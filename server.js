@@ -45,11 +45,38 @@ function loadStore(){
   catch { const d=defaults(); saveStore(d); return d; }
 }
 function saveStore(s){ fs.writeFileSync(DATA_FILE, JSON.stringify(s,null,2)); }
+function envText(name){ return String(process.env[name]||'').trim(); }
+function effectiveSettings(stored={}){
+  return {
+    ...defaults().settings,
+    ...(stored||{}),
+    brandName: envText('BRAND_NAME') || stored.brandName || 'REDEACHADOS BR',
+    shopeeStoreUrl: envText('SHOPEE_STORE_URL') || stored.shopeeStoreUrl || '',
+    defaultPrivacy: envText('DEFAULT_PRIVACY') || stored.defaultPrivacy || 'SELF_ONLY',
+    geminiModel: envText('GEMINI_MODEL') || stored.geminiModel || 'gemini-3.5-flash-lite',
+    geminiApiKey: envText('GEMINI_API_KEY') || stored.geminiApiKey || '',
+    tiktokClientKey: envText('TIKTOK_CLIENT_KEY') || stored.tiktokClientKey || '',
+    tiktokClientSecret: envText('TIKTOK_CLIENT_SECRET') || stored.tiktokClientSecret || ''
+  };
+}
 function now(){ return new Date().toISOString(); }
 function removeFile(p){ try{ if(p && fs.existsSync(p)) fs.unlinkSync(p); }catch{} }
 function baseUrl(req){ return (process.env.PUBLIC_BASE_URL || `${req.protocol}://${req.get('host')}`).replace(/\/$/,''); }
 function redirectUri(req){ return `${baseUrl(req)}/auth/tiktok/callback`; }
-function safeSettings(s){ return { brandName:s.brandName||'REDEACHADOS BR', shopeeStoreUrl:s.shopeeStoreUrl||'', defaultPrivacy:s.defaultPrivacy||'SELF_ONLY', defaultHashtagCount:Number(s.defaultHashtagCount||6), tiktokConfigured:Boolean(s.tiktokClientKey&&s.tiktokClientSecret), geminiConfigured:Boolean(s.geminiApiKey), geminiModel:s.geminiModel||'gemini-3.5-flash-lite' }; }
+function safeSettings(stored){
+  const s=effectiveSettings(stored||{});
+  return {
+    brandName:s.brandName, shopeeStoreUrl:s.shopeeStoreUrl, defaultPrivacy:s.defaultPrivacy,
+    defaultHashtagCount:Number(s.defaultHashtagCount||6),
+    tiktokConfigured:Boolean(s.tiktokClientKey&&s.tiktokClientSecret), geminiConfigured:Boolean(s.geminiApiKey),
+    geminiModel:s.geminiModel,
+    sources:{
+      shopeeStoreUrl:envText('SHOPEE_STORE_URL')?'render':'local',
+      geminiApiKey:envText('GEMINI_API_KEY')?'render':'local',
+      tiktokCredentials:(envText('TIKTOK_CLIENT_KEY')&&envText('TIKTOK_CLIENT_SECRET'))?'render':'local'
+    }
+  };
+}
 function mustLogin(req,res,next){
   const required = process.env.APP_PASSWORD;
   if(!required || req.session?.appAuth) return next();
@@ -116,7 +143,7 @@ app.post('/api/catalog/import', mustLogin, catalogUpload.single('catalog'), (req
   }catch(e){res.status(400).json({error:e.message});}
 });
 
-app.get('/api/health', (_req,res)=>res.json({ok:true,service:'REDEACHADOS BR Publisher Web V4'}));
+app.get('/api/health', (_req,res)=>res.json({ok:true,service:'REDEACHADOS BR Publisher Web V5.3'}));
 app.get('/api/auth-state',(req,res)=>res.json({locked:Boolean(process.env.APP_PASSWORD),loggedIn:!process.env.APP_PASSWORD||Boolean(req.session?.appAuth)}));
 app.post('/api/login',(req,res)=>{
   if(!process.env.APP_PASSWORD){ req.session.appAuth=true; return res.json({ok:true}); }
@@ -132,13 +159,14 @@ app.get('/api/config', mustLogin, (req,res)=>{
 app.post('/api/settings', mustLogin, (req,res)=>{
   const s=loadStore();
   const old=s.settings||{};
+  const current=effectiveSettings(old);
   s.settings={
     ...old,
-    brandName:String(req.body.brandName||old.brandName||'REDEACHADOS BR').trim(),
-    shopeeStoreUrl:String(req.body.shopeeStoreUrl??old.shopeeStoreUrl??'').trim(),
-    defaultPrivacy:String(req.body.defaultPrivacy||old.defaultPrivacy||'SELF_ONLY'),
-    defaultHashtagCount:Math.max(3,Math.min(10,Number(req.body.defaultHashtagCount||old.defaultHashtagCount||6))),
-    geminiModel:String(req.body.geminiModel||old.geminiModel||'gemini-3.5-flash-lite').trim(),
+    brandName:String(req.body.brandName||current.brandName||'REDEACHADOS BR').trim(),
+    shopeeStoreUrl:String(req.body.shopeeStoreUrl??current.shopeeStoreUrl??'').trim(),
+    defaultPrivacy:String(req.body.defaultPrivacy||current.defaultPrivacy||'SELF_ONLY'),
+    defaultHashtagCount:Math.max(3,Math.min(10,Number(req.body.defaultHashtagCount||current.defaultHashtagCount||6))),
+    geminiModel:String(req.body.geminiModel||current.geminiModel||'gemini-3.5-flash-lite').trim(),
     tiktokClientKey:String(req.body.tiktokClientKey||'').trim() || old.tiktokClientKey || '',
     tiktokClientSecret:String(req.body.tiktokClientSecret||'').trim() || old.tiktokClientSecret || '',
     geminiApiKey:String(req.body.geminiApiKey||'').trim() || old.geminiApiKey || ''
@@ -148,7 +176,7 @@ app.post('/api/settings', mustLogin, (req,res)=>{
 });
 
 async function refreshTokenIfNeeded(force=false){
-  const s=loadStore(); const token=s.token; const cfg=s.settings||{};
+  const s=loadStore(); const token=s.token; const cfg=effectiveSettings(s.settings||{});
   if(!token?.refresh_token) throw new Error('Conecte sua conta TikTok primeiro.');
   const expiresAt=Number(token.obtained_at||0)+Number(token.expires_in||0)*1000;
   if(!force && Date.now()<expiresAt-10*60*1000) return token.access_token;
@@ -162,23 +190,28 @@ async function tiktokJson(url,options={}){
   const token=await refreshTokenIfNeeded();
   const r=await fetch(url,{...options,headers:{Authorization:`Bearer ${token}`,'Content-Type':'application/json; charset=UTF-8',...(options.headers||{})}});
   const d=await r.json().catch(()=>({}));
-  if(!r.ok||(d.error?.code&&d.error.code!=='ok')) throw new Error(d?.error?.message||d?.error_description||`TikTok HTTP ${r.status}`);
+  if(!r.ok||(d.error?.code&&d.error.code!=='ok')) {
+    const code=d?.error?.code||d?.error||'';
+    const msg=d?.error?.message||d?.error_description||`TikTok HTTP ${r.status}`;
+    const logId=d?.error?.log_id||d?.log_id||'';
+    throw new Error([msg,code&&`Código: ${code}`,logId&&`Log: ${logId}`].filter(Boolean).join(' | '));
+  }
   return d;
 }
 async function creatorInfo(){ const d=await tiktokJson('https://open.tiktokapis.com/v2/post/publish/creator_info/query/',{method:'POST',body:'{}'}); return d.data||{}; }
 
 app.get('/auth/tiktok', mustLogin, (req,res)=>{
-  const cfg=loadStore().settings||{};
+  const cfg=effectiveSettings(loadStore().settings||{});
   if(!cfg.tiktokClientKey||!cfg.tiktokClientSecret) return res.status(400).send('Abra Configurações e informe Client Key e Client Secret do TikTok Developers.');
   const state=crypto.randomBytes(24).toString('hex'); req.session.oauthState=state;
-  const p=new URLSearchParams({client_key:cfg.tiktokClientKey,response_type:'code',scope:'user.info.basic,video.publish',redirect_uri:redirectUri(req),state});
+  const p=new URLSearchParams({client_key:cfg.tiktokClientKey,response_type:'code',scope:'user.info.basic,video.publish,video.upload',redirect_uri:redirectUri(req),state});
   res.redirect(`https://www.tiktok.com/v2/auth/authorize/?${p}`);
 });
 app.get('/auth/tiktok/callback', async(req,res)=>{
   try{
     if(req.query.error) throw new Error(req.query.error_description||req.query.error);
     if(!req.query.code||req.query.state!==req.session.oauthState) throw new Error('Autorização TikTok inválida ou expirada.');
-    const s=loadStore(), cfg=s.settings||{};
+    const s=loadStore(), cfg=effectiveSettings(s.settings||{});
     const form=new URLSearchParams({client_key:cfg.tiktokClientKey,client_secret:cfg.tiktokClientSecret,code:String(req.query.code),grant_type:'authorization_code',redirect_uri:redirectUri(req)});
     const r=await fetch('https://open.tiktokapis.com/v2/oauth/token/',{method:'POST',headers:{'Content-Type':'application/x-www-form-urlencoded'},body:form});
     const d=await r.json(); if(!r.ok||d.error) throw new Error(d.error_description||d.error||'Falha ao conectar o TikTok.');
@@ -196,17 +229,17 @@ function sanitizeJsonText(text){
 function fallbackCopy(filename, brand, shopUrl){
   const raw=String(filename||'produto').replace(/\.[^.]+$/,'').replace(/[_-]+/g,' ').replace(/\s+/g,' ').trim();
   const product=raw && !/^video\s*\d*$/i.test(raw) ? raw : 'Achadinho para o dia a dia';
-  const title=`Olha esse achadinho 👀`;
+  const title=`Olha esse achadinho`;
   const description=`${product}. Uma opção prática para facilitar a rotina. Veja os detalhes e confira se combina com você.`;
   const hashtags=['#achadinhos','#utilidades','#comprasonline','#dicas','#'+String(brand||'redeachadosbr').toLowerCase().replace(/[^a-z0-9]/g,'')];
-  const cta=shopUrl?'Confira na Shopee pelo link 👇':'Confira mais produtos no perfil.';
+  const cta=shopUrl?`Garanta o seu na ${brand||'REDEACHADOS BR'}`:`Confira mais produtos na ${brand||'REDEACHADOS BR'}.`;
   return {product,title,description,hashtags,cta,confidence:'fallback'};
 }
 async function generateCopyWithGemini({images,filename}){
-  const s=loadStore(), cfg=s.settings||{};
+  const s=loadStore(), cfg=effectiveSettings(s.settings||{});
   if(!cfg.geminiApiKey) return fallbackCopy(filename,cfg.brandName,cfg.shopeeStoreUrl);
   const model=cfg.geminiModel||'gemini-3.5-flash-lite';
-  const prompt=`Você é um redator de e-commerce brasileiro especializado em TikTok. Analise os frames de um vídeo de produto e gere metadados para publicação. Não invente especificações, certificações, preço, desconto, garantia, material, medidas ou funções que não estejam claramente visíveis. Evite promessas absolutas, alegações médicas e linguagem enganosa. Escreva em português do Brasil, natural e comercial sem spam. NÃO coloque emojis nos campos title, description, cta ou hashtags: o aplicativo aplicará emojis automaticamente de forma visual e moderada. Retorne SOMENTE JSON válido neste formato: {"product":"nome genérico provável do produto","title":"chamada curta de até 70 caracteres","description":"descrição de 120 a 320 caracteres","hashtags":["#hashtag1","#hashtag2","#hashtag3","#hashtag4","#hashtag5","#hashtag6"],"cta":"chamada curta para conferir o produto"}. Marca da loja: ${cfg.brandName||'REDEACHADOS BR'}. Nome do arquivo: ${filename||''}.`;
+  const prompt=`Você é um redator de e-commerce brasileiro especializado em TikTok. Analise os frames de um vídeo de produto e gere metadados para publicação. Não invente especificações, certificações, preço, desconto, garantia, material, medidas ou funções que não estejam claramente visíveis. Evite promessas absolutas, alegações médicas e linguagem enganosa. Escreva em português do Brasil, natural e comercial sem spam. NÃO coloque emojis nos campos title, description, cta ou hashtags: o aplicativo aplicará emojis automaticamente de forma visual e moderada. Retorne SOMENTE JSON válido neste formato: {"product":"nome genérico provável do produto","title":"chamada curta de até 70 caracteres","description":"descrição de 120 a 320 caracteres","hashtags":["#hashtag1","#hashtag2","#hashtag3","#hashtag4","#hashtag5","#hashtag6"],"cta":"CTA curto e natural mencionando a loja; prefira frases como Garanta o seu na REDE ACHADOS BR ou Confira na REDE ACHADOS BR, sem dizer apenas no link"}. Marca da loja: ${cfg.brandName||'REDEACHADOS BR'}. Nome do arquivo: ${filename||''}.`;
   const parts=[{text:prompt}];
   for(const img of (images||[]).slice(0,3)){
     const m=String(img).match(/^data:(image\/[a-zA-Z0-9.+-]+);base64,(.+)$/s); if(m) parts.push({inline_data:{mime_type:m[1],data:m[2]}});
@@ -220,7 +253,10 @@ async function generateCopyWithGemini({images,filename}){
   const text=d?.candidates?.[0]?.content?.parts?.map(p=>p.text||'').join('')||'';
   let out; try{out=JSON.parse(sanitizeJsonText(text));}catch{throw new Error('A IA não retornou um JSON válido. Tente novamente.');}
   const tags=Array.isArray(out.hashtags)?out.hashtags:[];
-  return {product:String(out.product||'Produto'),title:String(out.title||'Confira esse achadinho'),description:String(out.description||''),hashtags:tags.map(x=>String(x).startsWith('#')?String(x):'#'+String(x).replace(/\s+/g,'')),cta:String(out.cta||'Confira mais detalhes.'),confidence:'ai'};
+  let cta=String(out.cta||'').trim();
+  if(!cta || /\bno link\b/i.test(cta)) cta=`Garanta o seu na ${cfg.brandName||'REDEACHADOS BR'}`;
+  else if(!normalizeText(cta).includes(normalizeText(cfg.brandName||'REDEACHADOS BR'))) cta=`${cta.replace(/[.!]+$/,'')} na ${cfg.brandName||'REDEACHADOS BR'}`;
+  return {product:String(out.product||'Produto'),title:String(out.title||'Confira esse achadinho'),description:String(out.description||''),hashtags:tags.map(x=>String(x).startsWith('#')?String(x):'#'+String(x).replace(/\s+/g,'')),cta,confidence:'ai'};
 }
 app.post('/api/ai/generate', mustLogin, async(req,res)=>{
   try{
@@ -233,8 +269,9 @@ app.post('/api/ai/generate', mustLogin, async(req,res)=>{
 
 function productEmoji(meta={}){
   const text=`${meta.product||''} ${meta.title||''} ${meta.description||''}`.toLowerCase();
+  if(/avental|mini chef|chef|cozinha infantil/.test(text)) return '👩‍🍳';
+  if(/cozinha|panela|cafeteira|chaleira|frigideira|utens[ií]lio|assadeira|pote|galheteiro/.test(text)) return '🍳';
   if(/brinqued|infantil|crian[cç]a|bonec|carrinho|pista|jogo/.test(text)) return '🎁';
-  if(/cozinha|panela|cafeteira|chaleira|frigideira|utens[ií]lio|avental|chef/.test(text)) return '🍳';
   if(/organiz|gaveta|prateleira|porta joia|armazen/.test(text)) return '✨';
   if(/limp|mop|escova|pano|vassoura/.test(text)) return '🧼';
   if(/luz|led|lumin[aá]ria|sensor/.test(text)) return '💡';
@@ -268,6 +305,28 @@ function chunkPlan(size){
   if(chunkSize<MIN){chunks=Math.max(1,Math.floor(size/MIN));chunkSize=Math.floor(size/chunks);}
   return {chunkSize,totalChunks:Math.max(1,Math.ceil(size/chunkSize))};
 }
+
+async function uploadDraftFile(file){
+  const size=file.size, {chunkSize,totalChunks}=chunkPlan(size);
+  const payload={
+    source_info:{source:'FILE_UPLOAD',video_size:size,chunk_size:chunkSize,total_chunk_count:totalChunks}
+  };
+  const init=await tiktokJson('https://open.tiktokapis.com/v2/post/publish/inbox/video/init/',{method:'POST',body:JSON.stringify(payload)});
+  const uploadUrl=init?.data?.upload_url,publishId=init?.data?.publish_id;
+  if(!uploadUrl||!publishId) throw new Error('TikTok não retornou os dados de upload do rascunho.');
+  const fd=fs.openSync(file.path,'r'); let start=0;
+  try{
+    while(start<size){
+      let end=Math.min(start+chunkSize,size); if(size-end>0&&size-end<5*1024*1024) end=size;
+      const len=end-start,buf=Buffer.allocUnsafe(len); fs.readSync(fd,buf,0,len,start);
+      const put=await fetch(uploadUrl,{method:'PUT',headers:{'Content-Type':file.mimetype,'Content-Length':String(len),'Content-Range':`bytes ${start}-${end-1}/${size}`},body:buf});
+      if(![201,206].includes(put.status)) throw new Error(`Falha ao enviar o rascunho ao TikTok (HTTP ${put.status}).`);
+      start=end;
+    }
+  }finally{fs.closeSync(fd);}
+  return publishId;
+}
+
 async function publishFile(file, caption, options={}){
   const creator=await creatorInfo();
   const privacy=options.privacy||'SELF_ONLY';
@@ -298,11 +357,25 @@ async function publishFile(file, caption, options={}){
   }finally{fs.closeSync(fd);}
   return publishId;
 }
+app.post('/api/upload-draft', mustLogin, upload.single('video'), async(req,res)=>{
+  try{
+    if(!req.file) return res.status(400).json({error:'Selecione um vídeo.'});
+    const meta=JSON.parse(req.body.meta||'{}'); const s=loadStore(), settings=effectiveSettings(s.settings||{});
+    const manualCaption=String(req.body.caption||'').trim();
+    const caption=(manualCaption||buildCaption(meta,settings)).slice(0,2200);
+    const publishId=await uploadDraftFile(req.file);
+    s.history.unshift({id:crypto.randomUUID(),publishId,filename:req.file.originalname,product:meta.product||'',shopeeUrl:meta.shopeeUrl||'',caption,status:'SENT_TO_TIKTOK_INBOX',mode:'draft',createdAt:now()});
+    s.history=s.history.slice(0,200); saveStore(s); removeFile(req.file.path);
+    res.json({ok:true,publishId,caption,message:'Vídeo enviado como rascunho. Abra o TikTok e toque na notificação da caixa de entrada para concluir a edição e publicar.'});
+  }catch(e){ if(req.file) removeFile(req.file.path); res.status(400).json({error:e.message}); }
+});
+
 app.post('/api/publish', mustLogin, upload.single('video'), async(req,res)=>{
   try{
     if(!req.file) return res.status(400).json({error:'Selecione um vídeo.'});
-    const meta=JSON.parse(req.body.meta||'{}'); const s=loadStore(), settings=s.settings||{};
-    const caption=buildCaption(meta,settings);
+    const meta=JSON.parse(req.body.meta||'{}'); const s=loadStore(), settings=effectiveSettings(s.settings||{});
+    const manualCaption=String(req.body.caption||'').trim();
+    const caption=(manualCaption||buildCaption(meta,settings)).slice(0,2200);
     const publishId=await publishFile(req.file,caption,{
       privacy:req.body.privacy||settings.defaultPrivacy||'SELF_ONLY',duration:Number(req.body.duration||0),
       disableComment:req.body.disableComment==='true',disableDuet:req.body.disableDuet==='true',disableStitch:req.body.disableStitch==='true',isAigc:req.body.isAigc==='true'
@@ -317,4 +390,4 @@ app.post('/api/status/:publishId', mustLogin, async(req,res)=>{
   try{const d=await tiktokJson('https://open.tiktokapis.com/v2/post/publish/status/fetch/',{method:'POST',body:JSON.stringify({publish_id:req.params.publishId})});res.json(d.data||{});}catch(e){res.status(400).json({error:e.message});}
 });
 
-app.listen(PORT,()=>console.log(`REDEACHADOS BR Publisher Web V4 em http://localhost:${PORT}`));
+app.listen(PORT,()=>console.log(`REDEACHADOS BR Publisher Web V5.3 em http://localhost:${PORT}`));

@@ -1,77 +1,103 @@
-# REDEACHADOS BR Publisher Web V4
+# REDEACHADOS BR Publisher Web V5.3
 
-Aplicativo web privado para o fluxo diário: **escolher vídeo -> analisar -> gerar legenda -> publicar no TikTok**.
+Fluxo principal: escolher vídeo → IA identifica o produto → catálogo localiza o link Shopee → legenda editável → enviar como **rascunho para o TikTok** → finalizar no aplicativo TikTok.
 
-## O que a V4 faz
+## Novidades da V5.3
 
-- Recebe MP4, MOV ou WebM.
-- O navegador extrai 3 frames do vídeo automaticamente (15%, 50% e 85%).
-- A IA identifica o produto visualmente e gera: nome provável, chamada, descrição, CTA e hashtags.
-- Adiciona o link padrão da Shopee configurado uma vez.
-- Monta a legenda respeitando o limite de 2.200 caracteres do Direct Post do TikTok.
-- Consulta as opções de privacidade da conta TikTok antes da publicação.
-- Faz upload do vídeo pelo Content Posting API / Direct Post.
-- Mantém histórico das últimas publicações.
-- Marca a publicação como promoção da própria empresa (`brand_organic_toggle=true`).
-- Permite marcar `is_aigc` quando o **vídeo** foi gerado por IA.
+- Mantém as melhorias das versões anteriores: catálogo Shopee atualizável, link direto do produto, Gemini 3.5 Flash Lite, emojis por categoria, CTA mais natural, legenda editável e botão para restaurar a legenda da IA.
+- Credenciais e configurações podem ser mantidas no Render por Environment Variables, evitando preencher tudo novamente após reinicializações.
+- Ao conectar/reconectar o TikTok, o fluxo abre em outra aba e o rascunho dos campos permanece no navegador.
+- Novo modo **Upload/Rascunho** usando o endpoint oficial `/v2/post/publish/inbox/video/init/` com escopo `video.upload`.
+- O botão principal agora envia o vídeo à caixa de entrada do TikTok; a publicação final é feita dentro do TikTok.
+- A legenda fica pronta para copiar, mas o link Shopee não é inserido automaticamente no envio via API.
+- Erros do TikTok exibem código e log quando fornecidos pela API.
 
-## Importante sobre “só colocar o vídeo”
+## Variáveis recomendadas no Render
 
-No uso diário é isso mesmo: você escolhe o vídeo, espera a análise e clica em **PUBLICAR NO TIKTOK**. Existe apenas uma configuração inicial, porque TikTok e IA exigem credenciais próprias.
-
-Se a chave Gemini não estiver configurada, o app usa um modo básico baseado no nome do arquivo. Para reconhecer o produto olhando o vídeo, configure uma Gemini API Key.
-
-## Publicação pública no TikTok
-
-O TikTok exige um aplicativo no TikTok for Developers, o produto **Content Posting API** e autorização para o escopo `video.publish`. Clientes ainda não auditados ficam restritos a `SELF_ONLY` durante testes. O app mostra o Redirect URI exato que precisa ser cadastrado no painel do TikTok.
-
-## Como colocar online (forma simples)
-
-Este projeto inclui `Dockerfile` e `render.yaml` para hospedagem. Em um serviço como Render:
-
-1. Crie um novo Web Service usando este projeto/repositório.
-2. Defina `APP_PASSWORD` com uma senha sua.
-3. O serviço fornecerá um endereço HTTPS.
-4. Abra o endereço, entre com sua senha e vá em **Configurações**.
-5. Cole sua Gemini API Key, Client Key e Client Secret do TikTok.
-6. Copie o Redirect URI mostrado pelo próprio app e cadastre-o no TikTok Developers.
-7. Clique em **Conectar TikTok**.
-
-### Observação sobre hospedagem gratuita
-
-Hospedagens gratuitas podem suspender o serviço por inatividade ou apagar o armazenamento local em reinicializações. Para uso comercial contínuo, use armazenamento persistente ou plano que ofereça disco persistente.
-
-## Rodar localmente, se quiser testar
-
-```bash
-npm install
-APP_PASSWORD=minhasenha SESSION_SECRET=outra-chave npm start
+```env
+APP_PASSWORD=...
+SESSION_SECRET=...
+PUBLIC_BASE_URL=https://redeachados-publisher.onrender.com
+SHOPEE_STORE_URL=https://shopee.com.br/redeachadosbr
+GEMINI_API_KEY=...
+GEMINI_MODEL=gemini-3.5-flash-lite
+TIKTOK_CLIENT_KEY=...
+TIKTOK_CLIENT_SECRET=...
 ```
 
-Depois abra `http://localhost:3000`.
+## TikTok Developers
+
+Habilite **Content Posting API** e autorize os escopos:
+
+- `user.info.basic`
+- `video.upload` — necessário para enviar rascunhos
+- `video.publish` — mantido para futura publicação direta após revisão/auditoria
+
+Redirect URI:
+
+```text
+https://redeachados-publisher.onrender.com/auth/tiktok/callback
+```
+
+Após mudar os escopos, reconecte a conta TikTok para gerar um novo token contendo `video.upload`.
+
+## Como usar
+
+1. Escolha o vídeo.
+2. Aguarde a análise da IA.
+3. Revise produto, link Shopee, chamada, descrição, CTA e hashtags.
+4. Edite a prévia da legenda se quiser e use **Copiar legenda**.
+5. Clique **ENVIAR RASCUNHO AO TIKTOK**.
+6. Abra o TikTok, toque na notificação recebida, finalize a edição e publique.
+
+
+## Novidades da V5.2.2
+
+- A **Prévia da legenda agora é editável** antes da publicação.
+- O texto editado manualmente é enviado ao TikTok exatamente como aparece na prévia, respeitando o limite de 2.200 caracteres.
+- Novo botão **“Restaurar legenda gerada pela IA”** para voltar rapidamente ao texto montado a partir de chamada, descrição, CTA, link e hashtags.
+- A edição manual da legenda é preservada no rascunho do navegador junto com os demais campos.
+
+# REDEACHADOS BR Publisher Web V5.2.1
+
+## Novidades
+- Credenciais e configurações podem ficar persistentes nas **Environment Variables do Render**.
+- O app deixa de pedir Gemini/TikTok novamente quando as variáveis estão configuradas.
+- CTA mais natural, mencionando a REDE ACHADOS BR.
+- Emojis por categoria melhorados; produtos de cozinha infantil/avental usam 👩‍🍳 em vez de 🎁.
+- Catálogo Shopee continua atualizável por planilha e gera link direto do produto.
+- Modelo padrão: `gemini-3.5-flash-lite`.
+
+## Variáveis recomendadas no Render
+Configure em **Render > redeachados-publisher > Environment**:
+
+```env
+APP_PASSWORD=sua-senha
+SESSION_SECRET=uma-chave-longa
+PUBLIC_BASE_URL=https://redeachados-publisher.onrender.com
+BRAND_NAME=REDEACHADOS BR
+SHOPEE_STORE_URL=https://shopee.com.br/redeachadosbr
+GEMINI_API_KEY=sua-chave-gemini
+GEMINI_MODEL=gemini-3.5-flash-lite
+TIKTOK_CLIENT_KEY=sua-client-key
+TIKTOK_CLIENT_SECRET=seu-client-secret
+DEFAULT_PRIVACY=SELF_ONLY
+```
+
+As variáveis do Render têm prioridade sobre valores locais. Assim, reinicializações/deploys não obrigam você a preencher essas credenciais de novo.
+
+> Observação: token de autorização do TikTok, histórico e arquivos locais ainda vivem no armazenamento local do serviço. Em hospedagem gratuita, um restart/redeploy pode exigir reconectar o TikTok ou reimportar o catálogo. Para persistência total, use disco persistente ou banco externo.
+
+## Atualização do catálogo
+No app: **Configurações > Atualizar catálogo com planilha da Shopee**. Baixe uma nova planilha em Shopee Seller Center quando entrarem produtos novos e importe-a ali.
 
 ## Segurança
+Nunca coloque chaves secretas diretamente no GitHub público. Use Environment Variables no Render.
 
-Este é um app privado. Não publique Client Secret ou API Key em repositório público. Use uma senha forte em `APP_PASSWORD` e HTTPS em produção.
 
-## Catálogo Shopee automático
+## V5.2.1 — reconexão TikTok sem perder o trabalho
 
-Esta versão inclui um catálogo inicial com 459 produtos da REDE ACHADOS BR.
-
-- O app tenta identificar o produto analisado pela IA e associá-lo ao catálogo.
-- Quando há correspondência, usa o link direto do anúncio no formato `https://shopee.com.br/product/852701218/ID_DO_PRODUTO/`.
-- Se não houver correspondência segura, continua usando o link padrão da loja configurado.
-- Em **Configurações > Catálogo Shopee**, use **Atualizar catálogo** para importar uma nova planilha `.xlsx/.xls` baixada da Shopee em **Meus Produtos > Editar em Massa > Informações básicas**.
-- A importação substitui o catálogo anterior e inclui automaticamente produtos novos presentes no arquivo.
-
-A aplicação usa a dependência `xlsx` para ler a planilha da Shopee no próprio servidor.
-
-## V5.1 – Legenda visual com emojis
-A prévia e a legenda enviada ao TikTok agora usam emojis de forma moderada e automática:
-- emoji principal conforme a categoria do produto;
-- 📝 antes da descrição;
-- 🛍️ antes da chamada para ação;
-- 🔗 antes do link da Shopee;
-- hashtags permanecem sem emojis.
-
-O sistema evita duplicar emoji no início dos textos e mantém o limite de 2.200 caracteres.
+- Conectar/Reconectar TikTok abre a autorização em outra aba, preservando o vídeo e os campos já preenchidos na aba original.
+- Rascunho de produto, link, chamada, descrição, CTA, hashtags e opções de publicação também é salvo no navegador como proteção extra.
+- Ao voltar para a aba original, o status da conexão TikTok é atualizado automaticamente.
+- Por segurança do navegador, um arquivo de vídeo não pode ser restaurado após fechar/recarregar a aba; por isso a autorização em nova aba é a proteção principal.

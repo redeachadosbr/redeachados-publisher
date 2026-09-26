@@ -1,19 +1,54 @@
 const $=s=>document.querySelector(s);
 let config=null, selectedFile=null, duration=0, frames=[], generated=null;
+
+const DRAFT_KEY='redeachados_publisher_draft_v530';
+let captionManual=false;
+function saveDraft(){
+  try{
+    const data={
+      product:$('#product')?.value||'', shopeeUrl:$('#shopeeUrl')?.value||'', title:$('#title')?.value||'',
+      description:$('#description')?.value||'', cta:$('#cta')?.value||'', hashtags:$('#hashtags')?.value||'',
+      privacy:$('#privacy')?.value||'SELF_ONLY', disableComment:Boolean($('#disableComment')?.checked),
+      disableDuet:Boolean($('#disableDuet')?.checked), disableStitch:Boolean($('#disableStitch')?.checked),
+      isAigc:Boolean($('#isAigc')?.checked), caption:$('#captionPreview')?.value||'', captionManual:Boolean(captionManual), savedAt:Date.now()
+    };
+    localStorage.setItem(DRAFT_KEY,JSON.stringify(data));
+  }catch{}
+}
+function restoreDraft(){
+  try{
+    const d=JSON.parse(localStorage.getItem(DRAFT_KEY)||'null'); if(!d)return;
+    for(const id of ['product','shopeeUrl','title','description','cta','hashtags']) if(d[id] && $('#'+id)) $('#'+id).value=d[id];
+    if(d.privacy && $('#privacy')) $('#privacy').value=d.privacy;
+    if($('#disableComment')) $('#disableComment').checked=Boolean(d.disableComment);
+    if($('#disableDuet')) $('#disableDuet').checked=Boolean(d.disableDuet);
+    if($('#disableStitch')) $('#disableStitch').checked=Boolean(d.disableStitch);
+    if($('#isAigc')) $('#isAigc').checked=Boolean(d.isAigc);
+    captionManual=Boolean(d.captionManual);
+    if(d.product||d.title||d.description||d.cta||d.hashtags){ generated={...(generated||{}),product:d.product||'',shopeeUrl:d.shopeeUrl||'',title:d.title||'',description:d.description||'',cta:d.cta||'',hashtags:String(d.hashtags||'').split(/\s+/).filter(x=>x.startsWith('#'))}; }
+    if(captionManual && d.caption && $('#captionPreview')) $('#captionPreview').value=d.caption; else updateCaption(true);
+  }catch{}
+}
+function clearDraft(){try{localStorage.removeItem(DRAFT_KEY)}catch{}}
+
 function toast(msg,err=false){const d=document.createElement('div');d.className='toast'+(err?' err':'');d.textContent=msg;$('#toast').appendChild(d);setTimeout(()=>d.remove(),5000)}
 async function api(url,opt={}){const r=await fetch(url,{...opt,headers:{...(opt.body instanceof FormData?{}:{'Content-Type':'application/json'}),...(opt.headers||{})}});const d=await r.json().catch(()=>({}));if(!r.ok)throw new Error(d.error||'Erro inesperado.');return d}
 async function boot(){
   const a=await api('/api/auth-state');
   if(a.locked&&!a.loggedIn){$('#loginScreen').classList.remove('hidden');return}
-  $('#app').classList.remove('hidden'); await loadConfig(); await loadHistory();
+  $('#app').classList.remove('hidden'); await loadConfig(); restoreDraft(); await loadHistory();
 }
 async function loadConfig(){
   config=await api('/api/config');
   const s=config.settings;
   $('#brandName').value=s.brandName||'REDEACHADOS BR';$('#shopeeStoreUrl').value=s.shopeeStoreUrl||'';$('#geminiModel').value=s.geminiModel||'gemini-3.5-flash-lite';$('#redirectUri').value=config.redirectUri;
+  $('#geminiApiKey').placeholder=s.geminiConfigured?'Configurado ✓ — deixe em branco para manter':'Cole a chave aqui';
+  $('#tiktokClientKey').placeholder=s.tiktokConfigured?'Configurado ✓ — deixe em branco para manter':'Client Key do TikTok';
+  $('#tiktokClientSecret').placeholder=s.tiktokConfigured?'Configurado ✓ — deixe em branco para manter':'Client Secret do TikTok';
   await loadCatalogStatus();
-  $('#connectionText').textContent=config.tiktokConnected?'Conta conectada e pronta para publicar.':'Conta ainda não conectada.';
+  $('#connectionText').textContent=config.tiktokConnected?'Conta conectada e pronta para enviar rascunhos.':'Conta ainda não conectada.';
   $('#connectBtn').textContent=config.tiktokConnected?'Reconectar TikTok':'Conectar TikTok';
+  $('#connectBtn').title='A conexão abre em outra aba para não perder vídeo, legenda ou campos já preenchidos.';
   if(!s.tiktokConfigured||!s.geminiConfigured) setTimeout(()=>$('#settingsDialog').showModal(),300);
 }
 $('#loginBtn').onclick=async()=>{try{await api('/api/login',{method:'POST',body:JSON.stringify({password:$('#loginPassword').value})});location.reload()}catch(e){toast(e.message,true)}};
@@ -48,14 +83,21 @@ async function analyze(){
 function fillGenerated(){
   $('#product').value=generated.product||'';$('#shopeeUrl').value=generated.shopeeUrl||'';$('#title').value=generated.title||'';$('#description').value=generated.description||'';$('#cta').value=generated.cta||'';$('#hashtags').value=(generated.hashtags||[]).join(' ');
   if(generated.catalogMatch) toast(`Produto vinculado ao catálogo: ${generated.catalogMatch.name}`);
-  updateCaption();
+  captionManual=false;updateCaption(true);saveDraft();
 }
 
 function currentMeta(){return{product:$('#product').value.trim(),shopeeUrl:$('#shopeeUrl').value.trim(),title:$('#title').value.trim(),description:$('#description').value.trim(),cta:$('#cta').value.trim(),hashtags:$('#hashtags').value.trim().split(/\s+/).filter(x=>x.startsWith('#'))}}
-function productEmoji(m={}){const t=`${m.product||''} ${m.title||''} ${m.description||''}`.toLowerCase();if(/brinqued|infantil|crian[cç]a|bonec|carrinho|pista|jogo/.test(t))return'🎁';if(/cozinha|panela|cafeteira|chaleira|frigideira|utens[ií]lio|avental|chef/.test(t))return'🍳';if(/organiz|gaveta|prateleira|porta joia|armazen/.test(t))return'✨';if(/limp|mop|escova|pano|vassoura/.test(t))return'🧼';if(/luz|led|lumin[aá]ria|sensor/.test(t))return'💡';if(/beleza|maquiagem|pincel|joia|brinco/.test(t))return'💖';if(/fitness|balan[cç]a|treino|academia/.test(t))return'💪';return'✨'}
+function productEmoji(m={}){const t=`${m.product||''} ${m.title||''} ${m.description||''}`.toLowerCase();if(/avental|mini chef|chef|cozinha infantil/.test(t))return'👩‍🍳';if(/cozinha|panela|cafeteira|chaleira|frigideira|utens[ií]lio|assadeira|pote|galheteiro/.test(t))return'🍳';if(/brinqued|infantil|crian[cç]a|bonec|carrinho|pista|jogo/.test(t))return'🎁';if(/organiz|gaveta|prateleira|porta joia|armazen/.test(t))return'✨';if(/limp|mop|escova|pano|vassoura/.test(t))return'🧼';if(/luz|led|lumin[aá]ria|sensor/.test(t))return'💡';if(/beleza|maquiagem|pincel|joia|brinco/.test(t))return'💖';if(/fitness|balan[cç]a|treino|academia/.test(t))return'💪';return'✨'}
 function cleanEmoji(t=''){return String(t||'').replace(/^\s*[\p{Extended_Pictographic}\uFE0F\u200D]+\s*/u,'').trim()}
-function updateCaption(){if(!config)return;const m=currentMeta(),link=m.shopeeUrl||config.settings.shopeeStoreUrl,e=productEmoji(m),parts=[];if(m.title)parts.push(`${e} ${cleanEmoji(m.title)}`);if(m.description)parts.push(`📝 ${cleanEmoji(m.description)}`);if(m.cta)parts.push(`🛍️ ${cleanEmoji(m.cta)}`);if(link)parts.push(`🔗 ${link}`);if(m.hashtags.length)parts.push(m.hashtags.join(' '));$('#captionPreview').value=parts.filter(Boolean).join('\n\n').slice(0,2200)}
-['product','shopeeUrl','title','description','cta','hashtags'].forEach(id=>$('#'+id).addEventListener('input',updateCaption));
+function buildAutoCaption(){if(!config)return'';const m=currentMeta(),e=productEmoji(m),parts=[];if(m.title)parts.push(`${e} ${cleanEmoji(m.title)}`);if(m.description)parts.push(`📝 ${cleanEmoji(m.description)}`);if(m.cta)parts.push(`🛍️ ${cleanEmoji(m.cta)}`);if(m.hashtags.length)parts.push(m.hashtags.join(' '));return parts.filter(Boolean).join('\n\n').slice(0,2200)}
+function updateCaption(force=false){if(!config)return;if(captionManual&&!force)return;$('#captionPreview').value=buildAutoCaption()}
+function restoreGeneratedCaption(){captionManual=false;updateCaption(true);saveDraft();toast('Legenda restaurada a partir dos campos gerados.')}
+$('#captionPreview').addEventListener('input',()=>{captionManual=true;saveDraft()});
+$('#restoreCaptionBtn').onclick=restoreGeneratedCaption;
+$('#copyCaptionBtn').onclick=async()=>{try{await navigator.clipboard.writeText($('#captionPreview').value.trim());toast('Legenda copiada. Cole no TikTok ao finalizar o rascunho.')}catch{toast('Não foi possível copiar automaticamente. Selecione a legenda e use Ctrl+C.',true)}};
+['product','shopeeUrl','title','description','cta','hashtags'].forEach(id=>$('#'+id).addEventListener('input',()=>{updateCaption(false);saveDraft()}));
+['privacy','disableComment','disableDuet','disableStitch','isAigc'].forEach(id=>$('#'+id)?.addEventListener('change',saveDraft));
+$('#connectBtn').addEventListener('click',()=>saveDraft());
 $('#regenerateBtn').onclick=analyze;
 async function loadCreator(){
   if(!config?.tiktokConnected)return;
@@ -63,12 +105,18 @@ async function loadCreator(){
 }
 $('#publishBtn').onclick=async()=>{
   if(!selectedFile)return toast('Escolha um vídeo.',true);if(!generated)return toast('Aguarde a geração da publicação.',true);if(!config.tiktokConnected)return toast('Conecte sua conta TikTok primeiro.',true);
-  const b=$('#publishBtn');b.disabled=true;b.textContent='PUBLICANDO...';
-  try{const fd=new FormData();fd.append('video',selectedFile);fd.append('meta',JSON.stringify(currentMeta()));fd.append('privacy',$('#privacy').value);fd.append('duration',String(duration||0));fd.append('disableComment',String($('#disableComment').checked));fd.append('disableDuet',String($('#disableDuet').checked));fd.append('disableStitch',String($('#disableStitch').checked));fd.append('isAigc',String($('#isAigc').checked));const r=await api('/api/publish',{method:'POST',body:fd});toast('Vídeo enviado ao TikTok. A plataforma está processando a publicação.');await loadHistory();resetVideo();}
-  catch(e){toast(e.message,true)}finally{b.disabled=false;b.textContent='PUBLICAR NO TIKTOK'}
+  const b=$('#publishBtn');b.disabled=true;b.textContent='ENVIANDO RASCUNHO...';
+  try{
+    const fd=new FormData();fd.append('video',selectedFile);fd.append('meta',JSON.stringify(currentMeta()));fd.append('caption',$('#captionPreview').value.trim());fd.append('duration',String(duration||0));
+    const r=await api('/api/upload-draft',{method:'POST',body:fd});
+    toast('Rascunho enviado. Abra o TikTok e toque na notificação da caixa de entrada para concluir.');
+    try{await navigator.clipboard.writeText($('#captionPreview').value.trim())}catch{}
+    await loadHistory();resetVideo();
+  }catch(e){toast(e.message,true)}finally{b.disabled=false;b.textContent='ENVIAR RASCUNHO AO TIKTOK'}
 };
-function resetVideo(){selectedFile=null;frames=[];generated=null;$('#preview').removeAttribute('src');$('#workArea').classList.add('hidden');$('#dropzone').classList.remove('hidden');$('#videoInput').value=''}
+function resetVideo(){selectedFile=null;frames=[];generated=null;captionManual=false;clearDraft();$('#preview').removeAttribute('src');$('#workArea').classList.add('hidden');$('#dropzone').classList.remove('hidden');$('#videoInput').value=''}
 async function loadHistory(){try{const h=await api('/api/history');$('#history').innerHTML=h.length?h.slice(0,10).map(x=>`<div class="history-item"><div><b>${esc(x.product||x.filename)}</b><br><small>${new Date(x.createdAt).toLocaleString('pt-BR')}</small></div><div><small>${esc(x.status||'PROCESSING')}</small></div></div>`).join(''):'<p class="small">Nenhuma publicação ainda.</p>'}catch{}}
 function esc(s){return String(s||'').replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;'}[m]))}
-const q=new URLSearchParams(location.search);if(q.get('error'))toast(q.get('error'),true);if(q.get('tiktok')==='connected')toast('TikTok conectado com sucesso.');
+const q=new URLSearchParams(location.search);if(q.get('error'))toast(q.get('error'),true);if(q.get('tiktok')==='connected')toast('TikTok conectado com sucesso. Você pode fechar esta aba e voltar ao vídeo anterior.');
+window.addEventListener('focus',async()=>{try{if(!$('#app').classList.contains('hidden')){await loadConfig();await loadCreator();}}catch{}});
 boot();

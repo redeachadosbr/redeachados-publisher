@@ -15,7 +15,7 @@
   <div id="app" class="hidden">
     <header><div><strong>REDEACHADOS BR</strong><span> Publisher</span></div><button id="settingsBtn" class="ghost">⚙ Configurações</button></header>
     <main>
-      <section class="hero"><h1>Envie o vídeo. O restante o app prepara.</h1><p>O sistema analisa frames do vídeo, cria chamada, descrição, CTA e hashtags, monta a legenda e envia para o TikTok.</p></section>
+      <section class="hero"><h1>Envie o vídeo. O restante o app prepara.</h1><p>O sistema analisa frames do vídeo, cria chamada, descrição, CTA e hashtags e envia o vídeo como rascunho para você finalizar dentro do TikTok.</p></section>
 
       <section class="card upload-card">
         <div id="dropzone" class="dropzone">
@@ -31,21 +31,23 @@
             <label>Descrição<textarea id="description" rows="4"></textarea></label>
             <label>CTA<input id="cta" /></label>
             <label>Hashtags<input id="hashtags" /></label>
-            <label>Prévia da legenda<textarea id="captionPreview" rows="10" readonly></textarea></label>
+            <label>Prévia da legenda <span class="small">(editável)</span><textarea id="captionPreview" rows="10" maxlength="2200" placeholder="Você pode ajustar manualmente a legenda antes de publicar."></textarea></label>
+            <div class="caption-tools"><button id="restoreCaptionBtn" type="button" class="ghost">↺ Restaurar legenda gerada pela IA</button><button id="copyCaptionBtn" type="button" class="ghost">📋 Copiar legenda</button><span class="small">A legenda fica pronta para copiar e colar no TikTok ao finalizar o rascunho.</span></div>
           </div>
-          <div class="options">
+          <div class="status" id="draftModeInfo"><b>Modo rascunho:</b> o vídeo será enviado para a caixa de entrada do TikTok. Privacidade, comentários, Dueto, Costurar e marcação de IA serão definidos dentro do próprio TikTok antes da publicação.</div>
+          <div class="options hidden" aria-hidden="true">
             <label>Privacidade<select id="privacy"><option value="SELF_ONLY">Somente eu</option></select></label>
             <label class="check"><input id="disableComment" type="checkbox"> Desativar comentários</label>
             <label class="check"><input id="disableDuet" type="checkbox"> Desativar Dueto</label>
             <label class="check"><input id="disableStitch" type="checkbox"> Desativar Costurar</label>
             <label class="check"><input id="isAigc" type="checkbox"> O vídeo em si foi gerado por IA</label>
           </div>
-          <div class="actions"><button id="regenerateBtn" class="ghost">↻ Gerar novamente</button><button id="publishBtn" class="publish">PUBLICAR NO TIKTOK</button></div>
-          <p class="small">A URL da Shopee é adicionada à legenda. O TikTok pode exibi-la como texto, conforme os recursos disponíveis para a conta.</p>
+          <div class="actions"><button id="regenerateBtn" class="ghost">↻ Gerar novamente</button><button id="publishBtn" class="publish">ENVIAR RASCUNHO AO TIKTOK</button></div>
+          <p class="small">O link direto da Shopee continua disponível no Publisher, mas não é enviado automaticamente pelo aplicativo ao TikTok. Use o botão “Copiar legenda” e revise o texto no TikTok antes de publicar.</p>
         </div>
       </section>
 
-      <section class="card connection"><div><h3>TikTok</h3><p id="connectionText">Verificando conexão...</p></div><a id="connectBtn" href="/auth/tiktok" class="primary linkbtn">Conectar TikTok</a></section>
+      <section class="card connection"><div><h3>TikTok</h3><p id="connectionText">Verificando conexão...</p></div><a id="connectBtn" href="/auth/tiktok" target="_blank" rel="noopener" class="primary linkbtn">Conectar TikTok</a></section>
       <section class="card"><h3>Últimas publicações</h3><div id="history" class="history"></div></section>
     </main>
   </div>
@@ -69,7 +71,7 @@
       <label>Client Key<input id="tiktokClientKey" /></label>
       <label>Client Secret<input id="tiktokClientSecret" type="password" /></label>
       <label>Redirect URI para cadastrar no TikTok<input id="redirectUri" readonly /></label>
-      <p class="small">No TikTok Developers, habilite Content Posting API e solicite o escopo <b>video.publish</b>.</p>
+      <p class="small">No TikTok Developers, habilite Content Posting API e autorize os escopos <b>video.upload</b> e <b>video.publish</b>. Para o modo rascunho, <b>video.upload</b> é o escopo necessário.</p>
       <div class="actions"><button id="saveSettingsBtn" value="cancel" class="primary">Salvar configuração</button></div>
     </form>
   </dialog>
