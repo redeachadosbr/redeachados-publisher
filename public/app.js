@@ -1,7 +1,7 @@
 const $=s=>document.querySelector(s);
 let config=null, selectedFile=null, duration=0, frames=[], generated=null;
 
-const DRAFT_KEY='redeachados_publisher_draft_v530';
+const DRAFT_KEY='redeachados_publisher_draft_v541';
 let captionManual=false;
 function saveDraft(){
   try{
@@ -119,4 +119,66 @@ async function loadHistory(){try{const h=await api('/api/history');$('#history')
 function esc(s){return String(s||'').replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;'}[m]))}
 const q=new URLSearchParams(location.search);if(q.get('error'))toast(q.get('error'),true);if(q.get('tiktok')==='connected')toast('TikTok conectado com sucesso. Você pode fechar esta aba e voltar ao vídeo anterior.');
 window.addEventListener('focus',async()=>{try{if(!$('#app').classList.contains('hidden')){await loadConfig();await loadCreator();}}catch{}});
+
+async function loadRemoteVideo(candidate,product){
+  const status=$('#wedropStatus');
+  try{
+    status.textContent='Baixando vídeo da galeria…';
+    const r=await fetch('/api/wedrop/video?url='+encodeURIComponent(candidate.url));
+    if(!r.ok){const d=await r.json().catch(()=>({}));throw new Error(d.error||'Falha ao baixar o vídeo.')}
+    const blob=await r.blob();
+    const ext=(blob.type.includes('webm')?'webm':blob.type.includes('quicktime')?'mov':'mp4');
+    const baseName=(product?.name||product?.sku||'wedrop').replace(/[\/:*?"<>|]+/g,' ').replace(/\s+/g,' ').trim().slice(0,90);
+    const file=new File([blob],`${baseName}.${ext}`,{type:blob.type||'video/mp4'});
+    status.textContent='Vídeo carregado. Extraindo frames e analisando o produto…';
+    await selectVideo(file);
+    if(product?.shopeeUrl && !$('#shopeeUrl').value) $('#shopeeUrl').value=product.shopeeUrl;
+    saveDraft();
+    status.textContent='Vídeo carregado e analisado. Revise a publicação abaixo.';
+    window.scrollTo({top:document.querySelector('.upload-card').offsetTop-12,behavior:'smooth'});
+  }catch(e){toast(e.message,true);status.textContent=e.message}
+}
+function renderWedropAttempts(data){
+  const box=$('#wedropAttempts'), list=data.gallery?.attempts||[]; box.innerHTML='';
+  if(!list.length){box.classList.add('hidden');return}
+  box.classList.remove('hidden');
+  box.innerHTML='<b>Tentativas automáticas</b>'+list.map((x,i)=>`<div class="attempt-row"><span>${i+1}. ${esc(x.query)}</span><small>${x.matches?`✅ ${x.matches} resultado(s)`:`sem resultado · similaridade ${Math.round((x.bestScore||0)*100)}%`}</small></div>`).join('');
+}
+async function rememberWedropSearch(sku,query){
+  if(!sku||!query)return; try{await api('/api/wedrop/alias',{method:'POST',body:JSON.stringify({sku,query})})}catch{}
+}
+function renderWedropResults(data){
+  const box=$('#wedropResults'), status=$('#wedropStatus'); box.innerHTML='';
+  const p=data.product||{};
+  if(p.name && !$('#wedropQuery').value.trim()) $('#wedropQuery').value=p.name;
+  renderWedropAttempts(data);
+  status.innerHTML=`<b>${esc(data.sku)}</b>${p.name?' · '+esc(p.name):''}<br>${esc(data.gallery?.diagnostic||'')}`;
+  const list=data.gallery?.candidates||[];
+  if(list.length){
+    box.classList.remove('hidden');
+    list.forEach((c,i)=>{
+      const el=document.createElement('div');el.className='video-result';
+      el.innerHTML=`<div><b>Vídeo ${i+1}</b><small>${esc((c.label||p.name||data.sku).slice(0,150))}</small><small>Busca: ${esc(c.matchQuery||data.gallery?.bestQuery||'')}</small></div><button class="primary">USAR ESTE VÍDEO</button>`;
+      el.querySelector('button').onclick=async()=>{await rememberWedropSearch(data.sku,c.matchQuery||data.gallery?.bestQuery);loadRemoteVideo(c,p)}; box.appendChild(el);
+    });
+  }else{
+    box.classList.remove('hidden');
+    const el=document.createElement('div');el.className='video-result fallback';
+    const suggested=data.gallery?.attempts?.at(-1)?.query||p.name||data.sku;
+    el.innerHTML=`<div><b>Nenhum vídeo confirmado automaticamente</b><small>Você pode apagar algumas palavras do final no campo “Busca manual” e tentar novamente.</small><small>Última tentativa: ${esc(suggested)}</small></div><a class="primary linkbtn" target="_blank" rel="noopener" href="${esc(data.gallery?.galleryUrl||'https://drive-vid-gallery.lovable.app/')}">ABRIR GALERIA</a>`;
+    box.appendChild(el);
+  }
+}
+async function searchWedrop(manual=false){
+  const sku=$('#wedropSku').value.trim(); if(!sku)return toast('Digite a SKU WeDrop.',true);
+  const q=manual?$('#wedropQuery').value.trim():'';
+  const b=manual?$('#wedropManualBtn'):$('#wedropSearchBtn');b.disabled=true;b.textContent='BUSCANDO…';$('#wedropStatus').textContent=manual?'Tentando o nome informado…':'Buscando pelo título completo e encurtando automaticamente se necessário…';
+  try{const d=await api('/api/wedrop/lookup?sku='+encodeURIComponent(sku)+(q?'&q='+encodeURIComponent(q):''));renderWedropResults(d)}catch(e){toast(e.message,true);$('#wedropStatus').textContent=e.message}finally{b.disabled=false;b.textContent=manual?'TENTAR ESTA BUSCA':'BUSCAR VÍDEO'}
+}
+$('#wedropSearchBtn')?.addEventListener('click',()=>searchWedrop(false));
+$('#wedropManualBtn')?.addEventListener('click',()=>searchWedrop(true));
+$('#wedropSku')?.addEventListener('keydown',e=>{if(e.key==='Enter')searchWedrop(false)});
+
+$('#wedropQuery')?.addEventListener('keydown',e=>{if(e.key==='Enter')searchWedrop(true)});
+
 boot();

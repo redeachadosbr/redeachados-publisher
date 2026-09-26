@@ -2,7 +2,13 @@
 <html lang="pt-BR">
 <head>
   <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <meta name="theme-color" content="#090909" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <meta name="apple-mobile-web-app-title" content="RA Publisher" />
+  <link rel="manifest" href="/manifest.webmanifest" />
+  <link rel="apple-touch-icon" href="/icon-192.png" />
   <title>REDEACHADOS BR Publisher</title>
   <link rel="stylesheet" href="/styles.css" />
 </head>
@@ -16,6 +22,18 @@
     <header><div><strong>REDEACHADOS BR</strong><span> Publisher</span></div><button id="settingsBtn" class="ghost">⚙ Configurações</button></header>
     <main>
       <section class="hero"><h1>Envie o vídeo. O restante o app prepara.</h1><p>O sistema analisa frames do vídeo, cria chamada, descrição, CTA e hashtags e envia o vídeo como rascunho para você finalizar dentro do TikTok.</p></section>
+
+      <section class="card sku-card">
+        <div class="sku-head"><div><span class="eyebrow">NOVO · V5.4.1</span><h2>Buscar vídeo pela SKU WeDrop</h2><p>Digite a SKU. O Publisher tenta identificar o produto, localizar vídeos na galeria WeDrop e carregar o vídeo sem precisar baixar manualmente.</p></div><span class="mobile-badge">📱 iPhone</span></div>
+        <div class="sku-search"><input id="wedropSku" inputmode="text" autocapitalize="characters" placeholder="Ex.: VP-2383" /><button id="wedropSearchBtn" class="publish mini">BUSCAR VÍDEO</button></div>
+        <div class="manual-search-row">
+          <input id="wedropQuery" placeholder="Busca manual (opcional) — apague palavras do final se necessário" />
+          <button id="wedropManualBtn" class="ghost">TENTAR ESTA BUSCA</button>
+        </div>
+        <div id="wedropStatus" class="small"></div>
+        <div id="wedropAttempts" class="search-attempts hidden"></div>
+        <div id="wedropResults" class="video-results hidden"></div>
+      </section>
 
       <section class="card upload-card">
         <div id="dropzone" class="dropzone">
@@ -76,5 +94,6 @@
     </form>
   </dialog>
   <script src="/app.js"></script>
+  <script>if('serviceWorker' in navigator){navigator.serviceWorker.register('/sw.js').catch(()=>{})}</script>
 </body>
 </html>
