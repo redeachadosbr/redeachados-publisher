@@ -26,6 +26,7 @@
           <div class="video-row"><video id="preview" controls muted playsinline></video><div><h2 id="fileName"></h2><div id="aiStatus" class="status">Aguardando análise...</div><button id="changeBtn" class="ghost">Trocar vídeo</button></div></div>
           <div class="generated">
             <label>Produto identificado<input id="product" /></label>
+            <label>Link direto do produto Shopee<input id="shopeeUrl" placeholder="Será preenchido automaticamente pelo catálogo" /></label>
             <label>Chamada<input id="title" maxlength="100" /></label>
             <label>Descrição<textarea id="description" rows="4"></textarea></label>
             <label>CTA<input id="cta" /></label>
@@ -57,7 +58,12 @@
       <hr>
       <h3>IA para analisar o vídeo</h3>
       <label>Gemini API Key<input id="geminiApiKey" type="password" placeholder="Cole a chave aqui (só precisa na primeira vez)" /></label>
-      <label>Modelo<input id="geminiModel" value="gemini-2.5-flash-lite" /></label>
+      <label>Modelo<input id="geminiModel" value="gemini-3.5-flash-lite" /></label>
+      <hr>
+      <h3>Catálogo Shopee</h3>
+      <p id="catalogStatus" class="small">Verificando catálogo...</p>
+      <label>Atualizar catálogo com planilha da Shopee<input id="catalogFile" type="file" accept=".xlsx,.xls" /></label>
+      <button id="importCatalogBtn" type="button" class="ghost">Atualizar catálogo</button>
       <hr>
       <h3>TikTok Developers</h3>
       <label>Client Key<input id="tiktokClientKey" /></label>

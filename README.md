@@ -53,3 +53,25 @@ Depois abra `http://localhost:3000`.
 ## Segurança
 
 Este é um app privado. Não publique Client Secret ou API Key em repositório público. Use uma senha forte em `APP_PASSWORD` e HTTPS em produção.
+
+## Catálogo Shopee automático
+
+Esta versão inclui um catálogo inicial com 459 produtos da REDE ACHADOS BR.
+
+- O app tenta identificar o produto analisado pela IA e associá-lo ao catálogo.
+- Quando há correspondência, usa o link direto do anúncio no formato `https://shopee.com.br/product/852701218/ID_DO_PRODUTO/`.
+- Se não houver correspondência segura, continua usando o link padrão da loja configurado.
+- Em **Configurações > Catálogo Shopee**, use **Atualizar catálogo** para importar uma nova planilha `.xlsx/.xls` baixada da Shopee em **Meus Produtos > Editar em Massa > Informações básicas**.
+- A importação substitui o catálogo anterior e inclui automaticamente produtos novos presentes no arquivo.
+
+A aplicação usa a dependência `xlsx` para ler a planilha da Shopee no próprio servidor.
+
+## V5.1 – Legenda visual com emojis
+A prévia e a legenda enviada ao TikTok agora usam emojis de forma moderada e automática:
+- emoji principal conforme a categoria do produto;
+- 📝 antes da descrição;
+- 🛍️ antes da chamada para ação;
+- 🔗 antes do link da Shopee;
+- hashtags permanecem sem emojis.
+
+O sistema evita duplicar emoji no início dos textos e mantém o limite de 2.200 caracteres.

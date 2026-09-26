@@ -4,18 +4,21 @@ import multer from 'multer';
 import crypto from 'node:crypto';
 import fs from 'node:fs';
 import path from 'node:path';
+import * as XLSX from 'xlsx';
 import { fileURLToPath } from 'node:url';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const DATA_DIR = path.join(__dirname, 'data');
 const DATA_FILE = path.join(DATA_DIR, 'store.json');
 const UPLOAD_DIR = path.join(__dirname, 'uploads');
+const CATALOG_FILE = path.join(DATA_DIR, 'catalog.json');
 fs.mkdirSync(DATA_DIR, { recursive: true });
 fs.mkdirSync(UPLOAD_DIR, { recursive: true });
 
 const app = express();
 app.set('trust proxy', 1);
 const PORT = Number(process.env.PORT || 3000);
+const catalogUpload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 25 * 1024 * 1024 } });
 const upload = multer({
   storage: multer.diskStorage({
     destination: (_req, _file, cb) => cb(null, UPLOAD_DIR),
@@ -35,7 +38,7 @@ app.use(session({
 app.use(express.static(path.join(__dirname, 'public')));
 
 function defaults(){
-  return { token:null, settings:{ brandName:'REDEACHADOS BR', shopeeStoreUrl:'', defaultPrivacy:'SELF_ONLY', defaultHashtagCount:6, tiktokClientKey:'', tiktokClientSecret:'', geminiApiKey:'', geminiModel:'gemini-2.5-flash-lite' }, history:[] };
+  return { token:null, settings:{ brandName:'REDEACHADOS BR', shopeeStoreUrl:'', defaultPrivacy:'SELF_ONLY', defaultHashtagCount:6, tiktokClientKey:'', tiktokClientSecret:'', geminiApiKey:'', geminiModel:'gemini-3.5-flash-lite' }, history:[] };
 }
 function loadStore(){
   try { return { ...defaults(), ...JSON.parse(fs.readFileSync(DATA_FILE, 'utf8')) }; }
@@ -46,12 +49,72 @@ function now(){ return new Date().toISOString(); }
 function removeFile(p){ try{ if(p && fs.existsSync(p)) fs.unlinkSync(p); }catch{} }
 function baseUrl(req){ return (process.env.PUBLIC_BASE_URL || `${req.protocol}://${req.get('host')}`).replace(/\/$/,''); }
 function redirectUri(req){ return `${baseUrl(req)}/auth/tiktok/callback`; }
-function safeSettings(s){ return { brandName:s.brandName||'REDEACHADOS BR', shopeeStoreUrl:s.shopeeStoreUrl||'', defaultPrivacy:s.defaultPrivacy||'SELF_ONLY', defaultHashtagCount:Number(s.defaultHashtagCount||6), tiktokConfigured:Boolean(s.tiktokClientKey&&s.tiktokClientSecret), geminiConfigured:Boolean(s.geminiApiKey), geminiModel:s.geminiModel||'gemini-2.5-flash-lite' }; }
+function safeSettings(s){ return { brandName:s.brandName||'REDEACHADOS BR', shopeeStoreUrl:s.shopeeStoreUrl||'', defaultPrivacy:s.defaultPrivacy||'SELF_ONLY', defaultHashtagCount:Number(s.defaultHashtagCount||6), tiktokConfigured:Boolean(s.tiktokClientKey&&s.tiktokClientSecret), geminiConfigured:Boolean(s.geminiApiKey), geminiModel:s.geminiModel||'gemini-3.5-flash-lite' }; }
 function mustLogin(req,res,next){
   const required = process.env.APP_PASSWORD;
   if(!required || req.session?.appAuth) return next();
   res.status(401).json({error:'LOGIN_REQUIRED'});
 }
+
+
+function normalizeText(v){
+  return String(v||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase().replace(/[^a-z0-9]+/g,' ').replace(/\s+/g,' ').trim();
+}
+function loadCatalog(){
+  try { return JSON.parse(fs.readFileSync(CATALOG_FILE,'utf8')); }
+  catch { return {shopId:'852701218',importedAt:null,sourceFile:null,products:[]}; }
+}
+function saveCatalog(c){ fs.writeFileSync(CATALOG_FILE, JSON.stringify(c,null,2)); }
+function catalogTokens(v){
+  const stop=new Set(['para','com','sem','kit','produto','branco','preto','sortido','unidade','unidades','novo','nova','oferta']);
+  return normalizeText(v).split(' ').filter(x=>x.length>=3&&!stop.has(x));
+}
+function scoreCatalog(query,name){
+  const q=normalizeText(query), n=normalizeText(name); if(!q||!n) return 0;
+  if(n.includes(q)||q.includes(n)) return 0.98;
+  const qa=new Set(catalogTokens(q)), na=new Set(catalogTokens(n)); if(!qa.size||!na.size) return 0;
+  let common=0; for(const t of qa) if(na.has(t)) common++;
+  const recall=common/qa.size, precision=common/na.size;
+  return Math.min(0.95, recall*0.78 + precision*0.22);
+}
+function findCatalogMatch(query){
+  const c=loadCatalog(); let best=null, bestScore=0;
+  for(const p of c.products||[]){
+    const score=scoreCatalog(query,p.name);
+    if(score>bestScore){best=p;bestScore=score;}
+  }
+  return bestScore>=0.42 ? {...best,score:Number(bestScore.toFixed(3))} : null;
+}
+function parseShopeeCatalog(buffer,filename){
+  const book=XLSX.read(buffer,{type:'buffer'}); const ws=book.Sheets[book.SheetNames[0]];
+  const rows=XLSX.utils.sheet_to_json(ws,{header:1,defval:'',raw:false});
+  let h=-1; for(let i=0;i<Math.min(rows.length,20);i++){
+    const cells=rows[i].map(normalizeText);
+    if(cells.includes('id do produto')&&cells.includes('nome do produto')){h=i;break;}
+  }
+  if(h<0) throw new Error('Não encontrei as colunas ID do Produto e Nome do Produto no arquivo da Shopee.');
+  const header=rows[h].map(normalizeText);
+  const ixId=header.indexOf('id do produto'), ixSku=header.indexOf('sku de referencia'), ixName=header.indexOf('nome do produto'), ixDesc=header.indexOf('descricao do produto');
+  const shopId='852701218', map=new Map();
+  for(const row of rows.slice(h+1)){
+    const id=String(row[ixId]||'').trim(), name=String(row[ixName]||'').trim();
+    if(!/^\d+$/.test(id)||!name) continue;
+    map.set(id,{id,sku:ixSku>=0?String(row[ixSku]||'').trim():'',name,description:ixDesc>=0?String(row[ixDesc]||'').trim():'',url:`https://shopee.com.br/product/${shopId}/${id}/`});
+  }
+  const products=[...map.values()]; if(!products.length) throw new Error('Nenhum produto válido foi encontrado no arquivo.');
+  return {shopId,importedAt:now(),sourceFile:filename||'catalogo-shopee.xlsx',count:products.length,products};
+}
+
+app.get('/api/catalog', mustLogin, (_req,res)=>{
+  const c=loadCatalog(); res.json({count:(c.products||[]).length, importedAt:c.importedAt, sourceFile:c.sourceFile, shopId:c.shopId||'852701218'});
+});
+app.post('/api/catalog/import', mustLogin, catalogUpload.single('catalog'), (req,res)=>{
+  try{
+    if(!req.file) return res.status(400).json({error:'Selecione a planilha da Shopee.'});
+    const c=parseShopeeCatalog(req.file.buffer,req.file.originalname); saveCatalog(c);
+    res.json({ok:true,count:c.products.length,importedAt:c.importedAt,sourceFile:c.sourceFile});
+  }catch(e){res.status(400).json({error:e.message});}
+});
 
 app.get('/api/health', (_req,res)=>res.json({ok:true,service:'REDEACHADOS BR Publisher Web V4'}));
 app.get('/api/auth-state',(req,res)=>res.json({locked:Boolean(process.env.APP_PASSWORD),loggedIn:!process.env.APP_PASSWORD||Boolean(req.session?.appAuth)}));
@@ -75,7 +138,7 @@ app.post('/api/settings', mustLogin, (req,res)=>{
     shopeeStoreUrl:String(req.body.shopeeStoreUrl??old.shopeeStoreUrl??'').trim(),
     defaultPrivacy:String(req.body.defaultPrivacy||old.defaultPrivacy||'SELF_ONLY'),
     defaultHashtagCount:Math.max(3,Math.min(10,Number(req.body.defaultHashtagCount||old.defaultHashtagCount||6))),
-    geminiModel:String(req.body.geminiModel||old.geminiModel||'gemini-2.5-flash-lite').trim(),
+    geminiModel:String(req.body.geminiModel||old.geminiModel||'gemini-3.5-flash-lite').trim(),
     tiktokClientKey:String(req.body.tiktokClientKey||'').trim() || old.tiktokClientKey || '',
     tiktokClientSecret:String(req.body.tiktokClientSecret||'').trim() || old.tiktokClientSecret || '',
     geminiApiKey:String(req.body.geminiApiKey||'').trim() || old.geminiApiKey || ''
@@ -142,8 +205,8 @@ function fallbackCopy(filename, brand, shopUrl){
 async function generateCopyWithGemini({images,filename}){
   const s=loadStore(), cfg=s.settings||{};
   if(!cfg.geminiApiKey) return fallbackCopy(filename,cfg.brandName,cfg.shopeeStoreUrl);
-  const model=cfg.geminiModel||'gemini-2.5-flash-lite';
-  const prompt=`Você é um redator de e-commerce brasileiro especializado em TikTok. Analise os frames de um vídeo de produto e gere metadados para publicação. Não invente especificações, certificações, preço, desconto, garantia, material, medidas ou funções que não estejam claramente visíveis. Evite promessas absolutas, alegações médicas e linguagem enganosa. Escreva em português do Brasil, natural e comercial sem spam. Retorne SOMENTE JSON válido neste formato: {"product":"nome genérico provável do produto","title":"chamada curta de até 70 caracteres","description":"descrição de 120 a 320 caracteres","hashtags":["#hashtag1","#hashtag2","#hashtag3","#hashtag4","#hashtag5","#hashtag6"],"cta":"chamada curta para conferir o produto"}. Marca da loja: ${cfg.brandName||'REDEACHADOS BR'}. Nome do arquivo: ${filename||''}.`;
+  const model=cfg.geminiModel||'gemini-3.5-flash-lite';
+  const prompt=`Você é um redator de e-commerce brasileiro especializado em TikTok. Analise os frames de um vídeo de produto e gere metadados para publicação. Não invente especificações, certificações, preço, desconto, garantia, material, medidas ou funções que não estejam claramente visíveis. Evite promessas absolutas, alegações médicas e linguagem enganosa. Escreva em português do Brasil, natural e comercial sem spam. NÃO coloque emojis nos campos title, description, cta ou hashtags: o aplicativo aplicará emojis automaticamente de forma visual e moderada. Retorne SOMENTE JSON válido neste formato: {"product":"nome genérico provável do produto","title":"chamada curta de até 70 caracteres","description":"descrição de 120 a 320 caracteres","hashtags":["#hashtag1","#hashtag2","#hashtag3","#hashtag4","#hashtag5","#hashtag6"],"cta":"chamada curta para conferir o produto"}. Marca da loja: ${cfg.brandName||'REDEACHADOS BR'}. Nome do arquivo: ${filename||''}.`;
   const parts=[{text:prompt}];
   for(const img of (images||[]).slice(0,3)){
     const m=String(img).match(/^data:(image\/[a-zA-Z0-9.+-]+);base64,(.+)$/s); if(m) parts.push({inline_data:{mime_type:m[1],data:m[2]}});
@@ -160,14 +223,39 @@ async function generateCopyWithGemini({images,filename}){
   return {product:String(out.product||'Produto'),title:String(out.title||'Confira esse achadinho'),description:String(out.description||''),hashtags:tags.map(x=>String(x).startsWith('#')?String(x):'#'+String(x).replace(/\s+/g,'')),cta:String(out.cta||'Confira mais detalhes.'),confidence:'ai'};
 }
 app.post('/api/ai/generate', mustLogin, async(req,res)=>{
-  try{ const out=await generateCopyWithGemini({images:req.body.images,filename:req.body.filename}); res.json(out); }
-  catch(e){ res.status(400).json({error:e.message}); }
+  try{
+    const out=await generateCopyWithGemini({images:req.body.images,filename:req.body.filename});
+    const match=findCatalogMatch(out.product);
+    if(match){ out.shopeeUrl=match.url; out.catalogMatch={id:match.id,sku:match.sku,name:match.name,score:match.score}; }
+    res.json(out);
+  }catch(e){ res.status(400).json({error:e.message}); }
 });
 
+function productEmoji(meta={}){
+  const text=`${meta.product||''} ${meta.title||''} ${meta.description||''}`.toLowerCase();
+  if(/brinqued|infantil|crian[cç]a|bonec|carrinho|pista|jogo/.test(text)) return '🎁';
+  if(/cozinha|panela|cafeteira|chaleira|frigideira|utens[ií]lio|avental|chef/.test(text)) return '🍳';
+  if(/organiz|gaveta|prateleira|porta joia|armazen/.test(text)) return '✨';
+  if(/limp|mop|escova|pano|vassoura/.test(text)) return '🧼';
+  if(/luz|led|lumin[aá]ria|sensor/.test(text)) return '💡';
+  if(/beleza|maquiagem|pincel|joia|brinco/.test(text)) return '💖';
+  if(/fitness|balan[cç]a|treino|academia/.test(text)) return '💪';
+  return '✨';
+}
+function noLeadingEmoji(text=''){ return String(text||'').replace(/^\s*[\p{Extended_Pictographic}\uFE0F\u200D]+\s*/u,'').trim(); }
 function buildCaption(meta, settings){
   const tags=(meta.hashtags||[]).slice(0,Math.max(3,Math.min(10,Number(settings.defaultHashtagCount||6)))).join(' ');
-  const chunks=[meta.title,meta.description,meta.cta];
-  if(settings.shopeeStoreUrl) chunks.push(settings.shopeeStoreUrl);
+  const emoji=productEmoji(meta);
+  const title=noLeadingEmoji(meta.title);
+  const description=noLeadingEmoji(meta.description);
+  const cta=noLeadingEmoji(meta.cta);
+  const chunks=[];
+  if(title) chunks.push(`${emoji} ${title}`);
+  if(description) chunks.push(`📝 ${description}`);
+  if(cta) chunks.push(`🛍️ ${cta}`);
+  const directUrl=String(meta.shopeeUrl||'').trim();
+  const link=directUrl || String(settings.shopeeStoreUrl||'').trim();
+  if(link) chunks.push(`🔗 ${link}`);
   if(tags) chunks.push(tags);
   let caption=chunks.filter(Boolean).join('\n\n').trim();
   if(caption.length>2200) caption=caption.slice(0,2197)+'...';
@@ -219,7 +307,7 @@ app.post('/api/publish', mustLogin, upload.single('video'), async(req,res)=>{
       privacy:req.body.privacy||settings.defaultPrivacy||'SELF_ONLY',duration:Number(req.body.duration||0),
       disableComment:req.body.disableComment==='true',disableDuet:req.body.disableDuet==='true',disableStitch:req.body.disableStitch==='true',isAigc:req.body.isAigc==='true'
     });
-    s.history.unshift({id:crypto.randomUUID(),publishId,filename:req.file.originalname,product:meta.product||'',caption,status:'PROCESSING_UPLOAD',createdAt:now()});
+    s.history.unshift({id:crypto.randomUUID(),publishId,filename:req.file.originalname,product:meta.product||'',shopeeUrl:meta.shopeeUrl||'',caption,status:'PROCESSING_UPLOAD',createdAt:now()});
     s.history=s.history.slice(0,200); saveStore(s); removeFile(req.file.path);
     res.json({ok:true,publishId,caption});
   }catch(e){ if(req.file) removeFile(req.file.path); res.status(400).json({error:e.message}); }
