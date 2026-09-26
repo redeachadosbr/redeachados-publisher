@@ -1,0 +1,72 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>REDEACHADOS BR Publisher</title>
+  <link rel="stylesheet" href="/styles.css" />
+</head>
+<body>
+  <div id="toast"></div>
+  <section id="loginScreen" class="center hidden">
+    <div class="card login-card"><div class="logo">RA</div><h1>REDEACHADOS BR</h1><p>Publisher</p><input id="loginPassword" type="password" placeholder="Senha do aplicativo"><button id="loginBtn" class="primary">Entrar</button></div>
+  </section>
+
+  <div id="app" class="hidden">
+    <header><div><strong>REDEACHADOS BR</strong><span> Publisher</span></div><button id="settingsBtn" class="ghost">⚙ Configurações</button></header>
+    <main>
+      <section class="hero"><h1>Envie o vídeo. O restante o app prepara.</h1><p>O sistema analisa frames do vídeo, cria chamada, descrição, CTA e hashtags, monta a legenda e envia para o TikTok.</p></section>
+
+      <section class="card upload-card">
+        <div id="dropzone" class="dropzone">
+          <input id="videoInput" type="file" accept="video/mp4,video/quicktime,video/webm" hidden>
+          <div class="upload-icon">＋</div><h2>Selecione o vídeo</h2><p>MP4, MOV ou WebM</p><button id="chooseBtn" class="primary">Escolher vídeo</button>
+        </div>
+        <div id="workArea" class="hidden">
+          <div class="video-row"><video id="preview" controls muted playsinline></video><div><h2 id="fileName"></h2><div id="aiStatus" class="status">Aguardando análise...</div><button id="changeBtn" class="ghost">Trocar vídeo</button></div></div>
+          <div class="generated">
+            <label>Produto identificado<input id="product" /></label>
+            <label>Chamada<input id="title" maxlength="100" /></label>
+            <label>Descrição<textarea id="description" rows="4"></textarea></label>
+            <label>CTA<input id="cta" /></label>
+            <label>Hashtags<input id="hashtags" /></label>
+            <label>Prévia da legenda<textarea id="captionPreview" rows="10" readonly></textarea></label>
+          </div>
+          <div class="options">
+            <label>Privacidade<select id="privacy"><option value="SELF_ONLY">Somente eu</option></select></label>
+            <label class="check"><input id="disableComment" type="checkbox"> Desativar comentários</label>
+            <label class="check"><input id="disableDuet" type="checkbox"> Desativar Dueto</label>
+            <label class="check"><input id="disableStitch" type="checkbox"> Desativar Costurar</label>
+            <label class="check"><input id="isAigc" type="checkbox"> O vídeo em si foi gerado por IA</label>
+          </div>
+          <div class="actions"><button id="regenerateBtn" class="ghost">↻ Gerar novamente</button><button id="publishBtn" class="publish">PUBLICAR NO TIKTOK</button></div>
+          <p class="small">A URL da Shopee é adicionada à legenda. O TikTok pode exibi-la como texto, conforme os recursos disponíveis para a conta.</p>
+        </div>
+      </section>
+
+      <section class="card connection"><div><h3>TikTok</h3><p id="connectionText">Verificando conexão...</p></div><a id="connectBtn" href="/auth/tiktok" class="primary linkbtn">Conectar TikTok</a></section>
+      <section class="card"><h3>Últimas publicações</h3><div id="history" class="history"></div></section>
+    </main>
+  </div>
+
+  <dialog id="settingsDialog">
+    <form method="dialog" class="settings-form">
+      <div class="dialog-head"><div><h2>Configuração inicial</h2><p>Você faz isto uma vez. Depois, no uso diário, basta escolher o vídeo.</p></div><button value="cancel" class="x">×</button></div>
+      <label>Nome da loja<input id="brandName" value="REDEACHADOS BR"></label>
+      <label>Link padrão da sua loja/produto Shopee<input id="shopeeStoreUrl" placeholder="https://shopee.com.br/..." /></label>
+      <hr>
+      <h3>IA para analisar o vídeo</h3>
+      <label>Gemini API Key<input id="geminiApiKey" type="password" placeholder="Cole a chave aqui (só precisa na primeira vez)" /></label>
+      <label>Modelo<input id="geminiModel" value="gemini-2.5-flash-lite" /></label>
+      <hr>
+      <h3>TikTok Developers</h3>
+      <label>Client Key<input id="tiktokClientKey" /></label>
+      <label>Client Secret<input id="tiktokClientSecret" type="password" /></label>
+      <label>Redirect URI para cadastrar no TikTok<input id="redirectUri" readonly /></label>
+      <p class="small">No TikTok Developers, habilite Content Posting API e solicite o escopo <b>video.publish</b>.</p>
+      <div class="actions"><button id="saveSettingsBtn" value="cancel" class="primary">Salvar configuração</button></div>
+    </form>
+  </dialog>
+  <script src="/app.js"></script>
+</body>
+</html>
