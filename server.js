@@ -6,6 +6,9 @@ import fs from 'node:fs';
 import path from 'node:path';
 import * as XLSX from 'xlsx';
 import { fileURLToPath } from 'node:url';
+import { Readable } from 'node:stream';
+import { spawn } from 'node:child_process';
+import ffmpegPath from 'ffmpeg-static';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const DATA_DIR = path.join(__dirname, 'data');
@@ -373,38 +376,106 @@ app.get('/api/wedrop/lookup', mustLogin, async(req,res)=>{
 app.post('/api/wedrop/alias', mustLogin, (req,res)=>{
   try{const sku=String(req.body.sku||'').trim(), query=String(req.body.query||'').trim(); if(!sku||!query)return res.status(400).json({error:'SKU e busca são obrigatórias.'});saveWedropAlias(sku,query);res.json({ok:true,sku,query:cleanSearchTitle(query)});}catch(e){res.status(400).json({error:e.message});}
 });
+function driveCandidateUrls(id){
+  return [
+    `https://drive.usercontent.google.com/download?id=${encodeURIComponent(id)}&export=download&confirm=t`,
+    `https://drive.google.com/uc?export=download&id=${encodeURIComponent(id)}`
+  ];
+}
+async function fetchDriveResponse(id, range=''){
+  let last='';
+  for(const raw of driveCandidateUrls(id)){
+    try{
+      const headers={
+        'User-Agent':'Mozilla/5.0 (iPhone; CPU iPhone OS 18_0 like Mac OS X) AppleWebKit/605.1.15 Chrome/153 Mobile Safari/604.1',
+        'Accept':'video/*,application/octet-stream,*/*',
+        'Accept-Encoding':'identity'
+      };
+      if(range) headers.Range=range;
+      const r=await fetch(raw,{redirect:'follow',headers});
+      if(!r.ok && r.status!==206){last=`HTTP ${r.status}`;continue;}
+      const ct=(r.headers.get('content-type')||'').toLowerCase();
+      if(/text\/html|application\/json/.test(ct)){last='o Google Drive retornou uma página em vez do arquivo';continue;}
+      return r;
+    }catch(e){last=e.message;}
+  }
+  throw new Error(last||'fonte indisponível');
+}
+function remoteMime(response){
+  const ct=(response.headers.get('content-type')||'').toLowerCase();
+  const cd=response.headers.get('content-disposition')||'';
+  if(/video\//.test(ct)) return ct.split(';')[0];
+  if(/\.mov/i.test(cd)) return 'video/quicktime';
+  if(/\.webm/i.test(cd)) return 'video/webm';
+  return 'video/mp4';
+}
 app.get('/api/wedrop/video', mustLogin, async(req,res)=>{
   try{
     const id=String(req.query.id||'').trim();
-    const urls=[];
-    if(id && /^[A-Za-z0-9_-]{8,200}$/.test(id)){
-      urls.push(
-        `https://drive.usercontent.google.com/download?id=${encodeURIComponent(id)}&export=download&confirm=t`,
-        `https://drive.google.com/uc?export=download&id=${encodeURIComponent(id)}`
-      );
-    }
-    const supplied=safeRemoteUrl(req.query.url); if(supplied) urls.push(supplied.href);
-    if(!urls.length) return res.status(400).json({error:'ID ou URL de vídeo não permitido.'});
-    let last='';
-    for(const raw of urls){
-      try{
-        const r=await fetch(raw,{redirect:'follow',headers:{'User-Agent':'Mozilla/5.0 REDEACHADOS-Publisher/5.4.4','Accept':'video/*,application/octet-stream,*/*'}});
-        if(!r.ok){last=`HTTP ${r.status}`;continue;}
-        const ct=(r.headers.get('content-type')||'').toLowerCase();
-        const cd=r.headers.get('content-disposition')||'';
-        if(/text\/html|application\/json/.test(ct)){last='o Google Drive retornou uma página em vez do arquivo';continue;}
-        const ab=await r.arrayBuffer();
-        if(ab.byteLength<1024){last='arquivo retornado muito pequeno';continue;}
-        if(ab.byteLength>300*1024*1024) return res.status(413).json({error:'Vídeo remoto maior que 300 MB.'});
-        const outType=/video\//.test(ct)?ct:(/\.mov/i.test(cd)?'video/quicktime':/\.webm/i.test(cd)?'video/webm':'video/mp4');
-        res.setHeader('Content-Type',outType); res.setHeader('Content-Length',String(ab.byteLength)); res.setHeader('Cache-Control','no-store');
-        return res.send(Buffer.from(ab));
-      }catch(e){last=e.message;}
-    }
-    return res.status(400).json({error:`Não consegui baixar o vídeo do Google Drive (${last||'fonte indisponível'}).`});
-  }catch(e){res.status(400).json({error:e.message});}
+    if(!id || !/^[A-Za-z0-9_-]{8,200}$/.test(id)) return res.status(400).json({error:'ID de vídeo não permitido.'});
+    const range=String(req.headers.range||'').trim();
+    const r=await fetchDriveResponse(id,range);
+    const ct=remoteMime(r);
+    res.status(r.status===206?206:200);
+    res.setHeader('Content-Type',ct);
+    res.setHeader('Accept-Ranges',r.headers.get('accept-ranges')||'bytes');
+    const len=r.headers.get('content-length'); if(len) res.setHeader('Content-Length',len);
+    const cr=r.headers.get('content-range'); if(cr) res.setHeader('Content-Range',cr);
+    res.setHeader('Cache-Control','private, max-age=300');
+    res.setHeader('Content-Disposition','inline');
+    if(!r.body) return res.end();
+    Readable.fromWeb(r.body).on('error',()=>{try{res.destroy();}catch{}}).pipe(res);
+  }catch(e){ if(!res.headersSent) res.status(400).json({error:`Não consegui transmitir o vídeo do Google Drive (${e.message}).`}); }
 });
-app.get('/api/health', (_req,res)=>res.json({ok:true,service:'REDEACHADOS BR Publisher Web V5.4.4'}));
+async function downloadDriveToTemp(id, filename='wedrop-video.mp4'){
+  const r=await fetchDriveResponse(id,'');
+  const mime=remoteMime(r);
+  const ext=mime.includes('quicktime')?'.mov':mime.includes('webm')?'.webm':'.mp4';
+  const safeBase=path.basename(filename,path.extname(filename)).replace(/[^A-Za-z0-9._ -]+/g,' ').trim().slice(0,80)||'wedrop-video';
+  const filePath=path.join(UPLOAD_DIR,`${Date.now()}-${crypto.randomBytes(5).toString('hex')}-${safeBase}${ext}`);
+  const ws=fs.createWriteStream(filePath);
+  let size=0;
+  await new Promise((resolve,reject)=>{
+    const rs=Readable.fromWeb(r.body);
+    rs.on('data',chunk=>{size+=chunk.length;if(size>300*1024*1024){rs.destroy(new Error('Vídeo remoto maior que 300 MB.'));}});
+    rs.on('error',reject); ws.on('error',reject); ws.on('finish',resolve); rs.pipe(ws);
+  });
+  if(size<1024){removeFile(filePath);throw new Error('Arquivo retornado muito pequeno.');}
+  return {path:filePath,size,mimetype:mime,originalname:`${safeBase}${ext}`};
+}
+
+async function runFfmpeg(args){
+  await new Promise((resolve,reject)=>{
+    const cp=spawn(ffmpegPath,args,{stdio:['ignore','ignore','pipe']});
+    let err='';
+    cp.stderr.on('data',d=>{err+=String(d); if(err.length>12000) err=err.slice(-12000)});
+    cp.on('error',reject);
+    cp.on('close',code=>code===0?resolve():reject(new Error(`FFmpeg falhou (código ${code}). ${err.split('\n').slice(-6).join(' ')}`)));
+  });
+}
+async function extractRemoteFrames(id, filename, durationSec){
+  let remoteFile=null; const made=[];
+  try{
+    remoteFile=await downloadDriveToTemp(id,filename||'wedrop-video');
+    const dur=Number(durationSec||0);
+    const points=dur>1 ? [0.15,0.5,0.85].map(p=>Math.max(0.1,Math.min(Math.max(0.1,dur-0.15),dur*p))) : [0.5,1.5,2.5];
+    const images=[];
+    for(let i=0;i<points.length;i++){
+      const out=path.join(UPLOAD_DIR,`${Date.now()}-${crypto.randomBytes(4).toString('hex')}-frame-${i+1}.jpg`);
+      made.push(out);
+      await runFfmpeg(['-hide_banner','-loglevel','error','-ss',String(points[i]),'-i',remoteFile.path,'-frames:v','1','-vf','scale=720:-2:force_original_aspect_ratio=decrease','-q:v','3','-y',out]);
+      const buf=fs.readFileSync(out);
+      if(buf.length<500) throw new Error(`Frame ${i+1} inválido.`);
+      images.push(`data:image/jpeg;base64,${buf.toString('base64')}`);
+    }
+    return images;
+  }finally{
+    if(remoteFile?.path) removeFile(remoteFile.path);
+    for(const f of made) removeFile(f);
+  }
+}
+
+app.get('/api/health', (_req,res)=>res.json({ok:true,service:'REDEACHADOS BR Publisher Web V5.4.6'}));
 app.get('/api/auth-state',(req,res)=>res.json({locked:Boolean(process.env.APP_PASSWORD),loggedIn:!process.env.APP_PASSWORD||Boolean(req.session?.appAuth)}));
 app.post('/api/login',(req,res)=>{
   if(!process.env.APP_PASSWORD){ req.session.appAuth=true; return res.json({ok:true}); }
@@ -519,6 +590,22 @@ async function generateCopyWithGemini({images,filename}){
   else if(!normalizeText(cta).includes(normalizeText(cfg.brandName||'REDEACHADOS BR'))) cta=`${cta.replace(/[.!]+$/,'')} na ${cfg.brandName||'REDEACHADOS BR'}`;
   return {product:String(out.product||'Produto'),title:String(out.title||'Confira esse achadinho'),description:String(out.description||''),hashtags:tags.map(x=>String(x).startsWith('#')?String(x):'#'+String(x).replace(/\s+/g,'')),cta,confidence:'ai'};
 }
+
+app.post('/api/ai/generate-remote', mustLogin, async(req,res)=>{
+  try{
+    const id=String(req.body.remoteVideoId||'').trim();
+    if(!id || !/^[A-Za-z0-9_-]{8,200}$/.test(id)) return res.status(400).json({error:'Vídeo remoto inválido.'});
+    const filename=String(req.body.filename||'video-wedrop.mp4');
+    const duration=Number(req.body.duration||0);
+    const images=await extractRemoteFrames(id,filename,duration);
+    const out=await generateCopyWithGemini({images,filename});
+    const match=findCatalogMatch(out.product);
+    if(match){ out.shopeeUrl=match.url; out.catalogMatch={id:match.id,sku:match.sku,name:match.name,score:match.score}; }
+    out.analysisMode='server-ffmpeg';
+    res.json(out);
+  }catch(e){ res.status(400).json({error:`Falha na análise do vídeo no servidor: ${e.message}`}); }
+});
+
 app.post('/api/ai/generate', mustLogin, async(req,res)=>{
   try{
     const out=await generateCopyWithGemini({images:req.body.images,filename:req.body.filename});
@@ -618,6 +705,22 @@ async function publishFile(file, caption, options={}){
   }finally{fs.closeSync(fd);}
   return publishId;
 }
+app.post('/api/upload-draft-remote', mustLogin, async(req,res)=>{
+  let remoteFile=null;
+  try{
+    const id=String(req.body.remoteVideoId||'').trim();
+    if(!id || !/^[A-Za-z0-9_-]{8,200}$/.test(id)) return res.status(400).json({error:'Vídeo remoto inválido.'});
+    const meta=req.body.meta||{}; const s=loadStore(), settings=effectiveSettings(s.settings||{});
+    const manualCaption=String(req.body.caption||'').trim();
+    const caption=(manualCaption||buildCaption(meta,settings)).slice(0,2200);
+    remoteFile=await downloadDriveToTemp(id,String(req.body.filename||meta.product||'wedrop-video'));
+    const publishId=await uploadDraftFile(remoteFile);
+    s.history.unshift({id:crypto.randomUUID(),publishId,filename:remoteFile.originalname,product:meta.product||'',shopeeUrl:meta.shopeeUrl||'',caption,status:'SENT_TO_TIKTOK_INBOX',mode:'draft-remote',createdAt:now()});
+    s.history=s.history.slice(0,200); saveStore(s); removeFile(remoteFile.path);
+    res.json({ok:true,publishId,caption,message:'Vídeo remoto enviado como rascunho ao TikTok.'});
+  }catch(e){ if(remoteFile?.path) removeFile(remoteFile.path); res.status(400).json({error:e.message}); }
+});
+
 app.post('/api/upload-draft', mustLogin, upload.single('video'), async(req,res)=>{
   try{
     if(!req.file) return res.status(400).json({error:'Selecione um vídeo.'});
@@ -651,4 +754,4 @@ app.post('/api/status/:publishId', mustLogin, async(req,res)=>{
   try{const d=await tiktokJson('https://open.tiktokapis.com/v2/post/publish/status/fetch/',{method:'POST',body:JSON.stringify({publish_id:req.params.publishId})});res.json(d.data||{});}catch(e){res.status(400).json({error:e.message});}
 });
 
-app.listen(PORT,()=>console.log(`REDEACHADOS BR Publisher Web V5.4.4 em http://localhost:${PORT}`));
+app.listen(PORT,()=>console.log(`REDEACHADOS BR Publisher Web V5.4.6 em http://localhost:${PORT}`));

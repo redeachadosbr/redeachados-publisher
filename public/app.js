@@ -1,5 +1,5 @@
 const $=s=>document.querySelector(s);
-let config=null, selectedFile=null, duration=0, frames=[], generated=null;
+let config=null, selectedFile=null, selectedRemoteVideo=null, duration=0, frames=[], generated=null;
 
 const DRAFT_KEY='redeachados_publisher_draft_v541';
 let captionManual=false;
@@ -69,15 +69,15 @@ $('#chooseBtn').onclick=()=>$('#videoInput').click();$('#changeBtn').onclick=()=
 const dz=$('#dropzone');['dragenter','dragover'].forEach(x=>dz.addEventListener(x,e=>{e.preventDefault();dz.classList.add('drag')}));['dragleave','drop'].forEach(x=>dz.addEventListener(x,e=>{e.preventDefault();dz.classList.remove('drag')}));dz.addEventListener('drop',e=>{const f=e.dataTransfer.files?.[0];if(f)selectVideo(f)});$('#videoInput').onchange=e=>{const f=e.target.files?.[0];if(f)selectVideo(f)};
 async function selectVideo(file){
   if(!file.type.startsWith('video/'))return toast('Selecione um arquivo de vídeo.',true);
-  selectedFile=file; generated=null;frames=[];$('#fileName').textContent=file.name;$('#preview').src=URL.createObjectURL(file);$('#dropzone').classList.add('hidden');$('#workArea').classList.remove('hidden');$('#aiStatus').textContent='Lendo o vídeo...';
+  selectedRemoteVideo=null; selectedFile=file; generated=null;frames=[];$('#fileName').textContent=file.name;$('#preview').src=URL.createObjectURL(file);$('#dropzone').classList.add('hidden');$('#workArea').classList.remove('hidden');$('#aiStatus').textContent='Lendo o vídeo...';
   try{await new Promise((resolve,reject)=>{const v=$('#preview');v.onloadedmetadata=()=>{duration=v.duration||0;resolve()};v.onerror=reject});frames=await extractFrames($('#preview'),[.15,.5,.85]);await loadCreator();await analyze()}catch(e){toast('Não consegui analisar o vídeo: '+e.message,true);$('#aiStatus').textContent='Falha na análise.'}
 }
 async function extractFrames(video,points){
   const out=[];for(const p of points){const t=Math.max(0,Math.min(video.duration-.05,video.duration*p));await new Promise((resolve,reject)=>{const done=()=>{video.removeEventListener('seeked',done);resolve()};video.addEventListener('seeked',done,{once:true});video.currentTime=t;setTimeout(()=>reject(new Error('Tempo esgotado ao capturar frames.')),6000)});const c=document.createElement('canvas');const max=720,scale=Math.min(1,max/video.videoWidth);c.width=Math.max(1,Math.round(video.videoWidth*scale));c.height=Math.max(1,Math.round(video.videoHeight*scale));c.getContext('2d').drawImage(video,0,0,c.width,c.height);out.push(c.toDataURL('image/jpeg',.72))}video.currentTime=0;return out;
 }
 async function analyze(){
-  if(!selectedFile)return;$('#aiStatus').textContent='Analisando produto e criando a publicação...';$('#regenerateBtn').disabled=true;
-  try{generated=await api('/api/ai/generate',{method:'POST',body:JSON.stringify({filename:selectedFile.name,images:frames})});fillGenerated();$('#aiStatus').textContent=generated.confidence==='ai'?'Pronto: conteúdo criado automaticamente pela IA.':'Pronto: modo básico usado. Configure a chave da IA para análise visual.'}
+  if(!selectedFile&&!selectedRemoteVideo)return;$('#aiStatus').textContent='Analisando produto e criando a publicação...';$('#regenerateBtn').disabled=true;
+  try{generated=await api('/api/ai/generate',{method:'POST',body:JSON.stringify({filename:(selectedFile?.name||selectedRemoteVideo?.title||'video-wedrop.mp4'),images:frames})});fillGenerated();$('#aiStatus').textContent=generated.confidence==='ai'?'Pronto: conteúdo criado automaticamente pela IA.':'Pronto: modo básico usado. Configure a chave da IA para análise visual.'}
   catch(e){toast(e.message,true);$('#aiStatus').textContent='Não foi possível gerar o conteúdo.'}finally{$('#regenerateBtn').disabled=false}
 }
 function fillGenerated(){
@@ -104,17 +104,22 @@ async function loadCreator(){
   try{const c=await api('/api/creator');const p=$('#privacy');p.innerHTML='';for(const x of(c.privacy_level_options||['SELF_ONLY'])){const o=document.createElement('option');o.value=x;o.textContent={PUBLIC_TO_EVERYONE:'Público',MUTUAL_FOLLOW_FRIENDS:'Amigos',FOLLOWER_OF_CREATOR:'Seguidores',SELF_ONLY:'Somente eu'}[x]||x;p.appendChild(o)} if((c.privacy_level_options||[]).includes(config.settings.defaultPrivacy))p.value=config.settings.defaultPrivacy;}catch(e){toast(e.message,true)}
 }
 $('#publishBtn').onclick=async()=>{
-  if(!selectedFile)return toast('Escolha um vídeo.',true);if(!generated)return toast('Aguarde a geração da publicação.',true);if(!config.tiktokConnected)return toast('Conecte sua conta TikTok primeiro.',true);
+  if(!selectedFile&&!selectedRemoteVideo)return toast('Escolha um vídeo.',true);if(!generated)return toast('Aguarde a geração da publicação.',true);if(!config.tiktokConnected)return toast('Conecte sua conta TikTok primeiro.',true);
   const b=$('#publishBtn');b.disabled=true;b.textContent='ENVIANDO RASCUNHO...';
   try{
-    const fd=new FormData();fd.append('video',selectedFile);fd.append('meta',JSON.stringify(currentMeta()));fd.append('caption',$('#captionPreview').value.trim());fd.append('duration',String(duration||0));
-    const r=await api('/api/upload-draft',{method:'POST',body:fd});
+    let r;
+    if(selectedRemoteVideo?.id){
+      r=await api('/api/upload-draft-remote',{method:'POST',body:JSON.stringify({remoteVideoId:selectedRemoteVideo.id,filename:selectedRemoteVideo.title||'video-wedrop',meta:currentMeta(),caption:$('#captionPreview').value.trim(),duration:Number(duration||0)})});
+    }else{
+      const fd=new FormData();fd.append('video',selectedFile);fd.append('meta',JSON.stringify(currentMeta()));fd.append('caption',$('#captionPreview').value.trim());fd.append('duration',String(duration||0));
+      r=await api('/api/upload-draft',{method:'POST',body:fd});
+    }
     toast('Rascunho enviado. Abra o TikTok e toque na notificação da caixa de entrada para concluir.');
     try{await navigator.clipboard.writeText($('#captionPreview').value.trim())}catch{}
     await loadHistory();resetVideo();
   }catch(e){toast(e.message,true)}finally{b.disabled=false;b.textContent='ENVIAR RASCUNHO AO TIKTOK'}
 };
-function resetVideo(){selectedFile=null;frames=[];generated=null;captionManual=false;clearDraft();$('#preview').removeAttribute('src');$('#workArea').classList.add('hidden');$('#dropzone').classList.remove('hidden');$('#videoInput').value=''}
+function resetVideo(){selectedFile=null;selectedRemoteVideo=null;frames=[];generated=null;captionManual=false;clearDraft();$('#preview').removeAttribute('src');$('#workArea').classList.add('hidden');$('#dropzone').classList.remove('hidden');$('#videoInput').value=''}
 async function loadHistory(){try{const h=await api('/api/history');$('#history').innerHTML=h.length?h.slice(0,10).map(x=>`<div class="history-item"><div><b>${esc(x.product||x.filename)}</b><br><small>${new Date(x.createdAt).toLocaleString('pt-BR')}</small></div><div><small>${esc(x.status||'PROCESSING')}</small></div></div>`).join(''):'<p class="small">Nenhuma publicação ainda.</p>'}catch{}}
 function esc(s){return String(s||'').replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;'}[m]))}
 const q=new URLSearchParams(location.search);if(q.get('error'))toast(q.get('error'),true);if(q.get('tiktok')==='connected')toast('TikTok conectado com sucesso. Você pode fechar esta aba e voltar ao vídeo anterior.');
@@ -123,21 +128,35 @@ window.addEventListener('focus',async()=>{try{if(!$('#app').classList.contains('
 async function loadRemoteVideo(candidate,product){
   const status=$('#wedropStatus');
   try{
-    status.textContent='Baixando vídeo da galeria…';
-    const endpoint=candidate.id?('/api/wedrop/video?id='+encodeURIComponent(candidate.id)):('/api/wedrop/video?url='+encodeURIComponent(candidate.url||''));
-    const r=await fetch(endpoint);
-    if(!r.ok){const d=await r.json().catch(()=>({}));throw new Error(d.error||'Falha ao baixar o vídeo.')}
-    const blob=await r.blob();
-    const ext=(blob.type.includes('webm')?'webm':blob.type.includes('quicktime')?'mov':'mp4');
-    const baseName=(product?.name||product?.sku||'wedrop').replace(/[\/:*?"<>|]+/g,' ').replace(/\s+/g,' ').trim().slice(0,90);
-    const file=new File([blob],`${baseName}.${ext}`,{type:blob.type||'video/mp4'});
-    status.textContent='Vídeo carregado. Extraindo frames e analisando o produto…';
-    await selectVideo(file);
+    if(!candidate?.id) throw new Error('O vídeo selecionado não possui ID do Google Drive.');
+    selectedFile=null;
+    selectedRemoteVideo={id:candidate.id,title:candidate.title||product?.name||product?.sku||'Vídeo WeDrop'};
+    generated=null; frames=[];
+    const src='/api/wedrop/video?id='+encodeURIComponent(candidate.id)+'&v=546';
+    $('#fileName').textContent=selectedRemoteVideo.title;
+    const preview=$('#preview');
+    preview.pause(); preview.removeAttribute('src'); preview.load();
+    preview.src=src; preview.preload='metadata'; preview.playsInline=true;
+    $('#dropzone').classList.add('hidden');$('#workArea').classList.remove('hidden');
+    status.textContent='Carregando vídeo pelo servidor para compatibilidade com iPhone…';
+    $('#aiStatus').textContent='Lendo o vídeo…';
+    await new Promise((resolve,reject)=>{
+      const ok=()=>{cleanup();duration=preview.duration||0;resolve()};
+      const bad=()=>{cleanup();reject(new Error('Load Failed: o iPhone não conseguiu abrir o fluxo de vídeo.'))};
+      const cleanup=()=>{preview.removeEventListener('loadedmetadata',ok);preview.removeEventListener('error',bad)};
+      preview.addEventListener('loadedmetadata',ok,{once:true});preview.addEventListener('error',bad,{once:true});
+      preview.load();setTimeout(()=>{cleanup();reject(new Error('Tempo esgotado ao carregar o vídeo no iPhone.'))},20000);
+    });
     if(product?.shopeeUrl && !$('#shopeeUrl').value) $('#shopeeUrl').value=product.shopeeUrl;
+    $('#aiStatus').textContent='Analisando o vídeo no servidor…';
+    generated=await api('/api/ai/generate-remote',{method:'POST',body:JSON.stringify({remoteVideoId:selectedRemoteVideo.id,filename:selectedRemoteVideo.title||'video-wedrop.mp4',duration:Number(duration||0)})});
+    fillGenerated();
+    $('#aiStatus').textContent=generated.confidence==='ai'?'Pronto: conteúdo criado automaticamente pela IA.':'Pronto: modo básico usado. Configure a chave da IA para análise visual.';
+    await loadCreator();
     saveDraft();
-    status.textContent='Vídeo carregado e analisado. Revise a publicação abaixo.';
+    status.textContent='Vídeo carregado pelo servidor e analisado. Ao enviar ao TikTok, o arquivo será transferido diretamente pelo Render — sem baixar o vídeo inteiro no iPhone.';
     window.scrollTo({top:document.querySelector('.upload-card').offsetTop-12,behavior:'smooth'});
-  }catch(e){toast(e.message,true);status.textContent=e.message}
+  }catch(e){selectedRemoteVideo=null;toast(e.message,true);status.textContent=e.message}
 }
 function renderWedropAttempts(data){
   const box=$('#wedropAttempts'), list=data.gallery?.attempts||[]; box.innerHTML='';
