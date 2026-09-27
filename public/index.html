@@ -24,7 +24,7 @@
       <section class="hero"><h1>Envie o vídeo. O restante o app prepara.</h1><p>O sistema analisa frames do vídeo, cria chamada, descrição, CTA e hashtags e envia o vídeo como rascunho para você finalizar dentro do TikTok.</p></section>
 
       <section class="card sku-card">
-        <div class="sku-head"><div><span class="eyebrow">NOVO · V5.4.8</span><h2>Buscar vídeo pela SKU WeDrop</h2><p>Digite a SKU. O Publisher tenta identificar o produto, localizar vídeos na galeria WeDrop e carregar o vídeo sem precisar baixar manualmente.</p></div><span class="mobile-badge">📱 iPhone</span></div>
+        <div class="sku-head"><div><span class="eyebrow">NOVO · V5.4.10</span><h2>Buscar vídeo pela SKU WeDrop</h2><p>Digite a SKU. O Publisher tenta identificar o produto, localizar vídeos na galeria WeDrop e carregar o vídeo sem precisar baixar manualmente.</p></div><span class="mobile-badge">📱 iPhone</span></div>
         <div class="sku-search"><input id="wedropSku" inputmode="text" autocapitalize="characters" placeholder="Ex.: VP-2383" /><button id="wedropSearchBtn" class="publish mini">BUSCAR VÍDEO</button></div>
         <div class="manual-search-row">
           <input id="wedropQuery" placeholder="Busca manual (opcional) — apague palavras do final se necessário" />
@@ -50,7 +50,9 @@
             <label>CTA<input id="cta" /></label>
             <label>Hashtags<input id="hashtags" /></label>
             <label>Prévia da legenda <span class="small">(editável)</span><textarea id="captionPreview" rows="10" maxlength="2200" placeholder="Você pode ajustar manualmente a legenda antes de publicar."></textarea></label>
-            <div class="caption-tools"><button id="restoreCaptionBtn" type="button" class="ghost">↺ Restaurar legenda gerada pela IA</button><button id="copyCaptionBtn" type="button" class="ghost">📋 Copiar legenda</button><span class="small">A legenda fica pronta para copiar e colar no TikTok ao finalizar o rascunho.</span></div>
+            <div class="caption-tools"><button id="restoreCaptionBtn" type="button" class="ghost">↺ Restaurar legenda gerada pela IA</button><button id="copyCaptionBtn" type="button" class="ghost">📋 Copiar legenda</button><span class="small">A legenda mantém o link direto do produto Shopee.</span></div>
+            <label>Comentário de compra <span class="small">(para colar no primeiro comentário do TikTok)</span><textarea id="purchaseComment" rows="3" maxlength="500" placeholder="Será montado automaticamente com o link direto do produto."></textarea></label>
+            <div class="caption-tools"><button id="restoreCommentBtn" type="button" class="ghost">↺ Restaurar comentário</button><button id="copyCommentBtn" type="button" class="ghost">📋 Copiar comentário</button><span class="small">Depois de publicar, cole este texto no primeiro comentário e fixe manualmente no TikTok, se essa opção estiver disponível na sua conta.</span></div>
           </div>
           <div class="status" id="draftModeInfo"><b>Modo rascunho:</b> o vídeo será enviado para a caixa de entrada do TikTok. Privacidade, comentários, Dueto, Costurar e marcação de IA serão definidos dentro do próprio TikTok antes da publicação.</div>
           <div class="options hidden" aria-hidden="true">
@@ -61,7 +63,7 @@
             <label class="check"><input id="isAigc" type="checkbox"> O vídeo em si foi gerado por IA</label>
           </div>
           <div class="actions"><button id="regenerateBtn" class="ghost">↻ Gerar novamente</button><button id="publishBtn" class="publish">ENVIAR RASCUNHO AO TIKTOK</button></div>
-          <p class="small">O link direto do produto Shopee é incluído novamente na prévia da legenda. No modo rascunho, use “Copiar legenda” e cole no TikTok ao finalizar a publicação.</p>
+          <p class="small">O link direto do produto Shopee continua na legenda. O Publisher também prepara um comentário de compra separado para você copiar e colar no primeiro comentário do TikTok.</p>
         </div>
       </section>
 

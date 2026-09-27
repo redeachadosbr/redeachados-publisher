@@ -475,7 +475,7 @@ async function extractRemoteFrames(id, filename, durationSec){
   }
 }
 
-app.get('/api/health', (_req,res)=>res.json({ok:true,service:'REDEACHADOS BR Publisher Web V5.4.7'}));
+app.get('/api/health', (_req,res)=>res.json({ok:true,service:'REDEACHADOS BR Publisher Web V5.4.10'}));
 app.get('/api/auth-state',(req,res)=>res.json({locked:Boolean(process.env.APP_PASSWORD),loggedIn:!process.env.APP_PASSWORD||Boolean(req.session?.appAuth)}));
 app.post('/api/login',(req,res)=>{
   if(!process.env.APP_PASSWORD){ req.session.appAuth=true; return res.json({ok:true}); }
@@ -586,8 +586,20 @@ async function generateCopyWithGemini({images,filename}){
   let out; try{out=JSON.parse(sanitizeJsonText(text));}catch{throw new Error('A IA não retornou um JSON válido. Tente novamente.');}
   const tags=Array.isArray(out.hashtags)?out.hashtags:[];
   let cta=String(out.cta||'').trim();
-  if(!cta || /\bno link\b/i.test(cta)) cta=`Garanta o seu na ${cfg.brandName||'REDEACHADOS BR'}`;
-  else if(!normalizeText(cta).includes(normalizeText(cfg.brandName||'REDEACHADOS BR'))) cta=`${cta.replace(/[.!]+$/,'')} na ${cfg.brandName||'REDEACHADOS BR'}`;
+  const brand=String(cfg.brandName||'REDE ACHADOS BR').trim();
+  const brandKey=normalizeText(brand).replace(/[^a-z0-9]/g,'');
+  const ctaKey=normalizeText(cta).replace(/[^a-z0-9]/g,'');
+  if(!cta || /\bno link\b/i.test(cta)) {
+    cta=`Garanta o seu na ${brand}`;
+  } else if(!ctaKey.includes(brandKey)) {
+    cta=`${cta.replace(/[.!]+$/,'')} na ${brand}`;
+  }
+  // Remove duplicação acidental da marca, inclusive variações com/sem espaço.
+  cta=cta
+    .replace(/\bna\s+REDE\s*ACHADOS\s*BR\s+na\s+REDE\s*ACHADOS\s*BR\b/ig,'na REDE ACHADOS BR')
+    .replace(/\bREDE\s*ACHADOS\s*BR\s+REDE\s*ACHADOS\s*BR\b/ig,'REDE ACHADOS BR')
+    .replace(/\s{2,}/g,' ')
+    .trim();
   return {product:String(out.product||'Produto'),title:String(out.title||'Confira esse achadinho'),description:String(out.description||''),hashtags:tags.map(x=>String(x).startsWith('#')?String(x):'#'+String(x).replace(/\s+/g,'')),cta,confidence:'ai'};
 }
 
@@ -754,4 +766,4 @@ app.post('/api/status/:publishId', mustLogin, async(req,res)=>{
   try{const d=await tiktokJson('https://open.tiktokapis.com/v2/post/publish/status/fetch/',{method:'POST',body:JSON.stringify({publish_id:req.params.publishId})});res.json(d.data||{});}catch(e){res.status(400).json({error:e.message});}
 });
 
-app.listen(PORT,()=>console.log(`REDEACHADOS BR Publisher Web V5.4.7 em http://localhost:${PORT}`));
+app.listen(PORT,()=>console.log(`REDEACHADOS BR Publisher Web V5.4.10 em http://localhost:${PORT}`));
