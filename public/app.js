@@ -165,7 +165,13 @@ function renderWedropResults(data){
     box.classList.remove('hidden');
     const el=document.createElement('div');el.className='video-result fallback';
     const suggested=data.gallery?.attempts?.at(-1)?.query||p.name||data.sku;
-    el.innerHTML=`<div><b>Nenhum vídeo confirmado automaticamente</b><small>Você pode apagar algumas palavras do final no campo “Busca manual” e tentar novamente.</small><small>Última tentativa: ${esc(suggested)}</small></div><a class="primary linkbtn" target="_blank" rel="noopener" href="${esc(data.gallery?.galleryUrl||'https://drive-vid-gallery.lovable.app/')}">ABRIR GALERIA</a>`;
+    const helper=(data.gallery?.attempts||[]).find(x=>/\s/.test(x.query)&&x.query.split(/\s+/).length===2)?.query || suggested;
+    el.innerHTML=`<div><b>Nenhum vídeo confirmado automaticamente</b><small>A galeria usa carregamento dinâmico. A busca assistida copia a expressão mais curta e abre a galeria.</small><small>Busca sugerida: <b>${esc(helper)}</b></small></div><button class="primary" type="button">COPIAR BUSCA + ABRIR GALERIA</button>`;
+    el.querySelector('button').onclick=async()=>{
+      try{await navigator.clipboard.writeText(helper); toast('Busca copiada: '+helper);}catch{}
+      window.open(data.gallery?.galleryUrl||'https://drive-vid-gallery.lovable.app/','_blank','noopener');
+      const q=$('#wedropQuery'); if(q) q.value=helper;
+    };
     box.appendChild(el);
   }
 }

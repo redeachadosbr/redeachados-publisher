@@ -1,4 +1,4 @@
-# REDEACHADOS BR Publisher Web V5.4.1
+# REDEACHADOS BR Publisher Web V5.4.2
 
 Versão mobile + integração experimental com a galeria de vídeos WeDrop.
 
@@ -17,13 +17,24 @@ Versão mobile + integração experimental com a galeria de vídeos WeDrop.
 Opcional: `WEDROP_GALLERY_URL` (padrão: `https://drive-vid-gallery.lovable.app/`).
 
 ## Observação sobre WeDrop
-O painel `dash.wedrop.com.br` exige sessão/login. A V5.4.1 não pede nem armazena senha WeDrop. Para SKUs que não coincidam com a SKU do catálogo Shopee, a busca automática depende de o nome/SKU estar exposto na galeria pública. Se a WeDrop disponibilizar API oficial ou endpoint de catálogo, ele poderá ser conectado na próxima evolução sem mudar o fluxo do usuário.
+O painel `dash.wedrop.com.br` exige sessão/login. A V5.4.2 não pede nem armazena senha WeDrop. Para SKUs que não coincidam com a SKU do catálogo Shopee, a busca automática depende de o nome/SKU estar exposto na galeria pública. Se a WeDrop disponibilizar API oficial ou endpoint de catálogo, ele poderá ser conectado na próxima evolução sem mudar o fluxo do usuário.
 
 
-## Busca progressiva WeDrop — V5.4.1
+## Busca progressiva WeDrop — V5.4.2
 
 A busca por SKU agora reproduz o procedimento manual da galeria: o Publisher tenta o título completo e, quando não encontra correspondência forte, remove palavras do final progressivamente até localizar candidatos. As tentativas aparecem na tela.
 
 Quando uma busca encontra o vídeo correto e o usuário seleciona **USAR ESTE VÍDEO**, a expressão que funcionou é associada à SKU e reutilizada nas próximas buscas. Também existe um campo **Busca manual** para casos em que seja necessário encurtar o título de outra forma.
 
 Por segurança, a busca não continua indefinidamente até palavras genéricas; são exigidos termos significativos para reduzir o risco de selecionar vídeo de outro produto.
+
+
+## Correção V5.4.2 — busca WeDrop
+
+- Corrige títulos longos: a busca automática agora sempre testa prefixos fortes de 6, 5, 4, 3 e 2 palavras (ex.: `Pista Carrinho`).
+- Aumenta o limite de tentativas progressivas para não parar antes das expressões curtas úteis.
+- Mantém a busca manual exata.
+- Quando a galeria dinâmica não expõe a lista de vídeos ao servidor, oferece `COPIAR BUSCA + ABRIR GALERIA`, copiando automaticamente a melhor expressão para colar na busca da galeria.
+- Continua memorizando a expressão que funcionou por SKU.
+
+Observação: a galeria Lovable carrega parte do catálogo dinamicamente no navegador. Sem uma API/endpoint público documentado, o Publisher não deve inventar resultados. A V5.4.2 corrige a lógica de encurtamento e torna o fallback assistido muito mais rápido enquanto a integração direta do dataset não estiver disponível.

@@ -186,17 +186,25 @@ function progressiveSearchQueries(title, learned=''){
   add(learned);
   const full=cleanSearchTitle(title); add(full);
   const words=full.split(/\s+/).filter(Boolean);
-  // Reproduz o uso manual: tenta o título completo e vai apagando palavras do final.
-  for(let n=words.length-1;n>=2 && out.length<10;n--){
+  // V5.4.2: além do título completo, sempre inclui prefixos fortes de 6 até 2 palavras.
+  // Isso evita o erro anterior em títulos longos, onde o limite de tentativas podia acabar
+  // antes de chegar em uma busca simples como "Pista Carrinho".
+  const strong=[];
+  for(let n=Math.min(6,words.length);n>=2;n--){
     const v=words.slice(0,n).join(' ');
-    const useful=catalogTokens(v);
-    if(useful.length>=2) add(v);
+    if(catalogTokens(v).length>=2) strong.push(v);
   }
-  // Uma última alternativa segura remove somente cores/tamanho que costumam ficar no fim do título.
+  strong.forEach(add);
+  // Depois, tenta o comportamento manual real: remove uma palavra por vez do final.
+  for(let n=words.length-1;n>=2 && out.length<24;n--){
+    const v=words.slice(0,n).join(' ');
+    if(catalogTokens(v).length>=2) add(v);
+  }
+  // Alternativa removendo cores/tamanhos que normalmente não fazem parte do nome do vídeo.
   const removable=new Set(['branco','branca','preto','preta','azul','rosa','vermelho','vermelha','verde','cinza','sortido','sortida','grande','medio','media','pequeno','pequena']);
   const filtered=words.filter(w=>!removable.has(normalizeText(w)));
   if(filtered.length>=2)add(filtered.join(' '));
-  return out.slice(0,10);
+  return out.slice(0,24);
 }
 function getWedropAlias(sku){
   const st=loadStore(); return String(st.wedropSearchAliases?.[String(sku||'').trim().toUpperCase()]||'').trim();
@@ -207,12 +215,12 @@ function saveWedropAlias(sku,query){
 }
 async function loadGalleryDocuments(){
   const base=envText('WEDROP_GALLERY_URL')||'https://drive-vid-gallery.lovable.app/';
-  const r=await fetch(base,{headers:{'User-Agent':'Mozilla/5.0 REDEACHADOS-Publisher/5.4.1.1'}});
+  const r=await fetch(base,{headers:{'User-Agent':'Mozilla/5.0 REDEACHADOS-Publisher/5.4.2'}});
   if(!r.ok) throw new Error(`HTTP ${r.status}`);
   const html=await r.text(); const docs=[{url:base,text:html}];
   const scripts=[...html.matchAll(/<script[^>]+src=["']([^"']+)["']/gi)].map(m=>{try{return new URL(m[1],base).href}catch{return null}}).filter(Boolean).slice(0,14);
   for(const src of scripts){
-    try{const rr=await fetch(src,{headers:{'User-Agent':'Mozilla/5.0 REDEACHADOS-Publisher/5.4.1.1'}});if(rr.ok){const tx=await rr.text();if(tx.length<10_000_000)docs.push({url:src,text:tx});}}catch{}
+    try{const rr=await fetch(src,{headers:{'User-Agent':'Mozilla/5.0 REDEACHADOS-Publisher/5.4.2'}});if(rr.ok){const tx=await rr.text();if(tx.length<10_000_000)docs.push({url:src,text:tx});}}catch{}
   }
   return {base,docs};
 }
@@ -241,6 +249,7 @@ async function discoverGalleryVideos(title,sku,manualQuery=''){
   try{
     const {base,docs}=await loadGalleryDocuments(); result.galleryUrl=base;
     const media=collectGalleryMedia(docs);
+    result.inventoryCount=media.length;
     const variants=manualQuery?[cleanSearchTitle(manualQuery)]:progressiveSearchQueries(title||sku,learned);
     const threshold=0.50;
     let chosen=[];
@@ -260,7 +269,9 @@ async function discoverGalleryVideos(title,sku,manualQuery=''){
     result.candidates=chosen;
     if(!result.diagnostic) result.diagnostic=chosen.length
       ? `Vídeo(s) encontrado(s) após ${result.attempts.length} tentativa(s). Busca que funcionou: “${result.bestQuery}”.`
-      : 'Nenhum vídeo compatível foi localizado. Tente encurtar manualmente o nome; se ainda não aparecer, provavelmente não há vídeo na galeria.';
+      : (media.length===0
+        ? 'A galeria carregou, mas a lista de vídeos é dinâmica e não apareceu no HTML consultado pelo servidor. Use a busca assistida abaixo: o Publisher copia a melhor expressão e abre a galeria para você.'
+        : 'Nenhum vídeo compatível foi localizado nos dados disponíveis. O Publisher já testou também prefixos curtos como as 2 primeiras palavras do título.');
   }catch(e){result.diagnostic=`Não foi possível consultar automaticamente a galeria pública: ${e.message}`;}
   return result;
 }
@@ -282,7 +293,7 @@ app.post('/api/wedrop/alias', mustLogin, (req,res)=>{
 app.get('/api/wedrop/video', mustLogin, async(req,res)=>{
   try{
     const u=safeRemoteUrl(req.query.url); if(!u) return res.status(400).json({error:'URL de vídeo não permitida.'});
-    const r=await fetch(u,{redirect:'follow',headers:{'User-Agent':'Mozilla/5.0 REDEACHADOS-Publisher/5.4.1'}});
+    const r=await fetch(u,{redirect:'follow',headers:{'User-Agent':'Mozilla/5.0 REDEACHADOS-Publisher/5.4.2'}});
     if(!r.ok) return res.status(400).json({error:`Falha ao baixar vídeo (HTTP ${r.status}).`});
     const ct=r.headers.get('content-type')||'video/mp4';
     if(!/video|octet-stream/i.test(ct)) return res.status(400).json({error:'O endereço encontrado não retornou um arquivo de vídeo.'});
