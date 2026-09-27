@@ -14,3 +14,6 @@
 
 .instagram-publish{border:0;border-radius:12px;padding:16px 24px;font-weight:800;cursor:pointer;background:linear-gradient(90deg,#833ab4,#fd1d1d,#fcb045);color:#fff;font-size:16px}.instagram-publish:disabled{opacity:.55;cursor:wait}
 @media(max-width:700px){.instagram-publish{width:100%;min-height:52px}}
+
+.manual-upload-card{border:1px solid #e6d18a;background:linear-gradient(180deg,#fffdf6,#fff)}.manual-upload-head{display:flex;justify-content:space-between;gap:18px;align-items:flex-start}.manual-upload-card h2{margin:8px 0}.manual-upload-card p{color:#666;margin:0}.manual-upload-btn{margin-top:18px;width:100%;font-size:16px;min-height:54px}.manual-upload-card .small{margin-top:9px}
+@media(max-width:700px){.manual-upload-head{display:block}.manual-upload-card .mobile-badge{margin-top:10px}.manual-upload-btn{font-size:15px}}

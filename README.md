@@ -1,3 +1,11 @@
+# REDEACHADOS BR Publisher Web V5.4.13
+
+## Novidade V5.4.13
+
+- Upload manual de vídeo destacado na tela inicial.
+- Seleção de MP4, MOV ou WebM diretamente do computador ou iPhone.
+- O vídeo manual segue o mesmo fluxo de análise por IA, legenda TikTok, legenda Instagram, rascunho TikTok e Reel automático no Instagram.
+
 # REDEACHADOS BR Publisher Web V5.4.12
 
 ## Novo: publicação automática de Reels no Instagram
