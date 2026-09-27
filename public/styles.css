@@ -11,3 +11,6 @@
 /* V5.4.1 · busca progressiva WeDrop */
 .manual-search-row{display:grid;grid-template-columns:1fr auto;gap:10px;margin-top:10px}.search-attempts{margin-top:12px;border:1px solid #eee;border-radius:12px;padding:12px;background:#fcfcfc;display:grid;gap:7px}.attempt-row{display:flex;justify-content:space-between;gap:12px;padding-top:6px;border-top:1px dashed #e5e5e5}.attempt-row:first-of-type{border-top:0}.attempt-row span{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.attempt-row small{white-space:nowrap;color:#777}
 @media(max-width:700px){.manual-search-row{grid-template-columns:1fr}.manual-search-row button{width:100%}.attempt-row{display:grid;gap:3px}.attempt-row span{white-space:normal}.attempt-row small{white-space:normal}}
+
+.instagram-publish{border:0;border-radius:12px;padding:16px 24px;font-weight:800;cursor:pointer;background:linear-gradient(90deg,#833ab4,#fd1d1d,#fcb045);color:#fff;font-size:16px}.instagram-publish:disabled{opacity:.55;cursor:wait}
+@media(max-width:700px){.instagram-publish{width:100%;min-height:52px}}

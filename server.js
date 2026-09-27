@@ -41,7 +41,7 @@ app.use(session({
 app.use(express.static(path.join(__dirname, 'public')));
 
 function defaults(){
-  return { token:null, settings:{ brandName:'REDEACHADOS BR', shopeeStoreUrl:'', defaultPrivacy:'SELF_ONLY', defaultHashtagCount:6, tiktokClientKey:'', tiktokClientSecret:'', geminiApiKey:'', geminiModel:'gemini-3.5-flash-lite' }, history:[], wedropSearchAliases:{} };
+  return { token:null, settings:{ brandName:'REDEACHADOS BR', shopeeStoreUrl:'', defaultPrivacy:'SELF_ONLY', defaultHashtagCount:6, tiktokClientKey:'', tiktokClientSecret:'', geminiApiKey:'', geminiModel:'gemini-3.5-flash-lite', instagramAccessToken:'', instagramUserId:'17841480462088551', metaGraphVersion:'v26.0' }, history:[], wedropSearchAliases:{} };
 }
 function loadStore(){
   try { return { ...defaults(), ...JSON.parse(fs.readFileSync(DATA_FILE, 'utf8')) }; }
@@ -59,7 +59,10 @@ function effectiveSettings(stored={}){
     geminiModel: envText('GEMINI_MODEL') || stored.geminiModel || 'gemini-3.5-flash-lite',
     geminiApiKey: envText('GEMINI_API_KEY') || stored.geminiApiKey || '',
     tiktokClientKey: envText('TIKTOK_CLIENT_KEY') || stored.tiktokClientKey || '',
-    tiktokClientSecret: envText('TIKTOK_CLIENT_SECRET') || stored.tiktokClientSecret || ''
+    tiktokClientSecret: envText('TIKTOK_CLIENT_SECRET') || stored.tiktokClientSecret || '',
+    instagramAccessToken: envText('INSTAGRAM_ACCESS_TOKEN') || stored.instagramAccessToken || '',
+    instagramUserId: envText('INSTAGRAM_USER_ID') || stored.instagramUserId || '17841480462088551',
+    metaGraphVersion: envText('META_GRAPH_VERSION') || stored.metaGraphVersion || 'v26.0'
   };
 }
 function now(){ return new Date().toISOString(); }
@@ -72,11 +75,14 @@ function safeSettings(stored){
     brandName:s.brandName, shopeeStoreUrl:s.shopeeStoreUrl, defaultPrivacy:s.defaultPrivacy,
     defaultHashtagCount:Number(s.defaultHashtagCount||6),
     tiktokConfigured:Boolean(s.tiktokClientKey&&s.tiktokClientSecret), geminiConfigured:Boolean(s.geminiApiKey),
+    instagramConfigured:Boolean(s.instagramAccessToken&&s.instagramUserId), instagramUserId:s.instagramUserId, metaGraphVersion:s.metaGraphVersion,
     geminiModel:s.geminiModel,
     sources:{
       shopeeStoreUrl:envText('SHOPEE_STORE_URL')?'render':'local',
       geminiApiKey:envText('GEMINI_API_KEY')?'render':'local',
-      tiktokCredentials:(envText('TIKTOK_CLIENT_KEY')&&envText('TIKTOK_CLIENT_SECRET'))?'render':'local'
+      tiktokCredentials:(envText('TIKTOK_CLIENT_KEY')&&envText('TIKTOK_CLIENT_SECRET'))?'render':'local',
+      instagramAccessToken:envText('INSTAGRAM_ACCESS_TOKEN')?'render':'local',
+      instagramUserId:envText('INSTAGRAM_USER_ID')?'render':'local'
     }
   };
 }
@@ -475,7 +481,7 @@ async function extractRemoteFrames(id, filename, durationSec){
   }
 }
 
-app.get('/api/health', (_req,res)=>res.json({ok:true,service:'REDEACHADOS BR Publisher Web V5.4.10'}));
+app.get('/api/health', (_req,res)=>res.json({ok:true,service:'REDEACHADOS BR Publisher Web V5.4.12'}));
 app.get('/api/auth-state',(req,res)=>res.json({locked:Boolean(process.env.APP_PASSWORD),loggedIn:!process.env.APP_PASSWORD||Boolean(req.session?.appAuth)}));
 app.post('/api/login',(req,res)=>{
   if(!process.env.APP_PASSWORD){ req.session.appAuth=true; return res.json({ok:true}); }
@@ -501,10 +507,121 @@ app.post('/api/settings', mustLogin, (req,res)=>{
     geminiModel:String(req.body.geminiModel||current.geminiModel||'gemini-3.5-flash-lite').trim(),
     tiktokClientKey:String(req.body.tiktokClientKey||'').trim() || old.tiktokClientKey || '',
     tiktokClientSecret:String(req.body.tiktokClientSecret||'').trim() || old.tiktokClientSecret || '',
-    geminiApiKey:String(req.body.geminiApiKey||'').trim() || old.geminiApiKey || ''
+    geminiApiKey:String(req.body.geminiApiKey||'').trim() || old.geminiApiKey || '',
+    instagramAccessToken:String(req.body.instagramAccessToken||'').trim() || old.instagramAccessToken || '',
+    instagramUserId:String(req.body.instagramUserId||current.instagramUserId||'17841480462088551').trim(),
+    metaGraphVersion:String(req.body.metaGraphVersion||current.metaGraphVersion||'v26.0').trim()
   };
   saveStore(s);
   res.json({ok:true,settings:safeSettings(s.settings)});
+});
+
+
+
+function instagramSecret(){ return process.env.SESSION_SECRET || 'redeachados-dev-secret'; }
+function instagramMediaSig(kind,id,exp){
+  return crypto.createHmac('sha256',instagramSecret()).update(`${kind}:${id}:${exp}`).digest('hex');
+}
+function instagramPublicMediaUrl(req,kind,id,ttlSec=1800){
+  const exp=Math.floor(Date.now()/1000)+ttlSec;
+  const sig=instagramMediaSig(kind,id,exp);
+  return `${baseUrl(req)}/media/instagram/${encodeURIComponent(kind)}/${encodeURIComponent(id)}?exp=${exp}&sig=${sig}`;
+}
+function validInstagramMediaSig(kind,id,exp,sig){
+  const n=Number(exp||0); if(!Number.isFinite(n)||n<Math.floor(Date.now()/1000)||n>Math.floor(Date.now()/1000)+7200) return false;
+  const expected=instagramMediaSig(kind,id,n);
+  try{return crypto.timingSafeEqual(Buffer.from(String(sig||'')),Buffer.from(expected));}catch{return false;}
+}
+async function pipeRemoteResponse(r,res,cache='public, max-age=300'){
+  const ct=remoteMime(r);
+  res.status(r.status===206?206:200);
+  res.setHeader('Content-Type',ct);
+  res.setHeader('Accept-Ranges',r.headers.get('accept-ranges')||'bytes');
+  const len=r.headers.get('content-length'); if(len) res.setHeader('Content-Length',len);
+  const cr=r.headers.get('content-range'); if(cr) res.setHeader('Content-Range',cr);
+  res.setHeader('Cache-Control',cache);
+  res.setHeader('Content-Disposition','inline');
+  if(!r.body) return res.end();
+  Readable.fromWeb(r.body).on('error',()=>{try{res.destroy();}catch{}}).pipe(res);
+}
+app.get('/media/instagram/:kind/:id', async(req,res)=>{
+  try{
+    const kind=String(req.params.kind||''), id=String(req.params.id||'');
+    if(!validInstagramMediaSig(kind,id,req.query.exp,req.query.sig)) return res.status(403).send('Link expirado ou inválido.');
+    const range=String(req.headers.range||'').trim();
+    if(kind==='wedrop'){
+      if(!/^[A-Za-z0-9_-]{8,200}$/.test(id)) return res.status(400).send('ID inválido.');
+      const r=await fetchDriveResponse(id,range); return pipeRemoteResponse(r,res);
+    }
+    if(kind==='upload'){
+      const filename=path.basename(id); const full=path.join(UPLOAD_DIR,filename);
+      if(!fs.existsSync(full)) return res.status(404).send('Arquivo não encontrado.');
+      const st=fs.statSync(full); const ext=path.extname(filename).toLowerCase(); const ct=ext==='.mov'?'video/quicktime':ext==='.webm'?'video/webm':'video/mp4';
+      res.setHeader('Content-Type',ct);res.setHeader('Accept-Ranges','bytes');res.setHeader('Cache-Control','public, max-age=300');res.setHeader('Content-Disposition','inline');
+      if(range){
+        const m=range.match(/bytes=(\d*)-(\d*)/); if(m){const start=Number(m[1]||0),end=Math.min(Number(m[2]||st.size-1),st.size-1); if(start<=end){res.status(206);res.setHeader('Content-Range',`bytes ${start}-${end}/${st.size}`);res.setHeader('Content-Length',end-start+1);return fs.createReadStream(full,{start,end}).pipe(res);}}
+      }
+      res.setHeader('Content-Length',st.size); return fs.createReadStream(full).pipe(res);
+    }
+    res.status(404).send('Tipo de mídia inválido.');
+  }catch(e){if(!res.headersSent)res.status(400).send(`Falha ao servir vídeo: ${e.message}`);}
+});
+async function instagramGraph(pathname,{method='GET',params={}}={}){
+  const cfg=effectiveSettings(loadStore().settings||{});
+  if(!cfg.instagramAccessToken||!cfg.instagramUserId) throw new Error('Configure o token do Instagram e o Instagram Business Account ID.');
+  const version=/^v\d+\.\d+$/.test(cfg.metaGraphVersion)?cfg.metaGraphVersion:'v26.0';
+  const url=new URL(`https://graph.facebook.com/${version}/${String(pathname).replace(/^\//,'')}`);
+  const body=new URLSearchParams();
+  for(const [k,v] of Object.entries(params||{})){if(v!==undefined&&v!==null&&String(v)!=='')body.set(k,String(v));}
+  body.set('access_token',cfg.instagramAccessToken);
+  let r;
+  if(method==='GET'){for(const [k,v] of body)url.searchParams.set(k,v);r=await fetch(url,{headers:{Accept:'application/json'}});}
+  else r=await fetch(url,{method,headers:{'Content-Type':'application/x-www-form-urlencoded',Accept:'application/json'},body});
+  const d=await r.json().catch(()=>({}));
+  if(!r.ok||d.error){const e=d.error||{};throw new Error([e.message||`Meta HTTP ${r.status}`,e.code?`Código ${e.code}`:'',e.error_subcode?`Subcódigo ${e.error_subcode}`:''].filter(Boolean).join(' | '));}
+  return d;
+}
+async function instagramAccountInfo(){
+  const cfg=effectiveSettings(loadStore().settings||{});
+  return instagramGraph(`${cfg.instagramUserId}`,{params:{fields:'id,username'}});
+}
+async function publishInstagramReel({req,videoUrl,caption}){
+  const cfg=effectiveSettings(loadStore().settings||{});
+  const created=await instagramGraph(`${cfg.instagramUserId}/media`,{method:'POST',params:{media_type:'REELS',video_url:videoUrl,caption:String(caption||'').slice(0,2200),share_to_feed:'true'}});
+  const creationId=created.id; if(!creationId) throw new Error('A Meta não retornou o ID do container do Reel.');
+  let last={status_code:'IN_PROGRESS',status:'Processando'};
+  for(let i=0;i<18;i++){
+    await new Promise(r=>setTimeout(r,i===0?2500:3500));
+    last=await instagramGraph(`${creationId}`,{params:{fields:'status_code,status'}});
+    if(last.status_code==='FINISHED') break;
+    if(['ERROR','EXPIRED'].includes(last.status_code)) throw new Error(last.status||`Container do Instagram: ${last.status_code}`);
+  }
+  if(last.status_code!=='FINISHED') return {ok:true,pending:true,creationId,status:last.status_code||'IN_PROGRESS',message:'O Instagram ainda está processando o Reel. Tente finalizar em alguns segundos.'};
+  const published=await instagramGraph(`${cfg.instagramUserId}/media_publish`,{method:'POST',params:{creation_id:creationId}});
+  return {ok:true,pending:false,creationId,mediaId:published.id,status:'PUBLISHED',message:'Reel publicado no Instagram.'};
+}
+app.get('/api/instagram/status',mustLogin,async(_req,res)=>{try{const cfg=effectiveSettings(loadStore().settings||{});if(!cfg.instagramAccessToken||!cfg.instagramUserId)return res.json({configured:false,userId:cfg.instagramUserId||''});const info=await instagramAccountInfo();res.json({configured:true,connected:true,...info});}catch(e){res.json({configured:true,connected:false,error:e.message});}});
+app.post('/api/instagram/publish-remote',mustLogin,async(req,res)=>{
+  try{
+    const id=String(req.body.remoteVideoId||'').trim(); if(!/^[A-Za-z0-9_-]{8,200}$/.test(id))return res.status(400).json({error:'ID do vídeo WeDrop inválido.'});
+    const caption=String(req.body.caption||'').trim(); const videoUrl=instagramPublicMediaUrl(req,'wedrop',id,3600);
+    const result=await publishInstagramReel({req,videoUrl,caption});
+    const s=loadStore();s.history.unshift({id:crypto.randomUUID(),platform:'instagram',mediaId:result.mediaId||'',creationId:result.creationId||'',filename:String(req.body.filename||'video-wedrop'),caption,status:result.status||'PROCESSING',createdAt:now()});s.history=s.history.slice(0,100);saveStore(s);
+    res.json(result);
+  }catch(e){res.status(400).json({error:e.message});}
+});
+app.post('/api/instagram/publish',mustLogin,upload.single('video'),async(req,res)=>{
+  try{
+    if(!req.file)return res.status(400).json({error:'Envie um vídeo.'});
+    const caption=String(req.body.caption||'').trim(); const filename=path.basename(req.file.path); const videoUrl=instagramPublicMediaUrl(req,'upload',filename,3600);
+    const result=await publishInstagramReel({req,videoUrl,caption});
+    const s=loadStore();s.history.unshift({id:crypto.randomUUID(),platform:'instagram',mediaId:result.mediaId||'',creationId:result.creationId||'',filename:req.file.originalname,caption,status:result.status||'PROCESSING',createdAt:now()});s.history=s.history.slice(0,100);saveStore(s);
+    setTimeout(()=>removeFile(req.file.path),10*60*1000).unref?.();
+    res.json(result);
+  }catch(e){if(req.file?.path)setTimeout(()=>removeFile(req.file.path),10*60*1000).unref?.();res.status(400).json({error:e.message});}
+});
+app.post('/api/instagram/finalize',mustLogin,async(req,res)=>{
+  try{const creationId=String(req.body.creationId||'').trim();if(!/^\d+$/.test(creationId))return res.status(400).json({error:'Container inválido.'});const st=await instagramGraph(`${creationId}`,{params:{fields:'status_code,status'}});if(st.status_code!=='FINISHED')return res.json({ok:true,pending:true,creationId,status:st.status_code||'IN_PROGRESS',message:st.status||'Ainda processando.'});const cfg=effectiveSettings(loadStore().settings||{});const p=await instagramGraph(`${cfg.instagramUserId}/media_publish`,{method:'POST',params:{creation_id:creationId}});res.json({ok:true,pending:false,creationId,mediaId:p.id,status:'PUBLISHED',message:'Reel publicado no Instagram.'});}catch(e){res.status(400).json({error:e.message});}
 });
 
 async function refreshTokenIfNeeded(force=false){
@@ -565,13 +682,20 @@ function fallbackCopy(filename, brand, shopUrl){
   const description=`${product}. Uma opção prática para facilitar a rotina. Veja os detalhes e confira se combina com você.`;
   const hashtags=['#achadinhos','#utilidades','#comprasonline','#dicas','#'+String(brand||'redeachadosbr').toLowerCase().replace(/[^a-z0-9]/g,'')];
   const cta=shopUrl?`Garanta o seu na ${brand||'REDEACHADOS BR'}`:`Confira mais produtos na ${brand||'REDEACHADOS BR'}.`;
-  return {product,title,description,hashtags,cta,confidence:'fallback'};
+  const instagramDescription=`✨ ${product}\n\nUma opção prática para o dia a dia, pensada para facilitar sua rotina. Confira os detalhes no vídeo e veja se combina com o que você procura.\n\n💥 Por que vale conhecer?\n\n✅ Prático para o uso diário\n✅ Fácil de incluir na rotina\n✅ Opção versátil para casa ou dia a dia\n\n👉 Veja os detalhes e escolha a opção ideal para você.`;
+  return {product,title,description,instagramDescription,hashtags,cta,confidence:'fallback'};
 }
 async function generateCopyWithGemini({images,filename}){
   const s=loadStore(), cfg=effectiveSettings(s.settings||{});
   if(!cfg.geminiApiKey) return fallbackCopy(filename,cfg.brandName,cfg.shopeeStoreUrl);
   const model=cfg.geminiModel||'gemini-3.5-flash-lite';
-  const prompt=`Você é um redator de e-commerce brasileiro especializado em TikTok. Analise os frames de um vídeo de produto e gere metadados para publicação. Não invente especificações, certificações, preço, desconto, garantia, material, medidas ou funções que não estejam claramente visíveis. Evite promessas absolutas, alegações médicas e linguagem enganosa. Escreva em português do Brasil, natural e comercial sem spam. NÃO coloque emojis nos campos title, description, cta ou hashtags: o aplicativo aplicará emojis automaticamente de forma visual e moderada. Retorne SOMENTE JSON válido neste formato: {"product":"nome genérico provável do produto","title":"chamada curta de até 70 caracteres","description":"descrição de 120 a 320 caracteres","hashtags":["#hashtag1","#hashtag2","#hashtag3","#hashtag4","#hashtag5","#hashtag6"],"cta":"CTA curto e natural mencionando a loja; prefira frases como Garanta o seu na REDE ACHADOS BR ou Confira na REDE ACHADOS BR, sem dizer apenas no link"}. Marca da loja: ${cfg.brandName||'REDEACHADOS BR'}. Nome do arquivo: ${filename||''}.`;
+  const prompt=`Você é um redator de e-commerce brasileiro especializado em TikTok e Instagram. Analise os frames de um vídeo de produto e gere metadados para publicação. Não invente especificações, certificações, preço, desconto, garantia, material, medidas, fragrâncias, quantidades, funções ou resultados que não estejam claramente visíveis ou sustentados pelo nome do arquivo. Evite promessas absolutas, alegações médicas e linguagem enganosa. Escreva em português do Brasil, natural, comercial e sem spam.
+
+Para TikTok: title curto, description entre 120 e 320 caracteres e CTA curto. NÃO coloque emojis nesses três campos.
+
+Para Instagram: crie instagramDescription mais completa, com aproximadamente 650 a 1400 caracteres, usando emojis moderados e quebras de linha. Estrutura desejada: 1) gancho forte; 2) parágrafo explicando o produto; 3) se houver opções/variações realmente identificáveis, liste-as; 4) bloco "💥 Por que você pode gostar desse produto?"; 5) de 4 a 6 benefícios em linhas com ✅; 6) uma frase conectando com o problema/uso cotidiano; 7) uma frase sobre uso/resultado sem promessa absoluta. NÃO inclua URL, preço, desconto, estoque, hashtags nem CTA final na instagramDescription, pois o aplicativo adicionará esses itens.
+
+Retorne SOMENTE JSON válido neste formato: {"product":"nome genérico provável do produto","title":"chamada curta de até 70 caracteres","description":"descrição curta para TikTok","instagramDescription":"descrição longa estruturada para Instagram","hashtags":["#hashtag1","#hashtag2","#hashtag3","#hashtag4","#hashtag5","#hashtag6"],"cta":"CTA curto e natural mencionando a loja; prefira frases como Garanta o seu na REDE ACHADOS BR ou Confira na REDE ACHADOS BR, sem dizer apenas no link"}. Marca da loja: ${cfg.brandName||'REDEACHADOS BR'}. Nome do arquivo: ${filename||''}.`;
   const parts=[{text:prompt}];
   for(const img of (images||[]).slice(0,3)){
     const m=String(img).match(/^data:(image\/[a-zA-Z0-9.+-]+);base64,(.+)$/s); if(m) parts.push({inline_data:{mime_type:m[1],data:m[2]}});
@@ -600,7 +724,7 @@ async function generateCopyWithGemini({images,filename}){
     .replace(/\bREDE\s*ACHADOS\s*BR\s+REDE\s*ACHADOS\s*BR\b/ig,'REDE ACHADOS BR')
     .replace(/\s{2,}/g,' ')
     .trim();
-  return {product:String(out.product||'Produto'),title:String(out.title||'Confira esse achadinho'),description:String(out.description||''),hashtags:tags.map(x=>String(x).startsWith('#')?String(x):'#'+String(x).replace(/\s+/g,'')),cta,confidence:'ai'};
+  return {product:String(out.product||'Produto'),title:String(out.title||'Confira esse achadinho'),description:String(out.description||''),instagramDescription:String(out.instagramDescription||''),hashtags:tags.map(x=>String(x).startsWith('#')?String(x):'#'+String(x).replace(/\s+/g,'')),cta,confidence:'ai'};
 }
 
 app.post('/api/ai/generate-remote', mustLogin, async(req,res)=>{
@@ -766,4 +890,4 @@ app.post('/api/status/:publishId', mustLogin, async(req,res)=>{
   try{const d=await tiktokJson('https://open.tiktokapis.com/v2/post/publish/status/fetch/',{method:'POST',body:JSON.stringify({publish_id:req.params.publishId})});res.json(d.data||{});}catch(e){res.status(400).json({error:e.message});}
 });
 
-app.listen(PORT,()=>console.log(`REDEACHADOS BR Publisher Web V5.4.10 em http://localhost:${PORT}`));
+app.listen(PORT,()=>console.log(`REDEACHADOS BR Publisher Web V5.4.11 em http://localhost:${PORT}`));

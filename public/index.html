@@ -21,10 +21,10 @@
   <div id="app" class="hidden">
     <header><div><strong>REDEACHADOS BR</strong><span> Publisher</span></div><button id="settingsBtn" class="ghost">⚙ Configurações</button></header>
     <main>
-      <section class="hero"><h1>Envie o vídeo. O restante o app prepara.</h1><p>O sistema analisa frames do vídeo, cria chamada, descrição, CTA e hashtags e envia o vídeo como rascunho para você finalizar dentro do TikTok.</p></section>
+      <section class="hero"><h1>Envie o vídeo. O restante o app prepara.</h1><p>O sistema analisa o vídeo, cria as legendas e permite enviar ao TikTok ou publicar o Reel automaticamente no Instagram.</p></section>
 
       <section class="card sku-card">
-        <div class="sku-head"><div><span class="eyebrow">NOVO · V5.4.10</span><h2>Buscar vídeo pela SKU WeDrop</h2><p>Digite a SKU. O Publisher tenta identificar o produto, localizar vídeos na galeria WeDrop e carregar o vídeo sem precisar baixar manualmente.</p></div><span class="mobile-badge">📱 iPhone</span></div>
+        <div class="sku-head"><div><span class="eyebrow">NOVO · V5.4.12</span><h2>Buscar vídeo pela SKU WeDrop</h2><p>Digite a SKU. O Publisher tenta identificar o produto, localizar vídeos na galeria WeDrop e carregar o vídeo sem precisar baixar manualmente.</p></div><span class="mobile-badge">📱 iPhone</span></div>
         <div class="sku-search"><input id="wedropSku" inputmode="text" autocapitalize="characters" placeholder="Ex.: VP-2383" /><button id="wedropSearchBtn" class="publish mini">BUSCAR VÍDEO</button></div>
         <div class="manual-search-row">
           <input id="wedropQuery" placeholder="Busca manual (opcional) — apague palavras do final se necessário" />
@@ -51,6 +51,8 @@
             <label>Hashtags<input id="hashtags" /></label>
             <label>Prévia da legenda <span class="small">(editável)</span><textarea id="captionPreview" rows="10" maxlength="2200" placeholder="Você pode ajustar manualmente a legenda antes de publicar."></textarea></label>
             <div class="caption-tools"><button id="restoreCaptionBtn" type="button" class="ghost">↺ Restaurar legenda gerada pela IA</button><button id="copyCaptionBtn" type="button" class="ghost">📋 Copiar legenda</button><span class="small">A legenda mantém o link direto do produto Shopee.</span></div>
+            <label>Legenda completa para Instagram <span class="small">(editável)</span><textarea id="instagramCaption" rows="18" maxlength="2200" placeholder="A IA criará uma versão mais completa para Instagram com gancho, benefícios, CTA, link do produto e hashtags."></textarea></label>
+            <div class="caption-tools"><button id="restoreInstagramBtn" type="button" class="ghost">↺ Restaurar Instagram</button><button id="copyInstagramBtn" type="button" class="ghost">📋 Copiar para Instagram</button><span class="small">Formato completo usado também na publicação automática do Reel pelo Instagram.</span></div>
             <label>Comentário de compra <span class="small">(para colar no primeiro comentário do TikTok)</span><textarea id="purchaseComment" rows="3" maxlength="500" placeholder="Será montado automaticamente com o link direto do produto."></textarea></label>
             <div class="caption-tools"><button id="restoreCommentBtn" type="button" class="ghost">↺ Restaurar comentário</button><button id="copyCommentBtn" type="button" class="ghost">📋 Copiar comentário</button><span class="small">Depois de publicar, cole este texto no primeiro comentário e fixe manualmente no TikTok, se essa opção estiver disponível na sua conta.</span></div>
           </div>
@@ -62,12 +64,13 @@
             <label class="check"><input id="disableStitch" type="checkbox"> Desativar Costurar</label>
             <label class="check"><input id="isAigc" type="checkbox"> O vídeo em si foi gerado por IA</label>
           </div>
-          <div class="actions"><button id="regenerateBtn" class="ghost">↻ Gerar novamente</button><button id="publishBtn" class="publish">ENVIAR RASCUNHO AO TIKTOK</button></div>
+          <div class="actions"><button id="regenerateBtn" class="ghost">↻ Gerar novamente</button><button id="publishBtn" class="publish">ENVIAR RASCUNHO AO TIKTOK</button><button id="instagramPublishBtn" class="instagram-publish">📸 PUBLICAR REEL NO INSTAGRAM</button></div>
           <p class="small">O link direto do produto Shopee continua na legenda. O Publisher também prepara um comentário de compra separado para você copiar e colar no primeiro comentário do TikTok.</p>
         </div>
       </section>
 
       <section class="card connection"><div><h3>TikTok</h3><p id="connectionText">Verificando conexão...</p></div><a id="connectBtn" href="/auth/tiktok" target="_blank" rel="noopener" class="primary linkbtn">Conectar TikTok</a></section>
+      <section class="card connection"><div><h3>Instagram</h3><p id="instagramConnectionText">Verificando conexão...</p></div><button type="button" class="ghost" onclick="document.getElementById('settingsDialog').showModal()">Configurar Instagram</button></section>
       <section class="card"><h3>Últimas publicações</h3><div id="history" class="history"></div></section>
     </main>
   </div>
@@ -93,6 +96,12 @@
       <label>Client Secret<input id="tiktokClientSecret" type="password" /></label>
       <label>Redirect URI para cadastrar no TikTok<input id="redirectUri" readonly /></label>
       <p class="small">No TikTok Developers, habilite Content Posting API e autorize os escopos <b>video.upload</b> e <b>video.publish</b>. Para o modo rascunho, <b>video.upload</b> é o escopo necessário.</p>
+      <hr>
+      <h3>Instagram / Meta</h3>
+      <label>Instagram Business Account ID<input id="instagramUserId" value="17841480462088551" /></label>
+      <label>Meta Access Token<input id="instagramAccessToken" type="password" placeholder="Cole um novo token de acesso da Meta" /></label>
+      <label>Graph API Version<input id="metaGraphVersion" value="v26.0" /></label>
+      <p class="small">O token precisa incluir <b>instagram_basic</b>, <b>instagram_content_publish</b>, <b>pages_show_list</b> e <b>pages_read_engagement</b>. Para produção, prefira salvar <b>INSTAGRAM_ACCESS_TOKEN</b> no Environment do Render.</p>
       <div class="actions"><button id="saveSettingsBtn" value="cancel" class="primary">Salvar configuração</button></div>
     </form>
   </dialog>

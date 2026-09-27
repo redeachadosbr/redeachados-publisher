@@ -1,4 +1,24 @@
-# REDEACHADOS BR Publisher Web V5.4.10
+# REDEACHADOS BR Publisher Web V5.4.12
+
+## Novo: publicação automática de Reels no Instagram
+
+- Publica o mesmo vídeo selecionado no Instagram como Reel usando a Graph API da Meta.
+- Usa a legenda completa do Instagram já gerada pelo Publisher.
+- Suporta vídeo WeDrop sem download no iPhone: a Meta recebe uma URL pública temporária e assinada do Render.
+- Para vídeo local, cria uma URL temporária assinada enquanto a Meta processa o arquivo.
+- Cria o container do Reel, acompanha o processamento e chama `media_publish` automaticamente.
+- Conta configurada: `@redeachadosbr` / Instagram Business Account ID `17841480462088551`.
+- Permissões necessárias no token: `instagram_basic`, `instagram_content_publish`, `pages_show_list`, `pages_read_engagement`.
+
+### Configuração recomendada no Render
+
+```env
+INSTAGRAM_ACCESS_TOKEN=SEU_NOVO_TOKEN
+INSTAGRAM_USER_ID=17841480462088551
+META_GRAPH_VERSION=v26.0
+```
+
+**Importante:** gere um token novo para uso no Render. Tokens exibidos em prints devem ser considerados expostos.
 
 ## V5.4.10 — correção de CTA duplicado
 
@@ -39,3 +59,7 @@ Commit sugerido: `Update V5.4.8 Render FFmpeg fix`
 - Gera automaticamente um comentário de compra separado com o link direto do produto.
 - Adiciona botões para copiar e restaurar o comentário.
 - O comentário é colado manualmente no TikTok após a publicação; a API oficial usada pelo Publisher não publica comentários automaticamente.
+
+## Commit sugerido
+
+`Update V5.4.12 automatic Instagram Reels publishing`
