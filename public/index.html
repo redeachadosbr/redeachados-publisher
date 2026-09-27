@@ -37,7 +37,7 @@
       </section>
 
       <section class="card sku-card">
-        <div class="sku-head"><div><span class="eyebrow">NOVO · V5.4.13</span><h2>Buscar vídeo pela SKU WeDrop</h2><p>Digite a SKU. O Publisher tenta identificar o produto, localizar vídeos na galeria WeDrop e carregar o vídeo sem precisar baixar manualmente.</p></div><span class="mobile-badge">📱 iPhone</span></div>
+        <div class="sku-head"><div><span class="eyebrow">NOVO · V5.4.14</span><h2>Buscar vídeo pela SKU WeDrop</h2><p>Digite a SKU. O Publisher tenta identificar o produto, localizar vídeos na galeria WeDrop e carregar o vídeo sem precisar baixar manualmente.</p></div><span class="mobile-badge">📱 iPhone</span></div>
         <div class="sku-search"><input id="wedropSku" inputmode="text" autocapitalize="characters" placeholder="Ex.: VP-2383" /><button id="wedropSearchBtn" class="publish mini">BUSCAR VÍDEO</button></div>
         <div class="manual-search-row">
           <input id="wedropQuery" placeholder="Busca manual (opcional) — apague palavras do final se necessário" />
@@ -114,6 +114,9 @@
       <label>Instagram Business Account ID<input id="instagramUserId" value="17841480462088551" /></label>
       <label>Meta Access Token<input id="instagramAccessToken" type="password" placeholder="Cole um novo token de acesso da Meta" /></label>
       <label>Graph API Version<input id="metaGraphVersion" value="v26.0" /></label>
+      <p id="instagramTokenStatus" class="small">Verificando validade do token...</p>
+      <button id="maintainInstagramTokenBtn" type="button" class="ghost">🔄 Verificar / prolongar token agora</button>
+      <p class="small">Para manutenção automática, configure <b>META_APP_ID</b> e <b>META_APP_SECRET</b> no Environment do Render. O Publisher converte tokens curtos para longa duração e verifica a validade antes de publicar. A Meta ainda pode exigir nova autorização quando uma sessão for revogada ou chegar ao fim definitivo.</p>
       <p class="small">O token precisa incluir <b>instagram_basic</b>, <b>instagram_content_publish</b>, <b>pages_show_list</b> e <b>pages_read_engagement</b>. Para produção, prefira salvar <b>INSTAGRAM_ACCESS_TOKEN</b> no Environment do Render.</p>
       <div class="actions"><button id="saveSettingsBtn" value="cancel" class="primary">Salvar configuração</button></div>
     </form>

@@ -1,3 +1,25 @@
+# REDEACHADOS BR Publisher Web V5.4.14
+
+## Novidade V5.4.14 — manutenção automática do token Meta/Instagram
+
+- Converte automaticamente um token curto válido da Meta para um token de longa duração quando `META_APP_ID` e `META_APP_SECRET` estão configurados.
+- Verifica a validade do token antes das chamadas de publicação no Instagram.
+- Mostra a data de expiração no Publisher.
+- Quando faltar menos de 7 dias, tenta uma extensão automática no máximo uma vez por dia.
+- Inclui botão **Verificar / prolongar token agora** nas Configurações.
+- Se a Meta revogar a sessão ou exigir nova autorização, o Publisher mostra o aviso claramente; nenhuma integração web consegue garantir renovação indefinida sem nova autorização em todos os cenários.
+
+### Variáveis novas no Render
+
+```env
+META_APP_ID=1113447937922102
+META_APP_SECRET=SEU_APP_SECRET_DA_META
+```
+
+Mantenha também `INSTAGRAM_ACCESS_TOKEN`, `INSTAGRAM_USER_ID` e `META_GRAPH_VERSION`. Não exponha `META_APP_SECRET` em prints, GitHub ou no navegador.
+
+---
+
 # REDEACHADOS BR Publisher Web V5.4.13
 
 ## Novidade V5.4.13

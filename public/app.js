@@ -58,6 +58,7 @@ async function loadConfig(){
   if($('#metaGraphVersion')) $('#metaGraphVersion').value=s.metaGraphVersion||'v26.0';
   if($('#instagramAccessToken')) $('#instagramAccessToken').placeholder=s.instagramConfigured?'Configurado ✓ — deixe em branco para manter':'Cole um novo token de acesso da Meta';
   loadInstagramStatus();
+  loadInstagramTokenStatus();
   $('#connectBtn').title='A conexão abre em outra aba para não perder vídeo, legenda ou campos já preenchidos.';
   if(!s.tiktokConfigured||!s.geminiConfigured) setTimeout(()=>$('#settingsDialog').showModal(),300);
 }
@@ -135,6 +136,27 @@ $('#copyCommentBtn').onclick=async()=>{try{const text=$('#purchaseComment').valu
 $('#restoreInstagramBtn')?.addEventListener('click',restoreInstagramCaption);
 $('#copyInstagramBtn')?.addEventListener('click',async()=>{try{const text=$('#instagramCaption').value.trim();if(!text)throw new Error('empty');await navigator.clipboard.writeText(text);toast('Legenda do Instagram copiada.')}catch{toast('Não foi possível copiar automaticamente. Selecione a legenda e copie manualmente.',true)}});
 $('#captionPreview').addEventListener('input',()=>{captionManual=true;saveDraft()});
+
+
+function formatTokenExpiry(ts){
+  if(!ts)return 'sem data de expiração informada';
+  try{return new Date(Number(ts)*1000).toLocaleString('pt-BR');}catch{return 'data desconhecida'}
+}
+async function loadInstagramTokenStatus(){
+  const el=$('#instagramTokenStatus'); if(!el)return;
+  try{
+    const d=await api('/api/instagram/token-status');
+    if(!d.configured){el.textContent='Token do Instagram ainda não configurado.';return;}
+    if(!d.automationConfigured){el.textContent='Token configurado. Para manutenção automática, adicione META_APP_ID e META_APP_SECRET no Render.';return;}
+    if(d.valid===false){el.textContent='⚠️ Token inválido/expirado. Gere um novo token uma vez e salve; depois o Publisher fará a manutenção automática.';return;}
+    el.textContent=`✅ Manutenção automática ativa · validade: ${formatTokenExpiry(d.expiresAt)}${d.managed?' · token gerenciado pelo Publisher':''}`;
+  }catch(e){el.textContent='Não foi possível verificar o token: '+e.message;}
+}
+$('#maintainInstagramTokenBtn')?.addEventListener('click',async()=>{
+  const b=$('#maintainInstagramTokenBtn');b.disabled=true;b.textContent='VERIFICANDO...';
+  try{const d=await api('/api/instagram/token-maintain',{method:'POST',body:JSON.stringify({})});toast(d.message||'Token verificado.');await loadInstagramTokenStatus();await loadInstagramStatus();}
+  catch(e){toast(e.message,true)}finally{b.disabled=false;b.textContent='🔄 Verificar / prolongar token agora';}
+});
 
 async function loadInstagramStatus(){
   const el=$('#instagramConnectionText'); if(!el)return;

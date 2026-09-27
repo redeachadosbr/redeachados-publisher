@@ -41,7 +41,7 @@ app.use(session({
 app.use(express.static(path.join(__dirname, 'public')));
 
 function defaults(){
-  return { token:null, settings:{ brandName:'REDEACHADOS BR', shopeeStoreUrl:'', defaultPrivacy:'SELF_ONLY', defaultHashtagCount:6, tiktokClientKey:'', tiktokClientSecret:'', geminiApiKey:'', geminiModel:'gemini-3.5-flash-lite', instagramAccessToken:'', instagramUserId:'17841480462088551', metaGraphVersion:'v26.0' }, history:[], wedropSearchAliases:{} };
+  return { token:null, settings:{ brandName:'REDEACHADOS BR', shopeeStoreUrl:'', defaultPrivacy:'SELF_ONLY', defaultHashtagCount:6, tiktokClientKey:'', tiktokClientSecret:'', geminiApiKey:'', geminiModel:'gemini-3.5-flash-lite', instagramAccessToken:'', instagramUserId:'17841480462088551', metaGraphVersion:'v26.0', instagramTokenManaged:false, instagramTokenExpiresAt:0, instagramTokenLastCheckedAt:0, instagramTokenLastRefreshAt:0 }, history:[], wedropSearchAliases:{} };
 }
 function loadStore(){
   try { return { ...defaults(), ...JSON.parse(fs.readFileSync(DATA_FILE, 'utf8')) }; }
@@ -60,9 +60,13 @@ function effectiveSettings(stored={}){
     geminiApiKey: envText('GEMINI_API_KEY') || stored.geminiApiKey || '',
     tiktokClientKey: envText('TIKTOK_CLIENT_KEY') || stored.tiktokClientKey || '',
     tiktokClientSecret: envText('TIKTOK_CLIENT_SECRET') || stored.tiktokClientSecret || '',
-    instagramAccessToken: envText('INSTAGRAM_ACCESS_TOKEN') || stored.instagramAccessToken || '',
+    instagramAccessToken: ((stored.instagramTokenManaged && stored.instagramAccessToken && (!stored.instagramTokenExpiresAt || Number(stored.instagramTokenExpiresAt) > Math.floor(Date.now()/1000)+300)) ? stored.instagramAccessToken : '') || envText('INSTAGRAM_ACCESS_TOKEN') || stored.instagramAccessToken || '',
     instagramUserId: envText('INSTAGRAM_USER_ID') || stored.instagramUserId || '17841480462088551',
-    metaGraphVersion: envText('META_GRAPH_VERSION') || stored.metaGraphVersion || 'v26.0'
+    metaGraphVersion: envText('META_GRAPH_VERSION') || stored.metaGraphVersion || 'v26.0',
+    instagramTokenManaged:Boolean(stored.instagramTokenManaged),
+    instagramTokenExpiresAt:Number(stored.instagramTokenExpiresAt||0),
+    instagramTokenLastCheckedAt:Number(stored.instagramTokenLastCheckedAt||0),
+    instagramTokenLastRefreshAt:Number(stored.instagramTokenLastRefreshAt||0)
   };
 }
 function now(){ return new Date().toISOString(); }
@@ -76,6 +80,9 @@ function safeSettings(stored){
     defaultHashtagCount:Number(s.defaultHashtagCount||6),
     tiktokConfigured:Boolean(s.tiktokClientKey&&s.tiktokClientSecret), geminiConfigured:Boolean(s.geminiApiKey),
     instagramConfigured:Boolean(s.instagramAccessToken&&s.instagramUserId), instagramUserId:s.instagramUserId, metaGraphVersion:s.metaGraphVersion,
+    instagramTokenManaged:Boolean(s.instagramTokenManaged), instagramTokenExpiresAt:Number(s.instagramTokenExpiresAt||0),
+    metaTokenAutomationConfigured:Boolean(envText('META_APP_ID')&&envText('META_APP_SECRET')),
+    metaAppIdConfigured:Boolean(envText('META_APP_ID')), metaAppSecretConfigured:Boolean(envText('META_APP_SECRET')),
     geminiModel:s.geminiModel,
     sources:{
       shopeeStoreUrl:envText('SHOPEE_STORE_URL')?'render':'local',
@@ -481,7 +488,7 @@ async function extractRemoteFrames(id, filename, durationSec){
   }
 }
 
-app.get('/api/health', (_req,res)=>res.json({ok:true,service:'REDEACHADOS BR Publisher Web V5.4.12'}));
+app.get('/api/health', (_req,res)=>res.json({ok:true,service:'REDEACHADOS BR Publisher Web V5.4.14'}));
 app.get('/api/auth-state',(req,res)=>res.json({locked:Boolean(process.env.APP_PASSWORD),loggedIn:!process.env.APP_PASSWORD||Boolean(req.session?.appAuth)}));
 app.post('/api/login',(req,res)=>{
   if(!process.env.APP_PASSWORD){ req.session.appAuth=true; return res.json({ok:true}); }
@@ -510,13 +517,86 @@ app.post('/api/settings', mustLogin, (req,res)=>{
     geminiApiKey:String(req.body.geminiApiKey||'').trim() || old.geminiApiKey || '',
     instagramAccessToken:String(req.body.instagramAccessToken||'').trim() || old.instagramAccessToken || '',
     instagramUserId:String(req.body.instagramUserId||current.instagramUserId||'17841480462088551').trim(),
-    metaGraphVersion:String(req.body.metaGraphVersion||current.metaGraphVersion||'v26.0').trim()
+    metaGraphVersion:String(req.body.metaGraphVersion||current.metaGraphVersion||'v26.0').trim(),
+    instagramTokenManaged:String(req.body.instagramAccessToken||'').trim()?false:Boolean(old.instagramTokenManaged),
+    instagramTokenExpiresAt:String(req.body.instagramAccessToken||'').trim()?0:Number(old.instagramTokenExpiresAt||0),
+    instagramTokenLastCheckedAt:String(req.body.instagramAccessToken||'').trim()?0:Number(old.instagramTokenLastCheckedAt||0),
+    instagramTokenLastRefreshAt:Number(old.instagramTokenLastRefreshAt||0)
   };
   saveStore(s);
   res.json({ok:true,settings:safeSettings(s.settings)});
 });
 
 
+
+
+const DAY_SEC=24*60*60;
+let instagramMaintenancePromise=null;
+function metaAppCredentials(){ return {appId:envText('META_APP_ID'),appSecret:envText('META_APP_SECRET')}; }
+function graphVersionFrom(cfg){ return /^v\d+\.\d+$/.test(cfg.metaGraphVersion)?cfg.metaGraphVersion:'v26.0'; }
+async function debugMetaToken(token,cfg){
+  const {appId,appSecret}=metaAppCredentials();
+  if(!appId||!appSecret||!token) return null;
+  const version=graphVersionFrom(cfg);
+  const u=new URL(`https://graph.facebook.com/${version}/debug_token`);
+  u.searchParams.set('input_token',token);
+  u.searchParams.set('access_token',`${appId}|${appSecret}`);
+  const r=await fetch(u,{headers:{Accept:'application/json'}});
+  const d=await r.json().catch(()=>({}));
+  if(!r.ok||d.error) throw new Error(d.error?.message||`Meta debug_token HTTP ${r.status}`);
+  return d.data||null;
+}
+async function exchangeMetaLongLived(token,cfg){
+  const {appId,appSecret}=metaAppCredentials();
+  if(!appId||!appSecret) throw new Error('Configure META_APP_ID e META_APP_SECRET no Environment do Render.');
+  const version=graphVersionFrom(cfg);
+  const u=`https://graph.facebook.com/${version}/oauth/access_token`;
+  const body=new URLSearchParams({grant_type:'fb_exchange_token',client_id:appId,client_secret:appSecret,fb_exchange_token:token});
+  const r=await fetch(u,{method:'POST',headers:{'Content-Type':'application/x-www-form-urlencoded',Accept:'application/json'},body});
+  const d=await r.json().catch(()=>({}));
+  if(!r.ok||d.error||!d.access_token) throw new Error(d.error?.message||`Não foi possível converter o token para longa duração (HTTP ${r.status}).`);
+  return d;
+}
+async function maintainInstagramToken({force=false}={}){
+  if(instagramMaintenancePromise) return instagramMaintenancePromise;
+  instagramMaintenancePromise=(async()=>{
+    const s=loadStore();
+    const cfg=effectiveSettings(s.settings||{});
+    const creds=metaAppCredentials();
+    if(!cfg.instagramAccessToken) return {configured:false,automationConfigured:Boolean(creds.appId&&creds.appSecret),message:'Token do Instagram não configurado.'};
+    if(!creds.appId||!creds.appSecret) return {configured:true,automationConfigured:false,managed:Boolean(cfg.instagramTokenManaged),expiresAt:Number(cfg.instagramTokenExpiresAt||0),message:'Adicione META_APP_ID e META_APP_SECRET no Render para ativar a manutenção automática.'};
+    const nowSec=Math.floor(Date.now()/1000);
+    let info;
+    try{ info=await debugMetaToken(cfg.instagramAccessToken,cfg); }
+    catch(e){ return {configured:true,automationConfigured:true,managed:Boolean(cfg.instagramTokenManaged),expiresAt:Number(cfg.instagramTokenExpiresAt||0),error:e.message}; }
+    if(!info?.is_valid){
+      return {configured:true,automationConfigured:true,managed:Boolean(cfg.instagramTokenManaged),expiresAt:Number(info?.expires_at||cfg.instagramTokenExpiresAt||0),valid:false,error:'O token da Meta está inválido ou expirado. Gere um novo token uma vez e salve; o Publisher fará a conversão automática para longa duração.'};
+    }
+    let expiresAt=Number(info.expires_at||0);
+    const remaining=expiresAt?expiresAt-nowSec:999999999;
+    const lastRefresh=Number(s.settings?.instagramTokenLastRefreshAt||0);
+    const shouldExchange=force || (!cfg.instagramTokenManaged && expiresAt>0 && remaining < 3*DAY_SEC) || (cfg.instagramTokenManaged && expiresAt>0 && remaining < 7*DAY_SEC && nowSec-lastRefresh>DAY_SEC);
+    let refreshed=false, refreshNote='';
+    if(shouldExchange){
+      try{
+        const ex=await exchangeMetaLongLived(cfg.instagramAccessToken,cfg);
+        const newToken=String(ex.access_token||'').trim();
+        const newInfo=await debugMetaToken(newToken,cfg);
+        const newExp=Number(newInfo?.expires_at||0);
+        if(newInfo?.is_valid && newToken){
+          s.settings={...(s.settings||{}),instagramAccessToken:newToken,instagramTokenManaged:true,instagramTokenExpiresAt:newExp,instagramTokenLastCheckedAt:nowSec,instagramTokenLastRefreshAt:nowSec};
+          saveStore(s); refreshed=true; expiresAt=newExp;
+          refreshNote=(newExp && (!info.expires_at || newExp>Number(info.expires_at)+DAY_SEC))?'Token convertido/estendido automaticamente.':'Token validado; a Meta não ampliou a validade nesta tentativa.';
+        }
+      }catch(e){ refreshNote=`Não foi possível estender automaticamente agora: ${e.message}`; }
+    }else{
+      s.settings={...(s.settings||{}),instagramTokenManaged:Boolean(cfg.instagramTokenManaged),instagramTokenExpiresAt:expiresAt,instagramTokenLastCheckedAt:nowSec,instagramTokenLastRefreshAt:lastRefresh};
+      saveStore(s);
+    }
+    return {configured:true,automationConfigured:true,managed:Boolean(s.settings?.instagramTokenManaged),valid:true,expiresAt:Number(expiresAt||0),refreshed,refreshNote,scopes:info.scopes||[],message:refreshNote||'Token válido. O Publisher verifica a validade automaticamente antes de publicar.'};
+  })().finally(()=>{instagramMaintenancePromise=null;});
+  return instagramMaintenancePromise;
+}
 
 function instagramSecret(){ return process.env.SESSION_SECRET || 'redeachados-dev-secret'; }
 function instagramMediaSig(kind,id,exp){
@@ -567,6 +647,7 @@ app.get('/media/instagram/:kind/:id', async(req,res)=>{
   }catch(e){if(!res.headersSent)res.status(400).send(`Falha ao servir vídeo: ${e.message}`);}
 });
 async function instagramGraph(pathname,{method='GET',params={}}={}){
+  await maintainInstagramToken().catch(()=>null);
   const cfg=effectiveSettings(loadStore().settings||{});
   if(!cfg.instagramAccessToken||!cfg.instagramUserId) throw new Error('Configure o token do Instagram e o Instagram Business Account ID.');
   const version=/^v\d+\.\d+$/.test(cfg.metaGraphVersion)?cfg.metaGraphVersion:'v26.0';
@@ -600,6 +681,8 @@ async function publishInstagramReel({req,videoUrl,caption}){
   const published=await instagramGraph(`${cfg.instagramUserId}/media_publish`,{method:'POST',params:{creation_id:creationId}});
   return {ok:true,pending:false,creationId,mediaId:published.id,status:'PUBLISHED',message:'Reel publicado no Instagram.'};
 }
+app.get('/api/instagram/token-status',mustLogin,async(_req,res)=>{try{res.json(await maintainInstagramToken());}catch(e){res.status(400).json({error:e.message});}});
+app.post('/api/instagram/token-maintain',mustLogin,async(_req,res)=>{try{res.json(await maintainInstagramToken({force:true}));}catch(e){res.status(400).json({error:e.message});}});
 app.get('/api/instagram/status',mustLogin,async(_req,res)=>{try{const cfg=effectiveSettings(loadStore().settings||{});if(!cfg.instagramAccessToken||!cfg.instagramUserId)return res.json({configured:false,userId:cfg.instagramUserId||''});const info=await instagramAccountInfo();res.json({configured:true,connected:true,...info});}catch(e){res.json({configured:true,connected:false,error:e.message});}});
 app.post('/api/instagram/publish-remote',mustLogin,async(req,res)=>{
   try{
