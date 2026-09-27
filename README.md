@@ -1,40 +1,37 @@
-# REDEACHADOS BR Publisher Web V5.4.2
+# REDEACHADOS BR Publisher Web V5.4.3
 
-Versão mobile + integração experimental com a galeria de vídeos WeDrop.
+Atualização da busca automática de vídeos WeDrop.
 
-## Novidades
-- Layout otimizado para iPhone 17 Pro Max e Safari mobile.
-- Pode ser adicionado à Tela de Início como web app.
-- Campo **SKU WeDrop** e botão **Buscar vídeo**.
-- Busca primeiro a SKU no catálogo Shopee importado.
-- Consulta experimental da galeria pública `drive-vid-gallery.lovable.app` e tenta localizar links diretos de vídeo.
-- Quando encontra um vídeo direto, o Publisher baixa o arquivo no servidor, carrega no fluxo e inicia a análise automática.
-- Se a galeria mudar a estrutura ou esconder os arquivos atrás de autenticação, o app abre a galeria e copia o nome do produto como fallback.
-- Mantém V5.3: Gemini, catálogo Shopee, legenda editável, cópia de legenda, persistência de configurações, reconexão TikTok sem perder texto e envio para rascunho do TikTok.
+## Novidade principal
 
-## Variáveis recomendadas no Render
-`SHOPEE_STORE_URL`, `GEMINI_API_KEY`, `GEMINI_MODEL`, `TIKTOK_CLIENT_KEY`, `TIKTOK_CLIENT_SECRET`.
-Opcional: `WEDROP_GALLERY_URL` (padrão: `https://drive-vid-gallery.lovable.app/`).
+A V5.4.3 não tenta mais descobrir os vídeos apenas pelo HTML visual da galeria. Ela localiza o bundle dinâmico `routes-*.js` publicado pela galeria WeDrop/Lovable, extrai os registros `id + title` dos vídeos e cria um índice temporário para pesquisa.
 
-## Observação sobre WeDrop
-O painel `dash.wedrop.com.br` exige sessão/login. A V5.4.2 não pede nem armazena senha WeDrop. Para SKUs que não coincidam com a SKU do catálogo Shopee, a busca automática depende de o nome/SKU estar exposto na galeria pública. Se a WeDrop disponibilizar API oficial ou endpoint de catálogo, ele poderá ser conectado na próxima evolução sem mudar o fluxo do usuário.
+Fluxo: **SKU → produto no catálogo Shopee → nome do produto → índice da galeria → vídeo(s) compatível(is) → USAR ESTE VÍDEO**.
 
+### Incluído
 
-## Busca progressiva WeDrop — V5.4.2
+- leitura automática do `routes-*.js`, mesmo quando o hash/nome do arquivo mudar;
+- extração do ID do Google Drive, título e duração quando disponível;
+- cache do índice por 10 minutos;
+- busca por similaridade e encurtamento progressivo do título;
+- exibição de várias opções quando existem vários vídeos compatíveis;
+- botão **USAR ESTE VÍDEO** para baixar pelo ID do Google Drive e carregar no Publisher;
+- fallback para abrir a galeria caso a fonte externa mude;
+- catálogo Shopee e fluxo de rascunho TikTok preservados;
+- interface responsiva para desktop e iPhone.
 
-A busca por SKU agora reproduz o procedimento manual da galeria: o Publisher tenta o título completo e, quando não encontra correspondência forte, remove palavras do final progressivamente até localizar candidatos. As tentativas aparecem na tela.
+## Atualização
 
-Quando uma busca encontra o vídeo correto e o usuário seleciona **USAR ESTE VÍDEO**, a expressão que funcionou é associada à SKU e reutilizada nas próximas buscas. Também existe um campo **Busca manual** para casos em que seja necessário encurtar o título de outra forma.
+Suba os arquivos desta versão no mesmo repositório GitHub, substituindo os arquivos existentes, e faça commit direto na `main`. O Render com Auto-Deploy fará o rebuild automaticamente.
 
-Por segurança, a busca não continua indefinidamente até palavras genéricas; são exigidos termos significativos para reduzir o risco de selecionar vídeo de outro produto.
+Commit sugerido:
 
+`Update V5.4.3 direct WeDrop gallery index`
 
-## Correção V5.4.2 — busca WeDrop
+Descrição opcional:
 
-- Corrige títulos longos: a busca automática agora sempre testa prefixos fortes de 6, 5, 4, 3 e 2 palavras (ex.: `Pista Carrinho`).
-- Aumenta o limite de tentativas progressivas para não parar antes das expressões curtas úteis.
-- Mantém a busca manual exata.
-- Quando a galeria dinâmica não expõe a lista de vídeos ao servidor, oferece `COPIAR BUSCA + ABRIR GALERIA`, copiando automaticamente a melhor expressão para colar na busca da galeria.
-- Continua memorizando a expressão que funcionou por SKU.
+`Reads the dynamic WeDrop routes bundle, indexes Google Drive video IDs and titles, improves SKU matching, and loads selected videos directly into the Publisher.`
 
-Observação: a galeria Lovable carrega parte do catálogo dinamicamente no navegador. Sem uma API/endpoint público documentado, o Publisher não deve inventar resultados. A V5.4.2 corrige a lógica de encurtamento e torna o fallback assistido muito mais rápido enquanto a integração direta do dataset não estiver disponível.
+## Segurança
+
+Não publique Client Secret, Gemini API Key ou tokens dentro do repositório. Mantenha credenciais nas Environment Variables do Render.

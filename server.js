@@ -186,7 +186,7 @@ function progressiveSearchQueries(title, learned=''){
   add(learned);
   const full=cleanSearchTitle(title); add(full);
   const words=full.split(/\s+/).filter(Boolean);
-  // V5.4.2: além do título completo, sempre inclui prefixos fortes de 6 até 2 palavras.
+  // V5.4.3: além do título completo, sempre inclui prefixos fortes de 6 até 2 palavras.
   // Isso evita o erro anterior em títulos longos, onde o limite de tentativas podia acabar
   // antes de chegar em uma busca simples como "Pista Carrinho".
   const strong=[];
@@ -213,66 +213,96 @@ function saveWedropAlias(sku,query){
   const key=String(sku||'').trim().toUpperCase(), q=cleanSearchTitle(query); if(!key||!q)return;
   const st=loadStore(); st.wedropSearchAliases={...(st.wedropSearchAliases||{}),[key]:q}; saveStore(st);
 }
-async function loadGalleryDocuments(){
-  const base=envText('WEDROP_GALLERY_URL')||'https://drive-vid-gallery.lovable.app/';
-  const r=await fetch(base,{headers:{'User-Agent':'Mozilla/5.0 REDEACHADOS-Publisher/5.4.2'}});
-  if(!r.ok) throw new Error(`HTTP ${r.status}`);
-  const html=await r.text(); const docs=[{url:base,text:html}];
-  const scripts=[...html.matchAll(/<script[^>]+src=["']([^"']+)["']/gi)].map(m=>{try{return new URL(m[1],base).href}catch{return null}}).filter(Boolean).slice(0,14);
-  for(const src of scripts){
-    try{const rr=await fetch(src,{headers:{'User-Agent':'Mozilla/5.0 REDEACHADOS-Publisher/5.4.2'}});if(rr.ok){const tx=await rr.text();if(tx.length<10_000_000)docs.push({url:src,text:tx});}}catch{}
-  }
-  return {base,docs};
+let galleryCache={loadedAt:0,base:'',records:[],bundleUrl:'',diagnostic:''};
+function decodeJsString(v){
+  try{return JSON.parse('"'+String(v||'').replace(/\\/g,'\\\\').replace(/"/g,'\\"')+'"')}catch{return String(v||'').replace(/\\u([0-9a-f]{4})/gi,(_,h)=>String.fromCharCode(parseInt(h,16))).replace(/\\n/g,' ').replace(/\\\//g,'/');}
 }
-function collectGalleryMedia(docs){
-  const raw=[];
-  for(const d of docs){
-    for(const u of extractUrls(d.text)){
-      const pos=d.text.indexOf(u);
-      raw.push({url:u,context:d.text.slice(Math.max(0,pos-1800),Math.min(d.text.length,pos+1800))});
-    }
+function parseGalleryRecords(text){
+  const src=String(text||'');
+  const out=[];
+  // Estrutura confirmada no bundle da galeria WeDrop/Lovable:
+  // {"id":"ID_GOOGLE_DRIVE","title":"Nome do vídeo", ...}
+  const re=/["']id["']\s*:\s*["']([^"']{8,200})["']\s*,\s*["']title["']\s*:\s*["']([^"']{2,500})["']/g;
+  for(const m of src.matchAll(re)){
+    const id=decodeJsString(m[1]).trim();
+    const title=decodeJsString(m[2]).trim();
+    if(!id||!title) continue;
+    const near=src.slice(m.index,Math.min(src.length,m.index+1200));
+    const dm=near.match(/["']duration_ms["']\s*:\s*["']?(\d{2,12})["']?/);
+    const cm=near.match(/["']category["']\s*:\s*["']([^"']{2,120})["']/i);
+    out.push({id,title,durationMs:dm?Number(dm[1]):0,category:cm?decodeJsString(cm[1]).trim():''});
   }
   const seen=new Set();
-  return raw.filter(x=>safeRemoteUrl(x.url)&&!seen.has(x.url)&&(seen.add(x.url),true));
+  return out.filter(x=>!seen.has(x.id)&&(seen.add(x.id),true));
 }
-function scoreMediaForQuery(media,query){
-  return media.map(x=>({
-    url:x.url,
-    score:scoreVideoCandidate(query,x.context),
-    label:(x.context.match(/.{0,100}(?:avental|mini chef|produto|brinquedo|cozinha|organizador|vídeo|video).{0,150}/i)||[])[0]||query||'Vídeo WeDrop',
-    matchQuery:query
-  })).sort((a,b)=>b.score-a.score);
+async function loadGalleryInventory(force=false){
+  const base=envText('WEDROP_GALLERY_URL')||'https://drive-vid-gallery.lovable.app/';
+  if(!force && galleryCache.records.length && Date.now()-galleryCache.loadedAt<10*60*1000 && galleryCache.base===base) return galleryCache;
+  const headers={'User-Agent':'Mozilla/5.0 REDEACHADOS-Publisher/5.4.3','Accept':'text/html,application/xhtml+xml,application/javascript,text/javascript,*/*'};
+  const r=await fetch(base,{headers});
+  if(!r.ok) throw new Error(`Galeria HTTP ${r.status}`);
+  const html=await r.text();
+  const scripts=[...html.matchAll(/<script[^>]+src=["']([^"']+)["']/gi)].map(m=>{try{return new URL(m[1],base).href}catch{return null}}).filter(Boolean);
+  // O catálogo foi confirmado dentro do bundle routes-*.js. Ainda assim, mantemos
+  // fallback para outros bundles caso a Lovable troque o hash/nome no futuro.
+  scripts.sort((a,b)=>(/\/routes-[^/]+\.js(?:\?|$)/i.test(b)?1:0)-(/\/routes-[^/]+\.js(?:\?|$)/i.test(a)?1:0));
+  let bestRecords=[],bestUrl='',checked=0;
+  for(const src of scripts.slice(0,20)){
+    try{
+      const rr=await fetch(src,{headers}); if(!rr.ok) continue;
+      const tx=await rr.text(); checked++;
+      if(tx.length>18_000_000) continue;
+      const records=parseGalleryRecords(tx);
+      if(records.length>bestRecords.length){bestRecords=records;bestUrl=src;}
+      if(/\/routes-[^/]+\.js(?:\?|$)/i.test(src) && records.length>200) break;
+    }catch{}
+  }
+  galleryCache={loadedAt:Date.now(),base,records:bestRecords,bundleUrl:bestUrl,diagnostic:`${bestRecords.length} vídeos indexados a partir de ${bestUrl?new URL(bestUrl).pathname.split('/').pop():'nenhum bundle'} (${checked} bundle(s) verificado(s)).`};
+  return galleryCache;
+}
+function scoreGalleryRecord(query,record){
+  const title=record?.title||'';
+  let score=scoreVideoCandidate(query,title);
+  const nq=normalizeText(query), nt=normalizeText(title);
+  if(nq && nt){
+    if(nt===nq) score=Math.max(score,1);
+    else if(nt.includes(nq)||nq.includes(nt)) score=Math.max(score,0.92);
+    const q2=catalogTokens(query).slice(0,2).join(' '), t2=catalogTokens(title).slice(0,2).join(' ');
+    if(q2 && q2===t2) score=Math.max(score,0.70);
+  }
+  return Math.min(1,score);
+}
+function rankGalleryRecords(records,query){
+  return records.map(r=>({...r,score:scoreGalleryRecord(query,r),label:r.title,matchQuery:query}))
+    .sort((a,b)=>b.score-a.score || a.title.localeCompare(b.title,'pt-BR'));
 }
 async function discoverGalleryVideos(title,sku,manualQuery=''){
   const learned=getWedropAlias(sku);
   const result={galleryUrl:envText('WEDROP_GALLERY_URL')||'https://drive-vid-gallery.lovable.app/',query:title,sku,candidates:[],diagnostic:'',attempts:[],bestQuery:'',learnedQuery:learned};
   try{
-    const {base,docs}=await loadGalleryDocuments(); result.galleryUrl=base;
-    const media=collectGalleryMedia(docs);
-    result.inventoryCount=media.length;
+    const inv=await loadGalleryInventory(); result.galleryUrl=inv.base; result.inventoryCount=inv.records.length; result.bundleUrl=inv.bundleUrl;
     const variants=manualQuery?[cleanSearchTitle(manualQuery)]:progressiveSearchQueries(title||sku,learned);
-    const threshold=0.50;
+    const threshold=0.46;
     let chosen=[];
     for(const q of variants){
       if(!q)continue;
-      const ranked=scoreMediaForQuery(media,q);
+      const ranked=rankGalleryRecords(inv.records,q);
       const hits=ranked.filter(x=>x.score>=threshold).slice(0,12);
       result.attempts.push({query:q,matches:hits.length,bestScore:Number((ranked[0]?.score||0).toFixed(3))});
       if(hits.length){chosen=hits;result.bestQuery=q;break;}
     }
-    // Se não houve correspondência forte, mostramos no máximo candidatos moderados para revisão manual.
     if(!chosen.length && variants.length){
       const q=variants[variants.length-1];
-      const ranked=scoreMediaForQuery(media,q).filter(x=>x.score>=0.36).slice(0,6);
-      if(ranked.length){chosen=ranked;result.bestQuery=q;result.diagnostic='Encontrei candidatos aproximados. Confira o vídeo antes de usar.';}
+      const ranked=rankGalleryRecords(inv.records,q).filter(x=>x.score>=0.32).slice(0,6);
+      if(ranked.length){chosen=ranked;result.bestQuery=q;result.diagnostic='Encontrei candidatos aproximados no catálogo interno da galeria. Confira o vídeo antes de usar.';}
     }
-    result.candidates=chosen;
+    result.candidates=chosen.map(x=>({id:x.id,title:x.title,label:x.title,durationMs:x.durationMs||0,category:x.category||'',score:Number(x.score.toFixed(3)),matchQuery:x.matchQuery}));
     if(!result.diagnostic) result.diagnostic=chosen.length
-      ? `Vídeo(s) encontrado(s) após ${result.attempts.length} tentativa(s). Busca que funcionou: “${result.bestQuery}”.`
-      : (media.length===0
-        ? 'A galeria carregou, mas a lista de vídeos é dinâmica e não apareceu no HTML consultado pelo servidor. Use a busca assistida abaixo: o Publisher copia a melhor expressão e abre a galeria para você.'
-        : 'Nenhum vídeo compatível foi localizado nos dados disponíveis. O Publisher já testou também prefixos curtos como as 2 primeiras palavras do título.');
-  }catch(e){result.diagnostic=`Não foi possível consultar automaticamente a galeria pública: ${e.message}`;}
+      ? `${chosen.length} vídeo(s) encontrado(s) no catálogo de ${inv.records.length} vídeos. Busca que funcionou: “${result.bestQuery}”.`
+      : (inv.records.length===0
+        ? 'Não consegui indexar o catálogo interno da galeria nesta tentativa. Use “Abrir galeria” como alternativa.'
+        : `Nenhum vídeo compatível foi localizado entre ${inv.records.length} vídeos indexados. Tente encurtar o nome manualmente.`);
+  }catch(e){result.diagnostic=`Não foi possível consultar automaticamente o catálogo da galeria: ${e.message}`;}
   return result;
 }
 app.get('/api/wedrop/lookup', mustLogin, async(req,res)=>{
@@ -292,20 +322,36 @@ app.post('/api/wedrop/alias', mustLogin, (req,res)=>{
 });
 app.get('/api/wedrop/video', mustLogin, async(req,res)=>{
   try{
-    const u=safeRemoteUrl(req.query.url); if(!u) return res.status(400).json({error:'URL de vídeo não permitida.'});
-    const r=await fetch(u,{redirect:'follow',headers:{'User-Agent':'Mozilla/5.0 REDEACHADOS-Publisher/5.4.2'}});
-    if(!r.ok) return res.status(400).json({error:`Falha ao baixar vídeo (HTTP ${r.status}).`});
-    const ct=r.headers.get('content-type')||'video/mp4';
-    if(!/video|octet-stream/i.test(ct)) return res.status(400).json({error:'O endereço encontrado não retornou um arquivo de vídeo.'});
-    res.setHeader('Content-Type',ct);
-    res.setHeader('Cache-Control','no-store');
-    const ab=await r.arrayBuffer();
-    if(ab.byteLength>300*1024*1024) return res.status(413).json({error:'Vídeo remoto maior que 300 MB.'});
-    res.send(Buffer.from(ab));
+    const id=String(req.query.id||'').trim();
+    const urls=[];
+    if(id && /^[A-Za-z0-9_-]{8,200}$/.test(id)){
+      urls.push(
+        `https://drive.usercontent.google.com/download?id=${encodeURIComponent(id)}&export=download&confirm=t`,
+        `https://drive.google.com/uc?export=download&id=${encodeURIComponent(id)}`
+      );
+    }
+    const supplied=safeRemoteUrl(req.query.url); if(supplied) urls.push(supplied.href);
+    if(!urls.length) return res.status(400).json({error:'ID ou URL de vídeo não permitido.'});
+    let last='';
+    for(const raw of urls){
+      try{
+        const r=await fetch(raw,{redirect:'follow',headers:{'User-Agent':'Mozilla/5.0 REDEACHADOS-Publisher/5.4.3','Accept':'video/*,application/octet-stream,*/*'}});
+        if(!r.ok){last=`HTTP ${r.status}`;continue;}
+        const ct=(r.headers.get('content-type')||'').toLowerCase();
+        const cd=r.headers.get('content-disposition')||'';
+        if(/text\/html|application\/json/.test(ct)){last='o Google Drive retornou uma página em vez do arquivo';continue;}
+        const ab=await r.arrayBuffer();
+        if(ab.byteLength<1024){last='arquivo retornado muito pequeno';continue;}
+        if(ab.byteLength>300*1024*1024) return res.status(413).json({error:'Vídeo remoto maior que 300 MB.'});
+        const outType=/video\//.test(ct)?ct:(/\.mov/i.test(cd)?'video/quicktime':/\.webm/i.test(cd)?'video/webm':'video/mp4');
+        res.setHeader('Content-Type',outType); res.setHeader('Content-Length',String(ab.byteLength)); res.setHeader('Cache-Control','no-store');
+        return res.send(Buffer.from(ab));
+      }catch(e){last=e.message;}
+    }
+    return res.status(400).json({error:`Não consegui baixar o vídeo do Google Drive (${last||'fonte indisponível'}).`});
   }catch(e){res.status(400).json({error:e.message});}
 });
-
-app.get('/api/health', (_req,res)=>res.json({ok:true,service:'REDEACHADOS BR Publisher Web V5.4.1'}));
+app.get('/api/health', (_req,res)=>res.json({ok:true,service:'REDEACHADOS BR Publisher Web V5.4.3'}));
 app.get('/api/auth-state',(req,res)=>res.json({locked:Boolean(process.env.APP_PASSWORD),loggedIn:!process.env.APP_PASSWORD||Boolean(req.session?.appAuth)}));
 app.post('/api/login',(req,res)=>{
   if(!process.env.APP_PASSWORD){ req.session.appAuth=true; return res.json({ok:true}); }
@@ -552,4 +598,4 @@ app.post('/api/status/:publishId', mustLogin, async(req,res)=>{
   try{const d=await tiktokJson('https://open.tiktokapis.com/v2/post/publish/status/fetch/',{method:'POST',body:JSON.stringify({publish_id:req.params.publishId})});res.json(d.data||{});}catch(e){res.status(400).json({error:e.message});}
 });
 
-app.listen(PORT,()=>console.log(`REDEACHADOS BR Publisher Web V5.4 em http://localhost:${PORT}`));
+app.listen(PORT,()=>console.log(`REDEACHADOS BR Publisher Web V5.4.3 em http://localhost:${PORT}`));

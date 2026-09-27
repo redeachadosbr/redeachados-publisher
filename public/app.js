@@ -124,7 +124,8 @@ async function loadRemoteVideo(candidate,product){
   const status=$('#wedropStatus');
   try{
     status.textContent='Baixando vídeo da galeria…';
-    const r=await fetch('/api/wedrop/video?url='+encodeURIComponent(candidate.url));
+    const endpoint=candidate.id?('/api/wedrop/video?id='+encodeURIComponent(candidate.id)):('/api/wedrop/video?url='+encodeURIComponent(candidate.url||''));
+    const r=await fetch(endpoint);
     if(!r.ok){const d=await r.json().catch(()=>({}));throw new Error(d.error||'Falha ao baixar o vídeo.')}
     const blob=await r.blob();
     const ext=(blob.type.includes('webm')?'webm':blob.type.includes('quicktime')?'mov':'mp4');
@@ -158,7 +159,7 @@ function renderWedropResults(data){
     box.classList.remove('hidden');
     list.forEach((c,i)=>{
       const el=document.createElement('div');el.className='video-result';
-      el.innerHTML=`<div><b>Vídeo ${i+1}</b><small>${esc((c.label||p.name||data.sku).slice(0,150))}</small><small>Busca: ${esc(c.matchQuery||data.gallery?.bestQuery||'')}</small></div><button class="primary">USAR ESTE VÍDEO</button>`;
+      el.innerHTML=`<div><b>Vídeo ${i+1}</b><small>${esc((c.title||c.label||p.name||data.sku).slice(0,170))}</small>${c.durationMs?`<small>Duração: ${(c.durationMs/1000).toFixed(1)}s</small>`:''}<small>Compatibilidade: ${Math.round((c.score||0)*100)}% · Busca: ${esc(c.matchQuery||data.gallery?.bestQuery||'')}</small></div><button class="primary">USAR ESTE VÍDEO</button>`;
       el.querySelector('button').onclick=async()=>{await rememberWedropSearch(data.sku,c.matchQuery||data.gallery?.bestQuery);loadRemoteVideo(c,p)}; box.appendChild(el);
     });
   }else{
