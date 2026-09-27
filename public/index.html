@@ -24,7 +24,7 @@
       <section class="hero"><h1>Envie o vídeo. O restante o app prepara.</h1><p>O sistema analisa frames do vídeo, cria chamada, descrição, CTA e hashtags e envia o vídeo como rascunho para você finalizar dentro do TikTok.</p></section>
 
       <section class="card sku-card">
-        <div class="sku-head"><div><span class="eyebrow">NOVO · V5.4.6</span><h2>Buscar vídeo pela SKU WeDrop</h2><p>Digite a SKU. O Publisher tenta identificar o produto, localizar vídeos na galeria WeDrop e carregar o vídeo sem precisar baixar manualmente.</p></div><span class="mobile-badge">📱 iPhone</span></div>
+        <div class="sku-head"><div><span class="eyebrow">NOVO · V5.4.8</span><h2>Buscar vídeo pela SKU WeDrop</h2><p>Digite a SKU. O Publisher tenta identificar o produto, localizar vídeos na galeria WeDrop e carregar o vídeo sem precisar baixar manualmente.</p></div><span class="mobile-badge">📱 iPhone</span></div>
         <div class="sku-search"><input id="wedropSku" inputmode="text" autocapitalize="characters" placeholder="Ex.: VP-2383" /><button id="wedropSearchBtn" class="publish mini">BUSCAR VÍDEO</button></div>
         <div class="manual-search-row">
           <input id="wedropQuery" placeholder="Busca manual (opcional) — apague palavras do final se necessário" />
@@ -61,7 +61,7 @@
             <label class="check"><input id="isAigc" type="checkbox"> O vídeo em si foi gerado por IA</label>
           </div>
           <div class="actions"><button id="regenerateBtn" class="ghost">↻ Gerar novamente</button><button id="publishBtn" class="publish">ENVIAR RASCUNHO AO TIKTOK</button></div>
-          <p class="small">O link direto da Shopee continua disponível no Publisher, mas não é enviado automaticamente pelo aplicativo ao TikTok. Use o botão “Copiar legenda” e revise o texto no TikTok antes de publicar.</p>
+          <p class="small">O link direto do produto Shopee é incluído novamente na prévia da legenda. No modo rascunho, use “Copiar legenda” e cole no TikTok ao finalizar a publicação.</p>
         </div>
       </section>
 
@@ -80,10 +80,11 @@
       <label>Gemini API Key<input id="geminiApiKey" type="password" placeholder="Cole a chave aqui (só precisa na primeira vez)" /></label>
       <label>Modelo<input id="geminiModel" value="gemini-3.5-flash-lite" /></label>
       <hr>
-      <h3>Catálogo Shopee</h3>
+      <h3>Catálogo Shopee fixado</h3>
       <p id="catalogStatus" class="small">Verificando catálogo...</p>
-      <label>Atualizar catálogo com planilha da Shopee<input id="catalogFile" type="file" accept=".xlsx,.xls" /></label>
-      <button id="importCatalogBtn" type="button" class="ghost">Atualizar catálogo</button>
+      <p class="small">O catálogo fica salvo no Publisher. Você não precisa enviar a planilha novamente no uso diário. Use a opção abaixo somente quando quiser incluir produtos novos ou atualizar anúncios existentes.</p>
+      <label>Nova planilha da Shopee <span class="small">(somente para atualização)</span><input id="catalogFile" type="file" accept=".xlsx,.xls" /></label>
+      <button id="importCatalogBtn" type="button" class="ghost">Atualizar catálogo agora</button>
       <hr>
       <h3>TikTok Developers</h3>
       <label>Client Key<input id="tiktokClientKey" /></label>

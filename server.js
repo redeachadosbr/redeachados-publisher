@@ -8,7 +8,7 @@ import * as XLSX from 'xlsx';
 import { fileURLToPath } from 'node:url';
 import { Readable } from 'node:stream';
 import { spawn } from 'node:child_process';
-import ffmpegPath from 'ffmpeg-static';
+const ffmpegPath = process.env.FFMPEG_PATH || 'ffmpeg';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const DATA_DIR = path.join(__dirname, 'data');
@@ -449,7 +449,7 @@ async function runFfmpeg(args){
     const cp=spawn(ffmpegPath,args,{stdio:['ignore','ignore','pipe']});
     let err='';
     cp.stderr.on('data',d=>{err+=String(d); if(err.length>12000) err=err.slice(-12000)});
-    cp.on('error',reject);
+    cp.on('error',err=>reject(new Error(`Não foi possível iniciar o FFmpeg (${err.message}).`)));
     cp.on('close',code=>code===0?resolve():reject(new Error(`FFmpeg falhou (código ${code}). ${err.split('\n').slice(-6).join(' ')}`)));
   });
 }
@@ -475,7 +475,7 @@ async function extractRemoteFrames(id, filename, durationSec){
   }
 }
 
-app.get('/api/health', (_req,res)=>res.json({ok:true,service:'REDEACHADOS BR Publisher Web V5.4.6'}));
+app.get('/api/health', (_req,res)=>res.json({ok:true,service:'REDEACHADOS BR Publisher Web V5.4.7'}));
 app.get('/api/auth-state',(req,res)=>res.json({locked:Boolean(process.env.APP_PASSWORD),loggedIn:!process.env.APP_PASSWORD||Boolean(req.session?.appAuth)}));
 app.post('/api/login',(req,res)=>{
   if(!process.env.APP_PASSWORD){ req.session.appAuth=true; return res.json({ok:true}); }
@@ -754,4 +754,4 @@ app.post('/api/status/:publishId', mustLogin, async(req,res)=>{
   try{const d=await tiktokJson('https://open.tiktokapis.com/v2/post/publish/status/fetch/',{method:'POST',body:JSON.stringify({publish_id:req.params.publishId})});res.json(d.data||{});}catch(e){res.status(400).json({error:e.message});}
 });
 
-app.listen(PORT,()=>console.log(`REDEACHADOS BR Publisher Web V5.4.6 em http://localhost:${PORT}`));
+app.listen(PORT,()=>console.log(`REDEACHADOS BR Publisher Web V5.4.7 em http://localhost:${PORT}`));
