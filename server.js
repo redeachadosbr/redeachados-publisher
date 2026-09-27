@@ -235,31 +235,84 @@ function parseGalleryRecords(text){
   const seen=new Set();
   return out.filter(x=>!seen.has(x.id)&&(seen.add(x.id),true));
 }
+async function fetchGalleryText(url,headers,label='recurso'){
+  const r=await fetch(url,{headers,redirect:'follow'});
+  if(!r.ok) throw new Error(`${label} HTTP ${r.status}`);
+  return {text:await r.text(),finalUrl:r.url||url,status:r.status,contentType:r.headers.get('content-type')||''};
+}
+function extractJsAssetUrls(text,base){
+  const out=[];
+  const add=raw=>{
+    raw=String(raw||'').replace(/\\u0026/g,'&').replace(/\\\//g,'/').trim();
+    if(!raw||!(/\.js(?:[?#]|$)/i.test(raw))) return;
+    try{
+      const u=new URL(raw,base);
+      if(u.protocol==='https:' && u.hostname===new URL(base).hostname) out.push(u.href);
+    }catch{}
+  };
+  // HTML: scripts e modulepreload/preload.
+  for(const m of String(text||'').matchAll(/<(?:script|link)\b[^>]*(?:src|href)=["']([^"']+\.js(?:\?[^"']*)?)["'][^>]*>/gi)) add(m[1]);
+  // Bundles Vite/Lovable: imports/chunks referenciados como ./routes-xxxx.js, /assets/x.js ou assets/x.js.
+  for(const m of String(text||'').matchAll(/["'`](\.?\/?(?:assets\/)?[A-Za-z0-9_./~-]+\.js(?:\?[^"'`]*)?)["'`]/g)) add(m[1]);
+  // Fallback específico para nomes de chunk sem caminho explícito.
+  for(const m of String(text||'').matchAll(/(?:^|[^A-Za-z0-9_-])(routes-[A-Za-z0-9_-]+\.js)(?:[^A-Za-z0-9_-]|$)/g)) add('/assets/'+m[1]);
+  return [...new Set(out)];
+}
 async function loadGalleryInventory(force=false){
   const base=envText('WEDROP_GALLERY_URL')||'https://drive-vid-gallery.lovable.app/';
   if(!force && galleryCache.records.length && Date.now()-galleryCache.loadedAt<10*60*1000 && galleryCache.base===base) return galleryCache;
-  const headers={'User-Agent':'Mozilla/5.0 REDEACHADOS-Publisher/5.4.3','Accept':'text/html,application/xhtml+xml,application/javascript,text/javascript,*/*'};
-  const r=await fetch(base,{headers});
-  if(!r.ok) throw new Error(`Galeria HTTP ${r.status}`);
-  const html=await r.text();
-  const scripts=[...html.matchAll(/<script[^>]+src=["']([^"']+)["']/gi)].map(m=>{try{return new URL(m[1],base).href}catch{return null}}).filter(Boolean);
-  // O catálogo foi confirmado dentro do bundle routes-*.js. Ainda assim, mantemos
-  // fallback para outros bundles caso a Lovable troque o hash/nome no futuro.
-  scripts.sort((a,b)=>(/\/routes-[^/]+\.js(?:\?|$)/i.test(b)?1:0)-(/\/routes-[^/]+\.js(?:\?|$)/i.test(a)?1:0));
-  let bestRecords=[],bestUrl='',checked=0;
-  for(const src of scripts.slice(0,20)){
+  const headers={
+    'User-Agent':'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/153.0 Safari/537.36',
+    'Accept':'text/html,application/xhtml+xml,application/javascript,text/javascript,*/*',
+    'Accept-Language':'pt-BR,pt;q=0.9,en;q=0.8',
+    'Cache-Control':'no-cache',
+    'Pragma':'no-cache'
+  };
+  const diagnostics=[];
+  let htmlInfo;
+  try{
+    htmlInfo=await fetchGalleryText(base,headers,'HTML da galeria');
+  }catch(e){
+    galleryCache={loadedAt:Date.now(),base,records:[],bundleUrl:'',diagnostic:`Falha ao abrir a galeria: ${e.message}`};
+    throw e;
+  }
+  const html=htmlInfo.text;
+  diagnostics.push(`HTML ${htmlInfo.status}, ${html.length} bytes`);
+  let queue=extractJsAssetUrls(html,htmlInfo.finalUrl||base);
+  diagnostics.push(`${queue.length} asset(s) JS encontrado(s) no HTML`);
+  const seen=new Set();
+  let bestRecords=[],bestUrl='',checked=0,failures=0;
+  // Percorre também imports dinâmicos. Isso é necessário porque a Lovable normalmente
+  // inclui apenas index-*.js no HTML; routes-*.js é descoberto a partir desse bundle.
+  while(queue.length && checked<60){
+    const src=queue.shift();
+    if(!src||seen.has(src)) continue;
+    seen.add(src);
     try{
-      const rr=await fetch(src,{headers}); if(!rr.ok) continue;
-      const tx=await rr.text(); checked++;
-      if(tx.length>18_000_000) continue;
+      const info=await fetchGalleryText(src,headers,'Bundle da galeria');
+      checked++;
+      const tx=info.text;
+      if(tx.length>24_000_000){diagnostics.push(`ignorado ${new URL(src).pathname.split('/').pop()}: ${tx.length} bytes`);continue;}
       const records=parseGalleryRecords(tx);
       if(records.length>bestRecords.length){bestRecords=records;bestUrl=src;}
+      const children=extractJsAssetUrls(tx,src);
+      for(const child of children) if(!seen.has(child) && queue.length<120) queue.push(child);
+      diagnostics.push(`${new URL(src).pathname.split('/').pop()}: ${records.length} registro(s), ${children.length} chunk(s)`);
       if(/\/routes-[^/]+\.js(?:\?|$)/i.test(src) && records.length>200) break;
-    }catch{}
+    }catch(e){
+      failures++;
+      diagnostics.push(`${src.split('/').pop()}: ${e.message}`);
+    }
   }
-  galleryCache={loadedAt:Date.now(),base,records:bestRecords,bundleUrl:bestUrl,diagnostic:`${bestRecords.length} vídeos indexados a partir de ${bestUrl?new URL(bestUrl).pathname.split('/').pop():'nenhum bundle'} (${checked} bundle(s) verificado(s)).`};
+  const bundleName=bestUrl?new URL(bestUrl).pathname.split('/').pop():'nenhum bundle';
+  let diagnostic=`${bestRecords.length} vídeos indexados a partir de ${bundleName} (${checked} bundle(s) verificado(s)`;
+  if(failures) diagnostic+=`, ${failures} falha(s)`;
+  diagnostic+=`).`;
+  if(!bestRecords.length) diagnostic+=` Diagnóstico: ${diagnostics.slice(0,12).join(' | ')}`;
+  galleryCache={loadedAt:Date.now(),base,records:bestRecords,bundleUrl:bestUrl,diagnostic,debug:diagnostics};
   return galleryCache;
 }
+
 function scoreGalleryRecord(query,record){
   const title=record?.title||'';
   let score=scoreVideoCandidate(query,title);
@@ -300,7 +353,7 @@ async function discoverGalleryVideos(title,sku,manualQuery=''){
     if(!result.diagnostic) result.diagnostic=chosen.length
       ? `${chosen.length} vídeo(s) encontrado(s) no catálogo de ${inv.records.length} vídeos. Busca que funcionou: “${result.bestQuery}”.`
       : (inv.records.length===0
-        ? 'Não consegui indexar o catálogo interno da galeria nesta tentativa. Use “Abrir galeria” como alternativa.'
+        ? `Não consegui indexar o catálogo interno da galeria. ${inv.diagnostic||'Use “Abrir galeria” como alternativa.'}`
         : `Nenhum vídeo compatível foi localizado entre ${inv.records.length} vídeos indexados. Tente encurtar o nome manualmente.`);
   }catch(e){result.diagnostic=`Não foi possível consultar automaticamente o catálogo da galeria: ${e.message}`;}
   return result;
@@ -335,7 +388,7 @@ app.get('/api/wedrop/video', mustLogin, async(req,res)=>{
     let last='';
     for(const raw of urls){
       try{
-        const r=await fetch(raw,{redirect:'follow',headers:{'User-Agent':'Mozilla/5.0 REDEACHADOS-Publisher/5.4.3','Accept':'video/*,application/octet-stream,*/*'}});
+        const r=await fetch(raw,{redirect:'follow',headers:{'User-Agent':'Mozilla/5.0 REDEACHADOS-Publisher/5.4.4','Accept':'video/*,application/octet-stream,*/*'}});
         if(!r.ok){last=`HTTP ${r.status}`;continue;}
         const ct=(r.headers.get('content-type')||'').toLowerCase();
         const cd=r.headers.get('content-disposition')||'';
@@ -351,7 +404,7 @@ app.get('/api/wedrop/video', mustLogin, async(req,res)=>{
     return res.status(400).json({error:`Não consegui baixar o vídeo do Google Drive (${last||'fonte indisponível'}).`});
   }catch(e){res.status(400).json({error:e.message});}
 });
-app.get('/api/health', (_req,res)=>res.json({ok:true,service:'REDEACHADOS BR Publisher Web V5.4.3'}));
+app.get('/api/health', (_req,res)=>res.json({ok:true,service:'REDEACHADOS BR Publisher Web V5.4.4'}));
 app.get('/api/auth-state',(req,res)=>res.json({locked:Boolean(process.env.APP_PASSWORD),loggedIn:!process.env.APP_PASSWORD||Boolean(req.session?.appAuth)}));
 app.post('/api/login',(req,res)=>{
   if(!process.env.APP_PASSWORD){ req.session.appAuth=true; return res.json({ok:true}); }
@@ -598,4 +651,4 @@ app.post('/api/status/:publishId', mustLogin, async(req,res)=>{
   try{const d=await tiktokJson('https://open.tiktokapis.com/v2/post/publish/status/fetch/',{method:'POST',body:JSON.stringify({publish_id:req.params.publishId})});res.json(d.data||{});}catch(e){res.status(400).json({error:e.message});}
 });
 
-app.listen(PORT,()=>console.log(`REDEACHADOS BR Publisher Web V5.4.3 em http://localhost:${PORT}`));
+app.listen(PORT,()=>console.log(`REDEACHADOS BR Publisher Web V5.4.4 em http://localhost:${PORT}`));
