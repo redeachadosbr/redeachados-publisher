@@ -1,3 +1,9 @@
+# Interface Studio · atualização visual da V5.4.14
+
+Consulte **ATUALIZACAO_VISUAL.md** para aplicar somente os três arquivos da interface à sua instalação atual. O código das integrações permanece igual ao pacote original.
+
+---
+
 # REDEACHADOS BR Publisher Web V5.4.14
 
 ## Novidade V5.4.14 — manutenção automática do token Meta/Instagram
