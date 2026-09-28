@@ -1,11 +1,12 @@
 {
   "name": "redeachados-br-publisher-web",
-  "version": "5.4.14",
+  "version": "5.5.0",
   "private": true,
   "type": "module",
   "scripts": {
     "start": "node server.js",
-    "check": "node --check server.js && node --check public/app.js"
+    "check": "node --check server.js && node --check catalog.js && node --check public/app.js && node --check public/ui.js",
+    "test": "node --test tests/*.test.js"
   },
   "engines": {
     "node": ">=20"

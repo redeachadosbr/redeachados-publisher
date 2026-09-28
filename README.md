@@ -1,6 +1,23 @@
+# REDEACHADOS BR Publisher V5.5.0
+
+## Novidade — venda direto do Reel
+
+- Direct automático por comentário: o cliente comenta **QUERO** e recebe o link Shopee associado àquele Reel.
+- Resposta pública opcional confirmando o envio no Direct.
+- Criação opcional de anúncio a partir do Reel publicado, com CTA **Comprar agora** para o link Shopee.
+- Anúncios são criados **PAUSADOS por padrão** para revisão antes de gastar.
+- O Reel continua publicado mesmo se a criação do anúncio falhar.
+- Configuração e diagnóstico de Webhook e Meta Ads dentro do Publisher.
+
+**Configuração completa:** leia `META_COMMERCE_SETUP.md`.
+
+Testes locais: `npm test`. Sintaxe: `npm run check`.
+
+---
+
 # Interface Studio · atualização visual da V5.4.14
 
-Consulte **ATUALIZACAO_VISUAL.md** para aplicar somente os três arquivos da interface à sua instalação atual. O código das integrações permanece igual ao pacote original.
+Nota histórica da atualização visual: a versão V5.4.15 também corrige a leitura de SKUs no servidor. Siga **ATUALIZACAO.md** para instalar o pacote atual.
 
 ---
 

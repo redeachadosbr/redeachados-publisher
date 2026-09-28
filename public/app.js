@@ -1,7 +1,7 @@
 const $=s=>document.querySelector(s);
 let config=null, selectedFile=null, selectedRemoteVideo=null, duration=0, frames=[], generated=null;
 
-const DRAFT_KEY='redeachados_publisher_draft_v5412';
+const DRAFT_KEY='redeachados_publisher_draft_v550';
 let captionManual=false;
 let commentManual=false;
 let instagramManual=false;
@@ -12,7 +12,8 @@ function saveDraft(){
       description:$('#description')?.value||'', cta:$('#cta')?.value||'', hashtags:$('#hashtags')?.value||'',
       privacy:$('#privacy')?.value||'SELF_ONLY', disableComment:Boolean($('#disableComment')?.checked),
       disableDuet:Boolean($('#disableDuet')?.checked), disableStitch:Boolean($('#disableStitch')?.checked),
-      isAigc:Boolean($('#isAigc')?.checked), caption:$('#captionPreview')?.value||'', captionManual:Boolean(captionManual), purchaseComment:$('#purchaseComment')?.value||'', commentManual:Boolean(commentManual), instagramCaption:$('#instagramCaption')?.value||'', instagramDescription:generated?.instagramDescription||'', instagramManual:Boolean(instagramManual), savedAt:Date.now()
+      isAigc:Boolean($('#isAigc')?.checked), caption:$('#captionPreview')?.value||'', captionManual:Boolean(captionManual), purchaseComment:$('#purchaseComment')?.value||'', commentManual:Boolean(commentManual), instagramCaption:$('#instagramCaption')?.value||'', instagramDescription:generated?.instagramDescription||'', instagramManual:Boolean(instagramManual),
+      dmEnabled:Boolean($('#dmEnabled')?.checked), dmKeyword:$('#dmKeyword')?.value||'QUERO', publicReplyEnabled:Boolean($('#publicReplyEnabled')?.checked), createMetaAd:Boolean($('#createMetaAd')?.checked), metaAdStatus:$('#metaAdStatus')?.value||'PAUSED', savedAt:Date.now()
     };
     localStorage.setItem(DRAFT_KEY,JSON.stringify(data));
   }catch{}
@@ -26,6 +27,11 @@ function restoreDraft(){
     if($('#disableDuet')) $('#disableDuet').checked=Boolean(d.disableDuet);
     if($('#disableStitch')) $('#disableStitch').checked=Boolean(d.disableStitch);
     if($('#isAigc')) $('#isAigc').checked=Boolean(d.isAigc);
+    if($('#dmEnabled')&&d.dmEnabled!==undefined) $('#dmEnabled').checked=Boolean(d.dmEnabled);
+    if($('#dmKeyword')&&d.dmKeyword) $('#dmKeyword').value=d.dmKeyword;
+    if($('#publicReplyEnabled')&&d.publicReplyEnabled!==undefined) $('#publicReplyEnabled').checked=Boolean(d.publicReplyEnabled);
+    if($('#createMetaAd')&&d.createMetaAd!==undefined) $('#createMetaAd').checked=Boolean(d.createMetaAd);
+    if($('#metaAdStatus')&&d.metaAdStatus) $('#metaAdStatus').value=d.metaAdStatus;
     captionManual=Boolean(d.captionManual);
     commentManual=Boolean(d.commentManual);
     instagramManual=Boolean(d.instagramManual);
@@ -38,7 +44,7 @@ function restoreDraft(){
 function clearDraft(){try{localStorage.removeItem(DRAFT_KEY)}catch{}}
 
 function toast(msg,err=false){const d=document.createElement('div');d.className='toast'+(err?' err':'');d.textContent=msg;$('#toast').appendChild(d);setTimeout(()=>d.remove(),5000)}
-async function api(url,opt={}){const r=await fetch(url,{...opt,headers:{...(opt.body instanceof FormData?{}:{'Content-Type':'application/json'}),...(opt.headers||{})}});const d=await r.json().catch(()=>({}));if(!r.ok)throw new Error(d.error||'Erro inesperado.');return d}
+async function api(url,opt={}){const r=await fetch(url,{...opt,headers:{...(opt.body instanceof FormData?{}:{'Content-Type':'application/json'}),...(opt.headers||{})}});const d=await r.json().catch(()=>({}));if(!r.ok){const error=new Error(d.error||'Erro inesperado.');error.data=d;error.status=r.status;throw error;}return d}
 async function boot(){
   const a=await api('/api/auth-state');
   if(a.locked&&!a.loggedIn){$('#loginScreen').classList.remove('hidden');return}
@@ -57,17 +63,36 @@ async function loadConfig(){
   if($('#instagramUserId')) $('#instagramUserId').value=s.instagramUserId||'17841480462088551';
   if($('#metaGraphVersion')) $('#metaGraphVersion').value=s.metaGraphVersion||'v26.0';
   if($('#instagramAccessToken')) $('#instagramAccessToken').placeholder=s.instagramConfigured?'Configurado ✓ — deixe em branco para manter':'Cole um novo token de acesso da Meta';
+  if($('#instagramWebhookUrl')) $('#instagramWebhookUrl').value=config.instagramWebhookUrl||'';
+  if($('#instagramDmEnabled')) $('#instagramDmEnabled').checked=s.instagramDmEnabled!==false;
+  if($('#instagramDmKeyword')) $('#instagramDmKeyword').value=s.instagramDmKeyword||'QUERO';
+  if($('#instagramDmTemplate')) $('#instagramDmTemplate').value=s.instagramDmTemplate||'Oi! 👋 Aqui está o link do produto que você pediu: {link}';
+  if($('#instagramPublicReplyEnabled')) $('#instagramPublicReplyEnabled').checked=s.instagramPublicReplyEnabled!==false;
+  if($('#instagramPublicReplyTemplate')) $('#instagramPublicReplyTemplate').value=s.instagramPublicReplyTemplate||'Enviei o link no seu Direct ✅';
+  if($('#metaPageId')) $('#metaPageId').value=s.metaPageId||'';
+  if($('#metaAdAccountId')) $('#metaAdAccountId').value=s.metaAdAccountId||'';
+  if($('#metaAdSetId')) $('#metaAdSetId').value=s.metaAdSetId||'';
+  if($('#metaAdsAccessToken')) $('#metaAdsAccessToken').placeholder=s.metaAdsTokenConfigured?'Configurado ✓ — deixe em branco para manter':'Token com ads_management';
+  if($('#metaWebhookVerifyToken')) $('#metaWebhookVerifyToken').placeholder=s.metaWebhookConfigured?'Configurado ✓ — deixe em branco para manter':'Crie um token secreto';
+  if($('#metaCreateAdDefault')) $('#metaCreateAdDefault').checked=Boolean(s.metaCreateAdDefault);
+  if($('#metaAdDefaultStatus')) $('#metaAdDefaultStatus').value=s.metaAdDefaultStatus||'PAUSED';
+  if($('#dmEnabled')&&!localStorage.getItem(DRAFT_KEY)) $('#dmEnabled').checked=s.instagramDmEnabled!==false;
+  if($('#dmKeyword')&&!localStorage.getItem(DRAFT_KEY)) $('#dmKeyword').value=s.instagramDmKeyword||'QUERO';
+  if($('#publicReplyEnabled')&&!localStorage.getItem(DRAFT_KEY)) $('#publicReplyEnabled').checked=s.instagramPublicReplyEnabled!==false;
+  if($('#createMetaAd')&&!localStorage.getItem(DRAFT_KEY)) $('#createMetaAd').checked=Boolean(s.metaCreateAdDefault);
+  if($('#metaAdStatus')&&!localStorage.getItem(DRAFT_KEY)) $('#metaAdStatus').value=s.metaAdDefaultStatus||'PAUSED';
   loadInstagramStatus();
   loadInstagramTokenStatus();
+  loadInstagramCommerceStatus();
   $('#connectBtn').title='A conexão abre em outra aba para não perder vídeo, legenda ou campos já preenchidos.';
   if(!s.tiktokConfigured||!s.geminiConfigured) setTimeout(()=>$('#settingsDialog').showModal(),300);
 }
 $('#loginBtn').onclick=async()=>{try{await api('/api/login',{method:'POST',body:JSON.stringify({password:$('#loginPassword').value})});location.reload()}catch(e){toast(e.message,true)}};
 $('#settingsBtn').onclick=()=>$('#settingsDialog').showModal();
-$('#saveSettingsBtn').onclick=async e=>{e.preventDefault();try{await api('/api/settings',{method:'POST',body:JSON.stringify({brandName:$('#brandName').value,shopeeStoreUrl:$('#shopeeStoreUrl').value,geminiApiKey:$('#geminiApiKey').value,geminiModel:$('#geminiModel').value,tiktokClientKey:$('#tiktokClientKey').value,tiktokClientSecret:$('#tiktokClientSecret').value,instagramAccessToken:$('#instagramAccessToken')?.value||'',instagramUserId:$('#instagramUserId')?.value||'',metaGraphVersion:$('#metaGraphVersion')?.value||'v26.0'})});toast('Configuração salva.');$('#settingsDialog').close();await loadConfig();if(selectedFile)await analyze()}catch(err){toast(err.message,true)}};
+$('#saveSettingsBtn').onclick=async e=>{e.preventDefault();try{await api('/api/settings',{method:'POST',body:JSON.stringify({brandName:$('#brandName').value,shopeeStoreUrl:$('#shopeeStoreUrl').value,geminiApiKey:$('#geminiApiKey').value,geminiModel:$('#geminiModel').value,tiktokClientKey:$('#tiktokClientKey').value,tiktokClientSecret:$('#tiktokClientSecret').value,instagramAccessToken:$('#instagramAccessToken')?.value||'',instagramUserId:$('#instagramUserId')?.value||'',metaGraphVersion:$('#metaGraphVersion')?.value||'v26.0',instagramDmEnabled:Boolean($('#instagramDmEnabled')?.checked),instagramDmKeyword:$('#instagramDmKeyword')?.value||'QUERO',instagramDmTemplate:$('#instagramDmTemplate')?.value||'',instagramPublicReplyEnabled:Boolean($('#instagramPublicReplyEnabled')?.checked),instagramPublicReplyTemplate:$('#instagramPublicReplyTemplate')?.value||'',metaPageId:$('#metaPageId')?.value||'',metaAdAccountId:$('#metaAdAccountId')?.value||'',metaAdSetId:$('#metaAdSetId')?.value||'',metaAdsAccessToken:$('#metaAdsAccessToken')?.value||'',metaWebhookVerifyToken:$('#metaWebhookVerifyToken')?.value||'',metaCreateAdDefault:Boolean($('#metaCreateAdDefault')?.checked),metaAdDefaultStatus:$('#metaAdDefaultStatus')?.value||'PAUSED'})});toast('Configuração salva.');$('#settingsDialog').close();await loadConfig();if(selectedFile)await analyze()}catch(err){toast(err.message,true)}};
 
 async function loadCatalogStatus(){
-  try{const c=await api('/api/catalog');$('#catalogStatus').textContent=c.count?`Catálogo carregado: ${c.count} produtos. Última atualização: ${c.importedAt?new Date(c.importedAt).toLocaleString('pt-BR'):'não informada'}.`:'Nenhum catálogo carregado ainda.';}catch{$('#catalogStatus').textContent='Não foi possível consultar o catálogo.'}
+  try{const c=await api('/api/catalog');$('#catalogStatus').textContent=c.count?`Catálogo carregado: ${c.count} produtos · ${c.variationSkuCount||0} SKUs adicionais/variações. ${c.duplicateSkuCount?`${c.duplicateSkuCount} SKUs aparecem em mais de um anúncio; a busca pedirá sua escolha. `:''}Última importação: ${c.importedAt?new Date(c.importedAt).toLocaleString('pt-BR'):'não informada'}.`:'Nenhum catálogo carregado ainda.';}catch{$('#catalogStatus').textContent='Não foi possível consultar o catálogo.'}
 }
 $('#importCatalogBtn').onclick=async()=>{
   const file=$('#catalogFile').files?.[0]; if(!file)return toast('Selecione a planilha de Informações básicas da Shopee.',true);
@@ -75,6 +100,17 @@ $('#importCatalogBtn').onclick=async()=>{
   try{const fd=new FormData();fd.append('catalog',file);const r=await api('/api/catalog/import',{method:'POST',body:fd});toast(`Catálogo atualizado: ${r.count} produtos.`);$('#catalogFile').value='';await loadCatalogStatus();}
   catch(e){toast(e.message,true)}finally{btn.disabled=false;btn.textContent='Atualizar catálogo'}
 };
+
+$('#saveSkuAliasBtn')?.addEventListener('click',async()=>{
+  const button=$('#saveSkuAliasBtn');
+  const productId=$('#skuAliasProductId').value.trim(), sku=$('#skuAliasValue').value.trim();
+  if(!productId||!sku)return toast('Informe o ID do produto Shopee e a SKU da variação.',true);
+  button.disabled=true;button.textContent='Salvando vínculo...';
+  try{
+    await api('/api/catalog/sku-alias',{method:'POST',body:JSON.stringify({productId,sku})});
+    $('#skuAliasValue').value='';toast('SKU de variação vinculada ao produto.');await loadCatalogStatus();
+  }catch(e){toast(e.message,true)}finally{button.disabled=false;button.textContent='Vincular SKU ao produto';}
+});
 
 $('#chooseBtn').onclick=()=>$('#videoInput').click();$('#changeBtn').onclick=()=>$('#videoInput').click();$('#manualUploadBtn')?.addEventListener('click',()=>$('#videoInput').click());
 const dz=$('#dropzone');['dragenter','dragover'].forEach(x=>dz.addEventListener(x,e=>{e.preventDefault();dz.classList.add('drag')}));['dragleave','drop'].forEach(x=>dz.addEventListener(x,e=>{e.preventDefault();dz.classList.remove('drag')}));dz.addEventListener('drop',e=>{const f=e.dataTransfer.files?.[0];if(f)selectVideo(f)});$('#videoInput').onchange=e=>{const f=e.target.files?.[0];if(f)selectVideo(f)};
@@ -121,7 +157,9 @@ function buildAutoInstagramCaption(){
   }
   const cta=cleanEmoji(m.cta||'Garanta o seu na REDE ACHADOS BR');
   if(cta) parts.push(`👉 ${cta}`);
-  if(directLink) parts.push(`🔗 Link do Produto: ${directLink}`);
+  const dmOn=Boolean($('#dmEnabled')?.checked), keyword=String($('#dmKeyword')?.value||config?.settings?.instagramDmKeyword||'QUERO').trim()||'QUERO';
+  if(directLink&&dmOn) parts.push(`💬 Comente ${keyword.toUpperCase()} e receba o link de compra no Direct.`);
+  else if(directLink) parts.push(`🔗 Link do Produto: ${directLink}`);
   if(m.hashtags.length) parts.push(m.hashtags.join(' '));
   return parts.filter(Boolean).join('\n\n').slice(0,2200);
 }
@@ -158,6 +196,32 @@ $('#maintainInstagramTokenBtn')?.addEventListener('click',async()=>{
   catch(e){toast(e.message,true)}finally{b.disabled=false;b.textContent='🔄 Verificar / prolongar token agora';}
 });
 
+
+async function loadInstagramCommerceStatus(){
+  const badge=$('#commerceReadyBadge'),inline=$('#metaAdsInlineStatus'),status=$('#instagramCommerceStatus'),ads=$('#metaAdsStatus');
+  try{
+    const d=await api('/api/instagram/commerce-status');
+    if(status)status.textContent=d.dmConfigured?`✅ Direct automático pronto · ${d.rules} Reel(s) monitorado(s) · ${d.sent} link(s) enviado(s).`:'⚠️ Falta configurar o Webhook/Verify Token para o Direct automático.';
+    if(inline)inline.textContent=d.adsConfigured?'✅ Meta Ads configurado. O anúncio usará o conjunto definido nas Configurações.':'Configure Page ID, Ad Account ID, Ad Set ID e token com ads_management.';
+    if(ads)ads.textContent=d.adsConfigured?'Configuração preenchida. Use “Testar conexão” para validar conta e conjunto.':'Preencha os IDs da conta/conjunto e o acesso à Marketing API.';
+    if(badge){badge.classList.remove('ready','partial');if(d.dmConfigured&&d.adsConfigured){badge.textContent='PRONTO';badge.classList.add('ready')}else if(d.dmConfigured||d.adsConfigured){badge.textContent='PARCIAL';badge.classList.add('partial')}else badge.textContent='CONFIGURAR';}
+  }catch(e){if(status)status.textContent='Não foi possível verificar: '+e.message;if(badge)badge.textContent='VERIFICAR';}
+}
+$('#testMetaAdsBtn')?.addEventListener('click',async()=>{
+  const b=$('#testMetaAdsBtn');b.disabled=true;b.textContent='TESTANDO...';
+  try{const d=await api('/api/meta/ads/status');if(d.connected){$('#metaAdsStatus').textContent=`✅ ${d.account?.name||'Conta conectada'} · conjunto: ${d.adset?.name||d.adset?.id||'OK'} · ${d.adset?.effective_status||d.adset?.status||''}`;toast('Conexão com Meta Ads confirmada.')}else{throw new Error(d.error||'Não foi possível validar a conta.')}}catch(e){$('#metaAdsStatus').textContent='⚠️ '+e.message;toast(e.message,true)}finally{b.disabled=false;b.textContent='Testar conexão com Meta Ads';}
+});
+function instagramCommercePayload(){
+  return {product:$('#product')?.value.trim()||'',shopeeUrl:$('#shopeeUrl')?.value.trim()||'',dmEnabled:Boolean($('#dmEnabled')?.checked),dmKeyword:$('#dmKeyword')?.value.trim()||'QUERO',publicReplyEnabled:Boolean($('#publicReplyEnabled')?.checked),createAd:Boolean($('#createMetaAd')?.checked),adStatus:$('#metaAdStatus')?.value||'PAUSED'};
+}
+function describeInstagramResult(r){
+  const bits=['Reel publicado no Instagram ✅'];
+  if(r?.commerce?.dmEnabled)bits.push(`Direct “${r.commerce.keyword||'QUERO'}” ativado`);
+  if(r?.commerce?.ad?.adId)bits.push(`anúncio ${r.commerce.ad.status==='ACTIVE'?'ativo':'criado pausado para revisão'}`);
+  if(r?.commerce?.warning)bits.push(r.commerce.warning);
+  return bits.join(' · ');
+}
+
 async function loadInstagramStatus(){
   const el=$('#instagramConnectionText'); if(!el)return;
   try{const d=await api('/api/instagram/status');if(!d.configured){el.textContent='Configure o token da Meta em Configurações.';return;}if(d.connected){el.textContent=`Conectado: @${d.username||'redeachadosbr'}`;}else el.textContent='Token configurado, mas a Meta recusou a conexão: '+(d.error||'verifique o token.');}catch(e){el.textContent=e.message;}
@@ -165,14 +229,15 @@ async function loadInstagramStatus(){
 async function publishInstagram(){
   if(!selectedFile&&!selectedRemoteVideo)return toast('Escolha um vídeo.',true);if(!generated)return toast('Aguarde a geração da publicação.',true);if(!config?.settings?.instagramConfigured)return toast('Abra Configurações e informe um novo token de acesso da Meta.',true);
   const caption=$('#instagramCaption')?.value.trim()||''; if(!caption)return toast('A legenda do Instagram está vazia.',true);
+  const commerce=instagramCommercePayload();if((commerce.dmEnabled||commerce.createAd)&&!commerce.shopeeUrl)return toast('Informe o Link do produto Shopee para ativar Direct ou anúncio com compra.',true);
   const b=$('#instagramPublishBtn');b.disabled=true;b.textContent='PUBLICANDO REEL...';
   try{
     let r;
-    if(selectedRemoteVideo){r=await api('/api/instagram/publish-remote',{method:'POST',body:JSON.stringify({remoteVideoId:selectedRemoteVideo.id,filename:selectedRemoteVideo.title||'video-wedrop',caption})});}
-    else{const fd=new FormData();fd.append('video',selectedFile);fd.append('caption',caption);r=await api('/api/instagram/publish',{method:'POST',body:fd});}
-    if(r.pending){toast('Instagram ainda está processando. Vou tentar finalizar novamente em alguns segundos.');await new Promise(x=>setTimeout(x,8000));const f=await api('/api/instagram/finalize',{method:'POST',body:JSON.stringify({creationId:r.creationId})});if(f.pending)toast('O Reel continua processando. Tente o botão novamente em alguns segundos.',true);else toast('Reel publicado no Instagram ✅');}
-    else toast('Reel publicado no Instagram ✅');
-    await loadHistory();
+    if(selectedRemoteVideo){r=await api('/api/instagram/publish-remote',{method:'POST',body:JSON.stringify({remoteVideoId:selectedRemoteVideo.id,filename:selectedRemoteVideo.title||'video-wedrop',caption,...commerce})});}
+    else{const fd=new FormData();fd.append('video',selectedFile);fd.append('caption',caption);for(const [k,v] of Object.entries(commerce))fd.append(k,String(v));r=await api('/api/instagram/publish',{method:'POST',body:fd});}
+    if(r.pending){toast('Instagram ainda está processando. O Direct/anúncio serão associados assim que o Reel finalizar.');await new Promise(x=>setTimeout(x,8000));const f=await api('/api/instagram/finalize',{method:'POST',body:JSON.stringify({creationId:r.creationId})});if(f.pending)toast('O Reel continua processando. Tente publicar novamente em alguns segundos.',true);else{toast(describeInstagramResult(f));if(f.commerce?.adError)toast('Reel publicado, mas Meta Ads: '+f.commerce.adError,true);}}
+    else{toast(describeInstagramResult(r));if(r.commerce?.adError)toast('Reel publicado, mas Meta Ads: '+r.commerce.adError,true);}
+    await loadHistory();await loadInstagramCommerceStatus();
   }catch(e){toast('Instagram: '+e.message,true);}finally{b.disabled=false;b.textContent='📸 PUBLICAR REEL NO INSTAGRAM';}
 }
 $('#instagramPublishBtn')?.addEventListener('click',publishInstagram);
@@ -180,6 +245,8 @@ $('#instagramPublishBtn')?.addEventListener('click',publishInstagram);
 $('#restoreCaptionBtn').onclick=restoreGeneratedCaption;
 $('#copyCaptionBtn').onclick=async()=>{try{await navigator.clipboard.writeText($('#captionPreview').value.trim());toast('Legenda copiada. Cole no TikTok ao finalizar o rascunho.')}catch{toast('Não foi possível copiar automaticamente. Selecione a legenda e use Ctrl+C.',true)}};
 ['product','shopeeUrl','title','description','cta','hashtags'].forEach(id=>$('#'+id).addEventListener('input',()=>{updateCaption(false);updatePurchaseComment(false);updateInstagramCaption(false);saveDraft()}));
+['dmKeyword'].forEach(id=>$('#'+id)?.addEventListener('input',()=>{instagramManual=false;updateInstagramCaption(true);saveDraft()}));
+['dmEnabled','publicReplyEnabled','createMetaAd','metaAdStatus'].forEach(id=>$('#'+id)?.addEventListener('change',()=>{if(id==='dmEnabled'){instagramManual=false;updateInstagramCaption(true)}saveDraft()}));
 ['privacy','disableComment','disableDuet','disableStitch','isAigc'].forEach(id=>$('#'+id)?.addEventListener('change',saveDraft));
 $('#connectBtn').addEventListener('click',()=>saveDraft());
 $('#regenerateBtn').onclick=analyze;
@@ -256,7 +323,7 @@ function renderWedropResults(data){
   const p=data.product||{};
   if(p.name && !$('#wedropQuery').value.trim()) $('#wedropQuery').value=p.name;
   renderWedropAttempts(data);
-  status.innerHTML=`<b>${esc(data.sku)}</b>${p.name?' · '+esc(p.name):''}<br>${esc(data.gallery?.diagnostic||'')}`;
+  status.innerHTML=`<b>${esc(data.sku)}</b>${p.name?' · '+esc(p.name):''}${p.matchType==='variation'?'<br>SKU de variação reconhecido no catálogo.':''}<br>${esc(data.gallery?.diagnostic||'')}`;
   const list=data.gallery?.candidates||[];
   if(list.length){
     box.classList.remove('hidden');
@@ -279,11 +346,26 @@ function renderWedropResults(data){
     box.appendChild(el);
   }
 }
-async function searchWedrop(manual=false){
+function renderCatalogChoices(data,manual=false){
+  const box=$('#wedropResults');box.innerHTML='';box.classList.remove('hidden');
+  $('#wedropAttempts').classList.add('hidden');
+  for(const product of data.candidates||[]){
+    const row=document.createElement('div');row.className='video-result catalog-choice';
+    row.innerHTML=`<div><b>${esc(product.name)}</b><small>ID Shopee: ${esc(product.id)} · SKU principal: ${esc(product.sku)}</small></div><button type="button" class="primary">Usar este anúncio</button>`;
+    row.querySelector('button').onclick=()=>searchWedrop(manual,product.id);
+    box.appendChild(row);
+  }
+}
+async function searchWedrop(manual=false,productId=''){
   const sku=$('#wedropSku').value.trim(); if(!sku)return toast('Digite a SKU WeDrop.',true);
   const q=manual?$('#wedropQuery').value.trim():'';
   const b=manual?$('#wedropManualBtn'):$('#wedropSearchBtn');b.disabled=true;b.textContent='BUSCANDO…';$('#wedropStatus').textContent=manual?'Tentando o nome informado…':'Buscando pelo título completo e encurtando automaticamente se necessário…';
-  try{const d=await api('/api/wedrop/lookup?sku='+encodeURIComponent(sku)+(q?'&q='+encodeURIComponent(q):''));renderWedropResults(d)}catch(e){toast(e.message,true);$('#wedropStatus').textContent=e.message}finally{b.disabled=false;b.textContent=manual?'TENTAR ESTA BUSCA':'BUSCAR VÍDEO'}
+  try{const d=await api('/api/wedrop/lookup?sku='+encodeURIComponent(sku)+(q?'&q='+encodeURIComponent(q):'')+(productId?'&productId='+encodeURIComponent(productId):''));renderWedropResults(d)}
+  catch(e){
+    $('#wedropStatus').textContent=e.message;
+    if(e.data?.code==='SKU_AMBIGUOUS')renderCatalogChoices(e.data,manual);
+    else{toast(e.message,true);$('#wedropResults').classList.add('hidden');$('#wedropAttempts').classList.add('hidden');if(e.data?.code==='SKU_NOT_FOUND'){const details=document.querySelector('.manual-search');if(details)details.open=true;}}
+  }finally{b.disabled=false;b.textContent=manual?'TENTAR ESTA BUSCA':'BUSCAR VÍDEO'}
 }
 $('#wedropSearchBtn')?.addEventListener('click',()=>searchWedrop(false));
 $('#wedropManualBtn')?.addEventListener('click',()=>searchWedrop(true));

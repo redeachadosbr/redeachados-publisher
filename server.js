@@ -5,6 +5,7 @@ import crypto from 'node:crypto';
 import fs from 'node:fs';
 import path from 'node:path';
 import * as XLSX from 'xlsx';
+import { parseCatalogSheets, lookupCatalogSku, linkCatalogSku, catalogStats } from './catalog.js';
 import { fileURLToPath } from 'node:url';
 import { Readable } from 'node:stream';
 import { spawn } from 'node:child_process';
@@ -30,7 +31,7 @@ const upload = multer({
   limits: { fileSize: 4 * 1024 * 1024 * 1024 }
 });
 
-app.use(express.json({ limit: '25mb' }));
+app.use(express.json({ limit: '25mb', verify:(req,_res,buf)=>{ req.rawBody=Buffer.from(buf); } }));
 app.use(express.urlencoded({ extended: true }));
 app.use(session({
   secret: process.env.SESSION_SECRET || 'redeachados-dev-secret',
@@ -41,7 +42,21 @@ app.use(session({
 app.use(express.static(path.join(__dirname, 'public')));
 
 function defaults(){
-  return { token:null, settings:{ brandName:'REDEACHADOS BR', shopeeStoreUrl:'', defaultPrivacy:'SELF_ONLY', defaultHashtagCount:6, tiktokClientKey:'', tiktokClientSecret:'', geminiApiKey:'', geminiModel:'gemini-3.5-flash-lite', instagramAccessToken:'', instagramUserId:'17841480462088551', metaGraphVersion:'v26.0', instagramTokenManaged:false, instagramTokenExpiresAt:0, instagramTokenLastCheckedAt:0, instagramTokenLastRefreshAt:0 }, history:[], wedropSearchAliases:{} };
+  return {
+    token:null,
+    settings:{
+      brandName:'REDEACHADOS BR', shopeeStoreUrl:'', defaultPrivacy:'SELF_ONLY', defaultHashtagCount:6,
+      tiktokClientKey:'', tiktokClientSecret:'', geminiApiKey:'', geminiModel:'gemini-3.5-flash-lite',
+      instagramAccessToken:'', instagramUserId:'17841480462088551', metaGraphVersion:'v26.0',
+      instagramTokenManaged:false, instagramTokenExpiresAt:0, instagramTokenLastCheckedAt:0, instagramTokenLastRefreshAt:0,
+      instagramDmEnabled:true, instagramDmKeyword:'QUERO',
+      instagramDmTemplate:'Oi! 👋 Aqui está o link do produto que você pediu: {link}',
+      instagramPublicReplyEnabled:true, instagramPublicReplyTemplate:'Enviei o link no seu Direct ✅',
+      metaPageId:'', metaAdAccountId:'', metaAdSetId:'', metaAdsAccessToken:'', metaWebhookVerifyToken:'',
+      metaCreateAdDefault:false, metaAdDefaultStatus:'PAUSED'
+    },
+    history:[], wedropSearchAliases:{}, instagramRules:[], instagramDmLog:[]
+  };
 }
 function loadStore(){
   try { return { ...defaults(), ...JSON.parse(fs.readFileSync(DATA_FILE, 'utf8')) }; }
@@ -49,6 +64,7 @@ function loadStore(){
 }
 function saveStore(s){ fs.writeFileSync(DATA_FILE, JSON.stringify(s,null,2)); }
 function envText(name){ return String(process.env[name]||'').trim(); }
+function envBool(name,fallback=false){ const v=envText(name).toLowerCase(); return v?['1','true','yes','on'].includes(v):fallback; }
 function effectiveSettings(stored={}){
   return {
     ...defaults().settings,
@@ -66,7 +82,19 @@ function effectiveSettings(stored={}){
     instagramTokenManaged:Boolean(stored.instagramTokenManaged),
     instagramTokenExpiresAt:Number(stored.instagramTokenExpiresAt||0),
     instagramTokenLastCheckedAt:Number(stored.instagramTokenLastCheckedAt||0),
-    instagramTokenLastRefreshAt:Number(stored.instagramTokenLastRefreshAt||0)
+    instagramTokenLastRefreshAt:Number(stored.instagramTokenLastRefreshAt||0),
+    instagramDmEnabled: envText('INSTAGRAM_DM_ENABLED') ? envBool('INSTAGRAM_DM_ENABLED') : stored.instagramDmEnabled!==false,
+    instagramDmKeyword: envText('INSTAGRAM_DM_KEYWORD') || stored.instagramDmKeyword || 'QUERO',
+    instagramDmTemplate: envText('INSTAGRAM_DM_TEMPLATE') || stored.instagramDmTemplate || 'Oi! 👋 Aqui está o link do produto que você pediu: {link}',
+    instagramPublicReplyEnabled: envText('INSTAGRAM_PUBLIC_REPLY_ENABLED') ? envBool('INSTAGRAM_PUBLIC_REPLY_ENABLED') : stored.instagramPublicReplyEnabled!==false,
+    instagramPublicReplyTemplate: envText('INSTAGRAM_PUBLIC_REPLY_TEMPLATE') || stored.instagramPublicReplyTemplate || 'Enviei o link no seu Direct ✅',
+    metaPageId: envText('META_PAGE_ID') || stored.metaPageId || '',
+    metaAdAccountId: envText('META_AD_ACCOUNT_ID') || stored.metaAdAccountId || '',
+    metaAdSetId: envText('META_AD_SET_ID') || stored.metaAdSetId || '',
+    metaAdsAccessToken: envText('META_ADS_ACCESS_TOKEN') || stored.metaAdsAccessToken || '',
+    metaWebhookVerifyToken: envText('META_WEBHOOK_VERIFY_TOKEN') || stored.metaWebhookVerifyToken || '',
+    metaCreateAdDefault: envText('META_CREATE_AD_DEFAULT') ? envBool('META_CREATE_AD_DEFAULT') : Boolean(stored.metaCreateAdDefault),
+    metaAdDefaultStatus: String(envText('META_AD_DEFAULT_STATUS') || stored.metaAdDefaultStatus || 'PAUSED').toUpperCase()==='ACTIVE'?'ACTIVE':'PAUSED'
   };
 }
 function now(){ return new Date().toISOString(); }
@@ -81,6 +109,13 @@ function safeSettings(stored){
     tiktokConfigured:Boolean(s.tiktokClientKey&&s.tiktokClientSecret), geminiConfigured:Boolean(s.geminiApiKey),
     instagramConfigured:Boolean(s.instagramAccessToken&&s.instagramUserId), instagramUserId:s.instagramUserId, metaGraphVersion:s.metaGraphVersion,
     instagramTokenManaged:Boolean(s.instagramTokenManaged), instagramTokenExpiresAt:Number(s.instagramTokenExpiresAt||0),
+    instagramDmEnabled:Boolean(s.instagramDmEnabled), instagramDmKeyword:s.instagramDmKeyword,
+    instagramDmTemplate:s.instagramDmTemplate, instagramPublicReplyEnabled:Boolean(s.instagramPublicReplyEnabled), instagramPublicReplyTemplate:s.instagramPublicReplyTemplate,
+    metaPageId:s.metaPageId, metaAdAccountId:s.metaAdAccountId, metaAdSetId:s.metaAdSetId,
+    metaAdsConfigured:Boolean((s.metaAdsAccessToken||s.instagramAccessToken)&&s.metaAdAccountId&&s.metaAdSetId&&s.metaPageId&&s.instagramUserId),
+    metaAdsTokenConfigured:Boolean(s.metaAdsAccessToken||s.instagramAccessToken),
+    metaWebhookConfigured:Boolean(s.metaWebhookVerifyToken),
+    metaCreateAdDefault:Boolean(s.metaCreateAdDefault), metaAdDefaultStatus:s.metaAdDefaultStatus,
     metaTokenAutomationConfigured:Boolean(envText('META_APP_ID')&&envText('META_APP_SECRET')),
     metaAppIdConfigured:Boolean(envText('META_APP_ID')), metaAppSecretConfigured:Boolean(envText('META_APP_SECRET')),
     geminiModel:s.geminiModel,
@@ -89,7 +124,9 @@ function safeSettings(stored){
       geminiApiKey:envText('GEMINI_API_KEY')?'render':'local',
       tiktokCredentials:(envText('TIKTOK_CLIENT_KEY')&&envText('TIKTOK_CLIENT_SECRET'))?'render':'local',
       instagramAccessToken:envText('INSTAGRAM_ACCESS_TOKEN')?'render':'local',
-      instagramUserId:envText('INSTAGRAM_USER_ID')?'render':'local'
+      instagramUserId:envText('INSTAGRAM_USER_ID')?'render':'local',
+      metaAdsAccessToken:envText('META_ADS_ACCESS_TOKEN')?'render':'local',
+      metaWebhookVerifyToken:envText('META_WEBHOOK_VERIFY_TOKEN')?'render':'local'
     }
   };
 }
@@ -129,44 +166,33 @@ function findCatalogMatch(query){
   return bestScore>=0.42 ? {...best,score:Number(bestScore.toFixed(3))} : null;
 }
 function parseShopeeCatalog(buffer,filename){
-  const book=XLSX.read(buffer,{type:'buffer'}); const ws=book.Sheets[book.SheetNames[0]];
-  const rows=XLSX.utils.sheet_to_json(ws,{header:1,defval:'',raw:false});
-  let h=-1; for(let i=0;i<Math.min(rows.length,20);i++){
-    const cells=rows[i].map(normalizeText);
-    if(cells.includes('id do produto')&&cells.includes('nome do produto')){h=i;break;}
-  }
-  if(h<0) throw new Error('Não encontrei as colunas ID do Produto e Nome do Produto no arquivo da Shopee.');
-  const header=rows[h].map(normalizeText);
-  const ixId=header.indexOf('id do produto'), ixSku=header.indexOf('sku de referencia'), ixName=header.indexOf('nome do produto'), ixDesc=header.indexOf('descricao do produto');
-  const shopId='852701218', map=new Map();
-  for(const row of rows.slice(h+1)){
-    const id=String(row[ixId]||'').trim(), name=String(row[ixName]||'').trim();
-    if(!/^\d+$/.test(id)||!name) continue;
-    map.set(id,{id,sku:ixSku>=0?String(row[ixSku]||'').trim():'',name,description:ixDesc>=0?String(row[ixDesc]||'').trim():'',url:`https://shopee.com.br/product/${shopId}/${id}/`});
-  }
-  const products=[...map.values()]; if(!products.length) throw new Error('Nenhum produto válido foi encontrado no arquivo.');
-  return {shopId,importedAt:now(),sourceFile:filename||'catalogo-shopee.xlsx',count:products.length,products};
+  const book=XLSX.read(buffer,{type:'buffer'});
+  const sheets=book.SheetNames.map(name=>({name,rows:XLSX.utils.sheet_to_json(book.Sheets[name],{header:1,defval:'',raw:false})}));
+  return parseCatalogSheets(sheets,{filename,previous:loadCatalog(),importedAt:now()});
 }
 
 app.get('/api/catalog', mustLogin, (_req,res)=>{
-  const c=loadCatalog(); res.json({count:(c.products||[]).length, importedAt:c.importedAt, sourceFile:c.sourceFile, shopId:c.shopId||'852701218'});
+  const c=loadCatalog(); res.json({...catalogStats(c), importedAt:c.importedAt, sourceFile:c.sourceFile, shopId:c.shopId||'852701218'});
 });
 app.post('/api/catalog/import', mustLogin, catalogUpload.single('catalog'), (req,res)=>{
   try{
     if(!req.file) return res.status(400).json({error:'Selecione a planilha da Shopee.'});
     const c=parseShopeeCatalog(req.file.buffer,req.file.originalname); saveCatalog(c);
-    res.json({ok:true,count:c.products.length,importedAt:c.importedAt,sourceFile:c.sourceFile});
+    res.json({ok:true,...catalogStats(c),importedAt:c.importedAt,sourceFile:c.sourceFile});
+  }catch(e){res.status(400).json({error:e.message});}
+});
+
+app.post('/api/catalog/sku-alias', mustLogin, (req,res)=>{
+  try{
+    const c=linkCatalogSku(loadCatalog(),req.body.productId,req.body.sku);
+    saveCatalog(c);
+    res.json({ok:true,...catalogStats(c)});
   }catch(e){res.status(400).json({error:e.message});}
 });
 
 
-function findCatalogBySku(sku){
-  const q=String(sku||'').trim().toUpperCase();
-  if(!q) return null;
-  const c=loadCatalog();
-  const exact=(c.products||[]).find(p=>String(p.sku||'').trim().toUpperCase()===q);
-  if(exact) return {...exact,matchType:'exact'};
-  return null;
+function findCatalogBySku(sku,productId=''){
+  return lookupCatalogSku(loadCatalog(),sku,productId);
 }
 function safeRemoteUrl(raw){
   try{
@@ -378,10 +404,12 @@ app.get('/api/wedrop/lookup', mustLogin, async(req,res)=>{
   try{
     const sku=String(req.query.sku||'').trim(); if(!sku) return res.status(400).json({error:'Informe a SKU WeDrop.'});
     const manualQuery=String(req.query.q||'').trim();
-    const mapped=findCatalogBySku(sku);
+    let mapped;
+    try{mapped=findCatalogBySku(sku,String(req.query.productId||'').trim());}
+    catch(e){if(e.code==='SKU_AMBIGUOUS')return res.status(409).json({error:e.message,code:e.code,candidates:e.candidates});throw e;}
     const known={'VP-2383':{name:'Avental Infantil Vida Pratika Mini Chef Branco',source:'known-example'}};
-    const product=mapped?{sku:mapped.sku,name:mapped.name,shopeeUrl:mapped.url,source:'shopee-catalog'}:(known[sku.toUpperCase()]||{sku,name:'',source:'unresolved'});
-    if(!product.name && !manualQuery) return res.status(404).json({error:'Não encontrei esta SKU no catálogo Shopee. Atualize o catálogo ou informe o nome do produto no campo de busca manual.'});
+    const product=mapped?{id:mapped.id,sku:mapped.matchedSku||mapped.sku,parentSku:mapped.sku,name:mapped.name,shopeeUrl:mapped.url,source:'shopee-catalog',matchType:mapped.matchType}:(known[sku.toUpperCase()]||{sku,name:'',source:'unresolved'});
+    if(!product.name && !manualQuery) return res.status(404).json({code:'SKU_NOT_FOUND',error:'Esta SKU não está no catálogo importado. A planilha de informações básicas contém apenas o SKU principal. Para uma variação, importe uma planilha com os SKUs das variações ou vincule o código em Configurações > Loja e catálogo. Você também pode buscar pelo nome abaixo.'});
     const gallery=await discoverGalleryVideos(product.name||manualQuery||sku,sku,manualQuery);
     res.json({ok:true,sku,product,gallery});
   }catch(e){res.status(400).json({error:e.message});}
@@ -488,7 +516,7 @@ async function extractRemoteFrames(id, filename, durationSec){
   }
 }
 
-app.get('/api/health', (_req,res)=>res.json({ok:true,service:'REDEACHADOS BR Publisher Web V5.4.14'}));
+app.get('/api/health', (_req,res)=>res.json({ok:true,service:'REDEACHADOS BR Publisher Web V5.5.0'}));
 app.get('/api/auth-state',(req,res)=>res.json({locked:Boolean(process.env.APP_PASSWORD),loggedIn:!process.env.APP_PASSWORD||Boolean(req.session?.appAuth)}));
 app.post('/api/login',(req,res)=>{
   if(!process.env.APP_PASSWORD){ req.session.appAuth=true; return res.json({ok:true}); }
@@ -499,7 +527,10 @@ app.post('/api/app-logout',(req,res)=>{ req.session.destroy(()=>res.json({ok:tru
 
 app.get('/api/config', mustLogin, (req,res)=>{
   const s=loadStore();
-  res.json({ settings:safeSettings(s.settings||{}), tiktokConnected:Boolean(s.token?.access_token), redirectUri:redirectUri(req), publicBaseUrl:baseUrl(req) });
+  res.json({
+    settings:safeSettings(s.settings||{}), tiktokConnected:Boolean(s.token?.access_token), redirectUri:redirectUri(req), publicBaseUrl:baseUrl(req),
+    instagramWebhookUrl:`${baseUrl(req)}/webhooks/meta/instagram`
+  });
 });
 app.post('/api/settings', mustLogin, (req,res)=>{
   const s=loadStore();
@@ -518,6 +549,18 @@ app.post('/api/settings', mustLogin, (req,res)=>{
     instagramAccessToken:String(req.body.instagramAccessToken||'').trim() || old.instagramAccessToken || '',
     instagramUserId:String(req.body.instagramUserId||current.instagramUserId||'17841480462088551').trim(),
     metaGraphVersion:String(req.body.metaGraphVersion||current.metaGraphVersion||'v26.0').trim(),
+    instagramDmEnabled:req.body.instagramDmEnabled===undefined?Boolean(current.instagramDmEnabled):Boolean(req.body.instagramDmEnabled),
+    instagramDmKeyword:String(req.body.instagramDmKeyword??current.instagramDmKeyword??'QUERO').trim().slice(0,40)||'QUERO',
+    instagramDmTemplate:String(req.body.instagramDmTemplate??current.instagramDmTemplate??'Oi! 👋 Aqui está o link do produto que você pediu: {link}').trim().slice(0,900),
+    instagramPublicReplyEnabled:req.body.instagramPublicReplyEnabled===undefined?Boolean(current.instagramPublicReplyEnabled):Boolean(req.body.instagramPublicReplyEnabled),
+    instagramPublicReplyTemplate:String(req.body.instagramPublicReplyTemplate??current.instagramPublicReplyTemplate??'Enviei o link no seu Direct ✅').trim().slice(0,250),
+    metaPageId:String(req.body.metaPageId??current.metaPageId??'').trim(),
+    metaAdAccountId:String(req.body.metaAdAccountId??current.metaAdAccountId??'').trim(),
+    metaAdSetId:String(req.body.metaAdSetId??current.metaAdSetId??'').trim(),
+    metaAdsAccessToken:String(req.body.metaAdsAccessToken||'').trim() || old.metaAdsAccessToken || '',
+    metaWebhookVerifyToken:String(req.body.metaWebhookVerifyToken||'').trim() || old.metaWebhookVerifyToken || '',
+    metaCreateAdDefault:req.body.metaCreateAdDefault===undefined?Boolean(current.metaCreateAdDefault):Boolean(req.body.metaCreateAdDefault),
+    metaAdDefaultStatus:String(req.body.metaAdDefaultStatus||current.metaAdDefaultStatus||'PAUSED').toUpperCase()==='ACTIVE'?'ACTIVE':'PAUSED',
     instagramTokenManaged:String(req.body.instagramAccessToken||'').trim()?false:Boolean(old.instagramTokenManaged),
     instagramTokenExpiresAt:String(req.body.instagramAccessToken||'').trim()?0:Number(old.instagramTokenExpiresAt||0),
     instagramTokenLastCheckedAt:String(req.body.instagramAccessToken||'').trim()?0:Number(old.instagramTokenLastCheckedAt||0),
@@ -681,6 +724,175 @@ async function publishInstagramReel({req,videoUrl,caption}){
   const published=await instagramGraph(`${cfg.instagramUserId}/media_publish`,{method:'POST',params:{creation_id:creationId}});
   return {ok:true,pending:false,creationId,mediaId:published.id,status:'PUBLISHED',message:'Reel publicado no Instagram.'};
 }
+
+function normalizeAdAccountId(v=''){ return String(v||'').trim().replace(/^act_/i,''); }
+function renderCommerceTemplate(template,ctx={}){
+  return String(template||'')
+    .replace(/\{link\}/gi,String(ctx.link||''))
+    .replace(/\{product\}/gi,String(ctx.product||''))
+    .replace(/\{keyword\}/gi,String(ctx.keyword||''))
+    .trim();
+}
+function keywordMatches(text,keyword){
+  const hay=normalizeText(text), needle=normalizeText(keyword); if(!hay||!needle)return false;
+  return (` ${hay} `).includes(` ${needle} `) || hay===needle;
+}
+async function metaAdsGraph(pathname,{method='GET',params={}}={}){
+  const cfg=effectiveSettings(loadStore().settings||{});
+  const token=cfg.metaAdsAccessToken||cfg.instagramAccessToken;
+  if(!token) throw new Error('Configure um token da Meta com ads_management para criar anúncios.');
+  const version=graphVersionFrom(cfg);
+  const url=new URL(`https://graph.facebook.com/${version}/${String(pathname).replace(/^\//,'')}`);
+  const body=new URLSearchParams();
+  for(const [k,v] of Object.entries(params||{})){ if(v!==undefined&&v!==null&&String(v)!=='') body.set(k,String(v)); }
+  body.set('access_token',token);
+  let r;
+  if(method==='GET'){ for(const [k,v] of body) url.searchParams.set(k,v); r=await fetch(url,{headers:{Accept:'application/json'}}); }
+  else r=await fetch(url,{method,headers:{'Content-Type':'application/x-www-form-urlencoded',Accept:'application/json'},body});
+  const d=await r.json().catch(()=>({}));
+  if(!r.ok||d.error){ const e=d.error||{}; throw new Error([e.message||`Meta Ads HTTP ${r.status}`,e.code?`Código ${e.code}`:'',e.error_subcode?`Subcódigo ${e.error_subcode}`:''].filter(Boolean).join(' | ')); }
+  return d;
+}
+async function createMetaAdForReel({mediaId,shopeeUrl,product,status='PAUSED'}={}){
+  const cfg=effectiveSettings(loadStore().settings||{});
+  const accountId=normalizeAdAccountId(cfg.metaAdAccountId), adSetId=String(cfg.metaAdSetId||'').trim(), pageId=String(cfg.metaPageId||'').trim();
+  if(!mediaId) throw new Error('O Reel ainda não tem Media ID.');
+  if(!shopeeUrl) throw new Error('Informe o link do produto Shopee para criar o anúncio.');
+  if(!accountId||!adSetId||!pageId||!cfg.instagramUserId) throw new Error('Configure Page ID, Ad Account ID e Ad Set ID em Instagram / Meta.');
+  const stamp=new Date().toISOString().replace('T',' ').slice(0,16);
+  const name=`RA | ${String(product||'Reel').slice(0,70)} | ${stamp}`;
+  const creative=await metaAdsGraph(`act_${accountId}/adcreatives`,{method:'POST',params:{
+    name, object_id:pageId, instagram_user_id:cfg.instagramUserId, source_instagram_media_id:mediaId,
+    call_to_action:JSON.stringify({type:'SHOP_NOW',value:{link:shopeeUrl}})
+  }});
+  if(!creative.id) throw new Error('A Meta não retornou o ID do criativo do anúncio.');
+  const ad=await metaAdsGraph(`act_${accountId}/ads`,{method:'POST',params:{
+    name, adset_id:adSetId, creative:JSON.stringify({creative_id:creative.id}), status:String(status).toUpperCase()==='ACTIVE'?'ACTIVE':'PAUSED'
+  }});
+  if(!ad.id) throw new Error('A Meta não retornou o ID do anúncio.');
+  return {ok:true,creativeId:creative.id,adId:ad.id,status:String(status).toUpperCase()==='ACTIVE'?'ACTIVE':'PAUSED'};
+}
+function inputBool(v,fallback=false){ if(v===undefined||v===null||v==='')return fallback; if(typeof v==='boolean')return v; return ['1','true','yes','on'].includes(String(v).trim().toLowerCase()); }
+function normalizeCommerceOptions(body={},cfg=effectiveSettings(loadStore().settings||{})){
+  const dmEnabled=inputBool(body.dmEnabled,Boolean(cfg.instagramDmEnabled));
+  const keyword=String(body.dmKeyword||cfg.instagramDmKeyword||'QUERO').trim().slice(0,40)||'QUERO';
+  const publicReplyEnabled=inputBool(body.publicReplyEnabled,Boolean(cfg.instagramPublicReplyEnabled));
+  return {
+    dmEnabled, keyword, publicReplyEnabled,
+    dmTemplate:String(body.dmTemplate||cfg.instagramDmTemplate||'Oi! 👋 Aqui está o link do produto que você pediu: {link}').trim().slice(0,900),
+    publicReplyTemplate:String(body.publicReplyTemplate||cfg.instagramPublicReplyTemplate||'Enviei o link no seu Direct ✅').trim().slice(0,250),
+    product:String(body.product||'').trim().slice(0,180), shopeeUrl:String(body.shopeeUrl||'').trim(),
+    createAd:inputBool(body.createAd,Boolean(cfg.metaCreateAdDefault)),
+    adStatus:String(body.adStatus||cfg.metaAdDefaultStatus||'PAUSED').toUpperCase()==='ACTIVE'?'ACTIVE':'PAUSED'
+  };
+}
+
+async function registerInstagramCommerce(result,body={}){
+  const options=normalizeCommerceOptions(body);
+  if((options.dmEnabled||options.createAd)&&!options.shopeeUrl){
+    options.dmEnabled=false; options.createAd=false; options.warning='Link do produto não informado; Direct automático e anúncio foram desativados para este Reel.';
+  }
+  const rule=upsertInstagramRule({creationId:result.creationId||'',mediaId:result.mediaId||'',options});
+  let ad=null,adError='';
+  if(result.mediaId&&options.createAd){
+    try{ad=await createMetaAdForReel({mediaId:result.mediaId,shopeeUrl:options.shopeeUrl,product:options.product,status:options.adStatus});rule.adId=ad.adId;rule.creativeId=ad.creativeId;rule.adStatus=ad.status;rule.adCreatedAt=now();upsertInstagramRule({creationId:rule.creationId,mediaId:rule.mediaId,options:rule});}
+    catch(e){adError=e.message;rule.adError=e.message;upsertInstagramRule({creationId:rule.creationId,mediaId:rule.mediaId,options:rule});}
+  }
+  return {...result,commerce:{dmEnabled:Boolean(options.dmEnabled),keyword:options.keyword,createAd:Boolean(options.createAd),ad,adError,warning:options.warning||''}};
+}
+function updateInstagramHistoryAfterFinalize(creationId,mediaId,commerce={}){
+  const s=loadStore();const row=(s.history||[]).find(x=>x.platform==='instagram'&&x.creationId===creationId);
+  if(row){row.mediaId=mediaId;row.status='PUBLISHED';if(commerce?.ad?.adId)row.adId=commerce.ad.adId;if(commerce?.adError)row.adError=commerce.adError;saveStore(s);}
+}
+function upsertInstagramRule({creationId='',mediaId='',options={}}={}){
+  const s=loadStore(); s.instagramRules=Array.isArray(s.instagramRules)?s.instagramRules:[];
+  let r=s.instagramRules.find(x=>(mediaId&&x.mediaId===mediaId)||(creationId&&x.creationId===creationId));
+  if(!r){ r={id:crypto.randomUUID(),createdAt:now()}; s.instagramRules.unshift(r); }
+  Object.assign(r,{creationId:creationId||r.creationId||'',mediaId:mediaId||r.mediaId||'',updatedAt:now(),...options});
+  s.instagramRules=s.instagramRules.slice(0,500); saveStore(s); return r;
+}
+function finishInstagramRule(creationId,mediaId){
+  const s=loadStore(); s.instagramRules=Array.isArray(s.instagramRules)?s.instagramRules:[];
+  const r=s.instagramRules.find(x=>x.creationId===creationId); if(r){r.mediaId=mediaId;r.updatedAt=now();saveStore(s);} return r||null;
+}
+function findInstagramRule(mediaId){ const s=loadStore(); return (s.instagramRules||[]).find(x=>x.mediaId===mediaId&&x.dmEnabled); }
+function hasDmLog(commentId){ const s=loadStore(); return (s.instagramDmLog||[]).some(x=>x.commentId===commentId&&x.status==='SENT'); }
+function saveDmLog(row){ const s=loadStore(); s.instagramDmLog=Array.isArray(s.instagramDmLog)?s.instagramDmLog:[]; s.instagramDmLog.unshift({id:crypto.randomUUID(),createdAt:now(),...row}); s.instagramDmLog=s.instagramDmLog.slice(0,1000); saveStore(s); }
+async function sendInstagramPrivateReply(commentId,message){
+  const cfg=effectiveSettings(loadStore().settings||{});
+  try{
+    return await instagramGraph(`${cfg.instagramUserId}/messages`,{method:'POST',params:{recipient:JSON.stringify({comment_id:commentId}),message:JSON.stringify({text:message})}});
+  }catch(primaryError){
+    try{ return await instagramGraph(`${commentId}/private_replies`,{method:'POST',params:{message}}); }
+    catch(fallbackError){ throw new Error(`${primaryError.message} | Fallback private_replies: ${fallbackError.message}`); }
+  }
+}
+async function replyInstagramComment(commentId,message){ return instagramGraph(`${commentId}/replies`,{method:'POST',params:{message}}); }
+function verifyMetaWebhookSignature(req){
+  const secret=envText('META_APP_SECRET'); if(!secret)return true;
+  const sig=String(req.get('x-hub-signature-256')||''); if(!sig.startsWith('sha256='))return false;
+  const expected='sha256='+crypto.createHmac('sha256',secret).update(req.rawBody||Buffer.alloc(0)).digest('hex');
+  try{return crypto.timingSafeEqual(Buffer.from(sig),Buffer.from(expected));}catch{return false;}
+}
+function extractInstagramCommentEvents(payload){
+  const out=[];
+  for(const entry of payload?.entry||[]){
+    for(const change of entry?.changes||[]){
+      if(change?.field && !['comments','feed'].includes(change.field))continue;
+      const v=change?.value||{}; const commentId=String(v.id||v.comment_id||'').trim();
+      if(!commentId)continue;
+      out.push({commentId,text:String(v.text||v.message||''),mediaId:String(v.media?.id||v.media_id||v.media?.media_id||''),username:String(v.from?.username||v.from?.name||v.username||''),fromId:String(v.from?.id||v.user_id||'')});
+    }
+  }
+  return out;
+}
+async function processInstagramCommentEvent(ev){
+  try{
+    if(!ev.commentId||hasDmLog(ev.commentId))return;
+    let mediaId=ev.mediaId, text=ev.text, username=ev.username;
+    if(!mediaId||!text){
+      try{const d=await instagramGraph(ev.commentId,{params:{fields:'id,text,from,media'}});mediaId=mediaId||String(d.media?.id||'');text=text||String(d.text||'');username=username||String(d.from?.username||d.from?.name||'');}catch{}
+    }
+    const rule=findInstagramRule(mediaId); if(!rule||!keywordMatches(text,rule.keyword))return;
+    const message=renderCommerceTemplate(rule.dmTemplate,{link:rule.shopeeUrl,product:rule.product,keyword:rule.keyword});
+    if(!message||!rule.shopeeUrl){saveDmLog({commentId:ev.commentId,mediaId,status:'SKIPPED',reason:'Regra sem link/mensagem',username});return;}
+    const dm=await sendInstagramPrivateReply(ev.commentId,message);
+    if(rule.publicReplyEnabled&&rule.publicReplyTemplate){ try{await replyInstagramComment(ev.commentId,renderCommerceTemplate(rule.publicReplyTemplate,{link:rule.shopeeUrl,product:rule.product,keyword:rule.keyword}));}catch{} }
+    saveDmLog({commentId:ev.commentId,mediaId,status:'SENT',messageId:String(dm?.message_id||dm?.id||''),username,keyword:rule.keyword});
+  }catch(e){ saveDmLog({commentId:ev.commentId,mediaId:ev.mediaId||'',status:'ERROR',error:e.message,username:ev.username||''}); }
+}
+app.get('/webhooks/meta/instagram',(req,res)=>{
+  const cfg=effectiveSettings(loadStore().settings||{}); const mode=String(req.query['hub.mode']||''), token=String(req.query['hub.verify_token']||''), challenge=String(req.query['hub.challenge']||'');
+  if(mode==='subscribe'&&cfg.metaWebhookVerifyToken&&token===cfg.metaWebhookVerifyToken)return res.status(200).send(challenge);
+  res.sendStatus(403);
+});
+app.post('/webhooks/meta/instagram',(req,res)=>{
+  if(!verifyMetaWebhookSignature(req))return res.sendStatus(401);
+  const events=extractInstagramCommentEvents(req.body);res.sendStatus(200);
+  for(const ev of events)Promise.resolve().then(()=>processInstagramCommentEvent(ev)).catch(()=>{});
+});
+app.get('/api/instagram/commerce-status',mustLogin,async(req,res)=>{
+  const s=loadStore(), cfg=effectiveSettings(s.settings||{});
+  res.json({
+    dmConfigured:Boolean(cfg.instagramAccessToken&&cfg.instagramUserId&&cfg.metaWebhookVerifyToken),
+    adsConfigured:Boolean((cfg.metaAdsAccessToken||cfg.instagramAccessToken)&&cfg.metaAdAccountId&&cfg.metaAdSetId&&cfg.metaPageId&&cfg.instagramUserId),
+    webhookUrl:`${baseUrl(req)}/webhooks/meta/instagram`, keyword:cfg.instagramDmKeyword,
+    rules:(s.instagramRules||[]).filter(x=>x.mediaId).length, sent:(s.instagramDmLog||[]).filter(x=>x.status==='SENT').length,
+    recentDm:(s.instagramDmLog||[]).slice(0,10)
+  });
+});
+app.get('/api/meta/ads/status',mustLogin,async(_req,res)=>{
+  try{
+    const cfg=effectiveSettings(loadStore().settings||{}), accountId=normalizeAdAccountId(cfg.metaAdAccountId);
+    if(!accountId||!cfg.metaAdSetId)return res.json({configured:false,error:'Informe Ad Account ID e Ad Set ID.'});
+    const [account,adset]=await Promise.all([
+      metaAdsGraph(`act_${accountId}`,{params:{fields:'id,name,account_status,currency,timezone_name'}}),
+      metaAdsGraph(cfg.metaAdSetId,{params:{fields:'id,name,status,effective_status,campaign{id,name,status}'}})
+    ]);
+    res.json({configured:true,connected:true,account,adset});
+  }catch(e){res.json({configured:true,connected:false,error:e.message});}
+});
+
 app.get('/api/instagram/token-status',mustLogin,async(_req,res)=>{try{res.json(await maintainInstagramToken());}catch(e){res.status(400).json({error:e.message});}});
 app.post('/api/instagram/token-maintain',mustLogin,async(_req,res)=>{try{res.json(await maintainInstagramToken({force:true}));}catch(e){res.status(400).json({error:e.message});}});
 app.get('/api/instagram/status',mustLogin,async(_req,res)=>{try{const cfg=effectiveSettings(loadStore().settings||{});if(!cfg.instagramAccessToken||!cfg.instagramUserId)return res.json({configured:false,userId:cfg.instagramUserId||''});const info=await instagramAccountInfo();res.json({configured:true,connected:true,...info});}catch(e){res.json({configured:true,connected:false,error:e.message});}});
@@ -688,8 +900,8 @@ app.post('/api/instagram/publish-remote',mustLogin,async(req,res)=>{
   try{
     const id=String(req.body.remoteVideoId||'').trim(); if(!/^[A-Za-z0-9_-]{8,200}$/.test(id))return res.status(400).json({error:'ID do vídeo WeDrop inválido.'});
     const caption=String(req.body.caption||'').trim(); const videoUrl=instagramPublicMediaUrl(req,'wedrop',id,3600);
-    const result=await publishInstagramReel({req,videoUrl,caption});
-    const s=loadStore();s.history.unshift({id:crypto.randomUUID(),platform:'instagram',mediaId:result.mediaId||'',creationId:result.creationId||'',filename:String(req.body.filename||'video-wedrop'),caption,status:result.status||'PROCESSING',createdAt:now()});s.history=s.history.slice(0,100);saveStore(s);
+    let result=await publishInstagramReel({req,videoUrl,caption}); result=await registerInstagramCommerce(result,req.body||{});
+    const o=normalizeCommerceOptions(req.body||{}),s=loadStore();s.history.unshift({id:crypto.randomUUID(),platform:'instagram',mediaId:result.mediaId||'',creationId:result.creationId||'',filename:String(req.body.filename||'video-wedrop'),product:o.product,shopeeUrl:o.shopeeUrl,caption,dmKeyword:o.keyword,adId:result.commerce?.ad?.adId||'',status:result.status||'PROCESSING',createdAt:now()});s.history=s.history.slice(0,100);saveStore(s);
     res.json(result);
   }catch(e){res.status(400).json({error:e.message});}
 });
@@ -697,14 +909,22 @@ app.post('/api/instagram/publish',mustLogin,upload.single('video'),async(req,res
   try{
     if(!req.file)return res.status(400).json({error:'Envie um vídeo.'});
     const caption=String(req.body.caption||'').trim(); const filename=path.basename(req.file.path); const videoUrl=instagramPublicMediaUrl(req,'upload',filename,3600);
-    const result=await publishInstagramReel({req,videoUrl,caption});
-    const s=loadStore();s.history.unshift({id:crypto.randomUUID(),platform:'instagram',mediaId:result.mediaId||'',creationId:result.creationId||'',filename:req.file.originalname,caption,status:result.status||'PROCESSING',createdAt:now()});s.history=s.history.slice(0,100);saveStore(s);
+    let result=await publishInstagramReel({req,videoUrl,caption}); result=await registerInstagramCommerce(result,req.body||{});
+    const o=normalizeCommerceOptions(req.body||{}),s=loadStore();s.history.unshift({id:crypto.randomUUID(),platform:'instagram',mediaId:result.mediaId||'',creationId:result.creationId||'',filename:req.file.originalname,product:o.product,shopeeUrl:o.shopeeUrl,caption,dmKeyword:o.keyword,adId:result.commerce?.ad?.adId||'',status:result.status||'PROCESSING',createdAt:now()});s.history=s.history.slice(0,100);saveStore(s);
     setTimeout(()=>removeFile(req.file.path),10*60*1000).unref?.();
     res.json(result);
   }catch(e){if(req.file?.path)setTimeout(()=>removeFile(req.file.path),10*60*1000).unref?.();res.status(400).json({error:e.message});}
 });
 app.post('/api/instagram/finalize',mustLogin,async(req,res)=>{
-  try{const creationId=String(req.body.creationId||'').trim();if(!/^\d+$/.test(creationId))return res.status(400).json({error:'Container inválido.'});const st=await instagramGraph(`${creationId}`,{params:{fields:'status_code,status'}});if(st.status_code!=='FINISHED')return res.json({ok:true,pending:true,creationId,status:st.status_code||'IN_PROGRESS',message:st.status||'Ainda processando.'});const cfg=effectiveSettings(loadStore().settings||{});const p=await instagramGraph(`${cfg.instagramUserId}/media_publish`,{method:'POST',params:{creation_id:creationId}});res.json({ok:true,pending:false,creationId,mediaId:p.id,status:'PUBLISHED',message:'Reel publicado no Instagram.'});}catch(e){res.status(400).json({error:e.message});}
+  try{
+    const creationId=String(req.body.creationId||'').trim();if(!/^\d+$/.test(creationId))return res.status(400).json({error:'Container inválido.'});
+    const st=await instagramGraph(`${creationId}`,{params:{fields:'status_code,status'}});if(st.status_code!=='FINISHED')return res.json({ok:true,pending:true,creationId,status:st.status_code||'IN_PROGRESS',message:st.status||'Ainda processando.'});
+    const cfg=effectiveSettings(loadStore().settings||{});const p=await instagramGraph(`${cfg.instagramUserId}/media_publish`,{method:'POST',params:{creation_id:creationId}});
+    const rule=finishInstagramRule(creationId,p.id);let ad=null,adError='';
+    if(rule?.createAd){try{ad=await createMetaAdForReel({mediaId:p.id,shopeeUrl:rule.shopeeUrl,product:rule.product,status:rule.adStatus});upsertInstagramRule({creationId,mediaId:p.id,options:{...rule,adId:ad.adId,creativeId:ad.creativeId,adCreatedAt:now()}});}catch(e){adError=e.message;upsertInstagramRule({creationId,mediaId:p.id,options:{...rule,adError}});}}
+    const result={ok:true,pending:false,creationId,mediaId:p.id,status:'PUBLISHED',message:'Reel publicado no Instagram.',commerce:{dmEnabled:Boolean(rule?.dmEnabled),keyword:rule?.keyword||'',createAd:Boolean(rule?.createAd),ad,adError}};
+    updateInstagramHistoryAfterFinalize(creationId,p.id,result.commerce);res.json(result);
+  }catch(e){res.status(400).json({error:e.message});}
 });
 
 async function refreshTokenIfNeeded(force=false){
@@ -973,4 +1193,4 @@ app.post('/api/status/:publishId', mustLogin, async(req,res)=>{
   try{const d=await tiktokJson('https://open.tiktokapis.com/v2/post/publish/status/fetch/',{method:'POST',body:JSON.stringify({publish_id:req.params.publishId})});res.json(d.data||{});}catch(e){res.status(400).json({error:e.message});}
 });
 
-app.listen(PORT,()=>console.log(`REDEACHADOS BR Publisher Web V5.4.11 em http://localhost:${PORT}`));
+app.listen(PORT,()=>console.log(`REDEACHADOS BR Publisher Web V5.5.0 em http://localhost:${PORT}`));
