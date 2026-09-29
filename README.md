@@ -138,3 +138,14 @@ Commit sugerido: `Update V5.4.8 Render FFmpeg fix`
 
 ## V5.5.9 — compartilhamento no iPhone
 A página do QR pré-carrega o vídeo antes de liberar o botão Compartilhar. Assim, no toque, o iOS recebe imediatamente a chamada de compartilhamento. Se o navegador não aceitar o arquivo, use **Salvar vídeo no iPhone** como fallback.
+
+
+## V5.5.13 — Story Bridge nativo para iPhone
+
+O fluxo assistido de Story agora oferece um botão `Abrir direto no Story do Instagram` que chama o esquema `redeachados://story`. Para funcionar, instale o auxiliar nativo incluído em `ios-native-helper/`. O auxiliar baixa a cópia temporária do vídeo, grava os dados no UIPasteboard e abre o editor de Instagram Stories. O Story automático oficial via Graph API continua disponível separadamente.
+
+## V5.5.14 — UI Compact Pro
+
+Atualização visual focada no uso diário do Publisher em desktop e celular. A lógica de catálogo, WeDrop, TikTok, Instagram, Direct, Stories, Supabase e Render foi preservada.
+
+Principais mudanças: lista de vídeos mais compacta, comparação por compatibilidade, seleção única visível, painel de busca automática condensado, botões e ícones com contraste maior, sidebar e coluna de status menores, atividade recente compacta e redução geral de espaços vazios.

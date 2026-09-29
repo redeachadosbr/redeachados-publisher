@@ -11,9 +11,9 @@
   <link rel="apple-touch-icon" href="/icon-192.png" />
   <link rel="icon" href="/icon-192.png" />
   <title>REDEACHADOS BR · Publisher</title>
-  <link rel="stylesheet" href="/styles.css?v=557-stories" />
+  <link rel="stylesheet" href="/styles.css?v=5514-ui-compact-pro" />
 </head>
-<body>
+<body class="ui-compact-pro">
   <svg class="icon-definitions" xmlns="http://www.w3.org/2000/svg" aria-hidden="true"><defs>
     <symbol id="i-grid" viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/><rect x="14" y="14" width="7" height="7" rx="1.5"/></symbol>
     <symbol id="i-link" viewBox="0 0 24 24"><path d="m10 14 4-4m-6 6-1 1a4 4 0 0 1-6-6l4-4a4 4 0 0 1 6 0m2 1 1-1a4 4 0 0 1 6 6l-4 4a4 4 0 0 1-6 0" transform="translate(1 0)"/></symbol>
@@ -26,7 +26,7 @@
     <symbol id="i-check" viewBox="0 0 24 24"><path d="m5 12 4 4L19 6"/></symbol>
     <symbol id="i-spark" viewBox="0 0 24 24"><path d="m12 3 2.5 6.5L21 12l-6.5 2.5L12 21l-2.5-6.5L3 12l6.5-2.5ZM20 2v4m-2-2h4"/></symbol>
     <symbol id="i-instagram" viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="5"/><circle cx="12" cy="12" r="4"/><path d="M17.5 6.5h.01"/></symbol>
-    <symbol id="i-tiktok" viewBox="0 0 24 24"><path d="M14 3v12.5a4.5 4.5 0 1 1-4.5-4.5M14 3c0 3 2 5 5 5"/></symbol>
+    <symbol id="i-tiktok" viewBox="0 0 24 24"><path d="M14 3v12.5a4.5 4.5 0 1 1-4.5-4.5M14 3c0 3 2 5 5 5"/></symbol><symbol id="i-eye" viewBox="0 0 24 24"><path d="M2.5 12s3.5-6 9.5-6 9.5 6 9.5 6-3.5 6-9.5 6-9.5-6-9.5-6Z"/><circle cx="12" cy="12" r="2.5"/></symbol><symbol id="i-chevron-down" viewBox="0 0 24 24"><path d="m7 9 5 5 5-5"/></symbol><symbol id="i-bolt" viewBox="0 0 24 24"><path d="m13 2-8 12h7l-1 8 8-12h-7l1-8Z"/></symbol><symbol id="i-circle-check" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="m8 12 2.5 2.5L16 9"/></symbol>
   </defs></svg>
   <div id="toast" role="status" aria-live="polite"></div>
   <a class="skip-link" href="#create">Ir para o conteúdo</a>
@@ -38,7 +38,7 @@
       <a class="brand" href="#create" aria-label="Rede Achados BR Publisher"><span class="brand-mark">RA<span>•</span></span><span class="brand-name">REDE ACHADOS <b>BR</b><small>Publisher Studio</small></span></a>
       <span class="nav-caption">ESPAÇO DE TRABALHO</span>
       <nav class="side-nav"><a class="nav-link active" href="#create" aria-current="page"><svg class="icon"><use href="#i-grid"/></svg><span>Criar publicação</span></a><a class="nav-link" href="#channels"><svg class="icon"><use href="#i-link"/></svg><span>Canais</span></a><a class="nav-link" href="#activity"><svg class="icon"><use href="#i-clock"/></svg><span>Histórico</span></a></nav>
-      <div class="sidebar-footer"><div class="sidebar-note"><svg class="icon"><use href="#i-spark"/></svg><p>Mais conteúdo.<br><strong>Mais possibilidades.</strong></p></div><span>REDE ACHADOS BR <b>V5.5.12</b></span></div>
+      <div class="sidebar-footer"><div class="sidebar-note"><svg class="icon"><use href="#i-spark"/></svg><p>Mais conteúdo.<br><strong>Mais possibilidades.</strong></p></div><span>REDE ACHADOS BR <b>V5.5.14</b></span></div>
     </aside>
     <div class="page-stage">
       <header class="app-topbar"><div class="breadcrumb">Workspace <span>/</span> <strong>Publisher</strong></div><button id="settingsBtn" type="button" class="ghost"><svg class="icon"><use href="#i-settings"/></svg>Configurações</button></header>
@@ -47,13 +47,13 @@
         <div class="workspace-grid">
           <div class="creation-column">
             <section class="card source-card" aria-labelledby="sourceTitle">
-              <div class="section-head"><span class="step-number">01</span><div><h2 id="sourceTitle">Escolha seu vídeo</h2><p>Do seu aparelho ou do catálogo WeDrop.</p></div><span class="format-badge">MP4 · MOV · WebM</span></div>
+              <div class="section-head"><span class="step-number">01</span><div><h2 id="sourceTitle">Escolha seu vídeo</h2><p>Envie um arquivo ou encontre rapidamente no catálogo WeDrop.</p></div><span class="format-badge">MP4 · MOV · WebM</span></div>
               <div class="source-grid">
                 <div class="manual-upload-card">
                   <div id="dropzone" class="dropzone"><input id="videoInput" type="file" accept="video/mp4,video/quicktime,video/webm" hidden><div class="upload-icon"><svg class="icon"><use href="#i-upload"/></svg></div><h3>Seu vídeo começa aqui</h3><p>Arraste o arquivo ou escolha no aparelho.</p><button id="chooseBtn" type="button" class="primary">Escolher vídeo <svg class="icon"><use href="#i-arrow"/></svg></button><span class="small">Computador, Fotos ou Arquivos do iPhone</span></div>
                   <div class="upload-selected"><div class="upload-icon"><svg class="icon"><use href="#i-check"/></svg></div><h3>Vídeo selecionado</h3><p class="selected-file-name" id="selectedFileLabel">Pronto para revisar abaixo.</p><button id="manualUploadBtn" type="button" class="ghost">Escolher outro vídeo</button></div>
                 </div>
-                <div class="sku-card"><div class="source-heading"><span class="source-icon"><svg class="icon"><use href="#i-search"/></svg></span><div><h3>Buscar pela SKU</h3><p>Encontre o vídeo do produto na WeDrop.</p></div></div><label for="wedropSku">Código do produto</label><div class="sku-search"><input id="wedropSku" inputmode="text" autocapitalize="characters" placeholder="Ex.: VP-2383" /><button id="wedropSearchBtn" type="button" class="publish mini">Buscar vídeo</button></div><details class="manual-search"><summary>Buscar pelo nome do produto</summary><label class="sr-only" for="wedropQuery">Nome do produto para busca manual</label><div class="manual-search-row"><input id="wedropQuery" placeholder="Digite ou ajuste o nome do produto" /><button id="wedropManualBtn" type="button" class="ghost">Tentar busca</button></div><p class="small">Se necessário, reduza as palavras da busca.</p></details><div id="wedropStatus" class="small" role="status" aria-live="polite"></div><div id="wedropAttempts" class="search-attempts hidden"></div><div id="wedropResults" class="video-results hidden"></div></div>
+                <div class="sku-card"><div class="source-heading"><span class="source-icon"><svg class="icon"><use href="#i-search"/></svg></span><div><h3>Buscar vídeo do produto</h3><p>Use a SKU para localizar as melhores opções automaticamente.</p></div></div><label for="wedropSku">SKU do produto</label><div class="sku-search"><input id="wedropSku" inputmode="text" autocapitalize="characters" placeholder="Ex.: VP-2383" /><button id="wedropSearchBtn" type="button" class="publish mini">Buscar</button></div><details class="manual-search"><summary>Busca alternativa por nome</summary><label class="sr-only" for="wedropQuery">Nome do produto para busca manual</label><div class="manual-search-row"><input id="wedropQuery" placeholder="Digite ou ajuste o nome do produto" /><button id="wedropManualBtn" type="button" class="ghost">Tentar busca</button></div><p class="small">Se necessário, reduza as palavras da busca.</p></details><div id="wedropStatus" class="small" role="status" aria-live="polite"></div><div id="wedropAttempts" class="search-attempts hidden"></div><div id="wedropResults" class="video-results hidden"></div></div>
               </div>
             </section>
             <section class="card upload-card editor-card" aria-labelledby="editorTitle">
@@ -82,19 +82,19 @@
                     <button id="publishBtn" type="button" class="social-publish-btn tiktok-publish" aria-label="Enviar rascunho ao TikTok"><svg class="icon social-button-icon"><use href="#i-tiktok"/></svg><span class="social-button-copy"><b>Enviar rascunho ao TikTok</b><small>Finalize a publicação no aplicativo</small></span></button>
                     <button id="instagramPublishBtn" type="button" class="social-publish-btn instagram-publish" aria-label="Publicar Reel no Instagram"><svg class="icon social-button-icon"><use href="#i-instagram"/></svg><span class="social-button-copy"><b>Publicar Reel no Instagram</b><small>Publicação automática do Reel</small></span></button>
                   </div>
-                  <section class="story-box" aria-label="Stories do Instagram"><div class="story-head"><div><span class="eyebrow">STORIES</span><h4>Leve o mesmo vídeo para o Story</h4></div><span class="story-badge">NOVO</span></div><div class="story-actions"><button id="prepareStoryBtn" type="button" class="story-btn story-link"><svg class="icon"><use href="#i-link"/></svg><span><b>Continuar Story no iPhone</b><small>Gera um QR Code para abrir o vídeo e o link da Shopee diretamente no iPhone.</small></span></button><button id="instagramStoryPublishBtn" type="button" class="story-btn story-auto"><svg class="icon"><use href="#i-instagram"/></svg><span><b>Publicar Story automático</b><small>API oficial · sem adesivo de link · requer conta Instagram Business compatível.</small></span></button></div><p id="storyStatus" class="small story-status">Para vender pelo Story, use a primeira opção: escaneie o QR Code no iPhone, copie o link da Shopee e compartilhe o vídeo no Instagram.</p></section>
+                  <section class="story-box" aria-label="Stories do Instagram"><div class="story-head"><div><span class="eyebrow">STORIES</span><h4>Leve o mesmo vídeo para o Story</h4></div><span class="story-badge">NOVO</span></div><div class="story-actions"><button id="prepareStoryBtn" type="button" class="story-btn story-link"><svg class="icon"><use href="#i-link"/></svg><span><b>Abrir Story no iPhone</b><small>Gera um QR Code. No iPhone, o auxiliar nativo abre o editor de Stories com o vídeo carregado.</small></span></button><button id="instagramStoryPublishBtn" type="button" class="story-btn story-auto"><svg class="icon"><use href="#i-instagram"/></svg><span><b>Publicar Story automático</b><small>API oficial · sem adesivo de link · requer conta Instagram Business compatível.</small></span></button></div><p id="storyStatus" class="small story-status">Para vender pelo Story, use a primeira opção: escaneie o QR Code no iPhone e toque em “Abrir direto no Story do Instagram”. O auxiliar nativo precisa estar instalado no iPhone.</p></section>
                   <div class="sync-reel-row"><button id="syncLatestReelBtn" type="button" class="ghost sync-reel-btn">↻ Sincronizar último Reel com o Direct</button><span class="small">Use apenas para reparar um Reel já publicado que ainda não apareceu em <b>reel_links</b>.</span></div><p id="draftModeInfo" class="small"><b>No TikTok, você finaliza a publicação no aplicativo.</b> O vídeo vai para a caixa de entrada; privacidade, comentários, Dueto, Costurar e marcação de IA são definidos por lá. No Instagram, o Reel é publicado automaticamente. Stories podem ser publicados pela API sem link ou preparados para você adicionar o adesivo Link no celular.</p></div>
               </div>
             </section>
             <div class="empty-workspace" id="emptyWorkspace"><span class="empty-icon"><svg class="icon"><use href="#i-video"/></svg></span><div><h3>O próximo passo é com a IA.</h3><p>Ao escolher um vídeo, sua prévia e os textos aparecem aqui.</p></div><span class="empty-line"></span></div>
           </div>
           <aside class="workspace-aside">
-            <section class="card channels-card" id="channels" aria-labelledby="channelsTitle"><div class="aside-heading"><h2 id="channelsTitle">Seus canais</h2><svg class="icon"><use href="#i-link"/></svg></div><p class="aside-description">Conexões para compartilhar.</p><div class="connection"><div class="channel-heading"><span class="channel-icon tiktok"><svg class="icon"><use href="#i-tiktok"/></svg></span><h3>TikTok<small>Envio de rascunhos</small></h3></div><p id="connectionText" role="status">Verificando conexão...</p><a id="connectBtn" href="/auth/tiktok" target="_blank" rel="noopener" class="ghost linkbtn">Conectar TikTok</a></div><div class="connection"><div class="channel-heading"><span class="channel-icon instagram"><svg class="icon"><use href="#i-instagram"/></svg></span><h3>Instagram<small>Reels + Stories</small></h3></div><p id="instagramConnectionText" role="status">Verificando conexão...</p><button type="button" class="ghost" data-open-settings="settings-instagram">Configurar Instagram</button></div></section>
+            <section class="card channels-card" id="channels" aria-labelledby="channelsTitle"><div class="aside-heading"><h2 id="channelsTitle">Canais conectados</h2><svg class="icon"><use href="#i-link"/></svg></div><p class="aside-description">Status rápido das suas publicações.</p><div class="connection"><div class="channel-heading"><span class="channel-icon tiktok"><svg class="icon"><use href="#i-tiktok"/></svg></span><h3>TikTok<small>Envio de rascunhos</small></h3></div><p id="connectionText" role="status">Verificando conexão...</p><a id="connectBtn" href="/auth/tiktok" target="_blank" rel="noopener" class="ghost linkbtn">Conectar TikTok</a></div><div class="connection"><div class="channel-heading"><span class="channel-icon instagram"><svg class="icon"><use href="#i-instagram"/></svg></span><h3>Instagram<small>Reels + Stories</small></h3></div><p id="instagramConnectionText" role="status">Verificando conexão...</p><button type="button" class="ghost" data-open-settings="settings-instagram">Configurar Instagram</button></div></section>
             <section class="card history-card" id="activity" aria-labelledby="historyTitle"><div class="aside-heading"><h2 id="historyTitle">Atividade recente</h2><svg class="icon"><use href="#i-clock"/></svg></div><div id="history" class="history"></div></section>
-            <div class="workflow-note"><span class="eyebrow">UM FLUXO SIMPLES</span><ol><li><span>1</span>Escolha o vídeo</li><li><span>2</span>Revise o conteúdo</li><li><span>3</span>Envie para seus canais</li></ol></div>
+            <div class="workflow-note"><span class="eyebrow">FLUXO DE PUBLICAÇÃO</span><ol><li><span>1</span>Escolha o vídeo</li><li><span>2</span>Revise o conteúdo</li><li><span>3</span>Envie para seus canais</li></ol></div>
           </aside>
         </div>
-        <footer class="page-footer">Feito para dar mais tempo ao que importa.<span>REDE ACHADOS BR · Publisher V5.5.12 · <a href="/privacy" target="_blank" rel="noopener">Privacidade</a></span></footer>
+        <footer class="page-footer">Feito para dar mais tempo ao que importa.<span>REDE ACHADOS BR · Publisher V5.5.14 · <a href="/privacy" target="_blank" rel="noopener">Privacidade</a></span></footer>
       </main>
     </div>
   </div>
@@ -118,12 +118,12 @@
 
   <dialog id="storyQrDialog" aria-labelledby="storyQrTitle">
     <div class="story-qr-dialog">
-      <div class="dialog-head"><div><span class="eyebrow">CONTINUAR NO IPHONE</span><h2 id="storyQrTitle">Story com link da Shopee</h2><p>Escaneie com a câmera do iPhone. O vídeo e o link ficam prontos no celular.</p></div><button id="closeStoryQrBtn" type="button" class="x" aria-label="Fechar">×</button></div>
-      <div class="story-qr-body"><img id="storyQrImage" alt="QR Code para continuar o Story no iPhone"><div class="story-qr-steps"><b>No iPhone</b><span>1. Escaneie o QR Code</span><span>2. Toque em “Copiar link da Shopee”</span><span>3. Toque em “Compartilhar vídeo” e escolha Instagram</span><span>4. No Story, adicione o adesivo Link e cole</span><small>O QR Code expira em 30 minutos.</small></div></div>
+      <div class="dialog-head"><div><span class="eyebrow">ABRIR NO IPHONE</span><h2 id="storyQrTitle">Story direto no Instagram</h2><p>Escaneie com a câmera do iPhone e abra o auxiliar nativo para entrar diretamente no editor de Stories.</p></div><button id="closeStoryQrBtn" type="button" class="x" aria-label="Fechar">×</button></div>
+      <div class="story-qr-body"><img id="storyQrImage" alt="QR Code para continuar o Story no iPhone"><div class="story-qr-steps"><b>No iPhone</b><span>1. Escaneie o QR Code</span><span>2. Toque em “Abrir direto no Story do Instagram”</span><span>3. O auxiliar nativo prepara o vídeo e abre o editor de Stories</span><span>4. Revise o Story e publique; se o link não aparecer, use o botão de copiar link como alternativa</span><small>O QR Code expira em 30 minutos.</small></div></div>
       <div class="story-qr-footer"><button id="copyStoryMobileUrlBtn" type="button" class="ghost">Copiar endereço do QR</button><button id="doneStoryQrBtn" type="button" class="primary">Pronto</button></div>
     </div>
   </dialog>
-  <script src="/app.js?v=558-story-qr"></script><script src="/ui.js?v=558-story-qr"></script>
+  <script src="/app.js?v=5514-ui-compact-pro"></script><script src="/ui.js?v=5514-ui-compact-pro"></script>
   <script>if('serviceWorker' in navigator){navigator.serviceWorker.register('/sw.js').catch(()=>{})}</script>
 </body>
 </html>

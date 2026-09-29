@@ -1,6 +1,6 @@
 {
   "name": "redeachados-br-publisher-web",
-  "version": "5.5.12",
+  "version": "5.5.14",
   "private": true,
   "type": "module",
   "scripts": {

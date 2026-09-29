@@ -322,7 +322,7 @@ async function prepareStoryWithLink(){
     }
     showStoryQr(r);
     if(status)status.innerHTML='✅ QR Code pronto. <b>Escaneie com o iPhone</b> para copiar o link da Shopee e compartilhar o vídeo no Instagram.';
-    toast('QR Code pronto para continuar o Story no iPhone.');
+    toast('QR Code pronto. No iPhone, abra e toque em “Abrir direto no Story do Instagram”.');
   }catch(e){if(status)status.textContent='⚠️ '+e.message;toast(e.message,true)}finally{b.disabled=false;}
 }
 $('#prepareStoryBtn')?.addEventListener('click',prepareStoryWithLink);
@@ -442,7 +442,8 @@ function renderWedropAttempts(data){
   const box=$('#wedropAttempts'), list=data.gallery?.attempts||[]; box.innerHTML='';
   if(!list.length){box.classList.add('hidden');return}
   box.classList.remove('hidden');
-  box.innerHTML='<b>Tentativas automáticas</b>'+list.map((x,i)=>`<div class="attempt-row"><span>${i+1}. ${esc(x.query)}</span><small>${x.matches?`✅ ${x.matches} resultado(s)`:`sem resultado · similaridade ${Math.round((x.bestScore||0)*100)}%`}</small></div>`).join('');
+  const totalMatches=list.reduce((sum,x)=>sum+Number(x.matches||0),0);
+  box.innerHTML=`<div class="attempts-head"><span><svg class="icon"><use href="#i-bolt"/></svg><b>Busca automática concluída</b></span><small>${totalMatches} resultado${totalMatches===1?'':'s'} encontrado${totalMatches===1?'':'s'}</small></div><div class="attempts-list">${list.map((x,i)=>`<div class="attempt-row"><span class="attempt-index">${i+1}</span><span class="attempt-query">${esc(x.query)}</span><small class="${x.matches?'ok':'muted'}">${x.matches?`${x.matches} resultado${x.matches===1?'':'s'}`:`similaridade ${Math.round((x.bestScore||0)*100)}%`}</small></div>`).join('')}</div>`;
 }
 async function rememberWedropSearch(sku,query){
   if(!sku||!query)return; try{await api('/api/wedrop/alias',{method:'POST',body:JSON.stringify({sku,query})})}catch{}
@@ -464,10 +465,11 @@ function renderWedropResults(data){
       const durationText=c.durationMs?`${(c.durationMs/1000).toFixed(1)}s`:'Duração não informada';
       const query=c.matchQuery||data.gallery?.bestQuery||'';
       const el=document.createElement('article');el.className='video-result compact'+(i===bestIndex?' best-result':'')+(i>=3?' extra-result hidden':'');
-      el.innerHTML=`<div class="video-result-summary"><button type="button" class="video-result-toggle" aria-expanded="false"><span class="video-result-titleline"><b>Vídeo ${i+1}</b>${i===bestIndex?'<span class="best-badge">★ MELHOR OPÇÃO</span>':''}</span><span class="video-result-name">${esc(title.slice(0,96))}${title.length>96?'…':''}</span><span class="video-result-meta">${esc(durationText)} <span>•</span> Compatibilidade ${score}%</span><span class="result-chevron" aria-hidden="true">⌄</span></button><button type="button" class="primary use-video-btn"><span aria-hidden="true">▶</span> Usar este vídeo</button></div><div class="video-result-details" hidden><div><span class="detail-label">Nome completo</span><p>${esc(title)}</p></div><div class="details-grid"><div><span class="detail-label">Duração</span><p>${esc(durationText)}</p></div><div><span class="detail-label">Compatibilidade</span><p>${score}%</p></div></div>${query?`<div><span class="detail-label">Busca utilizada</span><p>${esc(query)}</p></div>`:''}</div>`;
+      const scoreClass=score>=85?'score-high':score>=65?'score-mid':'score-low';
+      el.innerHTML=`<div class="video-result-summary"><button type="button" class="video-result-toggle" aria-expanded="false" aria-label="Ver detalhes do vídeo ${i+1}"><span class="video-rank">${String(i+1).padStart(2,'0')}</span><span class="video-result-copy"><span class="video-result-titleline"><b>Vídeo ${i+1}</b>${i===bestIndex?'<span class="best-badge">★ MELHOR OPÇÃO</span>':''}</span><span class="video-result-name">${esc(title.slice(0,92))}${title.length>92?'…':''}</span><span class="video-result-meta"><span class="meta-chip">${esc(durationText)}</span><span class="score-pill ${scoreClass}">${score}% compatível</span></span></span><span class="score-track" aria-hidden="true"><i style="width:${Math.max(4,Math.min(score,100))}%"></i></span><svg class="icon result-chevron" aria-hidden="true"><use href="#i-chevron-down"/></svg></button><button type="button" class="primary use-video-btn"><svg class="icon"><use href="#i-circle-check"/></svg><span>Selecionar</span></button></div><div class="video-result-details" hidden><div><span class="detail-label">Nome completo</span><p>${esc(title)}</p></div><div class="details-grid"><div><span class="detail-label">Duração</span><p>${esc(durationText)}</p></div><div><span class="detail-label">Compatibilidade</span><p>${score}%</p></div></div>${query?`<div><span class="detail-label">Busca utilizada</span><p>${esc(query)}</p></div>`:''}</div>`;
       const toggle=el.querySelector('.video-result-toggle'),details=el.querySelector('.video-result-details');
       toggle.onclick=()=>{const willOpen=!el.classList.contains('expanded');closeOthers(el);el.classList.toggle('expanded',willOpen);toggle.setAttribute('aria-expanded',String(willOpen));details.hidden=!willOpen;};
-      el.querySelector('.use-video-btn').onclick=async()=>{await rememberWedropSearch(data.sku,query);const btn=el.querySelector('.use-video-btn');btn.innerHTML='<span aria-hidden="true">✓</span> Vídeo selecionado';btn.classList.add('selected');await loadRemoteVideo(c,p)};
+      el.querySelector('.use-video-btn').onclick=async()=>{await rememberWedropSearch(data.sku,query);box.querySelectorAll('.use-video-btn.selected').forEach(other=>{other.classList.remove('selected');other.innerHTML='<svg class="icon"><use href="#i-circle-check"/></svg><span>Selecionar</span>';});const btn=el.querySelector('.use-video-btn');btn.innerHTML='<svg class="icon"><use href="#i-check"/></svg><span>Selecionado</span>';btn.classList.add('selected');await loadRemoteVideo(c,p)};
       box.appendChild(el);
     });
     if(list.length>3){
