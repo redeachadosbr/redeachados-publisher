@@ -1,4 +1,6 @@
-# REDEACHADOS BR Publisher V5.5.0
+# REDEACHADOS BR Publisher V5.5.2
+
+**Destaques:** resultados de vídeo compactos em accordion, “Ver mais”, botões TikTok/Instagram premium e estados de autenticação/publicação mais claros.
 
 ## Novidade — venda direto do Reel
 

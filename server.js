@@ -55,7 +55,7 @@ function defaults(){
       metaPageId:'', metaAdAccountId:'', metaAdSetId:'', metaAdsAccessToken:'', metaWebhookVerifyToken:'',
       metaCreateAdDefault:false, metaAdDefaultStatus:'PAUSED'
     },
-    history:[], wedropSearchAliases:{}, instagramRules:[], instagramDmLog:[]
+    history:[], wedropSearchAliases:{}, wedropProductAliases:{}, instagramRules:[], instagramDmLog:[]
   };
 }
 function loadStore(){
@@ -65,6 +65,45 @@ function loadStore(){
 function saveStore(s){ fs.writeFileSync(DATA_FILE, JSON.stringify(s,null,2)); }
 function envText(name){ return String(process.env[name]||'').trim(); }
 function envBool(name,fallback=false){ const v=envText(name).toLowerCase(); return v?['1','true','yes','on'].includes(v):fallback; }
+function supabaseCommerceConfig(){
+  const url=envText('SUPABASE_URL').replace(/\/$/,'');
+  const key=envText('SUPABASE_SECRET_KEY') || envText('SUPABASE_SERVICE_ROLE_KEY');
+  return {url,key,configured:Boolean(url&&key)};
+}
+async function syncInstagramRuleToSupabase(rule){
+  const cfg=supabaseCommerceConfig();
+  if(!rule?.mediaId) return {configured:cfg.configured,synced:false,reason:'MEDIA_ID_PENDING'};
+  if(!cfg.configured) return {configured:false,synced:false,reason:'SUPABASE_NOT_CONFIGURED'};
+  if(!rule.shopeeUrl) return {configured:true,synced:false,reason:'PRODUCT_URL_EMPTY'};
+  const row={
+    instagram_media_id:String(rule.mediaId),
+    sku:String(rule.sku||'').trim()||null,
+    product_name:String(rule.product||'Produto').trim()||'Produto',
+    product_url:String(rule.shopeeUrl).trim(),
+    keyword:String(rule.keyword||'QUERO').trim()||'QUERO',
+    auto_dm_enabled:Boolean(rule.dmEnabled),
+    public_reply_enabled:Boolean(rule.publicReplyEnabled),
+    public_reply_text:String(rule.publicReplyTemplate||'Enviei o link no seu Direct ✅'),
+    dm_message_template:String(rule.dmTemplate||'Oi! 👋 Aqui está o link do produto que você pediu: {link}'),
+    active:Boolean(rule.dmEnabled),
+    updated_at:now()
+  };
+  const r=await fetch(`${cfg.url}/rest/v1/reel_links?on_conflict=instagram_media_id`,{
+    method:'POST',
+    headers:{
+      apikey:cfg.key,
+      Authorization:`Bearer ${cfg.key}`,
+      'Content-Type':'application/json',
+      Prefer:'resolution=merge-duplicates,return=minimal'
+    },
+    body:JSON.stringify([row])
+  });
+  if(!r.ok){
+    const body=await r.text().catch(()=> '');
+    throw new Error(`Supabase reel_links HTTP ${r.status}${body?`: ${body.slice(0,300)}`:''}`);
+  }
+  return {configured:true,synced:true};
+}
 function effectiveSettings(stored={}){
   return {
     ...defaults().settings,
@@ -118,6 +157,7 @@ function safeSettings(stored){
     metaCreateAdDefault:Boolean(s.metaCreateAdDefault), metaAdDefaultStatus:s.metaAdDefaultStatus,
     metaTokenAutomationConfigured:Boolean(envText('META_APP_ID')&&envText('META_APP_SECRET')),
     metaAppIdConfigured:Boolean(envText('META_APP_ID')), metaAppSecretConfigured:Boolean(envText('META_APP_SECRET')),
+    supabaseCommerceConfigured:supabaseCommerceConfig().configured,
     geminiModel:s.geminiModel,
     sources:{
       shopeeStoreUrl:envText('SHOPEE_STORE_URL')?'render':'local',
@@ -126,7 +166,8 @@ function safeSettings(stored){
       instagramAccessToken:envText('INSTAGRAM_ACCESS_TOKEN')?'render':'local',
       instagramUserId:envText('INSTAGRAM_USER_ID')?'render':'local',
       metaAdsAccessToken:envText('META_ADS_ACCESS_TOKEN')?'render':'local',
-      metaWebhookVerifyToken:envText('META_WEBHOOK_VERIFY_TOKEN')?'render':'local'
+      metaWebhookVerifyToken:envText('META_WEBHOOK_VERIFY_TOKEN')?'render':'local',
+      supabaseCommerce:supabaseCommerceConfig().configured?'render':'not-configured'
     }
   };
 }
@@ -163,7 +204,7 @@ function findCatalogMatch(query){
     const score=scoreCatalog(query,p.name);
     if(score>bestScore){best=p;bestScore=score;}
   }
-  return bestScore>=0.42 ? {...best,score:Number(bestScore.toFixed(3))} : null;
+  return bestScore>=0.78 ? {...best,score:Number(bestScore.toFixed(3))} : null;
 }
 function parseShopeeCatalog(buffer,filename){
   const book=XLSX.read(buffer,{type:'buffer'});
@@ -254,6 +295,19 @@ function getWedropAlias(sku){
 function saveWedropAlias(sku,query){
   const key=String(sku||'').trim().toUpperCase(), q=cleanSearchTitle(query); if(!key||!q)return;
   const st=loadStore(); st.wedropSearchAliases={...(st.wedropSearchAliases||{}),[key]:q}; saveStore(st);
+}
+function getWedropProductAlias(sku){
+  const key=String(sku||'').trim().toUpperCase();
+  const st=loadStore();
+  const saved=String(st.wedropProductAliases?.[key]||'').trim();
+  if(saved) return saved;
+  // Correção confirmada pelo catálogo/usuário: esta SKU duplicada deve abrir o anúncio com movimento.
+  const confirmed={'NTM3001127V':'22699708957'};
+  return confirmed[key]||'';
+}
+function saveWedropProductAlias(sku,productId){
+  const key=String(sku||'').trim().toUpperCase(), id=String(productId||'').trim(); if(!key||!/^\d+$/.test(id))return;
+  const st=loadStore(); st.wedropProductAliases={...(st.wedropProductAliases||{}),[key]:id}; saveStore(st);
 }
 let galleryCache={loadedAt:0,base:'',records:[],bundleUrl:'',diagnostic:''};
 function decodeJsString(v){
@@ -404,9 +458,18 @@ app.get('/api/wedrop/lookup', mustLogin, async(req,res)=>{
   try{
     const sku=String(req.query.sku||'').trim(); if(!sku) return res.status(400).json({error:'Informe a SKU WeDrop.'});
     const manualQuery=String(req.query.q||'').trim();
+    const explicitProductId=String(req.query.productId||'').trim();
+    const rememberedProductId=explicitProductId?'':getWedropProductAlias(sku);
     let mapped;
-    try{mapped=findCatalogBySku(sku,String(req.query.productId||'').trim());}
-    catch(e){if(e.code==='SKU_AMBIGUOUS')return res.status(409).json({error:e.message,code:e.code,candidates:e.candidates});throw e;}
+    try{mapped=findCatalogBySku(sku,explicitProductId||rememberedProductId);}
+    catch(e){
+      if(rememberedProductId&&!explicitProductId){
+        try{mapped=findCatalogBySku(sku,'');}
+        catch(inner){if(inner.code==='SKU_AMBIGUOUS')return res.status(409).json({error:inner.message,code:inner.code,candidates:inner.candidates});throw inner;}
+      }else if(e.code==='SKU_AMBIGUOUS')return res.status(409).json({error:e.message,code:e.code,candidates:e.candidates});
+      else throw e;
+    }
+    if(explicitProductId&&mapped) saveWedropProductAlias(sku,mapped.id);
     const known={'VP-2383':{name:'Avental Infantil Vida Pratika Mini Chef Branco',source:'known-example'}};
     const product=mapped?{id:mapped.id,sku:mapped.matchedSku||mapped.sku,parentSku:mapped.sku,name:mapped.name,shopeeUrl:mapped.url,source:'shopee-catalog',matchType:mapped.matchType}:(known[sku.toUpperCase()]||{sku,name:'',source:'unresolved'});
     if(!product.name && !manualQuery) return res.status(404).json({code:'SKU_NOT_FOUND',error:'Esta SKU não está no catálogo importado. A planilha de informações básicas contém apenas o SKU principal. Para uma variação, importe uma planilha com os SKUs das variações ou vincule o código em Configurações > Loja e catálogo. Você também pode buscar pelo nome abaixo.'});
@@ -516,7 +579,7 @@ async function extractRemoteFrames(id, filename, durationSec){
   }
 }
 
-app.get('/api/health', (_req,res)=>res.json({ok:true,service:'REDEACHADOS BR Publisher Web V5.5.0'}));
+app.get('/api/health', (_req,res)=>res.json({ok:true,service:'REDEACHADOS BR Publisher Web V5.5.2'}));
 app.get('/api/auth-state',(req,res)=>res.json({locked:Boolean(process.env.APP_PASSWORD),loggedIn:!process.env.APP_PASSWORD||Boolean(req.session?.appAuth)}));
 app.post('/api/login',(req,res)=>{
   if(!process.env.APP_PASSWORD){ req.session.appAuth=true; return res.json({ok:true}); }
@@ -781,6 +844,7 @@ function normalizeCommerceOptions(body={},cfg=effectiveSettings(loadStore().sett
     dmEnabled, keyword, publicReplyEnabled,
     dmTemplate:String(body.dmTemplate||cfg.instagramDmTemplate||'Oi! 👋 Aqui está o link do produto que você pediu: {link}').trim().slice(0,900),
     publicReplyTemplate:String(body.publicReplyTemplate||cfg.instagramPublicReplyTemplate||'Enviei o link no seu Direct ✅').trim().slice(0,250),
+    sku:String(body.sku||'').trim().slice(0,128),
     product:String(body.product||'').trim().slice(0,180), shopeeUrl:String(body.shopeeUrl||'').trim(),
     createAd:inputBool(body.createAd,Boolean(cfg.metaCreateAdDefault)),
     adStatus:String(body.adStatus||cfg.metaAdDefaultStatus||'PAUSED').toUpperCase()==='ACTIVE'?'ACTIVE':'PAUSED'
@@ -793,12 +857,17 @@ async function registerInstagramCommerce(result,body={}){
     options.dmEnabled=false; options.createAd=false; options.warning='Link do produto não informado; Direct automático e anúncio foram desativados para este Reel.';
   }
   const rule=upsertInstagramRule({creationId:result.creationId||'',mediaId:result.mediaId||'',options});
+  let supabaseSync={configured:supabaseCommerceConfig().configured,synced:false,reason:result.mediaId?'NOT_ATTEMPTED':'MEDIA_ID_PENDING'};
+  if(result.mediaId){
+    try{supabaseSync=await syncInstagramRuleToSupabase(rule);}
+    catch(e){supabaseSync={configured:true,synced:false,error:e.message};options.warning=[options.warning,e.message].filter(Boolean).join(' | ');}
+  }
   let ad=null,adError='';
   if(result.mediaId&&options.createAd){
     try{ad=await createMetaAdForReel({mediaId:result.mediaId,shopeeUrl:options.shopeeUrl,product:options.product,status:options.adStatus});rule.adId=ad.adId;rule.creativeId=ad.creativeId;rule.adStatus=ad.status;rule.adCreatedAt=now();upsertInstagramRule({creationId:rule.creationId,mediaId:rule.mediaId,options:rule});}
     catch(e){adError=e.message;rule.adError=e.message;upsertInstagramRule({creationId:rule.creationId,mediaId:rule.mediaId,options:rule});}
   }
-  return {...result,commerce:{dmEnabled:Boolean(options.dmEnabled),keyword:options.keyword,createAd:Boolean(options.createAd),ad,adError,warning:options.warning||''}};
+  return {...result,commerce:{dmEnabled:Boolean(options.dmEnabled),keyword:options.keyword,createAd:Boolean(options.createAd),ad,adError,supabaseSync,warning:options.warning||''}};
 }
 function updateInstagramHistoryAfterFinalize(creationId,mediaId,commerce={}){
   const s=loadStore();const row=(s.history||[]).find(x=>x.platform==='instagram'&&x.creationId===creationId);
@@ -873,8 +942,12 @@ app.post('/webhooks/meta/instagram',(req,res)=>{
 });
 app.get('/api/instagram/commerce-status',mustLogin,async(req,res)=>{
   const s=loadStore(), cfg=effectiveSettings(s.settings||{});
+  const supabaseConfigured=supabaseCommerceConfig().configured;
+  const localWebhookConfigured=Boolean(cfg.metaWebhookVerifyToken);
   res.json({
-    dmConfigured:Boolean(cfg.instagramAccessToken&&cfg.instagramUserId&&cfg.metaWebhookVerifyToken),
+    dmConfigured:Boolean(cfg.instagramAccessToken&&cfg.instagramUserId&&(supabaseConfigured||localWebhookConfigured)),
+    supabaseConfigured,
+    localWebhookConfigured,
     adsConfigured:Boolean((cfg.metaAdsAccessToken||cfg.instagramAccessToken)&&cfg.metaAdAccountId&&cfg.metaAdSetId&&cfg.metaPageId&&cfg.instagramUserId),
     webhookUrl:`${baseUrl(req)}/webhooks/meta/instagram`, keyword:cfg.instagramDmKeyword,
     rules:(s.instagramRules||[]).filter(x=>x.mediaId).length, sent:(s.instagramDmLog||[]).filter(x=>x.status==='SENT').length,
@@ -920,9 +993,10 @@ app.post('/api/instagram/finalize',mustLogin,async(req,res)=>{
     const creationId=String(req.body.creationId||'').trim();if(!/^\d+$/.test(creationId))return res.status(400).json({error:'Container inválido.'});
     const st=await instagramGraph(`${creationId}`,{params:{fields:'status_code,status'}});if(st.status_code!=='FINISHED')return res.json({ok:true,pending:true,creationId,status:st.status_code||'IN_PROGRESS',message:st.status||'Ainda processando.'});
     const cfg=effectiveSettings(loadStore().settings||{});const p=await instagramGraph(`${cfg.instagramUserId}/media_publish`,{method:'POST',params:{creation_id:creationId}});
-    const rule=finishInstagramRule(creationId,p.id);let ad=null,adError='';
+    const rule=finishInstagramRule(creationId,p.id);let ad=null,adError='',supabaseSync={configured:supabaseCommerceConfig().configured,synced:false};
+    if(rule){try{supabaseSync=await syncInstagramRuleToSupabase(rule);}catch(e){supabaseSync={configured:true,synced:false,error:e.message};}}
     if(rule?.createAd){try{ad=await createMetaAdForReel({mediaId:p.id,shopeeUrl:rule.shopeeUrl,product:rule.product,status:rule.adStatus});upsertInstagramRule({creationId,mediaId:p.id,options:{...rule,adId:ad.adId,creativeId:ad.creativeId,adCreatedAt:now()}});}catch(e){adError=e.message;upsertInstagramRule({creationId,mediaId:p.id,options:{...rule,adError}});}}
-    const result={ok:true,pending:false,creationId,mediaId:p.id,status:'PUBLISHED',message:'Reel publicado no Instagram.',commerce:{dmEnabled:Boolean(rule?.dmEnabled),keyword:rule?.keyword||'',createAd:Boolean(rule?.createAd),ad,adError}};
+    const result={ok:true,pending:false,creationId,mediaId:p.id,status:'PUBLISHED',message:'Reel publicado no Instagram.',commerce:{dmEnabled:Boolean(rule?.dmEnabled),keyword:rule?.keyword||'',createAd:Boolean(rule?.createAd),ad,adError,supabaseSync}};
     updateInstagramHistoryAfterFinalize(creationId,p.id,result.commerce);res.json(result);
   }catch(e){res.status(400).json({error:e.message});}
 });
@@ -988,11 +1062,16 @@ function fallbackCopy(filename, brand, shopUrl){
   const instagramDescription=`✨ ${product}\n\nUma opção prática para o dia a dia, pensada para facilitar sua rotina. Confira os detalhes no vídeo e veja se combina com o que você procura.\n\n💥 Por que vale conhecer?\n\n✅ Prático para o uso diário\n✅ Fácil de incluir na rotina\n✅ Opção versátil para casa ou dia a dia\n\n👉 Veja os detalhes e escolha a opção ideal para você.`;
   return {product,title,description,instagramDescription,hashtags,cta,confidence:'fallback'};
 }
-async function generateCopyWithGemini({images,filename}){
+async function generateCopyWithGemini({images,filename,productContext=null}){
   const s=loadStore(), cfg=effectiveSettings(s.settings||{});
-  if(!cfg.geminiApiKey) return fallbackCopy(filename,cfg.brandName,cfg.shopeeStoreUrl);
+  if(!cfg.geminiApiKey){
+    const out=fallbackCopy(productContext?.name||filename,cfg.brandName,cfg.shopeeStoreUrl);
+    if(productContext?.name) out.product=productContext.name;
+    return out;
+  }
   const model=cfg.geminiModel||'gemini-3.5-flash-lite';
-  const prompt=`Você é um redator de e-commerce brasileiro especializado em TikTok e Instagram. Analise os frames de um vídeo de produto e gere metadados para publicação. Não invente especificações, certificações, preço, desconto, garantia, material, medidas, fragrâncias, quantidades, funções ou resultados que não estejam claramente visíveis ou sustentados pelo nome do arquivo. Evite promessas absolutas, alegações médicas e linguagem enganosa. Escreva em português do Brasil, natural, comercial e sem spam.
+  const authoritative=productContext?.name?`\n\nPRODUTO CONFIRMADO PELO CATÁLOGO SHOPEE (FONTE AUTORITATIVA): ${productContext.name}. SKU: ${productContext.sku||''}. ID do anúncio: ${productContext.id||''}. O vídeo foi escolhido a partir desta SKU/anúncio. NÃO troque por outro produto visualmente parecido. Use os frames apenas para estilo, contexto de uso e características realmente visíveis; se houver dúvida, mantenha o nome e a identidade do produto confirmado pelo catálogo.`:'';
+  const prompt=`Você é um redator de e-commerce brasileiro especializado em TikTok e Instagram. Analise os frames de um vídeo de produto e gere metadados para publicação. Não invente especificações, certificações, preço, desconto, garantia, material, medidas, fragrâncias, quantidades, funções ou resultados que não estejam claramente visíveis ou sustentados pelo nome do arquivo ou pelo produto confirmado no catálogo. Evite promessas absolutas, alegações médicas e linguagem enganosa. Escreva em português do Brasil, natural, comercial e sem spam.${authoritative}
 
 Para TikTok: title curto, description entre 120 e 320 caracteres e CTA curto. NÃO coloque emojis nesses três campos.
 
@@ -1037,9 +1116,22 @@ app.post('/api/ai/generate-remote', mustLogin, async(req,res)=>{
     const filename=String(req.body.filename||'video-wedrop.mp4');
     const duration=Number(req.body.duration||0);
     const images=await extractRemoteFrames(id,filename,duration);
-    const out=await generateCopyWithGemini({images,filename});
-    const match=findCatalogMatch(out.product);
-    if(match){ out.shopeeUrl=match.url; out.catalogMatch={id:match.id,sku:match.sku,name:match.name,score:match.score}; }
+    const catalogSku=String(req.body.catalogSku||'').trim();
+    const catalogProductId=String(req.body.catalogProductId||'').trim();
+    let authoritativeProduct=null;
+    if(catalogSku&&catalogProductId){
+      try{authoritativeProduct=findCatalogBySku(catalogSku,catalogProductId);}catch{}
+    }
+    const productContext=authoritativeProduct?{id:authoritativeProduct.id,sku:catalogSku,name:authoritativeProduct.name,url:authoritativeProduct.url}:null;
+    const out=await generateCopyWithGemini({images,filename,productContext});
+    if(authoritativeProduct){
+      out.product=authoritativeProduct.name;
+      out.shopeeUrl=authoritativeProduct.url;
+      out.catalogMatch={id:authoritativeProduct.id,sku:catalogSku,name:authoritativeProduct.name,score:1,source:'sku-selected'};
+    }else{
+      const match=findCatalogMatch(out.product);
+      if(match){ out.shopeeUrl=match.url; out.catalogMatch={id:match.id,sku:match.sku,name:match.name,score:match.score,source:'ai-fuzzy'}; }
+    }
     out.analysisMode='server-ffmpeg';
     res.json(out);
   }catch(e){ res.status(400).json({error:`Falha na análise do vídeo no servidor: ${e.message}`}); }
@@ -1193,4 +1285,4 @@ app.post('/api/status/:publishId', mustLogin, async(req,res)=>{
   try{const d=await tiktokJson('https://open.tiktokapis.com/v2/post/publish/status/fetch/',{method:'POST',body:JSON.stringify({publish_id:req.params.publishId})});res.json(d.data||{});}catch(e){res.status(400).json({error:e.message});}
 });
 
-app.listen(PORT,()=>console.log(`REDEACHADOS BR Publisher Web V5.5.0 em http://localhost:${PORT}`));
+app.listen(PORT,()=>console.log(`REDEACHADOS BR Publisher Web V5.5.2 em http://localhost:${PORT}`));

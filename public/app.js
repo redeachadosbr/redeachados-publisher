@@ -1,10 +1,39 @@
 const $=s=>document.querySelector(s);
 let config=null, selectedFile=null, selectedRemoteVideo=null, duration=0, frames=[], generated=null;
 
-const DRAFT_KEY='redeachados_publisher_draft_v550';
+const DRAFT_KEY='redeachados_publisher_draft_v552';
 let captionManual=false;
 let commentManual=false;
 let instagramManual=false;
+let tiktokAuthInvalid=false;
+function socialButtonMarkup(platform,state='idle'){
+  const isTikTok=platform==='tiktok';
+  const icon=isTikTok?'i-tiktok':'i-instagram';
+  const labels=isTikTok?{
+    idle:['Enviar rascunho ao TikTok','Finalize a publicação no aplicativo'],
+    loading:['Enviando rascunho...','Aguarde a transferência do vídeo'],
+    success:['Rascunho enviado','Abra o TikTok para finalizar'],
+    reconnect:['Reconectar TikTok','Autorização inválida ou expirada']
+  }:{
+    idle:['Publicar Reel no Instagram','Publicação automática do Reel'],
+    loading:['Publicando Reel...','Aguarde a confirmação da Meta'],
+    success:['Reel publicado','Automação associada ao Reel']
+  };
+  const [title,subtitle]=labels[state]||labels.idle;
+  const spinner=state==='loading'?'<span class="button-spinner" aria-hidden="true"></span>':`<svg class="icon social-button-icon"><use href="#${icon}"/></svg>`;
+  return `${spinner}<span class="social-button-copy"><b>${title}</b><small>${subtitle}</small></span>`;
+}
+function setSocialButton(platform,state='idle'){
+  const b=$(platform==='tiktok'?'#publishBtn':'#instagramPublishBtn'); if(!b)return;
+  b.dataset.state=state;b.innerHTML=socialButtonMarkup(platform,state);
+  if(platform==='tiktok'&&state==='reconnect') b.classList.add('needs-reconnect'); else b.classList.remove('needs-reconnect');
+}
+function syncTikTokPublishState(){
+  const invalidFromUrl=/tiktok/i.test(new URLSearchParams(location.search).get('error')||'')&&/(inválid|expirad)/i.test(new URLSearchParams(location.search).get('error')||'');
+  tiktokAuthInvalid=tiktokAuthInvalid||invalidFromUrl;
+  if(!config?.tiktokConnected||tiktokAuthInvalid){setSocialButton('tiktok','reconnect');return false;}
+  setSocialButton('tiktok','idle');return true;
+}
 function saveDraft(){
   try{
     const data={
@@ -58,8 +87,12 @@ async function loadConfig(){
   $('#tiktokClientKey').placeholder=s.tiktokConfigured?'Configurado ✓ — deixe em branco para manter':'Client Key do TikTok';
   $('#tiktokClientSecret').placeholder=s.tiktokConfigured?'Configurado ✓ — deixe em branco para manter':'Client Secret do TikTok';
   await loadCatalogStatus();
-  $('#connectionText').textContent=config.tiktokConnected?'Conta conectada e pronta para enviar rascunhos.':'Conta ainda não conectada.';
-  $('#connectBtn').textContent=config.tiktokConnected?'Reconectar TikTok':'Conectar TikTok';
+  const authError=new URLSearchParams(location.search).get('error')||'';
+  const urlTikTokInvalid=/tiktok/i.test(authError)&&/(inválid|expirad)/i.test(authError);
+  if(urlTikTokInvalid)tiktokAuthInvalid=true;
+  $('#connectionText').textContent=tiktokAuthInvalid?'Autorização expirada. Reconecte o TikTok para voltar a enviar rascunhos.':(config.tiktokConnected?'Conta conectada e pronta para enviar rascunhos.':'Conta ainda não conectada.');
+  $('#connectBtn').textContent=(config.tiktokConnected||tiktokAuthInvalid)?'Reconectar TikTok':'Conectar TikTok';
+  syncTikTokPublishState();
   if($('#instagramUserId')) $('#instagramUserId').value=s.instagramUserId||'17841480462088551';
   if($('#metaGraphVersion')) $('#metaGraphVersion').value=s.metaGraphVersion||'v26.0';
   if($('#instagramAccessToken')) $('#instagramAccessToken').placeholder=s.instagramConfigured?'Configurado ✓ — deixe em branco para manter':'Cole um novo token de acesso da Meta';
@@ -133,7 +166,7 @@ function fillGenerated(){
   captionManual=false;commentManual=false;instagramManual=false;updateCaption(true);updatePurchaseComment(true);updateInstagramCaption(true);saveDraft();
 }
 
-function currentMeta(){return{product:$('#product').value.trim(),shopeeUrl:$('#shopeeUrl').value.trim(),title:$('#title').value.trim(),description:$('#description').value.trim(),cta:$('#cta').value.trim(),hashtags:$('#hashtags').value.trim().split(/\s+/).filter(x=>x.startsWith('#'))}}
+function currentMeta(){return{product:$('#product').value.trim(),shopeeUrl:selectedRemoteVideo?.catalogProductUrl||$('#shopeeUrl').value.trim(),title:$('#title').value.trim(),description:$('#description').value.trim(),cta:$('#cta').value.trim(),hashtags:$('#hashtags').value.trim().split(/\s+/).filter(x=>x.startsWith('#'))}}
 function productEmoji(m={}){const t=`${m.product||''} ${m.title||''} ${m.description||''}`.toLowerCase();if(/avental|mini chef|chef|cozinha infantil/.test(t))return'👩‍🍳';if(/cozinha|panela|cafeteira|chaleira|frigideira|utens[ií]lio|assadeira|pote|galheteiro/.test(t))return'🍳';if(/brinqued|infantil|crian[cç]a|bonec|carrinho|pista|jogo/.test(t))return'🎁';if(/organiz|gaveta|prateleira|porta joia|armazen/.test(t))return'✨';if(/limp|mop|escova|pano|vassoura/.test(t))return'🧼';if(/luz|led|lumin[aá]ria|sensor/.test(t))return'💡';if(/beleza|maquiagem|pincel|joia|brinco/.test(t))return'💖';if(/fitness|balan[cç]a|treino|academia/.test(t))return'💪';return'✨'}
 function cleanEmoji(t=''){return String(t||'').replace(/^\s*[\p{Extended_Pictographic}\uFE0F\u200D]+\s*/u,'').trim()}
 function buildAutoCaption(){if(!config)return'';const m=currentMeta(),e=productEmoji(m),parts=[];if(m.title)parts.push(`${e} ${cleanEmoji(m.title)}`);if(m.description)parts.push(`📝 ${cleanEmoji(m.description)}`);if(m.cta)parts.push(`🛍️ ${cleanEmoji(m.cta)}`);const directLink=String(m.shopeeUrl||config?.settings?.shopeeStoreUrl||'').trim();if(directLink)parts.push(`🔗 ${directLink}`);if(m.hashtags.length)parts.push(m.hashtags.join(' '));return parts.filter(Boolean).join('\n\n').slice(0,2200)}
@@ -201,7 +234,11 @@ async function loadInstagramCommerceStatus(){
   const badge=$('#commerceReadyBadge'),inline=$('#metaAdsInlineStatus'),status=$('#instagramCommerceStatus'),ads=$('#metaAdsStatus');
   try{
     const d=await api('/api/instagram/commerce-status');
-    if(status)status.textContent=d.dmConfigured?`✅ Direct automático pronto · ${d.rules} Reel(s) monitorado(s) · ${d.sent} link(s) enviado(s).`:'⚠️ Falta configurar o Webhook/Verify Token para o Direct automático.';
+    if(status){
+      if(!d.dmConfigured) status.textContent='⚠️ Falta configurar o acesso Meta/Direct automático.';
+      else if(!d.supabaseConfigured) status.textContent=`⚠️ Meta pronta, mas falta SUPABASE_URL + SUPABASE_SECRET_KEY no Render para gravar os Reels em reel_links.`;
+      else status.textContent=`✅ Direct automático + Supabase prontos · ${d.rules} Reel(s) locais · ${d.sent} link(s) enviados pelo fallback local.`;
+    }
     if(inline)inline.textContent=d.adsConfigured?'✅ Meta Ads configurado. O anúncio usará o conjunto definido nas Configurações.':'Configure Page ID, Ad Account ID, Ad Set ID e token com ads_management.';
     if(ads)ads.textContent=d.adsConfigured?'Configuração preenchida. Use “Testar conexão” para validar conta e conjunto.':'Preencha os IDs da conta/conjunto e o acesso à Marketing API.';
     if(badge){badge.classList.remove('ready','partial');if(d.dmConfigured&&d.adsConfigured){badge.textContent='PRONTO';badge.classList.add('ready')}else if(d.dmConfigured||d.adsConfigured){badge.textContent='PARCIAL';badge.classList.add('partial')}else badge.textContent='CONFIGURAR';}
@@ -212,7 +249,7 @@ $('#testMetaAdsBtn')?.addEventListener('click',async()=>{
   try{const d=await api('/api/meta/ads/status');if(d.connected){$('#metaAdsStatus').textContent=`✅ ${d.account?.name||'Conta conectada'} · conjunto: ${d.adset?.name||d.adset?.id||'OK'} · ${d.adset?.effective_status||d.adset?.status||''}`;toast('Conexão com Meta Ads confirmada.')}else{throw new Error(d.error||'Não foi possível validar a conta.')}}catch(e){$('#metaAdsStatus').textContent='⚠️ '+e.message;toast(e.message,true)}finally{b.disabled=false;b.textContent='Testar conexão com Meta Ads';}
 });
 function instagramCommercePayload(){
-  return {product:$('#product')?.value.trim()||'',shopeeUrl:$('#shopeeUrl')?.value.trim()||'',dmEnabled:Boolean($('#dmEnabled')?.checked),dmKeyword:$('#dmKeyword')?.value.trim()||'QUERO',publicReplyEnabled:Boolean($('#publicReplyEnabled')?.checked),createAd:Boolean($('#createMetaAd')?.checked),adStatus:$('#metaAdStatus')?.value||'PAUSED'};
+  return {sku:selectedRemoteVideo?.catalogSku||$('#wedropSku')?.value.trim()||'',product:$('#product')?.value.trim()||'',shopeeUrl:selectedRemoteVideo?.catalogProductUrl||$('#shopeeUrl')?.value.trim()||'',dmEnabled:Boolean($('#dmEnabled')?.checked),dmKeyword:$('#dmKeyword')?.value.trim()||'QUERO',publicReplyEnabled:Boolean($('#publicReplyEnabled')?.checked),createAd:Boolean($('#createMetaAd')?.checked),adStatus:$('#metaAdStatus')?.value||'PAUSED'};
 }
 function describeInstagramResult(r){
   const bits=['Reel publicado no Instagram ✅'];
@@ -230,7 +267,7 @@ async function publishInstagram(){
   if(!selectedFile&&!selectedRemoteVideo)return toast('Escolha um vídeo.',true);if(!generated)return toast('Aguarde a geração da publicação.',true);if(!config?.settings?.instagramConfigured)return toast('Abra Configurações e informe um novo token de acesso da Meta.',true);
   const caption=$('#instagramCaption')?.value.trim()||''; if(!caption)return toast('A legenda do Instagram está vazia.',true);
   const commerce=instagramCommercePayload();if((commerce.dmEnabled||commerce.createAd)&&!commerce.shopeeUrl)return toast('Informe o Link do produto Shopee para ativar Direct ou anúncio com compra.',true);
-  const b=$('#instagramPublishBtn');b.disabled=true;b.textContent='PUBLICANDO REEL...';
+  const b=$('#instagramPublishBtn');b.disabled=true;setSocialButton('instagram','loading');
   try{
     let r;
     if(selectedRemoteVideo){r=await api('/api/instagram/publish-remote',{method:'POST',body:JSON.stringify({remoteVideoId:selectedRemoteVideo.id,filename:selectedRemoteVideo.title||'video-wedrop',caption,...commerce})});}
@@ -238,7 +275,7 @@ async function publishInstagram(){
     if(r.pending){toast('Instagram ainda está processando. O Direct/anúncio serão associados assim que o Reel finalizar.');await new Promise(x=>setTimeout(x,8000));const f=await api('/api/instagram/finalize',{method:'POST',body:JSON.stringify({creationId:r.creationId})});if(f.pending)toast('O Reel continua processando. Tente publicar novamente em alguns segundos.',true);else{toast(describeInstagramResult(f));if(f.commerce?.adError)toast('Reel publicado, mas Meta Ads: '+f.commerce.adError,true);}}
     else{toast(describeInstagramResult(r));if(r.commerce?.adError)toast('Reel publicado, mas Meta Ads: '+r.commerce.adError,true);}
     await loadHistory();await loadInstagramCommerceStatus();
-  }catch(e){toast('Instagram: '+e.message,true);}finally{b.disabled=false;b.textContent='📸 PUBLICAR REEL NO INSTAGRAM';}
+  }catch(e){toast('Instagram: '+e.message,true);}finally{b.disabled=false;setSocialButton('instagram','idle');}
 }
 $('#instagramPublishBtn')?.addEventListener('click',publishInstagram);
 
@@ -251,12 +288,13 @@ $('#copyCaptionBtn').onclick=async()=>{try{await navigator.clipboard.writeText($
 $('#connectBtn').addEventListener('click',()=>saveDraft());
 $('#regenerateBtn').onclick=analyze;
 async function loadCreator(){
-  if(!config?.tiktokConnected)return;
-  try{const c=await api('/api/creator');const p=$('#privacy');p.innerHTML='';for(const x of(c.privacy_level_options||['SELF_ONLY'])){const o=document.createElement('option');o.value=x;o.textContent={PUBLIC_TO_EVERYONE:'Público',MUTUAL_FOLLOW_FRIENDS:'Amigos',FOLLOWER_OF_CREATOR:'Seguidores',SELF_ONLY:'Somente eu'}[x]||x;p.appendChild(o)} if((c.privacy_level_options||[]).includes(config.settings.defaultPrivacy))p.value=config.settings.defaultPrivacy;}catch(e){toast(e.message,true)}
+  if(!config?.tiktokConnected){syncTikTokPublishState();return;}
+  try{const c=await api('/api/creator');tiktokAuthInvalid=false;syncTikTokPublishState();const p=$('#privacy');p.innerHTML='';for(const x of(c.privacy_level_options||['SELF_ONLY'])){const o=document.createElement('option');o.value=x;o.textContent={PUBLIC_TO_EVERYONE:'Público',MUTUAL_FOLLOW_FRIENDS:'Amigos',FOLLOWER_OF_CREATOR:'Seguidores',SELF_ONLY:'Somente eu'}[x]||x;p.appendChild(o)} if((c.privacy_level_options||[]).includes(config.settings.defaultPrivacy))p.value=config.settings.defaultPrivacy;}catch(e){if(/token|oauth|authoriz|expir|invalid/i.test(e.message||'')){tiktokAuthInvalid=true;syncTikTokPublishState();$('#connectionText').textContent='Autorização expirada. Reconecte o TikTok para voltar a enviar rascunhos.';}else toast(e.message,true)}
 }
 $('#publishBtn').onclick=async()=>{
-  if(!selectedFile&&!selectedRemoteVideo)return toast('Escolha um vídeo.',true);if(!generated)return toast('Aguarde a geração da publicação.',true);if(!config.tiktokConnected)return toast('Conecte sua conta TikTok primeiro.',true);
-  const b=$('#publishBtn');b.disabled=true;b.textContent='ENVIANDO RASCUNHO...';
+  if(!selectedFile&&!selectedRemoteVideo)return toast('Escolha um vídeo.',true);if(!generated)return toast('Aguarde a geração da publicação.',true);
+  if(!config.tiktokConnected||tiktokAuthInvalid){syncTikTokPublishState();toast('Reconecte sua conta TikTok antes de enviar o rascunho.',true);$('#connectBtn')?.scrollIntoView({behavior:'smooth',block:'center'});return;}
+  const b=$('#publishBtn');b.disabled=true;setSocialButton('tiktok','loading');
   try{
     let r;
     if(selectedRemoteVideo?.id){
@@ -265,15 +303,16 @@ $('#publishBtn').onclick=async()=>{
       const fd=new FormData();fd.append('video',selectedFile);fd.append('meta',JSON.stringify(currentMeta()));fd.append('caption',$('#captionPreview').value.trim());fd.append('duration',String(duration||0));
       r=await api('/api/upload-draft',{method:'POST',body:fd});
     }
+    setSocialButton('tiktok','success');
     toast('Rascunho enviado. Abra o TikTok e toque na notificação da caixa de entrada para concluir.');
     try{await navigator.clipboard.writeText($('#captionPreview').value.trim())}catch{}
-    await loadHistory();resetVideo();
-  }catch(e){toast(e.message,true)}finally{b.disabled=false;b.textContent='ENVIAR RASCUNHO AO TIKTOK'}
+    await loadHistory();setTimeout(()=>{resetVideo();syncTikTokPublishState()},650);
+  }catch(e){if(/token|oauth|authoriz|expir|invalid/i.test(e.message||'')){tiktokAuthInvalid=true;syncTikTokPublishState();$('#connectionText').textContent='Autorização expirada. Reconecte o TikTok para voltar a enviar rascunhos.';}toast(e.message,true)}finally{b.disabled=false;if(!tiktokAuthInvalid)setSocialButton('tiktok','idle')}
 };
 function resetVideo(){selectedFile=null;selectedRemoteVideo=null;frames=[];generated=null;captionManual=false;commentManual=false;instagramManual=false;clearDraft();$('#preview').removeAttribute('src');$('#workArea').classList.add('hidden');$('#dropzone').classList.remove('hidden');$('#videoInput').value=''}
 async function loadHistory(){try{const h=await api('/api/history');$('#history').innerHTML=h.length?h.slice(0,10).map(x=>`<div class="history-item"><div><b>${esc(x.product||x.filename)}</b><br><small>${new Date(x.createdAt).toLocaleString('pt-BR')}</small></div><div><small>${esc(x.status||'PROCESSING')}</small></div></div>`).join(''):'<p class="small">Nenhuma publicação ainda.</p>'}catch{}}
 function esc(s){return String(s||'').replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;'}[m]))}
-const q=new URLSearchParams(location.search);if(q.get('error'))toast(q.get('error'),true);if(q.get('tiktok')==='connected')toast('TikTok conectado com sucesso. Você pode fechar esta aba e voltar ao vídeo anterior.');
+const q=new URLSearchParams(location.search);if(q.get('error')){toast(q.get('error'),true);if(/tiktok/i.test(q.get('error'))&&/(inválid|expirad)/i.test(q.get('error')))tiktokAuthInvalid=true;}if(q.get('tiktok')==='connected'){tiktokAuthInvalid=false;toast('TikTok conectado com sucesso. Você pode fechar esta aba e voltar ao vídeo anterior.');}
 window.addEventListener('focus',async()=>{try{if(!$('#app').classList.contains('hidden')){await loadConfig();await loadCreator();}}catch{}});
 
 async function loadRemoteVideo(candidate,product){
@@ -281,7 +320,7 @@ async function loadRemoteVideo(candidate,product){
   try{
     if(!candidate?.id) throw new Error('O vídeo selecionado não possui ID do Google Drive.');
     selectedFile=null;
-    selectedRemoteVideo={id:candidate.id,title:candidate.title||product?.name||product?.sku||'Vídeo WeDrop'};
+    selectedRemoteVideo={id:candidate.id,title:candidate.title||product?.name||product?.sku||'Vídeo WeDrop',catalogProductId:product?.id||'',catalogSku:product?.sku||$('#wedropSku')?.value.trim()||'',catalogProductName:product?.name||'',catalogProductUrl:product?.shopeeUrl||''};
     generated=null; frames=[];
     const src='/api/wedrop/video?id='+encodeURIComponent(candidate.id)+'&v=546';
     $('#fileName').textContent=selectedRemoteVideo.title;
@@ -298,9 +337,13 @@ async function loadRemoteVideo(candidate,product){
       preview.addEventListener('loadedmetadata',ok,{once:true});preview.addEventListener('error',bad,{once:true});
       preview.load();setTimeout(()=>{cleanup();reject(new Error('Tempo esgotado ao carregar o vídeo no iPhone.'))},20000);
     });
-    if(product?.shopeeUrl && !$('#shopeeUrl').value) $('#shopeeUrl').value=product.shopeeUrl;
+    if(product?.shopeeUrl) $('#shopeeUrl').value=product.shopeeUrl;
     $('#aiStatus').textContent='Analisando o vídeo no servidor…';
-    generated=await api('/api/ai/generate-remote',{method:'POST',body:JSON.stringify({remoteVideoId:selectedRemoteVideo.id,filename:selectedRemoteVideo.title||'video-wedrop.mp4',duration:Number(duration||0)})});
+    generated=await api('/api/ai/generate-remote',{method:'POST',body:JSON.stringify({remoteVideoId:selectedRemoteVideo.id,filename:selectedRemoteVideo.title||'video-wedrop.mp4',duration:Number(duration||0),catalogProductId:selectedRemoteVideo.catalogProductId||'',catalogSku:selectedRemoteVideo.catalogSku||''})});
+    // O produto escolhido pela SKU é autoritativo. A IA pode criar o texto, mas nunca trocar o anúncio/link.
+    if(product?.name) generated.product=product.name;
+    if(product?.shopeeUrl) generated.shopeeUrl=product.shopeeUrl;
+    if(product?.id) generated.catalogMatch={id:product.id,sku:selectedRemoteVideo.catalogSku||product.sku||'',name:product.name,score:1,source:'sku-selected'};
     fillGenerated();
     $('#aiStatus').textContent=generated.confidence==='ai'?'Pronto: conteúdo criado automaticamente pela IA.':'Pronto: modo básico usado. Configure a chave da IA para análise visual.';
     await loadCreator();
@@ -327,11 +370,25 @@ function renderWedropResults(data){
   const list=data.gallery?.candidates||[];
   if(list.length){
     box.classList.remove('hidden');
+    const bestIndex=list.reduce((best,c,i,arr)=>Number(c.score||0)>Number(arr[best]?.score||0)?i:best,0);
+    const closeOthers=current=>box.querySelectorAll('.video-result.expanded').forEach(card=>{if(card!==current){card.classList.remove('expanded');const toggle=card.querySelector('.video-result-toggle');const details=card.querySelector('.video-result-details');if(toggle)toggle.setAttribute('aria-expanded','false');if(details)details.hidden=true;}});
     list.forEach((c,i)=>{
-      const el=document.createElement('div');el.className='video-result';
-      el.innerHTML=`<div><b>Vídeo ${i+1}</b><small>${esc((c.title||c.label||p.name||data.sku).slice(0,170))}</small>${c.durationMs?`<small>Duração: ${(c.durationMs/1000).toFixed(1)}s</small>`:''}<small>Compatibilidade: ${Math.round((c.score||0)*100)}% · Busca: ${esc(c.matchQuery||data.gallery?.bestQuery||'')}</small></div><button class="primary">USAR ESTE VÍDEO</button>`;
-      el.querySelector('button').onclick=async()=>{await rememberWedropSearch(data.sku,c.matchQuery||data.gallery?.bestQuery);loadRemoteVideo(c,p)}; box.appendChild(el);
+      const title=String(c.title||c.label||p.name||data.sku);
+      const score=Math.round((c.score||0)*100);
+      const durationText=c.durationMs?`${(c.durationMs/1000).toFixed(1)}s`:'Duração não informada';
+      const query=c.matchQuery||data.gallery?.bestQuery||'';
+      const el=document.createElement('article');el.className='video-result compact'+(i===bestIndex?' best-result':'')+(i>=3?' extra-result hidden':'');
+      el.innerHTML=`<div class="video-result-summary"><button type="button" class="video-result-toggle" aria-expanded="false"><span class="video-result-titleline"><b>Vídeo ${i+1}</b>${i===bestIndex?'<span class="best-badge">★ MELHOR OPÇÃO</span>':''}</span><span class="video-result-name">${esc(title.slice(0,96))}${title.length>96?'…':''}</span><span class="video-result-meta">${esc(durationText)} <span>•</span> Compatibilidade ${score}%</span><span class="result-chevron" aria-hidden="true">⌄</span></button><button type="button" class="primary use-video-btn"><span aria-hidden="true">▶</span> Usar este vídeo</button></div><div class="video-result-details" hidden><div><span class="detail-label">Nome completo</span><p>${esc(title)}</p></div><div class="details-grid"><div><span class="detail-label">Duração</span><p>${esc(durationText)}</p></div><div><span class="detail-label">Compatibilidade</span><p>${score}%</p></div></div>${query?`<div><span class="detail-label">Busca utilizada</span><p>${esc(query)}</p></div>`:''}</div>`;
+      const toggle=el.querySelector('.video-result-toggle'),details=el.querySelector('.video-result-details');
+      toggle.onclick=()=>{const willOpen=!el.classList.contains('expanded');closeOthers(el);el.classList.toggle('expanded',willOpen);toggle.setAttribute('aria-expanded',String(willOpen));details.hidden=!willOpen;};
+      el.querySelector('.use-video-btn').onclick=async()=>{await rememberWedropSearch(data.sku,query);const btn=el.querySelector('.use-video-btn');btn.innerHTML='<span aria-hidden="true">✓</span> Vídeo selecionado';btn.classList.add('selected');await loadRemoteVideo(c,p)};
+      box.appendChild(el);
     });
+    if(list.length>3){
+      const more=document.createElement('button');more.type='button';more.className='video-results-more';more.dataset.expanded='false';more.textContent=`Ver mais ${list.length-3} vídeo${list.length-3===1?'':'s'}`;
+      more.onclick=()=>{const expanded=more.dataset.expanded==='true';box.querySelectorAll('.extra-result').forEach(x=>x.classList.toggle('hidden',expanded));more.dataset.expanded=String(!expanded);more.textContent=expanded?`Ver mais ${list.length-3} vídeo${list.length-3===1?'':'s'}`:'Mostrar menos';};
+      box.appendChild(more);
+    }
   }else{
     box.classList.remove('hidden');
     const el=document.createElement('div');el.className='video-result fallback';

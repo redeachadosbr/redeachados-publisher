@@ -11,7 +11,7 @@
   <link rel="apple-touch-icon" href="/icon-192.png" />
   <link rel="icon" href="/icon-192.png" />
   <title>REDEACHADOS BR · Publisher</title>
-  <link rel="stylesheet" href="/styles.css?v=550-commerce" />
+  <link rel="stylesheet" href="/styles.css?v=552-compact-social" />
 </head>
 <body>
   <svg class="icon-definitions" xmlns="http://www.w3.org/2000/svg" aria-hidden="true"><defs>
@@ -38,7 +38,7 @@
       <a class="brand" href="#create" aria-label="Rede Achados BR Publisher"><span class="brand-mark">RA<span>•</span></span><span class="brand-name">REDE ACHADOS <b>BR</b><small>Publisher Studio</small></span></a>
       <span class="nav-caption">ESPAÇO DE TRABALHO</span>
       <nav class="side-nav"><a class="nav-link active" href="#create" aria-current="page"><svg class="icon"><use href="#i-grid"/></svg><span>Criar publicação</span></a><a class="nav-link" href="#channels"><svg class="icon"><use href="#i-link"/></svg><span>Canais</span></a><a class="nav-link" href="#activity"><svg class="icon"><use href="#i-clock"/></svg><span>Histórico</span></a></nav>
-      <div class="sidebar-footer"><div class="sidebar-note"><svg class="icon"><use href="#i-spark"/></svg><p>Mais conteúdo.<br><strong>Mais possibilidades.</strong></p></div><span>REDE ACHADOS BR <b>V5.5.0</b></span></div>
+      <div class="sidebar-footer"><div class="sidebar-note"><svg class="icon"><use href="#i-spark"/></svg><p>Mais conteúdo.<br><strong>Mais possibilidades.</strong></p></div><span>REDE ACHADOS BR <b>V5.5.2</b></span></div>
     </aside>
     <div class="page-stage">
       <header class="app-topbar"><div class="breadcrumb">Workspace <span>/</span> <strong>Publisher</strong></div><button id="settingsBtn" type="button" class="ghost"><svg class="icon"><use href="#i-settings"/></svg>Configurações</button></header>
@@ -78,7 +78,10 @@
                       <section class="commerce-option"><label class="commerce-toggle"><input id="dmEnabled" type="checkbox" checked><span><b>Direct automático</b><small>Quem comentar a palavra recebe o link da Shopee no Direct.</small></span></label><label>Palavra-chave<input id="dmKeyword" maxlength="40" value="QUERO" /></label><label class="commerce-toggle compact"><input id="publicReplyEnabled" type="checkbox" checked><span><b>Responder o comentário</b><small>Confirma publicamente que o link foi enviado.</small></span></label></section>
                       <section class="commerce-option"><label class="commerce-toggle"><input id="createMetaAd" type="checkbox"><span><b>Criar anúncio com botão Comprar agora</b><small>Usa o Reel publicado e o conjunto de anúncios configurado.</small></span></label><label>Status inicial<select id="metaAdStatus"><option value="PAUSED">Pausado para revisar</option><option value="ACTIVE">Ativo imediatamente</option></select></label><p id="metaAdsInlineStatus" class="small">Configure a Marketing API em Configurações para habilitar.</p></section>
                     </div>
-                  </div><div class="actions"><button id="publishBtn" type="button" class="publish">Enviar rascunho ao TikTok</button><button id="instagramPublishBtn" type="button" class="instagram-publish">Publicar Reel no Instagram</button></div><p id="draftModeInfo" class="small"><b>No TikTok, você finaliza a publicação no aplicativo.</b> O vídeo vai para a caixa de entrada; privacidade, comentários, Dueto, Costurar e marcação de IA são definidos por lá. No Instagram, o Reel é publicado automaticamente.</p></div>
+                  </div><div class="actions social-actions">
+                    <button id="publishBtn" type="button" class="social-publish-btn tiktok-publish" aria-label="Enviar rascunho ao TikTok"><svg class="icon social-button-icon"><use href="#i-tiktok"/></svg><span class="social-button-copy"><b>Enviar rascunho ao TikTok</b><small>Finalize a publicação no aplicativo</small></span></button>
+                    <button id="instagramPublishBtn" type="button" class="social-publish-btn instagram-publish" aria-label="Publicar Reel no Instagram"><svg class="icon social-button-icon"><use href="#i-instagram"/></svg><span class="social-button-copy"><b>Publicar Reel no Instagram</b><small>Publicação automática do Reel</small></span></button>
+                  </div><p id="draftModeInfo" class="small"><b>No TikTok, você finaliza a publicação no aplicativo.</b> O vídeo vai para a caixa de entrada; privacidade, comentários, Dueto, Costurar e marcação de IA são definidos por lá. No Instagram, o Reel é publicado automaticamente.</p></div>
               </div>
             </section>
             <div class="empty-workspace" id="emptyWorkspace"><span class="empty-icon"><svg class="icon"><use href="#i-video"/></svg></span><div><h3>O próximo passo é com a IA.</h3><p>Ao escolher um vídeo, sua prévia e os textos aparecem aqui.</p></div><span class="empty-line"></span></div>
@@ -110,7 +113,7 @@
       <div class="dialog-footer"><span class="small">As configurações ficam salvas para o próximo uso.</span><button id="saveSettingsBtn" value="cancel" class="primary">Salvar configurações</button></div>
     </form>
   </dialog>
-  <script src="/app.js?v=550-commerce"></script><script src="/ui.js?v=550-commerce"></script>
+  <script src="/app.js?v=552-compact-social"></script><script src="/ui.js?v=552-compact-social"></script>
   <script>if('serviceWorker' in navigator){navigator.serviceWorker.register('/sw.js').catch(()=>{})}</script>
 </body>
 </html>
