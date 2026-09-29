@@ -275,8 +275,21 @@ async function publishInstagram(){
     let r;
     if(selectedRemoteVideo){r=await api('/api/instagram/publish-remote',{method:'POST',body:JSON.stringify({remoteVideoId:selectedRemoteVideo.id,filename:selectedRemoteVideo.title||'video-wedrop',caption,...commerce})});}
     else{const fd=new FormData();fd.append('video',selectedFile);fd.append('caption',caption);for(const [k,v] of Object.entries(commerce))fd.append(k,String(v));r=await api('/api/instagram/publish',{method:'POST',body:fd});}
-    if(r.pending){toast('Instagram ainda está processando. O Direct/anúncio serão associados assim que o Reel finalizar.');await new Promise(x=>setTimeout(x,8000));const f=await api('/api/instagram/finalize',{method:'POST',body:JSON.stringify({creationId:r.creationId})});if(f.pending)toast('O Reel continua processando. Tente publicar novamente em alguns segundos.',true);else{toast(describeInstagramResult(f));if(f.commerce?.adError)toast('Reel publicado, mas Meta Ads: '+f.commerce.adError,true);}}
-    else{toast(describeInstagramResult(r));if(r.commerce?.adError)toast('Reel publicado, mas Meta Ads: '+r.commerce.adError,true);}
+    if(r.pending){
+      toast('Instagram ainda está processando. O Direct/anúncio serão associados assim que o Reel finalizar.');
+      await new Promise(x=>setTimeout(x,8000));
+      const f=await api('/api/instagram/finalize',{method:'POST',body:JSON.stringify({creationId:r.creationId})});
+      if(f.pending)toast('O Reel continua processando. Tente publicar novamente em alguns segundos.',true);
+      else{
+        if(f.mediaId)try{localStorage.setItem('ra_last_instagram_media_id',String(f.mediaId));}catch{}
+        toast(describeInstagramResult(f));
+        if(f.commerce?.adError)toast('Reel publicado, mas Meta Ads: '+f.commerce.adError,true);
+      }
+    } else {
+      if(r.mediaId)try{localStorage.setItem('ra_last_instagram_media_id',String(r.mediaId));}catch{}
+      toast(describeInstagramResult(r));
+      if(r.commerce?.adError)toast('Reel publicado, mas Meta Ads: '+r.commerce.adError,true);
+    }
     await loadHistory();await loadInstagramCommerceStatus();
   }catch(e){toast('Instagram: '+e.message,true);}finally{b.disabled=false;setSocialButton('instagram','idle');}
 }
@@ -287,7 +300,9 @@ $('#syncLatestReelBtn')?.addEventListener('click',async()=>{
   if(!commerce.shopeeUrl)return toast('Informe o link do produto Shopee antes de sincronizar.',true);
   b.disabled=true;const original=b.textContent;b.textContent='Sincronizando...';
   try{
-    const r=await api('/api/instagram/sync-latest-reel',{method:'POST',body:JSON.stringify(commerce)});
+    let browserMediaId='';
+    try{browserMediaId=localStorage.getItem('ra_last_instagram_media_id')||'';}catch{}
+    const r=await api('/api/instagram/sync-latest-reel',{method:'POST',body:JSON.stringify({...commerce,mediaId:browserMediaId})});
     if(r?.supabaseSync?.synced)toast(`Último Reel sincronizado com o Supabase ✅ · Media ID ${r.mediaId}`);
     else toast('O Reel foi encontrado, mas o Supabase não confirmou a sincronização.',true);
     await loadInstagramCommerceStatus();

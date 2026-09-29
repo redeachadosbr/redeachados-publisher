@@ -65,6 +65,27 @@ function loadStore(){
 function saveStore(s){ fs.writeFileSync(DATA_FILE, JSON.stringify(s,null,2)); }
 function envText(name){ return String(process.env[name]||'').trim(); }
 function envBool(name,fallback=false){ const v=envText(name).toLowerCase(); return v?['1','true','yes','on'].includes(v):fallback; }
+function networkErrorDetails(error){
+  const cause=error?.cause||{};
+  return [error?.message,cause?.code,cause?.hostname,cause?.syscall].filter(Boolean).join(' | ')||'erro de rede desconhecido';
+}
+async function fetchWithRetry(url,options={},label='Requisição externa',{attempts=3,timeoutMs=15000}={}){
+  let lastError=null;
+  for(let attempt=1;attempt<=attempts;attempt++){
+    const controller=new AbortController();
+    const timer=setTimeout(()=>controller.abort(),timeoutMs);
+    try{
+      const response=await fetch(url,{...options,signal:controller.signal});
+      clearTimeout(timer);
+      return response;
+    }catch(error){
+      clearTimeout(timer);
+      lastError=error;
+      if(attempt<attempts) await new Promise(r=>setTimeout(r,700*attempt));
+    }
+  }
+  throw new Error(`${label}: falha de rede após ${attempts} tentativa(s) · ${networkErrorDetails(lastError)}`);
+}
 function supabaseCommerceConfig(){
   const url=envText('SUPABASE_URL').replace(/\/$/,'');
   const key=envText('SUPABASE_SECRET_KEY') || envText('SUPABASE_SERVICE_ROLE_KEY');
@@ -96,11 +117,12 @@ async function syncInstagramRuleToSupabase(rule){
   // New Supabase sb_secret_* keys are opaque API keys, not JWTs.
   // Send them only as `apikey`. Legacy service_role JWTs still accept Bearer auth.
   if(/^eyJ[A-Za-z0-9_-]*\./.test(cfg.key)) headers.Authorization=`Bearer ${cfg.key}`;
-  const r=await fetch(`${cfg.url}/rest/v1/reel_links?on_conflict=instagram_media_id`,{
+  const endpoint=`${cfg.url}/rest/v1/reel_links?on_conflict=instagram_media_id`;
+  const r=await fetchWithRetry(endpoint,{
     method:'POST',
     headers,
     body:JSON.stringify([row])
-  });
+  },'Supabase reel_links');
   if(!r.ok){
     const body=await r.text().catch(()=> '');
     throw new Error(`Supabase reel_links HTTP ${r.status}${body?`: ${body.slice(0,300)}`:''}`);
@@ -582,7 +604,7 @@ async function extractRemoteFrames(id, filename, durationSec){
   }
 }
 
-app.get('/api/health', (_req,res)=>res.json({ok:true,service:'REDEACHADOS BR Publisher Web V5.5.3'}));
+app.get('/api/health', (_req,res)=>res.json({ok:true,service:'REDEACHADOS BR Publisher Web V5.5.4'}));
 app.get('/api/auth-state',(req,res)=>res.json({locked:Boolean(process.env.APP_PASSWORD),loggedIn:!process.env.APP_PASSWORD||Boolean(req.session?.appAuth)}));
 app.post('/api/login',(req,res)=>{
   if(!process.env.APP_PASSWORD){ req.session.appAuth=true; return res.json({ok:true}); }
@@ -765,8 +787,12 @@ async function instagramGraph(pathname,{method='GET',params={}}={}){
   for(const [k,v] of Object.entries(params||{})){if(v!==undefined&&v!==null&&String(v)!=='')body.set(k,String(v));}
   body.set('access_token',cfg.instagramAccessToken);
   let r;
-  if(method==='GET'){for(const [k,v] of body)url.searchParams.set(k,v);r=await fetch(url,{headers:{Accept:'application/json'}});}
-  else r=await fetch(url,{method,headers:{'Content-Type':'application/x-www-form-urlencoded',Accept:'application/json'},body});
+  if(method==='GET'){
+    for(const [k,v] of body)url.searchParams.set(k,v);
+    r=await fetchWithRetry(url,{headers:{Accept:'application/json'}},'Meta Graph');
+  } else {
+    r=await fetchWithRetry(url,{method,headers:{'Content-Type':'application/x-www-form-urlencoded',Accept:'application/json'},body},'Meta Graph');
+  }
   const d=await r.json().catch(()=>({}));
   if(!r.ok||d.error){const e=d.error||{};throw new Error([e.message||`Meta HTTP ${r.status}`,e.code?`Código ${e.code}`:'',e.error_subcode?`Subcódigo ${e.error_subcode}`:''].filter(Boolean).join(' | '));}
   return d;
@@ -958,18 +984,49 @@ app.get('/api/instagram/commerce-status',mustLogin,async(req,res)=>{
   });
 });
 app.post('/api/instagram/sync-latest-reel',mustLogin,async(req,res)=>{
+  let stage='PREPARAR';
   try{
     const options=normalizeCommerceOptions(req.body||{});
-    if(!options.shopeeUrl)return res.status(400).json({error:'Informe o link do produto Shopee antes de sincronizar.'});
-    const cfg=effectiveSettings(loadStore().settings||{});
-    const recent=await instagramGraph(`${cfg.instagramUserId}/media`,{params:{fields:'id,media_type,media_product_type,caption,timestamp,permalink',limit:'10'}});
-    const items=Array.isArray(recent?.data)?recent.data:[];
-    const reel=items.find(x=>String(x.media_product_type||'').toUpperCase()==='REELS') || items.find(x=>String(x.media_type||'').toUpperCase()==='VIDEO');
-    if(!reel?.id)return res.status(404).json({error:'Não encontrei um Reel recente nesta conta do Instagram.'});
+    if(!options.shopeeUrl)return res.status(400).json({error:'Informe o link do produto Shopee antes de sincronizar.',stage});
+
+    const suppliedMediaId=String(req.body?.mediaId||'').trim();
+    const s=loadStore();
+    const localRules=Array.isArray(s.instagramRules)?s.instagramRules:[];
+    const localHistory=Array.isArray(s.history)?s.history:[];
+    const localRule=localRules.find(x=>x?.mediaId);
+    const localPublished=localHistory.find(x=>x?.platform==='instagram'&&x?.mediaId);
+
+    let reel=null;
+    let source='';
+    if(suppliedMediaId){
+      reel={id:suppliedMediaId};
+      source='BROWSER_LAST_MEDIA_ID';
+    } else if(localRule?.mediaId){
+      reel={id:String(localRule.mediaId),permalink:localRule.permalink||'',timestamp:localRule.updatedAt||localRule.createdAt||''};
+      source='LOCAL_RULE';
+    } else if(localPublished?.mediaId){
+      reel={id:String(localPublished.mediaId),permalink:localPublished.permalink||'',timestamp:localPublished.createdAt||''};
+      source='LOCAL_HISTORY';
+    } else {
+      stage='META_LISTAR_REELS';
+      const cfg=effectiveSettings(s.settings||{});
+      const recent=await instagramGraph(`${cfg.instagramUserId}/media`,{params:{fields:'id,media_type,media_product_type,caption,timestamp,permalink',limit:'10'}});
+      const items=Array.isArray(recent?.data)?recent.data:[];
+      reel=items.find(x=>String(x.media_product_type||'').toUpperCase()==='REELS') || items.find(x=>String(x.media_type||'').toUpperCase()==='VIDEO');
+      source='META_LATEST_REEL';
+    }
+    if(!reel?.id)return res.status(404).json({error:'Não encontrei um Reel recente nesta conta do Instagram.',stage,source});
+
+    stage='SUPABASE_UPSERT';
     const rule=upsertInstagramRule({mediaId:String(reel.id),options});
     const supabaseSync=await syncInstagramRuleToSupabase(rule);
-    res.json({ok:true,mediaId:String(reel.id),permalink:reel.permalink||'',timestamp:reel.timestamp||'',supabaseSync});
-  }catch(e){res.status(400).json({error:e.message});}
+    console.info('[SYNC-LATEST-REEL] OK',{mediaId:String(reel.id),source,stage});
+    res.json({ok:true,mediaId:String(reel.id),permalink:reel.permalink||'',timestamp:reel.timestamp||'',source,supabaseSync});
+  }catch(e){
+    const details=networkErrorDetails(e);
+    console.error('[SYNC-LATEST-REEL] ERROR',{stage,error:details});
+    res.status(400).json({error:e.message||details,stage,details});
+  }
 });
 
 app.get('/api/meta/ads/status',mustLogin,async(_req,res)=>{
@@ -1303,4 +1360,4 @@ app.post('/api/status/:publishId', mustLogin, async(req,res)=>{
   try{const d=await tiktokJson('https://open.tiktokapis.com/v2/post/publish/status/fetch/',{method:'POST',body:JSON.stringify({publish_id:req.params.publishId})});res.json(d.data||{});}catch(e){res.status(400).json({error:e.message});}
 });
 
-app.listen(PORT,()=>console.log(`REDEACHADOS BR Publisher Web V5.5.3 em http://localhost:${PORT}`));
+app.listen(PORT,()=>console.log(`REDEACHADOS BR Publisher Web V5.5.4 em http://localhost:${PORT}`));

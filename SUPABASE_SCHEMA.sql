@@ -1,4 +1,4 @@
--- REDEACHADOS BR Publisher V5.5.3
+-- REDEACHADOS BR Publisher V5.5.4
 -- Persistência da automação Instagram comentário -> Direct
 
 create extension if not exists pgcrypto;

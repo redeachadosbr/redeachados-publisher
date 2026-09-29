@@ -1,11 +1,11 @@
-# Atualização V5.5.3 · Hotfix Supabase Secret Key
+# Atualização V5.5.4 · Hotfix Supabase Secret Key
 
 - Corrige autenticação REST com chaves novas `sb_secret_*`: agora elas são enviadas somente no header `apikey`, sem `Authorization: Bearer`.
 - Mantém compatibilidade com `service_role` legado em formato JWT.
 - Mostra no retorno de publicação se a automação foi realmente gravada no Supabase.
 - Adiciona o botão **Sincronizar último Reel com o Direct** para reparar um Reel já publicado sem republicá-lo.
 
-# Atualização V5.5.3 · UI compacta de vídeos + botões sociais premium
+# Atualização V5.5.4 · UI compacta de vídeos + botões sociais premium
 
 ## Melhorias desta versão
 
@@ -19,7 +19,7 @@
 ---
 
 
-## Correções V5.5.3
+## Correções V5.5.4
 
 - **Link Shopee protegido pela SKU:** ao selecionar um vídeo via SKU/WeDrop, o anúncio escolhido no catálogo passa a ser a fonte autoritativa. A IA não pode mais substituir o link por outro produto visualmente parecido.
 - **Produto escolhido lembrado:** quando uma SKU aparece em mais de um anúncio e você escolhe o correto, o Publisher memoriza o ID para as próximas buscas.
@@ -29,7 +29,7 @@
 
 No Render, adicione `SUPABASE_URL` e `SUPABASE_SECRET_KEY` (ou a chave legada `SUPABASE_SERVICE_ROLE_KEY`). A chave fica apenas no backend do Render.
 
-# Atualização V5.5.3 · Instagram Commerce
+# Atualização V5.5.4 · Instagram Commerce
 
 Esta versão parte da V5.4.15 e **preserva a correção de SKUs, catálogo, interface Studio, TikTok, IA e publicação de Reels**.
 
@@ -49,7 +49,7 @@ Esta versão parte da V5.4.15 e **preserva a correção de SKUs, catálogo, inte
 
 ## Como atualizar
 
-Substitua os arquivos do projeto pela V5.5.3. Em produção, preserve seus dados e segredos existentes:
+Substitua os arquivos do projeto pela V5.5.4. Em produção, preserve seus dados e segredos existentes:
 
 - `data/store.json`
 - `uploads/`
