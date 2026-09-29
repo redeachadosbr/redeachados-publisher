@@ -1,10 +1,10 @@
-# REDEACHADOS BR Publisher V5.5.8
+# REDEACHADOS BR Publisher V5.5.9
 
 
 Esta versão preserva a V5.5.5 e adiciona a rota `POST /api/instagram/webhook` para o fluxo Meta → Cloudflare → Render → Supabase. Ela contorna o erro Cloudflare 530 / 1016 que ocorreu quando o Worker tentou acessar diretamente o Supabase. A política pública `/privacy` e `/data-deletion` continuam disponíveis.
 
 
-## V5.5.8 — Story no iPhone por QR Code
+## V5.5.9 — Story no iPhone por QR Code
 
 - Novo fluxo **Continuar Story no iPhone**: gera QR Code temporário no computador e abre no iPhone uma página com vídeo + link Shopee.
 - No iPhone: copie o link, compartilhe o vídeo para o Instagram e adicione o adesivo Link.
@@ -134,3 +134,7 @@ Commit sugerido: `Update V5.4.8 Render FFmpeg fix`
 ## Commit sugerido
 
 `Update V5.4.12 automatic Instagram Reels publishing`
+
+
+## V5.5.9 — compartilhamento no iPhone
+A página do QR pré-carrega o vídeo antes de liberar o botão Compartilhar. Assim, no toque, o iOS recebe imediatamente a chamada de compartilhamento. Se o navegador não aceitar o arquivo, use **Salvar vídeo no iPhone** como fallback.

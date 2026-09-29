@@ -684,14 +684,15 @@ app.get('/api/story-share/video',async(req,res)=>{
       const r=await fetchDriveResponse(payload.id,range);const ct=remoteMime(r);
       res.status(r.status===206?206:200);res.setHeader('Content-Type',ct);res.setHeader('Accept-Ranges',r.headers.get('accept-ranges')||'bytes');
       const len=r.headers.get('content-length');if(len)res.setHeader('Content-Length',len);const cr=r.headers.get('content-range');if(cr)res.setHeader('Content-Range',cr);
-      res.setHeader('Cache-Control','private, max-age=300');res.setHeader('Content-Disposition',`inline; filename="${safeStoryDownloadName(payload.title||'story')}.mp4"`);
+      res.setHeader('Cache-Control','private, max-age=300');const disposition=String(req.query.download||'')==='1'?'attachment':'inline';res.setHeader('Content-Disposition',`${disposition}; filename="${safeStoryDownloadName(payload.title||'story')}.mp4"`);
       if(!r.body)return res.end();Readable.fromWeb(r.body).on('error',()=>{try{res.destroy();}catch{}}).pipe(res);return;
     }
     const file=path.basename(String(payload.file||''));
     if(!file||file!==payload.file)throw new Error('Arquivo temporário inválido.');
     const filePath=path.join(UPLOAD_DIR,file);if(!fs.existsSync(filePath))return res.status(410).json({error:'O vídeo temporário expirou. Gere um novo QR Code no Publisher.'});
     res.setHeader('Cache-Control','private, max-age=300');
-    res.sendFile(filePath,{headers:{'Content-Disposition':`inline; filename="${safeStoryDownloadName(payload.title||'story')}.mp4"`}});
+    const disposition=String(req.query.download||'')==='1'?'attachment':'inline';
+    res.sendFile(filePath,{headers:{'Content-Disposition':`${disposition}; filename="${safeStoryDownloadName(payload.title||'story')}.mp4"`}});
   }catch(e){if(!res.headersSent)res.status(400).json({error:e.message});}
 });
 app.get('/story-mobile',(_req,res)=>res.sendFile(path.join(__dirname,'public','story-mobile.html')));
@@ -700,7 +701,7 @@ app.get('/story-mobile',(_req,res)=>res.sendFile(path.join(__dirname,'public','s
 app.get(['/privacy','/privacy-policy'], (_req,res)=>res.sendFile(path.join(__dirname,'public','privacy.html')));
 app.get('/data-deletion', (_req,res)=>res.sendFile(path.join(__dirname,'public','privacy.html')));
 
-app.get('/api/health', (_req,res)=>res.json({ok:true,service:'REDEACHADOS BR Publisher Web V5.5.8'}));
+app.get('/api/health', (_req,res)=>res.json({ok:true,service:'REDEACHADOS BR Publisher Web V5.5.9'}));
 app.get('/api/auth-state',(req,res)=>res.json({locked:Boolean(process.env.APP_PASSWORD),loggedIn:!process.env.APP_PASSWORD||Boolean(req.session?.appAuth)}));
 app.post('/api/login',(req,res)=>{
   if(!process.env.APP_PASSWORD){ req.session.appAuth=true; return res.json({ok:true}); }
@@ -1552,4 +1553,4 @@ app.post('/api/status/:publishId', mustLogin, async(req,res)=>{
   try{const d=await tiktokJson('https://open.tiktokapis.com/v2/post/publish/status/fetch/',{method:'POST',body:JSON.stringify({publish_id:req.params.publishId})});res.json(d.data||{});}catch(e){res.status(400).json({error:e.message});}
 });
 
-app.listen(PORT,()=>console.log(`REDEACHADOS BR Publisher Web V5.5.8 em http://localhost:${PORT}`));
+app.listen(PORT,()=>console.log(`REDEACHADOS BR Publisher Web V5.5.9 em http://localhost:${PORT}`));

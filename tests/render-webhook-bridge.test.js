@@ -6,8 +6,8 @@ const server=fs.readFileSync(new URL('../server.js',import.meta.url),'utf8');
 const worker=fs.readFileSync(new URL('../CLOUDFLARE_WORKER_REFERENCE.js',import.meta.url),'utf8');
 const pkg=JSON.parse(fs.readFileSync(new URL('../package.json',import.meta.url),'utf8'));
 
-test('V5.5.8 preserves Render webhook bridge',()=>{
-  assert.equal(pkg.version,'5.5.8');
+test('V5.5.9 preserves Render webhook bridge',()=>{
+  assert.equal(pkg.version,'5.5.9');
   assert.match(server,/app\.post\('\/api\/instagram\/webhook'/);
   assert.match(server,/supabaseInstagramWebhookUrl\(\)/);
   assert.match(server,/req\.rawBody/);
