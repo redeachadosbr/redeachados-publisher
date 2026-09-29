@@ -26,3 +26,13 @@ test('TikTok expired authorization gets reconnect state without changing Instagr
   assert.match(js,/Autorização inválida ou expirada/);
   assert.match(js,/setSocialButton\('instagram','loading'\)/);
 });
+
+
+test('V5.5.15 exposes dedicated navigation pages for commerce, connections and history',()=>{
+  assert.match(html,/href="#commerce"[^>]*>[\s\S]*?Link clicável/);
+  assert.match(html,/href="#channels"[^>]*>[\s\S]*?Canais de conexão/);
+  assert.match(html,/id="commerce" class="app-page"/);
+  assert.match(html,/Link clicável sem depender da legenda/);
+  assert.match(html,/id="channels" class="app-page"/);
+  assert.match(html,/id="activity" class="app-page"/);
+});

@@ -11,7 +11,10 @@
   <link rel="apple-touch-icon" href="/icon-192.png" />
   <link rel="icon" href="/icon-192.png" />
   <title>REDEACHADOS BR · Publisher</title>
-  <link rel="stylesheet" href="/styles.css?v=5514-ui-compact-pro" />
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/styles.css?v=5515-studio-pro" />
 </head>
 <body class="ui-compact-pro">
   <svg class="icon-definitions" xmlns="http://www.w3.org/2000/svg" aria-hidden="true"><defs>
@@ -26,7 +29,13 @@
     <symbol id="i-check" viewBox="0 0 24 24"><path d="m5 12 4 4L19 6"/></symbol>
     <symbol id="i-spark" viewBox="0 0 24 24"><path d="m12 3 2.5 6.5L21 12l-6.5 2.5L12 21l-2.5-6.5L3 12l6.5-2.5ZM20 2v4m-2-2h4"/></symbol>
     <symbol id="i-instagram" viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="5"/><circle cx="12" cy="12" r="4"/><path d="M17.5 6.5h.01"/></symbol>
-    <symbol id="i-tiktok" viewBox="0 0 24 24"><path d="M14 3v12.5a4.5 4.5 0 1 1-4.5-4.5M14 3c0 3 2 5 5 5"/></symbol><symbol id="i-eye" viewBox="0 0 24 24"><path d="M2.5 12s3.5-6 9.5-6 9.5 6 9.5 6-3.5 6-9.5 6-9.5-6-9.5-6Z"/><circle cx="12" cy="12" r="2.5"/></symbol><symbol id="i-chevron-down" viewBox="0 0 24 24"><path d="m7 9 5 5 5-5"/></symbol><symbol id="i-bolt" viewBox="0 0 24 24"><path d="m13 2-8 12h7l-1 8 8-12h-7l1-8Z"/></symbol><symbol id="i-circle-check" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="m8 12 2.5 2.5L16 9"/></symbol>
+    <symbol id="i-tiktok" viewBox="0 0 24 24"><path d="M14 3v12.5a4.5 4.5 0 1 1-4.5-4.5M14 3c0 3 2 5 5 5"/></symbol>
+    <symbol id="i-bag" viewBox="0 0 24 24"><path d="M5 8h14l-1 12H6L5 8Z"/><path d="M9 8V6a3 3 0 0 1 6 0v2"/></symbol>
+    <symbol id="i-plug" viewBox="0 0 24 24"><path d="M8 3v5m8-5v5M6 8h12v2a6 6 0 0 1-6 6v5m-3 0h6"/></symbol>
+    <symbol id="i-copy" viewBox="0 0 24 24"><rect x="8" y="8" width="11" height="11" rx="2"/><path d="M16 8V5a2 2 0 0 0-2-2H5a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h3"/></symbol>
+    <symbol id="i-message" viewBox="0 0 24 24"><path d="M4 5h16v11H8l-4 4V5Z"/></symbol>
+    <symbol id="i-megaphone" viewBox="0 0 24 24"><path d="m4 13 11-5v8L4 11v2Z"/><path d="M15 10h3a2 2 0 0 1 0 4h-3M7 14l1 5h3l-1-4"/></symbol>
+    <symbol id="i-eye" viewBox="0 0 24 24"><path d="M2.5 12s3.5-6 9.5-6 9.5 6 9.5 6-3.5 6-9.5 6-9.5-6-9.5-6Z"/><circle cx="12" cy="12" r="2.5"/></symbol><symbol id="i-chevron-down" viewBox="0 0 24 24"><path d="m7 9 5 5 5-5"/></symbol><symbol id="i-bolt" viewBox="0 0 24 24"><path d="m13 2-8 12h7l-1 8 8-12h-7l1-8Z"/></symbol><symbol id="i-circle-check" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="m8 12 2.5 2.5L16 9"/></symbol>
   </defs></svg>
   <div id="toast" role="status" aria-live="polite"></div>
   <a class="skip-link" href="#create">Ir para o conteúdo</a>
@@ -37,12 +46,17 @@
     <aside class="sidebar" aria-label="Menu principal">
       <a class="brand" href="#create" aria-label="Rede Achados BR Publisher"><span class="brand-mark">RA<span>•</span></span><span class="brand-name">REDE ACHADOS <b>BR</b><small>Publisher Studio</small></span></a>
       <span class="nav-caption">ESPAÇO DE TRABALHO</span>
-      <nav class="side-nav"><a class="nav-link active" href="#create" aria-current="page"><svg class="icon"><use href="#i-grid"/></svg><span>Criar publicação</span></a><a class="nav-link" href="#channels"><svg class="icon"><use href="#i-link"/></svg><span>Canais</span></a><a class="nav-link" href="#activity"><svg class="icon"><use href="#i-clock"/></svg><span>Histórico</span></a></nav>
-      <div class="sidebar-footer"><div class="sidebar-note"><svg class="icon"><use href="#i-spark"/></svg><p>Mais conteúdo.<br><strong>Mais possibilidades.</strong></p></div><span>REDE ACHADOS BR <b>V5.5.14</b></span></div>
+      <nav class="side-nav">
+        <a class="nav-link active" href="#create" aria-current="page"><svg class="icon"><use href="#i-grid"/></svg><span>Criar publicação</span></a>
+        <a class="nav-link" href="#commerce"><svg class="icon"><use href="#i-bag"/></svg><span>Link clicável</span></a>
+        <a class="nav-link" href="#channels"><svg class="icon"><use href="#i-plug"/></svg><span>Canais de conexão</span></a>
+        <a class="nav-link" href="#activity"><svg class="icon"><use href="#i-clock"/></svg><span>Histórico</span></a>
+      </nav>
+      <div class="sidebar-footer"><div class="sidebar-note"><svg class="icon"><use href="#i-spark"/></svg><p>Publicação simples.<br><strong>Venda mais conectada.</strong></p></div><span>REDE ACHADOS BR <b>V5.5.15</b></span></div>
     </aside>
     <div class="page-stage">
-      <header class="app-topbar"><div class="breadcrumb">Workspace <span>/</span> <strong>Publisher</strong></div><button id="settingsBtn" type="button" class="ghost"><svg class="icon"><use href="#i-settings"/></svg>Configurações</button></header>
-      <main id="create">
+      <header class="app-topbar"><div class="breadcrumb">Workspace <span>/</span> <strong id="breadcrumbCurrent">Criar publicação</strong></div><button id="settingsBtn" type="button" class="ghost"><svg class="icon"><use href="#i-settings"/></svg>Configurações</button></header>
+      <main id="create" class="app-page active-page" data-page="create">
         <section class="hero"><div><span class="eyebrow">SEU ESTÚDIO DE CONTEÚDO</span><h1>Vamos criar sua próxima publicação.</h1><p>Escolha o vídeo. Revise a legenda. Compartilhe com seu público.</p></div><span class="platform-tag"><svg class="icon"><use href="#i-video"/></svg>TikTok + Instagram</span></section>
         <div class="workspace-grid">
           <div class="creation-column">
@@ -72,29 +86,48 @@
                 </div>
                 <div class="options hidden" aria-hidden="true"><label>Privacidade<select id="privacy"><option value="SELF_ONLY">Somente eu</option></select></label><label class="check"><input id="disableComment" type="checkbox"> Desativar comentários</label><label class="check"><input id="disableDuet" type="checkbox"> Desativar Dueto</label><label class="check"><input id="disableStitch" type="checkbox"> Desativar Costurar</label><label class="check"><input id="isAigc" type="checkbox"> O vídeo em si foi gerado por IA</label></div>
                 <div class="publish-area"><div class="publish-heading"><span class="step-number">03</span><h3>Pronto para compartilhar?</h3><button id="regenerateBtn" type="button" class="text-button">↻ Gerar novamente</button></div>
-                  <div class="commerce-box" aria-label="Conversão do Instagram">
-                    <div class="commerce-head"><div><span class="eyebrow">VENDA DIRETO DO REEL</span><h4>Link clicável sem depender da legenda</h4></div><span id="commerceReadyBadge" class="commerce-badge">CONFIGURANDO</span></div>
-                    <div class="commerce-grid">
-                      <section class="commerce-option"><label class="commerce-toggle"><input id="dmEnabled" type="checkbox" checked><span><b>Direct automático</b><small>Quem comentar a palavra recebe o link da Shopee no Direct.</small></span></label><label>Palavra-chave<input id="dmKeyword" maxlength="40" value="QUERO" /></label><label class="commerce-toggle compact"><input id="publicReplyEnabled" type="checkbox" checked><span><b>Responder o comentário</b><small>Confirma publicamente que o link foi enviado.</small></span></label></section>
-                      <section class="commerce-option"><label class="commerce-toggle"><input id="createMetaAd" type="checkbox"><span><b>Criar anúncio com botão Comprar agora</b><small>Usa o Reel publicado e o conjunto de anúncios configurado.</small></span></label><label>Status inicial<select id="metaAdStatus"><option value="PAUSED">Pausado para revisar</option><option value="ACTIVE">Ativo imediatamente</option></select></label><p id="metaAdsInlineStatus" class="small">Configure a Marketing API em Configurações para habilitar.</p></section>
-                    </div>
-                  </div><div class="actions social-actions">
+                  <a href="#commerce" class="commerce-shortcut" aria-label="Abrir configurações de link clicável"><span class="shortcut-icon"><svg class="icon"><use href="#i-bag"/></svg></span><span><b>Link clicável e Direct</b><small>Configure em uma página própria, sem poluir a tela de publicação.</small></span><svg class="icon shortcut-arrow"><use href="#i-arrow"/></svg></a><div class="actions social-actions">
                     <button id="publishBtn" type="button" class="social-publish-btn tiktok-publish" aria-label="Enviar rascunho ao TikTok"><svg class="icon social-button-icon"><use href="#i-tiktok"/></svg><span class="social-button-copy"><b>Enviar rascunho ao TikTok</b><small>Finalize a publicação no aplicativo</small></span></button>
                     <button id="instagramPublishBtn" type="button" class="social-publish-btn instagram-publish" aria-label="Publicar Reel no Instagram"><svg class="icon social-button-icon"><use href="#i-instagram"/></svg><span class="social-button-copy"><b>Publicar Reel no Instagram</b><small>Publicação automática do Reel</small></span></button>
                   </div>
-                  <section class="story-box" aria-label="Stories do Instagram"><div class="story-head"><div><span class="eyebrow">STORIES</span><h4>Leve o mesmo vídeo para o Story</h4></div><span class="story-badge">NOVO</span></div><div class="story-actions"><button id="prepareStoryBtn" type="button" class="story-btn story-link"><svg class="icon"><use href="#i-link"/></svg><span><b>Abrir Story no iPhone</b><small>Gera um QR Code. No iPhone, o auxiliar nativo abre o editor de Stories com o vídeo carregado.</small></span></button><button id="instagramStoryPublishBtn" type="button" class="story-btn story-auto"><svg class="icon"><use href="#i-instagram"/></svg><span><b>Publicar Story automático</b><small>API oficial · sem adesivo de link · requer conta Instagram Business compatível.</small></span></button></div><p id="storyStatus" class="small story-status">Para vender pelo Story, use a primeira opção: escaneie o QR Code no iPhone e toque em “Abrir direto no Story do Instagram”. O auxiliar nativo precisa estar instalado no iPhone.</p></section>
-                  <div class="sync-reel-row"><button id="syncLatestReelBtn" type="button" class="ghost sync-reel-btn">↻ Sincronizar último Reel com o Direct</button><span class="small">Use apenas para reparar um Reel já publicado que ainda não apareceu em <b>reel_links</b>.</span></div><p id="draftModeInfo" class="small"><b>No TikTok, você finaliza a publicação no aplicativo.</b> O vídeo vai para a caixa de entrada; privacidade, comentários, Dueto, Costurar e marcação de IA são definidos por lá. No Instagram, o Reel é publicado automaticamente. Stories podem ser publicados pela API sem link ou preparados para você adicionar o adesivo Link no celular.</p></div>
+                  <section class="story-box" aria-label="Stories do Instagram"><div class="story-head"><div><span class="eyebrow">STORIES</span><h4>Story do produto</h4></div><span class="story-badge">INSTAGRAM</span></div><div class="story-actions"><button id="prepareStoryBtn" type="button" class="story-btn story-link"><svg class="icon"><use href="#i-copy"/></svg><span><b>Copiar link do produto</b><small>Copia somente o link da Shopee para você usar no adesivo Link de um Story manual.</small></span></button><button id="instagramStoryPublishBtn" type="button" class="story-btn story-auto"><svg class="icon"><use href="#i-instagram"/></svg><span><b>Publicar Story automático</b><small>API oficial · publica o vídeo sem adesivo de link.</small></span></button></div><p id="storyStatus" class="small story-status">O botão da esquerda apenas copia o link do produto. O Story automático é publicado diretamente no Instagram sem link clicável.</p></section>
+                  <div class="sync-reel-row"><button id="syncLatestReelBtn" type="button" class="ghost sync-reel-btn">↻ Sincronizar último Reel com o Direct</button><span class="small">Use apenas para reparar um Reel já publicado que ainda não apareceu em <b>reel_links</b>.</span></div><p id="draftModeInfo" class="small"><b>No TikTok, você finaliza a publicação no aplicativo.</b> O vídeo vai para a caixa de entrada; privacidade, comentários, Dueto, Costurar e marcação de IA são definidos por lá. No Instagram, o Reel é publicado automaticamente. Stories podem ser publicados automaticamente pela API sem link. Para um Story manual, use “Copiar link do produto”.</p></div>
               </div>
             </section>
             <div class="empty-workspace" id="emptyWorkspace"><span class="empty-icon"><svg class="icon"><use href="#i-video"/></svg></span><div><h3>O próximo passo é com a IA.</h3><p>Ao escolher um vídeo, sua prévia e os textos aparecem aqui.</p></div><span class="empty-line"></span></div>
           </div>
-          <aside class="workspace-aside">
-            <section class="card channels-card" id="channels" aria-labelledby="channelsTitle"><div class="aside-heading"><h2 id="channelsTitle">Canais conectados</h2><svg class="icon"><use href="#i-link"/></svg></div><p class="aside-description">Status rápido das suas publicações.</p><div class="connection"><div class="channel-heading"><span class="channel-icon tiktok"><svg class="icon"><use href="#i-tiktok"/></svg></span><h3>TikTok<small>Envio de rascunhos</small></h3></div><p id="connectionText" role="status">Verificando conexão...</p><a id="connectBtn" href="/auth/tiktok" target="_blank" rel="noopener" class="ghost linkbtn">Conectar TikTok</a></div><div class="connection"><div class="channel-heading"><span class="channel-icon instagram"><svg class="icon"><use href="#i-instagram"/></svg></span><h3>Instagram<small>Reels + Stories</small></h3></div><p id="instagramConnectionText" role="status">Verificando conexão...</p><button type="button" class="ghost" data-open-settings="settings-instagram">Configurar Instagram</button></div></section>
-            <section class="card history-card" id="activity" aria-labelledby="historyTitle"><div class="aside-heading"><h2 id="historyTitle">Atividade recente</h2><svg class="icon"><use href="#i-clock"/></svg></div><div id="history" class="history"></div></section>
-            <div class="workflow-note"><span class="eyebrow">FLUXO DE PUBLICAÇÃO</span><ol><li><span>1</span>Escolha o vídeo</li><li><span>2</span>Revise o conteúdo</li><li><span>3</span>Envie para seus canais</li></ol></div>
-          </aside>
+
         </div>
-        <footer class="page-footer">Feito para dar mais tempo ao que importa.<span>REDE ACHADOS BR · Publisher V5.5.14 · <a href="/privacy" target="_blank" rel="noopener">Privacidade</a></span></footer>
+        <footer class="page-footer">Feito para dar mais tempo ao que importa.<span>REDE ACHADOS BR · Publisher V5.5.15 · <a href="/privacy" target="_blank" rel="noopener">Privacidade</a></span></footer>
+      </main>
+
+      <main id="commerce" class="app-page" data-page="commerce" hidden>
+        <section class="page-hero premium-page-hero"><div><span class="eyebrow">CONVERSÃO NO INSTAGRAM</span><h1>Link clicável sem depender da legenda.</h1><p>Centralize o Direct automático e os anúncios com botão de compra em uma tela dedicada.</p></div><span class="hero-icon hero-icon-gold"><svg class="icon"><use href="#i-bag"/></svg></span></section>
+        <section class="card standalone-card commerce-standalone" aria-label="Configuração de link clicável">
+          <div class="standalone-head"><div><span class="section-kicker">AUTOMAÇÃO DE VENDA</span><h2>Como o cliente chega ao produto</h2><p>Escolha as opções que serão usadas quando você publicar um Reel pelo Publisher.</p></div><span id="commerceReadyBadge" class="commerce-badge">CONFIGURANDO</span></div>
+          <div class="commerce-grid page-commerce-grid">
+            <section class="commerce-option premium-option"><span class="option-icon"><svg class="icon"><use href="#i-message"/></svg></span><label class="commerce-toggle"><input id="dmEnabled" type="checkbox" checked><span><b>Direct automático</b><small>Quem comentar a palavra recebe o link da Shopee no Direct.</small></span></label><label>Palavra-chave<input id="dmKeyword" maxlength="40" value="QUERO" /></label><label class="commerce-toggle compact"><input id="publicReplyEnabled" type="checkbox" checked><span><b>Responder o comentário</b><small>Confirma publicamente que o link foi enviado.</small></span></label><p class="feature-help">Ideal para transformar comentários em visitas ao produto sem depender de links na legenda.</p></section>
+            <section class="commerce-option premium-option"><span class="option-icon"><svg class="icon"><use href="#i-megaphone"/></svg></span><label class="commerce-toggle"><input id="createMetaAd" type="checkbox"><span><b>Criar anúncio com botão Comprar agora</b><small>Usa o Reel publicado e o conjunto de anúncios configurado.</small></span></label><label>Status inicial<select id="metaAdStatus"><option value="PAUSED">Pausado para revisar</option><option value="ACTIVE">Ativo imediatamente</option></select></label><p id="metaAdsInlineStatus" class="small">Configure a Marketing API em Configurações para habilitar.</p><p class="feature-help">O botão de compra depende da configuração correta da conta de anúncios Meta.</p></section>
+          </div>
+          <div class="standalone-actions"><button type="button" class="ghost" data-open-settings="settings-instagram"><svg class="icon"><use href="#i-settings"/></svg>Configurar Instagram / Meta</button><a href="#create" class="primary linkbtn">Voltar para publicação <svg class="icon"><use href="#i-arrow"/></svg></a></div>
+        </section>
+        <footer class="page-footer">Configuração separada para facilitar sua rotina.<span>REDE ACHADOS BR · Publisher V5.5.15</span></footer>
+      </main>
+
+      <main id="channels" class="app-page" data-page="channels" hidden>
+        <section class="page-hero premium-page-hero"><div><span class="eyebrow">CANAIS DE CONEXÃO</span><h1>Conecte suas plataformas em um só lugar.</h1><p>Veja o status e acesse somente as configurações necessárias do TikTok e Instagram.</p></div><span class="hero-icon hero-icon-green"><svg class="icon"><use href="#i-plug"/></svg></span></section>
+        <div class="channel-page-grid">
+          <section class="card channel-page-card tiktok-channel-card"><div class="channel-page-head"><span class="channel-icon tiktok"><svg class="icon"><use href="#i-tiktok"/></svg></span><div><span class="section-kicker">TIKTOK</span><h2>Publicação de rascunhos</h2></div><span class="channel-dot"></span></div><p id="connectionText" class="channel-status-large" role="status">Verificando conexão...</p><div class="channel-capabilities"><span>Rascunhos de vídeo</span><span>Content Posting API</span><span>Finalização no TikTok</span></div><div class="channel-page-actions"><a id="connectBtn" href="/auth/tiktok" target="_blank" rel="noopener" class="primary linkbtn">Conectar TikTok</a><button type="button" class="ghost" data-open-settings="settings-tiktok"><svg class="icon"><use href="#i-settings"/></svg>Configurar API</button></div></section>
+          <section class="card channel-page-card instagram-channel-card"><div class="channel-page-head"><span class="channel-icon instagram"><svg class="icon"><use href="#i-instagram"/></svg></span><div><span class="section-kicker">INSTAGRAM</span><h2>Reels, Stories e Direct</h2></div><span class="channel-dot"></span></div><p id="instagramConnectionText" class="channel-status-large" role="status">Verificando conexão...</p><div class="channel-capabilities"><span>Reels automáticos</span><span>Stories automáticos</span><span>Direct por comentário</span></div><div class="channel-page-actions"><button type="button" class="primary" data-open-settings="settings-instagram">Configurar Instagram / Meta</button></div></section>
+        </div>
+        <section class="connection-tip"><svg class="icon"><use href="#i-spark"/></svg><div><b>Dica de operação</b><span>Mantenha os dois canais conectados antes de iniciar uma sequência de publicações.</span></div></section>
+        <footer class="page-footer">Conexões separadas da criação para deixar o fluxo mais simples.<span>REDE ACHADOS BR · Publisher V5.5.15</span></footer>
+      </main>
+
+      <main id="activity" class="app-page" data-page="activity" hidden>
+        <section class="page-hero premium-page-hero"><div><span class="eyebrow">HISTÓRICO</span><h1>Acompanhe o que já foi publicado.</h1><p>Uma visão limpa das últimas ações do Publisher.</p></div><span class="hero-icon"><svg class="icon"><use href="#i-clock"/></svg></span></section>
+        <section class="card standalone-card history-page-card"><div class="standalone-head"><div><span class="section-kicker">ATIVIDADE RECENTE</span><h2>Últimas publicações</h2><p>Status, produto e canal organizados em uma única página.</p></div></div><div id="history" class="history history-page-list"></div></section>
+        <footer class="page-footer">Seu histórico fica disponível para consulta rápida.<span>REDE ACHADOS BR · Publisher V5.5.15</span></footer>
       </main>
     </div>
   </div>
@@ -116,14 +149,8 @@
     </form>
   </dialog>
 
-  <dialog id="storyQrDialog" aria-labelledby="storyQrTitle">
-    <div class="story-qr-dialog">
-      <div class="dialog-head"><div><span class="eyebrow">ABRIR NO IPHONE</span><h2 id="storyQrTitle">Story direto no Instagram</h2><p>Escaneie com a câmera do iPhone e abra o auxiliar nativo para entrar diretamente no editor de Stories.</p></div><button id="closeStoryQrBtn" type="button" class="x" aria-label="Fechar">×</button></div>
-      <div class="story-qr-body"><img id="storyQrImage" alt="QR Code para continuar o Story no iPhone"><div class="story-qr-steps"><b>No iPhone</b><span>1. Escaneie o QR Code</span><span>2. Toque em “Abrir direto no Story do Instagram”</span><span>3. O auxiliar nativo prepara o vídeo e abre o editor de Stories</span><span>4. Revise o Story e publique; se o link não aparecer, use o botão de copiar link como alternativa</span><small>O QR Code expira em 30 minutos.</small></div></div>
-      <div class="story-qr-footer"><button id="copyStoryMobileUrlBtn" type="button" class="ghost">Copiar endereço do QR</button><button id="doneStoryQrBtn" type="button" class="primary">Pronto</button></div>
-    </div>
-  </dialog>
-  <script src="/app.js?v=5514-ui-compact-pro"></script><script src="/ui.js?v=5514-ui-compact-pro"></script>
+
+  <script src="/app.js?v=5515-studio-pro"></script><script src="/ui.js?v=5515-studio-pro"></script>
   <script>if('serviceWorker' in navigator){navigator.serviceWorker.register('/sw.js').catch(()=>{})}</script>
 </body>
 </html>

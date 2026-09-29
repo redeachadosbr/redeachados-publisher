@@ -149,3 +149,13 @@ O fluxo assistido de Story agora oferece um botão `Abrir direto no Story do Ins
 Atualização visual focada no uso diário do Publisher em desktop e celular. A lógica de catálogo, WeDrop, TikTok, Instagram, Direct, Stories, Supabase e Render foi preservada.
 
 Principais mudanças: lista de vídeos mais compacta, comparação por compatibilidade, seleção única visível, painel de busca automática condensado, botões e ícones com contraste maior, sidebar e coluna de status menores, atividade recente compacta e redução geral de espaços vazios.
+
+
+## V5.5.15 — Studio Pro
+
+- Menu lateral reorganizado em páginas independentes: Criar publicação, Link clicável, Canais de conexão e Histórico.
+- A configuração “Link clicável sem depender da legenda” saiu da tela de criação e ganhou página própria.
+- TikTok e Instagram agora têm página exclusiva de conexão/status, com acesso direto às configurações de API.
+- O botão de Story assistido foi simplificado para “Copiar link do produto”; ele não abre QR Code nem iPhone.
+- Story automático oficial continua disponível e publica sem adesivo de link.
+- Revisão visual geral com Manrope, contraste maior, cards premium, navegação mais clara e botões/ícones interativos.

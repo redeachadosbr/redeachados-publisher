@@ -57,14 +57,30 @@
     fileName.title = fileName.textContent;
   }).observe(fileName, {childList:true, subtree:true, characterData:true});
   const navLinks = [...document.querySelectorAll('.nav-link')];
+  const pages = [...document.querySelectorAll('.app-page')];
+  const pageTitles = {
+    '#create':'Criar publicação',
+    '#commerce':'Link clicável',
+    '#channels':'Canais de conexão',
+    '#activity':'Histórico'
+  };
   function updateNav() {
-    const target = ['#channels', '#activity'].includes(location.hash) ? location.hash : '#create';
+    const target = pageTitles[location.hash] ? location.hash : '#create';
     navLinks.forEach(link => {
       const active = link.getAttribute('href') === target;
       link.classList.toggle('active', active);
       if (active) link.setAttribute('aria-current', 'page');
       else link.removeAttribute('aria-current');
     });
+    pages.forEach(page => {
+      const active = `#${page.id}` === target;
+      page.hidden = !active;
+      page.classList.toggle('active-page', active);
+    });
+    const crumb = byId('breadcrumbCurrent');
+    if (crumb) crumb.textContent = pageTitles[target];
+    document.title = `${pageTitles[target]} · REDEACHADOS BR`;
+    requestAnimationFrame(() => window.scrollTo({top:0,left:0,behavior:'auto'}));
   }
   window.addEventListener('hashchange', updateNav);
   byId('loginPassword').addEventListener('keydown', event => {if (event.key === 'Enter') byId('loginBtn').click()});

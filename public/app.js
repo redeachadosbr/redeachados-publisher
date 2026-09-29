@@ -271,7 +271,7 @@ async function loadInstagramStatus(){
   try{const d=await api('/api/instagram/status');if(!d.configured){el.textContent='Configure o token da Meta em Configurações.';return;}if(d.connected){el.textContent=`Conectado: @${d.username||'redeachadosbr'}`;}else el.textContent='Token configurado, mas a Meta recusou a conexão: '+(d.error||'verifique o token.');}catch(e){el.textContent=e.message;}
 }
 async function publishInstagram(){
-  if(!selectedFile&&!selectedRemoteVideo)return toast('Escolha um vídeo.',true);if(!generated)return toast('Aguarde a geração da publicação.',true);if(!config?.settings?.instagramConfigured)return toast('Abra Configurações e informe um novo token de acesso da Meta.',true);
+  if(!selectedFile&&!selectedRemoteVideo)return toast('Escolha um vídeo.',true);if(!generated)return toast('Aguarde a geração da publicação.',true);if(!config?.settings?.instagramConfigured){location.hash='#channels';return toast('Abra Canais de conexão e configure o Instagram / Meta.',true);}
   const caption=$('#instagramCaption')?.value.trim()||''; if(!caption)return toast('A legenda do Instagram está vazia.',true);
   const commerce=instagramCommercePayload();if((commerce.dmEnabled||commerce.createAd)&&!commerce.shopeeUrl)return toast('Informe o Link do produto Shopee para ativar Direct ou anúncio com compra.',true);
   const b=$('#instagramPublishBtn');b.disabled=true;setSocialButton('instagram','loading');
@@ -300,41 +300,28 @@ async function publishInstagram(){
 $('#instagramPublishBtn')?.addEventListener('click',publishInstagram);
 
 function storyProductLink(){return String(selectedRemoteVideo?.catalogProductUrl||$('#shopeeUrl')?.value||config?.settings?.shopeeStoreUrl||'').trim()}
-let storyMobileUrl='';
-function closeStoryQr(){const d=$('#storyQrDialog');if(d?.open)d.close()}
-function showStoryQr(result){
-  storyMobileUrl=String(result?.url||'');
-  const img=$('#storyQrImage');if(img)img.src=String(result?.qrDataUrl||'');
-  const d=$('#storyQrDialog');if(d&&!d.open)d.showModal();
-}
-async function prepareStoryWithLink(){
-  if(!selectedFile&&!selectedRemoteVideo)return toast('Escolha um vídeo.',true);
-  const link=storyProductLink();if(!link)return toast('Informe o link do produto Shopee antes de preparar o Story.',true);
-  const status=$('#storyStatus'),b=$('#prepareStoryBtn');b.disabled=true;
+async function copyStoryProductLink(){
+  const link=storyProductLink();
+  if(!link)return toast('Informe o link do produto Shopee antes de copiar.',true);
+  const status=$('#storyStatus'),b=$('#prepareStoryBtn');
+  if(b)b.disabled=true;
   try{
-    if(status)status.textContent='Gerando QR Code seguro para o iPhone…';
-    let r;
-    if(selectedRemoteVideo){
-      r=await api('/api/story-share/remote',{method:'POST',body:JSON.stringify({remoteVideoId:selectedRemoteVideo.id,title:selectedRemoteVideo.title||$('#product')?.value||'Story REDE ACHADOS BR',productUrl:link})});
+    if(navigator.clipboard?.writeText){
+      await navigator.clipboard.writeText(link);
     }else{
-      const fd=new FormData();fd.append('video',selectedFile);fd.append('title',$('#product')?.value||selectedFile.name||'Story REDE ACHADOS BR');fd.append('productUrl',link);
-      r=await api('/api/story-share/upload',{method:'POST',body:fd});
+      const area=document.createElement('textarea');area.value=link;area.setAttribute('readonly','');area.style.position='fixed';area.style.opacity='0';document.body.appendChild(area);area.select();document.execCommand('copy');area.remove();
     }
-    showStoryQr(r);
-    if(status)status.innerHTML='✅ QR Code pronto. <b>Escaneie com o iPhone</b> para copiar o link da Shopee e compartilhar o vídeo no Instagram.';
-    toast('QR Code pronto. No iPhone, abra e toque em “Abrir direto no Story do Instagram”.');
-  }catch(e){if(status)status.textContent='⚠️ '+e.message;toast(e.message,true)}finally{b.disabled=false;}
+    if(status)status.innerHTML='✅ <b>Link do produto copiado.</b> Cole no adesivo Link quando criar um Story manual no Instagram.';
+    toast('Link da Shopee copiado.');
+  }catch(e){
+    if(status)status.textContent='⚠️ Não consegui copiar o link automaticamente.';
+    toast('Não consegui copiar o link. Selecione o campo “Link do produto Shopee” e copie manualmente.',true);
+  }finally{if(b)b.disabled=false;}
 }
-$('#prepareStoryBtn')?.addEventListener('click',prepareStoryWithLink);
-$('#closeStoryQrBtn')?.addEventListener('click',closeStoryQr);
-$('#doneStoryQrBtn')?.addEventListener('click',closeStoryQr);
-$('#copyStoryMobileUrlBtn')?.addEventListener('click',async()=>{
-  if(!storyMobileUrl)return;
-  try{await navigator.clipboard.writeText(storyMobileUrl);toast('Endereço do QR Code copiado.');}catch{toast('Não consegui copiar o endereço.',true)}
-});
+$('#prepareStoryBtn')?.addEventListener('click',copyStoryProductLink);
 
 async function publishInstagramStory(){
-  if(!selectedFile&&!selectedRemoteVideo)return toast('Escolha um vídeo.',true);if(!config?.settings?.instagramConfigured)return toast('Abra Configurações e informe um novo token de acesso da Meta.',true);
+  if(!selectedFile&&!selectedRemoteVideo)return toast('Escolha um vídeo.',true);if(!config?.settings?.instagramConfigured){location.hash='#channels';return toast('Abra Canais de conexão e configure o Instagram / Meta.',true);}
   const b=$('#instagramStoryPublishBtn'),status=$('#storyStatus');b.disabled=true;setSocialButton('story','loading');
   try{
     const meta=currentMeta();let r;
@@ -375,7 +362,7 @@ async function loadCreator(){
 }
 $('#publishBtn').onclick=async()=>{
   if(!selectedFile&&!selectedRemoteVideo)return toast('Escolha um vídeo.',true);if(!generated)return toast('Aguarde a geração da publicação.',true);
-  if(!config.tiktokConnected||tiktokAuthInvalid){syncTikTokPublishState();toast('Reconecte sua conta TikTok antes de enviar o rascunho.',true);$('#connectBtn')?.scrollIntoView({behavior:'smooth',block:'center'});return;}
+  if(!config.tiktokConnected||tiktokAuthInvalid){syncTikTokPublishState();location.hash='#channels';toast('Reconecte sua conta TikTok antes de enviar o rascunho.',true);setTimeout(()=>$('#connectBtn')?.focus(),120);return;}
   const b=$('#publishBtn');b.disabled=true;setSocialButton('tiktok','loading');
   try{
     let r;
