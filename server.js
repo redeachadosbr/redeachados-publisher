@@ -672,7 +672,10 @@ app.get('/api/story-share/info',(req,res)=>{
   try{
     const payload=readStoryShareToken(req.query.t);
     res.setHeader('Cache-Control','no-store');
-    res.json({ok:true,title:payload.title,productUrl:payload.productUrl,expiresAt:new Date(payload.exp).toISOString(),videoUrl:`/api/story-share/video?t=${encodeURIComponent(String(req.query.t||''))}`});
+    const token=encodeURIComponent(String(req.query.t||''));
+    const videoUrl=`/api/story-share/video?t=${token}`;
+    const downloadUrl=payload.source==='remote' ? driveCandidateUrls(payload.id)[0] : `${videoUrl}&download=1`;
+    res.json({ok:true,title:payload.title,productUrl:payload.productUrl,expiresAt:new Date(payload.exp).toISOString(),videoUrl,downloadUrl});
   }catch(e){res.status(400).json({error:e.message});}
 });
 app.get('/api/story-share/video',async(req,res)=>{
@@ -701,7 +704,7 @@ app.get('/story-mobile',(_req,res)=>res.sendFile(path.join(__dirname,'public','s
 app.get(['/privacy','/privacy-policy'], (_req,res)=>res.sendFile(path.join(__dirname,'public','privacy.html')));
 app.get('/data-deletion', (_req,res)=>res.sendFile(path.join(__dirname,'public','privacy.html')));
 
-app.get('/api/health', (_req,res)=>res.json({ok:true,service:'REDEACHADOS BR Publisher Web V5.5.9'}));
+app.get('/api/health', (_req,res)=>res.json({ok:true,service:'REDEACHADOS BR Publisher Web V5.5.11'}));
 app.get('/api/auth-state',(req,res)=>res.json({locked:Boolean(process.env.APP_PASSWORD),loggedIn:!process.env.APP_PASSWORD||Boolean(req.session?.appAuth)}));
 app.post('/api/login',(req,res)=>{
   if(!process.env.APP_PASSWORD){ req.session.appAuth=true; return res.json({ok:true}); }
@@ -1553,4 +1556,4 @@ app.post('/api/status/:publishId', mustLogin, async(req,res)=>{
   try{const d=await tiktokJson('https://open.tiktokapis.com/v2/post/publish/status/fetch/',{method:'POST',body:JSON.stringify({publish_id:req.params.publishId})});res.json(d.data||{});}catch(e){res.status(400).json({error:e.message});}
 });
 
-app.listen(PORT,()=>console.log(`REDEACHADOS BR Publisher Web V5.5.9 em http://localhost:${PORT}`));
+app.listen(PORT,()=>console.log(`REDEACHADOS BR Publisher Web V5.5.11 em http://localhost:${PORT}`));

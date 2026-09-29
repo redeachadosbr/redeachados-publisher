@@ -67,7 +67,7 @@ dialog{width:min(830px,94vw);max-height:90dvh;padding:0;border:1px solid #e0e5d8
 
 .page-footer a{color:inherit;text-decoration:underline;text-underline-offset:2px}.page-footer a:hover{color:#6e765f}
 
-/* V5.5.8 · Instagram Stories + QR para iPhone */
+/* V5.5.11 · Instagram Stories + QR para iPhone sem pré-carregamento */
 .story-box{margin:13px 0 4px;padding:15px;border:1px solid #e3e5dc;border-radius:13px;background:#fff}
 .story-head{display:flex;align-items:flex-start;justify-content:space-between;gap:12px;margin-bottom:11px}.story-head h4{font-size:13px;margin-top:4px}.story-badge{font-size:8px;font-weight:850;letter-spacing:.7px;border:1px solid #dbc7d9;background:#fbf5fb;color:#8b4c82;border-radius:999px;padding:5px 8px}
 .story-actions{display:grid;grid-template-columns:1fr 1fr;gap:10px}.story-btn{display:flex;align-items:flex-start;gap:10px;text-align:left;min-height:70px;padding:12px;border:1px solid #e4e5df;border-radius:11px;background:#fafbf8;color:#343a31}.story-btn:hover:not(:disabled){background:#f5f7f1;border-color:#d6d9cf}.story-btn .icon{width:20px;height:20px;flex:0 0 auto;margin-top:2px}.story-btn span{display:grid;gap:3px}.story-btn b{font-size:11px;line-height:1.35}.story-btn small{font-size:9px;line-height:1.5;color:#777f70}.story-link{border-color:#e2d5a9;background:#fffdf6}.story-auto{border-color:#e1ccdc;background:#fff9fd}.story-status{margin:10px 1px 0!important;line-height:1.55}
