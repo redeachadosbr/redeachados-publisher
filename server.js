@@ -88,14 +88,17 @@ async function syncInstagramRuleToSupabase(rule){
     active:Boolean(rule.dmEnabled),
     updated_at:now()
   };
+  const headers={
+    apikey:cfg.key,
+    'Content-Type':'application/json',
+    Prefer:'resolution=merge-duplicates,return=minimal'
+  };
+  // New Supabase sb_secret_* keys are opaque API keys, not JWTs.
+  // Send them only as `apikey`. Legacy service_role JWTs still accept Bearer auth.
+  if(/^eyJ[A-Za-z0-9_-]*\./.test(cfg.key)) headers.Authorization=`Bearer ${cfg.key}`;
   const r=await fetch(`${cfg.url}/rest/v1/reel_links?on_conflict=instagram_media_id`,{
     method:'POST',
-    headers:{
-      apikey:cfg.key,
-      Authorization:`Bearer ${cfg.key}`,
-      'Content-Type':'application/json',
-      Prefer:'resolution=merge-duplicates,return=minimal'
-    },
+    headers,
     body:JSON.stringify([row])
   });
   if(!r.ok){
@@ -579,7 +582,7 @@ async function extractRemoteFrames(id, filename, durationSec){
   }
 }
 
-app.get('/api/health', (_req,res)=>res.json({ok:true,service:'REDEACHADOS BR Publisher Web V5.5.2'}));
+app.get('/api/health', (_req,res)=>res.json({ok:true,service:'REDEACHADOS BR Publisher Web V5.5.3'}));
 app.get('/api/auth-state',(req,res)=>res.json({locked:Boolean(process.env.APP_PASSWORD),loggedIn:!process.env.APP_PASSWORD||Boolean(req.session?.appAuth)}));
 app.post('/api/login',(req,res)=>{
   if(!process.env.APP_PASSWORD){ req.session.appAuth=true; return res.json({ok:true}); }
@@ -954,6 +957,21 @@ app.get('/api/instagram/commerce-status',mustLogin,async(req,res)=>{
     recentDm:(s.instagramDmLog||[]).slice(0,10)
   });
 });
+app.post('/api/instagram/sync-latest-reel',mustLogin,async(req,res)=>{
+  try{
+    const options=normalizeCommerceOptions(req.body||{});
+    if(!options.shopeeUrl)return res.status(400).json({error:'Informe o link do produto Shopee antes de sincronizar.'});
+    const cfg=effectiveSettings(loadStore().settings||{});
+    const recent=await instagramGraph(`${cfg.instagramUserId}/media`,{params:{fields:'id,media_type,media_product_type,caption,timestamp,permalink',limit:'10'}});
+    const items=Array.isArray(recent?.data)?recent.data:[];
+    const reel=items.find(x=>String(x.media_product_type||'').toUpperCase()==='REELS') || items.find(x=>String(x.media_type||'').toUpperCase()==='VIDEO');
+    if(!reel?.id)return res.status(404).json({error:'Não encontrei um Reel recente nesta conta do Instagram.'});
+    const rule=upsertInstagramRule({mediaId:String(reel.id),options});
+    const supabaseSync=await syncInstagramRuleToSupabase(rule);
+    res.json({ok:true,mediaId:String(reel.id),permalink:reel.permalink||'',timestamp:reel.timestamp||'',supabaseSync});
+  }catch(e){res.status(400).json({error:e.message});}
+});
+
 app.get('/api/meta/ads/status',mustLogin,async(_req,res)=>{
   try{
     const cfg=effectiveSettings(loadStore().settings||{}), accountId=normalizeAdAccountId(cfg.metaAdAccountId);
@@ -1285,4 +1303,4 @@ app.post('/api/status/:publishId', mustLogin, async(req,res)=>{
   try{const d=await tiktokJson('https://open.tiktokapis.com/v2/post/publish/status/fetch/',{method:'POST',body:JSON.stringify({publish_id:req.params.publishId})});res.json(d.data||{});}catch(e){res.status(400).json({error:e.message});}
 });
 
-app.listen(PORT,()=>console.log(`REDEACHADOS BR Publisher Web V5.5.2 em http://localhost:${PORT}`));
+app.listen(PORT,()=>console.log(`REDEACHADOS BR Publisher Web V5.5.3 em http://localhost:${PORT}`));

@@ -6,7 +6,7 @@ const html=fs.readFileSync(new URL('../public/index.html',import.meta.url),'utf8
 const js=fs.readFileSync(new URL('../public/app.js',import.meta.url),'utf8');
 const css=fs.readFileSync(new URL('../public/styles.css',import.meta.url),'utf8');
 
-test('V5.5.2 exposes premium TikTok and Instagram publish buttons',()=>{
+test('V5.5.3 exposes premium TikTok and Instagram publish buttons',()=>{
   assert.match(html,/class="social-publish-btn tiktok-publish"/);
   assert.match(html,/class="social-publish-btn instagram-publish"/);
   assert.match(css,/\.tiktok-publish\{/);

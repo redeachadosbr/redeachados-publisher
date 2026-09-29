@@ -1,4 +1,4 @@
-# REDEACHADOS BR Publisher V5.5.2 — Instagram Commerce + Supabase
+# REDEACHADOS BR Publisher V5.5.3 — Instagram Commerce + Supabase
 
 ## Arquitetura usada nesta versão
 
@@ -25,7 +25,7 @@ consulta reel_links pelo IG_MEDIA_ID
 Direct com o link correto + resposta pública opcional
 ```
 
-## Correção principal da V5.5.2
+## Correção principal da V5.5.3
 
 Quando o vídeo é escolhido por **SKU/WeDrop**, o produto selecionado no catálogo Shopee passa a ser **autoritativo**. A IA pode gerar título, descrição e hashtags, mas não pode mais trocar o anúncio nem substituir o link por outro produto visualmente parecido.
 
@@ -34,7 +34,7 @@ Para a SKU `NTM3001127V`, a correção confirmada é:
 - ID Shopee: `22699708957`
 - URL: `https://shopee.com.br/product/852701218/22699708957/`
 
-A V5.5.2 também lembra a escolha do anúncio quando a mesma SKU aparece em mais de um item.
+A V5.5.3 também lembra a escolha do anúncio quando a mesma SKU aparece em mais de um item.
 
 ## Render — variáveis novas obrigatórias para o fluxo Supabase
 
@@ -105,7 +105,7 @@ Não copie esses valores para o frontend.
 
 ## Segurança contra links errados
 
-A V5.5.2 aplica três proteções:
+A V5.5.3 aplica três proteções:
 
 1. O link da SKU selecionada sobrescreve qualquer tentativa de troca feita pela IA.
 2. A URL autoritativa continua sendo usada na legenda e no payload da publicação mesmo se houver valor antigo no formulário.

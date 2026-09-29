@@ -254,8 +254,11 @@ function instagramCommercePayload(){
 function describeInstagramResult(r){
   const bits=['Reel publicado no Instagram ✅'];
   if(r?.commerce?.dmEnabled)bits.push(`Direct “${r.commerce.keyword||'QUERO'}” ativado`);
+  if(r?.commerce?.supabaseSync?.synced)bits.push('automação registrada no Supabase ✅');
+  else if(r?.commerce?.supabaseSync?.configured===false)bits.push('⚠️ Supabase não configurado');
+  else if(r?.commerce?.supabaseSync?.error)bits.push(`⚠️ Supabase: ${r.commerce.supabaseSync.error}`);
   if(r?.commerce?.ad?.adId)bits.push(`anúncio ${r.commerce.ad.status==='ACTIVE'?'ativo':'criado pausado para revisão'}`);
-  if(r?.commerce?.warning)bits.push(r.commerce.warning);
+  if(r?.commerce?.warning&&!String(r.commerce.warning).includes(r?.commerce?.supabaseSync?.error||'___'))bits.push(r.commerce.warning);
   return bits.join(' · ');
 }
 
@@ -278,6 +281,18 @@ async function publishInstagram(){
   }catch(e){toast('Instagram: '+e.message,true);}finally{b.disabled=false;setSocialButton('instagram','idle');}
 }
 $('#instagramPublishBtn')?.addEventListener('click',publishInstagram);
+$('#syncLatestReelBtn')?.addEventListener('click',async()=>{
+  const b=$('#syncLatestReelBtn');
+  const commerce=instagramCommercePayload();
+  if(!commerce.shopeeUrl)return toast('Informe o link do produto Shopee antes de sincronizar.',true);
+  b.disabled=true;const original=b.textContent;b.textContent='Sincronizando...';
+  try{
+    const r=await api('/api/instagram/sync-latest-reel',{method:'POST',body:JSON.stringify(commerce)});
+    if(r?.supabaseSync?.synced)toast(`Último Reel sincronizado com o Supabase ✅ · Media ID ${r.mediaId}`);
+    else toast('O Reel foi encontrado, mas o Supabase não confirmou a sincronização.',true);
+    await loadInstagramCommerceStatus();
+  }catch(e){toast('Sincronização: '+e.message,true)}finally{b.disabled=false;b.textContent=original;}
+});
 
 $('#restoreCaptionBtn').onclick=restoreGeneratedCaption;
 $('#copyCaptionBtn').onclick=async()=>{try{await navigator.clipboard.writeText($('#captionPreview').value.trim());toast('Legenda copiada. Cole no TikTok ao finalizar o rascunho.')}catch{toast('Não foi possível copiar automaticamente. Selecione a legenda e use Ctrl+C.',true)}};

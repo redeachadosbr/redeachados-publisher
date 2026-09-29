@@ -60,3 +60,7 @@ dialog{width:min(830px,94vw);max-height:90dvh;padding:0;border:1px solid #e0e5d8
 .button-spinner{width:23px;height:23px;border-radius:50%;border:2px solid #ffffff55;border-top-color:#fff;animation:button-spin .75s linear infinite;flex:0 0 auto}@keyframes button-spin{to{transform:rotate(360deg)}}
 
 @media(max-width:720px){.video-results{max-height:440px}.video-result-summary{grid-template-columns:minmax(0,1fr);gap:7px}.video-result .use-video-btn{justify-self:stretch!important;min-height:38px!important}.video-result-meta{white-space:normal}.social-actions{grid-template-columns:1fr!important}.social-actions .social-publish-btn{min-height:58px!important}.social-button-copy b{font-size:12px}}
+
+/* V5.5.3 · Supabase sync repair */
+.sync-reel-row{display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin:12px 0 4px}.sync-reel-btn{min-height:40px;padding:0 16px;font-weight:700}.sync-reel-row .small{margin:0;flex:1;min-width:260px}
+@media(max-width:700px){.sync-reel-row{align-items:stretch}.sync-reel-btn{width:100%}.sync-reel-row .small{min-width:0}}
