@@ -1,4 +1,4 @@
-# REDEACHADOS BR Publisher V5.5.6 — Instagram Commerce + Render Bridge + Supabase
+# REDEACHADOS BR Publisher V5.5.7 — Instagram Commerce + Stories + Render Bridge + Supabase
 
 ## Arquitetura usada nesta versão
 
@@ -112,3 +112,12 @@ A V5.5.4 aplica três proteções:
 1. O link da SKU selecionada sobrescreve qualquer tentativa de troca feita pela IA.
 2. A URL autoritativa continua sendo usada na legenda e no payload da publicação mesmo se houver valor antigo no formulário.
 3. O fuzzy match de vídeo enviado manualmente ficou mais rígido; um nome genérico não deve mais vincular automaticamente um anúncio com baixa similaridade.
+
+
+## Stories na V5.5.7
+
+- **Story com link da Shopee**: fluxo assistido no celular. O Publisher copia o link e prepara/compartilha o vídeo; no Instagram, adicione o adesivo **Link** e cole o endereço.
+- **Story automático**: usa a API oficial com `media_type=STORIES`. Não adiciona adesivo de link. Na integração via Facebook Login, a Meta restringe publicação de Stories a contas Instagram Business.
+- O fluxo de Reel + comentário `QUERO` + Direct continua independente e não foi alterado.
+
+O arquivo `SUPABASE_INSTAGRAM_COMMERCE_EDGE_FUNCTION.ts` incluído no pacote é a cópia limpa da Edge Function recuperada do trabalho anterior, sem escapes de Markdown em tipos TypeScript/backticks.

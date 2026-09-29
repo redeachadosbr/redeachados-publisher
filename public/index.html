@@ -11,7 +11,7 @@
   <link rel="apple-touch-icon" href="/icon-192.png" />
   <link rel="icon" href="/icon-192.png" />
   <title>REDEACHADOS BR · Publisher</title>
-  <link rel="stylesheet" href="/styles.css?v=552-compact-social" />
+  <link rel="stylesheet" href="/styles.css?v=557-stories" />
 </head>
 <body>
   <svg class="icon-definitions" xmlns="http://www.w3.org/2000/svg" aria-hidden="true"><defs>
@@ -38,7 +38,7 @@
       <a class="brand" href="#create" aria-label="Rede Achados BR Publisher"><span class="brand-mark">RA<span>•</span></span><span class="brand-name">REDE ACHADOS <b>BR</b><small>Publisher Studio</small></span></a>
       <span class="nav-caption">ESPAÇO DE TRABALHO</span>
       <nav class="side-nav"><a class="nav-link active" href="#create" aria-current="page"><svg class="icon"><use href="#i-grid"/></svg><span>Criar publicação</span></a><a class="nav-link" href="#channels"><svg class="icon"><use href="#i-link"/></svg><span>Canais</span></a><a class="nav-link" href="#activity"><svg class="icon"><use href="#i-clock"/></svg><span>Histórico</span></a></nav>
-      <div class="sidebar-footer"><div class="sidebar-note"><svg class="icon"><use href="#i-spark"/></svg><p>Mais conteúdo.<br><strong>Mais possibilidades.</strong></p></div><span>REDE ACHADOS BR <b>V5.5.6</b></span></div>
+      <div class="sidebar-footer"><div class="sidebar-note"><svg class="icon"><use href="#i-spark"/></svg><p>Mais conteúdo.<br><strong>Mais possibilidades.</strong></p></div><span>REDE ACHADOS BR <b>V5.5.7</b></span></div>
     </aside>
     <div class="page-stage">
       <header class="app-topbar"><div class="breadcrumb">Workspace <span>/</span> <strong>Publisher</strong></div><button id="settingsBtn" type="button" class="ghost"><svg class="icon"><use href="#i-settings"/></svg>Configurações</button></header>
@@ -81,13 +81,15 @@
                   </div><div class="actions social-actions">
                     <button id="publishBtn" type="button" class="social-publish-btn tiktok-publish" aria-label="Enviar rascunho ao TikTok"><svg class="icon social-button-icon"><use href="#i-tiktok"/></svg><span class="social-button-copy"><b>Enviar rascunho ao TikTok</b><small>Finalize a publicação no aplicativo</small></span></button>
                     <button id="instagramPublishBtn" type="button" class="social-publish-btn instagram-publish" aria-label="Publicar Reel no Instagram"><svg class="icon social-button-icon"><use href="#i-instagram"/></svg><span class="social-button-copy"><b>Publicar Reel no Instagram</b><small>Publicação automática do Reel</small></span></button>
-                  </div><div class="sync-reel-row"><button id="syncLatestReelBtn" type="button" class="ghost sync-reel-btn">↻ Sincronizar último Reel com o Direct</button><span class="small">Use apenas para reparar um Reel já publicado que ainda não apareceu em <b>reel_links</b>.</span></div><p id="draftModeInfo" class="small"><b>No TikTok, você finaliza a publicação no aplicativo.</b> O vídeo vai para a caixa de entrada; privacidade, comentários, Dueto, Costurar e marcação de IA são definidos por lá. No Instagram, o Reel é publicado automaticamente.</p></div>
+                  </div>
+                  <section class="story-box" aria-label="Stories do Instagram"><div class="story-head"><div><span class="eyebrow">STORIES</span><h4>Leve o mesmo vídeo para o Story</h4></div><span class="story-badge">NOVO</span></div><div class="story-actions"><button id="prepareStoryBtn" type="button" class="story-btn story-link"><svg class="icon"><use href="#i-link"/></svg><span><b>Story com link da Shopee</b><small>Copia o link e abre o compartilhamento no celular; adicione o adesivo Link no Instagram.</small></span></button><button id="instagramStoryPublishBtn" type="button" class="story-btn story-auto"><svg class="icon"><use href="#i-instagram"/></svg><span><b>Publicar Story automático</b><small>API oficial · sem adesivo de link · requer conta Instagram Business compatível.</small></span></button></div><p id="storyStatus" class="small story-status">Para vender pelo Story, use a primeira opção: o link do produto fica copiado para colar no adesivo <b>Link</b>.</p></section>
+                  <div class="sync-reel-row"><button id="syncLatestReelBtn" type="button" class="ghost sync-reel-btn">↻ Sincronizar último Reel com o Direct</button><span class="small">Use apenas para reparar um Reel já publicado que ainda não apareceu em <b>reel_links</b>.</span></div><p id="draftModeInfo" class="small"><b>No TikTok, você finaliza a publicação no aplicativo.</b> O vídeo vai para a caixa de entrada; privacidade, comentários, Dueto, Costurar e marcação de IA são definidos por lá. No Instagram, o Reel é publicado automaticamente. Stories podem ser publicados pela API sem link ou preparados para você adicionar o adesivo Link no celular.</p></div>
               </div>
             </section>
             <div class="empty-workspace" id="emptyWorkspace"><span class="empty-icon"><svg class="icon"><use href="#i-video"/></svg></span><div><h3>O próximo passo é com a IA.</h3><p>Ao escolher um vídeo, sua prévia e os textos aparecem aqui.</p></div><span class="empty-line"></span></div>
           </div>
           <aside class="workspace-aside">
-            <section class="card channels-card" id="channels" aria-labelledby="channelsTitle"><div class="aside-heading"><h2 id="channelsTitle">Seus canais</h2><svg class="icon"><use href="#i-link"/></svg></div><p class="aside-description">Conexões para compartilhar.</p><div class="connection"><div class="channel-heading"><span class="channel-icon tiktok"><svg class="icon"><use href="#i-tiktok"/></svg></span><h3>TikTok<small>Envio de rascunhos</small></h3></div><p id="connectionText" role="status">Verificando conexão...</p><a id="connectBtn" href="/auth/tiktok" target="_blank" rel="noopener" class="ghost linkbtn">Conectar TikTok</a></div><div class="connection"><div class="channel-heading"><span class="channel-icon instagram"><svg class="icon"><use href="#i-instagram"/></svg></span><h3>Instagram<small>Publicação de Reels</small></h3></div><p id="instagramConnectionText" role="status">Verificando conexão...</p><button type="button" class="ghost" data-open-settings="settings-instagram">Configurar Instagram</button></div></section>
+            <section class="card channels-card" id="channels" aria-labelledby="channelsTitle"><div class="aside-heading"><h2 id="channelsTitle">Seus canais</h2><svg class="icon"><use href="#i-link"/></svg></div><p class="aside-description">Conexões para compartilhar.</p><div class="connection"><div class="channel-heading"><span class="channel-icon tiktok"><svg class="icon"><use href="#i-tiktok"/></svg></span><h3>TikTok<small>Envio de rascunhos</small></h3></div><p id="connectionText" role="status">Verificando conexão...</p><a id="connectBtn" href="/auth/tiktok" target="_blank" rel="noopener" class="ghost linkbtn">Conectar TikTok</a></div><div class="connection"><div class="channel-heading"><span class="channel-icon instagram"><svg class="icon"><use href="#i-instagram"/></svg></span><h3>Instagram<small>Reels + Stories</small></h3></div><p id="instagramConnectionText" role="status">Verificando conexão...</p><button type="button" class="ghost" data-open-settings="settings-instagram">Configurar Instagram</button></div></section>
             <section class="card history-card" id="activity" aria-labelledby="historyTitle"><div class="aside-heading"><h2 id="historyTitle">Atividade recente</h2><svg class="icon"><use href="#i-clock"/></svg></div><div id="history" class="history"></div></section>
             <div class="workflow-note"><span class="eyebrow">UM FLUXO SIMPLES</span><ol><li><span>1</span>Escolha o vídeo</li><li><span>2</span>Revise o conteúdo</li><li><span>3</span>Envie para seus canais</li></ol></div>
           </aside>
@@ -113,7 +115,7 @@
       <div class="dialog-footer"><span class="small">As configurações ficam salvas para o próximo uso.</span><button id="saveSettingsBtn" value="cancel" class="primary">Salvar configurações</button></div>
     </form>
   </dialog>
-  <script src="/app.js?v=552-compact-social"></script><script src="/ui.js?v=552-compact-social"></script>
+  <script src="/app.js?v=557-stories"></script><script src="/ui.js?v=557-stories"></script>
   <script>if('serviceWorker' in navigator){navigator.serviceWorker.register('/sw.js').catch(()=>{})}</script>
 </body>
 </html>

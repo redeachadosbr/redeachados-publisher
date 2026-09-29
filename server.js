@@ -614,7 +614,7 @@ async function extractRemoteFrames(id, filename, durationSec){
 app.get(['/privacy','/privacy-policy'], (_req,res)=>res.sendFile(path.join(__dirname,'public','privacy.html')));
 app.get('/data-deletion', (_req,res)=>res.sendFile(path.join(__dirname,'public','privacy.html')));
 
-app.get('/api/health', (_req,res)=>res.json({ok:true,service:'REDEACHADOS BR Publisher Web V5.5.6'}));
+app.get('/api/health', (_req,res)=>res.json({ok:true,service:'REDEACHADOS BR Publisher Web V5.5.7'}));
 app.get('/api/auth-state',(req,res)=>res.json({locked:Boolean(process.env.APP_PASSWORD),loggedIn:!process.env.APP_PASSWORD||Boolean(req.session?.appAuth)}));
 app.post('/api/login',(req,res)=>{
   if(!process.env.APP_PASSWORD){ req.session.appAuth=true; return res.json({ok:true}); }
@@ -825,6 +825,23 @@ async function publishInstagramReel({req,videoUrl,caption}){
   if(last.status_code!=='FINISHED') return {ok:true,pending:true,creationId,status:last.status_code||'IN_PROGRESS',message:'O Instagram ainda está processando o Reel. Tente finalizar em alguns segundos.'};
   const published=await instagramGraph(`${cfg.instagramUserId}/media_publish`,{method:'POST',params:{creation_id:creationId}});
   return {ok:true,pending:false,creationId,mediaId:published.id,status:'PUBLISHED',message:'Reel publicado no Instagram.'};
+}
+
+async function publishInstagramStory({req,videoUrl}){
+  const cfg=effectiveSettings(loadStore().settings||{});
+  const created=await instagramGraph(`${cfg.instagramUserId}/media`,{method:'POST',params:{media_type:'STORIES',video_url:videoUrl}});
+  const creationId=created.id;
+  if(!creationId) throw new Error('A Meta não retornou o ID do container do Story.');
+  let last={status_code:'IN_PROGRESS',status:'Processando'};
+  for(let i=0;i<18;i++){
+    await new Promise(r=>setTimeout(r,i===0?2500:3500));
+    last=await instagramGraph(`${creationId}`,{params:{fields:'status_code,status'}});
+    if(last.status_code==='FINISHED') break;
+    if(['ERROR','EXPIRED'].includes(last.status_code)) throw new Error(last.status||`Container do Story: ${last.status_code}`);
+  }
+  if(last.status_code!=='FINISHED') return {ok:true,pending:true,creationId,status:last.status_code||'IN_PROGRESS',message:'O Instagram ainda está processando o Story. Tente finalizar em alguns segundos.'};
+  const published=await instagramGraph(`${cfg.instagramUserId}/media_publish`,{method:'POST',params:{creation_id:creationId}});
+  return {ok:true,pending:false,creationId,mediaId:published.id,status:'PUBLISHED',message:'Story publicado automaticamente no Instagram (sem adesivo de link).'};
 }
 
 function normalizeAdAccountId(v=''){ return String(v||'').trim().replace(/^act_/i,''); }
@@ -1112,6 +1129,46 @@ app.post('/api/instagram/publish',mustLogin,upload.single('video'),async(req,res
     res.json(result);
   }catch(e){if(req.file?.path)setTimeout(()=>removeFile(req.file.path),10*60*1000).unref?.();res.status(400).json({error:e.message});}
 });
+app.post('/api/instagram/story/publish-remote',mustLogin,async(req,res)=>{
+  try{
+    const id=String(req.body.remoteVideoId||'').trim();
+    if(!/^[A-Za-z0-9_-]{8,200}$/.test(id))return res.status(400).json({error:'ID do vídeo WeDrop inválido.'});
+    const videoUrl=instagramPublicMediaUrl(req,'wedrop',id,3600);
+    const result=await publishInstagramStory({req,videoUrl});
+    const s=loadStore();
+    s.history.unshift({id:crypto.randomUUID(),platform:'instagram-story',mediaId:result.mediaId||'',creationId:result.creationId||'',filename:String(req.body.filename||'video-wedrop'),product:String(req.body.product||''),shopeeUrl:String(req.body.shopeeUrl||''),status:result.status||'PROCESSING',createdAt:now()});
+    s.history=s.history.slice(0,100);saveStore(s);
+    res.json(result);
+  }catch(e){res.status(400).json({error:`Story: ${e.message}`});}
+});
+app.post('/api/instagram/story/publish',mustLogin,upload.single('video'),async(req,res)=>{
+  try{
+    if(!req.file)return res.status(400).json({error:'Envie um vídeo.'});
+    const filename=path.basename(req.file.path);
+    const videoUrl=instagramPublicMediaUrl(req,'upload',filename,3600);
+    const result=await publishInstagramStory({req,videoUrl});
+    const s=loadStore();
+    s.history.unshift({id:crypto.randomUUID(),platform:'instagram-story',mediaId:result.mediaId||'',creationId:result.creationId||'',filename:req.file.originalname,product:String(req.body.product||''),shopeeUrl:String(req.body.shopeeUrl||''),status:result.status||'PROCESSING',createdAt:now()});
+    s.history=s.history.slice(0,100);saveStore(s);
+    setTimeout(()=>removeFile(req.file.path),10*60*1000).unref?.();
+    res.json(result);
+  }catch(e){if(req.file?.path)setTimeout(()=>removeFile(req.file.path),10*60*1000).unref?.();res.status(400).json({error:`Story: ${e.message}`});}
+});
+app.post('/api/instagram/story/finalize',mustLogin,async(req,res)=>{
+  try{
+    const creationId=String(req.body.creationId||'').trim();
+    if(!/^\d+$/.test(creationId))return res.status(400).json({error:'Container de Story inválido.'});
+    const st=await instagramGraph(`${creationId}`,{params:{fields:'status_code,status'}});
+    if(st.status_code!=='FINISHED')return res.json({ok:true,pending:true,creationId,status:st.status_code||'IN_PROGRESS',message:st.status||'Story ainda processando.'});
+    const cfg=effectiveSettings(loadStore().settings||{});
+    const p=await instagramGraph(`${cfg.instagramUserId}/media_publish`,{method:'POST',params:{creation_id:creationId}});
+    const s=loadStore();
+    const item=(s.history||[]).find(x=>x.creationId===creationId&&x.platform==='instagram-story');
+    if(item){item.mediaId=p.id;item.status='PUBLISHED';item.updatedAt=now();saveStore(s);}
+    res.json({ok:true,pending:false,creationId,mediaId:p.id,status:'PUBLISHED',message:'Story publicado automaticamente no Instagram (sem adesivo de link).'});
+  }catch(e){res.status(400).json({error:`Story: ${e.message}`});}
+});
+
 app.post('/api/instagram/finalize',mustLogin,async(req,res)=>{
   try{
     const creationId=String(req.body.creationId||'').trim();if(!/^\d+$/.test(creationId))return res.status(400).json({error:'Container inválido.'});
@@ -1409,4 +1466,4 @@ app.post('/api/status/:publishId', mustLogin, async(req,res)=>{
   try{const d=await tiktokJson('https://open.tiktokapis.com/v2/post/publish/status/fetch/',{method:'POST',body:JSON.stringify({publish_id:req.params.publishId})});res.json(d.data||{});}catch(e){res.status(400).json({error:e.message});}
 });
 
-app.listen(PORT,()=>console.log(`REDEACHADOS BR Publisher Web V5.5.6 em http://localhost:${PORT}`));
+app.listen(PORT,()=>console.log(`REDEACHADOS BR Publisher Web V5.5.7 em http://localhost:${PORT}`));

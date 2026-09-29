@@ -1,5 +1,5 @@
 const $=s=>document.querySelector(s);
-let config=null, selectedFile=null, selectedRemoteVideo=null, duration=0, frames=[], generated=null;
+let config=null, selectedFile=null, selectedRemoteVideo=null, duration=0, frames=[], generated=null, preparedStoryFile=null, preparedStoryVideoId='';
 
 const DRAFT_KEY='redeachados_publisher_draft_v552';
 let captionManual=false;
@@ -7,13 +7,17 @@ let commentManual=false;
 let instagramManual=false;
 let tiktokAuthInvalid=false;
 function socialButtonMarkup(platform,state='idle'){
-  const isTikTok=platform==='tiktok';
+  const isTikTok=platform==='tiktok', isStory=platform==='story';
   const icon=isTikTok?'i-tiktok':'i-instagram';
   const labels=isTikTok?{
     idle:['Enviar rascunho ao TikTok','Finalize a publicação no aplicativo'],
     loading:['Enviando rascunho...','Aguarde a transferência do vídeo'],
     success:['Rascunho enviado','Abra o TikTok para finalizar'],
     reconnect:['Reconectar TikTok','Autorização inválida ou expirada']
+  }:isStory?{
+    idle:['Publicar Story automático','API oficial · sem adesivo de link'],
+    loading:['Publicando Story...','Aguarde a confirmação da Meta'],
+    success:['Story publicado','Sem adesivo de link']
   }:{
     idle:['Publicar Reel no Instagram','Publicação automática do Reel'],
     loading:['Publicando Reel...','Aguarde a confirmação da Meta'],
@@ -24,7 +28,7 @@ function socialButtonMarkup(platform,state='idle'){
   return `${spinner}<span class="social-button-copy"><b>${title}</b><small>${subtitle}</small></span>`;
 }
 function setSocialButton(platform,state='idle'){
-  const b=$(platform==='tiktok'?'#publishBtn':'#instagramPublishBtn'); if(!b)return;
+  const b=$(platform==='tiktok'?'#publishBtn':platform==='story'?'#instagramStoryPublishBtn':'#instagramPublishBtn'); if(!b)return;
   b.dataset.state=state;b.innerHTML=socialButtonMarkup(platform,state);
   if(platform==='tiktok'&&state==='reconnect') b.classList.add('needs-reconnect'); else b.classList.remove('needs-reconnect');
 }
@@ -149,7 +153,7 @@ $('#chooseBtn').onclick=()=>$('#videoInput').click();$('#changeBtn').onclick=()=
 const dz=$('#dropzone');['dragenter','dragover'].forEach(x=>dz.addEventListener(x,e=>{e.preventDefault();dz.classList.add('drag')}));['dragleave','drop'].forEach(x=>dz.addEventListener(x,e=>{e.preventDefault();dz.classList.remove('drag')}));dz.addEventListener('drop',e=>{const f=e.dataTransfer.files?.[0];if(f)selectVideo(f)});$('#videoInput').onchange=e=>{const f=e.target.files?.[0];if(f)selectVideo(f)};
 async function selectVideo(file){
   if(!file.type.startsWith('video/'))return toast('Selecione um arquivo de vídeo.',true);
-  selectedRemoteVideo=null; selectedFile=file; generated=null;frames=[];$('#fileName').textContent=file.name;$('#preview').src=URL.createObjectURL(file);$('#dropzone').classList.add('hidden');$('#workArea').classList.remove('hidden');$('#aiStatus').textContent='Lendo o vídeo...';
+  selectedRemoteVideo=null;preparedStoryFile=null;preparedStoryVideoId=''; selectedFile=file; generated=null;frames=[];$('#fileName').textContent=file.name;$('#preview').src=URL.createObjectURL(file);$('#dropzone').classList.add('hidden');$('#workArea').classList.remove('hidden');$('#aiStatus').textContent='Lendo o vídeo...';
   try{await new Promise((resolve,reject)=>{const v=$('#preview');v.onloadedmetadata=()=>{duration=v.duration||0;resolve()};v.onerror=reject});frames=await extractFrames($('#preview'),[.15,.5,.85]);await loadCreator();await analyze()}catch(e){toast('Não consegui analisar o vídeo: '+e.message,true);$('#aiStatus').textContent='Falha na análise.'}
 }
 async function extractFrames(video,points){
@@ -294,6 +298,72 @@ async function publishInstagram(){
   }catch(e){toast('Instagram: '+e.message,true);}finally{b.disabled=false;setSocialButton('instagram','idle');}
 }
 $('#instagramPublishBtn')?.addEventListener('click',publishInstagram);
+
+function storyProductLink(){return String(selectedRemoteVideo?.catalogProductUrl||$('#shopeeUrl')?.value||config?.settings?.shopeeStoreUrl||'').trim()}
+function safeStoryFilename(name='story.mp4'){const base=String(name||'story.mp4').replace(/[^a-zA-Z0-9._-]+/g,'-').replace(/^-+|-+$/g,'');return /\.[a-z0-9]{2,5}$/i.test(base)?base:(base||'story')+'.mp4'}
+function copyStoryLinkNow(link){
+  if(!link)throw new Error('Informe o link do produto Shopee.');
+  const t=document.createElement('textarea');t.value=link;t.setAttribute('readonly','');t.style.position='fixed';t.style.left='-9999px';t.style.opacity='0';document.body.appendChild(t);t.select();t.setSelectionRange(0,t.value.length);const ok=document.execCommand('copy');t.remove();return ok;
+}
+async function copyStoryLink(link){
+  if(copyStoryLinkNow(link))return true;
+  if(navigator.clipboard?.writeText){await navigator.clipboard.writeText(link);return true}
+  throw new Error('Não foi possível copiar o link automaticamente.');
+}
+async function remoteStoryFile(){
+  const id=String(selectedRemoteVideo?.id||'').trim();if(!id)throw new Error('Vídeo remoto não selecionado.');
+  const r=await fetch('/api/wedrop/video?id='+encodeURIComponent(id)+'&v=557');if(!r.ok)throw new Error('Não foi possível carregar o vídeo para compartilhar.');
+  const blob=await r.blob();const type=blob.type||'video/mp4';return new File([blob],safeStoryFilename(selectedRemoteVideo?.title||'story.mp4'),{type});
+}
+async function sharePreparedStory(file,link,status){
+  copyStoryLinkNow(link);
+  if(file&&navigator.share&&(!navigator.canShare||navigator.canShare({files:[file]}))){
+    if(status)status.innerHTML='✅ Link copiado. No compartilhamento, escolha <b>Instagram → Story</b>; depois adicione o adesivo <b>Link</b> e cole.';
+    try{await navigator.share({files:[file],title:'Story REDE ACHADOS BR'});toast('Link da Shopee copiado. Finalize o Story no Instagram adicionando o adesivo Link.');return true;}catch(e){if(e?.name==='AbortError'){toast('Compartilhamento cancelado. O link da Shopee continua copiado.');return true;}}
+  }
+  return false;
+}
+async function prepareStoryWithLink(){
+  if(!selectedFile&&!selectedRemoteVideo)return toast('Escolha um vídeo.',true);
+  const link=storyProductLink();if(!link)return toast('Informe o link do produto Shopee antes de preparar o Story.',true);
+  const status=$('#storyStatus'),b=$('#prepareStoryBtn');
+  try{
+    if(selectedFile){
+      const shared=await sharePreparedStory(selectedFile,link,status);
+      if(shared)return;
+      await copyStoryLink(link);
+      if(status)status.innerHTML='✅ Link copiado. Compartilhe este vídeo no Instagram, escolha <b>Story</b> e adicione o adesivo <b>Link</b>.';
+      return toast('Link da Shopee copiado. Agora adicione o adesivo Link ao Story.');
+    }
+    const remoteId=String(selectedRemoteVideo?.id||'');
+    if(preparedStoryFile&&preparedStoryVideoId===remoteId){
+      const shared=await sharePreparedStory(preparedStoryFile,link,status);
+      if(shared)return;
+      await copyStoryLink(link);
+      const a=document.createElement('a');a.href='/api/wedrop/video?id='+encodeURIComponent(remoteId)+'&v=557';a.target='_blank';a.rel='noopener';a.click();
+      if(status)status.innerHTML='✅ Link copiado. O vídeo foi aberto; compartilhe no Instagram → Story e adicione o adesivo <b>Link</b>.';
+      return toast('Link da Shopee copiado. Agora finalize o Story no Instagram.');
+    }
+    b.disabled=true;if(status)status.textContent='Preparando o vídeo do WeDrop para o compartilhamento…';
+    preparedStoryFile=await remoteStoryFile();preparedStoryVideoId=remoteId;await copyStoryLink(link);
+    if(status)status.innerHTML='✅ Vídeo preparado e link copiado. <b>Toque novamente em “Story com link da Shopee”</b> para abrir o compartilhamento no celular.';
+    toast('Vídeo preparado. Toque novamente no botão de Story com link.');
+  }catch(e){if(status)status.textContent='⚠️ '+e.message;toast(e.message,true)}finally{b.disabled=false;}
+}
+async function publishInstagramStory(){
+  if(!selectedFile&&!selectedRemoteVideo)return toast('Escolha um vídeo.',true);if(!config?.settings?.instagramConfigured)return toast('Abra Configurações e informe um novo token de acesso da Meta.',true);
+  const b=$('#instagramStoryPublishBtn'),status=$('#storyStatus');b.disabled=true;setSocialButton('story','loading');
+  try{
+    const meta=currentMeta();let r;
+    if(selectedRemoteVideo){r=await api('/api/instagram/story/publish-remote',{method:'POST',body:JSON.stringify({remoteVideoId:selectedRemoteVideo.id,filename:selectedRemoteVideo.title||'video-wedrop',product:meta.product,shopeeUrl:meta.shopeeUrl})});}
+    else{const fd=new FormData();fd.append('video',selectedFile);fd.append('product',meta.product||'');fd.append('shopeeUrl',meta.shopeeUrl||'');r=await api('/api/instagram/story/publish',{method:'POST',body:fd});}
+    if(r.pending){if(status)status.textContent='O Story ainda está processando na Meta…';await new Promise(x=>setTimeout(x,8000));r=await api('/api/instagram/story/finalize',{method:'POST',body:JSON.stringify({creationId:r.creationId})});}
+    if(r.pending){if(status)status.textContent='⚠️ Story ainda processando. Tente novamente em alguns segundos.';toast('O Story continua processando na Meta.',true)}else{if(status)status.innerHTML='✅ Story publicado automaticamente. <b>Esse modo não adiciona adesivo de link.</b>';toast(r.message||'Story publicado no Instagram.');await loadHistory();}
+  }catch(e){const msg=String(e.message||e);if(status)status.textContent='⚠️ '+msg;if(/business|creator|permission|permiss|unsupported|not supported/i.test(msg))toast('A Meta recusou o Story automático. Confirme se a conta é Instagram Business e se o token tem permissão de publicação.',true);else toast(msg,true)}finally{b.disabled=false;setSocialButton('story','idle');}
+}
+$('#prepareStoryBtn')?.addEventListener('click',prepareStoryWithLink);
+$('#instagramStoryPublishBtn')?.addEventListener('click',publishInstagramStory);
+
 $('#syncLatestReelBtn')?.addEventListener('click',async()=>{
   const b=$('#syncLatestReelBtn');
   const commerce=instagramCommercePayload();
@@ -339,7 +409,7 @@ $('#publishBtn').onclick=async()=>{
     await loadHistory();setTimeout(()=>{resetVideo();syncTikTokPublishState()},650);
   }catch(e){if(/token|oauth|authoriz|expir|invalid/i.test(e.message||'')){tiktokAuthInvalid=true;syncTikTokPublishState();$('#connectionText').textContent='Autorização expirada. Reconecte o TikTok para voltar a enviar rascunhos.';}toast(e.message,true)}finally{b.disabled=false;if(!tiktokAuthInvalid)setSocialButton('tiktok','idle')}
 };
-function resetVideo(){selectedFile=null;selectedRemoteVideo=null;frames=[];generated=null;captionManual=false;commentManual=false;instagramManual=false;clearDraft();$('#preview').removeAttribute('src');$('#workArea').classList.add('hidden');$('#dropzone').classList.remove('hidden');$('#videoInput').value=''}
+function resetVideo(){selectedFile=null;selectedRemoteVideo=null;preparedStoryFile=null;preparedStoryVideoId='';frames=[];generated=null;captionManual=false;commentManual=false;instagramManual=false;clearDraft();$('#preview').removeAttribute('src');$('#workArea').classList.add('hidden');$('#dropzone').classList.remove('hidden');$('#videoInput').value=''}
 async function loadHistory(){try{const h=await api('/api/history');$('#history').innerHTML=h.length?h.slice(0,10).map(x=>`<div class="history-item"><div><b>${esc(x.product||x.filename)}</b><br><small>${new Date(x.createdAt).toLocaleString('pt-BR')}</small></div><div><small>${esc(x.status||'PROCESSING')}</small></div></div>`).join(''):'<p class="small">Nenhuma publicação ainda.</p>'}catch{}}
 function esc(s){return String(s||'').replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;'}[m]))}
 const q=new URLSearchParams(location.search);if(q.get('error')){toast(q.get('error'),true);if(/tiktok/i.test(q.get('error'))&&/(inválid|expirad)/i.test(q.get('error')))tiktokAuthInvalid=true;}if(q.get('tiktok')==='connected'){tiktokAuthInvalid=false;toast('TikTok conectado com sucesso. Você pode fechar esta aba e voltar ao vídeo anterior.');}
@@ -349,7 +419,7 @@ async function loadRemoteVideo(candidate,product){
   const status=$('#wedropStatus');
   try{
     if(!candidate?.id) throw new Error('O vídeo selecionado não possui ID do Google Drive.');
-    selectedFile=null;
+    selectedFile=null;preparedStoryFile=null;preparedStoryVideoId='';
     selectedRemoteVideo={id:candidate.id,title:candidate.title||product?.name||product?.sku||'Vídeo WeDrop',catalogProductId:product?.id||'',catalogSku:product?.sku||$('#wedropSku')?.value.trim()||'',catalogProductName:product?.name||'',catalogProductUrl:product?.shopeeUrl||''};
     generated=null; frames=[];
     const src='/api/wedrop/video?id='+encodeURIComponent(candidate.id)+'&v=546';
