@@ -1,7 +1,10 @@
-# REDEACHADOS BR Publisher V5.5.5
+# REDEACHADOS BR Publisher V5.5.6
 
 
-## V5.5.5 — Política de Privacidade pública
+Esta versão preserva a V5.5.5 e adiciona a rota `POST /api/instagram/webhook` para o fluxo Meta → Cloudflare → Render → Supabase. Ela contorna o erro Cloudflare 530 / 1016 que ocorreu quando o Worker tentou acessar diretamente o Supabase. A política pública `/privacy` e `/data-deletion` continuam disponíveis.
+
+
+## V5.5.6 — Ponte de webhook via Render
 
 - Nova página pública em `/privacy`, sem exigir login do Publisher.
 - Aliases `/privacy-policy` e `/data-deletion`.

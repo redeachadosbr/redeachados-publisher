@@ -1,4 +1,4 @@
-# REDEACHADOS BR Publisher V5.5.4 — Instagram Commerce + Supabase
+# REDEACHADOS BR Publisher V5.5.6 — Instagram Commerce + Render Bridge + Supabase
 
 ## Arquitetura usada nesta versão
 
@@ -17,6 +17,8 @@ Comentário no Reel
 Meta Webhook
         ↓
 Cloudflare Worker (workers.dev)
+        ↓
+Render /api/instagram/webhook
         ↓
 Supabase Edge Function instagram-commerce
         ↓
@@ -76,7 +78,7 @@ No app da Meta, a assinatura do objeto `instagram` deve mostrar:
 - campo `comments`
 - callback URL do Worker `workers.dev`
 
-O Worker apenas recebe o GET de verificação e encaminha os POSTs reais para a Edge Function do Supabase.
+O Worker recebe o GET de verificação e encaminha os POSTs reais para o Render. O Render preserva o corpo bruto e as assinaturas da Meta e faz a chamada à Edge Function do Supabase, evitando o erro Cloudflare 530/1016 observado no acesso direto ao host `*.supabase.co`.
 
 ## Secrets da Edge Function Supabase
 

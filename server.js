@@ -91,6 +91,12 @@ function supabaseCommerceConfig(){
   const key=envText('SUPABASE_SECRET_KEY') || envText('SUPABASE_SERVICE_ROLE_KEY');
   return {url,key,configured:Boolean(url&&key)};
 }
+function supabaseInstagramWebhookUrl(){
+  const override=envText('SUPABASE_INSTAGRAM_WEBHOOK_URL');
+  if(override)return override;
+  const cfg=supabaseCommerceConfig();
+  return cfg.url?`${cfg.url}/functions/v1/instagram-commerce`:'';
+}
 async function syncInstagramRuleToSupabase(rule){
   const cfg=supabaseCommerceConfig();
   if(!rule?.mediaId) return {configured:cfg.configured,synced:false,reason:'MEDIA_ID_PENDING'};
@@ -608,7 +614,7 @@ async function extractRemoteFrames(id, filename, durationSec){
 app.get(['/privacy','/privacy-policy'], (_req,res)=>res.sendFile(path.join(__dirname,'public','privacy.html')));
 app.get('/data-deletion', (_req,res)=>res.sendFile(path.join(__dirname,'public','privacy.html')));
 
-app.get('/api/health', (_req,res)=>res.json({ok:true,service:'REDEACHADOS BR Publisher Web V5.5.5'}));
+app.get('/api/health', (_req,res)=>res.json({ok:true,service:'REDEACHADOS BR Publisher Web V5.5.6'}));
 app.get('/api/auth-state',(req,res)=>res.json({locked:Boolean(process.env.APP_PASSWORD),loggedIn:!process.env.APP_PASSWORD||Boolean(req.session?.appAuth)}));
 app.post('/api/login',(req,res)=>{
   if(!process.env.APP_PASSWORD){ req.session.appAuth=true; return res.json({ok:true}); }
@@ -963,6 +969,45 @@ async function processInstagramCommentEvent(ev){
     saveDmLog({commentId:ev.commentId,mediaId,status:'SENT',messageId:String(dm?.message_id||dm?.id||''),username,keyword:rule.keyword});
   }catch(e){ saveDmLog({commentId:ev.commentId,mediaId:ev.mediaId||'',status:'ERROR',error:e.message,username:ev.username||''}); }
 }
+// V5.5.6 — ponte pública Cloudflare -> Render -> Supabase Edge Function.
+// O Worker continua sendo o callback da Meta; esta rota evita o erro DNS 530/1016
+// observado em subrequests diretos Cloudflare -> *.supabase.co.
+app.get('/api/instagram/webhook',(req,res)=>{
+  const cfg=effectiveSettings(loadStore().settings||{});
+  const mode=String(req.query['hub.mode']||''), token=String(req.query['hub.verify_token']||''), challenge=String(req.query['hub.challenge']||'');
+  if(mode==='subscribe'&&cfg.metaWebhookVerifyToken&&token===cfg.metaWebhookVerifyToken)return res.status(200).type('text/plain').send(challenge);
+  res.status(403).type('text/plain').send('Webhook verification failed');
+});
+app.post('/api/instagram/webhook',async(req,res)=>{
+  if(!verifyMetaWebhookSignature(req))return res.status(401).json({ok:false,error:'Invalid Meta webhook signature'});
+  const target=supabaseInstagramWebhookUrl();
+  if(!target)return res.status(503).json({ok:false,error:'SUPABASE_URL/SUPABASE_INSTAGRAM_WEBHOOK_URL not configured'});
+  const rawBody=req.rawBody||Buffer.from(JSON.stringify(req.body||{}));
+  const headers={
+    'Content-Type':String(req.get('content-type')||'application/json'),
+    'X-RedeAchados-Bridge':'render-v5.5.6'
+  };
+  const sig=req.get('x-hub-signature');
+  const sig256=req.get('x-hub-signature-256');
+  if(sig)headers['X-Hub-Signature']=sig;
+  if(sig256)headers['X-Hub-Signature-256']=sig256;
+  const targetUrl=new URL(target);
+  targetUrl.search=req.originalUrl.includes('?')?req.originalUrl.slice(req.originalUrl.indexOf('?')):'';
+  try{
+    console.log(`[instagram-webhook-bridge] POST -> ${targetUrl.toString()} bytes=${rawBody.length}`);
+    const upstream=await fetchWithRetry(targetUrl.toString(),{method:'POST',headers,body:rawBody},'Instagram webhook bridge',{attempts:3,timeoutMs:20000});
+    const responseBody=await upstream.text();
+    console.log(`[instagram-webhook-bridge] Supabase HTTP ${upstream.status} ${responseBody.slice(0,300)}`);
+    res.status(upstream.status);
+    res.set('Content-Type',upstream.headers.get('content-type')||'text/plain; charset=utf-8');
+    return res.send(responseBody||'OK');
+  }catch(error){
+    const details=networkErrorDetails(error);
+    console.error('[instagram-webhook-bridge] erro:',details);
+    return res.status(502).json({ok:false,error:'Render -> Supabase bridge failed',details});
+  }
+});
+
 app.get('/webhooks/meta/instagram',(req,res)=>{
   const cfg=effectiveSettings(loadStore().settings||{}); const mode=String(req.query['hub.mode']||''), token=String(req.query['hub.verify_token']||''), challenge=String(req.query['hub.challenge']||'');
   if(mode==='subscribe'&&cfg.metaWebhookVerifyToken&&token===cfg.metaWebhookVerifyToken)return res.status(200).send(challenge);
@@ -1364,4 +1409,4 @@ app.post('/api/status/:publishId', mustLogin, async(req,res)=>{
   try{const d=await tiktokJson('https://open.tiktokapis.com/v2/post/publish/status/fetch/',{method:'POST',body:JSON.stringify({publish_id:req.params.publishId})});res.json(d.data||{});}catch(e){res.status(400).json({error:e.message});}
 });
 
-app.listen(PORT,()=>console.log(`REDEACHADOS BR Publisher Web V5.5.5 em http://localhost:${PORT}`));
+app.listen(PORT,()=>console.log(`REDEACHADOS BR Publisher Web V5.5.6 em http://localhost:${PORT}`));
