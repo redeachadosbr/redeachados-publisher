@@ -1,11 +1,14 @@
-# REDEACHADOS BR Publisher V5.5.7
+# REDEACHADOS BR Publisher V5.5.8
 
 
 Esta versão preserva a V5.5.5 e adiciona a rota `POST /api/instagram/webhook` para o fluxo Meta → Cloudflare → Render → Supabase. Ela contorna o erro Cloudflare 530 / 1016 que ocorreu quando o Worker tentou acessar diretamente o Supabase. A política pública `/privacy` e `/data-deletion` continuam disponíveis.
 
 
-## V5.5.7 — Ponte de webhook via Render
+## V5.5.8 — Story no iPhone por QR Code
 
+- Novo fluxo **Continuar Story no iPhone**: gera QR Code temporário no computador e abre no iPhone uma página com vídeo + link Shopee.
+- No iPhone: copie o link, compartilhe o vídeo para o Instagram e adicione o adesivo Link.
+- QR Code assinado e com expiração de 30 minutos.
 - Nova página pública em `/privacy`, sem exigir login do Publisher.
 - Aliases `/privacy-policy` e `/data-deletion`.
 - Link de Privacidade no rodapé.

@@ -5,6 +5,7 @@ import crypto from 'node:crypto';
 import fs from 'node:fs';
 import path from 'node:path';
 import * as XLSX from 'xlsx';
+import QRCode from 'qrcode';
 import { parseCatalogSheets, lookupCatalogSku, linkCatalogSku, catalogStats } from './catalog.js';
 import { fileURLToPath } from 'node:url';
 import { Readable } from 'node:stream';
@@ -170,6 +171,43 @@ function effectiveSettings(stored={}){
 function now(){ return new Date().toISOString(); }
 function removeFile(p){ try{ if(p && fs.existsSync(p)) fs.unlinkSync(p); }catch{} }
 function baseUrl(req){ return (process.env.PUBLIC_BASE_URL || `${req.protocol}://${req.get('host')}`).replace(/\/$/,''); }
+function storyShareSecret(){ return envText('STORY_SHARE_SECRET') || envText('SESSION_SECRET') || 'redeachados-story-share-dev-secret'; }
+function safeStoryDownloadName(value='story'){ return String(value||'story').replace(/\.[^.]+$/,'').replace(/[^A-Za-z0-9._-]+/g,'-').replace(/^-+|-+$/g,'').slice(0,80)||'story'; }
+function createStoryShareToken(payload){
+  const body=Buffer.from(JSON.stringify(payload),'utf8').toString('base64url');
+  const sig=crypto.createHmac('sha256',storyShareSecret()).update(body).digest('base64url');
+  return `${body}.${sig}`;
+}
+function readStoryShareToken(raw){
+  const token=String(raw||'').trim();
+  const [body,sig,...rest]=token.split('.');
+  if(!body||!sig||rest.length) throw new Error('Link do Story inválido. Gere um novo QR Code.');
+  const expected=crypto.createHmac('sha256',storyShareSecret()).update(body).digest('base64url');
+  const a=Buffer.from(sig),b=Buffer.from(expected);
+  if(a.length!==b.length || !crypto.timingSafeEqual(a,b)) throw new Error('Link do Story inválido. Gere um novo QR Code.');
+  let data;
+  try{data=JSON.parse(Buffer.from(body,'base64url').toString('utf8'));}catch{throw new Error('Link do Story inválido. Gere um novo QR Code.');}
+  if(!data?.exp || Number(data.exp)<Date.now()) throw new Error('Este QR Code expirou. Gere outro no Publisher.');
+  if(!['remote','upload'].includes(data.source)) throw new Error('Origem do vídeo inválida.');
+  return data;
+}
+function storySharePayload({source,id='',file='',title='',productUrl=''}){
+  const exp=Date.now()+30*60*1000;
+  return {v:1,source,id:String(id||''),file:String(file||''),title:String(title||'Story REDE ACHADOS BR').slice(0,120),productUrl:String(productUrl||'').slice(0,1500),exp};
+}
+function validateStoryProductUrl(raw){
+  const value=String(raw||'').trim();
+  if(!value) throw new Error('Informe o link do produto Shopee.');
+  let u;try{u=new URL(value);}catch{throw new Error('O link do produto não é uma URL válida.');}
+  if(!/^https?:$/.test(u.protocol)) throw new Error('Use um link http ou https para o produto.');
+  return u.toString();
+}
+async function makeStoryShareResponse(req,payload){
+  const token=createStoryShareToken(payload);
+  const url=`${baseUrl(req)}/story-mobile?t=${encodeURIComponent(token)}`;
+  const qrDataUrl=await QRCode.toDataURL(url,{width:360,margin:1,errorCorrectionLevel:'M'});
+  return {ok:true,url,qrDataUrl,expiresAt:new Date(payload.exp).toISOString()};
+}
 function redirectUri(req){ return `${baseUrl(req)}/auth/tiktok/callback`; }
 function safeSettings(stored){
   const s=effectiveSettings(stored||{});
@@ -610,11 +648,59 @@ async function extractRemoteFrames(id, filename, durationSec){
   }
 }
 
+// Story assistido para iPhone: o desktop gera um QR Code temporário e o celular recebe o vídeo + link da Shopee.
+app.post('/api/story-share/remote',mustLogin,async(req,res)=>{
+  try{
+    const id=String(req.body.remoteVideoId||'').trim();
+    if(!/^[A-Za-z0-9_-]{8,200}$/.test(id))return res.status(400).json({error:'ID de vídeo não permitido.'});
+    const productUrl=validateStoryProductUrl(req.body.productUrl);
+    const payload=storySharePayload({source:'remote',id,title:req.body.title||'Story REDE ACHADOS BR',productUrl});
+    res.json(await makeStoryShareResponse(req,payload));
+  }catch(e){res.status(400).json({error:e.message});}
+});
+app.post('/api/story-share/upload',mustLogin,upload.single('video'),async(req,res)=>{
+  try{
+    if(!req.file)return res.status(400).json({error:'Envie um vídeo.'});
+    const productUrl=validateStoryProductUrl(req.body.productUrl);
+    const filename=path.basename(req.file.path);
+    const payload=storySharePayload({source:'upload',file:filename,title:req.body.title||req.file.originalname||'Story REDE ACHADOS BR',productUrl});
+    setTimeout(()=>removeFile(req.file.path),70*60*1000).unref?.();
+    res.json(await makeStoryShareResponse(req,payload));
+  }catch(e){if(req.file?.path)removeFile(req.file.path);res.status(400).json({error:e.message});}
+});
+app.get('/api/story-share/info',(req,res)=>{
+  try{
+    const payload=readStoryShareToken(req.query.t);
+    res.setHeader('Cache-Control','no-store');
+    res.json({ok:true,title:payload.title,productUrl:payload.productUrl,expiresAt:new Date(payload.exp).toISOString(),videoUrl:`/api/story-share/video?t=${encodeURIComponent(String(req.query.t||''))}`});
+  }catch(e){res.status(400).json({error:e.message});}
+});
+app.get('/api/story-share/video',async(req,res)=>{
+  try{
+    const payload=readStoryShareToken(req.query.t);
+    if(payload.source==='remote'){
+      if(!/^[A-Za-z0-9_-]{8,200}$/.test(payload.id||''))throw new Error('Vídeo remoto inválido.');
+      const range=String(req.headers.range||'').trim();
+      const r=await fetchDriveResponse(payload.id,range);const ct=remoteMime(r);
+      res.status(r.status===206?206:200);res.setHeader('Content-Type',ct);res.setHeader('Accept-Ranges',r.headers.get('accept-ranges')||'bytes');
+      const len=r.headers.get('content-length');if(len)res.setHeader('Content-Length',len);const cr=r.headers.get('content-range');if(cr)res.setHeader('Content-Range',cr);
+      res.setHeader('Cache-Control','private, max-age=300');res.setHeader('Content-Disposition',`inline; filename="${safeStoryDownloadName(payload.title||'story')}.mp4"`);
+      if(!r.body)return res.end();Readable.fromWeb(r.body).on('error',()=>{try{res.destroy();}catch{}}).pipe(res);return;
+    }
+    const file=path.basename(String(payload.file||''));
+    if(!file||file!==payload.file)throw new Error('Arquivo temporário inválido.');
+    const filePath=path.join(UPLOAD_DIR,file);if(!fs.existsSync(filePath))return res.status(410).json({error:'O vídeo temporário expirou. Gere um novo QR Code no Publisher.'});
+    res.setHeader('Cache-Control','private, max-age=300');
+    res.sendFile(filePath,{headers:{'Content-Disposition':`inline; filename="${safeStoryDownloadName(payload.title||'story')}.mp4"`}});
+  }catch(e){if(!res.headersSent)res.status(400).json({error:e.message});}
+});
+app.get('/story-mobile',(_req,res)=>res.sendFile(path.join(__dirname,'public','story-mobile.html')));
+
 // Public legal pages required by platform reviews. These routes never require app login.
 app.get(['/privacy','/privacy-policy'], (_req,res)=>res.sendFile(path.join(__dirname,'public','privacy.html')));
 app.get('/data-deletion', (_req,res)=>res.sendFile(path.join(__dirname,'public','privacy.html')));
 
-app.get('/api/health', (_req,res)=>res.json({ok:true,service:'REDEACHADOS BR Publisher Web V5.5.7'}));
+app.get('/api/health', (_req,res)=>res.json({ok:true,service:'REDEACHADOS BR Publisher Web V5.5.8'}));
 app.get('/api/auth-state',(req,res)=>res.json({locked:Boolean(process.env.APP_PASSWORD),loggedIn:!process.env.APP_PASSWORD||Boolean(req.session?.appAuth)}));
 app.post('/api/login',(req,res)=>{
   if(!process.env.APP_PASSWORD){ req.session.appAuth=true; return res.json({ok:true}); }
@@ -1466,4 +1552,4 @@ app.post('/api/status/:publishId', mustLogin, async(req,res)=>{
   try{const d=await tiktokJson('https://open.tiktokapis.com/v2/post/publish/status/fetch/',{method:'POST',body:JSON.stringify({publish_id:req.params.publishId})});res.json(d.data||{});}catch(e){res.status(400).json({error:e.message});}
 });
 
-app.listen(PORT,()=>console.log(`REDEACHADOS BR Publisher Web V5.5.7 em http://localhost:${PORT}`));
+app.listen(PORT,()=>console.log(`REDEACHADOS BR Publisher Web V5.5.8 em http://localhost:${PORT}`));

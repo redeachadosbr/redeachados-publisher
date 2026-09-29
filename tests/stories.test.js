@@ -6,19 +6,23 @@ const server=fs.readFileSync(new URL('../server.js',import.meta.url),'utf8');
 const html=fs.readFileSync(new URL('../public/index.html',import.meta.url),'utf8');
 const app=fs.readFileSync(new URL('../public/app.js',import.meta.url),'utf8');
 
-test('V5.5.7 exposes official Instagram Story publishing',()=>{
+test('V5.5.8 exposes official Instagram Story publishing',()=>{
   assert.match(server,/media_type:'STORIES'/);
   assert.match(server,/\/api\/instagram\/story\/publish-remote/);
   assert.match(server,/\/api\/instagram\/story\/publish/);
   assert.match(server,/\/api\/instagram\/story\/finalize/);
 });
 
-test('V5.5.7 exposes assisted Story flow with Shopee link',()=>{
+test('V5.5.8 exposes QR-to-iPhone Story flow with Shopee link',()=>{
+  const mobile=fs.readFileSync(new URL('../public/story-mobile.html',import.meta.url),'utf8');
   assert.match(html,/id="prepareStoryBtn"/);
-  assert.match(html,/Story com link da Shopee/);
-  assert.match(app,/copyStoryLink/);
-  assert.match(app,/navigator\.share/);
-  assert.match(app,/adesivo <b>Link<\/b>/);
+  assert.match(html,/Continuar Story no iPhone/);
+  assert.match(server,/\/api\/story-share\/remote/);
+  assert.match(server,/\/api\/story-share\/upload/);
+  assert.match(server,/QRCode\.toDataURL/);
+  assert.match(app,/showStoryQr/);
+  assert.match(mobile,/Copiar link da Shopee/);
+  assert.match(mobile,/navigator\.share/);
 });
 
 test('automatic Story is explicitly link-free',()=>{
