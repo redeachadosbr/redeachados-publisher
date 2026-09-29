@@ -617,6 +617,83 @@ async function downloadDriveToTemp(id, filename='wedrop-video.mp4'){
   return {path:filePath,size,mimetype:mime,originalname:`${safeBase}${ext}`};
 }
 
+const REMOTE_CACHE_DIR=path.join(UPLOAD_DIR,'remote-cache');
+fs.mkdirSync(REMOTE_CACHE_DIR,{recursive:true});
+const remotePreparePromises=new Map();
+function preparedDrivePath(id){return path.join(REMOTE_CACHE_DIR,`${String(id).replace(/[^A-Za-z0-9_-]/g,'_')}.mp4`);}
+async function inspectMediaFile(filePath){
+  return await new Promise((resolve)=>{
+    const cp=spawn(ffmpegPath,['-hide_banner','-i',filePath],{stdio:['ignore','ignore','pipe']});
+    let err='';
+    cp.stderr.on('data',d=>{err+=String(d);if(err.length>50000)err=err.slice(-50000)});
+    const finish=()=>{
+      const v=(err.match(/Video:\s*([^,\s]+)/i)||[])[1]||'';
+      const a=(err.match(/Audio:\s*([^,\s]+)/i)||[])[1]||'';
+      const dm=err.match(/Duration:\s*(\d+):(\d+):(\d+(?:\.\d+)?)/i);
+      const duration=dm?(Number(dm[1])*3600+Number(dm[2])*60+Number(dm[3])):0;
+      resolve({videoCodec:v.toLowerCase(),audioCodec:a.toLowerCase(),duration:Number(duration||0)});
+    };
+    cp.on('error',()=>resolve({videoCodec:'',audioCodec:'',duration:0}));
+    cp.on('close',finish);
+  });
+}
+async function prepareDriveVideo(id,filename='wedrop-video.mp4'){
+  if(!/^[A-Za-z0-9_-]{8,200}$/.test(String(id||'')))throw new Error('ID de vídeo inválido.');
+  const target=preparedDrivePath(id);
+  try{const st=fs.statSync(target);if(st.size>1024)return {path:target,size:st.size,mimetype:'video/mp4',originalname:path.basename(target),...(await inspectMediaFile(target)),cached:true};}catch{}
+  if(remotePreparePromises.has(id))return remotePreparePromises.get(id);
+  const promise=(async()=>{
+    let remote=null,tmp='';
+    try{
+      remote=await downloadDriveToTemp(id,filename);
+      const info=await inspectMediaFile(remote.path);
+      tmp=`${target}.${Date.now()}.${crypto.randomBytes(3).toString('hex')}.tmp.mp4`;
+      const common=['-hide_banner','-loglevel','error','-i',remote.path,'-map','0:v:0','-map','0:a?'];
+      if(info.videoCodec==='h264' && (!info.audioCodec || info.audioCodec==='aac')){
+        await runFfmpeg([...common,'-c','copy','-movflags','+faststart','-y',tmp]);
+      }else if(info.videoCodec==='h264'){
+        await runFfmpeg([...common,'-c:v','copy','-c:a','aac','-b:a','128k','-ar','48000','-movflags','+faststart','-y',tmp]);
+      }else{
+        await runFfmpeg([...common,'-c:v','libx264','-preset','veryfast','-crf','22','-pix_fmt','yuv420p','-c:a','aac','-b:a','128k','-ar','48000','-movflags','+faststart','-y',tmp]);
+      }
+      const st=fs.statSync(tmp);if(st.size<1024)throw new Error('O vídeo preparado ficou inválido.');
+      try{removeFile(target)}catch{}
+      fs.renameSync(tmp,target);tmp='';
+      const finalInfo=await inspectMediaFile(target);
+      setTimeout(()=>removeFile(target),2*60*60*1000).unref?.();
+      return {path:target,size:fs.statSync(target).size,mimetype:'video/mp4',originalname:path.basename(target),...finalInfo,cached:false};
+    }finally{
+      if(remote?.path)removeFile(remote.path);
+      if(tmp)removeFile(tmp);
+    }
+  })().finally(()=>remotePreparePromises.delete(id));
+  remotePreparePromises.set(id,promise);
+  return promise;
+}
+function serveLocalVideo(req,res,filePath,{cache='private, max-age=300',download=false,name='video.mp4'}={}){
+  if(!fs.existsSync(filePath))return res.status(404).send('Vídeo temporário não encontrado.');
+  const st=fs.statSync(filePath);const range=String(req.headers.range||'').trim();
+  res.setHeader('Content-Type','video/mp4');res.setHeader('Accept-Ranges','bytes');res.setHeader('Cache-Control',cache);
+  const safeName=String(name||'video.mp4').replace(/[\"\r\n]/g,'_');
+  res.setHeader('Content-Disposition',`${download?'attachment':'inline'}; filename="${safeName}"`);
+  if(range){
+    const m=range.match(/bytes=(\d*)-(\d*)/);
+    if(m){const start=Number(m[1]||0),end=Math.min(Number(m[2]||st.size-1),st.size-1);if(start<=end){res.status(206);res.setHeader('Content-Range',`bytes ${start}-${end}/${st.size}`);res.setHeader('Content-Length',end-start+1);return fs.createReadStream(filePath,{start,end}).pipe(res);}}
+  }
+  res.status(200);res.setHeader('Content-Length',st.size);return fs.createReadStream(filePath).pipe(res);
+}
+
+app.post('/api/wedrop/prepare',mustLogin,async(req,res)=>{
+  try{
+    const id=String(req.body.remoteVideoId||'').trim();
+    const prepared=await prepareDriveVideo(id,String(req.body.filename||'video-wedrop.mp4'));
+    res.json({ok:true,streamUrl:`/api/wedrop/prepared?id=${encodeURIComponent(id)}&v=552`,duration:prepared.duration||0,size:prepared.size,videoCodec:prepared.videoCodec||'',audioCodec:prepared.audioCodec||'',cached:Boolean(prepared.cached)});
+  }catch(e){res.status(400).json({error:`Não consegui preparar o vídeo (${e.message}).`});}
+});
+app.get('/api/wedrop/prepared',mustLogin,async(req,res)=>{
+  try{const id=String(req.query.id||'').trim();const prepared=await prepareDriveVideo(id,'video-wedrop.mp4');return serveLocalVideo(req,res,prepared.path,{cache:'private, max-age=600',name:'redeachados-video.mp4'});}catch(e){if(!res.headersSent)res.status(400).json({error:`Vídeo preparado indisponível (${e.message}).`});}
+});
+
 async function runFfmpeg(args){
   await new Promise((resolve,reject)=>{
     const cp=spawn(ffmpegPath,args,{stdio:['ignore','ignore','pipe']});
@@ -627,25 +704,21 @@ async function runFfmpeg(args){
   });
 }
 async function extractRemoteFrames(id, filename, durationSec){
-  let remoteFile=null; const made=[];
+  const prepared=await prepareDriveVideo(id,filename||'wedrop-video.mp4'); const made=[];
   try{
-    remoteFile=await downloadDriveToTemp(id,filename||'wedrop-video');
-    const dur=Number(durationSec||0);
+    const dur=Number(durationSec||prepared.duration||0);
     const points=dur>1 ? [0.15,0.5,0.85].map(p=>Math.max(0.1,Math.min(Math.max(0.1,dur-0.15),dur*p))) : [0.5,1.5,2.5];
     const images=[];
     for(let i=0;i<points.length;i++){
       const out=path.join(UPLOAD_DIR,`${Date.now()}-${crypto.randomBytes(4).toString('hex')}-frame-${i+1}.jpg`);
       made.push(out);
-      await runFfmpeg(['-hide_banner','-loglevel','error','-ss',String(points[i]),'-i',remoteFile.path,'-frames:v','1','-vf','scale=720:-2:force_original_aspect_ratio=decrease','-q:v','3','-y',out]);
+      await runFfmpeg(['-hide_banner','-loglevel','error','-ss',String(points[i]),'-i',prepared.path,'-frames:v','1','-vf','scale=720:-2:force_original_aspect_ratio=decrease','-q:v','3','-y',out]);
       const buf=fs.readFileSync(out);
       if(buf.length<500) throw new Error(`Frame ${i+1} inválido.`);
       images.push(`data:image/jpeg;base64,${buf.toString('base64')}`);
     }
     return images;
-  }finally{
-    if(remoteFile?.path) removeFile(remoteFile.path);
-    for(const f of made) removeFile(f);
-  }
+  }finally{for(const f of made) removeFile(f);}
 }
 
 // Story assistido para iPhone: o desktop gera um QR Code temporário e o celular recebe o vídeo + link da Shopee.
@@ -653,6 +726,7 @@ app.post('/api/story-share/remote',mustLogin,async(req,res)=>{
   try{
     const id=String(req.body.remoteVideoId||'').trim();
     if(!/^[A-Za-z0-9_-]{8,200}$/.test(id))return res.status(400).json({error:'ID de vídeo não permitido.'});
+    await prepareDriveVideo(id,String(req.body.title||'story-rede-achados')+'.mp4');
     const productUrl=validateStoryProductUrl(req.body.productUrl);
     const payload=storySharePayload({source:'remote',id,title:req.body.title||'Story REDE ACHADOS BR',productUrl});
     res.json(await makeStoryShareResponse(req,payload));
@@ -674,7 +748,7 @@ app.get('/api/story-share/info',(req,res)=>{
     res.setHeader('Cache-Control','no-store');
     const token=encodeURIComponent(String(req.query.t||''));
     const videoUrl=`/api/story-share/video?t=${token}`;
-    const downloadUrl=payload.source==='remote' ? driveCandidateUrls(payload.id)[0] : `${videoUrl}&download=1`;
+    const downloadUrl=`${videoUrl}&download=1`;
     res.json({ok:true,title:payload.title,productUrl:payload.productUrl,expiresAt:new Date(payload.exp).toISOString(),videoUrl,downloadUrl});
   }catch(e){res.status(400).json({error:e.message});}
 });
@@ -683,12 +757,8 @@ app.get('/api/story-share/video',async(req,res)=>{
     const payload=readStoryShareToken(req.query.t);
     if(payload.source==='remote'){
       if(!/^[A-Za-z0-9_-]{8,200}$/.test(payload.id||''))throw new Error('Vídeo remoto inválido.');
-      const range=String(req.headers.range||'').trim();
-      const r=await fetchDriveResponse(payload.id,range);const ct=remoteMime(r);
-      res.status(r.status===206?206:200);res.setHeader('Content-Type',ct);res.setHeader('Accept-Ranges',r.headers.get('accept-ranges')||'bytes');
-      const len=r.headers.get('content-length');if(len)res.setHeader('Content-Length',len);const cr=r.headers.get('content-range');if(cr)res.setHeader('Content-Range',cr);
-      res.setHeader('Cache-Control','private, max-age=300');const disposition=String(req.query.download||'')==='1'?'attachment':'inline';res.setHeader('Content-Disposition',`${disposition}; filename="${safeStoryDownloadName(payload.title||'story')}.mp4"`);
-      if(!r.body)return res.end();Readable.fromWeb(r.body).on('error',()=>{try{res.destroy();}catch{}}).pipe(res);return;
+      const prepared=await prepareDriveVideo(payload.id,String(payload.title||'story')+'.mp4');
+      return serveLocalVideo(req,res,prepared.path,{cache:'private, max-age=600',download:String(req.query.download||'')==='1',name:`${safeStoryDownloadName(payload.title||'story')}.mp4`});
     }
     const file=path.basename(String(payload.file||''));
     if(!file||file!==payload.file)throw new Error('Arquivo temporário inválido.');
@@ -704,7 +774,7 @@ app.get('/story-mobile',(_req,res)=>res.sendFile(path.join(__dirname,'public','s
 app.get(['/privacy','/privacy-policy'], (_req,res)=>res.sendFile(path.join(__dirname,'public','privacy.html')));
 app.get('/data-deletion', (_req,res)=>res.sendFile(path.join(__dirname,'public','privacy.html')));
 
-app.get('/api/health', (_req,res)=>res.json({ok:true,service:'REDEACHADOS BR Publisher Web V5.5.11'}));
+app.get('/api/health', (_req,res)=>res.json({ok:true,service:'REDEACHADOS BR Publisher Web V5.5.12'}));
 app.get('/api/auth-state',(req,res)=>res.json({locked:Boolean(process.env.APP_PASSWORD),loggedIn:!process.env.APP_PASSWORD||Boolean(req.session?.appAuth)}));
 app.post('/api/login',(req,res)=>{
   if(!process.env.APP_PASSWORD){ req.session.appAuth=true; return res.json({ok:true}); }
@@ -862,7 +932,8 @@ app.get('/media/instagram/:kind/:id', async(req,res)=>{
     const range=String(req.headers.range||'').trim();
     if(kind==='wedrop'){
       if(!/^[A-Za-z0-9_-]{8,200}$/.test(id)) return res.status(400).send('ID inválido.');
-      const r=await fetchDriveResponse(id,range); return pipeRemoteResponse(r,res);
+      const prepared=await prepareDriveVideo(id,'instagram-redeachados.mp4');
+      return serveLocalVideo(req,res,prepared.path,{cache:'public, max-age=600',name:'instagram-redeachados.mp4'});
     }
     if(kind==='upload'){
       const filename=path.basename(id); const full=path.join(UPLOAD_DIR,filename);
@@ -1203,6 +1274,7 @@ app.get('/api/instagram/status',mustLogin,async(_req,res)=>{try{const cfg=effect
 app.post('/api/instagram/publish-remote',mustLogin,async(req,res)=>{
   try{
     const id=String(req.body.remoteVideoId||'').trim(); if(!/^[A-Za-z0-9_-]{8,200}$/.test(id))return res.status(400).json({error:'ID do vídeo WeDrop inválido.'});
+    await prepareDriveVideo(id,String(req.body.filename||'instagram-reel.mp4'));
     const caption=String(req.body.caption||'').trim(); const videoUrl=instagramPublicMediaUrl(req,'wedrop',id,3600);
     let result=await publishInstagramReel({req,videoUrl,caption}); result=await registerInstagramCommerce(result,req.body||{});
     const o=normalizeCommerceOptions(req.body||{}),s=loadStore();s.history.unshift({id:crypto.randomUUID(),platform:'instagram',mediaId:result.mediaId||'',creationId:result.creationId||'',filename:String(req.body.filename||'video-wedrop'),product:o.product,shopeeUrl:o.shopeeUrl,caption,dmKeyword:o.keyword,adId:result.commerce?.ad?.adId||'',status:result.status||'PROCESSING',createdAt:now()});s.history=s.history.slice(0,100);saveStore(s);
@@ -1223,6 +1295,7 @@ app.post('/api/instagram/story/publish-remote',mustLogin,async(req,res)=>{
   try{
     const id=String(req.body.remoteVideoId||'').trim();
     if(!/^[A-Za-z0-9_-]{8,200}$/.test(id))return res.status(400).json({error:'ID do vídeo WeDrop inválido.'});
+    await prepareDriveVideo(id,String(req.body.filename||'instagram-story.mp4'));
     const videoUrl=instagramPublicMediaUrl(req,'wedrop',id,3600);
     const result=await publishInstagramStory({req,videoUrl});
     const s=loadStore();
@@ -1556,4 +1629,4 @@ app.post('/api/status/:publishId', mustLogin, async(req,res)=>{
   try{const d=await tiktokJson('https://open.tiktokapis.com/v2/post/publish/status/fetch/',{method:'POST',body:JSON.stringify({publish_id:req.params.publishId})});res.json(d.data||{});}catch(e){res.status(400).json({error:e.message});}
 });
 
-app.listen(PORT,()=>console.log(`REDEACHADOS BR Publisher Web V5.5.11 em http://localhost:${PORT}`));
+app.listen(PORT,()=>console.log(`REDEACHADOS BR Publisher Web V5.5.12 em http://localhost:${PORT}`));

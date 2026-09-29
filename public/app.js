@@ -404,20 +404,24 @@ async function loadRemoteVideo(candidate,product){
     selectedFile=null;preparedStoryFile=null;preparedStoryVideoId='';
     selectedRemoteVideo={id:candidate.id,title:candidate.title||product?.name||product?.sku||'Vídeo WeDrop',catalogProductId:product?.id||'',catalogSku:product?.sku||$('#wedropSku')?.value.trim()||'',catalogProductName:product?.name||'',catalogProductUrl:product?.shopeeUrl||''};
     generated=null; frames=[];
-    const src='/api/wedrop/video?id='+encodeURIComponent(candidate.id)+'&v=546';
     $('#fileName').textContent=selectedRemoteVideo.title;
     const preview=$('#preview');
     preview.pause(); preview.removeAttribute('src'); preview.load();
-    preview.src=src; preview.preload='metadata'; preview.playsInline=true;
     $('#dropzone').classList.add('hidden');$('#workArea').classList.remove('hidden');
-    status.textContent='Carregando vídeo pelo servidor para compatibilidade com iPhone…';
-    $('#aiStatus').textContent='Lendo o vídeo…';
+    status.textContent='Preparando uma cópia temporária estável do vídeo…';
+    $('#aiStatus').textContent='Preparando o vídeo…';
+    const prepared=await api('/api/wedrop/prepare',{method:'POST',body:JSON.stringify({remoteVideoId:candidate.id,filename:selectedRemoteVideo.title||'video-wedrop.mp4'})});
+    const src=prepared.streamUrl;
+    preview.src=src; preview.preload='metadata'; preview.playsInline=true;
+    if(Number(prepared.duration||0)>0) duration=Number(prepared.duration);
+    status.textContent=prepared.cached?'Vídeo pronto. Usando a cópia temporária já preparada.':'Vídeo preparado no Render para reprodução e publicação estáveis.';
+    $('#aiStatus').textContent='Lendo o vídeo preparado…';
     await new Promise((resolve,reject)=>{
-      const ok=()=>{cleanup();duration=preview.duration||0;resolve()};
-      const bad=()=>{cleanup();reject(new Error('Load Failed: o iPhone não conseguiu abrir o fluxo de vídeo.'))};
+      const ok=()=>{cleanup();duration=preview.duration||duration||Number(prepared.duration||0);resolve()};
+      const bad=()=>{cleanup();reject(new Error('O navegador não conseguiu abrir a cópia preparada do vídeo. Tente selecionar o vídeo novamente.'))};
       const cleanup=()=>{preview.removeEventListener('loadedmetadata',ok);preview.removeEventListener('error',bad)};
       preview.addEventListener('loadedmetadata',ok,{once:true});preview.addEventListener('error',bad,{once:true});
-      preview.load();setTimeout(()=>{cleanup();reject(new Error('Tempo esgotado ao carregar o vídeo no iPhone.'))},20000);
+      preview.load();setTimeout(()=>{cleanup();reject(new Error('Tempo esgotado ao abrir a cópia preparada do vídeo.'))},45000);
     });
     if(product?.shopeeUrl) $('#shopeeUrl').value=product.shopeeUrl;
     $('#aiStatus').textContent='Analisando o vídeo no servidor…';
@@ -430,7 +434,7 @@ async function loadRemoteVideo(candidate,product){
     $('#aiStatus').textContent=generated.confidence==='ai'?'Pronto: conteúdo criado automaticamente pela IA.':'Pronto: modo básico usado. Configure a chave da IA para análise visual.';
     await loadCreator();
     saveDraft();
-    status.textContent='Vídeo carregado pelo servidor e analisado. Ao enviar ao TikTok, o arquivo será transferido diretamente pelo Render — sem baixar o vídeo inteiro no iPhone.';
+    status.textContent='Vídeo preparado e analisado. Preview, Instagram e Story usam a mesma cópia temporária estável no Render.';
     window.scrollTo({top:document.querySelector('.upload-card').offsetTop-12,behavior:'smooth'});
   }catch(e){selectedRemoteVideo=null;toast(e.message,true);status.textContent=e.message}
 }
