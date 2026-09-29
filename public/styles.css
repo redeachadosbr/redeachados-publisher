@@ -64,3 +64,5 @@ dialog{width:min(830px,94vw);max-height:90dvh;padding:0;border:1px solid #e0e5d8
 /* V5.5.4 · Supabase sync repair */
 .sync-reel-row{display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin:12px 0 4px}.sync-reel-btn{min-height:40px;padding:0 16px;font-weight:700}.sync-reel-row .small{margin:0;flex:1;min-width:260px}
 @media(max-width:700px){.sync-reel-row{align-items:stretch}.sync-reel-btn{width:100%}.sync-reel-row .small{min-width:0}}
+
+.page-footer a{color:inherit;text-decoration:underline;text-underline-offset:2px}.page-footer a:hover{color:#6e765f}

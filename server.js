@@ -604,7 +604,11 @@ async function extractRemoteFrames(id, filename, durationSec){
   }
 }
 
-app.get('/api/health', (_req,res)=>res.json({ok:true,service:'REDEACHADOS BR Publisher Web V5.5.4'}));
+// Public legal pages required by platform reviews. These routes never require app login.
+app.get(['/privacy','/privacy-policy'], (_req,res)=>res.sendFile(path.join(__dirname,'public','privacy.html')));
+app.get('/data-deletion', (_req,res)=>res.sendFile(path.join(__dirname,'public','privacy.html')));
+
+app.get('/api/health', (_req,res)=>res.json({ok:true,service:'REDEACHADOS BR Publisher Web V5.5.5'}));
 app.get('/api/auth-state',(req,res)=>res.json({locked:Boolean(process.env.APP_PASSWORD),loggedIn:!process.env.APP_PASSWORD||Boolean(req.session?.appAuth)}));
 app.post('/api/login',(req,res)=>{
   if(!process.env.APP_PASSWORD){ req.session.appAuth=true; return res.json({ok:true}); }
@@ -1360,4 +1364,4 @@ app.post('/api/status/:publishId', mustLogin, async(req,res)=>{
   try{const d=await tiktokJson('https://open.tiktokapis.com/v2/post/publish/status/fetch/',{method:'POST',body:JSON.stringify({publish_id:req.params.publishId})});res.json(d.data||{});}catch(e){res.status(400).json({error:e.message});}
 });
 
-app.listen(PORT,()=>console.log(`REDEACHADOS BR Publisher Web V5.5.4 em http://localhost:${PORT}`));
+app.listen(PORT,()=>console.log(`REDEACHADOS BR Publisher Web V5.5.5 em http://localhost:${PORT}`));

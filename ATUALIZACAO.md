@@ -1,3 +1,12 @@
+# Atualização V5.5.5 · Política de Privacidade pública
+
+- Adiciona `/privacy` público e sem login para cadastro no Meta for Developers.
+- Adiciona aliases `/privacy-policy` e `/data-deletion`.
+- Mantém sem alteração o fluxo Instagram → Supabase → Direct da V5.5.4.
+- URL recomendada na Meta: `https://redeachados-publisher.onrender.com/privacy`.
+
+---
+
 # Atualização V5.5.4 · Hotfix Supabase Secret Key
 
 - Corrige autenticação REST com chaves novas `sb_secret_*`: agora elas são enviadas somente no header `apikey`, sem `Authorization: Bearer`.

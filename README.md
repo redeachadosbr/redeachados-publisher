@@ -1,4 +1,14 @@
-# REDEACHADOS BR Publisher V5.5.4
+# REDEACHADOS BR Publisher V5.5.5
+
+
+## V5.5.5 — Política de Privacidade pública
+
+- Nova página pública em `/privacy`, sem exigir login do Publisher.
+- Aliases `/privacy-policy` e `/data-deletion`.
+- Link de Privacidade no rodapé.
+- Preserva integralmente a sincronização Supabase/Instagram da V5.5.4.
+
+**URL para a Meta:** `https://redeachados-publisher.onrender.com/privacy`
 
 **Destaques:** resultados de vídeo compactos em accordion, “Ver mais”, botões TikTok/Instagram premium e estados de autenticação/publicação mais claros.
 
