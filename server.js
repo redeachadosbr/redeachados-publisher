@@ -323,6 +323,39 @@ function extractUrls(text){
   }
   return [...new Set(urls)];
 }
+const GENERIC_SEARCH_TOKENS=new Set(['mini','kit','infantil','crianca','criancas','brinquedo','brinquedos','cores','cor','sortida','sortido','sortidas','sortidos','presente','oferta','flash','promocao','educativo','classico','super','top','luxo','pronta','entrega','unidade','unidades','com','para','de','da','do','das','dos','em','no','na','nos','nas','sem','por','um','uma','e']);
+const EXCLUSIVE_TOKEN_GROUPS=[
+  ['veiculo',['carro','carrinho','jeep','moto','motoca','quadriciclo','kart','bike','bicicleta','triciclo','patinete','scooter','caminhao','caminhaozinho','caminhonete']],
+  ['musical',['bateria','tambor','tambores','baqueta','baquetas','musical','musica','guitarra','violao','teclado','microfone','instrumento','instrumentos']],
+  ['cozinha',['panela','frigideira','chaleira','talher','talheres','garfo','faca','colher','jarra','copo','copos','taca','tacas','pote','potes','tabua','tabuas']],
+  ['organizacao',['cabide','cabides','organizadora','organizador','organizadores','gaveta','gavetas','vacuo','armario','roupeiro','guarda','roupa']],
+  ['pet',['pet','pets','cachorro','cachorros','cao','caes','gato','gatos','comedouro','bebedouro','coleira','pelos']]
+];
+function informativeTokens(v){
+  const uniq=[];
+  for(const token of catalogTokens(v)){
+    if(token.length<3) continue;
+    if(GENERIC_SEARCH_TOKENS.has(token)) continue;
+    if(/^\d+[a-z]*$/i.test(token)) continue;
+    if(!uniq.includes(token)) uniq.push(token);
+  }
+  return uniq;
+}
+function detectExclusiveGroups(tokens){
+  const set=new Set(tokens);
+  return EXCLUSIVE_TOKEN_GROUPS.filter(([,list])=>list.some(token=>set.has(token))).map(([name])=>name);
+}
+function semanticMatchMeta(query,title){
+  const qInfo=informativeTokens(query);
+  const tInfo=informativeTokens(title);
+  const shared=qInfo.filter(token=>tInfo.includes(token));
+  const qGroups=detectExclusiveGroups(qInfo);
+  const tGroups=detectExclusiveGroups(tInfo);
+  const sameGroup=qGroups.filter(group=>tGroups.includes(group));
+  const conflictingGroups=qGroups.length&&tGroups.length&&!sameGroup.length;
+  const genericQuery=qInfo.length===0;
+  return {qInfo,tInfo,shared,genericQuery,conflictingGroups};
+}
 function scoreVideoCandidate(query,text){
   const q=new Set(catalogTokens(query)), t=new Set(catalogTokens(text));
   if(!q.size||!t.size) return 0; let common=0; for(const x of q) if(t.has(x)) common++;
@@ -480,6 +513,8 @@ async function loadGalleryInventory(force=false){
 
 function scoreGalleryRecord(query,record){
   const title=record?.title||'';
+  const meta=semanticMatchMeta(query,title);
+  if(meta.genericQuery) return 0;
   let score=scoreVideoCandidate(query,title);
   const nq=normalizeText(query), nt=normalizeText(title);
   if(nq && nt){
@@ -488,6 +523,11 @@ function scoreGalleryRecord(query,record){
     const q2=catalogTokens(query).slice(0,2).join(' '), t2=catalogTokens(title).slice(0,2).join(' ');
     if(q2 && q2===t2) score=Math.max(score,0.70);
   }
+  if(meta.conflictingGroups) score=Math.min(score,0.18);
+  if(meta.qInfo.length>=4 && meta.shared.length<2) score=Math.min(score,0.24);
+  else if(meta.qInfo.length>=2 && meta.shared.length===0) score=Math.min(score,0.18);
+  else if(meta.qInfo.length>=3 && meta.shared.length===1) score=Math.min(score,0.42);
+  if(meta.shared.length>=2) score=Math.max(score,Math.min(0.96,0.58+(meta.shared.length*0.11)));
   return Math.min(1,score);
 }
 function rankGalleryRecords(records,query){
@@ -502,24 +542,33 @@ async function discoverGalleryVideos(title,sku,manualQuery=''){
     const variants=manualQuery?[cleanSearchTitle(manualQuery)]:progressiveSearchQueries(title||sku,learned);
     const threshold=0.46;
     let chosen=[];
+    let genericOnly=true;
     for(const q of variants){
       if(!q)continue;
+      const meta=semanticMatchMeta(q,q);
+      if(meta.genericQuery){
+        result.attempts.push({query:q,matches:0,bestScore:0,generic:true});
+        continue;
+      }
+      genericOnly=false;
       const ranked=rankGalleryRecords(inv.records,q);
       const hits=ranked.filter(x=>x.score>=threshold).slice(0,12);
       result.attempts.push({query:q,matches:hits.length,bestScore:Number((ranked[0]?.score||0).toFixed(3))});
       if(hits.length){chosen=hits;result.bestQuery=q;break;}
     }
-    if(!chosen.length && variants.length){
-      const q=variants[variants.length-1];
+    if(!chosen.length && variants.length && !genericOnly){
+      const q=[...variants].reverse().find(item=>!semanticMatchMeta(item,item).genericQuery)||variants[variants.length-1];
       const ranked=rankGalleryRecords(inv.records,q).filter(x=>x.score>=0.32).slice(0,6);
-      if(ranked.length){chosen=ranked;result.bestQuery=q;result.diagnostic='Encontrei candidatos aproximados no catálogo interno da galeria. Confira o vídeo antes de usar.';}
+      if(ranked.length){chosen=ranked;result.bestQuery=q;result.diagnostic='Encontrei candidatos aproximados, mas descartei vídeos incompatíveis com o tipo principal do produto.';}
     }
     result.candidates=chosen.map(x=>({id:x.id,title:x.title,label:x.title,durationMs:x.durationMs||0,category:x.category||'',score:Number(x.score.toFixed(3)),matchQuery:x.matchQuery}));
-    if(!result.diagnostic) result.diagnostic=chosen.length
-      ? `${chosen.length} vídeo(s) encontrado(s) no catálogo de ${inv.records.length} vídeos. Busca que funcionou: “${result.bestQuery}”.`
-      : (inv.records.length===0
-        ? `Não consegui indexar o catálogo interno da galeria. ${inv.diagnostic||'Use “Abrir galeria” como alternativa.'}`
-        : `Nenhum vídeo compatível foi localizado entre ${inv.records.length} vídeos indexados. Tente encurtar o nome manualmente.`);
+    if(!result.diagnostic) result.diagnostic=genericOnly
+      ? 'A busca informada está ampla demais para escolher vídeo com segurança. Digite pelo menos 2 palavras específicas do produto, por exemplo “mini bateria tambores” em vez de apenas “mini”.'
+      : chosen.length
+        ? `${chosen.length} vídeo(s) encontrado(s) no catálogo de ${inv.records.length} vídeos. Busca que funcionou: “${result.bestQuery}”.`
+        : (inv.records.length===0
+          ? `Não consegui indexar o catálogo interno da galeria. ${inv.diagnostic||'Use “Abrir galeria” como alternativa.'}`
+          : `Nenhum vídeo compatível foi localizado entre ${inv.records.length} vídeos indexados. Refine a busca com palavras específicas do produto.`);
   }catch(e){result.diagnostic=`Não foi possível consultar automaticamente o catálogo da galeria: ${e.message}`;}
   return result;
 }
@@ -774,7 +823,7 @@ app.get('/story-mobile',(_req,res)=>res.sendFile(path.join(__dirname,'public','s
 app.get(['/privacy','/privacy-policy'], (_req,res)=>res.sendFile(path.join(__dirname,'public','privacy.html')));
 app.get('/data-deletion', (_req,res)=>res.sendFile(path.join(__dirname,'public','privacy.html')));
 
-app.get('/api/health', (_req,res)=>res.json({ok:true,service:'REDEACHADOS BR Publisher Web V5.5.16'}));
+app.get('/api/health', (_req,res)=>res.json({ok:true,service:'REDEACHADOS BR Publisher Web V5.5.19'}));
 app.get('/api/auth-state',(req,res)=>res.json({locked:Boolean(process.env.APP_PASSWORD),loggedIn:!process.env.APP_PASSWORD||Boolean(req.session?.appAuth)}));
 app.post('/api/login',(req,res)=>{
   if(!process.env.APP_PASSWORD){ req.session.appAuth=true; return res.json({ok:true}); }
@@ -1637,4 +1686,4 @@ app.post('/api/status/:publishId', mustLogin, async(req,res)=>{
   try{const d=await tiktokJson('https://open.tiktokapis.com/v2/post/publish/status/fetch/',{method:'POST',body:JSON.stringify({publish_id:req.params.publishId})});res.json(d.data||{});}catch(e){res.status(400).json({error:e.message});}
 });
 
-app.listen(PORT,()=>console.log(`REDEACHADOS BR Publisher Web V5.5.16 em http://localhost:${PORT}`));
+app.listen(PORT,()=>console.log(`REDEACHADOS BR Publisher Web V5.5.19 em http://localhost:${PORT}`));

@@ -1,3 +1,8 @@
+## V5.5.19 — Filtro de compatibilidade de vídeos
+- Bloqueia buscas amplas demais, como apenas “mini”, para evitar resultados errados.
+- Exige palavras específicas do produto na busca e derruba a pontuação de vídeos de famílias incompatíveis (ex.: mini bateria x mini carro).
+- Mantém a busca assistida, mas com diagnóstico mais claro quando for necessário refinar o nome.
+
 # REDEACHADOS BR Publisher V5.5.11
 
 
@@ -161,7 +166,7 @@ Principais mudanças: lista de vídeos mais compacta, comparação por compatibi
 - Revisão visual geral com Manrope, contraste maior, cards premium, navegação mais clara e botões/ícones interativos.
 
 
-## V5.5.16 — Rascunho persistente + TikTok sem perda
+## V5.5.17 — Rascunho persistente + TikTok sem perda
 
 - O rascunho da publicação passa a salvar automaticamente SKU, busca, campos, legendas, opções e o vídeo atual.
 - Vídeos enviados do computador são preservados no IndexedDB do navegador para sobreviver a atualização da página.
@@ -170,3 +175,8 @@ Principais mudanças: lista de vídeos mais compacta, comparação por compatibi
 - Enviar um rascunho ao TikTok não limpa mais a publicação atual.
 - A publicação só é zerada ao iniciar uma SKU diferente ou pelo botão **Limpar publicação**.
 - O botão **Limpar publicação** pede confirmação antes de apagar vídeo e campos.
+
+
+## V5.5.18 — Notificações na tela ativa
+
+Os avisos são ancorados automaticamente ao modal/tela em uso, evitando mensagens escondidas atrás de Configurações ou outros diálogos.

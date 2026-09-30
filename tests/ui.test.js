@@ -28,11 +28,28 @@ test('TikTok expired authorization gets reconnect state without changing Instagr
 });
 
 
-test('V5.5.16 exposes dedicated navigation pages for commerce, connections and history',()=>{
+test('V5.5.19 exposes dedicated navigation pages for commerce, connections and history',()=>{
   assert.match(html,/href="#commerce"[^>]*>[\s\S]*?Link clicável/);
   assert.match(html,/href="#channels"[^>]*>[\s\S]*?Canais de conexão/);
   assert.match(html,/id="commerce" class="app-page"/);
   assert.match(html,/Link clicável sem depender da legenda/);
   assert.match(html,/id="channels" class="app-page"/);
   assert.match(html,/id="activity" class="app-page"/);
+});
+
+
+test('V5.5.19 keeps notifications on the currently open screen',()=>{
+  assert.match(html,/id="toast"/);
+  assert.match(js,/function activeToastSurface\(\)/);
+  assert.match(js,/document\.querySelectorAll\('dialog\[open\]'\)/);
+  assert.match(js,/surface\.appendChild\(host\)/);
+  assert.match(js,/MutationObserver/);
+  assert.match(css,/dialog\[open\]>#toast/);
+  assert.match(css,/z-index:2147483647/);
+});
+
+test('catalog import errors are shown inside the active settings screen',()=>{
+  assert.match(html,/id="catalogImportNotice"/);
+  assert.match(js,/O catálogo que já estava salvo foi mantido e não foi alterado/);
+  assert.match(css,/\.catalog-import-notice\.error/);
 });

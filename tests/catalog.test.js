@@ -74,7 +74,7 @@ test('changed parent codes do not retain the old parent SKU', () => {
 
 test('bad or empty input fails before replacing a valid catalog', () => {
   const previous=base(), snapshot=JSON.stringify(previous);
-  assert.throws(()=>parseCatalogSheets([{name:'Invalid',rows:[['SKU','Preço']]}],{previous}),/Não encontrei/);
+  assert.throws(()=>parseCatalogSheets([{name:'Invalid',rows:[['SKU','Preço']]}],{previous}),/não parece ser a exportação de Informações básicas/);
   assert.throws(()=>parseCatalogSheets(basic([]),{previous}),/Nenhum produto/);
   assert.equal(JSON.stringify(previous),snapshot);
 });

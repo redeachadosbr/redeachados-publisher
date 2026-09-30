@@ -1,20 +1,11 @@
-# V5.5.16 — Rascunho persistente + reconexão TikTok
+# V5.5.19 — Compatibilidade de vídeo mais rígida
 
-## Correção principal
-- SKU, vídeo, textos, legendas e opções ficam salvos automaticamente enquanto a publicação está em andamento.
-- Atualizar a página ou sair e voltar não deve apagar a publicação atual.
-- Vídeo manual é guardado no IndexedDB; vídeo WeDrop é restaurado pelo ID remoto.
+## Corrigido
+- A busca automática não considera mais consultas amplas demais como suficientes para sugerir qualquer vídeo.
+- Consultas genéricas como “mini” agora são tratadas como insuficientes e pedem refinamento.
+- O ranking penaliza vídeos de famílias incompatíveis com o produto (ex.: bateria/tambores x carro/bike/quadriciclo).
+- Para consultas com várias palavras específicas, o vídeo agora precisa compartilhar os termos principais do produto para aparecer como candidato.
 
-## TikTok
-- A autenticação continua abrindo em outra aba.
-- Ao terminar a autorização, a aba de retorno envia um evento para a aba original e tenta fechar automaticamente.
-- A aba original atualiza o status do TikTok sem apagar ou recarregar a publicação.
-- O foco da janela continua como fallback para conferir a conexão.
-
-## Regra de limpeza
-- Enviar ao TikTok NÃO limpa mais o formulário.
-- Uma nova busca com SKU diferente inicia um novo rascunho e limpa a publicação anterior.
-- O novo botão **Limpar publicação** permite zerar manualmente com confirmação.
-
-## Compatibilidade
-- Mantidos Instagram Reels, Stories, Direct automático, Meta Ads, Supabase, catálogo e WeDrop.
+## Resultado esperado
+- SKU/produto de **mini bateria** não deve mais sugerir **mini carro**, **bike** ou similares como melhores opções.
+- Quando a busca estiver ampla demais, o Publisher mostra a orientação certa em vez de sugerir o vídeo errado.

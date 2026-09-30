@@ -114,7 +114,7 @@ export function linkCatalogSku(catalog, productId, sku, extra = {}) {
 // a matrix of displayed cell values, making import behavior independently testable.
 export function parseCatalogSheets(sheets, {filename = 'catalogo-shopee.xlsx', previous = {}, importedAt = new Date().toISOString()} = {}) {
   const found = sheets.map(sheet => ({...sheet, header:sheetHeader(sheet.rows)})).filter(sheet => sheet.header);
-  if (!found.length) throw new Error('Não encontrei as colunas ID do Produto e Nome do Produto, ou ID do Produto e SKU da variação, no arquivo.');
+  if (!found.length) throw new Error('Esta planilha não parece ser a exportação de Informações básicas da Shopee: faltam as colunas ID do Produto + Nome do Produto (ou ID do Produto + SKU da variação). Baixe a planilha em Central do Vendedor > Meus Produtos > Editar em massa > Informações básicas e tente novamente.');
   const hasProductNames = found.some(sheet => sheet.header.name >= 0);
   const hasVariationColumn = found.some(sheet => sheet.header.variation >= 0);
   const shopId = text(previous.shopId) || '852701218';

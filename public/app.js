@@ -174,7 +174,47 @@ function hasPublicationData(){
   return Boolean(selectedFile||selectedRemoteVideo||generated||['product','shopeeUrl','title','description','cta','hashtags','captionPreview','purchaseComment','instagramCaption'].some(id=>String($('#'+id)?.value||'').trim()));
 }
 function normalizeSku(value=''){return String(value||'').trim().toUpperCase()}
-function toast(msg,err=false){const d=document.createElement('div');d.className='toast'+(err?' err':'');d.textContent=msg;$('#toast').appendChild(d);setTimeout(()=>d.remove(),5000)}
+function activeToastSurface(){
+  const dialogs=[...document.querySelectorAll('dialog[open]')];
+  return dialogs.at(-1)||document.body;
+}
+function syncToastHost(){
+  const host=$('#toast'); if(!host)return null;
+  // A notificação sempre pertence à tela atualmente visível.
+  // Quando há um <dialog> aberto, o host entra dentro dele para participar
+  // da mesma top-layer do navegador; assim nenhum aviso fica atrás do modal.
+  try{
+    if(typeof host.hidePopover==='function'&&host.matches(':popover-open'))host.hidePopover();
+  }catch{}
+  host.removeAttribute('popover');
+  const surface=activeToastSurface();
+  if(host.parentElement!==surface)surface.appendChild(host);
+  host.classList.toggle('toast-in-dialog',surface.tagName==='DIALOG');
+  return host;
+}
+function toastHost(){return syncToastHost()}
+function closeToastHostIfEmpty(host){
+  if(!host||host.childElementCount)return;
+  syncToastHost();
+}
+function watchToastSurface(){
+  const dialogs=[...document.querySelectorAll('dialog')];
+  const observer=new MutationObserver(()=>queueMicrotask(syncToastHost));
+  dialogs.forEach(dialog=>{
+    observer.observe(dialog,{attributes:true,attributeFilter:['open']});
+    dialog.addEventListener('close',()=>queueMicrotask(syncToastHost));
+    dialog.addEventListener('cancel',()=>queueMicrotask(syncToastHost));
+  });
+  window.addEventListener('resize',()=>{if($('#toast')?.childElementCount)syncToastHost()});
+  syncToastHost();
+}
+watchToastSurface();
+function toast(msg,err=false){
+  const host=toastHost(); if(!host)return;
+  const d=document.createElement('div');d.className='toast'+(err?' err':'');d.textContent=msg;d.setAttribute('role',err?'alert':'status');host.appendChild(d);
+  const ttl=err?8000:5200;
+  setTimeout(()=>{d.remove();closeToastHostIfEmpty(host)},ttl);
+}
 async function api(url,opt={}){const r=await fetch(url,{...opt,headers:{...(opt.body instanceof FormData?{}:{'Content-Type':'application/json'}),...(opt.headers||{})}});const d=await r.json().catch(()=>({}));if(!r.ok){const error=new Error(d.error||'Erro inesperado.');error.data=d;error.status=r.status;throw error;}return d}
 async function boot(){
   const a=await api('/api/auth-state');
@@ -224,16 +264,27 @@ async function loadConfig(){
 }
 $('#loginBtn').onclick=async()=>{try{await api('/api/login',{method:'POST',body:JSON.stringify({password:$('#loginPassword').value})});location.reload()}catch(e){toast(e.message,true)}};
 $('#settingsBtn').onclick=()=>$('#settingsDialog').showModal();
-$('#saveSettingsBtn').onclick=async e=>{e.preventDefault();try{await api('/api/settings',{method:'POST',body:JSON.stringify({brandName:$('#brandName').value,shopeeStoreUrl:$('#shopeeStoreUrl').value,geminiApiKey:$('#geminiApiKey').value,geminiModel:$('#geminiModel').value,tiktokClientKey:$('#tiktokClientKey').value,tiktokClientSecret:$('#tiktokClientSecret').value,instagramAccessToken:$('#instagramAccessToken')?.value||'',instagramUserId:$('#instagramUserId')?.value||'',metaGraphVersion:$('#metaGraphVersion')?.value||'v26.0',instagramDmEnabled:Boolean($('#instagramDmEnabled')?.checked),instagramDmKeyword:$('#instagramDmKeyword')?.value||'QUERO',instagramDmTemplate:$('#instagramDmTemplate')?.value||'',instagramPublicReplyEnabled:Boolean($('#instagramPublicReplyEnabled')?.checked),instagramPublicReplyTemplate:$('#instagramPublicReplyTemplate')?.value||'',metaPageId:$('#metaPageId')?.value||'',metaAdAccountId:$('#metaAdAccountId')?.value||'',metaAdSetId:$('#metaAdSetId')?.value||'',metaAdsAccessToken:$('#metaAdsAccessToken')?.value||'',metaWebhookVerifyToken:$('#metaWebhookVerifyToken')?.value||'',metaCreateAdDefault:Boolean($('#metaCreateAdDefault')?.checked),metaAdDefaultStatus:$('#metaAdDefaultStatus')?.value||'PAUSED'})});toast('Configuração salva.');$('#settingsDialog').close();await loadConfig();if(selectedFile)await analyze()}catch(err){toast(err.message,true)}};
+$('#saveSettingsBtn').onclick=async e=>{e.preventDefault();try{await api('/api/settings',{method:'POST',body:JSON.stringify({brandName:$('#brandName').value,shopeeStoreUrl:$('#shopeeStoreUrl').value,geminiApiKey:$('#geminiApiKey').value,geminiModel:$('#geminiModel').value,tiktokClientKey:$('#tiktokClientKey').value,tiktokClientSecret:$('#tiktokClientSecret').value,instagramAccessToken:$('#instagramAccessToken')?.value||'',instagramUserId:$('#instagramUserId')?.value||'',metaGraphVersion:$('#metaGraphVersion')?.value||'v26.0',instagramDmEnabled:Boolean($('#instagramDmEnabled')?.checked),instagramDmKeyword:$('#instagramDmKeyword')?.value||'QUERO',instagramDmTemplate:$('#instagramDmTemplate')?.value||'',instagramPublicReplyEnabled:Boolean($('#instagramPublicReplyEnabled')?.checked),instagramPublicReplyTemplate:$('#instagramPublicReplyTemplate')?.value||'',metaPageId:$('#metaPageId')?.value||'',metaAdAccountId:$('#metaAdAccountId')?.value||'',metaAdSetId:$('#metaAdSetId')?.value||'',metaAdsAccessToken:$('#metaAdsAccessToken')?.value||'',metaWebhookVerifyToken:$('#metaWebhookVerifyToken')?.value||'',metaCreateAdDefault:Boolean($('#metaCreateAdDefault')?.checked),metaAdDefaultStatus:$('#metaAdDefaultStatus')?.value||'PAUSED'})});$('#settingsDialog').close();toast('Configuração salva.');await loadConfig();if(selectedFile)await analyze()}catch(err){toast(err.message,true)}};
 
 async function loadCatalogStatus(){
   try{const c=await api('/api/catalog');$('#catalogStatus').textContent=c.count?`Catálogo carregado: ${c.count} produtos · ${c.variationSkuCount||0} SKUs adicionais/variações. ${c.duplicateSkuCount?`${c.duplicateSkuCount} SKUs aparecem em mais de um anúncio; a busca pedirá sua escolha. `:''}Última importação: ${c.importedAt?new Date(c.importedAt).toLocaleString('pt-BR'):'não informada'}.`:'Nenhum catálogo carregado ainda.';}catch{$('#catalogStatus').textContent='Não foi possível consultar o catálogo.'}
 }
+function catalogImportMessage(message='',kind='info'){
+  const el=$('#catalogImportNotice');if(!el)return;el.hidden=!message;el.textContent=message;el.className='status small catalog-import-notice '+kind;
+}
 $('#importCatalogBtn').onclick=async()=>{
-  const file=$('#catalogFile').files?.[0]; if(!file)return toast('Selecione a planilha de Informações básicas da Shopee.',true);
-  const btn=$('#importCatalogBtn');btn.disabled=true;btn.textContent='IMPORTANDO...';
-  try{const fd=new FormData();fd.append('catalog',file);const r=await api('/api/catalog/import',{method:'POST',body:fd});toast(`Catálogo atualizado: ${r.count} produtos.`);$('#catalogFile').value='';await loadCatalogStatus();}
-  catch(e){toast(e.message,true)}finally{btn.disabled=false;btn.textContent='Atualizar catálogo'}
+  const file=$('#catalogFile').files?.[0]; if(!file){catalogImportMessage('⚠️ Selecione a planilha de Informações básicas exportada da Shopee.','error');return toast('Selecione a planilha de Informações básicas da Shopee.',true);}
+  const btn=$('#importCatalogBtn');btn.disabled=true;btn.textContent='IMPORTANDO...';catalogImportMessage(`Lendo ${file.name}...`,'loading');
+  try{
+    const fd=new FormData();fd.append('catalog',file);const r=await api('/api/catalog/import',{method:'POST',body:fd});
+    catalogImportMessage(`✅ Catálogo atualizado com ${r.count} produtos. Arquivo: ${r.sourceFile||file.name}.`,'success');
+    toast(`Catálogo atualizado: ${r.count} produtos.`);$('#catalogFile').value='';await loadCatalogStatus();
+  }
+  catch(e){
+    const detail=String(e.message||e);
+    catalogImportMessage(`⚠️ ${detail} O catálogo que já estava salvo foi mantido e não foi alterado.`,'error');
+    toast(detail,true);
+  }finally{btn.disabled=false;btn.textContent='Atualizar catálogo'}
 };
 
 $('#saveSkuAliasBtn')?.addEventListener('click',async()=>{
@@ -557,7 +608,7 @@ function renderWedropAttempts(data){
   if(!list.length){box.classList.add('hidden');return}
   box.classList.remove('hidden');
   const totalMatches=list.reduce((sum,x)=>sum+Number(x.matches||0),0);
-  box.innerHTML=`<div class="attempts-head"><span><svg class="icon"><use href="#i-bolt"/></svg><b>Busca automática concluída</b></span><small>${totalMatches} resultado${totalMatches===1?'':'s'} encontrado${totalMatches===1?'':'s'}</small></div><div class="attempts-list">${list.map((x,i)=>`<div class="attempt-row"><span class="attempt-index">${i+1}</span><span class="attempt-query">${esc(x.query)}</span><small class="${x.matches?'ok':'muted'}">${x.matches?`${x.matches} resultado${x.matches===1?'':'s'}`:`similaridade ${Math.round((x.bestScore||0)*100)}%`}</small></div>`).join('')}</div>`;
+  box.innerHTML=`<div class="attempts-head"><span><svg class="icon"><use href="#i-bolt"/></svg><b>Busca automática concluída</b></span><small>${totalMatches} resultado${totalMatches===1?'':'s'} encontrado${totalMatches===1?'':'s'}</small></div><div class="attempts-list">${list.map((x,i)=>`<div class="attempt-row"><span class="attempt-index">${i+1}</span><span class="attempt-query">${esc(x.query)}</span><small class="${x.matches?'ok':'muted'}">${x.generic?'busca ampla demais':(x.matches?`${x.matches} resultado${x.matches===1?'':'s'}`:`similaridade ${Math.round((x.bestScore||0)*100)}%`)}</small></div>`).join('')}</div>`;
 }
 async function rememberWedropSearch(sku,query){
   if(!sku||!query)return; try{await api('/api/wedrop/alias',{method:'POST',body:JSON.stringify({sku,query})})}catch{}
@@ -595,7 +646,7 @@ function renderWedropResults(data){
     box.classList.remove('hidden');
     const el=document.createElement('div');el.className='video-result fallback';
     const suggested=data.gallery?.attempts?.at(-1)?.query||p.name||data.sku;
-    const helper=(data.gallery?.attempts||[]).find(x=>/\s/.test(x.query)&&x.query.split(/\s+/).length===2)?.query || suggested;
+    const helper=(data.gallery?.attempts||[]).find(x=>!x.generic&&/\s/.test(x.query)&&x.query.split(/\s+/).length>=2)?.query || suggested;
     el.innerHTML=`<div><b>Nenhum vídeo confirmado automaticamente</b><small>A galeria usa carregamento dinâmico. A busca assistida copia a expressão mais curta e abre a galeria.</small><small>Busca sugerida: <b>${esc(helper)}</b></small></div><button class="primary" type="button">COPIAR BUSCA + ABRIR GALERIA</button>`;
     el.querySelector('button').onclick=async()=>{
       try{await navigator.clipboard.writeText(helper); toast('Busca copiada: '+helper);}catch{}

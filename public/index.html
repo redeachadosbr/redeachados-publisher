@@ -14,7 +14,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="/styles.css?v=5515-studio-pro" />
+  <link rel="stylesheet" href="/styles.css?v=5518-toast-context-fix" />
 </head>
 <body class="ui-compact-pro">
   <svg class="icon-definitions" xmlns="http://www.w3.org/2000/svg" aria-hidden="true"><defs>
@@ -37,7 +37,7 @@
     <symbol id="i-megaphone" viewBox="0 0 24 24"><path d="m4 13 11-5v8L4 11v2Z"/><path d="M15 10h3a2 2 0 0 1 0 4h-3M7 14l1 5h3l-1-4"/></symbol>
     <symbol id="i-eye" viewBox="0 0 24 24"><path d="M2.5 12s3.5-6 9.5-6 9.5 6 9.5 6-3.5 6-9.5 6-9.5-6-9.5-6Z"/><circle cx="12" cy="12" r="2.5"/></symbol><symbol id="i-chevron-down" viewBox="0 0 24 24"><path d="m7 9 5 5 5-5"/></symbol><symbol id="i-bolt" viewBox="0 0 24 24"><path d="m13 2-8 12h7l-1 8 8-12h-7l1-8Z"/></symbol><symbol id="i-circle-check" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="m8 12 2.5 2.5L16 9"/></symbol>
   </defs></svg>
-  <div id="toast" role="status" aria-live="polite"></div>
+  <div id="toast" role="status" aria-live="polite" aria-atomic="false"></div>
   <a class="skip-link" href="#create">Ir para o conteúdo</a>
   <section id="loginScreen" class="center hidden">
     <div class="card login-card"><div class="logo">RA<span>•</span></div><span class="eyebrow">REDE ACHADOS BR</span><h1>Bem-vindo ao Publisher.</h1><p>Seu estúdio de conteúdo, em um só lugar.</p><label for="loginPassword">Senha do aplicativo</label><input id="loginPassword" type="password" autocomplete="current-password" placeholder="Digite sua senha"><button id="loginBtn" type="button" class="primary">Entrar no estúdio <svg class="icon"><use href="#i-arrow"/></svg></button></div>
@@ -52,7 +52,7 @@
         <a class="nav-link" href="#channels"><svg class="icon"><use href="#i-plug"/></svg><span>Canais de conexão</span></a>
         <a class="nav-link" href="#activity"><svg class="icon"><use href="#i-clock"/></svg><span>Histórico</span></a>
       </nav>
-      <div class="sidebar-footer"><div class="sidebar-note"><svg class="icon"><use href="#i-spark"/></svg><p>Publicação simples.<br><strong>Venda mais conectada.</strong></p></div><span>REDE ACHADOS BR <b>V5.5.16</b></span></div>
+      <div class="sidebar-footer"><div class="sidebar-note"><svg class="icon"><use href="#i-spark"/></svg><p>Publicação simples.<br><strong>Venda mais conectada.</strong></p></div><span>REDE ACHADOS BR <b>V5.5.19</b></span></div>
     </aside>
     <div class="page-stage">
       <header class="app-topbar"><div class="breadcrumb">Workspace <span>/</span> <strong id="breadcrumbCurrent">Criar publicação</strong></div><button id="settingsBtn" type="button" class="ghost"><svg class="icon"><use href="#i-settings"/></svg>Configurações</button></header>
@@ -98,7 +98,7 @@
           </div>
 
         </div>
-        <footer class="page-footer">Feito para dar mais tempo ao que importa.<span>REDE ACHADOS BR · Publisher V5.5.16 · <a href="/privacy" target="_blank" rel="noopener">Privacidade</a></span></footer>
+        <footer class="page-footer">Feito para dar mais tempo ao que importa.<span>REDE ACHADOS BR · Publisher V5.5.19 · <a href="/privacy" target="_blank" rel="noopener">Privacidade</a></span></footer>
       </main>
 
       <main id="commerce" class="app-page" data-page="commerce" hidden>
@@ -111,7 +111,7 @@
           </div>
           <div class="standalone-actions"><button type="button" class="ghost" data-open-settings="settings-instagram"><svg class="icon"><use href="#i-settings"/></svg>Configurar Instagram / Meta</button><a href="#create" class="primary linkbtn">Voltar para publicação <svg class="icon"><use href="#i-arrow"/></svg></a></div>
         </section>
-        <footer class="page-footer">Configuração separada para facilitar sua rotina.<span>REDE ACHADOS BR · Publisher V5.5.16</span></footer>
+        <footer class="page-footer">Configuração separada para facilitar sua rotina.<span>REDE ACHADOS BR · Publisher V5.5.19</span></footer>
       </main>
 
       <main id="channels" class="app-page" data-page="channels" hidden>
@@ -121,13 +121,13 @@
           <section class="card channel-page-card instagram-channel-card"><div class="channel-page-head"><span class="channel-icon instagram"><svg class="icon"><use href="#i-instagram"/></svg></span><div><span class="section-kicker">INSTAGRAM</span><h2>Reels, Stories e Direct</h2></div><span class="channel-dot"></span></div><p id="instagramConnectionText" class="channel-status-large" role="status">Verificando conexão...</p><div class="channel-capabilities"><span>Reels automáticos</span><span>Stories automáticos</span><span>Direct por comentário</span></div><div class="channel-page-actions"><button type="button" class="primary" data-open-settings="settings-instagram">Configurar Instagram / Meta</button></div></section>
         </div>
         <section class="connection-tip"><svg class="icon"><use href="#i-spark"/></svg><div><b>Dica de operação</b><span>Mantenha os dois canais conectados antes de iniciar uma sequência de publicações.</span></div></section>
-        <footer class="page-footer">Conexões separadas da criação para deixar o fluxo mais simples.<span>REDE ACHADOS BR · Publisher V5.5.16</span></footer>
+        <footer class="page-footer">Conexões separadas da criação para deixar o fluxo mais simples.<span>REDE ACHADOS BR · Publisher V5.5.19</span></footer>
       </main>
 
       <main id="activity" class="app-page" data-page="activity" hidden>
         <section class="page-hero premium-page-hero"><div><span class="eyebrow">HISTÓRICO</span><h1>Acompanhe o que já foi publicado.</h1><p>Uma visão limpa das últimas ações do Publisher.</p></div><span class="hero-icon"><svg class="icon"><use href="#i-clock"/></svg></span></section>
         <section class="card standalone-card history-page-card"><div class="standalone-head"><div><span class="section-kicker">ATIVIDADE RECENTE</span><h2>Últimas publicações</h2><p>Status, produto e canal organizados em uma única página.</p></div></div><div id="history" class="history history-page-list"></div></section>
-        <footer class="page-footer">Seu histórico fica disponível para consulta rápida.<span>REDE ACHADOS BR · Publisher V5.5.16</span></footer>
+        <footer class="page-footer">Seu histórico fica disponível para consulta rápida.<span>REDE ACHADOS BR · Publisher V5.5.19</span></footer>
       </main>
     </div>
   </div>
@@ -137,7 +137,7 @@
       <div class="settings-layout">
         <div class="settings-tabs" role="tablist" aria-label="Categorias de configuração" data-tabs><button id="setting-tab-store" type="button" role="tab" aria-selected="true" aria-controls="settings-store">Loja e catálogo</button><button id="setting-tab-ai" type="button" role="tab" aria-selected="false" aria-controls="settings-ai" tabindex="-1">Inteligência artificial</button><button id="setting-tab-tiktok" type="button" role="tab" aria-selected="false" aria-controls="settings-tiktok" tabindex="-1">TikTok</button><button id="setting-tab-instagram" type="button" role="tab" aria-selected="false" aria-controls="settings-instagram" tabindex="-1">Instagram / Meta</button></div>
         <div class="settings-content">
-          <section id="settings-store" class="settings-panel" role="tabpanel" aria-labelledby="setting-tab-store"><h3>Sua loja</h3><p class="small">Identificação e link padrão usados nas publicações.</p><label>Nome da loja<input id="brandName" value="REDEACHADOS BR"></label><label>Link padrão da loja ou produto Shopee<input id="shopeeStoreUrl" inputmode="url" placeholder="https://shopee.com.br/..." /></label><hr><h3>Catálogo Shopee</h3><p id="catalogStatus" class="status small">Verificando catálogo...</p><p class="small">O catálogo fica salvo. Atualize apenas para incluir produtos ou alterar anúncios existentes.</p><label>Atualizar planilha<input id="catalogFile" type="file" accept=".xlsx,.xls" /></label><button id="importCatalogBtn" type="button" class="ghost">Atualizar catálogo agora</button><details class="settings-help sku-alias-settings"><summary>Vincular SKU de variação</summary><p class="small">A planilha de informações básicas contém o SKU principal. Se o código de uma variação não estiver na exportação, informe o ID do anúncio e a SKU exatamente como aparecem na Shopee. O vínculo é mantido nas próximas importações.</p><div class="settings-field-grid"><label>ID do produto na Shopee<input id="skuAliasProductId" inputmode="numeric" placeholder="Ex.: 22699708957" /></label><label>SKU da variação<input id="skuAliasValue" maxlength="128" placeholder="Ex.: NTM3112B127V" /></label></div><button id="saveSkuAliasBtn" type="button" class="ghost">Vincular SKU ao produto</button></details></section>
+          <section id="settings-store" class="settings-panel" role="tabpanel" aria-labelledby="setting-tab-store"><h3>Sua loja</h3><p class="small">Identificação e link padrão usados nas publicações.</p><label>Nome da loja<input id="brandName" value="REDEACHADOS BR"></label><label>Link padrão da loja ou produto Shopee<input id="shopeeStoreUrl" inputmode="url" placeholder="https://shopee.com.br/..." /></label><hr><h3>Catálogo Shopee</h3><p id="catalogStatus" class="status small">Verificando catálogo...</p><p class="small">O catálogo fica salvo. Atualize apenas para incluir produtos ou alterar anúncios existentes.</p><label>Atualizar planilha<input id="catalogFile" type="file" accept=".xlsx,.xls" /></label><button id="importCatalogBtn" type="button" class="ghost">Atualizar catálogo agora</button><p id="catalogImportNotice" class="status small catalog-import-notice" aria-live="polite" hidden></p><details class="settings-help sku-alias-settings"><summary>Vincular SKU de variação</summary><p class="small">A planilha de informações básicas contém o SKU principal. Se o código de uma variação não estiver na exportação, informe o ID do anúncio e a SKU exatamente como aparecem na Shopee. O vínculo é mantido nas próximas importações.</p><div class="settings-field-grid"><label>ID do produto na Shopee<input id="skuAliasProductId" inputmode="numeric" placeholder="Ex.: 22699708957" /></label><label>SKU da variação<input id="skuAliasValue" maxlength="128" placeholder="Ex.: NTM3112B127V" /></label></div><button id="saveSkuAliasBtn" type="button" class="ghost">Vincular SKU ao produto</button></details></section>
           <section id="settings-ai" class="settings-panel" role="tabpanel" aria-labelledby="setting-tab-ai" hidden><h3>Inteligência artificial</h3><p class="small">Análise do vídeo e geração de conteúdo.</p><label>Gemini API Key<input id="geminiApiKey" type="password" autocomplete="off" placeholder="Cole a chave na primeira configuração" /></label><label>Modelo<input id="geminiModel" value="gemini-3.5-flash-lite" /></label><p class="help-note">Quando a chave já estiver configurada, deixe o campo em branco para mantê-la.</p></section>
           <section id="settings-tiktok" class="settings-panel" role="tabpanel" aria-labelledby="setting-tab-tiktok" hidden><h3>TikTok Developers</h3><p class="small">Conecte o aplicativo para enviar seus rascunhos.</p><label>Client Key<input id="tiktokClientKey" /></label><label>Client Secret<input id="tiktokClientSecret" type="password" autocomplete="off" /></label><label>Redirect URI para cadastrar no TikTok<input id="redirectUri" readonly /></label><p class="help-note">No TikTok Developers, habilite Content Posting API e autorize <b>video.upload</b> e <b>video.publish</b>. Para rascunhos, o escopo necessário é <b>video.upload</b>.</p></section>
           <section id="settings-instagram" class="settings-panel" role="tabpanel" aria-labelledby="setting-tab-instagram" hidden><h3>Instagram / Meta</h3><p class="small">Publicação de Reels, Direct automático e anúncios com link de compra.</p><div class="settings-field-grid"><label>Instagram Business Account ID<input id="instagramUserId" value="17841480462088551" /></label><label>Graph API Version<input id="metaGraphVersion" value="v26.0" /></label></div><label>Meta Access Token<input id="instagramAccessToken" type="password" autocomplete="off" placeholder="Cole um novo token de acesso da Meta" /></label><p id="instagramTokenStatus" class="status small">Verificando validade do token...</p><button id="maintainInstagramTokenBtn" type="button" class="ghost">Verificar / prolongar token agora</button><details class="settings-help"><summary>Manutenção automática e permissões</summary><p class="small">Configure <b>META_APP_ID</b> e <b>META_APP_SECRET</b> no Environment do Render. Para publicar e automatizar comentários, o token precisa incluir as permissões do Instagram para publicação, comentários e mensagens. Para Ads, o token usado pela Marketing API precisa de <b>ads_management</b>.</p></details>
@@ -150,7 +150,7 @@
   </dialog>
 
 
-  <script src="/app.js?v=5515-studio-pro"></script><script src="/ui.js?v=5515-studio-pro"></script>
+  <script src="/app.js?v=5518-toast-context-fix"></script><script src="/ui.js?v=5518-toast-context-fix"></script>
   <script>if('serviceWorker' in navigator){navigator.serviceWorker.register('/sw.js').catch(()=>{})}</script>
 </body>
 </html>
