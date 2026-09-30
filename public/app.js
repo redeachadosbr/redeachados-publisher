@@ -1,11 +1,21 @@
 const $=s=>document.querySelector(s);
 let config=null, selectedFile=null, selectedRemoteVideo=null, duration=0, frames=[], generated=null, preparedStoryFile=null, preparedStoryVideoId='';
+let previewObjectUrl='';
 
 const DRAFT_KEY='redeachados_publisher_draft_v552';
+const DRAFT_DB='redeachados_publisher_media_v5516';
+const DRAFT_DB_VERSION=1;
+const DRAFT_VIDEO_STORE='videos';
+const DRAFT_VIDEO_KEY='current-manual-video';
+const TIKTOK_AUTH_CHANNEL='redeachados_tiktok_auth_v1';
+const TIKTOK_AUTH_EVENT_KEY='redeachados_tiktok_auth_event_v1';
 let captionManual=false;
 let commentManual=false;
 let instagramManual=false;
 let tiktokAuthInvalid=false;
+let activeDraftSku='';
+let tiktokAuthChannel=null;
+
 function socialButtonMarkup(platform,state='idle'){
   const isTikTok=platform==='tiktok', isStory=platform==='story';
   const icon=isTikTok?'i-tiktok':'i-instagram';
@@ -38,50 +48,138 @@ function syncTikTokPublishState(){
   if(!config?.tiktokConnected||tiktokAuthInvalid){setSocialButton('tiktok','reconnect');return false;}
   setSocialButton('tiktok','idle');return true;
 }
+function openDraftDb(){
+  return new Promise((resolve,reject)=>{
+    if(!('indexedDB' in window))return reject(new Error('IndexedDB indisponível neste navegador.'));
+    const req=indexedDB.open(DRAFT_DB,DRAFT_DB_VERSION);
+    req.onupgradeneeded=()=>{const db=req.result;if(!db.objectStoreNames.contains(DRAFT_VIDEO_STORE))db.createObjectStore(DRAFT_VIDEO_STORE)};
+    req.onsuccess=()=>resolve(req.result);
+    req.onerror=()=>reject(req.error||new Error('Não foi possível abrir o armazenamento local do vídeo.'));
+  });
+}
+async function persistManualVideo(file){
+  if(!file)return;
+  const db=await openDraftDb();
+  try{
+    await new Promise((resolve,reject)=>{
+      const tx=db.transaction(DRAFT_VIDEO_STORE,'readwrite');
+      tx.objectStore(DRAFT_VIDEO_STORE).put({file,name:file.name,type:file.type,size:file.size,lastModified:file.lastModified,savedAt:Date.now()},DRAFT_VIDEO_KEY);
+      tx.oncomplete=()=>resolve();tx.onerror=()=>reject(tx.error||new Error('Falha ao salvar vídeo local.'));tx.onabort=()=>reject(tx.error||new Error('Armazenamento do vídeo foi interrompido.'));
+    });
+  }finally{db.close()}
+}
+async function getStoredManualVideo(){
+  try{
+    const db=await openDraftDb();
+    try{return await new Promise((resolve,reject)=>{const tx=db.transaction(DRAFT_VIDEO_STORE,'readonly');const req=tx.objectStore(DRAFT_VIDEO_STORE).get(DRAFT_VIDEO_KEY);req.onsuccess=()=>resolve(req.result||null);req.onerror=()=>reject(req.error)})}
+    finally{db.close()}
+  }catch{return null}
+}
+async function deleteStoredManualVideo(){
+  try{
+    const db=await openDraftDb();
+    try{await new Promise((resolve,reject)=>{const tx=db.transaction(DRAFT_VIDEO_STORE,'readwrite');tx.objectStore(DRAFT_VIDEO_STORE).delete(DRAFT_VIDEO_KEY);tx.oncomplete=()=>resolve();tx.onerror=()=>reject(tx.error)})}
+    finally{db.close()}
+  }catch{}
+}
+function safeRemoteVideoSnapshot(){
+  if(!selectedRemoteVideo?.id)return null;
+  return {
+    id:String(selectedRemoteVideo.id),title:String(selectedRemoteVideo.title||''),catalogProductId:String(selectedRemoteVideo.catalogProductId||''),
+    catalogSku:String(selectedRemoteVideo.catalogSku||''),catalogProductName:String(selectedRemoteVideo.catalogProductName||''),catalogProductUrl:String(selectedRemoteVideo.catalogProductUrl||'')
+  };
+}
 function saveDraft(){
   try{
     const data={
+      draftVersion:2,activeSku:activeDraftSku||selectedRemoteVideo?.catalogSku||'',wedropSku:$('#wedropSku')?.value||'',wedropQuery:$('#wedropQuery')?.value||'',
+      mediaType:selectedRemoteVideo?.id?'remote':selectedFile?'manual':'',selectedRemoteVideo:safeRemoteVideoSnapshot(),
+      manualVideo:selectedFile?{name:selectedFile.name,type:selectedFile.type,size:selectedFile.size,lastModified:selectedFile.lastModified}:null,duration:Number(duration||0),
       product:$('#product')?.value||'', shopeeUrl:$('#shopeeUrl')?.value||'', title:$('#title')?.value||'',
       description:$('#description')?.value||'', cta:$('#cta')?.value||'', hashtags:$('#hashtags')?.value||'',
       privacy:$('#privacy')?.value||'SELF_ONLY', disableComment:Boolean($('#disableComment')?.checked),
       disableDuet:Boolean($('#disableDuet')?.checked), disableStitch:Boolean($('#disableStitch')?.checked),
       isAigc:Boolean($('#isAigc')?.checked), caption:$('#captionPreview')?.value||'', captionManual:Boolean(captionManual), purchaseComment:$('#purchaseComment')?.value||'', commentManual:Boolean(commentManual), instagramCaption:$('#instagramCaption')?.value||'', instagramDescription:generated?.instagramDescription||'', instagramManual:Boolean(instagramManual),
+      generatedSnapshot:generated?{confidence:generated.confidence||'',instagramDescription:generated.instagramDescription||'',catalogMatch:generated.catalogMatch||null}:null,
       dmEnabled:Boolean($('#dmEnabled')?.checked), dmKeyword:$('#dmKeyword')?.value||'QUERO', publicReplyEnabled:Boolean($('#publicReplyEnabled')?.checked), createMetaAd:Boolean($('#createMetaAd')?.checked), metaAdStatus:$('#metaAdStatus')?.value||'PAUSED', savedAt:Date.now()
     };
     localStorage.setItem(DRAFT_KEY,JSON.stringify(data));
   }catch{}
 }
-function restoreDraft(){
-  try{
-    const d=JSON.parse(localStorage.getItem(DRAFT_KEY)||'null'); if(!d)return;
-    for(const id of ['product','shopeeUrl','title','description','cta','hashtags']) if(d[id] && $('#'+id)) $('#'+id).value=d[id];
-    if(d.privacy && $('#privacy')) $('#privacy').value=d.privacy;
-    if($('#disableComment')) $('#disableComment').checked=Boolean(d.disableComment);
-    if($('#disableDuet')) $('#disableDuet').checked=Boolean(d.disableDuet);
-    if($('#disableStitch')) $('#disableStitch').checked=Boolean(d.disableStitch);
-    if($('#isAigc')) $('#isAigc').checked=Boolean(d.isAigc);
-    if($('#dmEnabled')&&d.dmEnabled!==undefined) $('#dmEnabled').checked=Boolean(d.dmEnabled);
-    if($('#dmKeyword')&&d.dmKeyword) $('#dmKeyword').value=d.dmKeyword;
-    if($('#publicReplyEnabled')&&d.publicReplyEnabled!==undefined) $('#publicReplyEnabled').checked=Boolean(d.publicReplyEnabled);
-    if($('#createMetaAd')&&d.createMetaAd!==undefined) $('#createMetaAd').checked=Boolean(d.createMetaAd);
-    if($('#metaAdStatus')&&d.metaAdStatus) $('#metaAdStatus').value=d.metaAdStatus;
-    captionManual=Boolean(d.captionManual);
-    commentManual=Boolean(d.commentManual);
-    instagramManual=Boolean(d.instagramManual);
-    if(d.product||d.title||d.description||d.cta||d.hashtags){ generated={...(generated||{}),product:d.product||'',shopeeUrl:d.shopeeUrl||'',title:d.title||'',description:d.description||'',cta:d.cta||'',hashtags:String(d.hashtags||'').split(/\s+/).filter(x=>x.startsWith('#')),instagramDescription:d.instagramDescription||''}; }
-    if(captionManual && d.caption && $('#captionPreview')) $('#captionPreview').value=d.caption; else updateCaption(true);
-    if(commentManual && d.purchaseComment && $('#purchaseComment')) $('#purchaseComment').value=d.purchaseComment; else updatePurchaseComment(true);
-    if(instagramManual && d.instagramCaption && $('#instagramCaption')) $('#instagramCaption').value=d.instagramCaption; else updateInstagramCaption(true);
-  }catch{}
+function readDraft(){try{return JSON.parse(localStorage.getItem(DRAFT_KEY)||'null')}catch{return null}}
+function setPreviewObjectUrl(file){
+  if(previewObjectUrl){try{URL.revokeObjectURL(previewObjectUrl)}catch{}previewObjectUrl=''}
+  previewObjectUrl=URL.createObjectURL(file);$('#preview').src=previewObjectUrl;
 }
-function clearDraft(){try{localStorage.removeItem(DRAFT_KEY)}catch{}}
-
+function showDraftWorkspace(filename='Vídeo restaurado'){
+  $('#fileName').textContent=filename;$('#dropzone').classList.add('hidden');$('#workArea').classList.remove('hidden');
+}
+async function waitForVideoMetadata(video,timeout=12000){
+  if(video.readyState>=1)return;
+  await new Promise((resolve,reject)=>{let timer;const cleanup=()=>{clearTimeout(timer);video.removeEventListener('loadedmetadata',ok);video.removeEventListener('error',bad)};const ok=()=>{cleanup();resolve()};const bad=()=>{cleanup();reject(new Error('Não foi possível abrir o vídeo salvo.'))};video.addEventListener('loadedmetadata',ok,{once:true});video.addEventListener('error',bad,{once:true});timer=setTimeout(()=>{cleanup();reject(new Error('Tempo esgotado ao restaurar o vídeo.'))},timeout);video.load()});
+}
+async function restoreDraftMedia(d){
+  const preview=$('#preview');
+  if(d.mediaType==='remote'&&d.selectedRemoteVideo?.id){
+    selectedFile=null;selectedRemoteVideo={...d.selectedRemoteVideo};duration=Number(d.duration||0);showDraftWorkspace(selectedRemoteVideo.title||'Vídeo WeDrop');
+    try{
+      $('#aiStatus').textContent='Restaurando vídeo do rascunho…';
+      const prepared=await api('/api/wedrop/prepare',{method:'POST',body:JSON.stringify({remoteVideoId:selectedRemoteVideo.id,filename:selectedRemoteVideo.title||'video-wedrop.mp4'})});
+      preview.src=prepared.streamUrl;preview.preload='metadata';preview.playsInline=true;await waitForVideoMetadata(preview);duration=preview.duration||duration||Number(prepared.duration||0);
+      $('#aiStatus').textContent='Rascunho restaurado. Vídeo, textos e campos preservados.';
+    }catch(e){$('#aiStatus').textContent='Rascunho restaurado. O vídeo remoto será carregado novamente quando necessário.';}
+    return true;
+  }
+  if(d.mediaType==='manual'||d.manualVideo){
+    const record=await getStoredManualVideo();const raw=record?.file;
+    if(raw){
+      const file=raw instanceof File?raw:new File([raw],record.name||d.manualVideo?.name||'video.mp4',{type:record.type||d.manualVideo?.type||raw.type||'video/mp4',lastModified:record.lastModified||d.manualVideo?.lastModified||Date.now()});
+      selectedRemoteVideo=null;selectedFile=file;duration=Number(d.duration||0);showDraftWorkspace(file.name);setPreviewObjectUrl(file);
+      try{await waitForVideoMetadata(preview);duration=preview.duration||duration}catch{}
+      $('#aiStatus').textContent='Rascunho restaurado. Vídeo, textos e campos preservados.';
+      return true;
+    }
+  }
+  return false;
+}
+async function restoreDraft(){
+  const d=readDraft(); if(!d)return;
+  activeDraftSku=String(d.activeSku||d.selectedRemoteVideo?.catalogSku||d.wedropSku||'').trim();
+  if($('#wedropSku'))$('#wedropSku').value=d.wedropSku||activeDraftSku||'';
+  if($('#wedropQuery'))$('#wedropQuery').value=d.wedropQuery||'';
+  if(d.selectedRemoteVideo?.id)selectedRemoteVideo={...d.selectedRemoteVideo};
+  for(const id of ['product','shopeeUrl','title','description','cta','hashtags']) if(d[id]!==undefined && $('#'+id)) $('#'+id).value=d[id]||'';
+  if(d.privacy && $('#privacy')) $('#privacy').value=d.privacy;
+  if($('#disableComment')) $('#disableComment').checked=Boolean(d.disableComment);
+  if($('#disableDuet')) $('#disableDuet').checked=Boolean(d.disableDuet);
+  if($('#disableStitch')) $('#disableStitch').checked=Boolean(d.disableStitch);
+  if($('#isAigc')) $('#isAigc').checked=Boolean(d.isAigc);
+  if($('#dmEnabled')&&d.dmEnabled!==undefined) $('#dmEnabled').checked=Boolean(d.dmEnabled);
+  if($('#dmKeyword')&&d.dmKeyword) $('#dmKeyword').value=d.dmKeyword;
+  if($('#publicReplyEnabled')&&d.publicReplyEnabled!==undefined) $('#publicReplyEnabled').checked=Boolean(d.publicReplyEnabled);
+  if($('#createMetaAd')&&d.createMetaAd!==undefined) $('#createMetaAd').checked=Boolean(d.createMetaAd);
+  if($('#metaAdStatus')&&d.metaAdStatus) $('#metaAdStatus').value=d.metaAdStatus;
+  captionManual=Boolean(d.captionManual);commentManual=Boolean(d.commentManual);instagramManual=Boolean(d.instagramManual);
+  if(d.product||d.title||d.description||d.cta||d.hashtags){generated={...(d.generatedSnapshot||{}),product:d.product||'',shopeeUrl:d.shopeeUrl||'',title:d.title||'',description:d.description||'',cta:d.cta||'',hashtags:String(d.hashtags||'').split(/\s+/).filter(x=>x.startsWith('#')),instagramDescription:d.instagramDescription||d.generatedSnapshot?.instagramDescription||''};}
+  if(captionManual && d.caption && $('#captionPreview')) $('#captionPreview').value=d.caption; else updateCaption(true);
+  if(commentManual && d.purchaseComment && $('#purchaseComment')) $('#purchaseComment').value=d.purchaseComment; else updatePurchaseComment(true);
+  if(instagramManual && d.instagramCaption && $('#instagramCaption')) $('#instagramCaption').value=d.instagramCaption; else updateInstagramCaption(true);
+  const restoredMedia=await restoreDraftMedia(d);
+  if(!restoredMedia&&(d.product||d.title||d.description||d.caption)){
+    $('#workArea').classList.remove('hidden');$('#aiStatus').textContent='Textos restaurados. Selecione novamente o vídeo para publicar.';
+  }
+}
+function clearDraft(){try{localStorage.removeItem(DRAFT_KEY)}catch{}deleteStoredManualVideo().catch(()=>{})}
+function hasPublicationData(){
+  return Boolean(selectedFile||selectedRemoteVideo||generated||['product','shopeeUrl','title','description','cta','hashtags','captionPreview','purchaseComment','instagramCaption'].some(id=>String($('#'+id)?.value||'').trim()));
+}
+function normalizeSku(value=''){return String(value||'').trim().toUpperCase()}
 function toast(msg,err=false){const d=document.createElement('div');d.className='toast'+(err?' err':'');d.textContent=msg;$('#toast').appendChild(d);setTimeout(()=>d.remove(),5000)}
 async function api(url,opt={}){const r=await fetch(url,{...opt,headers:{...(opt.body instanceof FormData?{}:{'Content-Type':'application/json'}),...(opt.headers||{})}});const d=await r.json().catch(()=>({}));if(!r.ok){const error=new Error(d.error||'Erro inesperado.');error.data=d;error.status=r.status;throw error;}return d}
 async function boot(){
   const a=await api('/api/auth-state');
   if(a.locked&&!a.loggedIn){$('#loginScreen').classList.remove('hidden');return}
-  $('#app').classList.remove('hidden'); await loadConfig(); restoreDraft(); await loadHistory();
+  $('#app').classList.remove('hidden'); initTikTokAuthBridge(); await loadConfig(); await restoreDraft(); await loadHistory();
 }
 async function loadConfig(){
   config=await api('/api/config');
@@ -153,8 +251,14 @@ $('#chooseBtn').onclick=()=>$('#videoInput').click();$('#changeBtn').onclick=()=
 const dz=$('#dropzone');['dragenter','dragover'].forEach(x=>dz.addEventListener(x,e=>{e.preventDefault();dz.classList.add('drag')}));['dragleave','drop'].forEach(x=>dz.addEventListener(x,e=>{e.preventDefault();dz.classList.remove('drag')}));dz.addEventListener('drop',e=>{const f=e.dataTransfer.files?.[0];if(f)selectVideo(f)});$('#videoInput').onchange=e=>{const f=e.target.files?.[0];if(f)selectVideo(f)};
 async function selectVideo(file){
   if(!file.type.startsWith('video/'))return toast('Selecione um arquivo de vídeo.',true);
-  selectedRemoteVideo=null;preparedStoryFile=null;preparedStoryVideoId=''; selectedFile=file; generated=null;frames=[];$('#fileName').textContent=file.name;$('#preview').src=URL.createObjectURL(file);$('#dropzone').classList.add('hidden');$('#workArea').classList.remove('hidden');$('#aiStatus').textContent='Lendo o vídeo...';
-  try{await new Promise((resolve,reject)=>{const v=$('#preview');v.onloadedmetadata=()=>{duration=v.duration||0;resolve()};v.onerror=reject});frames=await extractFrames($('#preview'),[.15,.5,.85]);await loadCreator();await analyze()}catch(e){toast('Não consegui analisar o vídeo: '+e.message,true);$('#aiStatus').textContent='Falha na análise.'}
+  selectedRemoteVideo=null;preparedStoryFile=null;preparedStoryVideoId='';selectedFile=file;generated=null;frames=[];duration=0;showDraftWorkspace(file.name);setPreviewObjectUrl(file);$('#aiStatus').textContent='Salvando vídeo no rascunho local...';
+  try{await persistManualVideo(file)}catch(e){toast('O vídeo foi selecionado, mas o navegador não conseguiu guardar uma cópia persistente. Evite atualizar a página até concluir esta publicação.',true)}
+  saveDraft();
+  try{
+    $('#aiStatus').textContent='Lendo o vídeo...';
+    await waitForVideoMetadata($('#preview'),20000);duration=$('#preview').duration||0;saveDraft();
+    frames=await extractFrames($('#preview'),[.15,.5,.85]);await loadCreator();await analyze();saveDraft();
+  }catch(e){toast('Não consegui analisar o vídeo: '+e.message,true);$('#aiStatus').textContent='Falha na análise. O rascunho foi preservado.';saveDraft()}
 }
 async function extractFrames(video,points){
   const out=[];for(const p of points){const t=Math.max(0,Math.min(video.duration-.05,video.duration*p));await new Promise((resolve,reject)=>{const done=()=>{video.removeEventListener('seeked',done);resolve()};video.addEventListener('seeked',done,{once:true});video.currentTime=t;setTimeout(()=>reject(new Error('Tempo esgotado ao capturar frames.')),6000)});const c=document.createElement('canvas');const max=720,scale=Math.min(1,max/video.videoWidth);c.width=Math.max(1,Math.round(video.videoWidth*scale));c.height=Math.max(1,Math.round(video.videoHeight*scale));c.getContext('2d').drawImage(video,0,0,c.width,c.height);out.push(c.toDataURL('image/jpeg',.72))}video.currentTime=0;return out;
@@ -354,11 +458,11 @@ $('#copyCaptionBtn').onclick=async()=>{try{await navigator.clipboard.writeText($
 ['dmKeyword'].forEach(id=>$('#'+id)?.addEventListener('input',()=>{instagramManual=false;updateInstagramCaption(true);saveDraft()}));
 ['dmEnabled','publicReplyEnabled','createMetaAd','metaAdStatus'].forEach(id=>$('#'+id)?.addEventListener('change',()=>{if(id==='dmEnabled'){instagramManual=false;updateInstagramCaption(true)}saveDraft()}));
 ['privacy','disableComment','disableDuet','disableStitch','isAigc'].forEach(id=>$('#'+id)?.addEventListener('change',saveDraft));
-$('#connectBtn').addEventListener('click',()=>saveDraft());
+$('#connectBtn').addEventListener('click',()=>{saveDraft();if(selectedFile)persistManualVideo(selectedFile).catch(()=>{});});
 $('#regenerateBtn').onclick=analyze;
 async function loadCreator(){
   if(!config?.tiktokConnected){syncTikTokPublishState();return;}
-  try{const c=await api('/api/creator');tiktokAuthInvalid=false;syncTikTokPublishState();const p=$('#privacy');p.innerHTML='';for(const x of(c.privacy_level_options||['SELF_ONLY'])){const o=document.createElement('option');o.value=x;o.textContent={PUBLIC_TO_EVERYONE:'Público',MUTUAL_FOLLOW_FRIENDS:'Amigos',FOLLOWER_OF_CREATOR:'Seguidores',SELF_ONLY:'Somente eu'}[x]||x;p.appendChild(o)} if((c.privacy_level_options||[]).includes(config.settings.defaultPrivacy))p.value=config.settings.defaultPrivacy;}catch(e){if(/token|oauth|authoriz|expir|invalid/i.test(e.message||'')){tiktokAuthInvalid=true;syncTikTokPublishState();$('#connectionText').textContent='Autorização expirada. Reconecte o TikTok para voltar a enviar rascunhos.';}else toast(e.message,true)}
+  try{const c=await api('/api/creator');tiktokAuthInvalid=false;syncTikTokPublishState();const p=$('#privacy'),previousPrivacy=p.value,options=c.privacy_level_options||['SELF_ONLY'];p.innerHTML='';for(const x of options){const o=document.createElement('option');o.value=x;o.textContent={PUBLIC_TO_EVERYONE:'Público',MUTUAL_FOLLOW_FRIENDS:'Amigos',FOLLOWER_OF_CREATOR:'Seguidores',SELF_ONLY:'Somente eu'}[x]||x;p.appendChild(o)} if(options.includes(previousPrivacy))p.value=previousPrivacy;else if(options.includes(config.settings.defaultPrivacy))p.value=config.settings.defaultPrivacy;saveDraft();}catch(e){if(/token|oauth|authoriz|expir|invalid/i.test(e.message||'')){tiktokAuthInvalid=true;syncTikTokPublishState();$('#connectionText').textContent='Autorização expirada. Reconecte o TikTok para voltar a enviar rascunhos.';}else toast(e.message,true)}
 }
 $('#publishBtn').onclick=async()=>{
   if(!selectedFile&&!selectedRemoteVideo)return toast('Escolha um vídeo.',true);if(!generated)return toast('Aguarde a geração da publicação.',true);
@@ -375,10 +479,31 @@ $('#publishBtn').onclick=async()=>{
     setSocialButton('tiktok','success');
     toast('Rascunho enviado. Abra o TikTok e toque na notificação da caixa de entrada para concluir.');
     try{await navigator.clipboard.writeText($('#captionPreview').value.trim())}catch{}
-    await loadHistory();setTimeout(()=>{resetVideo();syncTikTokPublishState()},650);
-  }catch(e){if(/token|oauth|authoriz|expir|invalid/i.test(e.message||'')){tiktokAuthInvalid=true;syncTikTokPublishState();$('#connectionText').textContent='Autorização expirada. Reconecte o TikTok para voltar a enviar rascunhos.';}toast(e.message,true)}finally{b.disabled=false;if(!tiktokAuthInvalid)setSocialButton('tiktok','idle')}
+    await loadHistory();saveDraft();setTimeout(()=>syncTikTokPublishState(),1400);
+  }catch(e){if(/token|oauth|authoriz|expir|invalid/i.test(e.message||'')){tiktokAuthInvalid=true;syncTikTokPublishState();$('#connectionText').textContent='Autorização expirada. Reconecte o TikTok para voltar a enviar rascunhos.';}toast(e.message,true)}finally{b.disabled=false;if(!tiktokAuthInvalid)setTimeout(()=>setSocialButton('tiktok','idle'),1600)}
 };
-function resetVideo(){selectedFile=null;selectedRemoteVideo=null;preparedStoryFile=null;preparedStoryVideoId='';frames=[];generated=null;captionManual=false;commentManual=false;instagramManual=false;clearDraft();$('#preview').removeAttribute('src');$('#workArea').classList.add('hidden');$('#dropzone').classList.remove('hidden');$('#videoInput').value=''}
+async function resetPublication({preserveSku='',preserveQuery='',silent=false}={}){
+  selectedFile=null;selectedRemoteVideo=null;preparedStoryFile=null;preparedStoryVideoId='';frames=[];generated=null;duration=0;captionManual=false;commentManual=false;instagramManual=false;activeDraftSku=String(preserveSku||'').trim();
+  if(previewObjectUrl){try{URL.revokeObjectURL(previewObjectUrl)}catch{}previewObjectUrl=''}
+  clearDraft();await deleteStoredManualVideo();
+  const preview=$('#preview');try{preview.pause()}catch{}preview.removeAttribute('src');try{preview.load()}catch{}
+  $('#workArea').classList.add('hidden');$('#dropzone').classList.remove('hidden');$('#videoInput').value='';$('#fileName').textContent='';
+  for(const id of ['product','shopeeUrl','title','description','cta','hashtags','captionPreview','purchaseComment','instagramCaption'])if($('#'+id))$('#'+id).value='';
+  if($('#wedropSku'))$('#wedropSku').value=preserveSku||'';if($('#wedropQuery'))$('#wedropQuery').value=preserveQuery||'';
+  if($('#wedropStatus'))$('#wedropStatus').textContent='';if($('#wedropResults')){$('#wedropResults').innerHTML='';$('#wedropResults').classList.add('hidden')}if($('#wedropAttempts')){$('#wedropAttempts').innerHTML='';$('#wedropAttempts').classList.add('hidden')}
+  if($('#privacy'))$('#privacy').value=config?.settings?.defaultPrivacy||'SELF_ONLY';for(const id of ['disableComment','disableDuet','disableStitch','isAigc'])if($('#'+id))$('#'+id).checked=false;
+  if($('#dmEnabled'))$('#dmEnabled').checked=config?.settings?.instagramDmEnabled!==false;if($('#dmKeyword'))$('#dmKeyword').value=config?.settings?.instagramDmKeyword||'QUERO';if($('#publicReplyEnabled'))$('#publicReplyEnabled').checked=config?.settings?.instagramPublicReplyEnabled!==false;if($('#createMetaAd'))$('#createMetaAd').checked=Boolean(config?.settings?.metaCreateAdDefault);if($('#metaAdStatus'))$('#metaAdStatus').value=config?.settings?.metaAdDefaultStatus||'PAUSED';
+  if(preserveSku||preserveQuery)saveDraft();
+  if(!silent)toast('Publicação limpa. Você pode iniciar uma nova SKU.');
+}
+async function prepareSkuDraft(sku,query=''){
+  const next=String(sku||'').trim(),previous=String(activeDraftSku||selectedRemoteVideo?.catalogSku||'').trim();
+  if(previous&&normalizeSku(previous)!==normalizeSku(next)&&hasPublicationData()){
+    await resetPublication({preserveSku:next,preserveQuery:query,silent:true});
+    toast(`Nova SKU ${next}: a publicação anterior foi limpa e um novo rascunho foi iniciado.`);
+  }
+  activeDraftSku=next;if($('#wedropSku'))$('#wedropSku').value=next;if(query&&$('#wedropQuery'))$('#wedropQuery').value=query;saveDraft();
+}
 async function loadHistory(){try{const h=await api('/api/history');$('#history').innerHTML=h.length?h.slice(0,10).map(x=>`<div class="history-item"><div><b>${esc(x.product||x.filename)}</b><br><small>${new Date(x.createdAt).toLocaleString('pt-BR')}</small></div><div><small>${esc(x.status||'PROCESSING')}</small></div></div>`).join(''):'<p class="small">Nenhuma publicação ainda.</p>'}catch{}}
 function esc(s){return String(s||'').replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;'}[m]))}
 const q=new URLSearchParams(location.search);if(q.get('error')){toast(q.get('error'),true);if(/tiktok/i.test(q.get('error'))&&/(inválid|expirad)/i.test(q.get('error')))tiktokAuthInvalid=true;}if(q.get('tiktok')==='connected'){tiktokAuthInvalid=false;toast('TikTok conectado com sucesso. Você pode fechar esta aba e voltar ao vídeo anterior.');}
@@ -388,9 +513,11 @@ async function loadRemoteVideo(candidate,product){
   const status=$('#wedropStatus');
   try{
     if(!candidate?.id) throw new Error('O vídeo selecionado não possui ID do Google Drive.');
-    selectedFile=null;preparedStoryFile=null;preparedStoryVideoId='';
+    selectedFile=null;preparedStoryFile=null;preparedStoryVideoId='';await deleteStoredManualVideo();
     selectedRemoteVideo={id:candidate.id,title:candidate.title||product?.name||product?.sku||'Vídeo WeDrop',catalogProductId:product?.id||'',catalogSku:product?.sku||$('#wedropSku')?.value.trim()||'',catalogProductName:product?.name||'',catalogProductUrl:product?.shopeeUrl||''};
-    generated=null; frames=[];
+    activeDraftSku=selectedRemoteVideo.catalogSku||$('#wedropSku')?.value.trim()||activeDraftSku;
+    if(previewObjectUrl){try{URL.revokeObjectURL(previewObjectUrl)}catch{}previewObjectUrl=''}
+    generated=null;frames=[];saveDraft();
     $('#fileName').textContent=selectedRemoteVideo.title;
     const preview=$('#preview');
     preview.pause(); preview.removeAttribute('src'); preview.load();
@@ -491,6 +618,7 @@ function renderCatalogChoices(data,manual=false){
 async function searchWedrop(manual=false,productId=''){
   const sku=$('#wedropSku').value.trim(); if(!sku)return toast('Digite a SKU WeDrop.',true);
   const q=manual?$('#wedropQuery').value.trim():'';
+  await prepareSkuDraft(sku,q);
   const b=manual?$('#wedropManualBtn'):$('#wedropSearchBtn');b.disabled=true;b.textContent='BUSCANDO…';$('#wedropStatus').textContent=manual?'Tentando o nome informado…':'Buscando pelo título completo e encurtando automaticamente se necessário…';
   try{const d=await api('/api/wedrop/lookup?sku='+encodeURIComponent(sku)+(q?'&q='+encodeURIComponent(q):'')+(productId?'&productId='+encodeURIComponent(productId):''));renderWedropResults(d)}
   catch(e){
@@ -504,5 +632,29 @@ $('#wedropManualBtn')?.addEventListener('click',()=>searchWedrop(true));
 $('#wedropSku')?.addEventListener('keydown',e=>{if(e.key==='Enter')searchWedrop(false)});
 
 $('#wedropQuery')?.addEventListener('keydown',e=>{if(e.key==='Enter')searchWedrop(true)});
+['wedropSku','wedropQuery'].forEach(id=>$('#'+id)?.addEventListener('input',saveDraft));
+$('#clearPublicationBtn')?.addEventListener('click',async()=>{
+  if(!hasPublicationData()&&!String($('#wedropSku')?.value||'').trim())return toast('A publicação já está vazia.');
+  if(!window.confirm('Deseja realmente apagar o rascunho desta publicação, incluindo o vídeo e todos os campos preenchidos?'))return;
+  await resetPublication();
+});
+window.addEventListener('beforeunload',saveDraft);
+document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='hidden')saveDraft()});
+
+async function handleTikTokAuthEvent(payload={}){
+  if(!payload||payload.source!=='redeachados-publisher-tiktok')return;
+  if(payload.status==='connected'){
+    tiktokAuthInvalid=false;
+    try{await loadConfig();await loadCreator();$('#connectionText').textContent='Conta conectada e pronta para enviar rascunhos.';toast('TikTok conectado. Sua publicação continua exatamente como estava.');}
+    catch(e){toast('TikTok conectado, mas não consegui atualizar o status automaticamente: '+e.message,true)}
+  }else if(payload.status==='error'){
+    tiktokAuthInvalid=true;syncTikTokPublishState();$('#connectionText').textContent='Não foi possível concluir a conexão do TikTok.';toast(payload.message||'Falha ao conectar o TikTok.',true);
+  }
+}
+function initTikTokAuthBridge(){
+  try{if('BroadcastChannel' in window){tiktokAuthChannel=new BroadcastChannel(TIKTOK_AUTH_CHANNEL);tiktokAuthChannel.onmessage=e=>handleTikTokAuthEvent(e.data)}}catch{}
+  window.addEventListener('storage',e=>{if(e.key!==TIKTOK_AUTH_EVENT_KEY||!e.newValue)return;try{handleTikTokAuthEvent(JSON.parse(e.newValue))}catch{}});
+  window.addEventListener('message',e=>{if(e.origin===location.origin)handleTikTokAuthEvent(e.data)});
+}
 
 boot();

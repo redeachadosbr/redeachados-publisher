@@ -159,3 +159,14 @@ Principais mudanças: lista de vídeos mais compacta, comparação por compatibi
 - O botão de Story assistido foi simplificado para “Copiar link do produto”; ele não abre QR Code nem iPhone.
 - Story automático oficial continua disponível e publica sem adesivo de link.
 - Revisão visual geral com Manrope, contraste maior, cards premium, navegação mais clara e botões/ícones interativos.
+
+
+## V5.5.16 — Rascunho persistente + TikTok sem perda
+
+- O rascunho da publicação passa a salvar automaticamente SKU, busca, campos, legendas, opções e o vídeo atual.
+- Vídeos enviados do computador são preservados no IndexedDB do navegador para sobreviver a atualização da página.
+- Vídeos WeDrop são restaurados pelo ID remoto, sem regenerar os textos já revisados.
+- A autenticação do TikTok avisa a aba original por BroadcastChannel/localStorage e atualiza o status sem exigir reiniciar o trabalho.
+- Enviar um rascunho ao TikTok não limpa mais a publicação atual.
+- A publicação só é zerada ao iniciar uma SKU diferente ou pelo botão **Limpar publicação**.
+- O botão **Limpar publicação** pede confirmação antes de apagar vídeo e campos.

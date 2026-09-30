@@ -297,7 +297,7 @@ dialog{width:min(830px,94vw);max-height:90dvh;padding:0;border:1px solid #e0e5d8
   .ui-compact-pro .workspace-aside{gap:12px}
 }
 
-/* V5.5.15 · Studio Pro — navegação por páginas, clareza e acabamento premium */
+/* V5.5.16 · Studio Pro — navegação por páginas, clareza e acabamento premium */
 :root{font-family:"Manrope",Inter,ui-sans-serif,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;--ink:#20271f;--soft-ink:#4f5b4d;--premium-gold:#d9b756;--premium-green:#476149;--surface:#fbfcf9;--surface-2:#f3f6f0}
 body.ui-compact-pro{background:radial-gradient(circle at 78% 0%,rgba(221,231,210,.34),transparent 32%),linear-gradient(180deg,#f8faf6 0%,#f4f6f2 100%);color:var(--ink);font-family:"Manrope",Inter,ui-sans-serif,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif}
 .ui-compact-pro h1,.ui-compact-pro h2,.ui-compact-pro h3,.ui-compact-pro h4{font-family:"Manrope",Inter,sans-serif;letter-spacing:-.035em}
@@ -445,3 +445,10 @@ body.ui-compact-pro{background:radial-gradient(circle at 78% 0%,rgba(221,231,210
   .ui-compact-pro .commerce-shortcut{grid-template-columns:auto minmax(0,1fr)}
   .ui-compact-pro .shortcut-arrow{display:none}
 }
+
+/* V5.5.16 · rascunho persistente + reconexão TikTok sem perda */
+.ui-compact-pro .source-head-actions{margin-left:auto;display:flex;align-items:center;justify-content:flex-end;gap:9px;flex-wrap:wrap}
+.ui-compact-pro .source-head-actions .format-badge{margin-left:0}
+.ui-compact-pro .clear-publication-btn{min-height:31px;padding:6px 10px;font-size:9px;color:#7a514d;border-color:#e4d2cf;background:linear-gradient(180deg,#fff,#fbf5f4)}
+.ui-compact-pro .clear-publication-btn:hover{border-color:#d9b9b4;background:#fff8f6;color:#6e3730}
+@media(max-width:600px){.ui-compact-pro .section-head{flex-wrap:wrap}.ui-compact-pro .source-head-actions{width:100%;justify-content:flex-start;margin-left:44px}.ui-compact-pro .clear-publication-btn{min-height:34px}}

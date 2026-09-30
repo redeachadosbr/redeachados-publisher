@@ -774,7 +774,7 @@ app.get('/story-mobile',(_req,res)=>res.sendFile(path.join(__dirname,'public','s
 app.get(['/privacy','/privacy-policy'], (_req,res)=>res.sendFile(path.join(__dirname,'public','privacy.html')));
 app.get('/data-deletion', (_req,res)=>res.sendFile(path.join(__dirname,'public','privacy.html')));
 
-app.get('/api/health', (_req,res)=>res.json({ok:true,service:'REDEACHADOS BR Publisher Web V5.5.15'}));
+app.get('/api/health', (_req,res)=>res.json({ok:true,service:'REDEACHADOS BR Publisher Web V5.5.16'}));
 app.get('/api/auth-state',(req,res)=>res.json({locked:Boolean(process.env.APP_PASSWORD),loggedIn:!process.env.APP_PASSWORD||Boolean(req.session?.appAuth)}));
 app.post('/api/login',(req,res)=>{
   if(!process.env.APP_PASSWORD){ req.session.appAuth=true; return res.json({ok:true}); }
@@ -1377,6 +1377,14 @@ app.get('/auth/tiktok', mustLogin, (req,res)=>{
   const p=new URLSearchParams({client_key:cfg.tiktokClientKey,response_type:'code',scope:'user.info.basic,video.publish,video.upload',redirect_uri:redirectUri(req),state});
   res.redirect(`https://www.tiktok.com/v2/auth/authorize/?${p}`);
 });
+function tiktokAuthResultPage(status,message=''){
+  const payload=JSON.stringify({source:'redeachados-publisher-tiktok',status,message:String(message||''),at:Date.now()}).replace(/</g,'\\u003c');
+  const ok=status==='connected';
+  const title=ok?'TikTok conectado':'Falha na conexão do TikTok';
+  const rawDetail=ok?'Sua publicação foi preservada. Esta aba pode ser fechada.':String(message||'Não foi possível concluir a autorização.');
+  const detail=rawDetail.replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;'}[c]));
+  return `<!doctype html><html lang="pt-BR"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>${title}</title><style>body{margin:0;font-family:Inter,system-ui,sans-serif;background:#f6f8f3;color:#273027;display:grid;place-items:center;min-height:100vh}.box{width:min(520px,calc(100% - 32px));background:#fff;border:1px solid #dfe6db;border-radius:18px;padding:28px;box-shadow:0 18px 55px rgba(33,44,31,.10);text-align:center}h1{font-size:24px;margin:0 0 10px}p{color:#667161;line-height:1.6}a{display:inline-block;margin-top:10px;padding:11px 16px;border-radius:10px;background:#263126;color:#fff;text-decoration:none;font-weight:700}</style></head><body><main class="box"><h1>${title}</h1><p>${detail}</p><a href="/">Voltar ao Publisher</a></main><script>(()=>{const payload=${payload};try{localStorage.setItem('redeachados_tiktok_auth_event_v1',JSON.stringify(payload))}catch{}try{const c=new BroadcastChannel('redeachados_tiktok_auth_v1');c.postMessage(payload);setTimeout(()=>c.close(),500)}catch{}try{if(window.opener)window.opener.postMessage(payload,location.origin)}catch{}${ok?"setTimeout(()=>{try{window.close()}catch{}},900);":""}})();</script></body></html>`;
+}
 app.get('/auth/tiktok/callback', async(req,res)=>{
   try{
     if(req.query.error) throw new Error(req.query.error_description||req.query.error);
@@ -1385,8 +1393,8 @@ app.get('/auth/tiktok/callback', async(req,res)=>{
     const form=new URLSearchParams({client_key:cfg.tiktokClientKey,client_secret:cfg.tiktokClientSecret,code:String(req.query.code),grant_type:'authorization_code',redirect_uri:redirectUri(req)});
     const r=await fetch('https://open.tiktokapis.com/v2/oauth/token/',{method:'POST',headers:{'Content-Type':'application/x-www-form-urlencoded'},body:form});
     const d=await r.json(); if(!r.ok||d.error) throw new Error(d.error_description||d.error||'Falha ao conectar o TikTok.');
-    s.token={...d,obtained_at:Date.now()}; saveStore(s); delete req.session.oauthState; res.redirect('/?tiktok=connected');
-  }catch(e){ res.redirect('/?error='+encodeURIComponent(e.message)); }
+    s.token={...d,obtained_at:Date.now()}; saveStore(s); delete req.session.oauthState; res.type('html').send(tiktokAuthResultPage('connected'));
+  }catch(e){res.status(400).type('html').send(tiktokAuthResultPage('error',e.message));}
 });
 app.post('/api/tiktok/disconnect', mustLogin, (_req,res)=>{ const s=loadStore(); s.token=null; saveStore(s); res.json({ok:true}); });
 app.get('/api/creator', mustLogin, async(_req,res)=>{ try{res.json(await creatorInfo());}catch(e){res.status(400).json({error:e.message});} });
@@ -1629,4 +1637,4 @@ app.post('/api/status/:publishId', mustLogin, async(req,res)=>{
   try{const d=await tiktokJson('https://open.tiktokapis.com/v2/post/publish/status/fetch/',{method:'POST',body:JSON.stringify({publish_id:req.params.publishId})});res.json(d.data||{});}catch(e){res.status(400).json({error:e.message});}
 });
 
-app.listen(PORT,()=>console.log(`REDEACHADOS BR Publisher Web V5.5.15 em http://localhost:${PORT}`));
+app.listen(PORT,()=>console.log(`REDEACHADOS BR Publisher Web V5.5.16 em http://localhost:${PORT}`));

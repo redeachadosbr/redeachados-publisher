@@ -28,7 +28,7 @@ test('TikTok expired authorization gets reconnect state without changing Instagr
 });
 
 
-test('V5.5.15 exposes dedicated navigation pages for commerce, connections and history',()=>{
+test('V5.5.16 exposes dedicated navigation pages for commerce, connections and history',()=>{
   assert.match(html,/href="#commerce"[^>]*>[\s\S]*?Link clicável/);
   assert.match(html,/href="#channels"[^>]*>[\s\S]*?Canais de conexão/);
   assert.match(html,/id="commerce" class="app-page"/);
