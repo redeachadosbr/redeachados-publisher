@@ -296,10 +296,10 @@ async function guideGetOcrWorker(){
     guideOcrWorkerPromise=(async()=>{
       const response=await fetch('/health/ocr',{cache:'no-store'});
       const type=response.headers.get('content-type')||'';
-      if(!type.includes('application/json'))throw new Error('O servidor ainda não disponibiliza o diagnóstico OCR da V1.8.76. Aguarde o deploy terminar e recarregue a página.');
+      if(!type.includes('application/json'))throw new Error('O servidor ainda não disponibiliza o diagnóstico OCR da V1.8.77. Aguarde o deploy terminar e recarregue a página.');
       const health=await response.json();
       if(!response.ok||!health.ready)throw new Error(`A instalação do OCR está incompleta: ${(health.issues||[]).join(' · ')||'arquivos indisponíveis'}. Confira o log do deploy.`);
-      if(!window.Tesseract?.createWorker)throw new Error('O script do leitor OCR não carregou. Recarregue a página após o deploy da V1.8.76.');
+      if(!window.Tesseract?.createWorker)throw new Error('O script do leitor OCR não carregou. Recarregue a página após o deploy da V1.8.77.');
       return window.Tesseract.createWorker(['por','eng'],1,{
         workerPath:health.paths.worker,
         corePath:health.paths.core,
@@ -501,7 +501,7 @@ async function runDailyCycle({automatic=false,welcome=false}={}){
 function stopCatalogVerifyPoll(){if(catalogVerifyPollTimer){clearInterval(catalogVerifyPollTimer);catalogVerifyPollTimer=null}catalogVerifyPollBusy=false}
 window.dailyCatalogVerify=(itemId,encodedKey)=>{
   const key=decodeURIComponent(encodedKey||'');
-  // V1.8.76: abre a lista oficial filtrada; o Helper localiza a SKU e usa o link real de edição gerado pelo Mercado Livre.
+  // V1.8.77: abre a lista oficial filtrada; o Helper localiza a SKU e usa o link real de edição gerado pelo Mercado Livre.
   // foi aberta pelo Publisher para executar SOMENTE o fluxo “Verificar produto”.
   const url=`/api/ml/open-edit?itemId=${encodeURIComponent(itemId)}&auto=verify-product`;
   stopCatalogVerifyPoll();
@@ -648,8 +648,8 @@ function compactBackupProduct(p){
 }
 function saveProductBrowserBackup(rows){
   if(!rows?.length)return;
-  try{localStorage.setItem(PRODUCT_BACKUP_KEY,JSON.stringify({version:'1.8.76',savedAt:new Date().toISOString(),products:rows.map(compactBackupProduct)}));}
-  catch(_){try{const essential=rows.map(p=>({id:p.id,sku:p.sku,product:p.product,cost:p.cost,price:p.price,status:p.status,createdAt:p.createdAt,updatedAt:p.updatedAt,description:p.description,descriptionLocked:p.descriptionLocked,manualAttributes:p.manualAttributes,manualSaleTerms:p.manualSaleTerms,attributeValues:p.attributeValues,seoTitle:p.seoTitle,seoModel:p.seoModel,seoModelExpanded:p.seoModelExpanded,seoResearch:p.seoResearch,imageStudio:p.imageStudio,generatedImages:p.generatedImages,videoReviewed:p.videoReviewed,marketproVideo:p.marketproVideo,video_url:p.video_url,commercialAnalysis:p.commercialAnalysis?{...p.commercialAnalysis,scenarios:[]} : null,priceRecommendation:p.priceRecommendation,adsRecommendation:p.adsRecommendation,marketOpportunity:p.marketOpportunity,publicationAudit:p.publicationAudit,technicalCoverage:p.technicalCoverage,readiness:p.readiness,quality:p.quality,ml_item_id:p.ml_item_id,user_product_id:p.user_product_id,publishedAt:p.publishedAt,listing_type_id:p.listing_type_id}));localStorage.setItem(PRODUCT_BACKUP_KEY,JSON.stringify({version:'1.8.76',savedAt:new Date().toISOString(),products:essential,compact:true}));}catch(__){}}
+  try{localStorage.setItem(PRODUCT_BACKUP_KEY,JSON.stringify({version:'1.8.77',savedAt:new Date().toISOString(),products:rows.map(compactBackupProduct)}));}
+  catch(_){try{const essential=rows.map(p=>({id:p.id,sku:p.sku,product:p.product,cost:p.cost,price:p.price,status:p.status,createdAt:p.createdAt,updatedAt:p.updatedAt,description:p.description,descriptionLocked:p.descriptionLocked,manualAttributes:p.manualAttributes,manualSaleTerms:p.manualSaleTerms,attributeValues:p.attributeValues,seoTitle:p.seoTitle,seoModel:p.seoModel,seoModelExpanded:p.seoModelExpanded,seoResearch:p.seoResearch,imageStudio:p.imageStudio,generatedImages:p.generatedImages,videoReviewed:p.videoReviewed,marketproVideo:p.marketproVideo,video_url:p.video_url,commercialAnalysis:p.commercialAnalysis?{...p.commercialAnalysis,scenarios:[]} : null,priceRecommendation:p.priceRecommendation,adsRecommendation:p.adsRecommendation,marketOpportunity:p.marketOpportunity,publicationAudit:p.publicationAudit,technicalCoverage:p.technicalCoverage,readiness:p.readiness,quality:p.quality,ml_item_id:p.ml_item_id,user_product_id:p.user_product_id,publishedAt:p.publishedAt,listing_type_id:p.listing_type_id}));localStorage.setItem(PRODUCT_BACKUP_KEY,JSON.stringify({version:'1.8.77',savedAt:new Date().toISOString(),products:essential,compact:true}));}catch(__){}}
 }
 function readProductBrowserBackup(){try{const d=JSON.parse(localStorage.getItem(PRODUCT_BACKUP_KEY)||'null');return Array.isArray(d?.products)?d:null}catch{return null}}
 async function loadProducts(){

@@ -1,8 +1,8 @@
 {
   "name": "rede-achados-br-ml-publisher-pro",
-  "version": "1.8.76",
+  "version": "1.8.77",
   "private": true,
-  "description": "Rede Achados BR - Mercado Livre Publisher Pro V1.8.76: Rede Achados BR - Mercado Livre Publisher Pro V1.8.76: Verificar Produto abre pela lista oficial da Central, localiza a SKU/MLB e deixa o próprio Mercado Livre fornecer a rota real de edição; elimina 404 de links MLBU inventados.",
+  "description": "Rede Achados BR - Mercado Livre Publisher Pro V1.8.77: hotfix do deploy Render; corrige postinstall OCR executado antes de scripts/check-ocr.js existir no container, preservando as travas anti-loop do Helper V1.2.",
   "main": "src/server.js",
   "scripts": {
     "start": "node src/server.js",

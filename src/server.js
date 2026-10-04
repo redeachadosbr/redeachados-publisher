@@ -46,7 +46,7 @@ app.use(helmet({contentSecurityPolicy:false}));
 app.use(express.json({limit:'10mb'})); app.use(express.urlencoded({extended:true}));
 app.use(session({secret:process.env.SESSION_SECRET || crypto.randomBytes(32).toString('hex'),resave:false,saveUninitialized:false,proxy:true,cookie:{httpOnly:true,sameSite:'lax',secure:BASE.startsWith('https'),maxAge:12*60*60*1000}}));
 app.use(express.static(path.join(__dirname,'..','public')));
-// V1.8.76 — cliente/core compatíveis, diagnóstico e 404 real para arquivos OCR ausentes.
+// V1.8.77 — cliente/core compatíveis, diagnóstico e 404 real para arquivos OCR ausentes.
 require('./ocrAssets').mountOcrAssets(app);
 app.use('/generated', express.static(ImageStudio.MEDIA_DIR, {maxAge:'1h'}));
 
@@ -708,7 +708,7 @@ async function pictureBufferFromSource(source){
     if(!file.startsWith(root+path.sep)&&file!==root)throw new Error('Caminho de imagem inválido.');
     if(fs.existsSync(file))return {buffer:fs.readFileSync(file),filename:path.basename(file),mime:mimeFromName(file),source:src,local:true};
   }
-  const r=await axios.get(src,{responseType:'arraybuffer',timeout:30000,headers:{'User-Agent':'RedeAchadosBR-MLPublisher/1.8.76'}});
+  const r=await axios.get(src,{responseType:'arraybuffer',timeout:30000,headers:{'User-Agent':'RedeAchadosBR-MLPublisher/1.8.77'}});
   const mime=String(r.headers?.['content-type']||mimeFromName(src)).split(';')[0];
   return {buffer:Buffer.from(r.data),filename:`produto-${crypto.randomBytes(3).toString('hex')}.${mime.includes('png')?'png':mime.includes('webp')?'webp':'jpg'}`,mime,source:src,local:false};
 }
@@ -1817,7 +1817,7 @@ app.get('/health',async(req,res)=>{
   const db0=store.getDbState?.()||{};
   if(db0.configured&&db0.initialized&&db0.connected===false)await store.ensureConnected?.(0);
   const database=store.getDbState?.()||null;
-  res.json({ok:true,version:'1.8.76',persistence:store.pool?'postgres':'local-file',database,databaseOperational:!database?.configured||Boolean(database?.initialized&&database?.connected!==false)});
+  res.json({ok:true,version:'1.8.77',persistence:store.pool?'postgres':'local-file',database,databaseOperational:!database?.configured||Boolean(database?.initialized&&database?.connected!==false)});
 });
 app.get('/connect/mercadolivre',(req,res,next)=>{ if(!req.session?.operator?.id)return res.redirect('/?login=1'); if(!process.env.ML_CLIENT_ID||!process.env.ML_CLIENT_SECRET) return res.status(503).send('Configure ML_CLIENT_ID e ML_CLIENT_SECRET no Render.'); const state=crypto.randomBytes(24).toString('hex'); const p=ML.pkce(); req.session.mlOAuth={state,verifier:p.verifier,created:Date.now()}; req.session.save((err)=>{ if(err) return next(err); res.redirect(ML.authUrl({clientId:process.env.ML_CLIENT_ID,redirectUri:REDIRECT,state,challenge:p.challenge})); }); });
 app.get('/auth/mercadolivre/callback',async(req,res)=>{ try{ const {code,state}=req.query; const o=req.session.mlOAuth; if(!o||!code||!state||state!==o.state) throw new Error('OAuth state inválido. Inicie novamente pelo Publisher.'); const data=await ML.exchangeCode({clientId:process.env.ML_CLIENT_ID,clientSecret:process.env.ML_CLIENT_SECRET,redirectUri:REDIRECT,code,verifier:o.verifier}); await store.setTokens(data); delete req.session.mlOAuth; res.redirect('/?connected=1'); }catch(e){res.status(500).send(`<h2>Falha ao conectar Mercado Livre</h2><pre>${safeError(e)}</pre><a href='/'>Voltar</a>`);} });
@@ -1825,7 +1825,7 @@ app.post('/webhooks/mercadolivre',(req,res)=>{ const notification={id:id(),topic
 
 app.get('/api/auth/status',(req,res)=>{
   const users=store.getUsers(); const op=req.session?.operator||null;
-  res.json({authenticated:Boolean(op?.id),operator:op?{id:op.id,name:op.name,username:op.username,role:op.role,loginAt:op.loginAt,loginEventId:op.loginEventId}:null,setupRequired:users.length===0,setupCodeRequired:Boolean(process.env.APP_SETUP_CODE),mlConnected:Boolean(store.getTokens()),version:'1.8.76'});
+  res.json({authenticated:Boolean(op?.id),operator:op?{id:op.id,name:op.name,username:op.username,role:op.role,loginAt:op.loginAt,loginEventId:op.loginEventId}:null,setupRequired:users.length===0,setupCodeRequired:Boolean(process.env.APP_SETUP_CODE),mlConnected:Boolean(store.getTokens()),version:'1.8.77'});
 });
 app.post('/api/auth/setup',async(req,res)=>{
   try{
@@ -2000,7 +2000,7 @@ function sellerListUrl(itemId='',sku=''){
   return `https://www.mercadolivre.com.br/anuncios/lista?filters=OMNI_ACTIVE%7COMNI_INACTIVE%7CCHANNEL_NO_PROXIMITY_AND_NO_MP_MERCHANTS&page=1&search=${encodeURIComponent(q)}&sort=DEFAULT`;
 }
 function sellerEditUrl(itemId='',userProductId=''){
-  // V1.8.76: NÃO inventar URL /anuncios/MLBU.../modificar.
+  // V1.8.77: NÃO inventar URL /anuncios/MLBU.../modificar.
   // A Central OMNI adiciona segmentos opacos (bomni/variation/.../user_product_item_detail)
   // que não são derivados com segurança da API pública. O link correto deve nascer da própria Central.
   // Mantemos esta função por compatibilidade, mas ela só aceita uma URL completa já conhecida.
@@ -2066,7 +2066,7 @@ async function runCatalogGuard({source='manual',autoApply=true,t=null,me=null,sn
       else if(row.catalogRequirementKnown&&row.catalogEligibilityStatus==='READY_FOROPTIN'&&!row.catalogListing)optionalEligible.push(row);
       else unknown.push(row);
     }
-    // V1.8.76: "Verificar produto" deixa de ser inferido por status/catalog_product_id.
+    // V1.8.77: "Verificar produto" deixa de ser inferido por status/catalog_product_id.
     // Só entra na fila quando o /performance do próprio anúncio contém o objetivo explícito
     // de verificar o produto de catálogo. Assim anúncios inativos/sem estoque ficam fora.
     const monitorRowsByItem=new Map((store.getMonitoring().rows||[]).filter(x=>x?.itemId).map(x=>[String(x.itemId),x]));
@@ -2087,7 +2087,7 @@ async function runCatalogGuard({source='manual',autoApply=true,t=null,me=null,sn
       if(!catalogProductVerificationPending(pending))continue;
       productVerificationRequired.push({...row,verificationReason:'O objetivo oficial de qualidade do Mercado Livre mostra “Verificar produto”. Esta é a única condição que cria esta tarefa. Anúncios inativos ou sem estoque são ignorados.',verificationSource:'Mercado Livre /performance'});
     }
-    // V1.8.76: a auditoria visível não é mais poluída por classificações passivas
+    // V1.8.77: a auditoria visível não é mais poluída por classificações passivas
     // (READY_FOROPTIN / catálogo obrigatório). Mostramos somente SKUs que realmente exigem
     // “Verificar produto” e ações remotas efetivamente executadas.
     for(const row of productVerificationRequired){
@@ -2294,7 +2294,7 @@ async function qualityAttributeRepair(t,row,item,product=null,{evidenceValues={}
   const supplier=legacy?.supplier||store.findSupplierSku(row?.sku);
   let base=external?legacy.base:{...product,sku:product?.sku||row?.sku||'',category_id:item?.category_id||product?.category_id||''};
   if(supplier){
-    // V1.8.76: a ficha atual da WeDrop é a fonte factual prioritária para medidas, peso, EAN,
+    // V1.8.77: a ficha atual da WeDrop é a fonte factual prioritária para medidas, peso, EAN,
     // marca, modelo e demais dados do fornecedor. Não reutilizar um snapshot antigo da SKU.
     base=initializeProductShape(SupplierCatalog.refreshFromSupplier(base,supplier),external?'legacy-quality-wedrop':'quality-wedrop');
     if(product?.id){
@@ -2349,7 +2349,7 @@ async function qualityAttributeRepair(t,row,item,product=null,{evidenceValues={}
   const pendingNow=Array.isArray(perf?.pending)?perf.pending:[];
   const attributePending=pendingNow.filter(x=>Monitoring.qualityIssueKind(x)==='attributes');
   const performanceStillNeedsAttributes=attributePending.length>0;
-  // V1.8.76: mesmo quando /performance retorna somente a palavra genérica CARACTERÍSTICAS,
+  // V1.8.77: mesmo quando /performance retorna somente a palavra genérica CARACTERÍSTICAS,
   // o Publisher monta os campos editáveis da categoria e os entrega na própria tela para o operador.
   // Primeiro tentamos achar o atributo exato dentro do payload de /performance; se ele não vier,
   // priorizamos campos obrigatórios/condicionais ainda em branco e, por último, os candidatos de maior relevância.
@@ -2615,7 +2615,7 @@ async function applyMonitoringFix(alertId,{confirm=false}={}){
       if(details.republicationAdvice)message+=` ${details.republicationAdvice}`;
     }
     }
-    // V1.8.76 — se CARACTERÍSTICAS foi validada, essa causa sai da fila imediatamente.
+    // V1.8.77 — se CARACTERÍSTICAS foi validada, essa causa sai da fila imediatamente.
     // A nota geral pode continuar em 80–95 enquanto o Mercado Livre recalcula ou por outra causa;
     // isso não pode prender o operador na mesma correção já concluída.
     if(details.attributeResolved){
@@ -2728,7 +2728,7 @@ app.post('/api/monitoring/quality/attribute-evidence',imageUpload.single('image'
       await store.setMonitoring({...st,rows:rowsNow,alerts:[...refreshedQuality,...keepAlerts].slice(0,300)});
       return res.json({ok:true,attributeResolved:true,qualityResolved:Boolean(scoreNow!=null&&scoreNow>Math.max(80,Math.min(99,n(settingsNow.dailyQualityReviewMaxScore,95)))),remainingQualityActions:remaining,message:remaining.length?`CARACTERÍSTICAS já estava resolvida. Próxima causa de qualidade: ${remaining.join(', ')}.`:'A ficha técnica já não possui pendência de CARACTERÍSTICAS no Mercado Livre.',verification:{complete:!(Array.isArray(item.tags)&&item.tags.includes('incomplete_technical_specs')),missing:[],manualFields:[],attributePending:[],performanceAttributesPending:false,scoreAfter:scoreNow,pending:perfBefore?.pending||[],checkedAt}});
     }
-    // V1.8.76: o caminho de evidência não depende mais da OpenAI.
+    // V1.8.77: o caminho de evidência não depende mais da OpenAI.
     // O navegador faz OCR local e envia somente o texto; o servidor faz o casamento determinístico
     // contra os atributos oficiais da categoria. Texto digitado pelo operador usa o mesmo caminho.
     const manualDirect=manualAttributeEvidence(manualValues,targetAttributes,req.body?.evidenceSource||'operador');
@@ -2792,7 +2792,7 @@ app.post('/api/catalog-guard/product-verification/confirm',async(req,res)=>{try{
 app.get('/api/ml/open-edit',async(req,res)=>{try{
   const itemId=clean(req.query?.itemId);if(!itemId)return res.status(400).send('Informe o itemId.');
   const t=await token(),item=await ML.itemDetails(t,itemId),sku=skuFromMlItem(item),up=userProductIdFromMlItem(item);
-  // V1.8.76: a rota profunda de edição OMNI contém tokens/segmentos gerados pela própria Central.
+  // V1.8.77: a rota profunda de edição OMNI contém tokens/segmentos gerados pela própria Central.
   // Abrir /anuncios/MLBU.../modificar diretamente causa 404. Portanto começamos pela lista oficial,
   // filtrada pelo MLB exato; o Helper encontra o cartão correto e usa o href real renderizado pelo ML.
   let url=sellerListUrl(item.id,sku);
@@ -3034,7 +3034,7 @@ app.post('/api/daily-ops/settings',async(req,res)=>{
 
 app.post('/api/guide/event',async(req,res)=>{try{const op=req.session?.operator||{};const type=clean(req.body?.type||'guide-event');const entry={id:id(),type:'operator-guide',eventType:type,operatorId:op.id||null,operatorName:op.name||op.username||'',taskKey:clean(req.body?.taskKey||''),view:clean(req.body?.view||''),sku:clean(req.body?.sku||''),at:new Date().toISOString()};await store.addJob(entry);res.json({ok:true})}catch(e){res.status(500).json({error:safeError(e)})}});
 
-app.get('/api/status',async(req,res)=>{ let connected=false,user=null,error=null; try{const t=await token(); connected=true; user=await ML.me(t);}catch(e){error=safeError(e)} const supplier=store.getSupplierCatalog(); res.json({connected,user,error,site:SITE,version:'1.8.76',livePublish:process.env.ML_LIVE_PUBLISH_ENABLED==='true',redirectUri:REDIRECT,productCount:store.getProducts().length,persistence:persistenceInfo(),database:store.getDbState?.()||null,supplierCatalog:{configured:Boolean(supplier?.products?.length),count:supplier?.products?.length||0,meta:supplier?.meta||null,persistentMaster:true,expires:false},imageAIConfigured:Boolean(process.env.OPENAI_API_KEY),autoGenerateImages:process.env.AUTO_GENERATE_IMAGES==='true',imageGenerationMode:store.getSettings().imageGenerationMode||'manual',videoVisualAIConfigured:Boolean(process.env.OPENAI_API_KEY),requireAIImages:process.env.REQUIRE_AI_IMAGES!=='false',marketProUrl:process.env.MARKETPRO_GALLERY_URL||'https://drive-vid-gallery.lovable.app/'}); });
+app.get('/api/status',async(req,res)=>{ let connected=false,user=null,error=null; try{const t=await token(); connected=true; user=await ML.me(t);}catch(e){error=safeError(e)} const supplier=store.getSupplierCatalog(); res.json({connected,user,error,site:SITE,version:'1.8.77',livePublish:process.env.ML_LIVE_PUBLISH_ENABLED==='true',redirectUri:REDIRECT,productCount:store.getProducts().length,persistence:persistenceInfo(),database:store.getDbState?.()||null,supplierCatalog:{configured:Boolean(supplier?.products?.length),count:supplier?.products?.length||0,meta:supplier?.meta||null,persistentMaster:true,expires:false},imageAIConfigured:Boolean(process.env.OPENAI_API_KEY),autoGenerateImages:process.env.AUTO_GENERATE_IMAGES==='true',imageGenerationMode:store.getSettings().imageGenerationMode||'manual',videoVisualAIConfigured:Boolean(process.env.OPENAI_API_KEY),requireAIImages:process.env.REQUIRE_AI_IMAGES!=='false',marketProUrl:process.env.MARKETPRO_GALLERY_URL||'https://drive-vid-gallery.lovable.app/'}); });
 app.get('/api/products',(req,res)=>res.json(store.getProducts()));
 app.get('/api/persistence',(req,res)=>res.json({...persistenceInfo(),products:store.getProducts().length}));
 app.post('/api/state/restore-products',async(req,res)=>{try{
@@ -3534,7 +3534,7 @@ async function startOperationalWorkers(){
     const st=store.getSettings(); if(st.postPublishPipelineEnabled===false||!store.getTokens())return;
     const pending=store.getProducts().filter(p=>p.ml_item_id&&(!p.postPublishPipeline||['PENDING','WAITING','ERROR','ACTION_REQUIRED'].includes(String(p.postPublishPipeline?.status||'PENDING')))).slice(0,1);
     pending.forEach(async p=>{
-      // V1.8.76: autorização é de uso único. Nunca reutilizar por horas/dias uma aprovação antiga.
+      // V1.8.77: autorização é de uso único. Nunca reutilizar por horas/dias uma aprovação antiga.
       // O timer faz somente leitura/reconciliação; mudanças remotas exigem nova ação explícita ou automação própria habilitada.
       if(p.postPublishExecutionApprovedAt&&!postPublishApprovalIsFresh(p)){await store.updateProduct(p.id,{postPublishExecutionApprovedAt:null,postPublishExecutionExpiredAt:new Date().toISOString()}).catch(()=>{});}
       buildPostPublishCorrectionPlan(store.findProduct(p.id,p.sku)||p,{persist:true}).catch(e=>console.warn('[POST-PUBLISH-PLAN]',p.sku,safeError(e)));
@@ -3581,6 +3581,6 @@ const dbHeartbeat=setInterval(async()=>{
 dbHeartbeat.unref?.();
 
 app.listen(PORT,()=>{
-  console.log(`RA ML Publisher Pro v1.8.76 em ${PORT}`);
+  console.log(`RA ML Publisher Pro v1.8.77 em ${PORT}`);
   bootstrapPersistentState();
 });

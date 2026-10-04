@@ -1,0 +1,23 @@
+REDE ACHADOS BR — PATCH V1.8.77
+HOTFIX DE DEPLOY RENDER + ANTI-LOOP PRESERVADO
+
+CAUSA DO BUILD STATUS 1:
+- package.json executava postinstall: node scripts/check-ocr.js
+- o Dockerfile fazia npm install ANTES de copiar a pasta scripts
+- além disso, scripts/check-ocr.js não estava presente no patch/repositório publicado
+- resultado: npm install encerrava com status 1 e a V1.8.76 nunca entrava no ar
+
+CORREÇÃO:
+1. scripts/check-ocr.js agora acompanha o patch.
+2. Dockerfile copia o script ANTES de npm install.
+3. A checagem OCR continua ativa.
+4. Todas as travas anti-loop da V1.8.76 / Helper V1.2 são preservadas.
+
+APLICAÇÃO:
+- Substitua os arquivos deste patch no repositório.
+- Faça commit/push.
+- No Render use Clear build cache & deploy.
+- Aguarde o build concluir com sucesso.
+- Faça Ctrl+Shift+R no Publisher.
+- Confirme V1.8.77 no rodapé.
+- Mantenha somente o Helper Chrome V1.2 ativo.
