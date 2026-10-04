@@ -1,0 +1,18 @@
+REDE ACHADOS BR — HELPER MERCADO LIVRE V1.2.0
+
+CORREÇÃO CRÍTICA ANTI-LOOP
+- Uma única aba pode comandar cada automação.
+- O Helper nunca repete o mesmo clique por estágio.
+- O link do anúncio é aberto na MESMA aba quando possível.
+- Limite máximo de 7 ações por execução.
+- Pesquisa na Central é feita no máximo 1 vez.
+- Ao atingir página inesperada/404, a automação PARA.
+
+INSTALAÇÃO
+1. Em chrome://extensions, REMOVA ou DESATIVE o Helper V1.1 antigo.
+2. Extraia este ZIP em uma pasta nova.
+3. Ative Modo do desenvolvedor.
+4. Clique em Carregar sem compactação e escolha esta pasta.
+5. Confirme versão 1.2.0.
+
+IMPORTANTE: não mantenha V1.1 e V1.2 instalados ao mesmo tempo.

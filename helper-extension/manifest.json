@@ -1,0 +1,19 @@
+{
+  "manifest_version": 3,
+  "name": "Rede Achados BR · Helper Mercado Livre",
+  "version": "1.2.0",
+  "description": "Helper com trava de aba única, limite de ações e anti-loop para o fluxo Verificar produto do Publisher Rede Achados BR.",
+  "permissions": ["storage", "tabs"],
+  "background": {"service_worker": "background.js"},
+  "content_scripts": [
+    {
+      "matches": [
+        "https://vendedores.mercadolivre.com.br/*",
+        "https://www.mercadolivre.com.br/*",
+        "https://mercadolivre.com.br/*"
+      ],
+      "js": ["content.js"],
+      "run_at": "document_idle"
+    }
+  ]
+}

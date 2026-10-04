@@ -1,0 +1,24 @@
+REDE ACHADOS BR — PATCH V1.8.76
+CORREÇÃO CRÍTICA: ANTI-LOOP DA AUTOMAÇÃO “VERIFICAR PRODUTO”
+
+O que foi corrigido:
+- Publisher abre somente 1 aba por execução.
+- Botão de reabrir fica bloqueado se a primeira aba abriu corretamente.
+- Cada execução recebe um runId único.
+- Helper V1.2 tem trava global de aba única.
+- Cada etapa só pode clicar uma vez.
+- A busca na Central ocorre no máximo uma vez.
+- O link do anúncio é navegado na mesma aba quando possível.
+- Limite rígido de 7 ações; ao atingir o limite, PARA.
+- Página 404/inesperada faz a automação PARAR, nunca tentar de novo em loop.
+- Estado antigo do Helper V1.1 é removido automaticamente.
+
+INSTALAÇÃO SEGURA:
+1. PRIMEIRO desative/remova o Helper V1.1 em chrome://extensions.
+2. Feche as abas duplicadas do Mercado Livre.
+3. Substitua o Publisher pela V1.8.76 e faça Deploy/Restart.
+4. Ctrl+F5 e confirme V1.8.76 no rodapé.
+5. Instale o Helper V1.2.0 da pasta helper-extension ou do ZIP separado.
+6. Só então teste UMA SKU.
+
+NÃO mantenha V1.1 e V1.2 ativos ao mesmo tempo.
