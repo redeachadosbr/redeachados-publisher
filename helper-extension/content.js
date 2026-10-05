@@ -1,150 +1,282 @@
 (() => {
   'use strict';
-  const KEY='ra_ml_verify_product_auto_v3';
-  const OLD_KEYS=['ra_ml_verify_product_auto_v2'];
-  const MAX_MS=6*60*1000;
-  const MAX_ACTIONS=7;
-  const MIN_ACTION_GAP=1200;
-  const JUSTIFICATION='Produto diferente do catálogo sugerido.';
-
-  const norm=v=>String(v??'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase().replace(/\s+/g,' ').trim();
-  const visible=el=>{if(!el||!el.isConnected)return false;const s=getComputedStyle(el);if(s.display==='none'||s.visibility==='hidden'||Number(s.opacity)===0)return false;const r=el.getBoundingClientRect();return r.width>0&&r.height>0;};
-  const wait=ms=>new Promise(r=>setTimeout(r,ms));
-  const byText=(tests,{exact=false,root=document}={})=>{const arr=Array.isArray(tests)?tests:[tests];for(const el of [...root.querySelectorAll('button,[role="button"],a,label,div[tabindex],span[tabindex]')].filter(visible)){const t=norm(el.innerText||el.textContent||'');if(!t)continue;if(arr.some(q=>exact?t===norm(q):t.includes(norm(q))))return el;}return null;};
-  const click=el=>{if(!el||!visible(el))return false;el.scrollIntoView({block:'center',inline:'center'});el.dispatchEvent(new MouseEvent('mousedown',{bubbles:true,cancelable:true,view:window}));el.dispatchEvent(new MouseEvent('mouseup',{bubbles:true,cancelable:true,view:window}));el.click();return true;};
-  const nativeSet=(el,value)=>{const proto=el instanceof HTMLTextAreaElement?HTMLTextAreaElement.prototype:HTMLInputElement.prototype;const d=Object.getOwnPropertyDescriptor(proto,'value');if(d?.set)d.set.call(el,value);else el.value=value;el.dispatchEvent(new Event('input',{bubbles:true}));el.dispatchEvent(new Event('change',{bubbles:true}));};
-  const storage={
-    get:()=>new Promise(resolve=>chrome.storage.local.get([KEY],o=>resolve(o?.[KEY]||null))),
-    set:st=>new Promise(resolve=>chrome.storage.local.set({[KEY]:st},resolve)),
-    clear:()=>new Promise(resolve=>chrome.storage.local.remove([KEY],resolve)),
-    clearOld:()=>new Promise(resolve=>chrome.storage.local.remove(OLD_KEYS,resolve))
+  if (window.top !== window) return;
+  const REASON = 'Solicito manter este anúncio tradicional, sem vinculação a um produto de catálogo.';
+  const BANNER_ID = 'ra-ml-helper-banner';
+  const norm = value => String(value ?? '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().replace(/\s+/g, ' ').trim();
+  const escapeRegex = value => String(value).replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  const visible = el => {
+    if (!el?.isConnected || el.closest(`#${BANNER_ID},[hidden],[inert],[aria-hidden="true"]`)) return false;
+    const style = getComputedStyle(el), rect = el.getBoundingClientRect();
+    return style.display !== 'none' && style.visibility !== 'hidden' && Number(style.opacity) !== 0 && rect.width > 0 && rect.height > 0;
   };
-  const message=payload=>new Promise(resolve=>{try{chrome.runtime.sendMessage(payload,r=>resolve(r||{ok:false,granted:false}));}catch(_){resolve({ok:false,granted:false});}});
-
-  let banner=null;
-  function show(title,detail='',tone='run'){
-    if(!banner){banner=document.createElement('div');banner.id='ra-ml-helper-banner';banner.style.cssText='position:fixed;right:18px;top:18px;z-index:2147483647;width:min(420px,calc(100vw - 36px));background:#102a56;color:#fff;border:2px solid #ffe600;border-radius:16px;box-shadow:0 12px 38px rgba(0,0,0,.28);padding:14px 16px;font:14px/1.35 Arial,sans-serif;';document.documentElement.appendChild(banner);}
-    banner.style.background=tone==='ok'?'#0f6b45':tone==='error'?'#8e2f2f':'#102a56';
-    banner.innerHTML=`<div style="font-weight:800;font-size:15px;margin-bottom:5px">Rede Achados BR · Helper V1.2</div><div style="font-weight:800;margin-bottom:4px">${String(title).replace(/[<>]/g,'')}</div><div style="opacity:.92">${String(detail).replace(/[<>]/g,'')}</div><button id="ra-helper-cancel" style="margin-top:10px;border:1px solid rgba(255,255,255,.55);background:transparent;color:#fff;border-radius:8px;padding:5px 9px;cursor:pointer">PARAR automação</button>`;
-    banner.querySelector('#ra-helper-cancel').onclick=async()=>{const st=await storage.get();await storage.clear();if(st?.runId)await message({type:'RA_RELEASE',runId:st.runId});show('Automação parada','Nenhum outro clique automático será feito.','error');};
+  const enabled = el => visible(el) && !el.disabled && el.getAttribute('aria-disabled') !== 'true';
+  const onscreen = el => {
+    if (!enabled(el)) return false;
+    const r = el.getBoundingClientRect();
+    if (![r.top, r.bottom, r.left, r.right].every(Number.isFinite)) return true;
+    return r.bottom >= 0 && r.right >= 0 && r.top <= (globalThis.innerHeight || document.documentElement.clientHeight || 100000) && r.left <= (globalThis.innerWidth || document.documentElement.clientWidth || 100000);
+  };
+  const text = el => norm(el?.innerText || el?.textContent || '');
+  const labelsOf = el => [text(el), norm(el?.getAttribute?.('aria-label')), norm(el?.getAttribute?.('title')), norm(el?.value)].filter(Boolean);
+  const labelMatch = (value, wanted, loose = false) => value === wanted || (loose && value.includes(wanted) && value.length <= wanted.length + 80);
+  function pageText() {
+    const clone = document.body?.cloneNode(true);
+    clone?.querySelectorAll(`#${BANNER_ID},script,style,[hidden],[aria-hidden="true"]`).forEach(el => el.remove());
+    return text(clone);
   }
-  const markerFromLocation=()=>{if(!location.hash.includes('ra-auto-verify-product=1'))return null;const h=new URLSearchParams(location.hash.slice(1));return {runId:h.get('ra-run')||'',itemId:h.get('ra-item')||'',sku:h.get('ra-sku')||'',userProductId:h.get('ra-up')||'',title:h.get('ra-title')||''};};
-  async function startFromHash(){
-    await storage.clearOld();
-    const m=markerFromLocation();if(!m)return;
-    const runId=m.runId||`${m.itemId||m.sku||'run'}-${Date.now()}`;
-    const prev=await storage.get();
-    if(!prev||prev.runId!==runId||Date.now()>Number(prev.expiresAt||0)){
-      const st={...m,runId,stage:'locate',startedAt:Date.now(),expiresAt:Date.now()+MAX_MS,lastActionAt:0,searchAttempts:0,actionCount:0,lastUrl:location.href};
-      await storage.set(st);await message({type:'RA_BEGIN',runId,itemId:m.itemId||''});
+  function controls(labels, root = document, loose = false) {
+    const names = labels.map(norm), results = [];
+    const selectors = ['button,a,[role="button"],input[type="button"],input[type="submit"],[onclick],[tabindex]', 'span,div,p'];
+    for (const selector of selectors) {
+      for (const el of root.querySelectorAll(selector)) {
+        if (!visible(el)) continue;
+        const matched = labelsOf(el).some(value => names.some(name => labelMatch(value, name, loose)));
+        if (!matched) continue;
+        const parent = el.closest('button,a,[role="button"],[onclick],[tabindex]');
+        const target = parent && visible(parent) ? parent : el;
+        if (results.some(other => other === target || other.contains?.(target))) continue;
+        if (target.matches?.('span,div,p') && [...(target.children || [])].some(child => visible(child) && labelsOf(child).some(value => names.some(name => labelMatch(value, name, loose))))) continue;
+        results.push(target);
+      }
     }
-    show('Automação iniciada',`Proteção de aba única ativa. Vou trabalhar somente com ${m.sku||m.itemId||'esta SKU'}.`);
+    return results;
   }
-  function bodyHas(...terms){const t=norm(document.body?.innerText||'');return terms.some(x=>t.includes(norm(x)));}
-  function pageMatchesTarget(st){
-    const href=String(location.href||'');
-    if(st.itemId&&href.includes(st.itemId))return true;
-    if(st.userProductId&&href.includes(st.userProductId))return true;
-    const body=norm(document.body?.innerText||'');
-    if(st.sku&&body.includes(norm(st.sku)))return true;
-    const title=norm(st.title||'');if(title&&title.length>18&&body.includes(title.slice(0,Math.min(45,title.length))))return true;
-    return false;
+  const preferred = items => items.find(onscreen) || items.find(enabled) || null;
+  const control = (labels, root, loose = false) => preferred(controls(labels, root, loose));
+  function tokenIn(value, token) {
+    return !!token && new RegExp(`(^|[^a-z0-9])${escapeRegex(norm(token))}($|[^a-z0-9])`, 'i').test(norm(value));
   }
-  async function owned(st){const r=await message({type:'RA_CLAIM',runId:st.runId,itemId:st.itemId||''});return Boolean(r?.granted);}
-  async function stop(st,title,detail){await storage.set({...st,stage:'stopped',stoppedAt:Date.now()});await message({type:'RA_RELEASE',runId:st.runId});show(title,detail,'error');}
-  async function advance(st,stage,msg,extra={},countAction=false){
-    const actionCount=Number(st.actionCount||0)+(countAction?1:0);
-    const next={...st,...extra,stage,lastActionAt:Date.now(),actionCount,lastUrl:location.href};
-    await storage.set(next);show('Executando',msg);
-    return next;
+  function hasIdentity(el, state) {
+    const value = text(el);
+    const itemNumber = state.itemId.replace(/^MLB/, '');
+    return tokenIn(value, state.itemId) || tokenIn(value, itemNumber) || tokenIn(value, state.sku) || tokenIn(value, state.userProductId);
   }
-  const addMarker=(href,st)=>{try{const u=new URL(href,location.href);u.hash=new URLSearchParams({'ra-auto-verify-product':'1','ra-run':st.runId||'','ra-item':st.itemId||'','ra-sku':st.sku||'','ra-up':st.userProductId||'','ra-title':st.title||''}).toString();return u.toString();}catch(_){return href;}};
-  function exactRow(st){
-    const needles=[st.itemId,st.userProductId,st.sku].filter(Boolean).map(norm);
-    const blocks=[...document.querySelectorAll('tr,li,article,[data-testid],[class*="item"],[class*="card"],[class*="row"]')].filter(visible);
-    for(const b of blocks){const t=norm(b.innerText||b.textContent||'');if(needles.some(n=>n&&t.includes(n)))return b;}
-    for(const a of [...document.querySelectorAll('a[href]')].filter(visible)){const href=String(a.href||'');if([st.itemId,st.userProductId].filter(Boolean).some(id=>href.includes(id)))return a.closest('tr,li,article,[data-testid],[class*="item"],[class*="card"],[class*="row"]')||a;}
+  function singleListing(el, state) {
+    const value = text(el), number = state.itemId.replace(/^MLB/, '');
+    const ids = value.match(/(?:#\s*|mlb)\d{8,}/g) || [];
+    if (ids.some(id => id.replace(/\D/g, '') !== number)) return false;
+    const skus = [...value.matchAll(/\bsku\s*:?\s*([a-z0-9][a-z0-9._-]*)/g)].map(match => match[1]);
+    return !state.sku || skus.every(sku => sku === norm(state.sku));
+  }
+  function routeMatches(state) {
+    const parts = location.pathname.toUpperCase().split('/').filter(Boolean);
+    return parts.includes(state.itemId) || (state.userProductId && parts.includes(state.userProductId));
+  }
+  function trustedEditPage(state) {
+    if (!/\/anuncios\/[^/]+\/modificar(?:\/|$)/i.test(location.pathname)) return false;
+    // The owner tab is already bound to this run. Mercado Livre can rewrite MLB -> MLBU
+    // and can keep responsive duplicate controls in the DOM. On the edit route, once the
+    // exact listing was opened by this run, the Verify action is safe to resolve by page state.
+    return routeMatches(state) || !!state.actions.edit || state.stage === 'opening-item';
+  }
+  function catalogFlowPage(state) {
+    if (!/\/publicar\/catalogo(?:\/|$)/i.test(location.pathname)) return false;
+    return routeMatches(state) || !!state.actions.verify || ['verify-clicked','different-clicked','not-found-clicked','confirmed','filled','sending'].includes(state.stage);
+  }
+  function targetDifferent() {
+    const direct = control(['Não, é diferente', 'Não é diferente'], document, true);
+    if (direct) return direct;
+    const candidates = document.querySelectorAll('button,a,[role="button"],[onclick],[tabindex],span,div');
+    for (const el of candidates) {
+      if (!visible(el)) continue;
+      const label = labelsOf(el).join(' ');
+      if (/^nao[,!.]?\s+e\s+diferente\b/.test(label) || /\bnao[,!.]?\s+e\s+diferente\b/.test(label)) return el.closest('button,a,[role="button"],[onclick],[tabindex]') || el;
+    }
     return null;
   }
-  async function locateAndOpen(st){
-    if(st.stage!=='locate')return false;
-    if(byText(['Verificar produto'],{exact:true})||bodyHas('verifique o produto de catalogo que sugerimos')){await advance(st,'item-page','Anúncio correto localizado. Preparando “Verificar produto”.');return false;}
-    const row=exactRow(st);
-    if(row){
-      const links=[...row.querySelectorAll('a[href]')].filter(visible);
-      const target=links.find(a=>/\/modificar(?:\/|$|\?)/i.test(a.href))||links.find(a=>[st.itemId,st.userProductId].filter(Boolean).some(id=>String(a.href).includes(id)));
-      if(target){
-        const next=await advance(st,'opening-item',`Encontrei ${st.sku||st.itemId}. Abrindo UMA vez, na mesma aba.`,{},true);
-        location.assign(addMarker(target.href,next));return true;
+  function targetVerify(state) {
+    const buttons = controls(['Verificar produto'], document, true).filter(enabled);
+    // On an exact listings table, identity still wins and protects against another SKU.
+    for (const button of buttons) {
+      for (let node = button.parentElement; node && node !== document.body; node = node.parentElement) {
+        if (hasIdentity(node, state) && singleListing(node, state)) return button;
       }
-      const edit=byText(['Alterar','Editar','Modificar'],{exact:false,root:row});
-      if(edit){const next=await advance(st,'opening-item',`Encontrei ${st.sku||st.itemId}. Abrindo UMA vez pela Central.`,{},true);click(edit);return true;}
     }
-    const inputs=[...document.querySelectorAll('input')].filter(visible);
-    const search=inputs.find(i=>/buscar|pesquis|sku|produto|anuncio|anúncio/i.test(`${i.placeholder||''} ${i.getAttribute('aria-label')||''}`));
-    const query=st.itemId||st.sku||st.title;
-    if(search&&query&&Number(st.searchAttempts||0)<1){
-      nativeSet(search,query);search.focus();
-      const next=await advance(st,'locate',`Pesquisando ${query} uma única vez na Central.`,{searchAttempts:1},true);
-      search.dispatchEvent(new KeyboardEvent('keydown',{key:'Enter',code:'Enter',keyCode:13,which:13,bubbles:true}));
-      search.dispatchEvent(new KeyboardEvent('keyup',{key:'Enter',code:'Enter',keyCode:13,which:13,bubbles:true}));
-      return true;
-    }
-    return false;
+    // Once this run has opened the dedicated edit page, there is only one listing in scope.
+    // ML often leaves responsive duplicate copies of the same CTA in the DOM; prefer the one
+    // actually on screen instead of requiring buttons.length === 1.
+    if (trustedEditPage(state)) return preferred(buttons);
+    return null;
   }
-
-  let busy=false;
-  async function tick(){
-    if(busy)return;let st=await storage.get();if(!st||st.stage==='stopped'||st.stage==='sent')return;
-    if(Date.now()>Number(st.expiresAt||0)){await stop(st,'Tempo esgotado','Parei a automação. Nenhum outro clique será feito.');return;}
-    if(Number(st.actionCount||0)>=MAX_ACTIONS){await stop(st,'Limite de segurança atingido',`Foram executadas ${st.actionCount} ações. Parei antes de qualquer repetição.`);return;}
-    if(!(await owned(st)))return;
-    if(Date.now()-Number(st.lastActionAt||0)<MIN_ACTION_GAP)return;
-    busy=true;
-    try{
-      if(bodyHas('nao foi possivel encontrar esta pagina','não foi possível encontrar esta página')){await stop(st,'Página inválida','O Mercado Livre recusou esta rota. Parei sem abrir outra aba.');return;}
-
-      if(st.stage==='locate'){
-        const navigated=await locateAndOpen(st);if(navigated)return;st=await storage.get();
-      }
-
-      if(st.stage==='opening-item'){
-        if(!pageMatchesTarget(st))return;
-        if(byText(['Verificar produto'],{exact:true})||bodyHas('verifique o produto de catalogo que sugerimos'))st=await advance(st,'item-page','SKU correta confirmada.');
-        else return;
-      }
-
-      if(st.stage==='item-page'){
-        if(!pageMatchesTarget(st))return;
-        const verify=byText(['Verificar produto'],{exact:true})||byText(['Verificar produto']);
-        if(verify){st=await advance(st,'verify-clicked','Abrindo “Verificar produto” uma única vez.',{},true);click(verify);return;}
-      }
-
-      if(st.stage==='verify-clicked'){
-        const no=byText(['Não encontro meu produto','Nao encontro meu produto','Não encontrei meu produto','Nao encontrei meu produto'],{exact:false});
-        if(no){st=await advance(st,'not-found-clicked','Selecionando “Não encontro meu produto” uma única vez.',{},true);click(no);return;}
-      }
-
-      if(st.stage==='not-found-clicked'&&bodyHas('nao encontro meu produto','não encontro meu produto','produto nao esta','produto não esta','produto diferente')){
-        const confirm=byText(['Confirmar'],{exact:true})||byText(['Continuar'],{exact:true});
-        if(confirm){st=await advance(st,'confirmed','Confirmando produto diferente uma única vez.',{},true);click(confirm);return;}
-      }
-
-      if(['confirmed','filled'].includes(st.stage)){
-        const ta=[...document.querySelectorAll('textarea')].find(visible);
-        if(ta&&bodyHas('digite as principais diferencas','principais diferencas')){
-          if(norm(ta.value)!==norm(JUSTIFICATION)){nativeSet(ta,JUSTIFICATION);st=await advance(st,'filled','Diferença preenchida.',{},true);await wait(350);}
-          const send=byText(['Enviar'],{exact:true});
-          if(send&&!send.disabled){st=await advance(st,'sending','Enviando uma única vez.',{},true);click(send);await wait(700);await storage.set({...st,stage:'sent',sentAt:Date.now()});await message({type:'RA_RELEASE',runId:st.runId});show('Enviado','Automação encerrada. O Publisher fará apenas a validação do resultado.','ok');return;}
+  function targetEdit(state) {
+    for (const a of document.querySelectorAll('a[href]')) {
+      if (!enabled(a) || !/\/modificar(?:\/|$|\?)/i.test(a.href)) continue;
+      for (let node = a; node && node !== document.body; node = node.parentElement) {
+        if (hasIdentity(node, state)) {
+          // A wrapper holding multiple listings is not a target row.
+          if (singleListing(node, state)) return a;
+          break;
         }
       }
-
-      if(Date.now()-Number(st.lastActionAt||0)>30000)show('Aguardando tela esperada',`Não encontrei o próximo passo com segurança para ${st.sku||st.itemId}. Nenhum clique será repetido.`,'error');
-    }catch(e){await stop(st,'Automação interrompida',String(e?.message||e));}
-    finally{busy=false;}
+    }
+    return null;
   }
-
-  startFromHash().then(()=>tick());
-  const obs=new MutationObserver(()=>tick());obs.observe(document.documentElement,{childList:true,subtree:true,attributes:true,attributeFilter:['disabled','aria-disabled','class','href']});
-  setInterval(tick,1500);tick();
+  function refusalModal() {
+    const matches = el => {
+      const t = text(el);
+      return t.includes('nao encontrou seu produto') && t.includes('sem competir');
+    };
+    for (const el of document.querySelectorAll('dialog,[role="dialog"],[aria-modal="true"],.andes-modal')) {
+      if (visible(el) && matches(el) && control(['Continuar'], el, true)) return el;
+    }
+    for (const el of document.querySelectorAll('h1,h2,h3,p,span,div')) {
+      if (!visible(el) || text(el) !== 'nao encontrou seu produto?') continue;
+      for (let node = el.parentElement; node && node !== document.body; node = node.parentElement) {
+        if (matches(node) && controls(['Continuar'], node, true).length === 1) return node;
+      }
+    }
+    return null;
+  }
+  const rpc = payload => new Promise(resolve => {
+    try { chrome.runtime.sendMessage(payload, result => { const error = chrome.runtime.lastError; resolve(error ? {ok: false, reason: error.message} : result || {ok: false}); }); }
+    catch (error) { resolve({ok: false, reason: String(error.message || error)}); }
+  });
+  let banner, lastBanner = '', currentRun = '', busy = false, timer;
+  function show(title, detail, tone = 'run') {
+    const signature = `${title}|${detail}|${tone}`;
+    if (signature === lastBanner && banner?.isConnected) return;
+    lastBanner = signature;
+    if (!banner?.isConnected) {
+      banner = document.createElement('aside'); banner.id = BANNER_ID;
+      banner.style.cssText = 'position:fixed;right:16px;top:16px;z-index:2147483647;width:min(360px,calc(100vw - 64px));color:white;border:2px solid #ffe600;border-radius:14px;box-shadow:0 6px 24px #0004;padding:14px;font:14px/1.4 Arial,sans-serif;';
+      document.documentElement.appendChild(banner);
+    }
+    banner.style.background = tone === 'ok' ? '#116844' : tone === 'error' ? '#8e2f2f' : '#102a56';
+    banner.replaceChildren();
+    for (const [value, bold] of [['Rede Achados BR · Helper V1.6.1', true], [title, true], [detail, false]]) {
+      const el = document.createElement('div'); el.textContent = value; el.style.marginBottom = '5px'; if (bold) el.style.fontWeight = '700'; banner.appendChild(el);
+    }
+    if (currentRun && tone !== 'ok' && title !== 'Automação parada') {
+      const button = document.createElement('button'); button.textContent = 'PARAR automação';
+      button.style.cssText = 'margin-top:6px;padding:6px 10px;border:1px solid white;border-radius:7px;background:transparent;color:white;cursor:pointer';
+      button.onclick = async () => { await rpc({type: 'RA_STOP', runId: currentRun}); show('Automação parada', 'Nenhum novo clique será feito.', 'error'); };
+      banner.appendChild(button);
+    }
+  }
+  function nativeSet(el, value) {
+    const proto = el instanceof HTMLTextAreaElement ? HTMLTextAreaElement.prototype : HTMLInputElement.prototype;
+    Object.getOwnPropertyDescriptor(proto, 'value').set.call(el, value);
+    el.dispatchEvent(new Event('input', {bubbles: true})); el.dispatchEvent(new Event('change', {bubbles: true}));
+  }
+  function click(el) {
+    if (!enabled(el)) return;
+    el.scrollIntoView({block: 'center', inline: 'center'});
+    // Preserve ML's own URL and handler. Anchors stay in the current tab where possible.
+    const anchor = el.closest('a[href]'); if (anchor) anchor.target = '_self';
+    el.click();
+  }
+  async function action(state, name, detail, operation) {
+    const reserved = await rpc({type: 'RA_ACTION', runId: state.runId, action: name});
+    if (!reserved.ok) return false;
+    // A stop or handoff queued during the reservation must prevent the DOM action.
+    const latest = await rpc({type: 'RA_GET', runId: state.runId});
+    if (!latest.granted || latest.state?.status !== 'running') return false;
+    show('Executando', detail);
+    operation();
+    return true;
+  }
+  async function tick() {
+    if (busy) return;
+    busy = true;
+    try {
+      const result = await rpc({type: 'RA_GET', runId: currentRun || undefined});
+      if (result.queued) {
+        currentRun = result.requestRunId;
+        show('Conferindo a etapa anterior', `${result.previousItemId}: ${result.message} A próxima SKU será liberada automaticamente.`);
+        return;
+      }
+      if (result.retired) {
+        show(result.remoteConfirmed ? 'Anterior conferida · sequência liberada' : 'Execução anterior encerrada', result.remoteConfirmed ? `${result.itemId}: conclusão confirmada no Mercado Livre. A próxima solicitação segue na outra aba.` : `${result.itemId}: a pendência foi preservada no Publisher.`, result.remoteConfirmed ? 'ok' : 'error');
+        return;
+      }
+      if (!result.granted || !result.state) return;
+      const state = result.state; currentRun = state.runId;
+      if (state.status === 'checking' || state.status === 'awaiting-confirmation') {
+        show(state.status === 'checking' ? 'Conferindo a pendência' : 'Conferindo a conclusão', [state.previousNotice, state.checkMessage].filter(Boolean).join(' '));
+        return;
+      }
+      if (state.status === 'finished') { show(state.remoteConfirmed ? 'Conclusão confirmada no Mercado Livre' : 'Conferindo a conclusão', state.remoteConfirmed ? 'A pendência foi retirada da fila. A próxima solicitação será liberada automaticamente.' : 'Conferindo o resultado no Publisher antes de liberar a próxima SKU.', state.remoteConfirmed ? 'ok' : 'run'); return; }
+      if (state.status !== 'running') { show('Automação parada', state.error || 'Inicie novamente pelo Publisher.', 'error'); return; }
+      if (Date.now() - state.lastActionAt < 1100) return;
+      const content = pageText();
+      if (content.includes('nao foi possivel encontrar esta pagina')) {
+        await rpc({type: 'RA_STOP', runId: state.runId, reason: 'A rota retornou página não encontrada. Nenhuma outra aba será aberta.'}); return;
+      }
+      // The supplied recording proves this is the expected refusal result, not an HTTP error.
+      const traditionalResult = content.includes('nao foi possivel verificar seu produto de catalogo') && content.includes('anuncio tradicional') && (content.includes('continuara vendendo') || content.includes('continuar vendendo')) && content.includes('normalmente');
+      if (state.actions.send && traditionalResult) {
+        const back = control(['Ir para anúncios', 'Ir para os anúncios'], document, true);
+        if (back && !state.actions.return) await action(state, 'return', 'Resposta recebida: anúncio tradicional mantido. Voltando aos anúncios.', () => click(back));
+        return;
+      }
+      if (state.responseConfirmed && state.actions.return && !catalogFlowPage(state) && /\/anuncios(?:\/|$)/i.test(location.pathname)) {
+        await rpc({type: 'RA_FINISH', runId: state.runId}); schedule(); return;
+      }
+      if (catalogFlowPage(state)) {
+        const fields = [...document.querySelectorAll('textarea')].filter(visible);
+        if ((content.includes('digite as principais diferencas') || content.includes('produto se diferencia') || content.includes('principais diferencas')) && fields.length === 1 && !state.actions.send) {
+          const field = fields[0];
+          if (!field.value.trim()) {
+            if (!state.actions.fill) await action(state, 'fill', 'Preenchendo o pedido de manter o anúncio tradicional.', () => nativeSet(field, REASON));
+            return;
+          }
+          const send = control(['Enviar'], document, true);
+          if (send) await action(state, 'send', 'Enviando uma vez e aguardando a resposta do Mercado Livre.', () => click(send));
+          return;
+        }
+        const modal = refusalModal();
+        if (modal && !state.actions.continue) {
+          await action(state, 'continue', 'Confirmando “Continuar” somente na janela “Não encontrou seu produto?”.', () => click(control(['Continuar'], modal, true))); return;
+        }
+        const different = targetDifferent();
+        if (different && !state.actions.different && !state.actions.decline && !state.actions.continue && !state.actions.send) {
+          await action(state, 'different', 'Selecionando sempre “Não, é diferente”.', () => click(different)); return;
+        }
+        const decline = control(['Não encontro meu produto', 'Não encontrei meu produto'], document, true);
+        if (decline && !state.actions.decline && !state.actions.continue && !state.actions.send) {
+          await action(state, 'decline', 'Prosseguindo com “Não encontro meu produto” quando esta etapa aparecer.', () => click(decline)); return;
+        }
+      }
+      if (!state.actions.verify && !state.actions.send && !catalogFlowPage(state)) {
+        const verify = targetVerify(state);
+        if (verify) { await action(state, 'verify', `SKU ${state.sku || state.itemId} localizada. Abrindo “Verificar produto”.`, () => click(verify)); return; }
+        const edit = !state.actions.edit && targetEdit(state);
+        if (edit) { await action(state, 'edit', 'Abrindo o link de edição da SKU correta.', () => click(edit)); return; }
+        if (!state.actions.search && !state.actions.edit && /\/anuncios(?:\/|$)/i.test(location.pathname)) {
+          const input = [...document.querySelectorAll('input')].find(el => visible(el) && /busc|pesquis|sku|anuncio|anúncio/.test(norm(`${el.placeholder} ${el.getAttribute('aria-label')} ${el.getAttribute('role')} ${el.type === 'search' ? 'buscar' : ''}`)));
+          if (input && norm(input.value) !== norm(state.itemId)) {
+            await action(state, 'search', `Localizando somente ${state.itemId}.`, () => {
+              nativeSet(input, state.itemId); input.focus();
+              input.dispatchEvent(new KeyboardEvent('keydown', {key: 'Enter', code: 'Enter', keyCode: 13, which: 13, bubbles: true}));
+              input.dispatchEvent(new KeyboardEvent('keyup', {key: 'Enter', code: 'Enter', keyCode: 13, which: 13, bubbles: true}));
+            }); return;
+          }
+        }
+      }
+      const age = Date.now() - (state.lastActionAt || state.startedAt);
+      if (age > 20000) {
+        const step = {locate: 'localizar o botão na SKU correta', 'opening-item': 'localizar e clicar em “Verificar produto”', 'verify-clicked': 'abrir os produtos sugeridos', 'different-clicked': 'seguir após “Não, é diferente”', 'not-found-clicked': 'abrir a confirmação “Não encontrou seu produto?”', confirmed: 'abrir o campo “Digite as principais diferenças”', filled: 'habilitar “Enviar”', sending: 'aguardar a resposta final do Mercado Livre', returning: 'retornar ao anúncio e confirmar no Publisher'}[state.stage] || state.stage;
+        show('Aguardando Mercado Livre', `Etapa: ${step}. SKU ${state.sku || state.itemId}. O clique anterior não será repetido.`);
+      } else if (!state.lastActionAt) show('Localizando a SKU', `Procurando ${state.sku || state.itemId} na página.`, 'run');
+    } catch (error) {
+      await rpc({type: 'RA_STOP', runId: currentRun, reason: String(error?.message || error)});
+      show('Automação parada', String(error?.message || error), 'error');
+    } finally { busy = false; }
+  }
+  function schedule() { clearTimeout(timer); timer = setTimeout(tick, 150); }
+  async function start() {
+    const hash = new URLSearchParams(location.hash.slice(1));
+    if (hash.get('ra-auto-verify-product') === '1') {
+      const marker = {runId: hash.get('ra-run') || `${hash.get('ra-item')}-${Date.now()}`, itemId: hash.get('ra-item') || '', sku: hash.get('ra-sku') || '', userProductId: hash.get('ra-up') || '', title: hash.get('ra-title') || ''};
+      const result = await rpc({type: 'RA_BEGIN', marker});
+      if (!result.ok) { show('Não foi possível iniciar', 'Abra a SKU pelo botão “Resolver automaticamente” do Publisher.', 'error'); return; }
+      if (result.granted || result.queued) currentRun = result.state?.runId || result.requestRunId || marker.runId;
+      if (result.queued) show('Conferindo a etapa anterior', `${result.previousItemId}: a conclusão será conferida antes de liberar esta SKU.`);
+    }
+    const observer = new MutationObserver(records => { if (records.some(record => !banner?.contains(record.target) && record.target !== banner)) schedule(); });
+    observer.observe(document.documentElement, {childList: true, subtree: true, attributes: true, attributeFilter: ['disabled', 'aria-disabled', 'class', 'href', 'hidden']});
+    setInterval(tick, 1200); tick();
+  }
+  start();
 })();

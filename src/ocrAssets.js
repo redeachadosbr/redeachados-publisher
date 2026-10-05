@@ -4,7 +4,7 @@ const fs = require('node:fs');
 const path = require('node:path');
 const {createRequire} = require('node:module');
 
-const RELEASE = '1.8.77';
+const RELEASE = '1.8.79';
 const ASSET_BASE = `/vendor/ocr/v${RELEASE}`;
 // Tesseract 7 also selects relaxed SIMD on recent Chrome versions.
 const CORE_VARIANTS = ['', '-lstm', '-simd', '-simd-lstm', '-relaxedsimd', '-relaxedsimd-lstm'];

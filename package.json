@@ -1,13 +1,14 @@
 {
   "name": "rede-achados-br-ml-publisher-pro",
-  "version": "1.8.76",
+  "version": "1.8.79",
   "private": true,
-  "description": "Rede Achados BR - Mercado Livre Publisher Pro V1.8.76: Rede Achados BR - Mercado Livre Publisher Pro V1.8.76: Verificar Produto abre pela lista oficial da Central, localiza a SKU/MLB e deixa o próprio Mercado Livre fornecer a rota real de edição; elimina 404 de links MLBU inventados.",
+  "description": "Rede Achados BR - Mercado Livre Publisher Pro V1.8.79: auditoria de frete e preço diretamente pela API do Mercado Livre, com comparação histórica, custo WeDrop, tarifas, ADS e margem; Helper V1.6.1 fica somente no fluxo Verificar produto.",
   "main": "src/server.js",
   "scripts": {
     "start": "node src/server.js",
     "check": "node --check src/server.js && node --check src/ml.js && node --check src/store.js && node --check src/stockEngine.js && node --check src/imageStudio.js && node --check src/commercialEngine.js && node --check src/marketpro.js && node --check src/supplierCatalog.js && node --check src/variations.js && node --check src/opportunityEngine.js && node --check src/kitEngine.js && node --check src/accountingEngine.js && node --check src/promotionEngine.js && node --check src/researchEngine.js && node --check src/videoMatcher.js && node --check src/supplierVision.js && node --check src/seoEngine.js && node --check src/adsEngine.js && node --check src/monitoringEngine.js && node --check src/opsCopilot.js && node --check src/dailyOps.js && node --check public/app.js && node --check src/ocrAssets.js && node --check scripts/check-ocr.js",
-    "test": "node tests/smoke.js && node tests/v1842-flow.js && node tests/v1843-flow.js && node tests/v1844-flow.js && node tests/v1845-flow.js && node tests/v1846-flow.js",
+    "test": "node tests/smoke.js && node tests/v1842-flow.js && node tests/v1843-flow.js && node tests/v1844-flow.js && node tests/v1845-flow.js && node tests/v1846-flow.js && node tests/v1847-flow.js",
+    "postinstall": "node scripts/check-ocr.js",
     "check:ocr": "node scripts/check-ocr.js",
     "test:ocr": "node --test tests/v1863-ocr.test.js",
     "test:ocr:browser": "node tests/v1863-ocr.browser.js"

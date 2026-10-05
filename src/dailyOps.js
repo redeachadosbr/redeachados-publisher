@@ -73,7 +73,7 @@ function qualityTask(row={},qualityAlert=null,settings={}){
 function commercialTask(issue={}){
   const type=String(issue.type||'').toUpperCase();
   const view=issue.view||(type.includes('ADS')?'ads':type.includes('PROMO')||type.includes('DISCOUNT')?'promos':'pricing');
-  const labels={PRICE_BELOW_MIN:'PREÇO',PRICE_INVALID:'PREÇO',DISCOUNT_BELOW_MIN:'DESCONTO',PROMO_EXPIRING:'PROMOÇÃO',ADS_NO_SALES:'ADS',ADS_LOW_ROAS:'ADS',ADS_MARGIN_RISK:'ADS'};
+  const labels={PRICE_BELOW_MIN:'PREÇO',PRICE_INVALID:'PREÇO',DISCOUNT_BELOW_MIN:'DESCONTO',PROMO_EXPIRING:'PROMOÇÃO',ADS_NO_SALES:'ADS',ADS_LOW_ROAS:'ADS',ADS_MARGIN_RISK:'ADS',SHIPPING_PRICE_UP:'FRETE API',SHIPPING_PRICE_DOWN:'FRETE API',SHIPPING_REVIEW:'FRETE API'};
   const label=labels[type]||issue.label||'REVISÃO COMERCIAL';
   return {
     key:`commercial:${issue.itemId||issue.sku}:${type||issue.code||'issue'}`,kind:'commercial',priority:2,
@@ -102,7 +102,7 @@ function growthTask(cycle,ctx={}){
 }
 function buildTasks(cycle,ctx={}){
   const monitoring=ctx.monitoring||{},allAlerts=(monitoring.alerts||[]).filter(a=>a&&!a.waitingStock);
-  const rows=monitoring.rows||[],ads=ctx.ads||{},promos=ctx.promotions||{},promoRows=promos.rows||[],accounting=ctx.accounting||{},settings=ctx.settings||{},commercialAudit=monitoring.commercialAudit||{};
+  const rows=monitoring.rows||[],ads=ctx.ads||{},promos=ctx.promotions||{},promoRows=promos.rows||[],accounting=ctx.accounting||{},settings=ctx.settings||{},commercialAudit=monitoring.commercialAudit||{},shippingAudit=monitoring.shippingAudit||{};
   const tasks=[]; const add=t=>{if(t&&!tasks.some(x=>x.key===t.key))tasks.push(t)};
 
   // Ordem operacional:
@@ -112,8 +112,8 @@ function buildTasks(cycle,ctx={}){
   // 4) qualidade entre 80 e 95;
   // acima de 95 não entra na rotina de qualidade.
   const qualityAlerts=allAlerts.filter(a=>a.type==='QUALIDADE_BAIXA');
-  const commercialCovered=new Set(['PRECO_MUDOU','SEM_PROMOCAO','PROMO_TERMINANDO','PROMOCAO_TERMINANDO','ADS_SEM_VENDA','ROAS_BAIXO']);
-  const normalAlerts=allAlerts.filter(a=>a.type!=='QUALIDADE_BAIXA'&&!(commercialAudit.lastRunAt&&commercialCovered.has(String(a.type||''))));
+  const commercialCovered=new Set(['FRETE_MUDOU','PRECO_MUDOU','SEM_PROMOCAO','PROMO_TERMINANDO','PROMOCAO_TERMINANDO','ADS_SEM_VENDA','ROAS_BAIXO']);
+  const normalAlerts=allAlerts.filter(a=>{const type=String(a.type||'');if(type==='QUALIDADE_BAIXA')return false;if(type==='FRETE_MUDOU'&&shippingAudit.lastRunAt)return false;if(commercialAudit.lastRunAt&&commercialCovered.has(type))return false;return true;});
   const criticalOps=normalAlerts.filter(a=>a.severity==='critical');
   const otherOps=normalAlerts.filter(a=>a.severity!=='critical');
 
@@ -135,12 +135,15 @@ function buildTasks(cycle,ctx={}){
   qualityRows.filter(r=>num(r.qualityScore,101)<num(settings.dailyQualityCriticalScore,80)).forEach(r=>add(qualityTask(r,qAlertFor(r),settings)));
 
   // Preço, promoções, descontos e ADS são auditados para TODAS as SKUs da conta, sem depender da nota de qualidade.
+  // Se a auditoria de frete já explicou a correção de preço daquela SKU, evitamos duplicar a mesma ação como PRICE_BELOW_MIN.
+  const shippingActionItems=new Set((shippingAudit.issues||[]).map(i=>String(i.itemId||i.sku||'')));
   // Só entra na fila aquilo que realmente exige uma ação do operador.
   // Promoção terminando não pode virar uma etapa genérica de “ir para a tela”: se já existe
   // próxima campanha programada, não há nada a fazer; se não existe oferta segura, o sistema
   // apenas monitora. A rotina só interrompe o operador quando há uma promoção segura e aplicável.
   for(const issue of Array.isArray(commercialAudit.issues)?commercialAudit.issues:[]){
     const type=String(issue?.type||issue?.code||'').toUpperCase();
+    if(type==='PRICE_BELOW_MIN'&&shippingActionItems.has(String(issue.itemId||issue.sku||'')))continue;
     if(type==='PROMO_EXPIRING'){
       const same=promoRows.filter(r=>String(r.itemId||'')===String(issue.itemId||'')||(issue.sku&&String(r.sku||'').toLowerCase()===String(issue.sku||'').toLowerCase()));
       const scheduled=same.some(r=>String(r.status||'').toLowerCase()==='pending'||String(r.recommendation||'').toUpperCase()==='PROGRAMADA');
@@ -155,6 +158,9 @@ function buildTasks(cycle,ctx={}){
     }
     add(commercialTask(issue));
   }
+
+  // Frete é auditado diretamente pela API do Mercado Livre. O Helper do navegador não participa.
+  for(const issue of Array.isArray(shippingAudit.issues)?shippingAudit.issues:[]) add(commercialTask(issue));
 
   // Quando o Mercado Livre bloqueia um anúncio em "Verificar produto", a ação entra
   // automaticamente na fila. A política Rede Achados é manter o anúncio fora do catálogo
@@ -211,7 +217,7 @@ function summary(cycle,ctx,tasks=[]){
   const rows=ctx.monitoring?.rows||[],alerts=ctx.monitoring?.alerts||[],stockWait=rows.filter(r=>r.waitingStock).length,total=ctx.accounting?.summary?.total||{},adsRows=ctx.ads?.rows||[],adsAuditRows=ctx.ads?.auditRows||[],adsSpend=adsRows.reduce((sum,r)=>sum+num(r.metrics?.cost),0),published=publishedToday(ctx),goal=Math.max(0,Math.round(num(ctx.settings?.dailyNewProductGoal,2))),stretch=Math.max(goal,Math.round(num(ctx.settings?.dailyNewProductStretchGoal,5)));
   const criticalScore=num(ctx.settings?.dailyQualityCriticalScore,80),reviewMax=num(ctx.settings?.dailyQualityReviewMaxScore,95);
   const eligible=rows.filter(r=>!r.waitingStock&&Number.isFinite(Number(r.qualityScore))&&num(r.qualityScore,101)<=reviewMax&&qualityActionLabels(r).length>0);
-  const commercial=ctx.monitoring?.commercialAudit||{},commercialIssues=Array.isArray(commercial.issues)?commercial.issues:[],adsCommercialIssues=commercialIssues.filter(i=>/ADS/.test(String(i.type||i.code||'').toUpperCase()));
+  const commercial=ctx.monitoring?.commercialAudit||{},shipping=ctx.monitoring?.shippingAudit||{},commercialIssues=Array.isArray(commercial.issues)?commercial.issues:[],shippingIssues=Array.isArray(shipping.issues)?shipping.issues:[],adsCommercialIssues=commercialIssues.filter(i=>/ADS/.test(String(i.type||i.code||'').toUpperCase()));
   const badAds=adsRows.filter(r=>num(r.metrics?.cost)>0&&(num(r.metrics?.sales||r.metrics?.units_quantity,0)===0||num(r.metrics?.roas,999)<num(ctx.settings?.adsTargetRoas,6)));
   const adsActive=adsAuditRows.length?adsAuditRows.filter(r=>r.active).length:adsRows.filter(r=>!['paused','inactive'].includes(String(r.status||r.planStatus||'').toLowerCase())).length;
   const adsProblemCount=commercial.lastRunAt?adsCommercialIssues.length:badAds.length;
@@ -223,7 +229,7 @@ function summary(cycle,ctx,tasks=[]){
     gross:money(total.gross),net:money(total.netAfterAdsActual??total.net),
     qualityBelow:eligible.length,qualityCritical:eligible.filter(r=>num(r.qualityScore,101)<criticalScore).length,qualityImprove:eligible.filter(r=>num(r.qualityScore,101)>=criticalScore).length,
     commercialReviewed:num(commercial.verified??commercial.reviewed),commercialTotal:num(commercial.total),commercialAligned:num(commercial.aligned),
-    commercialCorrections:commercialIssues.length,commercialErrors:Array.isArray(commercial.errors)?commercial.errors.length:0,
+    commercialCorrections:commercialIssues.length+shippingIssues.length,commercialErrors:(Array.isArray(commercial.errors)?commercial.errors.length:0)+(Array.isArray(shipping.errors)?shipping.errors.length:0),shippingReviewed:num(shipping.reviewed),shippingChanges:num(shipping.changes),shippingActions:num(shipping.actions),
     catalogVerifyPending,publishedToday:published,newProductGoal:goal,newProductStretchGoal:stretch
   };
 }

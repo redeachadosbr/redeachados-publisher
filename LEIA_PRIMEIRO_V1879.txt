@@ -1,0 +1,41 @@
+REDE ACHADOS BR — PATCH PUBLISHER V1.8.79
+FRETE E PREÇO VIA API DO MERCADO LIVRE
+
+OBJETIVO DESTA VERSÃO
+- O Helper do Chrome NÃO analisa mais frete e NÃO decide preço.
+- O Helper fica dedicado somente ao fluxo visual “Verificar produto”.
+- O Publisher consulta frete, tarifa e dados do anúncio diretamente pelas APIs do Mercado Livre.
+- A cada auditoria, o Publisher compara a cotação atual com a leitura anterior salva.
+- Se o frete mudou, recalcula custo WeDrop + tarifa ML + impostos + reserva de ADS + margem.
+- Resultado por SKU: BASELINE / MANTER / AUMENTAR / REDUZIR / REVISAR.
+- O sistema não muda o preço silenciosamente. A rotina cria uma ação somente quando houver correção necessária.
+
+COMO FUNCIONA
+1. A rotina do dia inicia a auditoria de fundo.
+2. Etapa “Frete via API” consulta anúncios ativos que possuem vínculo com Publisher/WeDrop.
+3. A primeira leitura vira a base de comparação.
+4. Nas próximas leituras, variações acima de R$ 0,50 são tratadas como mudança relevante.
+5. Quando a mudança ou a margem exigir, o motor comercial faz a análise profunda e calcula um preço seguro.
+6. A tela Precificação > “Frete · API Mercado Livre” mostra frete anterior, frete atual, variação, margem, decisão e preço sugerido.
+
+HELPER
+- A pasta helper-extension deste patch é a V1.6.1.
+- Ela é a MESMA extensão já usada para “Verificar produto”; não instale uma segunda extensão.
+- Se você já está na V1.6 e está funcionando, pode manter a instalação atual.
+- Se chegou a instalar a V1.7 com frete dentro do Helper, substitua os arquivos pela V1.6.1 e recarregue a MESMA extensão.
+
+INSTALAÇÃO DO PUBLISHER
+1. Faça backup/commit da versão atual.
+2. Extraia este ZIP na raiz do repositório redeachados-ml-publisher, substituindo os arquivos.
+3. Faça commit/push para disparar o deploy no Render.
+4. Aguarde o /health mostrar version 1.8.79.
+5. Abra Precificação e confirme o novo painel “Frete · API Mercado Livre”.
+6. Clique “Conferir fretes agora” apenas se quiser forçar a leitura; a rotina diária já executa automaticamente.
+
+SEGURANÇA
+- Sem custo WeDrop: REVISAR, sem recomendação inventada.
+- Sem peso/dimensões: REVISAR, sem recomendação inventada.
+- SKU sem vínculo com Publisher/WeDrop: fica fora da auditoria automática.
+- Anúncio encerrado/sem estoque: ignorado.
+- A auditoria guarda histórico de cotação por SKU para detectar aumento ou redução na próxima leitura.
+- A compatibilidade do endpoint antigo /api/shipping-alert/analyze foi mantida, mas o Helper V1.6.1 não o utiliza.

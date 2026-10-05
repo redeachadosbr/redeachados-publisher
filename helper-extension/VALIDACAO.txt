@@ -1,0 +1,54 @@
+HELPER V1.6.1 — CORREÇÃO DO FLUXO COMPLETO “VERIFICAR PRODUTO”
+
+CAUSA OBSERVADA NO PRINT ATUAL
+A página de edição já está carregada e o botão “Verificar produto” está visível,
+mas a V1.5 permanece em “carregar o anúncio”. O Mercado Livre pode manter mais
+de uma instância responsiva do mesmo CTA no DOM e também reescrever a rota
+original MLB para MLBU/user-product. A V1.5 era conservadora demais e só
+autorizava o clique quando conseguia reduzir a detecção a uma única ocorrência.
+
+CORREÇÕES DA V1.6.1
+- Na página dedicada de edição já vinculada à execução correta, o Helper aceita
+  controles duplicados de “Verificar produto” e prioriza o que está na tela.
+- Mantém proteção por SKU nas telas de listagem para nunca clicar no anúncio
+  errado.
+- Depois de “Verificar produto”, o fluxo continua mesmo se o ML reescrever a
+  rota para MLBU ou outro identificador de user-product.
+- Prioriza “Não, é diferente” sempre que essa alternativa aparecer.
+- Quando a interface for a do vídeo, usa “Não encontro meu produto”, e nunca o
+  “Continuar” que aceitaria o produto de catálogo selecionado.
+- Na janela “Não encontrou seu produto?”, usa somente o “Continuar” da própria
+  janela.
+- Reconhece “Digite as principais diferenças” / “produto se diferencia”,
+  preenche a justificativa e envia uma única vez.
+- Só considera sucesso a tela que informa que não foi possível verificar o
+  produto de catálogo e que o anúncio continuará sendo vendido como tradicional.
+- Clica em “Ir para anúncios”, confirma a remoção da pendência no Publisher e,
+  quando a aba foi aberta pelo Publisher, fecha a aba e libera a próxima SKU.
+- Um envio já registrado continua protegido contra reenvio em retomadas.
+- A fila e a conferência remota da versão anterior foram preservadas.
+
+FLUXO VALIDADO CONTRA O VÍDEO ENVIADO
+Verificar produto > recusar correspondência / Não, é diferente quando aparecer >
+Não encontro meu produto > Continuar na confirmação > Digite as principais
+diferenças > Enviar > aguardar a resposta final > Ir para anúncios > confirmar no
+Publisher > encerrar a aba > próxima SKU.
+
+VALIDAÇÃO LOCAL EXECUTADA
+- node --check: content.js, background.js e publisher-bridge.js sem erro.
+- Manifesto: versão 1.6.1 e scripts presentes.
+- node --test tests/simulation.cjs tests/bridge.cjs
+- Resultado: 24 testes aprovados, 0 falhas.
+
+Os testes incluem duas regressões novas específicas: (1) mais de um CTA
+“Verificar produto” no DOM com escolha do controle que está na tela; (2) fluxo
+pós-verificação em rota de catálogo reescrita para MLBU.
+
+LIMITES
+A validação local simula o DOM e as APIs do Chrome/Publisher. Ela não substitui
+o teste autenticado na conta real do Mercado Livre. O pacote preserva o estado
+da execução atual para poder continuar após recarregar a extensão.
+
+FRETE / PREÇO
+- O Helper V1.6.1 não contém lógica de frete, margem ou preço.
+- Essas rotinas pertencem ao Publisher V1.8.79 via API do Mercado Livre.

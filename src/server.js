@@ -46,7 +46,7 @@ app.use(helmet({contentSecurityPolicy:false}));
 app.use(express.json({limit:'10mb'})); app.use(express.urlencoded({extended:true}));
 app.use(session({secret:process.env.SESSION_SECRET || crypto.randomBytes(32).toString('hex'),resave:false,saveUninitialized:false,proxy:true,cookie:{httpOnly:true,sameSite:'lax',secure:BASE.startsWith('https'),maxAge:12*60*60*1000}}));
 app.use(express.static(path.join(__dirname,'..','public')));
-// V1.8.77 — cliente/core compatíveis, diagnóstico e 404 real para arquivos OCR ausentes.
+// V1.8.79 — cliente/core compatíveis, diagnóstico e 404 real para arquivos OCR ausentes.
 require('./ocrAssets').mountOcrAssets(app);
 app.use('/generated', express.static(ImageStudio.MEDIA_DIR, {maxAge:'1h'}));
 
@@ -708,7 +708,7 @@ async function pictureBufferFromSource(source){
     if(!file.startsWith(root+path.sep)&&file!==root)throw new Error('Caminho de imagem inválido.');
     if(fs.existsSync(file))return {buffer:fs.readFileSync(file),filename:path.basename(file),mime:mimeFromName(file),source:src,local:true};
   }
-  const r=await axios.get(src,{responseType:'arraybuffer',timeout:30000,headers:{'User-Agent':'RedeAchadosBR-MLPublisher/1.8.77'}});
+  const r=await axios.get(src,{responseType:'arraybuffer',timeout:30000,headers:{'User-Agent':'RedeAchadosBR-MLPublisher/1.8.79'}});
   const mime=String(r.headers?.['content-type']||mimeFromName(src)).split(';')[0];
   return {buffer:Buffer.from(r.data),filename:`produto-${crypto.randomBytes(3).toString('hex')}.${mime.includes('png')?'png':mime.includes('webp')?'webp':'jpg'}`,mime,source:src,local:false};
 }
@@ -1817,7 +1817,7 @@ app.get('/health',async(req,res)=>{
   const db0=store.getDbState?.()||{};
   if(db0.configured&&db0.initialized&&db0.connected===false)await store.ensureConnected?.(0);
   const database=store.getDbState?.()||null;
-  res.json({ok:true,version:'1.8.77',persistence:store.pool?'postgres':'local-file',database,databaseOperational:!database?.configured||Boolean(database?.initialized&&database?.connected!==false)});
+  res.json({ok:true,version:'1.8.79',persistence:store.pool?'postgres':'local-file',database,databaseOperational:!database?.configured||Boolean(database?.initialized&&database?.connected!==false)});
 });
 app.get('/connect/mercadolivre',(req,res,next)=>{ if(!req.session?.operator?.id)return res.redirect('/?login=1'); if(!process.env.ML_CLIENT_ID||!process.env.ML_CLIENT_SECRET) return res.status(503).send('Configure ML_CLIENT_ID e ML_CLIENT_SECRET no Render.'); const state=crypto.randomBytes(24).toString('hex'); const p=ML.pkce(); req.session.mlOAuth={state,verifier:p.verifier,created:Date.now()}; req.session.save((err)=>{ if(err) return next(err); res.redirect(ML.authUrl({clientId:process.env.ML_CLIENT_ID,redirectUri:REDIRECT,state,challenge:p.challenge})); }); });
 app.get('/auth/mercadolivre/callback',async(req,res)=>{ try{ const {code,state}=req.query; const o=req.session.mlOAuth; if(!o||!code||!state||state!==o.state) throw new Error('OAuth state inválido. Inicie novamente pelo Publisher.'); const data=await ML.exchangeCode({clientId:process.env.ML_CLIENT_ID,clientSecret:process.env.ML_CLIENT_SECRET,redirectUri:REDIRECT,code,verifier:o.verifier}); await store.setTokens(data); delete req.session.mlOAuth; res.redirect('/?connected=1'); }catch(e){res.status(500).send(`<h2>Falha ao conectar Mercado Livre</h2><pre>${safeError(e)}</pre><a href='/'>Voltar</a>`);} });
@@ -1825,7 +1825,7 @@ app.post('/webhooks/mercadolivre',(req,res)=>{ const notification={id:id(),topic
 
 app.get('/api/auth/status',(req,res)=>{
   const users=store.getUsers(); const op=req.session?.operator||null;
-  res.json({authenticated:Boolean(op?.id),operator:op?{id:op.id,name:op.name,username:op.username,role:op.role,loginAt:op.loginAt,loginEventId:op.loginEventId}:null,setupRequired:users.length===0,setupCodeRequired:Boolean(process.env.APP_SETUP_CODE),mlConnected:Boolean(store.getTokens()),version:'1.8.77'});
+  res.json({authenticated:Boolean(op?.id),operator:op?{id:op.id,name:op.name,username:op.username,role:op.role,loginAt:op.loginAt,loginEventId:op.loginEventId}:null,setupRequired:users.length===0,setupCodeRequired:Boolean(process.env.APP_SETUP_CODE),mlConnected:Boolean(store.getTokens()),version:'1.8.79'});
 });
 app.post('/api/auth/setup',async(req,res)=>{
   try{
@@ -1984,7 +1984,7 @@ async function bulkItemDetails(t,ids=[]){
 }
 async function scanAccountInventory({t=null,me=null,max=1000}={}){
   t=t||await token();me=me||await ML.me(t);const ids=await allSellerItemIds(t,me.id,{max});const details=await bulkItemDetails(t,ids);const eligibleIds=await allSellerItemIds(t,me.id,{tags:'catalog_listing_eligible',max});const eligibleSet=new Set(eligibleIds);
-  const rows=details.map(item=>({itemId:item.id,userProductId:userProductIdFromMlItem(item),sku:skuFromMlItem(item),title:item.title||'',status:item.status||'',subStatus:Array.isArray(item.sub_status)?item.sub_status:[],availableQuantity:n(item.available_quantity),price:n(item.price),listingType:item.listing_type_id||'',catalogListing:Boolean(item.catalog_listing),catalogEligible:eligibleSet.has(String(item.id))||Array.isArray(item.tags)&&item.tags.includes('catalog_listing_eligible'),catalogProductId:item.catalog_product_id||'',domainId:item.domain_id||'',permalink:item.permalink||'',itemRelations:Array.isArray(item.item_relations)?item.item_relations:[],catalogBoost:Array.isArray(item.tags)&&item.tags.includes('catalog_boost'),freeShipping:Boolean(item.shipping?.free_shipping),logisticType:item.shipping?.logistic_type||'',shippingMode:item.shipping?.mode||'',dateCreated:item.date_created||null,updatedAt:item.last_updated||null,stopTime:item.stop_time||null,tags:Array.isArray(item.tags)?item.tags:[]}));
+  const rows=details.map(item=>({itemId:item.id,userProductId:userProductIdFromMlItem(item),sku:skuFromMlItem(item),title:item.title||'',status:item.status||'',subStatus:Array.isArray(item.sub_status)?item.sub_status:[],availableQuantity:n(item.available_quantity),price:n(item.price),listingType:item.listing_type_id||'',categoryId:item.category_id||'',condition:item.condition||'new',catalogListing:Boolean(item.catalog_listing),catalogEligible:eligibleSet.has(String(item.id))||Array.isArray(item.tags)&&item.tags.includes('catalog_listing_eligible'),catalogProductId:item.catalog_product_id||'',domainId:item.domain_id||'',permalink:item.permalink||'',itemRelations:Array.isArray(item.item_relations)?item.item_relations:[],catalogBoost:Array.isArray(item.tags)&&item.tags.includes('catalog_boost'),freeShipping:Boolean(item.shipping?.free_shipping),logisticType:item.shipping?.logistic_type||'',shippingMode:item.shipping?.mode||'',dateCreated:item.date_created||null,updatedAt:item.last_updated||null,stopTime:item.stop_time||null,tags:Array.isArray(item.tags)?item.tags:[]}));
   const byId=new Map(rows.map(x=>[String(x.itemId),x]));const eligible=eligibleIds.map(itemId=>byId.get(String(itemId))||{itemId:String(itemId),sku:'',title:'',status:'',catalogListing:false,catalogEligible:true,catalogEligibilityStatus:'READY_FOR_OPTIN'}).map(x=>({...x,catalogEligibilityStatus:x.catalogListing?'ALREADY_OPTED_IN':'READY_FOR_OPTIN'}));
   return {rows,eligible,scannedAt:new Date().toISOString(),sellerId:me.id};
 }
@@ -2000,7 +2000,7 @@ function sellerListUrl(itemId='',sku=''){
   return `https://www.mercadolivre.com.br/anuncios/lista?filters=OMNI_ACTIVE%7COMNI_INACTIVE%7CCHANNEL_NO_PROXIMITY_AND_NO_MP_MERCHANTS&page=1&search=${encodeURIComponent(q)}&sort=DEFAULT`;
 }
 function sellerEditUrl(itemId='',userProductId=''){
-  // V1.8.77: NÃO inventar URL /anuncios/MLBU.../modificar.
+  // V1.8.79: NÃO inventar URL /anuncios/MLBU.../modificar.
   // A Central OMNI adiciona segmentos opacos (bomni/variation/.../user_product_item_detail)
   // que não são derivados com segurança da API pública. O link correto deve nascer da própria Central.
   // Mantemos esta função por compatibilidade, mas ela só aceita uma URL completa já conhecida.
@@ -2066,7 +2066,7 @@ async function runCatalogGuard({source='manual',autoApply=true,t=null,me=null,sn
       else if(row.catalogRequirementKnown&&row.catalogEligibilityStatus==='READY_FOROPTIN'&&!row.catalogListing)optionalEligible.push(row);
       else unknown.push(row);
     }
-    // V1.8.77: "Verificar produto" deixa de ser inferido por status/catalog_product_id.
+    // V1.8.79: "Verificar produto" deixa de ser inferido por status/catalog_product_id.
     // Só entra na fila quando o /performance do próprio anúncio contém o objetivo explícito
     // de verificar o produto de catálogo. Assim anúncios inativos/sem estoque ficam fora.
     const monitorRowsByItem=new Map((store.getMonitoring().rows||[]).filter(x=>x?.itemId).map(x=>[String(x.itemId),x]));
@@ -2087,7 +2087,7 @@ async function runCatalogGuard({source='manual',autoApply=true,t=null,me=null,sn
       if(!catalogProductVerificationPending(pending))continue;
       productVerificationRequired.push({...row,verificationReason:'O objetivo oficial de qualidade do Mercado Livre mostra “Verificar produto”. Esta é a única condição que cria esta tarefa. Anúncios inativos ou sem estoque são ignorados.',verificationSource:'Mercado Livre /performance'});
     }
-    // V1.8.77: a auditoria visível não é mais poluída por classificações passivas
+    // V1.8.79: a auditoria visível não é mais poluída por classificações passivas
     // (READY_FOROPTIN / catálogo obrigatório). Mostramos somente SKUs que realmente exigem
     // “Verificar produto” e ações remotas efetivamente executadas.
     for(const row of productVerificationRequired){
@@ -2211,7 +2211,7 @@ async function runMonitoringCore({source='manual',onProgress=null,concurrency=2,
   for(let i=0;i<externalItems.length;i+=4){const part=externalItems.slice(i,i+4);const result=await Promise.all(part.map(processExternal));for(const basic of result){alerts.push(...(basic.alerts||[]));rows.push(basic)}}
   progress({phase:'finalizing',stage:'Consolidando alertas',message:'Ordenando saúde, qualidade, ADS, promoções e pendências.',percent:96,completed,total,failed});
   const unique=[];const seen=new Set();for(const a of alerts){const k=String(a.id||`${a.sku}:${a.type}:${a.message}`);if(seen.has(k))continue;seen.add(k);unique.push(a)}
-  const activeCooldowns=Object.fromEntries(Object.entries(cooldowns).filter(([,until])=>new Date(until).getTime()>Date.now()));const deepAt=new Date().toISOString();const data={lastRunAt:deepAt,lastDeepRunAt:deepAt,source,rows,alerts:unique.slice(0,300),notifications:previous.notifications||[],resolutions:previous.resolutions||[],optimizationCooldowns:activeCooldowns,errors,accountInventory,catalogEligible,accountInventoryScannedAt,newAccountItems,externalAccountItems,commercialAudit:previous.commercialAudit||null,cartAbandonmentAvailable:false,cartNote:'A API pública do Mercado Livre não expõe evento/contagem de carrinho abandonado por SKU. O Publisher usa visitas, vendas e métricas de ADS para detectar baixa conversão e recomendar ações.'};await store.setMonitoring(data);await store.addJob({id:id(),type:'monitoring',status:'sucesso',products:rows.length,alerts:unique.length,source,at:new Date().toISOString()});progress({phase:'done',stage:'Concluído',message:`${rows.length} anúncio(s) verificados · ${unique.length} alerta(s) · ${errors.length} falha(s) de consulta.`,percent:100,completed:total,total,failed});return store.getMonitoring();
+  const activeCooldowns=Object.fromEntries(Object.entries(cooldowns).filter(([,until])=>new Date(until).getTime()>Date.now()));const deepAt=new Date().toISOString();const data={lastRunAt:deepAt,lastDeepRunAt:deepAt,source,rows,alerts:unique.slice(0,300),notifications:previous.notifications||[],resolutions:previous.resolutions||[],optimizationCooldowns:activeCooldowns,errors,accountInventory,catalogEligible,accountInventoryScannedAt,newAccountItems,externalAccountItems,commercialAudit:previous.commercialAudit||null,shippingAudit:previous.shippingAudit||null,cartAbandonmentAvailable:false,cartNote:'A API pública do Mercado Livre não expõe evento/contagem de carrinho abandonado por SKU. O Publisher usa visitas, vendas e métricas de ADS para detectar baixa conversão e recomendar ações.'};await store.setMonitoring(data);await store.addJob({id:id(),type:'monitoring',status:'sucesso',products:rows.length,alerts:unique.length,source,at:new Date().toISOString()});progress({phase:'done',stage:'Concluído',message:`${rows.length} anúncio(s) verificados · ${unique.length} alerta(s) · ${errors.length} falha(s) de consulta.`,percent:100,completed:total,total,failed});return store.getMonitoring();
 }
 let monitoringInFlight=null,monitoringFastInFlight=null;
 async function runMonitoring(opts={}){
@@ -2255,7 +2255,8 @@ function monitoringRouteFor(type,product,row){
   if(['QUALIDADE_BAIXA'].includes(type))return {view:product?'products':'monitor',productId:product?.id||'',sku:row?.sku||'',label:product?'Completar qualidade oficial da publicação':'Corrigir qualidade da SKU antiga com WeDrop + Mercado Livre'};
   if(['ANUNCIO_PARADO'].includes(type))return {view:'commercial',productId:product?.id||'',sku:row?.sku||'',label:'Otimizar anúncio parado'};
   if(['CTR_BAIXO'].includes(type))return {view:'images',productId:product?.id||'',sku:row?.sku||'',label:'Revisar capa/foto principal e título'};
-  if(['CVR_BAIXO','CONVERSAO_BAIXA','FRETE_MUDOU','PRECO_MUDOU'].includes(type))return {view:'commercial',productId:product?.id||'',sku:row?.sku||'',label:'Revisar preço, frete e margem'};
+  if(type==='FRETE_MUDOU')return {view:'pricing',productId:product?.id||'',sku:row?.sku||'',label:'Analisar frete via API e preço sugerido'};
+  if(['CVR_BAIXO','CONVERSAO_BAIXA','PRECO_MUDOU'].includes(type))return {view:'commercial',productId:product?.id||'',sku:row?.sku||'',label:'Revisar preço e margem'};
   if(['SEM_PROMOCAO','PROMO_TERMINANDO'].includes(type))return {view:'promos',productId:product?.id||'',sku:row?.sku||'',label:'Revisar/aderir promoção segura'};
   if(['ADS_SEM_VENDA','ROAS_BAIXO'].includes(type))return {view:'ads',productId:product?.id||'',sku:row?.sku||'',label:'Revisar Product Ads'};
   return {view:product?'products':'monitor',productId:product?.id||'',sku:row?.sku||'',label:'Revisar anúncio'};
@@ -2294,7 +2295,7 @@ async function qualityAttributeRepair(t,row,item,product=null,{evidenceValues={}
   const supplier=legacy?.supplier||store.findSupplierSku(row?.sku);
   let base=external?legacy.base:{...product,sku:product?.sku||row?.sku||'',category_id:item?.category_id||product?.category_id||''};
   if(supplier){
-    // V1.8.77: a ficha atual da WeDrop é a fonte factual prioritária para medidas, peso, EAN,
+    // V1.8.79: a ficha atual da WeDrop é a fonte factual prioritária para medidas, peso, EAN,
     // marca, modelo e demais dados do fornecedor. Não reutilizar um snapshot antigo da SKU.
     base=initializeProductShape(SupplierCatalog.refreshFromSupplier(base,supplier),external?'legacy-quality-wedrop':'quality-wedrop');
     if(product?.id){
@@ -2349,7 +2350,7 @@ async function qualityAttributeRepair(t,row,item,product=null,{evidenceValues={}
   const pendingNow=Array.isArray(perf?.pending)?perf.pending:[];
   const attributePending=pendingNow.filter(x=>Monitoring.qualityIssueKind(x)==='attributes');
   const performanceStillNeedsAttributes=attributePending.length>0;
-  // V1.8.77: mesmo quando /performance retorna somente a palavra genérica CARACTERÍSTICAS,
+  // V1.8.79: mesmo quando /performance retorna somente a palavra genérica CARACTERÍSTICAS,
   // o Publisher monta os campos editáveis da categoria e os entrega na própria tela para o operador.
   // Primeiro tentamos achar o atributo exato dentro do payload de /performance; se ele não vier,
   // priorizamos campos obrigatórios/condicionais ainda em branco e, por último, os candidatos de maior relevância.
@@ -2509,12 +2510,18 @@ async function applyMonitoringFix(alertId,{confirm=false}={}){
     }else if(status==='active'&&effectiveQty>0){details.remoteConfirmed=true;message=`Anúncio ativo com ${effectiveQty} unidade(s) confirmadas.`;}
     else if(status==='paused'&&effectiveQty<=0){const target=pp?desiredStockTarget(pp):{quantity:0}; if(target.quantity>0){message=`O fornecedor/local indica ${target.quantity} unidade(s), mas o estoque remoto ainda não foi confirmado. A SKU permanece em correção, não como “sem estoque”.`;details.requiresManual=Boolean(details.stockError);details.stockSyncPending=!details.stockError;}else{message='Fornecedor e Mercado Livre estão sem estoque confirmado. A SKU ficará em observação até o estoque voltar.';details.waitingStock=true;details.supplierOutOfStock=true;}}
     else{message=`Não é seguro reativar automaticamente. Status ${status||'desconhecido'}${subs.length?` · ${subs.join(', ')}`:''}.`;details.requiresManual=true;}
-  }else if(['FRETE_MUDOU','PRECO_MUDOU','CVR_BAIXO','CONVERSAO_BAIXA'].includes(a.type)){
-    if(!p)throw Object.assign(new Error('Esta SKU não está cadastrada no Publisher para recalcular preço/frete automaticamente.'),{status:422});
+  }else if(a.type==='FRETE_MUDOU'){
+    const inv={...row,itemId:row.itemId,status:row.status||'active',availableQuantity:row.availableQuantity??1,price:n(row.currentPrice||row.price),listingType:row.listingType||row.listing_type_id||'',logisticType:row.logisticType||row.logistic_type||'',shippingMode:row.shippingMode||row.shipping_mode||'me2',freeShipping:Boolean(row.freeShipping??row.free_shipping),categoryId:row.categoryId||row.category_id||'',condition:row.condition||'new'};
+    const audit=await auditShippingViaApi(inv,{t,source:'monitor-freight-api',force:true});
+    details.shippingAudit=audit;details.reanalyzed=true;details.analysisOnly=true;details.priceChangeApplied=false;changed=true;
+    const decision=String(audit?.decision||'REVISAR').toUpperCase();details.requiresManual=['AUMENTAR','REDUZIR','REVISAR'].includes(decision);
+    route={view:'pricing',productId:p?.id||'',sku:row.sku||'',label:'Revisar frete via API e preço sugerido'};
+    message=audit?.message||`Frete consultado diretamente pela API do Mercado Livre. Decisão: ${decision}. Nenhum preço foi alterado automaticamente.`;
+  }else if(['PRECO_MUDOU','CVR_BAIXO','CONVERSAO_BAIXA'].includes(a.type)){
+    if(!p)throw Object.assign(new Error('Esta SKU não está cadastrada no Publisher para recalcular preço/margem automaticamente.'),{status:422});
     const analysis=await analyzeCommercial(p,{refreshMarket:true});const patch=commercialPatchFromResult(p,analysis);const current=store.getProducts().find(x=>String(x.id)===String(p.id))||p;const merged={...current,...patch};patch.quality=quality(merged);patch.readiness=productReadiness({...merged,quality:patch.quality});await store.updateProduct(p.id,patch);changed=true;
-    const recommended=n(patch.priceRecommendation?.grossUploadPrice||analysis.pricingRecommendation?.grossUploadPrice||analysis.recommendedScenario?.price);const activePromo=Number(row.promotion?.activeCount||0)>0;
-    if(a.type==='FRETE_MUDOU'&&recommended>0&&!activePromo&&Math.abs(recommended-n(row.currentPrice))>.01){await ML.updateItem(t,row.itemId,{price:Number(recommended.toFixed(2))});message=`Frete/margem recalculados e preço do anúncio ajustado para R$ ${recommended.toFixed(2)}.`;details.remotePriceChanged=true;}
-    else{message=activePromo?'Preço/frete recalculados. Há promoção ativa; o sistema preservou o preço remoto e abriu revisão comercial para não quebrar a oferta.':'Preço, frete e margem foram recalculados. Revise a recomendação comercial antes de alterar conteúdo/preço adicional.';details.reanalyzed=true;}
+    const activePromo=Number(row.promotion?.activeCount||0)>0;
+    message=activePromo?'Preço e margem recalculados. Há promoção ativa; o sistema preservou o preço remoto e abriu revisão comercial para não quebrar a oferta.':'Preço e margem foram recalculados. Revise a recomendação comercial antes de qualquer alteração remota.';details.reanalyzed=true;details.analysisOnly=true;details.priceChangeApplied=false;
   }else if(['SEM_PROMOCAO','PROMO_TERMINANDO'].includes(a.type)){
     const state=await scanPromotions({autoApply:false,itemId:row.itemId});const eligible=(state.rows||[]).filter(x=>String(x.itemId)===String(row.itemId)&&x.eligible&&x.status==='candidate').sort((x,y)=>n(y.projectedMargin)-n(x.projectedMargin));
     if(eligible.length){const chosen=eligible[0];const out=await applyPromotionRow(chosen,t);changed=true;message=`Promoção segura aplicada: ${chosen.typeLabel||chosen.type} · margem projetada ${n(chosen.projectedMargin).toFixed(1)}%.`;details.promotion={rowId:chosen.id,type:chosen.type,promoPrice:chosen.promoPrice,projectedMargin:chosen.projectedMargin,out};}
@@ -2615,7 +2622,7 @@ async function applyMonitoringFix(alertId,{confirm=false}={}){
       if(details.republicationAdvice)message+=` ${details.republicationAdvice}`;
     }
     }
-    // V1.8.77 — se CARACTERÍSTICAS foi validada, essa causa sai da fila imediatamente.
+    // V1.8.79 — se CARACTERÍSTICAS foi validada, essa causa sai da fila imediatamente.
     // A nota geral pode continuar em 80–95 enquanto o Mercado Livre recalcula ou por outra causa;
     // isso não pode prender o operador na mesma correção já concluída.
     if(details.attributeResolved){
@@ -2677,7 +2684,8 @@ function monitoringCorrectionPlan(alertId){
     add('1. Conferir estoque real',`Comparar estoque do fornecedor/local (${target?.quantity??'não disponível'}) com o estoque remoto correto (${row.stockSource==='multiwarehouse'?'User Product / seller_warehouse':'anúncio'}: ${row.availableQuantity??'não disponível'}).`,'Confirmar a quantidade remota depois da leitura.');
     if(target&&Number(row.availableQuantity)!==Number(target.quantity))add('2. Corrigir estoque',`Se não houver vendas que impeçam reposição, sincronizar ${row.availableQuantity??0} → ${target.quantity} unidade(s).`,'Ler novamente o estoque remoto e exigir a quantidade esperada.');
     add('3. Corrigir status',`Se houver estoque confirmado e não existir bloqueio de moderação, reativar o anúncio ${row.itemId}.`,'Consultar o item e confirmar status active.');
-  }else if(['FRETE_MUDOU','PRECO_MUDOU','CVR_BAIXO','CONVERSAO_BAIXA'].includes(a.type)){add('1. Recotar frete','Consultar frete atual e recalcular custo, tarifa, margem e preço seguro.');add('2. Proteger margem','Atualizar preço remoto apenas quando não houver promoção/automação que torne a alteração insegura.','Confirmar o preço remoto após a alteração.');}
+  }else if(a.type==='FRETE_MUDOU'){add('1. Consultar frete pela API','Consultar diretamente o custo de envio atual no Mercado Livre e comparar com a leitura anterior.');add('2. Recalcular margem','Combinar frete, custo WeDrop, tarifa, impostos e reserva de ADS para calcular a margem e o preço seguro.');add('3. Recomendar sem alterar','Classificar em AUMENTAR, MANTER, REDUZIR ou REVISAR e mostrar o preço sugerido.','Nenhuma alteração de preço é enviada automaticamente nesta etapa.');}
+  else if(['PRECO_MUDOU','CVR_BAIXO','CONVERSAO_BAIXA'].includes(a.type)){add('1. Reanalisar preço','Recalcular custo, tarifa, margem e preço seguro.');add('2. Proteger margem','Gerar recomendação comercial sem alterar o preço remoto silenciosamente.','Revisar a recomendação antes de qualquer alteração no Mercado Livre.');}
   else if(['SEM_PROMOCAO','PROMO_TERMINANDO'].includes(a.type)){add('1. Consultar promoções','Buscar campanhas elegíveis para esta SKU.');add('2. Aplicar oferta segura','Escolher somente opção que preserve a margem mínima.','Consultar promoções novamente e confirmar a adesão.');}
   else if(['ADS_SEM_VENDA','ROAS_BAIXO'].includes(a.type)){add('1. Proteger orçamento','Pausar o Ad Group somente se ele for gerenciado pelo Publisher.','Confirmar o estado enviado ao Product Ads.');}
   else if(a.type==='ANUNCIO_PARADO'){add('1. Reanalisar oferta','Recalcular SEO, preço, frete e margem.');add('2. Otimizar com segurança','Atualizar título somente sem vendas e aplicar promoção apenas se houver margem.','Colocar a SKU em observação de 72 h.');}
@@ -2728,7 +2736,7 @@ app.post('/api/monitoring/quality/attribute-evidence',imageUpload.single('image'
       await store.setMonitoring({...st,rows:rowsNow,alerts:[...refreshedQuality,...keepAlerts].slice(0,300)});
       return res.json({ok:true,attributeResolved:true,qualityResolved:Boolean(scoreNow!=null&&scoreNow>Math.max(80,Math.min(99,n(settingsNow.dailyQualityReviewMaxScore,95)))),remainingQualityActions:remaining,message:remaining.length?`CARACTERÍSTICAS já estava resolvida. Próxima causa de qualidade: ${remaining.join(', ')}.`:'A ficha técnica já não possui pendência de CARACTERÍSTICAS no Mercado Livre.',verification:{complete:!(Array.isArray(item.tags)&&item.tags.includes('incomplete_technical_specs')),missing:[],manualFields:[],attributePending:[],performanceAttributesPending:false,scoreAfter:scoreNow,pending:perfBefore?.pending||[],checkedAt}});
     }
-    // V1.8.77: o caminho de evidência não depende mais da OpenAI.
+    // V1.8.79: o caminho de evidência não depende mais da OpenAI.
     // O navegador faz OCR local e envia somente o texto; o servidor faz o casamento determinístico
     // contra os atributos oficiais da categoria. Texto digitado pelo operador usa o mesmo caminho.
     const manualDirect=manualAttributeEvidence(manualValues,targetAttributes,req.body?.evidenceSource||'operador');
@@ -2766,6 +2774,133 @@ app.post('/api/monitoring/quality/attribute-evidence',imageUpload.single('image'
   }catch(e){res.status(e.status||500).json({error:safeError(e),details:e.response?.data})}
 });
 
+
+function priorShippingScenario(p,{price,listingType,logisticType,shippingMode,freeShipping}){
+  const api=p?.shippingApiAudit||null;
+  if(api&&clean(api.listingType)===clean(listingType)&&clean(api.activeLogisticType||api.logisticType)===clean(logisticType)&&clean(api.shippingMode||'me2')===clean(shippingMode||'me2')&&Boolean(api.freeShipping)===Boolean(freeShipping)&&Number.isFinite(Number(api.currentShipping))){
+    return {shipping:n(api.currentShipping),price:n(api.currentPrice||price),source:'auditoria API anterior'};
+  }
+  const rows=Array.isArray(p?.commercialAnalysis?.scenarios)?p.commercialAnalysis.scenarios:[];
+  const same=rows.filter(x=>clean(x.listingType)===clean(listingType)&&clean(x.logisticType)===clean(logisticType)&&clean(x.shippingMode||'me2')===clean(shippingMode||'me2')&&Boolean(x.freeShipping)===Boolean(freeShipping));
+  if(same.length){same.sort((a,b)=>Math.abs(n(a.price)-n(price))-Math.abs(n(b.price)-n(price)));return {shipping:n(same[0].shipping),price:n(same[0].price),source:'análise comercial anterior'};}
+  const old=(p?.commercialAnalysis?.logisticsComparison||[]).find(x=>clean(x.type)===clean(logisticType)&&clean(x.mode||'me2')===clean(shippingMode||'me2'));
+  if(old?.best&&n(old.best.shipping)>=0)return {shipping:n(old.best.shipping),price:n(old.best.price),source:'comparativo logístico anterior'};
+  return null;
+}
+function shippingDecisionRows(analysis,listingType,threshold,targetMargin){
+  const rows=(analysis?.scenarios||[]).filter(x=>clean(x.listingType)===clean(listingType)&&Boolean(x.freeShipping)===(n(x.price)>=threshold)&&n(x.margin)>=targetMargin);
+  return rows.sort((a,b)=>n(a.price)-n(b.price)||n(b.profit)-n(a.profit));
+}
+
+function shippingAuditIssue(inv={},audit={}){
+  const decision=String(audit.decision||'').toUpperCase();
+  if(!['AUMENTAR','REDUZIR','REVISAR'].includes(decision))return null;
+  const current=n(audit.currentPrice),suggested=n(audit.recommendedPrice),delta=n(audit.delta);
+  const deltaText=Number.isFinite(Number(audit.delta))&&Math.abs(delta)>=.01?` O frete variou ${delta>0?'+':''}R$ ${delta.toFixed(2)}.`:'';
+  if(decision==='AUMENTAR')return commercialIssueBase(inv,'SHIPPING_PRICE_UP','FRETE API',`A API do Mercado Livre recalculou o envio.${deltaText} Com o preço atual de R$ ${current.toFixed(2)}, a margem ficou em ${n(audit.currentMargin).toFixed(1)}%. Preço seguro sugerido: R$ ${suggested.toFixed(2)}.`,`Revisar a recomendação e aumentar o preço para aproximadamente R$ ${suggested.toFixed(2)} somente se não houver promoção/automação incompatível.`,'pricing');
+  if(decision==='REDUZIR')return commercialIssueBase(inv,'SHIPPING_PRICE_DOWN','FRETE API',`A API do Mercado Livre recalculou o envio.${deltaText} Há espaço para reduzir o preço mantendo a margem configurada. Preço competitivo sugerido: R$ ${suggested.toFixed(2)}.`,`Revisar mercado e margem; se fizer sentido comercial, reduzir para aproximadamente R$ ${suggested.toFixed(2)}.`,'pricing');
+  return commercialIssueBase(inv,'SHIPPING_REVIEW','FRETE API',audit.message||`A cotação de frete via API para ${inv.sku||inv.itemId} precisa de revisão antes de alterar o preço.`,'Conferir custo WeDrop, peso/dimensões e modalidade logística. O Publisher não altera preço com dados incompletos.','pricing');
+}
+async function auditShippingViaApi(inv,{t=null,user=null,settings=null,source='shipping-api-audit',force=false}={}){
+  const itemId=clean(inv?.itemId),sku=clean(inv?.sku),status=clean(inv?.status).toLowerCase();
+  const checkedAt=new Date().toISOString(),base={itemId,sku,title:inv?.title||'',checkedAt,source,decision:'MANTER',recommendedPrice:n(inv?.price),currentPrice:n(inv?.price),priceChangeApplied:false};
+  if(!itemId)return {...base,decision:'REVISAR',message:'Item sem MLB para cotação de frete via API.'};
+  if(['closed','deleted'].includes(status)||n(inv?.availableQuantity)<=0)return {...base,decision:'IGNORAR',message:'Anúncio encerrado ou sem estoque; frete fora da fila de ação.'};
+  const products=store.getProducts(),local=products.find(p=>String(p.ml_item_id||'')===String(itemId)||(sku&&String(p.sku||'').toLowerCase()===sku.toLowerCase()))||null,supplier=sku?store.findSupplierSku(sku):null;
+  const working=local||supplier;
+  if(!working)return {...base,decision:'IGNORAR',message:'SKU não vinculada ao Publisher/WeDrop; fora da auditoria automática de margem.'};
+  const cost=n(local?.cost||supplier?.cost||working?.cost);if(cost<=0)return {...base,decision:'REVISAR',message:'Custo WeDrop não disponível; não alterei nem recomendei preço.'};
+  const dims=CE.dimensionsParam(local)||CE.dimensionsParam(supplier)||CE.dimensionsParam(working);if(!dims)return {...base,decision:'REVISAR',message:'Faltam peso/dimensões para cotar o envio pela API com segurança.'};
+  const last=local?.shippingApiAudit||null,lastAt=last?.checkedAt?new Date(last.checkedAt).getTime():0;
+  if(!force&&lastAt&&Date.now()-lastAt<4*60*60*1000)return {...last,cached:true};
+  t=t||await token();user=user||await ML.me(t);settings=settings||store.getSettings();
+  let item=inv,categoryId=clean(inv?.categoryId||local?.category_id||supplier?.category_id),condition=clean(inv?.condition||'new')||'new';
+  if(!categoryId||!clean(inv?.listingType)||!clean(inv?.logisticType)){const fresh=await ML.itemDetails(t,itemId);item={...inv,price:n(fresh.price),listingType:fresh.listing_type_id||inv.listingType,categoryId:fresh.category_id||categoryId,condition:fresh.condition||condition,freeShipping:Boolean(fresh.shipping?.free_shipping),logisticType:fresh.shipping?.logistic_type||inv.logisticType,shippingMode:fresh.shipping?.mode||inv.shippingMode,title:fresh.title||inv.title};categoryId=clean(item.categoryId);condition=clean(item.condition||condition)||'new';}
+  const currentPrice=n(item.price||local?.price),listingType=clean(item.listingType||local?.listing_type_id||'gold_special')||'gold_special',logisticType=clean(item.logisticType||settings.logisticType||'drop_off')||'drop_off',shippingMode=clean(item.shippingMode||settings.shippingMode||'me2')||'me2',freeShipping=Boolean(item.freeShipping);
+  const targetMargin=CE.clampPct(settings.targetMargin??18,5,70),minMargin=CE.clampPct(settings.pricingMinMargin??10,5,70),adsRate=CE.clampPct(local?.commercialAnalysis?.adsReserveRate??settings.adsPrePriceReservePct??settings.adsRate??0,0,45);
+  const origin=await resolveCommercialOrigin(t,user,settings,working),listingRaw=await ML.listingPrices(t,{site:SITE,price:currentPrice,listingType,categoryId,logisticType,shippingMode});
+  const shippingRaw=await ML.shippingOptions(t,{userId:user.id,itemId,dimensions:dims,itemPrice:currentPrice,listingType,mode:shippingMode,condition,logisticType,freeShipping,categoryId,zipCode:origin.zipCode||undefined});
+  const scenario=CE.scenario({price:currentPrice,listingType,listingRaw,shippingRaw,cost,taxRate:settings.taxRate,adsRate,freeShipping,logisticType,shippingMode});
+  const prior=priorShippingScenario(local||{}, {price:currentPrice,listingType,logisticType,shippingMode,freeShipping}),currentShipping=Accounting.money2(n(scenario.shipping)),previousShipping=prior?Accounting.money2(n(prior.shipping)):null,delta=prior?Accounting.money2(currentShipping-n(prior.shipping)):null,currentMargin=Math.round(n(scenario.margin)*100)/100;
+  let result={...base,currentPrice,listingType,activeLogisticType:logisticType,shippingMode,freeShipping,currentShipping,previousShipping,delta,baselineSource:prior?.source||'primeira leitura API',currentMargin,currentProfit:Accounting.money2(n(scenario.profit)),targetMargin,minMargin,decision:prior?'MANTER':'BASELINE',recommendedPrice:currentPrice,message:prior?'Frete atual conferido pela API; nenhuma correção de preço necessária.':'Primeira leitura de frete salva como base para detectar aumentos e reduções nas próximas conferências.'};
+  const changed=delta!=null&&Math.abs(delta)>.5,marginRisk=currentMargin+0.01<targetMargin;
+  if(local&&(changed||marginRisk)){
+    try{const deep=await analyzeShippingIncreaseAlert(itemId,`Auditoria automática via API · ${source}`);result={...result,...deep,source,previousShipping,delta,baselineSource:prior?.source||deep.baselineSource||'auditoria anterior',checkedAt};}
+    catch(e){result={...result,decision:'REVISAR',message:`A API detectou mudança/risco de margem, mas a análise profunda não concluiu: ${safeError(e)}`};}
+  }else if(!local&&(changed||marginRisk))result={...result,decision:'REVISAR',message:'A API detectou mudança de frete ou margem, mas esta SKU não está vinculada a um produto local do Publisher para calcular um novo preço seguro.'};
+  if(local)await store.updateProduct(local.id,{shippingApiAudit:result}).catch(()=>{});
+  return result;
+}
+async function scanShippingAudit({source='manual',inventory=null,concurrency=6,force=true,onProgress=null}={}){
+  const t=await token(),user=await ML.me(t),settings=store.getSettings();let mon=store.getMonitoring(),targets=Array.isArray(inventory)&&inventory.length?inventory:(Array.isArray(mon.accountInventory)?mon.accountInventory:[]);
+  if(!targets.length){const snap=await scanAccountInventory({t,me:user,max:1500});targets=snap.rows;mon=await store.setMonitoring({...mon,accountInventory:targets,accountInventoryScannedAt:snap.scannedAt});}
+  const localProducts=store.getProducts(),localIds=new Set(localProducts.map(p=>String(p.ml_item_id||'')).filter(Boolean)),localSkus=new Set(localProducts.map(p=>String(p.sku||'').toLowerCase()).filter(Boolean));
+  targets=targets.filter(x=>x?.itemId&&clean(x.status).toLowerCase()==='active'&&n(x.availableQuantity)>0&&(localIds.has(String(x.itemId))||localSkus.has(String(x.sku||'').toLowerCase())||Boolean(x.sku&&store.findSupplierSku(x.sku))));
+  const rows=[],errors=[],issues=[];let cursor=0,done=0;const limit=Math.max(2,Math.min(8,Number(concurrency)||6));
+  const progress=patch=>{try{onProgress&&onProgress({...patch,done,total:targets.length,at:new Date().toISOString()})}catch(_){}};
+  async function worker(){while(true){const idx=cursor++;if(idx>=targets.length)return;const inv=targets[idx];try{const audit=await auditShippingViaApi(inv,{t,user,settings,source,force});rows[idx]=audit;const issue=shippingAuditIssue(inv,audit);if(issue)issues.push({...issue,shippingAudit:audit});}catch(e){const err={sku:inv.sku||inv.itemId,itemId:inv.itemId,error:safeError(e)};errors.push(err);rows[idx]={itemId:inv.itemId,sku:inv.sku||inv.itemId,title:inv.title||'',checkedAt:new Date().toISOString(),source,decision:'REVISAR',message:err.error,error:err.error};issues.push({...commercialIssueBase(inv,'SHIPPING_REVIEW','FRETE API',`Não foi possível cotar o frete pela API: ${err.error}`,'Tente novamente; se persistir, confira peso/dimensões e a conexão Mercado Livre.','pricing'),shippingAudit:rows[idx]});}done++;progress({sku:inv.sku||inv.itemId,message:`Frete API: ${done}/${targets.length}`});}}
+  await Promise.all(Array.from({length:Math.min(limit,targets.length||1)},worker));
+  const state={lastRunAt:new Date().toISOString(),source,total:targets.length,reviewed:rows.filter(Boolean).length,changes:rows.filter(r=>r&&r.delta!=null&&Math.abs(n(r.delta))>.5).length,actions:issues.length,rows:rows.filter(Boolean),issues,errors,note:'Frete, tarifa e margem conferidos diretamente pelas APIs do Mercado Livre. O Helper não participa desta análise.'};
+  const fresh=store.getMonitoring();await store.setMonitoring({...fresh,shippingAudit:state});await store.addJob({id:id(),type:'shipping-api-audit',status:errors.length?'parcial':'sucesso',reviewed:state.reviewed,changes:state.changes,actions:state.actions,source,at:state.lastRunAt}).catch(()=>{});return state;
+}
+async function analyzeShippingIncreaseAlert(itemId,warningText=''){
+  const t=await token(),settings=store.getSettings(),user=await ML.me(t),item=await ML.itemDetails(t,itemId);
+  const sku=skuFromMlItem(item),products=store.getProducts(),p=products.find(x=>String(x.ml_item_id||'')===String(itemId))||store.findProduct('',sku);
+  const base={itemId,sku,title:item.title||'',warningText:clean(warningText).slice(0,1200),checkedAt:new Date().toISOString(),currentPrice:n(item.price),priceChangeApplied:false};
+  if(!p)return {...base,decision:'REVISAR',message:'A revisão de frete foi iniciada, mas esta SKU ainda não está vinculada a um produto do Publisher. Não alterei o preço.'};
+  if(n(p.cost)<=0)return {...base,decision:'REVISAR',message:'A revisão de frete foi iniciada, mas o custo WeDrop desta SKU não está disponível. Não alterei o preço.'};
+  const dims=CE.dimensionsParam(p);
+  if(!dims)return {...base,decision:'REVISAR',message:'A revisão de frete foi iniciada, mas faltam dimensões/peso suficientes para recotar o envio com segurança. Não alterei o preço.'};
+  const oldAnalysis=p.commercialAnalysis||null,currentPrice=n(item.price||p.price),listingType=clean(item.listing_type_id||p.listing_type_id||'gold_special')||'gold_special';
+  const activeType=clean(item.shipping?.logistic_type||settings.logisticType||'drop_off')||'drop_off',shippingMode=clean(item.shipping?.mode||settings.shippingMode||'me2')||'me2',freeShipping=Boolean(item.shipping?.free_shipping);
+  const threshold=n(settings.freeShippingThreshold,79)||79,targetMargin=CE.clampPct(settings.targetMargin??18,5,70),minMargin=CE.clampPct(settings.pricingMinMargin??10,5,70);
+  const adsRate=CE.clampPct(oldAnalysis?.adsReserveRate??settings.adsPrePriceReservePct??settings.adsRate??0,0,45),origin=await resolveCommercialOrigin(t,user,settings,p),lctx=await logisticsContext(t,user,item.category_id||p.category_id);
+  let options=lctx.options.filter(x=>['me2','me1','custom','not_specified'].includes(clean(x.mode)));if(!options.some(x=>clean(x.type)===activeType&&clean(x.mode||'me2')===shippingMode))options.unshift({type:activeType,mode:shippingMode});
+  const optionRows=[],errors=[],listingVariants=[...new Set([listingType,'gold_special','gold_pro'])];
+  for(const opt of options.slice(0,8)){
+    for(const saleType of listingVariants){
+      try{
+        const listingRaw=await ML.listingPrices(t,{site:SITE,price:currentPrice,listingType:saleType,categoryId:item.category_id||p.category_id,logisticType:opt.type,shippingMode:opt.mode});
+        const shippingRaw=await ML.shippingOptions(t,{userId:user.id,dimensions:dims,itemPrice:currentPrice,listingType:saleType,mode:opt.mode,condition:item.condition||'new',logisticType:opt.type,freeShipping,categoryId:item.category_id||p.category_id,zipCode:origin.zipCode||undefined});
+        const scenario=CE.scenario({price:currentPrice,listingType:saleType,listingRaw,shippingRaw,cost:p.cost,taxRate:settings.taxRate,adsRate,freeShipping,logisticType:opt.type,shippingMode:opt.mode});
+        const prior=priorShippingScenario({...p,commercialAnalysis:oldAnalysis},{price:currentPrice,listingType:saleType,logisticType:opt.type,shippingMode:opt.mode,freeShipping});
+        const delta=prior?Accounting.money2(n(scenario.shipping)-n(prior.shipping)):null, saleLabel=saleType==='gold_pro'?'Premium':saleType==='gold_special'?'Clássico':saleType;
+        optionRows.push({listingType:saleType,logisticType:opt.type,shippingMode:opt.mode,label:`${saleLabel} · ${logisticLabel(opt.type)}`,currentShipping:Accounting.money2(n(scenario.shipping)),previousShipping:prior?Accounting.money2(n(prior.shipping)):null,delta,baselineSource:prior?.source||'sem histórico comparável',margin:Math.round(n(scenario.margin)*100)/100,profit:Accounting.money2(n(scenario.profit)),active:saleType===listingType&&clean(opt.type)===activeType&&clean(opt.mode||'me2')===shippingMode});
+      }catch(e){errors.push(`${saleType}/${logisticLabel(opt.type)}: ${safeError(e)}`);}
+    }
+  }
+  const increasedOptions=optionRows.filter(x=>x.delta!=null&&x.delta>.5).sort((a,b)=>n(b.delta)-n(a.delta));
+  const decreasedOptions=optionRows.filter(x=>x.delta!=null&&x.delta<-.5).sort((a,b)=>n(a.delta)-n(b.delta));
+  const active=optionRows.find(x=>x.active)||null;
+  let freshAnalysis=null;
+  try{freshAnalysis=await analyzeCommercial(p,{price:currentPrice,logistic_type:activeType,shipping_mode:shippingMode,refreshMarket:false});}catch(e){errors.push(`reprecificação: ${safeError(e)}`);}
+  if(!freshAnalysis?.shippingComplete){
+    const analysis={...base,currentPrice,listingType,activeLogisticType:activeType,shippingMode,freeShipping,targetMargin,minMargin,currentMargin:active?.margin??null,currentShipping:active?.currentShipping??null,options:optionRows,increasedOptions,decreasedOptions,decision:'REVISAR',recommendedPrice:currentPrice,errors,message:'As modalidades de frete foram consultadas pela API, mas a cotação completa não ficou segura. Não alterei o preço.'};
+    await store.updateProduct(p.id,{shippingAlert:analysis}).catch(()=>{});await store.addJob({id:id(),type:'shipping-cost-alert',status:'revisar',sku,itemId,decision:'REVISAR',at:new Date().toISOString(),analysis}).catch(()=>{});return analysis;
+  }
+  const currentScenario=(freshAnalysis.scenarios||[]).filter(x=>clean(x.listingType)===listingType&&clean(x.logisticType)===activeType&&clean(x.shippingMode||'me2')===shippingMode&&Boolean(x.freeShipping)===freeShipping).sort((a,b)=>Math.abs(n(a.price)-currentPrice)-Math.abs(n(b.price)-currentPrice))[0]||freshAnalysis.recommendedScenario||freshAnalysis.bestScenario;
+  const currentMargin=n(currentScenario?.margin,active?.margin??0),minimumSalePrice=n(freshAnalysis.pricingRecommendation?.minimumSalePrice),grossSuggested=n(freshAnalysis.pricingRecommendation?.grossUploadPrice||freshAnalysis.recommendedScenario?.price||currentPrice);
+  const targetRows=shippingDecisionRows(freshAnalysis,listingType,threshold,targetMargin),minRows=shippingDecisionRows(freshAnalysis,listingType,threshold,minMargin),lowestTarget=n(targetRows[0]?.price),lowestMin=n(minRows[0]?.price);
+  const marketPrice=n(p.marketOpportunity?.marketPrice||freshAnalysis.marketOpportunity?.marketPrice),needFloor=Math.max(minimumSalePrice,lowestMin||0),needTarget=Math.max(grossSuggested,lowestTarget||0);
+  let decision='MANTER',recommendedPrice=currentPrice,reason='O novo frete ainda preserva a margem configurada; não há motivo seguro para alterar o preço.';
+  if(currentMargin+0.01<minMargin||currentPrice+0.01<needFloor){decision='AUMENTAR';recommendedPrice=Math.max(currentPrice,needTarget||needFloor||currentPrice);reason=`A margem caiu para ${currentMargin.toFixed(1)}%, abaixo do piso de ${minMargin.toFixed(1)}%.`;}
+  else if(currentMargin+0.01<targetMargin&&needTarget>currentPrice+.01){decision='AUMENTAR';recommendedPrice=needTarget;reason=`A margem ficou em ${currentMargin.toFixed(1)}%, abaixo da meta de ${targetMargin.toFixed(1)}%.`;}
+  else if(currentMargin>=targetMargin&&lowestTarget>0&&lowestTarget<currentPrice-.5&&marketPrice>0&&marketPrice<currentPrice-.5){decision='REDUZIR';recommendedPrice=lowestTarget;reason=`Há espaço para reduzir mantendo pelo menos ${targetMargin.toFixed(1)}% de margem e o preço de mercado está abaixo do atual.`;}
+  recommendedPrice=Math.round(recommendedPrice*100)/100;
+  const analysis={...base,currentPrice,listingType,activeLogisticType:activeType,shippingMode,freeShipping,targetMargin,minMargin,adsReserveRate:adsRate,currentMargin:Math.round(currentMargin*100)/100,currentProfit:Accounting.money2(n(currentScenario?.profit)),currentShipping:Accounting.money2(n(currentScenario?.shipping,active?.currentShipping||0)),minimumSalePrice:Accounting.money2(minimumSalePrice),grossSuggested:Accounting.money2(grossSuggested),marketPrice:marketPrice?Accounting.money2(marketPrice):null,decision,recommendedPrice,priceDifference:Accounting.money2(recommendedPrice-currentPrice),reason,options:optionRows,increasedOptions,decreasedOptions,errors,message:`Frete revisado. ${reason} ${decision==='AUMENTAR'?`Preço sugerido: R$ ${recommendedPrice.toFixed(2)}.`:decision==='REDUZIR'?`Preço competitivo seguro: R$ ${recommendedPrice.toFixed(2)}.`:'Preço atual mantido.'}`};
+  const patch=commercialPatchFromResult(p,freshAnalysis);await store.updateProduct(p.id,{...patch,shippingAlert:analysis});
+  await store.addJob({id:id(),type:'shipping-cost-alert',status:decision==='REVISAR'?'revisar':'analisado',sku,itemId,decision,recommendedPrice,currentPrice,at:new Date().toISOString(),analysis}).catch(()=>{});
+  await recordOperationAudit({category:'pricing',action:'SHIPPING_COST_API_ANALYZED',sku,itemId,title:item.title,status:'analyzed',confirmed:true,source:'mercadolivre-api',message:analysis.message,before:{price:currentPrice,shipping:oldAnalysis?.recommendedScenario?.shipping??null},after:{decision,recommendedPrice,currentMargin:analysis.currentMargin,currentShipping:analysis.currentShipping,increasedOptions:increasedOptions.map(x=>({label:x.label,delta:x.delta,currentShipping:x.currentShipping,previousShipping:x.previousShipping}))},links:auditLinks({itemId,sku,permalink:item.permalink||'',context:'pricing'})}).catch(()=>{});
+  return analysis;
+}
+app.post('/api/shipping-alert/analyze',async(req,res)=>{try{
+  const itemId=clean(req.body?.itemId);if(!/^MLB\d+$/i.test(itemId))return res.status(400).json({error:'Informe o MLB válido do anúncio.'});
+  const analysis=await analyzeShippingIncreaseAlert(itemId,req.body?.warningText||'');return res.json({ok:true,itemId,analysis});
+}catch(e){res.status(e.status||500).json({error:safeError(e),details:e.response?.data})}});
+app.get('/api/shipping-audit',(req,res)=>{const mon=store.getMonitoring();res.json(mon.shippingAudit||{lastRunAt:null,total:0,reviewed:0,changes:0,actions:0,rows:[],issues:[],errors:[],note:'Ainda não executado.'})});
+app.post('/api/shipping-audit/run',async(req,res)=>{try{const state=await scanShippingAudit({source:'manual-api',force:req.body?.force!==false,concurrency:n(req.body?.concurrency,6)});res.json(state)}catch(e){res.status(e.status||500).json({error:safeError(e),details:e.response?.data})}});
+app.post('/api/shipping-audit/item',async(req,res)=>{try{const itemId=clean(req.body?.itemId);if(!/^MLB\d+$/i.test(itemId))return res.status(400).json({error:'Informe o MLB válido do anúncio.'});const mon=store.getMonitoring(),inv=(mon.accountInventory||[]).find(x=>String(x.itemId)===String(itemId))||{itemId,status:'active',availableQuantity:1};const audit=await auditShippingViaApi(inv,{source:'manual-item-api',force:true});res.json({ok:true,audit})}catch(e){res.status(e.status||500).json({error:safeError(e),details:e.response?.data})}});
+
 app.post('/api/catalog-guard/product-verification/confirm',async(req,res)=>{try{
   const itemId=clean(req.body?.itemId);if(!itemId)return res.status(400).json({error:'Informe o MLB do anúncio.'});
   const t=await token(),item=await ML.itemDetails(t,itemId);let eligibility=null;try{eligibility=await ML.catalogEligibility(t,itemId)}catch(_){}
@@ -2792,7 +2927,7 @@ app.post('/api/catalog-guard/product-verification/confirm',async(req,res)=>{try{
 app.get('/api/ml/open-edit',async(req,res)=>{try{
   const itemId=clean(req.query?.itemId);if(!itemId)return res.status(400).send('Informe o itemId.');
   const t=await token(),item=await ML.itemDetails(t,itemId),sku=skuFromMlItem(item),up=userProductIdFromMlItem(item);
-  // V1.8.77: a rota profunda de edição OMNI contém tokens/segmentos gerados pela própria Central.
+  // V1.8.79: a rota profunda de edição OMNI contém tokens/segmentos gerados pela própria Central.
   // Abrir /anuncios/MLBU.../modificar diretamente causa 404. Portanto começamos pela lista oficial,
   // filtrada pelo MLB exato; o Helper encontra o cartão correto e usa o href real renderizado pelo ML.
   let url=sellerListUrl(item.id,sku);
@@ -2946,49 +3081,59 @@ function commercialPriorityOrder(inventory=[]){
 async function startDailyBackgroundWork({ci,inventory=[]}={}){
   if(dailyBackgroundPromise)return dailyBackgroundPromise;
   const settings=store.getSettings(),targets=commercialPriorityOrder(inventory),total=targets.length,batchSize=20;
-  dailyBackgroundJob={status:'running',percent:1,stage:'Product Ads',message:`Agora: conferindo ADS de ${total} anúncio(s). Depois: promoções/preço → qualidade → fechamento. Nenhuma alteração será feita sem confirmação.`,done:0,total,currentSku:'',issues:0,errors:0,startedAt:new Date().toISOString(),updatedAt:new Date().toISOString(),finishedAt:null,cycle:ci?.cycle||null};
+  dailyBackgroundJob={status:'running',percent:1,stage:'Product Ads',message:`Agora: conferindo ADS de ${total} anúncio(s). Depois: frete via API → preço/promoções → qualidade → fechamento. Nenhuma alteração será feita sem confirmação.`,done:0,total,currentSku:'',issues:0,errors:0,startedAt:new Date().toISOString(),updatedAt:new Date().toISOString(),finishedAt:null,cycle:ci?.cycle||null};
   let task;
   task=(async()=>{
     try{
       // 1) ADS: leitura em lote da conta inteira. Não altera campanhas.
       try{
-        dailyBackgroundUpdate({stage:'1/4 · Product Ads',percent:6,message:`Conferindo Product Ads de ${total} anúncio(s) diretamente no Mercado Livre.`});
+        dailyBackgroundUpdate({stage:'1/5 · Product Ads',percent:6,message:`Conferindo Product Ads de ${total} anúncio(s) diretamente no Mercado Livre.`});
         await scanAdsAutomation({autoApply:false,inventory:targets});
         const ads=store.getAds(),active=(ads.auditRows||[]).filter(x=>x.active).length;
-        dailyBackgroundUpdate({stage:'1/4 · Product Ads concluído',percent:15,message:`ADS conferido: ${active} anúncio(s) com Ad Group ativo. Agora vou conferir preço, promoção e desconto.`});
-      }catch(e){dailyBackgroundUpdate({errors:(dailyBackgroundJob.errors||0)+1,stage:'1/4 · Product Ads',message:`ADS não pôde ser concluído: ${safeError(e)}. Vou continuar as demais etapas.`});}
+        dailyBackgroundUpdate({stage:'1/5 · Product Ads concluído',percent:15,message:`ADS conferido: ${active} anúncio(s) com Ad Group ativo. Agora vou conferir o frete diretamente pela API do Mercado Livre.`});
+      }catch(e){dailyBackgroundUpdate({errors:(dailyBackgroundJob.errors||0)+1,stage:'1/5 · Product Ads',message:`ADS não pôde ser concluído: ${safeError(e)}. Vou continuar as demais etapas.`});}
 
-      // 2) Comercial: preço + promoções + descontos. Atualiza a fila a cada lote.
+      // 2) Frete: leitura direta pelas APIs do Mercado Livre. O Helper não participa.
+      try{
+        dailyBackgroundUpdate({stage:'2/5 · Frete via API',percent:16,message:`Conferindo custo de envio, tarifa e margem de ${total} anúncio(s) diretamente pela API do Mercado Livre.`});
+        const shippingAudit=await scanShippingAudit({source:`daily-shipping-api:${ci?.cycle||'current'}`,inventory:targets,concurrency:6,force:false,onProgress:p=>{
+          const fraction=p.total?p.done/p.total:1;
+          dailyBackgroundUpdate({stage:'2/5 · Frete via API',done:p.done,total:p.total,percent:16+Math.round(fraction*12),currentSku:p.sku||'',message:`Frete API: ${p.done}/${p.total}${p.sku?` · ${p.sku}`:''}. Mudanças são comparadas com a leitura anterior e só geram ação quando preço/margem precisam de ajuste.`});
+        }});
+        dailyBackgroundUpdate({stage:'2/5 · Frete via API concluído',percent:28,issues:(shippingAudit.issues||[]).length,errors:(shippingAudit.errors||[]).length,message:`Frete API concluído: ${shippingAudit.reviewed||0} anúncio(s), ${shippingAudit.changes||0} mudança(s) detectada(s), ${shippingAudit.actions||0} ação(ões) de preço/margem.`});
+      }catch(e){dailyBackgroundUpdate({errors:(dailyBackgroundJob.errors||0)+1,stage:'2/5 · Frete via API',message:`Frete via API não pôde ser concluído: ${safeError(e)}. Vou continuar preço, promoções e qualidade.`});}
+
+      // 3) Comercial: preço + promoções + descontos. Atualiza a fila a cada lote.
       for(let offset=0;offset<total;offset+=batchSize){
         const batch=targets.slice(offset,offset+batchSize);
         await scanCommercialAlignment({source:`daily-bg:${ci?.cycle||'current'}`,inventory:batch,concurrency:8,mergeExisting:true,totalOverride:total,recordJob:false,onProgress:p=>{
           const overall=Math.min(total,offset+(p.done||0)),mon=store.getMonitoring(),audit=mon.commercialAudit||{};
           const fraction=total?overall/total:1;
-          dailyBackgroundUpdate({stage:'2/4 · Preço · promoções · descontos',done:overall,total,percent:15+Math.round(fraction*50),currentSku:p.sku||'',issues:(audit.issues||[]).length,errors:(audit.errors||[]).length,message:`Agora: ${overall}/${total} anúncios comerciais conferidos${p.sku?` · ${p.sku}`:''}. Depois vou conferir qualidade.`});
+          dailyBackgroundUpdate({stage:'3/5 · Preço · promoções · descontos',done:overall,total,percent:28+Math.round(fraction*38),currentSku:p.sku||'',issues:(audit.issues||[]).length,errors:(audit.errors||[]).length,message:`Agora: ${overall}/${total} anúncios comerciais conferidos${p.sku?` · ${p.sku}`:''}. Depois vou conferir qualidade.`});
         }});
         const mon=store.getMonitoring(),audit=mon.commercialAudit||{};
-        dailyBackgroundUpdate({done:Math.min(total,offset+batch.length),total,percent:15+Math.round((total?Math.min(total,offset+batch.length)/total:1)*50),issues:(audit.issues||[]).length,errors:(audit.errors||[]).length,message:`Preço/promoções: ${Math.min(total,offset+batch.length)}/${total} · ${(audit.issues||[]).length} ponto(s) para revisar.`});
+        dailyBackgroundUpdate({done:Math.min(total,offset+batch.length),total,percent:28+Math.round((total?Math.min(total,offset+batch.length)/total:1)*38),issues:(audit.issues||[]).length,errors:(audit.errors||[]).length,message:`Preço/promoções: ${Math.min(total,offset+batch.length)}/${total} · ${(audit.issues||[]).length} ponto(s) para revisar.`});
         await waitMs(150);
       }
 
-      // 3) Qualidade: usa /performance para todos os anúncios da conta, inclusive os que não nasceram no Publisher.
+      // 4) Qualidade: usa /performance para todos os anúncios da conta, inclusive os que não nasceram no Publisher.
       let quality={reviewed:0,total,critical:0,improve:0,errors:[]};
       try{
-        dailyBackgroundUpdate({stage:'3/4 · Qualidade dos anúncios',percent:68,message:`Conferindo qualidade oficial dos ${total} anúncios. Título, foto, vídeo e características entram na orientação.`});
+        dailyBackgroundUpdate({stage:'4/5 · Qualidade dos anúncios',percent:68,message:`Conferindo qualidade oficial dos ${total} anúncios. Título, foto, vídeo e características entram na orientação.`});
         quality=await scanQualityOnly({source:`daily-quality:${ci?.cycle||'current'}`,inventory:targets,concurrency:8,onProgress:p=>{
           const fraction=p.total?p.done/p.total:1;
-          dailyBackgroundUpdate({stage:'3/4 · Qualidade dos anúncios',done:p.done,total:p.total,percent:68+Math.round(fraction*20),currentSku:p.sku||'',message:`Qualidade: ${p.done}/${p.total}${p.sku?` · ${p.sku}`:''}. Correções confirmadas entram na fila do orientador.`});
+          dailyBackgroundUpdate({stage:'4/5 · Qualidade dos anúncios',done:p.done,total:p.total,percent:68+Math.round(fraction*20),currentSku:p.sku||'',message:`Qualidade: ${p.done}/${p.total}${p.sku?` · ${p.sku}`:''}. Correções confirmadas entram na fila do orientador.`});
         }});
-      }catch(e){dailyBackgroundUpdate({errors:(dailyBackgroundJob.errors||0)+1,stage:'3/4 · Qualidade',message:`Qualidade não pôde ser concluída: ${safeError(e)}.`});}
+      }catch(e){dailyBackgroundUpdate({errors:(dailyBackgroundJob.errors||0)+1,stage:'4/5 · Qualidade',message:`Qualidade não pôde ser concluída: ${safeError(e)}.`});}
 
-      // 4) Catálogo e contabilidade são leitura/fechamento. A abertura guiada não altera remotamente sem confirmação.
+      // 5) Catálogo e contabilidade são leitura/fechamento. A abertura guiada não altera remotamente sem confirmação.
       if(settings.catalogAutoGuardEnabled!==false){
-        dailyBackgroundUpdate({stage:'4/4 · Verificar produto / catálogo',percent:92,message:'Conferindo pendências “Verificar produto” e elegibilidade de catálogo. Nenhuma confirmação de produto será feita sem sua ação.'});
+        dailyBackgroundUpdate({stage:'5/5 · Verificar produto / catálogo',percent:92,message:'Conferindo pendências “Verificar produto” e elegibilidade de catálogo. Nenhuma confirmação de produto será feita sem sua ação.'});
         try{const t=await token(),me=await ML.me(t),mon=store.getMonitoring();await runCatalogGuard({source:`daily-background:${ci?.cycle||'current'}`,autoApply:false,t,me,snapshot:{rows:mon.accountInventory||[],eligible:mon.catalogEligible||[],scannedAt:mon.accountInventoryScannedAt||null,sellerId:me.id}})}catch(e){dailyBackgroundUpdate({errors:(dailyBackgroundJob.errors||0)+1,message:`Verificar produto / catálogo: ${safeError(e)}`})}
       }
       const acc=store.getAccounting(),accAge=acc?.lastSyncAt?Date.now()-new Date(acc.lastSyncAt).getTime():Infinity;
-      if(ci?.cycle==='evening'||accAge>2*60*60*1000){dailyBackgroundUpdate({stage:'4/4 · Resultado financeiro',percent:96,message:'Atualizando o resultado financeiro. Isso não bloqueia as ações já liberadas.'});try{await syncAccounting(ci?.cycle==='evening'?7:1)}catch(e){dailyBackgroundUpdate({errors:(dailyBackgroundJob.errors||0)+1,message:`Contabilidade: ${safeError(e)}`})}}
-      const mon=store.getMonitoring(),audit=mon.commercialAudit||{},qualityState=mon.qualityAudit||quality,attention=(audit.issues||[]).length+Number(qualityState.critical||0)+Number(qualityState.improve||0),allErrors=(audit.errors||[]).length+Number((qualityState.errors||[]).length||0);
+      if(ci?.cycle==='evening'||accAge>2*60*60*1000){dailyBackgroundUpdate({stage:'5/5 · Resultado financeiro',percent:96,message:'Atualizando o resultado financeiro. Isso não bloqueia as ações já liberadas.'});try{await syncAccounting(ci?.cycle==='evening'?7:1)}catch(e){dailyBackgroundUpdate({errors:(dailyBackgroundJob.errors||0)+1,message:`Contabilidade: ${safeError(e)}`})}}
+      const mon=store.getMonitoring(),audit=mon.commercialAudit||{},shippingState=mon.shippingAudit||{},qualityState=mon.qualityAudit||quality,attention=(audit.issues||[]).length+(shippingState.issues||[]).length+Number(qualityState.critical||0)+Number(qualityState.improve||0),allErrors=(audit.errors||[]).length+(shippingState.errors||[]).length+Number((qualityState.errors||[]).length||0);
       dailyBackgroundUpdate({status:'done',percent:100,stage:'Conta conferida',message:`Conferência concluída: ${total} anúncio(s) · ${attention} ponto(s) para sua atenção. O orientador mostrará um de cada vez.`,done:total,total,issues:attention,errors:allErrors,finishedAt:new Date().toISOString(),currentSku:''});
       await store.addJob({id:id(),type:'guided-account-audit',status:allErrors?'parcial':'sucesso',reviewed:total,total,issues:attention,source:`daily-bg:${ci?.cycle||'current'}`,at:new Date().toISOString()});
     }catch(e){dailyBackgroundUpdate({status:'error',stage:'Auditoria interrompida',message:safeError(e),error:safeError(e),finishedAt:new Date().toISOString()});}
@@ -3034,7 +3179,7 @@ app.post('/api/daily-ops/settings',async(req,res)=>{
 
 app.post('/api/guide/event',async(req,res)=>{try{const op=req.session?.operator||{};const type=clean(req.body?.type||'guide-event');const entry={id:id(),type:'operator-guide',eventType:type,operatorId:op.id||null,operatorName:op.name||op.username||'',taskKey:clean(req.body?.taskKey||''),view:clean(req.body?.view||''),sku:clean(req.body?.sku||''),at:new Date().toISOString()};await store.addJob(entry);res.json({ok:true})}catch(e){res.status(500).json({error:safeError(e)})}});
 
-app.get('/api/status',async(req,res)=>{ let connected=false,user=null,error=null; try{const t=await token(); connected=true; user=await ML.me(t);}catch(e){error=safeError(e)} const supplier=store.getSupplierCatalog(); res.json({connected,user,error,site:SITE,version:'1.8.77',livePublish:process.env.ML_LIVE_PUBLISH_ENABLED==='true',redirectUri:REDIRECT,productCount:store.getProducts().length,persistence:persistenceInfo(),database:store.getDbState?.()||null,supplierCatalog:{configured:Boolean(supplier?.products?.length),count:supplier?.products?.length||0,meta:supplier?.meta||null,persistentMaster:true,expires:false},imageAIConfigured:Boolean(process.env.OPENAI_API_KEY),autoGenerateImages:process.env.AUTO_GENERATE_IMAGES==='true',imageGenerationMode:store.getSettings().imageGenerationMode||'manual',videoVisualAIConfigured:Boolean(process.env.OPENAI_API_KEY),requireAIImages:process.env.REQUIRE_AI_IMAGES!=='false',marketProUrl:process.env.MARKETPRO_GALLERY_URL||'https://drive-vid-gallery.lovable.app/'}); });
+app.get('/api/status',async(req,res)=>{ let connected=false,user=null,error=null; try{const t=await token(); connected=true; user=await ML.me(t);}catch(e){error=safeError(e)} const supplier=store.getSupplierCatalog(); res.json({connected,user,error,site:SITE,version:'1.8.79',livePublish:process.env.ML_LIVE_PUBLISH_ENABLED==='true',redirectUri:REDIRECT,productCount:store.getProducts().length,persistence:persistenceInfo(),database:store.getDbState?.()||null,supplierCatalog:{configured:Boolean(supplier?.products?.length),count:supplier?.products?.length||0,meta:supplier?.meta||null,persistentMaster:true,expires:false},imageAIConfigured:Boolean(process.env.OPENAI_API_KEY),autoGenerateImages:process.env.AUTO_GENERATE_IMAGES==='true',imageGenerationMode:store.getSettings().imageGenerationMode||'manual',videoVisualAIConfigured:Boolean(process.env.OPENAI_API_KEY),requireAIImages:process.env.REQUIRE_AI_IMAGES!=='false',marketProUrl:process.env.MARKETPRO_GALLERY_URL||'https://drive-vid-gallery.lovable.app/'}); });
 app.get('/api/products',(req,res)=>res.json(store.getProducts()));
 app.get('/api/persistence',(req,res)=>res.json({...persistenceInfo(),products:store.getProducts().length}));
 app.post('/api/state/restore-products',async(req,res)=>{try{
@@ -3534,7 +3679,7 @@ async function startOperationalWorkers(){
     const st=store.getSettings(); if(st.postPublishPipelineEnabled===false||!store.getTokens())return;
     const pending=store.getProducts().filter(p=>p.ml_item_id&&(!p.postPublishPipeline||['PENDING','WAITING','ERROR','ACTION_REQUIRED'].includes(String(p.postPublishPipeline?.status||'PENDING')))).slice(0,1);
     pending.forEach(async p=>{
-      // V1.8.77: autorização é de uso único. Nunca reutilizar por horas/dias uma aprovação antiga.
+      // V1.8.79: autorização é de uso único. Nunca reutilizar por horas/dias uma aprovação antiga.
       // O timer faz somente leitura/reconciliação; mudanças remotas exigem nova ação explícita ou automação própria habilitada.
       if(p.postPublishExecutionApprovedAt&&!postPublishApprovalIsFresh(p)){await store.updateProduct(p.id,{postPublishExecutionApprovedAt:null,postPublishExecutionExpiredAt:new Date().toISOString()}).catch(()=>{});}
       buildPostPublishCorrectionPlan(store.findProduct(p.id,p.sku)||p,{persist:true}).catch(e=>console.warn('[POST-PUBLISH-PLAN]',p.sku,safeError(e)));
@@ -3581,6 +3726,6 @@ const dbHeartbeat=setInterval(async()=>{
 dbHeartbeat.unref?.();
 
 app.listen(PORT,()=>{
-  console.log(`RA ML Publisher Pro v1.8.77 em ${PORT}`);
+  console.log(`RA ML Publisher Pro v1.8.79 em ${PORT}`);
   bootstrapPersistentState();
 });
