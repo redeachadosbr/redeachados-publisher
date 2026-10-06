@@ -7,7 +7,7 @@ export function shopeeConfig(publicBaseUrl=''){
   const partnerId=Number(envText('SHOPEE_PARTNER_ID')||0);
   const partnerKey=envText('SHOPEE_PARTNER_KEY');
   const host=mode==='live'?'https://partner.shopeemobile.com':'https://partner.test-stable.shopeemobile.com';
-  const authHost=mode==='live'?'https://open.shopee.com.br/auth':'https://open.test-stable.shopee.com.br/auth';
+  const authHost=mode==='live'?'https://open.shopee.com.br/auth':'https://open.sandbox.test-stable.shopee.com/auth';
   const redirectUri=envText('SHOPEE_REDIRECT_URI') || `${String(publicBaseUrl||'').replace(/\/$/,'')}/auth/shopee/callback`;
   return {
     mode,host,authHost,partnerId,partnerKey,redirectUri,
