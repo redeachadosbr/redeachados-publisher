@@ -852,7 +852,9 @@ app.get('/api/shopee/status', mustLogin, (req,res)=>{
 app.get('/auth/shopee/start', mustLogin, (req,res)=>{
   try{
     const cfg=shopeeConfig(baseUrl(req));
-    res.redirect(buildShopeeAuthorizationUrl(cfg));
+    const state=crypto.randomBytes(24).toString('hex');
+    req.session.shopeeOAuthState={value:state,createdAt:Date.now()};
+    res.redirect(buildShopeeAuthorizationUrl(cfg,state));
   }catch(e){
     res.status(400).send(`<h2>Shopee API não configurada</h2><p>${String(e.message||e)}</p><p><a href="/">Voltar ao Publisher</a></p>`);
   }
@@ -862,6 +864,12 @@ app.get('/auth/shopee/callback', async(req,res)=>{
   try{
     const code=String(req.query.code||'').trim();
     const shopId=Number(req.query.shop_id||0);
+    const state=String(req.query.state||'').trim();
+    const expected=req.session?.shopeeOAuthState;
+    if(!expected?.value || !state || state!==expected.value || Date.now()-Number(expected.createdAt||0)>10*60*1000){
+      throw new Error('Estado de autorização Shopee inválido ou expirado. Inicie a conexão novamente pelo Publisher.');
+    }
+    delete req.session.shopeeOAuthState;
     const cfg=shopeeConfig(baseUrl(req));
     const tokenData=await exchangeShopeeCode(cfg,{code,shopId});
     const auth=normalizeShopeeTokenResult(tokenData,shopId);
