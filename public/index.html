@@ -8,19 +8,75 @@
 </head>
 <body>
 <div class="shell">
-  <header><div class="brand">RA.</div><div><small>REDE ACHADOS BR</small><h1>Shopee</h1></div></header>
+  <header>
+    <div class="brand">RA.</div>
+    <div class="headcopy"><small>REDE ACHADOS BR</small><h1>Shopee</h1><p>Produtos · Pedidos · Ads · Relatórios</p></div>
+    <div id="statusPill" class="pill">Verificando…</div>
+  </header>
+
   <main>
-    <section id="login" class="card hidden">
-      <h2>Entrar</h2><p>Área administrativa da integração Shopee.</p>
-      <input id="password" type="password" placeholder="Senha do aplicativo">
-      <button id="loginBtn">Entrar</button><p id="loginMsg" class="msg"></p>
+    <section id="login" class="card login-card hidden">
+      <span class="eyebrow">ACESSO</span><h2>Entrar no sistema Shopee</h2>
+      <p>Use a senha administrativa configurada no Render.</p>
+      <div class="login-row"><input id="password" type="password" placeholder="Senha do aplicativo"><button id="loginBtn">Entrar</button></div>
+      <p id="loginMsg" class="msg"></p>
     </section>
+
     <section id="app" class="hidden">
-      <div class="grid">
-        <article class="card"><span class="eyebrow">CONEXÃO</span><h2 id="connTitle">Verificando…</h2><p id="connMeta"></p><div class="actions"><button id="connectBtn">Conectar Shopee</button><button class="secondary" id="testBtn">Testar loja</button><button class="secondary" id="refreshBtn">Renovar token</button></div></article>
-        <article class="card"><span class="eyebrow">MÓDULOS</span><h2>Próximas etapas</h2><p>Produtos e anúncios · Pedidos e vendas · Ads · ROAS/ACOS · Lucro por SKU · Curva ABCD.</p></article>
-      </div>
-      <pre id="output">Aguardando ação.</pre>
+      <nav class="tabs">
+        <button class="tab active" data-tab="overview">Visão geral</button>
+        <button class="tab" data-tab="products">Produtos</button>
+        <button class="tab" data-tab="orders">Pedidos</button>
+        <button class="tab" data-tab="ads">Ads</button>
+      </nav>
+
+      <section class="tabpane active" id="tab-overview">
+        <div class="metrics">
+          <article><span>Status</span><strong id="mConnection">—</strong></article>
+          <article><span>Shop ID</span><strong id="mShop">—</strong></article>
+          <article><span>Ambiente</span><strong id="mMode">—</strong></article>
+          <article><span>Tokens</span><strong id="mStorage">—</strong></article>
+        </div>
+        <div class="grid">
+          <article class="card">
+            <span class="eyebrow">CONEXÃO</span><h2 id="connTitle">Verificando…</h2><p id="connMeta"></p>
+            <div class="actions">
+              <button id="connectBtn">Conectar Shopee</button>
+              <button class="secondary" id="testBtn">Testar loja</button>
+              <button class="secondary" id="refreshBtn">Renovar token</button>
+            </div>
+          </article>
+          <article class="card">
+            <span class="eyebrow">ROADMAP</span><h2>Central Shopee Rede Achados</h2>
+            <p>Produtos e anúncios, pedidos e vendas, Ads, ROAS/ACOS, custos WeDrop, lucro líquido por SKU e Curva ABCD.</p>
+          </article>
+        </div>
+      </section>
+
+      <section class="tabpane" id="tab-products">
+        <div class="section-head"><div><span class="eyebrow">PRODUTOS</span><h2>Anúncios da loja</h2></div><button id="loadProductsBtn">Carregar produtos</button></div>
+        <div id="productsSummary" class="notice">Ainda não carregado.</div>
+        <div class="table-wrap"><table><thead><tr><th>Item ID</th><th>Status</th><th>Atualização</th><th>Ação</th></tr></thead><tbody id="productsBody"></tbody></table></div>
+      </section>
+
+      <section class="tabpane" id="tab-orders">
+        <div class="section-head"><div><span class="eyebrow">PEDIDOS</span><h2>Últimos 15 dias</h2></div><button id="loadOrdersBtn">Carregar pedidos</button></div>
+        <div id="ordersSummary" class="notice">Ainda não carregado.</div>
+        <div class="table-wrap"><table><thead><tr><th>Pedido</th><th>Status</th><th>Criação</th></tr></thead><tbody id="ordersBody"></tbody></table></div>
+      </section>
+
+      <section class="tabpane" id="tab-ads">
+        <div class="section-head"><div><span class="eyebrow">SHOPEE ADS</span><h2>Desempenho de campanhas</h2></div></div>
+        <div class="card form-card">
+          <label>Campaign IDs <input id="campaignIds" placeholder="Ex.: 11111,22222"></label>
+          <div class="dates"><label>Início <input id="adsStart" type="date"></label><label>Fim <input id="adsEnd" type="date"></label></div>
+          <button id="loadAdsBtn">Consultar desempenho</button>
+          <p class="hint">No Sandbox pode não haver campanhas. Em produção, esta área alimentará ROAS, ACOS, CPC, CTR, GMV e recomendações.</p>
+        </div>
+        <div id="adsSummary" class="notice">Ainda não carregado.</div>
+      </section>
+
+      <details class="debug"><summary>Diagnóstico técnico</summary><pre id="output">Aguardando ação.</pre></details>
     </section>
   </main>
 </div>
