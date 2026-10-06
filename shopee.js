@@ -5,16 +5,13 @@ function envText(name){ return String(process.env[name]||'').trim(); }
 export function shopeeConfig(publicBaseUrl=''){
   const mode=String(envText('SHOPEE_ENV')||'sandbox').toLowerCase()==='live'?'live':'sandbox';
   const partnerId=Number(envText('SHOPEE_PARTNER_ID')||0);
-  const partnerKeyRaw=envText('SHOPEE_PARTNER_KEY');
-  // Chaves novas exibidas pelo console podem vir com o prefixo identificador "shpk".
-  // Esse prefixo não faz parte do segredo usado no HMAC; usamos somente o conteúdo após ele.
-  const partnerKey=/^shpk/i.test(partnerKeyRaw)?partnerKeyRaw.slice(4):partnerKeyRaw;
-  const host=mode==='live'?'https://partner.shopeemobile.com':'https://partner.test-stable.shopeemobile.com';
+  const partnerKey=envText('SHOPEE_PARTNER_KEY');
+  // Sandbox V2 usa o domínio Open Platform dedicado para chamadas de API.
+  const host=mode==='live'?'https://partner.shopeemobile.com':'https://openplatform.sandbox.test-stable.shopee.sg';
   const authHost=mode==='live'?'https://open.shopee.com.br/auth':'https://open.sandbox.test-stable.shopee.com/auth';
   const redirectUri=envText('SHOPEE_REDIRECT_URI') || `${String(publicBaseUrl||'').replace(/\/$/,'')}/auth/shopee/callback`;
   return {
     mode,host,authHost,partnerId,partnerKey,redirectUri,
-    partnerKeyPrefixed:/^shpk/i.test(partnerKeyRaw),
     configured:Number.isInteger(partnerId)&&partnerId>0&&Boolean(partnerKey)&&/^https:\/\//i.test(redirectUri)
   };
 }
@@ -38,7 +35,10 @@ async function readJson(response){
   let data={};
   try{ data=text?JSON.parse(text):{}; }catch{ data={message:text||`HTTP ${response.status}`}; }
   if(!response.ok) throw new Error(data?.message||data?.error||`Shopee HTTP ${response.status}`);
-  if(data?.error) throw new Error(`${data.error}${data.message?': '+data.message:''}`);
+  if(data?.error){
+    const requestId=data?.request_id?` · request_id: ${data.request_id}`:'';
+    throw new Error(`${data.error}${data.message?': '+data.message:''}${requestId}`);
+  }
   return data;
 }
 
@@ -121,7 +121,7 @@ export function safeShopeeStatus(auth,cfg){
     mode:cfg?.mode||'sandbox',
     partnerId:cfg?.partnerId||0,
     redirectUri:cfg?.redirectUri||'',
-    partnerKeyPrefixed:Boolean(cfg?.partnerKeyPrefixed),
+    apiHost:cfg?.host||'',
     connected:Boolean(auth?.accessToken&&auth?.refreshToken&&auth?.shopId),
     shopId:Number(auth?.shopId||0),
     shopIds:Array.isArray(auth?.shopIds)?auth.shopIds:[],
