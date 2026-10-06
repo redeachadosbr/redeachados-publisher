@@ -23,6 +23,30 @@ function shopSign(cfg,path,timestamp,accessToken,shopId){
   return crypto.createHmac('sha256',cfg.partnerKey)
     .update(`${cfg.partnerId}${path}${timestamp}${accessToken}${shopId}`).digest('hex');
 }
+
+export async function callShopeeShopApi(cfg,{path,method='GET',accessToken,shopId,query={},body=null}={}){
+  requireConfigured(cfg);
+  if(!path||!String(path).startsWith('/api/v2/')) throw new Error('Caminho da API Shopee inválido.');
+  if(!accessToken||!shopId) throw new Error('access_token/shop_id da Shopee ausentes.');
+  const timestamp=Math.floor(Date.now()/1000);
+  const url=new URL(cfg.host+path);
+  url.searchParams.set('partner_id',String(cfg.partnerId));
+  url.searchParams.set('timestamp',String(timestamp));
+  url.searchParams.set('access_token',String(accessToken));
+  url.searchParams.set('shop_id',String(shopId));
+  url.searchParams.set('sign',shopSign(cfg,path,timestamp,String(accessToken),Number(shopId)));
+  for(const [key,value] of Object.entries(query||{})){
+    if(value===undefined||value===null||value==='') continue;
+    if(Array.isArray(value)) url.searchParams.set(key,value.join(','));
+    else url.searchParams.set(key,String(value));
+  }
+  const options={method:String(method||'GET').toUpperCase(),headers:{Accept:'application/json'}};
+  if(body!==null&&body!==undefined){
+    options.headers['Content-Type']='application/json';
+    options.body=JSON.stringify(body);
+  }
+  return readJson(await fetch(url,options));
+}
 function requireConfigured(cfg){
   if(!cfg?.configured) throw new Error('Configure SHOPEE_PARTNER_ID, SHOPEE_PARTNER_KEY e SHOPEE_REDIRECT_URI.');
 }
