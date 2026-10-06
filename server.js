@@ -210,6 +210,28 @@ async function makeStoryShareResponse(req,payload){
   return {ok:true,url,qrDataUrl,expiresAt:new Date(payload.exp).toISOString()};
 }
 function redirectUri(req){ return `${baseUrl(req)}/auth/tiktok/callback`; }
+
+function shopeeOAuthStateSecret(){
+  return envText('SESSION_SECRET') || envText('APP_PASSWORD') || 'redeachados-shopee-oauth-state';
+}
+function createShopeeOAuthState(){
+  const payload={v:1,ts:Date.now(),nonce:crypto.randomBytes(18).toString('hex')};
+  const body=Buffer.from(JSON.stringify(payload),'utf8').toString('base64url');
+  const sig=crypto.createHmac('sha256',shopeeOAuthStateSecret()).update(body).digest('base64url');
+  return `${body}.${sig}`;
+}
+function verifyShopeeOAuthState(raw){
+  try{
+    const token=String(raw||'').trim();
+    const [body,sig,...rest]=token.split('.');
+    if(!body||!sig||rest.length)return false;
+    const expected=crypto.createHmac('sha256',shopeeOAuthStateSecret()).update(body).digest('base64url');
+    const a=Buffer.from(sig),b=Buffer.from(expected);
+    if(a.length!==b.length||!crypto.timingSafeEqual(a,b))return false;
+    const payload=JSON.parse(Buffer.from(body,'base64url').toString('utf8'));
+    return payload?.v===1 && Number.isFinite(Number(payload.ts)) && Date.now()-Number(payload.ts) <= 10*60*1000 && Date.now()>=Number(payload.ts)-60*1000;
+  }catch{return false;}
+}
 function safeSettings(stored){
   const s=effectiveSettings(stored||{});
   return {
@@ -852,8 +874,7 @@ app.get('/api/shopee/status', mustLogin, (req,res)=>{
 app.get('/auth/shopee/start', mustLogin, (req,res)=>{
   try{
     const cfg=shopeeConfig(baseUrl(req));
-    const state=crypto.randomBytes(24).toString('hex');
-    req.session.shopeeOAuthState={value:state,createdAt:Date.now()};
+    const state=createShopeeOAuthState();
     res.redirect(buildShopeeAuthorizationUrl(cfg,state));
   }catch(e){
     res.status(400).send(`<h2>Shopee API não configurada</h2><p>${String(e.message||e)}</p><p><a href="/">Voltar ao Publisher</a></p>`);
@@ -865,11 +886,9 @@ app.get('/auth/shopee/callback', async(req,res)=>{
     const code=String(req.query.code||'').trim();
     const shopId=Number(req.query.shop_id||0);
     const state=String(req.query.state||'').trim();
-    const expected=req.session?.shopeeOAuthState;
-    if(!expected?.value || !state || state!==expected.value || Date.now()-Number(expected.createdAt||0)>10*60*1000){
+    if(!verifyShopeeOAuthState(state)){
       throw new Error('Estado de autorização Shopee inválido ou expirado. Inicie a conexão novamente pelo Publisher.');
     }
-    delete req.session.shopeeOAuthState;
     const cfg=shopeeConfig(baseUrl(req));
     const tokenData=await exchangeShopeeCode(cfg,{code,shopId});
     const auth=normalizeShopeeTokenResult(tokenData,shopId);
