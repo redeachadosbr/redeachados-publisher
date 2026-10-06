@@ -1,11 +1,11 @@
 {
   "name": "redeachados-br-publisher-web",
-  "version": "5.5.19",
+  "version": "5.5.20",
   "private": true,
   "type": "module",
   "scripts": {
     "start": "node server.js",
-    "check": "node --check server.js && node --check catalog.js && node --check public/app.js && node --check public/ui.js",
+    "check": "node --check server.js && node --check shopee.js && node --check catalog.js && node --check public/app.js && node --check public/ui.js",
     "test": "node --test tests/*.test.js"
   },
   "engines": {
@@ -17,5 +17,6 @@
     "multer": "^1.4.5-lts.1",
     "xlsx": "^0.18.5",
     "qrcode": "^1.5.4"
-  }
+  },
+  "description": "Rede Achados BR Publisher Web V5.5.20: TikTok/Instagram + catálogo Shopee e integração inicial Shopee Open Platform (OAuth, tokens e teste de loja)."
 }
