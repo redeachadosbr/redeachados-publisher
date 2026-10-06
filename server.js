@@ -6,7 +6,7 @@ import path from 'node:path';
 import {fileURLToPath} from 'node:url';
 import {
   shopeeConfig,buildShopeeAuthorizationUrl,exchangeShopeeCode,refreshShopeeToken,
-  getShopeeShopInfo,normalizeShopeeTokenResult,safeShopeeStatus
+  getShopeeShopInfo,normalizeShopeeTokenResult,safeShopeeStatus,callShopeeShopApi
 } from './shopee.js';
 
 const __dirname=path.dirname(fileURLToPath(import.meta.url));
@@ -21,6 +21,20 @@ function envText(name){return String(process.env[name]||'').trim();}
 function baseUrl(req){return (envText('PUBLIC_BASE_URL')||`${req.protocol}://${req.get('host')}`).replace(/\/$/,'');}
 function loadAuth(){try{return JSON.parse(fs.readFileSync(AUTH_FILE,'utf8'));}catch{return null;}}
 function saveAuth(auth){fs.writeFileSync(AUTH_FILE,JSON.stringify(auth,null,2));}
+
+async function getValidAuth(req){
+  let auth=loadAuth()||{};
+  const cfg=shopeeConfig(baseUrl(req));
+  if(!auth.accessToken||!auth.refreshToken||!auth.shopId) throw new Error('Shopee ainda não está conectada.');
+  const refreshAt=Number(auth.expiresAt||0)-5*60*1000;
+  if(!auth.expiresAt||Date.now()>=refreshAt){
+    const data=await refreshShopeeToken(cfg,{refreshToken:auth.refreshToken,shopId:auth.shopId});
+    const next=normalizeShopeeTokenResult(data,auth.shopId);
+    auth={...auth,...next,shopIds:next.shopIds.length?next.shopIds:(auth.shopIds||[]),lastRefreshAt:new Date().toISOString()};
+    saveAuth(auth);
+  }
+  return {auth,cfg};
+}
 function stateSecret(){return envText('SESSION_SECRET')||envText('APP_PASSWORD')||'redeachados-shopee-state';}
 function createState(){
   const body=Buffer.from(JSON.stringify({v:1,ts:Date.now(),nonce:crypto.randomBytes(18).toString('hex')}),'utf8').toString('base64url');
@@ -53,7 +67,7 @@ app.use(session({
 }));
 app.use(express.static(path.join(__dirname,'public')));
 
-app.get('/api/health',(_req,res)=>res.json({ok:true,service:'Rede Achados BR Shopee API',version:'1.0.0'}));
+app.get('/api/health',(_req,res)=>res.json({ok:true,service:'Rede Achados BR Shopee API',version:'1.1.0-dev'}));
 app.get('/api/auth-state',(req,res)=>res.json({locked:Boolean(envText('APP_PASSWORD')),loggedIn:!envText('APP_PASSWORD')||Boolean(req.session?.appAuth)}));
 app.post('/api/login',(req,res)=>{
   const required=envText('APP_PASSWORD');
@@ -100,6 +114,88 @@ app.get('/api/shopee/test-shop',mustLogin,async(req,res)=>{
     const cfg=shopeeConfig(baseUrl(req));
     const data=await getShopeeShopInfo(cfg,{accessToken:auth.accessToken,shopId:auth.shopId});
     res.json({ok:true,shopId:auth.shopId,response:data});
+  }catch(e){res.status(400).json({error:String(e.message||e)});}
+});
+
+
+app.get('/api/shopee/products',mustLogin,async(req,res)=>{
+  try{
+    const {auth,cfg}=await getValidAuth(req);
+    const pageSize=Math.max(1,Math.min(100,Number(req.query.page_size||50)));
+    const offset=Math.max(0,Number(req.query.offset||0));
+    const status=String(req.query.item_status||'NORMAL').toUpperCase();
+    const data=await callShopeeShopApi(cfg,{
+      path:'/api/v2/product/get_item_list',
+      accessToken:auth.accessToken,shopId:auth.shopId,
+      query:{offset,page_size:pageSize,item_status:status}
+    });
+    res.json({ok:true,shopId:auth.shopId,...data});
+  }catch(e){res.status(400).json({error:String(e.message||e)});}
+});
+
+app.get('/api/shopee/products/base-info',mustLogin,async(req,res)=>{
+  try{
+    const ids=String(req.query.item_ids||'').split(',').map(x=>x.trim()).filter(Boolean).slice(0,50);
+    if(!ids.length) return res.status(400).json({error:'Informe item_ids separados por vírgula.'});
+    const {auth,cfg}=await getValidAuth(req);
+    const data=await callShopeeShopApi(cfg,{
+      path:'/api/v2/product/get_item_base_info',
+      accessToken:auth.accessToken,shopId:auth.shopId,
+      query:{item_id_list:ids.join(','),need_tax_info:true,need_complaint_policy:true}
+    });
+    res.json({ok:true,shopId:auth.shopId,...data});
+  }catch(e){res.status(400).json({error:String(e.message||e)});}
+});
+
+app.get('/api/shopee/products/extra-info',mustLogin,async(req,res)=>{
+  try{
+    const ids=String(req.query.item_ids||'').split(',').map(x=>x.trim()).filter(Boolean).slice(0,50);
+    if(!ids.length) return res.status(400).json({error:'Informe item_ids separados por vírgula.'});
+    const {auth,cfg}=await getValidAuth(req);
+    const data=await callShopeeShopApi(cfg,{
+      path:'/api/v2/product/get_item_extra_info',
+      accessToken:auth.accessToken,shopId:auth.shopId,
+      query:{item_id_list:ids.join(',')}
+    });
+    res.json({ok:true,shopId:auth.shopId,...data});
+  }catch(e){res.status(400).json({error:String(e.message||e)});}
+});
+
+app.get('/api/shopee/orders',mustLogin,async(req,res)=>{
+  try{
+    const {auth,cfg}=await getValidAuth(req);
+    const nowSec=Math.floor(Date.now()/1000);
+    const to=Math.min(nowSec,Number(req.query.time_to||nowSec));
+    const from=Number(req.query.time_from||to-15*24*60*60);
+    const pageSize=Math.max(1,Math.min(100,Number(req.query.page_size||50)));
+    const query={
+      time_range_field:String(req.query.time_range_field||'create_time'),
+      time_from:from,time_to:to,page_size:pageSize,
+      cursor:String(req.query.cursor||''),
+      response_optional_fields:'order_status'
+    };
+    const data=await callShopeeShopApi(cfg,{
+      path:'/api/v2/order/get_order_list',
+      accessToken:auth.accessToken,shopId:auth.shopId,query
+    });
+    res.json({ok:true,shopId:auth.shopId,...data});
+  }catch(e){res.status(400).json({error:String(e.message||e)});}
+});
+
+app.get('/api/shopee/ads/product-campaign-performance',mustLogin,async(req,res)=>{
+  try{
+    const campaigns=String(req.query.campaign_ids||'').split(',').map(x=>x.trim()).filter(Boolean).slice(0,100);
+    if(!campaigns.length) return res.status(400).json({error:'Informe campaign_ids separados por vírgula.'});
+    const start=String(req.query.start_date||'').trim();
+    const end=String(req.query.end_date||'').trim();
+    if(!start||!end) return res.status(400).json({error:'Informe start_date e end_date no formato DD-MM-AAAA.'});
+    const {auth,cfg}=await getValidAuth(req);
+    const data=await callShopeeShopApi(cfg,{
+      path:'/api/v2/ads/get_product_campaign_daily_performance',
+      accessToken:auth.accessToken,shopId:auth.shopId,
+      query:{start_date:start,end_date:end,campaign_id_list:campaigns.join(',')}
+    });
+    res.json({ok:true,shopId:auth.shopId,...data});
   }catch(e){res.status(400).json({error:String(e.message||e)});}
 });
 
