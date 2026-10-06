@@ -1,11 +1,11 @@
 {
   "name": "redeachados-shopee",
-  "version": "1.0.0",
+  "version": "1.2.0-dev",
   "private": true,
   "type": "module",
   "scripts": {
     "start": "node server.js",
-    "check": "node --check server.js && node --check shopee.js"
+    "check": "node --check server.js && node --check shopee.js && node --check authStore.js && node --check public/app.js"
   },
   "engines": {
     "node": ">=20"
