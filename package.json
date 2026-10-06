@@ -1,35 +1,21 @@
 {
-  "name": "rede-achados-br-ml-publisher-pro",
-  "version": "1.8.79",
+  "name": "redeachados-br-publisher-web",
+  "version": "5.5.19",
   "private": true,
-  "description": "Rede Achados BR - Mercado Livre Publisher Pro V1.8.79: auditoria de frete e preço diretamente pela API do Mercado Livre, com comparação histórica, custo WeDrop, tarifas, ADS e margem; Helper V1.6.1 fica somente no fluxo Verificar produto.",
-  "main": "src/server.js",
+  "type": "module",
   "scripts": {
-    "start": "node src/server.js",
-    "check": "node --check src/server.js && node --check src/ml.js && node --check src/store.js && node --check src/stockEngine.js && node --check src/imageStudio.js && node --check src/commercialEngine.js && node --check src/marketpro.js && node --check src/supplierCatalog.js && node --check src/variations.js && node --check src/opportunityEngine.js && node --check src/kitEngine.js && node --check src/accountingEngine.js && node --check src/promotionEngine.js && node --check src/researchEngine.js && node --check src/videoMatcher.js && node --check src/supplierVision.js && node --check src/seoEngine.js && node --check src/adsEngine.js && node --check src/monitoringEngine.js && node --check src/opsCopilot.js && node --check src/dailyOps.js && node --check public/app.js && node --check src/ocrAssets.js && node --check scripts/check-ocr.js",
-    "test": "node tests/smoke.js && node tests/v1842-flow.js && node tests/v1843-flow.js && node tests/v1844-flow.js && node tests/v1845-flow.js && node tests/v1846-flow.js && node tests/v1847-flow.js",
-    "postinstall": "node scripts/check-ocr.js",
-    "check:ocr": "node scripts/check-ocr.js",
-    "test:ocr": "node --test tests/v1863-ocr.test.js",
-    "test:ocr:browser": "node tests/v1863-ocr.browser.js"
+    "start": "node server.js",
+    "check": "node --check server.js && node --check catalog.js && node --check public/app.js && node --check public/ui.js",
+    "test": "node --test tests/*.test.js"
   },
   "engines": {
     "node": ">=20"
   },
   "dependencies": {
-    "axios": "^1.7.9",
-    "dotenv": "^16.4.7",
     "express": "^4.21.2",
     "express-session": "^1.18.1",
-    "helmet": "^8.0.0",
     "multer": "^1.4.5-lts.1",
-    "pg": "^8.13.1",
     "xlsx": "^0.18.5",
-    "openai": "^6.16.0",
-    "sharp": "^0.34.4",
-    "tesseract.js": "7.0.0",
-    "tesseract.js-core": "7.0.0",
-    "@tesseract.js-data/por": "1.0.0",
-    "@tesseract.js-data/eng": "1.0.0"
+    "qrcode": "^1.5.4"
   }
 }
