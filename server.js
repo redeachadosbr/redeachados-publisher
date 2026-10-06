@@ -9,6 +9,7 @@ import QRCode from 'qrcode';
 import { parseCatalogSheets, lookupCatalogSku, linkCatalogSku, catalogStats } from './catalog.js';
 import { fileURLToPath } from 'node:url';
 import { Readable } from 'node:stream';
+import { shopeeConfig, buildShopeeAuthorizationUrl, exchangeShopeeCode, refreshShopeeToken, getShopeeShopInfo, normalizeShopeeTokenResult, safeShopeeStatus } from './shopee.js';
 import { spawn } from 'node:child_process';
 const ffmpegPath = process.env.FFMPEG_PATH || 'ffmpeg';
 
@@ -56,7 +57,7 @@ function defaults(){
       metaPageId:'', metaAdAccountId:'', metaAdSetId:'', metaAdsAccessToken:'', metaWebhookVerifyToken:'',
       metaCreateAdDefault:false, metaAdDefaultStatus:'PAUSED'
     },
-    history:[], wedropSearchAliases:{}, wedropProductAliases:{}, instagramRules:[], instagramDmLog:[]
+    history:[], wedropSearchAliases:{}, wedropProductAliases:{}, instagramRules:[], instagramDmLog:[], shopeeAuth:null
   };
 }
 function loadStore(){
@@ -823,7 +824,7 @@ app.get('/story-mobile',(_req,res)=>res.sendFile(path.join(__dirname,'public','s
 app.get(['/privacy','/privacy-policy'], (_req,res)=>res.sendFile(path.join(__dirname,'public','privacy.html')));
 app.get('/data-deletion', (_req,res)=>res.sendFile(path.join(__dirname,'public','privacy.html')));
 
-app.get('/api/health', (_req,res)=>res.json({ok:true,service:'REDEACHADOS BR Publisher Web V5.5.19'}));
+app.get('/api/health', (_req,res)=>res.json({ok:true,service:'REDEACHADOS BR Publisher Web V5.5.20',shopeeApi:true}));
 app.get('/api/auth-state',(req,res)=>res.json({locked:Boolean(process.env.APP_PASSWORD),loggedIn:!process.env.APP_PASSWORD||Boolean(req.session?.appAuth)}));
 app.post('/api/login',(req,res)=>{
   if(!process.env.APP_PASSWORD){ req.session.appAuth=true; return res.json({ok:true}); }
@@ -834,11 +835,69 @@ app.post('/api/app-logout',(req,res)=>{ req.session.destroy(()=>res.json({ok:tru
 
 app.get('/api/config', mustLogin, (req,res)=>{
   const s=loadStore();
+  const shopeeCfg=shopeeConfig(baseUrl(req));
   res.json({
     settings:safeSettings(s.settings||{}), tiktokConnected:Boolean(s.token?.access_token), redirectUri:redirectUri(req), publicBaseUrl:baseUrl(req),
-    instagramWebhookUrl:`${baseUrl(req)}/webhooks/meta/instagram`
+    instagramWebhookUrl:`${baseUrl(req)}/webhooks/meta/instagram`,
+    shopee:safeShopeeStatus(s.shopeeAuth||null,shopeeCfg)
   });
 });
+
+app.get('/api/shopee/status', mustLogin, (req,res)=>{
+  const s=loadStore();
+  const cfg=shopeeConfig(baseUrl(req));
+  res.json(safeShopeeStatus(s.shopeeAuth||null,cfg));
+});
+
+app.get('/auth/shopee/start', mustLogin, (req,res)=>{
+  try{
+    const cfg=shopeeConfig(baseUrl(req));
+    res.redirect(buildShopeeAuthorizationUrl(cfg));
+  }catch(e){
+    res.status(400).send(`<h2>Shopee API não configurada</h2><p>${String(e.message||e)}</p><p><a href="/">Voltar ao Publisher</a></p>`);
+  }
+});
+
+app.get('/auth/shopee/callback', async(req,res)=>{
+  try{
+    const code=String(req.query.code||'').trim();
+    const shopId=Number(req.query.shop_id||0);
+    const cfg=shopeeConfig(baseUrl(req));
+    const tokenData=await exchangeShopeeCode(cfg,{code,shopId});
+    const auth=normalizeShopeeTokenResult(tokenData,shopId);
+    if(!auth.accessToken||!auth.refreshToken||!auth.shopId) throw new Error('A Shopee não retornou todos os dados de autorização esperados.');
+    const s=loadStore();
+    s.shopeeAuth={...auth,mode:cfg.mode,partnerId:cfg.partnerId};
+    saveStore(s);
+    res.type('html').send(`<!doctype html><html lang="pt-BR"><meta charset="utf-8"><title>Shopee conectada</title><body style="font-family:Arial,sans-serif;padding:32px"><h2>✅ Shopee conectada com sucesso</h2><p>Shop ID: <strong>${auth.shopId}</strong></p><p>Ambiente: <strong>${cfg.mode}</strong></p><p><a href="/">Voltar ao Rede Achados BR Publisher</a></p></body></html>`);
+  }catch(e){
+    res.status(400).type('html').send(`<!doctype html><html lang="pt-BR"><meta charset="utf-8"><title>Erro Shopee</title><body style="font-family:Arial,sans-serif;padding:32px"><h2>❌ Não foi possível concluir a autorização da Shopee</h2><p>${String(e.message||e)}</p><p><a href="/">Voltar ao Publisher</a></p></body></html>`);
+  }
+});
+
+app.post('/api/shopee/refresh', mustLogin, async(req,res)=>{
+  try{
+    const s=loadStore();
+    const current=s.shopeeAuth||{};
+    const cfg=shopeeConfig(baseUrl(req));
+    const data=await refreshShopeeToken(cfg,{refreshToken:current.refreshToken,shopId:current.shopId});
+    const next=normalizeShopeeTokenResult(data,current.shopId);
+    s.shopeeAuth={...current,...next,shopIds:next.shopIds.length?next.shopIds:(current.shopIds||[]),lastRefreshAt:new Date().toISOString(),mode:cfg.mode,partnerId:cfg.partnerId};
+    saveStore(s);
+    res.json({ok:true,...safeShopeeStatus(s.shopeeAuth,cfg)});
+  }catch(e){res.status(400).json({error:String(e.message||e)});}
+});
+
+app.get('/api/shopee/test-shop', mustLogin, async(req,res)=>{
+  try{
+    const s=loadStore();
+    const auth=s.shopeeAuth||{};
+    const cfg=shopeeConfig(baseUrl(req));
+    const data=await getShopeeShopInfo(cfg,{accessToken:auth.accessToken,shopId:auth.shopId});
+    res.json({ok:true,shopId:auth.shopId,response:data});
+  }catch(e){res.status(400).json({error:String(e.message||e)});}
+});
+
 app.post('/api/settings', mustLogin, (req,res)=>{
   const s=loadStore();
   const old=s.settings||{};
@@ -1686,4 +1745,4 @@ app.post('/api/status/:publishId', mustLogin, async(req,res)=>{
   try{const d=await tiktokJson('https://open.tiktokapis.com/v2/post/publish/status/fetch/',{method:'POST',body:JSON.stringify({publish_id:req.params.publishId})});res.json(d.data||{});}catch(e){res.status(400).json({error:e.message});}
 });
 
-app.listen(PORT,()=>console.log(`REDEACHADOS BR Publisher Web V5.5.19 em http://localhost:${PORT}`));
+app.listen(PORT,()=>console.log(`REDEACHADOS BR Publisher Web V5.5.20 em http://localhost:${PORT}`));
