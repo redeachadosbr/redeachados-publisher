@@ -5,12 +5,16 @@ function envText(name){ return String(process.env[name]||'').trim(); }
 export function shopeeConfig(publicBaseUrl=''){
   const mode=String(envText('SHOPEE_ENV')||'sandbox').toLowerCase()==='live'?'live':'sandbox';
   const partnerId=Number(envText('SHOPEE_PARTNER_ID')||0);
-  const partnerKey=envText('SHOPEE_PARTNER_KEY');
+  const partnerKeyRaw=envText('SHOPEE_PARTNER_KEY');
+  // Chaves novas exibidas pelo console podem vir com o prefixo identificador "shpk".
+  // Esse prefixo não faz parte do segredo usado no HMAC; usamos somente o conteúdo após ele.
+  const partnerKey=/^shpk/i.test(partnerKeyRaw)?partnerKeyRaw.slice(4):partnerKeyRaw;
   const host=mode==='live'?'https://partner.shopeemobile.com':'https://partner.test-stable.shopeemobile.com';
   const authHost=mode==='live'?'https://open.shopee.com.br/auth':'https://open.sandbox.test-stable.shopee.com/auth';
   const redirectUri=envText('SHOPEE_REDIRECT_URI') || `${String(publicBaseUrl||'').replace(/\/$/,'')}/auth/shopee/callback`;
   return {
     mode,host,authHost,partnerId,partnerKey,redirectUri,
+    partnerKeyPrefixed:/^shpk/i.test(partnerKeyRaw),
     configured:Number.isInteger(partnerId)&&partnerId>0&&Boolean(partnerKey)&&/^https:\/\//i.test(redirectUri)
   };
 }
@@ -117,6 +121,7 @@ export function safeShopeeStatus(auth,cfg){
     mode:cfg?.mode||'sandbox',
     partnerId:cfg?.partnerId||0,
     redirectUri:cfg?.redirectUri||'',
+    partnerKeyPrefixed:Boolean(cfg?.partnerKeyPrefixed),
     connected:Boolean(auth?.accessToken&&auth?.refreshToken&&auth?.shopId),
     shopId:Number(auth?.shopId||0),
     shopIds:Array.isArray(auth?.shopIds)?auth.shopIds:[],
