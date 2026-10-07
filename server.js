@@ -124,8 +124,7 @@ app.post('/api/shopee/refresh',mustLogin,async(req,res)=>{
 });
 app.get('/api/shopee/test-shop',mustLogin,async(req,res)=>{
   try{
-    const auth=(await authStore.load())||{};
-    const cfg=shopeeConfig(baseUrl(req));
+    const {auth,cfg}=await getValidAuth(req);
     const data=await getShopeeShopInfo(cfg,{accessToken:auth.accessToken,shopId:auth.shopId});
     res.json({ok:true,shopId:auth.shopId,response:data});
   }catch(e){res.status(400).json({error:String(e.message||e)});}
