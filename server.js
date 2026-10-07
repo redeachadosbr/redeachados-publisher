@@ -7,7 +7,8 @@ import {fileURLToPath} from 'node:url';
 import {createAuthStore} from './authStore.js';
 import {
   shopeeConfig,buildShopeeAuthorizationUrl,exchangeShopeeCode,refreshShopeeToken,
-  getShopeeShopInfo,normalizeShopeeTokenResult,safeShopeeStatus,callShopeeShopApi
+  getShopeeShopInfo,normalizeShopeeTokenResult,safeShopeeStatus,callShopeeShopApi,
+  shopeeProxyStatus,getShopeeOutboundIp
 } from './shopee.js';
 
 const __dirname=path.dirname(fileURLToPath(import.meta.url));
@@ -80,8 +81,18 @@ app.get('/api/shopee/status',mustLogin,async(req,res)=>{
   try{
     const cfg=shopeeConfig(baseUrl(req));
     const auth=await authStore.load();
-    res.json({...safeShopeeStatus(auth,cfg),storage:authStore.status()});
+    res.json({...safeShopeeStatus(auth,cfg),proxy:shopeeProxyStatus(),storage:authStore.status()});
   }catch(e){res.status(400).json({error:String(e.message||e)});}
+});
+
+app.get('/api/shopee/proxy-test',mustLogin,async(_req,res)=>{
+  try{
+    const proxy=shopeeProxyStatus();
+    const outbound=await getShopeeOutboundIp();
+    res.json({ok:true,proxy,outbound});
+  }catch(e){
+    res.status(400).json({ok:false,proxy:shopeeProxyStatus(),error:String(e.message||e)});
+  }
 });
 app.get('/auth/shopee/start',mustLogin,(req,res)=>{
   try{res.redirect(buildShopeeAuthorizationUrl(shopeeConfig(baseUrl(req)),createState()));}
