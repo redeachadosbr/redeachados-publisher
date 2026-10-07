@@ -4,22 +4,74 @@ import {ProxyAgent} from 'undici';
 function envText(name){ return String(process.env[name]||'').trim(); }
 
 let proxyAgent=null;
+let proxyAgentKey='';
+
+function shopeeProxyConfig(){
+  const host=envText('SHOPEE_PROXY_HOST');
+  const port=Number(envText('SHOPEE_PROXY_PORT')||0);
+  const user=envText('SHOPEE_PROXY_USER');
+  const password=envText('SHOPEE_PROXY_PASSWORD');
+
+  if(host&&Number.isInteger(port)&&port>0&&port<=65535){
+    const auth=(user||password)?`${encodeURIComponent(user)}:${encodeURIComponent(password)}@`:'';
+    return {
+      configured:true,
+      provider:'Oracle Squid',
+      url:`http://${auth}${host}:${port}`,
+      host,
+      port,
+      authenticationConfigured:Boolean(user&&password)
+    };
+  }
+
+  const legacyUrl=envText('QUOTAGUARDSTATIC_URL')||envText('QUOTAGUARD_URL');
+  if(legacyUrl){
+    return {
+      configured:true,
+      provider:'QuotaGuard Static',
+      url:legacyUrl,
+      host:'',
+      port:0,
+      authenticationConfigured:true
+    };
+  }
+
+  return {
+    configured:false,
+    provider:'direct',
+    url:'',
+    host:'',
+    port:0,
+    authenticationConfigured:false
+  };
+}
+
 function shopeeFetch(url,options={}){
-  const proxyUrl=envText('QUOTAGUARDSTATIC_URL')||envText('QUOTAGUARD_URL');
-  if(!proxyUrl) return fetch(url,options);
-  if(!proxyAgent) proxyAgent=new ProxyAgent(proxyUrl);
+  const proxy=shopeeProxyConfig();
+  if(!proxy.configured) return fetch(url,options);
+
+  if(!proxyAgent||proxyAgentKey!==proxy.url){
+    proxyAgent=new ProxyAgent(proxy.url);
+    proxyAgentKey=proxy.url;
+  }
   return fetch(url,{...options,dispatcher:proxyAgent});
 }
 
 export function shopeeProxyStatus(){
-  const proxyUrl=envText('QUOTAGUARDSTATIC_URL')||envText('QUOTAGUARD_URL');
-  return {configured:Boolean(proxyUrl),provider:proxyUrl?'QuotaGuard Static':'direct'};
+  const proxy=shopeeProxyConfig();
+  return {
+    configured:proxy.configured,
+    provider:proxy.provider,
+    host:proxy.host||undefined,
+    port:proxy.port||undefined,
+    authenticationConfigured:proxy.authenticationConfigured
+  };
 }
 
 export async function getShopeeOutboundIp(){
-  const r=await shopeeFetch('https://ip.quotaguard.com',{headers:{Accept:'application/json,text/plain;q=0.9,*/*;q=0.8'}});
+  const r=await shopeeFetch('https://api.ipify.org?format=json',{headers:{Accept:'application/json,text/plain;q=0.9,*/*;q=0.8'}});
   const text=await r.text();
-  if(!r.ok) throw new Error(`QuotaGuard IP check HTTP ${r.status}`);
+  if(!r.ok) throw new Error(`Proxy IP check HTTP ${r.status}`);
   try{return JSON.parse(text);}catch{return {ip:text.trim()};}
 }
 
