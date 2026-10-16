@@ -136,6 +136,17 @@ export async function pendingWeDropModels(shopId,{limit=10,exclude=[]}={}){
       .map(x=>({itemId:String(x.item_id),title:String(x.item_name||'')}))
   };
 }
+export function compareSkuSets(supplierSkus,catalogSkus){
+  const catalog=new Set(catalogSkus.map(x=>String(x).trim()).filter(Boolean));
+  const offered=new Set(supplierSkus.map(x=>String(x).trim()).filter(Boolean));
+  const matching=[...offered].filter(x=>catalog.has(x));
+  const noMatch=[...offered].filter(x=>!catalog.has(x));
+  return {
+    uniqueCosts:offered.size,matchedCount:matching.length,
+    unmatchedCount:noMatch.length,unmatchedExamples:noMatch.slice(0,7),
+    catalogSkuCount:catalog.size
+  };
+}
 export async function compareIncomingCosts(shopId,costs){
   const id=validShopId(shopId);
   const [items,models]=await Promise.all([
@@ -144,19 +155,15 @@ export async function compareIncomingCosts(shopId,costs){
     readAll('shopee_catalog_models','shop_id=eq.'+id+'&order=model_id.asc',
       'item_id,model_sku')
   ]);
-  const storeSkus=new Set([
-    ...items.filter(x=>!x.has_model).map(x=>String(x.sku||'').trim()),
-    ...models.map(x=>String(x.model_sku||'').trim())
-  ].filter(Boolean));
-  const offered=new Set(costs.map(x=>String(x.sku||'').trim()).filter(Boolean));
-  const matching=[...offered].filter(x=>storeSkus.has(x));
-  const noMatch=[...offered].filter(x=>!storeSkus.has(x));
-  const variantsWaiting=items.filter(x=>x.has_model&&
-    !models.some(m=>String(m.item_id)===String(x.item_id))).length;
+  const comparison=compareSkuSets(
+    costs.map(x=>x.sku),
+    [...items.filter(x=>!x.has_model).map(x=>x.sku||''),
+      ...models.map(x=>x.model_sku||'')]
+  );
+  const presentModels=new Set(models.map(x=>String(x.item_id)));
+  const variantsWaiting=items.filter(x=>x.has_model&&!presentModels.has(String(x.item_id))).length;
   return {
-    uniqueCosts:offered.size,matchedCount:matching.length,
-    unmatchedCount:noMatch.length,unmatchedExamples:noMatch.slice(0,7),
-    catalogSkuCount:storeSkus.size,variantsWaiting,
+    ...comparison,variantsWaiting,
     warning:!matching.length
       ?'Nenhum SKU corresponde exatamente ao catálogo atualmente salvo. Confira se selecionou SKU da WeDrop (não código de barras/EAN/NCM), se há zeros à esquerda e se o catálogo/variações foram sincronizados.'
       :'Somente os custos com SKU idêntico ao da Shopee serão vinculados. Outros custos podem permanecer sem correspondência.'
