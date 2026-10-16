@@ -171,7 +171,7 @@ export function matchWeDropCosts(items,models,costs,{filter='all',offset=0,limit
       results.push({
         itemId,sku,modelId,
         supplierSku:supplierSku||null,linkedByReview:Boolean(linkedSupplierSku&&supplierSku!==sku),
-        name:String(item.item_name||''),status:String(item.item_status||''),
+        name:String(item.item_name||''),imageUrl:String(item.image_url||''),status:String(item.item_status||''),
         price:Number.isFinite(price)?price:null,
         unitCost:cost,
         grossDifference:cost!==null&&Number.isFinite(price)?Math.round((price-cost)*100)/100:null,
@@ -263,7 +263,7 @@ export async function getWeDropCoverage(shopId,{filter='matched',offset=0,limit=
   const [costs,items,models,links]=await Promise.all([
     readWeDropCosts(id),
     readAll('shopee_catalog_items','shop_id=eq.'+id+'&order=item_id.asc',
-      'item_id,sku,item_name,item_status,price,has_model'),
+      'item_id,sku,item_name,item_status,price,has_model,image_url'),
     readAll('shopee_catalog_models','shop_id=eq.'+id+'&order=model_id.asc',
       'item_id,model_id,model_sku,price,stock'),
     readWeDropSkuLinks(id)
