@@ -51,3 +51,11 @@ Importação dos custos de aquisição de SKUs do fornecedor WeDrop, com víncul
 - Lotes falhos mantêm dados salvos; falhas de API são exibidas por item, sem inventar SKUs.
 - Contagem de 404 SKUs sem custo era válida antes da importação. A prévia do CSV não grava dados. Os 117 anúncios com variações faltantes serão tratados pela sincronização em lote.
 - Nada altera preços, Ads, pedidos ou serviço Mercado Livre.
+
+## Ajuste 1.6.2 — custo ausente não é erro e não gera tabela vazia
+- Enquanto `shopee_wedrop_costs` não tiver custos para a loja, a central exibirá exclusivamente totais úteis do catálogo (anúncios, SKUs, variações), e o aviso **Nenhum custo WeDrop importado**.
+- As colunas e a tabela **Custo WeDrop / Diferença bruta / Situação financeira** e os cartões de custo vinculado/sem custo ficarão ocultos; não exibir 500 linhas inúteis com custo em branco.
+- O backend também não transmite a amostra financeira enquanto a tabela de custos estiver vazia. Nenhum anúncio, SKU ou custo é apagado.
+- Após importar algum custo válido, a análise por SKU e as colunas financeiras reaparecem; SKUs restantes sem vínculo continuam sinalizados apenas nessa fase de conciliação.
+- Correção na pré-validação: a mensagem de correspondência agora verifica `comparison.matchedCount`, não uma variável inexistente que causava erro.
+- Situação validada no banco em 16/10/2026: 521 anúncios, 355 modelos, 0 variações pendentes e **0 custos importados**. Esses dados não são automaticamente alterados pelo deploy.
