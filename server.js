@@ -12,7 +12,7 @@ import {fetchCatalogPage,normalizeShopeeModels,validItemId} from './catalog.js';
 import {storeCatalogItems,storeCatalogModels,readCatalogCache,catalogStoreReady} from './catalogStore.js';
 import {previewWeDropCsv,prepareWeDropImport,MAX_CSV_CHARS} from './wedropCsv.js';
 import {saveWeDropCosts,getWeDropCoverage,compareIncomingCosts,pendingWeDropModels} from './wedropCosts.js';
-import {readWeDropSyncState} from './wedropCosts.js';
+import {readWeDropSyncState,getStoredWeDropCostCount} from './wedropCosts.js';
 import {createWeDropAutoScheduler,importSupplierAutomatically,supplierFeedConfig} from './wedropAutoSync.js';
 import {
   shopeeConfig,buildShopeeAuthorizationUrl,exchangeShopeeCode,refreshShopeeToken,
@@ -84,7 +84,7 @@ app.use(session({
 }));
 app.use(express.static(path.join(__dirname,'public')));
 
-app.get('/api/health',(_req,res)=>res.json({ok:true,service:'Rede Achados BR Shopee API',version:'1.7.1',storage:authStore.status()}));
+app.get('/api/health',(_req,res)=>res.json({ok:true,service:'Rede Achados BR Shopee API',version:'1.7.2',storage:authStore.status()}));
 app.get('/api/auth-state',(req,res)=>res.json({locked:Boolean(envText('APP_PASSWORD')),loggedIn:!envText('APP_PASSWORD')||Boolean(req.session?.appAuth)}));
 app.post('/api/login',(req,res)=>{
   const required=envText('APP_PASSWORD');
@@ -227,9 +227,15 @@ app.get('/api/shopee/wedrop/auto/status',mustLogin,requireWeDropAdmin,async(req,
   res.setHeader('Cache-Control','no-store');
   try{
     const {auth}=await getValidAuth(req);
-    const state=await readWeDropSyncState(auth.shopId);
+    const [state,storedCosts]=await Promise.all([
+      readWeDropSyncState(auth.shopId),getStoredWeDropCostCount(auth.shopId)
+    ]);
     const feed=supplierFeedConfig();
     res.json({ok:true,shopId:auth.shopId,state,
+      catalogStored:storedCosts>0,storedCosts,
+      savedCatalogName:state?.source_name||'Catálogo WeDrop armazenado',
+      savedAt:state?.last_success_at||null,
+      rawCsvStored:false,
       feedConfigured:feed.configured===true&&feed.shopId===Number(auth.shopId),
       feedIntervalMinutes:feed.configured?feed.intervalMinutes:null,
       feedStatus:feed.configured&&feed.shopId===Number(auth.shopId)
