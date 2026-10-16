@@ -5,6 +5,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import {fileURLToPath} from 'node:url';
 import {createAuthStore} from './authStore.js';
+import {mergeShopeeOrderDates} from './orderView.js';
 import {
   shopeeConfig,buildShopeeAuthorizationUrl,exchangeShopeeCode,refreshShopeeToken,
   getShopeeShopInfo,normalizeShopeeTokenResult,safeShopeeStatus,callShopeeShopApi,
@@ -233,7 +234,41 @@ app.get('/api/shopee/orders',mustLogin,async(req,res)=>{
       path:'/api/v2/order/get_order_list',
       accessToken:auth.accessToken,shopId:auth.shopId,query
     });
-    res.json({ok:true,shopId:auth.shopId,...data});
+    const base=data.response||{};
+    const orderList=Array.isArray(base.order_list)?base.order_list:[];
+    let detailOrders=[];
+    let detailWarning=null;
+    if(orderList.length){
+      try{
+        const orderSns=orderList.map(x=>String(x.order_sn||'')).filter(Boolean).slice(0,50);
+        if(orderSns.length){
+          const detailed=await callShopeeShopApi(cfg,{
+            path:'/api/v2/order/get_order_detail',
+            accessToken:auth.accessToken,
+            shopId:auth.shopId,
+            query:{order_sn_list:orderSns.join(',')}
+          });
+          detailOrders=Array.isArray(detailed.response?.order_list)?detailed.response.order_list:[];
+        }
+      }catch(error){
+        detailWarning='Datas indisponíveis na consulta de detalhes: '+String(error.message||error).slice(0,250);
+      }
+    }
+    const compact=mergeShopeeOrderDates(orderList,detailOrders);
+    // Nunca devolver campos pessoais que possam vir da consulta de detalhes.
+    res.json({
+      ok:true,shopId:auth.shopId,
+      response:{
+        order_list:compact,
+        more:Boolean(base.more),
+        next_cursor:base.more?String(base.next_cursor||''):''
+      },
+      detailStatus:{
+        attempted:orderList.length>0,
+        withCreateTime:compact.filter(x=>x.create_time!==null).length,
+        warning:detailWarning
+      }
+    });
   }catch(e){res.status(400).json({error:String(e.message||e)});}
 });
 
