@@ -59,7 +59,7 @@ function setTab(name,{updateHistory=true,scroll=true}={}){
   if(updateHistory&&location.pathname!==nextUrl&&typeof history!=='undefined')
     history.pushState({page:name},'',nextUrl);
   setSidebarOpen(false);
-  if(name==='wedrop'){refreshWeDropCoverage();loadWeDropSourceState();}
+  if(name==='wedrop'){refreshWeDropCoverage();loadWeDropSourceState();void loadWeDropSkuReview();}
   else if(name==='finance'){refreshWeDropCoverage();}
   if(scroll&&typeof window!=='undefined')window.scrollTo({top:0,behavior:'instant'});
 }
@@ -950,6 +950,185 @@ $('#wedropImportBtn').onclick=async()=>{
   }
 };
 let financeSkuBalances=new Map(); // Apenas vendas concluídas de SKU único com repasse confirmado.
+// Central de pendências WeDrop — ações reais, confirmação explícita e possibilidade de desfazer.
+let skuReviewBusy=false;
+const reviewNode=(tag,className,textValue)=>{
+  const el=document.createElement(tag);
+  if(className)el.className=className;
+  if(textValue!==undefined&&textValue!==null)el.textContent=String(textValue);
+  return el;
+};
+function skuReviewAppendText(parent,tag,cls,txt){
+  const el=reviewNode(tag,cls,txt);parent.appendChild(el);return el;
+}
+function skuReviewMoney(value){
+  return value===null||value===undefined?'—':wdMoney(value);
+}
+function reviewCandidateControl(record,container){
+  const edit=reviewNode('div','sku-review-control');
+  const label=skuReviewAppendText(edit,'label','','SKU WeDrop para vincular');
+  const input=reviewNode('input','sku-review-input');
+  input.type='text';input.maxLength=120;input.autocomplete='off';
+  input.placeholder='Digite SKU ou escolha uma sugestão';
+  label.appendChild(input);
+  const suggestions=skuReviewAppendText(edit,'div','sku-candidates','');
+  if(!record.suggestions?.length){
+    skuReviewAppendText(suggestions,'p','sku-candidate-empty',
+      'Nenhum candidato evidente pelo código. Pesquise no catálogo e confira o fornecedor.');
+  }else{
+    for(const x of record.suggestions){
+      const choose=reviewNode('button','sku-candidate');
+      choose.type='button';
+      choose.appendChild(skuReviewAppendText(choose,'strong','',x.supplierSku));
+      choose.appendChild(skuReviewAppendText(choose,'span','',skuReviewMoney(x.unitCost)));
+      choose.appendChild(skuReviewAppendText(choose,'small','',x.reason));
+      choose.title='Selecionar SKU candidato para conferência';
+      choose.onclick=()=>{input.value=x.supplierSku;input.focus();};
+      suggestions.appendChild(choose);
+    }
+  }
+  const status=skuReviewAppendText(edit,'p','sku-card-status','');
+  status.setAttribute('role','status');
+  const actions=reviewNode('div','sku-card-actions');
+  const search=skuReviewAppendText(actions,'button','secondary','Buscar SKU');
+  search.type='button';
+  search.onclick=async()=>{
+    const query=input.value.trim()||record.shopeeSku;
+    if(query.length<2){status.textContent='Digite ao menos 2 caracteres para pesquisar.';return;}
+    search.disabled=true;status.textContent='Pesquisando no catálogo salvo...';
+    try{
+      const data=await json('/api/shopee/wedrop/sku-search?q='+encodeURIComponent(query),{
+        signal:AbortSignal.timeout(45000)
+      });
+      suggestions.replaceChildren();
+      for(const match of data.results||[]){
+        const b=reviewNode('button','sku-candidate');b.type='button';
+        skuReviewAppendText(b,'strong','',match.supplierSku);
+        skuReviewAppendText(b,'span','',skuReviewMoney(match.unitCost));
+        b.onclick=()=>{input.value=match.supplierSku;input.focus();};
+        suggestions.appendChild(b);
+      }
+      status.textContent=(data.results||[]).length
+        ?'Selecione um dos resultados e confira o produto na WeDrop.'
+        :'Nenhum SKU encontrado para esta pesquisa. Tente outro código.';
+    }catch(e){status.textContent='Falha na pesquisa: '+e.message;}
+    finally{search.disabled=false;}
+  };
+  const apply=skuReviewAppendText(actions,'button','','Confirmar vínculo');
+  apply.type='button';
+  apply.onclick=async()=>{
+    const supplierSku=input.value.trim();
+    if(!supplierSku){status.textContent='Escolha ou digite o SKU da WeDrop.';input.focus();return;}
+    if(!window.confirm('Vincular o custo do SKU WeDrop '+supplierSku+
+      ' ao anúncio Shopee '+record.shopeeSku+'?\n\n'+
+      'Confirme que é o MESMO produto e variação. O código do anúncio na Shopee não será modificado.'))return;
+    apply.disabled=true;search.disabled=true;status.textContent='Salvando vínculo confirmado...';
+    try{
+      const result=await json('/api/shopee/wedrop/sku-link',{
+        method:'POST',headers:{'Content-Type':'application/json'},
+        body:JSON.stringify({
+          itemId:record.itemId,modelId:record.modelId||0,
+          shopeeSku:record.shopeeSku,supplierSku
+        })
+      });
+      status.textContent=result.message||'Vínculo salvo.';
+      await refreshWeDropCoverage();
+      await loadWeDropSkuReview();
+    }catch(e){status.textContent='Não foi possível vincular: '+e.message;}
+    finally{apply.disabled=false;search.disabled=false;}
+  };
+  edit.appendChild(actions);actions.append(search,apply);
+  container.appendChild(edit);
+}
+function skuReviewRender(data){
+  const total=Number(data.summary?.pending||0);
+  $('#wedropReviewCount').textContent=wdNum(total);
+  $('#wedropReviewSummary').textContent=total
+    ?'anúncios ou variações sem custo correspondente — revise antes de vincular.'
+    :'Nenhuma pendência de custo encontrada.';
+  const list=$('#wedropReviewCards');list.replaceChildren();
+  for(const x of data.pending||[]){
+    const card=reviewNode('article','sku-review-card');
+    const header=reviewNode('div','sku-review-item');
+    const url=String(x.imageUrl||'');
+    if(/^https:\/\/(cf\.shopee\.com\.br|down-br\.img\.susercontent\.com)\//i.test(url)){
+      const image=document.createElement('img');image.src=url;image.alt='';
+      image.loading='lazy';image.decoding='async';
+      image.referrerPolicy='no-referrer';header.appendChild(image);
+    }else header.appendChild(skuReviewAppendText(header,'span','sku-review-photo-fallback','📦'));
+    const heading=reviewNode('div','sku-review-item-info');
+    skuReviewAppendText(heading,'strong','',x.title||'Anúncio '+x.itemId);
+    skuReviewAppendText(heading,'small','',
+      'Item '+x.itemId+(x.modelId?' · Variação '+x.modelId:''));
+    header.appendChild(heading);card.appendChild(header);
+    const meta=reviewNode('div','sku-review-meta');
+    skuReviewAppendText(meta,'span','sku-review-old','SKU Shopee: '+x.shopeeSku);
+    skuReviewAppendText(meta,'span','sku-review-reason',x.reason);
+    card.appendChild(meta);
+    reviewCandidateControl(x,card);
+    list.appendChild(card);
+  }
+  if(!total)list.appendChild(reviewNode('p','sku-review-all-clear',
+    'Os SKUs identificados estão com custos vinculados. Acompanhe novas variações e anúncios por esta página.'));
+  $('#wedropReviewedCount').textContent=wdNum((data.confirmedLinks||[]).length);
+  const links=$('#wedropReviewedList');links.replaceChildren();
+  for(const x of data.confirmedLinks||[]){
+    const wrap=reviewNode('div','sku-reviewed-row');
+    const detail=reviewNode('div','sku-reviewed-info');
+    skuReviewAppendText(detail,'strong','',x.shopeeSku+' → '+x.supplierSku);
+    skuReviewAppendText(detail,'small','',
+      'Item '+x.itemId+(x.modelId!=='0'?' · Variação '+x.modelId:'')+
+      ' · Custo '+skuReviewMoney(x.unitCost));
+    wrap.appendChild(detail);
+    const undo=skuReviewAppendText(wrap,'button','secondary','Desfazer vínculo');
+    undo.type='button';
+    undo.onclick=async()=>{
+      if(!window.confirm('Desfazer o vínculo de custo '+x.shopeeSku+' → '+x.supplierSku+
+        '?\nO produto voltará às pendências se não existir correspondência exata.'))return;
+      undo.disabled=true;
+      try{
+        await json('/api/shopee/wedrop/sku-unlink',{
+          method:'POST',headers:{'Content-Type':'application/json'},
+          body:JSON.stringify({itemId:x.itemId,modelId:x.modelId})
+        });
+        await refreshWeDropCoverage();
+        await loadWeDropSkuReview();
+      }catch(e){
+        $('#wedropReviewMessage').textContent='Não foi possível desfazer: '+e.message;
+        undo.disabled=false;
+      }
+    };
+    links.appendChild(wrap);
+  }
+  $('#wedropReviewedLinks').hidden=!(data.confirmedLinks||[]).length;
+  $('#wedropReviewMessage').textContent=data.warning||
+    'Confirme o produto antes de aplicar qualquer vínculo.';
+}
+async function loadWeDropSkuReview(){
+  if(skuReviewBusy)return;
+  skuReviewBusy=true;
+  const btn=$('#wedropReviewRefreshBtn');
+  btn.disabled=true;btn.textContent='Conferindo...';
+  $('#wedropReviewMessage').textContent='Consultando anúncios e sugestões do catálogo salvo...';
+  try{
+    const data=await json('/api/shopee/wedrop/sku-review',{
+      signal:AbortSignal.timeout(55000)
+    });
+    skuReviewRender(data);
+  }catch(error){
+    $('#wedropReviewMessage').textContent=
+      'Não foi possível consultar as pendências: '+error.message+
+      '. Os vínculos existentes não foram alterados. Clique em Revisar pendências para tentar novamente.';
+  }finally{
+    skuReviewBusy=false;btn.disabled=false;btn.textContent='Revisar pendências';
+  }
+}
+$('#wedropReviewRefreshBtn').onclick=()=>{void loadWeDropSkuReview();};
+$('#wedropGotoPending').onclick=()=>{
+  $('#wedropSkuReview').scrollIntoView?.({behavior:'smooth',block:'start'});
+  void loadWeDropSkuReview();
+};
+
 let wedropSelectedFilter='matched',wedropNextOffset=null,wedropTableLoading=false;
 function setWedropTab(filter){
   wedropSelectedFilter=filter;
