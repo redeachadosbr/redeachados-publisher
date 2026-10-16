@@ -104,15 +104,25 @@
           <p class="hint">GMV de Ads corresponde a vendas atribuídas à publicidade, não a lucro líquido. Não somar GMV amplo e direto.</p>
         </div>
         <div id="adsResults" hidden>
-          <div class="metrics">
-            <article><span>Campanhas localizadas</span><strong id="adsCampaignCount">—</strong></article>
+          <div class="metrics ads-metrics">
+            <article><span>Campanhas encontradas</span><strong id="adsCampaignCount">—</strong></article>
+            <article><span>Impressões</span><strong id="adsImpressions">—</strong></article>
+            <article><span>Cliques</span><strong id="adsClicks">—</strong></article>
+            <article><span>CTR</span><strong id="adsCtr">—</strong></article>
             <article><span>Investimento Ads</span><strong id="adsExpense">—</strong></article>
             <article><span>GMV amplo atribuído</span><strong id="adsGmv">—</strong></article>
             <article><span>ROAS / ACOS</span><strong id="adsRoasAcos">—</strong></article>
           </div>
           <div class="card monitor-card">
-            <h2>Resultados por campanha</h2>
-            <div class="table-wrap"><table><thead><tr><th>Campanha / ID</th><th>Tipo</th><th>Gasto</th><th>GMV amplo</th><th>ROAS</th><th>ACOS</th><th>Cliques</th></tr></thead>
+            <h2>Campanhas por situação</h2>
+            <p id="adsStatusExplanation" class="hint">O status de cada campanha vem da configuração atual na Shopee. As métricas correspondem ao período escolhido.</p>
+            <div class="ads-status-tabs" role="group" aria-label="Filtrar campanhas por situação">
+              <button type="button" class="secondary ads-status-tab selected" data-ads-group="active" aria-pressed="true">Ativas <span id="adsActiveCount">0</span></button>
+              <button type="button" class="secondary ads-status-tab" data-ads-group="inactive" aria-pressed="false">Pausadas / Desativadas <span id="adsInactiveCount">0</span></button>
+              <button type="button" class="secondary ads-status-tab" data-ads-group="other" aria-pressed="false" id="adsOtherTab" hidden>Outras / Sem confirmação <span id="adsOtherCount">0</span></button>
+            </div>
+            <p id="adsFilterSummary" class="hint" role="status">Selecione Localizar campanhas e analisar.</p>
+            <div class="table-wrap"><table><thead><tr><th>Campanha / ID</th><th>Status Shopee</th><th>Tipo</th><th>Impressões</th><th>Cliques</th><th>CTR</th><th>Gasto</th><th>GMV amplo</th><th>ROAS</th><th>ACOS</th></tr></thead>
             <tbody id="adsResultsBody"></tbody></table></div>
           </div>
         </div>
@@ -127,5 +137,5 @@
     </section>
   </main>
 </div>
-<script src="/app.js?v=1.4.0"></script>
+<script src="/app.js?v=1.4.1"></script>
 </body></html>
