@@ -2,7 +2,7 @@ const $=s=>document.querySelector(s);
 async function json(url,opt={}){const r=await fetch(url,opt);const d=await r.json().catch(()=>({}));if(!r.ok)throw new Error(d.error||('HTTP '+r.status));return d;}
 function fmtDate(v){if(!v)return '—';const n=Number(v);const d=Number.isFinite(n)&&n>1000000000?new Date(n*1000):new Date(v);return Number.isNaN(d.getTime())?String(v):d.toLocaleString('pt-BR');}
 function debug(v){$('#output').textContent=typeof v==='string'?v:JSON.stringify(v,null,2);}
-function setTab(name){document.querySelectorAll('.tab').forEach(b=>b.classList.toggle('active',b.dataset.tab===name));document.querySelectorAll('.tabpane').forEach(p=>p.classList.toggle('active',p.id==='tab-'+name));if(name==='wedrop')refreshWeDropCoverage();}
+function setTab(name){document.querySelectorAll('.tab').forEach(b=>b.classList.toggle('active',b.dataset.tab===name));document.querySelectorAll('.tabpane').forEach(p=>p.classList.toggle('active',p.id==='tab-'+name));if(name==='wedrop'){refreshWeDropCoverage();loadWeDropSourceState();}}
 document.querySelectorAll('.tab').forEach(b=>b.onclick=()=>setTab(b.dataset.tab));
 
 async function boot(){
@@ -560,12 +560,77 @@ $('#wedropPreviewBtn').onclick=async()=>{
     button.disabled=false;button.textContent='Conferir colunas do CSV';
   }
 };
-$('#wedropFile').onchange=()=>{
+async function loadWeDropSourceState(){
+  try{
+    const status=await json('/api/shopee/wedrop/auto/status',{
+      signal:AbortSignal.timeout(30000)
+    });
+    const state=status.state;
+    $('#wedropSourceStatus').textContent=
+      (state?.last_success_at
+        ?'Última sincronização: '+new Date(state.last_success_at).toLocaleString('pt-BR')+
+          ' · '+wdNum(state.imported_skus)+' SKUs no último catálogo · '+
+          wdNum(state.changed_skus)+' custos novos ou alterados.'
+        :'Ainda não há sincronização automática registrada.')+
+      ' '+status.feedStatus;
+    $('#wedropCheckFeedBtn').hidden=!status.feedConfigured;
+  }catch(error){
+    $('#wedropSourceStatus').textContent=
+      'Não foi possível consultar o histórico automático: '+error.message;
+  }
+}
+$('#wedropCheckFeedBtn').onclick=async()=>{
+  const button=$('#wedropCheckFeedBtn');button.disabled=true;
+  wdSetNotice('#wedropAutoStatus','Conferindo catálogo da origem autorizada...','info');
+  try{
+    const d=await json('/api/shopee/wedrop/auto/check',{
+      method:'POST',signal:AbortSignal.timeout(180000)
+    });
+    wdSetNotice('#wedropAutoStatus',d.unchanged
+      ?'Catálogo da origem não mudou desde a última sincronização.'
+      :'Feed atualizado: '+wdNum(d.changedCosts)+' custos alterados.', 'success');
+    await refreshWeDropCoverage();await loadWeDropSourceState();
+  }catch(error){
+    wdSetNotice('#wedropAutoStatus','Falha na consulta do feed: '+error.message,'error');
+  }finally{button.disabled=false;}
+};
+$('#wedropFile').onchange=async()=>{
   weDropCsvText=null;weDropPreview=null;weDropValidation=null;
   $('#wedropImportBtn').disabled=true;
   $('#wedropPreviewArea').hidden=true;
   $('#wedropZeroMatchLabel').hidden=true;
-  wdSetNotice('#wedropImportStatus','Novo arquivo selecionado. Confira novamente suas colunas.','info');
+  const file=$('#wedropFile').files?.[0];
+  if(!file)return;
+  const control=$('#wedropFile');
+  if(file.size>4_000_000){
+    wdSetNotice('#wedropAutoStatus',
+      'Arquivo acima de 4 MB. Divida o CSV ou utilize uma origem de feed autorizada.','error');
+    return;
+  }
+  control.disabled=true;
+  wdSetNotice('#wedropAutoStatus',
+    'Lendo catálogo oficial WeDrop e atualizando custos por SKU automaticamente...','info');
+  try{
+    const raw=await file.text();
+    const result=await json('/api/shopee/wedrop/auto/import',{
+      method:'POST',headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({csv:raw,fileName:file.name}),
+      signal:AbortSignal.timeout(180000)
+    });
+    wdSetNotice('#wedropAutoStatus',
+      'Atualização concluída! '+wdNum(result.uniqueCosts)+' SKUs identificados, '+
+      wdNum(result.changedCosts)+' custos novos/alterados, '+
+      wdNum(result.unchangedCosts)+' sem alteração, '+
+      wdNum(result.matchingSupplierSkus)+' SKUs da WeDrop encontrados na Shopee. '+
+      'Nenhum preço de anúncio foi alterado.','success');
+    wdSetNotice('#wedropImportStatus',
+      'Catálogo reconhecido e importado automaticamente. O formulário manual não foi utilizado.','success');
+    await refreshWeDropCoverage();await loadWeDropSourceState();
+  }catch(error){
+    wdSetNotice('#wedropAutoStatus',
+      'A atualização automática foi bloqueada: '+error.message+
+      '. Se este CSV não segue o layout oficial, abra a importação manual avançada.','error');
+  }finally{control.disabled=false;}
 };
 
 function wdInvalidateValidation(){

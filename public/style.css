@@ -125,3 +125,12 @@ button:disabled{opacity:.52;cursor:not-allowed}
 .wedrop-no-costs p{line-height:1.5;max-width:100ch}
 #wedropFinancialResults[hidden],#wedropNoCosts[hidden],
 .wedrop-financial-metric[hidden]{display:none!important}
+
+/* WeDrop: a importação padrão é automática; manual fica recolhida. */
+.wedrop-manual-fallback{margin-top:16px;padding:13px;border:1px solid #e4e3dc;border-radius:12px}
+.wedrop-manual-fallback>summary{cursor:pointer;font-weight:600;color:#344539}
+#wedropAutoStatus{line-height:1.5;overflow-wrap:anywhere;white-space:pre-line}
+#wedropAutoStatus[data-state="success"]{background:#edf7ee;border-color:#b9ddc5}
+#wedropAutoStatus[data-state="error"]{background:#fff3ee;border-color:#ebbcae}
+#wedropSourceStatus{margin-top:11px;line-height:1.45}
+#wedropFile:disabled{opacity:.65;cursor:wait}

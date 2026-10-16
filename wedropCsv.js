@@ -74,6 +74,42 @@ export function parseMoneyBR(raw){
   if(!Number.isFinite(value)||value<=0||value>99999999)return null;
   return Math.round((value+Number.EPSILON)*100)/100;
 }
+// Reconhece APENAS layouts explicitamente conhecidos do fornecedor.
+// "Preço" só é custo quando pertence ao layout oficial WeDrop com 16 colunas.
+const normalizeHeader=x=>String(x||'').trim().normalize('NFD')
+  .replace(/[\u0300-\u036f]/g,'').toLowerCase().replace(/\s+/g,' ');
+export function identifyWeDropLayout(headers){
+  const named=headers.map(normalizeHeader);
+  const skuColumns=named.map((x,i)=>x==='sku'?i:-1).filter(x=>x>=0);
+  if(skuColumns.length!==1)return {recognized:false,reason:'É necessário ter exatamente uma coluna SKU.'};
+  const skuColumn=skuColumns[0];
+  const costColumns=named.map((x,i)=>[
+    'custo','custo wedrop','preco de custo','custo de aquisicao',
+    'custo de compra','custo fornecedor','preco fornecedor'
+  ].includes(x)?i:-1).filter(x=>x>=0);
+  if(costColumns.length===1&&costColumns[0]!==skuColumn)
+    return {recognized:true,skuColumn,costColumn:costColumns[0],schema:'explicit-unit-cost'};
+  if(costColumns.length>1)
+    return {recognized:false,reason:'Várias colunas de custo. Verifique qual é o custo unitário.'};
+  const expected=[
+    'sku','nome do produto','marca','categoria','fornecedor',
+    'estado do fornecedor','preco','ean','ncm','cest',
+    'peso (kg)','largura (cm)','altura (cm)','comprimento (cm)',
+    'peso da caixa (kg)','imagem principal'
+  ];
+  const isOfficial=expected.length===named.length&&expected.every((x,i)=>x===named[i]);
+  if(isOfficial)return {recognized:true,skuColumn:0,costColumn:6,schema:'wedrop-catalog-16'};
+  return {recognized:false,reason:'Layout não reconhecido com segurança. A coluna Preço de uma planilha genérica pode ser preço de venda.'};
+}
+export function prepareAutomaticWeDropImport(raw,{skipInvalid=false}={}){
+  const parsed=parseCsv(raw),layout=identifyWeDropLayout(parsed.headers);
+  if(!layout.recognized)throw Error(layout.reason+' Importação automática bloqueada.');
+  const prepared=prepareWeDropImport(raw,{
+    skuColumn:layout.skuColumn,costColumn:layout.costColumn,skipInvalid
+  });
+  return {...prepared,layout:layout.schema,automatic:true,
+    columnIndexes:{sku:layout.skuColumn,cost:layout.costColumn}};
+}
 export function previewWeDropCsv(raw){
   const parsed=parseCsv(raw);
   return {
@@ -81,7 +117,8 @@ export function previewWeDropCsv(raw){
     rowCount:parsed.rows.length,
     delimiter:parsed.delimiter===';'?'ponto e vírgula':parsed.delimiter==='\t'?'tabulação':'vírgula',
     examples:parsed.rows.slice(0,5).map(row=>row.slice(0,Math.min(20,row.length))),
-    warning:'Selecione manualmente as colunas SKU e custo de aquisição. Não use o preço de venda como custo.'
+    automaticLayout:identifyWeDropLayout(parsed.headers),
+    warning:'Os layouts confiáveis são reconhecidos automaticamente; caso contrário, valide manualmente o custo de aquisição.'
   };
 }
 export function prepareWeDropImport(raw,{skuColumn,costColumn,skipInvalid=false}={}){
