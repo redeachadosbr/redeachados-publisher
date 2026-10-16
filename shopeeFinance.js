@@ -20,7 +20,7 @@ export function financePeriod(days){
 // pedido cuja entrega ocorreu dentro do intervalo.
 export function financeRange({days=15,start='',end=''}={},now=Math.floor(Date.now()/1000)){
   if(start||end){
-    const date=/^\\d{4}-\\d{2}-\\d{2}$/;
+    const date=/^\d{4}-\d{2}-\d{2}$/;
     if(!date.test(start)||!date.test(end))throw Error('Informe as datas inicial e final.');
     const fromMs=Date.parse(start+'T00:00:00-03:00');
     const toMs=Date.parse(end+'T23:59:59-03:00');
