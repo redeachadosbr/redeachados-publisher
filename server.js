@@ -8,7 +8,7 @@ import {createAuthStore} from './authStore.js';
 import {
   shopeeConfig,buildShopeeAuthorizationUrl,exchangeShopeeCode,refreshShopeeToken,
   getShopeeShopInfo,normalizeShopeeTokenResult,safeShopeeStatus,callShopeeShopApi,
-  shopeeProxyStatus,getShopeeOutboundIp
+  shopeeProxyStatus,getShopeeOutboundIp,diagnoseShopeeSignature
 } from './shopee.js';
 
 const __dirname=path.dirname(fileURLToPath(import.meta.url));
@@ -86,6 +86,23 @@ app.get('/api/shopee/status',mustLogin,async(req,res)=>{
     const auth=await authStore.load();
     res.json({...safeShopeeStatus(auth,cfg),proxy:shopeeProxyStatus(),storage:authStore.status(),oauthSecurity:{sessionSecretConfigured:Boolean(envText('SESSION_SECRET'))}});
   }catch(e){res.status(400).json({error:String(e.message||e)});}
+});
+
+// Diagnóstico solicitado explicitamente pelo usuário: consulta apenas a assinatura
+// e nunca devolve chave, token ou URL com sign.
+let lastSignatureProbeAt=0;
+app.post('/api/shopee/signature-diagnostic',mustLogin,async(req,res)=>{
+  res.setHeader('Cache-Control','no-store');
+  try{
+    if(!envText('APP_PASSWORD'))return res.status(403).json({error:'Configure APP_PASSWORD para usar o diagnóstico.'});
+    const now=Date.now();
+    if(now-lastSignatureProbeAt<45000)return res.status(429).json({error:'Aguarde 45 segundos para repetir o diagnóstico.'});
+    lastSignatureProbeAt=now;
+    const cfg=shopeeConfig(baseUrl(req));
+    if(cfg.mode!=='live')return res.status(400).json({error:'Diagnóstico disponível somente no ambiente Live.'});
+    const result=await diagnoseShopeeSignature(cfg);
+    return res.json({ok:true,...result});
+  }catch(e){return res.status(400).json({error:String(e.message||e)});}
 });
 
 app.get('/api/shopee/proxy-test',mustLogin,async(_req,res)=>{
