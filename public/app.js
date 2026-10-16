@@ -137,11 +137,29 @@ $('#loadOrdersBtn').onclick=async()=>{
   try{
     const d=await json('/api/shopee/orders?page_size=50');debug(d);
     const orders=d.response?.order_list||[];
-    $('#ordersSummary').textContent=`${orders.length} pedido(s) retornado(s) nos últimos 15 dias.`;
-    b.innerHTML=orders.length?'':'<tr><td colspan="3">Nenhum pedido no Sandbox.</td></tr>';
+    const datesCount=orders.filter(o=>Number(o.create_time)>0).length;
+    const countText=`${orders.length} pedido(s) retornado(s) nos últimos 15 dias.`;
+    const datesText=orders.length?` Datas de criação: ${datesCount} de ${orders.length}.`:'';
+    const moreText=d.response?.more?' Existem mais pedidos; a paginação será implementada na sincronização completa.':'';
+    const warningText=d.detailStatus?.warning?' '+d.detailStatus.warning:'';
+    $('#ordersSummary').textContent=countText+datesText+moreText+warningText;
+    b.replaceChildren();
+    if(!orders.length){
+      const empty=document.createElement('tr');
+      const cell=document.createElement('td');
+      cell.colSpan=3;
+      cell.textContent='Nenhum pedido encontrado no período consultado.';
+      empty.appendChild(cell);
+      b.appendChild(empty);
+    }
     for(const x of orders){
       const tr=document.createElement('tr');
-      tr.innerHTML=`<td>${x.order_sn||'—'}</td><td>${x.order_status||'—'}</td><td>${fmtDate(x.create_time)}</td>`;b.appendChild(tr);
+      [x.order_sn||'—',x.order_status||'—',fmtDate(x.create_time)].forEach(value=>{
+        const td=document.createElement('td');
+        td.textContent=String(value);
+        tr.appendChild(td);
+      });
+      b.appendChild(tr);
     }
   }catch(e){b.innerHTML='<tr><td colspan="3">'+e.message+'</td></tr>';$('#ordersSummary').textContent='Falha na consulta.';}
 };
