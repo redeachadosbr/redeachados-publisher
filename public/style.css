@@ -50,3 +50,21 @@ button:disabled{opacity:.52;cursor:not-allowed}
 .ads-metrics{grid-template-columns:repeat(auto-fit,minmax(170px,1fr))}
 #adsFilterSummary{margin:10px 0 16px;line-height:1.4}
 @media(max-width:650px){.ads-status-tabs .ads-status-tab{flex:1 1 130px}}
+
+/* Shopee catálogo, milhares de anúncios com visualização progressiva */
+.catalog-controls{display:flex;gap:14px;align-items:end;flex-wrap:wrap;margin:16px 0;padding:16px}
+.catalog-controls label{display:flex;flex-direction:column;gap:6px;flex:1 1 180px;min-width:150px;font-weight:600;font-size:13px}
+.catalog-controls input,.catalog-controls select{padding:11px;min-height:42px;border:1px solid #d8d8d1;border-radius:9px;background:#fff;color:#253228}
+.catalog-controls label:first-child{flex:2 1 270px}
+.catalog-metrics{grid-template-columns:repeat(auto-fit,minmax(140px,1fr));margin:15px 0}
+.catalog-product-title{display:flex;align-items:center;gap:10px;min-width:235px;max-width:420px}
+.catalog-product-title img{width:48px;height:48px;flex:none;object-fit:contain;background:#fafafa;border-radius:8px;border:1px solid #eee}
+.catalog-product-title span{line-height:1.35;overflow-wrap:anywhere}
+.catalog-details{margin-top:20px;padding:20px}
+.catalog-paging{justify-content:space-between;margin:14px 0}
+#productsSummary[data-state="loading"]{background:#f4f7fc;border-color:#d9e2f2}
+#productsSummary[data-state="success"]{background:#f2faf3;border-color:#c9e2ca}
+#productsSummary[data-state="warning"]{background:#fff8ed;border-color:#e6d7ad}
+#productsBody td{vertical-align:middle}
+#productsBody td:nth-child(2){overflow-wrap:anywhere;min-width:170px}
+@media(max-width:700px){.catalog-controls{gap:10px}.catalog-product-title{min-width:200px}}
