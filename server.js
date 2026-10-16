@@ -285,7 +285,7 @@ app.get('/api/shopee/wedrop/models/pending',mustLogin,requireWeDropAdmin,async(r
   res.setHeader('Cache-Control','no-store');
   try{
     const {auth}=await getValidAuth(req);
-    const exclude=String(req.query.exclude||'').split(',').filter(x=>/^\\d{1,18}$/.test(x)).slice(0,500);
+    const exclude=String(req.query.exclude||'').split(',').filter(x=>/^\d{1,18}$/.test(x)).slice(0,500);
     const result=await pendingWeDropModels(auth.shopId,{limit:10,exclude});
     res.json({ok:true,...result});
   }catch(e){res.status(400).json({error:String(e.message||e).slice(0,320)});}
@@ -295,7 +295,7 @@ app.post('/api/shopee/wedrop/models/sync',mustLogin,requireWeDropAdmin,async(req
   res.setHeader('Cache-Control','no-store');
   if(variantsSyncBusy)return res.status(409).json({error:'Já existe uma sincronização de variações em andamento. Aguarde.'});
   const ids=req.body?.itemIds;
-  if(!Array.isArray(ids)||!ids.length||ids.length>10||ids.some(x=>!/^\\d{1,18}$/.test(String(x)))){
+  if(!Array.isArray(ids)||!ids.length||ids.length>10||ids.some(x=>!/^\d{1,18}$/.test(String(x)))){
     return res.status(400).json({error:'Selecione até 10 anúncios válidos para consultar as variações.'});
   }
   const normalized=[...new Set(ids.map(String))];
