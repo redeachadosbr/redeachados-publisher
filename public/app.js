@@ -1470,7 +1470,16 @@ function renderFinanceSkuList(){
     all:entries.length,sold:entries.filter(x=>x.sale).length,
     pending:entries.filter(x=>x.pending||x.repeatedSku).length
   };
-  for(const btn of document.querySelectorAll('[data-finance-filter]').forEach(btn=>{
+  for(const btn of document.querySelectorAll('[data-finance-filter]')){
+    const kind=btn.dataset.financeFilter;
+    const selected=kind===financeSkuFilter;
+    btn.classList.toggle('active',selected);
+    btn.setAttribute('aria-pressed',String(selected));
+    btn.textContent=({all:'Vendas e pendências',sold:'Vendas verificadas',
+      pending:'Pendências'})[kind]+' ('+wdNum(count[kind])+')';
+  }
+}
+document.querySelectorAll('[data-finance-filter]').forEach(btn=>{
   btn.onclick=()=>{financeSkuFilter=btn.dataset.financeFilter;financeSkuShown=24;renderFinanceSkuList();};
 });
 $('#financeSkuSearch').oninput=()=>{financeSkuShown=24;renderFinanceSkuList();};
