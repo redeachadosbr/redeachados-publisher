@@ -189,7 +189,7 @@ function catalogRender(){
 function catalogSummaryText(prefix=''){
   const all=catalogAll();
   const unknown=all.filter(x=>!x.baseLoaded).length;
-  const state=catalogDone?'Completo para os status consultados':catalogBusy?'Em andamento':'Parcial';
+  const state=catalogDone?(catalogProblems.length?'Listagem concluída com ressalvas':'Listagem concluída'):catalogBusy?'Em andamento':'Parcial';
   const notice=$('#productsSummary');
   notice.dataset.state=catalogProblems.length?'warning':catalogDone?'success':catalogBusy?'loading':'warning';
   notice.textContent=(prefix?prefix+' ':'')+'Catálogo: '+state+'. '+all.length+
@@ -231,6 +231,8 @@ async function catalogScan(){
   catalogBusy=true;catalogStop=false;
   const btn=$('#loadProductsBtn');btn.disabled=true;
   $('#stopProductsBtn').hidden=false;
+  $('#stopProductsBtn').disabled=false;
+  $('#stopProductsBtn').textContent='Interromper';
   try{
     while(catalogProgress.statusIndex<CATALOG_API_STATUSES.length&&!catalogStop){
       const st=CATALOG_API_STATUSES[catalogProgress.statusIndex];
@@ -268,7 +270,7 @@ async function catalogScan(){
       catalogSummaryText('Consultando '+st+'.');
       await new Promise(resolve=>setTimeout(resolve,180));
     }
-    catalogDone=catalogProgress.statusIndex>=CATALOG_API_STATUSES.length&&!catalogStop&&!catalogProblems.length;
+    catalogDone=catalogProgress.statusIndex>=CATALOG_API_STATUSES.length&&!catalogStop;
     catalogSummaryText(catalogStop?'Sincronização interrompida a pedido.':catalogDone?'Sincronização finalizada.':'Sincronização incompleta.');
   }finally{
     catalogBusy=false;btn.disabled=false;
