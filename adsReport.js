@@ -68,7 +68,10 @@ export function settingsFromShopeeResponse(data,expectedIds){
       status:status||'unknown',
       statusGroup:classifyShopeeCampaignStatus(status),
       name:String(info.ad_name||'').trim(),
-      placement:String(info.campaign_placement||'').trim()
+      placement:String(info.campaign_placement||'').trim(),
+      // Lista oficial dos produtos anunciados, nunca derivada do nome da campanha.
+      itemIdList:Array.isArray(info.item_id_list)
+        ?[...new Set(info.item_id_list.map(String).filter(x=>/^[1-9]\d*$/.test(x)))]:[]
     });
   }
   return byId;
@@ -94,7 +97,7 @@ export function summarizeShopeeAds(performanceResponses,discovered){
   const map=new Map(discovered.map(c=>[c.campaignId,{
     campaignId:c.campaignId,adType:c.adType||'',name:'',status:'unknown',statusGroup:'other',
     expense:0,broadGmv:0,directGmv:0,clicks:0,impressions:0,
-    broadOrders:0,directOrders:0,daysWithData:0
+    broadOrders:0,directOrders:0,directOrdersObserved:false,daysWithData:0
   }]));
   for(const apiData of performanceResponses){
     const sections=Array.isArray(apiData.response)?apiData.response:[apiData.response];
@@ -112,6 +115,8 @@ export function summarizeShopeeAds(performanceResponses,discovered){
           entry.clicks+=amount(m.clicks);
           entry.impressions+=amount(m.impression);
           entry.broadOrders+=amount(m.broad_order);
+          if(m.direct_order!==null&&m.direct_order!==undefined)
+            entry.directOrdersObserved=true;
           entry.directOrders+=amount(m.direct_order);
           entry.daysWithData++;
         }
@@ -169,6 +174,7 @@ export async function loadShopeeAdsOverview(cfg,auth,callApi,{start,end}){
     campaign.statusGroup=details.statusGroup;
     if(details.name)campaign.name=details.name;
     campaign.placement=details.placement;
+    campaign.itemIdList=details.itemIdList;
   }
   const statusCounts={
     active:summary.campaigns.filter(x=>x.statusGroup==='active').length,

@@ -969,3 +969,36 @@ table tr:hover td{background:#f3f8ff}
 @media(hover:none),(prefers-reduced-motion:reduce){
  #tab-finance .finance-kpi{transition:none;transform:none!important}
 }
+
+/* Financeiro Shopee 1.12.0: varredura Ads e resultados por SKU */
+#tab-finance .finance-kpis{grid-template-columns:repeat(4,minmax(0,1fr))}
+#tab-finance .finance-kpi{min-height:66px;padding:10px 12px}
+#tab-finance .finance-kpi strong{font-size:clamp(12px,1.15vw,17px)}
+#tab-finance .finance-ads-scan{
+ padding:12px 14px;margin:14px 0 10px;background:linear-gradient(145deg,#f8fbff,#fff);
+ border:1px solid #dfe9f6;border-radius:12px;
+ box-shadow:0 3px 9px rgba(21,55,103,.045),inset 0 1px rgba(255,255,255,.95);
+}
+#tab-finance .finance-ads-scan-head{display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap}
+#tab-finance .finance-ads-scan h3{font-size:13px;margin:0;color:#24496f}
+#tab-finance .finance-ads-scan-badge{
+ font-size:10px;padding:5px 9px;border-radius:20px;background:#f4f5f7;color:#718197;
+ font-weight:760;border:1px solid #e5ebf2;
+}
+#tab-finance .finance-ads-scan-badge[data-state=ready]{background:#eaf8f0;border-color:#cceada;color:#25794c}
+#tab-finance .finance-ads-scan-badge[data-state=error]{background:#fff4ed;border-color:#ffdfc9;color:#ae583d}
+#tab-finance .finance-ads-scan .hint{font-size:11px;line-height:1.55;color:#677b92;margin:9px 0}
+#tab-finance .finance-ads-exceptions{border-top:1px solid #e4edf8;padding-top:8px;margin-top:9px}
+#tab-finance .finance-ads-exceptions summary{cursor:pointer;font-size:11px;font-weight:730;color:#375c80}
+#tab-finance .finance-ads-exceptions summary span{color:#ce633e;margin-left:5px}
+#tab-finance .finance-ads-exception-list{display:grid;gap:6px;margin-top:9px;max-height:290px;overflow:auto}
+#tab-finance .finance-ads-exception-row{display:flex;align-items:center;justify-content:space-between;gap:14px;
+ padding:8px 10px;border:1px solid #e7edf6;border-radius:8px;background:#fff}
+#tab-finance .finance-ads-exception-row strong{font-size:10px;color:#203f66}
+#tab-finance .finance-ads-exception-row span{font-size:10px;color:#6d8199;text-align:right}
+@media(max-width:1400px){#tab-finance .finance-kpis{grid-template-columns:repeat(3,minmax(0,1fr))}}
+@media(max-width:950px){#tab-finance .finance-kpis{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media(max-width:600px){
+ #tab-finance .finance-ads-exception-row{flex-direction:column;align-items:flex-start}
+ #tab-finance .finance-ads-exception-row span{text-align:left}
+}

@@ -1265,9 +1265,50 @@ function financeCatalogImage(url){
       host.endsWith('.susercontent.com'));
   }catch{return false;}
 }
+function financeAdsBySku(report){
+ const sweep=report?.adsSweep;
+ return sweep?.status==='verified_campaign_period'
+   ?new Map((sweep.skuCosts||[]).map(x=>[String(x.sku),x]))
+   :new Map();
+}
+function renderFinanceAdsScan(report){
+ const sweep=report.adsSweep||{};
+ const good=sweep.status==='verified_campaign_period';
+ $('#financeSkuAdsKpi').textContent=good?wdMoney(sweep.spendAllocatedToSoldSku):'—';
+ $('#financeAdsTotal').textContent=good?wdMoney(sweep.spendTotal):'—';
+ $('#financeAdsNoConversion').textContent=good?wdMoney(sweep.spendWithoutDirectConversions):'—';
+ $('#financeSkuNetKpi').textContent='—';
+ $('#financeAdsScanBadge').textContent=good?'Ads conferidos':'Ads não verificados';
+ $('#financeAdsScanBadge').dataset.state=good?'ready':'error';
+ $('#financeAdsScanText').textContent=good
+   ?'Campanhas verificadas: '+wdNum(sweep.campaignCount)+'. '+
+    'Ads com venda direta atribuída e custo vinculado a SKU vendido: '+
+    wdMoney(sweep.spendAllocatedToSoldSku)+'. '+
+    'Ads sem venda direta atribuída: '+wdMoney(sweep.spendWithoutDirectConversions)+
+    ' (despesa da loja, fora de vendas individuais). '+
+    'Ads com conversão mas não atribuíveis com segurança: '+
+    wdMoney(sweep.spendUnassigned)+'. '+
+    'Os valores Ads representam gasto de campanhas no período e não identificam o pedido individual.'
+   :'Não foi possível consultar e vincular os Ads: '+(sweep.error||'dados indisponíveis')+
+    '. Não use custo de publicidade igual a zero. Verifique as permissões Ads e tente novamente.';
+ $('#financeAdsExceptionCount').textContent=good?wdNum((sweep.review||[]).length):'0';
+ const list=$('#financeAdsExceptionList');list.replaceChildren();
+ if(good){
+  for(const x of (sweep.review||[]).slice(0,120)){
+   const row=financeSkuNode('div','finance-ads-exception-row');
+   row.appendChild(financeSkuNode('strong','',
+     'Campanha '+x.campaignId+' · '+wdMoney(x.expense)));
+   row.appendChild(financeSkuNode('span','',x.situation));
+   list.appendChild(row);
+  }
+  if(!(sweep.review||[]).length)list.appendChild(
+    financeSkuNode('p','hint','Nenhuma campanha pendente nesta varredura.'));
+ }
+}
 function financeSkuEntries(report){
   const catalog=Array.isArray(report.catalogProducts)?report.catalogProducts:[];
   const sold=new Map((report.skuSummary||[]).map(x=>[String(x.sku),x]));
+  const adsBySku=financeAdsBySku(report);
   const pending=new Set();
   for(const x of report.rows||[]){
     if(x.ready)continue;
@@ -1295,7 +1336,8 @@ function financeSkuEntries(report){
   });
   return [...unique.values()].map(entry=>{
     const sale=sold.get(entry.sku);
-    return {...entry,sale:sale||null,pending:pending.has(entry.sku)};
+    return {...entry,sale:sale||null,ads:adsBySku.get(entry.sku)||null,
+      pending:pending.has(entry.sku)};
   }).sort((a,b)=>(b.sale?1:0)-(a.sale?1:0)||
     Number(b.pending)-Number(a.pending)||
     a.title.localeCompare(b.title,'pt-BR'));
@@ -1351,10 +1393,22 @@ function renderFinanceSkuList(){
     const balance=col(tr,'Saldo antes Ads',hasSale?wdMoney(sale.balanceBeforeAds):'—',
       'finance-amount '+(hasSale?(sale.balanceBeforeAds<0?'negative':'positive'):''));
     if(hasSale)balance.title='Repasse informado pela Shopee menos custo WeDrop; não é lucro líquido final.';
-    col(tr,'Ads','—','finance-number muted');
-    col(tr,'Lucro líquido','—','finance-number muted');
-    col(tr,'Situação',hasSale?'Saldo conferido':
-      x.pending?'Pedido pendente de conciliação':'Sem venda verificada',
+    const scanned=financeReport.adsSweep?.status==='verified_campaign_period';
+    const unassigned=Number(financeReport.adsSweep?.spendUnassigned||0)>0;
+    // Zero é explícito só quando não há campanha com conversão sem vínculo.
+    const safeZero=scanned&&!unassigned;
+    col(tr,'Ads vinculado',hasSale&&x.ads?wdMoney(x.ads.expense):
+      hasSale&&safeZero?wdMoney(0):'—',
+      'finance-number '+(hasSale&&(x.ads||safeZero)?'':'muted'));
+    const afterAds=hasSale&&scanned&&x.ads
+      ?wdMoney(x.ads.afterAds):hasSale&&safeZero?wdMoney(sale.balanceBeforeAds):'—';
+    const operating=col(tr,'Saldo após Ads',afterAds,
+      'finance-amount '+(hasSale&&(x.ads||safeZero)
+        ?((x.ads?.afterAds??sale.balanceBeforeAds)<0?'negative':'positive'):''));
+    operating.title='Comparativo por SKU e período; não é lucro líquido final nem repasse por pedido.';
+    col(tr,'Situação',hasSale
+      ?(x.ads?'Venda + Ads conferidos (parcial)':safeZero?'Sem conversão Ads atribuída':scanned?'Ads em revisão':'Ads não conferidos')
+      :x.pending?'Pedido pendente de conciliação':'Sem venda verificada',
       'finance-status-cell '+(hasSale?'verified':x.pending?'pending':'neutral'));
     const act=col(tr,'Ação',null,'finance-actions-cell');
     const button=financeSkuNode('button','finance-row-action',
@@ -1410,7 +1464,8 @@ $('#shopeeFinanceLoad').onclick=async()=>{
   // Esconder números da consulta anterior ao trocar período: nunca exibir como atual.
   financeReport=null;financeSkuBalances.clear();renderFinanceSkuList();
   for(const id of ['#shopeeFinanceVerified','#shopeeFinancePayout',
-    '#shopeeFinanceCosts','#shopeeFinanceBalance'])
+    '#shopeeFinanceCosts','#shopeeFinanceBalance','#financeSkuAdsKpi',
+    '#financeAdsTotal','#financeAdsNoConversion','#financeSkuNetKpi'])
     $(id).textContent='—';
   $('#shopeeFinanceData').hidden=true;
   wdSetNotice('#shopeeFinanceStatus',
@@ -1422,6 +1477,7 @@ $('#shopeeFinanceLoad').onclick=async()=>{
     });
     const t=report.totals||{};
     financeReport=report;financeSkuShown=36;
+    renderFinanceAdsScan(report);
     $('#shopeeFinanceData').hidden=false;
     renderFinanceSkuList();
     $('#shopeeFinanceVerified').textContent=wdNum(t.verified)+' de '+wdNum(t.eligible);
@@ -1471,11 +1527,16 @@ $('#shopeeFinanceLoad').onclick=async()=>{
       (t.incomplete?'Pedidos sem custo/repasse confirmado: '+wdNum(t.incomplete)+'. ':'')+
       (report.skippedCompleted?'Pedidos concluídos não examinados nesta consulta: '+
         wdNum(report.skippedCompleted)+'. ':'')+
-      'As taxas e o frete são detalhados apenas para consulta: já estão refletidos no repasse e NÃO devem ser descontados de novo.';
+      'As taxas e o frete estão no repasse, não devem ser descontados novamente. '+
+      'Os Ads só entram no resultado do SKU quando existe venda atribuída e vínculo de campanha seguro; '+
+      'despesa de Ads sem conversão permanece contabilizada separadamente na loja. '+
+      'Resultado após Ads é parcial, ainda sem tributos e custos externos.';
     wdSetNotice('#shopeeFinanceStatus',
       'Consulta concluída: '+wdNum(t.verified)+' de '+wdNum(t.eligible)+
       ' pedidos concluídos com custo e repasse verificados. '+
-      'Este é um recorte por data de criação, limitado a 35 pedidos. Saldo antes Ads não é lucro líquido final.',
+      'Varredura de Ads '+(report.adsSweep?.status==='verified_campaign_period'
+        ?'concluída':'pendente')+'. Período limitado a 35 pedidos concluídos.'+
+      ' O resultado após Ads não é lucro líquido final.',
       report.complete?'success':'warning');
     // Atualiza a coluna por SKU apenas para vendas realmente verificadas.
     await refreshWeDropCoverage();
