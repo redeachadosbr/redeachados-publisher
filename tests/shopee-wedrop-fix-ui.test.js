@@ -39,7 +39,7 @@ test('interface só libera importação depois da validação de SKU',()=>{
   const code=readFileSync(new URL('../public/app.js',import.meta.url),'utf8');
   const server=readFileSync(new URL('../server.js',import.meta.url),'utf8');
   assert.match(html,/id="wedropImportBtn" type="button" disabled/);
-  assert.match(code,/id="wedropImportBtn"/);
+  assert.match(code,/#wedropImportBtn/);
   assert.match(code,/weDropValidation/);
   assert.match(code,/\/api\/shopee\/wedrop\/validate/);
   assert.match(server,/\/api\/shopee\/wedrop\/validate/);
