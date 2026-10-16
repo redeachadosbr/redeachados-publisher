@@ -39,3 +39,15 @@ Importação dos custos de aquisição de SKUs do fornecedor WeDrop, com víncul
 2. Importar produtos com variações para o cache e validar taxa de correspondência.
 3. Criar conciliação financeira com **valores líquidos efetivos** por pedido, taxas, descontos, frete, devoluções e Ads de modo deduplicado; só então habilitar cálculo de lucro e simulações de preço.
 4. Implementar prévia + **Executar** para promoções/descontos apenas quando API e margem forem confirmadas e com aprovação.
+
+## Correções 1.6.1 — 16/10/2026
+- Resolve o problema visual de checkboxes que herdavam `input { width: 100% }`, empurrando as legendas para a margem direita e criando uma faixa horizontal de rolagem. Caixas passam a medir 18 × 18 px ao lado da explicação.
+- Tabela de prévia de 5 linhas continua horizontalmente rolável **somente dentro da área de dados**, com altura máxima de 230 px, sem expandir o formulário.
+- O botão **Confirmar importação dos custos** permanece desativado até clicar em **Validar SKUs e custos antes de importar**.
+- A pré-validação lê o CSV, exige selecionar as duas colunas e calcula correspondência **exata** entre SKUs da WeDrop e SKUs armazenados do catálogo Shopee, sem eliminar zeros à esquerda.
+- Se houver 0 correspondências, exibir risco de EAN/NCM versus SKU e exigir autorização específica para prosseguir; a rota do servidor bloqueia importação sem tal aprovação.
+- Nunca atualizar custo já salvo automaticamente: seleção de substituição continua desmarcada por padrão.
+- O bloco de variações conta com **Sincronizar variações pendentes**, solicita até dez itens por lote da API oficial `get_model_list`, armazena no Supabase, atualiza as métricas e permite Interromper/Retomar.
+- Lotes falhos mantêm dados salvos; falhas de API são exibidas por item, sem inventar SKUs.
+- Contagem de 404 SKUs sem custo era válida antes da importação. A prévia do CSV não grava dados. Os 117 anúncios com variações faltantes serão tratados pela sincronização em lote.
+- Nada altera preços, Ads, pedidos ou serviço Mercado Livre.
