@@ -6,7 +6,7 @@
 <meta name="theme-color" content="#0A1C3A">
 <link rel="icon" type="image/svg+xml" href="/brand-logo.svg">
 <title>Rede Achados BR · Gestão Shopee</title>
-<link rel="stylesheet" href="/style.css?v=1.9.1">
+<link rel="stylesheet" href="/style.css?v=1.9.2">
 </head>
 <body>
 <div class="shell app-layout">
@@ -100,16 +100,17 @@
           <article><span>Estoque zero</span><strong id="catalogStockZero">—</strong></article>
         </div>
         <div id="productsSummary" class="notice" role="status" aria-live="polite">Clique em Sincronizar catálogo para percorrer todos os anúncios. A consulta pode levar alguns minutos.</div>
-        <div class="table-wrap"><table>
-          <thead><tr><th>Produto</th><th>Item ID / SKU</th><th>Status</th><th>Preço (R$)</th><th>Estoque</th><th>Promoção</th><th>Atualização</th><th>Ação</th></tr></thead>
-          <tbody id="productsBody"></tbody>
-        </table></div>
-        <div class="actions catalog-paging"><span id="productsRowsShown" class="hint"></span><button id="productsMoreBtn" class="secondary" type="button" hidden>Mostrar mais anúncios</button></div>
-        <section id="productDetailsPanel" class="card catalog-details" hidden aria-live="polite">
+        <section id="productDetailsPanel" class="card catalog-details" hidden aria-live="polite" tabindex="-1">
           <div class="section-head"><h2 id="productDetailsTitle">Detalhes do anúncio</h2><button id="closeProductDetails" class="secondary" type="button">Fechar</button></div>
           <p id="productDetailsStatus" class="hint">Consulte as variações de um anúncio.</p>
           <div class="table-wrap"><table><thead><tr><th>Variação</th><th>SKU</th><th>Status</th><th>Preço</th><th>Estoque</th></tr></thead><tbody id="productModelsBody"></tbody></table></div>
         </section>
+        <div class="catalog-list-heading"><h3>Anúncios encontrados</h3><span>Cartões responsivos — toque em Detalhes ou Variações para consultar.</span></div>
+        <div class="table-wrap catalog-list"><table class="catalog-products-table">
+          <thead><tr><th>Produto</th><th>Item ID / SKU</th><th>Status</th><th>Preço (R$)</th><th>Estoque</th><th>Promoção</th><th>Atualização</th><th>Ação</th></tr></thead>
+          <tbody id="productsBody"></tbody>
+        </table></div>
+        <div class="actions catalog-paging"><span id="productsRowsShown" class="hint"></span><button id="productsMoreBtn" class="secondary" type="button" hidden>Mostrar mais anúncios</button></div>
       </section>
               <section class="tabpane" id="tab-orders">
         <div class="section-head"><div><span class="eyebrow">PEDIDOS</span><h2>Últimos 15 dias</h2></div><button id="loadOrdersBtn">Carregar pedidos</button></div>
@@ -318,6 +319,6 @@
     </main>
   </div>
 </div>
-<script src="/app.js?v=1.9.1"></script>
+<script src="/app.js?v=1.9.2"></script>
 </body>
 </html>
