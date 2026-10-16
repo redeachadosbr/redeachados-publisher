@@ -22,3 +22,7 @@ button:disabled{opacity:.52;cursor:not-allowed}
 .monitor-danger-row{background:#fff7f4}
 #monitorBadge{font-weight:700;color:#e89255}
 @media(max-width:780px){.monitor-card{padding:15px}.monitor-alerts{gap:8px}}
+
+#monitorStatus[data-health="stale"],#monitorStatus[data-health="failed"]{background:#fff5ec;border-color:#e9ac80;color:#8e2f1b;font-weight:600}
+#monitorStatus[data-health="healthy"]{background:#eff8f1;border-color:#c8e0cc;color:#215d31}
+#monitorStatus[data-health="never"]{background:#fff9e9;border-color:#eadfb8}
