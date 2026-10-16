@@ -10,6 +10,8 @@ import {createShopeeOrderMonitor} from './orderMonitor.js';
 import {loadShopeeAdsOverview} from './adsReport.js';
 import {fetchCatalogPage,normalizeShopeeModels,validItemId} from './catalog.js';
 import {storeCatalogItems,storeCatalogModels,readCatalogCache,catalogStoreReady} from './catalogStore.js';
+import {previewWeDropCsv,prepareWeDropImport,MAX_CSV_CHARS} from './wedropCsv.js';
+import {saveWeDropCosts,getWeDropCoverage} from './wedropCosts.js';
 import {
   shopeeConfig,buildShopeeAuthorizationUrl,exchangeShopeeCode,refreshShopeeToken,
   getShopeeShopInfo,normalizeShopeeTokenResult,safeShopeeStatus,callShopeeShopApi,
@@ -72,7 +74,7 @@ function mustLogin(req,res,next){
   return res.redirect('/');
 }
 
-app.use(express.json({limit:'2mb'}));
+app.use(express.json({limit:'6mb'}));
 app.use(express.urlencoded({extended:true}));
 app.use(session({
   secret:stateSecret(),resave:false,saveUninitialized:false,proxy:true,
@@ -80,7 +82,7 @@ app.use(session({
 }));
 app.use(express.static(path.join(__dirname,'public')));
 
-app.get('/api/health',(_req,res)=>res.json({ok:true,service:'Rede Achados BR Shopee API',version:'1.5.1',storage:authStore.status()}));
+app.get('/api/health',(_req,res)=>res.json({ok:true,service:'Rede Achados BR Shopee API',version:'1.6.0',storage:authStore.status()}));
 app.get('/api/auth-state',(req,res)=>res.json({locked:Boolean(envText('APP_PASSWORD')),loggedIn:!envText('APP_PASSWORD')||Boolean(req.session?.appAuth)}));
 app.post('/api/login',(req,res)=>{
   const required=envText('APP_PASSWORD');
@@ -205,6 +207,58 @@ app.get('/api/shopee/test-shop',mustLogin,async(req,res)=>{
 
 
 // Catálogo operacional: página de anúncios enriquecida com dados de base.
+// Custos WeDrop. Nenhuma operação modifica preços ou campanhas Shopee.
+function requireWeDropAdmin(req,res,next){
+  if(!envText('APP_PASSWORD')||!req.session?.appAuth){
+    return res.status(403).json({error:'Configure APP_PASSWORD no Render e faça login para trabalhar com os custos do fornecedor.'});
+  }
+  next();
+}
+function costCsvFromBody(req){
+  const raw=req.body?.csv;
+  if(typeof raw!=='string'||raw.length>MAX_CSV_CHARS)
+    throw Error('CSV inválido ou maior que 4 MB.');
+  return raw;
+}
+app.post('/api/shopee/wedrop/preview',mustLogin,requireWeDropAdmin,(req,res)=>{
+  res.setHeader('Cache-Control','no-store');
+  try{
+    res.json({ok:true,...previewWeDropCsv(costCsvFromBody(req))});
+  }catch(error){
+    res.status(400).json({error:String(error.message||error).slice(0,320)});
+  }
+});
+app.post('/api/shopee/wedrop/import',mustLogin,requireWeDropAdmin,async(req,res)=>{
+  res.setHeader('Cache-Control','no-store');
+  try{
+    const prepared=prepareWeDropImport(costCsvFromBody(req),{
+      skuColumn:req.body?.skuColumn,costColumn:req.body?.costColumn,
+      skipInvalid:req.body?.skipInvalid===true
+    });
+    const {auth}=await getValidAuth(req);
+    const saved=await saveWeDropCosts(auth.shopId,prepared.costs,{
+      overwrite:req.body?.overwrite===true,
+      sourceFile:String(req.body?.fileName||'wedrop.csv')
+    });
+    res.json({ok:true,shopId:auth.shopId,...saved,
+      importedFrom:prepared.totalRows,
+      skippedInvalid:prepared.skippedInvalid,
+      invalidExamples:prepared.invalidExamples,
+      note:'Os custos foram gravados somente no Supabase Shopee. Nenhum preço ou anúncio foi alterado.'});
+  }catch(error){
+    res.status(400).json({error:String(error.message||error).slice(0,450)});
+  }
+});
+app.get('/api/shopee/wedrop/coverage',mustLogin,requireWeDropAdmin,async(req,res)=>{
+  res.setHeader('Cache-Control','no-store');
+  try{
+    const {auth}=await getValidAuth(req);
+    res.json({ok:true,...await getWeDropCoverage(auth.shopId)});
+  }catch(error){
+    res.status(400).json({error:String(error.message||error).slice(0,350)});
+  }
+});
+
 app.get('/api/shopee/catalog/cache',mustLogin,async(req,res)=>{
   res.setHeader('Cache-Control','no-store');
   try{

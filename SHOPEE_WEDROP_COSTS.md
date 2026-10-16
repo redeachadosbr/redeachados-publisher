@@ -1,0 +1,41 @@
+# WeDrop + Custos — Rede Achados BR Shopee 1.6.0
+
+## Finalidade
+Importação dos custos de aquisição de SKUs do fornecedor WeDrop, com vínculo à cópia do catálogo Shopee no Supabase. **Somente Shopee** (Shop ID fornecido pela autenticação). Mercado Livre permanece intacto.
+
+## Processo de importação
+1. Exportar arquivo **CSV** no fornecedor WeDrop, contendo colunas reais de **SKU** e **custo de aquisição unitário**. Neste estágio arquivos Excel XLSX não são suportados: exportar CSV.
+2. No aplicativo Shopee, abrir **WeDrop e custos**, selecionar arquivo CSV UTF-8 de até 4 MB.
+3. **Conferir colunas do CSV**, inspecionar prévia das primeiras cinco linhas e **escolher manualmente** qual coluna é SKU e qual é custo de aquisição (R$). O importador não assume por nome, nem confunde custo com preço de anúncio.
+4. **Confirmar importação dos custos**. Por padrão, custos existentes são preservados. Marcar **Atualizar custos já cadastrados** somente para substituir valores existentes.
+5. Linhas com custos zero, negativos, malformados ou SKU vazio são rejeitadas. Somente com **Ignorar linhas inválidas** marcado podem ser descartadas e quantificadas.
+6. SKUs repetidos com custo diferente no mesmo CSV bloqueiam a importação inteira. Repetidos de mesmo custo são deduplicados.
+7. O histórico é gravado no Supabase com a chave protegida do backend, na tabela `shopee_wedrop_costs` (RLS).
+8. **Atualizar cruzamento** para comparar custos com os SKUs de produtos/variações já sincronizados. Sem produto na cópia do catálogo, nenhum vínculo automático é inventado.
+
+## Resultados
+- Contagem de SKUs Shopee comparados, com custo vinculado, sem custo, modelos ainda não sincronizados e custos importados.
+- Lista priorizando SKUs sem custos.
+- `Preço catálogo - Custo WeDrop = Diferença bruta` quando os dois valores estiverem confirmados.
+- Nada é apresentado como **lucro líquido**, valor a receber ou margem líquida: isso exige taxas, logística, preços finais (inclusive promoção) e despesas reais de Ads por SKU.
+- A importação jamais executa alterações de preços, campanhas, estoque nem promoções na Shopee.
+
+## Controles
+- Protegido por senha administrativa `APP_PASSWORD` e sessão autenticada. Sem senha configurada, importação e consulta de custos são bloqueadas.
+- CSV e mapeamento processados no backend; o conteúdo do arquivo não é salvo no banco. Gravam-se apenas pares SKU e custo, nome do arquivo e data.
+- Limites por arquivo: até 4 milhões de caracteres (máximo 15.000 linhas), dados JSON até 6 MB, importação em lotes idempotentes. Se um lote falhar, a tela informa que a gravação foi parcial e como retomar.
+- Títulos e SKUs exibidos com `textContent`, impedindo interpretação de HTML.
+- Não contém integração privada com API WeDrop: custo só vem do CSV fornecido pelo titular.
+- Relação por SKU é exata após remoção de espaços nas extremidades; não há vínculo fuzzy que misture variantes diferentes.
+- A importação não é executada automaticamente no deploy; só após ação explícita do usuário.
+
+## Testes
+- Testes CSV BRL/USA, aspas e ponto e vírgula; formatos inválidos; duplicados conflitantes; custo zero; modelos sem preço.
+- Testes de catálogo já existentes permanecem ativos.
+- Teste de produção: login → WeDrop e custos → prévia do CSV → escolher SKU e custo → confirmar → atualizar cruzamento. Enviar somente print do resultado, nunca senha nem chaves.
+
+## Próxima etapa
+1. Validar uma exportação real WeDrop (nomes de coluna e SKU).
+2. Importar produtos com variações para o cache e validar taxa de correspondência.
+3. Criar conciliação financeira com **valores líquidos efetivos** por pedido, taxas, descontos, frete, devoluções e Ads de modo deduplicado; só então habilitar cálculo de lucro e simulações de preço.
+4. Implementar prévia + **Executar** para promoções/descontos apenas quando API e margem forem confirmadas e com aprovação.

@@ -68,3 +68,23 @@ button:disabled{opacity:.52;cursor:not-allowed}
 #productsBody td{vertical-align:middle}
 #productsBody td:nth-child(2){overflow-wrap:anywhere;min-width:170px}
 @media(max-width:700px){.catalog-controls{gap:10px}.catalog-product-title{min-width:200px}}
+
+/* Shopee + WeDrop: importação de custos e vinculação por SKU */
+.wedrop-panel,.wedrop-results{margin-top:17px;padding:22px}
+.wedrop-panel h2,.wedrop-results h2{margin-bottom:10px}
+.wedrop-panel label{display:block;margin:14px 0;font-weight:600}
+.wedrop-panel label input[type=file]{display:block;margin-top:8px;width:100%;max-width:550px}
+.wedrop-mapping{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:16px;margin:12px 0}
+.wedrop-mapping select{display:block;width:100%;padding:12px;margin-top:8px;border-radius:10px;border:1px solid #d4d6cf;background:white}
+.wedrop-flag{display:flex!important;align-items:flex-start;gap:9px;font-weight:400!important;line-height:1.4;cursor:pointer}
+.wedrop-flag input{margin-top:3px;flex:none}
+.wedrop-metrics{grid-template-columns:repeat(auto-fit,minmax(150px,1fr));margin:18px 0}
+#wedropSample{max-height:285px;overflow:auto;margin:14px 0}
+#wedropCoverageBody td:nth-child(1){min-width:180px}
+#wedropCoverageBody td:nth-child(2){min-width:115px;overflow-wrap:anywhere}
+#wedropCoverageBody tr.wedrop-missing{background:#fff9ef}
+#wedropPreviewSummary,#wedropImportStatus,#wedropCoverageStatus{margin-top:13px;line-height:1.5;overflow-wrap:anywhere}
+#wedropImportStatus[data-state="error"],#wedropCoverageStatus[data-state="error"]{background:#fff3ef;border-color:#e7bbae}
+#wedropImportStatus[data-state="success"],#wedropCoverageStatus[data-state="success"]{background:#edf7ee;border-color:#badbc3}
+#wedropCoverageStatus[data-state="warning"]{background:#fff8ea;border-color:#e5d4ad}
+@media(max-width:650px){.wedrop-panel,.wedrop-results{padding:15px}}

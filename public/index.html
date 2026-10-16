@@ -26,6 +26,7 @@
       <nav class="tabs">
         <button class="tab active" data-tab="overview">Visão geral</button>
         <button class="tab" data-tab="products">Produtos</button>
+        <button class="tab" data-tab="wedrop">WeDrop e custos</button>
         <button class="tab" data-tab="orders">Pedidos</button>
         <button class="tab" data-tab="alerts">Monitor de envios <span id="monitorBadge"></span></button>
         <button class="tab" data-tab="ads">Ads</button>
@@ -94,6 +95,47 @@
           <p id="productDetailsStatus" class="hint">Consulte as variações de um anúncio.</p>
           <div class="table-wrap"><table><thead><tr><th>Variação</th><th>SKU</th><th>Status</th><th>Preço</th><th>Estoque</th></tr></thead><tbody id="productModelsBody"></tbody></table></div>
         </section>
+      </section>
+
+      <section class="tabpane" id="tab-wedrop">
+        <div class="section-head">
+          <div><span class="eyebrow">CUSTOS WE DROP</span><h2>Custos por SKU e conferência Shopee</h2></div>
+          <button class="secondary" id="wedropRefreshBtn" type="button">Atualizar cruzamento</button>
+        </div>
+        <div class="card wedrop-panel">
+          <h2>Importar custos reais do fornecedor</h2>
+          <p class="hint">Exporte o catálogo da WeDrop em CSV. O arquivo não altera preços, promoções ou anúncios Shopee. Você escolhe a coluna de SKU e a coluna do custo de compra antes de confirmar.</p>
+          <label>Arquivo CSV da WeDrop <input id="wedropFile" type="file" accept=".csv,text/csv,text/plain"></label>
+          <button id="wedropPreviewBtn" type="button">Conferir colunas do CSV</button>
+          <div id="wedropPreviewArea" hidden>
+            <p id="wedropPreviewSummary" class="notice" role="status"></p>
+            <div class="wedrop-mapping">
+              <label>Coluna SKU <select id="wedropSkuColumn"><option value="">Escolha a coluna SKU</option></select></label>
+              <label>Coluna de custo de aquisição (R$) <select id="wedropCostColumn"><option value="">Escolha a coluna de custo — não preço de venda</option></select></label>
+            </div>
+            <div id="wedropSample" class="table-wrap"></div>
+            <label class="wedrop-flag"><input id="wedropSkipInvalid" type="checkbox"> Ignorar linhas inválidas e informar quantas foram descartadas</label>
+            <label class="wedrop-flag"><input id="wedropOverwrite" type="checkbox"> Atualizar os custos já cadastrados para os mesmos SKUs (sem marcar, preserva os existentes)</label>
+            <button id="wedropImportBtn" type="button">Confirmar importação dos custos</button>
+          </div>
+          <p id="wedropImportStatus" class="notice" role="status" aria-live="polite">Nenhum arquivo importado nesta sessão.</p>
+        </div>
+        <div class="metrics wedrop-metrics">
+          <article><span>SKUs comparados</span><strong id="wedropCompared">—</strong></article>
+          <article><span>Com custo WeDrop</span><strong id="wedropMatched">—</strong></article>
+          <article><span>Sem custo</span><strong id="wedropMissingCost">—</strong></article>
+          <article><span>Variações não sincronizadas</span><strong id="wedropPendingModels">—</strong></article>
+          <article><span>Custos importados</span><strong id="wedropImported">—</strong></article>
+        </div>
+        <p id="wedropCoverageStatus" class="notice" role="status" aria-live="polite">Atualize o cruzamento para ver os dados do Supabase.</p>
+        <div class="card wedrop-results">
+          <h2>Cruzamento por SKU</h2>
+          <p class="hint">Preço mostrado é o valor do catálogo, não necessariamente o preço efetivo de venda. A diferença bruta não considera taxas Shopee, descontos, frete, Ads nem devoluções — não representa lucro líquido.</p>
+          <div class="table-wrap"><table>
+            <thead><tr><th>Produto</th><th>SKU</th><th>Preço catálogo</th><th>Custo WeDrop</th><th>Diferença bruta</th><th>Situação</th></tr></thead>
+            <tbody id="wedropCoverageBody"></tbody>
+          </table></div>
+        </div>
       </section>
 
       <section class="tabpane" id="tab-orders">
@@ -169,5 +211,5 @@
     </section>
   </main>
 </div>
-<script src="/app.js?v=1.5.1"></script>
+<script src="/app.js?v=1.6.0"></script>
 </body></html>
