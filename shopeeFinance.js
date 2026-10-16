@@ -23,13 +23,22 @@ export function normalizeEscrowOrder(order,detail,escrow,costMap){
     return {orderSn,status,ready:false,reason:status!=='COMPLETED'
       ?'Pedido não concluído; repasse pode mudar.':'A Shopee não retornou o detalhe do repasse.'};
   }
+  if(Array.isArray(escrow.response?.return_order_sn_list)&&
+     escrow.response.return_order_sn_list.length){
+    return {orderSn,status,ready:false,payout:null,totalCost:null,balanceBeforeAds:null,
+      netProfit:null,netMargin:null,
+      reason:'Pedido com devolução/reembolso: aguarde a conciliação de itens devolvidos e custos.'};
+  }
   const payout=finiteMoney(income.escrow_amount_after_adjustment??income.escrow_amount);
   const items=Array.isArray(income.items)&&income.items.length
     ?income.items:Array.isArray(detail?.item_list)?detail.item_list:[];
   const costs=[],missing=[];
   for(const item of items){
     // SKU de modelo tem prioridade; nunca utilizar SKU pai no lugar da variação.
-    const sku=String(item.model_sku||item.item_sku||'').trim();
+    // Um modelo existente sem model_sku não deve herdar o SKU pai por engano.
+    const modelRequiresSku=Number(item.model_id||0)>0&&!String(item.model_sku||'').trim();
+    const isBundle=Boolean(item.is_kit);
+    const sku=modelRequiresSku||isBundle?'':String(item.model_sku||item.item_sku||'').trim();
     const qty=Number(item.quantity_purchased??item.model_quantity_purchased??item.quantity);
     const unit=costMap.get(sku);
     if(!sku||!Number.isSafeInteger(qty)||qty<1||qty>100000||
