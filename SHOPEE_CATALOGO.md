@@ -22,3 +22,13 @@
 Abra `https://redeachados-shopee.onrender.com`, Ctrl+F5, aba Produtos e clique **Sincronizar catálogo**. Verifique que ultrapassa a antiga limitação de 50, filtre e teste um anúncio com variações e um sem SKU. Se surgir aviso, copie somente a mensagem. Nenhuma chave/token precisa ser enviada.
 
 Referências: Shopee Open Platform v2.product.get_item_list, get_item_base_info e get_model_list. 
+
+## Cache persistente — versão 1.5.1
+- O backend grava páginas confirmadas na tabela `shopee_catalog_items`, por `shop_id + item_id`.
+- Variações consultadas pelo botão Detalhes são gravadas em `shopee_catalog_models`, por `shop_id + item_id + model_id`.
+- Ambos têm RLS ativada: acesso somente pela chave do backend; sem exposição pública de dados pessoais ou chaves OAuth.
+- Ao entrar no painel, a aba Produtos recupera o último catálogo salvo no Supabase. Exibe aviso de histórico, pois dados antigos **não são estoque atualizado**.
+- Cada consulta direta à Shopee atualiza a cópia armazenada. Caso o Supabase falhe, a leitura Shopee continua e um aviso é exibido.
+- Dados de base ausentes não apagam valores previamente confirmados. Estoque/preço desconhecidos continuam nulos.
+- O cache não equivale à sincronização completa: precisa percorrer todos os status, sem falhas.
+- Esse armazenamento permitirá relacionar os SKUs com os custos WeDrop e guardar comparativos de margem sem alterar o anúncio automaticamente.
