@@ -170,36 +170,78 @@ $('#adsEnd').value=today.toISOString().slice(0,10);$('#adsStart').value=before.t
 const adsMoney=v=>new Intl.NumberFormat('pt-BR',{style:'currency',currency:'BRL'}).format(Number(v)||0);
 const adsNum=v=>new Intl.NumberFormat('pt-BR',{maximumFractionDigits:2}).format(Number(v)||0);
 const adsMetric=v=>v===null||v===undefined?'—':adsNum(v);
-function renderShopeeAds(data){
-  const campaigns=Array.isArray(data.campaigns)?data.campaigns:[];
-  const total=data.total||{};
-  $('#adsResults').hidden=false;
-  $('#adsCampaignCount').textContent=data.campaignCount||0;
-  $('#adsExpense').textContent=adsMoney(total.expense);
-  $('#adsGmv').textContent=adsMoney(total.broadGmv);
-  $('#adsRoasAcos').textContent=adsMetric(total.roas)+'x / '+(total.acos===null?'—':adsNum(total.acos)+'%');
+let adsCampaignRows=[];
+let adsCurrentGroup='active';
+function adsStatusLabel(code){
+  const map={ongoing:'Ativa / Rodando',paused:'Pausada',ended:'Encerrada',
+    deleted:'Excluída',closed:'Desativada / Fechada',scheduled:'Agendada',unknown:'Não confirmado'};
+  const key=String(code||'unknown').toLowerCase();
+  return map[key]||('Outro: '+key);
+}
+function displayAdsGroup(group){
+  adsCurrentGroup=group;
+  const labels={active:'Ativas',inactive:'Pausadas ou desativadas',other:'Outras ou sem confirmação'};
+  document.querySelectorAll('.ads-status-tab').forEach(button=>{
+    const selected=button.dataset.adsGroup===group;
+    button.classList.toggle('selected',selected);
+    button.setAttribute('aria-pressed',selected?'true':'false');
+  });
+  const filtered=adsCampaignRows.filter(c=>c.statusGroup===group);
+  $('#adsFilterSummary').textContent=filtered.length+' campanha(s) — '+labels[group]+
+    '. O status corresponde à situação atual na Shopee; Impressões, Cliques e CTR ao período selecionado.';
   const body=$('#adsResultsBody');body.replaceChildren();
-  if(!campaigns.length){
+  if(!filtered.length){
     const tr=document.createElement('tr'),td=document.createElement('td');
-    td.colSpan=7;td.textContent='Nenhuma campanha de anúncio de produto retornada para esta loja.';
-    tr.appendChild(td);body.appendChild(tr);
-    return;
+    td.colSpan=10;
+    td.textContent=group==='active'?'Nenhuma campanha confirmada como ativa na consulta atual. Confira as outras abas.':
+      group==='inactive'?'Nenhuma campanha pausada, encerrada ou desativada identificada.':
+      'Nenhuma campanha agendada ou com status não confirmado.';
+    tr.appendChild(td);body.appendChild(tr);return;
   }
-  for(const campaign of campaigns){
+  for(const campaign of filtered){
     const tr=document.createElement('tr');
     const cells=[
       (campaign.name||'Campanha')+' · '+campaign.campaignId,
+      adsStatusLabel(campaign.status),
       campaign.adType||'—',
-      adsMoney(campaign.expense),adsMoney(campaign.broadGmv),
+      adsNum(campaign.impressions),
+      adsNum(campaign.clicks),
+      campaign.ctr===null?'—':adsNum(campaign.ctr)+'%',
+      adsMoney(campaign.expense),
+      adsMoney(campaign.broadGmv),
       campaign.roas===null?'—':adsNum(campaign.roas)+'x',
-      campaign.acos===null?'—':adsNum(campaign.acos)+'%',
-      adsNum(campaign.clicks)
+      campaign.acos===null?'—':adsNum(campaign.acos)+'%'
     ];
     for(const value of cells){
       const td=document.createElement('td');td.textContent=String(value);tr.appendChild(td);
     }
     body.appendChild(tr);
   }
+}
+document.querySelectorAll('.ads-status-tab').forEach(button=>{
+  button.onclick=()=>displayAdsGroup(button.dataset.adsGroup);
+});
+function renderShopeeAds(data){
+  const campaigns=Array.isArray(data.campaigns)?data.campaigns:[];
+  const total=data.total||{};
+  const counts=data.statusCounts||{active:0,inactive:0,other:campaigns.length};
+  adsCampaignRows=campaigns;
+  $('#adsResults').hidden=false;
+  $('#adsCampaignCount').textContent=data.campaignCount??campaigns.length;
+  $('#adsImpressions').textContent=adsNum(total.impressions);
+  $('#adsClicks').textContent=adsNum(total.clicks);
+  $('#adsCtr').textContent=total.ctr===null||total.ctr===undefined?'—':adsNum(total.ctr)+'%';
+  $('#adsExpense').textContent=adsMoney(total.expense);
+  $('#adsGmv').textContent=adsMoney(total.broadGmv);
+  $('#adsRoasAcos').textContent=adsMetric(total.roas)+'x / '+(total.acos===null?'—':adsNum(total.acos)+'%');
+  $('#adsActiveCount').textContent=counts.active||0;
+  $('#adsInactiveCount').textContent=counts.inactive||0;
+  $('#adsOtherCount').textContent=counts.other||0;
+  $('#adsOtherTab').hidden=!(counts.other>0);
+  $('#adsStatusExplanation').textContent=data.statusWarning
+    ?'Atenção: '+data.statusWarning+' Campanhas sem status confirmado ficam na aba Outras / Sem confirmação.'
+    :'Situação atual confirmada pela API Shopee; as métricas são do período selecionado (inclusive nas campanhas pausadas).';
+  displayAdsGroup('active');
 }
 $('#loadAdsAutoBtn').onclick=async()=>{
   const button=$('#loadAdsAutoBtn'),summary=$('#adsSummary');
@@ -217,7 +259,7 @@ $('#loadAdsAutoBtn').onclick=async()=>{
     renderShopeeAds(data);
     summary.dataset.state='success';
     summary.textContent='Consulta concluída: '+data.campaignCount+' campanhas identificadas, '+
-      (data.total?.withData||0)+' com métricas no período. '+data.caveat;
+      (data.total?.withData||0)+' com métricas no período. '+(data.statusWarning?' Status: '+data.statusWarning+' ':'')+data.caveat;
     debug({shopId:data.shopId,campaignCount:data.campaignCount,dates:data.dates,total:data.total,coverage:data.coverage});
   }catch(error){
     const message=error?.name==='TimeoutError'?'Tempo de consulta excedido. Tente novamente com período menor.':String(error.message||error);
