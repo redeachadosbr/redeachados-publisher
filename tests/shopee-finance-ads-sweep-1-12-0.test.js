@@ -78,7 +78,7 @@ test('campos UI/endpoint e nomes de despesas preservam lucro líquido final não
  assert.match(server,/loadShopeeAdsOverview\(cfg,auth,callShopeeShopApi,dates\)/);
  assert.match(server,/matchFinanceAds\(finance,adsResult.value\)/);
  assert.match(server,/status:'unavailable'/);
- assert.match(html,/lucro líquido final depende de tributos/i);
+ assert.match(html,/não é lucro fiscal final/i);
  assert.match(html,/app\.js\?v=1\.13\.0/);
 });
 test('datas de Ads correspondem ao calendário brasileiro, não ao fuso do servidor',()=>{
