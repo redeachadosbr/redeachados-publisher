@@ -47,11 +47,13 @@ export function normalizeEscrowOrder(order,detail,escrow,costMap){
   const balanceBeforeAds=ready?Math.round((payout-totalCost)*100)/100:null;
   const uniqueSku=[...new Set(costs.map(x=>x.sku))];
   const onlySku=ready&&uniqueSku.length===1?uniqueSku[0]:null;
+  const marginBeforeAds=ready&&payout>0?
+    Math.round(balanceBeforeAds/payout*10000)/100:null;
   return {
     orderSn,status,ready,sku:onlySku,skuList:uniqueSku,items:items.length,
     quantity:costs.reduce((n,x)=>n+x.qty,0),
     buyerTotal:finiteMoney(income.buyer_total_amount),
-    payout,totalCost,balanceBeforeAds,
+    payout,totalCost,balanceBeforeAds,marginBeforeAds,
     // Sem atribuição de Ads e tributos externos, NÃO nomear lucro líquido.
     netProfit:null,netMargin:null,
     feeBreakdown:{
@@ -81,6 +83,7 @@ export function summarizeFinance(rows,{more=false,eligible=0}={}){
     x.balanceBeforeAds=Math.round((x.balanceBeforeAds+r.balanceBeforeAds)*100)/100;
     x.payout=Math.round((x.payout+r.payout)*100)/100;
     x.cost=Math.round((x.cost+r.totalCost)*100)/100;
+    x.marginBeforeAds=x.payout>0?Math.round(x.balanceBeforeAds/x.payout*10000)/100:null;
     skus.set(r.sku,x);
   }
   return {
