@@ -1394,18 +1394,20 @@ function renderFinanceSkuList(){
       'finance-amount '+(hasSale?(sale.balanceBeforeAds<0?'negative':'positive'):''));
     if(hasSale)balance.title='Repasse informado pela Shopee menos custo WeDrop; não é lucro líquido final.';
     const scanned=financeReport.adsSweep?.status==='verified_campaign_period';
-    // Sem conversão atribuída, NÃO debitar o anúncio da venda específica.
-    // Só 0 exibido quando a API Ads foi consultada com sucesso e o vínculo é seguro.
-    col(tr,'Ads vinculado',hasSale&&scanned?wdMoney(x.ads?.expense||0):'—',
-      'finance-number '+(hasSale&&scanned?'':'muted'));
+    const unassigned=Number(financeReport.adsSweep?.spendUnassigned||0)>0;
+    // Zero é explícito só quando não há campanha com conversão sem vínculo.
+    const safeZero=scanned&&!unassigned;
+    col(tr,'Ads vinculado',hasSale&&x.ads?wdMoney(x.ads.expense):
+      hasSale&&safeZero?wdMoney(0):'—',
+      'finance-number '+(hasSale&&(x.ads||safeZero)?'':'muted'));
     const afterAds=hasSale&&scanned&&x.ads
-      ?wdMoney(x.ads.afterAds):hasSale&&scanned?wdMoney(sale.balanceBeforeAds):'—';
+      ?wdMoney(x.ads.afterAds):hasSale&&safeZero?wdMoney(sale.balanceBeforeAds):'—';
     const operating=col(tr,'Saldo após Ads',afterAds,
-      'finance-amount '+(hasSale&&scanned
-        ?(x.ads?.afterAds<0?'negative':'positive'):''));
+      'finance-amount '+(hasSale&&(x.ads||safeZero)
+        ?((x.ads?.afterAds??sale.balanceBeforeAds)<0?'negative':'positive'):''));
     operating.title='Comparativo por SKU e período; não é lucro líquido final nem repasse por pedido.';
     col(tr,'Situação',hasSale
-      ?(x.ads?'Venda + Ads conferidos (parcial)':scanned?'Venda sem gasto Ads atribuído':'Ads não conferidos')
+      ?(x.ads?'Venda + Ads conferidos (parcial)':safeZero?'Sem conversão Ads atribuída':scanned?'Ads em revisão':'Ads não conferidos')
       :x.pending?'Pedido pendente de conciliação':'Sem venda verificada',
       'finance-status-cell '+(hasSale?'verified':x.pending?'pending':'neutral'));
     const act=col(tr,'Ação',null,'finance-actions-cell');
