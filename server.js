@@ -12,6 +12,8 @@ import {fetchCatalogPage,normalizeShopeeModels,validItemId} from './catalog.js';
 import {storeCatalogItems,storeCatalogModels,readCatalogCache,catalogStoreReady} from './catalogStore.js';
 import {previewWeDropCsv,prepareWeDropImport,MAX_CSV_CHARS} from './wedropCsv.js';
 import {saveWeDropCosts,getWeDropCoverage,compareIncomingCosts,pendingWeDropModels} from './wedropCosts.js';
+import {readWeDropSyncState} from './wedropCosts.js';
+import {createWeDropAutoScheduler,importSupplierAutomatically,supplierFeedConfig} from './wedropAutoSync.js';
 import {
   shopeeConfig,buildShopeeAuthorizationUrl,exchangeShopeeCode,refreshShopeeToken,
   getShopeeShopInfo,normalizeShopeeTokenResult,safeShopeeStatus,callShopeeShopApi,
@@ -220,6 +222,44 @@ function costCsvFromBody(req){
     throw Error('CSV inválido ou maior que 4 MB.');
   return raw;
 }
+const wedropScheduler=createWeDropAutoScheduler();
+app.get('/api/shopee/wedrop/auto/status',mustLogin,requireWeDropAdmin,async(req,res)=>{
+  res.setHeader('Cache-Control','no-store');
+  try{
+    const {auth}=await getValidAuth(req);
+    const state=await readWeDropSyncState(auth.shopId);
+    const feed=supplierFeedConfig();
+    res.json({ok:true,shopId:auth.shopId,state,
+      feedConfigured:feed.configured===true&&feed.shopId===Number(auth.shopId),
+      feedIntervalMinutes:feed.configured?feed.intervalMinutes:null,
+      feedStatus:feed.configured&&feed.shopId===Number(auth.shopId)
+        ?'Feed autorizado configurado; consulta periódica depende do serviço estar em execução.'
+        :'Atualização automática disponível ao receber um novo CSV. Para detectar alterações na WeDrop sem upload, configure um feed autorizado.'});
+  }catch(e){res.status(400).json({error:String(e.message||e).slice(0,350)});}
+});
+app.post('/api/shopee/wedrop/auto/import',mustLogin,requireWeDropAdmin,async(req,res)=>{
+  res.setHeader('Cache-Control','no-store');
+  try{
+    const {auth}=await getValidAuth(req);
+    const result=await importSupplierAutomatically(auth.shopId,costCsvFromBody(req),{
+      sourceKind:'upload',sourceName:String(req.body?.fileName||'wedrop.csv').slice(0,130)
+    });
+    res.json({ok:true,shopId:auth.shopId,...result});
+  }catch(e){res.status(400).json({error:String(e.message||e).slice(0,400)});}
+});
+app.post('/api/shopee/wedrop/auto/check',mustLogin,requireWeDropAdmin,async(req,res)=>{
+  res.setHeader('Cache-Control','no-store');
+  try{
+    const {auth}=await getValidAuth(req);
+    const feed=supplierFeedConfig();
+    if(!feed.configured||feed.shopId!==Number(auth.shopId))
+      return res.status(409).json({error:'Feed WeDrop não configurado para esta loja. Use CSV ou configure feed autorizado.'});
+    const result=await wedropScheduler.check();
+    if(result.error)return res.status(400).json({error:result.error});
+    res.json({ok:true,...result});
+  }catch(e){res.status(400).json({error:String(e.message||e).slice(0,400)});}
+});
+
 app.post('/api/shopee/wedrop/preview',mustLogin,requireWeDropAdmin,(req,res)=>{
   res.setHeader('Cache-Control','no-store');
   try{
@@ -522,4 +562,5 @@ app.get('/api/shopee/ads/product-campaign-performance',mustLogin,async(req,res)=
 });
 
 orderMonitor.start();
+try{wedropScheduler.start();}catch(error){console.warn('[WeDrop] Feed não iniciado:',String(error.message||error).slice(0,200));}
 app.listen(PORT,()=>console.log(`Rede Achados BR Shopee API em http://localhost:${PORT}`));
