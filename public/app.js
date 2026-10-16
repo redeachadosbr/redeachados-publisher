@@ -1277,7 +1277,18 @@ function renderFinanceAdsScan(report){
  $('#financeSkuAdsKpi').textContent=good?wdMoney(sweep.spendAllocatedToSoldSku):'—';
  $('#financeAdsTotal').textContent=good?wdMoney(sweep.spendTotal):'—';
  $('#financeAdsNoConversion').textContent=good?wdMoney(sweep.spendWithoutDirectConversions):'—';
- $('#financeSkuNetKpi').textContent='—';
+ const total=Number(report.totals?.balanceBeforeAds);
+ const valid=good&&Number.isFinite(total)&&Number.isFinite(Number(sweep.spendTotal));
+ const result=valid?Math.round((total-Number(sweep.spendTotal))*100)/100:null;
+ const net=$('#financeSkuNetKpi');
+ net.textContent=result===null?'—':wdMoney(result);
+ net.classList.toggle('negative',result!==null&&result<0);
+ net.classList.toggle('positive',result!==null&&result>=0);
+ $('#financeResultCompleteness').textContent=result===null
+  ?'Sem dados completos de Ads e repasses'
+  :report.complete?'Após todos os Ads; antes de tributos'
+    :'Resultado parcial: ainda há pedidos não conciliados';
+ $('#financeTaxNetKpi').textContent='Em apuração';
  $('#financeAdsScanBadge').textContent=good?'Ads conferidos':'Ads não verificados';
  $('#financeAdsScanBadge').dataset.state=good?'ready':'error';
  $('#financeAdsScanText').textContent=good
@@ -1486,7 +1497,26 @@ document.querySelectorAll('[data-finance-filter]').forEach(btn=>{
   btn.onclick=()=>{financeSkuFilter=btn.dataset.financeFilter;financeSkuShown=24;renderFinanceSkuList();};
 });
 $('#financeSkuSearch').oninput=()=>{financeSkuShown=24;renderFinanceSkuList();};
-$('#financeSkuMore').onclick=()=>{financeSkuShown+=36;renderFinanceSkuList();};
+$('#financeSkuMore').onclick=()=>{financeSkuShown+=24;renderFinanceSkuList();};
+function financeSelectionChanged(){
+  const selected=$('#shopeeFinanceDays').value;
+  $('#financeCustomDates').hidden=selected!=='custom';
+  financeReport=null;financeSkuShown=24;renderFinanceSkuList();
+  $('#shopeeFinanceData').hidden=true;
+  for(const id of ['#shopeeFinanceVerified','#shopeeFinancePayout','#shopeeFinanceCosts',
+    '#shopeeFinanceBalance','#financeSkuAdsKpi','#financeAdsNoConversion',
+    '#financeAdsTotal','#financeSkuNetKpi'])$(id).textContent='—';
+  $('#financeSkuNetKpi').classList.remove('negative','positive');
+  $('#financeResultCompleteness').textContent='Atualize para o novo período';
+  $('#financePeriodCaption').textContent=selected==='custom'
+    ?'Personalizado: selecione as duas datas e clique Atualizar financeiro.'
+    :'Últimos '+selected+' dias civis no Brasil; clique Atualizar financeiro para consultar.';
+  wdSetNotice('#shopeeFinanceStatus',
+    'O período mudou. Clique em Atualizar financeiro para não misturar vendas e Ads de outras datas.','info');
+}
+$('#shopeeFinanceDays').onchange=financeSelectionChanged;
+$('#financePeriodStart').onchange=financeSelectionChanged;
+$('#financePeriodEnd').onchange=financeSelectionChanged;
 
 let shopeeFinanceBusy=false;
 $('#shopeeFinanceLoad').onclick=async()=>{
@@ -1500,16 +1530,30 @@ $('#shopeeFinanceLoad').onclick=async()=>{
     '#shopeeFinanceCosts','#shopeeFinanceBalance','#financeSkuAdsKpi',
     '#financeAdsTotal','#financeAdsNoConversion','#financeSkuNetKpi'])
     $(id).textContent='—';
+  $('#financeSkuNetKpi').classList.remove('negative','positive');
+  $('#financeResultCompleteness').textContent='Aguardando conciliação';
   $('#shopeeFinanceData').hidden=true;
   wdSetNotice('#shopeeFinanceStatus',
     'Buscando pedidos concluídos e detalhes de pagamento da Shopee. Não estamos presumindo taxas ou despesas.','info');
   try{
-    const days=$('#shopeeFinanceDays').value;
-    const report=await json('/api/shopee/finance/orders?days='+encodeURIComponent(days),{
+    const selected=$('#shopeeFinanceDays').value;
+    const params=new URLSearchParams();
+    if(selected==='custom'){
+      const from=$('#financePeriodStart').value,to=$('#financePeriodEnd').value;
+      if(!from||!to)throw Error('Selecione as datas inicial e final.');
+      params.set('start',from);params.set('end',to);
+    }else params.set('days',selected);
+    const report=await json('/api/shopee/finance/orders?'+params.toString(),{
       signal:AbortSignal.timeout(180000)
     });
     const t=report.totals||{};
     financeReport=report;financeSkuShown=24;
+    $('#financePeriodCaption').textContent='Exibindo apenas pedidos criados em '+
+      (report.selection?.label||'período selecionado')+
+      ' e já concluídos. Vendas de outros períodos não aparecem na lista.';
+    $('#financeResultsSubheading').textContent=
+      'Pedidos COMPLETED criados no intervalo escolhido, com repasse confirmado. '+
+      'Pendências financeiras têm filtro separado.';
     renderFinanceAdsScan(report);
     $('#shopeeFinanceData').hidden=false;
     renderFinanceSkuList();
@@ -1568,8 +1612,8 @@ $('#shopeeFinanceLoad').onclick=async()=>{
       'Consulta concluída: '+wdNum(t.verified)+' de '+wdNum(t.eligible)+
       ' pedidos concluídos com custo e repasse verificados. '+
       'Varredura de Ads '+(report.adsSweep?.status==='verified_campaign_period'
-        ?'concluída':'pendente')+'. Período limitado a 35 pedidos concluídos.'+
-      ' O resultado após Ads não é lucro líquido final.',
+        ?'concluída':'pendente')+'. Máximo de 100 pedidos concluídos por consulta.'+
+      ' Prejuízos são mostrados em vermelho. O resultado após Ads não inclui tributos.',
       report.complete?'success':'warning');
     // Atualiza a coluna por SKU apenas para vendas realmente verificadas.
     await refreshWeDropCoverage();
