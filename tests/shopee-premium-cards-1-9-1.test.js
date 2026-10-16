@@ -53,6 +53,6 @@ test('páginas e IDs das funções Shopee preservados',()=>{
     'shopeeFinanceLoad','wedropCoverageBody','adsStart','loginBtn','testBtn']){
     assert.equal((html.match(new RegExp('id="'+id+'"','g'))||[]).length,1,id);
   }
-  assert.match(html,/style\.css\?v=1\.12\.0/);
-  assert.match(html,/app\.js\?v=1\.12\.0/);
+  assert.match(html,/style\.css\?v=1\.13\.0/);
+  assert.match(html,/app\.js\?v=1\.13\.0/);
 });

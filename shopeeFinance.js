@@ -3,7 +3,7 @@
 // Ads não são deduzidos até existir atribuição comprovada sem duplicidades.
 import {readWeDropCosts,readWeDropSkuLinks,readFinanceCatalogProfiles} from './wedropCosts.js';
 
-export const MAX_FINANCE_ORDERS=35;
+export const MAX_FINANCE_ORDERS=100;
 export function finiteMoney(raw){
   if(raw===null||raw===undefined||raw==='')return null;
   const value=Number(raw);
@@ -11,9 +11,40 @@ export function finiteMoney(raw){
 }
 export function financePeriod(days){
   const n=Number(days);
-  if(!Number.isSafeInteger(n)||n<1||n>15)
-    throw Error('Escolha um período de 1 a 15 dias.');
+  if(!Number.isSafeInteger(n)||n<1||n>30)
+    throw Error('Escolha um período de 1 a 30 dias.');
   return n;
+}
+// Período em horário local brasileiro. Shopee Order List usa create_time:
+// são pedidos CRIADOS neste período que já estão COMPLETED, não qualquer
+// pedido cuja entrega ocorreu dentro do intervalo.
+export function financeRange({days=15,start='',end=''}={},now=Math.floor(Date.now()/1000)){
+  if(start||end){
+    const date=/^\d{4}-\d{2}-\d{2}$/;
+    if(!date.test(start)||!date.test(end))throw Error('Informe as datas inicial e final.');
+    const fromMs=Date.parse(start+'T00:00:00-03:00');
+    const toMs=Date.parse(end+'T23:59:59-03:00');
+    if(!Number.isFinite(fromMs)||!Number.isFinite(toMs)||
+      new Date(fromMs-3*3600000).toISOString().slice(0,10)!==start||
+      new Date(toMs-3*3600000).toISOString().slice(0,10)!==end)
+      throw Error('Data inválida.');
+    // Quando "até hoje" é selecionado, a janela termina AGORA,
+    // e não às 23:59 futuras do próprio dia.
+    const from=Math.floor(fromMs/1000),to=Math.min(Math.floor(toMs/1000),now);
+    const endDayStart=Math.floor(Date.parse(end+'T00:00:00-03:00')/1000);
+    if(from>to||endDayStart>now||Math.floor(toMs/1000)-from>30*86400-1)
+      throw Error('Intervalo inválido: escolha no máximo 30 dias, sem datas futuras.');
+    return {from,to,days:Math.ceil((to-from+1)/86400),label:start+' a '+end,mode:'custom'};
+  }
+  const n=financePeriod(days);
+  const parts=new Intl.DateTimeFormat('en-US',{
+    timeZone:'America/Sao_Paulo',year:'numeric',month:'2-digit',day:'2-digit'
+  }).formatToParts(new Date(now*1000));
+  const values=Object.fromEntries(parts.map(p=>[p.type,p.value]));
+  const today=values.year+'-'+values.month+'-'+values.day;
+  const midnight=Math.floor(Date.parse(today+'T00:00:00-03:00')/1000);
+  return {from:midnight-(n-1)*86400,to:now,days:n,
+    label:'Últimos '+n+' dias (calendário BR)',mode:'rolling'};
 }
 export function normalizeEscrowOrder(order,detail,escrow,costMap,linkMap=new Map()){
   const income=escrow?.response?.order_income;
@@ -125,8 +156,9 @@ export function summarizeFinance(rows,{more=false,eligible=0}={}){
     warning:'Resultado após repasse menos custo WeDrop, ANTES de Ads, impostos e despesas externas. Tarifas e frete já incluídos no repasse Shopee não são descontados duas vezes. Lucro líquido final e margem líquida permanecem pendentes.'
   };
 }
-export async function loadShopeeFinance(cfg,auth,callApi,{days=15,now=Math.floor(Date.now()/1000)}={}){
-  days=financePeriod(days);
+export async function loadShopeeFinance(cfg,auth,callApi,{days=15,now=Math.floor(Date.now()/1000),timeRange=null}={}){
+  const range=timeRange||financeRange({days},now);
+  days=range.days;
   if(!Number.isSafeInteger(Number(auth.shopId)))throw Error('Loja inválida.');
   const [supplierCosts,confirmedLinks]=await Promise.all([
     readWeDropCosts(auth.shopId),readWeDropSkuLinks(auth.shopId)
@@ -142,29 +174,35 @@ export async function loadShopeeFinance(cfg,auth,callApi,{days=15,now=Math.floor
   try{catalogProducts=await readFinanceCatalogProfiles(auth.shopId);}
   catch(e){catalogError='Miniaturas do catálogo temporariamente indisponíveis.';}
   const found=new Map();
-  let cursor='',more=false;
-  const periodFrom=now-days*86400;
-  for(let page=0;page<10;page++){
-    const api=await callApi(cfg,{
-      path:'/api/v2/order/get_order_list',
-      accessToken:auth.accessToken,shopId:auth.shopId,
-      query:{
-        time_range_field:'create_time',time_from:periodFrom,time_to:now,
-        page_size:50,cursor,response_optional_fields:'order_status'
+  // A Shopee limita a janela de Order List; dividir intervalos de 30 dias
+  // em períodos menores e paginar cada um integralmente.
+  const periodFrom=range.from,periodTo=range.to;
+  const CHUNK=14*86400;
+  for(let chunkFrom=periodFrom;chunkFrom<=periodTo;chunkFrom+=CHUNK){
+    const chunkTo=Math.min(chunkFrom+CHUNK-1,periodTo);
+    let cursor='',finished=false;
+    for(let page=0;page<30;page++){
+      const api=await callApi(cfg,{
+        path:'/api/v2/order/get_order_list',
+        accessToken:auth.accessToken,shopId:auth.shopId,
+        query:{
+          time_range_field:'create_time',time_from:chunkFrom,time_to:chunkTo,
+          page_size:50,cursor,response_optional_fields:'order_status'
+        }
+      });
+      const body=api.response||{};
+      if(!Array.isArray(body.order_list))throw Error('Shopee não retornou lista válida de pedidos.');
+      for(const x of body.order_list){
+        const sn=String(x.order_sn||'').trim();
+        if(sn&&(!x.create_time||(Number(x.create_time)>=periodFrom&&Number(x.create_time)<=periodTo)))
+          found.set(sn,x);
       }
-    });
-    const body=api.response||{};
-    if(!Array.isArray(body.order_list))throw Error('Shopee não retornou lista válida de pedidos.');
-    for(const x of body.order_list){
-      const sn=String(x.order_sn||'').trim();
-      if(sn)found.set(sn,x);
+      if(!body.more){finished=true;break;}
+      const next=String(body.next_cursor||'');
+      if(!next||next===cursor)throw Error('Paginação de pedidos parada. Consulte um intervalo menor.');
+      cursor=next;
     }
-    more=Boolean(body.more);
-    if(!more)break;
-    const next=String(body.next_cursor||'');
-    if(!next||next===cursor)throw Error('Paginação dos pedidos não avançou. Não foi possível conferir o período completo.');
-    cursor=next;
-    if(page===9)throw Error('Limite de paginação: o período possui pedidos demais. Consulte menos dias.');
+    if(!finished)throw Error('Pedidos demais no intervalo. Consulte uma data mais curta.');
   }
   const completed=[...found.values()].filter(x=>String(x.order_status||'').toUpperCase()==='COMPLETED');
   const limited=completed.slice(0,MAX_FINANCE_ORDERS);
@@ -202,17 +240,16 @@ export async function loadShopeeFinance(cfg,auth,callApi,{days=15,now=Math.floor
     }
     rows.push(normalizeEscrowOrder(item,detailMap.get(String(item.order_sn)),escrow,costs,linkMap));
   }
-  const summary=summarizeFinance(rows,{eligible:completed.length,more});
+  const summary=summarizeFinance(rows,{eligible:completed.length,more:false});
   return {
-    shopId:auth.shopId,days,window:{from:periodFrom,to:now},rows,
+    shopId:auth.shopId,days,window:{from:periodFrom,to:periodTo},selection:range,rows,
     catalogProducts,catalogError,
     ...summary,paymentAccessWarning,
     skippedCompleted:completed.length-limited.length,
-    complete:Boolean(!more&&!paymentAccessWarning&&completed.length===rows.length&&
+    complete:Boolean(!paymentAccessWarning&&completed.length===rows.length&&
       rows.every(x=>x.ready)),
     adsAttribution:'not_available',
-    caveat:'Somente pedidos COMPLETED criados nos últimos '+days+
-      ' dias; máximo de '+MAX_FINANCE_ORDERS+
-      ' por consulta. Acompanhamento de pedidos não é extrato de pagamento efetivado.'
+    caveat:'Somente pedidos COMPLETED criados entre as datas selecionadas; máximo de '+MAX_FINANCE_ORDERS+
+      ' pedidos concluídos por consulta. Não equivale ao extrato bancário.'
   };
 }

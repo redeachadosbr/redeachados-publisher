@@ -80,10 +80,10 @@ test('sumário parcial inclui apenas pedidos verificados e separa Ads indisponí
  assert.equal(report.totals.profitabilityComplete,false);
  assert.equal(report.skuSummary[0].sku,'0000001740');
 });
-test('faixa temporal de no máximo 15 dias evita consultar período não permitido',()=>{
+test('faixa temporal de no máximo 30 dias evita consultar período não permitido',()=>{
  assert.equal(financePeriod(15),15);
- assert.throws(()=>financePeriod(31),/1 a 15 dias/);
- assert.throws(()=>financePeriod(0),/1 a 15 dias/);
+ assert.throws(()=>financePeriod(31),/1 a 30 dias/);
+ assert.throws(()=>financePeriod(0),/1 a 30 dias/);
  assert.equal(finiteMoney('0'),0);
  assert.equal(finiteMoney(undefined),null);
 });

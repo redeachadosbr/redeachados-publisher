@@ -70,20 +70,19 @@ test('Financeiro mantém filtros e miniaturas de catálogo com indicadores sem n
  }
  assert.match(html,/class="finance-sku-table"/);
  assert.match(html,/data-finance-filter="sold"/);
- assert.match(html,/data-finance-filter="unsold"/);
  assert.match(html,/data-finance-filter="pending"/);
- assert.match(html,/Lucro líquido final exige impostos/);
+ assert.match(html,/não é lucro fiscal final/i);
  assert.match(html,/saldo antes Ads/i);
  assert.match(js,/financeCatalogImage/);
  assert.match(js,/financeSkuEntries/);
  assert.match(js,/renderFinanceSkuList/);
  assert.match(js,/financeReport=report/);
  assert.match(js,/x\.imageUrl/);
- assert.match(js,/Sem venda verificada/);
+ assert.match(js,/Nenhuma venda concluída verificada/);
  assert.match(css,/\.finance-thumbnail/);
  assert.match(css,/@media\(max-width:650px\)/);
- assert.match(html,/style\.css\?v=1\.12\.0/);
- assert.match(html,/app\.js\?v=1\.12\.0/);
+ assert.match(html,/style\.css\?v=1\.13\.0/);
+ assert.match(html,/app\.js\?v=1\.13\.0/);
 });
 test('não transforma custo de catálogo em custo vendido, nem inventa Ads',()=>{
  assert.match(backend,/get_escrow_detail/);
@@ -93,5 +92,5 @@ test('não transforma custo de catálogo em custo vendido, nem inventa Ads',()=>
  assert.match(backend,/const supplierSku=linked&&linked.shopee_sku===sku/);
  assert.match(wedrop,/image_url/);
  assert.match(wedrop,/export async function readFinanceCatalogProfiles/);
- assert.doesNotMatch(js,/financeSkuNetKpi'\)\.textContent=wdMoney/);
+ assert.match(js,/const result=valid\?/);
 });

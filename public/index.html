@@ -6,7 +6,7 @@
 <meta name="theme-color" content="#0A1C3A">
 <link rel="icon" type="image/svg+xml" href="/brand-logo.svg">
 <title>Rede Achados BR · Gestão Shopee</title>
-<link rel="stylesheet" href="/style.css?v=1.12.0">
+<link rel="stylesheet" href="/style.css?v=1.13.0">
 </head>
 <body>
 <div class="shell app-layout">
@@ -21,7 +21,7 @@
 <div class="nav-group"><div class="nav-group-title">OPERAÇÃO</div><a class="tab nav-link" href="/app/produtos" data-tab="products" data-page="produtos"><svg class="nav-icon" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="m12 2 9 5-9 5-9-5 9-5Z"/><path d="M3 7v10l9 5 9-5V7M12 12v10"/></svg><span class="nav-name">Produtos e anúncios</span></a><a class="tab nav-link" href="/app/pedidos" data-tab="orders" data-page="pedidos"><svg class="nav-icon" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3h2l2.6 12.5a2 2 0 0 0 2 1.5h9.3a2 2 0 0 0 2-1.5L22 7H6"/><circle cx="10" cy="21" r="1"/><circle cx="19" cy="21" r="1"/></svg><span class="nav-name">Pedidos e vendas</span></a><a class="tab nav-link" href="/app/envios" data-tab="alerts" data-page="envios"><svg class="nav-icon" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="5" width="13" height="12" rx="1.5"/><path d="M15 9h4l3 4v4h-7M7 17h1M18 17h1"/><circle cx="6" cy="18" r="2"/><circle cx="18" cy="18" r="2"/></svg><span class="nav-name">Monitor de envios</span><span class="sidebar-counter" id="monitorBadge"></span></a></div>
 <div class="nav-group"><div class="nav-group-title">GESTÃO</div><a class="tab nav-link" href="/app/ads" data-tab="ads" data-page="ads"><svg class="nav-icon" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="m3 11 12-5v12L3 13v-2ZM15 8a4 4 0 0 1 0 8M7 14l1 6h4l-1-4"/></svg><span class="nav-name">Shopee Ads</span></a><a class="tab nav-link" href="/app/wedrop" data-tab="wedrop" data-page="wedrop"><svg class="nav-icon" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M3 10 12 4l9 6v10H3V10ZM3 10h18M9 20v-6h6v6"/></svg><span class="nav-name">Fornecedor WeDrop</span></a><a class="tab nav-link" href="/app/financeiro" data-tab="finance" data-page="financeiro"><svg class="nav-icon" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="3"/><path d="M7 15l4-4 3 2 4-5M16 8h2v2"/></svg><span class="nav-name">Financeiro</span></a></div>
 <div class="nav-group"><div class="nav-group-title">SISTEMA</div><a class="tab nav-link" href="/app/configuracoes" data-tab="settings" data-page="configuracoes"><svg class="nav-icon" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="m19 13.2 1.2 1-1.7 3-1.5-.6c-.4.4-.8.6-1.3.8l-.2 1.6h-3.4l-.2-1.6-1.3-.8-1.5.6-1.7-3 1.2-1v-2.4l-1.2-1 1.7-3 1.5.6c.4-.3.8-.6 1.3-.8l.2-1.6h3.4l.2 1.6c.5.2.9.5 1.3.8l1.5-.6 1.7 3-1.2 1v2.4Z"/></svg><span class="nav-name">Integrações e ajustes</span></a></div></nav>
-    <div class="sidebar-bottom"><div class="sidebar-support"><span class="sidebar-support-dot"></span><span><strong>Central Shopee</strong><small>Versão 1.9.1</small></span></div><small class="sidebar-copy">© Rede Achados BR</small></div>
+    <div class="sidebar-bottom"><div class="sidebar-support"><span class="sidebar-support-dot"></span><span><strong>Central Shopee</strong><small>Versão 1.13.0</small></span></div><small class="sidebar-copy">© Rede Achados BR</small></div>
   </aside>
   <button class="sidebar-scrim" id="sidebarScrim" type="button" aria-label="Fechar menu" hidden></button>
   <div class="workspace-main">
@@ -267,20 +267,34 @@
       </section>
               <section class="tabpane" id="tab-finance">
         <section class="card shopee-finance-panel finance-premium" id="shopeeFinancePanel">
-          <div class="finance-toolbar">
+          <div class="finance-toolbar finance-approved-header">
             <div class="finance-page-title">
-              <span class="eyebrow">FINANCEIRO SHOPEE · CONCILIAÇÃO REAL</span>
-              <h2>Resultado financeiro por SKU</h2>
-              <p class="hint">Repasses oficiais, custos WeDrop, vendas verificadas e pendências. Sem valores estimados.</p>
+              <span class="eyebrow">REDE ACHADOS BR · SHOPEE MANAGER</span>
+              <h2><span class="finance-heading-mark" aria-hidden="true">▣</span> Financeiro Shopee</h2>
+              <p class="hint">Acompanhe seus pedidos concluídos, custos WeDrop, Ads e resultado do período.</p>
             </div>
             <div class="finance-toolbar-fields">
               <label>Período
-                <select id="shopeeFinanceDays"><option value="3">3 dias</option><option value="7">7 dias</option><option value="15" selected>15 dias</option></select>
+                <select id="shopeeFinanceDays">
+                  <option value="7">Últimos 7 dias</option><option value="15" selected>Últimos 15 dias</option>
+                  <option value="30">Últimos 30 dias</option><option value="custom">Personalizado</option>
+                </select>
               </label>
-              <label>Buscar produto / SKU
-                <input type="search" id="financeSkuSearch" placeholder="Nome ou SKU..." autocomplete="off" aria-label="Buscar nome ou SKU">
-              </label>
+              <div id="financeCustomDates" class="finance-custom-dates" hidden>
+                <label>De<input id="financePeriodStart" type="date" aria-label="Data inicial"></label>
+                <label>Até<input id="financePeriodEnd" type="date" aria-label="Data final"></label>
+              </div>
               <button id="shopeeFinanceLoad" type="button">Atualizar financeiro</button>
+            </div>
+          </div>
+          <div class="finance-hero-intro">
+            <div class="finance-hero-copy"><span class="eyebrow">RESUMO FINANCEIRO DA LOJA</span>
+              <h3>Resultados claros, sem valores ocultos</h3>
+              <p id="financePeriodCaption">Período: últimos 15 dias, conforme calendário do Brasil. Somente pedidos criados neste intervalo e já concluídos.</p>
+            </div>
+            <div class="finance-hero-art" aria-hidden="true"><span>▤</span><strong>S</strong></div>
+            <div class="finance-hero-rule"><strong>Como interpretar</strong>
+              <p>Ads de produtos convertidos são associados ao SKU quando há vínculo seguro. Ads sem conversão continuam como despesa da loja, não da venda individual.</p>
             </div>
           </div>
           <p id="shopeeFinanceStatus" class="notice finance-status" role="status" aria-live="polite">
@@ -294,23 +308,27 @@
             <article class="finance-kpi"><span class="finance-kpi-icon finance-tone-purple">◎</span><div><span>Ads com conversão / SKU</span><strong id="financeSkuAdsKpi">—</strong></div></article>
             <article class="finance-kpi"><span class="finance-kpi-icon finance-tone-amber">⌁</span><div><span>Ads sem conversão</span><strong id="financeAdsNoConversion">—</strong></div></article>
             <article class="finance-kpi"><span class="finance-kpi-icon finance-tone-blue">▤</span><div><span>Ads total (período)</span><strong id="financeAdsTotal">—</strong></div></article>
-            <article class="finance-kpi"><span class="finance-kpi-icon finance-tone-muted">◇</span><div><span>Lucro líquido final</span><strong id="financeSkuNetKpi">—</strong></div></article>
+            <article class="finance-kpi finance-kpi-result"><span class="finance-kpi-icon finance-tone-muted">◇</span><div><span>Resultado após Ads · loja*</span><strong id="financeSkuNetKpi">—</strong><small id="financeResultCompleteness">Aguardando conciliação</small></div></article>
+            <article class="finance-kpi finance-kpi-net"><span class="finance-kpi-icon finance-tone-muted">⌁</span><div><span>Lucro líquido final</span><strong id="financeTaxNetKpi">Em apuração</strong><small>Impostos e despesas externas pendentes</small></div></article>
           </div>
           <div id="shopeeFinanceData" hidden>
             <div class="finance-results-head">
-              <div><h3>Produtos e vendas verificadas</h3><p>Miniaturas reais do catálogo Shopee. Valores por SKU apenas quando o repasse é atribuível ao produto.</p></div>
+              <div><h3>Produtos vendidos no período</h3><p id="financeResultsSubheading">Somente vendas concluídas criadas no período selecionado. Pendências disponíveis em aba própria.</p></div>
               <div id="financeSkuCount" class="finance-results-count" aria-live="polite">—</div>
             </div>
             <div class="finance-filter-bar" role="group" aria-label="Filtrar produtos por resultado">
-              <button type="button" class="finance-filter active" data-finance-filter="all" aria-pressed="true">Todos</button>
-              <button type="button" class="finance-filter" data-finance-filter="sold" aria-pressed="false">Vendas verificadas</button>
-              <button type="button" class="finance-filter" data-finance-filter="unsold" aria-pressed="false">Sem venda verificada</button>
+              <button type="button" class="finance-filter" data-finance-filter="all" aria-pressed="false">Vendas e pendências</button>
+              <button type="button" class="finance-filter active" data-finance-filter="sold" aria-pressed="true">Vendas verificadas</button>
               <button type="button" class="finance-filter" data-finance-filter="pending" aria-pressed="false">Pendências</button>
+              <label class="finance-table-search">Buscar SKU / produto
+                <input id="financeSkuSearch" type="search" placeholder="Nome ou SKU" autocomplete="off">
+              </label>
             </div>
             <div class="table-wrap finance-sku-list"><table class="finance-sku-table">
-              <thead><tr><th>Produto</th><th>SKU</th><th>Qtd.</th><th>Repasse Shopee</th><th>Custo WeDrop</th><th>Saldo antes Ads</th><th>Ads vinculado</th><th>Saldo após Ads*</th><th>Situação</th><th>Ação</th></tr></thead>
+              <thead><tr><th>Produto</th><th>SKU / Qtd.</th><th>Repasse Shopee</th><th>Custo WeDrop</th><th>Ads vinculado</th><th>Resultado após Ads*</th><th>Situação</th><th>Ação</th></tr></thead>
               <tbody id="financeSkuBody"></tbody>
             </table></div>
+            <p class="finance-row-hint">O saldo antes de Ads e a memória do cálculo estão em <strong>Ver detalhes</strong>. Valores negativos aparecem em vermelho. Role somente a tabela caso use uma tela estreita.</p>
             <div class="finance-list-bottom">
               <span id="financeSkuPageInfo" class="hint"></span>
               <button id="financeSkuMore" type="button" class="secondary" hidden>Mostrar mais produtos</button>
@@ -334,7 +352,7 @@
               </table></div>
             </details>
           </div>
-          <div class="finance-disclaimer"><strong>Como o cálculo funciona</strong><p>O saldo antes Ads é o repasse líquido Shopee menos o custo real WeDrop. Quando existe campanha de produto com venda direta atribuída e vínculo inequívoco ao SKU vendido, seu gasto é descontado no <b>saldo operacional parcial após Ads</b>. Campanhas sem conversão permanecem como despesa da loja, sem ser debitadas em vendas específicas. As métricas Ads são por período, não por pedido individual, e podem incluir atribuição de até 7 dias após o clique. <b>Lucro líquido final exige impostos e despesas externas conciliados.</b> Comissão, descontos e frete já incluídos no repasse não são descontados duas vezes.</p></div>
+          <div class="finance-disclaimer"><strong>Como o cálculo funciona</strong><p>O saldo antes Ads é o repasse líquido Shopee menos o custo real WeDrop. Quando existe campanha de produto com venda direta atribuída e vínculo inequívoco ao SKU vendido, seu gasto é descontado no <b>saldo operacional parcial após Ads</b>. Campanhas sem conversão permanecem como despesa da loja, sem ser debitadas em vendas específicas. As métricas Ads são por período, não por pedido individual, e podem incluir atribuição de até 7 dias após o clique. <b>O resultado após Ads pode ser negativo e considera TODO o gasto Ads do período no consolidado da loja; não é lucro fiscal final até serem confirmados os tributos e demais despesas externas.</b> Comissão, descontos e frete já incluídos no repasse não são descontados duas vezes.</p></div>
         </section>
         <details class="finance-cost-audit" id="financeCatalogAudit">
           <summary>Conferência do catálogo e custos por SKU <span>Consulta detalhada opcional</span></summary>
@@ -381,6 +399,6 @@
     </main>
   </div>
 </div>
-<script src="/app.js?v=1.12.0"></script>
+<script src="/app.js?v=1.13.0"></script>
 </body>
 </html>

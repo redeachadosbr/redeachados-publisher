@@ -70,7 +70,7 @@ test('campos UI/endpoint e nomes de despesas preservam lucro líquido final não
    'financeSkuNetKpi','financeAdsExceptionList','financeAdsScanText','financeSkuBody']){
   assert.equal((html.match(new RegExp('id="'+id+'"','g'))||[]).length,1,id);
  }
- assert.match(html,/Saldo após Ads/);
+ assert.match(html,/Resultado após Ads/);
  assert.match(js,/renderFinanceAdsScan\(report\)/);
  assert.match(js,/spendWithoutDirectConversions/);
  assert.match(js,/financeAdsBySku/);
@@ -78,8 +78,8 @@ test('campos UI/endpoint e nomes de despesas preservam lucro líquido final não
  assert.match(server,/loadShopeeAdsOverview\(cfg,auth,callShopeeShopApi,dates\)/);
  assert.match(server,/matchFinanceAds\(finance,adsResult.value\)/);
  assert.match(server,/status:'unavailable'/);
- assert.match(html,/Lucro líquido final exige impostos/);
- assert.match(html,/app\.js\?v=1\.12\.0/);
+ assert.match(html,/não é lucro fiscal final/i);
+ assert.match(html,/app\.js\?v=1\.13\.0/);
 });
 test('datas de Ads correspondem ao calendário brasileiro, não ao fuso do servidor',()=>{
  assert.deepEqual(financeAdsDates({
