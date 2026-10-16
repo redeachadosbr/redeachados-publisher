@@ -14,6 +14,7 @@ import {storeCatalogItems,storeCatalogModels,readCatalogCache,catalogStoreReady}
 import {previewWeDropCsv,prepareWeDropImport,MAX_CSV_CHARS} from './wedropCsv.js';
 import {saveWeDropCosts,getWeDropCoverage,compareIncomingCosts,pendingWeDropModels} from './wedropCosts.js';
 import {readWeDropSyncState,getStoredWeDropCostCount} from './wedropCosts.js';
+import {getSkuReview,searchSupplierSku,confirmSkuLink,undoSkuLink} from './wedropSkuReview.js';
 import {createWeDropAutoScheduler,importSupplierAutomatically,supplierFeedConfig} from './wedropAutoSync.js';
 import {
   shopeeConfig,buildShopeeAuthorizationUrl,exchangeShopeeCode,refreshShopeeToken,
@@ -97,7 +98,7 @@ app.get('/app/:section',(req,res)=>{
 });
 app.get('/app',(_req,res)=>res.redirect(302,'/app/inicio'));
 
-app.get('/api/health',(_req,res)=>res.json({ok:true,service:'Rede Achados BR Shopee API',version:'1.9.2',storage:authStore.status()}));
+app.get('/api/health',(_req,res)=>res.json({ok:true,service:'Rede Achados BR Shopee API',version:'1.10.0',storage:authStore.status()}));
 app.get('/api/auth-state',(req,res)=>res.json({locked:Boolean(envText('APP_PASSWORD')),loggedIn:!envText('APP_PASSWORD')||Boolean(req.session?.appAuth)}));
 app.post('/api/login',(req,res)=>{
   const required=envText('APP_PASSWORD');
@@ -387,6 +388,46 @@ app.post('/api/shopee/wedrop/models/sync',mustLogin,requireWeDropAdmin,async(req
     res.json({ok:true,successful:details,failed,processed:details.length+failed.length});
   }catch(e){res.status(400).json({error:String(e.message||e).slice(0,320)});}
   finally{variantsSyncBusy=false;}
+});
+
+// Revisão de SKUs — somente conta autenticada. Alterações limitadas a
+// vínculos de custo internos; nunca alteram o anúncio oficial na Shopee.
+app.get('/api/shopee/wedrop/sku-review',mustLogin,requireWeDropAdmin,async(req,res)=>{
+  res.setHeader('Cache-Control','no-store');
+  try{
+    const {auth}=await getValidAuth(req);
+    res.json({ok:true,...await getSkuReview(auth.shopId)});
+  }catch(e){res.status(400).json({error:String(e.message||e).slice(0,300)});}
+});
+app.get('/api/shopee/wedrop/sku-search',mustLogin,requireWeDropAdmin,async(req,res)=>{
+  res.setHeader('Cache-Control','no-store');
+  try{
+    const {auth}=await getValidAuth(req);
+    const term=String(req.query.q||'');
+    if(term.length>120)return res.status(400).json({error:'Pesquisa muito longa.'});
+    res.json({ok:true,results:await searchSupplierSku(auth.shopId,term)});
+  }catch(e){res.status(400).json({error:String(e.message||e).slice(0,300)});}
+});
+function verifiedSameOrigin(req){
+  const origin=String(req.get('origin')||'');
+  const base=baseUrl(req);
+  try{return !origin||new URL(origin).origin===new URL(base).origin;}catch{return false;}
+}
+app.post('/api/shopee/wedrop/sku-link',mustLogin,requireWeDropAdmin,async(req,res)=>{
+  res.setHeader('Cache-Control','no-store');
+  if(!verifiedSameOrigin(req))return res.status(403).json({error:'Origem da solicitação não permitida.'});
+  try{
+    const {auth}=await getValidAuth(req);
+    res.json({ok:true,...await confirmSkuLink(auth.shopId,req.body||{})});
+  }catch(e){res.status(400).json({error:String(e.message||e).slice(0,320)});}
+});
+app.post('/api/shopee/wedrop/sku-unlink',mustLogin,requireWeDropAdmin,async(req,res)=>{
+  res.setHeader('Cache-Control','no-store');
+  if(!verifiedSameOrigin(req))return res.status(403).json({error:'Origem da solicitação não permitida.'});
+  try{
+    const {auth}=await getValidAuth(req);
+    res.json({ok:true,...await undoSkuLink(auth.shopId,req.body||{})});
+  }catch(e){res.status(400).json({error:String(e.message||e).slice(0,320)});}
 });
 
 app.get('/api/shopee/wedrop/coverage',mustLogin,requireWeDropAdmin,async(req,res)=>{
