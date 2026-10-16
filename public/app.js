@@ -180,4 +180,116 @@ $('#loadAdsBtn').onclick=async()=>{
     $('#adsSummary').textContent=`Campanhas: ${campaigns.length} · Gasto: R$ ${expense.toFixed(2)} · GMV: R$ ${gmv.toFixed(2)} · ROAS: ${roas.toFixed(2)} · ACOS: ${acos.toFixed(1)}% · Cliques: ${clicks} · Impressões: ${impressions}`;
   }catch(e){$('#adsSummary').textContent=e.message;debug(e.message);}
 };
+
+// Monitor de vendas: consultas com autenticação da sessão, sem expor dados privados.
+let monitorSeenAlerts=null;
+let monitorChecking=false;
+function monitorDate(epoch){
+  const n=Number(epoch);
+  return n>1000000000?new Date(n*1000).toLocaleString('pt-BR',{
+    timeZone:'America/Sao_Paulo',dateStyle:'short',timeStyle:'short'
+  }):'Não informado pela Shopee';
+}
+function setMonitorText(id,value){const node=$(id);if(node)node.textContent=String(value);}
+function monitorRiskLabel(risk){
+  return ({overdue:'PRAZO VENCIDO',critical:'Menos de 2 horas',urgent:'Menos de 6 horas',
+    today:'Menos de 24 horas',soon:'Menos de 48 horas',
+    unknown:'Conferir prazo',normal:'No prazo'})[risk]||'Conferir';
+}
+function renderPending(orders){
+  const body=$('#monitorPendingBody');body.replaceChildren();
+  if(!orders.length){
+    const tr=document.createElement('tr');
+    const td=document.createElement('td');td.colSpan=4;
+    td.textContent='Nenhum pedido pendente de envio foi identificado nesta verificação.';
+    tr.appendChild(td);body.appendChild(tr);return;
+  }
+  for(const x of orders){
+    const tr=document.createElement('tr');
+    if(['overdue','critical'].includes(x.risk))tr.className='monitor-danger-row';
+    [x.order_sn,x.order_status,monitorDate(x.ship_by_date),monitorRiskLabel(x.risk)].forEach(v=>{
+      const td=document.createElement('td');td.textContent=String(v||'—');tr.appendChild(td);
+    });
+    body.appendChild(tr);
+  }
+}
+function renderAlerts(items){
+  const container=$('#monitorAlerts');container.replaceChildren();
+  if(!items.length){container.textContent='Nenhum aviso registrado até o momento.';return;}
+  for(const a of items){
+    const article=document.createElement('article');
+    article.className='order-alert '+String(a.severity||'info')+(a.read_at?' read':'');
+    const title=document.createElement('strong');title.textContent=a.title||'Aviso Shopee';
+    const message=document.createElement('p');message.textContent=a.message||'';
+    const meta=document.createElement('small');
+    meta.textContent=new Date(a.created_at).toLocaleString('pt-BR',{timeZone:'America/Sao_Paulo'})+
+      (a.read_at?' · Lido':' · Novo');
+    article.append(title,message,meta);
+    if(!a.read_at){
+      const btn=document.createElement('button');btn.className='mini secondary';
+      btn.textContent='Marcar como lido';
+      btn.onclick=async()=>{
+        btn.disabled=true;
+        try{await json('/api/shopee/monitor/read',{
+          method:'POST',headers:{'Content-Type':'application/json'},
+          body:JSON.stringify({alert_key:a.alert_key})
+        });await refreshMonitor();}
+        catch(e){btn.disabled=false;setMonitorText('#monitorStatus','Falha ao marcar aviso: '+e.message);}
+      };
+      article.appendChild(btn);
+    }
+    container.appendChild(article);
+  }
+}
+async function refreshMonitor(){
+  if(!$('#monitorStatus'))return;
+  try{
+    const d=await json('/api/shopee/monitor');
+    const status=d.status||{};
+    const pending=d.pending||[],alerts=d.alerts||[];
+    setMonitorText('#monitorPendingCount',pending.length);
+    setMonitorText('#monitorCriticalCount',pending.filter(x=>['overdue','critical'].includes(x.risk)).length);
+    setMonitorText('#monitorUnreadCount',d.unread||0);
+    setMonitorText('#monitorLastRun',status.lastSuccessAt
+      ?new Date(status.lastSuccessAt).toLocaleString('pt-BR',{timeZone:'America/Sao_Paulo'}):'Aguardando');
+    setMonitorText('#monitorBadge',(d.unread||0)?'('+(d.unread||0)+')':'');
+    let text=(status.working?'Verificação em andamento. ':'')+
+      (status.enabled?'Monitor ativo durante o funcionamento do Render.':'Monitor desativado.')+
+      ' Intervalo: '+(status.intervalMinutes||5)+' min.'+
+      (status.telegramConfigured?' Telegram configurado.':' Telegram ainda não configurado.')+
+      (status.lastError?' Último erro: '+status.lastError:'');
+    setMonitorText('#monitorStatus',text);
+    renderPending(pending);
+    renderAlerts(alerts);
+    const keys=new Set(alerts.map(x=>x.alert_key));
+    if(monitorSeenAlerts!==null&&typeof Notification!=='undefined'&&Notification.permission==='granted'){
+      for(const a of alerts){
+        if(!monitorSeenAlerts.has(a.alert_key)&&!a.read_at){
+          try{new Notification('Shopee: '+a.title,{body:a.message,tag:a.alert_key});}catch{}
+        }
+      }
+    }
+    monitorSeenAlerts=keys;
+  }catch(e){setMonitorText('#monitorStatus','Monitor não disponível: '+e.message+'. Atualize a página ou repita a consulta.');}
+}
+$('#checkOrdersBtn').onclick=async()=>{
+  if(monitorChecking)return;
+  monitorChecking=true;
+  const b=$('#checkOrdersBtn');b.disabled=true;b.textContent='Verificando...';
+  setMonitorText('#monitorStatus','Consultando novos pedidos e prazos oficiais da Shopee. Aguarde.');
+  try{
+    const d=await json('/api/shopee/monitor/check-now',{method:'POST',signal:AbortSignal.timeout(120000)});
+    setMonitorText('#monitorStatus',d.busy?'Já existe uma verificação em andamento.':'Consulta concluída: '+d.scanned+' pedidos analisados, '+d.newAlerts+' novo(s) aviso(s).');
+  }catch(e){setMonitorText('#monitorStatus','Não foi possível concluir: '+e.message+'. Utilize Verificar pedidos agora para tentar novamente.');}
+  finally{monitorChecking=false;b.disabled=false;b.textContent='Verificar pedidos agora';await refreshMonitor();}
+};
+$('#enableBrowserAlertsBtn').onclick=async()=>{
+  const b=$('#enableBrowserAlertsBtn');
+  if(typeof Notification==='undefined'){b.textContent='Navegador não suporta alertas';return;}
+  const permission=await Notification.requestPermission();
+  b.textContent=permission==='granted'?'Avisos do navegador ativados':'Avisos bloqueados no navegador';
+};
+if(typeof setTimeout==='function')setTimeout(()=>refreshMonitor(),1500);
+if(typeof setInterval==='function')setInterval(()=>{if(document.visibilityState!=='hidden')refreshMonitor();},60000);
+
 boot();
