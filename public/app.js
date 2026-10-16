@@ -74,6 +74,33 @@ document.querySelectorAll('[data-go]').forEach(link=>{
     event.preventDefault();setTab(link.dataset.go);
   });
 });
+// Profundidade responsiva discreta, restrita aos 8 cards interativos.
+ // Não manipula dados, não executa chamadas à API e respeita movimento reduzido.
+function enableCardMicroInteractions(){
+  const allowed=typeof window!=='undefined'&&typeof window.matchMedia==='function'&&
+    window.matchMedia('(hover:hover) and (pointer:fine)').matches&&
+    !window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  if(!allowed)return;
+  document.querySelectorAll('.interactive-tilt').forEach(card=>{
+    if(typeof card.addEventListener!=='function')return;
+    card.addEventListener('pointermove',event=>{
+      const box=card.getBoundingClientRect();
+      if(!box.width||!box.height)return;
+      const px=Math.max(-1,Math.min(1,((event.clientX-box.left)/box.width-.5)*2));
+      const py=Math.max(-1,Math.min(1,((event.clientY-box.top)/box.height-.5)*2));
+      card.style.setProperty('--rx',(-py*1.9).toFixed(2)+'deg');
+      card.style.setProperty('--ry',(px*2.1).toFixed(2)+'deg');
+    },{passive:true});
+    const reset=()=>{
+      card.style.removeProperty('--rx');
+      card.style.removeProperty('--ry');
+    };
+    card.addEventListener('pointerleave',reset);
+    card.addEventListener('pointercancel',reset);
+    card.addEventListener('blur',reset);
+  });
+}
+enableCardMicroInteractions();
 if(typeof window!=='undefined')window.addEventListener('popstate',()=>setTab(currentPageFromUrl(),{updateHistory:false}));
 $('#sidebarToggle').onclick=()=>setSidebarOpen(!document.body?.classList?.contains('sidebar-open'));
 $('#sidebarScrim').onclick=()=>setSidebarOpen(false);
