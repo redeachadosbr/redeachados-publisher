@@ -103,9 +103,14 @@
           <button class="secondary" id="wedropRefreshBtn" type="button">Atualizar cruzamento</button>
         </div>
         <div class="card wedrop-panel">
-          <h2>Importar custos reais do fornecedor</h2>
-          <p class="hint">Exporte o catálogo da WeDrop em CSV. O arquivo não altera preços, promoções ou anúncios Shopee. Você escolhe a coluna de SKU e a coluna do custo de compra antes de confirmar.</p>
-          <label>Arquivo CSV da WeDrop <input id="wedropFile" type="file" accept=".csv,text/csv,text/plain"></label>
+          <h2>Atualização automática de custos WeDrop</h2>
+          <p class="hint">Selecione um catálogo CSV oficial da WeDrop. O sistema identifica automaticamente SKU e Preço, valida a correspondência, importa os novos custos e atualiza os valores que mudaram. Nenhum preço da Shopee será alterado.</p>
+          <label>Catálogo CSV da WeDrop <input id="wedropFile" type="file" accept=".csv,text/csv,text/plain"></label>
+          <p id="wedropAutoStatus" class="notice" role="status" aria-live="polite">Aguardando um CSV. Ao selecionar um arquivo oficial, a atualização será iniciada automaticamente.</p>
+          <p id="wedropSourceStatus" class="hint">Verificando a origem da sincronização automática...</p>
+          <button id="wedropCheckFeedBtn" type="button" class="secondary" hidden>Verificar atualização na WeDrop agora</button>
+          <details class="wedrop-manual-fallback"><summary>Importação manual avançada (outros formatos CSV)</summary>
+          <p class="hint">Use somente quando o catálogo não for reconhecido. Confira as colunas antes de importar.</p>
           <button id="wedropPreviewBtn" type="button">Conferir colunas do CSV</button>
           <div id="wedropPreviewArea" hidden>
             <p id="wedropPreviewSummary" class="notice" role="status"></p>
@@ -123,7 +128,8 @@
             <label id="wedropZeroMatchLabel" class="wedrop-flag" hidden><input id="wedropAllowUnmatched" type="checkbox"><span>Confirmo que desejo importar esses custos mesmo sem correspondência com o catálogo Shopee atual.</span></label>
             <button id="wedropImportBtn" type="button" disabled>Confirmar importação dos custos</button>
           </div>
-          <p id="wedropImportStatus" class="notice" role="status" aria-live="polite">Nenhum arquivo importado nesta sessão.</p>
+          <p id="wedropImportStatus" class="notice" role="status" aria-live="polite">A importação manual permanece disponível para casos excepcionais.</p>
+          </details>
         </div>
         <div class="card wedrop-variants">
           <div class="section-head">
@@ -230,5 +236,5 @@
     </section>
   </main>
 </div>
-<script src="/app.js?v=1.6.2"></script>
+<script src="/app.js?v=1.7.0"></script>
 </body></html>
