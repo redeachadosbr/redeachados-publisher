@@ -71,7 +71,7 @@ test('Financeiro mantém filtros e miniaturas de catálogo com indicadores sem n
  assert.match(html,/class="finance-sku-table"/);
  assert.match(html,/data-finance-filter="sold"/);
  assert.match(html,/data-finance-filter="pending"/);
- assert.match(html,/lucro líquido final depende de tributos/i);
+ assert.match(html,/não é lucro fiscal final/i);
  assert.match(html,/saldo antes Ads/i);
  assert.match(js,/financeCatalogImage/);
  assert.match(js,/financeSkuEntries/);
