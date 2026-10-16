@@ -118,3 +118,10 @@ button:disabled{opacity:.52;cursor:not-allowed}
 .wedrop-variants .section-head{gap:12px}
 @media(max-width:650px){.wedrop-variants .actions{width:100%;display:flex;flex-direction:column}
 .wedrop-variants .actions button{width:100%}.wedrop-flag span{font-size:13px}}
+
+/* Estado sem custos WeDrop: dados de catálogo visíveis, financeiro apenas quando disponível. */
+.wedrop-no-costs{margin-top:16px;padding:21px;border:1px solid #dce5d7;background:#f9fbf8}
+.wedrop-no-costs h2{font-size:19px}
+.wedrop-no-costs p{line-height:1.5;max-width:100ch}
+#wedropFinancialResults[hidden],#wedropNoCosts[hidden],
+.wedrop-financial-metric[hidden]{display:none!important}
