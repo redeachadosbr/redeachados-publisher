@@ -7,6 +7,7 @@ import {fileURLToPath} from 'node:url';
 import {createAuthStore} from './authStore.js';
 import {mergeShopeeOrderDates} from './orderView.js';
 import {createShopeeOrderMonitor} from './orderMonitor.js';
+import {loadShopeeAdsOverview} from './adsReport.js';
 import {
   shopeeConfig,buildShopeeAuthorizationUrl,exchangeShopeeCode,refreshShopeeToken,
   getShopeeShopInfo,normalizeShopeeTokenResult,safeShopeeStatus,callShopeeShopApi,
@@ -299,6 +300,25 @@ app.get('/api/shopee/orders',mustLogin,async(req,res)=>{
       }
     });
   }catch(e){res.status(400).json({error:String(e.message||e)});}
+});
+
+app.get('/api/shopee/ads/overview',mustLogin,async(req,res)=>{
+  res.setHeader('Cache-Control','no-store');
+  try{
+    const {auth,cfg}=await getValidAuth(req);
+    const result=await loadShopeeAdsOverview(cfg,auth,callShopeeShopApi,{
+      start:String(req.query.start_date||''),
+      end:String(req.query.end_date||'')
+    });
+    res.json({ok:true,...result});
+  }catch(error){
+    const message=String(error.message||error).slice(0,320);
+    const forbidden=/permission|denied|restricted|forbidden|no permission|unauthorized/i.test(message);
+    res.status(forbidden?403:400).json({
+      error:message,category:forbidden?'ads_permission':'ads_query',
+      help:forbidden?'Confira as permissões do módulo Ads na Shopee Open Platform para o aplicativo Seller In House System.':'Verifique datas, autorização e resposta da Shopee. Nada foi alterado nas campanhas.'
+    });
+  }
 });
 
 app.get('/api/shopee/ads/product-campaign-performance',mustLogin,async(req,res)=>{
