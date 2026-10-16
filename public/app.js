@@ -24,11 +24,11 @@ const APP_PAGES={
 };
 let activeAppPage='overview';
 function currentPageFromUrl(){
-  const slug=decodeURIComponent(location.pathname.match(/^\/app\/([^/]+)\/?$/)?.[1]||'inicio');
+  const slug=decodeURIComponent(String(location.pathname||'').match(/^\/app\/([^/]+)\/?$/)?.[1]||'inicio');
   return Object.keys(APP_PAGES).find(k=>APP_PAGES[k].slug===slug)||'overview';
 }
 function setSidebarOpen(open){
-  document.body.classList.toggle('sidebar-open',Boolean(open));
+  document.body?.classList?.toggle('sidebar-open',Boolean(open));
   $('#sidebarToggle').setAttribute('aria-expanded',String(Boolean(open)));
   $('#sidebarToggle').setAttribute('aria-label',open?'Fechar menu':'Abrir menu');
   $('#sidebarScrim').hidden=!open;
@@ -56,12 +56,12 @@ function setTab(name,{updateHistory=true,scroll=true}={}){
   $('#topbarSectionName').textContent=page.title;
   document.title=page.title+' · Rede Achados BR Shopee';
   const nextUrl='/app/'+page.slug;
-  if(updateHistory&&location.pathname!==nextUrl)
+  if(updateHistory&&location.pathname!==nextUrl&&typeof history!=='undefined')
     history.pushState({page:name},'',nextUrl);
   setSidebarOpen(false);
   if(name==='wedrop'){refreshWeDropCoverage();loadWeDropSourceState();}
   else if(name==='finance'){refreshWeDropCoverage();}
-  if(scroll)window.scrollTo({top:0,behavior:'instant'});
+  if(scroll&&typeof window!=='undefined')window.scrollTo({top:0,behavior:'instant'});
 }
 document.querySelectorAll('.nav-link[data-tab]').forEach(link=>{
   link.addEventListener('click',event=>{
@@ -74,11 +74,11 @@ document.querySelectorAll('[data-go]').forEach(link=>{
     event.preventDefault();setTab(link.dataset.go);
   });
 });
-window.addEventListener('popstate',()=>setTab(currentPageFromUrl(),{updateHistory:false}));
-$('#sidebarToggle').onclick=()=>setSidebarOpen(!document.body.classList.contains('sidebar-open'));
+if(typeof window!=='undefined')window.addEventListener('popstate',()=>setTab(currentPageFromUrl(),{updateHistory:false}));
+$('#sidebarToggle').onclick=()=>setSidebarOpen(!document.body?.classList?.contains('sidebar-open'));
 $('#sidebarScrim').onclick=()=>setSidebarOpen(false);
-document.addEventListener('keydown',event=>{
-  if(event.key==='Escape'&&document.body.classList.contains('sidebar-open'))setSidebarOpen(false);
+if(typeof document.addEventListener==='function')document.addEventListener('keydown',event=>{
+  if(event.key==='Escape'&&document.body?.classList?.contains('sidebar-open'))setSidebarOpen(false);
 });
 $('#logoutBtn').onclick=async()=>{
   const button=$('#logoutBtn');button.disabled=true;
