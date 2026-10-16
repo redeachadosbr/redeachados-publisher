@@ -9,6 +9,8 @@ import {mergeShopeeOrderDates} from './orderView.js';
 import {createShopeeOrderMonitor} from './orderMonitor.js';
 import {loadShopeeAdsOverview} from './adsReport.js';
 import {loadShopeeFinance} from './shopeeFinance.js';
+import {financeAdsDates,matchFinanceAds} from './financeAdsSweep.js';
+import {financePeriod} from './shopeeFinance.js';
 import {fetchCatalogPage,normalizeShopeeModels,validItemId} from './catalog.js';
 import {storeCatalogItems,storeCatalogModels,readCatalogCache,catalogStoreReady} from './catalogStore.js';
 import {previewWeDropCsv,prepareWeDropImport,MAX_CSV_CHARS} from './wedropCsv.js';
@@ -593,10 +595,22 @@ app.get('/api/shopee/finance/orders',mustLogin,requireWeDropAdmin,async(req,res)
   res.setHeader('Cache-Control','no-store');
   try{
     const {auth,cfg}=await getValidAuth(req);
-    const result=await loadShopeeFinance(cfg,auth,callShopeeShopApi,{
-      days:req.query.days??15
-    });
-    res.json({ok:true,...result});
+    const days=financePeriod(req.query.days??15);
+    const to=Math.floor(Date.now()/1000);
+    const dates=financeAdsDates({from:to-days*86400,to});
+    // Consultas em paralelo, sem permitir que a negação de Ads esconda o
+    // financeiro de repasse/custos. Nunca atribuir zero quando não autorizado.
+    const [finance,adsResult]=await Promise.all([
+      loadShopeeFinance(cfg,auth,callShopeeShopApi,{days,now:to}),
+      loadShopeeAdsOverview(cfg,auth,callShopeeShopApi,dates)
+        .then(value=>({ok:true,value}))
+        .catch(error=>({ok:false,error:String(error.message||error).slice(0,250)}))
+    ]);
+    const adsSweep=adsResult.ok
+      ?{...matchFinanceAds(finance,adsResult.value),dates}
+      :{status:'unavailable',dates,error:adsResult.error,
+        message:'Não foi possível concluir a varredura de Ads. O custo de publicidade e o resultado após Ads continuam indisponíveis; NÃO considere R$ 0.'};
+    res.json({ok:true,...finance,adsSweep});
   }catch(e){
     const error=String(e.message||e).slice(0,360);
     const forbidden=/permission|denied|403|forbidden/i.test(error);
