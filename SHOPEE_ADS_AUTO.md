@@ -28,3 +28,14 @@ https://open.shopee.com/documents/v2/v2.ads.get_product_campaign_daily_performan
 
 ## Teste após deploy
 Abra `https://redeachados-shopee.onrender.com`, Ctrl+F5, Ads → selecione início/fim → Localizar campanhas e analisar. Se aparecer erro, envie somente a mensagem de erro e request_id, nunca tokens.
+
+## Versão 1.4.1 — Impressões, Cliques, CTR e situação atual
+- Card e coluna **Impressões** = soma de `impression` para o intervalo selecionado.
+- Card e coluna **Cliques** = soma de `clicks` para o intervalo selecionado.
+- CTR (%) = `sum(clicks)/sum(impression)*100`; nunca média simples dos CTRs das campanhas. Sem impressões, exibir traço.
+- Após descobrir Campaign IDs, consultar `GET /api/v2/ads/get_product_level_campaign_setting_info` em lotes de no máximo 100 IDs, com `info_type_list=1` para receber `common_info.campaign_status`.
+- Abas: **Ativas** (exatamente `ongoing`), **Pausadas / Desativadas** (`paused`, `ended`, `closed`, `deleted`), e **Outras / Sem confirmação** (`scheduled`, status ausente, não reconhecido ou negado).
+- Situação atual é obtida das configurações da Shopee: métricas históricas não provam que anúncios estão rodando. Campanhas pausadas também podem ter gasto e cliques no período consultado.
+- Se a API de configurações falhar, preservar dados de métricas retornados, mostrar aviso e deixar todas as campanhas na aba Sem confirmação; **nunca atribuir status ativo com base no gasto ou quantidade de impressões**.
+- A consulta é exclusivamente de leitura; não ativar, pausar ou editar campanha automaticamente.
+- No frontend, atualize com Ctrl+F5, selecione o período e clique em Localizar campanhas e analisar. Clique nas abas de status para navegar sem repetir a consulta.

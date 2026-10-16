@@ -1,6 +1,7 @@
 // Consultas oficiais Shopee Ads V2. Nenhuma alteração em campanhas ou orçamento.
 const ID_PATH='/api/v2/ads/get_product_level_campaign_id_list';
 const DAILY_PATH='/api/v2/ads/get_product_campaign_daily_performance';
+const SETTINGS_PATH='/api/v2/ads/get_product_level_campaign_setting_info';
 const DAY=86400000;
 export function parseAdsDate(value){
   const v=String(value||'').trim();
@@ -45,6 +46,45 @@ export async function discoverShopeeCampaigns(cfg,auth,callApi){
   }
   throw Error('Limite de paginação (4.000 campanhas). A consulta não está completa.');
 }
+export function classifyShopeeCampaignStatus(raw){
+  const normalized=String(raw??'').trim().toLowerCase();
+  if(normalized==='ongoing')return 'active';
+  if(['paused','ended','deleted','closed'].includes(normalized))return 'inactive';
+  // scheduled não significa rodando. Informações ausentes também não.
+  return 'other';
+}
+export function settingsFromShopeeResponse(data,expectedIds){
+  const campaigns=data?.response?.campaign_list;
+  if(!Array.isArray(campaigns))throw Error('Shopee não retornou configurações válidas das campanhas.');
+  const allowed=new Set(expectedIds.map(x=>String(x)));
+  const byId=new Map();
+  for(const c of campaigns){
+    const id=String(c?.campaign_id||'').trim();
+    if(!allowed.has(id))continue;
+    const info=c?.common_info||{};
+    const status=typeof info.campaign_status==='string'?info.campaign_status.trim().toLowerCase():'';
+    byId.set(id,{
+      campaignId:id,
+      status:status||'unknown',
+      statusGroup:classifyShopeeCampaignStatus(status),
+      name:String(info.ad_name||'').trim(),
+      placement:String(info.campaign_placement||'').trim()
+    });
+  }
+  return byId;
+}
+export async function fetchShopeeCampaignSettings(cfg,auth,callApi,discovered){
+  const map=new Map();
+  for(let i=0;i<discovered.length;i+=100){
+    const ids=discovered.slice(i,i+100).map(x=>x.campaignId);
+    const d=await callApi(cfg,{
+      path:SETTINGS_PATH,accessToken:auth.accessToken,shopId:auth.shopId,
+      query:{campaign_id_list:ids.join(','),info_type_list:'1'}
+    });
+    for(const [k,v] of settingsFromShopeeResponse(d,ids))map.set(k,v);
+  }
+  return map;
+}
 function amount(value){
   const n=Number(value);
   return Number.isFinite(n)&&n>=0?n:0;
@@ -52,7 +92,7 @@ function amount(value){
 function ratio(n,d,factor=1){return d>0?Number((n/d*factor).toFixed(4)):null;}
 export function summarizeShopeeAds(performanceResponses,discovered){
   const map=new Map(discovered.map(c=>[c.campaignId,{
-    campaignId:c.campaignId,adType:c.adType||'',name:'',
+    campaignId:c.campaignId,adType:c.adType||'',name:'',status:'unknown',statusGroup:'other',
     expense:0,broadGmv:0,directGmv:0,clicks:0,impressions:0,
     broadOrders:0,directOrders:0,daysWithData:0
   }]));
@@ -100,6 +140,19 @@ export function summarizeShopeeAds(performanceResponses,discovered){
 export async function loadShopeeAdsOverview(cfg,auth,callApi,{start,end}){
   const range=validateAdsRange(start,end);
   const ids=await discoverShopeeCampaigns(cfg,auth,callApi);
+  // Consultar status REAL da campanha, não inferir pelo gasto/impressões passados.
+  // Se a Shopee negar configurações, mostrar "status não confirmado" sem
+  // classificar falsamente como ativa ou pausada.
+  let settings=new Map();
+  let statusWarning=null;
+  if(ids.length){
+    try{
+      settings=await fetchShopeeCampaignSettings(cfg,auth,callApi,ids);
+    }catch(err){
+      statusWarning='Não foi possível confirmar os status atuais na Shopee: '+
+        String(err.message||err).slice(0,220);
+    }
+  }
   const datasets=[];
   for(let i=0;i<ids.length;i+=100){
     const batch=ids.slice(i,i+100);
@@ -108,8 +161,22 @@ export async function loadShopeeAdsOverview(cfg,auth,callApi,{start,end}){
       query:{...range,campaign_id_list:batch.map(c=>c.campaignId).join(',')}
     }));
   }
+  const summary=summarizeShopeeAds(datasets,ids);
+  for(const campaign of summary.campaigns){
+    const details=settings.get(campaign.campaignId);
+    if(!details)continue;
+    campaign.status=details.status;
+    campaign.statusGroup=details.statusGroup;
+    if(details.name)campaign.name=details.name;
+    campaign.placement=details.placement;
+  }
+  const statusCounts={
+    active:summary.campaigns.filter(x=>x.statusGroup==='active').length,
+    inactive:summary.campaigns.filter(x=>x.statusGroup==='inactive').length,
+    other:summary.campaigns.filter(x=>x.statusGroup==='other').length
+  };
   return {shopId:auth.shopId,dates:{start:range.start_date,end:range.end_date},
-    ...summarizeShopeeAds(datasets,ids),
+    ...summary,statusCounts,statusWarning,
     coverage:'Campanhas de anúncios de produtos retornadas pela API Ads V2.',
-    caveat:'Receita atribuída não é lucro líquido. GMV amplo pode incluir outros produtos da loja; não some GMV amplo ao direto.'};
+    caveat:'Impressões, cliques e CTR referem-se ao período selecionado. O status é atual; histórico de desempenho não indica se uma campanha está rodando. Receita atribuída não é lucro líquido. GMV amplo pode incluir outros produtos da loja; não some GMV amplo ao direto.'};
 }

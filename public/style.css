@@ -37,3 +37,16 @@ button:disabled{opacity:.52;cursor:not-allowed}
 #adsSummary[data-state="loading"]{background:#f7f8fb;border-color:#d8dae3}
 #adsResults .metrics{margin-top:18px}
 #adsResults .metrics strong{font-size:clamp(14px,2.1vw,22px);overflow-wrap:anywhere}
+
+/* Abas internas da central de campanhas Shopee Ads */
+.ads-status-tabs{display:flex;align-items:center;gap:9px;flex-wrap:wrap;margin:16px 0}
+.ads-status-tabs .ads-status-tab{padding:10px 14px;border-radius:12px;font-size:13px;line-height:1.35;white-space:normal;text-align:center}
+.ads-status-tabs .ads-status-tab.selected{background:#243329;color:#fff;border-color:#243329}
+.ads-status-tabs .ads-status-tab span{font-variant-numeric:tabular-nums}
+.ads-status-tabs [hidden]{display:none!important}
+#adsResultsBody td{white-space:normal;min-width:80px}
+#adsResultsBody td:first-child{min-width:190px;overflow-wrap:anywhere}
+#adsResultsBody td:nth-child(2){min-width:130px}
+.ads-metrics{grid-template-columns:repeat(auto-fit,minmax(170px,1fr))}
+#adsFilterSummary{margin:10px 0 16px;line-height:1.4}
+@media(max-width:650px){.ads-status-tabs .ads-status-tab{flex:1 1 130px}}
