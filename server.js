@@ -6,6 +6,7 @@ import path from 'node:path';
 import {fileURLToPath} from 'node:url';
 import {createAuthStore} from './authStore.js';
 import {mergeShopeeOrderDates} from './orderView.js';
+import {createShopeeOrderMonitor} from './orderMonitor.js';
 import {
   shopeeConfig,buildShopeeAuthorizationUrl,exchangeShopeeCode,refreshShopeeToken,
   getShopeeShopInfo,normalizeShopeeTokenResult,safeShopeeStatus,callShopeeShopApi,
@@ -26,7 +27,7 @@ function baseUrl(req){return (envText('PUBLIC_BASE_URL')||`${req.protocol}://${r
 
 async function getValidAuth(req){
   let auth=(await authStore.load())||{};
-  const cfg=shopeeConfig(baseUrl(req));
+  const cfg=shopeeConfig(req?baseUrl(req):envText('PUBLIC_BASE_URL'));
   if(!auth.accessToken||!auth.refreshToken||!auth.shopId) throw new Error('Shopee ainda não está conectada.');
   if(auth.mode!==cfg.mode||auth.partnerId!==cfg.partnerId) throw new Error('A autorização existente pertence a outro ambiente/Partner ID. Conecte a Shopee novamente.');
   const refreshAt=Number(auth.expiresAt||0)-5*60*1000;
@@ -39,6 +40,10 @@ async function getValidAuth(req){
   }
   return {auth,cfg};
 }
+const orderMonitor=createShopeeOrderMonitor({
+  getAuth:()=>getValidAuth(),
+  callApi:callShopeeShopApi
+});
 function stateSecret(){return envText('SESSION_SECRET')||envText('APP_PASSWORD')||'redeachados-shopee-state';}
 function createState(){
   if(!envText('SESSION_SECRET')) throw new Error('Configure SESSION_SECRET no Environment do serviço Shopee antes de autorizar.');
@@ -104,6 +109,28 @@ app.post('/api/shopee/signature-diagnostic',mustLogin,async(req,res)=>{
     const result=await diagnoseShopeeSignature(cfg);
     return res.json({ok:true,...result});
   }catch(e){return res.status(400).json({error:String(e.message||e)});}
+});
+
+// Monitor exclusivo Shopee: leitura autenticada, verificação manual e alertas.
+app.get('/api/shopee/monitor',mustLogin,async(_req,res)=>{
+  res.setHeader('Cache-Control','no-store');
+  try{res.json({ok:true,...await orderMonitor.dashboard()});}
+  catch(e){res.status(400).json({error:String(e.message||e),monitor:orderMonitor.status()});}
+});
+app.get('/api/shopee/monitor/status',mustLogin,(_req,res)=>{
+  res.setHeader('Cache-Control','no-store');
+  res.json({ok:true,...orderMonitor.status()});
+});
+app.post('/api/shopee/monitor/check-now',mustLogin,async(_req,res)=>{
+  res.setHeader('Cache-Control','no-store');
+  try{res.json(await orderMonitor.check());}
+  catch(e){res.status(400).json({error:String(e.message||e),monitor:orderMonitor.status()});}
+});
+app.post('/api/shopee/monitor/read',mustLogin,async(req,res)=>{
+  try{
+    const {auth}=await getValidAuth(req);
+    res.json(await orderMonitor.markRead(Number(auth.shopId),req.body?.alert_key));
+  }catch(e){res.status(400).json({error:String(e.message||e)});}
 });
 
 app.get('/api/shopee/proxy-test',mustLogin,async(_req,res)=>{
@@ -291,4 +318,5 @@ app.get('/api/shopee/ads/product-campaign-performance',mustLogin,async(req,res)=
   }catch(e){res.status(400).json({error:String(e.message||e)});}
 });
 
+orderMonitor.start();
 app.listen(PORT,()=>console.log(`Rede Achados BR Shopee API em http://localhost:${PORT}`));
