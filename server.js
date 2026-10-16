@@ -72,7 +72,7 @@ app.use(session({
 }));
 app.use(express.static(path.join(__dirname,'public')));
 
-app.get('/api/health',(_req,res)=>res.json({ok:true,service:'Rede Achados BR Shopee API',version:'1.2.2',storage:authStore.status()}));
+app.get('/api/health',(_req,res)=>res.json({ok:true,service:'Rede Achados BR Shopee API',version:'1.2.3',storage:authStore.status()}));
 app.get('/api/auth-state',(req,res)=>res.json({locked:Boolean(envText('APP_PASSWORD')),loggedIn:!envText('APP_PASSWORD')||Boolean(req.session?.appAuth)}));
 app.post('/api/login',(req,res)=>{
   const required=envText('APP_PASSWORD');
@@ -240,15 +240,17 @@ app.get('/api/shopee/orders',mustLogin,async(req,res)=>{
     let detailWarning=null;
     if(orderList.length){
       try{
-        const orderSns=orderList.map(x=>String(x.order_sn||'')).filter(Boolean).slice(0,50);
-        if(orderSns.length){
+        const orderSns=orderList.map(x=>String(x.order_sn||'')).filter(Boolean);
+        for(let i=0;i<orderSns.length;i+=50){
+          const batch=orderSns.slice(i,i+50);
           const detailed=await callShopeeShopApi(cfg,{
             path:'/api/v2/order/get_order_detail',
             accessToken:auth.accessToken,
             shopId:auth.shopId,
-            query:{order_sn_list:orderSns.join(',')}
+            query:{order_sn_list:batch.join(',')}
           });
-          detailOrders=Array.isArray(detailed.response?.order_list)?detailed.response.order_list:[];
+          if(Array.isArray(detailed.response?.order_list))
+            detailOrders.push(...detailed.response.order_list);
         }
       }catch(error){
         detailWarning='Datas indisponíveis na consulta de detalhes: '+String(error.message||error).slice(0,250);
