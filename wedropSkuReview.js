@@ -62,7 +62,7 @@ export async function getSkuReview(shopId){
     const suggestions=suggestSkuCandidates(x.sku,costs);
     return {
       itemId:x.itemId,modelId:x.modelId,shopeeSku:x.sku,
-      title:x.name,price:x.price,reason:
+      title:x.name,imageUrl:x.imageUrl,price:x.price,reason:
         suggestions.length?'SKU não corresponde exatamente ao catálogo de custos.':
           'SKU não encontrado no catálogo de custos; nenhuma sugestão confiável pelo código.',
       suggestions,canLink:true
