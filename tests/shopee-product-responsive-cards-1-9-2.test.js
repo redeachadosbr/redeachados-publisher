@@ -52,6 +52,6 @@ test('mudança restrita ao catálogo Shopee, não perde APIs, estado ou áreas a
   'tab-wedrop','wedropStoredCatalog','monitorBadge']){
    assert.equal((html.match(new RegExp('id="'+id+'"','g'))||[]).length,1,id);
  }
- assert.match(html,/style\.css\?v=1\.11\.0/);
- assert.match(html,/app\.js\?v=1\.11\.0/);
+ assert.match(html,/style\.css\?v=1\.12\.0/);
+ assert.match(html,/app\.js\?v=1\.12\.0/);
 });
