@@ -575,3 +575,124 @@ table tr:hover td{background:#f3f8ff}
  .shortcut-arrow{transition:none!important;animation:none!important;transform:none!important}
  .app-sidebar .nav-link:hover{transform:none}
 }
+
+
+/* ==========================================================
+   1.9.2 — Produtos: cartões de catálogo responsivos de verdade
+   Ações sempre visíveis, sem conteúdo recortado lateralmente.
+   Não modifica outras tabelas (Financeiro, Ads, WeDrop).
+   ========================================================== */
+#tab-products{min-width:0;width:100%}
+#tab-products .catalog-controls,
+#tab-products .catalog-metrics,
+#tab-products .catalog-details{min-width:0;max-width:100%}
+#tab-products .section-head{gap:12px;flex-wrap:wrap}
+#tab-products .section-head>.actions{margin-top:0;align-items:center}
+#tab-products .catalog-controls{display:grid;grid-template-columns:minmax(240px,2fr) repeat(2,minmax(165px,1fr));gap:12px}
+#tab-products .catalog-controls label,#tab-products .catalog-controls label:first-child{min-width:0;width:100%;flex:none}
+#tab-products .catalog-controls input,#tab-products .catalog-controls select{margin:0;max-width:100%}
+#tab-products .catalog-metrics{grid-template-columns:repeat(auto-fit,minmax(142px,1fr))}
+#tab-products .catalog-metrics article{min-width:0}
+#tab-products .catalog-list-heading{display:flex;justify-content:space-between;align-items:center;gap:12px;margin:21px 0 11px}
+#tab-products .catalog-list-heading h3{font-size:15px;color:#163965;margin:0}
+#tab-products .catalog-list-heading span{font-size:12px;color:#75849b}
+#tab-products .catalog-list{width:100%;min-width:0;max-width:100%;border:0;box-shadow:none;background:transparent;overflow:visible}
+#tab-products .catalog-products-table{display:block;width:100%;min-width:0;border:0;table-layout:auto}
+#tab-products .catalog-products-table thead{
+ position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0,0,0,0);
+ white-space:nowrap;clip-path:inset(50%);
+}
+#tab-products .catalog-products-table tbody{
+ display:grid;width:100%;min-width:0;grid-template-columns:repeat(2,minmax(0,1fr));gap:13px;
+}
+#tab-products .catalog-products-table tbody tr{
+ width:100%;min-width:0;display:grid;position:relative;
+ grid-template-columns:minmax(0,1fr) minmax(105px,auto);
+ grid-template-areas:
+  "product action"
+  "sku status"
+  "price stock"
+  "promotion updated";
+ gap:9px 12px;align-items:center;
+ padding:15px 16px 14px;border:1px solid #dfe8f5;border-radius:15px;
+ background:linear-gradient(145deg,#fff,#fafcff);
+ box-shadow:0 1px 0 #fff inset,0 4px 11px rgba(22,52,103,.06),0 14px 22px -21px rgba(10,54,125,.4);
+ transition:box-shadow .18s ease,border-color .18s ease,transform .18s ease;
+}
+#tab-products .catalog-products-table tbody tr:hover{
+ border-color:#a9cbf5;transform:translateY(-1px);
+ box-shadow:0 2px 0 #fff inset,0 9px 16px -10px rgba(20,67,128,.28),0 20px 27px -21px rgba(18,56,114,.32);
+}
+#tab-products .catalog-products-table tbody td{
+ min-width:0!important;max-width:100%;width:auto;
+ padding:0;border:0;vertical-align:middle;
+ font-size:12px;line-height:1.4;color:#2d405b;
+ background:transparent;white-space:normal;overflow-wrap:anywhere;
+}
+#tab-products .catalog-products-table tbody td:first-child{grid-area:product}
+#tab-products .catalog-products-table tbody td:nth-child(2){grid-area:sku}
+#tab-products .catalog-products-table tbody td:nth-child(3){grid-area:status;justify-self:start;font-weight:750;color:#18558a}
+#tab-products .catalog-products-table tbody td:nth-child(4){grid-area:price;font-weight:750;font-size:13px;color:#133b72}
+#tab-products .catalog-products-table tbody td:nth-child(5){grid-area:stock}
+#tab-products .catalog-products-table tbody td:nth-child(6){grid-area:promotion}
+#tab-products .catalog-products-table tbody td:nth-child(7){grid-area:updated;text-align:right;font-size:11px}
+#tab-products .catalog-products-table tbody td:nth-child(8){grid-area:action;justify-self:end;align-self:start;overflow:visible}
+#tab-products .catalog-products-table tbody td:nth-child(n+2):nth-child(-n+7):before{
+ display:block;margin-bottom:3px;font-size:9px;font-weight:800;letter-spacing:.09em;color:#8290a4;
+ text-transform:uppercase;
+}
+#tab-products .catalog-products-table tbody td:nth-child(2):before{content:"Item ID / SKU"}
+#tab-products .catalog-products-table tbody td:nth-child(3):before{content:"Status"}
+#tab-products .catalog-products-table tbody td:nth-child(4):before{content:"Preço"}
+#tab-products .catalog-products-table tbody td:nth-child(5):before{content:"Estoque"}
+#tab-products .catalog-products-table tbody td:nth-child(6):before{content:"Promoção"}
+#tab-products .catalog-products-table tbody td:nth-child(7):before{content:"Atualização"}
+#tab-products .catalog-product-title{width:100%;min-width:0;max-width:100%;display:flex;align-items:center;gap:11px}
+#tab-products .catalog-product-title img{
+ width:55px;height:55px;flex:0 0 55px;border-radius:10px;object-fit:contain;
+ border:1px solid #dce7f3;box-shadow:0 3px 9px #123e8016;
+}
+#tab-products .catalog-product-title span{
+ display:block;min-width:0;font-size:13px;font-weight:720;color:#203750;line-height:1.35;
+ overflow-wrap:anywhere;word-break:normal;
+}
+#tab-products .catalog-products-table tbody td:nth-child(8) button{
+ display:inline-flex;justify-content:center;align-items:center;min-width:87px;min-height:36px;
+ padding:8px 11px;white-space:nowrap;font-size:11px;border-radius:9px;
+ background:linear-gradient(125deg,#f46c43,#ee4d2d);box-shadow:0 3px 7px #ee4d2d24;
+}
+#tab-products .catalog-products-table tbody tr:has(td[colspan]){
+ display:block;grid-column:1/-1;padding:22px;text-align:center;
+}
+#tab-products .catalog-products-table tbody tr:has(td[colspan]) td{
+ display:block;text-align:center;font-size:13px;
+}
+#tab-products .catalog-details{scroll-margin-top:90px;padding:18px 20px;margin:15px 0 20px}
+#tab-products .catalog-details .table-wrap{overflow-x:auto;max-width:100%}
+#tab-products .catalog-details table{min-width:480px}
+#tab-products .catalog-paging{align-items:center}
+@media(min-width:2100px){
+ #tab-products .catalog-products-table tbody{grid-template-columns:repeat(3,minmax(0,1fr))}
+}
+@media(max-width:1450px){
+ #tab-products .catalog-products-table tbody{grid-template-columns:1fr}
+}
+@media(max-width:850px){
+ #tab-products .catalog-controls{grid-template-columns:1fr 1fr}
+ #tab-products .catalog-controls label:first-child{grid-column:1/-1}
+ #tab-products .catalog-products-table tbody{grid-template-columns:1fr}
+}
+@media(max-width:600px){
+ #tab-products .catalog-controls{grid-template-columns:1fr}
+ #tab-products .catalog-controls label:first-child{grid-column:auto}
+ #tab-products .catalog-products-table tbody tr{padding:13px;grid-template-columns:minmax(0,1fr) auto;gap:9px 10px}
+ #tab-products .catalog-product-title img{width:46px;height:46px;flex-basis:46px}
+ #tab-products .catalog-product-title span{font-size:12px}
+ #tab-products .catalog-products-table tbody td:nth-child(8) button{min-width:76px;font-size:10px;padding:8px}
+ #tab-products .catalog-list-heading{flex-direction:column;align-items:flex-start}
+ #tab-products .catalog-metrics{grid-template-columns:repeat(2,minmax(0,1fr))}
+}
+@media(hover:none),(prefers-reduced-motion:reduce){
+ #tab-products .catalog-products-table tbody tr,
+ #tab-products .catalog-products-table tbody tr:hover{transform:none;transition:none}
+}

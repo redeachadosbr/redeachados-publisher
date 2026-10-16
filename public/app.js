@@ -332,6 +332,10 @@ function catalogSummaryText(prefix=''){
 }
 async function catalogShowModels(item){
   const panel=$('#productDetailsPanel');panel.hidden=false;
+  // O painel de variações fica antes da lista. Levar o usuário até o resultado
+  // para que o clique em Detalhes não pareça inoperante após dezenas de cards.
+  panel.scrollIntoView?.({behavior:'smooth',block:'start'});
+  panel.focus?.({preventScroll:true});
   $('#productDetailsTitle').textContent=item.title||'Anúncio '+item.itemId;
   const body=$('#productModelsBody');body.replaceChildren();
   const status=$('#productDetailsStatus');
