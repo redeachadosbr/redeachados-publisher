@@ -167,6 +167,69 @@ $('#loadOrdersBtn').onclick=async()=>{
 function ddmmyyyy(v){if(!v)return'';const [y,m,d]=v.split('-');return `${d}-${m}-${y}`;}
 const today=new Date(), before=new Date(Date.now()-7*86400000);
 $('#adsEnd').value=today.toISOString().slice(0,10);$('#adsStart').value=before.toISOString().slice(0,10);
+const adsMoney=v=>new Intl.NumberFormat('pt-BR',{style:'currency',currency:'BRL'}).format(Number(v)||0);
+const adsNum=v=>new Intl.NumberFormat('pt-BR',{maximumFractionDigits:2}).format(Number(v)||0);
+const adsMetric=v=>v===null||v===undefined?'—':adsNum(v);
+function renderShopeeAds(data){
+  const campaigns=Array.isArray(data.campaigns)?data.campaigns:[];
+  const total=data.total||{};
+  $('#adsResults').hidden=false;
+  $('#adsCampaignCount').textContent=data.campaignCount||0;
+  $('#adsExpense').textContent=adsMoney(total.expense);
+  $('#adsGmv').textContent=adsMoney(total.broadGmv);
+  $('#adsRoasAcos').textContent=adsMetric(total.roas)+'x / '+(total.acos===null?'—':adsNum(total.acos)+'%');
+  const body=$('#adsResultsBody');body.replaceChildren();
+  if(!campaigns.length){
+    const tr=document.createElement('tr'),td=document.createElement('td');
+    td.colSpan=7;td.textContent='Nenhuma campanha de anúncio de produto retornada para esta loja.';
+    tr.appendChild(td);body.appendChild(tr);
+    return;
+  }
+  for(const campaign of campaigns){
+    const tr=document.createElement('tr');
+    const cells=[
+      (campaign.name||'Campanha')+' · '+campaign.campaignId,
+      campaign.adType||'—',
+      adsMoney(campaign.expense),adsMoney(campaign.broadGmv),
+      campaign.roas===null?'—':adsNum(campaign.roas)+'x',
+      campaign.acos===null?'—':adsNum(campaign.acos)+'%',
+      adsNum(campaign.clicks)
+    ];
+    for(const value of cells){
+      const td=document.createElement('td');td.textContent=String(value);tr.appendChild(td);
+    }
+    body.appendChild(tr);
+  }
+}
+$('#loadAdsAutoBtn').onclick=async()=>{
+  const button=$('#loadAdsAutoBtn'),summary=$('#adsSummary');
+  if(button.disabled)return;
+  button.disabled=true;button.textContent='Consultando campanhas...';
+  summary.textContent='Buscando os IDs de campanhas e resultados pela Shopee. Aguarde.';
+  summary.dataset.state='loading';
+  $('#adsResults').hidden=true;
+  try{
+    const start=$('#adsStart').value,end=$('#adsEnd').value;
+    if(!start||!end||start>=end)throw Error('Selecione um período válido, com pelo menos dois dias.');
+    const q=new URLSearchParams({start_date:start,end_date:end});
+    const data=await json('/api/shopee/ads/overview?'+q,{signal:AbortSignal.timeout(120000)});
+    if(!data.ok)throw Error(data.error||'Resposta de Ads não confirmada.');
+    renderShopeeAds(data);
+    summary.dataset.state='success';
+    summary.textContent='Consulta concluída: '+data.campaignCount+' campanhas identificadas, '+
+      (data.total?.withData||0)+' com métricas no período. '+data.caveat;
+    debug({shopId:data.shopId,campaignCount:data.campaignCount,dates:data.dates,total:data.total,coverage:data.coverage});
+  }catch(error){
+    const message=error?.name==='TimeoutError'?'Tempo de consulta excedido. Tente novamente com período menor.':String(error.message||error);
+    summary.dataset.state='error';
+    summary.textContent='Não foi possível consultar Ads: '+message+
+      (/permission|denied|403|restricted|api_permission/i.test(message)
+        ?' Verifique o acesso ao módulo Ads na Shopee Open Platform.':' Confira a autorização e tente novamente.');
+    debug({adsError:message});
+  }finally{
+    button.disabled=false;button.textContent='Localizar campanhas e analisar';
+  }
+};
 $('#loadAdsBtn').onclick=async()=>{
   try{
     const ids=$('#campaignIds').value.trim();
