@@ -68,7 +68,10 @@ export function settingsFromShopeeResponse(data,expectedIds){
       status:status||'unknown',
       statusGroup:classifyShopeeCampaignStatus(status),
       name:String(info.ad_name||'').trim(),
-      placement:String(info.campaign_placement||'').trim()
+      placement:String(info.campaign_placement||'').trim(),
+      // Lista oficial dos produtos anunciados, nunca derivada do nome da campanha.
+      itemIdList:Array.isArray(info.item_id_list)
+        ?[...new Set(info.item_id_list.map(String).filter(x=>/^[1-9]\d*$/.test(x)))]:[]
     });
   }
   return byId;
@@ -169,6 +172,7 @@ export async function loadShopeeAdsOverview(cfg,auth,callApi,{start,end}){
     campaign.statusGroup=details.statusGroup;
     if(details.name)campaign.name=details.name;
     campaign.placement=details.placement;
+    campaign.itemIdList=details.itemIdList;
   }
   const statusCounts={
     active:summary.campaigns.filter(x=>x.statusGroup==='active').length,
