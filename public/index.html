@@ -27,6 +27,7 @@
         <button class="tab active" data-tab="overview">Visão geral</button>
         <button class="tab" data-tab="products">Produtos</button>
         <button class="tab" data-tab="orders">Pedidos</button>
+        <button class="tab" data-tab="alerts">Monitor de envios <span id="monitorBadge"></span></button>
         <button class="tab" data-tab="ads">Ads</button>
       </nav>
 
@@ -69,6 +70,30 @@
         <div class="table-wrap"><table><thead><tr><th>Pedido</th><th>Status</th><th>Criação</th></tr></thead><tbody id="ordersBody"></tbody></table></div>
       </section>
 
+      <section class="tabpane" id="tab-alerts">
+        <div class="section-head">
+          <div><span class="eyebrow">OPERAÇÃO SHOPEE</span><h2>Vendas e prazos de postagem</h2></div>
+          <div class="actions"><button id="checkOrdersBtn">Verificar pedidos agora</button><button id="enableBrowserAlertsBtn" class="secondary">Ativar aviso no navegador</button></div>
+        </div>
+        <p id="monitorStatus" class="notice" role="status" aria-live="polite">Verificando o monitor...</p>
+        <div class="metrics">
+          <article><span>Pendentes de envio</span><strong id="monitorPendingCount">—</strong></article>
+          <article><span>Críticos/vencidos</span><strong id="monitorCriticalCount">—</strong></article>
+          <article><span>Avisos não lidos</span><strong id="monitorUnreadCount">—</strong></article>
+          <article><span>Última verificação</span><strong id="monitorLastRun" class="small-metric">—</strong></article>
+        </div>
+        <div class="card monitor-card">
+          <h2>Prioridades para preparar e postar</h2>
+          <p class="hint">Datas de postagem são as informadas pela Shopee. Sem prazo na API, confira a Central do Vendedor; o sistema não inventa prazos.</p>
+          <div class="table-wrap"><table><thead><tr><th>Pedido</th><th>Status</th><th>Prazo Shopee</th><th>Prioridade</th></tr></thead><tbody id="monitorPendingBody"></tbody></table></div>
+        </div>
+        <div class="card monitor-card">
+          <h2>Avisos de vendas e envio</h2>
+          <p class="hint">O monitor verifica pedidos periodicamente enquanto o servidor estiver ativo. Para mensagens mesmo com o navegador fechado, configure Telegram no Render.</p>
+          <div id="monitorAlerts" class="monitor-alerts"></div>
+        </div>
+      </section>
+
       <section class="tabpane" id="tab-ads">
         <div class="section-head"><div><span class="eyebrow">SHOPEE ADS</span><h2>Desempenho de campanhas</h2></div></div>
         <div class="card form-card">
@@ -84,5 +109,5 @@
     </section>
   </main>
 </div>
-<script src="/app.js?v=1.2.3"></script>
+<script src="/app.js?v=1.3.0"></script>
 </body></html>
