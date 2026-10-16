@@ -112,9 +112,14 @@ export function matchWeDropCosts(items,models,costs){
       matched,missingCost:results.length-matched,withoutSku,waitingModels,
       importedCosts:bySku.size,supplierSkusNotMatched:[...bySku.keys()].filter(x=>!used.has(x)).length
     },
-    rows:results.sort((a,b)=>Number(a.costMatched)-Number(b.costMatched)||a.sku.localeCompare(b.sku,'pt-BR')).slice(0,500),
-    truncated:results.length>500,
-    warning:'Preço do catálogo pode não refletir promoções, frete ou valor efetivamente recebido. Diferença bruta não é lucro líquido.'
+    // Sem custos cadastrados, não produzir centenas de linhas financeiras vazias.
+    // Os totais de catálogo continuam disponíveis para o painel operacional.
+    rows:bySku.size?results.sort((a,b)=>Number(a.costMatched)-Number(b.costMatched)||a.sku.localeCompare(b.sku,'pt-BR')).slice(0,500):[],
+    truncated:bySku.size>0&&results.length>500,
+    financialReady:bySku.size>0,
+    warning:bySku.size
+      ?'Preço do catálogo pode não refletir promoções, frete ou valor efetivamente recebido. Diferença bruta não é lucro líquido.'
+      :'Nenhum custo WeDrop importado. Comparação financeira indisponível até existir custo real cadastrado.'
   };
 }
 
@@ -164,7 +169,7 @@ export async function compareIncomingCosts(shopId,costs){
   const variantsWaiting=items.filter(x=>x.has_model&&!presentModels.has(String(x.item_id))).length;
   return {
     ...comparison,variantsWaiting,
-    warning:!matching.length
+    warning:!comparison.matchedCount
       ?'Nenhum SKU corresponde exatamente ao catálogo atualmente salvo. Confira se selecionou SKU da WeDrop (não código de barras/EAN/NCM), se há zeros à esquerda e se o catálogo/variações foram sincronizados.'
       :'Somente os custos com SKU idêntico ao da Shopee serão vinculados. Outros custos podem permanecer sem correspondência.'
   };
