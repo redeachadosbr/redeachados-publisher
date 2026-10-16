@@ -480,7 +480,9 @@ $('#loadAdsBtn').onclick=async()=>{
 // Custos WeDrop: importação exige prévia e mapeamento explícito do arquivo CSV.
 let weDropCsvText=null;
 let weDropPreview=null;
+let weDropValidation=null;
 let weDropImportBusy=false;
+let weDropModelsRunning=false,wedropStopRequested=false;
 const wdMoney=value=>value===null||value===undefined?'—':new Intl.NumberFormat('pt-BR',{
   style:'currency',currency:'BRL'
 }).format(Number(value));
@@ -539,12 +541,16 @@ $('#wedropPreviewBtn').onclick=async()=>{
       body:JSON.stringify({csv:raw}),signal:AbortSignal.timeout(30000)
     });
     if(!data.ok)throw Error('Não foi possível reconhecer as colunas do CSV.');
-    weDropCsvText=raw;weDropPreview=data;
+    weDropCsvText=raw;weDropPreview=data;weDropValidation=null;
     wdRenderPreview(data);
     $('#wedropPreviewArea').hidden=false;
     $('#wedropOverwrite').checked=false;
     $('#wedropSkipInvalid').checked=false;
-    $('#wedropImportBtn').disabled=false;
+    $('#wedropImportBtn').disabled=true;
+    $('#wedropZeroMatchLabel').hidden=true;
+    $('#wedropAllowUnmatched').checked=false;
+    wdSetNotice('#wedropValidationStatus',
+      'Escolha as colunas corretas e clique em Validar SKUs e custos antes de importar.','info');
     wdSetNotice('#wedropPreviewSummary','Arquivo com '+wdNum(data.rowCount)+
       ' linhas. Selecione manualmente as colunas SKU e custo. Confira a prévia antes de confirmar.','info');
     wdSetNotice('#wedropImportStatus','Prévia concluída. Nenhum custo foi gravado no banco.','info');
@@ -555,14 +561,147 @@ $('#wedropPreviewBtn').onclick=async()=>{
   }
 };
 $('#wedropFile').onchange=()=>{
-  weDropCsvText=null;weDropPreview=null;
+  weDropCsvText=null;weDropPreview=null;weDropValidation=null;
+  $('#wedropImportBtn').disabled=true;
   $('#wedropPreviewArea').hidden=true;
+  $('#wedropZeroMatchLabel').hidden=true;
   wdSetNotice('#wedropImportStatus','Novo arquivo selecionado. Confira novamente suas colunas.','info');
 };
+
+function wdInvalidateValidation(){
+  weDropValidation=null;
+  $('#wedropImportBtn').disabled=true;
+  $('#wedropZeroMatchLabel').hidden=true;
+  $('#wedropAllowUnmatched').checked=false;
+  wdSetNotice('#wedropValidationStatus',
+    'As opções mudaram. Clique novamente em Validar SKUs e custos antes de importar.','info');
+}
+for(const id of ['#wedropSkuColumn','#wedropCostColumn','#wedropSkipInvalid']){
+  $(id).onchange=wdInvalidateValidation;
+}
+$('#wedropOverwrite').onchange=wdInvalidateValidation;
+$('#wedropAllowUnmatched').onchange=()=>{
+  if(!weDropValidation)return;
+  $('#wedropImportBtn').disabled=
+    Boolean(weDropValidation.requiresZeroMatchApproval)&&!$('#wedropAllowUnmatched').checked;
+};
+$('#wedropValidateBtn').onclick=async()=>{
+  const skuColumn=$('#wedropSkuColumn').value,costColumn=$('#wedropCostColumn').value;
+  if(!weDropCsvText||!weDropPreview||skuColumn===''||costColumn===''||skuColumn===costColumn){
+    wdSetNotice('#wedropValidationStatus',
+      'Selecione duas colunas diferentes: SKU da WeDrop e custo real de aquisição.','error');return;
+  }
+  const btn=$('#wedropValidateBtn');
+  btn.disabled=true;btn.textContent='Validando custos e SKUs...';
+  $('#wedropImportBtn').disabled=true;
+  weDropValidation=null;$('#wedropZeroMatchLabel').hidden=true;
+  try{
+    const result=await json('/api/shopee/wedrop/validate',{
+      method:'POST',headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({
+        csv:weDropCsvText,skuColumn:Number(skuColumn),costColumn:Number(costColumn),
+        skipInvalid:$('#wedropSkipInvalid').checked===true
+      }),signal:AbortSignal.timeout(90000)
+    });
+    const matched=result.comparison||{};
+    weDropValidation=result;
+    const zero=result.requiresZeroMatchApproval;
+    wdSetNotice('#wedropValidationStatus',
+      'Coluna SKU: '+result.skuHeader+' | Custo: '+result.costHeader+'. '+
+      wdNum(result.uniqueCosts)+' custos únicos; '+
+      wdNum(matched.matchedCount)+' correspondem exatamente a SKUs Shopee; '+
+      wdNum(matched.unmatchedCount)+' ainda sem correspondência; '+
+      wdNum(matched.variantsWaiting)+' anúncios com variações pendentes de leitura. '+
+      wdNum(result.skippedInvalid)+' linhas inválidas ignoradas. '+
+      matched.warning+(zero?' Se você escolher prosseguir sem vínculo, confirme a opção específica.':''),
+      zero?'warning':'success');
+    $('#wedropZeroMatchLabel').hidden=!zero;
+    $('#wedropAllowUnmatched').checked=false;
+    $('#wedropImportBtn').disabled=Boolean(zero);
+  }catch(error){
+    wdSetNotice('#wedropValidationStatus',
+      'Validação rejeitada: '+error.message+
+      ' Confira o SKU da WeDrop, e evite selecionar EAN/código de barras ou NCM como SKU.','error');
+  }finally{
+    btn.disabled=false;btn.textContent='Validar SKUs e custos antes de importar';
+  }
+};
+let wdModelsLastUpdate=0;
+$('#wedropStopModelsBtn').onclick=()=>{
+  wedropStopRequested=true;
+  $('#wedropStopModelsBtn').disabled=true;
+  $('#wedropStopModelsBtn').textContent='Interrompendo após o lote...';
+};
+$('#wedropSyncModelsBtn').onclick=async()=>{
+  if(weDropModelsRunning)return;
+  weDropModelsRunning=true;wedropStopRequested=false;
+  const run=$('#wedropSyncModelsBtn'),stop=$('#wedropStopModelsBtn');
+  run.disabled=true;run.textContent='Sincronizando...';stop.hidden=false;stop.disabled=false;
+  stop.textContent='Interromper';
+  let done=0,issues=[],failedIds=new Set(),attempts=0;
+  try{
+    while(!wedropStopRequested&&attempts<160){
+      attempts++;
+      const params=new URLSearchParams();
+      if(failedIds.size)params.set('exclude',[...failedIds].join(','));
+      const pending=await json('/api/shopee/wedrop/models/pending?'+params,{
+        signal:AbortSignal.timeout(25000)
+      });
+      if(!pending.items?.length){
+        wdSetNotice('#wedropModelsStatus',
+          (pending.totalPending===0?'Todas as variações foram consultadas.':
+          'Ainda restam '+wdNum(pending.totalPending)+' anúncios pendentes; '+
+          'alguns retornaram erros e foram ignorados nesta tentativa.')+
+          ' Modelos sincronizados nesta execução: '+wdNum(done)+'.'+
+          (issues.length?' Ocorrências: '+issues.slice(0,5).join(' | '):''),
+          pending.totalPending===0?'success':'warning');
+        break;
+      }
+      wdSetNotice('#wedropModelsStatus',
+        'Consultando lote de '+wdNum(pending.items.length)+' itens. '+
+        'Já sincronizados: '+wdNum(done)+'. Pendentes: '+wdNum(pending.totalPending)+
+        '. Você pode interromper sem perder dados salvos.','info');
+      const batch=await json('/api/shopee/wedrop/models/sync',{
+        method:'POST',headers:{'Content-Type':'application/json'},
+        body:JSON.stringify({itemIds:pending.items.map(x=>x.itemId)}),
+        signal:AbortSignal.timeout(95000)
+      });
+      done+=(batch.successful||[]).length;
+      for(const fail of batch.failed||[]){
+        failedIds.add(fail.itemId);
+        issues.push(fail.itemId+': '+fail.reason);
+      }
+      wdModelsLastUpdate=Date.now();
+      if(!batch.processed){
+        issues.push('Nenhum modelo retornado; consulte novamente mais tarde.');break;
+      }
+      await refreshWeDropCoverage();
+      // Evita rajadas excessivas contra a API Shopee.
+      await new Promise(resolve=>setTimeout(resolve,450));
+    }
+    if(wedropStopRequested)
+      wdSetNotice('#wedropModelsStatus',
+        'Sincronização interrompida após o lote atual. '+
+        wdNum(done)+' anúncios sincronizados; clique novamente para continuar.','warning');
+    else if(attempts>=160)
+      wdSetNotice('#wedropModelsStatus',
+        'Limite de lotes atingido. Consulte novamente para continuar. '+
+        wdNum(done)+' anúncios sincronizados.','warning');
+  }catch(error){
+    wdSetNotice('#wedropModelsStatus',
+      'Não foi possível continuar: '+error.message+
+      '. Dados de lotes anteriores foram mantidos. Clique novamente para tentar.','error');
+  }finally{
+    weDropModelsRunning=false;run.disabled=false;run.textContent='Sincronizar variações pendentes';
+    stop.hidden=true;await refreshWeDropCoverage();
+  }
+};
+
 $('#wedropImportBtn').onclick=async()=>{
   if(weDropImportBusy)return;
   const skuColumn=$('#wedropSkuColumn').value,costColumn=$('#wedropCostColumn').value;
-  if(!weDropPreview||!weDropCsvText||skuColumn===''||costColumn===''||skuColumn===costColumn){
+  if(!weDropPreview||!weDropCsvText||!weDropValidation||skuColumn===''||costColumn===''||skuColumn===costColumn||
+     (weDropValidation.requiresZeroMatchApproval&&!$('#wedropAllowUnmatched').checked)){
     wdSetNotice('#wedropImportStatus','Selecione duas colunas diferentes: SKU e custo de aquisição.','error');return;
   }
   weDropImportBusy=true;
@@ -576,6 +715,8 @@ $('#wedropImportBtn').onclick=async()=>{
         csv:weDropCsvText,skuColumn:Number(skuColumn),costColumn:Number(costColumn),
         overwrite:$('#wedropOverwrite').checked===true,
         skipInvalid:$('#wedropSkipInvalid').checked===true,
+        allowUnmatched:weDropValidation?.requiresZeroMatchApproval===true&&
+          $('#wedropAllowUnmatched').checked===true,
         fileName:$('#wedropFile').files?.[0]?.name||'wedrop.csv'
       }),
       signal:AbortSignal.timeout(120000)
@@ -586,7 +727,7 @@ $('#wedropImportBtn').onclick=async()=>{
       wdNum(data.updatedExisting)+' atualizados; '+
       wdNum(data.skippedInvalid)+' linhas ignoradas. Nenhum anúncio ou preço Shopee foi modificado.',
       'success');
-    weDropCsvText=null;
+    weDropCsvText=null;weDropValidation=null;
     $('#wedropPreviewArea').hidden=true;
     await refreshWeDropCoverage();
   }catch(e){

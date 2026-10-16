@@ -117,6 +117,59 @@ export function matchWeDropCosts(items,models,costs){
     warning:'Preço do catálogo pode não refletir promoções, frete ou valor efetivamente recebido. Diferença bruta não é lucro líquido.'
   };
 }
+
+export async function pendingWeDropModels(shopId,{limit=10,exclude=[]}={}){
+  const id=validShopId(shopId);
+  const [items,models]=await Promise.all([
+    readAll('shopee_catalog_items','shop_id=eq.'+id+'&order=item_id.asc',
+      'item_id,item_name,has_model'),
+    readAll('shopee_catalog_models','shop_id=eq.'+id+'&order=model_id.asc',
+      'item_id,model_id')
+  ]);
+  const present=new Set(models.map(x=>String(x.item_id)));
+  const pending=items.filter(x=>x.has_model&&!present.has(String(x.item_id)));
+  const max=Math.max(1,Math.min(500,Number(limit)||10));
+  const excluding=new Set(Array.isArray(exclude)?exclude.map(String):[]);
+  return {
+    totalPending:pending.length,
+    items:pending.filter(x=>!excluding.has(String(x.item_id))).slice(0,max)
+      .map(x=>({itemId:String(x.item_id),title:String(x.item_name||'')}))
+  };
+}
+export function compareSkuSets(supplierSkus,catalogSkus){
+  const catalog=new Set(catalogSkus.map(x=>String(x).trim()).filter(Boolean));
+  const offered=new Set(supplierSkus.map(x=>String(x).trim()).filter(Boolean));
+  const matching=[...offered].filter(x=>catalog.has(x));
+  const noMatch=[...offered].filter(x=>!catalog.has(x));
+  return {
+    uniqueCosts:offered.size,matchedCount:matching.length,
+    unmatchedCount:noMatch.length,unmatchedExamples:noMatch.slice(0,7),
+    catalogSkuCount:catalog.size
+  };
+}
+export async function compareIncomingCosts(shopId,costs){
+  const id=validShopId(shopId);
+  const [items,models]=await Promise.all([
+    readAll('shopee_catalog_items','shop_id=eq.'+id+'&order=item_id.asc',
+      'item_id,sku,item_name,has_model'),
+    readAll('shopee_catalog_models','shop_id=eq.'+id+'&order=model_id.asc',
+      'item_id,model_sku')
+  ]);
+  const comparison=compareSkuSets(
+    costs.map(x=>x.sku),
+    [...items.filter(x=>!x.has_model).map(x=>x.sku||''),
+      ...models.map(x=>x.model_sku||'')]
+  );
+  const presentModels=new Set(models.map(x=>String(x.item_id)));
+  const variantsWaiting=items.filter(x=>x.has_model&&!presentModels.has(String(x.item_id))).length;
+  return {
+    ...comparison,variantsWaiting,
+    warning:!matching.length
+      ?'Nenhum SKU corresponde exatamente ao catálogo atualmente salvo. Confira se selecionou SKU da WeDrop (não código de barras/EAN/NCM), se há zeros à esquerda e se o catálogo/variações foram sincronizados.'
+      :'Somente os custos com SKU idêntico ao da Shopee serão vinculados. Outros custos podem permanecer sem correspondência.'
+  };
+}
+
 export async function getWeDropCoverage(shopId){
   const id=validShopId(shopId);
   const [costs,items,models]=await Promise.all([

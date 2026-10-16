@@ -11,7 +11,7 @@ import {loadShopeeAdsOverview} from './adsReport.js';
 import {fetchCatalogPage,normalizeShopeeModels,validItemId} from './catalog.js';
 import {storeCatalogItems,storeCatalogModels,readCatalogCache,catalogStoreReady} from './catalogStore.js';
 import {previewWeDropCsv,prepareWeDropImport,MAX_CSV_CHARS} from './wedropCsv.js';
-import {saveWeDropCosts,getWeDropCoverage} from './wedropCosts.js';
+import {saveWeDropCosts,getWeDropCoverage,compareIncomingCosts,pendingWeDropModels} from './wedropCosts.js';
 import {
   shopeeConfig,buildShopeeAuthorizationUrl,exchangeShopeeCode,refreshShopeeToken,
   getShopeeShopInfo,normalizeShopeeTokenResult,safeShopeeStatus,callShopeeShopApi,
@@ -82,7 +82,7 @@ app.use(session({
 }));
 app.use(express.static(path.join(__dirname,'public')));
 
-app.get('/api/health',(_req,res)=>res.json({ok:true,service:'Rede Achados BR Shopee API',version:'1.6.0',storage:authStore.status()}));
+app.get('/api/health',(_req,res)=>res.json({ok:true,service:'Rede Achados BR Shopee API',version:'1.6.1',storage:authStore.status()}));
 app.get('/api/auth-state',(req,res)=>res.json({locked:Boolean(envText('APP_PASSWORD')),loggedIn:!envText('APP_PASSWORD')||Boolean(req.session?.appAuth)}));
 app.post('/api/login',(req,res)=>{
   const required=envText('APP_PASSWORD');
@@ -228,6 +228,29 @@ app.post('/api/shopee/wedrop/preview',mustLogin,requireWeDropAdmin,(req,res)=>{
     res.status(400).json({error:String(error.message||error).slice(0,320)});
   }
 });
+// Pré-validação sem gravação: confirma que o SKU escolhido não é EAN/NCM por engano.
+app.post('/api/shopee/wedrop/validate',mustLogin,requireWeDropAdmin,async(req,res)=>{
+  res.setHeader('Cache-Control','no-store');
+  try{
+    const prepared=prepareWeDropImport(costCsvFromBody(req),{
+      skuColumn:req.body?.skuColumn,costColumn:req.body?.costColumn,
+      skipInvalid:req.body?.skipInvalid===true
+    });
+    const {auth}=await getValidAuth(req);
+    const comparison=await compareIncomingCosts(auth.shopId,prepared.costs);
+    res.json({ok:true,shopId:auth.shopId,
+      importedFrom:prepared.totalRows,uniqueCosts:prepared.uniqueSkus,
+      skippedInvalid:prepared.skippedInvalid,invalidExamples:prepared.invalidExamples,
+      skuHeader:prepared.skuHeader,costHeader:prepared.costHeader,
+      comparison,
+      canImport:comparison.matchedCount>0,
+      requiresZeroMatchApproval:comparison.matchedCount===0
+    });
+  }catch(error){
+    res.status(400).json({error:String(error.message||error).slice(0,420)});
+  }
+});
+
 app.post('/api/shopee/wedrop/import',mustLogin,requireWeDropAdmin,async(req,res)=>{
   res.setHeader('Cache-Control','no-store');
   try{
@@ -236,6 +259,13 @@ app.post('/api/shopee/wedrop/import',mustLogin,requireWeDropAdmin,async(req,res)
       skipInvalid:req.body?.skipInvalid===true
     });
     const {auth}=await getValidAuth(req);
+    const comparison=await compareIncomingCosts(auth.shopId,prepared.costs);
+    if(!comparison.matchedCount&&req.body?.allowUnmatched!==true){
+      return res.status(409).json({
+        error:'Nenhum SKU da planilha corresponde ao catálogo Shopee. Faça a pré-validação e confirme explicitamente a importação sem correspondências.',
+        comparison
+      });
+    }
     const saved=await saveWeDropCosts(auth.shopId,prepared.costs,{
       overwrite:req.body?.overwrite===true,
       sourceFile:String(req.body?.fileName||'wedrop.csv')
@@ -244,11 +274,62 @@ app.post('/api/shopee/wedrop/import',mustLogin,requireWeDropAdmin,async(req,res)
       importedFrom:prepared.totalRows,
       skippedInvalid:prepared.skippedInvalid,
       invalidExamples:prepared.invalidExamples,
+      comparison,
       note:'Os custos foram gravados somente no Supabase Shopee. Nenhum preço ou anúncio foi alterado.'});
   }catch(error){
     res.status(400).json({error:String(error.message||error).slice(0,450)});
   }
 });
+// Sincronização segura e limitada das variações faltantes (somente leitura Shopee).
+app.get('/api/shopee/wedrop/models/pending',mustLogin,requireWeDropAdmin,async(req,res)=>{
+  res.setHeader('Cache-Control','no-store');
+  try{
+    const {auth}=await getValidAuth(req);
+    const exclude=String(req.query.exclude||'').split(',').filter(x=>/^\d{1,18}$/.test(x)).slice(0,500);
+    const result=await pendingWeDropModels(auth.shopId,{limit:10,exclude});
+    res.json({ok:true,...result});
+  }catch(e){res.status(400).json({error:String(e.message||e).slice(0,320)});}
+});
+let variantsSyncBusy=false;
+app.post('/api/shopee/wedrop/models/sync',mustLogin,requireWeDropAdmin,async(req,res)=>{
+  res.setHeader('Cache-Control','no-store');
+  if(variantsSyncBusy)return res.status(409).json({error:'Já existe uma sincronização de variações em andamento. Aguarde.'});
+  const ids=req.body?.itemIds;
+  if(!Array.isArray(ids)||!ids.length||ids.length>10||ids.some(x=>!/^\d{1,18}$/.test(String(x)))){
+    return res.status(400).json({error:'Selecione até 10 anúncios válidos para consultar as variações.'});
+  }
+  const normalized=[...new Set(ids.map(String))];
+  variantsSyncBusy=true;
+  try{
+    const {auth,cfg}=await getValidAuth(req);
+    const permitted=await pendingWeDropModels(auth.shopId,{limit:500});
+    const allowed=new Set(permitted.items.map(x=>x.itemId));
+    if(normalized.some(id=>!allowed.has(id))){
+      return res.status(400).json({error:'Existem anúncios que não estão pendentes no catálogo atual.'});
+    }
+    const details=[],failed=[];
+    for(const itemId of normalized){
+      try{
+        const data=await callShopeeShopApi(cfg,{
+          path:'/api/v2/product/get_model_list',
+          accessToken:auth.accessToken,shopId:auth.shopId,
+          query:{item_id:itemId}
+        });
+        const models=normalizeShopeeModels(data);
+        if(!models.length){failed.push({itemId,reason:'Shopee retornou zero modelos; verifique o anúncio.'});continue;}
+        const stored=await storeCatalogModels(auth.shopId,itemId,models);
+        if(stored.warning||stored.configured===false)throw Error(stored.warning||'Persistência de variações indisponível.');
+        details.push({itemId,models:models.length});
+      }catch(err){
+        failed.push({itemId,reason:String(err.message||err).slice(0,180)});
+        if(/rate.?limit|too many|429/i.test(String(err.message||err)))break;
+      }
+    }
+    res.json({ok:true,successful:details,failed,processed:details.length+failed.length});
+  }catch(e){res.status(400).json({error:String(e.message||e).slice(0,320)});}
+  finally{variantsSyncBusy=false;}
+});
+
 app.get('/api/shopee/wedrop/coverage',mustLogin,requireWeDropAdmin,async(req,res)=>{
   res.setHeader('Cache-Control','no-store');
   try{
