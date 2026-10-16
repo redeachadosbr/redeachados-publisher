@@ -26,3 +26,10 @@ Em Render Free, o processo pode hibernar; polling em memória não garante perio
 
 ## Validação
 `npm run check && npm test`. No painel: WeDrop e custos → escolher novo CSV → aguardar "Atualização concluída" → conferir último sync, 5.339 SKUs e correspondências com Shopee. Arquivos maiores de 4 MB ou acima de 15.000 linhas exigem divisão/adaptação.
+
+## Correção 1.7.1 — apresentação de vínculos
+- Confirmado no banco da Shopee: **737 linhas com SKU**, das quais **730 têm custo associado por chave exata** e **7 não têm**; 686 chaves distintas entre os vinculados.
+- A listagem anterior ordenava `false` antes de `true` em `costMatched`; portanto os sete pendentes apareciam primeiro e causavam a impressão de que a importação falhou.
+- A tabela tem agora **Com custo vinculado (padrão)**, **Pendentes** e **Todos**, com contagens e paginação de 500 registros. O resumo explica que catálogo geral WeDrop não anunciado não é falha.
+- Não vincular custos de SKU divergente automaticamente. Exemplos: `991-B` Shopee vs `991-b` fornecedor; `964517` vs `CO6964517`; `894939 - 48` vs `894939`. Exigem verificação de produto/variação.
+- Não altera cadastro de fornecedor, anúncios da Shopee, preços nem publisher Mercado Livre.
