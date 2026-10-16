@@ -26,3 +26,14 @@ button:disabled{opacity:.52;cursor:not-allowed}
 #monitorStatus[data-health="stale"],#monitorStatus[data-health="failed"]{background:#fff5ec;border-color:#e9ac80;color:#8e2f1b;font-weight:600}
 #monitorStatus[data-health="healthy"]{background:#eff8f1;border-color:#c8e0cc;color:#215d31}
 #monitorStatus[data-health="never"]{background:#fff9e9;border-color:#eadfb8}
+
+/* Relatórios Shopee Ads */
+.ads-manual{margin-top:16px;padding:16px}
+.ads-manual summary{font-weight:700;cursor:pointer}
+.ads-manual input{width:100%;margin:10px 0}
+#adsSummary{margin-top:16px;line-height:1.5;overflow-wrap:anywhere}
+#adsSummary[data-state="error"]{background:#fff5ec;border-color:#ebc6ac;color:#8d2f1c}
+#adsSummary[data-state="success"]{background:#f0f8f1;border-color:#bad9c2;color:#255d39}
+#adsSummary[data-state="loading"]{background:#f7f8fb;border-color:#d8dae3}
+#adsResults .metrics{margin-top:18px}
+#adsResults .metrics strong{font-size:clamp(14px,2.1vw,22px);overflow-wrap:anywhere}
