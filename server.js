@@ -10,7 +10,7 @@ import {createShopeeOrderMonitor} from './orderMonitor.js';
 import {loadShopeeAdsOverview} from './adsReport.js';
 import {loadShopeeFinance} from './shopeeFinance.js';
 import {financeAdsDates,matchFinanceAds} from './financeAdsSweep.js';
-import {financePeriod} from './shopeeFinance.js';
+import {financeRange} from './shopeeFinance.js';
 import {fetchCatalogPage,normalizeShopeeModels,validItemId} from './catalog.js';
 import {storeCatalogItems,storeCatalogModels,readCatalogCache,catalogStoreReady} from './catalogStore.js';
 import {previewWeDropCsv,prepareWeDropImport,MAX_CSV_CHARS} from './wedropCsv.js';
@@ -595,13 +595,17 @@ app.get('/api/shopee/finance/orders',mustLogin,requireWeDropAdmin,async(req,res)
   res.setHeader('Cache-Control','no-store');
   try{
     const {auth,cfg}=await getValidAuth(req);
-    const days=financePeriod(req.query.days??15);
     const to=Math.floor(Date.now()/1000);
-    const dates=financeAdsDates({from:to-days*86400,to});
+    const range=financeRange({
+      days:req.query.days??15,
+      start:String(req.query.start||''),
+      end:String(req.query.end||'')
+    },to);
+    const dates=financeAdsDates(range);
     // Consultas em paralelo, sem permitir que a negação de Ads esconda o
     // financeiro de repasse/custos. Nunca atribuir zero quando não autorizado.
     const [finance,adsResult]=await Promise.all([
-      loadShopeeFinance(cfg,auth,callShopeeShopApi,{days,now:to}),
+      loadShopeeFinance(cfg,auth,callShopeeShopApi,{now:to,timeRange:range}),
       loadShopeeAdsOverview(cfg,auth,callShopeeShopApi,dates)
         .then(value=>({ok:true,value}))
         .catch(error=>({ok:false,error:String(error.message||error).slice(0,250)}))
