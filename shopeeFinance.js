@@ -33,6 +33,11 @@ export function normalizeEscrowOrder(order,detail,escrow,costMap,linkMap=new Map
   const items=Array.isArray(income.items)&&income.items.length
     ?income.items:Array.isArray(detail?.item_list)?detail.item_list:[];
   const costs=[],missing=[];
+  const skuFromItem=item=>{
+    const modelRequired=Number(item.model_id||0)>0&&!String(item.model_sku||'').trim();
+    return modelRequired||item.is_kit?'':String(item.model_sku||item.item_sku||'').trim();
+  };
+  const presentSkuList=[...new Set(items.map(skuFromItem).filter(Boolean))];
   for(const item of items){
     // SKU de modelo tem prioridade; nunca utilizar SKU pai no lugar da variação.
     // Um modelo existente sem model_sku não deve herdar o SKU pai por engano.
@@ -66,7 +71,7 @@ export function normalizeEscrowOrder(order,detail,escrow,costMap,linkMap=new Map
   const marginBeforeAds=ready&&payout>0?
     Math.round(balanceBeforeAds/payout*10000)/100:null;
   return {
-    orderSn,status,ready,sku:onlySku,skuList:uniqueSku,items:items.length,
+    orderSn,status,ready,sku:onlySku,skuList:presentSkuList,items:items.length,
     quantity:costs.reduce((n,x)=>n+x.qty,0),
     buyerTotal:finiteMoney(income.buyer_total_amount),
     payout,totalCost,balanceBeforeAds,marginBeforeAds,
