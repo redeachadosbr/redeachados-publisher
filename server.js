@@ -9,6 +9,7 @@ import {mergeShopeeOrderDates} from './orderView.js';
 import {createShopeeOrderMonitor} from './orderMonitor.js';
 import {loadShopeeAdsOverview} from './adsReport.js';
 import {loadShopeeFinance} from './shopeeFinance.js';
+import {installFinanceBridge} from './financeBridge.js';
 import {fetchCatalogPage,normalizeShopeeModels,validItemId} from './catalog.js';
 import {storeCatalogItems,storeCatalogModels,readCatalogCache,catalogStoreReady} from './catalogStore.js';
 import {previewWeDropCsv,prepareWeDropImport,MAX_CSV_CHARS} from './wedropCsv.js';
@@ -585,6 +586,28 @@ app.get('/api/shopee/orders',mustLogin,async(req,res)=>{
       }
     });
   }catch(e){res.status(400).json({error:String(e.message||e)});}
+});
+
+// Ponte isolada somente-leitura: valores confirmados, sem dados de compradores e sem saldo ficticio.
+installFinanceBridge(app,async(req)=>{
+  const {auth,cfg}=await getValidAuth(req);
+  const finance=await loadShopeeFinance(cfg,auth,callShopeeShopApi,{days:15});
+  const orders=(finance.rows||[]).map(o=>({
+    orderId:String(o.orderSn||''),date:null,
+    netReceived:Number.isFinite(Number(o.payout))?Number(o.payout):null
+  }));
+  let ads={status:'unknown',amount:null,source:'Shopee Ads API'};
+  const now=new Date(),start=new Date(now.getTime()-14*86400000),day=d=>d.toISOString().slice(0,10);
+  try{
+    const report=await loadShopeeAdsOverview(cfg,auth,callShopeeShopApi,{start:day(start),end:day(now)});
+    if(report?.total&&Number.isFinite(Number(report.total.expense)))
+      ads={status:'confirmed',amount:Math.round(Number(report.total.expense)*100)/100,source:'Shopee Ads API · campanhas de produtos'};
+  }catch(_){/* Ads nao confirmado nao torna o repasse zero */}
+  return {
+    schema:'ra-finance-bridge-v1',platform:'shopee',generatedAt:new Date().toISOString(),orders,ads,
+    coverage:{note:'Pedidos concluidos CRIADOS nos ultimos 15 dias. Ate 35 pedidos por consulta. Repasse da Shopee pode nao ser saldo liberado; Ads sem atribuicao individual.'},
+    diagnostics:{ordersExamined:finance.rows?.length||0,complete:finance.complete===true,permissionWarning:Boolean(finance.paymentAccessWarning)}
+  };
 });
 
 // Financeiro Shopee baseado nos pedidos concluídos e no repasse efetivo da API Payment.
