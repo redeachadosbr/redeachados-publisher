@@ -9,6 +9,7 @@ import {mergeShopeeOrderDates} from './orderView.js';
 import {createShopeeOrderMonitor} from './orderMonitor.js';
 import {loadShopeeAdsOverview} from './adsReport.js';
 import {fetchCatalogPage,normalizeShopeeModels,validItemId} from './catalog.js';
+import {storeCatalogItems,storeCatalogModels,readCatalogCache,catalogStoreReady} from './catalogStore.js';
 import {
   shopeeConfig,buildShopeeAuthorizationUrl,exchangeShopeeCode,refreshShopeeToken,
   getShopeeShopInfo,normalizeShopeeTokenResult,safeShopeeStatus,callShopeeShopApi,
@@ -204,6 +205,15 @@ app.get('/api/shopee/test-shop',mustLogin,async(req,res)=>{
 
 
 // Catálogo operacional: página de anúncios enriquecida com dados de base.
+app.get('/api/shopee/catalog/cache',mustLogin,async(req,res)=>{
+  res.setHeader('Cache-Control','no-store');
+  try{
+    const {auth}=await getValidAuth(req);
+    const data=await readCatalogCache(auth.shopId);
+    res.json({ok:true,shopId:auth.shopId,...data});
+  }catch(e){res.status(400).json({error:String(e.message||e).slice(0,300)});}
+});
+
 app.get('/api/shopee/catalog/page',mustLogin,async(req,res)=>{
   res.setHeader('Cache-Control','no-store');
   try{
@@ -213,7 +223,10 @@ app.get('/api/shopee/catalog/page',mustLogin,async(req,res)=>{
       offset:req.query.offset??0,
       pageSize:req.query.page_size??50
     });
-    res.json({ok:true,shopId:auth.shopId,...page});
+    let persisted;
+    try{persisted=await storeCatalogItems(auth.shopId,page.items);}
+    catch(error){persisted={stored:0,warning:'Cache indisponível: '+String(error.message||error).slice(0,130)};}
+    res.json({ok:true,shopId:auth.shopId,...page,persistence:persisted});
   }catch(error){
     res.status(400).json({error:String(error.message||error).slice(0,320)});
   }
@@ -228,7 +241,10 @@ app.get('/api/shopee/catalog/models',mustLogin,async(req,res)=>{
       shopId:auth.shopId,query:{item_id:itemId}
     });
     const models=normalizeShopeeModels(data);
-    res.json({ok:true,itemId,models});
+    let persisted;
+    try{persisted=await storeCatalogModels(auth.shopId,itemId,models);}
+    catch(error){persisted={stored:0,warning:'Não foi possível salvar variações no histórico.'};}
+    res.json({ok:true,itemId,models,persistence:persisted});
   }catch(error){
     res.status(400).json({error:String(error.message||error).slice(0,320)});
   }
