@@ -103,13 +103,22 @@
           <button class="secondary" id="wedropRefreshBtn" type="button">Atualizar cruzamento</button>
         </div>
         <div class="card wedrop-panel">
-          <h2>Atualização automática de custos WeDrop</h2>
-          <p class="hint">Selecione um catálogo CSV oficial da WeDrop. O sistema identifica automaticamente SKU e Preço, valida a correspondência, importa os novos custos e atualiza os valores que mudaram. Nenhum preço da Shopee será alterado.</p>
-          <label>Catálogo CSV da WeDrop <input id="wedropFile" type="file" accept=".csv,text/csv,text/plain"></label>
-          <p id="wedropAutoStatus" class="notice" role="status" aria-live="polite">Aguardando um CSV. Ao selecionar um arquivo oficial, a atualização será iniciada automaticamente.</p>
-          <p id="wedropSourceStatus" class="hint">Verificando a origem da sincronização automática...</p>
-          <button id="wedropCheckFeedBtn" type="button" class="secondary" hidden>Verificar atualização na WeDrop agora</button>
-          <details class="wedrop-manual-fallback"><summary>Importação manual avançada (outros formatos CSV)</summary>
+          <h2>Catálogo WeDrop vinculado à Shopee</h2>
+          <div id="wedropStoredCatalog" class="wedrop-stored-catalog" hidden>
+            <div class="wedrop-stored-header"><strong><span aria-hidden="true">✓</span> Catálogo salvo no Supabase</strong><span id="wedropStoredBadge">Vinculado</span></div>
+            <p id="wedropStoredName" class="wedrop-stored-name">Carregando identificação do catálogo...</p>
+            <p id="wedropStoredSummary" class="hint">Consultando os custos salvos no banco...</p>
+            <div class="actions"><button id="wedropUseStoredBtn" type="button">Atualizar vínculos com catálogo salvo</button></div>
+            <p class="hint">Os custos permanecem vinculados à loja mesmo após fechar o navegador. Não é necessário reenviar o arquivo para consultar custos, recalcular comparações ou sincronizar novos anúncios.</p>
+          </div>
+          <p id="wedropSourceLoadError" class="notice" hidden role="status" aria-live="polite"></p>
+          <p id="wedropNoCatalogMessage" class="notice" hidden>Nenhum custo salvo nesta loja. Importe um catálogo oficial da WeDrop uma única vez para começar.</p>
+          <details id="wedropUploadDetails" class="wedrop-upload-details">
+            <summary>Enviar nova versão do CSV da WeDrop (somente quando houver atualização)</summary>
+            <p class="hint">O CSV é necessário apenas para substituir os custos pelos dados de uma nova exportação. O sistema reconhece automaticamente SKU e Preço do formato oficial.</p>
+            <label>Nova versão do catálogo CSV <input id="wedropFile" type="file" accept=".csv,text/csv,text/plain"></label>
+            <p id="wedropAutoStatus" class="notice" role="status" aria-live="polite">Nenhum novo arquivo selecionado. O catálogo já salvo continuará disponível.</p>
+            <details class="wedrop-manual-fallback"><summary>Importação manual avançada (outros formatos CSV)</summary>
           <p class="hint">Use somente quando o catálogo não for reconhecido. Confira as colunas antes de importar.</p>
           <button id="wedropPreviewBtn" type="button">Conferir colunas do CSV</button>
           <div id="wedropPreviewArea" hidden>
@@ -129,7 +138,10 @@
             <button id="wedropImportBtn" type="button" disabled>Confirmar importação dos custos</button>
           </div>
           <p id="wedropImportStatus" class="notice" role="status" aria-live="polite">A importação manual permanece disponível para casos excepcionais.</p>
+            </details>
           </details>
+          <p id="wedropSourceStatus" class="hint">Verificando a origem da sincronização automática...</p>
+          <button id="wedropCheckFeedBtn" type="button" class="secondary" hidden>Verificar atualização no feed da WeDrop agora</button>
         </div>
         <div class="card wedrop-variants">
           <div class="section-head">
@@ -244,5 +256,5 @@
     </section>
   </main>
 </div>
-<script src="/app.js?v=1.7.1"></script>
+<script src="/app.js?v=1.7.2"></script>
 </body></html>
