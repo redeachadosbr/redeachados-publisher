@@ -2,13 +2,94 @@ const $=s=>document.querySelector(s);
 async function json(url,opt={}){const r=await fetch(url,opt);const d=await r.json().catch(()=>({}));if(!r.ok)throw new Error(d.error||('HTTP '+r.status));return d;}
 function fmtDate(v){if(!v)return '—';const n=Number(v);const d=Number.isFinite(n)&&n>1000000000?new Date(n*1000):new Date(v);return Number.isNaN(d.getTime())?String(v):d.toLocaleString('pt-BR');}
 function debug(v){$('#output').textContent=typeof v==='string'?v:JSON.stringify(v,null,2);}
-function setTab(name){document.querySelectorAll('.tab').forEach(b=>b.classList.toggle('active',b.dataset.tab===name));document.querySelectorAll('.tabpane').forEach(p=>p.classList.toggle('active',p.id==='tab-'+name));if(name==='wedrop'){refreshWeDropCoverage();loadWeDropSourceState();}}
-document.querySelectorAll('.tab').forEach(b=>b.onclick=()=>setTab(b.dataset.tab));
+// Roteador do aplicativo SaaS. Cada setor tem URL própria sem desmontar os formulários,
+ // preservando cálculos em andamento e os controles já conectados à API Shopee.
+const APP_PAGES={
+  overview:{slug:'inicio',title:'Painel inicial',group:'Visão geral',
+    description:'Informações essenciais e acesso rápido aos setores da sua loja.'},
+  products:{slug:'produtos',title:'Produtos e anúncios',group:'Operação',
+    description:'Catálogo, variações, estoque e situação dos anúncios Shopee.'},
+  orders:{slug:'pedidos',title:'Pedidos e vendas',group:'Operação',
+    description:'Consulte as vendas e os estados dos seus pedidos.'},
+  alerts:{slug:'envios',title:'Monitor de envios',group:'Operação',
+    description:'Acompanhe prazos, prioridades e notificações de postagem.'},
+  ads:{slug:'ads',title:'Shopee Ads',group:'Gestão',
+    description:'Campanhas, impressões, cliques, CTR e eficiência dos anúncios.'},
+  wedrop:{slug:'wedrop',title:'Fornecedor WeDrop',group:'Gestão',
+    description:'Catálogo armazenado, custos de aquisição e correspondência por SKU.'},
+  finance:{slug:'financeiro',title:'Financeiro Shopee',group:'Gestão',
+    description:'Repasses, despesas informadas pela Shopee e saldo antes de Ads.'},
+  settings:{slug:'configuracoes',title:'Integrações e ajustes',group:'Sistema',
+    description:'Conexão oficial, testes e diagnóstico da API Shopee.'}
+};
+let activeAppPage='overview';
+function currentPageFromUrl(){
+  const slug=decodeURIComponent(location.pathname.match(/^\/app\/([^/]+)\/?$/)?.[1]||'inicio');
+  return Object.keys(APP_PAGES).find(k=>APP_PAGES[k].slug===slug)||'overview';
+}
+function setSidebarOpen(open){
+  document.body.classList.toggle('sidebar-open',Boolean(open));
+  $('#sidebarToggle').setAttribute('aria-expanded',String(Boolean(open)));
+  $('#sidebarToggle').setAttribute('aria-label',open?'Fechar menu':'Abrir menu');
+  $('#sidebarScrim').hidden=!open;
+}
+function setTab(name,{updateHistory=true,scroll=true}={}){
+  if(!APP_PAGES[name])name='overview';
+  const page=APP_PAGES[name];
+  const pane=$('#tab-'+name);
+  if(!pane)return;
+  activeAppPage=name;
+  document.querySelectorAll('.nav-link[data-tab]').forEach(link=>{
+    const selected=link.dataset.tab===name;
+    link.classList.toggle('active',selected);
+    if(selected)link.setAttribute('aria-current','page');
+    else link.removeAttribute('aria-current');
+  });
+  document.querySelectorAll('.tabpane').forEach(paneItem=>{
+    const selected=paneItem===pane;
+    paneItem.classList.toggle('active',selected);
+    paneItem.setAttribute('aria-hidden',String(!selected));
+  });
+  $('#pageGroup').textContent=page.group;
+  $('#pageTitle').textContent=page.title;
+  $('#pageDescription').textContent=page.description;
+  $('#topbarSectionName').textContent=page.title;
+  document.title=page.title+' · Rede Achados BR Shopee';
+  const nextUrl='/app/'+page.slug;
+  if(updateHistory&&location.pathname!==nextUrl)
+    history.pushState({page:name},'',nextUrl);
+  setSidebarOpen(false);
+  if(name==='wedrop'){refreshWeDropCoverage();loadWeDropSourceState();}
+  else if(name==='finance'){refreshWeDropCoverage();}
+  if(scroll)window.scrollTo({top:0,behavior:'instant'});
+}
+document.querySelectorAll('.nav-link[data-tab]').forEach(link=>{
+  link.addEventListener('click',event=>{
+    if(event.metaKey||event.ctrlKey||event.shiftKey||event.altKey||event.button!==0)return;
+    event.preventDefault();setTab(link.dataset.tab);
+  });
+});
+document.querySelectorAll('[data-go]').forEach(link=>{
+  link.addEventListener('click',event=>{
+    event.preventDefault();setTab(link.dataset.go);
+  });
+});
+window.addEventListener('popstate',()=>setTab(currentPageFromUrl(),{updateHistory:false}));
+$('#sidebarToggle').onclick=()=>setSidebarOpen(!document.body.classList.contains('sidebar-open'));
+$('#sidebarScrim').onclick=()=>setSidebarOpen(false);
+document.addEventListener('keydown',event=>{
+  if(event.key==='Escape'&&document.body.classList.contains('sidebar-open'))setSidebarOpen(false);
+});
+$('#logoutBtn').onclick=async()=>{
+  const button=$('#logoutBtn');button.disabled=true;
+  try{await json('/api/logout',{method:'POST'});location.replace('/app/inicio');}
+  catch(e){button.disabled=false;alert('Não foi possível sair: '+e.message);}
+};
 
 async function boot(){
   const a=await json('/api/auth-state');
   if(a.locked&&!a.loggedIn){$('#login').classList.remove('hidden');return;}
-  $('#app').classList.remove('hidden');await loadStatus();loadCatalogCache();
+  $('#app').classList.remove('hidden');await loadStatus();loadCatalogCache();setTab(currentPageFromUrl(),{updateHistory:false,scroll:false});
 }
 async function loadStatus(){
   try{
@@ -27,7 +108,7 @@ async function loadStatus(){
     $('#signatureBtn').disabled=!s.configured||s.mode!=='live';
   }catch(e){$('#connTitle').textContent='Erro de configuração';$('#connMeta').textContent=e.message;$('#statusPill').textContent='Erro';}
 }
-$('#loginBtn').onclick=async()=>{try{await json('/api/login',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({password:$('#password').value})});$('#login').classList.add('hidden');$('#app').classList.remove('hidden');await loadStatus();loadCatalogCache();}catch(e){$('#loginMsg').textContent=e.message;}};
+$('#loginBtn').onclick=async()=>{try{await json('/api/login',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({password:$('#password').value})});$('#login').classList.add('hidden');$('#app').classList.remove('hidden');await loadStatus();loadCatalogCache();setTab(currentPageFromUrl(),{updateHistory:false,scroll:false});}catch(e){$('#loginMsg').textContent=e.message;}};
 $('#connectBtn').onclick=()=>location.href='/auth/shopee/start';
 $('#signatureBtn').onclick=async()=>{
   const btn=$('#signatureBtn'),notice=$('#signatureNotice');
