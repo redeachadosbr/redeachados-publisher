@@ -258,6 +258,37 @@ export async function compareIncomingCosts(shopId,costs){
   };
 }
 
+// Índice visual da área Financeiro — thumbnails e variações oficiais Shopee.
+ // Consulta somente dados de catálogo da loja, sem compradores nem cálculos.
+export async function readFinanceCatalogProfiles(shopId){
+  const id=validShopId(shopId);
+  const [items,models]=await Promise.all([
+    readAll('shopee_catalog_items','shop_id=eq.'+id+'&order=item_id.asc',
+      'item_id,sku,item_name,image_url,has_model,item_status'),
+    readAll('shopee_catalog_models','shop_id=eq.'+id+'&order=model_id.asc',
+      'item_id,model_id,model_sku')
+  ]);
+  const modelByItem=new Map();
+  for(const model of models){
+    const key=String(model.item_id);
+    if(!modelByItem.has(key))modelByItem.set(key,[]);
+    modelByItem.get(key).push(model);
+  }
+  const out=[];
+  for(const item of items){
+    const variants=item.has_model?modelByItem.get(String(item.item_id))||[]:[null];
+    for(const model of variants){
+      const sku=String(model?model.model_sku:item.sku||'').trim();
+      if(!sku)continue;
+      out.push({
+        sku,itemId:String(item.item_id),modelId:model?String(model.model_id):null,
+        name:String(item.item_name||''),imageUrl:String(item.image_url||''),
+        status:String(item.item_status||'')
+      });
+    }
+  }
+  return out;
+}
 export async function getWeDropCoverage(shopId,{filter='matched',offset=0,limit=500}={}){
   const id=validShopId(shopId);
   const [costs,items,models,links]=await Promise.all([
