@@ -2,7 +2,8 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {
   parseAdsDate,validateAdsRange,campaignIdsFromResponse,
-  discoverShopeeCampaigns,summarizeShopeeAds,loadShopeeAdsOverview
+  discoverShopeeCampaigns,summarizeShopeeAds,loadShopeeAdsOverview,
+  classifyShopeeCampaignStatus,settingsFromShopeeResponse,fetchShopeeCampaignSettings
 } from '../adsReport.js';
 const cfg={mode:'live'};
 const auth={shopId:852701218,accessToken:'simulation'};
@@ -67,14 +68,72 @@ test('consulta desempenho com lista autodescoberta sem passar de 100 IDs',async(
   const req=[];
   const result=await loadShopeeAdsOverview(cfg,auth,async(_cfg,r)=>{
     req.push(r);
-    if(r.path.includes('campaign_id_list'))return {response:{campaign_list:ids,has_next_page:false}};
-    return {response:[{shop_id:auth.shopId,campaign_list:[]}]};
+    if(r.path.endsWith('campaign_id_list'))return {response:{campaign_list:ids,has_next_page:false}};
+    if(r.path.endsWith('campaign_setting_info')){
+      return {response:{campaign_list:r.query.campaign_id_list.split(',').map(id=>({
+        campaign_id:Number(id),common_info:{campaign_status:Number(id)%2?'ongoing':'paused',ad_name:'Ads '+id}
+      }))}};
+    }
+    return {response:{shop_id:auth.shopId,campaign_list:[]}};
   },{start:'2026-10-09',end:'2026-10-16'});
-  assert.equal(req.length,3);
-  assert.equal(req[1].query.campaign_id_list.split(',').length,100);
-  assert.equal(req[2].query.campaign_id_list.split(',').length,15);
+  assert.equal(req.length,5);
+  assert.equal(req.filter(x=>x.path.endsWith('campaign_setting_info')).length,2);
+  assert.equal(req.filter(x=>x.path.endsWith('daily_performance')).length,2);
+  assert.equal(req.filter(x=>x.path.endsWith('campaign_setting_info'))[0].query.info_type_list,'1');
+  assert.equal(req.filter(x=>x.path.endsWith('daily_performance'))[0].query.campaign_id_list.split(',').length,100);
+  assert.equal(req.filter(x=>x.path.endsWith('daily_performance'))[1].query.campaign_id_list.split(',').length,15);
   assert.equal(result.campaignCount,115);
+  assert.equal(result.statusCounts.active,58);
+  assert.equal(result.statusCounts.inactive,57);
+  assert.equal(result.statusCounts.other,0);
 });
 test('erro de permissão Shopee não é interpretado como campanha vazia',async()=>{
   await assert.rejects(()=>discoverShopeeCampaigns(cfg,auth,async()=>{throw new Error('error_api_permission');}),/permission/);
+});
+
+test('classificação de status Shopee usa campanha_status e não números de cliques',()=>{
+  assert.equal(classifyShopeeCampaignStatus('ongoing'),'active');
+  for(const s of ['paused','ended','closed','deleted']){
+    assert.equal(classifyShopeeCampaignStatus(s),'inactive');
+  }
+  for(const s of ['scheduled','unknown','',null,undefined,'invalid_field']){
+    assert.equal(classifyShopeeCampaignStatus(s),'other');
+  }
+});
+test('mapeia common_info da configuração sem colocar agendadas entre ativas',()=>{
+  const settings=settingsFromShopeeResponse({response:{campaign_list:[
+    {campaign_id:101,common_info:{campaign_status:'ongoing',ad_name:'Ativa'}},
+    {campaign_id:102,common_info:{campaign_status:'paused',ad_name:'Pausada'}},
+    {campaign_id:103,common_info:{campaign_status:'scheduled',ad_name:'Agendada'}},
+    {campaign_id:999,common_info:{campaign_status:'ongoing',ad_name:'Fora da consulta'}}
+  ]}},['101','102','103']);
+  assert.equal(settings.get('101').statusGroup,'active');
+  assert.equal(settings.get('102').statusGroup,'inactive');
+  assert.equal(settings.get('103').statusGroup,'other');
+  assert.equal(settings.has('999'),false);
+});
+test('CTR geral e por campanha: cliques sobre impressões, não média simples',()=>{
+  const data=summarizeShopeeAds([{response:{campaign_list:[
+    {campaign_id:101,metrics_list:[{expense:5,impression:100,clicks:20,broad_gmv:50}]},
+    {campaign_id:102,metrics_list:[{expense:5,impression:900,clicks:18,broad_gmv:90}]}
+  ]}}],[{campaignId:'101'},{campaignId:'102'}]);
+  assert.equal(data.campaigns.find(x=>x.campaignId==='101').ctr,20);
+  assert.equal(data.campaigns.find(x=>x.campaignId==='102').ctr,2);
+  assert.equal(data.total.impressions,1000);
+  assert.equal(data.total.clicks,38);
+  assert.equal(data.total.ctr,3.8);
+});
+test('permissão negada somente nas configurações não inventa campanha ativa',async()=>{
+  const report=await loadShopeeAdsOverview(cfg,auth,async(_cfg,r)=>{
+    if(r.path.endsWith('campaign_id_list'))
+      return {response:{campaign_list:[{campaign_id:101,ad_type:'auto'}],has_next_page:false}};
+    if(r.path.endsWith('campaign_setting_info'))throw Error('error_api_permission: denied');
+    return {response:{campaign_list:[{campaign_id:101,metrics_list:[{expense:10,impression:100,clicks:4,broad_gmv:50}]}]}};
+  },{start:'2026-10-09',end:'2026-10-16'});
+  assert.equal(report.campaignCount,1);
+  assert.equal(report.statusCounts.active,0);
+  assert.equal(report.statusCounts.inactive,0);
+  assert.equal(report.statusCounts.other,1);
+  assert.match(report.statusWarning,/permission/);
+  assert.equal(report.total.ctr,4);
 });
