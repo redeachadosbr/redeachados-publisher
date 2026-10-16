@@ -135,16 +135,21 @@
           <p id="wedropModelsStatus" class="notice" role="status" aria-live="polite">Use Sincronizar variações pendentes para completar o catálogo.</p>
         </div>
         <div class="metrics wedrop-metrics">
-          <article><span>SKUs comparados</span><strong id="wedropCompared">—</strong></article>
-          <article><span>Com custo WeDrop</span><strong id="wedropMatched">—</strong></article>
-          <article><span>Sem custo</span><strong id="wedropMissingCost">—</strong></article>
-          <article><span>Variações não sincronizadas</span><strong id="wedropPendingModels">—</strong></article>
-          <article><span>Custos importados</span><strong id="wedropImported">—</strong></article>
+          <article><span>SKUs identificados na Shopee</span><strong id="wedropCompared">—</strong></article>
+          <article><span>Variações pendentes</span><strong id="wedropPendingModels">—</strong></article>
+          <article><span>Custos WeDrop importados</span><strong id="wedropImported">—</strong></article>
+          <article class="wedrop-financial-metric" hidden><span>SKUs com custo vinculado</span><strong id="wedropMatched">—</strong></article>
+          <article class="wedrop-financial-metric" hidden><span>SKUs sem custo vinculado</span><strong id="wedropMissingCost">—</strong></article>
         </div>
-        <p id="wedropCoverageStatus" class="notice" role="status" aria-live="polite">Atualize o cruzamento para ver os dados do Supabase.</p>
-        <div class="card wedrop-results">
-          <h2>Cruzamento por SKU</h2>
-          <p class="hint">Preço mostrado é o valor do catálogo, não necessariamente o preço efetivo de venda. A diferença bruta não considera taxas Shopee, descontos, frete, Ads nem devoluções — não representa lucro líquido.</p>
+        <p id="wedropCoverageStatus" class="notice" role="status" aria-live="polite">Atualize o catálogo para ver a cobertura dos SKUs.</p>
+        <div id="wedropNoCosts" class="card wedrop-no-costs" hidden>
+          <h2>Catálogo Shopee sincronizado</h2>
+          <p id="wedropNoCostsMessage">Nenhum custo WeDrop cadastrado. O painel financeiro será liberado quando você importar custos reais do fornecedor.</p>
+          <p class="hint">Os SKUs e modelos sincronizados permanecem salvos. Não é necessário repetir a sincronização para mostrar custos futuramente.</p>
+        </div>
+        <div id="wedropFinancialResults" class="card wedrop-results" hidden>
+          <h2>Cruzamento financeiro por SKU</h2>
+          <p class="hint">Esta análise será exibida somente após importar custos WeDrop reais. Preço de catálogo não é necessariamente preço final de venda. A diferença bruta exclui taxas, frete, descontos, Ads e devoluções — não é lucro líquido.</p>
           <div class="table-wrap"><table>
             <thead><tr><th>Produto</th><th>SKU</th><th>Preço catálogo</th><th>Custo WeDrop</th><th>Diferença bruta</th><th>Situação</th></tr></thead>
             <tbody id="wedropCoverageBody"></tbody>
@@ -225,5 +230,5 @@
     </section>
   </main>
 </div>
-<script src="/app.js?v=1.6.1"></script>
+<script src="/app.js?v=1.6.2"></script>
 </body></html>
