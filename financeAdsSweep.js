@@ -5,9 +5,10 @@
 const money=v=>Math.round((Number(v)||0)*100)/100;
 const amount=v=>Number.isFinite(Number(v))&&Number(v)>=0?Number(v):0;
 const dateInBrazil=epoch=>{
- const v=new Date(epoch*1000);
- return new Intl.DateTimeFormat('en-CA',{timeZone:'America/Sao_Paulo',
-  year:'numeric',month:'2-digit',day:'2-digit'}).format(v);
+ const parts=new Intl.DateTimeFormat('en-US',{timeZone:'America/Sao_Paulo',
+  year:'numeric',month:'2-digit',day:'2-digit'}).formatToParts(new Date(epoch*1000));
+ const v=Object.fromEntries(parts.map(p=>[p.type,p.value]));
+ return v.year+'-'+v.month+'-'+v.day;
 };
 // Período de Ads por dia civil no Brasil; janela aproximada do recorte de pedidos.
 // A atribuição Shopee pode ocorrer até 7 dias após o clique, não é join por order_sn.
