@@ -6,7 +6,7 @@
 <meta name="theme-color" content="#0A1C3A">
 <link rel="icon" type="image/svg+xml" href="/brand-logo.svg">
 <title>Rede Achados BR · Gestão Shopee</title>
-<link rel="stylesheet" href="/style.css?v=1.11.0">
+<link rel="stylesheet" href="/style.css?v=1.12.0">
 </head>
 <body>
 <div class="shell app-layout">
@@ -291,7 +291,9 @@
             <article class="finance-kpi"><span class="finance-kpi-icon finance-tone-green">↗</span><div><span>Repasse Shopee</span><strong id="shopeeFinancePayout">—</strong></div></article>
             <article class="finance-kpi"><span class="finance-kpi-icon finance-tone-amber">▦</span><div><span>Custos WeDrop</span><strong id="shopeeFinanceCosts">—</strong></div></article>
             <article class="finance-kpi"><span class="finance-kpi-icon finance-tone-green">◉</span><div><span>Saldo antes Ads</span><strong id="shopeeFinanceBalance">—</strong></div></article>
-            <article class="finance-kpi"><span class="finance-kpi-icon finance-tone-purple">◎</span><div><span>Ads por SKU</span><strong id="financeSkuAdsKpi">Pendente</strong></div></article>
+            <article class="finance-kpi"><span class="finance-kpi-icon finance-tone-purple">◎</span><div><span>Ads com conversão / SKU</span><strong id="financeSkuAdsKpi">—</strong></div></article>
+            <article class="finance-kpi"><span class="finance-kpi-icon finance-tone-amber">⌁</span><div><span>Ads sem conversão</span><strong id="financeAdsNoConversion">—</strong></div></article>
+            <article class="finance-kpi"><span class="finance-kpi-icon finance-tone-blue">▤</span><div><span>Ads total (período)</span><strong id="financeAdsTotal">—</strong></div></article>
             <article class="finance-kpi"><span class="finance-kpi-icon finance-tone-muted">◇</span><div><span>Lucro líquido final</span><strong id="financeSkuNetKpi">—</strong></div></article>
           </div>
           <div id="shopeeFinanceData" hidden>
@@ -306,13 +308,22 @@
               <button type="button" class="finance-filter" data-finance-filter="pending" aria-pressed="false">Pendências</button>
             </div>
             <div class="table-wrap finance-sku-list"><table class="finance-sku-table">
-              <thead><tr><th>Produto</th><th>SKU</th><th>Qtd.</th><th>Repasse Shopee</th><th>Custo WeDrop</th><th>Saldo antes Ads</th><th>Ads</th><th>Lucro líquido</th><th>Situação</th><th>Ação</th></tr></thead>
+              <thead><tr><th>Produto</th><th>SKU</th><th>Qtd.</th><th>Repasse Shopee</th><th>Custo WeDrop</th><th>Saldo antes Ads</th><th>Ads vinculado</th><th>Saldo após Ads*</th><th>Situação</th><th>Ação</th></tr></thead>
               <tbody id="financeSkuBody"></tbody>
             </table></div>
             <div class="finance-list-bottom">
               <span id="financeSkuPageInfo" class="hint"></span>
               <button id="financeSkuMore" type="button" class="secondary" hidden>Mostrar mais produtos</button>
             </div>
+            <section class="finance-ads-scan" aria-labelledby="financeAdsScanTitle">
+              <div class="finance-ads-scan-head"><h3 id="financeAdsScanTitle">Varredura de publicidade</h3>
+                <span id="financeAdsScanBadge" class="finance-ads-scan-badge">Aguardando Ads</span></div>
+              <p id="financeAdsScanText" class="hint" role="status" aria-live="polite">O sistema verificará todas as campanhas de produto, as vendas diretas atribuídas e os SKUs com repasse confirmado.</p>
+              <details id="financeAdsExceptions" class="finance-ads-exceptions">
+                <summary>Campanhas sem venda ou sem vínculo seguro <span id="financeAdsExceptionCount">0</span></summary>
+                <div id="financeAdsExceptionList" class="finance-ads-exception-list"></div>
+              </details>
+            </section>
             <p id="shopeeFinanceWarning" class="notice finance-warning"></p>
             <details class="finance-details" id="financeOrdersDetails">
               <summary>Auditoria de pedidos e taxas oficiais <span>Ver detalhes por pedido</span></summary>
@@ -323,7 +334,7 @@
               </table></div>
             </details>
           </div>
-          <div class="finance-disclaimer"><strong>Como o cálculo funciona</strong><p>O saldo antes Ads é o repasse líquido informado pela Shopee menos o custo real WeDrop. Comissão, descontos e frete já incluídos no repasse não são subtraídos duas vezes. <b>O lucro líquido final permanece pendente</b> de Ads atribuídos, tributos e despesas externas; pedidos com vários SKUs não são rateados arbitrariamente.</p></div>
+          <div class="finance-disclaimer"><strong>Como o cálculo funciona</strong><p>O saldo antes Ads é o repasse líquido Shopee menos o custo real WeDrop. Quando existe campanha de produto com venda direta atribuída e vínculo inequívoco ao SKU vendido, seu gasto é descontado no <b>saldo operacional parcial após Ads</b>. Campanhas sem conversão permanecem como despesa da loja, sem ser debitadas em vendas específicas. As métricas Ads são por período, não por pedido individual, e podem incluir atribuição de até 7 dias após o clique. <b>Lucro líquido final exige impostos e despesas externas conciliados.</b> Comissão, descontos e frete já incluídos no repasse não são descontados duas vezes.</p></div>
         </section>
         <details class="finance-cost-audit" id="financeCatalogAudit">
           <summary>Conferência do catálogo e custos por SKU <span>Consulta detalhada opcional</span></summary>
@@ -370,6 +381,6 @@
     </main>
   </div>
 </div>
-<script src="/app.js?v=1.11.0"></script>
+<script src="/app.js?v=1.12.0"></script>
 </body>
 </html>
