@@ -11,7 +11,9 @@ function createPage(testResponse){
       children:[],
       classList:{toggle(){},remove(){},add(){}},
       replaceChildren(){this.children=[];},
-      append(...children){this.children.push(...children);}
+      append(...children){this.children.push(...children);},
+      appendChild(child){this.children.push(child);return child;},
+      setAttribute(name,value){this[name]=String(value);}
     };
   }
   function node(sel){if(!nodes.has(sel))nodes.set(sel,element());return nodes.get(sel);}
