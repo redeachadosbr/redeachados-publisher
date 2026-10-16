@@ -33,7 +33,14 @@ export function financeRange({days=15,start='',end=''}={},now=Math.floor(Date.no
     return {from,to,days:Math.ceil((to-from+1)/86400),label:start+' a '+end,mode:'custom'};
   }
   const n=financePeriod(days);
-  return {from:now-n*86400,to:now,days:n,label:'Últimos '+n+' dias',mode:'rolling'};
+  const parts=new Intl.DateTimeFormat('en-US',{
+    timeZone:'America/Sao_Paulo',year:'numeric',month:'2-digit',day:'2-digit'
+  }).formatToParts(new Date(now*1000));
+  const values=Object.fromEntries(parts.map(p=>[p.type,p.value]));
+  const today=values.year+'-'+values.month+'-'+values.day;
+  const midnight=Math.floor(Date.parse(today+'T00:00:00-03:00')/1000);
+  return {from:midnight-(n-1)*86400,to:now,days:n,
+    label:'Últimos '+n+' dias (calendário BR)',mode:'rolling'};
 }
 export function normalizeEscrowOrder(order,detail,escrow,costMap,linkMap=new Map()){
   const income=escrow?.response?.order_income;
