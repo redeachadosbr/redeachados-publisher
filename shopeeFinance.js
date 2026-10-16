@@ -1,7 +1,7 @@
 // Conciliação de pedidos Shopee: valores reais da API Payment, sem taxas presumidas.
 // O repasse (escrow_amount) já incorpora tarifas/descontos/frete registrados.
 // Ads não são deduzidos até existir atribuição comprovada sem duplicidades.
-import {readWeDropCosts} from './wedropCosts.js';
+import {readWeDropCosts,readWeDropSkuLinks,readFinanceCatalogProfiles} from './wedropCosts.js';
 
 export const MAX_FINANCE_ORDERS=35;
 export function finiteMoney(raw){
@@ -15,7 +15,7 @@ export function financePeriod(days){
     throw Error('Escolha um período de 1 a 15 dias.');
   return n;
 }
-export function normalizeEscrowOrder(order,detail,escrow,costMap){
+export function normalizeEscrowOrder(order,detail,escrow,costMap,linkMap=new Map()){
   const income=escrow?.response?.order_income;
   const status=String(detail?.order_status||order?.order_status||'').toUpperCase();
   const orderSn=String(order.order_sn||'');
@@ -33,6 +33,11 @@ export function normalizeEscrowOrder(order,detail,escrow,costMap){
   const items=Array.isArray(income.items)&&income.items.length
     ?income.items:Array.isArray(detail?.item_list)?detail.item_list:[];
   const costs=[],missing=[];
+  const skuFromItem=item=>{
+    const modelRequired=Number(item.model_id||0)>0&&!String(item.model_sku||'').trim();
+    return modelRequired||item.is_kit?'':String(item.model_sku||item.item_sku||'').trim();
+  };
+  const presentSkuList=[...new Set(items.map(skuFromItem).filter(Boolean))];
   for(const item of items){
     // SKU de modelo tem prioridade; nunca utilizar SKU pai no lugar da variação.
     // Um modelo existente sem model_sku não deve herdar o SKU pai por engano.
@@ -40,7 +45,14 @@ export function normalizeEscrowOrder(order,detail,escrow,costMap){
     const isBundle=Boolean(item.is_kit);
     const sku=modelRequiresSku||isBundle?'':String(item.model_sku||item.item_sku||'').trim();
     const qty=Number(item.quantity_purchased??item.model_quantity_purchased??item.quantity);
-    const unit=costMap.get(sku);
+    const itemId=String(item.item_id||'');
+    const modelId=String(item.model_id||0);
+    const linked=linkMap.get(itemId+':'+modelId);
+    // Vínculo revisado pelo lojista só vale para a mesma loja, item, modelo
+    // e SKU ainda idêntico ao publicado no momento da confirmação.
+    const supplierSku=linked&&linked.shopee_sku===sku
+      ?linked.supplier_sku:sku;
+    const unit=costMap.get(supplierSku);
     if(!sku||!Number.isSafeInteger(qty)||qty<1||qty>100000||
        !Number.isFinite(unit)||unit<=0){
       missing.push(sku||'SKU ausente');
@@ -59,7 +71,7 @@ export function normalizeEscrowOrder(order,detail,escrow,costMap){
   const marginBeforeAds=ready&&payout>0?
     Math.round(balanceBeforeAds/payout*10000)/100:null;
   return {
-    orderSn,status,ready,sku:onlySku,skuList:uniqueSku,items:items.length,
+    orderSn,status,ready,sku:onlySku,skuList:presentSkuList,items:items.length,
     quantity:costs.reduce((n,x)=>n+x.qty,0),
     buyerTotal:finiteMoney(income.buyer_total_amount),
     payout,totalCost,balanceBeforeAds,marginBeforeAds,
@@ -87,8 +99,10 @@ export function summarizeFinance(rows,{more=false,eligible=0}={}){
   const skus=new Map();
   for(const r of verified){
     if(!r.sku)continue;
-    const x=skus.get(r.sku)||{sku:r.sku,orders:0,balanceBeforeAds:0,payout:0,cost:0};
+    const x=skus.get(r.sku)||{sku:r.sku,orders:0,quantity:0,
+      balanceBeforeAds:0,payout:0,cost:0};
     x.orders++;
+    x.quantity+=Number(r.quantity||0);
     x.balanceBeforeAds=Math.round((x.balanceBeforeAds+r.balanceBeforeAds)*100)/100;
     x.payout=Math.round((x.payout+r.payout)*100)/100;
     x.cost=Math.round((x.cost+r.totalCost)*100)/100;
@@ -98,6 +112,9 @@ export function summarizeFinance(rows,{more=false,eligible=0}={}){
   return {
     totals:{
       examined:rows.length,eligible,verified:verified.length,
+      units:verified.reduce((n,x)=>n+Number(x.quantity||0),0),
+      allocatedSkuOrders:verified.filter(x=>x.sku).length,
+      multiSkuOrders:verified.filter(x=>!x.sku).length,
       incomplete:rows.length-verified.length,
       received:total('payout'),supplierCost:total('totalCost'),
       balanceBeforeAds:total('balanceBeforeAds'),
@@ -111,8 +128,19 @@ export function summarizeFinance(rows,{more=false,eligible=0}={}){
 export async function loadShopeeFinance(cfg,auth,callApi,{days=15,now=Math.floor(Date.now()/1000)}={}){
   days=financePeriod(days);
   if(!Number.isSafeInteger(Number(auth.shopId)))throw Error('Loja inválida.');
-  const costs=new Map((await readWeDropCosts(auth.shopId)).map(c=>
+  const [supplierCosts,confirmedLinks]=await Promise.all([
+    readWeDropCosts(auth.shopId),readWeDropSkuLinks(auth.shopId)
+  ]);
+  const costs=new Map(supplierCosts.map(c=>
     [String(c.supplier_sku),Number(c.unit_cost)]));
+  const linkMap=new Map(confirmedLinks.map(link=>[
+    String(link.item_id)+':'+String(link.model_id||0),link
+  ]));
+  // A consulta visual não pode impedir a conciliação caso o catálogo
+  // de imagens esteja temporariamente indisponível.
+  let catalogProducts=[],catalogError=null;
+  try{catalogProducts=await readFinanceCatalogProfiles(auth.shopId);}
+  catch(e){catalogError='Miniaturas do catálogo temporariamente indisponíveis.';}
   const found=new Map();
   let cursor='',more=false;
   const periodFrom=now-days*86400;
@@ -172,11 +200,12 @@ export async function loadShopeeFinance(cfg,auth,callApi,{days=15,now=Math.floor
       if(/permission|denied|403|no.?auth|forbidden/i.test(why))break;
       continue;
     }
-    rows.push(normalizeEscrowOrder(item,detailMap.get(String(item.order_sn)),escrow,costs));
+    rows.push(normalizeEscrowOrder(item,detailMap.get(String(item.order_sn)),escrow,costs,linkMap));
   }
   const summary=summarizeFinance(rows,{eligible:completed.length,more});
   return {
     shopId:auth.shopId,days,window:{from:periodFrom,to:now},rows,
+    catalogProducts,catalogError,
     ...summary,paymentAccessWarning,
     skippedCompleted:completed.length-limited.length,
     complete:Boolean(!more&&!paymentAccessWarning&&completed.length===rows.length&&

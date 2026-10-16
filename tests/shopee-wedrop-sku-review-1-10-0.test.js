@@ -76,6 +76,6 @@ test('layout compacto e responsivo preserva telas separadas',()=>{
  for(const id of ['tab-products','tab-orders','tab-ads','tab-finance','tab-settings']){
   assert.equal((html.match(new RegExp('id="'+id+'"','g'))||[]).length,1);
  }
- assert.match(html,/style\.css\?v=1\.10\.0/);
- assert.match(html,/app\.js\?v=1\.10\.0/);
+ assert.match(html,/style\.css\?v=1\.11\.0/);
+ assert.match(html,/app\.js\?v=1\.11\.0/);
 });

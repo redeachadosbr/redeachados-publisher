@@ -1246,12 +1246,172 @@ async function refreshWeDropCoverage({append=false}={}){
   }
 }
 $('#wedropRefreshBtn').onclick=refreshWeDropCoverage;
+// Tabela financeira compacta: somente dados de pedidos reais verificados.
+// Mantém registros sem venda visíveis, mas não supõe que não venderam fora do recorte.
+let financeReport=null,financeSkuFilter='all',financeSkuShown=36;
+const financeSkuNode=(tag,cls,txt)=>{
+  const el=document.createElement(tag);
+  if(cls)el.className=cls;
+  if(txt!==undefined&&txt!==null)el.textContent=String(txt);
+  return el;
+};
+function financeCatalogImage(url){
+  if(!url)return false;
+  try{
+    const p=new URL(String(url));
+    const host=p.hostname.toLowerCase();
+    return p.protocol==='https:'&&(host==='cf.shopee.com.br'||
+      host==='down-br.img.susercontent.com'||host==='down-ph.img.susercontent.com'||
+      host.endsWith('.susercontent.com'));
+  }catch{return false;}
+}
+function financeSkuEntries(report){
+  const catalog=Array.isArray(report.catalogProducts)?report.catalogProducts:[];
+  const sold=new Map((report.skuSummary||[]).map(x=>[String(x.sku),x]));
+  const pending=new Set();
+  for(const x of report.rows||[]){
+    if(x.ready)continue;
+    for(const sku of x.skuList||[])if(sku)pending.add(String(sku));
+    if(x.sku)pending.add(String(x.sku));
+  }
+  const unique=new Map();
+  for(const p of catalog){
+    const sku=String(p.sku||'').trim();
+    if(!sku)continue;
+    if(unique.has(sku)){
+      const existing=unique.get(sku);existing.repeatedSku=true;
+      continue;
+    }
+    unique.set(sku,{sku,title:String(p.name||'')||'Anúncio sem título',
+      imageUrl:String(p.imageUrl||''),itemId:String(p.itemId||''),
+      repeatedSku:false});
+  }
+  for(const sku of sold.keys())if(!unique.has(sku))unique.set(sku,{
+    sku,title:'SKU vendido (catálogo não localizado)',imageUrl:'',itemId:'',
+    repeatedSku:false
+  });
+  for(const sku of pending)if(!unique.has(sku))unique.set(sku,{
+    sku,title:'SKU em pedido incompleto',imageUrl:'',itemId:'',repeatedSku:false
+  });
+  return [...unique.values()].map(entry=>{
+    const sale=sold.get(entry.sku);
+    return {...entry,sale:sale||null,pending:pending.has(entry.sku)};
+  }).sort((a,b)=>(b.sale?1:0)-(a.sale?1:0)||
+    Number(b.pending)-Number(a.pending)||
+    a.title.localeCompare(b.title,'pt-BR'));
+}
+function financeSkuFiltered(items){
+  const q=$('#financeSkuSearch').value.trim().toLocaleLowerCase('pt-BR');
+  return items.filter(x=>{
+    const matches=!q||x.title.toLocaleLowerCase('pt-BR').includes(q)||
+      x.sku.toLocaleLowerCase('pt-BR').includes(q);
+    if(!matches)return false;
+    if(financeSkuFilter==='sold')return Boolean(x.sale);
+    if(financeSkuFilter==='unsold')return !x.sale&&!x.pending;
+    if(financeSkuFilter==='pending')return x.pending||x.repeatedSku;
+    return true;
+  });
+}
+function renderFinanceSkuList(){
+  const body=$('#financeSkuBody');body.replaceChildren();
+  if(!financeReport){
+    $('#financeSkuCount').textContent='—';
+    $('#financeSkuPageInfo').textContent='';
+    $('#financeSkuMore').hidden=true;return;
+  }
+  const entries=financeSkuEntries(financeReport);
+  const filtered=financeSkuFiltered(entries);
+  const visible=filtered.slice(0,financeSkuShown);
+  const col=(tr,name,text,cls='')=>{
+    const td=financeSkuNode('td',cls);
+    td.dataset.label=name;
+    if(text!==undefined&&text!==null)td.textContent=String(text);
+    tr.appendChild(td);return td;
+  };
+  for(const x of visible){
+    const sale=x.sale,hasSale=Boolean(sale);
+    const tr=financeSkuNode('tr',hasSale?(sale.balanceBeforeAds<0?'finance-negative':'finance-positive'):
+      x.pending?'finance-pending':'finance-no-sale');
+    const first=col(tr,'Produto',null,'finance-product-cell');
+    const product=financeSkuNode('div','finance-product-identity');
+    if(financeCatalogImage(x.imageUrl)){
+      const img=financeSkuNode('img','finance-thumbnail');
+      img.src=x.imageUrl;img.loading='lazy';img.decoding='async';
+      img.alt='';img.referrerPolicy='no-referrer';
+      product.appendChild(img);
+    }else product.appendChild(financeSkuNode('span','finance-thumbnail finance-thumbnail-empty','▣'));
+    const text=financeSkuNode('div','finance-product-text');
+    text.appendChild(financeSkuNode('strong','',x.title));
+    if(x.repeatedSku)text.appendChild(financeSkuNode('small','finance-duplicate','SKU compartilhado entre anúncios; conferir'));
+    product.appendChild(text);first.appendChild(product);
+    col(tr,'SKU',x.sku,'finance-sku-code');
+    col(tr,'Quantidade',hasSale?wdNum(sale.quantity):'—','finance-number');
+    col(tr,'Repasse Shopee',hasSale?wdMoney(sale.payout):'—','finance-number');
+    col(tr,'Custo WeDrop',hasSale?wdMoney(sale.cost):'—','finance-number');
+    const balance=col(tr,'Saldo antes Ads',hasSale?wdMoney(sale.balanceBeforeAds):'—',
+      'finance-amount '+(hasSale?(sale.balanceBeforeAds<0?'negative':'positive'):''));
+    if(hasSale)balance.title='Repasse informado pela Shopee menos custo WeDrop; não é lucro líquido final.';
+    col(tr,'Ads','—','finance-number muted');
+    col(tr,'Lucro líquido','—','finance-number muted');
+    col(tr,'Situação',hasSale?'Saldo conferido':
+      x.pending?'Pedido pendente de conciliação':'Sem venda verificada',
+      'finance-status-cell '+(hasSale?'verified':x.pending?'pending':'neutral'));
+    const act=col(tr,'Ação',null,'finance-actions-cell');
+    const button=financeSkuNode('button','finance-row-action',
+      hasSale?'Ver pedido':x.pending?'Conferir':'Ver produto');
+    button.type='button';
+    button.onclick=()=>{
+      if(hasSale||x.pending){
+        $('#financeOrdersDetails').open=true;
+        $('#financeOrdersDetails').scrollIntoView?.({behavior:'smooth',block:'start'});
+      }else{
+        setTab('products');
+        const input=$('#productsSearch');
+        if(input){input.value=x.sku;input.dispatchEvent(new Event('input',{bubbles:true}));}
+      }
+    };
+    act.appendChild(button);body.appendChild(tr);
+  }
+  if(!visible.length){
+    const tr=financeSkuNode('tr'),td=financeSkuNode('td','finance-empty',
+      'Nenhum produto encontrado neste filtro. Ajuste a pesquisa ou consulte outro período.');
+    td.colSpan=10;tr.appendChild(td);body.appendChild(tr);
+  }
+  $('#financeSkuCount').textContent=wdNum(filtered.length)+' produto(s)';
+  $('#financeSkuPageInfo').textContent='Exibindo '+wdNum(visible.length)+' de '+
+    wdNum(filtered.length)+' registros — somente pedidos verificados possuem valores financeiros.';
+  const more=$('#financeSkuMore');more.hidden=visible.length>=filtered.length;
+  for(const btn of document.querySelectorAll('[data-finance-filter]')){
+    const selected=btn.dataset.financeFilter===financeSkuFilter;
+    btn.classList.toggle('active',selected);
+    btn.setAttribute('aria-pressed',String(selected));
+    const counts={
+      all:entries.length,sold:entries.filter(x=>x.sale).length,
+      unsold:entries.filter(x=>!x.sale&&!x.pending).length,
+      pending:entries.filter(x=>x.pending||x.repeatedSku).length
+    };
+    const label={all:'Todos',sold:'Vendas verificadas',
+      unsold:'Sem venda verificada',pending:'Pendências'}[btn.dataset.financeFilter];
+    btn.textContent=label+' ('+wdNum(counts[btn.dataset.financeFilter])+')';
+  }
+}
+document.querySelectorAll('[data-finance-filter]').forEach(btn=>{
+  btn.onclick=()=>{financeSkuFilter=btn.dataset.financeFilter;financeSkuShown=36;renderFinanceSkuList();};
+});
+$('#financeSkuSearch').oninput=()=>{financeSkuShown=36;renderFinanceSkuList();};
+$('#financeSkuMore').onclick=()=>{financeSkuShown+=36;renderFinanceSkuList();};
+
 let shopeeFinanceBusy=false;
 $('#shopeeFinanceLoad').onclick=async()=>{
   if(shopeeFinanceBusy)return;
   shopeeFinanceBusy=true;
   const button=$('#shopeeFinanceLoad');
   button.disabled=true;button.textContent='Consultando repasses reais...';
+  // Esconder números da consulta anterior ao trocar período: nunca exibir como atual.
+  financeReport=null;financeSkuBalances.clear();renderFinanceSkuList();
+  for(const id of ['#shopeeFinanceVerified','#shopeeFinancePayout',
+    '#shopeeFinanceCosts','#shopeeFinanceBalance'])
+    $(id).textContent='—';
   $('#shopeeFinanceData').hidden=true;
   wdSetNotice('#shopeeFinanceStatus',
     'Buscando pedidos concluídos e detalhes de pagamento da Shopee. Não estamos presumindo taxas ou despesas.','info');
@@ -1261,7 +1421,9 @@ $('#shopeeFinanceLoad').onclick=async()=>{
       signal:AbortSignal.timeout(180000)
     });
     const t=report.totals||{};
+    financeReport=report;financeSkuShown=36;
     $('#shopeeFinanceData').hidden=false;
+    renderFinanceSkuList();
     $('#shopeeFinanceVerified').textContent=wdNum(t.verified)+' de '+wdNum(t.eligible);
     $('#shopeeFinancePayout').textContent=wdMoney(t.received);
     $('#shopeeFinanceCosts').textContent=wdMoney(t.supplierCost);
@@ -1311,18 +1473,20 @@ $('#shopeeFinanceLoad').onclick=async()=>{
         wdNum(report.skippedCompleted)+'. ':'')+
       'As taxas e o frete são detalhados apenas para consulta: já estão refletidos no repasse e NÃO devem ser descontados de novo.';
     wdSetNotice('#shopeeFinanceStatus',
-      'Verificação concluída. '+wdNum(t.verified)+' pedidos com repasse e custo identificados. '+
-      'Lucro líquido final permanece pendente de Ads e despesas externas.',
+      'Consulta concluída: '+wdNum(t.verified)+' de '+wdNum(t.eligible)+
+      ' pedidos concluídos com custo e repasse verificados. '+
+      'Este é um recorte por data de criação, limitado a 35 pedidos. Saldo antes Ads não é lucro líquido final.',
       report.complete?'success':'warning');
     // Atualiza a coluna por SKU apenas para vendas realmente verificadas.
     await refreshWeDropCoverage();
   }catch(error){
-    financeSkuBalances.clear();
+    financeReport=null;financeSkuBalances.clear();
+    $('#shopeeFinanceData').hidden=true;renderFinanceSkuList();
     wdSetNotice('#shopeeFinanceStatus','Não foi possível verificar os dados financeiros: '+
       error.message+'. Lucro líquido e margem permanecem indisponíveis.','error');
   }finally{
     shopeeFinanceBusy=false;
-    button.disabled=false;button.textContent='Consultar vendas e repasses reais';
+    button.disabled=false;button.textContent='Atualizar financeiro';
   }
 };
 
