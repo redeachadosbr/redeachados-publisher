@@ -72,7 +72,7 @@ test('Financeiro mantém filtros e miniaturas de catálogo com indicadores sem n
  assert.match(html,/data-finance-filter="sold"/);
  assert.match(html,/data-finance-filter="unsold"/);
  assert.match(html,/data-finance-filter="pending"/);
- assert.match(html,/Lucro líquido final permanece pendente/);
+ assert.match(html,/lucro líquido final permanece pendente/i);
  assert.match(html,/saldo antes Ads/i);
  assert.match(js,/financeCatalogImage/);
  assert.match(js,/financeSkuEntries/);
