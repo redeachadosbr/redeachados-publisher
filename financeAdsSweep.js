@@ -21,13 +21,15 @@ export function matchFinanceAds(finance,ads){
  const campaigns=Array.isArray(ads?.campaigns)?ads.campaigns:[];
  const products=Array.isArray(finance?.catalogProducts)?finance.catalogProducts:[];
  const financialSku=Array.isArray(finance?.skuSummary)?finance.skuSummary:[];
- const skuByItem=new Map();
+ const skuByItem=new Map(),itemsBySku=new Map();
  for(const p of products){
   const item=String(p.itemId||'');
   const sku=String(p.sku||'').trim();
   if(!item||!sku)continue;
   if(!skuByItem.has(item))skuByItem.set(item,new Set());
   skuByItem.get(item).add(sku);
+  if(!itemsBySku.has(sku))itemsBySku.set(sku,new Set());
+  itemsBySku.get(sku).add(item);
  }
  const sold=new Map(financialSku.map(row=>[String(row.sku),row]));
  const entries=new Map();
@@ -50,7 +52,8 @@ export function matchFinanceAds(finance,ads){
   }
   convertedSpend=money(convertedSpend+spent);
   const skus=ids.length===1?skuByItem.get(ids[0]):null;
-  if(ids.length!==1||!skus||skus.size!==1){
+  if(ids.length!==1||!skus||skus.size!==1||
+      itemsBySku.get([...skus||[]][0])?.size!==1){
     spendUnassigned=money(spendUnassigned+spent);
     review.push({campaignId,expense:spent,directOrders:conversions,
       situation:'Campanha com vários produtos, variações, ou sem item ID confirmado; sem rateio arbitrário'});
