@@ -134,3 +134,11 @@ button:disabled{opacity:.52;cursor:not-allowed}
 #wedropAutoStatus[data-state="error"]{background:#fff3ee;border-color:#ebbcae}
 #wedropSourceStatus{margin-top:11px;line-height:1.45}
 #wedropFile:disabled{opacity:.65;cursor:wait}
+
+/* Shopee WeDrop: abas de vínculos confirmados e pendências, sem confusão nos custos. */
+.wedrop-status-tabs{display:flex;flex-wrap:wrap;gap:10px;margin:16px 0 12px}
+.wedrop-status-tabs button{min-height:44px;max-width:100%;white-space:normal}
+.wedrop-status-tabs button.active{background:#243429;color:#fff;border-color:#243429}
+.wedrop-table-paging{justify-content:center;margin-top:15px}
+#wedropTableStatus{margin:7px 0 12px;line-height:1.45}
+@media(max-width:650px){.wedrop-status-tabs button{flex:1 1 100%}}
