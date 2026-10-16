@@ -27,17 +27,20 @@ async function getValidAuth(req){
   let auth=(await authStore.load())||{};
   const cfg=shopeeConfig(baseUrl(req));
   if(!auth.accessToken||!auth.refreshToken||!auth.shopId) throw new Error('Shopee ainda não está conectada.');
+  if(auth.mode!==cfg.mode||auth.partnerId!==cfg.partnerId) throw new Error('A autorização existente pertence a outro ambiente/Partner ID. Conecte a Shopee novamente.');
   const refreshAt=Number(auth.expiresAt||0)-5*60*1000;
   if(!auth.expiresAt||Date.now()>=refreshAt){
     const data=await refreshShopeeToken(cfg,{refreshToken:auth.refreshToken,shopId:auth.shopId});
     const next=normalizeShopeeTokenResult(data,auth.shopId);
-    auth={...auth,...next,shopIds:next.shopIds.length?next.shopIds:(auth.shopIds||[]),lastRefreshAt:new Date().toISOString(),mode:cfg.mode,partnerId:cfg.partnerId};
+    if(!next.accessToken)throw new Error('A Shopee não retornou novo access_token.');
+    auth={...auth,...next,refreshToken:next.refreshToken||auth.refreshToken,connectedAt:auth.connectedAt,shopIds:next.shopIds.length?next.shopIds:(auth.shopIds||[]),lastRefreshAt:new Date().toISOString(),mode:cfg.mode,partnerId:cfg.partnerId};
     await authStore.save(auth);
   }
   return {auth,cfg};
 }
 function stateSecret(){return envText('SESSION_SECRET')||envText('APP_PASSWORD')||'redeachados-shopee-state';}
 function createState(){
+  if(!envText('SESSION_SECRET')) throw new Error('Configure SESSION_SECRET no Environment do serviço Shopee antes de autorizar.');
   const body=Buffer.from(JSON.stringify({v:1,ts:Date.now(),nonce:crypto.randomBytes(18).toString('hex')}),'utf8').toString('base64url');
   const sig=crypto.createHmac('sha256',stateSecret()).update(body).digest('base64url');
   return `${body}.${sig}`;
@@ -81,7 +84,7 @@ app.get('/api/shopee/status',mustLogin,async(req,res)=>{
   try{
     const cfg=shopeeConfig(baseUrl(req));
     const auth=await authStore.load();
-    res.json({...safeShopeeStatus(auth,cfg),proxy:shopeeProxyStatus(),storage:authStore.status()});
+    res.json({...safeShopeeStatus(auth,cfg),proxy:shopeeProxyStatus(),storage:authStore.status(),oauthSecurity:{sessionSecretConfigured:Boolean(envText('SESSION_SECRET'))}});
   }catch(e){res.status(400).json({error:String(e.message||e)});}
 });
 
@@ -95,12 +98,32 @@ app.get('/api/shopee/proxy-test',mustLogin,async(_req,res)=>{
   }
 });
 app.get('/auth/shopee/start',mustLogin,(req,res)=>{
-  try{res.redirect(buildShopeeAuthorizationUrl(shopeeConfig(baseUrl(req)),createState()));}
-  catch(e){res.status(400).send(`<h2>Shopee API não configurada</h2><p>${String(e.message||e)}</p><p><a href="/">Voltar</a></p>`);}
+  try{
+    const cfg=shopeeConfig(baseUrl(req));
+    const state=createState();
+    const authUrl=buildShopeeAuthorizationUrl(cfg);
+    res.cookie('shopee_oauth_state',state,{
+      httpOnly:true,sameSite:'lax',secure:process.env.NODE_ENV==='production',
+      path:'/auth/shopee',maxAge:10*60*1000
+    });
+    res.setHeader('Cache-Control','no-store');
+    res.redirect(authUrl);
+  }catch(e){
+    res.status(400).type('text/plain').send('Não foi possível iniciar a conexão Shopee: '+String(e.message||e));
+  }
 });
 app.get('/auth/shopee/callback',async(req,res)=>{
+  res.setHeader('Cache-Control','no-store');
+  res.setHeader('Referrer-Policy','no-referrer');
   try{
-    if(!verifyState(req.query.state))throw new Error('Estado de autorização Shopee inválido ou expirado.');
+    const cookie=String(req.headers.cookie||'').split(';').map(x=>x.trim()).find(x=>x.startsWith('shopee_oauth_state='));
+    const state=cookie?decodeURIComponent(cookie.slice('shopee_oauth_state='.length)):'';
+    res.clearCookie('shopee_oauth_state',{
+      httpOnly:true,sameSite:'lax',secure:process.env.NODE_ENV==='production',path:'/auth/shopee'
+    });
+    if(!verifyState(state))throw new Error('Estado de autorização Shopee inválido ou expirado. Inicie a conexão novamente.');
+    if(req.query.state&&String(req.query.state)!==state)throw new Error('A validação de segurança Shopee não corresponde à sessão.');
+
     const cfg=shopeeConfig(baseUrl(req));
     const shopId=Number(req.query.shop_id||0);
     const data=await exchangeShopeeCode(cfg,{code:String(req.query.code||''),shopId});
@@ -109,16 +132,18 @@ app.get('/auth/shopee/callback',async(req,res)=>{
     await authStore.save({...auth,mode:cfg.mode,partnerId:cfg.partnerId});
     res.type('html').send(`<!doctype html><meta charset="utf-8"><title>Shopee conectada</title><body style="font-family:Arial;padding:32px"><h2>✅ Shopee conectada com sucesso</h2><p>Shop ID: <strong>${auth.shopId}</strong></p><p>Ambiente: <strong>${cfg.mode}</strong></p><p><a href="/">Voltar ao sistema Shopee</a></p></body>`);
   }catch(e){
-    res.status(400).type('html').send(`<!doctype html><meta charset="utf-8"><title>Erro Shopee</title><body style="font-family:Arial;padding:32px"><h2>❌ Não foi possível concluir a autorização</h2><p>${String(e.message||e)}</p><p><a href="/">Voltar</a></p></body>`);
+    res.status(400).type('text/plain').send('Não foi possível concluir a autorização Shopee: '+String(e.message||e));
   }
 });
 app.post('/api/shopee/refresh',mustLogin,async(req,res)=>{
   try{
     const current=(await authStore.load())||{};
     const cfg=shopeeConfig(baseUrl(req));
+    if(current.mode!==cfg.mode||current.partnerId!==cfg.partnerId)throw new Error('Token de outro ambiente/Partner ID. Autorize novamente.');
     const data=await refreshShopeeToken(cfg,{refreshToken:current.refreshToken,shopId:current.shopId});
     const next=normalizeShopeeTokenResult(data,current.shopId);
-    const auth={...current,...next,shopIds:next.shopIds.length?next.shopIds:(current.shopIds||[]),lastRefreshAt:new Date().toISOString()};
+    if(!next.accessToken)throw new Error('A Shopee não retornou novo access_token.');
+    const auth={...current,...next,refreshToken:next.refreshToken||current.refreshToken,connectedAt:current.connectedAt,shopIds:next.shopIds.length?next.shopIds:(current.shopIds||[]),lastRefreshAt:new Date().toISOString(),mode:cfg.mode,partnerId:cfg.partnerId};
     await authStore.save(auth);res.json({ok:true,...safeShopeeStatus(auth,cfg),storage:authStore.status()});
   }catch(e){res.status(400).json({error:String(e.message||e)});}
 });

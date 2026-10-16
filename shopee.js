@@ -36,13 +36,14 @@ function shopeeProxyConfig(){
 
 function shopeeFetch(url,options={}){
   const proxy=shopeeProxyConfig();
-  if(!proxy.configured) return fetch(url,options);
+  const request={...options,signal:options.signal??AbortSignal.timeout(15000)};
+  if(!proxy.configured) return fetch(url,request);
 
   if(!proxyAgent||proxyAgentKey!==proxy.url){
     proxyAgent=new ProxyAgent(proxy.url);
     proxyAgentKey=proxy.url;
   }
-  return fetch(url,{...options,dispatcher:proxyAgent});
+  return fetch(url,{...request,dispatcher:proxyAgent});
 }
 
 export function shopeeProxyStatus(){
@@ -68,10 +69,9 @@ export function shopeeConfig(publicBaseUrl=''){
   const partnerId=Number(envText('SHOPEE_PARTNER_ID')||0);
   const partnerKey=envText('SHOPEE_PARTNER_KEY');
   const host=mode==='live'?'https://partner.shopeemobile.com':'https://openplatform.sandbox.test-stable.shopee.sg';
-  const authHost=mode==='live'?'https://open.shopee.com.br/auth':'https://open.sandbox.test-stable.shopee.com/auth';
   const redirectUri=envText('SHOPEE_REDIRECT_URI') || `${String(publicBaseUrl||'').replace(/\/$/,'')}/auth/shopee/callback`;
   return {
-    mode,host,authHost,partnerId,partnerKey,redirectUri,
+    mode,host,partnerId,partnerKey,redirectUri,
     configured:Number.isInteger(partnerId)&&partnerId>0&&Boolean(partnerKey)&&/^https:\/\//i.test(redirectUri)
   };
 }
@@ -122,14 +122,15 @@ async function readJson(response){
   }
   return data;
 }
-export function buildShopeeAuthorizationUrl(cfg,state=''){
+export function buildShopeeAuthorizationUrl(cfg){
   requireConfigured(cfg);
-  const url=new URL(cfg.authHost);
+  const path='/api/v2/shop/auth_partner';
+  const timestamp=Math.floor(Date.now()/1000);
+  const url=new URL(cfg.host+path);
   url.searchParams.set('partner_id',String(cfg.partnerId));
-  url.searchParams.set('auth_type','seller');
-  url.searchParams.set('redirect_uri',cfg.redirectUri);
-  url.searchParams.set('response_type','code');
-  if(state)url.searchParams.set('state',String(state));
+  url.searchParams.set('timestamp',String(timestamp));
+  url.searchParams.set('sign',publicSign(cfg,path,timestamp));
+  url.searchParams.set('redirect',cfg.redirectUri);
   return url.toString();
 }
 export async function exchangeShopeeCode(cfg,{code,shopId}={}){
@@ -184,7 +185,7 @@ export function safeShopeeStatus(auth,cfg){
   return {
     configured:Boolean(cfg?.configured),mode:cfg?.mode||'sandbox',partnerId:cfg?.partnerId||0,
     redirectUri:cfg?.redirectUri||'',apiHost:cfg?.host||'',
-    connected:Boolean(auth?.accessToken&&auth?.refreshToken&&auth?.shopId),
+    connected:Boolean(auth?.accessToken&&auth?.refreshToken&&auth?.shopId&&auth?.mode===cfg?.mode&&auth?.partnerId===cfg?.partnerId),
     shopId:Number(auth?.shopId||0),shopIds:Array.isArray(auth?.shopIds)?auth.shopIds:[],
     expiresAt:Number(auth?.expiresAt||0),connectedAt:auth?.connectedAt||null,lastRefreshAt:auth?.lastRefreshAt||null
   };
