@@ -2,7 +2,7 @@ const $=s=>document.querySelector(s);
 async function json(url,opt={}){const r=await fetch(url,opt);const d=await r.json().catch(()=>({}));if(!r.ok)throw new Error(d.error||('HTTP '+r.status));return d;}
 function fmtDate(v){if(!v)return '—';const n=Number(v);const d=Number.isFinite(n)&&n>1000000000?new Date(n*1000):new Date(v);return Number.isNaN(d.getTime())?String(v):d.toLocaleString('pt-BR');}
 function debug(v){$('#output').textContent=typeof v==='string'?v:JSON.stringify(v,null,2);}
-function setTab(name){document.querySelectorAll('.tab').forEach(b=>b.classList.toggle('active',b.dataset.tab===name));document.querySelectorAll('.tabpane').forEach(p=>p.classList.toggle('active',p.id==='tab-'+name));}
+function setTab(name){document.querySelectorAll('.tab').forEach(b=>b.classList.toggle('active',b.dataset.tab===name));document.querySelectorAll('.tabpane').forEach(p=>p.classList.toggle('active',p.id==='tab-'+name));if(name==='wedrop')refreshWeDropCoverage();}
 document.querySelectorAll('.tab').forEach(b=>b.onclick=()=>setTab(b.dataset.tab));
 
 async function boot(){
@@ -476,6 +476,173 @@ $('#loadAdsBtn').onclick=async()=>{
     $('#adsSummary').textContent=`Campanhas: ${campaigns.length} · Gasto: R$ ${expense.toFixed(2)} · GMV: R$ ${gmv.toFixed(2)} · ROAS: ${roas.toFixed(2)} · ACOS: ${acos.toFixed(1)}% · Cliques: ${clicks} · Impressões: ${impressions}`;
   }catch(e){$('#adsSummary').textContent=e.message;debug(e.message);}
 };
+
+// Custos WeDrop: importação exige prévia e mapeamento explícito do arquivo CSV.
+let weDropCsvText=null;
+let weDropPreview=null;
+let weDropImportBusy=false;
+const wdMoney=value=>value===null||value===undefined?'—':new Intl.NumberFormat('pt-BR',{
+  style:'currency',currency:'BRL'
+}).format(Number(value));
+const wdNum=value=>new Intl.NumberFormat('pt-BR').format(Number(value)||0);
+function wdSetNotice(selector,message,state){
+  const elem=$(selector);
+  if(!elem)return;
+  elem.textContent=message;
+  elem.dataset.state=state||'info';
+}
+function wdRenderPreview(data){
+  const holder=$('#wedropSample');
+  holder.replaceChildren();
+  const table=document.createElement('table');
+  const thead=document.createElement('thead'),headRow=document.createElement('tr');
+  for(const head of data.headers.slice(0,20)){
+    const th=document.createElement('th');th.textContent=head;headRow.appendChild(th);
+  }
+  thead.appendChild(headRow);table.appendChild(thead);
+  const body=document.createElement('tbody');
+  for(const sample of data.examples||[]){
+    const tr=document.createElement('tr');
+    for(const val of sample){
+      const td=document.createElement('td');td.textContent=String(val??'');tr.appendChild(td);
+    }
+    body.appendChild(tr);
+  }
+  table.appendChild(body);holder.appendChild(table);
+  for(const id of ['#wedropSkuColumn','#wedropCostColumn']){
+    const select=$(id);select.replaceChildren();
+    const empty=document.createElement('option');
+    empty.value='';empty.textContent=id==='#wedropSkuColumn'?'Selecione o SKU':'Selecione o custo de aquisição';
+    select.appendChild(empty);
+    data.headers.forEach((header,index)=>{
+      const opt=document.createElement('option');
+      opt.value=String(index);
+      opt.textContent=(index+1)+': '+header;
+      select.appendChild(opt);
+    });
+    select.value='';
+  }
+}
+$('#wedropPreviewBtn').onclick=async()=>{
+  const button=$('#wedropPreviewBtn');
+  if(button.disabled)return;
+  button.disabled=true;button.textContent='Lendo arquivo...';
+  $('#wedropPreviewArea').hidden=true;
+  weDropCsvText=null;weDropPreview=null;
+  try{
+    const file=$('#wedropFile').files?.[0];
+    if(!file)throw Error('Selecione um arquivo CSV exportado da WeDrop.');
+    if(file.size>4_000_000)throw Error('Arquivo acima de 4 MB. Divida o CSV em partes menores.');
+    const raw=await file.text();
+    const data=await json('/api/shopee/wedrop/preview',{
+      method:'POST',headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({csv:raw}),signal:AbortSignal.timeout(30000)
+    });
+    if(!data.ok)throw Error('Não foi possível reconhecer as colunas do CSV.');
+    weDropCsvText=raw;weDropPreview=data;
+    wdRenderPreview(data);
+    $('#wedropPreviewArea').hidden=false;
+    $('#wedropOverwrite').checked=false;
+    $('#wedropSkipInvalid').checked=false;
+    $('#wedropImportBtn').disabled=false;
+    wdSetNotice('#wedropPreviewSummary','Arquivo com '+wdNum(data.rowCount)+
+      ' linhas. Selecione manualmente as colunas SKU e custo. Confira a prévia antes de confirmar.','info');
+    wdSetNotice('#wedropImportStatus','Prévia concluída. Nenhum custo foi gravado no banco.','info');
+  }catch(e){
+    wdSetNotice('#wedropImportStatus','Falha na prévia: '+e.message,'error');
+  }finally{
+    button.disabled=false;button.textContent='Conferir colunas do CSV';
+  }
+};
+$('#wedropFile').onchange=()=>{
+  weDropCsvText=null;weDropPreview=null;
+  $('#wedropPreviewArea').hidden=true;
+  wdSetNotice('#wedropImportStatus','Novo arquivo selecionado. Confira novamente suas colunas.','info');
+};
+$('#wedropImportBtn').onclick=async()=>{
+  if(weDropImportBusy)return;
+  const skuColumn=$('#wedropSkuColumn').value,costColumn=$('#wedropCostColumn').value;
+  if(!weDropPreview||!weDropCsvText||skuColumn===''||costColumn===''||skuColumn===costColumn){
+    wdSetNotice('#wedropImportStatus','Selecione duas colunas diferentes: SKU e custo de aquisição.','error');return;
+  }
+  weDropImportBusy=true;
+  const button=$('#wedropImportBtn');
+  button.disabled=true;button.textContent='Importando...';
+  wdSetNotice('#wedropImportStatus','Validando SKUs, custos e duplicidades antes de gravar no Supabase...','info');
+  try{
+    const data=await json('/api/shopee/wedrop/import',{
+      method:'POST',headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({
+        csv:weDropCsvText,skuColumn:Number(skuColumn),costColumn:Number(costColumn),
+        overwrite:$('#wedropOverwrite').checked===true,
+        skipInvalid:$('#wedropSkipInvalid').checked===true,
+        fileName:$('#wedropFile').files?.[0]?.name||'wedrop.csv'
+      }),
+      signal:AbortSignal.timeout(120000)
+    });
+    wdSetNotice('#wedropImportStatus',
+      'Importação concluída: '+wdNum(data.saved)+' custos gravados; '+
+      wdNum(data.preservedExisting)+' valores existentes preservados; '+
+      wdNum(data.updatedExisting)+' atualizados; '+
+      wdNum(data.skippedInvalid)+' linhas ignoradas. Nenhum anúncio ou preço Shopee foi modificado.',
+      'success');
+    weDropCsvText=null;
+    $('#wedropPreviewArea').hidden=true;
+    await refreshWeDropCoverage();
+  }catch(e){
+    wdSetNotice('#wedropImportStatus','Não foi possível concluir a importação: '+e.message+
+      ' Verifique os dados antes de tentar novamente.','error');
+  }finally{
+    weDropImportBusy=false;button.disabled=false;button.textContent='Confirmar importação dos custos';
+  }
+};
+async function refreshWeDropCoverage(){
+  const button=$('#wedropRefreshBtn');
+  if(button.disabled)return;
+  button.disabled=true;button.textContent='Consultando...';
+  wdSetNotice('#wedropCoverageStatus','Cruzando SKUs cadastrados no Supabase...','info');
+  try{
+    const data=await json('/api/shopee/wedrop/coverage',{signal:AbortSignal.timeout(45000)});
+    const t=data.totals||{};
+    $('#wedropCompared').textContent=wdNum(t.comparedSkus);
+    $('#wedropMatched').textContent=wdNum(t.matched);
+    $('#wedropMissingCost').textContent=wdNum(t.missingCost);
+    $('#wedropPendingModels').textContent=wdNum(t.waitingModels);
+    $('#wedropImported').textContent=wdNum(t.importedCosts);
+    const body=$('#wedropCoverageBody');body.replaceChildren();
+    for(const x of data.rows||[]){
+      const tr=document.createElement('tr');
+      const values=[
+        x.name||'Anúncio '+x.itemId,x.sku,
+        wdMoney(x.price),wdMoney(x.unitCost),wdMoney(x.grossDifference),
+        x.costMatched?'Custo vinculado':'SEM CUSTO'
+      ];
+      for(const val of values){
+        const td=document.createElement('td');td.textContent=String(val);
+        tr.appendChild(td);
+      }
+      if(!x.costMatched)tr.className='wedrop-missing';
+      body.appendChild(tr);
+    }
+    if(!data.rows?.length){
+      const tr=document.createElement('tr'),td=document.createElement('td');td.colSpan=6;
+      td.textContent='Sem SKUs sincronizados para comparação. Sincronize o catálogo na aba Produtos.';
+      tr.appendChild(td);body.appendChild(tr);
+    }
+    const text='Cruzamento: '+wdNum(t.matched)+' de '+wdNum(t.comparedSkus)+
+      ' SKUs encontrados nos custos WeDrop. '+wdNum(t.withoutSku)+' anúncios/modelos sem SKU, '+
+      wdNum(t.waitingModels)+' anúncios aguardando consulta das variações. '+
+      wdNum(t.supplierSkusNotMatched)+' custos importados sem SKU correspondente no catálogo.'+
+      (data.truncated?' Exibindo somente os primeiros 500 resultados.':'')+
+      ' Diferença bruta não é lucro líquido.';
+    wdSetNotice('#wedropCoverageStatus',text,t.missingCost||t.waitingModels?'warning':'success');
+  }catch(error){
+    wdSetNotice('#wedropCoverageStatus','Não foi possível conferir custos: '+error.message,'error');
+  }finally{
+    button.disabled=false;button.textContent='Atualizar cruzamento';
+  }
+}
+$('#wedropRefreshBtn').onclick=refreshWeDropCoverage;
 
 // Monitor de vendas: consultas com autenticação da sessão, sem expor dados privados.
 let monitorSeenAlerts=null;
