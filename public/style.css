@@ -158,3 +158,20 @@ button:disabled{opacity:.52;cursor:not-allowed}
 #wedropSourceLoadError[hidden],#wedropNoCatalogMessage[hidden],#wedropStoredCatalog[hidden]{display:none!important}
 #wedropSourceLoadError{background:#fff7ed;border-color:#e6d3ac;line-height:1.5}
 @media(max-width:700px){.wedrop-stored-catalog{padding:14px}.wedrop-stored-catalog .actions button{width:100%}}
+
+/* Auditoria financeira Shopee: valores somente após repasse real. */
+.shopee-finance-panel{margin-top:18px;padding:21px;min-width:0}
+.shopee-finance-panel h2{margin:6px 0 12px;font-size:22px}
+.shopee-finance-panel .hint{line-height:1.5;max-width:110ch}
+.shopee-finance-actions{display:flex;gap:13px;align-items:end;flex-wrap:wrap;margin:17px 0}
+.shopee-finance-actions label{display:flex;flex-direction:column;gap:8px;font-weight:600;font-size:14px}
+.shopee-finance-actions select{padding:10px 12px;min-width:170px;border:1px solid #d7d7cf;border-radius:9px;background:#fff}
+.shopee-finance-metrics{display:grid;grid-template-columns:repeat(auto-fit,minmax(175px,1fr));gap:12px;margin:17px 0}
+.shopee-finance-metrics article{min-width:0}
+.shopee-finance-panel .table-wrap{overflow:auto;width:100%;max-width:100%}
+.shopee-finance-panel .table-wrap table{min-width:1120px}
+#shopeeFinanceWarning{line-height:1.5;white-space:normal}
+#shopeeFinanceStatus[data-state="error"]{background:#fff0eb;border-color:#e0ada2}
+#shopeeFinanceStatus[data-state="warning"]{background:#fff8e8;border-color:#e4d09d}
+#shopeeFinanceStatus[data-state="success"]{background:#eff8ef;border-color:#c2ddc3}
+@media(max-width:650px){.shopee-finance-panel{padding:14px}.shopee-finance-actions button{width:100%}}

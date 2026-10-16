@@ -837,6 +837,7 @@ $('#wedropImportBtn').onclick=async()=>{
     weDropImportBusy=false;button.disabled=false;button.textContent='Confirmar importação dos custos';
   }
 };
+let financeSkuBalances=new Map(); // Apenas vendas concluídas de SKU único com repasse confirmado.
 let wedropSelectedFilter='matched',wedropNextOffset=null,wedropTableLoading=false;
 function setWedropTab(filter){
   wedropSelectedFilter=filter;
@@ -901,8 +902,9 @@ async function refreshWeDropCoverage({append=false}={}){
       const tr=document.createElement('tr');
       for(const val of [
         x.name||'Anúncio '+x.itemId,x.sku,
-        wdMoney(x.price),wdMoney(x.unitCost),wdMoney(x.grossDifference),
-        x.costMatched?'Custo vinculado':'Código não encontrado na WeDrop'
+        wdMoney(x.price),wdMoney(x.unitCost),
+        financeSkuBalances.has(x.sku)?wdMoney(financeSkuBalances.get(x.sku).balanceBeforeAds):'—',
+        x.costMatched?(financeSkuBalances.has(x.sku)?'Saldo verificado (antes de Ads)':'Custo vinculado; aguardando vendas verificadas'):'Código não encontrado na WeDrop'
       ]){
         const td=document.createElement('td');
         td.textContent=String(val);
@@ -934,7 +936,7 @@ async function refreshWeDropCoverage({append=false}={}){
       wdNum(t.missingCost)+' precisam de conferência. '+
       'Outros '+wdNum(t.supplierSkusNotMatched)+
       ' SKUs existem no catálogo WeDrop, mas não estão publicados na Shopee — isso não significa erro. '+
-      'Diferença bruta não é lucro líquido.',
+      'O saldo por SKU só aparece após conferir pedidos concluídos; não equivale a lucro líquido final.',
       t.missingCost?'warning':'success');
   }catch(error){
     if(!append){
@@ -953,6 +955,87 @@ async function refreshWeDropCoverage({append=false}={}){
   }
 }
 $('#wedropRefreshBtn').onclick=refreshWeDropCoverage;
+let shopeeFinanceBusy=false;
+$('#shopeeFinanceLoad').onclick=async()=>{
+  if(shopeeFinanceBusy)return;
+  shopeeFinanceBusy=true;
+  const button=$('#shopeeFinanceLoad');
+  button.disabled=true;button.textContent='Consultando repasses reais...';
+  $('#shopeeFinanceData').hidden=true;
+  wdSetNotice('#shopeeFinanceStatus',
+    'Buscando pedidos concluídos e detalhes de pagamento da Shopee. Não estamos presumindo taxas ou despesas.','info');
+  try{
+    const days=$('#shopeeFinanceDays').value;
+    const report=await json('/api/shopee/finance/orders?days='+encodeURIComponent(days),{
+      signal:AbortSignal.timeout(180000)
+    });
+    const t=report.totals||{};
+    $('#shopeeFinanceData').hidden=false;
+    $('#shopeeFinanceVerified').textContent=wdNum(t.verified)+' de '+wdNum(t.eligible);
+    $('#shopeeFinancePayout').textContent=wdMoney(t.received);
+    $('#shopeeFinanceCosts').textContent=wdMoney(t.supplierCost);
+    $('#shopeeFinanceBalance').textContent=wdMoney(t.balanceBeforeAds);
+    const body=$('#shopeeFinanceOrders');body.replaceChildren();
+    const feeText=entry=>{
+      const f=entry.feeBreakdown||{};
+      const parts=[
+        ['Comissão',f.commission],['Serviço',f.service],['Transação',f.transaction]
+      ].filter(([,v])=>v!==null&&v!==undefined);
+      return parts.length?parts.map(([label,n])=>label+': '+wdMoney(n)).join(' · '):'—';
+    };
+    for(const x of report.rows||[]){
+      const tr=document.createElement('tr');
+      if(!x.ready)tr.className='wedrop-missing';
+      const data=[
+        x.orderSn||'—',
+        x.sku||((x.skuList||[]).join(', ')||'—'),
+        wdMoney(x.payout),
+        feeText(x),
+        x.feeBreakdown?.actualShipping===null||x.feeBreakdown?.actualShipping===undefined
+          ?'—':wdMoney(x.feeBreakdown.actualShipping),
+        wdMoney(x.totalCost),
+        wdMoney(x.balanceBeforeAds),
+        x.marginBeforeAds===null||x.marginBeforeAds===undefined?'—':
+          Number(x.marginBeforeAds).toLocaleString('pt-BR')+'%',
+        '— (Ads não conciliados)',
+        x.reason||'Sem informações suficientes'
+      ];
+      for(const value of data){
+        const td=document.createElement('td');td.textContent=String(value);
+        tr.appendChild(td);
+      }
+      body.appendChild(tr);
+    }
+    if(!report.rows?.length){
+      const tr=document.createElement('tr'),td=document.createElement('td');
+      td.colSpan=10;td.textContent='Nenhum pedido concluído encontrado no período.';
+      tr.appendChild(td);body.appendChild(tr);
+    }
+    financeSkuBalances=new Map((report.skuSummary||[]).map(x=>[x.sku,x]));
+    $('#shopeeFinanceWarning').textContent=report.warning+' '+
+      (report.paymentAccessWarning?'Acesso Payment: '+report.paymentAccessWarning+'. ':'')+
+      (t.incompletePeriod?'Período incompleto: há pedidos ainda não consultados. ':'')+
+      (t.incomplete?'Pedidos sem custo/repasse confirmado: '+wdNum(t.incomplete)+'. ':'')+
+      (report.skippedCompleted?'Pedidos concluídos não examinados nesta consulta: '+
+        wdNum(report.skippedCompleted)+'. ':'')+
+      'As taxas e o frete são detalhados apenas para consulta: já estão refletidos no repasse e NÃO devem ser descontados de novo.';
+    wdSetNotice('#shopeeFinanceStatus',
+      'Verificação concluída. '+wdNum(t.verified)+' pedidos com repasse e custo identificados. '+
+      'Lucro líquido final permanece pendente de Ads e despesas externas.',
+      report.complete?'success':'warning');
+    // Atualiza a coluna por SKU apenas para vendas realmente verificadas.
+    await refreshWeDropCoverage();
+  }catch(error){
+    financeSkuBalances.clear();
+    wdSetNotice('#shopeeFinanceStatus','Não foi possível verificar os dados financeiros: '+
+      error.message+'. Lucro líquido e margem permanecem indisponíveis.','error');
+  }finally{
+    shopeeFinanceBusy=false;
+    button.disabled=false;button.textContent='Consultar vendas e repasses reais';
+  }
+};
+
+
 
 // Monitor de vendas: consultas com autenticação da sessão, sem expor dados privados.
 let monitorSeenAlerts=null;

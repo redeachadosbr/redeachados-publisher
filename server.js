@@ -8,6 +8,7 @@ import {createAuthStore} from './authStore.js';
 import {mergeShopeeOrderDates} from './orderView.js';
 import {createShopeeOrderMonitor} from './orderMonitor.js';
 import {loadShopeeAdsOverview} from './adsReport.js';
+import {loadShopeeFinance} from './shopeeFinance.js';
 import {fetchCatalogPage,normalizeShopeeModels,validItemId} from './catalog.js';
 import {storeCatalogItems,storeCatalogModels,readCatalogCache,catalogStoreReady} from './catalogStore.js';
 import {previewWeDropCsv,prepareWeDropImport,MAX_CSV_CHARS} from './wedropCsv.js';
@@ -84,7 +85,7 @@ app.use(session({
 }));
 app.use(express.static(path.join(__dirname,'public')));
 
-app.get('/api/health',(_req,res)=>res.json({ok:true,service:'Rede Achados BR Shopee API',version:'1.7.2',storage:authStore.status()}));
+app.get('/api/health',(_req,res)=>res.json({ok:true,service:'Rede Achados BR Shopee API',version:'1.8.0',storage:authStore.status()}));
 app.get('/api/auth-state',(req,res)=>res.json({locked:Boolean(envText('APP_PASSWORD')),loggedIn:!envText('APP_PASSWORD')||Boolean(req.session?.appAuth)}));
 app.post('/api/login',(req,res)=>{
   const required=envText('APP_PASSWORD');
@@ -531,6 +532,26 @@ app.get('/api/shopee/orders',mustLogin,async(req,res)=>{
       }
     });
   }catch(e){res.status(400).json({error:String(e.message||e)});}
+});
+
+// Financeiro Shopee baseado nos pedidos concluídos e no repasse efetivo da API Payment.
+// Retorna somente campos necessários, sem nome, telefone ou endereço de compradores.
+app.get('/api/shopee/finance/orders',mustLogin,requireWeDropAdmin,async(req,res)=>{
+  res.setHeader('Cache-Control','no-store');
+  try{
+    const {auth,cfg}=await getValidAuth(req);
+    const result=await loadShopeeFinance(cfg,auth,callShopeeShopApi,{
+      days:req.query.days??15
+    });
+    res.json({ok:true,...result});
+  }catch(e){
+    const error=String(e.message||e).slice(0,360);
+    const forbidden=/permission|denied|403|forbidden/i.test(error);
+    res.status(forbidden?403:400).json({error,category:forbidden?'finance_permission':'finance_query',
+      help:forbidden
+        ?'Verifique a permissão Payment / get_escrow_detail na Shopee Open Platform.'
+        :'Consulte um período menor ou verifique os detalhes dos pedidos na Shopee.'});
+  }
 });
 
 app.get('/api/shopee/ads/overview',mustLogin,async(req,res)=>{
