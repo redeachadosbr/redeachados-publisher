@@ -165,6 +165,33 @@
           <p id="wedropNoCostsMessage">Nenhum custo WeDrop cadastrado. O painel financeiro será liberado quando você importar custos reais do fornecedor.</p>
           <p class="hint">Os SKUs e modelos sincronizados permanecem salvos. Não é necessário repetir a sincronização para mostrar custos futuramente.</p>
         </div>
+        <section class="card shopee-finance-panel" id="shopeeFinancePanel">
+          <div class="section-head">
+            <div><span class="eyebrow">FINANCEIRO SHOPEE</span>
+              <h2>Conciliação real de vendas, taxas e custos WeDrop</h2></div>
+          </div>
+          <p class="hint">O cálculo usa o repasse do pedido informado pela Shopee, que já incorpora as taxas, descontos e frete considerados no pagamento. Despesas de Ads e encargos externos ainda precisam de conciliação antes de informar lucro líquido final.</p>
+          <div class="actions shopee-finance-actions">
+            <label>Pedidos criados nos últimos
+              <select id="shopeeFinanceDays"><option value="7">7 dias</option><option value="15" selected>15 dias</option><option value="3">3 dias</option></select>
+            </label>
+            <button id="shopeeFinanceLoad" type="button">Consultar vendas e repasses reais</button>
+          </div>
+          <p id="shopeeFinanceStatus" class="notice" role="status" aria-live="polite">Aguardando consulta à API financeira da Shopee. Nenhuma taxa foi estimada.</p>
+          <div id="shopeeFinanceData" hidden>
+            <div class="metrics shopee-finance-metrics">
+              <article><span>Pedidos verificados</span><strong id="shopeeFinanceVerified">—</strong></article>
+              <article><span>Repasses Shopee verificados</span><strong id="shopeeFinancePayout">—</strong></article>
+              <article><span>Custos WeDrop dos pedidos</span><strong id="shopeeFinanceCosts">—</strong></article>
+              <article><span>Saldo após repasse e custos, antes de Ads</span><strong id="shopeeFinanceBalance">—</strong></article>
+            </div>
+            <p id="shopeeFinanceWarning" class="notice"></p>
+            <div class="table-wrap"><table>
+              <thead><tr><th>Pedido</th><th>SKU</th><th>Repasse informado</th><th>Taxas Shopee</th><th>Frete</th><th>Custo WeDrop</th><th>Saldo antes Ads</th><th>Margem antes Ads</th><th>Lucro líquido final</th><th>Situação</th></tr></thead>
+              <tbody id="shopeeFinanceOrders"></tbody>
+            </table></div>
+          </div>
+        </section>
         <div id="wedropFinancialResults" class="card wedrop-results" hidden>
           <h2>Cruzamento financeiro por SKU</h2>
           <p class="hint">As correspondências já confirmadas aparecem primeiro. Os anúncios sem vínculo ficam em aba própria para revisão; não aplicamos custo por aproximação de código.</p>
@@ -174,9 +201,9 @@
             <button type="button" id="wedropTabAll" class="secondary" aria-pressed="false">Todos</button>
           </div>
           <p id="wedropTableStatus" class="hint" role="status" aria-live="polite"></p>
-          <p class="hint">Preço de catálogo não é necessariamente preço efetivo de venda. A diferença bruta exclui taxas, frete, descontos, Ads e devoluções — não é lucro líquido.</p>
+          <p class="hint">O saldo por venda só aparece se houver pedido concluído de um único SKU, repasse Shopee e custo WeDrop confirmados. Ainda não é lucro líquido final: faltam Ads atribuídos e despesas externas. O preço de catálogo não equivale ao preço vendido.</p>
           <div class="table-wrap"><table>
-            <thead><tr><th>Produto</th><th>SKU</th><th>Preço catálogo</th><th>Custo WeDrop</th><th>Diferença bruta</th><th>Situação</th></tr></thead>
+            <thead><tr><th>Produto</th><th>SKU</th><th>Preço catálogo</th><th>Custo WeDrop</th><th>Saldo por venda antes de Ads</th><th>Situação</th></tr></thead>
             <tbody id="wedropCoverageBody"></tbody>
           </table></div>
           <div class="actions wedrop-table-paging"><button id="wedropTableMoreBtn" class="secondary" type="button" hidden>Mostrar mais registros</button></div>
@@ -256,5 +283,5 @@
     </section>
   </main>
 </div>
-<script src="/app.js?v=1.7.2"></script>
+<script src="/app.js?v=1.8.0"></script>
 </body></html>
