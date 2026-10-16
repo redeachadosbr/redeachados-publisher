@@ -6,3 +6,19 @@ button:disabled{opacity:.52;cursor:not-allowed}
 .shop-test-result[data-state="error"]{background:#fff8f4;border-color:#f0d1c5}
 .shop-test-result[data-state="success"]{background:#f5faf6;border-color:#cadece}
 .shop-test-result[data-state="loading"]{background:#f5f7f8;border-color:#dde0e1}
+
+/* Shopee: monitor de envio */
+.monitor-card{margin:16px 0}
+.small-metric{font-size:13px!important;line-height:1.35;overflow-wrap:anywhere}
+.monitor-alerts{display:grid;gap:10px}
+.order-alert{background:#f8f9f7;border:1px solid #dce3da;border-left:5px solid #59745d;border-radius:12px;padding:15px}
+.order-alert.warning{border-left-color:#d59d22;background:#fffaf0}
+.order-alert.critical{border-left-color:#bf3829;background:#fff6f3}
+.order-alert.read{opacity:.68}
+.order-alert strong{display:block;margin-bottom:7px}
+.order-alert p{margin:6px 0;line-height:1.5;white-space:pre-wrap;overflow-wrap:anywhere}
+.order-alert small{display:block;color:#62685f;margin:7px 0}
+.order-alert button{margin-top:5px}
+.monitor-danger-row{background:#fff7f4}
+#monitorBadge{font-weight:700;color:#e89255}
+@media(max-width:780px){.monitor-card{padding:15px}.monitor-alerts{gap:8px}}
