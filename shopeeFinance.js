@@ -28,8 +28,12 @@ export function financeRange({days=15,start='',end=''}={},now=Math.floor(Date.no
       new Date(fromMs-3*3600000).toISOString().slice(0,10)!==start||
       new Date(toMs-3*3600000).toISOString().slice(0,10)!==end)
       throw Error('Data inválida.');
-    const from=Math.floor(fromMs/1000),to=Math.floor(toMs/1000);
-    if(from>to||to>now||to-from>30*86400-1)throw Error('Intervalo inválido: escolha no máximo 30 dias, sem datas futuras.');
+    // Quando "até hoje" é selecionado, a janela termina AGORA,
+    // e não às 23:59 futuras do próprio dia.
+    const from=Math.floor(fromMs/1000),to=Math.min(Math.floor(toMs/1000),now);
+    const endDayStart=Math.floor(Date.parse(end+'T00:00:00-03:00')/1000);
+    if(from>to||endDayStart>now||Math.floor(toMs/1000)-from>30*86400-1)
+      throw Error('Intervalo inválido: escolha no máximo 30 dias, sem datas futuras.');
     return {from,to,days:Math.ceil((to-from+1)/86400),label:start+' a '+end,mode:'custom'};
   }
   const n=financePeriod(days);
