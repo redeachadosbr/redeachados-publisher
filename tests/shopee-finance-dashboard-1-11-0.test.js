@@ -72,7 +72,7 @@ test('Financeiro mantém filtros e miniaturas de catálogo com indicadores sem n
  assert.match(html,/data-finance-filter="sold"/);
  assert.match(html,/data-finance-filter="unsold"/);
  assert.match(html,/data-finance-filter="pending"/);
- assert.match(html,/lucro líquido final permanece pendente/i);
+ assert.match(html,/Lucro líquido final exige impostos/);
  assert.match(html,/saldo antes Ads/i);
  assert.match(js,/financeCatalogImage/);
  assert.match(js,/financeSkuEntries/);
@@ -82,8 +82,8 @@ test('Financeiro mantém filtros e miniaturas de catálogo com indicadores sem n
  assert.match(js,/Sem venda verificada/);
  assert.match(css,/\.finance-thumbnail/);
  assert.match(css,/@media\(max-width:650px\)/);
- assert.match(html,/style\.css\?v=1\.11\.0/);
- assert.match(html,/app\.js\?v=1\.11\.0/);
+ assert.match(html,/style\.css\?v=1\.12\.0/);
+ assert.match(html,/app\.js\?v=1\.12\.0/);
 });
 test('não transforma custo de catálogo em custo vendido, nem inventa Ads',()=>{
  assert.match(backend,/get_escrow_detail/);
