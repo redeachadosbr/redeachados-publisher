@@ -802,80 +802,119 @@ $('#wedropImportBtn').onclick=async()=>{
     weDropImportBusy=false;button.disabled=false;button.textContent='Confirmar importação dos custos';
   }
 };
-async function refreshWeDropCoverage(){
-  const button=$('#wedropRefreshBtn');
-  if(button.disabled)return;
-  button.disabled=true;button.textContent='Consultando...';
-  wdSetNotice('#wedropCoverageStatus','Conferindo o catálogo Shopee e a existência de custos WeDrop...','info');
+let wedropSelectedFilter='matched',wedropNextOffset=null,wedropTableLoading=false;
+function setWedropTab(filter){
+  wedropSelectedFilter=filter;
+  for(const [name,id] of Object.entries({
+    matched:'#wedropTabMatched',unmatched:'#wedropTabUnmatched',all:'#wedropTabAll'
+  })){
+    const active=filter===name;
+    $(id).classList.toggle('active',active);
+    $(id).setAttribute('aria-pressed',String(active));
+  }
+  wedropNextOffset=null;
+  refreshWeDropCoverage();
+}
+$('#wedropTabMatched').onclick=()=>setWedropTab('matched');
+$('#wedropTabUnmatched').onclick=()=>setWedropTab('unmatched');
+$('#wedropTabAll').onclick=()=>setWedropTab('all');
+$('#wedropTableMoreBtn').onclick=()=>refreshWeDropCoverage({append:true});
+async function refreshWeDropCoverage({append=false}={}){
+  if(wedropTableLoading)return;
+  if(append&&wedropNextOffset===null)return;
+  const button=$('#wedropRefreshBtn'),more=$('#wedropTableMoreBtn');
+  wedropTableLoading=true;
+  button.disabled=true;
+  more.disabled=true;
+  button.textContent='Consultando...';
+  const requestedFilter=wedropSelectedFilter;
+  const offset=append?wedropNextOffset:0;
+  if(!append)wdSetNotice('#wedropCoverageStatus','Conferindo os custos vinculados à Shopee...','info');
   try{
-    const data=await json('/api/shopee/wedrop/coverage',{signal:AbortSignal.timeout(45000)});
+    const query=new URLSearchParams({filter:requestedFilter,offset:String(offset)});
+    const data=await json('/api/shopee/wedrop/coverage?'+query,{
+      signal:AbortSignal.timeout(45000)
+    });
     const t=data.totals||{};
     const costsAvailable=data.hasImportedCosts===true&&(Number(t.importedCosts)||0)>0;
     $('#wedropCompared').textContent=wdNum(t.comparedSkus);
     $('#wedropPendingModels').textContent=wdNum(t.waitingModels);
     $('#wedropImported').textContent=wdNum(t.importedCosts);
-    // Sem custo do fornecedor, não existe análise financeira a mostrar.
     $('#wedropNoCosts').hidden=costsAvailable;
     $('#wedropFinancialResults').hidden=!costsAvailable;
     document.querySelectorAll('.wedrop-financial-metric')
       .forEach(node=>{node.hidden=!costsAvailable;});
     const body=$('#wedropCoverageBody');
-    body.replaceChildren();
+    if(!append)body.replaceChildren();
     if(!costsAvailable){
-      const text='Catálogo Shopee: '+wdNum(t.catalogItems)+' anúncios salvos, '+
-        wdNum(t.comparedSkus)+' SKUs identificados e '+
-        wdNum(t.waitingModels)+' anúncios com variações pendentes. '+
-        wdNum(t.withoutSku)+' anúncios/modelos sem SKU cadastrado.';
       $('#wedropNoCostsMessage').textContent=
-        'Nenhum custo WeDrop foi importado ainda. As informações dos produtos estão salvas. '+
-        'As colunas Custo WeDrop, Diferença bruta e Situação financeira foram ocultadas, '+
-        'pois não existem valores reais para calcular. Quando importar os custos, '+
-        'o cruzamento será ativado automaticamente.';
-      wdSetNotice('#wedropCoverageStatus',text,'success');
+        'Ainda não existem custos WeDrop cadastrados. Os dados da Shopee estão preservados. '+
+        'Ao importar o catálogo WeDrop, os produtos vinculados aparecerão automaticamente.';
+      wdSetNotice('#wedropCoverageStatus',
+        'Shopee: '+wdNum(t.catalogItems)+' anúncios, '+wdNum(t.comparedSkus)+
+        ' registros de SKU identificados; '+wdNum(t.waitingModels)+' anúncios aguardando variações.','info');
+      $('#wedropTableStatus').textContent='';
+      more.hidden=true;wedropNextOffset=null;
       return;
     }
     $('#wedropMatched').textContent=wdNum(t.matched);
     $('#wedropMissingCost').textContent=wdNum(t.missingCost);
+    $('#wedropTabMatched').textContent='Com custo vinculado ('+wdNum(t.matched)+')';
+    $('#wedropTabUnmatched').textContent='Pendentes ('+wdNum(t.missingCost)+')';
+    $('#wedropTabAll').textContent='Todos ('+wdNum(t.comparedSkus)+')';
     for(const x of data.rows||[]){
       const tr=document.createElement('tr');
-      const values=[
+      for(const val of [
         x.name||'Anúncio '+x.itemId,x.sku,
         wdMoney(x.price),wdMoney(x.unitCost),wdMoney(x.grossDifference),
-        x.costMatched?'Custo vinculado':'Custo não vinculado'
-      ];
-      for(const val of values){
-        const td=document.createElement('td');td.textContent=String(val);
+        x.costMatched?'Custo vinculado':'Código não encontrado na WeDrop'
+      ]){
+        const td=document.createElement('td');
+        td.textContent=String(val);
         tr.appendChild(td);
       }
       if(!x.costMatched)tr.className='wedrop-missing';
       body.appendChild(tr);
     }
-    if(!data.rows?.length){
-      const tr=document.createElement('tr'),td=document.createElement('td');td.colSpan=6;
-      td.textContent='Sem SKUs sincronizados para comparação. Sincronize o catálogo na aba Produtos.';
+    if(!data.rows?.length&&!append){
+      const tr=document.createElement('tr'),td=document.createElement('td');
+      td.colSpan=6;
+      td.textContent=requestedFilter==='unmatched'
+        ?'Todos os SKUs estão vinculados. Não há pendências.'
+        :'Nenhum registro nesta situação.';
       tr.appendChild(td);body.appendChild(tr);
     }
-    const text='Custos WeDrop importados: '+wdNum(t.importedCosts)+
-      '. SKUs com custo vinculado: '+wdNum(t.matched)+
-      ' de '+wdNum(t.comparedSkus)+
-      '. Sem custo correspondente: '+wdNum(t.missingCost)+'. '+
-      wdNum(t.withoutSku)+' anúncios/modelos sem SKU; '+
-      wdNum(t.waitingModels)+' anúncios com variações pendentes. '+
-      wdNum(t.supplierSkusNotMatched)+' custos importados ainda sem SKU correspondente na Shopee.'+
-      (data.truncated?' Exibindo somente os primeiros 500 resultados.':'')+
-      ' Diferença bruta não representa lucro líquido.';
-    wdSetNotice('#wedropCoverageStatus',text,t.missingCost||t.waitingModels?'warning':'success');
-  }catch(error){
-    // Falhas não devem ser apresentadas como custo zero ou sincronização concluída.
-    $('#wedropNoCosts').hidden=true;
-    $('#wedropFinancialResults').hidden=true;
-    document.querySelectorAll('.wedrop-financial-metric')
-      .forEach(node=>{node.hidden=true;});
+    wedropNextOffset=data.nextOffset===null||data.nextOffset===undefined
+      ?null:Number(data.nextOffset);
+    more.hidden=wedropNextOffset===null;
+    const displayed=Math.min((data.offset||0)+(data.rows?.length||0),data.totalFiltered||0);
+    $('#wedropTableStatus').textContent='Exibindo '+wdNum(displayed)+
+      ' de '+wdNum(data.totalFiltered||0)+' registros nesta aba. '+
+      (requestedFilter==='unmatched'
+        ?'Somente códigos não encontrados. Confira o SKU na WeDrop antes de vincular; o sistema não supõe custos.'
+        :'Os vínculos confirmados estão listados por SKU.');
     wdSetNotice('#wedropCoverageStatus',
-      'Não foi possível consultar catálogo/custos: '+error.message+
-      '. Clique em Atualizar cruzamento para tentar novamente.','error');
+      'Cruzamento validado: '+wdNum(t.matched)+' de '+wdNum(t.comparedSkus)+
+      ' registros de SKU da Shopee estão com custo WeDrop vinculado. '+
+      wdNum(t.missingCost)+' precisam de conferência. '+
+      'Outros '+wdNum(t.supplierSkusNotMatched)+
+      ' SKUs existem no catálogo WeDrop, mas não estão publicados na Shopee — isso não significa erro. '+
+      'Diferença bruta não é lucro líquido.',
+      t.missingCost?'warning':'success');
+  }catch(error){
+    if(!append){
+      $('#wedropNoCosts').hidden=true;
+      $('#wedropFinancialResults').hidden=true;
+      document.querySelectorAll('.wedrop-financial-metric')
+        .forEach(node=>{node.hidden=true;});
+    }
+    wdSetNotice('#wedropCoverageStatus',
+      'Não foi possível atualizar o cruzamento: '+error.message+
+      '. Os dados exibidos podem estar desatualizados. Tente novamente.','error');
   }finally{
+    wedropTableLoading=false;
     button.disabled=false;button.textContent='Atualizar cruzamento';
+    more.disabled=false;
   }
 }
 $('#wedropRefreshBtn').onclick=refreshWeDropCoverage;
