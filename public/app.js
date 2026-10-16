@@ -1407,6 +1407,11 @@ $('#shopeeFinanceLoad').onclick=async()=>{
   shopeeFinanceBusy=true;
   const button=$('#shopeeFinanceLoad');
   button.disabled=true;button.textContent='Consultando repasses reais...';
+  // Esconder números da consulta anterior ao trocar período: nunca exibir como atual.
+  financeReport=null;financeSkuBalances.clear();renderFinanceSkuList();
+  for(const id of ['#shopeeFinanceVerified','#shopeeFinancePayout',
+    '#shopeeFinanceCosts','#shopeeFinanceBalance'])
+    $(id).textContent='—';
   $('#shopeeFinanceData').hidden=true;
   wdSetNotice('#shopeeFinanceStatus',
     'Buscando pedidos concluídos e detalhes de pagamento da Shopee. Não estamos presumindo taxas ou despesas.','info');
