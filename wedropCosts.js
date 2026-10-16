@@ -42,6 +42,28 @@ export async function readWeDropCosts(shopId){
   return readAll('shopee_wedrop_costs','shop_id=eq.'+id+'&order=supplier_sku.asc',
     'supplier_sku,unit_cost,source_file,imported_at');
 }
+export async function readWeDropSyncState(shopId){
+  const rows=await request('shopee_wedrop_sync_state',
+    '?shop_id=eq.'+validShopId(shopId)+
+    '&select=source_kind,source_name,source_hash,imported_skus,changed_skus,matched_skus,status,last_success_at,last_checked_at,last_error&limit=1');
+  return rows[0]||null;
+}
+export async function saveWeDropSyncState(shopId,state){
+  const row={
+    shop_id:validShopId(shopId),
+    source_kind:String(state.sourceKind||'').slice(0,30),
+    source_name:String(state.sourceName||'').slice(0,135),
+    source_hash:String(state.sourceHash||'').slice(0,100),
+    imported_skus:Number(state.importedSkus)||0,
+    changed_skus:Number(state.changedSkus)||0,
+    matched_skus:Number(state.matchedSkus)||0,
+    status:'success',last_success_at:new Date().toISOString(),
+    last_checked_at:new Date().toISOString(),last_error:null
+  };
+  await request('shopee_wedrop_sync_state','?on_conflict=shop_id',{
+    method:'POST',rows:[row],prefer:'resolution=merge-duplicates,return=minimal'
+  });
+}
 export async function saveWeDropCosts(shopId,costs,{overwrite=false,sourceFile=''}={}){
   const id=validShopId(shopId);
   if(!Array.isArray(costs)||costs.length<1||costs.length>15000)
