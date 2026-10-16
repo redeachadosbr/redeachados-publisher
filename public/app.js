@@ -22,6 +22,7 @@ async function loadStatus(){
     $('#statusPill').textContent=s.connected?'API conectada':'API pendente';
     $('#statusPill').classList.toggle('ok',Boolean(s.connected));
     $('#testBtn').disabled=!s.connected;
+    $('#retryTestBtn').disabled=!s.connected;
     $('#refreshBtn').disabled=!s.connected;
     $('#signatureBtn').disabled=!s.configured||s.mode!=='live';
   }catch(e){$('#connTitle').textContent='Erro de configuração';$('#connMeta').textContent=e.message;$('#statusPill').textContent='Erro';}
@@ -50,7 +51,67 @@ $('#signatureBtn').onclick=async()=>{
   }catch(e){notice.textContent='Diagnóstico indisponível: '+e.message;debug(e.message);}
   finally{btn.disabled=false;btn.textContent=oldLabel;}
 };
-$('#testBtn').onclick=async()=>{try{const d=await json('/api/shopee/test-shop');debug(d);}catch(e){debug(e.message);}};
+// Um clique em "Testar loja" deve mostrar resposta mesmo com diagnóstico técnico fechado.
+function showShopTestNotice(state,title,details){
+  const box=$('#shopTestNotice');
+  box.hidden=false;
+  box.dataset.state=state;
+  box.replaceChildren();
+  const heading=document.createElement('strong');
+  heading.textContent=title;
+  const explanation=document.createElement('p');
+  explanation.textContent=details;
+  box.append(heading,explanation);
+}
+function shopTestAdvice(message){
+  if(/(?:timed? ?out|timeout|AbortError|TimeoutError)/i.test(message))
+    return 'A Shopee demorou para responder. Confira o proxy/conexão e clique em Repetir teste.';
+  if(/(?:proxy|fetch failed|network|ECONN|ENOTFOUND|UND_ERR)/i.test(message))
+    return 'Verifique a comunicação do serviço Shopee com a API e o proxy Oracle, depois repita.';
+  if(/(?:error_sign|Wrong sign|sign inválid)/i.test(message))
+    return 'A Shopee recusou a assinatura desta chamada. Confira a Live Partner Key e o Partner ID.';
+  if(/(?:token|401|unauthorized|expired|invalid_auth|auth_failed)/i.test(message))
+    return 'A autorização pode estar inválida ou vencida. Confira a conexão antes de renovar ou reconectar.';
+  if(/(?:403|permission|denied|forbidden)/i.test(message))
+    return 'Confira as permissões de leitura da loja no aplicativo da Shopee Open Platform.';
+  return 'Confira a mensagem de erro. Você pode repetir o teste sem perder a autorização da loja.';
+}
+async function runShopTest(){
+  const button=$('#testBtn'), retry=$('#retryTestBtn');
+  if(button.disabled)return;
+  button.disabled=true;
+  retry.hidden=true;
+  button.textContent='Testando...';
+  showShopTestNotice('loading','Verificando comunicação com a Shopee...',
+    'Consultando as informações oficiais da loja. Aguarde até 30 segundos.');
+  try{
+    const result=await json('/api/shopee/test-shop',{signal:AbortSignal.timeout(30000)});
+    if(result.ok!==true)throw new Error(result.error||'A Shopee não confirmou o teste.');
+    const shop=result.response&&typeof result.response==='object'?result.response:result;
+    const shopId=Number(result.shopId||shop.shop_id||0);
+    const name=String(shop.shop_name||shop.shopName||'').trim();
+    const region=String(shop.region||shop.country||'').trim();
+    const label=name?'Loja: '+name+' · ':'';
+    const regionLabel=region?' · Região: '+region:'';
+    showShopTestNotice('success','Loja consultada com sucesso!',
+      label+'Shop ID: '+(shopId||'não informado')+regionLabel+
+      '. A chamada oficial get_shop_info respondeu com sucesso.');
+    debug({ok:true,shopId,shopName:name||null,region:region||null,testedAt:new Date().toISOString()});
+  }catch(error){
+    const message=error?.name==='TimeoutError'
+      ?'Tempo limite de 30 segundos atingido.'
+      :String(error?.message||'Falha desconhecida ao consultar a loja.');
+    showShopTestNotice('error','Falha ao testar a loja',message+' '+shopTestAdvice(message));
+    debug({ok:false,error:message,testedAt:new Date().toISOString()});
+  }finally{
+    button.disabled=false;
+    button.textContent='Testar loja';
+    retry.hidden=false;
+    retry.disabled=false;
+  }
+}
+$('#testBtn').onclick=runShopTest;
+$('#retryTestBtn').onclick=runShopTest;
 $('#refreshBtn').onclick=async()=>{try{const d=await json('/api/shopee/refresh',{method:'POST'});debug(d);await loadStatus();}catch(e){debug(e.message);}};
 
 $('#loadProductsBtn').onclick=async()=>{
