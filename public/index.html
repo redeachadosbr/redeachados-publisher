@@ -3,24 +3,25 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<meta name="theme-color" content="#192820">
+<meta name="theme-color" content="#0A1C3A">
+<link rel="icon" type="image/svg+xml" href="/brand-logo.svg">
 <title>Rede Achados BR · Gestão Shopee</title>
-<link rel="stylesheet" href="/style.css?v=1.9.0">
+<link rel="stylesheet" href="/style.css?v=1.9.1">
 </head>
 <body>
 <div class="shell app-layout">
   <aside class="app-sidebar" id="appSidebar" aria-label="Navegação lateral">
     <a class="sidebar-brand" href="/app/inicio" data-go="overview" aria-label="Ir ao painel inicial">
-      <span class="sidebar-logo">RA<span>.</span></span>
+      <span class="sidebar-logo"><img src="/brand-logo.svg" alt="Rede Achados BR" width="46" height="46"></span>
       <span class="sidebar-brand-label"><strong>REDE ACHADOS <em>BR</em></strong><small>SHOPEE MANAGER</small></span>
     </a>
-    <div class="sidebar-workspace"><span class="workspace-avatar">S</span><span><strong>Minha loja Shopee</strong><small>Painel de operação</small></span><span class="workspace-chevron">⌄</span></div>
+    <div class="sidebar-workspace"><span class="workspace-avatar" aria-hidden="true"><svg viewBox="0 0 48 48"><path d="M12 15h24l-2 26H14z" fill="#EE4D2D"/><path d="M19 17v-5a5 5 0 0 1 10 0v5" fill="none" stroke="#EE4D2D" stroke-width="3.2" stroke-linecap="round"/><text x="24" y="34" fill="white" font-size="17" text-anchor="middle" font-weight="800">S</text></svg></span><span><strong>Minha loja Shopee</strong><small>Painel de operação</small></span><span class="workspace-chevron">⌄</span></div>
     <nav class="sidebar-nav" id="sidebarNav" aria-label="Menu principal">
 <div class="nav-group"><div class="nav-group-title">VISÃO GERAL</div><a class="tab nav-link active" href="/app/inicio" data-tab="overview" data-page="inicio" aria-current="page"><svg class="nav-icon" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/><rect x="14" y="14" width="7" height="7" rx="1.5"/></svg><span class="nav-name">Painel inicial</span></a></div>
 <div class="nav-group"><div class="nav-group-title">OPERAÇÃO</div><a class="tab nav-link" href="/app/produtos" data-tab="products" data-page="produtos"><svg class="nav-icon" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="m12 2 9 5-9 5-9-5 9-5Z"/><path d="M3 7v10l9 5 9-5V7M12 12v10"/></svg><span class="nav-name">Produtos e anúncios</span></a><a class="tab nav-link" href="/app/pedidos" data-tab="orders" data-page="pedidos"><svg class="nav-icon" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3h2l2.6 12.5a2 2 0 0 0 2 1.5h9.3a2 2 0 0 0 2-1.5L22 7H6"/><circle cx="10" cy="21" r="1"/><circle cx="19" cy="21" r="1"/></svg><span class="nav-name">Pedidos e vendas</span></a><a class="tab nav-link" href="/app/envios" data-tab="alerts" data-page="envios"><svg class="nav-icon" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="5" width="13" height="12" rx="1.5"/><path d="M15 9h4l3 4v4h-7M7 17h1M18 17h1"/><circle cx="6" cy="18" r="2"/><circle cx="18" cy="18" r="2"/></svg><span class="nav-name">Monitor de envios</span><span class="sidebar-counter" id="monitorBadge"></span></a></div>
 <div class="nav-group"><div class="nav-group-title">GESTÃO</div><a class="tab nav-link" href="/app/ads" data-tab="ads" data-page="ads"><svg class="nav-icon" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="m3 11 12-5v12L3 13v-2ZM15 8a4 4 0 0 1 0 8M7 14l1 6h4l-1-4"/></svg><span class="nav-name">Shopee Ads</span></a><a class="tab nav-link" href="/app/wedrop" data-tab="wedrop" data-page="wedrop"><svg class="nav-icon" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M3 10 12 4l9 6v10H3V10ZM3 10h18M9 20v-6h6v6"/></svg><span class="nav-name">Fornecedor WeDrop</span></a><a class="tab nav-link" href="/app/financeiro" data-tab="finance" data-page="financeiro"><svg class="nav-icon" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="3"/><path d="M7 15l4-4 3 2 4-5M16 8h2v2"/></svg><span class="nav-name">Financeiro</span></a></div>
 <div class="nav-group"><div class="nav-group-title">SISTEMA</div><a class="tab nav-link" href="/app/configuracoes" data-tab="settings" data-page="configuracoes"><svg class="nav-icon" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="m19 13.2 1.2 1-1.7 3-1.5-.6c-.4.4-.8.6-1.3.8l-.2 1.6h-3.4l-.2-1.6-1.3-.8-1.5.6-1.7-3 1.2-1v-2.4l-1.2-1 1.7-3 1.5.6c.4-.3.8-.6 1.3-.8l.2-1.6h3.4l.2 1.6c.5.2.9.5 1.3.8l1.5-.6 1.7 3-1.2 1v2.4Z"/></svg><span class="nav-name">Integrações e ajustes</span></a></div></nav>
-    <div class="sidebar-bottom"><div class="sidebar-support"><span class="sidebar-support-dot"></span><span><strong>Central Shopee</strong><small>Versão 1.9.0</small></span></div><small class="sidebar-copy">© Rede Achados BR</small></div>
+    <div class="sidebar-bottom"><div class="sidebar-support"><span class="sidebar-support-dot"></span><span><strong>Central Shopee</strong><small>Versão 1.9.1</small></span></div><small class="sidebar-copy">© Rede Achados BR</small></div>
   </aside>
   <button class="sidebar-scrim" id="sidebarScrim" type="button" aria-label="Fechar menu" hidden></button>
   <div class="workspace-main">
@@ -29,10 +30,11 @@
         <button id="sidebarToggle" class="topbar-icon-button" type="button" aria-label="Abrir menu" aria-controls="appSidebar" aria-expanded="false"><svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M4 7h16M4 12h16M4 17h16"/></svg></button>
         <span class="topbar-location">Central de gestão <span class="topbar-separator">/</span> <strong id="topbarSectionName">Painel inicial</strong></span>
       </div>
-      <div class="topbar-trailing"><div id="statusPill" class="pill">Verificando…</div><span class="topbar-account"><span class="topbar-avatar">RA</span><span>Administrador</span></span><button id="logoutBtn" class="topbar-logout" type="button" title="Sair do aplicativo">Sair</button></div>
+      <div class="topbar-trailing"><span class="shopee-integration-mark" title="Integração Shopee" aria-label="Integração Shopee"><svg viewBox="0 0 48 48" aria-hidden="true"><path d="M12 16h24l-2.5 25h-19z" fill="#EE4D2D"/><path d="M19 17V11a5 5 0 1 1 10 0v6" stroke="#EE4D2D" stroke-width="3" fill="none" stroke-linecap="round"/><text x="24" y="34" fill="white" font-size="17" font-weight="800" text-anchor="middle">S</text></svg><span>Shopee</span></span><div id="statusPill" class="pill">Verificando…</div><span class="topbar-account"><span class="topbar-avatar"><img src="/brand-logo.svg" alt="" width="30" height="30"></span><span>Administrador</span></span><button id="logoutBtn" class="topbar-logout" type="button" title="Sair do aplicativo">Sair</button></div>
     </header>
     <main class="workspace-content">
       <section id="login" class="card login-card hidden">
+        <div class="login-brand"><img src="/brand-logo.svg" alt="Rede Achados BR" width="66" height="66"><span>Rede Achados BR <small>Gestão integrada Shopee</small></span></div>
         <span class="eyebrow">ACESSO RESTRITO</span><h2>Entrar na central Shopee</h2><p>Informe sua senha administrativa para continuar.</p>
         <div class="login-row"><input id="password" type="password" placeholder="Senha do aplicativo" autocomplete="current-password"><button id="loginBtn">Entrar</button></div>
         <p id="loginMsg" class="msg" role="alert"></p>
@@ -46,21 +48,29 @@
             <p>Acompanhe anúncios, vendas, envios e custos. Cada área tem seu próprio espaço para você trabalhar sem se perder.</p>
             <div class="hero-actions"><button class="hero-action" type="button" data-go="alerts">Ver prazos de envio <svg class="nav-icon" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="5" width="13" height="12" rx="1.5"/><path d="M15 9h4l3 4v4h-7M7 17h1M18 17h1"/><circle cx="6" cy="18" r="2"/><circle cx="18" cy="18" r="2"/></svg></button><button class="hero-ghost" type="button" data-go="finance">Abrir financeiro</button></div>
           </div>
-          <div class="hero-graphic" aria-hidden="true"><div class="hero-graphic-mark">RA<span>.</span></div><span>OPERAÇÃO SHOPEE</span><div class="hero-graphic-lines"><i></i><i></i><i></i></div></div>
+          <div class="hero-graphic" aria-hidden="true"><img src="/brand-logo.svg" alt="" width="136" height="136"><span>REDE ACHADOS BR</span><div class="hero-graphic-lines"><i></i><i></i><i></i></div></div>
         </div>
         <div class="dashboard-block-head"><h3>Resumo da conexão</h3><span>Dados da integração autorizada</span></div>
         <div class="metrics dashboard-metrics">
-          <article><span>Conexão Shopee</span><strong id="mConnection">—</strong></article>
-          <article><span>Identificação da loja</span><strong id="mShop">—</strong></article>
-          <article><span>Ambiente</span><strong id="mMode">—</strong></article>
-          <article><span>Banco de dados</span><strong id="mStorage">—</strong></article>
+          <button class="kpi-tile interactive-tilt" type="button" data-go="settings" aria-label="Abrir integração Shopee">
+            <span class="kpi-topline"><span>Conexão Shopee</span><span class="kpi-symbol">◉</span></span><strong id="mConnection">—</strong><small class="kpi-foot">Ver integração <span aria-hidden="true">↗</span></small>
+          </button>
+          <button class="kpi-tile interactive-tilt" type="button" data-go="settings" aria-label="Abrir dados da loja">
+            <span class="kpi-topline"><span>Identificação da loja</span><span class="kpi-symbol">▣</span></span><strong id="mShop">—</strong><small class="kpi-foot">Dados da loja <span aria-hidden="true">↗</span></small>
+          </button>
+          <button class="kpi-tile interactive-tilt" type="button" data-go="settings" aria-label="Abrir ambiente da integração">
+            <span class="kpi-topline"><span>Ambiente</span><span class="kpi-symbol">◇</span></span><strong id="mMode">—</strong><small class="kpi-foot">Configuração <span aria-hidden="true">↗</span></small>
+          </button>
+          <button class="kpi-tile interactive-tilt" type="button" data-go="wedrop" aria-label="Abrir dados do fornecedor">
+            <span class="kpi-topline"><span>Banco de dados</span><span class="kpi-symbol">▤</span></span><strong id="mStorage">—</strong><small class="kpi-foot">Ver dados <span aria-hidden="true">↗</span></small>
+          </button>
         </div>
         <div class="dashboard-block-head"><h3>Acesso rápido</h3><span>Principais setores da operação</span></div>
         <div class="shortcut-grid">
-          <button type="button" class="shortcut" data-go="products"><span class="shortcut-symbol"><svg class="nav-icon" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="m12 2 9 5-9 5-9-5 9-5Z"/><path d="M3 7v10l9 5 9-5V7M12 12v10"/></svg></span><strong>Produtos</strong><small>Catálogo, estoque e anúncios</small><span class="shortcut-arrow">↗</span></button>
-          <button type="button" class="shortcut" data-go="orders"><span class="shortcut-symbol"><svg class="nav-icon" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3h2l2.6 12.5a2 2 0 0 0 2 1.5h9.3a2 2 0 0 0 2-1.5L22 7H6"/><circle cx="10" cy="21" r="1"/><circle cx="19" cy="21" r="1"/></svg></span><strong>Pedidos</strong><small>Pedidos e vendas recentes</small><span class="shortcut-arrow">↗</span></button>
-          <button type="button" class="shortcut" data-go="wedrop"><span class="shortcut-symbol"><svg class="nav-icon" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M3 10 12 4l9 6v10H3V10ZM3 10h18M9 20v-6h6v6"/></svg></span><strong>WeDrop</strong><small>Custos e SKUs vinculados</small><span class="shortcut-arrow">↗</span></button>
-          <button type="button" class="shortcut" data-go="finance"><span class="shortcut-symbol"><svg class="nav-icon" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="3"/><path d="M7 15l4-4 3 2 4-5M16 8h2v2"/></svg></span><strong>Financeiro</strong><small>Repasses e conferência de margem</small><span class="shortcut-arrow">↗</span></button>
+          <button type="button" class="shortcut interactive-tilt" data-go="products"><span class="shortcut-symbol"><svg class="nav-icon" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="m12 2 9 5-9 5-9-5 9-5Z"/><path d="M3 7v10l9 5 9-5V7M12 12v10"/></svg></span><strong>Produtos</strong><small>Catálogo, estoque e anúncios</small><span class="shortcut-arrow">↗</span></button>
+          <button type="button" class="shortcut interactive-tilt" data-go="orders"><span class="shortcut-symbol"><svg class="nav-icon" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3h2l2.6 12.5a2 2 0 0 0 2 1.5h9.3a2 2 0 0 0 2-1.5L22 7H6"/><circle cx="10" cy="21" r="1"/><circle cx="19" cy="21" r="1"/></svg></span><strong>Pedidos</strong><small>Pedidos e vendas recentes</small><span class="shortcut-arrow">↗</span></button>
+          <button type="button" class="shortcut interactive-tilt" data-go="wedrop"><span class="shortcut-symbol"><svg class="nav-icon" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M3 10 12 4l9 6v10H3V10ZM3 10h18M9 20v-6h6v6"/></svg></span><strong>WeDrop</strong><small>Custos e SKUs vinculados</small><span class="shortcut-arrow">↗</span></button>
+          <button type="button" class="shortcut interactive-tilt" data-go="finance"><span class="shortcut-symbol"><svg class="nav-icon" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="3"/><path d="M7 15l4-4 3 2 4-5M16 8h2v2"/></svg></span><strong>Financeiro</strong><small>Repasses e conferência de margem</small><span class="shortcut-arrow">↗</span></button>
         </div>
         <div class="dashboard-tip"><div class="dashboard-tip-icon"><svg class="nav-icon" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="5" width="13" height="12" rx="1.5"/><path d="M15 9h4l3 4v4h-7M7 17h1M18 17h1"/><circle cx="6" cy="18" r="2"/><circle cx="18" cy="18" r="2"/></svg></div><div><strong>Não perca os prazos de postagem</strong><p>O monitor de envios acompanha os pedidos e indica as pendências com base nos prazos que a Shopee disponibilizar.</p></div><button class="secondary" type="button" data-go="alerts">Abrir monitor</button></div>
       </section>
@@ -308,6 +318,6 @@
     </main>
   </div>
 </div>
-<script src="/app.js?v=1.9.0"></script>
+<script src="/app.js?v=1.9.1"></script>
 </body>
 </html>
