@@ -1,0 +1,28 @@
+name: Testes Shopee OAuth
+
+on:
+  push:
+    branches:
+      - feat/shopee-oauth-recuperacao-2026-10-16
+  pull_request:
+    paths:
+      - shopee.js
+      - server.js
+      - package.json
+      - tests/shopee-auth.test.js
+      - .github/workflows/shopee-oauth-check.yml
+
+jobs:
+  shopee-oauth:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Verificar sintaxe
+        run: node --check shopee.js && node --check server.js
+      - name: Testes de autenticação Shopee
+        run: node --test tests/shopee-auth.test.js
