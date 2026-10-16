@@ -12,11 +12,13 @@ import {loadShopeeFinance} from './shopeeFinance.js';
 import {financeAdsDates,matchFinanceAds} from './financeAdsSweep.js';
 import {financeRange} from './shopeeFinance.js';
 import {fetchCatalogPage,normalizeShopeeModels,validItemId} from './catalog.js';
-import {storeCatalogItems,storeCatalogModels,readCatalogCache,catalogStoreReady} from './catalogStore.js';
+import {storeCatalogItems,storeCatalogModels,readCatalogCache,catalogStoreReady,findExactCatalogSku} from './catalogStore.js';
 import {previewWeDropCsv,prepareWeDropImport,MAX_CSV_CHARS} from './wedropCsv.js';
 import {saveWeDropCosts,getWeDropCoverage,compareIncomingCosts,pendingWeDropModels} from './wedropCosts.js';
 import {readWeDropSyncState,getStoredWeDropCostCount} from './wedropCosts.js';
 import {getSkuReview,searchSupplierSku,confirmSkuLink,undoSkuLink} from './wedropSkuReview.js';
+import {auditShopeeItem,validateSkuLookup} from './productOptimizer.js';
+import {optimizerSettings,saveOptimizerSettings} from './optimizerStore.js';
 import {createWeDropAutoScheduler,importSupplierAutomatically,supplierFeedConfig} from './wedropAutoSync.js';
 import {
   shopeeConfig,buildShopeeAuthorizationUrl,exchangeShopeeCode,refreshShopeeToken,
@@ -91,7 +93,7 @@ app.use(express.static(path.join(__dirname,'public')));
 // URLs próprias por setor do painel: recarregar/compartilhar não causa 404.
 // A sessão e autenticação das APIs continuam protegidas pelos mesmos middlewares.
 const appPagePaths=new Set([
-  'inicio','produtos','pedidos','envios','ads','wedrop','financeiro','configuracoes'
+  'inicio','produtos','otimizacao','pedidos','envios','ads','wedrop','financeiro','configuracoes'
 ]);
 app.get('/app/:section',(req,res)=>{
   if(!appPagePaths.has(String(req.params.section||'')))return res.status(404).send('Página não encontrada.');
@@ -100,7 +102,7 @@ app.get('/app/:section',(req,res)=>{
 });
 app.get('/app',(_req,res)=>res.redirect(302,'/app/inicio'));
 
-app.get('/api/health',(_req,res)=>res.json({ok:true,service:'Rede Achados BR Shopee API',version:'1.13.0',storage:authStore.status()}));
+app.get('/api/health',(_req,res)=>res.json({ok:true,service:'Rede Achados BR Shopee API',version:'1.14.0',storage:authStore.status()}));
 app.get('/api/auth-state',(req,res)=>res.json({locked:Boolean(envText('APP_PASSWORD')),loggedIn:!envText('APP_PASSWORD')||Boolean(req.session?.appAuth)}));
 app.post('/api/login',(req,res)=>{
   const required=envText('APP_PASSWORD');
@@ -530,6 +532,45 @@ app.get('/api/shopee/products/extra-info',mustLogin,async(req,res)=>{
     });
     res.json({ok:true,shopId:auth.shopId,...data});
   }catch(e){res.status(400).json({error:String(e.message||e)});}
+});
+
+// Preparação assistida de anúncios. Somente leitura da Shopee nesta versão;
+// auditoria jamais dispara update_item, mídia, alteração de preço ou estoque.
+app.get('/api/shopee/optimizer/find',mustLogin,requireWeDropAdmin,async(req,res)=>{
+  res.setHeader('Cache-Control','no-store');
+  try{
+    const sku=validateSkuLookup(req.query.sku);
+    const {auth}=await getValidAuth(req);
+    const matches=await findExactCatalogSku(auth.shopId,sku);
+    res.json({ok:true,sku,matches,
+      message:matches.length?'SKUs exatos localizados no catálogo armazenado. Confirme o Item ID antes de seguir.':
+        'SKU não está no cache. Sincronize Produtos e anúncios ou informe o Item ID da Shopee.'});
+  }catch(e){res.status(400).json({error:String(e.message||e).slice(0,240)});}
+});
+app.get('/api/shopee/optimizer/audit',mustLogin,requireWeDropAdmin,async(req,res)=>{
+  res.setHeader('Cache-Control','no-store');
+  try{
+    const itemId=validItemId(req.query.item_id);
+    const {auth,cfg}=await getValidAuth(req);
+    const record=await auditShopeeItem(cfg,auth,callShopeeShopApi,itemId);
+    res.json({ok:true,readOnly:true,record});
+  }catch(e){res.status(400).json({error:String(e.message||e).slice(0,320)});}
+});
+app.get('/api/shopee/optimizer/settings',mustLogin,requireWeDropAdmin,async(req,res)=>{
+  res.setHeader('Cache-Control','no-store');
+  try{
+    const {auth}=await getValidAuth(req);
+    res.json({ok:true,settings:await optimizerSettings(auth.shopId)});
+  }catch(e){res.status(503).json({error:String(e.message||e).slice(0,240)});}
+});
+app.post('/api/shopee/optimizer/settings',mustLogin,requireWeDropAdmin,async(req,res)=>{
+  res.setHeader('Cache-Control','no-store');
+  try{
+    const {auth}=await getValidAuth(req);
+    res.json({ok:true,settings:await saveOptimizerSettings(auth.shopId,{
+      imagePrompt:req.body?.imagePrompt,fiscalNotes:req.body?.fiscalNotes
+    })});
+  }catch(e){res.status(400).json({error:String(e.message||e).slice(0,240)});}
 });
 
 app.get('/api/shopee/orders',mustLogin,async(req,res)=>{

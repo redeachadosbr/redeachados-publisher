@@ -81,8 +81,8 @@ test('Financeiro mantém filtros e miniaturas de catálogo com indicadores sem n
  assert.match(js,/Nenhuma venda concluída verificada/);
  assert.match(css,/\.finance-thumbnail/);
  assert.match(css,/@media\(max-width:650px\)/);
- assert.match(html,/style\.css\?v=1\.13\.0/);
- assert.match(html,/app\.js\?v=1\.13\.0/);
+ assert.match(html,/style\.css\?v=1\.14\.0/);
+ assert.match(html,/app\.js\?v=1\.14\.0/);
 });
 test('não transforma custo de catálogo em custo vendido, nem inventa Ads',()=>{
  assert.match(backend,/get_escrow_detail/);

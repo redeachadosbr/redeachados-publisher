@@ -8,7 +8,7 @@ const css=readFileSync(new URL('../public/style.css',import.meta.url),'utf8');
 const server=readFileSync(new URL('../server.js',import.meta.url),'utf8');
 
 const pages=[
-  ['overview','inicio'],['products','produtos'],['orders','pedidos'],
+  ['overview','inicio'],['products','produtos'],['optimizer','otimizacao'],['orders','pedidos'],
   ['alerts','envios'],['ads','ads'],['wedrop','wedrop'],
   ['finance','financeiro'],['settings','configuracoes']
 ];
@@ -19,7 +19,7 @@ test('cada setor tem um item único no menu lateral e uma página independente',
     assert.match(app,new RegExp(key+":\\{slug:'"+route+"'"));
     assert.match(server,new RegExp("'"+route+"'"));
   }
-  assert.equal((index.match(/class="tabpane(?: active)?" id="tab-/g)||[]).length,8);
+  assert.equal((index.match(/class="tabpane(?: active)?" id="tab-/g)||[]).length,9);
   assert.match(index,/class="sidebar-nav"/);
   assert.match(index,/id="appSidebar"/);
   assert.match(index,/id="sidebarToggle"/);
@@ -62,8 +62,8 @@ test('IDs controlados pelo código existente permanecem únicos e presentes',()=
     const occur=(index.match(new RegExp('id="'+id+'"','g'))||[]).length;
     assert.equal(occur,1,'ID '+id+' deve existir uma vez');
   }
-  assert.match(index,/script src="\/app\.js\?v=1\.13\.0"/);
-  assert.match(index,/stylesheet" href="\/style\.css\?v=1\.13\.0"/);
+  assert.match(index,/script src="\/app\.js\?v=1\.14\.0"/);
+  assert.match(index,/stylesheet" href="\/style\.css\?v=1\.14\.0"/);
 });
 test('roteador suporta URLs próprias, refresh, voltar e avançar e atalhos',()=>{
   assert.match(app,/history\.pushState/);

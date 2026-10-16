@@ -96,3 +96,34 @@ export async function readCatalogCache(shopId){
   }
   throw Error('Cache acima de 30.000 itens. É necessário implementar paginação adicional antes de exibir tudo.');
 }
+
+export async function findExactCatalogSku(shopId,sku){
+  shopId=shopNumber(shopId);
+  sku=String(sku||'').trim();
+  if(!sku||sku.length>120||/[\\x00-\\x1F]/.test(sku))
+    throw Error('Informe um SKU válido da Shopee.');
+  const filter='shop_id=eq.'+shopId+'&limit=30&';
+  const [parents,models]=await Promise.all([
+    request('shopee_catalog_items','?'+filter+
+      'sku=eq.'+encodeURIComponent(sku)+
+      '&select=item_id,sku,item_name,item_status,image_url,has_model'),
+    request('shopee_catalog_models','?'+filter+
+      'model_sku=eq.'+encodeURIComponent(sku)+
+      '&select=item_id,model_id,model_sku,model_status')
+  ]);
+  const keyed=new Map();
+  for(const row of parents){
+    keyed.set(String(row.item_id)+':0',{
+      itemId:String(row.item_id),modelId:'0',sku:row.sku,title:row.item_name||'',
+      imageUrl:row.image_url||'',status:row.item_status||'',source:'item_sku'
+    });
+  }
+  for(const row of models){
+    keyed.set(String(row.item_id)+':'+String(row.model_id),{
+      itemId:String(row.item_id),modelId:String(row.model_id),
+      sku:row.model_sku,title:'Variação do Item '+row.item_id,
+      imageUrl:'',status:row.model_status||'',source:'model_sku'
+    });
+  }
+  return [...keyed.values()];
+}
