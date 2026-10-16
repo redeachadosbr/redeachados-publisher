@@ -40,3 +40,13 @@ No Environment **apenas** de `redeachados-shopee`:
 4. Comparar o prazo de 1 ou 2 pedidos com o Seller Center Shopee.
 5. Testar transição real de um novo pedido e, quando houver, de envio. Alertas históricos não são reemitidos.
 6. Configurar o canal de Telegram caso sejam desejadas notificações fora do navegador e executar um teste controlado.
+
+## Validação de continuidade (versão 1.3.1)
+
+- O monitor persiste no Supabase a **última tentativa, última execução bem-sucedida e último erro** na tabela `shopee_monitor_runs`. Esses dados sobrevivem a reinícios e suspensões do Render.
+- O painel sinaliza verde se sincronizou há no máximo cerca de 12 minutos, e destaque de alerta se a última sincronização está atrasada ou a última tentativa falhou.
+- Uma tela verde **não significa garantia de próximos alertas**: ela prova somente a última sincronização. O plano Render Free pode hibernar após inatividade e suspender o processo.
+- Para acompanhar um pedido real, abra **Monitor de envios** e use **Verificar pedidos agora**. Cheque o prazo contra a Central do Vendedor.
+- Sem upgrade ou scheduler externo, não alegar atendimento garantido 24/7.
+- **Canal externo desabilitado por padrão:** somente envia Telegram se `SHOPEE_ALERT_CHANNEL=telegram` for configurado expressamente. Sem essa variável (ou com `panel`), os alertas são somente painel/browser e nenhuma mensagem externa é enviada.
+- O navegador necessita permissão e página aberta para avisos; com navegador fechado ou computador desligado, os eventos ficam registrados no painel para consulta posterior.

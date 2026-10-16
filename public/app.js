@@ -201,7 +201,7 @@ function renderPending(orders){
   if(!orders.length){
     const tr=document.createElement('tr');
     const td=document.createElement('td');td.colSpan=4;
-    td.textContent='Nenhum pedido pendente de envio foi identificado nesta verificação.';
+    td.textContent='Nenhum pedido pendente de envio na última sincronização concluída. Confira a saúde do monitor acima.';
     tr.appendChild(td);body.appendChild(tr);return;
   }
   for(const x of orders){
@@ -253,10 +253,14 @@ async function refreshMonitor(){
     setMonitorText('#monitorLastRun',status.lastSuccessAt
       ?new Date(status.lastSuccessAt).toLocaleString('pt-BR',{timeZone:'America/Sao_Paulo'}):'Aguardando');
     setMonitorText('#monitorBadge',(d.unread||0)?'('+(d.unread||0)+')':'');
+    const health=status.health||{};
+    const panelOnly=status.alertChannel!=='telegram';
+    const notice=$('#monitorStatus');
+    notice.dataset.health=health.state||'never';
     let text=(status.working?'Verificação em andamento. ':'')+
-      (status.enabled?'Monitor ativo durante o funcionamento do Render.':'Monitor desativado.')+
-      ' Intervalo: '+(status.intervalMinutes||5)+' min.'+
-      (status.telegramConfigured?' Telegram configurado.':' Telegram ainda não configurado.')+
+      (health.reason||'Aguardando verificação de saúde do monitor.')+
+      ' Consultas previstas a cada '+(status.intervalMinutes||5)+' min somente enquanto o Render estiver ativo.'+
+      (panelOnly?' Alertas somente no painel e neste navegador.':' Canal externo habilitado.')+
       (status.lastError?' Último erro: '+status.lastError:'');
     setMonitorText('#monitorStatus',text);
     renderPending(pending);
@@ -290,6 +294,6 @@ $('#enableBrowserAlertsBtn').onclick=async()=>{
   b.textContent=permission==='granted'?'Avisos do navegador ativados':'Avisos bloqueados no navegador';
 };
 if(typeof setTimeout==='function')setTimeout(()=>refreshMonitor(),1500);
-if(typeof setInterval==='function')setInterval(()=>{if(document.visibilityState!=='hidden')refreshMonitor();},60000);
+if(typeof setInterval==='function')setInterval(()=>refreshMonitor(),60000);
 
 boot();

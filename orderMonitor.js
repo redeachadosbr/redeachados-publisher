@@ -1,4 +1,5 @@
 import {projectOrder,buildOrderEvents,sortPending,actionable} from './orderAlerts.js';
+import {deriveMonitorHealth} from './monitorHealth.js';
 
 function envText(k){return String(process.env[k]||'').trim();}
 function config(){
@@ -23,6 +24,17 @@ async function db(path,{method='GET',body,prefer}={}){
   if(!response.ok)throw new Error('Banco do monitor Shopee HTTP '+response.status);
   const raw=await response.text();
   return raw?JSON.parse(raw):[];
+}
+async function readRun(shopId){
+  const rows=await db('shopee_monitor_runs?shop_id=eq.'+shopId+'&select=*&limit=1');
+  return Array.isArray(rows)&&rows.length?rows[0]:null;
+}
+async function writeRun(shopId,patch){
+  const prior=await readRun(shopId)||{};
+  const row={...prior,...patch,shop_id:shopId,updated_at:new Date().toISOString()};
+  await db('shopee_monitor_runs?on_conflict=shop_id',{
+    method:'POST',body:[row],prefer:'resolution=merge-duplicates,return=minimal'
+  });
 }
 function limit(value,defaultValue=50,max=100){return Math.min(max,Math.max(1,Number(value)||defaultValue));}
 async function readLatest(shopId){
@@ -53,6 +65,8 @@ async function persistAlert(shopId,event){
   return Array.isArray(saved)&&saved.length===1?saved[0]:null;
 }
 async function sendTelegram(event){
+  // Somente painel/navegador por padrão. Um canal externo nunca é habilitado implicitamente.
+  if(envText('SHOPEE_ALERT_CHANNEL')!=='telegram')return {configured:false};
   const token=envText('SHOPEE_ALERT_TELEGRAM_BOT_TOKEN');
   const chatId=envText('SHOPEE_ALERT_TELEGRAM_CHAT_ID');
   if(!token||!chatId)return {configured:false};
@@ -124,10 +138,12 @@ export function createShopeeOrderMonitor({getAuth,callApi,intervalMs=300000}){
     if(working)return {busy:true,lastSuccessAt:successfulRun};
     working=true;
     previousRun=new Date().toISOString();
+    let shopId=null;
     try{
       const {cfg,auth}=await getAuth();
       if(cfg.mode!=='live')throw Error('O monitor exige conexão Shopee LIVE.');
-      const shopId=Number(auth.shopId);
+      shopId=Number(auth.shopId);
+      await writeRun(shopId,{last_started_at:previousRun,last_error:null});
       const existing=await readLatest(shopId);
       const snapshot=new Map(existing.map(o=>[o.order_sn,o]));
       const bootstrap=existing.length===0;
@@ -170,10 +186,18 @@ export function createShopeeOrderMonitor({getAuth,callApi,intervalMs=300000}){
       ordersScanned=entries.length;
       alertsCreated=created;
       successfulRun=new Date().toISOString();
+      await writeRun(shopId,{
+        last_success_at:successfulRun,last_error:null,last_error_at:null,
+        scanned_count:ordersScanned,new_alerts_count:created
+      });
       lastError=null;
       return {ok:true,scanned:ordersScanned,newAlerts:created,lastSuccessAt:successfulRun};
     }catch(error){
       lastError=String(error.message||error).slice(0,250);
+      if(shopId){
+        try{await writeRun(shopId,{last_error:lastError,last_error_at:new Date().toISOString()});}
+        catch(dbError){console.warn('Shopee heartbeat falhou:',String(dbError.message||dbError).slice(0,100));}
+      }
       throw error;
     }finally{working=false;}
   }
@@ -182,19 +206,27 @@ export function createShopeeOrderMonitor({getAuth,callApi,intervalMs=300000}){
       enabled:ready(),working,intervalMinutes:Math.round(intervalMs/60000),
       lastAttemptAt:previousRun,lastSuccessAt:successfulRun,lastError,
       scannedInLastRun:ordersScanned,newAlertsLastRun:alertsCreated,
-      telegramConfigured:Boolean(envText('SHOPEE_ALERT_TELEGRAM_BOT_TOKEN')&&envText('SHOPEE_ALERT_TELEGRAM_CHAT_ID')),
-      deliveryNote:'Monitoramento periódico depende de o serviço Render estar ativo. Alertas externos exigem Telegram configurado.'
+      telegramConfigured:envText('SHOPEE_ALERT_CHANNEL')==='telegram'&&Boolean(envText('SHOPEE_ALERT_TELEGRAM_BOT_TOKEN')&&envText('SHOPEE_ALERT_TELEGRAM_CHAT_ID')),
+      alertChannel:envText('SHOPEE_ALERT_CHANNEL')==='telegram'?'telegram':'panel-browser',
+      deliveryNote:'Avisos limitados ao painel e navegador aberto. Monitoramento periódico depende de o Render estar ativo.'
     };
   }
   async function dashboard(){
     const {auth}=await getAuth();
     const shopId=Number(auth.shopId);
-    const [pending,alerts]=await Promise.all([readPending(shopId),readRecentAlerts(shopId)]);
+    const [pending,alerts,run]=await Promise.all([readPending(shopId),readRecentAlerts(shopId),readRun(shopId)]);
+    const health=deriveMonitorHealth(run,{expectedIntervalMinutes:Math.round(intervalMs/60000)});
     const rows=sortPending(pending.map(p=>({
       order_sn:p.order_sn,order_status:p.order_status,create_time:p.create_time,
       ship_by_date:p.ship_by_date,pay_time:p.pay_time,pickup_done_time:p.pickup_done_time
     })));
-    return {status:status(),pending:rows,alerts,unread:alerts.filter(a=>!a.read_at).length};
+    const state=status();
+    return {status:{
+      ...state,
+      lastSuccessAt:health.lastSuccessAt||state.lastSuccessAt,
+      lastAttemptAt:health.lastAttemptAt||state.lastAttemptAt,
+      health
+    },pending:rows,alerts,unread:alerts.filter(a=>!a.read_at).length};
   }
   async function markRead(shopId,alertKey){
     if(typeof alertKey!=='string'||alertKey.length>200||!alertKey.startsWith(shopId+':'))
