@@ -14,17 +14,42 @@ async function loadStatus(){
   try{
     const s=await json('/api/shopee/status');
     $('#connTitle').textContent=s.connected?'Shopee conectada':'Shopee ainda não conectada';
-    $('#connMeta').textContent=`Partner ID: ${s.partnerId||'-'} · Shop ID: ${s.shopId||'-'} · API: ${s.apiHost||'-'}`;
+    $('#connMeta').textContent=`Partner ID: ${s.partnerId||'-'} · Shop ID: ${s.connected?s.shopId:'aguardando autorização Live'} · API: ${s.apiHost||'-'}`;
     $('#mConnection').textContent=s.connected?'Conectada':'Pendente';
-    $('#mShop').textContent=s.shopId||'—';
+    $('#mShop').textContent=s.connected?s.shopId:'—';
     $('#mMode').textContent=(s.mode||'—').toUpperCase();
     $('#mStorage').textContent=s.storage?.supabaseConfigured?'Supabase':'Local';
     $('#statusPill').textContent=s.connected?'API conectada':'API pendente';
     $('#statusPill').classList.toggle('ok',Boolean(s.connected));
+    $('#testBtn').disabled=!s.connected;
+    $('#refreshBtn').disabled=!s.connected;
+    $('#signatureBtn').disabled=!s.configured||s.mode!=='live';
   }catch(e){$('#connTitle').textContent='Erro de configuração';$('#connMeta').textContent=e.message;$('#statusPill').textContent='Erro';}
 }
 $('#loginBtn').onclick=async()=>{try{await json('/api/login',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({password:$('#password').value})});$('#login').classList.add('hidden');$('#app').classList.remove('hidden');await loadStatus();}catch(e){$('#loginMsg').textContent=e.message;}};
 $('#connectBtn').onclick=()=>location.href='/auth/shopee/start';
+$('#signatureBtn').onclick=async()=>{
+  const btn=$('#signatureBtn'),notice=$('#signatureNotice');
+  const oldLabel=btn.textContent;
+  btn.disabled=true;btn.textContent='Verificando...';
+  notice.hidden=false;notice.textContent='Consultando a autenticação oficial Shopee com segurança...';
+  try{
+    const result=await json('/api/shopee/signature-diagnostic',{method:'POST'});
+    const summary=(result.results||[]).map(x=>{
+      const option=x.format==='as_configured'?'Chave configurada':'Teste sem prefixo shpk';
+      const status=x.classification==='wrong_sign'?'Rejeitada: Wrong sign'
+        :x.classification==='authorization_redirect'?'Redirecionamento de autorização'
+        :x.classification==='authorization_page'?'Página de autorização recebida'
+        :x.classification==='network_error'?'Falha de rede'
+        :x.classification==='different_api_error'?'Outro erro da Shopee'
+        :'Resultado inconclusivo';
+      return option+': '+status+(x.requestId?' (ID '+x.requestId+')':'');
+    }).join(' · ');
+    notice.textContent=summary+'. '+(result.recommendation||'');
+    debug({mode:result.mode,partnerId:result.partnerId,keyHasShpkPrefix:result.keyHasShpkPrefix,results:result.results,recommendation:result.recommendation});
+  }catch(e){notice.textContent='Diagnóstico indisponível: '+e.message;debug(e.message);}
+  finally{btn.disabled=false;btn.textContent=oldLabel;}
+};
 $('#testBtn').onclick=async()=>{try{const d=await json('/api/shopee/test-shop');debug(d);}catch(e){debug(e.message);}};
 $('#refreshBtn').onclick=async()=>{try{const d=await json('/api/shopee/refresh',{method:'POST'});debug(d);await loadStatus();}catch(e){debug(e.message);}};
 
