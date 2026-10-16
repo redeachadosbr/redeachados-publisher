@@ -84,7 +84,7 @@ app.use(session({
 }));
 app.use(express.static(path.join(__dirname,'public')));
 
-app.get('/api/health',(_req,res)=>res.json({ok:true,service:'Rede Achados BR Shopee API',version:'1.7.0',storage:authStore.status()}));
+app.get('/api/health',(_req,res)=>res.json({ok:true,service:'Rede Achados BR Shopee API',version:'1.7.1',storage:authStore.status()}));
 app.get('/api/auth-state',(req,res)=>res.json({locked:Boolean(envText('APP_PASSWORD')),loggedIn:!envText('APP_PASSWORD')||Boolean(req.session?.appAuth)}));
 app.post('/api/login',(req,res)=>{
   const required=envText('APP_PASSWORD');
@@ -374,7 +374,9 @@ app.get('/api/shopee/wedrop/coverage',mustLogin,requireWeDropAdmin,async(req,res
   res.setHeader('Cache-Control','no-store');
   try{
     const {auth}=await getValidAuth(req);
-    res.json({ok:true,...await getWeDropCoverage(auth.shopId)});
+    const filter=String(req.query.filter||'matched');
+    const offset=Number(req.query.offset||0);
+    res.json({ok:true,...await getWeDropCoverage(auth.shopId,{filter,offset,limit:500})});
   }catch(error){
     res.status(400).json({error:String(error.message||error).slice(0,350)});
   }
