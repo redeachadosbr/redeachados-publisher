@@ -565,20 +565,52 @@ async function loadWeDropSourceState(){
     const status=await json('/api/shopee/wedrop/auto/status',{
       signal:AbortSignal.timeout(30000)
     });
-    const state=status.state;
+    const saved=status.catalogStored===true&&Number(status.storedCosts)>0;
+    const state=status.state||null;
+    $('#wedropStoredCatalog').hidden=!saved;
+    $('#wedropNoCatalogMessage').hidden=saved;
+    $('#wedropSourceLoadError').hidden=true;
+    if(saved){
+      $('#wedropStoredName').textContent=status.savedCatalogName||
+        'Catálogo de custos WeDrop';
+      const savedAt=status.savedAt
+        ?new Date(status.savedAt).toLocaleString('pt-BR'):'data não informada';
+      $('#wedropStoredSummary').textContent=
+        wdNum(status.storedCosts)+' SKUs com custo salvos permanentemente no Supabase. '+
+        'Última sincronização: '+savedAt+'. '+
+        (state?'Última conferência: '+wdNum(state.changed_skus)+' custos novos ou alterados. ':'')+
+        'Os anúncios Shopee utilizam estes custos automaticamente no cruzamento.';
+    }else{
+      $('#wedropUploadDetails').open=true;
+      $('#wedropNoCatalogMessage').textContent=
+        'Ainda não há custos WeDrop cadastrados nesta loja. '+
+        'Selecione um CSV oficial uma única vez para começar.';
+    }
     $('#wedropSourceStatus').textContent=
-      (state?.last_success_at
-        ?'Última sincronização: '+new Date(state.last_success_at).toLocaleString('pt-BR')+
-          ' · '+wdNum(state.imported_skus)+' SKUs no último catálogo · '+
-          wdNum(state.changed_skus)+' custos novos ou alterados.'
-        :'Ainda não há sincronização automática registrada.')+
-      ' '+status.feedStatus;
+      status.feedConfigured
+      ?'Conexão autorizada com a WeDrop configurada. '+status.feedStatus
+      :'Catálogo já salvo continua disponível. Para detectar atualizações futuras sem enviar outro CSV, ainda falta conectar um feed/API autorizado da WeDrop.';
     $('#wedropCheckFeedBtn').hidden=!status.feedConfigured;
   }catch(error){
-    $('#wedropSourceStatus').textContent=
-      'Não foi possível consultar o histórico automático: '+error.message;
+    // Jamais apresentar falha de leitura como se o catálogo tivesse desaparecido.
+    $('#wedropSourceLoadError').hidden=false;
+    $('#wedropSourceLoadError').textContent=
+      'Não foi possível conferir agora o catálogo salvo: '+error.message+
+      '. Seus custos não foram apagados. Tente atualizar o cruzamento.';
+    $('#wedropSourceStatus').textContent='Falha temporária na verificação da origem.';
   }
 }
+$('#wedropUseStoredBtn').onclick=async()=>{
+  const button=$('#wedropUseStoredBtn');
+  if(button.disabled)return;
+  button.disabled=true;button.textContent='Atualizando vínculos...';
+  try{
+    await refreshWeDropCoverage();
+    await loadWeDropSourceState();
+  }finally{
+    button.disabled=false;button.textContent='Atualizar vínculos com catálogo salvo';
+  }
+};
 $('#wedropCheckFeedBtn').onclick=async()=>{
   const button=$('#wedropCheckFeedBtn');button.disabled=true;
   wdSetNotice('#wedropAutoStatus','Conferindo catálogo da origem autorizada...','info');
@@ -590,6 +622,9 @@ $('#wedropCheckFeedBtn').onclick=async()=>{
       ?'Catálogo da origem não mudou desde a última sincronização.'
       :'Feed atualizado: '+wdNum(d.changedCosts)+' custos alterados.', 'success');
     await refreshWeDropCoverage();await loadWeDropSourceState();
+    $('#wedropUploadDetails').open=false;
+    // Não é possível preservar a seleção do arquivo no navegador;
+    // o catálogo oficial já foi convertido em registros permanentes no Supabase.
   }catch(error){
     wdSetNotice('#wedropAutoStatus','Falha na consulta do feed: '+error.message,'error');
   }finally{button.disabled=false;}
