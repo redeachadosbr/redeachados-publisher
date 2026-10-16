@@ -1,0 +1,26 @@
+name: Validar serviço Shopee
+
+on:
+  push:
+    branches:
+      - feat/shopee-live-oauth-v2-20261016
+  pull_request:
+    branches:
+      - shopee-service
+
+jobs:
+  test-shopee:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Instalar dependências Shopee
+        run: npm install
+      - name: Verificar sintaxe
+        run: npm run check
+      - name: Executar testes Shopee
+        run: npm test
