@@ -594,7 +594,7 @@ installFinanceBridge(app,async(req)=>{
   const finance=await loadShopeeFinance(cfg,auth,callShopeeShopApi,{days:15});
   const orders=(finance.rows||[]).map(o=>({
     orderId:String(o.orderSn||''),date:null,
-    netReceived:Number.isFinite(Number(o.payout))?Number(o.payout):null
+    netReceived:o.payout!==null&&o.payout!==undefined&&Number.isFinite(Number(o.payout))?Number(o.payout):null
   }));
   let ads={status:'unknown',amount:null,source:'Shopee Ads API'};
   const now=new Date(),start=new Date(now.getTime()-14*86400000),day=d=>d.toISOString().slice(0,10);
