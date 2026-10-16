@@ -142,3 +142,19 @@ button:disabled{opacity:.52;cursor:not-allowed}
 .wedrop-table-paging{justify-content:center;margin-top:15px}
 #wedropTableStatus{margin:7px 0 12px;line-height:1.45}
 @media(max-width:650px){.wedrop-status-tabs button{flex:1 1 100%}}
+
+/* Fonte WeDrop já importada: deixar cadastro salvo como informação principal. */
+.wedrop-stored-catalog{border:1px solid #cce2d0;background:#f6fbf7;border-radius:14px;padding:19px;margin:15px 0}
+.wedrop-stored-header{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap}
+.wedrop-stored-header strong{font-size:16px;color:#234a31}
+#wedropStoredBadge{background:#e0f2e5;color:#226239;border-radius:999px;padding:6px 12px;font-size:12px;font-weight:700}
+.wedrop-stored-name{font-size:16px;font-weight:700;overflow-wrap:anywhere;margin:12px 0 5px}
+.wedrop-stored-catalog .hint{line-height:1.5;max-width:95ch}
+.wedrop-stored-catalog .actions{margin:12px 0}
+.wedrop-upload-details{margin:14px 0;padding:14px;border:1px solid #ddd9d0;border-radius:12px}
+.wedrop-upload-details>summary{cursor:pointer;font-weight:650;line-height:1.45}
+.wedrop-upload-details[open]>summary{margin-bottom:12px}
+#wedropSourceStatus{line-height:1.5;margin:13px 0}
+#wedropSourceLoadError[hidden],#wedropNoCatalogMessage[hidden],#wedropStoredCatalog[hidden]{display:none!important}
+#wedropSourceLoadError{background:#fff7ed;border-color:#e6d3ac;line-height:1.5}
+@media(max-width:700px){.wedrop-stored-catalog{padding:14px}.wedrop-stored-catalog .actions button{width:100%}}
