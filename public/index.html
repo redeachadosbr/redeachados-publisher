@@ -155,11 +155,19 @@
         </div>
         <div id="wedropFinancialResults" class="card wedrop-results" hidden>
           <h2>Cruzamento financeiro por SKU</h2>
-          <p class="hint">Esta análise será exibida somente após importar custos WeDrop reais. Preço de catálogo não é necessariamente preço final de venda. A diferença bruta exclui taxas, frete, descontos, Ads e devoluções — não é lucro líquido.</p>
+          <p class="hint">As correspondências já confirmadas aparecem primeiro. Os anúncios sem vínculo ficam em aba própria para revisão; não aplicamos custo por aproximação de código.</p>
+          <div class="wedrop-status-tabs" role="group" aria-label="Filtrar produtos por situação do custo">
+            <button type="button" id="wedropTabMatched" class="secondary active" aria-pressed="true">Com custo vinculado</button>
+            <button type="button" id="wedropTabUnmatched" class="secondary" aria-pressed="false">Pendentes de vínculo</button>
+            <button type="button" id="wedropTabAll" class="secondary" aria-pressed="false">Todos</button>
+          </div>
+          <p id="wedropTableStatus" class="hint" role="status" aria-live="polite"></p>
+          <p class="hint">Preço de catálogo não é necessariamente preço efetivo de venda. A diferença bruta exclui taxas, frete, descontos, Ads e devoluções — não é lucro líquido.</p>
           <div class="table-wrap"><table>
             <thead><tr><th>Produto</th><th>SKU</th><th>Preço catálogo</th><th>Custo WeDrop</th><th>Diferença bruta</th><th>Situação</th></tr></thead>
             <tbody id="wedropCoverageBody"></tbody>
           </table></div>
+          <div class="actions wedrop-table-paging"><button id="wedropTableMoreBtn" class="secondary" type="button" hidden>Mostrar mais registros</button></div>
         </div>
       </section>
 
@@ -236,5 +244,5 @@
     </section>
   </main>
 </div>
-<script src="/app.js?v=1.7.0"></script>
+<script src="/app.js?v=1.7.1"></script>
 </body></html>
