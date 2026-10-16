@@ -118,7 +118,7 @@ export function matchWeDropCosts(items,models,costs){
   };
 }
 
-export async function pendingWeDropModels(shopId,{limit=10}={}){
+export async function pendingWeDropModels(shopId,{limit=10,exclude=[]}={}){
   const id=validShopId(shopId);
   const [items,models]=await Promise.all([
     readAll('shopee_catalog_items','shop_id=eq.'+id+'&order=item_id.asc',
@@ -128,10 +128,12 @@ export async function pendingWeDropModels(shopId,{limit=10}={}){
   ]);
   const present=new Set(models.map(x=>String(x.item_id)));
   const pending=items.filter(x=>x.has_model&&!present.has(String(x.item_id)));
-  const max=Math.max(1,Math.min(10,Number(limit)||10));
+  const max=Math.max(1,Math.min(500,Number(limit)||10));
+  const excluding=new Set(Array.isArray(exclude)?exclude.map(String):[]);
   return {
     totalPending:pending.length,
-    items:pending.slice(0,max).map(x=>({itemId:String(x.item_id),title:String(x.item_name||'')}))
+    items:pending.filter(x=>!excluding.has(String(x.item_id))).slice(0,max)
+      .map(x=>({itemId:String(x.item_id),title:String(x.item_name||'')}))
   };
 }
 export async function compareIncomingCosts(shopId,costs){
