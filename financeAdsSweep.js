@@ -34,7 +34,7 @@ export function matchFinanceAds(finance,ads){
  const sold=new Map(financialSku.map(row=>[String(row.sku),row]));
  const entries=new Map();
  let totalSpend=0,convertedSpend=0,spendWithoutConversion=0,
-     spendUnassigned=0,allocatedSpend=0;
+     spendUnassigned=0,allocatedSpend=0,spendMetricUnknown=0;
  const review=[];
  for(const c of campaigns){
   const spent=money(amount(c.expense));
@@ -44,6 +44,13 @@ export function matchFinanceAds(finance,ads){
   const campaignId=String(c.campaignId||'');
   totalSpend=money(totalSpend+spent);
   if(!spent)continue;
+  if(c.directOrdersObserved===false){
+    spendMetricUnknown=money(spendMetricUnknown+spent);
+    spendUnassigned=money(spendUnassigned+spent);
+    review.push({campaignId,expense:spent,directOrders:null,
+      situation:'Métrica de venda direta não retornada pela Shopee; gasto não atribuído'});
+    continue;
+  }
   if(conversions===0){
     spendWithoutConversion=money(spendWithoutConversion+spent);
     review.push({campaignId,expense:spent,directOrders:0,
@@ -53,7 +60,7 @@ export function matchFinanceAds(finance,ads){
   convertedSpend=money(convertedSpend+spent);
   const skus=ids.length===1?skuByItem.get(ids[0]):null;
   if(ids.length!==1||!skus||skus.size!==1||
-      itemsBySku.get([...skus||[]][0])?.size!==1){
+      itemsBySku.get(Array.from(skus||[])[0])?.size!==1){
     spendUnassigned=money(spendUnassigned+spent);
     review.push({campaignId,expense:spent,directOrders:conversions,
       situation:'Campanha com vários produtos, variações, ou sem item ID confirmado; sem rateio arbitrário'});
@@ -85,7 +92,8 @@ export function matchFinanceAds(finance,ads){
   reconciliation:'by_item_period_not_by_order',
   spendTotal:money(totalSpend),spendWithDirectConversions:money(convertedSpend),
   spendWithoutDirectConversions:money(spendWithoutConversion),
-  spendUnassigned:money(spendUnassigned),spendAllocatedToSoldSku:money(allocatedSpend),
+  spendUnassigned:money(spendUnassigned),spendMetricUnknown:money(spendMetricUnknown),
+  spendAllocatedToSoldSku:money(allocatedSpend),
   campaignCount:campaigns.length,
   skuCosts,
   review,
