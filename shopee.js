@@ -133,6 +133,79 @@ export function buildShopeeAuthorizationUrl(cfg){
   url.searchParams.set('redirect',cfg.redirectUri);
   return url.toString();
 }
+/**
+ * Verifica a aceitação da assinatura no endpoint de autorização sem expor a
+ * Partner Key, URLs assinadas ou tokens. Requisições apenas de leitura.
+ * O navegador do lojista continua sendo necessário para a autorização real.
+ */
+export async function diagnoseShopeeSignature(cfg,{httpFetch=fetch}={}){
+  requireConfigured(cfg);
+  const candidates=[{format:'as_configured',key:cfg.partnerKey}];
+  if(/^shpk/i.test(cfg.partnerKey)&&cfg.partnerKey.length>4){
+    candidates.push({format:'without_shpk_prefix',key:cfg.partnerKey.slice(4)});
+  }
+  const results=[];
+  for(const candidate of candidates){
+    let response;
+    try {
+      // Endpoint consultado diretamente, como acontece no navegador.
+      // Não encaminhar chave em corpo, URL ou header.
+      const url=buildShopeeAuthorizationUrl({...cfg,partnerKey:candidate.key});
+      response=await httpFetch(url,{
+        method:'GET',redirect:'manual',
+        headers:{Accept:'text/html,application/json'},
+        signal:AbortSignal.timeout(9000)
+      });
+      const contentType=String(response.headers?.get?.('content-type')||'').toLowerCase();
+      const raw=(await response.text()).slice(0,1500);
+      let data={};
+      if(contentType.includes('json')||raw.trimStart().startsWith('{')){
+        try{data=JSON.parse(raw);}catch{}
+      }
+      const error=String(data.error||'').slice(0,80);
+      const classification=error==='error_sign'?'wrong_sign'
+        :error?'different_api_error'
+        :response.status>=300&&response.status<400?'authorization_redirect'
+        :response.ok&&contentType.includes('text/html')?'authorization_page'
+        :'inconclusive';
+      const dateHeader=response.headers?.get?.('date');
+      const serverMs=dateHeader?Date.parse(dateHeader):NaN;
+      const driftSeconds=Number.isFinite(serverMs)?Math.round(Math.abs(Date.now()-serverMs)/1000):null;
+      results.push({
+        format:candidate.format,
+        classification,
+        httpStatus:response.status,
+        errorCode:error||null,
+        requestId:typeof data.request_id==='string'?data.request_id.slice(0,80):null,
+        clockDriftSeconds:driftSeconds
+      });
+    }catch{
+      results.push({format:candidate.format,classification:'network_error',httpStatus:null,errorCode:null,requestId:null,clockDriftSeconds:null});
+    }
+  }
+  const first=results[0];
+  const second=results[1];
+  let recommendation='A resposta não permitiu confirmar a assinatura. Verifique a conexão com a Shopee e tente novamente.';
+  if(first.classification==='wrong_sign'&&second?.classification==='wrong_sign'){
+    recommendation='Ambos os formatos retornaram Wrong sign. Confira a Live Partner Key no console e substitua apenas SHOPEE_PARTNER_KEY no Render, sem divulgá-la.';
+  }else if(first.classification==='wrong_sign'&&
+    ['authorization_redirect','authorization_page'].includes(second?.classification)){
+    recommendation='O teste indica que a assinatura sem o prefixo shpk passou da etapa que rejeitava a chave completa. É necessário ajustar o formato antes de conectar.';
+  }else if(['authorization_redirect','authorization_page'].includes(first.classification)){
+    recommendation='A assinatura original não retornou Wrong sign neste teste. Tente uma nova autorização pelo botão Conectar Shopee; não reutilize links antigos.';
+  }else if(first.classification==='wrong_sign'){
+    recommendation='A assinatura atual foi rejeitada. Confira a Live Partner Key no Render e o Partner ID correspondente.';
+  }else if(first.classification==='different_api_error'){
+    recommendation='A assinatura não apresentou Wrong sign, mas a Shopee retornou outro erro. Verifique código e request ID.';
+  }
+  return {
+    mode:cfg.mode,partnerId:cfg.partnerId,
+    keyHasShpkPrefix:/^shpk/i.test(cfg.partnerKey),
+    checkedAt:new Date().toISOString(),
+    results,recommendation
+  };
+}
+
 export async function exchangeShopeeCode(cfg,{code,shopId}={}){
   requireConfigured(cfg);
   if(!code)throw new Error('Shopee não retornou o code de autorização.');
