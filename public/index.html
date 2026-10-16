@@ -59,9 +59,41 @@
       </section>
 
       <section class="tabpane" id="tab-products">
-        <div class="section-head"><div><span class="eyebrow">PRODUTOS</span><h2>Anúncios da loja</h2></div><button id="loadProductsBtn">Carregar produtos</button></div>
-        <div id="productsSummary" class="notice">Ainda não carregado.</div>
-        <div class="table-wrap"><table><thead><tr><th>Item ID</th><th>Status</th><th>Atualização</th><th>Ação</th></tr></thead><tbody id="productsBody"></tbody></table></div>
+        <div class="section-head">
+          <div><span class="eyebrow">CATÁLOGO SHOPEE</span><h2>Anúncios e estoque da loja</h2></div>
+          <div class="actions">
+            <button id="loadProductsBtn">Sincronizar catálogo</button>
+            <button class="secondary" id="stopProductsBtn" hidden>Interromper</button>
+            <button class="secondary" id="exportProductsBtn" disabled>Exportar CSV</button>
+          </div>
+        </div>
+        <div class="card catalog-controls">
+          <label>Buscar título, SKU ou Item ID <input id="productsSearch" placeholder="Pesquisar anúncios carregados" type="search"></label>
+          <label>Situação
+            <select id="productsStatusFilter"><option value="ALL">Todas</option><option value="NORMAL">Ativos</option><option value="UNLIST">Inativos</option><option value="BANNED">Bloqueados</option><option value="REVIEWING">Em análise</option></select>
+          </label>
+          <label>Ordenar
+            <select id="productsSort"><option value="updated">Mais recentes</option><option value="name">Nome</option><option value="stock">Menor estoque primeiro</option><option value="price">Menor preço primeiro</option></select>
+          </label>
+        </div>
+        <div class="metrics catalog-metrics">
+          <article><span>Anúncios carregados</span><strong id="catalogTotal">—</strong></article>
+          <article><span>Ativos</span><strong id="catalogActive">—</strong></article>
+          <article><span>Inativos</span><strong id="catalogUnlisted">—</strong></article>
+          <article><span>Sem SKU</span><strong id="catalogNoSku">—</strong></article>
+          <article><span>Estoque zero</span><strong id="catalogStockZero">—</strong></article>
+        </div>
+        <div id="productsSummary" class="notice" role="status" aria-live="polite">Clique em Sincronizar catálogo para percorrer todos os anúncios. A consulta pode levar alguns minutos.</div>
+        <div class="table-wrap"><table>
+          <thead><tr><th>Produto</th><th>Item ID / SKU</th><th>Status</th><th>Preço (R$)</th><th>Estoque</th><th>Promoção</th><th>Atualização</th><th>Ação</th></tr></thead>
+          <tbody id="productsBody"></tbody>
+        </table></div>
+        <div class="actions catalog-paging"><span id="productsRowsShown" class="hint"></span><button id="productsMoreBtn" class="secondary" type="button" hidden>Mostrar mais anúncios</button></div>
+        <section id="productDetailsPanel" class="card catalog-details" hidden aria-live="polite">
+          <div class="section-head"><h2 id="productDetailsTitle">Detalhes do anúncio</h2><button id="closeProductDetails" class="secondary" type="button">Fechar</button></div>
+          <p id="productDetailsStatus" class="hint">Consulte as variações de um anúncio.</p>
+          <div class="table-wrap"><table><thead><tr><th>Variação</th><th>SKU</th><th>Status</th><th>Preço</th><th>Estoque</th></tr></thead><tbody id="productModelsBody"></tbody></table></div>
+        </section>
       </section>
 
       <section class="tabpane" id="tab-orders">
@@ -137,5 +169,5 @@
     </section>
   </main>
 </div>
-<script src="/app.js?v=1.4.1"></script>
+<script src="/app.js?v=1.5.0"></script>
 </body></html>

@@ -8,6 +8,7 @@ import {createAuthStore} from './authStore.js';
 import {mergeShopeeOrderDates} from './orderView.js';
 import {createShopeeOrderMonitor} from './orderMonitor.js';
 import {loadShopeeAdsOverview} from './adsReport.js';
+import {fetchCatalogPage,normalizeShopeeModels,validItemId} from './catalog.js';
 import {
   shopeeConfig,buildShopeeAuthorizationUrl,exchangeShopeeCode,refreshShopeeToken,
   getShopeeShopInfo,normalizeShopeeTokenResult,safeShopeeStatus,callShopeeShopApi,
@@ -78,7 +79,7 @@ app.use(session({
 }));
 app.use(express.static(path.join(__dirname,'public')));
 
-app.get('/api/health',(_req,res)=>res.json({ok:true,service:'Rede Achados BR Shopee API',version:'1.4.1',storage:authStore.status()}));
+app.get('/api/health',(_req,res)=>res.json({ok:true,service:'Rede Achados BR Shopee API',version:'1.5.0',storage:authStore.status()}));
 app.get('/api/auth-state',(req,res)=>res.json({locked:Boolean(envText('APP_PASSWORD')),loggedIn:!envText('APP_PASSWORD')||Boolean(req.session?.appAuth)}));
 app.post('/api/login',(req,res)=>{
   const required=envText('APP_PASSWORD');
@@ -201,6 +202,37 @@ app.get('/api/shopee/test-shop',mustLogin,async(req,res)=>{
   }catch(e){res.status(400).json({error:String(e.message||e)});}
 });
 
+
+// Catálogo operacional: página de anúncios enriquecida com dados de base.
+app.get('/api/shopee/catalog/page',mustLogin,async(req,res)=>{
+  res.setHeader('Cache-Control','no-store');
+  try{
+    const {auth,cfg}=await getValidAuth(req);
+    const page=await fetchCatalogPage(cfg,auth,callShopeeShopApi,{
+      status:String(req.query.status||'NORMAL'),
+      offset:req.query.offset??0,
+      pageSize:req.query.page_size??50
+    });
+    res.json({ok:true,shopId:auth.shopId,...page});
+  }catch(error){
+    res.status(400).json({error:String(error.message||error).slice(0,320)});
+  }
+});
+app.get('/api/shopee/catalog/models',mustLogin,async(req,res)=>{
+  res.setHeader('Cache-Control','no-store');
+  try{
+    const itemId=validItemId(req.query.item_id);
+    const {auth,cfg}=await getValidAuth(req);
+    const data=await callShopeeShopApi(cfg,{
+      path:'/api/v2/product/get_model_list',accessToken:auth.accessToken,
+      shopId:auth.shopId,query:{item_id:itemId}
+    });
+    const models=normalizeShopeeModels(data);
+    res.json({ok:true,itemId,models});
+  }catch(error){
+    res.status(400).json({error:String(error.message||error).slice(0,320)});
+  }
+});
 
 app.get('/api/shopee/products',mustLogin,async(req,res)=>{
   try{
