@@ -114,11 +114,25 @@
               <label>Coluna de custo de aquisição (R$) <select id="wedropCostColumn"><option value="">Escolha a coluna de custo — não preço de venda</option></select></label>
             </div>
             <div id="wedropSample" class="table-wrap"></div>
-            <label class="wedrop-flag"><input id="wedropSkipInvalid" type="checkbox"> Ignorar linhas inválidas e informar quantas foram descartadas</label>
-            <label class="wedrop-flag"><input id="wedropOverwrite" type="checkbox"> Atualizar os custos já cadastrados para os mesmos SKUs (sem marcar, preserva os existentes)</label>
-            <button id="wedropImportBtn" type="button">Confirmar importação dos custos</button>
+            <div class="wedrop-options">
+              <label class="wedrop-flag"><input id="wedropSkipInvalid" type="checkbox"><span>Ignorar linhas inválidas e informar quantas foram descartadas</span></label>
+              <label class="wedrop-flag"><input id="wedropOverwrite" type="checkbox"><span>Atualizar custos já cadastrados para os mesmos SKUs (desmarcado, preserva os existentes)</span></label>
+            </div>
+            <button id="wedropValidateBtn" type="button">Validar SKUs e custos antes de importar</button>
+            <p id="wedropValidationStatus" class="notice" role="status" aria-live="polite">Valide o mapeamento para conferir a correspondência com o catálogo Shopee.</p>
+            <label id="wedropZeroMatchLabel" class="wedrop-flag" hidden><input id="wedropAllowUnmatched" type="checkbox"><span>Confirmo que desejo importar esses custos mesmo sem correspondência com o catálogo Shopee atual.</span></label>
+            <button id="wedropImportBtn" type="button" disabled>Confirmar importação dos custos</button>
           </div>
           <p id="wedropImportStatus" class="notice" role="status" aria-live="polite">Nenhum arquivo importado nesta sessão.</p>
+        </div>
+        <div class="card wedrop-variants">
+          <div class="section-head">
+            <div><h2>Variações da Shopee ainda não consultadas</h2>
+              <p class="hint">Busque os modelos reais desses anúncios para vincular seus SKUs aos custos WeDrop. A operação apenas lê informações da Shopee.</p></div>
+            <div class="actions"><button id="wedropSyncModelsBtn" type="button">Sincronizar variações pendentes</button>
+              <button class="secondary" id="wedropStopModelsBtn" type="button" hidden>Interromper</button></div>
+          </div>
+          <p id="wedropModelsStatus" class="notice" role="status" aria-live="polite">Use Sincronizar variações pendentes para completar o catálogo.</p>
         </div>
         <div class="metrics wedrop-metrics">
           <article><span>SKUs comparados</span><strong id="wedropCompared">—</strong></article>
@@ -211,5 +225,5 @@
     </section>
   </main>
 </div>
-<script src="/app.js?v=1.6.0"></script>
+<script src="/app.js?v=1.6.1"></script>
 </body></html>
