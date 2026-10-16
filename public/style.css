@@ -405,3 +405,173 @@ button.shortcut:hover{border-color:#c2d5c3;background:#fcfdfb}
   #app>.tabpane{animation:none}
   .app-sidebar,button,.nav-link{transition:none!important}
 }
+
+/* =============================================================
+   Shopee Manager 1.9.1 — Microinterações e profundidade premium
+   Identidade: azul RA + laranja Shopee. Efeitos sutis e leves.
+   ============================================================= */
+:root{
+ --saas-sidebar:#081c38;--saas-sidebar-deep:#061124;
+ --saas-gold:#edb95f;--saas-ink:#152642;
+ --saas-muted:#66758a;--saas-paper:#f2f5fa;
+ --saas-outline:#e5ebf3;--saas-orange:#ee4d2d;
+ --brand-blue:#0875e2;--brand-navy:#08275b;
+ --shadow-lift:0 11px 19px -15px rgba(5,35,80,.25),0 21px 29px -24px rgba(9,39,91,.29),0 2px 5px rgba(24,53,96,.055);
+}
+body{color:var(--saas-ink);background:linear-gradient(135deg,#f4f7fb,#f5f6f9 58%,#f3f7fc)}
+.app-sidebar{
+ background:radial-gradient(circle at 15% 3%,rgba(32,104,204,.24),transparent 30%),linear-gradient(163deg,#0b2b59 0%,#081c38 57%,#061328 100%);
+ box-shadow:inset -1px 0 rgba(255,255,255,.09),5px 0 21px rgba(14,40,82,.06)
+}
+.sidebar-brand-label strong em{color:#e9b96a}
+.sidebar-brand-label small{color:#acc9f7}
+.sidebar-logo{width:48px;height:48px;flex:none;border-radius:15px;overflow:hidden;padding:0;background:#fff;
+ box-shadow:0 3px 7px #0005,0 7px 17px #00153b40,inset 0 1px #fff;border:1px solid #7cb6ff56}
+.sidebar-logo img{display:block;width:100%;height:100%;object-fit:cover;border-radius:14px}
+.sidebar-workspace{margin-bottom:21px;background:linear-gradient(120deg,#ffffff15,#ffffff07);border-color:#93beee35;
+ box-shadow:inset 0 1px rgba(255,255,255,.14),0 8px 18px rgba(0,13,35,.15)}
+.workspace-avatar{background:linear-gradient(145deg,#fff,#e9f1ff);border:1px solid #c5dbff;
+ box-shadow:0 4px 10px #0003}
+.workspace-avatar svg{width:29px;height:29px}
+.nav-group-title{color:#8eadd4}
+.app-sidebar .nav-link,.app-sidebar .nav-link.tab{color:#c4d6ef;transition:color .18s ease,background .18s ease,transform .18s ease,box-shadow .18s ease}
+.app-sidebar .nav-link:hover{background:#ffffff16;color:white;transform:translateX(2px)}
+.app-sidebar .nav-link.active,.app-sidebar .nav-link[aria-current="page"]{
+ background:linear-gradient(120deg,#fff7f4,#ffede7);
+ color:#2b3650;border:1px solid #ffc6b3;
+ box-shadow:0 3px 7px #0002,0 10px 21px #03122636,inset 0 1px #fff;
+ position:relative}
+.app-sidebar .nav-link.active:before{content:"";position:absolute;left:-5px;top:12px;bottom:12px;width:3px;border-radius:5px;background:#ee4d2d}
+.app-sidebar .nav-link.active .nav-icon{color:#e75437}
+.sidebar-support-dot{background:#51bdfc;box-shadow:0 0 0 4px #51bdfc23}
+header.workspace-topbar{background:#fffffff2;backdrop-filter:blur(9px);
+ border-bottom:1px solid #e6ebf2;box-shadow:0 3px 12px #08265d09}
+.topbar-location strong,.page-intro h1{color:#102c56}
+.topbar-avatar{border:1px solid #cbdffd;background:#fff;overflow:hidden;
+ box-shadow:0 3px 8px #0a387025}
+.topbar-avatar img{width:100%;height:100%;object-fit:cover}
+.topbar-account{border-color:#e7eefa}
+.shopee-integration-mark{display:inline-flex;align-items:center;gap:5px;white-space:nowrap;
+ color:#d44425;font-weight:800;font-size:12px;border:1px solid #f3ded5;border-radius:9px;
+ background:linear-gradient(#fff,#fff8f5);padding:4px 8px 4px 4px;box-shadow:0 2px 5px #ec674117}
+.shopee-integration-mark svg{width:26px;height:26px}
+.workspace-topbar .pill.ok{background:#eef9f3;border-color:#cce9d4;color:#187946}
+.page-group{color:#dd5d42}
+.page-intro{margin-bottom:19px}
+.dashboard-block-head{margin:22px 0 12px}
+.dashboard-block-head h3{color:#15345d}
+.card,.settings-grid .card,.shopee-finance-panel{
+ border:1px solid #e4eaf4;
+ background:linear-gradient(150deg,#fff 0%,#fff 69%,#fafcff 100%);
+ box-shadow:0 2px 4px #0e2f5610,0 12px 26px -22px #0e2d6b4f,inset 0 1px #fff;
+ transition:box-shadow .2s ease,border-color .2s ease,transform .2s ease;
+}
+.card:hover{border-color:#cfdded;box-shadow:0 3px 6px #0e2f5610,0 17px 30px -24px #073d8055,inset 0 1px #fff}
+.welcome-hero{
+ min-height:198px;margin-bottom:22px;padding:23px clamp(23px,3vw,38px);
+ border-radius:17px;
+ background:radial-gradient(circle at 85% -15%,rgba(75,154,255,.46),transparent 48%),
+  linear-gradient(112deg,#082859 0%,#073c85 55%,#0864b5 100%);
+ border:1px solid #3578ce70;box-shadow:0 5px 12px rgba(8,41,92,.14),0 24px 34px -27px rgba(12,52,114,.57),inset 0 1px rgba(255,255,255,.2);
+}
+.welcome-hero:before{width:250px;height:250px;background:radial-gradient(circle,#92bffb40,transparent 66%)}
+.welcome-kicker{font-size:10px;color:#d6eaff}
+.welcome-dot{background:#ffbd71;box-shadow:0 0 0 4px #ee80392d}
+.welcome-hero h2{font-size:clamp(24px,2.4vw,31px);margin:9px 0 7px}
+.welcome-hero p{font-size:12px;line-height:1.6;margin:7px 0}
+.hero-actions{margin-top:14px}
+.hero-actions button{padding:10px 14px;min-height:40px;font-size:12px}
+button.hero-action{color:#0a3974;background:linear-gradient(#fff,#edf5ff);border:1px solid #fff;
+ box-shadow:0 2px 2px rgba(255,255,255,.35),0 6px 12px #001e5160}
+button.hero-ghost{background:#ffffff14}
+.hero-graphic{min-width:135px;width:158px;height:145px;transform:rotate(-3deg);
+ border-radius:18px;box-shadow:0 12px 22px #001a4e5c,0 2px 3px #0002,inset 0 1px rgba(255,255,255,.35);
+ background:linear-gradient(130deg,#ffffff2e,#ffffff0b)}
+.hero-graphic img{width:106px;height:106px;object-fit:cover;border-radius:50%;
+ box-shadow:0 7px 12px #001d4a60,0 0 0 2px #cde7ffdd}
+.hero-graphic>span{letter-spacing:.1em;font-size:8px;margin-top:7px;color:#e9f4ff}
+.hero-graphic-lines{display:none}
+.dashboard-metrics{grid-template-columns:repeat(4,minmax(0,1fr));gap:12px}
+.dashboard-metrics .kpi-tile{
+ --rx:0deg;--ry:0deg;
+ width:100%;min-width:0;display:flex;flex-direction:column;align-items:stretch;text-align:left;
+ justify-content:space-between;gap:7px;padding:15px 17px;min-height:122px;border:1px solid #e3ebf6;
+ border-radius:14px;color:#1a3458;background:linear-gradient(145deg,#fff,#f9fbff);
+ box-shadow:0 1px 1px #fff inset,0 3px 7px #0d336b13,0 10px 20px -18px #0b397d90;
+ position:relative;overflow:hidden;
+ transform:perspective(920px) rotateX(var(--rx)) rotateY(var(--ry));
+ transition:transform .18s ease,box-shadow .18s ease,border-color .18s ease;
+ cursor:pointer;
+}
+.dashboard-metrics .kpi-tile:after{content:"";position:absolute;left:12px;right:12px;bottom:0;
+ height:2px;background:linear-gradient(90deg,#2284ee,#ee4d2d);opacity:.7;border-radius:8px}
+.kpi-topline{width:100%;display:flex;align-items:center;justify-content:space-between;gap:6px;
+ color:#71839a;font-weight:670;font-size:11px}
+.kpi-symbol{width:28px;height:28px;border-radius:9px;display:grid;place-items:center;
+ background:linear-gradient(#eef6ff,#e6f0fd);color:#2575d2;font-size:17px;
+ border:1px solid #d9e8fa;box-shadow:inset 0 1px #fff,0 3px 5px #0c3d8112}
+.dashboard-metrics .kpi-tile strong{font-size:clamp(15px,1.6vw,21px);
+ color:#19335b;letter-spacing:-.035em;line-height:1.15;overflow-wrap:anywhere}
+.kpi-foot{font-size:10px;font-weight:680;color:#647fa1;display:flex;justify-content:space-between}
+.kpi-foot span{color:#e95d3d}
+.dashboard-metrics .kpi-tile:hover,
+button.shortcut:hover{
+ border-color:#9abff2;box-shadow:0 7px 12px -10px #0a3f8499,0 18px 28px -19px #093c8f88,0 1px 0 #fff inset;
+}
+.dashboard-metrics .kpi-tile:focus-visible,button.shortcut:focus-visible{outline:3px solid #ef6b49;outline-offset:2px}
+.shortcut-grid{gap:12px}
+button.shortcut{
+ --rx:0deg;--ry:0deg;
+ min-height:138px;gap:7px;padding:15px 17px;border-radius:14px;
+ background:linear-gradient(145deg,#fff,#f9fbff);border:1px solid #e1eaf4;
+ box-shadow:0 1px #fff inset,0 3px 7px #12356012,0 11px 20px -18px #183c8099;
+ transform:perspective(920px) rotateX(var(--rx)) rotateY(var(--ry));
+ transition:transform .18s ease,box-shadow .2s ease,border-color .2s ease;
+}
+button.shortcut strong{font-size:13px;color:#243e61}
+button.shortcut small{font-size:10px;line-height:1.35;color:#71819a}
+.shortcut-symbol{width:34px;height:34px;border-radius:11px;color:#1271d4;
+ background:linear-gradient(145deg,#eff6ff,#dcecff);border:1px solid #cbe2ff;
+ box-shadow:inset 0 1px #fff,0 4px 7px #1153af23}
+.shortcut-symbol svg{height:19px;width:19px}
+.shortcut-arrow{font-size:17px;right:14px;top:15px;color:#e77351;transition:transform .15s}
+button.shortcut:hover .shortcut-arrow{transform:translate(2px,-2px)}
+.dashboard-tip{margin-top:17px;background:linear-gradient(125deg,#eef5ff,#e5f1fd);
+ border:1px solid #d0e2fa;box-shadow:inset 0 1px #fff,0 3px 10px #163d7b13}
+.dashboard-tip-icon{background:#d7eaff;color:#125da9}
+button,.app-sidebar .nav-link,.shopee-integration-mark{will-change:auto}
+.workspace-main .tabpane button:not(.kpi-tile):not(.shortcut):not(:disabled):hover{
+ box-shadow:0 4px 13px #ee4d2d24,0 2px 2px #0000000a;
+}
+.workspace-main .tabpane button.secondary:not(:disabled):hover{box-shadow:0 5px 14px #0d2d6a23}
+.table-wrap{border-color:#dce6f2;box-shadow:0 3px 9px #0b367709,inset 0 1px #fff}
+table th{background:#f2f7fe;color:#5f7693}
+table tr:hover td{background:#f3f8ff}
+.notice{box-shadow:inset 0 1px #fff9,0 3px 10px #12418a0b}
+#tab-finance .shopee-finance-panel{box-shadow:0 3px 7px #0e2f5610,0 14px 22px -20px #153f7852}
+.wedrop-stored-catalog{background:linear-gradient(130deg,#f3faff,#eef7ff);border-color:#c9e1fa}
+.wedrop-stored-header strong{color:#174d83}
+#wedropStoredBadge{color:#1c6dab;background:#d9efff}
+.login-brand{display:flex;align-items:center;gap:13px;margin:0 0 22px;
+ background:linear-gradient(125deg,#f0f7ff,#fff);border:1px solid #dcecff;border-radius:13px;padding:10px 13px}
+.login-brand img{width:58px;height:58px;border-radius:50%;box-shadow:0 5px 12px #0745842e}
+.login-brand span{font-size:16px;font-weight:800;color:#143566}
+.login-brand small{display:block;font-size:11px;color:#687f9d;font-weight:580;margin-top:4px}
+@media(max-width:1170px){.dashboard-metrics{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media(max-width:700px){
+ .shopee-integration-mark span{display:none}
+ .shopee-integration-mark{padding:3px}
+ .welcome-hero{padding:18px 19px}
+ .dashboard-metrics .kpi-tile{padding:13px 12px;min-height:108px}
+ button.shortcut{padding:13px 12px;min-height:124px}
+ .kpi-symbol{height:25px;width:25px}
+}
+@media(hover:hover) and (pointer:fine){
+ .dashboard-metrics .kpi-tile:hover,
+ .shortcut-grid button.shortcut:hover{transform:perspective(920px) rotateX(var(--rx)) rotateY(var(--ry)) translateY(-3px)}
+}
+@media(prefers-reduced-motion:reduce){
+ .dashboard-metrics .kpi-tile,button.shortcut,.app-sidebar .nav-link,button,
+ .shortcut-arrow{transition:none!important;animation:none!important;transform:none!important}
+ .app-sidebar .nav-link:hover{transform:none}
+}
