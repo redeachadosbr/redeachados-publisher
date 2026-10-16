@@ -42,6 +42,22 @@ export async function readWeDropCosts(shopId){
   return readAll('shopee_wedrop_costs','shop_id=eq.'+id+'&order=supplier_sku.asc',
     'supplier_sku,unit_cost,source_file,imported_at');
 }
+export function parseSupabaseExactCount(header){
+  const match=String(header||'').match(/\\/(\\d+)$/);
+  return match?Number(match[1]):null;
+}
+export async function getStoredWeDropCostCount(shopId){
+  const id=validShopId(shopId),cfg=credentials();
+  const headers={apikey:cfg.key,Accept:'application/json','Prefer':'count=exact'};
+  if(/^eyJ[A-Za-z0-9_-]*\\./.test(cfg.key))headers.Authorization='Bearer '+cfg.key;
+  const res=await fetch(cfg.url+'/rest/v1/shopee_wedrop_costs?shop_id=eq.'+id+
+    '&select=supplier_sku&limit=1',{headers,signal:AbortSignal.timeout(16000)});
+  if(!res.ok)throw Error('Não foi possível conferir os custos salvos no banco (HTTP '+res.status+').');
+  const count=parseSupabaseExactCount(res.headers.get('content-range'));
+  if(count!==null)return count;
+  // Alguns gateways não expõem Content-Range: retornar uma contagem real, não presumir zero.
+  return (await readWeDropCosts(id)).length;
+}
 export async function readWeDropSyncState(shopId){
   const rows=await request('shopee_wedrop_sync_state',
     '?shop_id=eq.'+validShopId(shopId)+
