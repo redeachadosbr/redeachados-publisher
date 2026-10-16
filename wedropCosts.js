@@ -108,12 +108,41 @@ export async function saveWeDropCosts(shopId,costs,{overwrite=false,sourceFile='
     updatedExisting:overwrite?costs.filter(x=>existing.has(x.sku)).length:0,
     overwrite:Boolean(overwrite)};
 }
-export function matchWeDropCosts(items,models,costs,{filter='all',offset=0,limit=500}={}){
+export async function readWeDropSkuLinks(shopId){
+  const id=validShopId(shopId);
+  return readAll('shopee_wedrop_sku_links','shop_id=eq.'+id+'&order=item_id.asc',
+    'item_id,model_id,shopee_sku,supplier_sku,linked_at');
+}
+export async function upsertWeDropSkuLink(shopId,{itemId,modelId=0,shopeeSku,supplierSku}){
+  const id=validShopId(shopId);
+  const item=Number(itemId),model=Number(modelId);
+  if(!Number.isSafeInteger(item)||item<=0||!Number.isSafeInteger(model)||model<0)
+    throw Error('Identificador de anúncio ou variação inválido.');
+  if(!shopeeSku||!supplierSku||shopeeSku.length>120||supplierSku.length>120)
+    throw Error('Selecione SKUs válidos.');
+  await request('shopee_wedrop_sku_links','?on_conflict=shop_id,item_id,model_id',{
+    method:'POST',rows:[{shop_id:id,item_id:item,model_id:model,
+      shopee_sku:shopeeSku,supplier_sku:supplierSku,
+      updated_at:new Date().toISOString()}],
+    prefer:'resolution=merge-duplicates,return=minimal'
+  });
+}
+export async function deleteWeDropSkuLink(shopId,{itemId,modelId=0}){
+  const id=validShopId(shopId),item=Number(itemId),model=Number(modelId);
+  if(!Number.isSafeInteger(item)||item<=0||!Number.isSafeInteger(model)||model<0)
+    throw Error('Identificador de anúncio ou variação inválido.');
+  await request('shopee_wedrop_sku_links','?shop_id=eq.'+id+'&item_id=eq.'+item+
+    '&model_id=eq.'+model,{method:'DELETE'});
+}
+export function matchWeDropCosts(items,models,costs,{filter='all',offset=0,limit=500,links=[]}={}){
   if(!['all','matched','unmatched'].includes(filter))throw Error('Filtro de custo inválido.');
   const start=Number(offset),perPage=Number(limit);
   if(!Number.isSafeInteger(start)||start<0||!Number.isSafeInteger(perPage)||perPage<1||perPage>500)
     throw Error('Paginação de custos inválida.');
   const bySku=new Map(costs.map(x=>[String(x.supplier_sku),Number(x.unit_cost)]));
+  const byItemModel=new Map((links||[]).map(link=>[
+    String(link.item_id)+':'+String(link.model_id||0),link
+  ]));
   const modelByItem=new Map();
   for(const x of models){
     const id=String(x.item_id);
@@ -132,10 +161,17 @@ export function matchWeDropCosts(items,models,costs,{filter='all',offset=0,limit
       if(!sku){withoutSku++;continue;}
       const amount=item.has_model?model.price:item.price;
       const price=amount===null||amount===undefined?null:Number(amount);
-      const cost=bySku.has(sku)?bySku.get(sku):null;
+      const modelId=item.has_model?String(model.model_id):null;
+      const link=byItemModel.get(itemId+':'+(modelId||'0'));
+      // Nunca usar vínculo antigo se o SKU publicado foi alterado na Shopee.
+      const linkedSupplierSku=link?.shopee_sku===sku&&bySku.has(link?.supplier_sku)
+        ?String(link.supplier_sku):null;
+      const supplierSku=bySku.has(sku)?sku:linkedSupplierSku;
+      const cost=supplierSku===null?null:bySku.get(supplierSku);
       results.push({
-        itemId,sku,modelId:item.has_model?String(model.model_id):null,
-        name:String(item.item_name||''),status:String(item.item_status||''),
+        itemId,sku,modelId,
+        supplierSku:supplierSku||null,linkedByReview:Boolean(linkedSupplierSku&&supplierSku!==sku),
+        name:String(item.item_name||''),imageUrl:String(item.image_url||''),status:String(item.item_status||''),
         price:Number.isFinite(price)?price:null,
         unitCost:cost,
         grossDifference:cost!==null&&Number.isFinite(price)?Math.round((price-cost)*100)/100:null,
@@ -148,7 +184,7 @@ export function matchWeDropCosts(items,models,costs,{filter='all',offset=0,limit
   const filtered=results.filter(x=>filter==='all'||x.costMatched===(filter==='matched'));
   // Custo cadastrado primeiro; pendências nunca escondem as centenas já vinculadas.
   filtered.sort((a,b)=>Number(b.costMatched)-Number(a.costMatched)||a.sku.localeCompare(b.sku,'pt-BR'));
-  const used=new Set(results.filter(x=>x.costMatched).map(x=>x.sku));
+  const used=new Set(results.filter(x=>x.costMatched).map(x=>x.supplierSku));
   return {
     totals:{
       catalogItems:items.length,variantSkus:models.length,
@@ -224,13 +260,14 @@ export async function compareIncomingCosts(shopId,costs){
 
 export async function getWeDropCoverage(shopId,{filter='matched',offset=0,limit=500}={}){
   const id=validShopId(shopId);
-  const [costs,items,models]=await Promise.all([
+  const [costs,items,models,links]=await Promise.all([
     readWeDropCosts(id),
     readAll('shopee_catalog_items','shop_id=eq.'+id+'&order=item_id.asc',
-      'item_id,sku,item_name,item_status,price,has_model'),
+      'item_id,sku,item_name,item_status,price,has_model,image_url'),
     readAll('shopee_catalog_models','shop_id=eq.'+id+'&order=model_id.asc',
-      'item_id,model_id,model_sku,price,stock')
+      'item_id,model_id,model_sku,price,stock'),
+    readWeDropSkuLinks(id)
   ]);
-  const coverage=matchWeDropCosts(items,models,costs,{filter,offset,limit});
+  const coverage=matchWeDropCosts(items,models,costs,{filter,offset,limit,links});
   return {shopId:id,...coverage,hasImportedCosts:costs.length>0};
 }
