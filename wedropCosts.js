@@ -92,7 +92,11 @@ export async function saveWeDropCosts(shopId,costs,{overwrite=false,sourceFile='
     updatedExisting:overwrite?costs.filter(x=>existing.has(x.sku)).length:0,
     overwrite:Boolean(overwrite)};
 }
-export function matchWeDropCosts(items,models,costs){
+export function matchWeDropCosts(items,models,costs,{filter='all',offset=0,limit=500}={}){
+  if(!['all','matched','unmatched'].includes(filter))throw Error('Filtro de custo inválido.');
+  const start=Number(offset),perPage=Number(limit);
+  if(!Number.isSafeInteger(start)||start<0||!Number.isSafeInteger(perPage)||perPage<1||perPage>500)
+    throw Error('Paginação de custos inválida.');
   const bySku=new Map(costs.map(x=>[String(x.supplier_sku),Number(x.unit_cost)]));
   const modelByItem=new Map();
   for(const x of models){
@@ -125,6 +129,9 @@ export function matchWeDropCosts(items,models,costs){
   }
   const matched=results.filter(x=>x.costMatched).length;
   const priced=results.filter(x=>x.price!==null&&x.costMatched).length;
+  const filtered=results.filter(x=>filter==='all'||x.costMatched===(filter==='matched'));
+  // Custo cadastrado primeiro; pendências nunca escondem as centenas já vinculadas.
+  filtered.sort((a,b)=>Number(b.costMatched)-Number(a.costMatched)||a.sku.localeCompare(b.sku,'pt-BR'));
   const used=new Set(results.filter(x=>x.costMatched).map(x=>x.sku));
   return {
     totals:{
@@ -134,10 +141,12 @@ export function matchWeDropCosts(items,models,costs){
       matched,missingCost:results.length-matched,withoutSku,waitingModels,
       importedCosts:bySku.size,supplierSkusNotMatched:[...bySku.keys()].filter(x=>!used.has(x)).length
     },
-    // Sem custos cadastrados, não produzir centenas de linhas financeiras vazias.
-    // Os totais de catálogo continuam disponíveis para o painel operacional.
-    rows:bySku.size?results.sort((a,b)=>Number(a.costMatched)-Number(b.costMatched)||a.sku.localeCompare(b.sku,'pt-BR')).slice(0,500):[],
-    truncated:bySku.size>0&&results.length>500,
+    // Não gerar tabela sem custos; paginação e filtro aplicados antes do recorte.
+    rows:bySku.size?filtered.slice(start,start+perPage):[],
+    filter,offset:start,pageSize:perPage,
+    totalFiltered:filtered.length,
+    nextOffset:bySku.size&&start+perPage<filtered.length?start+perPage:null,
+    truncated:bySku.size>0&&start+perPage<filtered.length,
     financialReady:bySku.size>0,
     warning:bySku.size
       ?'Preço do catálogo pode não refletir promoções, frete ou valor efetivamente recebido. Diferença bruta não é lucro líquido.'
@@ -197,7 +206,7 @@ export async function compareIncomingCosts(shopId,costs){
   };
 }
 
-export async function getWeDropCoverage(shopId){
+export async function getWeDropCoverage(shopId,{filter='matched',offset=0,limit=500}={}){
   const id=validShopId(shopId);
   const [costs,items,models]=await Promise.all([
     readWeDropCosts(id),
@@ -206,6 +215,6 @@ export async function getWeDropCoverage(shopId){
     readAll('shopee_catalog_models','shop_id=eq.'+id+'&order=model_id.asc',
       'item_id,model_id,model_sku,price,stock')
   ]);
-  const coverage=matchWeDropCosts(items,models,costs);
+  const coverage=matchWeDropCosts(items,models,costs,{filter,offset,limit});
   return {shopId:id,...coverage,hasImportedCosts:costs.length>0};
 }
