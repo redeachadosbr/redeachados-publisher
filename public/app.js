@@ -114,23 +114,185 @@ $('#testBtn').onclick=runShopTest;
 $('#retryTestBtn').onclick=runShopTest;
 $('#refreshBtn').onclick=async()=>{try{const d=await json('/api/shopee/refresh',{method:'POST'});debug(d);await loadStatus();}catch(e){debug(e.message);}};
 
-$('#loadProductsBtn').onclick=async()=>{
-  const b=$('#productsBody');b.innerHTML='<tr><td colspan="4">Carregando…</td></tr>';
-  try{
-    const d=await json('/api/shopee/products?page_size=50&item_status=NORMAL');
-    debug(d);
-    const items=d.response?.item||d.response?.item_list||[];
-    $('#productsSummary').textContent=`${items.length} produto(s) retornado(s) nesta página.`;
-    b.innerHTML=items.length?'':'<tr><td colspan="4">Nenhum produto no Sandbox.</td></tr>';
-    for(const x of items){
-      const id=x.item_id??x.itemid??'—';
-      const tr=document.createElement('tr');
-      tr.innerHTML=`<td>${id}</td><td>${x.item_status||x.status||'—'}</td><td>${fmtDate(x.update_time)}</td><td><button class="mini" data-id="${id}">Detalhes</button></td>`;
-      b.appendChild(tr);
-    }
-    b.querySelectorAll('.mini').forEach(btn=>btn.onclick=async()=>{try{const d=await json('/api/shopee/products/base-info?item_ids='+encodeURIComponent(btn.dataset.id));debug(d);}catch(e){debug(e.message);}});
-  }catch(e){b.innerHTML='<tr><td colspan="4">'+e.message+'</td></tr>';$('#productsSummary').textContent='Falha na consulta.';}
+// Inventário Shopee: carregamento incremental, retomada e dados verificáveis.
+const CATALOG_API_STATUSES=['NORMAL','UNLIST','BANNED','REVIEWING'];
+const catalogMap=new Map();
+let catalogProgress={statusIndex:0,offset:0,page:0};
+let catalogBusy=false,catalogStop=false,catalogDone=false,catalogRowsLimit=150;
+let catalogProblems=[];
+const catalogMoney=n=>n===null||n===undefined?'—':new Intl.NumberFormat('pt-BR',{style:'currency',currency:'BRL'}).format(n);
+const catalogNumber=n=>n===null||n===undefined?'—':new Intl.NumberFormat('pt-BR').format(n);
+const catalogCsvProtect=v=>{
+  const value=String(v??'');
+  const safe=/^\s*[=+\-@]/.test(value)?"'"+value:value;
+  return '"'+safe.replaceAll('"','""')+'"';
 };
+function catalogAll(){
+  return [...catalogMap.values()];
+}
+function catalogFiltered(){
+  const q=$('#productsSearch').value.trim().toLocaleLowerCase('pt-BR');
+  const status=$('#productsStatusFilter').value;
+  const sort=$('#productsSort').value;
+  const result=catalogAll().filter(x=>{
+    return (status==='ALL'||x.status===status)&&
+      (!q||[x.itemId,x.sku,x.title].some(v=>String(v||'').toLocaleLowerCase('pt-BR').includes(q)));
+  });
+  if(sort==='name')result.sort((a,b)=>a.title.localeCompare(b.title,'pt-BR'));
+  else if(sort==='stock')result.sort((a,b)=>(a.stock??Infinity)-(b.stock??Infinity));
+  else if(sort==='price')result.sort((a,b)=>(a.price??Infinity)-(b.price??Infinity));
+  else result.sort((a,b)=>(b.updateTime||0)-(a.updateTime||0));
+  return result;
+}
+function catalogCell(tr,value){
+  const td=document.createElement('td');td.textContent=String(value??'—');tr.appendChild(td);return td;
+}
+function catalogRender(){
+  const rows=catalogFiltered();
+  const body=$('#productsBody');body.replaceChildren();
+  for(const x of rows.slice(0,catalogRowsLimit)){
+    const tr=document.createElement('tr');
+    const product=document.createElement('td');
+    const top=document.createElement('div');top.className='catalog-product-title';
+    if(x.imageUrl){
+      const img=document.createElement('img');
+      img.src=x.imageUrl;img.alt='';img.loading='lazy';img.width=48;img.height=48;top.appendChild(img);
+    }
+    const title=document.createElement('span');title.textContent=x.title||'Nome indisponível';top.appendChild(title);
+    product.appendChild(top);tr.appendChild(product);
+    catalogCell(tr,x.itemId+' / '+(x.sku||'Sem SKU'));
+    catalogCell(tr,x.status);
+    catalogCell(tr,catalogMoney(x.price));
+    catalogCell(tr,x.hasModel?'Ver variações':catalogNumber(x.stock));
+    catalogCell(tr,x.promotion?'Sim':'—');
+    catalogCell(tr,fmtDate(x.updateTime));
+    const action=document.createElement('td');
+    const b=document.createElement('button');b.type='button';b.className='mini';b.textContent=x.hasModel?'Variações':'Detalhes';
+    b.onclick=()=>catalogShowModels(x);
+    action.appendChild(b);tr.appendChild(action);body.appendChild(tr);
+  }
+  if(!rows.length){
+    const tr=document.createElement('tr');const td=document.createElement('td');td.colSpan=8;
+    td.textContent=catalogBusy?'Buscando anúncios na Shopee...':'Nenhum anúncio encontrado com estes filtros.';
+    tr.appendChild(td);body.appendChild(tr);
+  }
+  const all=catalogAll();
+  $('#catalogTotal').textContent=catalogNumber(all.length);
+  $('#catalogActive').textContent=catalogNumber(all.filter(x=>x.status==='NORMAL').length);
+  $('#catalogUnlisted').textContent=catalogNumber(all.filter(x=>x.status==='UNLIST').length);
+  $('#catalogNoSku').textContent=catalogNumber(all.filter(x=>!x.sku).length);
+  $('#catalogStockZero').textContent=catalogNumber(all.filter(x=>x.stock===0).length);
+  $('#productsRowsShown').textContent=rows.length?'Exibindo '+Math.min(rows.length,catalogRowsLimit)+' de '+rows.length+' registros filtrados.':'';
+  $('#productsMoreBtn').hidden=rows.length<=catalogRowsLimit;
+  $('#exportProductsBtn').disabled=!all.length;
+}
+function catalogSummaryText(prefix=''){
+  const all=catalogAll();
+  const unknown=all.filter(x=>!x.baseLoaded).length;
+  const state=catalogDone?'Completo para os status consultados':catalogBusy?'Em andamento':'Parcial';
+  const notice=$('#productsSummary');
+  notice.dataset.state=catalogProblems.length?'warning':catalogDone?'success':catalogBusy?'loading':'warning';
+  notice.textContent=(prefix?prefix+' ':'')+'Catálogo: '+state+'. '+all.length+
+    ' anúncios únicos carregados; '+unknown+' sem detalhes.'+
+    (catalogProblems.length?' Avisos: '+catalogProblems.slice(-3).join(' | '):'')+
+    (!catalogDone?' É possível continuar sem descartar os anúncios já obtidos.':'');
+}
+async function catalogShowModels(item){
+  const panel=$('#productDetailsPanel');panel.hidden=false;
+  $('#productDetailsTitle').textContent=item.title||'Anúncio '+item.itemId;
+  const body=$('#productModelsBody');body.replaceChildren();
+  const status=$('#productDetailsStatus');
+  status.textContent='Item '+item.itemId+' · SKU: '+(item.sku||'não informado')+
+    ' · Preço: '+catalogMoney(item.price)+' · Estoque: '+catalogNumber(item.stock);
+  if(!item.hasModel){
+    status.textContent+=' · Anúncio sem variações, conforme a Shopee.';
+    return;
+  }
+  status.textContent='Carregando variações e estoques do item '+item.itemId+'...';
+  try{
+    const d=await json('/api/shopee/catalog/models?item_id='+encodeURIComponent(item.itemId),
+      {signal:AbortSignal.timeout(30000)});
+    const models=Array.isArray(d.models)?d.models:[];
+    status.textContent='Variações retornadas: '+models.length+'. Valores obtidos da Shopee.';
+    for(const m of models){
+      const row=document.createElement('tr');
+      [m.modelId,m.sku||'Sem SKU',m.status||'—',catalogMoney(m.price),catalogNumber(m.stock)]
+        .forEach(v=>catalogCell(row,v));
+      body.appendChild(row);
+    }
+  }catch(e){status.textContent='Falha ao buscar variações: '+e.message+'. Feche e tente novamente.';}
+}
+$('#closeProductDetails').onclick=()=>{$('#productDetailsPanel').hidden=true;};
+async function catalogScan(){
+  if(catalogBusy)return;
+  if(catalogDone){
+    catalogMap.clear();catalogProgress={statusIndex:0,offset:0,page:0};catalogProblems=[];catalogDone=false;
+  }
+  catalogBusy=true;catalogStop=false;
+  const btn=$('#loadProductsBtn');btn.disabled=true;
+  $('#stopProductsBtn').hidden=false;
+  try{
+    while(catalogProgress.statusIndex<CATALOG_API_STATUSES.length&&!catalogStop){
+      const st=CATALOG_API_STATUSES[catalogProgress.statusIndex];
+      const offset=catalogProgress.offset;
+      if(catalogProgress.page>=250){
+        catalogProblems.push(st+': limite de 25.000 anúncios atingido. Confira o total antes de considerar completo.');
+        break;
+      }
+      catalogSummaryText('Consultando '+st+', página '+(catalogProgress.page+1)+', offset '+offset+'.');
+      let result;
+      try{
+        const query=new URLSearchParams({status:st,offset:String(offset),page_size:'50'});
+        result=await json('/api/shopee/catalog/page?'+query,{signal:AbortSignal.timeout(65000)});
+      }catch(error){
+        catalogProblems.push(st+': '+String(error.message||error));
+        // Estado de página é preservado para Retomar. Não marcar como completo.
+        break;
+      }
+      for(const item of result.items||[]){
+        if(item.itemId)catalogMap.set(item.itemId,item);
+      }
+      if(Array.isArray(result.warnings)&&result.warnings.length)
+        catalogProblems.push(...result.warnings.map(x=>st+': '+x));
+      catalogProgress.page++;
+      if(result.hasNext){
+        if(!Number.isSafeInteger(Number(result.nextOffset))||Number(result.nextOffset)<=offset){
+          catalogProblems.push(st+': paginação não avançou; tente novamente.');
+          break;
+        }
+        catalogProgress.offset=Number(result.nextOffset);
+      }else{
+        catalogProgress={statusIndex:catalogProgress.statusIndex+1,offset:0,page:0};
+      }
+      catalogRender();
+      catalogSummaryText('Consultando '+st+'.');
+      await new Promise(resolve=>setTimeout(resolve,180));
+    }
+    catalogDone=catalogProgress.statusIndex>=CATALOG_API_STATUSES.length&&!catalogStop&&!catalogProblems.length;
+    catalogSummaryText(catalogStop?'Sincronização interrompida a pedido.':catalogDone?'Sincronização finalizada.':'Sincronização incompleta.');
+  }finally{
+    catalogBusy=false;btn.disabled=false;
+    btn.textContent=catalogDone?'Sincronizar novamente':'Continuar sincronização';
+    $('#stopProductsBtn').hidden=true;
+    catalogRender();
+  }
+}
+$('#loadProductsBtn').onclick=catalogScan;
+$('#stopProductsBtn').onclick=()=>{catalogStop=true;$('#stopProductsBtn').disabled=true;$('#stopProductsBtn').textContent='Interrompendo...';};
+$('#productsSearch').oninput=()=>{catalogRowsLimit=150;catalogRender();};
+$('#productsStatusFilter').onchange=()=>{catalogRowsLimit=150;catalogRender();};
+$('#productsSort').onchange=()=>{catalogRowsLimit=150;catalogRender();};
+$('#productsMoreBtn').onclick=()=>{catalogRowsLimit+=150;catalogRender();};
+$('#exportProductsBtn').onclick=()=>{
+  const headers=['Item ID','SKU','Título','Status','Preço BRL','Estoque','Tem variações','Promoção','Atualização','Detalhes confirmados'];
+  const data=catalogFiltered().map(x=>[x.itemId,x.sku,x.title,x.status,
+    x.price??'',x.stock??'',x.hasModel?'Sim':'Não',x.promotion?'Sim':'Não',fmtDate(x.updateTime),x.baseLoaded?'Sim':'Não']);
+  const csv='\uFEFF'+[headers,...data].map(row=>row.map(catalogCsvProtect).join(';')).join('\r\n');
+  const url=URL.createObjectURL(new Blob([csv],{type:'text/csv;charset=utf-8'}));
+  const anchor=document.createElement('a');anchor.href=url;anchor.download='shopee-catalogo-'+new Date().toISOString().slice(0,10)+'.csv';
+  document.body.appendChild(anchor);anchor.click();anchor.remove();URL.revokeObjectURL(url);
+};
+catalogRender();
 
 $('#loadOrdersBtn').onclick=async()=>{
   const b=$('#ordersBody');b.innerHTML='<tr><td colspan="3">Carregando…</td></tr>';
