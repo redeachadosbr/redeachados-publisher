@@ -1248,7 +1248,7 @@ async function refreshWeDropCoverage({append=false}={}){
 $('#wedropRefreshBtn').onclick=refreshWeDropCoverage;
 // Tabela financeira compacta: somente dados de pedidos reais verificados.
 // Mantém registros sem venda visíveis, mas não supõe que não venderam fora do recorte.
-let financeReport=null,financeSkuFilter='all',financeSkuShown=36;
+let financeReport=null,financeSkuFilter='sold',financeSkuShown=24;
 const financeSkuNode=(tag,cls,txt)=>{
   const el=document.createElement(tag);
   if(cls)el.className=cls;
@@ -1307,52 +1307,87 @@ function renderFinanceAdsScan(report){
 }
 function financeSkuEntries(report){
   const catalog=Array.isArray(report.catalogProducts)?report.catalogProducts:[];
+  const bySku=new Map();
+  for(const item of catalog){
+    const sku=String(item.sku||'').trim();
+    if(!sku)continue;
+    const prev=bySku.get(sku);
+    if(prev){prev.repeatedSku=true;continue;}
+    bySku.set(sku,{sku,title:String(item.name||'')||'Produto Shopee',
+      imageUrl:String(item.imageUrl||''),itemId:String(item.itemId||''),
+      repeatedSku:false});
+  }
   const sold=new Map((report.skuSummary||[]).map(x=>[String(x.sku),x]));
   const adsBySku=financeAdsBySku(report);
   const pending=new Set();
-  for(const x of report.rows||[]){
-    if(x.ready)continue;
-    for(const sku of x.skuList||[])if(sku)pending.add(String(sku));
-    if(x.sku)pending.add(String(x.sku));
+  for(const order of report.rows||[]){
+    if(order.ready)continue;
+    for(const sku of order.skuList||[])if(sku)pending.add(String(sku));
+    if(order.sku)pending.add(String(order.sku));
   }
-  const unique=new Map();
-  for(const p of catalog){
-    const sku=String(p.sku||'').trim();
-    if(!sku)continue;
-    if(unique.has(sku)){
-      const existing=unique.get(sku);existing.repeatedSku=true;
-      continue;
-    }
-    unique.set(sku,{sku,title:String(p.name||'')||'Anúncio sem título',
-      imageUrl:String(p.imageUrl||''),itemId:String(p.itemId||''),
-      repeatedSku:false});
-  }
-  for(const sku of sold.keys())if(!unique.has(sku))unique.set(sku,{
-    sku,title:'SKU vendido (catálogo não localizado)',imageUrl:'',itemId:'',
-    repeatedSku:false
-  });
-  for(const sku of pending)if(!unique.has(sku))unique.set(sku,{
-    sku,title:'SKU em pedido incompleto',imageUrl:'',itemId:'',repeatedSku:false
-  });
-  return [...unique.values()].map(entry=>{
-    const sale=sold.get(entry.sku);
-    return {...entry,sale:sale||null,ads:adsBySku.get(entry.sku)||null,
-      pending:pending.has(entry.sku)};
-  }).sort((a,b)=>(b.sale?1:0)-(a.sale?1:0)||
+  const wanted=new Set([...sold.keys(),...pending]); // NUNCA exibir os 693 anúncios por padrão.
+  return [...wanted].map(sku=>{
+    const base=bySku.get(sku)||{
+      sku,title:'Produto do pedido (não localizado no catálogo)',
+      imageUrl:'',itemId:'',repeatedSku:false
+    };
+    return {...base,sale:sold.get(sku)||null,ads:adsBySku.get(sku)||null,
+      pending:pending.has(sku)};
+  }).sort((a,b)=>Number(Boolean(b.sale))-Number(Boolean(a.sale))||
     Number(b.pending)-Number(a.pending)||
     a.title.localeCompare(b.title,'pt-BR'));
 }
 function financeSkuFiltered(items){
   const q=$('#financeSkuSearch').value.trim().toLocaleLowerCase('pt-BR');
   return items.filter(x=>{
-    const matches=!q||x.title.toLocaleLowerCase('pt-BR').includes(q)||
-      x.sku.toLocaleLowerCase('pt-BR').includes(q);
-    if(!matches)return false;
+    if(q&&!x.title.toLocaleLowerCase('pt-BR').includes(q)&&
+      !x.sku.toLocaleLowerCase('pt-BR').includes(q))return false;
     if(financeSkuFilter==='sold')return Boolean(x.sale);
-    if(financeSkuFilter==='unsold')return !x.sale&&!x.pending;
-    if(financeSkuFilter==='pending')return x.pending||x.repeatedSku;
-    return true;
+    if(financeSkuFilter==='pending')return Boolean(x.pending||x.repeatedSku);
+    return Boolean(x.sale||x.pending);
   });
+}
+function financeSkuDetail(row,source){
+  const expanded=row.nextElementSibling;
+  if(expanded?.classList.contains('finance-expanded-row')){
+    expanded.remove();return;
+  }
+  document.querySelectorAll('#financeSkuBody .finance-expanded-row').forEach(el=>el.remove());
+  const tr=financeSkuNode('tr','finance-expanded-row');
+  const td=financeSkuNode('td');td.colSpan=8;
+  const box=financeSkuNode('div','finance-expanded-content');
+  const sale=source.sale,ads=source.ads;
+  box.appendChild(financeSkuNode('strong','','Memória do cálculo · '+source.sku));
+  if(sale){
+    const count=(financeReport.rows||[]).filter(x=>x.ready&&x.sku===source.sku);
+    const pieces=[
+      'Pedidos concluídos: '+count.map(x=>x.orderSn).join(', '),
+      'Repasse líquido Shopee: '+wdMoney(sale.payout),
+      'Custo WeDrop × unidades: '+wdMoney(sale.cost)+' · '+wdNum(sale.quantity)+' un.',
+      'Saldo antes Ads: '+wdMoney(sale.balanceBeforeAds),
+      ads?'Ads de campanha vinculada: '+wdMoney(ads.expense):
+        'Ads deste SKU: '+(financeReport.adsSweep?.status==='verified_campaign_period'
+          ?'sem atribuição individual confirmada':'consulta indisponível'),
+      'Resultado após Ads: '+(ads?wdMoney(ads.afterAds):
+        financeReport.adsSweep?.spendUnassigned===0&&
+        financeReport.adsSweep?.status==='verified_campaign_period'
+          ?wdMoney(sale.balanceBeforeAds):'pendente de atribuição'),
+      'Lucro líquido fiscal final depende de tributos e despesas externas.'
+    ];
+    for(const line of pieces)box.appendChild(financeSkuNode('p','',line));
+    const open=financeSkuNode('button','secondary','Auditar pedidos e taxas');
+    open.type='button';open.onclick=()=>{
+      $('#financeOrdersDetails').open=true;
+      $('#financeOrdersDetails').scrollIntoView?.({behavior:'smooth',block:'start'});
+    };
+    box.appendChild(open);
+  }else{
+    const details=(financeReport.rows||[]).filter(x=>!x.ready&&
+      (x.skuList||[]).includes(source.sku));
+    for(const x of details)box.appendChild(financeSkuNode('p','',
+      (x.orderSn||'Pedido')+': '+(x.reason||'Pedido ainda sem conciliação financeira')));
+  }
+  td.appendChild(box);tr.appendChild(td);row.after(tr);
 }
 function renderFinanceSkuList(){
   const body=$('#financeSkuBody');body.replaceChildren();
@@ -1364,78 +1399,76 @@ function renderFinanceSkuList(){
   const entries=financeSkuEntries(financeReport);
   const filtered=financeSkuFiltered(entries);
   const visible=filtered.slice(0,financeSkuShown);
-  const col=(tr,name,text,cls='')=>{
+  const col=(tr,name,value,cls='')=>{
     const td=financeSkuNode('td',cls);
     td.dataset.label=name;
-    if(text!==undefined&&text!==null)td.textContent=String(text);
+    if(value!==undefined&&value!==null)td.textContent=String(value);
     tr.appendChild(td);return td;
   };
+  const adsReady=financeReport.adsSweep?.status==='verified_campaign_period';
+  const safeZero=adsReady&&Number(financeReport.adsSweep?.spendUnassigned||0)===0;
   for(const x of visible){
     const sale=x.sale,hasSale=Boolean(sale);
-    const tr=financeSkuNode('tr',hasSale?(sale.balanceBeforeAds<0?'finance-negative':'finance-positive'):
+    const operating=hasSale?(x.ads?.afterAds??(safeZero?sale.balanceBeforeAds:null)):null;
+    const tr=financeSkuNode('tr',operating!==null?(operating<0?'finance-negative':'finance-positive'):
       x.pending?'finance-pending':'finance-no-sale');
-    const first=col(tr,'Produto',null,'finance-product-cell');
+    const productCell=col(tr,'Produto',null,'finance-product-cell');
     const product=financeSkuNode('div','finance-product-identity');
     if(financeCatalogImage(x.imageUrl)){
       const img=financeSkuNode('img','finance-thumbnail');
-      img.src=x.imageUrl;img.loading='lazy';img.decoding='async';
-      img.alt='';img.referrerPolicy='no-referrer';
-      product.appendChild(img);
+      img.src=x.imageUrl;img.loading='lazy';img.decoding='async';img.alt='';
+      img.referrerPolicy='no-referrer';product.appendChild(img);
     }else product.appendChild(financeSkuNode('span','finance-thumbnail finance-thumbnail-empty','▣'));
-    const text=financeSkuNode('div','finance-product-text');
-    text.appendChild(financeSkuNode('strong','',x.title));
-    if(x.repeatedSku)text.appendChild(financeSkuNode('small','finance-duplicate','SKU compartilhado entre anúncios; conferir'));
-    product.appendChild(text);first.appendChild(product);
-    col(tr,'SKU',x.sku,'finance-sku-code');
-    col(tr,'Quantidade',hasSale?wdNum(sale.quantity):'—','finance-number');
+    const title=financeSkuNode('div','finance-product-text');
+    title.appendChild(financeSkuNode('strong','',x.title));
+    if(x.repeatedSku)title.appendChild(financeSkuNode('small','finance-duplicate',
+      'Mesmo SKU em mais de um anúncio; conferir'));
+    product.appendChild(title);productCell.appendChild(product);
+    const skucell=col(tr,'SKU / Qtd.',null,'finance-sku-code');
+    skucell.appendChild(financeSkuNode('strong','',x.sku));
+    skucell.appendChild(financeSkuNode('small','finance-sku-quantity',
+      hasSale?wdNum(sale.quantity)+' unidade(s)':'Pendente'));
     col(tr,'Repasse Shopee',hasSale?wdMoney(sale.payout):'—','finance-number');
     col(tr,'Custo WeDrop',hasSale?wdMoney(sale.cost):'—','finance-number');
-    const balance=col(tr,'Saldo antes Ads',hasSale?wdMoney(sale.balanceBeforeAds):'—',
-      'finance-amount '+(hasSale?(sale.balanceBeforeAds<0?'negative':'positive'):''));
-    if(hasSale)balance.title='Repasse informado pela Shopee menos custo WeDrop; não é lucro líquido final.';
-    const scanned=financeReport.adsSweep?.status==='verified_campaign_period';
-    const unassigned=Number(financeReport.adsSweep?.spendUnassigned||0)>0;
-    // Zero é explícito só quando não há campanha com conversão sem vínculo.
-    const safeZero=scanned&&!unassigned;
     col(tr,'Ads vinculado',hasSale&&x.ads?wdMoney(x.ads.expense):
-      hasSale&&safeZero?wdMoney(0):'—',
-      'finance-number '+(hasSale&&(x.ads||safeZero)?'':'muted'));
-    const afterAds=hasSale&&scanned&&x.ads
-      ?wdMoney(x.ads.afterAds):hasSale&&safeZero?wdMoney(sale.balanceBeforeAds):'—';
-    const operating=col(tr,'Saldo após Ads',afterAds,
-      'finance-amount '+(hasSale&&(x.ads||safeZero)
-        ?((x.ads?.afterAds??sale.balanceBeforeAds)<0?'negative':'positive'):''));
-    operating.title='Comparativo por SKU e período; não é lucro líquido final nem repasse por pedido.';
-    col(tr,'Situação',hasSale
-      ?(x.ads?'Venda + Ads conferidos (parcial)':safeZero?'Sem conversão Ads atribuída':scanned?'Ads em revisão':'Ads não conferidos')
-      :x.pending?'Pedido pendente de conciliação':'Sem venda verificada',
-      'finance-status-cell '+(hasSale?'verified':x.pending?'pending':'neutral'));
-    const act=col(tr,'Ação',null,'finance-actions-cell');
-    const button=financeSkuNode('button','finance-row-action',
-      hasSale?'Ver pedido':x.pending?'Conferir':'Ver produto');
-    button.type='button';
-    button.onclick=()=>{
-      if(hasSale||x.pending){
-        $('#financeOrdersDetails').open=true;
-        $('#financeOrdersDetails').scrollIntoView?.({behavior:'smooth',block:'start'});
-      }else{
-        setTab('products');
-        const input=$('#productsSearch');
-        if(input){input.value=x.sku;input.dispatchEvent(new Event('input',{bubbles:true}));}
-      }
-    };
-    act.appendChild(button);body.appendChild(tr);
+      hasSale&&safeZero?wdMoney(0):'—','finance-number');
+    const profit=col(tr,'Resultado após Ads',operating===null?'—':wdMoney(operating),
+      'finance-amount '+(operating===null?'muted':operating<0?'negative':'positive'));
+    profit.title='Resultado operacional do SKU após Ads identificados, antes de tributos e despesas externas.';
+    const label=hasSale?(x.ads?'Venda + Ads':safeZero?'Venda sem Ads atribuído':'Ads em revisão'):
+      'Pendente';
+    col(tr,'Situação',label,'finance-status-cell '+
+      (hasSale?'verified':x.pending?'pending':'neutral'));
+    const actions=col(tr,'Ação',null,'finance-actions-cell');
+    const btn=financeSkuNode('button','finance-row-action','Ver detalhes');
+    btn.type='button';btn.setAttribute('aria-label','Ver cálculo do SKU '+x.sku);
+    btn.onclick=()=>financeSkuDetail(tr,x);actions.appendChild(btn);
+    body.appendChild(tr);
   }
   if(!visible.length){
-    const tr=financeSkuNode('tr'),td=financeSkuNode('td','finance-empty',
-      'Nenhum produto encontrado neste filtro. Ajuste a pesquisa ou consulte outro período.');
-    td.colSpan=10;tr.appendChild(td);body.appendChild(tr);
+    const row=financeSkuNode('tr'),cell=financeSkuNode('td','finance-empty',
+      financeSkuFilter==='sold'?'Nenhuma venda concluída verificada no período selecionado.':
+      'Nenhum resultado deste filtro no período.');cell.colSpan=8;
+    row.appendChild(cell);body.appendChild(row);
   }
-  $('#financeSkuCount').textContent=wdNum(filtered.length)+' produto(s)';
-  $('#financeSkuPageInfo').textContent='Exibindo '+wdNum(visible.length)+' de '+
-    wdNum(filtered.length)+' registros — somente pedidos verificados possuem valores financeiros.';
-  const more=$('#financeSkuMore');more.hidden=visible.length>=filtered.length;
+  $('#financeSkuCount').textContent=wdNum(filtered.length)+' SKU(s) no filtro';
+  $('#financeSkuPageInfo').textContent=wdNum(visible.length)+' de '+
+    wdNum(filtered.length)+' SKUs exibidos · somente vendas e pendências do período.';
+  $('#financeSkuMore').hidden=visible.length>=filtered.length;
+  const count={
+    all:entries.length,sold:entries.filter(x=>x.sale).length,
+    pending:entries.filter(x=>x.pending||x.repeatedSku).length
+  };
   for(const btn of document.querySelectorAll('[data-finance-filter]')){
+    const kind=btn.dataset.financeFilter;
+    const selected=kind===financeSkuFilter;
+    btn.classList.toggle('active',selected);
+    btn.setAttribute('aria-pressed',String(selected));
+    btn.textContent=({all:'Vendas e pendências',sold:'Vendas verificadas',
+      pending:'Pendências'})[kind]+' ('+wdNum(count[kind])+')';
+  }
+}
+document.querySelectorAll('[data-finance-filter]')){
     const selected=btn.dataset.financeFilter===financeSkuFilter;
     btn.classList.toggle('active',selected);
     btn.setAttribute('aria-pressed',String(selected));
@@ -1450,9 +1483,9 @@ function renderFinanceSkuList(){
   }
 }
 document.querySelectorAll('[data-finance-filter]').forEach(btn=>{
-  btn.onclick=()=>{financeSkuFilter=btn.dataset.financeFilter;financeSkuShown=36;renderFinanceSkuList();};
+  btn.onclick=()=>{financeSkuFilter=btn.dataset.financeFilter;financeSkuShown=24;renderFinanceSkuList();};
 });
-$('#financeSkuSearch').oninput=()=>{financeSkuShown=36;renderFinanceSkuList();};
+$('#financeSkuSearch').oninput=()=>{financeSkuShown=24;renderFinanceSkuList();};
 $('#financeSkuMore').onclick=()=>{financeSkuShown+=36;renderFinanceSkuList();};
 
 let shopeeFinanceBusy=false;
@@ -1476,7 +1509,7 @@ $('#shopeeFinanceLoad').onclick=async()=>{
       signal:AbortSignal.timeout(180000)
     });
     const t=report.totals||{};
-    financeReport=report;financeSkuShown=36;
+    financeReport=report;financeSkuShown=24;
     renderFinanceAdsScan(report);
     $('#shopeeFinanceData').hidden=false;
     renderFinanceSkuList();
