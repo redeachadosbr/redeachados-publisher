@@ -74,6 +74,12 @@ export async function getSkuReview(shopId){
       manualLinks:links.length,waitingModels:coverage.totals.waitingModels,
       missingSku:coverage.totals.withoutSku},
     pending,
+    confirmedLinks:links.slice(0,120).map(link=>({
+      itemId:String(link.item_id),modelId:String(link.model_id||0),
+      shopeeSku:String(link.shopee_sku),supplierSku:String(link.supplier_sku),
+      unitCost:Number(costs.find(c=>c.supplier_sku===link.supplier_sku)?.unit_cost||0),
+      linkedAt:link.linked_at
+    })),
     warning:'Sugestões são por semelhança do código, não confirmação do produto. O catálogo de custos não contém nomes/fotos da WeDrop. Verifique o item e a variação no fornecedor antes de confirmar. Vincular custo não altera o SKU publicado na Shopee.'
   };
 }
