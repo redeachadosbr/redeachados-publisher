@@ -1284,3 +1284,24 @@ table tr:hover td{background:#f3f8ff}
 #priceStatus[data-state="success"],#discountPlanStatus[data-state="success"]{background:#effaf4;border:1px solid #bedccc;color:#247753}
 @media(max-width:820px){.sh-price-grid{grid-template-columns:1fr}.sh-price-hero>strong{font-size:32px}}
 @media(max-width:440px){.sh-price-fields{grid-template-columns:1fr}.sh-price-kpis strong{font-size:18px}.sh-fee-table{grid-template-columns:1.3fr 1fr 1fr;gap:5px}.sh-price-results{padding:10px}}
+
+
+/* v1.14.3 — otimizacao compacta; precificacao em submenu proprio */
+.sidebar-nav .sh-pricing-submenu{padding-left:35px!important;font-size:13px}
+.sidebar-nav .sh-pricing-submenu .nav-name{font-weight:700}
+.sh-pricing-submenu-icon{color:#ffb858;font-size:20px;font-weight:900;line-height:1}
+.sh-price-quick{margin-top:16px}
+.sh-quick-bar{max-width:660px;padding:4px 0 10px}
+.sh-quick-bar .sh-price-slider{margin-bottom:7px}
+.sh-price-quick-values{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px;margin-top:14px;margin-bottom:16px}
+.sh-price-quick-values>div{min-width:0}
+.sh-price-quick-values strong{font-size:clamp(16px,1.8vw,23px)}
+.sh-price-settings-collapsed{margin-top:14px;margin-bottom:20px}
+.sh-price-settings-collapsed>summary{font-size:13px;line-height:1.5;background:#f5f8fc;color:#294363}
+.sh-price-settings-collapsed>.sh-price-fields{padding:12px;margin-top:0}
+.sh-price-settings-collapsed>.sh-price-advanced{margin:8px 12px 12px}
+#optimizerQuickStatus[data-state=success]{color:#146448;background:#eefaf3;border:1px solid #bbebd0}
+#optimizerQuickStatus[data-state=error]{color:#a12f35;background:#fff0f1;border:1px solid #f4c5cb}
+#tab-pricing .sh-price-panel{margin-top:0}
+@media(max-width:1040px){.sh-price-quick-values{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media(max-width:470px){.sh-price-quick-values{grid-template-columns:1fr 1fr;gap:7px}.sidebar-nav .sh-pricing-submenu{padding-left:26px!important}}
