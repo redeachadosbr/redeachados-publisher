@@ -1323,13 +1323,16 @@ $('#optimizerFind').onclick=async()=>{
   optimizerNotice('Localizando automaticamente a SKU '+sku+' na Shopee...');
   try{
     if(!sku)throw Error('Informe somente o SKU do produto.');
+    // WeDrop and Shopee are checked independently, so missing Shopee cache
+    // must never hide a supplier cost that is already saved.
+    void shPricePreviewSupplierSku(sku,serial);
     const d=await json('/api/shopee/optimizer/find?sku='+encodeURIComponent(sku),{
       signal:AbortSignal.timeout(90000)
     });
     if(serial!==optimizerSkuLookupSerial||$('#optimizerSku').value.trim()!==sku)return;
     const matches=d.matches||[];
     if(!matches.length){
-      optimizerNotice(d.message||'Nenhum anúncio com este SKU. Verifique o SKU no catálogo da Shopee.','warning');
+      optimizerNotice('Anúncio Shopee ainda não confirmado. A SKU pode estar na WeDrop; veja o custo e o preço estimado ao lado. '+(d.message||''),'warning');
       return;
     }
     if(matches.length===1){
@@ -1357,7 +1360,8 @@ $('#optimizerFind').onclick=async()=>{
     }
   }catch(e){
     if(serial===optimizerSkuLookupSerial&&$('#optimizerSku').value.trim()===sku)
-      optimizerNotice('Não foi possível localizar a SKU: '+e.message,'error');
+      optimizerNotice('Consulta do anúncio Shopee indisponível: '+e.message+
+        '. A busca pelo custo WeDrop é independente e continua disponível.','warning');
   }finally{
     btn.disabled=false;
     const currentSku=$('#optimizerSku').value.trim();
@@ -1376,7 +1380,9 @@ $('#optimizerSku')?.addEventListener?.('input',()=>{
   // Não mostrar resultado de um produto anterior enquanto outra SKU é digitada.
   $('#optimizerQuickValues').hidden=true;
   $('#priceResults').hidden=true;
+  $('#optimizerSupplierResult').hidden=true;
   shPriceCurrentQuote=null;
+  shPriceSupplierQuote=null;
   shPriceSelection=null;
   optimizerSkuLookupSerial++;
   if(!value){
@@ -1425,7 +1431,11 @@ function optimizerRender(record){
   for(const [index,x] of (record.steps||[]).entries()){
     const div=optimizerMake('div','optimizer-step optimizer-step-'+x.state);
     div.appendChild(optimizerMake('strong','',(index+1)+'. '+x.name));
-    div.appendChild(optimizerMake('small','',x.reason));
+    const helper=optimizerMake('span','optimizer-tip','?');
+    helper.tabIndex=0;
+    helper.dataset.help=String(x.reason||'Etapa dependente de validação e revisão.');
+    helper.setAttribute('aria-label',helper.dataset.help);
+    div.appendChild(helper);
     steps.appendChild(div);
   }
   const body=$('#optimizerAttributesBody');body.replaceChildren();
@@ -1986,6 +1996,7 @@ if(typeof setInterval==='function')setInterval(()=>refreshMonitor(),60000);
 // Shopee 1.14.2 — mesmo SKU da auditoria -> preço bruto -> desconto salvo.
 // Não há endpoint de escrita de preço/desconto na API Shopee nesta versão.
 let shPriceSelection=null,shPriceSettingsLoaded=false,shPriceSettingsPromise=null;
+let shPriceSupplierQuote=null,shPricePreviewSerial=0;
 let shPriceCurrentQuote=null,shPricePrepareBusy=false,shPricePrepareAgain=false;
 let shDiscountQuote=null;
 const shPriceSelectionKey='shopee-optimizer-active-sku-v1142';
@@ -2079,6 +2090,8 @@ function shPriceBreakdown(q){
   }
 }
 function shPriceRender(q){
+  const isSupplierPreview=q.source==='wedrop_only';
+  if(isSupplierPreview&&shPriceSelection)return;
   shPriceCurrentQuote=q;
   shQuickSyncSlider();
   $('#optimizerQuickValues').hidden=false;
@@ -2087,7 +2100,9 @@ function shPriceRender(q){
   $('#optimizerQuickFinal').textContent=shPriceMoney(q.customerPrice);
   $('#optimizerQuickProfit').textContent=shPriceMoney(q.netProfit)+' · '+shPricePercent(q.netMarginPct);
   shQuickSetStatus('SKU '+q.sku+' · Custo WeDrop '+shPriceMoney(q.unitCost)+
-    '. Plano calculado e salvo para Descontos; nenhuma alteração foi enviada à Shopee.','success');
+    (isSupplierPreview
+      ?'. Simulação disponível. Aguarde a confirmação do anúncio Shopee para salvar na etapa Descontos.'
+      :'. Plano calculado e salvo para Descontos; nenhuma alteração foi enviada à Shopee.'),'success');
   $('#priceResults').hidden=false;
   $('#priceGross').textContent=shPriceMoney(q.grossPrice);
   $('#pricePromoPct').textContent=shPricePercent(q.discountPct);
@@ -2099,9 +2114,43 @@ function shPriceRender(q){
     ' · Piso com margem mínima: '+shPriceMoney(q.priceFloor);
   $('#priceMarketState').textContent=q.notice;
   shPriceBreakdown(q);
-  shPriceSetStatus('Plano da SKU '+q.sku+' calculado e salvo para Descontos. Nenhuma alteração foi enviada à Shopee.','success');
-  $('#priceSaveInfo').textContent='Padrões e plano atualizados '+fmtDate(q.calculatedAt)+
-    '. Margem mínima '+shPricePercent(q.minMarginPct)+'.';
+  shPriceSetStatus(isSupplierPreview
+    ?'SKU localizada no catálogo WeDrop. Simulação não salva como desconto de anúncio até validar o anúncio na Shopee.'
+    :'Plano da SKU '+q.sku+' calculado e salvo para Descontos. Nenhuma alteração foi enviada à Shopee.','success');
+  $('#priceSaveInfo').textContent=isSupplierPreview
+    ?'Prévia da WeDrop, sem anúncio vinculado. Margem mínima '+shPricePercent(q.minMarginPct)+'.'
+    :'Padrões e plano atualizados '+fmtDate(q.calculatedAt)+
+      '. Margem mínima '+shPricePercent(q.minMarginPct)+'.';
+}
+async function shPricePreviewSupplierSku(sku,lookupSerial=null){
+  if(!sku||sku.length>120)return;
+  const serial=++shPricePreviewSerial;
+  try{
+    await shPriceLoadDefaults();
+    if(lookupSerial!==null&&lookupSerial!==optimizerSkuLookupSerial)return;
+    const market=$('#priceMarketAvg').value.trim();
+    const result=await json('/api/shopee/optimizer/pricing/supplier-preview',{
+      method:'POST',headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({sku,settings:shPriceReadSettings(),
+        marketAverage:market===''?null:Number(market)}),signal:AbortSignal.timeout(25000)
+    });
+    if(serial!==shPricePreviewSerial||$('#optimizerSku').value.trim()!==sku)return;
+    if(!result.found){
+      $('#optimizerSupplierResult').hidden=false;
+      $('#optimizerSupplierResult').textContent='WeDrop · SKU '+sku+' sem custo disponível no catálogo salvo. Confira a importação do fornecedor.';
+      return;
+    }
+    shPriceSupplierQuote=result.quote;
+    $('#optimizerSupplierResult').hidden=false;
+    $('#optimizerSupplierResult').textContent='✓ WeDrop · '+sku+' · Custo '+
+      shPriceMoney(result.quote.unitCost)+' · Catálogo do fornecedor confirmado.';
+    if(!shPriceSelection)shPriceRender(result.quote);
+  }catch(e){
+    if($('#optimizerSku').value.trim()===sku){
+      $('#optimizerSupplierResult').hidden=false;
+      $('#optimizerSupplierResult').textContent='Custo WeDrop indisponível no momento: '+e.message;
+    }
+  }
 }
 async function shPricePrepare({silent=false}={}){
   if(!shPriceSelection){if(!silent)shPriceSetStatus('Localize primeiro uma SKU na Otimização.');return;}
@@ -2144,21 +2193,31 @@ $('#optimizerQuickMargin')?.addEventListener?.('input',()=>{
   if(shPriceSelection){
     shQuickSetStatus('Recalculando a SKU com margem desejada de '+$('#priceMargin').value+'%...');
     shQuickMarginTimer=setTimeout(()=>void shPricePrepare(),380);
+  }else if(shPriceSupplierQuote){
+    shQuickMarginTimer=setTimeout(()=>void shPricePreviewSupplierSku(shPriceSupplierQuote.sku),380);
   }
 });
 $('#priceMargin')?.addEventListener?.('input',()=>{
   shPriceRefreshMarginLabel();shQuickSyncSlider();
   if(shQuickMarginTimer)clearTimeout(shQuickMarginTimer);
   if(shPriceSelection)shQuickMarginTimer=setTimeout(()=>void shPricePrepare(),380);
+  else if(shPriceSupplierQuote)
+    shQuickMarginTimer=setTimeout(()=>void shPricePreviewSupplierSku(shPriceSupplierQuote.sku),380);
 });
 const shPriceInputIds=['#priceMinMargin','#priceDiscount',
   '#priceTax','#priceFlash','#priceCoupon','#priceAds','#priceFreight',
   '#pricePackaging','#priceMarketAvg','#priceSellerType','#priceHighVolume',
   ...[0,1,2,3].flatMap(i=>['#priceRate'+i,'#priceFee'+i])];
 for(const id of shPriceInputIds){
-  $(id)?.addEventListener?.('change',()=>{if(shPriceSelection)void shPricePrepare();});
+  $(id)?.addEventListener?.('change',()=>{
+    if(shPriceSelection)void shPricePrepare();
+    else if(shPriceSupplierQuote)void shPricePreviewSupplierSku(shPriceSupplierQuote.sku);
+  });
 }
-$('#priceRecalculate').onclick=()=>void shPricePrepare();
+$('#priceRecalculate').onclick=()=>{
+  if(shPriceSelection)void shPricePrepare();
+  else if(shPriceSupplierQuote)void shPricePreviewSupplierSku(shPriceSupplierQuote.sku);
+};
 $('#priceOpenDiscounts').onclick=()=>setTab('discounts');
 function shDiscountRender(q){
   shDiscountQuote=q;
