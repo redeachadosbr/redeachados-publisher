@@ -11,6 +11,8 @@ const APP_PAGES={
     description:'Catálogo, variações, estoque e situação dos anúncios Shopee.'},
   optimizer:{slug:'otimizacao',title:'Otimização de anúncios',group:'Operação',
     description:'Auditoria técnica por SKU, regras permanentes e preparo de otimização Shopee.'},
+  discounts:{slug:'descontos',title:'Descontos preparados',group:'Operação',
+    description:'Preço bruto e desconto recuperados da SKU já informada na Otimização.'},
   orders:{slug:'pedidos',title:'Pedidos e vendas',group:'Operação',
     description:'Consulte as vendas e os estados dos seus pedidos.'},
   alerts:{slug:'envios',title:'Monitor de envios',group:'Operação',
@@ -63,7 +65,8 @@ function setTab(name,{updateHistory=true,scroll=true}={}){
   setSidebarOpen(false);
   if(name==='wedrop'){refreshWeDropCoverage();loadWeDropSourceState();void loadWeDropSkuReview();}
   else if(name==='finance'){refreshWeDropCoverage();}
-  else if(name==='optimizer'){void optimizerLoadSettings();}
+  else if(name==='optimizer'){void optimizerLoadSettings();void shPriceLoadDefaults();}
+  else if(name==='discounts'){void shDiscountLoadLatest();}
   if(scroll&&typeof window!=='undefined')window.scrollTo({top:0,behavior:'instant'});
 }
 document.querySelectorAll('.nav-link[data-tab]').forEach(link=>{
@@ -1419,6 +1422,13 @@ async function optimizerRunAudit(itemId,sku,modelId=''){
       signal:AbortSignal.timeout(60000)
     });
     optimizerRender(data.record);
+    await shPriceLoadDefaults();
+    // Vincular o plano ao Item ID e à variação já escolhidos na busca por SKU.
+    if(shPriceSelection?.sku!==expectedSku||shPriceSelection?.itemId!==item)
+      $('#priceMarketAvg').value='';
+    shPriceSelection={sku:expectedSku,itemId:item,modelId:String(modelId||'0')};
+    shPriceSaveSelection(shPriceSelection);
+    await shPricePrepare({silent:false});
     optimizerNotice('SKU '+expectedSku+' analisado. Ficha técnica consultada pela API. '+
       'Nenhuma imagem, informação, título, preço ou estoque foi alterado.','success');
   }catch(e){optimizerNotice('Não foi possível validar a ficha técnica do SKU: '+e.message+
@@ -1908,5 +1918,229 @@ $('#enableBrowserAlertsBtn').onclick=async()=>{
 };
 if(typeof setTimeout==='function')setTimeout(()=>refreshMonitor(),1500);
 if(typeof setInterval==='function')setInterval(()=>refreshMonitor(),60000);
+
+// Shopee 1.14.2 — mesmo SKU da auditoria -> preço bruto -> desconto salvo.
+// Não há endpoint de escrita de preço/desconto na API Shopee nesta versão.
+let shPriceSelection=null,shPriceSettingsLoaded=false,shPriceSettingsPromise=null;
+let shPriceCurrentQuote=null,shPricePrepareBusy=false,shPricePrepareAgain=false;
+let shDiscountQuote=null;
+const shPriceSelectionKey='shopee-optimizer-active-sku-v1142';
+function shPriceSaveSelection(x){
+  try{sessionStorage.setItem(shPriceSelectionKey,JSON.stringify(x));}catch{}
+}
+function shPriceRestoredSelection(){
+  try{
+    const p=JSON.parse(sessionStorage.getItem(shPriceSelectionKey)||'null');
+    if(p&&/^[1-9]\d{0,17}$/.test(String(p.itemId))&&
+       /^\d{1,18}$/.test(String(p.modelId))&&
+       String(p.sku||'').trim().length>0&&String(p.sku).length<=120)
+      return {itemId:String(p.itemId),modelId:String(p.modelId),sku:String(p.sku)};
+  }catch{}
+  return null;
+}
+function shPriceSetStatus(message,state='info'){
+  const e=$('#priceStatus');e.textContent=message;e.dataset.state=state;
+}
+function shPriceFillSettings(c){
+  const fields={
+    marginPct:'#priceMargin',minMarginPct:'#priceMinMargin',
+    discountPct:'#priceDiscount',taxPct:'#priceTax',flashPct:'#priceFlash',
+    couponPct:'#priceCoupon',adsPct:'#priceAds',shipping:'#priceFreight',
+    packing:'#pricePackaging',sellerType:'#priceSellerType'
+  };
+  for(const [key,selector] of Object.entries(fields))
+    if(c[key]!==undefined)$(selector).value=c[key];
+  $('#priceHighVolume').checked=c.highVolumeCpf===true;
+  for(let i=0;i<4;i++){
+    $('#priceRate'+i).value=Number(c.commissionRates?.[i]??[20,14,14,14][i]);
+    $('#priceFee'+i).value=Number(c.fixedFees?.[i]??[4.5,16,20,26][i]);
+  }
+  shPriceRefreshMarginLabel();
+}
+function shPriceReadSettings(){
+  const number=id=>Number($(id).value);
+  return {
+    marginPct:number('#priceMargin'),minMarginPct:number('#priceMinMargin'),
+    discountPct:number('#priceDiscount'),taxPct:number('#priceTax'),
+    flashPct:number('#priceFlash'),couponPct:number('#priceCoupon'),
+    adsPct:number('#priceAds'),shipping:number('#priceFreight'),
+    packing:number('#pricePackaging'),sellerType:$('#priceSellerType').value,
+    highVolumeCpf:$('#priceHighVolume').checked,
+    commissionRates:[0,1,2,3].map(i=>number('#priceRate'+i)),
+    fixedFees:[0,1,2,3].map(i=>number('#priceFee'+i))
+  };
+}
+function shPriceRefreshMarginLabel(){$('#priceMarginLabel').textContent=$('#priceMargin').value+'%';}
+async function shPriceLoadDefaults(){
+  if(shPriceSettingsLoaded)return;
+  if(shPriceSettingsPromise)return shPriceSettingsPromise;
+  shPriceSettingsPromise=(async()=>{
+    try{
+      const d=await json('/api/shopee/optimizer/pricing/settings',
+        {signal:AbortSignal.timeout(24000)});
+      shPriceFillSettings(d.settings||{});
+      shPriceSettingsLoaded=true;
+    }catch(e){shPriceSetStatus('Não foi possível carregar a precificação: '+e.message,'error');}
+    finally{shPriceSettingsPromise=null;}
+  })();
+  return shPriceSettingsPromise;
+}
+function shPriceMoney(n){
+  return Number(n||0).toLocaleString('pt-BR',{style:'currency',currency:'BRL'});
+}
+function shPricePercent(n){return Number(n||0).toLocaleString('pt-BR',
+  {minimumFractionDigits:1,maximumFractionDigits:2})+'%';}
+function shPriceBreakdown(q){
+  const b=q.breakdown||{},rows=[
+    ['Custo WeDrop',b.unitCost],['Frete pago pela loja',b.shipping],
+    ['Embalagem',b.packing],['Comissão Shopee',b.commission],
+    ['Taxa fixa',b.fixedFee],['Extra CPF',b.cpfExtra],
+    ['Imposto',b.tax],['Oferta relâmpago',b.flash],['ADS',b.ads],
+    ['Desconto no anúncio',b.campaignDiscount],['Cupom da loja',b.couponDiscount]
+  ];
+  const el=$('#priceBreakdown');el.replaceChildren();
+  for(const [title,value] of rows){
+    const line=optimizerMake('div','sh-price-breakdown-row');
+    line.append(optimizerMake('span','',title),optimizerMake('strong','',shPriceMoney(value)));
+    el.appendChild(line);
+  }
+}
+function shPriceRender(q){
+  shPriceCurrentQuote=q;
+  $('#priceResults').hidden=false;
+  $('#priceGross').textContent=shPriceMoney(q.grossPrice);
+  $('#pricePromoPct').textContent=shPricePercent(q.discountPct);
+  $('#priceFinal').textContent=shPriceMoney(q.customerPrice);
+  $('#priceProfit').textContent=shPriceMoney(q.netProfit);
+  $('#priceMarginActual').textContent=shPricePercent(q.netMarginPct);
+  $('#priceCostSource').textContent='SKU '+q.sku+' · WeDrop '+q.supplierSku+
+    ' · Custo de aquisição '+shPriceMoney(q.unitCost)+
+    ' · Piso com margem mínima: '+shPriceMoney(q.priceFloor);
+  $('#priceMarketState').textContent=q.notice;
+  shPriceBreakdown(q);
+  shPriceSetStatus('Plano da SKU '+q.sku+' calculado e salvo para Descontos. Nenhuma alteração foi enviada à Shopee.','success');
+  $('#priceSaveInfo').textContent='Padrões e plano atualizados '+fmtDate(q.calculatedAt)+
+    '. Margem mínima '+shPricePercent(q.minMarginPct)+'.';
+}
+async function shPricePrepare({silent=false}={}){
+  if(!shPriceSelection){if(!silent)shPriceSetStatus('Localize primeiro uma SKU na Otimização.');return;}
+  if(shPricePrepareBusy){shPricePrepareAgain=true;return;}
+  shPricePrepareBusy=true;
+  const btn=$('#priceRecalculate');btn.disabled=true;
+  const selected={...shPriceSelection};
+  if(!silent)shPriceSetStatus('Conferindo o custo WeDrop salvo e preparando o desconto da SKU...');
+  try{
+    const market=$('#priceMarketAvg').value.trim();
+    const d=await json('/api/shopee/optimizer/pricing/prepare',{
+      method:'POST',headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({...selected,settings:shPriceReadSettings(),
+        marketAverage:market===''?null:Number(market)}),
+      signal:AbortSignal.timeout(35000)
+    });
+    if(shPriceSelection?.sku!==selected.sku||
+      shPriceSelection?.itemId!==selected.itemId||
+      shPriceSelection?.modelId!==selected.modelId)return;
+    shPriceRender(d.quote);
+  }catch(e){
+    $('#priceResults').hidden=true;shPriceCurrentQuote=null;
+    shPriceSetStatus('SKU '+selected.sku+': '+e.message,'error');
+    $('#priceSaveInfo').textContent='Sem custo WeDrop confirmado, não é permitido sugerir preço ou desconto.';
+  }finally{
+    shPricePrepareBusy=false;btn.disabled=false;
+    if(shPricePrepareAgain){shPricePrepareAgain=false;void shPricePrepare({silent:false});}
+  }
+}
+$('#priceMargin').addEventListener('input',shPriceRefreshMarginLabel);
+const shPriceInputIds=['#priceMargin','#priceMinMargin','#priceDiscount',
+  '#priceTax','#priceFlash','#priceCoupon','#priceAds','#priceFreight',
+  '#pricePackaging','#priceMarketAvg','#priceSellerType','#priceHighVolume',
+  ...[0,1,2,3].flatMap(i=>['#priceRate'+i,'#priceFee'+i])];
+for(const id of shPriceInputIds){
+  $(id).addEventListener('change',()=>{if(shPriceSelection)void shPricePrepare();});
+}
+$('#priceRecalculate').onclick=()=>void shPricePrepare();
+$('#priceOpenDiscounts').onclick=()=>setTab('discounts');
+function shDiscountRender(q){
+  shDiscountQuote=q;
+  $('#discountPlanCard').hidden=false;
+  $('#discountSku').textContent='SKU '+q.sku+(q.modelId!=='0'?' · Variação '+q.modelId:'');
+  $('#discountPlanDate').textContent='Calculado '+fmtDate(q.calculatedAt);
+  $('#discountGross').textContent=shPriceMoney(q.grossPrice);
+  $('#discountPct').textContent=shPricePercent(q.discountPct);
+  $('#discountFinal').textContent=shPriceMoney(q.customerPrice);
+  $('#discountMargin').textContent=shPricePercent(q.netMarginPct);
+  $('#discountPlanNotice').textContent=q.notice+' · Lucro líquido previsto '+
+    shPriceMoney(q.netProfit)+'. Confirme taxa, frete e promoção antes de aplicar.';
+}
+function shDiscountStatus(message,state='info'){
+  const n=$('#discountPlanStatus');n.textContent=message;n.dataset.state=state;
+}
+async function shDiscountChoose(row){
+  shDiscountStatus('Recuperando a SKU '+row.sku+' e conferindo o custo WeDrop atualizado...');
+  try{
+    const data=await json('/api/shopee/optimizer/pricing/prepare',{
+      method:'POST',headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({sku:row.sku,itemId:row.itemId,modelId:row.modelId}),
+      signal:AbortSignal.timeout(35000)
+    });
+    shPriceSelection={sku:row.sku,itemId:String(row.itemId),modelId:String(row.modelId)};
+    shPriceSaveSelection(shPriceSelection);
+    shDiscountRender(data.quote);
+    shDiscountStatus('Plano da SKU '+row.sku+' carregado automaticamente. Desconto preparado para revisão.','success');
+  }catch(e){
+    $('#discountPlanCard').hidden=true;shDiscountQuote=null;
+    shDiscountStatus('Plano não utilizável: '+e.message+
+      '. Abra Otimização para revisar a SKU ou o custo WeDrop.','error');
+  }
+}
+async function shDiscountLoadLatest(){
+  const list=$('#discountRecentPlans');list.replaceChildren();
+  shDiscountStatus('Carregando os últimos planos de desconto...');
+  try{
+    const result=await json('/api/shopee/optimizer/pricing/recent',
+      {signal:AbortSignal.timeout(25000)});
+    const plans=result.plans||[];
+    if(!plans.length){
+      $('#discountPlanCard').hidden=true;
+      shDiscountStatus('Nenhum plano salvo. Localize uma SKU uma única vez em Otimização.','warning');
+      return;
+    }
+    const saved=shPriceSelection||shPriceRestoredSelection();
+    const chosen=plans.find(p=>p.sku===saved?.sku&&
+      String(p.itemId)===saved.itemId&&String(p.modelId)===saved.modelId)||plans[0];
+    for(const row of plans){
+      const b=optimizerMake('button','sh-recent-plan');b.type='button';
+      b.append(optimizerMake('strong','',row.sku),
+        optimizerMake('span','',shPriceMoney(row.quote?.grossPrice)+
+          ' → '+shPricePercent(row.quote?.discountPct)+
+          ' · '+shPriceMoney(row.quote?.customerPrice)),
+        optimizerMake('small','',fmtDate(row.updatedAt)));
+      b.onclick=()=>void shDiscountChoose(row);
+      list.appendChild(b);
+    }
+    await shDiscountChoose(chosen);
+  }catch(e){shDiscountStatus('Não foi possível consultar planos Shopee: '+e.message,'error');}
+}
+$('#discountRefresh').onclick=()=>void shDiscountLoadLatest();
+$('#discountEdit').onclick=()=>{
+  if(!shPriceSelection)return setTab('optimizer');
+  setTab('optimizer');
+  $('#optimizerSku').value=shPriceSelection.sku;
+  void optimizerRunAudit(shPriceSelection.itemId,shPriceSelection.sku,shPriceSelection.modelId);
+};
+$('#discountCopy').onclick=async()=>{
+  const q=shDiscountQuote;
+  if(!q)return shDiscountStatus('Não há plano para copiar.','warning');
+  const report=['SHOPEE · REDE ACHADOS BR','SKU '+q.sku,
+    'Preço bruto: '+shPriceMoney(q.grossPrice),
+    'Desconto do anúncio: '+shPricePercent(q.discountPct),
+    'Cupom da loja: '+shPricePercent(q.couponPct),
+    'Preço final estimado: '+shPriceMoney(q.customerPrice),
+    'Lucro líquido estimado: '+shPriceMoney(q.netProfit),
+    'Margem mínima: '+shPricePercent(q.minMarginPct),
+    'Plano não aplicado na Shopee. Conferir Minha Promoção.'].join('\n');
+  try{await navigator.clipboard.writeText(report);shDiscountStatus('Valores copiados. Confira e aplique na Central da Shopee.','success');}
+  catch(e){shDiscountStatus('A cópia automática foi bloqueada pelo navegador. Confira os valores na tela.','warning');}
+};
 
 boot();
