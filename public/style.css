@@ -1238,3 +1238,49 @@ table tr:hover td{background:#f3f8ff}
  .optimizer-steps,.optimizer-kpis{grid-template-columns:repeat(2,minmax(0,1fr))}
  .optimizer-inline{flex-wrap:wrap}.optimizer-inline button{flex:1}}
 @media(hover:none),(prefers-reduced-motion:reduce){.optimizer-step{transition:none}}
+
+
+/* Shopee 1.14.2 — precificação por SKU, sem afetar componentes de outros setores. */
+.sh-price-panel{margin-top:16px}
+.sh-price-grid{display:grid;grid-template-columns:minmax(300px,1.03fr) minmax(280px,.97fr);gap:20px;align-items:start}
+.sh-price-controls{min-width:0}
+.sh-price-row{display:flex;justify-content:space-between;align-items:center;gap:10px;margin:6px 0}
+.sh-price-row label{font-weight:750;color:#263955}
+.sh-price-row strong{font-size:22px;font-weight:900;color:#d38b18}
+.sh-price-slider{display:block;width:100%;accent-color:#e6a929;cursor:pointer;margin:12px 0 17px}
+.sh-price-fields{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;margin:8px 0}
+.sh-price-fields label{display:flex;flex-direction:column;gap:7px;min-width:0;font-weight:700;font-size:12px;color:#53627a}
+.sh-price-fields input,.sh-price-fields select,.sh-fee-table input{display:block;width:100%;min-width:0;min-height:40px;padding:8px 10px;border:1px solid #cad5e7;border-radius:9px;background:white;color:#172b47;font:inherit}
+.sh-price-fields input:focus,.sh-price-fields select:focus,.sh-fee-table input:focus{outline:2px solid #edbf53;outline-offset:1px}
+.sh-price-advanced{margin:14px 0;border:1px solid #dbe3ef;border-radius:12px;overflow:hidden;background:#fbfcff}
+.sh-price-advanced summary{cursor:pointer;padding:13px 15px;font-weight:800;color:#283e5f}
+.sh-price-advanced[open] summary{border-bottom:1px solid #dbe3ef}
+.sh-price-advanced .sh-price-fields,.sh-price-advanced .hint,.sh-price-advanced .sh-price-checkbox,.sh-price-advanced .sh-fee-table{margin-left:13px;margin-right:13px}
+.sh-price-checkbox{display:flex;align-items:center;gap:8px;font-size:12px;color:#59677c}
+.sh-price-checkbox input{width:17px;height:17px;accent-color:#dc9f22}
+.sh-fee-table{display:grid;grid-template-columns:1.4fr 1fr 1fr;gap:8px;align-items:center;margin-bottom:15px}
+.sh-fee-table span{font-size:11px;font-weight:650;color:#52637a}
+.sh-price-results{border:1px solid #d8e0ed;border-radius:16px;background:#fff;padding:15px;min-width:0}
+.sh-price-hero{background:linear-gradient(135deg,#112845,#0d1c37);border-radius:12px;padding:21px;color:#fefefe;display:flex;flex-direction:column;gap:7px}
+.sh-price-hero>span{font-size:11px;letter-spacing:1.2px;color:#eac06c;font-weight:800}
+.sh-price-hero>strong{font-size:clamp(28px,3.6vw,43px);line-height:1.25;letter-spacing:-1px;overflow-wrap:anywhere}
+.sh-price-hero>small{color:#c9d5e7}
+.sh-price-kpis{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:9px;margin:12px 0}
+.sh-price-kpis>div{border:1px solid #e0e7f1;background:#f7f9fd;padding:12px;border-radius:12px;min-width:0}
+.sh-price-kpis span{font-size:11px;color:#62728c;display:block;line-height:1.4}
+.sh-price-kpis strong{font-size:clamp(17px,2.1vw,23px);font-weight:900;color:#152c4c;display:block;overflow-wrap:anywhere;margin-top:6px}
+.sh-price-kpis>div:nth-child(3) strong,.sh-price-kpis>div:nth-child(4) strong{color:#087d55}
+.sh-price-note{color:#576781;font-size:12px;line-height:1.65;margin:12px 0 0}
+.sh-price-breakdown-row{padding:9px 14px;border-bottom:1px solid #e9edf4;display:flex;justify-content:space-between;gap:12px;font-size:12px}
+.sh-price-breakdown-row span{color:#576781}.sh-price-breakdown-row strong{color:#1d375b}
+.sh-price-discount-card{border:1px solid #dbe4f0;border-radius:14px;background:#fff;padding:16px}
+.sh-price-discount-title{display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap;align-items:center;color:#243b5c}
+.sh-price-discount-title strong{font-size:18px}.sh-price-discount-title span{font-size:12px;color:#6a7b95}
+.sh-recent-plans{display:grid;grid-template-columns:repeat(auto-fill,minmax(230px,1fr));gap:10px;margin-top:12px}
+.sh-recent-plan{display:flex;flex-direction:column;gap:5px;text-align:left;padding:14px;border:1px solid #d5e0ec;border-radius:12px;background:#f8faff;cursor:pointer;color:#29405e;font:inherit}
+.sh-recent-plan strong{font-size:15px;font-weight:850}.sh-recent-plan span{font-size:13px;color:#2a475f}.sh-recent-plan small{color:#657993}
+.sh-recent-plan:hover,.sh-recent-plan:focus-visible{border-color:#d7a034;background:#fffaf0}
+#priceStatus[data-state="error"],#discountPlanStatus[data-state="error"]{background:#fff0f0;border:1px solid #f0c5c5;color:#a72c37}
+#priceStatus[data-state="success"],#discountPlanStatus[data-state="success"]{background:#effaf4;border:1px solid #bedccc;color:#247753}
+@media(max-width:820px){.sh-price-grid{grid-template-columns:1fr}.sh-price-hero>strong{font-size:32px}}
+@media(max-width:440px){.sh-price-fields{grid-template-columns:1fr}.sh-price-kpis strong{font-size:18px}.sh-fee-table{grid-template-columns:1.3fr 1fr 1fr;gap:5px}.sh-price-results{padding:10px}}
