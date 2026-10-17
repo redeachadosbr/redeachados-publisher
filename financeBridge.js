@@ -19,10 +19,46 @@ function authorized(req,res,next){
   if(a.length!==b.length||!crypto.timingSafeEqual(a,b))return res.status(401).json({error:'Chave da ponte financeira invalida.'});
   next();
 }
+// O relatório envolve muitas chamadas à Shopee (um repasse por pedido).
+// Nunca bloquear a função Netlify enquanto essa coleta é feita.
 export function installFinanceBridge(app,loadSnapshot){
-  app.options(path,(req,res)=>{if(!header(req,res))return;res.setHeader('Access-Control-Allow-Methods','GET, OPTIONS');res.setHeader('Access-Control-Allow-Headers','X-Finance-Bridge-Key, Accept');res.status(204).end();});
-  app.get(path,authorized,async(req,res)=>{
-    try{res.json(await loadSnapshot(req));}
-    catch(e){const raw=String(e?.message||e);res.status(/permission|denied|403|forbidden/i.test(raw)?403:502).json({error:'Nao foi possivel consultar dados financeiros Shopee. Confira autorizacao Payment e Ads no Publisher.'});}
+  const TTL_MS=10*60*1000;
+  const RETRY_AFTER_FAILURE_MS=30000;
+  let cached=null,storedAt=0,job=null,lastFailure=null;
+  const begin=()=>{
+    if(job)return;
+    job=Promise.resolve().then(()=>loadSnapshot()).then(data=>{
+      if(data?.schema!=='ra-finance-bridge-v1'||data?.platform!=='shopee'||!Array.isArray(data.orders))
+        throw Error('SHOPEE_BRIDGE_INVALID_RESULT');
+      cached=data;storedAt=Date.now();lastFailure=null;
+    }).catch(e=>{
+      const msg=String(e?.message||e||'');
+      const code=/permission|denied|forbidden|403/i.test(msg)?'PERMISSION_DENIED':
+        /autoriz|token|shop.*conectad/i.test(msg)?'SHOPEE_AUTH_REQUIRED':'COLLECTION_FAILED';
+      lastFailure={at:Date.now(),code};
+      console.warn('[Finance Bridge] Shopee collection failed:',code);
+    }).finally(()=>{job=null;});
+  };
+  app.options(path,(req,res)=>{
+    if(!header(req,res))return;
+    res.setHeader('Access-Control-Allow-Methods','GET, OPTIONS');
+    res.setHeader('Access-Control-Allow-Headers','X-Finance-Bridge-Key, Accept');
+    res.status(204).end();
+  });
+  app.get(path,authorized,(req,res)=>{
+    const now=Date.now();
+    if(cached){
+      if(now-storedAt>TTL_MS&&(!lastFailure||now-lastFailure.at>RETRY_AFTER_FAILURE_MS))begin();
+      return res.json({
+        ...cached,
+        cache:{status:job?'updating':'ready',ageSeconds:Math.max(0,Math.floor((now-storedAt)/1000))}
+      });
+    }
+    if(!job && lastFailure && now-lastFailure.at<RETRY_AFTER_FAILURE_MS)
+      return res.status(503).json({error:lastFailure.code,retryAfterSeconds:30});
+    begin();
+    res.setHeader('Retry-After','12');
+    return res.status(202).json({status:'pending',retryAfterSeconds:12,
+      message:'Coleta financeira Shopee em andamento. Nenhum valor foi considerado zero.'});
   });
 }
