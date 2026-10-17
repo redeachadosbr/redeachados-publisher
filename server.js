@@ -20,6 +20,10 @@ import {readWeDropSyncState,getStoredWeDropCostCount} from './wedropCosts.js';
 import {getSkuReview,searchSupplierSku,confirmSkuLink,undoSkuLink} from './wedropSkuReview.js';
 import {auditShopeeItem,validateSkuLookup} from './productOptimizer.js';
 import {optimizerSettings,saveOptimizerSettings} from './optimizerStore.js';
+import {quoteShopeePrice,normalizeShopeePricingSettings} from './shopeePricing.js';
+import {shopeePricingPreferences,saveShopeePricingPreferences,
+  shopeePricingSupplierCost,saveShopeePricePlan,recentShopeePricePlans,
+  savedShopeePricePlan} from './shopeePricingStore.js';
 import {createWeDropAutoScheduler,importSupplierAutomatically,supplierFeedConfig} from './wedropAutoSync.js';
 import {
   shopeeConfig,buildShopeeAuthorizationUrl,exchangeShopeeCode,refreshShopeeToken,
@@ -578,6 +582,70 @@ app.post('/api/shopee/optimizer/settings',mustLogin,requireWeDropAdmin,async(req
       imagePrompt:req.body?.imagePrompt,fiscalNotes:req.body?.fiscalNotes
     })});
   }catch(e){res.status(400).json({error:String(e.message||e).slice(0,240)});}
+});
+
+// Cotação e plano por SKU, exclusivos Shopee. Nenhum endpoint escreve preços,
+// promoções ou descontos na Central do Vendedor: revisão obrigatória.
+app.get('/api/shopee/optimizer/pricing/settings',mustLogin,requireWeDropAdmin,async(req,res)=>{
+  res.setHeader('Cache-Control','no-store');
+  try{
+    const {auth}=await getValidAuth(req);
+    res.json({ok:true,settings:await shopeePricingPreferences(auth.shopId)});
+  }catch(e){res.status(503).json({error:String(e.message||e).slice(0,280)});}
+});
+app.post('/api/shopee/optimizer/pricing/settings',mustLogin,requireWeDropAdmin,async(req,res)=>{
+  res.setHeader('Cache-Control','no-store');
+  try{
+    const {auth}=await getValidAuth(req);
+    res.json({ok:true,settings:await saveShopeePricingPreferences(auth.shopId,req.body?.settings)});
+  }catch(e){res.status(400).json({error:String(e.message||e).slice(0,280)});}
+});
+app.get('/api/shopee/optimizer/pricing/recent',mustLogin,requireWeDropAdmin,async(req,res)=>{
+  res.setHeader('Cache-Control','no-store');
+  try{
+    const {auth}=await getValidAuth(req);
+    res.json({ok:true,plans:await recentShopeePricePlans(auth.shopId),executed:false});
+  }catch(e){res.status(503).json({error:String(e.message||e).slice(0,280)});}
+});
+app.post('/api/shopee/optimizer/pricing/prepare',mustLogin,requireWeDropAdmin,async(req,res)=>{
+  res.setHeader('Cache-Control','no-store');
+  try{
+    const sku=validateSkuLookup(req.body?.sku);
+    const itemId=validItemId(req.body?.itemId);
+    const modelId=String(req.body?.modelId??'0');
+    if(!/^\d{1,18}$/.test(modelId))throw Error('ID da variação inválido.');
+    const {auth}=await getValidAuth(req);
+    // Não aceitar item/variação alterados ou de outro SKU por texto arbitrário.
+    const matches=await findExactCatalogSku(auth.shopId,sku);
+    if(!matches.some(x=>String(x.itemId)===itemId&&String(x.modelId)===modelId))
+      return res.status(409).json({error:'A SKU não corresponde mais a esse Item ID/variação. Localize novamente na Otimização.'});
+    const settings=req.body?.settings===undefined
+      ?await shopeePricingPreferences(auth.shopId)
+      :normalizeShopeePricingSettings(req.body.settings);
+    const cost=await shopeePricingSupplierCost(auth.shopId,{sku,itemId,modelId});
+    const previous=await savedShopeePricePlan(auth.shopId,itemId,modelId);
+    const marketAverage=req.body?.marketAverage===undefined
+      ?previous?.sku===sku?previous?.quote?.marketAverage??null:null
+      :req.body.marketAverage;
+    const quote=quoteShopeePrice({
+      unitCost:cost.unitCost,settings,marketAverage
+    });
+    quote.sku=sku;
+    quote.itemId=itemId;
+    quote.modelId=modelId;
+    quote.supplierSku=cost.supplierSku;
+    quote.costUpdatedAt=cost.costUpdatedAt;
+    quote.pricingSettings=settings;
+    quote.calculatedAt=new Date().toISOString();
+    // Evitar persistir configuração inválida/inviável ou uma SKU não encontrada.
+    if(req.body?.settings!==undefined)
+      await saveShopeePricingPreferences(auth.shopId,settings);
+    await saveShopeePricePlan(auth.shopId,{itemId,modelId,sku,supplierSku:cost.supplierSku,quote});
+    res.json({ok:true,readOnly:true,saved:true,quote});
+  }catch(e){
+    const message=String(e.message||e).slice(0,300);
+    res.status(/não vinculado|não corresponde|não disponível/i.test(message)?409:400).json({error:message});
+  }
 });
 
 app.get('/api/shopee/orders',mustLogin,async(req,res)=>{
