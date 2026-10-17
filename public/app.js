@@ -2052,13 +2052,13 @@ async function shPricePrepare({silent=false}={}){
     if(shPricePrepareAgain){shPricePrepareAgain=false;void shPricePrepare({silent:false});}
   }
 }
-$('#priceMargin').addEventListener('input',shPriceRefreshMarginLabel);
+$('#priceMargin')?.addEventListener?.('input',shPriceRefreshMarginLabel);
 const shPriceInputIds=['#priceMargin','#priceMinMargin','#priceDiscount',
   '#priceTax','#priceFlash','#priceCoupon','#priceAds','#priceFreight',
   '#pricePackaging','#priceMarketAvg','#priceSellerType','#priceHighVolume',
   ...[0,1,2,3].flatMap(i=>['#priceRate'+i,'#priceFee'+i])];
 for(const id of shPriceInputIds){
-  $(id).addEventListener('change',()=>{if(shPriceSelection)void shPricePrepare();});
+  $(id)?.addEventListener?.('change',()=>{if(shPriceSelection)void shPricePrepare();});
 }
 $('#priceRecalculate').onclick=()=>void shPricePrepare();
 $('#priceOpenDiscounts').onclick=()=>setTab('discounts');
