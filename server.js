@@ -21,6 +21,10 @@ import {getSkuReview,searchSupplierSku,confirmSkuLink,undoSkuLink} from './wedro
 import {auditShopeeItem,validateSkuLookup} from './productOptimizer.js';
 import {buildStages,descriptionDraft,safeTitle,validateReview} from './shopeeOptimizationWorkflow.js';
 import {getWorkflowReview,saveWorkflowReview} from './shopeeOptimizationWorkflowStore.js';
+import {compileShopeeExecutionPlan,confirmShopeeExecution,
+  assertLiveShopeeUnchanged,verifyShopeeExecution} from './shopeeExecutionPlan.js';
+import {readShopeeExecution,saveShopeePreparedExecution,
+  claimShopeePreparedExecution,finishShopeeExecution} from './shopeeExecutionStore.js';
 import {findLiveShopeeSku} from './shopeeSkuFinder.js';
 import {optimizerSettings,saveOptimizerSettings} from './optimizerStore.js';
 import {quoteShopeePrice,normalizeShopeePricingSettings} from './shopeePricing.js';
@@ -118,7 +122,7 @@ app.get('/app/:section',(req,res)=>{
 });
 app.get('/app',(_req,res)=>res.redirect(302,'/app/inicio'));
 
-app.get('/api/health',(_req,res)=>res.json({ok:true,service:'Rede Achados BR Shopee API',version:'1.14.6',storage:authStore.status()}));
+app.get('/api/health',(_req,res)=>res.json({ok:true,service:'Rede Achados BR Shopee API',version:'1.14.7',storage:authStore.status()}));
 app.get('/api/auth-state',(req,res)=>res.json({locked:Boolean(envText('APP_PASSWORD')),loggedIn:!envText('APP_PASSWORD')||Boolean(req.session?.appAuth)}));
 app.post('/api/login',(req,res)=>{
   const required=envText('APP_PASSWORD');
@@ -628,6 +632,114 @@ app.post('/api/shopee/optimizer/workflow/review',mustLogin,requireWeDropAdmin,as
       stages:buildStages(record,state),draftTitle:state.draftTitle||safeTitle(record.title),
       draftDescription:state.draftDescription||descriptionDraft(record)});
   }catch(e){res.status(400).json({error:String(e.message||e).slice(0,350)});}
+});
+
+// Preparação/execução Shopee segura: somente título e descrição revisados.
+// Mídia, frete, preço, promoção, estoque e fiscal NÃO são enviados.
+async function shopeeLiveEditableItem(cfg,auth,itemId){
+  const d=await callShopeeShopApi(cfg,{
+    path:'/api/v2/product/get_item_base_info',accessToken:auth.accessToken,
+    shopId:auth.shopId,query:{item_id_list:itemId}});
+  const x=(d?.response?.item_list||[]).find(i=>String(i.item_id)===String(itemId));
+  if(!x)throw Error('O anúncio não pôde ser confirmado na Shopee.');
+  return x;
+}
+app.post('/api/shopee/optimizer/execution/prepare',mustLogin,requireWeDropAdmin,async(req,res)=>{
+  res.setHeader('Cache-Control','no-store');
+  if(!verifiedSameOrigin(req))return res.status(403).json({error:'Origem não autorizada.'});
+  try{
+    const {itemId,modelId,sku,auth,cfg,record}=await checkedWorkflowAudit(req);
+    const review=await getWorkflowReview(auth.shopId,itemId,modelId);
+    if(review&&review.sku!==sku)throw Error('SKU do plano revisado é diferente. Refaça a auditoria.');
+    const live=await shopeeLiveEditableItem(cfg,auth,itemId);
+    const plan=compileShopeeExecutionPlan({shopId:auth.shopId,itemId,modelId,
+      sku,record,review:review?.review_state||{},live});
+    const stored=await saveShopeePreparedExecution(auth.shopId,itemId,modelId,sku,plan);
+    res.json({ok:true,ready:plan.canExecute,plan,
+      updatedAt:stored.updated_at,executionStatus:stored.state,marketplaceUpdated:false});
+  }catch(e){res.status(409).json({error:String(e.message||e).slice(0,300)});}
+});
+app.get('/api/shopee/optimizer/execution/status',mustLogin,requireWeDropAdmin,async(req,res)=>{
+  res.setHeader('Cache-Control','no-store');
+  try{
+    const itemId=validItemId(req.query.item_id),modelId=String(req.query.model_id||'0');
+    const sku=validateSkuLookup(req.query.sku);
+    if(!/^\d{1,18}$/.test(modelId))throw Error('Model ID inválido.');
+    const {auth}=await getValidAuth(req);
+    const job=await readShopeeExecution(auth.shopId,itemId,modelId);
+    res.json({ok:true,job:job?.sku===sku?job:null});
+  }catch(e){res.status(400).json({error:String(e.message||e).slice(0,300)});}
+});
+app.post('/api/shopee/optimizer/execution/execute',mustLogin,requireWeDropAdmin,async(req,res)=>{
+  res.setHeader('Cache-Control','no-store');
+  if(!verifiedSameOrigin(req))return res.status(403).json({error:'Origem não autorizada.'});
+  let claimed=false,auth,itemId,modelId,runId;
+  try{
+    if(req.body?.acceptPartialExecution!==true)
+      throw Error('Confirme que serão executados somente título e/ou descrição revisados.');
+    ({itemId,modelId,auth}=await checkedWorkflowAudit(req));
+    const sku=validateSkuLookup(req.body.sku);
+    const job=await readShopeeExecution(auth.shopId,itemId,modelId);
+    if(job?.sku!==sku||job.state!=='prepared')throw Error('Plano não preparado ou já executado. Prepare novamente.');
+    const plan=job.plan;
+    if(plan?.planId!==String(req.body.planId||'')||
+       String(job.updated_at)!==String(req.body.updatedAt||''))
+      throw Error('Plano atualizado em outra sessão. Confira novamente.');
+    confirmShopeeExecution(plan,{sku,confirmation:req.body.confirmation});
+    const review=await getWorkflowReview(auth.shopId,itemId,modelId);
+    if(review?.sku!==sku)throw Error('Conferência do anúncio foi modificada; prepare novamente.');
+    const reviewState=review.review_state||{};
+    if(plan.proposed.item_name!==undefined&&
+      (reviewState.stages?.seo?.reviewed!==true||safeTitle(reviewState.draftTitle)!==plan.proposed.item_name))
+      throw Error('Título foi alterado ou deixou de estar revisado. Refaça a preparação.');
+    if(plan.proposed.description!==undefined&&
+      (reviewState.stages?.description?.reviewed!==true||
+       String(reviewState.draftDescription||'').trim()!==plan.proposed.description))
+      throw Error('Descrição foi alterada ou deixou de estar revisada. Refaça a preparação.');
+    const {cfg}=await getValidAuth(req);
+    const live=await shopeeLiveEditableItem(cfg,auth,itemId);
+    assertLiveShopeeUnchanged(plan,live);
+    // O estado muda de prepared para running sob comparação atômica.
+    runId=crypto.randomUUID();
+    await claimShopeePreparedExecution(auth.shopId,itemId,modelId,{
+      planId:plan.planId,updatedAt:job.updated_at,runId});
+    claimed=true;
+    let mutation;
+    try{
+      mutation=await callShopeeShopApi(cfg,{path:'/api/v2/product/update_item',
+        method:'POST',accessToken:auth.accessToken,shopId:auth.shopId,
+        body:{item_id:Number(itemId),...plan.proposed}});
+    }catch(e){
+      // Mesmo erro de rede pode ocultar publicação feita. Não repetir sem leitura.
+      const message='Resposta da atualização Shopee inconclusiva: '+String(e.message||e).slice(0,170);
+      try{await finishShopeeExecution(auth.shopId,itemId,modelId,runId,
+        {state:'uncertain',result:{operation:'update_item'},lastError:message});}catch{}
+      return res.status(409).json({ok:false,status:'uncertain',error:message,
+        retryAutomatically:false,marketplaceUpdated:'não confirmado'});
+    }
+    let verified=false,readbackError=null;
+    try{
+      const updated=await shopeeLiveEditableItem(cfg,auth,itemId);
+      verified=verifyShopeeExecution(plan,updated);
+    }catch(e){readbackError=String(e.message||e).slice(0,190);}
+    const state=verified?'verified':'uncertain';
+    await finishShopeeExecution(auth.shopId,itemId,modelId,runId,{
+      state,result:{actions:plan.actions,requestId:String(mutation?.request_id||'').slice(0,100),
+        verified,readbackError},lastError:verified?null:'Sem confirmação de leitura pós-atualização.'
+    });
+    res.status(verified?200:409).json({ok:verified,status:state,
+      marketplaceUpdated:verified,actions:plan.actions,
+      message:verified?'Alterações confirmadas por nova leitura Shopee.':
+        'O anúncio pode ter sido alterado. Confira a Central do Vendedor; sem repetição automática.'});
+  }catch(e){
+    // Não tentar repetir uma alteração já iniciada; caso incerto permanece bloqueado.
+    if(claimed&&auth&&itemId&&runId){
+      try{await finishShopeeExecution(auth.shopId,itemId,modelId,runId,{
+        state:'uncertain',lastError:'Resultado da execução não confirmado.'});}catch{}
+    }
+    res.status(409).json({ok:false,error:String(e.message||e).slice(0,280),
+      retryAutomatically:false,marketplaceUpdated:claimed?'não confirmado':false});
+  }
 });
 
 app.get('/api/shopee/optimizer/settings',mustLogin,requireWeDropAdmin,async(req,res)=>{

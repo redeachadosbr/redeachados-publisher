@@ -1383,6 +1383,7 @@ $('#optimizerSku')?.addEventListener?.('input',()=>{
   $('#optimizerSupplierResult').hidden=true;
   $('#optimizerWorkflowPanel').hidden=true;
   optimizerWorkflowPlan=null;optimizerWorkflowStage=null;optimizerWorkflowSerial++;
+  optimizerExecReset();
   shPriceCurrentQuote=null;
   shPriceSupplierQuote=null;
   shPriceSelection=null;
@@ -1486,6 +1487,7 @@ async function optimizerWorkflowLoad(record){
      {signal:AbortSignal.timeout(60000)});
    if(serial!==optimizerWorkflowSerial||$('#optimizerSku').value.trim()!==sku)return;
    optimizerWorkflowRender(data);
+   void optimizerExecutionPrepare();
    optimizerWorkflowNotice('Plano da SKU '+sku+' carregado. As etapas são revisões, não alterações publicadas.','success');
  }catch(e){
    if(serial===optimizerWorkflowSerial&&$('#optimizerSku').value.trim()===sku)
@@ -1521,9 +1523,121 @@ $('#optimizerWorkflowReview')?.addEventListener?.('click',async()=>{
    });
    if(optimizerWorkflowPlan?.sku!==data.sku||optimizerWorkflowPlan?.itemId!==data.itemId)return;
    optimizerWorkflowRender({...data,...result,stages:result.stages});
+   void optimizerExecutionPrepare();
    optimizerWorkflowNotice('Revisão da etapa '+stage.name+' salva. Nenhum dado do anúncio foi alterado na Shopee.','success');
  }catch(e){optimizerWorkflowNotice('Falha ao salvar conferência: '+e.message,'error');}
  finally{btn.disabled=false;}
+});
+// Pré-execução parcial Shopee. Only explicit interaction authorizes update_item.
+let optimizerExecPlan=null,optimizerExecContext=null,optimizerExecBusy=false,optimizerExecSerial=0;
+function optimizerExecNotice(message,state='info'){
+ const e=$('#optimizerExecutionStatus');e.textContent=message;e.dataset.state=state;
+}
+function optimizerExecReset(){
+ ++optimizerExecSerial;optimizerExecPlan=null;optimizerExecContext=null;optimizerExecBusy=false;
+ $('#optimizerExecutionSummary').hidden=true;
+ $('#optimizerExecutionConfirmation').hidden=true;
+ $('#optimizerExecutionAccept').checked=false;
+ $('#optimizerExecutionInput').value='';
+ $('#optimizerExecutionRun').disabled=true;
+}
+function optimizerExecRow(parent,text,type='info'){
+ const el=optimizerMake('div','optimizer-exec-line optimizer-exec-'+type,text);
+ parent.appendChild(el);
+}
+function optimizerExecRender(data){
+ const plan=data.plan,context=optimizerExecContext;
+ if(!plan||!context||context.sku!==plan.sku||context.itemId!==plan.itemId)return;
+ optimizerExecPlan={...plan,updatedAt:data.updatedAt};
+ const changes=$('#optimizerExecutionChanges'),blocked=$('#optimizerExecutionBlockers'),warn=$('#optimizerExecutionWarnings');
+ changes.replaceChildren();blocked.replaceChildren();warn.replaceChildren();
+ if(plan.actions.length){
+   optimizerExecRow(changes,'Alterações disponíveis para executar após sua confirmação:','heading');
+   for(const [key,value] of Object.entries(plan.proposed)){
+     optimizerExecRow(changes,(key==='item_name'?'Título SEO':'Descrição')+
+       ': '+(value.length>180?value.slice(0,180)+'…':value),'action');
+   }
+ }else optimizerExecRow(changes,'Nenhum campo revisado possui alteração pendente.','info');
+ if(plan.blocked.length){
+   optimizerExecRow(blocked,'Pendências que impedem título/descrição:','heading');
+   for(const issue of plan.blocked)optimizerExecRow(blocked,'• '+issue,'blocker');
+ }
+ optimizerExecRow(warn,'Demais etapas ainda não executadas automaticamente:','heading');
+ for(const warning of plan.warnings)optimizerExecRow(warn,'• '+warning,'warning');
+ $('#optimizerExecutionSummary').hidden=false;
+ $('#optimizerExecutionConfirmation').hidden=!data.ready;
+ $('#optimizerExecutionAccept').checked=false;
+ $('#optimizerExecutionInput').value='';
+ $('#optimizerExecutionPhrase').textContent='EXECUTAR '+plan.sku;
+ optimizerExecUpdateRunButton();
+ optimizerExecNotice(data.ready
+   ?'Pré-voo aprovado para '+plan.actions.map(x=>x==='item_name'?'título SEO':'descrição').join(' e ')+
+     '. Aguarde sua autorização explícita para executar. As demais etapas continuam pendentes.'
+   : 'O sistema preparou a revisão, mas ainda não há alterações de título/descrição elegíveis para execução.',
+   data.ready?'success':'warning');
+}
+function optimizerExecUpdateRunButton(){
+ const p=optimizerExecPlan;
+ $('#optimizerExecutionRun').disabled=optimizerExecBusy||!p?.canExecute||
+   !$('#optimizerExecutionAccept').checked||
+   $('#optimizerExecutionInput').value.trim()!=='EXECUTAR '+p.sku;
+}
+async function optimizerExecutionPrepare(){
+ const w=optimizerWorkflowPlan;
+ if(!w||optimizerExecBusy)return;
+ const serial=++optimizerExecSerial;
+ optimizerExecContext={sku:w.sku,itemId:w.itemId,modelId:w.modelId};
+ optimizerExecPlan=null;
+ $('#optimizerExecutionSummary').hidden=true;
+ $('#optimizerExecutionConfirmation').hidden=true;
+ const btn=$('#optimizerExecutionPrepare');btn.disabled=true;
+ optimizerExecNotice('Conferindo o anúncio atual, os rascunhos revisados e os bloqueios por etapa...');
+ try{
+   const result=await json('/api/shopee/optimizer/execution/prepare',{
+     method:'POST',headers:{'Content-Type':'application/json'},
+     body:JSON.stringify({sku:w.sku,itemId:w.itemId,modelId:w.modelId}),
+     signal:AbortSignal.timeout(75000)
+   });
+   if(serial!==optimizerExecSerial||optimizerWorkflowPlan?.sku!==w.sku||
+      optimizerWorkflowPlan?.itemId!==w.itemId)return;
+   optimizerExecRender(result);
+ }catch(e){
+   if(serial===optimizerExecSerial)
+     optimizerExecNotice('Pré-execução bloqueada: '+e.message+
+       '. Confira o anúncio ou espere eventual execução anterior ser reconciliada.','error');
+ }finally{btn.disabled=false}
+}
+$('#optimizerExecutionPrepare')?.addEventListener?.('click',()=>void optimizerExecutionPrepare());
+$('#optimizerExecutionAccept')?.addEventListener?.('change',optimizerExecUpdateRunButton);
+$('#optimizerExecutionInput')?.addEventListener?.('input',optimizerExecUpdateRunButton);
+$('#optimizerExecutionRun')?.addEventListener?.('click',async()=>{
+ const p=optimizerExecPlan,ctx=optimizerExecContext;
+ if(!p?.canExecute||!ctx||optimizerExecBusy)return;
+ optimizerExecUpdateRunButton();
+ if(!$('#optimizerExecutionAccept').checked||
+   $('#optimizerExecutionInput').value.trim()!=='EXECUTAR '+p.sku)return;
+ const btn=$('#optimizerExecutionRun');
+ optimizerExecBusy=true;btn.disabled=true;$('#optimizerExecutionPrepare').disabled=true;
+ optimizerExecNotice('Executando apenas título/descrição autorizados. Aguarde confirmação da Shopee...');
+ try{
+   const out=await json('/api/shopee/optimizer/execution/execute',{
+     method:'POST',headers:{'Content-Type':'application/json'},
+     body:JSON.stringify({sku:ctx.sku,itemId:ctx.itemId,modelId:ctx.modelId,
+       planId:p.planId,updatedAt:p.updatedAt,confirmation:'EXECUTAR '+p.sku,
+       acceptPartialExecution:true}),
+     signal:AbortSignal.timeout(85000)
+   });
+   optimizerExecPlan=null;
+   $('#optimizerExecutionConfirmation').hidden=true;
+   optimizerExecNotice(out.marketplaceUpdated===true
+     ?'A Shopee confirmou as alterações. Refaça a auditoria antes da próxima etapa.'
+     :'Resposta não confirmou a atualização. Confira a Central do Vendedor; não execute novamente sem reconciliar.',
+     out.marketplaceUpdated===true?'success':'warning');
+ }catch(e){
+   optimizerExecPlan=null;$('#optimizerExecutionConfirmation').hidden=true;
+   optimizerExecNotice('Execução interrompida ou resposta incerta: '+e.message+
+     '. Não tente repetir automaticamente; confira o anúncio na Shopee.','error');
+ }finally{optimizerExecBusy=false;$('#optimizerExecutionPrepare').disabled=false;}
 });
 function optimizerCell(row,textValue,className=''){
   const td=optimizerMake('td',className,textValue);row.appendChild(td);return td;

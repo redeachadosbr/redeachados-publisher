@@ -1469,3 +1469,28 @@ table tr:hover td{background:#f3f8ff}
 @media(max-width:1100px){.optimizer-workflow-cards{grid-template-columns:repeat(2,minmax(0,1fr))}}
 @media(max-width:630px){.optimizer-workflow-cards{grid-template-columns:1fr}}
 @media(prefers-reduced-motion:reduce){.optimizer-workflow-card{transition:none}}
+
+
+/* Pré-execução Shopee 1.14.7. Explicit approval and readable blockers. */
+.optimizer-v15-page .optimizer-exec-panel{border:1px solid #dbe6f2;border-radius:15px;padding:17px;background:#f9fbfe;display:grid;gap:11px}
+.optimizer-exec-head{display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap}
+.optimizer-exec-head h4{font-size:16px;margin:4px 0;color:#183657}
+.optimizer-exec-head button{padding:9px 12px;font-size:11px}
+.optimizer-v15-page #optimizerExecutionSummary[hidden],
+.optimizer-v15-page #optimizerExecutionConfirmation[hidden]{display:none!important}
+.optimizer-exec-summary{display:grid;gap:12px}
+.optimizer-exec-changes,.optimizer-exec-blockers{display:grid;gap:5px;background:white;border:1px solid #e4edf5;border-radius:11px;padding:11px}
+.optimizer-exec-line{font-size:11px;line-height:1.5;overflow-wrap:anywhere;color:#4b6380}
+.optimizer-exec-heading{font-weight:800;color:#173d64;font-size:12px}
+.optimizer-exec-action{color:#157650;font-weight:700;background:#edf9f4;border-radius:8px;padding:8px}
+.optimizer-exec-blocker{color:#9a5e1f}
+.optimizer-exec-warning{color:#6e819a}
+.optimizer-exec-confirm{border:1px solid #f0d9a9;border-radius:12px;padding:12px;background:#fffcf6}
+.optimizer-exec-confirm summary{cursor:pointer;font-weight:800;color:#8f641d;font-size:12px}
+.optimizer-exec-confirm p{font-size:11px;line-height:1.6;color:#536a86}
+.optimizer-exec-accept{display:flex;gap:9px;align-items:flex-start;font-size:12px;line-height:1.5;color:#354e6c;margin:13px 0}
+.optimizer-exec-accept input{accent-color:#187a5c;width:18px;height:18px;flex-shrink:0;margin:1px 0 0}
+.optimizer-exec-confirm .optimizer-field strong{font-family:monospace;color:#2a5981}
+.optimizer-exec-confirm #optimizerExecutionInput{max-width:360px}
+.optimizer-exec-confirm #optimizerExecutionRun{font-size:12px;min-height:42px}
+.optimizer-exec-confirm #optimizerExecutionRun:disabled{cursor:not-allowed;opacity:.45}
