@@ -1381,6 +1381,8 @@ $('#optimizerSku')?.addEventListener?.('input',()=>{
   $('#optimizerQuickValues').hidden=true;
   $('#priceResults').hidden=true;
   $('#optimizerSupplierResult').hidden=true;
+  $('#optimizerWorkflowPanel').hidden=true;
+  optimizerWorkflowPlan=null;optimizerWorkflowStage=null;optimizerWorkflowSerial++;
   shPriceCurrentQuote=null;
   shPriceSupplierQuote=null;
   shPriceSelection=null;
@@ -1401,6 +1403,126 @@ $('#optimizerSku').onkeydown=event=>{
     $('#optimizerFind').click();
   }
 };
+// Etapas persistentes para o mesmo Item ID/modelo/SKU. Nenhum write na Shopee.
+let optimizerWorkflowPlan=null,optimizerWorkflowStage=null,optimizerWorkflowSerial=0;
+const workflowImageGuide=[
+ '01 · CAPA: mesma piscina real, produto completo, fundo claro, sem textos ou selos.',
+ '02 · MEDIDAS: somente dimensões confirmadas pelo fornecedor/fabricante.',
+ '03 · BENEFÍCIO: mostrar visualmente a função real, sem promessas novas.',
+ '04 · MATERIAIS: close apenas de material comprovado pelas imagens ou ficha.',
+ '05 · USO REAL: cena cotidiana coerente com a escala real do produto.',
+ '06 · DETALHES: mostrar acabamento e elementos que realmente existem.',
+ '07 · CONTEÚDO: somente itens realmente incluídos na embalagem.',
+ '08 · ESPECIFICAÇÕES: dados técnicos confirmados; sem medidas inventadas.',
+ '09 · CONVERSÃO: produto real em destaque e poucas palavras, se necessário.'
+].join('\n');
+function optimizerWorkflowNotice(message,state='info'){
+ const n=$('#optimizerWorkflowStatus');if(!n)return;
+ n.textContent=message;n.dataset.state=state;
+}
+function optimizerWorkflowRender(data){
+ optimizerWorkflowPlan=data;
+ const cards=$('#optimizerWorkflowCards');cards.replaceChildren();
+ const stages=data.stages||[];
+ const reviews=stages.filter(x=>x.reviewed&&x.key!=='final').length;
+ $('#optimizerWorkflowCounter').textContent=reviews+' / 8 etapas conferidas';
+ for(const [i,stage] of stages.entries()){
+   const btn=optimizerMake('button','optimizer-workflow-card optimizer-workflow-'+stage.status);
+   btn.type='button';
+   btn.setAttribute('aria-label','Abrir etapa '+(i+1)+': '+stage.name);
+   const number=optimizerMake('span','optimizer-workflow-number',String(i+1).padStart(2,'0'));
+   const body=optimizerMake('span','optimizer-workflow-label');
+   body.append(optimizerMake('strong','',stage.name),
+     optimizerMake('small','',stage.reviewed?'Conferência registrada':stage.blocking?'Precisa de atenção':'Preparar e revisar'));
+   const mark=optimizerMake('span','optimizer-workflow-symbol',stage.reviewed?'✓':'→');
+   btn.append(number,body,mark);
+   btn.onclick=()=>optimizerWorkflowOpen(stage.key);
+   cards.appendChild(btn);
+ }
+ if(optimizerWorkflowStage&&stages.some(x=>x.key===optimizerWorkflowStage))
+   optimizerWorkflowOpen(optimizerWorkflowStage);
+}
+function optimizerWorkflowOpen(key){
+ const data=optimizerWorkflowPlan;
+ const stage=(data?.stages||[]).find(x=>x.key===key);
+ if(!stage)return;
+ optimizerWorkflowStage=key;
+ $('#optimizerWorkflowEditor').hidden=false;
+ $('#optimizerWorkflowStageNumber').textContent='ETAPA '+String(data.stages.indexOf(stage)+1).padStart(2,'0');
+ $('#optimizerWorkflowStageTitle').textContent=stage.name;
+ $('#optimizerWorkflowStageDetail').textContent=stage.detail;
+ const guide=$('#optimizerWorkflowStageGuidance');
+ const isImages=key==='images';
+ guide.textContent=stage.hint+(isImages?'\n\nROTEIRO PARA GERAR E REVISAR AS NOVE IMAGENS:\n'+workflowImageGuide+
+    '\n\nUse o prompt mestre salvo em Regras da loja. Confira produto e medidas antes de substituir uma fotografia.':'');
+ const draftWrap=$('#optimizerWorkflowDraftWrap');
+ const isSeo=key==='seo',isDescription=key==='description';
+ draftWrap.hidden=!(isSeo||isDescription);
+ if(isSeo||isDescription){
+   $('#optimizerWorkflowDraftLabel').textContent=isSeo?'Título SEO proposto (edite antes de gravar na Shopee)':
+     'Rascunho de descrição (edite antes de gravar na Shopee)';
+   $('#optimizerWorkflowDraft').maxLength=isSeo?120:3000;
+   $('#optimizerWorkflowDraft').value=isSeo?data.draftTitle:data.draftDescription;
+ }
+ $('#optimizerWorkflowReview').hidden=key==='final';
+ if(key!=='final'){
+   $('#optimizerWorkflowReview').textContent=stage.reviewed?'Reabrir conferência':'Registrar etapa como conferida';
+ }
+ $('#optimizerWorkflowShopee').href='https://seller.shopee.com.br/portal/product/'+encodeURIComponent(data.itemId)+'?pageEntry=product_list';
+ // Not an execution button: opens the Seller Center for an actual confirmed edit.
+ const area=$('#optimizerWorkflowEditor');if(area.scrollIntoView)area.scrollIntoView({block:'nearest',behavior:'smooth'});
+}
+async function optimizerWorkflowLoad(record){
+ const serial=++optimizerWorkflowSerial,sku=String(record?.sku||'');
+ const id=String(record?.itemId||'');
+ const modelId=String(record?.selectedModelId||'0');
+ const p=$('#optimizerWorkflowPanel');
+ p.hidden=false;
+ optimizerWorkflowStage=null;$('#optimizerWorkflowEditor').hidden=true;
+ optimizerWorkflowNotice('Preparando etapas de revisão da SKU '+sku+' com a auditoria oficial...');
+ try{
+   const qs=new URLSearchParams({sku,item_id:id,model_id:modelId});
+   const data=await json('/api/shopee/optimizer/workflow?'+qs.toString(),
+     {signal:AbortSignal.timeout(60000)});
+   if(serial!==optimizerWorkflowSerial||$('#optimizerSku').value.trim()!==sku)return;
+   optimizerWorkflowRender(data);
+   optimizerWorkflowNotice('Plano da SKU '+sku+' carregado. As etapas são revisões, não alterações publicadas.','success');
+ }catch(e){
+   if(serial===optimizerWorkflowSerial&&$('#optimizerSku').value.trim()===sku)
+     optimizerWorkflowNotice('Não foi possível carregar as etapas: '+e.message+'. Refaça a análise desta SKU.','error');
+ }
+}
+$('#optimizerWorkflowClose')?.addEventListener?.('click',()=>{$('#optimizerWorkflowEditor').hidden=true;optimizerWorkflowStage=null;});
+$('#optimizerWorkflowCopy')?.addEventListener?.('click',async()=>{
+ const key=optimizerWorkflowStage,stage=optimizerWorkflowPlan?.stages?.find(x=>x.key===key);
+ if(!stage)return;
+ const value=(key==='seo'||key==='description')
+  ?$('#optimizerWorkflowDraft').value
+  :stage.name+'\n\n'+stage.detail+'\n'+$('#optimizerWorkflowStageGuidance').textContent;
+ try{await navigator.clipboard.writeText(value);optimizerWorkflowNotice('Orientação da etapa copiada para revisão.','success');}
+ catch{optimizerWorkflowNotice('Não foi possível copiar automaticamente; selecione o texto manualmente.','warning');}
+});
+$('#optimizerWorkflowReview')?.addEventListener?.('click',async()=>{
+ const data=optimizerWorkflowPlan,key=optimizerWorkflowStage;
+ const stage=data?.stages?.find(x=>x.key===key);
+ if(!stage||key==='final')return;
+ const btn=$('#optimizerWorkflowReview');btn.disabled=true;
+ optimizerWorkflowNotice('Salvando a conferência da etapa '+stage.name+' na Shopee Manager...');
+ try{
+   const body={itemId:data.itemId,modelId:data.modelId,sku:data.sku,
+     stage:key,reviewed:!stage.reviewed};
+   if(key==='seo')body.title=$('#optimizerWorkflowDraft').value;
+   if(key==='description')body.description=$('#optimizerWorkflowDraft').value;
+   const result=await json('/api/shopee/optimizer/workflow/review',{
+     method:'POST',headers:{'Content-Type':'application/json'},
+     body:JSON.stringify(body),signal:AbortSignal.timeout(60000)
+   });
+   if(optimizerWorkflowPlan?.sku!==data.sku||optimizerWorkflowPlan?.itemId!==data.itemId)return;
+   optimizerWorkflowRender({...data,...result,stages:result.stages});
+   optimizerWorkflowNotice('Revisão da etapa '+stage.name+' salva. Nenhum dado do anúncio foi alterado na Shopee.','success');
+ }catch(e){optimizerWorkflowNotice('Falha ao salvar conferência: '+e.message,'error');}
+ finally{btn.disabled=false;}
+});
 function optimizerCell(row,textValue,className=''){
   const td=optimizerMake('td',className,textValue);row.appendChild(td);return td;
 }
@@ -1495,6 +1617,7 @@ async function optimizerRunAudit(itemId,sku,modelId=''){
     });
     if($('#optimizerSku').value.trim()!==expectedSku)return;
     optimizerRender(data.record);
+    void optimizerWorkflowLoad(data.record);
     optimizerNotice('SKU '+expectedSku+' analisado. Ficha técnica consultada pela API. '+
       'Nenhuma imagem, informação, título, preço ou estoque foi alterado.','success');
   }catch(e){
