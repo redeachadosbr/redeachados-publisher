@@ -1494,3 +1494,29 @@ table tr:hover td{background:#f3f8ff}
 .optimizer-exec-confirm #optimizerExecutionInput{max-width:360px}
 .optimizer-exec-confirm #optimizerExecutionRun{font-size:12px;min-height:42px}
 .optimizer-exec-confirm #optimizerExecutionRun:disabled{cursor:not-allowed;opacity:.45}
+
+
+/* Shopee 1.14.8: private, SKU-bound manual video import and connection diagnostics */
+.optimizer-v15-page #optimizerVideoManualPanel[hidden],
+.optimizer-v15-page #optimizerVideoPreview[hidden]{display:none!important}
+.optimizer-video-import{display:grid;gap:12px;padding:17px;margin:16px 0;
+ background:linear-gradient(130deg,#f7faff,#fff);border:1px solid #d6e4f2;border-radius:14px}
+.optimizer-video-header{display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap}
+.optimizer-video-header strong{font-size:14px;color:#1b3755}
+.optimizer-video-tag{font-size:10px;font-weight:750;color:#6c7992;background:#e9eff8;padding:6px 9px;border-radius:99px}
+.optimizer-video-help{font-size:12px;color:#687a94;margin:0;line-height:1.6}
+.optimizer-video-import input[type=file]{font-size:12px;display:block;width:100%;padding:12px;
+ border:1px dashed #b6cadf;border-radius:11px;background:#fff;cursor:pointer}
+.optimizer-video-import video{display:block;width:min(100%,560px);max-height:340px;
+ object-fit:contain;background:#0e1d32;border-radius:13px}
+.optimizer-video-import .optimizer-workflow-actions{margin-top:0}
+.optimizer-video-import button{min-height:41px;font-size:12px;border-radius:10px}
+.optimizer-video-import button:disabled{cursor:not-allowed;opacity:.55}
+.optimizer-video-import .optimizer-notice{margin:0}
+.optimizer-connection-tools{display:flex;flex-wrap:wrap;align-items:center;gap:11px;padding:5px 0}
+.optimizer-connection-tools button{font-size:11px;padding:9px 12px}
+.optimizer-connection-tools p{flex:1;min-width:240px;color:#6f7e92;font-size:11px;line-height:1.5;margin:0;overflow-wrap:anywhere}
+.optimizer-connection-tools p[data-state=warning]{color:#985b20}
+.optimizer-connection-tools p[data-state=error]{color:#aa3940}
+.optimizer-connection-tools p[data-state=success]{color:#087653}
+@media(max-width:580px){.optimizer-video-import{padding:13px}.optimizer-video-import video{max-height:220px}}

@@ -1433,8 +1433,10 @@ function optimizerWorkflowRender(data){
    btn.setAttribute('aria-label','Abrir etapa '+(i+1)+': '+stage.name);
    const number=optimizerMake('span','optimizer-workflow-number',String(i+1).padStart(2,'0'));
    const body=optimizerMake('span','optimizer-workflow-label');
+   const videoStaged=stage.key==='video'&&Boolean(data.manualVideo);
    body.append(optimizerMake('strong','',stage.name),
-     optimizerMake('small','',stage.reviewed?'Conferência registrada':stage.blocking?'Precisa de atenção':'Preparar e revisar'));
+     optimizerMake('small','',videoStaged?'Vídeo importado · não publicado':
+       stage.reviewed?'Conferência registrada':stage.blocking?'Precisa de atenção':'Preparar e revisar'));
    const mark=optimizerMake('span','optimizer-workflow-symbol',stage.reviewed?'✓':'→');
    btn.append(number,body,mark);
    btn.onclick=()=>optimizerWorkflowOpen(stage.key);
@@ -1443,6 +1445,119 @@ function optimizerWorkflowRender(data){
  if(optimizerWorkflowStage&&stages.some(x=>x.key===optimizerWorkflowStage))
    optimizerWorkflowOpen(optimizerWorkflowStage);
 }
+// Importação manual (SKU isolada) em armazenamento privado. Nunca publica na Shopee.
+const optimizerVideoMaxBytes=30*1024*1024;
+let optimizerVideoObjectURL=null,optimizerVideoDurationReady=false,optimizerVideoUploading=false;
+function optimizerVideoContext(){
+ const p=optimizerWorkflowPlan;
+ if(!p||$('#optimizerSku').value.trim()!==p.sku)throw Error('Localize novamente a SKU antes de importar o vídeo.');
+ return {sku:p.sku,item_id:p.itemId,model_id:p.modelId};
+}
+function optimizerVideoNotice(message,state='info'){
+ const el=$('#optimizerVideoStatus');if(!el)return;
+ el.textContent=message;el.dataset.state=state;
+}
+function optimizerVideoClearPreview(){
+ if(optimizerVideoObjectURL){URL.revokeObjectURL(optimizerVideoObjectURL);optimizerVideoObjectURL=null}
+ const player=$('#optimizerVideoPreview');player.pause?.();player.removeAttribute?.('src');
+ player.load?.();player.hidden=true;
+}
+function optimizerVideoReset(){
+ optimizerVideoDurationReady=false;
+ $('#optimizerVideoFile').value='';
+ $('#optimizerVideoUpload').disabled=true;
+ optimizerVideoClearPreview();
+ optimizerVideoNotice('Selecione um vídeo do produto para importar e revisar.');
+}
+function optimizerVideoParams(){
+ return new URLSearchParams(optimizerVideoContext()).toString();
+}
+async function optimizerVideoLoadSaved(){
+ const target=optimizerWorkflowPlan;
+ if(!target||optimizerWorkflowStage!=='video')return;
+ const identity=target.sku+':'+target.itemId+':'+target.modelId;
+ optimizerVideoNotice('Consultando vídeo importado para esta SKU...');
+ try{
+  const result=await json('/api/shopee/optimizer/video/manual?'+optimizerVideoParams()+'&preview=1',{
+   signal:AbortSignal.timeout(25000)});
+  const now=optimizerWorkflowPlan;
+  if(optimizerWorkflowStage!=='video'||!now||
+     now.sku+':'+now.itemId+':'+now.modelId!==identity)return;
+  if(result.asset){
+   optimizerVideoNotice('Vídeo salvo: '+result.asset.filename+' · '+
+     (result.asset.sizeBytes/1024/1024).toFixed(1)+' MB. Importado no aplicativo, NÃO publicado na Shopee.','success');
+   if(result.previewUrl&&!$('#optimizerVideoFile').files?.length){
+    optimizerVideoClearPreview();
+    const player=$('#optimizerVideoPreview');player.src=result.previewUrl;player.hidden=false;
+   }
+  }else optimizerVideoNotice('Nenhum vídeo manual importado para esta SKU. Selecione seu arquivo.');
+ }catch(e){optimizerVideoNotice('Vídeo salvo não pôde ser consultado: '+e.message,'warning')}
+}
+$('#optimizerVideoFile')?.addEventListener?.('change',()=>{
+ optimizerVideoDurationReady=false;
+ $('#optimizerVideoUpload').disabled=true;
+ optimizerVideoClearPreview();
+ const file=$('#optimizerVideoFile').files?.[0];
+ if(!file)return optimizerVideoNotice('Nenhum vídeo selecionado.');
+ const name=String(file.name||'').toLowerCase();
+ if(!/\.(mp4|mov|webm)$/.test(name)||file.size<16||file.size>optimizerVideoMaxBytes)
+   return optimizerVideoNotice('Use MP4, MOV ou WebM, com até 30 MB.','error');
+ const player=$('#optimizerVideoPreview');
+ optimizerVideoObjectURL=URL.createObjectURL(file);
+ player.src=optimizerVideoObjectURL;player.hidden=false;
+ optimizerVideoNotice('Verificando duração e prévia do vídeo...');
+ player.onloadedmetadata=()=>{
+   if(!$('#optimizerVideoFile').files?.length)return;
+   const duration=Number(player.duration);
+   if(!Number.isFinite(duration)||duration<10||duration>60){
+     optimizerVideoDurationReady=false;
+     $('#optimizerVideoUpload').disabled=true;
+     optimizerVideoNotice('Duração '+(Number.isFinite(duration)?duration.toFixed(1)+'s':'desconhecida')+
+       '. Para preparar publicação Shopee, use vídeo entre 10 e 60 segundos.','error');
+   }else{
+     optimizerVideoDurationReady=true;
+     $('#optimizerVideoUpload').disabled=false;
+     optimizerVideoNotice('Prévia validada: '+duration.toFixed(1)+' segundos · '+
+       (file.size/1024/1024).toFixed(1)+' MB. Pronto para importar privadamente.','success');
+   }
+ };
+ player.onerror=()=>{
+   optimizerVideoDurationReady=false;$('#optimizerVideoUpload').disabled=true;
+   optimizerVideoNotice('O navegador não conseguiu ler o vídeo. Confira o arquivo antes de importar.','error');
+ };
+});
+$('#optimizerVideoUpload')?.addEventListener?.('click',async()=>{
+ if(optimizerVideoUploading||!optimizerVideoDurationReady)return;
+ const file=$('#optimizerVideoFile').files?.[0];if(!file)return;
+ let identity;
+ try{identity=optimizerVideoContext()}catch(e){return optimizerVideoNotice(e.message,'error')}
+ const ext=file.name.toLowerCase().split('.').pop();
+ const mime=ext==='mov'?'video/quicktime':ext==='webm'?'video/webm':'video/mp4';
+ optimizerVideoUploading=true;
+ $('#optimizerVideoUpload').disabled=true;
+ optimizerVideoNotice('Importando vídeo e vinculando ao anúncio '+identity.sku+'...');
+ try{
+   const raw=await fetch('/api/shopee/optimizer/video/manual?'+new URLSearchParams(identity),{
+     method:'POST',headers:{'Content-Type':mime,'X-Video-Filename':encodeURIComponent(file.name)},
+     body:file,signal:AbortSignal.timeout(120000)
+   });
+   const response=await raw.json().catch(()=>({}));
+   if(!raw.ok)throw Error(response.error||'Erro HTTP '+raw.status);
+   const current=optimizerWorkflowPlan;
+   if(!current||current.sku!==identity.sku||current.itemId!==identity.item_id)return;
+   optimizerVideoNotice('Arquivo '+file.name+' importado e armazenado para SKU '+identity.sku+
+     '. Ainda NÃO foi publicado na Shopee.','success');
+   if(optimizerWorkflowPlan?.sku===identity.sku){
+     optimizerWorkflowPlan.manualVideo=response.asset;
+     optimizerWorkflowRender(optimizerWorkflowPlan);
+   }
+   $('#optimizerVideoFile').value='';optimizerVideoDurationReady=false;
+   await optimizerVideoLoadSaved();
+ }catch(e){optimizerVideoNotice('Falha ao importar vídeo: '+e.message,'error')}
+ finally{optimizerVideoUploading=false;$('#optimizerVideoUpload').disabled=!optimizerVideoDurationReady}
+});
+$('#optimizerVideoRefresh')?.addEventListener?.('click',()=>void optimizerVideoLoadSaved());
+
 function optimizerWorkflowOpen(key){
  const data=optimizerWorkflowPlan;
  const stage=(data?.stages||[]).find(x=>x.key===key);
@@ -1458,6 +1573,9 @@ function optimizerWorkflowOpen(key){
     '\n\nUse o prompt mestre salvo em Regras da loja. Confira produto e medidas antes de substituir uma fotografia.':'');
  const draftWrap=$('#optimizerWorkflowDraftWrap');
  const isSeo=key==='seo',isDescription=key==='description';
+ const isVideo=key==='video';
+ $('#optimizerVideoManualPanel').hidden=!isVideo;
+ if(isVideo){optimizerVideoReset();void optimizerVideoLoadSaved();}
  draftWrap.hidden=!(isSeo||isDescription);
  if(isSeo||isDescription){
    $('#optimizerWorkflowDraftLabel').textContent=isSeo?'Título SEO proposto (edite antes de gravar na Shopee)':
@@ -1479,6 +1597,7 @@ async function optimizerWorkflowLoad(record){
  const modelId=String(record?.selectedModelId||'0');
  const p=$('#optimizerWorkflowPanel');
  p.hidden=false;
+ optimizerVideoReset();
  optimizerWorkflowStage=null;$('#optimizerWorkflowEditor').hidden=true;
  optimizerWorkflowNotice('Preparando etapas de revisão da SKU '+sku+' com a auditoria oficial...');
  try{
@@ -1582,6 +1701,23 @@ function optimizerExecUpdateRunButton(){
    !$('#optimizerExecutionAccept').checked||
    $('#optimizerExecutionInput').value.trim()!=='EXECUTAR '+p.sku;
 }
+async function optimizerConnectionCheck(){
+ const el=$('#optimizerConnectionStatus');const btn=$('#optimizerConnectionCheck');
+ if(!el||!btn)return;
+ btn.disabled=true;el.textContent='Verificando configurações da API, sem acessar chaves secretas...';
+ try{
+   const d=await json('/api/shopee/optimizer/execution/diagnostic',{
+     signal:AbortSignal.timeout(22000)});
+   el.textContent=d.ready
+    ?'Configuração básica presente. Se houver bloqueio, será preciso verificar a permissão ou resposta da API Shopee.'
+    :'Falta conferir no Render do serviço redeachados-shopee: '+
+      (d.missing||[]).join(', ')+'. Abra Environment no Render e valide essas variáveis. Nenhuma chave precisa ser enviada no chat.';
+   el.dataset.state=d.ready?'success':'warning';
+ }catch(e){el.textContent='Falha ao verificar integração: '+e.message;el.dataset.state='error'}
+ finally{btn.disabled=false}
+}
+$('#optimizerConnectionCheck')?.addEventListener?.('click',()=>void optimizerConnectionCheck());
+
 async function optimizerExecutionPrepare(){
  const w=optimizerWorkflowPlan;
  if(!w||optimizerExecBusy)return;
@@ -1602,9 +1738,12 @@ async function optimizerExecutionPrepare(){
       optimizerWorkflowPlan?.itemId!==w.itemId)return;
    optimizerExecRender(result);
  }catch(e){
-   if(serial===optimizerExecSerial)
+   if(serial===optimizerExecSerial){
      optimizerExecNotice('Pré-execução bloqueada: '+e.message+
        '. Confira o anúncio ou espere eventual execução anterior ser reconciliada.','error');
+     if(/SHOPEE_PARTNER_|SHOPEE_REDIRECT_|configur|Shopee HTTP/i.test(e.message))
+       void optimizerConnectionCheck();
+   }
  }finally{btn.disabled=false}
 }
 $('#optimizerExecutionPrepare')?.addEventListener?.('click',()=>void optimizerExecutionPrepare());
