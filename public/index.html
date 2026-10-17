@@ -153,6 +153,30 @@
       </div>
       <p class="optimizer-notice" id="optimizerWorkflowStatus" role="status" aria-live="polite">Aguardando a auditoria oficial da SKU.</p>
       <div class="optimizer-workflow-cards" id="optimizerWorkflowCards" aria-label="Etapas de otimização"></div>
+      <section class="optimizer-exec-panel" id="optimizerExecutionPanel" aria-label="Pré-execução automatizada por SKU">
+        <div class="optimizer-exec-head">
+          <div><span class="optimizer-v15-kicker">PRÉ-EXECUÇÃO SEGURA</span>
+            <h4>Preparar execução automática <span class="optimizer-tip" tabindex="0" data-help="O sistema verifica a SKU e prepara somente alterações revisadas de título e descrição. Imagens, vídeo, fiscal, preço e descontos permanecem pendentes até os motores correspondentes estarem validados." aria-label="O sistema verifica a SKU e prepara somente alterações revisadas de título e descrição. Imagens, vídeo, fiscal, preço e descontos permanecem pendentes até os motores correspondentes estarem validados.">?</span></h4>
+          </div>
+          <button id="optimizerExecutionPrepare" type="button" class="secondary">Revalidar e preparar</button>
+        </div>
+        <p id="optimizerExecutionStatus" class="optimizer-notice" role="status" aria-live="polite">Aguardando análise das etapas.</p>
+        <div class="optimizer-exec-summary" id="optimizerExecutionSummary" hidden>
+          <div id="optimizerExecutionChanges" class="optimizer-exec-changes"></div>
+          <div class="optimizer-exec-blockers" id="optimizerExecutionBlockers"></div>
+          <div class="optimizer-exec-blockers" id="optimizerExecutionWarnings"></div>
+          <details class="optimizer-exec-confirm" id="optimizerExecutionConfirmation" hidden>
+            <summary>Confirmar execução de título/descrição revisados</summary>
+            <p>Essa ação modifica somente o título e/ou a descrição indicados acima na Shopee. Não envia imagens, vídeos, estoque, preço, promoções ou informações fiscais.</p>
+            <label class="optimizer-exec-accept"><input id="optimizerExecutionAccept" type="checkbox"> Autorizo exclusivamente as alterações revisadas mostradas nesta prévia.</label>
+            <label class="optimizer-field">Digite <strong id="optimizerExecutionPhrase">EXECUTAR SKU</strong>
+              <input id="optimizerExecutionInput" type="text" autocomplete="off" placeholder="Confirmação da SKU"></label>
+            <button id="optimizerExecutionRun" type="button" disabled>Executar alterações aprovadas na Shopee</button>
+          </details>
+        </div>
+        <small class="optimizer-workflow-disclaimer">Sem execução automática em segundo plano. Uma operação iniciada não é repetida se a resposta da Shopee for incerta.</small>
+      </section>
+
       <div class="optimizer-workflow-editor" id="optimizerWorkflowEditor" hidden>
         <div class="optimizer-workflow-editor-head">
           <div><span id="optimizerWorkflowStageNumber" class="optimizer-v15-kicker">ETAPA</span>
