@@ -1316,7 +1316,7 @@ $('#optimizerFind').onclick=async()=>{
     if(matches.length===1){
       optimizerNotice('Produto encontrado. Conferindo a ficha técnica pela API...');
       $('#optimizerItemId').value=matches[0].itemId;
-      await optimizerRunAudit(matches[0].itemId,sku);
+      await optimizerRunAudit(matches[0].itemId,sku,matches[0].modelId);
       return;
     }
     optimizerNotice('Mais de um anúncio ou variação possui esse SKU. Escolha o produto correto abaixo; não é necessário informar Item ID.','warning');
@@ -1333,7 +1333,7 @@ $('#optimizerFind').onclick=async()=>{
         ' · Anúncio '+match.itemId));
       el.appendChild(wrapper);
       el.onclick=()=>{ $('#optimizerItemId').value=match.itemId;
-        void optimizerRunAudit(match.itemId,sku); };
+        void optimizerRunAudit(match.itemId,sku,match.modelId); };
       target.appendChild(el);
     }
   }catch(e){optimizerNotice('Não foi possível localizar o SKU: '+e.message,'error');}
@@ -1391,7 +1391,8 @@ function optimizerRender(record){
       (v.name||('Opção '+v.valueId))+(v.unit?' '+v.unit:'')).filter(Boolean).join('; ');
     optimizerCell(tr,current||'Não preenchido','optimizer-attribute-value');
     const status=optimizerCell(tr,'','optimizer-attribute-status');
-    const label=x.state==='filled'?'Preenchido, verificar fonte':
+    const label=x.state==='conditional'?'Condicional à variação/atributo pai':
+      x.state==='filled'?'Preenchido, verificar fonte':
       x.state==='review'?'Conferir dado suspeito':
       x.mandatory?'Obrigatório ausente':'Opcional ausente';
     status.appendChild(optimizerMake('span','optimizer-state '+x.state,label));
@@ -1404,7 +1405,7 @@ function optimizerRender(record){
     body.appendChild(tr);
   }
 }
-async function optimizerRunAudit(itemId,sku){
+async function optimizerRunAudit(itemId,sku,modelId=''){
   if(optimizerBusy)return;
   optimizerBusy=true;
   $('#optimizerAuditPanel').hidden=true;
@@ -1413,7 +1414,7 @@ async function optimizerRunAudit(itemId,sku){
     const item=String(itemId||'').trim(),expectedSku=String(sku||'').trim();
     if(!/^[1-9]\d{0,17}$/.test(item)||!expectedSku)
       throw Error('O SKU selecionado não possui anúncio técnico válido. Sincronize o catálogo.');
-    const params=new URLSearchParams({item_id:item,sku:expectedSku});
+    const params=new URLSearchParams({item_id:item,sku:expectedSku,model_id:String(modelId||'')});
     const data=await json('/api/shopee/optimizer/audit?'+params.toString(),{
       signal:AbortSignal.timeout(60000)
     });
