@@ -1496,9 +1496,11 @@ $('#optimizerWorkflowClose')?.addEventListener?.('click',()=>{$('#optimizerWorkf
 $('#optimizerWorkflowCopy')?.addEventListener?.('click',async()=>{
  const key=optimizerWorkflowStage,stage=optimizerWorkflowPlan?.stages?.find(x=>x.key===key);
  if(!stage)return;
+ const master=key==='images'?String($('#optimizerPrompt')?.value||'').trim():'';
  const value=(key==='seo'||key==='description')
   ?$('#optimizerWorkflowDraft').value
-  :stage.name+'\n\n'+stage.detail+'\n'+$('#optimizerWorkflowStageGuidance').textContent;
+  :stage.name+'\n\n'+stage.detail+'\n'+$('#optimizerWorkflowStageGuidance').textContent+
+    (master?'\n\nPROMPT MESTRE SALVO DA LOJA:\n'+master:'');
  try{await navigator.clipboard.writeText(value);optimizerWorkflowNotice('Orientação da etapa copiada para revisão.','success');}
  catch{optimizerWorkflowNotice('Não foi possível copiar automaticamente; selecione o texto manualmente.','warning');}
 });
