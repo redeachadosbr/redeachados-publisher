@@ -23,7 +23,8 @@ import {findLiveShopeeSku} from './shopeeSkuFinder.js';
 import {optimizerSettings,saveOptimizerSettings} from './optimizerStore.js';
 import {quoteShopeePrice,normalizeShopeePricingSettings} from './shopeePricing.js';
 import {shopeePricingPreferences,saveShopeePricingPreferences,
-  shopeePricingSupplierCost,saveShopeePricePlan,recentShopeePricePlans,
+  shopeePricingSupplierCost,shopeePricingDirectSupplierCost,
+  saveShopeePricePlan,recentShopeePricePlans,
   savedShopeePricePlan} from './shopeePricingStore.js';
 import {createWeDropAutoScheduler,importSupplierAutomatically,supplierFeedConfig} from './wedropAutoSync.js';
 import {
@@ -94,7 +95,14 @@ app.use(session({
   secret:stateSecret(),resave:false,saveUninitialized:false,proxy:true,
   cookie:{httpOnly:true,sameSite:'lax',secure:process.env.NODE_ENV==='production',maxAge:12*60*60*1000}
 }));
-app.use(express.static(path.join(__dirname,'public')));
+app.use(express.static(path.join(__dirname,'public'),{
+  setHeaders(res,filename){
+    // Never reuse old bundles after a Shopee UI deploy, even if Chrome
+    // has cached the path used by earlier releases.
+    if(/(?:^|[/\\])(?:app\.js|style\.css)$/.test(filename))
+      res.setHeader('Cache-Control','no-store');
+  }
+}));
 
 // URLs próprias por setor do painel: recarregar/compartilhar não causa 404.
 // A sessão e autenticação das APIs continuam protegidas pelos mesmos middlewares.
@@ -108,7 +116,7 @@ app.get('/app/:section',(req,res)=>{
 });
 app.get('/app',(_req,res)=>res.redirect(302,'/app/inicio'));
 
-app.get('/api/health',(_req,res)=>res.json({ok:true,service:'Rede Achados BR Shopee API',version:'1.14.3',storage:authStore.status()}));
+app.get('/api/health',(_req,res)=>res.json({ok:true,service:'Rede Achados BR Shopee API',version:'1.14.5',storage:authStore.status()}));
 app.get('/api/auth-state',(req,res)=>res.json({locked:Boolean(envText('APP_PASSWORD')),loggedIn:!envText('APP_PASSWORD')||Boolean(req.session?.appAuth)}));
 app.post('/api/login',(req,res)=>{
   const required=envText('APP_PASSWORD');
@@ -600,6 +608,30 @@ app.post('/api/shopee/optimizer/settings',mustLogin,requireWeDropAdmin,async(req
 
 // Cotação e plano por SKU, exclusivos Shopee. Nenhum endpoint escreve preços,
 // promoções ou descontos na Central do Vendedor: revisão obrigatória.
+// Prévia independente do anúncio: fornecedor WeDrop pode possuir SKU
+// que ainda não está no cache Shopee. Nunca confundir este preview com
+// promoção publicada ou vínculo validado de item/modelo Shopee.
+app.post('/api/shopee/optimizer/pricing/supplier-preview',mustLogin,requireWeDropAdmin,async(req,res)=>{
+  res.setHeader('Cache-Control','no-store');
+  try{
+    const sku=validateSkuLookup(req.body?.sku);
+    const {auth}=await getValidAuth(req);
+    const cost=await shopeePricingDirectSupplierCost(auth.shopId,sku);
+    if(!cost)return res.json({ok:true,found:false,sku,
+      message:'Esta SKU ainda não possui custo WeDrop salvo. Consulte a área Fornecedor WeDrop.'});
+    const settings=req.body?.settings===undefined
+      ?await shopeePricingPreferences(auth.shopId)
+      :normalizeShopeePricingSettings(req.body.settings);
+    const marketAverage=req.body?.marketAverage===undefined?null:req.body.marketAverage;
+    const quote=quoteShopeePrice({unitCost:cost.unitCost,settings,marketAverage});
+    res.json({ok:true,found:true,sku,costUpdatedAt:cost.costUpdatedAt,
+      quote:{...quote,sku,supplierSku:cost.supplierSku,
+        source:'wedrop_only',saved:false,listingVerified:false,
+        notice:quote.notice+' SKU reconhecida na WeDrop; vínculo com anúncio Shopee ainda em verificação.'},
+      message:'SKU '+sku+' localizada no catálogo WeDrop. A associação com a Shopee será conferida separadamente.'});
+  }catch(e){res.status(400).json({error:String(e.message||e).slice(0,280)});}
+});
+
 app.get('/api/shopee/optimizer/pricing/settings',mustLogin,requireWeDropAdmin,async(req,res)=>{
   res.setHeader('Cache-Control','no-store');
   try{

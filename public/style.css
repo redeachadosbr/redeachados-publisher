@@ -1305,3 +1305,127 @@ table tr:hover td{background:#f3f8ff}
 #tab-pricing .sh-price-panel{margin-top:0}
 @media(max-width:1040px){.sh-price-quick-values{grid-template-columns:repeat(2,minmax(0,1fr))}}
 @media(max-width:470px){.sh-price-quick-values{grid-template-columns:1fr 1fr;gap:7px}.sidebar-nav .sh-pricing-submenu{padding-left:26px!important}}
+
+
+/* SHOPEE OPTIMIZER · visual refresh v1.14.5, scoped to Otimização only */
+.optimizer-v15-page{gap:18px;font-family:inherit}
+.optimizer-v15-page .optimizer-panel{background:#fff;border:1px solid #e1e7f1;
+  box-shadow:0 10px 30px rgba(13,35,70,.055);border-radius:19px;padding:22px}
+.optimizer-v15-intro{display:flex;justify-content:space-between;align-items:center;gap:12px;
+  flex-wrap:wrap;padding:11px 16px;background:linear-gradient(112deg,#fff,#f5f9ff);
+  border:1px solid #e4ebf5;border-radius:13px;color:#274263}
+.optimizer-v15-intro-left{display:flex;gap:11px;align-items:center;flex-wrap:wrap}
+.optimizer-v15-intro-left strong{font-size:12px;letter-spacing:.02em}
+.optimizer-v15-intro-muted{font-size:11px;color:#8090a7}
+.optimizer-v15-dot{width:9px;height:9px;background:#0c987c;border-radius:100%;box-shadow:0 0 0 5px #d9f7ee}
+.optimizer-v15-readonly{color:#16815d;background:#ebfaf4;font-size:11px;font-weight:800;padding:7px 11px;border-radius:99px}
+.optimizer-v15-readonly>span{font-size:8px;margin-right:5px}
+.optimizer-v15-page .optimizer-v15-columns{grid-template-columns:minmax(360px,1fr) minmax(370px,1.15fr);gap:16px;align-items:stretch}
+.optimizer-v15-search{position:relative;min-height:290px}
+.optimizer-v15-price{margin-top:0!important;min-height:290px}
+.optimizer-v15-heading{display:flex;gap:11px;align-items:center;margin-bottom:20px;min-width:0}
+.optimizer-v15-heading-content{min-width:0;flex:1}
+.optimizer-v15-head-icon{width:42px;height:42px;display:grid;place-items:center;flex:0 0 42px;
+ background:#edf4ff;border:1px solid #dce8f7;color:#1e538d;border-radius:14px;font-size:25px;font-weight:800}
+.optimizer-v15-head-icon.amber{background:#fff5e5;border-color:#f3dfb6;color:#b77b12;font-size:22px}
+.optimizer-v15-kicker{font-size:10px;letter-spacing:1.25px;color:#8b9aaf;font-weight:850}
+.optimizer-v15-heading h3{margin:4px 0 0;color:#172e50;font-size:clamp(15px,1.45vw,19px);letter-spacing:-.4px;line-height:1.3}
+.optimizer-v15-step-badge{white-space:nowrap;font-size:10px;border-radius:99px;color:#497197;background:#eff5fc;padding:6px 10px;font-weight:800}
+.optimizer-v15-action-link{flex:0 0 auto;color:#256da8;font-size:11px;font-weight:850;text-decoration:none;padding:7px 9px;border-radius:9px}
+.optimizer-v15-action-link:hover{background:#eff6ff}
+.optimizer-v15-page .optimizer-inline{display:flex;align-items:end;gap:8px}
+.optimizer-v15-page .optimizer-search .optimizer-field{color:#687d97;font-size:11px;font-weight:750}
+.optimizer-v15-page .optimizer-search input{background:#fafcff;border:1px solid #d9e3f0;
+ border-radius:11px;min-height:48px;font-size:15px;font-weight:850;color:#19365b;
+ letter-spacing:.025em;padding:12px 14px;width:100%}
+.optimizer-v15-page .optimizer-search input:focus{background:#fff;border-color:#4a97d5;outline:3px solid #deedfa}
+.optimizer-v15-page #optimizerFind{min-height:48px;height:48px;padding:12px 16px;
+ border-radius:11px;background:#ef583b;font-size:12px;font-weight:850;color:#fff;
+ box-shadow:0 4px 10px #ee694526}
+.optimizer-v15-page #optimizerFind:hover{background:#dd442b}
+.optimizer-v15-page .optimizer-notice{font-size:11px;border-radius:11px;line-height:1.55;
+ padding:11px 13px;background:#f5f8fd;color:#60738e;border:1px solid #e5ebf3}
+.optimizer-v15-page #optimizerStatus[data-state="warning"]{color:#916e31;background:#fffaf1;border-color:#f4e1c3}
+.optimizer-v15-page #optimizerStatus[data-state="error"]{color:#a63832;background:#fff5f4;border-color:#f4d4d0}
+.optimizer-v15-page .optimizer-candidates{max-height:280px;overflow:auto}
+.optimizer-v15-supplier{font-size:12px;line-height:1.5;font-weight:750;color:#19735a;
+ background:#ebfaf3;border:1px solid #cee9dc;border-radius:11px;padding:10px 12px;margin-top:11px}
+.optimizer-v15-page .sh-quick-bar{max-width:none;padding:0 0 6px}
+.optimizer-v15-page .sh-price-row{margin:0}.optimizer-v15-page .sh-price-row label{font-size:12px;color:#6e8099}
+.optimizer-v15-page .sh-price-row strong{font-size:25px;color:#d48d15}
+.optimizer-v15-page .sh-price-slider{height:8px;margin:15px 0 14px;accent-color:#e8aa31}
+.optimizer-v15-page .sh-price-quick-values{grid-template-columns:repeat(2,minmax(0,1fr));gap:9px;margin-top:12px;margin-bottom:14px}
+.optimizer-v15-page .sh-price-quick-values>div{padding:13px;background:#f7f9fc;border-color:#e6edf5;border-radius:12px}
+.optimizer-v15-page .sh-price-quick-values span{font-size:10px;min-height:15px}
+.optimizer-v15-page .sh-price-quick-values strong{font-size:20px;color:#1c3554}
+.optimizer-v15-page .sh-price-quick-values>div:nth-child(1){background:#183251;border-color:#183251}
+.optimizer-v15-page .sh-price-quick-values>div:nth-child(1) span{color:#c4d8e9}
+.optimizer-v15-page .sh-price-quick-values>div:nth-child(1) strong{color:#fff}
+.optimizer-v15-page .sh-price-quick-values>div:nth-child(2) strong{color:#c78a1b}
+.optimizer-v15-page .sh-price-quick-values>div:nth-child(3) strong{color:#165182}
+.optimizer-v15-page .sh-price-quick-values>div:nth-child(4) strong{color:#078161;font-size:16px}
+.optimizer-v15-page .sh-price-quick .actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:13px}
+.optimizer-v15-page .sh-price-quick .actions button{font-size:11px;padding:10px 13px;border-radius:10px}
+.optimizer-v15-below{display:grid;grid-template-columns:1fr 1fr;gap:13px}
+.optimizer-v15-page .optimizer-v15-accordion{padding:0;border-radius:15px;box-shadow:none}
+.optimizer-v15-accordion>summary{list-style:none;display:flex;align-items:center;gap:12px;
+ cursor:pointer;min-height:75px;padding:15px 20px}
+.optimizer-v15-accordion>summary::-webkit-details-marker{display:none}
+.optimizer-v15-accordion>summary:focus-visible{outline:3px solid #7cbbf4;border-radius:15px}
+.optimizer-v15-accordion-icon{width:39px;height:39px;display:grid;place-items:center;background:#f3f6fb;
+ color:#476587;border-radius:12px;font-size:20px;flex:0 0 39px}
+.optimizer-v15-accordion-title{display:flex;flex-direction:column;gap:4px;min-width:0;flex:1}
+.optimizer-v15-accordion-title strong{font-size:13px;color:#223c5d}
+.optimizer-v15-accordion-title small{font-size:11px;color:#8998aa}
+.optimizer-v15-chevron{font-size:20px;color:#8492aa;transition:transform .2s}
+.optimizer-v15-accordion[open] .optimizer-v15-chevron{transform:rotate(180deg)}
+.optimizer-v15-accordion[open]>summary{border-bottom:1px solid #e4ebf5}
+.optimizer-v15-rule-body{padding:20px;display:grid;gap:12px}
+.optimizer-v15-rule-help{color:#71819a;font-size:11px;line-height:1.6}
+.optimizer-v15-page .optimizer-rules textarea{background:#f8fafd;border:1px solid #dce5f1;border-radius:11px}
+.optimizer-v15-page .optimizer-rules .optimizer-privacy{font-size:10px;color:#8999af}
+.optimizer-v15-page .optimizer-progress>.optimizer-steps{padding:14px 18px}
+.optimizer-v15-page .optimizer-steps{grid-template-columns:repeat(2,minmax(0,1fr));gap:9px}
+.optimizer-v15-page .optimizer-step{min-height:58px;padding:10px 11px;
+ flex-direction:row;justify-content:space-between;align-items:center;border-radius:10px;box-shadow:none}
+.optimizer-v15-page .optimizer-step strong{line-height:1.4;font-size:11px}
+.optimizer-tip{position:relative;display:inline-grid;place-items:center;margin-left:6px;
+ border:1px solid #cbd9e9;color:#6686a8;background:#f3f7fd;border-radius:50%;height:18px;width:18px;
+ font-size:11px;line-height:1;cursor:help;font-weight:900;vertical-align:middle;flex:0 0 18px}
+.optimizer-tip:focus-visible{outline:2px solid #398ee1;outline-offset:2px}
+.optimizer-tip:hover,.optimizer-tip:focus-visible{background:#d8e9fa;border-color:#a9cae9;color:#1d598e;z-index:15}
+.optimizer-tip:hover::after,.optimizer-tip:focus-visible::after{
+ content:attr(data-help);position:absolute;bottom:calc(100% + 10px);left:50%;transform:translateX(-50%);
+ width:max-content;max-width:min(310px,82vw);min-width:195px;white-space:normal;z-index:50;
+ border-radius:12px;padding:12px 14px;background:#172c48;color:#fff;
+ box-shadow:0 12px 28px rgba(15,34,58,.23);font-size:12px;line-height:1.55;
+ font-family:inherit;font-weight:500;text-align:left;letter-spacing:normal;pointer-events:none}
+.optimizer-v15-help-inline{white-space:nowrap}
+.optimizer-v15-page .optimizer-audit{margin-top:2px}
+@media(max-width:1190px){.optimizer-v15-page .optimizer-v15-columns{grid-template-columns:1fr}
+ .optimizer-v15-page .optimizer-v15-search{min-height:auto}}
+@media(max-width:800px){.optimizer-v15-below{grid-template-columns:1fr}
+ .optimizer-v15-page .optimizer-panel{padding:17px}
+ .optimizer-v15-page .optimizer-v15-accordion{padding:0}}
+@media(max-width:510px){.optimizer-v15-page .optimizer-inline{flex-wrap:wrap}
+ .optimizer-v15-page #optimizerFind{width:100%}
+ .optimizer-v15-page .sh-price-quick-values{grid-template-columns:repeat(2,minmax(0,1fr))}
+ .optimizer-v15-page .sh-price-quick-values strong{font-size:16px}
+ .optimizer-v15-intro-muted{display:none}}
+@media(prefers-reduced-motion:reduce){.optimizer-v15-page *{scroll-behavior:auto;transition:none!important}}
+
+
+/* Hidden state wins over layout displays, including CSS grids. */
+.optimizer-v15-page #optimizerSupplierResult[hidden],
+.optimizer-v15-page #optimizerQuickValues[hidden],
+.optimizer-v15-page #optimizerAuditPanel[hidden],
+.optimizer-v15-page .optimizer-candidates[hidden]{display:none!important}
+.optimizer-v15-page .optimizer-v15-audit-details{padding:0;border-radius:15px;box-shadow:none}
+.optimizer-v15-audit-details>summary{list-style:none;display:flex;align-items:center;gap:11px;
+  cursor:pointer;padding:16px 20px;min-height:70px}
+.optimizer-v15-audit-details>summary::-webkit-details-marker{display:none}
+.optimizer-v15-audit-details[open]>summary{border-bottom:1px solid #e4ebf5}
+.optimizer-v15-audit-details[open]>summary .optimizer-v15-chevron{transform:rotate(180deg)}
+.optimizer-v15-audit-body{padding:20px}
+.optimizer-v15-page .optimizer-v15-audit-details .optimizer-audit-head{margin-top:0}
+@media(max-width:800px){.optimizer-v15-audit-body{padding:14px}}
