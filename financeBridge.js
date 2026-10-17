@@ -62,3 +62,36 @@ export function installFinanceBridge(app,loadSnapshot){
       message:'Coleta financeira Shopee em andamento. Nenhum valor foi considerado zero.'});
   });
 }
+
+const walletPath='/api/finance-bridge/v1/wallet';
+export function installWalletBridge(app,loadWallet){
+ let cache=null,storedAt=0,job=null,failed=null;
+ const ttl=5*60*1000;
+ const begin=()=>{
+  if(job)return;
+  job=Promise.resolve().then(loadWallet).then(v=>{
+   if(v?.schema!=='ra-wallet-bridge-v1'||v.platform!=='shopee'||!Array.isArray(v.movements))
+    throw Error('WALLET_RESPONSE_INVALID');
+   cache=v;storedAt=Date.now();failed=null;
+  }).catch(err=>{
+   const msg=String(err?.message||err||'');
+   failed={at:Date.now(),code:/permission|denied|forbidden|403|not.allowed/i.test(msg)
+    ?'PAYMENT_PERMISSION_REQUIRED':/auth|token|conectad/i.test(msg)?'SHOPEE_AUTH_REQUIRED':'WALLET_UNAVAILABLE'};
+   console.warn('[Finance Wallet] Shopee wallet unavailable:',failed.code);
+  }).finally(()=>{job=null});
+ };
+ app.options(walletPath,(req,res)=>{
+  if(!header(req,res))return;
+  res.setHeader('Access-Control-Allow-Methods','GET, OPTIONS');
+  res.setHeader('Access-Control-Allow-Headers','X-Finance-Bridge-Key, Accept');
+  res.status(204).end();
+ });
+ app.get(walletPath,authorized,(_req,res)=>{
+  const now=Date.now();
+  if(cache&&now-storedAt<ttl)return res.json(cache);
+  if(failed&&now-failed.at<30000)return res.status(503).json({error:failed.code});
+  begin();
+  res.setHeader('Retry-After','8');
+  return res.status(202).json({status:'pending',retryAfterSeconds:8});
+ });
+}

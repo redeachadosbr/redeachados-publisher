@@ -9,7 +9,8 @@ import {mergeShopeeOrderDates} from './orderView.js';
 import {createShopeeOrderMonitor} from './orderMonitor.js';
 import {loadShopeeAdsOverview} from './adsReport.js';
 import {loadShopeeFinance,MAX_FINANCE_ORDERS} from './shopeeFinance.js';
-import {installFinanceBridge} from './financeBridge.js';
+import {installFinanceBridge,installWalletBridge} from './financeBridge.js';
+import {readShopeeWallet} from './shopeeWallet.js';
 import {financeAdsDates,matchFinanceAds} from './financeAdsSweep.js';
 import {financeRange} from './shopeeFinance.js';
 import {fetchCatalogPage,normalizeShopeeModels,validItemId} from './catalog.js';
@@ -1002,6 +1003,12 @@ installFinanceBridge(app,async(req)=>{
     orders,ads,coverage:{note:'Somente pedidos concluidos CRIADOS na janela de 15 dias; limite '+MAX_FINANCE_ORDERS+' pedidos. Repasse nao equivale ao saldo sacavel.'},
     diagnostics:{ordersExamined:orders.length,complete:financial.complete===true,
       permissionWarning:Boolean(financial.paymentAccessWarning),truncated:Boolean(financial.skippedCompleted)}};
+});
+
+// Extrato da carteira Shopee: não confundir com repasse de pedidos.
+installWalletBridge(app,async()=>{
+ const {auth,cfg}=await getValidAuth();
+ return readShopeeWallet(cfg,auth,callShopeeShopApi);
 });
 
 // Financeiro Shopee baseado nos pedidos concluídos e no repasse efetivo da API Payment.
