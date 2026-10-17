@@ -103,7 +103,7 @@ app.get('/app/:section',(req,res)=>{
 });
 app.get('/app',(_req,res)=>res.redirect(302,'/app/inicio'));
 
-app.get('/api/health',(_req,res)=>res.json({ok:true,service:'Rede Achados BR Shopee API',version:'1.14.0',storage:authStore.status()}));
+app.get('/api/health',(_req,res)=>res.json({ok:true,service:'Rede Achados BR Shopee API',version:'1.14.1',storage:authStore.status()}));
 app.get('/api/auth-state',(req,res)=>res.json({locked:Boolean(envText('APP_PASSWORD')),loggedIn:!envText('APP_PASSWORD')||Boolean(req.session?.appAuth)}));
 app.post('/api/login',(req,res)=>{
   const required=envText('APP_PASSWORD');
@@ -552,8 +552,14 @@ app.get('/api/shopee/optimizer/audit',mustLogin,requireWeDropAdmin,async(req,res
   res.setHeader('Cache-Control','no-store');
   try{
     const itemId=validItemId(req.query.item_id);
+    const expectedSku=req.query.sku?validateSkuLookup(req.query.sku):'';
+    const expectedModelId=String(req.query.model_id||'').trim();
+    if(expectedModelId&&!/^[0-9]{1,18}$/.test(expectedModelId))
+      throw Error('Modelo Shopee inválido.');
     const {auth,cfg}=await getValidAuth(req);
-    const record=await auditShopeeItem(cfg,auth,callShopeeShopApi,itemId);
+    const record=await auditShopeeItem(cfg,auth,callShopeeShopApi,itemId,{
+      expectedSku,expectedModelId
+    });
     res.json({ok:true,readOnly:true,record});
   }catch(e){res.status(400).json({error:String(e.message||e).slice(0,320)});}
 });

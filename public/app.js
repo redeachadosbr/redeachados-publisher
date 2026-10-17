@@ -1295,36 +1295,52 @@ $('#optimizerSave').onclick=async()=>{
   }catch(e){$('#optimizerSavedAt').textContent='Falha ao salvar: '+e.message;}
   finally{btn.disabled=false;}
 };
+// A UI recebe só SKU; o Item ID técnico vem do catálogo Shopee, não do usuário.
 $('#optimizerFind').onclick=async()=>{
-  const btn=$('#optimizerFind');
-  const target=$('#optimizerCandidates');target.replaceChildren();
-  btn.disabled=true;optimizerNotice('Procurando o SKU exato no catálogo salvo...');
+  const btn=$('#optimizerFind'),target=$('#optimizerCandidates');
+  target.replaceChildren();
+  $('#optimizerAuditPanel').hidden=true;
+  btn.disabled=true;
+  optimizerNotice('Localizando o SKU exato nos anúncios da Shopee...');
   try{
     const sku=$('#optimizerSku').value.trim();
-    if(!sku)throw Error('Informe o SKU exato.');
-    const d=await json('/api/shopee/optimizer/find?sku='+encodeURIComponent(sku));
-    optimizerNotice(d.message,d.matches?.length?'success':'warning');
-    for(const match of d.matches||[]){
-      const el=optimizerMake('button','optimizer-candidate');
-      el.type='button';
+    if(!sku)throw Error('Informe somente o SKU do produto.');
+    const d=await json('/api/shopee/optimizer/find?sku='+encodeURIComponent(sku),{
+      signal:AbortSignal.timeout(90000)
+    });
+    const matches=d.matches||[];
+    if(!matches.length){
+      optimizerNotice(d.message||'Nenhum anúncio com este SKU. Verifique o SKU no catálogo da Shopee.','warning');
+      return;
+    }
+    if(matches.length===1){
+      optimizerNotice('Produto encontrado. Conferindo a ficha técnica pela API...');
+      $('#optimizerItemId').value=matches[0].itemId;
+      await optimizerRunAudit(matches[0].itemId,sku,matches[0].modelId);
+      return;
+    }
+    optimizerNotice('Mais de um anúncio ou variação possui esse SKU. Escolha o produto correto abaixo; não é necessário informar Item ID.','warning');
+    for(const match of matches){
+      const el=optimizerMake('button','optimizer-candidate');el.type='button';
       if(match.imageUrl&&financeCatalogImage(match.imageUrl)){
-        const img=optimizerMake('img');img.src=match.imageUrl;img.alt='';img.loading='lazy';
-        el.appendChild(img);
+        const img=optimizerMake('img');img.src=match.imageUrl;img.alt='';
+        img.loading='lazy';el.appendChild(img);
       }
-      const text=optimizerMake('span','',match.title||'Item '+match.itemId);
-      const small=optimizerMake('small','',
-        'Item ID '+match.itemId+(match.modelId!=='0'?' · Modelo '+match.modelId:'')+' · '+match.sku);
-      const wrapper=optimizerMake('span');wrapper.append(text,small);
+      const wrapper=optimizerMake('span');
+      wrapper.appendChild(optimizerMake('span','',match.title||'Produto Shopee'));
+      wrapper.appendChild(optimizerMake('small','',
+        'SKU '+match.sku+(match.modelId!=='0'?' · Variação '+match.modelId:'')+
+        ' · Anúncio '+match.itemId));
       el.appendChild(wrapper);
-      el.onclick=()=>{$('#optimizerItemId').value=match.itemId;void optimizerRunAudit();};
+      el.onclick=()=>{ $('#optimizerItemId').value=match.itemId;
+        void optimizerRunAudit(match.itemId,sku,match.modelId); };
       target.appendChild(el);
     }
-    if(d.matches?.length===1){
-      $('#optimizerItemId').value=d.matches[0].itemId;
-      await optimizerRunAudit();
-    }
-  }catch(e){optimizerNotice('Busca indisponível: '+e.message,'error');}
+  }catch(e){optimizerNotice('Não foi possível localizar o SKU: '+e.message,'error');}
   finally{btn.disabled=false;}
+};
+$('#optimizerSku').onkeydown=event=>{
+  if(event.key==='Enter'){event.preventDefault();$('#optimizerFind').click();}
 };
 function optimizerCell(row,textValue,className=''){
   const td=optimizerMake('td',className,textValue);row.appendChild(td);return td;
@@ -1375,7 +1391,8 @@ function optimizerRender(record){
       (v.name||('Opção '+v.valueId))+(v.unit?' '+v.unit:'')).filter(Boolean).join('; ');
     optimizerCell(tr,current||'Não preenchido','optimizer-attribute-value');
     const status=optimizerCell(tr,'','optimizer-attribute-status');
-    const label=x.state==='filled'?'Preenchido, verificar fonte':
+    const label=x.state==='conditional'?'Condicional à variação/atributo pai':
+      x.state==='filled'?'Preenchido, verificar fonte':
       x.state==='review'?'Conferir dado suspeito':
       x.mandatory?'Obrigatório ausente':'Opcional ausente';
     status.appendChild(optimizerMake('span','optimizer-state '+x.state,label));
@@ -1388,25 +1405,26 @@ function optimizerRender(record){
     body.appendChild(tr);
   }
 }
-async function optimizerRunAudit(){
+async function optimizerRunAudit(itemId,sku,modelId=''){
   if(optimizerBusy)return;
-  optimizerBusy=true;const btn=$('#optimizerAudit');btn.disabled=true;
+  optimizerBusy=true;
   $('#optimizerAuditPanel').hidden=true;
-  optimizerNotice('Consultando produto, categoria e atributos reais da API Shopee...');
+  optimizerNotice('Consultando atributos oficiais da categoria deste SKU na Shopee...');
   try{
-    const item=$('#optimizerItemId').value.trim();
-    if(!/^[1-9]\d{0,17}$/.test(item))throw Error('Informe um Item ID numérico válido.');
-    const data=await json('/api/shopee/optimizer/audit?item_id='+encodeURIComponent(item),{
+    const item=String(itemId||'').trim(),expectedSku=String(sku||'').trim();
+    if(!/^[1-9]\d{0,17}$/.test(item)||!expectedSku)
+      throw Error('O SKU selecionado não possui anúncio técnico válido. Sincronize o catálogo.');
+    const params=new URLSearchParams({item_id:item,sku:expectedSku,model_id:String(modelId||'')});
+    const data=await json('/api/shopee/optimizer/audit?'+params.toString(),{
       signal:AbortSignal.timeout(60000)
     });
     optimizerRender(data.record);
-    optimizerNotice('Diagnóstico de leitura concluído para o Item '+data.record.itemId+
-      '. Nenhum campo, foto, título, preço ou estoque foi alterado.','success');
-  }catch(e){optimizerNotice('Não foi possível validar a ficha técnica: '+e.message+
-    '. Sem a árvore da categoria não é seguro preencher os campos.','error');}
-  finally{optimizerBusy=false;btn.disabled=false;}
+    optimizerNotice('SKU '+expectedSku+' analisado. Ficha técnica consultada pela API. '+
+      'Nenhuma imagem, informação, título, preço ou estoque foi alterado.','success');
+  }catch(e){optimizerNotice('Não foi possível validar a ficha técnica do SKU: '+e.message+
+    '. O produto permanece intacto.','error');}
+  finally{optimizerBusy=false;}
 }
-$('#optimizerAudit').onclick=optimizerRunAudit;
 
 let financeReport=null,financeSkuFilter='sold',financeSkuShown=24;
 const financeSkuNode=(tag,cls,txt)=>{

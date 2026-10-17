@@ -5,7 +5,6 @@ import {validItemId} from './catalog.js';
 const moneylessString=value=>String(value??'').trim();
 const array=value=>Array.isArray(value)?value:[];
 const numeric=value=>Number.isSafeInteger(Number(value))&&Number(value)>0;
-const APICATEGORY=1000000000;
 
 export function validateSkuLookup(input){
   const value=moneylessString(input);
@@ -13,12 +12,43 @@ export function validateSkuLookup(input){
     throw Error('Informe o SKU exato da Shopee (até 120 caracteres).');
   return value;
 }
+// A API get_attribute_tree devolve response.list[{category_id, attribute_tree}].
+ // As crianças da árvore dependem do value_id selecionado no atributo pai.
+export function optimizerCategoryAttributes(item,attributesResponse){
+  const categoryId=Number(item?.category_id);
+  const response=attributesResponse?.response||{};
+  const lists=Array.isArray(response.list)?response.list:null;
+  const branch=lists?.find(x=>Number(x.category_id)===categoryId);
+  const roots=lists?(branch?.attribute_tree):
+    Array.isArray(response.attribute_list)?response.attribute_list:response.attribute_tree;
+  if(!numeric(categoryId)||!Array.isArray(roots))
+    throw Error('A Shopee não retornou a árvore de atributos da categoria '+categoryId+'.');
+  const previous=new Map(array(item.attribute_list).map(x=>[Number(x.attribute_id),x]));
+  const nodes=new Map();
+  function visit(children,active=true,parentId=null){
+    for(const meta of array(children)){
+      if(!numeric(meta?.attribute_id))continue;
+      const id=Number(meta.attribute_id);
+      const present=nodes.get(id);
+      const conditional=!active;
+      if(!present||(!conditional&&present.conditional)){
+        nodes.set(id,{...meta,conditional,parentId});
+      }
+      const selected=new Set(array(previous.get(id)?.attribute_value_list)
+        .map(x=>Number(x.value_id)).filter(x=>x>0));
+      for(const option of array(meta.attribute_value_list)){
+        const grandchildren=array(option.child_attribute_list);
+        if(!grandchildren.length)continue;
+        visit(grandchildren,active&&selected.has(Number(option.value_id)),id);
+      }
+    }
+  }
+  visit(roots);
+  return [...nodes.values()];
+}
 export function normalizeAttributeAudit(item,attributesResponse){
   const categoryId=Number(item?.category_id);
-  const tree=attributesResponse?.response||{};
-  const attrs=Array.isArray(tree.attribute_list)?tree.attribute_list:
-    Array.isArray(tree.attribute_tree)?tree.attribute_tree:null;
-  if(!numeric(categoryId)||!attrs)throw Error('A Shopee não retornou a árvore de atributos para a categoria atual.');
+  const attrs=optimizerCategoryAttributes(item,attributesResponse);
   const existing=new Map(array(item.attribute_list).map(x=>[String(x.attribute_id),x]));
   const rows=attrs.map(meta=>{
     const id=Number(meta.attribute_id);
@@ -34,6 +64,7 @@ export function normalizeAttributeAudit(item,attributesResponse){
     const name=moneylessString(meta.name||meta.attribute_name)||'Atributo '+id;
     const info=meta.attribute_info||{};
     const mandatory=Boolean(meta.mandatory??meta.is_mandatory);
+    const conditional=Boolean(meta.conditional);
     const complete=values.some(v=>
       (Number(v.value_id)>0)||Boolean(moneylessString(v.original_value_name))
     );
@@ -55,8 +86,8 @@ export function normalizeAttributeAudit(item,attributesResponse){
       ...(longDimension?['Dimensões com texto extenso: separar medidas e unidades']:[]),
       ...(usbMismatch?['Tipo de plugue possivelmente incompatível: confirmar se acompanha carregador AC']:[])
     ];
-    const state=!complete?'missing':issues.length?'review':'filled';
-    return {id,name,mandatory,state,issues,inputType:info.input_type??null,
+    const state=conditional?'conditional':!complete?'missing':issues.length?'review':'filled';
+    return {id,name,mandatory,conditional,parentId:meta.parentId||null,state,issues,inputType:info.input_type??null,
       formatType:info.format_type??null,maxValues:info.max_value_count??null,
       supportSearch:Boolean(info.support_search_value),allowedUnits:array(info.attribute_unit_list),
       values:values.map(v=>({
@@ -79,7 +110,7 @@ export function normalizeAttributeAudit(item,attributesResponse){
   rows.push(...legacy);
   return {
     categoryId,checkedAt:new Date().toISOString(),
-    total:rows.length,mandatory:rows.filter(x=>x.mandatory).length,
+    total:rows.length,mandatory:rows.filter(x=>x.mandatory&&!x.conditional).length,
     missingMandatory:rows.filter(x=>x.mandatory&&x.state==='missing').length,
     review:rows.filter(x=>x.state==='review').length,
     optionalEmpty:rows.filter(x=>!x.mandatory&&x.state==='missing').length,
@@ -121,7 +152,7 @@ export function normalizeOptimizerItem(base,models,attributes){
     ]
   };
 }
-export async function auditShopeeItem(cfg,auth,callApi,itemId){
+export async function auditShopeeItem(cfg,auth,callApi,itemId,{expectedSku='',expectedModelId=''}={}){
   const id=validItemId(itemId);
   const common={accessToken:auth.accessToken,shopId:auth.shopId};
   const data=await callApi(cfg,{path:'/api/v2/product/get_item_base_info',
@@ -131,7 +162,7 @@ export async function auditShopeeItem(cfg,auth,callApi,itemId){
   const categoryId=Number(item.category_id);
   if(!numeric(categoryId))throw Error('Categoria não foi retornada pela Shopee; impossível validar atributos.');
   const tree=await callApi(cfg,{path:'/api/v2/product/get_attribute_tree',
-    ...common,query:{category_id:categoryId,language:'pt-BR'}});
+    ...common,query:{category_id_list:String(categoryId),language:'pt-BR'}});
   const attributes=normalizeAttributeAudit(item,tree);
   let models=null,modelWarning=null;
   if(item.has_model){
@@ -139,5 +170,24 @@ export async function auditShopeeItem(cfg,auth,callApi,itemId){
       ...common,query:{item_id:id}});}
     catch(e){modelWarning='Não foi possível conferir variações: '+String(e.message||e).slice(0,160);}
   }
-  return {...normalizeOptimizerItem(item,models,attributes),modelWarning};
+  // Um SKU encontrado no cache pode ter sido editado manualmente na Shopee.
+  // Conferimos sempre a correspondência AO VIVO antes de autorizar o fluxo.
+  const checkedSku=String(expectedSku||'').trim();
+  const checkedModel=String(expectedModelId||'').trim();
+  if(checkedSku){
+    const sameParent=String(item.item_sku||'').trim()===checkedSku;
+    const listed=array(models?.response?.model).filter(x=>
+      String(x.model_sku||'').trim()===checkedSku);
+    if(checkedModel&&checkedModel!=='0'){
+      if(!listed.some(x=>String(x.model_id)===checkedModel))
+        throw Error('O SKU ou modelo deste anúncio mudou na Shopee. Atualize o catálogo e selecione novamente.');
+    }else if(!sameParent){
+      if(modelWarning)throw Error('O SKU pertence a uma variação, mas a Shopee não permitiu confirmar qual. Tente novamente.');
+      if(listed.length!==1)throw Error('O SKU não corresponde de forma única às variações atuais. Atualize o catálogo e revise o cadastro.');
+    }
+    if(!sameParent&&!listed.length)
+      throw Error('SKU informado não corresponde mais ao produto na Shopee. Nenhuma alteração foi feita.');
+  }
+  return {...normalizeOptimizerItem(item,models,attributes),sku:checkedSku||
+    String(item.item_sku||'').trim(),selectedModelId:checkedModel||null,modelWarning};
 }

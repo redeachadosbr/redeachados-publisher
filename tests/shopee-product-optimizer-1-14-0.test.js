@@ -55,19 +55,22 @@ test('identidade do produto preserve fotos, título, e não afirma ausência de 
 test('auditoria chama SOMENTE endpoints de leitura e não altera o anúncio',async()=>{
  const seen=[];
  const api=async(_cfg,x)=>{
-   seen.push(x.path);
+   seen.push(x);
    if(x.path.endsWith('get_item_base_info'))return {response:{item_list:[item]}};
    if(x.path.endsWith('get_attribute_tree'))return tree;
    throw Error('Chamada inesperada '+x.path);
  };
  const result=await auditShopeeItem({}, {shopId:123,accessToken:'TEST'},api,item.item_id);
  assert.equal(result.itemId,String(item.item_id));
- assert.deepEqual(seen,['/api/v2/product/get_item_base_info','/api/v2/product/get_attribute_tree']);
+ assert.deepEqual(seen.map(x=>x.path),
+  ['/api/v2/product/get_item_base_info','/api/v2/product/get_attribute_tree']);
+ assert.equal(seen[1].query.category_id_list,String(item.category_id));
+ assert.equal(seen[1].query.category_id,undefined);
 });
 test('menu, regras persistentes e detalhes por atributo ficam separados de Produtos e Financeiro',()=>{
  const html=read('../public/index.html'),server=read('../server.js'),app=read('../public/app.js');
  for(const id of ['tab-optimizer','optimizerPrompt','optimizerFiscalNotes','optimizerItemId',
-   'optimizerAudit','optimizerAttributesBody','optimizerSteps','optimizerSave','optimizerCandidates'])
+   'optimizerFind','optimizerAttributesBody','optimizerSteps','optimizerSave','optimizerCandidates'])
    assert.equal((html.match(new RegExp('id="'+id+'"','g'))||[]).length,1,id);
  assert.match(html,/href="\/app\/otimizacao"/);
  assert.match(app,/optimizer:\{slug:'otimizacao'/);
@@ -75,5 +78,65 @@ test('menu, regras persistentes e detalhes por atributo ficam separados de Produ
  assert.match(server,/\/api\/shopee\/optimizer\/settings/);
  assert.match(server,/\/api\/shopee\/optimizer\/find/);
  assert.match(server,/readOnly:true/);
- assert.match(html,/app\.js\?v=1\.14\.0/);
+ assert.match(html,/app\.js\?v=1\.14\.1/);
+});
+
+
+test('a Shopee retorna response.list[{category_id,attribute_tree}], com filhos condicionais',()=>{
+ const source={response:{list:[
+  {category_id:10023,attribute_tree:[
+    {attribute_id:100,name:'Bateria',mandatory:true,attribute_value_list:[
+      {value_id:1,name:'Lítio',child_attribute_list:[
+        {attribute_id:101,name:'Certificado',mandatory:true,attribute_value_list:[]}
+      ]},
+      {value_id:2,name:'Outra',child_attribute_list:[]}
+    ]},
+    {attribute_id:102,name:'Peso',mandatory:true,attribute_info:{input_type:3}}
+  ]},
+  {category_id:99999,attribute_tree:[{attribute_id:900,name:'Outra categoria',mandatory:true}]}
+ ]}};
+ const noSelection=normalizeAttributeAudit({...item,attribute_list:[]},source);
+ assert.equal(noSelection.total,3);
+ assert.equal(noSelection.missingMandatory,2);
+ assert.equal(noSelection.attributes.find(x=>x.id===101).state,'conditional');
+ assert.equal(noSelection.attributes.find(x=>x.id===900),undefined);
+ const selected=normalizeAttributeAudit({...item,attribute_list:[
+  {attribute_id:100,attribute_value_list:[{value_id:1}]}
+ ]},source);
+ assert.equal(selected.missingMandatory,2);
+ assert.equal(selected.attributes.find(x=>x.id===101).state,'missing');
+});
+test('SKU verificado na consulta ao vivo e modelo correto, evitando vínculo antigo',async()=>{
+ const api=async(_cfg,x)=>{
+  if(x.path.endsWith('get_item_base_info'))return {response:{item_list:[{
+    ...item,has_model:true,item_sku:'PARENT'
+  }]}};
+  if(x.path.endsWith('get_attribute_tree'))return tree;
+  if(x.path.endsWith('get_model_list'))return {response:{model:[
+    {model_id:551,model_sku:'429229',model_status:'NORMAL'},
+    {model_id:552,model_sku:'OTHER',model_status:'NORMAL'}
+  ]}};
+  throw Error('API inesperada');
+ };
+ const auth={shopId:123,accessToken:'TEST'};
+ const valid=await auditShopeeItem({},auth,api,item.item_id,{
+  expectedSku:'429229',expectedModelId:'551'
+ });
+ assert.equal(valid.sku,'429229');
+ assert.equal(valid.selectedModelId,'551');
+ await assert.rejects(()=>auditShopeeItem({},auth,api,item.item_id,{
+  expectedSku:'429229',expectedModelId:'552'
+ }),/mudou na Shopee/);
+ await assert.rejects(()=>auditShopeeItem({},auth,api,item.item_id,{
+  expectedSku:'INCORRETO'
+ }),/não corresponde/);
+});
+test('na interface o lojista fornece somente SKU; o identificador do item é oculto',()=>{
+ const html=read('../public/index.html'),js=read('../public/app.js');
+ assert.match(html,/id="optimizerSku"/);
+ assert.match(html,/id="optimizerItemId" type="hidden"/);
+ assert.doesNotMatch(html,/id="optimizerAudit"/);
+ assert.match(html,/Localizar e analisar/);
+ assert.match(js,/optimizerRunAudit\(matches\[0\]\.itemId,sku,matches\[0\]\.modelId\)/);
+ assert.match(js,/optimizerRunAudit\(match\.itemId,sku,match\.modelId\)/);
 });
