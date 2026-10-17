@@ -25,6 +25,8 @@ import {compileShopeeExecutionPlan,confirmShopeeExecution,
   assertLiveShopeeUnchanged,verifyShopeeExecution} from './shopeeExecutionPlan.js';
 import {readShopeeExecution,saveShopeePreparedExecution,
   claimShopeePreparedExecution,finishShopeeExecution} from './shopeeExecutionStore.js';
+import {MAX_VIDEO_BYTES,getShopeeManualVideo,importShopeeManualVideo,
+ signedShopeeManualVideoPreview,manualVideoPublicInfo} from './shopeeManualVideo.js';
 import {findLiveShopeeSku} from './shopeeSkuFinder.js';
 import {optimizerSettings,saveOptimizerSettings} from './optimizerStore.js';
 import {quoteShopeePrice,normalizeShopeePricingSettings} from './shopeePricing.js';
@@ -740,6 +742,73 @@ app.post('/api/shopee/optimizer/execution/execute',mustLogin,requireWeDropAdmin,
     res.status(409).json({ok:false,error:String(e.message||e).slice(0,280),
       retryAutomatically:false,marketplaceUpdated:claimed?'não confirmado':false});
   }
+});
+
+// Diagnóstico somente de PRESENÇA da configuração, sem revelar Partner ID, Key ou token.
+// Uma sessão "conectada" não prova que as credenciais necessárias aos writes ainda existem.
+app.get('/api/shopee/optimizer/execution/diagnostic',mustLogin,requireWeDropAdmin,async(req,res)=>{
+ res.setHeader('Cache-Control','no-store');
+ try{
+  const cfg=shopeeConfig(baseUrl(req)),auth=await authStore.load();
+  const checks={
+   SHOPEE_PARTNER_ID:Number.isSafeInteger(cfg.partnerId)&&cfg.partnerId>0,
+   SHOPEE_PARTNER_KEY:Boolean(cfg.partnerKey),
+   SHOPEE_REDIRECT_URI:/^https:\/\//i.test(cfg.redirectUri),
+   SHOP_TOKEN_SAVED:Boolean(auth?.shopId&&auth?.accessToken&&auth?.refreshToken),
+   SHOP_PARTNER_MATCH:Boolean(auth?.partnerId&&cfg.partnerId&&auth.partnerId===cfg.partnerId),
+   SHOP_ENV_MATCH:Boolean(auth?.mode&&auth.mode===cfg.mode)
+  };
+  const missing=Object.entries(checks).filter(([,value])=>!value).map(([key])=>key);
+  res.json({ok:true,ready:missing.length===0,checks,missing,
+   message:missing.length
+    ?'A loja pode mostrar API conectada, mas a execução requer todas as configurações válidas no Render do serviço redeachados-shopee.'
+    :'Configuração básica presente. Ainda será necessário confirmar permissão e resposta da API Shopee para executar.'});
+ }catch(e){res.status(503).json({error:'Não foi possível consultar o diagnóstico das configurações Shopee.'});}
+});
+// Importar o vídeo manual depende somente da loja autenticada e do SKU do cache.
+// Funciona como preparo privado mesmo quando a Partner Key está ausente.
+async function checkedManualVideoIdentity(req){
+ const itemId=validItemId(req.query?.item_id),sku=validateSkuLookup(req.query?.sku);
+ const modelId=String(req.query?.model_id??'0');
+ if(!/^\d{1,18}$/.test(modelId))throw Error('Model ID inválido.');
+ const auth=await authStore.load();
+ const cfg=shopeeConfig(baseUrl(req));
+ if(!auth?.shopId||!auth?.accessToken||auth.mode!==cfg.mode)
+   throw Error('Reconecte a conta da loja Shopee antes de importar o vídeo.');
+ if(cfg.partnerId>0&&Number(auth.partnerId)!==cfg.partnerId)
+   throw Error('O vínculo da loja é diferente do ambiente atual.');
+ const matches=await findExactCatalogSku(auth.shopId,sku);
+ if(!matches.some(x=>String(x.itemId)===itemId&&String(x.modelId)===modelId))
+   throw Error('A SKU e o Item ID/variação não coincidem com o catálogo Shopee sincronizado.');
+ return {shopId:auth.shopId,itemId,modelId,sku};
+}
+app.get('/api/shopee/optimizer/video/manual',mustLogin,requireWeDropAdmin,async(req,res)=>{
+ res.setHeader('Cache-Control','no-store');
+ try{
+  const info=await checkedManualVideoIdentity(req);
+  const asset=await getShopeeManualVideo(info.shopId,info.itemId,info.modelId,info.sku);
+  const previewUrl=asset&&req.query.preview==='1'
+    ?await signedShopeeManualVideoPreview(info.shopId,info.itemId,info.modelId,info.sku):null;
+  res.json({ok:true,asset:manualVideoPublicInfo(asset),previewUrl,
+    publishedInShopee:false});
+ }catch(e){res.status(400).json({error:String(e.message||e).slice(0,250)});}
+});
+app.post('/api/shopee/optimizer/video/manual',
+ mustLogin,requireWeDropAdmin,
+ express.raw({type:['video/mp4','video/quicktime','video/webm'],limit:MAX_VIDEO_BYTES}),
+ async(req,res)=>{
+ res.setHeader('Cache-Control','no-store');
+ if(!verifiedSameOrigin(req))return res.status(403).json({error:'Origem da solicitação não autorizada.'});
+ try{
+  const info=await checkedManualVideoIdentity(req);
+  let name='video';
+  try{name=decodeURIComponent(String(req.get('x-video-filename')||'video'));}
+  catch{throw Error('Nome de arquivo inválido.');}
+  const asset=await importShopeeManualVideo(info.shopId,info.itemId,info.modelId,
+    info.sku,req.body,{mime:String(req.get('content-type')||'').split(';')[0].toLowerCase(),filename:name});
+  res.status(201).json({ok:true,asset,publishedInShopee:false,
+   message:'Vídeo importado e salvo em armazenamento privado para esta SKU. Ainda não foi publicado na Shopee.'});
+ }catch(e){res.status(400).json({error:String(e.message||e).slice(0,270)});}
 });
 
 app.get('/api/shopee/optimizer/settings',mustLogin,requireWeDropAdmin,async(req,res)=>{
