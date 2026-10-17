@@ -1413,3 +1413,19 @@ table tr:hover td{background:#f3f8ff}
  .optimizer-v15-page .sh-price-quick-values strong{font-size:16px}
  .optimizer-v15-intro-muted{display:none}}
 @media(prefers-reduced-motion:reduce){.optimizer-v15-page *{scroll-behavior:auto;transition:none!important}}
+
+
+/* Hidden state wins over layout displays, including CSS grids. */
+.optimizer-v15-page #optimizerSupplierResult[hidden],
+.optimizer-v15-page #optimizerQuickValues[hidden],
+.optimizer-v15-page #optimizerAuditPanel[hidden],
+.optimizer-v15-page .optimizer-candidates[hidden]{display:none!important}
+.optimizer-v15-page .optimizer-v15-audit-details{padding:0;border-radius:15px;box-shadow:none}
+.optimizer-v15-audit-details>summary{list-style:none;display:flex;align-items:center;gap:11px;
+  cursor:pointer;padding:16px 20px;min-height:70px}
+.optimizer-v15-audit-details>summary::-webkit-details-marker{display:none}
+.optimizer-v15-audit-details[open]>summary{border-bottom:1px solid #e4ebf5}
+.optimizer-v15-audit-details[open]>summary .optimizer-v15-chevron{transform:rotate(180deg)}
+.optimizer-v15-audit-body{padding:20px}
+.optimizer-v15-page .optimizer-v15-audit-details .optimizer-audit-head{margin-top:0}
+@media(max-width:800px){.optimizer-v15-audit-body{padding:14px}}
