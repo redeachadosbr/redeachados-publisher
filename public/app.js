@@ -1433,8 +1433,10 @@ function optimizerWorkflowRender(data){
    btn.setAttribute('aria-label','Abrir etapa '+(i+1)+': '+stage.name);
    const number=optimizerMake('span','optimizer-workflow-number',String(i+1).padStart(2,'0'));
    const body=optimizerMake('span','optimizer-workflow-label');
+   const videoStaged=stage.key==='video'&&Boolean(data.manualVideo);
    body.append(optimizerMake('strong','',stage.name),
-     optimizerMake('small','',stage.reviewed?'Conferência registrada':stage.blocking?'Precisa de atenção':'Preparar e revisar'));
+     optimizerMake('small','',videoStaged?'Vídeo importado · não publicado':
+       stage.reviewed?'Conferência registrada':stage.blocking?'Precisa de atenção':'Preparar e revisar'));
    const mark=optimizerMake('span','optimizer-workflow-symbol',stage.reviewed?'✓':'→');
    btn.append(number,body,mark);
    btn.onclick=()=>optimizerWorkflowOpen(stage.key);
