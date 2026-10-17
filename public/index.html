@@ -144,6 +144,35 @@
         </div>
       </details>
     </div>
+    <section class="optimizer-panel optimizer-workflow" id="optimizerWorkflowPanel" hidden aria-label="Fluxo de otimização por SKU">
+      <div class="optimizer-workflow-heading">
+        <div><span class="optimizer-v15-kicker">03 · CONTINUAR OTIMIZAÇÃO</span>
+          <h3>Preparar e revisar o anúncio <span class="optimizer-tip" tabindex="0" role="note" data-help="Cada etapa salva a conferência da SKU no Supabase. Nenhuma alteração é executada na Shopee sem ação autorizada e confirmação da API." aria-label="Cada etapa salva a conferência da SKU no Supabase. Nenhuma alteração é executada na Shopee sem ação autorizada e confirmação da API.">?</span></h3>
+        </div>
+        <span class="optimizer-workflow-counter" id="optimizerWorkflowCounter">0 / 8 revisadas</span>
+      </div>
+      <p class="optimizer-notice" id="optimizerWorkflowStatus" role="status" aria-live="polite">Aguardando a auditoria oficial da SKU.</p>
+      <div class="optimizer-workflow-cards" id="optimizerWorkflowCards" aria-label="Etapas de otimização"></div>
+      <div class="optimizer-workflow-editor" id="optimizerWorkflowEditor" hidden>
+        <div class="optimizer-workflow-editor-head">
+          <div><span id="optimizerWorkflowStageNumber" class="optimizer-v15-kicker">ETAPA</span>
+            <h4 id="optimizerWorkflowStageTitle">Revisar</h4></div>
+          <button id="optimizerWorkflowClose" type="button" class="secondary" aria-label="Fechar detalhes da etapa">Fechar ×</button>
+        </div>
+        <p class="optimizer-workflow-detail" id="optimizerWorkflowStageDetail"></p>
+        <div class="optimizer-workflow-guidance" id="optimizerWorkflowStageGuidance"></div>
+        <label class="optimizer-field" id="optimizerWorkflowDraftWrap" hidden>
+          <span id="optimizerWorkflowDraftLabel">Minuta editável</span>
+          <textarea id="optimizerWorkflowDraft" rows="6" maxlength="3000" aria-label="Minuta para revisão"></textarea>
+        </label>
+        <div class="optimizer-workflow-actions">
+          <button id="optimizerWorkflowCopy" type="button" class="secondary">Copiar orientação</button>
+          <button id="optimizerWorkflowReview" type="button">Registrar revisão desta etapa</button>
+          <a id="optimizerWorkflowShopee" class="optimizer-external" target="_blank" rel="noopener noreferrer" href="#">Conferir anúncio na Shopee ↗</a>
+        </div>
+        <small class="optimizer-workflow-disclaimer">O registro confirma somente sua conferência. Não atualiza imagens, vídeos, preço, SEO, descrição ou dados fiscais na Shopee.</small>
+      </div>
+    </section>
     <details class="optimizer-panel optimizer-audit optimizer-v15-audit-details" id="optimizerAuditPanel" hidden aria-label="Auditoria técnica do anúncio"><summary class="optimizer-v15-audit-summary"><span class="optimizer-v15-accordion-icon" aria-hidden="true">◎</span><span class="optimizer-v15-accordion-title"><strong>Auditoria técnica do anúncio</strong><small>Fotos, atributos, informações obrigatórias e revisão detalhada</small></span><span class="optimizer-v15-chevron">⌄</span></summary><div class="optimizer-v15-audit-body">
       <div class="optimizer-audit-head"><div><span class="eyebrow">DIAGNÓSTICO OFICIAL</span><h3 id="optimizerProductTitle">Anúncio</h3><p id="optimizerProductMeta"></p></div>
         <a id="optimizerOpenShopee" class="optimizer-external" target="_blank" rel="noopener noreferrer" href="#">Abrir na Central do Vendedor ↗</a></div>
