@@ -1457,8 +1457,8 @@ function optimizerVideoNotice(message,state='info'){
 }
 function optimizerVideoClearPreview(){
  if(optimizerVideoObjectURL){URL.revokeObjectURL(optimizerVideoObjectURL);optimizerVideoObjectURL=null}
- const player=$('#optimizerVideoPreview');player.pause();player.removeAttribute('src');
- player.load();player.hidden=true;
+ const player=$('#optimizerVideoPreview');player.pause?.();player.removeAttribute?.('src');
+ player.load?.();player.hidden=true;
 }
 function optimizerVideoReset(){
  optimizerVideoDurationReady=false;
@@ -1545,6 +1545,10 @@ $('#optimizerVideoUpload')?.addEventListener?.('click',async()=>{
    if(!current||current.sku!==identity.sku||current.itemId!==identity.item_id)return;
    optimizerVideoNotice('Arquivo '+file.name+' importado e armazenado para SKU '+identity.sku+
      '. Ainda NÃO foi publicado na Shopee.','success');
+   if(optimizerWorkflowPlan?.sku===identity.sku){
+     optimizerWorkflowPlan.manualVideo=response.asset;
+     optimizerWorkflowRender(optimizerWorkflowPlan);
+   }
    $('#optimizerVideoFile').value='';optimizerVideoDurationReady=false;
    await optimizerVideoLoadSaved();
  }catch(e){optimizerVideoNotice('Falha ao importar vídeo: '+e.message,'error')}
