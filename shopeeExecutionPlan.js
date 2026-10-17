@@ -25,6 +25,8 @@ export function compileShopeeExecutionPlan({shopId,itemId,modelId,sku,record,rev
       blocked.push('Descrição revisada deve ter entre 60 e 3000 caracteres.');
     else if(description!==currentDescription)proposed.description=description;
   }else if(description&&description!==currentDescription)blocked.push('Revisar e registrar Descrição e variações antes de executar.');
+  if(record?.hasModel||String(modelId)!=='0')
+    warnings.push('Título e descrição são campos do anúncio-pai; a alteração afeta TODAS as variações deste Item ID.');
   if(Number(record?.imageCount)<9)warnings.push('Imagens: '+record.imageCount+'/9; faltam arquivos aprovados, geração e upload.');
   warnings.push('Vídeo: '+String(record?.videoStatus||'não verificado')+'. É necessário confirmar/upload autorizado.');
   if((record.attributeAudit?.missingMandatory||0)>0)warnings.push('Ficha técnica: atributos obrigatórios pendentes.');
