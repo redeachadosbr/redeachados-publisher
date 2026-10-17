@@ -8,7 +8,8 @@ import {createAuthStore} from './authStore.js';
 import {mergeShopeeOrderDates} from './orderView.js';
 import {createShopeeOrderMonitor} from './orderMonitor.js';
 import {loadShopeeAdsOverview} from './adsReport.js';
-import {loadShopeeFinance} from './shopeeFinance.js';
+import {loadShopeeFinance,MAX_FINANCE_ORDERS} from './shopeeFinance.js';
+import {installFinanceBridge} from './financeBridge.js';
 import {financeAdsDates,matchFinanceAds} from './financeAdsSweep.js';
 import {financeRange} from './shopeeFinance.js';
 import {fetchCatalogPage,normalizeShopeeModels,validItemId} from './catalog.js';
@@ -628,6 +629,28 @@ app.get('/api/shopee/orders',mustLogin,async(req,res)=>{
       }
     });
   }catch(e){res.status(400).json({error:String(e.message||e)});}
+});
+
+// Bridge apenas de leitura: as credenciais oficiais Shopee nunca sao expostas.
+installFinanceBridge(app,async(req)=>{
+  const {auth,cfg}=await getValidAuth(req);
+  const to=Math.floor(Date.now()/1000);
+  const range=financeRange({days:15},to);
+  const financial=await loadShopeeFinance(cfg,auth,callShopeeShopApi,{now:to,timeRange:range});
+  const orders=(financial.rows||[]).map(o=>({
+    orderId:String(o.orderSn||''),date:null,
+    netReceived:o.payout!==null&&o.payout!==undefined&&Number.isFinite(Number(o.payout))?Math.round(Number(o.payout)*100)/100:null
+  }));
+  let ads={status:'unknown',amount:null,source:'Shopee Ads API'};
+  try{
+    const report=await loadShopeeAdsOverview(cfg,auth,callShopeeShopApi,financeAdsDates(range));
+    if(report?.total?.expense!==null&&report?.total?.expense!==undefined&&Number.isFinite(Number(report.total.expense)))
+      ads={status:'confirmed',amount:Math.round(Number(report.total.expense)*100)/100,source:'Shopee Ads API · campanhas de produtos'};
+  }catch(_){/* sem acesso Ads, não inventar R$0 */}
+  return {schema:'ra-finance-bridge-v1',platform:'shopee',generatedAt:new Date().toISOString(),
+    orders,ads,coverage:{note:'Somente pedidos concluidos CRIADOS na janela de 15 dias; limite '+MAX_FINANCE_ORDERS+' pedidos. Repasse nao equivale ao saldo sacavel.'},
+    diagnostics:{ordersExamined:orders.length,complete:financial.complete===true,
+      permissionWarning:Boolean(financial.paymentAccessWarning),truncated:Boolean(financial.skippedCompleted)}};
 });
 
 // Financeiro Shopee baseado nos pedidos concluídos e no repasse efetivo da API Payment.
