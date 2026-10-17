@@ -134,10 +134,11 @@ export function normalizeOptimizerItem(base,models,attributes){
     status:moneylessString(base.item_status),categoryId:Number(base.category_id),
     hasModel:Boolean(base.has_model),models:variations,
     descriptionPresent:Boolean(moneylessString(base.description)),
+    description:moneylessString(base.description),descriptionType:String(base.description_type||'normal'),
     promotion:Boolean(base.has_promotion),
     imageCount:Math.max(ids.length,urls.length),imageUrls:urls.slice(0,9),
     imageIds:ids.slice(0,9),
-    videoStatus:base.video_info?'Shopee retornou metadados de vídeo — conferir processamento':
+    videoStatus:(Array.isArray(base.video_info)?base.video_info.length>0:Boolean(base.video_info?.video_url))?'Shopee retornou metadados de vídeo — conferir processamento':
       'Não confirmado pela API de detalhes (não significa ausência de vídeo)',
     attributeAudit:attributes,
     steps:[
@@ -191,3 +192,4 @@ export async function auditShopeeItem(cfg,auth,callApi,itemId,{expectedSku='',ex
   return {...normalizeOptimizerItem(item,models,attributes),sku:checkedSku||
     String(item.item_sku||'').trim(),selectedModelId:checkedModel||null,modelWarning};
 }
+

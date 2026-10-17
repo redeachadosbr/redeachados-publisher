@@ -31,6 +31,10 @@ export async function saveWorkflowReview(shop,item,model,sku,change){
  const state=existing?.review_state||{},stages={...(state.stages||{})};
  stages[change.stage]={reviewed:change.reviewed,reviewedAt:change.reviewed?new Date().toISOString():null};
  const next={...state,stages};
+ if(change.assetSha256!==undefined)next.videoSha256=change.assetSha256;
+ if(change.attributes!==undefined)next.attributes=change.attributes;
+ if(change.tax!==undefined)next.tax=change.tax;
+ if(change.imagesSignature!==undefined)next.imagesSignature=change.imagesSignature;
  if(change.title!==undefined)next.draftTitle=change.title;
  if(change.description!==undefined)next.draftDescription=change.description;
  await api('?on_conflict=shop_id,item_id,model_id',{
@@ -39,3 +43,4 @@ export async function saveWorkflowReview(shop,item,model,sku,change){
  });
  return next;
 }
+

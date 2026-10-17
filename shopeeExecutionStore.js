@@ -26,7 +26,7 @@ const where=(shopId,itemId,modelId)=>'?shop_id=eq.'+num(shopId)+
  '&item_id=eq.'+num(itemId)+'&model_id=eq.'+model(modelId);
 export async function readShopeeExecution(shopId,itemId,modelId){
  const result=await rows(where(shopId,itemId,modelId)+
-   '&select=shop_id,item_id,model_id,sku,state,plan,result,run_id,last_error,updated_at&limit=1');
+   '&select=shop_id,item_id,model_id,sku,state,plan,result,run_id,last_error,updated_at,lease_until&limit=1');
  return result[0]||null;
 }
 export async function saveShopeePreparedExecution(shopId,itemId,modelId,sku,plan){
@@ -36,9 +36,11 @@ export async function saveShopeePreparedExecution(shopId,itemId,modelId,sku,plan
  const state=plan.canExecute?'prepared':'blocked';
  const data={shop_id:num(shopId),item_id:num(itemId),model_id:model(modelId),
   sku:String(sku),state,plan,result:null,run_id:null,last_error:null,updated_at:new Date().toISOString()};
- const result=await rows('?on_conflict=shop_id,item_id,model_id',{
-  method:'POST',data:[data],prefer:'resolution=merge-duplicates,return=representation'
- });
+ // Conditional save prevents a preparation in another tab from replacing a running job.
+ const result=prev?await rows(where(shopId,itemId,modelId)+
+  '&updated_at=eq.'+encodeURIComponent(prev.updated_at)+'&state=in.(prepared,blocked,verified,failed)',
+  {method:'PATCH',data,prefer:'return=representation'}):await rows('',{
+  method:'POST',data:[data],prefer:'return=representation'});
  if(result.length!==1||result[0].sku!==sku)throw Error('Plano não foi confirmado no banco Shopee.');
  return result[0];
 }
@@ -48,7 +50,7 @@ export async function claimShopeePreparedExecution(shopId,itemId,modelId,{planId
   '&plan->>planId=eq.'+encodeURIComponent(planId)+
   '&select=state,plan,run_id,updated_at';
  const result=await rows(query,{method:'PATCH',
-  data:{state:'running',run_id:runId,updated_at:new Date().toISOString()},
+  data:{state:'running',run_id:runId,result:{phase:'queued'},lease_until:new Date().toISOString(),updated_at:new Date().toISOString()},
   prefer:'return=representation'});
  if(result.length!==1||result[0]?.plan?.planId!==planId)throw Error('Plano já executado, alterado ou em andamento. Recarregue a prévia.');
  return result[0];
@@ -61,4 +63,32 @@ export async function finishShopeeExecution(shopId,itemId,modelId,runId,{state,r
   prefer:'return=representation'});
  if(rowsUpdated.length!==1)throw Error('Resultado da execução não pôde ser gravado com segurança.');
  return rowsUpdated[0];
+}
+
+
+export async function pendingShopeeExecutions(){
+ return rows('?state=eq.running&lease_until=lte.'+encodeURIComponent(new Date().toISOString())+
+  '&select=*&order=updated_at.asc&limit=3');
+}
+export async function leaseShopeeExecution(job,runId){
+ const r=await rows(where(job.shop_id,job.item_id,job.model_id)+
+  '&state=eq.running&run_id=eq.'+encodeURIComponent(job.run_id)+
+  '&lease_until=lte.'+encodeURIComponent(new Date().toISOString()),{method:'PATCH',
+  data:{run_id:runId,lease_until:new Date(Date.now()+300000).toISOString()},prefer:'return=representation'});
+ return r[0]||null;
+}
+export async function checkpointShopeeExecution(job,result,delay=1000){
+ const r=await rows(where(job.shop_id,job.item_id,job.model_id)+
+  '&state=eq.running&run_id=eq.'+encodeURIComponent(job.run_id),{method:'PATCH',
+  data:{result,lease_until:new Date(Date.now()+delay).toISOString(),updated_at:new Date().toISOString()},
+  prefer:'return=representation'});
+ if(r.length!==1)throw Error('Execução assumida por outra instância.');
+ return r[0];
+}
+export async function reconcileShopeeJob(job,{state,result,lastError}){
+ const r=await rows(where(job.shop_id,job.item_id,job.model_id)+
+  '&state=eq.uncertain&updated_at=eq.'+encodeURIComponent(job.updated_at),{method:'PATCH',
+  data:{state,result,last_error:lastError,updated_at:new Date().toISOString()},prefer:'return=representation'});
+ if(r.length!==1)throw Error('Execução mudou durante a conferência. Atualize o status.');
+ return r[0];
 }

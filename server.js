@@ -26,9 +26,15 @@ import {getWorkflowReview,saveWorkflowReview} from './shopeeOptimizationWorkflow
 import {compileShopeeExecutionPlan,confirmShopeeExecution,
   assertLiveShopeeUnchanged,verifyShopeeExecution} from './shopeeExecutionPlan.js';
 import {readShopeeExecution,saveShopeePreparedExecution,
-  claimShopeePreparedExecution,finishShopeeExecution} from './shopeeExecutionStore.js';
+  claimShopeePreparedExecution,finishShopeeExecution,pendingShopeeExecutions,leaseShopeeExecution,
+  checkpointShopeeExecution,reconcileShopeeJob} from './shopeeExecutionStore.js';
+import {advanceShopeeExecution} from './shopeeExecutionWorker.js';
+import {createShopeeMediaApi} from './shopeeMediaApi.js';
+import {normalizeManualVideo} from './shopeeVideoValidation.js';
+import {readPreparedImages,importPreparedImage,downloadPreparedImage,imagesSignature,MAX_IMAGE_BYTES,rememberPublishedImages} from './shopeePreparedImages.js';
+import {compileAttributes,compileTax} from './shopeeStructuredFields.js';
 import {MAX_VIDEO_BYTES,getShopeeManualVideo,importShopeeManualVideo,
- signedShopeeManualVideoPreview,manualVideoPublicInfo} from './shopeeManualVideo.js';
+ signedShopeeManualVideoPreview,manualVideoPublicInfo,downloadShopeeManualVideo,rememberPublishedVideo} from './shopeeManualVideo.js';
 import {findLiveShopeeSku} from './shopeeSkuFinder.js';
 import {optimizerSettings,saveOptimizerSettings} from './optimizerStore.js';
 import {quoteShopeePrice,normalizeShopeePricingSettings} from './shopeePricing.js';
@@ -126,7 +132,7 @@ app.get('/app/:section',(req,res)=>{
 });
 app.get('/app',(_req,res)=>res.redirect(302,'/app/inicio'));
 
-app.get('/api/health',(_req,res)=>res.json({ok:true,service:'Rede Achados BR Shopee API',version:'1.14.8',storage:authStore.status()}));
+app.get('/api/health',(_req,res)=>res.json({ok:true,service:'Rede Achados BR Shopee API',version:'1.15.0',storage:authStore.status()}));
 app.get('/api/auth-state',(req,res)=>res.json({locked:Boolean(envText('APP_PASSWORD')),loggedIn:!envText('APP_PASSWORD')||Boolean(req.session?.appAuth)}));
 app.post('/api/login',(req,res)=>{
   const required=envText('APP_PASSWORD');
@@ -608,18 +614,20 @@ async function checkedWorkflowAudit(req){
   const {auth,cfg}=await getValidAuth(req);
   const record=await auditShopeeItem(cfg,auth,callShopeeShopApi,itemId,
     {expectedSku:sku,expectedModelId:modelId});
-  return {itemId,modelId,sku,auth,record};
+  return {itemId,modelId,sku,auth,cfg,record};
 }
 app.get('/api/shopee/optimizer/workflow',mustLogin,requireWeDropAdmin,async(req,res)=>{
   res.setHeader('Cache-Control','no-store');
   try{
-    const {itemId,modelId,sku,auth,record}=await checkedWorkflowAudit(req);
+    const {itemId,modelId,sku,auth,cfg,record}=await checkedWorkflowAudit(req);
     const stored=await getWorkflowReview(auth.shopId,itemId,modelId);
     const review=stored?.sku===sku?stored.review_state||{}:{};
     const stages=buildStages(record,review);
+    const current=await shopeeLiveEditableItem(cfg,auth,itemId);
     const manualVideo=manualVideoPublicInfo(
       await getShopeeManualVideo(auth.shopId,itemId,modelId,sku));
     res.json({ok:true,readOnlyMarketplace:true,sku,itemId,modelId,manualVideo,
+      attributes:record.attributeAudit.attributes,attributeChanges:review.attributes||[],taxDraft:review.tax||{},taxCurrent:current.tax_info||{},
       recordedAt:stored?.updated_at||null,stages,
       draftTitle:review.draftTitle||safeTitle(record.title),
       draftDescription:review.draftDescription||descriptionDraft(record),
@@ -632,20 +640,31 @@ app.post('/api/shopee/optimizer/workflow/review',mustLogin,requireWeDropAdmin,as
   if(!verifiedSameOrigin(req))return res.status(403).json({error:'Origem da solicitação não permitida.'});
   try{
     const change=validateReview(req.body);
-    const {itemId,modelId,sku,auth,record}=await checkedWorkflowAudit(req);
+    const {itemId,modelId,sku,auth,cfg,record}=await checkedWorkflowAudit(req);
+    if(change.stage==='video'&&change.reviewed){
+      const asset=await getShopeeManualVideo(auth.shopId,itemId,modelId,sku);
+      if(!asset)throw Error('Importe e visualize o vídeo antes de aprovar esta etapa.');
+      change.assetSha256=asset.sha256;
+    }
+    if(change.stage==='images'&&change.reviewed){
+      const images=await readPreparedImages(auth.shopId,itemId,modelId,sku);
+      if(images.length&&images.length!==9)throw Error('Importe as nove imagens para revisar a substituição completa.');
+      change.imagesSignature=imagesSignature(images);
+    }
+    if(change.attributes)compileAttributes(change.attributes,record,await shopeeLiveEditableItem(cfg,auth,itemId));
+    if(change.tax)compileTax(change.tax,await shopeeLiveEditableItem(cfg,auth,itemId));
     const state=await saveWorkflowReview(auth.shopId,itemId,modelId,sku,change);
     res.json({ok:true,saved:true,marketplaceUpdated:false,sku,itemId,modelId,
-      stages:buildStages(record,state),draftTitle:state.draftTitle||safeTitle(record.title),
+      stages:buildStages(record,state),attributeChanges:state.attributes||[],taxDraft:state.tax||{},draftTitle:state.draftTitle||safeTitle(record.title),
       draftDescription:state.draftDescription||descriptionDraft(record)});
   }catch(e){res.status(400).json({error:String(e.message||e).slice(0,350)});}
 });
 
-// Preparação/execução Shopee segura: somente título e descrição revisados.
-// Mídia, frete, preço, promoção, estoque e fiscal NÃO são enviados.
+// Execution uses reviewed content, frozen media and a persisted one-step worker.
 async function shopeeLiveEditableItem(cfg,auth,itemId){
   const d=await callShopeeShopApi(cfg,{
     path:'/api/v2/product/get_item_base_info',accessToken:auth.accessToken,
-    shopId:auth.shopId,query:{item_id_list:itemId}});
+    shopId:auth.shopId,query:{item_id_list:itemId,need_tax_info:true}});
   const x=(d?.response?.item_list||[]).find(i=>String(i.item_id)===String(itemId));
   if(!x)throw Error('O anúncio não pôde ser confirmado na Shopee.');
   return x;
@@ -658,15 +677,13 @@ app.post('/api/shopee/optimizer/execution/prepare',mustLogin,requireWeDropAdmin,
     const review=await getWorkflowReview(auth.shopId,itemId,modelId);
     if(review&&review.sku!==sku)throw Error('SKU do plano revisado é diferente. Refaça a auditoria.');
     const live=await shopeeLiveEditableItem(cfg,auth,itemId);
-    const plan=compileShopeeExecutionPlan({shopId:auth.shopId,itemId,modelId,
-      sku,record,review:review?.review_state||{},live});
     const manualVideo=await getShopeeManualVideo(auth.shopId,itemId,modelId,sku);
-    if(manualVideo){
-      const warningIndex=plan.warnings.findIndex(x=>x.startsWith('Vídeo:'));
-      if(warningIndex>=0)
-        plan.warnings[warningIndex]='Vídeo manual importado ('+manualVideo.filename+
-          '), salvo em armazenamento privado; ainda precisa de processamento e publicação na Shopee.';
-    }
+    const previous=await readShopeeExecution(auth.shopId,itemId,modelId);
+    const verifiedVideoSha256=previous?.state==='verified'&&
+      verifyShopeeExecution(previous.plan,live,previous.result)?previous.plan.video?.sha256:null;
+    const manualImages=await readPreparedImages(auth.shopId,itemId,modelId,sku);
+    const plan=compileShopeeExecutionPlan({shopId:auth.shopId,itemId,modelId,
+      sku,record,review:review?.review_state||{},live,manualVideo,verifiedVideoSha256,manualImages});
     const stored=await saveShopeePreparedExecution(auth.shopId,itemId,modelId,sku,plan);
     res.json({ok:true,ready:plan.canExecute,plan,
       updatedAt:stored.updated_at,executionStatus:stored.state,marketplaceUpdated:false});
@@ -684,76 +701,105 @@ app.get('/api/shopee/optimizer/execution/status',mustLogin,requireWeDropAdmin,as
   }catch(e){res.status(400).json({error:String(e.message||e).slice(0,300)});}
 });
 app.post('/api/shopee/optimizer/execution/execute',mustLogin,requireWeDropAdmin,async(req,res)=>{
-  res.setHeader('Cache-Control','no-store');
-  if(!verifiedSameOrigin(req))return res.status(403).json({error:'Origem não autorizada.'});
-  let claimed=false,auth,itemId,modelId,runId;
-  try{
-    if(req.body?.acceptPartialExecution!==true)
-      throw Error('Confirme que serão executados somente título e/ou descrição revisados.');
-    ({itemId,modelId,auth}=await checkedWorkflowAudit(req));
-    const sku=validateSkuLookup(req.body.sku);
-    const job=await readShopeeExecution(auth.shopId,itemId,modelId);
-    if(job?.sku!==sku||job.state!=='prepared')throw Error('Plano não preparado ou já executado. Prepare novamente.');
-    const plan=job.plan;
-    if(plan?.planId!==String(req.body.planId||'')||
-       String(job.updated_at)!==String(req.body.updatedAt||''))
-      throw Error('Plano atualizado em outra sessão. Confira novamente.');
-    confirmShopeeExecution(plan,{sku,confirmation:req.body.confirmation});
-    const review=await getWorkflowReview(auth.shopId,itemId,modelId);
-    if(review?.sku!==sku)throw Error('Conferência do anúncio foi modificada; prepare novamente.');
-    const reviewState=review.review_state||{};
-    if(plan.proposed.item_name!==undefined&&
-      (reviewState.stages?.seo?.reviewed!==true||safeTitle(reviewState.draftTitle)!==plan.proposed.item_name))
-      throw Error('Título foi alterado ou deixou de estar revisado. Refaça a preparação.');
-    if(plan.proposed.description!==undefined&&
-      (reviewState.stages?.description?.reviewed!==true||
-       String(reviewState.draftDescription||'').trim()!==plan.proposed.description))
-      throw Error('Descrição foi alterada ou deixou de estar revisada. Refaça a preparação.');
-    const {cfg}=await getValidAuth(req);
-    const live=await shopeeLiveEditableItem(cfg,auth,itemId);
-    assertLiveShopeeUnchanged(plan,live);
-    // O estado muda de prepared para running sob comparação atômica.
-    runId=crypto.randomUUID();
-    await claimShopeePreparedExecution(auth.shopId,itemId,modelId,{
-      planId:plan.planId,updatedAt:job.updated_at,runId});
-    claimed=true;
-    let mutation;
-    try{
-      mutation=await callShopeeShopApi(cfg,{path:'/api/v2/product/update_item',
-        method:'POST',accessToken:auth.accessToken,shopId:auth.shopId,
-        body:{item_id:Number(itemId),...plan.proposed}});
-    }catch(e){
-      // Mesmo erro de rede pode ocultar publicação feita. Não repetir sem leitura.
-      const message='Resposta da atualização Shopee inconclusiva: '+String(e.message||e).slice(0,170);
-      try{await finishShopeeExecution(auth.shopId,itemId,modelId,runId,
-        {state:'uncertain',result:{operation:'update_item'},lastError:message});}catch{}
-      return res.status(409).json({ok:false,status:'uncertain',error:message,
-        retryAutomatically:false,marketplaceUpdated:'não confirmado'});
-    }
-    let verified=false,readbackError=null;
-    try{
-      const updated=await shopeeLiveEditableItem(cfg,auth,itemId);
-      verified=verifyShopeeExecution(plan,updated);
-    }catch(e){readbackError=String(e.message||e).slice(0,190);}
-    const state=verified?'verified':'uncertain';
-    await finishShopeeExecution(auth.shopId,itemId,modelId,runId,{
-      state,result:{actions:plan.actions,requestId:String(mutation?.request_id||'').slice(0,100),
-        verified,readbackError},lastError:verified?null:'Sem confirmação de leitura pós-atualização.'
-    });
-    res.status(verified?200:409).json({ok:verified,status:state,
-      marketplaceUpdated:verified,actions:plan.actions,
-      message:verified?'Alterações confirmadas por nova leitura Shopee.':
-        'O anúncio pode ter sido alterado. Confira a Central do Vendedor; sem repetição automática.'});
-  }catch(e){
-    // Não tentar repetir uma alteração já iniciada; caso incerto permanece bloqueado.
-    if(claimed&&auth&&itemId&&runId){
-      try{await finishShopeeExecution(auth.shopId,itemId,modelId,runId,{
-        state:'uncertain',lastError:'Resultado da execução não confirmado.'});}catch{}
-    }
-    res.status(409).json({ok:false,error:String(e.message||e).slice(0,280),
-      retryAutomatically:false,marketplaceUpdated:claimed?'não confirmado':false});
-  }
+ res.setHeader('Cache-Control','no-store');
+ if(!verifiedSameOrigin(req))return res.status(403).json({error:'Origem não autorizada.'});
+ try{
+  if(req.body?.acceptPartialExecution!==true)throw Error('Confirme as alterações da prévia.');
+  const {itemId,modelId,sku,auth,cfg,record}=await checkedWorkflowAudit(req);
+  const job=await readShopeeExecution(auth.shopId,itemId,modelId);
+  if(job?.sku!==sku||job.state!=='prepared')throw Error('Plano não preparado ou já iniciado. Confira o andamento.');
+  const plan=job.plan;
+  if(plan?.planId!==String(req.body.planId||'')||String(job.updated_at)!==String(req.body.updatedAt||''))
+   throw Error('Plano alterado em outra sessão. Prepare novamente.');
+  confirmShopeeExecution(plan,{sku,confirmation:req.body.confirmation});
+  const review=await getWorkflowReview(auth.shopId,itemId,modelId);
+  if(review?.sku!==sku)throw Error('Revisão da SKU mudou. Prepare novamente.');
+  const live=await shopeeLiveEditableItem(cfg,auth,itemId);
+  assertLiveShopeeUnchanged(plan,live);
+  const manualVideo=plan.video?await getShopeeManualVideo(auth.shopId,itemId,modelId,sku):null;
+  const manualImages=plan.images?.length?await readPreparedImages(auth.shopId,itemId,modelId,sku):[];
+  const fresh=compileShopeeExecutionPlan({shopId:auth.shopId,itemId,modelId,sku,record,
+   review:review.review_state,live,manualVideo,manualImages});
+  if(fresh.fingerprint!==plan.fingerprint||!fresh.canExecute)throw Error('Conteúdo ou aprovação mudou. Prepare novamente.');
+  await claimShopeePreparedExecution(auth.shopId,itemId,modelId,{
+   planId:plan.planId,updatedAt:job.updated_at,runId:crypto.randomUUID()});
+  // Only this explicit authenticated action starts the durable runner.
+  res.status(202).json({ok:true,status:'running',marketplaceUpdated:false,
+   message:'Execução iniciada. Acompanhe as etapas; você pode sair e voltar para esta SKU.'});
+  void runOptimizerJobs();
+ }catch(e){res.status(409).json({ok:false,error:String(e.message||e).slice(0,280)});}
 });
+app.post('/api/shopee/optimizer/execution/reconcile',mustLogin,requireWeDropAdmin,async(req,res)=>{
+ res.setHeader('Cache-Control','no-store');
+ if(!verifiedSameOrigin(req))return res.status(403).json({error:'Origem não autorizada.'});
+ try{
+  const {itemId,modelId,sku,auth,cfg}=await checkedWorkflowAudit(req);
+  const job=await readShopeeExecution(auth.shopId,itemId,modelId);
+  if(job?.sku!==sku)throw Error('Nenhuma execução encontrada para esta SKU.');
+  if(job.state!=='uncertain')return res.json({ok:true,job});
+  const live=await shopeeLiveEditableItem(cfg,auth,itemId);
+  const verified=verifyShopeeExecution(job.plan,live,job.result||{});
+  let updated=job;
+  if(verified){
+    await rememberPublishedVideo(job.plan,job.result||{});
+    await rememberPublishedImages(job.plan,job.result||{});
+    updated=await reconcileShopeeJob(job,{state:'verified',result:{...job.result,phase:'verified',verified:true},lastError:null});
+  }
+  else if(req.body.reprepare===true){
+    if(req.body.confirmation!=='REPREPARAR '+sku)throw Error('Confirme REPREPARAR '+sku+'.');
+    if(Date.now()-Date.parse(job.updated_at)<90000)throw Error('Aguarde 90 segundos para a Shopee consolidar a atualização.');
+    assertLiveShopeeUnchanged(job.plan,live);
+    updated=await reconcileShopeeJob(job,{state:'failed',result:{...job.result,phase:'retry_allowed'},
+      lastError:'Leitura confirmou os valores anteriores. Uma nova prévia e aprovação são necessárias.'});
+  }
+  res.json({ok:true,job:updated,verified,message:verified?'Alterações confirmadas na Shopee.':
+    'Resultado ainda não confirmado. Nenhuma alteração foi reenviada.'});
+ }catch(e){res.status(409).json({ok:false,error:String(e.message||e).slice(0,280)});}
+});
+let optimizerWorkerBusy=false;
+async function runOptimizerJobs(){
+ if(optimizerWorkerBusy)return;
+ optimizerWorkerBusy=true;
+ try{
+  const jobs=await pendingShopeeExecutions();
+  for(const candidate of jobs){
+   const job=await leaseShopeeExecution(candidate,crypto.randomUUID());
+   if(!job)continue;
+   try{
+    const {auth,cfg}=await getValidAuth();
+    if(Number(auth.shopId)!==Number(job.shop_id))throw Error('Loja vinculada diferente do plano aprovado.');
+    const common={accessToken:auth.accessToken,shopId:auth.shopId};
+    const out=await advanceShopeeExecution(job,{
+      read:()=>shopeeLiveEditableItem(cfg,auth,job.item_id),
+      validateIdentity:()=>auditShopeeItem(cfg,auth,callShopeeShopApi,job.item_id,
+        {expectedSku:job.sku,expectedModelId:String(job.model_id)}),
+      download:downloadShopeeManualVideo,downloadImage:downloadPreparedImage,media:createShopeeMediaApi(cfg,auth),
+      beforeWrite:result=>checkpointShopeeExecution(job,result,90000),
+      update:body=>callShopeeShopApi(cfg,{...common,path:'/api/v2/product/update_item',method:'POST',body})
+    });
+    if(out.state==='running')await checkpointShopeeExecution(job,out.result,out.delay);
+    else {
+      if(out.state==='verified'){
+        await rememberPublishedVideo(job.plan,out.result);
+        await rememberPublishedImages(job.plan,out.result);
+      }
+      await finishShopeeExecution(job.shop_id,job.item_id,job.model_id,job.run_id,out);
+    }
+   }catch(e){
+    const current=await readShopeeExecution(job.shop_id,job.item_id,job.model_id);
+    if(current?.run_id!==job.run_id||current.state!=='running')continue;
+    const uncertain=['updating','verifying'].includes(current.result?.phase);
+    const attempts=Number(current.result?.attempts||0)+1;
+    if(!uncertain&&attempts<3&&/fetch|timeout|network|HTTP 5|error_rate_limit/i.test(String(e.message))){
+     await checkpointShopeeExecution(job,{...current.result,attempts},attempts*15000);
+    }else await finishShopeeExecution(job.shop_id,job.item_id,job.model_id,job.run_id,{
+      state:uncertain?'uncertain':'failed',result:current.result,
+      lastError:String(e.message||e).slice(0,250)});
+   }
+  }
+ }catch(e){console.warn('[Shopee optimizer] execução aguardando persistência:',String(e.message||e).slice(0,180));}
+ finally{optimizerWorkerBusy=false;}
+}
 
 // Diagnóstico somente de PRESENÇA da configuração, sem revelar Partner ID, Key ou token.
 // Uma sessão "conectada" não prova que as credenciais necessárias aos writes ainda existem.
@@ -801,7 +847,7 @@ app.get('/api/shopee/optimizer/video/manual',mustLogin,requireWeDropAdmin,async(
   const previewUrl=asset&&req.query.preview==='1'
     ?await signedShopeeManualVideoPreview(info.shopId,info.itemId,info.modelId,info.sku):null;
   res.json({ok:true,asset:manualVideoPublicInfo(asset),previewUrl,
-    publishedInShopee:false});
+    publishedInShopee:Boolean(asset?.publication?.sha256===asset?.sha256)});
  }catch(e){res.status(400).json({error:String(e.message||e).slice(0,250)});}
 });
 app.post('/api/shopee/optimizer/video/manual',
@@ -815,11 +861,35 @@ app.post('/api/shopee/optimizer/video/manual',
   let name='video';
   try{name=decodeURIComponent(String(req.get('x-video-filename')||'video'));}
   catch{throw Error('Nome de arquivo inválido.');}
+  const active=await readShopeeExecution(info.shopId,info.itemId,info.modelId);
+  if(['running','uncertain'].includes(active?.state))throw Error('Conclua ou confira a execução em andamento antes de trocar o vídeo.');
+  const normalized=await normalizeManualVideo(req.body);
   const asset=await importShopeeManualVideo(info.shopId,info.itemId,info.modelId,
-    info.sku,req.body,{mime:String(req.get('content-type')||'').split(';')[0].toLowerCase(),filename:name});
+    info.sku,normalized.buffer,{mime:'video/mp4',filename:name.replace(/\.[^.]+$/,'')+'.mp4'});
   res.status(201).json({ok:true,asset,publishedInShopee:false,
    message:'Vídeo importado e salvo em armazenamento privado para esta SKU. Ainda não foi publicado na Shopee.'});
  }catch(e){res.status(400).json({error:String(e.message||e).slice(0,270)});}
+});
+
+app.get('/api/shopee/optimizer/images/manual',mustLogin,requireWeDropAdmin,async(req,res)=>{
+ res.setHeader('Cache-Control','no-store');
+ try{
+  const x=await checkedManualVideoIdentity(req);
+  const images=await readPreparedImages(x.shopId,x.itemId,x.modelId,x.sku,{preview:true});
+  res.json({ok:true,images});
+ }catch(e){res.status(400).json({error:String(e.message||e).slice(0,250)});}
+});
+app.post('/api/shopee/optimizer/images/manual',mustLogin,requireWeDropAdmin,
+ express.raw({type:['image/png','image/jpeg'],limit:MAX_IMAGE_BYTES}),async(req,res)=>{
+ res.setHeader('Cache-Control','no-store');
+ if(!verifiedSameOrigin(req))return res.status(403).json({error:'Origem não autorizada.'});
+ try{
+  const x=await checkedManualVideoIdentity(req),job=await readShopeeExecution(x.shopId,x.itemId,x.modelId);
+  if(['running','uncertain'].includes(job?.state))throw Error('Aguarde ou confira a execução antes de trocar as imagens.');
+  const image=await importPreparedImage({...x,slot:req.query.slot,file:req.body,
+   mime:String(req.get('content-type')||'').split(';')[0],filename:decodeURIComponent(req.get('x-image-filename')||'imagem')});
+  res.status(201).json({ok:true,image,marketplaceUpdated:false});
+ }catch(e){res.status(400).json({error:String(e.message||e).slice(0,250)});}
 });
 
 app.get('/api/shopee/optimizer/settings',mustLogin,requireWeDropAdmin,async(req,res)=>{
@@ -1091,6 +1161,9 @@ app.get('/api/shopee/ads/product-campaign-performance',mustLogin,async(req,res)=
   }catch(e){res.status(400).json({error:String(e.message||e)});}
 });
 
+setInterval(()=>void runOptimizerJobs(),4000).unref();
+void runOptimizerJobs();
 orderMonitor.start();
 try{wedropScheduler.start();}catch(error){console.warn('[WeDrop] Feed não iniciado:',String(error.message||error).slice(0,200));}
 app.listen(PORT,()=>console.log(`Rede Achados BR Shopee API em http://localhost:${PORT}`));
+

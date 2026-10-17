@@ -2,6 +2,7 @@
 export const STAGE_IDS=Object.freeze(['images','video','seo','category','technical','description','fiscal','pricing','final']);
 export const safeTitle=value=>String(value||'').normalize('NFC').replace(/\s+/g,' ').trim().slice(0,120);
 export function descriptionDraft(record){
+  if(record?.description)return String(record.description);
   return [safeTitle(record?.title)||'Produto da loja','',
     'Confira as fotografias e características informadas no anúncio para escolher a opção adequada.',
     'Antes da compra, verifique as medidas, o conteúdo da embalagem e as orientações de uso confirmadas pelo fabricante.',
@@ -20,8 +21,8 @@ export function buildStages(record,review={}){
     {key:'technical',name:'Ficha técnica',detail:(Number(a.total)||0)+' atributos: '+missing+' obrigatório(s) ausente(s), '+suspect+' para revisar, '+optional+' opcionais sem valor.',hint:'Zero obrigatórios ausentes não significa todos os dados corretos. Usar apenas opções da categoria e fontes comprovadas.',blocking:missing>0||suspect>0},
     {key:'description',name:'Descrição e variações',detail:(record.descriptionPresent?'Descrição atual encontrada.':'Descrição não confirmada.')+' Minuta conservadora disponível para revisar.',hint:'Não adicionar medidas, conteúdo de kit ou funções sem confirmação; revisar variações sem alterar estoques.',blocking:false},
     {key:'fiscal',name:'Informações fiscais',detail:'Dados fiscais dependem do produto e validação da contabilidade. Nenhuma nota ou cadastro fiscal alterado.',hint:'NCM, CFOP, origem e CSOSN devem ser verificados; não aplicar valores genéricos indiscriminadamente.',blocking:false},
-    {key:'pricing',name:'Preço e promoção',detail:'Usar o plano vinculado à mesma SKU, custo WeDrop atualizado e margem mínima protegida.',hint:'Conferir comissão, cupom e promoção vigente. Este checklist não altera preços na Shopee.',blocking:false},
-    {key:'final',name:'Revisão e execução',detail:'Conferir todas as etapas e solicitar confirmação antes de qualquer alteração via API.',hint:'Este painel prepara e salva revisões; só a confirmação da API pode provar anúncio atualizado/publicado.',blocking:true}
+    {key:'pricing',name:'Preço e promoção',detail:'Usar o plano vinculado à mesma SKU, custo WeDrop atualizado e margem mínima protegida.',hint:'Conferir comissão, cupom e promoção vigente. A análise financeira fica no submenu Precificação.',blocking:false},
+    {key:'final',name:'Revisão e execução',detail:'Conferir todas as etapas e solicitar confirmação antes de qualquer alteração via API.',hint:'A execução salva progresso e confirma as alterações por nova leitura da Shopee.',blocking:true}
   ];
   return stages.map(s=>{const entry=review?.stages?.[s.key]||{},reviewed=entry.reviewed===true;
     return {...s,reviewed,reviewedAt:reviewed?entry.reviewedAt||null:null,status:reviewed?'reviewed':s.blocking?'attention':'pending'};
@@ -37,5 +38,8 @@ export function validateReview(input){
   const description=input.description===undefined?undefined:String(input.description||'').trim();
   if(title!==undefined&&!title)throw Error('Título vazio.');
   if(description!==undefined&&description.length>3000)throw Error('Descrição excede 3000 caracteres.');
-  return {stage,reviewed:input.reviewed,title,description};
+  return {stage,reviewed:input.reviewed,title,description,
+    ...(stage==='technical'&&Array.isArray(input.attributes)?{attributes:input.attributes}:{}),
+    ...(stage==='fiscal'&&input.tax?{tax:input.tax}:{})};
 }
+
