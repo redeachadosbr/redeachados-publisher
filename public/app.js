@@ -1339,9 +1339,9 @@ $('#optimizerFind').onclick=async()=>{
   }catch(e){optimizerNotice('Não foi possível localizar o SKU: '+e.message,'error');}
   finally{btn.disabled=false;}
 };
-$('#optimizerSku').addEventListener('keydown',event=>{
+$('#optimizerSku').onkeydown=event=>{
   if(event.key==='Enter'){event.preventDefault();$('#optimizerFind').click();}
-});
+};
 function optimizerCell(row,textValue,className=''){
   const td=optimizerMake('td',className,textValue);row.appendChild(td);return td;
 }
