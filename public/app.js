@@ -1384,6 +1384,7 @@ $('#optimizerSku')?.addEventListener?.('input',()=>{
   shPriceCurrentQuote=null;
   shPriceSupplierQuote=null;
   shPriceSelection=null;
+  try{sessionStorage.removeItem(shPriceSelectionKey);}catch{}
   optimizerSkuLookupSerial++;
   if(!value){
     $('#optimizerQuickStatus').textContent='Informe uma SKU para calcular automaticamente.';
