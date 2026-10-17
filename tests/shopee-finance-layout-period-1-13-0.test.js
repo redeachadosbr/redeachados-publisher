@@ -74,6 +74,6 @@ test('tabela tem 8 colunas, espaço para valores e detalhamento do pedido',()=>{
  assert.match(css,/\.finance-sku-table \.finance-number/);
  assert.match(css,/white-space:nowrap;text-align:right/);
  assert.match(css,/\.finance-expanded-content/);
- assert.match(html,/app\.js\?v=1\.14\.0/);
- assert.match(html,/style\.css\?v=1\.14\.0/);
+ assert.match(html,/app\.js\?v=1\.14\.1/);
+ assert.match(html,/style\.css\?v=1\.14\.1/);
 });
