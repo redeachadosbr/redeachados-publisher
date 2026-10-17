@@ -8,7 +8,7 @@ import {createAuthStore} from './authStore.js';
 import {mergeShopeeOrderDates} from './orderView.js';
 import {createShopeeOrderMonitor} from './orderMonitor.js';
 import {loadShopeeAdsOverview} from './adsReport.js';
-import {loadShopeeFinance} from './shopeeFinance.js';
+import {loadShopeeFinance,MAX_FINANCE_ORDERS} from './shopeeFinance.js';
 import {installFinanceBridge} from './financeBridge.js';
 import {financeAdsDates,matchFinanceAds} from './financeAdsSweep.js';
 import {financeRange} from './shopeeFinance.js';
