@@ -19,6 +19,7 @@ import {saveWeDropCosts,getWeDropCoverage,compareIncomingCosts,pendingWeDropMode
 import {readWeDropSyncState,getStoredWeDropCostCount} from './wedropCosts.js';
 import {getSkuReview,searchSupplierSku,confirmSkuLink,undoSkuLink} from './wedropSkuReview.js';
 import {auditShopeeItem,validateSkuLookup} from './productOptimizer.js';
+import {findLiveShopeeSku} from './shopeeSkuFinder.js';
 import {optimizerSettings,saveOptimizerSettings} from './optimizerStore.js';
 import {quoteShopeePrice,normalizeShopeePricingSettings} from './shopeePricing.js';
 import {shopeePricingPreferences,saveShopeePricingPreferences,
@@ -545,11 +546,24 @@ app.get('/api/shopee/optimizer/find',mustLogin,requireWeDropAdmin,async(req,res)
   res.setHeader('Cache-Control','no-store');
   try{
     const sku=validateSkuLookup(req.query.sku);
-    const {auth}=await getValidAuth(req);
-    const matches=await findExactCatalogSku(auth.shopId,sku);
-    res.json({ok:true,sku,matches,
-      message:matches.length?'SKUs exatos localizados no catálogo armazenado. Confirme o Item ID antes de seguir.':
-        'SKU não está no cache. Sincronize Produtos e anúncios ou informe o Item ID da Shopee.'});
+    const {auth,cfg}=await getValidAuth(req);
+    let matches=await findExactCatalogSku(auth.shopId,sku);
+    let lookup='saved_catalog',warnings=[];
+    if(!matches.length){
+      // Cache parcial ou desatualizado: pesquisa oficial Shopee, leitura somente.
+      // Também recupera os detalhes e vincula a SKU ao catálogo persistente.
+      const live=await findLiveShopeeSku(cfg,auth,callShopeeShopApi,sku);
+      warnings=live.warnings||[];
+      matches=await findExactCatalogSku(auth.shopId,sku);
+      lookup=matches.length?'live_verified':'not_found';
+      if(live.matches.length&&!matches.length)
+        throw Error('A Shopee encontrou a SKU, mas não foi possível salvar o vínculo no catálogo. Tente novamente.');
+    }
+    res.json({ok:true,sku,matches,lookup,warnings:warnings.slice(0,3),
+      message:matches.length
+        ?'SKU exata localizada '+(lookup==='live_verified'?'na Shopee e salva no catálogo.':'no catálogo salvo.')+
+         ' Item ID obtido automaticamente.'
+        :'A Shopee não confirmou a SKU na pesquisa. Confira se está na mesma loja e tente sincronizar Produtos e anúncios.'});
   }catch(e){res.status(400).json({error:String(e.message||e).slice(0,240)});}
 });
 app.get('/api/shopee/optimizer/audit',mustLogin,requireWeDropAdmin,async(req,res)=>{
