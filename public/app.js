@@ -1417,18 +1417,20 @@ async function optimizerRunAudit(itemId,sku,modelId=''){
     const item=String(itemId||'').trim(),expectedSku=String(sku||'').trim();
     if(!/^[1-9]\d{0,17}$/.test(item)||!expectedSku)
       throw Error('O SKU selecionado não possui anúncio técnico válido. Sincronize o catálogo.');
+    // Precificação não depende da leitura dos atributos: prepara mesmo quando
+    // a árvore de categoria da Shopee estiver momentaneamente indisponível.
+    if(shPriceSelection?.sku!==expectedSku||shPriceSelection?.itemId!==item||
+       shPriceSelection?.modelId!==String(modelId||'0'))
+      $('#priceMarketAvg').value='';
+    shPriceSelection={sku:expectedSku,itemId:item,modelId:String(modelId||'0')};
+    shPriceSaveSelection(shPriceSelection);
+    $('#priceResults').hidden=true;
+    void shPriceLoadDefaults().then(()=>shPricePrepare());
     const params=new URLSearchParams({item_id:item,sku:expectedSku,model_id:String(modelId||'')});
     const data=await json('/api/shopee/optimizer/audit?'+params.toString(),{
       signal:AbortSignal.timeout(60000)
     });
     optimizerRender(data.record);
-    await shPriceLoadDefaults();
-    // Vincular o plano ao Item ID e à variação já escolhidos na busca por SKU.
-    if(shPriceSelection?.sku!==expectedSku||shPriceSelection?.itemId!==item)
-      $('#priceMarketAvg').value='';
-    shPriceSelection={sku:expectedSku,itemId:item,modelId:String(modelId||'0')};
-    shPriceSaveSelection(shPriceSelection);
-    await shPricePrepare({silent:false});
     optimizerNotice('SKU '+expectedSku+' analisado. Ficha técnica consultada pela API. '+
       'Nenhuma imagem, informação, título, preço ou estoque foi alterado.','success');
   }catch(e){optimizerNotice('Não foi possível validar a ficha técnica do SKU: '+e.message+
