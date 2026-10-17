@@ -1310,7 +1310,7 @@ $('#optimizerSave').onclick=async()=>{
   finally{btn.disabled=false;}
 };
 // A UI recebe só SKU; o Item ID técnico vem do catálogo Shopee, não do usuário.
-let optimizerSkuInputTimer=null,optimizerSkuLookupSerial=0,optimizerSkuPending='';
+let optimizerSkuInputTimer=null,optimizerSkuLookupSerial=0,optimizerSkuPending='',optimizerNextAudit=null;
 $('#optimizerFind').onclick=async()=>{
   const btn=$('#optimizerFind'),target=$('#optimizerCandidates');
   const sku=$('#optimizerSku').value.trim();
@@ -1366,7 +1366,7 @@ $('#optimizerFind').onclick=async()=>{
     }
   }
 };
-$('#optimizerSku').addEventListener('input',()=>{
+$('#optimizerSku')?.addEventListener?.('input',()=>{
   const value=$('#optimizerSku').value.trim();
   if(optimizerSkuInputTimer)clearTimeout(optimizerSkuInputTimer);
   // Não mostrar resultado de um produto anterior enquanto outra SKU é digitada.
@@ -1454,7 +1454,7 @@ function optimizerRender(record){
   }
 }
 async function optimizerRunAudit(itemId,sku,modelId=''){
-  if(optimizerBusy)return;
+  if(optimizerBusy){optimizerNextAudit={itemId,sku,modelId};return;}
   optimizerBusy=true;
   $('#optimizerAuditPanel').hidden=true;
   optimizerNotice('Consultando atributos oficiais da categoria deste SKU na Shopee...');
@@ -1478,12 +1478,22 @@ async function optimizerRunAudit(itemId,sku,modelId=''){
     const data=await json('/api/shopee/optimizer/audit?'+params.toString(),{
       signal:AbortSignal.timeout(60000)
     });
+    if($('#optimizerSku').value.trim()!==expectedSku)return;
     optimizerRender(data.record);
     optimizerNotice('SKU '+expectedSku+' analisado. Ficha técnica consultada pela API. '+
       'Nenhuma imagem, informação, título, preço ou estoque foi alterado.','success');
-  }catch(e){optimizerNotice('Não foi possível validar a ficha técnica do SKU: '+e.message+
-    '. O produto permanece intacto.','error');}
-  finally{optimizerBusy=false;}
+  }catch(e){
+    if($('#optimizerSku').value.trim()===String(sku||'').trim())
+      optimizerNotice('Não foi possível validar a ficha técnica do SKU: '+e.message+
+        '. O produto permanece intacto.','error');
+  }finally{
+    optimizerBusy=false;
+    if(optimizerNextAudit){
+      const next=optimizerNextAudit;optimizerNextAudit=null;
+      if($('#optimizerSku').value.trim()===String(next.sku||'').trim())
+        void optimizerRunAudit(next.itemId,next.sku,next.modelId);
+    }
+  }
 }
 
 let financeReport=null,financeSkuFilter='sold',financeSkuShown=24;
