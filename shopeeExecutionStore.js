@@ -10,16 +10,6 @@ function config(){
  if(/^eyJ[A-Za-z0-9_-]*\./.test(k))headers.Authorization='Bearer '+k;
  return {u,headers};
 }
-async function request(query,{method='GET',data=null,prefer=null}={}){
- const c=config(),headers={...c.headers};
- if(prefer)headers.Prefer=prefer;
- const r=await fetch(c.u+'/rest/v1/shopee_optimizer_execution_jobs'+query,{
-  method,headers,...(data===null?{}:{body:JSON.stringify(data)}),
-  signal:AbortSignal.timeout(16000)
- });
- if(!r.ok)throw Error('Falha ao persistir execução no Supabase Shopee (HTTP '+r.status+').');
- return (await r.text()).trim()?await Promise.resolve(null):null;
-}
 async function rows(query,options={}){
  const c=config(),headers={...c.headers};
  if(options.prefer)headers.Prefer=options.prefer;
@@ -55,6 +45,7 @@ export async function saveShopeePreparedExecution(shopId,itemId,modelId,sku,plan
 export async function claimShopeePreparedExecution(shopId,itemId,modelId,{planId,updatedAt,runId}){
  const query=where(shopId,itemId,modelId)+
   '&state=eq.prepared&updated_at=eq.'+encodeURIComponent(updatedAt)+
+  '&plan->>planId=eq.'+encodeURIComponent(planId)+
   '&select=state,plan,run_id,updated_at';
  const result=await rows(query,{method:'PATCH',
   data:{state:'running',run_id:runId,updated_at:new Date().toISOString()},
