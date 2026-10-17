@@ -1360,10 +1360,14 @@ $('#optimizerFind').onclick=async()=>{
       optimizerNotice('Não foi possível localizar a SKU: '+e.message,'error');
   }finally{
     btn.disabled=false;
-    if(optimizerSkuPending&&optimizerSkuPending!==sku){
+    const currentSku=$('#optimizerSku').value.trim();
+    // Mesmo que o botão estava desativado durante o debounce, o SKU novo
+    // precisa ser pesquisado automaticamente assim que a consulta antiga termina.
+    if(currentSku&&currentSku!==sku){
       optimizerSkuPending='';
-      $('#optimizerFind').click();
-    }
+      if(optimizerSkuInputTimer)clearTimeout(optimizerSkuInputTimer);
+      optimizerSkuInputTimer=setTimeout(()=>$('#optimizerFind').click(),180);
+    }else optimizerSkuPending='';
   }
 };
 $('#optimizerSku')?.addEventListener?.('input',()=>{
