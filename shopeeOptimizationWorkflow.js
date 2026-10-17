@@ -37,5 +37,5 @@ export function validateReview(input){
   const description=input.description===undefined?undefined:String(input.description||'').trim();
   if(title!==undefined&&!title)throw Error('Título vazio.');
   if(description!==undefined&&description.length>3000)throw Error('Descrição excede 3000 caracteres.');
-  return {stage,reviewed,title,description};
+  return {stage,reviewed:input.reviewed,title,description};
 }
