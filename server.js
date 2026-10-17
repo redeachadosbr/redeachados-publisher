@@ -19,6 +19,8 @@ import {saveWeDropCosts,getWeDropCoverage,compareIncomingCosts,pendingWeDropMode
 import {readWeDropSyncState,getStoredWeDropCostCount} from './wedropCosts.js';
 import {getSkuReview,searchSupplierSku,confirmSkuLink,undoSkuLink} from './wedropSkuReview.js';
 import {auditShopeeItem,validateSkuLookup} from './productOptimizer.js';
+import {buildStages,descriptionDraft,safeTitle,validateReview} from './shopeeOptimizationWorkflow.js';
+import {getWorkflowReview,saveWorkflowReview} from './shopeeOptimizationWorkflowStore.js';
 import {findLiveShopeeSku} from './shopeeSkuFinder.js';
 import {optimizerSettings,saveOptimizerSettings} from './optimizerStore.js';
 import {quoteShopeePrice,normalizeShopeePricingSettings} from './shopeePricing.js';
@@ -589,6 +591,45 @@ app.get('/api/shopee/optimizer/audit',mustLogin,requireWeDropAdmin,async(req,res
     res.json({ok:true,readOnly:true,record});
   }catch(e){res.status(400).json({error:String(e.message||e).slice(0,320)});}
 });
+// Stage reviews are internal Shopee records. No marketplace API writes.
+async function checkedWorkflowAudit(req){
+  const itemId=validItemId(req.query?.item_id??req.body?.itemId);
+  const sku=validateSkuLookup(req.query?.sku??req.body?.sku);
+  const modelId=String(req.query?.model_id??req.body?.modelId??'0');
+  if(!/^\d{1,18}$/.test(modelId))throw Error('Variação Shopee inválida.');
+  const {auth,cfg}=await getValidAuth(req);
+  const record=await auditShopeeItem(cfg,auth,callShopeeShopApi,itemId,
+    {expectedSku:sku,expectedModelId:modelId});
+  return {itemId,modelId,sku,auth,record};
+}
+app.get('/api/shopee/optimizer/workflow',mustLogin,requireWeDropAdmin,async(req,res)=>{
+  res.setHeader('Cache-Control','no-store');
+  try{
+    const {itemId,modelId,sku,auth,record}=await checkedWorkflowAudit(req);
+    const stored=await getWorkflowReview(auth.shopId,itemId,modelId);
+    const review=stored?.sku===sku?stored.review_state||{}:{};
+    const stages=buildStages(record,review);
+    res.json({ok:true,readOnlyMarketplace:true,sku,itemId,modelId,
+      recordedAt:stored?.updated_at||null,stages,
+      draftTitle:review.draftTitle||safeTitle(record.title),
+      draftDescription:review.draftDescription||descriptionDraft(record),
+      imageCount:record.imageCount,
+      videoStatus:record.videoStatus,categoryId:record.categoryId});
+  }catch(e){res.status(400).json({error:String(e.message||e).slice(0,350)});}
+});
+app.post('/api/shopee/optimizer/workflow/review',mustLogin,requireWeDropAdmin,async(req,res)=>{
+  res.setHeader('Cache-Control','no-store');
+  if(!verifiedSameOrigin(req))return res.status(403).json({error:'Origem da solicitação não permitida.'});
+  try{
+    const change=validateReview(req.body);
+    const {itemId,modelId,sku,auth,record}=await checkedWorkflowAudit(req);
+    const state=await saveWorkflowReview(auth.shopId,itemId,modelId,sku,change);
+    res.json({ok:true,saved:true,marketplaceUpdated:false,sku,itemId,modelId,
+      stages:buildStages(record,state),draftTitle:state.draftTitle||safeTitle(record.title),
+      draftDescription:state.draftDescription||descriptionDraft(record)});
+  }catch(e){res.status(400).json({error:String(e.message||e).slice(0,350)});}
+});
+
 app.get('/api/shopee/optimizer/settings',mustLogin,requireWeDropAdmin,async(req,res)=>{
   res.setHeader('Cache-Control','no-store');
   try{
