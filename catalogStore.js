@@ -100,7 +100,7 @@ export async function readCatalogCache(shopId){
 export async function findExactCatalogSku(shopId,sku){
   shopId=shopNumber(shopId);
   sku=String(sku||'').trim();
-  if(!sku||sku.length>120||/[\\x00-\\x1F]/.test(sku))
+  if(!sku||sku.length>120||/[\x00-\x1F]/.test(sku))
     throw Error('Informe um SKU válido da Shopee.');
   const filter='shop_id=eq.'+shopId+'&limit=30&';
   const [parents,models]=await Promise.all([
