@@ -9,7 +9,8 @@ import {mergeShopeeOrderDates} from './orderView.js';
 import {createShopeeOrderMonitor} from './orderMonitor.js';
 import {loadShopeeAdsOverview} from './adsReport.js';
 import {loadShopeeFinance,MAX_FINANCE_ORDERS} from './shopeeFinance.js';
-import {installFinanceBridge,installWalletBridge} from './financeBridge.js';
+import {installFinanceBridge,installWalletBridge,installAdsFinanceBridge} from './financeBridge.js';
+import {buildAdsFinanceSnapshot} from './financeAdsBridge.js';
 import {readShopeeWallet} from './shopeeWallet.js';
 import {financeAdsDates,matchFinanceAds} from './financeAdsSweep.js';
 import {financeRange} from './shopeeFinance.js';
@@ -1003,6 +1004,13 @@ installFinanceBridge(app,async(req)=>{
     orders,ads,coverage:{note:'Somente pedidos concluidos CRIADOS na janela de 15 dias; limite '+MAX_FINANCE_ORDERS+' pedidos. Repasse nao equivale ao saldo sacavel.'},
     diagnostics:{ordersExamined:orders.length,complete:financial.complete===true,
       permissionWarning:Boolean(financial.paymentAccessWarning),truncated:Boolean(financial.skippedCompleted)}};
+});
+
+// Relatório privado Shopee Ads de anúncios de produtos, consultado por mês.
+installAdsFinanceBridge(app,async month=>{
+ const {auth,cfg}=await getValidAuth();
+ return buildAdsFinanceSnapshot(month,dates=>
+  loadShopeeAdsOverview(cfg,auth,callShopeeShopApi,dates));
 });
 
 // Extrato da carteira Shopee: não confundir com repasse de pedidos.
