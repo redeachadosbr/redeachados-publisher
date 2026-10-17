@@ -100,5 +100,5 @@ test('a similar SKU does not match and invalid characters are rejected',async()=
     saveItems:async()=>{},saveModels:async()=>{},maxPages:1
   });
   assert.deepEqual(r.matches,[]);
-  await assert.rejects(findLiveShopeeSku(cfg,auth,mock,'TRC1525\n'),/SKU válido/);
+  await assert.rejects(findLiveShopeeSku(cfg,auth,mock,'TRC15\x00'),/SKU válido/);
 });
