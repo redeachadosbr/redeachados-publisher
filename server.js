@@ -98,7 +98,7 @@ app.use(express.static(path.join(__dirname,'public')));
 // URLs próprias por setor do painel: recarregar/compartilhar não causa 404.
 // A sessão e autenticação das APIs continuam protegidas pelos mesmos middlewares.
 const appPagePaths=new Set([
-  'inicio','produtos','otimizacao','descontos','pedidos','envios','ads','wedrop','financeiro','configuracoes'
+  'inicio','produtos','otimizacao','precificacao','descontos','pedidos','envios','ads','wedrop','financeiro','configuracoes'
 ]);
 app.get('/app/:section',(req,res)=>{
   if(!appPagePaths.has(String(req.params.section||'')))return res.status(404).send('Página não encontrada.');
@@ -107,7 +107,7 @@ app.get('/app/:section',(req,res)=>{
 });
 app.get('/app',(_req,res)=>res.redirect(302,'/app/inicio'));
 
-app.get('/api/health',(_req,res)=>res.json({ok:true,service:'Rede Achados BR Shopee API',version:'1.14.2',storage:authStore.status()}));
+app.get('/api/health',(_req,res)=>res.json({ok:true,service:'Rede Achados BR Shopee API',version:'1.14.3',storage:authStore.status()}));
 app.get('/api/auth-state',(req,res)=>res.json({locked:Boolean(envText('APP_PASSWORD')),loggedIn:!envText('APP_PASSWORD')||Boolean(req.session?.appAuth)}));
 app.post('/api/login',(req,res)=>{
   const required=envText('APP_PASSWORD');
