@@ -1,10 +1,12 @@
 import crypto from 'node:crypto';
+import {compileAttributes,compileTax,sameData,fieldsVerified} from './shopeeStructuredFields.js';
+import {imagesSignature} from './shopeePreparedImages.js';
 import {safeTitle} from './shopeeOptimizationWorkflow.js';
 
 // Preparation is deterministic for one verified item/model/SKU. This module
 // never calls Shopee, and never considers a reviewed checkbox a published item.
 const normal=s=>String(s??'').replace(/\r\n?/g,'\n').trim();
-export function compileShopeeExecutionPlan({shopId,itemId,modelId,sku,record,review,live}){
+export function compileShopeeExecutionPlan({shopId,itemId,modelId,sku,record,review,live,manualVideo=null,verifiedVideoSha256=null,manualImages=[]}){
   const state=review||{},stages=state.stages||{};
   const title=safeTitle(state.draftTitle||'');
   const description=normal(state.draftDescription);
@@ -26,28 +28,56 @@ export function compileShopeeExecutionPlan({shopId,itemId,modelId,sku,record,rev
     else if(description!==currentDescription)proposed.description=description;
   }else if(description&&description!==currentDescription)blocked.push('Revisar e registrar Descrição e variações antes de executar.');
   if(record?.hasModel||String(modelId)!=='0')
-    warnings.push('Título e descrição são campos do anúncio-pai; a alteração afeta TODAS as variações deste Item ID.');
+    warnings.push('As alterações são campos do anúncio-pai; a alteração afeta TODAS as variações deste Item ID.');
   if(Number(record?.imageCount)<9)warnings.push('Imagens: '+record.imageCount+'/9; faltam arquivos aprovados, geração e upload.');
   warnings.push('Vídeo: '+String(record?.videoStatus||'não verificado')+'. É necessário confirmar/upload autorizado.');
   if((record.attributeAudit?.missingMandatory||0)>0)warnings.push('Ficha técnica: atributos obrigatórios pendentes.');
-  warnings.push('Categoria/GTIN e fiscal dependem de comprovação. Não serão enviados.');
+  warnings.push('Categoria e GTIN atuais serão preservados. Confira o cadastro do produto.');
+  if(!stages.fiscal?.reviewed||!state.tax)warnings.push('Fiscal: informe os dados e a fonte por SKU para preparar a alteração.');
   warnings.push('Preço, frete e promoção permanecem separados; descontos não serão enviados.');
-  const canExecute=blocked.length===0&&Object.keys(proposed).length>0;
+  if(stages.technical?.reviewed&&state.attributes?.length){
+    try{const attributes=compileAttributes(state.attributes,record,live);
+      if(!sameData(attributes,live.attribute_list||[]))proposed.attribute_list=attributes;
+    }catch(e){blocked.push(e.message);}
+  }
+  if(stages.fiscal?.reviewed&&state.tax){
+    try{const tax=compileTax(state.tax,live);if(!sameData(tax,live.tax_info||{}))proposed.tax_info=tax;}
+    catch(e){blocked.push(e.message);}
+  }
+  let images=[];
+  if(stages.images?.reviewed&&manualImages.length){
+    if(manualImages.length!==9||state.imagesSignature!==imagesSignature(manualImages))
+      blocked.push('Importe e revise as nove imagens atuais antes de publicar.');
+    else if(!sameData(manualImages.map(x=>x.shopee_image_id),live.image?.image_id_list||[]))images=manualImages;
+  }
+  let video=null;
+  const savedVideoVerified=manualVideo?.publication?.sha256===manualVideo?.sha256&&videoMatches(live,manualVideo?.publication?.video);
+  if(manualVideo&&manualVideo.sha256!==verifiedVideoSha256&&!savedVideoVerified){
+    if(stages.video?.reviewed===true&&state.videoSha256===manualVideo.sha256){
+      video=manualVideo;
+      warnings.splice(warnings.findIndex(x=>x.startsWith('Vídeo:')),1);
+      warnings.push('Vídeo aprovado: '+manualVideo.filename+'. O vídeo do anúncio-pai será substituído após processamento.');
+    }else warnings.push('Registre a revisão do vídeo importado para incluí-lo na execução.');
+  }
+  if(images.length){const i=warnings.findIndex(x=>x.startsWith('Imagens:'));if(i>=0)warnings.splice(i,1);}
+  const canExecute=blocked.length===0&&(Object.keys(proposed).length>0||Boolean(video)||images.length>0);
   const fingerprint=crypto.createHash('sha256').update(JSON.stringify({
     shopId:String(shopId),itemId:String(itemId),modelId:String(modelId),sku,
     from:{item_name:currentTitle,description:currentDescription,description_type:currentType},
-    to:proposed
+    to:proposed,video:video?.sha256||null,images:imagesSignature(images)
   })).digest('hex');
   return {planId:crypto.randomUUID(),shopId:Number(shopId),itemId:String(itemId),
     modelId:String(modelId),sku,original:{
-      item_name:currentTitle,description:currentDescription,description_type:currentType
-    },proposed,actions:Object.keys(proposed),blocked,warnings,canExecute,
+      item_name:currentTitle,description:currentDescription,description_type:currentType,video_info:live?.video_info||[],
+      item_sku:String(live?.item_sku||''),category_id:live?.category_id,
+      attribute_list:live?.attribute_list||[],tax_info:live?.tax_info||{},image:live?.image||{}
+    },proposed,video,images,actions:[...Object.keys(proposed),...(images.length?['images']:[]),...(video?['video']:[])],blocked,warnings,canExecute,
     fingerprint,createdAt:new Date().toISOString(),marketplaceUpdated:false,
     requiresExplicitConfirmation:true,
-    scope:'somente título/descrição revisados; mídias e demais etapas permanecem pendentes'};
+    scope:'conteúdo e mídias aprovados; demais pendências aparecem separadamente'};
 }
 export function confirmShopeeExecution(plan,{sku,confirmation}={}){
-  if(!plan||!plan.canExecute||Object.keys(plan.proposed||{}).length===0)
+  if(!plan||!plan.canExecute||(Object.keys(plan.proposed||{}).length===0&&!plan.video&&!plan.images?.length))
     throw Error('Não existem alterações aprovadas e elegíveis para executar.');
   if(String(sku)!==plan.sku||String(confirmation)!=='EXECUTAR '+plan.sku)
     throw Error('Confirmação da SKU incorreta. Digite EXECUTAR '+plan.sku);
@@ -58,7 +88,26 @@ export function assertLiveShopeeUnchanged(plan,base){
      normal(base.description)!==plan.original.description||
      String(base.description_type||'normal').toLowerCase()!==plan.original.description_type)
     throw Error('Anúncio alterado após preparação. Recalcule o plano antes de executar.');
+  if(plan.video&&JSON.stringify(base.video_info||[])!==JSON.stringify(plan.original.video_info||[]))
+    throw Error('Vídeo do anúncio alterado após preparação. Prepare novamente.');
+  for(const key of ['attribute_list','tax_info'])if(plan.proposed[key]&&!sameData(base[key]|| (key==='attribute_list'?[]:{}),plan.original[key]))throw Error('Ficha do anúncio alterada após preparação. Refaça a prévia.');
+  if(plan.images?.length&&!sameData(base.image?.image_id_list||[],plan.original.image?.image_id_list||[]))throw Error('Imagens alteradas após preparação. Refaça a prévia.');
+  if(base.category_id&&plan.original.category_id&&Number(base.category_id)!==Number(plan.original.category_id))throw Error('Categoria alterada após preparação. Refaça a auditoria.');
+  if(base.item_status&&!['NORMAL','UNLIST'].includes(base.item_status))throw Error('Anúncio não está mais editável.');
 }
-export function verifyShopeeExecution(plan,item){
-  return Object.entries(plan.proposed||{}).every(([key,value])=>normal(item?.[key])===normal(value));
+export function verifyShopeeExecution(plan,item,result={}){
+  return String(item?.item_id)===String(plan.itemId)&&
+    (!plan.video||videoMatches(item,result.video))&&
+    (!plan.images?.length||sameData(item.image?.image_id_list||[],result.imageIds||[]))&&
+    fieldsVerified(plan.proposed||{},item);
 }
+
+
+export function videoMatches(item,video){
+  if(!video?.id||video.phase!=='ready')return false;
+  const infos=Array.isArray(item?.video_info)?item.video_info:[item?.video_info].filter(Boolean);
+  const paths=new Set((video.videoInfo?.video_url_list||[]).map(x=>videoPath(x.video_url)).filter(Boolean));
+  return infos.some(x=>x.video_upload_id===video.id||x.video_id===video.id||
+    (paths.size>0&&paths.has(videoPath(x.video_url))));
+}
+function videoPath(value){try{return new URL(value).pathname.replace(/\/+$/,'');}catch{return '';}}

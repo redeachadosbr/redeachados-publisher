@@ -108,6 +108,20 @@ export async function callShopeeShopApi(cfg,{path,method='GET',accessToken,shopI
   }
   return readJson(await shopeeFetch(url,options));
 }
+// MediaSpace upload_part/complete are Public APIs: do not use shop signatures.
+export async function callShopeePublicMediaApi(cfg,{path,form,body}={}){
+ requireConfigured(cfg);
+ if(!['/api/v2/media_space/upload_video_part','/api/v2/media_space/complete_video_upload',
+     '/api/v2/media_space/upload_image'].includes(path))throw Error('Operação de mídia inválida.');
+ const timestamp=Math.floor(Date.now()/1000),url=new URL(cfg.host+path);
+ url.searchParams.set('partner_id',String(cfg.partnerId));
+ url.searchParams.set('timestamp',String(timestamp));
+ url.searchParams.set('sign',publicSign(cfg,path,timestamp));
+ const headers={Accept:'application/json'};
+ if(!form)headers['Content-Type']='application/json';
+ return readJson(await shopeeFetch(url,{method:'POST',headers,
+   body:form||JSON.stringify(body),signal:AbortSignal.timeout(60000)}));
+}
 function requireConfigured(cfg){
   if(!cfg?.configured) throw new Error('Configure SHOPEE_PARTNER_ID, SHOPEE_PARTNER_KEY e SHOPEE_REDIRECT_URI.');
 }
@@ -263,3 +277,4 @@ export function safeShopeeStatus(auth,cfg){
     expiresAt:Number(auth?.expiresAt||0),connectedAt:auth?.connectedAt||null,lastRefreshAt:auth?.lastRefreshAt||null
   };
 }
+

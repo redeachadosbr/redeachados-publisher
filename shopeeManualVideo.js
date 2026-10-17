@@ -35,6 +35,7 @@ async function readRows(filter,{method='GET',body}={}){
  const h={...headers};
  if(method!=='GET')h['Content-Type']='application/json';
  if(method==='POST')h.Prefer='resolution=merge-duplicates,return=representation';
+ if(method==='PATCH')h.Prefer='return=representation';
  const result=await fetch(url+'/rest/v1/shopee_optimizer_manual_videos'+filter,{
   method,headers:h,...(body===undefined?{}:{body:JSON.stringify(body)}),
   signal:AbortSignal.timeout(20000)
@@ -45,7 +46,7 @@ async function readRows(filter,{method='GET',body}={}){
 export async function getShopeeManualVideo(shopId,itemId,modelId=0,sku=''){
  const id=resource(shopId,itemId,modelId);
  const filter='?shop_id=eq.'+id.shopId+'&item_id=eq.'+id.itemId+
-  '&model_id=eq.'+id.modelId+'&select=sku,filename,mime_type,size_bytes,sha256,status,imported_at,storage_path&limit=1';
+  '&model_id=eq.'+id.modelId+'&select=sku,filename,mime_type,size_bytes,sha256,status,imported_at,storage_path,publication&limit=1';
  const rows=await readRows(filter);
  const row=rows[0]||null;
  if(row&&String(row.sku)!==String(sku))return null;
@@ -65,7 +66,7 @@ export async function importShopeeManualVideo(shopId,itemId,modelId,sku,file,{mi
  if(!resp.ok)throw Error('Falha no armazenamento privado do vídeo (HTTP '+resp.status+').');
  const record={shop_id:id.shopId,item_id:id.itemId,model_id:id.modelId,sku:code,
    storage_path:storagePath,filename:name,mime_type:mime,size_bytes:file.length,
-   sha256,status:'manual_imported',imported_at:new Date().toISOString()};
+   sha256,publication:null,status:'manual_imported',imported_at:new Date().toISOString()};
  const data=await readRows('?on_conflict=shop_id,item_id,model_id',{method:'POST',body:[record]});
  if(!Array.isArray(data)||data.length!==1)throw Error('O arquivo foi recebido, mas o registro da SKU não foi confirmado.');
  return {sku:data[0].sku,filename:data[0].filename,mimeType:data[0].mime_type,
@@ -89,6 +90,28 @@ export async function signedShopeeManualVideoPreview(shopId,itemId,modelId,sku){
 export function manualVideoPublicInfo(saved){
  if(!saved)return null;
  return {sku:saved.sku,filename:saved.filename,mimeType:saved.mime_type,
-   sizeBytes:saved.size_bytes,status:saved.status,importedAt:saved.imported_at,
-   uploadedToShopee:false};
+   sizeBytes:saved.size_bytes,sha256:saved.sha256,status:saved.status,importedAt:saved.imported_at,
+   uploadedToShopee:Boolean(saved.publication?.sha256===saved.sha256),publishedAt:saved.publication?.verifiedAt||null};
+}
+
+
+// Only read the immutable object referenced by a server-side approved plan.
+export async function downloadShopeeManualVideo(asset){
+ if(!asset||!/^\d+\/\d+\/\d+\/[a-f0-9-]+\.(mp4|mov|webm)$/.test(asset.storage_path||''))
+  throw Error('Arquivo privado do plano inválido.');
+ const {url,headers}=config();
+ const res=await fetch(url+'/storage/v1/object/authenticated/'+VIDEO_BUCKET+'/'+asset.storage_path,
+  {headers,signal:AbortSignal.timeout(60000)});
+ if(!res.ok)throw Error('Não foi possível recuperar o vídeo aprovado (HTTP '+res.status+').');
+ const file=Buffer.from(await res.arrayBuffer());
+ if(file.length!==asset.size_bytes||file.length>MAX_VIDEO_BYTES||
+   crypto.createHash('sha256').update(file).digest('hex')!==asset.sha256)
+  throw Error('O vídeo armazenado difere do arquivo aprovado. Importe novamente.');
+ return file;
+}
+export async function rememberPublishedVideo(plan,result){
+ if(!plan.video||!result.video)return;
+ const filter='?shop_id=eq.'+n(plan.shopId)+'&item_id=eq.'+n(plan.itemId)+'&model_id=eq.'+n(plan.modelId,true)+
+  '&sha256=eq.'+encodeURIComponent(plan.video.sha256);
+ await readRows(filter,{method:'PATCH',body:{publication:{sha256:plan.video.sha256,video:result.video,verifiedAt:new Date().toISOString()}}});
 }

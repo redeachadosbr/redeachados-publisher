@@ -25,7 +25,7 @@ test('generates executable, review-scoped plan for exact Shopee item and SKU',()
   assert.ok(p.warnings.some(x=>x.includes('5/9')));
   assert.ok(p.requiresExplicitConfirmation);
   assert.equal(p.marketplaceUpdated,false);
-  assert.match(p.scope,/somente título/);
+  assert.match(p.scope,/aprovados/);
 });
 test('unreviewed fields and uncertain media cannot auto-publish',()=>{
   const p=compileShopeeExecutionPlan({...inputs,review:{
@@ -52,7 +52,7 @@ test('confirmation is exact, and current listing must match baseline',()=>{
   assert.equal(verifyShopeeExecution(p,{...original,...p.proposed}),true);
   assert.equal(verifyShopeeExecution(p,{...original,...p.proposed,description:'old'}),false);
 });
-test('separate executor does not change stock, promos, prices or media',()=>{
+test('executor keeps stock, prices and promotions out of the approved content flow',()=>{
   const begin=source.indexOf("app.post('/api/shopee/optimizer/execution/execute'");
   const end=source.indexOf("app.get('/api/shopee/optimizer/settings'",begin);
   assert.ok(begin>0&&end>begin);
@@ -73,3 +73,4 @@ test('separate executor does not change stock, promos, prices or media',()=>{
   assert.match(js,/optimizerExecutionAccept/);
   assert.match(js,/optimizerExecutionRun'\)\?\.addEventListener/);
 });
+
