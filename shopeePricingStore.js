@@ -35,6 +35,21 @@ export async function saveShopeePricingPreferences(shopId,settings){
     method:'POST',body:[{shop_id:validShop(shopId),settings:validated,updated_at:new Date().toISOString()}]});
   return validated;
 }
+// Busca exata no catálogo WeDrop, independente da existência de anúncio no cache Shopee.
+// Não associa anúncio/modelo sem validação nem salva plano de promoção.
+export async function shopeePricingDirectSupplierCost(shopId,sku){
+  const id=validShop(shopId),code=String(sku??'').trim();
+  if(!code||code.length>120||/[\x00-\x1F]/.test(code))throw Error('SKU WeDrop inválida.');
+  const rows=await request('shopee_wedrop_costs',
+    '?shop_id=eq.'+id+'&supplier_sku=eq.'+encodeURIComponent(code)+
+    '&select=supplier_sku,unit_cost,imported_at&limit=2');
+  if(rows.length!==1)return null;
+  const cost=Number(rows[0].unit_cost);
+  if(!Number.isFinite(cost)||cost<=0)return null;
+  return {supplierSku:String(rows[0].supplier_sku),unitCost:cost,
+    costUpdatedAt:rows[0].imported_at||null};
+}
+
 export async function shopeePricingSupplierCost(shopId,{sku,itemId,modelId}){
   const id=validShop(shopId),code=String(sku||'').trim();
   if(!code||code.length>120)throw Error('SKU inválida.');
