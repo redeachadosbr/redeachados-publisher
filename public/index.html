@@ -161,6 +161,10 @@
           <button id="optimizerExecutionPrepare" type="button" class="secondary">Revalidar e preparar</button>
         </div>
         <p id="optimizerExecutionStatus" class="optimizer-notice" role="status" aria-live="polite">Aguardando análise das etapas.</p>
+        <div class="optimizer-connection-tools">
+          <button id="optimizerConnectionCheck" type="button" class="secondary">Diagnosticar conexão da Shopee</button>
+          <p id="optimizerConnectionStatus" role="status" aria-live="polite">A conexão será conferida se a pré-execução falhar.</p>
+        </div>
         <div class="optimizer-exec-summary" id="optimizerExecutionSummary" hidden>
           <div id="optimizerExecutionChanges" class="optimizer-exec-changes"></div>
           <div class="optimizer-exec-blockers" id="optimizerExecutionBlockers"></div>
@@ -189,6 +193,22 @@
           <span id="optimizerWorkflowDraftLabel">Minuta editável</span>
           <textarea id="optimizerWorkflowDraft" rows="6" maxlength="3000" aria-label="Minuta para revisão"></textarea>
         </label>
+        <section class="optimizer-video-import" id="optimizerVideoManualPanel" hidden aria-label="Importação manual de vídeo para a SKU">
+          <div class="optimizer-video-header">
+            <strong><span aria-hidden="true">🎬</span> Importar vídeo do produto</strong>
+            <span class="optimizer-video-tag">Arquivo privado · não publicado</span>
+          </div>
+          <p class="optimizer-video-help">Escolha um vídeo MP4, MOV ou WebM de até 30 MB. Recomenda-se duração de 10 a 60 segundos. O arquivo fica associado à SKU atual; antes de publicar, ele ainda precisa ser validado e processado pela Shopee.</p>
+          <label class="optimizer-field" for="optimizerVideoFile">Selecionar vídeo do computador
+            <input id="optimizerVideoFile" type="file" accept=".mp4,.mov,.webm,video/mp4,video/quicktime,video/webm">
+          </label>
+          <video id="optimizerVideoPreview" controls playsinline preload="metadata" hidden></video>
+          <p id="optimizerVideoStatus" class="optimizer-notice" role="status" aria-live="polite">Nenhum vídeo selecionado.</p>
+          <div class="optimizer-workflow-actions">
+            <button id="optimizerVideoUpload" type="button" disabled>Importar e salvar vídeo</button>
+            <button id="optimizerVideoRefresh" class="secondary" type="button">Verificar vídeo salvo</button>
+          </div>
+        </section>
         <div class="optimizer-workflow-actions">
           <button id="optimizerWorkflowCopy" type="button" class="secondary">Copiar orientação</button>
           <button id="optimizerWorkflowReview" type="button">Registrar revisão desta etapa</button>
