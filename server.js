@@ -686,6 +686,16 @@ app.post('/api/shopee/optimizer/execution/execute',mustLogin,requireWeDropAdmin,
        String(job.updated_at)!==String(req.body.updatedAt||''))
       throw Error('Plano atualizado em outra sessão. Confira novamente.');
     confirmShopeeExecution(plan,{sku,confirmation:req.body.confirmation});
+    const review=await getWorkflowReview(auth.shopId,itemId,modelId);
+    if(review?.sku!==sku)throw Error('Conferência do anúncio foi modificada; prepare novamente.');
+    const state=review.review_state||{};
+    if(plan.proposed.item_name!==undefined&&
+      (state.stages?.seo?.reviewed!==true||safeTitle(state.draftTitle)!==plan.proposed.item_name))
+      throw Error('Título foi alterado ou deixou de estar revisado. Refaça a preparação.');
+    if(plan.proposed.description!==undefined&&
+      (state.stages?.description?.reviewed!==true||
+       String(state.draftDescription||'').trim()!==plan.proposed.description))
+      throw Error('Descrição foi alterada ou deixou de estar revisada. Refaça a preparação.');
     const {cfg}=await getValidAuth(req);
     const live=await shopeeLiveEditableItem(cfg,auth,itemId);
     assertLiveShopeeUnchanged(plan,live);
