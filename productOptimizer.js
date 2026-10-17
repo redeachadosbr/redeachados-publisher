@@ -152,7 +152,7 @@ export function normalizeOptimizerItem(base,models,attributes){
     ]
   };
 }
-export async function auditShopeeItem(cfg,auth,callApi,itemId){
+export async function auditShopeeItem(cfg,auth,callApi,itemId,{expectedSku='',expectedModelId=''}={}){
   const id=validItemId(itemId);
   const common={accessToken:auth.accessToken,shopId:auth.shopId};
   const data=await callApi(cfg,{path:'/api/v2/product/get_item_base_info',
@@ -170,5 +170,24 @@ export async function auditShopeeItem(cfg,auth,callApi,itemId){
       ...common,query:{item_id:id}});}
     catch(e){modelWarning='Não foi possível conferir variações: '+String(e.message||e).slice(0,160);}
   }
-  return {...normalizeOptimizerItem(item,models,attributes),modelWarning};
+  // Um SKU encontrado no cache pode ter sido editado manualmente na Shopee.
+  // Conferimos sempre a correspondência AO VIVO antes de autorizar o fluxo.
+  const checkedSku=String(expectedSku||'').trim();
+  const checkedModel=String(expectedModelId||'').trim();
+  if(checkedSku){
+    const sameParent=String(item.item_sku||'').trim()===checkedSku;
+    const listed=array(models?.response?.model).filter(x=>
+      String(x.model_sku||'').trim()===checkedSku);
+    if(checkedModel&&checkedModel!=='0'){
+      if(!listed.some(x=>String(x.model_id)===checkedModel))
+        throw Error('O SKU ou modelo deste anúncio mudou na Shopee. Atualize o catálogo e selecione novamente.');
+    }else if(!sameParent){
+      if(modelWarning)throw Error('O SKU pertence a uma variação, mas a Shopee não permitiu confirmar qual. Tente novamente.');
+      if(listed.length!==1)throw Error('O SKU não corresponde de forma única às variações atuais. Atualize o catálogo e revise o cadastro.');
+    }
+    if(!sameParent&&!listed.length)
+      throw Error('SKU informado não corresponde mais ao produto na Shopee. Nenhuma alteração foi feita.');
+  }
+  return {...normalizeOptimizerItem(item,models,attributes),sku:checkedSku||
+    String(item.item_sku||'').trim(),selectedModelId:checkedModel||null,modelWarning};
 }
