@@ -57,7 +57,7 @@ test('UI tem controles reais para abrir, copiar e salvar revisão persistente',(
  assert.match(server,/app\.get\('\/api\/shopee\/optimizer\/workflow'/);
  assert.match(server,/app\.post\('\/api\/shopee\/optimizer\/workflow\/review'/);
  const route=server.slice(server.indexOf("app.post('/api/shopee/optimizer/workflow/review'"),
-   server.indexOf("app.get('/api/shopee/optimizer/settings'"));
+   server.indexOf("app.post('/api/shopee/optimizer/execution/prepare'"));
  assert.doesNotMatch(route,/update_item|update_model|update_price|update_discount|saveShopeePricePlan/);
  assert.match(route,/marketplaceUpdated:false/);
 });
