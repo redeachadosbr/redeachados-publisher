@@ -615,7 +615,9 @@ app.get('/api/shopee/optimizer/workflow',mustLogin,requireWeDropAdmin,async(req,
     const stored=await getWorkflowReview(auth.shopId,itemId,modelId);
     const review=stored?.sku===sku?stored.review_state||{}:{};
     const stages=buildStages(record,review);
-    res.json({ok:true,readOnlyMarketplace:true,sku,itemId,modelId,
+    const manualVideo=manualVideoPublicInfo(
+      await getShopeeManualVideo(auth.shopId,itemId,modelId,sku));
+    res.json({ok:true,readOnlyMarketplace:true,sku,itemId,modelId,manualVideo,
       recordedAt:stored?.updated_at||null,stages,
       draftTitle:review.draftTitle||safeTitle(record.title),
       draftDescription:review.draftDescription||descriptionDraft(record),
@@ -656,6 +658,13 @@ app.post('/api/shopee/optimizer/execution/prepare',mustLogin,requireWeDropAdmin,
     const live=await shopeeLiveEditableItem(cfg,auth,itemId);
     const plan=compileShopeeExecutionPlan({shopId:auth.shopId,itemId,modelId,
       sku,record,review:review?.review_state||{},live});
+    const manualVideo=await getShopeeManualVideo(auth.shopId,itemId,modelId,sku);
+    if(manualVideo){
+      const warningIndex=plan.warnings.findIndex(x=>x.startsWith('Vídeo:'));
+      if(warningIndex>=0)
+        plan.warnings[warningIndex]='Vídeo manual importado ('+manualVideo.filename+
+          '), salvo em armazenamento privado; ainda precisa de processamento e publicação na Shopee.';
+    }
     const stored=await saveShopeePreparedExecution(auth.shopId,itemId,modelId,sku,plan);
     res.json({ok:true,ready:plan.canExecute,plan,
       updatedAt:stored.updated_at,executionStatus:stored.state,marketplaceUpdated:false});
