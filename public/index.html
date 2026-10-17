@@ -76,30 +76,55 @@
       </section>
               
 <section class="tabpane" id="tab-optimizer" aria-label="Otimização de anúncios">
-  <div class="optimizer-page">
-    <div class="optimizer-head">
-      <div><span class="eyebrow">REDE ACHADOS BR · SHOPEE</span>
-        <h2>Otimização de anúncios <span class="optimizer-phase">Etapa 1 · Auditoria oficial</span></h2>
-        <p>Identifique o anúncio pelo SKU, consulte a ficha da categoria e prepare uma otimização segura. Nenhuma edição é enviada à Shopee nesta etapa.</p>
-      </div>
-      <span class="optimizer-mode">Leitura segura pela API Shopee</span>
+  <div class="optimizer-page optimizer-v15-page">
+    <div class="optimizer-v15-intro">
+      <div class="optimizer-v15-intro-left"><span class="optimizer-v15-dot"></span><strong>Centro de otimização</strong><span class="optimizer-v15-intro-muted">SKU → Precificação → Revisão</span></div>
+      <span class="optimizer-v15-readonly"><span aria-hidden="true">●</span> Consulta segura</span>
     </div>
-    <div class="optimizer-columns">
-      <section class="optimizer-panel optimizer-search" aria-label="Encontrar anúncio">
-        <div class="optimizer-section-title"><span class="optimizer-symbol">01</span><div><h3>Localizar e analisar por SKU</h3><p>Digite somente o SKU usado no anúncio. O aplicativo encontra o Item ID internamente e consulta a ficha técnica da Shopee.</p></div></div>
-        <div class="optimizer-inline">
+    <div class="optimizer-columns optimizer-v15-columns">
+      <section class="optimizer-panel optimizer-search optimizer-v15-search" aria-label="Encontrar anúncio ou produto na WeDrop">
+        <div class="optimizer-v15-heading"><span class="optimizer-v15-head-icon" aria-hidden="true">⌕</span>
+          <div class="optimizer-v15-heading-content"><span class="optimizer-v15-kicker">01 · LOCALIZAR</span><h3>Localizar e analisar <span class="optimizer-v15-help-inline"><span class="optimizer-tip" tabindex="0" role="note" aria-label="Informe a SKU do produto. O sistema consulta o custo WeDrop imediatamente e tenta encontrar o anúncio exato na API Shopee, sem exigir Item ID." data-help="Informe a SKU do produto. O sistema consulta o custo WeDrop imediatamente e tenta encontrar o anúncio exato na API Shopee, sem exigir Item ID.">?</span></span></h3></div>
+          <span class="optimizer-v15-step-badge">SKU única</span>
+        </div>
+                <div class="optimizer-inline">
           <label class="optimizer-field">SKU do produto
-            <input id="optimizerSku" placeholder="Ex.: 429229" autocomplete="off" maxlength="120">
+            <input id="optimizerSku" placeholder="Ex.: TRC1525" autocomplete="off" maxlength="120">
           </label>
-          <button id="optimizerFind" type="button">Localizar e analisar</button>
+          <button id="optimizerFind" type="button">Buscar SKU</button>
         </div>
         <input id="optimizerItemId" type="hidden" value="">
         <div id="optimizerCandidates" class="optimizer-candidates" role="status" aria-label="Escolher produto quando mais de um anúncio utiliza o mesmo SKU"></div>
-        <div id="optimizerStatus" class="optimizer-notice" role="status" aria-live="polite">Informe apenas o SKU e clique em Localizar e analisar. Nenhum Item ID é necessário.</div>
+        <div id="optimizerStatus" class="optimizer-notice" role="status" aria-live="polite">Informe uma SKU para começar. A busca é automática.</div>
+
+        <div id="optimizerSupplierResult" class="optimizer-v15-supplier" hidden role="status" aria-live="polite"></div>
       </section>
-      <section class="optimizer-panel optimizer-rules" aria-label="Regras permanentes">
-        <div class="optimizer-section-title"><span class="optimizer-symbol">02</span><div><h3>Regras salvas da loja</h3><p>Válidas para todos os SKUs quando a automação de mídia for conectada.</p></div></div>
-        <label class="optimizer-field">Prompt padrão das 9 imagens
+      <section class="optimizer-panel sh-price-quick optimizer-v15-price" id="optimizerQuickPricing" aria-label="Resumo da precificação por SKU">
+        <div class="optimizer-v15-heading"><span class="optimizer-v15-head-icon amber" aria-hidden="true">%</span>
+          <div class="optimizer-v15-heading-content"><span class="optimizer-v15-kicker">02 · PRECIFICAR</span><h3>Preço e desconto <span class="optimizer-tip" tabindex="0" role="note" aria-label="Preço bruto é o valor cheio a cadastrar. O desconto é preparado para Minha Promoção. A margem já considera os custos configurados e não aplica alterações na Shopee." data-help="Preço bruto é o valor cheio a cadastrar. O desconto é preparado para Minha Promoção. A margem já considera os custos configurados e não aplica alterações na Shopee.">?</span></h3></div>
+          <a href="/app/precificacao" class="optimizer-v15-action-link" data-go="pricing" aria-label="Abrir configurações de precificação">Ajustar <span aria-hidden="true">↗</span></a>
+        </div>
+              <div class="sh-quick-bar">
+        <div class="sh-price-row"><label for="optimizerQuickMargin">Margem líquida desejada</label><strong id="optimizerQuickMarginLabel">25%</strong></div>
+        <input id="optimizerQuickMargin" class="sh-price-slider" type="range" min="0" max="70" step="1" value="25" aria-label="Margem desejada para o SKU">
+      </div>
+      <p id="optimizerQuickStatus" class="optimizer-notice" role="status" aria-live="polite">Informe a SKU acima. O preço bruto e o desconto aparecerão automaticamente.</p>
+      <div id="optimizerQuickValues" class="sh-price-kpis sh-price-quick-values optimizer-v15-kpis" hidden>
+        <div><span>Preço bruto para anúncio</span><strong id="optimizerQuickGross">—</strong></div>
+        <div><span>Desconto sugerido</span><strong id="optimizerQuickDiscount">—</strong></div>
+        <div><span>Preço final ao comprador</span><strong id="optimizerQuickFinal">—</strong></div>
+        <div><span>Lucro líquido e margem</span><strong id="optimizerQuickProfit">—</strong></div>
+      </div>
+      <div class="actions"><button type="button" class="secondary" data-go="pricing">Configurações e taxas →</button><button type="button" class="secondary" data-go="discounts">Descontos preparados →</button></div>
+
+      </section>
+    </div>
+    <div class="optimizer-v15-below">
+      <details class="optimizer-panel optimizer-rules optimizer-v15-accordion" aria-label="Regras permanentes" id="optimizerRulesDetails">
+        <summary><span class="optimizer-v15-accordion-icon" aria-hidden="true">⚙</span><span class="optimizer-v15-accordion-title"><strong>Regras salvas da loja</strong><small>Prompts, imagens e orientações fiscais</small></span><span class="optimizer-v15-chevron">⌄</span></summary>
+        <div class="optimizer-v15-rule-body">
+          <div class="optimizer-v15-rule-help">Edite somente quando precisar. Estas regras são compartilhadas com todos os SKUs. <span class="optimizer-tip" tabindex="0" role="note" aria-label="O prompt e as regras fiscais ficam persistidos no Supabase e são carregados sem alterar anúncios. Informações fiscais exigem validação antes da publicação." data-help="O prompt e as regras fiscais ficam persistidos no Supabase e são carregados sem alterar anúncios. Informações fiscais exigem validação antes da publicação.">?</span></div>
+                  <label class="optimizer-field">Prompt padrão das 9 imagens
           <textarea id="optimizerPrompt" rows="4" maxlength="12000" placeholder="Cole aqui o prompt completo com as regras e sequência das 9 imagens."></textarea>
         </label>
         <label class="optimizer-field">Regras fiscais fornecidas por você
@@ -107,36 +132,18 @@
         </label>
         <div class="optimizer-save"><button id="optimizerSave" type="button" class="secondary">Salvar regras permanentemente</button><small id="optimizerSavedAt">Carregando regras...</small></div>
         <p class="optimizer-privacy">O prompt e as orientações ficam salvos no Supabase da loja. Não serão usados para publicar valores fiscais sem validação.</p>
-      </section>
+
+        </div>
+      </details>
+      <details class="optimizer-panel optimizer-progress optimizer-v15-accordion" aria-label="Etapas da otimização" id="optimizerProgressDetails">
+        <summary><span class="optimizer-v15-accordion-icon" aria-hidden="true">☷</span><span class="optimizer-v15-accordion-title"><strong>Etapas da otimização</strong><small>Imagens, vídeo, SEO, ficha técnica e revisão</small></span><span class="optimizer-v15-chevron">⌄</span></summary>
+        <div id="optimizerSteps" class="optimizer-steps">
+          <div class="optimizer-step">Imagens · aguardando validação</div><div class="optimizer-step">Vídeo · aguardando validação</div>
+          <div class="optimizer-step">Título SEO, categoria e GTIN</div><div class="optimizer-step">Ficha técnica por categoria</div>
+          <div class="optimizer-step">Descrição e fiscal</div><div class="optimizer-step">Revisão e publicação confirmada</div>
+        </div>
+      </details>
     </div>
-    <section class="optimizer-panel sh-price-quick" id="optimizerQuickPricing" aria-label="Resumo da precificação por SKU">
-      <div class="optimizer-section-title"><span class="optimizer-symbol">03</span><div>
-        <h3>Preço bruto e desconto da SKU</h3><p>O sistema calcula quando você informa a SKU acima, sem digitar o código novamente em outra tela.</p>
-      </div></div>
-      <div class="sh-quick-bar">
-        <div class="sh-price-row"><label for="optimizerQuickMargin">Margem líquida desejada</label><strong id="optimizerQuickMarginLabel">25%</strong></div>
-        <input id="optimizerQuickMargin" class="sh-price-slider" type="range" min="0" max="70" step="1" value="25" aria-label="Margem desejada para o SKU">
-      </div>
-      <p id="optimizerQuickStatus" class="optimizer-notice" role="status" aria-live="polite">Informe a SKU acima. O preço bruto e o desconto aparecerão automaticamente.</p>
-      <div id="optimizerQuickValues" class="sh-price-kpis sh-price-quick-values" hidden>
-        <div><span>Preço bruto para cadastrar na Shopee</span><strong id="optimizerQuickGross">—</strong></div>
-        <div><span>Desconto para Minha Promoção</span><strong id="optimizerQuickDiscount">—</strong></div>
-        <div><span>Preço final ao comprador</span><strong id="optimizerQuickFinal">—</strong></div>
-        <div><span>Lucro líquido e margem estimados</span><strong id="optimizerQuickProfit">—</strong></div>
-      </div>
-      <div class="actions"><button type="button" class="secondary" data-go="pricing">Abrir precificação e configurações →</button><button type="button" class="secondary" data-go="discounts">Ver descontos preparados →</button></div>
-    </section>
-    <section class="optimizer-panel optimizer-progress" aria-label="Etapas da otimização">
-      <div class="optimizer-section-title"><span class="optimizer-symbol">04</span><div><h3>Sequência da otimização</h3><p>Uma etapa precisa ser confirmada antes da próxima. O sistema nunca apaga as fotos originais sem cópia e validação.</p></div></div>
-      <div id="optimizerSteps" class="optimizer-steps">
-        <div class="optimizer-step">1 · Imagens — aguardando prompt e integração</div>
-        <div class="optimizer-step">2 · Vídeo — upload manual ou integração autorizada</div>
-        <div class="optimizer-step">3 · Título SEO, categoria e GTIN</div>
-        <div class="optimizer-step">4 · Ficha técnica pela categoria oficial</div>
-        <div class="optimizer-step">5 · Descrição, variações e fiscal</div>
-        <div class="optimizer-step">6 · Revisão final e publicação confirmada</div>
-      </div>
-    </section>
     <section class="optimizer-panel optimizer-audit" id="optimizerAuditPanel" hidden aria-label="Auditoria técnica do anúncio">
       <div class="optimizer-audit-head"><div><span class="eyebrow">DIAGNÓSTICO OFICIAL</span><h3 id="optimizerProductTitle">Anúncio</h3><p id="optimizerProductMeta"></p></div>
         <a id="optimizerOpenShopee" class="optimizer-external" target="_blank" rel="noopener noreferrer" href="#">Abrir na Central do Vendedor ↗</a></div>
