@@ -11,8 +11,8 @@ assert.throws(()=>adsMonthWindows('2026-12',now),/FUTURE/);
 let calls=0;
 const fake=async range=>{
  calls++;
- return {total:{expense:calls===1?66.31:10,broadGmv:calls===1?100:20,broadOrders:1},
-  campaigns:[{campaignId:'123456',name:'Produto 123456',expense:calls===1?66.31:10,broadGmv:calls===1?100:20,broadOrders:1}]};
+ return {total:{expense:range.start.endsWith('-01')?66.31:10,broadGmv:range.start.endsWith('-01')?100:20,broadOrders:1},
+  campaigns:[{campaignId:'123456',name:'Produto 123456',expense:range.start.endsWith('-01')?66.31:10,broadGmv:range.start.endsWith('-01')?100:20,broadOrders:1}]};
 };
 const oct=await buildAdsFinanceSnapshot('2026-10',fake,{now});
 assert.equal(calls,1);
