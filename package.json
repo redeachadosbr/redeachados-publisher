@@ -1,11 +1,11 @@
 {
   "name": "redeachados-shopee",
-  "version": "1.14.7",
+  "version": "1.14.8",
   "private": true,
   "type": "module",
   "scripts": {
     "start": "node server.js",
-    "check": "node --check shopeePricing.js && node --check shopeePricingStore.js && node --check shopeeSkuFinder.js && node --check shopeeOptimizationWorkflow.js && node --check shopeeOptimizationWorkflowStore.js && node --check shopeeExecutionPlan.js && node --check shopeeExecutionStore.js && node --check productOptimizer.js && node --check optimizerStore.js && node --check financeAdsSweep.js && node --check shopeeFinance.js && node --check orderAlerts.js && node --check wedropAutoSync.js && node --check wedropCsv.js && node --check wedropSkuReview.js && node --check wedropCosts.js && node --check catalogStore.js && node --check catalog.js && node --check adsReport.js && node --check monitorHealth.js && node --check orderMonitor.js && node --check orderView.js && node --check server.js && node --check shopee.js && node --check authStore.js && node --check public/app.js",
+    "check": "node --check shopeePricing.js && node --check shopeePricingStore.js && node --check shopeeSkuFinder.js && node --check shopeeOptimizationWorkflow.js && node --check shopeeOptimizationWorkflowStore.js && node --check shopeeExecutionPlan.js && node --check shopeeExecutionStore.js && node --check shopeeManualVideo.js && node --check productOptimizer.js && node --check optimizerStore.js && node --check financeAdsSweep.js && node --check shopeeFinance.js && node --check orderAlerts.js && node --check wedropAutoSync.js && node --check wedropCsv.js && node --check wedropSkuReview.js && node --check wedropCosts.js && node --check catalogStore.js && node --check catalog.js && node --check adsReport.js && node --check monitorHealth.js && node --check orderMonitor.js && node --check orderView.js && node --check server.js && node --check shopee.js && node --check authStore.js && node --check public/app.js",
     "test": "node --test tests/*.test.js"
   },
   "engines": {
