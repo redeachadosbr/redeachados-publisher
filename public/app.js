@@ -157,8 +157,8 @@ async function loadStatus(){
     $('#heroEnvironmentHint').textContent=mode==='LIVE'?'Configuração de produção':'Consulte a configuração';
     $('#heroApiLabel').textContent=connected?'API conectada':'API pendente';
     $('#heroApiHint').textContent=connected?'Status confirmado nesta consulta':'Conexão não confirmada';
-    $('#heroConnectedLabel').closest('.dashboard-hero-status-card')?.classList.toggle('is-unavailable',!connected);
-    $('#heroApiLabel').closest('.dashboard-hero-status-card')?.classList.toggle('is-unavailable',!connected);
+    $('#heroConnectedLabel')?.closest?.('.dashboard-hero-status-card')?.classList?.toggle?.('is-unavailable',!connected);
+    $('#heroApiLabel')?.closest?.('.dashboard-hero-status-card')?.classList?.toggle?.('is-unavailable',!connected);
     $('#dashboardLastChecked').textContent='Atualizado às '+new Date().toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'});
     $('#statusPill').textContent=s.connected?'API conectada':'API pendente';
     $('#statusPill').classList.toggle('ok',Boolean(s.connected));
@@ -177,12 +177,12 @@ async function loadStatus(){
     $('#heroEnvironmentHint').textContent='Consulta não concluída';
     $('#heroApiLabel').textContent='API não verificada';
     $('#heroApiHint').textContent='Tente atualizar a consulta';
-    $('#heroConnectedLabel').closest('.dashboard-hero-status-card')?.classList.add('is-unavailable');
-    $('#heroApiLabel').closest('.dashboard-hero-status-card')?.classList.add('is-unavailable');
+    $('#heroConnectedLabel')?.closest?.('.dashboard-hero-status-card')?.classList?.add?.('is-unavailable');
+    $('#heroApiLabel')?.closest?.('.dashboard-hero-status-card')?.classList?.add?.('is-unavailable');
     $('#dashboardLastChecked').textContent='Consulta indisponível';
   }
 }
-$('#dashboardRefreshStatus')?.addEventListener('click',async()=>{
+$('#dashboardRefreshStatus')?.addEventListener?.('click',async()=>{
   const button=$('#dashboardRefreshStatus');button.disabled=true;
   try{await loadStatus()}finally{button.disabled=false}
 });

@@ -85,3 +85,24 @@ test('layout tem menu fixo, responsividade para mobile e tratamento acessível',
   assert.match(index,/aria-controls="appSidebar"/);
   assert.match(index,/aria-current="page"/);
 });
+
+test('painel inicial integra o visual de referência com estados reais e atalhos funcionais',()=>{
+ const home=index.slice(index.indexOf('id="tab-overview"'),index.indexOf('id="tab-optimizer"'));
+ for(const id of ['dashboardRefreshStatus','dashboardLastChecked','heroConnectedLabel',
+  'heroConnectedHint','heroEnvironmentLabel','heroApiLabel',
+  'mConnection','mShop','mMode','mStorage']){
+  assert.equal((home.match(new RegExp('id="'+id+'"','g'))||[]).length,1,id);
+ }
+ assert.match(home,/class="welcome-hero dashboard-hero-v2"/);
+ assert.match(home,/class="dashboard-hero-logo"/);
+ assert.equal((home.match(/class="dashboard-hero-status-card"/g)||[]).length,3);
+ assert.equal((home.match(/class="kpi-tile interactive-tilt dashboard-kpi-/g)||[]).length,4);
+ assert.equal((home.match(/class="shortcut interactive-tilt dashboard-shortcut-/g)||[]).length,4);
+ assert.match(app,/classList\?\.toggle\?\.\('view-overview',name==='overview'\)/);
+ assert.match(app,/heroConnectedLabel'\)\.textContent=connected\?/);
+ assert.match(app,/dashboardLastChecked'\)\.textContent='Atualizado às '/);
+ assert.match(app,/dashboardRefreshStatus'\)\?\.addEventListener\?\./);
+ assert.match(css,/\.dashboard-hero-v2/);
+ assert.match(css,/#tab-overview \.dashboard-metrics/);
+ assert.match(css,/@media\(max-width:680px\)/);
+});
