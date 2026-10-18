@@ -49,6 +49,7 @@ function setTab(name,{updateHistory=true,scroll=true}={}){
   document.body?.classList?.toggle?.('view-overview',name==='overview');
   document.body?.classList?.toggle?.('view-products',name==='products');
   document.body?.classList?.toggle?.('view-pricing',name==='pricing');
+  document.body?.classList?.toggle?.('view-discounts',name==='discounts');
   document.body?.classList?.toggle?.('view-finance',name==='finance');
   document.body?.classList?.toggle?.('view-alerts',name==='alerts');
   const reportTabs=new Set(['ads','wedrop']);
@@ -3431,22 +3432,68 @@ $('#priceRecalculate').onclick=()=>{
   else shPriceSetStatus('Selecione primeiro uma SKU em Otimização para calcular com o custo confirmado.','warning');
 };
 $('#priceOpenDiscounts').onclick=()=>setTab('discounts');
+
+let discountLoadRequestId=0,discountRefreshBusy=false;
+const discountReviewLabels={campaign:'Campanha conferida',price:'Preço vigente conferido',tax:'Taxas revisadas',ready:'Promoção revisada para aplicar'};
+function shDiscountResetReview(){
+  document.querySelectorAll('[data-discount-review]').forEach(input=>{
+    input.checked=false;input.disabled=!shDiscountQuote;
+  });
+  shDiscountReviewChanged();
+}
+function shDiscountReviewChanged(){
+  const items=[...document.querySelectorAll('[data-discount-review]')];
+  const checked=items.filter(i=>i.checked).length;
+  const all=items.length>0&&checked===items.length;
+  $('#discountReviewStatus').textContent=!shDiscountQuote?'É necessário recuperar um plano válido antes de revisar.':
+    all?'4 de 4 conferências marcadas manualmente. A aplicação ainda é feita na Shopee.':
+      checked+' de '+items.length+' conferências manuais realizadas. Nada foi aplicado.';
+  $('#discountSavedBadgeLabel').textContent=!shDiscountQuote?'Aguardando plano salvo':
+    all?'Plano conferido manualmente · não aplicado':'Plano salvo · revisão obrigatória';
+  $('#discountSavedBadge').dataset.state=!shDiscountQuote?'unavailable':all?'reviewed':'saved';
+}
+for(const input of document.querySelectorAll('[data-discount-review]')){
+ input.addEventListener('change',()=>{
+   if(!shDiscountQuote){input.checked=false;return;}
+   shDiscountReviewChanged();
+ });
+}
 function shDiscountRender(q){
+  if(!q||!q.sku||!Number.isFinite(Number(q.grossPrice))||Number(q.grossPrice)<=0||
+   !Number.isFinite(Number(q.unitCost))||Number(q.unitCost)<=0||
+   !Number.isFinite(Number(q.netMarginPct))||
+   Number(q.netMarginPct)+0.0001<Number(q.minMarginPct)){
+    throw Error('O plano não possui preço, custo ou margem mínima válida.');
+  }
   shDiscountQuote=q;
   $('#discountPlanCard').hidden=false;
-  $('#discountSku').textContent='SKU '+q.sku+(q.modelId!=='0'?' · Variação '+q.modelId:'');
+  $('#discountNoPlan').hidden=true;
+  $('#discountSku').textContent='SKU '+q.sku+(String(q.modelId)!=='0'?' · Variação '+q.modelId:'');
   $('#discountPlanDate').textContent='Calculado '+fmtDate(q.calculatedAt);
   $('#discountGross').textContent=shPriceMoney(q.grossPrice);
   $('#discountPct').textContent=shPricePercent(q.discountPct);
   $('#discountFinal').textContent=shPriceMoney(q.customerPrice);
   $('#discountMargin').textContent=shPricePercent(q.netMarginPct);
-  $('#discountPlanNotice').textContent=q.notice+' · Lucro líquido previsto '+
-    shPriceMoney(q.netProfit)+'. Confirme taxa, frete e promoção antes de aplicar.';
+  $('#discountProfit').textContent=shPriceMoney(q.netProfit);
+  $('#discountSupplierCost').textContent=shPriceMoney(q.unitCost);
+  $('#discountPlanNotice').textContent='Desconto preparado para revisão. '+
+   'As taxas configuradas e o preço vigente devem ser conferidos antes da promoção.';
+  shDiscountResetReview();
 }
 function shDiscountStatus(message,state='info'){
-  const n=$('#discountPlanStatus');n.textContent=message;n.dataset.state=state;
+  const n=$('#discountPlanStatus');
+  n.textContent=message;n.dataset.state=state;
+  if(!shDiscountQuote){
+    const empty=$('#discountNoPlan');empty.hidden=false;empty.textContent=message;
+    $('#discountPlanCard').hidden=true;
+    $('#discountSavedBadge').dataset.state='unavailable';
+    $('#discountSavedBadgeLabel').textContent='Aguardando plano salvo';
+  }
 }
 async function shDiscountChoose(row){
+  const requestId=++discountLoadRequestId;
+  shDiscountQuote=null;
+  shDiscountResetReview();
   shDiscountStatus('Recuperando a SKU '+row.sku+' e conferindo o custo WeDrop atualizado...');
   try{
     const data=await json('/api/shopee/optimizer/pricing/prepare',{
@@ -3454,43 +3501,78 @@ async function shDiscountChoose(row){
       body:JSON.stringify({sku:row.sku,itemId:row.itemId,modelId:row.modelId}),
       signal:AbortSignal.timeout(35000)
     });
+    if(requestId!==discountLoadRequestId)return;
+    if(!data?.quote||data?.saved!==true)throw Error('O servidor não confirmou o salvamento do plano.');
     shPriceSelection={sku:row.sku,itemId:String(row.itemId),modelId:String(row.modelId)};
     shPriceSaveSelection(shPriceSelection);
     shDiscountRender(data.quote);
-    shDiscountStatus('Plano da SKU '+row.sku+' carregado automaticamente. Desconto preparado para revisão.','success');
+    shDiscountStatus('Plano da SKU '+row.sku+' calculado e salvo. Revisão manual pendente.','success');
+    shDiscountHighlight(row);
   }catch(e){
+    if(requestId!==discountLoadRequestId)return;
     $('#discountPlanCard').hidden=true;shDiscountQuote=null;
+    shDiscountResetReview();
     shDiscountStatus('Plano não utilizável: '+e.message+
       '. Abra Otimização para revisar a SKU ou o custo WeDrop.','error');
   }
 }
+function shDiscountHighlight(row){
+  document.querySelectorAll('.discount-v2-recent-plan').forEach(btn=>{
+    const selected=btn.dataset.sku===String(row.sku)&&
+      btn.dataset.itemId===String(row.itemId)&&btn.dataset.modelId===String(row.modelId);
+    btn.classList.toggle('selected',selected);
+    btn.setAttribute('aria-current',selected?'true':'false');
+  });
+}
 async function shDiscountLoadLatest(){
+  if(discountRefreshBusy)return;
+  discountRefreshBusy=true;
+  const requestId=++discountLoadRequestId;
   const list=$('#discountRecentPlans');list.replaceChildren();
+  shDiscountQuote=null;shDiscountResetReview();
   shDiscountStatus('Carregando os últimos planos de desconto...');
+  const refresh=$('#discountRefresh');refresh.disabled=true;
+  $('#discountRefreshLabel').textContent='Atualizando...';
   try{
     const result=await json('/api/shopee/optimizer/pricing/recent',
       {signal:AbortSignal.timeout(25000)});
-    const plans=result.plans||[];
+    if(requestId!==discountLoadRequestId)return;
+    const plans=Array.isArray(result.plans)?result.plans:[];
     if(!plans.length){
-      $('#discountPlanCard').hidden=true;
       shDiscountStatus('Nenhum plano salvo. Localize uma SKU uma única vez em Otimização.','warning');
+      list.textContent='Nenhum plano encontrado para esta loja.';
       return;
     }
     const saved=shPriceSelection||shPriceRestoredSelection();
     const chosen=plans.find(p=>p.sku===saved?.sku&&
       String(p.itemId)===saved.itemId&&String(p.modelId)===saved.modelId)||plans[0];
     for(const row of plans){
-      const b=optimizerMake('button','sh-recent-plan');b.type='button';
-      b.append(optimizerMake('strong','',row.sku),
-        optimizerMake('span','',shPriceMoney(row.quote?.grossPrice)+
-          ' → '+shPricePercent(row.quote?.discountPct)+
-          ' · '+shPriceMoney(row.quote?.customerPrice)),
+      const b=optimizerMake('button','sh-recent-plan discount-v2-recent-plan');b.type='button';
+      b.dataset.sku=String(row.sku);b.dataset.itemId=String(row.itemId);
+      b.dataset.modelId=String(row.modelId);
+      const label=optimizerMake('span','discount-v2-recent-identity');
+      label.append(optimizerMake('strong','',row.sku),
         optimizerMake('small','',fmtDate(row.updatedAt)));
+      const values=optimizerMake('span','discount-v2-recent-values',
+        row.quote?shPriceMoney(row.quote.grossPrice)+' → '+
+        shPricePercent(row.quote.discountPct)+' → '+
+        shPriceMoney(row.quote.customerPrice):'Recalcular para conferir valores');
+      const chip=optimizerMake('span','discount-v2-recent-chip','✓  Plano salvo');
+      const arrow=optimizerMake('span','discount-v2-recent-arrow','›');
+      b.append(label,values,chip,arrow);
       b.onclick=()=>void shDiscountChoose(row);
       list.appendChild(b);
     }
-    await shDiscountChoose(chosen);
-  }catch(e){shDiscountStatus('Não foi possível consultar planos Shopee: '+e.message,'error');}
+    // Only select the relevant saved item, never invent the current SKU.
+    if(requestId===discountLoadRequestId)await shDiscountChoose(chosen);
+  }catch(e){
+    if(requestId!==discountLoadRequestId)return;
+    shDiscountStatus('Não foi possível consultar planos Shopee: '+e.message,'error');
+    list.textContent='Consulta indisponível. Use Atualizar planos para tentar novamente.';
+  }finally{
+    discountRefreshBusy=false;refresh.disabled=false;
+    $('#discountRefreshLabel').textContent='Atualizar planos';
+  }
 }
 $('#discountRefresh').onclick=()=>void shDiscountLoadLatest();
 $('#discountEdit').onclick=()=>{
@@ -3499,19 +3581,37 @@ $('#discountEdit').onclick=()=>{
   $('#optimizerSku').value=shPriceSelection.sku;
   void optimizerRunAudit(shPriceSelection.itemId,shPriceSelection.sku,shPriceSelection.modelId);
 };
+$('#discountOpenPromotion').onclick=()=>{
+  if(!shDiscountQuote){
+    shDiscountStatus('Não há plano confirmado para conferir na Minha Promoção.','warning');
+    return;
+  }
+  // Somente o portal da Shopee é confirmado; não presumir rota privada de campanha.
+  const opened=window.open('https://seller.shopee.com.br/','_blank','noopener,noreferrer');
+  shDiscountStatus('Abra Central de Marketing → Minha Promoção na Central do Vendedor. '+
+    'Confira campanha, preço e desconto manualmente; nenhum valor foi enviado pela API.','warning');
+};
 $('#discountCopy').onclick=async()=>{
   const q=shDiscountQuote;
   if(!q)return shDiscountStatus('Não há plano para copiar.','warning');
+  const manual=[...document.querySelectorAll('[data-discount-review]')]
+    .map(i=>discountReviewLabels[i.dataset.discountReview]+': '+(i.checked?'Marcada manualmente':'Pendente'));
   const report=['SHOPEE · REDE ACHADOS BR','SKU '+q.sku,
     'Preço bruto: '+shPriceMoney(q.grossPrice),
     'Desconto do anúncio: '+shPricePercent(q.discountPct),
     'Cupom da loja: '+shPricePercent(q.couponPct),
     'Preço final estimado: '+shPriceMoney(q.customerPrice),
-    'Lucro líquido estimado: '+shPriceMoney(q.netProfit),
+    'Lucro líquido previsto: '+shPriceMoney(q.netProfit),
+    'Margem líquida prevista: '+shPricePercent(q.netMarginPct),
+    'Custo WeDrop: '+shPriceMoney(q.unitCost),
     'Margem mínima: '+shPricePercent(q.minMarginPct),
-    'Plano não aplicado na Shopee. Conferir Minha Promoção.'].join('\n');
-  try{await navigator.clipboard.writeText(report);shDiscountStatus('Valores copiados. Confira e aplique na Central da Shopee.','success');}
-  catch(e){shDiscountStatus('A cópia automática foi bloqueada pelo navegador. Confira os valores na tela.','warning');}
+    ...manual,'Plano não aplicado na Shopee. Conferir Minha Promoção.'].join('\n');
+  try{
+    await navigator.clipboard.writeText(report);
+    shDiscountStatus('Valores copiados. Confira e aplique na Central da Shopee.','success');
+  }catch(e){
+    shDiscountStatus('A cópia automática foi bloqueada pelo navegador. Confira os valores na tela.','warning');
+  }
 };
 
 boot();
