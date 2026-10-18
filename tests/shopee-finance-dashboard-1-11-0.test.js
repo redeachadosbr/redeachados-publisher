@@ -94,3 +94,15 @@ test('não transforma custo de catálogo em custo vendido, nem inventa Ads',()=>
  assert.match(wedrop,/export async function readFinanceCatalogProfiles/);
  assert.match(js,/const result=valid\?/);
 });
+
+test('painel financeiro mantém o layout funcional com gráficos sem números demonstrativos',()=>{
+ for(const id of ['financeTrendSvg','financePeriodCaption','financeTrendNote','financeAdsDonut',
+  'financeDonutCenter','financeDonutLegend','financeGlobalSearch','financeExportCsv','financeAdsScanAccordion']){
+  assert.equal((html.match(new RegExp('id="'+id+'"','g'))||[]).length,1,id);
+ }
+ assert.match(html,/Distribuição dos Ads no período/);
+ assert.match(html,/finance-products-card/);
+ assert.match(html,/finance-insight-status/);
+ assert.match(backend,/export function summarizeFinanceDaily/);
+ assert.match(backend,/dailySeries:summarizeFinanceDaily\(rows\)/);
+});

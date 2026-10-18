@@ -102,7 +102,8 @@ export function normalizeEscrowOrder(order,detail,escrow,costMap,linkMap=new Map
   const marginBeforeAds=ready&&payout>0?
     Math.round(balanceBeforeAds/payout*10000)/100:null;
   return {
-    orderSn,status,ready,sku:onlySku,skuList:presentSkuList,items:items.length,
+    orderSn,status,ready,createdAt:Number.isSafeInteger(Number(order.create_time))&&Number(order.create_time)>0?Number(order.create_time):null,
+    sku:onlySku,skuList:presentSkuList,items:items.length,
     quantity:costs.reduce((n,x)=>n+x.qty,0),
     buyerTotal:finiteMoney(income.buyer_total_amount),
     payout,totalCost,balanceBeforeAds,marginBeforeAds,
@@ -124,6 +125,32 @@ export function normalizeEscrowOrder(order,detail,escrow,costMap,linkMap=new Map
       'Custo WeDrop ou quantidade ausente: '+[...new Set(missing)].slice(0,3).join(', ')+'.'
   };
 }
+
+/** Daily columns are based on the order create_time (Brazil calendar), not settlement date.
+ * Only COMPLETED orders with confirmed escrow and WeDrop costs contribute.
+ * No arbitrary Ads allocation is made at the daily/order level.
+ */
+export function summarizeFinanceDaily(rows){
+  const days=new Map(),br=new Intl.DateTimeFormat('en-CA',{timeZone:'America/Sao_Paulo',year:'numeric',month:'2-digit',day:'2-digit'});
+  const parts=stamp=>{
+    const p=Object.fromEntries(br.formatToParts(new Date(stamp*1000)).map(x=>[x.type,x.value]));
+    return p.year+'-'+p.month+'-'+p.day;
+  };
+  const money=n=>Math.round(n*100)/100;
+  for(const r of rows||[]){
+    if(!r.ready||!Number.isFinite(r.createdAt)||r.createdAt<=0||
+      !Number.isFinite(r.payout)||!Number.isFinite(r.totalCost)||!Number.isFinite(r.balanceBeforeAds))continue;
+    const day=parts(r.createdAt);
+    const entry=days.get(day)||{day,orders:0,payout:0,costs:0,balanceBeforeAds:0};
+    entry.orders++;
+    entry.payout=money(entry.payout+r.payout);
+    entry.costs=money(entry.costs+r.totalCost);
+    entry.balanceBeforeAds=money(entry.balanceBeforeAds+r.balanceBeforeAds);
+    days.set(day,entry);
+  }
+  return [...days.values()].sort((a,b)=>a.day.localeCompare(b.day));
+}
+
 export function summarizeFinance(rows,{more=false,eligible=0}={}){
   const verified=rows.filter(x=>x.ready);
   const total=(field)=>Math.round(verified.reduce((sum,x)=>sum+Number(x[field]||0),0)*100)/100;
@@ -232,7 +259,7 @@ export async function loadShopeeFinance(cfg,auth,callApi,{days=15,now=Math.floor
       // Não declarar que repasse é zero quando a permissão Payment é negada.
       const why=String(error.message||error).slice(0,200);
       paymentAccessWarning=paymentAccessWarning||why;
-      rows.push({orderSn:String(item.order_sn),status:'COMPLETED',ready:false,
+      rows.push({orderSn:String(item.order_sn),status:'COMPLETED',createdAt:Number(item.create_time)||null,ready:false,
         reason:'Detalhamento de pagamento indisponível: '+why,
         payout:null,totalCost:null,balanceBeforeAds:null,netProfit:null,netMargin:null});
       if(/permission|denied|403|no.?auth|forbidden/i.test(why))break;
@@ -243,6 +270,7 @@ export async function loadShopeeFinance(cfg,auth,callApi,{days=15,now=Math.floor
   const summary=summarizeFinance(rows,{eligible:completed.length,more:false});
   return {
     shopId:auth.shopId,days,window:{from:periodFrom,to:periodTo},selection:range,rows,
+    dailySeries:summarizeFinanceDaily(rows),
     catalogProducts,catalogError,
     ...summary,paymentAccessWarning,
     skippedCompleted:completed.length-limited.length,
