@@ -481,8 +481,10 @@ function catalogRender(){
     optimize.textContent='Abrir otimização';
     optimize.onclick=()=>{
       menu.open=false;setTab('optimizer');
-      if(x.sku)$('#optimizerSku').value=x.sku;
-      $('#optimizerSku')?.focus?.();
+      void shPriceLoadDefaults().catch(()=>{}).then(()=>{
+        if(x.sku)$('#optimizerSku').value=x.sku;
+        $('#optimizerSku')?.focus?.();
+      });
     };
     options.append(optimize);menu.append(options);
     action.append(b,menu);tr.append(action);body.append(tr);
@@ -546,6 +548,10 @@ async function catalogShowModels(item){
   const status=$('#productDetailsStatus');
   status.textContent='Item '+item.itemId+' · SKU: '+(item.sku||'não informado')+
     ' · Preço: '+catalogMoney(item.price)+' · Estoque: '+catalogNumber(item.stock);
+  if(!item.baseLoaded){
+    status.textContent+=' · Dados básicos ainda não confirmados. Sincronize o catálogo antes de concluir que não há variações.';
+    return;
+  }
   if(!item.hasModel){
     status.textContent+=' · Anúncio sem variações, conforme a Shopee.';
     return;
