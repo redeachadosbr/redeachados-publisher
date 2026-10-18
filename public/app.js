@@ -1727,7 +1727,22 @@ $('#optimizerHasVariants')?.addEventListener?.('change',()=>{
  const stage=w.stages.find(x=>x.key==='variants');
  if(stage){stage.skipped=!enabled;stage.status=enabled?'pending':'skipped';stage.reviewed=false;}
  optimizerWorkflowOpen('variants');
- optimizerWorkflowNotice(enabled?'Informe o tipo e as opções reais; depois salve a conferência.':'Sem variações: abra a etapa e salve o checklist para dispensá-la.');
+ optimizerWorkflowNotice(enabled?'Informe o tipo e as opções reais; depois registre a conferência.':'Este anúncio foi marcado como sem variações.');
+ const ctx={sku:w.sku,itemId:w.itemId,modelId:w.modelId};
+ void (async()=>{
+  try{
+   const out=await json('/api/shopee/optimizer/workflow/review',{
+    method:'POST',headers:{'Content-Type':'application/json'},
+    body:JSON.stringify({...ctx,stage:'variants',reviewed:false,
+     variationConfig:{enabled,type:enabled?(w.variationConfig?.type||''):'',values:enabled?(w.variationConfig?.values||[]):[]}}),
+    signal:AbortSignal.timeout(60000)});
+   if(optimizerWorkflowPlan?.sku!==ctx.sku||optimizerWorkflowPlan?.itemId!==ctx.itemId)return;
+   w.variationConfig=out.variationConfig;
+   w.stages=out.stages;
+   optimizerWorkflowRender(w);
+   optimizerWorkflowNotice(enabled?'Checklist habilitado e salvo. Informe as opções e registre a revisão.':'Sem variações confirmado e salvo nesta SKU.','success');
+  }catch(e){optimizerWorkflowNotice('Não foi possível salvar o checklist: '+e.message,'error')}
+ })();
 });
 $('#optimizerWorkflowCopy')?.addEventListener?.('click',async()=>{
  const key=optimizerWorkflowStage,stage=optimizerWorkflowPlan?.stages?.find(x=>x.key===key);
@@ -3014,12 +3029,17 @@ async function optimizerImagesLoad(){
   const data=await json('/api/shopee/optimizer/images/manual?'+new URLSearchParams({sku:w.sku,item_id:w.itemId,model_id:w.modelId}));
   if(optimizerWorkflowPlan?.sku!==w.sku||optimizerWorkflowPlan?.itemId!==w.itemId||optimizerWorkflowPlan?.modelId!==w.modelId||optimizerWorkflowStage!=='images')return;
   const gallery=$('#optimizerImagesGallery');gallery.replaceChildren();
-  for(const image of data.images||[]){
-   const card=optimizerMake('figure'),photo=optimizerMake('img');photo.src=image.previewUrl;photo.alt='Posição '+image.slot;
-   card.append(photo,optimizerMake('figcaption','',image.slot+' · '+image.filename));
-   const redo=optimizerMake('button','secondary','Solicitar ajuste');redo.type='button';
-   redo.onclick=()=>{$('#optimizerImageCorrectionSlot').value=String(image.slot);optimizerImageCorrectionLoad();$('#optimizerImageCorrection').focus();};
-   card.append(redo);gallery.append(card);
+  const stored=new Map((data.images||[]).map(image=>[Number(image.slot),image]));
+  for(let slot=1;slot<=9;slot++){
+   const image=stored.get(slot),card=optimizerMake('figure','optimizer-image-slot');
+   if(image){const photo=optimizerMake('img');photo.src=image.previewUrl;photo.alt='Imagem da posição '+slot;photo.loading='lazy';card.append(photo)}
+   else card.append(optimizerMake('div','optimizer-image-placeholder','Imagem '+String(slot).padStart(2,'0')+' · aguardando importação'));
+   card.append(optimizerMake('figcaption','',String(slot).padStart(2,'0')+' · '+(image?.filename||'Pendente')));
+   const redo=optimizerMake('button','secondary',image?'Solicitar ajuste':'Criar / preparar');
+   redo.type='button';redo.onclick=()=>{
+    $('#optimizerImageCorrectionSlot').value=String(slot);optimizerImageCorrectionLoad();
+    $('#optimizerImageCorrection').focus();
+   };card.append(redo);gallery.append(card);
   }
   status.textContent=(data.images||[]).length+'/9 imagens importadas. Confira a ordem e registre a revisão para incluir na prévia.';
  }catch(e){status.textContent=e.message;}
