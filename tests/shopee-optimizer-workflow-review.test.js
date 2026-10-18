@@ -110,3 +110,25 @@ test('variações existentes podem ser preenchidas a partir da própria Shopee',
  assert.equal(out.variationTiers[0].options[1].imageUrl,null);
  assert.equal(out.models[0].sku,'SKU-A');
 });
+
+test('layout 1.18 reproduz navegação lateral e painel da referência sem perder integração',()=>{
+ const html=readFileSync(new URL('../public/index.html',import.meta.url),'utf8');
+ const css=readFileSync(new URL('../public/style.css',import.meta.url),'utf8');
+ const js=readFileSync(new URL('../public/app.js',import.meta.url),'utf8');
+ for(const id of ['appSidebar','sidebarNav','sidebarReports','sidebarHelp','statusPill',
+  'optimizerSku','optimizerFind','optimizerQuickGross','optimizerQuickDiscount','optimizerQuickFinal',
+  'optimizerQuickProfit','optimizerMarginPlus','optimizerMarginMinus','optimizerQuickMargin',
+  'optimizerWorkflowCards','optimizerWorkflowCounter','optimizerShowExecution','optimizerAuditPanel']){
+   assert.equal((html.match(new RegExp('id="'+id+'"','g'))||[]).length,1,id);
+ }
+ assert.match(html,/class="optimizer-v15-intro optimizer-v18-journey"/);
+ assert.match(html,/optimizer-v18-journey-steps/);
+ assert.match(html,/data-tab="optimizer" data-page="otimizacao"/);
+ assert.match(css,/\.shell\.app-layout\{grid-template-columns:306px/);
+ assert.match(css,/\.optimizer-v15-page \.optimizer-workflow-cards\{grid-template-columns:repeat\(4/);
+ assert.match(css,/\.optimizer-v15-page \.optimizer-v18-margin-stepper/);
+ assert.match(js,/const reportTabs=new Set/);
+ assert.match(js,/slider\.dispatchEvent\(new Event\('input'/);
+ assert.match(js,/progress\.style\.setProperty\('--stage-progress'/);
+ assert.match(js,/\$\('#optimizerWorkflowEditor'\)\.hidden=true/);
+});
