@@ -1597,3 +1597,10 @@ table tr:hover td{background:#f3f8ff}
 @media(max-width:520px){.optimizer-v15-page .optimizer-workflow-cards{grid-template-columns:1fr 1fr}
 .optimizer-v15-page .optimizer-workflow-card{min-height:70px}
 .optimizer-variation-preview{grid-template-columns:1fr}}
+
+
+.optimizer-image-slot{border:1px solid #dce6f0;background:#fff;border-radius:12px;padding:8px;display:grid;gap:5px}
+.optimizer-image-placeholder{height:auto;aspect-ratio:1;display:grid;place-items:center;text-align:center;border:1px dashed #b5cde4;
+ border-radius:10px;color:#7891a9;font-size:11px;font-weight:700;background:linear-gradient(145deg,#f3f7fc,#fff)}
+.optimizer-image-slot figcaption{font-size:10px;color:#45607e;margin:0;padding:4px 2px}
+.optimizer-image-slot>button{justify-self:start}
