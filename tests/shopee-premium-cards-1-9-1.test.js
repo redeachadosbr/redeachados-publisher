@@ -23,7 +23,7 @@ test('cards internos compactos têm links reais, sem indicadores falsos',()=>{
   const dashboard=html.slice(html.indexOf('id="tab-overview"'),html.indexOf('id="tab-products"'));
   const cards=[...dashboard.matchAll(/class="kpi-tile interactive-tilt dashboard-kpi-[^"]+" type="button" data-go="([^"]+)"/g)];
   assert.equal(cards.length,4);
-  assert.deepEqual(cards.map(x=>x[1]),['settings','settings','settings','wedrop']);
+  assert.deepEqual(cards.map(x=>x[1]),['settings','settings','settings','settings']);
   assert.equal((dashboard.match(/class="shortcut interactive-tilt dashboard-shortcut-[^"]+"/g)||[]).length,4);
   for(const id of ['mConnection','mShop','mMode','mStorage']){
     assert.equal((html.match(new RegExp('id="'+id+'"','g'))||[]).length,1);
