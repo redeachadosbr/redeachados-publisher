@@ -2,6 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
 import {buildStages,descriptionDraft,safeTitle,validateReview,STAGE_IDS,validateVariationConfig,validateImageNotes} from '../shopeeOptimizationWorkflow.js';
+import {normalizeOptimizerItem} from '../productOptimizer.js';
 const example={itemId:'22095398152',sku:'TRC1525',selectedModelId:'179732416931',
   title:'Piscina Inflável - Azul',imageCount:5,
   videoStatus:'Não confirmado pela API (não significa ausência de vídeo)',
@@ -95,4 +96,17 @@ test('UX compacta preserva controles e somente uma etapa fica expandida',()=>{
  assert.match(js,/optimizerVariationPreview/);
  assert.match(css,/optimizer-workflow-card\.is-current/);
  assert.match(css,/#optimizerExecutionPanel\[hidden\]/);
+});
+
+test('variações existentes podem ser preenchidas a partir da própria Shopee',()=>{
+ const out=normalizeOptimizerItem({item_id:123,item_sku:'SKU',item_name:'Produto',category_id:10,
+  has_model:true,image:{image_id_list:[]}},{
+  response:{model:[{model_id:1,model_sku:'SKU-A',model_status:'NORMAL'}],
+  tier_variation:[{name:'Cor',option_list:[{option:'Azul',image:{image_url:'https://cdn.example.com/a.png'}},
+    {option:'Verde',image:{image_url:'http://inseguro.example.com/b.png'}}]}]}
+ },{total:0,attributes:[],missingMandatory:0,review:0});
+ assert.equal(out.variationTiers[0].name,'Cor');
+ assert.deepEqual(out.variationTiers[0].options.map(x=>x.name),['Azul','Verde']);
+ assert.equal(out.variationTiers[0].options[1].imageUrl,null);
+ assert.equal(out.models[0].sku,'SKU-A');
 });

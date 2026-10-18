@@ -136,7 +136,7 @@ app.get('/app/:section',(req,res)=>{
 });
 app.get('/app',(_req,res)=>res.redirect(302,'/app/inicio'));
 
-app.get('/api/health',(_req,res)=>res.json({ok:true,service:'Rede Achados BR Shopee API',version:'1.16.0',storage:authStore.status()}));
+app.get('/api/health',(_req,res)=>res.json({ok:true,service:'Rede Achados BR Shopee API',version:'1.17.0',storage:authStore.status()}));
 app.get('/api/auth-state',(req,res)=>res.json({locked:Boolean(envText('APP_PASSWORD')),loggedIn:!envText('APP_PASSWORD')||Boolean(req.session?.appAuth)}));
 app.post('/api/login',(req,res)=>{
   const required=envText('APP_PASSWORD');
@@ -640,6 +640,10 @@ app.get('/api/shopee/optimizer/workflow',mustLogin,requireWeDropAdmin,async(req,
     const stored=await getWorkflowReview(auth.shopId,itemId,modelId);
     const review=stored?.sku===sku?stored.review_state||{}:{};
     const stages=buildStages(record,review);
+    const existingTier=record.variationTiers?.[0];
+    const officialVariationConfig=existingTier?{enabled:true,
+      type:['Cor','Tamanho','Unidades por pacote','Modelo','Variação','Voltagem','Print','Quantidade'].includes(existingTier.name)?existingTier.name:'',
+      values:existingTier.options.map(x=>x.name)}:{enabled:Boolean(record.hasModel),type:'',values:[]};
     const current=await shopeeLiveEditableItem(cfg,auth,itemId);
     const [supplier,settings]=await Promise.all([
       readWeDropProduct(auth.shopId,{sku,itemId,modelId}),optimizerSettings(auth.shopId)]);
@@ -650,8 +654,9 @@ app.get('/api/shopee/optimizer/workflow',mustLogin,requireWeDropAdmin,async(req,
       contentVariants:review.contentVariants||null,contentResearch:review.contentResearch||null,
       attributes:record.attributeAudit.attributes,attributeChanges:review.attributes||[],taxDraft:review.tax||{},taxCurrent:current.tax_info||{},
       recordedAt:stored?.updated_at||null,stages,
-      variationConfig:review.variationConfig||{enabled:Boolean(record.hasModel),type:'',values:[]},
-      hasShopeeModels:Boolean(record.hasModel),shopeeModels:record.models||[],imageNotes:review.imageNotes||{},
+      variationConfig:review.variationConfig||officialVariationConfig,
+      hasShopeeModels:Boolean(record.hasModel),shopeeModels:record.models||[],
+      shopeeVariationTiers:record.variationTiers||[],imageNotes:review.imageNotes||{},
       draftTitle:review.draftTitle||safeTitle(record.title),
       draftDescription:review.draftDescription||descriptionDraft(record),
       imageCount:record.imageCount,

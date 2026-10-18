@@ -132,10 +132,18 @@ export function normalizeOptimizerItem(base,models,attributes){
   const variations=Array.isArray(models?.response?.model)
     ?models.response.model.map(m=>({modelId:String(m.model_id||''),sku:moneylessString(m.model_sku),
       status:moneylessString(m.model_status)})):[];
+  const variationTiers=array(models?.response?.tier_variation).slice(0,2).map(tier=>({
+    name:moneylessString(tier.name).slice(0,80),
+    options:array(tier.option_list).slice(0,20).map(option=>({
+      name:moneylessString(option.option).slice(0,80),
+      imageUrl:/^https:\/\//i.test(String(option.image?.image_url||''))?String(option.image.image_url):null,
+      imageId:moneylessString(option.image?.image_id).slice(0,150)
+    })).filter(x=>x.name)
+  })).filter(x=>x.name);
   return {
     itemId:id,sku,title:moneylessString(base.item_name),
     status:moneylessString(base.item_status),categoryId:Number(base.category_id),condition:moneylessString(base.condition),
-    hasModel:Boolean(base.has_model),models:variations,
+    hasModel:Boolean(base.has_model),models:variations,variationTiers,
     descriptionPresent:Boolean(moneylessString(base.description)),
     description:moneylessString(base.description),descriptionType:String(base.description_type||'normal'),
     promotion:Boolean(base.has_promotion),
