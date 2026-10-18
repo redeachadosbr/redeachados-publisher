@@ -1860,3 +1860,28 @@ button.topbar-logout{font-size:13px;color:#183766;border-color:#dfebf6;padding:1
  .topbar-account,.topbar-settings-button{display:none!important}
  .workspace-topbar .shopee-integration-mark{display:none}
 }
+
+
+/* Margem numérica com ações diretas, como no layout de referência. */
+.optimizer-v15-page .optimizer-v18-margin-control{display:flex;align-items:stretch;min-height:51px;
+ background:#f5f8fc;border:1px solid #dce6f4;border-radius:11px;margin:0 0 10px;padding:3px 6px 3px 12px;gap:8px}
+.optimizer-v15-page .optimizer-v18-margin-control .optimizer-margin-details{flex:1;min-width:0;
+ border:0;background:none;border-radius:0;padding:0;margin:0}
+.optimizer-v15-page .optimizer-v18-margin-control .optimizer-margin-details>summary{min-height:43px;
+ display:flex;justify-content:flex-start;align-items:center;gap:8px;color:#0c2a5b;font-weight:720;font-size:11px}
+.optimizer-v15-page .optimizer-v18-margin-control .optimizer-margin-details .sh-quick-bar{padding:0 10px 0 0}
+.optimizer-v15-page .optimizer-v18-margin-stepper{display:flex;align-self:stretch;align-items:center;
+ background:#fff;border:1px solid #e1e9f5;border-radius:9px;padding-left:12px;overflow:hidden}
+.optimizer-v15-page .optimizer-v18-margin-stepper strong{font-size:20px;color:#e86618;min-width:53px;text-align:center}
+.optimizer-v15-page .optimizer-v18-margin-stepper>div{display:flex;flex-direction:column;border-left:1px solid #e2e9f3;margin-left:7px}
+.optimizer-v15-page .optimizer-v18-margin-stepper button{height:23px;width:33px;display:grid;place-items:center;padding:0;border:0;border-radius:0;
+ background:#fff;color:#0c376a;font-size:18px;font-weight:800}
+.optimizer-v15-page .optimizer-v18-margin-stepper button:first-child{border-bottom:1px solid #e2e9f3}
+.optimizer-v15-page .optimizer-v18-margin-stepper button:hover{background:#edf5ff}
+.optimizer-v15-page .optimizer-v18-margin-control .optimizer-tip{margin-left:0}
+.optimizer-v15-page .sh-price-quick-values>div:after{position:absolute;right:10px;top:12px;font-size:16px;opacity:.82}
+.optimizer-v15-page .sh-price-quick-values>div:nth-child(1):after{content:"◇";color:#d8e7fb}
+.optimizer-v15-page .sh-price-quick-values>div:nth-child(2):after{content:"⚙";color:#1266b0}
+.optimizer-v15-page .sh-price-quick-values>div:nth-child(3):after{content:"🛒";font-size:13px}
+.optimizer-v15-page .sh-price-quick-values>div:nth-child(4):after{content:"▥";color:#007b68}
+.optimizer-v15-page .sh-price-quick-values>div>span{max-width:calc(100% - 17px)}
