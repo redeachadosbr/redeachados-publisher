@@ -78,3 +78,21 @@ test('variação opcional validada sem publicar na Shopee',()=>{
  assert.deepEqual(validateImageNotes({'1':'Refazer o fundo','9':'Mostrar embalagem'}),{'1':'Refazer o fundo','9':'Mostrar embalagem'});
  assert.throws(()=>validateImageNotes({'10':'Inválido'}),/posi/);
 });
+
+test('UX compacta preserva controles e somente uma etapa fica expandida',()=>{
+ const html=readFileSync(new URL('../public/index.html',import.meta.url),'utf8');
+ const js=readFileSync(new URL('../public/app.js',import.meta.url),'utf8');
+ const css=readFileSync(new URL('../public/style.css',import.meta.url),'utf8');
+ for(const id of ['optimizerMarginDetails','optimizerHasVariants','optimizerShowExecution',
+   'optimizerVariationPanel','optimizerVariationType','optimizerVariationValues','optimizerVariationPreview',
+   'optimizerImageCorrectionSlot','optimizerImageCorrection','optimizerImageCorrectionSave',
+   'optimizerImageCorrectionCopy','optimizerWorkflowNext']){
+   assert.equal((html.match(new RegExp('id="'+id+'"','g'))||[]).length,1,id);
+ }
+ assert.match(html,/id="optimizerExecutionPanel" hidden/);
+ assert.match(js,/optimizerWorkflowOpen\('variants'\)/);
+ assert.match(js,/optimizerImageCorrectionLoad/);
+ assert.match(js,/optimizerVariationPreview/);
+ assert.match(css,/optimizer-workflow-card\.is-current/);
+ assert.match(css,/#optimizerExecutionPanel\[hidden\]/);
+});
