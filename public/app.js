@@ -1425,25 +1425,28 @@ function optimizerWorkflowRender(data){
  optimizerWorkflowPlan=data;
  const cards=$('#optimizerWorkflowCards');cards.replaceChildren();
  const stages=data.stages||[];
- const reviews=stages.filter(x=>x.reviewed&&x.key!=='final').length;
- $('#optimizerWorkflowCounter').textContent=reviews+' / 8 etapas conferidas';
- for(const [i,stage] of stages.entries()){
-   const btn=optimizerMake('button','optimizer-workflow-card optimizer-workflow-'+stage.status);
-   btn.type='button';
+ const visible=stages.filter(x=>x.key!=='final'),required=visible.filter(x=>!x.skipped);
+ const reviews=required.filter(x=>x.reviewed).length;
+ $('#optimizerWorkflowCounter').textContent=reviews+' / '+required.length+' etapas conferidas';
+ $('#optimizerHasVariants').checked=Boolean(data.variationConfig?.enabled);
+ for(const [i,stage] of visible.entries()){
+   const btn=optimizerMake('button','optimizer-workflow-card optimizer-workflow-'+stage.status+(optimizerWorkflowStage===stage.key?' is-current':''));
+   btn.type='button';btn.dataset.stage=stage.key;
    btn.setAttribute('aria-label','Abrir etapa '+(i+1)+': '+stage.name);
    const number=optimizerMake('span','optimizer-workflow-number',String(i+1).padStart(2,'0'));
    const body=optimizerMake('span','optimizer-workflow-label');
    const videoStaged=stage.key==='video'&&Boolean(data.manualVideo);
    body.append(optimizerMake('strong','',stage.name),
      optimizerMake('small','',videoStaged?(data.manualVideo.uploadedToShopee?'Vídeo confirmado na Shopee':'Vídeo importado · não publicado'):
-       stage.reviewed?'Conferência registrada':stage.blocking?'Precisa de atenção':'Preparar e revisar'));
-   const mark=optimizerMake('span','optimizer-workflow-symbol',stage.reviewed?'✓':'→');
+       stage.skipped?'Não se aplica':stage.reviewed?'Conferência registrada':stage.blocking?'Precisa de atenção':'Preparar e revisar'));
+   const mark=optimizerMake('span','optimizer-workflow-symbol',stage.skipped?'—':stage.reviewed?'✓':'→');
    btn.append(number,body,mark);
    btn.onclick=()=>optimizerWorkflowOpen(stage.key);
    cards.appendChild(btn);
  }
- if(optimizerWorkflowStage&&stages.some(x=>x.key===optimizerWorkflowStage))
+ if(optimizerWorkflowStage&&visible.some(x=>x.key===optimizerWorkflowStage))
    optimizerWorkflowOpen(optimizerWorkflowStage);
+ else if(!optimizerWorkflowStage)optimizerWorkflowOpen(visible.find(x=>!x.reviewed&&!x.skipped)?.key||'images');
 }
 // Importação manual (SKU isolada) em armazenamento privado. Nunca publica na Shopee.
 const optimizerVideoMaxBytes=30*1024*1024;
@@ -1562,12 +1565,82 @@ $('#optimizerVideoUpload')?.addEventListener?.('click',async()=>{
 });
 $('#optimizerVideoRefresh')?.addEventListener?.('click',()=>void optimizerVideoLoadSaved());
 
+
+function optimizerVariationValues(){
+ return {enabled:$('#optimizerHasVariants').checked,
+  type:$('#optimizerVariationType').value,
+  values:$('#optimizerVariationValues').value.split(/\r?\n/).map(x=>x.trim()).filter(Boolean)};
+}
+function optimizerVariationPreview(){
+ const target=$('#optimizerVariationPreview');target.replaceChildren();
+ if(!$('#optimizerHasVariants').checked)return;
+ const type=$('#optimizerVariationType').value||'Variação';
+ for(const value of optimizerVariationValues().values.slice(0,20)){
+  const card=optimizerMake('div','optimizer-variation-card');
+  card.append(optimizerMake('strong','',type+' · '+value),
+   optimizerMake('small','', 'Foto por opção: aguardando conferência'));
+  const copy=optimizerMake('button','secondary','Copiar pedido de imagem');copy.type='button';
+  copy.onclick=async()=>{
+   const sku=optimizerWorkflowPlan?.sku||'';
+   const prompt='SKU '+sku+' | Gerar imagem 1200x1200 da variação '+type+': '+value+
+    '. Manter rigorosamente o modelo original da capa, sem cores ou detalhes inventados. '+
+    ($('#optimizerPrompt')?.value||'');
+   try{await navigator.clipboard.writeText(prompt);optimizerWorkflowNotice('Pedido da opção '+value+' copiado. A foto ainda precisa ser criada e conferida.','success');}
+   catch{optimizerWorkflowNotice('Não foi possível copiar o pedido.','warning')}
+  };card.append(copy);target.append(card);
+ }
+}
+function optimizerVariationRender(data){
+ const cfg=data.variationConfig||{enabled:false,type:'',values:[]};
+ $('#optimizerHasVariants').checked=Boolean(cfg.enabled);
+ $('#optimizerVariationPanel').hidden=!cfg.enabled;
+ $('#optimizerVariationType').value=cfg.type||'';
+ $('#optimizerVariationValues').value=(cfg.values||[]).join('\n');
+ optimizerVariationPreview();
+}
+$('#optimizerVariationType')?.addEventListener?.('change',()=>{optimizerVariationPreview();optimizerExecReset()});
+$('#optimizerVariationValues')?.addEventListener?.('input',()=>{optimizerVariationPreview();optimizerExecReset()});
+function optimizerImageCorrectionLoad(){
+ const slot=$('#optimizerImageCorrectionSlot').value;
+ $('#optimizerImageCorrection').value=optimizerWorkflowPlan?.imageNotes?.[slot]||'';
+}
+$('#optimizerImageCorrectionSlot')?.addEventListener?.('change',optimizerImageCorrectionLoad);
+$('#optimizerImageCorrectionSave')?.addEventListener?.('click',async()=>{
+ const w=optimizerWorkflowPlan;if(!w||optimizerWorkflowStage!=='images')return;
+ const slot=$('#optimizerImageCorrectionSlot').value,note=$('#optimizerImageCorrection').value.trim();
+ const stage=w.stages.find(x=>x.key==='images'),btn=$('#optimizerImageCorrectionSave');btn.disabled=true;
+ try{
+  const result=await json('/api/shopee/optimizer/workflow/review',{
+   method:'POST',headers:{'Content-Type':'application/json'},
+   body:JSON.stringify({itemId:w.itemId,modelId:w.modelId,sku:w.sku,
+    stage:'images',reviewed:Boolean(stage?.reviewed),imageNotes:{[slot]:note}}),signal:AbortSignal.timeout(60000)});
+  if(optimizerWorkflowPlan?.sku!==w.sku)return;
+  w.imageNotes={...(w.imageNotes||{}),...(result.imageNotes||{})};
+  optimizerWorkflowNotice('Ajuste da imagem '+slot+' salvo nesta SKU. Nenhuma foto foi gerada ou publicada.','success');
+ }catch(e){optimizerWorkflowNotice('Não foi possível salvar o ajuste: '+e.message,'error')}
+ finally{btn.disabled=false}
+});
+$('#optimizerImageCorrectionCopy')?.addEventListener?.('click',async()=>{
+ const w=optimizerWorkflowPlan;if(!w)return;
+ const slot=Number($('#optimizerImageCorrectionSlot').value),note=$('#optimizerImageCorrection').value.trim();
+ const prompt='SKU '+w.sku+' | Imagem '+slot+' de 9. '+workflowImageGuide[slot-1]+
+  '\nUse exatamente o produto real da capa, 1200x1200. '+
+  '\nREGRAS: '+($('#optimizerPrompt')?.value||'Verificar as regras do produto.')+
+  '\nAJUSTE: '+(note||'Conferir fidelidade e melhorar o enquadramento.');
+ try{await navigator.clipboard.writeText(prompt);
+  optimizerWorkflowNotice('Prompt da imagem '+slot+' copiado. Gere a imagem e importe na mesma posição.','success')}
+ catch{optimizerWorkflowNotice('Não foi possível copiar o prompt.','warning')}
+});
+
 function optimizerWorkflowOpen(key){
  const data=optimizerWorkflowPlan;
  const stage=(data?.stages||[]).find(x=>x.key===key);
  if(!stage)return;
  optimizerWorkflowStage=key;
+ $('#optimizerExecutionPanel').hidden=true;
  $('#optimizerWorkflowEditor').hidden=false;
+ for(const btn of $('#optimizerWorkflowCards').querySelectorAll('button'))
+   btn.classList.toggle('is-current',btn.dataset.stage===key);
  $('#optimizerWorkflowStageNumber').textContent='ETAPA '+String(data.stages.indexOf(stage)+1).padStart(2,'0');
  $('#optimizerWorkflowStageTitle').textContent=stage.name;
  $('#optimizerWorkflowStageDetail').textContent=stage.detail;
@@ -1581,7 +1654,9 @@ function optimizerWorkflowOpen(key){
  $('#optimizerImagesPanel').hidden=!isImages;
  $('#optimizerTechnicalPanel').hidden=key!=='technical';
  $('#optimizerFiscalPanel').hidden=key!=='fiscal';
- if(isImages)void optimizerImagesLoad();
+ $('#optimizerVariationPanel').hidden=key!=='variants'||!$('#optimizerHasVariants').checked;
+ if(key==='variants')optimizerVariationRender(data);
+ if(isImages){optimizerImageCorrectionLoad();void optimizerImagesLoad();}
  if(key==='technical')optimizerTechnicalRender(data);
  if(key==='fiscal')optimizerFiscalRender(data);
  optimizerSupplierRender(data,key);
@@ -1603,13 +1678,13 @@ function optimizerWorkflowOpen(key){
  }}
  const research=$('#optimizerContentResearch');research.hidden=!(isSeo||isDescription);
  research.textContent=data.contentResearch?.summary||'Pesquisa de concorrentes ainda não registrada para esta SKU. O texto atual exige revisão.';
- $('#optimizerWorkflowReview').hidden=key==='final';
- if(key!=='final'){
+ $('#optimizerWorkflowReview').hidden=key==='final'||stage.skipped;
+ if(key!=='final'&&!stage.skipped){
    $('#optimizerWorkflowReview').textContent=stage.reviewed?'Reabrir conferência':'Registrar etapa como conferida';
  }
  $('#optimizerWorkflowShopee').href='https://seller.shopee.com.br/portal/product/'+encodeURIComponent(data.itemId)+'?pageEntry=product_list';
  // Not an execution button: opens the Seller Center for an actual confirmed edit.
- const area=$('#optimizerWorkflowEditor');if(area.scrollIntoView)area.scrollIntoView({block:'nearest',behavior:'smooth'});
+ // Do not scroll unexpectedly while revising a sequence of SKU steps.
 }
 async function optimizerWorkflowLoad(record){
  const serial=++optimizerWorkflowSerial,sku=String(record?.sku||'');
@@ -1634,6 +1709,26 @@ async function optimizerWorkflowLoad(record){
  }
 }
 $('#optimizerWorkflowClose')?.addEventListener?.('click',()=>{$('#optimizerWorkflowEditor').hidden=true;optimizerWorkflowStage=null;});
+$('#optimizerShowExecution')?.addEventListener?.('click',()=>{
+ $('#optimizerWorkflowEditor').hidden=true;optimizerWorkflowStage=null;
+ $('#optimizerExecutionPanel').hidden=false;
+ for(const x of $('#optimizerWorkflowCards').querySelectorAll('.is-current'))x.classList.remove('is-current');
+});
+$('#optimizerWorkflowNext')?.addEventListener?.('click',()=>{
+ const stages=(optimizerWorkflowPlan?.stages||[]).filter(x=>x.key!=='final'&&!x.skipped);
+ const index=stages.findIndex(x=>x.key===optimizerWorkflowStage);
+ if(index>=0&&index<stages.length-1)optimizerWorkflowOpen(stages[index+1].key);
+ else $('#optimizerShowExecution').click();
+});
+$('#optimizerHasVariants')?.addEventListener?.('change',()=>{
+ const w=optimizerWorkflowPlan;if(!w)return;
+ const enabled=$('#optimizerHasVariants').checked;
+ w.variationConfig={...w.variationConfig,enabled};
+ const stage=w.stages.find(x=>x.key==='variants');
+ if(stage){stage.skipped=!enabled;stage.status=enabled?'pending':'skipped';stage.reviewed=false;}
+ optimizerWorkflowOpen('variants');
+ optimizerWorkflowNotice(enabled?'Informe o tipo e as opções reais; depois salve a conferência.':'Sem variações: abra a etapa e salve o checklist para dispensá-la.');
+});
 $('#optimizerWorkflowCopy')?.addEventListener?.('click',async()=>{
  const key=optimizerWorkflowStage,stage=optimizerWorkflowPlan?.stages?.find(x=>x.key===key);
  if(!stage)return;
@@ -1653,9 +1748,10 @@ $('#optimizerWorkflowReview')?.addEventListener?.('click',async()=>{
  optimizerWorkflowNotice('Salvando a conferência da etapa '+stage.name+' na Shopee Manager...');
  try{
    const body={itemId:data.itemId,modelId:data.modelId,sku:data.sku,
-     stage:key,reviewed:!stage.reviewed};
+     stage:key,reviewed:key==='variants'?$('#optimizerHasVariants').checked:!stage.reviewed};
    if(key==='technical')body.attributes=optimizerTechnicalValues();
    if(key==='fiscal')body.tax=optimizerFiscalValues();
+   if(key==='variants')body.variationConfig=optimizerVariationValues();
    if(key==='seo')body.title=$('#optimizerWorkflowDraft').value;
    if(key==='description')body.description=$('#optimizerWorkflowDraft').value;
    const result=await json('/api/shopee/optimizer/workflow/review',{
@@ -2920,7 +3016,10 @@ async function optimizerImagesLoad(){
   const gallery=$('#optimizerImagesGallery');gallery.replaceChildren();
   for(const image of data.images||[]){
    const card=optimizerMake('figure'),photo=optimizerMake('img');photo.src=image.previewUrl;photo.alt='Posição '+image.slot;
-   card.append(photo,optimizerMake('figcaption','',image.slot+' · '+image.filename));gallery.append(card);
+   card.append(photo,optimizerMake('figcaption','',image.slot+' · '+image.filename));
+   const redo=optimizerMake('button','secondary','Solicitar ajuste');redo.type='button';
+   redo.onclick=()=>{$('#optimizerImageCorrectionSlot').value=String(image.slot);optimizerImageCorrectionLoad();$('#optimizerImageCorrection').focus();};
+   card.append(redo);gallery.append(card);
   }
   status.textContent=(data.images||[]).length+'/9 imagens importadas. Confira a ordem e registre a revisão para incluir na prévia.';
  }catch(e){status.textContent=e.message;}
