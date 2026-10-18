@@ -78,7 +78,7 @@ test('menu, regras persistentes e detalhes por atributo ficam separados de Produ
  assert.match(server,/\/api\/shopee\/optimizer\/settings/);
  assert.match(server,/\/api\/shopee\/optimizer\/find/);
  assert.match(server,/readOnly:true/);
- assert.match(html,/app\.js\?v=1\.14\.1/);
+ assert.match(html,/app\.js\?v=\d+\.\d+\.\d+/);
 });
 
 

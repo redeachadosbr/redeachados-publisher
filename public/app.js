@@ -45,7 +45,7 @@ function setTab(name,{updateHistory=true,scroll=true}={}){
   const pane=$('#tab-'+name);
   if(!pane)return;
   activeAppPage=name;
-  document.body.classList.toggle('view-optimizer',name==='optimizer');
+  document.body?.classList?.toggle?.('view-optimizer',name==='optimizer');
   const reportTabs=new Set(['ads','wedrop','finance']);
   const reportMenu=$('#sidebarReports');
   if(reportMenu&&reportTabs.has(name))reportMenu.open=true;

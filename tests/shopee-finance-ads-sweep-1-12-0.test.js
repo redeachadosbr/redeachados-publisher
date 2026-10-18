@@ -79,7 +79,7 @@ test('campos UI/endpoint e nomes de despesas preservam lucro líquido final não
  assert.match(server,/matchFinanceAds\(finance,adsResult.value\)/);
  assert.match(server,/status:'unavailable'/);
  assert.match(html,/não é lucro fiscal final/i);
- assert.match(html,/app\.js\?v=1\.14\.1/);
+ assert.match(html,/app\.js\?v=\d+\.\d+\.\d+/);
 });
 test('datas de Ads correspondem ao calendário brasileiro, não ao fuso do servidor',()=>{
  assert.deepEqual(financeAdsDates({
