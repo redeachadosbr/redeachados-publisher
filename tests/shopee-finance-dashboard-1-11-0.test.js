@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
-import {normalizeEscrowOrder,summarizeFinance} from '../shopeeFinance.js';
+import {normalizeEscrowOrder,summarizeFinance,summarizeFinanceDaily} from '../shopeeFinance.js';
 
 const read=p=>readFileSync(new URL(p,import.meta.url),'utf8');
 const html=read('../public/index.html');
@@ -128,4 +128,21 @@ test('o menu financeiro é direto sob Gestão e o relatório CSV protege fórmul
  assert.match(js,/classList\?\.toggle\?\.\('view-finance',name==='finance'\)/);
  assert.match(js,/typeof value==='number'&&Number\.isFinite\(value\)/);
  assert.match(js,/toLocaleString\('pt-BR',\{useGrouping:false,maximumFractionDigits:2\}\)/);
+});
+
+test('evolução financeira diária usa somente pedidos com repasse/custo conciliados, sem Ads presumidos',()=>{
+ const dayOne=Date.parse('2026-10-15T09:00:00-03:00')/1000;
+ const dayTwo=Date.parse('2026-10-16T14:00:00-03:00')/1000;
+ const rows=[
+  {ready:true,createdAt:dayOne,payout:45.59,totalCost:36.98,balanceBeforeAds:8.61},
+  {ready:true,createdAt:dayOne,payout:10,totalCost:11,balanceBeforeAds:-1},
+  {ready:false,createdAt:dayTwo,payout:null,totalCost:null,balanceBeforeAds:null},
+  {ready:true,createdAt:dayTwo,payout:20,totalCost:14,balanceBeforeAds:6}
+ ];
+ const daily=summarizeFinanceDaily(rows);
+ assert.deepEqual(daily,[
+  {day:'2026-10-15',orders:2,payout:55.59,costs:47.98,balanceBeforeAds:7.61},
+  {day:'2026-10-16',orders:1,payout:20,costs:14,balanceBeforeAds:6}
+ ]);
+ assert.equal(daily.some(x=>'ads' in x),false);
 });

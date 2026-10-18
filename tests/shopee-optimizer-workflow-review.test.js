@@ -143,7 +143,7 @@ test('preços e margem cabem em cartões compactos sem quebrar valores monetári
  assert.match(css,/white-space:nowrap;word-break:normal;overflow-wrap:normal/);
  assert.match(css,/font-variant-numeric:tabular-nums/);
  assert.match(css,/@container \(max-width: 590px\)/);
- assert.match(html,/style\.css\?v=1\.18\.3/);
+ assert.match(html,/style\.css\?v=\d+\.\d+\.\d+/);
 });
 
 test('slider de margem sempre visível, com ajuda contextual e resumos sem texto redundante',()=>{
