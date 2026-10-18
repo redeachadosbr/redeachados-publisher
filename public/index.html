@@ -104,16 +104,17 @@
           <div class="optimizer-v15-heading-content"><span class="optimizer-v15-kicker">02 · PRECIFICAR</span><h3>Preço e desconto <span class="optimizer-tip" tabindex="0" role="note" aria-label="Preço bruto é o valor cheio a cadastrar. O desconto é preparado para Minha Promoção. A margem já considera os custos configurados e não aplica alterações na Shopee." data-help="Preço bruto é o valor cheio a cadastrar. O desconto é preparado para Minha Promoção. A margem já considera os custos configurados e não aplica alterações na Shopee.">?</span></h3></div>
           <a href="/app/precificacao" class="optimizer-v15-action-link" data-go="pricing" aria-label="Abrir configurações de precificação">Ajustar <span aria-hidden="true">↗</span></a>
         </div>
-              <div class="sh-quick-bar">
-        <div class="sh-price-row"><label for="optimizerQuickMargin">Margem líquida desejada</label><strong id="optimizerQuickMarginLabel">25%</strong></div>
-        <input id="optimizerQuickMargin" class="sh-price-slider" type="range" min="0" max="70" step="1" value="25" aria-label="Margem desejada para o SKU">
-      </div>
+      <details id="optimizerMarginDetails" class="optimizer-margin-details">
+        <summary>Margem líquida desejada <strong id="optimizerQuickMarginLabel">25%</strong><span>Ajustar ▾</span></summary>
+        <div class="sh-quick-bar"><label for="optimizerQuickMargin" class="optimizer-visually-hidden">Margem desejada</label>
+          <input id="optimizerQuickMargin" class="sh-price-slider" type="range" min="0" max="70" step="1" value="25" aria-label="Margem desejada para o SKU"></div>
+      </details>
       <p id="optimizerQuickStatus" class="optimizer-notice" role="status" aria-live="polite">Informe a SKU acima. O preço bruto e o desconto aparecerão automaticamente.</p>
       <div id="optimizerQuickValues" class="sh-price-kpis sh-price-quick-values optimizer-v15-kpis" hidden>
         <div><span>Preço bruto para anúncio</span><strong id="optimizerQuickGross">—</strong></div>
         <div><span>Desconto sugerido</span><strong id="optimizerQuickDiscount">—</strong></div>
         <div><span>Preço final ao comprador</span><strong id="optimizerQuickFinal">—</strong></div>
-        <div><span>Lucro líquido e margem</span><strong id="optimizerQuickProfit">—</strong></div>
+        <div><span>Lucro líquido / margem</span><strong id="optimizerQuickProfit">—</strong></div>
       </div>
       <div class="actions"><button type="button" class="secondary" data-go="pricing">Configurações e taxas →</button><button type="button" class="secondary" data-go="discounts">Descontos preparados →</button></div>
 
@@ -136,24 +137,26 @@
         </div>
       </details>
       <details class="optimizer-panel optimizer-progress optimizer-v15-accordion" aria-label="Etapas da otimização" id="optimizerProgressDetails">
-        <summary><span class="optimizer-v15-accordion-icon" aria-hidden="true">☷</span><span class="optimizer-v15-accordion-title"><strong>Etapas da otimização</strong><small>Imagens, vídeo, SEO, ficha técnica e revisão</small></span><span class="optimizer-v15-chevron">⌄</span></summary>
+        <summary><span class="optimizer-v15-accordion-icon" aria-hidden="true">☷</span><span class="optimizer-v15-accordion-title"><strong>Etapas da otimização</strong><small>Imagens, vídeo, SEO, especificações, variações e fiscal</small></span><span class="optimizer-v15-chevron">⌄</span></summary>
         <div id="optimizerSteps" class="optimizer-steps">
           <div class="optimizer-step">Imagens · aguardando validação</div><div class="optimizer-step">Vídeo · aguardando validação</div>
-          <div class="optimizer-step">Título SEO, categoria e GTIN</div><div class="optimizer-step">Ficha técnica por categoria</div>
-          <div class="optimizer-step">Descrição e fiscal</div><div class="optimizer-step">Revisão e publicação confirmada</div>
+          <div class="optimizer-step">Título SEO · Categoria</div><div class="optimizer-step">Especificações · Descrição</div>
+          <div class="optimizer-step">Variações (opcional)</div><div class="optimizer-step">Fiscal · Prévia e execução</div>
         </div>
       </details>
     </div>
     <section class="optimizer-panel optimizer-workflow" id="optimizerWorkflowPanel" hidden aria-label="Fluxo de otimização por SKU">
       <div class="optimizer-workflow-heading">
-        <div><span class="optimizer-v15-kicker">03 · CONTINUAR OTIMIZAÇÃO</span>
+        <div><span class="optimizer-v15-kicker">03 · FLUXO GUIADO POR SKU</span>
           <h3>Preparar e revisar o anúncio <span class="optimizer-tip" tabindex="0" role="note" data-help="Cada etapa salva a conferência da SKU no Supabase. Nenhuma alteração é executada na Shopee sem ação autorizada e confirmação da API." aria-label="Cada etapa salva a conferência da SKU no Supabase. Nenhuma alteração é executada na Shopee sem ação autorizada e confirmação da API.">?</span></h3>
         </div>
-        <span class="optimizer-workflow-counter" id="optimizerWorkflowCounter">0 / 8 revisadas</span>
+        <div class="optimizer-workflow-toolbar"><label class="optimizer-has-variants"><input type="checkbox" id="optimizerHasVariants"> Tem variações</label>
+        <span class="optimizer-workflow-counter" id="optimizerWorkflowCounter">0 / 7 revisadas</span>
+        <button id="optimizerShowExecution" class="secondary" type="button">Prévia e execução ↗</button></div>
       </div>
       <p class="optimizer-notice" id="optimizerWorkflowStatus" role="status" aria-live="polite">Aguardando a auditoria oficial da SKU.</p>
       <div class="optimizer-workflow-cards" id="optimizerWorkflowCards" aria-label="Etapas de otimização"></div>
-      <section class="optimizer-exec-panel" id="optimizerExecutionPanel" aria-label="Pré-execução automatizada por SKU">
+      <section class="optimizer-exec-panel" id="optimizerExecutionPanel" hidden aria-label="Pré-execução automatizada por SKU">
         <div class="optimizer-exec-head">
           <div><span class="optimizer-v15-kicker">PRÉ-EXECUÇÃO SEGURA</span>
             <h4>Preparar execução automática <span class="optimizer-tip" tabindex="0" data-help="A execução usa somente o conteúdo aprovado na prévia. O vídeo é validado, processado e confirmado na Shopee. Campos sem informação comprovada continuam como pendência." aria-label="A execução usa somente o conteúdo aprovado na prévia. O vídeo é validado, processado e confirmado na Shopee. Campos sem informação comprovada continuam como pendência.">?</span></h4>
@@ -210,7 +213,26 @@
           <button type="button" id="optimizerImagesUpload">Importar imagens para revisão</button>
           <p id="optimizerImagesStatus" role="status" class="optimizer-notice"></p>
           <div id="optimizerImagesGallery" class="optimizer-prepared-gallery"></div>
+          <div class="optimizer-image-rework">
+            <strong>Solicitar refação ou ajuste da imagem</strong>
+            <div class="optimizer-rework-fields">
+              <label class="optimizer-field">Posição<select id="optimizerImageCorrectionSlot"><option value="1">01 · Capa</option><option value="2">02</option><option value="3">03</option><option value="4">04</option><option value="5">05</option><option value="6">06</option><option value="7">07</option><option value="8">08</option><option value="9">09 · Mockup</option></select></label>
+              <label class="optimizer-field">O que deseja alterar?<textarea id="optimizerImageCorrection" rows="2" maxlength="500" placeholder="Ex.: fundo mais claro e manter o mesmo produto."></textarea></label>
+            </div>
+            <div class="optimizer-workflow-actions"><button id="optimizerImageCorrectionSave" class="secondary" type="button">Salvar alteração</button><button id="optimizerImageCorrectionCopy" class="secondary" type="button">Copiar pedido para criar / refazer</button></div>
+            <small>Importe a imagem gerada na posição correspondente. Sem um gerador conectado, o ChatGPT não envia imagens diretamente ao aplicativo.</small>
+          </div>
           <small>A geração das fotografias exige um provedor de imagens configurado. Aqui você pode importar as imagens já criadas e publicar as nove aprovadas.</small>
+        </section>
+        <section id="optimizerVariationPanel" class="optimizer-video-import" hidden>
+          <strong>Variações do produto</strong>
+          <p class="optimizer-video-help">Preencha apenas se este anúncio possuir variações reais. A configuração fica salva como prévia e não publica modelos sem confirmação.</p>
+          <div class="optimizer-variation-grid">
+            <label class="optimizer-field">Tipo de variação<select id="optimizerVariationType"><option value="">Selecione</option><option>Cor</option><option>Tamanho</option><option>Unidades por pacote</option><option>Modelo</option><option>Variação</option><option>Voltagem</option><option>Print</option><option>Quantidade</option></select></label>
+            <label class="optimizer-field">Opções (uma por linha)<textarea id="optimizerVariationValues" rows="3" maxlength="1400" placeholder="Ex.: Azul&#10;Verde"></textarea></label>
+          </div>
+          <div id="optimizerVariationPreview" class="optimizer-variation-preview"></div>
+          <small>A geração e publicação automática de fotos por variação exigem integração com gerador e API de modelos; cada opção ficará pendente até foto e dados conferidos.</small>
         </section>
         <section id="optimizerTechnicalPanel" class="optimizer-video-import" hidden>
           <strong>Preencher ficha técnica</strong>
@@ -241,7 +263,7 @@
         </section>
         <div class="optimizer-workflow-actions">
           <button id="optimizerWorkflowCopy" type="button" class="secondary">Copiar orientação</button>
-          <button id="optimizerWorkflowReview" type="button">Registrar revisão desta etapa</button>
+          <button id="optimizerWorkflowReview" type="button">Registrar revisão desta etapa</button><button id="optimizerWorkflowNext" class="secondary" type="button">Próxima etapa →</button>
           <a id="optimizerWorkflowShopee" class="optimizer-external" target="_blank" rel="noopener noreferrer" href="#">Conferir anúncio na Shopee ↗</a>
         </div>
         <small class="optimizer-workflow-disclaimer">O registro confirma somente sua conferência. Não atualiza imagens, vídeos, preço, SEO, descrição ou dados fiscais na Shopee.</small>
