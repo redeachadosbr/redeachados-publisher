@@ -2758,3 +2758,160 @@ body.view-products #tab-products{color:#09254f}
 #tab-products .catalog-row-menu summary:focus-visible{
  outline:3px solid #2a82d3;outline-offset:2px;
 }
+
+
+/* Shopee Manager 1.19.5 — Precificação com KPIs compactos e sem rolagem desnecessária */
+body.view-pricing .workspace-content{max-width:1900px;padding:16px 28px 34px}
+body.view-pricing .page-intro{display:none!important}
+#tab-pricing{min-width:0;color:#0c2a56}
+#tab-pricing .pricing-v2-page{min-width:0}
+#tab-pricing .pricing-v2-icon{width:21px;height:21px;flex:none}
+#tab-pricing .pricing-v2-help{height:17px;width:17px;font-size:10px;flex:0 0 17px}
+#tab-pricing .pricing-v2-heading{display:flex;align-items:center;justify-content:space-between;gap:16px;min-height:115px;margin:0 0 13px}
+#tab-pricing .pricing-v2-heading>div{min-width:0}
+#tab-pricing .pricing-v2-eyebrow{font-size:11px;font-weight:850;letter-spacing:.16em;color:#f45b25}
+#tab-pricing .pricing-v2-heading h2{font-size:clamp(29px,2.4vw,38px);line-height:1.1;letter-spacing:-.05em;font-weight:860;color:#092a58;margin:10px 0 8px}
+#tab-pricing .pricing-v2-heading p{font-size:13px;line-height:1.5;color:#6480a0;margin:0}
+#tab-pricing .pricing-v2-badge{display:flex;align-items:center;gap:11px;min-height:48px;padding:11px 15px;border-radius:30px;
+ border:1px solid #cdebdc;background:#eaf9f0;color:#037541;font-size:12px;font-weight:830;white-space:nowrap;box-shadow:0 3px 10px #095c3610}
+#tab-pricing .pricing-v2-badge .pricing-v2-icon{width:20px;height:20px}
+#tab-pricing .pricing-v2-badge.pricing-no-selection{background:#fff8eb;color:#a27426;border-color:#f1e2bb}
+#tab-pricing .pricing-v2-summary{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));align-items:stretch;gap:0;
+ background:#fff;border-radius:15px;border:1px solid #dfeaf8;padding:18px 13px;box-shadow:0 6px 20px #16437e0b;margin:0 0 18px}
+#tab-pricing .pricing-v2-summary-item{min-width:0;display:flex;flex-direction:column;gap:11px;justify-content:center;padding:2px 14px;border-right:1px solid #d9e5f4}
+#tab-pricing .pricing-v2-summary-item:last-child{border:0}
+#tab-pricing .pricing-v2-summary-title{display:flex;align-items:center;gap:6px;color:#567097;font-size:10px;line-height:1.4;white-space:nowrap}
+#tab-pricing .pricing-v2-summary-title>.pricing-v2-icon{width:19px;height:19px;color:#0968c5}
+#tab-pricing .pricing-v2-summary-item:nth-child(3) .pricing-v2-summary-title .pricing-v2-icon{color:#fa582d}
+#tab-pricing .pricing-v2-summary-item:nth-child(6) .pricing-v2-summary-title .pricing-v2-icon{color:#fb592f}
+#tab-pricing .pricing-v2-summary-item:nth-child(7) .pricing-v2-summary-title .pricing-v2-icon{color:#10a35a}
+#tab-pricing .pricing-v2-summary-title .pricing-v2-help{margin-left:0}
+#tab-pricing .pricing-v2-summary-item strong{font-size:clamp(15px,1.45vw,21px);line-height:1.15;letter-spacing:-.025em;font-weight:860;color:#0b2856;
+ white-space:nowrap;font-variant-numeric:tabular-nums}
+#tab-pricing .pricing-v2-summary-item:nth-child(3) strong{color:#f2582b}
+#tab-pricing .pricing-v2-summary-item:nth-child(6) strong,#tab-pricing .pricing-v2-summary-item:nth-child(7) strong{color:#00964f}
+#tab-pricing #pricingSummarySku{font-size:clamp(13px,1.1vw,16px)}
+#tab-pricing .pricing-v2-panel{background:transparent;border:0;box-shadow:none;padding:0;margin:0;min-width:0;max-width:none}
+#tab-pricing .pricing-v2-columns{display:grid;grid-template-columns:minmax(0,1.48fr) minmax(320px,.94fr);gap:18px;align-items:stretch}
+#tab-pricing .pricing-v2-controls{background:#fff;border:1px solid #e0e9f6;border-radius:16px;padding:17px;
+ box-shadow:0 4px 16px #134c7d0b;display:flex;flex-direction:column;gap:14px}
+#tab-pricing .pricing-v2-margin-card{background:transparent}
+#tab-pricing .pricing-v2-margin-heading{display:flex;align-items:center;gap:11px;min-height:49px}
+#tab-pricing .pricing-v2-heading-mark{width:43px;height:43px;flex:0 0 43px;border-radius:12px;display:grid;place-items:center;background:#fff0eb;color:#ff5b2f}
+#tab-pricing .pricing-v2-heading-mark .pricing-v2-icon{width:26px;height:26px}
+#tab-pricing .pricing-v2-margin-heading label{font-weight:835;font-size:17px;color:#0b2957;line-height:1.2}
+#tab-pricing .pricing-v2-margin-heading strong{font-weight:850;color:#ed8e08;font-size:27px;margin-left:auto;white-space:nowrap}
+#tab-pricing .pricing-v2-margin-controls{display:flex;align-items:center;gap:19px;margin:13px 2px 0}
+#tab-pricing .pricing-v2-slider-group{flex:1;min-width:0}
+#tab-pricing .pricing-v2-slider-group #priceMargin{display:block;width:100%;height:9px;min-height:9px;
+ margin:5px 0 12px;padding:0;border:0;accent-color:#f6ad20;cursor:pointer;background:transparent}
+#tab-pricing .pricing-v2-range-labels{display:flex;justify-content:space-between;align-items:center;font-size:10px;color:#718bac}
+#tab-pricing .pricing-v2-steppers{display:flex;align-items:center;gap:7px;flex:none}
+#tab-pricing .pricing-v2-steppers button{display:grid;place-items:center;height:43px;min-height:43px;width:43px;border:1px solid #dce6f5;border-radius:10px;
+ background:#fdfefe;color:#103c72;font-weight:750;font-size:23px;padding:0}
+#tab-pricing .pricing-v2-steppers button:hover{background:#f1f7ff;border-color:#bcd3ed}
+#tab-pricing .pricing-v2-steppers output{height:43px;min-height:43px;min-width:65px;display:grid;place-items:center;
+ background:#f9fbff;border:1px solid #dfe8f5;border-radius:10px;font-size:16px;font-weight:820;color:#0b2b57}
+#tab-pricing .sh-price-settings-collapsed{background:#f8fbff;border:1px solid #dce8f6;border-radius:13px;margin:3px 0 0;overflow:visible}
+#tab-pricing .sh-price-settings-collapsed>summary{display:flex;align-items:center;gap:13px;cursor:pointer;min-height:70px;
+ padding:14px 17px;background:transparent;list-style:none;color:#102d59}
+#tab-pricing .sh-price-settings-collapsed>summary::-webkit-details-marker{display:none}
+#tab-pricing .sh-price-settings-collapsed>summary:before{content:"⚙";display:grid;place-items:center;flex:0 0 35px;width:35px;height:35px;
+ border-radius:10px;font-size:24px;color:#1265ba}
+#tab-pricing .pricing-settings-heading{display:grid;gap:5px;min-width:0}
+#tab-pricing .pricing-settings-heading strong{font-size:13px;line-height:1.2;font-weight:830;color:#16315b}
+#tab-pricing .pricing-settings-heading small{font-size:11px;color:#7589a6;line-height:1.3;font-weight:550}
+#tab-pricing .pricing-chevron{margin-left:auto;font-size:23px;color:#154879;font-weight:700;transition:transform .12s}
+#tab-pricing .sh-price-settings-collapsed[open]>summary .pricing-chevron{transform:rotate(180deg)}
+#tab-pricing .sh-price-settings-collapsed>.sh-price-fields{padding:12px 14px;margin:0;border-top:1px solid #e1eaf5}
+#tab-pricing .sh-price-settings-collapsed>.sh-price-advanced{margin:9px 14px 14px}
+#tab-pricing .sh-price-fields label{font-size:11px}
+#tab-pricing .pricing-v2-results{min-width:0;border:0;padding:0;background:transparent;box-shadow:none;display:block!important}
+#tab-pricing .pricing-v2-gross{min-height:233px;height:100%;display:flex;flex-direction:column;align-items:flex-start;justify-content:center;gap:20px;
+ padding:24px 29px;border:1px solid #244b7d;border-radius:16px;
+ background:radial-gradient(ellipse at 4% 0%,#1c4873 0,transparent 55%),linear-gradient(130deg,#0c315d,#061d3d);
+ box-shadow:0 8px 22px #17366316}
+#tab-pricing .pricing-v2-gross>span{color:#fa8430;font-size:12px;font-weight:870;letter-spacing:.085em;line-height:1.45;
+ display:flex;align-items:center;gap:9px}
+#tab-pricing .pricing-v2-gross>span>.pricing-v2-icon{width:39px;height:39px;padding:9px;background:#8440216c;border-radius:12px;color:#ff8b40}
+#tab-pricing .pricing-v2-gross>span>.pricing-v2-help{color:#c9dcf5;border-color:#7189a5;background:#2e4a6d}
+#tab-pricing .pricing-v2-gross>strong{font-size:clamp(34px,4.4vw,63px);color:#fff;line-height:1.1;letter-spacing:-.045em;white-space:nowrap;
+ font-weight:870;text-shadow:0 3px 4px #07172d44}
+#tab-pricing .pricing-v2-gross>small{font-size:13px;color:#a7c2e2;line-height:1.4}
+#tab-pricing .pricing-v2-footer{background:#fff;border:1px solid #e0eaf7;border-radius:16px;margin-top:16px;padding:15px 17px;
+ box-shadow:0 4px 15px #143e730a}
+#tab-pricing .pricing-v2-actions{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:12px}
+#tab-pricing .pricing-v2-actions button{display:flex;align-items:center;justify-content:center;gap:12px;width:100%;min-height:55px;padding:12px 14px;border-radius:11px;
+ font-size:14px;font-weight:800;line-height:1.2}
+#tab-pricing .pricing-v2-actions button .pricing-v2-icon{width:22px;height:22px}
+#tab-pricing #priceRecalculate{background:linear-gradient(112deg,#006541,#043d2b);color:#fff;border:1px solid #0f7151;box-shadow:0 3px 10px #125b3b1d}
+#tab-pricing #priceOpenDiscounts{background:#fff;color:#102e5e;border:1px solid #cde0f5}
+#tab-pricing #priceStatus{min-height:58px;margin:0 0 9px;padding:13px 15px;border:1px solid #dce6f4;background:#f7faff;color:#486584;
+ display:flex;align-items:center;line-height:1.45;font-size:12px;border-radius:12px}
+#tab-pricing #priceStatus:before{content:"✓";font-size:18px;line-height:1;display:grid;place-items:center;color:#fff;background:#0bb46c;
+ width:30px;height:30px;flex:0 0 30px;border-radius:50%;margin-right:13px}
+#tab-pricing #priceStatus[data-state="success"]{background:#edfaf3;color:#125e40;border-color:#c9e9d6}
+#tab-pricing #priceStatus[data-state="error"]{background:#fff0f1;border-color:#efc5ca;color:#a32935}
+#tab-pricing #priceStatus[data-state="warning"]{background:#fff8eb;border-color:#f1dfb8;color:#9f6c1c}
+#tab-pricing #priceStatus:not([data-state="success"]):before{content:"!";background:#b6c5d4}
+#tab-pricing #priceStatus[data-state="error"]:before{background:#d44b4b}
+#tab-pricing #priceStatus[data-state="warning"]:before{background:#d59b26}
+#tab-pricing #priceSaveInfo{display:block;font-size:10px;color:#6f83a1;margin:0 4px 12px;line-height:1.5}
+#tab-pricing .pricing-v2-breakdown{border:1px solid #dbe7f5;border-radius:12px;background:#f9fbff;margin:0;overflow:hidden}
+#tab-pricing .pricing-v2-breakdown>summary{display:flex;align-items:center;gap:12px;min-height:54px;padding:12px 14px;
+ font-weight:800;font-size:14px;list-style:none;color:#12325f;cursor:pointer;background:transparent}
+#tab-pricing .pricing-v2-breakdown>summary::-webkit-details-marker{display:none}
+#tab-pricing .pricing-v2-breakdown>summary>.pricing-v2-icon{width:24px;height:24px;color:#1473c7}
+#tab-pricing .pricing-v2-breakdown[open]>summary .pricing-chevron{transform:rotate(180deg)}
+#tab-pricing .pricing-v2-breakdown-content{padding:4px 13px 12px;border-top:1px solid #e4ecf6;background:#fff}
+#tab-pricing .pricing-v2-breakdown-content .sh-price-note{font-size:11px;line-height:1.5;margin:8px 0;color:#63809f}
+#tab-pricing .pricing-v2-breakdown-content .sh-price-breakdown-row{font-size:11px;padding:9px 10px}
+@media(max-width:1430px){
+ #tab-pricing .pricing-v2-summary{padding:14px 8px}
+ #tab-pricing .pricing-v2-summary-item{padding:2px 9px;gap:8px}
+ #tab-pricing .pricing-v2-summary-title{font-size:9px;gap:4px}
+ #tab-pricing .pricing-v2-summary-title>.pricing-v2-icon{width:16px;height:16px}
+ #tab-pricing .pricing-v2-summary-item strong{font-size:17px}
+ #tab-pricing .pricing-v2-columns{grid-template-columns:minmax(0,1.25fr) minmax(270px,.8fr);gap:13px}
+ #tab-pricing .pricing-v2-margin-heading label{font-size:15px}
+ #tab-pricing .pricing-v2-gross{padding:21px}
+ #tab-pricing .pricing-v2-gross>strong{font-size:clamp(32px,4vw,53px)}
+}
+@media(max-width:1130px){
+ #tab-pricing .pricing-v2-summary{grid-template-columns:repeat(4,minmax(0,1fr));row-gap:15px}
+ #tab-pricing .pricing-v2-summary-item:nth-child(4){border-right:0}
+ #tab-pricing .pricing-v2-summary-item strong{font-size:20px}
+ #tab-pricing .pricing-v2-columns{grid-template-columns:1fr}
+ #tab-pricing .pricing-v2-gross{min-height:200px}
+}
+@media(max-width:680px){
+ body.view-pricing .workspace-content{padding:13px 10px 32px}
+ #tab-pricing .pricing-v2-heading{align-items:flex-start;flex-direction:column;gap:12px;margin-bottom:14px}
+ #tab-pricing .pricing-v2-heading h2{font-size:29px}
+ #tab-pricing .pricing-v2-heading p{font-size:12px}
+ #tab-pricing .pricing-v2-badge{min-height:38px;padding:7px 12px;font-size:11px}
+ #tab-pricing .pricing-v2-summary{grid-template-columns:repeat(2,minmax(0,1fr));gap:0 0;padding:8px}
+ #tab-pricing .pricing-v2-summary-item{min-height:70px;border-bottom:1px solid #e0e9f4;padding:10px}
+ #tab-pricing .pricing-v2-summary-item:nth-child(2n){border-right:0}
+ #tab-pricing .pricing-v2-summary-item:nth-child(4){border-right:0}
+ #tab-pricing .pricing-v2-summary-item:last-child{border-bottom:0}
+ #tab-pricing .pricing-v2-summary-item:nth-child(6){border-bottom:0}
+ #tab-pricing .pricing-v2-controls{padding:12px}
+ #tab-pricing .pricing-v2-margin-heading{gap:7px}
+ #tab-pricing .pricing-v2-margin-heading label{font-size:13px}
+ #tab-pricing .pricing-v2-margin-heading strong{font-size:20px}
+ #tab-pricing .pricing-v2-margin-controls{gap:8px}
+ #tab-pricing .pricing-v2-steppers{gap:4px}
+ #tab-pricing .pricing-v2-steppers button{width:32px;height:37px;min-height:37px;font-size:18px}
+ #tab-pricing .pricing-v2-steppers output{height:37px;min-height:37px;min-width:43px;font-size:12px}
+ #tab-pricing .pricing-v2-settings-heading{font-size:11px}
+ #tab-pricing .pricing-v2-gross>strong{font-size:clamp(32px,8vw,46px)}
+ #tab-pricing .pricing-v2-actions{gap:8px}
+ #tab-pricing .pricing-v2-actions button{font-size:11px;padding:9px;min-height:52px}
+}
+@media(max-width:380px){
+ #tab-pricing .pricing-v2-summary{grid-template-columns:1fr}
+ #tab-pricing .pricing-v2-summary-item{border-right:0;min-height:60px}
+ #tab-pricing .pricing-v2-margin-controls{flex-wrap:wrap}
+ #tab-pricing .pricing-v2-steppers{margin-left:auto}
+}
