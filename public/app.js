@@ -2686,7 +2686,7 @@ $('#shopeeFinanceLoad').onclick=async()=>{
 
 // Monitor de envios: todos os indicadores derivam das consultas autenticadas da Shopee.
 let monitorSeenAlerts=null,monitorChecking=false,monitorCurrentPending=[],monitorCurrentAlerts=[];
-let monitorCurrentFilter='all',monitorShowAll=false,monitorLastHealth='never';
+let monitorCurrentFilter='all',monitorShowAll=false,monitorLastHealth='never',monitorDataLoaded=false;
 function monitorDate(epoch){
   const n=Number(epoch);
   return Number.isFinite(n)&&n>1000000000
@@ -2723,9 +2723,8 @@ function monitorBrowserState(){
   setMonitorText('#monitorBrowserInfo',permission==='granted'?'Permissão concedida (navegador aberto)':
     permission==='denied'?'Notificações bloqueadas':
     !supported?'Navegador sem suporte':'Permissão não concedida');
-  const button=$('#enableBrowserAlertsBtn');
-  if(button)button.textContent=permission==='granted'?'Avisos do navegador ativados':
-    permission==='denied'?'Avisos bloqueados':'Ativar aviso no navegador';
+  setMonitorText('#browserAlertsLabel',permission==='granted'?'Avisos do navegador ativados':
+    permission==='denied'?'Avisos bloqueados':'Ativar aviso no navegador');
 }
 function monitorShowEmpty(title,detail){
   $('#monitorEmpty').hidden=false;
@@ -2735,6 +2734,13 @@ function monitorShowEmpty(title,detail){
 function renderPending(orders=monitorCurrentPending){
   const body=$('#monitorPendingBody');if(!body)return;
   body.replaceChildren();$('#monitorEmpty').hidden=true;
+  if(!monitorDataLoaded){
+    for(const id of ['#monitorFilterAll','#monitorFilterToday','#monitorFilterCritical','#monitorFilterSoon'])
+      setMonitorText(id,'—');
+    setMonitorText('#monitorFilterSummary','Aguardando uma consulta válida dos pedidos.');
+    monitorShowEmpty('Pedidos não confirmados','É necessária uma sincronização bem-sucedida antes de mostrar contagens.');
+    return;
+  }
   const total=orders.length,urgent=orders.filter(x=>monitorRiskFilter(x,'critical')).length;
   const today=orders.filter(x=>monitorRiskFilter(x,'today')).length;
   const soon=orders.filter(x=>monitorRiskFilter(x,'soon')).length;
@@ -2813,9 +2819,9 @@ function renderAlerts(items=monitorCurrentAlerts){
 function monitorSyncStatus({state,reason,enabled,working,minutes,error,successAt}){
   const banner=$('#monitorStatus');
   if(!banner)return;
-  monitorLastHealth=state||'never';
-  banner.dataset.health=monitorLastHealth;
   const healthy=state==='healthy'&&enabled===true;
+  monitorLastHealth=healthy?'healthy':state==='healthy'?'stale':state||'never';
+  banner.dataset.health=monitorLastHealth;
   const headline=working?'Verificação de pedidos em andamento':
     healthy?'Monitor sincronizado recentemente':
     state==='stale'?'Monitor com sincronização atrasada':
@@ -2833,10 +2839,10 @@ function monitorSyncStatus({state,reason,enabled,working,minutes,error,successAt
   monitorSetActiveIndicator('#monitorStateRunning',healthy?'ok':enabled?'warn':'neutral');
   setMonitorText('#monitorRunningInfo',working?'Consulta em andamento':healthy?'Ativo e sincronizado':
     !enabled?'Serviço indisponível':'Verifique a sincronização');
-  monitorSetActiveIndicator('#monitorStateInterval',enabled?'ok':'neutral');
+  monitorSetActiveIndicator('#monitorStateInterval',healthy?'ok':enabled?'warn':'neutral');
   setMonitorText('#monitorIntervalLabel','Consultas a cada '+(minutes||5)+' min');
   setMonitorText('#monitorIntervalInfo',enabled?'Programadas com servidor ativo':'Monitor não habilitado');
-  monitorSetActiveIndicator('#monitorStatePanel',enabled?'ok':'neutral');
+  monitorSetActiveIndicator('#monitorStatePanel',healthy?'ok':enabled?'warn':'neutral');
   setMonitorText('#monitorPanelInfo',enabled?'Alertas exibidos nesta página':'Aguardando serviço');
   monitorBrowserState();
 }
@@ -2846,7 +2852,7 @@ async function refreshMonitor(){
     const d=await json('/api/shopee/monitor');
     const status=d.status||{},health=status.health||{};
     const pending=Array.isArray(d.pending)?d.pending:[],alerts=Array.isArray(d.alerts)?d.alerts:[];
-    monitorCurrentPending=pending;monitorCurrentAlerts=alerts;
+    monitorCurrentPending=pending;monitorCurrentAlerts=alerts;monitorDataLoaded=true;
     const countCritical=pending.filter(x=>monitorRiskFilter(x,'critical')).length;
     setMonitorText('#monitorPendingCount',pending.length);
     setMonitorText('#monitorCriticalCount',countCritical);
@@ -2872,7 +2878,7 @@ async function refreshMonitor(){
     }
     monitorSeenAlerts=keys;
   }catch(e){
-    monitorLastHealth='failed';
+    monitorLastHealth='failed';monitorDataLoaded=false;
     const banner=$('#monitorStatus');if(banner)banner.dataset.health='failed';
     setMonitorText('#monitorHeadline','Monitor indisponível');
     setMonitorText('#monitorStatusDetail','Não foi possível consultar pedidos e alertas: '+e.message+'. Utilize Verificar pedidos agora.');
@@ -2913,7 +2919,7 @@ $('#monitorShowAllAlerts')?.addEventListener?.('click',()=>{
 $('#checkOrdersBtn').onclick=async()=>{
   if(monitorChecking)return;
   monitorChecking=true;
-  const button=$('#checkOrdersBtn');button.disabled=true;button.textContent='Verificando...';
+  const button=$('#checkOrdersBtn');button.disabled=true;setMonitorText('#checkOrdersLabel','Verificando...');
   setMonitorText('#monitorHeadline','Verificação manual iniciada');
   setMonitorText('#monitorStatusDetail','Consultando pedidos e prazos oficiais da Shopee. Aguarde.');
   try{
@@ -2921,15 +2927,15 @@ $('#checkOrdersBtn').onclick=async()=>{
     setMonitorText('#monitorStatusDetail',result.busy?'Já existe uma verificação em andamento.':
       'Consulta concluída: '+result.scanned+' pedidos analisados e '+result.newAlerts+' novo(s) aviso(s).');
   }catch(e){setMonitorText('#monitorStatusDetail','Falha ao verificar pedidos: '+e.message+'. Tente novamente.');}
-  finally{monitorChecking=false;button.disabled=false;button.textContent='↻ Verificar pedidos agora';await refreshMonitor();}
+  finally{monitorChecking=false;button.disabled=false;setMonitorText('#checkOrdersLabel','Verificar pedidos agora');await refreshMonitor();}
 };
 $('#enableBrowserAlertsBtn').onclick=async()=>{
   const button=$('#enableBrowserAlertsBtn');
   if(typeof Notification==='undefined'){
-    button.textContent='Navegador não suporta alertas';monitorBrowserState();return;
+    setMonitorText('#browserAlertsLabel','Navegador sem suporte');monitorBrowserState();return;
   }
   try{await Notification.requestPermission();}
-  catch{button.textContent='Não foi possível solicitar permissão';}
+  catch{setMonitorText('#browserAlertsLabel','Não foi possível solicitar permissão');}
   monitorBrowserState();
 };
 if(typeof setTimeout==='function')setTimeout(()=>refreshMonitor(),1500);
