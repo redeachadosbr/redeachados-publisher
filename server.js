@@ -650,6 +650,8 @@ app.get('/api/shopee/optimizer/workflow',mustLogin,requireWeDropAdmin,async(req,
       contentVariants:review.contentVariants||null,contentResearch:review.contentResearch||null,
       attributes:record.attributeAudit.attributes,attributeChanges:review.attributes||[],taxDraft:review.tax||{},taxCurrent:current.tax_info||{},
       recordedAt:stored?.updated_at||null,stages,
+      variationConfig:review.variationConfig||{enabled:Boolean(record.hasModel),type:'',values:[]},
+      hasShopeeModels:Boolean(record.hasModel),shopeeModels:record.models||[],imageNotes:review.imageNotes||{},
       draftTitle:review.draftTitle||safeTitle(record.title),
       draftDescription:review.draftDescription||descriptionDraft(record),
       imageCount:record.imageCount,
@@ -687,7 +689,8 @@ app.post('/api/shopee/optimizer/workflow/review',mustLogin,requireWeDropAdmin,as
     const state=await saveWorkflowReview(auth.shopId,itemId,modelId,sku,change);
     res.json({ok:true,saved:true,marketplaceUpdated:false,sku,itemId,modelId,
       stages:buildStages(record,state),attributeChanges:state.attributes||[],taxDraft:state.tax||{},draftTitle:state.draftTitle||safeTitle(record.title),
-      draftDescription:state.draftDescription||descriptionDraft(record)});
+      draftDescription:state.draftDescription||descriptionDraft(record),
+      variationConfig:state.variationConfig||{enabled:Boolean(record.hasModel),type:'',values:[]},imageNotes:state.imageNotes||{}});
   }catch(e){res.status(400).json({error:String(e.message||e).slice(0,350)});}
 });
 

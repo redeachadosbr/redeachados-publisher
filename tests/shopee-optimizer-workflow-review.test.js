@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
-import {buildStages,descriptionDraft,safeTitle,validateReview,STAGE_IDS} from '../shopeeOptimizationWorkflow.js';
+import {buildStages,descriptionDraft,safeTitle,validateReview,STAGE_IDS,validateVariationConfig,validateImageNotes} from '../shopeeOptimizationWorkflow.js';
 const example={itemId:'22095398152',sku:'TRC1525',selectedModelId:'179732416931',
   title:'Piscina Inflável - Azul',imageCount:5,
   videoStatus:'Não confirmado pela API (não significa ausência de vídeo)',
@@ -26,6 +26,8 @@ test('TRC1525 oferece 9 etapas com mídia pendente e atributos não inventados',
  assert.match(stages.find(s=>s.key==='description').hint,/dois parágrafos curtos/);
  assert.match(stages.find(s=>s.key==='description').hint,/10 a 20/);
  assert.equal(stages.at(-1).blocking,true);
+ assert.deepEqual(stages.map(s=>s.key),['images','video','seo','category','technical','description','variants','fiscal','final']);
+ assert.equal(stages.find(x=>x.key==='variants').status,'skipped');
 });
 test('título e descrição não inventam capacidade, idade nem medidas',()=>{
  assert.equal(safeTitle('  Piscina  Inflável  -  Azul   '),'Piscina Inflável - Azul');
@@ -66,3 +68,13 @@ test('UI tem controles reais para abrir, copiar e salvar revisão persistente',(
  assert.match(route,/marketplaceUpdated:false/);
 });
 
+
+test('variação opcional validada sem publicar na Shopee',()=>{
+ assert.deepEqual(validateVariationConfig({enabled:false}),{enabled:false,type:'',values:[]});
+ assert.deepEqual(validateReview({stage:'variants',reviewed:true,variationConfig:{enabled:true,type:'Cor',values:['Azul','Verde']}}).variationConfig.values,['Azul','Verde']);
+ assert.throws(()=>validateVariationConfig({enabled:true,type:'Cor',values:['Azul','azul']},true),/repetidas/);
+ assert.throws(()=>validateVariationConfig({enabled:true,type:'Inexistente',values:['Azul']},true),/inválido/);
+ assert.throws(()=>validateVariationConfig({enabled:true,type:'Cor',values:[]},true),/pelo menos uma/);
+ assert.deepEqual(validateImageNotes({'1':'Refazer o fundo','9':'Mostrar embalagem'}),{'1':'Refazer o fundo','9':'Mostrar embalagem'});
+ assert.throws(()=>validateImageNotes({'10':'Inválido'}),/posi/);
+});
