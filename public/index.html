@@ -6,7 +6,7 @@
 <meta name="theme-color" content="#0A1C3A">
 <link rel="icon" type="image/svg+xml" href="/brand-logo.svg">
 <title>Rede Achados BR · Gestão Shopee</title>
-<link rel="stylesheet" href="/style.css?v=1.19.6">
+<link rel="stylesheet" href="/style.css?v=1.19.7">
 </head>
 <body>
 <div class="shell app-layout">
@@ -32,7 +32,7 @@
         </details>
       </div>
     </nav>
-    <div class="sidebar-bottom"><div class="sidebar-support"><span class="sidebar-support-dot"></span><span><strong>Central Shopee</strong><small>Versão 1.19.6</small></span></div><small class="sidebar-copy">© Rede Achados BR</small></div>
+    <div class="sidebar-bottom"><div class="sidebar-support"><span class="sidebar-support-dot"></span><span><strong>Central Shopee</strong><small>Versão 1.19.7</small></span></div><small class="sidebar-copy">© Rede Achados BR</small></div>
   </aside>
   <button class="sidebar-scrim" id="sidebarScrim" type="button" aria-label="Fechar menu" hidden></button>
   <div class="workspace-main">
@@ -548,10 +548,69 @@
         </table></div>
         <div class="catalog-paging"><span id="productsRowsShown" class="hint"></span><button id="productsMoreBtn" class="secondary" type="button" hidden>Mostrar mais anúncios</button></div>
       </section>
-              <section class="tabpane" id="tab-orders">
-        <div class="section-head"><div><span class="eyebrow">PEDIDOS</span><h2>Últimos 15 dias</h2></div><button id="loadOrdersBtn">Carregar pedidos</button></div>
-        <div id="ordersSummary" class="notice">Ainda não carregado.</div>
-        <div class="table-wrap"><table><thead><tr><th>Pedido</th><th>Status</th><th>Criação</th></tr></thead><tbody id="ordersBody"></tbody></table></div>
+              <section class="tabpane" id="tab-orders" aria-label="Pedidos e vendas Shopee">
+        <div class="orders-v2-heading">
+          <div><span class="orders-v2-eyebrow">OPERAÇÃO</span><h2>Pedidos e vendas</h2>
+            <p>Acompanhe pedidos, status, quantidades e desempenho do período.</p></div>
+          <div class="orders-v2-header-actions">
+            <label class="orders-v2-period"><svg class="orders-v2-icon" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round" stroke-linecap="round"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M7 3v4M17 3v4M3 10h18"/></svg>
+              <select id="ordersPeriod" aria-label="Período dos pedidos">
+                <option value="1">Hoje (24h)</option><option value="7">Últimos 7 dias</option>
+                <option value="15" selected>Últimos 15 dias</option><option value="30">Últimos 30 dias</option>
+                <option value="60">Últimos 60 dias</option></select></label>
+            <button id="ordersExportBtn" type="button" class="secondary" disabled><svg class="orders-v2-icon" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round" stroke-linecap="round"><path d="M12 3v12m-5-5 5 5 5-5M4 16v5h16v-5"/></svg> Exportar relatório</button>
+            <button id="loadOrdersBtn" type="button"><svg class="orders-v2-icon" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round" stroke-linecap="round"><path d="M20 7v5h-5M4 17v-5h5"/><path d="M5.6 8A8 8 0 0 1 19 7l1 5M4 12l1 5a8 8 0 0 0 13.5-1"/></svg> <span id="ordersLoadLabel">Carregar pedidos</span></button>
+          </div>
+        </div>
+        <div class="orders-v2-kpis"><article class="orders-v2-kpi orders-v2-kpi-blue"><div class="orders-v2-kpi-icon"><svg class="orders-v2-icon" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round" stroke-linecap="round"><path d="M3 3h2l2.6 12h12.2L22 7H6"/><circle cx="10" cy="21" r="1"/><circle cx="19" cy="21" r="1"/></svg></div><span class="optimizer-tip orders-v2-help" tabindex="0" role="note" data-help="Quantidade de pedidos efetivamente carregados do período selecionado, após percorrer todas as páginas disponíveis." aria-label="Ajuda: Quantidade de pedidos efetivamente carregados do período selecionado, após percorrer todas as páginas disponíveis.">?</span><div class="orders-v2-kpi-title">Pedidos no período</div><div class="orders-v2-kpi-value" id="ordersKpiCount">—</div><div class="orders-v2-kpi-foot" id="ordersKpiCountFoot">Aguardando consulta</div></article>
+<article class="orders-v2-kpi orders-v2-kpi-red"><div class="orders-v2-kpi-icon"><svg class="orders-v2-icon" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round" stroke-linecap="round"><rect x="2" y="5" width="13" height="12" rx="1.5"/><path d="M15 9h4l3 4v4h-7"/><circle cx="7" cy="18" r="2"/><circle cx="19" cy="18" r="2"/></svg></div><span class="optimizer-tip orders-v2-help" tabindex="0" role="note" data-help="Contagem com status SHIPPED retornado pela Shopee. Outros estados logísticos são separados." aria-label="Ajuda: Contagem com status SHIPPED retornado pela Shopee. Outros estados logísticos são separados.">?</span><div class="orders-v2-kpi-title">Pedidos enviados</div><div class="orders-v2-kpi-value" id="ordersKpiShipped">—</div><div class="orders-v2-kpi-foot" id="ordersKpiShippedFoot">Aguardando consulta</div></article>
+<article class="orders-v2-kpi orders-v2-kpi-green"><div class="orders-v2-kpi-icon"><svg class="orders-v2-icon" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round" stroke-linecap="round"><circle cx="12" cy="12" r="9"/><path d="m7 12 3 3 6-6"/></svg></div><span class="optimizer-tip orders-v2-help" tabindex="0" role="note" data-help="Contagem com status COMPLETED retornado pela Shopee." aria-label="Ajuda: Contagem com status COMPLETED retornado pela Shopee.">?</span><div class="orders-v2-kpi-title">Pedidos concluídos</div><div class="orders-v2-kpi-value" id="ordersKpiCompleted">—</div><div class="orders-v2-kpi-foot" id="ordersKpiCompletedFoot">Aguardando consulta</div></article>
+<article class="orders-v2-kpi orders-v2-kpi-purple"><div class="orders-v2-kpi-icon"><svg class="orders-v2-icon" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round" stroke-linecap="round"><rect x="5" y="3" width="14" height="18" rx="2"/><path d="M9 8h6M9 12h6M9 16h6"/></svg></div><span class="optimizer-tip orders-v2-help" tabindex="0" role="note" data-help="Pedidos únicos efetivamente carregados. Pode diferir do universo total se a consulta ficar incompleta." aria-label="Ajuda: Pedidos únicos efetivamente carregados. Pode diferir do universo total se a consulta ficar incompleta.">?</span><div class="orders-v2-kpi-title">Total de registros</div><div class="orders-v2-kpi-value" id="ordersKpiRecords">—</div><div class="orders-v2-kpi-foot" id="ordersKpiRecordsFoot">Pedidos carregados</div></article>
+<article class="orders-v2-kpi orders-v2-kpi-amber"><div class="orders-v2-kpi-icon"><svg class="orders-v2-icon" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round" stroke-linecap="round"><path d="m12 2 9 5-9 5-9-5 9-5ZM3 7v10l9 5 9-5V7M12 12v10"/></svg></div><span class="optimizer-tip orders-v2-help" tabindex="0" role="note" data-help="Soma das quantidades dos itens de pedidos cujos detalhes retornaram. Se algum pedido não informar quantidades, a soma completa fica indisponível." aria-label="Ajuda: Soma das quantidades dos itens de pedidos cujos detalhes retornaram. Se algum pedido não informar quantidades, a soma completa fica indisponível.">?</span><div class="orders-v2-kpi-title">Itens (quantidades)</div><div class="orders-v2-kpi-value" id="ordersKpiItems">—</div><div class="orders-v2-kpi-foot" id="ordersKpiItemsFoot">Aguardando detalhes</div></article>
+<article class="orders-v2-kpi orders-v2-kpi-slate"><div class="orders-v2-kpi-icon"><svg class="orders-v2-icon" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round" stroke-linecap="round"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l4 2"/></svg></div><span class="optimizer-tip orders-v2-help" tabindex="0" role="note" data-help="Horário da última consulta finalizada; erro ou carregamento parcial são identificados separadamente." aria-label="Ajuda: Horário da última consulta finalizada; erro ou carregamento parcial são identificados separadamente.">?</span><div class="orders-v2-kpi-title">Última atualização</div><div class="orders-v2-kpi-value" id="ordersKpiUpdated">—</div><div class="orders-v2-kpi-foot" id="ordersKpiUpdatedFoot">Nenhuma sincronização concluída</div></article></div>
+        <div class="orders-v2-charts">
+          <section class="orders-v2-chart-card">
+            <h3>Distribuição por status <span class="optimizer-tip orders-v2-help" tabindex="0" role="note" data-help="Proporção dos pedidos carregados por status oficial informado pela Shopee; não são valores simulados." aria-label="Ajuda: Proporção dos pedidos carregados por status oficial informado pela Shopee; não são valores simulados.">?</span></h3>
+            <div class="orders-v2-chart-layout">
+              <div id="ordersStatusDonut" class="orders-v2-donut" role="img" aria-label="Gráfico com distribuição por status, aguardando pedidos">
+                <div class="orders-v2-donut-center"><strong id="ordersDonutTotal">—</strong><span>pedidos</span></div></div>
+              <div id="ordersStatusLegend" class="orders-v2-chart-legend" aria-live="polite">Aguardando pedidos…</div>
+            </div>
+          </section>
+          <section class="orders-v2-chart-card orders-v2-summary-card">
+            <h3><svg class="orders-v2-icon" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round" stroke-linecap="round"><path d="M3 20V11h4v9M10 20V4h4v16M17 20v-8h4v8"/></svg> Resumo do período <span class="optimizer-tip orders-v2-help" tabindex="0" role="note" data-help="Resumo dos pedidos carregados, baseado em dados reais. Caso itens ou valores não estejam confirmados, a limitação aparece na tela." aria-label="Ajuda: Resumo dos pedidos carregados, baseado em dados reais. Caso itens ou valores não estejam confirmados, a limitação aparece na tela.">?</span></h3>
+            <div id="ordersPeriodSummary" class="orders-v2-summary-lines" aria-live="polite"><p>Aguardando consulta da Shopee.</p></div>
+          </section>
+        </div>
+        <div class="orders-v2-filterbar">
+          <label class="orders-v2-search"><svg class="orders-v2-icon" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="m16.5 16.5 5 5"/></svg><input id="ordersSearch" type="search" placeholder="Buscar por pedido ou SKU..." aria-label="Buscar por pedido ou SKU" autocomplete="off"></label>
+          <select id="ordersStatusFilter" aria-label="Filtrar situação dos pedidos"><option value="ALL">Todos os status</option></select>
+          <label class="orders-v2-sort"><svg class="orders-v2-icon" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round" stroke-linecap="round"><path d="m7 4-3 3 3 3M4 7v13M17 20l3-3-3-3m3 3V4"/></svg><select id="ordersSort" aria-label="Ordenar pedidos">
+            <option value="newest">Mais recentes</option><option value="oldest">Mais antigos</option><option value="value_desc">Maior valor</option>
+            <option value="value_asc">Menor valor</option><option value="quantity">Mais itens</option></select></label>
+          <div id="ordersQuickFilters" class="orders-v2-quickfilters" role="group" aria-label="Filtros rápidos de pedidos">
+            <button type="button" class="orders-v2-chip selected" data-orders-status="ALL" aria-pressed="true">Todos (—)</button>
+          </div>
+        </div>
+        <section class="orders-v2-results">
+          <div class="orders-v2-results-head"><div><h3>Pedidos encontrados</h3><span id="ordersFoundBadge">— pedidos</span></div>
+            <div class="orders-v2-paging"><span id="ordersPagingInfo"></span>
+              <button id="ordersPrevPage" type="button" class="secondary" disabled aria-label="Página anterior">‹</button>
+              <span id="ordersCurrentPage">1 / 1</span>
+              <button id="ordersNextPage" type="button" class="secondary" disabled aria-label="Próxima página">›</button></div>
+          </div>
+          <div id="ordersSummary" class="orders-v2-load-status" data-state="idle" role="status" aria-live="polite">Aguardando carregamento da Shopee.</div>
+          <div class="orders-v2-table-wrap"><table class="orders-v2-table">
+            <thead><tr><th>Pedido</th><th>Status</th><th>Criação</th><th>Qtd. itens <span class="optimizer-tip orders-v2-help" tabindex="0" role="note" data-help="Somatório das quantidades reais, quando a Shopee disponibilizar os detalhes." aria-label="Ajuda: Somatório das quantidades reais, quando a Shopee disponibilizar os detalhes.">?</span></th>
+              <th>SKU principal</th><th>Valor / resumo <span class="optimizer-tip orders-v2-help" tabindex="0" role="note" data-help="Total oficial do pedido, quando disponível nos detalhes da Shopee." aria-label="Ajuda: Total oficial do pedido, quando disponível nos detalhes da Shopee.">?</span></th><th>Ações</th></tr></thead>
+            <tbody id="ordersBody"><tr><td colspan="7">Clique em Carregar pedidos para consultar os dados.</td></tr></tbody>
+          </table></div>
+        </section>
+        <section id="ordersDetailPanel" class="orders-v2-detail-panel" hidden aria-live="polite" tabindex="-1">
+          <div class="orders-v2-details-title"><div><h3 id="ordersDetailTitle">Detalhes do pedido</h3><span id="ordersDetailMeta"></span></div>
+            <button id="ordersDetailClose" type="button" class="secondary">Fechar</button></div>
+          <div id="ordersDetailBody"></div>
+        </section>
       </section>
               <section class="tabpane" id="tab-alerts" aria-label="Monitor de envios">
         <div class="monitor-heading">
@@ -902,6 +961,6 @@
     </main>
   </div>
 </div>
-<script src="/app.js?v=1.19.6"></script>
+<script src="/app.js?v=1.19.7"></script>
 </body>
 </html>
