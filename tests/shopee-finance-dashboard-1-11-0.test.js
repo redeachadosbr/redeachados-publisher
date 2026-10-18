@@ -121,3 +121,11 @@ test('gráficos usam dados confirmados e exportação respeita filtro real e CSV
  assert.match(js,/financeExportCsv'\)\.disabled=false/);
  assert.match(js,/financeGlobalSearch'\)\.oninput=/);
 });
+
+test('o menu financeiro é direto sob Gestão e o relatório CSV protege fórmulas sem invalidar saldos negativos',()=>{
+ assert.match(html,/<span class="nav-name">Financeiro Shopee<\/span>/);
+ assert.equal((html.match(/data-tab="finance"/g)||[]).length,1);
+ assert.match(js,/classList\?\.toggle\?\.\('view-finance',name==='finance'\)/);
+ assert.match(js,/typeof value==='number'&&Number\.isFinite\(value\)/);
+ assert.match(js,/toLocaleString\('pt-BR',\{useGrouping:false,maximumFractionDigits:2\}\)/);
+});

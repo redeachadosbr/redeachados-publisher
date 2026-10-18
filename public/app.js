@@ -46,7 +46,8 @@ function setTab(name,{updateHistory=true,scroll=true}={}){
   if(!pane)return;
   activeAppPage=name;
   document.body?.classList?.toggle?.('view-optimizer',name==='optimizer');
-  const reportTabs=new Set(['ads','wedrop','finance']);
+  document.body?.classList?.toggle?.('view-finance',name==='finance');
+  const reportTabs=new Set(['ads','wedrop']);
   const reportMenu=$('#sidebarReports');
   if(reportMenu&&reportTabs.has(name))reportMenu.open=true;
   document.querySelectorAll('.nav-link[data-tab]').forEach(link=>{
@@ -2252,6 +2253,8 @@ function renderFinanceDistribution(report){
  donut.setAttribute('aria-label','Total Ads '+wdMoney(total)+'. '+parts.map(x=>x.label+' '+wdMoney(x.value)).join('; '));
 }
 function financeCsvSafe(value){
+ if(typeof value==='number'&&Number.isFinite(value))
+   return '"'+value.toLocaleString('pt-BR',{useGrouping:false,maximumFractionDigits:2})+'"';
  const raw=String(value??'');
  const guarded=/^[\s\uFEFF]*[=+@\-\t\r]/.test(raw)?"'"+raw:raw;
  return '"'+guarded.replace(/"/g,'""')+'"';
