@@ -2740,3 +2740,21 @@ body.view-products #tab-products{color:#09254f}
  #tab-products .catalog-pagination-toolbar{width:100%;flex-wrap:wrap;justify-content:space-between}
  #tab-products .catalog-title-count h3{font-size:16px}
 }
+
+
+/* Ações contextuais usam botões discretos, sem herdar o botão laranja de Detalhes. */
+#tab-products .catalog-products-table tbody td:nth-child(8) .catalog-row-options button{
+ display:block;min-width:0;min-height:34px;width:100%;text-align:left;
+ font-size:11px;padding:8px 10px;background:transparent;color:#20527e;
+ border:0;box-shadow:none;white-space:nowrap;font-weight:650;border-radius:7px;
+}
+#tab-products .catalog-products-table tbody td:nth-child(8) .catalog-row-options button:hover{
+ background:#eaf4ff;color:#0b4b94;
+}
+#tab-products .catalog-products-table tbody td:nth-child(8) .catalog-row-menu>summary{
+ background:#fff;color:#254e80;box-shadow:none;
+}
+#tab-products .catalog-page-button:focus-visible,#tab-products .catalog-filter-chip:focus-visible,
+#tab-products .catalog-row-menu summary:focus-visible{
+ outline:3px solid #2a82d3;outline-offset:2px;
+}
