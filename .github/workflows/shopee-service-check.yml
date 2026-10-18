@@ -3,6 +3,7 @@ name: Validar serviço Shopee
 on:
   push:
     branches:
+      - shopee-service
       - feat/shopee-live-oauth-v2-20261016
   pull_request:
     branches:
