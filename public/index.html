@@ -6,7 +6,7 @@
 <meta name="theme-color" content="#0A1C3A">
 <link rel="icon" type="image/svg+xml" href="/brand-logo.svg">
 <title>Rede Achados BR · Gestão Shopee</title>
-<link rel="stylesheet" href="/style.css?v=1.18.1">
+<link rel="stylesheet" href="/style.css?v=1.18.2">
 </head>
 <body>
 <div class="shell app-layout">
@@ -89,7 +89,7 @@
   <div class="optimizer-page optimizer-v15-page">
     <div class="optimizer-v15-intro optimizer-v18-journey">
       <div class="optimizer-v15-intro-left"><span class="optimizer-v18-journey-icon" aria-hidden="true"><svg class="nav-icon" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="5"/><path d="M12 12l8-8"/></svg></span>
-        <span class="optimizer-v18-journey-title"><strong>Centro de otimização</strong><small>SKU → Precificação → Revisão</small></span></div>
+        <span class="optimizer-v18-journey-title"><strong>Centro de otimização</strong></span></div>
       <div class="optimizer-v18-journey-steps" aria-label="Etapas principais">
         <span class="optimizer-v18-journey-step is-current"><b>1</b>Localizar e analisar</span>
         <span class="optimizer-v18-journey-line"></span>
@@ -102,7 +102,7 @@
     <div class="optimizer-columns optimizer-v15-columns">
       <section class="optimizer-panel optimizer-search optimizer-v15-search" aria-label="Encontrar anúncio ou produto na WeDrop">
         <div class="optimizer-v15-heading"><span class="optimizer-v15-head-icon" aria-hidden="true">⌕</span>
-          <div class="optimizer-v15-heading-content"><h3>Localizar e analisar <span class="optimizer-v15-help-inline"><span class="optimizer-tip" tabindex="0" role="note" aria-label="Informe a SKU do produto. O sistema consulta o custo WeDrop imediatamente e tenta encontrar o anúncio exato na API Shopee, sem exigir Item ID." data-help="Informe a SKU do produto. O sistema consulta o custo WeDrop imediatamente e tenta encontrar o anúncio exato na API Shopee, sem exigir Item ID.">?</span></span></h3><p class="optimizer-v18-head-description">Informe o SKU do produto para analisar as informações.</p></div>
+          <div class="optimizer-v15-heading-content"><h3>Localizar e analisar <span class="optimizer-v15-help-inline"><span class="optimizer-tip" tabindex="0" role="note" aria-label="Informe a SKU do produto. O sistema consulta o custo WeDrop imediatamente e tenta encontrar o anúncio exato na API Shopee, sem exigir Item ID." data-help="Informe a SKU do produto. O sistema consulta o custo WeDrop imediatamente e tenta encontrar o anúncio exato na API Shopee, sem exigir Item ID.">?</span></span></h3></div>
           <span class="optimizer-v15-step-badge">SKU única</span>
         </div>
                 <div class="optimizer-inline">
@@ -119,15 +119,19 @@
       </section>
       <section class="optimizer-panel sh-price-quick optimizer-v15-price" id="optimizerQuickPricing" aria-label="Resumo da precificação por SKU">
         <div class="optimizer-v15-heading"><span class="optimizer-v15-head-icon amber" aria-hidden="true">%</span>
-          <div class="optimizer-v15-heading-content"><h3>Preço e desconto <span class="optimizer-tip" tabindex="0" role="note" aria-label="Preço bruto é o valor cheio a cadastrar. O desconto é preparado para Minha Promoção. A margem já considera os custos configurados e não aplica alterações na Shopee." data-help="Preço bruto é o valor cheio a cadastrar. O desconto é preparado para Minha Promoção. A margem já considera os custos configurados e não aplica alterações na Shopee.">?</span></h3><p class="optimizer-v18-head-description">Defina a margem desejada e visualize os valores calculados.</p></div>
+          <div class="optimizer-v15-heading-content"><h3>Preço e desconto <span class="optimizer-tip" tabindex="0" role="note" aria-label="Ajuda: entenda o preço bruto, desconto, preço final e lucro líquido antes de executar alterações na Shopee." data-help="Defina a margem desejada e visualize preço bruto, desconto sugerido, preço final e lucro líquido. O valor bruto é o preço cheio para o anúncio. A simulação considera os custos configurados e não altera a Shopee.">?</span></h3></div>
           <a href="/app/precificacao" class="optimizer-v15-action-link" data-go="pricing" aria-label="Abrir configurações de precificação">Ajustar <span aria-hidden="true">↗</span></a>
         </div>
       <div class="optimizer-v18-margin-control">
-        <details id="optimizerMarginDetails" class="optimizer-margin-details">
-          <summary>Margem líquida desejada <span class="optimizer-tip" tabindex="0" role="note" data-help="Ajuste a margem desejada; os valores serão recalculados para a SKU.">?</span></summary>
-          <div class="sh-quick-bar"><label for="optimizerQuickMargin" class="optimizer-visually-hidden">Margem desejada</label>
-            <input id="optimizerQuickMargin" class="sh-price-slider" type="range" min="0" max="70" step="1" value="25" aria-label="Margem desejada para o SKU"></div>
-        </details>
+        <div id="optimizerMarginDetails" class="optimizer-margin-details">
+          <div class="optimizer-margin-title-row">
+            <label for="optimizerQuickMargin">Margem líquida desejada</label>
+            <span class="optimizer-tip" tabindex="0" role="note"
+              data-help="Arraste a barra ou use as setas para definir a margem líquida desejada de 0% a 70%. Os valores são recalculados usando as taxas e os custos cadastrados. Essa simulação não altera o preço na Shopee."
+              aria-label="Ajuda: ajuste a margem de 0% a 70%. O aplicativo recalcula os preços, mas não publica alterações automaticamente.">?</span>
+          </div>
+          <input id="optimizerQuickMargin" class="sh-price-slider" type="range" min="0" max="70" step="1" value="25" aria-label="Margem líquida desejada, de 0 a 70 por cento">
+        </div>
         <div class="optimizer-v18-margin-stepper"><strong id="optimizerQuickMarginLabel">25%</strong>
           <div><button id="optimizerMarginPlus" type="button" aria-label="Aumentar margem em um ponto percentual">⌃</button>
             <button id="optimizerMarginMinus" type="button" aria-label="Diminuir margem em um ponto percentual">⌄</button></div>
@@ -146,7 +150,7 @@
     </div>
     <div class="optimizer-v15-below">
       <details class="optimizer-panel optimizer-rules optimizer-v15-accordion" aria-label="Regras permanentes" id="optimizerRulesDetails">
-        <summary><span class="optimizer-v15-accordion-icon" aria-hidden="true"><svg class="nav-icon" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M12 2v2m0 16v2M4 12H2m20 0h-2m-2.3-5.7 1.4-1.4m-14 14 1.4-1.4m0-11.4L5 4.7m14 14-1.4-1.4"/></svg></span><span class="optimizer-v15-accordion-title"><strong>Regras salvas da loja</strong><small>Prompts, imagens e orientações fiscais</small></span><span class="optimizer-v15-chevron">⌄</span></summary>
+        <summary><span class="optimizer-v15-accordion-icon" aria-hidden="true"><svg class="nav-icon" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M12 2v2m0 16v2M4 12H2m20 0h-2m-2.3-5.7 1.4-1.4m-14 14 1.4-1.4m0-11.4L5 4.7m14 14-1.4-1.4"/></svg></span><span class="optimizer-v15-accordion-title"><strong>Regras salvas da loja</strong></span><span class="optimizer-tip" tabindex="0" role="note" aria-label="Ajuda: orientações permanentes de imagens e fiscal" data-help="Abra para consultar e editar os prompts das 9 imagens e as orientações fiscais salvas para a loja. As alterações nessas regras não publicam anúncios.">?</span><span class="optimizer-v15-chevron">⌄</span></summary>
         <div class="optimizer-v15-rule-body">
           <div class="optimizer-v15-rule-help">Edite somente quando precisar. Estas regras são compartilhadas com todos os SKUs. <span class="optimizer-tip" tabindex="0" role="note" aria-label="O prompt e as regras fiscais ficam persistidos no Supabase e são carregados sem alterar anúncios. Informações fiscais exigem validação antes da publicação." data-help="O prompt e as regras fiscais ficam persistidos no Supabase e são carregados sem alterar anúncios. Informações fiscais exigem validação antes da publicação.">?</span></div>
                   <label class="optimizer-field">Prompt padrão das 9 imagens
@@ -161,7 +165,7 @@
         </div>
       </details>
       <details class="optimizer-panel optimizer-progress optimizer-v15-accordion" aria-label="Etapas da otimização" id="optimizerProgressDetails">
-        <summary><span class="optimizer-v15-accordion-icon" aria-hidden="true"><svg class="nav-icon" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M8 6h12M8 12h12M8 18h12"/><circle cx="4" cy="6" r="1" fill="currentColor"/><circle cx="4" cy="12" r="1" fill="currentColor"/><circle cx="4" cy="18" r="1" fill="currentColor"/></svg></span><span class="optimizer-v15-accordion-title"><strong>Etapas da otimização</strong><small>Imagens, vídeo, SEO, especificações, variações e fiscal</small></span><span class="optimizer-v15-chevron">⌄</span></summary>
+        <summary><span class="optimizer-v15-accordion-icon" aria-hidden="true"><svg class="nav-icon" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M8 6h12M8 12h12M8 18h12"/><circle cx="4" cy="6" r="1" fill="currentColor"/><circle cx="4" cy="12" r="1" fill="currentColor"/><circle cx="4" cy="18" r="1" fill="currentColor"/></svg></span><span class="optimizer-v15-accordion-title"><strong>Etapas da otimização</strong></span><span class="optimizer-tip" tabindex="0" role="note" aria-label="Ajuda: consultar etapas" data-help="Consulte a sequência: imagens, vídeo, título SEO, categoria, especificações, descrição, variações quando houver e informações fiscais. A execução requer confirmação posterior.">?</span><span class="optimizer-v15-chevron">⌄</span></summary>
         <div id="optimizerSteps" class="optimizer-steps">
           <div class="optimizer-step">Imagens · aguardando validação</div><div class="optimizer-step">Vídeo · aguardando validação</div>
           <div class="optimizer-step">Título SEO · Categoria</div><div class="optimizer-step">Especificações · Descrição</div>
@@ -171,7 +175,7 @@
     </div>
     <section class="optimizer-panel optimizer-workflow" id="optimizerWorkflowPanel" hidden aria-label="Fluxo de otimização por SKU">
       <div class="optimizer-workflow-heading">
-        <div><h3>Preparar e revisar o anúncio <span class="optimizer-tip" tabindex="0" role="note" data-help="Cada etapa salva a conferência da SKU no Supabase. Nenhuma alteração é executada na Shopee sem ação autorizada e confirmação da API." aria-label="Cada etapa salva a conferência da SKU no Supabase. Nenhuma alteração é executada na Shopee sem ação autorizada e confirmação da API.">?</span></h3><p class="optimizer-v18-head-description">Siga o fluxo de etapas para deixar seu anúncio completo e otimizado.</p>
+        <div><h3>Preparar e revisar o anúncio <span class="optimizer-tip" tabindex="0" role="note" data-help="Siga a sequência do anúncio: imagens, vídeo, SEO, categoria, especificações, descrição, variações opcionais e fiscal. Abra só a etapa em preparação. A revisão é salva, mas publicar exige sua autorização e confirmação da Shopee." aria-label="Cada etapa salva a conferência da SKU no Supabase. Nenhuma alteração é executada na Shopee sem ação autorizada e confirmação da API.">?</span></h3>
         </div>
         <div class="optimizer-workflow-toolbar"><label class="optimizer-has-variants"><input type="checkbox" id="optimizerHasVariants"> Tem variações</label>
         <span class="optimizer-workflow-counter" id="optimizerWorkflowCounter">0 / 7 etapas conferidas</span>
@@ -720,6 +724,6 @@
     </main>
   </div>
 </div>
-<script src="/app.js?v=1.18.1"></script>
+<script src="/app.js?v=1.18.2"></script>
 </body>
 </html>

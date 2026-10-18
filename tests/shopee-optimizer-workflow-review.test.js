@@ -143,5 +143,21 @@ test('preços e margem cabem em cartões compactos sem quebrar valores monetári
  assert.match(css,/white-space:nowrap;word-break:normal;overflow-wrap:normal/);
  assert.match(css,/font-variant-numeric:tabular-nums/);
  assert.match(css,/@container \(max-width: 590px\)/);
- assert.match(html,/style\.css\?v=1\.18\.1/);
+ assert.match(html,/style\.css\?v=1\.18\.2/);
+});
+
+test('slider de margem sempre visível, com ajuda contextual e resumos sem texto redundante',()=>{
+ const html=readFileSync(new URL('../public/index.html',import.meta.url),'utf8');
+ const css=readFileSync(new URL('../public/style.css',import.meta.url),'utf8');
+ const js=readFileSync(new URL('../public/app.js',import.meta.url),'utf8');
+ const margin=html.slice(html.indexOf('class="optimizer-v18-margin-control"'),html.indexOf('id="optimizerQuickStatus"'));
+ assert.match(margin,/<div id="optimizerMarginDetails" class="optimizer-margin-details">/);
+ assert.doesNotMatch(margin,/<details|<summary/);
+ assert.match(margin,/id="optimizerQuickMargin"[^>]*type="range"/);
+ assert.match(margin,/data-help="Arraste a barra ou use as setas/);
+ assert.match(html,/Regras salvas da loja<\/strong><\/span><span class="optimizer-tip"/);
+ assert.match(html,/Etapas da otimização<\/strong><\/span><span class="optimizer-tip"/);
+ assert.doesNotMatch(html,/class="optimizer-v18-head-description"/);
+ assert.match(css,/#optimizerQuickMargin\.sh-price-slider\{/);
+ assert.match(js,/slider\.dispatchEvent\(new Event\('input'/);
 });

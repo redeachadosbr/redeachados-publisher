@@ -1926,3 +1926,48 @@ button.topbar-logout{font-size:13px;color:#183766;border-color:#dfebf6;padding:1
 @container (max-width: 310px){
  .optimizer-v15-page .sh-price-quick-values{grid-template-columns:1fr}
 }
+
+
+/* 1.18.2 — margem sempre visível e explicações concentradas no ícone de ajuda. */
+.optimizer-v15-page .optimizer-v18-margin-control{
+  display:flex;align-items:center;gap:10px;min-height:67px;
+  padding:8px 10px 8px 13px;
+}
+.optimizer-v15-page .optimizer-v18-margin-control #optimizerMarginDetails{
+  flex:1 1 auto;display:flex;flex-direction:column;gap:9px;
+  min-width:0;margin:0;padding:0;border:0;background:transparent;
+}
+.optimizer-v15-page .optimizer-margin-title-row{
+  display:flex;align-items:center;gap:6px;min-height:17px;
+}
+.optimizer-v15-page .optimizer-margin-title-row label{
+  font-size:11px;font-weight:760;color:#12315b;white-space:nowrap;
+}
+.optimizer-v15-page .optimizer-margin-title-row .optimizer-tip{margin-left:2px}
+.optimizer-v15-page #optimizerQuickMargin.sh-price-slider{
+  display:block;width:100%;min-width:0;height:16px;min-height:16px;
+  margin:0;padding:0;border:0;border-radius:0;
+  background:transparent;accent-color:#f06412;cursor:pointer;
+}
+.optimizer-v15-page #optimizerQuickMargin.sh-price-slider:focus-visible{
+  outline:2px solid #f18857;outline-offset:2px;
+}
+.optimizer-v15-page .optimizer-v18-margin-stepper{flex:none;min-height:47px}
+.optimizer-v15-page .optimizer-v18-margin-stepper strong{font-size:17px;min-width:49px}
+.optimizer-v15-page .optimizer-v18-margin-stepper button{height:23px;width:28px;font-size:17px}
+.optimizer-v15-page .optimizer-v15-heading{margin-bottom:11px}
+.optimizer-v15-page .optimizer-v15-heading .optimizer-v15-heading-content h3{margin:0}
+.optimizer-v15-page .optimizer-v15-accordion>summary{min-height:57px;gap:10px}
+.optimizer-v15-page .optimizer-v15-accordion>summary .optimizer-tip{margin-left:0}
+.optimizer-v15-page .optimizer-v15-accordion>summary .optimizer-v15-chevron{margin-left:auto}
+/* Tooltips remain readable on focus (keyboard/mobile) and are not always-on text. */
+.optimizer-v15-page .optimizer-tip:focus-visible{z-index:80}
+.optimizer-v15-page .optimizer-tip:is(:hover,:focus-visible)::after{
+  max-width:min(300px,calc(100vw - 38px));overflow-wrap:anywhere;
+}
+@container (max-width: 370px){
+  .optimizer-v15-page .optimizer-margin-title-row label{font-size:10px}
+  .optimizer-v15-page .optimizer-v18-margin-control{gap:6px;padding:7px}
+  .optimizer-v15-page .optimizer-v18-margin-stepper strong{min-width:40px;font-size:15px}
+  .optimizer-v15-page .optimizer-v18-margin-stepper button{width:26px}
+}
