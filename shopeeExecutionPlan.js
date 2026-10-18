@@ -36,7 +36,6 @@ export function compileShopeeExecutionPlan({shopId,itemId,modelId,sku,record,rev
   const changing=new Set(stages.technical?.reviewed?(state.attributes||[]).map(x=>Number(x.attributeId)):[]);
   const pendingAttributes=(record.attributeAudit?.attributes||[]).filter(x=>!x.conditional&&x.state==='missing'&&!changing.has(x.id));
   if(pendingAttributes.length)warnings.push('Ficha técnica: '+pendingAttributes.map(x=>x.name).join(', ')+'. Dados sem fonte permanecem pendentes; somente os campos revisados serão alterados.');
-  warnings.push('Categoria e GTIN atuais serão preservados. Confira o cadastro do produto.');
   if(state.variationConfig?.enabled)warnings.push('Variações: somente rascunho revisado. Modelos, opções e imagens individuais NÃO serão cadastrados na Shopee nesta execução. Exigem fluxo específico de modelos e fotos confirmadas.');
   if(!stages.fiscal?.reviewed||!state.tax)warnings.push('Fiscal: informe os dados e a fonte por SKU para preparar a alteração.');
   warnings.push('Preço, frete e promoção permanecem separados; descontos não serão enviados.');

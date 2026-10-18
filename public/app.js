@@ -1444,7 +1444,6 @@ function optimizerWorkflowRender(data){
     images:'<rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><path d="m3 17 5-5 4 3 4-5 5 6"/>',
     video:'<rect x="3" y="5" width="13" height="14" rx="2"/><path d="m16 10 5-3v10l-5-3"/>',
     seo:'<path d="M3 19h8M4 15l7-7 4 4-7 7H4v-4ZM15 4l5 5M16 15h5M19 12v7"/>',
-    category:'<path d="M3 4v16M6 4v16M10 4v16M13 4v16M18 4v16M21 4v16"/>',
     technical:'<path d="M6 2h9l5 5v15H6zM15 2v5h5M9 12h8M9 16h7"/>',
     description:'<path d="M4 6h2M9 6h11M4 12h2M9 12h11M4 18h2M9 18h11"/>',
     variants:'<path d="m12 2 9 5-9 5-9-5 9-5ZM3 7v10l9 5 9-5V7M12 12v10"/>',
@@ -1465,8 +1464,11 @@ function optimizerWorkflowRender(data){
  }
  if(optimizerWorkflowStage&&visible.some(x=>x.key===optimizerWorkflowStage))
    optimizerWorkflowOpen(optimizerWorkflowStage);
- // A tela inicial mostra apenas os cartões; abrir uma etapa exige escolha do usuário.
- else if(!optimizerWorkflowStage)$('#optimizerWorkflowEditor').hidden=true;
+ // Se uma etapa foi eliminada em uma atualização, fechar o editor antigo.
+ else{
+   optimizerWorkflowStage=null;
+   $('#optimizerWorkflowEditor').hidden=true;
+ }
 }
 // Importação manual (SKU isolada) em armazenamento privado. Nunca publica na Shopee.
 const optimizerVideoMaxBytes=30*1024*1024;

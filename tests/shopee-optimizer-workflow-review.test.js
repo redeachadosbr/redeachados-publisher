@@ -13,11 +13,11 @@ const example={itemId:'22095398152',sku:'TRC1525',selectedModelId:'179732416931'
     {name:'Material',state:'filled',mandatory:false}
   ]}
 };
-test('TRC1525 oferece 9 etapas com mídia pendente e atributos não inventados',()=>{
+test('TRC1525 oferece 8 etapas sem revisão de categoria/GTIN e mantém mídia e atributos',()=>{
  const stages=buildStages(example);
- assert.equal(stages.length,9);
+ assert.equal(stages.length,8);
  assert.deepEqual(stages.map(s=>s.key),[...STAGE_IDS]);
- const images=stages[0],video=stages[1],technical=stages[4];
+ const images=stages[0],video=stages[1],technical=stages[3];
  assert.equal(images.blocking,true);
  assert.match(images.detail,/5 de 9/);
  assert.equal(video.blocking,false);
@@ -27,7 +27,7 @@ test('TRC1525 oferece 9 etapas com mídia pendente e atributos não inventados',
  assert.match(stages.find(s=>s.key==='description').hint,/dois parágrafos curtos/);
  assert.match(stages.find(s=>s.key==='description').hint,/10 a 20/);
  assert.equal(stages.at(-1).blocking,true);
- assert.deepEqual(stages.map(s=>s.key),['images','video','seo','category','technical','description','variants','fiscal','final']);
+ assert.deepEqual(stages.map(s=>s.key),['images','video','seo','technical','description','variants','fiscal','final']);
  assert.equal(stages.find(x=>x.key==='variants').status,'skipped');
 });
 test('título e descrição não inventam capacidade, idade nem medidas',()=>{
@@ -143,7 +143,7 @@ test('preços e margem cabem em cartões compactos sem quebrar valores monetári
  assert.match(css,/white-space:nowrap;word-break:normal;overflow-wrap:normal/);
  assert.match(css,/font-variant-numeric:tabular-nums/);
  assert.match(css,/@container \(max-width: 590px\)/);
- assert.match(html,/style\.css\?v=1\.18\.2/);
+ assert.match(html,/style\.css\?v=1\.18\.3/);
 });
 
 test('slider de margem sempre visível, com ajuda contextual e resumos sem texto redundante',()=>{
@@ -160,4 +160,22 @@ test('slider de margem sempre visível, com ajuda contextual e resumos sem texto
  assert.doesNotMatch(html,/class="optimizer-v18-head-description"/);
  assert.match(css,/#optimizerQuickMargin\.sh-price-slider\{/);
  assert.match(js,/slider\.dispatchEvent\(new Event\('input'/);
+});
+
+test('a etapa Categoria/GTIN é automática e a busca SKU é compacta e alinhada',()=>{
+ const html=readFileSync(new URL('../public/index.html',import.meta.url),'utf8');
+ const css=readFileSync(new URL('../public/style.css',import.meta.url),'utf8');
+ const js=readFileSync(new URL('../public/app.js',import.meta.url),'utf8');
+ const plan=readFileSync(new URL('../shopeeExecutionPlan.js',import.meta.url),'utf8');
+ const stages=buildStages(example);
+ assert.equal(stages.some(x=>x.key==='category'),false);
+ assert.throws(()=>validateReview({stage:'category',reviewed:true}),/inválida/);
+ assert.equal(stages.some(x=>x.key==='technical'),true);
+ assert.match(html,/<label class="optimizer-field" for="optimizerSku">SKU do produto/);
+ assert.match(css,/\.optimizer-v15-search \.optimizer-inline\{\s*display:grid;grid-template-columns:minmax\(0,236px\) 126px/);
+ assert.match(css,/#optimizerSku\{\s*width:100%;height:44px;min-height:44px/);
+ assert.match(css,/#optimizerFind\{\s*width:126px;min-width:0;max-width:126px;height:44px;min-height:44px/);
+ assert.doesNotMatch(js,/category:'<path/);
+ assert.doesNotMatch(plan,/Confira o cadastro do produto/);
+ assert.match(html,/0 \/ 6 etapas conferidas/);
 });

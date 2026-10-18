@@ -6,7 +6,7 @@
 <meta name="theme-color" content="#0A1C3A">
 <link rel="icon" type="image/svg+xml" href="/brand-logo.svg">
 <title>Rede Achados BR · Gestão Shopee</title>
-<link rel="stylesheet" href="/style.css?v=1.18.2">
+<link rel="stylesheet" href="/style.css?v=1.18.3">
 </head>
 <body>
 <div class="shell app-layout">
@@ -106,7 +106,7 @@
           <span class="optimizer-v15-step-badge">SKU única</span>
         </div>
                 <div class="optimizer-inline">
-          <label class="optimizer-field">SKU do produto
+          <label class="optimizer-field" for="optimizerSku">SKU do produto
             <input id="optimizerSku" placeholder="Ex.: TRC1525" autocomplete="off" maxlength="120">
           </label>
           <button id="optimizerFind" type="button">Buscar SKU</button>
@@ -165,20 +165,20 @@
         </div>
       </details>
       <details class="optimizer-panel optimizer-progress optimizer-v15-accordion" aria-label="Etapas da otimização" id="optimizerProgressDetails">
-        <summary><span class="optimizer-v15-accordion-icon" aria-hidden="true"><svg class="nav-icon" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M8 6h12M8 12h12M8 18h12"/><circle cx="4" cy="6" r="1" fill="currentColor"/><circle cx="4" cy="12" r="1" fill="currentColor"/><circle cx="4" cy="18" r="1" fill="currentColor"/></svg></span><span class="optimizer-v15-accordion-title"><strong>Etapas da otimização</strong></span><span class="optimizer-tip" tabindex="0" role="note" aria-label="Ajuda: consultar etapas" data-help="Consulte a sequência: imagens, vídeo, título SEO, categoria, especificações, descrição, variações quando houver e informações fiscais. A execução requer confirmação posterior.">?</span><span class="optimizer-v15-chevron">⌄</span></summary>
+        <summary><span class="optimizer-v15-accordion-icon" aria-hidden="true"><svg class="nav-icon" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M8 6h12M8 12h12M8 18h12"/><circle cx="4" cy="6" r="1" fill="currentColor"/><circle cx="4" cy="12" r="1" fill="currentColor"/><circle cx="4" cy="18" r="1" fill="currentColor"/></svg></span><span class="optimizer-v15-accordion-title"><strong>Etapas da otimização</strong></span><span class="optimizer-tip" tabindex="0" role="note" aria-label="Ajuda: consultar etapas" data-help="Consulte a sequência: imagens, vídeo, título SEO, especificações, descrição, variações quando houver e informações fiscais. Categoria e GTIN existentes vêm da Shopee e são preservados; não exigem revisão manual nesta rotina.">?</span><span class="optimizer-v15-chevron">⌄</span></summary>
         <div id="optimizerSteps" class="optimizer-steps">
           <div class="optimizer-step">Imagens · aguardando validação</div><div class="optimizer-step">Vídeo · aguardando validação</div>
-          <div class="optimizer-step">Título SEO · Categoria</div><div class="optimizer-step">Especificações · Descrição</div>
+          <div class="optimizer-step">Título SEO · Especificações</div><div class="optimizer-step">Descrição · Variações opcionais</div>
           <div class="optimizer-step">Variações (opcional)</div><div class="optimizer-step">Fiscal · Prévia e execução</div>
         </div>
       </details>
     </div>
     <section class="optimizer-panel optimizer-workflow" id="optimizerWorkflowPanel" hidden aria-label="Fluxo de otimização por SKU">
       <div class="optimizer-workflow-heading">
-        <div><h3>Preparar e revisar o anúncio <span class="optimizer-tip" tabindex="0" role="note" data-help="Siga a sequência do anúncio: imagens, vídeo, SEO, categoria, especificações, descrição, variações opcionais e fiscal. Abra só a etapa em preparação. A revisão é salva, mas publicar exige sua autorização e confirmação da Shopee." aria-label="Cada etapa salva a conferência da SKU no Supabase. Nenhuma alteração é executada na Shopee sem ação autorizada e confirmação da API.">?</span></h3>
+        <div><h3>Preparar e revisar o anúncio <span class="optimizer-tip" tabindex="0" role="note" data-help="Siga: imagens, vídeo, SEO, especificações, descrição, variações opcionais e fiscal. Categoria e GTIN já cadastrados na Shopee são preservados. Abra só a etapa em preparação; publicar exige autorização e confirmação da Shopee." aria-label="Cada etapa salva a conferência da SKU no Supabase. Nenhuma alteração é executada na Shopee sem ação autorizada e confirmação da API.">?</span></h3>
         </div>
         <div class="optimizer-workflow-toolbar"><label class="optimizer-has-variants"><input type="checkbox" id="optimizerHasVariants"> Tem variações</label>
-        <span class="optimizer-workflow-counter" id="optimizerWorkflowCounter">0 / 7 etapas conferidas</span>
+        <span class="optimizer-workflow-counter" id="optimizerWorkflowCounter">0 / 6 etapas conferidas</span>
         <button id="optimizerShowExecution" class="secondary" type="button"><span class="optimizer-v18-play" aria-hidden="true">▶</span> Prévia e execução</button></div>
       </div>
       <p class="optimizer-notice" id="optimizerWorkflowStatus" role="status" aria-live="polite">Aguardando a auditoria oficial da SKU.</p>
@@ -724,6 +724,6 @@
     </main>
   </div>
 </div>
-<script src="/app.js?v=1.18.2"></script>
+<script src="/app.js?v=1.18.3"></script>
 </body>
 </html>
