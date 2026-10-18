@@ -2517,3 +2517,20 @@ body.view-alerts .page-intro{display:none!important}
  #tab-alerts .monitor-operation-card{grid-column:auto}
  #tab-alerts .monitor-history-body{grid-template-columns:1fr}
 }
+
+
+/* Estado vazio integrado à tabela de prioridades, sem painel branco duplicado. */
+@media(min-width:981px){
+ body.view-alerts .shell.app-layout{grid-template-columns:334px minmax(0,1fr)}
+}
+#tab-alerts .monitor-priorities-card:has(#monitorEmpty:not([hidden])) .monitor-priority-table{
+ min-height:0;border-radius:11px 11px 0 0;border-bottom:0;
+}
+#tab-alerts .monitor-priorities-card:has(#monitorEmpty:not([hidden])) .monitor-empty{
+ min-height:245px;align-content:center;border-radius:0 0 11px 11px;margin:0;
+}
+#tab-alerts .monitor-practices-list p:first-letter{color:#0ca34e}
+#tab-alerts .monitor-summary-card:focus-visible,
+#tab-alerts .monitor-filter:focus-visible,#tab-alerts .monitor-see-all:focus-visible{
+ outline:3px solid #2277cc;outline-offset:2px;
+}
