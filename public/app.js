@@ -48,6 +48,7 @@ function setTab(name,{updateHistory=true,scroll=true}={}){
   document.body?.classList?.toggle?.('view-optimizer',name==='optimizer');
   document.body?.classList?.toggle?.('view-overview',name==='overview');
   document.body?.classList?.toggle?.('view-products',name==='products');
+  document.body?.classList?.toggle?.('view-pricing',name==='pricing');
   document.body?.classList?.toggle?.('view-finance',name==='finance');
   document.body?.classList?.toggle?.('view-alerts',name==='alerts');
   const reportTabs=new Set(['ads','wedrop']);
@@ -82,7 +83,10 @@ function setTab(name,{updateHistory=true,scroll=true}={}){
         shPriceSelection=shPriceRestoredSelection();
         if(shPriceSelection)$('#optimizerSku').value=shPriceSelection.sku;
       }
-      if(shPriceSelection&&!shPriceCurrentQuote)void shPricePrepare({silent:true});
+      if(shPriceSelection){
+        pricingShowSelection(shPriceSelection);
+        if(!shPriceCurrentQuote)void shPricePrepare({silent:true});
+      }
     });
   }
   else if(name==='discounts'){void shDiscountLoadLatest();}
@@ -3203,7 +3207,37 @@ function shPriceReadSettings(){
     fixedFees:[0,1,2,3].map(i=>number('#priceFee'+i))
   };
 }
-function shPriceRefreshMarginLabel(){$('#priceMarginLabel').textContent=$('#priceMargin').value+'%';}
+function shPriceRefreshMarginLabel(){
+  const value=$('#priceMargin').value+'%';
+  $('#priceMarginLabel').textContent=value;
+  const readout=$('#pricingMarginValue');if(readout)readout.textContent=value;
+  const summary=$('#pricingSummaryTarget');if(summary)summary.textContent=value;
+}
+function pricingShowSelection(selection){
+  const sku=$('#pricingSummarySku');
+  const inherited=$('#pricingInheritedBadge');
+  if(sku)sku.textContent=selection?.sku||'—';
+  if(inherited)inherited.classList.toggle('pricing-no-selection',!selection);
+}
+function pricingResetQuote(){
+  for(const id of ['#priceGross','#pricePromoPct','#priceFinal','#priceProfit',
+    '#priceMarginActual','#pricingSummaryCost']){
+    const node=$(id);if(node)node.textContent='—';
+  }
+  $('#priceBreakdown')?.replaceChildren?.();
+  $('#priceCostSource').textContent='';
+  $('#priceMarketState').textContent='';
+  $('#priceResults').hidden=false;
+  pricingShowSelection(shPriceSelection);
+}
+for(const [id,change] of [['#pricingMarginPlus',1],['#pricingMarginMinus',-1]]){
+  $(id)?.addEventListener?.('click',()=>{
+    const slider=$('#priceMargin');const n=Number(slider.value||0);
+    const next=Math.max(Number(slider.min||0),Math.min(Number(slider.max||70),n+change));
+    if(next===n)return;
+    slider.value=String(next);slider.dispatchEvent(new Event('input',{bubbles:true}));
+  });
+}
 function shQuickSyncSlider(){
   const v=$('#priceMargin').value;
   $('#optimizerQuickMargin').value=v;
@@ -3267,6 +3301,9 @@ function shPriceRender(q){
   $('#priceFinal').textContent=shPriceMoney(q.customerPrice);
   $('#priceProfit').textContent=shPriceMoney(q.netProfit);
   $('#priceMarginActual').textContent=shPricePercent(q.netMarginPct);
+  $('#pricingSummaryCost').textContent=shPriceMoney(q.unitCost);
+  pricingShowSelection({sku:q.sku});
+  shPriceRefreshMarginLabel();
   $('#priceCostSource').textContent='SKU '+q.sku+' · WeDrop '+q.supplierSku+
     ' · Custo de aquisição '+shPriceMoney(q.unitCost)+
     ' · Piso com margem mínima: '+shPriceMoney(q.priceFloor);
@@ -3311,11 +3348,17 @@ async function shPricePreviewSupplierSku(sku,lookupSerial=null){
   }
 }
 async function shPricePrepare({silent=false}={}){
-  if(!shPriceSelection){if(!silent)shPriceSetStatus('Localize primeiro uma SKU na Otimização.');return;}
+  if(!shPriceSelection){
+    pricingShowSelection(null);
+    pricingResetQuote();
+    if(!silent)shPriceSetStatus('Localize primeiro uma SKU na Otimização.');
+    return;
+  }
   if(shPricePrepareBusy){shPricePrepareAgain=true;return;}
   shPricePrepareBusy=true;
   const btn=$('#priceRecalculate');btn.disabled=true;
   const selected={...shPriceSelection};
+  pricingShowSelection(selected);
   if(!silent)shPriceSetStatus('Conferindo o custo WeDrop salvo e preparando o desconto da SKU...');
   shQuickSetStatus('Calculando preço bruto e desconto da SKU '+selected.sku+'...');
   try{
@@ -3332,7 +3375,8 @@ async function shPricePrepare({silent=false}={}){
     shPriceRender(d.quote);
   }catch(e){
     if(shPriceSelection?.sku===selected.sku&&shPriceSelection?.itemId===selected.itemId){
-      $('#priceResults').hidden=true;$('#optimizerQuickValues').hidden=true;shPriceCurrentQuote=null;
+      $('#optimizerQuickValues').hidden=true;shPriceCurrentQuote=null;
+      pricingResetQuote();
       shPriceSetStatus('SKU '+selected.sku+': '+e.message,'error');
       shQuickSetStatus('SKU '+selected.sku+': '+e.message,'error');
     }
@@ -3384,6 +3428,7 @@ for(const id of shPriceInputIds){
 $('#priceRecalculate').onclick=()=>{
   if(shPriceSelection)void shPricePrepare();
   else if(shPriceSupplierQuote)void shPricePreviewSupplierSku(shPriceSupplierQuote.sku);
+  else shPriceSetStatus('Selecione primeiro uma SKU em Otimização para calcular com o custo confirmado.','warning');
 };
 $('#priceOpenDiscounts').onclick=()=>setTab('discounts');
 function shDiscountRender(q){
