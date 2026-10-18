@@ -23,6 +23,8 @@ test('TRC1525 oferece 9 etapas com mídia pendente e atributos não inventados',
  assert.match(video.detail,/Não confirmado/);
  assert.match(technical.detail,/0 obrigatório/);
  assert.match(technical.detail,/2 opcionais/);
+ assert.match(stages.find(s=>s.key==='description').hint,/dois parágrafos curtos/);
+ assert.match(stages.find(s=>s.key==='description').hint,/10 a 20/);
  assert.equal(stages.at(-1).blocking,true);
 });
 test('título e descrição não inventam capacidade, idade nem medidas',()=>{
