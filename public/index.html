@@ -6,7 +6,7 @@
 <meta name="theme-color" content="#0A1C3A">
 <link rel="icon" type="image/svg+xml" href="/brand-logo.svg">
 <title>Rede Achados BR · Gestão Shopee</title>
-<link rel="stylesheet" href="/style.css?v=1.19.0">
+<link rel="stylesheet" href="/style.css?v=1.19.1">
 </head>
 <body>
 <div class="shell app-layout">
@@ -32,7 +32,7 @@
         </details>
       </div>
     </nav>
-    <div class="sidebar-bottom"><div class="sidebar-support"><span class="sidebar-support-dot"></span><span><strong>Central Shopee</strong><small>Versão 1.19.0</small></span></div><small class="sidebar-copy">© Rede Achados BR</small></div>
+    <div class="sidebar-bottom"><div class="sidebar-support"><span class="sidebar-support-dot"></span><span><strong>Central Shopee</strong><small>Versão 1.19.1</small></span></div><small class="sidebar-copy">© Rede Achados BR</small></div>
   </aside>
   <button class="sidebar-scrim" id="sidebarScrim" type="button" aria-label="Fechar menu" hidden></button>
   <div class="workspace-main">
@@ -53,37 +53,53 @@
       <section id="app" class="hidden">
         <div class="page-intro"><div><p id="pageGroup" class="page-group">Visão geral</p><h1 id="pageTitle">Painel inicial</h1><p id="pageDescription">Acompanhe a operação da sua loja Shopee.</p></div><div id="pageTopAction"></div></div>
               <section class="tabpane active" id="tab-overview" aria-labelledby="overviewTitle">
-        <div class="welcome-hero">
-          <div class="welcome-hero-copy"><span class="welcome-kicker"><span class="welcome-dot"></span> Central de gestão Shopee</span>
+        <div class="welcome-hero dashboard-hero-v2">
+          <div class="welcome-hero-copy">
+            <span class="welcome-kicker"><span class="welcome-dot"></span> REDE ACHADOS <em>BR</em></span>
             <h2 id="overviewTitle">Sua loja em um só lugar.</h2>
             <p>Acompanhe anúncios, vendas, envios e custos. Cada área tem seu próprio espaço para você trabalhar sem se perder.</p>
-            <div class="hero-actions"><button class="hero-action" type="button" data-go="alerts">Ver prazos de envio <svg class="nav-icon" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="5" width="13" height="12" rx="1.5"/><path d="M15 9h4l3 4v4h-7M7 17h1M18 17h1"/><circle cx="6" cy="18" r="2"/><circle cx="18" cy="18" r="2"/></svg></button><button class="hero-ghost" type="button" data-go="finance">Abrir financeiro</button></div>
+            <div class="hero-actions"><button class="hero-action" type="button" data-go="alerts"><svg class="nav-icon" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="5" width="13" height="12" rx="1.5"/><path d="M15 9h4l3 4v4h-7"/><circle cx="7" cy="18" r="2"/><circle cx="19" cy="18" r="2"/></svg><span>Ver prazos de envio</span><svg class="nav-icon" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="m9 6 6 6-6 6"/></svg></button>
+              <button class="hero-ghost" type="button" data-go="finance"><svg class="nav-icon" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 21V12h4v9M10 21V5h4v16M17 21v-9h4v9"/></svg><span>Abrir financeiro</span><svg class="nav-icon" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="m9 6 6 6-6 6"/></svg></button></div>
           </div>
-          <div class="hero-graphic" aria-hidden="true"><img src="/brand-logo.svg" alt="" width="136" height="136"><span>REDE ACHADOS BR</span><div class="hero-graphic-lines"><i></i><i></i><i></i></div></div>
+          <div class="dashboard-hero-right">
+            <div class="dashboard-hero-status" aria-label="Situação da loja">
+              <div class="dashboard-hero-status-card"><span class="dashboard-hero-status-icon green" aria-hidden="true">✓</span><div><strong id="heroConnectedLabel">Verificando conexão</strong><small id="heroConnectedHint">Consultando a Shopee</small></div></div>
+              <div class="dashboard-hero-status-card"><span class="dashboard-hero-status-icon purple" aria-hidden="true"><svg class="nav-icon" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="m12 3 9 5-9 5-9-5 9-5ZM3 12l9 5 9-5M3 17l9 5 9-5"/></svg></span><div><strong id="heroEnvironmentLabel">Verificando ambiente</strong><small id="heroEnvironmentHint">Configuração da integração</small></div></div>
+              <div class="dashboard-hero-status-card"><span class="dashboard-hero-status-icon orange" aria-hidden="true">ϟ</span><div><strong id="heroApiLabel">Consultando API</strong><small id="heroApiHint">Status da autenticação</small></div></div>
+            </div>
+            <div class="dashboard-hero-display" aria-hidden="true">
+              <div class="dashboard-hero-glow"></div><div class="dashboard-hero-logo"><img src="/brand-logo.svg" alt="" width="185" height="185"><span>REDE ACHADOS BR</span></div><div class="dashboard-hero-pedestal"></div>
+            </div>
+          </div>
         </div>
-        <div class="dashboard-block-head"><h3>Resumo da conexão</h3><span>Dados da integração autorizada</span></div>
-        <div class="metrics dashboard-metrics">
-          <button class="kpi-tile interactive-tilt" type="button" data-go="settings" aria-label="Abrir integração Shopee">
-            <span class="kpi-topline"><span>Conexão Shopee</span><span class="kpi-symbol">◉</span></span><strong id="mConnection">—</strong><small class="kpi-foot">Ver integração <span aria-hidden="true">↗</span></small>
+        <div class="dashboard-block-head dashboard-section-head"><h3>Resumo da conexão</h3>
+          <div class="dashboard-section-meta"><span>▣ &nbsp; Dados da integração autorizada</span>
+          <button id="dashboardRefreshStatus" type="button" class="dashboard-refresh" aria-label="Atualizar conexão"><svg class="nav-icon" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M20 7v5h-5M4 17v-5h5"/><path d="M5.6 8A8 8 0 0 1 19 7l1 5M4 12l1 5a8 8 0 0 0 13.5-1"/></svg><span id="dashboardLastChecked">Aguardando consulta</span></button></div>
+        </div>
+        <div class="metrics dashboard-metrics">          <button class="kpi-tile interactive-tilt dashboard-kpi-connection" type="button" data-go="settings" aria-label="Abrir integração Shopee">
+            <span class="dashboard-kpi-icon"><svg class="nav-icon" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M2 9a15 15 0 0 1 20 0M5 13a10 10 0 0 1 14 0M9 17a5 5 0 0 1 6 0"/><circle cx="12" cy="21" r="1" fill="currentColor"/></svg></span><span class="dashboard-kpi-copy"><span class="kpi-topline"><span>Conexão Shopee</span></span><strong id="mConnection">—</strong><small class="kpi-foot">Ver integração</small></span><span class="dashboard-kpi-chevron" aria-hidden="true"><svg class="nav-icon" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="m9 6 6 6-6 6"/></svg></span>
           </button>
-          <button class="kpi-tile interactive-tilt" type="button" data-go="settings" aria-label="Abrir dados da loja">
-            <span class="kpi-topline"><span>Identificação da loja</span><span class="kpi-symbol">▣</span></span><strong id="mShop">—</strong><small class="kpi-foot">Dados da loja <span aria-hidden="true">↗</span></small>
+          <button class="kpi-tile interactive-tilt dashboard-kpi-shop" type="button" data-go="settings" aria-label="Abrir identificação da loja">
+            <span class="dashboard-kpi-icon"><svg class="nav-icon" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 10 5 3h14l2 7H3ZM4 13v8h16v-8M9 21v-7h6v7"/></svg></span><span class="dashboard-kpi-copy"><span class="kpi-topline"><span>Identificação da loja</span></span><strong id="mShop">—</strong><small class="kpi-foot">Dados da loja</small></span><span class="dashboard-kpi-chevron" aria-hidden="true"><svg class="nav-icon" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="m9 6 6 6-6 6"/></svg></span>
           </button>
-          <button class="kpi-tile interactive-tilt" type="button" data-go="settings" aria-label="Abrir ambiente da integração">
-            <span class="kpi-topline"><span>Ambiente</span><span class="kpi-symbol">◇</span></span><strong id="mMode">—</strong><small class="kpi-foot">Configuração <span aria-hidden="true">↗</span></small>
+          <button class="kpi-tile interactive-tilt dashboard-kpi-environment" type="button" data-go="settings" aria-label="Abrir ambiente da integração">
+            <span class="dashboard-kpi-icon"><svg class="nav-icon" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="m12 3 9 5-9 5-9-5 9-5ZM3 12l9 5 9-5M3 17l9 5 9-5"/></svg></span><span class="dashboard-kpi-copy"><span class="kpi-topline"><span>Ambiente</span></span><strong id="mMode">—</strong><small class="kpi-foot">Configuração</small></span><span class="dashboard-kpi-chevron" aria-hidden="true"><svg class="nav-icon" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="m9 6 6 6-6 6"/></svg></span>
           </button>
-          <button class="kpi-tile interactive-tilt" type="button" data-go="wedrop" aria-label="Abrir dados do fornecedor">
-            <span class="kpi-topline"><span>Banco de dados</span><span class="kpi-symbol">▤</span></span><strong id="mStorage">—</strong><small class="kpi-foot">Ver dados <span aria-hidden="true">↗</span></small>
+          <button class="kpi-tile interactive-tilt dashboard-kpi-database" type="button" data-go="settings" aria-label="Abrir estado do banco de dados">
+            <span class="dashboard-kpi-icon"><svg class="nav-icon" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><ellipse cx="12" cy="5" rx="8" ry="3"/><path d="M4 5v14c0 1.7 3.6 3 8 3s8-1.3 8-3V5M4 12c0 1.7 3.6 3 8 3s8-1.3 8-3"/></svg></span><span class="dashboard-kpi-copy"><span class="kpi-topline"><span>Banco de dados</span></span><strong id="mStorage">—</strong><small class="kpi-foot">Ver configuração</small></span><span class="dashboard-kpi-chevron" aria-hidden="true"><svg class="nav-icon" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="m9 6 6 6-6 6"/></svg></span>
           </button>
         </div>
-        <div class="dashboard-block-head"><h3>Acesso rápido</h3><span>Principais setores da operação</span></div>
-        <div class="shortcut-grid">
-          <button type="button" class="shortcut interactive-tilt" data-go="products"><span class="shortcut-symbol"><svg class="nav-icon" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="m12 2 9 5-9 5-9-5 9-5Z"/><path d="M3 7v10l9 5 9-5V7M12 12v10"/></svg></span><strong>Produtos</strong><small>Catálogo, estoque e anúncios</small><span class="shortcut-arrow">↗</span></button>
-          <button type="button" class="shortcut interactive-tilt" data-go="orders"><span class="shortcut-symbol"><svg class="nav-icon" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3h2l2.6 12.5a2 2 0 0 0 2 1.5h9.3a2 2 0 0 0 2-1.5L22 7H6"/><circle cx="10" cy="21" r="1"/><circle cx="19" cy="21" r="1"/></svg></span><strong>Pedidos</strong><small>Pedidos e vendas recentes</small><span class="shortcut-arrow">↗</span></button>
-          <button type="button" class="shortcut interactive-tilt" data-go="wedrop"><span class="shortcut-symbol"><svg class="nav-icon" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M3 10 12 4l9 6v10H3V10ZM3 10h18M9 20v-6h6v6"/></svg></span><strong>WeDrop</strong><small>Custos e SKUs vinculados</small><span class="shortcut-arrow">↗</span></button>
-          <button type="button" class="shortcut interactive-tilt" data-go="finance"><span class="shortcut-symbol"><svg class="nav-icon" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="3"/><path d="M7 15l4-4 3 2 4-5M16 8h2v2"/></svg></span><strong>Financeiro</strong><small>Repasses e conferência de margem</small><span class="shortcut-arrow">↗</span></button>
+        <div class="dashboard-block-head dashboard-section-head"><h3>Acesso rápido</h3><span>Principais setores da operação</span></div>
+        <div class="shortcut-grid">          <button type="button" class="shortcut interactive-tilt dashboard-shortcut-products" data-go="products">
+          <span class="shortcut-symbol"><svg class="nav-icon" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="m12 2 9 5-9 5-9-5 9-5ZM3 7v10l9 5 9-5V7M12 12v10"/></svg></span><span class="shortcut-copy"><strong>Produtos</strong><small>Catálogo, estoque e anúncios</small></span><span class="shortcut-arrow" aria-hidden="true"><svg class="nav-icon" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="m9 6 6 6-6 6"/></svg></span></button>
+          <button type="button" class="shortcut interactive-tilt dashboard-shortcut-orders" data-go="orders">
+          <span class="shortcut-symbol"><svg class="nav-icon" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3h2l2.6 12.5a2 2 0 0 0 2 1.5h9.3a2 2 0 0 0 2-1.5L22 7H6"/><circle cx="10" cy="21" r="1"/><circle cx="19" cy="21" r="1"/></svg></span><span class="shortcut-copy"><strong>Pedidos</strong><small>Pedidos e vendas recentes</small></span><span class="shortcut-arrow" aria-hidden="true"><svg class="nav-icon" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="m9 6 6 6-6 6"/></svg></span></button>
+          <button type="button" class="shortcut interactive-tilt dashboard-shortcut-wedrop" data-go="wedrop">
+          <span class="shortcut-symbol"><svg class="nav-icon" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 10 12 4l9 6v10H3V10ZM3 10h18M9 20v-6h6v6"/></svg></span><span class="shortcut-copy"><strong>WeDrop</strong><small>Custos e SKUs vinculados</small></span><span class="shortcut-arrow" aria-hidden="true"><svg class="nav-icon" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="m9 6 6 6-6 6"/></svg></span></button>
+          <button type="button" class="shortcut interactive-tilt dashboard-shortcut-finance" data-go="finance">
+          <span class="shortcut-symbol"><svg class="nav-icon" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 21V12h4v9M10 21V5h4v16M17 21v-9h4v9"/></svg></span><span class="shortcut-copy"><strong>Financeiro</strong><small>Repasses e conferência de margem</small></span><span class="shortcut-arrow" aria-hidden="true"><svg class="nav-icon" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="m9 6 6 6-6 6"/></svg></span></button>
         </div>
-        <div class="dashboard-tip"><div class="dashboard-tip-icon"><svg class="nav-icon" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="5" width="13" height="12" rx="1.5"/><path d="M15 9h4l3 4v4h-7M7 17h1M18 17h1"/><circle cx="6" cy="18" r="2"/><circle cx="18" cy="18" r="2"/></svg></div><div><strong>Não perca os prazos de postagem</strong><p>O monitor de envios acompanha os pedidos e indica as pendências com base nos prazos que a Shopee disponibilizar.</p></div><button class="secondary" type="button" data-go="alerts">Abrir monitor</button></div>
+        <div class="dashboard-tip"><div class="dashboard-tip-icon"><svg class="nav-icon" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="5" width="13" height="12" rx="1.5"/><path d="M15 9h4l3 4v4h-7"/><circle cx="7" cy="18" r="2"/><circle cx="19" cy="18" r="2"/></svg></div><div><strong>Não perca os prazos de postagem</strong><p>O monitor de envios acompanha os pedidos e indica as pendências com base nos prazos que a Shopee disponibilizar.</p></div><button class="secondary" type="button" data-go="alerts">Abrir monitor <svg class="nav-icon" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="m9 6 6 6-6 6"/></svg></button></div>
       </section>
               
 <section class="tabpane" id="tab-optimizer" aria-label="Otimização de anúncios">
@@ -742,6 +758,6 @@
     </main>
   </div>
 </div>
-<script src="/app.js?v=1.19.0"></script>
+<script src="/app.js?v=1.19.1"></script>
 </body>
 </html>

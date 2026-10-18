@@ -6,7 +6,7 @@ function debug(v){$('#output').textContent=typeof v==='string'?v:JSON.stringify(
  // preservando cálculos em andamento e os controles já conectados à API Shopee.
 const APP_PAGES={
   overview:{slug:'inicio',title:'Painel inicial',group:'Visão geral',
-    description:'Informações essenciais e acesso rápido aos setores da sua loja.'},
+    description:'Acompanhe as informações essenciais e tenha acesso rápido aos principais setores da sua loja na Shopee.'},
   products:{slug:'produtos',title:'Produtos e anúncios',group:'Operação',
     description:'Catálogo, variações, estoque e situação dos anúncios Shopee.'},
   optimizer:{slug:'otimizacao',title:'Otimização de anúncios',group:'Operação',
@@ -46,6 +46,7 @@ function setTab(name,{updateHistory=true,scroll=true}={}){
   if(!pane)return;
   activeAppPage=name;
   document.body?.classList?.toggle?.('view-optimizer',name==='optimizer');
+  document.body?.classList?.toggle?.('view-overview',name==='overview');
   document.body?.classList?.toggle?.('view-finance',name==='finance');
   const reportTabs=new Set(['ads','wedrop']);
   const reportMenu=$('#sidebarReports');
@@ -149,14 +150,42 @@ async function loadStatus(){
     $('#mShop').textContent=s.connected?s.shopId:'—';
     $('#mMode').textContent=(s.mode||'—').toUpperCase();
     $('#mStorage').textContent=s.storage?.supabaseConfigured?'Supabase':'Local';
+    const connected=Boolean(s.connected),mode=String(s.mode||'').toUpperCase();
+    $('#heroConnectedLabel').textContent=connected?'Loja conectada':'Loja não conectada';
+    $('#heroConnectedHint').textContent=connected?'Autorização Shopee ativa':'Verifique a integração';
+    $('#heroEnvironmentLabel').textContent=mode?'Ambiente '+mode:'Ambiente não informado';
+    $('#heroEnvironmentHint').textContent=mode==='LIVE'?'Configuração de produção':'Consulte a configuração';
+    $('#heroApiLabel').textContent=connected?'API conectada':'API pendente';
+    $('#heroApiHint').textContent=connected?'Status confirmado nesta consulta':'Conexão não confirmada';
+    $('#heroConnectedLabel').closest('.dashboard-hero-status-card')?.classList.toggle('is-unavailable',!connected);
+    $('#heroApiLabel').closest('.dashboard-hero-status-card')?.classList.toggle('is-unavailable',!connected);
+    $('#dashboardLastChecked').textContent='Atualizado às '+new Date().toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'});
     $('#statusPill').textContent=s.connected?'API conectada':'API pendente';
     $('#statusPill').classList.toggle('ok',Boolean(s.connected));
     $('#testBtn').disabled=!s.connected;
     $('#retryTestBtn').disabled=!s.connected;
     $('#refreshBtn').disabled=!s.connected;
     $('#signatureBtn').disabled=!s.configured||s.mode!=='live';
-  }catch(e){$('#connTitle').textContent='Erro de configuração';$('#connMeta').textContent=e.message;$('#statusPill').textContent='Erro';}
+  }catch(e){
+    $('#connTitle').textContent='Erro de configuração';$('#connMeta').textContent=e.message;
+    $('#statusPill').textContent='Erro';$('#statusPill').classList.remove('ok');
+    $('#mConnection').textContent='Indisponível';$('#mShop').textContent='—';
+    $('#mMode').textContent='—';$('#mStorage').textContent='—';
+    $('#heroConnectedLabel').textContent='Conexão indisponível';
+    $('#heroConnectedHint').textContent='Não foi possível consultar a Shopee';
+    $('#heroEnvironmentLabel').textContent='Ambiente indisponível';
+    $('#heroEnvironmentHint').textContent='Consulta não concluída';
+    $('#heroApiLabel').textContent='API não verificada';
+    $('#heroApiHint').textContent='Tente atualizar a consulta';
+    $('#heroConnectedLabel').closest('.dashboard-hero-status-card')?.classList.add('is-unavailable');
+    $('#heroApiLabel').closest('.dashboard-hero-status-card')?.classList.add('is-unavailable');
+    $('#dashboardLastChecked').textContent='Consulta indisponível';
+  }
 }
+$('#dashboardRefreshStatus')?.addEventListener('click',async()=>{
+  const button=$('#dashboardRefreshStatus');button.disabled=true;
+  try{await loadStatus()}finally{button.disabled=false}
+});
 $('#loginBtn').onclick=async()=>{try{await json('/api/login',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({password:$('#password').value})});$('#login').classList.add('hidden');$('#app').classList.remove('hidden');await loadStatus();loadCatalogCache();setTab(currentPageFromUrl(),{updateHistory:false,scroll:false});}catch(e){$('#loginMsg').textContent=e.message;}};
 $('#connectBtn').onclick=()=>location.href='/auth/shopee/start';
 $('#signatureBtn').onclick=async()=>{
