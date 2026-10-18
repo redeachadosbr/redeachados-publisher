@@ -6,7 +6,7 @@
 <meta name="theme-color" content="#0A1C3A">
 <link rel="icon" type="image/svg+xml" href="/brand-logo.svg">
 <title>Rede Achados BR · Gestão Shopee</title>
-<link rel="stylesheet" href="/style.css?v=1.19.1">
+<link rel="stylesheet" href="/style.css?v=1.19.2">
 </head>
 <body>
 <div class="shell app-layout">
@@ -32,7 +32,7 @@
         </details>
       </div>
     </nav>
-    <div class="sidebar-bottom"><div class="sidebar-support"><span class="sidebar-support-dot"></span><span><strong>Central Shopee</strong><small>Versão 1.19.1</small></span></div><small class="sidebar-copy">© Rede Achados BR</small></div>
+    <div class="sidebar-bottom"><div class="sidebar-support"><span class="sidebar-support-dot"></span><span><strong>Central Shopee</strong><small>Versão 1.19.2</small></span></div><small class="sidebar-copy">© Rede Achados BR</small></div>
   </aside>
   <button class="sidebar-scrim" id="sidebarScrim" type="button" aria-label="Fechar menu" hidden></button>
   <div class="workspace-main">
@@ -459,28 +459,78 @@
         <div id="ordersSummary" class="notice">Ainda não carregado.</div>
         <div class="table-wrap"><table><thead><tr><th>Pedido</th><th>Status</th><th>Criação</th></tr></thead><tbody id="ordersBody"></tbody></table></div>
       </section>
-              <section class="tabpane" id="tab-alerts">
-        <div class="section-head">
-          <div><span class="eyebrow">OPERAÇÃO SHOPEE</span><h2>Vendas e prazos de postagem</h2></div>
-          <div class="actions"><button id="checkOrdersBtn">Verificar pedidos agora</button><button id="enableBrowserAlertsBtn" class="secondary">Ativar aviso no navegador</button></div>
+              <section class="tabpane" id="tab-alerts" aria-label="Monitor de envios">
+        <div class="monitor-heading">
+          <div class="monitor-heading-main"><span class="monitor-eyebrow">OPERAÇÃO</span>
+            <div class="monitor-heading-line"><span class="monitor-heading-icon"><svg viewBox="0 0 24 24" class="monitor-icon-svg" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="5" width="13" height="12" rx="1.5"/><path d="M15 9h4l3 4v4h-7"/><circle cx="7" cy="18" r="2"/><circle cx="19" cy="18" r="2"/></svg></span>
+              <h2>Monitor de envios</h2><span class="optimizer-tip monitor-help" tabindex="0" role="note" data-help="Acompanhe pedidos a preparar, prazos oficiais e avisos de vendas. A verificação periódica depende da conexão com a Shopee, do Supabase e do servidor ativo." aria-label="Ajuda: Acompanhe pedidos a preparar, prazos oficiais e avisos de vendas. A verificação periódica depende da conexão com a Shopee, do Supabase e do servidor ativo.">?</span></div>
+          </div>
+          <div class="monitor-header-actions"><button id="checkOrdersBtn" type="button"><svg viewBox="0 0 24 24" class="monitor-icon-svg" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M20 7v5h-5M4 17v-5h5"/><path d="M6 8a8 8 0 0 1 13-1l1 5M4 12l1 5a8 8 0 0 0 14 4"/></svg> Verificar pedidos agora</button>
+            <button id="enableBrowserAlertsBtn" type="button" class="secondary"><svg viewBox="0 0 24 24" class="monitor-icon-svg" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8a6 6 0 0 0-12 0c0 7-3 7-3 9h18c0-2-3-2-3-9"/><path d="M10 21h4"/></svg> Ativar aviso no navegador</button></div>
         </div>
-        <p id="monitorStatus" class="notice" role="status" aria-live="polite">Verificando o monitor...</p>
-        <div class="metrics">
-          <article><span>Pendentes de envio</span><strong id="monitorPendingCount">—</strong></article>
-          <article><span>Críticos/vencidos</span><strong id="monitorCriticalCount">—</strong></article>
-          <article><span>Avisos não lidos</span><strong id="monitorUnreadCount">—</strong></article>
-          <article><span>Última verificação</span><strong id="monitorLastRun" class="small-metric">—</strong></article>
+        <div id="monitorStatus" class="monitor-sync-banner" role="status" aria-live="polite" data-health="never">
+          <span class="monitor-sync-icon"><svg viewBox="0 0 24 24" class="monitor-icon-svg" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="m5 12 5 5 9-10"/></svg></span>
+          <span class="monitor-sync-copy"><strong id="monitorHeadline">Consultando estado do monitor</strong>
+            <small id="monitorStatusDetail">Aguardando a resposta do serviço de monitoramento.</small></span>
+          <span class="monitor-sync-health"><span id="monitorSystemHealth">Estado ainda não confirmado</span>
+            <small id="monitorHealthDetail">Sem leitura atual</small></span>
         </div>
-        <div class="card monitor-card">
-          <h2>Prioridades para preparar e postar</h2>
-          <p class="hint">Datas de postagem são as informadas pela Shopee. Sem prazo na API, confira a Central do Vendedor; o sistema não inventa prazos.</p>
-          <div class="table-wrap"><table><thead><tr><th>Pedido</th><th>Status</th><th>Prazo Shopee</th><th>Prioridade</th></tr></thead><tbody id="monitorPendingBody"></tbody></table></div>
+        <div class="monitor-summary-grid">
+          <button type="button" class="monitor-summary-card monitor-summary-blue" data-monitor-shortcut="all"><span class="monitor-summary-icon"><svg viewBox="0 0 24 24" class="monitor-icon-svg" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 4h16l2 11v5H2v-5L4 4ZM2 15h6l2 3h4l2-3h6"/></svg></span><span class="monitor-summary-copy"><span class="monitor-summary-title">Pendentes de envio</span><strong id="monitorPendingCount">—</strong><small>Pedidos para preparar</small></span><span class="monitor-card-arrow"><svg viewBox="0 0 24 24" class="monitor-icon-svg" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="m9 6 6 6-6 6"/></svg></span></button>
+<button type="button" class="monitor-summary-card monitor-summary-red" data-monitor-shortcut="critical"><span class="monitor-summary-icon"><svg viewBox="0 0 24 24" class="monitor-icon-svg" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="m12 3 10 17H2L12 3Z"/><path d="M12 9v4M12 17h.01"/></svg></span><span class="monitor-summary-copy"><span class="monitor-summary-title">Críticos/vencidos</span><strong id="monitorCriticalCount">—</strong><small>Pedidos em atraso ou com menos de 2h</small></span><span class="monitor-card-arrow"><svg viewBox="0 0 24 24" class="monitor-icon-svg" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="m9 6 6 6-6 6"/></svg></span></button>
+<button type="button" class="monitor-summary-card monitor-summary-amber" data-monitor-shortcut="notifications"><span class="monitor-summary-icon"><svg viewBox="0 0 24 24" class="monitor-icon-svg" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8a6 6 0 0 0-12 0c0 7-3 7-3 9h18c0-2-3-2-3-9"/><path d="M10 21h4"/></svg></span><span class="monitor-summary-copy"><span class="monitor-summary-title">Avisos não lidos</span><strong id="monitorUnreadCount">—</strong><small>Notificações pendentes</small></span><span class="monitor-card-arrow"><svg viewBox="0 0 24 24" class="monitor-icon-svg" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="m9 6 6 6-6 6"/></svg></span></button>
+<button type="button" class="monitor-summary-card monitor-summary-violet" data-monitor-shortcut="history"><span class="monitor-summary-icon"><svg viewBox="0 0 24 24" class="monitor-icon-svg" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l4 2"/></svg></span><span class="monitor-summary-copy"><span class="monitor-summary-title">Última verificação</span><strong id="monitorLastRun">—</strong><small>Última sincronização confirmada</small></span><span class="monitor-card-arrow"><svg viewBox="0 0 24 24" class="monitor-icon-svg" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="m9 6 6 6-6 6"/></svg></span></button>
         </div>
-        <div class="card monitor-card">
-          <h2>Avisos de vendas e envio</h2>
-          <p class="hint">O monitor verifica pedidos periodicamente enquanto o servidor estiver ativo. Para mensagens mesmo com o navegador fechado, configure Telegram no Render.</p>
-          <div id="monitorAlerts" class="monitor-alerts"></div>
+        <div class="monitor-main-grid">
+          <section class="monitor-priorities-card">
+            <div class="monitor-card-heading"><span class="monitor-heading-symbol"><svg viewBox="0 0 24 24" class="monitor-icon-svg" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="4" width="14" height="18" rx="2"/><path d="M9 4V2h6v4H9M9 11h6M9 15h6"/></svg></span><h3>Prioridades para preparar e postar</h3>
+              <span class="optimizer-tip monitor-help" tabindex="0" role="note" data-help="Prazos oficiais recuperados da Shopee. Pedidos sem data informada permanecem pendentes para conferência manual; não é atribuído prazo fictício." aria-label="Ajuda: Prazos oficiais recuperados da Shopee. Pedidos sem data informada permanecem pendentes para conferência manual; não é atribuído prazo fictício.">?</span></div>
+            <div class="monitor-filter-row" role="group" aria-label="Filtrar pedidos por prioridade">
+              <button type="button" class="monitor-filter is-active" data-monitor-filter="all" aria-pressed="true"><svg viewBox="0 0 24 24" class="monitor-icon-svg" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="m5 12 5 5 9-10"/></svg><span>Todos</span> <b id="monitorFilterAll">—</b></button>
+              <button type="button" class="monitor-filter" data-monitor-filter="today" aria-pressed="false"><svg viewBox="0 0 24 24" class="monitor-icon-svg" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l4 2"/></svg><span>Hoje</span> <b id="monitorFilterToday">—</b></button>
+              <button type="button" class="monitor-filter" data-monitor-filter="critical" aria-pressed="false"><svg viewBox="0 0 24 24" class="monitor-icon-svg" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="m12 3 10 17H2L12 3Z"/><path d="M12 9v4M12 17h.01"/></svg><span>Críticos</span> <b id="monitorFilterCritical">—</b></button>
+              <button type="button" class="monitor-filter" data-monitor-filter="soon" aria-pressed="false"><svg viewBox="0 0 24 24" class="monitor-icon-svg" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l4 2"/></svg><span>Próximos</span> <b id="monitorFilterSoon">—</b></button>
+            </div>
+            <p id="monitorFilterSummary" class="monitor-filter-summary" aria-live="polite">Aguardando dados dos pedidos.</p>
+            <div class="monitor-priority-table"><table><thead><tr><th>Pedido</th><th>Status</th><th>Prazo Shopee</th><th>Prioridade</th><th>Ação</th></tr></thead>
+              <tbody id="monitorPendingBody"><tr><td colspan="5">Consultando pedidos da Shopee…</td></tr></tbody></table>
+            </div>
+            <div id="monitorEmpty" class="monitor-empty" hidden><span class="monitor-empty-image"><svg viewBox="0 0 24 24" class="monitor-icon-svg" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="m12 2 9 5-9 5-9-5 9-5ZM3 7v10l9 5 9-5V7M12 12v10"/></svg></span>
+              <strong id="monitorEmptyTitle">Nenhum pedido nesta categoria</strong><p id="monitorEmptyDetail">Aguardando a verificação do monitor.</p></div>
+          </section>
+          <div class="monitor-right-column">
+            <section class="monitor-operation-card">
+              <div class="monitor-card-heading"><span class="monitor-heading-symbol"><svg viewBox="0 0 24 24" class="monitor-icon-svg" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 20V12h3v8M10 20V4h3v16M16 20v-9h3v9"/></svg></span><h3>Resumo operacional</h3>
+                <span class="optimizer-tip monitor-help" tabindex="0" role="note" data-help="Indicadores baseados no estado real do serviço e na permissão atual do navegador. Verde indica apenas estados confirmados." aria-label="Ajuda: Indicadores baseados no estado real do serviço e na permissão atual do navegador. Verde indica apenas estados confirmados.">?</span></div>
+              <div class="monitor-operation-grid">
+                <div id="monitorStateRunning" class="monitor-operation-item"><span class="monitor-operation-icon"><svg viewBox="0 0 24 24" class="monitor-icon-svg" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="m8 5 11 7-11 7V5Z"/></svg></span><div><strong>Monitor ativo</strong><small id="monitorRunningInfo">Aguardando consulta</small></div><i></i></div>
+                <div id="monitorStateInterval" class="monitor-operation-item"><span class="monitor-operation-icon"><svg viewBox="0 0 24 24" class="monitor-icon-svg" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M20 7v5h-5M4 17v-5h5"/><path d="M6 8a8 8 0 0 1 13-1l1 5M4 12l1 5a8 8 0 0 0 14 4"/></svg></span><div><strong id="monitorIntervalLabel">Consulta periódica</strong><small id="monitorIntervalInfo">Aguardando consulta</small></div><i></i></div>
+                <div id="monitorStatePanel" class="monitor-operation-item"><span class="monitor-operation-icon"><svg viewBox="0 0 24 24" class="monitor-icon-svg" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8a6 6 0 0 0-12 0c0 7-3 7-3 9h18c0-2-3-2-3-9"/><path d="M10 21h4"/></svg></span><div><strong>Alertas no painel</strong><small id="monitorPanelInfo">Aguardando consulta</small></div><i></i></div>
+                <div id="monitorStateBrowser" class="monitor-operation-item"><span class="monitor-operation-icon"><svg viewBox="0 0 24 24" class="monitor-icon-svg" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8a6 6 0 0 0-12 0c0 7-3 7-3 9h18c0-2-3-2-3-9"/><path d="M10 21h4"/></svg></span><div><strong>Avisos no navegador</strong><small id="monitorBrowserInfo">Verificando permissão</small></div><i></i></div>
+              </div>
+            </section>
+            <section class="monitor-notification-card">
+              <div class="monitor-card-heading"><span class="monitor-heading-symbol"><svg viewBox="0 0 24 24" class="monitor-icon-svg" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8a6 6 0 0 0-12 0c0 7-3 7-3 9h18c0-2-3-2-3-9"/><path d="M10 21h4"/></svg></span><h3>Avisos de vendas e envio</h3>
+                <span class="optimizer-tip monitor-help" tabindex="0" role="note" data-help="Histórico recente de avisos do monitor. Você pode marcar os avisos como lidos; não é enviado pedido à Shopee nessa ação." aria-label="Ajuda: Histórico recente de avisos do monitor. Você pode marcar os avisos como lidos; não é enviado pedido à Shopee nessa ação.">?</span>
+                <button id="monitorShowAllAlerts" type="button" class="monitor-see-all">Ver todos <svg viewBox="0 0 24 24" class="monitor-icon-svg" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="m9 6 6 6-6 6"/></svg></button></div>
+              <div id="monitorAlerts" class="monitor-alerts">Aguardando avisos…</div>
+            </section>
+            <section class="monitor-practices-card">
+              <div class="monitor-card-heading"><span class="monitor-heading-symbol"><svg viewBox="0 0 24 24" class="monitor-icon-svg" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18h6M10 22h4M8 15c-2-2-3-4-2-7a6 6 0 0 1 12 0c1 3 0 5-2 7l-1 3H9l-1-3Z"/></svg></span><h3>Boas práticas</h3>
+                <span class="optimizer-tip monitor-help" tabindex="0" role="note" data-help="Orientações gerais. Elas não significam que uma ação de envio foi concluída." aria-label="Ajuda: Orientações gerais. Elas não significam que uma ação de envio foi concluída.">?</span></div>
+              <div class="monitor-practices-list"><p>✓ &nbsp; Monitorar pedidos</p><p>✓ &nbsp; Organizar prazos de postagem</p>
+                <p>✓ &nbsp; Priorizar pedidos urgentes</p><p>✓ &nbsp; Manter avisos ativos</p></div>
+            </section>
+          </div>
         </div>
+        <details class="monitor-history" id="monitorHistory">
+          <summary><span class="monitor-heading-symbol"><svg viewBox="0 0 24 24" class="monitor-icon-svg" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 11a9 9 0 1 1 2.7 6.4M3 4v7h7M12 6v6l4 2"/></svg></span><span><strong>Histórico e auditoria</strong><small>Consulte a última verificação e os avisos registrados.</small></span><svg viewBox="0 0 24 24" class="monitor-icon-svg" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="m9 6 6 6-6 6"/></svg></summary>
+          <div class="monitor-history-body"><div><strong>Última tentativa</strong><span id="monitorLastAttempt">—</span></div>
+            <div><strong>Último sucesso</strong><span id="monitorLastSuccessAudit">—</span></div>
+            <div><strong>Pedidos verificados</strong><span id="monitorScannedCount">—</span></div>
+            <div><strong>Novos avisos no último ciclo</strong><span id="monitorLastNewAlerts">—</span></div>
+            <div class="monitor-history-error"><strong>Diagnóstico</strong><span id="monitorLastError">Aguardando consulta.</span></div></div>
+        </details>
       </section>
               <section class="tabpane" id="tab-ads">
         <div class="section-head"><div><span class="eyebrow">SHOPEE ADS — LIVE</span><h2>Desempenho automático de campanhas</h2></div></div>
@@ -758,6 +808,6 @@
     </main>
   </div>
 </div>
-<script src="/app.js?v=1.19.1"></script>
+<script src="/app.js?v=1.19.2"></script>
 </body>
 </html>
