@@ -2153,6 +2153,148 @@ function financeAdsBySku(report){
    ?new Map((sweep.skuCosts||[]).map(x=>[String(x.sku),x]))
    :new Map();
 }
+
+/** Gráficos com dados de conciliação; Ads diário nunca é fabricado. */
+function renderFinanceTrend(report){
+ const svg=$('#financeTrendSvg');svg.replaceChildren();
+ const rows=Array.isArray(report?.dailySeries)?report.dailySeries.filter(x=>
+  /^\d{4}-\d{2}-\d{2}$/.test(String(x.day))&&
+  [x.payout,x.costs,x.balanceBeforeAds].every(v=>Number.isFinite(Number(v)))):[];
+ const caption=$('#financeTrendNote');
+ const label=$('#financePeriodCaption');
+ label.textContent=report?.selection?.label||'Período selecionado';
+ if(!rows.length){
+  caption.textContent='Nenhum pedido concluído e conciliado com data confirmada no período.';
+  const noData=document.createElementNS('http://www.w3.org/2000/svg','text');
+  noData.setAttribute('x','300');noData.setAttribute('y','110');
+  noData.setAttribute('text-anchor','middle');noData.setAttribute('fill','#7991b0');
+  noData.setAttribute('font-size','14');noData.textContent='Sem dados diários conciliados';
+  svg.append(noData);return;
+ }
+ const ns='http://www.w3.org/2000/svg';
+ const add=(tag,attributes,text)=>{
+  const el=document.createElementNS(ns,tag);
+  for(const [key,value] of Object.entries(attributes))el.setAttribute(key,String(value));
+  if(text!==undefined)el.textContent=String(text);
+  svg.append(el);return el;
+ };
+ const data=rows.slice(-30);
+ const values=data.flatMap(x=>[Number(x.payout),Number(x.costs),Number(x.balanceBeforeAds)]);
+ const high=Math.max(1,...values,0),low=Math.min(0,...values);
+ const top=18,bottom=177,left=59,right=580,domainHigh=high+(high-low)*.08,
+  domainLow=low-(high-low)*.08,range=domainHigh-domainLow||1;
+ const y=v=>top+(domainHigh-v)/range*(bottom-top),zero=y(0);
+ const moneyTick=n=>(n<0?'−':'')+'R$ '+Math.abs(n).toLocaleString('pt-BR',{maximumFractionDigits:0});
+ for(let tick=0;tick<=4;tick++){
+  const v=domainLow+(domainHigh-domainLow)*tick/4,yp=y(v);
+  add('line',{x1:left,x2:right,y1:yp,y2:yp,stroke:'#e7eff8','stroke-width':1});
+  add('text',{x:left-8,y:yp+4,'text-anchor':'end',fill:'#7b8ba2','font-size':10},moneyTick(v));
+ }
+ add('line',{x1:left,x2:right,y1:zero,y2:zero,stroke:'#b0c5df','stroke-width':1.4});
+ const width=(right-left)/data.length,barWidth=Math.max(2.1,Math.min(12,width/5)),gap=Math.max(.6,barWidth*.18);
+ const colors=['#25b77a','#ff943a','#f05155'],fields=['payout','costs','balanceBeforeAds'];
+ data.forEach((point,index)=>{
+  const center=left+width*(index+.5);
+  fields.forEach((field,j)=>{
+   const value=Number(point[field]),yp=y(value),height=Math.max(Math.abs(yp-zero),value===0?0:1);
+   const x=center+(j-1)*(barWidth+gap)-barWidth/2;
+   if(height<=0)return;
+   const bar=add('rect',{x,y:Math.min(yp,zero),width:barWidth,height,rx:1.2,fill:colors[j]});
+   const title=document.createElementNS(ns,'title');
+   title.textContent=point.day+' · '+({payout:'Repasse',costs:'WeDrop',balanceBeforeAds:'Saldo antes Ads'})[field]+': '+wdMoney(value);
+   bar.append(title);
+  });
+  const every=Math.max(1,Math.ceil(data.length/9));
+  if(index%every===0||index===data.length-1){
+   const date=point.day.slice(8,10)+'/'+point.day.slice(5,7);
+   add('text',{x:center,y:198,'text-anchor':'middle',fill:'#7189a7','font-size':10},date);
+  }
+ });
+ caption.textContent='Por data de criação dos pedidos COMPLETED, apenas repasses e custos confirmados. '+
+  (report.complete?'Período conferido.':'Há pedidos pendentes; a evolução pode estar incompleta.')+
+  ' Ads não são distribuídos artificialmente por dia.';
+}
+function renderFinanceDistribution(report){
+ const donut=$('#financeAdsDonut'),center=$('#financeDonutCenter'),legend=$('#financeDonutLegend');
+ legend.replaceChildren();donut.style.background='conic-gradient(#e6edf6 0 100%)';
+ const sw=report?.adsSweep||{},verified=sw.status==='verified_campaign_period';
+ const total=Number(sw.spendTotal);
+ if(!verified||!Number.isFinite(total)||total<0){
+  center.textContent='—';donut.setAttribute('aria-label','Ads não verificados');
+  legend.textContent='Ads indisponíveis: não presumir gasto zero.';return;
+ }
+ center.textContent=wdMoney(total);
+ const parts=[
+  {label:'Com vínculo a SKU vendido',value:Number(sw.spendAllocatedToSoldSku),color:'#9363df'},
+  {label:'Sem conversão direta',value:Number(sw.spendWithoutDirectConversions),color:'#ff9337'},
+  {label:'Sem vínculo seguro',value:Number(sw.spendUnassigned),color:'#438cf3'}
+ ];
+ if(parts.some(x=>!Number.isFinite(x.value)||x.value<0)){
+  center.textContent='—';donut.setAttribute('aria-label','Composição Ads inconsistente');
+  legend.textContent='Não foi possível validar todas as categorias de gastos Ads.';return;
+ }
+ const assigned=parts.reduce((n,x)=>n+x.value,0),gap=Math.max(0,total-assigned);
+ if(gap>.015)parts.push({label:'Não classificado',value:gap,color:'#a7b5c8'});
+ const pct=x=>total>0?100*x/total:0;
+ let offset=0;const slices=[];
+ for(const part of parts){
+  const start=offset;offset=Math.min(100,offset+pct(part.value));
+  if(part.value>0)slices.push(part.color+' '+start.toFixed(3)+'% '+offset.toFixed(3)+'%');
+  const item=financeSkuNode('div','finance-donut-legend-row');
+  const name=financeSkuNode('span','finance-donut-category');
+  const dot=financeSkuNode('span','finance-legend-dot');dot.style.background=part.color;
+  name.append(dot,financeSkuNode('span','',part.label));
+  item.append(name,financeSkuNode('strong','',wdMoney(part.value)));
+  const percent=financeSkuNode('small','',pct(part.value).toLocaleString('pt-BR',{maximumFractionDigits:1})+'%');
+  item.append(percent);legend.append(item);
+ }
+ donut.style.background=total>0&&slices.length?'conic-gradient('+slices.join(',')+')':'conic-gradient(#e6edf6 0 100%)';
+ donut.setAttribute('aria-label','Total Ads '+wdMoney(total)+'. '+parts.map(x=>x.label+' '+wdMoney(x.value)).join('; '));
+}
+function financeCsvSafe(value){
+ const raw=String(value??'');
+ const guarded=/^[\s\uFEFF]*[=+@\-\t\r]/.test(raw)?"'"+raw:raw;
+ return '"'+guarded.replace(/"/g,'""')+'"';
+}
+function financeExportRows(report){
+ const p=report.selection?.label||'Período sem identificação';
+ const t=report.totals||{},sw=report.adsSweep||{},adsReady=sw.status==='verified_campaign_period';
+ const items=[
+  ['Relatório Financeiro Shopee · Rede Achados BR'],
+  ['Período',p],['Gerado em',new Date().toLocaleString('pt-BR',{timeZone:'America/Sao_Paulo'})],
+  ['Fonte repasse','API Shopee Payment'],['Fonte custos','WeDrop conciliado'],
+  ['Pedidos conferidos',t.verified],['Pedidos elegíveis',t.eligible],
+  ['Repasse Shopee',t.received],['Custo WeDrop',t.supplierCost],
+  ['Saldo antes Ads',t.balanceBeforeAds],
+  ['Ads total',adsReady?sw.spendTotal:'Não verificado'],
+  ['Ads com vínculo seguro',adsReady?sw.spendAllocatedToSoldSku:'Não verificado'],
+  ['Ads sem conversão',adsReady?sw.spendWithoutDirectConversions:'Não verificado'],
+  ['Ads sem vínculo seguro',adsReady?sw.spendUnassigned:'Não verificado'],
+  ['Resultado após Ads',adsReady&&Number.isFinite(Number(t.balanceBeforeAds))?
+   Math.round((Number(t.balanceBeforeAds)-Number(sw.spendTotal))*100)/100:'Não verificado'],
+  ['Lucro líquido fiscal','Em apuração'],[],
+  ['SKU','Produto','Unidades','Repasse Shopee','Custo WeDrop','Ads SKU','Resultado após Ads','Situação']
+ ];
+ const skuAds=financeAdsBySku(report),safeZero=adsReady&&Number(sw.spendUnassigned)===0;
+ for(const x of financeSkuEntries(report)){
+  const s=x.sale,ad=skuAds.get(x.sku),operating=s?(ad?.afterAds??(safeZero?s.balanceBeforeAds:null)):null;
+  items.push([x.sku,x.title,s?.quantity??'',s?.payout??'',s?.cost??'',ad?.expense??'',
+   operating??'Não atribuído',s?'Venda concluída':x.pending?'Pendente':'Sem venda']);
+ }
+ items.push([],['Observação','Resultado operacional antes de tributos e despesas externas; não é lucro fiscal final.'],
+  ['Observação','Campanhas não são atribuídas a pedidos individuais por presunção.']);
+ return '\ufeff'+items.map(row=>row.map(financeCsvSafe).join(';')).join('\r\n');
+}
+$('#financeExportCsv')?.addEventListener?.('click',()=>{
+ if(!financeReport)return;
+ const start=String(financeReport.selection?.label||'periodo').replace(/[^a-zA-Z0-9]+/g,'-').slice(0,45);
+ const blob=new Blob([financeExportRows(financeReport)],{type:'text/csv;charset=utf-8;'});
+ const url=URL.createObjectURL(blob),a=document.createElement('a');
+ a.href=url;a.download='rede-achados-shopee-financeiro-'+start+'.csv';
+ document.body.append(a);a.click();a.remove();
+ setTimeout(()=>URL.revokeObjectURL(url),1000);
+});
+
 function renderFinanceAdsScan(report){
  const sweep=report.adsSweep||{};
  const good=sweep.status==='verified_campaign_period';
@@ -2364,13 +2506,17 @@ function renderFinanceSkuList(){
 document.querySelectorAll('[data-finance-filter]').forEach(btn=>{
   btn.onclick=()=>{financeSkuFilter=btn.dataset.financeFilter;financeSkuShown=24;renderFinanceSkuList();};
 });
-$('#financeSkuSearch').oninput=()=>{financeSkuShown=24;renderFinanceSkuList();};
+$('#financeSkuSearch').oninput=()=>{financeSkuShown=24;$('#financeGlobalSearch').value=$('#financeSkuSearch').value;renderFinanceSkuList();};
+$('#financeGlobalSearch').oninput=()=>{financeSkuShown=24;$('#financeSkuSearch').value=$('#financeGlobalSearch').value;renderFinanceSkuList();};
 $('#financeSkuMore').onclick=()=>{financeSkuShown+=24;renderFinanceSkuList();};
 function financeSelectionChanged(){
   const selected=$('#shopeeFinanceDays').value;
   $('#financeCustomDates').hidden=selected!=='custom';
   financeReport=null;financeSkuShown=24;renderFinanceSkuList();
   $('#shopeeFinanceData').hidden=true;
+  $('#financeExportCsv').disabled=true;
+  renderFinanceTrend(null);renderFinanceDistribution(null);
+  $('#financeVerifiedCaption').textContent='Aguardando consulta';
   for(const id of ['#shopeeFinanceVerified','#shopeeFinancePayout','#shopeeFinanceCosts',
     '#shopeeFinanceBalance','#financeSkuAdsKpi','#financeAdsNoConversion',
     '#financeAdsTotal','#financeSkuNetKpi'])$(id).textContent='—';
@@ -2394,6 +2540,9 @@ $('#shopeeFinanceLoad').onclick=async()=>{
   button.disabled=true;button.textContent='Consultando repasses reais...';
   // Esconder números da consulta anterior ao trocar período: nunca exibir como atual.
   financeReport=null;financeSkuBalances.clear();renderFinanceSkuList();
+  $('#financeExportCsv').disabled=true;
+  renderFinanceTrend(null);renderFinanceDistribution(null);
+  $('#financeVerifiedCaption').textContent='Consultando pedidos...';
   for(const id of ['#shopeeFinanceVerified','#shopeeFinancePayout',
     '#shopeeFinanceCosts','#shopeeFinanceBalance','#financeSkuAdsKpi',
     '#financeAdsTotal','#financeAdsNoConversion','#financeSkuNetKpi'])
@@ -2416,7 +2565,10 @@ $('#shopeeFinanceLoad').onclick=async()=>{
     });
     const t=report.totals||{};
     financeReport=report;financeSkuShown=24;
-    $('#financePeriodCaption').textContent='Exibindo apenas pedidos criados em '+
+    renderFinanceTrend(report);renderFinanceDistribution(report);
+    $('#financeExportCsv').disabled=false;
+    $('#financeVerifiedCaption').textContent=(t.eligible>0&&t.verified===t.eligible&&report.complete?'100% dos elegíveis':'Conciliação parcial');
+    $('#financePeriodCaption').title='Exibindo apenas pedidos criados em '+
       (report.selection?.label||'período selecionado')+
       ' e já concluídos. Vendas de outros períodos não aparecem na lista.';
     $('#financeResultsSubheading').textContent=
@@ -2486,6 +2638,7 @@ $('#shopeeFinanceLoad').onclick=async()=>{
     // Atualiza a coluna por SKU apenas para vendas realmente verificadas.
     await refreshWeDropCoverage();
   }catch(error){
+    $('#financeExportCsv').disabled=true;renderFinanceTrend(null);renderFinanceDistribution(null);
     financeReport=null;financeSkuBalances.clear();
     $('#shopeeFinanceData').hidden=true;renderFinanceSkuList();
     wdSetNotice('#shopeeFinanceStatus','Não foi possível verificar os dados financeiros: '+

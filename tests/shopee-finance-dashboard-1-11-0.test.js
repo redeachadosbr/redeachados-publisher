@@ -106,3 +106,18 @@ test('painel financeiro mantém o layout funcional com gráficos sem números de
  assert.match(backend,/export function summarizeFinanceDaily/);
  assert.match(backend,/dailySeries:summarizeFinanceDaily\(rows\)/);
 });
+
+test('gráficos usam dados confirmados e exportação respeita filtro real e CSV seguro',()=>{
+ for(const signature of ['function renderFinanceTrend(report)','function renderFinanceDistribution(report)',
+   'function financeExportRows(report)','function financeCsvSafe(value)']){
+   assert.ok(js.includes(signature),signature);
+ }
+ assert.match(js,/report\?\.dailySeries/);
+ assert.match(js,/report\.adsSweep\|\|\{\}/);
+ assert.match(js,/sw\.status==='verified_campaign_period'/);
+ assert.match(js,/financeCsvSafe\)\.join\(';'/);
+ assert.match(js,/financeReport=report;financeSkuShown=24/);
+ assert.match(js,/renderFinanceTrend\(report\);renderFinanceDistribution\(report\)/);
+ assert.match(js,/financeExportCsv'\)\.disabled=false/);
+ assert.match(js,/financeGlobalSearch'\)\.oninput=/);
+});
