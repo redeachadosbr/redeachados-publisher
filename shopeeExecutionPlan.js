@@ -1,7 +1,7 @@
 import crypto from 'node:crypto';
 import {compileAttributes,compileTax,sameData,fieldsVerified} from './shopeeStructuredFields.js';
 import {imagesSignature} from './shopeePreparedImages.js';
-import {normalizedTitle,codePointCount} from './shopeeOptimizationWorkflow.js';
+import {normalizedTitle,codePointCount,titleHasUnhelpfulDimensions} from './shopeeOptimizationWorkflow.js';
 
 // Preparation is deterministic for one verified item/model/SKU. This module
 // never calls Shopee, and never considers a reviewed checkbox a published item.
@@ -19,6 +19,7 @@ export function compileShopeeExecutionPlan({shopId,itemId,modelId,sku,record,rev
   if(!['NORMAL','UNLIST'].includes(String(record?.status)))blocked.push('Anúncio não está em estado editável confirmado.');
   if(stages.seo?.reviewed===true){
     if(!title||codePointCount(title)>120)blocked.push('Título SEO revisado é inválido.');
+    else if(titleHasUnhelpfulDimensions(title))blocked.push('Título SEO contém sequência de medidas lineares; use termos de busca e deixe as medidas na ficha técnica.');
     else if(title!==currentTitle)proposed.item_name=title;
   }else if(title&&title!==currentTitle)blocked.push('Revisar e registrar a etapa Título SEO antes de executar.');
   if(stages.description?.reviewed===true){

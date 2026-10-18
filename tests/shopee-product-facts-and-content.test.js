@@ -11,7 +11,7 @@ import {compileShopeeExecutionPlan} from '../shopeeExecutionPlan.js';
 const header='SKU,Nome do Produto,Marca,Categoria,Fornecedor,Estado do Fornecedor,Preço,EAN,NCM,CEST,Peso (kg),Largura (cm),Altura (cm),Comprimento (cm),Peso da Caixa (kg),Imagem Principal';
 const row='000A,Piscina Azul,Top Rio,Piscinas,Fornecedor,SC,99.99,0790872291525,01012100,,2600,33,13,36,0,https://example.com/pool.jpg';
 const csv=header+'\n'+row;
-const title='Piscina Inflável 210 Litros Azul 💦 Top Rio para Diversão no Verão ☀️ em Plásticos Compacta para Guardar 135 x 88 x 43 cm';
+const title='Piscina Inflável Infantil Quadrada 210 Litros Azul Top Rio 💦 Para Crianças no Quintal ou Jardim, Lazer e Sol no Verão ☀️';
 test('official catalog preserves SKU, NCM and EAN leading zeros and raw conflicting measurement units',()=>{
  const p=prepareAutomaticWeDropImport(csv).products[0];
  assert.equal(p.sku,'000A');assert.equal(p.data.ncm,'01012100');assert.equal(p.data.ean,'0790872291525');
@@ -91,6 +91,7 @@ test('title validation and execution both count Unicode codepoints without trunc
  assert.equal([...title].length,120);assert.ok(title.length>120);assert.equal(safeTitle(title),title);
  assert.equal(validateReview({stage:'seo',reviewed:true,title}).title,title);
  assert.throws(()=>validateReview({stage:'seo',reviewed:true,title:title+'!'}),/120/);
+ assert.throws(()=>validateReview({stage:'seo',reviewed:true,title:'Piscina Inflável 210 Litros Azul 💦 Top Rio para Diversão no Verão ☀️ em Plásticos Compacta para Guardar 135 x 88 x 43 cm'}),/medidas lineares/);
  const plan=compileShopeeExecutionPlan({shopId:1,itemId:2,modelId:0,sku:'SKU',record:{itemId:2,sku:'SKU',status:'NORMAL'},
   review:{draftTitle:title,stages:{seo:{reviewed:true}}},live:{item_name:'Antigo',description:'Texto',item_sku:'SKU'}});
  assert.equal(plan.canExecute,true);assert.equal(plan.proposed.item_name,title);

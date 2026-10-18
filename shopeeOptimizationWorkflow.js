@@ -3,8 +3,14 @@ export const STAGE_IDS=Object.freeze(['images','video','seo','category','technic
 export const normalizedTitle=value=>String(value||'').normalize('NFC').replace(/\s+/g,' ').trim();
 export const safeTitle=value=>[...normalizedTitle(value)].slice(0,120).join('');
 export const codePointCount=value=>[...String(value||'')].length;
+// Dimensões compostas são detalhadas na ficha técnica, não usadas como preenchimento SEO.
+// Capacidade (ex.: 210 litros) e tamanhos pesquisados individualmente seguem permitidos.
+export const titleHasUnhelpfulDimensions=value=>/\b\d+(?:[.,]\d+)?\s*[x×]\s*\d+(?:[.,]\d+)?(?:\s*[x×]\s*\d+(?:[.,]\d+)?)?\s*(?:mm|cm|m)\b/i.test(normalizedTitle(value));
 export function validateContentRules({title,description}){
- if(title!==undefined&&codePointCount(normalizedTitle(title))!==120)throw Error('O título deve ter exatamente 120 caracteres, incluindo espaços e emojis, conforme as regras da loja.');
+ if(title!==undefined){
+  if(codePointCount(normalizedTitle(title))!==120)throw Error('O título deve ter exatamente 120 caracteres, incluindo espaços e emojis, conforme as regras da loja.');
+  if(titleHasUnhelpfulDimensions(title))throw Error('Não utilize sequência de medidas lineares no título SEO. Priorize palavras-chave pesquisáveis e deixe as dimensões na ficha técnica.');
+ }
  if(description!==undefined){
   const text=String(description).replace(/\r\n?/g,'\n').normalize('NFC').trim(),count=codePointCount(text);
   if(count<1400||count>1440)throw Error('A descrição deve ter entre 1400 e 1440 caracteres, incluindo quebras de linha e emojis.');
@@ -31,7 +37,7 @@ export function buildStages(record,review={}){
   const stages=[
     {key:'images',name:'Imagens comerciais',detail:img+' de 9 imagens disponíveis. '+Math.max(0,9-img)+' posições a preparar/revisar. Não substituir fotos originais sem aprovação.',hint:'Uma imagem por vez (1200 × 1200), preservando exatamente o modelo das fotos originais, seguindo o prompt salvo.',blocking:img<9},
     {key:'video',name:'Vídeo do anúncio',detail:String(record.videoStatus||'Presença não confirmada')+'. Continue as outras etapas mesmo sem confirmação.',hint:'Confirmar Clip publicado/em revisão ou utilizar vídeo de fonte autorizada e upload manual. Não presumir ausência.',blocking:false},
-    {key:'seo',name:'Título SEO',detail:'Título atual: '+(record.title||'Não informado')+'. Revise as versões A/B preparadas; o texto atual não é uma nova otimização.',hint:'Cada versão A/B deve ter exatamente 120 caracteres, começar com as palavras-chave principais e distribuir emojis. Use somente atributos confirmados.',blocking:!record.title},
+    {key:'seo',name:'Título SEO',detail:'Título atual: '+(record.title||'Não informado')+'. Revise as versões A/B preparadas; o texto atual não é uma nova otimização.',hint:'Cada título A/B deve ter exatamente 120 caracteres com emojis e começar por termos que compradores digitam, sustentados por pesquisa de anúncios equivalentes. Priorize nome, tipo, público, capacidade e ocasião de uso conforme o produto. Evite sequências de dimensões em cm: deixe medidas na ficha/descrição. Não declare volumes de busca sem dados oficiais e não invente características.',blocking:!record.title},
     {key:'category',name:'Categoria e GTIN',detail:'Categoria Shopee: '+(record.categoryId||'não informada')+'. GTIN não confirmado nesta auditoria.',hint:'Validar categoria e EAN/GTIN com fonte oficial/fabricante. Não inventar valores.',blocking:!record.categoryId},
     {key:'technical',name:'Ficha técnica',detail:(Number(a.total)||0)+' atributos: '+missing+' obrigatório(s) ausente(s), '+suspect+' para revisar, '+optional+' opcionais sem valor.',hint:'Zero obrigatórios ausentes não significa todos os dados corretos. Usar apenas opções da categoria e fontes comprovadas.',blocking:missing>0||suspect>0},
     {key:'description',name:'Descrição e variações',detail:(record.descriptionPresent?'Descrição atual encontrada.':'Descrição não confirmada.')+' Revise a redação conforme as regras da loja.',hint:'1400–1440 caracteres, com emojis e cinco seções: Descrição do produto; Especificações do produto; Tabela de medidas; 5 dúvidas frequentes; 10 motivos para comprar agora. Não inventar dados ou promessas.',blocking:false},
