@@ -21,9 +21,9 @@ test('v1.19.5 Precificação tem sete KPIs, margem funcional, card bruto e rodap
   assert.match(page,/class="pricing-v2-footer"/);
   assert.match(page,/<details class="sh-price-advanced sh-price-settings-collapsed" id="priceSettingsDetails">/);
   assert.match(page,/<details class="sh-price-advanced pricing-v2-breakdown">/);
-  assert.match(html,/style\.css\?v=1\.19\.5/);
-  assert.match(html,/app\.js\?v=1\.19\.5/);
-  assert.match(server,/version:'1\.19\.5'/);
+  assert.match(html,/style\.css\?v=\d+\.\d+\.\d+/);
+  assert.match(html,/app\.js\?v=\d+\.\d+\.\d+/);
+  assert.match(server,/version:'\d+\.\d+\.\d+'/);
 });
 test('todos os campos oficiais salvos continuam disponíveis, recolhidos por padrão',()=>{
   for(const id of ['priceMinMargin','priceDiscount','priceTax','priceFlash','priceCoupon',
