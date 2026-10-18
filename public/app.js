@@ -2803,6 +2803,15 @@ async function shPricePrepare({silent=false}={}){
   }
 }
 let shQuickMarginTimer=null;
+for(const [selector,delta] of [['#optimizerMarginPlus',1],['#optimizerMarginMinus',-1]]){
+ $(selector)?.addEventListener?.('click',()=>{
+  const slider=$('#optimizerQuickMargin');
+  const next=Math.max(Number(slider.min||0),Math.min(Number(slider.max||70),Number(slider.value||0)+delta));
+  if(next===Number(slider.value))return;
+  slider.value=String(next);
+  slider.dispatchEvent(new Event('input',{bubbles:true}));
+ });
+}
 $('#optimizerQuickMargin')?.addEventListener?.('input',()=>{
   $('#priceMargin').value=$('#optimizerQuickMargin').value;
   shPriceRefreshMarginLabel();
