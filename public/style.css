@@ -1885,3 +1885,44 @@ button.topbar-logout{font-size:13px;color:#183766;border-color:#dfebf6;padding:1
 .optimizer-v15-page .sh-price-quick-values>div:nth-child(3):after{content:"🛒";font-size:13px}
 .optimizer-v15-page .sh-price-quick-values>div:nth-child(4):after{content:"▥";color:#007b68}
 .optimizer-v15-page .sh-price-quick-values>div>span{max-width:calc(100% - 17px)}
+
+
+/* 1.18.1 — cartões financeiros compactos, sem corte/quebra de valores. */
+.optimizer-v15-page .optimizer-v15-price{container-type:inline-size}
+.optimizer-v15-page .sh-price-quick-values{
+ display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px;
+ margin:8px 0 0;min-width:0;align-items:stretch
+}
+.optimizer-v15-page .sh-price-quick-values>div{
+ min-width:0;min-height:94px;padding:11px 10px 10px;
+ display:flex;flex-direction:column;align-items:flex-start;justify-content:space-between;
+ gap:5px;overflow:hidden;border-radius:12px
+}
+.optimizer-v15-page .sh-price-quick-values>div>span{
+ display:block;max-width:calc(100% - 18px);margin:0;min-height:0;
+ font-size:10px;line-height:1.3;font-weight:550;overflow-wrap:normal
+}
+.optimizer-v15-page .sh-price-quick-values>div>strong{
+ display:block;width:100%;max-width:100%;min-width:0;margin:0;
+ font-size:clamp(15px,1.1vw,19px);line-height:1.2;font-weight:800;
+ white-space:nowrap;word-break:normal;overflow-wrap:normal;
+ letter-spacing:-.035em;font-variant-numeric:tabular-nums;
+}
+.optimizer-v15-page .sh-price-quick-values>div:nth-child(4)>strong{
+ font-size:clamp(15px,1.1vw,18px);color:#088955
+}
+.optimizer-v15-page .optimizer-profit-card{justify-content:initial;gap:3px}
+.optimizer-v15-page .optimizer-profit-card>strong{margin-top:auto}
+.optimizer-v15-page .optimizer-profit-percent{
+ display:block;font-size:11px;line-height:1.2;font-weight:750;
+ letter-spacing:0;color:#087c51;white-space:nowrap;font-variant-numeric:tabular-nums
+}
+/* A disposição responde à largura real do painel, não só à largura do monitor. */
+@container (max-width: 590px){
+ .optimizer-v15-page .sh-price-quick-values{grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}
+ .optimizer-v15-page .sh-price-quick-values>div{min-height:83px}
+ .optimizer-v15-page .sh-price-quick-values>div>strong{font-size:19px}
+}
+@container (max-width: 310px){
+ .optimizer-v15-page .sh-price-quick-values{grid-template-columns:1fr}
+}

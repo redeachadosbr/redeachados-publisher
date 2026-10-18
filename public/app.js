@@ -2716,7 +2716,8 @@ function shPriceRender(q){
   $('#optimizerQuickGross').textContent=shPriceMoney(q.grossPrice);
   $('#optimizerQuickDiscount').textContent=shPricePercent(q.discountPct);
   $('#optimizerQuickFinal').textContent=shPriceMoney(q.customerPrice);
-  $('#optimizerQuickProfit').textContent=shPriceMoney(q.netProfit)+' · '+shPricePercent(q.netMarginPct);
+  $('#optimizerQuickProfit').textContent=shPriceMoney(q.netProfit);
+  $('#optimizerQuickMarginPercent').textContent=shPricePercent(q.netMarginPct)+' de margem';
   shQuickSetStatus('SKU '+q.sku+' · Custo WeDrop '+shPriceMoney(q.unitCost)+
     (isSupplierPreview
       ?'. Simulação disponível. Aguarde a confirmação do anúncio Shopee para salvar na etapa Descontos.'

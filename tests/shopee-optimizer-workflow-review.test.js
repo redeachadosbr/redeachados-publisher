@@ -132,3 +132,16 @@ test('layout 1.18 reproduz navegação lateral e painel da referência sem perde
  assert.match(js,/progress\.style\.setProperty\('--stage-progress'/);
  assert.match(js,/\$\('#optimizerWorkflowEditor'\)\.hidden=true/);
 });
+
+test('preços e margem cabem em cartões compactos sem quebrar valores monetários',()=>{
+ const html=readFileSync(new URL('../public/index.html',import.meta.url),'utf8');
+ const js=readFileSync(new URL('../public/app.js',import.meta.url),'utf8');
+ const css=readFileSync(new URL('../public/style.css',import.meta.url),'utf8');
+ assert.match(html,/id="optimizerQuickProfit">—<\/strong><small id="optimizerQuickMarginPercent"/);
+ assert.match(js,/\$\('#optimizerQuickProfit'\)\.textContent=shPriceMoney\(q\.netProfit\);/);
+ assert.match(js,/\$\('#optimizerQuickMarginPercent'\)\.textContent=shPricePercent\(q\.netMarginPct\)/);
+ assert.match(css,/white-space:nowrap;word-break:normal;overflow-wrap:normal/);
+ assert.match(css,/font-variant-numeric:tabular-nums/);
+ assert.match(css,/@container \(max-width: 590px\)/);
+ assert.match(html,/style\.css\?v=1\.18\.1/);
+});
