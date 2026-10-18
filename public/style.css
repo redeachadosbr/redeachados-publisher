@@ -1536,3 +1536,64 @@ table tr:hover td{background:#f3f8ff}
 .optimizer-source-facts p{margin:7px 0}.optimizer-source-facts small{display:block;color:#795500}
 .optimizer-title-variants{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px}
 .copy-count-valid{color:#13754d}.copy-count-invalid{color:#a34814}
+
+
+/* Shopee Manager 1.17 — condensar busca/precificação e mostrar uma etapa por vez */
+.optimizer-v15-page .optimizer-v15-columns{grid-template-columns:minmax(280px,.92fr) minmax(330px,1.08fr);gap:12px;align-items:start}
+.optimizer-v15-page .optimizer-v15-search,.optimizer-v15-page .optimizer-v15-price{min-height:0;padding:15px 17px}
+.optimizer-v15-page .optimizer-v15-heading{margin-bottom:11px;gap:9px}
+.optimizer-v15-page .optimizer-v15-head-icon{width:35px;height:35px;flex-basis:35px;font-size:18px}
+.optimizer-v15-page .optimizer-v15-heading h3{font-size:16px}
+.optimizer-v15-page #optimizerStatus{padding:7px 9px;margin:8px 0;font-size:11px}
+.optimizer-v15-page .optimizer-v15-supplier{padding:7px 10px;margin:7px 0;font-size:11px}
+.optimizer-v15-page .optimizer-margin-details{border:1px solid #e5ecf4;background:#f7f9fd;border-radius:10px;padding:0 11px;margin:5px 0}
+.optimizer-v15-page .optimizer-margin-details>summary{display:flex;gap:8px;align-items:center;cursor:pointer;min-height:37px;font-size:11px;color:#536a85;list-style:none}
+.optimizer-v15-page .optimizer-margin-details>summary::-webkit-details-marker{display:none}
+.optimizer-v15-page .optimizer-margin-details>summary strong{font-size:16px;margin-left:auto;color:#c48620}
+.optimizer-v15-page .optimizer-margin-details>summary span{color:#8a9bb0;font-size:10px}
+.optimizer-v15-page .optimizer-margin-details .sh-price-slider{margin:8px 0 12px;width:100%;height:6px}
+.optimizer-v15-page .sh-price-quick-values{grid-template-columns:repeat(4,minmax(0,1fr));gap:6px;margin:8px 0}
+.optimizer-v15-page .sh-price-quick-values>div{padding:9px 8px;min-width:0}
+.optimizer-v15-page .sh-price-quick-values span{font-size:9px;line-height:1.4}
+.optimizer-v15-page .sh-price-quick-values strong{font-size:clamp(13px,1.4vw,18px);line-height:1.3}
+.optimizer-v15-page .sh-price-quick-values>div:nth-child(4) strong{font-size:clamp(12px,1.2vw,16px)}
+.optimizer-v15-page .sh-price-quick .actions{margin-top:7px;gap:6px}
+.optimizer-v15-page .sh-price-quick .actions button{padding:6px 9px;font-size:10px}
+.optimizer-v15-page #optimizerQuickStatus{padding:7px 9px;margin:7px 0}
+.optimizer-v15-page .optimizer-workflow{gap:11px}
+.optimizer-v15-page .optimizer-workflow-heading{gap:10px}
+.optimizer-workflow-toolbar{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.optimizer-has-variants{font-size:11px;color:#2a5276;background:#f1f6fb;border:1px solid #dbe8f2;border-radius:10px;padding:8px 10px;display:flex;align-items:center;gap:7px;cursor:pointer;font-weight:750}
+.optimizer-has-variants input{accent-color:#187b62;width:16px;height:16px}
+.optimizer-workflow-toolbar>button{font-size:11px;padding:9px 11px;border-radius:9px}
+.optimizer-v15-page .optimizer-workflow-cards{grid-template-columns:repeat(4,minmax(0,1fr));gap:7px}
+.optimizer-v15-page .optimizer-workflow-card{padding:10px 9px;gap:7px;min-height:65px;border-radius:11px;box-shadow:none}
+.optimizer-v15-page .optimizer-workflow-number{width:25px;height:25px;flex-basis:25px;border-radius:8px;font-size:10px}
+.optimizer-v15-page .optimizer-workflow-label strong{font-size:11px}
+.optimizer-v15-page .optimizer-workflow-label small{font-size:9px}
+.optimizer-v15-page .optimizer-workflow-card.is-current{border:2px solid #3377b6;background:#f0f7fe;box-shadow:0 5px 18px #1c659716}
+.optimizer-v15-page .optimizer-workflow-skipped{opacity:.7;background:#f4f6f9}
+.optimizer-v15-page .optimizer-workflow-editor{padding:15px 17px;order:1}
+.optimizer-v15-page .optimizer-workflow-guidance{padding:9px 11px;line-height:1.5}
+.optimizer-v15-page .optimizer-exec-panel{order:2}
+.optimizer-v15-page #optimizerWorkflowEditor[hidden],.optimizer-v15-page #optimizerExecutionPanel[hidden],
+.optimizer-v15-page #optimizerVariationPanel[hidden]{display:none!important}
+.optimizer-variation-grid{display:grid;grid-template-columns:minmax(160px,.6fr) minmax(220px,1.4fr);gap:12px}
+.optimizer-variation-preview{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}
+.optimizer-variation-card{display:flex;flex-wrap:wrap;justify-content:space-between;align-items:center;gap:8px;padding:10px 12px;border:1px solid #dce6f2;background:#fff;border-radius:10px}
+.optimizer-variation-card strong{font-size:12px;color:#193654}
+.optimizer-variation-card small{font-size:10px;color:#6a7d96}
+.optimizer-variation-card button{font-size:10px;padding:7px 9px}
+.optimizer-image-rework{display:grid;gap:10px;padding:12px;border:1px solid #d5e1ef;border-radius:12px;background:#fff}
+.optimizer-rework-fields{display:grid;grid-template-columns:160px 1fr;gap:10px}
+.optimizer-image-rework>small{font-size:10px;line-height:1.5;color:#7a6580}
+.optimizer-prepared-gallery figure>button{font-size:10px;padding:6px 9px;margin:2px}
+.optimizer-visually-hidden{position:absolute!important;width:1px!important;height:1px!important;overflow:hidden!important;clip:rect(0,0,0,0)!important}
+@media(max-width:1240px){.optimizer-v15-page .optimizer-workflow-cards{grid-template-columns:repeat(3,minmax(0,1fr))}
+.optimizer-v15-page .sh-price-quick-values{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media(max-width:880px){.optimizer-v15-page .optimizer-v15-columns{grid-template-columns:1fr}
+.optimizer-v15-page .optimizer-workflow-cards{grid-template-columns:repeat(2,minmax(0,1fr))}
+.optimizer-variation-grid,.optimizer-rework-fields{grid-template-columns:1fr}}
+@media(max-width:520px){.optimizer-v15-page .optimizer-workflow-cards{grid-template-columns:1fr 1fr}
+.optimizer-v15-page .optimizer-workflow-card{min-height:70px}
+.optimizer-variation-preview{grid-template-columns:1fr}}
