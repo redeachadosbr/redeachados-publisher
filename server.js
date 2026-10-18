@@ -6,7 +6,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import {fileURLToPath} from 'node:url';
 import {createAuthStore} from './authStore.js';
-import {mergeShopeeOrderDates} from './orderView.js';
+import {mergeShopeeOrderDates,mergeShopeeOrderSummaries} from './orderView.js';
 import {createShopeeOrderMonitor} from './orderMonitor.js';
 import {loadShopeeAdsOverview} from './adsReport.js';
 import {loadShopeeFinance,MAX_FINANCE_ORDERS} from './shopeeFinance.js';
@@ -1075,7 +1075,7 @@ app.get('/api/shopee/orders',mustLogin,async(req,res)=>{
         detailWarning='Datas indisponíveis na consulta de detalhes: '+String(error.message||error).slice(0,250);
       }
     }
-    const compact=mergeShopeeOrderDates(orderList,detailOrders);
+    const compact=mergeShopeeOrderSummaries(orderList,detailOrders);
     // Nunca devolver campos pessoais que possam vir da consulta de detalhes.
     res.json({
       ok:true,shopId:auth.shopId,

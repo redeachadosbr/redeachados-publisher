@@ -28,3 +28,30 @@ test('usa data da lista quando já existe e ignora timestamps inválidos',()=>{
   assert.equal(data[0].create_time,1792000000);
   assert.equal(data[1].create_time,null);
 });
+
+test('resumo operacional inclui SKU, preço e quantidades sem divulgar dados do comprador',async()=>{
+  const {mergeShopeeOrderSummaries}=await import('../orderView.js');
+  const rows=[{order_sn:'A',order_status:'SHIPPED'},{order_sn:'B',order_status:'COMPLETED'}];
+  const details=[{order_sn:'A',create_time:1792074700,total_amount:89.90,
+    recipient_address:{name:'CLIENTE PRIVADO',phone:'99999'},buyer_username:'SECRETO',
+    item_list:[{item_sku:'SKU123',item_name:'Produto A',model_quantity_purchased:2,model_discounted_price:44.95}]},
+    {order_sn:'B',create_time:1792010000,recipient_address:{name:'SECRET NAME'}}];
+  const result=mergeShopeeOrderSummaries(rows,details);
+  assert.equal(result[0].total_amount,89.9);
+  assert.equal(result[0].items_count,2);
+  assert.equal(result[0].primary_sku,'SKU123');
+  assert.equal(result[0].items[0].quantity,2);
+  assert.equal(result[1].items_count,null);
+  assert.equal(result[1].total_amount,null);
+  assert.ok(!JSON.stringify(result).includes('CLIENTE PRIVADO'));
+  assert.ok(!JSON.stringify(result).includes('SECRET NAME'));
+  assert.ok(!JSON.stringify(result).includes('SECRETO'));
+});
+test('resumo não presume estoque ou quantidade ausente de detalhes',async()=>{
+ const {mergeShopeeOrderSummaries}=await import('../orderView.js');
+ const rows=mergeShopeeOrderSummaries([{order_sn:'A',order_status:'READY_TO_SHIP'}],[]);
+ assert.equal(rows[0].items_count,null);
+ assert.equal(rows[0].total_amount,null);
+ assert.equal(rows[0].primary_sku,null);
+ assert.equal(rows[0].detail_available,false);
+});
