@@ -122,11 +122,17 @@
           <div class="optimizer-v15-heading-content"><h3>Preço e desconto <span class="optimizer-tip" tabindex="0" role="note" aria-label="Preço bruto é o valor cheio a cadastrar. O desconto é preparado para Minha Promoção. A margem já considera os custos configurados e não aplica alterações na Shopee." data-help="Preço bruto é o valor cheio a cadastrar. O desconto é preparado para Minha Promoção. A margem já considera os custos configurados e não aplica alterações na Shopee.">?</span></h3><p class="optimizer-v18-head-description">Defina a margem desejada e visualize os valores calculados.</p></div>
           <a href="/app/precificacao" class="optimizer-v15-action-link" data-go="pricing" aria-label="Abrir configurações de precificação">Ajustar <span aria-hidden="true">↗</span></a>
         </div>
-      <details id="optimizerMarginDetails" class="optimizer-margin-details">
-        <summary>Margem líquida desejada <strong id="optimizerQuickMarginLabel">25%</strong><span>Ajustar ▾</span></summary>
-        <div class="sh-quick-bar"><label for="optimizerQuickMargin" class="optimizer-visually-hidden">Margem desejada</label>
-          <input id="optimizerQuickMargin" class="sh-price-slider" type="range" min="0" max="70" step="1" value="25" aria-label="Margem desejada para o SKU"></div>
-      </details>
+      <div class="optimizer-v18-margin-control">
+        <details id="optimizerMarginDetails" class="optimizer-margin-details">
+          <summary>Margem líquida desejada <span class="optimizer-tip" tabindex="0" role="note" data-help="Ajuste a margem desejada; os valores serão recalculados para a SKU.">?</span></summary>
+          <div class="sh-quick-bar"><label for="optimizerQuickMargin" class="optimizer-visually-hidden">Margem desejada</label>
+            <input id="optimizerQuickMargin" class="sh-price-slider" type="range" min="0" max="70" step="1" value="25" aria-label="Margem desejada para o SKU"></div>
+        </details>
+        <div class="optimizer-v18-margin-stepper"><strong id="optimizerQuickMarginLabel">25%</strong>
+          <div><button id="optimizerMarginPlus" type="button" aria-label="Aumentar margem em um ponto percentual">⌃</button>
+            <button id="optimizerMarginMinus" type="button" aria-label="Diminuir margem em um ponto percentual">⌄</button></div>
+        </div>
+      </div>
       <p id="optimizerQuickStatus" class="optimizer-notice" role="status" aria-live="polite">Informe a SKU acima. O preço bruto e o desconto aparecerão automaticamente.</p>
       <div id="optimizerQuickValues" class="sh-price-kpis sh-price-quick-values optimizer-v15-kpis" hidden>
         <div><span>Preço bruto para anúncio</span><strong id="optimizerQuickGross">—</strong></div>
