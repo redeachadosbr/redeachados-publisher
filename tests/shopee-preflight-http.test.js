@@ -27,5 +27,5 @@ test('authenticated HTTP preflight passes the real config from audit to the subs
   assert.doesNotMatch(JSON.stringify(body),/fixture-key|fixture-token|fixture-service/);
   const bad=await fetch(base+'/api/shopee/optimizer/execution/prepare',{method:'POST',headers:{'Content-Type':'application/json',Cookie:cookie,Origin:'https://wrong-origin.invalid'},body:JSON.stringify({sku:'SKU',itemId:'2',modelId:'0'})});
   assert.equal(bad.status,403);
- }finally{child.kill();await once(child,'exit').catch(()=>{});}
+ }finally{if(child.exitCode===null){const exited=once(child,'exit').catch(()=>{});child.kill();await exited;}}
 });

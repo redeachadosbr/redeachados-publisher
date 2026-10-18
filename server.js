@@ -1,5 +1,6 @@
 import express from 'express';
 import session from 'express-session';
+import {createShopeeSessionStore,SESSION_TTL_MS} from './shopeeSessionStore.js';
 import crypto from 'node:crypto';
 import fs from 'node:fs';
 import path from 'node:path';
@@ -108,8 +109,9 @@ function mustLogin(req,res,next){
 app.use(express.json({limit:'6mb'}));
 app.use(express.urlencoded({extended:true}));
 app.use(session({
+  store:createShopeeSessionStore(),
   secret:stateSecret(),resave:false,saveUninitialized:false,proxy:true,
-  cookie:{httpOnly:true,sameSite:'lax',secure:process.env.NODE_ENV==='production',maxAge:12*60*60*1000}
+  cookie:{httpOnly:true,sameSite:'lax',secure:process.env.NODE_ENV==='production',maxAge:SESSION_TTL_MS}
 }));
 app.use(express.static(path.join(__dirname,'public'),{
   setHeaders(res,filename){
@@ -132,14 +134,24 @@ app.get('/app/:section',(req,res)=>{
 });
 app.get('/app',(_req,res)=>res.redirect(302,'/app/inicio'));
 
-app.get('/api/health',(_req,res)=>res.json({ok:true,service:'Rede Achados BR Shopee API',version:'1.15.0',storage:authStore.status()}));
+app.get('/api/health',(_req,res)=>res.json({ok:true,service:'Rede Achados BR Shopee API',version:'1.15.1',storage:authStore.status()}));
 app.get('/api/auth-state',(req,res)=>res.json({locked:Boolean(envText('APP_PASSWORD')),loggedIn:!envText('APP_PASSWORD')||Boolean(req.session?.appAuth)}));
 app.post('/api/login',(req,res)=>{
   const required=envText('APP_PASSWORD');
-  if(!required||String(req.body.password||'')===required){req.session.appAuth=true;return res.json({ok:true});}
+  if(!required||String(req.body.password||'')===required){
+    return req.session.regenerate(error=>{
+      if(error)return res.status(503).json({error:'Não foi possível iniciar a sessão. Tente novamente.'});
+      req.session.appAuth=true;
+      req.session.save(error=>error
+        ?res.status(503).json({error:'Não foi possível salvar o acesso. Tente novamente.'})
+        :res.json({ok:true}));
+    });
+  }
   res.status(401).json({error:'Senha incorreta.'});
 });
-app.post('/api/logout',(req,res)=>req.session.destroy(()=>res.json({ok:true})));
+app.post('/api/logout',(req,res)=>req.session.destroy(error=>error
+  ?res.status(503).json({error:'Não foi possível encerrar a sessão. Tente novamente.'})
+  :res.clearCookie('connect.sid').json({ok:true})));
 
 app.get('/api/shopee/status',mustLogin,async(req,res)=>{
   try{
