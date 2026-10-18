@@ -1,6 +1,21 @@
 // Checklist de otimização Shopee por SKU (não publica nem altera anúncios).
 export const STAGE_IDS=Object.freeze(['images','video','seo','category','technical','description','fiscal','pricing','final']);
-export const safeTitle=value=>String(value||'').normalize('NFC').replace(/\s+/g,' ').trim().slice(0,120);
+export const normalizedTitle=value=>String(value||'').normalize('NFC').replace(/\s+/g,' ').trim();
+export const safeTitle=value=>[...normalizedTitle(value)].slice(0,120).join('');
+export const codePointCount=value=>[...String(value||'')].length;
+export function validateContentRules({title,description}){
+ if(title!==undefined&&codePointCount(normalizedTitle(title))!==120)throw Error('O título deve ter exatamente 120 caracteres, incluindo espaços e emojis, conforme as regras da loja.');
+ if(description!==undefined){
+  const text=String(description).replace(/\r\n?/g,'\n').normalize('NFC').trim(),count=codePointCount(text);
+  if(count<1400||count>1440)throw Error('A descrição deve ter entre 1400 e 1440 caracteres, incluindo quebras de linha e emojis.');
+  const headings=['Descrição do produto','Especificações do produto','Tabela de medidas','5 dúvidas frequentes','10 motivos para comprar agora'];
+  const positions=headings.map(x=>text.toLocaleLowerCase('pt-BR').indexOf(x.toLocaleLowerCase('pt-BR')));
+  if(positions.some((p,i)=>p<0||(i>0&&p<=positions[i-1])))throw Error('Use as cinco seções solicitadas, na ordem: descrição, especificações, medidas, 5 dúvidas e 10 motivos.');
+  const numbered=part=>(part.match(/^\d{1,2}[.)]\s+.+$/gm)||[]);
+  const questions=numbered(text.slice(positions[3],positions[4])),reasons=numbered(text.slice(positions[4]));
+  if(questions.length!==5||reasons.length!==10)throw Error('Numere as 5 perguntas com respostas e os 10 motivos, um por linha.');
+ }
+}
 export function descriptionDraft(record){
   if(record?.description)return String(record.description);
   return [safeTitle(record?.title)||'Produto da loja','',
@@ -16,10 +31,10 @@ export function buildStages(record,review={}){
   const stages=[
     {key:'images',name:'Imagens comerciais',detail:img+' de 9 imagens disponíveis. '+Math.max(0,9-img)+' posições a preparar/revisar. Não substituir fotos originais sem aprovação.',hint:'Uma imagem por vez (1200 × 1200), preservando exatamente o modelo das fotos originais, seguindo o prompt salvo.',blocking:img<9},
     {key:'video',name:'Vídeo do anúncio',detail:String(record.videoStatus||'Presença não confirmada')+'. Continue as outras etapas mesmo sem confirmação.',hint:'Confirmar Clip publicado/em revisão ou utilizar vídeo de fonte autorizada e upload manual. Não presumir ausência.',blocking:false},
-    {key:'seo',name:'Título SEO',detail:'Título atual: '+(record.title||'Não informado')+'. Sugestão inicial editável sem alegações novas.',hint:'Até 120 caracteres. Usar palavras-chave comprovadas sem inventar dimensões, idade, material ou certificação.',blocking:!record.title},
+    {key:'seo',name:'Título SEO',detail:'Título atual: '+(record.title||'Não informado')+'. Revise as versões A/B preparadas; o texto atual não é uma nova otimização.',hint:'Cada versão A/B deve ter exatamente 120 caracteres, começar com as palavras-chave principais e distribuir emojis. Use somente atributos confirmados.',blocking:!record.title},
     {key:'category',name:'Categoria e GTIN',detail:'Categoria Shopee: '+(record.categoryId||'não informada')+'. GTIN não confirmado nesta auditoria.',hint:'Validar categoria e EAN/GTIN com fonte oficial/fabricante. Não inventar valores.',blocking:!record.categoryId},
     {key:'technical',name:'Ficha técnica',detail:(Number(a.total)||0)+' atributos: '+missing+' obrigatório(s) ausente(s), '+suspect+' para revisar, '+optional+' opcionais sem valor.',hint:'Zero obrigatórios ausentes não significa todos os dados corretos. Usar apenas opções da categoria e fontes comprovadas.',blocking:missing>0||suspect>0},
-    {key:'description',name:'Descrição e variações',detail:(record.descriptionPresent?'Descrição atual encontrada.':'Descrição não confirmada.')+' Minuta conservadora disponível para revisar.',hint:'Não adicionar medidas, conteúdo de kit ou funções sem confirmação; revisar variações sem alterar estoques.',blocking:false},
+    {key:'description',name:'Descrição e variações',detail:(record.descriptionPresent?'Descrição atual encontrada.':'Descrição não confirmada.')+' Revise a redação conforme as regras da loja.',hint:'1400–1440 caracteres, com emojis e cinco seções: Descrição do produto; Especificações do produto; Tabela de medidas; 5 dúvidas frequentes; 10 motivos para comprar agora. Não inventar dados ou promessas.',blocking:false},
     {key:'fiscal',name:'Informações fiscais',detail:'Dados fiscais dependem do produto e validação da contabilidade. Nenhuma nota ou cadastro fiscal alterado.',hint:'NCM, CFOP, origem e CSOSN devem ser verificados; não aplicar valores genéricos indiscriminadamente.',blocking:false},
     {key:'pricing',name:'Preço e promoção',detail:'Usar o plano vinculado à mesma SKU, custo WeDrop atualizado e margem mínima protegida.',hint:'Conferir comissão, cupom e promoção vigente. A análise financeira fica no submenu Precificação.',blocking:false},
     {key:'final',name:'Revisão e execução',detail:'Conferir todas as etapas e solicitar confirmação antes de qualquer alteração via API.',hint:'A execução salva progresso e confirma as alterações por nova leitura da Shopee.',blocking:true}
@@ -34,10 +49,12 @@ export function validateReview(input){
   if(!STAGE_IDS.includes(stage))throw Error('Etapa de otimização inválida.');
   if(typeof input.reviewed!=='boolean')throw Error('Informe a confirmação da revisão.');
   if(stage==='final'&&input.reviewed)throw Error('Este checklist não pode declarar execução/publicação concluída sem confirmação da API.');
-  const title=input.title===undefined?undefined:safeTitle(input.title);
-  const description=input.description===undefined?undefined:String(input.description||'').trim();
+  const title=input.title===undefined?undefined:normalizedTitle(input.title);
+  const description=input.description===undefined?undefined:String(input.description||'').replace(/\r\n?/g,'\n').normalize('NFC').trim();
   if(title!==undefined&&!title)throw Error('Título vazio.');
-  if(description!==undefined&&description.length>3000)throw Error('Descrição excede 3000 caracteres.');
+  if(description!==undefined&&codePointCount(description)>3000)throw Error('Descrição excede 3000 caracteres.');
+  if(input.reviewed&&stage==='seo')validateContentRules({title:title??''});
+  if(input.reviewed&&stage==='description')validateContentRules({description:description??''});
   return {stage,reviewed:input.reviewed,title,description,
     ...(stage==='technical'&&Array.isArray(input.attributes)?{attributes:input.attributes}:{}),
     ...(stage==='fiscal'&&input.tax?{tax:input.tax}:{})};

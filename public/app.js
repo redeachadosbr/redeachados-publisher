@@ -1584,15 +1584,25 @@ function optimizerWorkflowOpen(key){
  if(isImages)void optimizerImagesLoad();
  if(key==='technical')optimizerTechnicalRender(data);
  if(key==='fiscal')optimizerFiscalRender(data);
+ optimizerSupplierRender(data,key);
  $('#optimizerVideoManualPanel').hidden=!isVideo;
  if(isVideo){optimizerVideoReset();void optimizerVideoLoadSaved();}
  draftWrap.hidden=!(isSeo||isDescription);
  if(isSeo||isDescription){
    $('#optimizerWorkflowDraftLabel').textContent=isSeo?'Título SEO proposto (edite antes de gravar na Shopee)':
      'Rascunho de descrição (edite antes de gravar na Shopee)';
-   $('#optimizerWorkflowDraft').maxLength=isSeo?120:3000;
+   // HTML maxlength counts UTF-16 units; validation below counts Unicode points.
+   $('#optimizerWorkflowDraft').maxLength=isSeo?500:6000;
    $('#optimizerWorkflowDraft').value=isSeo?data.draftTitle:data.draftDescription;
+   optimizerCopyCount();
  }
+ const variants=$('#optimizerTitleVariants');variants.replaceChildren();variants.hidden=!isSeo||!data.contentVariants;
+ if(isSeo&&data.contentVariants){for(const [name,title] of Object.entries(data.contentVariants)){
+  const button=optimizerMake('button','secondary','Usar título '+name+' · '+[...title].length+' caracteres');button.type='button';
+  button.onclick=()=>{$('#optimizerWorkflowDraft').value=title;optimizerCopyCount();optimizerExecReset();};variants.append(button);
+ }}
+ const research=$('#optimizerContentResearch');research.hidden=!(isSeo||isDescription);
+ research.textContent=data.contentResearch?.summary||'Pesquisa de concorrentes ainda não registrada para esta SKU. O texto atual exige revisão.';
  $('#optimizerWorkflowReview').hidden=key==='final';
  if(key!=='final'){
    $('#optimizerWorkflowReview').textContent=stage.reviewed?'Reabrir conferência':'Registrar etapa como conferida';
@@ -2791,39 +2801,107 @@ function optimizerExecutionDisplay(key,value){
  if(key==='tax_info')return Object.entries(value||{}).map(([k,v])=>(optimizerTaxLabels[k]||k)+': '+v).join('\n')||'Não informado';
  return String(value||'Não informado');
 }
-$('#optimizerWorkflowDraft')?.addEventListener?.('input',()=>optimizerExecReset());
+function optimizerCopyCount(){
+ const count=[...$('#optimizerWorkflowDraft').value.normalize('NFC')].length,isTitle=optimizerWorkflowStage==='seo';
+ $('#optimizerCopyCount').textContent=count+' caracteres · '+(isTitle?'exatamente 120':'entre 1400 e 1440');
+ $('#optimizerCopyCount').className=(isTitle?count===120:count>=1400&&count<=1440)?'copy-count-valid':'copy-count-invalid';
+}
+$('#optimizerWorkflowDraft')?.addEventListener?.('input',()=>{optimizerExecReset();optimizerCopyCount();});
+function optimizerSupplierRender(data,key){
+ const wrap=$('#optimizerSupplierFacts');wrap.replaceChildren();wrap.hidden=!['seo','description','technical','fiscal','category'].includes(key);
+ if(wrap.hidden)return;
+ const p=data.supplierProduct;
+ if(!p){wrap.append(optimizerMake('p','','Ficha WeDrop ainda não importada. Reimporte o catálogo oficial para recuperar NCM e dados da SKU.'));return;}
+ wrap.append(optimizerMake('strong','',p.source),optimizerMake('p','',[p.name,p.brand,'NCM: '+(p.ncm||'não confirmado'),'EAN: '+(p.ean||'não confirmado')].join(' · ')));
+ if(key==='technical'&&p.catalogMeasurements){const m=p.catalogMeasurements;
+  wrap.append(optimizerMake('p','','Valores brutos da planilha: C '+m.lengthCm+' × L '+m.widthCm+' × A '+m.heightCm+' cm; peso na coluna kg: '+m.weightKg+'. Confira se são dados de embalagem.'));
+ }
+ if(key==='technical'||key==='fiscal')for(const warning of p.warnings||[])wrap.append(optimizerMake('small','',warning));
+}
 function optimizerTechnicalRender(data){
  const wrap=$('#optimizerTechnicalFields');wrap.replaceChildren();
+ $('#optimizerTechnicalRefresh').hidden=!(data.attributes||[]).some(x=>x.parentId);
+ const labels={100413:'Condição',100942:'Dimensões (C × L × A)',100135:'Idade recomendada',101219:'Produto personalizado',
+  102292:'Certificação Inmetro',100162:'Estampa',100999:'Quantidade'};
  for(const attr of data.attributes||[]){
-  if(attr.conditional||!attr.options?.some(x=>x.id>0))continue;
-  const field=optimizerMake('label','optimizer-field',attr.name+(attr.mandatory?' *':''));
-  const select=optimizerMake('select');select.dataset.attributeId=String(attr.id);
-  const keep=optimizerMake('option','', 'Manter atual: '+(attr.values||[]).map(x=>x.name).join(', '));keep.value='';select.append(keep);
-  for(const option of attr.options.filter(x=>x.id>0)){
-   const item=optimizerMake('option','',option.name+(option.unit?' '+option.unit:''));item.value=String(option.id);select.append(item);
+  const name=labels[attr.id]||attr.name,type=Number(attr.inputType),custom=[2,3,5].includes(type),multi=[4,5].includes(type);
+  const field=optimizerMake('fieldset','optimizer-attribute');field.dataset.attributeId=String(attr.id);
+  field.append(optimizerMake('legend','',name+(attr.mandatory?' *':'')));
+  field.append(optimizerMake('small','','Atual: '+((attr.values||[]).map(x=>x.name+(x.unit?' '+x.unit:'')).join(', ')||'Não preenchido')));
+  wrap.append(field);
+  if(attr.conditional){field.append(optimizerMake('p','','Depende da opção escolhida em outro campo. Selecione o campo relacionado e atualize as opções dependentes.'));continue;}
+  if(![1,2,3,4,5].includes(type)&&!attr.options?.length){field.append(optimizerMake('p','','Campo existente sem esquema editável retornado pela Shopee.'));continue;}
+  const existing=(data.attributeChanges||[]).find(x=>Number(x.attributeId)===attr.id)||
+    (data.attributeSuggestions||[]).find(x=>Number(x.attributeId)===attr.id);
+  const enableLabel=optimizerMake('label','optimizer-attribute-toggle'),enabled=optimizerMake('input');
+  enabled.type='checkbox';enabled.dataset.attributeEnabled='true';enabled.checked=Boolean(existing);
+  enabled.setAttribute('aria-label','Preencher '+name);enableLabel.append(enabled,document.createTextNode(' Preencher este campo'));field.append(enableLabel);
+  const controls=optimizerMake('div','optimizer-attribute-controls');controls.hidden=!enabled.checked;field.append(controls);
+  const rows=optimizerMake('div');rows.dataset.attributeRows='true';controls.append(rows);
+  function addRow(value={}){
+   const row=optimizerMake('div','optimizer-attribute-value');row.dataset.attributeValue='true';
+   const select=optimizerMake('select');select.dataset.valueId='true';select.setAttribute('aria-label',name+' — opção');
+   const blank=optimizerMake('option','','Selecione uma opção');blank.value='';select.append(blank);
+   for(const option of (attr.options||[]).filter(x=>x.id>0)){
+    const item=optimizerMake('option','',option.name+(option.unit?' '+option.unit:''));item.value=String(option.id);select.append(item);
+   }
+   if(custom){const other=optimizerMake('option','','Informar valor');other.value='0';select.append(other);}
+   select.value=value.valueId!==undefined?String(value.valueId):type===3||!attr.options?.length?'0':'';
+   select.hidden=type===3||(!attr.options?.length&&custom);row.append(select);
+   const input=optimizerMake('input');input.type=Number(attr.validationType)===4?'date':'text';input.maxLength=500;
+   input.dataset.valueName='true';input.setAttribute('aria-label',name+' — valor');
+   input.placeholder=attr.id===100942?'Comprimento × largura × altura e unidade':'Valor confirmado do produto';
+   input.value=Number(attr.validationType)===4&&/^\d+$/.test(String(value.valueName||''))?
+    new Date(Number(value.valueName)*1000).toISOString().slice(0,10):String(value.valueName||'');row.append(input);
+   const units=(attr.allowedUnits||[]).map(x=>typeof x==='string'?x:x.unit||x.name||'').filter(Boolean);
+   let unit;
+   if(units.length){
+    unit=optimizerMake('select');unit.dataset.valueUnit='true';unit.setAttribute('aria-label',name+' — unidade');
+    const empty=optimizerMake('option','','Unidade');empty.value='';unit.append(empty);
+    for(const u of units){const o=optimizerMake('option','',u);o.value=u;unit.append(o);}unit.value=value.unit||'';row.append(unit);
+   }
+   const show=()=>{input.hidden=select.value!=='0';if(unit)unit.hidden=select.value!=='0';optimizerExecReset();};
+   select.onchange=show;input.oninput=()=>optimizerExecReset();if(unit)unit.onchange=()=>optimizerExecReset();show();
+   if(multi){const remove=optimizerMake('button','secondary','Remover valor');remove.type='button';remove.onclick=()=>{row.remove();optimizerExecReset();};row.append(remove);}
+   rows.append(row);
   }
-  const existing=(data.attributeChanges||[]).find(x=>Number(x.attributeId)===attr.id);
-  select.value=existing?String(existing.valueId):'';
-  const evidence=optimizerMake('input');evidence.type='text';evidence.maxLength=300;evidence.placeholder='Fonte: ficha WeDrop, fabricante ou nota';
-  evidence.dataset.evidenceFor=String(attr.id);evidence.value=existing?.evidence||'';
-  select.onchange=evidence.oninput=()=>optimizerExecReset();
-  field.append(select,evidence);wrap.append(field);
+  for(const value of existing?(existing.values||[existing]):[{}])addRow(value);
+  if(multi){const add=optimizerMake('button','secondary','Adicionar valor');add.type='button';
+   add.onclick=()=>{if(rows.children.length<(Number(attr.maxValues)>0?Number(attr.maxValues):20))addRow();};controls.append(add);}
+  const evidence=optimizerMake('input');evidence.type='text';evidence.maxLength=500;evidence.placeholder='Fonte: ficha WeDrop, fabricante ou nota';
+  evidence.dataset.evidenceFor=String(attr.id);evidence.setAttribute('aria-label',name+' — fonte');evidence.value=existing?.evidence||'';
+  evidence.oninput=()=>optimizerExecReset();controls.append(evidence);
+  enabled.onchange=()=>{controls.hidden=!enabled.checked;optimizerExecReset();};
  }
- if(!wrap.children.length)wrap.append(optimizerMake('p','','Nenhuma opção estruturada editável foi retornada. Confira os campos livres na Shopee.'));
+ if(!wrap.children.length)wrap.append(optimizerMake('p','','A categoria não retornou atributos.'));
 }
 function optimizerTechnicalValues(){
- return [...$('#optimizerTechnicalFields').querySelectorAll('select')].filter(x=>x.value).map(x=>({
-  attributeId:Number(x.dataset.attributeId),valueId:Number(x.value),
-  evidence:$('#optimizerTechnicalFields').querySelector('[data-evidence-for="'+x.dataset.attributeId+'"]').value.trim()
+ return [...$('#optimizerTechnicalFields').querySelectorAll('fieldset')].filter(x=>x.querySelector('[data-attribute-enabled]')?.checked).map(field=>({
+  attributeId:Number(field.dataset.attributeId),evidence:field.querySelector('[data-evidence-for]').value.trim(),
+  values:[...field.querySelectorAll('[data-attribute-value]')].map(row=>{
+   const input=row.querySelector('[data-value-name]'),raw=input.value.trim(),selected=row.querySelector('[data-value-id]').value;
+   return {valueId:selected===''?-1:Number(selected),valueName:input.type==='date'&&raw?String(Date.parse(raw+'T00:00:00Z')/1000):raw,
+    unit:row.querySelector('[data-value-unit]')?.value||''};
+  })
  }));
 }
+$('#optimizerTechnicalRefresh')?.addEventListener?.('click',async()=>{
+ const w=optimizerWorkflowPlan,attributes=optimizerTechnicalValues(),btn=$('#optimizerTechnicalRefresh');if(!w)return;
+ btn.disabled=true;
+ try{
+  const result=await json('/api/shopee/optimizer/workflow/attributes/preview',{method:'POST',headers:{'Content-Type':'application/json'},
+   body:JSON.stringify({itemId:w.itemId,modelId:w.modelId,sku:w.sku,attributes}),signal:AbortSignal.timeout(60000)});
+  if(optimizerWorkflowPlan!==w||optimizerWorkflowStage!=='technical')return;
+  w.attributes=result.attributes;w.attributeChanges=attributes;optimizerTechnicalRender(w);
+  optimizerWorkflowNotice('Opções dependentes atualizadas. Confira os campos liberados.');
+ }catch(e){optimizerWorkflowNotice(e.message,'error');}finally{btn.disabled=false;}
+});
 const optimizerTaxLabels={ncm:'NCM do produto (8 dígitos)',origin:'Origem',same_state_cfop:'CFOP mesmo estado',
  diff_state_cfop:'CFOP outros estados',csosn:'CSOSN',measure_unit:'Unidade de medida',cest:'CEST (se aplicável)',
  pis_cofins_cst:'CST PIS/COFINS',operation_type:'Tipo de operação: 1 Revendedor / 2 Fabricante',evidence:'Fonte e validação fiscal desta SKU'};
 function optimizerFiscalRender(data){
  const wrap=$('#optimizerFiscalFields');wrap.replaceChildren();
- const draft={origin:'2',same_state_cfop:'5106',diff_state_cfop:'6106',csosn:'102',pis_cofins_cst:'99',operation_type:'1',
-  ...(data.taxCurrent||{}),...(data.taxDraft||{})};
+ const draft={...(data.taxCurrent||{}),...(data.taxSuggestion||{}),...(data.taxDraft||{})};
  for(const [key,label] of Object.entries(optimizerTaxLabels)){
   const field=optimizerMake('label','optimizer-field',label),input=optimizerMake('input');
   input.type='text';input.dataset.taxField=key;input.value=String(draft[key]||'');input.maxLength=key==='evidence'?300:20;

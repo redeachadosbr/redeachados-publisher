@@ -19,6 +19,8 @@ import {fetchCatalogPage,normalizeShopeeModels,validItemId} from './catalog.js';
 import {storeCatalogItems,storeCatalogModels,readCatalogCache,catalogStoreReady,findExactCatalogSku} from './catalogStore.js';
 import {previewWeDropCsv,prepareWeDropImport,MAX_CSV_CHARS} from './wedropCsv.js';
 import {saveWeDropCosts,getWeDropCoverage,compareIncomingCosts,pendingWeDropModels} from './wedropCosts.js';
+import {saveWeDropProducts,readWeDropProduct} from './wedropCosts.js';
+import {supplierWorkflowFacts} from './shopeeSupplierFacts.js';
 import {readWeDropSyncState,getStoredWeDropCostCount} from './wedropCosts.js';
 import {getSkuReview,searchSupplierSku,confirmSkuLink,undoSkuLink} from './wedropSkuReview.js';
 import {auditShopeeItem,validateSkuLookup} from './productOptimizer.js';
@@ -33,7 +35,7 @@ import {advanceShopeeExecution} from './shopeeExecutionWorker.js';
 import {createShopeeMediaApi} from './shopeeMediaApi.js';
 import {normalizeManualVideo} from './shopeeVideoValidation.js';
 import {readPreparedImages,importPreparedImage,downloadPreparedImage,imagesSignature,MAX_IMAGE_BYTES,rememberPublishedImages} from './shopeePreparedImages.js';
-import {compileAttributes,compileTax} from './shopeeStructuredFields.js';
+import {compileAttributes,compileTax,attributeAuditForChanges} from './shopeeStructuredFields.js';
 import {MAX_VIDEO_BYTES,getShopeeManualVideo,importShopeeManualVideo,
  signedShopeeManualVideoPreview,manualVideoPublicInfo,downloadShopeeManualVideo,rememberPublishedVideo} from './shopeeManualVideo.js';
 import {findLiveShopeeSku} from './shopeeSkuFinder.js';
@@ -134,7 +136,7 @@ app.get('/app/:section',(req,res)=>{
 });
 app.get('/app',(_req,res)=>res.redirect(302,'/app/inicio'));
 
-app.get('/api/health',(_req,res)=>res.json({ok:true,service:'Rede Achados BR Shopee API',version:'1.15.1',storage:authStore.status()}));
+app.get('/api/health',(_req,res)=>res.json({ok:true,service:'Rede Achados BR Shopee API',version:'1.16.0',storage:authStore.status()}));
 app.get('/api/auth-state',(req,res)=>res.json({locked:Boolean(envText('APP_PASSWORD')),loggedIn:!envText('APP_PASSWORD')||Boolean(req.session?.appAuth)}));
 app.post('/api/login',(req,res)=>{
   const required=envText('APP_PASSWORD');
@@ -376,7 +378,10 @@ app.post('/api/shopee/wedrop/import',mustLogin,requireWeDropAdmin,async(req,res)
       overwrite:req.body?.overwrite===true,
       sourceFile:String(req.body?.fileName||'wedrop.csv')
     });
+    const productFactsSaved=await saveWeDropProducts(auth.shopId,prepared.products,{
+      sourceFile:String(req.body?.fileName||'wedrop.csv'),sourceHash:crypto.createHash('sha256').update(costCsvFromBody(req),'utf8').digest('hex')});
     res.json({ok:true,shopId:auth.shopId,...saved,
+      productFactsSaved,
       importedFrom:prepared.totalRows,
       skippedInvalid:prepared.skippedInvalid,
       invalidExamples:prepared.invalidExamples,
@@ -636,9 +641,13 @@ app.get('/api/shopee/optimizer/workflow',mustLogin,requireWeDropAdmin,async(req,
     const review=stored?.sku===sku?stored.review_state||{}:{};
     const stages=buildStages(record,review);
     const current=await shopeeLiveEditableItem(cfg,auth,itemId);
+    const [supplier,settings]=await Promise.all([
+      readWeDropProduct(auth.shopId,{sku,itemId,modelId}),optimizerSettings(auth.shopId)]);
+    const supplierFacts=supplierWorkflowFacts(supplier,record,settings);
     const manualVideo=manualVideoPublicInfo(
       await getShopeeManualVideo(auth.shopId,itemId,modelId,sku));
-    res.json({ok:true,readOnlyMarketplace:true,sku,itemId,modelId,manualVideo,
+    res.json({ok:true,readOnlyMarketplace:true,sku,itemId,modelId,manualVideo,...supplierFacts,
+      contentVariants:review.contentVariants||null,contentResearch:review.contentResearch||null,
       attributes:record.attributeAudit.attributes,attributeChanges:review.attributes||[],taxDraft:review.tax||{},taxCurrent:current.tax_info||{},
       recordedAt:stored?.updated_at||null,stages,
       draftTitle:review.draftTitle||safeTitle(record.title),
@@ -646,6 +655,16 @@ app.get('/api/shopee/optimizer/workflow',mustLogin,requireWeDropAdmin,async(req,
       imageCount:record.imageCount,
       videoStatus:record.videoStatus,categoryId:record.categoryId});
   }catch(e){res.status(400).json({error:String(e.message||e).slice(0,350)});}
+});
+app.post('/api/shopee/optimizer/workflow/attributes/preview',mustLogin,requireWeDropAdmin,async(req,res)=>{
+  res.setHeader('Cache-Control','no-store');
+  if(!verifiedSameOrigin(req))return res.status(403).json({error:'Origem não autorizada.'});
+  try{
+    const {itemId,auth,cfg,record}=await checkedWorkflowAudit(req);
+    const live=await shopeeLiveEditableItem(cfg,auth,itemId);
+    const audit=attributeAuditForChanges(req.body.attributes,record,live);
+    res.json({ok:true,attributes:audit.attributes.map(a=>({...a,values:record.attributeAudit.attributes.find(x=>x.id===a.id)?.values||[]}))});
+  }catch(e){res.status(400).json({error:String(e.message||e).slice(0,300)});}
 });
 app.post('/api/shopee/optimizer/workflow/review',mustLogin,requireWeDropAdmin,async(req,res)=>{
   res.setHeader('Cache-Control','no-store');

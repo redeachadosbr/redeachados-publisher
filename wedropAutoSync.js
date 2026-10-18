@@ -3,7 +3,7 @@ import crypto from 'node:crypto';
 import {prepareAutomaticWeDropImport,MAX_CSV_CHARS} from './wedropCsv.js';
 import {
   readWeDropCosts,saveWeDropCosts,compareIncomingCosts,
-  readWeDropSyncState,saveWeDropSyncState
+  saveWeDropSyncState,saveWeDropProducts
 } from './wedropCosts.js';
 
 export function supplierFeedConfig(env=process.env){
@@ -39,6 +39,7 @@ export async function importSupplierAutomatically(shopId,csv,{sourceKind='upload
   if(changes.length)saved=await saveWeDropCosts(shopId,changes,{
     overwrite:true,sourceFile:sourceName
   });
+  const productFactsSaved=await saveWeDropProducts(shopId,prepared.products,{sourceFile:sourceName,sourceHash:hash});
   await saveWeDropSyncState(shopId,{
     sourceKind,sourceName,sourceHash:hash,
     importedSkus:prepared.uniqueSkus,changedSkus:changes.length,
@@ -51,7 +52,7 @@ export async function importSupplierAutomatically(shopId,csv,{sourceKind='upload
     unchangedCosts:prepared.uniqueSkus-changes.length,
     matchingSupplierSkus:compared.matchedCount,
     supplierSkusWithoutShopeeMatch:compared.unmatchedCount,
-    layout:prepared.layout,
+    layout:prepared.layout,productFactsSaved,
     ...saved,
     message:'Custos sincronizados no Supabase Shopee. Nenhum preço, estoque ou promoção da Shopee foi modificado.'
   };
@@ -99,9 +100,8 @@ export function createWeDropAutoScheduler({log=console.log}={}){
     running=true;
     try{
       const csv=await fetchSupplierCatalogCsv(feed);
-      const hash=supplierCsvHash(csv);
-      const previous=await readWeDropSyncState(feed.shopId);
-      if(previous?.source_hash===hash)return {configured:true,unchanged:true,checkedAt:new Date().toISOString()};
+      // Re-read product metadata even when prices/file hash did not change;
+      // earlier imports stored only costs and may need metadata backfill.
       const result=await importSupplierAutomatically(feed.shopId,csv,{
         sourceKind:'feed',sourceName:'wedrop-feed.csv'
       });
@@ -124,3 +124,4 @@ export function createWeDropAutoScheduler({log=console.log}={}){
   }
   return {start,check,get running(){return running;}};
 }
+

@@ -56,7 +56,7 @@ export function normalizeAttributeAudit(item,attributesResponse){
     const recorded=existing.get(String(id));
     const values=array(recorded?.attribute_value_list);
     const declared=array(meta.attribute_value_list);
-    const options=declared.slice(0,120).map(v=>({
+    const options=declared.map(v=>({
       id:Number(v.value_id||0),
       name:moneylessString(v.name||v.original_value_name),
       unit:moneylessString(v.value_unit)
@@ -88,14 +88,14 @@ export function normalizeAttributeAudit(item,attributesResponse){
     ];
     const state=conditional?'conditional':!complete?'missing':issues.length?'review':'filled';
     return {id,name,mandatory,conditional,parentId:meta.parentId||null,state,issues,inputType:info.input_type??null,
-      formatType:info.format_type??null,maxValues:info.max_value_count??null,
+      formatType:info.format_type??null,validationType:info.input_validation_type??null,maxValues:info.max_value_count??null,
       supportSearch:Boolean(info.support_search_value),allowedUnits:array(info.attribute_unit_list),
       values:values.map(v=>({
         valueId:Number(v.value_id||0),
         name:moneylessString(v.original_value_name)||
           moneylessString(declared.find(x=>Number(x.value_id)===Number(v.value_id))?.name),
         unit:moneylessString(v.value_unit)
-      })),options,optionsTruncated:declared.length>120};
+      })),options,optionsTruncated:false};
   }).filter(Boolean);
   const seen=new Set(rows.map(x=>x.id));
   const legacy=array(item.attribute_list)
@@ -108,7 +108,7 @@ export function normalizeAttributeAudit(item,attributesResponse){
         unit:moneylessString(v.value_unit)
       })),options:[],optionsTruncated:false}));
   rows.push(...legacy);
-  return {
+  const audit={
     categoryId,checkedAt:new Date().toISOString(),
     total:rows.length,mandatory:rows.filter(x=>x.mandatory&&!x.conditional).length,
     missingMandatory:rows.filter(x=>x.mandatory&&x.state==='missing').length,
@@ -119,6 +119,9 @@ export function normalizeAttributeAudit(item,attributesResponse){
     attributes:rows,
     note:'Esquema e opções consultados da Shopee. Medidas, bateria, potência e certificações precisam de fonte do fabricante/WeDrop e validação humana. O produto NÃO foi alterado.'
   };
+  // Retained for server-side revalidation of dependent attributes, not sent to clients.
+  Object.defineProperty(audit,'schema',{value:attributesResponse,enumerable:false});
+  return audit;
 }
 export function normalizeOptimizerItem(base,models,attributes){
   const id=validItemId(base?.item_id);
@@ -131,7 +134,7 @@ export function normalizeOptimizerItem(base,models,attributes){
       status:moneylessString(m.model_status)})):[];
   return {
     itemId:id,sku,title:moneylessString(base.item_name),
-    status:moneylessString(base.item_status),categoryId:Number(base.category_id),
+    status:moneylessString(base.item_status),categoryId:Number(base.category_id),condition:moneylessString(base.condition),
     hasModel:Boolean(base.has_model),models:variations,
     descriptionPresent:Boolean(moneylessString(base.description)),
     description:moneylessString(base.description),descriptionType:String(base.description_type||'normal'),
