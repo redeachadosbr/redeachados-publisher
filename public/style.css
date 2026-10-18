@@ -2124,3 +2124,204 @@ body.view-finance .page-intro{display:none!important}
  #tab-finance .finance-donut-layout{justify-content:flex-start;flex-wrap:wrap}
  #tab-finance .finance-visual-aside{grid-template-columns:1fr}
 }
+
+
+/* Shopee Manager 1.19.1 — Painel inicial fiel ao layout de referência, sem dados simulados. */
+body.view-overview{background:#f5f8fd}
+body.view-overview .shell.app-layout{grid-template-columns:350px minmax(0,1fr)}
+body.view-overview .workspace-content{max-width:1900px;padding:17px 30px 35px}
+body.view-overview .app-sidebar{position:sticky;overflow:hidden}
+body.view-overview .app-sidebar .sidebar-nav{position:relative;z-index:2}
+body.view-overview .app-sidebar:before{content:"";position:absolute;left:-130px;right:-70px;bottom:-65px;
+ height:235px;pointer-events:none;opacity:.72;
+ background:radial-gradient(ellipse at 80% 6%,#18478c 0,transparent 38%),
+ linear-gradient(156deg,transparent 24%,#023d87 25%,#071c44 60%,#08224f 100%);
+ border-top:2px solid #1464c2;transform:rotate(-6deg)}
+body.view-overview .app-sidebar:after{content:"";position:absolute;width:470px;height:180px;left:-70px;
+ bottom:-108px;border:2px solid #f16b30;border-left:0;border-right:0;border-radius:55%;opacity:.5;transform:rotate(12deg);pointer-events:none}
+body.view-overview .page-intro{margin:0 0 14px;min-height:119px;align-items:flex-start}
+body.view-overview .page-intro>div:first-child{max-width:750px}
+body.view-overview .page-group{color:#f0522f;font-size:12px;font-weight:850;letter-spacing:.16em;margin:4px 0 5px}
+body.view-overview .page-intro h1{font-size:clamp(31px,3vw,43px);line-height:1.06;font-weight:850;
+ color:#092653;letter-spacing:-.055em}
+body.view-overview .page-intro #pageDescription{max-width:650px;font-size:14px;line-height:1.55;color:#607a9b;margin:6px 0 0}
+#tab-overview .welcome-hero.dashboard-hero-v2{height:auto;min-height:271px;display:grid;
+ grid-template-columns:minmax(330px,1.07fr) minmax(440px,.93fr);align-items:center;
+ margin:0 0 19px;padding:22px 27px 19px 38px;gap:15px;overflow:hidden;border:1px solid #164b9b;
+ border-radius:20px;color:#fff;
+ background:radial-gradient(ellipse at 94% 3%,#137cf2a8,transparent 38%),
+ radial-gradient(ellipse at 75% 85%,#0b5db3aa,transparent 49%),
+ linear-gradient(112deg,#042454 0%,#062e6d 45%,#074891 75%,#0879d4 100%);
+ box-shadow:0 7px 22px #0a3b791a}
+#tab-overview .dashboard-hero-v2:before{content:"";position:absolute;right:-80px;top:-115px;width:410px;height:410px;
+ border:1px solid #41a2ff4d;border-radius:50%;background:radial-gradient(circle,#50c5ff1f 0,transparent 62%);pointer-events:none}
+#tab-overview .dashboard-hero-v2:after{content:"";position:absolute;width:250px;height:250px;right:125px;top:5px;
+ border:1px solid #63adff38;border-radius:50%;background:none;pointer-events:none}
+#tab-overview .welcome-hero-copy{max-width:650px;min-width:0;z-index:2}
+#tab-overview .welcome-kicker{display:inline-flex;align-items:center;gap:9px;padding:9px 14px;
+ background:#ffffff14;border:1px solid #ffffff0b;border-radius:999px;
+ color:#e5f1ff;font-size:11px;font-weight:850;letter-spacing:.07em}
+#tab-overview .welcome-kicker em{font-style:normal;color:#ffbd4b}
+#tab-overview .welcome-dot{height:15px;width:15px;flex:0 0 15px;background:linear-gradient(135deg,#ff9541,#ff5335);
+ border:2px solid #ffbe79;box-shadow:0 0 0 3px #ff893e25}
+#tab-overview .welcome-hero h2{font-size:clamp(32px,3.45vw,49px);line-height:1.02;
+ letter-spacing:-.062em;margin:11px 0 10px;color:#fff;font-weight:880;white-space:normal}
+#tab-overview .welcome-hero p{font-size:14px;line-height:1.5;max-width:565px;color:#d6e4fb;margin:0}
+#tab-overview .hero-actions{margin-top:22px;display:flex;gap:12px;flex-wrap:wrap}
+#tab-overview .hero-actions button{height:54px;min-height:54px;border-radius:13px;padding:12px 16px;
+ font-size:12px;font-weight:810;display:inline-flex;align-items:center;gap:11px}
+#tab-overview .hero-actions .nav-icon{height:21px;width:21px;flex:0 0 21px}
+#tab-overview .hero-actions button .nav-icon:last-child{margin-left:6px;height:15px;width:15px}
+#tab-overview .hero-actions .hero-action{color:#0c2a5d;background:#fff;border-color:#e5ecfc;
+ box-shadow:0 5px 12px #001f5599}
+#tab-overview .hero-actions .hero-ghost{background:#ffffff13;color:#fff;border:1px solid #9fc6ff71}
+#tab-overview .dashboard-hero-right{position:relative;z-index:1;min-width:0;display:grid;
+ grid-template-columns:minmax(170px,.98fr) minmax(185px,.95fr);align-items:center;gap:14px;height:222px}
+#tab-overview .dashboard-hero-status{display:flex;flex-direction:column;gap:11px;z-index:2}
+#tab-overview .dashboard-hero-status-card{height:62px;min-width:0;display:flex;align-items:center;
+ gap:11px;padding:8px 12px;background:linear-gradient(110deg,#ffffff15,#ffffff08);
+ border:1px solid #77c5ff18;border-radius:14px;box-shadow:inset 0 1px #ffffff0d}
+#tab-overview .dashboard-hero-status-card>div{display:flex;flex-direction:column;gap:4px;min-width:0}
+#tab-overview .dashboard-hero-status-card strong{font-size:12px;line-height:1.2;font-weight:820;color:#fff;white-space:nowrap}
+#tab-overview .dashboard-hero-status-card small{font-size:9px;color:#c4dafa;line-height:1.3}
+#tab-overview .dashboard-hero-status-icon{display:grid;place-items:center;height:42px;width:42px;flex:0 0 42px;
+ border-radius:50%;font-size:24px;font-weight:850;color:#fff;box-shadow:0 4px 11px #00164044}
+#tab-overview .dashboard-hero-status-icon.green{background:linear-gradient(145deg,#67e880,#1ab557)}
+#tab-overview .dashboard-hero-status-icon.purple{background:linear-gradient(145deg,#637dff,#392bc8)}
+#tab-overview .dashboard-hero-status-icon.orange{background:linear-gradient(145deg,#ffad57,#f65b2e)}
+#tab-overview .dashboard-hero-status-icon .nav-icon{width:24px;height:24px}
+#tab-overview .dashboard-hero-status-card.is-unavailable .dashboard-hero-status-icon{filter:grayscale(1);opacity:.6}
+#tab-overview .dashboard-hero-display{position:relative;height:224px;min-width:0;display:grid;place-items:center;isolation:isolate}
+#tab-overview .dashboard-hero-glow{position:absolute;inset:-40px -30px 1px;
+ background:radial-gradient(ellipse,#49aeff66 0,transparent 68%);z-index:-2}
+#tab-overview .dashboard-hero-logo{z-index:2;width:187px;height:188px;position:relative;top:-6px;
+ border-radius:27px;transform:perspective(520px) rotateY(-10deg) rotateZ(-6deg);
+ border:2px solid #dcf3ff;box-shadow:0 0 0 5px #339aff30,0 10px 19px #01123d99,0 0 25px #3bafffaa,inset 0 0 16px #fff5;
+ background:linear-gradient(140deg,#1d8eff,#063177 65%,#155cc8);display:flex;align-items:center;
+ justify-content:center;flex-direction:column;overflow:hidden}
+#tab-overview .dashboard-hero-logo img{width:150px;height:150px;object-fit:contain;filter:drop-shadow(0 8px 8px #001d4c7a)}
+#tab-overview .dashboard-hero-logo span{font-size:9px;font-weight:850;white-space:nowrap;letter-spacing:.08em;color:#f6fbff}
+#tab-overview .dashboard-hero-pedestal{position:absolute;bottom:-23px;width:245px;height:58px;
+ border-radius:50%;background:linear-gradient(#2aa7ff,#0757b2);
+ border:1px solid #83d5ff;box-shadow:0 10px 16px #001338bb,0 0 31px #1b91f5a8}
+#tab-overview .dashboard-hero-pedestal:after{content:"";position:absolute;left:2%;right:2%;top:14px;bottom:-9px;
+ border-radius:0 0 46% 46%;background:linear-gradient(#075fb4,#003677);z-index:-1}
+#tab-overview .dashboard-block-head.dashboard-section-head{margin:17px 0 12px;min-height:26px}
+#tab-overview .dashboard-section-head h3{font-size:20px;letter-spacing:-.035em;color:#102c57}
+#tab-overview .dashboard-section-head>span{font-size:11px;color:#718aa8}
+#tab-overview .dashboard-section-meta{display:flex;align-items:center;gap:25px;font-size:11px;color:#7187a3}
+#tab-overview .dashboard-refresh{border:0;background:none;color:#079e57;font-size:10px;font-weight:650;
+ display:flex;align-items:center;gap:6px;padding:6px;white-space:nowrap}
+#tab-overview .dashboard-refresh .nav-icon{height:14px;width:14px}
+#tab-overview .dashboard-refresh:hover{background:#e7f6ee;border-radius:8px}
+#tab-overview .dashboard-refresh:disabled{opacity:.55;cursor:wait}
+#tab-overview .dashboard-metrics{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:13px;margin:0 0 13px}
+#tab-overview .dashboard-metrics .kpi-tile{display:grid;grid-template-columns:58px minmax(0,1fr) 20px;align-items:center;
+ gap:11px;min-height:116px;padding:15px 13px;text-align:left;justify-content:normal;
+ border-radius:15px;white-space:normal}
+#tab-overview .dashboard-metrics .kpi-tile:after{display:none}
+#tab-overview .dashboard-kpi-icon{width:58px;height:58px;border-radius:18px;display:grid;place-items:center}
+#tab-overview .dashboard-kpi-icon .nav-icon{height:30px;width:30px}
+#tab-overview .dashboard-kpi-copy{display:flex;flex-direction:column;align-items:flex-start;gap:6px;min-width:0}
+#tab-overview .kpi-topline{font-size:11px;white-space:nowrap;color:#5d7697;font-weight:660;justify-content:start}
+#tab-overview .dashboard-metrics .kpi-tile strong{white-space:nowrap;overflow-wrap:normal;font-size:clamp(16px,1.7vw,23px);line-height:1.2;color:#092957}
+#tab-overview .kpi-foot{font-size:10px;font-weight:550;color:#7b91aa;white-space:nowrap}
+#tab-overview .dashboard-kpi-chevron{align-self:end;display:grid;place-items:center;width:25px;height:25px;
+ border-radius:100%;background:#e8f3ff;color:#1e6ccc}
+#tab-overview .dashboard-kpi-chevron .nav-icon{height:16px;width:16px}
+#tab-overview .dashboard-kpi-connection{border-color:#cfeee2;background:linear-gradient(130deg,#fff,#f1fbf7)}
+#tab-overview .dashboard-kpi-connection .dashboard-kpi-icon{background:#e0f8eb;color:#0ca84f}
+#tab-overview .dashboard-kpi-connection strong{color:#087843!important}
+#tab-overview .dashboard-kpi-shop{border-color:#d3e8ff;background:linear-gradient(130deg,#fff,#f1f8ff)}
+#tab-overview .dashboard-kpi-shop .dashboard-kpi-icon{background:#e6f3ff;color:#1678e8}
+#tab-overview .dashboard-kpi-environment{border-color:#dfdefd;background:linear-gradient(130deg,#fff,#f7f6ff)}
+#tab-overview .dashboard-kpi-environment .dashboard-kpi-icon{background:#eae8ff;color:#6248db}
+#tab-overview .dashboard-kpi-environment strong{color:#4e36c8!important}
+#tab-overview .dashboard-kpi-database{border-color:#f6e1d3;background:linear-gradient(130deg,#fff,#fff8f4)}
+#tab-overview .dashboard-kpi-database .dashboard-kpi-icon{background:#ffede1;color:#f05b33}
+#tab-overview .shortcut-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:13px}
+#tab-overview button.shortcut{min-height:82px;max-height:none;display:grid;grid-template-columns:54px minmax(0,1fr) 25px;
+ align-items:center;gap:11px;padding:12px 13px;text-align:left;border-radius:14px}
+#tab-overview .shortcut-symbol{width:53px;height:53px;border-radius:15px}
+#tab-overview .shortcut-symbol .nav-icon{width:28px;height:28px}
+#tab-overview .shortcut-copy{min-width:0;display:flex;flex-direction:column;gap:5px}
+#tab-overview button.shortcut strong{color:#102c55;font-size:13px}
+#tab-overview button.shortcut small{font-size:10px;line-height:1.3;color:#607b9d}
+#tab-overview button.shortcut .shortcut-arrow{position:static;width:26px;height:26px;
+ background:#fff1ec;border-radius:50%;display:grid;place-items:center;color:#f25b34}
+#tab-overview .shortcut-arrow .nav-icon{width:16px;height:16px}
+#tab-overview .dashboard-shortcut-products{border-color:#f6ded6;background:#fffaf7}
+#tab-overview .dashboard-shortcut-products .shortcut-symbol{background:#ffebe3;color:#f0522c}
+#tab-overview .dashboard-shortcut-orders{border-color:#d9eafb;background:#fbfdff}
+#tab-overview .dashboard-shortcut-orders .shortcut-symbol{background:#e2f1ff;color:#177bf1}
+#tab-overview .dashboard-shortcut-wedrop{border-color:#e3ddff;background:#fdfcff}
+#tab-overview .dashboard-shortcut-wedrop .shortcut-symbol{background:#eae5ff;color:#5437eb}
+#tab-overview .dashboard-shortcut-finance{border-color:#d9efe5;background:#f9fffc}
+#tab-overview .dashboard-shortcut-finance .shortcut-symbol{background:#e3f8ed;color:#148f52}
+#tab-overview .dashboard-tip{min-height:79px;margin:15px 0 0;border-radius:15px;padding:13px 19px;
+ background:linear-gradient(105deg,#effaf6,#eaf8f5);border:1px solid #ccece0}
+#tab-overview .dashboard-tip-icon{height:54px;width:54px;border-radius:50%;background:#dff6eb;color:#0b995a}
+#tab-overview .dashboard-tip-icon .nav-icon{height:28px;width:28px}
+#tab-overview .dashboard-tip>div:nth-child(2){border-left:1px solid #b9e4d2;padding-left:20px}
+#tab-overview .dashboard-tip strong{font-size:14px;color:#0d2b50}
+#tab-overview .dashboard-tip p{font-size:11px;color:#6d88a4;margin:5px 0 0;line-height:1.4}
+#tab-overview .dashboard-tip button{color:#fff;background:#006640;border:0;border-radius:11px;
+ height:45px;padding:10px 17px;display:flex;align-items:center;gap:12px;font-size:12px}
+#tab-overview .dashboard-tip button .nav-icon{height:15px;width:15px}
+@media(max-width:1450px){
+ body.view-overview .shell.app-layout{grid-template-columns:306px minmax(0,1fr)}
+ #tab-overview .welcome-hero.dashboard-hero-v2{grid-template-columns:minmax(300px,1fr) minmax(360px,.9fr);padding-left:23px}
+ #tab-overview .dashboard-hero-right{grid-template-columns:minmax(170px,1fr) 165px;gap:6px}
+ #tab-overview .dashboard-hero-logo{width:154px;height:164px}
+ #tab-overview .dashboard-hero-logo img{width:127px;height:127px}
+ #tab-overview .dashboard-hero-pedestal{width:185px}
+ #tab-overview .dashboard-hero-status-card{padding:6px 8px}
+ #tab-overview .dashboard-metrics .kpi-tile{grid-template-columns:43px minmax(0,1fr) 17px;gap:8px;padding:11px 9px}
+ #tab-overview .dashboard-kpi-icon{width:43px;height:43px}
+ #tab-overview .dashboard-kpi-icon .nav-icon{width:24px;height:24px}
+ #tab-overview .shortcut-grid{gap:9px}
+ #tab-overview button.shortcut{grid-template-columns:41px minmax(0,1fr) 18px;gap:7px;padding:10px 9px}
+ #tab-overview .shortcut-symbol{width:41px;height:41px}
+ #tab-overview .shortcut-symbol .nav-icon{width:23px;height:23px}
+}
+@media(max-width:1220px){
+ #tab-overview .welcome-hero.dashboard-hero-v2{grid-template-columns:1fr;min-height:0;gap:25px}
+ #tab-overview .dashboard-hero-right{max-width:700px;width:100%;grid-template-columns:1fr 200px;margin:0 auto;height:215px}
+ #tab-overview .dashboard-hero-status{gap:8px}
+ #tab-overview .dashboard-metrics,#tab-overview .shortcut-grid{grid-template-columns:repeat(2,minmax(0,1fr))}
+ #tab-overview .dashboard-metrics .kpi-tile{grid-template-columns:55px minmax(0,1fr) 20px}
+ #tab-overview .dashboard-kpi-icon{width:55px;height:55px}
+ #tab-overview button.shortcut{grid-template-columns:52px minmax(0,1fr) 25px}
+ #tab-overview .shortcut-symbol{width:52px;height:52px}
+}
+@media(max-width:980px){
+ body.view-overview .shell.app-layout{display:block}
+ body.view-overview .app-sidebar{position:fixed;width:306px}
+ body.view-overview .workspace-content{padding:16px 18px 35px}
+}
+@media(max-width:680px){
+ body.view-overview .page-intro{min-height:0;margin:0 0 18px}
+ body.view-overview .page-intro h1{font-size:31px}
+ body.view-overview .page-intro #pageDescription{font-size:12px}
+ #tab-overview .welcome-hero.dashboard-hero-v2{padding:23px 18px}
+ #tab-overview .welcome-hero h2{font-size:clamp(31px,8vw,40px)}
+ #tab-overview .welcome-hero p{font-size:12px}
+ #tab-overview .hero-actions button{height:47px;min-height:47px;padding:9px 10px;font-size:11px}
+ #tab-overview .dashboard-hero-right{grid-template-columns:1fr}
+ #tab-overview .dashboard-hero-display{display:none}
+ #tab-overview .dashboard-section-meta{gap:7px}
+ #tab-overview .dashboard-section-meta>span{display:none}
+ #tab-overview .dashboard-metrics,#tab-overview .shortcut-grid{grid-template-columns:1fr 1fr;gap:8px}
+ #tab-overview .dashboard-metrics .kpi-tile{grid-template-columns:1fr 20px;min-height:112px;padding:12px}
+ #tab-overview .dashboard-kpi-icon{display:none}
+ #tab-overview .dashboard-kpi-copy{align-self:center}
+ #tab-overview .dashboard-metrics .kpi-tile strong{font-size:17px}
+ #tab-overview button.shortcut{grid-template-columns:1fr 17px;min-height:88px;padding:11px}
+ #tab-overview .shortcut-symbol{display:none}
+ #tab-overview .dashboard-tip{flex-wrap:wrap}
+ #tab-overview .dashboard-tip>div:nth-child(2){padding-left:11px}
+ #tab-overview .dashboard-tip button{margin-left:auto}
+}
+@media(max-width:390px){
+ #tab-overview .dashboard-metrics,#tab-overview .shortcut-grid{grid-template-columns:1fr}
+}
