@@ -2915,3 +2915,117 @@ body.view-pricing .page-intro{display:none!important}
  #tab-pricing .pricing-v2-margin-controls{flex-wrap:wrap}
  #tab-pricing .pricing-v2-steppers{margin-left:auto}
 }
+
+
+/* Shopee 1.19.6 — Descontos preparados: visual fiel à referência e checklists honestos. */
+body.view-discounts .workspace-content{max-width:1900px;padding:16px 28px 38px}
+body.view-discounts .page-intro{display:none!important}
+#tab-discounts{color:#0b2855}
+#tab-discounts .discount-v2-icon{width:21px;height:21px;flex:0 0 21px}
+#tab-discounts .discount-v2-help{flex:0 0 17px;width:17px;height:17px;font-size:10px}
+#tab-discounts .discount-v2-page-head{display:flex;justify-content:space-between;align-items:center;gap:14px;min-height:119px;margin:0 0 15px}
+#tab-discounts .discount-v2-eyebrow{color:#f05431;font-size:11px;font-weight:850;letter-spacing:.15em}
+#tab-discounts .discount-v2-page-head h2{font-size:clamp(29px,2.5vw,39px);color:#092553;margin:8px 0 7px;font-weight:880;letter-spacing:-.047em;line-height:1.1}
+#tab-discounts .discount-v2-page-head p{font-size:13px;color:#6c83a4;line-height:1.45;margin:0}
+#tab-discounts .discount-v2-saved-badge{display:inline-flex;align-items:center;gap:9px;padding:11px 15px;border-radius:999px;border:1px solid #cce9d9;background:#eaf8f0;color:#087248;white-space:nowrap;font-size:11px;font-weight:810}
+#tab-discounts .discount-v2-saved-badge .discount-v2-icon{width:18px;height:18px}
+#tab-discounts .discount-v2-saved-badge[data-state="unavailable"]{background:#fff8e8;border-color:#eedfbf;color:#97671d}
+#tab-discounts .discount-v2-saved-badge[data-state="reviewed"]{background:#e9f8f0;border-color:#bde6d0;color:#087e50}
+#tab-discounts .discount-v2-main,#tab-discounts .discount-v2-recent{border:1px solid #e0eaf6;background:#fff;box-shadow:0 5px 21px #0d3a7409;border-radius:16px;padding:18px 21px;margin-bottom:11px}
+#tab-discounts .discount-v2-title-row{display:flex;align-items:center;gap:14px;margin-bottom:14px}
+#tab-discounts .discount-v2-main-icon{display:grid;place-items:center;width:49px;height:49px;flex:0 0 49px;border-radius:14px;background:linear-gradient(135deg,#fff1ec,#ffe9e2);color:#f95a30}
+#tab-discounts .discount-v2-main-icon .discount-v2-icon{width:27px;height:27px}
+#tab-discounts .discount-v2-title-row h3{display:flex;align-items:center;gap:9px;font-size:20px;letter-spacing:-.03em;color:#112f5b;font-weight:850;margin:0 0 5px}
+#tab-discounts .discount-v2-title-row p{color:#7487a5;font-size:12px;margin:0}
+#tab-discounts .discount-v2-plan{background:#f9fbfe;padding:12px;border:1px solid #dbe5f3;border-radius:13px}
+#tab-discounts .discount-v2-plan-heading{min-height:30px;margin:0 3px 11px}
+#tab-discounts .discount-v2-plan-heading strong{font-size:19px;letter-spacing:-.025em;color:#102d5c;font-weight:870}
+#tab-discounts .discount-v2-plan-heading span{font-size:11px;color:#7a8da8}
+#tab-discounts .discount-v2-kpis{display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:9px;margin-bottom:12px}
+#tab-discounts .discount-v2-kpi{background:linear-gradient(130deg,#fff,#fafcff);border:1px solid #dfe8f4;min-width:0;min-height:111px;padding:12px 11px;border-radius:12px;display:flex;flex-direction:column;justify-content:space-between;gap:8px}
+#tab-discounts .discount-v2-kpi-label{display:flex;align-items:center;gap:7px;min-width:0;font-size:10px;color:#48678e;line-height:1.35}
+#tab-discounts .discount-v2-kpi-icon{width:35px;height:35px;flex:0 0 35px;border-radius:9px;background:#fff0ec;color:#f65b36;display:grid;place-items:center}
+#tab-discounts .discount-v2-kpi-icon .discount-v2-icon{width:19px;height:19px}
+#tab-discounts .discount-v2-kpi-label>span:nth-child(2){min-width:0;flex:1}
+#tab-discounts .discount-v2-kpi-label .discount-v2-help{margin-left:auto}
+#tab-discounts .discount-v2-kpi strong{font-size:clamp(17px,1.75vw,26px);color:#0a2754;font-weight:850;letter-spacing:-.035em;line-height:1.15;white-space:nowrap;font-variant-numeric:tabular-nums}
+#tab-discounts .discount-v2-kpi-final strong,#tab-discounts .discount-v2-kpi-margin strong,#tab-discounts .discount-v2-kpi-profit strong{color:#007c4c}
+#tab-discounts .discount-v2-kpi-final .discount-v2-kpi-icon,#tab-discounts .discount-v2-kpi-margin .discount-v2-kpi-icon,#tab-discounts .discount-v2-kpi-profit .discount-v2-kpi-icon{color:#0c9d5f;background:#e9faef}
+#tab-discounts .discount-v2-kpi-cost .discount-v2-kpi-icon{color:#7b92ad;background:#eef3fa}
+#tab-discounts .discount-v2-detail-grid{display:grid;grid-template-columns:1fr 1fr;gap:11px;margin:0 0 12px}
+#tab-discounts .discount-v2-detail-card{border:1px solid #dce7f5;border-radius:12px;padding:13px 15px;background:#fff;min-width:0}
+#tab-discounts .discount-v2-detail-card h4{display:flex;gap:9px;align-items:center;color:#15345e;font-weight:830;font-size:12px;margin:0 0 10px}
+#tab-discounts .discount-v2-detail-card h4 .discount-v2-icon{width:19px;height:19px;color:#1461bb}
+#tab-discounts .discount-v2-status-row{display:flex;align-items:center;gap:8px;border-radius:10px;padding:11px 12px;font-size:11px;line-height:1.45;font-weight:650;background:#eef4fd;color:#41668b;border:1px solid #dfe8f4}
+#tab-discounts .discount-v2-status-row[data-state="success"]{background:#e9f8ef;color:#087c4d;border-color:#d2eedf}
+#tab-discounts .discount-v2-status-row[data-state="warning"]{background:#fff6e6;color:#976d1d;border-color:#f0dfbc}
+#tab-discounts .discount-v2-status-row[data-state="error"]{background:#fff0f1;color:#b13545;border-color:#f1cace}
+#tab-discounts .discount-v2-subnote{background:#f4f6fa;border:1px solid #e3eaf4;color:#6f829e;border-radius:9px;padding:9px 12px;font-size:11px;line-height:1.45;margin:7px 0 0}
+#tab-discounts .discount-v2-check-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px 18px;margin:12px 0 11px}
+#tab-discounts .discount-v2-check-item{display:flex;align-items:center;gap:8px;cursor:pointer;min-width:0;font-size:11px;color:#546f94;line-height:1.3}
+#tab-discounts .discount-v2-check-item input{position:absolute;opacity:0;width:1px;height:1px}
+#tab-discounts .discount-v2-check-indicator{width:21px;height:21px;flex:0 0 21px;border-radius:50%;display:grid;place-items:center;background:#edf1f8;border:1px solid #b9cbe2;color:transparent;font-size:13px;font-weight:900}
+#tab-discounts .discount-v2-check-item input:checked+.discount-v2-check-indicator{background:#0fa35c;color:#fff;border-color:#0fa35c}
+#tab-discounts .discount-v2-check-item input:focus-visible+.discount-v2-check-indicator{outline:3px solid #3489cc;outline-offset:2px}
+#tab-discounts .discount-v2-check-item:has(input:disabled){opacity:.55;cursor:not-allowed}
+#tab-discounts #discountReviewStatus{font-size:10px;color:#6c829e;line-height:1.4}
+#tab-discounts .discount-v2-actions{display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px;margin:3px 0 0}
+#tab-discounts .discount-v2-actions button{display:flex;align-items:center;justify-content:center;gap:11px;min-height:47px;padding:10px;border-radius:9px;font-size:12px;font-weight:830;white-space:nowrap}
+#tab-discounts .discount-v2-actions button .discount-v2-icon{width:19px;height:19px}
+#tab-discounts #discountCopy{background:linear-gradient(115deg,#ff6039,#f54b2d);color:#fff;border:0;box-shadow:0 4px 11px #f2533025}
+#tab-discounts #discountEdit{background:linear-gradient(120deg,#063e2b,#0d583e);color:#fff;border:0}
+#tab-discounts #discountOpenPromotion{background:#fff;border:1px solid #d5e2f1;color:#123564}
+#tab-discounts .discount-v2-no-plan{padding:17px;background:#fff8eb;border:1px solid #f1dec0;border-radius:10px;color:#956b24;font-size:12px}
+#tab-discounts .discount-v2-no-plan[hidden]{display:none}
+#tab-discounts .discount-v2-recent-header{display:flex;align-items:center;gap:12px}
+#tab-discounts .discount-v2-recent-icon{display:grid;place-items:center;width:44px;height:44px;flex:0 0 44px;background:#edf5ff;border-radius:12px;color:#1361b7}
+#tab-discounts .discount-v2-recent-header>div{flex:1;min-width:0}
+#tab-discounts .discount-v2-recent-header h3{display:flex;align-items:center;gap:7px;font-size:18px;font-weight:850;color:#15335d;letter-spacing:-.03em;margin:0 0 5px}
+#tab-discounts .discount-v2-recent-header p{font-size:11px;color:#7890a9;line-height:1.45;margin:0}
+#tab-discounts #discountRefresh{min-height:41px;display:flex;align-items:center;gap:8px;padding:9px 14px;border-radius:9px;color:#fff;background:linear-gradient(135deg,#06482f,#092b20);font-size:11px;font-weight:800;white-space:nowrap}
+#tab-discounts #discountRefresh .discount-v2-icon{width:17px;height:17px}
+#tab-discounts .discount-v2-recent-list{display:grid;grid-template-columns:1fr;gap:0;margin:10px 0 0}
+#tab-discounts .discount-v2-recent-plan{display:grid;grid-template-columns:minmax(150px,.9fr) minmax(200px,1.9fr) minmax(115px,.6fr) 20px;align-items:center;gap:10px;width:100%;border:1px solid #e1e9f6;border-bottom:0;padding:9px 15px;border-radius:0;background:#fff;text-align:left;min-height:50px;color:#1d3b63;cursor:pointer;box-shadow:none}
+#tab-discounts .discount-v2-recent-plan:first-child{border-radius:10px 10px 0 0}
+#tab-discounts .discount-v2-recent-plan:last-child{border-bottom:1px solid #e1e9f6;border-radius:0 0 10px 10px}
+#tab-discounts .discount-v2-recent-plan:only-child{border-radius:10px}
+#tab-discounts .discount-v2-recent-plan.selected{background:#edf5ff;border-color:#d8e5f8}
+#tab-discounts .discount-v2-recent-plan:hover{background:#f0f6ff;border-color:#c5d9ef}
+#tab-discounts .discount-v2-recent-identity{display:grid;gap:3px}
+#tab-discounts .discount-v2-recent-identity strong{font-size:12px;color:#15345e;font-weight:850}
+#tab-discounts .discount-v2-recent-identity small{font-size:10px;color:#7a90ab}
+#tab-discounts .discount-v2-recent-values{font-size:11px;color:#35517b;white-space:normal;line-height:1.35}
+#tab-discounts .discount-v2-recent-chip{justify-self:start;background:#eaf8ef;color:#0b7c49;border:1px solid #d3eedc;border-radius:999px;padding:6px 12px;font-size:10px;font-weight:690;white-space:nowrap}
+#tab-discounts .discount-v2-recent-arrow{font-size:24px;font-weight:600;color:#254f82;text-align:center}
+@media(max-width:1400px){
+ #tab-discounts .discount-v2-kpis{gap:7px}
+ #tab-discounts .discount-v2-kpi{padding:10px 8px}
+ #tab-discounts .discount-v2-kpi-label{font-size:9px;gap:4px}
+ #tab-discounts .discount-v2-kpi-icon{width:27px;height:27px;flex-basis:27px}
+ #tab-discounts .discount-v2-kpi strong{font-size:18px}
+}
+@media(max-width:1150px){
+ #tab-discounts .discount-v2-kpis{grid-template-columns:repeat(3,minmax(0,1fr))}
+ #tab-discounts .discount-v2-detail-grid{grid-template-columns:1fr}
+}
+@media(max-width:720px){
+ body.view-discounts .workspace-content{padding:12px 10px 28px}
+ #tab-discounts .discount-v2-page-head{align-items:flex-start;flex-direction:column;gap:10px;min-height:0}
+ #tab-discounts .discount-v2-page-head h2{font-size:28px}
+ #tab-discounts .discount-v2-main,#tab-discounts .discount-v2-recent{padding:12px}
+ #tab-discounts .discount-v2-title-row h3{font-size:16px}
+ #tab-discounts .discount-v2-title-row p{font-size:11px}
+ #tab-discounts .discount-v2-kpis{grid-template-columns:repeat(2,minmax(0,1fr))}
+ #tab-discounts .discount-v2-kpi strong{font-size:19px}
+ #tab-discounts .discount-v2-plan-heading strong{font-size:16px}
+ #tab-discounts .discount-v2-check-grid{grid-template-columns:1fr 1fr}
+ #tab-discounts .discount-v2-actions{grid-template-columns:1fr;gap:7px}
+ #tab-discounts .discount-v2-actions button{min-height:44px}
+ #tab-discounts .discount-v2-recent-header{flex-wrap:wrap}
+ #tab-discounts #discountRefresh{margin-left:auto}
+ #tab-discounts .discount-v2-recent-plan{grid-template-columns:1fr 20px;gap:5px}
+ #tab-discounts .discount-v2-recent-identity{grid-column:1}
+ #tab-discounts .discount-v2-recent-values{grid-column:1}
+ #tab-discounts .discount-v2-recent-chip{grid-column:1}
+ #tab-discounts .discount-v2-recent-arrow{grid-column:2;grid-row:1/4}
+}
