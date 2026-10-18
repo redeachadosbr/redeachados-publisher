@@ -6,7 +6,7 @@
 <meta name="theme-color" content="#0A1C3A">
 <link rel="icon" type="image/svg+xml" href="/brand-logo.svg">
 <title>Rede Achados BR · Gestão Shopee</title>
-<link rel="stylesheet" href="/style.css?v=1.19.4">
+<link rel="stylesheet" href="/style.css?v=1.19.5">
 </head>
 <body>
 <div class="shell app-layout">
@@ -32,7 +32,7 @@
         </details>
       </div>
     </nav>
-    <div class="sidebar-bottom"><div class="sidebar-support"><span class="sidebar-support-dot"></span><span><strong>Central Shopee</strong><small>Versão 1.19.4</small></span></div><small class="sidebar-copy">© Rede Achados BR</small></div>
+    <div class="sidebar-bottom"><div class="sidebar-support"><span class="sidebar-support-dot"></span><span><strong>Central Shopee</strong><small>Versão 1.19.5</small></span></div><small class="sidebar-copy">© Rede Achados BR</small></div>
   </aside>
   <button class="sidebar-scrim" id="sidebarScrim" type="button" aria-label="Fechar menu" hidden></button>
   <div class="workspace-main">
@@ -333,19 +333,39 @@
   </div>
 </section>
               <section class="tabpane" id="tab-pricing" aria-label="Precificação Shopee e configurações">
-        <div class="optimizer-page">
-          <div class="optimizer-head"><div><span class="eyebrow">OTIMIZAÇÃO · SHOPEE</span><h2>Precificação</h2>
-          <p>Margem e valores à vista; configurações pré-definidas permanecem recolhidas, mas podem ser editadas e salvas.</p></div>
-          <span class="optimizer-mode">SKU herdada da Otimização</span></div>
-    <section class="optimizer-panel sh-price-panel" id="optimizerPricingPanel" aria-label="Precificação Shopee da SKU">
-      <div class="optimizer-section-title"><span class="optimizer-symbol">03</span><div><h3>Precificação de produtos Shopee</h3><p>O custo e a SKU vêm da Otimização. Ajuste a margem; os demais campos ficam recolhidos com seus padrões salvos.</p></div></div>
-      <p class="optimizer-notice" id="priceStatus" role="status" aria-live="polite">Informe a SKU na página Otimização. Este cálculo é compartilhado automaticamente.</p>
-      <div class="sh-price-grid">
-        <div class="sh-price-controls">
-          <div class="sh-price-row"><label for="priceMargin">Margem líquida desejada</label><strong id="priceMarginLabel">25%</strong></div>
-          <input id="priceMargin" class="sh-price-slider" type="range" min="0" max="70" step="1" value="25">
-          <details class="sh-price-advanced sh-price-settings-collapsed" id="priceSettingsDetails">
-            <summary>Configurações pré-definidas e editáveis · imposto, cupom, oferta relâmpago, descontos e taxas</summary>
+        <div class="pricing-v2-page">
+          <div class="pricing-v2-heading"><div><span class="pricing-v2-eyebrow">OTIMIZAÇÃO</span>
+            <h2>Precificação</h2><p>Margens, valores de anúncio e configurações de taxas editáveis da Shopee.</p></div>
+            <span id="pricingInheritedBadge" class="pricing-v2-badge"><svg class="pricing-v2-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linejoin="round" stroke-linecap="round" aria-hidden="true"><ellipse cx="12" cy="5" rx="8" ry="3"/><path d="M4 5v14c0 1.7 3.6 3 8 3s8-1.3 8-3V5M4 12c0 1.7 3.6 3 8 3s8-1.3 8-3"/></svg> SKU herdada da Otimização</span></div>
+          <div class="pricing-v2-summary" aria-label="Resumo financeiro da SKU">
+            <div class="pricing-v2-summary-item"><span class="pricing-v2-summary-title"><svg class="pricing-v2-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linejoin="round" stroke-linecap="round" aria-hidden="true"><path d="m12 2 9 5-9 5-9-5 9-5ZM3 7v10l9 5 9-5V7M12 12v10"/></svg> SKU <span class="optimizer-tip pricing-v2-help" tabindex="0" role="note" data-help="A SKU é herdada da última seleção válida em Otimização. Não é necessário digitar novamente." aria-label="Ajuda: A SKU é herdada da última seleção válida em Otimização. Não é necessário digitar novamente.">?</span></span><strong id="pricingSummarySku">—</strong></div>
+<div class="pricing-v2-summary-item"><span class="pricing-v2-summary-title"><svg class="pricing-v2-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linejoin="round" stroke-linecap="round" aria-hidden="true"><path d="M3 3h2l2 12h12l2-9H6M10 21h.01M19 21h.01"/></svg> Custo WeDrop <span class="optimizer-tip pricing-v2-help" tabindex="0" role="note" data-help="Custo de aquisição do produto obtido no catálogo WeDrop salvo e confirmado para a SKU." aria-label="Ajuda: Custo de aquisição do produto obtido no catálogo WeDrop salvo e confirmado para a SKU.">?</span></span><strong id="pricingSummaryCost">—</strong></div>
+<div class="pricing-v2-summary-item"><span class="pricing-v2-summary-title"><svg class="pricing-v2-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linejoin="round" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="5"/><circle cx="12" cy="12" r="1"/></svg> Margem desejada <span class="optimizer-tip pricing-v2-help" tabindex="0" role="note" data-help="Percentual ajustado na barra. O cálculo é refeito com a margem definida, respeitando as taxas e o piso de margem mínima." aria-label="Ajuda: Percentual ajustado na barra. O cálculo é refeito com a margem definida, respeitando as taxas e o piso de margem mínima.">?</span></span><strong id="pricingSummaryTarget">—</strong></div>
+<div class="pricing-v2-summary-item"><span class="pricing-v2-summary-title"><svg class="pricing-v2-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linejoin="round" stroke-linecap="round" aria-hidden="true"><path d="M3 3v7l11 11 7-7L10 3H3ZM7 7h.01"/></svg> Desconto preparado <span class="optimizer-tip pricing-v2-help" tabindex="0" role="note" data-help="Percentual recomendado para o preço bruto do anúncio. Não é aplicado automaticamente na Shopee." aria-label="Ajuda: Percentual recomendado para o preço bruto do anúncio. Não é aplicado automaticamente na Shopee.">?</span></span><strong id="pricePromoPct">—</strong></div>
+<div class="pricing-v2-summary-item"><span class="pricing-v2-summary-title"><svg class="pricing-v2-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linejoin="round" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M15 9c-1-2-6-2-6 1s6 2 6 5-5 3-6 1M12 6v12"/></svg> Preço final estimado <span class="optimizer-tip pricing-v2-help" tabindex="0" role="note" data-help="Estimativa do valor a pagar após os descontos configurados." aria-label="Ajuda: Estimativa do valor a pagar após os descontos configurados.">?</span></span><strong id="priceFinal">—</strong></div>
+<div class="pricing-v2-summary-item"><span class="pricing-v2-summary-title"><svg class="pricing-v2-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linejoin="round" stroke-linecap="round" aria-hidden="true"><path d="M3 21V13h3v8M9 21V7h3v14M15 21V3h3v18M21 21H2"/></svg> Lucro líquido <span class="optimizer-tip pricing-v2-help" tabindex="0" role="note" data-help="Estimativa operacional líquida após os custos e taxas configurados; confira despesas reais da loja." aria-label="Ajuda: Estimativa operacional líquida após os custos e taxas configurados; confira despesas reais da loja.">?</span></span><strong id="priceProfit">—</strong></div>
+<div class="pricing-v2-summary-item"><span class="pricing-v2-summary-title"><svg class="pricing-v2-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linejoin="round" stroke-linecap="round" aria-hidden="true"><path d="M12 2v10h10M9 3a10 10 0 1 0 12 12"/></svg> Margem líquida <span class="optimizer-tip pricing-v2-help" tabindex="0" role="note" data-help="Margem calculada sobre o preço final do comprador, conforme os custos e taxas cadastrados." aria-label="Ajuda: Margem calculada sobre o preço final do comprador, conforme os custos e taxas cadastrados.">?</span></span><strong id="priceMarginActual">—</strong></div>
+          </div>
+          <section class="optimizer-panel sh-price-panel pricing-v2-panel" id="optimizerPricingPanel" aria-label="Precificação Shopee da SKU">
+            <div class="pricing-v2-columns">
+              <div class="sh-price-controls pricing-v2-controls">
+                <div class="pricing-v2-margin-card">
+                  <div class="pricing-v2-margin-heading"><span class="pricing-v2-heading-mark"><svg class="pricing-v2-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linejoin="round" stroke-linecap="round" aria-hidden="true"><path d="M3 21V13h3v8M9 21V7h3v14M15 21V3h3v18M21 21H2"/></svg></span>
+                    <label for="priceMargin">Margem líquida desejada</label>
+                    <span class="optimizer-tip pricing-v2-help" tabindex="0" role="note" data-help="Altere pela barra ou pelas setas. A margem permite até 70%, e o plano é recalculado para a SKU validada. Nenhum preço é alterado na Shopee sem autorização." aria-label="Ajuda: Altere pela barra ou pelas setas. A margem permite até 70%, e o plano é recalculado para a SKU validada. Nenhum preço é alterado na Shopee sem autorização.">?</span>
+                    <strong id="priceMarginLabel">25%</strong></div>
+                  <div class="pricing-v2-margin-controls">
+                    <div class="pricing-v2-slider-group">
+                      <input id="priceMargin" class="sh-price-slider" type="range" min="0" max="70" step="1" value="25" aria-label="Margem líquida desejada, de zero a setenta por cento">
+                      <div class="pricing-v2-range-labels"><span>0%</span><span>70%</span></div>
+                    </div>
+                    <div class="pricing-v2-steppers"><button id="pricingMarginMinus" type="button" aria-label="Diminuir margem em um ponto percentual">−</button>
+                      <output id="pricingMarginValue" for="priceMargin">25%</output>
+                      <button id="pricingMarginPlus" type="button" aria-label="Aumentar margem em um ponto percentual">+</button></div>
+                  </div>
+                </div>
+                <details class="sh-price-advanced sh-price-settings-collapsed" id="priceSettingsDetails">
+            <summary><span class="pricing-settings-heading"><strong>Configurações pré-definidas e editáveis</strong><small>Imposto, cupom, oferta relâmpago, descontos e taxas.</small></span><span class="pricing-chevron" aria-hidden="true">⌄</span></summary>
           <div class="sh-price-fields">
             <label>Margem mínima protegida (%)<input id="priceMinMargin" type="number" min="0" max="70" step=".1" value="5"></label>
             <label>Desconto base Shopee (%)<input id="priceDiscount" type="number" min="0" max="90" step=".1" value="20"></label>
@@ -372,24 +392,29 @@
             </div>
           </details>
           </details>
-          <div class="actions"><button id="priceRecalculate" type="button" class="secondary">Recalcular e salvar plano</button><button id="priceOpenDiscounts" type="button" class="secondary">Ir para Descontos →</button></div>
-          <small class="hint" id="priceSaveInfo">Os padrões ficam salvos no Supabase Shopee.</small>
-        </div>
-        <div class="sh-price-results" id="priceResults" hidden>
-          <div class="sh-price-hero"><span>PREÇO BRUTO PARA SUBIR NA SHOPEE</span><strong id="priceGross">—</strong><small>Valor cheio, antes do desconto</small></div>
-          <div class="sh-price-kpis">
-            <div><span>Desconto preparado</span><strong id="pricePromoPct">—</strong></div>
-            <div><span>Preço final estimado</span><strong id="priceFinal">—</strong></div>
-            <div><span>Lucro líquido</span><strong id="priceProfit">—</strong></div>
-            <div><span>Margem líquida</span><strong id="priceMarginActual">—</strong></div>
-          </div>
-          <p class="sh-price-note" id="priceCostSource"></p>
-          <p class="sh-price-note" id="priceMarketState"></p>
-          <details class="sh-price-advanced"><summary>Ver memória de cálculo</summary><div id="priceBreakdown"></div></details>
-        </div>
-      </div>
-    </section>
-
+              </div>
+              <div class="sh-price-results pricing-v2-results" id="priceResults">
+                <div class="sh-price-hero pricing-v2-gross">
+                  <span><svg class="pricing-v2-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linejoin="round" stroke-linecap="round" aria-hidden="true"><path d="M3 3v7l11 11 7-7L10 3H3ZM7 7h.01"/></svg> PREÇO BRUTO PARA SUBIR NA SHOPEE <span class="optimizer-tip pricing-v2-help" tabindex="0" role="note" data-help="Preço cheio calculado para cadastrar antes da promoção. Nenhuma alteração é enviada automaticamente à Shopee." aria-label="Ajuda: Preço cheio calculado para cadastrar antes da promoção. Nenhuma alteração é enviada automaticamente à Shopee.">?</span></span>
+                  <strong id="priceGross">—</strong><small>Valor cheio, antes do desconto.</small>
+                </div>
+              </div>
+            </div>
+            <div class="pricing-v2-footer">
+              <div class="pricing-v2-actions">
+                <button id="priceRecalculate" type="button"><svg class="pricing-v2-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linejoin="round" stroke-linecap="round" aria-hidden="true"><rect x="4" y="2" width="16" height="20" rx="2"/><path d="M8 6h8M8 11h2M14 11h2M8 15h2M14 15h2M8 19h2M14 19h2"/></svg> Recalcular e salvar plano</button>
+                <button id="priceOpenDiscounts" type="button" class="secondary"><svg class="pricing-v2-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linejoin="round" stroke-linecap="round" aria-hidden="true"><path d="M4 12h16m-6-6 6 6-6 6"/></svg> Ir para Descontos</button>
+              </div>
+              <p class="optimizer-notice" id="priceStatus" role="status" aria-live="polite">Informe a SKU na página Otimização. Este cálculo é compartilhado automaticamente.</p>
+              <small class="hint" id="priceSaveInfo">Os padrões ficam salvos no Supabase Shopee.</small>
+              <details class="sh-price-advanced pricing-v2-breakdown">
+                <summary><svg class="pricing-v2-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linejoin="round" stroke-linecap="round" aria-hidden="true"><rect x="4" y="2" width="16" height="20" rx="2"/><path d="M8 6h8M8 11h2M14 11h2M8 15h2M14 15h2M8 19h2M14 19h2"/></svg> Ver memória de cálculo <span class="pricing-chevron" aria-hidden="true">⌄</span></summary>
+                <div class="pricing-v2-breakdown-content"><p class="sh-price-note" id="priceCostSource"></p>
+                  <p class="sh-price-note" id="priceMarketState"></p>
+                  <div id="priceBreakdown"></div></div>
+              </details>
+            </div>
+          </section>
         </div>
       </section>
               <section class="tabpane" id="tab-discounts" aria-label="Descontos da Shopee preparados">
@@ -849,6 +874,6 @@
     </main>
   </div>
 </div>
-<script src="/app.js?v=1.19.4"></script>
+<script src="/app.js?v=1.19.5"></script>
 </body>
 </html>
