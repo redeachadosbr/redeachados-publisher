@@ -37,7 +37,7 @@ test('status de revisão salvo não implica aplicação na Shopee',()=>{
  assert.equal(stages.find(s=>s.key==='seo').reviewed,true);
  assert.equal(stages.find(s=>s.key==='images').status,'attention');
  assert.throws(()=>validateReview({stage:'final',reviewed:true}),/publicação/);
- const title='Piscina Inflável 210 Litros Azul 💦 Top Rio para Diversão no Verão ☀️ em Plásticos Compacta para Guardar 135 x 88 x 43 cm';
+ const title='Piscina Inflável Infantil Quadrada 210 Litros Azul Top Rio 💦 Para Crianças no Quintal ou Jardim, Lazer e Sol no Verão ☀️';
  assert.throws(()=>validateReview({stage:'seo',reviewed:true,title:'Piscina Inflável Azul'}),/120 caracteres/);
  assert.deepEqual(validateReview({stage:'seo',reviewed:true,title}),{
    stage:'seo',reviewed:true,title,description:undefined
