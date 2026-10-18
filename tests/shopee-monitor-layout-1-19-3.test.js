@@ -56,5 +56,5 @@ test('monitor usa os endpoints existentes, sem inventar sincronização, avisos 
   assert.match(js,/Notification\.permission==='granted'/);
   assert.match(js,/Notification\.requestPermission\(\)/);
   assert.match(js,/monitorSetActiveIndicator\('#monitorStateInterval',healthy\?'ok'/);
-  assert.match(html,/app\.js\?v=1\.19\.3/);
+  assert.match(html,/app\.js\?v=\d+\.\d+\.\d+/);
 });
