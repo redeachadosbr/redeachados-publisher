@@ -47,6 +47,7 @@ function setTab(name,{updateHistory=true,scroll=true}={}){
   activeAppPage=name;
   document.body?.classList?.toggle?.('view-optimizer',name==='optimizer');
   document.body?.classList?.toggle?.('view-overview',name==='overview');
+  document.body?.classList?.toggle?.('view-products',name==='products');
   document.body?.classList?.toggle?.('view-finance',name==='finance');
   document.body?.classList?.toggle?.('view-alerts',name==='alerts');
   const reportTabs=new Set(['ads','wedrop']);
