@@ -1097,7 +1097,7 @@ app.get('/api/shopee/orders',mustLogin,async(req,res)=>{
 installFinanceBridge(app,async(req)=>{
   const {auth,cfg}=await getValidAuth(req);
   const to=Math.floor(Date.now()/1000);
-  const range=financeRange({days:15},to);
+  const range=financeRange({days:30},to);
   const financial=await loadShopeeFinance(cfg,auth,callShopeeShopApi,{now:to,timeRange:range});
   const orders=(financial.rows||[]).map(o=>({
     orderId:String(o.orderSn||''),date:null,
@@ -1110,7 +1110,7 @@ installFinanceBridge(app,async(req)=>{
       ads={status:'confirmed',amount:Math.round(Number(report.total.expense)*100)/100,source:'Shopee Ads API · campanhas de produtos'};
   }catch(_){/* sem acesso Ads, não inventar R$0 */}
   return {schema:'ra-finance-bridge-v1',platform:'shopee',generatedAt:new Date().toISOString(),
-    orders,ads,coverage:{note:'Somente pedidos concluidos CRIADOS na janela de 15 dias; limite '+MAX_FINANCE_ORDERS+' pedidos. Repasse nao equivale ao saldo sacavel.'},
+    orders,ads,coverage:{note:'Somente pedidos COMPLETED criados na janela de 30 dias; enviados sem repasse confirmado permanecem pendentes; limite '+MAX_FINANCE_ORDERS+' pedidos. Repasse nao equivale ao saldo sacavel.'},
     diagnostics:{ordersExamined:orders.length,complete:financial.complete===true,
       permissionWarning:Boolean(financial.paymentAccessWarning),truncated:Boolean(financial.skippedCompleted)}};
 });
