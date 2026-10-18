@@ -1,14 +1,14 @@
 import crypto from 'node:crypto';
 import {compileAttributes,compileTax,sameData,fieldsVerified} from './shopeeStructuredFields.js';
 import {imagesSignature} from './shopeePreparedImages.js';
-import {safeTitle} from './shopeeOptimizationWorkflow.js';
+import {normalizedTitle,codePointCount} from './shopeeOptimizationWorkflow.js';
 
 // Preparation is deterministic for one verified item/model/SKU. This module
 // never calls Shopee, and never considers a reviewed checkbox a published item.
 const normal=s=>String(s??'').replace(/\r\n?/g,'\n').trim();
 export function compileShopeeExecutionPlan({shopId,itemId,modelId,sku,record,review,live,manualVideo=null,verifiedVideoSha256=null,manualImages=[]}){
   const state=review||{},stages=state.stages||{};
-  const title=safeTitle(state.draftTitle||'');
+  const title=normalizedTitle(state.draftTitle||'');
   const description=normal(state.draftDescription);
   const currentTitle=normal(live?.item_name),currentDescription=normal(live?.description);
   const currentType=String(live?.description_type||'normal').toLowerCase();
@@ -18,7 +18,7 @@ export function compileShopeeExecutionPlan({shopId,itemId,modelId,sku,record,rev
     throw Error('Anúncio, modelo ou SKU diferente da auditoria atual.');
   if(!['NORMAL','UNLIST'].includes(String(record?.status)))blocked.push('Anúncio não está em estado editável confirmado.');
   if(stages.seo?.reviewed===true){
-    if(!title||title.length>120)blocked.push('Título SEO revisado é inválido.');
+    if(!title||codePointCount(title)>120)blocked.push('Título SEO revisado é inválido.');
     else if(title!==currentTitle)proposed.item_name=title;
   }else if(title&&title!==currentTitle)blocked.push('Revisar e registrar a etapa Título SEO antes de executar.');
   if(stages.description?.reviewed===true){
@@ -32,6 +32,9 @@ export function compileShopeeExecutionPlan({shopId,itemId,modelId,sku,record,rev
   if(Number(record?.imageCount)<9)warnings.push('Imagens: '+record.imageCount+'/9; faltam arquivos aprovados, geração e upload.');
   warnings.push('Vídeo: '+String(record?.videoStatus||'não verificado')+'. É necessário confirmar/upload autorizado.');
   if((record.attributeAudit?.missingMandatory||0)>0)warnings.push('Ficha técnica: atributos obrigatórios pendentes.');
+  const changing=new Set(stages.technical?.reviewed?(state.attributes||[]).map(x=>Number(x.attributeId)):[]);
+  const pendingAttributes=(record.attributeAudit?.attributes||[]).filter(x=>!x.conditional&&x.state==='missing'&&!changing.has(x.id));
+  if(pendingAttributes.length)warnings.push('Ficha técnica: '+pendingAttributes.map(x=>x.name).join(', ')+'. Dados sem fonte permanecem pendentes; somente os campos revisados serão alterados.');
   warnings.push('Categoria e GTIN atuais serão preservados. Confira o cadastro do produto.');
   if(!stages.fiscal?.reviewed||!state.tax)warnings.push('Fiscal: informe os dados e a fonte por SKU para preparar a alteração.');
   warnings.push('Preço, frete e promoção permanecem separados; descontos não serão enviados.');

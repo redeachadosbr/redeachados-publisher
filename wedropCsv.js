@@ -144,7 +144,40 @@ export function prepareWeDropImport(raw,{skuColumn,costColumn,skipInvalid=false}
   if(conflicts.length)throw Error('SKUs repetidos com custos diferentes: '+conflicts.slice(0,8).map(x=>x.sku).join(', ')+'. Corrija a planilha.');
   if(invalid.length&&!skipInvalid)throw Error('Há '+invalid.length+' linhas inválidas. Corrija a planilha ou marque Ignorar linhas inválidas. Exemplos: '+invalid.slice(0,5).map(x=>x.line).join(', ')+'.');
   if(!valid.size)throw Error('Nenhum SKU com custo válido foi encontrado.');
-  return {costs:[...valid].map(([sku,unitCost])=>({sku,unitCost})),
+  const products=prepareWeDropProducts(headers,rows,new Set(valid.keys()));
+  return {costs:[...valid].map(([sku,unitCost])=>({sku,unitCost})),products,
     totalRows:rows.length,uniqueSkus:valid.size,skippedInvalid:invalid.length,
     invalidExamples:invalid.slice(0,8),skuHeader:headers[skuIndex],costHeader:headers[costIndex]};
 }
+
+// Product facts are trusted only in the official catalog layout. Preserve raw
+// values: supplier shipping measurements must not become assembled dimensions.
+export function prepareWeDropProducts(headers,rows,allowedSkus){
+  if(identifyWeDropLayout(headers).schema!=='wedrop-catalog-16')return [];
+  const products=new Map();
+  const code=(value,length)=>{
+    const raw=String(value||'').trim();
+    const normalized=raw.replace(/[.\s-]/g,'');
+    return new RegExp('^\\d{'+length+'}$').test(normalized)?normalized:null;
+  };
+  for(const [index,row] of rows.entries()){
+    const sku=skuText(row[0]);if(!sku||!allowedSkus.has(sku))continue;
+    const data={name:row[1]||'',brand:row[2]||'',category:row[3]||'',supplier:row[4]||'',supplierState:row[5]||'',
+      ean:String(row[7]||'').trim(),ncm:code(row[8],8),cest:code(row[9],7),
+      rawNcm:String(row[8]||''),rawCest:String(row[9]||''),
+      catalogMeasurements:{weightKg:String(row[10]||''),widthCm:String(row[11]||''),heightCm:String(row[12]||''),
+        lengthCm:String(row[13]||''),boxWeightKg:String(row[14]||'')},
+      imageUrl:/^https:\/\//i.test(row[15]||'')?row[15]:'',
+      warnings:['Peso e medidas da planilha precisam de conferência: não presumir unidade incorreta nem medidas do produto montado.',
+        ...(!code(row[8],8)?['NCM ausente ou inválido na fonte.']:[]),
+        ...(row[9]&&!code(row[9],7)?['CEST inválido na fonte.']:[])]};
+    const previous=products.get(sku);
+    if(previous&&JSON.stringify(previous.data)!==JSON.stringify(data)){
+      previous.data={conflict:true,name:previous.data.name||data.name,
+        warnings:['SKU repetida com dados diferentes nas linhas '+previous.sourceLine+' e '+(index+2)+'. Confira o fornecedor antes de preencher dados técnicos/fiscais.']};
+    }
+    if(!previous)products.set(sku,{sku,data,sourceLine:index+2});
+  }
+  return [...products.values()];
+}
+

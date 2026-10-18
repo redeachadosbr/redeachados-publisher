@@ -108,6 +108,34 @@ export async function saveWeDropCosts(shopId,costs,{overwrite=false,sourceFile='
     updatedExisting:overwrite?costs.filter(x=>existing.has(x.sku)).length:0,
     overwrite:Boolean(overwrite)};
 }
+export async function saveWeDropProducts(shopId,products,{sourceFile='',sourceHash=''}={}){
+  const id=validShopId(shopId);
+  if(!Array.isArray(products)||products.length>15000)throw Error('Catálogo de produtos inválido.');
+  const file=String(sourceFile||'catalogo.csv').split(/[\\/]/).pop().slice(0,130);
+  let saved=0;
+  for(let i=0;i<products.length;i+=150){
+    const rows=products.slice(i,i+150).map(p=>({shop_id:id,supplier_sku:p.sku,product_data:p.data,
+      source_line:p.sourceLine,source_file:file,source_hash:sourceHash,imported_at:new Date().toISOString()}));
+    await request('shopee_wedrop_products','?on_conflict=shop_id,supplier_sku',{
+      method:'POST',rows,prefer:'resolution=merge-duplicates,return=minimal'});
+    saved+=rows.length;
+  }
+  return saved;
+}
+export async function readWeDropProduct(shopId,{sku,itemId,modelId=0}){
+  const id=validShopId(shopId);
+  const read=async supplierSku=>{
+    const literal='"'+String(supplierSku).replace(/\\/g,'\\\\').replace(/"/g,'\\"')+'"';
+    const rows=await request('shopee_wedrop_products','?shop_id=eq.'+id+'&supplier_sku=eq.'+
+      encodeURIComponent(literal)+'&select=supplier_sku,product_data,source_file,source_line,source_hash,imported_at&limit=1');
+    return rows[0]||null;
+  };
+  const direct=await read(sku);if(direct)return {...direct,matchedBy:'exact-sku'};
+  const link=(await readWeDropSkuLinks(id)).find(x=>String(x.item_id)===String(itemId)&&
+    String(x.model_id||0)===String(modelId)&&x.shopee_sku===sku);
+  if(!link)return null;
+  const linked=await read(link.supplier_sku);return linked?{...linked,matchedBy:'reviewed-link'}:null;
+}
 export async function readWeDropSkuLinks(shopId){
   const id=validShopId(shopId);
   return readAll('shopee_wedrop_sku_links','shop_id=eq.'+id+'&order=item_id.asc',
@@ -302,3 +330,4 @@ export async function getWeDropCoverage(shopId,{filter='matched',offset=0,limit=
   const coverage=matchWeDropCosts(items,models,costs,{filter,offset,limit,links});
   return {shopId:id,...coverage,hasImportedCosts:costs.length>0};
 }
+

@@ -1524,3 +1524,15 @@ table tr:hover td{background:#f3f8ff}
 
 .optimizer-edit-fields{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:16px}.optimizer-edit-fields input,.optimizer-edit-fields select{width:100%;min-width:0}.optimizer-prepared-gallery{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px}.optimizer-prepared-gallery figure{margin:0;min-width:0}.optimizer-prepared-gallery img{width:100%;aspect-ratio:1;object-fit:contain;background:#f5f6f8;border-radius:12px}.optimizer-prepared-gallery figcaption{font-size:12px;overflow-wrap:anywhere;padding:6px 0}.optimizer-exec-panel details>summary{cursor:pointer;padding:10px 0}.optimizer-video-import[hidden]{display:none}@media(max-width:700px){.optimizer-edit-fields{grid-template-columns:1fr}.optimizer-prepared-gallery{grid-template-columns:repeat(2,minmax(0,1fr))}}
 .optimizer-exec-diff{border:1px solid var(--border,#d9e3ec);border-radius:10px;padding:12px;margin:8px 0;background:var(--panel,#fff)}.optimizer-exec-diff summary{cursor:pointer;font-weight:700}.optimizer-exec-diff-columns{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:16px;margin-top:12px}.optimizer-exec-diff pre{white-space:pre-wrap;overflow-wrap:anywhere;font:inherit;font-size:.88rem;line-height:1.5;max-height:340px;overflow:auto}@media(max-width:700px){.optimizer-exec-diff-columns{grid-template-columns:1fr}}
+/* Category-aware editing and evidence kept beside the values. */
+.optimizer-attribute{min-width:0;margin:0;padding:16px;border:1px solid #e2e8f0;border-radius:12px;background:#fff;display:flex;flex-direction:column;gap:10px}
+.optimizer-attribute legend{font-weight:700;padding:0 4px}
+.optimizer-attribute-toggle{display:flex;align-items:center;gap:8px;font-size:13px}
+.optimizer-attribute-toggle input{width:16px!important;height:16px!important}
+.optimizer-attribute-controls,.optimizer-attribute-value{display:flex;flex-direction:column;gap:8px}
+.optimizer-attribute-value{padding-bottom:8px}
+.optimizer-attribute input,.optimizer-attribute select{width:100%;min-width:0}
+.optimizer-source-facts{padding:14px 16px;border:1px solid #b9d8ef;background:#f4faff;border-radius:12px;margin:12px 0;font-size:13px;overflow-wrap:anywhere}
+.optimizer-source-facts p{margin:7px 0}.optimizer-source-facts small{display:block;color:#795500}
+.optimizer-title-variants{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px}
+.copy-count-valid{color:#13754d}.copy-count-invalid{color:#a34814}

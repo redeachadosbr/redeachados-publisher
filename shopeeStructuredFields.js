@@ -1,17 +1,64 @@
+import {normalizeAttributeAudit} from './productOptimizer.js';
 const list=x=>Array.isArray(x)?x:[];
+export function attributeAuditForChanges(changes,record,live){
+ if(!record.attributeAudit?.schema)return record.attributeAudit;
+ if(!Array.isArray(changes)||changes.length>60)throw Error('Ficha técnica inválida.');
+ const selected=new Map(list(live.attribute_list).map(x=>[Number(x.attribute_id),x]));
+ for(const change of changes){
+  selected.set(Number(change.attributeId),{attribute_id:Number(change.attributeId),
+   attribute_value_list:(Array.isArray(change.values)?change.values:[change]).map(x=>({value_id:Number(x.valueId),
+    original_value_name:String(x.valueName||''),value_unit:String(x.unit||'')}))});
+ }
+ return normalizeAttributeAudit({...live,attribute_list:[...selected.values()]},record.attributeAudit.schema);
+}
+export function attributeInputRules(meta){
+ const type=Number(meta.inputType);
+ return {custom:[2,3,5].includes(type),multiple:[4,5].includes(type),
+  max:[4,5].includes(type)?(Number(meta.maxValues)>0?Number(meta.maxValues):20):1,
+  units:list(meta.allowedUnits).map(x=>typeof x==='string'?x:String(x?.unit||x?.name||'')).filter(Boolean)};
+}
+function attributeValue(raw,meta){
+ const rules=attributeInputRules(meta),id=Number(raw.valueId);
+ if(!Number.isSafeInteger(id)||id<0)throw Error('Valor inválido para '+meta.name+'.');
+ if(id>0){
+  const option=meta.options?.find(x=>x.id===id);
+  if(!option)throw Error('Selecione um valor oficial da Shopee para '+meta.name+'.');
+  return {value_id:id,original_value_name:option.name,...(option.unit?{value_unit:option.unit}:{})};
+ }
+ if(!rules.custom)throw Error('Este atributo exige uma opção oficial: '+meta.name+'.');
+ let value=String(raw.valueName||'').normalize('NFC').trim();
+ if(!value||[...value].length>500||/[\x00-\x1f]/.test(value))throw Error('Preencha um valor válido para '+meta.name+'.');
+ const validation=Number(meta.validationType);
+ if(validation===1&&!/^\d+$/.test(value))throw Error(meta.name+' exige um número inteiro.');
+ if(validation===3){value=value.replace(',','.');if(!/^-?\d+(\.\d+)?$/.test(value)||!Number.isFinite(Number(value)))throw Error(meta.name+' exige um número.');}
+ if(validation===4&&!/^\d{1,12}$/.test(value))throw Error(meta.name+' exige uma data válida.');
+ const unit=String(raw.unit||'').trim();
+ if(Number(meta.formatType)===2&&(!unit||!rules.units.includes(unit)))throw Error('Selecione a unidade oficial de '+meta.name+'.');
+ if(unit&&!rules.units.includes(unit))throw Error('Unidade não permitida para '+meta.name+'.');
+ return {value_id:0,original_value_name:value,...(unit?{value_unit:unit}:{})};
+}
 export function compileAttributes(changes,record,live){
  if(!Array.isArray(changes)||changes.length>60)throw Error('Ficha técnica inválida.');
+ const audit=attributeAuditForChanges(changes,record,live);
  const merged=new Map(list(live.attribute_list).map(x=>[Number(x.attribute_id),x]));
  const used=new Set();
  for(const change of changes){
-  const id=Number(change.attributeId),meta=record.attributeAudit?.attributes?.find(x=>x.id===id);
+  const id=Number(change.attributeId),meta=audit?.attributes?.find(x=>x.id===id);
   if(!meta||meta.conditional||used.has(id))throw Error('Atributo não disponível nesta categoria.');
   if(String(change.evidence||'').trim().length<3)throw Error('Informe a fonte do atributo '+meta.name+'.');
   used.add(id);
-  const option=meta.options?.find(x=>x.id===Number(change.valueId)&&x.id>0);
-  if(!option)throw Error('Selecione um valor oficial da Shopee para '+meta.name+'.');
-  merged.set(id,{attribute_id:id,attribute_value_list:[{value_id:option.id,original_value_name:option.name,
-   ...(option.unit?{value_unit:option.unit}:{})}]});
+  const values=Array.isArray(change.values)?change.values:[change];
+  if(!values.length||values.length>attributeInputRules(meta).max)throw Error('Quantidade de valores não permitida para '+meta.name+'.');
+  const compiled=values.map(x=>attributeValue(x,meta));
+  if(new Set(compiled.map(x=>JSON.stringify(x))).size!==compiled.length)throw Error('Valores repetidos para '+meta.name+'.');
+  merged.set(id,{attribute_id:id,attribute_value_list:compiled});
+ }
+ if(changes.length){
+  for(const meta of audit?.attributes||[]){
+   if(meta.conditional){merged.delete(meta.id);continue;}
+   if(meta.mandatory&&!merged.get(meta.id)?.attribute_value_list?.length)
+    throw Error('Preencha o atributo obrigatório '+meta.name+' após selecionar os campos relacionados.');
+  }
  }
  return [...merged.values()];
 }
