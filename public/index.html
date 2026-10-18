@@ -6,7 +6,7 @@
 <meta name="theme-color" content="#0A1C3A">
 <link rel="icon" type="image/svg+xml" href="/brand-logo.svg">
 <title>Rede Achados BR · Gestão Shopee</title>
-<link rel="stylesheet" href="/style.css?v=1.19.3">
+<link rel="stylesheet" href="/style.css?v=1.19.4">
 </head>
 <body>
 <div class="shell app-layout">
@@ -32,7 +32,7 @@
         </details>
       </div>
     </nav>
-    <div class="sidebar-bottom"><div class="sidebar-support"><span class="sidebar-support-dot"></span><span><strong>Central Shopee</strong><small>Versão 1.19.3</small></span></div><small class="sidebar-copy">© Rede Achados BR</small></div>
+    <div class="sidebar-bottom"><div class="sidebar-support"><span class="sidebar-support-dot"></span><span><strong>Central Shopee</strong><small>Versão 1.19.4</small></span></div><small class="sidebar-copy">© Rede Achados BR</small></div>
   </aside>
   <button class="sidebar-scrim" id="sidebarScrim" type="button" aria-label="Fechar menu" hidden></button>
   <div class="workspace-main">
@@ -416,43 +416,84 @@
         </section>
         </div>
       </section>
-              <section class="tabpane" id="tab-products">
-        <div class="section-head">
-          <div><span class="eyebrow">CATÁLOGO SHOPEE</span><h2>Anúncios e estoque da loja</h2></div>
-          <div class="actions">
-            <button id="loadProductsBtn">Sincronizar catálogo</button>
-            <button class="secondary" id="stopProductsBtn" hidden>Interromper</button>
-            <button class="secondary" id="exportProductsBtn" disabled>Exportar CSV</button>
+              <section class="tabpane" id="tab-products" aria-label="Produtos e anúncios">
+        <div class="catalog-page-heading">
+          <div><span class="catalog-page-eyebrow">OPERAÇÃO</span><h2>Produtos e anúncios</h2>
+            <p>Catálogo, variações, estoque e situação dos anúncios Shopee.</p></div>
+          <div class="catalog-header-actions">
+            <button id="loadProductsBtn" type="button"><svg class="catalog-icon-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 7v5h-5M4 17v-5h5"/><path d="M5.6 8A8 8 0 0 1 19 7l1 5M4 12l1 5a8 8 0 0 0 13.5-1"/></svg> <span id="catalogSyncButtonLabel">Sincronizar catálogo</span></button>
+            <button class="secondary" id="stopProductsBtn" type="button" hidden>Interromper sincronização</button>
+            <button class="secondary" id="exportProductsBtn" type="button" disabled><svg class="catalog-icon-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3v12m-5-5 5 5 5-5M4 16v5h16v-5"/></svg> Exportar CSV</button>
           </div>
         </div>
-        <div class="card catalog-controls">
-          <label>Buscar título, SKU ou Item ID <input id="productsSearch" placeholder="Pesquisar anúncios carregados" type="search"></label>
-          <label>Situação
-            <select id="productsStatusFilter"><option value="ALL">Todas</option><option value="NORMAL">Ativos</option><option value="UNLIST">Inativos</option><option value="BANNED">Bloqueados</option><option value="REVIEWING">Em análise</option></select>
-          </label>
-          <label>Ordenar
-            <select id="productsSort"><option value="updated">Mais recentes</option><option value="name">Nome</option><option value="stock">Menor estoque primeiro</option><option value="price">Menor preço primeiro</option></select>
-          </label>
+        <div class="catalog-filters-card">
+          <div class="catalog-controls">
+            <label>Buscar título, SKU ou Item ID
+              <span class="catalog-search-wrap"><svg class="catalog-icon-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m16.5 16.5 5 5"/></svg>
+                <input id="productsSearch" placeholder="Pesquisar anúncios..." type="search" autocomplete="off"></span></label>
+            <label>Situação
+              <select id="productsStatusFilter"><option value="ALL">Todas</option><option value="NORMAL">Ativos</option><option value="UNLIST">Inativos</option><option value="BANNED">Bloqueados</option><option value="REVIEWING">Em análise</option></select>
+            </label>
+            <label>Ordenar
+              <select id="productsSort"><option value="updated">Mais recentes</option><option value="name">Nome</option><option value="stock">Menor estoque primeiro</option><option value="price">Menor preço primeiro</option><option value="title_desc">Nome Z–A</option></select>
+            </label>
+          </div>
+          <div class="catalog-filter-footer"><div class="catalog-quick-filters" role="group" aria-label="Filtros rápidos de anúncios">
+            <button type="button" class="catalog-filter-chip selected" data-catalog-filter="all" aria-pressed="true">Todos</button>
+            <button type="button" class="catalog-filter-chip" data-catalog-filter="active" aria-pressed="false">Ativos</button>
+            <button type="button" class="catalog-filter-chip" data-catalog-filter="inactive" aria-pressed="false">Inativos</button>
+            <button type="button" class="catalog-filter-chip" data-catalog-filter="noSku" aria-pressed="false">Sem SKU</button>
+            <button type="button" class="catalog-filter-chip" data-catalog-filter="stockZero" aria-pressed="false">Estoque zero</button>
+            <button type="button" class="catalog-filter-chip" data-catalog-filter="promotion" aria-pressed="false">Com promoção</button>
+            </div>
+            <button id="catalogAdvancedToggle" type="button" class="catalog-extra-toggle" aria-expanded="false" aria-controls="catalogAdvancedFilters"><svg class="catalog-icon-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 6h16M7 12h10M10 18h4"/></svg> Mais filtros <svg class="catalog-icon-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m9 6 6 6-6 6"/></svg></button>
+          </div>
+          <div id="catalogAdvancedFilters" class="catalog-advanced-filters" hidden>
+            <label>Detalhamento
+              <select id="catalogDetailFilter"><option value="any">Todos</option><option value="complete">Dados consultados</option><option value="incomplete">Dados pendentes</option><option value="variations">Com variações</option><option value="stockUnknown">Estoque não informado</option></select></label>
+            <label>Preço mínimo (R$)<input id="catalogPriceMin" type="number" min="0" step="0.01" placeholder="0,00"></label>
+            <label>Preço máximo (R$)<input id="catalogPriceMax" type="number" min="0" step="0.01" placeholder="Sem limite"></label>
+            <button id="catalogResetFilters" class="secondary" type="button">Limpar filtros</button>
+          </div>
         </div>
-        <div class="metrics catalog-metrics">
-          <article><span>Anúncios carregados</span><strong id="catalogTotal">—</strong></article>
-          <article><span>Ativos</span><strong id="catalogActive">—</strong></article>
-          <article><span>Inativos</span><strong id="catalogUnlisted">—</strong></article>
-          <article><span>Sem SKU</span><strong id="catalogNoSku">—</strong></article>
-          <article><span>Estoque zero</span><strong id="catalogStockZero">—</strong></article>
+        <div class="metrics catalog-metrics"><article class="catalog-kpi catalog-kpi-total"><span class="catalog-kpi-icon"><svg class="catalog-icon-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m12 2 9 5-9 5-9-5 9-5ZM3 7v10l9 5 9-5V7M12 12v10"/></svg></span><div class="catalog-kpi-info"><span>Anúncios carregados</span><strong id="catalogTotal">—</strong><small id="catalogTotalMeta">—</small></div><span class="optimizer-tip catalog-help" tabindex="0" role="note" data-help="Quantidade de anúncios únicos já recuperados do catálogo ou cache. Pode ser parcial antes de concluir a sincronização." aria-label="Ajuda: Quantidade de anúncios únicos já recuperados do catálogo ou cache. Pode ser parcial antes de concluir a sincronização.">?</span></article>
+<article class="catalog-kpi catalog-kpi-active"><span class="catalog-kpi-icon"><svg class="catalog-icon-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m5 12 5 5 9-10"/></svg></span><div class="catalog-kpi-info"><span>Ativos</span><strong id="catalogActive">—</strong><small id="catalogActiveMeta">—</small></div><span class="optimizer-tip catalog-help" tabindex="0" role="note" data-help="Quantidade de anúncios carregados cujo status oficial da Shopee é NORMAL." aria-label="Ajuda: Quantidade de anúncios carregados cujo status oficial da Shopee é NORMAL.">?</span></article>
+<article class="catalog-kpi catalog-kpi-inactive"><span class="catalog-kpi-icon"><svg class="catalog-icon-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M7 12h10"/></svg></span><div class="catalog-kpi-info"><span>Inativos</span><strong id="catalogUnlisted">—</strong><small id="catalogUnlistedMeta">—</small></div><span class="optimizer-tip catalog-help" tabindex="0" role="note" data-help="Quantidade de anúncios carregados com status UNLIST (inativos). Bloqueados e em análise ficam nos filtros adicionais." aria-label="Ajuda: Quantidade de anúncios carregados com status UNLIST (inativos). Bloqueados e em análise ficam nos filtros adicionais.">?</span></article>
+<article class="catalog-kpi catalog-kpi-sku"><span class="catalog-kpi-icon"><svg class="catalog-icon-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 3v7l11 11 7-7L10 3H3ZM7 7h.01"/></svg></span><div class="catalog-kpi-info"><span>Sem SKU</span><strong id="catalogNoSku">—</strong><small id="catalogNoSkuMeta">—</small></div><span class="optimizer-tip catalog-help" tabindex="0" role="note" data-help="Conta somente anúncios com dados básicos consultados cujo SKU principal está vazio. Variações podem ter SKU próprios." aria-label="Ajuda: Conta somente anúncios com dados básicos consultados cujo SKU principal está vazio. Variações podem ter SKU próprios.">?</span></article>
+<article class="catalog-kpi catalog-kpi-stock"><span class="catalog-kpi-icon"><svg class="catalog-icon-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m12 2 9 5-9 5-9-5 9-5ZM3 7v10l9 5 9-5V7M12 12v10"/></svg></span><div class="catalog-kpi-info"><span>Estoque zero</span><strong id="catalogStockZero">—</strong><small id="catalogStockZeroMeta">—</small></div><span class="optimizer-tip catalog-help" tabindex="0" role="note" data-help="Conta somente anúncios com estoque explicitamente igual a zero. Estoque não informado pela API não é considerado zero." aria-label="Ajuda: Conta somente anúncios com estoque explicitamente igual a zero. Estoque não informado pela API não é considerado zero.">?</span></article></div>
+        <div class="catalog-sync-bar">
+          <span class="catalog-sync-symbol"><svg class="catalog-icon-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m5 12 5 5 9-10"/></svg></span>
+          <div class="catalog-sync-info"><strong id="catalogSyncHeadline">Aguardando sincronização</strong>
+            <span id="productsSummary" role="status" aria-live="polite">Use Sincronizar catálogo para consultar os anúncios na Shopee.</span>
+            <small id="catalogSyncLastSaved"></small></div>
+          <button type="button" id="catalogHistoryToggle" class="secondary"><svg class="catalog-icon-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l4 2"/></svg> Ver histórico</button>
         </div>
-        <div id="productsSummary" class="notice" role="status" aria-live="polite">Clique em Sincronizar catálogo para percorrer todos os anúncios. A consulta pode levar alguns minutos.</div>
+        <details id="catalogSyncHistory" class="catalog-sync-history">
+          <summary>Detalhes do histórico e da sincronização</summary>
+          <div class="catalog-history-content"><p id="catalogHistorySummary">Aguardando consulta.</p>
+            <p id="catalogHistorySource">Os registros em cache podem estar desatualizados; sincronizar consulta as páginas oficiais.</p>
+            <p id="catalogHistoryIssues"></p></div>
+        </details>
         <section id="productDetailsPanel" class="card catalog-details" hidden aria-live="polite" tabindex="-1">
           <div class="section-head"><h2 id="productDetailsTitle">Detalhes do anúncio</h2><button id="closeProductDetails" class="secondary" type="button">Fechar</button></div>
           <p id="productDetailsStatus" class="hint">Consulte as variações de um anúncio.</p>
           <div class="table-wrap"><table><thead><tr><th>Variação</th><th>SKU</th><th>Status</th><th>Preço</th><th>Estoque</th></tr></thead><tbody id="productModelsBody"></tbody></table></div>
         </section>
-        <div class="catalog-list-heading"><h3>Anúncios encontrados</h3><span>Cartões responsivos — toque em Detalhes ou Variações para consultar.</span></div>
+        <div class="catalog-list-heading"><div class="catalog-title-count"><h3>Anúncios encontrados</h3><span id="catalogResultCount">— anúncios</span></div>
+          <div class="catalog-pagination-toolbar"><label for="catalogPageSize">Itens por página</label>
+            <select id="catalogPageSize" aria-label="Quantidade de anúncios por página"><option value="10" selected>10</option><option value="20">20</option><option value="50">50</option><option value="100">100</option></select>
+            <nav class="catalog-pagination-controls" aria-label="Paginação do catálogo">
+              <button id="catalogPrevPage" class="secondary" type="button" aria-label="Página anterior" disabled>‹</button>
+              <div id="catalogPages" class="catalog-page-numbers"></div>
+              <button id="catalogNextPage" class="secondary" type="button" aria-label="Próxima página" disabled>›</button>
+            </nav>
+          </div>
+        </div>
         <div class="table-wrap catalog-list"><table class="catalog-products-table">
-          <thead><tr><th>Produto</th><th>Item ID / SKU</th><th>Status</th><th>Preço (R$)</th><th>Estoque</th><th>Promoção</th><th>Atualização</th><th>Ação</th></tr></thead>
+          <thead><tr><th>Produto</th><th>Item ID / SKU</th><th>Preço</th><th>Promoção</th><th>Estoque</th><th>Situação</th><th>Última atualização</th><th>Ações</th></tr></thead>
           <tbody id="productsBody"></tbody>
         </table></div>
-        <div class="actions catalog-paging"><span id="productsRowsShown" class="hint"></span><button id="productsMoreBtn" class="secondary" type="button" hidden>Mostrar mais anúncios</button></div>
+        <div class="catalog-paging"><span id="productsRowsShown" class="hint"></span><button id="productsMoreBtn" class="secondary" type="button" hidden>Mostrar mais anúncios</button></div>
       </section>
               <section class="tabpane" id="tab-orders">
         <div class="section-head"><div><span class="eyebrow">PEDIDOS</span><h2>Últimos 15 dias</h2></div><button id="loadOrdersBtn">Carregar pedidos</button></div>
@@ -808,6 +849,6 @@
     </main>
   </div>
 </div>
-<script src="/app.js?v=1.19.3"></script>
+<script src="/app.js?v=1.19.4"></script>
 </body>
 </html>
