@@ -17,7 +17,7 @@ test('v1.19.5 Precificação tem sete KPIs, margem funcional, card bruto e rodap
   assert.equal((page.match(/class="pricing-v2-summary-item"/g)||[]).length,7);
   assert.match(page,/class="pricing-v2-columns"/);
   assert.match(page,/class="pricing-v2-summary"/);
-  assert.match(page,/class="pricing-v2-gross"/);
+  assert.match(page,/class="sh-price-hero pricing-v2-gross"/);
   assert.match(page,/class="pricing-v2-footer"/);
   assert.match(page,/<details class="sh-price-advanced sh-price-settings-collapsed" id="priceSettingsDetails">/);
   assert.match(page,/<details class="sh-price-advanced pricing-v2-breakdown">/);
