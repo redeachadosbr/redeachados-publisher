@@ -3685,9 +3685,13 @@ body.view-wedrop .page-intro{display:none!important}
 #optimizerImagesPanel .optimizer-commercial-rework{background:#fff;border:1px solid #dce8f5;border-radius:14px;padding:15px;min-width:0;position:relative}
 #optimizerImagesPanel .optimizer-commercial-rework .optimizer-image-rework{background:none;border:0;margin:0;padding:0;display:grid;gap:10px}
 #optimizerImagesPanel .optimizer-commercial-rework .optimizer-image-rework>strong{font-size:14px;font-weight:800;color:#103967}
-#optimizerImagesPanel .optimizer-rework-fields{display:grid;gap:10px}
-#optimizerImagesPanel .optimizer-rework-fields .optimizer-field{font-size:11px;font-weight:700;color:#24486d;margin:0}
-#optimizerImagesPanel .optimizer-rework-fields textarea{min-height:100px;resize:vertical}
+/* The global .optimizer-rework-fields uses 160px + 1fr, which crushes the
+   textarea in this narrow sidebar. Stack both controls to give writing full width. */
+#optimizerImagesPanel .optimizer-rework-fields{display:grid;grid-template-columns:minmax(0,1fr);gap:12px;min-width:0;width:100%}
+#optimizerImagesPanel .optimizer-rework-fields .optimizer-field{font-size:12px;font-weight:700;color:#24486d;margin:0;min-width:0;width:100%}
+#optimizerImagesPanel .optimizer-rework-fields select{display:block;box-sizing:border-box;width:100%;max-width:100%;min-width:0;min-height:42px}
+#optimizerImagesPanel #optimizerImageCorrection{display:block;box-sizing:border-box;width:100%;max-width:100%;min-width:0;min-height:144px;padding:12px 13px;resize:vertical;border:1px solid #cbdaf0;border-radius:10px;background:#f8fbff;color:#173a60;font-size:13px;line-height:1.55;white-space:pre-wrap;overflow-wrap:break-word}
+#optimizerImagesPanel #optimizerImageCorrection:focus-visible{outline:2px solid #3a82e0;outline-offset:1px;border-color:#3a82e0;background:#fff}
 #optimizerImagesPanel .optimizer-image-rework .optimizer-workflow-actions{display:grid;gap:7px}
 #optimizerImagesPanel .optimizer-image-rework .optimizer-workflow-actions button{width:100%;border-radius:8px;white-space:normal;min-height:40px;font-size:11px}
 #optimizerImagesPanel #optimizerImageCorrectionSave{background:#0b8853;color:#fff;border:0}

@@ -93,3 +93,15 @@ test('empty slot deletion does not remove existing Shopee photos or access stora
   if(old.key===undefined)delete process.env.SUPABASE_SECRET_KEY;else process.env.SUPABASE_SECRET_KEY=old.key;
  }
 });
+
+test('image rework panel stacks controls and gives the correction text full width',()=>{
+ const css=readFileSync(new URL('../public/style.css',import.meta.url),'utf8');
+ assert.match(css,/#optimizerImagesPanel \.optimizer-rework-fields\{[^}]*grid-template-columns:minmax\(0,1fr\)/);
+ assert.match(css,/#optimizerImagesPanel #optimizerImageCorrection\{[^}]*width:100%;max-width:100%;min-width:0/);
+ assert.match(css,/#optimizerImagesPanel #optimizerImageCorrection\{[^}]*min-height:144px/);
+ assert.match(css,/#optimizerImagesPanel \.optimizer-rework-fields select\{[^}]*width:100%/);
+ assert.match(html,/id="optimizerImageCorrection" rows="5" maxlength="500"/);
+ assert.match(html,/style\.css\?v=1\.20\.9-rework1/);
+ for(const id of ['optimizerImageCorrectionSlot','optimizerImageCorrectionSave','optimizerImageCorrectionCopy','optimizerImageCorrectionCount'])
+  assert.equal((html.match(new RegExp('id="'+id+'"','g'))||[]).length,1,id);
+});
