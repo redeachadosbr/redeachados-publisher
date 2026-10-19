@@ -42,7 +42,7 @@ test('edição OpenAI recebe foto original e retorna imagem 1200x1200 pronta par
  const prevFetch=globalThis.fetch;
  const oldKey=process.env.OPENAI_API_KEY,oldModel=process.env.OPENAI_IMAGE_MODEL;
  const orig=Buffer.alloc(32);orig[0]=255;orig[1]=216;
- const png=Buffer.alloc(40);
+ const png=Buffer.alloc(400);
  Buffer.from([137,80,78,71,13,10,26,10]).copy(png,0);
  png.writeUInt32BE(1200,16);png.writeUInt32BE(1200,20);
  let seen=0;
