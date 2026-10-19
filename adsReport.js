@@ -3,6 +3,19 @@ const ID_PATH='/api/v2/ads/get_product_level_campaign_id_list';
 const DAILY_PATH='/api/v2/ads/get_product_campaign_daily_performance';
 const SETTINGS_PATH='/api/v2/ads/get_product_level_campaign_setting_info';
 const DAY=86400000;
+/** Dia civil da operação brasileira, independentemente da virada UTC. */
+export function brazilAdsToday(now=Date.now()){
+ const p=new Intl.DateTimeFormat('en-US',{timeZone:'America/Sao_Paulo',
+  year:'numeric',month:'2-digit',day:'2-digit'}).formatToParts(new Date(now));
+ const m=Object.fromEntries(p.filter(x=>x.type!=='literal').map(x=>[x.type,x.value]));
+ return m.year+'-'+m.month+'-'+m.day;
+}
+function shiftAdsDate(value,offset){
+ return new Date(parseAdsDate(value).timestamp+offset*DAY).toISOString().slice(0,10);
+}
+export function adsApiDateFuture(error){
+ return /ads\.performance\.error_date_in_future|date must be today or earlier|date_in_future/i.test(String(error?.message||error));
+}
 export function parseAdsDate(value){
   const v=String(value||'').trim();
   let year,month,day;
@@ -19,7 +32,7 @@ export function parseAdsDate(value){
 }
 export function validateAdsRange(start,end,now=Date.now()){
   const a=parseAdsDate(start),b=parseAdsDate(end);
-  const latest=Date.UTC(new Date(now).getUTCFullYear(),new Date(now).getUTCMonth(),new Date(now).getUTCDate());
+  const latest=parseAdsDate(brazilAdsToday(now)).timestamp;
   if(a.timestamp>=b.timestamp)throw Error('A data inicial deve ser anterior à data final. Escolha pelo menos dois dias.');
   if(b.timestamp>latest)throw Error('A data final não pode estar no futuro.');
   if(b.timestamp-a.timestamp>29*DAY)throw Error('A API permite no máximo 30 dias por consulta.');
@@ -142,8 +155,9 @@ export function summarizeShopeeAds(performanceResponses,discovered){
   total.ctr=ratio(total.clicks,total.impressions,100);
   return {campaigns,total,campaignCount:campaigns.length};
 }
-export async function loadShopeeAdsOverview(cfg,auth,callApi,{start,end}){
-  const range=validateAdsRange(start,end);
+export async function loadShopeeAdsOverview(cfg,auth,callApi,{start,end,allowDateFallback=false}){
+  const originalRange=validateAdsRange(start,end);
+  let range=originalRange,shiftedDays=0;
   const ids=await discoverShopeeCampaigns(cfg,auth,callApi);
   // Consultar status REAL da campanha, não inferir pelo gasto/impressões passados.
   // Se a Shopee negar configurações, mostrar "status não confirmado" sem
@@ -158,13 +172,23 @@ export async function loadShopeeAdsOverview(cfg,auth,callApi,{start,end}){
         String(err.message||err).slice(0,220);
     }
   }
-  const datasets=[];
-  for(let i=0;i<ids.length;i+=100){
-    const batch=ids.slice(i,i+100);
-    datasets.push(await callApi(cfg,{
-      path:DAILY_PATH,accessToken:auth.accessToken,shopId:auth.shopId,
-      query:{...range,campaign_id_list:batch.map(c=>c.campaignId).join(',')}
-    }));
+  let datasets=[];
+  for(let attempt=0;attempt<(allowDateFallback?3:1);attempt++){
+    try{
+      datasets=[];
+      for(let i=0;i<ids.length;i+=100){
+        const batch=ids.slice(i,i+100);
+        datasets.push(await callApi(cfg,{
+          path:DAILY_PATH,accessToken:auth.accessToken,shopId:auth.shopId,
+          query:{...range,campaign_id_list:batch.map(c=>c.campaignId).join(',')}
+        }));
+      }
+      break;
+    }catch(error){
+      if(!allowDateFallback||!ids.length||!adsApiDateFuture(error)||attempt===2)throw error;
+      shiftedDays++;
+      range=validateAdsRange(shiftAdsDate(start,-shiftedDays),shiftAdsDate(end,-shiftedDays));
+    }
   }
   const summary=summarizeShopeeAds(datasets,ids);
   for(const campaign of summary.campaigns){
@@ -182,6 +206,8 @@ export async function loadShopeeAdsOverview(cfg,auth,callApi,{start,end}){
     other:summary.campaigns.filter(x=>x.statusGroup==='other').length
   };
   return {shopId:auth.shopId,dates:{start:range.start_date,end:range.end_date},
+    dateAdjustment:shiftedDays?{shiftedDays,originalStart:originalRange.start_date,
+      originalEnd:originalRange.end_date,reason:'A Shopee ainda não disponibilizou o dia mais recente.'}:null,
     ...summary,statusCounts,statusWarning,
     coverage:'Campanhas de anúncios de produtos retornadas pela API Ads V2.',
     caveat:'Impressões, cliques e CTR referem-se ao período selecionado. O status é atual; histórico de desempenho não indica se uma campanha está rodando. Receita atribuída não é lucro líquido. GMV amplo pode incluir outros produtos da loja; não some GMV amplo ao direto.'};
