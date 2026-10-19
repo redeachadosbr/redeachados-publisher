@@ -4253,13 +4253,15 @@ function optimizerSupplierRender(data,key){
 function optimizerTechnicalRender(data){
  const wrap=$('#optimizerTechnicalFields');wrap.replaceChildren();
  $('#optimizerTechnicalRefresh').hidden=!(data.attributes||[]).some(x=>x.parentId);
- const labels={100413:'Condição',100942:'Dimensões (C × L × A)',100135:'Idade recomendada',101219:'Produto personalizado',
-  102292:'Certificação Inmetro',100162:'Estampa',100999:'Quantidade'};
+ // Usar exclusivamente os nomes da árvore oficial da categoria, sem campos fixos.
  for(const attr of data.attributes||[]){
-  const name=labels[attr.id]||attr.name,type=Number(attr.inputType),custom=[2,3,5].includes(type),multi=[4,5].includes(type);
+  const name=attr.name||'Atributo '+attr.id,type=Number(attr.inputType),custom=[2,3,5].includes(type),multi=[4,5].includes(type);
   const field=optimizerMake('fieldset','optimizer-attribute');field.dataset.attributeId=String(attr.id);
   field.append(optimizerMake('legend','',name+(attr.mandatory?' *':'')));
   field.append(optimizerMake('small','','Atual: '+((attr.values||[]).map(x=>x.name+(x.unit?' '+x.unit:'')).join(', ')||'Não preenchido')));
+  if(attr.introduction)field.append(optimizerMake('small','',attr.introduction));
+  field.append(optimizerMake('small','',attr.conditional?'Condicional • depende do atributo pai':
+    attr.mandatory?'Obrigatório na categoria '+data.categoryId:'Opcional na categoria '+data.categoryId));
   wrap.append(field);
   if(attr.conditional){field.append(optimizerMake('p','','Depende da opção escolhida em outro campo. Selecione o campo relacionado e atualize as opções dependentes.'));continue;}
   if(![1,2,3,4,5].includes(type)&&!attr.options?.length){field.append(optimizerMake('p','','Campo existente sem esquema editável retornado pela Shopee.'));continue;}
@@ -4270,6 +4272,54 @@ function optimizerTechnicalRender(data){
   enabled.setAttribute('aria-label','Preencher '+name);enableLabel.append(enabled,document.createTextNode(' Preencher este campo'));field.append(enableLabel);
   const controls=optimizerMake('div','optimizer-attribute-controls');controls.hidden=!enabled.checked;field.append(controls);
   const rows=optimizerMake('div');rows.dataset.attributeRows='true';controls.append(rows);
+  if(attr.supportSearch){
+   const searchBox=optimizerMake('div','optimizer-attribute-search');
+   const inputSearch=optimizerMake('input');inputSearch.type='search';inputSearch.placeholder='Buscar opções oficiais na Shopee';
+   inputSearch.maxLength=90;inputSearch.setAttribute('aria-label','Pesquisar opções de '+name);
+   const runSearch=optimizerMake('button','secondary','Pesquisar opções');
+   runSearch.type='button';
+   const next=optimizerMake('button','secondary','Ver mais opções');next.type='button';next.hidden=true;
+   const help=optimizerMake('small','','');
+   let nextCursor=0,queryText='',busy=false;
+   async function loadPage(reset=false){
+    if(busy)return;
+    const w=optimizerWorkflowPlan;if(!w||w.sku!==data.sku)return;
+    const entered=inputSearch.value.trim();
+    if(reset||queryText!==entered){nextCursor=0;queryText=entered;}
+    busy=true;runSearch.disabled=true;next.disabled=true;help.textContent='Consultando a Shopee...';
+    try{
+     const response=await json('/api/shopee/optimizer/workflow/attributes/options',{
+      method:'POST',headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({sku:w.sku,itemId:w.itemId,modelId:w.modelId,attributeId:attr.id,
+       valueName:queryText,cursor:nextCursor,limit:50}),
+      signal:AbortSignal.timeout(50000)
+     });
+     if(optimizerWorkflowPlan!==w||optimizerWorkflowStage!=='technical')return;
+     const options=new Map((attr.options||[]).map(x=>[Number(x.id),x]));
+     for(const option of response.options||[])options.set(Number(option.id),option);
+     attr.options=[...options.values()];
+     for(const select of field.querySelectorAll('select[data-value-id]')){
+      const selected=select.value;
+      for(const option of response.options||[]){
+       if([...select.options].some(o=>o.value===String(option.id)))continue;
+       const element=optimizerMake('option','',option.name+(option.unit?' '+option.unit:''));
+       element.value=String(option.id);
+       select.append(element);
+      }
+      select.value=selected;
+     }
+     nextCursor=response.nextCursor??0;next.hidden=!response.hasNext;
+     help.textContent=(response.options||[]).length+' opção(ões) carregadas. Escolha o valor oficial no campo.';
+    }catch(e){help.textContent='Erro ao consultar opções: '+e.message;}
+    finally{busy=false;runSearch.disabled=false;next.disabled=false;}
+   }
+   runSearch.onclick=()=>void loadPage(true);
+   next.onclick=()=>void loadPage(false);
+   inputSearch.onkeydown=e=>{if(e.key==='Enter'){e.preventDefault();void loadPage(true);}};
+   searchBox.append(inputSearch,runSearch,next,help);
+   controls.append(searchBox);
+  }
+
   function addRow(value={}){
    const row=optimizerMake('div','optimizer-attribute-value');row.dataset.attributeValue='true';
    const select=optimizerMake('select');select.dataset.valueId='true';select.setAttribute('aria-label',name+' — opção');
@@ -4282,7 +4332,7 @@ function optimizerTechnicalRender(data){
    select.hidden=type===3||(!attr.options?.length&&custom);row.append(select);
    const input=optimizerMake('input');input.type=Number(attr.validationType)===4?'date':'text';input.maxLength=500;
    input.dataset.valueName='true';input.setAttribute('aria-label',name+' — valor');
-   input.placeholder=attr.id===100942?'Comprimento × largura × altura e unidade':'Valor confirmado do produto';
+   input.placeholder='Informe somente um valor confirmado do fabricante ou fornecedor';
    input.value=Number(attr.validationType)===4&&/^\d+$/.test(String(value.valueName||''))?
     new Date(Number(value.valueName)*1000).toISOString().slice(0,10):String(value.valueName||'');row.append(input);
    const units=(attr.allowedUnits||[]).map(x=>typeof x==='string'?x:x.unit||x.name||'').filter(Boolean);
@@ -4312,7 +4362,10 @@ function optimizerTechnicalValues(){
   attributeId:Number(field.dataset.attributeId),evidence:field.querySelector('[data-evidence-for]').value.trim(),
   values:[...field.querySelectorAll('[data-attribute-value]')].map(row=>{
    const input=row.querySelector('[data-value-name]'),raw=input.value.trim(),selected=row.querySelector('[data-value-id]').value;
-   return {valueId:selected===''?-1:Number(selected),valueName:input.type==='date'&&raw?String(Date.parse(raw+'T00:00:00Z')/1000):raw,
+   const attr=(optimizerWorkflowPlan?.attributes||[]).find(a=>Number(a.id)===Number(field.dataset.attributeId));
+   const official=selected!==''&&Number(selected)>0?(attr?.options||[]).find(o=>Number(o.id)===Number(selected)):null;
+   return {valueId:selected===''?-1:Number(selected),
+    valueName:official?.name||(input.type==='date'&&raw?String(Date.parse(raw+'T00:00:00Z')/1000):raw),
     unit:row.querySelector('[data-value-unit]')?.value||''};
   })
  }));
