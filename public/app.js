@@ -2924,7 +2924,9 @@ function optimizerExecRender(data){
  $('#optimizerExecutionPhrase').textContent='EXECUTAR '+plan.sku;
  optimizerExecUpdateRunButton();
  optimizerExecNotice(data.ready
-   ?'Etapas revisadas. Clique em “Executar na Shopee” para aplicar as alterações aprovadas. A confirmação será verificada automaticamente na Shopee.'
+   ?plan.fiscalDeferred===true
+     ?'CEST mantido em branco. Dados fiscais NÃO serão enviados. Clique em “Executar na Shopee” para tentar publicar somente imagens, vídeo e demais alterações aprovadas. A Shopee ainda poderá exigir regularização fiscal.'
+     :'Etapas revisadas. Clique em “Executar na Shopee” para aplicar as alterações aprovadas. A confirmação será verificada automaticamente na Shopee.'
    : 'Nenhuma alteração aprovada está pronta. Revise as etapas e confira as pendências.',
    data.ready?'success':'warning');
 }

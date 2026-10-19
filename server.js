@@ -843,20 +843,25 @@ app.post('/api/shopee/optimizer/execution/prepare',mustLogin,requireWeDropAdmin,
       technicalMatrixSource({sku,record,attributes:reviewState.attributes||[],reviewSource:reviewState.matrixTechnical});
       await hydrateCategoryChoices(record,reviewState.attributes||[],cfg,auth,live);
     }
-    const plan=compileShopeeExecutionPlan({shopId:auth.shopId,itemId,modelId,
-      sku,record,review:review?.review_state||{},live,manualVideo,verifiedVideoSha256,manualImages});
+    const inputs={shopId:auth.shopId,itemId,modelId,sku,record,
+      review:review?.review_state||{},live,manualVideo,verifiedVideoSha256,manualImages};
+    let plan=compileShopeeExecutionPlan(inputs);
+    // Previous Shopee validation can mean tax_info was rejected while other
+    // approved changes are independent. Leave CEST blank, OMIT tax_info entirely,
+    // and let the next explicit execution try only non-fiscal changes.
+    // A refusal from Shopee itself is still decisive, never silently bypassed.
+    const taxDraftNcm=String(reviewState.tax?.ncm||live.tax_info?.ncm||'').trim();
+    const priorFiscalDeferred=previous?.sku===sku&&previous?.plan?.fiscalDeferred===true&&
+      !String(reviewState.tax?.cest||live.tax_info?.cest||'').trim()&&
+      taxDraftNcm===String(previous.plan.deferredTaxDraft?.ncm||previous.plan.original?.tax_info?.ncm||'').trim();
+    const deferFiscal=Boolean(priorFiscalDeferred||
+      (previous?.sku===sku&&needsCestRevalidation(previous.last_error,previous.plan,plan)));
+    if(deferFiscal)plan=compileShopeeExecutionPlan({...inputs,deferUnconfirmedFiscal:true});
     plan.reusedMedia=recyclableShopeeMedia(previous,plan);
-    // A known CEST refusal must not be resent after a superficial reprepare.
-    if(previous?.sku===sku&&needsCestRevalidation(previous.last_error,previous.plan,plan)){
-      plan.canExecute=false;
-      plan.blocked.push('Informações fiscais: a Shopee já exigiu CEST para o NCM '+
-        (plan.proposed?.tax_info?.ncm||plan.original?.tax_info?.ncm||'informado')+
-        '. Confirme e preencha o CEST antes de tentar novamente.');
-    }
     const stored=await saveShopeePreparedExecution(auth.shopId,itemId,modelId,sku,plan);
     res.json({ok:true,ready:plan.canExecute,plan,progress:shopeeExecutionProgress(stored),
-      issue:needsCestRevalidation(previous?.last_error,previous?.plan,plan)?
-       detectShopeeExecutionIssue(previous.last_error,previous.plan):null,
+      issue:deferFiscal&&!plan.canExecute?
+        detectShopeeExecutionIssue(previous.last_error,previous.plan):null,
       updatedAt:stored.updated_at,executionStatus:stored.state,marketplaceUpdated:false});
   }catch(e){res.status(409).json({error:String(e.message||e).slice(0,300)});}
 });
@@ -904,7 +909,8 @@ app.post('/api/shopee/optimizer/execution/execute',mustLogin,requireWeDropAdmin,
   const manualVideo=plan.video?await getShopeeManualVideo(auth.shopId,itemId,modelId,sku):null;
   const manualImages=plan.images?.length?await readPreparedImages(auth.shopId,itemId,modelId,sku):[];
   const fresh=compileShopeeExecutionPlan({shopId:auth.shopId,itemId,modelId,sku,record,
-   review:review.review_state,live,manualVideo,manualImages});
+   review:review.review_state,live,manualVideo,manualImages,
+   deferUnconfirmedFiscal:plan.fiscalDeferred===true});
   if(fresh.fingerprint!==plan.fingerprint||!fresh.canExecute)throw Error('Conteúdo ou aprovação mudou. Prepare novamente.');
   await claimShopeePreparedExecution(auth.shopId,itemId,modelId,{
    planId:plan.planId,updatedAt:job.updated_at,runId:crypto.randomUUID()});

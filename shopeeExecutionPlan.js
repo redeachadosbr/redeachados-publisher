@@ -7,7 +7,7 @@ import {normalizedTitle,validateContentRules} from './shopeeOptimizationWorkflow
 // Preparation is deterministic for one verified item/model/SKU. This module
 // never calls Shopee, and never considers a reviewed checkbox a published item.
 const normal=s=>String(s??'').replace(/\r\n?/g,'\n').trim();
-export function compileShopeeExecutionPlan({shopId,itemId,modelId,sku,record,review,live,manualVideo=null,verifiedVideoSha256=null,manualImages=[]}){
+export function compileShopeeExecutionPlan({shopId,itemId,modelId,sku,record,review,live,manualVideo=null,verifiedVideoSha256=null,manualImages=[],deferUnconfirmedFiscal=false}){
   const state=review||{},stages=state.stages||{};
   const title=normalizedTitle(state.draftTitle||'');
   const description=normal(state.draftDescription);
@@ -56,7 +56,16 @@ export function compileShopeeExecutionPlan({shopId,itemId,modelId,sku,record,rev
     if(anatel.requiresAction)blocked.push('Anatel: '+anatel.message);
     else if(anatel.status==='registro-informado')warnings.push('Anatel: número declarado; confira a homologação correspondente ao modelo.');
   }catch(e){blocked.push('Anatel: não foi possível revalidar a ficha. '+e.message);}
-  if(stages.fiscal?.reviewed&&state.tax){
+  // A rejected fiscal update must not turn unrelated, already reviewed
+  // content and media stages into a permanent CEST hostage.
+  // The field remains blank. Do NOT send an invented CEST, "00", or tax_info.
+  // Shopee may still reject update_item; that is reported from the API.
+  const fiscalDeferred=Boolean(deferUnconfirmedFiscal)&&
+    !String(state.tax?.cest||'').trim()&&
+    !String(live?.tax_info?.cest||'').trim();
+  if(fiscalDeferred){
+    warnings.push('CEST em branco: dados fiscais não serão enviados nesta execução. Imagens, vídeo e conteúdo aprovados serão preparados separadamente. A Shopee poderá solicitar a regularização fiscal.');
+  }else if(stages.fiscal?.reviewed&&state.tax){
     try{const tax=compileTax(state.tax,live);if(!sameData(tax,live.tax_info||{}))proposed.tax_info=tax;}
     catch(e){blocked.push(e.message);}
   }
@@ -80,7 +89,9 @@ export function compileShopeeExecutionPlan({shopId,itemId,modelId,sku,record,rev
   const fingerprint=crypto.createHash('sha256').update(JSON.stringify({
     shopId:String(shopId),itemId:String(itemId),modelId:String(modelId),sku,
     from:{item_name:currentTitle,description:currentDescription,description_type:currentType},
-    to:proposed,video:video?.sha256||null,images:imagesSignature(images)
+    to:proposed,fiscalDeferred,
+    deferredTaxDraft:fiscalDeferred?state.tax||{}:null,
+    video:video?.sha256||null,images:imagesSignature(images)
   })).digest('hex');
   return {planId:crypto.randomUUID(),shopId:Number(shopId),itemId:String(itemId),
     modelId:String(modelId),sku,original:{
@@ -88,7 +99,7 @@ export function compileShopeeExecutionPlan({shopId,itemId,modelId,sku,record,rev
       item_sku:String(live?.item_sku||''),category_id:live?.category_id,
       attribute_list:live?.attribute_list||[],tax_info:live?.tax_info||{},image:live?.image||{}
     },proposed,video,images,actions:[...Object.keys(proposed),...(images.length?['images']:[]),...(video?['video']:[])],blocked,warnings,canExecute,
-    fingerprint,createdAt:new Date().toISOString(),marketplaceUpdated:false,
+    fingerprint,fiscalDeferred,createdAt:new Date().toISOString(),marketplaceUpdated:false,
     requiresExplicitConfirmation:true,
     scope:'conteúdo e mídias aprovados; demais pendências aparecem separadamente'};
 }
