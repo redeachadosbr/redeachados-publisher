@@ -6,7 +6,8 @@ export function supplierWorkflowFacts(supplier,record,settings={}){
  const notes=clean(settings.fiscal_notes);
  const rules={origin:/Origem\s*:\s*([0-8])\b/i,same_state_cfop:/CFOP\s+Mesmo\s+Estado\s*:\s*(5\d{3})/i,
   diff_state_cfop:/CFOP\s+Outros\s+Estados\s*:\s*(6\d{3})/i,csosn:/CSOSN\s*:\s*(\d{3})/i,
-  pis_cofins_cst:/(?:PISCOFIS|PIS[\s\/-]*COFINS)\s*:\s*(\d{2})\b/i};
+  // Não herdar automaticamente CST do emissor de NF-e como dado do anúncio Shopee.
+  };
  for(const [key,re] of Object.entries(rules)){const value=notes.match(re)?.[1];if(value)taxSuggestion[key]=value;}
  if(/tipo de (?:serviço|operac[aã]o|operaç[aã]o)\s*:\s*revendedor/i.test(notes))taxSuggestion.operation_type='1';
  if(/^\d{8}$/.test(facts.ncm||''))taxSuggestion.ncm=facts.ncm;
