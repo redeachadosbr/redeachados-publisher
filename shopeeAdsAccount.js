@@ -32,6 +32,18 @@ export async function readShopeeAdsAccount(cfg,auth,callApi){
   request('/api/v2/ads/get_shop_toggle_info')
  ]);
  // Each endpoint can lack permission independently. Never report R$0 on failure.
- return normalizeShopeeAdsAccount(balance.status==='fulfilled'?balance.value:null,
-   toggle.status==='fulfilled'?toggle.value:null);
+ const result=normalizeShopeeAdsAccount(
+  balance.status==='fulfilled'?balance.value:null,
+  toggle.status==='fulfilled'?toggle.value:null);
+ // Safe diagnostic classes only. Never expose Shopee raw errors, tokens or account IDs.
+ const code=out=>{
+  if(out.status==='fulfilled')return 'unavailable';
+  const message=String(out.reason?.message||out.reason||'').toLowerCase();
+  return /permission|denied|forbidden|restricted|not.allowed|403/.test(message)?'permission_required':
+   /auth|token|expired|unauthoriz|401/.test(message)?'authorization_required':'unavailable';
+ };
+ if(result.balance.status!=='confirmed')result.balance.status=code(balance);
+ if(result.automaticRecharge.status!=='confirmed')result.automaticRecharge.status=code(toggle);
+ result.checkedAt=new Date().toISOString();
+ return result;
 }
