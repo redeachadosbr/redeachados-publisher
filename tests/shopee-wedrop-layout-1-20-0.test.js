@@ -42,8 +42,8 @@ test('WeDrop continua no Supabase com ações reais, sem substituir o fornecedor
  assert.match(js,/wdNum\(t\.matched\)/);
  assert.match(js,/wdNum\(t\.missingCost\)/);
  assert.match(js,/wdNum\(status\.storedCosts\)/);
- assert.match(js,/$('#wedropMoveRefresh')/);
- assert.match(js,/await $('#wedropUseStoredBtn')\.onclick\(\)/);
+ assert.ok(js.includes("$('#wedropMoveRefresh')"));
+ assert.ok(js.includes("await $('#wedropUseStoredBtn').onclick()"));
  assert.match(js,/function reviewCandidateControl/);
  assert.match(js,/function refreshWeDropCoverage/);
  assert.match(js,/function loadWeDropSkuReview/);
