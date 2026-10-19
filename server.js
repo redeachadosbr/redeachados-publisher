@@ -36,6 +36,7 @@ import {readShopeeExecution,saveShopeePreparedExecution,
   checkpointShopeeExecution,reconcileShopeeJob} from './shopeeExecutionStore.js';
 import {advanceShopeeExecution} from './shopeeExecutionWorker.js';
 import {shopeeExecutionProgress,withExecutionEvent} from './shopeeExecutionProgress.js';
+import {recyclableShopeeMedia} from './shopeeExecutionMediaReuse.js';
 import {detectShopeeExecutionIssue,needsCestRevalidation} from './shopeeExecutionIssues.js';
 import {createShopeeMediaApi} from './shopeeMediaApi.js';
 import {normalizeManualVideo} from './shopeeVideoValidation.js';
@@ -826,6 +827,7 @@ app.post('/api/shopee/optimizer/execution/prepare',mustLogin,requireWeDropAdmin,
     }
     const plan=compileShopeeExecutionPlan({shopId:auth.shopId,itemId,modelId,
       sku,record,review:review?.review_state||{},live,manualVideo,verifiedVideoSha256,manualImages});
+    plan.reusedMedia=recyclableShopeeMedia(previous,plan);
     // A known CEST refusal must not be resent after a superficial reprepare.
     if(previous?.sku===sku&&needsCestRevalidation(previous.last_error,previous.plan,plan)){
       plan.canExecute=false;
