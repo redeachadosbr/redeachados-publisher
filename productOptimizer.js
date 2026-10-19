@@ -1,6 +1,7 @@
 // Otimizador Shopee: apenas leitura, com esquema de atributos obtido da Shopee
 // no momento da consulta. Não produz dados técnicos fictícios nem modifica anúncios.
 import {validItemId} from './catalog.js';
+import {inspectAnatelCompliance} from './shopeeAnatel.js';
 
 const moneylessString=value=>String(value??'').trim();
 const array=value=>Array.isArray(value)?value:[];
@@ -121,6 +122,7 @@ export function normalizeAttributeAudit(item,attributesResponse){
     attributes:rows,
     note:'Esquema e opções consultados da Shopee. Medidas, bateria, potência e certificações precisam de fonte do fabricante/WeDrop e validação humana. O produto NÃO foi alterado.'
   };
+  audit.anatel=inspectAnatelCompliance(audit);
   // Retained for server-side revalidation of dependent attributes, not sent to clients.
   Object.defineProperty(audit,'schema',{value:attributesResponse,enumerable:false});
   return audit;
