@@ -28,7 +28,8 @@ test('Otimização mostra somente barra e os valores; custos ficam recolhidos na
 });
 test('busca SKU inicia ao digitar com debounce, compartilha resultado e margem',()=>{
   assert.match(js, /optimizerSku'\)\?\.addEventListener\?\.\('input'/);
-  assert.match(js,/setTimeout\(\(\)=>\$\('#optimizerFind'\)\.click\(\),700\)/);
+  assert.match(js,/setTimeout\(\(\)=>void optimizerFindSku\(\),1000\)/);
+  assert.match(js,/optimizerSkuRequest\.abort\(\)/);
   assert.match(js,/optimizerQuickGross'\)\.textContent=shPriceMoney\(q\.grossPrice\)/);
   assert.match(js,/optimizerQuickDiscount'\)\.textContent=shPricePercent\(q\.discountPct\)/);
   assert.match(js,/optimizerQuickMargin'\)\?\.addEventListener\?\.\('input'/);
