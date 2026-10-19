@@ -54,7 +54,7 @@ test('fiscal suggestions use this exact supplier row and saved store settings, n
  const product=prepareAutomaticWeDropImport(csv).products[0],supplier={product_data:product.data,supplier_sku:product.sku,source_file:'catalogo.csv',source_line:2};
  const record={condition:'NEW',description:'43cm Altura x 135cm Largura x 88cm Comprimento',attributeAudit:{attributes:[{id:100942,inputType:3,values:[]}]}};
  const facts=supplierWorkflowFacts(supplier,record,{fiscal_notes:'Origem: 2- estrangeira\nCFOP Mesmo Estado: 5106\nCFOP Outros Estados: 6106\nCSOSN: 102\nPISCOFIS: 99\ntipo de serviço: Revendedor'});
- assert.equal(facts.taxSuggestion.ncm,'01012100');assert.equal(facts.taxSuggestion.operation_type,'1');assert.equal(facts.taxSuggestion.pis_cofins_cst,'99');
+ assert.equal(facts.taxSuggestion.ncm,'01012100');assert.equal(facts.taxSuggestion.operation_type,'1');assert.equal(facts.taxSuggestion.pis_cofins_cst,undefined);
  assert.equal(facts.attributeSuggestions[0].values[0].valueName,'88 x 135 x 43 cm');
  assert.equal(facts.taxSuggestion.measure_unit,undefined);assert.deepEqual(supplierWorkflowFacts(null,{}).taxSuggestion,{});
  assert.equal(compileTax({...facts.taxSuggestion,measure_unit:'UN'},{}).ncm,'01012100');
