@@ -2466,8 +2466,10 @@ $('#optimizerVariationValues')?.addEventListener?.('input',()=>{optimizerVariati
 function optimizerImageCorrectionLoad(){
  const slot=$('#optimizerImageCorrectionSlot').value;
  $('#optimizerImageCorrection').value=optimizerWorkflowPlan?.imageNotes?.[slot]||'';
+ const counter=$('#optimizerImageCorrectionCount');if(counter)counter.textContent=[...$('#optimizerImageCorrection').value].length+'/500';
 }
 $('#optimizerImageCorrectionSlot')?.addEventListener?.('change',optimizerImageCorrectionLoad);
+$('#optimizerImageCorrection')?.addEventListener?.('input',()=>{const count=$('#optimizerImageCorrectionCount');if(count)count.textContent=[...$('#optimizerImageCorrection').value].length+'/500';});
 $('#optimizerImageCorrectionSave')?.addEventListener?.('click',async()=>{
  const w=optimizerWorkflowPlan;if(!w||optimizerWorkflowStage!=='images')return;
  const slot=$('#optimizerImageCorrectionSlot').value,note=$('#optimizerImageCorrection').value.trim();
@@ -2476,9 +2478,11 @@ $('#optimizerImageCorrectionSave')?.addEventListener?.('click',async()=>{
   const result=await json('/api/shopee/optimizer/workflow/review',{
    method:'POST',headers:{'Content-Type':'application/json'},
    body:JSON.stringify({itemId:w.itemId,modelId:w.modelId,sku:w.sku,
-    stage:'images',reviewed:Boolean(stage?.reviewed),imageNotes:{[slot]:note}}),signal:AbortSignal.timeout(60000)});
+    stage:'images',reviewed:false,imageNotes:{[slot]:note}}),signal:AbortSignal.timeout(60000)});
   if(optimizerWorkflowPlan?.sku!==w.sku)return;
   w.imageNotes={...(w.imageNotes||{}),...(result.imageNotes||{})};
+  if(stage){stage.reviewed=false;stage.status='pending';stage.reviewedAt=null;}
+  optimizerWorkflowRender(w);optimizerExecReset();
   optimizerWorkflowNotice('Ajuste da imagem '+slot+' salvo nesta SKU. Nenhuma foto foi gerada ou publicada.','success');
  }catch(e){optimizerWorkflowNotice('Não foi possível salvar o ajuste: '+e.message,'error')}
  finally{btn.disabled=false}
@@ -2511,6 +2515,8 @@ function optimizerWorkflowOpen(key){
  const isImages=key==='images';
  guide.textContent=stage.hint+(isImages?'\n\nROTEIRO PARA GERAR E REVISAR AS NOVE IMAGENS:\n'+workflowImageGuide+
     '\n\nUse o prompt mestre salvo em Regras da loja. Confira produto e medidas antes de substituir uma fotografia.':'');
+ guide.hidden=isImages;
+ if(isImages){const toggle=$('#optimizerCommercialRules');if(toggle)toggle.setAttribute('aria-expanded','false');}
  const draftWrap=$('#optimizerWorkflowDraftWrap');
  const isSeo=key==='seo',isDescription=key==='description';
  const isVideo=key==='video';
@@ -4405,6 +4411,25 @@ function optimizerFiscalValues(){
 // Imagens OpenAI: cada etapa salva o arquivo no Supabase; somente a revisão explícita permite executar na Shopee.
 let optimizerImagesAutoBusy=false,optimizerImagesStopRequested=false;
 let optimizerImagesSavedSlots=new Set(),optimizerImagesApiConfigured=false;
+let optimizerImagesFilter='all';
+const optimizerCommercialPositionNames=['Capa','Dicas de uso','Especificações','Benefícios','Dor e solução','Copy persuasiva','Transformação','Objeções','Mockup'];
+function optimizerCommercialSetFilter(filter){
+ if(!['all','pending','saved'].includes(filter))return;
+ optimizerImagesFilter=filter;
+ for(const id of ['all','pending','saved']){
+  const button=$('#optimizerImagesFilter'+id[0].toUpperCase()+id.slice(1));
+  if(button){button.classList.toggle('is-active',id===filter);button.setAttribute('aria-pressed',String(id===filter));}
+ }
+ void optimizerImagesLoad();
+}
+for(const [name,filter] of [['All','all'],['Pending','pending'],['Saved','saved']])
+ $('#optimizerImagesFilter'+name)?.addEventListener?.('click',()=>optimizerCommercialSetFilter(filter));
+for(const id of ['optimizerCommercialRules','optimizerCommercialShowRules'])
+ $('#'+id)?.addEventListener?.('click',()=>{
+  const guidance=$('#optimizerWorkflowStageGuidance');
+  guidance.hidden=!guidance.hidden;
+  const button=$('#optimizerCommercialRules');if(button)button.setAttribute('aria-expanded',String(!guidance.hidden));
+ });
 
 let optimizerImagesMode=null;
 let optimizerChatgptBrief=null,optimizerChatgptBriefSku='';
@@ -4455,6 +4480,41 @@ async function optimizerChatgptRender(w){
    list.append(card);
   }
  }catch(e){$('#optimizerChatgptCopyStatus').textContent='Não foi possível preparar os pedidos: '+e.message;}
+}
+async function optimizerCommercialRequestChatgptSlot(w,slot){
+ if(!optimizerImagesSameSku(w))return;
+ const status=$('#optimizerImagesStatus');
+ if(optimizerChatBridgeBusy){status.textContent='A ponte ChatGPT já está em execução. Espere terminar ou pause antes de solicitar outra posição.';return;}
+ if(!optimizerChatBridgeReady){
+  // Manual fallback is an explicit action; never silently claims the file was created.
+  const chatTab=window.open('https://chatgpt.com/','_blank','noopener,noreferrer');
+  try{
+   const brief=await optimizerChatgptMakeBrief(w);
+   await navigator.clipboard.writeText(brief.prompts[slot-1]);
+   status.textContent='Prompt da posição '+slot+' copiado. No ChatGPT, anexe a foto original, cole o texto e importe a imagem resultante na mesma posição.';
+  }catch(e){status.textContent='Não foi possível preparar o prompt da posição '+slot+': '+e.message;}
+  if(!chatTab)status.textContent+=' Permita pop-ups para abrir o ChatGPT.';
+  return;
+ }
+ try{
+  const brief=await optimizerChatgptMakeBrief(w);
+  if(!brief.original)throw Error('Não há fotografia original da Shopee para esta SKU.');
+  optimizerChatBridgeNonce=crypto.randomUUID();
+  optimizerChatBridgeSku=w.sku;
+  sessionStorage.setItem(RA_CHAT_BRIDGE_SESSION_KEY,optimizerChatBridgeNonce);
+  optimizerChatBridgeBusy=true;
+  $('#optimizerChatgptAbort').hidden=false;
+  status.textContent='Solicitando à extensão a imagem '+slot+' da SKU '+w.sku+'. Aguarde confirmação do upload.';
+  window.postMessage({kind:'RA_SITE_START',payload:{
+   nonce:optimizerChatBridgeNonce,sku:w.sku,itemId:String(w.itemId),modelId:String(w.modelId),
+   imageUrl:brief.original,prompts:brief.prompts,
+   // The extension skips all other positions for this individual request.
+   completed:Array.from({length:9},(_,i)=>i+1).filter(n=>n!==slot)
+  }},location.origin);
+ }catch(e){
+  optimizerChatBridgeBusy=false;$('#optimizerChatgptAbort').hidden=true;
+  status.textContent='Não foi possível iniciar a posição '+slot+': '+e.message;
+ }
 }
 async function optimizerChatgptCopyAll({open=false}={}){
  const w=optimizerWorkflowPlan;
@@ -4688,27 +4748,98 @@ async function optimizerImagesLoad(){
   const gallery=$('#optimizerImagesGallery');gallery.replaceChildren();
   const stored=new Map((data.images||[]).map(image=>[Number(image.slot),image]));
   optimizerImagesSavedSlots=new Set(stored.keys());
+  const completed=stored.size,pending=9-completed;
+  const originals=Array.isArray(w.imageUrls)?w.imageUrls.filter(Boolean):[];
+  const counters={
+   optimizerCommercialOriginalCount:originals.length,
+   optimizerCommercialPreparedCount:completed,
+   optimizerImagesFilterAllCount:9,
+   optimizerImagesFilterPendingCount:pending,
+   optimizerImagesFilterSavedCount:completed
+  };
+  for(const [id,value] of Object.entries(counters)){const element=$('#'+id);if(element)element.textContent=String(value);}
+  $('#optimizerCommercialGallerySummary').textContent=completed+' / 9 imagens preparadas';
+  $('#optimizerCommercialGalleryProgress').value=completed;
+  const reviewStage=w.stages?.find(x=>x.key==='images');
+  const reviewBtn=$('#optimizerWorkflowReview');
+  if(reviewBtn&&optimizerWorkflowStage==='images'){
+   reviewBtn.disabled=completed!==9&&!reviewStage?.reviewed;
+   reviewBtn.title=completed===9?'Conferir as 9 imagens antes de aprovar.':'Prepare todas as nove imagens para registrar a conferência.';
+  }
   for(let slot=1;slot<=9;slot++){
-   const image=stored.get(slot),card=optimizerMake('figure','optimizer-image-slot');
-   if(image){const photo=optimizerMake('img');photo.src=image.previewUrl;photo.alt='Imagem da posição '+slot;photo.loading='lazy';card.append(photo)}
-   else card.append(optimizerMake('div','optimizer-image-placeholder','Imagem '+String(slot).padStart(2,'0')+' · aguardando geração'));
-   card.append(optimizerMake('figcaption','',String(slot).padStart(2,'0')+' · '+(image?.filename||'Pendente')));
-   const redo=optimizerMake('button','secondary',image?'↻ Refazer com IA':'✨ Gerar com IA');
-   redo.type='button';redo.disabled=optimizerImagesAutoBusy||!optimizerImagesApiConfigured;
-   redo.onclick=async()=>{
+   const image=stored.get(slot);
+   if(optimizerImagesFilter==='saved'&&!image)continue;
+   if(optimizerImagesFilter==='pending'&&image)continue;
+   const originalUrl=originals[slot-1]||null;
+   const card=optimizerMake('article','optimizer-commercial-image-card');
+   card.dataset.slot=String(slot);
+   const thumb=optimizerMake('div','optimizer-commercial-thumb');
+   const url=image?.previewUrl||originalUrl;
+   if(url){
+    const photo=optimizerMake('img');photo.src=url;
+    photo.alt=(image?'Imagem comercial preparada':'Foto original Shopee de referência')+' da posição '+slot;
+    photo.loading='lazy';thumb.append(photo);
+   }else thumb.append(optimizerMake('span','optimizer-image-placeholder','▧'));
+   thumb.append(optimizerMake('span','optimizer-commercial-thumb-slot',String(slot)));
+   card.append(thumb);
+   const detail=optimizerMake('div','optimizer-commercial-image-info');
+   const heading=optimizerMake('div','optimizer-commercial-image-meta');
+   heading.append(optimizerMake('strong','',String(slot).padStart(2,'0')+' · '+optimizerCommercialPositionNames[slot-1]));
+   heading.append(optimizerMake('span',image?'optimizer-slot-ready':'optimizer-slot-pending',
+    image?'● Pronta':originalUrl?'◉ Original':'◆ Pendente'));
+   detail.append(heading);
+   if(!image&&originalUrl)detail.append(optimizerMake('small','optimizer-commercial-original-caption','Foto da Shopee · ainda não preparada'));
+   const actions=optimizerMake('div','optimizer-commercial-image-actions');
+   const generate=optimizerMake('button','secondary',image?'↻ Refazer':'✧ Gerar');
+   generate.type='button';generate.disabled=optimizerImagesAutoBusy;
+   generate.setAttribute('aria-label',(image?'Refazer':'Gerar')+' imagem '+slot);
+   generate.onclick=async()=>{
     if(optimizerImagesAutoBusy)return;
-    if(image&&!window.confirm('Refazer a imagem '+slot+'? A foto aprovada para esta posição será substituída e será necessário revisar novamente.'))return;
+    $('#optimizerImageCorrectionSlot').value=String(slot);optimizerImageCorrectionLoad();
+    if(image&&!window.confirm('Refazer somente a imagem '+slot+' da SKU '+w.sku+'? A imagem anterior será mantida até a nova ser salva e exigirá revisão novamente.'))return;
+    if(optimizerImagesMode!=='api'){
+     await optimizerCommercialRequestChatgptSlot(w,slot);return;
+    }
+    if(!optimizerImagesApiConfigured){
+     $('#optimizerImagesStatus').textContent='Conecte a API OpenAI ou escolha o ChatGPT para gerar esta posição.';return;
+    }
     optimizerImagesAutoBusy=true;optimizerImagesSetProgress();optimizerExecReset();
     try{
-     status.textContent='Gerando imagem '+slot+' de 9 com OpenAI. Aguarde...';
+     status.textContent='Gerando imagem '+slot+' de 9 pela OpenAI...';
      await optimizerImagesGenerateSlot(w,slot,Boolean(image));
-     if(optimizerImagesSameSku(w))await optimizerImagesLoad();
-     status.textContent='Imagem '+slot+' salva. Revise o modelo, texto e detalhes antes de aprovar.';
-    }catch(e){status.textContent='Imagem '+slot+' não foi gerada: '+e.message+'. As imagens anteriores foram mantidas.';}
+     status.textContent='Imagem '+slot+' salva nesta SKU. Confira antes de aprovar.';
+    }catch(e){status.textContent='Imagem '+slot+' não foi gerada: '+e.message+'. As anteriores foram mantidas.';}
     finally{optimizerImagesAutoBusy=false;optimizerImagesSetProgress();if(optimizerImagesSameSku(w))await optimizerImagesLoad();}
    };
-   card.append(redo);gallery.append(card);
+   actions.append(generate);
+   const adjust=optimizerMake('button','secondary','✎');adjust.type='button';
+   adjust.title='Ajustar pedido da imagem '+slot;adjust.setAttribute('aria-label','Ajustar imagem '+slot);
+   adjust.onclick=()=>{$('#optimizerImageCorrectionSlot').value=String(slot);optimizerImageCorrectionLoad();$('#optimizerImageCorrection').focus();};
+   actions.append(adjust);
+   const remove=optimizerMake('button','secondary','⌫');remove.type='button';
+   remove.classList.add('optimizer-commercial-delete');
+   remove.title=image?'Excluir apenas a imagem comercial preparada':'Não há imagem comercial preparada para excluir';
+   remove.setAttribute('aria-label','Excluir imagem preparada '+slot);
+   remove.disabled=!image||optimizerImagesAutoBusy;
+   remove.onclick=async()=>{
+    if(!image||optimizerImagesAutoBusy)return;
+    if(!window.confirm('Excluir a imagem preparada '+slot+' da SKU '+w.sku+'?\nA foto publicada na Shopee NÃO será alterada.'))return;
+    optimizerImagesAutoBusy=true;optimizerImagesSetProgress();optimizerExecReset();
+    try{
+     status.textContent='Excluindo apenas a imagem preparada '+slot+'...';
+     await json('/api/shopee/optimizer/images/manual?'+new URLSearchParams({
+      sku:w.sku,item_id:w.itemId,model_id:w.modelId,slot
+     }),{method:'DELETE',signal:AbortSignal.timeout(60000)});
+     const stage=w.stages?.find(x=>x.key==='images');if(stage){stage.reviewed=false;stage.status='pending';stage.reviewedAt=null;}
+     optimizerWorkflowRender(w);
+     status.textContent='Posição '+slot+' limpa. As fotos da Shopee foram preservadas.';
+    }catch(e){status.textContent='Não foi possível excluir: '+e.message;}
+    finally{optimizerImagesAutoBusy=false;optimizerImagesSetProgress();if(optimizerImagesSameSku(w))await optimizerImagesLoad();}
+   };
+   actions.append(remove);detail.append(actions);card.append(detail);gallery.append(card);
   }
+  if(!gallery.children.length)gallery.append(optimizerMake('p','optimizer-commercial-empty',
+   optimizerImagesFilter==='saved'?'Nenhuma imagem comercial preparada nesta SKU.':'Nenhuma posição pendente.'));
   optimizerImagesSetProgress();
   if(!optimizerImagesAutoBusy)status.textContent=stored.size+'/9 imagens salvas. Revise todas e registre a conferência antes de executar na Shopee.';
  }catch(e){status.textContent='Falha ao carregar imagens: '+e.message;}

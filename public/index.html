@@ -6,7 +6,7 @@
 <meta name="theme-color" content="#0A1C3A">
 <link rel="icon" type="image/svg+xml" href="/brand-logo.svg">
 <title>Rede Achados BR · Gestão Shopee</title>
-<link rel="stylesheet" href="/style.css?v=1.20.8">
+<link rel="stylesheet" href="/style.css?v=1.20.9">
 </head>
 <body>
 <div class="shell app-layout">
@@ -250,9 +250,22 @@
         <div id="optimizerTitleVariants" class="optimizer-title-variants" hidden></div>
         <p id="optimizerContentResearch" class="optimizer-video-help" hidden></p>
         <section id="optimizerImagesPanel" class="optimizer-video-import" hidden>
+          <div class="optimizer-commercial-layout">
+            <div class="optimizer-commercial-main">
+              <div class="optimizer-commercial-heading">
+                <div><span class="optimizer-commercial-kicker">ETAPA 01</span>
+                  <h4>Imagens comerciais <button type="button" id="optimizerCommercialRules" class="optimizer-commercial-help" title="Ver orientações e regras da loja" aria-expanded="false">?</button></h4>
+                  <p><span id="optimizerCommercialOriginalCount">—</span> imagens originais da Shopee para referência · <span id="optimizerCommercialPreparedCount">0</span> de 9 imagens comerciais preparadas</p>
+                </div>
+              </div>
+              <div class="optimizer-commercial-summary">
+                <strong>Resumo da etapa</strong><span>▣ 1200 × 1200</span><span>▧ 9 posições</span><span>♢ Preservar produto</span><span>⊘ Sem substituir automaticamente</span>
+                <button id="optimizerCommercialShowRules" type="button" class="secondary">ⓘ Ver regras</button>
+              </div>
+
           <div class="optimizer-image-mode-selector" role="group" aria-label="Escolher como gerar as nove imagens">
-            <button id="optimizerModeChatgpt" type="button" class="secondary" aria-pressed="false">✦ Gerar 9 imagens pelo ChatGPT</button>
-            <button id="optimizerModeApi" type="button" class="secondary" aria-pressed="false">⚙ Gerar automaticamente pela API</button>
+            <button id="optimizerModeChatgpt" type="button" class="secondary" aria-pressed="false">✦ ✦ Gerar com ChatGPT</button>
+            <button id="optimizerModeApi" type="button" class="secondary" aria-pressed="false">⚙ ⚙ Gerar automaticamente pela API</button>
           </div>
           <div id="optimizerImagesChatgptPanel" class="optimizer-chatgpt-panel" hidden>
             <div class="optimizer-chatgpt-head">
@@ -261,7 +274,7 @@
             </div>
             <p>O sistema prepara os 9 pedidos conforme as regras e a SKU. Abra o ChatGPT, anexe a fotografia original do produto, gere as imagens individualmente e retorne para importá-las. Nenhuma imagem é publicada sem revisão.</p>
             <div class="optimizer-chatgpt-bridge-actions">
-              <button type="button" id="optimizerChatgptAuto">✦ Gerar as 9 imagens no ChatGPT e enviar automaticamente</button>
+              <button type="button" id="optimizerChatgptAuto">✦ Gerar 9 imagens com ChatGPT</button>
               <button type="button" id="optimizerChatgptAbort" class="secondary" hidden>Pausar geração</button>
             </div>
             <p id="optimizerChatgptBridgeStatus" role="status" aria-live="polite">A automação via navegador necessita da extensão Rede Achados BR — Ponte ChatGPT instalada no Chrome. Ela acompanha cada imagem, salva no sistema e preserva a revisão da Shopee.</p>
@@ -277,7 +290,7 @@
               <summary>Ver/copiar os 9 prompts individualmente</summary>
               <div id="optimizerChatgptPromptList" class="optimizer-chatgpt-prompt-list"></div>
             </details>
-            <div class="optimizer-chatgpt-import">
+            <details class="optimizer-chatgpt-import-details"><summary>Importar imagens geradas</summary><div class="optimizer-chatgpt-import">
               <strong>Importar imagens geradas pelo ChatGPT</strong>
               <p>Salve os arquivos como <code>01.png</code> a <code>09.png</code> ou selecione-os na ordem das posições. O sistema ajusta imagens quadradas para 1200 × 1200 e salva cada foto na sua SKU.</p>
               <label class="optimizer-field">Fotos geradas (JPG/PNG/WebP) <input id="optimizerChatgptFiles" type="file" multiple accept="image/png,image/jpeg,image/webp,.png,.jpg,.jpeg,.webp"></label>
@@ -286,7 +299,7 @@
               </label>
               <button type="button" id="optimizerChatgptImport">Importar e salvar para revisão</button>
               <p id="optimizerChatgptImportStatus" role="status" aria-live="polite"></p>
-            </div>
+            </div></details>
           </div>
           <div id="optimizerImagesApiPanel" class="optimizer-ai-generator">
             <div class="optimizer-ai-generator-heading"><strong>✨ Gerador automático de 9 imagens com OpenAI</strong><small id="optimizerImagesProvider" role="status">Verificando conexão com o gerador…</small></div>
@@ -307,7 +320,7 @@
             </div>
             <p id="optimizerOpenAiNotice" role="status" aria-live="polite"></p>
             <div class="optimizer-ai-generator-actions">
-              <button type="button" id="optimizerImagesGenerateAll">✨ Gerar / retomar 9 imagens automaticamente</button>
+              <button type="button" id="optimizerImagesGenerateAll">⚡ Gerar / retomar 9 imagens pela API</button>
               <button type="button" class="secondary" id="optimizerImagesStop" hidden>Parar após a imagem atual</button>
             </div>
             <progress id="optimizerImagesProgress" max="9" value="0" aria-label="Imagens comerciais preparadas"></progress>
@@ -320,17 +333,39 @@
           <label class="optimizer-field">Imagens do computador <input id="optimizerImagesFiles" type="file" multiple accept="image/jpeg,image/png,.jpg,.jpeg,.png"></label>
           <button type="button" id="optimizerImagesUpload">Importar imagens para revisão</button></details>
           <p id="optimizerImagesStatus" role="status" class="optimizer-notice"></p>
-          <div id="optimizerImagesGallery" class="optimizer-prepared-gallery"></div>
+
+            </div>
+            <aside class="optimizer-commercial-rework">
           <div class="optimizer-image-rework">
-            <strong>Solicitar refação ou ajuste da imagem</strong>
+            <strong>✦ Solicitar ajuste da imagem</strong>
             <div class="optimizer-rework-fields">
               <label class="optimizer-field">Posição<select id="optimizerImageCorrectionSlot"><option value="1">01 · Capa</option><option value="2">02</option><option value="3">03</option><option value="4">04</option><option value="5">05</option><option value="6">06</option><option value="7">07</option><option value="8">08</option><option value="9">09 · Mockup</option></select></label>
-              <label class="optimizer-field">O que deseja alterar?<textarea id="optimizerImageCorrection" rows="2" maxlength="500" placeholder="Ex.: fundo mais claro e manter o mesmo produto."></textarea></label>
+              <label class="optimizer-field">O que deseja alterar?<textarea id="optimizerImageCorrection" rows="3" maxlength="500" placeholder="Ex.: fundo mais claro, mantendo exatamente o mesmo produto."></textarea></label>
             </div>
             <div class="optimizer-workflow-actions"><button id="optimizerImageCorrectionSave" class="secondary" type="button">Salvar alteração</button><button id="optimizerImageCorrectionCopy" class="secondary" type="button">Copiar pedido para criar / refazer</button></div>
             <small>Importe a imagem gerada na posição correspondente. Sem um gerador conectado, o ChatGPT não envia imagens diretamente ao aplicativo.</small>
           </div>
-          <small>Após conferir as nove imagens, registre a revisão da etapa para habilitar o envio à Shopee.</small>
+
+              <small id="optimizerImageCorrectionCount" class="optimizer-rework-count">0/500</small>
+            </aside>
+          </div>
+          <section class="optimizer-commercial-gallery-section" aria-label="Galeria comercial por SKU">
+            <div class="optimizer-commercial-gallery-head">
+              <strong>▧ Imagens do produto</strong>
+              <div class="optimizer-commercial-gallery-kpis">
+                <span id="optimizerCommercialGallerySummary">0/9 imagens preparadas</span>
+                <progress id="optimizerCommercialGalleryProgress" max="9" value="0" aria-label="Progresso das imagens preparadas"></progress>
+              </div>
+              <div class="optimizer-commercial-filters" role="group" aria-label="Filtrar imagens comerciais">
+                <button id="optimizerImagesFilterAll" type="button" class="is-active" aria-pressed="true">Todas <span id="optimizerImagesFilterAllCount">9</span></button>
+                <button id="optimizerImagesFilterPending" type="button" aria-pressed="false">Pendentes <span id="optimizerImagesFilterPendingCount">9</span></button>
+                <button id="optimizerImagesFilterSaved" type="button" aria-pressed="false">Salvas <span id="optimizerImagesFilterSavedCount">0</span></button>
+              </div>
+            </div>
+            <div id="optimizerImagesGallery" class="optimizer-prepared-gallery"></div>
+            <small>Fotos originais da Shopee são apenas referências. Apenas as nove imagens comerciais salvas e aprovadas serão incluídas em uma nova prévia de execução.</small>
+          </section>
+
         </section>
         <section id="optimizerVariationPanel" class="optimizer-video-import" hidden>
           <strong>Variações do produto</strong>
@@ -1085,6 +1120,6 @@
     </main>
   </div>
 </div>
-<script src="/app.js?v=1.20.8"></script>
+<script src="/app.js?v=1.20.9"></script>
 </body>
 </html>

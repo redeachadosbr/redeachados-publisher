@@ -10,7 +10,7 @@ test('ChatGPT extension bridge has one-click automatic generation and per-slot u
  for(const id of ['optimizerChatgptAuto','optimizerChatgptAbort','optimizerChatgptBridgeStatus']){
   assert.equal((html.match(new RegExp('id="'+id+'"','g'))||[]).length,1,id);
  }
- assert.match(html,/Gerar as 9 imagens no ChatGPT e enviar automaticamente/);
+ assert.match(html,/Gerar 9 imagens com ChatGPT/);
  assert.match(html,/Opção manual \(sem extensão\)/);
  assert.match(js,/RA_EXTENSION_PROBE/);
  assert.match(js,/RA_SITE_START/);

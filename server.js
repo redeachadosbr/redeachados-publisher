@@ -35,7 +35,7 @@ import {readShopeeExecution,saveShopeePreparedExecution,
 import {advanceShopeeExecution} from './shopeeExecutionWorker.js';
 import {createShopeeMediaApi} from './shopeeMediaApi.js';
 import {normalizeManualVideo} from './shopeeVideoValidation.js';
-import {readPreparedImages,importPreparedImage,downloadPreparedImage,imagesSignature,MAX_IMAGE_BYTES,rememberPublishedImages} from './shopeePreparedImages.js';
+import {readPreparedImages,importPreparedImage,deletePreparedImage,downloadPreparedImage,imagesSignature,MAX_IMAGE_BYTES,rememberPublishedImages} from './shopeePreparedImages.js';
 import {generateOpenAiImage,imageGenerationStatus} from './shopeeOpenAiImages.js';
 import {openAiKeyStatus,openAiApiKey,saveOpenAiApiKey,deleteOpenAiApiKey} from './shopeeOpenAiCredentials.js';
 import {compileAttributes,compileTax,attributeAuditForChanges} from './shopeeStructuredFields.js';
@@ -140,7 +140,7 @@ app.get('/app/:section',(req,res)=>{
 });
 app.get('/app',(_req,res)=>res.redirect(302,'/app/inicio'));
 
-app.get('/api/health',(_req,res)=>res.json({ok:true,service:'Rede Achados BR Shopee API',version:'1.20.8',storage:authStore.status()}));
+app.get('/api/health',(_req,res)=>res.json({ok:true,service:'Rede Achados BR Shopee API',version:'1.20.9',storage:authStore.status()}));
 app.get('/api/auth-state',(req,res)=>res.json({locked:Boolean(envText('APP_PASSWORD')),loggedIn:!envText('APP_PASSWORD')||Boolean(req.session?.appAuth)}));
 app.post('/api/login',(req,res)=>{
   const required=envText('APP_PASSWORD');
@@ -1087,6 +1087,27 @@ app.post('/api/shopee/optimizer/images/manual',mustLogin,requireWeDropAdmin,
   await saveWorkflowReview(x.shopId,x.itemId,x.modelId,x.sku,{stage:'images',reviewed:false});
   res.status(201).json({ok:true,image,requiresReview:true,marketplaceUpdated:false});
  }catch(e){res.status(400).json({error:String(e.message||e).slice(0,250)});}
+});
+
+app.delete('/api/shopee/optimizer/images/manual',mustLogin,requireWeDropAdmin,async(req,res)=>{
+ res.setHeader('Cache-Control','no-store');
+ if(!verifiedSameOrigin(req))return res.status(403).json({error:'Origem não autorizada.'});
+ try{
+  const x=await checkedManualVideoIdentity(req);
+  const position=Number(req.query.slot);
+  if(!Number.isInteger(position)||position<1||position>9)
+   return res.status(400).json({error:'Posição inválida (1 a 9).'});
+  const lock=[x.shopId,x.itemId,x.modelId,x.sku].join(':');
+  if(shopeeImageGenerationLocks.has(lock))
+   return res.status(409).json({error:'Existe uma geração de imagem em andamento. Aguarde terminar para excluir.'});
+  const job=await readShopeeExecution(x.shopId,x.itemId,x.modelId);
+  if(['running','uncertain'].includes(job?.state))
+   return res.status(409).json({error:'Uma execução está em andamento ou sem confirmação. Não exclua imagens antes de reconciliar.'});
+  // Invalidate approval first: never leave a previously approved signature active.
+  await saveWorkflowReview(x.shopId,x.itemId,x.modelId,x.sku,{stage:'images',reviewed:false});
+  const result=await deletePreparedImage(x.shopId,x.itemId,x.modelId,x.sku,position);
+  res.json({ok:true,...result,requiresReview:true});
+ }catch(e){res.status(400).json({error:String(e.message||e).slice(0,260)});}
 });
 
 app.get('/api/shopee/optimizer/settings',mustLogin,requireWeDropAdmin,async(req,res)=>{

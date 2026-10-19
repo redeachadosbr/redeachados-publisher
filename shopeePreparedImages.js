@@ -61,6 +61,31 @@ export async function importPreparedImage({shopId,itemId,modelId,sku,slot,file,m
   headers:{'Content-Type':'application/json',Prefer:'resolution=merge-duplicates,return=representation'},body:JSON.stringify([data])});
  return (await r.json())[0];
 }
+// Remove somente o arquivo preparado na galeria privada; nunca toca nas imagens publicadas na Shopee.
+export async function deletePreparedImage(shop,item,model,sku,slot){
+ const position=num(slot);
+ if(position<1||position>9)throw Error('Posição inválida: escolha de 1 a 9.');
+ const rows=await readPreparedImages(shop,item,model,sku);
+ const current=rows.find(x=>Number(x.slot)===position);
+ if(!current)return {deleted:false,slot:position,marketplaceUpdated:false};
+ // Constrain DELETE to the exact version; a concurrent replacement must not be removed.
+ const identity=where(shop,item,model)+'&slot=eq.'+position+
+  '&sku=eq.'+encodeURIComponent(String(sku))+'&sha256=eq.'+encodeURIComponent(current.sha256);
+ const removed=await api('/rest/v1/shopee_optimizer_images'+identity,{
+  method:'DELETE',headers:{Prefer:'return=representation'}
+ });
+ const deleted=await removed.json();
+ if(!Array.isArray(deleted)||deleted.length!==1)
+  throw Error('A imagem foi alterada durante a exclusão. Atualize a galeria antes de tentar novamente.');
+ // Metadata is authoritative. If storage cleanup fails, the orphan is private
+ // and must never be reused: its database record was already invalidated.
+ try{
+  await api('/storage/v1/object/'+IMAGE_BUCKET+'/'+current.storage_path,{method:'DELETE'});
+ }catch(e){
+  console.warn('[optimizer-images] A limpeza privada ficou pendente após excluir um slot.',String(e.message||e).slice(0,140));
+ }
+ return {deleted:true,slot:position,marketplaceUpdated:false};
+}
 export async function downloadPreparedImage(asset){
  if(!/^\d+\/\d+\/\d+\/[a-f0-9-]+\.(jpg|png)$/.test(asset?.storage_path||''))throw Error('Imagem aprovada inválida.');
  const r=await api('/storage/v1/object/authenticated/'+IMAGE_BUCKET+'/'+asset.storage_path);
