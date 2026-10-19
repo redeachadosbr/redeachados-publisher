@@ -21,7 +21,7 @@ function page(start){
  const app=readFileSync(new URL('../public/app.js',import.meta.url),'utf8');
  const code=app.slice(app.indexOf('let optimizerExecPlan='),app.indexOf('function optimizerCell('));
  runInNewContext(code+`
-  optimizerExecPlan={canExecute:true,sku:'TRC1525',planId:'p',updatedAt:'t'};
+  optimizerExecPlan={canExecute:true,sku:'TRC1525',itemId:'22095398152',modelId:'0',planId:'p',updatedAt:'t'};
   optimizerExecContext={...optimizerWorkflowPlan};
   this.jobView=optimizerExecutionJobView;
   this.reset=optimizerExecReset;
