@@ -4335,7 +4335,7 @@ function optimizerTechnicalRender(data){
    }
    if(custom){const other=optimizerMake('option','','Informar valor');other.value='0';select.append(other);}
    select.value=value.valueId!==undefined?String(value.valueId):type===3||!attr.options?.length?'0':'';
-   select.hidden=type===3||(!attr.options?.length&&custom);row.append(select);
+   select.hidden=type===3||(!attr.options?.length&&custom&&!attr.supportSearch);row.append(select);
    const input=optimizerMake('input');input.type=Number(attr.validationType)===4?'date':'text';input.maxLength=500;
    input.dataset.valueName='true';input.setAttribute('aria-label',name+' — valor');
    input.placeholder='Informe somente um valor confirmado do fabricante ou fornecedor';
