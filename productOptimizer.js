@@ -103,7 +103,7 @@ export function normalizeAttributeAudit(item,attributesResponse){
   const legacy=array(item.attribute_list)
     .filter(x=>numeric(x.attribute_id)&&!seen.has(Number(x.attribute_id)))
     .map(x=>({id:Number(x.attribute_id),name:'Atributo existente fora da árvore retornada',mandatory:false,
-      state:'review',issues:['A categoria atual não retornou esse atributo; revisar migração de categoria'],
+      legacy:true,state:'review',issues:['A categoria atual não retornou esse atributo; revisar migração de categoria'],
       inputType:null,formatType:null,maxValues:null,supportSearch:false,
       allowedUnits:[],values:array(x.attribute_value_list).map(v=>({
         valueId:Number(v.value_id||0),name:moneylessString(v.original_value_name),
