@@ -4555,8 +4555,18 @@ function optimizerTechnicalRender(data){
   if(!suggested&&['marca','estampa','numero de registro inmetro'].some(n=>String(name).toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').includes(n))&&
      !attr.values?.length)field.append(optimizerMake('small','',
        'Sem comprovação automática: cole a ficha do fabricante acima ou selecione uma opção oficial.'));
-  const existing=(data.attributeChanges||[]).find(x=>Number(x.attributeId)===attr.id)||
+  const reviewed=(data.attributeChanges||[]).find(x=>Number(x.attributeId)===attr.id);
+  // Prefill confirmed supplier facts at OPEN, not behind a second "Usar sugestão"
+  // click. A previously saved, deliberate manual edit takes precedence except
+  // the invalid brand Novo copied from Shopee's condition NEW.
+  const invalidNewBrand=String(name).normalize('NFD').replace(/[\u0300-\u036f]/g,'')
+    .toLowerCase()==='marca'&&reviewed?.values?.[0]?.valueName?.trim().toLowerCase()==='novo';
+  const auto=(!reviewed||invalidNewBrand)?suggested:null;
+  const existing=auto||reviewed||
     (data.attributeSuggestions||[]).find(x=>Number(x.attributeId)===attr.id);
+  if(auto)field.append(optimizerMake('p','optimizer-source-autofilled',
+    '✓ Preenchido automaticamente: '+auto.values.map(x=>x.valueName).join(', ')+
+    ' · Fonte: '+auto.evidence+'. Confirme na revisão para publicar.'));
   const enableLabel=optimizerMake('label','optimizer-attribute-toggle'),enabled=optimizerMake('input');
   enabled.type='checkbox';enabled.dataset.attributeEnabled='true';enabled.checked=Boolean(existing);
   enabled.setAttribute('aria-label','Preencher '+name);enableLabel.append(enabled,document.createTextNode(' Preencher este campo'));field.append(enableLabel);
@@ -4638,8 +4648,8 @@ function optimizerTechnicalRender(data){
    rows.append(row);
   }
   for(const value of existing?(existing.values||[existing]):[{}])addRow(value);
-  if(suggested){
-   const apply=optimizerMake('button','secondary','Usar sugestão confirmada: '+suggested.values[0].valueName);
+  if(suggested&&!auto){
+   const apply=optimizerMake('button','secondary','Aplicar dado WeDrop: '+suggested.values[0].valueName);
    apply.type='button';
    apply.onclick=()=>{
     enabled.checked=true;controls.hidden=false;rows.replaceChildren();
