@@ -1311,13 +1311,14 @@ function renderShopeeAds(data){
   'Situação atual confirmada pela API Shopee; métricas históricas incluem campanhas pausadas. GMV atribuído não é lucro.';
  adsRenderHealth(data);adsRenderSuggestions();adsRenderExecution();
  $('#adsExportBtn').disabled=!campaigns.length;
+ $('#adsExecuteSuggested').disabled=!campaigns.length;
  displayAdsGroup('all');
 }
 $('#loadAdsAutoBtn').onclick=async()=>{
  const button=$('#loadAdsAutoBtn');if(adsBusy)return;
  adsBusy=true;button.disabled=true;$('#adsRefreshLabel').textContent='Consultando...';
  adsStatusState('Consultando campanhas e resultados oficiais da Shopee…','loading');
- $('#adsResults').hidden=true;adsLastReport=null;adsCampaignRows=[];adsSelected.clear();$('#adsExportBtn').disabled=true;
+ $('#adsResults').hidden=true;adsLastReport=null;adsCampaignRows=[];adsSelected.clear();$('#adsExportBtn').disabled=true;$('#adsExecuteSuggested').disabled=true;
  try{
   const start=$('#adsStart').value,end=$('#adsEnd').value;
   if(!start||!end||start>=end)throw Error('Informe duas datas válidas, com pelo menos dois dias.');
