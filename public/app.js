@@ -4252,6 +4252,12 @@ function optimizerSupplierRender(data,key){
 }
 function optimizerTechnicalRender(data){
  const wrap=$('#optimizerTechnicalFields');wrap.replaceChildren();
+ if(data.technicalWarning)wrap.append(optimizerMake('p','optimizer-warning',
+  'Atenção: os dados da ficha técnica salva precisam de nova conferência nesta categoria: '+data.technicalWarning));
+ wrap.append(optimizerMake('p','optimizer-category-summary',
+  'Ficha técnica oficial da categoria Shopee '+String(data.categoryId||'não identificada')+
+  ' · '+(data.attributes||[]).filter(x=>x.mandatory&&!x.conditional).length+
+  ' atributos obrigatórios ativos · '+(data.attributes||[]).length+' campos retornados pela API.'));
  $('#optimizerTechnicalRefresh').hidden=!(data.attributes||[]).some(x=>x.parentId);
  // Usar exclusivamente os nomes da árvore oficial da categoria, sem campos fixos.
  for(const attr of data.attributes||[]){
