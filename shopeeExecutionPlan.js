@@ -1,5 +1,5 @@
 import crypto from 'node:crypto';
-import {compileAttributes,compileTax,sameData,fieldsVerified} from './shopeeStructuredFields.js';
+import {compileAttributes,compileTax,sameData,sameShopeeAttributes,fieldsVerified} from './shopeeStructuredFields.js';
 import {imagesSignature} from './shopeePreparedImages.js';
 import {normalizedTitle,validateContentRules} from './shopeeOptimizationWorkflow.js';
 
@@ -43,7 +43,7 @@ export function compileShopeeExecutionPlan({shopId,itemId,modelId,sku,record,rev
   warnings.push('Preço, frete e promoção permanecem separados; descontos não serão enviados.');
   if(stages.technical?.reviewed&&state.attributes?.length){
     try{const attributes=compileAttributes(state.attributes,record,live);
-      if(!sameData(attributes,live.attribute_list||[]))proposed.attribute_list=attributes;
+      if(!sameShopeeAttributes(attributes,live.attribute_list||[]))proposed.attribute_list=attributes;
     }catch(e){blocked.push(e.message);}
   }
   if(stages.fiscal?.reviewed&&state.tax){
@@ -96,7 +96,10 @@ export function assertLiveShopeeUnchanged(plan,base){
     throw Error('Anúncio alterado após preparação. Recalcule o plano antes de executar.');
   if(plan.video&&JSON.stringify(base.video_info||[])!==JSON.stringify(plan.original.video_info||[]))
     throw Error('Vídeo do anúncio alterado após preparação. Prepare novamente.');
-  for(const key of ['attribute_list','tax_info'])if(plan.proposed[key]&&!sameData(base[key]|| (key==='attribute_list'?[]:{}),plan.original[key]))throw Error('Ficha do anúncio alterada após preparação. Refaça a prévia.');
+  if(plan.proposed.attribute_list&&!sameShopeeAttributes(base.attribute_list||[],plan.original.attribute_list||[]))
+    throw Error('A ficha técnica da Shopee foi modificada após a prévia. Recalcule a prévia e confira os atributos antes de executar.');
+  if(plan.proposed.tax_info&&!sameData(base.tax_info||{},plan.original.tax_info||{}))
+    throw Error('Os dados fiscais da Shopee mudaram após a prévia. Recalcule e confira o NCM e os demais campos fiscais.');
   if(plan.images?.length&&!sameData(base.image?.image_id_list||[],plan.original.image?.image_id_list||[]))throw Error('Imagens alteradas após preparação. Refaça a prévia.');
   if(base.category_id&&plan.original.category_id&&Number(base.category_id)!==Number(plan.original.category_id))throw Error('Categoria alterada após preparação. Refaça a auditoria.');
   if(base.item_status&&!['NORMAL','UNLIST'].includes(base.item_status))throw Error('Anúncio não está mais editável.');

@@ -34,6 +34,8 @@ export async function saveWorkflowReview(shop,item,model,sku,change){
  if(change.assetSha256!==undefined)next.videoSha256=change.assetSha256;
  if(change.attributes!==undefined)next.attributes=change.attributes;
  if(change.tax!==undefined)next.tax=change.tax;
+ if(change.matrixFiscal!==undefined)next.matrixFiscal=change.matrixFiscal;
+ if(change.matrixTechnical!==undefined)next.matrixTechnical=change.matrixTechnical;
  if(change.imagesSignature!==undefined)next.imagesSignature=change.imagesSignature;
  if(change.variationConfig!==undefined)next.variationConfig=change.variationConfig;
  if(change.imageNotes!==undefined)next.imageNotes={...(state.imageNotes||{}),...change.imageNotes};

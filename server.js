@@ -21,6 +21,7 @@ import {previewWeDropCsv,prepareWeDropImport,MAX_CSV_CHARS} from './wedropCsv.js
 import {saveWeDropCosts,getWeDropCoverage,compareIncomingCosts,pendingWeDropModels} from './wedropCosts.js';
 import {saveWeDropProducts,readWeDropProduct} from './wedropCosts.js';
 import {supplierWorkflowFacts} from './shopeeSupplierFacts.js';
+import {fiscalMatrixSource,technicalMatrixSource} from './shopeeMatrixRules.js';
 import {readWeDropSyncState,getStoredWeDropCostCount} from './wedropCosts.js';
 import {getSkuReview,searchSupplierSku,confirmSkuLink,undoSkuLink} from './wedropSkuReview.js';
 import {auditShopeeItem,validateSkuLookup} from './productOptimizer.js';
@@ -138,7 +139,7 @@ app.get('/app/:section',(req,res)=>{
 });
 app.get('/app',(_req,res)=>res.redirect(302,'/app/inicio'));
 
-app.get('/api/health',(_req,res)=>res.json({ok:true,service:'Rede Achados BR Shopee API',version:'1.20.6',storage:authStore.status()}));
+app.get('/api/health',(_req,res)=>res.json({ok:true,service:'Rede Achados BR Shopee API',version:'1.20.7',storage:authStore.status()}));
 app.get('/api/auth-state',(req,res)=>res.json({locked:Boolean(envText('APP_PASSWORD')),loggedIn:!envText('APP_PASSWORD')||Boolean(req.session?.appAuth)}));
 app.post('/api/login',(req,res)=>{
   const required=envText('APP_PASSWORD');
@@ -692,8 +693,20 @@ app.post('/api/shopee/optimizer/workflow/review',mustLogin,requireWeDropAdmin,as
       if(images.length!==9)throw Error('Gere ou importe todas as nove imagens antes de aprovar a substituição.');
       change.imagesSignature=imagesSignature(images);
     }
-    if(change.attributes)compileAttributes(change.attributes,record,await shopeeLiveEditableItem(cfg,auth,itemId));
-    if(change.tax)compileTax(change.tax,await shopeeLiveEditableItem(cfg,auth,itemId));
+    if(change.stage==='technical'&&change.reviewed){
+      const live=await shopeeLiveEditableItem(cfg,auth,itemId);
+      const attributes=change.attributes||[];
+      change.matrixTechnical=technicalMatrixSource({sku,record,attributes});
+      const verifiedAttributes=attributeAuditForChanges(attributes,record,live);
+      if(Number(verifiedAttributes?.missingMandatory)>0)
+        throw Error('Motor Matriz: a ficha técnica ainda possui '+verifiedAttributes.missingMandatory+' atributo(s) obrigatório(s) sem preenchimento. Corrija antes de aprovar.');
+      compileAttributes(attributes,record,live);
+    }else if(change.attributes)compileAttributes(change.attributes,record,await shopeeLiveEditableItem(cfg,auth,itemId));
+    if(change.stage==='fiscal'&&change.reviewed){
+      const supplier=await readWeDropProduct(auth.shopId,{sku,itemId,modelId});
+      change.matrixFiscal=fiscalMatrixSource({sku,supplier,tax:change.tax});
+      compileTax(change.tax,await shopeeLiveEditableItem(cfg,auth,itemId));
+    }else if(change.tax)compileTax(change.tax,await shopeeLiveEditableItem(cfg,auth,itemId));
     const state=await saveWorkflowReview(auth.shopId,itemId,modelId,sku,change);
     res.json({ok:true,saved:true,marketplaceUpdated:false,sku,itemId,modelId,
       stages:buildStages(record,state),attributeChanges:state.attributes||[],taxDraft:state.tax||{},draftTitle:state.draftTitle||safeTitle(record.title),
@@ -724,6 +737,13 @@ app.post('/api/shopee/optimizer/execution/prepare',mustLogin,requireWeDropAdmin,
     const verifiedVideoSha256=previous?.state==='verified'&&
       verifyShopeeExecution(previous.plan,live,previous.result)?previous.plan.video?.sha256:null;
     const manualImages=await readPreparedImages(auth.shopId,itemId,modelId,sku);
+    const reviewState=review?.review_state||{};
+    if(reviewState.stages?.fiscal?.reviewed&&reviewState.tax){
+      const supplier=await readWeDropProduct(auth.shopId,{sku,itemId,modelId});
+      fiscalMatrixSource({sku,supplier,tax:reviewState.tax,reviewSource:reviewState.matrixFiscal});
+    }
+    if(reviewState.stages?.technical?.reviewed)
+      technicalMatrixSource({sku,record,attributes:reviewState.attributes||[],reviewSource:reviewState.matrixTechnical});
     const plan=compileShopeeExecutionPlan({shopId:auth.shopId,itemId,modelId,
       sku,record,review:review?.review_state||{},live,manualVideo,verifiedVideoSha256,manualImages});
     const stored=await saveShopeePreparedExecution(auth.shopId,itemId,modelId,sku,plan);
@@ -756,6 +776,13 @@ app.post('/api/shopee/optimizer/execution/execute',mustLogin,requireWeDropAdmin,
   confirmShopeeExecution(plan,{sku,confirmation:req.body.confirmation});
   const review=await getWorkflowReview(auth.shopId,itemId,modelId);
   if(review?.sku!==sku)throw Error('Revisão da SKU mudou. Prepare novamente.');
+  const reviewState=review.review_state||{};
+  if(reviewState.stages?.fiscal?.reviewed&&reviewState.tax){
+    const supplier=await readWeDropProduct(auth.shopId,{sku,itemId,modelId});
+    fiscalMatrixSource({sku,supplier,tax:reviewState.tax,reviewSource:reviewState.matrixFiscal});
+  }
+  if(reviewState.stages?.technical?.reviewed)
+    technicalMatrixSource({sku,record,attributes:reviewState.attributes||[],reviewSource:reviewState.matrixTechnical});
   const live=await shopeeLiveEditableItem(cfg,auth,itemId);
   assertLiveShopeeUnchanged(plan,live);
   const manualVideo=plan.video?await getShopeeManualVideo(auth.shopId,itemId,modelId,sku):null;
