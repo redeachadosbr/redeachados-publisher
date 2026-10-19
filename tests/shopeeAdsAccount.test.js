@@ -35,7 +35,20 @@ test('official Shopee APIs are read only and independently fail safe',async()=>{
  ]);
  assert.ok(calls.every(x=>x.method==='GET'));
  assert.equal(x.balance.amount,16.55);
- assert.equal(x.automaticRecharge.status,'unavailable');
+ assert.equal(x.automaticRecharge.status,'permission_required');
  assert.equal(x.automaticRecharge.enabled,null);
+ assert.ok(Number.isFinite(Date.parse(x.checkedAt)));
  assert.ok(!JSON.stringify(x).includes('private'));
+});
+
+test('auth failures and generic errors stay separate from missing balance',async()=>{
+ const fail=async (_cfg,r)=>{
+  if(r.path.endsWith('get_total_balance'))throw Error('expired token');
+  throw Error('service temporarily unavailable');
+ };
+ const x=await readShopeeAdsAccount({}, {shopId:123,accessToken:'secret'},fail);
+ assert.equal(x.balance.status,'authorization_required');
+ assert.equal(x.automaticRecharge.status,'unavailable');
+ assert.equal(x.balance.amount,null);
+ assert.equal(x.automaticRecharge.enabled,null);
 });
