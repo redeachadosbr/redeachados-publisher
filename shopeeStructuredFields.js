@@ -82,6 +82,22 @@ export function compileTax(input,live){
  }
  return tax;
 }
+// Shopee may reorder the attribute list and its value lists on readback.
+// Compare ALL attribute identities and value triples, not array order or volatile API metadata.
+export function sameShopeeAttributes(left,right){
+ const normalize=raw=>(Array.isArray(raw)?raw:[]).map(a=>({
+  attribute_id:String(a?.attribute_id??''),
+  attribute_value_list:(Array.isArray(a?.attribute_value_list)?a.attribute_value_list:[])
+   .map(v=>({
+    value_id:String(v?.value_id??''),
+    original_value_name:String(v?.original_value_name??''),
+    value_unit:String(v?.value_unit??'')
+   }))
+   .sort((x,y)=>JSON.stringify(x).localeCompare(JSON.stringify(y)))
+ })).sort((x,y)=>Number(x.attribute_id)-Number(y.attribute_id)||
+  JSON.stringify(x).localeCompare(JSON.stringify(y)));
+ return JSON.stringify(normalize(left))===JSON.stringify(normalize(right));
+}
 export function sameData(a,b){
  const normalize=value=>Array.isArray(value)?value.map(normalize):value&&typeof value==='object'
   ?Object.fromEntries(Object.keys(value).sort().map(k=>[k,normalize(value[k])])):value;
