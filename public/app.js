@@ -4411,6 +4411,108 @@ $('#optimizerModeChatgpt')?.addEventListener?.('click',()=>{
 $('#optimizerModeApi')?.addEventListener?.('click',()=>{
  optimizerImagesMode='api';optimizerImagesRenderMode();
 });
+
+const RA_CHAT_BRIDGE_SESSION_KEY='redeAchadosBridgeNonceV1';
+let optimizerChatBridgeReady=false,optimizerChatBridgeBusy=false,optimizerChatBridgeUploading=false;
+let optimizerChatBridgeNonce=sessionStorage.getItem(RA_CHAT_BRIDGE_SESSION_KEY)||'';
+let optimizerChatBridgeSku='';
+window.addEventListener('message',async(event)=>{
+ if(event.source!==window||event.origin!==location.origin||!event.data||typeof event.data!=='object')return;
+ const m=event.data,status=$('#optimizerChatgptBridgeStatus');
+ if(m.kind==='RA_EXTENSION_READY'){
+  optimizerChatBridgeReady=true;
+  if(status&&!optimizerChatBridgeBusy)status.textContent='Extensão Rede Achados BR detectada. Clique em Gerar as 9 imagens para abrir o ChatGPT e receber cada foto automaticamente.';
+  return;
+ }
+ if(m.kind==='RA_EXTENSION_START_RESULT'&&m.nonce===optimizerChatBridgeNonce){
+  if(!m.ok){
+   optimizerChatBridgeBusy=false;
+   $('#optimizerChatgptAbort').hidden=true;
+   if(status)status.textContent='Não foi possível iniciar a extensão: '+(m.error||'erro não identificado')+'. Verifique se está instalada e atualizada no Chrome.';
+  }else if(status)status.textContent='Extensão iniciada para a SKU '+(optimizerWorkflowPlan?.sku||'')+'. O ChatGPT está gerando e cada foto será enviada à galeria automaticamente.';
+  return;
+ }
+ if(m.nonce!==optimizerChatBridgeNonce||!m.nonce)return;
+ const w=optimizerWorkflowPlan;
+ if(!w||!optimizerImagesSameSku(w)||String(m.sku)!==String(w.sku)||String(m.itemId)!==String(w.itemId)||String(m.modelId)!==String(w.modelId))return;
+ if(m.kind==='RA_EXTENSION_PROGRESS'){
+  const done=m.status==='9/9 imagens armazenadas. Confira e aprove a etapa no Shopee Manager antes de publicar na Shopee.';
+  if(status)status.textContent=m.status+(m.error?' '+m.error:'')+
+   (m.slot?' · posição '+Math.min(9,m.slot)+'/9':'');
+  if(done){optimizerChatBridgeBusy=false;$('#optimizerChatgptAbort').hidden=true;void optimizerImagesLoad();}
+  return;
+ }
+ if(m.kind!=='RA_EXTENSION_IMAGE')return;
+ if(optimizerChatBridgeUploading)return; // Retentativa será enviada pelo runner se não receber ACK.
+ optimizerChatBridgeUploading=true;
+ let error='',ok=false;
+ try{
+  if(!Number.isInteger(m.slot)||m.slot<1||m.slot>9)throw Error('Slot inválido.');
+  if(typeof m.dataUrl!=='string'||m.dataUrl.length>28*1024*1024||
+    !/^data:image\/(?:png|jpeg|webp);base64,/i.test(m.dataUrl))
+   throw Error('O ChatGPT não entregou um arquivo de imagem válido.');
+  status.textContent='Imagem '+m.slot+'/9 recebida do ChatGPT. Convertendo para 1200×1200 e salvando na SKU '+w.sku+'...';
+  const blob=await(await fetch(m.dataUrl)).blob();
+  const file=new File([blob],'chatgpt-auto-'+String(m.slot).padStart(2,'0')+'.'+(blob.type==='image/jpeg'?'jpg':blob.type==='image/webp'?'webp':'png'),{type:blob.type});
+  const png=await optimizerChatgptScaleFile(file);
+  const response=await fetch('/api/shopee/optimizer/images/manual?'+new URLSearchParams({
+   sku:w.sku,item_id:w.itemId,model_id:w.modelId,slot:m.slot
+  }),{method:'POST',headers:{'Content-Type':'image/png',
+   'X-Image-Filename':encodeURIComponent('chatgpt-auto-'+String(m.slot).padStart(2,'0')+'.png')},
+   body:png,signal:AbortSignal.timeout(90000)});
+  const data=await response.json();
+  if(!response.ok)throw Error(data.error||'O armazenamento não confirmou a imagem.');
+  optimizerImagesSavedSlots.add(m.slot);
+  const stage=w.stages?.find(x=>x.key==='images');
+  if(stage){stage.reviewed=false;stage.status='pending';stage.reviewedAt=null;}
+  optimizerWorkflowRender(w);optimizerExecReset();
+  status.textContent='Imagem '+m.slot+'/9 salva na galeria da SKU '+w.sku+'. O ChatGPT continuará automaticamente com a próxima.';
+  ok=true;
+  await optimizerImagesLoad();
+ }catch(e){
+  error=String(e.message||e);
+  if(status)status.textContent='Erro ao salvar imagem '+m.slot+': '+error+'. A extensão deve preservar o arquivo para retomar, sem gerar novamente.';
+ }finally{
+  optimizerChatBridgeUploading=false;
+  window.postMessage({kind:'RA_SITE_UPLOAD_RESULT',nonce:m.nonce,slot:m.slot,ok,error},location.origin);
+ }
+});
+$('#optimizerChatgptAuto')?.addEventListener?.('click',async()=>{
+ const w=optimizerWorkflowPlan,status=$('#optimizerChatgptBridgeStatus');
+ if(!w||!optimizerImagesSameSku(w))return;
+ if(optimizerChatBridgeBusy){status.textContent='A extensão já está executando. Aguarde ou pause o processo atual.';return;}
+ if(!optimizerChatBridgeReady){
+  window.postMessage({kind:'RA_EXTENSION_PROBE'},location.origin);
+  status.textContent='Extensão não detectada. Instale a Ponte ChatGPT no Chrome e atualize esta página. O pacote de instalação acompanha a atualização do aplicativo.';
+  return;
+ }
+ const btn=$('#optimizerChatgptAuto');btn.disabled=true;
+ try{
+  const brief=await optimizerChatgptMakeBrief(w);
+  if(!brief.original)throw Error('A Shopee não retornou uma foto original para esta SKU; abra o anúncio e confira as imagens antes de iniciar.');
+  optimizerChatBridgeNonce=crypto.randomUUID();
+  optimizerChatBridgeSku=w.sku;
+  sessionStorage.setItem(RA_CHAT_BRIDGE_SESSION_KEY,optimizerChatBridgeNonce);
+  optimizerChatBridgeBusy=true;
+  $('#optimizerChatgptAbort').hidden=false;
+  status.textContent='Conectando à extensão e abrindo ChatGPT para a SKU '+w.sku+'...';
+  window.postMessage({kind:'RA_SITE_START',payload:{
+    nonce:optimizerChatBridgeNonce,sku:w.sku,itemId:String(w.itemId),modelId:String(w.modelId),
+    imageUrl:brief.original,prompts:brief.prompts,completed:[...optimizerImagesSavedSlots]
+  }},location.origin);
+  setTimeout(()=>{if(optimizerChatBridgeBusy&&status?.textContent?.includes('Conectando'))status.textContent='Aguardando confirmação da extensão. Confira se ela está habilitada no Chrome.';},3500);
+ }catch(e){optimizerChatBridgeBusy=false;$('#optimizerChatgptAbort').hidden=true;status.textContent='Não foi possível iniciar: '+e.message;}
+ finally{btn.disabled=false;}
+});
+$('#optimizerChatgptAbort')?.addEventListener?.('click',()=>{
+ if(!optimizerChatBridgeNonce)return;
+ window.postMessage({kind:'RA_SITE_ABORT',nonce:optimizerChatBridgeNonce},location.origin);
+ optimizerChatBridgeBusy=false;
+ $('#optimizerChatgptAbort').hidden=true;
+ $('#optimizerChatgptBridgeStatus').textContent='Pausa solicitada. Os arquivos já salvos permanecerão na galeria; continue pela extensão para não duplicar gerações.';
+});
+window.postMessage({kind:'RA_EXTENSION_PROBE'},location.origin);
+
 $('#optimizerChatgptOpen')?.addEventListener?.('click',()=>void optimizerChatgptCopyAll({open:true}));
 $('#optimizerChatgptCopyAll')?.addEventListener?.('click',()=>void optimizerChatgptCopyAll());
 async function optimizerChatgptScaleFile(file){
