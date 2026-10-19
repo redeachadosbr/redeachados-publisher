@@ -697,6 +697,9 @@ app.post('/api/shopee/optimizer/workflow/review',mustLogin,requireWeDropAdmin,as
       const live=await shopeeLiveEditableItem(cfg,auth,itemId);
       const attributes=change.attributes||[];
       change.matrixTechnical=technicalMatrixSource({sku,record,attributes});
+      const verifiedAttributes=attributeAuditForChanges(attributes,record,live);
+      if(Number(verifiedAttributes?.missingMandatory)>0)
+        throw Error('Motor Matriz: a ficha técnica ainda possui '+verifiedAttributes.missingMandatory+' atributo(s) obrigatório(s) sem preenchimento. Corrija antes de aprovar.');
       compileAttributes(attributes,record,live);
     }else if(change.attributes)compileAttributes(change.attributes,record,await shopeeLiveEditableItem(cfg,auth,itemId));
     if(change.stage==='fiscal'&&change.reviewed){
