@@ -87,4 +87,7 @@ test('backend ignora a regra histórica que bloqueava cada publicação por CEST
  assert.match(server,/deferUnconfirmedFiscal:plan\.fiscalDeferred===true/);
  assert.doesNotMatch(server,/plan\.blocked\.push\('Informações fiscais: a Shopee já exigiu CEST/);
  assert.match(server,/issue:deferFiscal&&!plan\.canExecute\?/);
+ assert.match(server,/priorFiscalDeferred=previous\?\.sku===sku&&previous\?\.plan\?\.fiscalDeferred===true/);
+ const app=readFileSync(new URL('../public/app.js',import.meta.url),'utf8');
+ assert.match(app,/CEST mantido em branco\. Dados fiscais NÃO serão enviados/);
 });
