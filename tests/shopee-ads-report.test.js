@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import {
   parseAdsDate,validateAdsRange,campaignIdsFromResponse,
   discoverShopeeCampaigns,summarizeShopeeAds,loadShopeeAdsOverview,
-  classifyShopeeCampaignStatus,settingsFromShopeeResponse,fetchShopeeCampaignSettings
+  classifyShopeeCampaignStatus,settingsFromShopeeResponse,fetchShopeeCampaignSettings, brazilAdsToday
 } from '../adsReport.js';
 const cfg={mode:'live'};
 const auth={shopId:852701218,accessToken:'simulation'};
@@ -136,4 +136,36 @@ test('permissão negada somente nas configurações não inventa campanha ativa'
   assert.equal(report.statusCounts.other,1);
   assert.match(report.statusWarning,/permission/);
   assert.equal(report.total.ctr,4);
+});
+
+test('dia brasileiro não avança quando UTC já virou para amanhã',()=>{
+ const clock=Date.parse('2026-10-19T01:00:00Z');
+ assert.equal(brazilAdsToday(clock),'2026-10-18');
+ assert.deepEqual(validateAdsRange('2026-10-11','2026-10-18',clock),
+   {start_date:'11-10-2026',end_date:'18-10-2026'});
+ assert.throws(()=>validateAdsRange('2026-10-12','2026-10-19',clock),/futuro/);
+});
+test('Shopee Ads recua a janela inteira em data não liberada e não duplica métricas',async()=>{
+ const seen=[];
+ const report=await loadShopeeAdsOverview(cfg,auth,async(_cfg,r)=>{
+  seen.push(r);
+  if(r.path.endsWith('campaign_id_list'))return {response:{campaign_list:[{campaign_id:101,ad_type:'auto'}],has_next_page:false}};
+  if(r.path.endsWith('campaign_setting_info'))return {response:{campaign_list:[{campaign_id:101,common_info:{campaign_status:'ongoing'}}]}};
+  if(r.path.endsWith('daily_performance')&&r.query.end_date==='18-10-2026')
+    throw Error('ads.performance.error_date_in_future: The date must be today or earlier than today up to 6 months ago');
+  if(r.path.endsWith('daily_performance'))return {response:{campaign_list:[{campaign_id:101,metrics_list:[
+    {expense:9,broad_gmv:20,impression:50,clicks:2}]}]}};
+  throw Error('Unexpected path '+r.path);
+ },{start:'2026-10-11',end:'2026-10-18',allowDateFallback:true});
+ assert.deepEqual(report.dates,{start:'10-10-2026',end:'17-10-2026'});
+ assert.equal(report.dateAdjustment.shiftedDays,1);
+ assert.equal(report.total.expense,9);
+ assert.equal(seen.filter(x=>x.path.endsWith('daily_performance')).length,2);
+});
+test('rotinas financeiras sem fallback não alteram silenciosamente o período',async()=>{
+ await assert.rejects(()=>loadShopeeAdsOverview(cfg,auth,async(_cfg,r)=>{
+  if(r.path.endsWith('campaign_id_list'))return {response:{campaign_list:[{campaign_id:101}],has_next_page:false}};
+  if(r.path.endsWith('campaign_setting_info'))return {response:{campaign_list:[]}};
+  throw Error('ads.performance.error_date_in_future');
+ },{start:'2026-10-11',end:'2026-10-18'}),/error_date_in_future/);
 });

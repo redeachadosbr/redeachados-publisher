@@ -1,0 +1,21 @@
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import {readFileSync} from 'node:fs';
+const html=readFileSync(new URL('../public/index.html',import.meta.url),'utf8');
+const app=readFileSync(new URL('../public/app.js',import.meta.url),'utf8');
+const server=readFileSync(new URL('../server.js',import.meta.url),'utf8');
+test('Ads 1.19.9 seleciona data no calendário brasileiro e evita dia UTC futuro',()=>{
+ assert.match(app,/function adsBrazilDayOffset\(offset=0\)/);
+ assert.match(app,/timeZone:'America\/Sao_Paulo'/);
+ assert.match(app,/adsEnd'\)\.value=adsBrazilDayOffset\(-1\)/);
+ assert.match(app,/adsStart'\)\.value=adsBrazilDayOffset\(-8\)/);
+ assert.match(app,/const todayBr=adsBrazilDayOffset\(0\)/);
+ assert.match(app,/start=adsShiftIsoDay\(start,-days\)/);
+ assert.match(app,/end=adsShiftIsoDay\(end,-days\)/);
+ assert.match(app,/if\(data\.dateAdjustment\?\.shiftedDays\)/);
+ assert.match(app,/A análise anterior continua visível/);
+ assert.match(app,/Data ainda indisponível na Shopee Brasil/);
+ assert.match(server,/allowDateFallback:true/);
+ assert.match(html,/app\.js\?v=1\.19\.9/);
+ assert.match(server,/version:'1\.19\.9'/);
+});

@@ -22,9 +22,9 @@ test('Shopee Ads 1.19.8 exibe nove indicadores, saúde, revisão e tabela real',
   assert.equal((ads.match(new RegExp('id="'+id+'"','g'))||[]).length,1,id);
  }
  assert.equal((ads.match(/class="ads-v2-kpi ads-v2-kpi-/g)||[]).length,9);
- assert.match(html,/style\.css\?v=1\.19\.8/);
- assert.match(html,/app\.js\?v=1\.19\.8/);
- assert.match(server,/version:'1\.19\.8'/);
+ assert.match(html,/style\.css\?v=\d+\.\d+\.\d+/);
+ assert.match(html,/app\.js\?v=\d+\.\d+\.\d+/);
+ assert.match(server,/version:'\d+\.\d+\.\d+'/);
  assert.match(ads,/id="adsExecuteSuggested" type="button" disabled/);
  assert.match(ads,/id="adsResults" hidden/);
 });
