@@ -6,7 +6,7 @@
 <meta name="theme-color" content="#0A1C3A">
 <link rel="icon" type="image/svg+xml" href="/brand-logo.svg">
 <title>Rede Achados BR · Gestão Shopee</title>
-<link rel="stylesheet" href="/style.css?v=1.20.3">
+<link rel="stylesheet" href="/style.css?v=1.20.4">
 </head>
 <body>
 <div class="shell app-layout">
@@ -250,7 +250,38 @@
         <div id="optimizerTitleVariants" class="optimizer-title-variants" hidden></div>
         <p id="optimizerContentResearch" class="optimizer-video-help" hidden></p>
         <section id="optimizerImagesPanel" class="optimizer-video-import" hidden>
-          <div class="optimizer-ai-generator">
+          <div class="optimizer-image-mode-selector" role="group" aria-label="Escolher como gerar as nove imagens">
+            <button id="optimizerModeChatgpt" type="button" class="secondary" aria-pressed="false">✦ Gerar 9 imagens pelo ChatGPT</button>
+            <button id="optimizerModeApi" type="button" class="secondary" aria-pressed="false">⚙ Gerar automaticamente pela API</button>
+          </div>
+          <div id="optimizerImagesChatgptPanel" class="optimizer-chatgpt-panel" hidden>
+            <div class="optimizer-chatgpt-head">
+              <strong>✦ ChatGPT · 9 imagens comerciais</strong>
+              <small>Usa seu ChatGPT, sem chave de API. Integração assistida, não automática.</small>
+            </div>
+            <p>O sistema prepara os 9 pedidos conforme as regras e a SKU. Abra o ChatGPT, anexe a fotografia original do produto, gere as imagens individualmente e retorne para importá-las. Nenhuma imagem é publicada sem revisão.</p>
+            <div class="optimizer-chatgpt-actions">
+              <button type="button" id="optimizerChatgptOpen">✦ Copiar pedido das 9 imagens e abrir ChatGPT</button>
+              <button type="button" class="secondary" id="optimizerChatgptCopyAll">Copiar somente os 9 roteiros</button>
+              <a id="optimizerChatgptOriginal" class="optimizer-chatgpt-original" target="_blank" rel="noopener noreferrer" hidden>Ver foto original Shopee ↗</a>
+            </div>
+            <p id="optimizerChatgptCopyStatus" role="status" aria-live="polite"></p>
+            <details class="optimizer-chatgpt-prompts-detail">
+              <summary>Ver/copiar os 9 prompts individualmente</summary>
+              <div id="optimizerChatgptPromptList" class="optimizer-chatgpt-prompt-list"></div>
+            </details>
+            <div class="optimizer-chatgpt-import">
+              <strong>Importar imagens geradas pelo ChatGPT</strong>
+              <p>Salve os arquivos como <code>01.png</code> a <code>09.png</code> ou selecione-os na ordem das posições. O sistema ajusta imagens quadradas para 1200 × 1200 e salva cada foto na sua SKU.</p>
+              <label class="optimizer-field">Fotos geradas (JPG/PNG/WebP) <input id="optimizerChatgptFiles" type="file" multiple accept="image/png,image/jpeg,image/webp,.png,.jpg,.jpeg,.webp"></label>
+              <label class="optimizer-field optimizer-chatgpt-start">Posição inicial, se não houver número nos arquivos
+                <select id="optimizerChatgptStart"><option value="1">01 · Capa</option><option value="2">02</option><option value="3">03</option><option value="4">04</option><option value="5">05</option><option value="6">06</option><option value="7">07</option><option value="8">08</option><option value="9">09</option></select>
+              </label>
+              <button type="button" id="optimizerChatgptImport">Importar e salvar para revisão</button>
+              <p id="optimizerChatgptImportStatus" role="status" aria-live="polite"></p>
+            </div>
+          </div>
+          <div id="optimizerImagesApiPanel" class="optimizer-ai-generator">
             <div class="optimizer-ai-generator-heading"><strong>✨ Gerador automático de 9 imagens com OpenAI</strong><small id="optimizerImagesProvider" role="status">Verificando conexão com o gerador…</small></div>
             <p class="optimizer-video-help">Utiliza as fotos atuais da Shopee, as regras salvas e os ajustes de cada posição. Gera e armazena uma de cada vez. Nunca publica sem a sua aprovação.</p>
             <div id="optimizerOpenAiConnect" class="optimizer-ai-connection" hidden>
@@ -1047,6 +1078,6 @@
     </main>
   </div>
 </div>
-<script src="/app.js?v=1.20.3"></script>
+<script src="/app.js?v=1.20.4"></script>
 </body>
 </html>
