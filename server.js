@@ -693,8 +693,8 @@ app.get('/api/shopee/optimizer/workflow',mustLogin,requireWeDropAdmin,async(req,
       try{
         const request=searchAttributeRequest({attributeId:attr.id,valueName:missing.value,limit:50});
         const official=readSearchedAttributeOptions(await matrixShopeeSearch(cfg,auth,request),0,50).options
-          .find(x=>x.name.normalize('NFD').replace(/[\\u0300-\\u036f]/g,'').toLowerCase().trim()===
-            String(missing.value).normalize('NFD').replace(/[\\u0300-\\u036f]/g,'').toLowerCase().trim());
+          .find(x=>x.name.normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase().trim()===
+            String(missing.value).normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase().trim());
         if(official){
           attr.options=[...(attr.options||[]).filter(x=>Number(x.id)!==Number(official.id)),official];
           extraOptions=true;
