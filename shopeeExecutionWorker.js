@@ -40,7 +40,8 @@ export async function advanceShopeeExecution(job,io){
     ...(plan.video?{video_upload_id:[result.video.id]}:{})});
   result.requestId=String(response?.request_id||'').slice(0,100);
   result.phase='verifying';
-  Object.assign(result,withExecutionEvent(checkpoint,'update-accepted','A API recebeu a solicitação. Conferindo dados do anúncio.'));
+  Object.assign(result,withExecutionEvent({...checkpoint,phase:'verifying',requestId:result.requestId},
+   'update-accepted','A API recebeu a solicitação. Conferindo dados do anúncio.'));
  }catch(e){
   // HTTP/network errors do not prove the write failed.
   return {state:'uncertain',result:withExecutionEvent(checkpoint,'update-uncertain','A atualização não teve confirmação conclusiva.','warning'),lastError:'Atualização sem confirmação: '+String(e.message||e).slice(0,200)};
