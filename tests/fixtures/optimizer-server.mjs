@@ -1,4 +1,5 @@
 // Offline HTTP integration fixture. Every external request is intercepted.
+import {approvedTitle} from './approved-content.js';
 const nativeFetch=globalThis.fetch;
 const send=x=>new Response(JSON.stringify(x),{headers:{'Content-Type':'application/json'}});
 const listing={item_id:2,item_name:'Título atual',item_sku:'SKU',item_status:'NORMAL',category_id:3,
@@ -18,7 +19,7 @@ globalThis.fetch=async(url,request={})=>{
    return send(active?[row]:[]);
   }
   if(u.pathname==='/rest/v1/shopee_auth')return send([{shop_id:1,shop_ids:[1],access_token:'fixture-token',refresh_token:'fixture-refresh',expires_at:Date.now()+3600000,mode:'live',partner_id:12}]);
-  if(u.pathname==='/rest/v1/shopee_optimizer_workflow_reviews')return send([{sku:'SKU',review_state:{stages:{seo:{reviewed:true}},draftTitle:'Título revisado do produto'}}]);
+  if(u.pathname==='/rest/v1/shopee_optimizer_workflow_reviews')return send([{sku:'SKU',review_state:{stages:{seo:{reviewed:true}},draftTitle:approvedTitle}}]);
   if(u.pathname==='/rest/v1/shopee_optimizer_execution_jobs'){
    if(request.method==='POST'){job=JSON.parse(request.body)[0];return send([job]);}
    if(u.searchParams.get('state')==='eq.running')return send([]);

@@ -1,6 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
+import {approvedTitle,approvedDescription} from './fixtures/approved-content.js';
 import {compileShopeeExecutionPlan,confirmShopeeExecution,assertLiveShopeeUnchanged,
   verifyShopeeExecution} from '../shopeeExecutionPlan.js';
 const source=readFileSync(new URL('../server.js',import.meta.url),'utf8');
@@ -12,8 +13,7 @@ const record={itemId:'22095398152',selectedModelId:'179732416931',sku:'TRC1525',
 const original={item_id:22095398152,item_name:'Piscina Inflável - Azul',
   description:'Piscina atual com descrição existente da Shopee.',description_type:'normal'};
 const state={stages:{seo:{reviewed:true},description:{reviewed:true}},
-  draftTitle:'Piscina Inflável Azul para Uso Recreativo',
-  draftDescription:'Piscina inflável azul. Confira as fotos do produto e as instruções do fabricante antes da compra. Em caso de dúvidas, fale com nossa loja pelo chat.'};
+  draftTitle:approvedTitle,draftDescription:approvedDescription};
 const inputs={shopId:991,itemId:record.itemId,modelId:record.selectedModelId,
   sku:record.sku,record,review:state,live:original};
 test('generates executable, review-scoped plan for exact Shopee item and SKU',()=>{
@@ -41,6 +41,18 @@ test('extended descriptions are safely excluded from automatic edit',()=>{
   assert.equal('description' in p.proposed,false);
   assert.ok(p.blocked.some(x=>x.includes('estendida')));
   assert.equal(p.canExecute,false);
+});
+test('persisted review flags cannot bypass current title and description rules',()=>{
+ for(const overrides of [
+  {draftTitle:'Título antigo curto'},
+  {draftDescription:'Descrição antiga '.repeat(8)},
+  {draftDescription:approvedDescription.replace(/\n/g,'\\n')},
+  {draftDescription:approvedDescription.replace('5. Precisa de supervisão?','-. Precisa de supervisão?')}
+ ]){
+  const plan=compileShopeeExecutionPlan({...inputs,review:{...state,...overrides}});
+  assert.equal(plan.canExecute,false);
+  assert.ok(plan.blocked.length>0);
+ }
 });
 test('confirmation is exact, and current listing must match baseline',()=>{
   const p=compileShopeeExecutionPlan(inputs);

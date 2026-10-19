@@ -8,12 +8,13 @@ import {callShopeePublicMediaApi} from '../shopee.js';
 import {compileAttributes,compileTax} from '../shopeeStructuredFields.js';
 import {imageDimensions,imagesSignature} from '../shopeePreparedImages.js';
 import {descriptionDraft} from '../shopeeOptimizationWorkflow.js';
+import {approvedTitle} from './fixtures/approved-content.js';
 const description='Descrição real do produto, com todas as características e instruções já confirmadas pelo fornecedor.';
 const live={item_id:2,item_status:'NORMAL',item_name:'Produto atual',item_sku:'SKU',description,category_id:3,description_type:'normal',video_info:[],image:{image_id_list:['old']},attribute_list:[],tax_info:{}};
 const record={itemId:'2',sku:'SKU',selectedModelId:'0',status:'NORMAL',imageCount:1,attributeAudit:{attributes:[]}};
 const asset={filename:'produto.mp4',sha256:'a'.repeat(64),size_bytes:30,mime_type:'video/mp4',storage_path:'1/2/0/a.mp4'};
 const compile=(options={})=>compileShopeeExecutionPlan({shopId:1,itemId:'2',modelId:'0',sku:'SKU',record,live,review:{},...options});
-const textPlan=()=>compile({review:{stages:{seo:{reviewed:true}},draftTitle:'Novo título comprovado'}});
+const textPlan=()=>compile({review:{stages:{seo:{reviewed:true}},draftTitle:approvedTitle}});
 const videoPlan=()=>compile({manualVideo:asset,review:{stages:{video:{reviewed:true}},videoSha256:asset.sha256}});
 const video={id:'uploaded-video',phase:'ready',videoInfo:{video_url_list:[{video_url:'https://cvf.shopee.com.br/file/verified-video'}]}};
 function ioFor(plan,overrides={}){
