@@ -2687,9 +2687,12 @@ function optimizerExecReset(){
  optimizerExecStartError='';
  if(optimizerExecPoll)clearTimeout(optimizerExecPoll);optimizerExecPoll=null;optimizerExecJob=null;
  $('#optimizerExecutionReconcile').hidden=true;$('#optimizerExecutionRetry').hidden=true;
+ $('#optimizerExecutionLaunch').hidden=true;
+ $('#optimizerExecutionShopeeLink').hidden=true;
  ++optimizerExecSerial;optimizerExecPlan=null;optimizerExecContext=null;optimizerExecBusy=false;
  $('#optimizerExecutionSummary').hidden=true;
  $('#optimizerExecutionConfirmation').hidden=true;
+ $('#optimizerExecutionConfirmation').open=false;
  $('#optimizerExecutionAccept').checked=false;
  $('#optimizerExecutionInput').value='';
  $('#optimizerExecutionRun').disabled=true;
@@ -2732,13 +2735,16 @@ function optimizerExecRender(data){
  for(const warning of plan.warnings)optimizerExecRow(warn,'• '+warning,'warning');
  $('#optimizerExecutionSummary').hidden=false;
  $('#optimizerExecutionConfirmation').hidden=!data.ready;
+ $('#optimizerExecutionConfirmation').open=Boolean(data.ready);
+ $('#optimizerExecutionLaunch').hidden=!data.ready;
+ $('#optimizerExecutionShopeeLink').hidden=true;
  $('#optimizerExecutionAccept').checked=false;
  $('#optimizerExecutionInput').value='';
  $('#optimizerExecutionPhrase').textContent='EXECUTAR '+plan.sku;
  optimizerExecUpdateRunButton();
  optimizerExecNotice(data.ready
-   ?'Pré-voo aprovado para '+plan.actions.map(x=>x==='item_name'?'título SEO':x==='video'?'vídeo':x==='images'?'imagens':x==='attribute_list'?'ficha técnica':x==='tax_info'?'fiscal':'descrição').join(' e ')+
-     '. Confira a prévia e confirme a execução.'
+   ?'Pronto para enviar à Shopee: '+plan.actions.map(x=>x==='item_name'?'título SEO':x==='video'?'vídeo':x==='images'?'imagens':x==='attribute_list'?'ficha técnica':x==='tax_info'?'fiscal':'descrição').join(' e ')+
+     '. Clique em “Confirmar e executar na Shopee”, autorize as mudanças e depois clique em “Executar alterações aprovadas”.'
    : 'Nenhuma alteração aprovada está pronta. Revise as etapas e confira as pendências.',
    data.ready?'success':'warning');
 }
@@ -2774,6 +2780,8 @@ async function optimizerExecutionPrepare(){
  optimizerExecPlan=null;
  $('#optimizerExecutionSummary').hidden=true;
  $('#optimizerExecutionConfirmation').hidden=true;
+ $('#optimizerExecutionLaunch').hidden=true;
+ $('#optimizerExecutionShopeeLink').hidden=true;
  const btn=$('#optimizerExecutionPrepare');btn.disabled=true;
  optimizerExecNotice('Conferindo o anúncio atual, os rascunhos revisados e os bloqueios por etapa...');
  try{
@@ -2797,6 +2805,17 @@ async function optimizerExecutionPrepare(){
  }finally{btn.disabled=false}
 }
 $('#optimizerExecutionPrepare')?.addEventListener?.('click',()=>void optimizerExecutionPrepare());
+$('#optimizerExecutionLaunch')?.addEventListener?.('click',()=>{
+ const p=optimizerExecPlan;
+ if(!p?.canExecute||optimizerExecBusy)return;
+ const confirmation=$('#optimizerExecutionConfirmation');
+ if(confirmation.hidden)return optimizerExecNotice('Revalide a prévia para liberar a confirmação.','warning');
+ confirmation.open=true;
+ confirmation.scrollIntoView?.({behavior:'smooth',block:'center'});
+ $('#optimizerExecutionAccept').focus?.({preventScroll:true});
+ optimizerExecNotice('Etapa final: confira as alterações, marque a autorização, digite EXECUTAR '+p.sku+
+   ' e clique no botão “Executar alterações aprovadas na Shopee”. Nenhum envio aconteceu ainda.','info');
+});
 $('#optimizerExecutionAccept')?.addEventListener?.('change',optimizerExecUpdateRunButton);
 $('#optimizerExecutionInput')?.addEventListener?.('input',optimizerExecUpdateRunButton);
 $('#optimizerExecutionRun')?.addEventListener?.('click',async()=>{
@@ -2807,7 +2826,8 @@ $('#optimizerExecutionRun')?.addEventListener?.('click',async()=>{
    $('#optimizerExecutionInput').value.trim()!=='EXECUTAR '+p.sku)return;
  const btn=$('#optimizerExecutionRun');
  optimizerExecStartError='';optimizerExecBusy=true;btn.disabled=true;$('#optimizerExecutionPrepare').disabled=true;
- optimizerExecNotice('Iniciando as alterações aprovadas. O andamento ficará salvo para esta SKU...');
+ $('#optimizerExecutionLaunch').hidden=true;
+ optimizerExecNotice('Enviando comando de execução à Shopee. O andamento ficará salvo para esta SKU...');
  try{
    const out=await json('/api/shopee/optimizer/execution/execute',{
      method:'POST',headers:{'Content-Type':'application/json'},
@@ -2819,6 +2839,7 @@ $('#optimizerExecutionRun')?.addEventListener?.('click',async()=>{
    if(optimizerWorkflowPlan?.sku!==ctx.sku||optimizerWorkflowPlan?.itemId!==ctx.itemId||optimizerWorkflowPlan?.modelId!==ctx.modelId)return;
    optimizerExecPlan=null;
    $('#optimizerExecutionConfirmation').hidden=true;
+   $('#optimizerExecutionLaunch').hidden=true;
    optimizerExecNotice(out.marketplaceUpdated===true
      ?'A Shopee confirmou as alterações aprovadas.'
      :'Execução iniciada. O progresso será consultado automaticamente.',
@@ -2827,6 +2848,7 @@ $('#optimizerExecutionRun')?.addEventListener?.('click',async()=>{
  }catch(e){
    if(optimizerWorkflowPlan?.sku!==ctx.sku||optimizerWorkflowPlan?.itemId!==ctx.itemId||optimizerWorkflowPlan?.modelId!==ctx.modelId)return;
    optimizerExecPlan=null;$('#optimizerExecutionConfirmation').hidden=true;
+   $('#optimizerExecutionLaunch').hidden=true;
    optimizerExecStartError=String(e.message||e);
    optimizerExecNotice('Execução interrompida ou resposta incerta: '+optimizerExecStartError+
      '. Consultando o estado salvo para evitar repetição.','error');
@@ -2837,6 +2859,11 @@ $('#optimizerExecutionRun')?.addEventListener?.('click',async()=>{
 function optimizerExecutionJobView(job){
  optimizerExecJob=job;
  const active=['running','uncertain'].includes(job?.state);
+ const verified=job?.state==='verified';
+ const resultLink=$('#optimizerExecutionShopeeLink');
+ resultLink.hidden=!verified;
+ if(verified&&optimizerWorkflowPlan?.itemId)
+   resultLink.href='https://seller.shopee.com.br/portal/product/'+encodeURIComponent(optimizerWorkflowPlan.itemId)+'?pageEntry=product_list';
  $('#optimizerExecutionReconcile').hidden=job?.state!=='uncertain';
  $('#optimizerExecutionRetry').hidden=!['failed','uncertain'].includes(job?.state);
  if(!job)return;
@@ -2856,7 +2883,8 @@ function optimizerExecutionJobView(job){
  if(job.last_error)message+=' · '+job.last_error;
  if(job.state==='verified')message+=' · Somente as alterações aprovadas nesta execução foram confirmadas.';
  optimizerExecNotice(message,job.state==='verified'?'success':job.state==='failed'||job.state==='uncertain'?'warning':'info');
- if(active||job.state==='verified'){
+ if(active||verified){
+  $('#optimizerExecutionLaunch').hidden=true;
   optimizerExecPlan=null;$('#optimizerExecutionConfirmation').hidden=true;
   $('#optimizerExecutionRun').disabled=true;
  }

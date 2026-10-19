@@ -3734,3 +3734,33 @@ body.view-wedrop .page-intro{display:none!important}
 #optimizerWorkflowCards>.optimizer-anatel-alert{grid-column:1/-1;display:flex;align-items:center;justify-content:space-between;gap:12px;padding:12px 14px;border:1px solid var(--border,#dbad56);border-radius:12px;background:rgba(240,178,51,.10);font-size:13px;line-height:1.5}
 #optimizerWorkflowCards>.optimizer-anatel-alert button{flex-shrink:0;min-width:112px}
 @media(max-width:650px){#optimizerWorkflowCards>.optimizer-anatel-alert{flex-direction:column;align-items:stretch}}
+
+/* Fluxo de execução Shopee: comando sempre visível após pré-voo, confirmação explícita e retorno da API */
+.optimizer-v15-page .optimizer-exec-top-actions{display:flex;gap:9px;align-items:center;flex-wrap:wrap;justify-content:flex-end}
+.optimizer-v15-page .optimizer-exec-top-actions #optimizerExecutionLaunch{
+ background:#0753b8;color:#fff;border:1px solid #08479b;box-shadow:0 5px 16px #08479b2b;
+ font-size:13px;font-weight:800;min-height:45px;padding:10px 16px;border-radius:10px
+}
+.optimizer-v15-page .optimizer-exec-summary>.optimizer-exec-confirm{
+ border:2px solid #acd2ba;background:#f3fbf6;padding:17px;display:block
+}
+.optimizer-v15-page .optimizer-exec-summary>.optimizer-exec-confirm summary{
+ color:#14593c;font-size:15px;line-height:1.4
+}
+.optimizer-v15-page .optimizer-exec-confirm #optimizerExecutionRun{
+ background:#0753b8;color:#fff;font-size:14px;font-weight:800;
+ min-height:46px;min-width:270px;padding:11px 19px;border-radius:9px
+}
+.optimizer-v15-page .optimizer-exec-result-link{
+ display:inline-flex;align-items:center;align-self:start;gap:8px;
+ text-decoration:none;background:#edf9f2;border:1px solid #97d4ab;
+ border-radius:10px;padding:12px 15px;color:#145c36;font-size:13px;font-weight:800
+}
+.optimizer-v15-page #optimizerExecutionLaunch[hidden],
+.optimizer-v15-page #optimizerExecutionShopeeLink[hidden],
+.optimizer-v15-page #optimizerExecutionConfirmation[hidden]{display:none!important}
+@media(max-width:780px){
+ .optimizer-v15-page .optimizer-exec-top-actions{width:100%;justify-content:stretch}
+ .optimizer-v15-page .optimizer-exec-top-actions button{flex:1 1 200px}
+ .optimizer-v15-page .optimizer-exec-confirm #optimizerExecutionRun{width:100%;min-width:0}
+}
