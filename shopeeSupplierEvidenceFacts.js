@@ -44,7 +44,7 @@ export function supplierAttributeSuggestions({attributes=[],proposed=[],supplier
    if(value)suggest(attr,value[0]+' x '+value[1]+' x '+value[2]+' cm',
     'Dimensões descritas pelo fornecedor; confirmar que são da piscina montada, nunca da caixa.',{onlyIfMissing:true});
   }else if((n.includes('inmetro')||n.includes('numero de registro inmetro'))&&
-    /(registro\s*(?:do\s*)?inmetro|inmetro|nbr)\s*[:\-]\s*(?:n\/?a|nao se aplica|isento)/i.test(plain(notes))){
+    /(registro\s*(?:do\s*)?inmetro|inmetro|nbr)\s*[:\-]\s*(?:n\/a\b|nao se aplica\b|isento\b)/i.test(plain(notes))){
    const opt=list(attr.options).find(x=>/n\/?a.*nbr.*nao aplicavel/i.test(plain(x.name)));
    if(opt)suggest(attr,opt.name,'Declaração explícita de não aplicabilidade no texto fornecido para esta SKU; confirme exigência regulatória.');
    else unresolved.push({attributeId:attr.id,name:attr.name,value:'N/A',reason:'O modelo não retornou uma opção oficial N/A. Confira antes de marcar isento.'});
