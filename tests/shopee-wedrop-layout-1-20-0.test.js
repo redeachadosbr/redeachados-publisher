@@ -5,6 +5,7 @@ const html=readFileSync(new URL('../public/index.html',import.meta.url),'utf8');
 const js=readFileSync(new URL('../public/app.js',import.meta.url),'utf8');
 const css=readFileSync(new URL('../public/style.css',import.meta.url),'utf8');
 const server=readFileSync(new URL('../server.js',import.meta.url),'utf8');
+const version=JSON.parse(readFileSync(new URL('../package.json',import.meta.url),'utf8')).version;
 const section=html.slice(html.indexOf('id="tab-wedrop"'),html.indexOf('id="tab-finance"'));
 test('Fornecedor WeDrop 1.20.0 mantém os cinco indicadores e quatro setores visíveis',()=>{
  const ids=['wedropCompared','wedropPendingModels','wedropImported','wedropMatched','wedropMissingCost',
@@ -25,9 +26,9 @@ test('Fornecedor WeDrop 1.20.0 mantém os cinco indicadores e quatro setores vis
  assert.match(section,/class="card wedrop-variants wd-v2-section wd-v2-variants"/);
  assert.match(section,/id="wedropStoredCatalog"[^>]*hidden/);
  assert.match(section,/id="wedropImportBtn" type="button" disabled/);
- assert.match(html,/style\.css\?v=1\.20\.[01]/);
- assert.match(html,/app\.js\?v=1\.20\.[01]/);
- assert.match(server,/version:'1\.20\.[01]'/);
+ assert.ok(html.includes('style.css?v='+version));
+ assert.ok(html.includes('app.js?v='+version));
+ assert.ok(server.includes("version:'"+version+"'"));
 });
 test('WeDrop continua no Supabase com ações reais, sem substituir o fornecedor nem publicar preços',()=>{
  for(const route of ['/api/shopee/wedrop/auto/status','/api/shopee/wedrop/auto/import',

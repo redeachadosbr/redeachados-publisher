@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import {spawn} from 'node:child_process';
 import {createServer} from 'node:net';
 import {once} from 'node:events';
+import {approvedTitle} from './fixtures/approved-content.js';
 async function unusedPort(){const s=createServer();s.listen(0,'127.0.0.1');await once(s,'listening');const p=s.address().port;await new Promise(resolve=>s.close(resolve));return p;}
 test('authenticated HTTP preflight passes the real config from audit to the subsequent Shopee read',async()=>{
  const port=await unusedPort(),base='http://127.0.0.1:'+port;
@@ -22,7 +23,7 @@ test('authenticated HTTP preflight passes the real config from audit to the subs
    headers:{'Content-Type':'application/json',Cookie:cookie,Origin:base},body:JSON.stringify({sku:'SKU',itemId:'2',modelId:'0'})});
   const body=await response.json();
   assert.equal(response.status,200,JSON.stringify(body));assert.equal(body.ready,true);
-  assert.equal(body.plan.proposed.item_name,'Título revisado do produto');
+  assert.equal(body.plan.proposed.item_name,approvedTitle);
   assert.equal(body.marketplaceUpdated,false);
   assert.doesNotMatch(JSON.stringify(body),/fixture-key|fixture-token|fixture-service/);
   const bad=await fetch(base+'/api/shopee/optimizer/execution/prepare',{method:'POST',headers:{'Content-Type':'application/json',Cookie:cookie,Origin:'https://wrong-origin.invalid'},body:JSON.stringify({sku:'SKU',itemId:'2',modelId:'0'})});

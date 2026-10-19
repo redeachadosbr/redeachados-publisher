@@ -125,7 +125,9 @@ export async function saveWeDropProducts(shopId,products,{sourceFile='',sourceHa
 export async function readWeDropProduct(shopId,{sku,itemId,modelId=0}){
   const id=validShopId(shopId);
   const read=async supplierSku=>{
-    const literal='"'+String(supplierSku).replace(/\\/g,'\\\\').replace(/"/g,'\\"')+'"';
+    // Top-level eq treats quotes as part of the value. URI encoding protects
+    // punctuation without changing the exact supplier SKU stored in PostgREST.
+    const literal=String(supplierSku);
     const rows=await request('shopee_wedrop_products','?shop_id=eq.'+id+'&supplier_sku=eq.'+
       encodeURIComponent(literal)+'&select=supplier_sku,product_data,source_file,source_line,source_hash,imported_at&limit=1');
     return rows[0]||null;

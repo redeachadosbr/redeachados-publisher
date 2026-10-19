@@ -1,7 +1,7 @@
 import crypto from 'node:crypto';
 import {compileAttributes,compileTax,sameData,fieldsVerified} from './shopeeStructuredFields.js';
 import {imagesSignature} from './shopeePreparedImages.js';
-import {normalizedTitle,codePointCount,titleHasUnhelpfulDimensions} from './shopeeOptimizationWorkflow.js';
+import {normalizedTitle,validateContentRules} from './shopeeOptimizationWorkflow.js';
 
 // Preparation is deterministic for one verified item/model/SKU. This module
 // never calls Shopee, and never considers a reviewed checkbox a published item.
@@ -18,15 +18,17 @@ export function compileShopeeExecutionPlan({shopId,itemId,modelId,sku,record,rev
     throw Error('Anúncio, modelo ou SKU diferente da auditoria atual.');
   if(!['NORMAL','UNLIST'].includes(String(record?.status)))blocked.push('Anúncio não está em estado editável confirmado.');
   if(stages.seo?.reviewed===true){
-    if(!title||codePointCount(title)>120)blocked.push('Título SEO revisado é inválido.');
-    else if(titleHasUnhelpfulDimensions(title))blocked.push('Título SEO contém sequência de medidas lineares; use termos de busca e deixe as medidas na ficha técnica.');
-    else if(title!==currentTitle)proposed.item_name=title;
+    try{
+      validateContentRules({title});
+      if(title!==currentTitle)proposed.item_name=title;
+    }catch(e){blocked.push(e.message);}
   }else if(title&&title!==currentTitle)blocked.push('Revisar e registrar a etapa Título SEO antes de executar.');
   if(stages.description?.reviewed===true){
     if(currentType!=='normal')blocked.push('Descrição estendida da Shopee exige fluxo próprio; atualização bloqueada.');
-    else if(description.length<60||description.length>3000)
-      blocked.push('Descrição revisada deve ter entre 60 e 3000 caracteres.');
-    else if(description!==currentDescription)proposed.description=description;
+    else try{
+      validateContentRules({description});
+      if(description!==currentDescription)proposed.description=description;
+    }catch(e){blocked.push(e.message);}
   }else if(description&&description!==currentDescription)blocked.push('Revisar e registrar Descrição e variações antes de executar.');
   if(record?.hasModel||String(modelId)!=='0')
     warnings.push('As alterações são campos do anúncio-pai; a alteração afeta TODAS as variações deste Item ID.');
