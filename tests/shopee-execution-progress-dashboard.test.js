@@ -101,7 +101,7 @@ test('campos do monitor existem e usam somente dados do serviço',()=>{
   assert.match(area,new RegExp('id="'+id+'"'));
  }
  assert.match(js,/optimizerExecutionTrackerRender\(data\.progress/);
- assert.match(js,/optimizerExecutionJobView\(data\.job,data\.progress\)/);
+ assert.match(js,/optimizerExecutionJobView\(data\.job,data\.progress,data\.issue\)/);
  assert.doesNotMatch(area,/12 abr\. 2025|fone de ouvido/i);
 });
 
