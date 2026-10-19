@@ -20,8 +20,8 @@ export function shopeeExecutionProgress(job){
  const verified=state==='verified',pastImages=phase==='video_upload'||phase==='video_processing'||
    phase==='updating'||phase==='verifying'||phase==='verified';
  const pastVideo=['updating','verifying','verified'].includes(phase);
- const mediaFinished=images===0||uploaded===images&&pastImages||verified;
- const videoFinished=!video||Boolean(readyVideo)&&pastVideo||verified;
+ const mediaFinished=images===0||uploaded===images||verified;
+ const videoFinished=!video||Boolean(readyVideo)||verified;
  const updateAccepted=verified||phase==='verifying'||phase==='verified';
  const total=1+images+(video?1:0)+1+1;
  const completed=(started?1:0)+uploaded+(video&&readyVideo?1:0)+(updateAccepted?1:0)+(verified?1:0);
@@ -37,11 +37,10 @@ export function shopeeExecutionProgress(job){
   state==='failed'?'Execução interrompida':state==='blocked'?'Pendências para executar':
   state==='prepared'?'Pronto para executar':phaseNames[phase]||'Execução em andamento';
  const step=(id,label,s)=>({id,label,status:s});
- const doneIf=x=>x?'done':'waiting';
  const steps=[
   step('prep','Preparação',started?'done':state==='prepared'?'done':'waiting'),
   step('images','Envio de imagens',images===0?'skipped':mediaFinished?'done':
-   started&&(!pastImages||phase==='images_upload')?'active':'waiting'),
+   started&&phase==='images_upload'?'active':'waiting'),
   step('video','Envio de vídeo',!video?'skipped':videoFinished?'done':
    started&&mediaFinished&&['video_upload','video_processing'].includes(phase)?'active':'waiting'),
   step('update','Atualização do anúncio',updateAccepted?'done':
