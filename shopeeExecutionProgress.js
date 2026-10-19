@@ -58,14 +58,16 @@ export function shopeeExecutionProgress(job){
  return {
   state,phase,title,percent,steps,events,startedAt:result.startedAt||null,
   updatedAt:job.updated_at||null,imagesTotal:images,imagesUploaded:uploaded,imagePercent,
-  videoIncluded:video,hasStarted:started,verified,
+  videoIncluded:video,videoReady:readyVideo,videoPublished:verified&&video,
+  imagesPublished:verified?images:0,hasStarted:started,verified,
   attention:failure,lastError:job.last_error||null,
   // Important distinction: uploaded media is not yet attached to the listing.
   message:images&&phase==='images_upload'
    ?uploaded+' de '+images+' imagens enviadas à mídia Shopee; anúncio ainda não atualizado.'
    :verified?'Alterações verificadas no anúncio pela API da Shopee.'
    :state==='uncertain'?'Resultado não confirmado. Confira antes de tentar novamente.'
-   :state==='failed'?'A execução foi interrompida. Verifique o motivo antes de reexecutar.'
+   :state==='failed'?uploaded+' imagens na mídia Shopee, '+(verified?images:0)+
+     ' aplicadas ao anúncio. A Shopee recusou a atualização; veja a pendência para corrigir.'
    :state==='prepared'?'Plano aprovado. Aguardando seu comando Executar na Shopee.'
    :state==='blocked'?'Corrija as pendências da prévia antes de executar.'
    :phaseNames[phase]||title

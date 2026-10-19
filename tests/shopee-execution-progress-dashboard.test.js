@@ -25,6 +25,7 @@ test('status mostra 2 de 9 na mídia, nunca como imagens já publicadas',()=>{
  const progress=shopeeExecutionProgress(job('running','images_upload',{imageIds:['a','b']}));
  assert.equal(progress.imagesUploaded,2);
  assert.equal(progress.imagesTotal,9);
+ assert.equal(progress.imagesPublished,0);
  assert.equal(progress.imagePercent,22);
  assert.match(progress.message,/biblioteca|mídia Shopee|mídia/i);
  assert.match(progress.message,/anúncio ainda não atualizado/i);
@@ -50,6 +51,8 @@ test('somente leitura verificada chega a 100%, erros preservam atenção sem con
  const verified=shopeeExecutionProgress(job('verified','verified',{
   imageIds:Array(9).fill('id'),video:{phase:'ready'},verified:true}));
  assert.equal(verified.percent,100);
+ assert.equal(verified.imagesPublished,9);
+ assert.equal(verified.videoPublished,true);
  assert.equal(verified.steps[5].status,'done');
  assert.equal(verified.verified,true);
  const failed=shopeeExecutionProgress({...job('uncertain','verifying',{imageIds:Array(9).fill('id')}),

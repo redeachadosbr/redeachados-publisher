@@ -2820,7 +2820,8 @@ function optimizerExecutionTrackerRender(progress,job){
  $('#optimizerExecutionBarFill').style.width=pct+'%';
  $('#optimizerExecutionProgressDetail').textContent=progress.message;
  $('#optimizerExecutionMediaCount').textContent=progress.imagesTotal?
-   progress.imagesUploaded+' / '+progress.imagesTotal+' imagens na mídia Shopee':'';
+   progress.imagesUploaded+' / '+progress.imagesTotal+' na mídia · '+
+   progress.imagesPublished+' / '+progress.imagesTotal+' publicadas no anúncio':'';
  const stageList=$('#optimizerExecutionSteps');stageList.replaceChildren();
  const statuses={done:'Concluído',active:'Em andamento',waiting:'Aguardando',skipped:'Não incluído',attention:'Verificar'};
  for(const [i,step] of (progress.steps||[]).entries()){
