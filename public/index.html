@@ -133,6 +133,23 @@
         <div id="optimizerStatus" class="optimizer-notice" role="status" aria-live="polite">Informe uma SKU para começar. A busca é automática.</div>
 
         <div id="optimizerSupplierResult" class="optimizer-v15-supplier" hidden role="status" aria-live="polite"></div>
+        <section id="optimizerSourcePanel" class="optimizer-source-panel" hidden aria-label="Informações adicionais da WeDrop por SKU">
+          <div class="optimizer-source-header"><div><strong>Informações e prints da WeDrop</strong>
+            <p>Adicione dados do produto desta SKU para completar a ficha técnica. Não são publicados sem revisão.</p></div>
+            <span class="optimizer-source-tag">Somente esta SKU</span></div>
+          <label class="optimizer-field" for="optimizerSourceText">Cole as especificações da WeDrop, embalagem ou fabricante
+            <textarea id="optimizerSourceText" rows="5" maxlength="12000" placeholder="Ex.: Marca: Top Rio; Capacidade: 210 litros; Dimensões da piscina montada: ...; Registro INMETRO: ...; Idade recomendada: ..."></textarea>
+          </label>
+          <div class="optimizer-source-actions">
+            <button id="optimizerSourceSave" type="button">Salvar informações e atualizar sugestões</button>
+            <label class="optimizer-source-upload">Anexar print JPG/PNG
+              <input id="optimizerSourceImage" type="file" accept="image/png,image/jpeg" multiple>
+            </label>
+          </div>
+          <div id="optimizerSourceImages" class="optimizer-source-images" aria-label="Prints guardados da WeDrop"></div>
+          <div id="optimizerSourceFacts" class="optimizer-source-facts" aria-live="polite"></div>
+          <p id="optimizerSourceStatus" class="optimizer-notice" role="status" aria-live="polite">Os prints são privados. Confira manualmente as informações antes de publicar.</p>
+        </section>
       </section>
       <section class="optimizer-panel sh-price-quick optimizer-v15-price" id="optimizerQuickPricing" aria-label="Resumo da precificação por SKU">
         <div class="optimizer-v15-heading"><span class="optimizer-v15-head-icon amber" aria-hidden="true">%</span>
