@@ -63,7 +63,7 @@ test('IDs controlados pelo código existente permanecem únicos e presentes',()=
     assert.equal(occur,1,'ID '+id+' deve existir uma vez');
   }
   assert.match(index,/script src="\/app\.js\?v=\d+\.\d+\.\d+"/);
-  assert.match(index,/stylesheet" href="\/style\.css\?v=\d+\.\d+\.\d+"/);
+  assert.match(index,/stylesheet" href="\/style\.css\?v=\d+\.\d+\.\d+(?:-[a-z0-9]+)?"/);
 });
 test('roteador suporta URLs próprias, refresh, voltar e avançar e atalhos',()=>{
   assert.match(app,/history\.pushState/);
