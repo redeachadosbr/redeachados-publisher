@@ -3559,3 +3559,27 @@ body.view-wedrop .page-intro{display:none!important}
  #optimizerImagesPanel .optimizer-ai-generator-actions>*{width:100%}
  #optimizerImagesPanel .optimizer-ai-generator-heading{align-items:flex-start}
 }
+
+
+/* Integração OpenAI por loja - credencial guardada no servidor */
+#optimizerImagesPanel .optimizer-ai-connection{
+ display:grid;gap:9px;border:1px solid #d4e3f3;border-radius:11px;
+ background:#fff;padding:13px 15px;margin:7px 0 9px
+}
+#optimizerImagesPanel .optimizer-ai-connection[hidden],#optimizerImagesPanel .optimizer-ai-connected[hidden]{display:none!important}
+#optimizerImagesPanel .optimizer-ai-connection>strong{font-size:14px;color:#143b69}
+#optimizerImagesPanel .optimizer-ai-connection>p{font-size:12px;line-height:1.5;color:#55708c;margin:0}
+#optimizerImagesPanel .optimizer-ai-connect-fields{display:flex;align-items:flex-end;gap:11px;flex-wrap:wrap}
+#optimizerImagesPanel .optimizer-ai-connect-fields>a{font-size:12px;font-weight:750;padding:10px 0;color:#165ca7}
+#optimizerImagesPanel .optimizer-ai-connect-fields label{flex:1;min-width:210px;font-size:11px;margin:0}
+#optimizerImagesPanel #optimizerOpenAiKey{width:100%;font-size:13px;max-width:520px}
+#optimizerImagesPanel #optimizerOpenAiSave{min-height:42px;font-size:12px;background:#114fa8;color:white;border:0;border-radius:8px;padding:9px 13px}
+#optimizerImagesPanel .optimizer-ai-connection>small{color:#74849c;font-size:11px}
+#optimizerImagesPanel .optimizer-ai-connected{display:flex;flex-wrap:wrap;gap:9px;align-items:center;justify-content:space-between;padding:7px 10px;background:#ecf8f1;color:#145b3d;border-radius:8px;font-size:12px}
+#optimizerImagesPanel .optimizer-ai-connected>button{font-size:11px}
+#optimizerImagesPanel #optimizerOpenAiNotice:empty{display:none}
+#optimizerImagesPanel #optimizerOpenAiNotice{font-size:12px;margin:0}
+@media(max-width:700px){
+ #optimizerImagesPanel .optimizer-ai-connect-fields>*{width:100%}
+ #optimizerImagesPanel .optimizer-ai-connect-fields>a{padding:4px 0}
+}
