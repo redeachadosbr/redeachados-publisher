@@ -86,12 +86,9 @@ export function compileTax(input,live){
   diff_state_cfop:/^6\d{3}$/,csosn:/^\d{3}$/,cest:/^(\d{7}|00)$/,pis_cofins_cst:/^\d{2}$/,operation_type:/^[12]$/};
  const tax={...(live.tax_info||{})};
  for(const [key,regex] of Object.entries(patterns)){
-  if(input[key]===undefined||String(input[key]).trim()===''){
-   // Campos opcionais vazios não geram erros nem novos valores fiscais.
-   // Valores que já existem na Shopee são preservados, sem apagar tributos do anúncio.
-   if(SHOPEE_OPTIONAL_TAX_FIELDS.includes(key))continue;
-   continue;
-  }
+  // CST PIS/COFINS (e outros campos não enviados) não é obrigatório para
+  // preparar a otimização; valores já existentes no anúncio são preservados.
+  if(input[key]===undefined||String(input[key]).trim()==='')continue;
   const value=String(input[key]).trim();if(!regex.test(value))throw Error('Campo fiscal '+key+' inválido.');
   tax[key]=value;
  }
