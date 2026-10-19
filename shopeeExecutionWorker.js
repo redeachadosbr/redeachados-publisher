@@ -1,6 +1,7 @@
 import {assertLiveShopeeUnchanged,verifyShopeeExecution} from './shopeeExecutionPlan.js';
 import {advanceVideoUpload} from './shopeeMediaApi.js';
 import {withExecutionEvent} from './shopeeExecutionProgress.js';
+import {isDefinitiveShopeeRejection} from './shopeeExecutionIssues.js';
 // One durable step per lease. No tokens or secret configuration are persisted.
 export async function advanceShopeeExecution(job,io){
  const plan=job.plan,result={...(job.result||{})};
@@ -43,8 +44,13 @@ export async function advanceShopeeExecution(job,io){
   Object.assign(result,withExecutionEvent({...checkpoint,phase:'verifying',requestId:result.requestId},
    'update-accepted','A API recebeu a solicitação. Conferindo dados do anúncio.'));
  }catch(e){
-  // HTTP/network errors do not prove the write failed.
-  return {state:'uncertain',result:withExecutionEvent(checkpoint,'update-uncertain','A atualização não teve confirmação conclusiva.','warning'),lastError:'Atualização sem confirmação: '+String(e.message||e).slice(0,200)};
+  // Known business rejection is definitive. Unknown/network error remains uncertain.
+  const reason=String(e.message||e).slice(0,240);
+  if(isDefinitiveShopeeRejection(reason))
+   return {state:'failed',result:withExecutionEvent(checkpoint,'fiscal-rejected',
+    'A Shopee rejeitou o envio: falta corrigir o CEST correspondente ao NCM.','warning'),
+    lastError:reason};
+  return {state:'uncertain',result:withExecutionEvent(checkpoint,'update-uncertain','A atualização não teve confirmação conclusiva.','warning'),lastError:'Atualização sem confirmação: '+reason};
  }
  return {state:'running',result,delay:1000};
 }
