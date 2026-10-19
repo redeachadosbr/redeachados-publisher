@@ -2717,7 +2717,11 @@ function optimizerExecutionTrackerRender(progress,job){
  const image=$('#optimizerExecutionProductImage'),fallback=$('#optimizerExecutionProductFallback');
  const src=(w.imageUrls||[]).find(x=>typeof x==='string'&&/^https:\/\//i.test(x));
  image.hidden=!src;fallback.hidden=Boolean(src);
- if(src&&image.src!==src)image.src=src;
+ if(src&&image.src!==src){
+  image.onerror=()=>{image.hidden=true;fallback.hidden=false;};
+  image.onload=()=>{image.hidden=false;fallback.hidden=true;};
+  image.src=src;
+ }
  if(!src)image.removeAttribute?.('src');
  $('#optimizerExecutionPhaseTitle').textContent=progress.title;
  $('#optimizerExecutionPhaseSubtitle').textContent=progress.message;
@@ -2906,6 +2910,7 @@ async function optimizerExecuteApproved(){
      ?'A Shopee confirmou as alterações aprovadas.'
      :'Execução iniciada. O progresso será consultado automaticamente.',
      out.marketplaceUpdated===true?'success':'info');
+   $('#optimizerExecutionTracker').scrollIntoView?.({behavior:'smooth',block:'nearest'});
    void optimizerExecutionRefresh(true);
  }catch(e){
    if(optimizerWorkflowPlan?.sku!==ctx.sku||optimizerWorkflowPlan?.itemId!==ctx.itemId||optimizerWorkflowPlan?.modelId!==ctx.modelId)return;
@@ -2921,6 +2926,11 @@ async function optimizerExecuteApproved(){
 function optimizerExecutionJobView(job,progress=null){
  optimizerExecutionTrackerRender(progress,job);
  optimizerExecJob=job;
+ // Continuar acompanhando a SKU automaticamente mesmo após recarregar a página.
+ if(job&&['running','uncertain'].includes(job.state)){
+  $('#optimizerExecutionPanel').hidden=false;
+  $('#optimizerWorkflowEditor').hidden=true;
+ }
  const active=['running','uncertain'].includes(job?.state);
  const verified=job?.state==='verified';
  const resultLink=$('#optimizerExecutionShopeeLink');
