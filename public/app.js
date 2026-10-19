@@ -4332,28 +4332,113 @@ function optimizerFiscalRender(data){
 function optimizerFiscalValues(){
  return Object.fromEntries([...$('#optimizerFiscalFields').querySelectorAll('input')].map(x=>[x.dataset.taxField,x.value.trim()]));
 }
+// Imagens OpenAI: cada etapa salva o arquivo no Supabase; somente a revisão explícita permite executar na Shopee.
+let optimizerImagesAutoBusy=false,optimizerImagesStopRequested=false;
+let optimizerImagesSavedSlots=new Set(),optimizerImagesApiConfigured=false;
+function optimizerImagesSameSku(w){
+ return optimizerWorkflowPlan?.sku===w.sku&&optimizerWorkflowPlan?.itemId===w.itemId&&
+  optimizerWorkflowPlan?.modelId===w.modelId&&optimizerWorkflowStage==='images';
+}
+function optimizerImagesSetProgress(){
+ const count=optimizerImagesSavedSlots.size;
+ const p=$('#optimizerImagesProgress');if(p)p.value=count;
+ const b=$('#optimizerImagesGenerateAll');if(b)b.disabled=optimizerImagesAutoBusy||!optimizerImagesApiConfigured;
+}
 async function optimizerImagesLoad(){
  const w=optimizerWorkflowPlan;if(!w)return;
- const status=$('#optimizerImagesStatus');status.textContent='Consultando imagens salvas...';
+ const status=$('#optimizerImagesStatus');if(!optimizerImagesAutoBusy)status.textContent='Consultando imagens salvas...';
  try{
-  const data=await json('/api/shopee/optimizer/images/manual?'+new URLSearchParams({sku:w.sku,item_id:w.itemId,model_id:w.modelId}));
-  if(optimizerWorkflowPlan?.sku!==w.sku||optimizerWorkflowPlan?.itemId!==w.itemId||optimizerWorkflowPlan?.modelId!==w.modelId||optimizerWorkflowStage!=='images')return;
+  const [data,provider]=await Promise.all([
+   json('/api/shopee/optimizer/images/manual?'+new URLSearchParams({sku:w.sku,item_id:w.itemId,model_id:w.modelId})),
+   json('/api/shopee/optimizer/images/generation/status')
+  ]);
+  if(!optimizerImagesSameSku(w))return;
+  optimizerImagesApiConfigured=provider.configured===true;
+  $('#optimizerImagesProvider').textContent=optimizerImagesApiConfigured
+   ?'API OpenAI configurada · '+provider.model
+   :'API OpenAI não configurada. Adicione OPENAI_API_KEY no Render.';
   const gallery=$('#optimizerImagesGallery');gallery.replaceChildren();
   const stored=new Map((data.images||[]).map(image=>[Number(image.slot),image]));
+  optimizerImagesSavedSlots=new Set(stored.keys());
   for(let slot=1;slot<=9;slot++){
    const image=stored.get(slot),card=optimizerMake('figure','optimizer-image-slot');
    if(image){const photo=optimizerMake('img');photo.src=image.previewUrl;photo.alt='Imagem da posição '+slot;photo.loading='lazy';card.append(photo)}
-   else card.append(optimizerMake('div','optimizer-image-placeholder','Imagem '+String(slot).padStart(2,'0')+' · aguardando importação'));
+   else card.append(optimizerMake('div','optimizer-image-placeholder','Imagem '+String(slot).padStart(2,'0')+' · aguardando geração'));
    card.append(optimizerMake('figcaption','',String(slot).padStart(2,'0')+' · '+(image?.filename||'Pendente')));
-   const redo=optimizerMake('button','secondary',image?'Solicitar ajuste':'Criar / preparar');
-   redo.type='button';redo.onclick=()=>{
-    $('#optimizerImageCorrectionSlot').value=String(slot);optimizerImageCorrectionLoad();
-    $('#optimizerImageCorrection').focus();
-   };card.append(redo);gallery.append(card);
+   const redo=optimizerMake('button','secondary',image?'↻ Refazer com IA':'✨ Gerar com IA');
+   redo.type='button';redo.disabled=optimizerImagesAutoBusy||!optimizerImagesApiConfigured;
+   redo.onclick=async()=>{
+    if(optimizerImagesAutoBusy)return;
+    if(image&&!window.confirm('Refazer a imagem '+slot+'? A foto aprovada para esta posição será substituída e será necessário revisar novamente.'))return;
+    optimizerImagesAutoBusy=true;optimizerImagesSetProgress();optimizerExecReset();
+    try{
+     status.textContent='Gerando imagem '+slot+' de 9 com OpenAI. Aguarde...';
+     await optimizerImagesGenerateSlot(w,slot,Boolean(image));
+     if(optimizerImagesSameSku(w))await optimizerImagesLoad();
+     status.textContent='Imagem '+slot+' salva. Revise o modelo, texto e detalhes antes de aprovar.';
+    }catch(e){status.textContent='Imagem '+slot+' não foi gerada: '+e.message+'. As imagens anteriores foram mantidas.';}
+    finally{optimizerImagesAutoBusy=false;optimizerImagesSetProgress();if(optimizerImagesSameSku(w))await optimizerImagesLoad();}
+   };
+   card.append(redo);gallery.append(card);
   }
-  status.textContent=(data.images||[]).length+'/9 imagens importadas. Confira a ordem e registre a revisão para incluir na prévia.';
- }catch(e){status.textContent=e.message;}
+  optimizerImagesSetProgress();
+  if(!optimizerImagesAutoBusy)status.textContent=stored.size+'/9 imagens salvas. Revise todas e registre a conferência antes de executar na Shopee.';
+ }catch(e){status.textContent='Falha ao carregar imagens: '+e.message;}
 }
+async function optimizerImagesGenerateSlot(w,slot,replace){
+ const result=await json('/api/shopee/optimizer/images/generate',{
+  method:'POST',headers:{'Content-Type':'application/json'},
+  body:JSON.stringify({sku:w.sku,itemId:w.itemId,modelId:w.modelId,slot,replace}),
+  signal:AbortSignal.timeout(210000)
+ });
+ if(optimizerImagesSameSku(w)){
+  optimizerImagesSavedSlots.add(slot);
+  const stage=w.stages?.find(x=>x.key==='images');
+  if(stage){stage.reviewed=false;stage.status='pending';stage.reviewedAt=null;}
+  optimizerWorkflowRender(w);optimizerExecReset();
+ }
+ return result;
+}
+$('#optimizerImagesStop')?.addEventListener?.('click',()=>{
+ optimizerImagesStopRequested=true;
+ $('#optimizerImagesStatus').textContent='Interrupção solicitada. A imagem atual será concluída e salva primeiro.';
+});
+$('#optimizerImagesGenerateAll')?.addEventListener?.('click',async()=>{
+ const w=optimizerWorkflowPlan;
+ if(!w||!optimizerImagesSameSku(w)||optimizerImagesAutoBusy)return;
+ if(!optimizerImagesApiConfigured){$('#optimizerImagesStatus').textContent='Configure OPENAI_API_KEY no Render antes de gerar.';return;}
+ optimizerImagesAutoBusy=true;optimizerImagesStopRequested=false;
+ const btn=$('#optimizerImagesGenerateAll'),stop=$('#optimizerImagesStop'),status=$('#optimizerImagesStatus');
+ stop.hidden=false;optimizerImagesSetProgress();optimizerExecReset();
+ let count=0,errorMessage='';
+ try{
+  // Retoma somente as posições ainda vazias, sem pagar novamente pelas já salvas.
+  for(let slot=1;slot<=9;slot++){
+   if(optimizerImagesStopRequested||!optimizerImagesSameSku(w))break;
+   if(optimizerImagesSavedSlots.has(slot))continue;
+   status.textContent='OpenAI gerando imagem '+slot+' de 9. '+optimizerImagesSavedSlots.size+'/9 concluídas. Não feche o anúncio.';
+   await optimizerImagesGenerateSlot(w,slot,false);
+   count++;
+   await optimizerImagesLoad();
+  }
+  if(optimizerImagesSameSku(w))
+   status.textContent=optimizerImagesSavedSlots.size===9
+    ?'9/9 imagens prontas e salvas. Confira a galeria e aprove a etapa antes do envio à Shopee.'
+    :optimizerImagesStopRequested?'Geração interrompida. '+optimizerImagesSavedSlots.size+'/9 imagens salvas. Clique novamente para continuar.'
+    :'Geração parcial. '+optimizerImagesSavedSlots.size+'/9 imagens disponíveis.';
+ }catch(e){
+  errorMessage=e.message;
+  status.textContent='Geração interrompida: '+errorMessage+'. '+optimizerImagesSavedSlots.size+'/9 imagens permanecem salvas. Use Gerar / retomar para continuar.';
+ }finally{
+  optimizerImagesAutoBusy=false;stop.hidden=true;optimizerImagesSetProgress();
+  if(optimizerImagesSameSku(w))await optimizerImagesLoad();
+  if(optimizerImagesSameSku(w)){
+   status.textContent=errorMessage?'Falha na geração: '+errorMessage+'. '+optimizerImagesSavedSlots.size+'/9 imagens salvas; clique em Gerar / retomar para tentar novamente.'
+    :optimizerImagesSavedSlots.size===9?'9/9 imagens salvas. Confira cada foto e aprove a etapa antes de executar na Shopee.'
+    :'Lote encerrado: '+optimizerImagesSavedSlots.size+'/9 imagens salvas. Use Gerar / retomar quando quiser.';
+  }
+ }
+});
 $('#optimizerImagesUpload')?.addEventListener?.('click',async()=>{
  const w=optimizerWorkflowPlan,files=[...($('#optimizerImagesFiles').files||[])],start=Number($('#optimizerImagesStart').value);
  if(!w||!files.length)return;
