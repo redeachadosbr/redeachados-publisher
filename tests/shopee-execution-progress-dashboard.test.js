@@ -104,3 +104,24 @@ test('campos do monitor existem e usam somente dados do serviço',()=>{
  assert.match(js,/optimizerExecutionJobView\(data\.job,data\.progress\)/);
  assert.doesNotMatch(area,/12 abr\. 2025|fone de ouvido/i);
 });
+
+test('aceite da atualização muda imediatamente o monitor para conferência sem simular publicação',async()=>{
+ const leanPlan={...plan,images:[],video:null};
+ const saved={...job('running','queued',{phase:'queued'}),plan:leanPlan};
+ let beforeWrite=null;
+ const next=await advanceShopeeExecution(saved,{
+  validateIdentity:async()=>{},
+  read:async()=>({item_id:555555,item_name:'Piscina antiga',description:'Atual',
+   description_type:'normal',category_id:1001,item_status:'NORMAL',
+   attribute_list:[],tax_info:{},image:{image_id_list:[]}}),
+  beforeWrite:async result=>{beforeWrite=result;},
+  update:async()=>({request_id:'confirmed-request'})
+ });
+ assert.equal(beforeWrite.phase,'updating');
+ assert.equal(next.state,'running');
+ assert.equal(next.result.phase,'verifying');
+ assert.equal(next.result.requestId,'confirmed-request');
+ assert.ok(next.result.events.some(x=>x.key==='update-request'));
+ assert.ok(next.result.events.some(x=>x.key==='update-accepted'));
+ assert.ok(shopeeExecutionProgress({...saved,result:next.result}).percent<100);
+});
