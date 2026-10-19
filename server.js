@@ -875,6 +875,16 @@ app.post('/api/shopee/optimizer/execution/reconcile',mustLogin,requireWeDropAdmi
     await rememberPublishedImages(job.plan,job.result||{});
     updated=await reconcileShopeeJob(job,{state:'verified',result:withExecutionEvent({...job.result,phase:'verified',verified:true},'verified','A Shopee confirmou as alterações no anúncio.','success'),lastError:null});
   }
+  else if(req.body.safeRecover===true&&detectShopeeExecutionIssue(job.last_error,job.plan)?.code==='CEST_REQUIRED'){
+    // Reconcile a known field-level rejection without retrying any marketplace write.
+    // Only release the old uncertain job after readback confirms that the listing
+    // still matches its pre-execution baseline (images, video, attributes, tax).
+    assertLiveShopeeUnchanged(job.plan,live);
+    updated=await reconcileShopeeJob(job,{state:'failed',
+      result:withExecutionEvent({...job.result,phase:'retry_allowed'},
+        'cest-confirmed-rejection','CEST pendente: a Shopee rejeitou a edição; o anúncio foi conferido sem reenvio.','warning'),
+      lastError:job.last_error});
+  }
   else if(req.body.reprepare===true){
     if(req.body.confirmation!=='REPREPARAR '+sku)throw Error('Confirme REPREPARAR '+sku+'.');
     if(Date.now()-Date.parse(job.updated_at)<90000)throw Error('Aguarde 90 segundos para a Shopee consolidar a atualização.');

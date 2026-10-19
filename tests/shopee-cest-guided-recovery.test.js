@@ -58,3 +58,21 @@ test('tela usa retorno da API, destaca campo e preserva bloqueio de reenvio',()=
  assert.match(server,/needsCestRevalidation\(previous\.last_error,previous\.plan,plan\)/);
  assert.match(server,/issue:owned\?detectShopeeExecutionIssue/);
 });
+
+test('recuperação automática do status incerto exige leitura de dados e não publica',()=>{
+ const server=readFileSync(new URL('../server.js',import.meta.url),'utf8');
+ const app=readFileSync(new URL('../public/app.js',import.meta.url),'utf8');
+ const reconcile=server.slice(server.indexOf("app.post('/api/shopee/optimizer/execution/reconcile'"),
+  server.indexOf("let optimizerWorkerBusy",server.indexOf("app.post('/api/shopee/optimizer/execution/reconcile'")));
+ assert.match(reconcile,/safeRecover===true/);
+ assert.match(reconcile,/assertLiveShopeeUnchanged\(job\.plan,live\)/);
+ assert.match(reconcile,/reconcileShopeeJob\(job,\{state:'failed'/);
+ assert.doesNotMatch(reconcile,/update_item|runOptimizerJobs/);
+ const begin=app.indexOf('async function optimizerExecutionSafeRecoverCest');
+ const end=app.indexOf('async function optimizerExecutionRefresh(',begin);
+ assert.ok(begin>0&&end>begin);
+ const code=app.slice(begin,end);
+ assert.match(code,/safeRecover:true/);
+ assert.doesNotMatch(code,/optimizerExecuteApproved\(|\/execution\/execute/);
+ assert.match(app,/optimizerExecSafeRecoveryKey===key/);
+});
