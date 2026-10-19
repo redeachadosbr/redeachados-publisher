@@ -12,7 +12,7 @@ function uniqueItemIds(values){
 }
 const sameSku=(a,b)=>String(a??'').trim()===b;
 
-export async function findLiveShopeeSku(cfg,auth,callApi,sku,{maxPages=12,maxModels=80,
+export async function findLiveShopeeSku(cfg,auth,callApi,sku,{maxPages=12,maxModels=80,fastOnly=false,
   saveItems=storeCatalogItems,saveModels=storeCatalogModels,pageFetcher=fetchCatalogPage}={}){
   sku=String(sku??'').trim();
   if(!sku||sku.length>120||/[\x00-\x1F]/.test(sku))
@@ -77,6 +77,8 @@ export async function findLiveShopeeSku(cfg,auth,callApi,sku,{maxPages=12,maxMod
   }
   if(!matches.size&&variantIds.length)await inspectVariants(Math.min(variantIds.length,maxModels));
   if(matches.size)return {matches:[...matches.values()],source:'live_search',warnings:failures};
+  // Avoid expensive full catalog/model scans during automatic SKU lookup.
+  if(fastOnly)return {matches:[],source:'fast_not_found',warnings:failures,incomplete:true};
 
   // Cache pode estar incompleto (sincronização parcial). Varrer produtos oficiais
   // paginados; cada página de 100 inclui dados base, sem alterar anúncio.

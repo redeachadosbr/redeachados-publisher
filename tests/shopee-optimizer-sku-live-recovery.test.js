@@ -102,3 +102,35 @@ test('a similar SKU does not match and invalid characters are rejected',async()=
   assert.deepEqual(r.matches,[]);
   await assert.rejects(findLiveShopeeSku(cfg,auth,mock,'TRC15\x00'),/SKU válido/);
 });
+
+
+test('fastOnly searches exact Shopee SKU without scanning every catalog page',async()=>{
+ const paths=[];let scanned=0;
+ const lookup=await findLiveShopeeSku(cfg,auth,async(_cfg,req)=>{
+  paths.push(req.path);
+  if(req.path==='/api/v2/product/search_item')return {response:{item_id_list:[]}};
+  throw Error('Unexpected search endpoint '+req.path);
+ },'TRC1525',{fastOnly:true,
+   pageFetcher:async()=>{scanned++;throw Error('expensive scanning must not run');},
+   saveItems:async()=>{},saveModels:async()=>{}});
+ assert.deepEqual(paths,['/api/v2/product/search_item']);
+ assert.equal(scanned,0);
+ assert.deepEqual(lookup.matches,[]);
+ assert.equal(lookup.source,'fast_not_found');
+ assert.equal(lookup.incomplete,true);
+});
+test('fastOnly retains exact model-SKU matches returned by targeted search',async()=>{
+ const seen=[];
+ const lookup=await findLiveShopeeSku(cfg,auth,async(_cfg,req)=>{
+  seen.push(req.path);
+  if(req.path==='/api/v2/product/search_item')return {response:{item_id_list:[22095398152]}};
+  if(req.path==='/api/v2/product/get_item_base_info')return {response:{item_list:[{...sampleBase,item_sku:'PARENT'}]}};
+  if(req.path==='/api/v2/product/get_model_list')return {response:{model:[{
+    model_id:179732416931,model_sku:'TRC1525',model_status:'NORMAL'
+  }]}};
+  throw Error('Unexpected request');
+ },'TRC1525',{fastOnly:true,saveItems:async()=>{},saveModels:async()=>{},
+   pageFetcher:async()=>{throw Error('should not scan catalog');}});
+ assert.equal(lookup.matches[0].modelId,'179732416931');
+ assert.deepEqual(seen,['/api/v2/product/search_item','/api/v2/product/get_item_base_info','/api/v2/product/get_model_list']);
+});

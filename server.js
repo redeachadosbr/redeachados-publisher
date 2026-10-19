@@ -593,23 +593,25 @@ app.get('/api/shopee/optimizer/find',mustLogin,requireWeDropAdmin,async(req,res)
   try{
     const sku=validateSkuLookup(req.query.sku);
     const {auth,cfg}=await getValidAuth(req);
+    const deep=req.query.deep==='1';
     let matches=await findExactCatalogSku(auth.shopId,sku);
     let lookup='saved_catalog',warnings=[];
     if(!matches.length){
-      // Cache parcial ou desatualizado: pesquisa oficial Shopee, leitura somente.
-      // Também recupera os detalhes e vincula a SKU ao catálogo persistente.
-      const live=await findLiveShopeeSku(cfg,auth,callShopeeShopApi,sku);
+      // Fast path: direct official SKU search, no 12-page catalog scan for each keystroke.
+      // Users can explicitly request the full fallback if directed search misses.
+      const live=await findLiveShopeeSku(cfg,auth,callShopeeShopApi,sku,{fastOnly:!deep});
       warnings=live.warnings||[];
-      matches=await findExactCatalogSku(auth.shopId,sku);
-      lookup=matches.length?'live_verified':'not_found';
+      matches=live.matches.length?await findExactCatalogSku(auth.shopId,sku):[];
+      lookup=matches.length?'live_verified':deep?'not_found':'fast_not_found';
       if(live.matches.length&&!matches.length)
         throw Error('A Shopee encontrou a SKU, mas não foi possível salvar o vínculo no catálogo. Tente novamente.');
     }
-    res.json({ok:true,sku,matches,lookup,warnings:warnings.slice(0,3),
+    res.json({ok:true,sku,matches,lookup,canDeepSearch:!deep&&!matches.length,warnings:warnings.slice(0,3),
       message:matches.length
         ?'SKU exata localizada '+(lookup==='live_verified'?'na Shopee e salva no catálogo.':'no catálogo salvo.')+
          ' Item ID obtido automaticamente.'
-        :'A Shopee não confirmou a SKU na pesquisa. Confira se está na mesma loja e tente sincronizar Produtos e anúncios.'});
+        :deep?'Busca completa não confirmou a SKU. Confira a loja e sincronize o catálogo.':
+         'Pesquisa direta sem resultado; a busca aprofundada pode verificar o restante do catálogo.'});
   }catch(e){res.status(400).json({error:String(e.message||e).slice(0,240)});}
 });
 app.get('/api/shopee/optimizer/audit',mustLogin,requireWeDropAdmin,async(req,res)=>{

@@ -2155,99 +2155,120 @@ $('#optimizerSave').onclick=async()=>{
   finally{btn.disabled=false;}
 };
 // A UI recebe só SKU; o Item ID técnico vem do catálogo Shopee, não do usuário.
-let optimizerSkuInputTimer=null,optimizerSkuLookupSerial=0,optimizerSkuPending='',optimizerNextAudit=null;
-$('#optimizerFind').onclick=async()=>{
-  const btn=$('#optimizerFind'),target=$('#optimizerCandidates');
-  const sku=$('#optimizerSku').value.trim();
-  if(btn.disabled){optimizerSkuPending=sku;return;}
-  if(optimizerSkuInputTimer){clearTimeout(optimizerSkuInputTimer);optimizerSkuInputTimer=null;}
-  const serial=++optimizerSkuLookupSerial;
-  target.replaceChildren();
-  $('#optimizerAuditPanel').hidden=true;
-  btn.disabled=true;
-  optimizerNotice('Localizando automaticamente a SKU '+sku+' na Shopee...');
-  try{
-    if(!sku)throw Error('Informe somente o SKU do produto.');
-    // WeDrop and Shopee are checked independently, so missing Shopee cache
-    // must never hide a supplier cost that is already saved.
-    void shPricePreviewSupplierSku(sku,serial);
-    const d=await json('/api/shopee/optimizer/find?sku='+encodeURIComponent(sku),{
-      signal:AbortSignal.timeout(90000)
-    });
-    if(serial!==optimizerSkuLookupSerial||$('#optimizerSku').value.trim()!==sku)return;
-    const matches=d.matches||[];
-    if(!matches.length){
-      optimizerNotice('Anúncio Shopee ainda não confirmado. A SKU pode estar na WeDrop; veja o custo e o preço estimado ao lado. '+(d.message||''),'warning');
-      return;
-    }
-    if(matches.length===1){
-      optimizerNotice('Produto encontrado. Conferindo a ficha técnica pela API...');
-      $('#optimizerItemId').value=matches[0].itemId;
-      await optimizerRunAudit(matches[0].itemId,sku,matches[0].modelId);
-      return;
-    }
-    optimizerNotice('Mais de um anúncio ou variação possui esse SKU. Escolha o produto correto abaixo; não é necessário informar Item ID.','warning');
-    for(const match of matches){
-      const el=optimizerMake('button','optimizer-candidate');el.type='button';
-      if(match.imageUrl&&financeCatalogImage(match.imageUrl)){
-        const img=optimizerMake('img');img.src=match.imageUrl;img.alt='';
-        img.loading='lazy';el.appendChild(img);
-      }
-      const wrapper=optimizerMake('span');
-      wrapper.appendChild(optimizerMake('span','',match.title||'Produto Shopee'));
-      wrapper.appendChild(optimizerMake('small','',
-        'SKU '+match.sku+(match.modelId!=='0'?' · Variação '+match.modelId:'')+
-        ' · Anúncio '+match.itemId));
-      el.appendChild(wrapper);
-      el.onclick=()=>{ $('#optimizerItemId').value=match.itemId;
-        void optimizerRunAudit(match.itemId,sku,match.modelId); };
-      target.appendChild(el);
-    }
-  }catch(e){
-    if(serial===optimizerSkuLookupSerial&&$('#optimizerSku').value.trim()===sku)
-      optimizerNotice('Consulta do anúncio Shopee indisponível: '+e.message+
-        '. A busca pelo custo WeDrop é independente e continua disponível.','warning');
-  }finally{
-    btn.disabled=false;
-    const currentSku=$('#optimizerSku').value.trim();
-    // Mesmo que o botão estava desativado durante o debounce, o SKU novo
-    // precisa ser pesquisado automaticamente assim que a consulta antiga termina.
-    if(currentSku&&currentSku!==sku){
-      optimizerSkuPending='';
-      if(optimizerSkuInputTimer)clearTimeout(optimizerSkuInputTimer);
-      optimizerSkuInputTimer=setTimeout(()=>$('#optimizerFind').click(),180);
-    }else optimizerSkuPending='';
+let optimizerSkuInputTimer=null,optimizerSkuLookupSerial=0,optimizerNextAudit=null,optimizerSkuRequest=null;
+function optimizerCancelSkuLookup(){
+ if(optimizerSkuRequest){optimizerSkuRequest.abort();optimizerSkuRequest=null;}
+ $('#optimizerFind').disabled=false;
+}
+async function optimizerFindSku({deep=false}={}){
+ const btn=$('#optimizerFind'),target=$('#optimizerCandidates'),sku=$('#optimizerSku').value.trim();
+ if(optimizerSkuInputTimer){clearTimeout(optimizerSkuInputTimer);optimizerSkuInputTimer=null;}
+ optimizerCancelSkuLookup();
+ const serial=++optimizerSkuLookupSerial;
+ const controller=new AbortController();
+ optimizerSkuRequest=controller;
+ target.replaceChildren();
+ $('#optimizerAuditPanel').hidden=true;
+ btn.disabled=true;
+ optimizerNotice((deep?'Conferindo catálogo completo':'Buscando SKU exata')+' '+sku+' na Shopee...');
+ try{
+  if(!sku)throw Error('Informe somente o SKU do produto.');
+  // Supplier price lookup remains independent of the Shopee listing.
+  void shPricePreviewSupplierSku(sku,serial);
+  const d=await json('/api/shopee/optimizer/find?'+new URLSearchParams({sku,...(deep?{deep:'1'}:{})}),{
+   signal:AbortSignal.any([controller.signal,AbortSignal.timeout(deep?90000:25000)])
+  });
+  if(serial!==optimizerSkuLookupSerial||$('#optimizerSku').value.trim()!==sku)return;
+  const matches=d.matches||[];
+  if(!matches.length){
+   optimizerNotice(deep
+    ?'SKU não confirmada na busca completa. Verifique a loja, o SKU exato ou sincronize o catálogo. '+(d.message||'')
+    :'SKU não encontrada no cache ou na pesquisa direta. Use Busca aprofundada para conferir mais anúncios.','warning');
+   if(!deep&&d.canDeepSearch!==false){
+    const more=optimizerMake('button','secondary','Busca aprofundada');more.type='button';
+    more.onclick=()=>void optimizerFindSku({deep:true});
+    target.append(more);
+   }
+   return;
   }
-};
+  if(matches.length===1){
+   optimizerNotice('Produto encontrado. Conferindo a ficha técnica pela API...');
+   $('#optimizerItemId').value=matches[0].itemId;
+   await optimizerRunAudit(matches[0].itemId,sku,matches[0].modelId);
+   return;
+  }
+  optimizerNotice('Mais de um anúncio ou variação possui esse SKU. Escolha o produto correto abaixo; não é necessário informar Item ID.','warning');
+  for(const match of matches){
+   const el=optimizerMake('button','optimizer-candidate');el.type='button';
+   if(match.imageUrl&&financeCatalogImage(match.imageUrl)){
+    const img=optimizerMake('img');img.src=match.imageUrl;img.alt='';
+    img.loading='lazy';el.appendChild(img);
+   }
+   const wrapper=optimizerMake('span');
+   wrapper.appendChild(optimizerMake('span','',match.title||'Produto Shopee'));
+   wrapper.appendChild(optimizerMake('small','',
+    'SKU '+match.sku+(match.modelId!=='0'?' · Variação '+match.modelId:'')+
+    ' · Anúncio '+match.itemId));
+   el.appendChild(wrapper);
+   el.onclick=()=>{ $('#optimizerItemId').value=match.itemId;
+    void optimizerRunAudit(match.itemId,sku,match.modelId); };
+   target.appendChild(el);
+  }
+ }catch(e){
+  if(serial===optimizerSkuLookupSerial&&$('#optimizerSku').value.trim()===sku){
+   const aborted=controller.signal.aborted;
+   optimizerNotice(aborted?'Consulta anterior substituída pelo SKU digitado.':
+    'A busca rápida do anúncio falhou: '+e.message+
+    '. O custo WeDrop continua independente; tente novamente ou utilize a busca aprofundada.','warning');
+   if(!aborted&&!deep){
+    const retry=optimizerMake('button','secondary','Busca aprofundada');retry.type='button';
+    retry.onclick=()=>void optimizerFindSku({deep:true});
+    target.replaceChildren(retry);
+   }
+  }
+ }finally{
+  if(optimizerSkuRequest===controller){
+   optimizerSkuRequest=null;btn.disabled=false;
+  }
+ }
+}
+$('#optimizerFind').onclick=()=>void optimizerFindSku();
 $('#optimizerSku')?.addEventListener?.('input',()=>{
-  const value=$('#optimizerSku').value.trim();
-  if(optimizerSkuInputTimer)clearTimeout(optimizerSkuInputTimer);
-  // Não mostrar resultado de um produto anterior enquanto outra SKU é digitada.
-  $('#optimizerQuickValues').hidden=true;
-  $('#priceResults').hidden=true;
-  $('#optimizerSupplierResult').hidden=true;
-  $('#optimizerWorkflowPanel').hidden=true;
-  optimizerWorkflowPlan=null;optimizerWorkflowStage=null;optimizerWorkflowSerial++;
-  optimizerExecReset();
-  shPriceCurrentQuote=null;
-  shPriceSupplierQuote=null;
-  shPriceSelection=null;
-  try{sessionStorage.removeItem(shPriceSelectionKey);}catch{}
-  optimizerSkuLookupSerial++;
-  if(!value){
-    $('#optimizerQuickStatus').textContent='Informe uma SKU para calcular automaticamente.';
-    optimizerNotice('Informe a SKU para localizar e analisar.');
-    return;
-  }
-  $('#optimizerQuickStatus').textContent='Aguardando o término da digitação para localizar a SKU '+value+'...';
-  optimizerSkuInputTimer=setTimeout(()=>$('#optimizerFind').click(),700);
+ const value=$('#optimizerSku').value.trim();
+ if(optimizerSkuInputTimer)clearTimeout(optimizerSkuInputTimer);
+ ++optimizerSkuLookupSerial;
+ optimizerCancelSkuLookup();
+ // Clear stale results immediately when the user changes the SKU.
+ $('#optimizerCandidates').replaceChildren();
+ $('#optimizerQuickValues').hidden=true;
+ $('#priceResults').hidden=true;
+ $('#optimizerSupplierResult').hidden=true;
+ $('#optimizerWorkflowPanel').hidden=true;
+ optimizerWorkflowPlan=null;optimizerWorkflowStage=null;optimizerWorkflowSerial++;
+ optimizerExecReset();
+ shPriceCurrentQuote=null;
+ shPriceSupplierQuote=null;
+ shPriceSelection=null;
+ try{sessionStorage.removeItem(shPriceSelectionKey);}catch{}
+ if(!value){
+  $('#optimizerQuickStatus').textContent='Informe uma SKU para calcular automaticamente.';
+  optimizerNotice('Informe a SKU para localizar e analisar.');
+  return;
+ }
+ if(value.length<4){
+  $('#optimizerQuickStatus').textContent='Continue digitando o SKU ou clique em Buscar SKU.';
+  optimizerNotice('Aguardando SKU completa para evitar buscas parciais.');
+  return;
+ }
+ $('#optimizerQuickStatus').textContent='Aguardando o término da digitação para localizar a SKU '+value+'...';
+ optimizerSkuInputTimer=setTimeout(()=>void optimizerFindSku(),1000);
 });
 $('#optimizerSku').onkeydown=event=>{
-  if(event.key==='Enter'){
-    event.preventDefault();
-    if(optimizerSkuInputTimer)clearTimeout(optimizerSkuInputTimer);
-    $('#optimizerFind').click();
-  }
+ if(event.key==='Enter'){
+  event.preventDefault();
+  if(optimizerSkuInputTimer)clearTimeout(optimizerSkuInputTimer);
+  void optimizerFindSku();
+ }
 };
 // Etapas persistentes para o mesmo Item ID/modelo/SKU. Nenhum write na Shopee.
 let optimizerWorkflowPlan=null,optimizerWorkflowStage=null,optimizerWorkflowSerial=0;
