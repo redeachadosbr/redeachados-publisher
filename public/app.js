@@ -4291,7 +4291,7 @@ function optimizerTechnicalRender(data){
      const response=await json('/api/shopee/optimizer/workflow/attributes/options',{
       method:'POST',headers:{'Content-Type':'application/json'},
       body:JSON.stringify({sku:w.sku,itemId:w.itemId,modelId:w.modelId,attributeId:attr.id,
-       valueName:queryText,cursor:nextCursor,limit:50}),
+       attributes:optimizerTechnicalValues(),valueName:queryText,cursor:nextCursor,limit:50}),
       signal:AbortSignal.timeout(50000)
      });
      if(optimizerWorkflowPlan!==w||optimizerWorkflowStage!=='technical')return;
