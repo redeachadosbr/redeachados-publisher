@@ -24,8 +24,8 @@ export function supplierWorkflowFacts(supplier,record,settings={}){
   if(attr.id===100942&&[2,3,5].includes(Number(attr.inputType))&&Object.keys(axes).length===3)
    attributeSuggestions.push({attributeId:attr.id,values:[{valueId:0,valueName:axes.length+' x '+axes.width+' x '+axes.height+' cm'}],
     evidence:'Descrição atual desta SKU na Shopee: comprimento × largura × altura, em cm. Não usa as medidas logísticas WeDrop.'});
-  if(attr.id===100413&&[2,3,5].includes(Number(attr.inputType))&&record.condition==='NEW')
-   attributeSuggestions.push({attributeId:attr.id,values:[{valueId:0,valueName:'Novo'}],evidence:'Condição NEW retornada pela Shopee para este item.'});
+  // A condição NEW nunca autoriza preencher Marca com 'Novo': o ID da categoria
+  // é dinâmico. Marca é obtida do catálogo WeDrop e validada pela árvore Shopee.
  }
  return {supplierProduct:supplier?{...facts,sku:supplier.supplier_sku,source,importedAt:supplier.imported_at,matchedBy:supplier.matchedBy}:null,
   taxSuggestion,attributeSuggestions,fiscalNotes:notes};
