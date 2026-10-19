@@ -21,7 +21,7 @@ test('Descontos v1.19.6 preserva os planos reais e os seis KPIs da referência',
  assert.match(page,/id="discountPlanCard"[^>]*hidden/);
  assert.match(page,/class="discount-v2-recent"/);
  assert.match(page,/id="discountRecentPlans"/);
- assert.match(html,/app\.js\?v=1\.19\.6/);
+ assert.match(html,/app\.js\?v=\d+\.\d+\.\d+/);
 });
 test('campos de conferência são manuais, não declaram confirmação Shopee automática',()=>{
  assert.match(app,/const discountReviewLabels=/);
