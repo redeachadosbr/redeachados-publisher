@@ -4377,7 +4377,7 @@ async function optimizerImagesLoad(){
      if(optimizerImagesSameSku(w))await optimizerImagesLoad();
      status.textContent='Imagem '+slot+' salva. Revise o modelo, texto e detalhes antes de aprovar.';
     }catch(e){status.textContent='Imagem '+slot+' não foi gerada: '+e.message+'. As imagens anteriores foram mantidas.';}
-    finally{optimizerImagesAutoBusy=false;optimizerImagesSetProgress();}
+    finally{optimizerImagesAutoBusy=false;optimizerImagesSetProgress();if(optimizerImagesSameSku(w))await optimizerImagesLoad();}
    };
    card.append(redo);gallery.append(card);
   }
@@ -4410,7 +4410,7 @@ $('#optimizerImagesGenerateAll')?.addEventListener?.('click',async()=>{
  optimizerImagesAutoBusy=true;optimizerImagesStopRequested=false;
  const btn=$('#optimizerImagesGenerateAll'),stop=$('#optimizerImagesStop'),status=$('#optimizerImagesStatus');
  stop.hidden=false;optimizerImagesSetProgress();optimizerExecReset();
- let count=0;
+ let count=0,errorMessage='';
  try{
   // Retoma somente as posições ainda vazias, sem pagar novamente pelas já salvas.
   for(let slot=1;slot<=9;slot++){
@@ -4427,13 +4427,14 @@ $('#optimizerImagesGenerateAll')?.addEventListener?.('click',async()=>{
     :optimizerImagesStopRequested?'Geração interrompida. '+optimizerImagesSavedSlots.size+'/9 imagens salvas. Clique novamente para continuar.'
     :'Geração parcial. '+optimizerImagesSavedSlots.size+'/9 imagens disponíveis.';
  }catch(e){
-  status.textContent='Geração interrompida: '+e.message+'. '+optimizerImagesSavedSlots.size+'/9 imagens permanecem salvas. Use Gerar / retomar para continuar.';
+  errorMessage=e.message;
+  status.textContent='Geração interrompida: '+errorMessage+'. '+optimizerImagesSavedSlots.size+'/9 imagens permanecem salvas. Use Gerar / retomar para continuar.';
  }finally{
   optimizerImagesAutoBusy=false;stop.hidden=true;optimizerImagesSetProgress();
   if(optimizerImagesSameSku(w))await optimizerImagesLoad();
   if(optimizerImagesSameSku(w)){
-   status.textContent=optimizerImagesSavedSlots.size===9
-    ?'9/9 imagens salvas. Confira cada foto e aprove a etapa antes de executar na Shopee.'
+   status.textContent=errorMessage?'Falha na geração: '+errorMessage+'. '+optimizerImagesSavedSlots.size+'/9 imagens salvas; clique em Gerar / retomar para tentar novamente.'
+    :optimizerImagesSavedSlots.size===9?'9/9 imagens salvas. Confira cada foto e aprove a etapa antes de executar na Shopee.'
     :'Lote encerrado: '+optimizerImagesSavedSlots.size+'/9 imagens salvas. Use Gerar / retomar quando quiser.';
   }
  }
