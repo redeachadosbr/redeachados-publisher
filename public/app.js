@@ -4414,9 +4414,9 @@ $('#optimizerModeApi')?.addEventListener?.('click',()=>{
 
 const RA_CHAT_BRIDGE_SESSION_KEY='redeAchadosBridgeNonceV1';
 let optimizerChatBridgeReady=false,optimizerChatBridgeBusy=false,optimizerChatBridgeUploading=false;
-let optimizerChatBridgeNonce=sessionStorage.getItem(RA_CHAT_BRIDGE_SESSION_KEY)||'';
+let optimizerChatBridgeNonce=typeof sessionStorage==='undefined'?'':sessionStorage.getItem(RA_CHAT_BRIDGE_SESSION_KEY)||'';
 let optimizerChatBridgeSku='';
-window.addEventListener('message',async(event)=>{
+globalThis.window?.addEventListener?.('message',async(event)=>{
  if(event.source!==window||event.origin!==location.origin||!event.data||typeof event.data!=='object')return;
  const m=event.data,status=$('#optimizerChatgptBridgeStatus');
  if(m.kind==='RA_EXTENSION_READY'){
@@ -4482,7 +4482,7 @@ $('#optimizerChatgptAuto')?.addEventListener?.('click',async()=>{
  if(!w||!optimizerImagesSameSku(w))return;
  if(optimizerChatBridgeBusy){status.textContent='A extensão já está executando. Aguarde ou pause o processo atual.';return;}
  if(!optimizerChatBridgeReady){
-  window.postMessage({kind:'RA_EXTENSION_PROBE'},location.origin);
+  globalThis.window?.postMessage?.({kind:'RA_EXTENSION_PROBE'},location.origin);
   status.textContent='Extensão não detectada. Instale a Ponte ChatGPT no Chrome e atualize esta página. O pacote de instalação acompanha a atualização do aplicativo.';
   return;
  }
