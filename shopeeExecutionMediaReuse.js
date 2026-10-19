@@ -6,8 +6,11 @@ export function recyclableShopeeMedia(oldJob,newPlan){
   String(oldJob.shop_id)!==String(newPlan.shopId)||
   String(oldJob.item_id)!==String(newPlan.itemId)||
   String(oldJob.model_id)!==String(newPlan.modelId)||
-  !['failed','verified'].includes(oldJob.state))return null;
- const old=oldJob.plan||{},result=oldJob.result||{};
+  !['failed','verified','blocked','prepared'].includes(oldJob.state))return null;
+ const old=oldJob.plan||{},result={
+  imageIds:oldJob.result?.imageIds?.length?oldJob.result.imageIds:oldJob.plan?.reusedMedia?.imageIds||[],
+  video:oldJob.result?.video?.phase==='ready'?oldJob.result.video:oldJob.plan?.reusedMedia?.video||null
+ };
  const media={imageIds:[],video:null};
  const before=ids(old.images),current=ids(newPlan.images),existing=ids(result.imageIds);
  if(current.length&&current.length===before.length&&existing.length===before.length&&
