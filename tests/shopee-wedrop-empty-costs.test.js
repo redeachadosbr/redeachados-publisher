@@ -38,7 +38,7 @@ test('interface oculta colunas financeiras e cartões até importação de custo
   const css=readFileSync(new URL('../public/style.css',import.meta.url),'utf8');
   assert.match(html,/id="wedropNoCosts"[^>]*hidden/);
   assert.match(html,/id="wedropFinancialResults"[^>]*hidden/);
-  assert.match(html,/class="wedrop-financial-metric" hidden/);
+  assert.match(html,/class="[^"]*wedrop-financial-metric" hidden/);
   assert.match(html,/id="wedropCompared"/);
   assert.match(js,/const costsAvailable=data\.hasImportedCosts===true/);
   assert.match(js,/\$\('#wedropFinancialResults'\)\.hidden=!costsAvailable/);

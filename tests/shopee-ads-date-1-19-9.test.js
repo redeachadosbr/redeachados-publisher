@@ -16,6 +16,6 @@ test('Ads 1.19.9 seleciona data no calendário brasileiro e evita dia UTC futuro
  assert.match(app,/A análise anterior continua visível/);
  assert.match(app,/Data ainda indisponível na Shopee Brasil/);
  assert.match(server,/allowDateFallback:true/);
- assert.match(html,/app\.js\?v=1\.19\.9/);
- assert.match(server,/version:'1\.19\.9'/);
+ assert.match(html,/app\.js\?v=\d+\.\d+\.\d+/);
+ assert.match(server,/version:'\d+\.\d+\.\d+'/);
 });

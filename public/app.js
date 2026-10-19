@@ -1543,7 +1543,18 @@ async function loadWeDropSourceState(){
     $('#wedropSourceStatus').textContent='Falha temporária na verificação da origem.';
   }
 }
-$('#wedropMoveRefresh').onclick=()=>{$('#wedropUseStoredBtn').click();};
+$('#wedropMoveRefresh').onclick=async()=>{
+  const visible=$('#wedropMoveRefresh');
+  if(visible.disabled)return;
+  visible.disabled=true;
+  visible.setAttribute('aria-busy','true');
+  try{
+    await $('#wedropUseStoredBtn').onclick();
+  }finally{
+    visible.disabled=false;
+    visible.removeAttribute('aria-busy');
+  }
+};
 $('#wedropUseStoredBtn').onclick=async()=>{
   const button=$('#wedropUseStoredBtn');
   if(button.disabled)return;
