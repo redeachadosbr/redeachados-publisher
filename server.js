@@ -649,6 +649,13 @@ app.get('/api/shopee/optimizer/workflow',mustLogin,requireWeDropAdmin,async(req,
       type:['Cor','Tamanho','Unidades por pacote','Modelo','Variação','Voltagem','Print','Quantidade'].includes(existingTier.name)?existingTier.name:'',
       values:existingTier.options.map(x=>x.name)}:{enabled:Boolean(record.hasModel),type:'',values:[]};
     const current=await shopeeLiveEditableItem(cfg,auth,itemId);
+    let technicalPreview=record.attributeAudit,technicalWarning='';
+    if(Array.isArray(review.attributes)&&review.attributes.length){
+      try{
+        await hydrateCategoryChoices(record,review.attributes,cfg,auth,current);
+        technicalPreview=attributeAuditForChanges(review.attributes,record,current);
+      }catch(e){technicalWarning=String(e.message||e).slice(0,220);}
+    }
     const [supplier,settings]=await Promise.all([
       readWeDropProduct(auth.shopId,{sku,itemId,modelId}),optimizerSettings(auth.shopId)]);
     const supplierFacts=supplierWorkflowFacts(supplier,record,settings);
@@ -656,7 +663,7 @@ app.get('/api/shopee/optimizer/workflow',mustLogin,requireWeDropAdmin,async(req,
       await getShopeeManualVideo(auth.shopId,itemId,modelId,sku));
     res.json({ok:true,readOnlyMarketplace:true,sku,itemId,modelId,manualVideo,...supplierFacts,
       contentVariants:review.contentVariants||null,contentResearch:review.contentResearch||null,
-      attributes:record.attributeAudit.attributes,attributeChanges:review.attributes||[],taxDraft:review.tax||{},taxCurrent:current.tax_info||{},
+      attributes:technicalPreview.attributes,technicalWarning,attributeChanges:review.attributes||[],taxDraft:review.tax||{},taxCurrent:current.tax_info||{},
       recordedAt:stored?.updated_at||null,stages,
       variationConfig:review.variationConfig||officialVariationConfig,
       hasShopeeModels:Boolean(record.hasModel),shopeeModels:record.models||[],
