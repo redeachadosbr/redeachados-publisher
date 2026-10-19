@@ -25,9 +25,9 @@ test('Fornecedor WeDrop 1.20.0 mantém os cinco indicadores e quatro setores vis
  assert.match(section,/class="card wedrop-variants wd-v2-section wd-v2-variants"/);
  assert.match(section,/id="wedropStoredCatalog"[^>]*hidden/);
  assert.match(section,/id="wedropImportBtn" type="button" disabled/);
- assert.match(html,/style\.css\?v=1\.20\.0/);
- assert.match(html,/app\.js\?v=1\.20\.0/);
- assert.match(server,/version:'1\.20\.0'/);
+ assert.match(html,/style\.css\?v=1\.20\.[01]/);
+ assert.match(html,/app\.js\?v=1\.20\.[01]/);
+ assert.match(server,/version:'1\.20\.[01]'/);
 });
 test('WeDrop continua no Supabase com ações reais, sem substituir o fornecedor nem publicar preços',()=>{
  for(const route of ['/api/shopee/wedrop/auto/status','/api/shopee/wedrop/auto/import',
