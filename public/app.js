@@ -2466,8 +2466,10 @@ $('#optimizerVariationValues')?.addEventListener?.('input',()=>{optimizerVariati
 function optimizerImageCorrectionLoad(){
  const slot=$('#optimizerImageCorrectionSlot').value;
  $('#optimizerImageCorrection').value=optimizerWorkflowPlan?.imageNotes?.[slot]||'';
+ const counter=$('#optimizerImageCorrectionCount');if(counter)counter.textContent=[...$('#optimizerImageCorrection').value].length+'/500';
 }
 $('#optimizerImageCorrectionSlot')?.addEventListener?.('change',optimizerImageCorrectionLoad);
+$('#optimizerImageCorrection')?.addEventListener?.('input',()=>{const count=$('#optimizerImageCorrectionCount');if(count)count.textContent=[...$('#optimizerImageCorrection').value].length+'/500';});
 $('#optimizerImageCorrectionSave')?.addEventListener?.('click',async()=>{
  const w=optimizerWorkflowPlan;if(!w||optimizerWorkflowStage!=='images')return;
  const slot=$('#optimizerImageCorrectionSlot').value,note=$('#optimizerImageCorrection').value.trim();
@@ -2476,9 +2478,11 @@ $('#optimizerImageCorrectionSave')?.addEventListener?.('click',async()=>{
   const result=await json('/api/shopee/optimizer/workflow/review',{
    method:'POST',headers:{'Content-Type':'application/json'},
    body:JSON.stringify({itemId:w.itemId,modelId:w.modelId,sku:w.sku,
-    stage:'images',reviewed:Boolean(stage?.reviewed),imageNotes:{[slot]:note}}),signal:AbortSignal.timeout(60000)});
+    stage:'images',reviewed:false,imageNotes:{[slot]:note}}),signal:AbortSignal.timeout(60000)});
   if(optimizerWorkflowPlan?.sku!==w.sku)return;
   w.imageNotes={...(w.imageNotes||{}),...(result.imageNotes||{})};
+  if(stage){stage.reviewed=false;stage.status='pending';stage.reviewedAt=null;}
+  optimizerWorkflowRender(w);optimizerExecReset();
   optimizerWorkflowNotice('Ajuste da imagem '+slot+' salvo nesta SKU. Nenhuma foto foi gerada ou publicada.','success');
  }catch(e){optimizerWorkflowNotice('Não foi possível salvar o ajuste: '+e.message,'error')}
  finally{btn.disabled=false}
@@ -2511,6 +2515,8 @@ function optimizerWorkflowOpen(key){
  const isImages=key==='images';
  guide.textContent=stage.hint+(isImages?'\n\nROTEIRO PARA GERAR E REVISAR AS NOVE IMAGENS:\n'+workflowImageGuide+
     '\n\nUse o prompt mestre salvo em Regras da loja. Confira produto e medidas antes de substituir uma fotografia.':'');
+ guide.hidden=isImages;
+ if(isImages){const toggle=$('#optimizerCommercialRules');if(toggle)toggle.setAttribute('aria-expanded','false');}
  const draftWrap=$('#optimizerWorkflowDraftWrap');
  const isSeo=key==='seo',isDescription=key==='description';
  const isVideo=key==='video';
@@ -4405,6 +4411,25 @@ function optimizerFiscalValues(){
 // Imagens OpenAI: cada etapa salva o arquivo no Supabase; somente a revisão explícita permite executar na Shopee.
 let optimizerImagesAutoBusy=false,optimizerImagesStopRequested=false;
 let optimizerImagesSavedSlots=new Set(),optimizerImagesApiConfigured=false;
+let optimizerImagesFilter='all';
+const optimizerCommercialPositionNames=['Capa','Dicas de uso','Especificações','Benefícios','Dor e solução','Copy persuasiva','Transformação','Objeções','Mockup'];
+function optimizerCommercialSetFilter(filter){
+ if(!['all','pending','saved'].includes(filter))return;
+ optimizerImagesFilter=filter;
+ for(const id of ['all','pending','saved']){
+  const button=$('#optimizerImagesFilter'+id[0].toUpperCase()+id.slice(1));
+  if(button){button.classList.toggle('is-active',id===filter);button.setAttribute('aria-pressed',String(id===filter));}
+ }
+ void optimizerImagesLoad();
+}
+for(const [name,filter] of [['All','all'],['Pending','pending'],['Saved','saved']])
+ $('#optimizerImagesFilter'+name)?.addEventListener?.('click',()=>optimizerCommercialSetFilter(filter));
+for(const id of ['optimizerCommercialRules','optimizerCommercialShowRules'])
+ $('#'+id)?.addEventListener?.('click',()=>{
+  const guidance=$('#optimizerWorkflowStageGuidance');
+  guidance.hidden=!guidance.hidden;
+  const button=$('#optimizerCommercialRules');if(button)button.setAttribute('aria-expanded',String(!guidance.hidden));
+ });
 
 let optimizerImagesMode=null;
 let optimizerChatgptBrief=null,optimizerChatgptBriefSku='';
