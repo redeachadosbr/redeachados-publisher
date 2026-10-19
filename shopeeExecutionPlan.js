@@ -1,5 +1,6 @@
 import crypto from 'node:crypto';
-import {compileAttributes,compileTax,sameData,sameShopeeAttributes,fieldsVerified} from './shopeeStructuredFields.js';
+import {compileAttributes,compileTax,sameData,sameShopeeAttributes,fieldsVerified,attributeAuditForChanges} from './shopeeStructuredFields.js';
+import {inspectAnatelCompliance} from './shopeeAnatel.js';
 import {imagesSignature} from './shopeePreparedImages.js';
 import {normalizedTitle,validateContentRules} from './shopeeOptimizationWorkflow.js';
 
@@ -46,6 +47,15 @@ export function compileShopeeExecutionPlan({shopId,itemId,modelId,sku,record,rev
       if(!sameShopeeAttributes(attributes,live.attribute_list||[]))proposed.attribute_list=attributes;
     }catch(e){blocked.push(e.message);}
   }
+  // Verifique também execuções só de título/imagem: a Shopee pode recusar
+  // atualizações se o novo atributo obrigatório estiver sem resposta.
+  try{
+    const technicalDraft=stages.technical?.reviewed&&state.attributes?.length
+      ?attributeAuditForChanges(state.attributes,record,live):record.attributeAudit;
+    const anatel=inspectAnatelCompliance(technicalDraft);
+    if(anatel.requiresAction)blocked.push('Anatel: '+anatel.message);
+    else if(anatel.status==='registro-informado')warnings.push('Anatel: número declarado; confira a homologação correspondente ao modelo.');
+  }catch(e){blocked.push('Anatel: não foi possível revalidar a ficha. '+e.message);}
   if(stages.fiscal?.reviewed&&state.tax){
     try{const tax=compileTax(state.tax,live);if(!sameData(tax,live.tax_info||{}))proposed.tax_info=tax;}
     catch(e){blocked.push(e.message);}
