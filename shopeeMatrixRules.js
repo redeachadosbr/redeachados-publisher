@@ -32,6 +32,19 @@ export function fiscalMatrixSource({sku,supplier,tax,reviewSource=null}={}){
  return {sku:listingSku,ncm:chosen,supplierSku:supplierSku||null,
   source:supplier?.matchedBy||'manual-verified',file:supplier?.source_file||null};
 }
+// A Marca cadastrada é um atributo por categoria, nunca a condição NEW.
+export function assertShopeeSupplierBrand({record,attributes=[],supplier}={}){
+ const brand=normal(supplier?.product_data?.brand);
+ if(!brand)return;
+ const fmt=x=>String(x??'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase().trim();
+ const brandAttr=(record?.attributeAudit?.attributes||[]).find(x=>fmt(x.name)==='marca');
+ if(!brandAttr)return;
+ const saved=attributes.find(x=>Number(x.attributeId)===Number(brandAttr.id));
+ const chosen=normal(saved?.values?.[0]?.valueName||brandAttr.values?.[0]?.name);
+ if(chosen&&fmt(chosen)!==fmt(brand))
+  throw Error('Motor Matriz: Marca "'+chosen+'" diverge da marca "'+brand+
+   '" informada pela WeDrop. Abra Ficha técnica, selecione a marca oficial e aprove novamente.');
+}
 export function technicalMatrixSource({sku,record,attributes=[],reviewSource=null}={}){
  const listingSku=normal(sku),categoryId=Number(record?.categoryId);
  if(!listingSku||record?.sku!==listingSku)throw Error('Motor Matriz: ficha técnica pertence a outra SKU.');

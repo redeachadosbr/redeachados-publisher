@@ -2287,7 +2287,84 @@ function optimizerWorkflowNotice(message,state='info'){
  const n=$('#optimizerWorkflowStatus');if(!n)return;
  n.textContent=message;n.dataset.state=state;
 }
+function optimizerSourceNotice(message,state='info'){
+ const el=$('#optimizerSourceStatus');if(el){el.textContent=message;el.dataset.state=state;}
+}
+function optimizerSourceRender(data){
+ const pane=$('#optimizerSourcePanel');if(!pane)return;
+ pane.hidden=!data?.sku;if(!data?.sku)return;
+ const evidence=data.sourceEvidence||{sourceText:'',screenshots:[]};
+ $('#optimizerSourceText').value=evidence.sourceText||'';
+ const images=$('#optimizerSourceImages');images.replaceChildren();
+ for(const shot of evidence.screenshots||[]){
+  const card=optimizerMake('div','optimizer-source-image-card');
+  if(shot.previewUrl&&/^https:\/\//.test(shot.previewUrl)){
+   const image=optimizerMake('img');image.src=shot.previewUrl;
+   image.alt='Print da WeDrop: '+shot.filename;image.loading='lazy';
+   const link=optimizerMake('a');link.href=shot.previewUrl;link.target='_blank';link.rel='noopener noreferrer';
+   link.append(image);card.append(link);
+  }
+  card.append(optimizerMake('small','',shot.filename));
+  const remove=optimizerMake('button','secondary','Excluir');remove.type='button';
+  remove.onclick=()=>void optimizerSourceAction('remove',{id:shot.id});
+  card.append(remove);images.append(card);
+ }
+ const facts=$('#optimizerSourceFacts');facts.replaceChildren();
+ const item=data.sourceFacts||{};
+ for(const conflict of item.conflicts||[]){
+  facts.append(optimizerMake('p','optimizer-source-conflict',
+   'Atenção: '+conflict.name+' no anúncio: '+conflict.current+'; WeDrop recomenda '+conflict.recommended+
+   '. Abra Ficha técnica e aplique a opção oficial da categoria.'));
+ }
+ for(const hint of item.unresolved||[])facts.append(optimizerMake('p','optimizer-source-hint',
+  (hint.name||'Informação')+': '+hint.reason));
+ for(const value of item.metrics||[])facts.append(optimizerMake('p','optimizer-source-metric',
+  value.name+': '+value.value+'. '+value.note));
+ optimizerSourceNotice('Informações vinculadas apenas à SKU '+data.sku+
+  '. Prints não são interpretados automaticamente. Revise as opções oficiais da categoria.');
+}
+async function optimizerSourceAction(action,extra={}){
+ const w=optimizerWorkflowPlan;if(!w?.sku)return;
+ const btn=$('#optimizerSourceSave');btn.disabled=true;
+ optimizerSourceNotice(action==='image'?'Enviando print para a área privada...':'Salvando informações da SKU...');
+ try{
+  const response=await json('/api/shopee/optimizer/workflow/source',{
+   method:'POST',headers:{'Content-Type':'application/json'},
+   body:JSON.stringify({sku:w.sku,itemId:w.itemId,modelId:w.modelId,action,...extra}),
+   signal:AbortSignal.timeout(90000)
+  });
+  if(optimizerWorkflowPlan!==w)return;
+  if(action!=='text')w.sourceEvidence=response.sourceEvidence;
+  const refresh=await json('/api/shopee/optimizer/workflow?'+new URLSearchParams({
+   sku:w.sku,item_id:w.itemId,model_id:w.modelId}),{signal:AbortSignal.timeout(60000)});
+  if(optimizerWorkflowPlan!==w)return;
+  Object.assign(w,{sourceEvidence:refresh.sourceEvidence,sourceFacts:refresh.sourceFacts,
+    attributeSuggestions:refresh.attributeSuggestions,attributes:refresh.attributes});
+  optimizerSourceRender(w);
+  if(optimizerWorkflowStage==='technical')optimizerTechnicalRender(w);
+  optimizerSourceNotice('Informações salvas. Sugestões atualizadas; confira e aprove cada atributo antes da publicação.','success');
+ }catch(error){optimizerSourceNotice('Falha ao salvar evidência: '+error.message,'error');}
+ finally{btn.disabled=false;}
+}
+$('#optimizerSourceSave')?.addEventListener?.('click',()=>void optimizerSourceAction('text',{
+ sourceText:$('#optimizerSourceText').value
+}));
+$('#optimizerSourceImage')?.addEventListener?.('change',async()=>{
+ const input=$('#optimizerSourceImage'),files=[...(input.files||[])].slice(0,4);
+ for(const file of files){
+  if(!['image/jpeg','image/png'].includes(file.type)||file.size>4*1024*1024){
+   optimizerSourceNotice('Aceitos apenas JPG ou PNG com até 4 MB cada.','warning');continue;
+  }
+  try{
+   const buffer=new Uint8Array(await file.arrayBuffer());
+   let binary='';for(let i=0;i<buffer.length;i+=32768)binary+=String.fromCharCode(...buffer.subarray(i,i+32768));
+   await optimizerSourceAction('image',{imageBase64:btoa(binary),mime:file.type,filename:file.name});
+  }catch(e){optimizerSourceNotice('Falha ao ler o print: '+e.message,'error');}
+ }
+ input.value='';
+});
 function optimizerWorkflowRender(data){
+ optimizerSourceRender(data);
  optimizerWorkflowPlan=data;
  const cards=$('#optimizerWorkflowCards');cards.replaceChildren();
  if(data.anatel?.requiresAction){
@@ -4466,6 +4543,13 @@ function optimizerTechnicalRender(data){
   wrap.append(field);
   if(attr.conditional){field.append(optimizerMake('p','','Depende da opção escolhida em outro campo. Selecione o campo relacionado e atualize as opções dependentes.'));continue;}
   if(![1,2,3,4,5].includes(type)&&!attr.options?.length){field.append(optimizerMake('p','','Campo existente sem esquema editável retornado pela Shopee.'));continue;}
+  const suggested=(data.sourceFacts?.suggestions||[]).find(x=>Number(x.attributeId)===attr.id);
+  const conflict=(data.sourceFacts?.conflicts||[]).find(x=>Number(x.attributeId)===attr.id);
+  if(conflict)field.append(optimizerMake('p','optimizer-source-conflict',
+   'Divergência com fornecedor: '+conflict.current+' → '+conflict.recommended+' (Top Rio apenas quando corresponder a esta SKU).'));
+  if(!suggested&&['marca','estampa','numero de registro inmetro'].some(n=>String(name).toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').includes(n))&&
+     !attr.values?.length)field.append(optimizerMake('small','',
+       'Sem comprovação automática: cole a ficha do fabricante acima ou selecione uma opção oficial.'));
   const existing=(data.attributeChanges||[]).find(x=>Number(x.attributeId)===attr.id)||
     (data.attributeSuggestions||[]).find(x=>Number(x.attributeId)===attr.id);
   const enableLabel=optimizerMake('label','optimizer-attribute-toggle'),enabled=optimizerMake('input');
@@ -4549,6 +4633,18 @@ function optimizerTechnicalRender(data){
    rows.append(row);
   }
   for(const value of existing?(existing.values||[existing]):[{}])addRow(value);
+  if(suggested){
+   const apply=optimizerMake('button','secondary','Usar sugestão confirmada: '+suggested.values[0].valueName);
+   apply.type='button';
+   apply.onclick=()=>{
+    enabled.checked=true;controls.hidden=false;rows.replaceChildren();
+    for(const v of suggested.values)addRow(v);
+    evidence.value=suggested.evidence;
+    optimizerExecReset();
+    optimizerWorkflowNotice('Sugestão aplicada em '+name+'. Confira e registre a revisão técnica antes de executar.','info');
+   };
+   field.append(apply);
+  }
   if(multi){const add=optimizerMake('button','secondary','Adicionar valor');add.type='button';
    add.onclick=()=>{if(rows.children.length<(Number(attr.maxValues)>0?Number(attr.maxValues):20))addRow();};controls.append(add);}
   const evidence=optimizerMake('input');evidence.type='text';evidence.maxLength=500;evidence.placeholder='Fonte: ficha WeDrop, fabricante ou nota';
