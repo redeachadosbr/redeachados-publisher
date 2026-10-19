@@ -38,7 +38,7 @@ export function technicalMatrixSource({sku,record,attributes=[],reviewSource=nul
  if(!Number.isSafeInteger(categoryId)||categoryId<=0)
   throw Error('Motor Matriz: categoria oficial Shopee não confirmada.');
  if(!Array.isArray(attributes))throw Error('Motor Matriz: atributos inválidos para revisão.');
- const schemaIds=new Set((record?.attributeAudit?.attributes||[]).map(x=>Number(x.id)));
+ const schemaIds=new Set((record?.attributeAudit?.attributes||[]).filter(x=>!x.legacy).map(x=>Number(x.id)));
  const ids=new Set();
  for(const attr of attributes){
   const id=Number(attr?.attributeId);
