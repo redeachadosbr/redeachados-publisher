@@ -23,7 +23,7 @@ import {saveWeDropProducts,readWeDropProduct} from './wedropCosts.js';
 import {supplierWorkflowFacts} from './shopeeSupplierFacts.js';
 import {supplierAttributeSuggestions} from './shopeeSupplierEvidenceFacts.js';
 import {readShopeeSourceEvidence,saveShopeeSourceText,importShopeeEvidenceImage,removeShopeeEvidenceImage} from './shopeeSourceEvidence.js';
-import {fiscalMatrixSource,technicalMatrixSource} from './shopeeMatrixRules.js';
+import {fiscalMatrixSource,technicalMatrixSource,assertShopeeSupplierBrand} from './shopeeMatrixRules.js';
 import {readWeDropSyncState,getStoredWeDropCostCount} from './wedropCosts.js';
 import {getSkuReview,searchSupplierSku,confirmSkuLink,undoSkuLink} from './wedropSkuReview.js';
 import {auditShopeeItem,validateSkuLookup} from './productOptimizer.js';
@@ -775,6 +775,8 @@ app.post('/api/shopee/optimizer/workflow/review',mustLogin,requireWeDropAdmin,as
       const live=await shopeeLiveEditableItem(cfg,auth,itemId);
       const attributes=change.attributes||[];
       await hydrateCategoryChoices(record,attributes,cfg,auth,live);
+      const supplier=await readWeDropProduct(auth.shopId,{sku,itemId,modelId});
+      assertShopeeSupplierBrand({record,attributes,supplier});
       change.matrixTechnical=technicalMatrixSource({sku,record,attributes});
       const verifiedAttributes=attributeAuditForChanges(attributes,record,live);
       if(Number(verifiedAttributes?.missingMandatory)>0)
@@ -822,6 +824,8 @@ app.post('/api/shopee/optimizer/execution/prepare',mustLogin,requireWeDropAdmin,
       fiscalMatrixSource({sku,supplier,tax:reviewState.tax,reviewSource:reviewState.matrixFiscal});
     }
     if(reviewState.stages?.technical?.reviewed){
+      const supplier=await readWeDropProduct(auth.shopId,{sku,itemId,modelId});
+      assertShopeeSupplierBrand({record,attributes:reviewState.attributes||[],supplier});
       technicalMatrixSource({sku,record,attributes:reviewState.attributes||[],reviewSource:reviewState.matrixTechnical});
       await hydrateCategoryChoices(record,reviewState.attributes||[],cfg,auth,live);
     }
@@ -876,6 +880,8 @@ app.post('/api/shopee/optimizer/execution/execute',mustLogin,requireWeDropAdmin,
   }
   const live=await shopeeLiveEditableItem(cfg,auth,itemId);
   if(reviewState.stages?.technical?.reviewed){
+    const supplier=await readWeDropProduct(auth.shopId,{sku,itemId,modelId});
+    assertShopeeSupplierBrand({record,attributes:reviewState.attributes||[],supplier});
     technicalMatrixSource({sku,record,attributes:reviewState.attributes||[],reviewSource:reviewState.matrixTechnical});
     await hydrateCategoryChoices(record,reviewState.attributes||[],cfg,auth,live);
   }
