@@ -93,7 +93,7 @@ export async function generateOpenAiImage({record,slot,masterPrompt='',note='',r
  const status=imageGenerationStatus();
  const token=String(process.env.OPENAI_API_KEY||'').trim();
  if(!token)throw Error('OPENAI_API_KEY não configurada no serviço redeachados-shopee do Render. Configure a chave na área segura Environment.');
- const sources=[...new Set(referenceUrls.filter(Boolean))].slice(0,2);
+ const sources=[...new Set(referenceUrls.filter(Boolean))].slice(0,1);
  if(!sources.length)throw Error('Nenhuma fotografia original encontrada na Shopee. Importação manual necessária.');
  const originals=[];
  for(const u of sources)originals.push(await fetchShopeeReference(u));
