@@ -850,8 +850,12 @@ app.post('/api/shopee/optimizer/execution/prepare',mustLogin,requireWeDropAdmin,
     // approved changes are independent. Leave CEST blank, OMIT tax_info entirely,
     // and let the next explicit execution try only non-fiscal changes.
     // A refusal from Shopee itself is still decisive, never silently bypassed.
-    const deferFiscal=previous?.sku===sku&&
-      needsCestRevalidation(previous.last_error,previous.plan,plan);
+    const taxDraftNcm=String(reviewState.tax?.ncm||live.tax_info?.ncm||'').trim();
+    const priorFiscalDeferred=previous?.sku===sku&&previous?.plan?.fiscalDeferred===true&&
+      !String(reviewState.tax?.cest||live.tax_info?.cest||'').trim()&&
+      taxDraftNcm===String(previous.plan.deferredTaxDraft?.ncm||previous.plan.original?.tax_info?.ncm||'').trim();
+    const deferFiscal=Boolean(priorFiscalDeferred||
+      (previous?.sku===sku&&needsCestRevalidation(previous.last_error,previous.plan,plan)));
     if(deferFiscal)plan=compileShopeeExecutionPlan({...inputs,deferUnconfirmedFiscal:true});
     plan.reusedMedia=recyclableShopeeMedia(previous,plan);
     const stored=await saveShopeePreparedExecution(auth.shopId,itemId,modelId,sku,plan);
