@@ -662,7 +662,8 @@ app.get('/api/shopee/optimizer/workflow',mustLogin,requireWeDropAdmin,async(req,
       draftTitle:review.draftTitle||safeTitle(record.title),
       draftDescription:review.draftDescription||descriptionDraft(record),
       imageCount:record.imageCount,
-      videoStatus:record.videoStatus,categoryId:record.categoryId});
+      videoStatus:record.videoStatus,categoryId:record.categoryId,
+      imageUrls:(record.imageUrls||[]).slice(0,9)});
   }catch(e){res.status(400).json({error:String(e.message||e).slice(0,350)});}
 });
 app.post('/api/shopee/optimizer/workflow/attributes/preview',mustLogin,requireWeDropAdmin,async(req,res)=>{
