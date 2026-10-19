@@ -26,6 +26,9 @@ test('troca de uma imagem, vídeo, shop ou SKU invalida reaproveitamento indevid
  assert.equal(recyclableShopeeMedia(old,{...newPlan,sku:'OUTRA'}),null);
  assert.equal(recyclableShopeeMedia(old,{...newPlan,shopId:8}),null);
  assert.equal(recyclableShopeeMedia({...old,state:'uncertain'},newPlan),null);
+ const stored={...old,state:'blocked',result:null,plan:{...old.plan,reusedMedia:recyclableShopeeMedia(old,newPlan)}};
+ assert.equal(recyclableShopeeMedia(stored,newPlan).imageIds.length,9);
+ assert.equal(recyclableShopeeMedia(stored,newPlan).video.id,'sg-video-12345');
 });
 const supplier={supplier_sku:'TRC1525',source_file:'catalogo.csv',product_data:{
  brand:'Top Rio',catalogMeasurements:{heightCm:'13',widthCm:'33',lengthCm:'36',weightKg:'2600'}}};
