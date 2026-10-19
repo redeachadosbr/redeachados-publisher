@@ -871,7 +871,7 @@ app.post('/api/shopee/optimizer/execution/reconcile',mustLogin,requireWeDropAdmi
     updated=await reconcileShopeeJob(job,{state:'failed',result:{...job.result,phase:'retry_allowed'},
       lastError:'Leitura confirmou os valores anteriores. Uma nova prévia e aprovação são necessárias.'});
   }
-  res.json({ok:true,job:updated,verified,message:verified?'Alterações confirmadas na Shopee.':
+  res.json({ok:true,job:updated,progress:shopeeExecutionProgress(updated),verified,message:verified?'Alterações confirmadas na Shopee.':
     'Resultado ainda não confirmado. Nenhuma alteração foi reenviada.'});
  }catch(e){res.status(409).json({ok:false,error:String(e.message||e).slice(0,280)});}
 });
