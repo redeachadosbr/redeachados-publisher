@@ -3615,3 +3615,14 @@ body.view-wedrop .page-intro{display:none!important}
 #optimizerImagesPanel #optimizerChatgptImportStatus{width:100%}
 @media(max-width:900px){#optimizerImagesPanel .optimizer-chatgpt-prompt-list{grid-template-columns:repeat(2,minmax(0,1fr))}}
 @media(max-width:600px){#optimizerImagesPanel .optimizer-image-mode-selector{grid-template-columns:1fr}#optimizerImagesPanel .optimizer-chatgpt-prompt-list{grid-template-columns:1fr}#optimizerImagesPanel .optimizer-chatgpt-actions>*{width:100%}#optimizerImagesPanel .optimizer-chatgpt-panel{padding:12px}#optimizerImagesPanel .optimizer-chatgpt-import>*{width:100%}}
+
+/* Ponte Chrome ChatGPT: execução por SKU, galeria e revisão automática */
+#optimizerImagesPanel .optimizer-chatgpt-bridge-actions{display:flex;gap:9px;align-items:center;flex-wrap:wrap}
+#optimizerImagesPanel #optimizerChatgptAuto{background:linear-gradient(110deg,#155ab2,#10418b);color:#fff;border:0;border-radius:10px;min-height:48px;font-size:13px;font-weight:800;padding:11px 16px;box-shadow:0 3px 10px #10418b20}
+#optimizerImagesPanel #optimizerChatgptAuto:disabled{opacity:.55;cursor:wait}
+#optimizerImagesPanel #optimizerChatgptAbort{min-height:44px;font-size:12px}
+#optimizerImagesPanel #optimizerChatgptBridgeStatus{margin:0;color:#335b80;font-size:12px;line-height:1.5;border:1px solid #d7e6f4;border-radius:9px;padding:9px 12px;background:#f5f9fe}
+#optimizerImagesPanel .optimizer-chatgpt-assist-fallback{border:1px solid #d8e5f0;border-radius:10px;padding:9px 12px;background:#fff}
+#optimizerImagesPanel .optimizer-chatgpt-assist-fallback>summary{font-size:12px;color:#3b658b;font-weight:720;cursor:pointer}
+#optimizerImagesPanel .optimizer-chatgpt-assist-fallback[open] .optimizer-chatgpt-actions{margin:9px 0}
+@media(max-width:700px){#optimizerImagesPanel .optimizer-chatgpt-bridge-actions>*{width:100%}}
