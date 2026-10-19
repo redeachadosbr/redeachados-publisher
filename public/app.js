@@ -2645,11 +2645,12 @@ $('#optimizerWorkflowReview')?.addEventListener?.('click',async()=>{
 });
 // Pré-execução parcial Shopee. Only explicit interaction authorizes update_item.
 let optimizerExecPlan=null,optimizerExecContext=null,optimizerExecBusy=false,optimizerExecSerial=0;
-let optimizerExecPoll=null,optimizerExecJob=null,optimizerExecPolling=false;
+let optimizerExecPoll=null,optimizerExecJob=null,optimizerExecPolling=false,optimizerExecStartError='';
 function optimizerExecNotice(message,state='info'){
  const e=$('#optimizerExecutionStatus');e.textContent=message;e.dataset.state=state;
 }
 function optimizerExecReset(){
+ optimizerExecStartError='';
  if(optimizerExecPoll)clearTimeout(optimizerExecPoll);optimizerExecPoll=null;optimizerExecJob=null;
  $('#optimizerExecutionReconcile').hidden=true;$('#optimizerExecutionRetry').hidden=true;
  ++optimizerExecSerial;optimizerExecPlan=null;optimizerExecContext=null;optimizerExecBusy=false;
@@ -2733,6 +2734,7 @@ $('#optimizerConnectionCheck')?.addEventListener?.('click',()=>void optimizerCon
 async function optimizerExecutionPrepare(){
  const w=optimizerWorkflowPlan;
  if(!w||optimizerExecBusy)return;
+ optimizerExecStartError='';
  const serial=++optimizerExecSerial;
  optimizerExecContext={sku:w.sku,itemId:w.itemId,modelId:w.modelId};
  optimizerExecPlan=null;
@@ -2770,7 +2772,7 @@ $('#optimizerExecutionRun')?.addEventListener?.('click',async()=>{
  if(!$('#optimizerExecutionAccept').checked||
    $('#optimizerExecutionInput').value.trim()!=='EXECUTAR '+p.sku)return;
  const btn=$('#optimizerExecutionRun');
- optimizerExecBusy=true;btn.disabled=true;$('#optimizerExecutionPrepare').disabled=true;
+ optimizerExecStartError='';optimizerExecBusy=true;btn.disabled=true;$('#optimizerExecutionPrepare').disabled=true;
  optimizerExecNotice('Iniciando as alterações aprovadas. O andamento ficará salvo para esta SKU...');
  try{
    const out=await json('/api/shopee/optimizer/execution/execute',{
@@ -2791,7 +2793,8 @@ $('#optimizerExecutionRun')?.addEventListener?.('click',async()=>{
  }catch(e){
    if(optimizerWorkflowPlan?.sku!==ctx.sku||optimizerWorkflowPlan?.itemId!==ctx.itemId||optimizerWorkflowPlan?.modelId!==ctx.modelId)return;
    optimizerExecPlan=null;$('#optimizerExecutionConfirmation').hidden=true;
-   optimizerExecNotice('Execução interrompida ou resposta incerta: '+e.message+
+   optimizerExecStartError=String(e.message||e);
+   optimizerExecNotice('Execução interrompida ou resposta incerta: '+optimizerExecStartError+
      '. Consultando o estado salvo para evitar repetição.','error');
    void optimizerExecutionRefresh(true);
  }finally{optimizerExecBusy=false;$('#optimizerExecutionPrepare').disabled=false;}
@@ -2803,6 +2806,14 @@ function optimizerExecutionJobView(job){
  $('#optimizerExecutionReconcile').hidden=job?.state!=='uncertain';
  $('#optimizerExecutionRetry').hidden=!['failed','uncertain'].includes(job?.state);
  if(!job)return;
+ // A rejected start leaves the job prepared. Do not erase its actionable
+ // error when the follow-up status request returns the unchanged preview.
+ if(job.state==='prepared'&&optimizerExecStartError){
+  optimizerExecNotice('Execução não iniciada: '+optimizerExecStartError+
+    '. O plano continua preparado; nenhuma alteração foi enviada por esta tentativa. Corrija o motivo e revalide a prévia.','error');
+  return;
+ }
+ if(job.state!=='prepared')optimizerExecStartError='';
  const labels={images_upload:'Enviando imagens',queued:'Na fila',video_upload:'Enviando vídeo',video_processing:'Shopee processando vídeo',
   updating:'Aplicando alterações',verifying:'Conferindo o anúncio na Shopee',verified:'Alterações confirmadas',retry_allowed:'Pronto para uma nova prévia'};
  let message=labels[job.result?.phase]||({failed:'Execução interrompida',uncertain:'Aguardando confirmação',prepared:'Prévia preparada',blocked:'Revisão pendente'}[job.state])||job.state;
