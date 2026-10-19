@@ -33,6 +33,16 @@ export function supplierAttributeSuggestions({attributes=[],proposed=[],supplier
   }else if(n.includes('estampa')||n.includes('padrao')){
    if(/\bestampad[oa]\b/i.test(plain(notes)))
     suggest(attr,'Estampado','Texto colado da ficha do fornecedor · declaração de estampa.',{onlyIfMissing:true});
+  }else if(n.includes('idade recomendada')){
+   const value=plain(notes).match(/idade\s+recomendada\s*[:\-]\s*(\d{1,2})\s*(?:anos|ano)/)?.[1];
+   if(value)suggest(attr,value+' anos','Idade recomendada informada literalmente no texto do fabricante/WeDrop.',{onlyIfMissing:true});
+  }else if(n.includes('quantidade')&&n.includes('embalagem')){
+   const value=plain(notes).match(/quantidade\s+(?:incluida|por\s+embalagem)\s*[:\-]\s*(\d{1,3})\b/)?.[1];
+   if(value)suggest(attr,value,'Texto da ficha WeDrop: quantidade explicitamente indicada.',{onlyIfMissing:true});
+  }else if((n.includes('dimensoes')||n.includes('dimensao'))&&n.includes('produto')){
+   const value=plain(notes).match(/dimensoes?\s+(?:descritas\s+para\s+a\s+piscina|da\s+piscina\s+montada|do\s+produto)\s*[:\-]\s*(\d+(?:[.,]\d+)?)\s*cm\s*(?:de\s+)?altura\s*[×x]\s*(\d+(?:[.,]\d+)?)\s*cm\s*(?:de\s+)?largura\s*[×x]\s*(\d+(?:[.,]\d+)?)\s*cm\s*(?:de\s+)?comprimento/)?.slice(1);
+   if(value)suggest(attr,value[0]+' x '+value[1]+' x '+value[2]+' cm',
+    'Dimensões descritas pelo fornecedor; confirmar que são da piscina montada, nunca da caixa.',{onlyIfMissing:true});
   }else if((n.includes('inmetro')||n.includes('numero de registro inmetro'))&&
     /(registro\s*(?:do\s*)?inmetro|inmetro|nbr)\s*[:\-]\s*(?:n\/?a|nao se aplica|isento)/i.test(plain(notes))){
    const opt=list(attr.options).find(x=>/n\/?a.*nbr.*nao aplicavel/i.test(plain(x.name)));
