@@ -39,6 +39,7 @@ import {readPreparedImages,importPreparedImage,deletePreparedImage,downloadPrepa
 import {generateOpenAiImage,imageGenerationStatus} from './shopeeOpenAiImages.js';
 import {openAiKeyStatus,openAiApiKey,saveOpenAiApiKey,deleteOpenAiApiKey} from './shopeeOpenAiCredentials.js';
 import {compileAttributes,compileTax,attributeAuditForChanges} from './shopeeStructuredFields.js';
+import {inspectAnatelCompliance} from './shopeeAnatel.js';
 import {assertSearchableAttribute,searchAttributeRequest,readSearchedAttributeOptions,hydrateSearchOptions} from './shopeeCategorySearch.js';
 import {MAX_VIDEO_BYTES,getShopeeManualVideo,importShopeeManualVideo,
  signedShopeeManualVideoPreview,manualVideoPublicInfo,downloadShopeeManualVideo,rememberPublishedVideo} from './shopeeManualVideo.js';
@@ -663,7 +664,7 @@ app.get('/api/shopee/optimizer/workflow',mustLogin,requireWeDropAdmin,async(req,
       await getShopeeManualVideo(auth.shopId,itemId,modelId,sku));
     res.json({ok:true,readOnlyMarketplace:true,sku,itemId,modelId,manualVideo,...supplierFacts,
       contentVariants:review.contentVariants||null,contentResearch:review.contentResearch||null,
-      attributes:technicalPreview.attributes,technicalWarning,attributeChanges:review.attributes||[],taxDraft:review.tax||{},taxCurrent:current.tax_info||{},
+      attributes:technicalPreview.attributes,anatel:inspectAnatelCompliance(technicalPreview),technicalWarning,attributeChanges:review.attributes||[],taxDraft:review.tax||{},taxCurrent:current.tax_info||{},
       recordedAt:stored?.updated_at||null,stages,
       variationConfig:review.variationConfig||officialVariationConfig,
       hasShopeeModels:Boolean(record.hasModel),shopeeModels:record.models||[],
@@ -714,7 +715,7 @@ app.post('/api/shopee/optimizer/workflow/attributes/preview',mustLogin,requireWe
     const live=await shopeeLiveEditableItem(cfg,auth,itemId);
     await hydrateCategoryChoices(record,req.body.attributes||[],cfg,auth,live);
     const audit=attributeAuditForChanges(req.body.attributes,record,live);
-    res.json({ok:true,categoryId:record.categoryId,attributes:audit.attributes});
+    res.json({ok:true,categoryId:record.categoryId,attributes:audit.attributes,anatel:inspectAnatelCompliance(audit)});
   }catch(e){res.status(400).json({error:String(e.message||e).slice(0,300)});}
 });
 app.post('/api/shopee/optimizer/workflow/review',mustLogin,requireWeDropAdmin,async(req,res)=>{
