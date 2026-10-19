@@ -3537,3 +3537,25 @@ body.view-wedrop .page-intro{display:none!important}
  #tab-wedrop #wedropSyncModelsBtn{flex:1}
  #tab-wedrop .sku-review-disclaimer{font-size:9px}
 }
+
+
+/* Imagens comerciais · geração OpenAI por SKU, layout compacto e responsivo */
+#optimizerImagesPanel .optimizer-ai-generator{display:grid;gap:10px;padding:15px 17px;margin:0 0 15px;border:1px solid #c8def4;border-radius:14px;background:linear-gradient(135deg,#f3f9ff,#fff)}
+#optimizerImagesPanel .optimizer-ai-generator-heading{display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px}
+#optimizerImagesPanel .optimizer-ai-generator-heading strong{font-size:15px;color:#113761}
+#optimizerImagesPanel .optimizer-ai-generator-heading small{color:#497196;font-size:11px}
+#optimizerImagesPanel .optimizer-ai-generator p{margin:0;color:#56738d;font-size:12px}
+#optimizerImagesPanel .optimizer-ai-generator-actions{display:flex;flex-wrap:wrap;align-items:center;gap:9px}
+#optimizerImagesPanel #optimizerImagesGenerateAll{background:linear-gradient(120deg,#195abd,#083d9c);border:0;border-radius:9px;color:white;font-weight:780;padding:11px 16px;min-height:42px}
+#optimizerImagesPanel #optimizerImagesGenerateAll:disabled{opacity:.48;cursor:not-allowed}
+#optimizerImagesPanel #optimizerImagesStop{min-height:42px}
+#optimizerImagesPanel #optimizerImagesProgress{appearance:auto;width:100%;height:10px;accent-color:#0c65c5}
+#optimizerImagesPanel .optimizer-ai-generator>small{color:#6a7f99;font-size:11px}
+#optimizerImagesPanel .optimizer-image-manual-fallback{border:1px solid #d6e0ed;background:#fff;border-radius:10px;padding:10px 13px;margin:0 0 12px}
+#optimizerImagesPanel .optimizer-image-manual-fallback summary{font-size:12px;cursor:pointer;font-weight:700;color:#316398;margin:0 0 2px}
+#optimizerImagesPanel .optimizer-image-manual-fallback[open] summary{margin-bottom:12px}
+@media(max-width:700px){
+ #optimizerImagesPanel .optimizer-ai-generator{padding:12px}
+ #optimizerImagesPanel .optimizer-ai-generator-actions>*{width:100%}
+ #optimizerImagesPanel .optimizer-ai-generator-heading{align-items:flex-start}
+}
