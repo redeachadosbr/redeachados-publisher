@@ -1,0 +1,25 @@
+name: Shopee OpenAI Images - validation
+on:
+  push:
+    branches:
+      - feat/shopee-openai-images-20261018
+  pull_request:
+    branches:
+      - shopee-service
+permissions:
+  contents: read
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - name: Install dependencies
+        run: npm install --no-audit --no-fund
+      - name: Check syntax
+        run: npm run check
+      - name: Run all tests
+        run: npm test
