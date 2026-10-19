@@ -52,6 +52,7 @@ function setTab(name,{updateHistory=true,scroll=true}={}){
   document.body?.classList?.toggle?.('view-discounts',name==='discounts');
   document.body?.classList?.toggle?.('view-orders',name==='orders');
   document.body?.classList?.toggle?.('view-ads',name==='ads');
+  document.body?.classList?.toggle?.('view-wedrop',name==='wedrop');
   document.body?.classList?.toggle?.('view-finance',name==='finance');
   document.body?.classList?.toggle?.('view-alerts',name==='alerts');
   const reportTabs=new Set(['ads','wedrop']);
@@ -1516,11 +1517,12 @@ async function loadWeDropSourceState(){
         'Catálogo de custos WeDrop';
       const savedAt=status.savedAt
         ?new Date(status.savedAt).toLocaleString('pt-BR'):'data não informada';
-      $('#wedropStoredSummary').textContent=
-        wdNum(status.storedCosts)+' SKUs com custo salvos permanentemente no Supabase. '+
-        'Última sincronização: '+savedAt+'. '+
-        (state?'Última conferência: '+wdNum(state.changed_skus)+' custos novos ou alterados. ':'')+
-        'Os anúncios Shopee utilizam estes custos automaticamente no cruzamento.';
+      $('#wedropStoredSummary').textContent='Os custos do fornecedor estão registrados no banco e podem ser usados nas conferências de anúncios.';
+      $('#wedropStoredCountDetail').textContent=wdNum(status.storedCosts)+' SKUs com custo salvos';
+      $('#wedropStoredLastSync').textContent='Última sincronização: '+savedAt;
+      $('#wedropStoredLastCheck').textContent=state?
+        'Última conferência: '+wdNum(state.changed_skus)+' custo(s) novos ou alterados':
+        'Última conferência: ainda não registrada';
     }else{
       $('#wedropUploadDetails').open=true;
       $('#wedropNoCatalogMessage').textContent=
@@ -1541,6 +1543,7 @@ async function loadWeDropSourceState(){
     $('#wedropSourceStatus').textContent='Falha temporária na verificação da origem.';
   }
 }
+$('#wedropMoveRefresh').onclick=()=>{$('#wedropUseStoredBtn').click();};
 $('#wedropUseStoredBtn').onclick=async()=>{
   const button=$('#wedropUseStoredBtn');
   if(button.disabled)return;
@@ -1874,7 +1877,14 @@ function skuReviewRender(data){
   $('#wedropReviewCount').textContent=wdNum(total);
   $('#wedropReviewSummary').textContent=total
     ?'anúncios ou variações sem custo correspondente — revise antes de vincular.'
-    :'Nenhuma pendência de custo encontrada.';
+    :'Nenhuma pendência de custo entre os SKUs já identificados.';
+  const overall=$('#wedropReviewOverall');
+  const extra=Number(data.summary?.waitingModels||0)+Number(data.summary?.missingSku||0);
+  const clear=total===0&&extra===0&&Number(data.summary?.compared||0)>0;
+  overall.dataset.state=clear?'success':total||extra?'warning':'loading';
+  overall.textContent=clear?'Tudo vinculado':total||extra?
+    wdNum(total)+' pendência(s) de custo · '+wdNum(extra)+' modelo(s)/SKU(s) não identificados':
+    'Aguardando catálogo sincronizado';
   const list=$('#wedropReviewCards');list.replaceChildren();
   for(const x of data.pending||[]){
     const card=reviewNode('article','sku-review-card');
@@ -1930,8 +1940,10 @@ function skuReviewRender(data){
     links.appendChild(wrap);
   }
   $('#wedropReviewedLinks').hidden=!(data.confirmedLinks||[]).length;
-  $('#wedropReviewMessage').textContent=data.warning||
-    'Confirme o produto antes de aplicar qualquer vínculo.';
+  $('#wedropReviewMessage').textContent=total?
+    (data.warning||'Confira o SKU do fornecedor antes de vincular.'):
+    'Nenhuma pendência de custo encontrada entre os SKUs identificados. '+
+    (extra?'Ainda há variações ou SKUs a sincronizar.':'Novos produtos devem ser conferidos ao sincronizar.');
 }
 async function loadWeDropSkuReview(){
   if(skuReviewBusy)return;
@@ -1945,6 +1957,8 @@ async function loadWeDropSkuReview(){
     });
     skuReviewRender(data);
   }catch(error){
+    $('#wedropReviewOverall').textContent='Conferência indisponível';
+    $('#wedropReviewOverall').dataset.state='warning';
     $('#wedropReviewMessage').textContent=
       'Não foi possível consultar as pendências: '+error.message+
       '. Os vínculos existentes não foram alterados. Clique em Revisar pendências para tentar novamente.';
@@ -1996,6 +2010,14 @@ async function refreshWeDropCoverage({append=false}={}){
     $('#wedropCompared').textContent=wdNum(t.comparedSkus);
     $('#wedropPendingModels').textContent=wdNum(t.waitingModels);
     $('#wedropImported').textContent=wdNum(t.importedCosts);
+    const expectedExtra=Number(t.waitingModels||0)+Number(t.withoutSku||0);
+    const modelsNotice=$('#wedropVariantsNotice');
+    modelsNotice.textContent=Number(t.waitingModels)>0?
+      wdNum(t.waitingModels)+' anúncio(s) possuem variações ainda não sincronizadas. Clique em Sincronizar variações pendentes.':
+      'Nenhuma variação pendente encontrada na última conferência.';
+    modelsNotice.dataset.state=t.waitingModels?'warning':'success';
+    const summaryState=$('#wedropCoverageStatus');
+    summaryState.dataset.coverage=t.missingCost===0&&expectedExtra===0&&Number(t.comparedSkus)>0?'complete':'pending';
     $('#wedropNoCosts').hidden=costsAvailable;
     $('#wedropFinancialResults').hidden=!costsAvailable;
     document.querySelectorAll('.wedrop-financial-metric')

@@ -6,7 +6,7 @@
 <meta name="theme-color" content="#0A1C3A">
 <link rel="icon" type="image/svg+xml" href="/brand-logo.svg">
 <title>Rede Achados BR · Gestão Shopee</title>
-<link rel="stylesheet" href="/style.css?v=1.19.9">
+<link rel="stylesheet" href="/style.css?v=1.20.0">
 </head>
 <body>
 <div class="shell app-layout">
@@ -32,7 +32,7 @@
         </details>
       </div>
     </nav>
-    <div class="sidebar-bottom"><div class="sidebar-support"><span class="sidebar-support-dot"></span><span><strong>Central Shopee</strong><small>Versão 1.19.9</small></span></div><small class="sidebar-copy">© Rede Achados BR</small></div>
+    <div class="sidebar-bottom"><div class="sidebar-support"><span class="sidebar-support-dot"></span><span><strong>Central Shopee</strong><small>Versão 1.20.0</small></span></div><small class="sidebar-copy">© Rede Achados BR</small></div>
   </aside>
   <button class="sidebar-scrim" id="sidebarScrim" type="button" aria-label="Fechar menu" hidden></button>
   <div class="workspace-main">
@@ -775,42 +775,45 @@
           <p class="hint">Diagnóstico de campanhas de produtos. Não modifica o orçamento, status ou lance.</p>
         </details>
       </section>
-              <section class="tabpane" id="tab-wedrop">
-        <div class="section-head">
-          <div><span class="eyebrow">FORNECEDOR · WE DROP</span><h2>Custos e vínculos da loja</h2><p class="hint">Catálogo salvo, custos importados e pendências em um só lugar.</p></div>
-          <div class="actions"><button type="button" id="wedropGotoPending" class="secondary">Revisar SKUs pendentes</button><button class="secondary" id="wedropRefreshBtn" type="button">Atualizar cruzamento</button></div>
-        </div>
-        <div class="metrics wedrop-metrics wedrop-stats-compact">
-          <article><span>SKUs Shopee</span><strong id="wedropCompared">—</strong></article>
-          <article><span>Variações pendentes</span><strong id="wedropPendingModels">—</strong></article>
-          <article><span>Custos importados</span><strong id="wedropImported">—</strong></article>
-          <article class="wedrop-financial-metric" hidden><span>Com custo vinculado</span><strong id="wedropMatched">—</strong></article>
-          <article class="wedrop-financial-metric" hidden><span>Pendências de custo</span><strong id="wedropMissingCost">—</strong></article>
-        </div>
-        <section class="card sku-review-panel" id="wedropSkuReview" aria-labelledby="skuReviewTitle">
+              <section class="tabpane" id="tab-wedrop" aria-label="Fornecedor WeDrop">
+ <div class="wd-v2-page">
+ <header class="wd-v2-page-head"><div><span class="wd-v2-eyebrow">GESTÃO</span><h2>Fornecedor WeDrop <span class="optimizer-tip wd-v2-help" tabindex="0" role="note" data-help="Central de correspondência de SKUs e custos importados. Alterações de preço e catálogo Shopee não são executadas por esta tela." aria-label="Ajuda: Central de correspondência de SKUs e custos importados. Alterações de preço e catálogo Shopee não são executadas por esta tela.">?</span></h2>
+ <p>Catálogo armazenado, custos de aquisição e correspondência por SKU.</p></div>
+ <div class="wd-v2-head-actions">
+ <button type="button" id="wedropGotoPending" class="wd-v2-action-green"><svg class="wd-v2-icon" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M9 6h12M9 12h12M9 18h12M3 6h2M3 12h2M3 18h2"/></svg> Revisar SKUs pendentes</button>
+ <button type="button" id="wedropRefreshBtn" class="secondary wd-v2-action-light"><svg class="wd-v2-icon" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M20 7v5h-5M4 17v-5h5"/><path d="M5.6 8A8 8 0 0 1 19 7l1 5M4 12l1 5a8 8 0 0 0 13.5-1"/></svg> Atualizar cruzamento</button>
+ </div></header>
+ <div class="metrics wedrop-metrics wedrop-stats-compact wd-v2-metrics"><article class="wd-v2-metric wd-v2-blue"><span class="wd-v2-metric-icon"><svg class="wd-v2-icon" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="m12 2 9 5-9 5-9-5 9-5ZM3 7v10l9 5 9-5V7M12 12v10"/></svg></span><span class="wd-v2-metric-title">SKUs Shopee <span class="optimizer-tip wd-v2-help" tabindex="0" role="note" data-help="Registros de SKU com código identificados no catálogo sincronizado da Shopee; sem SKU ou variações não carregadas não entram neste total." aria-label="Ajuda: Registros de SKU com código identificados no catálogo sincronizado da Shopee; sem SKU ou variações não carregadas não entram neste total.">?</span></span><strong id="wedropCompared">—</strong></article><article class="wd-v2-metric wd-v2-orange"><span class="wd-v2-metric-icon"><svg class="wd-v2-icon" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="m12 3 10 18H2L12 3Z"/><path d="M12 9v5M12 18h.01"/></svg></span><span class="wd-v2-metric-title">Variações pendentes <span class="optimizer-tip wd-v2-help" tabindex="0" role="note" data-help="Anúncios que possuem variações mas cujos modelos ainda não foram sincronizados. Não declarar tudo vinculado até conferir." aria-label="Ajuda: Anúncios que possuem variações mas cujos modelos ainda não foram sincronizados. Não declarar tudo vinculado até conferir.">?</span></span><strong id="wedropPendingModels">—</strong></article><article class="wd-v2-metric wd-v2-purple"><span class="wd-v2-metric-icon"><svg class="wd-v2-icon" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><ellipse cx="12" cy="5" rx="8" ry="3"/><path d="M4 5v14c0 1.7 3.6 3 8 3s8-1.3 8-3V5M4 12c0 1.7 3.6 3 8 3s8-1.3 8-3"/></svg></span><span class="wd-v2-metric-title">Custos importados <span class="optimizer-tip wd-v2-help" tabindex="0" role="note" data-help="Quantidade de SKUs de custo existentes no Supabase, extraídos do catálogo WeDrop; não é a quantidade de anúncios na Shopee." aria-label="Ajuda: Quantidade de SKUs de custo existentes no Supabase, extraídos do catálogo WeDrop; não é a quantidade de anúncios na Shopee.">?</span></span><strong id="wedropImported">—</strong></article><article class="wd-v2-metric wd-v2-green wedrop-financial-metric" hidden><span class="wd-v2-metric-icon"><svg class="wd-v2-icon" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M10 13a5 5 0 0 0 8 .5l2-2a5 5 0 0 0-7-7l-2 2M14 11a5 5 0 0 0-8-.5l-2 2a5 5 0 0 0 7 7l2-2"/></svg></span><span class="wd-v2-metric-title">Com custo vinculado <span class="optimizer-tip wd-v2-help" tabindex="0" role="note" data-help="Registros da Shopee com correspondência exata ou vínculo manual confirmado com um SKU WeDrop." aria-label="Ajuda: Registros da Shopee com correspondência exata ou vínculo manual confirmado com um SKU WeDrop.">?</span></span><strong id="wedropMatched">—</strong></article><article class="wd-v2-metric wd-v2-red wedrop-financial-metric" hidden><span class="wd-v2-metric-icon"><svg class="wd-v2-icon" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M5 3h10l4 4v14H5zM15 3v5h4M8 12h8M8 16h8"/></svg></span><span class="wd-v2-metric-title">Pendências de custo <span class="optimizer-tip wd-v2-help" tabindex="0" role="note" data-help="Registros identificados na Shopee sem custo fornecedor associado. Não inclui anúncios sem código ou variações não carregadas." aria-label="Ajuda: Registros identificados na Shopee sem custo fornecedor associado. Não inclui anúncios sem código ou variações não carregadas.">?</span></span><strong id="wedropMissingCost">—</strong></article></div>
+ <section class="card sku-review-panel wd-v2-section wd-v2-review" id="wedropSkuReview" aria-labelledby="skuReviewTitle">
           <div class="sku-review-head">
-            <div><span class="eyebrow">CENTRAL DE PENDÊNCIAS</span>
-              <h2 id="skuReviewTitle">Conferência inteligente de SKUs</h2>
-              <p class="hint">Identifique os produtos e escolha o SKU correto da WeDrop. O sistema não modifica o código do anúncio na Shopee.</p>
+            <div><span class="wd-v2-heading-icon"><svg class="wd-v2-icon" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="m12 2 9 4v6c0 5-3.4 8.7-9 10-5.6-1.4-9-5-9-10V6l9-4Z"/><path d="m8 12 3 3 5-6"/></svg></span><h2 id="skuReviewTitle">Conferência inteligente de SKUs <span class="optimizer-tip wd-v2-help" tabindex="0" role="note" data-help="Vínculos sugeridos por semelhança exigem revisão do produto e da variação; nunca vincular custo sem sua confirmação." aria-label="Ajuda: Vínculos sugeridos por semelhança exigem revisão do produto e da variação; nunca vincular custo sem sua confirmação.">?</span></h2>
+              <p class="hint">Verificação dos SKUs da Shopee e seus custos WeDrop. Vínculos manuais exigem sua confirmação.</p>
             </div>
-            <button type="button" id="wedropReviewRefreshBtn" class="secondary">Revisar pendências</button>
+            <button type="button" id="wedropReviewRefreshBtn" class="secondary wd-v2-action-green">Revisar pendências</button>
           </div>
-          <div class="sku-review-status-line"><strong id="wedropReviewCount">—</strong><span id="wedropReviewSummary">Verificando anúncios sem custo vinculado...</span></div>
-          <p id="wedropReviewMessage" class="hint" role="status" aria-live="polite">Aguardando conferência dos produtos.</p>
+          <div id="wedropReviewOverall" class="wd-v2-review-pill" data-state="loading">Verificando vínculos...</div><div class="sku-review-status-line"><strong id="wedropReviewCount">—</strong><span id="wedropReviewSummary">Verificando anúncios sem custo vinculado...</span></div>
+          <p id="wedropReviewMessage" class="hint wd-v2-review-message" role="status" aria-live="polite">Aguardando conferência dos produtos.</p>
           <div id="wedropReviewCards" class="sku-review-grid"></div>
           <details id="wedropReviewedLinks" class="sku-reviewed-links">
-            <summary>Vínculos de custo confirmados <span id="wedropReviewedCount">0</span></summary>
+            <summary>Vínculos de custo confirmados manualmente <span id="wedropReviewedCount">0</span></summary>
             <div id="wedropReviewedList" class="sku-reviewed-list"></div>
           </details>
           <p class="sku-review-disclaimer">Sugestões por semelhança de código não comprovam que o produto é igual. Confirme o modelo e a variação no fornecedor antes de vincular. Para mudar o SKU publicado, use o cadastro oficial da Shopee.</p>
         </section>
-        <div class="card wedrop-panel">
-          <div class="compact-panel-heading"><div><span class="eyebrow">CATÁLOGO CONECTADO</span><h2>Base de custos WeDrop</h2></div><span class="compact-panel-symbol" aria-hidden="true">↗</span></div>
+        
+ <div class="card wedrop-panel wd-v2-section wd-v2-catalog">
+          <div class="wd-v2-card-top"><div class="wd-v2-heading-with-icon"><span class="wd-v2-heading-icon"><svg class="wd-v2-icon" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><ellipse cx="12" cy="5" rx="8" ry="3"/><path d="M4 5v14c0 1.7 3.6 3 8 3s8-1.3 8-3V5M4 12c0 1.7 3.6 3 8 3s8-1.3 8-3"/></svg></span>
+<div><h2>Base de custos WeDrop <span class="optimizer-tip wd-v2-help" tabindex="0" role="note" data-help="Catálogo de custos registrado no Supabase. O CSV salvo continua disponível, sem precisar reimportar em cada visita." aria-label="Ajuda: Catálogo de custos registrado no Supabase. O CSV salvo continua disponível, sem precisar reimportar em cada visita.">?</span></h2>
+<p>Catálogo de produtos e custos importados da WeDrop.</p></div></div>
+<button id="wedropMoveRefresh" type="button" class="wd-v2-action-orange"><svg class="wd-v2-icon" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M20 7v5h-5M4 17v-5h5"/><path d="M5.6 8A8 8 0 0 1 19 7l1 5M4 12l1 5a8 8 0 0 0 13.5-1"/></svg> Atualizar vínculos com catálogo salvo</button></div>
           <div id="wedropStoredCatalog" class="wedrop-stored-catalog" hidden>
             <div class="wedrop-stored-header"><strong><span aria-hidden="true">✓</span> Catálogo salvo no Supabase</strong><span id="wedropStoredBadge">Vinculado</span></div>
             <p id="wedropStoredName" class="wedrop-stored-name">Carregando identificação do catálogo...</p>
-            <p id="wedropStoredSummary" class="hint">Consultando os custos salvos no banco...</p>
-            <div class="actions"><button id="wedropUseStoredBtn" type="button">Atualizar vínculos com catálogo salvo</button></div>
+            <p id="wedropStoredSummary" class="hint">Consultando os custos salvos no banco...</p><div class="wd-v2-source-meta">
+<span id="wedropStoredCountDetail">Custos: aguardando consulta</span>
+<span id="wedropStoredLastSync">Última sincronização: —</span>
+<span id="wedropStoredLastCheck">Última conferência: —</span></div>
+            <div class="actions wd-v2-original-refresh"><button id="wedropUseStoredBtn" type="button">Atualizar vínculos com catálogo salvo</button></div>
             <p class="hint">Os custos permanecem vinculados à loja mesmo após fechar o navegador. Não é necessário reenviar o arquivo para consultar custos, recalcular comparações ou sincronizar novos anúncios.</p>
           </div>
           <p id="wedropSourceLoadError" class="notice" hidden role="status" aria-live="polite"></p>
@@ -845,16 +848,18 @@
           <p id="wedropSourceStatus" class="hint">Verificando a origem da sincronização automática...</p>
           <button id="wedropCheckFeedBtn" type="button" class="secondary" hidden>Verificar atualização no feed da WeDrop agora</button>
         </div>
-        <div class="card wedrop-variants">
+        
+ <div class="card wedrop-variants wd-v2-section wd-v2-variants">
           <div class="section-head">
-            <div><h2>Sincronização de variações</h2>
+            <div><h2><span class="wd-v2-heading-icon"><svg class="wd-v2-icon" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="4" r="2"/><circle cx="5" cy="19" r="2"/><circle cx="19" cy="19" r="2"/><path d="M12 6v6M12 12l-7 5M12 12l7 5"/></svg></span> Sincronização de variações <span class="optimizer-tip wd-v2-help" tabindex="0" role="note" data-help="Consulta apenas modelos pendentes; não modifica anúncios nem preços na Shopee." aria-label="Ajuda: Consulta apenas modelos pendentes; não modifica anúncios nem preços na Shopee.">?</span></h2>
               <p class="hint">Consulta somente os modelos ainda pendentes; anúncios e preços não são modificados.</p></div>
             <div class="actions"><button id="wedropSyncModelsBtn" type="button">Sincronizar variações pendentes</button>
               <button class="secondary" id="wedropStopModelsBtn" type="button" hidden>Interromper</button></div>
           </div>
-          <p id="wedropModelsStatus" class="notice" role="status" aria-live="polite">Use Sincronizar variações pendentes para completar o catálogo.</p>
+          <p id="wedropVariantsNotice" class="wd-v2-variant-info">Use esta função apenas para completar variações ainda pendentes.</p><p id="wedropModelsStatus" class="notice" role="status" aria-live="polite">Use Sincronizar variações pendentes para completar o catálogo.</p>
         </div>
-        <p id="wedropCoverageStatus" class="notice" role="status" aria-live="polite">Atualize o catálogo para ver a cobertura dos SKUs.</p>
+        
+ <p id="wedropCoverageStatus" class="notice wd-v2-coverage-summary" role="status" aria-live="polite">Atualize o catálogo para ver a cobertura dos SKUs.</p>
         <div id="wedropNoCosts" class="card wedrop-no-costs" hidden>
           <h2>Catálogo Shopee sincronizado</h2>
           <p id="wedropNoCostsMessage">Nenhum custo WeDrop cadastrado. O painel financeiro será liberado quando você importar custos reais do fornecedor.</p>
@@ -862,6 +867,9 @@
         </div>
 
       </section>
+
+ </div>
+ </section>
               <section class="tabpane" id="tab-finance">
         <section class="card shopee-finance-panel finance-premium" id="shopeeFinancePanel">
           <div class="finance-toolbar finance-approved-header">
@@ -1013,6 +1021,6 @@
     </main>
   </div>
 </div>
-<script src="/app.js?v=1.19.9"></script>
+<script src="/app.js?v=1.20.0"></script>
 </body>
 </html>
