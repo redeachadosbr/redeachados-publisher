@@ -49,9 +49,15 @@ export async function claimShopeePreparedExecution(shopId,itemId,modelId,{planId
   '&state=eq.prepared&updated_at=eq.'+encodeURIComponent(updatedAt)+
   '&plan->>planId=eq.'+encodeURIComponent(planId)+
   '&select=state,plan,run_id,updated_at';
+ const saved=await readShopeeExecution(shopId,itemId,modelId);
+ const reused=saved?.plan?.planId===planId?saved.plan.reusedMedia:null;
  const result=await rows(query,{method:'PATCH',
   data:{state:'running',run_id:runId,result:{phase:'queued',startedAt:new Date().toISOString(),
-  events:[{key:'queued',label:'Execução autorizada e recebida para processamento.',kind:'info',at:new Date().toISOString()}]},
+  ...(reused?.imageIds?.length?{imageIds:reused.imageIds}:{}),
+  ...(reused?.video?.phase==='ready'?{video:reused.video}:{}),
+  events:[{key:'queued',label:'Execução autorizada e recebida para processamento.',kind:'info',at:new Date().toISOString()},
+   ...(reused?.imageIds?.length?[{key:'images-reused',label:reused.imageIds.length+' imagens já enviadas à mídia Shopee serão reaproveitadas.',kind:'success',at:new Date().toISOString()}]:[]),
+   ...(reused?.video?.phase==='ready'?[{key:'video-reused',label:'Vídeo processado será reaproveitado; publicação ainda não confirmada.',kind:'success',at:new Date().toISOString()}]:[])]},
   lease_until:new Date().toISOString(),updated_at:new Date().toISOString()},
   prefer:'return=representation'});
  if(result.length!==1||result[0]?.plan?.planId!==planId)throw Error('Plano já executado, alterado ou em andamento. Recarregue a prévia.');
