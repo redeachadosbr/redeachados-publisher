@@ -4337,7 +4337,7 @@ let optimizerImagesAutoBusy=false,optimizerImagesStopRequested=false;
 let optimizerImagesSavedSlots=new Set(),optimizerImagesApiConfigured=false;
 
 let optimizerImagesMode=null;
-let optimizerChatgptBrief=null;
+let optimizerChatgptBrief=null,optimizerChatgptBriefSku='';
 function optimizerImagesRenderMode(){
  const mode=optimizerImagesMode||'chatgpt';
  const chat=mode==='chatgpt';
@@ -4363,6 +4363,7 @@ async function optimizerChatgptRender(w){
   const brief=await optimizerChatgptMakeBrief(w);
   if(!optimizerImagesSameSku(w))return;
   optimizerChatgptBrief=brief;
+  optimizerChatgptBriefSku=[w.sku,w.itemId,w.modelId].join('|');
   const original=$('#optimizerChatgptOriginal');
   original.hidden=!brief.original;
   if(brief.original)original.href=brief.original;
@@ -4388,12 +4389,16 @@ async function optimizerChatgptRender(w){
 async function optimizerChatgptCopyAll({open=false}={}){
  const w=optimizerWorkflowPlan;
  if(!w||!optimizerImagesSameSku(w))return;
- // Abrir a janela na interação direta impede bloqueio por popup após um await.
- if(open)window.open('https://chatgpt.com/','_blank','noopener,noreferrer');
  const status=$('#optimizerChatgptCopyStatus');
+ const key=[w.sku,w.itemId,w.modelId].join('|');
+ const recent=optimizerChatgptBriefSku===key?optimizerChatgptBrief:null;
  try{
-  const brief=await optimizerChatgptMakeBrief(w);
-  await navigator.clipboard.writeText(brief.batch);
+  // Cópia iniciada durante o clique para preservar permissão de área de transferência.
+  const copy=recent
+   ?navigator.clipboard.writeText(recent.batch)
+   :optimizerChatgptMakeBrief(w).then(brief=>navigator.clipboard.writeText(brief.batch));
+  if(open)window.open('https://chatgpt.com/','_blank','noopener,noreferrer');
+  await copy;
   status.textContent=open
    ?'Pedido das nove imagens copiado. No ChatGPT, anexe a foto original da Shopee e cole o texto (Ctrl + V).'
    :'Os nove roteiros foram copiados. Cole no ChatGPT junto com a fotografia original do produto.';
@@ -4494,6 +4499,9 @@ async function optimizerImagesLoad(){
    json('/api/shopee/optimizer/images/generation/status')
   ]);
   if(!optimizerImagesSameSku(w))return;
+  if(optimizerChatgptBriefSku!==[w.sku,w.itemId,w.modelId].join('|')){
+   optimizerChatgptBrief=null;optimizerChatgptBriefSku='';
+  }
   optimizerImagesApiConfigured=provider.configured===true;
   if(optimizerImagesMode===null)optimizerImagesMode=optimizerImagesApiConfigured?'api':'chatgpt';
   optimizerImagesRenderMode();
