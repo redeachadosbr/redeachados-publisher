@@ -4481,6 +4481,41 @@ async function optimizerChatgptRender(w){
   }
  }catch(e){$('#optimizerChatgptCopyStatus').textContent='Não foi possível preparar os pedidos: '+e.message;}
 }
+async function optimizerCommercialRequestChatgptSlot(w,slot){
+ if(!optimizerImagesSameSku(w))return;
+ const status=$('#optimizerImagesStatus');
+ if(optimizerChatBridgeBusy){status.textContent='A ponte ChatGPT já está em execução. Espere terminar ou pause antes de solicitar outra posição.';return;}
+ if(!optimizerChatBridgeReady){
+  // Manual fallback is an explicit action; never silently claims the file was created.
+  const chatTab=window.open('https://chatgpt.com/','_blank','noopener,noreferrer');
+  try{
+   const brief=await optimizerChatgptMakeBrief(w);
+   await navigator.clipboard.writeText(brief.prompts[slot-1]);
+   status.textContent='Prompt da posição '+slot+' copiado. No ChatGPT, anexe a foto original, cole o texto e importe a imagem resultante na mesma posição.';
+  }catch(e){status.textContent='Não foi possível preparar o prompt da posição '+slot+': '+e.message;}
+  if(!chatTab)status.textContent+=' Permita pop-ups para abrir o ChatGPT.';
+  return;
+ }
+ try{
+  const brief=await optimizerChatgptMakeBrief(w);
+  if(!brief.original)throw Error('Não há fotografia original da Shopee para esta SKU.');
+  optimizerChatBridgeNonce=crypto.randomUUID();
+  optimizerChatBridgeSku=w.sku;
+  sessionStorage.setItem(RA_CHAT_BRIDGE_SESSION_KEY,optimizerChatBridgeNonce);
+  optimizerChatBridgeBusy=true;
+  $('#optimizerChatgptAbort').hidden=false;
+  status.textContent='Solicitando à extensão a imagem '+slot+' da SKU '+w.sku+'. Aguarde confirmação do upload.';
+  window.postMessage({kind:'RA_SITE_START',payload:{
+   nonce:optimizerChatBridgeNonce,sku:w.sku,itemId:String(w.itemId),modelId:String(w.modelId),
+   imageUrl:brief.original,prompts:brief.prompts,
+   // The extension skips all other positions for this individual request.
+   completed:Array.from({length:9},(_,i)=>i+1).filter(n=>n!==slot)
+  }},location.origin);
+ }catch(e){
+  optimizerChatBridgeBusy=false;$('#optimizerChatgptAbort').hidden=true;
+  status.textContent='Não foi possível iniciar a posição '+slot+': '+e.message;
+ }
+}
 async function optimizerChatgptCopyAll({open=false}={}){
  const w=optimizerWorkflowPlan;
  if(!w||!optimizerImagesSameSku(w))return;
