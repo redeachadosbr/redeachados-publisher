@@ -4569,7 +4569,9 @@ globalThis.window?.addEventListener?.('message',async(event)=>{
   const done=m.status==='9/9 imagens armazenadas. Confira e aprove a etapa no Shopee Manager antes de publicar na Shopee.';
   if(status)status.textContent=m.status+(m.error?' '+m.error:'')+
    (m.slot?' · posição '+Math.min(9,m.slot)+'/9':'');
-  if(done){optimizerChatBridgeBusy=false;$('#optimizerChatgptAbort').hidden=true;void optimizerImagesLoad();}
+  const paused=/pausad[ao]|interrompid[ao]|cancelad[ao]|falha (?:no |de )?(?:upload|importação)/i.test(m.status||'');
+  if(done||paused){optimizerChatBridgeBusy=false;$('#optimizerChatgptAbort').hidden=true;}
+  if(done)void optimizerImagesLoad();
   return;
  }
  if(m.kind!=='RA_EXTENSION_IMAGE')return;
@@ -4584,23 +4586,28 @@ globalThis.window?.addEventListener?.('message',async(event)=>{
   status.textContent='Imagem '+m.slot+'/9 recebida do ChatGPT. Convertendo para 1200×1200 e salvando na SKU '+w.sku+'...';
   const blob=await(await fetch(m.dataUrl)).blob();
   const file=new File([blob],'chatgpt-auto-'+String(m.slot).padStart(2,'0')+'.'+(blob.type==='image/jpeg'?'jpg':blob.type==='image/webp'?'webp':'png'),{type:blob.type});
-  const png=await optimizerChatgptScaleFile(file);
+  const prepared=await optimizerChatgptScaleFile(file);
+  const outputType=prepared.blob.type==='image/jpeg'?'image/jpeg':'image/png';
+  const extension=outputType==='image/jpeg'?'jpg':'png';
   const response=await fetch('/api/shopee/optimizer/images/manual?'+new URLSearchParams({
    sku:w.sku,item_id:w.itemId,model_id:w.modelId,slot:m.slot
-  }),{method:'POST',headers:{'Content-Type':'image/png',
-   'X-Image-Filename':encodeURIComponent('chatgpt-auto-'+String(m.slot).padStart(2,'0')+'.png')},
-   body:png,signal:AbortSignal.timeout(90000)});
+  }),{method:'POST',headers:{'Content-Type':outputType,
+   'X-Image-Filename':encodeURIComponent('chatgpt-auto-'+String(m.slot).padStart(2,'0')+'.'+extension)},
+   body:prepared.blob,signal:AbortSignal.timeout(90000)});
   const data=await response.json();
   if(!response.ok)throw Error(data.error||'O armazenamento não confirmou a imagem.');
   optimizerImagesSavedSlots.add(m.slot);
   const stage=w.stages?.find(x=>x.key==='images');
   if(stage){stage.reviewed=false;stage.status='pending';stage.reviewedAt=null;}
   optimizerWorkflowRender(w);optimizerExecReset();
-  status.textContent='Imagem '+m.slot+'/9 salva na galeria da SKU '+w.sku+'. O ChatGPT continuará automaticamente com a próxima.';
+  status.textContent='Imagem '+m.slot+'/9 salva na galeria da SKU '+w.sku+'.'+
+   (prepared.wasPadded?' Formato ajustado para 1:1 com margens, sem cortes. Confira a composição.':'')+
+   ' O ChatGPT continuará automaticamente com a próxima.';
   ok=true;
   await optimizerImagesLoad();
  }catch(e){
   error=String(e.message||e);
+  optimizerChatBridgeBusy=false;$('#optimizerChatgptAbort').hidden=true;
   if(status)status.textContent='Erro ao salvar imagem '+m.slot+': '+error+'. A extensão deve preservar o arquivo para retomar, sem gerar novamente.';
  }finally{
   optimizerChatBridgeUploading=false;
@@ -4649,23 +4656,8 @@ async function optimizerChatgptScaleFile(file){
  if(file.size>30*1024*1024)throw Error('Arquivo '+file.name+' excede 30 MB.');
  if(!/\.(png|jpg|jpeg|webp)$/i.test(file.name)&&!['image/png','image/jpeg','image/webp'].includes(file.type))
   throw Error('Use arquivos PNG, JPG ou WebP.');
- const bitmap=await createImageBitmap(file);
- try{
-  const ratio=bitmap.width/bitmap.height;
-  if(!Number.isFinite(ratio)||ratio<0.98||ratio>1.02)
-   throw Error('A imagem '+file.name+' não é quadrada. Peça uma versão 1:1 ao ChatGPT para evitar cortes.');
-  const canvas=document.createElement('canvas');
-  canvas.width=1200;canvas.height=1200;
-  const ctx=canvas.getContext('2d');
-  if(!ctx)throw Error('Conversão de imagens não está disponível neste navegador.');
-  ctx.imageSmoothingEnabled=true;ctx.imageSmoothingQuality='high';
-  ctx.drawImage(bitmap,0,0,1200,1200);
-  const blob=await new Promise((resolve,reject)=>canvas.toBlob(
-   x=>x?resolve(x):reject(Error('Não foi possível converter a imagem '+file.name)), 'image/png'
-  ));
-  if(blob.size>10*1024*1024)throw Error('A imagem '+file.name+' ficou maior que 10 MB. Reduza o arquivo.');
-  return blob;
- }finally{bitmap.close?.();}
+ const {prepareSquareImage}=await import('/imageSquare.js?v=1.20.10');
+ return prepareSquareImage(file);
 }
 $('#optimizerChatgptImport')?.addEventListener?.('click',async()=>{
  const w=optimizerWorkflowPlan;
@@ -4688,12 +4680,15 @@ $('#optimizerChatgptImport')?.addEventListener?.('click',async()=>{
   for(const {file,slot} of ordered){
    if(!optimizerImagesSameSku(w))throw Error('A SKU mudou durante a importação.');
    status.textContent='Preparando e salvando imagem '+slot+' de 9 ('+(processed+1)+'/'+ordered.length+')...';
-   const blob=await optimizerChatgptScaleFile(file);
+   const prepared=await optimizerChatgptScaleFile(file);
+   const outputType=prepared.blob.type==='image/jpeg'?'image/jpeg':'image/png';
+   const extension=outputType==='image/jpeg'?'jpg':'png';
    const response=await fetch('/api/shopee/optimizer/images/manual?'+new URLSearchParams({
     sku:w.sku,item_id:w.itemId,model_id:w.modelId,slot
    }),{
-    method:'POST',headers:{'Content-Type':'image/png','X-Image-Filename':encodeURIComponent('chatgpt-'+String(slot).padStart(2,'0')+'.png')},
-    body:blob,signal:AbortSignal.timeout(90000)
+    method:'POST',headers:{'Content-Type':outputType,
+     'X-Image-Filename':encodeURIComponent('chatgpt-'+String(slot).padStart(2,'0')+'.'+extension)},
+    body:prepared.blob,signal:AbortSignal.timeout(90000)
    });
    const result=await response.json();
    if(!response.ok)throw Error(result.error||'Erro ao salvar imagem '+slot+'.');

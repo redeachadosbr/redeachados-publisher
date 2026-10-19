@@ -23,7 +23,7 @@ test('commercial image workspace matches the provided layout while preserving it
  assert.match(html,/Sem substituir automaticamente/);
  assert.match(html,/Solicitar ajuste da imagem/);
  assert.match(html,/Imagens do produto/);
- assert.match(html,/\/app\.js\?v=1\.20\.9/);
+ assert.match(html,/\/app\.js\?v=1\.20\.10/);
  assert.match(html,/\/style\.css\?v=1\.20\.9/);
 });
 test('gallery actions are wired to real API routes for a matching SKU and image slot',()=>{
