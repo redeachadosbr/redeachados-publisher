@@ -4354,9 +4354,13 @@ async function optimizerImagesLoad(){
   ]);
   if(!optimizerImagesSameSku(w))return;
   optimizerImagesApiConfigured=provider.configured===true;
+  const connect=$('#optimizerOpenAiConnect'),connected=$('#optimizerOpenAiConnected');
+  connect.hidden=optimizerImagesApiConfigured;
+  connected.hidden=!optimizerImagesApiConfigured;
+  $('#optimizerOpenAiDisconnect').hidden=provider.source==='render';
   $('#optimizerImagesProvider').textContent=optimizerImagesApiConfigured
-   ?'API OpenAI configurada · '+provider.model
-   :'API OpenAI não configurada. Adicione OPENAI_API_KEY no Render.';
+   ?'✓ API OpenAI conectada · '+provider.model
+   :'API OpenAI desconectada · conecte abaixo para liberar as imagens';
   const gallery=$('#optimizerImagesGallery');gallery.replaceChildren();
   const stored=new Map((data.images||[]).map(image=>[Number(image.slot),image]));
   optimizerImagesSavedSlots=new Set(stored.keys());
@@ -4399,6 +4403,37 @@ async function optimizerImagesGenerateSlot(w,slot,replace){
  }
  return result;
 }
+$('#optimizerOpenAiSave')?.addEventListener?.('click',async()=>{
+ const field=$('#optimizerOpenAiKey'),btn=$('#optimizerOpenAiSave'),notice=$('#optimizerOpenAiNotice');
+ const key=field.value.trim();
+ if(!key){notice.textContent='Crie uma chave na plataforma OpenAI e cole aqui.';return;}
+ btn.disabled=true;notice.textContent='Conferindo a chave com a OpenAI e salvando em cofre privado...';
+ try{
+  const result=await json('/api/shopee/optimizer/images/generation/connect',{
+   method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({apiKey:key}),
+   signal:AbortSignal.timeout(30000)
+  });
+  field.value='';
+  notice.textContent=result.message||'Conexão ativada! A geração das nove imagens está liberada.';
+  optimizerImagesApiConfigured=true;
+  await optimizerImagesLoad();
+ }catch(e){
+  notice.textContent='Não foi possível conectar: '+e.message;
+ }finally{btn.disabled=false;}
+});
+$('#optimizerOpenAiDisconnect')?.addEventListener?.('click',async()=>{
+ if(!window.confirm('Desconectar a chave OpenAI salva? As imagens já preparadas serão mantidas.'))return;
+ const btn=$('#optimizerOpenAiDisconnect'),notice=$('#optimizerOpenAiNotice');
+ btn.disabled=true;
+ try{
+  const r=await json('/api/shopee/optimizer/images/generation/disconnect',{
+   method:'POST',headers:{'Content-Type':'application/json'},body:'{}',signal:AbortSignal.timeout(25000)
+  });
+  notice.textContent=r.message||'Integração desconectada.';
+  await optimizerImagesLoad();
+ }catch(e){notice.textContent='Não foi possível desconectar: '+e.message;}
+ finally{btn.disabled=false;}
+});
 $('#optimizerImagesStop')?.addEventListener?.('click',()=>{
  optimizerImagesStopRequested=true;
  $('#optimizerImagesStatus').textContent='Interrupção solicitada. A imagem atual será concluída e salva primeiro.';
@@ -4406,7 +4441,7 @@ $('#optimizerImagesStop')?.addEventListener?.('click',()=>{
 $('#optimizerImagesGenerateAll')?.addEventListener?.('click',async()=>{
  const w=optimizerWorkflowPlan;
  if(!w||!optimizerImagesSameSku(w)||optimizerImagesAutoBusy)return;
- if(!optimizerImagesApiConfigured){$('#optimizerImagesStatus').textContent='Configure OPENAI_API_KEY no Render antes de gerar.';return;}
+ if(!optimizerImagesApiConfigured){$('#optimizerImagesStatus').textContent='Conecte a API OpenAI no painel acima para gerar imagens.';return;}
  optimizerImagesAutoBusy=true;optimizerImagesStopRequested=false;
  const btn=$('#optimizerImagesGenerateAll'),stop=$('#optimizerImagesStop'),status=$('#optimizerImagesStatus');
  stop.hidden=false;optimizerImagesSetProgress();optimizerExecReset();

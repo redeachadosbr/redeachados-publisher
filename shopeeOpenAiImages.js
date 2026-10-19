@@ -16,7 +16,7 @@ export const IMAGE_STORYBOARD=Object.freeze([
 
 export function imageGenerationStatus(){
  return {configured:Boolean(String(process.env.OPENAI_API_KEY||'').trim()),
-  provider:'OpenAI',model:String(process.env.OPENAI_IMAGE_MODEL||'gpt-image-2.5-sunburst')};
+  provider:'OpenAI',model:String(process.env.OPENAI_IMAGE_MODEL||'gpt-image-2')};
 }
 export function validateImageSourceUrl(input){
  let url;
@@ -89,10 +89,10 @@ function resizeImagePng(bytes){
   ff.stdin.end(bytes);
  });
 }
-export async function generateOpenAiImage({record,slot,masterPrompt='',note='',referenceUrls=[]}){
+export async function generateOpenAiImage({record,slot,masterPrompt='',note='',referenceUrls=[],apiKey=''}){
  const status=imageGenerationStatus();
- const token=String(process.env.OPENAI_API_KEY||'').trim();
- if(!token)throw Error('OPENAI_API_KEY não configurada no serviço redeachados-shopee do Render. Configure a chave na área segura Environment.');
+ const token=String(apiKey||process.env.OPENAI_API_KEY||'').trim();
+ if(!token)throw Error('Conecte sua conta da API OpenAI em Otimização > Gerador de imagens.');
  const sources=[...new Set(referenceUrls.filter(Boolean))].slice(0,1);
  if(!sources.length)throw Error('Nenhuma fotografia original encontrada na Shopee. Importação manual necessária.');
  const originals=[];
