@@ -6,7 +6,7 @@
 <meta name="theme-color" content="#0A1C3A">
 <link rel="icon" type="image/svg+xml" href="/brand-logo.svg">
 <title>Rede Achados BR · Gestão Shopee</title>
-<link rel="stylesheet" href="/style.css?v=1.20.2">
+<link rel="stylesheet" href="/style.css?v=1.20.3">
 </head>
 <body>
 <div class="shell app-layout">
@@ -253,6 +253,21 @@
           <div class="optimizer-ai-generator">
             <div class="optimizer-ai-generator-heading"><strong>✨ Gerador automático de 9 imagens com OpenAI</strong><small id="optimizerImagesProvider" role="status">Verificando conexão com o gerador…</small></div>
             <p class="optimizer-video-help">Utiliza as fotos atuais da Shopee, as regras salvas e os ajustes de cada posição. Gera e armazena uma de cada vez. Nunca publica sem a sua aprovação.</p>
+            <div id="optimizerOpenAiConnect" class="optimizer-ai-connection" hidden>
+              <strong>Conectar OpenAI uma única vez</strong>
+              <p>Crie sua chave na plataforma OpenAI e cole abaixo. O sistema testa a chave e a armazena criptografada no servidor, sem mostrá-la novamente.</p>
+              <div class="optimizer-ai-connect-fields">
+                <a href="https://platform.openai.com/api-keys" target="_blank" rel="noopener noreferrer">1. Criar chave na OpenAI ↗</a>
+                <label class="optimizer-field">2. Chave privada da API OpenAI <input id="optimizerOpenAiKey" type="password" autocomplete="off" spellcheck="false" placeholder="Cole sua chave sk-... aqui" maxlength="520"></label>
+                <button type="button" id="optimizerOpenAiSave">3. Testar e ativar geração</button>
+              </div>
+              <small>A API OpenAI exige faturamento/créditos próprios, separados do ChatGPT Plus. A chave não é enviada à Shopee nem salva no navegador.</small>
+            </div>
+            <div id="optimizerOpenAiConnected" class="optimizer-ai-connected" hidden>
+              <span>✓ OpenAI conectada — geração automática habilitada</span>
+              <button id="optimizerOpenAiDisconnect" type="button" class="secondary">Desconectar chave</button>
+            </div>
+            <p id="optimizerOpenAiNotice" role="status" aria-live="polite"></p>
             <div class="optimizer-ai-generator-actions">
               <button type="button" id="optimizerImagesGenerateAll">✨ Gerar / retomar 9 imagens automaticamente</button>
               <button type="button" class="secondary" id="optimizerImagesStop" hidden>Parar após a imagem atual</button>
@@ -1032,6 +1047,6 @@
     </main>
   </div>
 </div>
-<script src="/app.js?v=1.20.2"></script>
+<script src="/app.js?v=1.20.3"></script>
 </body>
 </html>
