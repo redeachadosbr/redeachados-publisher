@@ -2320,7 +2320,9 @@ function optimizerSourceRender(data){
   (hint.name||'Informação')+': '+hint.reason));
  for(const value of item.metrics||[])facts.append(optimizerMake('p','optimizer-source-metric',
   value.name+': '+value.value+'. '+value.note));
- optimizerSourceNotice('Informações vinculadas apenas à SKU '+data.sku+
+ if(data.sourceEvidenceWarning){
+  optimizerSourceNotice(data.sourceEvidenceWarning,'warning');
+ }else optimizerSourceNotice('Informações vinculadas apenas à SKU '+data.sku+
   '. Prints não são interpretados automaticamente. Revise as opções oficiais da categoria.');
 }
 async function optimizerSourceAction(action,extra={}){
