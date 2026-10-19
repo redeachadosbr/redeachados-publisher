@@ -138,7 +138,7 @@ app.get('/app/:section',(req,res)=>{
 });
 app.get('/app',(_req,res)=>res.redirect(302,'/app/inicio'));
 
-app.get('/api/health',(_req,res)=>res.json({ok:true,service:'Rede Achados BR Shopee API',version:'1.20.3',storage:authStore.status()}));
+app.get('/api/health',(_req,res)=>res.json({ok:true,service:'Rede Achados BR Shopee API',version:'1.20.4',storage:authStore.status()}));
 app.get('/api/auth-state',(req,res)=>res.json({locked:Boolean(envText('APP_PASSWORD')),loggedIn:!envText('APP_PASSWORD')||Boolean(req.session?.appAuth)}));
 app.post('/api/login',(req,res)=>{
   const required=envText('APP_PASSWORD');
@@ -662,7 +662,8 @@ app.get('/api/shopee/optimizer/workflow',mustLogin,requireWeDropAdmin,async(req,
       draftTitle:review.draftTitle||safeTitle(record.title),
       draftDescription:review.draftDescription||descriptionDraft(record),
       imageCount:record.imageCount,
-      videoStatus:record.videoStatus,categoryId:record.categoryId});
+      videoStatus:record.videoStatus,categoryId:record.categoryId,
+      imageUrls:(record.imageUrls||[]).slice(0,9)});
   }catch(e){res.status(400).json({error:String(e.message||e).slice(0,350)});}
 });
 app.post('/api/shopee/optimizer/workflow/attributes/preview',mustLogin,requireWeDropAdmin,async(req,res)=>{

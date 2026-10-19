@@ -3583,3 +3583,35 @@ body.view-wedrop .page-intro{display:none!important}
  #optimizerImagesPanel .optimizer-ai-connect-fields>*{width:100%}
  #optimizerImagesPanel .optimizer-ai-connect-fields>a{padding:4px 0}
 }
+
+
+/* Escolha do gerador: ChatGPT assistido ou API automática. */
+#optimizerImagesPanel .optimizer-image-mode-selector{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:9px;margin:0 0 14px}
+#optimizerImagesPanel .optimizer-image-mode-selector button{min-height:46px;text-align:center;border:1px solid #ccdbed;border-radius:12px;background:#fff;color:#234d7b;font-size:13px;font-weight:760;padding:10px;white-space:normal}
+#optimizerImagesPanel .optimizer-image-mode-selector button.is-active{border:2px solid #2467c6;background:#edf5ff;color:#123f7e}
+#optimizerImagesPanel #optimizerImagesChatgptPanel[hidden],#optimizerImagesPanel #optimizerImagesApiPanel[hidden]{display:none!important}
+#optimizerImagesPanel .optimizer-chatgpt-panel{display:grid;gap:11px;border:1px solid #d4e2f2;background:linear-gradient(140deg,#f5faff,#fff);border-radius:14px;padding:16px;margin:0 0 15px}
+#optimizerImagesPanel .optimizer-chatgpt-head{display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap}
+#optimizerImagesPanel .optimizer-chatgpt-head strong{font-size:16px;color:#113b68}
+#optimizerImagesPanel .optimizer-chatgpt-head small{font-size:11px;color:#477294}
+#optimizerImagesPanel .optimizer-chatgpt-panel>p{margin:0;color:#4a6888;font-size:12px;line-height:1.55}
+#optimizerImagesPanel .optimizer-chatgpt-actions{display:flex;align-items:center;gap:9px;flex-wrap:wrap}
+#optimizerImagesPanel .optimizer-chatgpt-actions button{min-height:42px;font-size:12px}
+#optimizerImagesPanel #optimizerChatgptOpen{border-radius:9px;border:none;background:#134fa4;color:#fff;font-weight:760}
+#optimizerImagesPanel .optimizer-chatgpt-original{color:#1758a4;font-size:11px;font-weight:740;padding:9px}
+#optimizerImagesPanel #optimizerChatgptCopyStatus,#optimizerImagesPanel #optimizerChatgptImportStatus{font-size:12px;color:#285c91;line-height:1.45;margin:0}
+#optimizerImagesPanel .optimizer-chatgpt-prompts-detail{padding:10px 13px;border:1px solid #dbe5ef;border-radius:10px;background:#fff}
+#optimizerImagesPanel .optimizer-chatgpt-prompts-detail summary{cursor:pointer;color:#23548b;font-size:12px;font-weight:730}
+#optimizerImagesPanel .optimizer-chatgpt-prompt-list{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:7px;margin:10px 0 0}
+#optimizerImagesPanel .optimizer-chatgpt-prompt-item{display:flex;justify-content:space-between;align-items:center;gap:8px;padding:9px;border:1px solid #e1eaf5;border-radius:8px;background:#f9fbff;font-size:11px}
+#optimizerImagesPanel .optimizer-chatgpt-prompt-item button{font-size:10px;min-height:34px;padding:6px 9px;white-space:normal}
+#optimizerImagesPanel .optimizer-chatgpt-import{display:flex;gap:9px;align-items:end;flex-wrap:wrap;padding:12px;border-radius:12px;border:1px solid #cce1d7;background:#f7fbf8}
+#optimizerImagesPanel .optimizer-chatgpt-import>strong,#optimizerImagesPanel .optimizer-chatgpt-import>p{width:100%;margin:0}
+#optimizerImagesPanel .optimizer-chatgpt-import>strong{font-size:13px;color:#1d4a34}
+#optimizerImagesPanel .optimizer-chatgpt-import>p{font-size:11px;line-height:1.5;color:#446651}
+#optimizerImagesPanel .optimizer-chatgpt-import .optimizer-field{flex:1;min-width:220px}
+#optimizerImagesPanel .optimizer-chatgpt-import .optimizer-chatgpt-start{flex:0 1 210px;min-width:150px}
+#optimizerImagesPanel #optimizerChatgptImport{min-height:42px;background:#19583a;color:white;border:0;border-radius:9px;font-size:12px}
+#optimizerImagesPanel #optimizerChatgptImportStatus{width:100%}
+@media(max-width:900px){#optimizerImagesPanel .optimizer-chatgpt-prompt-list{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media(max-width:600px){#optimizerImagesPanel .optimizer-image-mode-selector{grid-template-columns:1fr}#optimizerImagesPanel .optimizer-chatgpt-prompt-list{grid-template-columns:1fr}#optimizerImagesPanel .optimizer-chatgpt-actions>*{width:100%}#optimizerImagesPanel .optimizer-chatgpt-panel{padding:12px}#optimizerImagesPanel .optimizer-chatgpt-import>*{width:100%}}
