@@ -50,7 +50,9 @@ export async function claimShopeePreparedExecution(shopId,itemId,modelId,{planId
   '&plan->>planId=eq.'+encodeURIComponent(planId)+
   '&select=state,plan,run_id,updated_at';
  const result=await rows(query,{method:'PATCH',
-  data:{state:'running',run_id:runId,result:{phase:'queued'},lease_until:new Date().toISOString(),updated_at:new Date().toISOString()},
+  data:{state:'running',run_id:runId,result:{phase:'queued',startedAt:new Date().toISOString(),
+  events:[{key:'queued',label:'Execução autorizada e recebida para processamento.',kind:'info',at:new Date().toISOString()}]},
+  lease_until:new Date().toISOString(),updated_at:new Date().toISOString()},
   prefer:'return=representation'});
  if(result.length!==1||result[0]?.plan?.planId!==planId)throw Error('Plano já executado, alterado ou em andamento. Recarregue a prévia.');
  return result[0];

@@ -33,6 +33,7 @@ import {readShopeeExecution,saveShopeePreparedExecution,
   claimShopeePreparedExecution,finishShopeeExecution,pendingShopeeExecutions,leaseShopeeExecution,
   checkpointShopeeExecution,reconcileShopeeJob} from './shopeeExecutionStore.js';
 import {advanceShopeeExecution} from './shopeeExecutionWorker.js';
+import {shopeeExecutionProgress,withExecutionEvent} from './shopeeExecutionProgress.js';
 import {createShopeeMediaApi} from './shopeeMediaApi.js';
 import {normalizeManualVideo} from './shopeeVideoValidation.js';
 import {readPreparedImages,importPreparedImage,deletePreparedImage,downloadPreparedImage,imagesSignature,MAX_IMAGE_BYTES,rememberPublishedImages} from './shopeePreparedImages.js';
@@ -675,7 +676,7 @@ app.get('/api/shopee/optimizer/workflow',mustLogin,requireWeDropAdmin,async(req,
       draftDescription:review.draftDescription||descriptionDraft(record),
       imageCount:record.imageCount,
       videoStatus:record.videoStatus,categoryId:record.categoryId,
-      imageUrls:(record.imageUrls||[]).slice(0,9)});
+      imageUrls:(record.imageUrls||[]).slice(0,9),productTitle:record.title});
   }catch(e){res.status(400).json({error:String(e.message||e).slice(0,350)});}
 });
 // Category-attribute options are loaded from the official Shopee endpoint.
@@ -793,7 +794,7 @@ app.post('/api/shopee/optimizer/execution/prepare',mustLogin,requireWeDropAdmin,
     const plan=compileShopeeExecutionPlan({shopId:auth.shopId,itemId,modelId,
       sku,record,review:review?.review_state||{},live,manualVideo,verifiedVideoSha256,manualImages});
     const stored=await saveShopeePreparedExecution(auth.shopId,itemId,modelId,sku,plan);
-    res.json({ok:true,ready:plan.canExecute,plan,
+    res.json({ok:true,ready:plan.canExecute,plan,progress:shopeeExecutionProgress(stored),
       updatedAt:stored.updated_at,executionStatus:stored.state,marketplaceUpdated:false});
   }catch(e){res.status(409).json({error:String(e.message||e).slice(0,300)});}
 });
@@ -805,7 +806,8 @@ app.get('/api/shopee/optimizer/execution/status',mustLogin,requireWeDropAdmin,as
     if(!/^\d{1,18}$/.test(modelId))throw Error('Model ID inválido.');
     const {auth}=await getValidAuth(req);
     const job=await readShopeeExecution(auth.shopId,itemId,modelId);
-    res.json({ok:true,job:job?.sku===sku?job:null});
+    const owned=job?.sku===sku?job:null;
+    res.json({ok:true,job:owned,progress:shopeeExecutionProgress(owned)});
   }catch(e){res.status(400).json({error:String(e.message||e).slice(0,300)});}
 });
 app.post('/api/shopee/optimizer/execution/execute',mustLogin,requireWeDropAdmin,async(req,res)=>{
@@ -860,7 +862,7 @@ app.post('/api/shopee/optimizer/execution/reconcile',mustLogin,requireWeDropAdmi
   if(verified){
     await rememberPublishedVideo(job.plan,job.result||{});
     await rememberPublishedImages(job.plan,job.result||{});
-    updated=await reconcileShopeeJob(job,{state:'verified',result:{...job.result,phase:'verified',verified:true},lastError:null});
+    updated=await reconcileShopeeJob(job,{state:'verified',result:withExecutionEvent({...job.result,phase:'verified',verified:true},'verified','A Shopee confirmou as alterações no anúncio.','success'),lastError:null});
   }
   else if(req.body.reprepare===true){
     if(req.body.confirmation!=='REPREPARAR '+sku)throw Error('Confirme REPREPARAR '+sku+'.');
@@ -869,7 +871,7 @@ app.post('/api/shopee/optimizer/execution/reconcile',mustLogin,requireWeDropAdmi
     updated=await reconcileShopeeJob(job,{state:'failed',result:{...job.result,phase:'retry_allowed'},
       lastError:'Leitura confirmou os valores anteriores. Uma nova prévia e aprovação são necessárias.'});
   }
-  res.json({ok:true,job:updated,verified,message:verified?'Alterações confirmadas na Shopee.':
+  res.json({ok:true,job:updated,progress:shopeeExecutionProgress(updated),verified,message:verified?'Alterações confirmadas na Shopee.':
     'Resultado ainda não confirmado. Nenhuma alteração foi reenviada.'});
  }catch(e){res.status(409).json({ok:false,error:String(e.message||e).slice(0,280)});}
 });
@@ -910,7 +912,9 @@ async function runOptimizerJobs(){
     if(!uncertain&&attempts<3&&/fetch|timeout|network|HTTP 5|error_rate_limit/i.test(String(e.message))){
      await checkpointShopeeExecution(job,{...current.result,attempts},attempts*15000);
     }else await finishShopeeExecution(job.shop_id,job.item_id,job.model_id,job.run_id,{
-      state:uncertain?'uncertain':'failed',result:current.result,
+      state:uncertain?'uncertain':'failed',
+      result:withExecutionEvent(current.result,uncertain?'result-uncertain':'execution-failed',
+       uncertain?'Resultado pendente de confirmação pela Shopee.':'Execução interrompida: '+String(e.message||e).slice(0,150),'warning'),
       lastError:String(e.message||e).slice(0,250)});
    }
   }
