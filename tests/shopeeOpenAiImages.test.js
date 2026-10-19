@@ -34,7 +34,7 @@ test('sem chave OpenAI informa configuração sem gerar',async()=>{
  delete process.env.OPENAI_API_KEY;
  try{
   assert.equal(imageGenerationStatus().configured,false);
-  await assert.rejects(()=>generateOpenAiImage({record:sample,slot:1,referenceUrls:[]}),/OPENAI_API_KEY/);
+  await assert.rejects(()=>generateOpenAiImage({record:sample,slot:1,referenceUrls:[]}),/Conecte sua conta da API OpenAI/);
  }finally{if(old===undefined)delete process.env.OPENAI_API_KEY;else process.env.OPENAI_API_KEY=old;}
 });
 
