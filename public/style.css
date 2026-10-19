@@ -3626,3 +3626,13 @@ body.view-wedrop .page-intro{display:none!important}
 #optimizerImagesPanel .optimizer-chatgpt-assist-fallback>summary{font-size:12px;color:#3b658b;font-weight:720;cursor:pointer}
 #optimizerImagesPanel .optimizer-chatgpt-assist-fallback[open] .optimizer-chatgpt-actions{margin:9px 0}
 @media(max-width:700px){#optimizerImagesPanel .optimizer-chatgpt-bridge-actions>*{width:100%}}
+
+
+/* Motor Matriz · editor técnico 100% baseado na árvore da categoria Shopee. */
+#optimizerTechnicalFields .optimizer-category-summary{padding:11px 13px;border:1px solid #d4e4f5;border-radius:10px;background:#f1f7ff;color:#204970;font-weight:680;font-size:12px;line-height:1.5}
+#optimizerTechnicalFields .optimizer-warning{padding:11px 13px;border:1px solid #eed7a5;border-radius:10px;background:#fff9ec;color:#774b11;font-size:12px}
+#optimizerTechnicalFields .optimizer-attribute-search{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin:10px 0}
+#optimizerTechnicalFields .optimizer-attribute-search input{flex:1 1 240px;min-width:180px}
+#optimizerTechnicalFields .optimizer-attribute-search button{font-size:12px;white-space:normal;min-height:38px}
+#optimizerTechnicalFields .optimizer-attribute-search small{flex-basis:100%;font-size:11px;color:#527190}
+@media(max-width:620px){#optimizerTechnicalFields .optimizer-attribute-search>*{width:100%;flex-basis:100%}}

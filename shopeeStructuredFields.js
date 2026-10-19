@@ -2,14 +2,25 @@ import {normalizeAttributeAudit} from './productOptimizer.js';
 const list=x=>Array.isArray(x)?x:[];
 export function attributeAuditForChanges(changes,record,live){
  if(!record.attributeAudit?.schema)return record.attributeAudit;
- if(!Array.isArray(changes)||changes.length>60)throw Error('Ficha técnica inválida.');
+ if(!Array.isArray(changes)||changes.length>300)throw Error('Ficha técnica inválida.');
  const selected=new Map(list(live.attribute_list).map(x=>[Number(x.attribute_id),x]));
  for(const change of changes){
   selected.set(Number(change.attributeId),{attribute_id:Number(change.attributeId),
    attribute_value_list:(Array.isArray(change.values)?change.values:[change]).map(x=>({value_id:Number(x.valueId),
     original_value_name:String(x.valueName||''),value_unit:String(x.unit||'')}))});
  }
- return normalizeAttributeAudit({...live,attribute_list:[...selected.values()]},record.attributeAudit.schema);
+ const audit=normalizeAttributeAudit({...live,attribute_list:[...selected.values()]},record.attributeAudit.schema);
+ // Official search results validated by the backend may not be in the initial
+ // get_attribute_tree response. Preserve them only for the same attribute ID.
+ for(const meta of audit.attributes){
+  const source=record.attributeAudit.attributes?.find(x=>Number(x.id)===meta.id);
+  if(!source?.supportSearch)continue;
+  const combined=new Map((meta.options||[]).map(x=>[Number(x.id),x]));
+  for(const option of source.options||[])if(Number(option.id)>0&&!combined.has(Number(option.id)))
+   combined.set(Number(option.id),option);
+  meta.options=[...combined.values()];
+ }
+ return audit;
 }
 export function attributeInputRules(meta){
  const type=Number(meta.inputType);
@@ -38,7 +49,7 @@ function attributeValue(raw,meta){
  return {value_id:0,original_value_name:value,...(unit?{value_unit:unit}:{})};
 }
 export function compileAttributes(changes,record,live){
- if(!Array.isArray(changes)||changes.length>60)throw Error('Ficha técnica inválida.');
+ if(!Array.isArray(changes)||changes.length>300)throw Error('Ficha técnica inválida.');
  const audit=attributeAuditForChanges(changes,record,live);
  const merged=new Map(list(live.attribute_list).map(x=>[Number(x.attribute_id),x]));
  const used=new Set();
@@ -56,7 +67,7 @@ export function compileAttributes(changes,record,live){
  if(changes.length){
   for(const meta of audit?.attributes||[]){
    if(meta.conditional){merged.delete(meta.id);continue;}
-   if(meta.mandatory&&!merged.get(meta.id)?.attribute_value_list?.length)
+   if(meta.mandatory&&(meta.state==='missing'||!merged.get(meta.id)?.attribute_value_list?.length))
     throw Error('Preencha o atributo obrigatório '+meta.name+' após selecionar os campos relacionados.');
   }
  }
