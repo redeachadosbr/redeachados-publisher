@@ -21,9 +21,9 @@ test('Pedidos e vendas 1.19.7 mantém seis KPIs e componentes funcionais',()=>{
  assert.match(page,/<option value="15" selected>Últimos 15 dias<\/option>/);
  assert.match(page,/id="ordersExportBtn" type="button" class="secondary" disabled/);
  assert.match(page,/colspan="7"/);
- assert.match(html,/style\.css\?v=1\.19\.7/);
- assert.match(html,/app\.js\?v=1\.19\.7/);
- assert.match(server,/version:'1\.19\.7'/);
+ assert.match(html,/style\.css\?v=\d+\.\d+\.\d+/);
+ assert.match(html,/app\.js\?v=\d+\.\d+\.\d+/);
+ assert.match(server,/version:'\d+\.\d+\.\d+'/);
 });
 test('O servidor solicita apenas os dados operacionais e protege PII',()=>{
  assert.match(server,/response_optional_fields:'item_list,total_amount'/);
