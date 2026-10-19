@@ -1063,8 +1063,19 @@ $('#ordersExportBtn').onclick=()=>{
 };
 
 function ddmmyyyy(v){if(!v)return'';const [y,m,d]=v.split('-');return `${d}-${m}-${y}`;}
-const today=new Date(), before=new Date(Date.now()-7*86400000);
-$('#adsEnd').value=today.toISOString().slice(0,10);$('#adsStart').value=before.toISOString().slice(0,10);
+function adsBrazilDayOffset(offset=0){
+ const parts=new Intl.DateTimeFormat('en-US',{timeZone:'America/Sao_Paulo',
+  year:'numeric',month:'2-digit',day:'2-digit'}).formatToParts(new Date());
+ const fields=Object.fromEntries(parts.filter(p=>p.type!=='literal').map(p=>[p.type,p.value]));
+ const utc=Date.UTC(Number(fields.year),Number(fields.month)-1,Number(fields.day));
+ return new Date(utc+offset*86400000).toISOString().slice(0,10);
+}
+function adsShiftIsoDay(value,days){
+ return new Date(Date.parse(value+'T00:00:00Z')+days*86400000).toISOString().slice(0,10);
+}
+// Por padrão, consultar sete dias completos, sem data futura na Shopee Brasil.
+$('#adsEnd').value=adsBrazilDayOffset(-1);
+$('#adsStart').value=adsBrazilDayOffset(-8);
 const adsMoney=value=>value===null||value===undefined||!Number.isFinite(Number(value))?
  '—':new Intl.NumberFormat('pt-BR',{style:'currency',currency:'BRL'}).format(Number(value));
 const adsNum=value=>new Intl.NumberFormat('pt-BR',{maximumFractionDigits:2}).format(Number(value));
@@ -1317,25 +1328,44 @@ function renderShopeeAds(data){
 $('#loadAdsAutoBtn').onclick=async()=>{
  const button=$('#loadAdsAutoBtn');if(adsBusy)return;
  adsBusy=true;button.disabled=true;$('#adsRefreshLabel').textContent='Consultando...';
+ const hadPrevious=Boolean(adsLastReport);
+ if(!hadPrevious)$('#adsResults').hidden=true;
  adsStatusState('Consultando campanhas e resultados oficiais da Shopee…','loading');
- $('#adsResults').hidden=true;adsLastReport=null;adsCampaignRows=[];adsSelected.clear();$('#adsExportBtn').disabled=true;$('#adsExecuteSuggested').disabled=true;
  try{
-  const start=$('#adsStart').value,end=$('#adsEnd').value;
-  if(!start||!end||start>=end)throw Error('Informe duas datas válidas, com pelo menos dois dias.');
+  let start=$('#adsStart').value,end=$('#adsEnd').value;
+  if(!start||!end||start>=end)throw Error('Informe um período válido: início anterior ao fim.');
+  let adjustedNote='';
+  const todayBr=adsBrazilDayOffset(0);
+  if(end>todayBr){
+    const days=Math.round((Date.parse(end+'T00:00:00Z')-Date.parse(todayBr+'T00:00:00Z'))/86400000);
+    if(days>2)throw Error('Data final no futuro. Escolha uma data até '+todayBr+'.');
+    start=adsShiftIsoDay(start,-days);
+    end=adsShiftIsoDay(end,-days);
+    adjustedNote='A data final era futura no Brasil; o período foi corrigido. ';
+    $('#adsStart').value=start;$('#adsEnd').value=end;
+  }
   const q=new URLSearchParams({start_date:start,end_date:end});
   const data=await json('/api/shopee/ads/overview?'+q,{signal:AbortSignal.timeout(120000)});
   if(!data.ok)throw Error(data.error||'Resposta Ads não confirmada.');
+  if(data.dateAdjustment?.shiftedDays){
+    $('#adsStart').value=String(data.dates.start).split('-').reverse().join('-');
+    $('#adsEnd').value=String(data.dates.end).split('-').reverse().join('-');
+    adjustedNote+='A Shopee ainda não liberou o último dia; a consulta foi repetida em dias anteriores. ';
+  }
   renderShopeeAds(data);
-  adsStatusState('Consulta concluída: '+data.campaignCount+' campanhas, '+
-   (data.total?.withData||0)+' com métricas no período. '+
-   (data.statusWarning?'Atenção: '+data.statusWarning+' ':'')+
-   'Nenhuma mudança foi enviada à Shopee.',data.statusWarning?'warning':'success');
-  debug({shopId:data.shopId,campaignCount:data.campaignCount,dates:data.dates,total:data.total,coverage:data.coverage});
+  adsStatusState(adjustedNote+'Período consultado: '+$('#adsStart').value+' a '+$('#adsEnd').value+
+    '. '+data.campaignCount+' campanhas, '+(data.total?.withData||0)+' com métricas. '+
+    (data.statusWarning?'Atenção: '+data.statusWarning+' ':'')+
+    'Nenhuma alteração enviada à Shopee.',adjustedNote||data.statusWarning?'warning':'success');
+  debug({shopId:data.shopId,campaignCount:data.campaignCount,dates:data.dates,total:data.total,dateAdjustment:data.dateAdjustment});
  }catch(error){
-  adsStatusState('Não foi possível consultar Ads: '+(error?.name==='TimeoutError'?
-   'Tempo da consulta esgotado; use período menor.':String(error.message||error))+
-   '. Verifique permissões Shopee Ads e tente novamente.','error');
-  debug({adsError:String(error.message||error)});
+  const message=error?.name==='TimeoutError'?'Consulta demorou demais; use um período menor.':String(error.message||error);
+  const isDate=/date_in_future|date must be today or earlier|data final.*futuro/i.test(message);
+  const isPermission=/permission|denied|403|restricted|forbidden|unauthorized/i.test(message);
+  adsStatusState((hadPrevious?'A análise anterior continua visível. ':'')+
+    (isDate?'Data ainda indisponível na Shopee Brasil. Selecione um dia anterior e tente novamente.':
+      'Não foi possível atualizar Ads: '+message+(isPermission?' Confira as permissões Ads.':' Tente novamente.')),'error');
+  debug({adsError:message});
  }finally{adsBusy=false;button.disabled=false;$('#adsRefreshLabel').textContent='Atualizar análise';}
 };
 $('#adsShowAllSuggestions').onclick=()=>{adsSuggestionsExpanded=!adsSuggestionsExpanded;adsRenderSuggestions();};
