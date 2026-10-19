@@ -21,6 +21,8 @@ import {previewWeDropCsv,prepareWeDropImport,MAX_CSV_CHARS} from './wedropCsv.js
 import {saveWeDropCosts,getWeDropCoverage,compareIncomingCosts,pendingWeDropModels} from './wedropCosts.js';
 import {saveWeDropProducts,readWeDropProduct} from './wedropCosts.js';
 import {supplierWorkflowFacts} from './shopeeSupplierFacts.js';
+import {supplierAttributeSuggestions} from './shopeeSupplierEvidenceFacts.js';
+import {readShopeeSourceEvidence,saveShopeeSourceText,importShopeeEvidenceImage,removeShopeeEvidenceImage} from './shopeeSourceEvidence.js';
 import {fiscalMatrixSource,technicalMatrixSource} from './shopeeMatrixRules.js';
 import {readWeDropSyncState,getStoredWeDropCostCount} from './wedropCosts.js';
 import {getSkuReview,searchSupplierSku,confirmSkuLink,undoSkuLink} from './wedropSkuReview.js';
@@ -663,10 +665,14 @@ app.get('/api/shopee/optimizer/workflow',mustLogin,requireWeDropAdmin,async(req,
     }
     const [supplier,settings]=await Promise.all([
       readWeDropProduct(auth.shopId,{sku,itemId,modelId}),optimizerSettings(auth.shopId)]);
+    const [sourceEvidence]=await Promise.all([readShopeeSourceEvidence(auth.shopId,itemId,modelId,sku,{preview:true})]);
     const supplierFacts=supplierWorkflowFacts(supplier,record,settings);
+    const evidenceFacts=supplierAttributeSuggestions({attributes:technicalPreview.attributes,
+      proposed:review.attributes||[],supplier,sourceText:sourceEvidence.sourceText});
     const manualVideo=manualVideoPublicInfo(
       await getShopeeManualVideo(auth.shopId,itemId,modelId,sku));
     res.json({ok:true,readOnlyMarketplace:true,sku,itemId,modelId,manualVideo,...supplierFacts,
+      sourceEvidence,sourceFacts:evidenceFacts,
       contentVariants:review.contentVariants||null,contentResearch:review.contentResearch||null,
       attributes:technicalPreview.attributes,anatel:inspectAnatelCompliance(technicalPreview),technicalWarning,attributeChanges:review.attributes||[],taxDraft:review.tax||{},taxCurrent:current.tax_info||{},
       recordedAt:stored?.updated_at||null,stages,
@@ -679,6 +685,32 @@ app.get('/api/shopee/optimizer/workflow',mustLogin,requireWeDropAdmin,async(req,
       videoStatus:record.videoStatus,categoryId:record.categoryId,
       imageUrls:(record.imageUrls||[]).slice(0,9),productTitle:record.title});
   }catch(e){res.status(400).json({error:String(e.message||e).slice(0,350)});}
+});
+// Reference material belongs to an exact authenticated Shopee shop/item/model/SKU.
+// Screenshots are private, not parsed as unverified OCR or used for API writes.
+app.get('/api/shopee/optimizer/workflow/source',mustLogin,requireWeDropAdmin,async(req,res)=>{
+ res.setHeader('Cache-Control','no-store');
+ try{
+  const {auth,itemId,modelId,sku}=await checkedWorkflowAudit(req);
+  res.json({ok:true,sourceEvidence:await readShopeeSourceEvidence(auth.shopId,itemId,modelId,sku,{preview:true})});
+ }catch(e){res.status(400).json({error:String(e.message||e).slice(0,200)});}
+});
+app.post('/api/shopee/optimizer/workflow/source',mustLogin,requireWeDropAdmin,async(req,res)=>{
+ res.setHeader('Cache-Control','no-store');
+ if(!verifiedSameOrigin(req))return res.status(403).json({error:'Origem não autorizada.'});
+ try{
+  const {auth,itemId,modelId,sku}=await checkedWorkflowAudit(req);
+  const action=String(req.body.action||'text');
+  if(action==='text')
+   await saveShopeeSourceText(auth.shopId,itemId,modelId,sku,req.body.sourceText);
+  else if(action==='image')
+   await importShopeeEvidenceImage(auth.shopId,itemId,modelId,sku,{
+    imageBase64:req.body.imageBase64,mime:req.body.mime,filename:req.body.filename});
+  else if(action==='remove')
+   await removeShopeeEvidenceImage(auth.shopId,itemId,modelId,sku,req.body.id);
+  else throw Error('Operação de evidência não reconhecida.');
+  res.json({ok:true,sourceEvidence:await readShopeeSourceEvidence(auth.shopId,itemId,modelId,sku,{preview:true})});
+ }catch(e){res.status(400).json({error:String(e.message||e).slice(0,270)});}
 });
 // Category-attribute options are loaded from the official Shopee endpoint.
 // Restrict searches to category/attribute pairs verified by the product audit.
