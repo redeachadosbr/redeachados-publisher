@@ -4511,7 +4511,7 @@ $('#optimizerChatgptAbort')?.addEventListener?.('click',()=>{
  $('#optimizerChatgptAbort').hidden=true;
  $('#optimizerChatgptBridgeStatus').textContent='Pausa solicitada. Os arquivos já salvos permanecerão na galeria; continue pela extensão para não duplicar gerações.';
 });
-window.postMessage({kind:'RA_EXTENSION_PROBE'},location.origin);
+globalThis.window?.postMessage?.({kind:'RA_EXTENSION_PROBE'},location.origin);
 
 $('#optimizerChatgptOpen')?.addEventListener?.('click',()=>void optimizerChatgptCopyAll({open:true}));
 $('#optimizerChatgptCopyAll')?.addEventListener?.('click',()=>void optimizerChatgptCopyAll());
