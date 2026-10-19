@@ -7,9 +7,16 @@ const equal=(a,b)=>plain(a)===plain(b);
 const selectedValue=(attr,proposed)=>list(proposed).find(x=>Number(x.attributeId)===Number(attr.id))?.values?.[0]?.valueName||
  attr.values?.[0]?.name||'';
 const isBrand=x=>['marca','brand','marca do produto'].includes(plain(x));
-const isDimensions=x=>/dimens|medidas?/.test(plain(x))&&/produto|piscina|item|montad/.test(plain(x))&&
- !/pacote|embalagem|caixa|logist/.test(plain(x));
-const isPackageDimensions=x=>/dimens|medida|tamanho/.test(plain(x))&&/pacote|embalagem|caixa/.test(plain(x));
+const isDimensions=x=>{
+ const n=plain(x);
+ return /dimens|medidas?/.test(n)&&/produto|piscina|item|montad/.test(n)&&
+  (!/pacote|embalagem|caixa|logist/.test(n)||/sem\s+(?:a\s+)?(?:caixa|embalagem)|sem\s+embalagem/.test(n));
+};
+const isPackageDimensions=x=>{
+ const n=plain(x);
+ return /dimens|medida|tamanho/.test(n)&&/pacote|embalagem|caixa/.test(n)&&
+  !/sem\s+(?:a\s+)?(?:caixa|embalagem)|sem\s+embalagem/.test(n);
+};
 const sizeNumber=x=>String(x).replace(',','.');
 
 // The product order on the official Shopee category is A x L x C.
@@ -137,7 +144,7 @@ export function supplierAttributeSuggestions({attributes=[],proposed=[],supplier
  if(facts.catalogMeasurements){
   const c=facts.catalogMeasurements;
   metrics.push({name:'Medidas do catálogo logístico',value:[c.heightCm,c.widthCm,c.lengthCm].join(' × ')+' cm',
-   note:'Medidas de transporte/embalagem na planilha; não são necessariamente medidas do produto.'});
+   note:'Medidas de transporte/embalagem na planilha; não são necessariamente medidas da piscina ou do produto montado.'});
   if(c.weightKg)metrics.push({name:'Peso bruto na planilha',value:String(c.weightKg),
    note:'Unidade inconsistente/pendente de conferência; NÃO preencher automaticamente em kg ou g.'});
  }
