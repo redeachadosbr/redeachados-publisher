@@ -6,7 +6,7 @@
 <meta name="theme-color" content="#0A1C3A">
 <link rel="icon" type="image/svg+xml" href="/brand-logo.svg">
 <title>Rede Achados BR · Gestão Shopee</title>
-<link rel="stylesheet" href="/style.css?v=1.19.7">
+<link rel="stylesheet" href="/style.css?v=1.19.8">
 </head>
 <body>
 <div class="shell app-layout">
@@ -32,7 +32,7 @@
         </details>
       </div>
     </nav>
-    <div class="sidebar-bottom"><div class="sidebar-support"><span class="sidebar-support-dot"></span><span><strong>Central Shopee</strong><small>Versão 1.19.7</small></span></div><small class="sidebar-copy">© Rede Achados BR</small></div>
+    <div class="sidebar-bottom"><div class="sidebar-support"><span class="sidebar-support-dot"></span><span><strong>Central Shopee</strong><small>Versão 1.19.8</small></span></div><small class="sidebar-copy">© Rede Achados BR</small></div>
   </aside>
   <button class="sidebar-scrim" id="sidebarScrim" type="button" aria-label="Fechar menu" hidden></button>
   <div class="workspace-main">
@@ -685,42 +685,94 @@
             <div class="monitor-history-error"><strong>Diagnóstico</strong><span id="monitorLastError">Aguardando consulta.</span></div></div>
         </details>
       </section>
-              <section class="tabpane" id="tab-ads">
-        <div class="section-head"><div><span class="eyebrow">SHOPEE ADS — LIVE</span><h2>Desempenho automático de campanhas</h2></div></div>
-        <div class="card form-card">
-          <p class="hint">O sistema identifica automaticamente campanhas de anúncios de produtos autorizadas pela API Shopee. Não é necessário informar Campaign IDs.</p>
-          <div class="dates"><label>Início <input id="adsStart" type="date"></label><label>Fim <input id="adsEnd" type="date"></label></div>
-          <button id="loadAdsAutoBtn">Localizar campanhas e analisar</button>
-          <div id="adsSummary" class="notice" role="status" aria-live="polite">Clique para localizar campanhas e consultar o desempenho real da Shopee.</div>
-          <p class="hint">GMV de Ads corresponde a vendas atribuídas à publicidade, não a lucro líquido. Não somar GMV amplo e direto.</p>
+              <section class="tabpane" id="tab-ads" aria-label="Shopee Ads">
+        <div class="ads-v2-heading">
+          <div><span class="ads-v2-eyebrow">GESTÃO</span><h2>Shopee Ads</h2><p>Campanhas, desempenho, pedidos atribuídos e recomendações automáticas de otimização. <span class="optimizer-tip ads-v2-help" tabindex="0" role="note" data-help="As recomendações são indicativas, baseadas nas métricas. A análise não altera campanhas automaticamente." aria-label="Ajuda: As recomendações são indicativas, baseadas nas métricas. A análise não altera campanhas automaticamente.">?</span></p></div>
+          <div class="ads-v2-heading-actions">
+            <label class="ads-v2-daterange"><svg class="ads-v2-icon" aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M7 3v4M17 3v4M3 10h18"/></svg><input id="adsStart" type="date" aria-label="Início do período"><span>→</span><input id="adsEnd" type="date" aria-label="Fim do período"></label>
+            <button id="loadAdsAutoBtn" type="button" class="secondary"><svg class="ads-v2-icon" aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M20 7v5h-5M4 17v-5h5"/><path d="M5.6 8A8 8 0 0 1 19 7l1 5M4 12l1 5a8 8 0 0 0 13.5-1"/></svg> <span id="adsRefreshLabel">Atualizar análise</span></button>
+            <button id="adsExportBtn" type="button" class="secondary" disabled><svg class="ads-v2-icon" aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v12m-5-5 5 5 5-5M4 16v5h16v-5"/></svg> Exportar relatório</button>
+            <button id="adsExecuteSuggested" type="button"><svg class="ads-v2-icon" aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="m4 20 12-12 4 4-12 12M13 5l1-3 1 3 3 1-3 1-1 3-1-3-3-1 3-1M20 2v3M18.5 3.5h3"/></svg> Revisar ajustes sugeridos</button>
+          </div>
         </div>
+        <div id="adsSummary" class="ads-v2-message" data-state="idle" role="status" aria-live="polite">Aguardando consulta da API Shopee Ads. Nenhum dado financeiro foi presumido.</div>
         <div id="adsResults" hidden>
-          <div class="metrics ads-metrics">
-            <article><span>Campanhas encontradas</span><strong id="adsCampaignCount">—</strong></article>
-            <article><span>Impressões</span><strong id="adsImpressions">—</strong></article>
-            <article><span>Cliques</span><strong id="adsClicks">—</strong></article>
-            <article><span>CTR</span><strong id="adsCtr">—</strong></article>
-            <article><span>Investimento Ads</span><strong id="adsExpense">—</strong></article>
-            <article><span>GMV amplo atribuído</span><strong id="adsGmv">—</strong></article>
-            <article><span>ROAS / ACOS</span><strong id="adsRoasAcos">—</strong></article>
+          <div class="ads-v2-metrics"><article class="ads-v2-kpi ads-v2-kpi-blue"><span class="ads-v2-kpi-icon"><svg class="ads-v2-icon" aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 21V12h4v9M10 21V3h4v18M17 21V8h4v13"/></svg></span><span class="ads-v2-kpi-name">Campanhas encontradas</span><span class="optimizer-tip ads-v2-help" tabindex="0" role="note" data-help="Total de campanhas de anúncios de produtos retornadas pela API Shopee." aria-label="Ajuda: Total de campanhas de anúncios de produtos retornadas pela API Shopee.">?</span><strong id="adsCampaignCount">—</strong></article>
+<article class="ads-v2-kpi ads-v2-kpi-violet"><span class="ads-v2-kpi-icon"><svg class="ads-v2-icon" aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M2 12s3.7-7 10-7 10 7 10 7-3.7 7-10 7S2 12 2 12Z"/><circle cx="12" cy="12" r="3"/></svg></span><span class="ads-v2-kpi-name">Impressões</span><span class="optimizer-tip ads-v2-help" tabindex="0" role="note" data-help="Soma de impressões do período." aria-label="Ajuda: Soma de impressões do período.">?</span><strong id="adsImpressions">—</strong></article>
+<article class="ads-v2-kpi ads-v2-kpi-green"><span class="ads-v2-kpi-icon"><svg class="ads-v2-icon" aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M5 3v14l4-4 3 7 3-1-3-7 6-1L5 3Z"/></svg></span><span class="ads-v2-kpi-name">Cliques</span><span class="optimizer-tip ads-v2-help" tabindex="0" role="note" data-help="Cliques atribuídos às campanhas no período." aria-label="Ajuda: Cliques atribuídos às campanhas no período.">?</span><strong id="adsClicks">—</strong></article>
+<article class="ads-v2-kpi ads-v2-kpi-amber"><span class="ads-v2-kpi-icon"><svg class="ads-v2-icon" aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 19V5M7 19v-8M12 19V8M17 19V3M21 19V10"/></svg></span><span class="ads-v2-kpi-name">CTR</span><span class="optimizer-tip ads-v2-help" tabindex="0" role="note" data-help="Taxa de cliques: cliques divididos por impressões, no período." aria-label="Ajuda: Taxa de cliques: cliques divididos por impressões, no período.">?</span><strong id="adsCtr">—</strong></article>
+<article class="ads-v2-kpi ads-v2-kpi-red"><span class="ads-v2-kpi-icon"><svg class="ads-v2-icon" aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="5" width="18" height="14" rx="3"/><path d="M12 8v8M15 10c-2-2-6-1-6 1s6 1 6 3-4 3-6 1"/></svg></span><span class="ads-v2-kpi-name">Investimento Ads</span><span class="optimizer-tip ads-v2-help" tabindex="0" role="note" data-help="Gasto real das campanhas consultadas, em reais." aria-label="Ajuda: Gasto real das campanhas consultadas, em reais.">?</span><strong id="adsExpense">—</strong></article>
+<article class="ads-v2-kpi ads-v2-kpi-green"><span class="ads-v2-kpi-icon"><svg class="ads-v2-icon" aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3h2l2 12h12l2-9H6M10 21h.01M19 21h.01"/></svg></span><span class="ads-v2-kpi-name">GMV atribuído</span><span class="optimizer-tip ads-v2-help" tabindex="0" role="note" data-help="GMV amplo atribuído pela Shopee Ads. Não representa lucro líquido." aria-label="Ajuda: GMV amplo atribuído pela Shopee Ads. Não representa lucro líquido.">?</span><strong id="adsGmv">—</strong></article>
+<article class="ads-v2-kpi ads-v2-kpi-violet"><span class="ads-v2-kpi-icon"><svg class="ads-v2-icon" aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 19V5M7 19v-8M12 19V8M17 19V3M21 19V10"/></svg></span><span class="ads-v2-kpi-name">ROAS / ACOS</span><span class="optimizer-tip ads-v2-help" tabindex="0" role="note" data-help="ROAS = GMV amplo / gasto; ACOS = gasto / GMV amplo. Indisponíveis com denominador zero." aria-label="Ajuda: ROAS = GMV amplo / gasto; ACOS = gasto / GMV amplo. Indisponíveis com denominador zero.">?</span><strong id="adsRoasAcos">—</strong></article>
+<article class="ads-v2-kpi ads-v2-kpi-pink"><span class="ads-v2-kpi-icon"><svg class="ads-v2-icon" aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3h2l2 12h12l2-9H6M10 21h.01M19 21h.01"/></svg></span><span class="ads-v2-kpi-name">Pedidos atribuídos</span><span class="optimizer-tip ads-v2-help" tabindex="0" role="note" data-help="Soma do campo broad_order das métricas da Shopee no período." aria-label="Ajuda: Soma do campo broad_order das métricas da Shopee no período.">?</span><strong id="adsAttributedOrders">—</strong></article>
+<article class="ads-v2-kpi ads-v2-kpi-blue"><span class="ads-v2-kpi-icon"><svg class="ads-v2-icon" aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="m12 2 9 5-9 5-9-5 9-5ZM3 7v10l9 5 9-5V7M12 12v10"/></svg></span><span class="ads-v2-kpi-name">Itens vendidos</span><span class="optimizer-tip ads-v2-help" tabindex="0" role="note" data-help="A API Ads consultada não informa quantidade confirmada de itens vendidos; não substituir por número de pedidos." aria-label="Ajuda: A API Ads consultada não informa quantidade confirmada de itens vendidos; não substituir por número de pedidos.">?</span><strong id="adsItemsSold">—</strong></article></div>
+          <div class="ads-v2-main-grid">
+            <section class="ads-v2-card ads-v2-health">
+              <h3>Saúde das campanhas <span class="optimizer-tip ads-v2-help" tabindex="0" role="note" data-help="Índice interno indicativo, de 0 a 100, calculado com os dados e limites de alerta da loja. Não é uma pontuação oficial da Shopee." aria-label="Ajuda: Índice interno indicativo, de 0 a 100, calculado com os dados e limites de alerta da loja. Não é uma pontuação oficial da Shopee.">?</span></h3>
+              <div class="ads-v2-health-top">
+                <div id="adsHealthGauge" class="ads-v2-gauge" role="img" aria-label="Índice interno ainda não calculado"><span><strong id="adsHealthScore">—</strong><small>de 100</small></span></div>
+                <div class="ads-v2-health-note"><strong>Situação geral</strong><span id="adsHealthState">Aguardando dados</span><p id="adsHealthComment">O resultado depende das campanhas realmente consultadas.</p></div>
+              </div>
+              <div class="ads-v2-health-bottom"><h4>Status das campanhas</h4><div class="ads-v2-status-track" id="adsStatusTrack"></div>
+                <div class="ads-v2-status-legend"><div><span class="ads-v2-status-dot active"></span><strong>Ativas</strong><b id="adsActiveCount">—</b></div>
+                  <div><span class="ads-v2-status-dot inactive"></span><strong>Pausadas / desativadas</strong><b id="adsInactiveCount">—</b></div>
+                  <div id="adsOtherWrap"><span class="ads-v2-status-dot other"></span><strong>Outras / não confirmadas</strong><b id="adsOtherCount">—</b></div></div>
+              </div>
+            </section>
+            <section class="ads-v2-card ads-v2-improvements">
+              <div class="ads-v2-card-head"><h3>O que precisa melhorar <span class="optimizer-tip ads-v2-help" tabindex="0" role="note" data-help="Regras de análise: CTR baixo, ACOS elevado e campanhas com gasto sem venda atribuída. Indicações exigem revisão dos anúncios e margens antes de qualquer ação." aria-label="Ajuda: Regras de análise: CTR baixo, ACOS elevado e campanhas com gasto sem venda atribuída. Indicações exigem revisão dos anúncios e margens antes de qualquer ação.">?</span></h3>
+                <button id="adsShowAllSuggestions" type="button" class="ads-v2-text-action">Ver todas</button></div>
+              <div id="adsRecommendations" class="ads-v2-recommendations">Aguardando análise de campanhas.</div>
+            </section>
+            <section class="ads-v2-card ads-v2-execution">
+              <h3>Execução via API <span class="optimizer-tip ads-v2-help" tabindex="0" role="note" data-help="A integração instalada permite consultar relatórios; não há ainda um endpoint de escrita verificado para alterar lances, orçamentos ou pausar anúncios. Os ajustes ficam para revisão manual." aria-label="Ajuda: A integração instalada permite consultar relatórios; não há ainda um endpoint de escrita verificado para alterar lances, orçamentos ou pausar anúncios. Os ajustes ficam para revisão manual.">?</span></h3>
+              <div id="adsExecutionSteps" class="ads-v2-steps">
+                <p>1. Consultar métricas <span>Pendente</span></p><p>2. Identificar baixo desempenho <span>Pendente</span></p>
+                <p>3. Gerar recomendações <span>Pendente</span></p><p>4. Revisar ajustes <span>Aguardando</span></p>
+                <p>5. Alterar campanha pela API <span>Não habilitado</span></p>
+              </div>
+              <button id="adsExecutionReviewBtn" type="button"><svg class="ads-v2-icon" aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="m4 20 12-12 4 4-12 12M13 5l1-3 1 3 3 1-3 1-1 3-1-3-3-1 3-1M20 2v3M18.5 3.5h3"/></svg> Revisar campanhas selecionadas</button>
+              <small id="adsExecutionNote">Nenhum ajuste será enviado automaticamente à Shopee.</small>
+            </section>
           </div>
-          <div class="card monitor-card">
-            <h2>Campanhas por situação</h2>
-            <p id="adsStatusExplanation" class="hint">O status de cada campanha vem da configuração atual na Shopee. As métricas correspondem ao período escolhido.</p>
-            <div class="ads-status-tabs" role="group" aria-label="Filtrar campanhas por situação">
-              <button type="button" class="secondary ads-status-tab selected" data-ads-group="active" aria-pressed="true">Ativas <span id="adsActiveCount">0</span></button>
-              <button type="button" class="secondary ads-status-tab" data-ads-group="inactive" aria-pressed="false">Pausadas / Desativadas <span id="adsInactiveCount">0</span></button>
-              <button type="button" class="secondary ads-status-tab" data-ads-group="other" aria-pressed="false" id="adsOtherTab" hidden>Outras / Sem confirmação <span id="adsOtherCount">0</span></button>
+          <section class="ads-v2-card ads-v2-campaigns">
+            <div class="ads-v2-table-header"><div><h3>Campanhas por situação <span class="optimizer-tip ads-v2-help" tabindex="0" role="note" data-help="Status atual da campanha vindo da API; métricas do período selecionado, inclusive campanhas pausadas." aria-label="Ajuda: Status atual da campanha vindo da API; métricas do período selecionado, inclusive campanhas pausadas.">?</span></h3>
+              <p id="adsStatusExplanation">Aguardando retorno da consulta.</p></div>
+              <div class="ads-v2-table-controls"><label class="ads-v2-search"><svg class="ads-v2-icon" aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="7"/><path d="m16.5 16.5 5 5"/></svg><input id="adsCampaignSearch" type="search" placeholder="Buscar campanha ou produto..." aria-label="Buscar campanha ou produto"></label>
+                <button id="adsFilterToggle" type="button" class="secondary" aria-expanded="false"><svg class="ads-v2-icon" aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 6h16M7 12h10M10 18h4"/></svg> Filtros</button></div>
             </div>
-            <p id="adsFilterSummary" class="hint" role="status">Selecione Localizar campanhas e analisar.</p>
-            <div class="table-wrap"><table><thead><tr><th>Campanha / ID</th><th>Status Shopee</th><th>Tipo</th><th>Impressões</th><th>Cliques</th><th>CTR</th><th>Gasto</th><th>GMV amplo</th><th>ROAS</th><th>ACOS</th></tr></thead>
-            <tbody id="adsResultsBody"></tbody></table></div>
-          </div>
+            <div id="adsFiltersPanel" class="ads-v2-filter-panel" hidden>
+              <div class="ads-status-tabs" role="group" aria-label="Filtrar campanhas por situação">
+                <button type="button" class="secondary ads-status-tab selected" data-ads-group="all" aria-pressed="true">Todas</button>
+                <button type="button" class="secondary ads-status-tab" data-ads-group="active" aria-pressed="false">Ativas</button>
+                <button type="button" class="secondary ads-status-tab" data-ads-group="inactive" aria-pressed="false">Pausadas / Desativadas</button>
+                <button type="button" class="secondary ads-status-tab" data-ads-group="other" aria-pressed="false" id="adsOtherTab">Outras / Sem confirmação</button>
+              </div>
+              <label>Diagnóstico <select id="adsDiagnosisFilter"><option value="all">Todos os diagnósticos</option>
+                <option value="attention">Requer atenção</option><option value="ok">Sem alerta</option></select></label>
+              <label>Ordenar <select id="adsCampaignSort"><option value="expense">Maior gasto</option><option value="clicks">Mais cliques</option>
+                <option value="acos">Maior ACOS</option><option value="ctr">Menor CTR</option></select></label>
+            </div>
+            <div class="ads-v2-table-selection"><label><input id="adsSelectVisible" type="checkbox"> Selecionar campanhas exibidas</label>
+              <span id="adsFilterSummary">Nenhuma campanha carregada</span><span id="adsSelectionCount">0 selecionadas</span></div>
+            <div class="ads-v2-table-wrap"><table class="ads-v2-table"><thead><tr>
+              <th><span aria-label="Seleção">✓</span></th><th>Campanha / Produto</th><th>Status Shopee</th><th>Tipo</th><th>Impressões</th><th>Cliques</th><th>CTR</th><th>Gasto</th><th>GMV atribuído</th><th>Pedidos</th><th>ROAS</th><th>Diagnóstico</th><th>Ações</th>
+            </tr></thead><tbody id="adsResultsBody"></tbody></table></div>
+            <div class="ads-v2-table-bottom"><span id="adsPaginationInfo"></span><div>
+              <button id="adsPrevious" class="secondary" type="button" disabled>Anterior</button>
+              <span id="adsPageCurrent">1 / 1</span>
+              <button id="adsNext" class="secondary" type="button" disabled>Próxima</button></div></div>
+          </section>
+          <section class="ads-v2-review-panel" id="adsReviewPanel" hidden aria-live="polite" tabindex="-1">
+            <div class="ads-v2-review-title"><h3>Prévia dos ajustes recomendados</h3><button id="adsCloseReview" type="button" class="secondary">Fechar</button></div>
+            <p id="adsReviewNotice">As ações exigem avaliação manual na Central de Marketing da Shopee. Esta versão não executa alterações via API.</p>
+            <div id="adsReviewRows"></div><button id="adsOpenSeller" type="button" class="secondary">Abrir Central do Vendedor para revisar campanhas ↗</button>
+          </section>
         </div>
-        <details class="card ads-manual" id="adsManualPanel"><summary>Consulta avançada por IDs (opcional)</summary>
+        <details class="card ads-manual" id="adsManualPanel"><summary>Consulta avançada por Campaign IDs (opcional)</summary>
           <label>Campaign IDs <input id="campaignIds" placeholder="Ex.: 11111,22222"></label>
-          <button id="loadAdsBtn">Consultar IDs informados</button>
-          <p class="hint">Alternativa de diagnóstico para campanhas de anúncios de produtos.</p>
+          <button id="loadAdsBtn" type="button">Consultar IDs informados</button>
+          <p class="hint">Diagnóstico de campanhas de produtos. Não modifica o orçamento, status ou lance.</p>
         </details>
       </section>
               <section class="tabpane" id="tab-wedrop">
@@ -961,6 +1013,6 @@
     </main>
   </div>
 </div>
-<script src="/app.js?v=1.19.7"></script>
+<script src="/app.js?v=1.19.8"></script>
 </body>
 </html>
