@@ -2269,6 +2269,13 @@ function optimizerWorkflowNotice(message,state='info'){
 function optimizerWorkflowRender(data){
  optimizerWorkflowPlan=data;
  const cards=$('#optimizerWorkflowCards');cards.replaceChildren();
+ if(data.anatel?.requiresAction){
+   const alert=optimizerMake('div','optimizer-anatel-alert');
+   const message=optimizerMake('span','','Anatel • '+data.anatel.message);
+   const fix=optimizerMake('button','secondary','Corrigir Anatel');fix.type='button';
+   fix.onclick=()=>optimizerWorkflowOpen('technical');
+   alert.append(message,fix);cards.append(alert);
+ }
  const stages=data.stages||[];
  const visible=stages.filter(x=>x.key!=='final'),required=visible.filter(x=>!x.skipped);
  const reviews=required.filter(x=>x.reviewed).length;
@@ -4258,6 +4265,10 @@ function optimizerSupplierRender(data,key){
 }
 function optimizerTechnicalRender(data){
  const wrap=$('#optimizerTechnicalFields');wrap.replaceChildren();
+ if(data.anatel?.applicable){
+   wrap.append(optimizerMake('p',data.anatel.requiresAction?'optimizer-warning':'optimizer-category-summary',
+     'Anatel • '+data.anatel.message));
+ }
  if(data.technicalWarning)wrap.append(optimizerMake('p','optimizer-warning',
   'Atenção: os dados da ficha técnica salva precisam de nova conferência nesta categoria: '+data.technicalWarning));
  wrap.append(optimizerMake('p','optimizer-category-summary',
@@ -4389,7 +4400,7 @@ $('#optimizerTechnicalRefresh')?.addEventListener?.('click',async()=>{
   const result=await json('/api/shopee/optimizer/workflow/attributes/preview',{method:'POST',headers:{'Content-Type':'application/json'},
    body:JSON.stringify({itemId:w.itemId,modelId:w.modelId,sku:w.sku,attributes}),signal:AbortSignal.timeout(60000)});
   if(optimizerWorkflowPlan!==w||optimizerWorkflowStage!=='technical')return;
-  w.attributes=result.attributes;w.attributeChanges=attributes;optimizerTechnicalRender(w);
+  w.attributes=result.attributes;w.attributeChanges=attributes;w.anatel=result.anatel;optimizerTechnicalRender(w);
   optimizerWorkflowNotice('Opções dependentes atualizadas. Confira os campos liberados.');
  }catch(e){optimizerWorkflowNotice(e.message,'error');}finally{btn.disabled=false;}
 });
