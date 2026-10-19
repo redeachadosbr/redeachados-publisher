@@ -200,7 +200,7 @@
       </div>
       <p class="optimizer-notice" id="optimizerWorkflowStatus" role="status" aria-live="polite">Aguardando a auditoria oficial da SKU.</p>
       <div class="optimizer-workflow-cards" id="optimizerWorkflowCards" aria-label="Etapas de otimização"></div>
-      <section class="optimizer-exec-panel" id="optimizerExecutionPanel" hidden aria-label="Pré-execução automatizada por SKU">
+      <section class="optimizer-exec-panel optimizer-exec-panel-v21" id="optimizerExecutionPanel" hidden aria-label="Pré-execução automatizada por SKU">
         <div class="optimizer-exec-head">
           <div><span class="optimizer-v15-kicker">PRÉ-EXECUÇÃO SEGURA</span>
             <h4>Preparar execução automática <span class="optimizer-tip" tabindex="0" data-help="A execução usa somente o conteúdo aprovado na prévia. O vídeo é validado, processado e confirmado na Shopee. Campos sem informação comprovada continuam como pendência." aria-label="A execução usa somente o conteúdo aprovado na prévia. O vídeo é validado, processado e confirmado na Shopee. Campos sem informação comprovada continuam como pendência.">?</span></h4>
@@ -210,6 +210,40 @@
             <button id="optimizerExecutionLaunch" type="button" hidden>▶ Executar na Shopee</button>
           </div>
         </div>
+        <section id="optimizerExecutionTracker" class="optimizer-exec-tracker" hidden aria-label="Acompanhamento em tempo real da execução">
+          <div class="optimizer-exec-tracker-head">
+            <div class="optimizer-exec-tracker-heading">
+              <span class="optimizer-exec-icon optimizer-exec-icon-blue" aria-hidden="true">⚙</span>
+              <div><h4>Acompanhamento da execução</h4><p>Etapas reais da SKU e confirmação da Shopee, atualizadas automaticamente.</p></div>
+            </div>
+            <span id="optimizerExecutionLiveBadge" class="optimizer-exec-live-badge">● Sincronizando</span>
+          </div>
+          <div class="optimizer-exec-product">
+            <div class="optimizer-exec-product-visual">
+              <img id="optimizerExecutionProductImage" alt="Foto atual do anúncio na Shopee" hidden>
+              <span id="optimizerExecutionProductFallback" aria-hidden="true">▣</span>
+            </div>
+            <div class="optimizer-exec-product-description">
+              <strong id="optimizerExecutionSku">SKU</strong>
+              <span id="optimizerExecutionProductTitle">Anúncio Shopee</span>
+              <small id="optimizerExecutionItemId">Item ID —</small>
+            </div>
+            <div class="optimizer-exec-marketplace"><strong>▣ Shopee</strong><small>Marketplace</small></div>
+            <div class="optimizer-exec-current-state">
+              <strong id="optimizerExecutionPhaseTitle">Preparando execução</strong>
+              <small id="optimizerExecutionPhaseSubtitle">Aguardando status da API</small>
+            </div>
+            <div class="optimizer-exec-started"><span>Início da execução</span><strong id="optimizerExecutionStartedAt">Ainda não registrado</strong></div>
+          </div>
+          <div class="optimizer-exec-progress-card">
+            <div class="optimizer-exec-progress-head">
+              <div><strong>Progresso da execução</strong><p id="optimizerExecutionProgressDetail">Aguardando dados verificados da Shopee.</p></div>
+              <div class="optimizer-exec-percent"><span id="optimizerExecutionMediaCount"></span><strong id="optimizerExecutionPercent">0%</strong></div>
+            </div>
+            <div id="optimizerExecutionBar" class="optimizer-exec-progress-track" role="progressbar" aria-label="Progresso das etapas registradas" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0"><span id="optimizerExecutionBarFill"></span></div>
+            <ol id="optimizerExecutionSteps" class="optimizer-exec-steps" aria-label="Etapas reais do processamento"></ol>
+          </div>
+        </section>
         <p id="optimizerExecutionStatus" class="optimizer-notice" role="status" aria-live="polite">Aguardando análise das etapas.</p>
         <a id="optimizerExecutionShopeeLink" class="optimizer-exec-result-link" hidden target="_blank" rel="noopener noreferrer">✓ Alterações confirmadas. Ver anúncio na Central do Vendedor Shopee ↗</a>
         <div class="optimizer-workflow-actions">
@@ -217,6 +251,8 @@
           <button id="optimizerExecutionReconcile" type="button" class="secondary" hidden>Conferir resultado na Shopee</button>
           <button id="optimizerExecutionRetry" type="button" class="secondary" hidden>Repreparar execução</button>
         </div>
+        <div class="optimizer-exec-bottom">
+          <div class="optimizer-exec-support">
         <details class="optimizer-connection-tools" id="optimizerConnectionTools">
           <summary>Diagnóstico de conexão (somente se houver falha)</summary>
           <button id="optimizerConnectionCheck" type="button" class="secondary">Diagnosticar conexão da Shopee</button>
@@ -238,7 +274,13 @@
           <details><summary>Pendências das outras etapas</summary><div class="optimizer-exec-blockers" id="optimizerExecutionWarnings"></div></details>
 
         </div>
-        <small class="optimizer-workflow-disclaimer">Após aprovação, a execução avança em segundo plano e salva o progresso. Em resultado incerto, confira antes de reenviar.</small>
+          </div>
+          <section class="optimizer-exec-activity" id="optimizerExecutionActivity" hidden aria-label="Últimas ações do processamento">
+            <div class="optimizer-exec-activity-head"><div><span class="optimizer-exec-icon optimizer-exec-icon-blue" aria-hidden="true">◷</span><strong>Últimas ações da execução</strong></div><small>Dados reais do processamento</small></div>
+            <ol id="optimizerExecutionEvents" class="optimizer-exec-events"></ol>
+          </section>
+        </div>
+        <small class="optimizer-workflow-disclaimer">A execução é gravada por SKU e prossegue automaticamente. Imagens enviadas à mídia Shopee só serão aplicadas ao anúncio quando a API confirmar a atualização.</small>
       </section>
 
       <div class="optimizer-workflow-editor" id="optimizerWorkflowEditor" hidden>
