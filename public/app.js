@@ -16,7 +16,7 @@ const APP_PAGES={
   discounts:{slug:'descontos',title:'Descontos preparados',group:'Operação',
     description:'Preço bruto e desconto recuperados da SKU já informada na Otimização.'},
   orders:{slug:'pedidos',title:'Pedidos e vendas',group:'Operação',
-    description:'Consulte as vendas e os estados dos seus pedidos.'},
+    description:'Acompanhe pedidos, status, quantidades e desempenho do período.'},
   alerts:{slug:'envios',title:'Monitor de envios',group:'Operação',
     description:'Acompanhe prazos, prioridades e notificações de postagem.'},
   ads:{slug:'ads',title:'Shopee Ads',group:'Gestão',
@@ -50,6 +50,7 @@ function setTab(name,{updateHistory=true,scroll=true}={}){
   document.body?.classList?.toggle?.('view-products',name==='products');
   document.body?.classList?.toggle?.('view-pricing',name==='pricing');
   document.body?.classList?.toggle?.('view-discounts',name==='discounts');
+  document.body?.classList?.toggle?.('view-orders',name==='orders');
   document.body?.classList?.toggle?.('view-finance',name==='finance');
   document.body?.classList?.toggle?.('view-alerts',name==='alerts');
   const reportTabs=new Set(['ads','wedrop']);
@@ -77,6 +78,7 @@ function setTab(name,{updateHistory=true,scroll=true}={}){
   setSidebarOpen(false);
   if(name==='wedrop'){refreshWeDropCoverage();loadWeDropSourceState();void loadWeDropSkuReview();}
   else if(name==='finance'){refreshWeDropCoverage();}
+  else if(name==='orders')ordersEnsureLoaded();
   else if(name==='optimizer'||name==='pricing'){
     if(name==='optimizer')void optimizerLoadSettings();
     void shPriceLoadDefaults().then(()=>{
@@ -701,36 +703,361 @@ $('#exportProductsBtn').onclick=()=>{
 };
 catalogRender();
 
-$('#loadOrdersBtn').onclick=async()=>{
-  const b=$('#ordersBody');b.innerHTML='<tr><td colspan="3">Carregando…</td></tr>';
-  try{
-    const d=await json('/api/shopee/orders?page_size=50');debug(d);
-    const orders=d.response?.order_list||[];
-    const datesCount=orders.filter(o=>Number(o.create_time)>0).length;
-    const countText=`${orders.length} pedido(s) retornado(s) nos últimos 15 dias.`;
-    const datesText=orders.length?` Datas de criação: ${datesCount} de ${orders.length}.`:'';
-    const moreText=d.response?.more?' Existem mais pedidos; a paginação será implementada na sincronização completa.':'';
-    const warningText=d.detailStatus?.warning?' '+d.detailStatus.warning:'';
-    $('#ordersSummary').textContent=countText+datesText+moreText+warningText;
-    b.replaceChildren();
-    if(!orders.length){
-      const empty=document.createElement('tr');
-      const cell=document.createElement('td');
-      cell.colSpan=3;
-      cell.textContent='Nenhum pedido encontrado no período consultado.';
-      empty.appendChild(cell);
-      b.appendChild(empty);
-    }
-    for(const x of orders){
-      const tr=document.createElement('tr');
-      [x.order_sn||'—',x.order_status||'—',fmtDate(x.create_time)].forEach(value=>{
-        const td=document.createElement('td');
-        td.textContent=String(value);
-        tr.appendChild(td);
-      });
-      b.appendChild(tr);
-    }
-  }catch(e){b.innerHTML='<tr><td colspan="3">'+e.message+'</td></tr>';$('#ordersSummary').textContent='Falha na consulta.';}
+
+/* Pedidos v1.19.7: paginação real por cursor, janelas de até 14 dias, dados operacionais sem PII. */
+let ordersLoaded=[],ordersCurrentPeriod=15,ordersCurrentStatus='ALL',
+ ordersPage=1,ordersPageSize=10,ordersLoadedAt=null,ordersLoadedComplete=false,
+ ordersBusy=false,ordersRequestId=0,ordersAbortController=null,ordersAutoLoaded=false;
+const ORDERS_SHOPEE_COLORS={
+ SHIPPED:'#3488ff',COMPLETED:'#18aa69',READY_TO_SHIP:'#ed9c28',
+ PROCESSED:'#885dee',TO_CONFIRM_RECEIVE:'#21a8c8',UNPAID:'#a1adc1',
+ IN_CANCEL:'#e87943',CANCELLED:'#e75564',CANCELED:'#e75564'
+};
+const ordersCurrency=value=>value===null||value===undefined||value===''||!Number.isFinite(Number(value))?
+ 'Não informado':new Intl.NumberFormat('pt-BR',{style:'currency',currency:'BRL'}).format(Number(value));
+const ordersNum=value=>new Intl.NumberFormat('pt-BR').format(value);
+const ordersStr=(value)=>String(value??'');
+function ordersStatusMeta(s){
+ const code=ordersStr(s||'UNKNOWN').toUpperCase();
+ const labels={SHIPPED:'SHIPPED',COMPLETED:'COMPLETED',READY_TO_SHIP:'A preparar',
+  PROCESSED:'Em processamento',TO_CONFIRM_RECEIVE:'A confirmar',
+  UNPAID:'Não pago',CANCELLED:'Cancelado',CANCELED:'Cancelado'};
+ return {code,label:labels[code]||code,color:ORDERS_SHOPEE_COLORS[code]||'#8193ac'};
+}
+function ordersKpi(id,value,footId,foot){
+ const n=$('#'+id);if(n)n.textContent=String(value);
+ const f=$('#'+footId);if(f)f.textContent=foot;
+}
+function ordersSetStatus(message,state='info'){
+ const node=$('#ordersSummary');node.textContent=message;node.dataset.state=state;
+}
+function ordersLocalTime(time){
+ return time?fmtDate(time):'Data não informada';
+}
+function ordersGetFiltered(){
+ const search=$('#ordersSearch').value.trim().toLocaleLowerCase('pt-BR');
+ const selected=$('#ordersStatusFilter').value;
+ const sorted=ordersLoaded.filter(order=>{
+  const text=[order.order_sn,order.primary_sku,...(order.items||[]).flatMap(x=>[x.sku,x.name])]
+    .join(' ').toLocaleLowerCase('pt-BR');
+  return (selected==='ALL'||order.order_status===selected)&&(!search||text.includes(search));
+ });
+ const sort=$('#ordersSort').value;
+ const amount=order=>order.total_amount==null?null:Number(order.total_amount);
+ if(sort==='oldest')sorted.sort((a,b)=>(a.create_time??Infinity)-(b.create_time??Infinity));
+ else if(sort==='value_desc')sorted.sort((a,b)=>(amount(b)??-Infinity)-(amount(a)??-Infinity));
+ else if(sort==='value_asc')sorted.sort((a,b)=>(amount(a)??Infinity)-(amount(b)??Infinity));
+ else if(sort==='quantity')sorted.sort((a,b)=>(b.items_count??-Infinity)-(a.items_count??-Infinity));
+ else sorted.sort((a,b)=>(b.create_time??0)-(a.create_time??0));
+ return sorted;
+}
+function ordersRefreshQuickFilters(){
+ const counts=new Map();
+ for(const order of ordersLoaded){
+  const status=order.order_status||'UNKNOWN';
+  counts.set(status,(counts.get(status)||0)+1);
+ }
+ const selector=$('#ordersStatusFilter'),quick=$('#ordersQuickFilters');
+ const current=selector.value;
+ selector.replaceChildren();
+ const o=document.createElement('option');o.value='ALL';o.textContent='Todos os status';selector.append(o);
+ const statuses=[...counts.keys()].sort((a,b)=>(counts.get(b)||0)-(counts.get(a)||0));
+ for(const status of statuses){
+  const option=document.createElement('option');option.value=status;
+  option.textContent=ordersStatusMeta(status).label;selector.append(option);
+ }
+ selector.value=statuses.includes(current)?current:'ALL';
+ ordersCurrentStatus=selector.value;
+ quick.replaceChildren();
+ const chips=[['ALL','Todos',ordersLoaded.length],
+   ...statuses.map(status=>[status,ordersStatusMeta(status).label,counts.get(status)])];
+ for(const [value,label,count] of chips){
+  const btn=document.createElement('button');btn.type='button';btn.className='orders-v2-chip';
+  btn.dataset.ordersStatus=value;btn.textContent=label+' ('+count+')';
+  const active=value===ordersCurrentStatus;btn.classList.toggle('selected',active);
+  btn.setAttribute('aria-pressed',String(active));
+  btn.onclick=()=>{selector.value=value;ordersCurrentStatus=value;ordersPage=1;ordersRender();};
+  quick.append(btn);
+ }
+}
+function ordersMakeStatusChip(order){
+ const tag=document.createElement('span');tag.className='orders-v2-status-chip';
+ const meta=ordersStatusMeta(order.order_status);
+ tag.style.setProperty('--order-color',meta.color);
+ tag.textContent=meta.label;
+ return tag;
+}
+function ordersShowDetail(order){
+ const root=$('#ordersDetailPanel'),content=$('#ordersDetailBody');
+ content.replaceChildren();
+ $('#ordersDetailTitle').textContent='Pedido '+order.order_sn;
+ $('#ordersDetailMeta').textContent='Status: '+ordersStatusMeta(order.order_status).label+
+  ' · Criado: '+ordersLocalTime(order.create_time);
+ const summary=document.createElement('div');summary.className='orders-v2-detail-counters';
+ for(const [label,value] of [['Valor total',ordersCurrency(order.total_amount)],
+  ['Quantidade de itens',order.items_count==null?'Não informada':ordersNum(order.items_count)],
+  ['SKU principal',order.primary_sku||'Não informado']]){
+  const el=document.createElement('div'),key=document.createElement('small'),data=document.createElement('strong');
+  key.textContent=label;data.textContent=value;el.append(key,data);summary.append(el);
+ }
+ content.append(summary);
+ const title=document.createElement('h4');title.textContent='Itens do pedido';content.append(title);
+ if(!order.items?.length){
+  const message=document.createElement('p');message.className='orders-v2-details-hint';
+  message.textContent='A consulta de detalhes não retornou itens para este pedido.';
+  content.append(message);
+ }else{
+  const wrap=document.createElement('div');wrap.className='orders-v2-details-table-wrap';
+  const table=document.createElement('table');
+  const th=document.createElement('thead'),tr=document.createElement('tr');
+  for(const title of ['Produto','Variação / SKU','Quantidade','Preço unitário informado']){
+   const h=document.createElement('th');h.textContent=title;tr.append(h);
+  }
+  th.append(tr);table.append(th);
+  const body=document.createElement('tbody');
+  for(const item of order.items){
+   const row=document.createElement('tr');
+   for(const value of [item.name||'Produto não informado',
+    [item.variation,item.sku].filter(Boolean).join(' / ')||'Não informado',
+    item.quantity??'Não informado',ordersCurrency(item.unit_price)]){
+    const cell=document.createElement('td');cell.textContent=String(value);row.append(cell);
+   }
+   body.append(row);
+  }
+  table.append(body);wrap.append(table);content.append(wrap);
+  if(!order.items_complete){
+   const note=document.createElement('p');note.className='orders-v2-details-hint';
+   note.textContent='Quantidade total pode estar incompleta: faltam detalhes de algum item.';
+   content.append(note);
+  }
+ }
+ root.hidden=false;root.focus?.();root.scrollIntoView?.({behavior:'smooth',block:'nearest'});
+}
+function ordersCreateCell(tr,value){
+ const td=document.createElement('td');td.textContent=String(value);
+ tr.append(td);return td;
+}
+function ordersRenderRows(filtered){
+ const body=$('#ordersBody');body.replaceChildren();
+ const totalPages=Math.max(1,Math.ceil(filtered.length/ordersPageSize));
+ ordersPage=Math.min(Math.max(1,ordersPage),totalPages);
+ const page=filtered.slice((ordersPage-1)*ordersPageSize,ordersPage*ordersPageSize);
+ if(!page.length){
+  const tr=document.createElement('tr'),td=document.createElement('td');td.colSpan=7;
+  td.className='orders-v2-empty-row';
+  td.textContent=!ordersLoaded.length?'Nenhum pedido carregado no período.':
+    'Nenhum pedido corresponde à busca e aos filtros.';
+  tr.append(td);body.append(tr);
+ }
+ for(const order of page){
+  const tr=document.createElement('tr');
+  ordersCreateCell(tr,order.order_sn||'—');
+  const status=document.createElement('td');status.append(ordersMakeStatusChip(order));tr.append(status);
+  ordersCreateCell(tr,ordersLocalTime(order.create_time));
+  ordersCreateCell(tr,order.items_count==null?'—':ordersNum(order.items_count));
+  ordersCreateCell(tr,order.primary_sku||'—');
+  const value=document.createElement('td');value.className='orders-v2-total-value';
+  const strong=document.createElement('strong');strong.textContent=ordersCurrency(order.total_amount);
+  const hint=document.createElement('small');hint.textContent=order.items_count==null?
+    'Itens não confirmados':ordersNum(order.items_count)+' itens';
+  value.append(strong,hint);tr.append(value);
+  const actions=document.createElement('td'),controls=document.createElement('div');
+  controls.className='orders-v2-row-actions';
+  const detail=document.createElement('button');detail.type='button';
+  detail.textContent='Detalhes';detail.className='secondary orders-v2-detail-button';
+  detail.onclick=()=>ordersShowDetail(order);controls.append(detail);
+  const menu=document.createElement('details');menu.className='orders-v2-row-menu';
+  const summary=document.createElement('summary');summary.textContent='⋮';summary.title='Ações do pedido';
+  summary.setAttribute('aria-label','Ações do pedido '+order.order_sn);
+  const pop=document.createElement('div');pop.className='orders-v2-pop-menu';
+  const copy=document.createElement('button');copy.type='button';copy.textContent='Copiar número';
+  copy.onclick=async()=>{
+   try{await navigator.clipboard.writeText(order.order_sn);ordersSetStatus('Número do pedido copiado.','success');}
+   catch{ordersSetStatus('Não foi possível copiar automaticamente o número do pedido.','warning');}
+   menu.open=false;
+  };
+  const show=document.createElement('button');show.type='button';show.textContent='Ver itens e detalhes';
+  show.onclick=()=>{menu.open=false;ordersShowDetail(order);};
+  pop.append(copy,show);menu.append(summary,pop);controls.append(menu);actions.append(controls);tr.append(actions);
+  body.append(tr);
+ }
+ $('#ordersFoundBadge').textContent=ordersNum(filtered.length)+' pedido(s)';
+ $('#ordersPagingInfo').textContent=filtered.length?
+  (ordersPage-1)*ordersPageSize+1+'–'+Math.min(ordersPage*ordersPageSize,filtered.length)+' de '+filtered.length:'0 registros';
+ $('#ordersCurrentPage').textContent=ordersPage+' / '+totalPages;
+ $('#ordersPrevPage').disabled=ordersPage===1;
+ $('#ordersNextPage').disabled=ordersPage===totalPages;
+}
+function ordersRenderCharts(){
+ const counts=new Map();
+ for(const order of ordersLoaded){
+  const key=ordersStr(order.order_status||'UNKNOWN').toUpperCase();
+  counts.set(key,(counts.get(key)||0)+1);
+ }
+ const donut=$('#ordersStatusDonut'),legend=$('#ordersStatusLegend');
+ const total=ordersLoaded.length;$('#ordersDonutTotal').textContent=ordersNum(total);
+ legend.replaceChildren();
+ if(!total){
+  donut.style.background='conic-gradient(#e3edf8 0 100%)';
+  donut.setAttribute('aria-label','Nenhum pedido disponível para distribuir por status');
+  legend.textContent='Sem pedidos carregados para o gráfico.';
+ }else{
+  const sorted=[...counts.entries()].sort((a,b)=>b[1]-a[1]);
+  let accumulated=0;
+  const stops=[];
+  for(const [status,count] of sorted){
+   const meta=ordersStatusMeta(status),percent=count/total*100;
+   const start=accumulated;accumulated+=percent;
+   stops.push(meta.color+' '+start.toFixed(3)+'% '+accumulated.toFixed(3)+'%');
+   const row=document.createElement('div');row.className='orders-v2-legend-row';
+   const name=document.createElement('span');name.className='orders-v2-legend-label';
+   const dot=document.createElement('i');dot.style.background=meta.color;name.append(dot);
+   const title=document.createElement('span');title.textContent=meta.label;name.append(title);
+   const amount=document.createElement('strong');amount.textContent=ordersNum(count);
+   const pct=document.createElement('span');pct.textContent=percent.toLocaleString('pt-BR',{maximumFractionDigits:1})+'%';
+   const bar=document.createElement('span');bar.className='orders-v2-bar';
+   const fill=document.createElement('span');fill.style.width=percent.toFixed(2)+'%';
+   fill.style.background=meta.color;bar.append(fill);
+   row.append(name,amount,pct,bar);legend.append(row);
+  }
+  donut.style.background='conic-gradient('+stops.join(',')+')';
+  donut.setAttribute('aria-label',sorted.map(([status,n])=>ordersStatusMeta(status).label+': '+n).join('; '));
+ }
+ const incomplete=ordersLoaded.filter(o=>o.items_count==null).length;
+ const known=ordersLoaded.reduce((n,o)=>n+(o.items_count??0),0);
+ const sent=ordersLoaded.filter(o=>o.order_status==='SHIPPED').length,
+  completed=ordersLoaded.filter(o=>o.order_status==='COMPLETED').length;
+ const summary=$('#ordersPeriodSummary');summary.replaceChildren();
+ const rows=[
+  [String(total)+' pedidos retornados nos últimos '+ordersCurrentPeriod+' dias.','🛒'],
+  [String(sent)+' enviados e '+completed+' concluídos, segundo os status da Shopee.','🚚'],
+  [incomplete?known+' itens conhecidos; '+incomplete+' pedido(s) sem quantidades confirmadas.':
+   known+' itens somados no período.','📦']
+ ];
+ for(const [text,mark] of rows){
+  const row=document.createElement('p');const ic=document.createElement('span');
+  ic.className='orders-v2-summary-emoji';ic.textContent=mark;
+  const content=document.createElement('span');content.textContent=text;
+  row.append(ic,content);summary.append(row);
+ }
+}
+function ordersRender(){
+ ordersRefreshQuickFilters();
+ const filtered=ordersGetFiltered();
+ ordersRenderRows(filtered);
+ ordersRenderCharts();
+ const total=ordersLoaded.length;
+ const sent=ordersLoaded.filter(o=>o.order_status==='SHIPPED').length;
+ const completed=ordersLoaded.filter(o=>o.order_status==='COMPLETED').length;
+ const pct=count=>total?(count/total*100).toLocaleString('pt-BR',{maximumFractionDigits:1})+'% do total':'—';
+ const missing=ordersLoaded.filter(o=>o.items_count==null).length;
+ const known=ordersLoaded.reduce((n,o)=>n+(o.items_count??0),0);
+ const label=ordersLoadedComplete?'no período selecionado':'de registros carregados (consulta parcial)';
+ ordersKpi('ordersKpiCount',ordersNum(total),'ordersKpiCountFoot',label);
+ ordersKpi('ordersKpiShipped',ordersNum(sent),'ordersKpiShippedFoot',pct(sent));
+ ordersKpi('ordersKpiCompleted',ordersNum(completed),'ordersKpiCompletedFoot',pct(completed));
+ ordersKpi('ordersKpiRecords',ordersNum(total),'ordersKpiRecordsFoot',ordersLoadedComplete?'Consulta completa':'Consulta parcial');
+ ordersKpi('ordersKpiItems',missing?'—':ordersNum(known),'ordersKpiItemsFoot',
+   missing?known+' itens conhecidos · '+missing+' pedido(s) sem dados':'Itens somados no período');
+ ordersKpi('ordersKpiUpdated',ordersLoadedAt?ordersLoadedAt.toLocaleDateString('pt-BR'):'—',
+   'ordersKpiUpdatedFoot',ordersLoadedAt?
+   ordersLoadedAt.toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'})+
+    (ordersLoadedComplete?' · consulta concluída':' · consulta parcial'):'Aguardando consulta');
+ $('#ordersExportBtn').disabled=!ordersLoaded.length;
+}
+async function ordersLoad({force=false}={}){
+ if(ordersBusy&&!force)return;
+ ordersAutoLoaded=true;
+ const requestId=++ordersRequestId;
+ if(ordersAbortController)ordersAbortController.abort();
+ const controller=new AbortController();ordersAbortController=controller;ordersBusy=true;
+ const button=$('#loadOrdersBtn');button.disabled=true;
+ $('#ordersLoadLabel').textContent='Carregando...';
+ ordersCurrentPeriod=Number($('#ordersPeriod').value)||15;
+ ordersLoaded=[];ordersLoadedAt=null;ordersLoadedComplete=false;ordersPage=1;
+ ordersRender();
+ $('#ordersDetailPanel').hidden=true;
+ ordersSetStatus('Consultando pedidos da Shopee. A janela será percorrida em blocos de até 14 dias.','loading');
+ const seen=new Map(),warnings=[];
+ const now=Math.floor(Date.now()/1000);
+ const oldest=now-ordersCurrentPeriod*86400;const blockSeconds=14*86400;
+ let complete=true,windows=0,pages=0;
+ try{
+   // Shopee limita o intervalo de get_order_list; segmentar mantendo todos os cursores.
+   for(let to=now;to>oldest;){
+     const from=Math.max(oldest,to-blockSeconds);
+     let cursor='',pageNumber=0;windows++;
+     for(;;){
+       if(requestId!==ordersRequestId)return;
+       const qs=new URLSearchParams({time_from:String(from),time_to:String(to),
+         time_range_field:'create_time',page_size:'100'});
+       if(cursor)qs.set('cursor',cursor);
+       const response=await json('/api/shopee/orders?'+qs.toString(),{signal:controller.signal});
+       pages++;pageNumber++;
+       const rows=Array.isArray(response.response?.order_list)?response.response.order_list:[];
+       for(const x of rows)if(x?.order_sn)seen.set(String(x.order_sn),x);
+       if(response.detailStatus?.warning)warnings.push(response.detailStatus.warning);
+       if(pages%3===0||!response.response?.more){
+         ordersLoaded=[...seen.values()];
+         ordersSetStatus(ordersNum(seen.size)+' pedidos carregados em '+pages+
+           ' página(s). Aguarde a conclusão para conferir os totais.','loading');
+       }
+       if(!response.response?.more)break;
+       const next=String(response.response?.next_cursor||'');
+       if(!next||next===cursor){complete=false;warnings.push('A Shopee não retornou o próximo cursor de paginação.');break;}
+       if(pageNumber>=100){complete=false;warnings.push('Limite seguro de 100 páginas atingido em uma janela.');break;}
+       cursor=next;
+     }
+     to=from-1;
+     if(!complete)break;
+   }
+ }catch(error){
+   if(requestId!==ordersRequestId)return;
+   if(error?.name==='AbortError')return;
+   complete=false;warnings.push('Falha na consulta: '+String(error.message||error));
+ }finally{
+   if(requestId!==ordersRequestId)return;
+   ordersBusy=false;button.disabled=false;$('#ordersLoadLabel').textContent='Carregar pedidos';
+   ordersLoaded=[...seen.values()];ordersLoadedComplete=complete;
+   ordersLoadedAt=new Date();
+   ordersRender();
+   ordersSetStatus(complete?'Consulta concluída: '+ordersNum(ordersLoaded.length)+
+      ' pedidos únicos em '+windows+' janela(s) e '+pages+' página(s).'+
+      (warnings.length?' Alguns detalhes indisponíveis: '+warnings.slice(0,2).join(' | '):''):
+      'Consulta incompleta: '+ordersNum(ordersLoaded.length)+' registros carregados. '+
+      warnings.slice(0,3).join(' | '),complete?(warnings.length?'warning':'success'):'warning');
+ }
+}
+function ordersEnsureLoaded(){
+ if(!ordersAutoLoaded&&!ordersBusy)void ordersLoad();
+}
+$('#loadOrdersBtn').onclick=()=>void ordersLoad({force:true});
+$('#ordersPeriod').onchange=()=>void ordersLoad({force:true});
+$('#ordersSearch').oninput=()=>{ordersPage=1;ordersRender();};
+$('#ordersStatusFilter').onchange=()=>{ordersPage=1;ordersRender();};
+$('#ordersSort').onchange=()=>{ordersPage=1;ordersRender();};
+$('#ordersPrevPage').onclick=()=>{if(ordersPage>1){ordersPage--;ordersRenderRows(ordersGetFiltered());}};
+$('#ordersNextPage').onclick=()=>{
+ if(ordersPage<Math.ceil(ordersGetFiltered().length/ordersPageSize)){
+  ordersPage++;ordersRenderRows(ordersGetFiltered());
+ }
+};
+$('#ordersDetailClose').onclick=()=>{$('#ordersDetailPanel').hidden=true;};
+function ordersCsvProtect(value){
+ let s=String(value??'').replaceAll('"','""');
+ if(/^[\s]*[=+\-@\t\r]/.test(s))s="'"+s;
+ return '"'+s+'"';
+}
+$('#ordersExportBtn').onclick=()=>{
+ const headings=['Pedido','Status','Criação','Quantidade de itens','SKU principal',
+   'Valor BRL','Consulta completa'];
+ const rows=ordersGetFiltered().map(o=>[o.order_sn,o.order_status,ordersLocalTime(o.create_time),
+   o.items_count??'',o.primary_sku||'',o.total_amount??'',ordersLoadedComplete?'Sim':'Não']);
+ const csv='\uFEFF'+[headings,...rows].map(row=>row.map(ordersCsvProtect).join(';')).join('\r\n');
+ const url=URL.createObjectURL(new Blob([csv],{type:'text/csv;charset=utf-8'}));
+ const a=document.createElement('a');a.href=url;a.download='shopee-pedidos-'+ordersCurrentPeriod+'dias-'+
+    new Date().toISOString().slice(0,10)+'.csv';
+ document.body.append(a);a.click();a.remove();URL.revokeObjectURL(url);
 };
 
 function ddmmyyyy(v){if(!v)return'';const [y,m,d]=v.split('-');return `${d}-${m}-${y}`;}
