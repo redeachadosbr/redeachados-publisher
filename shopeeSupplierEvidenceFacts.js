@@ -19,7 +19,7 @@ export function supplierProductDimensions(text){
  const n='(\\d{1,4}(?:[.,]\\d{1,2})?)';
  // Labeled dimensions, with one unit per axis (supplier text in any order).
  const pattern=new RegExp(
-  '(?:dimens(?:oes|ao)|medidas?)\\s*(?:(?:descritas?\\s+)?(?:para|da|do)\\s+(?:o\\s+)?(?:produto|piscina|item|piscina\\s+montada))?\\s*[:\\-]\\s*'+
+  '(?:dimens(?:oes|ao)|medidas?)\\s*(?:(?:descritas?\\s+)?(?:para|da|do)\\s+(?:(?:a|o)\\s+)?(?:piscina\\s+montada|produto|piscina|item))?\\s*[:\\-]\\s*'+
   n+'\\s*cm\\s*(?:de\\s+)?altura\\s*[x×|;,]+\\s*'+
   n+'\\s*cm\\s*(?:de\\s+)?largura\\s*[x×|;,]+\\s*'+
   n+'\\s*cm\\s*(?:de\\s+)?comprimento','i');
