@@ -36,6 +36,7 @@ import {createShopeeMediaApi} from './shopeeMediaApi.js';
 import {normalizeManualVideo} from './shopeeVideoValidation.js';
 import {readPreparedImages,importPreparedImage,downloadPreparedImage,imagesSignature,MAX_IMAGE_BYTES,rememberPublishedImages} from './shopeePreparedImages.js';
 import {generateOpenAiImage,imageGenerationStatus} from './shopeeOpenAiImages.js';
+import {openAiKeyStatus,openAiApiKey,saveOpenAiApiKey,deleteOpenAiApiKey} from './shopeeOpenAiCredentials.js';
 import {compileAttributes,compileTax,attributeAuditForChanges} from './shopeeStructuredFields.js';
 import {MAX_VIDEO_BYTES,getShopeeManualVideo,importShopeeManualVideo,
  signedShopeeManualVideoPreview,manualVideoPublicInfo,downloadShopeeManualVideo,rememberPublishedVideo} from './shopeeManualVideo.js';
@@ -914,9 +915,39 @@ app.post('/api/shopee/optimizer/video/manual',
 // Cada foto é gerada isoladamente: progresso fica persistido no Supabase.
 // Chave OpenAI permanece exclusivamente no backend. Nenhuma publicação automática.
 const shopeeImageGenerationLocks=new Set();
-app.get('/api/shopee/optimizer/images/generation/status',mustLogin,requireWeDropAdmin,(_req,res)=>{
+app.get('/api/shopee/optimizer/images/generation/status',mustLogin,requireWeDropAdmin,async(req,res)=>{
  res.setHeader('Cache-Control','no-store');
- res.json({ok:true,...imageGenerationStatus(),mode:'manual_approval',marketplaceUpdated:false});
+ try{
+  const {auth}=await getValidAuth(req);
+  const status=await openAiKeyStatus(auth.shopId);
+  res.json({ok:true,...imageGenerationStatus(),...status,mode:'manual_approval',marketplaceUpdated:false});
+ }catch(e){res.status(503).json({error:'Não foi possível verificar a integração OpenAI. '+String(e.message||e).slice(0,160)});}
+});
+let openAiLastKeyAttemptAt=0;
+app.post('/api/shopee/optimizer/images/generation/connect',mustLogin,requireWeDropAdmin,async(req,res)=>{
+ res.setHeader('Cache-Control','no-store');
+ if(!verifiedSameOrigin(req))return res.status(403).json({error:'Origem não autorizada.'});
+ // Evitar verificações excessivas de credenciais, mesmo com sessão administrativa.
+ if(Date.now()-openAiLastKeyAttemptAt<5000)return res.status(429).json({error:'Aguarde cinco segundos antes de tentar novamente.'});
+ openAiLastKeyAttemptAt=Date.now();
+ try{
+  if(typeof req.body?.apiKey!=='string')throw Error('Cole uma chave de API OpenAI válida.');
+  const {auth}=await getValidAuth(req);
+  const status=await saveOpenAiApiKey(auth.shopId,req.body.apiKey);
+  res.json({ok:true,...status,model:imageGenerationStatus().model,
+   message:'Chave verificada e protegida. A geração de imagens já pode ser iniciada.'});
+ }catch(e){res.status(400).json({error:String(e.message||e).slice(0,240)});}
+});
+app.post('/api/shopee/optimizer/images/generation/disconnect',mustLogin,requireWeDropAdmin,async(req,res)=>{
+ res.setHeader('Cache-Control','no-store');
+ if(!verifiedSameOrigin(req))return res.status(403).json({error:'Origem não autorizada.'});
+ try{
+  const {auth}=await getValidAuth(req);
+  const status=await deleteOpenAiApiKey(auth.shopId);
+  res.json({ok:true,...status,message:status.source==='render'
+   ?'Credencial removida do cofre. Existe uma credencial gerenciada pelo Render.'
+   :'Credencial removida. A geração por IA está desativada.'});
+ }catch(e){res.status(400).json({error:'Falha ao desconectar a integração OpenAI.'});}
 });
 app.post('/api/shopee/optimizer/images/generate',mustLogin,requireWeDropAdmin,async(req,res)=>{
  res.setHeader('Cache-Control','no-store');
@@ -924,11 +955,11 @@ app.post('/api/shopee/optimizer/images/generate',mustLogin,requireWeDropAdmin,as
  const position=Number(req.body?.slot);
  if(!Number.isInteger(position)||position<1||position>9)
   return res.status(400).json({error:'Selecione uma imagem de 1 a 9.'});
- if(!imageGenerationStatus().configured)
-  return res.status(503).json({error:'Geração indisponível: configure OPENAI_API_KEY no Render do serviço redeachados-shopee. O ChatGPT Plus não fornece chave de API.'});
  let lock='';
  try{
   const {itemId,modelId,sku,auth,record}=await checkedWorkflowAudit(req);
+  const apiKey=await openAiApiKey(auth.shopId);
+  if(!apiKey)throw Error('Conecte a API OpenAI no painel do Gerador de imagens antes de iniciar.');
   lock=[auth.shopId,itemId,modelId,sku].join(':');
   if(shopeeImageGenerationLocks.has(lock))return res.status(409).json({error:'Já existe uma imagem sendo gerada para esta SKU. Aguarde terminar.'});
   shopeeImageGenerationLocks.add(lock);
@@ -945,7 +976,7 @@ app.post('/api/shopee/optimizer/images/generate',mustLogin,requireWeDropAdmin,as
   const references=(record.imageUrls||[]).slice(0,2);
   if(!references.length)throw Error('Sem foto original disponível na Shopee para esta SKU. Faça a importação manual.');
   const output=await generateOpenAiImage({
-   record,slot:position,referenceUrls:references,
+   record,slot:position,referenceUrls:references,apiKey,
    masterPrompt:settings.image_prompt||'',note:review.imageNotes?.[position]||''
   });
   const image=await importPreparedImage({
@@ -957,7 +988,7 @@ app.post('/api/shopee/optimizer/images/generate',mustLogin,requireWeDropAdmin,as
    saved:true,requiresReview:true,marketplaceUpdated:false});
  }catch(e){
   const msg=String(e.message||e).slice(0,360);
-  const status=/OPENAI_API_KEY|não configurad/i.test(msg)?503:/HTTP 429/.test(msg)?429:400;
+  const status=/Conecte a API OpenAI|não configurad/i.test(msg)?503:/HTTP 429/.test(msg)?429:400;
   res.status(status).json({error:msg,marketplaceUpdated:false});
  }finally{if(lock)shopeeImageGenerationLocks.delete(lock);}
 });
