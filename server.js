@@ -12,6 +12,7 @@ import {loadShopeeAdsOverview} from './adsReport.js';
 import {loadShopeeFinance,MAX_FINANCE_ORDERS} from './shopeeFinance.js';
 import {installFinanceBridge,installWalletBridge,installAdsFinanceBridge} from './financeBridge.js';
 import {buildAdsFinanceSnapshot} from './financeAdsBridge.js';
+import {readShopeeAdsAccount} from './shopeeAdsAccount.js';
 import {readShopeeWallet} from './shopeeWallet.js';
 import {financeAdsDates,matchFinanceAds} from './financeAdsSweep.js';
 import {financeRange} from './shopeeFinance.js';
@@ -1370,8 +1371,11 @@ installFinanceBridge(app,async(req)=>{
 // Relatório privado Shopee Ads de anúncios de produtos, consultado por mês.
 installAdsFinanceBridge(app,async month=>{
  const {auth,cfg}=await getValidAuth();
- return buildAdsFinanceSnapshot(month,dates=>
-  loadShopeeAdsOverview(cfg,auth,callShopeeShopApi,dates));
+ const [report,account]=await Promise.all([
+  buildAdsFinanceSnapshot(month,dates=>loadShopeeAdsOverview(cfg,auth,callShopeeShopApi,dates)),
+  readShopeeAdsAccount(cfg,auth,callShopeeShopApi)
+ ]);
+ return {...report,account};
 });
 
 // Extrato da carteira Shopee: não confundir com repasse de pedidos.
