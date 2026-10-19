@@ -77,3 +77,11 @@ test('busca paginada da Shopee aceita somente atributos habilitados pela própri
  await assert.rejects(()=>hydrateSearchOptions(record2,[{attributeId:404,values:[{valueId:707,valueName:'Marca A'}]}],
  async()=>({response:{attribute_value_list:[{value_id:708,name:'Marca X'}]}})),/não foi confirmada/);
 });
+
+test('atributo removido da categoria não pode ser reaproveitado para preencher outra ficha',()=>{
+ const oldItem={...base,attribute_list:[{attribute_id:878787,attribute_value_list:[{value_id:0,original_value_name:'Legado'}]}]};
+ const a=normalizeAttributeAudit(oldItem,tree);
+ const legacy=a.attributes.find(x=>x.id===878787);
+ assert.equal(legacy.legacy,true);
+ assert.match(legacy.issues[0],/categoria atual/);
+});
