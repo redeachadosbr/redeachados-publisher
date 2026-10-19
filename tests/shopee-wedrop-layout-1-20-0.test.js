@@ -27,7 +27,7 @@ test('Fornecedor WeDrop 1.20.0 mantém os cinco indicadores e quatro setores vis
  assert.match(section,/id="wedropStoredCatalog"[^>]*hidden/);
  assert.match(section,/id="wedropImportBtn" type="button" disabled/);
  assert.ok(html.includes('style.css?v='+version));
- assert.ok(html.includes('app.js?v='+version));
+ assert.ok(html.includes('app.js?v=1.20.10')); // Browser must fetch the image-normalization fix rather than cached JS.
  assert.ok(server.includes("version:'"+version+"'"));
 });
 test('WeDrop continua no Supabase com ações reais, sem substituir o fornecedor nem publicar preços',()=>{
