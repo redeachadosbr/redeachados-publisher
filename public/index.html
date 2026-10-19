@@ -244,6 +244,20 @@
             <ol id="optimizerExecutionSteps" class="optimizer-exec-steps" aria-label="Etapas reais do processamento"></ol>
           </div>
         </section>
+        <section id="optimizerExecutionIssue" class="optimizer-exec-issue" hidden role="alert" aria-live="polite">
+          <div class="optimizer-exec-issue-top">
+            <span class="optimizer-exec-issue-icon" aria-hidden="true">!</span>
+            <div><strong id="optimizerExecutionIssueTitle">Pendência identificada pela Shopee</strong>
+              <p id="optimizerExecutionIssueReason"></p>
+            </div>
+          </div>
+          <div id="optimizerExecutionIssueInfo" class="optimizer-exec-issue-info"></div>
+          <p id="optimizerExecutionIssueGuidance" class="optimizer-exec-issue-guidance"></p>
+          <div class="optimizer-exec-issue-actions">
+            <button id="optimizerExecutionFix" type="button">Corrigir informações fiscais →</button>
+            <small id="optimizerExecutionIssueAfter">Nenhuma alteração será reenviada automaticamente.</small>
+          </div>
+        </section>
         <p id="optimizerExecutionStatus" class="optimizer-notice" role="status" aria-live="polite">Aguardando análise das etapas.</p>
         <a id="optimizerExecutionShopeeLink" class="optimizer-exec-result-link" hidden target="_blank" rel="noopener noreferrer">✓ Alterações confirmadas. Ver anúncio na Central do Vendedor Shopee ↗</a>
         <div class="optimizer-workflow-actions">

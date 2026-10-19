@@ -3868,3 +3868,19 @@ body.view-wedrop .page-intro{display:none!important}
  .optimizer-exec-activity-head small{display:none}
  .optimizer-exec-percent{width:100%;justify-content:space-between}
 }
+
+/* Diagnóstico fiscal preciso: captura a resposta da API Shopee e abre o campo incorreto. */
+.optimizer-v15-page .optimizer-exec-issue{display:grid;gap:13px;padding:17px 19px;border:1px solid #f3cb96;border-left:5px solid #e47b22;border-radius:14px;background:#fff9f0;box-shadow:0 5px 17px #c8832320;color:#583c21}
+.optimizer-v15-page .optimizer-exec-issue[hidden]{display:none!important}
+.optimizer-exec-issue-top{display:flex;gap:13px;align-items:start}
+.optimizer-exec-issue-icon{background:#ffe3be;border-radius:12px;display:grid;place-items:center;min-width:40px;height:40px;font-size:23px;font-weight:900;color:#b7650f}
+.optimizer-exec-issue-top strong{font-size:17px;line-height:1.4;color:#88410d}
+.optimizer-exec-issue-top p{margin:5px 0 0;color:#654c33;line-height:1.5;font-size:13px}
+.optimizer-exec-issue-info{color:#945514;font-size:12px;font-weight:850;background:#ffedce;border-radius:9px;padding:9px 12px;overflow-wrap:anywhere}
+.optimizer-exec-issue-guidance{font-size:13px;line-height:1.55;margin:0;color:#684d32}
+.optimizer-exec-issue-actions{display:flex;gap:12px;align-items:center;flex-wrap:wrap}
+.optimizer-exec-issue-actions button{background:#a44910;color:white;font-weight:800;border-radius:9px;padding:11px 16px}
+.optimizer-exec-issue-actions small{color:#936d48;font-size:11px;line-height:1.45}
+.optimizer-v15-page .optimizer-exec-field-target{border:2px solid #da8128;background:#fff6e8;border-radius:12px;padding:12px}
+.optimizer-v15-page .optimizer-fiscal-cest-help{display:block;margin-top:7px;font-size:11px;line-height:1.5;color:#926019}
+@media(max-width:650px){.optimizer-exec-issue-actions button{width:100%}}

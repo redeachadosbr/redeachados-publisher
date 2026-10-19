@@ -2689,6 +2689,7 @@ function optimizerExecReset(){
  $('#optimizerExecutionReconcile').hidden=true;$('#optimizerExecutionRetry').hidden=true;
  $('#optimizerExecutionLaunch').hidden=true;
  $('#optimizerExecutionShopeeLink').hidden=true;
+ $('#optimizerExecutionIssue').hidden=true;
  $('#optimizerExecutionTracker').hidden=true;
  $('#optimizerExecutionActivity').hidden=true;
  ++optimizerExecSerial;optimizerExecPlan=null;optimizerExecContext=null;optimizerExecBusy=false;
@@ -2766,6 +2767,30 @@ function optimizerExecutionTrackerRender(progress,job){
  }
  if(!log.children.length)log.append(optimizerMake('li','optimizer-exec-event-empty','Aguardando registros da execução.'));
 }
+function optimizerExecutionIssueRender(issue){
+ const el=$('#optimizerExecutionIssue');
+ if(!el)return;
+ el.hidden=!issue;
+ if(!issue)return;
+ $('#optimizerExecutionIssueTitle').textContent=issue.title||'Pendência fiscal';
+ $('#optimizerExecutionIssueReason').textContent=issue.reason||'Confira as informações fiscais deste anúncio.';
+ $('#optimizerExecutionIssueInfo').textContent='SKU '+(optimizerWorkflowPlan?.sku||'—')+
+   ' · Campo: CEST'+(issue.ncm?' · NCM informado: '+issue.ncm:'');
+ $('#optimizerExecutionIssueGuidance').textContent=issue.guidance||'Verifique os dados com seu fornecedor.';
+ $('#optimizerExecutionFix').textContent=issue.action||'Corrigir informações fiscais';
+ $('#optimizerExecutionIssueAfter').textContent=issue.retry||'A alteração exige nova aprovação.';
+}
+$('#optimizerExecutionFix')?.addEventListener?.('click',()=>{
+ const w=optimizerWorkflowPlan;if(!w)return;
+ optimizerWorkflowOpen('fiscal');
+ const input=$('#optimizerFiscalFields')?.querySelector?.('[data-tax-field="cest"]');
+ if(input){
+  const label=input.closest?.('label');
+  if(label){label.classList.add('optimizer-exec-field-target');label.scrollIntoView?.({behavior:'smooth',block:'center'});}
+  input.focus?.({preventScroll:true});
+ }
+ optimizerWorkflowNotice('Erro da Shopee localizado: CEST correspondente ao NCM. Confira a nota fiscal, o XML ou confirme com a WeDrop/contabilidade; não invente o código. Depois registre a revisão fiscal.','warning');
+});
 function optimizerExecRow(parent,text,type='info'){
  const el=optimizerMake('div','optimizer-exec-line optimizer-exec-'+type,text);
  parent.appendChild(el);
@@ -2786,6 +2811,7 @@ function optimizerExecRender(data){
  const plan=data.plan,context=optimizerExecContext;
  if(!plan||!context||context.sku!==plan.sku||context.itemId!==plan.itemId||context.modelId!==plan.modelId)return;
  optimizerExecPlan={...plan,updatedAt:data.updatedAt};
+ optimizerExecutionIssueRender(data.issue||null);
  optimizerExecutionTrackerRender(data.progress,{sku:plan.sku,item_id:plan.itemId,plan});
  const changes=$('#optimizerExecutionChanges'),blocked=$('#optimizerExecutionBlockers'),warn=$('#optimizerExecutionWarnings');
  changes.replaceChildren();blocked.replaceChildren();warn.replaceChildren();
@@ -2923,8 +2949,9 @@ async function optimizerExecuteApproved(){
  }finally{optimizerExecBusy=false;$('#optimizerExecutionPrepare').disabled=false;}
 }
 
-function optimizerExecutionJobView(job,progress=null){
+function optimizerExecutionJobView(job,progress=null,issue=null){
  optimizerExecutionTrackerRender(progress,job);
+ optimizerExecutionIssueRender(issue);
  optimizerExecJob=job;
  // Continuar acompanhando a SKU automaticamente mesmo após recarregar a página.
  if(job&&['running','uncertain'].includes(job.state)){
@@ -2953,7 +2980,8 @@ function optimizerExecutionJobView(job,progress=null){
  let message=labels[job.result?.phase]||({failed:'Execução interrompida',uncertain:'Aguardando confirmação',prepared:'Prévia preparada',blocked:'Revisão pendente'}[job.state])||job.state;
  if(job.result?.phase==='images_upload')message+=' · '+(job.result.imageIds||[]).length+'/9';
  if(job.result?.video?.totalParts&&job.result.video.phase==='uploading')message+=' · parte '+job.result.video.nextPart+'/'+job.result.video.totalParts;
- if(job.last_error)message+=' · '+job.last_error;
+ if(job.last_error)message+=' · '+(issue?.code==='CEST_REQUIRED'
+   ?'CEST correspondente ao NCM precisa ser corrigido na ficha fiscal.':job.last_error);
  if(job.state==='verified')message+=' · Somente as alterações aprovadas nesta execução foram confirmadas.';
  optimizerExecNotice(message,job.state==='verified'?'success':job.state==='failed'||job.state==='uncertain'?'warning':'info');
  if(active||verified){
@@ -2971,7 +2999,7 @@ async function optimizerExecutionRefresh(poll=false){
    sku:w.sku,item_id:w.itemId,model_id:w.modelId}),{signal:AbortSignal.timeout(25000)});
   const current=optimizerWorkflowPlan;
   if(!current||current.sku+':'+current.itemId+':'+current.modelId!==identity)return null;
-  optimizerExecutionJobView(data.job,data.progress);
+  optimizerExecutionJobView(data.job,data.progress,data.issue);
   if(data.job?.state==='running'){
    if(optimizerExecPoll)clearTimeout(optimizerExecPoll);
    optimizerExecPoll=setTimeout(()=>void optimizerExecutionRefresh(true),4000);
@@ -2991,7 +3019,7 @@ $('#optimizerExecutionReconcile')?.addEventListener?.('click',async()=>{
  try{
   const d=await json('/api/shopee/optimizer/execution/reconcile',{method:'POST',
    headers:{'Content-Type':'application/json'},body:JSON.stringify({sku:w.sku,itemId:w.itemId,modelId:w.modelId})});
-  if(optimizerWorkflowPlan===w)optimizerExecutionJobView(d.job,d.progress);
+  if(optimizerWorkflowPlan===w)optimizerExecutionJobView(d.job,d.progress,d.issue);
  }catch(e){optimizerExecNotice(e.message,'warning');}finally{btn.disabled=false;}
 });
 $('#optimizerExecutionRetry')?.addEventListener?.('click',async()=>{
@@ -3002,7 +3030,7 @@ $('#optimizerExecutionRetry')?.addEventListener?.('click',async()=>{
    const d=await json('/api/shopee/optimizer/execution/reconcile',{method:'POST',
     headers:{'Content-Type':'application/json'},body:JSON.stringify({sku:w.sku,itemId:w.itemId,modelId:w.modelId,
      reprepare:true,confirmation:'REPREPARAR '+w.sku})});
-   if(d.job?.state==='uncertain')return optimizerExecutionJobView(d.job,d.progress);
+   if(d.job?.state==='uncertain')return optimizerExecutionJobView(d.job,d.progress,d.issue);
   }catch(e){return optimizerExecNotice(e.message,'warning');}
  }
  await optimizerExecutionPrepare();
@@ -4537,6 +4565,12 @@ function optimizerFiscalRender(data){
   const field=optimizerMake('label','optimizer-field',label),input=optimizerMake('input');
   input.type='text';input.dataset.taxField=key;input.value=String(draft[key]||'');input.maxLength=key==='evidence'?300:20;
   input.oninput=()=>optimizerExecReset();field.append(input);wrap.append(field);
+ }
+ const cest=wrap.querySelector('[data-tax-field="cest"]');
+ if(cest&&!String(draft.cest||'').trim()){
+  const info=optimizerMake('small','optimizer-fiscal-cest-help',
+    'A WeDrop não informou CEST para esta SKU. Consulte o XML/nota de compra ou a contabilidade antes de preencher. Um NCM isolado não comprova o CEST aplicável.');
+  cest.closest('label')?.append(info);
  }
 }
 function optimizerFiscalValues(){
