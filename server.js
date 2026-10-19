@@ -1066,7 +1066,7 @@ app.get('/api/shopee/orders',mustLogin,async(req,res)=>{
             path:'/api/v2/order/get_order_detail',
             accessToken:auth.accessToken,
             shopId:auth.shopId,
-            query:{order_sn_list:batch.join(',')}
+            query:{order_sn_list:batch.join(','),response_optional_fields:'item_list,total_amount'}
           });
           if(Array.isArray(detailed.response?.order_list))
             detailOrders.push(...detailed.response.order_list);
