@@ -138,7 +138,7 @@ app.get('/app/:section',(req,res)=>{
 });
 app.get('/app',(_req,res)=>res.redirect(302,'/app/inicio'));
 
-app.get('/api/health',(_req,res)=>res.json({ok:true,service:'Rede Achados BR Shopee API',version:'1.20.4',storage:authStore.status()}));
+app.get('/api/health',(_req,res)=>res.json({ok:true,service:'Rede Achados BR Shopee API',version:'1.20.5',storage:authStore.status()}));
 app.get('/api/auth-state',(req,res)=>res.json({locked:Boolean(envText('APP_PASSWORD')),loggedIn:!envText('APP_PASSWORD')||Boolean(req.session?.appAuth)}));
 app.post('/api/login',(req,res)=>{
   const required=envText('APP_PASSWORD');
@@ -1011,7 +1011,9 @@ app.post('/api/shopee/optimizer/images/manual',mustLogin,requireWeDropAdmin,
   if(['running','uncertain'].includes(job?.state))throw Error('Aguarde ou confira a execução antes de trocar as imagens.');
   const image=await importPreparedImage({...x,slot:req.query.slot,file:req.body,
    mime:String(req.get('content-type')||'').split(';')[0],filename:decodeURIComponent(req.get('x-image-filename')||'imagem')});
-  res.status(201).json({ok:true,image,marketplaceUpdated:false});
+  // Um arquivo alterado nunca herda aprovação da versão anterior da imagem.
+  await saveWorkflowReview(x.shopId,x.itemId,x.modelId,x.sku,{stage:'images',reviewed:false});
+  res.status(201).json({ok:true,image,requiresReview:true,marketplaceUpdated:false});
  }catch(e){res.status(400).json({error:String(e.message||e).slice(0,250)});}
 });
 
