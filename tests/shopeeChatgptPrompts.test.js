@@ -48,5 +48,5 @@ test('layout oferece escolha ChatGPT independente de API e mantém prévia antes
  assert.match(js,/optimizerImagesMode=optimizerImagesApiConfigured\?'api':'chatgpt'/);
  assert.match(js,/optimizerChatgptScaleFile/);
  assert.match(js,/canvas\.width=1200;canvas\.height=1200/);
- assert.match(js,/marketplace/);
+ assert.match(js,/api\/shopee\/optimizer\/images\/manual/);
 });
