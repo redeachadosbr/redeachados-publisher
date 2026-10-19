@@ -1,4 +1,5 @@
 import {normalizeAttributeAudit} from './productOptimizer.js';
+import {assertAnatelCompliance} from './shopeeAnatel.js';
 const list=x=>Array.isArray(x)?x:[];
 export function attributeAuditForChanges(changes,record,live){
  if(!record.attributeAudit?.schema)return record.attributeAudit;
@@ -70,6 +71,7 @@ export function compileAttributes(changes,record,live){
    if(meta.mandatory&&(meta.state==='missing'||!merged.get(meta.id)?.attribute_value_list?.length))
     throw Error('Preencha o atributo obrigatório '+meta.name+' após selecionar os campos relacionados.');
   }
+  assertAnatelCompliance(audit);
  }
  return [...merged.values()];
 }
