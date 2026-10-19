@@ -87,7 +87,9 @@ export function normalizeAttributeAudit(item,attributesResponse){
       ...(usbMismatch?['Tipo de plugue possivelmente incompatível: confirmar se acompanha carregador AC']:[])
     ];
     const state=conditional?'conditional':!complete?'missing':issues.length?'review':'filled';
-    return {id,name,mandatory,conditional,parentId:meta.parentId||null,state,issues,inputType:info.input_type??null,
+    return {id,name,mandatory,conditional,parentId:meta.parentId||null,state,issues,
+      introduction:moneylessString(info.introduction).slice(0,450),dateFormatType:info.date_format_type??null,
+      inputType:info.input_type??null,
       formatType:info.format_type??null,validationType:info.input_validation_type??null,maxValues:info.max_value_count??null,
       supportSearch:Boolean(info.support_search_value),allowedUnits:array(info.attribute_unit_list),
       values:values.map(v=>({
@@ -111,7 +113,7 @@ export function normalizeAttributeAudit(item,attributesResponse){
   const audit={
     categoryId,checkedAt:new Date().toISOString(),
     total:rows.length,mandatory:rows.filter(x=>x.mandatory&&!x.conditional).length,
-    missingMandatory:rows.filter(x=>x.mandatory&&x.state==='missing').length,
+    missingMandatory:rows.filter(x=>x.mandatory&&!x.conditional&&x.state==='missing').length,
     review:rows.filter(x=>x.state==='review').length,
     optionalEmpty:rows.filter(x=>!x.mandatory&&x.state==='missing').length,
     // Somente API valida a estrutura. Nem atributos preenchidos garantem veracidade factual.
