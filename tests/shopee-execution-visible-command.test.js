@@ -35,7 +35,7 @@ function simulatedPage(){
   json:async(url)=>{
    calls.push(url);
    if(url.endsWith('/execute'))return {ok:true,status:'running',marketplaceUpdated:false};
-   if(url.includes('/status?'))return {job:{state:'running',result:{phase:'queued'}}};
+   if(url.includes('/status?'))return {job:{state:'verified',result:{phase:'verified'}}};
    throw Error('Unexpected request '+url);
   }
  };
@@ -71,7 +71,7 @@ test('envio só acontece depois da autorização e mostra progresso e link após
  await new Promise(resolve=>setImmediate(resolve));
  assert.equal(p.calls.filter(x=>x.endsWith('/execute')).length,1);
  assert.equal(p.node('#optimizerExecutionLaunch').hidden,true);
- assert.match(p.node('#optimizerExecutionStatus').textContent,/Na fila|Execução iniciada/);
+ assert.match(p.node('#optimizerExecutionStatus').textContent,/Alterações confirmadas|Execução iniciada/);
  p.scope.view({state:'verified',result:{phase:'verified'}});
  assert.equal(p.node('#optimizerExecutionShopeeLink').hidden,false);
  assert.match(p.node('#optimizerExecutionShopeeLink').href,/portal\/product\/123456789/);
