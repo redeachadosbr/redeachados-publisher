@@ -823,9 +823,12 @@ app.post('/api/shopee/optimizer/execution/prepare',mustLogin,requireWeDropAdmin,
       const supplier=await readWeDropProduct(auth.shopId,{sku,itemId,modelId});
       fiscalMatrixSource({sku,supplier,tax:reviewState.tax,reviewSource:reviewState.matrixFiscal});
     }
+    // Marca proveniente da WeDrop precisa coincidir com a categoria mesmo que a
+    // ficha técnica não esteja aprovada; nunca publicar com Marca: Novo por engano.
+    const supplierForBrand=await readWeDropProduct(auth.shopId,{sku,itemId,modelId});
+    assertShopeeSupplierBrand({record,attributes:reviewState.stages?.technical?.reviewed?
+      reviewState.attributes||[]:[],supplier:supplierForBrand});
     if(reviewState.stages?.technical?.reviewed){
-      const supplier=await readWeDropProduct(auth.shopId,{sku,itemId,modelId});
-      assertShopeeSupplierBrand({record,attributes:reviewState.attributes||[],supplier});
       technicalMatrixSource({sku,record,attributes:reviewState.attributes||[],reviewSource:reviewState.matrixTechnical});
       await hydrateCategoryChoices(record,reviewState.attributes||[],cfg,auth,live);
     }
@@ -879,9 +882,10 @@ app.post('/api/shopee/optimizer/execution/execute',mustLogin,requireWeDropAdmin,
     fiscalMatrixSource({sku,supplier,tax:reviewState.tax,reviewSource:reviewState.matrixFiscal});
   }
   const live=await shopeeLiveEditableItem(cfg,auth,itemId);
+  const supplierForBrand=await readWeDropProduct(auth.shopId,{sku,itemId,modelId});
+  assertShopeeSupplierBrand({record,attributes:reviewState.stages?.technical?.reviewed?
+    reviewState.attributes||[]:[],supplier:supplierForBrand});
   if(reviewState.stages?.technical?.reviewed){
-    const supplier=await readWeDropProduct(auth.shopId,{sku,itemId,modelId});
-    assertShopeeSupplierBrand({record,attributes:reviewState.attributes||[],supplier});
     technicalMatrixSource({sku,record,attributes:reviewState.attributes||[],reviewSource:reviewState.matrixTechnical});
     await hydrateCategoryChoices(record,reviewState.attributes||[],cfg,auth,live);
   }
