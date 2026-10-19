@@ -2680,6 +2680,7 @@ $('#optimizerWorkflowReview')?.addEventListener?.('click',async()=>{
 // Pré-execução parcial Shopee. Only explicit interaction authorizes update_item.
 let optimizerExecPlan=null,optimizerExecContext=null,optimizerExecBusy=false,optimizerExecSerial=0;
 let optimizerExecPoll=null,optimizerExecJob=null,optimizerExecPolling=false,optimizerExecStartError='';
+let optimizerExecSafeRecoveryKey='',optimizerExecSafeRecovering=false;
 function optimizerExecNotice(message,state='info'){
  const e=$('#optimizerExecutionStatus');e.textContent=message;e.dataset.state=state;
 }
@@ -2690,6 +2691,7 @@ function optimizerExecReset(){
  $('#optimizerExecutionLaunch').hidden=true;
  $('#optimizerExecutionShopeeLink').hidden=true;
  $('#optimizerExecutionIssue').hidden=true;
+ optimizerExecSafeRecoveryKey='';optimizerExecSafeRecovering=false;
  $('#optimizerExecutionTracker').hidden=true;
  $('#optimizerExecutionActivity').hidden=true;
  ++optimizerExecSerial;optimizerExecPlan=null;optimizerExecContext=null;optimizerExecBusy=false;
@@ -2990,6 +2992,29 @@ function optimizerExecutionJobView(job,progress=null,issue=null){
   $('#optimizerExecutionRun').disabled=true;
  }
 }
+// One readback-only reconciliation for a historical field-level CEST refusal.
+ // If the marketplace changed anything, keep the uncertain state and do not retry.
+async function optimizerExecutionSafeRecoverCest(job,w){
+ if(!job||optimizerExecSafeRecovering)return;
+ const key=[w.sku,w.itemId,w.modelId,job.run_id||'',job.updated_at||''].join('|');
+ if(optimizerExecSafeRecoveryKey===key)return;
+ optimizerExecSafeRecoveryKey=key;optimizerExecSafeRecovering=true;
+ try{
+  const data=await json('/api/shopee/optimizer/execution/reconcile',{
+   method:'POST',headers:{'Content-Type':'application/json'},
+   body:JSON.stringify({sku:w.sku,itemId:w.itemId,modelId:w.modelId,safeRecover:true}),
+   signal:AbortSignal.timeout(45000)});
+  if(optimizerWorkflowPlan?.sku!==w.sku||optimizerWorkflowPlan?.itemId!==w.itemId||
+      optimizerWorkflowPlan?.modelId!==w.modelId)return;
+  optimizerExecutionJobView(data.job,data.progress,data.issue);
+  if(data.job?.state==='failed')
+   optimizerExecNotice('A Shopee rejeitou a edição por CEST. O anúncio foi conferido e nenhuma alteração foi reenviada. Corrija as informações fiscais para continuar.','warning');
+ }catch(error){
+  // Keep the uncertain state. Never infer a failed write from network loss.
+  if(optimizerWorkflowPlan?.sku===w.sku&&optimizerWorkflowPlan?.itemId===w.itemId)
+   optimizerExecNotice('Não foi possível confirmar com segurança a rejeição fiscal: '+error.message+'. Nenhum envio será repetido.','warning');
+ }finally{optimizerExecSafeRecovering=false;}
+}
 async function optimizerExecutionRefresh(poll=false){
  const w=optimizerWorkflowPlan;if(!w||optimizerExecPolling)return null;
  const identity=w.sku+':'+w.itemId+':'+w.modelId;
@@ -3000,6 +3025,8 @@ async function optimizerExecutionRefresh(poll=false){
   const current=optimizerWorkflowPlan;
   if(!current||current.sku+':'+current.itemId+':'+current.modelId!==identity)return null;
   optimizerExecutionJobView(data.job,data.progress,data.issue);
+  if(data.job?.state==='uncertain'&&data.issue?.code==='CEST_REQUIRED')
+   void optimizerExecutionSafeRecoverCest(data.job,w);
   if(data.job?.state==='running'){
    if(optimizerExecPoll)clearTimeout(optimizerExecPoll);
    optimizerExecPoll=setTimeout(()=>void optimizerExecutionRefresh(true),4000);
