@@ -75,6 +75,9 @@ export function compileAttributes(changes,record,live){
  }
  return [...merged.values()];
 }
+// Campos do cadastro de anúncio, não substituem as exigências da NF-e.
+// CST PIS/COFINS é opcional para o motor de otimização e nunca é preenchido implicitamente.
+export const SHOPEE_OPTIONAL_TAX_FIELDS=Object.freeze(['pis_cofins_cst']);
 const units=new Set('AMPOLA BALDE BANDEJ BARRA BISNAG BLOCO BOBINA BOMB CAPS CART CENTO CJ CM CM2 CX CX2 CX3 CX5 CX10 CX15 CX20 CX25 CX50 CX100 DISP DUZIA EMBAL FARDO FOLHA FRASCO GALAO GF GRAMAS JOGO KG KIT LATA LITRO M M2 M3 MILHEI ML MWH PACOTE PALETE PARES PC POTE K RESMA ROLO SACO SACOLA TAMBOR TANQUE TON TUBO UN VASIL VIDRO'.split(' '));
 export function compileTax(input,live){
  if(!input||typeof input!=='object'||String(input.evidence||'').trim().length<3)
@@ -83,6 +86,8 @@ export function compileTax(input,live){
   diff_state_cfop:/^6\d{3}$/,csosn:/^\d{3}$/,cest:/^(\d{7}|00)$/,pis_cofins_cst:/^\d{2}$/,operation_type:/^[12]$/};
  const tax={...(live.tax_info||{})};
  for(const [key,regex] of Object.entries(patterns)){
+  // CST PIS/COFINS (e outros campos não enviados) não é obrigatório para
+  // preparar a otimização; valores já existentes no anúncio são preservados.
   if(input[key]===undefined||String(input[key]).trim()==='')continue;
   const value=String(input[key]).trim();if(!regex.test(value))throw Error('Campo fiscal '+key+' inválido.');
   tax[key]=value;
