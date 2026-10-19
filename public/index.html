@@ -6,7 +6,7 @@
 <meta name="theme-color" content="#0A1C3A">
 <link rel="icon" type="image/svg+xml" href="/brand-logo.svg">
 <title>Rede Achados BR · Gestão Shopee</title>
-<link rel="stylesheet" href="/style.css?v=1.20.0">
+<link rel="stylesheet" href="/style.css?v=1.20.1">
 </head>
 <body>
 <div class="shell app-layout">
@@ -250,6 +250,17 @@
         <div id="optimizerTitleVariants" class="optimizer-title-variants" hidden></div>
         <p id="optimizerContentResearch" class="optimizer-video-help" hidden></p>
         <section id="optimizerImagesPanel" class="optimizer-video-import" hidden>
+          <div class="optimizer-ai-generator">
+            <div class="optimizer-ai-generator-heading"><strong>✨ Gerador automático de 9 imagens com OpenAI</strong><small id="optimizerImagesProvider" role="status">Verificando conexão com o gerador…</small></div>
+            <p class="optimizer-video-help">Utiliza as fotos atuais da Shopee, as regras salvas e os ajustes de cada posição. Gera e armazena uma de cada vez. Nunca publica sem a sua aprovação.</p>
+            <div class="optimizer-ai-generator-actions">
+              <button type="button" id="optimizerImagesGenerateAll">✨ Gerar / retomar 9 imagens automaticamente</button>
+              <button type="button" class="secondary" id="optimizerImagesStop" hidden>Parar após a imagem atual</button>
+            </div>
+            <progress id="optimizerImagesProgress" max="9" value="0" aria-label="Imagens comerciais preparadas"></progress>
+            <small>O serviço salva o progresso por SKU. Imagens já existentes não são recriadas no lote. A geração usa créditos pagos da API OpenAI.</small>
+          </div>
+          <details class="optimizer-image-manual-fallback"><summary>Importação manual de imagens (alternativa)</summary>
           <strong>Importar imagens revisadas</strong>
           <p class="optimizer-video-help">Selecione até nove JPG/PNG de 1200 × 1200. A ordem escolhida será a ordem do anúncio. Para trocar uma imagem, escolha a posição e envie somente o novo arquivo.</p>
           <label class="optimizer-field">Primeira posição <select id="optimizerImagesStart"><option value="1">1 · Capa</option><option>2</option><option>3</option><option>4</option><option>5</option><option>6</option><option>7</option><option>8</option><option>9</option></select></label>
@@ -266,7 +277,7 @@
             <div class="optimizer-workflow-actions"><button id="optimizerImageCorrectionSave" class="secondary" type="button">Salvar alteração</button><button id="optimizerImageCorrectionCopy" class="secondary" type="button">Copiar pedido para criar / refazer</button></div>
             <small>Importe a imagem gerada na posição correspondente. Sem um gerador conectado, o ChatGPT não envia imagens diretamente ao aplicativo.</small>
           </div>
-          <small>A geração das fotografias exige um provedor de imagens configurado. Aqui você pode importar as imagens já criadas e publicar as nove aprovadas.</small>
+          <small>Importe somente fotos conferidas do produto, mantendo o formato 1200 × 1200.</small></details>
         </section>
         <section id="optimizerVariationPanel" class="optimizer-video-import" hidden>
           <strong>Variações do produto</strong>
