@@ -667,14 +667,24 @@ app.get('/api/shopee/optimizer/workflow',mustLogin,requireWeDropAdmin,async(req,
     }
     const [supplier,settings]=await Promise.all([
       readWeDropProduct(auth.shopId,{sku,itemId,modelId}),optimizerSettings(auth.shopId)]);
-    const [sourceEvidence]=await Promise.all([readShopeeSourceEvidence(auth.shopId,itemId,modelId,sku,{preview:true})]);
+    // Supplementary supplier evidence must never block the actual category audit.
+    // Storage may reject a read/signing request; the main SKU workflow stays usable.
+    let sourceEvidence={sku,sourceText:'',screenshots:[],updatedAt:null};
+    let sourceEvidenceWarning=null;
+    try{
+      sourceEvidence=await readShopeeSourceEvidence(auth.shopId,itemId,modelId,sku,{preview:true});
+    }catch(error){
+      sourceEvidenceWarning='As informações extras da WeDrop estão indisponíveis no momento. '+
+        'A otimização principal continua funcionando. Atualize ou tente salvar os dados novamente.';
+      console.warn('[shopee-source-evidence] supplementary read unavailable:',String(error.message||error).slice(0,150));
+    }
     const supplierFacts=supplierWorkflowFacts(supplier,record,settings);
     const evidenceFacts=supplierAttributeSuggestions({attributes:technicalPreview.attributes,
       proposed:review.attributes||[],supplier,sourceText:sourceEvidence.sourceText});
     const manualVideo=manualVideoPublicInfo(
       await getShopeeManualVideo(auth.shopId,itemId,modelId,sku));
     res.json({ok:true,readOnlyMarketplace:true,sku,itemId,modelId,manualVideo,...supplierFacts,
-      sourceEvidence,sourceFacts:evidenceFacts,
+      sourceEvidence,sourceEvidenceWarning,sourceFacts:evidenceFacts,
       contentVariants:review.contentVariants||null,contentResearch:review.contentResearch||null,
       attributes:technicalPreview.attributes,anatel:inspectAnatelCompliance(technicalPreview),technicalWarning,attributeChanges:review.attributes||[],taxDraft:review.tax||{},taxCurrent:current.tax_info||{},
       recordedAt:stored?.updated_at||null,stages,
