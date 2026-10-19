@@ -34,6 +34,7 @@ import {readShopeeExecution,saveShopeePreparedExecution,
   checkpointShopeeExecution,reconcileShopeeJob} from './shopeeExecutionStore.js';
 import {advanceShopeeExecution} from './shopeeExecutionWorker.js';
 import {shopeeExecutionProgress,withExecutionEvent} from './shopeeExecutionProgress.js';
+import {detectShopeeExecutionIssue,needsCestRevalidation} from './shopeeExecutionIssues.js';
 import {createShopeeMediaApi} from './shopeeMediaApi.js';
 import {normalizeManualVideo} from './shopeeVideoValidation.js';
 import {readPreparedImages,importPreparedImage,deletePreparedImage,downloadPreparedImage,imagesSignature,MAX_IMAGE_BYTES,rememberPublishedImages} from './shopeePreparedImages.js';
@@ -793,8 +794,17 @@ app.post('/api/shopee/optimizer/execution/prepare',mustLogin,requireWeDropAdmin,
     }
     const plan=compileShopeeExecutionPlan({shopId:auth.shopId,itemId,modelId,
       sku,record,review:review?.review_state||{},live,manualVideo,verifiedVideoSha256,manualImages});
+    // A known CEST refusal must not be resent after a superficial reprepare.
+    if(previous?.sku===sku&&needsCestRevalidation(previous.last_error,previous.plan,plan)){
+      plan.canExecute=false;
+      plan.blocked.push('Informações fiscais: a Shopee já exigiu CEST para o NCM '+
+        (plan.proposed?.tax_info?.ncm||plan.original?.tax_info?.ncm||'informado')+
+        '. Confirme e preencha o CEST antes de tentar novamente.');
+    }
     const stored=await saveShopeePreparedExecution(auth.shopId,itemId,modelId,sku,plan);
     res.json({ok:true,ready:plan.canExecute,plan,progress:shopeeExecutionProgress(stored),
+      issue:needsCestRevalidation(previous?.last_error,previous?.plan,plan)?
+       detectShopeeExecutionIssue(previous.last_error,previous.plan):null,
       updatedAt:stored.updated_at,executionStatus:stored.state,marketplaceUpdated:false});
   }catch(e){res.status(409).json({error:String(e.message||e).slice(0,300)});}
 });
@@ -807,7 +817,8 @@ app.get('/api/shopee/optimizer/execution/status',mustLogin,requireWeDropAdmin,as
     const {auth}=await getValidAuth(req);
     const job=await readShopeeExecution(auth.shopId,itemId,modelId);
     const owned=job?.sku===sku?job:null;
-    res.json({ok:true,job:owned,progress:shopeeExecutionProgress(owned)});
+    res.json({ok:true,job:owned,progress:shopeeExecutionProgress(owned),
+      issue:owned?detectShopeeExecutionIssue(owned.last_error,owned.plan):null});
   }catch(e){res.status(400).json({error:String(e.message||e).slice(0,300)});}
 });
 app.post('/api/shopee/optimizer/execution/execute',mustLogin,requireWeDropAdmin,async(req,res)=>{
@@ -871,7 +882,8 @@ app.post('/api/shopee/optimizer/execution/reconcile',mustLogin,requireWeDropAdmi
     updated=await reconcileShopeeJob(job,{state:'failed',result:{...job.result,phase:'retry_allowed'},
       lastError:'Leitura confirmou os valores anteriores. Uma nova prévia e aprovação são necessárias.'});
   }
-  res.json({ok:true,job:updated,progress:shopeeExecutionProgress(updated),verified,message:verified?'Alterações confirmadas na Shopee.':
+  res.json({ok:true,job:updated,progress:shopeeExecutionProgress(updated),
+    issue:detectShopeeExecutionIssue(updated.last_error,updated.plan),verified,message:verified?'Alterações confirmadas na Shopee.':
     'Resultado ainda não confirmado. Nenhuma alteração foi reenviada.'});
  }catch(e){res.status(409).json({ok:false,error:String(e.message||e).slice(0,280)});}
 });
