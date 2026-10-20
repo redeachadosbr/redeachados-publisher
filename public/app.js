@@ -81,7 +81,10 @@ function setTab(name,{updateHistory=true,scroll=true}={}){
   if(name==='wedrop'){refreshWeDropCoverage();loadWeDropSourceState();void loadWeDropSkuReview();}
   else if(name==='finance'){refreshWeDropCoverage();}
   else if(name==='orders')ordersEnsureLoaded();
-  else if(name==='ads'&&!adsLoadedOnce){adsLoadedOnce=true;void $('#loadAdsAutoBtn').click();}
+  else if(name==='ads'){
+    void adsPricingLoad();
+    if(!adsLoadedOnce){adsLoadedOnce=true;void $('#loadAdsAutoBtn').click();}
+  }
   else if(name==='optimizer'||name==='pricing'){
     if(name==='optimizer')void optimizerLoadSettings();
     void shPriceLoadDefaults().then(()=>{
@@ -4210,6 +4213,7 @@ if(typeof setInterval==='function')setInterval(()=>refreshMonitor(),60000);
 let shPriceSelection=null,shPriceSettingsLoaded=false,shPriceSettingsPromise=null;
 let shPriceSupplierQuote=null,shPricePreviewSerial=0;
 let shPriceCurrentQuote=null,shPricePrepareBusy=false,shPricePrepareAgain=false;
+let shPriceAdsLoadedKey='';
 let shDiscountQuote=null;
 const shPriceSelectionKey='shopee-optimizer-active-sku-v1142';
 function shPriceSaveSelection(x){
@@ -4232,7 +4236,7 @@ function shPriceFillSettings(c){
   const fields={
     marginPct:'#priceMargin',minMarginPct:'#priceMinMargin',
     discountPct:'#priceDiscount',taxPct:'#priceTax',flashPct:'#priceFlash',
-    couponPct:'#priceCoupon',adsPct:'#priceAds',shipping:'#priceFreight',
+    couponPct:'#priceCoupon',shipping:'#priceFreight',
     packing:'#pricePackaging',sellerType:'#priceSellerType'
   };
   for(const [key,selector] of Object.entries(fields))
@@ -4251,13 +4255,55 @@ function shPriceReadSettings(){
     marginPct:number('#priceMargin'),minMarginPct:number('#priceMinMargin'),
     discountPct:number('#priceDiscount'),taxPct:number('#priceTax'),
     flashPct:number('#priceFlash'),couponPct:number('#priceCoupon'),
-    adsPct:number('#priceAds'),shipping:number('#priceFreight'),
+    adsPct:$('#priceAdsEnabled').checked?number('#priceAds'):0,shipping:number('#priceFreight'),
     packing:number('#pricePackaging'),sellerType:$('#priceSellerType').value,
     highVolumeCpf:$('#priceHighVolume').checked,
     commissionRates:[0,1,2,3].map(i=>number('#priceRate'+i)),
     fixedFees:[0,1,2,3].map(i=>number('#priceFee'+i))
   };
 }
+function shPriceAdsRefreshUi(){
+ const on=$('#priceAdsEnabled').checked;
+ const box=$('#pricingAdsReserveBox');
+ box?.classList?.toggle('ads-selected',on);
+ const pct=$('#priceAds');
+ pct.disabled=!on;
+ pct.required=on;
+ const rate=Number(pct.value);
+ const help=$('#priceAdsHelp');
+ if(help)help.textContent=on
+   ?'Reserva de '+(Number.isFinite(rate)?rate.toLocaleString('pt-BR'):'—')+
+     '% do preço final estimado por venda. Esse valor entra como custo na simulação e reduz a margem antes de gerar o plano.'
+   :'Desmarcado: não há reserva Ads no preço desta SKU. Outros anúncios não são afetados.';
+ const preview=$('#priceAdsPreview');
+ if(preview)preview.textContent=on&&shPriceCurrentQuote?.adsBudgetEnabled===true
+   ?'Reserva estimada por venda: '+shPriceMoney(shPriceCurrentQuote.breakdown?.ads)+
+     ' · percentual '+shPricePercent(shPriceCurrentQuote.adsBudgetPct)
+   :on?'Defina o percentual e recalcule para salvar esta SKU na lista de Ads.'
+     :'Nenhuma reserva Ads está prevista neste plano.';
+}
+async function shPriceAdsRestoreSelection(selected){
+ const key=[selected.sku,selected.itemId,selected.modelId].join('|');
+ if(shPriceAdsLoadedKey===key)return;
+ const params=new URLSearchParams({sku:selected.sku,itemId:selected.itemId,modelId:selected.modelId});
+ const d=await json('/api/shopee/optimizer/pricing/selection?'+params,
+   {signal:AbortSignal.timeout(22000)});
+ if(!shPriceSelection||[shPriceSelection.sku,shPriceSelection.itemId,shPriceSelection.modelId].join('|')!==key)return false;
+ const enabled=d.adsBudgetEnabled===true;
+ $('#priceAdsEnabled').checked=enabled;
+ $('#priceAds').value=enabled?String(d.adsBudgetPct||0):'0';
+ shPriceAdsLoadedKey=key;
+ shPriceAdsRefreshUi();
+ return true;
+}
+$('#priceAdsEnabled')?.addEventListener('change',()=>{
+ shPriceAdsRefreshUi();
+ if($('#priceAdsEnabled').checked&&!(Number($('#priceAds').value)>0)){
+  shPriceSetStatus('Informe o percentual de reserva para Ads desta SKU (acima de 0%).','warning');
+  $('#priceAds').focus();return;
+ }
+ if(shPriceSelection)void shPricePrepare();
+});
 function shPriceRefreshMarginLabel(){
   const value=$('#priceMargin').value+'%';
   $('#priceMarginLabel').textContent=value;
@@ -4280,6 +4326,7 @@ function pricingResetQuote(){
   $('#priceMarketState').textContent='';
   $('#priceResults').hidden=false;
   pricingShowSelection(shPriceSelection);
+  shPriceAdsRefreshUi();
 }
 for(const [id,change] of [['#pricingMarginPlus',1],['#pricingMarginMinus',-1]]){
   $(id)?.addEventListener?.('click',()=>{
@@ -4335,6 +4382,10 @@ function shPriceRender(q){
   const isSupplierPreview=q.source==='wedrop_only';
   if(isSupplierPreview&&shPriceSelection)return;
   shPriceCurrentQuote=q;
+  // O plano do anúncio preserva a reserva selecionada; nunca usa Ads de outra SKU.
+  $('#priceAdsEnabled').checked=q.adsBudgetEnabled===true;
+  $('#priceAds').value=String(q.adsBudgetEnabled===true?Number(q.adsBudgetPct||0):0);
+  shPriceAdsRefreshUi();
   shQuickSyncSlider();
   $('#optimizerQuickValues').hidden=false;
   $('#optimizerQuickGross').textContent=shPriceMoney(q.grossPrice);
@@ -4413,10 +4464,16 @@ async function shPricePrepare({silent=false}={}){
   if(!silent)shPriceSetStatus('Conferindo o custo WeDrop salvo e preparando o desconto da SKU...');
   shQuickSetStatus('Calculando preço bruto e desconto da SKU '+selected.sku+'...');
   try{
+    const restored=await shPriceAdsRestoreSelection(selected);
+    if(restored===false)return;
+    if($('#priceAdsEnabled').checked&&!(Number($('#priceAds').value)>0))
+      throw Error('Informe um adicional Ads superior a 0% para esta SKU.');
     const market=$('#priceMarketAvg').value.trim();
     const d=await json('/api/shopee/optimizer/pricing/prepare',{
       method:'POST',headers:{'Content-Type':'application/json'},
       body:JSON.stringify({...selected,settings:shPriceReadSettings(),
+        adsBudgetEnabled:$('#priceAdsEnabled').checked,
+        adsBudgetPct:$('#priceAdsEnabled').checked?Number($('#priceAds').value):0,
         marketAverage:market===''?null:Number(market)}),
       signal:AbortSignal.timeout(35000)
     });
@@ -4482,6 +4539,62 @@ $('#priceRecalculate').onclick=()=>{
   else shPriceSetStatus('Selecione primeiro uma SKU em Otimização para calcular com o custo confirmado.','warning');
 };
 $('#priceOpenDiscounts').onclick=()=>setTab('discounts');
+shPriceAdsRefreshUi();
+
+// Reserva prevista no preço (dados persistidos) — independente das consultas
+// de gasto real Shopee Ads. A lista NÃO autoriza campanhas nem publica preços.
+let adsPricingLoadSerial=0;
+async function adsPricingLoad(){
+ const list=$('#adsPricingRows'),notice=$('#adsPricingReservedNotice'),count=$('#adsPricingCount');
+ if(!list||!notice||!count)return;
+ const serial=++adsPricingLoadSerial;
+ list.replaceChildren();
+ const wait=document.createElement('tr'),cell=document.createElement('td');
+ cell.colSpan=8;cell.textContent='Consultando os planos salvos de precificação...';
+ wait.append(cell);list.append(wait);
+ notice.textContent='Consultando a reserva por SKU...';
+ try{
+  const data=await json('/api/shopee/optimizer/pricing/ads-reserved',
+    {signal:AbortSignal.timeout(30000)});
+  if(serial!==adsPricingLoadSerial)return;
+  list.replaceChildren();
+  const plans=Array.isArray(data.plans)?data.plans:[];
+  count.textContent=plans.length+' anúncio(s) com reserva';
+  notice.textContent=data.complete===false
+   ?'Relatório parcial: existem mais planos do que o limite de consulta.'
+   :plans.length?'Reserva já considerada na margem dos preços calculados.':'Nenhuma SKU marcada para Ads na precificação.';
+  for(const plan of plans){
+   const tr=document.createElement('tr');
+   const td=(value)=>{const el=document.createElement('td');el.textContent=String(value);return el;};
+   tr.append(td(plan.sku),td(shPriceMoney(plan.customerPrice)),td(shPriceMoney(plan.grossPrice)),
+    td(shPricePercent(plan.adsBudgetPct)),td(shPriceMoney(plan.adsReserveAmount)),
+    td(shPricePercent(plan.netMarginPct)),
+    td(fmtDate(plan.updatedAt)));
+   const action=document.createElement('td'),button=document.createElement('button');
+   button.type='button';button.className='secondary';button.textContent='Ver plano';
+   button.addEventListener('click',()=>{
+    shPriceSelection={sku:plan.sku,itemId:plan.itemId,modelId:plan.modelId};
+    shPriceSaveSelection(shPriceSelection);
+    shPriceAdsLoadedKey='';
+    setTab('pricing');
+   });
+   action.append(button);tr.append(action);list.append(tr);
+  }
+  if(!plans.length){
+   const empty=document.createElement('tr'),blank=document.createElement('td');
+   blank.colSpan=8;blank.textContent='Nenhum anúncio tem adicional Ads reservado em um plano salvo. Marque a opção na página Precificação e recalcule.';
+   empty.append(blank);list.append(empty);
+  }
+ }catch(error){
+  if(serial!==adsPricingLoadSerial)return;
+  count.textContent='Indisponível';
+  notice.textContent='Não foi possível consultar os planos de Ads: '+error.message;
+  list.replaceChildren();const tr=document.createElement('tr'),cell=document.createElement('td');
+  cell.colSpan=8;cell.textContent='Falha na consulta. Use Atualizar lista para tentar novamente.';
+  tr.append(cell);list.append(tr);
+ }
+}
+$('#adsPricingRefresh')?.addEventListener('click',()=>void adsPricingLoad());
 
 let discountLoadRequestId=0,discountRefreshBusy=false;
 const discountReviewLabels={campaign:'Campanha conferida',price:'Preço vigente conferido',tax:'Taxas revisadas',ready:'Promoção revisada para aplicar'};
