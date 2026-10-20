@@ -4555,8 +4555,18 @@ function optimizerTechnicalRender(data){
   if(!suggested&&['marca','estampa','numero de registro inmetro'].some(n=>String(name).toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').includes(n))&&
      !attr.values?.length)field.append(optimizerMake('small','',
        'Sem comprovação automática: cole a ficha do fabricante acima ou selecione uma opção oficial.'));
-  const existing=(data.attributeChanges||[]).find(x=>Number(x.attributeId)===attr.id)||
+  const reviewed=(data.attributeChanges||[]).find(x=>Number(x.attributeId)===attr.id);
+  // Prefill confirmed supplier facts at OPEN, not behind a second "Usar sugestão"
+  // click. A previously saved, deliberate manual edit takes precedence except
+  // the invalid brand Novo copied from Shopee's condition NEW.
+  const invalidNewBrand=String(name).normalize('NFD').replace(/[\u0300-\u036f]/g,'')
+    .toLowerCase()==='marca'&&reviewed?.values?.[0]?.valueName?.trim().toLowerCase()==='novo';
+  const auto=(!reviewed||invalidNewBrand)?suggested:null;
+  const existing=auto||reviewed||
     (data.attributeSuggestions||[]).find(x=>Number(x.attributeId)===attr.id);
+  if(auto)field.append(optimizerMake('p','optimizer-source-autofilled',
+    '✓ Preenchido automaticamente: '+auto.values.map(x=>x.valueName).join(', ')+
+    ' · Fonte: '+auto.evidence+'. Confirme na revisão para publicar.'));
   const enableLabel=optimizerMake('label','optimizer-attribute-toggle'),enabled=optimizerMake('input');
   enabled.type='checkbox';enabled.dataset.attributeEnabled='true';enabled.checked=Boolean(existing);
   enabled.setAttribute('aria-label','Preencher '+name);enableLabel.append(enabled,document.createTextNode(' Preencher este campo'));field.append(enableLabel);
@@ -4638,8 +4648,8 @@ function optimizerTechnicalRender(data){
    rows.append(row);
   }
   for(const value of existing?(existing.values||[existing]):[{}])addRow(value);
-  if(suggested){
-   const apply=optimizerMake('button','secondary','Usar sugestão confirmada: '+suggested.values[0].valueName);
+  if(suggested&&!auto){
+   const apply=optimizerMake('button','secondary','Aplicar dado WeDrop: '+suggested.values[0].valueName);
    apply.type='button';
    apply.onclick=()=>{
     enabled.checked=true;controls.hidden=false;rows.replaceChildren();
@@ -4688,10 +4698,26 @@ const optimizerTaxLabels={ncm:'NCM do produto (8 dígitos)',origin:'Origem',same
  pis_cofins_cst:'CST PIS/COFINS (opcional no anúncio)',operation_type:'Tipo de operação: 1 Revendedor / 2 Fabricante',evidence:'Fonte e validação fiscal desta SKU'};
 function optimizerFiscalRender(data){
  const wrap=$('#optimizerFiscalFields');wrap.replaceChildren();
- const draft={...(data.taxCurrent||{}),...(data.taxSuggestion||{}),...(data.taxDraft||{})};
+ const defaults=data.taxSuggestion||{},saved=data.taxDraft||{};
+ // Pre-fill by shop rules + supplier NCM. Saved SKU-specific edits take priority;
+ // blanks for optional CEST/CST remain blank and are never replaced by fake codes.
+ const draft={...(data.taxCurrent||{}),...defaults,...saved};
+ const summary=optimizerMake('p','optimizer-category-summary',
+  'Motor Matriz · preenchimento automático da SKU '+(data.sku||'')+
+  '. Os campos abaixo são uma prévia do Shopee Manager; a Central do Vendedor só muda após execução e confirmação da API.');
+ wrap.append(summary);
  for(const [key,label] of Object.entries(optimizerTaxLabels)){
   const field=optimizerMake('label','optimizer-field',label),input=optimizerMake('input');
-  input.type='text';input.dataset.taxField=key;input.value=String(draft[key]||'');input.maxLength=key==='evidence'?300:20;
+  const value=String(draft[key]??'');
+  input.type='text';input.dataset.taxField=key;input.value=value;input.maxLength=key==='evidence'?300:20;
+  if(value&&key!=='evidence'){
+   const savedValue=Object.hasOwn(saved,key)&&String(saved[key]??'').trim()!==''&&saved[key]===draft[key];
+   const origin=savedValue?'Revisão salva desta SKU':
+     (data.taxSuggestionSources||{})[key]||'Informação fiscal obtida do anúncio';
+   const provenance=optimizerMake('small','optimizer-fiscal-filled',
+     '✓ '+(savedValue?'Valor já salvo':'Pré-preenchido automaticamente')+' · '+origin);
+   field.append(provenance);
+  }
   input.oninput=()=>optimizerExecReset();field.append(input);wrap.append(field);
   if(key==='pis_cofins_cst'){
    input.placeholder='Opcional na otimização';
@@ -4702,7 +4728,7 @@ function optimizerFiscalRender(data){
  const cest=wrap.querySelector('[data-tax-field="cest"]');
  if(cest&&!String(draft.cest||'').trim()){
   const info=optimizerMake('small','optimizer-fiscal-cest-help',
-    'A WeDrop não informou CEST para esta SKU. Consulte o XML/nota de compra ou a contabilidade antes de preencher. Um NCM isolado não comprova o CEST aplicável.');
+    'CEST em branco conforme sua regra. Não preencher automaticamente. A Shopee pode exigir o código mesmo que o nosso sistema não bloqueie.');
   cest.closest('label')?.append(info);
  }
 }

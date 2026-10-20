@@ -679,8 +679,33 @@ app.get('/api/shopee/optimizer/workflow',mustLogin,requireWeDropAdmin,async(req,
       console.warn('[shopee-source-evidence] supplementary read unavailable:',String(error.message||error).slice(0,150));
     }
     const supplierFacts=supplierWorkflowFacts(supplier,record,settings);
-    const evidenceFacts=supplierAttributeSuggestions({attributes:technicalPreview.attributes,
-      proposed:review.attributes||[],supplier,sourceText:sourceEvidence.sourceText});
+    let evidenceFacts=supplierAttributeSuggestions({attributes:technicalPreview.attributes,
+      proposed:review.attributes||[],supplier,sourceText:sourceEvidence.sourceText,
+      productDescription:record.description});
+    // Brand/category option lists can be truncated. Resolve missing exact values
+    // through Shopee's official search before prefilling, never manufacture IDs.
+    const searchable=evidenceFacts.unresolved.filter(x=>x.value&&
+      /^(marca|brand|estampa|padr[aã]o|dimens[oõ]es do produto)$/i.test(x.name||'')).slice(0,3);
+    let extraOptions=false;
+    for(const missing of searchable){
+      const attr=technicalPreview.attributes.find(x=>Number(x.id)===Number(missing.attributeId));
+      if(!attr?.supportSearch||attr.conditional)continue;
+      try{
+        const request=searchAttributeRequest({attributeId:attr.id,valueName:missing.value,limit:50});
+        const official=readSearchedAttributeOptions(await matrixShopeeSearch(cfg,auth,request),0,50).options
+          .find(x=>x.name.normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase().trim()===
+            String(missing.value).normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase().trim());
+        if(official){
+          attr.options=[...(attr.options||[]).filter(x=>Number(x.id)!==Number(official.id)),official];
+          extraOptions=true;
+        }
+      }catch(error){
+        console.warn('[shopee-autofill] official category option unavailable:',String(error.message||error).slice(0,120));
+      }
+    }
+    if(extraOptions)evidenceFacts=supplierAttributeSuggestions({attributes:technicalPreview.attributes,
+      proposed:review.attributes||[],supplier,sourceText:sourceEvidence.sourceText,
+      productDescription:record.description});
     const manualVideo=manualVideoPublicInfo(
       await getShopeeManualVideo(auth.shopId,itemId,modelId,sku));
     res.json({ok:true,readOnlyMarketplace:true,sku,itemId,modelId,manualVideo,...supplierFacts,

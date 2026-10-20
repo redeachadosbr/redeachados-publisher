@@ -13,7 +13,20 @@ export function supplierWorkflowFacts(supplier,record,settings={}){
  if(/^\d{8}$/.test(facts.ncm||''))taxSuggestion.ncm=facts.ncm;
  if(/^\d{7}$/.test(facts.cest||''))taxSuggestion.cest=facts.cest;
  if(source)taxSuggestion.evidence=source+'; demais campos conforme regras fiscais salvas da loja.';
- const attrs=record.attributeAudit?.attributes||[],description=clean(record.description);
+ // Unidade padrão só é inferida quando há comprovação explícita para esta SKU.
+ // Não tratar kit, metro ou pacote como UN apenas porque a loja é revendedora.
+ const explicitUnit=clean(facts.measure_unit||facts.measureUnit||facts.unitOfMeasure||'').toUpperCase();
+ if(['UN','UND','UNIDADE'].includes(explicitUnit))taxSuggestion.measure_unit='UN';
+ else if(['KIT','KT'].includes(explicitUnit))taxSuggestion.measure_unit='KIT';
+ else if(['M','MT','METRO'].includes(explicitUnit))taxSuggestion.measure_unit='M';
+ else if(['KG','QUILOGRAMA'].includes(explicitUnit))taxSuggestion.measure_unit='KG';
+ const description=clean(record.description);
+ const attrs=record.attributeAudit?.attributes||[];
+ const singularQuantity=attrs.find(x=>/quantidade\s+(?:da|por)\s+embalagem|quantidade\s+incluida/i.test(
+   String(x.name||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'')))?.values?.[0]?.name;
+ if(!taxSuggestion.measure_unit&&String(singularQuantity||'').trim()==='1'&&
+   !/\b(kit|jogo|conjunto|metro|pacote de|fardo)\b/i.test(String(facts.name||record.title||'')))
+  taxSuggestion.measure_unit='UN';
  const axes={};
  for(const [key,names] of Object.entries({length:'comprimento',width:'largura',height:'altura'})){
   const value=description.match(new RegExp('(\\d+(?:[.,]\\d+)?)\\s*cm\\s*(?:de\\s+)?'+names,'i'))?.[1];
@@ -28,5 +41,7 @@ export function supplierWorkflowFacts(supplier,record,settings={}){
   // é dinâmico. Marca é obtida do catálogo WeDrop e validada pela árvore Shopee.
  }
  return {supplierProduct:supplier?{...facts,sku:supplier.supplier_sku,source,importedAt:supplier.imported_at,matchedBy:supplier.matchedBy}:null,
-  taxSuggestion,attributeSuggestions,fiscalNotes:notes};
+  taxSuggestion,attributeSuggestions,fiscalNotes:notes,
+  taxSuggestionSources:Object.fromEntries(Object.keys(taxSuggestion).map(key=>[key,
+   ['ncm','cest','measure_unit'].includes(key)?(source||'Ficha técnica do produto'):'Regras fiscais salvas da loja']))};
 }

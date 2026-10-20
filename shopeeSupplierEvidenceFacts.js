@@ -1,67 +1,150 @@
-// Evidence-based suggestions are drafts, not merchant-certified product attributes.
+// Motor Matriz: compile product facts into category-specific draft values.
+// These values appear filled in the editor but are never an authorization to publish.
 const list=x=>Array.isArray(x)?x:[];
 const plain=v=>String(v??'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase().trim();
 const clean=s=>String(s||'').trim();
 const equal=(a,b)=>plain(a)===plain(b);
 const selectedValue=(attr,proposed)=>list(proposed).find(x=>Number(x.attributeId)===Number(attr.id))?.values?.[0]?.valueName||
  attr.values?.[0]?.name||'';
-export function supplierAttributeSuggestions({attributes=[],proposed=[],supplier=null,sourceText=''}={}){
- const notes=clean(sourceText).slice(0,12000),facts=supplier?.product_data||{};
- const origin=supplier?'Ficha WeDrop '+supplier.source_file+' · SKU '+supplier.supplier_sku:'Texto do fornecedor informado pelo vendedor';
+const isBrand=x=>['marca','brand','marca do produto'].includes(plain(x));
+const isDimensions=x=>{
+ const n=plain(x);
+ return /dimens|medidas?/.test(n)&&/produto|piscina|item|montad/.test(n)&&
+  (!/pacote|embalagem|caixa|logist/.test(n)||/sem\s+(?:a\s+)?(?:caixa|embalagem)|sem\s+embalagem/.test(n));
+};
+const isPackageDimensions=x=>{
+ const n=plain(x);
+ return /dimens|medida|tamanho/.test(n)&&/pacote|embalagem|caixa/.test(n)&&
+  !/sem\s+(?:a\s+)?(?:caixa|embalagem)|sem\s+embalagem/.test(n);
+};
+const sizeNumber=x=>String(x).replace(',','.');
+
+// The product order on the official Shopee category is A x L x C.
+// Never transfer supplier shipping/box measurements into this product field.
+export function supplierProductDimensions(text){
+ const source=String(text||'').slice(0,24000);
+ const n='(\\d{1,4}(?:[.,]\\d{1,2})?)';
+ // Labeled dimensions, with one unit per axis (supplier text in any order).
+ const pattern=new RegExp(
+  '(?:dimens(?:oes|ao)|medidas?)\\s*(?:(?:descritas?\\s+)?(?:para|da|do)\\s+(?:(?:a|o)\\s+)?(?:piscina\\s+montada|produto|piscina|item))?\\s*[:\\-]\\s*'+
+  n+'\\s*cm\\s*(?:de\\s+)?altura\\s*[x×|;,]+\\s*'+
+  n+'\\s*cm\\s*(?:de\\s+)?largura\\s*[x×|;,]+\\s*'+
+  n+'\\s*cm\\s*(?:de\\s+)?comprimento','i');
+ const matches=[...plain(source).matchAll(new RegExp(pattern.source,'gi'))];
+ for(const item of matches){
+  const window=plain(source).slice(Math.max(0,item.index-75),item.index);
+  if(/(?:embalagem|logist|pacote|caixa)(?:\\s+\\w+){0,2}\\s*$/.test(window))continue;
+  const dimensions=item.slice(1,4).map(sizeNumber);
+  if(dimensions.every(x=>Number(x)>0&&Number(x)<10000))
+   return {height:dimensions[0],width:dimensions[1],length:dimensions[2],
+    value:dimensions.join(' x ')+' cm',provenance:item[0]};
+ }
+ // Many WeDrop descriptions use 'Dimensões: 43cm Altura x 135cm Largura x 88cm Comprimento'.
+ // If the dimensions line explicitly says "da embalagem", it is excluded.
+ const loose=new RegExp('^\\s*(?:dimens(?:oes|ao)|medidas?)\\s*[:\\-]\\s*'+
+   n+'\\s*cm\\s*altura\\s*[x×]\\s*'+
+   n+'\\s*cm\\s*largura\\s*[x×]\\s*'+
+   n+'\\s*cm\\s*comprimento\\s*$','mi');
+ const match=plain(source).match(loose);
+ if(match&&match.slice(1,4).every(x=>Number(sizeNumber(x))>0))
+  return {height:sizeNumber(match[1]),width:sizeNumber(match[2]),length:sizeNumber(match[3]),
+   value:match.slice(1,4).map(sizeNumber).join(' x ')+' cm',provenance:match[0]};
+ return null;
+}
+export function supplierAttributeSuggestions({attributes=[],proposed=[],supplier=null,sourceText='',productDescription=''}={}){
+ const facts=supplier?.product_data||{},notes=clean(sourceText).slice(0,12000);
+ const officialDescription=clean(facts.description||facts.details||'').slice(0,12000);
+ const fallbackDescription=clean(productDescription).slice(0,12000);
+ const sources=[{text:notes,label:'Informações fornecidas para a SKU'},
+  {text:officialDescription,label:'Descrição do catálogo WeDrop'},
+  {text:fallbackDescription,label:'Descrição existente do anúncio (conferir com fabricante)'}].filter(x=>x.text);
+ const supplierName=supplier?'WeDrop '+supplier.source_file+' · SKU '+supplier.supplier_sku:'';
  const suggestions=[],conflicts=[],unresolved=[];
  function suggest(attr,value,evidence,{onlyIfMissing=false}={}){
   if(!value||attr.legacy||attr.conditional)return;
   const active=selectedValue(attr,proposed);
   if(equal(value,active))return;
   if(onlyIfMissing&&active)return;
-  const opt=list(attr.options).find(x=>Number(x.id)>0&&equal(x.name,value));
+  const official=list(attr.options).find(x=>Number(x.id)>0&&equal(x.name,value));
   const custom=[2,3,5].includes(Number(attr.inputType));
-  if(!opt&&!custom){
-   unresolved.push({attributeId:attr.id,name:attr.name,value,reason:'Selecione opção oficial na Shopee. Se não aparecer, pesquise ou informe o suporte.'});
+  if(!official&&!custom){
+   unresolved.push({attributeId:attr.id,name:attr.name,value,
+     reason:attr.supportSearch?'A opção deve ser consultada na lista oficial da Shopee.':
+     'A categoria exige uma opção oficial; não inventar código ou selecionar outra marca.'});
    return;
   }
-  const candidate={attributeId:attr.id,values:[{valueId:opt?.id||0,valueName:opt?.name||value}],evidence};
-  suggestions.push(candidate);
+  // Custom free-text with format_type=2 requires an official unit. Dimensions
+  // presented as a single formatted value should never be coerced to a number.
+  if(!official&&Number(attr.validationType)===1&&!/^\d+$/.test(value) ||
+    !official&&Number(attr.validationType)===3&&!/^-?\d+(?:[.,]\d+)?$/.test(value)){
+    unresolved.push({attributeId:attr.id,name:attr.name,value,
+      reason:'O formato deste atributo não aceita esse texto. Confira a unidade/opção oficial.'});
+    return;
+  }
+  if(!official&&Number(attr.formatType)===2){
+    const units=list(attr.allowedUnits).map(x=>typeof x==='string'?x:x?.unit||x?.name||'');
+    if(!units.length){
+     unresolved.push({attributeId:attr.id,name:attr.name,value,
+       reason:'A Shopee exige unidade da categoria ainda não confirmada.'});return;
+    }
+    const unit=units.find(u=>plain(u)==='cm');
+    if(!unit){unresolved.push({attributeId:attr.id,name:attr.name,value,
+      reason:'Não há unidade cm na categoria; conferir formato antes de preencher.'});return;}
+    // Shopee's structured numeric measurement should not receive an arbitrary
+    // composite string even when the category supports a unit.
+    if(!/^\d+(?:[.,]\d+)?$/.test(value)){
+     unresolved.push({attributeId:attr.id,name:attr.name,value,
+      reason:'O atributo exige valor numérico com unidade, não medida composta.'});return;}
+  }
+  const entry={attributeId:attr.id,values:[{valueId:official?.id||0,valueName:official?.name||value}],
+   evidence,autoFilled:true};
+  suggestions.push(entry);
   if(active)conflicts.push({attributeId:attr.id,name:attr.name,current:active,recommended:value});
  }
+ function specifiedText(re){
+  for(const src of sources){const m=plain(src.text).match(re);if(m)return {value:m[1]||m[0],source:src.label};}
+  return null;
+ }
+ const dims=sources.map(src=>({value:supplierProductDimensions(src.text),label:src.label}))
+  .find(x=>x.value)?.value||null;
+ const dimSource=sources.find(src=>supplierProductDimensions(src.text))?.label||'';
  for(const attr of attributes){
   const n=plain(attr.name);
-  if(n==='marca'||n==='brand'){
-   const brand=clean(facts.brand);
-   if(brand)suggest(attr,brand,origin+' — marca confirmada no catálogo do fornecedor.');
-   else unresolved.push({attributeId:attr.id,name:attr.name,value:null,reason:'Marca não informada pela WeDrop: confirmar embalagem ou fabricante.'});
-  }else if(n.includes('estampa')||n.includes('padrao')){
-   if(/\bestampad[oa]\b/i.test(plain(notes)))
-    suggest(attr,'Estampado','Texto colado da ficha do fornecedor · declaração de estampa.',{onlyIfMissing:true});
+  if(isBrand(n)){
+   // Always prefer supplier-confirmed brand over wrong 'Novo' inherited from condition NEW.
+   const brand=clean(facts.brand)||specifiedText(/(?:^|\n)\s*marca\s*[:\-]\s*([^\n.;]+)/)?.value;
+   if(brand)suggest(attr,brand,(supplierName||'Ficha desta SKU')+' — marca confirmada na fonte da SKU.');
+   else unresolved.push({attributeId:attr.id,name:attr.name,value:null,reason:'Marca não confirmada pelo fornecedor.'});
+  }else if(n.includes('estampa')||n.includes('padrao')||n.includes('estampado')){
+   const stamp=specifiedText(/(?:^|\n)\s*(?:estampa|padrao)\s*[:\-]\s*(estampad[oa])\b/);
+   if(stamp)suggest(attr,'Estampado',stamp.source+' — estampa explicitamente declarada.',{onlyIfMissing:true});
+  }else if(isDimensions(n)){
+   if(dims)suggest(attr,dims.value,dimSource+' — medidas do produto (A x L x C); NÃO são dimensões da embalagem.',{onlyIfMissing:true});
+  }else if(isPackageDimensions(n)){
+   // Never conflate with product dimensions. Catalogue CSV sizes have uncertain
+   // shipping meaning and therefore remain review-only.
   }else if(n.includes('idade recomendada')){
-   const value=plain(notes).match(/idade\s+recomendada\s*[:\-]\s*(\d{1,2})\s*(?:anos|ano)/)?.[1];
-   if(value)suggest(attr,value+' anos','Idade recomendada informada literalmente no texto do fabricante/WeDrop.',{onlyIfMissing:true});
+   const found=specifiedText(/idade\s+recomendada\s*[:\-]\s*(\d{1,2})\s*(?:anos|ano)/);
+   if(found)suggest(attr,found.value+' anos',found.source+' — idade expressamente informada.',{onlyIfMissing:true});
   }else if(n.includes('quantidade')&&n.includes('embalagem')){
-   const value=plain(notes).match(/quantidade\s+(?:incluida|por\s+embalagem)\s*[:\-]\s*(\d{1,3})\b/)?.[1];
-   if(value)suggest(attr,value,'Texto da ficha WeDrop: quantidade explicitamente indicada.',{onlyIfMissing:true});
-  }else if((n.includes('dimensoes')||n.includes('dimensao'))&&n.includes('produto')){
-   const value=plain(notes).match(/dimensoes?\s+(?:descritas\s+para\s+a\s+piscina|da\s+piscina\s+montada|do\s+produto)\s*[:\-]\s*(\d+(?:[.,]\d+)?)\s*cm\s*(?:de\s+)?altura\s*[×x]\s*(\d+(?:[.,]\d+)?)\s*cm\s*(?:de\s+)?largura\s*[×x]\s*(\d+(?:[.,]\d+)?)\s*cm\s*(?:de\s+)?comprimento/)?.slice(1);
-   if(value)suggest(attr,value[0]+' x '+value[1]+' x '+value[2]+' cm',
-    'Dimensões descritas pelo fornecedor; confirmar que são da piscina montada, nunca da caixa.',{onlyIfMissing:true});
-  }else if((n.includes('inmetro')||n.includes('numero de registro inmetro'))&&
-    /(registro\s*(?:do\s*)?inmetro|inmetro|nbr)\s*[:\-]\s*(?:n\/a\b|nao se aplica\b|isento\b)/i.test(plain(notes))){
-   const opt=list(attr.options).find(x=>/n\/?a.*nbr.*nao aplicavel/i.test(plain(x.name)));
-   if(opt)suggest(attr,opt.name,'Declaração explícita de não aplicabilidade no texto fornecido para esta SKU; confirme exigência regulatória.');
-   else unresolved.push({attributeId:attr.id,name:attr.name,value:'N/A',reason:'O modelo não retornou uma opção oficial N/A. Confira antes de marcar isento.'});
+   const found=specifiedText(/quantidade\s+(?:incluida|por\s+embalagem)\s*[:\-]\s*(\d{1,3})\b/);
+   if(found)suggest(attr,found.value,found.source+' — quantidade confirmada.',{onlyIfMissing:true});
+  }else if(n.includes('inmetro')&&
+    sources.some(src=>/(?:registro\s*(?:do\s*)?inmetro|inmetro|nbr)\s*[:\-]\s*(?:n\/a\b|nao se aplica\b|isento\b)/i.test(plain(src.text)))){
+   const option=list(attr.options).find(x=>/n\/?a.*nbr.*nao aplicavel/i.test(plain(x.name)));
+   if(option)suggest(attr,option.name,'Declaração explícita da não aplicabilidade pelo fornecedor; conferir requisito regulatório.');
+   else unresolved.push({attributeId:attr.id,name:attr.name,value:'N/A',reason:'Opção N/A não confirmada na árvore da categoria.'});
   }
  }
- // Product measurements versus boxed transport dimensions are never interchangeable.
  const metrics=[];
- const m=notes.match(/dimens(?:oes|ao)?\s*[:\-]\s*(\d+(?:[.,]\d+)?)\s*cm\s*altura\s*[x×]\s*(\d+(?:[.,]\d+)?)\s*cm\s*largura\s*[x×]\s*(\d+(?:[.,]\d+)?)\s*cm\s*comprimento/i);
- if(m)metrics.push({name:'Dimensões declaradas no texto',value:m.slice(1).join(' × ')+' cm',
-  note:'Confirmar se são medidas da piscina montada. Não usar como dimensão da embalagem.'});
- const capacity=notes.match(/(?:capacidade|volume)\s*[:\-]?\s*(\d{2,5})\s*(?:litros|l\b)/i);
- if(capacity)metrics.push({name:'Capacidade',value:capacity[1]+' litros',note:'Fonte: texto da WeDrop colado nesta SKU.'});
+ if(dims)metrics.push({name:'Dimensões do produto (A × L × C)',value:dims.value,
+  note:dimSource+'; confirmar medidas montadas. Não utilizar dimensões logísticas.'});
+ const capacity=specifiedText(/(?:capacidade|volume)\s*[:\-]?\s*(\d{2,5})\s*(?:litros|l\b)/);
+ if(capacity)metrics.push({name:'Capacidade',value:capacity.value+' litros',note:capacity.source});
  if(facts.catalogMeasurements){
   const c=facts.catalogMeasurements;
-  metrics.push({name:'Medidas do catálogo logístico',
-   value:[c.heightCm,c.widthCm,c.lengthCm].join(' × ')+' cm',
-   note:'Medidas de transporte/embalagem na planilha; não são necessariamente medidas da piscina montada.'});
+  metrics.push({name:'Medidas do catálogo logístico',value:[c.heightCm,c.widthCm,c.lengthCm].join(' × ')+' cm',
+   note:'Medidas de transporte/embalagem na planilha; não são necessariamente medidas da piscina ou do produto montado.'});
   if(c.weightKg)metrics.push({name:'Peso bruto na planilha',value:String(c.weightKg),
    note:'Unidade inconsistente/pendente de conferência; NÃO preencher automaticamente em kg ou g.'});
  }
