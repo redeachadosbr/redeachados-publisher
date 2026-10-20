@@ -12,6 +12,7 @@
 <link rel="stylesheet" href="/optimizer-ads-reserve.css?v=1.20.15">
 <link rel="stylesheet" href="/shopee-discount-publish.css?v=1.20.16">
 <link rel="stylesheet" href="/shopee-discount-one-click.css?v=1.20.17">
+<link rel="stylesheet" href="/shopee-market-research.css?v=1.20.18">
 </head>
 <body>
 <div class="shell app-layout">
@@ -670,7 +671,7 @@
             <label>Imposto (%)<input id="priceTax" type="number" min="0" max="60" step=".1" value="4"></label>
             <label>Oferta relâmpago · custo (%)<input id="priceFlash" type="number" min="0" max="60" step=".1" value="3"></label>
             <label>Cupom da loja (%)<input id="priceCoupon" type="number" min="0" max="90" step=".1" value="1"></label>
-            <label>Média de mercado final (R$) · opcional<input id="priceMarketAvg" type="number" min="0" step=".01" placeholder="Sem média verificada"></label>
+            <label>Referência manual (R$) · não substitui pesquisa<input id="priceMarketAvg" type="number" min="0" step=".01" placeholder="Sem média verificada"></label>
           </div>
           <details class="sh-price-advanced"><summary>Ajustar comissões, frete e ADS</summary>
             <div class="sh-price-fields">
@@ -709,6 +710,12 @@
                 <summary><svg class="pricing-v2-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linejoin="round" stroke-linecap="round" aria-hidden="true"><rect x="4" y="2" width="16" height="20" rx="2"/><path d="M8 6h8M8 11h2M14 11h2M8 15h2M14 15h2M8 19h2M14 19h2"/></svg> Ver memória de cálculo <span class="pricing-chevron" aria-hidden="true">⌄</span></summary>
                 <div class="pricing-v2-breakdown-content"><p class="sh-price-note" id="priceCostSource"></p>
                   <p class="sh-price-note" id="priceMarketState"></p>
+                  <section class="pricing-market-research" aria-labelledby="pricingMarketResearchTitle">
+                    <div class="pricing-market-research-head"><strong id="pricingMarketResearchTitle">Pesquisa de concorrentes</strong><span id="pricingMarketResearchBadge">Aguardando consulta</span></div>
+                    <p id="pricingMarketResearchStatus" role="status" aria-live="polite">A pesquisa começa automaticamente ao recalcular a SKU.</p>
+                    <div id="pricingMarketResearchOffers" class="pricing-market-research-offers"></div>
+                    <small>Fonte: ofertas públicas da API de Afiliados Shopee, quando configurada. Amostra de ofertas, não de todos os anúncios da plataforma.</small>
+                  </section>
                   <div id="priceBreakdown"></div></div>
               </details>
             </div>
