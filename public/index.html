@@ -625,21 +625,23 @@
           <p class="optimizer-video-help">Confira os dados do produto e sua orientação fiscal. NCM deve vir da nota ou catálogo do fornecedor. O código CST PIS/COFINS é separado de alíquotas.</p>
           <div id="optimizerFiscalFields" class="optimizer-edit-fields"></div>
         </section>
-        <section class="optimizer-video-import" id="optimizerVideoManualPanel" hidden aria-label="Importação manual de vídeo para a SKU">
+        <section class="optimizer-video-import optimizer-video-unified" id="optimizerVideoManualPanel" hidden aria-label="Vídeos para a SKU">
           <div class="optimizer-video-header">
-            <strong><span aria-hidden="true">🎬</span> Importar vídeo do produto</strong>
-            <span class="optimizer-video-tag">Arquivo vinculado à SKU</span>
+            <strong>🎬 Vídeos para este produto</strong>
+            <span class="optimizer-video-tag">MarketPro + envio manual</span>
           </div>
-          <p class="optimizer-video-help">Escolha um vídeo MP4, MOV ou WebM de até 30 MB e duração de 10 a 60 segundos. O servidor valida a duração e converte o arquivo para MP4 quando necessário. Depois de importar, registre a revisão e execute a prévia para publicar na Shopee.</p>
-          <label class="optimizer-field" for="optimizerVideoFile">Selecionar vídeo do computador
-            <input id="optimizerVideoFile" type="file" accept=".mp4,.mov,.webm,video/mp4,video/quicktime,video/webm">
-          </label>
+          <p class="optimizer-video-help">A busca usa o título da SKU e apresenta somente resultados encontrados no acervo. Escolha o vídeo correto para salvar e revisar. Nenhum vídeo é publicado na Shopee sem aprovação.</p>
+          <div id="optimizerVideoMarketStatus" class="optimizer-video-market-status" role="status" aria-live="polite">Buscando vídeos no Markt Pro...</div>
+          <div id="optimizerVideoMarketResults" class="optimizer-video-market-results" aria-label="Vídeos disponíveis para escolher"></div>
+          <details class="optimizer-video-manual-details">
+            <summary>Não encontrou? Importar arquivo manualmente</summary>
+            <label class="optimizer-field" for="optimizerVideoFile">Selecionar MP4, MOV ou WebM (10 a 60 segundos, até 30 MB)
+              <input id="optimizerVideoFile" type="file" accept=".mp4,.mov,.webm,video/mp4,video/quicktime,video/webm">
+            </label>
+            <button id="optimizerVideoUpload" type="button" hidden disabled aria-hidden="true">Salvar vídeo</button>
+          </details>
           <video id="optimizerVideoPreview" controls playsinline preload="metadata" hidden></video>
           <p id="optimizerVideoStatus" class="optimizer-notice" role="status" aria-live="polite">Nenhum vídeo selecionado.</p>
-          <div class="optimizer-workflow-actions">
-            <button id="optimizerVideoUpload" type="button" disabled>Importar e salvar vídeo</button>
-            <button id="optimizerVideoRefresh" class="secondary" type="button">Verificar vídeo salvo</button>
-          </div>
         </section>
         <div class="optimizer-workflow-actions">
           <button id="optimizerWorkflowCopy" type="button" class="secondary">Copiar orientação</button>
@@ -1422,7 +1424,7 @@
 <script src="/optimizer-compact.js?v=1.20.12"></script>
 <script src="/optimizer-dashboard.js?v=1.20.11"></script>
 <script src="/dashboard-new-listings.js?v=1.20.21-shopee"></script>
-<script src="/app.js?v=1.20.25-distinct-scenes"></script>
+<script src="/app.js?v=1.20.26-marketpro"></script>
 <script src="/optimizer-fiscal-premium.js?v=1.20.13"></script>
 </body>
 </html>
