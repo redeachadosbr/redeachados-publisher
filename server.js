@@ -17,6 +17,7 @@ import {readShopeeWallet} from './shopeeWallet.js';
 import {financeAdsDates,matchFinanceAds} from './financeAdsSweep.js';
 import {financeRange} from './shopeeFinance.js';
 import {fetchCatalogPage,normalizeShopeeModels,validItemId} from './catalog.js';
+import {getShopeeNewListingsSummary} from './shopeeNewListings.js';
 import {storeCatalogItems,storeCatalogModels,readCatalogCache,catalogStoreReady,findExactCatalogSku,findCatalogSkuIgnoringCase} from './catalogStore.js';
 import {previewWeDropCsv,prepareWeDropImport,MAX_CSV_CHARS} from './wedropCsv.js';
 import {saveWeDropCosts,getWeDropCoverage,compareIncomingCosts,pendingWeDropModels} from './wedropCosts.js';
@@ -517,6 +518,19 @@ app.get('/api/shopee/catalog/cache',mustLogin,async(req,res)=>{
   }catch(e){res.status(400).json({error:String(e.message||e).slice(0,300)});}
 });
 
+// Dashboard: create_time comes from Shopee's item details, never from
+// update_time or the catalog's first sync date. Read-only shop-scoped API.
+app.get('/api/shopee/dashboard/new-listings',mustLogin,async(req,res)=>{
+ res.setHeader('Cache-Control','no-store');
+ try{
+  const {auth,cfg}=await getValidAuth(req);
+  const report=await getShopeeNewListingsSummary({cfg,auth,callApi:callShopeeShopApi});
+  res.json(report);
+ }catch(error){
+  res.status(503).json({ok:false,unavailable:true,
+   error:String(error?.message||error).slice(0,230)});
+ }
+});
 app.get('/api/shopee/catalog/page',mustLogin,async(req,res)=>{
   res.setHeader('Cache-Control','no-store');
   try{
