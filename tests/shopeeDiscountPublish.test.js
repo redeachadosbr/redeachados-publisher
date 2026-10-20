@@ -1,5 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
+import vm from 'node:vm';
 import {readFileSync} from 'node:fs';
 import {promotionFromQuote,promotionBasePrice,promotionMember,discountPlanSnapshot,
   readDiscountPages,signDiscountPreview,verifyDiscountPreview,
@@ -86,4 +87,47 @@ test('Servidor não bloqueia prévia por sinal promocional genérico',()=>{
  assert.match(server,/promotionSignal:promoMembership\.kind/);
  assert.match(server,/discountExecutionInputs\(req,approved\.sku/);
  assert.match(server,/add_discount_item/);
+});
+
+test('Botão Executar libera com a prévia correta e apenas as confirmações da seção de execução',()=>{
+ const js=readFileSync(new URL('../public/app.js',import.meta.url),'utf8');
+ const start=js.indexOf('function discountPromoApproval(){');
+ const end=js.indexOf('function discountPromoRenderPreview(data){',start);
+ assert.ok(start>0&&end>start,'Lógica de aprovação não encontrada');
+ const evaluator=js.slice(start,end);
+ const preview={sku:'TRC1525',itemId:'22095398152',modelId:'0',action:'add',
+  originalPrice:280.99,gross:219.6,needsBasePriceUpdate:true};
+ function check({confirm=true,price=true,sku='TRC1525',inProgress=false,
+  token='signed-token',action='add',requiresPrice=true}={}){
+  const elements={
+   '#discountPromotionExecute':{disabled:true},
+   '#discountPromotionConfirm':{checked:confirm},
+   '#discountPromotionAllowPrice':{checked:price},
+   '#discountPublishBadge':{textContent:'',dataset:{}}
+  };
+  const context={
+   discountPromoPreview:{approvalToken:token,preview:{...preview,
+    action,needsBasePriceUpdate:requiresPrice}},
+   shDiscountQuote:{sku,itemId:preview.itemId,modelId:preview.modelId},
+   discountPromoExecuting:inProgress,
+   $:selector=>elements[selector],
+   discountPromoStatus:()=>{},
+   shPriceMoney:value=>String(value)
+  };
+  const fn=vm.runInNewContext(evaluator+'\n discountPromoApproval;',context);
+  const enabled=fn();
+  assert.equal(elements['#discountPromotionExecute'].disabled,!enabled);
+  return enabled;
+ }
+ assert.equal(check(),true,'Duas autorizações permitem executar sem o checklist adicional');
+ assert.equal(check({confirm:false}),false,'Sem confirmação do envio permanece bloqueado');
+ assert.equal(check({price:false}),false,'Preço bruto alterado exige autorização específica');
+ assert.equal(check({requiresPrice:false,price:false}),true,
+  'Se o preço bruto já está correto, não exige autorização de alteração');
+ assert.equal(check({sku:'OUTRA-SKU'}),false,'Prévia de outra SKU não pode executar');
+ assert.equal(check({token:''}),false,'Prévia sem token não pode executar');
+ assert.equal(check({action:'already'}),false,'SKU já incluída não deve ser reenviada');
+ assert.equal(check({inProgress:true}),false,'Execução em andamento não pode ser repetida');
+ assert.doesNotMatch(evaluator,/\[data-discount-review\]/,
+  'Checklist informativo não pode interferir no botão Executar');
 });
