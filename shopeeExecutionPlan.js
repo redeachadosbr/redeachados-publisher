@@ -113,7 +113,7 @@ export function compileShopeeExecutionPlan({shopId,itemId,modelId,sku,record,rev
     },proposed,video,images,actions:[...Object.keys(proposed),...(images.length?['images']:[]),...(video?['video']:[])],blocked,warnings,canExecute,
     fingerprint,fiscalDeferred,selectedStage,createdAt:new Date().toISOString(),marketplaceUpdated:false,
     requiresExplicitConfirmation:true,
-    scope:selectedStage==='all'?'Todas as alterações aprovadas':'Somente '+SHOPEE_EXECUTION_STAGE_LABELS[selectedStage]+'; outras etapas não serão enviadas'};
+    scope:selectedStage==='all'?'Todos os campos aprovados':'Somente '+SHOPEE_EXECUTION_STAGE_LABELS[selectedStage]+'; outras etapas não serão enviadas'};
 }
 export function confirmShopeeExecution(plan,{sku,confirmation}={}){
   if(!plan||!plan.canExecute||(Object.keys(plan.proposed||{}).length===0&&!plan.video&&!plan.images?.length))
