@@ -29,6 +29,7 @@
   for(const item of items){
    const count=Math.max(0,Number(item.count)||0);
    const cell=element('div','dashboard-new-listings-history-item');
+   if(item.key)cell.dataset.periodKey=String(item.key);
    const label=element('span','dashboard-new-listings-history-label',String(item.label||''));
    const track=element('div','dashboard-new-listings-history-track');
    const fill=element('span','dashboard-new-listings-history-fill');
@@ -51,6 +52,9 @@
   $('dashboardNewListingsYearLabel').textContent=String(data.yearKey||'Ano atual');
   paintHistory('dashboardNewListingsDays',data.last7);
   paintHistory('dashboardNewListingsMonths',data.byMonth);
+  for(const row of document.querySelectorAll('#dashboardNewListingsMonths .dashboard-new-listings-history-item')){
+   row.classList.toggle('is-current-month',row.dataset.periodKey===data.monthKey);
+  }
   const checked=data.checkedAt?new Date(data.checkedAt):new Date();
   status('Atualizado às '+checked.toLocaleTimeString('pt-BR',{
    timeZone:'America/Sao_Paulo',hour:'2-digit',minute:'2-digit'}));
@@ -91,5 +95,42 @@
   })();
   return inFlight;
  }
+ function setupHistoryButtons(){
+  const history=$('dashboardNewListingsHistory');
+  if(!history)return;
+  const cards=[...document.querySelectorAll('#dashboardNewListings .dashboard-new-listings-card[data-listing-period]')];
+  const sync=()=>{
+   const selected=history.open?history.dataset.view:'all';
+   for(const button of cards){
+    const active=button.dataset.listingPeriod===selected;
+    button.classList.toggle('is-selected',active);
+    button.setAttribute('aria-expanded',active?'true':'false');
+   }
+  };
+  for(const button of cards){
+   button.addEventListener('click',()=>{
+    const view=button.dataset.listingPeriod;
+    const same=history.open&&history.dataset.view===view;
+    history.open=!same;
+    history.dataset.view=same?'all':view;
+    sync();
+    if(!same){
+     history.scrollIntoView({behavior:window.matchMedia?.('(prefers-reduced-motion: reduce)')?.matches?'auto':'smooth',
+      block:'nearest'});
+    }
+   });
+  }
+  history.addEventListener('toggle',()=>{
+   if(!history.open)history.dataset.view='all';
+   sync();
+  });
+  history.querySelector('summary')?.addEventListener('click',()=>{
+   // O link de histórico original mantém a função de mostrar ambas as tabelas.
+   history.dataset.view='all';
+   sync();
+  });
+  sync();
+ }
+ setupHistoryButtons();
  window.dashboardNewListingsLoad=load;
 })();
