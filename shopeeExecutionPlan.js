@@ -77,7 +77,7 @@ export function compileShopeeExecutionPlan({shopId,itemId,modelId,sku,record,rev
     !String(state.tax?.cest||'').trim()&&
     !String(live?.tax_info?.cest||'').trim());
   if(fiscalDeferred){
-    warnings.push(omitFiscal?'Preparação para migração CPF → CNPJ: os dados fiscais não serão enviados nesta execução. As demais etapas aprovadas continuam disponíveis.':
+    warnings.push(omitFiscal?'Dados fiscais permanecem salvos no Motor Matriz. O modo Todas as etapas não envia tax_info; o envio fiscal exige selecionar somente Informações fiscais e confirmar a prévia.':
       'CEST em branco: dados fiscais não serão enviados nesta execução. Imagens, vídeo e conteúdo aprovados serão preparados separadamente. A Shopee poderá solicitar a regularização fiscal.');
   }else if(selected('fiscal')&&stages.fiscal?.reviewed&&state.tax){
     try{const tax=compileTax(state.tax,live);if(!sameData(tax,live.tax_info||{}))proposed.tax_info=tax;}
