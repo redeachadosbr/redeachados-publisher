@@ -218,6 +218,18 @@
       <p class="optimizer-notice" id="optimizerWorkflowStatus" role="status" aria-live="polite">Aguardando a auditoria oficial da SKU.</p>
       <div class="optimizer-workflow-cards" id="optimizerWorkflowCards" aria-label="Etapas de otimização"></div>
       <section class="optimizer-exec-panel optimizer-exec-panel-v21" id="optimizerExecutionPanel" hidden aria-label="Pré-execução automatizada por SKU">
+        <div class="optimizer-stage-execute-switch">
+          <div><strong>O que executar nesta SKU?</strong><small>Escolha uma etapa ou mantenha a execução completa.</small></div>
+          <select id="optimizerExecutionScope" aria-label="Selecionar etapa para executar">
+            <option value="all">Todas as etapas aprovadas</option>
+            <option value="images">Somente imagens</option>
+            <option value="video">Somente vídeo</option>
+            <option value="seo">Somente título SEO</option>
+            <option value="technical">Somente ficha técnica</option>
+            <option value="description">Somente descrição</option>
+            <option value="fiscal">Somente informações fiscais</option>
+          </select>
+        </div>
         <div class="optimizer-exec-head">
           <div><span class="optimizer-v15-kicker">PRÉ-EXECUÇÃO SEGURA</span>
             <h4>Preparar execução automática <span class="optimizer-tip" tabindex="0" data-help="A execução usa somente o conteúdo aprovado na prévia. O vídeo é validado, processado e confirmado na Shopee. Campos sem informação comprovada continuam como pendência." aria-label="A execução usa somente o conteúdo aprovado na prévia. O vídeo é validado, processado e confirmado na Shopee. Campos sem informação comprovada continuam como pendência.">?</span></h4>
@@ -311,6 +323,20 @@
             <ol id="optimizerExecutionEvents" class="optimizer-exec-events"></ol>
           </section>
         </div>
+        <details class="optimizer-fiscal-batch" id="optimizerFiscalBatch">
+          <summary>Executar informações fiscais em lote <span class="optimizer-fiscal-batch-pill">Até 12 SKUs por lote</span></summary>
+          <p>Use somente as fichas fiscais já conferidas no Motor Matriz. Primeiro confira a prévia por SKU; depois autorize o envio. Título, fotos, vídeo, preço e ficha técnica não serão alterados neste lote.</p>
+          <label class="optimizer-field">SKUs para atualização fiscal (uma por linha ou separadas por vírgula)
+            <textarea id="optimizerFiscalBatchSkus" rows="4" placeholder="TRC1525&#10;TRC0809&#10;TRC1230"></textarea>
+          </label>
+          <div class="optimizer-fiscal-batch-actions">
+            <button id="optimizerFiscalBatchPrepare" class="secondary" type="button">1 · Preparar prévia fiscal do lote</button>
+            <button id="optimizerFiscalBatchExecute" type="button" hidden disabled>2 · Executar lote fiscal aprovado</button>
+            <button id="optimizerFiscalBatchRefresh" class="secondary" type="button" hidden>Atualizar andamento</button>
+          </div>
+          <p id="optimizerFiscalBatchStatus" class="optimizer-notice" role="status" aria-live="polite">Nenhum lote preparado. SKUs precisam estar no catálogo da Shopee e ter revisão fiscal salva.</p>
+          <div id="optimizerFiscalBatchList" class="optimizer-fiscal-batch-list" aria-label="Status individual de cada SKU do lote"></div>
+        </details>
         <small class="optimizer-workflow-disclaimer">A execução é gravada por SKU e prossegue automaticamente. Imagens enviadas à mídia Shopee só serão aplicadas ao anúncio quando a API confirmar a atualização.</small>
       </section>
 

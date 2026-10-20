@@ -7,7 +7,19 @@ import {normalizedTitle,validateContentRules} from './shopeeOptimizationWorkflow
 // Preparation is deterministic for one verified item/model/SKU. This module
 // never calls Shopee, and never considers a reviewed checkbox a published item.
 const normal=s=>String(s??'').replace(/\r\n?/g,'\n').trim();
-export function compileShopeeExecutionPlan({shopId,itemId,modelId,sku,record,review,live,manualVideo=null,verifiedVideoSha256=null,manualImages=[],deferUnconfirmedFiscal=false}){
+export const SHOPEE_EXECUTION_STAGES=Object.freeze(['all','images','video','seo','technical','description','fiscal']);
+export const SHOPEE_EXECUTION_STAGE_LABELS=Object.freeze({
+ all:'Todas as etapas',images:'Imagens comerciais',video:'Vídeo do anúncio',
+ seo:'Título SEO',technical:'Ficha técnica',description:'Descrição',fiscal:'Informações fiscais'
+});
+export function normalizeShopeeExecutionStage(stage='all'){
+ const selected=String(stage||'all');
+ if(!SHOPEE_EXECUTION_STAGES.includes(selected))throw Error('Etapa de publicação desconhecida.');
+ return selected;
+}
+export function compileShopeeExecutionPlan({shopId,itemId,modelId,sku,record,review,live,manualVideo=null,verifiedVideoSha256=null,manualImages=[],deferUnconfirmedFiscal=false,selectedStage='all'}){
+  selectedStage=normalizeShopeeExecutionStage(selectedStage);
+  const selected=name=>selectedStage==='all'||selectedStage===name;
   const state=review||{},stages=state.stages||{};
   const title=normalizedTitle(state.draftTitle||'');
   const description=normal(state.draftDescription);
@@ -18,19 +30,19 @@ export function compileShopeeExecutionPlan({shopId,itemId,modelId,sku,record,rev
      String(record?.selectedModelId||'0')!==String(modelId))
     throw Error('Anúncio, modelo ou SKU diferente da auditoria atual.');
   if(!['NORMAL','UNLIST'].includes(String(record?.status)))blocked.push('Anúncio não está em estado editável confirmado.');
-  if(stages.seo?.reviewed===true){
+  if(selected('seo')&&stages.seo?.reviewed===true){
     try{
       validateContentRules({title});
       if(title!==currentTitle)proposed.item_name=title;
     }catch(e){blocked.push(e.message);}
-  }else if(title&&title!==currentTitle)blocked.push('Revisar e registrar a etapa Título SEO antes de executar.');
-  if(stages.description?.reviewed===true){
+  }else if(selected('seo')&&title&&title!==currentTitle)blocked.push('Revisar e registrar a etapa Título SEO antes de executar.');
+  if(selected('description')&&stages.description?.reviewed===true){
     if(currentType!=='normal')blocked.push('Descrição estendida da Shopee exige fluxo próprio; atualização bloqueada.');
     else try{
       validateContentRules({description});
       if(description!==currentDescription)proposed.description=description;
     }catch(e){blocked.push(e.message);}
-  }else if(description&&description!==currentDescription)blocked.push('Revisar e registrar Descrição e variações antes de executar.');
+  }else if(selected('description')&&description&&description!==currentDescription)blocked.push('Revisar e registrar Descrição e variações antes de executar.');
   if(record?.hasModel||String(modelId)!=='0')
     warnings.push('As alterações são campos do anúncio-pai; a alteração afeta TODAS as variações deste Item ID.');
   if(Number(record?.imageCount)<9)warnings.push('Imagens: '+record.imageCount+'/9; faltam arquivos aprovados, geração e upload.');
@@ -42,7 +54,7 @@ export function compileShopeeExecutionPlan({shopId,itemId,modelId,sku,record,rev
   if(state.variationConfig?.enabled)warnings.push('Variações: somente rascunho revisado. Modelos, opções e imagens individuais NÃO serão cadastrados na Shopee nesta execução. Exigem fluxo específico de modelos e fotos confirmadas.');
   if(!stages.fiscal?.reviewed||!state.tax)warnings.push('Fiscal: informe os dados e a fonte por SKU para preparar a alteração.');
   warnings.push('Preço, frete e promoção permanecem separados; descontos não serão enviados.');
-  if(stages.technical?.reviewed&&state.attributes?.length){
+  if(selected('technical')&&stages.technical?.reviewed&&state.attributes?.length){
     try{const attributes=compileAttributes(state.attributes,record,live);
       if(!sameShopeeAttributes(attributes,live.attribute_list||[]))proposed.attribute_list=attributes;
     }catch(e){blocked.push(e.message);}
@@ -50,7 +62,7 @@ export function compileShopeeExecutionPlan({shopId,itemId,modelId,sku,record,rev
   // Verifique também execuções só de título/imagem: a Shopee pode recusar
   // atualizações se o novo atributo obrigatório estiver sem resposta.
   try{
-    const technicalDraft=stages.technical?.reviewed&&state.attributes?.length
+    const technicalDraft=selected('technical')&&stages.technical?.reviewed&&state.attributes?.length
       ?attributeAuditForChanges(state.attributes,record,live):record.attributeAudit;
     const anatel=inspectAnatelCompliance(technicalDraft);
     if(anatel.requiresAction)blocked.push('Anatel: '+anatel.message);
@@ -60,24 +72,24 @@ export function compileShopeeExecutionPlan({shopId,itemId,modelId,sku,record,rev
   // content and media stages into a permanent CEST hostage.
   // The field remains blank. Do NOT send an invented CEST, "00", or tax_info.
   // Shopee may still reject update_item; that is reported from the API.
-  const fiscalDeferred=Boolean(deferUnconfirmedFiscal)&&
+  const fiscalDeferred=selected('fiscal')&&selectedStage!=='fiscal'&&Boolean(deferUnconfirmedFiscal)&&
     !String(state.tax?.cest||'').trim()&&
     !String(live?.tax_info?.cest||'').trim();
   if(fiscalDeferred){
     warnings.push('CEST em branco: dados fiscais não serão enviados nesta execução. Imagens, vídeo e conteúdo aprovados serão preparados separadamente. A Shopee poderá solicitar a regularização fiscal.');
-  }else if(stages.fiscal?.reviewed&&state.tax){
+  }else if(selected('fiscal')&&stages.fiscal?.reviewed&&state.tax){
     try{const tax=compileTax(state.tax,live);if(!sameData(tax,live.tax_info||{}))proposed.tax_info=tax;}
     catch(e){blocked.push(e.message);}
   }
   let images=[];
-  if(stages.images?.reviewed&&manualImages.length){
+  if(selected('images')&&stages.images?.reviewed&&manualImages.length){
     if(manualImages.length!==9||state.imagesSignature!==imagesSignature(manualImages))
       blocked.push('Importe e revise as nove imagens atuais antes de publicar.');
     else if(!sameData(manualImages.map(x=>x.shopee_image_id),live.image?.image_id_list||[]))images=manualImages;
   }
   let video=null;
   const savedVideoVerified=manualVideo?.publication?.sha256===manualVideo?.sha256&&videoMatches(live,manualVideo?.publication?.video);
-  if(manualVideo&&manualVideo.sha256!==verifiedVideoSha256&&!savedVideoVerified){
+  if(selected('video')&&manualVideo&&manualVideo.sha256!==verifiedVideoSha256&&!savedVideoVerified){
     if(stages.video?.reviewed===true&&state.videoSha256===manualVideo.sha256){
       video=manualVideo;
       warnings.splice(warnings.findIndex(x=>x.startsWith('Vídeo:')),1);
@@ -88,7 +100,7 @@ export function compileShopeeExecutionPlan({shopId,itemId,modelId,sku,record,rev
   const canExecute=blocked.length===0&&(Object.keys(proposed).length>0||Boolean(video)||images.length>0);
   const fingerprint=crypto.createHash('sha256').update(JSON.stringify({
     shopId:String(shopId),itemId:String(itemId),modelId:String(modelId),sku,
-    from:{item_name:currentTitle,description:currentDescription,description_type:currentType},
+    selectedStage,from:{item_name:currentTitle,description:currentDescription,description_type:currentType},
     to:proposed,fiscalDeferred,
     deferredTaxDraft:fiscalDeferred?state.tax||{}:null,
     video:video?.sha256||null,images:imagesSignature(images)
@@ -99,9 +111,9 @@ export function compileShopeeExecutionPlan({shopId,itemId,modelId,sku,record,rev
       item_sku:String(live?.item_sku||''),category_id:live?.category_id,
       attribute_list:live?.attribute_list||[],tax_info:live?.tax_info||{},image:live?.image||{}
     },proposed,video,images,actions:[...Object.keys(proposed),...(images.length?['images']:[]),...(video?['video']:[])],blocked,warnings,canExecute,
-    fingerprint,fiscalDeferred,createdAt:new Date().toISOString(),marketplaceUpdated:false,
+    fingerprint,fiscalDeferred,selectedStage,createdAt:new Date().toISOString(),marketplaceUpdated:false,
     requiresExplicitConfirmation:true,
-    scope:'conteúdo e mídias aprovados; demais pendências aparecem separadamente'};
+    scope:selectedStage==='all'?'Todos os campos aprovados':'Somente '+SHOPEE_EXECUTION_STAGE_LABELS[selectedStage]+'; outras etapas não serão enviadas'};
 }
 export function confirmShopeeExecution(plan,{sku,confirmation}={}){
   if(!plan||!plan.canExecute||(Object.keys(plan.proposed||{}).length===0&&!plan.video&&!plan.images?.length))
