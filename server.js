@@ -44,6 +44,7 @@ import {fiscalPreviewDisposition} from './shopeeFiscalReadiness.js';
 import {detectShopeeExecutionIssue,needsCestRevalidation} from './shopeeExecutionIssues.js';
 import {createShopeeMediaApi} from './shopeeMediaApi.js';
 import {normalizeManualVideo} from './shopeeVideoValidation.js';
+import * as ShopeeMarktPro from './shopeeMarktPro.js';
 import {readPreparedImages,importPreparedImage,deletePreparedImage,downloadPreparedImage,imagesSignature,MAX_IMAGE_BYTES,rememberPublishedImages} from './shopeePreparedImages.js';
 import {generateOpenAiImage,imageGenerationStatus} from './shopeeOpenAiImages.js';
 import {openAiKeyStatus,openAiApiKey,saveOpenAiApiKey,deleteOpenAiApiKey} from './shopeeOpenAiCredentials.js';
@@ -1290,6 +1291,84 @@ app.post('/api/shopee/optimizer/video/manual',
   res.status(201).json({ok:true,asset,publishedInShopee:false,
    message:'Vídeo importado e salvo em armazenamento privado para esta SKU. Ainda não foi publicado na Shopee.'});
  }catch(e){res.status(400).json({error:String(e.message||e).slice(0,270)});}
+});
+
+
+// Pesquisa MarktPro da mesma biblioteca já usada no Publisher do Mercado Livre.
+// O servidor lê metadados do catálogo; a escolha importa o vídeo apenas para a SKU conferida.
+function marktProTitle(req,info,matches){
+ const exact=matches.find(x=>String(x.itemId)===String(info.itemId)&&String(x.modelId)===String(info.modelId));
+ const suggested=String(req.query?.title||'').replace(/[\x00-\x1F]/g,' ').trim().slice(0,250);
+ const official=String(exact?.title||'');
+ // Título da variação no cache pode ser apenas "Variação do Item ..."
+ return (official&&!/^Variação do Item \d+$/i.test(official)?official:suggested)||info.sku;
+}
+async function marktProCandidates(req,info){
+ const matches=await findExactCatalogSku(info.shopId,info.sku);
+ const title=marktProTitle(req,info,matches);
+ const results=await ShopeeMarktPro.search(title);
+ return {title,results};
+}
+function marktProCandidateFor(id,results){
+ if(!/^[A-Za-z0-9_-]{8,200}$/.test(String(id||'')))throw Error('Identificador de vídeo inválido.');
+ const candidate=results.candidates?.find(x=>x.id===id);
+ if(!candidate||candidate.hardMismatch||candidate.score<.46)
+  throw Error('O vídeo não pertence às opções encontradas para este produto. Faça nova busca.');
+ return candidate;
+}
+app.get('/api/shopee/optimizer/video/marktpro/search',mustLogin,requireWeDropAdmin,async(req,res)=>{
+ res.setHeader('Cache-Control','no-store');
+ try{
+  const info=await checkedManualVideoIdentity(req);
+  const {title,results}=await marktProCandidates(req,info);
+  res.json({ok:true,sku:info.sku,itemId:info.itemId,modelId:info.modelId,title,
+   inventoryCount:results.inventoryCount,bestQuery:results.bestQuery,
+   candidates:results.candidates.slice(0,5).map(x=>({id:x.id,title:x.title,score:x.score,durationMs:x.durationMs,
+    category:x.category,hardMismatch:x.hardMismatch,variantReasons:x.variantReasons})),source:'MarktPro',publication:false});
+ }catch(e){res.status(503).json({error:'Busca MarktPro indisponível: '+String(e.message||e).slice(0,210)});}
+});
+app.get('/api/shopee/optimizer/video/marktpro/stream',mustLogin,requireWeDropAdmin,async(req,res)=>{
+ try{
+  const info=await checkedManualVideoIdentity(req);
+  const {results}=await marktProCandidates(req,info);
+  marktProCandidateFor(String(req.query?.id||''),results);
+  await ShopeeMarktPro.stream(req.query.id,String(req.headers.range||''),res,false);
+ }catch(e){if(!res.headersSent)res.status(400).json({error:String(e.message||e).slice(0,230)});}
+});
+app.post('/api/shopee/optimizer/video/marktpro/select',
+ mustLogin,requireWeDropAdmin,express.json({limit:'5kb'}),async(req,res)=>{
+ res.setHeader('Cache-Control','no-store');
+ if(!verifiedSameOrigin(req))return res.status(403).json({error:'Origem não autorizada.'});
+ try{
+  const info=await checkedManualVideoIdentity(req);
+  const {results}=await marktProCandidates(req,info);
+  const video=marktProCandidateFor(String(req.body?.id||''),results);
+  if(video.durationMs && (video.durationMs<10000||video.durationMs>60000))
+   throw Error('Este vídeo não atende ao limite de 10 a 60 segundos.');
+  const active=await readShopeeExecution(info.shopId,info.itemId,info.modelId);
+  if(['running','uncertain'].includes(active?.state))
+   throw Error('Conclua a execução em andamento antes de trocar o vídeo.');
+  const {response}=await ShopeeMarktPro.inspect(video.id);
+  const size=Number(response.headers.get('content-length')||0);
+  if(size>MAX_VIDEO_BYTES){await response.body?.cancel?.();throw Error('Vídeo excede o limite de 30 MB.');}
+  if(!response.body)throw Error('Fonte do vídeo indisponível.');
+  const reader=response.body.getReader(),buffers=[];
+  let bytes=0;
+  try{
+   while(true){
+    const {done,value}=await reader.read();
+    if(done)break;
+    bytes+=value.byteLength;
+    if(bytes>MAX_VIDEO_BYTES)throw Error('Vídeo excede o limite de 30 MB.');
+    buffers.push(Buffer.from(value));
+   }
+  }finally{await reader.cancel().catch(()=>{});}
+  const normalized=await normalizeManualVideo(Buffer.concat(buffers,bytes));
+  const asset=await importShopeeManualVideo(info.shopId,info.itemId,info.modelId,info.sku,
+   normalized.buffer,{mime:'video/mp4',filename:'marktpro-'+video.id+'.mp4'});
+  res.status(201).json({ok:true,asset,publishedInShopee:false,
+    message:'Vídeo MarktPro selecionado e salvo para revisão da SKU. Ainda não publicado na Shopee.'});
+ }catch(e){res.status(400).json({error:String(e.message||e).slice(0,260)});}
 });
 
 // Cada foto é gerada isoladamente: progresso fica persistido no Supabase.
