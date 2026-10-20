@@ -4037,3 +4037,23 @@ body.view-wedrop .page-intro{display:none!important}
  .optimizer-sku-dash-stage-rail{grid-template-columns:repeat(3,minmax(0,1fr))}
  .optimizer-sku-dash-footer{grid-template-columns:1fr}
 }
+
+
+/* Vídeos MarktPro por SKU: uma busca automática, escolha direta e manual recolhido. */
+#optimizerVideoManualPanel.optimizer-video-unified{gap:10px;max-width:100%;padding:13px 14px}
+#optimizerVideoManualPanel .optimizer-video-header{gap:8px}
+#optimizerVideoManualPanel .optimizer-video-market-status{color:#335a80;background:#f1f7fd;border:1px solid #dbe8f5;padding:9px 12px;border-radius:9px;font-size:12px;line-height:1.4}
+#optimizerVideoManualPanel .optimizer-video-market-results{display:grid;grid-template-columns:repeat(auto-fill,minmax(205px,1fr));gap:10px}
+#optimizerVideoManualPanel .optimizer-market-video-card{border:1px solid #d7e5f2;border-radius:12px;padding:9px;background:#fff;display:flex;flex-direction:column;gap:7px;min-width:0}
+#optimizerVideoManualPanel .optimizer-market-video-card video{width:100%;height:170px;max-height:170px;background:#0e203a;border-radius:8px;object-fit:contain}
+#optimizerVideoManualPanel .optimizer-market-video-info{display:flex;flex-direction:column;align-items:flex-start;gap:6px;flex:1}
+#optimizerVideoManualPanel .optimizer-market-video-info strong{font-size:12px;line-height:1.35;color:#15385d}
+#optimizerVideoManualPanel .optimizer-market-video-info small{font-size:11px;color:#61758e}
+#optimizerVideoManualPanel .optimizer-market-video-info button{margin-top:auto;width:100%;min-height:37px;background:#155bc4;color:#fff;border:0;border-radius:8px;font-weight:760}
+#optimizerVideoManualPanel .optimizer-video-manual-details{border:1px solid #dbe7f5;border-radius:9px;background:#fbfdff;padding:10px 12px}
+#optimizerVideoManualPanel .optimizer-video-manual-details summary{cursor:pointer;color:#24578d;font-size:12px;font-weight:750}
+#optimizerVideoManualPanel .optimizer-video-manual-details label{margin:10px 0 0}
+#optimizerVideoManualPanel #optimizerVideoPreview{max-height:320px;border-radius:10px}
+#optimizerWorkflowEditor:has(#optimizerVideoManualPanel:not([hidden]))>.optimizer-workflow-actions #optimizerWorkflowCopy,
+#optimizerWorkflowEditor:has(#optimizerVideoManualPanel:not([hidden]))>.optimizer-workflow-actions #optimizerWorkflowShopee{display:none}
+@media(max-width:640px){#optimizerVideoManualPanel .optimizer-video-market-results{grid-template-columns:minmax(0,1fr)}}
