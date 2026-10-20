@@ -264,3 +264,9 @@
  #tab-overview .dashboard-new-listings-card:hover .dashboard-new-listings-button-icon,
  #tab-overview .dashboard-new-listings-card:hover .dashboard-new-listings-button-arrow{transform:none}
 }
+
+/* Consulta autenticada: o resumo mostra o código da falha sem deformar os cards. */
+#tab-overview .dashboard-new-listings-updated{
+ max-width:min(360px,100%);
+ overflow:hidden;text-overflow:ellipsis;white-space:nowrap;cursor:help
+}
