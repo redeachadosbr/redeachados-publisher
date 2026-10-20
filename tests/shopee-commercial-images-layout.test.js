@@ -13,13 +13,16 @@ test('commercial image workspace matches the provided layout while preserving it
   'optimizerCommercialOriginalCount','optimizerCommercialPreparedCount','optimizerCommercialGallerySummary',
   'optimizerCommercialGalleryProgress','optimizerImagesFilterAll','optimizerImagesFilterPending','optimizerImagesFilterSaved',
   'optimizerImageCorrectionSlot','optimizerImageCorrection','optimizerImageCorrectionCount',
-  'optimizerImageCorrectionSave','optimizerImageCorrectionCopy','optimizerModeChatgpt','optimizerModeApi',
+  'optimizerImageCorrectionSave','optimizerImageCorrectionCopy','optimizerModeApi',
   'optimizerImagesGenerateAll','optimizerChatgptAuto','optimizerChatgptImport','optimizerWorkflowReview',
   'optimizerWorkflowShopee','optimizerWorkflowNext'
  ]){
   assert.equal((html.match(new RegExp('id="'+id+'"','g'))||[]).length,1,id);
  }
  assert.match(html,/Imagens comerciais/);
+ assert.doesNotMatch(html,/id="optimizerModeChatgpt"/);
+ assert.equal((html.match(/id="optimizerChatgptAuto"/g)||[]).length,1);
+ assert.match(app,/optimizerImagesMode='chatgpt';optimizerImagesRenderMode\(\)/);
  assert.match(html,/Novas fotos na galeria/);
  assert.match(html,/Solicitar ajuste da imagem/);
  assert.match(html,/Imagens do produto/);
