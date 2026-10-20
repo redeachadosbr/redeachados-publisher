@@ -34,6 +34,18 @@ export function promotionBasePrice(item){
 export function promotionMember(pages,itemId){
  return pages.flatMap(p=>Array.isArray(p.item_list)?p.item_list:[]).find(x=>String(x.item_id)===String(itemId))||null;
 }
+// has_promotion from get_item_base_info is an ALL-promotions flag, not
+// proof of membership in any other shop-discount activity. Never reject
+// a SKU based only on this generic signal. Only the selected discount's
+// get_discount.item_list establishes membership in that activity.
+export function shopDiscountMembershipSignal(live,existing){
+ if(existing)return {kind:'included_in_selected_discount',warning:null};
+ if(live?.has_promotion===true)
+  return {kind:'unclassified_promotion',
+   warning:'A Shopee informa alguma atividade promocional neste anúncio, mas isso não comprova participação em outra Minha Promoção. A SKU não foi encontrada na promoção escolhida. A API validará possíveis conflitos no envio.'};
+ return {kind:'not_in_selected_discount',
+  warning:'A SKU não consta na promoção escolhida. Nenhuma outra promoção de desconto foi confirmada por esta consulta.'};
+}
 export function discountPlanSnapshot({shopId,sku,itemId,modelId,discountId,quote,record,existing,originalPrice}){
  if(!integer(shopId)||!integer(itemId)||!integer(modelId)||!integer(discountId)||!sku)
   throw Error('Identificação de loja, SKU ou promoção inválida.');
