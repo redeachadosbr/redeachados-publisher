@@ -66,7 +66,7 @@
   status('Consultando datas de criação na Shopee...');
   inFlight=(async()=>{
    try{
-    const response=await fetch('/api/shopee/dashboard/new-listings',{
+    const response=await fetch('/api/shopee/dashboard/new-listings'+(force?'?fresh=1':''),{
      credentials:'same-origin',cache:'no-store',
      signal:AbortSignal.timeout(150000),
      headers:{Accept:'application/json'}
