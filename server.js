@@ -54,6 +54,7 @@ import {MAX_VIDEO_BYTES,getShopeeManualVideo,importShopeeManualVideo,
 import {findLiveShopeeSku} from './shopeeSkuFinder.js';
 import {optimizerSettings,saveOptimizerSettings} from './optimizerStore.js';
 import {quoteShopeePrice,normalizeShopeePricingSettings} from './shopeePricing.js';
+import {promotionFromQuote,promotionBasePrice,promotionMember,discountPlanSnapshot,signDiscountPreview,verifyDiscountPreview,readDiscountPages} from './shopeeDiscountPublish.js';
 import {shopeePricingPreferences,saveShopeePricingPreferences,
   shopeePricingSupplierCost,shopeePricingDirectSupplierCost,
   saveShopeePricePlan,recentShopeePricePlans,
@@ -1493,6 +1494,24 @@ app.get('/api/shopee/optimizer/pricing/ads-reserved',mustLogin,requireWeDropAdmi
   res.json({ok:true,...data,source:'saved_pricing_plans',marketplaceUpdated:false});
  }catch(e){res.status(503).json({error:String(e.message||e).slice(0,240)});}
 });
+// Consulta do plano aprovado localmente, sem recalcular nem mudar o percentual Ads
+// quando o usuário apenas abre a página de Descontos preparados.
+app.get('/api/shopee/optimizer/pricing/saved',mustLogin,requireWeDropAdmin,async(req,res)=>{
+ res.setHeader('Cache-Control','no-store');
+ try{
+  const sku=validateSkuLookup(req.query?.sku),itemId=validItemId(req.query?.itemId);
+  const modelId=String(req.query?.modelId??'0');
+  if(!/^\d{1,18}$/.test(modelId))throw Error('Variação inválida.');
+  const {auth}=await getValidAuth(req);
+  const matches=await findExactCatalogSku(auth.shopId,sku);
+  if(!matches.some(x=>String(x.itemId)===itemId&&String(x.modelId)===modelId))
+   return res.status(409).json({error:'SKU mudou de anúncio. Faça uma nova busca.'});
+  const row=await savedShopeePricePlan(auth.shopId,itemId,modelId);
+  if(!row||String(row.sku)!==sku||String(row.quote?.sku)!==sku)
+   return res.status(404).json({error:'Nenhum plano salvo para esta SKU.'});
+  res.json({ok:true,saved:true,quote:row.quote,updatedAt:row.updated_at,marketplaceUpdated:false});
+ }catch(e){res.status(400).json({error:String(e.message||e).slice(0,240)});}
+});
 app.post('/api/shopee/optimizer/pricing/prepare',mustLogin,requireWeDropAdmin,async(req,res)=>{
   res.setHeader('Cache-Control','no-store');
   try{
@@ -1545,6 +1564,116 @@ app.post('/api/shopee/optimizer/pricing/prepare',mustLogin,requireWeDropAdmin,as
   }
 });
 
+// O ID vem do usuário e é confirmado pela API da loja. A prévia somente lê.
+const activeDiscountWrites=new Set();
+async function discountExecutionInputs(req,sku,itemId,modelId,discountId){
+ const {auth,cfg}=await getValidAuth(req);
+ const matches=await findExactCatalogSku(auth.shopId,sku);
+ if(!matches.some(x=>String(x.itemId)===String(itemId)&&String(x.modelId)===String(modelId)))
+  throw Error('A SKU não corresponde a esse anúncio. Pesquise novamente.');
+ if(String(modelId)!=='0')throw Error('A publicação de descontos de SKUs com variações necessita validação de modelos individuais. Não houve alteração.');
+ const saved=await savedShopeePricePlan(auth.shopId,itemId,modelId);
+ if(!saved||saved.sku!==sku||saved.quote?.sku!==sku||
+   String(saved.quote?.itemId)!==String(itemId)||String(saved.quote?.modelId)!==String(modelId))
+  throw Error('Plano não encontrado ou pertence a outra SKU. Recalcule em Precificação.');
+ const quote=saved.quote;
+ promotionFromQuote(quote);
+ if(!Number.isFinite(Date.parse(quote.calculatedAt))||
+    Date.now()-Date.parse(quote.calculatedAt)>7*86400000)
+  throw Error('Plano de preço antigo. Recalcule na Precificação antes de executar.');
+ const cost=await shopeePricingSupplierCost(auth.shopId,{sku,itemId,modelId});
+ if(Math.abs(Number(cost.unitCost)-Number(quote.unitCost))>0.009)
+  throw Error('O custo WeDrop foi alterado após o plano. Recalcule na Precificação antes de publicar.');
+ const live=await shopeeLiveEditableItem(cfg,auth,itemId);
+ if(live.item_sku&&String(live.item_sku)!==sku)
+  throw Error('A SKU da Shopee mudou. Publicação cancelada.');
+ const originalPrice=promotionBasePrice(live);
+ const {record,pages}=await readDiscountPages(callShopeeShopApi,{cfg,auth,discountId});
+ const existing=promotionMember(pages,itemId);
+ const snapshot=discountPlanSnapshot({shopId:auth.shopId,sku,itemId,modelId,discountId,
+   quote,record,existing,originalPrice});
+ return {auth,cfg,quote,snapshot,originalPrice};
+}
+app.post('/api/shopee/optimizer/discounts/preview',mustLogin,requireWeDropAdmin,async(req,res)=>{
+ res.setHeader('Cache-Control','no-store');
+ if(!verifiedSameOrigin(req))return res.status(403).json({error:'Origem não autorizada.'});
+ try{
+  const sku=validateSkuLookup(req.body?.sku),itemId=validItemId(req.body?.itemId);
+  const modelId=String(req.body?.modelId??'0');
+  const discountId=String(req.body?.discountId||'').trim();
+  if(!/^\d{1,18}$/.test(discountId)||!Number.isSafeInteger(Number(discountId))||
+     !/^\d{1,18}$/.test(modelId))throw Error('ID de promoção ou variação inválido.');
+  const data=await discountExecutionInputs(req,sku,itemId,modelId,discountId);
+  const signature=signDiscountPreview(data.snapshot,envText('SESSION_SECRET'));
+  res.json({ok:true,readOnly:true,preview:data.snapshot,approvalToken:signature,
+   warning:'Nenhum desconto ou preço foi alterado. Execute apenas após verificar os valores.'});
+ }catch(e){res.status(400).json({error:String(e.message||e).slice(0,350)});}
+});
+app.post('/api/shopee/optimizer/discounts/execute',mustLogin,requireWeDropAdmin,async(req,res)=>{
+ res.setHeader('Cache-Control','no-store');
+ if(!verifiedSameOrigin(req))return res.status(403).json({error:'Origem não autorizada.'});
+ if(req.body?.confirm!==true)return res.status(400).json({error:'É necessária aprovação explícita da prévia.'});
+ let lock=null,originalPriceChanged=false,posted=false;
+ try{
+  const approved=verifyDiscountPreview(req.body?.approvalToken,envText('SESSION_SECRET'),
+    (await getValidAuth(req)).auth.shopId);
+  lock=[approved.shopId,approved.itemId,approved.discountId].join(':');
+  if(activeDiscountWrites.has(lock))throw Error('Esta SKU já está em execução. Aguarde e atualize a promoção.');
+  activeDiscountWrites.add(lock);
+  // Reconsultar preço, custo, SKU, campanha inteira e estado antes de QUALQUER escrita.
+  const data=await discountExecutionInputs(req,approved.sku,approved.itemId,
+    approved.modelId,approved.discountId);
+  const current=data.snapshot;
+  for(const key of ['shopId','sku','itemId','modelId','discountId','gross','promo',
+    'buyerAfterCoupon','discountPct','couponPct','originalPrice','action','existingPrice','quoteAt']){
+    if(current[key]!==approved[key])
+      throw Error('A prévia ficou desatualizada ('+key+'). Gere outra prévia antes de executar.');
+  }
+  if(current.action==='already')
+   return res.json({ok:true,status:'already_applied',verified:true,
+     sku:approved.sku,discountId:approved.discountId,promotionPrice:current.promo,
+     message:'A SKU já está nesta promoção com o valor previsto. Nada foi reenviado.'});
+  if(current.needsBasePriceUpdate){
+   if(req.body?.allowPriceChange!==true)
+    throw Error('O preço bruto da Shopee está diferente do plano. Autorize também a atualização do preço bruto ou ajuste-o manualmente.');
+   // A alteração do preço original é uma operação à parte, expressamente autorizada.
+   await callShopeeShopApi(data.cfg,{path:'/api/v2/product/update_price',method:'POST',
+    accessToken:data.auth.accessToken,shopId:data.auth.shopId,
+    body:{item_id:Number(approved.itemId),price_list:[{original_price:current.gross}]}});
+   originalPriceChanged=true;
+   const checked=await shopeeLiveEditableItem(data.cfg,data.auth,approved.itemId);
+   if(Math.abs(promotionBasePrice(checked)-current.gross)>0.011)
+    return res.status(409).json({ok:false,status:'price_confirmation_pending',
+     priceUpdated:true,promotionUpdated:false,
+     error:'A Shopee recebeu a atualização do preço bruto, mas a nova leitura ainda não confirmou o valor. Nenhum desconto foi enviado. Consulte o anúncio antes de tentar novamente.'});
+  }
+  const payload={discount_id:Number(approved.discountId),item_list:[{
+    item_id:Number(approved.itemId),item_promotion_price:current.promo,
+    ...(current.action==='add'?{purchase_limit:0}:{})
+  }]};
+  const result=await callShopeeShopApi(data.cfg,{
+   path:current.action==='add'?'/api/v2/discount/add_discount_item':'/api/v2/discount/update_discount_item',
+   method:'POST',accessToken:data.auth.accessToken,shopId:data.auth.shopId,body:payload});
+  const errors=result.response?.error_list||[];
+  if(Array.isArray(errors)&&errors.length)
+    throw Error('A Shopee recusou a SKU na promoção: '+String(errors[0].fail_message||errors[0].fail_error||'erro de validação').slice(0,250));
+  if(current.action==='add'&&Number(result.response?.count)!==1)
+    throw Error('A API não confirmou a inclusão da SKU. Confira a campanha antes de tentar novamente.');
+  posted=true;
+  const check=await readDiscountPages(callShopeeShopApi,{cfg:data.cfg,auth:data.auth,discountId:approved.discountId});
+  const entry=promotionMember(check.pages,approved.itemId);
+  const verified=Boolean(entry&&Math.abs(Number(entry.item_promotion_price)-current.promo)<0.011);
+  res.json({ok:true,status:verified?'confirmed':'awaiting_verification',
+   verified,sku:approved.sku,discountId:approved.discountId,
+   promotionPrice:current.promo,basePriceUpdated:originalPriceChanged,
+   message:verified?'Shopee confirmou a SKU e seu preço promocional na campanha.'
+    :'Shopee recebeu a operação, mas a leitura ainda não confirmou o desconto. Confira na Central do Vendedor e não reenvie automaticamente.'});
+ }catch(e){
+  res.status(409).json({error:String(e.message||e).slice(0,400),
+   status:originalPriceChanged?'partial_price_changed':posted?'awaiting_verification':'not_applied',
+   basePriceUpdated:originalPriceChanged,discountConfirmed:false});
+ }finally{if(lock)activeDiscountWrites.delete(lock);}
+});
 app.get('/api/shopee/orders',mustLogin,async(req,res)=>{
   try{
     const {auth,cfg}=await getValidAuth(req);
