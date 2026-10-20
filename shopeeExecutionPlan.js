@@ -17,7 +17,7 @@ export function normalizeShopeeExecutionStage(stage='all'){
  if(!SHOPEE_EXECUTION_STAGES.includes(selected))throw Error('Etapa de publicação desconhecida.');
  return selected;
 }
-export function compileShopeeExecutionPlan({shopId,itemId,modelId,sku,record,review,live,manualVideo=null,verifiedVideoSha256=null,manualImages=[],deferUnconfirmedFiscal=false,selectedStage='all'}){
+export function compileShopeeExecutionPlan({shopId,itemId,modelId,sku,record,review,live,manualVideo=null,verifiedVideoSha256=null,manualImages=[],deferUnconfirmedFiscal=false,omitFiscal=false,selectedStage='all'}){
   selectedStage=normalizeShopeeExecutionStage(selectedStage);
   const selected=name=>selectedStage==='all'||selectedStage===name;
   const state=review||{},stages=state.stages||{};
@@ -72,11 +72,13 @@ export function compileShopeeExecutionPlan({shopId,itemId,modelId,sku,record,rev
   // content and media stages into a permanent CEST hostage.
   // The field remains blank. Do NOT send an invented CEST, "00", or tax_info.
   // Shopee may still reject update_item; that is reported from the API.
-  const fiscalDeferred=selected('fiscal')&&selectedStage!=='fiscal'&&Boolean(deferUnconfirmedFiscal)&&
+  const fiscalDeferred=selected('fiscal')&&(
+    Boolean(omitFiscal)||selectedStage!=='fiscal'&&Boolean(deferUnconfirmedFiscal)&&
     !String(state.tax?.cest||'').trim()&&
-    !String(live?.tax_info?.cest||'').trim();
+    !String(live?.tax_info?.cest||'').trim());
   if(fiscalDeferred){
-    warnings.push('CEST em branco: dados fiscais não serão enviados nesta execução. Imagens, vídeo e conteúdo aprovados serão preparados separadamente. A Shopee poderá solicitar a regularização fiscal.');
+    warnings.push(omitFiscal?'Preparação para migração CPF → CNPJ: os dados fiscais não serão enviados nesta execução. As demais etapas aprovadas continuam disponíveis.':
+      'CEST em branco: dados fiscais não serão enviados nesta execução. Imagens, vídeo e conteúdo aprovados serão preparados separadamente. A Shopee poderá solicitar a regularização fiscal.');
   }else if(selected('fiscal')&&stages.fiscal?.reviewed&&state.tax){
     try{const tax=compileTax(state.tax,live);if(!sameData(tax,live.tax_info||{}))proposed.tax_info=tax;}
     catch(e){blocked.push(e.message);}
