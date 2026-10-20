@@ -4865,13 +4865,16 @@ $('#optimizerTechnicalRefresh')?.addEventListener?.('click',async()=>{
 });
 const optimizerTaxLabels={ncm:'NCM do produto (8 dígitos)',origin:'Origem',same_state_cfop:'CFOP mesmo estado',
  diff_state_cfop:'CFOP outros estados',csosn:'CSOSN',measure_unit:'Unidade de medida',cest:'CEST (se aplicável)',
- pis_cofins_cst:'CST PIS/COFINS (opcional no anúncio)',operation_type:'Tipo de operação: 1 Revendedor / 2 Fabricante',evidence:'Fonte e validação fiscal desta SKU'};
+ pis_cofins_cst:'PIS e COFINS CST (padrão 99 — Outras Operações)',operation_type:'Tipo de operação: 1 Revendedor / 2 Fabricante',evidence:'Fonte e validação fiscal desta SKU'};
 function optimizerFiscalRender(data){
  const wrap=$('#optimizerFiscalFields');wrap.replaceChildren();
  const defaults=data.taxSuggestion||{},saved=data.taxDraft||{};
- // Pre-fill by shop rules + supplier NCM. Saved SKU-specific edits take priority;
- // blanks for optional CEST/CST remain blank and are never replaced by fake codes.
+ // Regras da loja sugerem CST 99 de PIS/COFINS para o cadastro Shopee.
+ // Valores específicos já salvos ou presentes na Shopee não são sobrescritos.
+ // Em particular, não deduzir CEST como 00; esse campo segue por SKU.
  const draft={...(data.taxCurrent||{}),...defaults,...saved};
+ const existingPis=String(saved.pis_cofins_cst||data.taxCurrent?.pis_cofins_cst||'').trim();
+ if(existingPis)draft.pis_cofins_cst=existingPis;
  const summary=optimizerMake('p','optimizer-category-summary',
   'Motor Matriz · preenchimento automático da SKU '+(data.sku||'')+
   '. Os campos abaixo são uma prévia do Shopee Manager; a Central do Vendedor só muda após execução e confirmação da API.');
@@ -4890,9 +4893,9 @@ function optimizerFiscalRender(data){
   }
   input.oninput=()=>optimizerExecReset();field.append(input);wrap.append(field);
   if(key==='pis_cofins_cst'){
-   input.placeholder='Opcional na otimização';
+   input.placeholder='99';
    field.append(optimizerMake('small','optimizer-fiscal-cest-help',
-    'Pode ficar em branco no cadastro do anúncio. O CST de PIS/COFINS da NF-e continua sujeito às regras fiscais do seu emissor; não substitua o preenchimento da nota por este campo.'));
+    'Motor Matriz: padrão da loja 99 (Outras Operações). Pode ser alterado conforme a contabilidade e os dados específicos da SKU. O cadastro Shopee não substitui o CST da NF-e.'));
   }
  }
  const cest=wrap.querySelector('[data-tax-field="cest"]');
