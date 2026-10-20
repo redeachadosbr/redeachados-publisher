@@ -65,3 +65,10 @@
  #tab-discounts #discountPromotionPreviewInfo{grid-template-columns:1fr}
  #tab-discounts .discount-publish-panel{padding:12px}
 }
+
+/* Aviso específico do get_item_base_info: "has_promotion" não é sinônimo
+   de participação em outra Minha Promoção. */
+#tab-discounts .discount-publish-promo-notice{
+ font-size:11px;line-height:1.55;background:#f0f6ff;color:#285784;
+ border:1px solid #cfdef0;border-radius:9px;padding:10px 12px;margin:10px 0 0;
+}
