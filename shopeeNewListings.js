@@ -77,11 +77,27 @@ export function countCreatedListings(rows,now=new Date()){
  return {today,month:inMonth,year:inYear,byMonth,last7,known,dayKey:current,
   monthKey:month,yearKey:year,timezone:ZONE};
 }
-function validatePage(body,status){
- const arr=Array.isArray(body?.item)?body.item:
-  Array.isArray(body?.item_list)?body.item_list:null;
- if(!arr)throw Error('A listagem de anúncios '+status+' veio incompleta.');
- return arr;
+export function validatePage(body,status,{offset=0}={}){
+ // Com nenhum item, a Shopee pode omitir "item" ou retorná-lo null.
+ // Essa resposta é válida APENAS se houver sinal explícito de página final
+ // sem itens. Não transformar falha, resposta ausente ou página truncada em zero.
+ if(!body||typeof body!=='object'||Array.isArray(body))
+  throw Error('A Shopee não retornou uma resposta válida para os anúncios '+status+'.');
+ const arr=Array.isArray(body.item)?body.item:
+  Array.isArray(body.item_list)?body.item_list:null;
+ const count=body.total_count===null||body.total_count===undefined
+  ?null:Number(body.total_count);
+ const hasNext=body.has_next_page;
+ if(arr){
+  if(offset===0&&arr.length===0&&Number.isFinite(count)&&count>0)
+   throw Error('A listagem '+status+' informou '+count+' anúncios, mas nenhum item foi retornado.');
+  return arr;
+ }
+ const noItems=body.item==null&&body.item_list==null;
+ const confirmedEmpty=hasNext===false&&noItems&&
+  (count===null||count===0);
+ if(confirmedEmpty)return [];
+ throw Error('A listagem de anúncios '+status+' veio incompleta (paginação ou total não confirmados).');
 }
 export async function getShopeeNewListingsSummary({cfg,auth,callApi,now=new Date()}){
  const id=Number(auth?.shopId);
@@ -98,7 +114,7 @@ export async function getShopeeNewListingsSummary({cfg,auth,callApi,now=new Date
     const data=await shopRead(callApi,cfg,{path:'/api/v2/product/get_item_list',
      accessToken:auth.accessToken,shopId:id,
      query:{item_status:status,offset,page_size:PAGE_SIZE}});
-    const body=data?.response||{},items=validatePage(body,status);
+    const body=data?.response,items=validatePage(body,status,{offset});
     for(const row of items){
      const itemId=String(row?.item_id??'');
      if(/^\d{1,18}$/.test(itemId))ids.add(itemId);
