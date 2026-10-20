@@ -2893,6 +2893,7 @@ function optimizerExecRender(data){
  const plan=data.plan,context=optimizerExecContext;
  if(!plan||!context||context.sku!==plan.sku||context.itemId!==plan.itemId||context.modelId!==plan.modelId)return;
  optimizerExecPlan={...plan,updatedAt:data.updatedAt};
+ $('#optimizerExecutionScope').value=plan.selectedStage||'all';
  optimizerExecutionIssueRender(data.issue||null);
  optimizerExecutionTrackerRender(data.progress,{sku:plan.sku,item_id:plan.itemId,plan});
  const changes=$('#optimizerExecutionChanges'),blocked=$('#optimizerExecutionBlockers'),warn=$('#optimizerExecutionWarnings');
@@ -2976,7 +2977,8 @@ async function optimizerExecutionPrepare(){
    if(['running','uncertain'].includes(active?.state))return;
    const result=await json('/api/shopee/optimizer/execution/prepare',{
      method:'POST',headers:{'Content-Type':'application/json'},
-     body:JSON.stringify({sku:w.sku,itemId:w.itemId,modelId:w.modelId}),
+     body:JSON.stringify({sku:w.sku,itemId:w.itemId,modelId:w.modelId,
+       stage:$('#optimizerExecutionScope').value}),
      signal:AbortSignal.timeout(75000)
    });
    if(serial!==optimizerExecSerial||optimizerWorkflowPlan?.sku!==w.sku||
@@ -2992,6 +2994,15 @@ async function optimizerExecutionPrepare(){
  }finally{btn.disabled=false}
 }
 $('#optimizerExecutionPrepare')?.addEventListener?.('click',()=>void optimizerExecutionPrepare());
+$('#optimizerExecutionScope')?.addEventListener?.('change',()=>{
+ const stage=$('#optimizerExecutionScope').value;
+ optimizerExecPlan=null;
+ $('#optimizerExecutionLaunch').hidden=true;
+ $('#optimizerExecutionSummary').hidden=true;
+ optimizerExecNotice('Modo selecionado: '+$('#optimizerExecutionScope').selectedOptions[0].text+
+   '. Preparando somente os campos dessa etapa...');
+ void optimizerExecutionPrepare();
+});
 $('#optimizerExecutionLaunch')?.addEventListener?.('click',()=>void optimizerExecuteApproved());
 $('#optimizerExecutionRun')?.addEventListener?.('click',()=>void optimizerExecuteApproved());
 async function optimizerExecuteApproved(){
@@ -3008,8 +3019,8 @@ async function optimizerExecuteApproved(){
    const out=await json('/api/shopee/optimizer/execution/execute',{
      method:'POST',headers:{'Content-Type':'application/json'},
      body:JSON.stringify({sku:ctx.sku,itemId:ctx.itemId,modelId:ctx.modelId,
-       planId:p.planId,updatedAt:p.updatedAt,confirmation:'EXECUTAR '+p.sku,
-       acceptPartialExecution:true}),
+       planId:p.planId,updatedAt:p.updatedAt,stage:p.selectedStage||'all',
+       confirmation:'EXECUTAR '+p.sku,acceptPartialExecution:true}),
      signal:AbortSignal.timeout(85000)
    });
    if(optimizerWorkflowPlan?.sku!==ctx.sku||optimizerWorkflowPlan?.itemId!==ctx.itemId||optimizerWorkflowPlan?.modelId!==ctx.modelId)return;
@@ -3033,6 +3044,140 @@ async function optimizerExecuteApproved(){
  }finally{optimizerExecBusy=false;$('#optimizerExecutionPrepare').disabled=false;}
 }
 
+// A fiscal batch never posts whole ads: every row has its own verified
+// immutable single-stage tax_info plan and independent persisted worker job.
+let optimizerFiscalBatchRows=[],optimizerFiscalBatchBusy=false,optimizerFiscalBatchTimer=null;
+const SHOPEE_BATCH_SESSION_KEY='ra-shopee-fiscal-batch-v1';
+function optimizerFiscalBatchNotice(message,state='info'){
+ const el=$('#optimizerFiscalBatchStatus');if(el){el.textContent=message;el.dataset.state=state;}
+}
+function optimizerFiscalBatchRender(){
+ const list=$('#optimizerFiscalBatchList');if(!list)return;
+ list.replaceChildren();
+ let ready=0;
+ for(const row of optimizerFiscalBatchRows){
+  const card=optimizerMake('article','optimizer-fiscal-batch-item');
+  const head=optimizerMake('div','optimizer-fiscal-batch-item-head');
+  head.append(optimizerMake('strong','',row.sku||'SKU'));
+  const status=row.status||row.state||(row.ready?'prepared':'blocked');
+  const chip=optimizerMake('span','optimizer-fiscal-batch-state is-'+String(status).replace(/[^a-z-]/g,''),
+   ({prepared:'Pronto',running:'Executando',verified:'Confirmado',
+      failed:'Falhou',uncertain:'Confirmação pendente',blocked:'Pendente',failed_preview:'Pendente'}[status]||status));
+  head.append(chip);card.append(head);
+  if(row.ready&&row.planId&&status==='prepared')ready++;
+  if(row.ready&&row.proposed){
+   const changed=Object.entries(row.proposed).filter(([k,v])=>k!=='evidence'&&String(v??'')!=='')
+    .map(([k,v])=>k+': '+String(v)).join(' · ');
+   if(changed)card.append(optimizerMake('p','optimizer-fiscal-batch-diff',changed));
+  }
+  const message=row.message||row.error||row.blocked?.join(' · ')||'';
+  if(message)card.append(optimizerMake('small','',message));
+  if(row.issue?.code==='CEST_REQUIRED')
+   card.append(optimizerMake('small','optimizer-fiscal-batch-warning',
+     'A Shopee exige CEST para este NCM. Esta SKU não foi confirmada.'));
+  list.append(card);
+ }
+ const execute=$('#optimizerFiscalBatchExecute');
+ execute.hidden=!optimizerFiscalBatchRows.length||!optimizerFiscalBatchRows.some(x=>x.ready&&x.planId);
+ execute.disabled=optimizerFiscalBatchBusy||ready===0;
+ const refresh=$('#optimizerFiscalBatchRefresh');
+ refresh.hidden=!optimizerFiscalBatchRows.some(x=>x.status==='running'||x.status==='uncertain'||x.status==='verified'||x.status==='failed');
+}
+$('#optimizerFiscalBatchSkus')?.addEventListener?.('input',()=>{
+ optimizerFiscalBatchRows=[];
+ $('#optimizerFiscalBatchExecute').hidden=true;
+ $('#optimizerFiscalBatchRefresh').hidden=true;
+ $('#optimizerFiscalBatchList').replaceChildren();
+ optimizerFiscalBatchNotice('Seleção alterada. Prepare uma nova prévia antes de executar.');
+});
+async function optimizerFiscalBatchPrepare(){
+ if(optimizerFiscalBatchBusy)return;
+ const source=$('#optimizerFiscalBatchSkus').value.trim();
+ if(!source){optimizerFiscalBatchNotice('Informe as SKUs que deseja incluir no lote.','warning');return;}
+ optimizerFiscalBatchBusy=true;
+ const btn=$('#optimizerFiscalBatchPrepare');btn.disabled=true;
+ optimizerFiscalBatchNotice('Localizando SKUs e conferindo as fichas fiscais individualmente. Nenhum anúncio será alterado...');
+ try{
+  const data=await json('/api/shopee/optimizer/batch/fiscal/prepare',{
+   method:'POST',headers:{'Content-Type':'application/json'},
+   body:JSON.stringify({skus:source.split(/[\s,;]+/g).filter(Boolean)}),
+   signal:AbortSignal.timeout(240000)
+  });
+  optimizerFiscalBatchRows=data.results||[];
+  optimizerFiscalBatchRender();
+  optimizerFiscalBatchNotice(data.ready+' de '+data.total+' SKUs aptas para envio fiscal. Confira os valores exibidos e clique em Executar lote fiscal aprovado.',data.ready?'success':'warning');
+ }catch(e){optimizerFiscalBatchRows=[];optimizerFiscalBatchRender();
+  optimizerFiscalBatchNotice('Falha ao preparar lote fiscal: '+e.message,'error');}
+ finally{optimizerFiscalBatchBusy=false;btn.disabled=false;optimizerFiscalBatchRender();}
+}
+$('#optimizerFiscalBatchPrepare')?.addEventListener?.('click',()=>void optimizerFiscalBatchPrepare());
+async function optimizerFiscalBatchExecute(){
+ if(optimizerFiscalBatchBusy)return;
+ const selected=optimizerFiscalBatchRows.filter(x=>x.ready&&x.planId&&(x.status||x.state)==='prepared');
+ if(!selected.length)return;
+ optimizerFiscalBatchBusy=true;
+ $('#optimizerFiscalBatchExecute').disabled=true;
+ optimizerFiscalBatchNotice('Iniciando somente tax_info para '+selected.length+' SKUs. Cada SKU terá confirmação independente...');
+ try{
+  const data=await json('/api/shopee/optimizer/batch/fiscal/execute',{
+   method:'POST',headers:{'Content-Type':'application/json'},
+   body:JSON.stringify({confirmation:'EXECUTAR LOTE FISCAL',acceptPartialExecution:true,
+    items:selected.map(x=>({sku:x.sku,itemId:x.itemId,modelId:x.modelId,planId:x.planId,updatedAt:x.updatedAt}))}),
+   signal:AbortSignal.timeout(240000)
+  });
+  const received=new Map((data.results||[]).map(x=>[x.sku,x]));
+  optimizerFiscalBatchRows=optimizerFiscalBatchRows.map(row=>{
+   const item=received.get(row.sku);
+   return item?{...row,status:item.status,message:item.message}:row;
+  });
+  const refs=optimizerFiscalBatchRows.filter(x=>x.itemId&&x.status==='running')
+   .map(x=>({sku:x.sku,itemId:x.itemId,modelId:x.modelId}));
+  try{if(refs.length)sessionStorage.setItem(SHOPEE_BATCH_SESSION_KEY,JSON.stringify(refs));}catch{}
+  optimizerFiscalBatchNotice((data.results||[]).filter(x=>x.status==='running').length+
+   ' SKUs iniciadas. Os resultados são conferidos pela Shopee e permanecem salvos por SKU.','info');
+  optimizerFiscalBatchRender();
+  void optimizerFiscalBatchRefresh();
+ }catch(e){optimizerFiscalBatchNotice('Execução do lote não confirmada: '+e.message+
+    '. Consulte o status antes de reenviar.','error');
+  void optimizerFiscalBatchRefresh();}
+ finally{optimizerFiscalBatchBusy=false;optimizerFiscalBatchRender();}
+}
+$('#optimizerFiscalBatchExecute')?.addEventListener?.('click',()=>void optimizerFiscalBatchExecute());
+async function optimizerFiscalBatchRefresh(){
+ if(optimizerFiscalBatchTimer){clearTimeout(optimizerFiscalBatchTimer);optimizerFiscalBatchTimer=null;}
+ const refs=optimizerFiscalBatchRows.filter(x=>x.itemId&&
+   ['running','uncertain','verified','failed'].includes(x.status)).map(x=>({sku:x.sku,itemId:x.itemId,modelId:x.modelId}));
+ if(!refs.length)return;
+ try{
+  const data=await json('/api/shopee/optimizer/batch/fiscal/status?'+
+   new URLSearchParams({items:JSON.stringify(refs)}),{signal:AbortSignal.timeout(45000)});
+  const bySku=new Map((data.results||[]).map(x=>[x.sku,x]));
+  optimizerFiscalBatchRows=optimizerFiscalBatchRows.map(x=>bySku.has(x.sku)?
+   {...x,...{status:bySku.get(x.sku).status,message:bySku.get(x.sku).message,issue:bySku.get(x.sku).issue}}:x);
+  optimizerFiscalBatchRender();
+  const active=optimizerFiscalBatchRows.some(x=>x.status==='running');
+  if(active){optimizerFiscalBatchNotice('Execução fiscal em andamento. Atualização automática a cada 7 segundos.','info');
+   optimizerFiscalBatchTimer=setTimeout(()=>void optimizerFiscalBatchRefresh(),7000);}
+  else{
+   try{sessionStorage.removeItem(SHOPEE_BATCH_SESSION_KEY);}catch{}
+   optimizerFiscalBatchNotice('Lote processado. '+optimizerFiscalBatchRows.filter(x=>x.status==='verified').length+
+     ' SKUs confirmadas. Revise falhas individualmente; nenhuma SKU com erro será reenviada automaticamente.',
+     optimizerFiscalBatchRows.some(x=>x.status==='failed'||x.status==='uncertain')?'warning':'success');
+  }
+ }catch(e){
+  optimizerFiscalBatchNotice('Não foi possível atualizar o status do lote: '+e.message+
+   '. As execuções já autorizadas continuam armazenadas. Atualize o andamento novamente.','warning');
+ }
+}
+$('#optimizerFiscalBatchRefresh')?.addEventListener?.('click',()=>void optimizerFiscalBatchRefresh());
+try{
+ const pending=JSON.parse(sessionStorage.getItem(SHOPEE_BATCH_SESSION_KEY)||'[]');
+ if(Array.isArray(pending)&&pending.length&&pending.length<=12){
+  optimizerFiscalBatchRows=pending.map(x=>({...x,status:'running',ready:false}));
+  optimizerFiscalBatchRender();
+  void optimizerFiscalBatchRefresh();
+ }
+}catch{}
 function optimizerExecutionJobView(job,progress=null,issue=null){
  optimizerExecutionTrackerRender(progress,job);
  optimizerExecutionIssueRender(issue);
