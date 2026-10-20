@@ -2656,7 +2656,9 @@ function optimizerWorkflowOpen(key){
  research.textContent=data.contentResearch?.summary||'Pesquisa de concorrentes ainda não registrada para esta SKU. O texto atual exige revisão.';
  $('#optimizerWorkflowReview').hidden=key==='final'||stage.skipped;
  if(key!=='final'&&!stage.skipped){
-   $('#optimizerWorkflowReview').textContent=stage.reviewed?'Reabrir conferência':'Registrar etapa como conferida';
+   $('#optimizerWorkflowReview').textContent=key==='fiscal'?
+     (stage.reviewed?'Atualizar dados fiscais salvos':'Salvar informações fiscais no Motor Matriz'):
+     (stage.reviewed?'Reabrir conferência':'Registrar etapa como conferida');
  }
  $('#optimizerWorkflowShopee').href='https://seller.shopee.com.br/portal/product/'+encodeURIComponent(data.itemId)+'?pageEntry=product_list';
  // Not an execution button: opens the Seller Center for an actual confirmed edit.
@@ -2739,7 +2741,7 @@ $('#optimizerWorkflowReview')?.addEventListener?.('click',async()=>{
  optimizerWorkflowNotice('Salvando a conferência da etapa '+stage.name+' na Shopee Manager...');
  try{
    const body={itemId:data.itemId,modelId:data.modelId,sku:data.sku,
-     stage:key,reviewed:key==='variants'?$('#optimizerHasVariants').checked:!stage.reviewed};
+     stage:key,reviewed:key==='fiscal'?true:key==='variants'?$('#optimizerHasVariants').checked:!stage.reviewed};
    if(key==='technical')body.attributes=optimizerTechnicalValues();
    if(key==='fiscal')body.tax=optimizerFiscalValues();
    if(key==='variants')body.variationConfig=optimizerVariationValues();
@@ -2751,8 +2753,12 @@ $('#optimizerWorkflowReview')?.addEventListener?.('click',async()=>{
    });
    if(optimizerWorkflowPlan?.sku!==data.sku||optimizerWorkflowPlan?.itemId!==data.itemId||optimizerWorkflowPlan?.modelId!==data.modelId)return;
    optimizerWorkflowRender({...data,...result,stages:result.stages});
-   void optimizerExecutionPrepare();
-   optimizerWorkflowNotice('Revisão da etapa '+stage.name+' salva. Nenhum dado do anúncio foi alterado na Shopee.','success');
+   // A saved fiscal draft must never automatically re-attempt a rejected CEST
+   // update in the background. Execution has its own explicit separate button.
+   if(key!=='fiscal')void optimizerExecutionPrepare();
+   optimizerWorkflowNotice(key==='fiscal'?
+     'Dados fiscais da SKU '+data.sku+' cadastrados e mantidos no Motor Matriz. CEST pode ficar em branco. Nenhum dado fiscal foi enviado à Shopee.':
+     'Revisão da etapa '+stage.name+' salva. Nenhum dado do anúncio foi alterado na Shopee.','success');
  }catch(e){optimizerWorkflowNotice('Falha ao salvar conferência: '+e.message,'error');}
  finally{btn.disabled=false;}
 });
@@ -3125,7 +3131,7 @@ function optimizerFiscalBatchRender(){
   const status=row.status||row.state||(row.ready?'prepared':'blocked');
   const chip=optimizerMake('span','optimizer-fiscal-batch-state is-'+String(status).replace(/[^a-z-]/g,''),
    ({prepared:'Pronto',running:'Executando',verified:'Confirmado',
-      draft_only:'Prévia sem envio',failed:'Falhou',uncertain:'Confirmação pendente',
+      draft_only:'Cadastrado no Motor Matriz',failed:'Falhou',uncertain:'Confirmação pendente',
       blocked:'Pendente',failed_preview:'Pendente'}[status]||status));
   head.append(chip);card.append(head);
   if(row.ready&&row.planId&&status==='prepared')ready++;
@@ -3137,7 +3143,9 @@ function optimizerFiscalBatchRender(){
   const message=row.message||row.error||row.blocked?.join(' · ')||'';
   if(message)card.append(optimizerMake('small','',message));
   if(row.blocked?.length)card.append(optimizerMake('small','optimizer-fiscal-batch-warning',
-    row.blocked.join(' · ')));
+    'Dados a revisar: '+row.blocked.join(' · ')));
+  if(row.publicationPending?.length)card.append(optimizerMake('small','optimizer-fiscal-batch-pending',
+    'Publicação fiscal pendente: '+row.publicationPending.join(' · ')));
   if(row.issue?.code==='CEST_REQUIRED')
    card.append(optimizerMake('small','optimizer-fiscal-batch-warning',
      'A Shopee exige CEST para este NCM. Esta SKU não foi confirmada.'));
@@ -3171,11 +3179,10 @@ async function optimizerFiscalBatchPrepare(){
   });
   optimizerFiscalBatchRows=data.results||[];
   optimizerFiscalBatchRender();
-  optimizerFiscalBatchNotice(data.ready+' de '+data.total+' SKUs aptas para envio fiscal. '+
-  (optimizerFiscalReadiness.fiscalPublishingEnabled?
-   'Confira os valores e confirme explicitamente antes de enviar.':
-   'Suas fichas fiscais ficam preparadas para o futuro CNPJ, sem envio à Shopee.'),
-  data.ready?'success':'info');
+  const registered=(data.results||[]).filter(x=>x.registered||x.ready).length;
+  optimizerFiscalBatchNotice(registered+' de '+data.total+' SKUs cadastradas/conferidas no Motor Matriz. '+
+   data.ready+' aptas para envio à Shopee. CEST em branco não bloqueia o cadastro; a plataforma poderá impedir a publicação fiscal.',
+   registered?'success':'warning');
  }catch(e){optimizerFiscalBatchRows=[];optimizerFiscalBatchRender();
   optimizerFiscalBatchNotice('Falha ao preparar lote fiscal: '+e.message,'error');}
  finally{optimizerFiscalBatchBusy=false;btn.disabled=false;optimizerFiscalBatchRender();}

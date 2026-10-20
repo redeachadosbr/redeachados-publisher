@@ -824,10 +824,19 @@ app.post('/api/shopee/optimizer/workflow/review',mustLogin,requireWeDropAdmin,as
     if(change.stage==='fiscal'&&change.reviewed){
       const supplier=await readWeDropProduct(auth.shopId,{sku,itemId,modelId});
       change.matrixFiscal=fiscalMatrixSource({sku,supplier,tax:change.tax});
-      compileTax(change.tax,await shopeeLiveEditableItem(cfg,auth,itemId));
-    }else if(change.tax)compileTax(change.tax,await shopeeLiveEditableItem(cfg,auth,itemId));
+      // Register the accountant-supplied SKU fields in Motor Matriz even if
+      // Shopee previously rejected the fiscal update due to missing CEST.
+      // Validating a LOCAL draft must never require a Shopee tax_info read/write.
+      // compileTax accepts an omitted CEST; it does not invent a substitute.
+      compileTax(change.tax,{tax_info:{}});
+    }else if(change.tax)compileTax(change.tax,{tax_info:{}});
     const state=await saveWorkflowReview(auth.shopId,itemId,modelId,sku,change);
     res.json({ok:true,saved:true,marketplaceUpdated:false,sku,itemId,modelId,
+      fiscalRegistration:change.stage==='fiscal'?{
+        status:'saved_in_matrix',registered:true,shopUpdated:false,
+        cestOptional:true,cestProvided:Boolean(String(state.tax?.cest||'').trim()),
+        message:'Dados fiscais cadastrados no Motor Matriz sem exigir CEST. A Shopee não foi alterada.'
+      }:null,
       stages:buildStages(record,state),attributeChanges:state.attributes||[],taxDraft:state.tax||{},draftTitle:state.draftTitle||safeTitle(record.title),
       draftDescription:state.draftDescription||descriptionDraft(record),
       variationConfig:state.variationConfig||{enabled:Boolean(record.hasModel),type:'',values:[]},imageNotes:state.imageNotes||{}});
@@ -972,11 +981,12 @@ app.post('/api/shopee/optimizer/batch/fiscal/prepare',mustLogin,requireWeDropAdm
       previousError:prior?.last_error,previousPlan:prior?.plan});
     if(!disposition.allowed){
       results.push({sku,itemId:String(itemId),modelId:String(modelId),
-        ready:false,state:'draft_only',current:live.tax_info||{},
+        ready:false,registered:true,state:'draft_only',current:live.tax_info||{},
         proposed:plan.proposed.tax_info||null,
-        blocked:[...disposition.issues,...plan.blocked],
+        blocked:plan.blocked,
+        publicationPending:disposition.issues,
         warnings:plan.warnings.filter(x=>/Fiscal|CEST|NCM|Anatel/i.test(x)),
-        message:'Rascunho fiscal salvo na ficha da SKU. Nenhuma alteração enviada à Shopee.'});
+        message:'Cadastro fiscal já salvo no Motor Matriz (NCM, origem, CFOP, CSOSN e demais campos revisados). CEST em branco não impede o cadastro. Envio à Shopee ainda pendente.'});
       continue;
     }
     plan.mediaArchive=archiveShopeeMedia(prior,plan);
