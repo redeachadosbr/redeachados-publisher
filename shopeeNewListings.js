@@ -2,12 +2,27 @@
 // update_time is intentionally never used as a fallback: edits are not new ads.
 // Counts include currently listed/unlisted/reviewing/banned items, not deleted items.
 // Distinct item_id is one ad; models/variants do not inflate totals.
-const STATUSES=Object.freeze(['NORMAL','UNLIST','REVIEWING','BANNED']);
+const STATUSES=Object.freeze(['NORMAL','UNLIST','BANNED']);
+// Shopee get_item_list aceita filtros NORMAL, UNLIST e BANNED.
+// REVIEWING pode aparecer como situação de um item, mas não é um filtro
+// confiavelmente aceito em todas as lojas/versões e interrompia a consulta.
 const ZONE='America/Sao_Paulo';
 const MAX_PAGES_PER_STATUS=40; // 4,000 listings/status; fail explicitly above limit.
 const PAGE_SIZE=100;
 const MAX_ITEMS_PER_BASE=50;
-const CACHE_MS=15*60*1000;
+const CACHE_MS=10*60*1000;
+const transient=/rate.?limit|too.many|429|timeout|timed.?out|temporar|bad.gateway|503|502|504|frequency|throttl|network|socket|fetch.failed/i;
+const wait=ms=>new Promise(resolve=>setTimeout(resolve,ms));
+async function shopRead(callApi,cfg,params){
+ for(let attempt=0;attempt<3;attempt++){
+  try{return await callApi(cfg,params)}catch(error){
+   const message=String(error?.message||error);
+   if(!transient.test(message)||attempt===2)throw error;
+   await wait(350*(attempt+1)*(attempt+1));
+  }
+ }
+}
+
 const cache=new Map();
 
 const dateFormatter=new Intl.DateTimeFormat('en-US',{
@@ -80,7 +95,7 @@ export async function getShopeeNewListingsSummary({cfg,auth,callApi,now=new Date
   for(const status of STATUSES){
    let offset=0,complete=false;
    for(let page=0;page<MAX_PAGES_PER_STATUS;page++){
-    const data=await callApi(cfg,{path:'/api/v2/product/get_item_list',
+    const data=await shopRead(callApi,cfg,{path:'/api/v2/product/get_item_list',
      accessToken:auth.accessToken,shopId:id,
      query:{item_status:status,offset,page_size:PAGE_SIZE}});
     const body=data?.response||{},items=validatePage(body,status);
@@ -100,7 +115,7 @@ export async function getShopeeNewListingsSummary({cfg,auth,callApi,now=new Date
   const all=[...ids],rows=[];
   for(let i=0;i<all.length;i+=MAX_ITEMS_PER_BASE){
    const segment=all.slice(i,i+MAX_ITEMS_PER_BASE);
-   const base=await callApi(cfg,{path:'/api/v2/product/get_item_base_info',
+   const base=await shopRead(callApi,cfg,{path:'/api/v2/product/get_item_base_info',
     accessToken:auth.accessToken,shopId:id,
     query:{item_id_list:segment.join(',')}});
    const results=base?.response?.item_list;
@@ -116,7 +131,7 @@ export async function getShopeeNewListingsSummary({cfg,auth,callApi,now=new Date
   }
   const totals=countCreatedListings(rows,now);
   return {ok:true,source:'shopee.product.get_item_base_info.create_time',
-   scope:'Anúncios ainda presentes na loja, incluindo ativos e inativos; exclui removidos.',
+   scope:'Anúncios ainda presentes na loja (NORMAL, UNLIST e BANNED); exclui excluídos e outros estados não consultados.',
    shopId:String(id),checkedAt:new Date().toISOString(),totalItems:all.length,...totals};
  })();
  cache.set(id,{task,expiresAt:Date.now()+CACHE_MS,localDay:localDateKey(now)});
