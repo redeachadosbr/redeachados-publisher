@@ -1,0 +1,53 @@
+/* v1.20.17 — Uma única ação de desconto para o lojista.
+   Os mecanismos antigos permanecem internos para compatibilidade, sem controles duplicados. */
+#tab-discounts .discount-v2-detail-grid,
+#tab-discounts .discount-publish-panel,
+#tab-discounts .discount-v2-actions,
+#tab-discounts .discount-v2-recent{display:none!important}
+#tab-discounts .discount-one-click{
+ display:grid;grid-template-columns:minmax(0,1fr);gap:10px;
+ padding:17px 19px;margin:14px 0 0;
+ border:1px solid #d5e5f5;border-radius:16px;
+ background:linear-gradient(135deg,#f5faff,#fff);
+ box-shadow:0 6px 18px rgba(17,54,95,.05)
+}
+#tab-discounts .discount-one-click-sku{display:grid;gap:6px;max-width:500px;
+ color:#264a78;font-size:12px;font-weight:800}
+#tab-discounts #discountOneClickSku{
+ width:100%;min-height:44px;border:1px solid #c8dbed;
+ border-radius:10px;background:#fff;color:#133967;
+ font-size:14px;font-weight:800;padding:10px 12px
+}
+#tab-discounts #discountOneClickSku:disabled{opacity:.7}
+#tab-discounts .discount-one-click-explainer{
+ color:#5d7899;font-size:12px;line-height:1.55;margin:1px 0 4px
+}
+#tab-discounts #discountOneClickExecute{
+ width:100%;min-height:56px;
+ border:0;border-radius:12px;
+ background:#006c47;color:#fff;font-size:16px;font-weight:900;
+ letter-spacing:.01em;box-shadow:0 6px 14px rgba(0,108,71,.15);
+ transition:filter .12s,transform .12s;cursor:pointer
+}
+#tab-discounts #discountOneClickExecute:disabled{
+ background:#a5bcb3;color:#fff;cursor:default;box-shadow:none;opacity:.85
+}
+#tab-discounts #discountOneClickExecute:not(:disabled):hover{filter:brightness(1.07)}
+#tab-discounts #discountOneClickExecute:not(:disabled):active{transform:translateY(1px)}
+#tab-discounts .discount-one-click-status{margin:0;color:#45678f;
+ background:#edf4fc;border:1px solid #dce9f8;
+ border-radius:10px;padding:11px 13px;
+ font-size:12px;line-height:1.5}
+#tab-discounts .discount-one-click-status[data-state="success"]{
+ background:#e8f8ee;border-color:#bbe8ca;color:#0c7544
+}
+#tab-discounts .discount-one-click-status[data-state="warning"]{
+ background:#fff6e8;border-color:#ffdfae;color:#986017
+}
+#tab-discounts .discount-one-click-status[data-state="error"]{
+ background:#fff0ee;border-color:#ffccc5;color:#ae3c2c
+}
+@media(max-width:700px){
+ #tab-discounts .discount-one-click{padding:13px}
+ #tab-discounts #discountOneClickExecute{font-size:14px;min-height:51px}
+}
