@@ -112,4 +112,5 @@
  function sync(rows){stats(Array.isArray(rows)?rows:[]);}
  window.OptimizerFiscalPremium={renderRow,sync};
  q('optimizerFiscalBatchSkus')?.addEventListener('input',()=>sync([]));
+ if(typeof window.optimizerFiscalBatchRender==='function')window.optimizerFiscalBatchRender();
 })();
