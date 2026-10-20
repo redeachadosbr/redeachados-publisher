@@ -78,7 +78,7 @@ export function evaluateMarketOffers({title,offers=[],ownItemId,ownShopId,querie
   sample:filtered.slice(0,12),reason:null};
 }
 const safeError=e=>String(e?.message||'Falha na consulta').slice(0,170);
-export async function lookupShopeeCompetitors({title,ownShopId,ownItemId}){
+async function lookupShopeeCompetitorsUncached({title,ownShopId,ownItemId}){
  const searchedAt=new Date().toISOString(),keywords=marketSearchKeywords(title);
  const base={source:'shopee_affiliate_product_offers',searchTerms:keywords,
   researchedAt:searchedAt,verified:false,reference:null,count:0,sample:[]};
@@ -108,4 +108,25 @@ export async function lookupShopeeCompetitors({title,ownShopId,ownItemId}){
     assessment.reason};
  }catch(e){return {...base,status:'provider_error',
   message:'Não foi possível pesquisar concorrentes: '+safeError(e)};}
+}
+
+// Reuse the same checked offer sample while the seller changes the margin
+// slider; never repeatedly bill or rate-limit a public-offer API on each keypress.
+// Bad/missing credentials are cached for only 45 seconds.
+const marketCache=new Map();
+export async function lookupShopeeCompetitors(input){
+ const key=[String(input.ownShopId||''),String(input.ownItemId||''),normalize(input.title)].join('|');
+ const old=marketCache.get(key),now=Date.now();
+ if(old&&now<old.expiresAt)return old.promise;
+ const promise=lookupShopeeCompetitorsUncached(input);
+ marketCache.set(key,{promise,expiresAt:now+45000});
+ try{
+  const result=await promise;
+  const ttl=result.verified?10*60000:result.status==='insufficient_comparables'?2*60000:45000;
+  marketCache.set(key,{promise:Promise.resolve(result),expiresAt:Date.now()+ttl});
+  if(marketCache.size>180)marketCache.delete(marketCache.keys().next().value);
+  return result;
+ }catch(e){
+  marketCache.delete(key);throw e;
+ }
 }
