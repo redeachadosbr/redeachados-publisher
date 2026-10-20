@@ -5686,7 +5686,7 @@ function optimizerChatBridgeQueue(){
    },
    onSaved:async row=>{
     const w=optimizerWorkflowPlan;
-    optimizerChatBridgeNotice('Imagem '+row.slot+'/9 salva na SKU '+row.sku+'. Aguardando a próxima imagem.');
+    optimizerChatBridgeNotice('Imagem '+row.slot+'/9 salva na SKU '+row.sku+'. '+(row.wasPadded?'Formato ajustado para 1:1 com margens, sem cortes. ':'')+'Aguardando a próxima imagem.');
     if(optimizerChatBridgeIdentity(w,row)){
      optimizerImagesSavedSlots.add(row.slot);
      const stage=w.stages?.find(x=>x.key==='images');
@@ -5762,7 +5762,7 @@ globalThis.window?.addEventListener?.('message',async(event)=>{
   const extension=prepared.blob.type==='image/jpeg'?'jpg':'png';
   const queue=await optimizerChatBridgeQueue();
   // The queue ACKs immediately after server confirmation. Rendering is independent.
-  await queue.enqueue({...job,slot:m.slot,blob:prepared.blob,sha256,
+  await queue.enqueue({...job,slot:m.slot,blob:prepared.blob,sha256,wasPadded:prepared.wasPadded,
    filename:'chatgpt-auto-'+String(m.slot).padStart(2,'0')+'.'+extension});
  }catch(e){
   optimizerChatBridgeBusy=false;$('#optimizerChatgptAbort').hidden=true;

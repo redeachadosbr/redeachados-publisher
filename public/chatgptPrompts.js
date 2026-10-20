@@ -20,7 +20,7 @@ export function createChatGptPrompts({sku='',title='',masterPrompt='',imageNotes
   'PROJETO: REDE ACHADOS BR — NOVE IMAGENS DE UM ÚNICO ANÚNCIO SHOPEE',
   'SKU: '+asText(sku,120),
   'Produto: '+asText(title,260),
-  'FOTO REAL OBRIGATÓRIA: anexe a foto original do anúncio nesta conversa antes de criar qualquer imagem. NÃO comece sem a referência visual.',
+  'FOTO REAL OBRIGATÓRIA: use a foto original já anexada nesta conversa. Se ainda não houver referência visual acessível, anexe a foto original do anúncio antes de criar qualquer imagem. NÃO comece sem a referência visual.',
   original?'Foto original disponível no endereço (abra e anexe o arquivo, pois o ChatGPT pode não conseguir abrir o link): '+original:'Abra o anúncio Shopee, salve a foto original e anexe-a a esta conversa.',
   'REGRAS INEGOCIÁVEIS: manter exatamente o mesmo produto, geometria, cores, marcas existentes, acabamento, quantidade e peças. Não inventar variantes, acessórios, medidas, embalagem, funcionalidades nem logotipos.',
   'Para cada posição, criar UMA IMAGEM INDIVIDUAL QUADRADA, com composição para 1200 × 1200 pixels, fotorrealista, iluminação de estúdio/ambiente profissional, sem marca d’água e sem preço.',
@@ -28,7 +28,7 @@ export function createChatGptPrompts({sku='',title='',masterPrompt='',imageNotes
   'Sem textos decorativos nas imagens. Textos só nos slots em que o roteiro expressamente permite, curtos, corretos e em português.',
   'Características confirmadas: '+(factsFrom(attributes)||'Nenhuma especificação técnica confirmada; não mostrar valores ou características inventadas.'),
   'REGRAS MESTRAS DA LOJA: '+(asText(masterPrompt,10000)||'Seguir os nove roteiros e a fidelidade ao produto.'),
-  'ENTREGA: gerar nove arquivos individuais, nunca uma montagem 3x3. Nomear 01.png, 02.png, ... 09.png. Solicitar confirmação quando faltar informação.',
+  'ENTREGA: gerar nove arquivos individuais, nunca uma montagem 3x3. Nomear 01.png, 02.png, ... 09.png. Use somente fatos confirmados; omita especificações não essenciais que estiverem ausentes e continue. Interrompa apenas se a referência visual estiver inacessível ou ocorrer uma falha real da geração.',
  ].join('\n');
  const prompts=CHATGPT_IMAGE_SCENES.map((scene,index)=>[
   header,
