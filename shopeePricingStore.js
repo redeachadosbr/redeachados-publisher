@@ -96,3 +96,33 @@ export async function savedShopeePricePlan(shopId,itemId,modelId=0){
     '&select=item_id,model_id,sku,supplier_sku,quote,updated_at&limit=1');
   return rows[0]||null;
 }
+
+// Projetos de Ads: exclusivamente cotações salvas por SKU com reserva
+// explicitamente marcada. Não representam campanhas ativas ou verba paga.
+// Filtro aplicado no banco para não transportar planos sem Ads.
+export async function shopeeAdsReservedPricePlans(shopId){
+ const id=validShop(shopId),plans=[];
+ for(let offset=0;offset<3000;offset+=200){
+  const query='?shop_id=eq.'+id+
+   '&'+encodeURIComponent('quote->>adsBudgetEnabled')+'=eq.true'+
+   '&select=item_id,model_id,sku,supplier_sku,quote,updated_at'+
+   '&order=updated_at.desc&limit=200&offset='+offset;
+  const page=await request('shopee_optimizer_price_plans',query);
+  for(const row of page){
+   const q=row.quote||{};
+   if(q.adsBudgetEnabled!==true||!Number.isFinite(Number(q.adsBudgetPct))||
+     Number(q.adsBudgetPct)<=0||Number(q.adsBudgetPct)>60||
+     !Number.isFinite(Number(q.customerPrice))||Number(q.customerPrice)<=0||
+     !Number.isFinite(Number(q.breakdown?.ads))||Number(q.breakdown.ads)<=0||
+     q.readyForManualReview!==true||q.appliedInShopee!==false)continue;
+   plans.push({sku:row.sku,itemId:String(row.item_id),modelId:String(row.model_id),
+    supplierSku:row.supplier_sku,adsBudgetPct:Number(q.adsBudgetPct),
+    adsReserveAmount:Number(q.breakdown.ads),grossPrice:Number(q.grossPrice),
+    customerPrice:Number(q.customerPrice),netProfit:Number(q.netProfit),
+    netMarginPct:Number(q.netMarginPct),minMarginPct:Number(q.minMarginPct),
+    updatedAt:row.updated_at,appliedInShopee:false});
+  }
+  if(page.length<200)return {plans,complete:true};
+ }
+ return {plans,complete:false};
+}
