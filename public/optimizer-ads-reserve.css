@@ -1,0 +1,62 @@
+/* v1.20.15 · Reserva Ads por SKU e relatório de elegibilidade
+   Visual-only: preços reais e campanhas continuam sujeitos à aprovação. */
+#tab-pricing .pricing-ads-reserve{
+ display:grid;grid-template-columns:minmax(0,1fr) minmax(110px,155px);
+ align-items:center;gap:10px 15px;border:1px solid #d7e4f6;
+ border-radius:14px;background:linear-gradient(120deg,#f7faff,#fff);
+ padding:14px 15px;margin:12px 0 0;min-width:0
+}
+#tab-pricing .pricing-ads-reserve.ads-selected{border-color:#b9e4d2;background:#f4fbf8}
+#tab-pricing .pricing-ads-check{display:flex;align-items:center;gap:11px;
+ color:#12365e;font-size:13px;font-weight:800;line-height:1.4;cursor:pointer;
+ min-width:0;margin:0}
+#tab-pricing .pricing-ads-check input{width:20px;height:20px;flex:none;
+ accent-color:#0c9663;margin:0;cursor:pointer}
+#tab-pricing .pricing-ads-check span{display:grid;gap:4px}
+#tab-pricing .pricing-ads-check small{font-weight:500;font-size:11px;color:#56769c}
+#tab-pricing .pricing-ads-pct{display:grid;gap:4px;color:#42658e;
+ font-size:11px;font-weight:700;min-width:0}
+#tab-pricing .pricing-ads-pct input{width:100%;box-sizing:border-box;min-height:38px;
+ border:1px solid #cbdbec;border-radius:9px;background:#fff;padding:7px 10px;
+ font-weight:850;color:#0d315e;font-size:14px}
+#tab-pricing .pricing-ads-pct input:disabled{background:#edf1f6;color:#90a1b4}
+#tab-pricing .pricing-ads-help{grid-column:1/-1;margin:0;font-size:11px;
+ line-height:1.5;color:#547598}
+#tab-pricing .pricing-ads-reserve-preview{grid-column:1/-1;display:flex;
+ border-radius:9px;background:#e9f5ee;color:#176646;padding:9px 11px;
+ font-size:11px;font-weight:800}
+#tab-pricing .pricing-ads-reserve:not(.ads-selected) .pricing-ads-reserve-preview{
+ background:#edf3fa;color:#58708e
+}
+#tab-ads .ads-pricing-report{margin:13px 0 18px;padding:17px 18px;
+ border:1px solid #dbe7f4;background:#fff;border-radius:16px;
+ box-shadow:0 6px 22px rgba(15,51,104,.05)}
+#tab-ads .ads-pricing-report-head{display:flex;align-items:center;justify-content:space-between;
+ gap:13px;flex-wrap:wrap}
+#tab-ads .ads-pricing-report-head h3{font-size:17px;font-weight:900;
+ color:#102d5d;margin:3px 0 5px;line-height:1.3}
+#tab-ads .ads-pricing-kicker{font-size:10px;font-weight:800;
+ letter-spacing:.12em;color:#ec5b32}
+#tab-ads .ads-pricing-report-head p{font-size:11px;color:#6a819e;line-height:1.5;margin:0}
+#tab-ads .ads-pricing-report-head button{min-height:35px;border-radius:10px;font-size:11px}
+#tab-ads .ads-pricing-report-top{margin:12px 0 8px;display:flex;gap:12px;
+ align-items:center;justify-content:space-between;flex-wrap:wrap;
+ border-radius:10px;background:#eff6fe;padding:10px 12px;font-size:11px;color:#567397}
+#tab-ads .ads-pricing-report-top strong{color:#0e477c;font-size:12px}
+#tab-ads .ads-pricing-scroll{overflow-x:auto;max-width:100%}
+#tab-ads .ads-pricing-table{width:100%;border-collapse:collapse;font-size:11px}
+#tab-ads .ads-pricing-table th{white-space:nowrap;background:#f5f8fc;
+ color:#527094;text-align:left;font-weight:800;padding:10px 11px}
+#tab-ads .ads-pricing-table td{border-top:1px solid #ebf0f8;color:#214470;
+ padding:10px 11px;white-space:nowrap}
+#tab-ads .ads-pricing-table td:first-child{font-weight:850}
+#tab-ads .ads-pricing-table td:nth-child(5){font-weight:850;color:#137650}
+#tab-ads .ads-pricing-table button{padding:8px 10px;min-height:31px;
+ font-size:11px;font-weight:800;border-radius:9px}
+#tab-ads .ads-pricing-footnote{display:block;font-size:10px;color:#7085a0;
+ line-height:1.5;margin-top:10px}
+@media(max-width:800px){
+ #tab-pricing .pricing-ads-reserve{grid-template-columns:1fr}
+ #tab-pricing .pricing-ads-pct{max-width:180px}
+ #tab-ads .ads-pricing-report{padding:12px}
+}
