@@ -10,6 +10,7 @@
 <link rel="stylesheet" href="/optimizer-compact.css?v=1.20.12">
 <link rel="stylesheet" href="/optimizer-fiscal-premium.css?v=1.20.13">
 <link rel="stylesheet" href="/optimizer-ads-reserve.css?v=1.20.15">
+<link rel="stylesheet" href="/shopee-discount-publish.css?v=1.20.16">
 </head>
 <body>
 <div class="shell app-layout">
@@ -722,7 +723,7 @@
     <section class="discount-v2-main">
       <div class="discount-v2-title-row"><span class="discount-v2-main-icon"><svg class="discount-v2-icon" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="m12 2 9 4v6c0 5-3.5 8.6-9 10-5.5-1.4-9-5-9-10V6l9-4Z"/><path d="m8 12 3 3 5-6"/></svg></span><div>
         <h3>Descontos preparados por SKU <span class="optimizer-tip discount-v2-help" tabindex="0" role="note" data-help="Recupera o último plano salvo e recalcula com o custo atualizado da WeDrop. Não envia preços ou promoções à Shopee." aria-label="Ajuda: Recupera o último plano salvo e recalcula com o custo atualizado da WeDrop. Não envia preços ou promoções à Shopee.">?</span></h3>
-        <p>O preço bruto e o percentual vêm automaticamente da Otimização.</p></div></div>
+        <p>O preço bruto e o percentual vêm automaticamente da Otimização. A execução na Shopee ocorre somente após sua confirmação.</p></div></div>
       <div id="discountPlanCard" class="sh-price-discount-card discount-v2-plan" hidden>
         <div class="sh-price-discount-title discount-v2-plan-heading"><strong id="discountSku">—</strong>
           <span id="discountPlanDate">—</span></div>
@@ -747,6 +748,32 @@
             <small id="discountReviewStatus">É necessário recuperar um plano válido antes de revisar.</small>
           </section>
         </div>
+        <section class="discount-publish-panel" aria-label="Aplicar desconto na Shopee">
+          <div class="discount-publish-heading">
+            <div><span class="discount-publish-kicker">PUBLICAÇÃO VIA API SHOPEE</span>
+              <h4>Adicionar SKU na Minha Promoção</h4>
+              <p>Confira a promoção existente, gere a prévia e confirme antes de alterar a Shopee.</p></div>
+            <span id="discountPublishBadge" class="discount-publish-badge">Não executado</span>
+          </div>
+          <div class="discount-publish-controls">
+            <label>ID da promoção <input id="discountPromotionId" type="text" inputmode="numeric" value="512820626272845" maxlength="18" aria-label="ID da promoção existente na Shopee"></label>
+            <button id="discountPromotionPreview" type="button" class="secondary">1 · Conferir promoção e gerar prévia</button>
+          </div>
+          <p class="discount-publish-help">O ID acima veio da promoção apresentada na captura de tela. Pode ser alterado. A API precisa confirmar que essa campanha pertence à sua loja.</p>
+          <div id="discountPromotionPreviewBox" class="discount-publish-review" hidden>
+            <div id="discountPromotionPreviewInfo"></div>
+            <label class="discount-publish-approval" id="discountPromotionPriceWrap" hidden>
+              <input id="discountPromotionAllowPrice" type="checkbox">
+              <span id="discountPromotionPriceLabel">Autorizo atualizar o preço bruto do anúncio.</span>
+            </label>
+            <label class="discount-publish-approval">
+              <input id="discountPromotionConfirm" type="checkbox">
+              <span>Conferi o anúncio, a promoção e os valores. Autorizo enviar a atualização à Shopee.</span>
+            </label>
+            <button id="discountPromotionExecute" type="button" disabled>2 · Executar desconto na Shopee</button>
+          </div>
+          <p id="discountPromotionStatus" class="discount-publish-status" role="status" aria-live="polite">Nenhum desconto foi enviado. Gere a prévia para conferir a campanha.</p>
+        </section>
         <div class="discount-v2-actions">
           <button id="discountCopy" type="button"><svg class="discount-v2-icon" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="8" y="8" width="12" height="12" rx="2"/><path d="M16 8V6a3 3 0 0 0-3-3H6a3 3 0 0 0-3 3v7a3 3 0 0 0 3 3h2"/></svg> Copiar valores do plano</button>
           <button id="discountEdit" class="secondary" type="button"><svg class="discount-v2-icon" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="m11 5-7 7 7 7M4 12h14a3 3 0 0 1 3 3v2"/></svg> Voltar à Otimização</button>
