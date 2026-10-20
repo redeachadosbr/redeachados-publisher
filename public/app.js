@@ -4419,6 +4419,9 @@ function shPriceRender(q){
   $('#optimizerQuickValues').hidden=false;
   $('#optimizerQuickGross').textContent=shPriceMoney(q.grossPrice);
   $('#optimizerQuickDiscount').textContent=shPricePercent(q.discountPct);
+  const marketVerified=q.marketResearch?.verified===true;
+  $('#optimizerQuickDiscountLabel').textContent=marketVerified?'Desconto baseado no mercado':'Desconto base · sem pesquisa';
+  $('#pricePromoLabel').textContent=marketVerified?'Desconto competitivo calculado':'Desconto base · não pesquisado';
   $('#optimizerQuickFinal').textContent=shPriceMoney(q.customerPrice);
   $('#optimizerQuickProfit').textContent=shPriceMoney(q.netProfit);
   $('#optimizerQuickMarginPercent').textContent=shPricePercent(q.netMarginPct)+' de margem';
@@ -4931,6 +4934,8 @@ function shDiscountRender(q){
   $('#discountPlanDate').textContent='Calculado '+fmtDate(q.calculatedAt);
   $('#discountGross').textContent=shPriceMoney(q.grossPrice);
   $('#discountPct').textContent=shPricePercent(q.discountPct);
+  $('#discountPromoLabel').textContent=q.marketResearch?.verified===true
+    ?'Desconto baseado no mercado':'Desconto base · sem pesquisa';
   $('#discountFinal').textContent=shPriceMoney(q.customerPrice);
   $('#discountMargin').textContent=shPricePercent(q.netMarginPct);
   $('#discountProfit').textContent=shPriceMoney(q.netProfit);
