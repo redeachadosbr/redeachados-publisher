@@ -1587,9 +1587,15 @@ async function discountExecutionInputs(req,sku,itemId,modelId,discountId){
  const live=await shopeeLiveEditableItem(cfg,auth,itemId);
  if(live.item_sku&&String(live.item_sku)!==sku)
   throw Error('A SKU da Shopee mudou. Publicação cancelada.');
+ if(live.item_status&&String(live.item_status)!=='NORMAL')
+  throw Error('O anúncio não está em situação NORMAL na Shopee; a promoção não será alterada.');
+ if(typeof live.has_model!=='boolean')
+  throw Error('Não foi possível confirmar se o anúncio possui variações. Nada foi enviado.');
  const originalPrice=promotionBasePrice(live);
  const {record,pages}=await readDiscountPages(callShopeeShopApi,{cfg,auth,discountId});
  const existing=promotionMember(pages,itemId);
+ if(live.has_promotion===true&&!existing)
+  throw Error('Esta SKU já participa de outra promoção Shopee. Confira campanhas concorrentes antes de incluí-la; nenhuma alteração foi enviada.');
  const snapshot=discountPlanSnapshot({shopId:auth.shopId,sku,itemId,modelId,discountId,
    quote,record,existing,originalPrice});
  return {auth,cfg,quote,snapshot,originalPrice};
