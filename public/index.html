@@ -8,6 +8,7 @@
 <title>Rede Achados BR · Gestão Shopee</title>
 <link rel="stylesheet" href="/style.css?v=1.20.9-rework1">
 <link rel="stylesheet" href="/optimizer-compact.css?v=1.20.12">
+<link rel="stylesheet" href="/optimizer-fiscal-premium.css?v=1.20.13">
 </head>
 <body>
 <div class="shell app-layout">
@@ -398,18 +399,23 @@
           </section>
         </div>
         <details class="optimizer-fiscal-batch" id="optimizerFiscalBatch">
-          <summary>Informações fiscais em lote <span class="optimizer-fiscal-batch-pill">Até 12 SKUs por lote</span></summary>
-          <p>Preencha e salve agora os dados da contabilidade para suas SKUs, mesmo com a loja no CPF. Isso não emite nota fiscal. A publicação dos dados fiscais na Shopee é opcional, separada e somente ocorre após prévia e sua confirmação; a Shopee pode exigir CEST.</p>
+          <summary><span class="ra-fiscal-logo" aria-hidden="true">▤</span><span class="ra-fiscal-title"><strong>Informações Fiscais em Lote</strong><small>Prepare, valide e envie dados por SKU sem perder o cadastro local.</small></span><span class="optimizer-fiscal-batch-pill">Até 12 SKUs por lote</span><span class="ra-fiscal-chevron" aria-hidden="true">⌄</span></summary>
+          <div class="ra-fiscal-kpis" aria-label="Resumo das SKUs do lote">
+<div class="ra-fiscal-kpi"><span>SKUs no lote</span><strong id="optimizerFiscalBatchTotal">0</strong></div>
+<div class="ra-fiscal-kpi good"><span>Prontas</span><strong id="optimizerFiscalBatchReady">0</strong></div>
+<div class="ra-fiscal-kpi warn"><span>Pendentes</span><strong id="optimizerFiscalBatchPending">0</strong></div>
+<div class="ra-fiscal-kpi"><span>Confirmadas</span><strong id="optimizerFiscalBatchVerified">0</strong></div></div>
+<p class="ra-fiscal-help">Cadastre os dados contábeis no Motor Matriz mesmo antes da migração para CNPJ. O cadastro não emite nota fiscal; o envio à Shopee é opcional e exige prévia e aprovação. A API pode exigir CEST.</p>
           <label class="optimizer-field">SKUs para atualização fiscal (uma por linha ou separadas por vírgula)
-            <textarea id="optimizerFiscalBatchSkus" rows="4" placeholder="TRC1525&#10;TRC0809&#10;TRC1230"></textarea>
+            <textarea id="optimizerFiscalBatchSkus" rows="1" placeholder="Ex.: TRC1525, TRC0809, TRC1230"></textarea><small class="ra-fiscal-input-help">Separe SKUs por vírgula, espaço ou Enter.</small>
           </label>
           <div class="optimizer-fiscal-batch-actions">
-            <button id="optimizerFiscalBatchPrepare" class="secondary" type="button">1 · Preparar prévia fiscal do lote</button>
-            <button id="optimizerFiscalBatchExecute" type="button" hidden disabled>2 · Executar lote fiscal aprovado</button>
+            <button id="optimizerFiscalBatchPrepare" class="secondary" type="button">1 · Gerar prévia</button>
+            <button id="optimizerFiscalBatchExecute" type="button" hidden disabled>2 · Executar aprovadas</button>
             <button id="optimizerFiscalBatchRefresh" class="secondary" type="button" hidden>Atualizar andamento</button>
           </div>
-          <p id="optimizerFiscalBatchStatus" class="optimizer-notice" role="status" aria-live="polite">Nenhum lote preparado. SKUs precisam estar no catálogo da Shopee e ter revisão fiscal salva.</p>
-          <div id="optimizerFiscalBatchList" class="optimizer-fiscal-batch-list" aria-label="Status individual de cada SKU do lote"></div>
+          <p id="optimizerFiscalBatchStatus" class="optimizer-notice" role="status" aria-live="polite">Nenhum lote preparado. SKUs precisam estar no catálogo da Shopee e ter revisão fiscal salva.</p><div id="optimizerFiscalBatchSynopsis" class="ra-fiscal-synopsis" aria-live="polite">Informe as SKUs e prepare uma prévia antes de executar.</div>
+          <div id="optimizerFiscalBatchList" class="optimizer-fiscal-batch-list" aria-label="Status individual de cada SKU do lote"></div><div class="ra-fiscal-note">O CEST não impede o cadastro local no Motor Matriz. Quando exigido pela Shopee, o envio fiscal daquela SKU deverá aguardar correção e nova aprovação.</div>
         </details>
         <small class="optimizer-workflow-disclaimer">A execução é gravada por SKU e prossegue automaticamente. Imagens enviadas à mídia Shopee só serão aplicadas ao anúncio quando a API confirmar a atualização.</small>
       </section>
@@ -1304,5 +1310,6 @@
 <script src="/optimizer-compact.js?v=1.20.12"></script>
 <script src="/optimizer-dashboard.js?v=1.20.11"></script>
 <script src="/app.js?v=1.20.10"></script>
+<script src="/optimizer-fiscal-premium.js?v=1.20.13"></script>
 </body>
 </html>
