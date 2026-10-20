@@ -51,7 +51,7 @@ const workflow={
 test('new dashboard is integrated without removing existing workflow, fiscal batch, and API execution',()=>{
  assert.match(html,/id="optimizerSkuDashboard"/);
  assert.match(html,/src="\/optimizer-dashboard\.js\?v=1\.20\.11"/);
- assert.ok(html.indexOf('/optimizer-dashboard.js')<html.indexOf('/app.js?v=1.20.11'));
+ assert.ok(html.indexOf('/optimizer-dashboard.js')<html.indexOf('/app.js?v=1.20.10-sku-dashboard'));
  assert.match(html,/id="optimizerWorkflowPanel"/);
  assert.match(html,/id="optimizerExecutionLaunch"/);
  assert.match(html,/id="optimizerFiscalBatchExecute"/);
