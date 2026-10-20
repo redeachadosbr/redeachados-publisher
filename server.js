@@ -17,7 +17,7 @@ import {readShopeeWallet} from './shopeeWallet.js';
 import {financeAdsDates,matchFinanceAds} from './financeAdsSweep.js';
 import {financeRange} from './shopeeFinance.js';
 import {fetchCatalogPage,normalizeShopeeModels,validItemId} from './catalog.js';
-import {storeCatalogItems,storeCatalogModels,readCatalogCache,catalogStoreReady,findExactCatalogSku} from './catalogStore.js';
+import {storeCatalogItems,storeCatalogModels,readCatalogCache,catalogStoreReady,findExactCatalogSku,findCatalogSkuIgnoringCase} from './catalogStore.js';
 import {previewWeDropCsv,prepareWeDropImport,MAX_CSV_CHARS} from './wedropCsv.js';
 import {saveWeDropCosts,getWeDropCoverage,compareIncomingCosts,pendingWeDropModels} from './wedropCosts.js';
 import {saveWeDropProducts,readWeDropProduct} from './wedropCosts.js';
@@ -904,12 +904,26 @@ app.post('/api/shopee/optimizer/batch/fiscal/prepare',mustLogin,requireWeDropAdm
   const skus=normalizedShopeeFiscalBatchSkus(req.body.skus);
   const {auth,cfg}=await getValidAuth(req);
   const results=[],usedItemIds=new Set();
-  for(const sku of skus){
+  for(const requestedSku of skus){
+   let sku=requestedSku;
    try{
-    const matches=await findExactCatalogSku(auth.shopId,sku);
+    // A busca digitada pode ser "trc1525" embora o SKU oficial seja "TRC1525".
+    // Localize ignorando caixa, mas execute SOMENTE usando o SKU real da Shopee.
+    let matches=await findCatalogSkuIgnoringCase(auth.shopId,requestedSku);
+    if(!matches.length){
+      // Catálogo local pode estar desatualizado; consultar a API oficial, sem
+      // pedir que o vendedor sincronize ou importe manualmente outra vez.
+      const candidates=[...new Set([requestedSku,requestedSku.toUpperCase()])];
+      for(const candidate of candidates){
+        await findLiveShopeeSku(cfg,auth,callShopeeShopApi,candidate,{fastOnly:true});
+        matches=await findCatalogSkuIgnoringCase(auth.shopId,requestedSku);
+        if(matches.length)break;
+      }
+    }
     if(matches.length!==1)throw Error(matches.length?
-      'SKU vinculada a mais de um anúncio/modelo. Escolha individualmente na busca.':
-      'SKU não está no catálogo Shopee sincronizado. Localize primeiro no campo de busca.');
+      'Mais de um anúncio/modelo usa esta SKU. Selecione individualmente para evitar alterar o produto errado.':
+      'SKU não encontrada nem no catálogo nem na consulta direcionada à Shopee. Confira o código do anúncio.');
+    sku=matches[0].sku; // spelling/case verified in catalog, not fabricated.
     const {itemId,modelId}=matches[0];
     if(usedItemIds.has(String(itemId)))
      throw Error('O anúncio-pai já consta neste lote com outra variação.');
@@ -935,7 +949,7 @@ app.post('/api/shopee/optimizer/batch/fiscal/prepare',mustLogin,requireWeDropAdm
       message:plan.canExecute?'Prévia fiscal preparada; anúncio não alterado.':
        'Revisão fiscal pendente ou nenhuma alteração fiscal aprovada.'});
    }catch(error){
-    results.push({sku,ready:false,state:'failed_preview',
+    results.push({sku:requestedSku,ready:false,state:'failed_preview',
       error:String(error.message||error).slice(0,230)});
    }
   }
