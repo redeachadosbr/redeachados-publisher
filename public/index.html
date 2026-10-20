@@ -323,31 +323,9 @@
             <ol id="optimizerExecutionEvents" class="optimizer-exec-events"></ol>
           </section>
         </div>
-        <section class="optimizer-fiscal-readiness" aria-label="Preparação fiscal CPF para CNPJ">
-          <div class="optimizer-fiscal-readiness-header">
-            <strong>Cadastro fiscal da loja — CPF → CNPJ</strong>
-            <span id="optimizerFiscalReadinessTag">Verificando...</span>
-          </div>
-          <p>Prepare NCM, CFOP, CSOSN e as fichas da WeDrop agora. Enquanto a Shopee estiver no CPF, o lote fiscal fica em prévia, sem publicar. A migração para CNPJ não corrige automaticamente exigências de CEST.</p>
-          <label class="optimizer-field">Situação do cadastro na Shopee
-            <select id="optimizerFiscalReadinessMode" aria-label="Situação do cadastro fiscal">
-              <option value="cpf_atual">CPF atual — preparar sem enviar</option>
-              <option value="cnpj_preparacao">CNPJ em preparação — salvar sem enviar</option>
-              <option value="cnpj_ativo">CNPJ ativado na Shopee — liberar somente após confirmação</option>
-            </select>
-          </label>
-          <div id="optimizerFiscalReadinessConfirm" class="optimizer-fiscal-readiness-confirm" hidden>
-            <label><input id="optimizerFiscalMigrationConfirmed" type="checkbox"> Confirmo que a migração da conta vendedora para CNPJ foi concluída na Shopee.</label>
-            <label><input id="optimizerFiscalAccountantConfirmed" type="checkbox"> Confirmo que a contabilidade revisou regime, NCM, CFOP, CSOSN e o enquadramento CEST antes do envio.</label>
-          </div>
-          <div class="optimizer-fiscal-readiness-actions">
-            <button id="optimizerFiscalReadinessSave" type="button" class="secondary">Salvar situação fiscal</button>
-            <small id="optimizerFiscalReadinessMessage" role="status" aria-live="polite">Até a confirmação da migração, somente prévias de informações fiscais.</small>
-          </div>
-        </section>
         <details class="optimizer-fiscal-batch" id="optimizerFiscalBatch">
-          <summary>Executar informações fiscais em lote <span class="optimizer-fiscal-batch-pill">Até 12 SKUs por lote</span></summary>
-          <p>Use somente as fichas fiscais já conferidas no Motor Matriz. Primeiro confira a prévia por SKU; depois autorize o envio. Título, fotos, vídeo, preço e ficha técnica não serão alterados neste lote.</p>
+          <summary>Informações fiscais em lote <span class="optimizer-fiscal-batch-pill">Até 12 SKUs por lote</span></summary>
+          <p>Preencha e salve agora os dados da contabilidade para suas SKUs, mesmo com a loja no CPF. Isso não emite nota fiscal. A publicação dos dados fiscais na Shopee é opcional, separada e somente ocorre após prévia e sua confirmação; a Shopee pode exigir CEST.</p>
           <label class="optimizer-field">SKUs para atualização fiscal (uma por linha ou separadas por vírgula)
             <textarea id="optimizerFiscalBatchSkus" rows="4" placeholder="TRC1525&#10;TRC0809&#10;TRC1230"></textarea>
           </label>
