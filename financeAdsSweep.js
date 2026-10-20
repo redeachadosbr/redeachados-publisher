@@ -42,18 +42,21 @@ export function matchFinanceAds(finance,ads){
   const ids=Array.isArray(c.itemIdList)?[...new Set(c.itemIdList.map(String)
     .filter(x=>/^[1-9]\d*$/.test(x)))]:[];
   const campaignId=String(c.campaignId||'');
+  // IDs fornecidos pela configuração oficial da campanha. São evidência
+  // para identificação visual, nunca para atribuição financeira ao SKU.
+  const itemIdList=ids.slice(0,8),advertisedItemCount=ids.length;
   totalSpend=money(totalSpend+spent);
   if(!spent)continue;
   if(c.directOrdersObserved===false){
     spendMetricUnknown=money(spendMetricUnknown+spent);
     spendUnassigned=money(spendUnassigned+spent);
-    review.push({campaignId,expense:spent,directOrders:null,
+    review.push({campaignId,itemIdList,advertisedItemCount,expense:spent,directOrders:null,
       situation:'Métrica de venda direta não retornada pela Shopee; gasto não atribuído'});
     continue;
   }
   if(conversions===0){
     spendWithoutConversion=money(spendWithoutConversion+spent);
-    review.push({campaignId,expense:spent,directOrders:0,
+    review.push({campaignId,itemIdList,advertisedItemCount,expense:spent,directOrders:0,
       situation:'Sem venda direta atribuída no Ads — despesa da loja, não da venda por SKU'});
     continue;
   }
@@ -62,7 +65,7 @@ export function matchFinanceAds(finance,ads){
   if(ids.length!==1||!skus||skus.size!==1||
       itemsBySku.get(Array.from(skus||[])[0])?.size!==1){
     spendUnassigned=money(spendUnassigned+spent);
-    review.push({campaignId,expense:spent,directOrders:conversions,
+    review.push({campaignId,itemIdList,advertisedItemCount,expense:spent,directOrders:conversions,
       situation:'Campanha com vários produtos, variações, ou sem item ID confirmado; sem rateio arbitrário'});
     continue;
   }
@@ -70,7 +73,7 @@ export function matchFinanceAds(finance,ads){
   const sale=sold.get(sku);
   if(!sale){
     spendUnassigned=money(spendUnassigned+spent);
-    review.push({campaignId,sku,expense:spent,directOrders:conversions,
+    review.push({campaignId,sku,itemIdList,advertisedItemCount,expense:spent,directOrders:conversions,
       situation:'Venda atribuída ao Ads, mas não existe venda concluída conciliada desse SKU no recorte de pedidos'});
     continue;
   }
