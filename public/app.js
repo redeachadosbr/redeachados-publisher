@@ -4899,6 +4899,12 @@ function shDiscountRender(q){
   $('#discountProfit').textContent=shPriceMoney(q.netProfit);
   $('#discountSupplierCost').textContent=shPriceMoney(q.unitCost);
   $('#discountPlanNotice').textContent='Plano pronto: confira os valores acima. A execução verifica preço, custo e promoção automaticamente.';
+  const gross=Number(q.grossPrice),discount=Number(q.discountPct);
+  const promoPrice=Math.round(gross*(1-discount/100)*100)/100;
+  $('#discountOneClickExplainer').textContent='Ao clicar, o sistema poderá ajustar o preço bruto para '+
+   shPriceMoney(gross)+' e aplicará '+shPricePercent(discount)+
+   ' de desconto na Minha Promoção (preço promocional '+shPriceMoney(promoPrice)+
+   '). O cupom é considerado separadamente e nenhuma outra SKU será modificada.';
   shDiscountResetReview();
   discountOneClickStatus('Plano da SKU '+q.sku+' carregado. Clique em Executar na Shopee para aplicar o preço e o desconto.');
   discountOneClickReady();
