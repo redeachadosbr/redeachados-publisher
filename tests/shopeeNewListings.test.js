@@ -94,3 +94,25 @@ test('Interface mostra só três KPIs e histórico recolhível, com atualizaçã
  assert.match(app,/if\(name==='overview'\)void window\.dashboardNewListingsLoad\?\.\(\)/);
  assert.match(client,/\/api\/shopee\/dashboard\/new-listings/);
 });
+
+test('Cards 3D compactos são botões funcionais e acessíveis, sem duplicar indicadores',()=>{
+ const html=readFileSync(new URL('../public/index.html',import.meta.url),'utf8');
+ const client=readFileSync(new URL('../public/dashboard-new-listings.js',import.meta.url),'utf8');
+ const css=readFileSync(new URL('../public/dashboard-new-listings.css',import.meta.url),'utf8');
+ assert.equal((html.match(/data-listing-period="/g)||[]).length,3);
+ for(const type of ['today','month','year']){
+  assert.match(html,new RegExp('<button[^>]*data-listing-period="'+type+'"[^>]*aria-controls="dashboardNewListingsHistory"'));
+ }
+ assert.equal((html.match(/id="dashboardNewListingsHistory"/g)||[]).length,1);
+ for(const id of ['dashboardNewListingsToday','dashboardNewListingsMonth','dashboardNewListingsYear']){
+  assert.equal((html.match(new RegExp('id="'+id+'"','g'))||[]).length,1);
+ }
+ assert.match(client,/setupHistoryButtons\(\)/);
+ assert.match(client,/button\.addEventListener\('click'/);
+ assert.match(client,/history\.open=!same/);
+ assert.match(client,/button\.setAttribute\('aria-expanded'/);
+ assert.match(css,/dashboard-new-listings-card:hover/);
+ assert.match(css,/translateY\(-4px\)/);
+ assert.match(css,/prefers-reduced-motion:reduce/);
+ assert.match(css,/max-width:560px/);
+});
