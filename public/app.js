@@ -2510,7 +2510,12 @@ async function optimizerVideoFindMarket(){
       method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({id:video.id}),
       signal:AbortSignal.timeout(240000)});
      if(!optimizerVideoStillViewing(identity))return;
-     if(optimizerWorkflowPlan)optimizerWorkflowPlan.manualVideo=response.asset;
+     if(optimizerWorkflowPlan){
+      optimizerWorkflowPlan.manualVideo=response.asset;
+      const videoStage=optimizerWorkflowPlan.stages?.find(stage=>stage.key==='video');
+      if(videoStage){videoStage.reviewed=false;videoStage.status='pending';videoStage.reviewedAt=null;}
+      optimizerWorkflowRender(optimizerWorkflowPlan);
+     }
      optimizerExecReset();
      optimizerVideoNotice('Vídeo selecionado e salvo para revisão. Ainda não publicado na Shopee.','success');
      await optimizerVideoLoadSaved();
