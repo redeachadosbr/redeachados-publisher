@@ -182,6 +182,79 @@
 
       </section>
     </div>
+    <section id="optimizerSkuDashboard" class="optimizer-sku-dashboard" hidden aria-label="Painel compacto de acompanhamento da SKU">
+      <header class="optimizer-sku-dash-head">
+        <div class="optimizer-sku-dash-heading">
+          <p class="optimizer-sku-eyebrow">PAINEL DE OTIMIZAÇÃO · DADOS DA SKU</p>
+          <h2>Execução da SKU <span id="optimizerDashSku">—</span></h2>
+          <p>Acompanhe as etapas reais, revise os dados da WeDrop e execute somente o que foi aprovado.</p>
+        </div>
+        <div class="optimizer-sku-dash-head-actions">
+          <span id="optimizerDashStatus" class="optimizer-sku-status-pill" data-state="idle">Aguardando revisão</span>
+          <button type="button" class="secondary" id="optimizerDashBack">← Pesquisar outra SKU</button>
+        </div>
+      </header>
+      <div class="optimizer-sku-dash-hero">
+        <div class="optimizer-sku-dash-product">
+          <div class="optimizer-sku-dash-picture">
+            <img id="optimizerDashImage" alt="Imagem atual do anúncio na Shopee" hidden>
+            <span id="optimizerDashImageFallback" aria-hidden="true">▣</span>
+          </div>
+          <div class="optimizer-sku-dash-product-text">
+            <h3 id="optimizerDashTitle">Produto encontrado na Shopee</h3>
+            <p id="optimizerDashMeta">SKU — · anúncio —</p>
+            <div class="optimizer-sku-dash-tags"><span id="optimizerDashSupplierTag">WeDrop · aguardando</span><span id="optimizerDashCatalogTag">Catálogo Shopee consultado</span></div>
+          </div>
+        </div>
+        <div class="optimizer-sku-dash-kpis">
+          <div class="optimizer-sku-dash-kpi">
+            <span>Imagens do anúncio / mídia</span><strong id="optimizerDashImages">— / 9</strong>
+            <div class="optimizer-sku-dash-meter"><span id="optimizerDashImageFill"></span></div>
+            <small id="optimizerDashImageCaption">Consultando imagens oficiais</small>
+          </div>
+          <div class="optimizer-sku-dash-kpi">
+            <span>Etapas conferidas</span><strong id="optimizerDashReviewed">— / —</strong>
+            <div class="optimizer-sku-dash-meter green"><span id="optimizerDashStageFill"></span></div>
+            <small id="optimizerDashStageCaption">Revisões registradas no Motor Matriz</small>
+          </div>
+        </div>
+        <div class="optimizer-sku-dash-current">
+          <span>ETAPA ATUAL</span>
+          <strong id="optimizerDashNextTitle">Carregando revisão</strong>
+          <small id="optimizerDashNextHelp">Abra a etapa que precisa de atenção</small>
+          <button type="button" id="optimizerDashContinue">Continuar etapa →</button>
+        </div>
+      </div>
+      <div class="optimizer-sku-dash-grid">
+        <section class="optimizer-sku-dash-card optimizer-sku-dash-facts" aria-labelledby="optimizerDashFactsHeading">
+          <div class="optimizer-sku-dash-card-head"><h3 id="optimizerDashFactsHeading">▣ Informações da WeDrop</h3><button type="button" class="secondary" id="optimizerDashSourceOpen">Ver detalhes ↗</button></div>
+          <div id="optimizerDashFacts" class="optimizer-sku-dash-fact-grid" aria-live="polite"><p>Localize uma SKU para consultar as informações comprovadas.</p></div>
+          <small id="optimizerDashFactsNote">Informações de produto e logística são identificadas separadamente para evitar medidas incorretas.</small>
+        </section>
+        <section class="optimizer-sku-dash-card optimizer-sku-dash-stages" aria-labelledby="optimizerDashStagesHeading">
+          <div class="optimizer-sku-dash-card-head"><h3 id="optimizerDashStagesHeading">☷ Etapas da otimização</h3><button type="button" class="secondary" id="optimizerDashAllStages">Ver todas as etapas ↗</button></div>
+          <div id="optimizerDashStageRail" class="optimizer-sku-dash-stage-rail" role="group" aria-label="Abrir etapa da SKU"></div>
+        </section>
+        <section class="optimizer-sku-dash-card optimizer-sku-dash-technical" aria-labelledby="optimizerDashTechnicalHeading">
+          <div class="optimizer-sku-dash-card-head"><h3 id="optimizerDashTechnicalHeading">▤ Ficha técnica</h3><span id="optimizerDashTechnicalStatus" class="optimizer-sku-mini-tag">Aguardando</span></div>
+          <div class="optimizer-sku-dash-technical-body"><strong id="optimizerDashTechnicalTitle">Anúncio Shopee</strong><p id="optimizerDashTechnicalDetails">A ficha oficial da categoria será preenchida conforme os dados confirmados.</p></div>
+          <button type="button" class="secondary optimizer-sku-dash-card-action" id="optimizerDashTechnicalOpen">Ver / editar ficha →</button>
+        </section>
+        <section class="optimizer-sku-dash-card optimizer-sku-dash-fiscal" aria-labelledby="optimizerDashFiscalHeading">
+          <div class="optimizer-sku-dash-card-head"><h3 id="optimizerDashFiscalHeading">▤ Informações fiscais em lote</h3><span id="optimizerDashFiscalStatus" class="optimizer-sku-mini-tag">Revisar</span></div>
+          <div id="optimizerDashFiscalChips" class="optimizer-sku-dash-tax-chips"></div>
+          <p>Dados preparados no Motor Matriz. Cadastro fiscal não emite nota. Envio à Shopee exige uma prévia e aprovação separadas.</p>
+          <div class="optimizer-sku-dash-card-actions"><button type="button" class="secondary" id="optimizerDashFiscalOpen">Ver / editar fiscal</button><button type="button" id="optimizerDashFiscalBatchOpen">Abrir lote fiscal →</button></div>
+        </section>
+      </div>
+      <div class="optimizer-sku-dash-footer">
+        <button type="button" class="optimizer-sku-dash-tool" id="optimizerDashConnection"><strong>◉ Diagnóstico de conexão</strong><small id="optimizerDashConnectionState">API: consultar quando necessário</small></button>
+        <button type="button" class="optimizer-sku-dash-tool" id="optimizerDashChanges"><strong>▤ Detalhes das alterações</strong><small id="optimizerDashChangesState">Conferir prévia oficial</small></button>
+        <button type="button" class="optimizer-sku-dash-tool" id="optimizerDashPending"><strong>⚠ Pendências</strong><small id="optimizerDashPendingState">Consultar revisões ainda abertas</small></button>
+        <button type="button" class="optimizer-sku-dash-tool" id="optimizerDashAudit"><strong>◇ Auditoria técnica do anúncio</strong><small id="optimizerDashAuditState">Ver fotos, atributos e dados da categoria</small></button>
+      </div>
+      <p id="optimizerDashExecutionNotice" class="optimizer-sku-dash-footnote" aria-live="polite">A prévia do aplicativo não representa publicação. Somente alterações confirmadas pela API são marcadas como publicadas.</p>
+    </section>
     <div class="optimizer-v15-below">
       <details class="optimizer-panel optimizer-rules optimizer-v15-accordion" aria-label="Regras permanentes" id="optimizerRulesDetails">
         <summary><span class="optimizer-v15-accordion-icon" aria-hidden="true"><svg class="nav-icon" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M12 2v2m0 16v2M4 12H2m20 0h-2m-2.3-5.7 1.4-1.4m-14 14 1.4-1.4m0-11.4L5 4.7m14 14-1.4-1.4"/></svg></span><span class="optimizer-v15-accordion-title"><strong>Regras salvas da loja</strong></span><span class="optimizer-tip" tabindex="0" role="note" aria-label="Ajuda: orientações permanentes de imagens e fiscal" data-help="Abra para consultar e editar os prompts das 9 imagens e as orientações fiscais salvas para a loja. As alterações nessas regras não publicam anúncios.">?</span><span class="optimizer-v15-chevron">⌄</span></summary>
@@ -1227,6 +1300,7 @@
     </main>
   </div>
 </div>
+<script src="/optimizer-dashboard.js?v=1.20.11"></script>
 <script src="/app.js?v=1.20.10"></script>
 </body>
 </html>
