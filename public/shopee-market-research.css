@@ -14,3 +14,9 @@
 #tab-pricing .pricing-market-offer strong{font-size:11px;color:#126441;white-space:nowrap}
 #tab-pricing .pricing-market-research>small{font-size:10px;color:#6e839e;line-height:1.4}
 @media(max-width:730px){#tab-pricing .pricing-market-research-offers{grid-template-columns:1fr}}
+
+#tab-pricing .pricing-market-top{margin:10px 0;padding:10px 13px;background:#fff5e8;
+ border:1px solid #ffe2ae;color:#835712;border-radius:10px;font-size:11px;
+ line-height:1.5;font-weight:700}
+#tab-pricing .pricing-market-top[data-state="success"]{background:#e9f8ef;
+ border-color:#c3ebd4;color:#126b43}
