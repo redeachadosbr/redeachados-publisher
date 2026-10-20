@@ -825,7 +825,7 @@ app.post('/api/shopee/optimizer/workflow/review',mustLogin,requireWeDropAdmin,as
       const supplier=await readWeDropProduct(auth.shopId,{sku,itemId,modelId});
       change.matrixFiscal=fiscalMatrixSource({sku,supplier,tax:change.tax});
       // Register the accountant-supplied SKU fields in Motor Matriz even if
-      // Shopee previously rejected update_item due to missing CEST.
+      // Shopee previously rejected the fiscal update due to missing CEST.
       // Validating a LOCAL draft must never require a Shopee tax_info read/write.
       // compileTax accepts an omitted CEST; it does not invent a substitute.
       compileTax(change.tax,{tax_info:{}});
