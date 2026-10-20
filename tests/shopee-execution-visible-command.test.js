@@ -55,7 +55,8 @@ test('um clique dispara somente as alterações já aprovadas e consulta a Shope
  assert.equal(p.node('#optimizerExecutionLaunch').hidden,false);
  assert.equal(p.node('#optimizerExecutionLaunch').disabled,false);
  assert.equal(p.node('#optimizerExecutionConfirmation').hidden,true);
- assert.equal(p.calls.length,0);
+ // O painel fiscal consulta a situação CPF/CNPJ ao carregar, sem qualquer publicação.
+ assert.equal(p.calls.filter(x=>x.url.endsWith('/execute')).length,0);
  p.node('#optimizerExecutionLaunch').click();
  await new Promise(resolve=>setImmediate(resolve));
  assert.equal(p.calls.filter(x=>x.url.endsWith('/execute')).length,1);
