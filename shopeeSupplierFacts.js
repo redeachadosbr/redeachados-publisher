@@ -1,12 +1,16 @@
 // Suggestions have explicit provenance and are never an approval to publish.
+import {fiscalStoreDefaults} from './shopeeMatrixRules.js';
 const clean=value=>String(value||'').trim();
 export function supplierWorkflowFacts(supplier,record,settings={}){
  const facts=supplier?.product_data||{},taxSuggestion={},attributeSuggestions=[];
  const source=supplier?'WeDrop '+supplier.source_file+' · SKU '+supplier.supplier_sku+' · linha '+supplier.source_line:'';
  const notes=clean(settings.fiscal_notes);
+ // Sugestão de padrão da loja (99 = Outras Operações), nunca aprovação de
+ // publicação; um CST salvo especificamente na SKU continua prioritário.
+ Object.assign(taxSuggestion,fiscalStoreDefaults(notes));
  const rules={origin:/Origem\s*:\s*([0-8])\b/i,same_state_cfop:/CFOP\s+Mesmo\s+Estado\s*:\s*(5\d{3})/i,
   diff_state_cfop:/CFOP\s+Outros\s+Estados\s*:\s*(6\d{3})/i,csosn:/CSOSN\s*:\s*(\d{3})/i,
-  // Não herdar automaticamente CST do emissor de NF-e como dado do anúncio Shopee.
+  // CST do anúncio é uma regra da própria loja; não herdar CST da NF-e.
   };
  for(const [key,re] of Object.entries(rules)){const value=notes.match(re)?.[1];if(value)taxSuggestion[key]=value;}
  if(/tipo de (?:serviço|operac[aã]o|operaç[aã]o)\s*:\s*revendedor/i.test(notes))taxSuggestion.operation_type='1';
@@ -43,5 +47,6 @@ export function supplierWorkflowFacts(supplier,record,settings={}){
  return {supplierProduct:supplier?{...facts,sku:supplier.supplier_sku,source,importedAt:supplier.imported_at,matchedBy:supplier.matchedBy}:null,
   taxSuggestion,attributeSuggestions,fiscalNotes:notes,
   taxSuggestionSources:Object.fromEntries(Object.keys(taxSuggestion).map(key=>[key,
-   ['ncm','cest','measure_unit'].includes(key)?(source||'Ficha técnica do produto'):'Regras fiscais salvas da loja']))};
+   ['ncm','cest','measure_unit'].includes(key)?(source||'Ficha técnica do produto'):
+    key==='pis_cofins_cst'?'Motor Matriz · padrão fiscal da loja: 99 — Outras Operações':'Regras fiscais salvas da loja']))};
 }
