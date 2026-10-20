@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
 import {localDateKey,countCreatedListings,getShopeeNewListingsSummary,
- clearShopeeNewListingsCache} from '../shopeeNewListings.js';
+ clearShopeeNewListingsCache,validatePage} from '../shopeeNewListings.js';
 
 const at=(iso)=>Math.floor(Date.parse(iso)/1000);
 const row=(item_id,iso)=>({item_id,create_time:at(iso)});
@@ -145,4 +145,41 @@ test('Cards 3D compactos são botões funcionais e acessíveis, sem duplicar ind
  assert.match(css,/translateY\(-4px\)/);
  assert.match(css,/prefers-reduced-motion:reduce/);
  assert.match(css,/max-width:560px/);
+});
+
+test('Lista UNLIST sem item é uma lista realmente vazia se a Shopee confirmar total zero',()=>{
+ assert.deepEqual(validatePage({total_count:0,has_next_page:false},'UNLIST'),[]);
+ assert.deepEqual(validatePage({item:null,total_count:0,has_next_page:false},'UNLIST'),[]);
+ assert.deepEqual(validatePage({item_list:null,total_count:0,has_next_page:false},'UNLIST'),[]);
+ assert.deepEqual(validatePage({has_next_page:false},'BANNED'),[]);
+ assert.deepEqual(validatePage({item:[],total_count:0,has_next_page:false},'UNLIST'),[]);
+ assert.throws(()=>validatePage({total_count:12,has_next_page:false},'UNLIST'),/incompleta/);
+ assert.throws(()=>validatePage({total_count:0,has_next_page:true},'UNLIST'),/incompleta/);
+ assert.throws(()=>validatePage({response:null},'UNLIST'),/incompleta/);
+ assert.throws(()=>validatePage(null,'UNLIST'),/resposta válida/);
+ assert.throws(()=>validatePage({item:[],total_count:3,has_next_page:false},'UNLIST'),/3 anúncios/);
+});
+test('Consulta completa continua mesmo se UNLIST e BANNED não vierem com campo item',async()=>{
+ const shopId=987654330;clearShopeeNewListingsCache(shopId);
+ const calls=[];
+ const mock=async(_cfg,req)=>{
+  calls.push(req.path+' '+(req.query.item_status||''));
+  if(req.path.endsWith('/get_item_list')){
+   const status=req.query.item_status;
+   return {response:status==='NORMAL'
+    ?{item:[{item_id:10},{item_id:11}],total_count:2,has_next_page:false}
+    :{total_count:0,has_next_page:false}};
+  }
+  return {response:{item_list:req.query.item_id_list.split(',').map(id=>
+   row(id,id==='10'?'2026-10-20T11:00:00Z':'2026-10-04T11:00:00Z'))}};
+ };
+ const summary=await getShopeeNewListingsSummary({
+  cfg:{},auth:{shopId,accessToken:'test'},callApi:mock,now});
+ assert.equal(summary.ok,true);
+ assert.equal(summary.totalItems,2);
+ assert.equal(summary.today,1);
+ assert.equal(summary.month,2);
+ assert.equal(summary.year,2);
+ assert.equal(calls.filter(x=>x.includes('get_item_list')).length,3);
+ clearShopeeNewListingsCache(shopId);
 });
