@@ -650,6 +650,15 @@
                       <button id="pricingMarginPlus" type="button" aria-label="Aumentar margem em um ponto percentual">+</button></div>
                   </div>
                 </div>
+                <div class="pricing-ads-reserve" id="pricingAdsReserveBox">
+                  <label class="pricing-ads-check" for="priceAdsEnabled">
+                    <input id="priceAdsEnabled" type="checkbox">
+                    <span><strong>Incluir reserva para Shopee Ads nesta SKU</strong><small>Marque apenas os anúncios que deseja preparar para campanhas.</small></span>
+                  </label>
+                  <label class="pricing-ads-pct" for="priceAds">Adicional Ads (%)<input id="priceAds" type="number" min="0" max="60" step=".1" value="0" inputmode="decimal"></label>
+                  <p class="pricing-ads-help" id="priceAdsHelp">Desmarcado: nenhum custo Ads é incluído no cálculo. Marque e informe o percentual para reservar verba por venda.</p>
+                  <div class="pricing-ads-reserve-preview" id="priceAdsPreview">Nenhuma reserva de Ads no plano atual.</div>
+                </div>
                 <details class="sh-price-advanced sh-price-settings-collapsed" id="priceSettingsDetails">
             <summary><span class="pricing-settings-heading"><strong>Configurações pré-definidas e editáveis</strong><small>Imposto, cupom, oferta relâmpago, descontos e taxas.</small></span><span class="pricing-chevron" aria-hidden="true">⌄</span></summary>
           <div class="sh-price-fields">
@@ -662,7 +671,7 @@
           </div>
           <details class="sh-price-advanced"><summary>Ajustar comissões, frete e ADS</summary>
             <div class="sh-price-fields">
-              <label>Reserva ADS (%)<input id="priceAds" type="number" min="0" max="60" step=".1" value="0"></label>
+
               <label>Frete pago pela loja (R$)<input id="priceFreight" type="number" min="0" step=".01" value="0"></label>
               <label>Embalagem / despesas extras (R$)<input id="pricePackaging" type="number" min="0" step=".01" value="0"></label>
               <label>Cadastro da Shopee<select id="priceSellerType"><option value="cpf">CPF</option><option value="cnpj">CNPJ</option></select></label>
@@ -981,6 +990,18 @@
             <button id="adsExecuteSuggested" type="button" disabled><svg class="ads-v2-icon" aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="m4 20 12-12 4 4-12 12M13 5l1-3 1 3 3 1-3 1-1 3-1-3-3-1 3-1M20 2v3M18.5 3.5h3"/></svg> Revisar ajustes sugeridos</button>
           </div>
         </div>
+        <section class="ads-pricing-report" aria-labelledby="adsPricingReportTitle">
+          <div class="ads-pricing-report-head"><div><span class="ads-pricing-kicker">PREPARADOS NA PRECIFICAÇÃO</span><h3 id="adsPricingReportTitle">Anúncios com reserva para Ads</h3>
+            <p>SKUs com percentual reservado no preço. Não significa que a campanha está ativa nem que o valor já foi gasto.</p></div>
+            <button id="adsPricingRefresh" class="secondary" type="button">↻ Atualizar lista</button>
+          </div>
+          <div class="ads-pricing-report-top"><strong id="adsPricingCount">— anúncios</strong><span id="adsPricingReservedNotice" role="status" aria-live="polite">Consultando planos salvos...</span></div>
+          <div class="table-wrap ads-pricing-scroll"><table class="ads-pricing-table">
+            <thead><tr><th>SKU</th><th>Preço final estimado</th><th>Preço bruto</th><th>Adicional Ads</th><th>Reserva por venda</th><th>Margem estimada*</th><th>Atualizado</th><th>Ação</th></tr></thead>
+            <tbody id="adsPricingRows"><tr><td colspan="8">Aguardando consulta dos planos de precificação.</td></tr></tbody>
+          </table></div>
+          <small class="ads-pricing-footnote">*Estimativas do plano salvo, com a reserva já descontada do lucro projetado. Campanhas e gastos reais são conferidos separadamente na Shopee Ads. O preço sugerido ainda exige publicação/aprovação.</small>
+        </section>
         <div id="adsSummary" class="ads-v2-message" data-state="idle" role="status" aria-live="polite">Aguardando consulta da API Shopee Ads. Nenhum dado financeiro foi presumido.</div>
         <div id="adsResults" hidden>
           <div class="ads-v2-metrics"><article class="ads-v2-kpi ads-v2-kpi-blue"><span class="ads-v2-kpi-icon"><svg class="ads-v2-icon" aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 21V12h4v9M10 21V3h4v18M17 21V8h4v13"/></svg></span><span class="ads-v2-kpi-name">Campanhas encontradas</span><span class="optimizer-tip ads-v2-help" tabindex="0" role="note" data-help="Total de campanhas de anúncios de produtos retornadas pela API Shopee." aria-label="Ajuda: Total de campanhas de anúncios de produtos retornadas pela API Shopee.">?</span><strong id="adsCampaignCount">—</strong></article>
