@@ -1,0 +1,60 @@
+/* Financeiro Shopee — identificação visual dos anúncios e pedidos.
+   Dados vêm do catálogo autenticado; fallback não sugere vínculo inexistente. */
+#tab-finance .finance-mini-photo{
+ width:42px;height:42px;flex:0 0 42px;display:inline-grid;place-items:center;
+ overflow:hidden;border-radius:10px;border:1px solid #dfebf7;
+ background:linear-gradient(150deg,#fff,#f2f6fb);
+ box-shadow:0 2px 6px rgba(23,62,108,.09);
+ transition:transform .18s ease,box-shadow .18s ease;
+ vertical-align:middle
+}
+#tab-finance .finance-mini-img{width:100%;height:100%;object-fit:contain;display:block;background:#fff}
+#tab-finance .finance-mini-photo:hover{
+ transform:scale(1.09);box-shadow:0 8px 18px rgba(18,68,135,.17);z-index:2;position:relative
+}
+#tab-finance .finance-mini-fallback{display:grid;place-items:center;
+ width:100%;height:100%;font-size:19px;font-weight:700;color:#97a9c0;
+ background:linear-gradient(145deg,#f7f9fc,#e7eff8)
+}
+#tab-finance .finance-mini-stack{display:inline-flex;align-items:center;min-width:42px;gap:4px;flex:0 0 auto}
+#tab-finance .finance-mini-stack .finance-mini-photo~.finance-mini-photo{margin-left:-11px;
+ box-shadow:0 2px 6px rgba(23,62,108,.12),0 0 0 2px white}
+#tab-finance .finance-mini-overflow{display:inline-flex;align-items:center;justify-content:center;
+ background:#e7eef8;border:1px solid #d5e1f1;border-radius:50%;
+ min-width:24px;height:24px;padding:0 4px;font-size:10px;color:#315884;font-weight:850
+}
+#tab-finance .finance-ads-exception-row{align-items:center;gap:14px}
+#tab-finance .finance-ads-exception-identity{display:flex;align-items:center;gap:11px;
+ min-width:200px;flex:1 1 40%}
+#tab-finance .finance-ads-exception-info{display:grid;gap:4px;min-width:0}
+#tab-finance .finance-ads-exception-row .finance-ads-exception-info strong{
+ color:#19416d;font-size:11px;font-weight:800;line-height:1.3
+}
+#tab-finance .finance-ads-exception-info small{font-size:9.5px;color:#6d829d;
+ display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:1;
+ line-clamp:1;overflow:hidden;overflow-wrap:anywhere
+}
+#tab-finance .finance-ads-exception-row .finance-ads-exception-reason{
+ flex:1 1 43%;font-size:10px;line-height:1.4;text-align:right;
+ color:#657a95;overflow-wrap:anywhere
+}
+#tab-finance .finance-audit-sku-cell{min-width:205px;vertical-align:middle}
+#tab-finance .finance-audit-identity{display:flex;align-items:center;gap:10px;
+ min-width:180px}
+#tab-finance .finance-mini-label{display:grid;gap:3px;min-width:0}
+#tab-finance .finance-mini-label strong{font-size:10px;line-height:1.3;
+ color:#244266;overflow-wrap:anywhere}
+#tab-finance .finance-mini-label small{font-size:9px;line-height:1.3;
+ color:#71869d;display:-webkit-box;-webkit-box-orient:vertical;
+ -webkit-line-clamp:2;line-clamp:2;overflow:hidden}
+#tab-finance #shopeeFinanceOrders .finance-mini-photo{width:40px;height:40px;flex-basis:40px}
+#tab-finance #shopeeFinanceOrders .finance-mini-stack{min-width:40px}
+@media(max-width:900px){
+ #tab-finance .finance-ads-exception-row{align-items:flex-start;flex-wrap:wrap}
+ #tab-finance .finance-ads-exception-identity{min-width:0;flex:1 1 100%}
+ #tab-finance .finance-ads-exception-row .finance-ads-exception-reason{text-align:left;flex:1 1 100%}
+}
+@media(prefers-reduced-motion:reduce){
+ #tab-finance .finance-mini-photo{transition:none}
+ #tab-finance .finance-mini-photo:hover{transform:none}
+}
