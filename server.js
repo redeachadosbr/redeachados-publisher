@@ -31,7 +31,7 @@ import {auditShopeeItem,validateSkuLookup} from './productOptimizer.js';
 import {buildStages,descriptionDraft,safeTitle,validateReview} from './shopeeOptimizationWorkflow.js';
 import {getWorkflowReview,saveWorkflowReview} from './shopeeOptimizationWorkflowStore.js';
 import {compileShopeeExecutionPlan,confirmShopeeExecution,
-  assertLiveShopeeUnchanged,verifyShopeeExecution} from './shopeeExecutionPlan.js';
+  assertLiveShopeeUnchanged,verifyShopeeExecution,normalizeShopeeExecutionStage} from './shopeeExecutionPlan.js';
 import {readShopeeExecution,saveShopeePreparedExecution,
   claimShopeePreparedExecution,finishShopeeExecution,pendingShopeeExecutions,leaseShopeeExecution,
   checkpointShopeeExecution,reconcileShopeeJob} from './shopeeExecutionStore.js';
@@ -846,6 +846,7 @@ app.post('/api/shopee/optimizer/execution/prepare',mustLogin,requireWeDropAdmin,
   if(!verifiedSameOrigin(req))return res.status(403).json({error:'Origem não autorizada.'});
   try{
     const {itemId,modelId,sku,auth,cfg,record}=await checkedWorkflowAudit(req);
+    const selectedStage=normalizeShopeeExecutionStage(req.body.stage||'all');
     const review=await getWorkflowReview(auth.shopId,itemId,modelId);
     if(review&&review.sku!==sku)throw Error('SKU do plano revisado é diferente. Refaça a auditoria.');
     const live=await shopeeLiveEditableItem(cfg,auth,itemId);
@@ -855,21 +856,22 @@ app.post('/api/shopee/optimizer/execution/prepare',mustLogin,requireWeDropAdmin,
       verifyShopeeExecution(previous.plan,live,previous.result)?previous.plan.video?.sha256:null;
     const manualImages=await readPreparedImages(auth.shopId,itemId,modelId,sku);
     const reviewState=review?.review_state||{};
-    if(reviewState.stages?.fiscal?.reviewed&&reviewState.tax){
+    if(['all','fiscal'].includes(selectedStage)&&reviewState.stages?.fiscal?.reviewed&&reviewState.tax){
       const supplier=await readWeDropProduct(auth.shopId,{sku,itemId,modelId});
       fiscalMatrixSource({sku,supplier,tax:reviewState.tax,reviewSource:reviewState.matrixFiscal});
     }
     // Marca proveniente da WeDrop precisa coincidir com a categoria mesmo que a
     // ficha técnica não esteja aprovada; nunca publicar com Marca: Novo por engano.
     const supplierForBrand=await readWeDropProduct(auth.shopId,{sku,itemId,modelId});
-    assertShopeeSupplierBrand({record,attributes:reviewState.stages?.technical?.reviewed?
-      reviewState.attributes||[]:[],supplier:supplierForBrand});
-    if(reviewState.stages?.technical?.reviewed){
+    if(['all','technical'].includes(selectedStage))
+      assertShopeeSupplierBrand({record,attributes:reviewState.stages?.technical?.reviewed?
+        reviewState.attributes||[]:[],supplier:supplierForBrand});
+    if(['all','technical'].includes(selectedStage)&&reviewState.stages?.technical?.reviewed){
       technicalMatrixSource({sku,record,attributes:reviewState.attributes||[],reviewSource:reviewState.matrixTechnical});
       await hydrateCategoryChoices(record,reviewState.attributes||[],cfg,auth,live);
     }
     const inputs={shopId:auth.shopId,itemId,modelId,sku,record,
-      review:review?.review_state||{},live,manualVideo,verifiedVideoSha256,manualImages};
+      review:review?.review_state||{},live,manualVideo,verifiedVideoSha256,manualImages,selectedStage};
     let plan=compileShopeeExecutionPlan(inputs);
     // Previous Shopee validation can mean tax_info was rejected while other
     // approved changes are independent. Leave CEST blank, OMIT tax_info entirely,
@@ -879,7 +881,7 @@ app.post('/api/shopee/optimizer/execution/prepare',mustLogin,requireWeDropAdmin,
     const priorFiscalDeferred=previous?.sku===sku&&previous?.plan?.fiscalDeferred===true&&
       !String(reviewState.tax?.cest||live.tax_info?.cest||'').trim()&&
       taxDraftNcm===String(previous.plan.deferredTaxDraft?.ncm||previous.plan.original?.tax_info?.ncm||'').trim();
-    const deferFiscal=Boolean(priorFiscalDeferred||
+    const deferFiscal=selectedStage==='all'&&Boolean(priorFiscalDeferred||
       (previous?.sku===sku&&needsCestRevalidation(previous.last_error,previous.plan,plan)));
     if(deferFiscal)plan=compileShopeeExecutionPlan({...inputs,deferUnconfirmedFiscal:true});
     plan.reusedMedia=recyclableShopeeMedia(previous,plan);
@@ -912,21 +914,24 @@ app.post('/api/shopee/optimizer/execution/execute',mustLogin,requireWeDropAdmin,
   const job=await readShopeeExecution(auth.shopId,itemId,modelId);
   if(job?.sku!==sku||job.state!=='prepared')throw Error('Plano não preparado ou já iniciado. Confira o andamento.');
   const plan=job.plan;
+  if(normalizeShopeeExecutionStage(req.body.stage||'all')!==normalizeShopeeExecutionStage(plan?.selectedStage||'all'))
+   throw Error('A etapa escolhida mudou desde a prévia. Reprepare.');
   if(plan?.planId!==String(req.body.planId||'')||String(job.updated_at)!==String(req.body.updatedAt||''))
    throw Error('Plano alterado em outra sessão. Prepare novamente.');
   confirmShopeeExecution(plan,{sku,confirmation:req.body.confirmation});
   const review=await getWorkflowReview(auth.shopId,itemId,modelId);
   if(review?.sku!==sku)throw Error('Revisão da SKU mudou. Prepare novamente.');
   const reviewState=review.review_state||{};
-  if(reviewState.stages?.fiscal?.reviewed&&reviewState.tax){
+  if(['all','fiscal'].includes(plan.selectedStage||'all')&&reviewState.stages?.fiscal?.reviewed&&reviewState.tax){
     const supplier=await readWeDropProduct(auth.shopId,{sku,itemId,modelId});
     fiscalMatrixSource({sku,supplier,tax:reviewState.tax,reviewSource:reviewState.matrixFiscal});
   }
   const live=await shopeeLiveEditableItem(cfg,auth,itemId);
   const supplierForBrand=await readWeDropProduct(auth.shopId,{sku,itemId,modelId});
-  assertShopeeSupplierBrand({record,attributes:reviewState.stages?.technical?.reviewed?
-    reviewState.attributes||[]:[],supplier:supplierForBrand});
-  if(reviewState.stages?.technical?.reviewed){
+  if(['all','technical'].includes(plan.selectedStage||'all'))
+    assertShopeeSupplierBrand({record,attributes:reviewState.stages?.technical?.reviewed?
+      reviewState.attributes||[]:[],supplier:supplierForBrand});
+  if(['all','technical'].includes(plan.selectedStage||'all')&&reviewState.stages?.technical?.reviewed){
     technicalMatrixSource({sku,record,attributes:reviewState.attributes||[],reviewSource:reviewState.matrixTechnical});
     await hydrateCategoryChoices(record,reviewState.attributes||[],cfg,auth,live);
   }
@@ -935,7 +940,7 @@ app.post('/api/shopee/optimizer/execution/execute',mustLogin,requireWeDropAdmin,
   const manualImages=plan.images?.length?await readPreparedImages(auth.shopId,itemId,modelId,sku):[];
   const fresh=compileShopeeExecutionPlan({shopId:auth.shopId,itemId,modelId,sku,record,
    review:review.review_state,live,manualVideo,manualImages,
-   deferUnconfirmedFiscal:plan.fiscalDeferred===true});
+   deferUnconfirmedFiscal:plan.fiscalDeferred===true,selectedStage:plan.selectedStage||'all'});
   if(fresh.fingerprint!==plan.fingerprint||!fresh.canExecute)throw Error('Conteúdo ou aprovação mudou. Prepare novamente.');
   await claimShopeePreparedExecution(auth.shopId,itemId,modelId,{
    planId:plan.planId,updatedAt:job.updated_at,runId:crypto.randomUUID()});
