@@ -501,9 +501,9 @@
                 <button id="optimizerCommercialShowRules" type="button" class="secondary">ⓘ Ver regras</button>
               </div>
 
-          <div class="optimizer-image-mode-selector" role="group" aria-label="Escolher como gerar as nove imagens">
-            <button id="optimizerModeChatgpt" type="button" class="secondary" aria-pressed="false">✦ ✦ Gerar com ChatGPT</button>
-            <button id="optimizerModeApi" type="button" class="secondary" aria-pressed="false">⚙ ⚙ Gerar automaticamente pela API</button>
+          <div class="optimizer-image-mode-selector" role="group" aria-label="Geração de imagens comerciais">
+            <button id="optimizerChatgptAuto" type="button">✦ Gerar 9 imagens com ChatGPT</button>
+            <button id="optimizerModeApi" type="button" class="secondary" aria-pressed="false">⚙ Gerar automaticamente pela API</button>
           </div>
           <div id="optimizerImagesChatgptPanel" class="optimizer-chatgpt-panel" hidden>
             <div class="optimizer-chatgpt-head">
@@ -512,7 +512,6 @@
             </div>
             <p>Clique uma vez para gerar as 9 imagens. Cada foto recebida substitui a original na galeria e o envio é confirmado antes da próxima. Se a conexão cair, o sistema preserva a imagem para reenviar. Ao final, confira as 9 fotos antes de executar na Shopee.</p>
             <div class="optimizer-chatgpt-bridge-actions">
-              <button type="button" id="optimizerChatgptAuto">✦ Gerar 9 imagens com ChatGPT</button>
               <button type="button" id="optimizerChatgptAbort" class="secondary" hidden>Pausar geração</button>
             </div>
             <p id="optimizerChatgptBridgeStatus" role="status" aria-live="polite">Gerar → receber → salvar → próxima imagem. As fotos originais da WeDrop servem como referência e não contam como imagens novas.</p>
