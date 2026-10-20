@@ -26,6 +26,15 @@ test('modo ChatGPT monta as nove instruções para a SKU, respeita roteiro e ima
  assert.match(brief.prompts[4],/Destacar uso doméstico/);
  assert.match(brief.batch,/anexe a foto original/i);
  assert.equal(brief.original,'https://down-br.img.susercontent.com/file/xyz');
+ assert.match(brief.prompts[0],/DIVERSIDADE OBRIGATÓRIA/);
+ assert.match(brief.prompts[2],/MEDIDAS DO PRODUTO/);
+ const backpack=createChatGptPrompts({sku:'TUD0667',title:'Super Mochila Construtor 3 em 1',
+  imageUrls:['https://cf.shopee.com.br/file/original'],attributes:[]});
+ assert.equal(backpack.prompts.length,9);
+ assert.match(backpack.prompts[2],/SEM? medidas|sem cotas|APENAS com valores/i);
+ assert.match(backpack.prompts[3],/flat lay|Foto de cima/i);
+ assert.match(backpack.prompts[7],/Três recortes editoriais/i);
+ assert.notEqual(backpack.scenes[1].guide,backpack.scenes[3].guide);
 });
 test('arquivos numerados mapeiam os slots corretos independentemente da ordem de seleção',()=>{
  const input=[{name:'09.png'},{name:'02.webp'},{name:'01.png'}];
@@ -40,7 +49,7 @@ test('arquivos numerados mapeiam os slots corretos independentemente da ordem de
 test('layout oferece escolha ChatGPT independente de API e mantém prévia antes de enviar',()=>{
  const html=readFileSync(new URL('../public/index.html',import.meta.url),'utf8');
  const js=readFileSync(new URL('../public/app.js',import.meta.url),'utf8');
- for(const id of ['optimizerImagesChatgptPanel','optimizerImagesApiPanel','optimizerModeChatgpt',
+ for(const id of ['optimizerImagesChatgptPanel','optimizerImagesApiPanel','optimizerChatgptAuto',
   'optimizerModeApi','optimizerChatgptOpen','optimizerChatgptCopyAll','optimizerChatgptPromptList',
   'optimizerChatgptFiles','optimizerChatgptImport','optimizerChatgptImportStatus']){
   assert.equal((html.match(new RegExp('id="'+id+'"','g'))||[]).length,1,id);
