@@ -5518,7 +5518,7 @@ function optimizerImagesRenderMode(){
  $('#optimizerModeApi').classList.toggle('is-active',!chat);
 }
 async function optimizerChatgptMakeBrief(w){
- const {createChatGptPrompts}=await import('/chatgptPrompts.js');
+ const {createChatGptPrompts}=await import('/chatgptPrompts.js?v=1.20.25-distinct-scenes');
  return createChatGptPrompts({
   sku:w.sku,title:w.draftTitle||'Produto Shopee',
   imageUrls:w.imageUrls||[],
@@ -5830,7 +5830,7 @@ $('#optimizerChatgptImport')?.addEventListener?.('click',async()=>{
  const status=$('#optimizerChatgptImportStatus'),button=$('#optimizerChatgptImport');
  let ordered;
  try{
-  const {assignChatGptFiles}=await import('/chatgptPrompts.js');
+  const {assignChatGptFiles}=await import('/chatgptPrompts.js?v=1.20.25-distinct-scenes');
   ordered=assignChatGptFiles(chosen,{startSlot:Number($('#optimizerChatgptStart').value)});
  }catch(e){status.textContent=e.message;return;}
  const mapping=ordered.map(x=>String(x.slot).padStart(2,'0')+' ← '+x.file.name).join('\n');
