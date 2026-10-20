@@ -72,5 +72,5 @@ test('interface permite somente prévia até confirmação real CPF->CNPJ e cont
  assert.match(html,/id="optimizerFiscalMigrationConfirmed"/);
  assert.match(html,/id="optimizerFiscalAccountantConfirmed"/);
  assert.match(js,/mode==='cnpj_ativo'&&\(!migrationConfirmed\|\|!accountantConfirmed\)/);
- assert.match(js,/draft_only:'Prévia sem envio'/);
+ assert.match(js,/draft_only:'Cadastrado no Motor Matriz'/);
 });
