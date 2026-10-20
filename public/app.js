@@ -4634,7 +4634,7 @@ $('#discountOneClickExecute')?.addEventListener('click',async()=>{
  const unchanged=()=>shDiscountQuote&&
    [String(shDiscountQuote.sku),String(shDiscountQuote.itemId),String(shDiscountQuote.modelId)].join('|')===selected;
  const discountId=String($('#discountPromotionId')?.value||'').trim();
- if(!/^\\d{1,18}$/.test(discountId)){
+ if(!/^\d{1,18}$/.test(discountId)){
   discountOneClickStatus('Promoção da loja não configurada. Nenhum anúncio foi alterado.','error');
   return;
  }
