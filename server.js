@@ -1288,7 +1288,8 @@ app.post('/api/shopee/optimizer/video/manual',
   const normalized=await normalizeManualVideo(req.body);
   const asset=await importShopeeManualVideo(info.shopId,info.itemId,info.modelId,
     info.sku,normalized.buffer,{mime:'video/mp4',filename:name.replace(/\.[^.]+$/,'')+'.mp4'});
-  res.status(201).json({ok:true,asset,publishedInShopee:false,
+  await saveWorkflowReview(info.shopId,info.itemId,info.modelId,info.sku,{stage:'video',reviewed:false});
+  res.status(201).json({ok:true,asset,publishedInShopee:false,requiresReview:true,
    message:'Vídeo importado e salvo em armazenamento privado para esta SKU. Ainda não foi publicado na Shopee.'});
  }catch(e){res.status(400).json({error:String(e.message||e).slice(0,270)});}
 });
@@ -1366,7 +1367,9 @@ app.post('/api/shopee/optimizer/video/marktpro/select',
   const normalized=await normalizeManualVideo(Buffer.concat(buffers,bytes));
   const asset=await importShopeeManualVideo(info.shopId,info.itemId,info.modelId,info.sku,
    normalized.buffer,{mime:'video/mp4',filename:'marktpro-'+video.id+'.mp4'});
-  res.status(201).json({ok:true,asset,publishedInShopee:false,
+  // A escolha de um arquivo novo revoga uma aprovação de vídeo anterior.
+  await saveWorkflowReview(info.shopId,info.itemId,info.modelId,info.sku,{stage:'video',reviewed:false});
+  res.status(201).json({ok:true,asset,publishedInShopee:false,requiresReview:true,
     message:'Vídeo MarktPro selecionado e salvo para revisão da SKU. Ainda não publicado na Shopee.'});
  }catch(e){res.status(400).json({error:String(e.message||e).slice(0,260)});}
 });
