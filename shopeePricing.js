@@ -93,19 +93,26 @@ export function quoteShopeePrice({unitCost,settings={},marketAverage=null}={}){
   let proposed={...c},financial=calculateShopeeSale(gross,proposed,money(cost)),state='PROTEGIDO';
   let note='Plano preparado com a margem desejada e as taxas cadastradas.';
   if(market!==null){
+    // O percentual competitivo NÃO é o desconto base (20%). É o menor
+    // desconto capaz de colocar o preço final próximo ao preço de referência
+    // mantendo lucro >= piso. Cupom já entra no preço final calculado.
     const target=money(market);
-    if(financial.saleCents>target){
-      let chosen=null;
-      for(let step=Math.max(0,Math.floor(c.discountPct*10));step<=900;step++){
-        const candidate={...c,discountPct:step/10};
-        const result=calculateShopeeSale(gross,candidate,money(cost));
-        if(result.saleCents<=target&&result.marginPct+1e-8>=c.minMarginPct){chosen={candidate,result};break}
+    let chosen=null;
+    for(let step=0;step<=900;step++){
+      const candidate={...c,discountPct:step/10};
+      const result=calculateShopeeSale(gross,candidate,money(cost));
+      if(result.saleCents<=target&&result.marginPct+1e-8>=c.minMarginPct){
+        chosen={candidate,result};break;
       }
-      if(chosen){proposed=chosen.candidate;financial=chosen.result;state='COMPETITIVO';
-        note='Desconto elevado para alcançar a média de mercado sem ultrapassar o lucro mínimo.';}
-      else{state='MERCADO_ABAIXO_DO_PISO';
-        note='A média de mercado está abaixo do preço protegido; não reduzir automaticamente o preço.';}
-    }else{state='DENTRO_DA_MEDIA';note='Preço final não ultrapassa a média de mercado informada.';}
+    }
+    if(chosen){
+      proposed=chosen.candidate;financial=chosen.result;
+      state='COMPETITIVO';
+      note='Desconto calculado pela referência de preço informada. A origem da referência deve ser conferida no relatório de mercado.';
+    }else{
+      state='MERCADO_ABAIXO_DO_PISO';
+      note='Não existe desconto competitivo viável no preço bruto calculado sem violar a margem mínima. Nenhum desconto deve ser publicado automaticamente.';
+    }
   }else note+=' Média de mercado não informada; não foi feita pesquisa de concorrentes.';
   if(financial.marginPct+1e-8<c.minMarginPct)throw Error('Cotação rejeitada: abaixo da margem líquida mínima.');
   const floorSale=calculateShopeeSale(floor,c,money(cost));
