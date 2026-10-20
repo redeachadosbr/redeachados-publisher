@@ -1,0 +1,67 @@
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import {readFileSync} from 'node:fs';
+import {promotionFromQuote,promotionBasePrice,promotionMember,discountPlanSnapshot,
+  readDiscountPages,signDiscountPreview,verifyDiscountPreview} from '../shopeeDiscountPublish.js';
+
+const q={sku:'TRC1525',itemId:'22095398152',modelId:'0',grossPrice:219.6,
+ discountPct:20,couponPct:1,customerPrice:173.92,unitCost:99.99,
+ netMarginPct:10.01,minMarginPct:5,readyForManualReview:true,
+ appliedInShopee:false,calculatedAt:new Date().toISOString()};
+const activity={discount_id:512820626272845,status:'ongoing',
+ discount_name:'Desconto Produtos 07/04/2027',
+ end_time:Math.floor(Date.now()/1000)+86400,item_list:[],more:false};
+test('Preço enviado na campanha exclui o cupom que já é deduzido separadamente',()=>{
+ const v=promotionFromQuote(q);
+ assert.equal(v.gross,219.60);
+ assert.equal(v.promo,175.68);
+ assert.equal(v.buyerAfterCoupon,173.92);
+ assert.equal(v.discountPct,20);
+});
+test('Prévia detecta adição, atualização e desconto já aplicado sem duplicar',()=>{
+ const base={shopId:'1234',sku:q.sku,itemId:q.itemId,modelId:'0',
+  discountId:String(activity.discount_id),quote:q,record:activity,originalPrice:219.6};
+ assert.equal(discountPlanSnapshot({...base,existing:null}).action,'add');
+ assert.equal(discountPlanSnapshot({...base,existing:{item_id:q.itemId,item_promotion_price:169}}).action,'update');
+ assert.equal(discountPlanSnapshot({...base,existing:{item_id:q.itemId,item_promotion_price:175.68}}).action,'already');
+ const changed=discountPlanSnapshot({...base,originalPrice:149.9,
+  existing:{item_id:q.itemId,item_promotion_price:175.68}});
+ assert.equal(changed.action,'update');
+ assert.equal(changed.needsBasePriceUpdate,true);
+});
+test('Recusa produto com variantes, preço desconhecido ou moeda diferente',()=>{
+ assert.equal(promotionBasePrice({has_model:false,price_info:[{original_price:219.6,currency:'BRL'}]}),219.6);
+ assert.throws(()=>promotionBasePrice({has_model:true,price_info:[{original_price:219.6}]}),/variações/);
+ assert.throws(()=>promotionBasePrice({price_info:[]}),/preço original/);
+ assert.throws(()=>promotionBasePrice({price_info:[{original_price:219.6,currency:'USD'}]}),/BRL/);
+});
+test('Prévia exige correspondência de campanha e pagina todos os itens',async()=>{
+ const result=await readDiscountPages(async(_cfg,{query})=>({response:{
+  ...activity,item_list:query.page_no===1?[{item_id:'10'}]:[{item_id:q.itemId,item_promotion_price:175.68}],
+  more:query.page_no<2
+ }}),{cfg:{},auth:{accessToken:'test',shopId:'1234'},discountId:String(activity.discount_id)});
+ assert.equal(result.pages.length,2);
+ assert.equal(promotionMember(result.pages,q.itemId).item_promotion_price,175.68);
+});
+test('Aprovação assinada é vinculada à loja e expira',()=>{
+ const preview=discountPlanSnapshot({shopId:'1234',sku:q.sku,itemId:q.itemId,
+  modelId:'0',discountId:String(activity.discount_id),quote:q,record:activity,
+  originalPrice:219.6,existing:null});
+ const secret='test-secret-very-long';
+ const signed=signDiscountPreview(preview,secret);
+ const value=verifyDiscountPreview(signed,secret,'1234');
+ assert.equal(value.promo,175.68);
+ assert.throws(()=>verifyDiscountPreview(signed,secret,'9999'),/outra loja/);
+ assert.throws(()=>verifyDiscountPreview(signed+'x',secret,'1234'),/alterada/);
+});
+test('Descontos têm botão executar e prévia, sem execução automática',()=>{
+ const html=readFileSync(new URL('../public/index.html',import.meta.url),'utf8');
+ const js=readFileSync(new URL('../public/app.js',import.meta.url),'utf8');
+ for(const id of ['discountPromotionId','discountPromotionPreview','discountPromotionExecute',
+  'discountPromotionConfirm','discountPromotionAllowPrice']){
+  assert.equal((html.match(new RegExp('id="'+id+'"','g'))||[]).length,1);
+ }
+ assert.match(js,/discountPromotionExecute.*addEventListener/);
+ assert.match(js,/\/api\/shopee\/optimizer\/discounts\/preview/);
+ assert.match(js,/\/api\/shopee\/optimizer\/discounts\/execute/);
+});
