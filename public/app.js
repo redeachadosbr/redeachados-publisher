@@ -5742,6 +5742,7 @@ globalThis.window?.addEventListener?.('message',async(event)=>{
    (m.slot?' · posição '+Math.min(9,m.slot)+'/9':'');
   const paused=/pausad[ao]|interrompid[ao]|cancelad[ao]|falha (?:no |de )?(?:upload|importação)/i.test(m.status||'');
   if(paused){optimizerChatBridgeBusy=false;$('#optimizerChatgptAbort').hidden=true;}
+  else if(!done){optimizerChatBridgeBusy=true;$('#optimizerChatgptAbort').hidden=false;}
   if(done)void optimizerChatBridgeConfirmed(job).then(complete=>{
    if(!complete)optimizerChatBridgeNotice('Aguardando o sistema confirmar todas as imagens novas da SKU '+job.sku+'.');
   }).catch(e=>optimizerChatBridgeNotice('Conferência pendente: '+e.message));
@@ -5789,7 +5790,8 @@ $('#optimizerChatgptAuto')?.addEventListener?.('click',async()=>{
   if(optimizerImagesSavedSlots.size===9){status.textContent='9/9 imagens novas já estão salvas nesta SKU. Use Refazer na posição que deseja alterar.';return;}
   const brief=await optimizerChatgptMakeBrief(w);
   if(!brief.original)throw Error('A Shopee não retornou uma foto original para esta SKU; abra o anúncio e confira as imagens antes de iniciar.');
-  optimizerChatBridgeNonce=crypto.randomUUID();
+  optimizerChatBridgeNonce=optimizerChatBridgeIdentity(optimizerChatBridgeJob,w)&&optimizerChatBridgeJob.slots?.length===9
+   ?optimizerChatBridgeJob.nonce:crypto.randomUUID();
   optimizerChatBridgeSku=w.sku;
   sessionStorage.setItem(RA_CHAT_BRIDGE_SESSION_KEY,optimizerChatBridgeNonce);
   optimizerChatBridgeRemember(w);
