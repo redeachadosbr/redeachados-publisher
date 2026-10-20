@@ -4388,6 +4388,14 @@ function shPriceMarketResearchRender(q){
  if(!badge||!msg||!offers)return;
  offers.replaceChildren();
  const verified=research?.verified===true&&research?.sourceType==='researched_affiliate_offers';
+ const top=$('#pricingMarketTopStatus');
+ if(top){
+  top.dataset.state=verified?'success':'warning';
+  top.textContent=verified?
+   'Mercado pesquisado: '+research.count+' ofertas equivalentes · referência '+shPriceMoney(research.reference)+
+    ' · desconto calculado '+shPricePercent(q.discountPct):
+   'Sem pesquisa de mercado validada: desconto base não pesquisado. '+String(research?.message||'');
+ }
  badge.textContent=verified?'Comparação realizada':'Sem pesquisa verificada';
  badge.dataset.state=verified?'success':'warning';
  msg.textContent=verified?
