@@ -4623,11 +4623,30 @@ function discountPromoReset(){
  discountPromoStatus('Nenhum desconto enviado. Gere uma prévia para conferir a campanha.');
 }
 function discountPromoApproval(){
- const ready=Boolean(discountPromoPreview)&&discountPromoPreview.preview.action!=='already'&&
-   !discountPromoExecuting&&$('#discountPromotionConfirm').checked&&
-   [...document.querySelectorAll('[data-discount-review]')].every(x=>x.checked)&&
-   (!discountPromoPreview.preview.needsBasePriceUpdate||$('#discountPromotionAllowPrice').checked);
+ const preview=discountPromoPreview?.preview;
+ // A prévia assinada, o anúncio atual e as DUAS confirmações relevantes
+ // controlam a execução. O checklist de 4 itens é apenas informativo.
+ const sameSku=Boolean(preview&&shDiscountQuote)&&
+   String(preview.sku)===String(shDiscountQuote.sku)&&
+   String(preview.itemId)===String(shDiscountQuote.itemId)&&
+   String(preview.modelId)===String(shDiscountQuote.modelId);
+ const authorized=Boolean($('#discountPromotionConfirm').checked);
+ const priceAuthorized=preview?.needsBasePriceUpdate!==true||
+   Boolean($('#discountPromotionAllowPrice').checked);
+ const ready=Boolean(discountPromoPreview?.approvalToken)&&sameSku&&
+   preview.action!=='already'&&!discountPromoExecuting&&
+   authorized&&priceAuthorized;
  $('#discountPromotionExecute').disabled=!ready;
+ if(ready){
+  $('#discountPublishBadge').textContent='Pronto para executar';
+  $('#discountPublishBadge').dataset.state='review';
+  discountPromoStatus(preview.needsBasePriceUpdate
+   ?'Autorizações confirmadas. Ao executar, a Shopee tentará atualizar o preço bruto de '+
+     shPriceMoney(preview.originalPrice)+' para '+shPriceMoney(preview.gross)+
+     ' e depois adicionar o desconto. Se a segunda etapa falhar, o preço bruto pode permanecer alterado.'
+   :'Autorização confirmada. Clique em Executar para solicitar a inclusão do desconto na Shopee.',
+   'success');
+ }
  return ready;
 }
 function discountPromoRenderPreview(data){
@@ -4702,7 +4721,7 @@ $('#discountPromotionPreview')?.addEventListener('click',async()=>{
  finally{btn.disabled=false;}
 });
 $('#discountPromotionExecute')?.addEventListener('click',async()=>{
- if(!discountPromoApproval())return discountPromoStatus('Marque as revisões e confirme a autorização antes de executar.','warning');
+ if(!discountPromoApproval())return discountPromoStatus('Gere uma prévia válida e confirme o envio. Se o preço bruto precisar mudar, autorize essa alteração separadamente.','warning');
  if(discountPromoExecuting)return;
  const data=discountPromoPreview;
  discountPromoExecuting=true;
@@ -4743,12 +4762,12 @@ function shDiscountReviewChanged(){
   const items=[...document.querySelectorAll('[data-discount-review]')];
   const checked=items.filter(i=>i.checked).length;
   const all=items.length>0&&checked===items.length;
-  $('#discountReviewStatus').textContent=!shDiscountQuote?'É necessário recuperar um plano válido antes de revisar.':
-    all?'4 de 4 conferências marcadas manualmente. A aplicação ainda é feita na Shopee.':
-      checked+' de '+items.length+' conferências manuais realizadas. Nada foi aplicado.';
+  $('#discountReviewStatus').textContent=!shDiscountQuote?'Recupere primeiro um plano válido.':
+    discountPromoPublished?'Desconto confirmado na Shopee. Conferências adicionais são opcionais.':
+      checked+' de '+items.length+' conferências adicionais marcadas (opcionais). A execução depende da prévia e das autorizações abaixo.';
   $('#discountSavedBadgeLabel').textContent=!shDiscountQuote?'Aguardando plano salvo':
     discountPromoPublished?'Desconto confirmado na Shopee':
-    all?'Plano conferido manualmente · aguardando execução':'Plano salvo · revisão obrigatória';
+    all?'Plano salvo · conferências adicionais concluídas':'Plano salvo · aguarda prévia e aprovação';
   $('#discountSavedBadge').dataset.state=!shDiscountQuote?'unavailable':discountPromoPublished?'reviewed':all?'reviewed':'saved';
   discountPromoApproval();
 }
