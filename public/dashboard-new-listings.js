@@ -5,7 +5,7 @@
  let inFlight=null,lastFetch=0,lastDate='',lastShop='';
  const $=id=>document.getElementById(id);
  const number=n=>Number(n).toLocaleString('pt-BR');
- const status=(message)=>{if($('dashboardNewListingsUpdated'))$('dashboardNewListingsUpdated').textContent=message;};
+ const status=(message)=>{const node=$('dashboardNewListingsUpdated');if(node)node.textContent=message;};
  const todayKey=()=>{
   const parts=new Intl.DateTimeFormat('en-US',{timeZone:'America/Sao_Paulo',
    year:'numeric',month:'2-digit',day:'2-digit'}).formatToParts(new Date());
@@ -56,11 +56,12 @@
    row.classList.toggle('is-current-month',row.dataset.periodKey===data.monthKey);
   }
   const checked=data.checkedAt?new Date(data.checkedAt):new Date();
-  status('Atualizado às '+checked.toLocaleTimeString('pt-BR',{
+  if($('dashboardNewListingsUpdated'))$('dashboardNewListingsUpdated').title='Contagem confirmada pela API de produtos Shopee.';
+ status('Atualizado às '+checked.toLocaleTimeString('pt-BR',{
    timeZone:'America/Sao_Paulo',hour:'2-digit',minute:'2-digit'}));
   $('dashboardNewListingsFootnote').textContent=
    'Dados da criação original dos anúncios pela API Shopee. Cada item é contado uma vez. '+
-   'Inclui anúncios ainda existentes (ativos e inativos); não inclui anúncios removidos. Fuso: Brasília.';
+   'Inclui anúncios ainda existentes com status NORMAL, UNLIST e BANNED; não inclui removidos ou outras situações. Fuso: Brasília.';
  }
  async function load(force=false){
   if(!$('dashboardNewListings'))return;
@@ -81,15 +82,18 @@
     draw(body);
     lastFetch=Date.now();lastDate=day;lastShop=String(body.shopId||'');
    }catch(error){
-    status('Não foi possível conferir os novos anúncios.');
+    const cause=String(error?.message||'Erro de conexão').replace(/\s+/g,' ').slice(0,170);
+    const label=$('dashboardNewListingsUpdated');
+    status('Falha na consulta Shopee · '+cause);
+    if(label)label.title=cause+' — recarregue o painel para tentar novamente.';
     for(const id of ['dashboardNewListingsToday','dashboardNewListingsMonth','dashboardNewListingsYear'])
      value(id,null);
     for(const id of ['dashboardNewListingsDays','dashboardNewListingsMonths']){
      const node=$(id);if(node)node.replaceChildren(
       element('span','', 'A contagem estará disponível quando a consulta Shopee for concluída.'));
     }
-    $('dashboardNewListingsFootnote').textContent=String(error?.message||'Erro na consulta')+
-     ' Nenhum número estimado foi utilizado.';
+    $('dashboardNewListingsFootnote').textContent=
+     'Detalhe da consulta: '+cause+'. Nenhuma quantidade foi inventada; a API precisa retornar as datas de criação.';
     lastFetch=0;lastDate='';
    }finally{inFlight=null;}
   })();
