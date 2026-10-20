@@ -57,7 +57,7 @@ import {quoteShopeePrice,normalizeShopeePricingSettings} from './shopeePricing.j
 import {shopeePricingPreferences,saveShopeePricingPreferences,
   shopeePricingSupplierCost,shopeePricingDirectSupplierCost,
   saveShopeePricePlan,recentShopeePricePlans,
-  savedShopeePricePlan} from './shopeePricingStore.js';
+  savedShopeePricePlan,shopeeAdsReservedPricePlans} from './shopeePricingStore.js';
 import {createWeDropAutoScheduler,importSupplierAutomatically,supplierFeedConfig} from './wedropAutoSync.js';
 import {
   shopeeConfig,buildShopeeAuthorizationUrl,exchangeShopeeCode,refreshShopeeToken,
@@ -1464,6 +1464,35 @@ app.get('/api/shopee/optimizer/pricing/recent',mustLogin,requireWeDropAdmin,asyn
     res.json({ok:true,plans:await recentShopeePricePlans(auth.shopId),executed:false});
   }catch(e){res.status(503).json({error:String(e.message||e).slice(0,280)});}
 });
+// Seleção autenticada por item/modelo/SKU; não deduzir reserva Ads
+// de outro produto da mesma loja nem de preferências globais.
+app.get('/api/shopee/optimizer/pricing/selection',mustLogin,requireWeDropAdmin,async(req,res)=>{
+ res.setHeader('Cache-Control','no-store');
+ try{
+  const sku=validateSkuLookup(req.query?.sku),itemId=validItemId(req.query?.itemId);
+  const modelId=String(req.query?.modelId??'0');
+  if(!/^\d{1,18}$/.test(modelId))throw Error('Variação inválida.');
+  const {auth}=await getValidAuth(req);
+  const matches=await findExactCatalogSku(auth.shopId,sku);
+  if(!matches.some(x=>String(x.itemId)===itemId&&String(x.modelId)===modelId))
+   return res.status(409).json({error:'Vínculo da SKU alterado. Refaça a busca.'});
+  const saved=await savedShopeePricePlan(auth.shopId,itemId,modelId);
+  res.json({ok:true,sku,itemId,modelId,
+   adsBudgetEnabled:saved?.sku===sku&&saved?.quote?.adsBudgetEnabled===true,
+   adsBudgetPct:saved?.sku===sku&&saved?.quote?.adsBudgetEnabled===true
+    ?Number(saved.quote.adsBudgetPct||0):0,
+   updatedAt:saved?.sku===sku?saved.updated_at:null,
+   marketplaceUpdated:false});
+ }catch(e){res.status(400).json({error:String(e.message||e).slice(0,240)});}
+});
+app.get('/api/shopee/optimizer/pricing/ads-reserved',mustLogin,requireWeDropAdmin,async(req,res)=>{
+ res.setHeader('Cache-Control','no-store');
+ try{
+  const {auth}=await getValidAuth(req);
+  const data=await shopeeAdsReservedPricePlans(auth.shopId);
+  res.json({ok:true,...data,source:'saved_pricing_plans',marketplaceUpdated:false});
+ }catch(e){res.status(503).json({error:String(e.message||e).slice(0,240)});}
+});
 app.post('/api/shopee/optimizer/pricing/prepare',mustLogin,requireWeDropAdmin,async(req,res)=>{
   res.setHeader('Cache-Control','no-store');
   try{
@@ -1476,11 +1505,18 @@ app.post('/api/shopee/optimizer/pricing/prepare',mustLogin,requireWeDropAdmin,as
     const matches=await findExactCatalogSku(auth.shopId,sku);
     if(!matches.some(x=>String(x.itemId)===itemId&&String(x.modelId)===modelId))
       return res.status(409).json({error:'A SKU não corresponde mais a esse Item ID/variação. Localize novamente na Otimização.'});
-    const settings=req.body?.settings===undefined
+    const sourceSettings=req.body?.settings===undefined
       ?await shopeePricingPreferences(auth.shopId)
       :normalizeShopeePricingSettings(req.body.settings);
     const cost=await shopeePricingSupplierCost(auth.shopId,{sku,itemId,modelId});
     const previous=await savedShopeePricePlan(auth.shopId,itemId,modelId);
+    // O percentual de Ads só entra se o checkbox da SKU estiver marcado;
+    // jamais herdar reserva de outro anúncio nem usar o valor global.
+    const adsBudgetEnabled=req.body?.adsBudgetEnabled===true;
+    const adsBudgetPct=adsBudgetEnabled?Number(req.body?.adsBudgetPct):0;
+    if(adsBudgetEnabled&&(!Number.isFinite(adsBudgetPct)||adsBudgetPct<=0||adsBudgetPct>60))
+      throw Error('Marque Ads e informe uma reserva entre 0,1% e 60% para esta SKU.');
+    const settings={...sourceSettings,adsPct:adsBudgetPct};
     const marketAverage=req.body?.marketAverage===undefined
       ?previous?.sku===sku?previous?.quote?.marketAverage??null:null
       :req.body.marketAverage;
@@ -1493,10 +1529,14 @@ app.post('/api/shopee/optimizer/pricing/prepare',mustLogin,requireWeDropAdmin,as
     quote.supplierSku=cost.supplierSku;
     quote.costUpdatedAt=cost.costUpdatedAt;
     quote.pricingSettings=settings;
+    quote.adsBudgetEnabled=adsBudgetEnabled;
+    quote.adsBudgetPct=adsBudgetPct;
+    quote.adsBudgetSource='reserved_in_saved_price_plan';
+    quote.adsActualSpent=false;
     quote.calculatedAt=new Date().toISOString();
-    // Evitar persistir configuração inválida/inviável ou uma SKU não encontrada.
+    // Parâmetros globais de tarifa são salvos sem Ads; Ads é EXCLUSIVO da SKU.
     if(req.body?.settings!==undefined)
-      await saveShopeePricingPreferences(auth.shopId,settings);
+      await saveShopeePricingPreferences(auth.shopId,{...sourceSettings,adsPct:0});
     await saveShopeePricePlan(auth.shopId,{itemId,modelId,sku,supplierSku:cost.supplierSku,quote});
     res.json({ok:true,readOnly:true,saved:true,quote});
   }catch(e){
