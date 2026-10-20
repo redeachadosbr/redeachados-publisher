@@ -47,7 +47,7 @@ export function discountPlanSnapshot({shopId,sku,itemId,modelId,discountId,quote
  if(Number(record.end_time)<=now)throw Error('A promoção terminou.');
  // Somente incluir ou atualizar UMA SKU, nunca alterar as demais da campanha.
  const existingPrice=existing?Number(existing.item_promotion_price):null;
- const act=!existing?'add':validMoney(existingPrice)&&Math.abs(brl(existingPrice)-values.promo)<0.011?'already':'update';
+ const act=!existing?'add':validMoney(existingPrice)&&Math.abs(brl(existingPrice)-values.promo)<0.011&&Math.abs(originalPrice-values.gross)<0.011?'already':'update';
  return {...values,shopId:String(shopId),sku:String(sku),itemId:String(itemId),
    modelId:String(modelId),discountId:String(discountId),promotionName:String(record.discount_name||''),
    status:String(record.status),promotionEnd:Number(record.end_time),originalPrice,
