@@ -1418,8 +1418,9 @@ app.post('/api/shopee/optimizer/settings',mustLogin,requireWeDropAdmin,async(req
   }catch(e){res.status(400).json({error:String(e.message||e).slice(0,240)});}
 });
 
-// Cotação e plano por SKU, exclusivos Shopee. Nenhum endpoint escreve preços,
-// promoções ou descontos na Central do Vendedor: revisão obrigatória.
+// Cotação por SKU não escreve na Shopee. A publicação foi isolada em
+// /optimizer/discounts/preview (read-only) + /execute (autorização explícita),
+// com leitura de volta e sem alterar anúncios não selecionados.
 // Prévia independente do anúncio: fornecedor WeDrop pode possuir SKU
 // que ainda não está no cache Shopee. Nunca confundir este preview com
 // promoção publicada ou vínculo validado de item/modelo Shopee.
