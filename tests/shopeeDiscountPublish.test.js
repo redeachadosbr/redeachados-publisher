@@ -2,7 +2,8 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
 import {promotionFromQuote,promotionBasePrice,promotionMember,discountPlanSnapshot,
-  readDiscountPages,signDiscountPreview,verifyDiscountPreview} from '../shopeeDiscountPublish.js';
+  readDiscountPages,signDiscountPreview,verifyDiscountPreview,
+  shopDiscountMembershipSignal} from '../shopeeDiscountPublish.js';
 
 const q={sku:'TRC1525',itemId:'22095398152',modelId:'0',grossPrice:219.6,
  discountPct:20,couponPct:1,customerPrice:173.92,unitCost:99.99,
@@ -64,4 +65,25 @@ test('Descontos têm botão executar e prévia, sem execução automática',()=>
  assert.match(js,/discountPromotionExecute.*addEventListener/);
  assert.match(js,/\/api\/shopee\/optimizer\/discounts\/preview/);
  assert.match(js,/\/api\/shopee\/optimizer\/discounts\/execute/);
+});
+
+test('has_promotion=true sozinho não afirma participação em outra Minha Promoção',()=>{
+ const signal=shopDiscountMembershipSignal({has_promotion:true},null);
+ assert.equal(signal.kind,'unclassified_promotion');
+ assert.match(signal.warning,/não comprova participação/);
+ assert.doesNotMatch(signal.warning,/já participa de outra promoção/);
+ const noPromotion=shopDiscountMembershipSignal({has_promotion:false},null);
+ assert.equal(noPromotion.kind,'not_in_selected_discount');
+ assert.match(noPromotion.warning,/não consta/);
+ const active=shopDiscountMembershipSignal({has_promotion:true},{item_id:q.itemId});
+ assert.equal(active.kind,'included_in_selected_discount');
+ assert.equal(active.warning,null);
+});
+test('Servidor não bloqueia prévia por sinal promocional genérico',()=>{
+ const server=readFileSync(new URL('../server.js',import.meta.url),'utf8');
+ assert.doesNotMatch(server,/if\s*\(live\.has_promotion===true\s*&&\s*!existing\)\s*throw/);
+ assert.match(server,/shopDiscountMembershipSignal\(live,existing\)/);
+ assert.match(server,/promotionSignal:promoMembership\.kind/);
+ assert.match(server,/discountExecutionInputs\(req,approved\.sku/);
+ assert.match(server,/add_discount_item/);
 });
