@@ -4208,8 +4208,8 @@ $('#enableBrowserAlertsBtn').onclick=async()=>{
 if(typeof setTimeout==='function')setTimeout(()=>refreshMonitor(),1500);
 if(typeof setInterval==='function')setInterval(()=>refreshMonitor(),60000);
 
-// Shopee 1.14.2 — mesmo SKU da auditoria -> preço bruto -> desconto salvo.
-// Não há endpoint de escrita de preço/desconto na API Shopee nesta versão.
+// Shopee: mesmo SKU da auditoria -> preço bruto -> plano de desconto salvo.
+// A publicação na Shopee exige prévia assinada e confirmação específica em Descontos preparados.
 let shPriceSelection=null,shPriceSettingsLoaded=false,shPriceSettingsPromise=null;
 let shPriceSupplierQuote=null,shPricePreviewSerial=0;
 let shPriceCurrentQuote=null,shPricePrepareBusy=false,shPricePrepareAgain=false;
@@ -4603,13 +4603,13 @@ async function adsPricingLoad(){
 $('#adsPricingRefresh')?.addEventListener('click',()=>void adsPricingLoad());
 
 let discountLoadRequestId=0,discountRefreshBusy=false;
-let discountPromoPreview=null,discountPromoExecuting=false;
+let discountPromoPreview=null,discountPromoExecuting=false,discountPromoPublished=false;
 function discountPromoStatus(message,state='info'){
  const n=$('#discountPromotionStatus');if(!n)return;
  n.textContent=message;n.dataset.state=state;
 }
 function discountPromoReset(){
- discountPromoPreview=null;
+ discountPromoPreview=null;discountPromoPublished=false;
  const box=$('#discountPromotionPreviewBox');
  if(box)box.hidden=true;
  const confirm=$('#discountPromotionConfirm');
@@ -4660,6 +4660,7 @@ function discountPromoRenderPreview(data){
  $('#discountPromotionAllowPrice').checked=false;
  const badge=$('#discountPublishBadge');
  badge.textContent=p.action==='already'?'Já incluído':'Prévia pronta';
+ discountPromoPublished=p.action==='already';
  badge.dataset.state=p.action==='already'?'success':'review';
  discountPromoStatus(p.action==='already'
   ?'SKU já consta nesta promoção com o preço sugerido. Nenhuma alteração é necessária.'
@@ -4707,7 +4708,9 @@ $('#discountPromotionExecute')?.addEventListener('click',async()=>{
   if(!response.ok)throw Error(body.error||(body.basePriceUpdated
     ?'Preço bruto alterado, mas a inclusão do desconto não foi confirmada. Confira na Shopee.':
     'A Shopee não confirmou o envio.'));
+  discountPromoPublished=body.verified===true;
   discountPromoStatus(body.message,body.verified?'success':'warning');
+  if(body.verified){$('#discountPlanNotice').textContent='Shopee confirmou o desconto da SKU na campanha selecionada.';$('#discountSavedBadgeLabel').textContent='Desconto confirmado na Shopee';}
   $('#discountPublishBadge').textContent=body.verified?'Confirmado na Shopee':'Conferência pendente';
   $('#discountPublishBadge').dataset.state=body.verified?'success':'review';
   // Evitar novas submissões até outra prévia e nova revisão.
@@ -4733,8 +4736,9 @@ function shDiscountReviewChanged(){
     all?'4 de 4 conferências marcadas manualmente. A aplicação ainda é feita na Shopee.':
       checked+' de '+items.length+' conferências manuais realizadas. Nada foi aplicado.';
   $('#discountSavedBadgeLabel').textContent=!shDiscountQuote?'Aguardando plano salvo':
-    all?'Plano conferido manualmente · não aplicado':'Plano salvo · revisão obrigatória';
-  $('#discountSavedBadge').dataset.state=!shDiscountQuote?'unavailable':all?'reviewed':'saved';
+    discountPromoPublished?'Desconto confirmado na Shopee':
+    all?'Plano conferido manualmente · aguardando execução':'Plano salvo · revisão obrigatória';
+  $('#discountSavedBadge').dataset.state=!shDiscountQuote?'unavailable':discountPromoPublished?'reviewed':all?'reviewed':'saved';
   discountPromoApproval();
 }
 for(const input of document.querySelectorAll('[data-discount-review]')){
@@ -4895,7 +4899,7 @@ $('#discountCopy').onclick=async()=>{
     'Margem líquida prevista: '+shPricePercent(q.netMarginPct),
     'Custo WeDrop: '+shPriceMoney(q.unitCost),
     'Margem mínima: '+shPricePercent(q.minMarginPct),
-    ...manual,'Plano não aplicado na Shopee. Conferir Minha Promoção.'].join('\n');
+    ...manual,discountPromoPublished?'Desconto confirmado pela API Shopee para a SKU na promoção consultada.':'Plano ainda sem confirmação de aplicação na Shopee. Conferir Minha Promoção.'].join('\n');
   try{
     await navigator.clipboard.writeText(report);
     shDiscountStatus('Valores copiados. Confira e aplique na Central da Shopee.','success');
