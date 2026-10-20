@@ -127,3 +127,43 @@ export async function findExactCatalogSku(shopId,sku){
   }
   return [...keyed.values()];
 }
+
+/**
+ * Lote fiscal: encontrar SKU exata ignorando apenas diferenças de caixa.
+ * O resultado SEMPRE retorna o SKU real do catálogo, jamais o digitado.
+ * Escapa curingas de LIKE e valida igualdade exata depois da consulta.
+ */
+export async function findCatalogSkuIgnoringCase(shopId,sku){
+ shopId=shopNumber(shopId);
+ sku=String(sku||'').trim();
+ if(!sku||sku.length>120||/[\x00-\x1f]/.test(sku))
+  throw Error('Informe uma SKU válida da Shopee.');
+ const exact=await findExactCatalogSku(shopId,sku);
+ if(exact.length)return exact;
+ const target=sku.toLocaleLowerCase('en-US');
+ const escaped=sku.replace(/[\\%_*]/g,x=>'\\'+x);
+ const filter='shop_id=eq.'+shopId+'&limit=30&';
+ const [parents,models]=await Promise.all([
+  request('shopee_catalog_items','?'+filter+'sku=ilike.'+encodeURIComponent(escaped)+
+   '&select=item_id,sku,item_name,item_status,image_url,has_model'),
+  request('shopee_catalog_models','?'+filter+'model_sku=ilike.'+encodeURIComponent(escaped)+
+   '&select=item_id,model_id,model_sku,model_status')
+ ]);
+ const found=new Map();
+ for(const row of parents){
+  if(String(row.sku||'').trim().toLocaleLowerCase('en-US')!==target)continue;
+  found.set(String(row.item_id)+':0',{
+   itemId:String(row.item_id),modelId:'0',sku:row.sku,title:row.item_name||'',
+   imageUrl:row.image_url||'',status:row.item_status||'',source:'item_sku_ci'
+  });
+ }
+ for(const row of models){
+  if(String(row.model_sku||'').trim().toLocaleLowerCase('en-US')!==target)continue;
+  found.set(String(row.item_id)+':'+String(row.model_id),{
+   itemId:String(row.item_id),modelId:String(row.model_id),sku:row.model_sku,
+   title:'Variação do Item '+row.item_id,imageUrl:'',
+   status:row.model_status||'',source:'model_sku_ci'
+  });
+ }
+ return [...found.values()];
+}
