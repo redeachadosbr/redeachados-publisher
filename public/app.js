@@ -3050,69 +3050,6 @@ async function optimizerExecuteApproved(){
  }finally{optimizerExecBusy=false;$('#optimizerExecutionPrepare').disabled=false;}
 }
 
-// Seller-controlled fiscal readiness: the current CPF account may preview
-// future CNPJ tax details, but the marketplace is never written without a
-// confirmed migration, accountant validation and a fresh per-SKU preview.
-let optimizerFiscalReadiness={mode:'cpf_atual',fiscalPublishingEnabled:false};
-function optimizerFiscalReadinessRender(){
- const mode=$('#optimizerFiscalReadinessMode').value;
- const active=mode==='cnpj_ativo';
- $('#optimizerFiscalReadinessConfirm').hidden=!active;
- const tag=$('#optimizerFiscalReadinessTag');
- tag.textContent=optimizerFiscalReadiness.fiscalPublishingEnabled?'Fiscal liberado após confirmação':
-  'Preparação sem envio fiscal';
- const explanation=$('#optimizerFiscalReadinessMessage');
- explanation.textContent=optimizerFiscalReadiness.fiscalPublishingEnabled?
-  'Cadastro marcado como CNPJ ativo e fiscal validado. Ainda são necessárias prévia, aprovação por SKU e aceitação da Shopee.':
-  'CPF/CNPJ em preparação: dados salvos para uso futuro. A Shopee pode exigir CEST mesmo após a migração.';
-}
-$('#optimizerFiscalReadinessMode')?.addEventListener?.('change',()=>{
- // No implicit activation from changing dropdown; requires confirmations and save.
- $('#optimizerFiscalMigrationConfirmed').checked=false;
- $('#optimizerFiscalAccountantConfirmed').checked=false;
- optimizerFiscalReadinessRender();
-});
-async function optimizerFiscalReadinessLoad(){
- try{
-  const data=await json('/api/shopee/optimizer/fiscal/readiness',{signal:AbortSignal.timeout(20000)});
-  optimizerFiscalReadiness=data.readiness||optimizerFiscalReadiness;
-  $('#optimizerFiscalReadinessMode').value=optimizerFiscalReadiness.mode;
-  $('#optimizerFiscalMigrationConfirmed').checked=Boolean(optimizerFiscalReadiness.migrationConfirmed);
-  $('#optimizerFiscalAccountantConfirmed').checked=Boolean(optimizerFiscalReadiness.accountantConfirmed);
-  optimizerFiscalReadinessRender();
- }catch(e){
-  $('#optimizerFiscalReadinessTag').textContent='Situação indisponível';
-  $('#optimizerFiscalReadinessMessage').textContent='Não foi possível confirmar o cadastro fiscal: '+e.message+
-   '. Por segurança, o envio fiscal permanece bloqueado.';
- }
-}
-$('#optimizerFiscalReadinessSave')?.addEventListener?.('click',async()=>{
- const btn=$('#optimizerFiscalReadinessSave'),mode=$('#optimizerFiscalReadinessMode').value;
- const migrationConfirmed=$('#optimizerFiscalMigrationConfirmed').checked;
- const accountantConfirmed=$('#optimizerFiscalAccountantConfirmed').checked;
- if(mode==='cnpj_ativo'&&(!migrationConfirmed||!accountantConfirmed)){
-  $('#optimizerFiscalReadinessMessage').textContent='A ativação exige a migração de CPF para CNPJ realmente concluída e os dados fiscais validados com a contabilidade.';
-  return;
- }
- btn.disabled=true;
- try{
-  const data=await json('/api/shopee/optimizer/fiscal/readiness',{
-   method:'POST',headers:{'Content-Type':'application/json'},
-   body:JSON.stringify({mode,migrationConfirmed,accountantConfirmed}),
-   signal:AbortSignal.timeout(25000)
-  });
-  optimizerFiscalReadiness=data.readiness;
-  optimizerFiscalBatchRows=[];
-  $('#optimizerFiscalBatchList').replaceChildren();
-  optimizerFiscalBatchRender();
-  optimizerFiscalReadinessRender();
-  $('#optimizerFiscalReadinessMessage').textContent=data.message;
-  optimizerFiscalBatchNotice('Situação fiscal atualizada. Prepare uma nova prévia para continuar; nenhum anúncio foi alterado.');
- }catch(e){
-  $('#optimizerFiscalReadinessMessage').textContent='Não foi possível salvar: '+e.message;
- }finally{btn.disabled=false;}
-});
-void optimizerFiscalReadinessLoad();
 // A fiscal batch never posts whole ads: every row has its own verified
 // immutable single-stage tax_info plan and independent persisted worker job.
 let optimizerFiscalBatchRows=[],optimizerFiscalBatchBusy=false,optimizerFiscalBatchTimer=null;
@@ -3180,8 +3117,8 @@ async function optimizerFiscalBatchPrepare(){
   optimizerFiscalBatchRows=data.results||[];
   optimizerFiscalBatchRender();
   const registered=(data.results||[]).filter(x=>x.registered||x.ready).length;
-  optimizerFiscalBatchNotice(registered+' de '+data.total+' SKUs cadastradas/conferidas no Motor Matriz. '+
-   data.ready+' aptas para envio à Shopee. CEST em branco não bloqueia o cadastro; a plataforma poderá impedir a publicação fiscal.',
+  optimizerFiscalBatchNotice(registered+' de '+data.total+' SKUs com informações fiscais salvas no Motor Matriz. '+
+   data.ready+' com prévia fiscal apta para envio opcional à Shopee. Preencher os campos não emite nota fiscal.',
    registered?'success':'warning');
  }catch(e){optimizerFiscalBatchRows=[];optimizerFiscalBatchRender();
   optimizerFiscalBatchNotice('Falha ao preparar lote fiscal: '+e.message,'error');}
