@@ -13,7 +13,7 @@
 <link rel="stylesheet" href="/shopee-discount-publish.css?v=1.20.16">
 <link rel="stylesheet" href="/shopee-discount-one-click.css?v=1.20.17">
 <link rel="stylesheet" href="/shopee-market-research.css?v=1.20.18">
-<link rel="stylesheet" href="/dashboard-new-listings.css?v=1.20.19">
+<link rel="stylesheet" href="/dashboard-new-listings.css?v=1.20.20-3d">
 </head>
 <body>
 <div class="shell app-layout">
@@ -110,23 +110,23 @@
             <span id="dashboardNewListingsUpdated" class="dashboard-new-listings-updated" role="status" aria-live="polite">Consultando anúncios...</span>
           </div>
           <div class="dashboard-new-listings-grid" aria-label="Anúncios novos por período">
-            <div class="dashboard-new-listings-card dashboard-new-listings-today">
-              <span class="dashboard-new-listings-period">Hoje</span>
-              <strong id="dashboardNewListingsToday" aria-label="Anúncios criados hoje">—</strong>
-              <small id="dashboardNewListingsDayLabel">Dia atual</small>
-            </div>
-            <div class="dashboard-new-listings-card dashboard-new-listings-month">
-              <span class="dashboard-new-listings-period">Este mês</span>
-              <strong id="dashboardNewListingsMonth" aria-label="Anúncios criados neste mês">—</strong>
-              <small id="dashboardNewListingsMonthLabel">Mês atual</small>
-            </div>
-            <div class="dashboard-new-listings-card dashboard-new-listings-year">
-              <span class="dashboard-new-listings-period">Este ano</span>
-              <strong id="dashboardNewListingsYear" aria-label="Anúncios criados neste ano">—</strong>
-              <small id="dashboardNewListingsYearLabel">Ano atual</small>
-            </div>
+            <button type="button" class="dashboard-new-listings-card dashboard-new-listings-today" data-listing-period="today" aria-controls="dashboardNewListingsHistory" aria-expanded="false" aria-label="Hoje — mostrar histórico dos últimos sete dias">
+              <span class="dashboard-new-listings-button-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="17" rx="2.4"/><path d="M8 2v4M16 2v4M3 9h18"/><path d="m9 15 2 2 4-4"/></svg></span>
+              <span class="dashboard-new-listings-button-copy"><span class="dashboard-new-listings-period">Hoje</span><strong id="dashboardNewListingsToday" aria-label="Anúncios criados hoje">—</strong><small id="dashboardNewListingsDayLabel">Dia atual</small></span>
+              <span class="dashboard-new-listings-button-arrow" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round"><path d="m9 6 6 6-6 6"/></svg></span>
+            </button>
+            <button type="button" class="dashboard-new-listings-card dashboard-new-listings-month" data-listing-period="month" aria-controls="dashboardNewListingsHistory" aria-expanded="false" aria-label="Este mês — abrir histórico mensal dos anúncios">
+              <span class="dashboard-new-listings-button-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="17" rx="2.4"/><path d="M8 2v4M16 2v4M3 9h18"/><path d="M7.8 13h2.4v2.4H7.8zM13.8 13h2.4v2.4h-2.4z"/></svg></span>
+              <span class="dashboard-new-listings-button-copy"><span class="dashboard-new-listings-period">Este mês</span><strong id="dashboardNewListingsMonth" aria-label="Anúncios criados neste mês">—</strong><small id="dashboardNewListingsMonthLabel">Mês atual</small></span>
+              <span class="dashboard-new-listings-button-arrow" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round"><path d="m9 6 6 6-6 6"/></svg></span>
+            </button>
+            <button type="button" class="dashboard-new-listings-card dashboard-new-listings-year" data-listing-period="year" aria-controls="dashboardNewListingsHistory" aria-expanded="false" aria-label="Este ano — abrir histórico de anúncios por mês">
+              <span class="dashboard-new-listings-button-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><rect x="3.5" y="12" width="3.5" height="8" rx="1"/><rect x="10.2" y="7" width="3.5" height="13" rx="1"/><rect x="16.9" y="3.5" width="3.5" height="16.5" rx="1"/></svg></span>
+              <span class="dashboard-new-listings-button-copy"><span class="dashboard-new-listings-period">Este ano</span><strong id="dashboardNewListingsYear" aria-label="Anúncios criados neste ano">—</strong><small id="dashboardNewListingsYearLabel">Ano atual</small></span>
+              <span class="dashboard-new-listings-button-arrow" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round"><path d="m9 6 6 6-6 6"/></svg></span>
+            </button>
           </div>
-          <details class="dashboard-new-listings-history">
+          <details class="dashboard-new-listings-history" id="dashboardNewListingsHistory" data-view="all">
             <summary>Ver histórico de cadastros <span class="dashboard-new-listings-chevron" aria-hidden="true">⌄</span></summary>
             <div class="dashboard-new-listings-history-content">
               <div class="dashboard-new-listings-history-block">
@@ -1421,7 +1421,7 @@
 </div>
 <script src="/optimizer-compact.js?v=1.20.12"></script>
 <script src="/optimizer-dashboard.js?v=1.20.11"></script>
-<script src="/dashboard-new-listings.js?v=1.20.19"></script>
+<script src="/dashboard-new-listings.js?v=1.20.20-3d"></script>
 <script src="/app.js?v=1.20.10"></script>
 <script src="/optimizer-fiscal-premium.js?v=1.20.13"></script>
 </body>
