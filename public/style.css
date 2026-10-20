@@ -3910,3 +3910,35 @@ body.view-wedrop .page-intro{display:none!important}
 .optimizer-source-panel .optimizer-notice{font-size:11px;line-height:1.5}
 .optimizer-attribute .optimizer-source-conflict{font-size:11px;line-height:1.55}
 @media(max-width:660px){.optimizer-source-actions>*{flex:1 1 100%}.optimizer-source-upload{flex-wrap:wrap}}
+
+/* Scoped publishing and batch fiscal — per-item previews with trusted API feedback. */
+.optimizer-v15-page .optimizer-stage-execute-switch{display:flex;justify-content:space-between;align-items:center;gap:16px;padding:16px 18px;border:1px solid #cddff9;border-radius:14px;background:#eef5ff}
+.optimizer-stage-execute-switch>div{display:grid;gap:4px}
+.optimizer-stage-execute-switch strong{font-size:14px;color:#123660}
+.optimizer-stage-execute-switch small{font-size:11px;color:#5376a0;line-height:1.5}
+.optimizer-stage-execute-switch select{min-width:220px;max-width:100%;padding:11px 12px;border-radius:10px;border:1px solid #bcd0ef;background:#fff;font-size:12px;font-weight:800;color:#144484}
+.optimizer-v15-page .optimizer-fiscal-batch{background:#fff;border:1px solid #d8e6f8;border-radius:14px;padding:15px;box-shadow:0 3px 12px #244b7109}
+.optimizer-v15-page .optimizer-fiscal-batch>summary{cursor:pointer;display:flex;align-items:center;gap:10px;flex-wrap:wrap;color:#16365e;font-size:14px;font-weight:850;padding:2px 0;list-style:revert}
+.optimizer-fiscal-batch-pill{border-radius:99px;color:#1a66a9;background:#ebf3ff;padding:5px 10px;font-size:10px}
+.optimizer-fiscal-batch>p{color:#597395;font-size:12px;line-height:1.55;margin:11px 0}
+.optimizer-fiscal-batch textarea{width:100%;min-height:85px;resize:vertical;background:#fff;border:1px solid #c9daf1;border-radius:10px;padding:11px;font-size:12px;box-sizing:border-box}
+.optimizer-fiscal-batch-actions{display:flex;gap:9px;align-items:center;flex-wrap:wrap;margin:12px 0}
+.optimizer-fiscal-batch-actions button{border-radius:10px;min-height:39px;padding:10px 14px;font-size:12px;font-weight:800}
+.optimizer-fiscal-batch-actions #optimizerFiscalBatchExecute{background:#0e52b8;color:#fff}
+.optimizer-fiscal-batch-list{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:9px;max-height:430px;overflow-y:auto}
+.optimizer-fiscal-batch-item{border:1px solid #e1ebf8;border-radius:12px;padding:12px;background:#f9fcff;display:grid;gap:7px;min-width:0}
+.optimizer-fiscal-batch-item-head{display:flex;align-items:center;justify-content:space-between;gap:8px;min-width:0}
+.optimizer-fiscal-batch-item-head strong{font-size:13px;color:#143764;overflow-wrap:anywhere}
+.optimizer-fiscal-batch-state{border-radius:99px;background:#e9f0fb;color:#3d6491;font-size:10px;font-weight:750;padding:5px 9px;white-space:nowrap}
+.optimizer-fiscal-batch-state.is-prepared{background:#e2f7ec;color:#14734b}
+.optimizer-fiscal-batch-state.is-running{background:#e3f0ff;color:#195db6}
+.optimizer-fiscal-batch-state.is-verified{background:#dff9e7;color:#16864a}
+.optimizer-fiscal-batch-state.is-failed,.optimizer-fiscal-batch-state.is-uncertain,
+.optimizer-fiscal-batch-state.is-failed_preview,.optimizer-fiscal-batch-state.is-blocked{background:#fff0dd;color:#92501d}
+.optimizer-fiscal-batch-diff{font-size:11px;line-height:1.6;background:#fff;padding:8px;border-radius:8px;color:#2c547b;border:1px solid #e9eff8;overflow-wrap:anywhere;margin:0}
+.optimizer-fiscal-batch-item small{color:#6882a2;line-height:1.4;font-size:11px;overflow-wrap:anywhere}
+.optimizer-fiscal-batch-item .optimizer-fiscal-batch-warning{color:#aa4b1c}
+@media(max-width:900px){.optimizer-fiscal-batch-list{grid-template-columns:1fr}}
+@media(max-width:600px){.optimizer-stage-execute-switch{flex-direction:column;align-items:stretch}
+ .optimizer-stage-execute-switch select{width:100%;min-width:0}
+ .optimizer-fiscal-batch-actions button{flex:1 1 100%}}
