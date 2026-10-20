@@ -54,6 +54,7 @@ import {MAX_VIDEO_BYTES,getShopeeManualVideo,importShopeeManualVideo,
 import {findLiveShopeeSku} from './shopeeSkuFinder.js';
 import {optimizerSettings,saveOptimizerSettings} from './optimizerStore.js';
 import {quoteShopeePrice,normalizeShopeePricingSettings} from './shopeePricing.js';
+import {lookupShopeeCompetitors,marketResearchConfigured} from './shopeeMarketResearch.js';
 import {promotionFromQuote,promotionBasePrice,promotionMember,shopDiscountMembershipSignal,discountPlanSnapshot,signDiscountPreview,verifyDiscountPreview,readDiscountPages} from './shopeeDiscountPublish.js';
 import {shopeePricingPreferences,saveShopeePricingPreferences,
   shopeePricingSupplierCost,shopeePricingDirectSupplierCost,
@@ -1445,6 +1446,17 @@ app.post('/api/shopee/optimizer/pricing/supplier-preview',mustLogin,requireWeDro
   }catch(e){res.status(400).json({error:String(e.message||e).slice(0,280)});}
 });
 
+app.get('/api/shopee/optimizer/pricing/market-status',mustLogin,requireWeDropAdmin,async(req,res)=>{
+ res.setHeader('Cache-Control','no-store');
+ try{
+  const {auth}=await getValidAuth(req);
+  res.json({ok:true,shopId:String(auth.shopId),
+   provider:'Shopee Affiliate Open API (ofertas)',configured:marketResearchConfigured(),
+   requiredVariables:['SHOPEE_AFFILIATE_APP_ID','SHOPEE_AFFILIATE_SECRET'],
+   note:marketResearchConfigured()?'Pesquisa disponível. A qualidade depende de ofertas equivalentes retornadas.':
+   'Configure as credenciais separadas de afiliado no Render para ativar a pesquisa automática.'});
+ }catch(e){res.status(503).json({error:String(e.message||e).slice(0,240)});}
+});
 app.get('/api/shopee/optimizer/pricing/settings',mustLogin,requireWeDropAdmin,async(req,res)=>{
   res.setHeader('Cache-Control','no-store');
   try{
@@ -1537,12 +1549,26 @@ app.post('/api/shopee/optimizer/pricing/prepare',mustLogin,requireWeDropAdmin,as
     if(adsBudgetEnabled&&(!Number.isFinite(adsBudgetPct)||adsBudgetPct<=0||adsBudgetPct>60))
       throw Error('Marque Ads e informe uma reserva entre 0,1% e 60% para esta SKU.');
     const settings={...sourceSettings,adsPct:adsBudgetPct};
-    const marketAverage=req.body?.marketAverage===undefined
-      ?previous?.sku===sku?previous?.quote?.marketAverage??null:null
-      :req.body.marketAverage;
-    const quote=quoteShopeePrice({
-      unitCost:cost.unitCost,settings,marketAverage
+    // Referências de concorrentes: consulta automática separada da API de seller.
+    // Não herdar um valor manual antigo como se fosse pesquisa verificada.
+    const {cfg}=await getValidAuth(req);
+    const live=await shopeeLiveEditableItem(cfg,auth,itemId);
+    const market=await lookupShopeeCompetitors({
+      title:live.item_name||'',ownShopId:auth.shopId,ownItemId:itemId
     });
+    const rawManual=req.body?.marketAverage;
+    const manual=rawManual===null||rawManual===undefined||rawManual===''?null:Number(rawManual);
+    if(manual!==null&&(!Number.isFinite(manual)||manual<=0||manual>100000))
+      throw Error('Média de mercado manual inválida.');
+    const reference=market.verified?market.reference:manual;
+    const source=market.verified?'researched_affiliate_offers':
+      manual!==null?'manual_unverified':'no_verified_competitors';
+    const quote=quoteShopeePrice({
+      unitCost:cost.unitCost,settings,marketAverage:reference
+    });
+    quote.marketResearch={...market,sourceType:source,
+      manualMarketReference:manual!==null&&!market.verified?manual:null,
+      verified:market.verified===true};
     quote.sku=sku;
     quote.itemId=itemId;
     quote.modelId=modelId;
@@ -1554,6 +1580,8 @@ app.post('/api/shopee/optimizer/pricing/prepare',mustLogin,requireWeDropAdmin,as
     quote.adsBudgetSource='reserved_in_saved_price_plan';
     quote.adsActualSpent=false;
     quote.calculatedAt=new Date().toISOString();
+    // O desconto base nunca deve receber etiqueta de recomendação de mercado.
+    quote.discountRecommendationSource=market.verified?'researched':'base_not_researched';
     // Parâmetros globais de tarifa são salvos sem Ads; Ads é EXCLUSIVO da SKU.
     if(req.body?.settings!==undefined)
       await saveShopeePricingPreferences(auth.shopId,{...sourceSettings,adsPct:0});
@@ -1578,6 +1606,19 @@ async function discountExecutionInputs(req,sku,itemId,modelId,discountId){
    String(saved.quote?.itemId)!==String(itemId)||String(saved.quote?.modelId)!==String(modelId))
   throw Error('Plano não encontrado ou pertence a outra SKU. Recalcule em Precificação.');
  const quote=saved.quote;
+ // A cotação só é publicável como promoção competitiva se possuir
+ // comparação atual de pelo menos três lojas; plano base continua disponível
+ // para simulação, mas não pode ser anunciado como pesquisa automática.
+ const research=quote.marketResearch;
+ if(research?.verified!==true||
+    research.source!=='shopee_affiliate_product_offers'||
+    !Number.isFinite(Date.parse(research.researchedAt))||
+    Date.now()-Date.parse(research.researchedAt)>48*3600000||
+    research.count<3||
+    quote.discountRecommendationSource!=='researched')
+  throw Error('Desconto ainda sem pesquisa de concorrentes validada. Conecte a API de ofertas Shopee e recalcule a SKU em Precificação antes de executar.');
+ if(quote.status==='MERCADO_ABAIXO_DO_PISO')
+  throw Error('Preços de concorrentes abaixo da margem mínima. Nenhum desconto será aplicado.');
  promotionFromQuote(quote);
  if(!Number.isFinite(Date.parse(quote.calculatedAt))||
     Date.now()-Date.parse(quote.calculatedAt)>7*86400000)
