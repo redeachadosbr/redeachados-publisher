@@ -4381,6 +4381,32 @@ function shPriceBreakdown(q){
     el.appendChild(line);
   }
 }
+function shPriceMarketResearchRender(q){
+ const research=q?.marketResearch||null;
+ const badge=$('#pricingMarketResearchBadge'),msg=$('#pricingMarketResearchStatus');
+ const offers=$('#pricingMarketResearchOffers');
+ if(!badge||!msg||!offers)return;
+ offers.replaceChildren();
+ const verified=research?.verified===true&&research?.sourceType==='researched_affiliate_offers';
+ badge.textContent=verified?'Comparação realizada':'Sem pesquisa verificada';
+ badge.dataset.state=verified?'success':'warning';
+ msg.textContent=verified?
+  'Referência de '+shPriceMoney(research.reference)+' por '+research.count+
+  ' oferta(s) equivalente(s). Desconto calculado: '+shPricePercent(q.discountPct)+
+  '. A amostra não cobre todo o mercado e pode não incluir frete ou cupons específicos.':
+  research?.message||
+  'O desconto exibido é o parâmetro inicial da calculadora, não uma recomendação baseada no mercado.';
+ if(!verified)return;
+ for(const offer of (Array.isArray(research.sample)?research.sample:[]).slice(0,6)){
+  const shop=String(offer.shopId||''),item=String(offer.itemId||'');
+  if(!/^\d{1,18}$/.test(shop)||!/^\d{1,18}$/.test(item))continue;
+  const link=document.createElement('a');link.href='https://shopee.com.br/product/'+shop+'/'+item;
+  link.target='_blank';link.rel='noopener noreferrer';link.className='pricing-market-offer';
+  const label=document.createElement('span');label.textContent=offer.title||'Anúncio semelhante';
+  const price=document.createElement('strong');price.textContent=shPriceMoney(offer.price);
+  link.append(label,price);offers.append(link);
+ }
+}
 function shPriceRender(q){
   const isSupplierPreview=q.source==='wedrop_only';
   if(isSupplierPreview&&shPriceSelection)return;
@@ -4413,10 +4439,14 @@ function shPriceRender(q){
     ' · Custo de aquisição '+shPriceMoney(q.unitCost)+
     ' · Piso com margem mínima: '+shPriceMoney(q.priceFloor);
   $('#priceMarketState').textContent=q.notice;
+  shPriceMarketResearchRender(q);
   shPriceBreakdown(q);
   shPriceSetStatus(isSupplierPreview
-    ?'SKU localizada no catálogo WeDrop. Simulação não salva como desconto de anúncio até validar o anúncio na Shopee.'
-    :'Plano da SKU '+q.sku+' calculado e salvo para Descontos. Nenhuma alteração foi enviada à Shopee.','success');
+    ?'Prévia WeDrop sem vínculo e sem pesquisa de concorrentes.'
+    :q.marketResearch?.verified===true
+      ?'Preço calculado com ofertas semelhantes; confira a pesquisa na memória de cálculo.'
+      :'Preço simulado com desconto padrão, sem pesquisa de concorrentes validada.',
+    q.marketResearch?.verified===true?'success':'warning');
   $('#priceSaveInfo').textContent=isSupplierPreview
     ?'Prévia da WeDrop, sem anúncio vinculado. Margem mínima '+shPricePercent(q.minMarginPct)+'.'
     :'Padrões e plano atualizados '+fmtDate(q.calculatedAt)+
@@ -4613,9 +4643,16 @@ function discountOneClickReady(){
  const btn=$('#discountOneClickExecute');
  if(!btn)return;
  const q=shDiscountQuote;
+ const research=q?.marketResearch;
+ const researched=research?.verified===true&&
+    research.sourceType==='researched_affiliate_offers'&&
+    Number(research.count)>=3&&
+    Number.isFinite(Date.parse(research.researchedAt))&&
+    Date.now()-Date.parse(research.researchedAt)<=48*3600000;
  const valid=Boolean(q?.sku&&q?.itemId!==undefined&&q?.modelId!==undefined&&
-   Number(q.grossPrice)>0&&Number(q.discountPct)>0&&
-   Number(q.netMarginPct)+0.0001>=Number(q.minMarginPct));
+    Number(q.grossPrice)>0&&Number(q.discountPct)>0&&
+    Number(q.netMarginPct)+0.0001>=Number(q.minMarginPct)&&
+    q.status!=='MERCADO_ABAIXO_DO_PISO'&&researched);
  btn.disabled=!valid||discountOneClickBusy||discountOneClickLocked;
  btn.textContent=discountOneClickBusy?'Executando na Shopee...':'Executar na Shopee';
  const select=$('#discountOneClickSku');
@@ -4906,7 +4943,12 @@ function shDiscountRender(q){
    ' de desconto na Minha Promoção (preço promocional '+shPriceMoney(promoPrice)+
    '). O cupom é considerado separadamente e nenhuma outra SKU será modificada.';
   shDiscountResetReview();
-  discountOneClickStatus('Plano da SKU '+q.sku+' carregado. Clique em Executar na Shopee para aplicar o preço e o desconto.');
+  discountOneClickStatus(q.marketResearch?.verified===true
+    ?q.status==='MERCADO_ABAIXO_DO_PISO'
+      ?'Preço da concorrência inferior à margem protegida. Desconto não executável.'
+      :'Pesquisa de mercado verificada. Plano pronto para executar na Shopee.'
+    :'Desconto base sem pesquisa comprovada. Conecte a API de ofertas Shopee e recalcule a SKU em Precificação.',
+    q.marketResearch?.verified===true&&q.status!=='MERCADO_ABAIXO_DO_PISO'?'success':'warning');
   discountOneClickReady();
 }
 function shDiscountStatus(message,state='info'){
