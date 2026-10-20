@@ -11,6 +11,7 @@
 <link rel="stylesheet" href="/optimizer-fiscal-premium.css?v=1.20.13">
 <link rel="stylesheet" href="/optimizer-ads-reserve.css?v=1.20.15">
 <link rel="stylesheet" href="/shopee-discount-publish.css?v=1.20.16">
+<link rel="stylesheet" href="/shopee-discount-one-click.css?v=1.20.17">
 </head>
 <body>
 <div class="shell app-layout">
@@ -717,13 +718,13 @@
               <section class="tabpane" id="tab-discounts" aria-label="Descontos da Shopee preparados">
   <div class="discount-v2-page">
     <header class="discount-v2-page-head"><div><span class="discount-v2-eyebrow">OPERAÇÃO</span><h2>Descontos preparados</h2>
-      <p>Preço bruto e desconto recuperados da SKU da Otimização.</p></div>
+      <p>Confira os valores do anúncio e clique em Executar. O restante é automático.</p></div>
       <span id="discountSavedBadge" class="discount-v2-saved-badge" data-state="unavailable"><svg class="discount-v2-icon" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="m12 2 9 4v6c0 5-3.5 8.6-9 10-5.5-1.4-9-5-9-10V6l9-4Z"/><path d="m8 12 3 3 5-6"/></svg> <span id="discountSavedBadgeLabel">Aguardando plano salvo</span></span>
     </header>
     <section class="discount-v2-main">
       <div class="discount-v2-title-row"><span class="discount-v2-main-icon"><svg class="discount-v2-icon" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="m12 2 9 4v6c0 5-3.5 8.6-9 10-5.5-1.4-9-5-9-10V6l9-4Z"/><path d="m8 12 3 3 5-6"/></svg></span><div>
         <h3>Descontos preparados por SKU <span class="optimizer-tip discount-v2-help" tabindex="0" role="note" data-help="Recupera o último plano salvo e recalcula com o custo atualizado da WeDrop. Não envia preços ou promoções à Shopee." aria-label="Ajuda: Recupera o último plano salvo e recalcula com o custo atualizado da WeDrop. Não envia preços ou promoções à Shopee.">?</span></h3>
-        <p>O preço bruto e o percentual vêm automaticamente da Otimização. A execução na Shopee ocorre somente após sua confirmação.</p></div></div>
+        <p>O preço bruto, desconto e margem são calculados para a SKU selecionada.</p></div></div>
       <div id="discountPlanCard" class="sh-price-discount-card discount-v2-plan" hidden>
         <div class="sh-price-discount-title discount-v2-plan-heading"><strong id="discountSku">—</strong>
           <span id="discountPlanDate">—</span></div>
@@ -733,6 +734,16 @@
 <div class="discount-v2-kpi discount-v2-kpi-margin"><div class="discount-v2-kpi-label"><span class="discount-v2-kpi-icon"><svg class="discount-v2-icon" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="m12 2 9 4v6c0 5-3.5 8.6-9 10-5.5-1.4-9-5-9-10V6l9-4Z"/><path d="m8 12 3 3 5-6"/></svg></span><span>Margem líquida protegida</span><span class="optimizer-tip discount-v2-help" tabindex="0" role="note" data-help="Margem estimada do plano; a proteção do piso depende das taxas e dos custos informados." aria-label="Ajuda: Margem estimada do plano; a proteção do piso depende das taxas e dos custos informados.">?</span></div><strong id="discountMargin">—</strong></div>
 <div class="discount-v2-kpi discount-v2-kpi-profit"><div class="discount-v2-kpi-label"><span class="discount-v2-kpi-icon"><svg class="discount-v2-icon" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 20V13h4v7M10 20V4h4v16M17 20v-9h4v9"/></svg></span><span>Lucro líquido previsto</span><span class="optimizer-tip discount-v2-help" tabindex="0" role="note" data-help="Lucro estimado do cálculo, não o lucro fiscal já realizado." aria-label="Ajuda: Lucro estimado do cálculo, não o lucro fiscal já realizado.">?</span></div><strong id="discountProfit">—</strong></div>
 <div class="discount-v2-kpi discount-v2-kpi-cost"><div class="discount-v2-kpi-label"><span class="discount-v2-kpi-icon"><svg class="discount-v2-icon" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><ellipse cx="12" cy="5" rx="8" ry="3"/><path d="M4 5v14c0 1.7 3.5 3 8 3s8-1.3 8-3V5M4 12c0 1.7 3.5 3 8 3s8-1.3 8-3"/></svg></span><span>Custo WeDrop</span><span class="optimizer-tip discount-v2-help" tabindex="0" role="note" data-help="Custo do fornecedor WeDrop confirmado no cálculo mais recente para esta SKU." aria-label="Ajuda: Custo do fornecedor WeDrop confirmado no cálculo mais recente para esta SKU.">?</span></div><strong id="discountSupplierCost">—</strong></div></div>
+        <section class="discount-one-click" aria-label="Executar desconto do anúncio na Shopee">
+          <label class="discount-one-click-sku" for="discountOneClickSku">Anúncio que receberá o desconto
+            <select id="discountOneClickSku" aria-label="Escolher anúncio para executar">
+              <option value="">Carregando anúncios...</option>
+            </select>
+          </label>
+          <p class="discount-one-click-explainer">Ao executar, o sistema confere a promoção existente, ajusta o preço bruto ao plano acima quando necessário e aplica o desconto. Nenhuma outra SKU será alterada.</p>
+          <button id="discountOneClickExecute" type="button" disabled>Executar na Shopee</button>
+          <p id="discountOneClickStatus" class="discount-one-click-status" role="status" aria-live="polite">Carregando o plano do anúncio...</p>
+        </section>
         <div class="discount-v2-detail-grid">
           <section class="discount-v2-detail-card">
             <h4><svg class="discount-v2-icon" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="3" width="14" height="18" rx="2"/><path d="M9 9h6M9 13h6M9 17h4"/></svg> Plano da SKU selecionada <span class="optimizer-tip discount-v2-help" tabindex="0" role="note" data-help="Os valores foram calculados e salvos com as premissas atuais. Um plano salvo não confirma que a Shopee aceitou uma promoção." aria-label="Ajuda: Os valores foram calculados e salvos com as premissas atuais. Um plano salvo não confirma que a Shopee aceitou uma promoção.">?</span></h4>
