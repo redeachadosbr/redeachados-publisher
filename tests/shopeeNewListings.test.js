@@ -36,7 +36,7 @@ test('Virada do calendário brasileiro não usa data UTC ou data de atualizaçã
   update_time:at('2026-10-20T12:00:00Z')}],now);
  assert.equal(stats.today,0);assert.equal(stats.month,0);assert.equal(stats.year,0);
 });
-test('API consulta quatro situações, confere create_time de cada anúncio e não duplica IDs',async()=>{
+test('API consulta somente filtros aceitos, confere create_time e não duplica IDs',async()=>{
  clearShopeeNewListingsCache(987654321);
  const calls=[];
  const mock=async (_cfg,req)=>{
@@ -60,10 +60,11 @@ test('API consulta quatro situações, confere create_time de cada anúncio e n�
   cfg:{},auth:{shopId:987654321,accessToken:'test'},callApi:mock,now});
  assert.equal(data.today,1);assert.equal(data.month,2);assert.equal(data.year,3);
  assert.equal(data.totalItems,3);
- assert.equal(calls.filter(x=>x.path.endsWith('/get_item_list')).length,4);
+ assert.deepEqual(calls.filter(x=>x.path.endsWith('/get_item_list')).map(x=>x.query.item_status),
+  ['NORMAL','UNLIST','BANNED']);
  assert.equal(calls.filter(x=>x.path.endsWith('/get_item_base_info')).length,1);
  assert.match(data.source,/create_time/);
- assert.match(data.scope,/exclui removidos/);
+ assert.match(data.scope,/exclui excluídos/);
  const cached=await getShopeeNewListingsSummary({
   cfg:{},auth:{shopId:987654321,accessToken:'test'},callApi:mock,now});
  assert.deepEqual(cached,data);
@@ -80,6 +81,35 @@ test('Data de criação ausente impede reportar contagem parcial ou fictícia',a
  };
  await assert.rejects(getShopeeNewListingsSummary({
   cfg:{},auth:{shopId,accessToken:'x'},callApi:mock,now}),/data original de criação/);
+ clearShopeeNewListingsCache(shopId);
+});
+test('Erro transitório Shopee recupera automaticamente sem duplicar os anúncios',async()=>{
+ const shopId=987654324;
+ clearShopeeNewListingsCache(shopId);
+ let tries=0;
+ const mock=async (_cfg,req)=>{
+  if(req.path.endsWith('/get_item_list')){
+   if(req.query.item_status==='NORMAL'&&++tries===1)
+    throw Error('Shopee HTTP 429 too many requests');
+   return {response:{item:req.query.item_status==='NORMAL'?[{item_id:4321}]:[],
+    has_next_page:false}};
+  }
+  return {response:{item_list:[row(4321,'2026-10-20T12:00:00Z')]}};
+ };
+ const totals=await getShopeeNewListingsSummary({
+  cfg:{},auth:{shopId,accessToken:'x'},callApi:mock,now});
+ assert.equal(totals.today,1);
+ assert.equal(totals.totalItems,1);
+ assert.equal(tries,2);
+ clearShopeeNewListingsCache(shopId);
+});
+test('Erro de autenticação não fica repetindo chamadas sem necessidade',async()=>{
+ const shopId=987654325;clearShopeeNewListingsCache(shopId);
+ let called=0;
+ const mock=async()=>{called++;throw Error('error_auth: invalid access_token');};
+ await assert.rejects(getShopeeNewListingsSummary({
+  cfg:{},auth:{shopId,accessToken:'x'},callApi:mock,now}),/access_token/);
+ assert.equal(called,1);
  clearShopeeNewListingsCache(shopId);
 });
 test('Interface mostra só três KPIs e histórico recolhível, com atualização automática',()=>{
