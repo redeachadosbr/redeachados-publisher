@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
 import {fiscalCanPublish,fiscalPreviewDisposition,pendingFiscalReason} from '../shopeeFiscalReadiness.js';
 import {compileShopeeExecutionPlan} from '../shopeeExecutionPlan.js';
+import {approvedTitle} from './fixtures/approved-content.js';
 const preparing={mode:'cnpj_preparacao',migrationConfirmed:false,accountantConfirmed:false};
 const active={mode:'cnpj_ativo',migrationConfirmed:true,accountantConfirmed:true};
 const record={itemId:'22095398152',sku:'TRC1525',selectedModelId:'0',status:'NORMAL',
@@ -13,7 +14,7 @@ const live={item_id:22095398152,item_name:'Piscina anterior',description:'Texto 
 const review={stages:{fiscal:{reviewed:true},seo:{reviewed:true}},
  tax:{ncm:'95069900',origin:'2',same_state_cfop:'5106',diff_state_cfop:'6106',
   csosn:'102',measure_unit:'UN',cest:'',evidence:'WeDrop nota fiscal conferida'},
- draftTitle:'Piscina Inflável Infantil Azul Top Rio 210 Litros Quadrada para Jardim e Quintal Sol Verão Lazer Diversão Família Casa'};
+ draftTitle:approvedTitle};
 const args={shopId:852701218,itemId:'22095398152',modelId:'0',sku:'TRC1525',record,review,live};
 test('CPF e CNPJ em preparação nunca autorizam um envio fiscal',()=>{
  for(const state of [{mode:'cpf_atual'},preparing,
