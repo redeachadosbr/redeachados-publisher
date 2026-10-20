@@ -4603,6 +4603,107 @@ async function adsPricingLoad(){
 $('#adsPricingRefresh')?.addEventListener('click',()=>void adsPricingLoad());
 
 let discountLoadRequestId=0,discountRefreshBusy=false;
+let discountOneClickRows=[],discountOneClickBusy=false,discountOneClickLocked=false;
+function discountOneClickStatus(message,state='info'){
+ const el=$('#discountOneClickStatus');
+ if(!el)return;
+ el.textContent=message;el.dataset.state=state;
+}
+function discountOneClickReady(){
+ const btn=$('#discountOneClickExecute');
+ if(!btn)return;
+ const q=shDiscountQuote;
+ const valid=Boolean(q?.sku&&q?.itemId!==undefined&&q?.modelId!==undefined&&
+   Number(q.grossPrice)>0&&Number(q.discountPct)>0&&
+   Number(q.netMarginPct)+0.0001>=Number(q.minMarginPct));
+ btn.disabled=!valid||discountOneClickBusy||discountOneClickLocked;
+ btn.textContent=discountOneClickBusy?'Executando na Shopee...':'Executar na Shopee';
+ const select=$('#discountOneClickSku');
+ if(select)select.disabled=discountOneClickBusy;
+}
+$('#discountOneClickSku')?.addEventListener('change',()=>{
+ if(discountOneClickBusy)return;
+ const idx=Number($('#discountOneClickSku').value);
+ if(!Number.isInteger(idx)||idx<0||idx>=discountOneClickRows.length)return;
+ void shDiscountChoose(discountOneClickRows[idx]);
+});
+$('#discountOneClickExecute')?.addEventListener('click',async()=>{
+ if(discountOneClickBusy||discountOneClickLocked||!shDiscountQuote)return;
+ const q=shDiscountQuote;
+ const selected=[String(q.sku),String(q.itemId),String(q.modelId)].join('|');
+ const unchanged=()=>shDiscountQuote&&
+   [String(shDiscountQuote.sku),String(shDiscountQuote.itemId),String(shDiscountQuote.modelId)].join('|')===selected;
+ const discountId=String($('#discountPromotionId')?.value||'').trim();
+ if(!/^\\d{1,18}$/.test(discountId)){
+  discountOneClickStatus('Promoção da loja não configurada. Nenhum anúncio foi alterado.','error');
+  return;
+ }
+ discountOneClickBusy=true;
+ discountOneClickReady();
+ let sentExecution=false;
+ try{
+  discountOneClickStatus('Conferindo automaticamente a SKU, o preço, o custo WeDrop e a promoção na Shopee...');
+  const preview=await json('/api/shopee/optimizer/discounts/preview',{
+   method:'POST',headers:{'Content-Type':'application/json'},
+   body:JSON.stringify({sku:q.sku,itemId:q.itemId,modelId:q.modelId,discountId}),
+   signal:AbortSignal.timeout(75000)
+  });
+  if(!unchanged())throw Error('A SKU selecionada mudou. Nenhuma alteração foi enviada.');
+  const plan=preview?.preview;
+  if(!preview?.approvalToken||!plan||String(plan.sku)!==String(q.sku)||
+     String(plan.itemId)!==String(q.itemId)||String(plan.modelId)!==String(q.modelId))
+   throw Error('Não foi possível confirmar a prévia segura do anúncio.');
+  // Um único clique do lojista executa o plano exibido: quando necessário,
+  // ajusta o preço bruto E insere/atualiza o desconto. O backend revalida
+  // custo, vínculo, preço e campanha imediatamente antes de cada escrita.
+  if(plan.action==='already'){
+   discountOneClickLocked=true;
+   discountOneClickStatus('Confirmado: o anúncio já está na promoção com o valor calculado. Nenhuma alteração necessária.','success');
+   $('#discountSavedBadgeLabel').textContent='Confirmado na Shopee';
+   return;
+  }
+  discountOneClickStatus(plan.needsBasePriceUpdate?
+   'Ajustando o preço bruto de '+shPriceMoney(plan.originalPrice)+' para '+
+   shPriceMoney(plan.gross)+' e incluindo o desconto na promoção...':
+   'Incluindo o desconto da SKU na promoção escolhida...');
+  sentExecution=true;
+  const response=await fetch('/api/shopee/optimizer/discounts/execute',{
+   method:'POST',headers:{'Content-Type':'application/json'},
+   body:JSON.stringify({approvalToken:preview.approvalToken,confirm:true,
+    allowPriceChange:true}),
+   signal:AbortSignal.timeout(120000)
+  });
+  const result=await response.json().catch(()=>({}));
+  discountOneClickLocked=true;
+  if(!response.ok){
+   const details=String(result.error||'A Shopee não confirmou a execução.');
+   const partial=Boolean(result.basePriceUpdated||result.priceUpdated);
+   discountOneClickStatus((partial?
+    'Atenção: o preço bruto pode ter sido atualizado, mas o desconto não foi confirmado. '+
+    'Confira o anúncio na Shopee antes de nova tentativa. ':
+    'A Shopee não concluiu a promoção. Nenhum novo envio será repetido automaticamente. ')+details,'error');
+   return;
+  }
+  if(result.verified===true){
+   discountPromoPublished=true;
+   $('#discountPlanNotice').textContent='Preço e desconto confirmados na Shopee para a promoção escolhida.';
+   $('#discountSavedBadgeLabel').textContent='Confirmado na Shopee';
+   discountOneClickStatus(result.message||'Desconto confirmado na Shopee.','success');
+  }else{
+   discountOneClickStatus(result.message||
+    'A Shopee recebeu a operação, mas a confirmação ainda está pendente. Verifique antes de enviar outra vez.','warning');
+  }
+ }catch(error){
+  if(sentExecution)discountOneClickLocked=true;
+  discountOneClickStatus((sentExecution?
+   'A solicitação pode ter chegado à Shopee. Verifique o preço e a promoção antes de tentar novamente. ':
+   'Não foi possível concluir a conferência automática; nenhum preço ou desconto foi enviado. ')+
+   String(error.message||error),'error');
+ }finally{
+  discountOneClickBusy=false;discountOneClickReady();
+ }
+});
+
 let discountPromoPreview=null,discountPromoExecuting=false,discountPromoPublished=false;
 function discountPromoStatus(message,state='info'){
  const n=$('#discountPromotionStatus');if(!n)return;
@@ -4786,6 +4887,7 @@ function shDiscountRender(q){
   }
   shDiscountQuote=q;
   discountPromoReset();
+  discountOneClickLocked=false;
   $('#discountPlanCard').hidden=false;
   $('#discountNoPlan').hidden=true;
   $('#discountSku').textContent='SKU '+q.sku+(String(q.modelId)!=='0'?' · Variação '+q.modelId:'');
@@ -4796,9 +4898,10 @@ function shDiscountRender(q){
   $('#discountMargin').textContent=shPricePercent(q.netMarginPct);
   $('#discountProfit').textContent=shPriceMoney(q.netProfit);
   $('#discountSupplierCost').textContent=shPriceMoney(q.unitCost);
-  $('#discountPlanNotice').textContent='Desconto preparado para revisão. '+
-   'A execução via API exige prévia da promoção, preço vigente conferido e confirmação.';
+  $('#discountPlanNotice').textContent='Plano pronto: confira os valores acima. A execução verifica preço, custo e promoção automaticamente.';
   shDiscountResetReview();
+  discountOneClickStatus('Plano da SKU '+q.sku+' carregado. Clique em Executar na Shopee para aplicar o preço e o desconto.');
+  discountOneClickReady();
 }
 function shDiscountStatus(message,state='info'){
   const n=$('#discountPlanStatus');
@@ -4813,6 +4916,9 @@ function shDiscountStatus(message,state='info'){
 async function shDiscountChoose(row){
   const requestId=++discountLoadRequestId;
   shDiscountQuote=null;
+  discountOneClickLocked=false;
+  discountOneClickStatus('Carregando plano da SKU '+row.sku+'...');
+  discountOneClickReady();
   discountPromoReset();
   shDiscountResetReview();
   shDiscountStatus('Recuperando o plano salvo da SKU '+row.sku+' (sem sobrescrever o cálculo)...');
@@ -4826,11 +4932,18 @@ async function shDiscountChoose(row){
     shPriceSelection={sku:row.sku,itemId:String(row.itemId),modelId:String(row.modelId)};
     shPriceSaveSelection(shPriceSelection);
     shDiscountRender(data.quote);
-    shDiscountStatus('Plano da SKU '+row.sku+' recuperado sem recalcular. Prévia da promoção disponível.','success');
+    const select=$('#discountOneClickSku');
+    const index=discountOneClickRows.findIndex(x=>
+      x.sku===row.sku&&String(x.itemId)===String(row.itemId)&&
+      String(x.modelId)===String(row.modelId));
+    if(index>=0)select.value=String(index);
+    shDiscountStatus('Plano da SKU '+row.sku+' recuperado sem recalcular. Pronto para execução simplificada.','success');
     shDiscountHighlight(row);
   }catch(e){
     if(requestId!==discountLoadRequestId)return;
     $('#discountPlanCard').hidden=true;shDiscountQuote=null;
+    discountOneClickStatus('Plano indisponível: '+e.message,'error');
+    discountOneClickReady();
     shDiscountResetReview();
     shDiscountStatus('Plano não utilizável: '+e.message+
       '. Abra Otimização para revisar a SKU ou o custo WeDrop.','error');
@@ -4849,7 +4962,13 @@ async function shDiscountLoadLatest(){
   discountRefreshBusy=true;
   const requestId=++discountLoadRequestId;
   const list=$('#discountRecentPlans');list.replaceChildren();
+  const selector=$('#discountOneClickSku');selector.replaceChildren();
+  discountOneClickRows=[];
+  const placeholder=document.createElement('option');
+  placeholder.value='';placeholder.textContent='Carregando anúncios...';selector.append(placeholder);
   shDiscountQuote=null;discountPromoReset();shDiscountResetReview();
+  discountOneClickStatus('Carregando os planos salvos...');
+  discountOneClickReady();
   shDiscountStatus('Carregando os últimos planos de desconto...');
   const refresh=$('#discountRefresh');refresh.disabled=true;
   $('#discountRefreshLabel').textContent='Atualizando...';
@@ -4858,7 +4977,19 @@ async function shDiscountLoadLatest(){
       {signal:AbortSignal.timeout(25000)});
     if(requestId!==discountLoadRequestId)return;
     const plans=Array.isArray(result.plans)?result.plans:[];
+    discountOneClickRows=plans;
+    selector.replaceChildren();
+    plans.forEach((row,i)=>{
+     const option=document.createElement('option');option.value=String(i);
+     option.textContent=row.sku+
+       (String(row.modelId)!=='0'?' · Variação '+row.modelId:'');
+     selector.append(option);
+    });
     if(!plans.length){
+     const none=document.createElement('option');
+     none.value='';none.textContent='Nenhum plano disponível';selector.append(none);
+     discountOneClickStatus('Não há anúncios preparados. Calcule primeiro em Precificação.','warning');
+     discountOneClickReady();
       shDiscountStatus('Nenhum plano salvo. Localize uma SKU uma única vez em Otimização.','warning');
       list.textContent='Nenhum plano encontrado para esta loja.';
       return;
@@ -4866,6 +4997,7 @@ async function shDiscountLoadLatest(){
     const saved=shPriceSelection||shPriceRestoredSelection();
     const chosen=plans.find(p=>p.sku===saved?.sku&&
       String(p.itemId)===saved.itemId&&String(p.modelId)===saved.modelId)||plans[0];
+    selector.value=String(plans.indexOf(chosen));
     for(const row of plans){
       const b=optimizerMake('button','sh-recent-plan discount-v2-recent-plan');b.type='button';
       b.dataset.sku=String(row.sku);b.dataset.itemId=String(row.itemId);
