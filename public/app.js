@@ -3089,8 +3089,10 @@ function optimizerFiscalBatchRender(){
   if(row.issue?.code==='CEST_REQUIRED')
    card.append(optimizerMake('small','optimizer-fiscal-batch-warning',
      'A Shopee exige CEST para este NCM. Esta SKU não foi confirmada.'));
+  window.OptimizerFiscalPremium?.renderRow?.({row,card,chip,status,message});
   list.append(card);
  }
+ window.OptimizerFiscalPremium?.sync?.(optimizerFiscalBatchRows);
  const execute=$('#optimizerFiscalBatchExecute');
  execute.hidden=!optimizerFiscalBatchRows.length||!optimizerFiscalBatchRows.some(x=>x.ready&&x.planId);
  execute.disabled=optimizerFiscalBatchBusy||ready===0;
