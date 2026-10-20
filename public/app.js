@@ -4635,6 +4635,7 @@ function discountPromoRenderPreview(data){
  const p=data.preview, box=$('#discountPromotionPreviewBox');
  box.hidden=false;
  const info=$('#discountPromotionPreviewInfo');info.replaceChildren();
+ $('#discountPromotionPreviewBox')?.querySelectorAll('.discount-publish-promo-notice').forEach(el=>el.remove());
  const lines=[
   ['SKU',p.sku],['Campanha',p.promotionName+' · '+p.discountId],
   ['Situação',p.status],['Preço bruto no plano',shPriceMoney(p.gross)],
@@ -4659,9 +4660,6 @@ function discountPromoRenderPreview(data){
   hint.className='discount-publish-promo-notice';
   hint.textContent=p.promotionNotice;
   info.after(hint);
-  // Guardar somente um aviso quando a prévia é refeita.
-  const oldNotice=$('#discountPromotionPreviewBox .discount-publish-promo-notice');
-  if(oldNotice&&oldNotice!==hint)oldNotice.remove();
  }
  $('#discountPromotionPriceWrap').hidden=!p.needsBasePriceUpdate||p.action==='already';
  $('#discountPromotionPriceLabel').textContent='Autorizo atualizar o preço bruto na Shopee de '+
