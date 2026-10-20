@@ -1532,7 +1532,7 @@ app.post('/api/shopee/optimizer/pricing/prepare',mustLogin,requireWeDropAdmin,as
     const itemId=validItemId(req.body?.itemId);
     const modelId=String(req.body?.modelId??'0');
     if(!/^\d{1,18}$/.test(modelId))throw Error('ID da variação inválido.');
-    const {auth}=await getValidAuth(req);
+    const {auth,cfg}=await getValidAuth(req);
     // Não aceitar item/variação alterados ou de outro SKU por texto arbitrário.
     const matches=await findExactCatalogSku(auth.shopId,sku);
     if(!matches.some(x=>String(x.itemId)===itemId&&String(x.modelId)===modelId))
@@ -1551,7 +1551,6 @@ app.post('/api/shopee/optimizer/pricing/prepare',mustLogin,requireWeDropAdmin,as
     const settings={...sourceSettings,adsPct:adsBudgetPct};
     // Referências de concorrentes: consulta automática separada da API de seller.
     // Não herdar um valor manual antigo como se fosse pesquisa verificada.
-    const {cfg}=await getValidAuth(req);
     const live=await shopeeLiveEditableItem(cfg,auth,itemId);
     const market=await lookupShopeeCompetitors({
       title:live.item_name||'',ownShopId:auth.shopId,ownItemId:itemId
