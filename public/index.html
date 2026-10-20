@@ -740,12 +740,12 @@
             <p class="discount-v2-subnote" id="discountPlanNotice">Plano preparado para revisão. Nenhum desconto foi aplicado.</p>
           </section>
           <section class="discount-v2-detail-card discount-v2-review">
-            <h4><svg class="discount-v2-icon" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M9 6h12M9 12h12M9 18h12M3 6h2M3 12h2M3 18h2"/></svg> Checklist de revisão <span class="optimizer-tip discount-v2-help" tabindex="0" role="note" data-help="Marque cada item após conferir na Shopee. São confirmações manuais suas, não validações automáticas da API." aria-label="Ajuda: Marque cada item após conferir na Shopee. São confirmações manuais suas, não validações automáticas da API.">?</span></h4>
+            <h4><svg class="discount-v2-icon" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M9 6h12M9 12h12M9 18h12M3 6h2M3 12h2M3 18h2"/></svg> Conferências adicionais (opcionais) <span class="optimizer-tip discount-v2-help" tabindex="0" role="note" data-help="Checklist complementar para controle interno. Não é condição para executar a prévia da API. As autorizações obrigatórias ficam na seção Publicação via API Shopee." aria-label="Ajuda: Checklist complementar e opcional. A execução depende da prévia válida e das autorizações da seção Publicação via API Shopee.">?</span></h4>
             <div class="discount-v2-check-grid"><label class="discount-v2-check-item"><input type="checkbox" data-discount-review="campaign" disabled><span class="discount-v2-check-indicator">✓</span><span>Campanha conferida</span><span class="optimizer-tip discount-v2-help" tabindex="0" role="note" data-help="Confira manualmente na Minha Promoção se a campanha certa existe e aceita esta SKU." aria-label="Ajuda: Confira manualmente na Minha Promoção se a campanha certa existe e aceita esta SKU.">?</span></label>
 <label class="discount-v2-check-item"><input type="checkbox" data-discount-review="price" disabled><span class="discount-v2-check-indicator">✓</span><span>Preço vigente conferido</span><span class="optimizer-tip discount-v2-help" tabindex="0" role="note" data-help="Confira o preço atual do anúncio na Shopee; este aplicativo não certifica o preço vigente." aria-label="Ajuda: Confira o preço atual do anúncio na Shopee; este aplicativo não certifica o preço vigente.">?</span></label>
 <label class="discount-v2-check-item"><input type="checkbox" data-discount-review="tax" disabled><span class="discount-v2-check-indicator">✓</span><span>Taxas revisadas</span><span class="optimizer-tip discount-v2-help" tabindex="0" role="note" data-help="Confira as taxas, impostos, cupom, frete e despesas configuradas para a margem." aria-label="Ajuda: Confira as taxas, impostos, cupom, frete e despesas configuradas para a margem.">?</span></label>
 <label class="discount-v2-check-item"><input type="checkbox" data-discount-review="ready" disabled><span class="discount-v2-check-indicator">✓</span><span>Promoção revisada para aplicar</span><span class="optimizer-tip discount-v2-help" tabindex="0" role="note" data-help="Após conferir os outros itens, confirme manualmente que a promoção pode ser aplicada. Nada é enviado automaticamente." aria-label="Ajuda: Após conferir os outros itens, confirme manualmente que a promoção pode ser aplicada. Nada é enviado automaticamente.">?</span></label></div>
-            <small id="discountReviewStatus">É necessário recuperar um plano válido antes de revisar.</small>
+            <small id="discountReviewStatus">Conferências complementares opcionais. Não bloqueiam a execução após prévia válida e autorizações.</small>
           </section>
         </div>
         <section class="discount-publish-panel" aria-label="Aplicar desconto na Shopee">
@@ -770,7 +770,7 @@
               <input id="discountPromotionConfirm" type="checkbox">
               <span>Conferi o anúncio, a promoção e os valores. Autorizo enviar a atualização à Shopee.</span>
             </label>
-            <button id="discountPromotionExecute" type="button" disabled>2 · Executar desconto na Shopee</button>
+            <button id="discountPromotionExecute" type="button" disabled title="Gere a prévia, marque a confirmação de envio e, se necessário, autorize a alteração do preço bruto.">2 · Executar desconto na Shopee</button>
           </div>
           <p id="discountPromotionStatus" class="discount-publish-status" role="status" aria-live="polite">Nenhum desconto foi enviado. Gere a prévia para conferir a campanha.</p>
         </section>
