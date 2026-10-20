@@ -17,7 +17,7 @@ import {readShopeeWallet} from './shopeeWallet.js';
 import {financeAdsDates,matchFinanceAds} from './financeAdsSweep.js';
 import {financeRange} from './shopeeFinance.js';
 import {fetchCatalogPage,normalizeShopeeModels,validItemId} from './catalog.js';
-import {getShopeeNewListingsSummary} from './shopeeNewListings.js';
+import {getShopeeNewListingsSummary,clearShopeeNewListingsCache} from './shopeeNewListings.js';
 import {storeCatalogItems,storeCatalogModels,readCatalogCache,catalogStoreReady,findExactCatalogSku,findCatalogSkuIgnoringCase} from './catalogStore.js';
 import {previewWeDropCsv,prepareWeDropImport,MAX_CSV_CHARS} from './wedropCsv.js';
 import {saveWeDropCosts,getWeDropCoverage,compareIncomingCosts,pendingWeDropModels} from './wedropCosts.js';
@@ -524,6 +524,7 @@ app.get('/api/shopee/dashboard/new-listings',mustLogin,async(req,res)=>{
  res.setHeader('Cache-Control','no-store');
  try{
   const {auth,cfg}=await getValidAuth(req);
+  if(req.query?.fresh==='1')clearShopeeNewListingsCache(auth.shopId);
   const report=await getShopeeNewListingsSummary({cfg,auth,callApi:callShopeeShopApi});
   res.json(report);
  }catch(error){
