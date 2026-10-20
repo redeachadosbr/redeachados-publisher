@@ -3447,6 +3447,96 @@ function financeCatalogImage(url){
       host.endsWith('.susercontent.com'));
   }catch{return false;}
 }
+// Miniaturas financeiras: fotos somente de item_id / SKU comprovados no
+// catálogo autenticado da mesma loja. Não presumir foto pela campanha ou SKU
+// ambígua; imagem sem origem confiável mostra placeholder.
+function financeCatalogPhotoMaps(report){
+ const byItem=new Map(),bySkuIds=new Map();
+ for(const p of Array.isArray(report?.catalogProducts)?report.catalogProducts:[]){
+  const itemId=String(p?.itemId||'').trim(),sku=String(p?.sku||'').trim();
+  if(!/^[1-9]\d{0,17}$/.test(itemId))continue;
+  const profile={itemId,sku,name:String(p.name||'Anúncio Shopee'),
+   imageUrl:financeCatalogImage(p.imageUrl)?String(p.imageUrl):''};
+  if(!byItem.has(itemId)||(!byItem.get(itemId).imageUrl&&profile.imageUrl))
+   byItem.set(itemId,profile);
+  if(sku){
+   if(!bySkuIds.has(sku))bySkuIds.set(sku,new Set());
+   bySkuIds.get(sku).add(itemId);
+  }
+ }
+ return {byItem,bySkuIds};
+}
+function financeMiniPhoto(profile,{title='Imagem do anúncio',missingLabel='Sem imagem confirmada'}={}){
+ const wrap=financeSkuNode('span','finance-mini-photo');
+ const verified=profile&&financeCatalogImage(profile.imageUrl);
+ wrap.title=verified?String(profile.name||title):missingLabel;
+ if(verified){
+  const img=financeSkuNode('img','finance-mini-img');
+  img.src=profile.imageUrl;img.alt=title;img.loading='lazy';img.decoding='async';
+  img.referrerPolicy='no-referrer';img.width=42;img.height=42;
+  img.addEventListener('error',()=>{
+   img.remove();wrap.appendChild(financeSkuNode('span','finance-mini-fallback','▣'));
+   wrap.title='Imagem não disponível no momento';
+  },{once:true});
+  wrap.appendChild(img);
+ }else{
+  wrap.appendChild(financeSkuNode('span','finance-mini-fallback','▣'));
+ }
+ return wrap;
+}
+function financeAuditIdentity(order,maps){
+ const container=financeSkuNode('div','finance-audit-identity');
+ const pictures=financeSkuNode('span','finance-mini-stack');
+ const ids=[...new Set((Array.isArray(order.skuList)?order.skuList:[])
+   .concat(order.sku||[]).map(x=>String(x||'').trim()).filter(Boolean))];
+ const label=financeSkuNode('div','finance-mini-label');
+ label.appendChild(financeSkuNode('strong','',ids.length?ids.join(', '):'SKU não informada'));
+ const verified=[],unknown=[];
+ for(const sku of ids){
+  const matches=maps.bySkuIds.get(sku);
+  if(matches?.size===1){
+   const profile=maps.byItem.get([...matches][0]);
+   if(profile&&!verified.some(x=>x.itemId===profile.itemId)){verified.push(profile);continue;}
+  }
+  unknown.push(sku);
+ }
+ for(const item of verified.slice(0,3)){
+  pictures.appendChild(financeMiniPhoto(item,{
+   title:'Imagem do anúncio '+item.sku+' — '+item.name
+  }));
+ }
+ if(unknown.length||!verified.length)
+  pictures.appendChild(financeMiniPhoto(null,{
+   missingLabel:unknown.length
+    ?'SKU sem anúncio único identificado: '+unknown.join(', ')
+    :'Imagem do pedido não identificada no catálogo'
+  }));
+ if(verified.length>3)pictures.appendChild(financeSkuNode('span','finance-mini-overflow','+'+(verified.length-3)));
+ if(ids.length===1&&verified.length===1)
+  label.appendChild(financeSkuNode('small','',verified[0].name));
+ else if(unknown.length)
+  label.appendChild(financeSkuNode('small','','Foto indisponível ou SKU ambígua'));
+ container.append(pictures,label);
+ return container;
+}
+function financeAdsPhotos(review,maps){
+ const ids=[...new Set((Array.isArray(review.itemIdList)?review.itemIdList:[])
+   .map(x=>String(x)).filter(x=>/^[1-9]\d{0,17}$/.test(x)))];
+ const outer=financeSkuNode('span','finance-mini-stack');
+ for(const id of ids.slice(0,3)){
+  const product=maps.byItem.get(id);
+  outer.appendChild(financeMiniPhoto(product,{
+   title:product?'Produto anunciado: '+product.name:'ID do anúncio: '+id,
+   missingLabel:'Imagem não disponível para item '+id
+  }));
+ }
+ const advertisedCount=Math.max(ids.length,Number(review.advertisedItemCount)||0);
+ if(advertisedCount>3)outer.appendChild(financeSkuNode('span','finance-mini-overflow','+'+(advertisedCount-3)));
+ if(!ids.length)outer.appendChild(financeMiniPhoto(null,{
+  missingLabel:'A API Shopee Ads não identificou o produto desta campanha'
+ }));
+ return outer;
+}
 function financeAdsBySku(report){
  const sweep=report?.adsSweep;
  return sweep?.status==='verified_campaign_period'
@@ -3631,11 +3721,21 @@ function renderFinanceAdsScan(report){
  $('#financeAdsExceptionCount').textContent=good?wdNum((sweep.review||[]).length):'0';
  const list=$('#financeAdsExceptionList');list.replaceChildren();
  if(good){
+  const photos=financeCatalogPhotoMaps(report);
   for(const x of (sweep.review||[]).slice(0,120)){
    const row=financeSkuNode('div','finance-ads-exception-row');
-   row.appendChild(financeSkuNode('strong','',
+   const identity=financeSkuNode('div','finance-ads-exception-identity');
+   identity.appendChild(financeAdsPhotos(x,photos));
+   const info=financeSkuNode('div','finance-ads-exception-info');
+   info.appendChild(financeSkuNode('strong','',
      'Campanha '+x.campaignId+' · '+wdMoney(x.expense)));
-   row.appendChild(financeSkuNode('span','',x.situation));
+   const itemIds=Array.isArray(x.itemIdList)?x.itemIdList:[];
+   const photosWithNames=itemIds.map(id=>photos.byItem.get(String(id))?.name).filter(Boolean);
+   const note=photosWithNames.length?photosWithNames.slice(0,2).join(' · '):
+     'Produto não identificado com segurança';
+   info.appendChild(financeSkuNode('small','',note));
+   identity.appendChild(info);row.appendChild(identity);
+   row.appendChild(financeSkuNode('span','finance-ads-exception-reason',x.situation));
    list.appendChild(row);
   }
   if(!(sweep.review||[]).length)list.appendChild(
@@ -3884,6 +3984,7 @@ $('#shopeeFinanceLoad').onclick=async()=>{
     $('#shopeeFinanceCosts').textContent=wdMoney(t.supplierCost);
     $('#shopeeFinanceBalance').textContent=wdMoney(t.balanceBeforeAds);
     const body=$('#shopeeFinanceOrders');body.replaceChildren();
+    const orderPhotos=financeCatalogPhotoMaps(report);
     const feeText=entry=>{
       const f=entry.feeBreakdown||{};
       const parts=[
@@ -3908,8 +4009,12 @@ $('#shopeeFinanceLoad').onclick=async()=>{
         '— (Ads não conciliados)',
         x.reason||'Sem informações suficientes'
       ];
-      for(const value of data){
-        const td=document.createElement('td');td.textContent=String(value);
+      for(const [index,value] of data.entries()){
+        const td=document.createElement('td');
+        if(index===1){
+         td.className='finance-audit-sku-cell';
+         td.appendChild(financeAuditIdentity(x,orderPhotos));
+        }else td.textContent=String(value);
         tr.appendChild(td);
       }
       body.appendChild(tr);
