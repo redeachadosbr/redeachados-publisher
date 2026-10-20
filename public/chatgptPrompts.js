@@ -20,7 +20,7 @@ export function createChatGptPrompts({sku='',title='',masterPrompt='',imageNotes
   'PROJETO: REDE ACHADOS BR — NOVE IMAGENS DE UM ÚNICO ANÚNCIO SHOPEE',
   'SKU: '+asText(sku,120),
   'Produto: '+asText(title,260),
-  'FOTO REAL OBRIGATÓRIA: anexe a foto original do anúncio nesta conversa antes de criar qualquer imagem. NÃO comece sem a referência visual.',
+  'FOTO REAL OBRIGATÓRIA: use a foto original já anexada nesta conversa. Se ainda não houver referência visual acessível, anexe a foto original do anúncio antes de criar qualquer imagem. NÃO comece sem a referência visual.',
   original?'Foto original disponível no endereço (abra e anexe o arquivo, pois o ChatGPT pode não conseguir abrir o link): '+original:'Abra o anúncio Shopee, salve a foto original e anexe-a a esta conversa.',
   'REGRAS INEGOCIÁVEIS: manter exatamente o mesmo produto, geometria, cores, marcas existentes, acabamento, quantidade e peças. Não inventar variantes, acessórios, medidas, embalagem, funcionalidades nem logotipos.',
   'Para cada posição, criar UMA IMAGEM INDIVIDUAL QUADRADA, com composição para 1200 × 1200 pixels, fotorrealista, iluminação de estúdio/ambiente profissional, sem marca d’água e sem preço.',
@@ -28,17 +28,17 @@ export function createChatGptPrompts({sku='',title='',masterPrompt='',imageNotes
   'Sem textos decorativos nas imagens. Textos só nos slots em que o roteiro expressamente permite, curtos, corretos e em português.',
   'Características confirmadas: '+(factsFrom(attributes)||'Nenhuma especificação técnica confirmada; não mostrar valores ou características inventadas.'),
   'REGRAS MESTRAS DA LOJA: '+(asText(masterPrompt,10000)||'Seguir os nove roteiros e a fidelidade ao produto.'),
-  'ENTREGA: gerar nove arquivos individuais, nunca uma montagem 3x3. Nomear 01.png, 02.png, ... 09.png. Solicitar confirmação quando faltar informação.',
+  'ENTREGA: gerar nove arquivos individuais, nunca uma montagem 3x3. Nomear 01.png, 02.png, ... 09.png. Use somente fatos confirmados; omita especificações não essenciais que estiverem ausentes e continue. Interrompa apenas se a referência visual estiver inacessível ou ocorrer uma falha real da geração.',
  ].join('\n');
  const prompts=CHATGPT_IMAGE_SCENES.map((scene,index)=>[
   header,
   'GERAR APENAS A IMAGEM '+String(index+1).padStart(2,'0')+' DE 09.',
   scene.label+': '+scene.guide,
   'AJUSTE ESPECÍFICO: '+(asText(imageNotes?.[index+1],500)||'Nenhum.'),
-  'A saída deve ser apenas uma imagem separada para download, não um mosaico.'
+  'Exiba a imagem gerada diretamente na conversa com a ferramenta nativa de imagens. Não entregue apenas um link de arquivo, um prompt ou uma resposta em texto. A extensão precisa receber o resultado visual desta posição antes de solicitar a próxima.'
  ].join('\n\n'));
  const batch=[header,
-  'TAREFA: crie as 9 imagens, UMA POR VEZ, mantendo o MESMO produto da foto original. Se não puder gerar nove numa única resposta, gere a primeira e continue nas próximas mensagens com o mesmo padrão.',
+  'TAREFA AUTORIZADA: execute a sequência completa de 9 imagens agora, em nove chamadas sequenciais da ferramenta de imagens, uma imagem individual por chamada, mantendo o MESMO produto da foto original. Continue até a imagem 09 sem solicitar confirmação entre posições. Exiba cada resultado diretamente na conversa; não substitua a imagem por um link de download. Se houver uma falha real da ferramenta, informe exatamente a posição pendente e preserve o progresso.',
   ...CHATGPT_IMAGE_SCENES.map((scene,i)=>
    String(i+1).padStart(2,'0')+' / 09 — '+scene.label+': '+scene.guide+
    (imageNotes?.[i+1]?'\nAjuste: '+asText(imageNotes[i+1],500):'')),

@@ -52,11 +52,17 @@ export async function importPreparedImage({shopId,itemId,modelId,sku,slot,file,m
  const position=num(slot);if(position<1||position>9)throw Error('Posição de imagem deve ser de 1 a 9.');
  const dims=imageDimensions(file,mime);
  if(dims.width!==1200||dims.height!==1200)throw Error('Use imagem de 1200 × 1200 pixels conforme o padrão da loja.');
+ const sha256=crypto.createHash('sha256').update(file).digest('hex');
+ // A lost response may cause the bridge to resend the same file. Reuse the
+ // confirmed slot instead of uploading another object or clearing publication state.
+ const existing=(await readPreparedImages(shopId,itemId,modelId,sku))
+  .find(row=>Number(row.slot)===position&&row.sha256===sha256);
+ if(existing)return existing;
  const storage_path=[num(shopId),num(itemId),num(modelId),crypto.randomUUID()+'.'+dims.extension].join('/');
  await api('/storage/v1/object/'+IMAGE_BUCKET+'/'+storage_path,{method:'POST',headers:{'Content-Type':mime,'x-upsert':'false'},body:file});
  const data={shop_id:num(shopId),item_id:num(itemId),model_id:num(modelId),sku,slot:position,storage_path,
   filename:String(filename||'imagem').replace(/[\/\\\x00-\x1f\x7f]/g,'_').slice(0,130),mime_type:mime,
-  size_bytes:file.length,shopee_image_id:null,sha256:crypto.createHash('sha256').update(file).digest('hex'),updated_at:new Date().toISOString()};
+  size_bytes:file.length,shopee_image_id:null,sha256,updated_at:new Date().toISOString()};
  const r=await api('/rest/v1/shopee_optimizer_images?on_conflict=shop_id,item_id,model_id,slot',{method:'POST',
   headers:{'Content-Type':'application/json',Prefer:'resolution=merge-duplicates,return=representation'},body:JSON.stringify([data])});
  return (await r.json())[0];

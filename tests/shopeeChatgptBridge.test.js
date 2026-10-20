@@ -19,14 +19,14 @@ test('ChatGPT extension bridge has one-click automatic generation and per-slot u
  assert.match(js,/optimizerImagesSameSku\(w\)/);
  assert.match(js,/optimizerChatgptScaleFile\(file\)/);
  assert.match(js,/crypto\.randomUUID\(\)/);
- assert.match(js,/optimizerImagesSavedSlots\.add\(m\.slot\)/);
+ assert.match(js,/optimizerImagesSavedSlots\.add\(row\.slot\)/);
  assert.match(js,/requiresReview|stage\.reviewed=false/);
 });
 
 test('browser image upload uses authenticated same-origin API and invalidates old approvals',()=>{
  assert.match(js,/fetch\('\/api\/shopee\/optimizer\/images\/manual\?/);
- assert.match(js,/m\.itemId/);
- assert.match(js,/m\.modelId/);
+ assert.match(js,/optimizerChatBridgeIdentity\(job,m\)/);
+ assert.match(js,/optimizerChatBridgeJob/);
  assert.match(js,/m\.nonce!==optimizerChatBridgeNonce/);
  assert.match(server,/saveWorkflowReview\(x\.shopId,x\.itemId,x\.modelId,x\.sku,\{stage:'images',reviewed:false\}\)/);
  assert.match(server,/requiresReview:true,marketplaceUpdated:false/);

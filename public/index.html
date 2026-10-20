@@ -497,7 +497,7 @@
                 </div>
               </div>
               <div class="optimizer-commercial-summary">
-                <strong>Resumo da etapa</strong><span>▣ 1200 × 1200</span><span>▧ 9 posições</span><span>♢ Preservar produto</span><span>⊘ Sem substituir automaticamente</span>
+                <strong>Resumo da etapa</strong><span>▣ 1200 × 1200</span><span>▧ 9 posições</span><span>♢ Preservar produto</span><span>✓ Novas fotos na galeria</span>
                 <button id="optimizerCommercialShowRules" type="button" class="secondary">ⓘ Ver regras</button>
               </div>
 
@@ -508,14 +508,14 @@
           <div id="optimizerImagesChatgptPanel" class="optimizer-chatgpt-panel" hidden>
             <div class="optimizer-chatgpt-head">
               <strong>✦ ChatGPT · 9 imagens comerciais</strong>
-              <small>Usa seu ChatGPT, sem chave de API. Integração assistida, não automática.</small>
+              <small>Uma sequência de 9 imagens, com envio e progresso por SKU.</small>
             </div>
-            <p>O sistema prepara os 9 pedidos conforme as regras e a SKU. Abra o ChatGPT, anexe a fotografia original do produto, gere as imagens individualmente e retorne para importá-las. Nenhuma imagem é publicada sem revisão.</p>
+            <p>Clique uma vez para gerar as 9 imagens. Cada foto recebida substitui a original na galeria e o envio é confirmado antes da próxima. Se a conexão cair, o sistema preserva a imagem para reenviar. Ao final, confira as 9 fotos antes de executar na Shopee.</p>
             <div class="optimizer-chatgpt-bridge-actions">
               <button type="button" id="optimizerChatgptAuto">✦ Gerar 9 imagens com ChatGPT</button>
               <button type="button" id="optimizerChatgptAbort" class="secondary" hidden>Pausar geração</button>
             </div>
-            <p id="optimizerChatgptBridgeStatus" role="status" aria-live="polite">A automação via navegador necessita da extensão Rede Achados BR — Ponte ChatGPT instalada no Chrome. Ela acompanha cada imagem, salva no sistema e preserva a revisão da Shopee.</p>
+            <p id="optimizerChatgptBridgeStatus" role="status" aria-live="polite">Gerar → receber → salvar → próxima imagem. As fotos originais da WeDrop servem como referência e não contam como imagens novas.</p>
             <details class="optimizer-chatgpt-assist-fallback"><summary>Opção manual (sem extensão)</summary>
             <div class="optimizer-chatgpt-actions">
               <button type="button" id="optimizerChatgptOpen">✦ Copiar pedido das 9 imagens e abrir ChatGPT</button>
@@ -1423,7 +1423,7 @@
 <script src="/optimizer-compact.js?v=1.20.12"></script>
 <script src="/optimizer-dashboard.js?v=1.20.11"></script>
 <script src="/dashboard-new-listings.js?v=1.20.21-shopee"></script>
-<script src="/app.js?v=1.20.22-finance-thumbs"></script>
+<script src="/app.js?v=1.20.23-image-delivery"></script>
 <script src="/optimizer-fiscal-premium.js?v=1.20.13"></script>
 </body>
 </html>
