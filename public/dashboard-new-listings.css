@@ -93,3 +93,174 @@
  #tab-overview .dashboard-new-listings-card strong{font-size:21px}
  #tab-overview .dashboard-new-listings-period{font-size:10px}
 }
+
+
+/* v1.20.20 · Botões 3D compactos com hover e foco acessível.
+   Reutiliza IDs dos contadores e não interfere na consulta à API Shopee. */
+#tab-overview .dashboard-new-listings{
+ padding:14px 17px;
+ gap:10px;
+ margin:14px 0 19px;
+ border-radius:17px;
+ box-shadow:0 5px 17px rgba(15,45,85,.055),inset 0 1px rgba(255,255,255,.9)
+}
+#tab-overview .dashboard-new-listings-heading{gap:10px}
+#tab-overview .dashboard-new-listings-icon{
+ width:39px;height:39px;border-radius:12px;
+ box-shadow:0 5px 11px rgba(26,98,171,.09),inset 0 1px 0 #fff
+}
+#tab-overview .dashboard-new-listings-icon svg{width:21px;height:21px}
+#tab-overview .dashboard-new-listings-title h3{font-size:16px}
+#tab-overview .dashboard-new-listings-title p{font-size:10.5px}
+#tab-overview .dashboard-new-listings-grid{
+ grid-template-columns:repeat(3,minmax(0,1fr));gap:11px
+}
+#tab-overview .dashboard-new-listings-card{
+ --accent:#168a56;--lift:#c5e8d7;--glow:rgba(26,150,93,.17);
+ appearance:none;
+ position:relative;display:flex;align-items:center;gap:12px;
+ padding:11px 13px;min-height:91px;
+ min-width:0;width:100%;box-sizing:border-box;
+ text-align:left;cursor:pointer;overflow:visible;
+ font-family:inherit;color:#123662;
+ border:1px solid var(--lift);border-radius:17px;
+ background:linear-gradient(165deg,rgba(255,255,255,.99),rgba(241,250,246,.98));
+ box-shadow:
+  0 4px 0 var(--lift),
+  0 9px 17px rgba(16,45,84,.065),
+  inset 0 1px 1px rgba(255,255,255,.98);
+ transition:transform .19s ease,box-shadow .19s ease,
+  border-color .19s ease,background .19s ease
+}
+#tab-overview .dashboard-new-listings-card:hover{
+ transform:translateY(-4px);
+ border-color:var(--accent);
+ box-shadow:
+  0 8px 0 var(--lift),
+  0 18px 26px var(--glow),
+  inset 0 1px 1px rgba(255,255,255,.99)
+}
+#tab-overview .dashboard-new-listings-card:active{
+ transform:translateY(1px);
+ box-shadow:0 2px 0 var(--lift),0 5px 11px rgba(16,45,84,.055)
+}
+#tab-overview .dashboard-new-listings-card:focus-visible{
+ outline:3px solid var(--accent);outline-offset:4px
+}
+#tab-overview .dashboard-new-listings-card.is-selected{
+ border-color:var(--accent);
+ box-shadow:0 4px 0 var(--lift),0 10px 22px var(--glow),inset 0 1px 0 white
+}
+#tab-overview .dashboard-new-listings-button-icon{
+ display:grid;place-items:center;flex:none;
+ width:43px;height:43px;border-radius:50%;
+ color:white;
+ background:linear-gradient(155deg,#4ade8c,var(--accent));
+ box-shadow:0 5px 11px var(--glow),inset 0 2px 2px rgba(255,255,255,.25),
+  inset 0 -2px 2px rgba(0,0,0,.12);
+ transition:transform .19s ease,box-shadow .19s ease
+}
+#tab-overview .dashboard-new-listings-button-icon svg{width:22px;height:22px}
+#tab-overview .dashboard-new-listings-button-copy{
+ display:flex;flex-direction:column;min-width:0;flex:1;gap:2px;
+ line-height:1.1
+}
+#tab-overview .dashboard-new-listings-card .dashboard-new-listings-period{
+ font-size:12px;font-weight:900;color:#1c3b64;white-space:nowrap
+}
+#tab-overview .dashboard-new-listings-card .dashboard-new-listings-button-copy strong{
+ font-size:25px;line-height:1.12;letter-spacing:-.035em;
+ color:var(--accent);font-weight:950;margin:2px 0
+}
+#tab-overview .dashboard-new-listings-card .dashboard-new-listings-button-copy small{
+ color:#7890aa;font-size:10px;white-space:nowrap;
+ overflow:hidden;text-overflow:ellipsis
+}
+#tab-overview .dashboard-new-listings-button-arrow{
+ display:grid;place-items:center;flex:none;
+ width:31px;height:31px;border-radius:50%;
+ color:var(--accent);
+ background:linear-gradient(160deg,#fff,#e9f4ef);
+ box-shadow:0 3px 8px rgba(16,45,84,.075),inset 0 1px 1px white;
+ transition:transform .19s ease,background .19s ease
+}
+#tab-overview .dashboard-new-listings-button-arrow svg{width:16px;height:16px}
+#tab-overview .dashboard-new-listings-card:hover .dashboard-new-listings-button-arrow{
+ transform:translateX(3px) scale(1.1)
+}
+#tab-overview .dashboard-new-listings-card:hover .dashboard-new-listings-button-icon{
+ transform:scale(1.05);box-shadow:0 9px 15px var(--glow),inset 0 2px 2px rgba(255,255,255,.3)
+}
+#tab-overview .dashboard-new-listings-today{
+ --accent:#148c55;--lift:#cce9d9;--glow:rgba(24,160,94,.16);
+ background:linear-gradient(155deg,#fff,#f1fcf5)
+}
+#tab-overview .dashboard-new-listings-month{
+ --accent:#297bea;--lift:#cbdffa;--glow:rgba(41,123,234,.18);
+ background:linear-gradient(155deg,#fff,#f0f7ff)
+}
+#tab-overview .dashboard-new-listings-month .dashboard-new-listings-button-icon{
+ background:linear-gradient(150deg,#61adff,#2675e9)
+}
+#tab-overview .dashboard-new-listings-month .dashboard-new-listings-button-arrow{
+ background:linear-gradient(150deg,#fff,#eaf2ff)
+}
+#tab-overview .dashboard-new-listings-year{
+ --accent:#7950cd;--lift:#ded2f5;--glow:rgba(127,74,209,.17);
+ background:linear-gradient(155deg,#fff,#f8f2ff)
+}
+#tab-overview .dashboard-new-listings-year .dashboard-new-listings-button-icon{
+ background:linear-gradient(150deg,#bc96ff,#7950cd)
+}
+#tab-overview .dashboard-new-listings-year .dashboard-new-listings-button-arrow{
+ background:linear-gradient(150deg,#fff,#f0e8ff)
+}
+#tab-overview .dashboard-new-listings-history{
+ margin-top:5px;padding-top:7px
+}
+#tab-overview .dashboard-new-listings-history[data-view="today"] .dashboard-new-listings-history-block:nth-child(2),
+#tab-overview .dashboard-new-listings-history[data-view="month"] .dashboard-new-listings-history-block:first-child,
+#tab-overview .dashboard-new-listings-history[data-view="year"] .dashboard-new-listings-history-block:first-child{
+ display:none
+}
+#tab-overview .dashboard-new-listings-history[data-view="today"] .dashboard-new-listings-history-content,
+#tab-overview .dashboard-new-listings-history[data-view="month"] .dashboard-new-listings-history-content,
+#tab-overview .dashboard-new-listings-history[data-view="year"] .dashboard-new-listings-history-content{
+ grid-template-columns:1fr
+}
+#tab-overview .dashboard-new-listings-history[data-view="month"] .dashboard-new-listings-history-item.is-current-month{
+ border-radius:7px;background:#e7f1ff;padding:5px 7px
+}
+@media(max-width:1050px){
+ #tab-overview .dashboard-new-listings-card{gap:8px;padding:10px 9px}
+ #tab-overview .dashboard-new-listings-button-icon{width:38px;height:38px}
+ #tab-overview .dashboard-new-listings-button-arrow{width:27px;height:27px}
+}
+@media(max-width:760px){
+ #tab-overview .dashboard-new-listings-grid{grid-template-columns:repeat(3,minmax(0,1fr));gap:7px}
+ #tab-overview .dashboard-new-listings-card{padding:9px 7px;min-height:83px;gap:6px}
+ #tab-overview .dashboard-new-listings-button-icon{width:31px;height:31px}
+ #tab-overview .dashboard-new-listings-button-icon svg{width:17px;height:17px}
+ #tab-overview .dashboard-new-listings-button-arrow{width:22px;height:22px}
+ #tab-overview .dashboard-new-listings-button-arrow svg{width:13px;height:13px}
+ #tab-overview .dashboard-new-listings-card .dashboard-new-listings-period{font-size:11px}
+ #tab-overview .dashboard-new-listings-card .dashboard-new-listings-button-copy strong{font-size:21px}
+ #tab-overview .dashboard-new-listings-card .dashboard-new-listings-button-copy small{font-size:9px}
+}
+@media(max-width:560px){
+ #tab-overview .dashboard-new-listings-grid{grid-template-columns:1fr;gap:10px}
+ #tab-overview .dashboard-new-listings-card{min-height:75px;padding:10px 13px;gap:12px}
+ #tab-overview .dashboard-new-listings-button-icon{width:41px;height:41px}
+ #tab-overview .dashboard-new-listings-button-icon svg{width:21px;height:21px}
+ #tab-overview .dashboard-new-listings-button-arrow{width:30px;height:30px}
+ #tab-overview .dashboard-new-listings-card .dashboard-new-listings-button-copy strong{font-size:23px}
+}
+@media(prefers-reduced-motion:reduce){
+ #tab-overview .dashboard-new-listings-card,
+ #tab-overview .dashboard-new-listings-button-icon,
+ #tab-overview .dashboard-new-listings-button-arrow{transition:none}
+ #tab-overview .dashboard-new-listings-card:hover,
+ #tab-overview .dashboard-new-listings-card:active,
+ #tab-overview .dashboard-new-listings-card:hover .dashboard-new-listings-button-icon,
+ #tab-overview .dashboard-new-listings-card:hover .dashboard-new-listings-button-arrow{transform:none}
+}
