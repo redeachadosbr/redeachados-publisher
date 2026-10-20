@@ -6,6 +6,7 @@ import {compileShopeeExecutionPlan,confirmShopeeExecution,
  normalizeShopeeExecutionStage,SHOPEE_EXECUTION_STAGES,verifyShopeeExecution} from '../shopeeExecutionPlan.js';
 import {advanceShopeeExecution} from '../shopeeExecutionWorker.js';
 import {normalizedShopeeFiscalBatchSkus,checkedShopeeFiscalBatchEntries} from '../shopeeExecutionBatch.js';
+import {recyclableShopeeMedia,archiveShopeeMedia} from '../shopeeExecutionMediaReuse.js';
 const record={itemId:'22095398152',selectedModelId:'0',sku:'TRC1525',
  status:'NORMAL',imageCount:5,videoStatus:'Indisponível',
  attributeAudit:{missingMandatory:0,attributes:[]}};
@@ -94,4 +95,22 @@ test('endpoints de lote fazem prévia e confirmação, cada item com CAS, replay
  assert.match(html,/id="optimizerFiscalBatchExecute"/);
  assert.match(js,/stage:p\.selectedStage\|\|'all'/);
  assert.match(js,/confirmation:'EXECUTAR LOTE FISCAL'/);
+});
+
+test('preparing fiscal-only batch does not lose 9 Shopee uploads from previous rejected update',()=>{
+ const hashes=Array.from({length:9},(_,i)=>({slot:i+1,sha256:'a'.repeat(64)}));
+ const previous={sku:'TRC1525',shop_id:1,item_id:22095398152,model_id:0,
+  state:'failed',plan:{images:hashes,video:{sha256:'b'.repeat(64)}},
+  result:{imageIds:hashes.map((_,i)=>'shopee-image-'+i),
+   video:{id:'shopee-video-123',phase:'ready'}}};
+ const fiscal=compileShopeeExecutionPlan({...input,selectedStage:'fiscal'});
+ const archived=archiveShopeeMedia(previous,fiscal);
+ assert.equal(archived.imageIds.length,9);
+ assert.equal(archived.video.ready.id,'shopee-video-123');
+ const nextPlan={...fiscal,mediaArchive:archived};
+ const approvedMediaPlan={...nextPlan,selectedStage:'images',
+  images:hashes,video:{sha256:'b'.repeat(64)}};
+ const future=recyclableShopeeMedia({...previous,state:'verified',plan:nextPlan,result:{phase:'verified'}},approvedMediaPlan);
+ assert.equal(future.imageIds.length,9);
+ assert.equal(future.video.id,'shopee-video-123');
 });
