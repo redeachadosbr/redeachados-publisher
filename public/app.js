@@ -4643,7 +4643,9 @@ function discountPromoRenderPreview(data){
   ['Preço para Minha Promoção',shPriceMoney(p.promo)],
   ['Após cupom da loja ('+shPricePercent(p.couponPct)+')',shPriceMoney(p.buyerAfterCoupon)],
   ['Operação',p.action==='add'?'Adicionar SKU à promoção':p.action==='update'?
-    'Atualizar preço promocional da SKU já cadastrada':'Produto já tem o preço planejado na promoção']
+    'Atualizar preço promocional da SKU já cadastrada':'Produto já tem o preço planejado na promoção'],
+  ['Vínculo na campanha consultada',p.action==='add'?'Não encontrada — pronta para solicitar inclusão':
+    'SKU identificada na promoção selecionada']
  ];
  for(const [label,value] of lines){
   const line=document.createElement('div');
@@ -4651,6 +4653,15 @@ function discountPromoRenderPreview(data){
   const key=document.createElement('span');key.textContent=label;
   const val=document.createElement('strong');val.textContent=String(value);
   line.append(key,val);info.append(line);
+ }
+ if(p.promotionNotice){
+  const hint=document.createElement('p');
+  hint.className='discount-publish-promo-notice';
+  hint.textContent=p.promotionNotice;
+  info.after(hint);
+  // Guardar somente um aviso quando a prévia é refeita.
+  const oldNotice=$('#discountPromotionPreviewBox .discount-publish-promo-notice');
+  if(oldNotice&&oldNotice!==hint)oldNotice.remove();
  }
  $('#discountPromotionPriceWrap').hidden=!p.needsBasePriceUpdate||p.action==='already';
  $('#discountPromotionPriceLabel').textContent='Autorizo atualizar o preço bruto na Shopee de '+
@@ -4666,7 +4677,9 @@ function discountPromoRenderPreview(data){
   ?'SKU já consta nesta promoção com o preço sugerido. Nenhuma alteração é necessária.'
   :p.needsBasePriceUpdate
   ?'O preço bruto precisa ser atualizado primeiro. A operação somente ocorrerá se você também autorizar esta etapa.'
-  :'Prévia conferida pela API. Marque as quatro revisões, confirme a autorização e clique em Executar.',
+  :p.promotionSignal==='unclassified_promotion'
+    ?'A campanha escolhida não contém esta SKU. A sinalização promocional da Shopee não confirma conflito; a inclusão será validada no envio. Revise e autorize somente se os dados estiverem corretos.'
+    :'SKU não encontrada na campanha escolhida. Revise os dados e confirme para solicitar inclusão à Shopee.',
   p.action==='already'?'success':'warning');
  discountPromoApproval();
 }
