@@ -73,7 +73,8 @@ export async function getShopeeNewListingsSummary({cfg,auth,callApi,now=new Date
  if(!Number.isSafeInteger(id)||id<=0)throw Error('Loja Shopee não identificada.');
  if(typeof callApi!=='function')throw Error('API Shopee indisponível.');
  const current=cache.get(id);
- if(current&&Date.now()<current.expiresAt)return current.task;
+ if(current&&Date.now()<current.expiresAt&&current.localDay===localDateKey(now))
+  return current.task;
  const task=(async()=>{
   const ids=new Set();
   for(const status of STATUSES){
@@ -118,7 +119,7 @@ export async function getShopeeNewListingsSummary({cfg,auth,callApi,now=new Date
    scope:'Anúncios ainda presentes na loja, incluindo ativos e inativos; exclui removidos.',
    shopId:String(id),checkedAt:new Date().toISOString(),totalItems:all.length,...totals};
  })();
- cache.set(id,{task,expiresAt:Date.now()+CACHE_MS});
+ cache.set(id,{task,expiresAt:Date.now()+CACHE_MS,localDay:localDateKey(now)});
  try{return await task;}catch(e){cache.delete(id);throw e;}
 }
 export function clearShopeeNewListingsCache(shopId){cache.delete(Number(shopId));}
