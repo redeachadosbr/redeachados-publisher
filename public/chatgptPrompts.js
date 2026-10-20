@@ -35,10 +35,10 @@ export function createChatGptPrompts({sku='',title='',masterPrompt='',imageNotes
   'GERAR APENAS A IMAGEM '+String(index+1).padStart(2,'0')+' DE 09.',
   scene.label+': '+scene.guide,
   'AJUSTE ESPECÍFICO: '+(asText(imageNotes?.[index+1],500)||'Nenhum.'),
-  'A saída deve ser apenas uma imagem separada para download, não um mosaico.'
+  'Exiba a imagem gerada diretamente na conversa com a ferramenta nativa de imagens. Não entregue apenas um link de arquivo, um prompt ou uma resposta em texto. A extensão precisa receber o resultado visual desta posição antes de solicitar a próxima.'
  ].join('\n\n'));
  const batch=[header,
-  'TAREFA: crie as 9 imagens, UMA POR VEZ, mantendo o MESMO produto da foto original. Se não puder gerar nove numa única resposta, gere a primeira e continue nas próximas mensagens com o mesmo padrão.',
+  'TAREFA AUTORIZADA: execute a sequência completa de 9 imagens agora, em nove chamadas sequenciais da ferramenta de imagens, uma imagem individual por chamada, mantendo o MESMO produto da foto original. Continue até a imagem 09 sem solicitar confirmação entre posições. Exiba cada resultado diretamente na conversa; não substitua a imagem por um link de download. Se houver uma falha real da ferramenta, informe exatamente a posição pendente e preserve o progresso.',
   ...CHATGPT_IMAGE_SCENES.map((scene,i)=>
    String(i+1).padStart(2,'0')+' / 09 — '+scene.label+': '+scene.guide+
    (imageNotes?.[i+1]?'\nAjuste: '+asText(imageNotes[i+1],500):'')),
