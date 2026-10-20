@@ -4872,10 +4872,14 @@ $('#discountOpenPromotion').onclick=()=>{
     shDiscountStatus('Não há plano confirmado para conferir na Minha Promoção.','warning');
     return;
   }
-  // Somente o portal da Shopee é confirmado; não presumir rota privada de campanha.
-  const opened=window.open('https://seller.shopee.com.br/','_blank','noopener,noreferrer');
-  shDiscountStatus('Abra Central de Marketing → Minha Promoção na Central do Vendedor. '+
-    'Confira campanha, preço e desconto manualmente; nenhum valor foi enviado pela API.','warning');
+  // A rota da Minha Promoção foi fornecida pelo usuário; exigir ID numérico
+  // e validação da loja durante a prévia antes de qualquer execução.
+  const id=String($('#discountPromotionId')?.value||'').trim();
+  const target=/^\d{1,18}$/.test(id)&&Number.isSafeInteger(Number(id))
+   ?'https://seller.shopee.com.br/portal/marketing/discount/'+id
+   :'https://seller.shopee.com.br/portal/marketing/discount';
+  window.open(target,'_blank','noopener,noreferrer');
+  shDiscountStatus('Central do Vendedor aberta. Confira o produto na promoção; a execução no Shopee Manager continua dependendo de prévia e confirmação.','warning');
 };
 $('#discountCopy').onclick=async()=>{
   const q=shDiscountQuote;
