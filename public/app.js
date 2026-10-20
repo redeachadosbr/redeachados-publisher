@@ -4297,6 +4297,9 @@ async function shPriceAdsRestoreSelection(selected){
  return true;
 }
 $('#priceAdsEnabled')?.addEventListener('change',()=>{
+ // Uma escolha explícita do usuário nunca pode ser sobrescrita pela
+ // restauração assíncrona de um plano anterior da mesma SKU.
+ if(shPriceSelection)shPriceAdsLoadedKey=[shPriceSelection.sku,shPriceSelection.itemId,shPriceSelection.modelId].join('|');
  shPriceAdsRefreshUi();
  if($('#priceAdsEnabled').checked&&!(Number($('#priceAds').value)>0)){
   shPriceSetStatus('Informe o percentual de reserva para Ads desta SKU (acima de 0%).','warning');
@@ -4529,6 +4532,9 @@ const shPriceInputIds=['#priceMinMargin','#priceDiscount',
   ...[0,1,2,3].flatMap(i=>['#priceRate'+i,'#priceFee'+i])];
 for(const id of shPriceInputIds){
   $(id)?.addEventListener?.('change',()=>{
+    if(id==='#priceAds'&&shPriceSelection)
+      shPriceAdsLoadedKey=[shPriceSelection.sku,shPriceSelection.itemId,shPriceSelection.modelId].join('|');
+    if(id==='#priceAds')shPriceAdsRefreshUi();
     if(shPriceSelection)void shPricePrepare();
     else if(shPriceSupplierQuote)void shPricePreviewSupplierSku(shPriceSupplierQuote.sku);
   });
