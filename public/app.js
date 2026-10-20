@@ -4946,7 +4946,9 @@ function shDiscountRender(q){
   discountOneClickStatus(q.marketResearch?.verified===true
     ?q.status==='MERCADO_ABAIXO_DO_PISO'
       ?'Preço da concorrência inferior à margem protegida. Desconto não executável.'
-      :'Pesquisa de mercado verificada. Plano pronto para executar na Shopee.'
+      :Number(q.discountPct)===0
+        ?'Este anúncio já está competitivo sem desconto adicional. Não é necessário inserir na Minha Promoção.'
+        :'Pesquisa de mercado verificada. Plano pronto para executar na Shopee.'
     :'Desconto base sem pesquisa comprovada. Conecte a API de ofertas Shopee e recalcule a SKU em Precificação.',
     q.marketResearch?.verified===true&&q.status!=='MERCADO_ABAIXO_DO_PISO'?'success':'warning');
   discountOneClickReady();
