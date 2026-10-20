@@ -5514,9 +5514,7 @@ function optimizerImagesRenderMode(){
  const chat=mode==='chatgpt';
  $('#optimizerImagesChatgptPanel').hidden=!chat;
  $('#optimizerImagesApiPanel').hidden=chat;
- $('#optimizerModeChatgpt').setAttribute('aria-pressed',String(chat));
  $('#optimizerModeApi').setAttribute('aria-pressed',String(!chat));
- $('#optimizerModeChatgpt').classList.toggle('is-active',chat);
  $('#optimizerModeApi').classList.toggle('is-active',!chat);
 }
 async function optimizerChatgptMakeBrief(w){
@@ -5612,10 +5610,6 @@ async function optimizerChatgptCopyAll({open=false}={}){
    :'Os nove roteiros foram copiados. Cole no ChatGPT junto com a fotografia original do produto.';
  }catch(e){status.textContent='Falha ao copiar os roteiros: '+e.message+'. Use os botões individuais abaixo.';}
 }
-$('#optimizerModeChatgpt')?.addEventListener?.('click',()=>{
- optimizerImagesMode='chatgpt';optimizerImagesRenderMode();
- if(optimizerWorkflowPlan)void optimizerChatgptRender(optimizerWorkflowPlan);
-});
 $('#optimizerModeApi')?.addEventListener?.('click',()=>{
  optimizerImagesMode='api';optimizerImagesRenderMode();
 });
@@ -5776,6 +5770,9 @@ globalThis.window?.addEventListener?.('message',async(event)=>{
 $('#optimizerChatgptAuto')?.addEventListener?.('click',async()=>{
  const w=optimizerWorkflowPlan,status=$('#optimizerChatgptBridgeStatus');
  if(!w||!optimizerImagesSameSku(w))return;
+ // Um comando: selecionar ChatGPT e iniciar/retomar a geracao da SKU atual.
+ optimizerImagesMode='chatgpt';optimizerImagesRenderMode();
+ void optimizerChatgptRender(w);
  if(optimizerChatBridgeBusy){void optimizerChatBridgeRecover();status.textContent='A geração ou o envio está em andamento. O progresso será preservado.';return;}
  if(!optimizerChatBridgeReady){
   globalThis.window?.postMessage?.({kind:'RA_EXTENSION_PROBE'},location.origin);
