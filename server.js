@@ -54,7 +54,7 @@ import {MAX_VIDEO_BYTES,getShopeeManualVideo,importShopeeManualVideo,
 import {findLiveShopeeSku} from './shopeeSkuFinder.js';
 import {optimizerSettings,saveOptimizerSettings} from './optimizerStore.js';
 import {quoteShopeePrice,normalizeShopeePricingSettings} from './shopeePricing.js';
-import {promotionFromQuote,promotionBasePrice,promotionMember,discountPlanSnapshot,signDiscountPreview,verifyDiscountPreview,readDiscountPages} from './shopeeDiscountPublish.js';
+import {promotionFromQuote,promotionBasePrice,promotionMember,shopDiscountMembershipSignal,discountPlanSnapshot,signDiscountPreview,verifyDiscountPreview,readDiscountPages} from './shopeeDiscountPublish.js';
 import {shopeePricingPreferences,saveShopeePricingPreferences,
   shopeePricingSupplierCost,shopeePricingDirectSupplierCost,
   saveShopeePricePlan,recentShopeePricePlans,
@@ -1595,10 +1595,14 @@ async function discountExecutionInputs(req,sku,itemId,modelId,discountId){
  const originalPrice=promotionBasePrice(live);
  const {record,pages}=await readDiscountPages(callShopeeShopApi,{cfg,auth,discountId});
  const existing=promotionMember(pages,itemId);
- if(live.has_promotion===true&&!existing)
-  throw Error('Esta SKU já participa de outra promoção Shopee. Confira campanhas concorrentes antes de incluí-la; nenhuma alteração foi enviada.');
- const snapshot=discountPlanSnapshot({shopId:auth.shopId,sku,itemId,modelId,discountId,
-   quote,record,existing,originalPrice});
+ // has_promotion é genérico: NÃO comprova inscrição em outra Minha Promoção.
+ // A inclusão na campanha escolhida depende da verificação do item_list e
+ // das regras validadas pela API add_discount_item da própria Shopee.
+ const promoMembership=shopDiscountMembershipSignal(live,existing);
+ const snapshot={...discountPlanSnapshot({shopId:auth.shopId,sku,itemId,modelId,discountId,
+   quote,record,existing,originalPrice}),
+   promotionSignal:promoMembership.kind,
+   promotionNotice:promoMembership.warning};
  return {auth,cfg,quote,snapshot,originalPrice};
 }
 app.post('/api/shopee/optimizer/discounts/preview',mustLogin,requireWeDropAdmin,async(req,res)=>{
@@ -1632,7 +1636,8 @@ app.post('/api/shopee/optimizer/discounts/execute',mustLogin,requireWeDropAdmin,
     approved.modelId,approved.discountId);
   const current=data.snapshot;
   for(const key of ['shopId','sku','itemId','modelId','discountId','gross','promo',
-    'buyerAfterCoupon','discountPct','couponPct','originalPrice','action','existingPrice','quoteAt']){
+    'buyerAfterCoupon','discountPct','couponPct','originalPrice','action','existingPrice','quoteAt',
+    'promotionSignal']){
     if(current[key]!==approved[key])
       throw Error('A prévia ficou desatualizada ('+key+'). Gere outra prévia antes de executar.');
   }
