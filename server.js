@@ -39,6 +39,7 @@ import {advanceShopeeExecution} from './shopeeExecutionWorker.js';
 import {shopeeExecutionProgress,withExecutionEvent} from './shopeeExecutionProgress.js';
 import {recyclableShopeeMedia,archiveShopeeMedia} from './shopeeExecutionMediaReuse.js';
 import {normalizedShopeeFiscalBatchSkus,checkedShopeeFiscalBatchEntries} from './shopeeExecutionBatch.js';
+import {readShopeeFiscalReadiness,saveShopeeFiscalReadiness,fiscalCanPublish,fiscalPreviewDisposition,pendingFiscalReason} from './shopeeFiscalReadiness.js';
 import {detectShopeeExecutionIssue,needsCestRevalidation} from './shopeeExecutionIssues.js';
 import {createShopeeMediaApi} from './shopeeMediaApi.js';
 import {normalizeManualVideo} from './shopeeVideoValidation.js';
@@ -894,6 +895,28 @@ app.post('/api/shopee/optimizer/execution/prepare',mustLogin,requireWeDropAdmin,
       updatedAt:stored.updated_at,executionStatus:stored.state,marketplaceUpdated:false});
   }catch(e){res.status(409).json({error:String(e.message||e).slice(0,300)});}
 });
+app.get('/api/shopee/optimizer/fiscal/readiness',mustLogin,requireWeDropAdmin,async(req,res)=>{
+ res.setHeader('Cache-Control','no-store');
+ try{
+  const {auth}=await getValidAuth(req);
+  res.json({ok:true,readiness:await readShopeeFiscalReadiness(auth.shopId)});
+ }catch(e){res.status(503).json({error:String(e.message||e).slice(0,230)});}
+});
+app.post('/api/shopee/optimizer/fiscal/readiness',mustLogin,requireWeDropAdmin,async(req,res)=>{
+ res.setHeader('Cache-Control','no-store');
+ if(!verifiedSameOrigin(req))return res.status(403).json({error:'Origem não autorizada.'});
+ try{
+  const {auth}=await getValidAuth(req);
+  const readiness=await saveShopeeFiscalReadiness(auth.shopId,{
+   mode:req.body.mode,migrationConfirmed:req.body.migrationConfirmed,
+   accountantConfirmed:req.body.accountantConfirmed
+  });
+  res.json({ok:true,readiness,marketplaceUpdated:false,
+   message:readiness.fiscalPublishingEnabled?
+     'O envio fiscal foi habilitado após sua confirmação de migração e validação com a contabilidade. Cada SKU continua exigindo prévia aprovada.':
+     'Dados fiscais em preparação: nenhum envio será executado até a migração e a validação serem confirmadas.'});
+ }catch(e){res.status(400).json({error:String(e.message||e).slice(0,280)});}
+});
 // BATCH: prepare and execute ONLY fiscal tax_info for distinct exact SKUs.
 // Each item uses the same audited plan, saved review, CAS lock and durable worker
 // as a single-SKU execution. A failed item never cancels other items.
@@ -903,6 +926,7 @@ app.post('/api/shopee/optimizer/batch/fiscal/prepare',mustLogin,requireWeDropAdm
  try{
   const skus=normalizedShopeeFiscalBatchSkus(req.body.skus);
   const {auth,cfg}=await getValidAuth(req);
+  const readiness=await readShopeeFiscalReadiness(auth.shopId);
   const results=[],usedItemIds=new Set();
   for(const requestedSku of skus){
    let sku=requestedSku;
@@ -940,6 +964,17 @@ app.post('/api/shopee/optimizer/batch/fiscal/prepare',mustLogin,requireWeDropAdm
     const plan=compileShopeeExecutionPlan({shopId:auth.shopId,itemId,modelId,sku,
       record,review:review.review_state,live,selectedStage:'fiscal'});
     const prior=await readShopeeExecution(auth.shopId,itemId,modelId);
+    const disposition=fiscalPreviewDisposition({readiness,stage:'fiscal',plan,
+      previousError:prior?.last_error,previousPlan:prior?.plan});
+    if(!disposition.allowed){
+      results.push({sku,itemId:String(itemId),modelId:String(modelId),
+        ready:false,state:'draft_only',current:live.tax_info||{},
+        proposed:plan.proposed.tax_info||null,
+        blocked:[...disposition.issues,...plan.blocked],
+        warnings:plan.warnings.filter(x=>/Fiscal|CEST|NCM|Anatel/i.test(x)),
+        message:'Rascunho fiscal salvo na ficha da SKU. Nenhuma alteração enviada à Shopee.'});
+      continue;
+    }
     plan.mediaArchive=archiveShopeeMedia(prior,plan);
     const job=await saveShopeePreparedExecution(auth.shopId,itemId,modelId,sku,plan);
     results.push({sku,itemId:String(itemId),modelId:String(modelId),
@@ -965,6 +1000,8 @@ app.post('/api/shopee/optimizer/batch/fiscal/execute',mustLogin,requireWeDropAdm
    throw Error('Confirme explicitamente o lote fiscal aprovado.');
   const items=checkedShopeeFiscalBatchEntries(req.body.items);
   const {auth,cfg}=await getValidAuth(req);
+  const readiness=await readShopeeFiscalReadiness(auth.shopId);
+  if(!fiscalCanPublish(readiness))throw Error(pendingFiscalReason);
   const results=[];
   for(const item of items){
    try{
@@ -989,6 +1026,9 @@ app.post('/api/shopee/optimizer/batch/fiscal/execute',mustLogin,requireWeDropAdm
       record,review:review.review_state,live,selectedStage:'fiscal'});
     if(!recalculated.canExecute||recalculated.fingerprint!==job.plan.fingerprint)
       throw Error('Valores fiscais diferentes da prévia. Revise a SKU novamente.');
+    const disposition=fiscalPreviewDisposition({readiness,stage:'fiscal',plan:job.plan,
+      previousError:job.last_error,previousPlan:job.plan});
+    if(!disposition.allowed)throw Error(disposition.issues.join(' '));
     confirmShopeeExecution(job.plan,{sku,confirmation:'EXECUTAR '+sku});
     await claimShopeePreparedExecution(auth.shopId,itemId,modelId,{
       planId,updatedAt,runId:crypto.randomUUID()});
