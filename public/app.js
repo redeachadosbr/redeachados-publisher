@@ -2245,6 +2245,7 @@ $('#optimizerSku')?.addEventListener?.('input',()=>{
  $('#optimizerSupplierResult').hidden=true;
  $('#optimizerWorkflowPanel').hidden=true;
  optimizerWorkflowPlan=null;optimizerWorkflowStage=null;optimizerWorkflowSerial++;
+ globalThis.OptimizerSkuDashboard?.reset?.();
  optimizerExecReset();
  shPriceCurrentQuote=null;
  shPriceSupplierQuote=null;
@@ -2368,6 +2369,7 @@ $('#optimizerSourceImage')?.addEventListener?.('change',async()=>{
 function optimizerWorkflowRender(data){
  optimizerSourceRender(data);
  optimizerWorkflowPlan=data;
+ globalThis.OptimizerSkuDashboard?.workflow?.(data);
  const cards=$('#optimizerWorkflowCards');cards.replaceChildren();
  if(data.anatel?.requiresAction){
    const alert=optimizerMake('div','optimizer-anatel-alert');
@@ -2791,6 +2793,7 @@ function optimizerExecReset(){
 // Acompanhamento em tempo real, sempre com informações da própria SKU e da API.
 // Imagens em mídia não significam alteração publicada até status "verified".
 function optimizerExecutionTrackerRender(progress,job){
+ globalThis.OptimizerSkuDashboard?.execution?.(progress,job);
  if(!progress)return;
  const tracker=$('#optimizerExecutionTracker'),activity=$('#optimizerExecutionActivity');
  if(!tracker||!activity)return;
@@ -3196,6 +3199,7 @@ function optimizerExecutionJobView(job,progress=null,issue=null){
  optimizerExecutionTrackerRender(progress,job);
  optimizerExecutionIssueRender(issue);
  optimizerExecJob=job;
+ if(!job)globalThis.OptimizerSkuDashboard?.execution?.(null,null);
  // Continuar acompanhando a SKU automaticamente mesmo após recarregar a página.
  if(job&&['running','uncertain'].includes(job.state)){
   $('#optimizerExecutionPanel').hidden=false;
@@ -3302,6 +3306,11 @@ $('#optimizerExecutionRetry')?.addEventListener?.('click',async()=>{
   }catch(e){return optimizerExecNotice(e.message,'warning');}
  }
  await optimizerExecutionPrepare();
+});
+// Display-only compact dashboard: all actions reuse the original workflow.
+globalThis.OptimizerSkuDashboard?.bind?.({
+ openStage:key=>optimizerWorkflowOpen(key),
+ openExecution:()=>$('#optimizerShowExecution')?.click?.()
 });
 function optimizerCell(row,textValue,className=''){
   const td=optimizerMake('td',className,textValue);row.appendChild(td);return td;
