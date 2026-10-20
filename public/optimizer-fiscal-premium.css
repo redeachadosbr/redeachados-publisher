@@ -1,0 +1,102 @@
+/* Rede Achados BR — módulo fiscal premium responsivo, escopo restrito. */
+#tab-optimizer .optimizer-fiscal-batch{border:1px solid #dce6f5;border-radius:18px;
+ background:#fff;box-shadow:0 10px 26px rgba(16,45,91,.06);padding:14px 16px}
+#tab-optimizer .optimizer-fiscal-batch > summary{
+ list-style:none;cursor:pointer;display:flex;align-items:center;gap:13px;padding:4px 2px;
+ color:#0c2954;font-size:16px;flex-wrap:wrap
+}
+#tab-optimizer .optimizer-fiscal-batch > summary::-webkit-details-marker{display:none}
+#tab-optimizer .ra-fiscal-title{display:grid;gap:3px;min-width:0;flex:1}
+#tab-optimizer .ra-fiscal-title strong{font-size:16px;font-weight:900;line-height:1.2}
+#tab-optimizer .ra-fiscal-title small{font-size:11px;color:#647fa2;font-weight:500;line-height:1.35}
+#tab-optimizer .ra-fiscal-logo{display:grid;place-items:center;background:#fff0e8;color:#ed572f;
+ border-radius:12px;width:43px;height:43px;font-size:22px;flex:none}
+#tab-optimizer .optimizer-fiscal-batch-pill{margin-left:auto}
+#tab-optimizer .ra-fiscal-chevron{color:#37649a;font-size:20px;transition:transform .15s}
+#tab-optimizer .optimizer-fiscal-batch[open] .ra-fiscal-chevron{transform:rotate(180deg)}
+#tab-optimizer .ra-fiscal-kpis{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));
+ gap:9px;margin:14px 0 11px}
+#tab-optimizer .ra-fiscal-kpi{border-radius:11px;padding:10px 12px;display:flex;align-items:center;
+ justify-content:space-between;gap:8px;background:#f0f5fe;border:1px solid #e3ebf7}
+#tab-optimizer .ra-fiscal-kpi span{font-size:11px;font-weight:750;color:#45678f}
+#tab-optimizer .ra-fiscal-kpi strong{font-size:21px;font-weight:900;color:#183b6b}
+#tab-optimizer .ra-fiscal-kpi.good{background:#edf9f1;border-color:#d9f0df}
+#tab-optimizer .ra-fiscal-kpi.good strong{color:#13864c}
+#tab-optimizer .ra-fiscal-kpi.warn{background:#fff7ec;border-color:#fee6c9}
+#tab-optimizer .ra-fiscal-kpi.warn strong{color:#c16a10}
+#tab-optimizer .ra-fiscal-help{font-size:11px!important;color:#647e9e!important;line-height:1.4!important;
+ margin:6px 0 13px!important}
+#tab-optimizer .optimizer-fiscal-batch > .optimizer-field{display:block;
+ background:#f6f9fd;border:1px solid #e4ecf8;border-radius:12px;padding:12px 13px;
+ font-size:12px;color:#1b3a64;font-weight:800}
+#tab-optimizer .optimizer-fiscal-batch textarea{
+ min-height:45px;height:47px;max-height:120px;line-height:1.4;
+ padding:11px 12px;background:#fff;font-size:13px;border-radius:9px;margin-top:7px;
+ resize:vertical
+}
+#tab-optimizer .ra-fiscal-input-help{display:block;font-size:10px;color:#6781a2;margin-top:5px}
+#tab-optimizer .optimizer-fiscal-batch-actions{display:flex;flex-wrap:wrap;gap:9px;margin:11px 0}
+#tab-optimizer .optimizer-fiscal-batch-actions button{
+ min-height:41px;border-radius:10px;font-weight:800;font-size:12px;flex:1 1 160px;
+ padding:10px 12px
+}
+#tab-optimizer #optimizerFiscalBatchPrepare{background:#155338;color:#fff;border:1px solid #155338}
+#tab-optimizer #optimizerFiscalBatchExecute{background:#2465c6;color:#fff;border:1px solid #2465c6}
+#tab-optimizer .optimizer-fiscal-batch-actions button[hidden]{display:none!important}
+#tab-optimizer .optimizer-fiscal-batch-actions button:disabled{opacity:.52;cursor:not-allowed}
+#tab-optimizer .optimizer-fiscal-batch #optimizerFiscalBatchStatus{
+ font-size:11px!important;line-height:1.4;padding:10px 12px;margin:4px 0 12px;
+ border-radius:9px;background:#eef5ff;color:#27517d;border:1px solid #e0e9f7
+}
+#tab-optimizer .ra-fiscal-synopsis{font-size:11px;line-height:1.5;color:#345a86;
+ background:#f4f8ff;padding:9px 12px;border-radius:9px;margin:0 0 12px}
+#tab-optimizer .optimizer-fiscal-batch-list{display:grid;grid-template-columns:1fr;
+ gap:11px;max-height:none;overflow:visible}
+#tab-optimizer .optimizer-fiscal-batch-item{
+ background:#fff;border:1px solid #dfe8f5;border-radius:14px;
+ box-shadow:0 4px 14px rgba(20,56,94,.04);padding:14px;gap:10px
+}
+#tab-optimizer .optimizer-fiscal-batch-item-head{justify-content:flex-start;gap:11px;flex-wrap:wrap}
+#tab-optimizer .optimizer-fiscal-batch-item-head strong{font-size:17px;color:#102f5d}
+#tab-optimizer .optimizer-fiscal-batch-state{font-size:10px;padding:6px 11px}
+#tab-optimizer .optimizer-fiscal-batch-state.is-cest{color:#ac5d0c;background:#fff0d9}
+#tab-optimizer .ra-fiscal-field-grid{display:grid;
+ grid-template-columns:repeat(6,minmax(0,1fr));gap:7px}
+#tab-optimizer .ra-fiscal-field{min-width:0;background:#f5f8fd;border-radius:9px;
+ padding:9px;display:grid;gap:5px}
+#tab-optimizer .ra-fiscal-field span{font-size:10px;color:#5b7397}
+#tab-optimizer .ra-fiscal-field strong{font-size:12px;font-weight:900;color:#162f5b;overflow-wrap:anywhere}
+#tab-optimizer .ra-fiscal-alert{display:grid;gap:4px;background:#fff7e9;border:1px solid #ffd9a7;
+ padding:11px 13px;border-radius:10px}
+#tab-optimizer .ra-fiscal-alert strong{font-size:12px;color:#ad4615}
+#tab-optimizer .ra-fiscal-alert span{font-size:11px;color:#617996;line-height:1.45}
+#tab-optimizer .ra-fiscal-card-note{font-size:11px;color:#547296;margin:0;line-height:1.45}
+#tab-optimizer .ra-fiscal-item-actions{display:flex;gap:8px;align-items:stretch;flex-wrap:wrap}
+#tab-optimizer .ra-fiscal-item-actions > button, 
+#tab-optimizer .ra-fiscal-item-actions > details{
+ flex:1 1 145px;min-width:0;border-radius:9px;
+}
+#tab-optimizer .ra-fiscal-item-actions > button{font-size:11px;font-weight:800;
+ padding:9px 12px;min-height:37px}
+#tab-optimizer .ra-fiscal-edit{border:1px solid #ee4d2d;background:#ee4d2d;color:#fff}
+#tab-optimizer .ra-fiscal-details{border:1px solid #d9e3f1;color:#254c7b;
+ background:#fff}
+#tab-optimizer .ra-fiscal-details summary{list-style:none;cursor:pointer;
+ padding:10px 11px;text-align:center;font-size:11px;font-weight:800}
+#tab-optimizer .ra-fiscal-details summary::-webkit-details-marker{display:none}
+#tab-optimizer .ra-fiscal-raw{padding:8px 10px;border-top:1px solid #e7edf6;
+ max-height:140px;overflow:auto}
+#tab-optimizer .ra-fiscal-raw p{font-size:10px;color:#526987;margin:0 0 5px;line-height:1.4;
+ overflow-wrap:anywhere}
+#tab-optimizer .ra-fiscal-note{border-radius:10px;padding:10px 12px;
+ background:#eef6ff;color:#23528c;font-size:11px;line-height:1.5;margin-top:12px}
+@media(max-width:1150px){
+ #tab-optimizer .ra-fiscal-field-grid{grid-template-columns:repeat(3,minmax(0,1fr))}
+}
+@media(max-width:660px){
+ #tab-optimizer .ra-fiscal-kpis{grid-template-columns:repeat(2,minmax(0,1fr))}
+ #tab-optimizer .ra-fiscal-field-grid{grid-template-columns:repeat(2,minmax(0,1fr))}
+ #tab-optimizer .optimizer-fiscal-batch{padding:12px}
+ #tab-optimizer .ra-fiscal-item-actions > button,
+ #tab-optimizer .ra-fiscal-item-actions > details{flex-basis:100%}
+}
