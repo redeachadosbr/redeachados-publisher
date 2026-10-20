@@ -37,7 +37,7 @@ import {readShopeeExecution,saveShopeePreparedExecution,
   checkpointShopeeExecution,reconcileShopeeJob} from './shopeeExecutionStore.js';
 import {advanceShopeeExecution} from './shopeeExecutionWorker.js';
 import {shopeeExecutionProgress,withExecutionEvent} from './shopeeExecutionProgress.js';
-import {recyclableShopeeMedia} from './shopeeExecutionMediaReuse.js';
+import {recyclableShopeeMedia,archiveShopeeMedia} from './shopeeExecutionMediaReuse.js';
 import {normalizedShopeeFiscalBatchSkus,checkedShopeeFiscalBatchEntries} from './shopeeExecutionBatch.js';
 import {detectShopeeExecutionIssue,needsCestRevalidation} from './shopeeExecutionIssues.js';
 import {createShopeeMediaApi} from './shopeeMediaApi.js';
@@ -886,6 +886,7 @@ app.post('/api/shopee/optimizer/execution/prepare',mustLogin,requireWeDropAdmin,
       (previous?.sku===sku&&needsCestRevalidation(previous.last_error,previous.plan,plan)));
     if(deferFiscal)plan=compileShopeeExecutionPlan({...inputs,deferUnconfirmedFiscal:true});
     plan.reusedMedia=recyclableShopeeMedia(previous,plan);
+    plan.mediaArchive=archiveShopeeMedia(previous,plan);
     const stored=await saveShopeePreparedExecution(auth.shopId,itemId,modelId,sku,plan);
     res.json({ok:true,ready:plan.canExecute,plan,progress:shopeeExecutionProgress(stored),
       issue:deferFiscal&&!plan.canExecute?
@@ -924,6 +925,8 @@ app.post('/api/shopee/optimizer/batch/fiscal/prepare',mustLogin,requireWeDropAdm
     const live=await shopeeLiveEditableItem(cfg,auth,itemId);
     const plan=compileShopeeExecutionPlan({shopId:auth.shopId,itemId,modelId,sku,
       record,review:review.review_state,live,selectedStage:'fiscal'});
+    const prior=await readShopeeExecution(auth.shopId,itemId,modelId);
+    plan.mediaArchive=archiveShopeeMedia(prior,plan);
     const job=await saveShopeePreparedExecution(auth.shopId,itemId,modelId,sku,plan);
     results.push({sku,itemId:String(itemId),modelId:String(modelId),
       ready:plan.canExecute,state:job.state,planId:plan.planId,updatedAt:job.updated_at,
