@@ -1,0 +1,95 @@
+/* Rede Achados BR — cartões de anúncios cadastrados por dia, mês e ano. */
+#tab-overview .dashboard-new-listings{
+ background:linear-gradient(135deg,#ffffff,#f5faff);
+ border:1px solid #dbe7f5;border-radius:18px;
+ box-shadow:0 8px 22px rgba(13,52,96,.055);
+ padding:17px 18px;margin:17px 0 22px;display:grid;gap:14px
+}
+#tab-overview .dashboard-new-listings-heading{
+ display:flex;align-items:center;gap:12px;flex-wrap:wrap
+}
+#tab-overview .dashboard-new-listings-icon{
+ width:43px;height:43px;border-radius:13px;display:grid;place-items:center;
+ background:#e9f3ff;color:#1363b3;flex:none
+}
+#tab-overview .dashboard-new-listings-icon svg{width:24px;height:24px}
+#tab-overview .dashboard-new-listings-title{flex:1;min-width:185px}
+#tab-overview .dashboard-new-listings-title h3{margin:0 0 3px;font-size:17px;
+ font-weight:900;line-height:1.25;color:#112d55}
+#tab-overview .dashboard-new-listings-title p{margin:0;
+ font-size:11px;line-height:1.45;color:#607d9e}
+#tab-overview .dashboard-new-listings-updated{font-size:10px;
+ font-weight:700;color:#55779c;background:#eef5fd;
+ padding:8px 10px;border-radius:20px;max-width:280px}
+#tab-overview .dashboard-new-listings-grid{display:grid;
+ grid-template-columns:repeat(3,minmax(0,1fr));gap:12px}
+#tab-overview .dashboard-new-listings-card{
+ display:grid;gap:3px;min-width:0;border-radius:13px;
+ border:1px solid #e0e9f5;background:#fff;padding:13px 16px
+}
+#tab-overview .dashboard-new-listings-period{
+ font-size:12px;font-weight:850;color:#476b94
+}
+#tab-overview .dashboard-new-listings-card strong{
+ font-size:29px;font-weight:950;line-height:1.35;color:#163760;letter-spacing:-.025em
+}
+#tab-overview .dashboard-new-listings-card small{font-size:11px;color:#7b90aa}
+#tab-overview .dashboard-new-listings-today{
+ border-color:#cdece0;background:#f2fcf6
+}
+#tab-overview .dashboard-new-listings-today strong{color:#07885b}
+#tab-overview .dashboard-new-listings-month{
+ border-color:#d7e7ff;background:#f3f8ff
+}
+#tab-overview .dashboard-new-listings-month strong{color:#175cb0}
+#tab-overview .dashboard-new-listings-year{
+ border-color:#e5defb;background:#f9f6ff
+}
+#tab-overview .dashboard-new-listings-year strong{color:#674cb3}
+#tab-overview .dashboard-new-listings-history{
+ border-top:1px solid #e8eef8;padding-top:7px
+}
+#tab-overview .dashboard-new-listings-history>summary{
+ display:flex;align-items:center;gap:7px;cursor:pointer;list-style:none;
+ color:#2c5687;font-size:11px;font-weight:800;padding:6px 0
+}
+#tab-overview .dashboard-new-listings-history>summary::-webkit-details-marker{display:none}
+#tab-overview .dashboard-new-listings-chevron{font-size:15px;transition:transform .16s}
+#tab-overview .dashboard-new-listings-history[open] .dashboard-new-listings-chevron{transform:rotate(180deg)}
+#tab-overview .dashboard-new-listings-history-content{
+ display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:17px;
+ padding:12px 0 5px
+}
+#tab-overview .dashboard-new-listings-history-block{display:grid;align-content:start;gap:5px}
+#tab-overview .dashboard-new-listings-history-block>strong{
+ font-size:12px;color:#1b4171;margin-bottom:5px
+}
+#tab-overview .dashboard-new-listings-days,
+#tab-overview .dashboard-new-listings-months{display:grid;gap:6px}
+#tab-overview .dashboard-new-listings-history-item{
+ display:grid;grid-template-columns:52px 1fr 35px;align-items:center;gap:10px
+}
+#tab-overview .dashboard-new-listings-history-label{font-size:10px;color:#6984a4}
+#tab-overview .dashboard-new-listings-history-track{
+ background:#e8eff8;height:8px;border-radius:99px;overflow:hidden
+}
+#tab-overview .dashboard-new-listings-history-fill{
+ display:block;height:100%;background:#4485ce;border-radius:99px
+}
+#tab-overview .dashboard-new-listings-history-item strong{
+ font-size:11px;color:#254d7b;text-align:right
+}
+#tab-overview #dashboardNewListingsFootnote{grid-column:1/-1;
+ font-size:10px;line-height:1.45;color:#7086a2;margin:6px 0 0
+}
+@media(max-width:760px){
+ #tab-overview .dashboard-new-listings-grid{gap:7px}
+ #tab-overview .dashboard-new-listings-card{padding:11px 9px}
+ #tab-overview .dashboard-new-listings-card strong{font-size:24px}
+ #tab-overview .dashboard-new-listings-history-content{grid-template-columns:1fr}
+ #tab-overview .dashboard-new-listings{padding:13px}
+}
+@media(max-width:420px){
+ #tab-overview .dashboard-new-listings-card strong{font-size:21px}
+ #tab-overview .dashboard-new-listings-period{font-size:10px}
+}
