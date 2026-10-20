@@ -4603,6 +4603,121 @@ async function adsPricingLoad(){
 $('#adsPricingRefresh')?.addEventListener('click',()=>void adsPricingLoad());
 
 let discountLoadRequestId=0,discountRefreshBusy=false;
+let discountPromoPreview=null,discountPromoExecuting=false;
+function discountPromoStatus(message,state='info'){
+ const n=$('#discountPromotionStatus');if(!n)return;
+ n.textContent=message;n.dataset.state=state;
+}
+function discountPromoReset(){
+ discountPromoPreview=null;
+ const box=$('#discountPromotionPreviewBox');
+ if(box)box.hidden=true;
+ const confirm=$('#discountPromotionConfirm');
+ if(confirm)confirm.checked=false;
+ const price=$('#discountPromotionAllowPrice');
+ if(price)price.checked=false;
+ const go=$('#discountPromotionExecute');
+ if(go)go.disabled=true;
+ const badge=$('#discountPublishBadge');
+ if(badge){badge.textContent='Não executado';badge.dataset.state='pending';}
+ discountPromoStatus('Nenhum desconto enviado. Gere uma prévia para conferir a campanha.');
+}
+function discountPromoApproval(){
+ const ready=Boolean(discountPromoPreview)&&discountPromoPreview.preview.action!=='already'&&
+   !discountPromoExecuting&&$('#discountPromotionConfirm').checked&&
+   [...document.querySelectorAll('[data-discount-review]')].every(x=>x.checked)&&
+   (!discountPromoPreview.preview.needsBasePriceUpdate||$('#discountPromotionAllowPrice').checked);
+ $('#discountPromotionExecute').disabled=!ready;
+ return ready;
+}
+function discountPromoRenderPreview(data){
+ discountPromoPreview=data;
+ const p=data.preview, box=$('#discountPromotionPreviewBox');
+ box.hidden=false;
+ const info=$('#discountPromotionPreviewInfo');info.replaceChildren();
+ const lines=[
+  ['SKU',p.sku],['Campanha',p.promotionName+' · '+p.discountId],
+  ['Situação',p.status],['Preço bruto no plano',shPriceMoney(p.gross)],
+  ['Preço bruto atual Shopee',shPriceMoney(p.originalPrice)],
+  ['Desconto calculado',shPricePercent(p.discountPct)],
+  ['Preço para Minha Promoção',shPriceMoney(p.promo)],
+  ['Após cupom da loja ('+shPricePercent(p.couponPct)+')',shPriceMoney(p.buyerAfterCoupon)],
+  ['Operação',p.action==='add'?'Adicionar SKU à promoção':p.action==='update'?
+    'Atualizar preço promocional da SKU já cadastrada':'Produto já tem o preço planejado na promoção']
+ ];
+ for(const [label,value] of lines){
+  const line=document.createElement('div');
+  line.className='discount-publish-row';
+  const key=document.createElement('span');key.textContent=label;
+  const val=document.createElement('strong');val.textContent=String(value);
+  line.append(key,val);info.append(line);
+ }
+ $('#discountPromotionPriceWrap').hidden=!p.needsBasePriceUpdate||p.action==='already';
+ $('#discountPromotionPriceLabel').textContent='Autorizo atualizar o preço bruto na Shopee de '+
+   shPriceMoney(p.originalPrice)+' para '+shPriceMoney(p.gross)+
+   ' antes de adicionar o desconto. Se a inclusão falhar, o preço bruto pode permanecer atualizado.';
+ $('#discountPromotionConfirm').checked=false;
+ $('#discountPromotionAllowPrice').checked=false;
+ const badge=$('#discountPublishBadge');
+ badge.textContent=p.action==='already'?'Já incluído':'Prévia pronta';
+ badge.dataset.state=p.action==='already'?'success':'review';
+ discountPromoStatus(p.action==='already'
+  ?'SKU já consta nesta promoção com o preço sugerido. Nenhuma alteração é necessária.'
+  :p.needsBasePriceUpdate
+  ?'O preço bruto precisa ser atualizado primeiro. A operação somente ocorrerá se você também autorizar esta etapa.'
+  :'Prévia conferida pela API. Marque as quatro revisões, confirme a autorização e clique em Executar.',
+  p.action==='already'?'success':'warning');
+ discountPromoApproval();
+}
+$('#discountPromotionId')?.addEventListener('input',discountPromoReset);
+$('#discountPromotionConfirm')?.addEventListener('change',discountPromoApproval);
+$('#discountPromotionAllowPrice')?.addEventListener('change',discountPromoApproval);
+$('#discountPromotionPreview')?.addEventListener('click',async()=>{
+ if(!shDiscountQuote||discountPromoExecuting)return discountPromoStatus('Carregue uma SKU antes de conferir a promoção.','error');
+ discountPromoReset();
+ const btn=$('#discountPromotionPreview');btn.disabled=true;
+ discountPromoStatus('Consultando preço, SKU e produtos da promoção na API Shopee...');
+ try{
+  const q=shDiscountQuote;
+  const d=await json('/api/shopee/optimizer/discounts/preview',{
+   method:'POST',headers:{'Content-Type':'application/json'},
+   body:JSON.stringify({sku:q.sku,itemId:q.itemId,modelId:q.modelId,
+    discountId:$('#discountPromotionId').value.trim()}),signal:AbortSignal.timeout(60000)});
+  if(!shDiscountQuote||shDiscountQuote.sku!==q.sku||
+     shDiscountQuote.itemId!==q.itemId||shDiscountQuote.modelId!==q.modelId)return;
+  discountPromoRenderPreview(d);
+ }catch(e){discountPromoStatus('A prévia não pôde ser confirmada: '+e.message,'error');}
+ finally{btn.disabled=false;}
+});
+$('#discountPromotionExecute')?.addEventListener('click',async()=>{
+ if(!discountPromoApproval())return discountPromoStatus('Marque as revisões e confirme a autorização antes de executar.','warning');
+ if(discountPromoExecuting)return;
+ const data=discountPromoPreview;
+ discountPromoExecuting=true;
+ discountPromoApproval();
+ const btn=$('#discountPromotionPreview');btn.disabled=true;
+ discountPromoStatus('Executando UMA SKU via API Shopee. Aguarde a conferência do resultado...');
+ try{
+  const response=await fetch('/api/shopee/optimizer/discounts/execute',{
+   method:'POST',headers:{'Content-Type':'application/json'},
+   body:JSON.stringify({approvalToken:data.approvalToken,confirm:true,
+    allowPriceChange:$('#discountPromotionAllowPrice').checked}),
+   signal:AbortSignal.timeout(90000)});
+  const body=await response.json().catch(()=>({}));
+  if(!response.ok)throw Error(body.error||(body.basePriceUpdated
+    ?'Preço bruto alterado, mas a inclusão do desconto não foi confirmada. Confira na Shopee.':
+    'A Shopee não confirmou o envio.'));
+  discountPromoStatus(body.message,body.verified?'success':'warning');
+  $('#discountPublishBadge').textContent=body.verified?'Confirmado na Shopee':'Conferência pendente';
+  $('#discountPublishBadge').dataset.state=body.verified?'success':'review';
+  // Evitar novas submissões até outra prévia e nova revisão.
+  discountPromoPreview=null;$('#discountPromotionExecute').disabled=true;
+ }catch(e){
+  discountPromoStatus('Não foi possível confirmar a execução: '+e.message+
+   ' Não reenvie automaticamente. Confira primeiro a promoção na Shopee.','error');
+  discountPromoPreview=null;$('#discountPromotionExecute').disabled=true;
+ }finally{discountPromoExecuting=false;btn.disabled=false;}
+});
 const discountReviewLabels={campaign:'Campanha conferida',price:'Preço vigente conferido',tax:'Taxas revisadas',ready:'Promoção revisada para aplicar'};
 function shDiscountResetReview(){
   document.querySelectorAll('[data-discount-review]').forEach(input=>{
@@ -4620,6 +4735,7 @@ function shDiscountReviewChanged(){
   $('#discountSavedBadgeLabel').textContent=!shDiscountQuote?'Aguardando plano salvo':
     all?'Plano conferido manualmente · não aplicado':'Plano salvo · revisão obrigatória';
   $('#discountSavedBadge').dataset.state=!shDiscountQuote?'unavailable':all?'reviewed':'saved';
+  discountPromoApproval();
 }
 for(const input of document.querySelectorAll('[data-discount-review]')){
  input.addEventListener('change',()=>{
@@ -4635,6 +4751,7 @@ function shDiscountRender(q){
     throw Error('O plano não possui preço, custo ou margem mínima válida.');
   }
   shDiscountQuote=q;
+  discountPromoReset();
   $('#discountPlanCard').hidden=false;
   $('#discountNoPlan').hidden=true;
   $('#discountSku').textContent='SKU '+q.sku+(String(q.modelId)!=='0'?' · Variação '+q.modelId:'');
@@ -4646,7 +4763,7 @@ function shDiscountRender(q){
   $('#discountProfit').textContent=shPriceMoney(q.netProfit);
   $('#discountSupplierCost').textContent=shPriceMoney(q.unitCost);
   $('#discountPlanNotice').textContent='Desconto preparado para revisão. '+
-   'As taxas configuradas e o preço vigente devem ser conferidos antes da promoção.';
+   'A execução via API exige prévia da promoção, preço vigente conferido e confirmação.';
   shDiscountResetReview();
 }
 function shDiscountStatus(message,state='info'){
@@ -4662,12 +4779,12 @@ function shDiscountStatus(message,state='info'){
 async function shDiscountChoose(row){
   const requestId=++discountLoadRequestId;
   shDiscountQuote=null;
+  discountPromoReset();
   shDiscountResetReview();
-  shDiscountStatus('Recuperando a SKU '+row.sku+' e conferindo o custo WeDrop atualizado...');
+  shDiscountStatus('Recuperando o plano salvo da SKU '+row.sku+' (sem sobrescrever o cálculo)...');
   try{
-    const data=await json('/api/shopee/optimizer/pricing/prepare',{
-      method:'POST',headers:{'Content-Type':'application/json'},
-      body:JSON.stringify({sku:row.sku,itemId:row.itemId,modelId:row.modelId}),
+    const qs=new URLSearchParams({sku:row.sku,itemId:row.itemId,modelId:row.modelId});
+    const data=await json('/api/shopee/optimizer/pricing/saved?'+qs,{
       signal:AbortSignal.timeout(35000)
     });
     if(requestId!==discountLoadRequestId)return;
@@ -4675,7 +4792,7 @@ async function shDiscountChoose(row){
     shPriceSelection={sku:row.sku,itemId:String(row.itemId),modelId:String(row.modelId)};
     shPriceSaveSelection(shPriceSelection);
     shDiscountRender(data.quote);
-    shDiscountStatus('Plano da SKU '+row.sku+' calculado e salvo. Revisão manual pendente.','success');
+    shDiscountStatus('Plano da SKU '+row.sku+' recuperado sem recalcular. Prévia da promoção disponível.','success');
     shDiscountHighlight(row);
   }catch(e){
     if(requestId!==discountLoadRequestId)return;
@@ -4698,7 +4815,7 @@ async function shDiscountLoadLatest(){
   discountRefreshBusy=true;
   const requestId=++discountLoadRequestId;
   const list=$('#discountRecentPlans');list.replaceChildren();
-  shDiscountQuote=null;shDiscountResetReview();
+  shDiscountQuote=null;discountPromoReset();shDiscountResetReview();
   shDiscountStatus('Carregando os últimos planos de desconto...');
   const refresh=$('#discountRefresh');refresh.disabled=true;
   $('#discountRefreshLabel').textContent='Atualizando...';
