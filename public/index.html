@@ -95,6 +95,51 @@
             <span class="dashboard-kpi-icon"><svg class="nav-icon" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><ellipse cx="12" cy="5" rx="8" ry="3"/><path d="M4 5v14c0 1.7 3.6 3 8 3s8-1.3 8-3V5M4 12c0 1.7 3.6 3 8 3s8-1.3 8-3"/></svg></span><span class="dashboard-kpi-copy"><span class="kpi-topline"><span>Banco de dados</span></span><strong id="mStorage">—</strong><small class="kpi-foot">Ver configuração</small></span><span class="dashboard-kpi-chevron" aria-hidden="true"><svg class="nav-icon" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="m9 6 6 6-6 6"/></svg></span>
           </button>
         </div>
+        <section class="dashboard-new-listings" id="dashboardNewListings" aria-labelledby="dashboardNewListingsTitle">
+          <div class="dashboard-new-listings-heading">
+            <span class="dashboard-new-listings-icon" aria-hidden="true">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+                <rect x="3" y="4" width="14" height="15" rx="2"/><path d="M7 8h6M7 12h5M17 13v8M13 17h8"/>
+              </svg>
+            </span>
+            <div class="dashboard-new-listings-title">
+              <h3 id="dashboardNewListingsTitle">Novos anúncios cadastrados</h3>
+              <p>Contagem pela data de criação na Shopee, sem duplicar variações.</p>
+            </div>
+            <span id="dashboardNewListingsUpdated" class="dashboard-new-listings-updated" role="status" aria-live="polite">Consultando anúncios...</span>
+          </div>
+          <div class="dashboard-new-listings-grid" aria-label="Anúncios novos por período">
+            <div class="dashboard-new-listings-card dashboard-new-listings-today">
+              <span class="dashboard-new-listings-period">Hoje</span>
+              <strong id="dashboardNewListingsToday" aria-label="Anúncios criados hoje">—</strong>
+              <small id="dashboardNewListingsDayLabel">Dia atual</small>
+            </div>
+            <div class="dashboard-new-listings-card dashboard-new-listings-month">
+              <span class="dashboard-new-listings-period">Este mês</span>
+              <strong id="dashboardNewListingsMonth" aria-label="Anúncios criados neste mês">—</strong>
+              <small id="dashboardNewListingsMonthLabel">Mês atual</small>
+            </div>
+            <div class="dashboard-new-listings-card dashboard-new-listings-year">
+              <span class="dashboard-new-listings-period">Este ano</span>
+              <strong id="dashboardNewListingsYear" aria-label="Anúncios criados neste ano">—</strong>
+              <small id="dashboardNewListingsYearLabel">Ano atual</small>
+            </div>
+          </div>
+          <details class="dashboard-new-listings-history">
+            <summary>Ver histórico de cadastros <span class="dashboard-new-listings-chevron" aria-hidden="true">⌄</span></summary>
+            <div class="dashboard-new-listings-history-content">
+              <div class="dashboard-new-listings-history-block">
+                <strong>Últimos 7 dias</strong>
+                <div id="dashboardNewListingsDays" class="dashboard-new-listings-days"><span>Carregando histórico...</span></div>
+              </div>
+              <div class="dashboard-new-listings-history-block">
+                <strong>Por mês no ano atual</strong>
+                <div id="dashboardNewListingsMonths" class="dashboard-new-listings-months"><span>Carregando histórico...</span></div>
+              </div>
+              <small id="dashboardNewListingsFootnote">Anúncios ainda presentes na loja. Itens excluídos não entram no total.</small>
+            </div>
+          </details>
+        </section>
         <div class="dashboard-block-head dashboard-section-head"><h3>Acesso rápido</h3><span>Principais setores da operação</span></div>
         <div class="shortcut-grid">          <button type="button" class="shortcut interactive-tilt dashboard-shortcut-products" data-go="products">
           <span class="shortcut-symbol"><svg class="nav-icon" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="m12 2 9 5-9 5-9-5 9-5ZM3 7v10l9 5 9-5V7M12 12v10"/></svg></span><span class="shortcut-copy"><strong>Produtos</strong><small>Catálogo, estoque e anúncios</small></span><span class="shortcut-arrow" aria-hidden="true"><svg class="nav-icon" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="m9 6 6 6-6 6"/></svg></span></button>
