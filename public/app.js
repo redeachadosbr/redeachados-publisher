@@ -78,6 +78,7 @@ function setTab(name,{updateHistory=true,scroll=true}={}){
   if(updateHistory&&location.pathname!==nextUrl&&typeof history!=='undefined')
     history.pushState({page:name},'',nextUrl);
   setSidebarOpen(false);
+  if(name==='overview')void window.dashboardNewListingsLoad?.();
   if(name==='wedrop'){refreshWeDropCoverage();loadWeDropSourceState();void loadWeDropSkuReview();}
   else if(name==='finance'){refreshWeDropCoverage();}
   else if(name==='orders')ordersEnsureLoaded();
@@ -199,7 +200,8 @@ async function loadStatus(){
 }
 $('#dashboardRefreshStatus')?.addEventListener?.('click',async()=>{
   const button=$('#dashboardRefreshStatus');button.disabled=true;
-  try{await loadStatus()}finally{button.disabled=false}
+  try{await loadStatus();if(activeAppPage==='overview')await window.dashboardNewListingsLoad?.(true);}
+  finally{button.disabled=false}
 });
 $('#loginBtn').onclick=async()=>{try{await json('/api/login',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({password:$('#password').value})});$('#login').classList.add('hidden');$('#app').classList.remove('hidden');await loadStatus();loadCatalogCache();setTab(currentPageFromUrl(),{updateHistory:false,scroll:false});}catch(e){$('#loginMsg').textContent=e.message;}};
 $('#connectBtn').onclick=()=>location.href='/auth/shopee/start';
