@@ -2,6 +2,16 @@
 // Sugestões WeDrop nunca autorizam publicações ou mudanças fiscais automaticamente.
 const normal=x=>String(x??'').trim();
 const ncmPattern=/^\d{8}$/;
+// Padrão de cadastro do vendedor Rede Achados BR, confirmado para seus anúncios
+// Shopee. Não é um CST universal de NF-e; a contabilidade pode orientar
+// exceções por SKU e o valor salvo/revisado da SKU tem precedência.
+// Nunca aplicar esta regra para inferir CEST, CFOP ou NCM.
+export const REDE_ACHADOS_FISCAL_DEFAULTS=Object.freeze({pis_cofins_cst:'99'});
+export function fiscalStoreDefaults(fiscalNotes=''){
+ const notes=normal(fiscalNotes);
+ const approved=notes.match(/(?:PIS\s*(?:e|\/|&)\s*COFINS\s*CST|CST\s*PIS\s*(?:e|\/)\s*COFINS|PISCOFIS|PIS\s*COFINS)\s*:\s*(\d{2})\b/i)?.[1];
+ return {pis_cofins_cst:approved||REDE_ACHADOS_FISCAL_DEFAULTS.pis_cofins_cst};
+}
 export function fiscalMatrixSource({sku,supplier,tax,reviewSource=null}={}){
  const listingSku=normal(sku),supplierSku=normal(supplier?.supplier_sku);
  if(!listingSku)throw Error('Motor Matriz: SKU do anúncio não confirmada.');
