@@ -1,0 +1,74 @@
+/* Shopee Manager v1.20.12 — apresentação compacta, sem alterar regras. */
+#tab-optimizer .optimizer-v15-page{gap:12px}
+#tab-optimizer .optimizer-v15-page .optimizer-v15-columns{align-items:start;gap:12px}
+#tab-optimizer .optimizer-v15-page .optimizer-v15-search,
+#tab-optimizer .optimizer-v15-page .optimizer-v15-price{
+ min-height:0;height:auto;align-self:start;margin:0!important;padding:15px 17px
+}
+#tab-optimizer .optimizer-v15-page .optimizer-v15-search .optimizer-v15-heading,
+#tab-optimizer .optimizer-v15-page .optimizer-v15-price .optimizer-v15-heading{
+ min-height:0;margin-bottom:10px
+}
+#tab-optimizer .optimizer-v15-page .optimizer-v15-search .optimizer-notice{margin-bottom:0}
+/* A mesma informação já existe nas etapas de revisão. Mantê-la no DOM
+   preserva as atualizações do painel e as integrações existentes. */
+#tab-optimizer .optimizer-sku-dashboard,
+#tab-optimizer #optimizerProgressDetails{display:none!important}
+#tab-optimizer #optimizerWorkflowPanel{margin:0;scroll-margin-top:110px}
+#tab-optimizer .optimizer-v15-page #optimizerWorkflowPanel.optimizer-panel{padding:15px 17px}
+#tab-optimizer #optimizerWorkflowPanel .optimizer-workflow-heading{margin-bottom:9px}
+#tab-optimizer #optimizerWorkflowPanel .optimizer-workflow-cards{gap:9px}
+#tab-optimizer #optimizerSourceCompact{
+ padding:0!important;margin:0;overflow:hidden;border-radius:14px;
+ border:1px solid #dce7f5;background:#fff;box-shadow:none
+}
+#tab-optimizer #optimizerSourceCompact > summary{
+ list-style:none;display:flex;align-items:center;gap:10px;
+ padding:13px 16px;cursor:pointer;color:#102b52;min-height:49px
+}
+#tab-optimizer #optimizerSourceCompact > summary::-webkit-details-marker{display:none}
+#tab-optimizer #optimizerSourceCompact > summary:focus-visible{
+ outline:2px solid #3169b7;outline-offset:-3px
+}
+#tab-optimizer .optimizer-source-compact-summary > strong{font-size:13px;font-weight:800}
+#tab-optimizer .optimizer-source-compact-hint{
+ font-size:11px;color:#58749c;margin-left:auto;white-space:nowrap
+}
+#tab-optimizer .optimizer-source-compact-chevron{
+ color:#23518b;font-weight:800;transition:transform .15s
+}
+#tab-optimizer #optimizerSourceCompact[open] .optimizer-source-compact-chevron{transform:rotate(180deg)}
+#tab-optimizer #optimizerSourceCompact:not([open]) > :not(summary){display:none!important}
+#tab-optimizer #optimizerSourceCompact #optimizerSourcePanel[hidden]{display:none!important}
+#tab-optimizer #optimizerSourceCompact #optimizerSourcePanel:not([hidden]){
+ display:grid;gap:9px;padding:4px 16px 15px;margin:0;
+ border:0;border-radius:0;background:#fff;box-shadow:none
+}
+/* Fatos fiscais e dimensões permanecem salvos e acessíveis na ficha técnica,
+   mas não são despejados no formulário de inclusão de provas. */
+#tab-optimizer #optimizerSourceCompact .optimizer-source-header,
+#tab-optimizer #optimizerSourceFacts{display:none!important}
+#tab-optimizer #optimizerSourceCompact .optimizer-field{margin:0;font-size:12px}
+#tab-optimizer #optimizerSourceCompact textarea{
+ min-height:76px;height:88px;max-height:200px;resize:vertical;font-size:12px
+}
+#tab-optimizer #optimizerSourceCompact .optimizer-source-actions{gap:8px;flex-wrap:wrap}
+#tab-optimizer #optimizerSourceCompact .optimizer-source-actions button,
+#tab-optimizer #optimizerSourceCompact .optimizer-source-upload{font-size:11px;min-height:37px}
+#tab-optimizer #optimizerSourceCompact .optimizer-source-images{margin:0}
+#tab-optimizer #optimizerSourceCompact #optimizerSourceStatus{margin:0;font-size:11px}
+#tab-optimizer #optimizerSourceCompactEmpty{
+ margin:0;padding:2px 16px 15px;color:#657e9e;font-size:12px
+}
+#tab-optimizer #optimizerSourceCompact:has(#optimizerSourcePanel:not([hidden]))
+  #optimizerSourceCompactEmpty{display:none}
+@media(max-width:900px){
+ #tab-optimizer .optimizer-v15-page .optimizer-v15-columns{grid-template-columns:1fr}
+ #tab-optimizer #optimizerWorkflowPanel .optimizer-workflow-toolbar{flex-wrap:wrap}
+}
+@media(max-width:560px){
+ #tab-optimizer #optimizerSourceCompact > summary{flex-wrap:wrap}
+ #tab-optimizer .optimizer-source-compact-hint{margin-left:0}
+ #tab-optimizer .optimizer-source-compact-chevron{margin-left:auto}
+ #tab-optimizer .optimizer-v15-page #optimizerWorkflowPanel.optimizer-panel{padding:12px}
+}
