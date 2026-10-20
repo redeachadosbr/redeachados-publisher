@@ -5651,6 +5651,8 @@ async function optimizerChatBridgeConfirmed(job){
  const slots=new Set((data.images||[]).map(row=>Number(row.slot)));
  const complete=job.slots.every(slot=>slots.has(slot));
  if(complete&&job.nonce===optimizerChatBridgeNonce){
+  optimizerChatBridgeJob.complete=true;
+  sessionStorage.setItem(RA_CHAT_BRIDGE_JOB_KEY,JSON.stringify(optimizerChatBridgeJob));
   optimizerChatBridgeBusy=false;$('#optimizerChatgptAbort').hidden=true;
   optimizerChatBridgeNotice(job.slots.length===9
    ?'9/9 imagens novas salvas na SKU '+job.sku+'. Confira a galeria para executar na Shopee.'
@@ -5790,7 +5792,7 @@ $('#optimizerChatgptAuto')?.addEventListener?.('click',async()=>{
   if(optimizerImagesSavedSlots.size===9){status.textContent='9/9 imagens novas já estão salvas nesta SKU. Use Refazer na posição que deseja alterar.';return;}
   const brief=await optimizerChatgptMakeBrief(w);
   if(!brief.original)throw Error('A Shopee não retornou uma foto original para esta SKU; abra o anúncio e confira as imagens antes de iniciar.');
-  optimizerChatBridgeNonce=optimizerChatBridgeIdentity(optimizerChatBridgeJob,w)&&optimizerChatBridgeJob.slots?.length===9
+  optimizerChatBridgeNonce=optimizerChatBridgeIdentity(optimizerChatBridgeJob,w)&&!optimizerChatBridgeJob.complete&&optimizerChatBridgeJob.slots?.length===9
    ?optimizerChatBridgeJob.nonce:crypto.randomUUID();
   optimizerChatBridgeSku=w.sku;
   sessionStorage.setItem(RA_CHAT_BRIDGE_SESSION_KEY,optimizerChatBridgeNonce);
