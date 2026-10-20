@@ -2447,10 +2447,85 @@ function optimizerVideoReset(){
  $('#optimizerVideoFile').value='';
  $('#optimizerVideoUpload').disabled=true;
  optimizerVideoClearPreview();
- optimizerVideoNotice('Selecione um vídeo do produto para importar e revisar.');
+ optimizerVideoNotice('Selecione um vídeo sugerido pelo Markt Pro ou use o arquivo manual.');
 }
 function optimizerVideoParams(){
  return new URLSearchParams(optimizerVideoContext()).toString();
+}
+
+function optimizerVideoSearchIdentity(){
+ const p=optimizerWorkflowPlan;
+ const id=optimizerVideoContext();
+ const title=String(p?.draftTitle||p?.title||p?.itemName||'').trim().slice(0,250);
+ return {...id,title};
+}
+function optimizerVideoStillViewing(id){
+ const p=optimizerWorkflowPlan;
+ return p&&optimizerWorkflowStage==='video'&&String(p.sku)===String(id.sku)&&
+  String(p.itemId)===String(id.item_id)&&String(p.modelId)===String(id.model_id);
+}
+async function optimizerVideoFindMarket(){
+ const wrap=$('#optimizerVideoMarketResults'),notice=$('#optimizerVideoMarketStatus');
+ if(!wrap||!notice)return;
+ wrap.replaceChildren();
+ let identity;
+ try{identity=optimizerVideoSearchIdentity();}
+ catch(e){notice.textContent=e.message;return;}
+ notice.textContent='Pesquisando vídeos do Markt Pro para '+identity.sku+'...';
+ try{
+  const query=new URLSearchParams(identity);
+  const data=await json('/api/shopee/optimizer/video/marktpro/search?'+query,{
+   signal:AbortSignal.timeout(90000)});
+  if(!optimizerVideoStillViewing(identity))return;
+  if(!data?.candidates?.length){
+   notice.textContent=data.inventoryCount
+    ?'Nenhum vídeo compatível com o título desta SKU foi encontrado no acervo.'
+    :'O catálogo Markt Pro não retornou itens. Confira a disponibilidade do acervo.';
+   const link=document.createElement('a');link.href='https://drive-vid-gallery.lovable.app/';
+   link.target='_blank';link.rel='noopener noreferrer';link.textContent='Consultar catálogo original ↗';wrap.append(link);
+   return;
+  }
+  notice.textContent=data.candidates.length+' vídeo(s) sugerido(s) para '+identity.sku+
+    '. Confira o produto no vídeo antes de selecionar.';
+  for(const video of data.candidates){
+   const card=document.createElement('article');card.className='optimizer-market-video-card';
+   const player=document.createElement('video');player.controls=true;player.playsInline=true;player.preload='none';
+   player.setAttribute('aria-label','Prévia do vídeo '+video.title);
+   player.src='/api/shopee/optimizer/video/marktpro/stream?'+new URLSearchParams({...identity,id:video.id});
+   const info=document.createElement('div');info.className='optimizer-market-video-info';
+   const name=document.createElement('strong');name.textContent=video.title;
+   const meta=document.createElement('small');meta.textContent=
+    'Compatibilidade textual '+Math.round(Number(video.score||0)*100)+'%'+
+    (video.durationMs?' · '+Math.round(video.durationMs/1000)+' s':'')+
+    (video.category?' · '+video.category:'');
+   const choose=document.createElement('button');choose.type='button';choose.className='secondary';
+   choose.textContent='Usar este vídeo';
+   choose.onclick=async()=>{
+    if(optimizerVideoUploading||!optimizerVideoStillViewing(identity))return;
+    optimizerVideoUploading=true;
+    for(const b of wrap.querySelectorAll('button'))b.disabled=true;
+    optimizerVideoNotice('Importando do Markt Pro para a SKU '+identity.sku+'...','info');
+    try{
+     const response=await json('/api/shopee/optimizer/video/marktpro/select?'+query,{
+      method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({id:video.id}),
+      signal:AbortSignal.timeout(240000)});
+     if(!optimizerVideoStillViewing(identity))return;
+     if(optimizerWorkflowPlan)optimizerWorkflowPlan.manualVideo=response.asset;
+     optimizerExecReset();
+     optimizerVideoNotice('Vídeo selecionado e salvo para revisão. Ainda não publicado na Shopee.','success');
+     await optimizerVideoLoadSaved();
+    }catch(e){optimizerVideoNotice('Não foi possível importar este vídeo: '+e.message,'error');}
+    finally{optimizerVideoUploading=false;for(const b of wrap.querySelectorAll('button'))b.disabled=false;}
+   };
+   info.append(name,meta,choose);card.append(player,info);wrap.append(card);
+  }
+ }catch(e){
+  if(!optimizerVideoStillViewing(identity))return;
+  notice.textContent='Não foi possível consultar o Markt Pro agora: '+e.message+
+   '. Você pode usar a importação manual abaixo.';
+  const link=document.createElement('a');link.href='https://drive-vid-gallery.lovable.app/';
+  link.target='_blank';link.rel='noopener noreferrer';link.textContent='Abrir catálogo Markt Pro ↗';wrap.append(link);
+ }
 }
 async function optimizerVideoLoadSaved(){
  const target=optimizerWorkflowPlan;
@@ -2491,7 +2566,8 @@ $('#optimizerVideoFile')?.addEventListener?.('change',()=>{
    const duration=Number(player.duration);
    if(!Number.isFinite(duration)){
      optimizerVideoDurationReady=true;$('#optimizerVideoUpload').disabled=false;
-     optimizerVideoNotice('O navegador não informou a duração. Ao importar, o servidor validará os 10 a 60 segundos.','warning');
+     optimizerVideoNotice('Duração desconhecida. O servidor validará o vídeo ao salvar automaticamente.','warning');
+      queueMicrotask(()=>$('#optimizerVideoUpload')?.click());
    }else if(duration<10||duration>60){
      optimizerVideoDurationReady=false;
      $('#optimizerVideoUpload').disabled=true;
@@ -2501,12 +2577,14 @@ $('#optimizerVideoFile')?.addEventListener?.('change',()=>{
      optimizerVideoDurationReady=true;
      $('#optimizerVideoUpload').disabled=false;
      optimizerVideoNotice('Prévia validada: '+duration.toFixed(1)+' segundos · '+
-       (file.size/1024/1024).toFixed(1)+' MB. Pronto para importar privadamente.','success');
+       (file.size/1024/1024).toFixed(1)+' MB. Salvando automaticamente...','success');
+       queueMicrotask(()=>$('#optimizerVideoUpload')?.click());
    }
  };
  player.onerror=()=>{
    optimizerVideoDurationReady=true;$('#optimizerVideoUpload').disabled=false;
-   optimizerVideoNotice('Prévia indisponível neste navegador. Importe para validar e converter no servidor; um arquivo inválido será recusado.','warning');
+   optimizerVideoNotice('Prévia indisponível; validando e salvando automaticamente no servidor...','warning');
+    queueMicrotask(()=>$('#optimizerVideoUpload')?.click());
  };
 });
 $('#optimizerVideoUpload')?.addEventListener?.('click',async()=>{
@@ -2540,7 +2618,7 @@ $('#optimizerVideoUpload')?.addEventListener?.('click',async()=>{
  }catch(e){optimizerVideoNotice('Falha ao importar vídeo: '+e.message,'error')}
  finally{optimizerVideoUploading=false;$('#optimizerVideoUpload').disabled=!optimizerVideoDurationReady}
 });
-$('#optimizerVideoRefresh')?.addEventListener?.('click',()=>void optimizerVideoLoadSaved());
+
 
 
 function optimizerVariationValues(){
@@ -2644,7 +2722,7 @@ function optimizerWorkflowOpen(key){
  if(key==='fiscal')optimizerFiscalRender(data);
  optimizerSupplierRender(data,key);
  $('#optimizerVideoManualPanel').hidden=!isVideo;
- if(isVideo){optimizerVideoReset();void optimizerVideoLoadSaved();}
+ if(isVideo){optimizerVideoReset();void optimizerVideoLoadSaved();void optimizerVideoFindMarket();}
  draftWrap.hidden=!(isSeo||isDescription);
  if(isSeo||isDescription){
    $('#optimizerWorkflowDraftLabel').textContent=isSeo?'Título SEO proposto (edite antes de gravar na Shopee)':
