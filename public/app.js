@@ -2324,7 +2324,8 @@ function optimizerSourceNotice(message,state='info'){
 }
 function optimizerSourceRender(data){
  const pane=$('#optimizerSourcePanel');if(!pane)return;
- pane.hidden=!data?.sku;if(!data?.sku)return;
+ pane.hidden=true; // Editor legado duplicado: único formulário visível é Ficha técnica inteligente.
+ if(!data?.sku)return;
  const evidence=data.sourceEvidence||{sourceText:'',screenshots:[]};
  $('#optimizerSourceText').value=evidence.sourceText||'';
  const images=$('#optimizerSourceImages');images.replaceChildren();
@@ -2355,7 +2356,7 @@ function optimizerSourceRender(data){
  if(data.sourceEvidenceWarning){
   optimizerSourceNotice(data.sourceEvidenceWarning,'warning');
  }else optimizerSourceNotice('Informações vinculadas apenas à SKU '+data.sku+
-  '. Para ler os prints, use “Ler dados e preencher ficha” na etapa Ficha técnica. Revise as opções oficiais da categoria.');
+  '. Consulte texto e prints na Ficha técnica inteligente.');
 }
 async function optimizerSourceAction(action,extra={}){
  const w=optimizerWorkflowPlan;if(!w?.sku)return;
@@ -2376,7 +2377,8 @@ async function optimizerSourceAction(action,extra={}){
     attributeSuggestions:refresh.attributeSuggestions,attributes:refresh.attributes});
   optimizerSourceRender(w);
   if(optimizerWorkflowStage==='technical')optimizerTechnicalRender(w);
-  optimizerSourceNotice('Informações salvas. Sugestões atualizadas; confira e aprove cada atributo antes da publicação.','success');
+  optimizerSourceNotice('Informações salvas na SKU.','success');
+   if(optimizerWorkflowStage==='technical')optimizerTechNotice('✓ Print atualizado. Ficha técnica sincronizada e dados salvos na SKU.','success');
  }catch(error){optimizerSourceNotice('Falha ao salvar evidência: '+error.message,'error');}
  finally{btn.disabled=false;}
 }
@@ -6016,7 +6018,7 @@ async function optimizerTechImport(){
   optimizerTechNotice('Cole as especificações ou selecione um print antes de continuar.','warning');return;
  }
  if(files.length+oldShots>4){
-  optimizerTechNotice('Limite de 4 prints por SKU. Exclua os antigos no bloco Informações da WeDrop.','warning');return;
+  optimizerTechNotice('Limite de 4 prints por SKU. Exclua os anexos antigos nas miniaturas desta ficha.','warning');return;
  }
  button.disabled=true;
  let warning='',extracted=0,updated=false,success=false;
@@ -6114,7 +6116,7 @@ function optimizerTechnicalRender(data){
  }else if(data.supplierProduct){
   optimizerTechNotice('Catálogo WeDrop localizado. Atributos comprovados foram sugeridos automaticamente. Adicione texto ou prints para complementar.','info');
  }
- if(countTag)countTag.textContent=imageCount+' de 4 print(s) salvos para esta SKU. Exclua prints antigos no bloco Informações da WeDrop.';
+ if(countTag)countTag.textContent=imageCount+' de 4 prints salvos nesta SKU. Confira ou exclua os anexos logo abaixo.';
  const wrap=$('#optimizerTechnicalFields');wrap.replaceChildren();
  if(data.anatel?.applicable){
    wrap.append(optimizerMake('p',data.anatel.requiresAction?'optimizer-warning':'optimizer-category-summary',
