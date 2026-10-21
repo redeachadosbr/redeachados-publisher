@@ -2907,6 +2907,10 @@ $('#optimizerWorkflowReview')?.addEventListener?.('click',async()=>{
      body:JSON.stringify(body),signal:AbortSignal.timeout(60000)
    });
    if(optimizerWorkflowPlan?.sku!==data.sku||optimizerWorkflowPlan?.itemId!==data.itemId||optimizerWorkflowPlan?.modelId!==data.modelId)return;
+   if(key==='technical'){
+    try{localStorage.removeItem(techKey(data,'fields'));}catch{}
+    data.technicalDraft=null;
+   }
    optimizerWorkflowRender({...data,...result,stages:result.stages});
    // A saved fiscal draft must never automatically re-attempt a rejected CEST
    // update in the background. Execution has its own explicit separate button.
@@ -6054,9 +6058,25 @@ $('#optimizerTechnicalFields')?.addEventListener?.('change',()=>{
  }
 });
 function optimizerTechnicalRender(data){
+ const cached=techCached(data,'fields');
+ const remoteTime=Date.parse(data.technicalDraft?.updatedAt||'')||0;
+ const useCached=Array.isArray(cached?.fields)&&Date.parse(cached.updatedAt||'')>remoteTime;
+ const manualFields=useCached?cached.fields:(data.technicalDraft?.fields||[]);
+ const manualById=new Map(manualFields.map(f=>[Number(f.attributeId),f]));
+ if(useCached)setTimeout(()=>{if(optimizerWorkflowPlan===data&&optimizerWorkflowStage==='technical')
+  void techFieldSend(data,manualFields);},80);
+ const textCache=techCached(data,'text');
+ const restoreText=textCache&&Date.parse(textCache.updatedAt||'')>
+  (Date.parse(data.sourceEvidence?.updatedAt||'')||0);
  $('#optimizerTechSku').textContent='SKU '+String(data.sku||'—');
  const textBox=$('#optimizerTechText');
- if(textBox)textBox.value=String(data.sourceEvidence?.sourceText||'');
+ if(textBox)textBox.value=restoreText?String(textCache.text||''):
+  String(data.sourceEvidence?.sourceText||'');
+ if(restoreText){
+  const source=$('#optimizerSourceText');if(source)source.value=textBox.value;
+  setTimeout(()=>{if(optimizerWorkflowPlan===data&&optimizerWorkflowStage==='technical')
+   void techTextSend(data,textBox.value);},80);
+ }
  const countTag=$('#optimizerTechImagesCount'),imageCount=(data.sourceEvidence?.screenshots||[]).length;
  if(data.supplierProduct&&data.sourceEvidence?.sourceText){
   optimizerTechNotice('Dados da WeDrop e texto vinculados a esta SKU. Sugestões compatíveis já aparecem na prévia; use “Ler dados” para interpretar prints.','info');
@@ -6106,10 +6126,11 @@ function optimizerTechnicalRender(data){
   const invalidNewBrand=String(name).normalize('NFD').replace(/[\u0300-\u036f]/g,'')
     .toLowerCase()==='marca'&&reviewed?.values?.[0]?.valueName?.trim().toLowerCase()==='novo';
   const auto=(!reviewed||invalidNewBrand)?suggested:null;
-  const existing=auto||reviewed||
+  const manual=manualById.get(Number(attr.id));
+  const existing=manual?{values:manual.values,evidence:manual.evidence}:auto||reviewed||
     (data.attributeSuggestions||[]).find(x=>Number(x.attributeId)===attr.id);
   const hasCurrentValue=Boolean(attr.values?.length);
-  const hasDraft=Boolean(existing?.values?.some(v=>Number(v.valueId)>0||String(v.valueName||'').trim()));
+  const hasDraft=Boolean((manual?manual.enabled:true)&&existing?.values?.some(v=>Number(v.valueId)>0||String(v.valueName||'').trim()));
   if((hasCurrentValue||hasDraft)&&!conflict){
    field.hidden=true;field.dataset.autofilled='true';autoHidden++;
   }else if(!attr.mandatory&&!attr.conditional){
@@ -6119,7 +6140,7 @@ function optimizerTechnicalRender(data){
     '✓ Preenchido automaticamente: '+auto.values.map(x=>x.valueName).join(', ')+
     ' · Fonte: '+auto.evidence+'. Confirme na revisão para publicar.'));
   const enableLabel=optimizerMake('label','optimizer-attribute-toggle'),enabled=optimizerMake('input');
-  enabled.type='checkbox';enabled.dataset.attributeEnabled='true';enabled.checked=Boolean(existing);
+  enabled.type='checkbox';enabled.dataset.attributeEnabled='true';enabled.checked=manual?Boolean(manual.enabled):Boolean(existing);
   enabled.setAttribute('aria-label','Preencher '+optimizerTechLabel(name));enableLabel.append(enabled,document.createTextNode(' Preencher este campo'));field.append(enableLabel);
   const controls=optimizerMake('div','optimizer-attribute-controls');controls.hidden=!enabled.checked;field.append(controls);
   const rows=optimizerMake('div');rows.dataset.attributeRows='true';controls.append(rows);
