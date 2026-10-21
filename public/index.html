@@ -18,6 +18,7 @@
 <link rel="stylesheet" href="/title-studio.css?v=1.20.27">
 <link rel="stylesheet" href="/optimizer-technical-import.css?v=1.20.28">
 <link rel="stylesheet" href="/optimizer-description.css?v=1.20.30">
+<link rel="stylesheet" href="/optimizer-fiscal-last.css?v=1.20.31">
 </head>
 <body>
 <div class="shell app-layout">
@@ -444,6 +445,17 @@
           </details>
           <div class="optimizer-exec-blockers" id="optimizerExecutionBlockers"></div>
           <details><summary>Pendências das outras etapas</summary><div class="optimizer-exec-blockers" id="optimizerExecutionWarnings"></div></details>
+          <section id="optimizerExecFiscalLast" class="optimizer-exec-fiscal-last" aria-label="Última etapa: dados fiscais">
+            <div class="optimizer-exec-fiscal-head">
+              <span aria-hidden="true">07</span>
+              <div><strong>Última etapa — Dados fiscais na Shopee</strong>
+                <small id="optimizerExecFiscalState">Aguardando prévia da SKU</small>
+              </div>
+              <button id="optimizerExecFiscalEdit" type="button" class="secondary">Conferir ficha fiscal</button>
+            </div>
+            <div id="optimizerExecFiscalValues" class="optimizer-exec-fiscal-values"></div>
+            <p id="optimizerExecFiscalNote" class="optimizer-exec-fiscal-note">Os dados fiscais devem ser confirmados separadamente pela API. CEST “00” não é um código fiscal válido.</p>
+          </section>
 
         </div>
           </div>
@@ -1465,7 +1477,7 @@
 <script src="/optimizer-dashboard.js?v=1.20.11"></script>
 <script src="/dashboard-new-listings.js?v=1.20.21-shopee"></script>
 <script src="/title-studio.js?v=1.20.27"></script>
-<script src="/app.js?v=1.20.30-cta-compact"></script>
+<script src="/app.js?v=1.20.31-fiscal-last"></script>
 <script src="/optimizer-fiscal-premium.js?v=1.20.13"></script>
 </body>
 </html>
