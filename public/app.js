@@ -5902,7 +5902,30 @@ async function techFlush(){
  if(techFieldTimer){clearTimeout(techFieldTimer);techFieldTimer=0;
   await techFieldSend(w,techFieldsSnapshot());}else await techFieldQueue;
 }
+async function techRefreshSuggestions(){
+ const w=optimizerWorkflowPlan;
+ if(!w?.sku||optimizerWorkflowStage!=='technical')return;
+ try{
+  if(techTextTimer){clearTimeout(techTextTimer);techTextTimer=0;
+   await techTextSend(w,$('#optimizerTechText')?.value||'');}
+  else await techTextQueue;
+  if(techFieldTimer){clearTimeout(techFieldTimer);techFieldTimer=0;
+   await techFieldSend(w,techFieldsSnapshot());}
+  else await techFieldQueue;
+  if(optimizerWorkflowPlan!==w||optimizerWorkflowStage!=='technical')return;
+  const fresh=await json('/api/shopee/optimizer/workflow?'+new URLSearchParams({
+   sku:w.sku,item_id:w.itemId,model_id:w.modelId}),{signal:AbortSignal.timeout(60000)});
+  if(optimizerWorkflowPlan!==w||optimizerWorkflowStage!=='technical')return;
+  Object.assign(w,{sourceEvidence:fresh.sourceEvidence,sourceFacts:fresh.sourceFacts,
+   supplierProduct:fresh.supplierProduct,attributeSuggestions:fresh.attributeSuggestions,
+   attributes:fresh.attributes,technicalDraft:fresh.technicalDraft,shopId:fresh.shopId});
+  optimizerTechnicalRender(w);
+  optimizerTechNotice('✓ Texto salvo e ficha atualizada com as sugestões da WeDrop. Só os campos sem informação precisam ser revisados.','success');
+ }catch(e){if(optimizerWorkflowPlan===w)
+  optimizerTechNotice('Texto mantido no rascunho. Não foi possível atualizar sugestões: '+e.message,'warning');}
+}
 $('#optimizerTechText')?.addEventListener('input',e=>void techSaveText(e.target.value));
+$('#optimizerTechText')?.addEventListener('blur',()=>void techRefreshSuggestions());
 $('#optimizerSourceText')?.addEventListener('input',e=>void techSaveText(e.target.value));
 $('#optimizerTechnicalFields')?.addEventListener('input',()=>void techSaveFields());
 function optimizerTechNotice(message,state='info'){
@@ -6051,6 +6074,10 @@ async function optimizerTechImport(){
  }
 }
 $('#optimizerTechFill')?.addEventListener?.('click',()=>void optimizerTechImport());
+$('#optimizerTechFiles')?.addEventListener('change',()=>{
+ if($('#optimizerTechFiles')?.files?.length&&optimizerWorkflowStage==='technical')
+  void optimizerTechImport();
+});
 $('#optimizerTechnicalFields')?.addEventListener?.('change',()=>{
  if(optimizerWorkflowPlan&&optimizerWorkflowStage==='technical'){
   optimizerTechnicalSummary(optimizerWorkflowPlan);
