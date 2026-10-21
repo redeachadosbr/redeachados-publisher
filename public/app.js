@@ -5040,7 +5040,8 @@ async function shPricePreviewSupplierSku(sku,lookupSerial=null){
     const result=await json('/api/shopee/optimizer/pricing/supplier-preview',{
       method:'POST',headers:{'Content-Type':'application/json'},
       body:JSON.stringify({sku,settings:shPriceReadSettings(),
-        marketAverage:market===''?null:Number(market)}),signal:AbortSignal.timeout(25000)
+        marketAverage:market===''?null:Number(market),
+        marginOverride:shManualMarginChoice}),signal:AbortSignal.timeout(25000)
     });
     if(serial!==shPricePreviewSerial||$('#optimizerSku').value.trim()!==sku)return;
     if(!result.found){
@@ -5071,6 +5072,8 @@ async function shPricePrepare({silent=false}={}){
   shPricePrepareBusy=true;
   const btn=$('#priceRecalculate');btn.disabled=true;
   const selected={...shPriceSelection};
+  const marginKey=[selected.sku,selected.itemId,selected.modelId].join('|');
+  if(shManualMarginSkuKey!==marginKey){shManualMarginChoice=false;shManualMarginSkuKey=marginKey;}
   pricingShowSelection(selected);
   if(!silent)shPriceSetStatus('Conferindo o custo WeDrop salvo e preparando o desconto da SKU...');
   shQuickSetStatus('Calculando preço bruto e desconto da SKU '+selected.sku+'...');
@@ -5107,6 +5110,8 @@ async function shPricePrepare({silent=false}={}){
   }
 }
 let shQuickMarginTimer=null;
+let shManualMarginChoice=false;
+let shManualMarginSkuKey='';
 for(const [selector,delta] of [['#optimizerMarginPlus',1],['#optimizerMarginMinus',-1]]){
  $(selector)?.addEventListener?.('click',()=>{
   const slider=$('#optimizerQuickMargin');
@@ -5117,6 +5122,8 @@ for(const [selector,delta] of [['#optimizerMarginPlus',1],['#optimizerMarginMinu
  });
 }
 $('#optimizerQuickMargin')?.addEventListener?.('input',()=>{
+  shManualMarginChoice=true;
+  if(shPriceSelection)shManualMarginSkuKey=[shPriceSelection.sku,shPriceSelection.itemId,shPriceSelection.modelId].join('|');
   $('#priceMargin').value=$('#optimizerQuickMargin').value;
   shPriceRefreshMarginLabel();
   shQuickSyncSlider();
@@ -5129,6 +5136,8 @@ $('#optimizerQuickMargin')?.addEventListener?.('input',()=>{
   }
 });
 $('#priceMargin')?.addEventListener?.('input',()=>{
+  shManualMarginChoice=true;
+  if(shPriceSelection)shManualMarginSkuKey=[shPriceSelection.sku,shPriceSelection.itemId,shPriceSelection.modelId].join('|');
   shPriceRefreshMarginLabel();shQuickSyncSlider();
   if(shQuickMarginTimer)clearTimeout(shQuickMarginTimer);
   if(shPriceSelection)shQuickMarginTimer=setTimeout(()=>void shPricePrepare(),380);
