@@ -105,7 +105,9 @@ export function compileShopeeExecutionPlan({shopId,itemId,modelId,sku,record,rev
     shopId:String(shopId),itemId:String(itemId),modelId:String(modelId),sku,
     selectedStage,from:{item_name:currentTitle,description:currentDescription,description_type:currentType},
     to:proposed,fiscalDeferred,
-    deferredTaxDraft:fiscalDeferred?state.tax||{}:null,
+    // Não invalidar publicação de imagens/conteúdo por edição fiscal que NÃO será enviada.
+    // A prévia fiscal individual continua protegida por proposed.tax_info.
+    deferredTaxDraft:fiscalDeferred&&!omitFiscal?state.tax||{}:null,
     video:video?.sha256||null,images:imagesSignature(images)
   })).digest('hex');
   return {planId:crypto.randomUUID(),shopId:Number(shopId),itemId:String(itemId),
