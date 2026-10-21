@@ -115,6 +115,47 @@
  }
  function sync(rows){stats(Array.isArray(rows)?rows:[]);}
  window.OptimizerFiscalPremium={renderRow,sync};
+ // Migração CPF -> CNPJ: inventário de todas as páginas, somente leitura.
+ // Nunca iniciar envio nem marcar revisão como feita pela consulta.
+ q('optimizerFiscalMigrationDiscover')?.addEventListener('click',async()=>{
+   const button=q('optimizerFiscalMigrationDiscover');
+   const notice=q('optimizerFiscalMigrationStatus');
+   button.disabled=true;
+   const rows=[];let offset=0,pages=0;
+   try{
+     while(pages<200){
+       if(notice)notice.textContent='Consultando anúncios ativos: '+rows.length+' SKU(s) localizadas…';
+       const response=await fetch('/api/shopee/optimizer/fiscal-migration/active-skus?offset='+offset,
+         {credentials:'same-origin',cache:'no-store'});
+       const data=await response.json();
+       if(!response.ok||!data.ok)throw Error(data.error||'Erro ao consultar anúncios.');
+       rows.push(...(data.items||[]));pages++;
+       if(!data.hasNext)break;
+       if(!Number.isInteger(data.nextOffset)||data.nextOffset<=offset)
+         throw Error('A paginação da Shopee não avançou.');
+       offset=data.nextOffset;
+     }
+     if(pages>=200)throw Error('Limite de páginas atingido. Revise o catálogo.');
+     const unique=new Map(rows.filter(x=>x.sku).map(x=>[x.itemId+':'+x.modelId,x]));
+     const items=[...unique.values()];
+     const reviewed=items.filter(x=>x.reviewed);
+     const missing=items.length-reviewed.length;
+     if(notice)notice.textContent='Anúncios ativos localizados: '+items.length+
+       ' SKU(s). Fichas fiscais revisadas: '+reviewed.length+
+       '. Pendentes de revisão: '+missing+
+       '. Nenhuma informação fiscal foi enviada.';
+     // Pré-seleção somente de fichas já revisadas; mantém o limite seguro de 12.
+     if(reviewed.length){
+       const input=q('optimizerFiscalBatchSkus');
+       if(input){input.value=reviewed.slice(0,12).map(x=>x.sku).join('\\n');
+         input.dispatchEvent(new Event('input',{bubbles:true}));}
+     }
+     window.optimizerFiscalMigrationInventory=items;
+   }catch(error){
+     if(notice)notice.textContent='Consulta incompleta: '+String(error.message||error)+
+       '. Nenhum dado foi enviado à Shopee.';
+   }finally{button.disabled=false;}
+ });
  q('optimizerFiscalBatchSkus')?.addEventListener('input',()=>sync([]));
  if(typeof window.optimizerFiscalBatchRender==='function')window.optimizerFiscalBatchRender();
 })();
