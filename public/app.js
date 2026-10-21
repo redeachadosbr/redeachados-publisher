@@ -5088,7 +5088,8 @@ async function shPricePrepare({silent=false}={}){
       body:JSON.stringify({...selected,settings:shPriceReadSettings(),
         adsBudgetEnabled:$('#priceAdsEnabled').checked,
         adsBudgetPct:$('#priceAdsEnabled').checked?Number($('#priceAds').value):0,
-        marketAverage:market===''?null:Number(market)}),
+        marketAverage:market===''?null:Number(market),
+        marginOverride:shManualMarginChoice}),
       // Até cinco buscas sequenciais de ofertas podem levar mais de 35 segundos.
       signal:AbortSignal.timeout(75000)
     });
