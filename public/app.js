@@ -2970,7 +2970,7 @@ function optimizerExecutionTrackerRender(progress,job){
    'Horário indisponível';
  const badge=$('#optimizerExecutionLiveBadge');
  badge.textContent=progress.verified?'✓ Confirmado':progress.attention?'! Atenção':'● Atualização automática';
- badge.dataset.state=progress.state;
+ badge.dataset.state=progress.fiscalPartial?'warning':progress.state;
  const pct=Math.max(0,Math.min(100,Number(progress.percent)||0));
  $('#optimizerExecutionPercent').textContent=pct+'%';
  $('#optimizerExecutionBar').setAttribute('aria-valuenow',String(pct));
@@ -3418,6 +3418,9 @@ function optimizerExecutionJobView(job,progress=null,issue=null){
  const fiscalPartial=verified&&job?.result?.phase==='verified_partial';
  const resultLink=$('#optimizerExecutionShopeeLink');
  resultLink.hidden=!verified;
+ resultLink.textContent=fiscalPartial?
+  '⚠ Comercial confirmado; fiscal pendente — conferir na Shopee ↗':
+  '✓ Alterações incluídas confirmadas na Shopee ↗';
  if(verified&&optimizerWorkflowPlan?.itemId)
    resultLink.href='https://seller.shopee.com.br/portal/product/'+encodeURIComponent(optimizerWorkflowPlan.itemId)+'?pageEntry=product_list';
  $('#optimizerExecutionReconcile').hidden=job?.state!=='uncertain';
