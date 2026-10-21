@@ -565,13 +565,16 @@ app.get('/api/shopee/optimizer/fiscal-migration/active-skus',mustLogin,requireWe
   const results=[];
   for(const item of page.items||[]){
    const itemId=String(item.itemId||'');
-   if(!/^\\d+$/.test(itemId))continue;
+   if(!/^\d+$/.test(itemId))continue;
    let models=[];
    try{
     const data=await callShopeeShopApi(cfg,{path:'/api/v2/product/get_model_list',
      accessToken:auth.accessToken,shopId:auth.shopId,query:{item_id:Number(itemId)}});
     models=normalizeShopeeModels(data);
-   }catch{/* Produto sem variações: usar SKU principal do catálogo. */}
+   }catch(error){
+    if(item.hasModel)throw Error('Falha ao consultar variações do anúncio '+itemId+': '+String(error.message||error).slice(0,100));
+    // Produto sem variações: usar SKU principal do catálogo.
+   }
    const candidates=models.length?models.map(m=>({sku:m.sku,modelId:m.modelId,status:m.status}))
     :[{sku:item.sku,modelId:'0',status:'NORMAL'}];
    for(const candidate of candidates){
