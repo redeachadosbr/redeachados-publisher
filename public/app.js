@@ -3156,6 +3156,9 @@ $('#optimizerExecutionScope')?.addEventListener?.('change',()=>{
 });
 $('#optimizerExecutionLaunch')?.addEventListener?.('click',()=>void optimizerExecuteApproved());
 $('#optimizerExecutionRun')?.addEventListener?.('click',()=>void optimizerExecuteApproved());
+function optimizerExecutionNeedsFreshPreview(message){
+ return /Conteúdo ou aprovação mudou|Plano alterado em outra sessão|Plano mudou|Anúncio alterado após preparação|A ficha técnica da Shopee foi modificada|Os dados fiscais da Shopee mudaram|Imagens alteradas após preparação|Categoria alterada após preparação|A etapa escolhida mudou|Plano já executado, alterado/i.test(String(message||''));
+}
 async function optimizerExecuteApproved(){
  const p=optimizerExecPlan,ctx=optimizerExecContext;
  if(!p?.canExecute||!ctx||optimizerExecBusy||p.sku!==ctx.sku||
@@ -3165,7 +3168,8 @@ async function optimizerExecuteApproved(){
  optimizerExecStartError='';optimizerExecBusy=true;btn.disabled=true;$('#optimizerExecutionRun').disabled=true;
  $('#optimizerExecutionPrepare').disabled=true;
  $('#optimizerExecutionLaunch').hidden=true;
- optimizerExecNotice('Enviando comando de execução à Shopee. O andamento ficará salvo para esta SKU...');
+ let previewMustRefresh=false;
+ optimizerExecNotice('Validando a prévia e iniciando somente as alterações aprovadas...');
  try{
    const out=await json('/api/shopee/optimizer/execution/execute',{
      method:'POST',headers:{'Content-Type':'application/json'},
@@ -3189,10 +3193,23 @@ async function optimizerExecuteApproved(){
    optimizerExecPlan=null;$('#optimizerExecutionConfirmation').hidden=true;
    $('#optimizerExecutionLaunch').hidden=true;
    optimizerExecStartError=String(e.message||e);
-   optimizerExecNotice('Execução não confirmada: '+optimizerExecStartError+
-     '. O sistema está consultando a Shopee antes de permitir uma nova tentativa.','error');
-   void optimizerExecutionRefresh(true);
+   previewMustRefresh=optimizerExecutionNeedsFreshPreview(optimizerExecStartError);
+   if(previewMustRefresh){
+     optimizerExecNotice('A prévia anterior ficou desatualizada. Atualizando a prévia com as alterações vigentes para sua nova conferência. Nenhum envio ocorreu nesta tentativa.','warning');
+   }else{
+     optimizerExecNotice('Execução não confirmada: '+optimizerExecStartError+
+       '. Consultando o andamento antes de permitir qualquer nova tentativa.','error');
+     void optimizerExecutionRefresh(true);
+   }
  }finally{optimizerExecBusy=false;$('#optimizerExecutionPrepare').disabled=false;}
+ if(previewMustRefresh&&optimizerWorkflowPlan?.sku===ctx.sku&&
+    optimizerWorkflowPlan?.itemId===ctx.itemId&&optimizerWorkflowPlan?.modelId===ctx.modelId){
+   // Reconstituir a prévia é seguro; NUNCA repetir execute() automaticamente.
+   // O comprador precisa visualizar e clicar novamente, autorizando o novo plano.
+   await optimizerExecutionPrepare();
+   if(optimizerExecPlan?.canExecute&&optimizerExecPlan.sku===ctx.sku)
+     optimizerExecNotice('Prévia atualizada com segurança. Confira as alterações acima e clique em “Executar na Shopee” para autorizar esta NOVA prévia. Nenhum envio foi feito automaticamente.','warning');
+ }
 }
 
 // A fiscal batch never posts whole ads: every row has its own verified
