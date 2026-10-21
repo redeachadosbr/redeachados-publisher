@@ -1,0 +1,31 @@
+/* Ficha técnica: editor compacto, bilíngue na API, apresentação em português. */
+#tab-optimizer .optimizer-technical-import{padding:15px!important;border-radius:16px!important;border:1px solid #dbe6f4!important;background:linear-gradient(155deg,#fff,#f7faff)!important;box-shadow:0 6px 20px rgba(18,48,83,.04)}
+#tab-optimizer .optimizer-tech-import-title{display:flex;flex-wrap:wrap;justify-content:space-between;align-items:center;gap:7px;margin-bottom:8px!important}
+#tab-optimizer .optimizer-tech-import-title strong{font-size:15px!important;color:#18375a}
+#tab-optimizer #optimizerTechText{min-height:76px!important;height:90px;max-height:180px;font-size:13px;line-height:1.5;border:1px solid #ceddf0;border-radius:12px;padding:10px;background:#fff}
+#tab-optimizer .optimizer-tech-import-actions{display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin:9px 0!important}
+#tab-optimizer .optimizer-tech-import-actions>*{flex:1 1 210px;min-height:42px!important}
+#tab-optimizer #optimizerTechFill{background:linear-gradient(130deg,#1680cc,#0b5fa9)!important;border-radius:12px!important;font-size:13px!important;font-weight:800;box-shadow:0 5px 12px rgba(5,74,155,.12)}
+#tab-optimizer .optimizer-tech-privacy{font-size:11px!important;line-height:1.4!important;color:#62788e}
+#tab-optimizer .optimizer-technical-summary{padding:12px!important;border-radius:16px!important;border:1px solid #dce8f5!important;background:#f9fcff!important;box-shadow:0 4px 16px rgba(27,74,118,.045)!important}
+#tab-optimizer .optimizer-tech-summary-head{margin-bottom:10px!important}
+#tab-optimizer .optimizer-tech-summary-stats{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:9px!important}
+#tab-optimizer .optimizer-tech-summary-stat{padding:10px!important;min-height:68px!important;border-radius:11px!important}
+#tab-optimizer .optimizer-tech-summary-stat strong{font-size:21px!important}
+#tab-optimizer .optimizer-tech-summary-note{margin:9px 0!important;font-size:12px!important}
+#tab-optimizer .optimizer-technical-advanced{border-radius:16px!important;background:#fff;border:1px solid #dbe7f5!important;box-shadow:0 4px 16px rgba(19,57,99,.035)}
+#tab-optimizer .optimizer-technical-advanced>summary{padding:14px 16px!important;font-size:13px!important}
+#tab-optimizer .optimizer-technical-advanced-body{padding:12px!important}
+#tab-optimizer #optimizerTechnicalFields{display:grid!important;grid-template-columns:repeat(2,minmax(0,1fr));gap:9px!important}
+#tab-optimizer #optimizerTechnicalFields>.optimizer-tech-compact-summary,#tab-optimizer #optimizerTechnicalFields>.optimizer-category-summary,#tab-optimizer #optimizerTechnicalFields>.optimizer-warning,#tab-optimizer #optimizerTechnicalFields>.optimizer-tech-optional{grid-column:1/-1}
+#tab-optimizer #optimizerTechnicalFields>.optimizer-tech-compact-summary{border-radius:11px;background:#ecf7f1;color:#126747;font-size:12px;font-weight:700;padding:11px 13px;margin:0}
+#tab-optimizer #optimizerTechnicalFields .optimizer-attribute{margin:0!important;padding:11px!important;border:1px solid #dbe5f0!important;border-radius:12px!important;min-width:0;box-shadow:0 2px 8px rgba(23,61,98,.025);background:#fff}
+#tab-optimizer #optimizerTechnicalFields .optimizer-attribute[hidden]{display:none!important}
+#tab-optimizer #optimizerTechnicalFields .optimizer-attribute legend{font-size:13px!important;font-weight:800!important;color:#153c62!important;padding:0 5px}
+#tab-optimizer #optimizerTechnicalFields .optimizer-attribute small{font-size:11px!important;color:#65809d}
+#tab-optimizer #optimizerTechnicalFields .optimizer-attribute input,#tab-optimizer #optimizerTechnicalFields .optimizer-attribute select{min-height:36px!important;font-size:12px!important}
+#tab-optimizer .optimizer-tech-optional,#tab-optimizer .optimizer-tech-filled-list{border:1px solid #dfebf7;background:#f6f9fd;border-radius:12px;margin:9px 0;padding:11px 13px}
+#tab-optimizer .optimizer-tech-optional>summary,#tab-optimizer .optimizer-tech-filled-list>summary{cursor:pointer;color:#234c76;font-weight:750;font-size:12px}
+#tab-optimizer .optimizer-tech-optional[open] .optimizer-attribute{margin-top:9px!important}
+#tab-optimizer .optimizer-tech-filled-list .optimizer-tech-summary-list{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;margin-top:11px}
+@media(max-width:800px){#tab-optimizer #optimizerTechnicalFields,#tab-optimizer .optimizer-tech-filled-list .optimizer-tech-summary-list{grid-template-columns:1fr!important}}
