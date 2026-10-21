@@ -1,4 +1,5 @@
-import {assertLiveShopeeUnchanged,verifyShopeeExecution} from './shopeeExecutionPlan.js';
+import {assertLiveShopeeUnchanged,verifyShopeeExecution,verifyShopeeFiscalExecution} from './shopeeExecutionPlan.js';
+import {sameData} from './shopeeStructuredFields.js';
 import {advanceVideoUpload} from './shopeeMediaApi.js';
 import {withExecutionEvent} from './shopeeExecutionProgress.js';
 import {isDefinitiveShopeeRejection} from './shopeeExecutionIssues.js';
@@ -6,12 +7,70 @@ import {isDefinitiveShopeeRejection} from './shopeeExecutionIssues.js';
 export async function advanceShopeeExecution(job,io){
  const plan=job.plan,result={...(job.result||{})};
  if(!plan?.requiresExplicitConfirmation||!plan.canExecute)throw Error('Plano sem aprovação válida.');
+ // A segunda escrita fiscal tem checkpoint separado: depois de qualquer queda
+ // retomamos SOMENTE a leitura, evitando duplicidade de update_item.
+ if(['fiscal_updating','fiscal_verifying'].includes(result.phase)){
+  const live=await io.read();
+  if(verifyShopeeFiscalExecution(plan,live,result))
+   return {state:'verified',result:withExecutionEvent({...result,phase:'verified',verified:true,
+    fiscal:{status:'verified'}},'fiscal-verified','Todas as etapas, inclusive os dados fiscais, foram confirmadas pela Shopee.','success'),lastError:null};
+  if(Date.now()-Number(result.fiscalStartedAt||0)>90000)
+   return {state:'uncertain',result:withExecutionEvent(result,'fiscal-timeout',
+    'Conteúdo enviado; ainda não há confirmação dos dados fiscais pela Shopee.','warning'),
+    lastError:'A Shopee ainda não confirmou o envio fiscal final. Não repetir o envio sem reconciliação.'};
+  return {state:'running',result:{...result,phase:'fiscal_verifying'},delay:5000};
+ }
  if(['updating','verifying'].includes(result.phase)){
   const live=await io.read();
-  if(verifyShopeeExecution(plan,live,result))return {state:'verified',result:withExecutionEvent({...result,phase:'verified',verified:true},'verified','A Shopee confirmou as alterações no anúncio.','success'),lastError:null};
+  if(verifyShopeeExecution(plan,live,result)){
+   if(plan.finalFiscal)
+    return {state:'running',result:withExecutionEvent({...result,phase:'fiscal_ready',
+     primaryVerified:true},'commerce-verified',
+     'Imagens, vídeo e conteúdo confirmados. Iniciando a última etapa fiscal.','success'),delay:500};
+   return {state:'verified',result:withExecutionEvent({...result,phase:'verified',verified:true},
+    'verified','A Shopee confirmou as alterações no anúncio.','success'),lastError:null};
+  }
   if(Date.now()-Number(result.updateStartedAt||0)>90000)
     return {state:'uncertain',result:withExecutionEvent(result,'verify-timeout','A conferência da Shopee excedeu o tempo esperado.','warning'),lastError:'A Shopee ainda não confirmou todos os campos. Use Conferir resultado.'};
   return {state:'running',result:{...result,phase:'verifying'},delay:5000};
+ }
+ if(result.phase==='fiscal_ready'){
+  await io.validateIdentity();
+  const live=await io.read();
+  if(!verifyShopeeExecution(plan,live,result))
+   return {state:'uncertain',result:withExecutionEvent(result,'commerce-changed',
+    'A parte comercial mudou antes do envio fiscal. Não foi enviado outro dado.','warning'),
+    lastError:'Conteúdo alterado entre as duas etapas. Verifique o anúncio antes de continuar.'};
+  if(!sameData(live.tax_info||{},plan.original.tax_info||{})){
+   if(verifyShopeeFiscalExecution(plan,live,result))
+    return {state:'verified',result:withExecutionEvent({...result,phase:'verified',
+     verified:true,fiscal:{status:'verified'}},'fiscal-confirmed',
+     'Dados fiscais já conferidos na Shopee; não foi necessário reenviar.','success'),lastError:null};
+   return {state:'uncertain',result:withExecutionEvent(result,'fiscal-changed',
+    'Os campos fiscais mudaram após a prévia. Não foi feito novo envio.','warning'),
+    lastError:'Dados fiscais alterados fora do plano. Confira antes de autorizar nova prévia.'};
+  }
+  const checkpoint=withExecutionEvent({...result,phase:'fiscal_updating',
+   fiscalStartedAt:Date.now()},'fiscal-request',
+   'Etapa final: enviando SOMENTE os dados fiscais conferidos no Motor Matriz.');
+  await io.beforeWrite(checkpoint);
+  try{
+   const response=await io.update({item_id:Number(plan.itemId),tax_info:plan.finalFiscal});
+   return {state:'running',result:withExecutionEvent({...checkpoint,phase:'fiscal_verifying',
+    fiscalRequestId:String(response?.request_id||'').slice(0,100)},
+    'fiscal-accepted','A Shopee recebeu a atualização fiscal; verificando os campos.'),
+    delay:1500};
+  }catch(error){
+   const reason=String(error.message||error).slice(0,240);
+   if(isDefinitiveShopeeRejection(reason))
+    return {state:'verified',result:withExecutionEvent({...checkpoint,phase:'verified_partial',
+     primaryVerified:true,fiscal:{status:'rejected',reason}},'fiscal-rejected',
+     'Parte comercial confirmada; a Shopee recusou o CEST/NCM. Fiscal pendente.','warning'),
+     lastError:reason};
+   return {state:'uncertain',result:withExecutionEvent(checkpoint,'fiscal-uncertain',
+    'A parte comercial foi confirmada, mas o resultado da atualização fiscal está incerto.','warning'),
+    lastError:'Atualização fiscal final sem confirmação: '+reason};
+  }
  }
  await io.validateIdentity();
  assertLiveShopeeUnchanged(plan,await io.read());
@@ -31,6 +90,11 @@ export async function advanceShopeeExecution(job,io){
   return {state:'running',result:withExecutionEvent({...result,phase:status},status,labeled),
    delay:status==='video_processing'?10000:500};
  }
+ // Se a última etapa fiscal for a ÚNICA alteração, não escrever item vazio.
+ if(plan.finalFiscal&&!Object.keys(plan.proposed||{}).length&&!plan.images?.length&&!plan.video)
+  return {state:'running',result:withExecutionEvent({...result,phase:'fiscal_ready',
+   primaryVerified:true},'fiscal-only-last','Nenhuma alteração comercial pendente; preparando dados fiscais.'),
+   delay:500};
  // Persist intent before the external write. A crash resumes readback only.
  result.phase='updating';result.updateStartedAt=Date.now();
  const checkpoint=withExecutionEvent(result,'update-request','Enviando alteração aprovada para o anúncio.');
