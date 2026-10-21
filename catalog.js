@@ -79,8 +79,22 @@ export async function fetchCatalogPage(cfg,auth,callApi,{status='NORMAL',offset=
     query:{item_status:status,offset:at,page_size:page}
   });
   const body=listing?.response||{};
-  const entries=Array.isArray(body.item)?body.item:Array.isArray(body.item_list)?body.item_list:null;
-  if(!entries)throw Error('Resposta inesperada da listagem Shopee: não há itens.');
+  // A API da Shopee pode omitir a propriedade item quando um status não
+  // possui anúncios. Isso NÃO deve interromper a leitura dos demais status.
+  // Ausência de itens com contagem positiva continua sendo erro bloqueante.
+  const totalCount=safeNonnegative(body.total_count);
+  const hasNext=Boolean(body.has_next_page);
+  let entries=Array.isArray(body.item)?body.item:Array.isArray(body.item_list)?body.item_list:null;
+  const isVerifiedEmpty=totalCount===0&&!hasNext&&at===0;
+  if(entries===null){
+    if(isVerifiedEmpty)entries=[];
+    else throw Error('Listagem Shopee incompleta ('+status+', página '+at+
+      '): campo de itens ausente, total '+(totalCount??'desconhecido')+
+      ', próxima página '+hasNext+'. Nenhum envio fiscal autorizado.');
+  }
+  if(entries.length===0&&totalCount>at)
+    throw Error('Listagem Shopee incompleta ('+status+', página '+at+
+      '): nenhum anúncio retornado de '+totalCount+' esperados. Nenhum envio fiscal autorizado.');
   const unique=new Map();
   for(const row of entries){
     try{const id=validItemId(row.item_id);unique.set(id,row);}catch{}
@@ -105,7 +119,6 @@ export async function fetchCatalogPage(cfg,auth,callApi,{status='NORMAL',offset=
     }
   }
   const items=ids.map(id=>normalizeCatalogItem(unique.get(id),enriched.get(id)));
-  const hasNext=Boolean(body.has_next_page);
   const nextOffset=Number(body.next_offset);
   const calculated=Number.isSafeInteger(nextOffset)&&nextOffset>at?nextOffset:at+entries.length;
   if(hasNext&&calculated<=at)throw Error('Paginação Shopee não avançou.');
@@ -113,7 +126,7 @@ export async function fetchCatalogPage(cfg,auth,callApi,{status='NORMAL',offset=
     status,items,
     hasNext,
     nextOffset:hasNext?calculated:null,
-    totalCount:safeNonnegative(body.total_count),
+    totalCount,
     warnings,
     enrichedCount:items.filter(x=>x.baseLoaded).length
   };
