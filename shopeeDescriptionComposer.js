@@ -162,10 +162,33 @@ export function composeShopeeDescription({record={},supplier=null,sourceText=''}
  // Use official SKU-specific facts, never raw source text as a completed description.
  let body=toLines(p,pr);
  if(codePointCount(body)>1440&&p.type==='toy'){
-  // Prefira retirar repetições a cortar frases no meio. As especificações da fonte permanecem.
-  pr.intro1='🧰 A '+p.short+' reúne ferramentas e acessórios para brincadeiras de construção, montagem e faz de conta.';
-  pr.intro2='🎯 A proposta 3 em 1 permite criar cenários de oficina e guardar as peças na mochila depois da diversão.';
-  pr.details=pr.details.filter(x=>!x.includes('Uso: brincadeiras de oficina'));
+  // Texto comercial completo: jamais interromper frases ou itens de FAQ para atingir contagem.
+  pr.intro1='🧰 A '+p.short+' reúne ferramentas e acessórios de brinquedo para imaginar uma oficina, montar peças e explorar o faz de conta.';
+  pr.intro2='🎯 O conjunto 3 em 1 permite criar novas brincadeiras; depois, a mochila reúne as peças para guardar e organizar tudo.';
+  pr.details=[
+   '🧩 Tipo: mochila construtor 3 em 1 com ferramentas de brinquedo.',
+   ...(p.content?['📦 Conteúdo: mochila, ferramentas e acessórios temáticos.']:[])
+  ];
+  pr.faq=[
+   ['O que é?','Uma mochila 3 em 1 com ferramentas de brinquedo.'],
+   ['Como usar?','Abra a mochila e organize as peças para brincar.'],
+   ['Para qual idade?',p.facts.age?'A partir de '+p.facts.age+', conforme a ficha.':'Confira a indicação etária na ficha.'],
+   ['O que acompanha?',p.content?'Uma mochila e acessórios de brinquedo.':'Confira os itens incluídos no anúncio.'],
+   ['Como guardar?','Recoloque as peças na mochila após o uso.']
+  ];
+  pr.reasons=[
+   '🧰 Kit de ferramentas de brinquedo',
+   'Mochila para organizar as peças',
+   '🎲 Brincadeiras de faz de conta',
+   'Tema de oficina e construção',
+   'Acessórios do mesmo conjunto',
+   '⭐ Proposta de brinquedo 3 em 1',
+   'Peças reunidas em um só lugar',
+   'Leve as peças dentro da mochila',
+   '🎁 Ideia de presente infantil',
+   'Montagens e novas histórias'
+  ];
+  pr.measureExtra='Compare as medidas com o espaço de uso e armazenamento.';
   body=toLines(p,pr);
  }
  if(codePointCount(body)>1440){
