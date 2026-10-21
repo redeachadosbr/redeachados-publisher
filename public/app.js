@@ -2712,7 +2712,7 @@ function optimizerWorkflowOpen(key){
  const isImages=key==='images';
  guide.textContent=stage.hint+(isImages?'\n\nROTEIRO PARA GERAR E REVISAR AS NOVE IMAGENS:\n'+workflowImageGuide+
     '\n\nUse o prompt mestre salvo em Regras da loja. Confira produto e medidas antes de substituir uma fotografia.':'');
- guide.hidden=isImages||isDescription;
+ guide.hidden=isImages||key==='description';
  if(isImages){const toggle=$('#optimizerCommercialRules');if(toggle)toggle.setAttribute('aria-expanded','false');}
  const draftWrap=$('#optimizerWorkflowDraftWrap');
  const isSeo=key==='seo',isDescription=key==='description';
