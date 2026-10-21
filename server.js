@@ -664,17 +664,24 @@ app.post('/api/shopee/optimizer/fiscal-migration/prepare-drafts',mustLogin,requi
     const supplier=await readWeDropProduct(auth.shopId,{sku,itemId,modelId});
     if(!supplier||!['exact-sku','reviewed-link'].includes(supplier.matchedBy))
       throw Error('Correspondência WeDrop não confirmada.');
-    const ncm=String(supplier.product_data?.ncm??'').replace(/\D/g,'');
-    if(!/^\d{8}$/.test(ncm))throw Error('NCM de oito dígitos ausente na WeDrop.');
-    const unit=suggestFiscalMeasureUnit(record.title||x.title||'',supplier.product_data?.title||'');
-    if(!unit.unit)throw Error(unit.reason);
+    const supplierNcm=String(supplier.product_data?.ncm??'').replace(/\D/g,'');
     const previous=existing?.sku===sku?existing.review_state?.tax||{}:{};
+    const manualNcm=String(previous.ncm||'').replace(/\D/g,'');
+    const ncm=manualNcm||supplierNcm;
+    if(!/^\d{8}$/.test(ncm))throw Error('NCM de oito dígitos não confirmado na ficha manual nem na WeDrop.');
+    if(/^\d{8}$/.test(supplierNcm)&&manualNcm&&manualNcm!==supplierNcm)
+      throw Error('NCM manual difere do NCM WeDrop. A informação manual foi preservada; confira a divergência.');
+    const unit=suggestFiscalMeasureUnit(record.title||x.title||'',supplier.product_data?.title||'');
+    const measureUnit=String(previous.measure_unit||'').trim()||unit.unit;
+    if(!measureUnit)throw Error(unit.reason);
+    // Valores digitados têm prioridade: nunca sobrescrever NCM, unidade ou
+    // justificativa fiscal manual com uma nova sugestão do catálogo.
     const tax={...previous,ncm,origin:previous.origin||'2',
       same_state_cfop:previous.same_state_cfop||'5106',
       diff_state_cfop:previous.diff_state_cfop||'6106',
       csosn:previous.csosn||'102',pis_cofins_cst:previous.pis_cofins_cst||'99',
-      cest:previous.cest||'00',measure_unit:unit.unit,
-      evidence:'NCM WeDrop '+supplier.supplier_sku+' · '+(supplier.source_file||'cadastro importado')};
+      cest:previous.cest||'00',measure_unit:measureUnit,
+      evidence:previous.evidence||('NCM WeDrop '+supplier.supplier_sku+' · '+(supplier.source_file||'cadastro importado'))};
     fiscalMatrixSource({sku,supplier,tax});
     compileTax(tax,{tax_info:{}});
     await saveWorkflowReview(auth.shopId,itemId,modelId,sku,
@@ -706,16 +713,18 @@ app.post('/api/shopee/optimizer/fiscal-migration/validate-one',mustLogin,require
    {expectedSku:sku,expectedModelId:modelId});
   if(!['NORMAL','UNLIST'].includes(record.status))throw Error('Anúncio não está ativo.');
   const supplier=await readWeDropProduct(auth.shopId,{sku,itemId,modelId});
-  if(!supplier||supplier.matchedBy!=='exact-sku'||supplier.supplier_sku!==sku)
-   throw Error('Vínculo exato da SKU com WeDrop não confirmado.');
+  if(!supplier||!['exact-sku','reviewed-link'].includes(supplier.matchedBy))
+   throw Error('Não há vínculo WeDrop exato ou vínculo aprovado para esta SKU.');
   const tax=existing.review_state?.tax;
   if(!tax)throw Error('Rascunho fiscal ausente.');
   const source=fiscalMatrixSource({sku,supplier,tax});
   const unit=suggestFiscalMeasureUnit(record.title||'',supplier.product_data?.title||'');
-  if(!unit.unit||unit.unit!==tax.measure_unit)throw Error('Unidade de medida exige revisão.');
+  if(!tax.measure_unit)throw Error('Unidade de medida fiscal ausente.');
+  // Uma unidade informada manualmente tem precedência sobre heurística de título.
+  // compileTax verifica se a unidade é aceita pelo esquema, sem reescrever o valor.
   const ncm=String(supplier.product_data?.ncm||'').replace(/\D/g,'');
-  if(!/^\d{8}$/.test(ncm)||ncm!==String(tax.ncm))
-   throw Error('NCM da ficha diverge do NCM WeDrop.');
+  if(!/^\d{8}$/.test(String(tax.ncm))||(/^\d{8}$/.test(ncm)&&ncm!==String(tax.ncm)))
+   throw Error('NCM da ficha ausente ou divergente da WeDrop. Valor manual preservado para correção.');
   if(!['00',...[]].includes(String(tax.cest||''))&&!/^\d{7}$/.test(String(tax.cest||'')))
    throw Error('CEST fora do padrão autorizado.');
   const required={origin:'2',same_state_cfop:'5106',diff_state_cfop:'6106',
