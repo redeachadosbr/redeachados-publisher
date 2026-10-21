@@ -1269,7 +1269,12 @@ app.post('/api/shopee/optimizer/fiscal-migration/execute-one',mustLogin,requireW
   // manuais prevalecem, não se presume CEST real a partir do NCM.
   compileTax(tax,{tax_info:{}});
   const source=fiscalMatrixSource({sku,supplier:supplierLinked?supplier:null,tax});
-  if(!existing?.review_state?.stages?.fiscal?.reviewed){
+  // Completar campos ausentes até mesmo nas fichas já marcadas como
+  // revisadas, sem sobrescrever um único valor manual preexistente.
+  const needsSave=!existing?.review_state?.stages?.fiscal?.reviewed||
+   Object.entries(tax).some(([key,value])=>
+    String(previousTax[key]??'')!==String(value??''));
+  if(needsSave){
    await saveWorkflowReview(auth.shopId,itemId,modelId,sku,{
     stage:'fiscal',reviewed:true,tax,matrixFiscal:source
    });
