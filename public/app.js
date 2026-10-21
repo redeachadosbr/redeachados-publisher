@@ -4992,8 +4992,8 @@ function shPriceRender(q){
   $('#optimizerQuickGross').textContent=shPriceMoney(q.grossPrice);
   $('#optimizerQuickDiscount').textContent=shPricePercent(q.discountPct);
   const marketVerified=q.marketResearch?.verified===true;
-  $('#optimizerQuickDiscountLabel').textContent=marketVerified?'Desconto baseado no mercado':'Desconto base · sem pesquisa';
-  $('#pricePromoLabel').textContent=marketVerified?'Desconto competitivo calculado':'Desconto base · não pesquisado';
+  $('#optimizerQuickDiscountLabel').textContent=q.marginOverride?'Desconto base · margem personalizada':marketVerified?'Desconto baseado no mercado':'Desconto base · sem pesquisa';
+  $('#pricePromoLabel').textContent=q.marginOverride?'Desconto mantido · margem manual':marketVerified?'Desconto competitivo calculado':'Desconto base · não pesquisado';
   $('#optimizerQuickFinal').textContent=shPriceMoney(q.customerPrice);
   $('#optimizerQuickProfit').textContent=shPriceMoney(q.netProfit);
   $('#optimizerQuickMarginPercent').textContent=shPricePercent(q.netMarginPct)+' de margem';
