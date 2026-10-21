@@ -1218,6 +1218,34 @@ app.post('/api/shopee/optimizer/execution/prepare',mustLogin,requireWeDropAdmin,
       updatedAt:stored.updated_at,executionStatus:stored.state,marketplaceUpdated:false});
   }catch(e){res.status(409).json({error:String(e.message||e).slice(0,300)});}
 });
+// Validação fiscal leve: consulta apenas anúncio + eventual modelo. Não busca
+// esquema de atributos, mídia ou preço, pois só envia tax_info.
+async function auditFiscalSkuLight(cfg,auth,itemId,modelId,sku){
+ const live=await shopeeLiveEditableItem(cfg,auth,itemId);
+ const status=String(live.item_status||'');
+ if(!['NORMAL','UNLIST'].includes(status))
+  throw Error('Anúncio não está em estado editável na Shopee.');
+ if(String(live.item_id)!==String(itemId))throw Error('Item ID divergente.');
+ if(String(modelId)!=='0'){
+  if(!live.has_model)throw Error('Anúncio não possui o modelo solicitado.');
+  const raw=await callShopeeShopApi(cfg,{
+   path:'/api/v2/product/get_model_list',accessToken:auth.accessToken,
+   shopId:auth.shopId,query:{item_id:Number(itemId)}
+  });
+  const model=normalizeShopeeModels(raw).find(x=>x.modelId===String(modelId));
+  if(!model||model.sku!==sku)
+   throw Error('SKU ou modelo diverge da listagem oficial Shopee.');
+  if(!['MODEL_NORMAL','MODEL_UNAVAILABLE','NORMAL','UNLIST'].includes(model.status))
+   throw Error('Modelo não editável no momento: '+model.status);
+ }else if(live.has_model||String(live.item_sku||'').trim()!==sku){
+  throw Error('SKU principal não corresponde ao anúncio Shopee sem variações.');
+ }
+ const record={itemId:String(itemId),selectedModelId:String(modelId),sku,
+  title:String(live.item_name||''),status,hasModel:Boolean(live.has_model),
+  categoryId:Number(live.category_id)||0,imageCount:0,videoStatus:'Não consultado',
+  attributeAudit:{attributes:[],missingMandatory:0}};
+ return {record,live};
+}
 // Execução fiscal direta: um único roundtrip de preparação + validação +
 // agendamento durável. A autorização veio do único botão autenticado da loja.
 // Não emite NF-e e só altera tax_info no anúncio; nunca preço, imagens ou vídeo.
@@ -1236,11 +1264,9 @@ app.post('/api/shopee/optimizer/fiscal-migration/execute-one',mustLogin,requireW
    return res.json({ok:true,sku,itemId,modelId,status:previousJob.state,
     message:previousJob.state==='running'?'Envio fiscal já em andamento.':
       'Envio anterior ainda sem confirmação; a operação não será repetida.'});
-  // Revalidar identidade e categoria diretamente na Shopee antes de qualquer escrita.
-  const record=await auditShopeeItem(cfg,auth,callShopeeShopApi,itemId,
-   {expectedSku:sku,expectedModelId:modelId});
-  if(!['NORMAL','UNLIST'].includes(record.status))
-   throw Error('Anúncio não está em status editável na Shopee.');
+  // Revalidar identidade e dados atuais sem consultar ficha técnica, vídeo,
+  // imagens ou preço: esses campos não participam da atualização fiscal.
+  const {record,live}=await auditFiscalSkuLight(cfg,auth,itemId,modelId,sku);
   const existing=await getWorkflowReview(auth.shopId,itemId,modelId);
   if(existing&&existing.sku!==sku)throw Error('A revisão salva pertence a outra SKU.');
   const previousTax=existing?.review_state?.tax||{};
@@ -1285,7 +1311,6 @@ app.post('/api/shopee/optimizer/fiscal-migration/execute-one',mustLogin,requireW
    throw Error('Os dados fiscais não foram persistidos; operação cancelada.');
   fiscalMatrixSource({sku,supplier:supplierLinked?supplier:null,tax:reviewedTax,
    reviewSource:review.review_state.matrixFiscal});
-  const live=await shopeeLiveEditableItem(cfg,auth,itemId);
   const plan=compileShopeeExecutionPlan({shopId:auth.shopId,itemId,modelId,sku,
    record,review:review.review_state,live,selectedStage:'fiscal'});
   if(!plan.canExecute&&!plan.blocked.length&&!plan.proposed.tax_info)
