@@ -1,0 +1,15 @@
+/* Etapa fiscal sempre no fim da prévia de execução */
+.optimizer-exec-fiscal-last{margin:16px 0 6px;padding:14px 15px;background:#f5faff;border:1px solid #cbdff4;border-radius:14px}
+.optimizer-exec-fiscal-head{display:flex;align-items:center;gap:10px}
+.optimizer-exec-fiscal-head>span{background:#e4f1ff;color:#1763a9;font-size:14px;font-weight:900;padding:8px;border-radius:9px}
+.optimizer-exec-fiscal-head>div{display:flex;flex-direction:column;gap:3px;flex:1;min-width:0}
+.optimizer-exec-fiscal-head strong{font-size:13px;color:#173455}
+.optimizer-exec-fiscal-head small{font-size:11px;color:#466889}
+#optimizerExecFiscalEdit{font-size:11px;font-weight:700;padding:9px 11px;white-space:nowrap}
+.optimizer-exec-fiscal-values{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:7px;margin:12px 0}
+.optimizer-exec-fiscal-values>div{padding:9px 11px;border-radius:9px;background:#fff;border:1px solid #d9e6f2;min-width:0}
+.optimizer-exec-fiscal-values strong{display:block;font-size:10px;color:#5d7691}
+.optimizer-exec-fiscal-values span{display:block;font-size:12px;color:#123b66;font-weight:800;margin-top:3px;overflow-wrap:anywhere}
+.optimizer-exec-fiscal-note{font-size:11px!important;line-height:1.5;color:#59758e;margin:8px 0 0!important}
+@media(max-width:820px){.optimizer-exec-fiscal-values{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media(max-width:590px){.optimizer-exec-fiscal-head{flex-wrap:wrap}.optimizer-exec-fiscal-values{grid-template-columns:1fr}#optimizerExecFiscalEdit{width:100%}}
