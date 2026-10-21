@@ -16,6 +16,7 @@ export function supplierWorkflowFacts(supplier,record,settings={}){
  if(/tipo de (?:serviço|operac[aã]o|operaç[aã]o)\s*:\s*revendedor/i.test(notes))taxSuggestion.operation_type='1';
  if(/^\d{8}$/.test(facts.ncm||''))taxSuggestion.ncm=facts.ncm;
  if(/^\d{7}$/.test(facts.cest||''))taxSuggestion.cest=facts.cest;
+ // Ausência de CEST na ficha do fornecedor: manter marcador 00 do Motor Matriz.
  if(source)taxSuggestion.evidence=source+'; demais campos conforme regras fiscais salvas da loja.';
  // Unidade padrão só é inferida quando há comprovação explícita para esta SKU.
  // Não tratar kit, metro ou pacote como UN apenas porque a loja é revendedora.
@@ -47,6 +48,7 @@ export function supplierWorkflowFacts(supplier,record,settings={}){
  return {supplierProduct:supplier?{...facts,sku:supplier.supplier_sku,source,importedAt:supplier.imported_at,matchedBy:supplier.matchedBy}:null,
   taxSuggestion,attributeSuggestions,fiscalNotes:notes,
   taxSuggestionSources:Object.fromEntries(Object.keys(taxSuggestion).map(key=>[key,
-   ['ncm','cest','measure_unit'].includes(key)?(source||'Ficha técnica do produto'):
-    key==='pis_cofins_cst'?'Motor Matriz · padrão fiscal da loja: 99 — Outras Operações':'Regras fiscais salvas da loja']))};
+   ['ncm','measure_unit'].includes(key)||key==='cest'&&taxSuggestion.cest!=='00'?(source||'Ficha técnica do produto'):
+    key==='pis_cofins_cst'?'Motor Matriz · padrão fiscal da loja: 99 — Outras Operações':
+    key==='cest'&&taxSuggestion.cest==='00'?'Motor Matriz · marcador 00 (sem CEST confirmado; não enviar à Shopee)':'Regras fiscais salvas da loja']))};
 }
