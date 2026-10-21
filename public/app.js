@@ -4703,6 +4703,13 @@ function shPriceMarketResearchRender(q){
  const offers=$('#pricingMarketResearchOffers');
  if(!badge||!msg||!offers)return;
  offers.replaceChildren();
+ const sample=Array.isArray(research?.sample)?research.sample.slice(0,5):[];
+ const searchLink=$('#pricingMarketSearchShopee');
+ const searchTerm=String(research?.searchTerms||'').trim();
+ if(searchLink){
+   searchLink.hidden=!searchTerm;
+   if(searchTerm)searchLink.href='https://shopee.com.br/search?keyword='+encodeURIComponent(searchTerm);
+ }
  const verified=research?.verified===true&&research?.sourceType==='researched_affiliate_offers';
  const top=$('#pricingMarketTopStatus');
  if(top){
@@ -4710,14 +4717,18 @@ function shPriceMarketResearchRender(q){
   top.textContent=verified?
    'Mercado pesquisado: '+research.count+' ofertas equivalentes · referência '+shPriceMoney(research.reference)+
     ' · desconto calculado '+shPricePercent(q.discountPct):
-   'Sem pesquisa de mercado validada: desconto base não pesquisado. '+String(research?.message||'');
+   (sample.length?
+     'Pesquisa parcial: '+sample.length+' anúncio(s) verificável(is); sem média validada. ':
+     'Sem pesquisa de mercado validada: desconto base não pesquisado. ')+String(research?.message||'');
  }
- badge.textContent=verified?research.count+' anúncios comparados':'Pesquisa não disponível';
+ badge.textContent=verified?research.count+' anúncios comparados':
+  sample.length?sample.length+' referência(s) parcial(is)':'Pesquisa sem comparáveis';
  badge.dataset.state=verified?'success':'warning';
  const avg=$('#pricingResearchAverage'),suggested=$('#pricingResearchSuggested'),margin=$('#pricingResearchMargin');
  if(avg)avg.textContent=verified?shPriceMoney(research.reference):'—';
  if(suggested)suggested.textContent=verified&&q.status==='COMPETITIVO'?shPriceMoney(q.customerPrice):
-   verified&&q.status==='MERCADO_ABAIXO_DO_PISO'?'Sem preço viável':'Aguardando pesquisa';
+   verified&&q.status==='MERCADO_ABAIXO_DO_PISO'?'Sem preço viável':
+   q.customerPrice>0?shPriceMoney(q.customerPrice)+' (provisório)':'—';
  if(margin)margin.textContent=verified&&q.status==='COMPETITIVO'?shPricePercent(q.netMarginPct):
    verified&&q.status==='MERCADO_ABAIXO_DO_PISO'?'Margem mínima protegida':'—';
  msg.textContent=verified?
@@ -4729,9 +4740,10 @@ function shPriceMarketResearchRender(q){
       'A margem desejada de '+shPricePercent(q.targetMarginPct)+' não foi atingida.':'A margem desejada foi preservada.'))+
   ' Pesquisa em '+(research.researchedAt?new Date(research.researchedAt).toLocaleString('pt-BR'):'data não disponível')+'.':
   String(research?.message||'Nenhum preço comparável foi validado.')+
-  ' São necessários de 2 a 5 anúncios comparáveis, em lojas distintas, usando a API Shopee Afiliados.';
- if(!verified)return;
- for(const offer of (Array.isArray(research.sample)?research.sample:[]).slice(0,5)){
+  ' São necessários de 2 a 5 anúncios comparáveis, em lojas distintas, usando a API Shopee Afiliados. '+
+  (sample.length?'As referências exibidas são PARCIAIS e não definem desconto. ':'')+
+  'O preço provisório deriva do custo e das taxas, não da média de concorrência.';
+ for(const offer of sample){
   const shop=String(offer.shopId||''),item=String(offer.itemId||'');
   if(!/^\d{1,18}$/.test(shop)||!/^\d{1,18}$/.test(item))continue;
   const link=document.createElement('a');link.href='https://shopee.com.br/product/'+shop+'/'+item;
