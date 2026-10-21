@@ -615,7 +615,9 @@ app.get('/api/shopee/optimizer/fiscal-migration/active-skus',mustLogin,requireWe
         :[{sku:item.sku,modelId:'0',status:'NORMAL'}];
       const output=[];
       for(const candidate of candidates){
-        if(!candidate.sku||candidate.status&&!['NORMAL','UNLIST'].includes(candidate.status))continue;
+        // get_model_list retorna MODEL_NORMAL/MODEL_UNAVAILABLE, não NORMAL/UNLIST.
+        // Excluir esses modelos omitia silenciosamente todas as variações com SKU.
+        if(!candidate.sku||candidate.status&&!['NORMAL','UNLIST','MODEL_NORMAL','MODEL_UNAVAILABLE'].includes(candidate.status))continue;
         const review=await getWorkflowReview(auth.shopId,itemId,candidate.modelId);
         const checked=Boolean(review?.sku===candidate.sku&&
           review?.review_state?.stages?.fiscal?.reviewed&&review?.review_state?.tax?.ncm);
