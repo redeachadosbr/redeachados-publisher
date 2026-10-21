@@ -119,9 +119,13 @@ export async function downloadShopeeEvidenceImages(shop,item,model,sku){
   const prefix=[id.shop_id,id.item_id,id.model_id].join('/')+'/';
   if(!target.startsWith(prefix)||!/^[0-9a-f-]{36}\.(png|jpg)$/.test(target.slice(prefix.length)))
     continue;
-  const c=cfg();
-  const response=await fetch(c.url+'/storage/v1/object/authenticated/'+BUCKET+'/'+target,{
-   method:'GET',headers:c.headers,signal:AbortSignal.timeout(25000)
+  const signed=await jsonApi('/storage/v1/object/sign/'+BUCKET+'/'+target,{
+   method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({expiresIn:90})
+  });
+  const signedPath=String(signed.signedURL||signed.signedUrl||'');
+  if(!signedPath.startsWith('/object/sign/'))throw Error('Não foi possível autorizar a leitura privada do print.');
+  const response=await fetch(cfg().url+'/storage/v1'+signedPath,{
+   method:'GET',redirect:'error',signal:AbortSignal.timeout(25000)
   });
   if(!response.ok)throw Error('Não foi possível ler o print privado da WeDrop (HTTP '+response.status+').');
   if(Number(response.headers.get('content-length')||0)>MAX)throw Error('Print armazenado excede o limite de leitura.');
