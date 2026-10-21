@@ -29,7 +29,8 @@ const dimension=txt=>{
 };
 const banned=/\b(capa|inflador|bomba|adesivo|reparo|conserto|tapete|borda|filtro|somente|pecas|suporte|acessorio)\b/;
 export function marketSearchKeywords(title){
- const words=normalize(title).split(' ').filter(w=>w.length>2&&!stops.has(w));
+ const withoutDecimalMeters=String(title||'').replace(/\b\d{1,2}[,.]\d{1,2}\s*m\b/gi,' ');
+ const words=normalize(withoutDecimalMeters).split(' ').filter(w=>w.length>2&&!stops.has(w));
  const unique=[...new Set(words)].filter(w=>!/^(\d+|ml|cm)$/.test(w)).slice(0,4);
  const cap=capacity(title);
  return [...unique,cap?cap+' litros':''].filter(Boolean).join(' ').slice(0,100);
