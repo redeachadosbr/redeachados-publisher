@@ -737,6 +737,20 @@
 <div class="pricing-v2-summary-item"><span class="pricing-v2-summary-title"><svg class="pricing-v2-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linejoin="round" stroke-linecap="round" aria-hidden="true"><path d="M12 2v10h10M9 3a10 10 0 1 0 12 12"/></svg> Margem líquida <span class="optimizer-tip pricing-v2-help" tabindex="0" role="note" data-help="Margem calculada sobre o preço final do comprador, conforme os custos e taxas cadastrados." aria-label="Ajuda: Margem calculada sobre o preço final do comprador, conforme os custos e taxas cadastrados.">?</span></span><strong id="priceMarginActual">—</strong></div>
           </div>
           <p id="pricingMarketTopStatus" class="pricing-market-top" data-state="warning" role="status">Pesquisa de mercado ainda não verificada. O desconto padrão não representa análise da concorrência.</p>
+                    <section class="pricing-market-research" aria-labelledby="pricingMarketResearchTitle">
+            <div class="pricing-market-research-head">
+              <strong id="pricingMarketResearchTitle">🔎 Pesquisa de mercado Shopee · 2 a 5 anúncios</strong>
+              <span id="pricingMarketResearchBadge">Aguardando consulta</span>
+            </div>
+            <div class="pricing-market-summary">
+              <div><small>Média aritmética dos concorrentes</small><strong id="pricingResearchAverage">—</strong></div>
+              <div><small>Preço recomendado com margem protegida</small><strong id="pricingResearchSuggested">—</strong></div>
+              <div><small>Margem líquida estimada</small><strong id="pricingResearchMargin">—</strong></div>
+            </div>
+            <p id="pricingMarketResearchStatus" role="status" aria-live="polite">Localize uma SKU para pesquisar de 2 a 5 anúncios comparáveis.</p>
+            <div id="pricingMarketResearchOffers" class="pricing-market-research-offers"></div>
+            <small>Fonte: ofertas públicas da API Shopee Afiliados, quando conectada. Cada preço apresenta o anúncio e o horário da consulta; frete, cupom e variantes podem diferir. Sem 2 anúncios comprovados, não há recomendação automática de mercado.</small>
+          </section>
           <section class="optimizer-panel sh-price-panel pricing-v2-panel" id="optimizerPricingPanel" aria-label="Precificação Shopee da SKU">
             <div class="pricing-v2-columns">
               <div class="sh-price-controls pricing-v2-controls">
@@ -811,12 +825,7 @@
                 <summary><svg class="pricing-v2-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linejoin="round" stroke-linecap="round" aria-hidden="true"><rect x="4" y="2" width="16" height="20" rx="2"/><path d="M8 6h8M8 11h2M14 11h2M8 15h2M14 15h2M8 19h2M14 19h2"/></svg> Ver memória de cálculo <span class="pricing-chevron" aria-hidden="true">⌄</span></summary>
                 <div class="pricing-v2-breakdown-content"><p class="sh-price-note" id="priceCostSource"></p>
                   <p class="sh-price-note" id="priceMarketState"></p>
-                  <section class="pricing-market-research" aria-labelledby="pricingMarketResearchTitle">
-                    <div class="pricing-market-research-head"><strong id="pricingMarketResearchTitle">Pesquisa de concorrentes</strong><span id="pricingMarketResearchBadge">Aguardando consulta</span></div>
-                    <p id="pricingMarketResearchStatus" role="status" aria-live="polite">A pesquisa começa automaticamente ao recalcular a SKU.</p>
-                    <div id="pricingMarketResearchOffers" class="pricing-market-research-offers"></div>
-                    <small>Fonte: ofertas públicas da API de Afiliados Shopee, quando configurada. Amostra de ofertas, não de todos os anúncios da plataforma.</small>
-                  </section>
+
                   <div id="priceBreakdown"></div></div>
               </details>
             </div>
@@ -1477,7 +1486,7 @@
 <script src="/optimizer-dashboard.js?v=1.20.11"></script>
 <script src="/dashboard-new-listings.js?v=1.20.21-shopee"></script>
 <script src="/title-studio.js?v=1.20.27"></script>
-<script src="/app.js?v=1.20.32-cest00-send"></script>
+<script src="/app.js?v=1.20.33-market-average"></script>
 <script src="/optimizer-fiscal-premium.js?v=1.20.32"></script>
 </body>
 </html>
