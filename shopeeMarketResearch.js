@@ -4,6 +4,8 @@
 import crypto from 'node:crypto';
 
 const endpoint='https://open-api.affiliate.shopee.com.br/graphql';
+// API Shopee Afiliados retorna erro 11001 se limit superar 50.
+export const SHOPEE_OFFER_PAGE_LIMIT=50;
 const env=n=>String(process.env[n]||'').trim();
 export const marketResearchConfigured=()=>Boolean(env('SHOPEE_AFFILIATE_APP_ID')&&
  env('SHOPEE_AFFILIATE_SECRET'));
@@ -103,7 +105,7 @@ async function lookupShopeeCompetitorsUncached({title,ownShopId,ownItemId}){
  if(!marketResearchConfigured())return {...base,status:'provider_not_configured',
   message:'Pesquisa automática indisponível: credenciais da API de ofertas Shopee ainda não configuradas.'};
  const id=env('SHOPEE_AFFILIATE_APP_ID'),secret=env('SHOPEE_AFFILIATE_SECRET');
- const query=`{ productOfferV2(keyword:${JSON.stringify(keywords)}, listType:0, sortType:1, page:1, limit:60){ nodes { itemId shopId productName priceMin priceMax } pageInfo{hasNextPage} } }`;
+ const query=`{ productOfferV2(keyword:${JSON.stringify(keywords)}, listType:0, sortType:1, page:1, limit:${SHOPEE_OFFER_PAGE_LIMIT}){ nodes { itemId shopId productName priceMin priceMax } pageInfo{hasNextPage} } }`;
  const payload=JSON.stringify({query});
  const now=String(Math.floor(Date.now()/1000));
  const signature=crypto.createHash('sha256').update(id+now+payload+secret).digest('hex');
