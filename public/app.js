@@ -2329,7 +2329,7 @@ function optimizerSourceRender(data){
  if(data.sourceEvidenceWarning){
   optimizerSourceNotice(data.sourceEvidenceWarning,'warning');
  }else optimizerSourceNotice('Informações vinculadas apenas à SKU '+data.sku+
-  '. Prints não são interpretados automaticamente. Revise as opções oficiais da categoria.');
+  '. Para ler os prints, use “Ler dados e preencher ficha” na etapa Ficha técnica. Revise as opções oficiais da categoria.');
 }
 async function optimizerSourceAction(action,extra={}){
  const w=optimizerWorkflowPlan;if(!w?.sku)return;
