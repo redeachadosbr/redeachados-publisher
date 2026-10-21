@@ -29,3 +29,13 @@
 #tab-optimizer .optimizer-tech-optional[open] .optimizer-attribute{margin-top:9px!important}
 #tab-optimizer .optimizer-tech-filled-list .optimizer-tech-summary-list{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;margin-top:11px}
 @media(max-width:800px){#tab-optimizer #optimizerTechnicalFields,#tab-optimizer .optimizer-tech-filled-list .optimizer-tech-summary-list{grid-template-columns:1fr!important}}
+
+/* The former WeDrop editor remains as hidden compatibility markup only.
+   There must be exactly one visible place to enter source text and screenshots. */
+#tab-optimizer #optimizerSourcePanel{display:none!important}
+#tab-optimizer .optimizer-tech-saved-images:empty{display:none!important}
+#tab-optimizer .optimizer-tech-saved-images:not(:empty){display:flex;flex-wrap:wrap;gap:9px;margin:8px 0 10px;padding:10px;border:1px solid #dae6f5;border-radius:12px;background:#f9fbff}
+#tab-optimizer .optimizer-tech-saved-images .optimizer-source-image-card{width:112px;min-width:0;padding:7px;border:1px solid #e3ebf4;border-radius:10px;background:#fff;box-shadow:0 2px 8px rgba(14,49,89,.06);display:flex;flex-direction:column;gap:5px;overflow:hidden}
+#tab-optimizer .optimizer-tech-saved-images .optimizer-source-image-card img{display:block;max-width:100%;width:96px;height:72px;object-fit:contain;border-radius:6px}
+#tab-optimizer .optimizer-tech-saved-images .optimizer-source-image-card small{max-width:100%;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-size:10px}
+#tab-optimizer .optimizer-tech-saved-images .optimizer-source-image-card button{min-height:26px!important;padding:4px 7px!important;font-size:10px!important;border-radius:7px!important}
