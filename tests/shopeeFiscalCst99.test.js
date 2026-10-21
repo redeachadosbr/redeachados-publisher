@@ -4,19 +4,19 @@ import {REDE_ACHADOS_FISCAL_DEFAULTS,fiscalStoreDefaults} from '../shopeeMatrixR
 import {supplierWorkflowFacts} from '../shopeeSupplierFacts.js';
 import {compileTax} from '../shopeeStructuredFields.js';
 
-test('Motor Matriz sugere CST 99 para cadastro Shopee em qualquer SKU, sem inventar CEST',()=>{
+test('Motor Matriz apresenta CST 99 e marcador CEST 00 sem inventar código fiscal',()=>{
  assert.equal(REDE_ACHADOS_FISCAL_DEFAULTS.pis_cofins_cst,'99');
  for(const sku of ['TRC1525','TRC0809','SKU-TESTE']){
   const result=supplierWorkflowFacts(null,{title:sku,description:'',attributeAudit:{attributes:[]}},{});
   assert.equal(result.taxSuggestion.pis_cofins_cst,'99');
-  assert.equal(result.taxSuggestion.cest,undefined);
+  assert.equal(result.taxSuggestion.cest,'00');
   assert.match(result.taxSuggestionSources.pis_cofins_cst,/Motor Matriz/);
  }
 });
 
 test('Regra da loja permite exceção expressa pela contabilidade',()=>{
- assert.deepEqual(fiscalStoreDefaults('PISCOFIS: 49'),{pis_cofins_cst:'49'});
- assert.deepEqual(fiscalStoreDefaults('PIS e COFINS CST: 99'),{pis_cofins_cst:'99'});
+ assert.deepEqual(fiscalStoreDefaults('PISCOFIS: 49'),{pis_cofins_cst:'49',cest:'00'});
+ assert.deepEqual(fiscalStoreDefaults('PIS e COFINS CST: 99'),{pis_cofins_cst:'99',cest:'00'});
  assert.equal(fiscalStoreDefaults('Origem: 2').pis_cofins_cst,'99');
 });
 
@@ -42,5 +42,5 @@ test('Compilação fiscal mantém valor CST explícito e não cria CEST automati
   evidence:'Contabilidade: exceção específica conferida'
  },{tax_info:{}});
  assert.equal(corrected.pis_cofins_cst,'49');
- assert.equal(corrected.cest,'00');
+ assert.equal(corrected.cest,undefined);
 });
