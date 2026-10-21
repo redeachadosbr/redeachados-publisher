@@ -76,10 +76,11 @@ function progress(state,phase='Pronto para executar',sku=''){
  const items=state?.inventory||[],ids=new Set(items.map(idOf));
  const values=Object.entries(state?.done||{}).filter(([key])=>ids.has(key)).map(([,v])=>v);
  const verified=values.filter(v=>v==='verified').length;
+ const alreadyCurrent=values.filter(v=>v==='already_current').length;
  const failed=values.filter(v=>v==='failed').length;
  const blocked=values.filter(v=>v==='blocked'||v==='uncertain').length;
  const trustworthy=Boolean(inventoryVerifiedThisSession&&state?.catalogValidatedAt);
- const total=trustworthy?items.length:0,processed=trustworthy?verified+failed+blocked:0;
+ const total=trustworthy?items.length:0,processed=trustworthy?verified+alreadyCurrent+failed+blocked:0;
  const pct=total?Math.min(100,Math.round(100*processed/total)):0;
  $('raFiscalRunPhase').textContent=phase+(sku?' · SKU '+sku:'');
  $('raFiscalRunPercent').textContent=trustworthy?pct+'%':'—';
@@ -91,13 +92,13 @@ function progress(state,phase='Pronto para executar',sku=''){
   'Contagem oficial da Shopee ainda não consultada. ';
  $('raFiscalRunCounts').textContent=official+(trustworthy?
   'SKUs editáveis identificadas '+total+' · Verificadas '+processed+'/'+total+
-  ' · Confirmadas fiscalmente '+verified+' · Pendentes '+blocked+' · Falhas '+failed:
+  ' · Enviadas e confirmadas '+verified+' · Já preenchidas '+alreadyCurrent+' · Pendentes '+blocked+' · Falhas '+failed:
   'Histórico antigo: '+items.length+' SKUs. Não representa o catálogo completo nem confirmação atual de envio.');
  const numbers={
   optimizerFiscalBatchTotal:liveCensus?liveCensus.totalListings:'—',
   optimizerFiscalBatchReady:liveCensus?editableCount():'—',
   optimizerFiscalBatchPending:liveCensus?liveCensus.totalListings-editableCount():'—',
-  optimizerFiscalBatchVerified:trustworthy?verified:'—'
+  optimizerFiscalBatchVerified:trustworthy?verified+alreadyCurrent:'—'
  };
  for(const [key,value] of Object.entries(numbers))if($(key))$(key).textContent=String(value);
  const issues=$('raFiscalRunIssues');issues.replaceChildren();
@@ -181,7 +182,7 @@ async function run(){
    let offset=0,finished=false;let checkedStatus=0;
    for(let page=0;page<200;page++){
    report(state,'Consultando anúncios '+status+' na Shopee · '+all.length+' SKUs encontradas');
-   const data=await request('/api/shopee/optimizer/fiscal-migration/active-skus?status='+status+'&offset='+offset);
+   const data=await request('/api/shopee/optimizer/fiscal-migration/active-skus?fast=1&status='+status+'&offset='+offset);
    if(!Array.isArray(data.items)||!Array.isArray(data.pageItemIds)||
       !Number.isSafeInteger(data.pageItemCount)||data.pageItemCount!==data.pageItemIds.length)
      throw Error('Shopee retornou uma página de anúncios incompleta.');
@@ -209,6 +210,10 @@ async function run(){
   // O histórico local é somente memória de trabalho. Conferir estados anteriores no servidor.
   for(const item of all){
    const key=idOf(item);
+   if(state.done[key]==='already_current'){
+    // Sem job de envio persistido, reconfirmar a informação na API em cada nova execução.
+    delete state.done[key];
+   }
    if(state.done[key]==='verified'){
     const last=await jobStatus(item);
     if(last?.status!=='verified'){delete state.done[key];delete state.errors[key];}
@@ -234,44 +239,40 @@ async function run(){
    if(state.done[key]==='verified'||state.done[key]==='uncertain')continue;
    report(state,'SKU '+(i+1)+'/'+all.length+' · Preparando dados fiscais',item.sku);
    try{
-    // A versão anterior chamava validate-one sem prepare-drafts:
-    // todas as SKUs ainda sem ficha falhavam e NADA era enviado.
-    const draft=await post('/api/shopee/optimizer/fiscal-migration/prepare-drafts',{items:[{
-     sku:item.sku,itemId:item.itemId,modelId:item.modelId,title:item.title||''
-    }]});
-    const d=(draft.results||[]).find(x=>x.sku===item.sku);
-    if(!d||!['draft_saved','already_reviewed'].includes(d.status)){
-     mark(state,item,'blocked',d?.message||'Fonte fiscal/NCM WeDrop pendente; não é seguro inventar os dados.');
-     continue;
-    }
-    await post('/api/shopee/optimizer/fiscal-migration/validate-one',{
-     confirmation:'VALIDAR FISCAL MIGRACAO',
-     sku:item.sku,itemId:item.itemId,modelId:item.modelId
-    });
-    const prepared=await post('/api/shopee/optimizer/batch/fiscal/prepare',{skus:[item.sku]});
-    const plan=(prepared.results||[]).find(x=>x.sku===item.sku);
-    if(!plan?.ready||!plan.planId){
-     const reason=plan?.error||plan?.publicationPending?.join('; ')||
-      plan?.blocked?.join('; ')||plan?.message||'Dados fiscais não aptos para atualização.';
-     mark(state,item,'blocked',reason);
-     continue;
-    }
-    // Persistir a intenção ANTES do HTTP POST, para nunca duplicar após HTTP 502.
+    // Uma única chamada: o backend aproveita os dados já salvos, preenche
+    // somente os campos fiscais ausentes, valida a fonte e agenda o envio.
+    // Checkpoint antes do POST: nunca duplicar uma escrita após erro HTTP.
     state.pending=key;save(state);
-    report(state,'Enviando informações fiscais para a Shopee · aguardando confirmação',item.sku);
     let response=null;
     try{
-     response=await post('/api/shopee/optimizer/batch/fiscal/execute',{
-      confirmation:'EXECUTAR LOTE FISCAL',acceptPartialExecution:true,
-      items:[{sku:item.sku,itemId:item.itemId,modelId:item.modelId,
-       planId:plan.planId,updatedAt:plan.updatedAt}]
-     },0); // POST de execução NUNCA recebe retry automático
+     response=await post('/api/shopee/optimizer/fiscal-migration/execute-one',{
+      confirmation:'EXECUTAR FISCAL SKU',
+      sku:item.sku,itemId:item.itemId,modelId:item.modelId
+     },0); // Sem retry de POST que pode publicar tax_info.
     }catch(error){
-     report(state,'Resposta de envio indisponível. Consultando o estado real sem repetir a operação.',item.sku);
+     report(state,'Resposta do servidor indisponível; verificando envio sem repetir chamada.',item.sku);
+     // Uma falha HTTP não comprova que a operação chegou à Shopee.
+     // jobStatus realiza somente leitura e não pode reexecutar o update.
+     const result=await awaitConfirmation(state,item);
+     report(state,result==='verified'?'Confirmação recebida da Shopee':
+       'Operação sem confirmação; SKU preservada para revisão',item.sku);
+     continue;
     }
-    const receipt=(response?.results||[]).find(x=>x.sku===item.sku);
-    if(receipt?.status==='failed'){
-     mark(state,item,'failed',receipt.message||'Shopee recusou a autorização da atualização.');
+    if(response.status==='already_current'){
+     mark(state,item,'already_current');
+     report(state,'Dados fiscais já cadastrados na Shopee; nenhuma atualização necessária.',item.sku);
+     continue;
+    }
+    if(response.status==='blocked'||response.status==='failed'){
+     mark(state,item,'blocked',response.message||'Dados fiscais exigem revisão específica.');
+     continue;
+    }
+    if(response.status==='uncertain'){
+     mark(state,item,'uncertain',response.message||'Envio anterior sem confirmação.');
+     continue;
+    }
+    if(response.status!=='running'){
+     mark(state,item,'uncertain','Resposta de execução desconhecida. Nenhum reenvio automático.');
      continue;
     }
     const result=await awaitConfirmation(state,item);
