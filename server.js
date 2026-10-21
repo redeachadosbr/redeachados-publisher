@@ -945,6 +945,11 @@ app.post('/api/shopee/optimizer/execution/prepare',mustLogin,requireWeDropAdmin,
         previous.plan?.proposed?.tax_info?.ncm||previous.plan?.original?.tax_info?.ncm||'').trim();
     const deferFiscal=selectedStage==='all'&&Boolean(previouslyRejected);
     if(deferFiscal)plan=compileShopeeExecutionPlan({...inputs,deferUnconfirmedFiscal:true,omitFiscal:false});
+    if(plan.finalFiscal&&selectedStage==='all'){
+      // A última etapa usa o mesmo vínculo WeDrop/NCM que a execução fiscal isolada.
+      const supplier=await readWeDropProduct(auth.shopId,{sku,itemId,modelId});
+      fiscalMatrixSource({sku,supplier,tax:reviewState.tax,reviewSource:reviewState.matrixFiscal});
+    }
     if(selectedStage==='fiscal'){
       const disposition=fiscalPreviewDisposition({plan,
         previousError:previous?.last_error,previousPlan:previous?.plan});
