@@ -47,18 +47,18 @@
     const prefix=f.kind==='toy'?'🧰 ':'✨ ';
     const addAccessories=isToyKit?['Com Acessórios']:[],more=[...extra,...addAccessories];
     return [
-      {name:'Busca direta',subtitle:'Nome original em destaque',base:title,terms:more,emoji:prefix,
+      {name:'Busca direta',subtitle:'Nome original em destaque',base:title,terms:more,emoji:prefix,tail:f.kind==='toy'?' 🎁':' ✨',
        reason:'Preserva a descrição principal e acrescenta pesquisas relacionadas sem promessas fictícias.'},
-      {name:'Palavras-chave',subtitle:'Foco em buscas específicas',base:b2,terms:more.slice().reverse(),emoji:'🔎 ',
+      {name:'Palavras-chave',subtitle:'Foco em buscas específicas',base:b2,terms:more.slice().reverse(),emoji:'🔎 ',tail:f.kind==='toy'?' 🎁':' ✨',
        reason:'Destaca os termos principais de busca e a categoria do produto.'},
-      {name:'Uso e brincadeira',subtitle:'Contexto do comprador',base:b3,terms:more.slice(2).concat(more.slice(0,2)),emoji:'✨ ',
+      {name:'Uso e brincadeira',subtitle:'Contexto do comprador',base:b3,terms:more.slice(2).concat(more.slice(0,2)),emoji:'✨ ',tail:f.kind==='toy'?' 🎁':' ✨',
        reason:'Testa a intenção de uso com termos compatíveis com o nome e a ficha original.'},
-      {name:'Presente e descoberta',subtitle:'Abordagem comercial',base:b4,terms:more.slice(4).concat(more.slice(0,4)),emoji:f.kind==='toy'?'🎁 ':'⭐ ',
+      {name:'Presente e descoberta',subtitle:'Abordagem comercial',base:b4,terms:more.slice(4).concat(more.slice(0,4)),emoji:f.kind==='toy'?'🎁 ':'⭐ ',tail:f.kind==='toy'?' 🎁':' ✨',
        reason:'Explora ocasião de compra sem usar urgência, brinde ou descontos não comprovados.'}
     ];
   }
   function assemble(cfg){
-    const base=clean(cfg.base),prefix=cfg.emoji||'',tail=' 🎁',available=LIMIT-count(tail);
+    const base=clean(cfg.base),prefix=cfg.emoji||'',tail=cfg.tail||' ✨',available=LIMIT-count(tail);
     const start=count(prefix+base)<=available?prefix+base:prefix+[...base].slice(0,available-count(prefix)).join('').replace(/\s+\S*$/,'');
     const words=s=>new Set(clean(s).normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase().split(/[^a-z0-9]+/).filter(x=>x.length>3&&!['para','como','mais','brinquedo'].includes(x)));
     const baseWords=words(base);
