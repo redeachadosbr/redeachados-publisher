@@ -136,9 +136,9 @@ export function supplierAttributeSuggestions({attributes=[],proposed=[],supplier
   }else if(n==='material'||n.startsWith('material ')||n.includes('composicao')){
    const explicit=specifiedText(/(?:^|\n)\s*(?:material|composicao)\s*[:\-]\s*([^\n.;]{2,75})/)||
     specifiedText(/(?:produto|brinquedo|conjunto)\s+(?:fabricado|feito|produzido)\s+em\s+([a-z]{2,32})\b/);
-   if(explicit)suggest(attr,clean(explicit.value),explicit.source+' — material expresso no texto desta SKU.',{onlyIfMissing:true});
+   if(explicit)suggest(attr,plain(explicit.value)==='pp'?'PP':clean(explicit.value),explicit.source+' — material expresso no texto desta SKU.',{onlyIfMissing:true});
   }else if(n.includes('inmetro')||n.includes('certificacao')||n.includes('certificado')){
-   const officialNumber=specifiedText(/(?:registro|certificado|certificacao|numero\s+de\s+registro)\s*(?:do\s*)?(?:inmetro)?\s*[:\-]\s*(\d{3,12}\/\d{4}|\d{5,14})\b/)||
+   const officialNumber=specifiedText(/(?:registro|certificado|certificacao|numero\s+de\s+registro)\s*(?:do\s*)?inmetro\s*[:\-]\s*(\d{3,12}\/\d{4}|\d{5,14})\b/)||
     specifiedText(/(?:registro|numero)\s*(?:do\s*)?inmetro\s*(?:n[oº°]\.?)?\s*(\d{3,12}\/\d{4}|\d{5,14})\b/);
    if(officialNumber)suggest(attr,officialNumber.value,officialNumber.source+' — registro informado na ficha; validar no Inmetro.',{onlyIfMissing:true});
    else if(sources.some(src=>/\bcertificad[oa]\s+pelo\s+inmetro\b/i.test(plain(src.text))))
