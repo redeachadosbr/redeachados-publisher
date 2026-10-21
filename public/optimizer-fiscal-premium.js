@@ -147,7 +147,7 @@
      // Pré-seleção somente de fichas já revisadas; mantém o limite seguro de 12.
      if(reviewed.length){
        const input=q('optimizerFiscalBatchSkus');
-       if(input){input.value=reviewed.slice(0,12).map(x=>x.sku).join('\\n');
+       if(input){input.value=reviewed.slice(0,12).map(x=>x.sku).join('\n');
          input.dispatchEvent(new Event('input',{bubbles:true}));}
      }
      window.optimizerFiscalMigrationInventory=items;
