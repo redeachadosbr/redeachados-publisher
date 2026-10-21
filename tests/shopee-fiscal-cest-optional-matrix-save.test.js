@@ -29,7 +29,16 @@ test('campos do contador ficam aproveitáveis nas próximas SKUs com NCM própri
  assert.equal(result.same_state_cfop,'5106');
  assert.equal(result.diff_state_cfop,'6106');
  assert.equal(result.csosn,'102');
- assert.equal(result.cest,undefined);
+ assert.equal(result.cest,'00');
+});
+test('Marcador 00 nunca substitui CEST fiscal real de 7 dígitos',()=>{
+ const actual=supplierWorkflowFacts({...supplier,product_data:{...supplier.product_data,cest:'1234567'}},
+  {title:'Piscina Inflável',description:'',attributeAudit:{attributes:[]}},{fiscal_notes:''}).taxSuggestion;
+ assert.equal(actual.cest,'1234567');
+ const verified=compileTax({...fiscal,cest:'00'},{tax_info:{cest:'7654321'}});
+ assert.equal(verified.cest,'7654321');
+ const blank=compileTax({...fiscal,cest:'00'},{tax_info:{}});
+ assert.equal(Object.hasOwn(blank,'cest'),false);
 });
 test('cadastrar fiscal não aciona API Shopee e não exige CEST para marcar revisão',()=>{
  const server=readFileSync(new URL('../server.js',import.meta.url),'utf8');
