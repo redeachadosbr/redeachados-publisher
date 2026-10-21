@@ -22,9 +22,12 @@
    optimizerFiscalBatchPending:pending,optimizerFiscalBatchVerified:confirmed};
   for(const [id,value] of Object.entries(values))if(q(id))q(id).textContent=String(value);
   const note=q('optimizerFiscalBatchSynopsis');
-  if(note)note.textContent=rows.length
-   ?'Lote processado · '+confirmed+' SKU(s) confirmada(s) · '+pending+' pendência(s).'
-   :'Informe as SKUs e prepare uma prévia antes de executar.';
+  if(note)note.textContent=!rows.length
+   ?'Informe as SKUs e prepare uma prévia antes de executar.'
+   :rows.some(x=>formatStatus(x)==='running')?'Envio à Shopee em andamento · aguarde a confirmação.'
+   :ready?'Prévia pronta para '+ready+' SKU(s). Clique em “2 · Executar aprovadas” para enviar.'
+   :confirmed?'Confirmadas na Shopee: '+confirmed+' · pendências: '+pending
+   :'Nenhum envio confirmado. Revise as pendências e gere nova prévia.';
  }
  function focusCest(sku){
   const active=String(q('optimizerSku')?.value||'').trim().toUpperCase();
@@ -65,8 +68,9 @@
    child.remove();
   }
   const fields={...row.current,...row.proposed};
+  names.cest='CEST';
   const grid=make('div','ra-fiscal-field-grid');
-  for(const key of ['ncm','origin','same_state_cfop','diff_state_cfop','csosn','measure_unit']){
+  for(const key of ['ncm','origin','same_state_cfop','diff_state_cfop','csosn','measure_unit','cest']){
    const item=make('div','ra-fiscal-field');
    item.append(make('span','',names[key]),make('strong','',String(fields[key]||'—')));
    grid.append(item);
@@ -103,7 +107,7 @@
   const body=make('div','ra-fiscal-raw');
   const dedup=[...new Set(diagnostics.concat([message||'']).filter(Boolean))];
   for(const item of dedup)body.append(make('p','',item));
-  if(fields.cest)body.append(make('p','','CEST cadastrado: '+fields.cest));
+  if(fields.cest)body.append(make('p','',fields.cest==='00'?'CEST 00: envio literal sujeito à validação da Shopee.':'CEST cadastrado: '+fields.cest));
   if(!dedup.length&&!fields.cest)body.append(make('p','','Nenhum detalhe adicional informado.'));
   more.append(summary,body);
   actions.append(edit,preview,more);
