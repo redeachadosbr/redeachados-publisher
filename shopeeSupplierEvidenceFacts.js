@@ -7,6 +7,7 @@ const equal=(a,b)=>plain(a)===plain(b);
 const selectedValue=(attr,proposed)=>list(proposed).find(x=>Number(x.attributeId)===Number(attr.id))?.values?.[0]?.valueName||
  attr.values?.[0]?.name||'';
 const isBrand=x=>['marca','brand','marca do produto'].includes(plain(x));
+const unusableBrand=x=>/^(?:importado|nacional|sem marca|marca nao informada|generico|outros?|nao informado|n\/a)$/i.test(plain(x));
 const isDimensions=x=>{
  const n=plain(x);
  return /dimens|medidas?/.test(n)&&/produto|piscina|item|montad/.test(n)&&
@@ -38,6 +39,21 @@ export function supplierProductDimensions(text){
   if(dimensions.every(x=>Number(x)>0&&Number(x)<10000))
    return {height:dimensions[0],width:dimensions[1],length:dimensions[2],
     value:dimensions.join(' x ')+' cm',provenance:item[0]};
+ }
+ // Ficha do produto pode usar o próprio nome em vez de "produto":
+ // "Dimensões da mochila: 30cm de altura x 25cm de largura x 15cm de comprimento".
+ // NÃO aceitar o campo se ele tratar de caixa, pacote ou embalagem.
+ const named=new RegExp('dimens(?:oes|ao)\\s+(?:da|do)\\s+([a-z ]{3,65})\\s*:\\s*'+
+   n+'\\s*cm\\s*(?:de\\s+)?altura\\s*[x×|;,]+\\s*'+
+   n+'\\s*cm\\s*(?:de\\s+)?largura\\s*[x×|;,]+\\s*'+
+   n+'\\s*cm\\s*(?:de\\s+)?comprimento','gi');
+ for(const hit of plain(source).matchAll(named)){
+  const label=hit[1].trim(),nums=hit.slice(2,5).map(sizeNumber);
+  if(/embalagem|pacote|caixa|logistica|frete|transporte/.test(label))continue;
+  if(nums.every(v=>Number(v)>0&&Number(v)<10000)){
+   return {height:nums[0],width:nums[1],length:nums[2],
+    value:nums.join(' x ')+' cm',provenance:hit[0]};
+  }
  }
  // Many WeDrop descriptions use 'Dimensões: 43cm Altura x 135cm Largura x 88cm Comprimento'.
  // If the dimensions line explicitly says "da embalagem", it is excluded.
@@ -113,8 +129,27 @@ export function supplierAttributeSuggestions({attributes=[],proposed=[],supplier
   if(isBrand(n)){
    // Always prefer supplier-confirmed brand over wrong 'Novo' inherited from condition NEW.
    const brand=clean(facts.brand)||specifiedText(/(?:^|\n)\s*marca\s*[:\-]\s*([^\n.;]+)/)?.value;
-   if(brand)suggest(attr,brand,(supplierName||'Ficha desta SKU')+' — marca confirmada na fonte da SKU.');
+   if(brand&&!unusableBrand(brand))suggest(attr,brand,(supplierName||'Ficha desta SKU')+' — marca confirmada na fonte da SKU.');
+   if(brand&&unusableBrand(brand))unresolved.push({attributeId:attr.id,name:attr.name,value:brand,
+     reason:'IMPORTADO/GENÉRICO indica origem ou ausência de marca; não usar como marca sem comprovação.'});
    else unresolved.push({attributeId:attr.id,name:attr.name,value:null,reason:'Marca não confirmada pelo fornecedor.'});
+  }else if(n==='material'||n.startsWith('material ')||n.includes('composicao')){
+   const explicit=specifiedText(/(?:^|\n)\s*(?:material|composicao)\s*[:\-]\s*([^\n.;]{2,75})/)||
+    specifiedText(/(?:produto|brinquedo|conjunto)\s+(?:fabricado|feito|produzido)\s+em\s+([a-z]{2,32})\b/);
+   if(explicit)suggest(attr,clean(explicit.value),explicit.source+' — material expresso no texto desta SKU.',{onlyIfMissing:true});
+  }else if(n.includes('inmetro')||n.includes('certificacao')||n.includes('certificado')){
+   const officialNumber=specifiedText(/(?:registro|certificado|certificacao|numero\s+de\s+registro)\s*(?:do\s*)?(?:inmetro)?\s*[:\-]\s*(\d{3,12}\/\d{4}|\d{5,14})\b/)||
+    specifiedText(/(?:registro|numero)\s*(?:do\s*)?inmetro\s*(?:n[oº°]\.?)?\s*(\d{3,12}\/\d{4}|\d{5,14})\b/);
+   if(officialNumber)suggest(attr,officialNumber.value,officialNumber.source+' — registro informado na ficha; validar no Inmetro.',{onlyIfMissing:true});
+   else if(sources.some(src=>/\bcertificad[oa]\s+pelo\s+inmetro\b/i.test(plain(src.text))))
+    unresolved.push({attributeId:attr.id,name:attr.name,value:null,
+     reason:'A fonte cita Inmetro, mas não apresenta número de registro validado. Não preencher certificação automaticamente.'});
+  }else if(n==='cor'||n.startsWith('cor ')||n==='cores'){
+   const color=specifiedText(/(?:^|\n)\s*cor(?:es)?\s*[:\-]\s*([a-z ]{3,30})\b/);
+   if(color)suggest(attr,clean(color.value),color.source+' — cor explicitamente declarada.',{onlyIfMissing:true});
+  }else if(n==='modelo'||n.includes('modelo do produto')){
+   const model=specifiedText(/(?:^|\n)\s*modelo\s*[:\-]\s*([^\n.;]{2,55})/);
+   if(model)suggest(attr,clean(model.value),model.source+' — modelo explicitamente declarado.',{onlyIfMissing:true});
   }else if(n.includes('estampa')||n.includes('padrao')||n.includes('estampado')){
    const stamp=specifiedText(/(?:^|\n)\s*(?:estampa|padrao)\s*[:\-]\s*(estampad[oa])\b/);
    if(stamp)suggest(attr,'Estampado',stamp.source+' — estampa explicitamente declarada.',{onlyIfMissing:true});
@@ -124,16 +159,13 @@ export function supplierAttributeSuggestions({attributes=[],proposed=[],supplier
    // Never conflate with product dimensions. Catalogue CSV sizes have uncertain
    // shipping meaning and therefore remain review-only.
   }else if(n.includes('idade recomendada')){
-   const found=specifiedText(/idade\s+recomendada\s*[:\-]\s*(\d{1,2})\s*(?:anos|ano)/);
+   const found=specifiedText(/idade\s+recomendada\s*[:\-]\s*(\d{1,2})\s*(?:anos|ano)/)||
+    specifiedText(/(?:indicad[oa]s?\s+para\s+criancas|a\s+partir\s+de)\s+(?:a\s+partir\s+de\s+)?(\d{1,2})\s*anos/);
    if(found)suggest(attr,found.value+' anos',found.source+' — idade expressamente informada.',{onlyIfMissing:true});
   }else if(n.includes('quantidade')&&n.includes('embalagem')){
    const found=specifiedText(/quantidade\s+(?:incluida|por\s+embalagem)\s*[:\-]\s*(\d{1,3})\b/);
    if(found)suggest(attr,found.value,found.source+' — quantidade confirmada.',{onlyIfMissing:true});
-  }else if(n.includes('inmetro')&&
-    sources.some(src=>/(?:registro\s*(?:do\s*)?inmetro|inmetro|nbr)\s*[:\-]\s*(?:n\/a\b|nao se aplica\b|isento\b)/i.test(plain(src.text)))){
-   const option=list(attr.options).find(x=>/n\/?a.*nbr.*nao aplicavel/i.test(plain(x.name)));
-   if(option)suggest(attr,option.name,'Declaração explícita da não aplicabilidade pelo fornecedor; conferir requisito regulatório.');
-   else unresolved.push({attributeId:attr.id,name:attr.name,value:'N/A',reason:'Opção N/A não confirmada na árvore da categoria.'});
+
   }
  }
  const metrics=[];
