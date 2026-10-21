@@ -1,5 +1,10 @@
 // Regras permanentes do Motor Matriz Shopee: independentes de produto, SKU e categoria.
 // Sugestões WeDrop nunca autorizam publicações ou mudanças fiscais automaticamente.
+// Motor Matriz: regras fixas da descrição para todas as SKUs.
+export const REDE_ACHADOS_DESCRIPTION_RULES=Object.freeze({
+ minChars:1400,maxChars:1440,cta:'🛒 Gostou? Adicione ao carrinho e aproveite!',
+ sections:5,faqCount:5,reasonsCount:10,compactPreview:true
+});
 const normal=x=>String(x??'').trim();
 const ncmPattern=/^\d{8}$/;
 // Padrão de cadastro do vendedor Rede Achados BR, confirmado para seus anúncios
