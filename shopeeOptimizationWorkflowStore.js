@@ -33,6 +33,8 @@ export async function saveWorkflowReview(shop,item,model,sku,change){
  const next={...state,stages};
  if(change.assetSha256!==undefined)next.videoSha256=change.assetSha256;
  if(change.attributes!==undefined)next.attributes=change.attributes;
+ if(change.technicalDraft!==undefined)next.technicalDraft=change.technicalDraft;
+ if(change.stage==='technical'&&change.reviewed===true&&change.attributes!==undefined)next.technicalDraft=null;
  if(change.tax!==undefined)next.tax=change.tax;
  if(change.matrixFiscal!==undefined)next.matrixFiscal=change.matrixFiscal;
  if(change.matrixTechnical!==undefined)next.matrixTechnical=change.matrixTechnical;
