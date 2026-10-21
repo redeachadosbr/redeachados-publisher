@@ -26,7 +26,7 @@ import {supplierWorkflowFacts} from './shopeeSupplierFacts.js';
 import {supplierAttributeSuggestions} from './shopeeSupplierEvidenceFacts.js';
 import {readShopeeSourceEvidence,saveShopeeSourceText,importShopeeEvidenceImage,removeShopeeEvidenceImage,downloadShopeeEvidenceImages} from './shopeeSourceEvidence.js';
 import {extractSupplierScreenshotText,mergeExtractedPrints,withoutExtractedPrints} from './shopeeEvidenceVision.js';
-import {fiscalMatrixSource,technicalMatrixSource,assertShopeeSupplierBrand,isShopeeCestConfirmed} from './shopeeMatrixRules.js';
+import {fiscalMatrixSource,technicalMatrixSource,assertShopeeSupplierBrand,isShopeeCestConfirmed,REDE_ACHADOS_MARKET_RULES} from './shopeeMatrixRules.js';
 import {readWeDropSyncState,getStoredWeDropCostCount} from './wedropCosts.js';
 import {getSkuReview,searchSupplierSku,confirmSkuLink,undoSkuLink} from './wedropSkuReview.js';
 import {auditShopeeItem,validateSkuLookup} from './productOptimizer.js';
@@ -1745,15 +1745,14 @@ async function discountExecutionInputs(req,sku,itemId,modelId,discountId){
    String(saved.quote?.itemId)!==String(itemId)||String(saved.quote?.modelId)!==String(modelId))
   throw Error('Plano não encontrado ou pertence a outra SKU. Recalcule em Precificação.');
  const quote=saved.quote;
- // A cotação só é publicável como promoção competitiva se possuir
- // comparação atual de pelo menos três lojas; plano base continua disponível
- // para simulação, mas não pode ser anunciado como pesquisa automática.
+ // Motor Matriz: comparação de 2 a 5 lojas verificadas, com URLs e dados
+ // atuais. Uma simulação sem duas ofertas permanece não publicável.
  const research=quote.marketResearch;
  if(research?.verified!==true||
     research.source!=='shopee_affiliate_product_offers'||
     !Number.isFinite(Date.parse(research.researchedAt))||
     Date.now()-Date.parse(research.researchedAt)>48*3600000||
-    research.count<3||
+    research.count<REDE_ACHADOS_MARKET_RULES.minimumOffers||
     quote.discountRecommendationSource!=='researched')
   throw Error('Desconto ainda sem pesquisa de concorrentes validada. Conecte a API de ofertas Shopee e recalcule a SKU em Precificação antes de executar.');
  if(quote.status==='MERCADO_ABAIXO_DO_PISO')
