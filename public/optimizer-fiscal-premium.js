@@ -153,6 +153,7 @@
      window.optimizerFiscalMigrationInventory=items;
      const prepareButton=q('optimizerFiscalMigrationPrepare');
      if(prepareButton)prepareButton.disabled=!items.some(x=>!x.reviewed);
+     if(prepareButton&&!prepareButton.disabled)prepareButton.click();
    }catch(error){
      if(notice)notice.textContent='Consulta incompleta: '+String(error.message||error)+
        '. Nenhum dado foi enviado à Shopee.';
