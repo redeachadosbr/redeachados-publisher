@@ -1,0 +1,12 @@
+/* Descrição SEO gerada assim que a SKU é carregada */
+.optimizer-description-ready{font-weight:750;font-size:13px;line-height:1.6;padding:11px 13px;border-radius:11px;background:#edf9f3;border:1px solid #bbdfcc;color:#17623c;margin:12px 0}
+.optimizer-description-ready[data-valid="false"]{background:#fff5e6;color:#a15713;border-color:#f3d0a9}
+#optimizerWorkflowDraftWrap:not([hidden]){display:block;margin-top:10px}
+#optimizerWorkflowDraftWrap span{display:block;font-size:12px;font-weight:750;margin-bottom:7px}
+#optimizerWorkflowEditor:has(#optimizerDescriptionReady:not([hidden])) #optimizerWorkflowDraft{
+ width:100%;box-sizing:border-box;min-height:475px;max-height:none;resize:vertical;border:1px solid #cedfe9;
+ border-radius:13px;padding:15px 17px;line-height:1.72;font-size:14px;font-weight:520;
+ color:#163352;background:linear-gradient(180deg,#fff,#fcfdff);overflow-y:auto;
+}
+#optimizerWorkflowEditor:has(#optimizerDescriptionReady:not([hidden])) #optimizerCopyCount{display:block;margin:7px 0;color:#3f688a}
+@media(max-width:740px){#optimizerWorkflowEditor:has(#optimizerDescriptionReady:not([hidden])) #optimizerWorkflowDraft{font-size:13px;min-height:410px;padding:12px}}
