@@ -552,6 +552,41 @@ app.get('/api/shopee/catalog/page',mustLogin,async(req,res)=>{
     res.status(400).json({error:String(error.message||error).slice(0,320)});
   }
 });
+// Rotina assistida de migração CPF -> CNPJ: descoberta SOMENTE LEITURA.
+// Não altera anúncios nem ignora a revisão fiscal obrigatória.
+app.get('/api/shopee/optimizer/fiscal-migration/active-skus',mustLogin,requireWeDropAdmin,async(req,res)=>{
+ res.setHeader('Cache-Control','no-store');
+ try{
+  const {auth,cfg}=await getValidAuth(req);
+  const offset=Math.max(0,Number(req.query.offset)||0);
+  if(!Number.isSafeInteger(offset)||offset>100000)throw Error('Paginação inválida.');
+  const page=await fetchCatalogPage(cfg,auth,callShopeeShopApi,{status:'NORMAL',offset,pageSize:50});
+  const results=[];
+  for(const item of page.items||[]){
+   const itemId=String(item.itemId||'');
+   if(!/^\\d+$/.test(itemId))continue;
+   let models=[];
+   try{
+    const data=await callShopeeShopApi(cfg,{path:'/api/v2/product/get_model_list',
+     accessToken:auth.accessToken,shopId:auth.shopId,query:{item_id:Number(itemId)}});
+    models=normalizeShopeeModels(data);
+   }catch{/* Produto sem variações: usar SKU principal do catálogo. */}
+   const candidates=models.length?models.map(m=>({sku:m.sku,modelId:m.modelId,status:m.status}))
+    :[{sku:item.sku,modelId:'0',status:'NORMAL'}];
+   for(const candidate of candidates){
+    if(!candidate.sku||candidate.status&&candidate.status!=='NORMAL')continue;
+    const review=await getWorkflowReview(auth.shopId,itemId,candidate.modelId);
+    const checked=Boolean(review?.sku===candidate.sku&&
+      review?.review_state?.stages?.fiscal?.reviewed&&review?.review_state?.tax?.ncm);
+    results.push({sku:candidate.sku,itemId,modelId:candidate.modelId,
+      title:item.name||item.title||'',reviewed:checked,
+      status:checked?'revisado':'requer revisão fiscal'});
+   }
+  }
+  res.json({ok:true,items:results,hasNext:Boolean(page.hasNext),
+    nextOffset:page.nextOffset,warnings:page.warnings||[]});
+ }catch(error){res.status(400).json({ok:false,error:String(error.message||error).slice(0,260)});}
+});
 app.get('/api/shopee/catalog/models',mustLogin,async(req,res)=>{
   res.setHeader('Cache-Control','no-store');
   try{
