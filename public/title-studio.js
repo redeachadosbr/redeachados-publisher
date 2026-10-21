@@ -26,6 +26,14 @@
     } else if(/porta.?shampoo|organizador de box/i.test(joined)){
       kind='bath';
       phrases=['Organizador de Banheiro','Para Box de Banheiro','Suporte de Canto','Prateleira para Shampoo'];
+    } else if(/toalha/i.test(joined)&&/camping|acampamento/i.test(joined)){
+      kind='camping_towel';
+      // Expressões de contexto derivadas do produto; não são volumes de busca verificados.
+      phrases=['Toalha para Camping','Toalha para Viagem','Toalha para Acampamento',
+       'Camping e Viagem','Acessórios para Camping','Acampamento ao Ar Livre',
+       'Toalha de Camping','Equipamentos para Acampamento','Para Levar em Viagens',
+       'Toalha para Uso no Camping','Artigos para Camping','Toalha para Atividades ao Ar Livre',
+       'Para Viagens e Camping','Toalha de Viagem','Camping ao Ar Livre'];
     } else if(/garrafa t[eé]rmica/i.test(joined)){
       kind='bottle';
       phrases=['Garrafa para Bebidas','Para o Dia a Dia','Garrafa Térmica'];
@@ -44,7 +52,7 @@
     const b2=isToyKit?'Mochila Construtor 3 em 1 com Ferramentas':short;
     const b3=isToyKit?'Brinquedo Mochila Construtor 3 em 1 com Ferramentas':alternate;
     const b4=isToyKit?'Mochila de Ferramentas Construtor 3 em 1':short;
-    const prefix=f.kind==='toy'?'🧰 ':'✨ ';
+    const prefix=f.kind==='toy'?'🧰 ':f.kind==='camping_towel'?'🏕️ ':'✨ ';
     const addAccessories=isToyKit?['Com Acessórios']:[],more=[...extra,...addAccessories];
     return [
       {name:'Busca direta',subtitle:'Nome original em destaque',base:title,terms:more,emoji:prefix,tail:f.kind==='toy'?' 🎁':' ✨',
@@ -89,6 +97,7 @@
       if(final>highest){winner=state.text;highest=final;}
     }
     let chosen=clean(winner||start);
+    // Não preencher o limite com palavras inventadas ou repetição artificial.
     if(count(chosen)===available-1)chosen+='✨';
     chosen+=tail;
     return chosen;
@@ -142,9 +151,14 @@
       grid.replaceChildren();
       savedTerms.set(sku,inp.value);
       const output=variants(f,inp.value).map(v=>({...v,title:assemble(v)}));
+    const used=new Set();
+    for(const o of output){
+      if(used.has(key(o.title)))o.duplicate=true;
+      used.add(key(o.title));
+    }
       for(const [i,o] of output.entries()){
         const n=count(o.title),score=rating(o.title,f.kind);
-        const card=el('article','seo-studio-card'+(n===LIMIT?' valid':' needs-review'));
+        const card=el('article','seo-studio-card'+(n===LIMIT&&!o.duplicate?' valid':' needs-review'));
         const meta=el('div','seo-studio-card-top');
         const group=el('div','seo-studio-option');
         group.append(el('strong','','0'+(i+1)+' · '+o.name),el('small','',o.subtitle));
@@ -153,7 +167,7 @@
         meta.append(group,meter);card.append(meta);
         card.append(el('p','seo-studio-candidate',o.title));
         const keys=el('div','seo-studio-metrics');
-        keys.append(el('span',n===LIMIT?'seo-studio-ok':'seo-studio-caution',n+'/120 caracteres'),
+        keys.append(el('span',n===LIMIT&&!o.duplicate?'seo-studio-ok':'seo-studio-caution',n+'/120 caracteres'+(o.duplicate?' · opção repetida':'')),
           el('span','','⚡ '+(n===LIMIT?'Pronto para revisão':'Ajustar para 120')));
         card.append(keys,el('p','seo-studio-why',o.reason));
         const actions=el('div','seo-studio-card-actions');
