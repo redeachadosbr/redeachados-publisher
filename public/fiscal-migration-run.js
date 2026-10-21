@@ -300,6 +300,18 @@ const previous=read();
 panel();updateCensusBadge();
 progress(previous,previous?.inventory?.length?
  'Histórico parcial encontrado; verificando catálogo oficial':'Conferindo catálogo oficial da Shopee');
+const resumeAuthorized=previous?.active===true;
+// Se a aba for recarregada durante uma execução já autorizada, retomar
+// somente após a sessão estar autenticada; não exigir novo clique.
+function resumeAfterLogin(attempt=0){
+ if(!resumeAuthorized||busy)return;
+ if($('app')?.classList.contains('hidden')){
+  if(attempt<25)setTimeout(()=>resumeAfterLogin(attempt+1),1500);
+  return;
+ }
+ void run();
+}
+if(resumeAuthorized)setTimeout(()=>resumeAfterLogin(),600);
 // Abertura é SOMENTE leitura, sem executar alterações fiscais.
 let censusRetries=0;
 async function loadReadOnlyCensus(){
