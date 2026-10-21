@@ -97,21 +97,31 @@ export function quoteShopeePrice({unitCost,settings={},marketAverage=null}={}){
     // desconto capaz de colocar o preço final próximo ao preço de referência
     // mantendo lucro >= piso. Cupom já entra no preço final calculado.
     const target=money(market);
-    let chosen=null;
-    for(let step=0;step<=900;step++){
-      const candidate={...c,discountPct:step/10};
-      const result=calculateShopeeSale(gross,candidate,money(cost));
-      if(result.saleCents<=target&&result.marginPct+1e-8>=c.minMarginPct){
-        chosen={candidate,result};break;
-      }
-    }
-    if(chosen){
-      proposed=chosen.candidate;financial=chosen.result;
+    // Proximidade de até 2% da média mantém a margem DESEJADA da loja e
+    // evita sacrificar lucro apenas para reduzir centavos na vitrine.
+    if(financial.saleCents<=Math.round(target*1.02)&&
+       financial.marginPct+1e-8>=desired){
       state='COMPETITIVO';
-      note='Desconto calculado pela referência de preço informada. A origem da referência deve ser conferida no relatório de mercado.';
+      note='Preço final já está até 2% acima da média comparável e preserva a margem desejada. Não reduzir o desconto sem vantagem competitiva significativa.';
     }else{
-      state='MERCADO_ABAIXO_DO_PISO';
-      note='Não existe desconto competitivo viável no preço bruto calculado sem violar a margem mínima. Nenhum desconto deve ser publicado automaticamente.';
+      let chosen=null;
+      for(let step=0;step<=900;step++){
+        const candidate={...c,discountPct:step/10};
+        const result=calculateShopeeSale(gross,candidate,money(cost));
+        if(result.saleCents<=target&&result.marginPct+1e-8>=c.minMarginPct){
+          chosen={candidate,result};break;
+        }
+      }
+      if(chosen){
+        proposed=chosen.candidate;financial=chosen.result;
+        state='COMPETITIVO';
+        note=financial.marginPct+1e-8>=desired?
+          'Preço ajustado à média de mercado mantendo a margem desejada.':
+          'Preço ajustado à média sem violar a margem MÍNIMA; margem desejada reduzida. Exige revisão antes de qualquer promoção.';
+      }else{
+        state='MERCADO_ABAIXO_DO_PISO';
+        note='Média de mercado abaixo do piso de margem mínima: não reduzir preço nem aplicar promoção automaticamente.';
+      }
     }
   }else note+=' Média de mercado não informada; não foi feita pesquisa de concorrentes.';
   if(financial.marginPct+1e-8<c.minMarginPct)throw Error('Cotação rejeitada: abaixo da margem líquida mínima.');
@@ -119,7 +129,10 @@ export function quoteShopeePrice({unitCost,settings={},marketAverage=null}={}){
   return {unitCost:cost,grossPrice:financial.gross,discountPct:proposed.discountPct,
     couponPct:c.couponPct,customerPrice:financial.finalPrice,netProfit:financial.profit,
     netMarginPct:Number(financial.marginPct.toFixed(3)),minMarginPct:c.minMarginPct,
-    targetMarginPct:c.marginPct,marketAverage:market,priceFloor:floorSale.finalPrice,
+    targetMarginPct:c.marginPct,marketAverage:market,
+    marketGapPct:market===null?null:Number(((financial.finalPrice/market-1)*100).toFixed(2)),
+    targetMarginPreserved:financial.marginPct+1e-8>=desired,
+    priceFloor:floorSale.finalPrice,
     feeTier:financial.tier,breakdown:{
       campaignDiscount:financial.campaignDiscount,couponDiscount:financial.couponDiscount,
       unitCost:financial.unitCost,shipping:financial.shipping,packing:financial.packing,
