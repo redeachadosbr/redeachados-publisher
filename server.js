@@ -574,7 +574,7 @@ app.get('/api/shopee/optimizer/fiscal-migration/catalog-census',mustLogin,requir
   res.json({ok:true,source:'shopee-api-live',asOf:new Date().toISOString(),
    unit:'anuncios-pai-sem-contar-variacoes',
    statuses:totals,totalListings:results.reduce((n,x)=>n+x.items,0),
-   executableStatuses:['NORMAL']});
+   executableStatuses:['NORMAL','UNLIST']});
  }catch(error){res.status(503).json({ok:false,verified:false,
   error:'Não foi possível verificar todo o catálogo diretamente na Shopee: '+
    String(error.message||error).slice(0,220)});}
@@ -585,9 +585,11 @@ app.get('/api/shopee/optimizer/fiscal-migration/active-skus',mustLogin,requireWe
  res.setHeader('Cache-Control','no-store');
  try{
   const {auth,cfg}=await getValidAuth(req);
+  const status=String(req.query.status||'NORMAL').toUpperCase();
+  if(!['NORMAL','UNLIST'].includes(status))throw Error('Status não editável para o fiscal em massa.');
   const offset=Math.max(0,Number(req.query.offset)||0);
   if(!Number.isSafeInteger(offset)||offset>100000)throw Error('Paginação inválida.');
-  const page=await fetchCatalogPage(cfg,auth,callShopeeShopApi,{status:'NORMAL',offset,pageSize:50});
+  const page=await fetchCatalogPage(cfg,auth,callShopeeShopApi,{status,offset,pageSize:50});
   // A mesma listagem utilizada para executar deve alimentar o cache de SKUs,
   // evitando uma busca remota adicional para cada um dos centenas de anúncios.
   await storeCatalogItems(auth.shopId,page.items||[]);
@@ -613,19 +615,19 @@ app.get('/api/shopee/optimizer/fiscal-migration/active-skus',mustLogin,requireWe
         :[{sku:item.sku,modelId:'0',status:'NORMAL'}];
       const output=[];
       for(const candidate of candidates){
-        if(!candidate.sku||candidate.status&&candidate.status!=='NORMAL')continue;
+        if(!candidate.sku||candidate.status&&!['NORMAL','UNLIST'].includes(candidate.status))continue;
         const review=await getWorkflowReview(auth.shopId,itemId,candidate.modelId);
         const checked=Boolean(review?.sku===candidate.sku&&
           review?.review_state?.stages?.fiscal?.reviewed&&review?.review_state?.tax?.ncm);
         output.push({sku:candidate.sku,itemId,modelId:candidate.modelId,
-          title:item.title||'',unitSuggestion:suggestFiscalMeasureUnit(item.title).unit,reviewed:checked,
+          title:item.title||'',listingStatus:status,unitSuggestion:suggestFiscalMeasureUnit(item.title).unit,reviewed:checked,
           status:checked?'revisado':'requer revisão fiscal'});
       }
       return output;
     }));
     for(const found of batch)results.push(...found);
   }
-  res.json({ok:true,source:'shopee-api-live',status:'NORMAL',
+  res.json({ok:true,source:'shopee-api-live',status,
     items:results,pageItemCount:(page.items||[]).length,
     pageItemIds:(page.items||[]).map(item=>String(item.itemId)),
     totalCount:page.totalCount,
@@ -656,7 +658,7 @@ app.post('/api/shopee/optimizer/fiscal-migration/prepare-drafts',mustLogin,requi
     // Confirmar identidade e status diretamente na Shopee antes de salvar no banco.
     const record=await auditShopeeItem(cfg,auth,callShopeeShopApi,itemId,
       {expectedSku:sku,expectedModelId:modelId});
-    if(record.status!=='NORMAL')throw Error('Anúncio não está ativo.');
+    if(!['NORMAL','UNLIST'].includes(record.status))throw Error('Anúncio não está ativo.');
     const supplier=await readWeDropProduct(auth.shopId,{sku,itemId,modelId});
     if(!supplier||!['exact-sku','reviewed-link'].includes(supplier.matchedBy))
       throw Error('Correspondência WeDrop não confirmada.');
@@ -700,7 +702,7 @@ app.post('/api/shopee/optimizer/fiscal-migration/validate-one',mustLogin,require
    return res.json({ok:true,status:'already_reviewed',sku});
   const record=await auditShopeeItem(cfg,auth,callShopeeShopApi,itemId,
    {expectedSku:sku,expectedModelId:modelId});
-  if(record.status!=='NORMAL')throw Error('Anúncio não está ativo.');
+  if(!['NORMAL','UNLIST'].includes(record.status))throw Error('Anúncio não está ativo.');
   const supplier=await readWeDropProduct(auth.shopId,{sku,itemId,modelId});
   if(!supplier||supplier.matchedBy!=='exact-sku'||supplier.supplier_sku!==sku)
    throw Error('Vínculo exato da SKU com WeDrop não confirmado.');
