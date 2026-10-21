@@ -3809,8 +3809,13 @@ async function optimizerRunAudit(itemId,sku,modelId=''){
     // Precificação não depende da leitura dos atributos: prepara mesmo quando
     // a árvore de categoria da Shopee estiver momentaneamente indisponível.
     if(shPriceSelection?.sku!==expectedSku||shPriceSelection?.itemId!==item||
-       shPriceSelection?.modelId!==String(modelId||'0'))
+       shPriceSelection?.modelId!==String(modelId||'0')){
       $('#priceMarketAvg').value='';
+      optimizerDiscountFinalQuote=null;optimizerDiscountFinalIdentity='';
+      optimizerDiscountFinalPreviewData=null;optimizerDiscountFinalPreviewKey='';
+      optimizerDiscountFinalSent=false;++optimizerDiscountFinalLoading;
+      optimizerDiscountFinalPaint();
+    }
     if($('#optimizerSku').value.trim()!==expectedSku)return;
     shPriceSelection={sku:expectedSku,itemId:item,modelId:String(modelId||'0')};
     shPriceSaveSelection(shPriceSelection);
