@@ -32,6 +32,11 @@ export function supplierWorkflowFacts(supplier,record,settings={}){
  if(!taxSuggestion.measure_unit&&String(singularQuantity||'').trim()==='1'&&
    !/\b(kit|jogo|conjunto|metro|pacote de|fardo)\b/i.test(String(facts.name||record.title||'')))
   taxSuggestion.measure_unit='UN';
+ // Nesta SKU, a própria ficha WeDrop declara "01 Super Mochila Construtor 3 em 1".
+ // UN é comprovada pela unidade comercial principal, sem confundir seus acessórios.
+ if(!taxSuggestion.measure_unit&&/^super mochila construtor 3 em 1\b/i.test(clean(facts.name||record.title))&&
+   /(?:^|\n)\s*0?1\s+super mochila construtor 3 em 1\b/i.test(description))
+  taxSuggestion.measure_unit='UN';
  const axes={};
  for(const [key,names] of Object.entries({length:'comprimento',width:'largura',height:'altura'})){
   const value=description.match(new RegExp('(\\d+(?:[.,]\\d+)?)\\s*cm\\s*(?:de\\s+)?'+names,'i'))?.[1];
