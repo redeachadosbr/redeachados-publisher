@@ -26,7 +26,7 @@ import {supplierWorkflowFacts} from './shopeeSupplierFacts.js';
 import {supplierAttributeSuggestions} from './shopeeSupplierEvidenceFacts.js';
 import {readShopeeSourceEvidence,saveShopeeSourceText,importShopeeEvidenceImage,removeShopeeEvidenceImage,downloadShopeeEvidenceImages} from './shopeeSourceEvidence.js';
 import {extractSupplierScreenshotText,mergeExtractedPrints,withoutExtractedPrints} from './shopeeEvidenceVision.js';
-import {fiscalMatrixSource,technicalMatrixSource,assertShopeeSupplierBrand} from './shopeeMatrixRules.js';
+import {fiscalMatrixSource,technicalMatrixSource,assertShopeeSupplierBrand,isShopeeCestConfirmed} from './shopeeMatrixRules.js';
 import {readWeDropSyncState,getStoredWeDropCostCount} from './wedropCosts.js';
 import {getSkuReview,searchSupplierSku,confirmSkuLink,undoSkuLink} from './wedropSkuReview.js';
 import {auditShopeeItem,validateSkuLookup} from './productOptimizer.js';
@@ -879,8 +879,8 @@ app.post('/api/shopee/optimizer/workflow/review',mustLogin,requireWeDropAdmin,as
     res.json({ok:true,saved:true,marketplaceUpdated:false,sku,itemId,modelId,
       fiscalRegistration:change.stage==='fiscal'?{
         status:'saved_in_matrix',registered:true,shopUpdated:false,
-        cestOptional:true,cestProvided:Boolean(String(state.tax?.cest||'').trim()),
-        message:'Dados fiscais cadastrados no Motor Matriz sem exigir CEST. A Shopee não foi alterada.'
+        cestOptional:true,cestProvided:isShopeeCestConfirmed(state.tax?.cest),
+        message:'Dados fiscais cadastrados no Motor Matriz. CEST 00 é apenas marcador local; a Shopee não foi alterada.'
       }:null,
       stages:buildStages(record,state),attributeChanges:state.attributes||[],taxDraft:state.tax||{},draftTitle:state.draftTitle||safeTitle(record.title),
       // Se outra etapa foi salva, mantenha o rascunho gerado na tela em vez de
@@ -934,12 +934,13 @@ app.post('/api/shopee/optimizer/execution/prepare',mustLogin,requireWeDropAdmin,
       review:review?.review_state||{},live,manualVideo,verifiedVideoSha256,manualImages,selectedStage};
     let plan=compileShopeeExecutionPlan({...inputs,omitFiscal:selectedStage==='all'});
     // Previous Shopee validation can mean tax_info was rejected while other
-    // approved changes are independent. Leave CEST blank, OMIT tax_info entirely,
+    // approved changes are independent. Treat local CEST "00" as unset; OMIT tax_info entirely,
     // and let the next explicit execution try only non-fiscal changes.
     // A refusal from Shopee itself is still decisive, never silently bypassed.
     const taxDraftNcm=String(reviewState.tax?.ncm||live.tax_info?.ncm||'').trim();
     const priorFiscalDeferred=previous?.sku===sku&&previous?.plan?.fiscalDeferred===true&&
-      !String(reviewState.tax?.cest||live.tax_info?.cest||'').trim()&&
+      !isShopeeCestConfirmed(reviewState.tax?.cest)&&
+      !isShopeeCestConfirmed(live.tax_info?.cest)&&
       taxDraftNcm===String(previous.plan.deferredTaxDraft?.ncm||previous.plan.original?.tax_info?.ncm||'').trim();
     const deferFiscal=selectedStage==='all'&&Boolean(priorFiscalDeferred||
       (previous?.sku===sku&&needsCestRevalidation(previous.last_error,previous.plan,plan)));
