@@ -1,3 +1,4 @@
+import {isShopeeCestConfirmed} from './shopeeMatrixRules.js';
 // Fiscal information is saved per SKU in the Motor Matriz, independent of
 // the seller's CPF/CNPJ registration. Saving a draft is NOT issuing an NF-e,
 // and is never itself an authorization to update an advertisement.
@@ -9,7 +10,7 @@ export function fiscalPreviewDisposition({plan,previousError='',previousPlan=nul
  const ncm=text(plan?.proposed?.tax_info?.ncm||plan?.original?.tax_info?.ncm);
  const previousNcm=text(previousPlan?.proposed?.tax_info?.ncm||previousPlan?.original?.tax_info?.ncm);
  const cest=text(plan?.proposed?.tax_info?.cest||plan?.original?.tax_info?.cest);
- const knownCest=Boolean(previousCestError&&!cest&&ncm&&ncm===previousNcm);
+ const knownCest=Boolean(previousCestError&&!isShopeeCestConfirmed(cest)&&ncm&&ncm===previousNcm);
  const issues=[];
  if(knownCest)issues.push(
   'A Shopee já recusou o envio fiscal sem CEST para este NCM. O cadastro no Motor Matriz permanece salvo. '+
