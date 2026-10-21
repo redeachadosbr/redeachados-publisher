@@ -50,6 +50,77 @@ export function fiscalMatrixSource({sku,supplier,tax,reviewSource=null}={}){
  return {sku:listingSku,ncm:chosen,supplierSku:supplierSku||null,
   source:supplier?.matchedBy||'manual-verified',file:supplier?.source_file||null};
 }
+
+// MOTOR MATRIZ — pesquisa de concorrentes para QUALQUER SKU Shopee.
+// Somente ofertas reais com URL, preço e vendedor distintos autorizam uma média.
+// Nunca salvar preço pesquisado como confirmado só porque há um título semelhante.
+export const REDE_ACHADOS_MARKET_RULES=Object.freeze({
+ minimumOffers:2,maximumOffers:5,maxQueries:5,apiPageLimit:50,
+ distinctShops:true,excludeOwnShop:true,excludeAccessories:true,
+ preserveModelSpecs:true,maxVariantPriceRatio:1.30,
+ minimumPriceRatioToMedian:0.65,maximumPriceRatioToMedian:1.55,
+ preserveDesiredMarginWithinMarketPct:2
+});
+const marketNormal=x=>String(x??'').normalize('NFD').replace(/[\u0300-\u036f]/g,'')
+ .toLowerCase().replace(/[^a-z0-9 ]+/g,' ').replace(/\s+/g,' ').trim();
+const MARKET_FAMILIES=[
+ {id:'mochila_construtor',detect:/\bmochila\b.*\b(construtor|ferramentas|oficina)\b|\b(construtor|ferramentas|oficina)\b.*\bmochila\b/,
+  queries:['mochila construtor ferramentas','mochila ferramentas brinquedo','mochila bancada ferramentas infantil','maleta mochila ferramentas brinquedo']},
+ {id:'passadeira_vapor',detect:/\b(passadeira|vaporizador)\b.*\bvapor\b|\bvapor\b.*\b(passadeira|vaporizador)\b/,
+  queries:['passadeira a vapor portatil roupas','vaporizador de roupas portatil','steamer vaporizador roupas']},
+ {id:'piscina_inflavel',detect:/\bpiscina\b.*\binflavel\b|\binflavel\b.*\bpiscina\b/,
+  queries:['piscina inflavel infantil','piscina inflavel quadrada','piscina inflavel para criancas']},
+ {id:'porta_shampoo',detect:/\bporta shampoo\b|\b(suporte|organizador)\b.*\b(shampoo|box)\b/,
+  queries:['porta shampoo canto banheiro','organizador box banheiro','suporte shampoo banheiro']},
+ {id:'garrafa_termica',detect:/\bgarrafa\b.*\btermica\b|\btermica\b.*\bgarrafa\b/,
+  queries:['garrafa termica bebidas','garrafa termica portatil','garrafa termica inox']},
+ {id:'cafeteira_italiana',detect:/\bcafeteira\b.*\bitaliana\b|\bitaliana\b.*\bcafeteira\b|\bcafeteira moka\b/,
+  queries:['cafeteira italiana moka','cafeteira moka aluminio','cafeteira italiana cafe']},
+ {id:'raquete_mosquito',detect:/\braquete\b.*\b(mosquito|mosquitos|insetos)\b|\b(mata mosquito|mata mosquitos)\b.*\braquete\b/,
+  queries:['raquete mata mosquito eletrica','raquete eletrica insetos','raquete mata mosquitos']},
+ {id:'lixeira_tela',detect:/\blixeira\b.*\b(tela|telada|metal|aramada)\b|\b(tela|telada|aramada)\b.*\blixeira\b/,
+  queries:['lixeira telada metal','lixeira aramada escritorio','lixeira metal tela']},
+ {id:'jogo_chaves',detect:/\b(jogo|kit|conjunto)\b.*\b(chaves|ferramentas)\b/,
+  queries:['jogo chaves ferramentas','kit chaves maleta','jogo ferramentas chaves']},
+ {id:'arvore_natal',detect:/\barvore\b.*\bnatal\b|\bnatal\b.*\barvore\b/,
+  queries:['arvore natal decoracao','arvore natal verde','arvore natal galhos']},
+ {id:'microfone_karaoke',detect:/\bmicrofone\b.*\b(karaoke|infantil|kids)\b/,
+  queries:['microfone infantil karaoke','microfone karaoke brinquedo','microfone karaokê sem fio']},
+ {id:'fogareiro',detect:/\bfogareiro\b/,
+  queries:['fogareiro portatil','fogareiro camping','fogareiro gas']},
+ {id:'pote_hermetico',detect:/\bpote\b.*\b(hermetico|vedacao)\b|\b(hermetico|vedacao)\b.*\bpote\b/,
+  queries:['pote hermetico cozinha','pote vedacao alimentos','recipiente hermetico']},
+ {id:'porta_temperos',detect:/\bporta temperos\b|\b(organizador|suporte)\b.*\btemperos\b/,
+  queries:['porta temperos cozinha','organizador porta temperos','suporte potes temperos']},
+ {id:'liquidificador_portatil',detect:/\bliquidificador\b.*\b(portatil|mini|usb)\b/,
+  queries:['liquidificador portatil','mini liquidificador usb','liquidificador individual']},
+ {id:'carrinho_compras',detect:/\bcarrinho\b.*\bcompras\b/,
+  queries:['carrinho compras dobravel','carrinho de feira dobravel','carrinho mercado rodinhas']}
+];
+export function marketMatrixProfile(title){
+ const normalized=marketNormal(title);
+ const family=MARKET_FAMILIES.find(f=>f.detect.test(normalized));
+ return {family:family?.id||'generic',queries:family?.queries||[],original:normalized};
+}
+export function marketMatrixSearchQueries(title,seed=''){
+ const profile=marketMatrixProfile(title),base=marketNormal(seed||title);
+ const words=base.split(' ').filter(x=>x.length>2);
+ // Regra universal: buscar nome real, sintagmas curtos e sinônimos por tipo,
+ // em até cinco variações. Para famílias conhecidas, priorizar o produto correto.
+ const generic=[words.slice(0,4).join(' '),words.slice(0,3).join(' '),
+  words.slice(0,2).join(' '),words.slice(-3).join(' ')];
+ const terms=[base,...profile.queries,...generic];
+ return [...new Set(terms.map(marketNormal).filter(x=>x.split(' ').length>=2))]
+  .slice(0,REDE_ACHADOS_MARKET_RULES.maxQueries);
+}
+export function marketMatrixFamilyCompatible(source,candidate){
+ const a=marketMatrixProfile(source),b=marketMatrixProfile(candidate);
+ // Outro tipo reconhecido (ex. piscina vs garrafa) jamais entra na média.
+ if(a.family!=='generic')return a.family===b.family;
+ if(b.family!=='generic')return false;
+ return null; // família genérica: usar palavras centrais e características.
+}
+
 // A Marca cadastrada é um atributo por categoria, nunca a condição NEW.
 export function assertShopeeSupplierBrand({record,attributes=[],supplier}={}){
  const brand=normal(supplier?.product_data?.brand);
