@@ -1,0 +1,33 @@
+/* Visual-only Rede Achados BR: fiscal + comercial, sem mudanças de IDs ou ações. */
+#tab-optimizer .ra-optimizer-side-by-side{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:16px;align-items:stretch;margin:18px 0 10px}
+#tab-optimizer .ra-optimizer-side-by-side>section{min-width:0;margin:0!important;border-radius:20px;padding:17px;background:linear-gradient(150deg,#fff 0%,#f7fbff 100%);border:1px solid #dce8f8;box-shadow:0 12px 26px rgba(14,43,78,.09),0 2px 4px rgba(14,43,78,.03)}
+#tab-optimizer .ra-optimizer-side-by-side .optimizer-exec-discount-last{border-color:#d9ebde;background:linear-gradient(150deg,#fff 0%,#f6fcf8 100%)}
+#tab-optimizer .ra-optimizer-side-by-side .optimizer-exec-fiscal-head,
+#tab-optimizer .ra-optimizer-side-by-side .optimizer-exec-discount-heading{min-height:54px;gap:11px}
+#tab-optimizer .ra-optimizer-side-by-side .optimizer-exec-fiscal-head>span,
+#tab-optimizer .ra-optimizer-side-by-side .optimizer-exec-discount-heading>span{font-size:14px;padding:13px;border-radius:14px;min-width:46px;text-align:center;color:#1762b3;background:#e8f2ff}
+#tab-optimizer .ra-optimizer-side-by-side .optimizer-exec-discount-heading>span{color:#158553;background:#e7f8ed}
+#tab-optimizer .ra-optimizer-side-by-side .optimizer-exec-fiscal-head strong,
+#tab-optimizer .ra-optimizer-side-by-side .optimizer-exec-discount-heading strong{font-size:16px;line-height:1.35;color:#112e57;font-weight:900}
+#tab-optimizer .ra-optimizer-side-by-side .optimizer-exec-fiscal-head small,
+#tab-optimizer .ra-optimizer-side-by-side .optimizer-exec-discount-heading small{font-size:11px;line-height:1.45}
+#tab-optimizer .ra-optimizer-side-by-side #optimizerExecFiscalEdit{font-size:11px;background:linear-gradient(#159451,#08713c);color:white;border:1px solid #14814b;border-radius:11px;box-shadow:0 5px 12px rgba(0,108,61,.17);padding:11px 12px}
+#tab-optimizer .ra-optimizer-side-by-side .optimizer-exec-fiscal-values{grid-template-columns:repeat(3,minmax(0,1fr));gap:9px;margin-top:17px}
+#tab-optimizer .ra-optimizer-side-by-side .optimizer-exec-discount-values{grid-template-columns:repeat(4,minmax(0,1fr));gap:8px;margin-top:17px}
+#tab-optimizer .ra-optimizer-side-by-side .optimizer-exec-fiscal-values>div,
+#tab-optimizer .ra-optimizer-side-by-side .optimizer-exec-discount-values>div{min-height:80px;padding:13px 10px;border:1px solid #dae6f5;border-radius:13px;background:#fff;box-shadow:0 4px 10px rgba(20,57,96,.035);transition:transform .17s,box-shadow .17s}
+#tab-optimizer .ra-optimizer-side-by-side .optimizer-exec-fiscal-values>div:hover,
+#tab-optimizer .ra-optimizer-side-by-side .optimizer-exec-discount-values>div:hover{transform:translateY(-2px);box-shadow:0 9px 17px rgba(20,57,96,.12)}
+#tab-optimizer .ra-optimizer-side-by-side .optimizer-exec-fiscal-values strong,
+#tab-optimizer .ra-optimizer-side-by-side .optimizer-exec-discount-values small{font-size:11px;font-weight:650;line-height:1.3;color:#607b9a}
+#tab-optimizer .ra-optimizer-side-by-side .optimizer-exec-fiscal-values span,
+#tab-optimizer .ra-optimizer-side-by-side .optimizer-exec-discount-values strong{font-size:15px;font-weight:850;color:#133862;line-height:1.35}
+#tab-optimizer .ra-optimizer-side-by-side .optimizer-exec-fiscal-note,
+#tab-optimizer .ra-optimizer-side-by-side #optimizerExecDiscountMessage{background:#eff6ff;border-radius:12px;padding:12px!important;margin-top:14px!important;font-size:11px!important;line-height:1.5!important}
+#tab-optimizer .ra-optimizer-side-by-side #optimizerExecDiscountMessage{background:#edf9f0;color:#34664b}
+#tab-optimizer .ra-optimizer-side-by-side .optimizer-exec-discount-controls input{border-radius:11px;box-shadow:inset 0 1px 3px rgba(15,48,83,.04)}
+#tab-optimizer .ra-optimizer-side-by-side button{transition:transform .18s,box-shadow .18s}
+#tab-optimizer .ra-optimizer-side-by-side button:not(:disabled):hover{transform:translateY(-2px);box-shadow:0 8px 15px rgba(0,84,51,.16)}
+@media(max-width:1420px){#tab-optimizer .ra-optimizer-side-by-side{grid-template-columns:1fr}#tab-optimizer .ra-optimizer-side-by-side .optimizer-exec-discount-values{grid-template-columns:repeat(4,minmax(0,1fr))}}
+@media(min-width:1421px) and (max-width:1680px){#tab-optimizer .ra-optimizer-side-by-side .optimizer-exec-discount-values{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media(max-width:650px){#tab-optimizer .ra-optimizer-side-by-side .optimizer-exec-fiscal-values{grid-template-columns:repeat(2,minmax(0,1fr))}#tab-optimizer .ra-optimizer-side-by-side .optimizer-exec-discount-values{grid-template-columns:repeat(2,minmax(0,1fr))}#tab-optimizer .ra-optimizer-side-by-side .optimizer-exec-fiscal-head{flex-wrap:wrap}#tab-optimizer .ra-optimizer-side-by-side #optimizerExecFiscalEdit{width:100%}}
