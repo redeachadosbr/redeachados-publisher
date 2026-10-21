@@ -15,7 +15,7 @@ const post=(url,data)=>request(url,{method:'POST',headers:{'Content-Type':'appli
  body:JSON.stringify(data)});
 function save(p){p.updatedAt=new Date().toISOString();localStorage.setItem(KEY,JSON.stringify(p));}
 function read(){try{return JSON.parse(localStorage.getItem(KEY)||'null');}catch{return null;}}
-function showSaved(){const p=read(),label=$('optimizerFiscalMigrationStatus');if(!label||!p?.inventory?.length)return;const values=Object.values(p.done||{});label.textContent='Migração salva neste navegador: '+p.inventory.length+' SKUs localizadas · '+values.filter(v=>v==='verified').length+' confirmadas · '+values.filter(v=>v==='blocked').length+' pendentes · '+values.filter(v=>v==='failed').length+' falhas'+(p.pending?' · aguardando confirmação de '+p.pending:'')+'. Retomar não exige nova prévia.';}
+function showSaved(){const p=read(),label=$('optimizerFiscalMigrationStatus');if(!label||label.dataset.liveRun==='true'||!p?.inventory?.length)return;const values=Object.values(p.done||{});label.textContent='Migração salva neste navegador: '+p.inventory.length+' SKUs localizadas · '+values.filter(v=>v==='verified').length+' confirmadas · '+values.filter(v=>v==='blocked').length+' pendentes · '+values.filter(v=>v==='failed').length+' falhas'+(p.pending?' · aguardando confirmação de '+p.pending:'')+'. Retomar não exige nova prévia.';}
 const identity=x=>x.itemId+':'+x.modelId+':'+x.sku;
 async function status(x){
  const params=new URLSearchParams({items:JSON.stringify([{sku:x.sku,itemId:x.itemId,modelId:x.modelId}])});
@@ -25,7 +25,8 @@ async function status(x){
 async function run(){
  const btn=$('optimizerFiscalMigrationRun'),label=$('optimizerFiscalMigrationStatus');
  if(btn.disabled)return;btn.disabled=true;
- const info=t=>{if(label)label.textContent=t;};
+ const info=t=>{if(label){label.textContent=t;label.dataset.liveRun='true';}btn.title=t;};
+ info('Iniciando consulta dos anúncios ativos...');
  try{
   let run=read();
   if(!run)run={done:{},pending:null};
@@ -33,9 +34,23 @@ async function run(){
   for(let page=0;!all.length&&page<200;page++){
    const d=await request('/api/shopee/optimizer/fiscal-migration/active-skus?offset='+offset);
    all.push(...(d.items||[]));
+   info('Localizando anúncios ativos: '+all.length+' encontrados...');
    if(!d.hasNext)break;
    if(!Number.isSafeInteger(d.nextOffset)||d.nextOffset<=offset)throw Error('Paginação interrompida');
    offset=d.nextOffset;
+   // Continuar a paginação mesmo depois de receber a primeira página.
+   if(all.length){
+    for(let follow=page+1;follow<200;follow++){
+     const next=await request('/api/shopee/optimizer/fiscal-migration/active-skus?offset='+offset);
+     all.push(...(next.items||[]));
+     info('Localizando anúncios ativos: '+all.length+' encontrados...');
+     if(!next.hasNext)break;
+     if(!Number.isSafeInteger(next.nextOffset)||next.nextOffset<=offset)throw Error('Paginação interrompida');
+     offset=next.nextOffset;
+     if(follow===199)throw Error('Limite de páginas atingido');
+    }
+    break;
+   }
   }
   all=[...new Map(all.filter(x=>x.sku).map(x=>[identity(x),x])).values()];
   run.inventory=all;save(run);
@@ -89,7 +104,7 @@ async function run(){
   info('Execução concluída nesta passagem. Confirmadas '+completed+
    ', falhas '+failed+', pendentes '+blocked+'. Consulte a Shopee para confirmar o total consolidado.');
  }catch(e){info('Pausado: '+e.message+'. Progresso salvo. Para retomar, use o mesmo botão.');}
- finally{btn.disabled=false;showSaved();}
+ finally{btn.disabled=false;btn.title='Validar e executar na Shopee';}
 }
 $('optimizerFiscalMigrationRun')?.addEventListener('click',()=>void run());
 showSaved();
