@@ -1,3 +1,4 @@
+import {isShopeeCestConfirmed} from './shopeeMatrixRules.js';
 import {normalizeAttributeAudit} from './productOptimizer.js';
 import {assertAnatelCompliance} from './shopeeAnatel.js';
 const list=x=>Array.isArray(x)?x:[];
@@ -90,6 +91,9 @@ export function compileTax(input,live){
   // preparar a otimização; valores já existentes no anúncio são preservados.
   if(input[key]===undefined||String(input[key]).trim()==='')continue;
   const value=String(input[key]).trim();if(!regex.test(value))throw Error('Campo fiscal '+key+' inválido.');
+  // "00" é marcador de cadastro interno do Motor Matriz; nunca transmitir à Shopee.
+  // Caso haja um CEST real já no anúncio, preservar o valor existente.
+  if(key==='cest'&&!isShopeeCestConfirmed(value))continue;
   tax[key]=value;
  }
  if(!patterns.ncm.test(String(tax.ncm||'')))throw Error('NCM confirmado com 8 dígitos é obrigatório para preparar o fiscal.');
