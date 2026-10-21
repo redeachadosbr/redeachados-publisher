@@ -2728,6 +2728,7 @@ $('#optimizerImageCorrectionCopy')?.addEventListener?.('click',async()=>{
 });
 
 function optimizerWorkflowOpen(key){
+ optimizerContentRemember();
  const data=optimizerWorkflowPlan;
  const stage=(data?.stages||[]).find(x=>x.key===key);
  if(!stage)return;
@@ -2789,7 +2790,7 @@ function optimizerWorkflowOpen(key){
  const variants=$('#optimizerTitleVariants');variants.replaceChildren();variants.hidden=!isSeo||!data.contentVariants;
  if(isSeo&&data.contentVariants){for(const [name,title] of Object.entries(data.contentVariants)){
   const button=optimizerMake('button','secondary','Usar título '+name+' · '+[...title].length+' caracteres');button.type='button';
-  button.onclick=()=>{$('#optimizerWorkflowDraft').value=title;optimizerCopyCount();optimizerExecReset();};variants.append(button);
+  button.onclick=()=>{$('#optimizerWorkflowDraft').value=title;$('#optimizerWorkflowDraft').dispatchEvent(new Event('input',{bubbles:true}));};variants.append(button);
  }}
  const research=$('#optimizerContentResearch');research.hidden=!(isSeo||isDescription);
  research.textContent=isDescription
@@ -2802,7 +2803,7 @@ function optimizerWorkflowOpen(key){
    $('#optimizerWorkflowDraft').rows=3;
    globalThis.ShopeeTitleStudio?.open(data,title=>{
      $('#optimizerWorkflowDraft').value=title;
-     optimizerCopyCount();optimizerExecReset();
+     $('#optimizerWorkflowDraft').dispatchEvent(new Event('input',{bubbles:true}));
    });
  }else{
    draftWrap.parentNode.insertBefore(draftWrap,variants);
@@ -2832,6 +2833,7 @@ async function optimizerWorkflowLoad(record){
    const data=await json('/api/shopee/optimizer/workflow?'+qs.toString(),
      {signal:AbortSignal.timeout(60000)});
    if(serial!==optimizerWorkflowSerial||$('#optimizerSku').value.trim()!==sku)return;
+   optimizerContentRestore(data);
    optimizerWorkflowRender(data);
    void optimizerExecutionPrepare();
    optimizerWorkflowNotice('Plano da SKU '+sku+' carregado. As etapas são revisões, não alterações publicadas.','success');
@@ -2896,6 +2898,7 @@ $('#optimizerWorkflowReview')?.addEventListener?.('click',async()=>{
  const btn=$('#optimizerWorkflowReview');btn.disabled=true;
  optimizerWorkflowNotice('Salvando a conferência da etapa '+stage.name+' na Shopee Manager...');
  try{
+   if(key==='seo'||key==='description'){optimizerContentRemember();await optimizerContentFlush();}
    if(key==='technical')await techFlush();
    const body={itemId:data.itemId,modelId:data.modelId,sku:data.sku,
      stage:key,reviewed:key==='fiscal'?true:key==='variants'?$('#optimizerHasVariants').checked:!stage.reviewed};
@@ -5788,12 +5791,92 @@ function optimizerExecutionDisplay(key,value){
  if(key==='tax_info')return Object.entries(value||{}).map(([k,v])=>(optimizerTaxLabels[k]||k)+': '+v).join('\n')||'Não informado';
  return String(value||'Não informado');
 }
+
+// Edições manuais persistem por SKU, sem exigir clique de aprovação.
+// Uma alteração de texto invalida a conferência anterior, não publica na Shopee.
+let optimizerContentTimer=0,optimizerContentPending=null,optimizerContentQueue=Promise.resolve();
+function optimizerContentKey(w,stage){
+ return ['ra-optimizer-content-v1',w.shopId,w.itemId,w.modelId,w.sku,stage].join(':');
+}
+function optimizerContentRemember(){
+ const w=optimizerWorkflowPlan,stage=optimizerWorkflowStage;
+ if(!w||!['seo','description'].includes(stage))return;
+ const val=$('#optimizerWorkflowDraft').value;
+ const field=stage==='seo'?'draftTitle':'draftDescription';
+ if(w[field]===val&&!optimizerContentPending)return;
+ w[field]=val;
+ const reviewed=w.stages?.find(x=>x.key===stage);
+ if(reviewed){reviewed.reviewed=false;reviewed.reviewedAt=null;reviewed.status='pending';}
+ const pending={sku:w.sku,itemId:w.itemId,modelId:w.modelId,shopId:w.shopId,stage,value:val};
+ try{localStorage.setItem(optimizerContentKey(w,stage),JSON.stringify(pending));}catch{}
+ optimizerContentPending=pending;
+ if(optimizerContentTimer)clearTimeout(optimizerContentTimer);
+ optimizerContentTimer=setTimeout(()=>{void optimizerContentFlush().catch(()=>{});},650);
+}
+async function optimizerContentFlush(){
+ if(optimizerContentTimer)clearTimeout(optimizerContentTimer);
+ optimizerContentTimer=0;
+ if(!optimizerContentPending)return optimizerContentQueue;
+ const pending=optimizerContentPending;
+ optimizerContentPending=null;
+ const job=()=>json('/api/shopee/optimizer/workflow/content-draft',{
+  method:'POST',headers:{'Content-Type':'application/json'},
+  body:JSON.stringify({
+   itemId:pending.itemId,modelId:pending.modelId,sku:pending.sku,
+   stage:pending.stage,
+   ...(pending.stage==='seo'?{title:pending.value}:{description:pending.value})
+  }),signal:AbortSignal.timeout(45000)
+ });
+ // Todas as alterações são gravadas em ordem, impedindo que a revisão
+ // explícita seja sobrescrita por um rascunho atrasado.
+ optimizerContentQueue=optimizerContentQueue.catch(()=>{}).then(job).then(result=>{
+  const active=optimizerWorkflowPlan;
+  if(result?.saved===true){
+   try{
+    const id=optimizerContentKey(pending,pending.stage);
+    const cached=JSON.parse(localStorage.getItem(id)||'null');
+    if(cached?.value===pending.value)localStorage.removeItem(id);
+   }catch{}
+  }
+  if(active?.sku===pending.sku&&active.itemId===pending.itemId&&
+    active.modelId===pending.modelId&&active[ pending.stage==='seo'?'draftTitle':'draftDescription' ]===pending.value)
+    optimizerWorkflowNotice('Texto da SKU '+pending.sku+' salvo automaticamente.','success');
+  return result;
+ }).catch(error=>{
+  optimizerWorkflowNotice('O rascunho continua protegido neste navegador, mas ainda não foi salvo no servidor: '+error.message,'warning');
+  throw error;
+ });
+ return optimizerContentQueue;
+}
+function optimizerContentRestore(w){
+ if(!w)return w;
+ for(const stage of ['seo','description']){
+  try{
+   const cached=JSON.parse(localStorage.getItem(optimizerContentKey(w,stage))||'null');
+   if(!cached||cached.sku!==w.sku||cached.itemId!==w.itemId||
+      cached.modelId!==w.modelId||typeof cached.value!=='string')continue;
+   const field=stage==='seo'?'draftTitle':'draftDescription';
+   w[field]=cached.value;
+   const row=w.stages?.find(x=>x.key===stage);
+   if(row){row.reviewed=false;row.status='pending';row.reviewedAt=null;}
+   // Reenvia só o texto pendente do navegador. Nenhuma API de publicação.
+   optimizerContentPending=cached;
+   setTimeout(()=>{void optimizerContentFlush().catch(()=>{});},350);
+  }catch{}
+ }
+ return w;
+}
+
 function optimizerCopyCount(){
  const count=[...$('#optimizerWorkflowDraft').value.normalize('NFC')].length,isTitle=optimizerWorkflowStage==='seo';
- $('#optimizerCopyCount').textContent=count+' caracteres · '+(isTitle?'exatamente 120':'entre 1400 e 1440');
- $('#optimizerCopyCount').className=(isTitle?count===120:count>=1400&&count<=1440)?'copy-count-valid':'copy-count-invalid';
+ $('#optimizerCopyCount').textContent=count+' caracteres · '+(isTitle?'até 120':'entre 1400 e 1440');
+ $('#optimizerCopyCount').className=(isTitle?count>0&&count<=120:count>=1400&&count<=1440)?'copy-count-valid':'copy-count-invalid';
 }
-$('#optimizerWorkflowDraft')?.addEventListener?.('input',()=>{optimizerExecReset();optimizerCopyCount();if(optimizerWorkflowStage==='description')optimizerDescriptionCompactPreview($('#optimizerWorkflowDraft').value);});
+$('#optimizerWorkflowDraft')?.addEventListener?.('input',()=>{
+ optimizerContentRemember();
+ optimizerExecReset();optimizerCopyCount();
+ if(optimizerWorkflowStage==='description')optimizerDescriptionCompactPreview($('#optimizerWorkflowDraft').value);
+});
 function optimizerSupplierRender(data,key){
  const wrap=$('#optimizerSupplierFacts');wrap.replaceChildren();wrap.hidden=!['seo','description','technical','fiscal','category'].includes(key);
  if(wrap.hidden)return;
