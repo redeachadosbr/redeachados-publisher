@@ -34,7 +34,7 @@ test('ação única usa somente uma chamada por SKU, mantém CAS e não repete P
  assert.match(route,/saveShopeePreparedExecution/);
  assert.match(route,/claimShopeePreparedExecution/);
  assert.match(route,/runOptimizerJobs/);
- assert.match(route,/previousJob\?\.state/);
+ assert.match(route,/previousJob\?\.sku/);
  assert.match(route,/already_current/);
  assert.doesNotMatch(route,/update_price|update_stock|update_discount|emitirNota/);
 });
@@ -78,7 +78,7 @@ test('não tratar inventário antigo como total nem enviar antes do censo e pagi
  assert.match(route,/uniqueParents\.size!==editableCount\(\)/);
  assert.match(route,/state\.catalogValidatedAt=new Date\(\)\.toISOString\(\)/);
  assert.ok(route.indexOf('uniqueParents.size!==editableCount()') <
-           route.indexOf("'/api/shopee/optimizer/batch/fiscal/execute'"));
+           route.indexOf("'/api/shopee/optimizer/fiscal-migration/execute-one'"));
  assert.doesNotMatch(src,/if\(previous\?\.active&&previous\?\.inventory\?\.length\)/);
 });
 test('censo oficial inclui status Shopee e deixa explícito anúncio versus SKU',()=>{
