@@ -2744,6 +2744,18 @@ function optimizerWorkflowOpen(key){
  }}
  const research=$('#optimizerContentResearch');research.hidden=!(isSeo||isDescription);
  research.textContent=data.contentResearch?.summary||'Pesquisa de concorrentes ainda não registrada para esta SKU. O texto atual exige revisão.';
+ if(isSeo){
+   // As quatro opções são somente prévias: aplicação ocorre ao selecionar e confirmar a revisão.
+   draftWrap.parentNode.insertBefore(variants,draftWrap);
+   $('#optimizerWorkflowDraft').rows=3;
+   globalThis.ShopeeTitleStudio?.open(data,title=>{
+     $('#optimizerWorkflowDraft').value=title;
+     optimizerCopyCount();optimizerExecReset();
+   });
+ }else{
+   draftWrap.parentNode.insertBefore(draftWrap,variants);
+   $('#optimizerWorkflowDraft').rows=6;
+ }
  $('#optimizerWorkflowReview').hidden=key==='final'||stage.skipped;
  if(key!=='final'&&!stage.skipped){
    $('#optimizerWorkflowReview').textContent=key==='fiscal'?

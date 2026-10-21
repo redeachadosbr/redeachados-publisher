@@ -1,0 +1,37 @@
+/* Títulos SEO — cartões compactos e selecionáveis, Rede Achados BR */
+#optimizerTitleVariants.seo-studio{display:block!important;margin:12px 0 16px;padding:16px;border:1px solid #dbe8fa;border-radius:18px;background:linear-gradient(165deg,#f8fbff,#eef6ff);color:#173353}
+.seo-studio-head{display:flex;align-items:flex-start;justify-content:space-between;gap:14px}
+.seo-studio-head h4{margin:3px 0 5px!important;font-size:20px!important;line-height:1.2;color:#112944}
+.seo-studio-head p{font-size:13px;margin:0 0 8px!important;line-height:1.5}
+.seo-studio-kicker{color:#2474b4;font-size:10px;font-weight:800;letter-spacing:1.3px}
+.seo-studio-sku{font-weight:800;font-size:12px;border-radius:10px;background:#fff;border:1px solid #d6e6fa;padding:8px 10px;white-space:nowrap}
+.seo-studio-alert{font-size:12px;line-height:1.5;border-left:3px solid #5a89d7;background:#fff;padding:8px 12px;border-radius:7px;margin:8px 0}
+.seo-studio-facts{font-size:12px;margin:12px 0;padding:9px 12px;border:1px solid #d8e5f3;border-radius:10px;background:#eaf5ff}
+.seo-studio-facts strong{font-weight:800}
+.seo-studio-custom{display:flex;gap:9px;align-items:end;margin:10px 0 5px}
+.seo-studio-custom label{display:flex;flex-direction:column;flex:1;gap:5px;font-size:12px;font-weight:700}
+.seo-studio-input{width:100%;padding:11px 12px;border:1px solid #bfd5ee;background:#fff;border-radius:10px;color:#173353;font-size:13px}
+.seo-studio-rebuild{height:42px;white-space:nowrap;font-weight:700}
+.seo-studio>small{font-size:11px;display:block;color:#58708b;margin:3px 0 13px}
+.seo-studio-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}
+.seo-studio-card{min-width:0;padding:14px;background:#fff;border:1.5px solid #d9e5f1;border-radius:14px;box-shadow:0 3px 11px #193a6110;transition:border-color .15s,box-shadow .15s,transform .15s}
+.seo-studio-card:hover{border-color:#78b4f4;box-shadow:0 7px 18px #193a611b;transform:translateY(-2px)}
+.seo-studio-card.selected{border:2px solid #1c8b66;background:linear-gradient(#fff,#f2fff8)}
+.seo-studio-card-top{display:flex;justify-content:space-between;align-items:flex-start;gap:9px}
+.seo-studio-option strong{display:block;font-size:13px;color:#123557}
+.seo-studio-option small,.seo-studio-meter small{font-size:10px;color:#617a93;display:block;margin-top:2px}
+.seo-studio-meter{text-align:right;white-space:nowrap}
+.seo-studio-meter strong{font-size:18px;color:#157d58}
+.seo-studio-candidate{font-size:14px!important;font-weight:800!important;line-height:1.5!important;color:#122e48!important;min-height:65px;margin:14px 0 9px!important;overflow-wrap:anywhere}
+.seo-studio-metrics{display:flex;flex-wrap:wrap;gap:8px;font-size:11px;font-weight:800}
+.seo-studio-metrics span{border-radius:7px;background:#e9f3ff;color:#42658d;padding:4px 7px}
+.seo-studio-metrics .seo-studio-ok{background:#e3f7ea;color:#177747}
+.seo-studio-metrics .seo-studio-caution{background:#fff2d8;color:#94600e}
+.seo-studio-why{font-size:11px!important;color:#597087;line-height:1.5;margin:10px 0!important}
+.seo-studio-card-actions{display:flex;gap:8px;margin-top:10px}
+.seo-studio-choose{background:#0e765c;color:#fff;border:1px solid #0e765c;border-radius:9px;padding:9px 11px;font-weight:800;font-size:12px;flex:1;cursor:pointer}
+.seo-studio-copy{padding:9px 12px;font-size:12px}
+.seo-studio-bottom{font-size:12px!important;line-height:1.45;color:#45627d;margin:12px 0 2px!important}
+.seo-studio-status{font-size:12px;margin-top:5px;color:#0c775a;font-weight:700}
+@media(max-width:1000px){.seo-studio-grid{grid-template-columns:1fr}}
+@media(max-width:650px){#optimizerTitleVariants.seo-studio{padding:10px}.seo-studio-head{flex-direction:column}.seo-studio-custom{flex-direction:column;align-items:stretch}.seo-studio-rebuild{width:100%}}
