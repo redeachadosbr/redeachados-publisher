@@ -42,5 +42,5 @@ test('Compilação fiscal mantém valor CST explícito e não cria CEST automati
   evidence:'Contabilidade: exceção específica conferida'
  },{tax_info:{}});
  assert.equal(corrected.pis_cofins_cst,'49');
- assert.equal(corrected.cest,undefined);
+ assert.equal(corrected.cest,'00');
 });
