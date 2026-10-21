@@ -33,7 +33,7 @@ import {getSkuReview,searchSupplierSku,confirmSkuLink,undoSkuLink} from './wedro
 import {auditShopeeItem,validateSkuLookup} from './productOptimizer.js';
 import {buildStages,safeTitle,validateReview} from './shopeeOptimizationWorkflow.js';
 import {composeShopeeDescription,isCommercialDescription} from './shopeeDescriptionComposer.js';
-import {getWorkflowReview,saveWorkflowReview} from './shopeeOptimizationWorkflowStore.js';
+import {getWorkflowReview,saveWorkflowReview,mergeWorkflowTechnicalAutofill} from './shopeeOptimizationWorkflowStore.js';
 import {compileShopeeExecutionPlan,confirmShopeeExecution,
   assertLiveShopeeUnchanged,verifyShopeeExecution,verifyShopeeFiscalExecution,normalizeShopeeExecutionStage} from './shopeeExecutionPlan.js';
 import {readShopeeExecution,saveShopeePreparedExecution,
@@ -906,6 +906,19 @@ app.get('/api/shopee/optimizer/workflow',mustLogin,requireWeDropAdmin,async(req,
     if(extraOptions)evidenceFacts=supplierAttributeSuggestions({attributes:technicalPreview.attributes,
       proposed:review.attributes||[],supplier,sourceText:sourceEvidence.sourceText,
       productDescription:record.description});
+    // Merge confirmed source-backed values into the SKU's existing draft,
+    // not into the published listing and never over an earlier manual edit.
+    let persistedTechnicalDraft=review.technicalDraft||null;
+    if(evidenceFacts.suggestions?.length){
+      try{
+        persistedTechnicalDraft=await mergeWorkflowTechnicalAutofill(auth.shopId,itemId,modelId,sku,
+          technicalPreview.attributes,evidenceFacts.suggestions)||persistedTechnicalDraft;
+      }catch(error){
+        technicalWarning=(technicalWarning?technicalWarning+' ':'')+
+          'Preenchimento sugerido, mas salvamento automático pendente: '+
+          String(error.message||error).slice(0,130);
+      }
+    }
     const manualVideo=manualVideoPublicInfo(
       await getShopeeManualVideo(auth.shopId,itemId,modelId,sku));
     // Já ao consultar a SKU, uma descrição comercial pronta substitui o texto bruto.
@@ -914,7 +927,7 @@ app.get('/api/shopee/optimizer/workflow',mustLogin,requireWeDropAdmin,async(req,
     const keepReviewedDescription=isCommercialDescription(review.draftDescription);
     const finalDescription=keepReviewedDescription?review.draftDescription:composed.description;
     res.json({ok:true,readOnlyMarketplace:true,sku,itemId,modelId,manualVideo,...supplierFacts,
-      sourceEvidence,sourceEvidenceWarning,sourceFacts:evidenceFacts,technicalDraft:review.technicalDraft||null,shopId:auth.shopId,
+      sourceEvidence,sourceEvidenceWarning,sourceFacts:evidenceFacts,technicalDraft:persistedTechnicalDraft,shopId:auth.shopId,
       contentVariants:review.contentVariants||null,contentResearch:review.contentResearch||null,
       attributes:technicalPreview.attributes,anatel:inspectAnatelCompliance(technicalPreview),technicalWarning,attributeChanges:review.attributes||[],taxDraft:review.tax||{},taxCurrent:current.tax_info||{},
       recordedAt:stored?.updated_at||null,stages,
