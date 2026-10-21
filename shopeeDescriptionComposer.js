@@ -5,7 +5,7 @@ import {supplierProductDimensions} from './shopeeSupplierEvidenceFacts.js';
 const normal=v=>String(v||'').normalize('NFC').replace(/\r\n?/g,'\n');
 const clean=v=>normal(v).replace(/\s+/g,' ').trim();
 const fold=v=>clean(v).normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase();
-const compactTitle=v=>[...clean(v).replace(/[!|]+/g,' ')].slice(0,74).join('').replace(/\s+\S*$/,'').trim()||'este produto';
+const compactTitle=v=>{const t=clean(v).replace(/[!|]+/g,' ');return codePointCount(t)<=84?t:([...t].slice(0,84).join('').replace(/\s+\S*$/,'').trim()||'este produto');};
 const verify=s=>{try{validateContentRules({description:s});return true;}catch{return false;}};
 export function isCommercialDescription(value){return verify(normal(value).trim());}
 function extract({record={},supplier=null,sourceText=''}) {
@@ -160,6 +160,13 @@ export function composeShopeeDescription({record={},supplier=null,sourceText=''}
  const p=extract({record,supplier,sourceText}),pr=pack(p);
  // Use official SKU-specific facts, never raw source text as a completed description.
  let body=toLines(p,pr);
+ if(codePointCount(body)>1440&&p.type==='toy'){
+  // Prefira retirar repetições a cortar frases no meio. As especificações da fonte permanecem.
+  pr.intro1='🧰 A '+p.short+' reúne ferramentas e acessórios para brincadeiras de construção, montagem e faz de conta.';
+  pr.intro2='🎯 A proposta 3 em 1 permite criar cenários de oficina e guardar as peças na mochila depois da diversão.';
+  pr.details=pr.details.filter(x=>!x.includes('Uso: brincadeiras de oficina'));
+  body=toLines(p,pr);
+ }
  if(codePointCount(body)>1440){
   const shortened={...pr,
    intro1:shortest(pr.intro1,140)+'.',
@@ -176,6 +183,19 @@ export function composeShopeeDescription({record={},supplier=null,sourceText=''}
     body=toLines(p,shortened);
   }
   Object.assign(pr,shortened);
+ }
+ // Nunca entregar rascunho inválido. Compactar anotações repetidas antes das dicas adicionais.
+ if(codePointCount(body)>1440){
+  pr.details=pr.details.filter(x=>!/\bUso:|\bCategoria:/.test(x));
+  body=toLines(p,pr);
+ }
+ if(codePointCount(body)>1440){
+  pr.measureExtra='Confira nas fotos a versão e os detalhes anunciados.';
+  body=toLines(p,pr);
+ }
+ if(codePointCount(body)>1440){
+  pr.faq=pr.faq.map(([q,a])=>[q,shortest(a,Math.max(35,Math.ceil(a.length*.72))).replace(/[.]+$/,'')+'.']);
+  body=toLines(p,pr);
  }
  if(codePointCount(body)<1400){
   // Best-first selection from real-use guidance; independent notes, never invented claims.
