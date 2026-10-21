@@ -562,6 +562,9 @@ app.get('/api/shopee/optimizer/fiscal-migration/active-skus',mustLogin,requireWe
   const offset=Math.max(0,Number(req.query.offset)||0);
   if(!Number.isSafeInteger(offset)||offset>100000)throw Error('Paginação inválida.');
   const page=await fetchCatalogPage(cfg,auth,callShopeeShopApi,{status:'NORMAL',offset,pageSize:50});
+  // A mesma listagem utilizada para executar deve alimentar o cache de SKUs,
+  // evitando uma busca remota adicional para cada um dos centenas de anúncios.
+  await storeCatalogItems(auth.shopId,page.items||[]);
   // Consultas em pequenos grupos evitam timeouts HTTP 502 ao examinar mais de 400 SKUs.
   // Não consultar get_model_list em produtos sem variações: uma chamada desnecessária
   // por anúncio fazia cada página levar dezenas de segundos.
@@ -577,6 +580,7 @@ app.get('/api/shopee/optimizer/fiscal-migration/active-skus',mustLogin,requireWe
         const data=await callShopeeShopApi(cfg,{path:'/api/v2/product/get_model_list',
           accessToken:auth.accessToken,shopId:auth.shopId,query:{item_id:Number(itemId)}});
         models=normalizeShopeeModels(data);
+        await storeCatalogModels(auth.shopId,itemId,models);
         if(!models.length)throw Error('Anúncio '+itemId+' informou variações, mas nenhuma foi retornada.');
       }
       const candidates=item.hasModel?models.map(m=>({sku:m.sku,modelId:m.modelId,status:m.status}))
