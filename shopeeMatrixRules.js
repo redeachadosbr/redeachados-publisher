@@ -105,12 +105,27 @@ export function marketMatrixProfile(title){
 export function marketMatrixSearchQueries(title,seed=''){
  const profile=marketMatrixProfile(title),base=marketNormal(seed||title);
  const words=base.split(' ').filter(x=>x.length>2);
- // Regra universal: buscar nome real, sintagmas curtos e sinônimos por tipo,
- // em até cinco variações. Para famílias conhecidas, priorizar o produto correto.
+ // Atributos comerciais principais da própria SKU entram nos termos de busca,
+ // inclusive quando o título tem variações como "2,10m", "210L" e "40 peças".
+ const raw=String(title||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase();
+ const pieces=raw.match(/\b\d{1,4}\s*(?:pecas|pçs|pcs|galhos)\b/i)?.[0];
+ const size=raw.match(/\b\d{1,2}[,.]\d{1,2}\s*m\b/i)?.[0]?.replace(',','.');
+ const capacity=raw.match(/\b\d{2,5}\s*(?:ml|l|litros|litro)\b/i)?.[0];
+ const power=raw.match(/\b\d{2,4}\s*w\b/i)?.[0];
+ const voltage=raw.match(/\b(?:110|127|220|240)\s*v\b/i)?.[0];
+ const storey=raw.match(/\b\d\s*(?:andares|andar|niveis)\b/i)?.[0];
+ const profileCore=profile.queries[0]?.split(' ').slice(0,2).join(' ');
+ const anchor=profileCore||words.slice(0,2).join(' ');
+ const details=[size,pieces,capacity,power&&voltage?power+' '+voltage:power,storey]
+  .filter(Boolean).map(v=>anchor+' '+v);
+ // Regra universal: sempre manter família e atributos, depois sinônimos,
+ // sem exagerar o número de chamadas à API de afiliados.
  const generic=[words.slice(0,4).join(' '),words.slice(0,3).join(' '),
   words.slice(0,2).join(' '),words.slice(-3).join(' ')];
- const terms=[base,...profile.queries,...generic];
- return [...new Set(terms.map(marketNormal).filter(x=>x.split(' ').length>=2))]
+ const searchNormalize=value=>String(value??'').normalize('NFD').replace(/[\u0300-\u036f]/g,'')
+  .toLowerCase().replace(/[^a-z0-9., ]+/g,' ').replace(/\s+/g,' ').trim();
+ const terms=[...details,base,...profile.queries,...generic];
+ return [...new Set(terms.map(searchNormalize).filter(x=>x.split(' ').length>=2))]
   .slice(0,REDE_ACHADOS_MARKET_RULES.maxQueries);
 }
 export function marketMatrixFamilyCompatible(source,candidate){
