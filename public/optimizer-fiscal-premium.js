@@ -151,9 +151,39 @@
          input.dispatchEvent(new Event('input',{bubbles:true}));}
      }
      window.optimizerFiscalMigrationInventory=items;
+     const prepareButton=q('optimizerFiscalMigrationPrepare');
+     if(prepareButton)prepareButton.disabled=!items.some(x=>!x.reviewed);
    }catch(error){
      if(notice)notice.textContent='Consulta incompleta: '+String(error.message||error)+
        '. Nenhum dado foi enviado à Shopee.';
+   }finally{button.disabled=false;}
+ });
+ q('optimizerFiscalMigrationPrepare')?.addEventListener('click',async()=>{
+   const button=q('optimizerFiscalMigrationPrepare');
+   const notice=q('optimizerFiscalMigrationStatus');
+   const rows=(window.optimizerFiscalMigrationInventory||[]).filter(x=>!x.reviewed);
+   if(!rows.length){if(notice)notice.textContent='Nenhuma ficha pendente localizada.';return;}
+   button.disabled=true;
+   const results=[];
+   try{
+     for(let i=0;i<rows.length;i+=12){
+       if(notice)notice.textContent='Preparando fichas fiscais com NCM WeDrop: '+Math.min(i+12,rows.length)+'/'+rows.length+'. Nenhum envio à Shopee.';
+       const response=await fetch('/api/shopee/optimizer/fiscal-migration/prepare-drafts',{
+         method:'POST',credentials:'same-origin',headers:{'Content-Type':'application/json'},
+         body:JSON.stringify({items:rows.slice(i,i+12)})});
+       const data=await response.json();
+       if(!response.ok||!data.ok)throw Error(data.error||'Falha ao preparar fichas.');
+       results.push(...(data.results||[]));
+     }
+     const saved=results.filter(x=>x.status==='draft_saved').length;
+     const pending=results.filter(x=>x.status==='pending').length;
+     if(notice)notice.textContent='Preparação concluída: '+saved+' rascunhos salvos, '+pending+
+       ' pendências e '+results.filter(x=>x.status==='already_reviewed').length+
+       ' já revisados. Revise e aprove os dados fiscais antes de executar. Nada enviado à Shopee.';
+     window.optimizerFiscalMigrationDraftResults=results;
+   }catch(error){
+     if(notice)notice.textContent='Preparação interrompida após '+results.length+
+       ' SKUs; '+String(error.message||error)+'. Rascunhos anteriores ficam salvos, sem envio.';
    }finally{button.disabled=false;}
  });
  q('optimizerFiscalBatchSkus')?.addEventListener('input',()=>sync([]));
