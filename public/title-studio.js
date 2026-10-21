@@ -58,8 +58,8 @@
     ];
   }
   function assemble(cfg){
-    const base=clean(cfg.base),prefix=cfg.emoji||'';
-    const start=count(prefix+base)<=LIMIT?prefix+base:prefix+[...base].slice(0,LIMIT-count(prefix)).join('').replace(/\s+\S*$/,'');
+    const base=clean(cfg.base),prefix=cfg.emoji||'',tail=' 🎁',available=LIMIT-count(tail);
+    const start=count(prefix+base)<=available?prefix+base:prefix+[...base].slice(0,available-count(prefix)).join('').replace(/\s+\S*$/,'');
     const words=s=>new Set(clean(s).normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase().split(/[^a-z0-9]+/).filter(x=>x.length>3&&!['para','como','mais','brinquedo'].includes(x)));
     const baseWords=words(base);
     const terms=cfg.terms.filter((t,i,a)=>{
@@ -75,7 +75,7 @@
       for(const [len,current] of states){
         for(const sep of [' · ',' | ',' ']){
           const part=sep+term,n=len+count(part);
-          if(n>LIMIT)continue;
+          if(n>available)continue;
           const quality=current.score+(sep===' '?-3:9)+Math.min(7,count(term)*.25);
           const old=next.get(n);
           if(!old||quality>old.score)next.set(n,{text:current.text+part,score:quality});
@@ -85,11 +85,12 @@
     }
     let winner='',highest=-Infinity;
     for(const [len,state] of states){
-      const final=len===LIMIT?500+state.score:len*3+state.score;
+      const final=len===available?500+state.score:len*3+state.score;
       if(final>highest){winner=state.text;highest=final;}
     }
     let chosen=clean(winner||start);
-    if(count(chosen)===LIMIT-1)chosen+='✨';
+    if(count(chosen)===available-1)chosen+='✨';
+    chosen+=tail;
     return chosen;
   }
   function rating(title,kind){
