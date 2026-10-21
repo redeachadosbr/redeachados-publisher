@@ -5799,6 +5799,25 @@ function optimizerSupplierRender(data,key){
  if(key==='technical'||key==='fiscal')for(const warning of p.warnings||[])wrap.append(optimizerMake('small','',warning));
 }
 
+const optimizerTechPtNames={
+ 'contains bluetooth, wireless and/or rf technology':'Contém Bluetooth, Wi-Fi ou tecnologia RF',
+ 'region of origin':'País ou região de origem','warranty duration':'Prazo de garantia',
+ 'material':'Material','condition':'Condição do produto','ball diameter':'Diâmetro da bola',
+ 'length':'Comprimento','height':'Altura','width':'Largura','quantity':'Quantidade',
+ 'indication':'Indicação de uso','custom product':'Produto personalizado',
+ 'quantity per pack':'Quantidade por embalagem','ball size':'Tamanho da bola',
+ 'model':'Modelo','color':'Cor','colour':'Cor','brand':'Marca','size':'Tamanho',
+ 'pattern':'Estampa','product dimensions':'Dimensões do produto',
+ 'certification':'Certificação','weight':'Peso'};
+function optimizerTechLabel(value){
+ const raw=String(value||'').trim();
+ return optimizerTechPtNames[raw.toLowerCase()]||raw;
+}
+function optimizerTechValueLabel(value){
+ const raw=String(value||'').trim();
+ return ({yes:'Sim',no:'Não',new:'Novo',used:'Usado','not applicable':'Não se aplica',
+ 'not specified':'Não informado',other:'Outro','no warranty':'Sem garantia'})[raw.toLowerCase()]||raw;
+}
 function optimizerTechNotice(message,state='info'){
  const notice=$('#optimizerTechStatus');if(notice){notice.textContent=message;notice.dataset.state=state;}
 }
@@ -5846,7 +5865,8 @@ function optimizerTechnicalSummary(data){
    const details=$('#optimizerTechnicalAdvanced');details.open=true;
    const field=[...$('#optimizerTechnicalFields').querySelectorAll('fieldset')].find(x=>
       Number(x.dataset.attributeId)===change.attributeId);
-   if(field){field.scrollIntoView({behavior:'smooth',block:'center'});field.querySelector('input,select')?.focus({preventScroll:true});}
+   if(field){field.hidden=false;const optional=field.closest('.optimizer-tech-optional');if(optional)optional.open=true;
+    field.scrollIntoView({behavior:'smooth',block:'center'});field.querySelector('input,select')?.focus({preventScroll:true});}
   };
   item.append(edit);list.append(item);
  }
@@ -5855,7 +5875,7 @@ function optimizerTechnicalSummary(data){
   'Pendente: '+mandatory.map(x=>x.name).slice(0,4).join(', ')+
   (mandatory.length>4?' e outros.':'.')+' Abra os campos apenas quando precisar corrigir.'));
  const info=$('#optimizerTechnicalAdvancedCount');
- if(info)info.textContent=attrs.length+' campos da categoria · abrir quando necessário';
+ if(info)info.textContent=attrs.filter(x=>x.mandatory&&!x.values?.length).length+' obrigatórios pendentes na Shopee · '+attrs.length+' no total';
 }
 async function optimizerTechRequest(w,action,extra={}){
  return json('/api/shopee/optimizer/workflow/source',{
@@ -5877,7 +5897,7 @@ async function optimizerTechImport(){
  const input=$('#optimizerTechText'),written=input.value.trim();
  const oldText=String(w.sourceEvidence?.sourceText||'').trim();
  const oldShots=(w.sourceEvidence?.screenshots||[]).length;
- if(!written&&!files.length&&!oldShots){
+ if(!written&&!files.length&&!oldShots&&!w.supplierProduct){
   optimizerTechNotice('Cole as especificações ou selecione um print antes de continuar.','warning');return;
  }
  if(files.length+oldShots>4){
@@ -5962,13 +5982,17 @@ function optimizerTechnicalRender(data){
   ' · '+(data.attributes||[]).filter(x=>x.mandatory&&!x.conditional).length+
   ' atributos obrigatórios ativos · '+(data.attributes||[]).length+' campos retornados pela API.'));
  $('#optimizerTechnicalRefresh').hidden=!(data.attributes||[]).some(x=>x.parentId);
- // Usar exclusivamente os nomes da árvore oficial da categoria, sem campos fixos.
+ // Campos já cadastrados ou com sugestão comprovada ficam somente na prévia.
+ const optionalDetails=optimizerMake('details','optimizer-tech-optional');
+ const optionalSummary=optimizerMake('summary','','Outros campos opcionais');
+ optionalDetails.append(optionalSummary);
+ let optionalMissing=0,autoHidden=0,requiredMissing=0;
  for(const attr of data.attributes||[]){
   const name=attr.name||'Atributo '+attr.id,type=Number(attr.inputType),custom=[2,3,5].includes(type),multi=[4,5].includes(type);
   const field=optimizerMake('fieldset','optimizer-attribute');field.dataset.attributeId=String(attr.id);
-  field.append(optimizerMake('legend','',name+(attr.mandatory?' *':'')));
-  field.append(optimizerMake('small','','Atual: '+((attr.values||[]).map(x=>x.name+(x.unit?' '+x.unit:'')).join(', ')||'Não preenchido')));
-  if(attr.introduction)field.append(optimizerMake('small','',attr.introduction));
+  field.append(optimizerMake('legend','',optimizerTechLabel(name)+(attr.mandatory?' *':'')));
+  field.append(optimizerMake('small','','Atual: '+((attr.values||[]).map(x=>optimizerTechValueLabel(x.name)+(x.unit?' '+x.unit:'')).join(', ')||'Não preenchido')));
+  if(attr.introduction){const tip=optimizerMake('small','','Orientação oficial da categoria');tip.title=attr.introduction;field.append(tip);}
   field.append(optimizerMake('small','',attr.conditional?'Condicional • depende do atributo pai':
     attr.mandatory?'Obrigatório na categoria '+data.categoryId:'Opcional na categoria '+data.categoryId));
   wrap.append(field);
@@ -5990,18 +6014,25 @@ function optimizerTechnicalRender(data){
   const auto=(!reviewed||invalidNewBrand)?suggested:null;
   const existing=auto||reviewed||
     (data.attributeSuggestions||[]).find(x=>Number(x.attributeId)===attr.id);
+  const hasCurrentValue=Boolean(attr.values?.length);
+  const hasDraft=Boolean(existing?.values?.some(v=>Number(v.valueId)>0||String(v.valueName||'').trim()));
+  if((hasCurrentValue||hasDraft)&&!conflict){
+   field.hidden=true;field.dataset.autofilled='true';autoHidden++;
+  }else if(!attr.mandatory&&!attr.conditional){
+   optionalDetails.append(field);optionalMissing++;
+  }else requiredMissing++;
   if(auto)field.append(optimizerMake('p','optimizer-source-autofilled',
     '✓ Preenchido automaticamente: '+auto.values.map(x=>x.valueName).join(', ')+
     ' · Fonte: '+auto.evidence+'. Confirme na revisão para publicar.'));
   const enableLabel=optimizerMake('label','optimizer-attribute-toggle'),enabled=optimizerMake('input');
   enabled.type='checkbox';enabled.dataset.attributeEnabled='true';enabled.checked=Boolean(existing);
-  enabled.setAttribute('aria-label','Preencher '+name);enableLabel.append(enabled,document.createTextNode(' Preencher este campo'));field.append(enableLabel);
+  enabled.setAttribute('aria-label','Preencher '+optimizerTechLabel(name));enableLabel.append(enabled,document.createTextNode(' Preencher este campo'));field.append(enableLabel);
   const controls=optimizerMake('div','optimizer-attribute-controls');controls.hidden=!enabled.checked;field.append(controls);
   const rows=optimizerMake('div');rows.dataset.attributeRows='true';controls.append(rows);
   if(attr.supportSearch){
    const searchBox=optimizerMake('div','optimizer-attribute-search');
    const inputSearch=optimizerMake('input');inputSearch.type='search';inputSearch.placeholder='Buscar opções oficiais na Shopee';
-   inputSearch.maxLength=90;inputSearch.setAttribute('aria-label','Pesquisar opções de '+name);
+   inputSearch.maxLength=90;inputSearch.setAttribute('aria-label','Pesquisar opções de '+optimizerTechLabel(name));
    const runSearch=optimizerMake('button','secondary','Pesquisar opções');
    runSearch.type='button';
    const next=optimizerMake('button','secondary','Ver mais opções');next.type='button';next.hidden=true;
@@ -6028,7 +6059,7 @@ function optimizerTechnicalRender(data){
       const selected=select.value;
       for(const option of response.options||[]){
        if([...select.options].some(o=>o.value===String(option.id)))continue;
-       const element=optimizerMake('option','',option.name+(option.unit?' '+option.unit:''));
+       const element=optimizerMake('option','',optimizerTechValueLabel(option.name)+(option.unit?' '+option.unit:''));
        element.value=String(option.id);
        select.append(element);
       }
@@ -6048,23 +6079,23 @@ function optimizerTechnicalRender(data){
 
   function addRow(value={}){
    const row=optimizerMake('div','optimizer-attribute-value');row.dataset.attributeValue='true';
-   const select=optimizerMake('select');select.dataset.valueId='true';select.setAttribute('aria-label',name+' — opção');
+   const select=optimizerMake('select');select.dataset.valueId='true';select.setAttribute('aria-label',optimizerTechLabel(name)+' — opção');
    const blank=optimizerMake('option','','Selecione uma opção');blank.value='';select.append(blank);
    for(const option of (attr.options||[]).filter(x=>x.id>0)){
-    const item=optimizerMake('option','',option.name+(option.unit?' '+option.unit:''));item.value=String(option.id);select.append(item);
+    const item=optimizerMake('option','',optimizerTechValueLabel(option.name)+(option.unit?' '+option.unit:''));item.value=String(option.id);select.append(item);
    }
    if(custom){const other=optimizerMake('option','','Informar valor');other.value='0';select.append(other);}
    select.value=value.valueId!==undefined?String(value.valueId):type===3||!attr.options?.length?'0':'';
    select.hidden=type===3||(!attr.options?.length&&custom&&!attr.supportSearch);row.append(select);
    const input=optimizerMake('input');input.type=Number(attr.validationType)===4?'date':'text';input.maxLength=500;
-   input.dataset.valueName='true';input.setAttribute('aria-label',name+' — valor');
+   input.dataset.valueName='true';input.setAttribute('aria-label',optimizerTechLabel(name)+' — valor');
    input.placeholder='Informe somente um valor confirmado do fabricante ou fornecedor';
    input.value=Number(attr.validationType)===4&&/^\d+$/.test(String(value.valueName||''))?
     new Date(Number(value.valueName)*1000).toISOString().slice(0,10):String(value.valueName||'');row.append(input);
    const units=(attr.allowedUnits||[]).map(x=>typeof x==='string'?x:x.unit||x.name||'').filter(Boolean);
    let unit;
    if(units.length){
-    unit=optimizerMake('select');unit.dataset.valueUnit='true';unit.setAttribute('aria-label',name+' — unidade');
+    unit=optimizerMake('select');unit.dataset.valueUnit='true';unit.setAttribute('aria-label',optimizerTechLabel(name)+' — unidade');
     const empty=optimizerMake('option','','Unidade');empty.value='';unit.append(empty);
     for(const u of units){const o=optimizerMake('option','',u);o.value=u;unit.append(o);}unit.value=value.unit||'';row.append(unit);
    }
@@ -6089,11 +6120,18 @@ function optimizerTechnicalRender(data){
   if(multi){const add=optimizerMake('button','secondary','Adicionar valor');add.type='button';
    add.onclick=()=>{if(rows.children.length<(Number(attr.maxValues)>0?Number(attr.maxValues):20))addRow();};controls.append(add);}
   const evidence=optimizerMake('input');evidence.type='text';evidence.maxLength=500;evidence.placeholder='Fonte: ficha WeDrop, fabricante ou nota';
-  evidence.dataset.evidenceFor=String(attr.id);evidence.setAttribute('aria-label',name+' — fonte');evidence.value=existing?.evidence||'';
+  evidence.dataset.evidenceFor=String(attr.id);evidence.setAttribute('aria-label',optimizerTechLabel(name)+' — fonte');evidence.value=existing?.evidence||'';
   evidence.oninput=()=>optimizerExecReset();controls.append(evidence);
   enabled.onchange=()=>{controls.hidden=!enabled.checked;optimizerExecReset();};
  }
+ if(optionalMissing){
+  optionalSummary.textContent='Mostrar '+optionalMissing+' atributo(s) opcionais sem informação comprovada';
+  wrap.append(optionalDetails);
+ }
  if(!wrap.children.length)wrap.append(optimizerMake('p','','A categoria não retornou atributos.'));
+ wrap.prepend(optimizerMake('p','optimizer-tech-compact-summary',
+  '✓ '+autoHidden+' preenchidos/recuperados · '+requiredMissing+
+  ' precisam de conferência'+(optionalMissing?' · '+optionalMissing+' opcionais recolhidos':'')));
  optimizerTechnicalSummary(data);
 }
 function optimizerTechnicalValues(){
