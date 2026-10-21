@@ -495,15 +495,17 @@
 <div class="ra-fiscal-kpi good"><span>Prontas</span><strong id="optimizerFiscalBatchReady">0</strong></div>
 <div class="ra-fiscal-kpi warn"><span>Pendentes</span><strong id="optimizerFiscalBatchPending">0</strong></div>
 <div class="ra-fiscal-kpi"><span>Confirmadas</span><strong id="optimizerFiscalBatchVerified">0</strong></div></div>
-<p class="ra-fiscal-help">Cadastre os dados contábeis no Motor Matriz mesmo antes da migração para CNPJ. O cadastro não emite nota fiscal; o envio à Shopee é opcional e exige prévia e aprovação. A API pode exigir CEST.</p>
+<p class="ra-fiscal-help">Migração CPF → CNPJ: localize anúncios ativos automaticamente. Apenas fichas fiscais revisadas podem ser enviadas à Shopee; o CEST pode ser exigido pela API.</p>
           <label class="optimizer-field">SKUs para atualização fiscal (uma por linha ou separadas por vírgula)
             <textarea id="optimizerFiscalBatchSkus" rows="1" placeholder="Ex.: TRC1525, TRC0809, TRC1230"></textarea><small class="ra-fiscal-input-help">Separe SKUs por vírgula, espaço ou Enter.</small>
           </label>
           <div class="optimizer-fiscal-batch-actions">
+            <button id="optimizerFiscalMigrationDiscover" class="secondary" type="button">Localizar anúncios ativos</button>
             <button id="optimizerFiscalBatchPrepare" class="secondary" type="button">1 · Gerar prévia</button>
             <button id="optimizerFiscalBatchExecute" type="button" hidden disabled>2 · Executar aprovadas</button>
             <button id="optimizerFiscalBatchRefresh" class="secondary" type="button" hidden>Atualizar andamento</button>
           </div>
+          <p id="optimizerFiscalMigrationStatus" class="optimizer-notice" role="status" aria-live="polite">Migração fiscal única: nenhuma consulta iniciada.</p>
           <p id="optimizerFiscalBatchStatus" class="optimizer-notice" role="status" aria-live="polite">Nenhum lote preparado. SKUs precisam estar no catálogo da Shopee e ter revisão fiscal salva.</p><div id="optimizerFiscalBatchSynopsis" class="ra-fiscal-synopsis" aria-live="polite">Informe as SKUs e prepare uma prévia antes de executar.</div>
           <div id="optimizerFiscalBatchList" class="optimizer-fiscal-batch-list" aria-label="Status individual de cada SKU do lote"></div><div class="ra-fiscal-note">O CEST não impede o cadastro local no Motor Matriz. Quando exigido pela Shopee, o envio fiscal daquela SKU deverá aguardar correção e nova aprovação.</div>
         </details>
