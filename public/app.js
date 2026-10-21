@@ -5806,6 +5806,11 @@ function optimizerFiscalRender(data){
  // CEST 00 é padrão do Motor Matriz para cadastro interno, não um código válido para emissão.
  // Nunca substituir um CEST verdadeiro (7 dígitos) trazido da SKU/fornecedor.
  const draft={...(data.taxCurrent||{}),...defaults,...saved};
+ // Rascunho antigo vazio não pode esconder uma sugestão comprovada pela WeDrop
+ // ou pelas regras já cadastradas no Motor Matriz.
+ for(const [key,value] of Object.entries(defaults)){
+  if(!String(draft[key]??'').trim()&&String(value??'').trim())draft[key]=value;
+ }
  const cestEntries=[saved.cest,data.taxCurrent?.cest,defaults.cest].map(v=>String(v??'').trim());
  draft.cest=cestEntries.find(v=>/^\d{7}$/.test(v))||cestEntries.find(Boolean)||'00';
  const existingPis=String(saved.pis_cofins_cst||data.taxCurrent?.pis_cofins_cst||'').trim();
