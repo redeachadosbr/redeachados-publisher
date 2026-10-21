@@ -24,7 +24,8 @@ import {saveWeDropCosts,getWeDropCoverage,compareIncomingCosts,pendingWeDropMode
 import {saveWeDropProducts,readWeDropProduct} from './wedropCosts.js';
 import {supplierWorkflowFacts} from './shopeeSupplierFacts.js';
 import {supplierAttributeSuggestions} from './shopeeSupplierEvidenceFacts.js';
-import {readShopeeSourceEvidence,saveShopeeSourceText,importShopeeEvidenceImage,removeShopeeEvidenceImage} from './shopeeSourceEvidence.js';
+import {readShopeeSourceEvidence,saveShopeeSourceText,importShopeeEvidenceImage,removeShopeeEvidenceImage,downloadShopeeEvidenceImages} from './shopeeSourceEvidence.js';
+import {extractSupplierScreenshotText,mergeExtractedPrints,withoutExtractedPrints} from './shopeeEvidenceVision.js';
 import {fiscalMatrixSource,technicalMatrixSource,assertShopeeSupplierBrand} from './shopeeMatrixRules.js';
 import {readWeDropSyncState,getStoredWeDropCostCount} from './wedropCosts.js';
 import {getSkuReview,searchSupplierSku,confirmSkuLink,undoSkuLink} from './wedropSkuReview.js';
@@ -744,7 +745,7 @@ app.get('/api/shopee/optimizer/workflow',mustLogin,requireWeDropAdmin,async(req,
   }catch(e){res.status(400).json({error:String(e.message||e).slice(0,350)});}
 });
 // Reference material belongs to an exact authenticated Shopee shop/item/model/SKU.
-// Screenshots are private, not parsed as unverified OCR or used for API writes.
+// Screenshots are private. Automatic transcription is explicit and never authorizes Shopee writes.
 app.get('/api/shopee/optimizer/workflow/source',mustLogin,requireWeDropAdmin,async(req,res)=>{
  res.setHeader('Cache-Control','no-store');
  try{
@@ -763,8 +764,25 @@ app.post('/api/shopee/optimizer/workflow/source',mustLogin,requireWeDropAdmin,as
   else if(action==='image')
    await importShopeeEvidenceImage(auth.shopId,itemId,modelId,sku,{
     imageBase64:req.body.imageBase64,mime:req.body.mime,filename:req.body.filename});
-  else if(action==='remove')
+  else if(action==='remove'){
    await removeShopeeEvidenceImage(auth.shopId,itemId,modelId,sku,req.body.id);
+   // Extraction derived from a removed print is no longer valid.
+   const evidence=await readShopeeSourceEvidence(auth.shopId,itemId,modelId,sku);
+   const cleaned=withoutExtractedPrints(evidence.sourceText);
+   if(cleaned!==evidence.sourceText)await saveShopeeSourceText(auth.shopId,itemId,modelId,sku,cleaned);
+  }
+  else if(action==='extract'){
+   const images=await downloadShopeeEvidenceImages(auth.shopId,itemId,modelId,sku);
+   if(!images.length)throw Error('Anexe um print JPG ou PNG para a leitura automática.');
+   const key=await openAiApiKey(auth.shopId);
+   const transcription=await extractSupplierScreenshotText(key,images);
+   const evidence=await readShopeeSourceEvidence(auth.shopId,itemId,modelId,sku);
+   const merged=mergeExtractedPrints(evidence.sourceText,transcription.lines);
+   if(!merged.count)throw Error('Não foi possível identificar especificações legíveis. Cole o texto da WeDrop.');
+   await saveShopeeSourceText(auth.shopId,itemId,modelId,sku,merged.text);
+   return res.json({ok:true,extractedCount:merged.count,
+     sourceEvidence:await readShopeeSourceEvidence(auth.shopId,itemId,modelId,sku,{preview:true})});
+  }
   else throw Error('Operação de evidência não reconhecida.');
   res.json({ok:true,sourceEvidence:await readShopeeSourceEvidence(auth.shopId,itemId,modelId,sku,{preview:true})});
  }catch(e){res.status(400).json({error:String(e.message||e).slice(0,270)});}

@@ -108,3 +108,29 @@ export async function removeShopeeEvidenceImage(shop,item,model,sku,idFile){
  }catch{}
  return {removed:true};
 }
+
+/** Fetch only screenshots belonging to the authenticated shop/item/model/SKU. */
+export async function downloadShopeeEvidenceImages(shop,item,model,sku){
+ const id=identity(shop,item,model,sku);
+ const shots=await internalAttachments(id);
+ const out=[];
+ for(const shot of shots.slice(0,4)){
+  const target=String(shot.path||'');
+  const prefix=[id.shop_id,id.item_id,id.model_id].join('/')+'/';
+  if(!target.startsWith(prefix)||!/^[0-9a-f-]{36}\.(png|jpg)$/.test(target.slice(prefix.length)))
+    continue;
+  const c=cfg();
+  const response=await fetch(c.url+'/storage/v1/object/authenticated/'+BUCKET+'/'+target,{
+   method:'GET',headers:c.headers,signal:AbortSignal.timeout(25000)
+  });
+  if(!response.ok)throw Error('Não foi possível ler o print privado da WeDrop (HTTP '+response.status+').');
+  if(Number(response.headers.get('content-length')||0)>MAX)throw Error('Print armazenado excede o limite de leitura.');
+  const bytes=Buffer.from(await response.arrayBuffer());
+  if(bytes.length>MAX||bytes.length<50)throw Error('Print armazenado inválido.');
+  const png=bytes.subarray(0,8).equals(Buffer.from([137,80,78,71,13,10,26,10]));
+  const jpg=bytes[0]===255&&bytes[1]===216&&bytes[2]===255;
+  if(!(png||jpg))throw Error('Formato de print armazenado inválido.');
+  out.push({mime:png?'image/png':'image/jpeg',bytes,filename:String(shot.filename||'print').slice(0,90)});
+ }
+ return out;
+}
