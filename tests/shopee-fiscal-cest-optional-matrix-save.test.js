@@ -38,7 +38,7 @@ test('Marcador 00 nunca substitui CEST fiscal real de 7 dígitos',()=>{
  const verified=compileTax({...fiscal,cest:'00'},{tax_info:{cest:'7654321'}});
  assert.equal(verified.cest,'7654321');
  const blank=compileTax({...fiscal,cest:'00'},{tax_info:{}});
- assert.equal(Object.hasOwn(blank,'cest'),false);
+ assert.equal(blank.cest,'00');
 });
 test('cadastrar fiscal não aciona API Shopee e não exige CEST para marcar revisão',()=>{
  const server=readFileSync(new URL('../server.js',import.meta.url),'utf8');
