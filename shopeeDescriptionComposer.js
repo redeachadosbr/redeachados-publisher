@@ -80,7 +80,8 @@ function pack(p){
    '🧩 As peças podem ser combinadas em diferentes cenários de faz de conta e construção.',
    '📦 Consulte as informações de embalagem para identificar exatamente o que acompanha.',
    '🔎 A proposta de oficina estimula brincadeiras de montagem e criação de histórias.',
-   '💬 Se precisar confirmar alguma peça, fale com a loja antes de comprar.'
+   '💬 Se precisar confirmar alguma peça, fale com a loja antes de comprar.',
+   '📷 Confira os acessórios nas fotos do anúncio.'
   ]
  };
  if(p.type==='steamer')return{
@@ -153,7 +154,7 @@ function toLines(p,profile,extraLines=[],short=false){
  return parts.join('\n').trim();
 }
 function shortest(value,max){
- const s=clean(value);if(codePointCount(s)<=max)return s;
+ const s=clean(value);if(codePointCount(s)<=max)return s.replace(/\.+$/,'');
  return [...s].slice(0,max).join('').replace(/\s+\S*$/,'').replace(/[\s,.;:-]+$/,'');
 }
 export function composeShopeeDescription({record={},supplier=null,sourceText=''}={}){
