@@ -233,24 +233,56 @@ export function supplierAttributeSuggestions({attributes=[],proposed=[],supplier
    hit=suppliedValue(['countryOfOrigin'],['pais de origem','regiao de origem','region of origin']);
   }else if(/^(?:length|comprimento|comprimento do produto)$/.test(n)){
    if(dims)hit={value:dims.length,source:dimSource+' · comprimento do produto em cm'};
-   else hit=labeledField(['comprimento do produto','product length']);
+   else hit=labeledField(['comprimento do produto','product length','comprimento','length']);
   }else if(/^(?:height|altura|altura do produto)$/.test(n)){
    if(dims)hit={value:dims.height,source:dimSource+' · altura do produto em cm'};
-   else hit=labeledField(['altura do produto','product height']);
+   else hit=labeledField(['altura do produto','product height','altura','height']);
   }else if(/^(?:width|largura|largura do produto)$/.test(n)){
    if(dims)hit={value:dims.width,source:dimSource+' · largura do produto em cm'};
-   else hit=labeledField(['largura do produto','product width']);
+   else hit=labeledField(['largura do produto','product width','largura','width']);
   }else if(/^(?:quantity|quantidade)$/.test(n)){
-   hit=labeledField(['quantidade do produto','quantidade de itens','quantidade incluida','quantidade incluida no pacote']);
+   hit=labeledField(['quantidade do produto','quantidade de itens','quantidade incluida','quantidade incluida no pacote','quantity']);
   }else if(/^(?:size|tamanho)$/.test(n)){
    hit=suppliedValue(['size','tamanho'],['tamanho do produto','size','tamanho']);
+  }else if(/^(?:condition|condicao do produto|condicao)$/.test(n)){
+   hit=suppliedValue(['condition'],['condicao','estado de conservacao','condition']);
+  }else if(/^(?:custom product|produto personalizado)$/.test(n)){
+   hit=suppliedValue(['customProduct'],['produto personalizado','personalizado','custom product']);
+  }else if(/^(?:indication|indicacao|indicacao de uso)$/.test(n)){
+   hit=suppliedValue(['indication'],['indicacao de uso','indicacao','indication']);
+  }else if(/^(?:voltage|voltagem|tensao)$/.test(n)){
+   hit=suppliedValue(['voltage'],['voltagem','tensao','voltage']);
+  }else if(/^(?:power|potencia)$/.test(n)){
+   hit=suppliedValue(['power'],['potencia','power']);
+  }else if(/^(?:capacity|capacidade)$/.test(n)){
+   hit=suppliedValue(['capacity'],['capacidade','capacity']);
+  }else if(/^(?:pattern|estampa|padrao)$/.test(n)){
+   hit=suppliedValue(['pattern'],['estampa','padrao','pattern']);
+  }else if(/^(?:recommended age|idade recomendada)$/.test(n)){
+   hit=suppliedValue(['recommendedAge'],['idade recomendada','recommended age']);
+  }else if(/^(?:product weight|peso do produto)$/.test(n)){
+   hit=suppliedValue(['productWeight'],['peso do produto','product weight']);
+  }else if(n.length>=3&&n.length<=55&&!/^(?:ncm|cest|cfop|ean|barcode)$/.test(n)){
+   // Campo não mapeado: somente etiqueta expressa, idêntica à da categoria.
+   hit=labeledField([attr.name]);
   }
   if(!hit)continue;
   const raw=String(hit.value).trim();
   const numeric=raw.match(/^(\d{1,4}(?:[.,]\d{1,2})?)\s*(cm|mm|m|kg|g)?\s*$/i);
   let value=/^(?:ball size|tamanho da bola|size|tamanho)$/.test(n)?normalizeSize(raw):raw;
+  if(/^(?:custom product|produto personalizado)$/.test(n)){
+   const bin=plain(value);
+   if(['nao','no','sem personalizacao'].includes(bin))value='No';
+   else if(['sim','yes'].includes(bin))value='Yes';
+  }
+  if(/^(?:condition|condicao do produto|condicao)$/.test(n)){
+   const bin=plain(value);
+   if(bin==='novo')value='New';
+   else if(bin==='usado')value='Used';
+  }
   let unit='';
   // Structured measurement fields require a Shopee-approved unit.
+  if(Number(attr.formatType)===2&&(!numeric||!numeric[2])&&!dims)continue;
   if(numeric&&Number(attr.formatType)===2){
    const units=list(attr.allowedUnits).map(u=>typeof u==='string'?u:u?.unit||u?.name||'').filter(Boolean);
    const match=units.find(u=>plain(u)===plain(numeric[2]||'cm'));
