@@ -496,7 +496,7 @@
           </section>
           </div>
         <details class="optimizer-fiscal-batch" id="optimizerFiscalBatch" open>
-          <summary><span class="ra-fiscal-logo" aria-hidden="true"><svg class="ra-panel-icon" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="2" width="16" height="20" rx="2"/><path d="M8 7h8M8 12h8M8 17h8"/></svg></span><span class="ra-fiscal-title"><strong>Informações Fiscais em Lote</strong><small>Prepare, valide e envie dados por SKU sem perder o cadastro local.</small></span><span class="optimizer-fiscal-batch-pill">Até 12 SKUs por lote</span><span class="ra-fiscal-chevron" aria-hidden="true">⌄</span></summary>
+          <summary><span class="ra-fiscal-logo" aria-hidden="true"><svg class="ra-panel-icon" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="2" width="16" height="20" rx="2"/><path d="M8 7h8M8 12h8M8 17h8"/></svg></span><span class="ra-fiscal-title"><strong>Informações Fiscais em Lote</strong><small>Localize toda a loja, preencha os dados fiscais disponíveis e envie diretamente para a Shopee.</small></span><span class="optimizer-fiscal-batch-pill">Catálogo completo</span><span class="ra-fiscal-chevron" aria-hidden="true">⌄</span></summary>
           <div class="ra-fiscal-batch-workspace">
           <label class="optimizer-field ra-fiscal-sku-input">SKUs para atualização fiscal (uma por linha ou separadas por vírgula)
             <textarea id="optimizerFiscalBatchSkus" rows="2" placeholder="Ex.: TRC1525, TRC0809, TRC1230"></textarea><small class="ra-fiscal-input-help">Separe SKUs por vírgula, espaço ou Enter.</small>
@@ -508,7 +508,7 @@
 <div class="ra-fiscal-kpi warn"><span class="ra-fiscal-kpi-icon" aria-hidden="true"><svg class="ra-panel-icon" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M6 2h12M6 22h12M7 2v4c0 3 5 6 5 6s5-3 5-6V2M7 22v-4c0-3 5-6 5-6s5 3 5 6v4"/></svg></span><span class="ra-fiscal-kpi-label">Pendentes</span><strong id="optimizerFiscalBatchPending">0</strong></div>
 <div class="ra-fiscal-kpi"><span class="ra-fiscal-kpi-icon" aria-hidden="true"><svg class="ra-panel-icon" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8zM14 2v6h6M8 13h8M8 17h6"/></svg></span><span class="ra-fiscal-kpi-label">Confirmadas</span><strong id="optimizerFiscalBatchVerified">0</strong></div></div>
           <div class="optimizer-fiscal-batch-actions">
-            <button id="optimizerFiscalMigrationRun" class="ra-fiscal-main-action" type="button">▶ Validar e executar na Shopee</button>
+            <button id="optimizerFiscalMigrationRun" class="ra-fiscal-main-action" type="button">▶ Executar informações fiscais na Shopee</button>
             <details class="ra-fiscal-advanced"><summary>Opções avançadas de consulta, prévia e execução manual</summary><div class="ra-fiscal-advanced-actions">
             <button id="optimizerFiscalMigrationDiscover" class="secondary" type="button"><svg class="ra-panel-icon" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="10.5" cy="10.5" r="7.5"/><path d="m16 16 6 6"/></svg><span class="ra-fiscal-action-copy"><strong>Localizar anúncios ativos</strong><small>Busca SKU(s) ativos na Shopee</small></span></button>
             <button id="optimizerFiscalMigrationPrepare" class="secondary" type="button" disabled><svg class="ra-panel-icon" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8zM14 2v6h6M8 13h8M8 17h6"/></svg><span class="ra-fiscal-action-copy"><strong>Preparar fichas pendentes</strong><small>Valida e prepara os dados fiscais</small></span></button>
@@ -520,7 +520,7 @@
             </div>
           </div>
           <div class="ra-fiscal-batch-feedback">
-          <p id="optimizerFiscalMigrationStatus" class="optimizer-notice" role="status" aria-live="polite">Migração fiscal única: nenhuma consulta iniciada.</p>
+          <p id="optimizerFiscalMigrationStatus" class="optimizer-notice" role="status" aria-live="polite">Nenhuma atualização fiscal iniciada. Um clique executa o preenchimento e o envio por SKU.</p>
           <p id="optimizerFiscalBatchStatus" class="optimizer-notice" role="status" aria-live="polite">Nenhum lote preparado. SKUs precisam estar no catálogo da Shopee e ter revisão fiscal salva.</p><div id="optimizerFiscalBatchSynopsis" class="ra-fiscal-synopsis" aria-live="polite">Informe as SKUs e prepare uma prévia antes de executar.</div>
           </div>
           <div id="optimizerFiscalBatchList" class="optimizer-fiscal-batch-list" aria-label="Status individual de cada SKU do lote"></div>
@@ -1534,6 +1534,6 @@
 <script src="/title-studio.js?v=1.20.45-camping-seo"></script>
 <script src="/app.js?v=1.20.48-technical-smart"></script>
 <script src="/optimizer-fiscal-premium.js?v=1.20.47-fiscal-run"></script>
-<script src="/fiscal-migration-run.js?v=5-full-catalog"></script>
+<script src="/fiscal-migration-run.js?v=6-autoprepare-send"></script>
 </body>
 </html>
