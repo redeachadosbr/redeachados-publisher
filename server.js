@@ -1273,14 +1273,34 @@ app.post('/api/shopee/optimizer/batch/fiscal/prepare',mustLogin,requireWeDropAdm
         message:'Ficha fiscal salva no Motor Matriz. Envio à Shopee pendente por exigência de CEST; os demais dados permanecem cadastrados.'});
       continue;
     }
+    // Não transformar uma SKU já cadastrada na Shopee em "pendência".
+    // Quando o plano não tem nenhuma diferença e não há bloqueios,
+    // a leitura oficial já confirmou que os campos revisados estão presentes.
+    if(!plan.canExecute&&!plan.blocked.length&&!plan.proposed.tax_info){
+      results.push({sku,itemId:String(itemId),modelId:String(modelId),
+        ready:false,state:'already_current',marketplaceUpdated:false,registered:true,
+        current:live.tax_info||{},proposed:null,blocked:[],
+        message:'Informações fiscais da ficha já estão cadastradas na Shopee. Nenhum reenvio necessário.'});
+      continue;
+    }
+    // Expor o bloqueio REAL e não sobrescrever um job confirmado por
+    // um plano blocked que não executará nenhum update.
+    if(!plan.canExecute){
+      results.push({sku,itemId:String(itemId),modelId:String(modelId),
+        ready:false,state:'blocked_validation',registered:true,
+        current:live.tax_info||{},proposed:plan.proposed.tax_info||null,
+        blocked:plan.blocked,
+        message:plan.blocked.join(' · ')||
+          'A ficha fiscal revisada não apresentou alterações elegíveis. Confira NCM e dados já existentes.'});
+      continue;
+    }
     plan.mediaArchive=archiveShopeeMedia(prior,plan);
     const job=await saveShopeePreparedExecution(auth.shopId,itemId,modelId,sku,plan);
     results.push({sku,itemId:String(itemId),modelId:String(modelId),
-      ready:plan.canExecute,state:job.state,planId:plan.planId,updatedAt:job.updated_at,
+      ready:true,state:job.state,planId:plan.planId,updatedAt:job.updated_at,
       current:live.tax_info||{},proposed:plan.proposed.tax_info||null,
       blocked:plan.blocked,warnings:plan.warnings.filter(x=>/Fiscal|CEST|NCM|Anatel/i.test(x)),
-      message:plan.canExecute?'Prévia fiscal preparada; anúncio não alterado.':
-       'Revisão fiscal pendente ou nenhuma alteração fiscal aprovada.'});
+      message:'Alteração fiscal preparada para envio autorizado à Shopee.'});
    }catch(error){
     results.push({sku:requestedSku,ready:false,state:'failed_preview',
       error:String(error.message||error).slice(0,230)});
