@@ -2905,7 +2905,7 @@ $('#optimizerWorkflowReview')?.addEventListener?.('click',async()=>{
    // Salvar fiscal atualiza a prévia, mas não faz qualquer chamada de publicação.
    void optimizerExecutionPrepare();
    optimizerWorkflowNotice(key==='fiscal'?
-     'Dados fiscais da SKU '+data.sku+' cadastrados e mantidos no Motor Matriz. CEST pode ficar em branco. Nenhum dado fiscal foi enviado à Shopee.':
+     'Dados fiscais da SKU '+data.sku+' salvos no Motor Matriz. CEST 00 será considerado no envio se aparecer na próxima prévia; nenhum dado foi enviado só por salvar.':
      'Revisão da etapa '+stage.name+' salva. Nenhum dado do anúncio foi alterado na Shopee.','success');
  }catch(e){optimizerWorkflowNotice('Falha ao salvar conferência: '+e.message,'error');}
  finally{btn.disabled=false;}
@@ -3061,8 +3061,10 @@ function optimizerExecFiscalLast(plan){
  for(const [key,label] of keymap){
   const card=optimizerMake('div');
   card.append(optimizerMake('strong','',label),
-   optimizerMake('span','',key==='cest'&&!preview?.cest?'00 (não transmitido)':
-      String(values[key]||'Não informado')));
+   optimizerMake('span','',key==='cest'?
+    (preview?.cest==='00'?'00 · previsto no envio':
+      preview?.cest||'Não incluído nesta prévia'):
+    String(values[key]||'Não informado')));
   container.append(card);
  }
  const mode=plan.finalFiscal?'Depois da confirmação comercial · envio fiscal pendente':
@@ -3071,9 +3073,9 @@ function optimizerExecFiscalLast(plan){
   'Fiscal não incluído nesta prévia · confira as regras da SKU';
  $('#optimizerExecFiscalState').textContent=mode;
  $('#optimizerExecFiscalNote').textContent=plan.finalFiscal?
-  'Os valores acima irão em atualização fiscal própria, como última etapa. CEST 00 não será transmitido. A Shopee pode exigir regularização adicional.':
+  'Os valores acima irão em atualização fiscal própria como última etapa. Se CEST = 00, será transmitido literalmente, sujeito à validação da Shopee. A prévia não confirma publicação.':
   plan.proposed?.tax_info?
-  'Somente os dados fiscais acima serão enviados, depois de sua autorização. O resultado será conferido na Shopee.':
+  'Somente os dados fiscais acima serão enviados após sua autorização, inclusive CEST 00 se constar na prévia. A Shopee poderá recusar o valor.':
   'A conferência registrada não significa publicação. Corrija o Motor Matriz e revalide a prévia se houver pendência.';
 }
 $('#optimizerExecFiscalEdit')?.addEventListener?.('click',()=>{
@@ -5845,7 +5847,7 @@ function optimizerFiscalRender(data){
  if(cest){
   const marker=String(draft.cest||'').trim()==='00';
   const info=optimizerMake('small','optimizer-fiscal-cest-help',marker
-    ?'Motor Matriz: 00 = CEST não informado. Vem preenchido por padrão, mas não é enviado como código CEST à Shopee. Se necessário, informe o CEST real de 7 dígitos.'
+    ?'Motor Matriz: 00 é o valor escolhido pela loja. Ao executar, será enviado literalmente para teste na Shopee; a plataforma poderá rejeitá-lo. Confira a prévia.'
     :'CEST da SKU: confira o código de 7 dígitos com a WeDrop/contabilidade antes de enviar os dados fiscais.');
   cest.closest('label')?.append(info);
  }
