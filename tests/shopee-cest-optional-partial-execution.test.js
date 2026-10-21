@@ -22,8 +22,8 @@ const oldError='product.error_busi: Please upload the corresponding CEST of NCM'
 
 test('CEST em branco nunca recebe valor inventado e fiscal pode ficar de fora da otimização',()=>{
  const ordinary=compileShopeeExecutionPlan(input);
- assert.equal(ordinary.proposed.tax_info.ncm,'95069900');
- assert.equal(ordinary.proposed.tax_info.cest,undefined);
+ assert.equal(ordinary.finalFiscal.ncm,'95069900');
+ assert.equal(ordinary.finalFiscal.cest,undefined);
  const deferred=compileShopeeExecutionPlan({...input,deferUnconfirmedFiscal:true});
  assert.equal(deferred.fiscalDeferred,true);
  assert.equal(deferred.canExecute,true);
@@ -31,7 +31,7 @@ test('CEST em branco nunca recebe valor inventado e fiscal pode ficar de fora da
  assert.ok(deferred.actions.includes('description'));
  assert.equal(deferred.actions.includes('tax_info'),false);
  assert.equal(Object.hasOwn(deferred.proposed,'tax_info'),false);
- assert.ok(deferred.warnings.some(x=>/CEST 00\/sem código real.*não serão enviados/i.test(x)));
+ assert.ok(deferred.warnings.some(x=>/CEST sem código confirmado.*fiscal permanece pendente/i.test(x)));
  const prior={proposed:{tax_info:{ncm:'95069900'}},original:{tax_info:{}}};
  assert.equal(needsCestRevalidation(oldError,prior,ordinary),true);
 });
@@ -48,7 +48,7 @@ test('CEST validado restaura o processamento fiscal habitual sem enviar 00 autom
  const withCest={...input,review:{...review,tax:{...tax,cest:'1234567'}}};
  const result=compileShopeeExecutionPlan({...withCest,deferUnconfirmedFiscal:true});
  assert.equal(result.fiscalDeferred,false);
- assert.equal(result.proposed.tax_info.cest,'1234567');
+ assert.equal(result.finalFiscal.cest,'1234567');
  assert.ok(result.actions.includes('tax_info'));
 });
 test('rascunho fiscal alterado depois do pré-voo invalida a assinatura do plano',()=>{
@@ -87,15 +87,15 @@ test('backend ignora a regra histórica que bloqueava cada publicação por CEST
  assert.match(server,/deferUnconfirmedFiscal:plan\.fiscalDeferred===true/);
  assert.doesNotMatch(server,/plan\.blocked\.push\('Informações fiscais: a Shopee já exigiu CEST/);
  assert.match(server,/issue:deferFiscal&&!plan\.canExecute\?/);
- assert.match(server,/priorFiscalDeferred=previous\?\.sku===sku&&previous\?\.plan\?\.fiscalDeferred===true/);
+ assert.match(server,/previouslyRejected=previous\?\.sku===sku&&/);
  const app=readFileSync(new URL('../public/app.js',import.meta.url),'utf8');
- assert.match(app,/CEST mantido em branco\. Dados fiscais NÃO serão enviados/);
+ assert.match(app,/Fiscal ainda pendente/);
 });
 
 test('CEST 00 é marcador no Motor Matriz e não entra na API nem bloqueia outras etapas',()=>{
  const withZero={...input,review:{...review,tax:{...tax,cest:'00'}}};
  const ordinary=compileShopeeExecutionPlan(withZero);
- assert.equal(Object.hasOwn(ordinary.proposed.tax_info,'cest'),false);
+ assert.equal(Object.hasOwn(ordinary.finalFiscal,'cest'),false);
  const deferred=compileShopeeExecutionPlan({...withZero,deferUnconfirmedFiscal:true});
  assert.equal(deferred.fiscalDeferred,true);
  assert.equal(Object.hasOwn(deferred.proposed,'tax_info'),false);
