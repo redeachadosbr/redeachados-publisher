@@ -46,31 +46,28 @@ async function run(){
  try{
   let run=read();
   if(!run)run={done:{},pending:null};
-  let all=Array.isArray(run.inventory)&&run.inventory.length?run.inventory.slice():[],offset=0;
-  for(let page=0;!all.length&&page<200;page++){
+  // Sempre conferir o catálogo completo: o inventário antigo de 38 SKUs veio de uma página parcial.
+  // Manter resultados já confirmados; nunca os descartar ao atualizar o inventário.
+  let all=[],offset=0,complete=false;
+  for(let page=0;page<200;page++){
+   info('Consultando catálogo completo da Shopee: '+all.length+' SKUs encontradas...');
    const d=await request('/api/shopee/optimizer/fiscal-migration/active-skus?offset='+offset);
-   all.push(...(d.items||[]));
-   info('Localizando anúncios ativos: '+all.length+' encontrados...');
-   if(!d.hasNext)break;
-   if(!Number.isSafeInteger(d.nextOffset)||d.nextOffset<=offset)throw Error('Paginação interrompida');
+   if(!Array.isArray(d.items))throw Error('Resposta do catálogo sem lista de SKUs.');
+   all.push(...d.items);
+   if(!d.hasNext){complete=true;break;}
+   if(!Number.isSafeInteger(d.nextOffset)||d.nextOffset<=offset)
+    throw Error('Paginação inválida no offset '+offset+'. Inventário anterior preservado.');
    offset=d.nextOffset;
-   // Continuar a paginação mesmo depois de receber a primeira página.
-   if(all.length){
-    for(let follow=page+1;follow<200;follow++){
-     const next=await request('/api/shopee/optimizer/fiscal-migration/active-skus?offset='+offset);
-     all.push(...(next.items||[]));
-     info('Localizando anúncios ativos: '+all.length+' encontrados...');
-     if(!next.hasNext)break;
-     if(!Number.isSafeInteger(next.nextOffset)||next.nextOffset<=offset)throw Error('Paginação interrompida');
-     offset=next.nextOffset;
-     if(follow===199)throw Error('Limite de páginas atingido');
-    }
-    break;
-   }
   }
+  if(!complete)throw Error('Consulta do catálogo não terminou; inventário anterior preservado.');
   all=[...new Map(all.filter(x=>x.sku).map(x=>[identity(x),x])).values()];
-  run.inventory=all;save(run);progress(run,'Validação das fichas fiscais');
-  info('Localizadas '+all.length+' SKUs. Validando e executando individualmente.');
+  if(!all.length)throw Error('Nenhuma SKU ativa retornada; inventário anterior preservado.');
+  // Só gravar após a última página, para não salvar uma lista parcial.
+  run.inventory=all;
+  run.inventoryComplete=true;
+  save(run);
+  progress(run,'Catálogo completo localizado · validando informações fiscais');
+  info('Catálogo completo: '+all.length+' SKUs. Prosseguindo sem repetir as confirmadas.');
   if(run.pending){
    const item=all.find(x=>identity(x)===run.pending);
    if(!item)throw Error('SKU anteriormente enviada não está no catálogo atual; revisar antes de retomar.');
