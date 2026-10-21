@@ -4979,7 +4979,10 @@ function shPriceRender(q){
   shQuickSetStatus('SKU '+q.sku+' · Custo WeDrop '+shPriceMoney(q.unitCost)+
     (isSupplierPreview
       ?'. Simulação disponível. Aguarde a confirmação do anúncio Shopee para salvar na etapa Descontos.'
-      :'. Plano calculado e salvo para Descontos; nenhuma alteração foi enviada à Shopee.'),'success');
+      :q.marketResearch?.verified===true
+       ?'. Pesquisa de mercado validada e desconto preparado para o final da otimização; nada foi publicado.'
+       :'. Preço provisório salvo, mas desconto NÃO liberado sem 2 anúncios comparáveis.' ),
+    isSupplierPreview||q.marketResearch?.verified===true?'success':'warning');
   $('#priceResults').hidden=false;
   $('#priceGross').textContent=shPriceMoney(q.grossPrice);
   $('#pricePromoPct').textContent=shPricePercent(q.discountPct);
@@ -5062,7 +5065,8 @@ async function shPricePrepare({silent=false}={}){
         adsBudgetEnabled:$('#priceAdsEnabled').checked,
         adsBudgetPct:$('#priceAdsEnabled').checked?Number($('#priceAds').value):0,
         marketAverage:market===''?null:Number(market)}),
-      signal:AbortSignal.timeout(35000)
+      // Até cinco buscas sequenciais de ofertas podem levar mais de 35 segundos.
+      signal:AbortSignal.timeout(75000)
     });
     if(shPriceSelection?.sku!==selected.sku||
       shPriceSelection?.itemId!==selected.itemId||
