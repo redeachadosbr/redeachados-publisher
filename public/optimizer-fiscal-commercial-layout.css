@@ -28,6 +28,23 @@
 #tab-optimizer .ra-optimizer-side-by-side .optimizer-exec-discount-controls input{border-radius:11px;box-shadow:inset 0 1px 3px rgba(15,48,83,.04)}
 #tab-optimizer .ra-optimizer-side-by-side button{transition:transform .18s,box-shadow .18s}
 #tab-optimizer .ra-optimizer-side-by-side button:not(:disabled):hover{transform:translateY(-2px);box-shadow:0 8px 15px rgba(0,84,51,.16)}
-@media(max-width:1420px){#tab-optimizer .ra-optimizer-side-by-side{grid-template-columns:1fr}#tab-optimizer .ra-optimizer-side-by-side .optimizer-exec-discount-values{grid-template-columns:repeat(4,minmax(0,1fr))}}
-@media(min-width:1421px) and (max-width:1680px){#tab-optimizer .ra-optimizer-side-by-side .optimizer-exec-discount-values{grid-template-columns:repeat(2,minmax(0,1fr))}}
-@media(max-width:650px){#tab-optimizer .ra-optimizer-side-by-side .optimizer-exec-fiscal-values{grid-template-columns:repeat(2,minmax(0,1fr))}#tab-optimizer .ra-optimizer-side-by-side .optimizer-exec-discount-values{grid-template-columns:repeat(2,minmax(0,1fr))}#tab-optimizer .ra-optimizer-side-by-side .optimizer-exec-fiscal-head{flex-wrap:wrap}#tab-optimizer .ra-optimizer-side-by-side #optimizerExecFiscalEdit{width:100%}}
+
+/* Layout aprovado: desktop usa sempre duas colunas no espaço do conteúdo, não o viewport. */
+#tab-optimizer .ra-optimizer-side-by-side{width:100%;max-width:none;min-width:0;grid-template-columns:minmax(0,1fr) minmax(0,1.05fr)!important}
+#tab-optimizer .ra-optimizer-side-by-side .optimizer-exec-discount-values{grid-template-columns:repeat(2,minmax(0,1fr))}
+#tab-optimizer .ra-optimizer-side-by-side .optimizer-exec-fiscal-values{grid-template-columns:repeat(3,minmax(0,1fr))}
+#tab-optimizer .ra-optimizer-side-by-side .optimizer-exec-fiscal-values>div,
+#tab-optimizer .ra-optimizer-side-by-side .optimizer-exec-discount-values>div{overflow-wrap:anywhere}
+@media(min-width:1700px){
+ #tab-optimizer .ra-optimizer-side-by-side .optimizer-exec-discount-values{grid-template-columns:repeat(4,minmax(0,1fr))}
+}
+@media(max-width:1000px){
+ #tab-optimizer .ra-optimizer-side-by-side{grid-template-columns:minmax(0,1fr)!important}
+ #tab-optimizer .ra-optimizer-side-by-side .optimizer-exec-discount-values{grid-template-columns:repeat(4,minmax(0,1fr))}
+}
+@media(max-width:650px){
+ #tab-optimizer .ra-optimizer-side-by-side .optimizer-exec-fiscal-values,
+ #tab-optimizer .ra-optimizer-side-by-side .optimizer-exec-discount-values{grid-template-columns:repeat(2,minmax(0,1fr))}
+ #tab-optimizer .ra-optimizer-side-by-side .optimizer-exec-fiscal-head{flex-wrap:wrap}
+ #tab-optimizer .ra-optimizer-side-by-side #optimizerExecFiscalEdit{width:100%}
+}
