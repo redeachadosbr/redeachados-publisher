@@ -92,10 +92,10 @@ test('backend ignora a regra histórica que bloqueava cada publicação por CEST
  assert.match(app,/Fiscal ainda pendente/);
 });
 
-test('CEST 00 é marcador no Motor Matriz e não entra na API nem bloqueia outras etapas',()=>{
+test('CEST 00 solicitado é incluído na prévia fiscal final e não bloqueia as demais etapas',()=>{
  const withZero={...input,review:{...review,tax:{...tax,cest:'00'}}};
  const ordinary=compileShopeeExecutionPlan(withZero);
- assert.equal(Object.hasOwn(ordinary.finalFiscal,'cest'),false);
+ assert.equal(ordinary.finalFiscal.cest,'00');
  const deferred=compileShopeeExecutionPlan({...withZero,deferUnconfirmedFiscal:true});
  assert.equal(deferred.fiscalDeferred,true);
  assert.equal(Object.hasOwn(deferred.proposed,'tax_info'),false);
