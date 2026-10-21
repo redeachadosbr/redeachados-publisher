@@ -5856,7 +5856,7 @@ function optimizerTechnicalSummary(data){
   if(!attr)continue;
   const item=optimizerMake('div','optimizer-tech-summary-item');
   const desc=optimizerMake('div','optimizer-tech-summary-desc');
-  desc.append(optimizerMake('strong','',String(attr.name||'Atributo '+change.attributeId)),
+  desc.append(optimizerMake('strong','',optimizerTechLabel(String(attr.name||'Atributo '+change.attributeId))),
    optimizerMake('span','',change.values.map(x=>x.valueName+(x.unit?' '+x.unit:'')).join(', ')));
   const proof=suggested.some(x=>Number(x.attributeId)===change.attributeId);
   item.append(desc,optimizerMake('small',proof?'Dado WeDrop · conferir':'Preenchimento registrado ou manual'));
@@ -5870,9 +5870,13 @@ function optimizerTechnicalSummary(data){
   };
   item.append(edit);list.append(item);
  }
- if(list.childElementCount)target.append(list);
+ if(list.childElementCount){
+  const details=optimizerMake('details','optimizer-tech-filled-list');
+  details.append(optimizerMake('summary','','Ver '+list.childElementCount+' atributo(s) preenchidos e editar'));
+  details.append(list);target.append(details);
+ }
  if(mandatory.length)target.append(optimizerMake('p','optimizer-tech-warning',
-  'Pendente: '+mandatory.map(x=>x.name).slice(0,4).join(', ')+
+  'Pendente: '+mandatory.map(x=>optimizerTechLabel(x.name)).slice(0,4).join(', ')+
   (mandatory.length>4?' e outros.':'.')+' Abra os campos apenas quando precisar corrigir.'));
  const info=$('#optimizerTechnicalAdvancedCount');
  if(info)info.textContent=attrs.filter(x=>x.mandatory&&!x.values?.length).length+' obrigatórios pendentes na Shopee · '+attrs.length+' no total';
