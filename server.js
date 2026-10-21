@@ -1665,7 +1665,8 @@ app.post('/api/shopee/optimizer/pricing/supplier-preview',mustLogin,requireWeDro
       ?await shopeePricingPreferences(auth.shopId)
       :normalizeShopeePricingSettings(req.body.settings);
     const marketAverage=req.body?.marketAverage===undefined?null:req.body.marketAverage;
-    const quote=quoteShopeePrice({unitCost:cost.unitCost,settings,marketAverage});
+    const quote=quoteShopeePrice({unitCost:cost.unitCost,settings,marketAverage,
+      marginOverride:req.body?.marginOverride===true});
     res.json({ok:true,found:true,sku,costUpdatedAt:cost.costUpdatedAt,
       quote:{...quote,sku,supplierSku:cost.supplierSku,
         source:'wedrop_only',saved:false,listingVerified:false,
