@@ -79,8 +79,8 @@ function extract({record={},supplier=null,sourceText=''}) {
 function pack(p){
  const name=p.short;
  if(p.type==='ball')return{
-  intro1:'⚽ A '+name+' é uma bola de futebol infantil para brincadeiras recreativas, chutes e momentos de lazer com a família.',
-  intro2:'🏃 O modelo inflável favorece atividades em casa, no quintal e em espaços apropriados. Confira a indicação etária e as instruções de enchimento.',
+  intro1:'⚽ A '+name+' é uma bola infantil para futebol recreativo, chutes e brincadeiras.',
+  intro2:'🏃 Inflável para lazer em espaços adequados, com orientação de enchimento e supervisão adulta.',
   details:[
    '⚽ Tipo: bola de futebol infantil recreativa.',
    ...(p.facts.ballMaterial?['🔹 Material informado: '+p.facts.ballMaterial+'.']:[]),
@@ -89,7 +89,7 @@ function pack(p){
    ...(p.facts.inmetro?['🔎 Registro INMETRO informado pelo fornecedor: '+p.facts.inmetro+'.']:[])
   ],
   measureExtra:p.facts.logistics?
-   '📦 Cadastro logístico WeDrop: '+p.facts.logistics+'; não é diâmetro da bola inflada.':
+   'As medidas acima são do cadastro logístico, não do diâmetro inflado.':
    'O diâmetro da bola inflada não foi confirmado pelo fornecedor.',
   faq:[
    ['Para qual idade?',p.facts.age?'Indicada a partir de '+p.facts.age+'.':'Confira a faixa etária informada pelo fabricante.'],
