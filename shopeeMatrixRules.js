@@ -17,7 +17,8 @@ export const isShopeeCestConfirmed=value=>/^\d{7}$/.test(String(value??'').trim(
 export function fiscalStoreDefaults(fiscalNotes=''){
  const notes=normal(fiscalNotes);
  const approved=notes.match(/(?:PIS\s*(?:e|\/|&)\s*COFINS\s*CST|CST\s*PIS\s*(?:e|\/)\s*COFINS|PISCOFIS|PIS\s*COFINS)\s*:\s*(\d{2})\b/i)?.[1];
- return {pis_cofins_cst:approved||REDE_ACHADOS_FISCAL_DEFAULTS.pis_cofins_cst};
+ return {pis_cofins_cst:approved||REDE_ACHADOS_FISCAL_DEFAULTS.pis_cofins_cst,
+  cest:REDE_ACHADOS_FISCAL_DEFAULTS.cest};
 }
 export function fiscalMatrixSource({sku,supplier,tax,reviewSource=null}={}){
  const listingSku=normal(sku),supplierSku=normal(supplier?.supplier_sku);
