@@ -872,7 +872,7 @@ app.get('/api/shopee/optimizer/workflow',mustLogin,requireWeDropAdmin,async(req,
     const keepReviewedDescription=isCommercialDescription(review.draftDescription);
     const finalDescription=keepReviewedDescription?review.draftDescription:composed.description;
     res.json({ok:true,readOnlyMarketplace:true,sku,itemId,modelId,manualVideo,...supplierFacts,
-      sourceEvidence,sourceEvidenceWarning,sourceFacts:evidenceFacts,
+      sourceEvidence,sourceEvidenceWarning,sourceFacts:evidenceFacts,technicalDraft:review.technicalDraft||null,shopId:auth.shopId,
       contentVariants:review.contentVariants||null,contentResearch:review.contentResearch||null,
       attributes:technicalPreview.attributes,anatel:inspectAnatelCompliance(technicalPreview),technicalWarning,attributeChanges:review.attributes||[],taxDraft:review.tax||{},taxCurrent:current.tax_info||{},
       recordedAt:stored?.updated_at||null,stages,
@@ -931,6 +931,43 @@ app.post('/api/shopee/optimizer/workflow/source',mustLogin,requireWeDropAdmin,as
   else throw Error('Operação de evidência não reconhecida.');
   res.json({ok:true,sourceEvidence:await readShopeeSourceEvidence(auth.shopId,itemId,modelId,sku,{preview:true})});
  }catch(e){res.status(400).json({error:String(e.message||e).slice(0,270)});}
+});
+// Store user-entered technical values immediately, including incomplete drafts.
+// This is not approval and does not update the Shopee listing.
+app.post('/api/shopee/optimizer/workflow/technical-draft',mustLogin,requireWeDropAdmin,async(req,res)=>{
+ res.setHeader('Cache-Control','no-store');
+ if(!verifiedSameOrigin(req))return res.status(403).json({error:'Origem não autorizada.'});
+ try{
+  const {auth,itemId,modelId,sku,record}=await checkedWorkflowAudit(req);
+  const input=req.body?.fields;
+  if(!Array.isArray(input)||input.length>160)throw Error('Rascunho técnico inválido.');
+  const validIds=new Set((record.attributeAudit?.attributes||[]).map(a=>Number(a.id)));
+  const used=new Set();
+  const fields=input.map(f=>{
+   const id=Number(f.attributeId);
+   if(!Number.isSafeInteger(id)||id<=0||!validIds.has(id)||used.has(id))
+    throw Error('Atributo técnico não pertence à categoria deste produto.');
+   used.add(id);
+   if(typeof f.enabled!=='boolean'||!Array.isArray(f.values)||f.values.length>20)
+    throw Error('Campos da ficha inválidos.');
+   const evidence=String(f.evidence??'').normalize('NFC');
+   if(evidence.length>500)throw Error('Comprovação excede o limite.');
+   const values=f.values.map(v=>{
+    const valueId=Number(v.valueId);
+    if(!Number.isSafeInteger(valueId)||valueId< -1||valueId>2147483647)
+     throw Error('Opção fiscal inválida.');
+    const valueName=String(v.valueName??'').normalize('NFC'),unit=String(v.unit??'').normalize('NFC');
+    if(valueName.length>500||unit.length>35)throw Error('Valor manual excede o limite.');
+    return {valueId,valueName,unit};
+   });
+   return {attributeId:id,enabled:f.enabled,evidence,values};
+  });
+  const technicalDraft={fields,updatedAt:new Date().toISOString()};
+  await saveWorkflowReview(auth.shopId,itemId,modelId,sku,{
+   stage:'technical',reviewed:false,technicalDraft
+  });
+  res.json({ok:true,saved:true,sku,technicalDraft,marketplaceUpdated:false});
+ }catch(e){res.status(400).json({error:String(e.message||e).slice(0,230)});}
 });
 // Category-attribute options are loaded from the official Shopee endpoint.
 // Restrict searches to category/attribute pairs verified by the product audit.
