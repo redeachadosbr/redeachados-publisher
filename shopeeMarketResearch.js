@@ -14,7 +14,7 @@ const normalize=t=>String(t||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'')
 const stops=new Set(['de','do','da','dos','das','com','para','em','e','ou','a','o','na',
  'no','sem','cor','cores','azul','branco','preto','rosa','verde','top','rio','unidade',
  'litros','litro','litre','l','cm','ml','kit','produto','infantil','crianca','criancas',
- 'original','promo','oferta','completo']);
+ 'original','promo','oferta','completo','super','acessorios','acessorio','novo','nova']);
 const wordset=txt=>new Set(normalize(txt).split(' ').filter(s=>s.length>2&&!stops.has(s)));
 const capacity=txt=>{
  const match=normalize(txt).match(/\b(\d{2,5})\s*(l|litros|litro)\b/);
@@ -32,6 +32,18 @@ export function marketSearchKeywords(title){
  const cap=capacity(title);
  return [...unique,cap?cap+' litros':''].filter(Boolean).join(' ').slice(0,100);
 }
+export function marketSearchQueries(title){
+ const exact=marketSearchKeywords(title),normalized=normalize(title);
+ let variants=[];
+ if(/\bmochila\b/.test(normalized)&&/\b(construtor|ferramentas|ferramenta|oficina)\b/.test(normalized)){
+  variants=['mochila construtor ferramentas','mochila ferramentas brinquedo',
+   'mochila bancada ferramentas infantil','maleta mochila ferramentas brinquedo'];
+ }else{
+  const words=exact.split(' ').filter(Boolean);
+  variants=[words.slice(0,3).join(' '),words.slice(-3).join(' '),words.slice(0,2).join(' ')];
+ }
+ return [...new Set([exact,...variants].map(v=>v.trim()).filter(v=>v.split(' ').length>=2))].slice(0,5);
+}
 export function comparableTitle(source,candidate){
  const src=wordset(source),dst=wordset(candidate);
  const cap=capacity(source),other=capacity(candidate);
@@ -39,6 +51,13 @@ export function comparableTitle(source,candidate){
  const size=dimension(source),size2=dimension(candidate);
  if(size&&size2&&size!==size2)return false;
  if(banned.test(normalize(candidate))&&!banned.test(normalize(source)))return false;
+ const sourceText=normalize(source),candidateText=normalize(candidate);
+ if(/\bmochila\b/.test(sourceText)&&/\b(construtor|ferramentas|ferramenta|oficina)\b/.test(sourceText)){
+  if(!/\bmochila\b/.test(candidateText)||!/\b(construtor|ferramentas|ferramenta|oficina)\b/.test(candidateText))return false;
+  if(/\b(profissional|pedreiro|eletricista|lona|impermeavel|oxford)\b/.test(candidateText))return false;
+  if(!/\b(infantil|crianca|criancas|brinquedo|brinquedos|kids|construtor|oficina|3 em 1)\b/.test(candidateText))return false;
+  return true;
+ }
  const overlap=[...src].filter(w=>dst.has(w)).length;
  return overlap>=Math.max(2,Math.min(3,src.size));
 }
