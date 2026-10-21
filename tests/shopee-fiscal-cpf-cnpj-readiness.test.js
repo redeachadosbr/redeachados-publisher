@@ -52,8 +52,8 @@ test('backend removeu gate CPF/CNPJ e mantém execução fiscal opt-in',()=>{
  const server=readFileSync(new URL('../server.js',import.meta.url),'utf8');
  assert.doesNotMatch(server,/readShopeeFiscalReadiness|saveShopeeFiscalReadiness|fiscalCanPublish|pendingFiscalReason/);
  assert.doesNotMatch(server,/app\.(?:get|post)\('\/api\/shopee\/optimizer\/fiscal\/readiness'/);
- assert.match(server,/omitFiscal:selectedStage==='all'/);
- assert.match(server,/omitFiscal:plan\.selectedStage==='all'/);
+ assert.match(server,/omitFiscal:false/);
+ assert.match(server,/finalFiscal/);
  assert.match(server,/plan\.selectedStage!=='fiscal'/);
  const begin=server.indexOf("app.post('/api/shopee/optimizer/batch/fiscal/prepare'");
  const finish=server.indexOf("app.post('/api/shopee/optimizer/batch/fiscal/execute'",begin);
