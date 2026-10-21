@@ -43,6 +43,10 @@ export async function saveWorkflowReview(shop,item,model,sku,change){
  if(change.imageNotes!==undefined)next.imageNotes={...(state.imageNotes||{}),...change.imageNotes};
  if(change.title!==undefined)next.draftTitle=change.title;
  if(change.description!==undefined)next.draftDescription=change.description;
+ if(change.titleOrigin!==undefined)next.titleOrigin=String(change.titleOrigin);
+ if(change.descriptionOrigin!==undefined)next.descriptionOrigin=String(change.descriptionOrigin);
+ if(change.previousGeneratedDescription!==undefined)
+   next.previousGeneratedDescription=String(change.previousGeneratedDescription).slice(0,3000);
  await api('?on_conflict=shop_id,item_id,model_id',{
    method:'POST',body:[{shop_id:num(shop),item_id:num(item),model_id:num(model),
      sku,review_state:next,updated_at:new Date().toISOString()}]
