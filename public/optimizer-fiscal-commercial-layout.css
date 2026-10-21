@@ -302,3 +302,16 @@
 #tab-optimizer .ra-optimizer-side-by-side .optimizer-exec-discount-controls input{padding:8px 10px!important}
 #tab-optimizer .ra-optimizer-side-by-side #optimizerExecDiscountResult{padding:8px 10px!important;margin:8px 0 0!important;font-size:10px!important}
 @media(min-width:1250px){#tab-optimizer .ra-optimizer-side-by-side .optimizer-exec-discount-values{grid-template-columns:repeat(4,minmax(0,1fr))!important}}
+
+/* Correção: os avisos têm ícone absoluto; reservar a área esquerda após compactação. */
+#tab-optimizer .ra-optimizer-side-by-side #optimizerExecFiscalNote,
+#tab-optimizer .ra-optimizer-side-by-side #optimizerExecDiscountMessage{
+  display:block!important;box-sizing:border-box!important;
+  padding:10px 11px 10px 42px!important;
+  min-height:40px!important;line-height:1.45!important;
+}
+#tab-optimizer .ra-optimizer-side-by-side #optimizerExecFiscalNote::before,
+#tab-optimizer .ra-optimizer-side-by-side #optimizerExecDiscountMessage::before{
+  left:12px!important;top:50%!important;transform:translateY(-50%)!important;
+  width:18px!important;height:18px!important;pointer-events:none;
+}
