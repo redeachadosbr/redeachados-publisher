@@ -81,7 +81,13 @@ export function supplierAttributeSuggestions({attributes=[],proposed=[],supplier
   const active=selectedValue(attr,proposed);
   if(equal(value,active))return;
   if(onlyIfMissing&&active)return;
-  const official=list(attr.options).find(x=>Number(x.id)>0&&equal(x.name,value));
+  // Tamanho N2/Nº 2 pode estar grafado de formas diferentes na opção oficial.
+  // Só reconciliar essas grafias para atributo de tamanho, mantendo ID original.
+  const isNumericSize=/^(?:ball size|tamanho da bola)$/.test(plain(attr.name));
+  const normalizedNumber=x=>plain(x).replace(/^(?:n(?:umero)?[.º°o]*\s*)?(\d{1,2})$/,'$1');
+  const official=list(attr.options).find(x=>Number(x.id)>0&&
+    (equal(x.name,value)||(isNumericSize&&normalizedNumber(x.name)===normalizedNumber(value)&&
+    /^\d{1,2}$/.test(normalizedNumber(value)))));
   const custom=[2,3,5].includes(Number(attr.inputType));
   if(!official&&!custom){
    unresolved.push({attributeId:attr.id,name:attr.name,value,
@@ -179,8 +185,8 @@ export function supplierAttributeSuggestions({attributes=[],proposed=[],supplier
     const normalized=plain(lines[i]);
     const colon=normalized.match(/^([^:=-]{2,65})\s*[:=-]\s*(.{1,110})$/);
     let candidate=null;
-    if(colon&&labelsPlain.includes(colon[1].trim()))candidate=lines[i].slice(lines[i].indexOf(':')+1).trim()||colon[2];
-    if(!candidate&&labelsPlain.includes(normalized)&&i+1<lines.length&&lines[i+1].length<=90)
+    if(colon&&labelsPlain.includes(colon[1].trim()))candidate=lines[i].match(/^[^:=-]{2,65}\s*[:=-]\s*(.{1,110})$/)?.[1]?.trim()||colon[2];
+    if(!candidate&&labelsPlain.includes(normalized.replace(/[:=-]\s*$/,''))&&i+1<lines.length&&lines[i+1].length<=90)
       candidate=lines[i+1];
     if(candidate&&candidate.length<=110)return {value:candidate.trim(),source:src.label};
    }
@@ -215,7 +221,6 @@ export function supplierAttributeSuggestions({attributes=[],proposed=[],supplier
   }else if(/^(?:ball size|tamanho da bola)$/.test(n)){
    hit=suppliedValue(['ballSize'],['tamanho da bola','ball size']);
    if(!hit&&/\bbola\b/i.test(sourceName)){
-    const size=sourceName.match(/\b(?:n[.º°o]*\s*)?(\d{1,2})\b/i);
     const explicit=sourceName.match(/\b(?:n[.º°o]*\s*|tamanho\s*)(\d{1,2})\b/i);
     if(explicit)hit={value:explicit[1],source:supplierName+' · tamanho indicado no nome do produto'};
    }
