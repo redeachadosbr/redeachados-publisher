@@ -1,0 +1,8 @@
+#tab-optimizer .optimizer-fiscal-batch-actions{display:flex;flex-direction:column;gap:10px;align-items:stretch}
+#tab-optimizer #optimizerFiscalMigrationRun.ra-fiscal-main-action{width:100%;min-height:58px;background:linear-gradient(145deg,#109454,#08713e);border:1px solid #087e47;color:#fff;font-size:16px;font-weight:850;border-radius:14px;box-shadow:0 7px 15px rgba(6,95,57,.18);cursor:pointer}
+#tab-optimizer #optimizerFiscalMigrationRun.ra-fiscal-main-action:hover:not(:disabled){filter:brightness(1.07);transform:translateY(-1px)}
+#tab-optimizer #optimizerFiscalMigrationRun.ra-fiscal-main-action:disabled{opacity:.65;cursor:wait}
+#tab-optimizer .ra-fiscal-advanced{width:100%;border:1px solid #dce6f2;border-radius:11px;background:#f7faff;padding:10px}
+#tab-optimizer .ra-fiscal-advanced>summary{cursor:pointer;color:#415d7e;font-size:12px;font-weight:700}
+#tab-optimizer .ra-fiscal-advanced-actions{display:flex;flex-wrap:wrap;gap:8px;margin-top:12px}
+#tab-optimizer .ra-fiscal-advanced-actions>button{flex:1 1 145px;min-width:0}
