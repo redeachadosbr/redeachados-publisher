@@ -19,6 +19,7 @@
 <link rel="stylesheet" href="/optimizer-technical-import.css?v=1.20.28">
 <link rel="stylesheet" href="/optimizer-description.css?v=1.20.30">
 <link rel="stylesheet" href="/optimizer-fiscal-last.css?v=1.20.31">
+<link rel="stylesheet" href="/optimizer-discount-last.css?v=1.20.36">
 </head>
 <body>
 <div class="shell app-layout">
@@ -455,6 +456,28 @@
             </div>
             <div id="optimizerExecFiscalValues" class="optimizer-exec-fiscal-values"></div>
             <p id="optimizerExecFiscalNote" class="optimizer-exec-fiscal-note">Os dados fiscais devem ser confirmados separadamente pela API. CEST “00” não é um código fiscal válido.</p>
+          </section>
+          <section id="optimizerExecDiscountFinal" class="optimizer-exec-discount-last" aria-label="Última etapa comercial: preço e desconto">
+            <div class="optimizer-exec-discount-heading">
+              <span>08</span>
+              <div><strong>Preço e desconto — última etapa comercial</strong>
+                <small id="optimizerExecDiscountState">Preparando custo WeDrop e pesquisa de mercado da SKU...</small>
+              </div>
+            </div>
+            <div id="optimizerExecDiscountValues" class="optimizer-exec-discount-values" aria-live="polite"></div>
+            <p id="optimizerExecDiscountMessage">O desconto é calculado ao localizar a SKU; a publicação exige uma campanha Shopee validada e sua autorização.</p>
+            <div class="optimizer-exec-discount-controls">
+              <label for="optimizerExecDiscountCampaign">ID da campanha Minha Promoção
+                <input id="optimizerExecDiscountCampaign" inputmode="numeric" maxlength="18" placeholder="Informe o ID da promoção" autocomplete="off">
+              </label>
+              <button type="button" id="optimizerExecDiscountPreview" class="secondary" disabled>Conferir promoção</button>
+              <button type="button" id="optimizerExecDiscountApply" disabled hidden>Aplicar desconto final na Shopee</button>
+            </div>
+            <label id="optimizerExecDiscountPriceApproval" class="optimizer-exec-discount-price-approval" hidden>
+              <input id="optimizerExecDiscountPriceConsent" type="checkbox">
+              Autorizo também atualizar o preço bruto na Shopee, se necessário. Se o desconto falhar, o preço bruto poderá permanecer alterado.
+            </label>
+            <p id="optimizerExecDiscountResult" class="optimizer-notice" role="status" aria-live="polite">Nenhuma alteração de preço ou promoção enviada à Shopee.</p>
           </section>
 
         </div>
@@ -1488,7 +1511,7 @@
 <script src="/optimizer-dashboard.js?v=1.20.11"></script>
 <script src="/dashboard-new-listings.js?v=1.20.21-shopee"></script>
 <script src="/title-studio.js?v=1.20.27"></script>
-<script src="/app.js?v=1.20.35-matrix-all-skus"></script>
+<script src="/app.js?v=1.20.36-auto-market-discount"></script>
 <script src="/optimizer-fiscal-premium.js?v=1.20.32"></script>
 </body>
 </html>
