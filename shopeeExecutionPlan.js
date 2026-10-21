@@ -3,6 +3,7 @@ import {compileAttributes,compileTax,sameData,sameShopeeAttributes,fieldsVerifie
 import {inspectAnatelCompliance} from './shopeeAnatel.js';
 import {imagesSignature} from './shopeePreparedImages.js';
 import {normalizedTitle,validateContentRules} from './shopeeOptimizationWorkflow.js';
+import {isShopeeCestConfirmed} from './shopeeMatrixRules.js';
 
 // Preparation is deterministic for one verified item/model/SKU. This module
 // never calls Shopee, and never considers a reviewed checkbox a published item.
@@ -70,15 +71,15 @@ export function compileShopeeExecutionPlan({shopId,itemId,modelId,sku,record,rev
   }catch(e){blocked.push('Anatel: não foi possível revalidar a ficha. '+e.message);}
   // A rejected fiscal update must not turn unrelated, already reviewed
   // content and media stages into a permanent CEST hostage.
-  // The field remains blank. Do NOT send an invented CEST, "00", or tax_info.
+  // The UI may display "00", but this is not a real CEST and is NEVER sent as tax_info.cest.
   // Shopee may still reject update_item; that is reported from the API.
   const fiscalDeferred=selected('fiscal')&&(
     Boolean(omitFiscal)||selectedStage!=='fiscal'&&Boolean(deferUnconfirmedFiscal)&&
-    !String(state.tax?.cest||'').trim()&&
-    !String(live?.tax_info?.cest||'').trim());
+    !isShopeeCestConfirmed(state.tax?.cest)&&
+    !isShopeeCestConfirmed(live?.tax_info?.cest));
   if(fiscalDeferred){
     warnings.push(omitFiscal?'Dados fiscais permanecem salvos no Motor Matriz. O modo Todas as etapas não envia tax_info; o envio fiscal exige selecionar somente Informações fiscais e confirmar a prévia.':
-      'CEST em branco: dados fiscais não serão enviados nesta execução. Imagens, vídeo e conteúdo aprovados serão preparados separadamente. A Shopee poderá solicitar a regularização fiscal.');
+      'CEST 00/sem código real: dados fiscais não serão enviados nesta execução. Imagens, vídeo e conteúdo aprovados serão preparados separadamente. A Shopee poderá solicitar a regularização fiscal.');
   }else if(selected('fiscal')&&stages.fiscal?.reviewed&&state.tax){
     try{const tax=compileTax(state.tax,live);if(!sameData(tax,live.tax_info||{}))proposed.tax_info=tax;}
     catch(e){blocked.push(e.message);}
