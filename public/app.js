@@ -5073,7 +5073,10 @@ async function shPricePrepare({silent=false}={}){
   const btn=$('#priceRecalculate');btn.disabled=true;
   const selected={...shPriceSelection};
   const marginKey=[selected.sku,selected.itemId,selected.modelId].join('|');
-  if(shManualMarginSkuKey!==marginKey){shManualMarginChoice=false;shManualMarginSkuKey=marginKey;}
+  if(shManualMarginSkuKey!==marginKey){
+    shManualMarginChoice=$('#optimizerQuickMargin')?.dataset?.manualMargin==='true';
+    shManualMarginSkuKey=marginKey;
+  }
   pricingShowSelection(selected);
   if(!silent)shPriceSetStatus('Conferindo o custo WeDrop salvo e preparando o desconto da SKU...');
   shQuickSetStatus('Calculando preço bruto e desconto da SKU '+selected.sku+'...');
@@ -5083,19 +5086,23 @@ async function shPricePrepare({silent=false}={}){
     if($('#priceAdsEnabled').checked&&!(Number($('#priceAds').value)>0))
       throw Error('Informe um adicional Ads superior a 0% para esta SKU.');
     const market=$('#priceMarketAvg').value.trim();
+    const manualOverride=shManualMarginChoice||$('#optimizerQuickMargin')?.dataset?.manualMargin==='true';
+    const requestedMargin=Number($('#optimizerQuickMargin').value);
     const d=await json('/api/shopee/optimizer/pricing/prepare',{
       method:'POST',headers:{'Content-Type':'application/json'},
       body:JSON.stringify({...selected,settings:shPriceReadSettings(),
         adsBudgetEnabled:$('#priceAdsEnabled').checked,
         adsBudgetPct:$('#priceAdsEnabled').checked?Number($('#priceAds').value):0,
         marketAverage:market===''?null:Number(market),
-        marginOverride:shManualMarginChoice}),
+        marginOverride:manualOverride}),
       // Até cinco buscas sequenciais de ofertas podem levar mais de 35 segundos.
       signal:AbortSignal.timeout(75000)
     });
     if(shPriceSelection?.sku!==selected.sku||
       shPriceSelection?.itemId!==selected.itemId||
       shPriceSelection?.modelId!==selected.modelId)return;
+    if(manualOverride&&Number(d.quote?.netMarginPct)+0.01<requestedMargin)
+      throw Error('O motor retornou margem inferior aos '+requestedMargin+'% escolhidos. Cotação rejeitada; nenhum preço foi publicado.');
     shPriceRender(d.quote);
   }catch(e){
     if(shPriceSelection?.sku===selected.sku&&shPriceSelection?.itemId===selected.itemId){
@@ -5123,6 +5130,7 @@ for(const [selector,delta] of [['#optimizerMarginPlus',1],['#optimizerMarginMinu
  });
 }
 $('#optimizerQuickMargin')?.addEventListener?.('input',()=>{
+  $('#optimizerQuickMargin').dataset.manualMargin='true';
   shManualMarginChoice=true;
   if(shPriceSelection)shManualMarginSkuKey=[shPriceSelection.sku,shPriceSelection.itemId,shPriceSelection.modelId].join('|');
   $('#priceMargin').value=$('#optimizerQuickMargin').value;
@@ -5137,6 +5145,7 @@ $('#optimizerQuickMargin')?.addEventListener?.('input',()=>{
   }
 });
 $('#priceMargin')?.addEventListener?.('input',()=>{
+  $('#optimizerQuickMargin').dataset.manualMargin='true';
   shManualMarginChoice=true;
   if(shPriceSelection)shManualMarginSkuKey=[shPriceSelection.sku,shPriceSelection.itemId,shPriceSelection.modelId].join('|');
   shPriceRefreshMarginLabel();shQuickSyncSlider();
