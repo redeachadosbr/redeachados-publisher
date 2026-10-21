@@ -3099,6 +3099,7 @@ function optimizerDiscountFinalPaint(){
  }
  const eligible=active&&optimizerDiscountFinalEligible(q);
  const verified=optimizerExecJob?.state==='verified'&&
+  optimizerExecJob?.plan?.selectedStage==='all'&&
   optimizerExecJob?.result?.phase!=='verified_partial'&&
   String(optimizerExecJob.sku||optimizerExecJob.plan?.sku||'')===String(w?.sku)&&
   String(optimizerExecJob.plan?.itemId||'')===String(w?.itemId);
@@ -3160,7 +3161,8 @@ async function optimizerDiscountFinalPrepare({automatic=false}={}){
     key!==[String(q.sku),String(q.itemId),String(q.modelId)].join('|'))return;
  const campaign=String($('#optimizerExecDiscountCampaign').value||'').trim();
  if(!optimizerDiscountFinalEligible(q)||!/^\d{1,18}$/.test(campaign)||
-   optimizerExecJob?.state!=='verified'||optimizerExecJob?.result?.phase==='verified_partial')
+   optimizerExecJob?.state!=='verified'||optimizerExecJob?.plan?.selectedStage!=='all'||
+   optimizerExecJob?.result?.phase==='verified_partial')
    return optimizerDiscountFinalPaint();
  const previewKey=key+'|'+campaign+'|'+String(q.calculatedAt||'');
  if(automatic&&previewKey===optimizerDiscountFinalPreviewKey)return;
@@ -3210,7 +3212,8 @@ $('#optimizerExecDiscountApply')?.addEventListener('click',async()=>{
     key!==[String(data.preview?.sku),String(data.preview?.itemId),String(data.preview?.modelId)].join('|'))
   return optimizerDiscountFinalStatus('A SKU ou a variação mudou. Gere nova prévia sem reenviar o desconto.','warning');
  if(!optimizerDiscountFinalEligible(optimizerDiscountFinalQuote)||
-    optimizerExecJob?.state!=='verified'||optimizerExecJob?.result?.phase==='verified_partial')return;
+    optimizerExecJob?.state!=='verified'||optimizerExecJob?.plan?.selectedStage!=='all'||
+    optimizerExecJob?.result?.phase==='verified_partial')return;
  const approved=data.preview;
  if(approved.needsBasePriceUpdate&&!$('#optimizerExecDiscountPriceConsent').checked){
   optimizerDiscountFinalStatus('Autorize a atualização do preço bruto antes de enviar.','warning');return;
@@ -3613,7 +3616,8 @@ function optimizerExecutionJobView(job,progress=null,issue=null){
  optimizerExecutionIssueRender(issue);
  optimizerExecJob=job;
  optimizerDiscountFinalPaint();
- if(job?.state==='verified'&&job?.result?.phase!=='verified_partial'&&
+ if(job?.state==='verified'&&job?.plan?.selectedStage==='all'&&
+    job?.result?.phase!=='verified_partial'&&
     optimizerDiscountFinalEligible(optimizerDiscountFinalQuote))
   void optimizerDiscountFinalPrepare({automatic:true});
  if(!job)globalThis.OptimizerSkuDashboard?.execution?.(null,null);
