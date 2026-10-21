@@ -9,8 +9,8 @@
   const savedTerms=new Map();
   const setLabel=(e,v)=>{e.textContent=v;return e;};
   function facts(data){
-    const title=clean(data.productTitle||data.draftTitle||'Produto');
-    const supplier=clean(data.supplierProduct?.name||'');
+    const title=withoutInternalCode(data.productTitle||data.draftTitle||'Produto',data.sku);
+    const supplier=withoutInternalCode(data.supplierProduct?.name||'',data.sku);
     const brand=clean(data.supplierProduct?.brand||'');
     const raw=[title,supplier];
     let kind='generic',phrases=[];
@@ -41,6 +41,18 @@
     // Nunca usar características de concorrentes ou promessa comercial como fato do produto.
     if(brand&&brand.length<35&&!/^(sem marca|gen[eé]rico|n[ãa]o informado|outros)$/i.test(brand))phrases.unshift(brand);
     return {title,supplier,brand,kind,phrases};
+  }
+  // O SKU e os códigos internos do catálogo não são termos de busca.
+  // A limpeza atua nas SUGESTÕES, nunca no título editado manualmente.
+  function withoutInternalCode(value,sku=''){
+    const normalized=clean(value);
+    return clean(normalized.split(/\s+/).filter(word=>{
+      const token=word.replace(/^[^\p{L}\p{N}]+|[^\p{L}\p{N}]+$/gu,'');
+      if(!token)return true;
+      if(sku&&token.toLowerCase()===String(sku).toLowerCase())return false;
+      return !/^(?=[a-z0-9-]{5,}$)(?=[a-z0-9-]*[a-z])(?=[a-z0-9-]*\d)[a-z0-9-]+$/i.test(token)||
+        /^(?:\d+(?:w|v|ml|l|cm|mm|kg)|n\d{1,2})$/i.test(token);
+    }).join(' '));
   }
   function variants(f,manual){
     const confirmed=manual.split(/[,;\n]/).map(clean).filter(x=>x.length>=3&&count(x)<=45).slice(0,12);
@@ -158,7 +170,7 @@
     }
       for(const [i,o] of output.entries()){
         const n=count(o.title),score=rating(o.title,f.kind);
-        const card=el('article','seo-studio-card'+(n===LIMIT&&!o.duplicate?' valid':' needs-review'));
+        const card=el('article','seo-studio-card'+(n>0&&n<=LIMIT&&!o.duplicate?' valid':' needs-review'));
         const meta=el('div','seo-studio-card-top');
         const group=el('div','seo-studio-option');
         group.append(el('strong','','0'+(i+1)+' · '+o.name),el('small','',o.subtitle));
@@ -167,8 +179,8 @@
         meta.append(group,meter);card.append(meta);
         card.append(el('p','seo-studio-candidate',o.title));
         const keys=el('div','seo-studio-metrics');
-        keys.append(el('span',n===LIMIT&&!o.duplicate?'seo-studio-ok':'seo-studio-caution',n+'/120 caracteres'+(o.duplicate?' · opção repetida':'')),
-          el('span','','⚡ '+(n===LIMIT?'Pronto para revisão':'Ajustar para 120')));
+        keys.append(el('span',n>0&&n<=LIMIT&&!o.duplicate?'seo-studio-ok':'seo-studio-caution',n+'/120 caracteres'+(o.duplicate?' · opção repetida':'')),
+          el('span','','⚡ '+(n<=LIMIT?'Pronto para revisão':'Reduzir para até 120')));
         card.append(keys,el('p','seo-studio-why',o.reason));
         const actions=el('div','seo-studio-card-actions');
         const choose=el('button','seo-studio-choose','✓ Usar este título');choose.type='button';
@@ -176,7 +188,7 @@
           onChoose(o.title);
           for(const c of grid.querySelectorAll('.seo-studio-card'))c.classList.remove('selected');
           card.classList.add('selected');
-          setLabel(status,n===LIMIT?'Título selecionado. Revise e registre a conferência para salvar.':'Título selecionado. Complete os caracteres necessários no campo manual antes de salvar.');
+          setLabel(status,n<=LIMIT?'Título selecionado. Revise e registre a conferência para salvar.':'Título longo demais. Reduza para até 120 caracteres.');
         };
         const copy=el('button','secondary seo-studio-copy','Copiar');copy.type='button';
         copy.onclick=()=>copyText(o.title,status);
