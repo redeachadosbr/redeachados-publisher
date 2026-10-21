@@ -3551,36 +3551,59 @@ async function optimizerFiscalBatchPrepare(){
  finally{optimizerFiscalBatchBusy=false;btn.disabled=false;optimizerFiscalBatchRender();}
 }
 $('#optimizerFiscalBatchPrepare')?.addEventListener?.('click',()=>void optimizerFiscalBatchPrepare());
+const FISCAL_ONE_BY_ONE_KEY='ra-fiscal-single-worker-v1';
 async function optimizerFiscalBatchExecute(){
  if(optimizerFiscalBatchBusy)return;
  const selected=optimizerFiscalBatchRows.filter(x=>x.ready&&x.planId&&(x.status||x.state)==='prepared');
  if(!selected.length)return;
  optimizerFiscalBatchBusy=true;
  $('#optimizerFiscalBatchExecute').disabled=true;
- optimizerFiscalBatchNotice('Iniciando somente tax_info para '+selected.length+' SKUs. Cada SKU terá confirmação independente...');
+ const key=selected.map(x=>[x.sku,x.itemId,x.modelId,x.planId].join(':')).join('|');
+ let start=0;
  try{
-  const data=await json('/api/shopee/optimizer/batch/fiscal/execute',{
-   method:'POST',headers:{'Content-Type':'application/json'},
-   body:JSON.stringify({confirmation:'EXECUTAR LOTE FISCAL',acceptPartialExecution:true,
-    items:selected.map(x=>({sku:x.sku,itemId:x.itemId,modelId:x.modelId,planId:x.planId,updatedAt:x.updatedAt}))}),
-   signal:AbortSignal.timeout(240000)
-  });
-  const received=new Map((data.results||[]).map(x=>[x.sku,x]));
-  optimizerFiscalBatchRows=optimizerFiscalBatchRows.map(row=>{
-   const item=received.get(row.sku);
-   return item?{...row,status:item.status,message:item.message}:row;
-  });
-  const refs=optimizerFiscalBatchRows.filter(x=>x.itemId&&x.status==='running')
-   .map(x=>({sku:x.sku,itemId:x.itemId,modelId:x.modelId}));
-  try{if(refs.length)sessionStorage.setItem(SHOPEE_BATCH_SESSION_KEY,JSON.stringify(refs));}catch{}
-  optimizerFiscalBatchNotice((data.results||[]).filter(x=>x.status==='running').length+
-   ' SKUs iniciadas. Os resultados são conferidos pela Shopee e permanecem salvos por SKU.','info');
-  optimizerFiscalBatchRender();
+  const checkpoint=JSON.parse(localStorage.getItem(FISCAL_ONE_BY_ONE_KEY)||'null');
+  if(checkpoint?.key===key&&Number.isInteger(checkpoint.next)&&checkpoint.next>=0&&checkpoint.next<selected.length)
+   start=checkpoint.next;
+ }catch{}
+ try{
+  for(let i=start;i<selected.length;i++){
+   const row=selected[i];
+   optimizerFiscalBatchNotice('Processando SKU '+(i+1)+' de '+selected.length+': '+row.sku+'. Uma por vez, sem alterar preço ou mídia.');
+   // Salvar antes da chamada: em caso de queda, consultar status antes de reenviar.
+   try{localStorage.setItem(FISCAL_ONE_BY_ONE_KEY,JSON.stringify({key,next:i,pending:row.sku}));}catch{}
+   let data;
+   try{
+    data=await json('/api/shopee/optimizer/batch/fiscal/execute',{
+     method:'POST',headers:{'Content-Type':'application/json'},
+     body:JSON.stringify({confirmation:'EXECUTAR LOTE FISCAL',acceptPartialExecution:true,
+      items:[{sku:row.sku,itemId:row.itemId,modelId:row.modelId,planId:row.planId,updatedAt:row.updatedAt}]}),
+     signal:AbortSignal.timeout(120000)
+    });
+   }catch(error){
+    optimizerFiscalBatchNotice('Execução pausada na SKU '+row.sku+': '+error.message+
+      '. Confira o resultado na Shopee antes de retomar para evitar reenvio duplicado.','warning');
+    void optimizerFiscalBatchRefresh();
+    return;
+   }
+   const item=(data.results||[]).find(x=>x.sku===row.sku);
+   if(!item){
+    optimizerFiscalBatchNotice('Resposta sem confirmação da SKU '+row.sku+'. Confira o status antes de continuar.','warning');
+    void optimizerFiscalBatchRefresh();return;
+   }
+   optimizerFiscalBatchRows=optimizerFiscalBatchRows.map(x=>x.sku===row.sku?
+    {...x,status:item.status,message:item.message}:x);
+   optimizerFiscalBatchRender();
+   if(!['running','verified'].includes(item.status)){
+    optimizerFiscalBatchNotice('SKU '+row.sku+' exige revisão: '+(item.message||item.status)+
+      '. Os demais itens não foram enviados; revise antes de continuar.','warning');
+    return;
+   }
+   try{localStorage.setItem(FISCAL_ONE_BY_ONE_KEY,JSON.stringify({key,next:i+1,pending:null}));}catch{}
+  }
+  try{localStorage.removeItem(FISCAL_ONE_BY_ONE_KEY);}catch{}
+  optimizerFiscalBatchNotice('Envio sequencial iniciado para as SKUs aptas. Confira a confirmação de cada uma na Shopee.','success');
   void optimizerFiscalBatchRefresh();
- }catch(e){optimizerFiscalBatchNotice('Execução do lote não confirmada: '+e.message+
-    '. Consulte o status antes de reenviar.','error');
-  void optimizerFiscalBatchRefresh();}
- finally{optimizerFiscalBatchBusy=false;optimizerFiscalBatchRender();}
+ }finally{optimizerFiscalBatchBusy=false;optimizerFiscalBatchRender();}
 }
 $('#optimizerFiscalBatchExecute')?.addEventListener?.('click',()=>void optimizerFiscalBatchExecute());
 async function optimizerFiscalBatchRefresh(){
