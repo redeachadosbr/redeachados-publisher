@@ -90,6 +90,7 @@ test('all returned official options stay available after position 120',()=>{
 test('title validation and execution both count Unicode codepoints without truncating emojis',()=>{
  assert.equal([...title].length,120);assert.ok(title.length>120);assert.equal(safeTitle(title),title);
  assert.equal(validateReview({stage:'seo',reviewed:true,title}).title,title);
+ assert.equal(validateReview({stage:'seo',reviewed:true,title:'Bola Infantil N2 ⚽'}).title,'Bola Infantil N2 ⚽');
  assert.throws(()=>validateReview({stage:'seo',reviewed:true,title:title+'!'}),/120/);
  assert.throws(()=>validateReview({stage:'seo',reviewed:true,title:'Piscina Inflável 210 Litros Azul 💦 Top Rio para Diversão no Verão ☀️ em Plásticos Compacta para Guardar 135 x 88 x 43 cm'}),/medidas lineares/);
  const plan=compileShopeeExecutionPlan({shopId:1,itemId:2,modelId:0,sku:'SKU',record:{itemId:2,sku:'SKU',status:'NORMAL'},
