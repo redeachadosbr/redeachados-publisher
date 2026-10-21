@@ -1791,7 +1791,8 @@ app.post('/api/shopee/optimizer/pricing/prepare',mustLogin,requireWeDropAdmin,as
     const source=market.verified?'researched_affiliate_offers':
       manual!==null?'manual_unverified':'no_verified_competitors';
     const quote=quoteShopeePrice({
-      unitCost:cost.unitCost,settings,marketAverage:reference
+      unitCost:cost.unitCost,settings,marketAverage:reference,
+      marginOverride:req.body?.marginOverride===true
     });
     quote.marketResearch={...market,sourceType:source,
       manualMarketReference:manual!==null&&!market.verified?manual:null,
