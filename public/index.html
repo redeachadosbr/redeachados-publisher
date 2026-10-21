@@ -17,7 +17,7 @@
 <link rel="stylesheet" href="/finance-thumbnails.css?v=1.20.22">
 <link rel="stylesheet" href="/title-studio.css?v=1.20.27">
 <link rel="stylesheet" href="/optimizer-technical-import.css?v=1.20.28">
-<link rel="stylesheet" href="/optimizer-description.css?v=1.20.29">
+<link rel="stylesheet" href="/optimizer-description.css?v=1.20.30">
 </head>
 <body>
 <div class="shell app-layout">
@@ -484,6 +484,17 @@
         <div class="optimizer-workflow-guidance" id="optimizerWorkflowStageGuidance"></div>
         <div id="optimizerSupplierFacts" class="optimizer-source-facts" hidden></div>
         <p id="optimizerDescriptionReady" class="optimizer-description-ready" role="status" hidden></p>
+        <section id="optimizerDescriptionCompact" class="optimizer-description-compact" hidden aria-label="Resumo compacto da descrição">
+          <div class="optimizer-description-compact-heading">
+            <strong>✨ Descrição pronta para revisão</strong><span id="optimizerDescriptionCompactCount">— caracteres</span>
+          </div>
+          <p id="optimizerDescriptionCompactIntro"></p>
+          <div class="optimizer-description-compact-tags">
+            <span>⚙️ Especificações</span><span>📏 Medidas</span><span>❓ 5 dúvidas</span><span>🌟 10 motivos</span>
+          </div>
+          <p id="optimizerDescriptionCompactCta" class="optimizer-description-compact-cta"></p>
+          <button type="button" id="optimizerDescriptionToggle" class="secondary">Editar descrição completa ⌄</button>
+        </section>
         <label class="optimizer-field" id="optimizerWorkflowDraftWrap" hidden>
           <span id="optimizerWorkflowDraftLabel">Minuta editável</span>
           <textarea id="optimizerWorkflowDraft" rows="6" maxlength="6000" aria-label="Minuta para revisão"></textarea>
@@ -1454,7 +1465,7 @@
 <script src="/optimizer-dashboard.js?v=1.20.11"></script>
 <script src="/dashboard-new-listings.js?v=1.20.21-shopee"></script>
 <script src="/title-studio.js?v=1.20.27"></script>
-<script src="/app.js?v=1.20.29-auto-description"></script>
+<script src="/app.js?v=1.20.30-cta-compact"></script>
 <script src="/optimizer-fiscal-premium.js?v=1.20.13"></script>
 </body>
 </html>
