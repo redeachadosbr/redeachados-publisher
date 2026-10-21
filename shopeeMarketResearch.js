@@ -2,10 +2,12 @@
 // Never invent competitor prices or call a static discount "researched".
 // Query covers ONLY affiliate-eligible offers; sample is not entire marketplace.
 import crypto from 'node:crypto';
+import {REDE_ACHADOS_MARKET_RULES,marketMatrixSearchQueries,marketMatrixFamilyCompatible,
+ marketMatrixProfile} from './shopeeMatrixRules.js';
 
 const endpoint='https://open-api.affiliate.shopee.com.br/graphql';
 // API Shopee Afiliados retorna erro 11001 se limit superar 50.
-export const SHOPEE_OFFER_PAGE_LIMIT=50;
+export const SHOPEE_OFFER_PAGE_LIMIT=REDE_ACHADOS_MARKET_RULES.apiPageLimit;
 const env=n=>String(process.env[n]||'').trim();
 export const marketResearchConfigured=()=>Boolean(env('SHOPEE_AFFILIATE_APP_ID')&&
  env('SHOPEE_AFFILIATE_SECRET'));
@@ -33,31 +35,57 @@ export function marketSearchKeywords(title){
  return [...unique,cap?cap+' litros':''].filter(Boolean).join(' ').slice(0,100);
 }
 export function marketSearchQueries(title){
- const exact=marketSearchKeywords(title),normalized=normalize(title);
- let variants=[];
- if(/\bmochila\b/.test(normalized)&&/\b(construtor|ferramentas|ferramenta|oficina)\b/.test(normalized)){
-  variants=['mochila construtor ferramentas','mochila ferramentas brinquedo',
-   'mochila bancada ferramentas infantil','maleta mochila ferramentas brinquedo'];
- }else{
-  const words=exact.split(' ').filter(Boolean);
-  variants=[words.slice(0,3).join(' '),words.slice(-3).join(' '),words.slice(0,2).join(' ')];
- }
- return [...new Set([exact,...variants].map(v=>v.trim()).filter(v=>v.split(' ').length>=2))].slice(0,5);
+ return marketMatrixSearchQueries(title,marketSearchKeywords(title));
 }
+// Características essenciais das variações não podem ser misturadas
+// só porque os anúncios têm palavras parecidas (ex. 900ml vs 750ml).
+const comparableSpecs=(source,candidate)=>{
+ const sn=normalize(source),cn=normalize(candidate);
+ const cap=txt=>{
+  const m=normalize(txt).match(/\b(\d{1,5})\s*(ml|mililitros|litros|litro|l)\b/);
+  return m?Number(m[1])*(m[2]==='ml'||m[2]==='mililitros'?1:1000):null;
+ };
+ const integer=(txt,re)=>{
+  const m=normalize(txt).match(re);
+  return m?Number(m[1]):null;
+ };
+ const metric=(txt,re)=>{
+  const m=String(txt||'').replace(',','.').toLowerCase().match(re);
+  return m?Number(m[1]):null;
+ };
+ const specs=[
+  [cap(source),cap(candidate)],
+  [integer(source,/\b(\d{2,4})\s*w\b/),integer(candidate,/\b(\d{2,4})\s*w\b/) ],
+  [integer(source,/\b(110|127|220|240)\s*v\b/),integer(candidate,/\b(110|127|220|240)\s*v\b/) ],
+  [integer(source,/\b(\d{1,4})\s*(?:pecas|pcs|pçs|itens)\b/),
+   integer(candidate,/\b(\d{1,4})\s*(?:pecas|pcs|pçs|itens)\b/) ],
+  [integer(source,/\b(\d)\s*(?:andares|andar|niveis|nivel)\b/),
+   integer(candidate,/\b(\d)\s*(?:andares|andar|niveis|nivel)\b/) ],
+  [integer(source,/\b(\d{2,4})\s*galhos\b/),integer(candidate,/\b(\d{2,4})\s*galhos\b/) ],
+  [metric(source,/\b(\d(?:\.\d{1,2})?)\s*m(?:etros?)?\b/),
+   metric(candidate,/\b(\d(?:\.\d{1,2})?)\s*m(?:etros?)?\b/)]
+ ];
+ if(specs.some(([a,b])=>a!==null&&(b===null||Math.abs(a-b)>0.01)))return false;
+ // Mesmo sem especificação numérica, materiais e formatos incompatíveis importam.
+ if(/\binox\b/.test(sn)&&/\bplastico\b/.test(cn)&&!/\binox\b/.test(cn))return false;
+ const size=dimension(source),otherSize=dimension(candidate);
+ if(size&&otherSize&&size!==otherSize)return false;
+ return true;
+};
 export function comparableTitle(source,candidate){
+ if(!source||!candidate)return false;
  const src=wordset(source),dst=wordset(candidate);
- const cap=capacity(source),other=capacity(candidate);
- if(cap!==null&&(other===null||cap!==other))return false;
- const size=dimension(source),size2=dimension(candidate);
- if(size&&size2&&size!==size2)return false;
- if(banned.test(normalize(candidate))&&!banned.test(normalize(source)))return false;
  const sourceText=normalize(source),candidateText=normalize(candidate);
- if(/\bmochila\b/.test(sourceText)&&/\b(construtor|ferramentas|ferramenta|oficina)\b/.test(sourceText)){
-  if(!/\bmochila\b/.test(candidateText)||!/\b(construtor|ferramentas|ferramenta|oficina)\b/.test(candidateText))return false;
-  if(/\b(profissional|pedreiro|eletricista|lona|impermeavel|oxford)\b/.test(candidateText))return false;
-  if(!/\b(infantil|crianca|criancas|brinquedo|brinquedos|kids|construtor|oficina|3 em 1)\b/.test(candidateText))return false;
-  return true;
- }
+ const family=marketMatrixFamilyCompatible(source,candidate);
+ if(family===false)return false;
+ if(!comparableSpecs(source,candidate))return false;
+ const accessories=/\b(capa|inflador|bomba|adesivo|reparo|conserto|borda|filtro|somente|pecas avulsas|acessorio avulso|refil|reposicao)\b/;
+ if(accessories.test(candidateText)&&!accessories.test(sourceText))return false;
+ if(marketMatrixProfile(source).family==='mochila_construtor'&&
+    /\b(profissional|pedreiro|eletricista|lona|impermeavel|oxford)\b/.test(candidateText))return false;
+ if(family===true)return true;
+ // SKU de qualquer categoria nova: duas palavras do nome-base coincidentes.
+ // Apenas uma palavra comum não autoriza chamar produtos diferentes de iguais.
  const overlap=[...src].filter(w=>dst.has(w)).length;
  return overlap>=Math.max(2,Math.min(3,src.size));
 }
@@ -70,8 +98,8 @@ const median=arr=>{
  const middle=Math.floor(ordered.length/2);
  return ordered.length%2?ordered[middle]:(ordered[middle-1]+ordered[middle])/2;
 };
-export const MARKET_COMPARISON_MIN=2;
-export const MARKET_COMPARISON_MAX=5;
+export const MARKET_COMPARISON_MIN=REDE_ACHADOS_MARKET_RULES.minimumOffers;
+export const MARKET_COMPARISON_MAX=REDE_ACHADOS_MARKET_RULES.maximumOffers;
 // Amostra observada de 2 até 5 anúncios diferentes, não estimativa de demanda.
 export function evaluateMarketOffers({title,offers=[],ownItemId,ownShopId,queriedAt=new Date().toISOString()}){
  const comparable=[],seen=new Set();
@@ -83,7 +111,7 @@ export function evaluateMarketOffers({title,offers=[],ownItemId,ownShopId,querie
   seen.add(key);
   if(!comparableTitle(title,offer.productName))continue;
   const min=asPrice(offer.priceMin),max=asPrice(offer.priceMax);
-  if(min===null||max===null||max<min||max>min*1.3)continue;
+  if(min===null||max===null||max<min||max>min*REDE_ACHADOS_MARKET_RULES.maxVariantPriceRatio)continue;
   const targetWords=wordset(title),candidateWords=wordset(offer.productName);
   const overlap=[...targetWords].filter(x=>candidateWords.has(x)).length;
   const similarity=overlap/Math.max(1,targetWords.size);
@@ -96,7 +124,8 @@ export function evaluateMarketOffers({title,offers=[],ownItemId,ownShopId,querie
   reason:'Menos de 2 anúncios comparáveis encontrados para esta SKU.'};
  const center=median(comparable.map(x=>x.price));
  // Evitar que anúncio de acessório ou preço promocional anômalo contamine a média.
- const filtered=comparable.filter(x=>x.price>=center*.65&&x.price<=center*1.55);
+ const filtered=comparable.filter(x=>x.price>=center*REDE_ACHADOS_MARKET_RULES.minimumPriceRatioToMedian&&
+  x.price<=center*REDE_ACHADOS_MARKET_RULES.maximumPriceRatioToMedian);
  filtered.sort((a,b)=>b.similarity-a.similarity||
   Math.abs(a.price-center)-Math.abs(b.price-center)||a.price-b.price);
  const shops=new Set(),selected=[];
