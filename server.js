@@ -1244,7 +1244,9 @@ async function runOptimizerJobs(){
    }catch(e){
     const current=await readShopeeExecution(job.shop_id,job.item_id,job.model_id);
     if(current?.run_id!==job.run_id||current.state!=='running')continue;
-    const uncertain=['updating','verifying'].includes(current.result?.phase);
+    // Uma falha após a escrita fiscal pode ter sido aceita pela Shopee.
+    // NUNCA reenviar automaticamente; consultar o resultado antes de qualquer retry.
+    const uncertain=['updating','verifying','fiscal_updating','fiscal_verifying'].includes(current.result?.phase);
     const attempts=Number(current.result?.attempts||0)+1;
     if(!uncertain&&attempts<3&&/fetch|timeout|network|HTTP 5|error_rate_limit/i.test(String(e.message))){
      await checkpointShopeeExecution(job,{...current.result,attempts},attempts*15000);
