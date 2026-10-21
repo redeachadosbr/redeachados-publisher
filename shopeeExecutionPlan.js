@@ -60,15 +60,18 @@ export function compileShopeeExecutionPlan({shopId,itemId,modelId,sku,record,rev
       if(!sameShopeeAttributes(attributes,live.attribute_list||[]))proposed.attribute_list=attributes;
     }catch(e){blocked.push(e.message);}
   }
-  // Verifique também execuções só de título/imagem: a Shopee pode recusar
-  // atualizações se o novo atributo obrigatório estiver sem resposta.
-  try{
-    const technicalDraft=selected('technical')&&stages.technical?.reviewed&&state.attributes?.length
-      ?attributeAuditForChanges(state.attributes,record,live):record.attributeAudit;
-    const anatel=inspectAnatelCompliance(technicalDraft);
-    if(anatel.requiresAction)blocked.push('Anatel: '+anatel.message);
-    else if(anatel.status==='registro-informado')warnings.push('Anatel: número declarado; confira a homologação correspondente ao modelo.');
-  }catch(e){blocked.push('Anatel: não foi possível revalidar a ficha. '+e.message);}
+  // Não bloquear uma alteração EXCLUSIVAMENTE fiscal por atributos técnicos
+  // que NÃO serão modificados: Anatel continua obrigatório para conteúdo,
+  // imagem, vídeo ou ficha técnica quando a árvore de atributos o exigir.
+  if(selectedStage!=='fiscal'){
+    try{
+      const technicalDraft=selected('technical')&&stages.technical?.reviewed&&state.attributes?.length
+        ?attributeAuditForChanges(state.attributes,record,live):record.attributeAudit;
+      const anatel=inspectAnatelCompliance(technicalDraft);
+      if(anatel.requiresAction)blocked.push('Anatel: '+anatel.message);
+      else if(anatel.status==='registro-informado')warnings.push('Anatel: número declarado; confira a homologação correspondente ao modelo.');
+    }catch(e){blocked.push('Anatel: não foi possível revalidar a ficha. '+e.message);}
+  }
   // A rejected fiscal update must not turn unrelated, already reviewed
   // content and media stages into a permanent CEST hostage.
   // The UI may display "00", but this is not a real CEST and is NEVER sent as tax_info.cest.
