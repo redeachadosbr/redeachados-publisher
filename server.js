@@ -885,7 +885,7 @@ app.post('/api/shopee/optimizer/workflow/review',mustLogin,requireWeDropAdmin,as
       stages:buildStages(record,state),attributeChanges:state.attributes||[],taxDraft:state.tax||{},draftTitle:state.draftTitle||safeTitle(record.title),
       // Se outra etapa foi salva, mantenha o rascunho gerado na tela em vez de
       // substituí-lo silenciosamente pelo anúncio antigo.
-      ...(state.draftDescription?{draftDescription:state.draftDescription}:{}),
+      ...(change.stage==='description'&&state.draftDescription?{draftDescription:state.draftDescription}:{}),
       variationConfig:state.variationConfig||{enabled:Boolean(record.hasModel),type:'',values:[]},imageNotes:state.imageNotes||{}});
   }catch(e){res.status(400).json({error:String(e.message||e).slice(0,350)});}
 });
