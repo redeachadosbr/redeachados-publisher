@@ -1218,6 +1218,96 @@ app.post('/api/shopee/optimizer/execution/prepare',mustLogin,requireWeDropAdmin,
       updatedAt:stored.updated_at,executionStatus:stored.state,marketplaceUpdated:false});
   }catch(e){res.status(409).json({error:String(e.message||e).slice(0,300)});}
 });
+// Execução fiscal direta: um único roundtrip de preparação + validação +
+// agendamento durável. A autorização veio do único botão autenticado da loja.
+// Não emite NF-e e só altera tax_info no anúncio; nunca preço, imagens ou vídeo.
+app.post('/api/shopee/optimizer/fiscal-migration/execute-one',mustLogin,requireWeDropAdmin,async(req,res)=>{
+ res.setHeader('Cache-Control','no-store');
+ if(!verifiedSameOrigin(req))return res.status(403).json({ok:false,error:'Origem não autorizada.'});
+ try{
+  if(req.body?.confirmation!=='EXECUTAR FISCAL SKU')
+   throw Error('A operação fiscal precisa de autorização expressa.');
+  const sku=validateSkuLookup(req.body?.sku),itemId=validItemId(req.body?.itemId);
+  const modelId=String(req.body?.modelId??'0');
+  if(!/^\d{1,18}$/.test(modelId))throw Error('Modelo inválido.');
+  const {auth,cfg}=await getValidAuth(req);
+  const previousJob=await readShopeeExecution(auth.shopId,itemId,modelId);
+  if(previousJob?.sku===sku&&['running','uncertain'].includes(previousJob.state))
+   return res.json({ok:true,sku,itemId,modelId,status:previousJob.state,
+    message:previousJob.state==='running'?'Envio fiscal já em andamento.':
+      'Envio anterior ainda sem confirmação; a operação não será repetida.'});
+  // Revalidar identidade e categoria diretamente na Shopee antes de qualquer escrita.
+  const record=await auditShopeeItem(cfg,auth,callShopeeShopApi,itemId,
+   {expectedSku:sku,expectedModelId:modelId});
+  if(!['NORMAL','UNLIST'].includes(record.status))
+   throw Error('Anúncio não está em status editável na Shopee.');
+  const existing=await getWorkflowReview(auth.shopId,itemId,modelId);
+  if(existing&&existing.sku!==sku)throw Error('A revisão salva pertence a outra SKU.');
+  const previousTax=existing?.review_state?.tax||{};
+  const supplier=await readWeDropProduct(auth.shopId,{sku,itemId,modelId});
+  const supplierLinked=supplier&&['exact-sku','reviewed-link'].includes(supplier.matchedBy);
+  const sourceNcm=String(supplierLinked?supplier.product_data?.ncm||'':'').replace(/\D/g,'');
+  const manuallySaved=String(previousTax.ncm||'').replace(/\D/g,'');
+  const ncm=manuallySaved||sourceNcm;
+  if(!/^\d{8}$/.test(ncm))
+   throw Error('NCM da SKU ausente: confira cadastro fiscal manual ou importação WeDrop.');
+  if(/^\d{8}$/.test(sourceNcm)&&manuallySaved&&manuallySaved!==sourceNcm)
+   throw Error('NCM manual diferente da WeDrop. Preservado no cadastro para revisão, sem envio.');
+  const unit=suggestFiscalMeasureUnit(record.title||'',supplierLinked?supplier.product_data?.title||'':'');
+  const measureUnit=String(previousTax.measure_unit||'').trim()||unit.unit;
+  if(!measureUnit)throw Error('Unidade fiscal sem informação suficiente: '+unit.reason);
+  const evidence=String(previousTax.evidence||'').trim()||
+   (supplierLinked?'NCM WeDrop '+supplier.supplier_sku+' · '+(supplier.source_file||'catálogo validado'):'');
+  if(!evidence)throw Error('NCM manual sem fonte fiscal registrada; dados preservados para revisão.');
+  const tax={...previousTax,ncm,origin:previousTax.origin||'2',
+   same_state_cfop:previousTax.same_state_cfop||'5106',
+   diff_state_cfop:previousTax.diff_state_cfop||'6106',
+   csosn:previousTax.csosn||'102',
+   pis_cofins_cst:previousTax.pis_cofins_cst||'99',
+   cest:previousTax.cest||'00',measure_unit:measureUnit,evidence};
+  // Validar tudo ANTES de marcar a ficha revisada. A fonte e as escolhas
+  // manuais prevalecem, não se presume CEST real a partir do NCM.
+  compileTax(tax,{tax_info:{}});
+  const source=fiscalMatrixSource({sku,supplier:supplierLinked?supplier:null,tax});
+  if(!existing?.review_state?.stages?.fiscal?.reviewed){
+   await saveWorkflowReview(auth.shopId,itemId,modelId,sku,{
+    stage:'fiscal',reviewed:true,tax,matrixFiscal:source
+   });
+  }
+  const review=await getWorkflowReview(auth.shopId,itemId,modelId);
+  const reviewedTax=review?.review_state?.tax;
+  if(review?.sku!==sku||!review.review_state?.stages?.fiscal?.reviewed||!reviewedTax)
+   throw Error('Os dados fiscais não foram persistidos; operação cancelada.');
+  fiscalMatrixSource({sku,supplier:supplierLinked?supplier:null,tax:reviewedTax,
+   reviewSource:review.review_state.matrixFiscal});
+  const live=await shopeeLiveEditableItem(cfg,auth,itemId);
+  const plan=compileShopeeExecutionPlan({shopId:auth.shopId,itemId,modelId,sku,
+   record,review:review.review_state,live,selectedStage:'fiscal'});
+  if(!plan.canExecute&&!plan.blocked.length&&!plan.proposed.tax_info)
+   return res.json({ok:true,sku,itemId,modelId,status:'already_current',
+    message:'Os campos fiscais da ficha já constam na Shopee; leitura oficial confirmada.'});
+  const disposition=fiscalPreviewDisposition({plan,previousError:previousJob?.last_error,
+   previousPlan:previousJob?.plan});
+  if(!disposition.allowed)
+   return res.json({ok:true,sku,itemId,modelId,status:'blocked',
+    message:disposition.issues.join(' '),needsReview:true});
+  if(!plan.canExecute||Object.keys(plan.proposed||{}).some(k=>k!=='tax_info')||
+    !plan.proposed.tax_info||plan.images?.length||plan.video)
+   return res.json({ok:true,sku,itemId,modelId,status:'blocked',
+    message:plan.blocked.join(' · ')||'Informação fiscal não elegível para envio.'});
+  confirmShopeeExecution(plan,{sku,confirmation:'EXECUTAR '+sku});
+  const saved=await saveShopeePreparedExecution(auth.shopId,itemId,modelId,sku,plan);
+  await claimShopeePreparedExecution(auth.shopId,itemId,modelId,{
+   planId:plan.planId,updatedAt:saved.updated_at,runId:crypto.randomUUID()
+  });
+  res.status(202).json({ok:true,sku,itemId,modelId,status:'running',
+   message:'Atualização fiscal iniciada; aguardando confirmação oficial por SKU.'});
+  void runOptimizerJobs();
+ }catch(error){
+  res.status(409).json({ok:false,error:String(error.message||error).slice(0,280)});
+ }
+});
+
 // BATCH: prepare and execute ONLY fiscal tax_info for distinct exact SKUs.
 // Each item uses the same audited plan, saved review, CAS lock and durable worker
 // as a single-SKU execution. A failed item never cancels other items.
