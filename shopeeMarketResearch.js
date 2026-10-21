@@ -49,34 +49,50 @@ const median=arr=>{
  const middle=Math.floor(ordered.length/2);
  return ordered.length%2?ordered[middle]:(ordered[middle-1]+ordered[middle])/2;
 };
+export const MARKET_COMPARISON_MIN=2;
+export const MARKET_COMPARISON_MAX=5;
+// Amostra observada de 2 até 5 anúncios diferentes, não estimativa de demanda.
 export function evaluateMarketOffers({title,offers=[],ownItemId,ownShopId,queriedAt=new Date().toISOString()}){
  const comparable=[],seen=new Set();
  for(const offer of offers){
   const shop=String(offer.shopId||'').trim(),id=String(offer.itemId||'').trim();
   const key=shop+':'+id;
-  if(!shop||!id||seen.has(key)||shop===String(ownShopId)||id===String(ownItemId))continue;
+  if(!/^\d{1,18}$/.test(shop)||!/^\d{1,18}$/.test(id)||
+     seen.has(key)||shop===String(ownShopId)||id===String(ownItemId))continue;
   seen.add(key);
   if(!comparableTitle(title,offer.productName))continue;
   const min=asPrice(offer.priceMin),max=asPrice(offer.priceMax);
-  if(min===null||max===null||max<min||max>min*1.3)continue; // variant ranges not reliably comparable
+  if(min===null||max===null||max<min||max>min*1.3)continue;
+  const targetWords=wordset(title),candidateWords=wordset(offer.productName);
+  const overlap=[...targetWords].filter(x=>candidateWords.has(x)).length;
+  const similarity=overlap/Math.max(1,targetWords.size);
   comparable.push({title:String(offer.productName).slice(0,180),shopId:shop,
    itemId:id,price:min,url:'https://shopee.com.br/product/'+shop+'/'+id,
-   checkedAt:queriedAt});
+   checkedAt:queriedAt,similarity:Number(similarity.toFixed(3))});
  }
- // Three different stores and tight spreads avoid distorted variant/sponsored prices.
- const uniqueShops=new Set(comparable.map(o=>o.shopId));
- if(comparable.length<3||uniqueShops.size<3)return {verified:false,reference:null,
-  count:comparable.length,sample:comparable.slice(0,8),
-  reason:'Menos de três ofertas equivalentes de lojas diferentes disponíveis para comparação.'};
- const initial=median(comparable.map(o=>o.price));
- const filtered=comparable.filter(o=>o.price>=initial*.65&&o.price<=initial*1.55);
- if(filtered.length<3||new Set(filtered.map(o=>o.shopId)).size<3)
-  return {verified:false,reference:null,count:filtered.length,sample:filtered.slice(0,8),
-   reason:'Preços encontrados muito divergentes; não há amostra consistente.'};
- const reference=Math.round(median(filtered.map(o=>o.price))*100)/100;
- return {verified:true,reference,count:filtered.length,
-  sample:filtered.slice(0,12),reason:null};
+ if(comparable.length<MARKET_COMPARISON_MIN)return {verified:false,reference:null,average:null,
+  count:comparable.length,sample:comparable.slice(0,MARKET_COMPARISON_MAX),
+  reason:'Menos de 2 anúncios comparáveis encontrados para esta SKU.'};
+ const center=median(comparable.map(x=>x.price));
+ // Evitar que anúncio de acessório ou preço promocional anômalo contamine a média.
+ const filtered=comparable.filter(x=>x.price>=center*.65&&x.price<=center*1.55);
+ filtered.sort((a,b)=>b.similarity-a.similarity||
+  Math.abs(a.price-center)-Math.abs(b.price-center)||a.price-b.price);
+ const shops=new Set(),selected=[];
+ for(const offer of filtered){
+  if(shops.has(offer.shopId))continue;
+  shops.add(offer.shopId);selected.push(offer);
+  if(selected.length>=MARKET_COMPARISON_MAX)break;
+ }
+ if(selected.length<MARKET_COMPARISON_MIN)return {verified:false,reference:null,average:null,
+  count:selected.length,sample:selected,
+  reason:'Não há pelo menos 2 lojas diferentes com preços comparáveis consistentes.'};
+ const average=Math.round(selected.reduce((total,o)=>total+o.price,0)/selected.length*100)/100;
+ return {verified:true,reference:average,average,count:selected.length,
+  sample:selected,method:'arithmetic_mean',minimumCount:MARKET_COMPARISON_MIN,
+  maximumCount:MARKET_COMPARISON_MAX,reason:null};
 }
+
 const safeError=e=>String(e?.message||'Falha na consulta').slice(0,170);
 async function lookupShopeeCompetitorsUncached({title,ownShopId,ownItemId}){
  const searchedAt=new Date().toISOString(),keywords=marketSearchKeywords(title);
@@ -104,7 +120,7 @@ async function lookupShopeeCompetitorsUncached({title,ownShopId,ownItemId}){
    ownShopId,ownItemId,queriedAt:searchedAt});
   return {...base,...assessment,status:assessment.verified?'verified':'insufficient_comparables',
    message:assessment.verified?
-    'Referência de ofertas equivalentes da API de afiliados Shopee; amostra não representa todo o mercado.':
+    'Média aritmética de '+assessment.count+' anúncios comparáveis em lojas diferentes (ofertas da API de afiliados Shopee). Amostra parcial do mercado.':
     assessment.reason};
  }catch(e){return {...base,status:'provider_error',
   message:'Não foi possível pesquisar concorrentes: '+safeError(e)};}
