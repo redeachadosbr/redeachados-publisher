@@ -20,3 +20,17 @@
  line-height:1.5;font-weight:700}
 #tab-pricing .pricing-market-top[data-state="success"]{background:#e9f8ef;
  border-color:#c3ebd4;color:#126b43}
+
+/* Comparação 2 a 5 anúncios visível antes dos controles da precificação */
+#tab-pricing .pricing-market-research{margin:14px 0 17px;padding:16px;border-radius:16px;background:#f9fcff}
+#tab-pricing .pricing-market-research-head strong{font-size:15px}
+#tab-pricing .pricing-market-summary{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:9px}
+#tab-pricing .pricing-market-summary>div{background:white;border:1px solid #dae8f5;
+ border-radius:11px;padding:10px 12px;min-width:0}
+#tab-pricing .pricing-market-summary small{display:block;color:#597494;font-size:11px;line-height:1.45}
+#tab-pricing .pricing-market-summary strong{display:block;color:#163963;font-size:19px;margin-top:5px;white-space:normal}
+#tab-pricing .pricing-market-research-offers{grid-template-columns:repeat(auto-fit,minmax(225px,1fr))}
+#tab-pricing .pricing-market-offer{min-height:47px}
+#tab-pricing .pricing-market-offer span{font-size:11px}
+#tab-pricing .pricing-market-offer strong{font-size:13px}
+@media(max-width:790px){#tab-pricing .pricing-market-summary{grid-template-columns:1fr}}
