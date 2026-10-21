@@ -879,8 +879,8 @@ app.post('/api/shopee/optimizer/workflow/review',mustLogin,requireWeDropAdmin,as
     res.json({ok:true,saved:true,marketplaceUpdated:false,sku,itemId,modelId,
       fiscalRegistration:change.stage==='fiscal'?{
         status:'saved_in_matrix',registered:true,shopUpdated:false,
-        cestOptional:true,cestProvided:isShopeeCestConfirmed(state.tax?.cest),
-        message:'Dados fiscais cadastrados no Motor Matriz. CEST 00 é apenas marcador local; a Shopee não foi alterada.'
+        cestOptional:true,cestProvided:Boolean(String(state.tax?.cest||'').trim()),
+        message:'Dados fiscais cadastrados no Motor Matriz. CEST 00 poderá ser enviado após autorização explícita; nenhum dado foi alterado na Shopee por esta conferência.'
       }:null,
       stages:buildStages(record,state),attributeChanges:state.attributes||[],taxDraft:state.tax||{},draftTitle:state.draftTitle||safeTitle(record.title),
       // Se outra etapa foi salva, mantenha o rascunho gerado na tela em vez de
@@ -933,14 +933,19 @@ app.post('/api/shopee/optimizer/execution/prepare',mustLogin,requireWeDropAdmin,
       review:review?.review_state||{},live,manualVideo,verifiedVideoSha256,manualImages,selectedStage};
     let plan=compileShopeeExecutionPlan({...inputs,omitFiscal:false});
     // Previous Shopee validation can mean tax_info was rejected while other
-    // approved changes are independent. Treat local CEST "00" as unset; OMIT tax_info entirely,
+    // approved changes are independent. A first explicit "00" submission is allowed,
     // and let the next explicit execution try only non-fiscal changes.
     // A refusal from Shopee itself is still decisive, never silently bypassed.
     const taxDraftNcm=String(reviewState.tax?.ncm||live.tax_info?.ncm||'').trim();
+    // Somente uma recusa da MESMA combinação CEST/NCM adia a etapa fiscal.
+    // Se antes não se enviava "00", permitir sua primeira tentativa explicitamente autorizada.
+    const reviewedCest=String(reviewState.tax?.cest||'').trim();
+    const previousSentCest=String(previous?.plan?.finalFiscal?.cest||
+      previous?.plan?.proposed?.tax_info?.cest||'').trim();
     const previouslyRejected=previous?.sku===sku&&
       /corresponding CEST of NCM|CEST.{0,50}(required|obrigat)/i.test(String(previous.last_error||''))&&
-      !isShopeeCestConfirmed(reviewState.tax?.cest)&&
       !isShopeeCestConfirmed(live.tax_info?.cest)&&
+      (!reviewedCest||(reviewedCest==='00'&&previousSentCest==='00'))&&
       taxDraftNcm===String(previous.plan?.finalFiscal?.ncm||
         previous.plan?.proposed?.tax_info?.ncm||previous.plan?.original?.tax_info?.ncm||'').trim();
     const deferFiscal=selectedStage==='all'&&Boolean(previouslyRejected);
