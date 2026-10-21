@@ -24,6 +24,7 @@ test('inventário completo: consulta sem modelos extras e paralelo limitado, nã
  const end=code.indexOf("app.post('/api/shopee/optimizer/fiscal-migration/prepare-drafts'",begin);
  const route=code.slice(begin,end);
  assert.match(route,/pageSize:50/);
+ assert.match(route,/\['NORMAL','UNLIST'\]\.includes\(status\)/);
  assert.match(route,/some\(item=>!item\.baseLoaded\)/);
  assert.match(route,/at\+=5/);
  assert.match(route,/if\(item\.hasModel\)/);
@@ -41,7 +42,7 @@ test('tela exibe somente um controle principal e CSS oculta prévias legadas',()
  assert.match(css,/\.ra-fiscal-advanced,/);
  assert.match(css,/#optimizerFiscalBatchList,/);
  assert.match(css,/#optimizerFiscalBatchStatus,/);
- assert.match(html,/\/fiscal-migration-run\.js\?v=7-census-safety/);
+ assert.match(html,/\/fiscal-migration-run\.js\?v=8-complete-status-audit/);
 });
 
 test('não tratar inventário antigo como total nem enviar antes do censo e paginação oficial',()=>{
@@ -53,9 +54,9 @@ test('não tratar inventário antigo como total nem enviar antes do censo e pagi
  assert.match(src,/Histórico antigo:/);
  assert.match(route,/const census=await ensureCensus\(true\)/);
  assert.match(route,/data\.pageItemIds/);
- assert.match(route,/uniqueParents\.size!==census\.statuses\.NORMAL/);
+ assert.match(route,/uniqueParents\.size!==editableCount\(\)/);
  assert.match(route,/state\.catalogValidatedAt=new Date\(\)\.toISOString\(\)/);
- assert.ok(route.indexOf('uniqueParents.size!==census.statuses.NORMAL') <
+ assert.ok(route.indexOf('uniqueParents.size!==editableCount()') <
            route.indexOf("'/api/shopee/optimizer/batch/fiscal/execute'"));
  assert.doesNotMatch(src,/if\(previous\?\.active&&previous\?\.inventory\?\.length\)/);
 });
