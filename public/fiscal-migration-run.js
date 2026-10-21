@@ -6,7 +6,7 @@ const KEY='ra-fiscal-migration-run-v3';
 let liveCensus=null;
 let inventoryVerifiedThisSession=false;
 let censusLoading=null;
-function activeCount(){return Number(liveCensus?.statuses?.NORMAL??0);}
+function editableCount(){return Number(liveCensus?.statuses?.NORMAL??0)+Number(liveCensus?.statuses?.UNLIST??0);}
 function updateCensusBadge(){
  const badge=$('optimizerFiscalBatch')?.querySelector('.optimizer-fiscal-batch-pill');
  if(badge)badge.textContent=liveCensus?'Contagem oficial da Shopee':'Contagem não verificada';
@@ -86,17 +86,17 @@ function progress(state,phase='Pronto para executar',sku=''){
  $('raFiscalRunFill').style.width=trustworthy?pct+'%':'0%';
  box.querySelector('[role=progressbar]').setAttribute('aria-valuenow',String(trustworthy?pct:0));
  const official=liveCensus?
-  'Shopee: '+liveCensus.totalListings+' anúncios (sem variações) · '+activeCount()+
-  ' ativos · '+(liveCensus.totalListings-activeCount())+' em outros status. ':
+  'Shopee: '+liveCensus.totalListings+' anúncios (sem variações) · '+editableCount()+
+  ' editáveis (ativos e inativos) · '+(liveCensus.totalListings-editableCount())+' em análise/bloqueados. ':
   'Contagem oficial da Shopee ainda não consultada. ';
  $('raFiscalRunCounts').textContent=official+(trustworthy?
-  'SKUs ativas identificadas '+total+' · Verificadas '+processed+'/'+total+
+  'SKUs editáveis identificadas '+total+' · Verificadas '+processed+'/'+total+
   ' · Confirmadas fiscalmente '+verified+' · Pendentes '+blocked+' · Falhas '+failed:
   'Histórico antigo: '+items.length+' SKUs. Não representa o catálogo completo nem confirmação atual de envio.');
  const numbers={
   optimizerFiscalBatchTotal:liveCensus?liveCensus.totalListings:'—',
-  optimizerFiscalBatchReady:liveCensus?activeCount():'—',
-  optimizerFiscalBatchPending:liveCensus?liveCensus.totalListings-activeCount():'—',
+  optimizerFiscalBatchReady:liveCensus?editableCount():'—',
+  optimizerFiscalBatchPending:liveCensus?liveCensus.totalListings-editableCount():'—',
   optimizerFiscalBatchVerified:trustworthy?verified:'—'
  };
  for(const [key,value] of Object.entries(numbers))if($(key))$(key).textContent=String(value);
@@ -175,32 +175,35 @@ async function run(){
   // Nenhuma escrita começa sem uma contagem atual e íntegra da API da Shopee.
   const census=await ensureCensus(true);
   inventoryVerifiedThisSession=false;
-  let all=[],offset=0,finished=false,scannedParents=0;
+  let all=[],scannedParents=0;
   const uniqueParents=new Set();
-  for(let page=0;page<200;page++){
-   report(state,'Consultando todos os anúncios ativos na Shopee · '+all.length+' SKUs encontradas');
-   const data=await request('/api/shopee/optimizer/fiscal-migration/active-skus?offset='+offset);
+  for(const status of ['NORMAL','UNLIST']){
+   let offset=0,finished=false;let checkedStatus=0;
+   for(let page=0;page<200;page++){
+   report(state,'Consultando anúncios '+status+' na Shopee · '+all.length+' SKUs encontradas');
+   const data=await request('/api/shopee/optimizer/fiscal-migration/active-skus?status='+status+'&offset='+offset);
    if(!Array.isArray(data.items)||!Array.isArray(data.pageItemIds)||
       !Number.isSafeInteger(data.pageItemCount)||data.pageItemCount!==data.pageItemIds.length)
      throw Error('Shopee retornou uma página de anúncios incompleta.');
-   if(!Number.isSafeInteger(data.totalCount)||data.totalCount!==census.statuses.NORMAL)
+   if(data.status!==status||!Number.isSafeInteger(data.totalCount)||data.totalCount!==census.statuses[status])
      throw Error('A quantidade de anúncios ativos mudou durante a conferência; nenhuma escrita foi autorizada.');
    for(const itemId of data.pageItemIds){
     if(uniqueParents.has(itemId))
      throw Error('A Shopee retornou o mesmo anúncio em mais de uma página. Refazer a conferência.');
     uniqueParents.add(itemId);
    }
-   scannedParents+=data.pageItemCount;
+   scannedParents+=data.pageItemCount;checkedStatus+=data.pageItemCount;
    all.push(...data.items);
    if(!data.hasNext){finished=true;break;}
    if(!Number.isSafeInteger(data.nextOffset)||data.nextOffset<=offset)
     throw Error('A paginação Shopee não avançou; inventário anterior preservado.');
    offset=data.nextOffset;
   }
-  if(!finished||scannedParents!==census.statuses.NORMAL||
-     uniqueParents.size!==census.statuses.NORMAL)
-   throw Error('Consulta incompleta: foram lidos '+scannedParents+' de '+
-     census.statuses.NORMAL+' anúncios ativos oficiais. Nenhum envio será iniciado.');
+   if(!finished||checkedStatus!==census.statuses[status])
+    throw Error('Consulta '+status+' incompleta: '+checkedStatus+' de '+census.statuses[status]+'. Nenhum envio será iniciado.');
+  }
+  if(scannedParents!==editableCount()||uniqueParents.size!==editableCount())
+   throw Error('Consulta incompleta: '+scannedParents+' de '+editableCount()+' anúncios editáveis. Nenhum envio será iniciado.');
   all=[...new Map(all.filter(x=>x.sku).map(x=>[idOf(x),x])).values()];
   if(!all.length)throw Error('Nenhuma SKU ativa identificada; não há envio permitido.');
   // O histórico local é somente memória de trabalho. Conferir estados anteriores no servidor.
@@ -218,7 +221,7 @@ async function run(){
   state.census=census.statuses;
   save(state);
   inventoryVerifiedThisSession=true;
-  report(state,'Conferência completa dos anúncios ATIVOS. Os demais status foram contados, mas não serão alterados.');
+  report(state,'Conferidos anúncios ativos e inativos editáveis. Em análise/bloqueados foram contabilizados e não serão alterados.');
 
   if(state.pending){
    const item=all.find(x=>idOf(x)===state.pending);
@@ -282,7 +285,7 @@ async function run(){
    }
   }
   state.active=false;save(state);
-  report(state,'Passagem concluída para os anúncios ativos. Somente as SKUs confirmadas pela Shopee são consideradas atualizadas; anúncios não ativos foram contabilizados, não enviados.');
+  report(state,'Passagem concluída para anúncios ativos e inativos editáveis. Somente as SKUs confirmadas pela Shopee são consideradas atualizadas.');
  }catch(error){
   state.active=false;save(state);
   report(state,'Execução pausada: '+String(error.message||error)+'. Progresso preservado; use o mesmo botão para retomar.');
