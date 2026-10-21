@@ -587,6 +587,7 @@ app.get('/api/shopee/optimizer/fiscal-migration/active-skus',mustLogin,requireWe
   const {auth,cfg}=await getValidAuth(req);
   const status=String(req.query.status||'NORMAL').toUpperCase();
   if(!['NORMAL','UNLIST'].includes(status))throw Error('Status não editável para o fiscal em massa.');
+  const fast=String(req.query.fast||'')==='1';
   const offset=Math.max(0,Number(req.query.offset)||0);
   if(!Number.isSafeInteger(offset)||offset>100000)throw Error('Paginação inválida.');
   const page=await fetchCatalogPage(cfg,auth,callShopeeShopApi,{status,offset,pageSize:50});
@@ -618,7 +619,9 @@ app.get('/api/shopee/optimizer/fiscal-migration/active-skus',mustLogin,requireWe
         // get_model_list retorna MODEL_NORMAL/MODEL_UNAVAILABLE, não NORMAL/UNLIST.
         // Excluir esses modelos omitia silenciosamente todas as variações com SKU.
         if(!candidate.sku||candidate.status&&!['NORMAL','UNLIST','MODEL_NORMAL','MODEL_UNAVAILABLE'].includes(candidate.status))continue;
-        const review=await getWorkflowReview(auth.shopId,itemId,candidate.modelId);
+        // Inventário para execução não precisa fazer 742 consultas separadas
+        // ao Supabase. A revisão será consultada durante a execução da SKU.
+        const review=fast?null:await getWorkflowReview(auth.shopId,itemId,candidate.modelId);
         const checked=Boolean(review?.sku===candidate.sku&&
           review?.review_state?.stages?.fiscal?.reviewed&&review?.review_state?.tax?.ncm);
         output.push({sku:candidate.sku,itemId,modelId:candidate.modelId,
