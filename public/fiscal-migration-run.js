@@ -13,7 +13,9 @@ async function request(url,options={}){
 }
 const post=(url,data)=>request(url,{method:'POST',headers:{'Content-Type':'application/json'},
  body:JSON.stringify(data)});
-function save(p){localStorage.setItem(KEY,JSON.stringify(p));}
+function save(p){p.updatedAt=new Date().toISOString();localStorage.setItem(KEY,JSON.stringify(p));}
+function read(){try{return JSON.parse(localStorage.getItem(KEY)||'null');}catch{return null;}}
+function showSaved(){const p=read(),label=$('optimizerFiscalMigrationStatus');if(!label||!p?.inventory?.length)return;const values=Object.values(p.done||{});label.textContent='Migração salva neste navegador: '+p.inventory.length+' SKUs localizadas · '+values.filter(v=>v==='verified').length+' confirmadas · '+values.filter(v=>v==='blocked').length+' pendentes · '+values.filter(v=>v==='failed').length+' falhas'+(p.pending?' · aguardando confirmação de '+p.pending:'')+'. Retomar não exige nova prévia.';}
 const identity=x=>x.itemId+':'+x.modelId+':'+x.sku;
 async function status(x){
  const params=new URLSearchParams({items:JSON.stringify([{sku:x.sku,itemId:x.itemId,modelId:x.modelId}])});
@@ -25,10 +27,10 @@ async function run(){
  if(btn.disabled)return;btn.disabled=true;
  const info=t=>{if(label)label.textContent=t;};
  try{
-  let run=JSON.parse(localStorage.getItem(KEY)||'null');
+  let run=read();
   if(!run)run={done:{},pending:null};
-  let all=[],offset=0;
-  for(let page=0;page<200;page++){
+  let all=Array.isArray(run.inventory)&&run.inventory.length?run.inventory.slice():[],offset=0;
+  for(let page=0;!all.length&&page<200;page++){
    const d=await request('/api/shopee/optimizer/fiscal-migration/active-skus?offset='+offset);
    all.push(...(d.items||[]));
    if(!d.hasNext)break;
@@ -36,6 +38,7 @@ async function run(){
    offset=d.nextOffset;
   }
   all=[...new Map(all.filter(x=>x.sku).map(x=>[identity(x),x])).values()];
+  run.inventory=all;save(run);
   info('Localizadas '+all.length+' SKUs. Validando e executando individualmente.');
   if(run.pending){
    const item=all.find(x=>identity(x)===run.pending);
@@ -86,7 +89,8 @@ async function run(){
   info('Execução concluída nesta passagem. Confirmadas '+completed+
    ', falhas '+failed+', pendentes '+blocked+'. Consulte a Shopee para confirmar o total consolidado.');
  }catch(e){info('Pausado: '+e.message+'. Progresso salvo. Para retomar, use o mesmo botão.');}
- finally{btn.disabled=false;}
+ finally{btn.disabled=false;showSaved();}
 }
 $('optimizerFiscalMigrationRun')?.addEventListener('click',()=>void run());
+showSaved();
 })();
