@@ -626,7 +626,9 @@ app.get('/api/shopee/optimizer/fiscal-migration/active-skus',mustLogin,requireWe
     for(const found of batch)results.push(...found);
   }
   res.json({ok:true,source:'shopee-api-live',status:'NORMAL',
-    items:results,pageItemCount:(page.items||[]).length,totalCount:page.totalCount,
+    items:results,pageItemCount:(page.items||[]).length,
+    pageItemIds:(page.items||[]).map(item=>String(item.itemId)),
+    totalCount:page.totalCount,
     hasNext:Boolean(page.hasNext),nextOffset:page.nextOffset,
     warnings:page.warnings||[]});
  }catch(error){res.status(400).json({ok:false,error:String(error.message||error).slice(0,260)});}
