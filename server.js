@@ -887,7 +887,9 @@ app.get('/api/shopee/optimizer/workflow',mustLogin,requireWeDropAdmin,async(req,
     // Brand/category option lists can be truncated. Resolve missing exact values
     // through Shopee's official search before prefilling, never manufacture IDs.
     const searchable=evidenceFacts.unresolved.filter(x=>x.value&&
-      /^(marca|brand|estampa|padr[aã]o|dimens[oõ]es do produto)$/i.test(x.name||'')).slice(0,3);
+      typeof x.value==='string'&&x.value.length<=100).slice(0,8);
+    // Search category options only for values explicitly found in supplier evidence;
+    // only exact official matches are ever used in the prepared draft.
     let extraOptions=false;
     for(const missing of searchable){
       const attr=technicalPreview.attributes.find(x=>Number(x.id)===Number(missing.attributeId));
