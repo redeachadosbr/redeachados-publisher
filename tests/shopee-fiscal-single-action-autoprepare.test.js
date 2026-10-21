@@ -3,21 +3,36 @@ import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
 const read=path=>readFileSync(new URL('../'+path,import.meta.url),'utf8');
 
-test('ação única cria rascunho antes de validar, preparar e executar a SKU',()=>{
- const source=read('public/fiscal-migration-run.js');
- const flow=source.slice(source.indexOf('async function run(){'));
- const draft=flow.indexOf("'/api/shopee/optimizer/fiscal-migration/prepare-drafts'");
- const validate=flow.indexOf("'/api/shopee/optimizer/fiscal-migration/validate-one'");
- const prepare=flow.indexOf("'/api/shopee/optimizer/batch/fiscal/prepare'");
- const execute=flow.indexOf("'/api/shopee/optimizer/batch/fiscal/execute'");
- assert.ok(draft>=0&&validate>draft&&prepare>validate&&execute>prepare);
- assert.match(flow,/if\(state\.done\[key\]==='verified'\|\|state\.done\[key\]==='uncertain'\)continue/);
- assert.match(flow,/state\.pending=key;save\(state\)/);
- assert.match(flow,/updatedAt:plan\.updatedAt/);
- assert.match(flow,/},0\); \/\/ POST de execução NUNCA recebe retry automático/);
- assert.match(flow,/await awaitConfirmation\(state,item\)/);
+test('ação única usa somente uma chamada por SKU, mantém CAS e não repete POST de escrita',()=>{
+ const frontend=read('public/fiscal-migration-run.js');
+ const client=frontend.slice(frontend.indexOf('async function run(){'));
+ assert.match(client,/\/fiscal-migration\/execute-one/);
+ assert.match(client,/confirmation:'EXECUTAR FISCAL SKU'/);
+ assert.match(client,/},0\); \/\/ Sem retry de POST/);
+ assert.match(client,/state\.pending=key;save\(state\)/);
+ assert.match(client,/response\.status==='already_current'/);
+ assert.match(client,/response\.status==='blocked'/);
+ assert.match(client,/await awaitConfirmation\(state,item\)/);
+ assert.doesNotMatch(client,/\/fiscal-migration\/prepare-drafts/);
+ assert.doesNotMatch(client,/\/fiscal-migration\/validate-one/);
+ assert.doesNotMatch(client,/\/batch\/fiscal\/prepare/);
+ const server=read('server.js');
+ const a=server.indexOf("app.post('/api/shopee/optimizer/fiscal-migration/execute-one'");
+ const b=server.indexOf('// BATCH: prepare and execute ONLY fiscal',a);
+ const route=server.slice(a,b);
+ assert.ok(a>0&&b>a);
+ assert.match(route,/auditShopeeItem/);
+ assert.match(route,/readWeDropProduct/);
+ assert.match(route,/compileTax/);
+ assert.match(route,/fiscalMatrixSource/);
+ assert.match(route,/saveWorkflowReview/);
+ assert.match(route,/saveShopeePreparedExecution/);
+ assert.match(route,/claimShopeePreparedExecution/);
+ assert.match(route,/runOptimizerJobs/);
+ assert.match(route,/previousJob\?\.state/);
+ assert.match(route,/already_current/);
+ assert.doesNotMatch(route,/update_price|update_stock|update_discount|emitirNota/);
 });
-
 test('inventário completo: consulta sem modelos extras e paralelo limitado, não aceita página incompleta',()=>{
  const code=read('server.js');
  const begin=code.indexOf("app.get('/api/shopee/optimizer/fiscal-migration/active-skus'");
@@ -30,6 +45,7 @@ test('inventário completo: consulta sem modelos extras e paralelo limitado, nã
  assert.match(route,/if\(item\.hasModel\)/);
  assert.match(route,/Promise\.all/);
  assert.match(route,/getWorkflowReview/);
+ assert.match(route,/const fast=String\(req.query.fast/);
 });
 
 test('tela exibe somente um controle principal e CSS oculta prévias legadas',()=>{
@@ -42,7 +58,7 @@ test('tela exibe somente um controle principal e CSS oculta prévias legadas',()
  assert.match(css,/\.ra-fiscal-advanced,/);
  assert.match(css,/#optimizerFiscalBatchList,/);
  assert.match(css,/#optimizerFiscalBatchStatus,/);
- assert.match(html,/\/fiscal-migration-run\.js\?v=8-complete-status-audit/);
+ assert.match(html,/\/fiscal-migration-run\.js\?v=9-fiscal-direct/);
 });
 
 test('não tratar inventário antigo como total nem enviar antes do censo e paginação oficial',()=>{
