@@ -4712,20 +4712,32 @@ function shPriceMarketResearchRender(q){
     ' · desconto calculado '+shPricePercent(q.discountPct):
    'Sem pesquisa de mercado validada: desconto base não pesquisado. '+String(research?.message||'');
  }
- badge.textContent=verified?'Comparação realizada':'Sem pesquisa verificada';
+ badge.textContent=verified?research.count+' anúncios comparados':'Pesquisa não disponível';
  badge.dataset.state=verified?'success':'warning';
+ const avg=$('#pricingResearchAverage'),suggested=$('#pricingResearchSuggested'),margin=$('#pricingResearchMargin');
+ if(avg)avg.textContent=verified?shPriceMoney(research.reference):'—';
+ if(suggested)suggested.textContent=verified&&q.status==='COMPETITIVO'?shPriceMoney(q.customerPrice):
+   verified&&q.status==='MERCADO_ABAIXO_DO_PISO'?'Sem preço viável':'Aguardando pesquisa';
+ if(margin)margin.textContent=verified&&q.status==='COMPETITIVO'?shPricePercent(q.netMarginPct):
+   verified&&q.status==='MERCADO_ABAIXO_DO_PISO'?'Margem mínima protegida':'—';
  msg.textContent=verified?
-  'Referência de '+shPriceMoney(research.reference)+' por '+research.count+
-  ' oferta(s) equivalente(s). Desconto calculado: '+shPricePercent(q.discountPct)+
-  '. A amostra não cobre todo o mercado e pode não incluir frete ou cupons específicos.':
-  research?.message||
-  'O desconto exibido é o parâmetro inicial da calculadora, não uma recomendação baseada no mercado.';
+  'Média aritmética de '+research.count+' anúncios de lojas diferentes: '+shPriceMoney(research.reference)+
+  '. '+(q.status==='MERCADO_ABAIXO_DO_PISO'?
+   'Preço médio inferior ao piso de margem mínima: NÃO reduzir abaixo do limite seguro.':
+   'Preço sugerido com margem líquida de '+shPricePercent(q.netMarginPct)+' (mínima: '+shPricePercent(q.minMarginPct)+'). '+
+     (q.netMarginPct+0.01<q.targetMarginPct?
+      'A margem desejada de '+shPricePercent(q.targetMarginPct)+' não foi atingida.':'A margem desejada foi preservada.'))+
+  ' Pesquisa em '+(research.researchedAt?new Date(research.researchedAt).toLocaleString('pt-BR'):'data não disponível')+'.':
+  String(research?.message||'Nenhum preço comparável foi validado.')+
+  ' São necessários de 2 a 5 anúncios comparáveis, em lojas distintas, usando a API Shopee Afiliados.';
  if(!verified)return;
- for(const offer of (Array.isArray(research.sample)?research.sample:[]).slice(0,6)){
+ for(const offer of (Array.isArray(research.sample)?research.sample:[]).slice(0,5)){
   const shop=String(offer.shopId||''),item=String(offer.itemId||'');
   if(!/^\d{1,18}$/.test(shop)||!/^\d{1,18}$/.test(item))continue;
   const link=document.createElement('a');link.href='https://shopee.com.br/product/'+shop+'/'+item;
   link.target='_blank';link.rel='noopener noreferrer';link.className='pricing-market-offer';
+  link.title='Abrir na Shopee · '+(offer.title||'Anúncio')+' · consultado em '+
+   (offer.checkedAt?new Date(offer.checkedAt).toLocaleString('pt-BR'):'data desconhecida');
   const label=document.createElement('span');label.textContent=offer.title||'Anúncio semelhante';
   const price=document.createElement('strong');price.textContent=shPriceMoney(offer.price);
   link.append(label,price);offers.append(link);
