@@ -1,0 +1,21 @@
+/* Motor Matriz: desconto pronto no final da execução por SKU. */
+.optimizer-exec-discount-last{margin:14px 0 8px;border:1px solid #cbdff2;border-radius:14px;padding:14px;background:#f7fbff}
+.optimizer-exec-discount-heading{display:flex;align-items:center;gap:11px}
+.optimizer-exec-discount-heading>span{font-weight:900;color:#14569c;border-radius:9px;background:#e2f1ff;padding:9px}
+.optimizer-exec-discount-heading>div{display:flex;flex-direction:column;flex:1;gap:3px}
+.optimizer-exec-discount-heading strong{font-size:14px;color:#163960}
+.optimizer-exec-discount-heading small{font-size:11px;color:#51708d}
+.optimizer-exec-discount-values{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px;margin:12px 0 8px}
+.optimizer-exec-discount-values>div{background:#fff;border-radius:9px;border:1px solid #dce8f4;padding:10px}
+.optimizer-exec-discount-values small{display:block;color:#57728d;font-size:11px}
+.optimizer-exec-discount-values strong{display:block;font-size:14px;color:#0d3a68;margin-top:4px;overflow-wrap:anywhere}
+#optimizerExecDiscountMessage{font-size:12px;line-height:1.5;color:#4a6682;margin:9px 0}
+.optimizer-exec-discount-controls{display:flex;gap:8px;align-items:end;flex-wrap:wrap}
+.optimizer-exec-discount-controls label{font-size:11px;color:#3c5872;font-weight:700;flex:1;min-width:190px}
+.optimizer-exec-discount-controls input{display:block;border-radius:8px;border:1px solid #c4d5e8;margin-top:5px;padding:10px;width:100%;font:inherit;font-size:12px}
+.optimizer-exec-discount-controls button{border-radius:9px;font-weight:750;font-size:12px;min-height:40px;padding:9px 12px}
+.optimizer-exec-discount-price-approval{font-size:12px;color:#805000;display:flex;align-items:start;gap:9px;margin:10px 0}
+.optimizer-exec-discount-price-approval[hidden],.optimizer-exec-discount-controls button[hidden]{display:none!important}
+#optimizerExecDiscountResult{margin-top:10px}
+@media(max-width:850px){.optimizer-exec-discount-values{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media(max-width:520px){.optimizer-exec-discount-values{grid-template-columns:1fr}.optimizer-exec-discount-controls>*{width:100%}}
