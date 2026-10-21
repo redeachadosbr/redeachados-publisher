@@ -51,7 +51,7 @@ test('todas as etapas incluem fiscal como ÚLTIMA alteração, fora do update co
  const p=plan();
  assert.equal(p.canExecute,true);
  assert.equal(p.finalFiscal.ncm,'95030099');
- assert.equal(Object.hasOwn(p.finalFiscal,'cest'),false);
+ assert.equal(p.finalFiscal.cest,'00');
  assert.deepEqual(p.actions,['item_name','tax_info']);
  assert.equal(Object.hasOwn(p.proposed,'tax_info'),false);
 });
@@ -60,6 +60,7 @@ test('execução fiscal só começa DEPOIS de a Shopee confirmar a edição come
  const result=await executeInMemory();
  assert.equal(result.job.state,'verified');
  assert.deepEqual(result.writes.map(x=>Object.keys(x)),[['item_id','item_name'],['item_id','tax_info']]);
+ assert.equal(result.writes[1].tax_info.cest,'00');
  assert.deepEqual(result.checkpoints,['updating','fiscal_updating']);
  assert.ok(result.phases.indexOf('fiscal_ready')>result.phases.indexOf('verifying'));
  assert.equal(verifyShopeeFiscalExecution(result.job.plan,result.shop,result.job.result),true);
