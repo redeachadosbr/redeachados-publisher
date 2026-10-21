@@ -553,6 +553,32 @@ app.get('/api/shopee/catalog/page',mustLogin,async(req,res)=>{
     res.status(400).json({error:String(error.message||error).slice(0,320)});
   }
 });
+// Conferência oficial SOMENTE LEITURA: diferencia anúncios de SKUs/modelos.
+// O total oficial de anúncios jamais deve ser inferido do histórico local de 38 SKUs.
+app.get('/api/shopee/optimizer/fiscal-migration/catalog-census',mustLogin,requireWeDropAdmin,async(req,res)=>{
+ res.setHeader('Cache-Control','no-store');
+ try{
+  const {auth,cfg}=await getValidAuth(req);
+  const statuses=['NORMAL','UNLIST','REVIEWING','BANNED'];
+  const results=await Promise.all(statuses.map(async status=>{
+   const data=await callShopeeShopApi(cfg,{path:'/api/v2/product/get_item_list',
+    accessToken:auth.accessToken,shopId:auth.shopId,
+    query:{item_status:status,offset:0,page_size:1}});
+   const body=data?.response||{};
+   const total=Number(body.total_count);
+   if(!Number.isSafeInteger(total)||total<0)
+    throw Error('Shopee não confirmou a contagem de anúncios do status '+status+'.');
+   return {status,items:total};
+  }));
+  const totals=Object.fromEntries(results.map(x=>[x.status,x.items]));
+  res.json({ok:true,source:'shopee-api-live',asOf:new Date().toISOString(),
+   unit:'anuncios-pai-sem-contar-variacoes',
+   statuses:totals,totalListings:results.reduce((n,x)=>n+x.items,0),
+   executableStatuses:['NORMAL']});
+ }catch(error){res.status(503).json({ok:false,verified:false,
+  error:'Não foi possível verificar todo o catálogo diretamente na Shopee: '+
+   String(error.message||error).slice(0,220)});}
+});
 // Rotina assistida de migração CPF -> CNPJ: descoberta SOMENTE LEITURA.
 // Não altera anúncios nem ignora a revisão fiscal obrigatória.
 app.get('/api/shopee/optimizer/fiscal-migration/active-skus',mustLogin,requireWeDropAdmin,async(req,res)=>{
@@ -599,8 +625,10 @@ app.get('/api/shopee/optimizer/fiscal-migration/active-skus',mustLogin,requireWe
     }));
     for(const found of batch)results.push(...found);
   }
-  res.json({ok:true,items:results,hasNext:Boolean(page.hasNext),
-    nextOffset:page.nextOffset,warnings:page.warnings||[]});
+  res.json({ok:true,source:'shopee-api-live',status:'NORMAL',
+    items:results,pageItemCount:(page.items||[]).length,totalCount:page.totalCount,
+    hasNext:Boolean(page.hasNext),nextOffset:page.nextOffset,
+    warnings:page.warnings||[]});
  }catch(error){res.status(400).json({ok:false,error:String(error.message||error).slice(0,260)});}
 });
 // Prepara no Motor Matriz, SEM autorizar envio ou marcar revisão fiscal como concluída.
