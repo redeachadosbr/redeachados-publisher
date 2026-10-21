@@ -63,7 +63,7 @@ test('tela exibe somente um controle principal e CSS oculta prévias legadas',()
  assert.match(css,/\.ra-fiscal-advanced,/);
  assert.match(css,/#optimizerFiscalBatchList,/);
  assert.match(css,/#optimizerFiscalBatchStatus,/);
- assert.match(html,/\/fiscal-migration-run\.js\?v=9-fiscal-direct/);
+ assert.match(html,/\/fiscal-migration-run\.js\?v=10-fast-resume/);
 });
 
 test('não tratar inventário antigo como total nem enviar antes do censo e paginação oficial',()=>{
@@ -79,7 +79,8 @@ test('não tratar inventário antigo como total nem enviar antes do censo e pagi
  assert.match(route,/state\.catalogValidatedAt=new Date\(\)\.toISOString\(\)/);
  assert.ok(route.indexOf('uniqueParents.size!==editableCount()') <
            route.indexOf("'/api/shopee/optimizer/fiscal-migration/execute-one'"));
- assert.doesNotMatch(src,/if\(previous\?\.active&&previous\?\.inventory\?\.length\)/);
+ assert.match(src,/const resumeAuthorized=previous\?\.active===true/);
+ assert.match(src,/function resumeAfterLogin/);
 });
 test('censo oficial inclui status Shopee e deixa explícito anúncio versus SKU',()=>{
  const server=read('server.js');
