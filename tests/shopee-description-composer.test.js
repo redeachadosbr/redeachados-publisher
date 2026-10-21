@@ -22,6 +22,7 @@ for(const product of tests){
   assert.ok(codePointCount(result.description)<=1440);
   assert.ok((result.description.match(/\p{Extended_Pictographic}/gu)||[]).length>=10);
   validateContentRules({description:result.description});
+  assert.match(result.description,/🛒 Gostou\? Adicione ao carrinho e aproveite!$/u);
   assert.ok(isCommercialDescription(result.description));
   assert.notEqual(result.description,product.desc);
   assert.ok(result.description.indexOf('Descrição do produto')<result.description.indexOf('Especificações do produto'));
@@ -34,4 +35,10 @@ test('Não inventar certificação ou número INMETRO na mochila',()=>{
  assert.doesNotMatch(result.description,/certificad[oa]\s+pelo\s+inmetro|003131\/2025/i);
  assert.match(result.description,/PP/);
  assert.match(result.description,/30 x 25 x 15 cm/);
+});
+
+test('Motor Matriz exige CTA no final da descrição',()=>{
+ const ready=composeShopeeDescription({record:{title:tests[0].title,description:tests[0].desc}}).description;
+ const modified=ready.replace('🛒 Gostou? Adicione ao carrinho e aproveite!','🛒 Veja detalhes antes de comprar.');
+ assert.throws(()=>validateContentRules({description:modified}),/CTA oficial/);
 });
