@@ -1,0 +1,5 @@
+#tab-optimizer .ra-fiscal-progress{border:1px solid #cde5d8;background:#f4fbf7;border-radius:13px;padding:13px 15px;margin-top:9px;color:#173c2b}
+#tab-optimizer .ra-fiscal-progress-head{display:flex;justify-content:space-between;gap:12px;font-size:13px}
+#tab-optimizer .ra-fiscal-progress-track{height:12px;background:#dcece4;overflow:hidden;border-radius:20px;margin:10px 0}
+#tab-optimizer #raFiscalRunFill{height:100%;width:0;background:linear-gradient(90deg,#15a66b,#087c4c);transition:width .3s ease;border-radius:20px}
+#tab-optimizer #raFiscalRunCounts{font-size:12px;line-height:1.5;margin:0;color:#456653}
