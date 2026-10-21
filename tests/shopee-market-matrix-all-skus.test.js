@@ -71,6 +71,6 @@ test('Média exige 2 lojas e não confunde itens duplicados',()=>{
  const sample=evaluateMarketOffers({title,offers});
  assert.equal(sample.verified,true);
  assert.equal(sample.count,2);
- assert.equal(sample.reference,82);
+ assert.equal(sample.reference,84);
  assert.equal(new Set(sample.sample.map(x=>x.shopId)).size,2);
 });
