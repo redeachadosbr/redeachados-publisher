@@ -140,7 +140,8 @@ export function supplierAttributeSuggestions({attributes=[],proposed=[],supplier
      reason:'IMPORTADO/GENÉRICO indica origem ou ausência de marca; não usar como marca sem comprovação.'});
    else if(!brand)unresolved.push({attributeId:attr.id,name:attr.name,value:null,reason:'Marca não confirmada pelo fornecedor.'});
   }else if(n==='material'||n.startsWith('material ')||n.includes('composicao')){
-   const explicit=specifiedText(/(?:^|\n)\s*(?:material|composicao)\s*[:\-]\s*([^\n.;]{2,75})/)||
+   const catalogMaterial=clean(facts.material||facts.composition);
+   const explicit=(catalogMaterial?{value:catalogMaterial,source:supplierName+' · material informado no catálogo'}:null)||specifiedText(/(?:^|\n)\s*(?:material|composicao)\s*[:\-]\s*([^\n.;]{2,75})/)||
     specifiedText(/(?:produto|brinquedo|conjunto)\s+(?:fabricado|feito|produzido)\s+em\s+([a-z]{2,32})\b/);
    if(explicit)suggest(attr,plain(explicit.value)==='pp'?'PP':clean(explicit.value),explicit.source+' — material expresso no texto desta SKU.',{onlyIfMissing:true});
   }else if(n.includes('inmetro')||n.includes('certificacao')||n.includes('certificado')){
