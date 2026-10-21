@@ -2432,7 +2432,8 @@ function optimizerWorkflowRender(data){
    const videoStaged=stage.key==='video'&&Boolean(data.manualVideo);
    body.append(optimizerMake('strong','',stage.name),
      optimizerMake('small','',videoStaged?(data.manualVideo.uploadedToShopee?'Vídeo confirmado na Shopee':'Vídeo importado · não publicado'):
-       stage.skipped?'Não se aplica':stage.reviewed?'Conferência registrada':stage.blocking?'Precisa de atenção':'Preparar e revisar'));
+       stage.skipped?'Não se aplica':stage.key==='fiscal'&&stage.reviewed?'Salvo · ainda não publicado':
+       stage.reviewed?'Conferência registrada':stage.blocking?'Precisa de atenção':'Preparar e revisar'));
    const mark=optimizerMake('span','optimizer-workflow-symbol',stage.skipped?'—':stage.reviewed?'✓':'→');
    btn.append(number,glyph,body,mark);
    btn.onclick=()=>optimizerWorkflowOpen(stage.key);
@@ -3040,10 +3041,47 @@ function optimizerExecDiff(parent,key,before,after){
  }
  detail.append(columns);parent.append(detail);
 }
+function optimizerExecFiscalLast(plan){
+ const block=$('#optimizerExecFiscalLast');
+ if(!block||!plan)return;
+ const preview=plan.finalFiscal||plan.proposed?.tax_info||null;
+ const draft=optimizerWorkflowPlan?.taxDraft||{};
+ const values=preview||draft;
+ const container=$('#optimizerExecFiscalValues');
+ container.replaceChildren();
+ const keymap=[
+  ['ncm','NCM'],['origin','Origem'],['same_state_cfop','CFOP mesmo estado'],
+  ['diff_state_cfop','CFOP outros estados'],['csosn','CSOSN'],
+  ['measure_unit','Unidade'],['pis_cofins_cst','PIS/COFINS CST'],
+  ['operation_type','Tipo de operação'],['cest','CEST']
+ ];
+ for(const [key,label] of keymap){
+  const card=optimizerMake('div');
+  card.append(optimizerMake('strong','',label),
+   optimizerMake('span','',key==='cest'&&!preview?.cest?'00 (não transmitido)':
+      String(values[key]||'Não informado')));
+  container.append(card);
+ }
+ const mode=plan.finalFiscal?'Depois da confirmação comercial · envio fiscal pendente':
+  plan.proposed?.tax_info?'Execução exclusivamente fiscal · após autorização':
+  plan.fiscalDeferred?'Fiscal pendente: CEST/validação anterior impediu inclusão':
+  'Fiscal não incluído nesta prévia · confira as regras da SKU';
+ $('#optimizerExecFiscalState').textContent=mode;
+ $('#optimizerExecFiscalNote').textContent=plan.finalFiscal?
+  'Os valores acima irão em atualização fiscal própria, como última etapa. CEST 00 não será transmitido. A Shopee pode exigir regularização adicional.':
+  plan.proposed?.tax_info?
+  'Somente os dados fiscais acima serão enviados, depois de sua autorização. O resultado será conferido na Shopee.':
+  'A conferência registrada não significa publicação. Corrija o Motor Matriz e revalide a prévia se houver pendência.';
+}
+$('#optimizerExecFiscalEdit')?.addEventListener?.('click',()=>{
+ $('#optimizerWorkflowEditor').hidden=false;
+ optimizerWorkflowOpen('fiscal');
+});
 function optimizerExecRender(data){
  const plan=data.plan,context=optimizerExecContext;
  if(!plan||!context||context.sku!==plan.sku||context.itemId!==plan.itemId||context.modelId!==plan.modelId)return;
  optimizerExecPlan={...plan,updatedAt:data.updatedAt};
+ optimizerExecFiscalLast(plan);
  $('#optimizerExecutionScope').value=plan.selectedStage||'all';
  optimizerExecutionIssueRender(data.issue||null);
  optimizerExecutionTrackerRender(data.progress,{sku:plan.sku,item_id:plan.itemId,plan});
@@ -3056,6 +3094,10 @@ function optimizerExecRender(data){
    }
    if(plan.images?.length)optimizerExecRow(changes,'Imagens: substituir pela sequência de nove imagens revisadas.','action');
    if(plan.video)optimizerExecRow(changes,'Vídeo: '+plan.video.filename+' · validar, enviar, processar e confirmar no anúncio.','action');
+   if(plan.finalFiscal){
+    optimizerExecRow(changes,'ETAPA FINAL 07 · Informações fiscais após confirmação do anúncio comercial.','heading');
+    optimizerExecDiff(changes,'tax_info',plan.original.tax_info,plan.finalFiscal);
+   }
  }else optimizerExecRow(changes,'Nenhum campo revisado possui alteração pendente.','info');
  if(plan.blocked.length){
    optimizerExecRow(blocked,'Pendências que impedem a execução:','heading');
@@ -3077,8 +3119,10 @@ function optimizerExecRender(data){
  optimizerExecUpdateRunButton();
  optimizerExecNotice(data.ready
    ?plan.fiscalDeferred===true
-     ?'CEST mantido em branco. Dados fiscais NÃO serão enviados. Clique em “Executar na Shopee” para tentar publicar somente imagens, vídeo e demais alterações aprovadas. A Shopee ainda poderá exigir regularização fiscal.'
-     :'Etapas revisadas. Clique em “Executar na Shopee” para aplicar as alterações aprovadas. A confirmação será verificada automaticamente na Shopee.'
+     ?'Fiscal ainda pendente: a etapa fiscal não foi incluída por validação anterior. O restante aprovado pode ser executado, sem afirmar envio fiscal.'
+     :plan.finalFiscal
+      ?'Pronto: execução comercial primeiro, dados fiscais como ÚLTIMA etapa. Clique em “Executar na Shopee”; ambas serão conferidas separadamente.'
+      :'Prévia pronta. Confira o bloco fiscal no fim: o que não estiver incluído não será publicado na Shopee.'
    : 'Nenhuma alteração aprovada está pronta. Revise as etapas e confira as pendências.',
    data.ready?'success':'warning');
 }
@@ -3368,6 +3412,7 @@ function optimizerExecutionJobView(job,progress=null,issue=null){
  }
  const active=['running','uncertain'].includes(job?.state);
  const verified=job?.state==='verified';
+ const fiscalPartial=verified&&job?.result?.phase==='verified_partial';
  const resultLink=$('#optimizerExecutionShopeeLink');
  resultLink.hidden=!verified;
  if(verified&&optimizerWorkflowPlan?.itemId)
@@ -3390,8 +3435,10 @@ function optimizerExecutionJobView(job,progress=null,issue=null){
  if(job.result?.video?.totalParts&&job.result.video.phase==='uploading')message+=' · parte '+job.result.video.nextPart+'/'+job.result.video.totalParts;
  if(job.last_error)message+=' · '+(issue?.code==='CEST_REQUIRED'
    ?'CEST correspondente ao NCM precisa ser corrigido na ficha fiscal.':job.last_error);
- if(job.state==='verified')message+=' · Somente as alterações aprovadas nesta execução foram confirmadas.';
- optimizerExecNotice(message,job.state==='verified'?'success':job.state==='failed'||job.state==='uncertain'?'warning':'info');
+ if(fiscalPartial)message='Conteúdo e mídia confirmados na Shopee, mas a etapa FISCAL foi recusada e continua pendente. Corrija o CEST/NCM no Motor Matriz antes de preparar nova execução fiscal.';
+ else if(job.state==='verified')message+=' · Todas as alterações incluídas nesta execução foram verificadas.';
+ optimizerExecNotice(message,fiscalPartial?'warning':job.state==='verified'?'success':
+  job.state==='failed'||job.state==='uncertain'?'warning':'info');
  if(active||verified){
   $('#optimizerExecutionLaunch').hidden=true;
   optimizerExecPlan=null;$('#optimizerExecutionConfirmation').hidden=true;
