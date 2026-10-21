@@ -591,6 +591,55 @@ app.get('/api/shopee/optimizer/fiscal-migration/active-skus',mustLogin,requireWe
     nextOffset:page.nextOffset,warnings:page.warnings||[]});
  }catch(error){res.status(400).json({ok:false,error:String(error.message||error).slice(0,260)});}
 });
+// Prepara no Motor Matriz, SEM autorizar envio ou marcar revisão fiscal como concluída.
+// Processa apenas 12 SKUs por chamada para que a UI possa avançar em lotes seguros.
+app.post('/api/shopee/optimizer/fiscal-migration/prepare-drafts',mustLogin,requireWeDropAdmin,async(req,res)=>{
+ res.setHeader('Cache-Control','no-store');
+ if(!verifiedSameOrigin(req))return res.status(403).json({error:'Origem não autorizada.'});
+ try{
+  const rows=req.body?.items;
+  if(!Array.isArray(rows)||rows.length<1||rows.length>12)throw Error('Informe de 1 a 12 anúncios.');
+  const {auth,cfg}=await getValidAuth(req);
+  const results=[];const seen=new Set();
+  for(const x of rows){
+   const sku=validateSkuLookup(x?.sku),itemId=validItemId(x?.itemId),modelId=String(x?.modelId??'0');
+   if(!/^\d{1,18}$/.test(modelId))throw Error('Modelo inválido.');
+   const identity=itemId+':'+modelId;
+   if(seen.has(identity))throw Error('SKU duplicada no lote.');seen.add(identity);
+   try{
+    const existing=await getWorkflowReview(auth.shopId,itemId,modelId);
+    if(existing?.sku===sku&&existing.review_state?.stages?.fiscal?.reviewed){
+     results.push({sku,status:'already_reviewed'});continue;
+    }
+    // Confirmar identidade e status diretamente na Shopee antes de salvar no banco.
+    const record=await auditShopeeItem(cfg,auth,callShopeeShopApi,itemId,
+      {expectedSku:sku,expectedModelId:modelId});
+    if(record.status!=='NORMAL')throw Error('Anúncio não está ativo.');
+    const supplier=await readWeDropProduct(auth.shopId,{sku,itemId,modelId});
+    if(!supplier||!['exact-sku','reviewed-link'].includes(supplier.matchedBy))
+      throw Error('Correspondência WeDrop não confirmada.');
+    const ncm=String(supplier.product_data?.ncm??'').replace(/\D/g,'');
+    if(!/^\d{8}$/.test(ncm))throw Error('NCM de oito dígitos ausente na WeDrop.');
+    const unit=suggestFiscalMeasureUnit(record.title||x.title||'',supplier.product_data?.title||'');
+    if(!unit.unit)throw Error(unit.reason);
+    const previous=existing?.sku===sku?existing.review_state?.tax||{}:{};
+    const tax={...previous,ncm,origin:previous.origin||'2',
+      same_state_cfop:previous.same_state_cfop||'5106',
+      diff_state_cfop:previous.diff_state_cfop||'6106',
+      csosn:previous.csosn||'102',pis_cofins_cst:previous.pis_cofins_cst||'99',
+      cest:previous.cest||'00',measure_unit:unit.unit,
+      evidence:'NCM WeDrop '+supplier.supplier_sku+' · '+(supplier.source_file||'cadastro importado')};
+    fiscalMatrixSource({sku,supplier,tax});
+    compileTax(tax,{tax_info:{}});
+    await saveWorkflowReview(auth.shopId,itemId,modelId,sku,
+      {stage:'fiscal',reviewed:false,tax});
+    results.push({sku,status:'draft_saved',ncm,unit:unit.unit,cest:tax.cest,
+      message:'Rascunho salvo. Exige revisão e aprovação fiscal antes de enviar.'});
+   }catch(error){results.push({sku,status:'pending',message:String(error.message||error).slice(0,200)});}
+  }
+  res.json({ok:true,marketplaceUpdated:false,results});
+ }catch(error){res.status(400).json({ok:false,error:String(error.message||error).slice(0,260)});}
+});
 app.get('/api/shopee/catalog/models',mustLogin,async(req,res)=>{
   res.setHeader('Cache-Control','no-store');
   try{
