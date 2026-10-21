@@ -1,4 +1,5 @@
 /* Títulos SEO — cartões compactos e selecionáveis, Rede Achados BR */
+#optimizerTitleVariants.seo-studio[hidden]{display:none!important}
 #optimizerTitleVariants.seo-studio{display:block!important;margin:12px 0 16px;padding:16px;border:1px solid #dbe8fa;border-radius:18px;background:linear-gradient(165deg,#f8fbff,#eef6ff);color:#173353}
 .seo-studio-head{display:flex;align-items:flex-start;justify-content:space-between;gap:14px}
 .seo-studio-head h4{margin:3px 0 5px!important;font-size:20px!important;line-height:1.2;color:#112944}
