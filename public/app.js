@@ -3585,7 +3585,12 @@ async function optimizerFiscalBatchExecute(){
    start=nextIndex;
   }else if(checkpoint?.key===key&&Number.isInteger(checkpoint.next)&&checkpoint.next>=0&&checkpoint.next<selected.length)
    start=checkpoint.next;
- }catch{}
+ }catch(error){
+  optimizerFiscalBatchNotice('Não foi possível conferir a SKU interrompida: '+String(error.message||error)+'. Nenhum reenvio foi realizado.','warning');
+  optimizerFiscalBatchBusy=false;
+  optimizerFiscalBatchRender();
+  return;
+ }
  try{
   for(let i=start;i<selected.length;i++){
    const row=selected[i];
