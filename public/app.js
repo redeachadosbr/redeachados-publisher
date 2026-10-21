@@ -5904,7 +5904,7 @@ async function techFlush(){
 }
 async function techRefreshSuggestions(){
  const w=optimizerWorkflowPlan;
- if(!w?.sku||optimizerWorkflowStage!=='technical')return;
+ if(!w?.sku||optimizerWorkflowStage!=='technical'||$('#optimizerTechFill')?.disabled)return;
  try{
   if(techTextTimer){clearTimeout(techTextTimer);techTextTimer=0;
    await techTextSend(w,$('#optimizerTechText')?.value||'');}
@@ -6020,6 +6020,9 @@ async function optimizerTechImport(){
  button.disabled=true;
  let warning='',extracted=0,updated=false,success=false;
  try{
+  // Prevent a queued autosave from replacing text extracted from newly uploaded prints.
+  if(techTextTimer){clearTimeout(techTextTimer);techTextTimer=0;}
+  await techTextQueue;
   if(written!==oldText){
    optimizerTechNotice('Salvando texto WeDrop desta SKU...');
    await optimizerTechRequest(w,'text',{sourceText:written});
