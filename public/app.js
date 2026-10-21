@@ -5973,6 +5973,11 @@ function optimizerTechnicalRender(data){
  const textBox=$('#optimizerTechText');
  if(textBox)textBox.value=String(data.sourceEvidence?.sourceText||'');
  const countTag=$('#optimizerTechImagesCount'),imageCount=(data.sourceEvidence?.screenshots||[]).length;
+ if(data.supplierProduct&&data.sourceEvidence?.sourceText){
+  optimizerTechNotice('Dados da WeDrop e texto vinculados a esta SKU. Sugestões compatíveis já aparecem na prévia; use “Ler dados” para interpretar prints.','info');
+ }else if(data.supplierProduct){
+  optimizerTechNotice('Catálogo WeDrop localizado. Atributos comprovados foram sugeridos automaticamente. Adicione texto ou prints para complementar.','info');
+ }
  if(countTag)countTag.textContent=imageCount+' de 4 print(s) salvos para esta SKU. Exclua prints antigos no bloco Informações da WeDrop.';
  const wrap=$('#optimizerTechnicalFields');wrap.replaceChildren();
  if(data.anatel?.applicable){
@@ -6000,7 +6005,7 @@ function optimizerTechnicalRender(data){
   field.append(optimizerMake('small','',attr.conditional?'Condicional • depende do atributo pai':
     attr.mandatory?'Obrigatório na categoria '+data.categoryId:'Opcional na categoria '+data.categoryId));
   wrap.append(field);
-  if(attr.conditional){field.append(optimizerMake('p','','Depende da opção escolhida em outro campo. Selecione o campo relacionado e atualize as opções dependentes.'));continue;}
+  if(attr.conditional){field.append(optimizerMake('p','','Campo dependente de outra opção da categoria.'));optionalDetails.append(field);optionalMissing++;continue;}
   if(![1,2,3,4,5].includes(type)&&!attr.options?.length){field.append(optimizerMake('p','','Campo existente sem esquema editável retornado pela Shopee.'));continue;}
   const suggested=(data.sourceFacts?.suggestions||[]).find(x=>Number(x.attributeId)===attr.id);
   const conflict=(data.sourceFacts?.conflicts||[]).find(x=>Number(x.attributeId)===attr.id);
