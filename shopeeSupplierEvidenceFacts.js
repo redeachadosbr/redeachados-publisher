@@ -132,7 +132,7 @@ export function supplierAttributeSuggestions({attributes=[],proposed=[],supplier
    if(brand&&!unusableBrand(brand))suggest(attr,brand,(supplierName||'Ficha desta SKU')+' — marca confirmada na fonte da SKU.');
    if(brand&&unusableBrand(brand))unresolved.push({attributeId:attr.id,name:attr.name,value:brand,
      reason:'IMPORTADO/GENÉRICO indica origem ou ausência de marca; não usar como marca sem comprovação.'});
-   else unresolved.push({attributeId:attr.id,name:attr.name,value:null,reason:'Marca não confirmada pelo fornecedor.'});
+   else if(!brand)unresolved.push({attributeId:attr.id,name:attr.name,value:null,reason:'Marca não confirmada pelo fornecedor.'});
   }else if(n==='material'||n.startsWith('material ')||n.includes('composicao')){
    const explicit=specifiedText(/(?:^|\n)\s*(?:material|composicao)\s*[:\-]\s*([^\n.;]{2,75})/)||
     specifiedText(/(?:produto|brinquedo|conjunto)\s+(?:fabricado|feito|produzido)\s+em\s+([a-z]{2,32})\b/);
@@ -168,6 +168,96 @@ export function supplierAttributeSuggestions({attributes=[],proposed=[],supplier
 
   }
  }
+
+ // Matching bilingual Shopee attributes to facts explicitly supplied for THIS SKU.
+ // Never assume shipping dimensions are dimensions of the product.
+ function labeledField(labels){
+  const labelsPlain=labels.map(plain);
+  for(const src of sources){
+   const lines=String(src.text).split(/\r?\n/).map(x=>x.trim()).filter(Boolean);
+   for(let i=0;i<lines.length;i++){
+    const normalized=plain(lines[i]);
+    const colon=normalized.match(/^([^:=-]{2,65})\s*[:=-]\s*(.{1,110})$/);
+    let candidate=null;
+    if(colon&&labelsPlain.includes(colon[1].trim()))candidate=lines[i].slice(lines[i].indexOf(':')+1).trim()||colon[2];
+    if(!candidate&&labelsPlain.includes(normalized)&&i+1<lines.length&&lines[i+1].length<=90)
+      candidate=lines[i+1];
+    if(candidate&&candidate.length<=110)return {value:candidate.trim(),source:src.label};
+   }
+  }
+  return null;
+ }
+ function suppliedValue(keys,labels=[]){
+  for(const name of keys){
+   const item=facts[name];
+   if((typeof item==='string'||typeof item==='number')&&String(item).trim())
+    return {value:String(item).trim(),source:supplierName+' · campo '+name};
+  }
+  return labeledField(labels);
+ }
+ function normalizeSize(raw){
+  return String(raw||'').normalize('NFC').replace(/\b(?:numero|n[.º°o]*)\s*(\d+)\b/ig,'$1').trim();
+ }
+ const sourceName=String(facts.name||facts.title||'');
+ for(const attr of attributes){
+  if(attr.legacy||attr.conditional||attr.values?.length||
+     suggestions.some(x=>Number(x.attributeId)===Number(attr.id)))continue;
+  const n=plain(attr.name);
+  let hit=null;
+  if(/^(?:model|modelo|product model)$/.test(n))
+   hit=suppliedValue(['model','modelo'],['modelo','model','modelo do produto']);
+  else if(/^(?:material|composition|composicao|material do produto)$/.test(n))
+   hit=suppliedValue(['material','composition'],['material','composicao','composition']);
+  else if(/^(?:color|colour|cor|cores)$/.test(n))
+   hit=suppliedValue(['color','cor'],['cor','cores','color','colour']);
+  else if(/^(?:ball diameter|diametro da bola|diametro)$/.test(n)){
+   hit=suppliedValue(['ballDiameter'],['diametro da bola','ball diameter','diametro do produto']);
+  }else if(/^(?:ball size|tamanho da bola)$/.test(n)){
+   hit=suppliedValue(['ballSize'],['tamanho da bola','ball size']);
+   if(!hit&&/\bbola\b/i.test(sourceName)){
+    const size=sourceName.match(/\b(?:n[.º°o]*\s*)?(\d{1,2})\b/i);
+    const explicit=sourceName.match(/\b(?:n[.º°o]*\s*|tamanho\s*)(\d{1,2})\b/i);
+    if(explicit)hit={value:explicit[1],source:supplierName+' · tamanho indicado no nome do produto'};
+   }
+  }else if(/^(?:quantity per pack|quantidade por pacote|unidades por pacote)$/.test(n)){
+   hit=suppliedValue(['quantityPerPack'],['quantidade por pacote','unidades por pacote','quantity per pack']);
+  }else if(/^(?:warranty duration|prazo de garantia|tempo de garantia)$/.test(n)){
+   hit=suppliedValue(['warrantyDuration'],['prazo de garantia','tempo de garantia','warranty duration']);
+  }else if(/^(?:region of origin|pais de origem|regiao de origem)$/.test(n)){
+   hit=suppliedValue(['countryOfOrigin'],['pais de origem','regiao de origem','region of origin']);
+  }else if(/^(?:length|comprimento|comprimento do produto)$/.test(n)){
+   if(dims)hit={value:dims.length,source:dimSource+' · comprimento do produto em cm'};
+   else hit=labeledField(['comprimento do produto','product length']);
+  }else if(/^(?:height|altura|altura do produto)$/.test(n)){
+   if(dims)hit={value:dims.height,source:dimSource+' · altura do produto em cm'};
+   else hit=labeledField(['altura do produto','product height']);
+  }else if(/^(?:width|largura|largura do produto)$/.test(n)){
+   if(dims)hit={value:dims.width,source:dimSource+' · largura do produto em cm'};
+   else hit=labeledField(['largura do produto','product width']);
+  }else if(/^(?:quantity|quantidade)$/.test(n)){
+   hit=labeledField(['quantidade do produto','quantidade de itens','quantidade incluida','quantidade incluida no pacote']);
+  }else if(/^(?:size|tamanho)$/.test(n)){
+   hit=suppliedValue(['size','tamanho'],['tamanho do produto','size','tamanho']);
+  }
+  if(!hit)continue;
+  const raw=String(hit.value).trim();
+  const numeric=raw.match(/^(\d{1,4}(?:[.,]\d{1,2})?)\s*(cm|mm|m|kg|g)?\s*$/i);
+  let value=/^(?:ball size|tamanho da bola|size|tamanho)$/.test(n)?normalizeSize(raw):raw;
+  let unit='';
+  // Structured measurement fields require a Shopee-approved unit.
+  if(numeric&&Number(attr.formatType)===2){
+   const units=list(attr.allowedUnits).map(u=>typeof u==='string'?u:u?.unit||u?.name||'').filter(Boolean);
+   const match=units.find(u=>plain(u)===plain(numeric[2]||'cm'));
+   if(!match)continue;
+   value=numeric[1].replace(',','.');unit=match;
+  }
+  const previous=suggestions.length;
+  suggest(attr,value,hit.source+' — valor explícito desta SKU.',{onlyIfMissing:true});
+  if(suggestions.length>previous&&unit){
+   suggestions[suggestions.length-1].values[0].unit=unit;
+  }
+ }
+
  const metrics=[];
  if(dims)metrics.push({name:'Dimensões do produto (A × L × C)',value:dims.value,
   note:dimSource+'; confirmar medidas montadas. Não utilizar dimensões logísticas.'});
