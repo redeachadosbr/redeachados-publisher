@@ -5850,6 +5850,7 @@ async function optimizerContentFlush(){
 }
 function optimizerContentRestore(w){
  if(!w)return w;
+ const unsaved=[];
  for(const stage of ['seo','description']){
   try{
    const cached=JSON.parse(localStorage.getItem(optimizerContentKey(w,stage))||'null');
@@ -5859,11 +5860,23 @@ function optimizerContentRestore(w){
    w[field]=cached.value;
    const row=w.stages?.find(x=>x.key===stage);
    if(row){row.reviewed=false;row.status='pending';row.reviewedAt=null;}
-   // Reenvia só o texto pendente do navegador. Nenhuma API de publicação.
-   optimizerContentPending=cached;
-   setTimeout(()=>{void optimizerContentFlush().catch(()=>{});},350);
+   // As duas etapas podem ter alterações simultâneas pendentes.
+   unsaved.push(cached);
   }catch{}
  }
+ if(unsaved.length)setTimeout(()=>{
+  void (async()=>{
+   for(const draft of unsaved){
+    const field=draft.stage==='seo'?'draftTitle':'draftDescription';
+    if(optimizerWorkflowPlan?.sku!==draft.sku||
+       optimizerWorkflowPlan?.itemId!==draft.itemId||
+       optimizerWorkflowPlan?.[field]!==draft.value)continue;
+    if(optimizerContentPending)await optimizerContentFlush().catch(()=>{});
+    optimizerContentPending=draft;
+    await optimizerContentFlush().catch(()=>{});
+   }
+  })();
+ },350);
  return w;
 }
 
