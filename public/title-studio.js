@@ -40,47 +40,55 @@
     const title=f.title;
     const short=title.replace(/^(super|novo|novidade|promo[cç][aã]o|oferta)\s+/i,'');
     const alternate=f.supplier&&key(f.supplier)!==key(title)?f.supplier:short;
+    const isToyKit=f.kind==='toy'&&/\b3\s*em\s*1\b/i.test(title)&&/mochila/i.test(title)&&/ferramentas/i.test(title);
+    const b2=isToyKit?'Mochila Construtor 3 em 1 com Ferramentas':short;
+    const b3=isToyKit?'Brinquedo Mochila Construtor 3 em 1 com Ferramentas':alternate;
+    const b4=isToyKit?'Mochila de Ferramentas Construtor 3 em 1':short;
     const prefix=f.kind==='toy'?'🧰 ':'✨ ';
+    const addAccessories=isToyKit?['Com Acessórios']:[],more=[...extra,...addAccessories];
     return [
-      {name:'Busca direta',subtitle:'Começa pelo nome do produto',base:title,terms:extra,emoji:prefix,
-       reason:'Prioriza nome, tipo e termos relacionados ao produto identificado.'},
-      {name:'Palavras-chave',subtitle:'Amplia buscas relacionadas',base:short,terms:extra.slice().reverse(),emoji:'🔎 ',
-       reason:'Organiza sinônimos e termos de busca sem afirmar volume pesquisado.'},
-      {name:'Uso e benefício',subtitle:'Contexto de compra',base:alternate,terms:extra.slice(2).concat(extra.slice(0,2)),emoji:'✨ ',
-       reason:'Combina atributos existentes e contextos coerentes com a categoria.'},
-      {name:'Presente e descoberta',subtitle:'Apresentação comercial',base:short,terms:extra.slice(4).concat(extra.slice(0,4)),emoji:f.kind==='toy'?'🎁 ':'⭐ ',
-       reason:'Testa outra ordem de palavras mantendo as informações do anúncio.'}
+      {name:'Busca direta',subtitle:'Nome original em destaque',base:title,terms:more,emoji:prefix,
+       reason:'Preserva a descrição principal e acrescenta pesquisas relacionadas sem promessas fictícias.'},
+      {name:'Palavras-chave',subtitle:'Foco em buscas específicas',base:b2,terms:more.slice().reverse(),emoji:'🔎 ',
+       reason:'Destaca os termos principais de busca e a categoria do produto.'},
+      {name:'Uso e brincadeira',subtitle:'Contexto do comprador',base:b3,terms:more.slice(2).concat(more.slice(0,2)),emoji:'✨ ',
+       reason:'Testa a intenção de uso com termos compatíveis com o nome e a ficha original.'},
+      {name:'Presente e descoberta',subtitle:'Abordagem comercial',base:b4,terms:more.slice(4).concat(more.slice(0,4)),emoji:f.kind==='toy'?'🎁 ':'⭐ ',
+       reason:'Explora ocasião de compra sem usar urgência, brinde ou descontos não comprovados.'}
     ];
   }
   function assemble(cfg){
-    const base=clean(cfg.base);
-    const prefix=cfg.emoji||'';
+    const base=clean(cfg.base),prefix=cfg.emoji||'';
     const start=count(prefix+base)<=LIMIT?prefix+base:prefix+[...base].slice(0,LIMIT-count(prefix)).join('').replace(/\s+\S*$/,'');
-    const terms=cfg.terms.filter((t,i,a)=>t&&a.findIndex(v=>key(v)===key(t))===i&&
-      !key(base).includes(key(t)) && count(t)<=42);
-    // Mochila 3 em 1 etc. Only the product's own title, supplier and optional approved terms.
+    const words=s=>new Set(clean(s).normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase().split(/[^a-z0-9]+/).filter(x=>x.length>3&&!['para','como','mais','brinquedo'].includes(x)));
+    const baseWords=words(base);
+    const terms=cfg.terms.filter((t,i,a)=>{
+      if(!t||a.findIndex(v=>key(v)===key(t))!==i||key(base).includes(key(t))||count(t)>42)return false;
+      const ws=words(t);
+      if(ws.size>0&&[...ws].filter(w=>baseWords.has(w)).length/ws.size>=.75)return false;
+      return true;
+    });
+    // Otimiza somente combinações de palavras sustentadas pelo título e termos confirmados.
     let states=new Map([[count(start),{text:start,score:0}]]);
-    const additions=terms.slice(0,16);
-    for(let i=0;i<additions.length;i++){
+    for(const term of terms.slice(0,16)){
       const next=new Map(states);
       for(const [len,current] of states){
         for(const sep of [' · ',' | ',' ']){
-          const part=sep+additions[i],n=len+count(part);
+          const part=sep+term,n=len+count(part);
           if(n>LIMIT)continue;
-          const score=current.score+count(additions[i])+(sep===' · '?1:0);
+          const quality=current.score+(sep===' '?-3:9)+Math.min(7,count(term)*.25);
           const old=next.get(n);
-          if(!old||score>old.score)next.set(n,{text:current.text+part,score});
+          if(!old||quality>old.score)next.set(n,{text:current.text+part,score:quality});
         }
       }
       states=next;
     }
-    let winner=null,score=-Infinity;
+    let winner='',highest=-Infinity;
     for(const [len,state] of states){
-      const value=len*5+state.score*.05-(len===LIMIT?0:0);
-      if(value>score){winner=state.text;score=value;}
+      const final=len===LIMIT?500+state.score:len*3+state.score;
+      if(final>highest){winner=state.text;highest=final;}
     }
     let chosen=clean(winner||start);
-    // Optional accent emojis fill exact 1-character gaps, never add spaces as fake SEO.
     if(count(chosen)===LIMIT-1)chosen+='✨';
     return chosen;
   }
