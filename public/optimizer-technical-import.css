@@ -1,0 +1,54 @@
+/* Ficha técnica inteligente · compactação e leitura de provas WeDrop */
+#optimizerTechnicalPanel.optimizer-technical-modern{padding:14px 15px;display:block}
+#optimizerTechnicalPanel.optimizer-technical-modern[hidden]{display:none!important}
+.optimizer-technical-header{display:flex;align-items:center;gap:12px;padding:5px 0 14px}
+.optimizer-technical-header strong{font-size:17px;color:#15335b}
+.optimizer-technical-header p{font-size:12px;color:#58708a;margin:3px 0 0}
+.optimizer-technical-icon{background:#e7f2ff;color:#1970d1;border-radius:11px;width:41px;height:41px;display:grid;place-items:center;font-size:25px;font-weight:800}
+.optimizer-technical-pill{margin-left:auto;border:1px solid #bad7f7;background:#edf7ff;border-radius:20px;padding:7px 10px;color:#165293;font-size:11px;font-weight:800;white-space:nowrap}
+.optimizer-technical-import{background:linear-gradient(130deg,#f4f9ff,#fff);border:1px solid #d3e4f7;border-radius:14px;padding:16px;margin-bottom:13px}
+.optimizer-tech-import-title{display:flex;align-items:center;gap:7px;justify-content:space-between;flex-wrap:wrap;margin:0 0 12px}
+.optimizer-tech-import-title strong{color:#124d91;font-size:14px}
+.optimizer-tech-import-title small{color:#607998;font-size:11px}
+.optimizer-technical-import label[for=optimizerTechText]{font-size:12px;color:#214666;font-weight:740;display:block}
+#optimizerTechText{display:block;box-sizing:border-box;width:100%;min-height:95px;resize:vertical;margin:7px 0 11px;padding:12px;border:1px solid #cbdaec;border-radius:10px;background:#fff;color:#173653;font-size:13px;line-height:1.55}
+.optimizer-tech-import-actions{display:flex;align-items:stretch;gap:10px;flex-wrap:wrap}
+.optimizer-tech-upload{position:relative;display:flex;align-items:center;gap:8px;padding:10px 12px;border:1px solid #d4e3f3;border-radius:10px;background:#fff;font-size:12px;font-weight:750;color:#1d5b90;max-width:100%;cursor:pointer}
+.optimizer-tech-upload input{max-width:220px;font-size:11px}
+#optimizerTechFill{background:linear-gradient(110deg,#115bb8,#1e84ce);border:0;color:#fff;border-radius:10px;padding:11px 17px;font-size:12px;font-weight:800;box-shadow:0 4px 8px #185f9a2b;cursor:pointer}
+#optimizerTechFill:hover{filter:brightness(1.07)}
+#optimizerTechFill:disabled{opacity:.65;cursor:wait}
+#optimizerTechImagesCount{display:block;font-size:11px;margin:8px 0 0;color:#597b9e}
+.optimizer-tech-privacy{font-size:11px;color:#627b92;line-height:1.55;margin:8px 0!important}
+#optimizerTechStatus{font-size:12px!important;margin:8px 0 0!important;line-height:1.5}
+.optimizer-technical-summary{padding:14px;background:#fff;border:1px solid #dbe5f2;border-radius:13px;margin-bottom:12px}
+.optimizer-tech-summary-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:10px}
+.optimizer-tech-summary-head strong{display:block;color:#152e4b;font-size:14px}
+.optimizer-tech-summary-head small{font-size:11px;color:#58728f}
+.optimizer-tech-summary-stats{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:9px}
+.optimizer-tech-summary-stat{background:#f0f5fb;border-radius:9px;padding:10px 8px;text-align:center}
+.optimizer-tech-summary-stat strong{display:block;font-size:24px;line-height:1.1;color:#143e65;font-weight:850}
+.optimizer-tech-summary-stat span{font-size:11px;color:#52718d;font-weight:650}
+.optimizer-tech-summary-stat.ok{background:#e7f8f0}
+.optimizer-tech-summary-stat.ok strong{color:#16785c}
+.optimizer-tech-summary-stat.warn{background:#fff4dd}
+.optimizer-tech-summary-stat.warn strong{color:#995f1e}
+.optimizer-tech-summary-note{font-size:11px!important;color:#58728d;margin:11px 0!important}
+.optimizer-tech-summary-list{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}
+.optimizer-tech-summary-item{display:flex;align-items:center;gap:7px;min-width:0;padding:10px;border:1px solid #dde8f1;background:#f9fcff;border-radius:10px}
+.optimizer-tech-summary-desc{min-width:0;flex:1}
+.optimizer-tech-summary-desc strong{display:block;font-size:12px;color:#173a59}
+.optimizer-tech-summary-desc span{display:block;font-size:12px;color:#1f6a54;margin-top:3px;overflow-wrap:anywhere}
+.optimizer-tech-summary-item small{font-size:10px;color:#63819b;max-width:92px}
+.optimizer-tech-summary-item button{font-size:10px!important;padding:7px 8px!important;min-height:29px!important}
+.optimizer-tech-warning{margin:10px 0 0!important;padding:9px 10px;border-radius:8px;background:#fff6e6;color:#8b5d1c;font-size:11px!important}
+.optimizer-technical-advanced{border:1px solid #d6e4f2;border-radius:13px;background:#f8fbff;overflow:hidden}
+.optimizer-technical-advanced>summary{display:flex;align-items:center;gap:8px;cursor:pointer;padding:13px 15px;list-style:none;font-size:13px;font-weight:800;color:#194e82}
+.optimizer-technical-advanced>summary::-webkit-details-marker{display:none}
+.optimizer-technical-advanced>summary small{margin-left:auto;color:#6e89a4;font-size:11px}
+.optimizer-technical-advanced>summary span:last-child{font-size:18px}
+.optimizer-technical-advanced[open]>summary span:last-child{transform:rotate(180deg)}
+.optimizer-technical-advanced-body{border-top:1px solid #dbe7f3;padding:13px}
+.optimizer-technical-advanced-body .optimizer-edit-fields{margin-top:14px}
+@media(max-width:900px){.optimizer-tech-summary-list{grid-template-columns:1fr}}
+@media(max-width:660px){.optimizer-tech-summary-stats{grid-template-columns:repeat(3,1fr)}.optimizer-tech-summary-stat strong{font-size:20px}.optimizer-technical-header{flex-wrap:wrap}.optimizer-technical-pill{margin:0}.optimizer-tech-import-actions>*{width:100%}.optimizer-tech-upload input{flex:1;min-width:0}}

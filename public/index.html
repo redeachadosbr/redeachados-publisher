@@ -16,6 +16,7 @@
 <link rel="stylesheet" href="/dashboard-new-listings.css?v=1.20.21-shopee">
 <link rel="stylesheet" href="/finance-thumbnails.css?v=1.20.22">
 <link rel="stylesheet" href="/title-studio.css?v=1.20.27">
+<link rel="stylesheet" href="/optimizer-technical-import.css?v=1.20.28">
 </head>
 <body>
 <div class="shell app-layout">
@@ -615,11 +616,36 @@
           <div id="optimizerVariationPreview" class="optimizer-variation-preview"></div>
           <small>A geração e publicação automática de fotos por variação exigem integração com gerador e API de modelos; cada opção ficará pendente até foto e dados conferidos.</small>
         </section>
-        <section id="optimizerTechnicalPanel" class="optimizer-video-import" hidden>
-          <strong>Preencher ficha técnica</strong>
-          <p class="optimizer-video-help">Selecione os valores confirmados pela ficha do fornecedor. Campos não selecionados conservam o valor atual. Informe a fonte para cada alteração.</p>
-          <div id="optimizerTechnicalFields" class="optimizer-edit-fields"></div>
-          <button type="button" id="optimizerTechnicalRefresh" class="secondary" hidden>Atualizar opções dependentes</button>
+        <section id="optimizerTechnicalPanel" class="optimizer-video-import optimizer-technical-modern" hidden>
+          <div class="optimizer-technical-header">
+            <span class="optimizer-technical-icon" aria-hidden="true">▣</span>
+            <div><strong>Ficha técnica inteligente</strong><p>Preencha pela WeDrop e confira o resumo. Campos completos somente quando quiser editar.</p></div>
+            <span id="optimizerTechSku" class="optimizer-technical-pill">SKU</span>
+          </div>
+          <div class="optimizer-technical-import">
+            <div class="optimizer-tech-import-title"><strong>① Importar informações WeDrop</strong><small>Produto localizado na Shopee + catálogo WeDrop + seus dados</small></div>
+            <label for="optimizerTechText">Cole a descrição ou as especificações do fornecedor
+              <textarea id="optimizerTechText" maxlength="12000" rows="4" placeholder="Cole aqui os detalhes da página WeDrop. Ex.: Material: PP; Idade recomendada: 3 anos; Dimensões da mochila: ..."></textarea>
+            </label>
+            <div class="optimizer-tech-import-actions">
+              <label class="optimizer-tech-upload">▧ Adicionar prints (JPG/PNG)
+                <input type="file" id="optimizerTechFiles" accept=".png,.jpg,.jpeg,image/png,image/jpeg" multiple>
+              </label>
+              <button type="button" id="optimizerTechFill">✦ Ler dados e preencher ficha</button>
+            </div>
+            <small id="optimizerTechImagesCount">Os prints existentes da SKU também podem ser lidos.</small>
+            <p class="optimizer-tech-privacy">A leitura de prints utiliza a API OpenAI configurada, quando disponível, podendo gerar custos de API. Confira valores, unidades, certificados e variantes. Os dados são preparados localmente no seu fluxo; a Shopee não é alterada.</p>
+            <p id="optimizerTechStatus" class="optimizer-notice" role="status" aria-live="polite">Cole o texto ou anexe um print e clique uma vez para preparar a ficha.</p>
+          </div>
+          <div id="optimizerTechnicalSummary" class="optimizer-technical-summary" aria-live="polite">Carregando dados da categoria…</div>
+          <details id="optimizerTechnicalAdvanced" class="optimizer-technical-advanced">
+            <summary><span>② Conferir ou editar campos individualmente</span><small id="optimizerTechnicalAdvancedCount">Opções da categoria</small><span aria-hidden="true">⌄</span></summary>
+            <div class="optimizer-technical-advanced-body">
+              <p class="optimizer-video-help">Os campos preenchidos pelo fornecedor aparecem selecionados. Corrija somente o necessário e informe a fonte de cada alteração. Os outros campos atuais serão preservados.</p>
+              <div id="optimizerTechnicalFields" class="optimizer-edit-fields"></div>
+              <button type="button" id="optimizerTechnicalRefresh" class="secondary" hidden>Atualizar opções dependentes</button>
+            </div>
+          </details>
         </section>
         <section id="optimizerFiscalPanel" class="optimizer-video-import" hidden>
           <strong>Dados fiscais por SKU</strong>
@@ -1426,7 +1452,7 @@
 <script src="/optimizer-dashboard.js?v=1.20.11"></script>
 <script src="/dashboard-new-listings.js?v=1.20.21-shopee"></script>
 <script src="/title-studio.js?v=1.20.27"></script>
-<script src="/app.js?v=1.20.27-title-studio"></script>
+<script src="/app.js?v=1.20.28-wedrop-tech"></script>
 <script src="/optimizer-fiscal-premium.js?v=1.20.13"></script>
 </body>
 </html>

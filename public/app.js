@@ -2723,7 +2723,7 @@ function optimizerWorkflowOpen(key){
  $('#optimizerVariationPanel').hidden=key!=='variants'||!$('#optimizerHasVariants').checked;
  if(key==='variants')optimizerVariationRender(data);
  if(isImages){optimizerImageCorrectionLoad();void optimizerImagesLoad();}
- if(key==='technical')optimizerTechnicalRender(data);
+ if(key==='technical'){$('#optimizerTechnicalAdvanced').open=false;optimizerTechnicalRender(data);}
  if(key==='fiscal')optimizerFiscalRender(data);
  optimizerSupplierRender(data,key);
  $('#optimizerVideoManualPanel').hidden=!isVideo;
@@ -5364,7 +5364,158 @@ function optimizerSupplierRender(data,key){
  }
  if(key==='technical'||key==='fiscal')for(const warning of p.warnings||[])wrap.append(optimizerMake('small','',warning));
 }
+
+function optimizerTechNotice(message,state='info'){
+ const notice=$('#optimizerTechStatus');if(notice){notice.textContent=message;notice.dataset.state=state;}
+}
+function optimizerTechnicalSummary(data){
+ const target=$('#optimizerTechnicalSummary');if(!target)return;
+ target.replaceChildren();
+ const attrs=(data.attributes||[]),changes=optimizerTechnicalValues();
+ const suggested=data.sourceFacts?.suggestions||[];
+ const index=new Map(attrs.map(x=>[Number(x.id),x]));
+ const chosen=changes.filter(x=>x.values?.some(v=>v.valueName&&v.valueId!==-1));
+ const current=attrs.filter(x=>x.values?.length).length;
+ const mandatory=attrs.filter(x=>x.mandatory&&!x.conditional&&!x.values?.length&&
+   !chosen.some(c=>c.attributeId===Number(x.id)&&c.values.some(v=>v.valueName&&v.valueId!==-1)));
+ const header=optimizerMake('div','optimizer-tech-summary-head');
+ const title=optimizerMake('div');
+ title.append(optimizerMake('strong','','② Prévia do preenchimento'),
+  optimizerMake('small','','Dados da categoria '+String(data.categoryId||'—')+' · antes de enviar para a Shopee'));
+ header.append(title);target.append(header);
+ const stats=optimizerMake('div','optimizer-tech-summary-stats');
+ const tile=(number,label,type)=>{
+  const div=optimizerMake('div','optimizer-tech-summary-stat '+type);
+  div.append(optimizerMake('strong','',String(number)),optimizerMake('span','',label));
+  stats.append(div);
+ };
+ tile(chosen.length,'Preparados para revisão','ok');
+ tile(current,'Atuais na Shopee','neutral');
+ tile(mandatory.length,'Obrigatórios pendentes','warn');
+ target.append(stats);
+ const summaryNote=optimizerMake('p','optimizer-tech-summary-note',chosen.length?
+   'Os valores sugeridos já estão nos campos de revisão. Confira antes de registrar a etapa; não houve publicação.':
+   'Nenhuma nova alteração técnica pronta. Cole informações na área acima, ou abra os campos individuais.');
+ target.append(summaryNote);
+ const list=optimizerMake('div','optimizer-tech-summary-list');
+ for(const change of chosen.slice(0,18)){
+  const attr=index.get(change.attributeId);
+  if(!attr)continue;
+  const item=optimizerMake('div','optimizer-tech-summary-item');
+  const desc=optimizerMake('div','optimizer-tech-summary-desc');
+  desc.append(optimizerMake('strong','',String(attr.name||'Atributo '+change.attributeId)),
+   optimizerMake('span','',change.values.map(x=>x.valueName+(x.unit?' '+x.unit:'')).join(', ')));
+  const proof=suggested.some(x=>Number(x.attributeId)===change.attributeId);
+  item.append(desc,optimizerMake('small',proof?'Dado WeDrop · conferir':'Preenchimento registrado ou manual'));
+  const edit=optimizerMake('button','secondary','Editar');edit.type='button';
+  edit.onclick=()=>{
+   const details=$('#optimizerTechnicalAdvanced');details.open=true;
+   const field=[...$('#optimizerTechnicalFields').querySelectorAll('fieldset')].find(x=>
+      Number(x.dataset.attributeId)===change.attributeId);
+   if(field){field.scrollIntoView({behavior:'smooth',block:'center'});field.querySelector('input,select')?.focus({preventScroll:true});}
+  };
+  item.append(edit);list.append(item);
+ }
+ if(list.childElementCount)target.append(list);
+ if(mandatory.length)target.append(optimizerMake('p','optimizer-tech-warning',
+  'Pendente: '+mandatory.map(x=>x.name).slice(0,4).join(', ')+
+  (mandatory.length>4?' e outros.':'.')+' Abra os campos apenas quando precisar corrigir.'));
+ const info=$('#optimizerTechnicalAdvancedCount');
+ if(info)info.textContent=attrs.length+' campos da categoria · abrir quando necessário';
+}
+async function optimizerTechRequest(w,action,extra={}){
+ return json('/api/shopee/optimizer/workflow/source',{
+  method:'POST',headers:{'Content-Type':'application/json'},
+  body:JSON.stringify({sku:w.sku,itemId:w.itemId,modelId:w.modelId,action,...extra}),
+  signal:AbortSignal.timeout(action==='extract'?120000:90000)
+ });
+}
+async function optimizerTechImport(){
+ const w=optimizerWorkflowPlan,button=$('#optimizerTechFill');
+ if(!w?.sku||optimizerWorkflowStage!=='technical'||button.disabled)return;
+ const sku=w.sku,files=[...($('#optimizerTechFiles')?.files||[])];
+ if(files.length>4){optimizerTechNotice('Selecione até 4 prints por vez.','warning');return;}
+ for(const file of files){
+  if(!['image/png','image/jpeg'].includes(file.type)||!file.size||file.size>4*1024*1024){
+   optimizerTechNotice('Print inválido: use JPG/PNG de até 4 MB.','warning');return;
+  }
+ }
+ const input=$('#optimizerTechText'),written=input.value.trim();
+ const oldText=String(w.sourceEvidence?.sourceText||'').trim();
+ const oldShots=(w.sourceEvidence?.screenshots||[]).length;
+ if(!written&&!files.length&&!oldShots){
+  optimizerTechNotice('Cole as especificações ou selecione um print antes de continuar.','warning');return;
+ }
+ if(files.length+oldShots>4){
+  optimizerTechNotice('Limite de 4 prints por SKU. Exclua os antigos no bloco Informações da WeDrop.','warning');return;
+ }
+ button.disabled=true;
+ let warning='',extracted=0,updated=false,success=false;
+ try{
+  if(written!==oldText){
+   optimizerTechNotice('Salvando texto WeDrop desta SKU...');
+   await optimizerTechRequest(w,'text',{sourceText:written});
+   updated=true;
+  }
+  for(let i=0;i<files.length;i++){
+   optimizerTechNotice('Guardando print '+(i+1)+' de '+files.length+'...');
+   const file=files[i],bytes=new Uint8Array(await file.arrayBuffer());let binary='';
+   for(let n=0;n<bytes.length;n+=32768)binary+=String.fromCharCode(...bytes.subarray(n,n+32768));
+   await optimizerTechRequest(w,'image',{imageBase64:btoa(binary),mime:file.type,filename:file.name});
+   updated=true;
+  }
+  if(oldShots+files.length){
+   optimizerTechNotice('Lendo informações dos prints com IA. Pode levar alguns segundos...');
+   try{
+    const scanned=await optimizerTechRequest(w,'extract');
+    extracted=Number(scanned.extractedCount||0);
+    if(extracted)updated=true;
+   }catch(error){
+    warning='Prints guardados, mas a leitura automática não concluiu: '+error.message+
+      ' Você pode colar o texto manualmente.';
+   }
+  }
+  optimizerTechNotice('Aplicando as sugestões às opções oficiais da categoria...');
+  if(updated){
+   // New evidence always reopens technical review, even if it was approved earlier.
+   await json('/api/shopee/optimizer/workflow/review',{
+    method:'POST',headers:{'Content-Type':'application/json'},
+    body:JSON.stringify({itemId:w.itemId,modelId:w.modelId,sku:w.sku,stage:'technical',reviewed:false}),
+    signal:AbortSignal.timeout(60000)
+   });
+  }
+  const refreshed=await json('/api/shopee/optimizer/workflow?'+new URLSearchParams({
+   sku:w.sku,item_id:w.itemId,model_id:w.modelId}),{signal:AbortSignal.timeout(90000)});
+  if(optimizerWorkflowPlan!==w||optimizerWorkflowStage!=='technical'||w.sku!==sku)return;
+  Object.assign(w,refreshed);optimizerWorkflowRender(w);optimizerExecReset();
+  // Workflow render enters the technical step again and recalculates the summaries.
+  $('#optimizerTechFiles').value='';
+  success=true;
+  const choices=optimizerTechnicalValues().length;
+  optimizerTechNotice(choices+' atributo(s) preparados para conferência.'+
+    (extracted?' '+extracted+' dado(s) lido(s) dos prints.':'')+
+    (warning?' '+warning:'')+' Nenhuma alteração publicada.',warning?'warning':'success');
+ }catch(error){
+  optimizerTechNotice('Não foi possível preparar a ficha: '+error.message,'error');
+ }finally{
+  if(!success&&updated){
+   // Source evidence may already have been saved. Preserve entered text and allow retry.
+   optimizerSourceNotice('Informações da WeDrop guardadas; recarregue a SKU se o processamento interrompeu.','warning');
+  }
+  button.disabled=false;
+ }
+}
+$('#optimizerTechFill')?.addEventListener?.('click',()=>void optimizerTechImport());
+$('#optimizerTechnicalFields')?.addEventListener?.('change',()=>{
+ if(optimizerWorkflowPlan&&optimizerWorkflowStage==='technical')
+  optimizerTechnicalSummary(optimizerWorkflowPlan);
+});
 function optimizerTechnicalRender(data){
+ $('#optimizerTechSku').textContent='SKU '+String(data.sku||'—');
+ const textBox=$('#optimizerTechText');
+ if(textBox)textBox.value=String(data.sourceEvidence?.sourceText||'');
+ const countTag=$('#optimizerTechImagesCount'),imageCount=(data.sourceEvidence?.screenshots||[]).length;
+ if(countTag)countTag.textContent=imageCount+' de 4 print(s) salvos para esta SKU. Exclua prints antigos no bloco Informações da WeDrop.';
  const wrap=$('#optimizerTechnicalFields');wrap.replaceChildren();
  if(data.anatel?.applicable){
    wrap.append(optimizerMake('p',data.anatel.requiresAction?'optimizer-warning':'optimizer-category-summary',
@@ -5509,6 +5660,7 @@ function optimizerTechnicalRender(data){
   enabled.onchange=()=>{controls.hidden=!enabled.checked;optimizerExecReset();};
  }
  if(!wrap.children.length)wrap.append(optimizerMake('p','','A categoria não retornou atributos.'));
+ optimizerTechnicalSummary(data);
 }
 function optimizerTechnicalValues(){
  return [...$('#optimizerTechnicalFields').querySelectorAll('fieldset')].filter(x=>x.querySelector('[data-attribute-enabled]')?.checked).map(field=>({
