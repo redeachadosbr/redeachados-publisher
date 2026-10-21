@@ -11,7 +11,7 @@ const ncmPattern=/^\d{8}$/;
 // Shopee. Não é um CST universal de NF-e; a contabilidade pode orientar
 // exceções por SKU e o valor salvo/revisado da SKU tem precedência.
 // Nunca aplicar esta regra para inferir CEST, CFOP ou NCM.
-// CEST "00" é marcador visual de não informado, nunca código fiscal oficial.
+// CEST "00" é valor literal solicitado pela loja e pode ser enviado após autorização. Não presume enquadramento fiscal de 7 dígitos.
 export const REDE_ACHADOS_FISCAL_DEFAULTS=Object.freeze({pis_cofins_cst:'99',cest:'00'});
 export const isShopeeCestConfirmed=value=>/^\d{7}$/.test(String(value??'').trim());
 export function fiscalStoreDefaults(fiscalNotes=''){
