@@ -3148,6 +3148,9 @@ function optimizerDiscountFinalSavedQuote(q){
  optimizerDiscountFinalQuote=q;optimizerDiscountFinalIdentity=key;
  optimizerDiscountFinalPreviewData=null;optimizerDiscountFinalPreviewKey='';
  optimizerDiscountFinalPaint();
+ if(optimizerExecJob?.state==='verified'&&optimizerExecJob?.plan?.selectedStage==='all'&&
+    optimizerDiscountFinalEligible(q))
+  void optimizerDiscountFinalPrepare({automatic:true});
  optimizerDiscountFinalStatus(
   q.marketResearch?.verified?'Preço, pesquisa e desconto salvos no Motor Matriz. Serão revisados ao final da execução.':
   'Preço provisório salvo. Sem 2 anúncios comparáveis, não haverá publicação de desconto.',
@@ -3199,6 +3202,8 @@ $('#optimizerExecDiscountCampaign')?.addEventListener('input',()=>{
  optimizerDiscountFinalPaint();
  if(optimizerDiscountCampaignTimer)clearTimeout(optimizerDiscountCampaignTimer);
  const candidate=String($('#optimizerExecDiscountCampaign').value||'');
+ if(/^\d{1,18}$/.test(candidate)&&$('#discountPromotionId'))
+  $('#discountPromotionId').value=candidate;
  if(/^\d{1,18}$/.test(candidate))optimizerDiscountCampaignTimer=setTimeout(()=>
   void optimizerDiscountFinalPrepare({automatic:true}),450);
 });
@@ -3292,6 +3297,8 @@ function optimizerExecRender(data){
  if(!plan||!context||context.sku!==plan.sku||context.itemId!==plan.itemId||context.modelId!==plan.modelId)return;
  optimizerExecPlan={...plan,updatedAt:data.updatedAt};
  optimizerExecFiscalLast(plan);
+ if(!$('#optimizerExecDiscountCampaign').value&&$('#discountPromotionId')?.value)
+  $('#optimizerExecDiscountCampaign').value=String($('#discountPromotionId').value).trim();
  void optimizerDiscountFinalLoad();
  $('#optimizerExecutionScope').value=plan.selectedStage||'all';
  optimizerExecutionIssueRender(data.issue||null);
