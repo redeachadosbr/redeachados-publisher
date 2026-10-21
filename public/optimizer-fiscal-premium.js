@@ -158,32 +158,72 @@
        '. Nenhum dado foi enviado à Shopee.';
    }finally{button.disabled=false;}
  });
+ const fiscalMigrationProgressKey='ra-shopee-fiscal-migration-v2';
+ async function migrationDraftRequest(items){
+   let lastError;
+   for(let attempt=1;attempt<=4;attempt++){
+     try{
+       const response=await fetch('/api/shopee/optimizer/fiscal-migration/prepare-drafts',{
+         method:'POST',credentials:'same-origin',cache:'no-store',
+         headers:{'Content-Type':'application/json','Accept':'application/json'},
+         body:JSON.stringify({items}),signal:AbortSignal.timeout(110000)});
+       const type=response.headers.get('content-type')||'';
+       if(!type.includes('application/json')){
+         const error=new Error('Servidor retornou HTML ou outra resposta inesperada (HTTP '+response.status+').');
+         error.retryable=[408,429,500,502,503,504].includes(response.status)||response.ok;
+         throw error;
+       }
+       const data=await response.json();
+       if(!response.ok||!data.ok){
+         const error=new Error(data.error||'Falha ao preparar fichas (HTTP '+response.status+').');
+         error.retryable=[408,429,500,502,503,504].includes(response.status);
+         throw error;
+       }
+       if(!Array.isArray(data.results)||data.results.length!==items.length)
+         throw Error('Resposta incompleta: lote não foi confirmado.');
+       return data.results;
+     }catch(error){
+       lastError=error;
+       if(error.retryable===false||attempt===4)break;
+       await new Promise(resolve=>setTimeout(resolve,Math.min(1000*2**(attempt-1),8000)));
+     }
+   }
+   throw lastError;
+ }
  q('optimizerFiscalMigrationPrepare')?.addEventListener('click',async()=>{
    const button=q('optimizerFiscalMigrationPrepare');
    const notice=q('optimizerFiscalMigrationStatus');
    const rows=(window.optimizerFiscalMigrationInventory||[]).filter(x=>!x.reviewed);
-   if(!rows.length){if(notice)notice.textContent='Nenhuma ficha pendente localizada.';return;}
+   if(!rows.length){if(notice)notice.textContent='Nenhuma ficha pendente localizada. Localize os anúncios ativos novamente.';return;}
    button.disabled=true;
    const results=[];
+   const identity=rows.map(x=>x.itemId+':'+x.modelId+':'+x.sku).join('|');
+   let start=0;
    try{
-     for(let i=0;i<rows.length;i+=12){
-       if(notice)notice.textContent='Preparando fichas fiscais com NCM WeDrop: '+Math.min(i+12,rows.length)+'/'+rows.length+'. Nenhum envio à Shopee.';
-       const response=await fetch('/api/shopee/optimizer/fiscal-migration/prepare-drafts',{
-         method:'POST',credentials:'same-origin',headers:{'Content-Type':'application/json'},
-         body:JSON.stringify({items:rows.slice(i,i+12)})});
-       const data=await response.json();
-       if(!response.ok||!data.ok)throw Error(data.error||'Falha ao preparar fichas.');
-       results.push(...(data.results||[]));
+     const saved=JSON.parse(sessionStorage.getItem(fiscalMigrationProgressKey)||'null');
+     if(saved?.identity===identity&&Number.isSafeInteger(saved.next)&&saved.next>0&&saved.next<rows.length){
+       start=saved.next;
+       if(notice)notice.textContent='Retomando preparação da SKU '+(start+1)+' de '+rows.length+'. Lotes anteriores já foram processados.';
+     }
+   }catch{}
+   try{
+     for(let i=start;i<rows.length;i+=12){
+       if(notice)notice.textContent='Preparando fichas fiscais: '+Math.min(i+12,rows.length)+'/'+rows.length+
+         ' · envio à Shopee desativado.';
+       const batch=await migrationDraftRequest(rows.slice(i,i+12));
+       results.push(...batch);
+       try{sessionStorage.setItem(fiscalMigrationProgressKey,JSON.stringify({
+         identity,next:Math.min(i+12,rows.length)}));}catch{}
      }
      const saved=results.filter(x=>x.status==='draft_saved').length;
      const pending=results.filter(x=>x.status==='pending').length;
-     if(notice)notice.textContent='Preparação concluída: '+saved+' rascunhos salvos, '+pending+
-       ' pendências e '+results.filter(x=>x.status==='already_reviewed').length+
-       ' já revisados. Revise e aprove os dados fiscais antes de executar. Nada enviado à Shopee.';
+     if(notice)notice.textContent='Preparação concluída: '+saved+' novos rascunhos salvos, '+pending+
+       ' pendências nesta execução. Fichas anteriores preservadas. Ainda exige revisão fiscal; nenhum envio à Shopee.';
+     try{sessionStorage.removeItem(fiscalMigrationProgressKey);}catch{}
      window.optimizerFiscalMigrationDraftResults=results;
    }catch(error){
-     if(notice)notice.textContent='Preparação interrompida após '+results.length+
-       ' SKUs; '+String(error.message||error)+'. Rascunhos anteriores ficam salvos, sem envio.';
+     if(notice)notice.textContent='Preparação pausada: '+String(error.message||error)+
+       '. '+results.length+' SKUs processadas nesta tentativa. Clique novamente para retomar sem reiniciar os lotes concluídos.';
    }finally{button.disabled=false;}
  });
  q('optimizerFiscalBatchSkus')?.addEventListener('input',()=>sync([]));
