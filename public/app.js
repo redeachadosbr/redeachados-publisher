@@ -5390,7 +5390,7 @@ function optimizerTechnicalSummary(data){
   stats.append(div);
  };
  tile(chosen.length,'Preparados para revisão','ok');
- tile(current,'Atuais na Shopee','neutral');
+ tile(current,'Preenchidos na ficha','neutral');
  tile(mandatory.length,'Obrigatórios pendentes','warn');
  target.append(stats);
  const summaryNote=optimizerMake('p','optimizer-tech-summary-note',chosen.length?
