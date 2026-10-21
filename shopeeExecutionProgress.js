@@ -51,7 +51,7 @@ export function shopeeExecutionProgress(job){
    started&&mediaFinished&&['video_upload','video_processing'].includes(phase)?'active':'waiting'),
   step('update','Atualização do anúncio',updateAccepted?'done':
    started&&phase==='updating'?'active':'waiting'),
-  step('verify','Conferência na Shopee',verified?'done':
+  step('verify','Conferência comercial na Shopee',commercialConfirmed?'done':
    started&&phase==='verifying'?'active':'waiting'),
   ...(plan.finalFiscal?[step('fiscal','07 · Dados fiscais — etapa final',
       fiscalPartial?'attention':fiscalDone?'done':fiscalActive?'active':'waiting')]:
