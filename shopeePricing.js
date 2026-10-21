@@ -80,7 +80,7 @@ export function minimumGrossForNetMargin(cost,c,marginPct){
   }
   return best;
 }
-export function quoteShopeePrice({unitCost,settings={},marketAverage=null}={}){
+export function quoteShopeePrice({unitCost,settings={},marketAverage=null,marginOverride=false}={}){
   const c=normalizeShopeePricingSettings(settings);
   const cost=Number(unitCost);
   if(!Number.isFinite(cost)||cost<=0||cost>100000)throw Error('Custo de aquisição WeDrop não disponível ou inválido.');
@@ -92,7 +92,12 @@ export function quoteShopeePrice({unitCost,settings={},marketAverage=null}={}){
   if(gross===null||floor===null)throw Error('As taxas e a margem escolhida impedem preço seguro.');
   let proposed={...c},financial=calculateShopeeSale(gross,proposed,money(cost)),state='PROTEGIDO';
   let note='Plano preparado com a margem desejada e as taxas cadastradas.';
-  if(market!==null){
+  if(marginOverride){
+    // Ação explícita do vendedor: a margem escolhida tem prioridade sobre o mercado.
+    // Mantém o desconto configurado e calcula o menor preço bruto que alcança a meta.
+    state='MARGEM_MANUAL';
+    note='Margem definida manualmente: preço bruto recalculado para atingir a margem escolhida. A média de mercado é apenas referência; a publicação continua sujeita à aprovação.';
+  }else if(market!==null){
     // O percentual competitivo NÃO é o desconto base (20%). É o menor
     // desconto capaz de colocar o preço final próximo ao preço de referência
     // mantendo lucro >= piso. Cupom já entra no preço final calculado.
@@ -131,7 +136,7 @@ export function quoteShopeePrice({unitCost,settings={},marketAverage=null}={}){
     netMarginPct:Number(financial.marginPct.toFixed(3)),minMarginPct:c.minMarginPct,
     targetMarginPct:c.marginPct,marketAverage:market,
     marketGapPct:market===null?null:Number(((financial.finalPrice/market-1)*100).toFixed(2)),
-    targetMarginPreserved:financial.marginPct+1e-8>=desired,
+    targetMarginPreserved:financial.marginPct+1e-8>=desired,marginOverride:Boolean(marginOverride),
     priceFloor:floorSale.finalPrice,
     feeTier:financial.tier,breakdown:{
       campaignDiscount:financial.campaignDiscount,couponDiscount:financial.couponDiscount,
