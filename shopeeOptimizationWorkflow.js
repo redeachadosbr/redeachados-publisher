@@ -33,6 +33,8 @@ export function validateContentRules({title,description}){
  }
  if(description!==undefined){
   const text=String(description).replace(/\r\n?/g,'\n').normalize('NFC').trim(),count=codePointCount(text);
+  if(!text.endsWith(REDE_ACHADOS_DESCRIPTION_RULES.cta))
+   throw Error('Motor Matriz: a descrição precisa terminar com o CTA oficial: '+REDE_ACHADOS_DESCRIPTION_RULES.cta);
   if(count<REDE_ACHADOS_DESCRIPTION_RULES.minChars||count>REDE_ACHADOS_DESCRIPTION_RULES.maxChars)throw Error('A descrição deve ter entre 1400 e 1440 caracteres, incluindo quebras de linha e emojis.');
   const headings=['Descrição do produto','Especificações do produto','Tabela de medidas','5 dúvidas frequentes','10 motivos para comprar agora'];
   const positions=headings.map(x=>text.toLocaleLowerCase('pt-BR').indexOf(x.toLocaleLowerCase('pt-BR')));
@@ -40,8 +42,7 @@ export function validateContentRules({title,description}){
   const numbered=part=>(part.match(/^\d{1,2}[.)]\s+.+$/gm)||[]);
   const questions=numbered(text.slice(positions[3],positions[4])),reasons=numbered(text.slice(positions[4]));
   if(questions.length!==5||reasons.length!==10)throw Error('Numere as 5 perguntas com respostas e os 10 motivos, um por linha.');
-  if(!text.endsWith(REDE_ACHADOS_DESCRIPTION_RULES.cta))
-   throw Error('Motor Matriz: a descrição precisa terminar com o CTA oficial: '+REDE_ACHADOS_DESCRIPTION_RULES.cta);
+
  }
 }
 export function descriptionDraft(record){
