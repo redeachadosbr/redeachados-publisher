@@ -59,7 +59,9 @@ export const REDE_ACHADOS_MARKET_RULES=Object.freeze({
  distinctShops:true,excludeOwnShop:true,excludeAccessories:true,
  preserveModelSpecs:true,maxVariantPriceRatio:1.30,
  minimumPriceRatioToMedian:0.65,maximumPriceRatioToMedian:1.55,
- preserveDesiredMarginWithinMarketPct:2
+ preserveDesiredMarginWithinMarketPct:2,
+ autoPriceAndResearchOnSku:true,prepareDiscountDuringOptimization:true,
+ publishDiscountOnlyAfterApproval:true
 });
 const marketNormal=x=>String(x??'').normalize('NFD').replace(/[\u0300-\u036f]/g,'')
  .toLowerCase().replace(/[^a-z0-9 ]+/g,' ').replace(/\s+/g,' ').trim();
