@@ -77,13 +77,27 @@ export function compileShopeeExecutionPlan({shopId,itemId,modelId,sku,record,rev
     Boolean(omitFiscal)||selectedStage!=='fiscal'&&Boolean(deferUnconfirmedFiscal)&&
     !isShopeeCestConfirmed(state.tax?.cest)&&
     !isShopeeCestConfirmed(live?.tax_info?.cest));
+  // Na execução completa, o fiscal é uma segunda atualização DURÁVEL,
+  // posterior à confirmação de imagens, vídeo e conteúdo. Nunca no mesmo update_item.
+  let finalFiscal=null;
   if(fiscalDeferred){
-    warnings.push(omitFiscal?'Dados fiscais permanecem salvos no Motor Matriz. O modo Todas as etapas não envia tax_info; o envio fiscal exige selecionar somente Informações fiscais e confirmar a prévia.':
-      'CEST 00/sem código real: dados fiscais não serão enviados nesta execução. Imagens, vídeo e conteúdo aprovados serão preparados separadamente. A Shopee poderá solicitar a regularização fiscal.');
+    warnings.push(omitFiscal?'Fiscal omitido explicitamente nesta execução; a ficha no Motor Matriz permanece guardada.':
+      'CEST sem código confirmado após recusa anterior: fiscal permanece pendente; não será enviado sem nova revisão. As demais etapas continuam independentes.');
   }else if(selected('fiscal')&&stages.fiscal?.reviewed&&state.tax){
-    try{const tax=compileTax(state.tax,live);if(!sameData(tax,live.tax_info||{}))proposed.tax_info=tax;}
-    catch(e){blocked.push(e.message);}
+    try{
+      const tax=compileTax(state.tax,live);
+      if(!sameData(tax,live.tax_info||{})){
+        if(selectedStage==='all')finalFiscal=tax;
+        else proposed.tax_info=tax;
+      }
+    }catch(e){
+      // Falha fiscal não deve apagar alterações comerciais previamente aprovadas.
+      if(selectedStage==='all')warnings.push('Fiscal pendente: '+e.message+' Revise o Motor Matriz.');
+      else blocked.push(e.message);
+    }
   }
+  if(selectedStage==='all'&&finalFiscal)
+    warnings.push('Fiscal será a ÚLTIMA etapa: primeiro confirmar conteúdo e mídia na Shopee; depois enviar e verificar os campos fiscais. Se recusado, mostrar pendência explícita.');
   let images=[];
   if(selected('images')&&stages.images?.reviewed&&manualImages.length){
     if(manualImages.length!==9||state.imagesSignature!==imagesSignature(manualImages))
@@ -100,11 +114,11 @@ export function compileShopeeExecutionPlan({shopId,itemId,modelId,sku,record,rev
     }else warnings.push('Registre a revisão do vídeo importado para incluí-lo na execução.');
   }
   if(images.length){const i=warnings.findIndex(x=>x.startsWith('Imagens:'));if(i>=0)warnings.splice(i,1);}
-  const canExecute=blocked.length===0&&(Object.keys(proposed).length>0||Boolean(video)||images.length>0);
+  const canExecute=blocked.length===0&&(Object.keys(proposed).length>0||Boolean(finalFiscal)||Boolean(video)||images.length>0);
   const fingerprint=crypto.createHash('sha256').update(JSON.stringify({
     shopId:String(shopId),itemId:String(itemId),modelId:String(modelId),sku,
     selectedStage,from:{item_name:currentTitle,description:currentDescription,description_type:currentType},
-    to:proposed,fiscalDeferred,
+    to:proposed,finalFiscal,fiscalDeferred,
     // Não invalidar publicação de imagens/conteúdo por edição fiscal que NÃO será enviada.
     // A prévia fiscal individual continua protegida por proposed.tax_info.
     deferredTaxDraft:fiscalDeferred&&!omitFiscal?state.tax||{}:null,
@@ -115,13 +129,15 @@ export function compileShopeeExecutionPlan({shopId,itemId,modelId,sku,record,rev
       item_name:currentTitle,description:currentDescription,description_type:currentType,video_info:live?.video_info||[],
       item_sku:String(live?.item_sku||''),category_id:live?.category_id,
       attribute_list:live?.attribute_list||[],tax_info:live?.tax_info||{},image:live?.image||{}
-    },proposed,video,images,actions:[...Object.keys(proposed),...(images.length?['images']:[]),...(video?['video']:[])],blocked,warnings,canExecute,
+    },proposed,video,images,finalFiscal,
+    actions:[...Object.keys(proposed),...(images.length?['images']:[]),...(video?['video']:[]),...(finalFiscal?['tax_info']:[])],
+    blocked,warnings,canExecute,
     fingerprint,fiscalDeferred,selectedStage,createdAt:new Date().toISOString(),marketplaceUpdated:false,
     requiresExplicitConfirmation:true,
-    scope:selectedStage==='all'?'Todos os campos aprovados':'Somente '+SHOPEE_EXECUTION_STAGE_LABELS[selectedStage]+'; outras etapas não serão enviadas'};
+    scope:selectedStage==='all'?'Conteúdo e mídia primeiro; fiscal separado na última etapa, se elegível':'Somente '+SHOPEE_EXECUTION_STAGE_LABELS[selectedStage]+'; outras etapas não serão enviadas'};
 }
 export function confirmShopeeExecution(plan,{sku,confirmation}={}){
-  if(!plan||!plan.canExecute||(Object.keys(plan.proposed||{}).length===0&&!plan.video&&!plan.images?.length))
+  if(!plan||!plan.canExecute||(Object.keys(plan.proposed||{}).length===0&&!plan.finalFiscal&&!plan.video&&!plan.images?.length))
     throw Error('Não existem alterações aprovadas e elegíveis para executar.');
   if(String(sku)!==plan.sku||String(confirmation)!=='EXECUTAR '+plan.sku)
     throw Error('Confirmação da SKU incorreta. Digite EXECUTAR '+plan.sku);
@@ -136,11 +152,15 @@ export function assertLiveShopeeUnchanged(plan,base){
     throw Error('Vídeo do anúncio alterado após preparação. Prepare novamente.');
   if(plan.proposed.attribute_list&&!sameShopeeAttributes(base.attribute_list||[],plan.original.attribute_list||[]))
     throw Error('A ficha técnica da Shopee foi modificada após a prévia. Recalcule a prévia e confira os atributos antes de executar.');
-  if(plan.proposed.tax_info&&!sameData(base.tax_info||{},plan.original.tax_info||{}))
+  if((plan.proposed.tax_info||plan.finalFiscal)&&!sameData(base.tax_info||{},plan.original.tax_info||{}))
     throw Error('Os dados fiscais da Shopee mudaram após a prévia. Recalcule e confira o NCM e os demais campos fiscais.');
   if(plan.images?.length&&!sameData(base.image?.image_id_list||[],plan.original.image?.image_id_list||[]))throw Error('Imagens alteradas após preparação. Refaça a prévia.');
   if(base.category_id&&plan.original.category_id&&Number(base.category_id)!==Number(plan.original.category_id))throw Error('Categoria alterada após preparação. Refaça a auditoria.');
   if(base.item_status&&!['NORMAL','UNLIST'].includes(base.item_status))throw Error('Anúncio não está mais editável.');
+}
+export function verifyShopeeFiscalExecution(plan,item,result={}){
+  return verifyShopeeExecution(plan,item,result)&&
+    (!plan.finalFiscal||fieldsVerified({tax_info:plan.finalFiscal},item));
 }
 export function verifyShopeeExecution(plan,item,result={}){
   return String(item?.item_id)===String(plan.itemId)&&
