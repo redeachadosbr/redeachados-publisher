@@ -35,9 +35,40 @@ test('tela exibe somente um controle principal e CSS oculta prévias legadas',()
  const html=read('public/index.html');
  const css=read('public/fiscal-single-action.css');
  assert.match(html,/id="optimizerFiscalMigrationRun"[^>]*>▶ Executar informações fiscais na Shopee/);
- assert.match(html,/Catálogo completo/);
+ assert.match(html,/Contagem não verificada/);
+ assert.match(html,/Anúncios na loja/);
+ assert.doesNotMatch(html,/Catálogo completo/);
  assert.match(css,/\.ra-fiscal-advanced,/);
  assert.match(css,/#optimizerFiscalBatchList,/);
  assert.match(css,/#optimizerFiscalBatchStatus,/);
- assert.match(html,/\/fiscal-migration-run\.js\?v=6-autoprepare-send/);
+ assert.match(html,/\/fiscal-migration-run\.js\?v=7-census-safety/);
+});
+
+test('não tratar inventário antigo como total nem enviar antes do censo e paginação oficial',()=>{
+ const src=read('public/fiscal-migration-run.js');
+ const start=src.indexOf('async function run(){');
+ const route=src.slice(start);
+ assert.match(src,/inventoryVerifiedThisSession=false/);
+ assert.match(src,/const trustworthy=Boolean\(inventoryVerifiedThisSession&&state\?\.catalogValidatedAt\)/);
+ assert.match(src,/Histórico antigo:/);
+ assert.match(route,/const census=await ensureCensus\(true\)/);
+ assert.match(route,/data\.pageItemIds/);
+ assert.match(route,/uniqueParents\.size!==census\.statuses\.NORMAL/);
+ assert.match(route,/state\.catalogValidatedAt=new Date\(\)\.toISOString\(\)/);
+ assert.ok(route.indexOf('uniqueParents.size!==census.statuses.NORMAL') <
+           route.indexOf("'/api/shopee/optimizer/batch/fiscal/execute'"));
+ assert.doesNotMatch(src,/if\(previous\?\.active&&previous\?\.inventory\?\.length\)/);
+});
+test('censo oficial inclui status Shopee e deixa explícito anúncio versus SKU',()=>{
+ const server=read('server.js');
+ const a=server.indexOf("app.get('/api/shopee/optimizer/fiscal-migration/catalog-census'");
+ const b=server.indexOf("app.get('/api/shopee/optimizer/fiscal-migration/active-skus'",a);
+ const route=server.slice(a,b);
+ assert.ok(a>0&&b>a);
+ for(const status of ['NORMAL','UNLIST','REVIEWING','BANNED'])
+  assert.ok(route.includes(status));
+ assert.match(route,/get_item_list/);
+ assert.match(route,/total_count/);
+ assert.match(route,/anuncios-pai-sem-contar-variacoes/);
+ assert.doesNotMatch(route,/update_item|update_price|runOptimizerJobs/);
 });
