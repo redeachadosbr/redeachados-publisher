@@ -1,5 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
+import {readFileSync} from 'node:fs';
 import {fetchCatalogPage} from '../catalog.js';
 
 const auth={accessToken:'test-token',shopId:123};
@@ -44,4 +45,14 @@ test('página com itens reais mantém paginação e metadados oficiais',async()=
  assert.equal(page.totalCount,1);
  assert.equal(page.items.length,1);
  assert.equal(page.items[0].sku,'SKU-A');
+});
+
+test('variações oficiais MODEL_NORMAL e MODEL_UNAVAILABLE não desaparecem do inventário',()=>{
+ const server=readFileSync(new URL('../server.js',import.meta.url),'utf8');
+ const a=server.indexOf("app.get('/api/shopee/optimizer/fiscal-migration/active-skus'");
+ const b=server.indexOf("app.post('/api/shopee/optimizer/fiscal-migration/prepare-drafts'",a);
+ const route=server.slice(a,b);
+ assert.match(route,/MODEL_NORMAL/);
+ assert.match(route,/MODEL_UNAVAILABLE/);
+ assert.match(route,/normalizeShopeeModels/);
 });
