@@ -117,34 +117,51 @@ export function evaluateMarketOffers({title,offers=[],ownItemId,ownShopId,querie
 const safeError=e=>String(e?.message||'Falha na consulta').slice(0,170);
 async function lookupShopeeCompetitorsUncached({title,ownShopId,ownItemId}){
  const searchedAt=new Date().toISOString(),keywords=marketSearchKeywords(title);
+ const queries=marketSearchQueries(title);
  const base={source:'shopee_affiliate_product_offers',searchTerms:keywords,
-  researchedAt:searchedAt,verified:false,reference:null,count:0,sample:[]};
- if(!keywords||keywords.split(' ').length<2)return {...base,
-  status:'insufficient_product_description',message:'Título insuficiente para comparar produtos semelhantes.'};
+  searchedQueries:[],researchedAt:searchedAt,verified:false,reference:null,count:0,sample:[]};
+ if(!queries.length)return {...base,status:'insufficient_product_description',
+  message:'Título insuficiente para comparar produtos semelhantes.'};
  if(!marketResearchConfigured())return {...base,status:'provider_not_configured',
   message:'Pesquisa automática indisponível: credenciais da API de ofertas Shopee ainda não configuradas.'};
  const id=env('SHOPEE_AFFILIATE_APP_ID'),secret=env('SHOPEE_AFFILIATE_SECRET');
- const query=`{ productOfferV2(keyword:${JSON.stringify(keywords)}, listType:0, sortType:1, page:1, limit:${SHOPEE_OFFER_PAGE_LIMIT}){ nodes { itemId shopId productName priceMin priceMax } pageInfo{hasNextPage} } }`;
- const payload=JSON.stringify({query});
- const now=String(Math.floor(Date.now()/1000));
- const signature=crypto.createHash('sha256').update(id+now+payload+secret).digest('hex');
- try{
-  const response=await fetch(endpoint,{method:'POST',headers:{
-   'Content-Type':'application/json','Authorization':`SHA256 Credential=${id}, Timestamp=${now}, Signature=${signature}`},
-   body:payload,signal:AbortSignal.timeout(14000)});
-  if(!response.ok)throw Error('Consulta de ofertas Shopee retornou HTTP '+response.status);
-  const result=await response.json();
-  if(result?.errors?.length)throw Error('API de ofertas indisponível: '+safeError(result.errors[0]));
-  if(!Array.isArray(result?.data?.productOfferV2?.nodes))
-   throw Error('API de ofertas retornou dados incompletos.');
-  const assessment=evaluateMarketOffers({title,offers:result.data.productOfferV2.nodes,
-   ownShopId,ownItemId,queriedAt:searchedAt});
-  return {...base,...assessment,status:assessment.verified?'verified':'insufficient_comparables',
-   message:assessment.verified?
-    'Média aritmética de '+assessment.count+' anúncios comparáveis em lojas diferentes (ofertas da API de afiliados Shopee). Amostra parcial do mercado.':
-    assessment.reason};
- }catch(e){return {...base,status:'provider_error',
-  message:'Não foi possível pesquisar concorrentes: '+safeError(e)};}
+ const offers=[],searchedQueries=[],errors=[];
+ let assessment=null;
+ for(const term of queries){
+  const query='{ productOfferV2(keyword:'+JSON.stringify(term)+
+   ', listType:0, sortType:1, page:1, limit:'+SHOPEE_OFFER_PAGE_LIMIT+
+   '){ nodes { itemId shopId productName priceMin priceMax } pageInfo{hasNextPage} } }';
+  const payload=JSON.stringify({query}),now=String(Math.floor(Date.now()/1000));
+  const signature=crypto.createHash('sha256').update(id+now+payload+secret).digest('hex');
+  try{
+   const response=await fetch(endpoint,{method:'POST',headers:{
+    'Content-Type':'application/json',
+    'Authorization':'SHA256 Credential='+id+', Timestamp='+now+', Signature='+signature},
+    body:payload,signal:AbortSignal.timeout(8500)});
+   if(!response.ok)throw Error('HTTP '+response.status);
+   const result=await response.json();
+   if(result?.errors?.length)throw Error(safeError(result.errors[0]));
+   if(!Array.isArray(result?.data?.productOfferV2?.nodes))
+    throw Error('Dados incompletos no retorno de ofertas');
+   searchedQueries.push(term);
+   offers.push(...result.data.productOfferV2.nodes);
+   assessment=evaluateMarketOffers({title,offers,ownShopId,ownItemId,queriedAt:searchedAt});
+   if(assessment.verified&&assessment.count>=MARKET_COMPARISON_MIN)break;
+  }catch(error){
+   errors.push(String(error.message||error).slice(0,145));
+   if(/credential|signature|unauthorized|forbidden|auth|rate.limit|limite de requis/i.test(String(error.message||error)))break;
+  }
+ }
+ assessment ||=evaluateMarketOffers({title,offers,ownShopId,ownItemId,queriedAt:searchedAt});
+ const status=assessment.verified?'verified':searchedQueries.length?
+  'insufficient_comparables':'provider_error';
+ const message=assessment.verified?
+  'Média aritmética de '+assessment.count+' anúncios semelhantes em lojas diferentes, consultados pela API Shopee Afiliados. A amostra não representa todo o mercado.':
+  searchedQueries.length?
+   'Foram consultadas '+searchedQueries.length+' buscas, mas só '+assessment.count+
+   ' oferta(s) passaram pela verificação de comparabilidade. Veja as referências parciais e a busca ampliada; sem 2 anúncios válidos, não há média confiável.':
+   'A API Shopee Afiliados não concluiu a pesquisa: '+errors.join(' | ').slice(0,180);
+ return {...base,...assessment,status,message,searchedQueries,rawOfferCount:offers.length,errors:errors.slice(0,2)};
 }
 
 // Reuse the same checked offer sample while the seller changes the margin
@@ -159,7 +176,7 @@ export async function lookupShopeeCompetitors(input){
  marketCache.set(key,{promise,expiresAt:now+45000});
  try{
   const result=await promise;
-  const ttl=result.verified?10*60000:result.status==='insufficient_comparables'?2*60000:45000;
+  const ttl=result.verified?10*60000:result.status==='insufficient_comparables'?60000:20000;
   marketCache.set(key,{promise:Promise.resolve(result),expiresAt:Date.now()+ttl});
   if(marketCache.size>180)marketCache.delete(marketCache.keys().next().value);
   return result;
