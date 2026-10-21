@@ -640,6 +640,54 @@ app.post('/api/shopee/optimizer/fiscal-migration/prepare-drafts',mustLogin,requi
   res.json({ok:true,marketplaceUpdated:false,results});
  }catch(error){res.status(400).json({ok:false,error:String(error.message||error).slice(0,260)});}
 });
+// Migração excepcional: validação fiscal com rastreabilidade por SKU.
+// Autorização expressa da loja, sem modificar preço, imagens ou outros campos.
+app.post('/api/shopee/optimizer/fiscal-migration/validate-one',mustLogin,requireWeDropAdmin,async(req,res)=>{
+ res.setHeader('Cache-Control','no-store');
+ if(!verifiedSameOrigin(req))return res.status(403).json({ok:false,error:'Origem não autorizada.'});
+ try{
+  if(req.body?.confirmation!=='VALIDAR FISCAL MIGRACAO')
+   throw Error('Autorização fiscal explícita ausente.');
+  const sku=validateSkuLookup(req.body?.sku),itemId=validItemId(req.body?.itemId);
+  const modelId=String(req.body?.modelId??'0');
+  if(!/^\d{1,18}$/.test(modelId))throw Error('Identificador do modelo inválido.');
+  const {auth,cfg}=await getValidAuth(req);
+  const existing=await getWorkflowReview(auth.shopId,itemId,modelId);
+  if(existing?.sku!==sku)throw Error('SKU não corresponde à ficha fiscal armazenada.');
+  if(existing.review_state?.stages?.fiscal?.reviewed===true)
+   return res.json({ok:true,status:'already_reviewed',sku});
+  const record=await auditShopeeItem(cfg,auth,callShopeeShopApi,itemId,
+   {expectedSku:sku,expectedModelId:modelId});
+  if(record.status!=='NORMAL')throw Error('Anúncio não está ativo.');
+  const supplier=await readWeDropProduct(auth.shopId,{sku,itemId,modelId});
+  if(!supplier||supplier.matchedBy!=='exact-sku'||supplier.supplier_sku!==sku)
+   throw Error('Vínculo exato da SKU com WeDrop não confirmado.');
+  const tax=existing.review_state?.tax;
+  if(!tax)throw Error('Rascunho fiscal ausente.');
+  const source=fiscalMatrixSource({sku,supplier,tax});
+  const unit=suggestFiscalMeasureUnit(record.title||'',supplier.product_data?.title||'');
+  if(!unit.unit||unit.unit!==tax.measure_unit)throw Error('Unidade de medida exige revisão.');
+  const ncm=String(supplier.product_data?.ncm||'').replace(/\D/g,'');
+  if(!/^\d{8}$/.test(ncm)||ncm!==String(tax.ncm))
+   throw Error('NCM da ficha diverge do NCM WeDrop.');
+  if(!['00',...[]].includes(String(tax.cest||''))&&!/^\d{7}$/.test(String(tax.cest||'')))
+   throw Error('CEST fora do padrão autorizado.');
+  const required={origin:'2',same_state_cfop:'5106',diff_state_cfop:'6106',
+   csosn:'102',pis_cofins_cst:'99'};
+  for(const [field,value] of Object.entries(required))
+   if(String(tax[field])!==value)throw Error('Revisão de '+field+' necessária.');
+  compileTax(tax,{tax_info:{}});
+  const prior=await readShopeeExecution(auth.shopId,itemId,modelId);
+  if(/Please upload the corresponding CEST of NCM/i.test(String(prior?.last_error||''))&&
+      String(tax.cest)==='00')
+   throw Error('Shopee já rejeitou CEST 00 para esta SKU; obter CEST oficial.');
+  await saveWorkflowReview(auth.shopId,itemId,modelId,sku,{
+   stage:'fiscal',reviewed:true,tax,matrixFiscal:source
+  });
+  res.json({ok:true,status:'validated',sku,ncm,cest:tax.cest,
+   message:'Dados da ficha confirmados com a WeDrop; envio ainda depende de prévia individual.'});
+ }catch(error){res.status(409).json({ok:false,error:String(error.message||error).slice(0,240)});}
+});
 app.get('/api/shopee/catalog/models',mustLogin,async(req,res)=>{
   res.setHeader('Cache-Control','no-store');
   try{
