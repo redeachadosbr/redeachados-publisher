@@ -17,6 +17,7 @@ import {readShopeeWallet} from './shopeeWallet.js';
 import {financeAdsDates,matchFinanceAds} from './financeAdsSweep.js';
 import {financeRange} from './shopeeFinance.js';
 import {fetchCatalogPage,normalizeShopeeModels,validItemId} from './catalog.js';
+import {suggestFiscalMeasureUnit} from './shopeeFiscalMeasure.js';
 import {getShopeeNewListingsSummary,clearShopeeNewListingsCache} from './shopeeNewListings.js';
 import {storeCatalogItems,storeCatalogModels,readCatalogCache,catalogStoreReady,findExactCatalogSku,findCatalogSkuIgnoringCase} from './catalogStore.js';
 import {previewWeDropCsv,prepareWeDropImport,MAX_CSV_CHARS} from './wedropCsv.js';
@@ -579,7 +580,7 @@ app.get('/api/shopee/optimizer/fiscal-migration/active-skus',mustLogin,requireWe
     const checked=Boolean(review?.sku===candidate.sku&&
       review?.review_state?.stages?.fiscal?.reviewed&&review?.review_state?.tax?.ncm);
     results.push({sku:candidate.sku,itemId,modelId:candidate.modelId,
-      title:item.title||'',reviewed:checked,
+      title:item.title||'',unitSuggestion:suggestFiscalMeasureUnit(item.title).unit,reviewed:checked,
       status:checked?'revisado':'requer revisão fiscal'});
    }
   }
