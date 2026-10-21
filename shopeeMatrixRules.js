@@ -114,7 +114,7 @@ export function marketMatrixSearchQueries(title,seed=''){
  const power=raw.match(/\b\d{2,4}\s*w\b/i)?.[0];
  const voltage=raw.match(/\b(?:110|127|220|240)\s*v\b/i)?.[0];
  const storey=raw.match(/\b\d\s*(?:andares|andar|niveis)\b/i)?.[0];
- const profileCore=profile.queries[0]?.split(' ').slice(0,2).join(' ');
+ const profileCore=profile.queries[0]?.split(' ').filter(x=>x.length>2&&!['para','com','dos','das'].includes(x)).slice(0,2).join(' ');
  const anchor=profileCore||words.slice(0,2).join(' ');
  const details=[size,pieces,capacity,power&&voltage?power+' '+voltage:power,storey]
   .filter(Boolean).map(v=>anchor+' '+v);
