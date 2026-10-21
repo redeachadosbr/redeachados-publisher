@@ -5957,7 +5957,7 @@ function optimizerTechnicalSummary(data){
  tile(mandatory.length,'Obrigatórios pendentes','warn');
  target.append(stats);
  const summaryNote=optimizerMake('p','optimizer-tech-summary-note',chosen.length?
-   'Os valores sugeridos já estão nos campos de revisão. Confira antes de registrar a etapa; não houve publicação.':
+   '✓ '+chosen.length+' atributo(s) preenchidos com dados da SKU. Só os '+mandatory.length+' obrigatório(s) sem informação precisam da sua intervenção; nenhuma publicação foi feita.':
    'Nenhuma nova alteração técnica pronta. Cole informações na área acima, ou abra os campos individuais.');
  target.append(summaryNote);
  const list=optimizerMake('div','optimizer-tech-summary-list');
@@ -5989,7 +5989,7 @@ function optimizerTechnicalSummary(data){
   'Pendente: '+mandatory.map(x=>optimizerTechLabel(x.name)).slice(0,4).join(', ')+
   (mandatory.length>4?' e outros.':'.')+' Abra os campos apenas quando precisar corrigir.'));
  const info=$('#optimizerTechnicalAdvancedCount');
- if(info)info.textContent=attrs.filter(x=>x.mandatory&&!x.values?.length).length+' obrigatórios pendentes na Shopee · '+attrs.length+' no total';
+ if(info)info.textContent=mandatory.length+' obrigatório(s) ainda sem informação · '+(current+chosen.length)+' preenchidos/preparados';
 }
 async function optimizerTechRequest(w,action,extra={}){
  return json('/api/shopee/optimizer/workflow/source',{
