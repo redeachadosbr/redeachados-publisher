@@ -5833,6 +5833,7 @@ function techFieldsSnapshot(){
  return [...$('#optimizerTechnicalFields').querySelectorAll('fieldset[data-attribute-id]')].map(f=>({
   attributeId:Number(f.dataset.attributeId),
   enabled:Boolean(f.querySelector('[data-attribute-enabled]')?.checked),
+  userDisabled:f.dataset.userDisabled==='true',
   evidence:String(f.querySelector('[data-evidence-for]')?.value||''),
   values:[...f.querySelectorAll('[data-attribute-value]')].map(row=>({
    valueId:Number(row.querySelector('[data-value-id]')?.value||-1),
@@ -6157,6 +6158,7 @@ function optimizerTechnicalRender(data){
     .toLowerCase()==='marca'&&reviewed?.values?.[0]?.valueName?.trim().toLowerCase()==='novo';
   const auto=(!reviewed||invalidNewBrand)?suggested:null;
   const manual=manualById.get(Number(attr.id));
+  field.dataset.userDisabled=manual?.userDisabled?'true':'false';
   const existing=manual?{values:manual.values,evidence:manual.evidence}:auto||reviewed||
     (data.attributeSuggestions||[]).find(x=>Number(x.attributeId)===attr.id);
   const hasCurrentValue=Boolean(attr.values?.length);
@@ -6267,7 +6269,7 @@ function optimizerTechnicalRender(data){
   const evidence=optimizerMake('input');evidence.type='text';evidence.maxLength=500;evidence.placeholder='Fonte: ficha WeDrop, fabricante ou nota';
   evidence.dataset.evidenceFor=String(attr.id);evidence.setAttribute('aria-label',optimizerTechLabel(name)+' — fonte');evidence.value=existing?.evidence||'';
   evidence.oninput=()=>optimizerExecReset();controls.append(evidence);
-  enabled.onchange=()=>{controls.hidden=!enabled.checked;optimizerExecReset();};
+  enabled.onchange=()=>{field.dataset.userDisabled=(!enabled.checked).toString();controls.hidden=!enabled.checked;optimizerExecReset();};
  }
  if(optionalMissing){
   optionalSummary.textContent='Mostrar '+optionalMissing+' atributo(s) opcionais sem informação comprovada';
