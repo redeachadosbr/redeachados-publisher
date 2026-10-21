@@ -1019,7 +1019,7 @@ app.post('/api/shopee/optimizer/workflow/technical-draft',mustLogin,requireWeDro
     if(valueName.length>500||unit.length>35)throw Error('Valor manual excede o limite.');
     return {valueId,valueName,unit};
    });
-   return {attributeId:id,enabled:f.enabled,evidence,values};
+   return {attributeId:id,enabled:f.enabled,userDisabled:f.userDisabled===true,evidence,values};
   });
   const technicalDraft={fields,updatedAt:new Date().toISOString()};
   await saveWorkflowReview(auth.shopId,itemId,modelId,sku,{
