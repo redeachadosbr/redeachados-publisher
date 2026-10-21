@@ -6,7 +6,7 @@ const cestRequired=/(corresponding\s+CEST\s+of\s+NCM|CEST.{0,70}(NCM|missing|req
 export function detectShopeeExecutionIssue(error,plan={}){
  const raw=text(error);
  if(!raw||!cestIssue.test(raw)||!cestRequired.test(raw))return null;
- const supplied=plan?.proposed?.tax_info||plan?.original?.tax_info||{};
+ const supplied=plan?.finalFiscal||plan?.proposed?.tax_info||plan?.original?.tax_info||{};
  const ncm=text(supplied.ncm).replace(/\D/g,'');
  const currentCest=text(supplied.cest);
  return {
@@ -29,8 +29,8 @@ export function isDefinitiveShopeeRejection(error){
 }
 export function needsCestRevalidation(lastError,oldPlan,newPlan){
  if(!detectShopeeExecutionIssue(lastError,oldPlan))return false;
- const former=text(oldPlan?.proposed?.tax_info?.ncm||oldPlan?.original?.tax_info?.ncm);
- const next=text(newPlan?.proposed?.tax_info?.ncm||newPlan?.original?.tax_info?.ncm);
- const cest=text(newPlan?.proposed?.tax_info?.cest||newPlan?.original?.tax_info?.cest);
+ const former=text(oldPlan?.finalFiscal?.ncm||oldPlan?.proposed?.tax_info?.ncm||oldPlan?.original?.tax_info?.ncm);
+ const next=text(newPlan?.finalFiscal?.ncm||newPlan?.proposed?.tax_info?.ncm||newPlan?.original?.tax_info?.ncm);
+ const cest=text(newPlan?.finalFiscal?.cest||newPlan?.proposed?.tax_info?.cest||newPlan?.original?.tax_info?.cest);
  return Boolean(former&&former===next&&!cest);
 }
