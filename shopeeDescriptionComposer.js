@@ -220,7 +220,7 @@ function toLines(p,profile,extraLines=[],short=false){
  if(p.type==='ball'&&f.logistics)parts.push('📐 Medidas do cadastro logístico: '+f.logistics+'. Não representam o diâmetro inflado.');
  else if(f.dimensions)parts.push('📐 Produto (A × L × C): '+f.dimensions+'.');
  else parts.push('📐 Medidas: consulte os dados do produto e a versão anunciada.');
- parts.push(profile.measureExtra);
+ if(!(p.type==='ball'&&f.logistics))parts.push(profile.measureExtra);
  parts.push('','❓ 5 dúvidas frequentes');
  profile.faq.forEach(([q,a],i)=>parts.push((i+1)+'. '+q+' '+a));
  parts.push('','🌟 10 motivos para comprar agora');
