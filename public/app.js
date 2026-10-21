@@ -3156,6 +3156,8 @@ async function optimizerDiscountFinalPrepare({automatic=false}={}){
  const w=optimizerWorkflowPlan,q=optimizerDiscountFinalQuote;
  if(!w||!q||optimizerDiscountFinalBusy||optimizerDiscountFinalSent)return;
  const key=optimizerDiscountFinalIdentityOf(w);
+ if(key!==optimizerDiscountFinalIdentity||
+    key!==[String(q.sku),String(q.itemId),String(q.modelId)].join('|'))return;
  const campaign=String($('#optimizerExecDiscountCampaign').value||'').trim();
  if(!optimizerDiscountFinalEligible(q)||!/^\d{1,18}$/.test(campaign)||
    optimizerExecJob?.state!=='verified'||optimizerExecJob?.result?.phase==='verified_partial')
@@ -3204,6 +3206,9 @@ $('#optimizerExecDiscountApply')?.addEventListener('click',async()=>{
  const data=optimizerDiscountFinalPreviewData,w=optimizerWorkflowPlan;
  if(!data||!w||optimizerDiscountFinalBusy||optimizerDiscountFinalSent)return;
  const key=optimizerDiscountFinalIdentityOf(w);
+ if(key!==optimizerDiscountFinalIdentity||
+    key!==[String(data.preview?.sku),String(data.preview?.itemId),String(data.preview?.modelId)].join('|'))
+  return optimizerDiscountFinalStatus('A SKU ou a variação mudou. Gere nova prévia sem reenviar o desconto.','warning');
  if(!optimizerDiscountFinalEligible(optimizerDiscountFinalQuote)||
     optimizerExecJob?.state!=='verified'||optimizerExecJob?.result?.phase==='verified_partial')return;
  const approved=data.preview;
