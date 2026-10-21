@@ -5736,8 +5736,11 @@ function optimizerFiscalRender(data){
  const defaults=data.taxSuggestion||{},saved=data.taxDraft||{};
  // Regras da loja sugerem CST 99 de PIS/COFINS para o cadastro Shopee.
  // Valores específicos já salvos ou presentes na Shopee não são sobrescritos.
- // Em particular, não deduzir CEST como 00; esse campo segue por SKU.
+ // CEST 00 é padrão do Motor Matriz para cadastro interno, não um código válido para emissão.
+ // Nunca substituir um CEST verdadeiro (7 dígitos) trazido da SKU/fornecedor.
  const draft={...(data.taxCurrent||{}),...defaults,...saved};
+ const cestEntries=[saved.cest,data.taxCurrent?.cest,defaults.cest].map(v=>String(v??'').trim());
+ draft.cest=cestEntries.find(v=>/^\d{7}$/.test(v))||cestEntries.find(Boolean)||'00';
  const existingPis=String(saved.pis_cofins_cst||data.taxCurrent?.pis_cofins_cst||'').trim();
  if(existingPis)draft.pis_cofins_cst=existingPis;
  const summary=optimizerMake('p','optimizer-category-summary',
@@ -5764,9 +5767,11 @@ function optimizerFiscalRender(data){
   }
  }
  const cest=wrap.querySelector('[data-tax-field="cest"]');
- if(cest&&!String(draft.cest||'').trim()){
-  const info=optimizerMake('small','optimizer-fiscal-cest-help',
-    'CEST em branco conforme sua regra. Não preencher automaticamente. A Shopee pode exigir o código mesmo que o nosso sistema não bloqueie.');
+ if(cest){
+  const marker=String(draft.cest||'').trim()==='00';
+  const info=optimizerMake('small','optimizer-fiscal-cest-help',marker
+    ?'Motor Matriz: 00 = CEST não informado. Vem preenchido por padrão, mas não é enviado como código CEST à Shopee. Se necessário, informe o CEST real de 7 dígitos.'
+    :'CEST da SKU: confira o código de 7 dígitos com a WeDrop/contabilidade antes de enviar os dados fiscais.');
   cest.closest('label')?.append(info);
  }
 }
