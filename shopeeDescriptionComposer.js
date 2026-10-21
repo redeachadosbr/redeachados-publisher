@@ -1,6 +1,7 @@
 // Motor de descrição comercial por SKU. Nenhuma publicação é realizada aqui.
 // Dados não confirmados não se tornam características do produto.
 import {validateContentRules,codePointCount} from './shopeeOptimizationWorkflow.js';
+import {REDE_ACHADOS_DESCRIPTION_RULES} from './shopeeMatrixRules.js';
 import {supplierProductDimensions} from './shopeeSupplierEvidenceFacts.js';
 const normal=v=>String(v||'').normalize('NFC').replace(/\r\n?/g,'\n');
 const clean=v=>normal(v).replace(/\s+/g,' ').trim();
@@ -151,6 +152,7 @@ function toLines(p,profile,extraLines=[],short=false){
  profile.faq.forEach(([q,a],i)=>parts.push((i+1)+'. '+q+' '+a));
  parts.push('','🌟 10 motivos para comprar agora');
  profile.reasons.forEach((x,i)=>parts.push((i+1)+'. '+x));
+ parts.push('',''+REDE_ACHADOS_DESCRIPTION_RULES.cta);
  return parts.join('\n').trim();
 }
 function shortest(value,max){
@@ -223,7 +225,7 @@ export function composeShopeeDescription({record={},supplier=null,sourceText=''}
  }
  if(codePointCount(body)<1400){
   // Best-first selection from real-use guidance; independent notes, never invented claims.
-  const candidates=pr.tips.map(clean).filter(Boolean);
+  const candidates=[...pr.tips,'📷 Observe as fotos do anúncio.','🔎 Confira o anúncio.','💬 Tire dúvidas.','✅ Revise a ficha.'].map(clean).filter(Boolean);
   const selected=[];
   while(candidates.length&&codePointCount(body)<1400){
    const available=1440-codePointCount(body);
