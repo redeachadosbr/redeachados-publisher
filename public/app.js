@@ -2836,6 +2836,8 @@ $('#optimizerShowExecution')?.addEventListener?.('click',()=>{
  $('#optimizerWorkflowEditor').hidden=true;optimizerWorkflowStage=null;
  $('#optimizerExecutionPanel').hidden=false;
  for(const x of $('#optimizerWorkflowCards').querySelectorAll('.is-current'))x.classList.remove('is-current');
+ // A prévia sempre reflete a versão fiscal revisada mais recente da SKU.
+ void optimizerExecutionPrepare();
 });
 $('#optimizerWorkflowNext')?.addEventListener?.('click',()=>{
  const stages=(optimizerWorkflowPlan?.stages||[]).filter(x=>x.key!=='final'&&!x.skipped);
@@ -2900,7 +2902,8 @@ $('#optimizerWorkflowReview')?.addEventListener?.('click',async()=>{
    optimizerWorkflowRender({...data,...result,stages:result.stages});
    // A saved fiscal draft must never automatically re-attempt a rejected CEST
    // update in the background. Execution has its own explicit separate button.
-   if(key!=='fiscal')void optimizerExecutionPrepare();
+   // Salvar fiscal atualiza a prévia, mas não faz qualquer chamada de publicação.
+   void optimizerExecutionPrepare();
    optimizerWorkflowNotice(key==='fiscal'?
      'Dados fiscais da SKU '+data.sku+' cadastrados e mantidos no Motor Matriz. CEST pode ficar em branco. Nenhum dado fiscal foi enviado à Shopee.':
      'Revisão da etapa '+stage.name+' salva. Nenhum dado do anúncio foi alterado na Shopee.','success');
