@@ -6,3 +6,44 @@
 #tab-optimizer .ra-fiscal-advanced>summary{cursor:pointer;color:#415d7e;font-size:12px;font-weight:700}
 #tab-optimizer .ra-fiscal-advanced-actions{display:flex;flex-wrap:wrap;gap:8px;margin-top:12px}
 #tab-optimizer .ra-fiscal-advanced-actions>button{flex:1 1 145px;min-width:0}
+
+
+/* O vendedor autorizou um único fluxo: as rotinas legadas permanecem no DOM
+   para compatibilidade, mas não geram botões/etapas paralelos. */
+#tab-optimizer #optimizerFiscalBatch .ra-fiscal-advanced,
+#tab-optimizer #optimizerFiscalBatch .ra-fiscal-sku-input,
+#tab-optimizer #optimizerFiscalBatch #optimizerFiscalBatchList,
+#tab-optimizer #optimizerFiscalBatch #optimizerFiscalBatchStatus,
+#tab-optimizer #optimizerFiscalBatch #optimizerFiscalBatchSynopsis,
+#tab-optimizer #optimizerFiscalBatch .ra-fiscal-guidance {display:none!important}
+#tab-optimizer #optimizerFiscalBatch .ra-fiscal-batch-workspace {
+ display:block!important;
+}
+#tab-optimizer #optimizerFiscalBatch .ra-fiscal-batch-overview {width:100%;gap:12px;}
+#tab-optimizer #optimizerFiscalMigrationStatus {
+ display:block; margin:9px 0 0; font-size:12px;line-height:1.45; color:#31536b;
+}
+#tab-optimizer #raFiscalRunProgress{
+ display:block;margin:9px 0 0;padding:14px 16px;border:1px solid #d5e9df;
+ background:#f7fcf9;border-radius:13px;min-height:90px;
+}
+#tab-optimizer #raFiscalRunProgress .ra-fiscal-progress-head{
+ display:flex;align-items:center;justify-content:space-between;gap:12px;
+ color:#125037;font-size:13px;font-weight:700;
+}
+#tab-optimizer #raFiscalRunProgress .ra-fiscal-progress-track{
+ margin:10px 0;background:#dbe9e3;border-radius:99px;height:12px;overflow:hidden;
+}
+#tab-optimizer #raFiscalRunProgress #raFiscalRunFill{
+ width:0%;height:100%;background:linear-gradient(90deg,#16a76c,#087b4d);
+ border-radius:99px;transition:width .24s ease;
+}
+#tab-optimizer #raFiscalRunCounts{margin:0;color:#467064;font-size:12px;line-height:1.5;}
+#tab-optimizer #raFiscalRunIssues{margin-top:9px;color:#8c4b20;font-size:12px;max-height:180px;overflow:auto;}
+#tab-optimizer #raFiscalRunIssues strong{display:block;margin-bottom:6px;color:#8a401b;}
+#tab-optimizer #raFiscalRunIssues p{margin:3px 0;line-height:1.45;word-break:break-word;}
+#tab-optimizer #raFiscalRunIssues:empty{display:none;}
+@media(max-width:650px){
+ #tab-optimizer #optimizerFiscalBatch .ra-fiscal-kpis{grid-template-columns:repeat(2,minmax(0,1fr));}
+ #tab-optimizer #raFiscalRunProgress{padding:12px;}
+}
