@@ -505,12 +505,14 @@
 <div class="ra-fiscal-kpi warn"><span class="ra-fiscal-kpi-icon" aria-hidden="true"><svg class="ra-panel-icon" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M6 2h12M6 22h12M7 2v4c0 3 5 6 5 6s5-3 5-6V2M7 22v-4c0-3 5-6 5-6s5 3 5 6v4"/></svg></span><span class="ra-fiscal-kpi-label">Pendentes</span><strong id="optimizerFiscalBatchPending">0</strong></div>
 <div class="ra-fiscal-kpi"><span class="ra-fiscal-kpi-icon" aria-hidden="true"><svg class="ra-panel-icon" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8zM14 2v6h6M8 13h8M8 17h6"/></svg></span><span class="ra-fiscal-kpi-label">Confirmadas</span><strong id="optimizerFiscalBatchVerified">0</strong></div></div>
           <div class="optimizer-fiscal-batch-actions">
+            <button id="optimizerFiscalMigrationRun" class="ra-fiscal-main-action" type="button">▶ Validar e executar na Shopee</button>
+            <details class="ra-fiscal-advanced"><summary>Opções avançadas de consulta, prévia e execução manual</summary><div class="ra-fiscal-advanced-actions">
             <button id="optimizerFiscalMigrationDiscover" class="secondary" type="button"><svg class="ra-panel-icon" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="10.5" cy="10.5" r="7.5"/><path d="m16 16 6 6"/></svg><span class="ra-fiscal-action-copy"><strong>Localizar anúncios ativos</strong><small>Busca SKU(s) ativos na Shopee</small></span></button>
-            <button id="optimizerFiscalMigrationRun" type="button">Regularizar SKUs ativas</button>
             <button id="optimizerFiscalMigrationPrepare" class="secondary" type="button" disabled><svg class="ra-panel-icon" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8zM14 2v6h6M8 13h8M8 17h6"/></svg><span class="ra-fiscal-action-copy"><strong>Preparar fichas pendentes</strong><small>Valida e prepara os dados fiscais</small></span></button>
             <button id="optimizerFiscalBatchPrepare" class="secondary" type="button"><svg class="ra-panel-icon" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="m7 3 14 9-14 9Z" fill="currentColor" stroke="none"/></svg><span class="ra-fiscal-action-copy"><strong>1 · Gerar prévia</strong><small>Revisa e exibe as alterações</small></span></button>
             <button id="optimizerFiscalBatchExecute" type="button" hidden disabled>2 · Executar aprovadas</button>
             <button id="optimizerFiscalBatchRefresh" class="secondary" type="button" hidden>Atualizar andamento</button>
+            </div></details>
           </div>
             </div>
           </div>
