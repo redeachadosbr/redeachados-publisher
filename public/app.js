@@ -3562,7 +3562,28 @@ async function optimizerFiscalBatchExecute(){
  let start=0;
  try{
   const checkpoint=JSON.parse(localStorage.getItem(FISCAL_ONE_BY_ONE_KEY)||'null');
-  if(checkpoint?.key===key&&Number.isInteger(checkpoint.next)&&checkpoint.next>=0&&checkpoint.next<selected.length)
+  if(checkpoint?.pending){
+   // Uma resposta perdida não autoriza reenviar: confirmar a execução persistida na API.
+   const pendingRow=selected.find(x=>x.sku===checkpoint.pending);
+   if(!pendingRow){
+    optimizerFiscalBatchNotice('Existe uma SKU de execução anterior sem confirmação ('+checkpoint.pending+'). Consulte o andamento antes de iniciar outro lote.','warning');
+    return;
+   }
+   const status=await json('/api/shopee/optimizer/batch/fiscal/status?'+new URLSearchParams({
+    items:JSON.stringify([{sku:pendingRow.sku,itemId:pendingRow.itemId,modelId:pendingRow.modelId}])
+   }),{signal:AbortSignal.timeout(45000)});
+   const item=(status.results||[]).find(x=>x.sku===pendingRow.sku);
+   if(!item||!['verified','running'].includes(item.status)){
+    optimizerFiscalBatchNotice('SKU '+pendingRow.sku+' com resultado não confirmado ('+(item?.status||'sem retorno')+'). Não houve reenvio. Confira a Shopee.','warning');
+    return;
+   }
+   optimizerFiscalBatchRows=optimizerFiscalBatchRows.map(x=>x.sku===pendingRow.sku?
+    {...x,status:item.status,message:item.message}:x);
+   optimizerFiscalBatchRender();
+   const nextIndex=selected.findIndex(x=>x.sku===pendingRow.sku)+1;
+   try{localStorage.setItem(FISCAL_ONE_BY_ONE_KEY,JSON.stringify({key,next:nextIndex,pending:null}));}catch{}
+   start=nextIndex;
+  }else if(checkpoint?.key===key&&Number.isInteger(checkpoint.next)&&checkpoint.next>=0&&checkpoint.next<selected.length)
    start=checkpoint.next;
  }catch{}
  try{
