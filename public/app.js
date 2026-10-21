@@ -2255,6 +2255,11 @@ $('#optimizerSku')?.addEventListener?.('input',()=>{
  shPriceCurrentQuote=null;
  shPriceSupplierQuote=null;
  shPriceSelection=null;
+ optimizerDiscountFinalQuote=null;optimizerDiscountFinalIdentity='';
+ optimizerDiscountFinalPreviewData=null;optimizerDiscountFinalPreviewKey='';
+ optimizerDiscountFinalSent=false;
+ ++optimizerDiscountFinalLoading;
+ optimizerDiscountFinalPaint();
  try{sessionStorage.removeItem(shPriceSelectionKey);}catch{}
  if(!value){
   $('#optimizerQuickStatus').textContent='Informe uma SKU para calcular automaticamente.';
@@ -2395,6 +2400,8 @@ $('#optimizerSourceImage')?.addEventListener?.('change',async()=>{
 function optimizerWorkflowRender(data){
  optimizerSourceRender(data);
  optimizerWorkflowPlan=data;
+ // A pesquisa e a precificação começam ao selecionar a SKU e continuam em paralelo.
+ void optimizerDiscountFinalLoad();
  globalThis.OptimizerSkuDashboard?.workflow?.(data);
  const cards=$('#optimizerWorkflowCards');cards.replaceChildren();
  if(data.anatel?.requiresAction){
@@ -3277,6 +3284,7 @@ function optimizerExecRender(data){
  if(!plan||!context||context.sku!==plan.sku||context.itemId!==plan.itemId||context.modelId!==plan.modelId)return;
  optimizerExecPlan={...plan,updatedAt:data.updatedAt};
  optimizerExecFiscalLast(plan);
+ void optimizerDiscountFinalLoad();
  $('#optimizerExecutionScope').value=plan.selectedStage||'all';
  optimizerExecutionIssueRender(data.issue||null);
  optimizerExecutionTrackerRender(data.progress,{sku:plan.sku,item_id:plan.itemId,plan});
@@ -3599,6 +3607,10 @@ function optimizerExecutionJobView(job,progress=null,issue=null){
  optimizerExecutionTrackerRender(progress,job);
  optimizerExecutionIssueRender(issue);
  optimizerExecJob=job;
+ optimizerDiscountFinalPaint();
+ if(job?.state==='verified'&&job?.result?.phase!=='verified_partial'&&
+    optimizerDiscountFinalEligible(optimizerDiscountFinalQuote))
+  void optimizerDiscountFinalPrepare({automatic:true});
  if(!job)globalThis.OptimizerSkuDashboard?.execution?.(null,null);
  // Continuar acompanhando a SKU automaticamente mesmo após recarregar a página.
  if(job&&['running','uncertain'].includes(job.state)){
@@ -4949,6 +4961,7 @@ function shPriceRender(q){
   const isSupplierPreview=q.source==='wedrop_only';
   if(isSupplierPreview&&shPriceSelection)return;
   shPriceCurrentQuote=q;
+  if(!isSupplierPreview)optimizerDiscountFinalSavedQuote(q);
   // O plano do anúncio preserva a reserva selecionada; nunca usa Ads de outra SKU.
   $('#priceAdsEnabled').checked=q.adsBudgetEnabled===true;
   $('#priceAds').value=String(q.adsBudgetEnabled===true?Number(q.adsBudgetPct||0):0);
