@@ -9,6 +9,14 @@ const fold=v=>clean(v).normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCa
 const compactTitle=v=>{const t=clean(v).replace(/[!|]+/g,' ');return codePointCount(t)<=84?t:([...t].slice(0,84).join('').replace(/\s+\S*$/,'').trim()||'este produto');};
 const verify=s=>{try{validateContentRules({description:s});return true;}catch{return false;}};
 export function isCommercialDescription(value){return verify(normal(value).trim());}
+// Apenas o antigo template automático identificável é substituível.
+// Textos pessoais, mesmo incompletos, NUNCA são tratados como modelo genérico.
+export function isGenericShopeeDescription(value){
+ const t=fold(value);
+ return t.includes('conheca')&&
+  t.includes('uma opcao para quem busca praticidade e quer conferir as caracteristicas do produto')&&
+  t.includes('informacoes reunidas em um anuncio')&&t.includes('consulte dados e medidas');
+}
 function extract({record={},supplier=null,sourceText=''}) {
  const data=supplier?.product_data||{};
  const desc=[sourceText,data.description||data.details||'',record.description||''].filter(Boolean).map(normal);
@@ -19,19 +27,20 @@ function extract({record={},supplier=null,sourceText=''}) {
  const short=title.replace(/^(super|novo|nova|promo[cç][aã]o|oferta)\s+/i,'');
  const age=normalized.match(/(?:a partir de|idade recomendada\s*[:\-]?|criancas? a partir de)\s*(\d{1,2})\s*anos?/);
  const size=desc.map(text=>supplierProductDimensions(text)).find(Boolean)||null;
- const material=normalized.match(/(?:composicao|material)\s*[:\-]\s*(polipropileno|aco inoxidavel|aco carbono|aco|plastico|silicone|vidro|aluminio|pp|abs|metal)\b/)||
+ const material=normalized.match(/(?:composicao|material)\s*[:\-]\s*(vinil\s*\(pvc\)|vinil|pvc|polipropileno|aco inoxidavel|aco carbono|aco|plastico|silicone|vidro|aluminio|pp|abs|metal)\b/)||
   normalized.match(/(?:fabricad[oa]|produzid[oa]|feito)\s+em\s+(polipropileno|aco inoxidavel|aco carbono|plastico|silicone|vidro|aluminio|pp|abs)\b/);
  const capacity=normalized.match(/(?:capacidade|reservatorio)\s*(?:de|:)?\s*(\d{2,5})\s*(ml|litros|l)\b/);
  const watts=clean(head+' '+combined).match(/\b(\d{3,4})\s*w\b/i);
  const voltage=clean(head+' '+combined).match(/\b(110|127|220|240)\s*v\b/i);
  let type='general';
- if(/mochila/.test(fold(head))&&/construtor|ferramentas/.test(fold(head)))type='toy';
+ if(/\bbola\b/.test(fold(head))&&/\b(futebol|infantil)\b/.test(fold(head)))type='ball';
+ else if(/mochila/.test(fold(head))&&/construtor|ferramentas/.test(fold(head)))type='toy';
  else if(/passadeira a vapor|vaporizador de roupa/.test(fold(head)))type='steamer';
  else if(/porta shampoo|organizador de box|prateleira de banheiro/.test(fold(head)))type='bath';
  else if(/piscina inflavel/.test(fold(head)))type='pool';
  else if(/garrafa termica/.test(fold(head)))type='bottle';
  else if(/cafeteira italiana/.test(fold(head)))type='coffee';
- const confirmedMaterial=material?({pp:'PP',abs:'ABS',aco:'aço',plastico:'plástico',polipropileno:'polipropileno',vidro:'vidro',metal:'metal',silicone:'silicone',aluminio:'alumínio','aco carbono':'aço carbono','aco inoxidavel':'aço inoxidável'}[material[1]]||material[1]):'';
+ const confirmedMaterial=material?({'vinil (pvc)':'vinil (PVC)',vinil:'vinil',pvc:'PVC',pp:'PP',abs:'ABS',aco:'aço',plastico:'plástico',polipropileno:'polipropileno',vidro:'vidro',metal:'metal',silicone:'silicone',aluminio:'alumínio','aco carbono':'aço carbono','aco inoxidavel':'aço inoxidável'}[material[1]]||material[1]):'';
  const extraInfo={
    age:age?age[1]+' anos':'',
    dimensions:size?size.value:'',
@@ -40,12 +49,75 @@ function extract({record={},supplier=null,sourceText=''}) {
    power:watts?watts[1]+' W':'',
    voltage:voltage?voltage[1]+' V':''
  };
+ if(type==='ball'){
+  // A fonte registra tamanho Nº 2, não diâmetro inflado.
+  const sizeMatch=normalized.match(/\btamanho\s*[:\-]?\s*(?:n(?:o|º|\.)?\s*)?([1-7])\b/)||
+    fold(head).match(/\bn\s*([1-7])\b/);
+  extraInfo.ballSize=sizeMatch?'Nº '+sizeMatch[1]:'';
+  extraInfo.ballMaterial=/vinil\s*\(pvc\)|\bvinil\b.*\bpvc\b/.test(normalized)?'vinil (PVC)':extraInfo.material;
+  const supplierAge=normalized.match(/(?:indicacao de idade|a partir de|idade recomendada)\s*[:\-]?\s*\+?\s*(\d{1,2})\s*anos?/)||
+    normalized.match(/\+\s*(\d{1,2})\s*anos?/);
+  if(supplierAge)extraInfo.age=supplierAge[1]+' anos';
+  extraInfo.sentDeflated=/enviad[ao]\s+vazi[ao]|enviada\s+sem\s+ar/.test(normalized);
+  extraInfo.inflatable=/inflavel/.test(normalized);
+  const registration=normalized.match(/registro\s+inmetro\s*[:\-]?\s*(\d{5,8}\/\d{4})/);
+  extraInfo.inmetro=registration?registration[1]:'';
+  extraInfo.inmetroSource=registration?'informado no texto do fornecedor':'';
+  const catalog=supplier?.product_data?.catalogMeasurements||{};
+  const dimensions=[catalog.heightCm,catalog.widthCm,catalog.lengthCm].map(Number);
+  extraInfo.logistics=dimensions.every(v=>Number.isFinite(v)&&v>0&&v<=300)?
+    dimensions.map(v=>String(v).replace('.',',')).join(' × ')+' cm':'';
+  // As medidas logísticas nunca são transformadas em diâmetro da bola inflada.
+  extraInfo.dimensions='';
+  extraInfo.brandMismatch=/\bmarca\s*[:\-]\s*ddm\s+toys\b/.test(normalized)&&
+    /^ddg$/i.test(String(supplier?.product_data?.brand||'')) ;
+ }
  const content=/conjunto de ferramentas|ferramentas, brinquedos, miniaturas/i.test(normalized);
  const converts=/pode ser aberta e transformada|transformad[ao] em um cenario|vira (?:mesa|bancada|oficina)/i.test(normalized);
  return {type,title,short,data,sourceText,hasSupplier:Boolean(supplier),facts:extraInfo,content,converts};
 }
 function pack(p){
  const name=p.short;
+ if(p.type==='ball')return{
+  intro1:'⚽ A '+name+' é uma bola de futebol infantil para brincadeiras recreativas, chutes e momentos de lazer com a família.',
+  intro2:'🏃 O modelo inflável favorece atividades em casa, no quintal e em espaços apropriados. Confira a indicação etária e as instruções de enchimento.',
+  details:[
+   '⚽ Tipo: bola de futebol infantil recreativa.',
+   ...(p.facts.ballMaterial?['🔹 Material informado: '+p.facts.ballMaterial+'.']:[]),
+   ...(p.facts.ballSize?['📏 Tamanho informado: '+p.facts.ballSize+'.']:[]),
+   ...(p.facts.sentDeflated?['📦 Envio: bola vazia, pronta para inflar conforme orientações.']:[]),
+   ...(p.facts.inmetro?['🔎 Registro INMETRO informado pelo fornecedor: '+p.facts.inmetro+'.']:[])
+  ],
+  measureExtra:p.facts.logistics?
+   '📦 Cadastro logístico WeDrop: '+p.facts.logistics+'; não é diâmetro da bola inflada.':
+   'O diâmetro da bola inflada não foi confirmado pelo fornecedor.',
+  faq:[
+   ['Para qual idade?',p.facts.age?'Indicada a partir de '+p.facts.age+'.':'Confira a faixa etária informada pelo fabricante.'],
+   ['Chega inflada?',p.facts.sentDeflated?'Não, a bola é enviada vazia.':'Confira a condição de envio informada na ficha.'],
+   ['Qual o material?',p.facts.ballMaterial?'Material informado: '+p.facts.ballMaterial+'.':'Confira a ficha do fornecedor.'],
+   ['Qual o tamanho?',p.facts.ballSize?'Tamanho '+p.facts.ballSize+' conforme a ficha.':'Confira a numeração do modelo.'],
+   ['Como usar?','Inflar conforme as instruções e brincar sob supervisão adulta.']
+  ],
+  reasons:[
+   '⚽ Bola para brincadeiras com futebol',
+   'Modelo recreativo infantil',
+   '🏃 Incentiva atividades ao ar livre',
+   'Opção para brincar no quintal',
+   'Leve para encontros em família',
+   '🎯 Prática de chutes e passes',
+   'Uso recreativo em espaços adequados',
+   'Escolha por tamanho informado',
+   '🎁 Presente para quem gosta de bola',
+   'Conferência fácil das especificações'
+  ],
+  tips:[
+   '💡 Respeite a recomendação de enchimento do fabricante.',
+   '📷 Confira as fotos para identificar a cor enviada.',
+   '⚽ Utilize em local seguro e com supervisão.',
+   '📦 Verifique os dados da versão escolhida.',
+   '🔎 O registro INMETRO informado deve ser conferido na documentação do produto.'
+  ]
+ };
  if(p.type==='toy')return{
   intro1:'🧰 A '+name+' reúne ferramentas e acessórios de brinquedo para criar cenas de construção, montagem e faz de conta com muita imaginação.',
   intro2:'🎯 A proposta 3 em 1 permite explorar diferentes formas de brincar; depois, a mochila ajuda a guardar as peças e organizar tudo para a próxima aventura.',
@@ -138,14 +210,15 @@ function toLines(p,profile,extraLines=[],short=false){
  parts.push(paragraph1,'',profile.intro2);
  parts.push('','⚙️ Especificações do produto',...profile.details);
  const f=p.facts;
- if(f.material)parts.push('🔹 Material: '+f.material+'.');
- if(f.age)parts.push('🔹 Idade indicada: a partir de '+f.age+'.');
+ if(f.material&&p.type!=='ball')parts.push('🔹 Material: '+f.material+'.');
+ if(f.age&&p.type!=='ball')parts.push('🔹 Idade indicada: a partir de '+f.age+'.');
  if(f.capacity)parts.push('🔹 Capacidade informada: '+f.capacity+'.');
  if(f.power)parts.push('🔹 Potência informada: '+f.power+'.');
  if(f.voltage)parts.push('🔹 Voltagem informada: '+f.voltage+'.');
  parts.push(...extraLines);
  parts.push('','📏 Tabela de medidas');
- if(f.dimensions)parts.push('📐 Produto (A × L × C): '+f.dimensions+'.');
+ if(p.type==='ball'&&f.logistics)parts.push('📐 Medidas do cadastro logístico: '+f.logistics+'. Não representam o diâmetro inflado.');
+ else if(f.dimensions)parts.push('📐 Produto (A × L × C): '+f.dimensions+'.');
  else parts.push('📐 Medidas: consulte os dados do produto e a versão anunciada.');
  parts.push(profile.measureExtra);
  parts.push('','❓ 5 dúvidas frequentes');
@@ -245,7 +318,11 @@ export function composeShopeeDescription({record={},supplier=null,sourceText=''}
  return {description:body,valid:verify(body),characterCount:codePointCount(body),
   source:p.hasSupplier?'WeDrop + anúncio Shopee':'Anúncio Shopee',
   warnings:[
-   ...(!p.facts.dimensions?['Medidas específicas não confirmadas; confira a ficha do fornecedor.']:[]),
+   ...(p.type==='ball'?
+    ['Medidas 8 × 8 × 8 cm, quando presentes, são apenas dados do cadastro logístico; não indicam diâmetro inflado.',
+      ...(p.facts.brandMismatch?['Divergência de marca: WeDrop DDG e texto anexado DDM Toys; conferir rótulo e cadastro oficial.']:[]),
+      ...(p.facts.inmetro?['Registro INMETRO informado na fonte, não verificado em base oficial.']:[])]
+    :(!p.facts.dimensions?['Medidas específicas não confirmadas; confira a ficha do fornecedor.']:[])),
    'Certificações, selos e números de registro não são deduzidos automaticamente.'
   ]};
 }
