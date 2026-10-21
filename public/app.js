@@ -2894,6 +2894,7 @@ $('#optimizerWorkflowReview')?.addEventListener?.('click',async()=>{
  const btn=$('#optimizerWorkflowReview');btn.disabled=true;
  optimizerWorkflowNotice('Salvando a conferência da etapa '+stage.name+' na Shopee Manager...');
  try{
+   if(key==='technical')await techFlush();
    const body={itemId:data.itemId,modelId:data.modelId,sku:data.sku,
      stage:key,reviewed:key==='fiscal'?true:key==='variants'?$('#optimizerHasVariants').checked:!stage.reviewed};
    if(key==='technical')body.attributes=optimizerTechnicalValues();
@@ -5818,6 +5819,88 @@ function optimizerTechValueLabel(value){
  return ({yes:'Sim',no:'Não',new:'Novo',used:'Usado','not applicable':'Não se aplica',
  'not specified':'Não informado',other:'Outro','no warranty':'Sem garantia'})[raw.toLowerCase()]||raw;
 }
+// Guarda imediatamente tudo o que o usuário editar, antes da revisão formal.
+let techFieldTimer=0,techTextTimer=0,techFieldQueue=Promise.resolve(),techTextQueue=Promise.resolve();
+function techKey(w,type){return ['ra-tech-draft-v1',w.shopId,w.itemId,w.modelId,w.sku,type].join(':');}
+function techCached(w,type){try{return JSON.parse(localStorage.getItem(techKey(w,type))||'null');}catch{return null;}}
+function techCache(w,type,data){try{localStorage.setItem(techKey(w,type),
+ JSON.stringify({...data,updatedAt:new Date().toISOString()}));}catch{}}
+function techFieldsSnapshot(){
+ return [...$('#optimizerTechnicalFields').querySelectorAll('fieldset[data-attribute-id]')].map(f=>({
+  attributeId:Number(f.dataset.attributeId),
+  enabled:Boolean(f.querySelector('[data-attribute-enabled]')?.checked),
+  evidence:String(f.querySelector('[data-evidence-for]')?.value||''),
+  values:[...f.querySelectorAll('[data-attribute-value]')].map(row=>({
+   valueId:Number(row.querySelector('[data-value-id]')?.value||-1),
+   valueName:String(row.querySelector('[data-value-name]')?.value||''),
+   unit:String(row.querySelector('[data-value-unit]')?.value||'')
+  }))
+ }));
+}
+function techFieldSend(w,fields){
+ techFieldQueue=techFieldQueue.catch(()=>{}).then(async()=>{
+  const result=await json('/api/shopee/optimizer/workflow/technical-draft',{
+   method:'POST',headers:{'Content-Type':'application/json'},
+   body:JSON.stringify({itemId:w.itemId,modelId:w.modelId,sku:w.sku,fields}),
+   signal:AbortSignal.timeout(60000)
+  });
+  if(optimizerWorkflowPlan===w){
+   w.technicalDraft=result.technicalDraft;
+   optimizerTechNotice('✓ Campos manuais salvos no banco para a SKU '+w.sku+'.','success');
+  }
+  return result;
+ });
+ techFieldQueue.catch(e=>{if(optimizerWorkflowPlan===w)
+  optimizerTechNotice('Campos mantidos no navegador; falha no banco: '+e.message,'error');});
+ return techFieldQueue;
+}
+function techSaveFields(now=false){
+ const w=optimizerWorkflowPlan;if(!w||optimizerWorkflowStage!=='technical')return Promise.resolve();
+ const fields=techFieldsSnapshot();techCache(w,'fields',{fields});
+ clearTimeout(techFieldTimer);
+ if(now)return techFieldSend(w,fields);
+ optimizerTechNotice('Salvando suas alterações da ficha…');
+ techFieldTimer=setTimeout(()=>{techFieldTimer=0;void techFieldSend(w,fields);},850);
+ return Promise.resolve();
+}
+function techTextSend(w,value){
+ techTextQueue=techTextQueue.catch(()=>{}).then(async()=>{
+  const res=await json('/api/shopee/optimizer/workflow/source',{
+   method:'POST',headers:{'Content-Type':'application/json'},
+   body:JSON.stringify({sku:w.sku,itemId:w.itemId,modelId:w.modelId,action:'text',sourceText:value}),
+   signal:AbortSignal.timeout(60000)
+  });
+  if(optimizerWorkflowPlan===w){
+   w.sourceEvidence={...(w.sourceEvidence||{}),...(res.sourceEvidence||{}),sourceText:value};
+   optimizerTechNotice('✓ Texto manual salvo no banco para a SKU '+w.sku+'.','success');
+  }
+  return res;
+ });
+ techTextQueue.catch(e=>{if(optimizerWorkflowPlan===w)
+  optimizerTechNotice('Texto mantido no navegador; falha no banco: '+e.message,'error');});
+ return techTextQueue;
+}
+function techSaveText(value,now=false){
+ const w=optimizerWorkflowPlan;if(!w?.sku)return Promise.resolve();
+ value=String(value||'');techCache(w,'text',{text:value});
+ for(const el of [$('#optimizerTechText'),$('#optimizerSourceText')])
+  if(el&&el!==document.activeElement)el.value=value;
+ clearTimeout(techTextTimer);
+ if(now)return techTextSend(w,value);
+ optimizerTechNotice('Salvando texto manual…');
+ techTextTimer=setTimeout(()=>{techTextTimer=0;void techTextSend(w,value);},850);
+ return Promise.resolve();
+}
+async function techFlush(){
+ const w=optimizerWorkflowPlan;if(!w)return;
+ if(techTextTimer){clearTimeout(techTextTimer);techTextTimer=0;
+  await techTextSend(w,$('#optimizerTechText').value);}else await techTextQueue;
+ if(techFieldTimer){clearTimeout(techFieldTimer);techFieldTimer=0;
+  await techFieldSend(w,techFieldsSnapshot());}else await techFieldQueue;
+}
+$('#optimizerTechText')?.addEventListener('input',e=>void techSaveText(e.target.value));
+$('#optimizerSourceText')?.addEventListener('input',e=>void techSaveText(e.target.value));
+$('#optimizerTechnicalFields')?.addEventListener('input',()=>void techSaveFields());
 function optimizerTechNotice(message,state='info'){
  const notice=$('#optimizerTechStatus');if(notice){notice.textContent=message;notice.dataset.state=state;}
 }
@@ -5965,8 +6048,10 @@ async function optimizerTechImport(){
 }
 $('#optimizerTechFill')?.addEventListener?.('click',()=>void optimizerTechImport());
 $('#optimizerTechnicalFields')?.addEventListener?.('change',()=>{
- if(optimizerWorkflowPlan&&optimizerWorkflowStage==='technical')
+ if(optimizerWorkflowPlan&&optimizerWorkflowStage==='technical'){
   optimizerTechnicalSummary(optimizerWorkflowPlan);
+  void techSaveFields();
+ }
 });
 function optimizerTechnicalRender(data){
  $('#optimizerTechSku').textContent='SKU '+String(data.sku||'—');
