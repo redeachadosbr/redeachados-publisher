@@ -21,7 +21,12 @@ test('ação única usa somente uma chamada por SKU, mantém CAS e não repete P
  const b=server.indexOf('// BATCH: prepare and execute ONLY fiscal',a);
  const route=server.slice(a,b);
  assert.ok(a>0&&b>a);
- assert.match(route,/auditShopeeItem/);
+ assert.match(route,/auditFiscalSkuLight/);
+ assert.doesNotMatch(route,/auditShopeeItem/);
+ const helper=server.slice(server.indexOf('async function auditFiscalSkuLight('),a);
+ assert.match(helper,/shopeeLiveEditableItem/);
+ assert.match(helper,/get_model_list/);
+ assert.doesNotMatch(helper,/get_attribute_tree|get_item_extra_info/);
  assert.match(route,/readWeDropProduct/);
  assert.match(route,/compileTax/);
  assert.match(route,/fiscalMatrixSource/);
