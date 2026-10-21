@@ -1311,6 +1311,15 @@ app.post('/api/shopee/optimizer/fiscal-migration/execute-one',mustLogin,requireW
    throw Error('Os dados fiscais não foram persistidos; operação cancelada.');
   fiscalMatrixSource({sku,supplier:supplierLinked?supplier:null,tax:reviewedTax,
    reviewSource:review.review_state.matrixFiscal});
+  // tax_info pertence ao anúncio-pai na API Shopee. Não sobrescrever
+  // o NCM de outra variação sem verificar o enquadramento do anúncio inteiro.
+  const liveNcm=String(live.tax_info?.ncm||'').replace(/\D/g,'');
+  if(record.hasModel&&/^\d{8}$/.test(liveNcm)&&liveNcm!==String(reviewedTax.ncm)){
+   return res.json({ok:true,sku,itemId,modelId,status:'blocked',
+    message:'Este anúncio possui variações com NCM fiscal divergente: Shopee '+
+      liveNcm+' / ficha '+reviewedTax.ncm+
+      '. A API fiscal altera o anúncio-pai. Corrija o vínculo fiscal antes de substituir dados de outras variações.'});
+  }
   const plan=compileShopeeExecutionPlan({shopId:auth.shopId,itemId,modelId,sku,
    record,review:review.review_state,live,selectedStage:'fiscal'});
   if(!plan.canExecute&&!plan.blocked.length&&!plan.proposed.tax_info)
