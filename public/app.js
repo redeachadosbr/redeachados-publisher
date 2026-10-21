@@ -5843,6 +5843,9 @@ async function optimizerContentFlush(){
     optimizerWorkflowNotice('Texto da SKU '+pending.sku+' salvo automaticamente.','success');
   return result;
  }).catch(error=>{
+  // Sem perder o texto ou exigir nova digitação: a próxima tentativa de
+  // conferência ou retomada poderá reenviar este rascunho (não publica anúncio).
+  if(!optimizerContentPending)optimizerContentPending=pending;
   optimizerWorkflowNotice('O rascunho continua protegido neste navegador, mas ainda não foi salvo no servidor: '+error.message,'warning');
   throw error;
  });
