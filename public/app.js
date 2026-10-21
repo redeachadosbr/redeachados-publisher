@@ -3273,7 +3273,7 @@ function optimizerExecFiscalLast(plan){
   card.append(optimizerMake('strong','',label),
    optimizerMake('span','',key==='cest'?
     (preview?.cest==='00'?'00 · previsto no envio':
-      preview?.cest||'Não incluído nesta prévia'):
+      preview?.cest||draft?.cest||'00 · padrão cadastral'):
     String(values[key]||'Não informado')));
   container.append(card);
  }
