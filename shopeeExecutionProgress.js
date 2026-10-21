@@ -26,10 +26,10 @@ export function shopeeExecutionProgress(job){
  const pastVideo=['updating','verifying','verified'].includes(phase);
  const mediaFinished=images===0||uploaded===images||verified;
  const videoFinished=!video||Boolean(readyVideo)||verified;
- const updateAccepted=verified||phase==='verifying'||phase==='verified';
+ const updateAccepted=commercialConfirmed||phase==='verifying'||phase==='verified';
  const total=1+images+(video?1:0)+1+1+(plan.finalFiscal?1:0);
  const completed=(started?1:0)+uploaded+(video&&readyVideo?1:0)+(updateAccepted?1:0)+(commercialConfirmed?1:0)+(fiscalDone?1:0);
- const percent=state==='verified'?100:Math.min(99,Math.round(completed/total*100));
+ const percent=verified?100:Math.min(fiscalPartial?95:99,Math.round(completed/total*100));
  const failure=['failed','uncertain'].includes(state)||fiscalPartial;
  const phaseNames={
   queued:'Preparando envio',images_upload:'Enviando imagens à Shopee',
