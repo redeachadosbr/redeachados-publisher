@@ -32,6 +32,7 @@ let activeAppPage='overview';
 // Handoff Ads -> Otimização: pré-preenchimento não dispara consulta automática.
 let optimizerAdsHandoffSku=null;
 let adsReserveRequest=null;
+let adsReserveAwaitDiscountSku=null;
 function currentPageFromUrl(){
   const slug=decodeURIComponent(String(location.pathname||'').match(/^\/app\/([^/]+)\/?$/)?.[1]||'inicio');
   return Object.keys(APP_PAGES).find(k=>APP_PAGES[k].slug===slug)||'overview';
@@ -4032,6 +4033,7 @@ async function optimizerRunAudit(itemId,sku,modelId=''){
         shPriceAdsLoadedKey=[shPriceSelection.sku,shPriceSelection.itemId,shPriceSelection.modelId].join('|');
         shPriceAdsRefreshUi();
         adsReserveRequest=null;
+        adsReserveAwaitDiscountSku=expectedSku;
         shPriceSetStatus('Reserva Ads de '+pending.pct+'% selecionada para esta SKU. Revise os preços e o desconto preparado; nada foi publicado.','info');
       }
       return shPricePrepare();
@@ -5301,6 +5303,12 @@ async function shPricePrepare({silent=false}={}){
     if(manualOverride&&Number(d.quote?.netMarginPct)+0.01<requestedMargin)
       throw Error('O motor retornou margem inferior aos '+requestedMargin+'% escolhidos. Cotação rejeitada; nenhum preço foi publicado.');
     shPriceRender(d.quote);
+    if(adsReserveAwaitDiscountSku===selected.sku){
+      adsReserveAwaitDiscountSku=null;
+      // Após a busca manual da SKU e o cálculo concluído, abrir Descontos preparados.
+      // Apenas prévia: nunca clicar em Executar nem publicar preço automaticamente.
+      setTab('discounts');
+    }
   }catch(e){
     if(shPriceSelection?.sku===selected.sku&&shPriceSelection?.itemId===selected.itemId){
       $('#optimizerQuickValues').hidden=true;shPriceCurrentQuote=null;
