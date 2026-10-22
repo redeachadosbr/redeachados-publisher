@@ -56,6 +56,7 @@ import {normalizeManualVideo} from './shopeeVideoValidation.js';
 import * as ShopeeMarktPro from './shopeeMarktPro.js';
 import {readPreparedImages,importPreparedImage,deletePreparedImage,downloadPreparedImage,imagesSignature,MAX_IMAGE_BYTES,rememberPublishedImages} from './shopeePreparedImages.js';
 import {generateOpenAiImage,imageGenerationStatus} from './shopeeOpenAiImages.js';
+import {validateVariationName,variationImagePrompt,saveVariationImage,variationImagePreview,variationImageBytes,validateVariationDetails,buildVariationPayload} from './shopeeVariationMedia.js';
 import {openAiKeyStatus,openAiApiKey,saveOpenAiApiKey,deleteOpenAiApiKey} from './shopeeOpenAiCredentials.js';
 import {compileAttributes,compileTax,attributeAuditForChanges} from './shopeeStructuredFields.js';
 import {inspectAnatelCompliance} from './shopeeAnatel.js';
@@ -1875,6 +1876,180 @@ app.post('/api/shopee/optimizer/video/marktpro/select',
 // Cada foto é gerada isoladamente: progresso fica persistido no Supabase.
 // Chave OpenAI permanece exclusivamente no backend. Nenhuma publicação automática.
 const shopeeImageGenerationLocks=new Set();
+// Variações com fotografia por opção: persistência privada antes da publicação.
+const activeVariationOps=new Set(),consumedVariationApprovals=new Set();
+function variationSigned(state,secret){
+ const encoded=Buffer.from(JSON.stringify(state)).toString('base64url');
+ return encoded+'.'+crypto.createHmac('sha256',secret).update(encoded).digest('base64url');
+}
+function variationVerify(token,secret,shopId){
+ const [encoded,mac,extra]=String(token||'').split('.');
+ if(!encoded||!mac||extra||encoded.length>4000)throw Error('Prévia de variação inválida.');
+ const expect=crypto.createHmac('sha256',secret).update(encoded).digest('base64url');
+ const a=Buffer.from(mac),b=Buffer.from(expect);
+ if(a.length!==b.length||!crypto.timingSafeEqual(a,b))throw Error('Assinatura de variação inválida.');
+ let state;try{state=JSON.parse(Buffer.from(encoded,'base64url').toString());}catch{throw Error('Prévia de variação inválida.');}
+ if(String(state.shopId)!==String(shopId)||!Number.isFinite(state.at)||
+  Date.now()-state.at>300000||state.at>Date.now()+30000||!state.nonce)
+  throw Error('Prévia de variação expirada ou pertencente a outra loja.');
+ return state;
+}
+async function variationContext(req){
+ const ctx=await checkedWorkflowAudit(req);
+ const entry=await getWorkflowReview(ctx.auth.shopId,ctx.itemId,ctx.modelId);
+ if(entry&&entry.sku!==ctx.sku)throw Error('SKU mudou desde a última revisão.');
+ return {...ctx,details:entry?.review_state?.variationDetails||null};
+}
+function variantAssetBelongsTo(asset,auth,itemId,modelId){
+ const prefix=[auth.shopId,itemId,Number(modelId)||0,'variations'].join('/')+'/';
+ return asset?.storagePath?.startsWith(prefix)===true;
+}
+function mergeVariationDetails(input,current,ctx){
+ const requested=validateVariationDetails(input);
+ const prior=new Map((current?.type===requested.type?current.options:[]||[])
+  .map(o=>[o.name.toLocaleLowerCase('pt-BR'),o]));
+ const options=requested.options.map(o=>{
+  const saved=prior.get(o.name.toLocaleLowerCase('pt-BR'));
+  return {...o,asset:saved?.asset&&variantAssetBelongsTo(saved.asset,ctx.auth,ctx.itemId,ctx.modelId)?
+   saved.asset:null,photoConfirmed:saved?.asset?o.photoConfirmed:false};
+ });
+ return {type:requested.type,options,updatedAt:new Date().toISOString()};
+}
+app.get('/api/shopee/optimizer/variants/draft',mustLogin,requireWeDropAdmin,async(req,res)=>{
+ res.setHeader('Cache-Control','no-store');
+ try{
+  const x=await variationContext(req);
+  const draft=x.details||{type:'',options:[]};
+  const options=await Promise.all((draft.options||[]).map(async o=>({...o,
+   previewUrl:o.asset?await variationImagePreview(o.asset):null})));
+  res.json({ok:true,sku:x.sku,details:{...draft,options},marketplaceUpdated:false});
+ }catch(e){res.status(400).json({ok:false,error:String(e.message||e).slice(0,300)});}
+});
+app.post('/api/shopee/optimizer/variants/draft',mustLogin,requireWeDropAdmin,async(req,res)=>{
+ res.setHeader('Cache-Control','no-store');
+ if(!verifiedSameOrigin(req))return res.status(403).json({error:'Origem não autorizada.'});
+ try{
+  const x=await variationContext(req);
+  const details=mergeVariationDetails(req.body.details,x.details,x);
+  await saveWorkflowReview(x.auth.shopId,x.itemId,x.modelId,x.sku,
+   {stage:'variants',reviewed:false,variationDetails:details,
+    variationConfig:{enabled:true,type:details.type,values:details.options.map(o=>o.name)}});
+  res.json({ok:true,saved:true,details,marketplaceUpdated:false});
+ }catch(e){res.status(400).json({ok:false,error:String(e.message||e).slice(0,330)});}
+});
+app.post('/api/shopee/optimizer/variants/photo',mustLogin,requireWeDropAdmin,
+ express.raw({type:['image/png','image/jpeg'],limit:MAX_IMAGE_BYTES}),async(req,res)=>{
+ res.setHeader('Cache-Control','no-store');
+ if(!verifiedSameOrigin(req))return res.status(403).json({error:'Origem não autorizada.'});
+ try{
+  const x=await variationContext(req);
+  const value=validateVariationName(req.query.option);
+  const target=x.details?.options?.find(o=>o.name.toLocaleLowerCase('pt-BR')===value.toLocaleLowerCase('pt-BR'));
+  if(!target)throw Error('Salve primeiro a opção da variação.');
+  const job=await readShopeeExecution(x.auth.shopId,x.itemId,x.modelId);
+  if(['running','uncertain'].includes(job?.state))throw Error('Execução em andamento; aguarde confirmação.');
+  const asset=await saveVariationImage({shopId:x.auth.shopId,itemId:x.itemId,modelId:x.modelId,
+   file:req.body,mime:String(req.get('content-type')||'').split(';')[0]});
+  const details={...x.details,options:x.details.options.map(o=>o.name===target.name?
+   {...o,asset,photoConfirmed:false}:o)};
+  await saveWorkflowReview(x.auth.shopId,x.itemId,x.modelId,x.sku,
+   {stage:'variants',reviewed:false,variationDetails:details});
+  res.status(201).json({ok:true,asset,previewUrl:await variationImagePreview(asset),
+   requiresConfirmation:true,marketplaceUpdated:false});
+ }catch(e){res.status(400).json({ok:false,error:String(e.message||e).slice(0,350)});}
+});
+app.post('/api/shopee/optimizer/variants/generate',mustLogin,requireWeDropAdmin,async(req,res)=>{
+ res.setHeader('Cache-Control','no-store');
+ if(!verifiedSameOrigin(req))return res.status(403).json({error:'Origem não autorizada.'});
+ let lock='';
+ try{
+  const x=await variationContext(req),value=validateVariationName(req.body?.option);
+  const target=x.details?.options?.find(o=>o.name.toLocaleLowerCase('pt-BR')===value.toLocaleLowerCase('pt-BR'));
+  if(!target)throw Error('Salve primeiro a opção.');
+  lock=[x.auth.shopId,x.itemId,x.modelId].join(':');
+  if(activeVariationOps.has(lock))return res.status(409).json({error:'Outra foto de variação está sendo gerada.'});
+  activeVariationOps.add(lock);
+  const key=await openAiApiKey(x.auth.shopId);
+  if(!key)throw Error('Conecte a API OpenAI no Gerador de imagens.');
+  if(!x.record.imageUrls?.length)throw Error('Produto sem foto original; use o envio manual da foto.');
+  const picture=await generateOpenAiImage({record:x.record,slot:1,apiKey:key,
+   referenceUrls:x.record.imageUrls,
+   overridePrompt:variationImagePrompt(x.record,x.details.type,target.name)});
+  const asset=await saveVariationImage({shopId:x.auth.shopId,itemId:x.itemId,modelId:x.modelId,
+   file:picture.file,mime:picture.mime});
+  // Releia: não sobrescrever edições feitas enquanto a geração ocorria.
+  const latest=await variationContext(req);
+  if(!latest.details?.options?.some(o=>o.name===target.name&&latest.details.type===x.details.type))
+   throw Error('As opções da SKU mudaram. A foto não foi associada a uma opção diferente.');
+  const details={...latest.details,options:latest.details.options.map(o=>o.name===target.name?
+   {...o,asset,photoConfirmed:false}:o)};
+  await saveWorkflowReview(x.auth.shopId,x.itemId,x.modelId,x.sku,
+   {stage:'variants',reviewed:false,variationDetails:details});
+  res.status(201).json({ok:true,asset,previewUrl:await variationImagePreview(asset),
+   generated:true,requiresReview:true,marketplaceUpdated:false});
+ }catch(e){res.status(400).json({ok:false,error:String(e.message||e).slice(0,350)});}
+ finally{if(lock)activeVariationOps.delete(lock);}
+});
+app.post('/api/shopee/optimizer/variants/preview',mustLogin,requireWeDropAdmin,async(req,res)=>{
+ res.setHeader('Cache-Control','no-store');
+ if(!verifiedSameOrigin(req))return res.status(403).json({error:'Origem não autorizada.'});
+ try{
+  const x=await variationContext(req);
+  if(!x.details)throw Error('Salve o rascunho das opções.');
+  const data=validateVariationDetails(x.details,{requirePhotos:true});
+  if(!data.options.every(o=>variantAssetBelongsTo(o.asset,x.auth,x.itemId,x.modelId)))
+   throw Error('Alguma foto não pertence a este anúncio.');
+  const live=await shopeeLiveEditableItem(x.cfg,x.auth,x.itemId);
+  if(live.has_model||x.record.hasModel)throw Error('Este anúncio já possui modelos. A atualização não pode sobrescrever variações existentes automaticamente.');
+  if(String(live.item_status).toUpperCase()!=='NORMAL')throw Error('Anúncio não está ativo.');
+  const approval=variationSigned({shopId:x.auth.shopId,itemId:x.itemId,modelId:x.modelId,
+   sku:x.sku,nonce:crypto.randomUUID(),at:Date.now(),
+   fingerprint:crypto.createHash('sha256').update(JSON.stringify(x.details)).digest('hex')},adsApprovalSecret());
+  res.json({ok:true,approval,preview:{type:data.type,options:data.options.map(o=>({
+   name:o.name,sku:o.sku,price:o.price,stock:o.stock,gtin:o.gtin||null,hasImage:true})),
+   itemId:x.itemId,notice:'Aplicar converterá o anúncio atual para modelos de uma variação. Estoque informado deve existir realmente na WeDrop. Não reenviar em erro de rede.'},
+   marketplaceUpdated:false});
+ }catch(e){res.status(400).json({ok:false,error:String(e.message||e).slice(0,350)});}
+});
+app.post('/api/shopee/optimizer/variants/apply',mustLogin,requireWeDropAdmin,async(req,res)=>{
+ res.setHeader('Cache-Control','no-store');
+ if(!verifiedSameOrigin(req)||req.body?.confirm!==true)
+  return res.status(403).json({ok:false,error:'Confirmação explícita obrigatória.'});
+ let key='';
+ try{
+  const x=await variationContext(req),token=variationVerify(req.body.approval,adsApprovalSecret(),x.auth.shopId);
+  if(String(token.itemId)!==x.itemId||String(token.sku)!==x.sku||String(token.modelId)!==x.modelId)
+   throw Error('Prévia não corresponde a esta SKU.');
+  key=String(x.auth.shopId)+':'+x.itemId;
+  if(activeVariationOps.has(key)||consumedVariationApprovals.has(token.nonce))
+   throw Error('Esta variação já está em execução ou a aprovação já foi utilizada.');
+  activeVariationOps.add(key);consumedVariationApprovals.add(token.nonce);
+  if(!x.details||crypto.createHash('sha256').update(JSON.stringify(x.details)).digest('hex')!==token.fingerprint)
+   throw Error('Dados da variação mudaram após a prévia.');
+  const details=validateVariationDetails(x.details,{requirePhotos:true});
+  if(details.options.some(o=>!variantAssetBelongsTo(o.asset,x.auth,x.itemId,x.modelId)))
+   throw Error('Fotos não pertencem a esta loja.');
+  const live=await shopeeLiveEditableItem(x.cfg,x.auth,x.itemId);
+  if(live.has_model||x.record.hasModel)throw Error('Anúncio já possui modelos; atualização não destrutiva requer fluxo separado.');
+  const ids=[];
+  for(const option of details.options){
+   const file=await variationImageBytes(option.asset);
+   ids.push(await createShopeeMediaApi(x.cfg,x.auth).image(file,option.asset.mime));
+  }
+  const payload=buildVariationPayload(x.itemId,details,ids);
+  // Uma única mutação de produto, sem repetição automática em timeout.
+  const response=await callShopeeShopApi(x.cfg,{path:'/api/v2/product/init_tier_variation',
+   method:'POST',accessToken:x.auth.accessToken,shopId:x.auth.shopId,body:payload});
+  const verified=await callShopeeShopApi(x.cfg,{path:'/api/v2/product/get_model_list',
+   accessToken:x.auth.accessToken,shopId:x.auth.shopId,query:{item_id:x.itemId}});
+  const modelCount=verified?.response?.model?.length||0;
+  res.json({ok:true,marketplaceUpdated:true,modelsConfirmed:modelCount,
+   message:'Variações enviadas à Shopee. Modelos identificados: '+modelCount+'.'});
+ }catch(e){res.status(400).json({ok:false,error:String(e.message||e).slice(0,360),
+  warning:'Se houve timeout após envio, consulte a Shopee antes de tentar outra vez.'});}
+ finally{if(key)activeVariationOps.delete(key);}
+});
+
 app.get('/api/shopee/optimizer/images/generation/status',mustLogin,requireWeDropAdmin,async(req,res)=>{
  res.setHeader('Cache-Control','no-store');
  try{
