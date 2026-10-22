@@ -3114,6 +3114,14 @@ async function optimizerWorkflowLoad(record){
  const modelId=String(record?.selectedModelId||'0');
  const p=$('#optimizerWorkflowPanel');
  p.hidden=false;
+ // Produto identificado pela auditoria: preparar 4 títulos imediatamente, antes
+ // mesmo da abertura da etapa SEO. O estúdio reutiliza o resultado por SKU.
+ if(sku&&id){
+   const titleJob=globalThis.ShopeeTitleStudio?.prefetch?.({
+     ...record,sku,itemId:id,modelId,productTitle:record?.title||''
+   });
+   titleJob?.catch(()=>{}); // Falhas da IA não bloqueiam a análise da SKU.
+ }
  optimizerVideoReset();
  optimizerWorkflowStage=null;$('#optimizerWorkflowEditor').hidden=true;
  optimizerWorkflowNotice('Preparando etapas de revisão da SKU '+sku+' com a auditoria oficial...');
