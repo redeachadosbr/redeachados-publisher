@@ -90,7 +90,7 @@ function resizeImagePng(bytes){
   ff.stdin.end(bytes);
  });
 }
-export async function generateOpenAiImage({record,slot,masterPrompt='',note='',referenceUrls=[],apiKey=''}){
+export async function generateOpenAiImage({record,slot,masterPrompt='',note='',referenceUrls=[],apiKey='',overridePrompt=null}){
  const status=imageGenerationStatus();
  const token=String(apiKey||process.env.OPENAI_API_KEY||'').trim();
  if(!token)throw Error('Conecte sua conta da API OpenAI em Otimização > Gerador de imagens.');
@@ -104,7 +104,7 @@ export async function generateOpenAiImage({record,slot,masterPrompt='',note='',r
  form.set('quality',String(process.env.OPENAI_IMAGE_QUALITY||'medium'));
  form.set('output_format','png');
  form.set('n','1');
- form.set('prompt',imagePrompt({record,slot,masterPrompt,note,sourceImageCount:originals.length}));
+ form.set('prompt',overridePrompt||imagePrompt({record,slot,masterPrompt,note,sourceImageCount:originals.length}));
  for(const [i,x] of originals.entries())form.append('image[]',new Blob([x.file],{type:x.mime}),'original-'+i+(x.mime==='image/png'?'.png':x.mime==='image/webp'?'.webp':'.jpg'));
  const response=await fetch('https://api.openai.com/v1/images/edits',{
   method:'POST',headers:{Authorization:'Bearer '+token},
