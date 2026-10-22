@@ -3186,6 +3186,11 @@ $('#optimizerWorkflowReview')?.addEventListener?.('click',async()=>{
  const btn=$('#optimizerWorkflowReview');btn.disabled=true;
  optimizerWorkflowNotice('Salvando a conferência da etapa '+stage.name+' na Shopee Manager...');
  try{
+   if(key==='seo'&&!stage.reviewed){
+     const title=$('#optimizerWorkflowDraft').value.normalize('NFC').replace(/\s+/g,' ').trim();
+     const length=[...title].length;
+     if(length<100||length>120)throw Error('Título SEO com '+length+' caracteres. Para aprovar, informe de 100 a 120 caracteres usando somente dados confirmados.');
+   }
    if(key==='seo'||key==='description'){optimizerContentRemember();await optimizerContentFlush();}
    if(key==='technical')await techFlush();
    const body={itemId:data.itemId,modelId:data.modelId,sku:data.sku,
@@ -6210,8 +6215,8 @@ function optimizerContentRestore(w){
 
 function optimizerCopyCount(){
  const count=[...$('#optimizerWorkflowDraft').value.normalize('NFC')].length,isTitle=optimizerWorkflowStage==='seo';
- $('#optimizerCopyCount').textContent=count+' caracteres · '+(isTitle?'até 120':'entre 1400 e 1440');
- $('#optimizerCopyCount').className=(isTitle?count>0&&count<=120:count>=1400&&count<=1440)?'copy-count-valid':'copy-count-invalid';
+ $('#optimizerCopyCount').textContent=count+' caracteres · '+(isTitle?'mínimo 100, máximo 120':'entre 1400 e 1440')+(isTitle&&count<100?' · faltam '+(100-count):isTitle&&count>120?' · excede '+(count-120):'');
+ $('#optimizerCopyCount').className=(isTitle?count>=100&&count<=120:count>=1400&&count<=1440)?'copy-count-valid':'copy-count-invalid';
 }
 $('#optimizerWorkflowDraft')?.addEventListener?.('input',()=>{
  optimizerContentRemember();
