@@ -312,3 +312,26 @@ body.view-ads .workspace-content{max-width:none;width:100%;padding:9px 14px 30px
  #tab-ads #adsSummary{grid-row:9!important;}
  #tab-ads #adsManualPanel{grid-row:10!important;}
 }
+
+
+/* SEO Ads pertence somente à página Shopee Ads, após o painel principal. */
+#tab-ads #adsSeoDisclosure.ads-seo-disclosure{
+ grid-column:1/-1!important;grid-row:8!important;min-width:0;margin:0!important;
+ padding:0!important;border:1px solid #dfe9f5;border-radius:13px;
+ background:#fff;box-shadow:0 4px 14px #0a3d780a;overflow:hidden;
+}
+#tab-ads #adsSeoDisclosure.ads-seo-disclosure>summary{
+ cursor:pointer;display:list-item;padding:16px 19px;color:#17365f;
+ font-size:13px;font-weight:750;list-style-position:inside;
+}
+#tab-ads #adsSeoDisclosure.ads-seo-disclosure>summary:hover{background:#f4f8ff}
+#tab-ads #adsSeoDisclosure #adsSeoSection{
+ width:100%;max-width:none;min-width:0;margin:0!important;padding:14px 18px 20px;
+ border:0;box-shadow:none;border-top:1px solid #e5edf7;
+}
+@media(max-width:880px){
+ #tab-ads #adsSeoDisclosure.ads-seo-disclosure{grid-row:10!important}
+}
+@media(max-width:650px){
+ #tab-ads #adsSeoDisclosure.ads-seo-disclosure{grid-row:11!important}
+}
