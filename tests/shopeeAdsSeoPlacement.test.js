@@ -20,7 +20,7 @@ test('SEO Ads não ocupa grade principal e só atualiza após expansão',()=>{
  assert.match(css,/#tab-ads #adsSeoDisclosure\.ads-seo-disclosure\{/);
  assert.match(css,/grid-row:8!important/);
  assert.match(html,/ads-premium\.css\?v=2\.4\.0-seo-ads-location/);
- assert.match(html,/ads-seo\.js\?v=4-active-only/);
+ assert.match(html,/ads-seo\.js\?v=6-ads-eligible-counter/);
  assert.match(js,/observer\.observe\(root\)/);
  assert.match(js,/redeAdsOpenOptimizerSku\(sku\)/);
  assert.doesNotMatch(js,/input\.dispatchEvent\(new Event\('input'/);
