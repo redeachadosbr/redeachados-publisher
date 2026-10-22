@@ -1,5 +1,4 @@
-// Shopee Ads: preparação individual por SKU e criação com lances CPC manuais.
-// Não confundir ROAS de acompanhamento com alvo de lance automático GMV Max.
+// Shopee Ads: produto escolhido individualmente e GMV Max com Meta de ROAS (lance automático).
 (()=>{
  'use strict';
  const cash=v=>Number(v||0).toLocaleString('pt-BR',{style:'currency',currency:'BRL'});
@@ -32,6 +31,31 @@
   selected.append(el('strong','','✓ Anúncios Individuais'),
    el('small','','✓ Produto selecionado manualmente · 1 SKU por campanha'),
    el('strong','','✓ GMV Max — Meta de ROAS'));
+  const estimate=el('div','ads-roas-estimate');
+  const percentage=el('strong');
+  const applyReserve=el('button','secondary','Aplicar % equivalente à reserva');
+  applyReserve.type='button';
+  const updateEstimate=()=>{
+   const target=Number(roas.input.value);
+   const implied=target>0?100/target:null;
+   percentage.textContent=implied!==null?
+    'Custo Ads equivalente ao ROAS-alvo: '+implied.toLocaleString('pt-BR',{maximumFractionDigits:2})+
+    '% do GMV atribuído':'Informe ROAS positivo.';
+   applyReserve.disabled=!(implied>0&&implied<=40);
+   applyReserve.title=implied>40?'Mais de 40% não pode ser reservado automaticamente. Revise o alvo de ROAS.':
+    'Aplicar somente à estimativa; preço e desconto ainda precisam ser recalculados.';
+  };
+  applyReserve.addEventListener('click',()=>{
+   const amount=100/Number(roas.input.value),input=root.closest('.ads-seo-card')?.querySelector('.ads-manual-reserve-input');
+   if(!input||!Number.isFinite(amount)||amount>40)return;
+   input.value=(Math.ceil(amount*10)/10).toFixed(1);
+   input.dispatchEvent(new Event('input',{bubbles:true}));
+   setStatus('Reserva pré-preenchida. Clique em Preparar preço/desconto e publique os ajustes antes de criar GMV Max.');
+   invalidate();
+  });
+  roas.input.addEventListener('input',updateEstimate);updateEstimate();
+  estimate.append(percentage,el('small','',
+   'Conta indicativa 100 ÷ ROAS, não equivale necessariamente ao custo sobre todas as vendas nem garante conversão.'),applyReserve);
   const warning=el('p','ads-manual-note',
    'Impulsão Rápida, recomendação oficial de ROAS e Proteção ROAS não podem ser presumidas: dependem da elegibilidade Shopee e não são configuradas por este endpoint. ROAS-alvo não garante resultado.');
   const confirm=el('label','ads-manual-consent');
@@ -42,7 +66,7 @@
   previewBtn.type='button';
   const status=el('p','ads-manual-feedback','Campanha não criada.');
   const review=el('div','ads-manual-review');
-  inner.append(selected,note,roas.wrap,budget.wrap,begin.wrap,end.wrap,warning,confirm,previewBtn,status,review);
+  inner.append(selected,note,roas.wrap,budget.wrap,estimate,begin.wrap,end.wrap,warning,confirm,previewBtn,status,review);
   root.append(inner);
   const setStatus=(message,kind='info')=>{status.textContent=message;status.dataset.kind=kind;};
   const invalidate=()=>review.replaceChildren();
@@ -63,6 +87,7 @@
     review.append(el('strong','','Prévia — Anúncio Individual com Meta de ROAS'),
      el('p','','Produto '+p.product.sku+' · Item ID '+p.product.itemId+' · Preço do plano '+cash(p.product.currentPrice)),
      el('p','','ROAS-alvo '+p.draft.roasTarget+'x · Orçamento '+cash(p.draft.dailyBudget)+'/dia · Reserva Ads '+p.draft.reservePct+'%'),
+     el('p','','Equivalência indicativa pelo ROAS: '+p.impliedAdsPct+'% do GMV atribuído. Diferença para a reserva: '+p.coverageGapPct+' pontos percentuais.'),
      el('p','',p.draft.endDate?'Período '+p.draft.startDate+' a '+p.draft.endDate:
        'Início '+p.draft.startDate+' · sem data final'),
      el('p','',p.warning));
