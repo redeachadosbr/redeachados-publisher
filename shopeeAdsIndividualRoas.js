@@ -14,8 +14,11 @@ const date=value=>{
 };
 export function validateIndividualRoasDraft(input,{today=new Date()}={}){
  if(!input||typeof input!=='object'||Array.isArray(input))throw Error('Preencha a campanha individual.');
- const allowed=new Set(['sku','itemId','dailyBudget','roasTarget','reservePct','startDate','endDate','priceConfirmed']);
+ const allowed=new Set(['sku','itemId','dailyBudget','roasTarget','reservePct','startDate','endDate','priceConfirmed','productSelection','biddingMethod','strategy']);
  if(Object.keys(input).some(k=>!allowed.has(k)))throw Error('Campo não permitido para GMV Max Meta de ROAS.');
+ if(input.productSelection!==undefined&&input.productSelection!=='manual')throw Error('Seleção de produto não é individual.');
+ if(input.biddingMethod!==undefined&&input.biddingMethod!=='auto')throw Error('Meta ROAS exige lance automático GMV Max.');
+ if(input.strategy!==undefined&&input.strategy!=='GMV Max - Meta de ROAS')throw Error('Estratégia de lance não corresponde à Meta de ROAS.');
  if(!validId(input.itemId))throw Error('Item ID inválido.');
  const sku=String(input.sku||'').trim();
  if(!sku||sku.length>120||/[\x00-\x1f]/.test(sku))throw Error('SKU inválida.');
