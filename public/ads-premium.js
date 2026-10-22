@@ -174,5 +174,4 @@
  }
  globalThis.RedeAdsPremium={openReview,onData};
  find('adsOpenSeller')?.remove();
- find('adsCloseReview')?.addEventListener('click',()=>{els.panel.hidden=false;});
 })();
