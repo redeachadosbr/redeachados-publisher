@@ -125,3 +125,12 @@
 #optimizerVariationPanel .optimizer-variation-color-dot{width:13px;height:13px;flex:0 0 13px;border:1px solid #a9bad1;border-radius:50%;display:inline-block}
 #optimizerVariationPanel .optimizer-variation-chip-close{font-size:15px;line-height:1;margin-left:2px;color:#58749a}
 #optimizerVariationPanel .optimizer-variant-footer{display:none!important}
+
+#optimizerVariationPanel .stage-right{position:relative;flex-wrap:wrap}
+#optimizerVariationPanel .optimizer-variant-stage-actions{margin-left:auto;position:relative}
+#optimizerVariationPanel .optimizer-variant-stage-toggle{font-size:11px;border:1px solid #cbdaf0;border-radius:8px;background:#f1f6ff;color:#174078;padding:8px 10px;cursor:pointer}
+#optimizerVariationPanel .optimizer-variant-stage-controls{position:absolute;right:0;top:calc(100% + 6px);z-index:15;width:235px;padding:9px;border:1px solid #d7e3f4;border-radius:10px;background:white;box-shadow:0 12px 24px #163a6625;display:grid;gap:7px}
+#optimizerVariationPanel .optimizer-variant-stage-controls[hidden]{display:none!important}
+#optimizerVariationPanel .optimizer-variant-stage-controls button{font-size:11px;color:#fff;border:0;border-radius:8px;padding:10px 8px;background:#174e32;cursor:pointer}
+#optimizerVariationPanel .optimizer-variant-stage-controls .optimizer-variant-stage-publish{background:#f04a2e}
+#optimizerVariationPanel .optimizer-variant-stage-controls button:disabled{opacity:.48;cursor:not-allowed}
