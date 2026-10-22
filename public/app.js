@@ -1176,16 +1176,16 @@ function adsRenderExecution(){
   ['Identificar baixo desempenho',known?'Concluído':'Pendente'],
   ['Gerar recomendações',known?'Concluído':'Pendente'],
   ['Revisar ajustes sugeridos',known&&recommendations?'Disponível':'Sem ações'],
-  ['Executar ajustes via API','Não habilitado']
+  ['Executar ajustes via API','Após aprovação']
  ];
  for(let i=0;i<states.length;i++){
   const [label,status]=states[i],p=adsCreateElement('p','ads-v2-step');
   const name=adsCreateElement('span','',String(i+1)+'. '+label);
   const state=adsCreateElement('span','ads-v2-step-badge',status);
-  state.dataset.state=status==='Concluído'?'complete':status==='Não habilitado'?'blocked':'pending';
+  state.dataset.state=status==='Concluído'?'complete':'pending';
   p.append(name,state);root.append(p);
  }
- $('#adsExecutionNote').textContent='A consulta Ads instalada é somente leitura. Nenhum lance, orçamento ou status foi alterado.';
+ $('#adsExecutionNote').textContent='Consultas não modificam campanhas. Mudanças via API exigem prévia assinada, confirmação individual e permissão Ads da Shopee.';
 }
 function adsRenderHealth(data){
  const campaigns=adsCampaignRows,analyzed=campaigns.filter(c=>c.daysWithData>0);
