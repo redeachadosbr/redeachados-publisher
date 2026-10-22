@@ -71,9 +71,9 @@ function render(){
   fileInput.hidden=true;fileInput.setAttribute('aria-label','Foto da opção '+name);
   const upload=el('button','secondary','Incluir foto');
   const generate=el('button','secondary','Gerar foto IA');
-  upload.type=generate.type='button';upload.onclick=()=>fileInput.click();
+  upload.type=generate.type='button';upload.onclick=()=>{fileInput.value='';fileInput.click();};
   generate.onclick=()=>void transferImage(name,'generate');
-  fileInput.onchange=()=>{if(fileInput.files?.[0])void transferImage(name,'upload',fileInput.files[0]);};
+  fileInput.onchange=()=>{const selected=fileInput.files?.[0];if(selected)void transferImage(name,'upload',selected);};
   buttons.append(upload,generate,fileInput);visual.append(buttons);
   const fields=el('div','optimizer-variant-inputs');
   const price=field('Preço (R$)',prior.price>0?prior.price:(suggestedPrice||''),{kind:'number',min:'0.01',placeholder:'Informe o preço'});
@@ -184,6 +184,7 @@ async function persist(){
  return result;
 }
 async function squarePng(file){
+ if(!file?.type?.startsWith('image/'))throw Error('Selecione uma imagem JPG, PNG ou WebP.');
  const bmp=await createImageBitmap(file),canvas=document.createElement('canvas');
  canvas.width=canvas.height=1200;const ctx=canvas.getContext('2d');
  if(!ctx)throw Error('Navegador não permite converter imagem.');
@@ -194,7 +195,7 @@ async function squarePng(file){
  return new Promise((resolve,reject)=>canvas.toBlob(blob=>blob?resolve(blob):reject(Error('Erro ao converter imagem.')),'image/png',1));
 }
 async function transferImage(name,mode,file){
- if(busy)return;
+ if(busy){notify('Aguarde a operação atual terminar para enviar outra foto.','info');return;}
  try{
   await persist();busy=true;
   notify(mode==='generate'?'Gerando imagem '+name+' pela API OpenAI...':'Enviando foto da opção '+name+'...');
@@ -209,7 +210,7 @@ async function transferImage(name,mode,file){
    if(!raw.ok||!result.ok)throw Error(result.error||'Falha no upload.');
   }
   const o=(saved.options||[]).find(o=>o.name===name);
-  if(o){o.asset=result.asset;o.previewUrl=result.previewUrl;o.photoConfirmed=false;}
+  if(o){o.asset=result.asset;o.previewUrl=result.previewUrl||null;o.photoConfirmed=false;}
   render();notify('Imagem de '+name+' salva. Confira a aparência real antes de autorizar a publicação.','success');
  }catch(e){notify('Falha na imagem de '+name+': '+e.message,'error');}
  finally{busy=false;}
