@@ -164,6 +164,7 @@
   finally{busy=false;button.disabled=false;}
  }
  button.addEventListener('click',refresh);
+ globalThis.RedeAdsSeoRefresh=()=>{if(!busy)void refresh();};
  const disclosure=document.getElementById('adsSeoDisclosure');
  disclosure?.addEventListener('toggle',()=>{if(disclosure.open&&!last)void refresh();});
  // Exibir contador aptos mesmo quando a análise detalhada está recolhida.
