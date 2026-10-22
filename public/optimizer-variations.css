@@ -40,3 +40,10 @@
  #optimizerVariationPanel .optimizer-variant-photo>img,#optimizerVariationPanel .optimizer-variant-photo-placeholder{max-width:220px}}
 @media(max-width:580px){#optimizerVariationPanel .optimizer-variant-inputs{grid-template-columns:1fr}
  #optimizerVariationPanel .optimizer-variant-footer button{width:100%}}
+
+#optimizerVariationPanel .optimizer-variant-original-suggestion{
+ display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:10px;
+ padding:10px 12px;background:#fff6e8;border:1px solid #f4d9a5;border-radius:10px;
+ font-size:11px;line-height:1.45;color:#755024
+}
+#optimizerVariationPanel .optimizer-variant-original-suggestion button{min-height:35px;padding:7px 10px;font-size:11px}
