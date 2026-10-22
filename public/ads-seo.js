@@ -90,19 +90,19 @@
  }
  function displayCampaigns(data){
   campaigns.replaceChildren();
+  // Defesa adicional no navegador: nunca renderizar campanhas pausadas ou sem status ativo.
+  const active=(data.campaigns||[]).filter(c=>c.statusGroup==='active');
   if(!data.adsAvailable){
    campaigns.append(el('p',data.adsWarning||'Não há acesso confirmado à API Shopee Ads. Verifique as permissões da Open Platform.','ads-seo-empty'));return;
   }
-  if(!data.campaigns?.length){
-   campaigns.append(el('p','A Shopee não retornou campanhas de produto para o período. Sem campanha Ads não é possível medir impressões e cliques patrocinados por SKU.','ads-seo-empty'));return;
+  if(!active.length){
+   campaigns.append(el('p','Nenhuma campanha ativa/rodando foi confirmada pela Shopee neste período. Campanhas pausadas e desativadas ficam ocultas.','ads-seo-empty'));return;
   }
-  for(const c of data.campaigns.slice(0,36)){
+  for(const c of active.slice(0,36)){
    const card=el('article',null,'ads-seo-card');card.dataset.severity=c.severity||'neutral';
    card.append(head(c.imageUrl,c.title||c.name,c.sku?
     'SKU '+c.sku+' · Campanha '+c.campaignId:'Campanha '+c.campaignId));
-   card.append(chip(c.statusGroup==='active'?'Ativa na Shopee':
-    c.statusGroup==='inactive'?'Não ativa':'Status não confirmado',
-    c.severity==='attention'?'attention':'neutral'));
+   card.append(chip('Ativa / Rodando',c.severity==='attention'?'attention':'good'));
    card.append(metricRow([
     ['Impressões • 7 dias',integer(c.metrics.impressions)],['Cliques • 7 dias',integer(c.metrics.clicks)],
     ['CTR',pct(c.metrics.ctr)],['Pedidos atribuídos',integer(c.metrics.orders)],
@@ -134,7 +134,7 @@
    }
    campaigns.append(card);
   }
-  if(data.campaigns.length>36)campaigns.append(el('p','Mostrando 36 campanhas prioritárias dentre as '+data.monitoredCampaigns+' encontradas.','ads-seo-empty'));
+  if(active.length>36)campaigns.append(el('p','Mostrando 36 campanhas ativas dentre as '+active.length+' retornadas.','ads-seo-empty'));
  }
  async function refresh(){
   if(busy)return;
@@ -148,7 +148,7 @@
    summary.replaceChildren();
    for(const message of [
     (data.candidates?.length||0)+' SKUs elegíveis nos planos recentes',
-    (data.monitoredCampaigns||0)+' campanhas monitoradas',
+    (data.monitoredCampaigns||0)+' campanhas ativas monitoradas',
     (data.withAlerts||0)+' campanhas com alerta',
     'Acompanhamento de 7 dias vs 7 anteriores'
    ])summary.append(el('span',message));
