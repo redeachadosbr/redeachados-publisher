@@ -177,8 +177,8 @@ async function persist(){
  const result=await request('/api/shopee/optimizer/variants/draft','POST',{details:draft});
  const previous=new Map((saved.options||[]).map(o=>[o.name,o]));
  saved={...result.details,options:result.details.options.map(o=>({
-  ...o,previewUrl:previous.get(o.name)?.asset?.sha256===o.asset?.sha256?
-   previous.get(o.name).previewUrl:null
+  ...o,previewUrl:o.asset?.sha256 && previous.get(o.name)?.asset?.sha256===o.asset.sha256?
+   (previous.get(o.name)?.previewUrl||null):null
  }))};
  notify('Rascunho salvo para '+context.sku+'. Nenhuma alteração enviada à Shopee.','success');
  return result;
