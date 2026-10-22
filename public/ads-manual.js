@@ -23,6 +23,9 @@
   root.append(head);
   const inner=el('div','ads-manual-fields'),note=el('p','ads-manual-note',
    'Modo manual: você define palavras-chave e CPC. ROAS é referência de desempenho e NÃO é transmitido como lance automático.');
+  const price=field('Preço final planejado (R$)','number',candidate.quoteCustomerPrice||0,{min:0,step:0.01});
+  price.input.readOnly=true;
+  price.input.title='O preço não pode ser alterado na API Ads: use Descontos preparados.';
   const budget=field('Orçamento diário (R$)','number',candidate.suggestedDailyBudget||10,{min:5,max:300,step:0.01});
   const roas=field('ROAS de referência (x)','number',candidate.roasTarget||5,{min:1,max:100,step:0.1});
   const begin=field('Início • DD-MM-AAAA','text',textDate(1),{placeholder:'DD-MM-AAAA'});
@@ -38,7 +41,7 @@
    'Confirmei que o preço e o desconto com a reserva Ads já foram publicados na Shopee. Quero criar uma campanha com custo real.'));
   const previewBtn=el('button','ads-manual-cta','Conferir prévia manual');
   previewBtn.type='button';const status=el('p','ads-manual-feedback','Nenhuma campanha foi criada.');
-  inner.append(note,budget.wrap,roas.wrap,begin.wrap,end.wrap,kwLabel,confirm,previewBtn,status);
+  inner.append(note,price.wrap,budget.wrap,roas.wrap,begin.wrap,end.wrap,kwLabel,confirm,previewBtn,status);
   const review=el('div','ads-manual-review');inner.append(review);
   root.append(inner);
   const setStatus=(message,kind='info')=>{status.textContent=message;status.dataset.kind=kind;};
