@@ -63,3 +63,13 @@
 @media(max-width:550px){#tab-ads .ads-manual-fields{grid-template-columns:1fr}
  #tab-ads .ads-manual-reserve-controls{grid-template-columns:1fr}}
 @media(prefers-reduced-motion:reduce){#tab-ads .ads-eligible-summary{transition:none!important}}
+
+/* GMV Max • seleção individual e meta ROAS, como no formulário Shopee Ads. */
+#tab-ads .ads-roas-choice{grid-column:1/-1;display:grid;gap:6px;
+ border:1px solid #ffb49d;background:linear-gradient(115deg,#fff6f2,#fff);
+ padding:11px 12px;border-radius:11px}
+#tab-ads .ads-roas-choice strong{color:#af4524;font-size:12px}
+#tab-ads .ads-roas-choice small{color:#785a4f;font-size:10px}
+#tab-ads .ads-manual-editor>summary:hover{background:#e0eeff}
+#tab-ads .ads-manual-fields input:focus-visible{outline:2px solid #f66b43;outline-offset:2px}
+#tab-ads .ads-manual-review .ads-manual-execute{margin-top:7px}
