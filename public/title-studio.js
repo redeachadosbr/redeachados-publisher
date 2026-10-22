@@ -95,7 +95,8 @@
     } else if(/\bbola\b/i.test(joined)&&/\binfantil|futebol/i.test(joined)){
       kind='ball';
       phrases=['Bola de Futebol para Crianças','Brinquedo Esportivo Infantil',
-        'Para Chutes e Brincadeiras','Bola Infantil Recreativa','Para Jogos de Futebol Infantil'];
+        'Para Chutes e Brincadeiras','Bola Infantil Recreativa','Para Jogos de Futebol Infantil',
+        'Para Lazer e Recreação','Para Chutes e Passes','Para Brincar','Para Atividades Recreativas'];
       if(/infl[aá]vel/i.test(joined))phrases.push('Bola Inflável');
       if(/vinil|pvc/i.test(joined))phrases.push('Vinil PVC');
     } else if(/piscina\s+infl[aá]vel/i.test(joined)){
