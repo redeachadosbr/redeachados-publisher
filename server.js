@@ -2497,7 +2497,8 @@ app.post('/api/shopee/ads/manual/preview',mustLogin,async(req,res)=>{
   const [catalog,plans]=await Promise.all([readCatalogCache(auth.shopId),recentShopeePricePlans(auth.shopId,{limit:1000})]);
   const preview=manualAdsPreview(req.body,catalog.items,plans);
   const approval=manualAdsToken({shopId:String(auth.shopId),nonce:crypto.randomUUID(),
-   at:Date.now(),draft:req.body},adsApprovalSecret());
+   at:Date.now(),draft:req.body,quotedPrice:preview.product.currentPrice,
+   quotedUpdatedAt:preview.product.pricePlanUpdatedAt},adsApprovalSecret());
   res.json({ok:true,preview,approval,created:false});
  }catch(e){res.status(400).json({ok:false,error:String(e.message||e).slice(0,380),created:false});}
 });
@@ -2513,7 +2514,10 @@ app.post('/api/shopee/ads/manual/create',mustLogin,async(req,res)=>{
    return res.status(409).json({ok:false,error:'Esta aprovação já foi usada. Confira a Shopee antes de tentar criar outra campanha.'});
   adsManualCreateUsed.set(nonce,'reserved');
   const [catalog,plans]=await Promise.all([readCatalogCache(auth.shopId),recentShopeePricePlans(auth.shopId,{limit:1000})]);
-  verifyManualAdsCandidate(signed.draft,catalog.items,plans);
+  const actualPlan=verifyManualAdsCandidate(signed.draft,catalog.items,plans);
+  if(Math.abs(actualPlan.currentPrice-Number(signed.quotedPrice))>.011||
+     actualPlan.pricePlanUpdatedAt!==signed.quotedUpdatedAt)
+   throw Error('Preço/planilha de desconto mudou após a prévia. Confirme novamente antes de criar Ads.');
   // Conferência adicional do anúncio ao vivo: só produtos NORMAL podem receber anúncio.
   const live=await callShopeeShopApi(cfg,{path:'/api/v2/product/get_item_base_info',
    accessToken:auth.accessToken,shopId:auth.shopId,query:{item_id_list:String(signed.draft.itemId)}});
