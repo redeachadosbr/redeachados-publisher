@@ -17,35 +17,56 @@
     clean(data?.productTitle||data?.title||''),
     clean(extraTerms||'')
   ].join('|');
+  // Gratuito e local: não chamar serviços de IA pagos nem usar créditos de API.
+  // A assinatura ChatGPT Plus não é uma credencial de API do sistema.
   function prefetch(data,{force=false,extraTerms='',previousTitles=[]}={}){
     const sku=clean(data?.sku||''),itemId=String(data?.itemId||'');
     if(!sku||!itemId)return Promise.resolve({
-      ok:false,source:'local_fallback',message:'SKU não identificada.',titles:[]
+      ok:false,source:'local_generator',message:'SKU ainda não identificada.',titles:[]
     });
-    const key=prefetchKey(data,extraTerms),current=seoAiPrefetchCache.get(key),now=Date.now();
-    if(current&&now<current.expiresAt&&(!force||now-current.createdAt<8000))return current.promise;
-    const request=fetch('/api/shopee/optimizer/workflow/title-ai',{
-      method:'POST',credentials:'same-origin',headers:{'Content-Type':'application/json'},
-      body:JSON.stringify({
-        sku,itemId,modelId:String(data.modelId??data.selectedModelId??'0'),
-        extraTerms:String(extraTerms||'').slice(0,300),
-        refresh:Boolean(force),previousTitles:(Array.isArray(previousTitles)?previousTitles:[])
-          .slice(0,4).map(x=>String(x||'').slice(0,120))
-      }),
-      signal:AbortSignal.timeout(75000)
-    }).then(async res=>{
-      const result=await res.json().catch(()=>({}));
-      if(!res.ok)throw Error(result.error||'Serviço de IA indisponível (HTTP '+res.status+').');
-      return result;
-    });
-    // On failure keep the fallback visible, but allow a retry later.
-    seoAiPrefetchCache.set(key,{promise:request,createdAt:now,expiresAt:now+10*60000});
-    request.catch(()=>{
-      const saved=seoAiPrefetchCache.get(key);
-      if(saved?.promise===request)seoAiPrefetchCache.delete(key);
-    });
+    const cacheId=prefetchKey(data,extraTerms),old=seoAiPrefetchCache.get(cacheId);
+    if(old&&!force)return old.promise;
+    const version=force?(Number(old?.version||0)+1):0;
+    const previous=new Set((Array.isArray(previousTitles)?previousTitles:[]).map(key));
+    const product=facts(data);
+    const plans=variants(product,String(extraTerms||''),[]);
+    const collected=[],seen=new Set(previous);
+    for(let i=0;i<plans.length;i++){
+      const cfg=plans[i],terms=cfg.terms||[];
+      let selected='';
+      const times=terms.length?Math.min(36,terms.length*3):1;
+      for(let attempt=0;attempt<times;attempt++){
+        const rotation=terms.length?(version*3+i*2+attempt)%terms.length:0;
+        const ordered=terms.slice(rotation).concat(terms.slice(0,rotation));
+        const alt={...cfg,terms:ordered};
+        const candidate=assemble(alt,seen);
+        const length=count(candidate),signature=key(candidate);
+        if(length>=MIN&&length<=LIMIT&&signature&&!seen.has(signature)){
+          selected=candidate;break;
+        }
+      }
+      if(!selected){
+        // Sem fatos suficientes, nunca preencher com características inventadas.
+        const fallback=assemble(cfg,seen),n=count(fallback);
+        if(n>=MIN&&n<=LIMIT&&!seen.has(key(fallback)))selected=fallback;
+      }
+      if(selected){
+        seen.add(key(selected));
+        collected.push({title:selected,length:count(selected),
+          reason:cfg.reason||'Termos de produto e finalidade compatíveis com o cadastro.'});
+      }
+    }
+    const result={
+      ok:true,configured:false,source:'local_generator',titles:collected,
+      cached:false,marketVerified:false,marketCount:0,
+      message:collected.length===4
+        ?'Quatro títulos elaborados no gerador interno, sem uso da API OpenAI ou créditos.'
+        :'Somente '+collected.length+' título(s) válidos com os dados confirmados. Adicione termos comprovados para completar as quatro opções.'
+    };
+    const promise=Promise.resolve(result);
+    seoAiPrefetchCache.set(cacheId,{promise,version,createdAt:Date.now()});
     if(seoAiPrefetchCache.size>36)seoAiPrefetchCache.delete(seoAiPrefetchCache.keys().next().value);
-    return request;
+    return promise;
   }
 
   const setLabel=(e,v)=>{e.textContent=v;return e;};
@@ -271,7 +292,7 @@
       el('p','','4 opções elaboradas com termos do produto, de 100 a 120 caracteres, com edição manual.'));
     const badge=el('span','seo-studio-sku','SKU '+(sku||'—'));
     head.append(hd,badge);mount.append(head);
-    const note=el('div','seo-studio-alert','A IA gera títulos em segundo plano, usando dados da SKU e anúncios comparáveis quando disponíveis. Não é um ranking de volume de buscas.');
+    const note=el('div','seo-studio-alert','Geração automática gratuita no Shopee Manager, sem consumir créditos da API. Não utiliza o ChatGPT Plus; termos são baseados na SKU e na ficha do produto.');
     mount.append(note);
     const kw=el('div','seo-studio-facts');
     kw.append(el('strong','','Base confirmada: '),el('span','',f.title));
@@ -315,7 +336,7 @@
         const card=el('article','seo-studio-card'+(n>=MIN&&n<=LIMIT&&!o.duplicate?' valid':' needs-review'));
         const meta=el('div','seo-studio-card-top');
         const group=el('div','seo-studio-option');
-        group.append(el('strong','','0'+(i+1)+' · '+o.name),el('small','',o.ai?'✦ Elaborado pela API OpenAI':'Sugestão local · '+o.subtitle));
+        group.append(el('strong','','0'+(i+1)+' · '+o.name),el('small','',o.ai?'✦ Elaborado pelo ChatGPT':'Gerador interno gratuito · '+o.subtitle));
         const meter=el('div','seo-studio-meter');
         meter.append(el('strong','',score+'/100'),el('small','','nota estrutural estimada'));
         meta.append(group,meter);card.append(meta);
@@ -340,42 +361,35 @@
         actions.append(choose,copy);card.append(actions);grid.append(card);
       }
     }
-    const marketNotice=el('div','seo-studio-market-status','✦ Preparando pesquisa e geração de títulos por IA…');
+    const marketNotice=el('div','seo-studio-market-status','Preparando quatro títulos sem custo de API…');
     marketNotice.setAttribute('role','status');
     marketNotice.setAttribute('aria-live','polite');
     note.insertAdjacentElement('afterend',marketNotice);
-    async function generateByAi(refresh=false){
+    async function generateTitles(refresh=false){
       if(aiBusy)return;
       const token=++researchToken;
-      aiBusy=true;aiRequested=true;btn.disabled=true;
-      const desiredTerms=inp.value;
+      aiBusy=true;btn.disabled=true;
       const currentIdentity=identity;
-      setLabel(marketNotice,'✦ Títulos em elaboração automática pela IA. Pesquisa e revisão de termos em andamento…');
+      setLabel(marketNotice,'Preparando títulos automaticamente no gerador interno, sem cobrança de API…');
       try{
-        if(!sku||!data.itemId)throw Error('SKU sem identificação completa.');
-        const oldTitles=Array.isArray(aiOptions)?aiOptions.map(x=>x.title):[];
-        const result=await prefetch(data,{force:refresh,extraTerms:desiredTerms,previousTitles:oldTitles});
+        const oldTitles=refresh&&Array.isArray(aiOptions)?aiOptions.map(x=>x.title):[];
+        const result=await prefetch(data,{
+          force:refresh,extraTerms:inp.value,previousTitles:oldTitles
+        });
         if(token!==researchToken||!mount.isConnected||mount.dataset.seoStudioIdentity!==currentIdentity)return;
-        if(result.source!=='openai_api'||!Array.isArray(result.titles)||result.titles.length!==4){
-          aiOptions=null;
-          setLabel(marketNotice,'◉ IA indisponível: '+(result.message||'Conecte a API OpenAI no sistema.')+
-            ' As sugestões locais ficam disponíveis.');
-        }else{
-          const candidates=result.titles.map(t=>({title:clean(t.title),reason:clean(t.reason)}));
-          const allValid=candidates.every(t=>count(t.title)>=MIN&&count(t.title)<=LIMIT);
-          const unique=new Set(candidates.map(t=>key(t.title))).size===4;
-          if(!allValid||!unique)throw Error('A API retornou títulos fora do intervalo ou repetidos.');
-          aiOptions=candidates;
-          setLabel(marketNotice,'✓ 4 títulos gerados automaticamente pela IA'+(result.cached?' (reaproveitados da SKU)':'')+
-            ' · '+(result.marketVerified?result.marketCount+' anúncios comparáveis considerados':'sem amostra externa verificada')+
-            '. Selecione um título ou use Gerar novos títulos.');
-        }
+        const titles=Array.isArray(result.titles)?result.titles:[];
+        const candidates=titles.map(t=>({title:clean(t.title),reason:clean(t.reason)}));
+        if(candidates.some(t=>count(t.title)<MIN||count(t.title)>LIMIT))
+          throw Error('Uma sugestão não atende a regra de 100 a 120 caracteres.');
+        aiOptions=candidates.length===4?candidates:null;
+        setLabel(marketNotice,candidates.length===4
+          ?'✓ Quatro títulos preparados automaticamente por gerador interno, sem créditos de API. Selecione um ou clique em Gerar novos títulos.'
+          :result.message||'A ficha não tem dados suficientes para preparar quatro títulos válidos.');
         regenerate();
       }catch(err){
         if(token!==researchToken||!mount.isConnected||mount.dataset.seoStudioIdentity!==currentIdentity)return;
         aiOptions=null;
-        setLabel(marketNotice,'◉ Falha na geração por IA: '+err.message+
-          ' Sugestões locais preservadas; nenhuma publicação realizada.');
+        setLabel(marketNotice,'Falha ao preparar títulos locais: '+err.message);
         regenerate();
       }finally{
         if(token===researchToken&&mount.dataset.seoStudioIdentity===currentIdentity){
@@ -385,14 +399,14 @@
     }
     btn.addEventListener('click',()=>{
       if(aiBusy)return;
-      void generateByAi(true);
+      void generateTitles(true);
     });
     inp.addEventListener('keydown',e=>{
-      if(e.key==='Enter'){e.preventDefault();void generateByAi(true);}
+      if(e.key==='Enter'){e.preventDefault();void generateTitles(true);}
     });
     regenerate();
-    // A API é chamada pelo próprio Shopee Manager. Nenhuma aba do ChatGPT é aberta.
-    void generateByAi(false);
+    // Processo local ao Shopee Manager: não abre o ChatGPT nem chama API paga.
+    void generateTitles(false);
   }
   globalThis.ShopeeTitleStudio={open,prefetch};
 })();
