@@ -29,6 +29,8 @@ test('prévia mantém reserva no preço e nunca publica',()=>{
  const result=individualRoasPreview(form,[item],[plan],{today:now});
  assert.equal(result.draft.roasTarget,5.6);
  assert.equal(result.reserve.additionalReservePct,0);
+ assert.equal(result.impliedAdsPct,17.86);
+ assert.equal(result.coverageGapPct,9.86);
  assert.equal(result.product.sku,form.sku);
  assert.equal(result.requiresConfirmation,true);
 });
