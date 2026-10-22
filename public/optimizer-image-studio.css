@@ -1,0 +1,98 @@
+
+/* Rede Achados BR · Commercial Image Studio (isolated to the images stage) */
+#optimizerImagesPanel.ra-studio{--ra-ink:#102d5b;--ra-border:#dce8f7;--ra-blue:#0869e8;display:grid;gap:10px;min-width:0}
+#optimizerImagesPanel.ra-studio [hidden]{display:none!important}
+#optimizerImagesPanel.ra-studio button{transition:filter .15s,transform .15s,border-color .15s}
+#optimizerImagesPanel.ra-studio button:hover:not(:disabled){filter:brightness(.97)}
+#optimizerImagesPanel.ra-studio button:focus-visible,#optimizerImagesPanel.ra-studio a:focus-visible,#optimizerImagesPanel.ra-studio select:focus-visible{outline:3px solid #84b4fc;outline-offset:2px}
+#optimizerImagesPanel .ra-studio-header{background:#fff;border:1px solid var(--ra-border);border-radius:15px;padding:13px;display:grid;grid-template-columns:minmax(0,1fr) minmax(220px,.8fr) auto;align-items:center;gap:14px}
+#optimizerImagesPanel .ra-studio-header .optimizer-commercial-heading{display:block}
+#optimizerImagesPanel .ra-studio-header .optimizer-commercial-kicker{display:none}
+#optimizerImagesPanel .ra-studio-header .optimizer-commercial-heading h4{font-size:24px;letter-spacing:-.035em;margin:0}
+#optimizerImagesPanel .ra-studio-header .optimizer-commercial-heading p{margin:4px 0 0;font-size:11px}
+#optimizerImagesPanel .ra-studio-product{display:flex;gap:10px;align-items:center;border:1px solid var(--ra-border);border-radius:10px;padding:7px;min-width:0}
+#optimizerImagesPanel .ra-studio-product img{width:60px;height:60px;object-fit:cover;background:#f4f8ff;border-radius:8px;flex:none}
+#optimizerImagesPanel .ra-studio-product>div{display:grid;gap:3px;min-width:0}
+#optimizerImagesPanel .ra-studio-product strong{font-size:12px;color:var(--ra-ink);line-height:1.3}
+#optimizerImagesPanel .ra-studio-product span{font-size:11px;color:#274e81;line-height:1.3;overflow:hidden;text-overflow:ellipsis;max-height:2.7em;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical}
+#optimizerImagesPanel .ra-studio-progress{display:grid;gap:2px;min-width:110px;text-align:center;background:#e4f9ee;padding:12px;border-radius:10px;color:#087946}
+#optimizerImagesPanel .ra-studio-progress strong{font-size:25px;line-height:1.2}
+#optimizerImagesPanel .ra-studio-progress small{font-size:11px}
+#optimizerImagesPanel .ra-studio-toolbar{display:grid;grid-template-columns:1.2fr 1fr 1fr 1fr auto;gap:8px;padding:11px;background:#fff;border:1px solid var(--ra-border);border-radius:14px;align-items:stretch}
+#optimizerImagesPanel .ra-studio-toolbar button{min-height:52px;padding:8px 12px;border:1px solid #c8dffb;border-radius:10px;background:#fff;color:#1651a1;font-size:12px;line-height:1.35;font-weight:800;white-space:normal}
+#optimizerImagesPanel .ra-studio-toolbar #optimizerChatgptAuto{background:linear-gradient(120deg,#0974f7,#0754dc);color:white;border-color:#0754dc;min-height:52px;margin:0}
+#optimizerImagesPanel .ra-studio-toolbar .ra-toolbar-import{color:#087343;border-color:#a5dfc4}
+#optimizerImagesPanel .ra-studio-toolbar .ra-toolbar-gallery{color:#723fc1;border-color:#d6c1ff}
+#optimizerImagesPanel .ra-studio-toolbar .ra-toolbar-rules{color:#2264b5;background:#f5faff}
+#optimizerImagesPanel .ra-studio-workspace{display:grid;grid-template-columns:minmax(0,1fr) minmax(244px,274px);gap:10px;align-items:start;min-width:0}
+#optimizerImagesPanel .ra-studio-workspace>.optimizer-commercial-gallery-section{min-width:0;margin:0;gap:7px;padding:10px 11px}
+#optimizerImagesPanel .ra-studio-workspace .optimizer-commercial-gallery-head>strong{display:none}
+#optimizerImagesPanel .ra-studio-workspace .optimizer-commercial-gallery-kpis{margin-right:auto}
+#optimizerImagesPanel .ra-studio-workspace #optimizerImagesGallery{grid-template-columns:repeat(3,minmax(0,1fr));gap:8px}
+#optimizerImagesPanel .ra-studio-workspace .optimizer-commercial-image-card{display:block;position:relative;min-width:0;padding:6px 6px 7px;border-radius:11px;cursor:default;box-shadow:0 1px 4px #1f509a0a}
+#optimizerImagesPanel .ra-studio-workspace .optimizer-commercial-image-card.ra-selected{border-color:#2778f5;box-shadow:0 0 0 2px #d3e5ff}
+#optimizerImagesPanel .ra-studio-workspace .optimizer-commercial-thumb{height:auto;aspect-ratio:1.46;min-height:100px;border-radius:8px;cursor:pointer}
+#optimizerImagesPanel .ra-studio-workspace .optimizer-commercial-thumb-slot{top:6px;left:6px;min-width:24px;height:24px;background:#122d4d;color:white;border:0;border-radius:7px;display:grid;place-items:center;font-size:12px}
+#optimizerImagesPanel .ra-studio-workspace .optimizer-commercial-image-info{padding:5px 2px 0;display:flex;gap:3px}
+#optimizerImagesPanel .ra-studio-workspace .optimizer-commercial-image-meta{display:flex;align-items:center;min-width:0;gap:4px}
+#optimizerImagesPanel .ra-studio-workspace .optimizer-commercial-image-meta strong{font-size:11px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+#optimizerImagesPanel .ra-studio-workspace .optimizer-slot-ready,#optimizerImagesPanel .ra-studio-workspace .optimizer-slot-pending{display:none}
+#optimizerImagesPanel .ra-studio-workspace .optimizer-commercial-original-caption{font-size:9px}
+#optimizerImagesPanel .ra-studio-workspace .optimizer-commercial-image-actions{display:grid;grid-template-columns:1fr 28px 28px;gap:4px;margin-top:2px}
+#optimizerImagesPanel .ra-studio-workspace .optimizer-commercial-image-actions button{font-size:10px;min-height:29px;padding:4px 5px}
+#optimizerImagesPanel .ra-studio-workspace .optimizer-commercial-move-select{display:none}
+#optimizerImagesPanel .ra-card-menu{position:absolute;right:10px;top:10px;z-index:2}
+#optimizerImagesPanel .ra-card-menu>summary{list-style:none;display:grid;place-items:center;width:27px;height:28px;border-radius:7px;background:#fffdfd;box-shadow:0 1px 5px #081d4430;color:#244364;cursor:pointer;font-weight:900}
+#optimizerImagesPanel .ra-card-menu>summary::-webkit-details-marker{display:none}
+#optimizerImagesPanel .ra-card-menu[open] .ra-card-menu-content{display:grid}
+#optimizerImagesPanel .ra-card-menu-content{position:absolute;right:0;top:33px;z-index:5;width:175px;padding:7px;display:grid;gap:5px;background:#fff;border:1px solid #cbddf1;box-shadow:0 10px 20px #16375a30;border-radius:10px}
+#optimizerImagesPanel .ra-card-menu-content label{font-size:11px;color:#385d83}
+#optimizerImagesPanel .ra-card-menu-content .optimizer-commercial-move-select{display:block;width:100%;font-size:11px;min-height:34px}
+#optimizerImagesPanel .ra-studio-workspace .optimizer-commercial-image-card:nth-child(3n) .ra-card-menu-content{right:0}
+#optimizerImagesPanel .ra-studio-workspace>.optimizer-commercial-rework{padding:13px;min-width:0}
+#optimizerImagesPanel .ra-studio-workspace .optimizer-image-rework{gap:9px}
+#optimizerImagesPanel .ra-studio-workspace .optimizer-image-rework>strong{font-size:14px}
+#optimizerImagesPanel .ra-studio-workspace .optimizer-rework-fields{gap:8px}
+#optimizerImagesPanel .ra-studio-workspace #optimizerImageCorrection{min-height:94px;max-height:185px;line-height:1.4;font-size:12px}
+#optimizerImagesPanel .ra-studio-workspace #optimizerImageCorrectionSlot{min-height:35px}
+#optimizerImagesPanel .ra-studio-slot-controls{display:grid;grid-template-columns:1fr auto auto;align-items:center;gap:6px;border-bottom:1px solid #e9eff8;padding-bottom:7px}
+#optimizerImagesPanel .ra-studio-slot-controls strong{font-size:18px;color:#12345f}
+#optimizerImagesPanel .ra-studio-slot-controls button{width:33px;height:33px;border-radius:9px;border:1px solid #d5e2f5;background:#f7fbff;color:#226ac6}
+#optimizerImagesPanel .ra-studio-quick-actions{display:grid;gap:6px}
+#optimizerImagesPanel .ra-studio-quick-actions button{min-height:36px;text-align:left;border:1px solid #dae6f5;background:#f7faff;color:#194c8c;border-radius:8px;padding:8px 10px;font-size:12px;font-weight:750}
+#optimizerImagesPanel .ra-studio-quick-actions button:hover{background:#eaf3ff}
+#optimizerImagesPanel .ra-studio-workspace .optimizer-image-rework .optimizer-workflow-actions{grid-template-columns:1fr 1fr;gap:6px}
+#optimizerImagesPanel .ra-studio-workspace .optimizer-image-rework .optimizer-workflow-actions #optimizerImageCorrectionGenerate{grid-column:1/-1;min-height:42px;background:#0969e8;border-color:#0969e8;color:white;font-weight:800}
+#optimizerImagesPanel .ra-studio-workspace .optimizer-image-rework .optimizer-workflow-actions button{min-height:35px}
+#optimizerImagesPanel .ra-studio-workspace .optimizer-image-ready-actions{margin-top:0}
+#optimizerImagesPanel .ra-studio-extra-tools{border-top:1px solid #e5edf7;padding-top:8px}
+#optimizerImagesPanel .ra-studio-extra-tools>summary{cursor:pointer;font-size:11px;font-weight:750;color:#33628d}
+#optimizerImagesPanel .ra-studio-extra-tools[open] .optimizer-image-ready-actions{margin-top:9px}
+#optimizerImagesPanel .ra-studio-extra-tools .optimizer-image-ready-actions{padding:6px 0}
+#optimizerImagesPanel .ra-studio-extra-tools .optimizer-image-ready-actions>small{font-size:10px;line-height:1.3}
+#optimizerImagesPanel .ra-studio-extra-tools .optimizer-image-ready-buttons{display:grid;grid-template-columns:1fr 1fr;gap:5px}
+#optimizerImagesPanel .ra-studio-extra-tools .optimizer-image-ready-buttons button{padding:6px;min-height:36px;font-size:11px}
+#optimizerImagesPanel .ra-studio-workspace #optimizerImageCorrectionStatus{font-size:10px;line-height:1.35;max-height:120px;overflow:auto}
+#optimizerImagesPanel .ra-studio-workspace .optimizer-correction-preview{margin:0}
+#optimizerImagesPanel .ra-studio-workspace .optimizer-correction-preview img{max-height:125px;object-fit:contain}
+#optimizerImagesPanel .ra-studio-advanced{border:1px solid var(--ra-border);border-radius:13px;background:#fff;min-width:0}
+#optimizerImagesPanel .ra-studio-advanced>summary{cursor:pointer;color:#24568e;font-size:12px;font-weight:800;padding:11px 13px;list-style:revert}
+#optimizerImagesPanel .ra-studio-advanced>.optimizer-commercial-main{border:0;border-top:1px solid #e4edf7;border-radius:0;padding:12px}
+#optimizerImagesPanel .ra-studio-advanced .optimizer-commercial-summary{font-size:10px;padding:7px}
+#optimizerImagesPanel .ra-studio-advanced .optimizer-commercial-summary strong{flex-basis:auto}
+#optimizerImagesPanel .ra-studio-advanced .optimizer-image-mode-selector{grid-template-columns:1fr}
+#optimizerImagesPanel .ra-studio-advanced .optimizer-image-mode-selector button:first-child{display:none}
+#optimizerImagesPanel .ra-studio-advanced #optimizerImagesChatgptPanel{padding:10px}
+#optimizerImagesPanel .ra-studio-advanced #optimizerImagesChatgptPanel:before{display:none}
+#optimizerImagesPanel .ra-studio-advanced #optimizerImagesApiPanel{padding:10px}
+#optimizerImagesPanel .ra-studio-status{display:block;padding:8px 11px;background:#f3f8ff;border:1px solid #dce8f6;border-radius:8px;color:#3a628f;font-size:11px;line-height:1.4}
+#optimizerImagesPanel .ra-studio-bulk{display:flex;flex-wrap:wrap;align-items:center;gap:8px;border:1px solid var(--ra-border);border-radius:13px;background:#fff;padding:10px}
+#optimizerImagesPanel .ra-studio-bulk strong{font-size:13px;color:#173969;margin-right:auto}
+#optimizerImagesPanel .ra-studio-bulk button{min-height:36px;border:1px solid #cfe0f5;background:#f8fbff;border-radius:8px;color:#164d8c;padding:7px 11px;font-size:11px;font-weight:800}
+#optimizerImagesPanel .ra-studio-bulk .ra-bulk-delete{color:#cb3d35;background:#fff6f5;border-color:#f6cecc}
+#optimizerWorkflowEditor:has(#optimizerImagesPanel.ra-studio:not([hidden]))>.optimizer-workflow-actions{position:sticky;bottom:0;z-index:7}
+#optimizerWorkflowEditor:has(#optimizerImagesPanel.ra-studio:not([hidden]))>.optimizer-workflow-actions #optimizerWorkflowNext{background:#077c49;color:#fff}
+@media(max-width:1230px){#optimizerImagesPanel .ra-studio-header{grid-template-columns:minmax(0,1fr) minmax(150px,.7fr) auto}#optimizerImagesPanel .ra-studio-workspace{grid-template-columns:minmax(0,1fr) 246px}#optimizerImagesPanel .ra-studio-toolbar{grid-template-columns:repeat(3,minmax(0,1fr))}#optimizerImagesPanel .ra-studio-toolbar .ra-toolbar-rules{grid-column:auto}}
+@media(max-width:1020px){#optimizerImagesPanel .ra-studio-header{grid-template-columns:minmax(0,1fr) auto}#optimizerImagesPanel .ra-studio-product{grid-column:1/-1;grid-row:2}#optimizerImagesPanel .ra-studio-workspace{grid-template-columns:1fr}#optimizerImagesPanel .ra-studio-workspace>.optimizer-commercial-rework{order:2}#optimizerImagesPanel .ra-studio-workspace #optimizerImagesGallery{grid-template-columns:repeat(3,minmax(0,1fr))}}
+@media(max-width:680px){#optimizerImagesPanel .ra-studio-header{grid-template-columns:1fr}#optimizerImagesPanel .ra-studio-product{grid-column:auto;grid-row:auto}#optimizerImagesPanel .ra-studio-toolbar{grid-template-columns:repeat(2,minmax(0,1fr))}#optimizerImagesPanel .ra-studio-workspace #optimizerImagesGallery{grid-template-columns:repeat(2,minmax(0,1fr))}#optimizerImagesPanel .ra-studio-header .optimizer-commercial-heading h4{font-size:19px}#optimizerImagesPanel .ra-studio-bulk button{flex:1 1 135px}}
+@media(max-width:410px){#optimizerImagesPanel .ra-studio-toolbar{grid-template-columns:1fr}#optimizerImagesPanel .ra-studio-workspace #optimizerImagesGallery{grid-template-columns:1fr}}
