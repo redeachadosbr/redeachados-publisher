@@ -53,9 +53,11 @@ export function individualRoasPreview(input,catalog,plans,{today=new Date()}={})
  const product=verifyManualAdsCandidate(draft,catalog,plans);
  const reserve=calculateAdsReserve({currentPrice:product.currentPrice,
   currentAdsPct:product.adsBudgetPct,desiredAdsPct:draft.reservePct,netMarginPct:product.netMarginPct});
- return {draft,product,reserve,api:PRODUCT_ROAS_CREATE_PATH,
+ const impliedAdsPct=Math.round(10000/draft.roasTarget)/100;
+ const coverageGapPct=Math.max(0,Math.round((impliedAdsPct-draft.reservePct)*100)/100);
+ return {draft,product,reserve,impliedAdsPct,coverageGapPct,api:PRODUCT_ROAS_CREATE_PATH,
   requiresConfirmation:true,financialRisk:true,
-  warning:'Seleção individual de produto, GMV Max Meta de ROAS. O algoritmo define lances e posicionamentos. Orçamento diário gera gasto real após criação; ROAS-alvo não é garantia de resultado. Impulsão Rápida e Proteção ROAS dependem da elegibilidade e não são configuradas nesta API.'};
+  warning:'Seleção individual GMV Max Meta de ROAS. A equivalência 100/ROAS refere-se ao faturamento atribuído; não é gasto garantido por venda ou margem efetiva. O algoritmo controla os lances, enquanto o orçamento diário gera gasto real. Impulsão Rápida e Proteção ROAS não são configuradas neste endpoint.'};
 }
 const sign=(body,key)=>crypto.createHmac('sha256',key).update(body).digest('base64url');
 export function individualRoasToken(payload,secret){
