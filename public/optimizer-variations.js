@@ -6,7 +6,7 @@ const el=(tag,cls,label)=>{
  if(label!==undefined)x.textContent=String(label);return x;
 };
 const $=id=>document.getElementById(id);
-let context=null,saved={type:'',options:[]},loadSerial=0,busy=false;
+let context=null,saved={type:'',options:[]},loadSerial=0,busy=false,originalColor='';
 const values=()=>String($('optimizerVariationValues')?.value||'').split(/\r?\n/).map(x=>x.trim()).filter(Boolean).slice(0,20);
 const type=()=>String($('optimizerVariationType')?.value||'').trim();
 const currentKey=()=>context?context.sku+'|'+context.itemId+'|'+context.modelId:'';
@@ -39,6 +39,19 @@ function render(){
   const note=el('p','optimizer-variant-status',
    'Preencha os dados e salve antes de gerar ou enviar fotos. Nenhuma modificação é publicada automaticamente.');
   note.id='optimizerVariationStatus';target.append(note);
+ }
+ if(variationType==='Cor'&&originalColor&&
+    !options.some(v=>v.toLocaleLowerCase('pt-BR')===originalColor.toLocaleLowerCase('pt-BR'))){
+   const suggestion=el('div','optimizer-variant-original-suggestion');
+   suggestion.append(el('span','',
+    'Este anúncio anuncia a cor '+originalColor+'. Para criar uma segunda cor sem retirar a original, inclua também essa opção.'));
+   const add=el('button','secondary','Adicionar cor original: '+originalColor);
+   add.type='button';add.onclick=()=>{
+    const textarea=$('optimizerVariationValues');
+    textarea.value=[originalColor,...values()].join('\n');
+    textarea.dispatchEvent(new Event('input',{bubbles:true}));
+   };
+   suggestion.append(add);target.append(suggestion);
  }
  const existing=new Map((saved.type===variationType?saved.options:[]).map(o=>[o.name,o]));
  const cards=el('div','optimizer-variant-cards');
@@ -206,6 +219,9 @@ async function load(data){
  if(!sku||!itemId)return;
  const seq=++loadSerial;
  context={sku,itemId,modelId};
+ const title=String(data?.draftTitle||'');
+ const match=title.match(/(?:-|–|—)\s*(Vermelha|Vermelho|Preta|Preto|Azul|Rosa|Branca|Branco|Verde|Amarela|Amarelo)(?:\s|$)/i);
+ originalColor=match?.[1]||'';
  saved={type:'',options:[]};
  try{
   const result=await request('/api/shopee/optimizer/variants/draft','GET');
