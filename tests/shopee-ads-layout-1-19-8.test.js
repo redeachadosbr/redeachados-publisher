@@ -28,7 +28,7 @@ test('Shopee Ads 1.19.8 exibe nove indicadores, saúde, revisão e tabela real',
  assert.match(ads,/id="adsExecuteSuggested" type="button" disabled/);
  assert.match(ads,/id="adsResults" hidden/);
 });
-test('Recomendações são indicativas e não criam operações Shopee Ads de escrita',()=>{
+test('Recomendações não executam ações financeiras automaticamente e exigem revisão',()=>{
  const a=app.indexOf('function adsDiagnose(c){');
  const b=app.indexOf('function adsCreateElement(',a);
  const q=app.indexOf('function adsRecommendationsFor(',b);
@@ -42,8 +42,8 @@ test('Recomendações são indicativas e não criam operações Shopee Ads de es
  assert.equal(scope.adsDiagnose({daysWithData:1,impressions:10,ctr:0,broadGmv:0,acos:null,expense:4,directOrdersObserved:false,directOrders:0}).kind,'unknown');
  assert.equal(scope.adsDiagnose({daysWithData:0}).kind,'unknown');
  assert.match(app,/adsSuggestions=adsRecommendationsFor\(campaigns\)/);
- assert.match(app,/Não habilitado/);
- assert.match(app,/Nenhum lance, orçamento ou status foi alterado/);
+ assert.match(app,/globalThis\.RedeAdsPremium\?\.openReview/);
+ assert.match(app,/Nenhum lance, orçamento ou status foi alterado|Nenhuma alteração enviada à Shopee/);
  assert.doesNotMatch(server,/app\.post\('\/api\/shopee\/ads\/(update|pause|budget)/);
  assert.match(app,/https:\/\/seller\.shopee\.com\.br\//);
 });
