@@ -98,3 +98,25 @@
 #optimizerVariationPanel .optimizer-variant-status:not([data-level=error]):not([data-level=success]){display:none!important}
 #optimizerVariationPanel .optimizer-variant-footer button{min-height:51px!important}
 @media(min-width:1151px){#optimizerVariationPanel .optimizer-variant-workspace{grid-template-columns:minmax(0,1fr) minmax(225px,.29fr)!important}}
+
+/* Ações de variações incorporadas à Etapa 06: sem painel lateral. */
+#optimizerVariationPanel .optimizer-variant-workspace{
+ display:grid!important;grid-template-columns:minmax(0,1fr)!important;
+ width:100%!important;gap:10px!important
+}
+#optimizerVariationPanel .optimizer-variant-main{grid-column:1!important;width:100%!important;max-width:none!important}
+#optimizerVariationPanel .optimizer-variant-footer{
+ grid-column:1!important;display:flex!important;flex-direction:row!important;
+ justify-content:flex-end;align-items:center;gap:10px!important;
+ padding:11px 12px!important;background:#fff;border:1px solid #dce7f5;border-radius:11px;
+}
+#optimizerVariationPanel .optimizer-variant-footer button{
+ width:auto!important;min-width:205px!important;min-height:44px!important;
+ padding:9px 16px!important;font-size:12px!important
+}
+#optimizerVariationPanel .optimizer-variant-footer button:first-child{background:#185535!important}
+#optimizerVariationPanel .optimizer-variant-publish{background:linear-gradient(115deg,#ff6949,#f0442c)!important}
+@media(max-width:650px){
+ #optimizerVariationPanel .optimizer-variant-footer{flex-direction:column!important}
+ #optimizerVariationPanel .optimizer-variant-footer button{width:100%!important;min-width:0!important}
+}
