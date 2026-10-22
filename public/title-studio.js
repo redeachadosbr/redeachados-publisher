@@ -7,6 +7,47 @@
   const key=s=>clean(s).normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase().replace(/[^\p{L}\p{N}]/gu,'');
   const el=(tag,cls,text)=>{const n=document.createElement(tag);if(cls)n.className=cls;if(text!==undefined)n.textContent=String(text);return n;};
   const savedTerms=new Map();
+
+  // One in-flight generation per SKU/model/terms; starts as soon as the audit
+  // identifies the product. Opening SEO reuses the same promise/results.
+  const seoAiPrefetchCache=new Map();
+  const prefetchKey=(data,extraTerms='')=>[
+    String(data?.sku||''),String(data?.itemId||''),
+    String(data?.modelId??data?.selectedModelId??'0'),
+    clean(data?.productTitle||data?.title||''),
+    clean(extraTerms||'')
+  ].join('|');
+  function prefetch(data,{force=false,extraTerms='',previousTitles=[]}={}){
+    const sku=clean(data?.sku||''),itemId=String(data?.itemId||'');
+    if(!sku||!itemId)return Promise.resolve({
+      ok:false,source:'local_fallback',message:'SKU não identificada.',titles:[]
+    });
+    const key=prefetchKey(data,extraTerms),current=seoAiPrefetchCache.get(key),now=Date.now();
+    if(current&&now<current.expiresAt&&(!force||now-current.createdAt<8000))return current.promise;
+    const request=fetch('/api/shopee/optimizer/workflow/title-ai',{
+      method:'POST',credentials:'same-origin',headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({
+        sku,itemId,modelId:String(data.modelId??data.selectedModelId??'0'),
+        extraTerms:String(extraTerms||'').slice(0,300),
+        refresh:Boolean(force),previousTitles:(Array.isArray(previousTitles)?previousTitles:[])
+          .slice(0,4).map(x=>String(x||'').slice(0,120))
+      }),
+      signal:AbortSignal.timeout(75000)
+    }).then(async res=>{
+      const result=await res.json().catch(()=>({}));
+      if(!res.ok)throw Error(result.error||'Serviço de IA indisponível (HTTP '+res.status+').');
+      return result;
+    });
+    // On failure keep the fallback visible, but allow a retry later.
+    seoAiPrefetchCache.set(key,{promise:request,createdAt:now,expiresAt:now+10*60000});
+    request.catch(()=>{
+      const saved=seoAiPrefetchCache.get(key);
+      if(saved?.promise===request)seoAiPrefetchCache.delete(key);
+    });
+    if(seoAiPrefetchCache.size>36)seoAiPrefetchCache.delete(seoAiPrefetchCache.keys().next().value);
+    return request;
+  }
+
   const setLabel=(e,v)=>{e.textContent=v;return e;};
   function facts(data){
     const title=withoutInternalCode(data.productTitle||data.draftTitle||'Produto',data.sku);
@@ -220,6 +261,8 @@
     mount.replaceChildren();mount.hidden=false;
     mount.classList.add('seo-studio');
     const f=facts(data),sku=clean(data.sku||'');
+    const identity=prefetchKey(data);
+    mount.dataset.seoStudioIdentity=identity;
     let marketSample=[],researchToken=0,aiOptions=null,aiBusy=false,aiRequested=false;
     const head=el('div','seo-studio-head');
     const hd=el('div','');
@@ -240,7 +283,7 @@
     inp.placeholder='Ex.: número de peças, material, capacidade — somente se comprovados';
     inp.value=savedTerms.get(sku)||'';
     label.append(inp);
-    const btn=el('button','secondary seo-studio-rebuild','✦ Gerar títulos com IA');btn.type='button';
+    const btn=el('button','secondary seo-studio-rebuild','↻ Gerar novos títulos');btn.type='button';
     manual.append(label,btn);
     const help=el('small','','Separe termos por vírgula. Não invente quantidade, INMETRO, entrega, brinde nem promoção.');
     mount.append(manual,help);
@@ -306,56 +349,50 @@
       const token=++researchToken;
       aiBusy=true;aiRequested=true;btn.disabled=true;
       const desiredTerms=inp.value;
-      setLabel(marketNotice,'✦ IA consultando a ficha e pesquisando anúncios similares em segundo plano…');
+      const currentIdentity=identity;
+      setLabel(marketNotice,'✦ Títulos em elaboração automática pela IA. Pesquisa e revisão de termos em andamento…');
       try{
         if(!sku||!data.itemId)throw Error('SKU sem identificação completa.');
-        const res=await fetch('/api/shopee/optimizer/workflow/title-ai',{
-          method:'POST',credentials:'same-origin',
-          headers:{'Content-Type':'application/json'},
-          body:JSON.stringify({
-            sku,itemId:data.itemId,modelId:data.modelId||'0',
-            extraTerms:desiredTerms,refresh
-          }),
-          signal:AbortSignal.timeout(75000)
-        });
-        const result=await res.json().catch(()=>({}));
-        if(!res.ok)throw Error(result.error||'Serviço de IA indisponível (HTTP '+res.status+').');
-        if(token!==researchToken||!mount.isConnected)return;
+        const oldTitles=Array.isArray(aiOptions)?aiOptions.map(x=>x.title):[];
+        const result=await prefetch(data,{force:refresh,extraTerms:desiredTerms,previousTitles:oldTitles});
+        if(token!==researchToken||!mount.isConnected||mount.dataset.seoStudioIdentity!==currentIdentity)return;
         if(result.source!=='openai_api'||!Array.isArray(result.titles)||result.titles.length!==4){
           aiOptions=null;
-          setLabel(marketNotice,'◉ IA indisponível: '+(result.message||'Conecte a chave OpenAI no sistema.')+' As sugestões locais permanecem disponíveis.');
+          setLabel(marketNotice,'◉ IA indisponível: '+(result.message||'Conecte a API OpenAI no sistema.')+
+            ' As sugestões locais ficam disponíveis.');
         }else{
           const candidates=result.titles.map(t=>({title:clean(t.title),reason:clean(t.reason)}));
           const allValid=candidates.every(t=>count(t.title)>=MIN&&count(t.title)<=LIMIT);
           const unique=new Set(candidates.map(t=>key(t.title))).size===4;
           if(!allValid||!unique)throw Error('A API retornou títulos fora do intervalo ou repetidos.');
           aiOptions=candidates;
-          setLabel(marketNotice,'✓ 4 títulos criados pela IA'+(result.cached?' (cache recente)':'')+
+          setLabel(marketNotice,'✓ 4 títulos gerados automaticamente pela IA'+(result.cached?' (reaproveitados da SKU)':'')+
             ' · '+(result.marketVerified?result.marketCount+' anúncios comparáveis considerados':'sem amostra externa verificada')+
-            '. Revise uma opção antes de aprovar.');
+            '. Selecione um título ou use Gerar novos títulos.');
         }
         regenerate();
       }catch(err){
-        if(token!==researchToken||!mount.isConnected)return;
+        if(token!==researchToken||!mount.isConnected||mount.dataset.seoStudioIdentity!==currentIdentity)return;
         aiOptions=null;
-        setLabel(marketNotice,'◉ Falha na geração por IA: '+err.message+' Sugestões locais preservadas; nenhuma publicação realizada.');
+        setLabel(marketNotice,'◉ Falha na geração por IA: '+err.message+
+          ' Sugestões locais preservadas; nenhuma publicação realizada.');
         regenerate();
       }finally{
-        if(token===researchToken){aiBusy=false;btn.disabled=false;}
+        if(token===researchToken&&mount.dataset.seoStudioIdentity===currentIdentity){
+          aiBusy=false;btn.disabled=false;
+        }
       }
     }
     btn.addEventListener('click',()=>{
       if(aiBusy)return;
-      aiOptions=null;
-      regenerate();
       void generateByAi(true);
     });
     inp.addEventListener('keydown',e=>{
-      if(e.key==='Enter'){e.preventDefault();aiOptions=null;regenerate();void generateByAi(true);}
+      if(e.key==='Enter'){e.preventDefault();void generateByAi(true);}
     });
     regenerate();
     // A API é chamada pelo próprio Shopee Manager. Nenhuma aba do ChatGPT é aberta.
     void generateByAi(false);
   }
-  globalThis.ShopeeTitleStudio={open};
+  globalThis.ShopeeTitleStudio={open,prefetch};
 })();
