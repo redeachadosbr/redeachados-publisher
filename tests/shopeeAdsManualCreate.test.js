@@ -62,5 +62,6 @@ test('página mostra contador de aptos e formulário de campanha manual',()=>{
  assert.match(front,/\/api\/shopee\/ads\/manual\/create/);
  assert.match(app,/adsReserveAwaitDiscountSku/);
  assert.match(app,/setTab\('discounts'\)/);
- assert.match(server,/bidding_method:'manual'/); // in comment or SDK module? validated separately below
+ assert.match(server,/\/api\/shopee\/ads\/manual\/create/);
+ assert.match(server,/manualAdsPayload\(signed\.draft,signed\.nonce\)/);
 });
