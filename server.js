@@ -965,13 +965,22 @@ app.get('/api/shopee/optimizer/workflow',mustLogin,requireWeDropAdmin,async(req,
       const attr=technicalPreview.attributes.find(x=>Number(x.id)===Number(missing.attributeId));
       if(!attr?.supportSearch||attr.conditional)continue;
       try{
-        const request=searchAttributeRequest({attributeId:attr.id,valueName:missing.value,limit:50});
-        const official=readSearchedAttributeOptions(await matrixShopeeSearch(cfg,auth,request),0,50).options
-          .find(x=>x.name.normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase().trim()===
-            String(missing.value).normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase().trim());
-        if(official){
-          attr.options=[...(attr.options||[]).filter(x=>Number(x.id)!==Number(official.id)),official];
-          extraOptions=true;
+        const original=String(missing.value).normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase().trim();
+        const label=String(attr.name||'').toLowerCase();
+        const variants=[missing.value];
+        if(/power source|fonte de alimenta/.test(label)&&original==='bateria')variants.push('Battery');
+        if(/recommended age|idade recomendada/.test(label)&&/a partir de 3 anos/.test(original))
+          variants.push('3 years and above','3 years old and above');
+        for(const value of variants){
+          const request=searchAttributeRequest({attributeId:attr.id,valueName:value,limit:50});
+          const items=readSearchedAttributeOptions(await matrixShopeeSearch(cfg,auth,request),0,50).options;
+          const normalized=String(value).normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase().trim();
+          const official=items.find(x=>String(x.name||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase().trim()===normalized);
+          if(official){
+            attr.options=[...(attr.options||[]).filter(x=>Number(x.id)!==Number(official.id)),official];
+            extraOptions=true;
+            break;
+          }
         }
       }catch(error){
         console.warn('[shopee-autofill] official category option unavailable:',String(error.message||error).slice(0,120));
