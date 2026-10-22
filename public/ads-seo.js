@@ -69,7 +69,7 @@
    (Number(b.adsMetrics?.[mode]??-1)-Number(a.adsMetrics?.[mode]??-1))||
    (Number(b.score)-Number(a.score)));
   if(!items.length){cards.append(el('p','Nenhuma SKU com preço, estoque e margem mínima válida entre os planos recentes. Atualize o catálogo/WeDrop e a precificação antes de anunciar.','ads-seo-empty'));return;}
-  for(const c of items){
+  for(const c of items.slice(0,30)){
    const card=el('article',null,'ads-seo-card');
    card.append(head(c.imageUrl,c.title,'SKU '+c.sku+' · '+integer(c.stock)+' em estoque'));
    const tag=Number(c.score)>=70?'Prioridade alta':Number(c.score)>=50?'Em avaliação':'Prioridade cautelosa';
@@ -89,6 +89,7 @@
    globalThis.RedeAdsManual?.attach?.(c,card);
    cards.append(card);
   }
+  if(items.length>30)cards.append(el('p','Mostrando 30 de '+items.length+' produtos classificados.','ads-seo-empty'));
  }
  function displayCampaigns(data){
   campaigns.replaceChildren();
