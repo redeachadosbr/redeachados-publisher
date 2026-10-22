@@ -73,3 +73,11 @@
 #tab-ads .ads-manual-editor>summary:hover{background:#e0eeff}
 #tab-ads .ads-manual-fields input:focus-visible{outline:2px solid #f66b43;outline-offset:2px}
 #tab-ads .ads-manual-review .ads-manual-execute{margin-top:7px}
+
+#tab-ads .ads-roas-estimate{grid-column:1/-1;display:grid;gap:6px;padding:10px 11px;
+ background:#eff7ff;border:1px solid #c5ddf7;border-radius:10px}
+#tab-ads .ads-roas-estimate strong{font-size:12px;color:#174e86}
+#tab-ads .ads-roas-estimate small{font-size:10px;color:#4e6b8c;line-height:1.45}
+#tab-ads .ads-roas-estimate button{justify-self:start;min-height:33px;
+ padding:8px 11px;font-size:10px;border-radius:8px;border:1px solid #a1c0eb}
+#tab-ads .ads-roas-estimate button:disabled{opacity:.5;cursor:not-allowed}
