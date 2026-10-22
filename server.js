@@ -2455,7 +2455,7 @@ app.get('/api/shopee/ads/seo/candidates',mustLogin,async(req,res)=>{
  res.setHeader('Cache-Control','no-store');
  try{
   const {auth,cfg}=await getValidAuth(req);
-  const [catalog,plans]=await Promise.all([readCatalogCache(auth.shopId),recentShopeePricePlans(auth.shopId)]);
+  const [catalog,plans]=await Promise.all([readCatalogCache(auth.shopId),recentShopeePricePlans(auth.shopId,{limit:1000})]);
   const financialCandidates=rankAdsCandidates(catalog.items,plans);
   const windows=adsSevenDayWindows(brazilAdsToday());
   let recent=null,previous=null,adsWarning=null;
@@ -2476,7 +2476,7 @@ app.get('/api/shopee/ads/seo/candidates',mustLogin,async(req,res)=>{
   const intelligence=buildAdsMonitor({
    catalog:catalog.items,plans,candidates:financialCandidates,recent,previous
   });
-  res.json({ok:true,mode:'read_only',scope:'Triagem de até 20 planos de preço recentes, com monitoramento de campanhas Ads retornadas pela Shopee',
+  res.json({ok:true,mode:'read_only',scope:'Triagem de até 1000 planos de preço recentes, com monitoramento de campanhas Ads retornadas pela Shopee',
    catalogUpdatedAt:catalog.lastSavedAt||null,examinedPlans:plans.length,
    period:{recent:recent?.dates||windows.recent,previous:previous?.dates||windows.previous},
    adsAvailable:Boolean(recent),adsWarning:adsWarning||recent?.statusWarning||null,
