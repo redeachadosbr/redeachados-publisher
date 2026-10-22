@@ -1219,9 +1219,15 @@ function adsVisibleCampaigns(){
  else if(sort==='acos')records.sort((a,b)=>(b.acos??-Infinity)-(a.acos??-Infinity));
  else if(sort==='ctr')records.sort((a,b)=>(a.ctr??Infinity)-(b.ctr??Infinity));
  else records.sort((a,b)=>b.expense-a.expense);
+ // Campanhas realmente ativas/rodando sempre no topo, independentemente da métrica escolhida.
+ const priority=x=>x.statusGroup==='active'?0:x.statusGroup==='other'?1:2;
+ records.sort((a,b)=>priority(a)-priority(b));
  return records;
 }
 function adsShowReview(ids){
+ if(globalThis.RedeAdsPremium?.openReview){
+  return globalThis.RedeAdsPremium.openReview(ids?.length?ids:[...adsSelected],adsCampaignRows);
+ }
  const all=ids?.length?adsCampaignRows.filter(c=>ids.includes(c.campaignId)):
   adsCampaignRows.filter(c=>adsSelected.has(c.campaignId));
  const root=$('#adsReviewPanel'),list=$('#adsReviewRows');list.replaceChildren();
@@ -1253,7 +1259,20 @@ function adsDisplayCampaigns(){
   const item=adsCreateElement('td','ads-v2-campaign-name');
   const title=adsCreateElement('strong','',c.name||'Campanha '+c.campaignId);
   const sub=adsCreateElement('small','','ID: '+c.campaignId+(c.itemIdList?.length?' · Produto '+c.itemIdList.slice(0,2).join(', '):''));
-  item.append(title,sub);tr.append(item);
+  if(c.productImage&&/^https:\/\//i.test(String(c.productImage))){
+   try{
+    const imageUrl=new URL(c.productImage);
+    if(['shopee.com.br','susercontent.com','shopeeusercontent.com','shopeemobile.com'].some(d=>imageUrl.hostname===d||imageUrl.hostname.endsWith('.'+d))){
+      const im=document.createElement('img');im.src=imageUrl.href;im.loading='lazy';
+      im.referrerPolicy='no-referrer';im.alt='Produto da campanha';im.className='ads-v3-product-thumb';
+      item.append(im);
+    }
+   }catch{}
+  }
+  const info=document.createElement('span');info.className='ads-v3-product-copy';
+  info.append(adsCreateElement('strong','',c.productTitle||c.name||'Campanha '+c.campaignId),
+   adsCreateElement('small','',c.productSku?'SKU '+c.productSku+' · ID '+c.campaignId:'ID '+c.campaignId));
+  item.append(info);tr.append(item);
   const status=adsCreateElement('td');
   const statusEl=adsCreateElement('span','ads-v2-status',adsStatusLabel(c.status));
   statusEl.dataset.group=c.statusGroup;status.append(statusEl);tr.append(status);
@@ -1273,9 +1292,9 @@ function adsDisplayCampaigns(){
   const summary=document.createElement('summary');summary.textContent='⋮';summary.setAttribute('aria-label','Ações da campanha '+c.campaignId);
   const list=adsCreateElement('div','ads-v2-row-menu-list');
   const inspect=adsCreateElement('button','','Ver diagnóstico');inspect.onclick=()=>{more.open=false;adsShowReview([c.campaignId]);};
-  const open=adsCreateElement('button','','Abrir Central Shopee');
-  open.onclick=()=>{more.open=false;window.open('https://seller.shopee.com.br/','_blank','noopener,noreferrer');};
-  list.append(inspect,open);more.append(summary,list);actions.append(review,more);tr.append(actions);
+  const manage=adsCreateElement('button','','Ajustar pela API');
+  manage.onclick=()=>{more.open=false;adsShowReview([c.campaignId]);};
+  list.append(inspect,manage);more.append(summary,list);actions.append(review,more);tr.append(actions);
   body.append(tr);
  }
  if(!filtered.length){
@@ -1327,6 +1346,7 @@ function renderShopeeAds(data){
   'Status atual não confirmado: '+data.statusWarning:
   'Situação atual confirmada pela API Shopee; métricas históricas incluem campanhas pausadas. GMV atribuído não é lucro.';
  adsRenderHealth(data);adsRenderSuggestions();adsRenderExecution();
+ globalThis.RedeAdsPremium?.onData?.(campaigns);
  $('#adsExportBtn').disabled=!campaigns.length;
  $('#adsExecuteSuggested').disabled=!campaigns.length;
  displayAdsGroup('all');
@@ -1378,7 +1398,7 @@ $('#adsShowAllSuggestions').onclick=()=>{adsSuggestionsExpanded=!adsSuggestionsE
 $('#adsExecuteSuggested').onclick=()=>adsShowReview(adsSuggestions.filter(s=>s.level!=='Informativo').flatMap(s=>s.ids));
 $('#adsExecutionReviewBtn').onclick=()=>adsShowReview([...adsSelected]);
 $('#adsCloseReview').onclick=()=>{$('#adsReviewPanel').hidden=true;};
-$('#adsOpenSeller').onclick=()=>window.open('https://seller.shopee.com.br/','_blank','noopener,noreferrer');
+$('#adsOpenSeller').onclick=()=>adsShowReview([...adsSelected]);
 $('#adsFilterToggle').onclick=()=>{
  const panel=$('#adsFiltersPanel');panel.hidden=!panel.hidden;
  $('#adsFilterToggle').setAttribute('aria-expanded',String(!panel.hidden));
