@@ -2497,7 +2497,7 @@ app.post('/api/shopee/ads/manual/preview',mustLogin,async(req,res)=>{
   const [catalog,plans]=await Promise.all([readCatalogCache(auth.shopId),recentShopeePricePlans(auth.shopId,{limit:1000})]);
   const preview=manualAdsPreview(req.body,catalog.items,plans);
   const approval=manualAdsToken({shopId:String(auth.shopId),nonce:crypto.randomUUID(),
-   at:Date.now(),draft:preview.draft},adsApprovalSecret());
+   at:Date.now(),draft:req.body},adsApprovalSecret());
   res.json({ok:true,preview,approval,created:false});
  }catch(e){res.status(400).json({ok:false,error:String(e.message||e).slice(0,380),created:false});}
 });
@@ -2523,6 +2523,17 @@ app.post('/api/shopee/ads/manual/create',mustLogin,async(req,res)=>{
   const liveSku=String(info.item_sku||'').trim();
   if(liveSku&&liveSku!==signed.draft.sku)
    throw Error('SKU do produto mudou na Shopee. Refaça a prévia antes de anunciar.');
+  // Evitar campanha duplicada para um produto que já está em Ads.
+  // A comparação usa o status atual, não o gasto histórico do período.
+  const today=brazilAdsToday();
+  const earlier=new Date(Date.parse(today+'T00:00:00Z')-7*86400000).toISOString().slice(0,10);
+  const existing=await loadShopeeAdsOverview(cfg,auth,callShopeeShopApi,{
+   start:earlier,end:today,allowDateFallback:false
+  });
+  if(existing.statusWarning)throw Error('Status Ads não confirmado. Não é seguro criar possível duplicata.');
+  if((existing.campaigns||[]).some(c=>c.statusGroup==='active'&&
+   (c.itemIdList||[]).some(id=>String(id)===String(signed.draft.itemId))))
+   throw Error('Este produto já participa de uma campanha ativa. Nenhuma duplicata será criada.');
   const reqApi=manualAdsPayload(signed.draft,signed.nonce);
   // Não repetir chamada POST por timeout; reference_id permite deduplicação na Shopee.
   adsManualCreateUsed.set(nonce,'sending');
