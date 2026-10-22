@@ -30,6 +30,8 @@ function render(){
  if(!target)return;
  target.replaceChildren();
  const options=values(),variationType=type();
+ const tags=$('optimizerVariationTags');if(tags){tags.replaceChildren();for(const option of options){const chip=el('button','optimizer-variation-chip',option+'  ×');chip.type='button';chip.onclick=()=>{const t=$('optimizerVariationValues');t.value=values().filter(v=>v!==option).join('\n');t.dispatchEvent(new Event('input',{bubbles:true}));};tags.append(chip);}const add=el('button','optimizer-variation-add','＋ Adicionar opção');add.type='button';add.onclick=()=>{const next=window.prompt('Nome da nova opção:');if(next?.trim()){const t=$('optimizerVariationValues');t.value=[...values(),next.trim()].join('\n');t.dispatchEvent(new Event('input',{bubbles:true}));}};tags.append(add);}
+ const notice=$('optimizerVariationOriginalNotice');if(notice){const missing=variationType==='Cor'&&originalColor&&!options.some(v=>v.toLowerCase()===originalColor.toLowerCase());notice.textContent=missing?'⚠ Este anúncio anuncia a cor '+originalColor+'. Inclua essa cor para não retirar a original.':'';notice.hidden=!missing;}
  if(!context||!variationType||!options.length){
   target.append(el('p','optimizer-variant-help',
    'Escolha o tipo e informe cada opção (uma por linha) para editar foto, preço e estoque.'));
@@ -68,7 +70,7 @@ function render(){
   row.dataset.option=name;
   const header=el('div','optimizer-variant-heading');
   const headingName=el('strong','', '●  '+variationType+' · '+name);
-  header.append(headingName,el('small','',prior.asset?'Foto salva':'Foto pendente'));
+  header.append(headingName,el('small','',sameOriginal?'● Cor original':prior.asset?'Foto salva':'Foto pendente'));
   const body=el('div','optimizer-variant-body'),visual=el('div','optimizer-variant-photo');
   if(prior.previewUrl){
    const img=el('img');img.src=prior.previewUrl;img.alt='Prévia da opção '+name;
@@ -107,7 +109,7 @@ function render(){
    el('span','','Confirmei pelo fornecedor que esta opção existe e há estoque disponível'));
   const save=el('button','optimizer-variant-save','Salvar dados da variação');
   save.type='button';save.onclick=()=>void persist();
-  fields.append(price.label,sku.label,stock.label,gtin.label,noGtin,confirmPhoto,confirmStock,save);
+  fields.append(price.label,sku.label,gtin.label,stock.label,noGtin,confirmPhoto,confirmStock,save);
   body.append(visual,fields);row.append(header,body);cards.append(row);
  }
  left.append(cards);workspace.append(left);
