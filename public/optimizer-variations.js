@@ -6,7 +6,7 @@ const el=(tag,cls,label)=>{
  if(label!==undefined)x.textContent=String(label);return x;
 };
 const $=id=>document.getElementById(id);
-let context=null,saved={type:'',options:[]},loadSerial=0,busy=false,originalColor='',suggestedPrice=null;
+let context=null,saved={type:'',options:[]},loadSerial=0,busy=false,originalColor='',suggestedPrice=null,supplierEan=null;
 const values=()=>String($('optimizerVariationValues')?.value||'').split(/\r?\n/).map(x=>x.trim()).filter(Boolean).slice(0,20);
 const type=()=>String($('optimizerVariationType')?.value||'').trim();
 const currentKey=()=>context?context.sku+'|'+context.itemId+'|'+context.modelId:'';
@@ -57,6 +57,9 @@ function render(){
  const cards=el('div','optimizer-variant-cards');
  for(const name of options){
   const prior=existing.get(name)||{},row=el('article','optimizer-variant-item');
+  const normalColor=v=>String(v||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase().replace(/[ao]$/,'');
+  const sameOriginal=originalColor&&normalColor(name)===normalColor(originalColor);
+  const verifiedEan=prior.gtin||((sameOriginal&&supplierEan)?supplierEan:'');
   row.dataset.option=name;
   const header=el('div','optimizer-variant-heading');
   header.append(el('strong','',variationType+' · '+name),
@@ -82,10 +85,10 @@ function render(){
   stock.input.step='1';stock.input.dataset.variantField='stock';
   const sku=field('SKU da opção',prior.sku||((context.sku+'-'+safeName(name)).slice(0,100)),{placeholder:'SKU única'});
   sku.input.dataset.variantField='sku';sku.input.maxLength=100;
-  const gtin=field('GTIN / EAN',prior.gtin||'',{placeholder:'Somente se existir'});
+  const gtin=field('GTIN / EAN',verifiedEan,{placeholder:'Somente se existir'});
   gtin.input.dataset.variantField='gtin';gtin.input.maxLength=14;
   const noGtin=el('label','optimizer-variant-check');
-  const n=el('input');n.type='checkbox';n.dataset.variantField='noGtin';n.checked=prior.noGtin??!prior.gtin;
+  const n=el('input');n.type='checkbox';n.dataset.variantField='noGtin';n.checked=Boolean(prior.noGtin===true&&!verifiedEan);
   noGtin.append(n,el('span','','Item sem GTIN informado'));
   n.onchange=()=>{gtin.input.disabled=n.checked;if(n.checked)gtin.input.value='';};
   gtin.input.disabled=n.checked;
@@ -223,12 +226,13 @@ async function load(data){
  const title=String(data?.draftTitle||'');
  const match=title.match(/(?:-|–|—)\s*(Vermelha|Vermelho|Preta|Preto|Azul|Rosa|Branca|Branco|Verde|Amarela|Amarelo)(?:\s|$)/i);
  originalColor=match?.[1]||'';
- saved={type:'',options:[]};suggestedPrice=null;
+ saved={type:'',options:[]};suggestedPrice=null;supplierEan=null;
  try{
   const result=await request('/api/shopee/optimizer/variants/draft','GET');
   if(seq!==loadSerial||currentKey()!==sku+'|'+itemId+'|'+modelId)return;
   saved=result.details||saved;
   suggestedPrice=Number(result.suggestedPrice)>0?Number(result.suggestedPrice):null;
+  supplierEan=/^\d{8,14}$/.test(String(result.supplierEan||''))?String(result.supplierEan):null;
   if(saved?.type&&!type())$('optimizerVariationType').value=saved.type;
   if(saved?.options?.length&&!values().length)$('optimizerVariationValues').value=saved.options.map(o=>o.name).join('\n');
   render();
