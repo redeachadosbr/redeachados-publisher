@@ -2414,8 +2414,10 @@ function optimizerSourceNotice(message,state='info'){
 }
 function optimizerSourceRender(data){
  const pane=$('#optimizerSourcePanel');if(!pane)return;
- pane.hidden=true; // Editor legado duplicado: único formulário visível é Ficha técnica inteligente.
+ pane.hidden=!data?.sku; // Usa a SKU já validada na busca inicial e libera texto/prints sem nova consulta.
  if(!data?.sku)return;
+ pane.dataset.sku=String(data.sku);
+ const badge=pane.querySelector('.optimizer-source-tag');if(badge)badge.textContent='SKU '+data.sku;
  const evidence=data.sourceEvidence||{sourceText:'',screenshots:[]};
  $('#optimizerSourceText').value=evidence.sourceText||'';
  const images=$('#optimizerSourceImages');images.replaceChildren();
