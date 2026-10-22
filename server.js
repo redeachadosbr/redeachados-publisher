@@ -869,6 +869,36 @@ async function checkedWorkflowAudit(req){
     {expectedSku:sku,expectedModelId:modelId});
   return {itemId,modelId,sku,auth,cfg,record};
 }
+
+// SEO research is read-only. These are observed offer titles, NOT search-volume rankings.
+// Some Shopee Affiliate offers are not comparable; never use their unconfirmed claims.
+app.get('/api/shopee/optimizer/workflow/title-research',mustLogin,requireWeDropAdmin,async(req,res)=>{
+  res.setHeader('Cache-Control','no-store');
+  try{
+    const {itemId,sku,modelId,auth,record}=await checkedWorkflowAudit(req);
+    const market=await lookupShopeeCompetitors({
+      title:String(record.title||'').slice(0,200),
+      ownShopId:auth.shopId,ownItemId:itemId
+    });
+    const sample=(market.sample||[]).slice(0,5).map(row=>({
+      title:String(row.title||'').slice(0,180),
+      url:row.url||null,
+      similarity:Number(row.similarity)||0
+    }));
+    res.json({ok:true,sku,itemId,modelId,
+      source:'Shopee Afiliados · amostra de ofertas por termos relacionados',
+      verifiedSample:market.verified===true,
+      sample,
+      researchedAt:market.researchedAt||null,
+      status:market.status||'unavailable',
+      message:market.message||market.reason||'Pesquisa externa não confirmada.',
+      note:'Recorrência dos termos nos anúncios não comprova volume de buscas. Apenas termos sustentados pelo produto podem compor o título.'
+    });
+  }catch(err){
+    res.status(400).json({ok:false,error:String(err.message||err).slice(0,220)});
+  }
+});
+
 app.get('/api/shopee/optimizer/workflow',mustLogin,requireWeDropAdmin,async(req,res)=>{
   res.setHeader('Cache-Control','no-store');
   try{
