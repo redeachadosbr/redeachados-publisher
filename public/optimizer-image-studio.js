@@ -67,7 +67,9 @@
   makeButton('ⓘ Ver regras','ra-toolbar-rules',()=>$('#optimizerCommercialShowRules')?.click())
  );
  const workspace=el('div','ra-studio-workspace');
- workspace.append(gallery,aside);
+ const galleryColumn=el('div','ra-studio-gallery-column');
+ galleryColumn.append(gallery);
+ workspace.append(galleryColumn,aside);
  const nav=el('div','ra-studio-slot-controls');
  const navLabel=el('strong','');
  const prev=makeButton('‹','',()=>setSlot(slot===1?9:slot-1));
@@ -92,9 +94,16 @@
  );
  rework.insertBefore(quick,rework.querySelector('.optimizer-workflow-actions'));
  const originalReady=rework.querySelector('.optimizer-image-ready-actions');
- if(originalReady){
+ const savedPreview=rework.querySelector('#optimizerImageCorrectionPreview');
+ if(originalReady||savedPreview){
   const ready=el('details','ra-studio-extra-tools');
-  ready.append(el('summary','','▣ Colar ou selecionar imagem pronta'),originalReady);
+  ready.id='raCommercialPasteReady';
+  const readySummary=el('summary','','📋 Copiar e colar imagem já pronta');
+  readySummary.setAttribute('aria-label','Abrir ferramentas para colar ou selecionar imagem pronta e visualizar a foto atual');
+  const readyHelp=el('p','ra-studio-paste-help','Copie a imagem no ChatGPT e cole com Ctrl + V, ou selecione um arquivo. A substituição será salva na posição escolhida.');
+  ready.append(readySummary,readyHelp);
+  if(savedPreview)ready.append(savedPreview);
+  if(originalReady)ready.append(originalReady);
   rework.insertBefore(ready,$('#optimizerImageCorrectionStatus'));
  }
  const bulk=el('section','ra-studio-bulk');
@@ -158,8 +167,9 @@
   finally{deleteAll.disabled=false;filterAll();await bridge()?.reload?.();}
  });
  bulk.append(deleteAll);
+ galleryColumn.append(bulk);
  layout.remove();
- panel.replaceChildren(head,toolbar,workspace,extra,statusLine,bulk);
+ panel.replaceChildren(head,toolbar,workspace,extra,statusLine);
  // Keep the server's real controls and their listeners; only relocate them.
  select.addEventListener('change',()=>{slot=Number(select.value)||1;refreshSelected();});
  function setSlot(value){
