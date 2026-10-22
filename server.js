@@ -1922,6 +1922,14 @@ app.get('/api/shopee/optimizer/variants/draft',mustLogin,requireWeDropAdmin,asyn
   const draft=x.details||{type:'',options:[]};
   const options=await Promise.all((draft.options||[]).map(async o=>({...o,
    previewUrl:o.asset?await variationImagePreview(o.asset):null})));
+  // EAN do fornecedor pertence ao SKU físico; não herdar para cores novas.
+  let supplierEan=null;
+  try{
+   const supplier=await readWeDropProduct(x.auth.shopId,{sku:x.sku,itemId:x.itemId,modelId:x.modelId});
+   const facts=supplier?.product_data||{};
+   const candidates=[facts.ean,facts.EAN,facts.gtin,facts.GTIN,facts.barcode,facts.codigo_barras,facts.codigoDeBarras];
+   supplierEan=candidates.map(v=>String(v??'').trim()).find(v=>/^\\d{8,14}$/.test(v))||null;
+  }catch{ /* mantém edição manual se fornecedor indisponível */ }
   let suggestedPrice=null;
   try{
    const live=await shopeeLiveEditableItem(x.cfg,x.auth,x.itemId);
@@ -1929,7 +1937,7 @@ app.get('/api/shopee/optimizer/variants/draft',mustLogin,requireWeDropAdmin,asyn
    const candidates=[...priceRows.map(p=>p?.original_price),live.original_price,live.price];
    suggestedPrice=candidates.map(Number).find(p=>Number.isFinite(p)&&p>0)||null;
   }catch{ /* não inventar preço quando a Shopee não fornecer */ }
-  res.json({ok:true,sku:x.sku,suggestedPrice,priceSource:suggestedPrice?'Shopee API':null,
+  res.json({ok:true,sku:x.sku,supplierEan,eanSource:supplierEan?'WeDrop':null,suggestedPrice,priceSource:suggestedPrice?'Shopee API':null,
    details:{...draft,options},marketplaceUpdated:false});
  }catch(e){res.status(400).json({ok:false,error:String(e.message||e).slice(0,300)});}
 });
