@@ -153,3 +153,50 @@
 @media(max-width:1090px){#optimizerVariationPanel .optimizer-variant-workspace{grid-template-columns:minmax(0,1fr)!important}#optimizerVariationPanel .optimizer-variant-side-actions{grid-template-columns:repeat(2,minmax(0,1fr))}}
 @media(max-width:780px){#optimizerVariationPanel .optimizer-variant-main .optimizer-variant-cards{grid-template-columns:1fr!important}#optimizerVariationPanel .optimizer-variant-stage-head{grid-template-columns:1fr!important}}
 @media(max-width:550px){#optimizerVariationPanel .optimizer-variant-side-actions{grid-template-columns:1fr}}
+
+/* 22/10 — refinamento do modelo de referência, desktop 1648 px. */
+#optimizerVariationPanel .optimizer-variant-stage-head{grid-template-columns:minmax(0,1fr)!important;margin-bottom:12px}
+#optimizerVariationPanel .stage-left{width:100%;min-height:95px!important;gap:14px!important;padding:14px!important}
+#optimizerVariationPanel .stage-left .stage-symbol{flex-basis:56px!important;height:56px!important;font-size:27px!important}
+#optimizerVariationPanel .stage-left strong{font-size:21px!important}
+#optimizerVariationPanel .stage-right{position:absolute!important;width:1px!important;height:1px!important;overflow:hidden!important;clip-path:inset(50%)!important}
+#optimizerVariationPanel .optimizer-variant-stage-head{position:relative}
+#optimizerVariationPanel .stage-left:after{content:"✓  Etapa opcional  ·  Em configuração";margin-left:auto;white-space:nowrap;border-radius:24px;background:#e6f9ed;color:#138947;font-size:11px;font-weight:750;padding:9px 12px}
+#optimizerVariationPanel .optimizer-variant-config{padding:14px!important;margin-bottom:12px!important}
+#optimizerVariationPanel .optimizer-variant-config>.config-heading{font-size:15px!important;margin-bottom:10px!important}
+#optimizerVariationPanel .optimizer-variation-grid{grid-template-columns:minmax(160px,.28fr) minmax(300px,.57fr) minmax(210px,.32fr)!important;align-items:end!important}
+#optimizerVariationPanel .optimizer-variation-original-notice{min-height:57px!important}
+#optimizerVariationPanel .optimizer-variant-workspace{grid-template-columns:minmax(0,1fr) minmax(245px,.28fr)!important;gap:11px!important}
+#optimizerVariationPanel .optimizer-variant-main .optimizer-variant-cards{grid-template-columns:repeat(2,minmax(0,1fr))!important;gap:11px!important}
+#optimizerVariationPanel .optimizer-variant-main,#optimizerVariationPanel .optimizer-variant-side{padding:12px!important}
+#optimizerVariationPanel .optimizer-variant-heading{gap:5px!important;margin-bottom:3px}
+#optimizerVariationPanel .optimizer-variant-title{display:inline-flex;gap:7px;align-items:center;min-width:0}
+#optimizerVariationPanel .optimizer-variant-title .optimizer-variation-color-dot{flex:none;width:14px;height:14px}
+#optimizerVariationPanel .optimizer-variant-heading small{font-size:10px!important;padding:4px 8px!important}
+#optimizerVariationPanel .optimizer-variant-item{padding:11px!important}
+#optimizerVariationPanel .optimizer-variant-body{grid-template-columns:minmax(120px,.97fr) minmax(0,1.45fr)!important;gap:10px!important}
+#optimizerVariationPanel .optimizer-variant-photo>img{aspect-ratio:1!important;object-fit:cover!important}
+#optimizerVariationPanel .optimizer-variant-field input{height:38px!important}
+#optimizerVariationPanel .optimizer-variant-photo-actions button{display:flex;align-items:center;justify-content:center;gap:5px;min-height:38px!important}
+#optimizerVariationPanel .optimizer-action-symbol{font-size:16px;line-height:1;color:#1565c7}
+#optimizerVariationPanel .optimizer-variant-photo-actions button:nth-child(2) .optimizer-action-symbol{color:#159a46}
+#optimizerVariationPanel .optimizer-variant-save{min-height:30px!important}
+#optimizerVariationPanel .optimizer-variant-side-heading{margin-bottom:12px!important}
+#optimizerVariationPanel .optimizer-variant-side-actions button{display:flex;align-items:center;text-align:left;gap:9px;min-height:61px!important;padding:9px 12px!important}
+#optimizerVariationPanel .optimizer-side-action-icon{display:grid;place-items:center;flex:none;width:37px;height:37px;background:#ffffff36;border-radius:50%;font-size:22px}
+#optimizerVariationPanel .optimizer-side-action-copy{display:grid;gap:4px;min-width:0}
+#optimizerVariationPanel .optimizer-side-action-copy strong{font-size:11px;color:#fff;line-height:1.2}
+#optimizerVariationPanel .optimizer-side-action-copy small{font-size:10px;font-weight:400;color:#fff;opacity:.85}
+#optimizerVariationPanel .optimizer-variant-side-note{margin-top:10px!important;padding:10px!important}
+@media(max-width:1100px){
+ #optimizerVariationPanel .optimizer-variation-grid{grid-template-columns:minmax(160px,.35fr) minmax(0,1fr)!important}
+ #optimizerVariationPanel .optimizer-variation-original-notice{grid-column:1/-1}
+ #optimizerVariationPanel .optimizer-variant-workspace{grid-template-columns:1fr!important}
+ #optimizerVariationPanel .optimizer-variant-side-actions{grid-template-columns:repeat(2,minmax(0,1fr))}
+}
+@media(max-width:700px){
+ #optimizerVariationPanel .optimizer-variation-grid{grid-template-columns:1fr!important}
+ #optimizerVariationPanel .optimizer-variant-main .optimizer-variant-cards{grid-template-columns:1fr!important}
+ #optimizerVariationPanel .stage-left:after{display:none}
+}
+@media(max-width:530px){#optimizerVariationPanel .optimizer-variant-side-actions{grid-template-columns:1fr}}
