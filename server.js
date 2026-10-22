@@ -16,6 +16,7 @@ import {buildAdsFinanceSnapshot} from './financeAdsBridge.js';
 import {readShopeeAdsAccount} from './shopeeAdsAccount.js';
 import {checkGmsEligibility,prepareGmsDraft} from './shopeeAdsGmsIntegration.js';
 import {rankAdsCandidates} from './shopeeAdsSeo.js';
+import {liveAdsCampaign,buildAdsPreview,signAdsApproval,verifyAdsApproval,adsEditRequest} from './shopeeAdsActions.js';
 import {readShopeeWallet} from './shopeeWallet.js';
 import {financeAdsDates,matchFinanceAds} from './financeAdsSweep.js';
 import {financeRange} from './shopeeFinance.js';
@@ -2507,6 +2508,62 @@ app.post('/api/shopee/ads/gms/preview',mustLogin,(req,res)=>{
 });
 // Nenhuma rota de criação/publicação é habilitada nesta implantação.
 
+// Cada mutação de Ads requer prévia assinada (5 minutos) e confirmação separada.
+// Nunca aplicar soluções textuais a campanhas sem aprovação explícita.
+const adsActionUsed=new Map();
+function adsBrowserOrigin(req){
+ const origin=String(req.get('origin')||'');
+ const expected=req.protocol+'://'+req.get('host');
+ return origin===expected;
+}
+app.post('/api/shopee/ads/campaigns/preview',mustLogin,async(req,res)=>{
+ res.setHeader('Cache-Control','no-store');
+ if(!adsBrowserOrigin(req))return res.status(403).json({error:'Origem da sessão não autorizada para gerenciar Ads.'});
+ try{
+  const {cfg,auth}=await getValidAuth(req);
+  const live=await liveAdsCampaign(cfg,auth,callShopeeShopApi,req.body?.campaignId);
+  const preview=buildAdsPreview(req.body,live);
+  const approval=signAdsApproval({shopId:String(auth.shopId),at:Date.now(),
+   nonce:crypto.randomUUID(),preview},stateSecret());
+  res.json({ok:true,preview,approval,requiresConfirmation:true,executed:false});
+ }catch(error){res.status(400).json({ok:false,error:String(error?.message||error).slice(0,320),executed:false});}
+});
+app.post('/api/shopee/ads/campaigns/apply',mustLogin,async(req,res)=>{
+ res.setHeader('Cache-Control','no-store');
+ if(!adsBrowserOrigin(req))return res.status(403).json({error:'Origem da sessão não autorizada para alterar Ads.'});
+ if(req.body?.confirm!==true)return res.status(400).json({error:'Confirmação explícita obrigatória.'});
+ try{
+  const {cfg,auth}=await getValidAuth(req);
+  const approval=verifyAdsApproval(req.body.approval,stateSecret(),{shopId:auth.shopId});
+  const {preview,nonce}=approval;
+  const prior=adsActionUsed.get(nonce);
+  if(prior)return res.status(409).json({error:'Esta aprovação já foi usada; atualize as campanhas para confirmar a operação.',state:prior});
+  adsActionUsed.set(nonce,'sending');
+  // Reconsultar proprietário, tipo e status antes de escrever na Shopee.
+  const live=await liveAdsCampaign(cfg,auth,callShopeeShopApi,preview.campaignId);
+  if(live.kind!==preview.type||live.status!==preview.statusBefore)
+   throw Error('Campanha mudou após a prévia. Recarregue a página antes de executar.');
+  const request=adsEditRequest(preview,nonce);
+  // Uma única chamada à API. Nunca repetir automaticamente em erro de rede.
+  const accepted=await callShopeeShopApi(cfg,{...request,accessToken:auth.accessToken,shopId:auth.shopId});
+  adsActionUsed.set(nonce,'accepted');
+  let verified=null,verificationWarning=null;
+  try{
+   const after=await liveAdsCampaign(cfg,auth,callShopeeShopApi,preview.campaignId);
+   if(preview.action==='pause')verified=after.statusGroup==='inactive';
+   else if(preview.action==='resume')verified=after.statusGroup==='active';
+   else verificationWarning='A Shopee aceitou a operação. Consulte o orçamento/ROAS atualizado na próxima sincronização; resposta de configurações não confirma esse campo.';
+  }catch(e){verificationWarning='Enviado à Shopee, mas a releitura de confirmação não ficou disponível: '+String(e.message||e).slice(0,120);}
+  res.json({ok:true,acceptedByApi:true,verified,verificationWarning,
+   campaignId:preview.campaignId,action:preview.action,
+   responseCampaignId:accepted?.response?.campaign_id||null,
+   message:verified===true?'Alteração confirmada pelo status Shopee.':
+    'Requisição aceita pela API; atualize os dados para confirmar a configuração atual.'});
+ }catch(error){
+  res.status(400).json({ok:false,error:String(error?.message||error).slice(0,320),
+   note:'Se houve timeout na API, confira a campanha antes de tentar novamente.'});
+ }
+});
 app.get('/api/shopee/ads/overview',mustLogin,async(req,res)=>{
   res.setHeader('Cache-Control','no-store');
   try{
