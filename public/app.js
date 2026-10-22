@@ -1097,6 +1097,10 @@ function adsStatusLabel(code){
 }
 function adsDiagnose(c){
  if(!c||!c.daysWithData)return {kind:'unknown',label:'Sem dados',reason:'Sem métricas verificadas no período.'};
+ if(c.statusGroup==='active'&&c.impressions===0)
+  return {kind:'attention',label:'Sem impressões',reason:'Campanha ativa sem impressões; investigar saldo Ads, entrega e moderação.'};
+ if(c.impressions>=300&&c.clicks===0)
+  return {kind:'attention',label:'Sem cliques',reason:'Muitas impressões sem cliques; revisar foto principal, título e preço.'};
  if(c.impressions>=100&&c.ctr!==null&&c.ctr<1)
   return {kind:'attention',label:'CTR baixo',reason:'CTR inferior a 1% com ao menos 100 impressões.'};
  if(c.broadGmv>0&&c.acos!==null&&c.acos>30)
@@ -1113,10 +1117,18 @@ function adsCreateElement(tag,cls,value){
 }
 function adsRecommendationsFor(campaigns){
  const relevant=campaigns.filter(c=>c.daysWithData>0&&c.statusGroup==='active');
+ const noReach=relevant.filter(c=>c.impressions===0);
+ const noClicks=relevant.filter(c=>c.impressions>=300&&c.clicks===0);
  const low=relevant.filter(c=>c.impressions>=100&&c.ctr!==null&&c.ctr<1);
  const costly=relevant.filter(c=>c.broadGmv>0&&c.acos!==null&&c.acos>30);
  const noSales=relevant.filter(c=>c.expense>=10&&c.directOrdersObserved&&c.directOrders===0);
  const out=[];
+ if(noReach.length)out.push({id:'no-impressions',title:'Campanhas ativas sem impressões',level:'Alta',
+  text:noReach.length+' campanha(s) devem ser verificadas quanto a saldo Ads, orçamento, aprovação e entrega.',
+  action:'Revisar entrega',ids:noReach.map(c=>c.campaignId)});
+ if(noClicks.length)out.push({id:'impressions-no-clicks',title:'Impressões sem cliques',level:'Alta',
+  text:noClicks.length+' campanha(s) tiveram exposição, mas nenhum clique. Conferir foto de capa, título SEO e preço.',
+  action:'Corrigir oferta',ids:noClicks.map(c=>c.campaignId)});
  if(low.length)out.push({id:'low-ctr',title:'CTR baixo em campanhas',level:'Alta',
   text:low.length+' campanha(s) ativa(s) com CTR abaixo de 1% e mais de 100 impressões.',
   action:'Revisar anúncios',ids:low.map(c=>c.campaignId)});
