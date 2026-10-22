@@ -102,10 +102,44 @@ function render(){
  }
  left.append(cards);workspace.append(left);
  target.append(workspace);
- target.querySelectorAll('input').forEach(i=>{
-  if(i.type==='file')return;
-  i.addEventListener('input',()=>{});
- });
+ const head=$('optimizerVariationPanel')?.querySelector('.optimizer-variant-stage-head .stage-right');
+ if(head){
+  head.querySelector('.optimizer-variant-stage-actions')?.remove();
+  const actions=el('div','optimizer-variant-stage-actions');
+  const trigger=el('button','optimizer-variant-stage-toggle','Conferir e aplicar ▾');
+  const controls=el('div','optimizer-variant-stage-controls');
+  controls.hidden=true;trigger.type='button';trigger.onclick=()=>{controls.hidden=!controls.hidden;trigger.setAttribute('aria-expanded',String(!controls.hidden));};
+  trigger.setAttribute('aria-expanded','false');
+  const preview=el('button','optimizer-variant-stage-preview','Conferir envio pela API');
+  const send=el('button','optimizer-variant-stage-publish','Aplicar variações na Shopee');
+  preview.type=send.type='button';send.disabled=true;let approval=null;
+  preview.onclick=async()=>{
+   if(busy)return;
+   try{
+    if(!window.confirm('Confirma que verificou as fotos reais e a disponibilidade do estoque de todas as variações no fornecedor?'))return;
+    for(const card of target.querySelectorAll('.optimizer-variant-item')){
+     card.querySelector('[data-variant-field="photoConfirmed"]').checked=true;
+     card.querySelector('[data-variant-field="stockConfirmed"]').checked=true;
+    }
+    await persist();
+    const result=await request('/api/shopee/optimizer/variants/preview','POST',{});
+    approval=result.approval;send.disabled=false;
+    notify('Conferência pela API concluída. Revise as opções antes de aplicar.','success');
+   }catch(e){approval=null;send.disabled=true;notify(e.message,'error');}
+  };
+  send.onclick=async()=>{
+   if(!approval||busy)return;
+   if(!window.confirm('CONFIRMAR PUBLICAÇÃO: deseja aplicar as variações na Shopee? Esta operação altera o anúncio real.'))return;
+   busy=true;send.disabled=true;
+   try{
+    const result=await request('/api/shopee/optimizer/variants/apply','POST',{approval,confirm:true});
+    notify(result.message+' Atualize a auditoria da SKU.','success');approval=null;
+   }catch(e){notify('Confira a Shopee antes de repetir: '+e.message,'error');}
+   finally{busy=false;}
+  };
+  controls.append(preview,send);actions.append(trigger,controls);head.append(actions);
+  target.querySelectorAll('input').forEach(i=>{if(i.type!=='file')i.addEventListener('input',()=>{approval=null;send.disabled=true;});});
+ }
 }
 function collect(){
  const variationType=type(),options=[];
