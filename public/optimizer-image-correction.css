@@ -1,0 +1,32 @@
+/* Edição pontual de imagens comerciais. Usa a largura compacta da coluna lateral. */
+.optimizer-image-correction-actions{
+ display:grid!important;grid-template-columns:minmax(0,1fr) minmax(0,1fr);
+ align-items:stretch;gap:8px!important;margin-top:10px
+}
+.optimizer-image-correction-actions button{min-width:0;width:100%;white-space:normal;line-height:1.3;padding:11px 9px;border-radius:10px}
+#optimizerImageCorrectionGenerate{
+ grid-column:1/-1;background:linear-gradient(120deg,#135cd6,#0344b3);
+ border:1px solid #0d58ce;color:#fff;font-weight:800;box-shadow:0 5px 13px #0a4da526
+}
+#optimizerImageCorrectionGenerate:not(:disabled):hover{
+ transform:translateY(-1px);box-shadow:0 8px 18px #0a4da535
+}
+#optimizerImageCorrectionGenerate:disabled{cursor:wait;opacity:.65}
+.optimizer-correction-status{
+ font-size:12px;line-height:1.55;margin:10px 0;padding:11px 12px;
+ border:1px solid #c9daef;background:#f3f8ff;color:#19416c;border-radius:11px;
+ overflow-wrap:anywhere
+}
+.optimizer-correction-preview{margin:12px 0;border:1px solid #d9e3f2;border-radius:12px;
+ padding:9px;background:#fff;overflow:hidden}
+.optimizer-correction-preview[hidden]{display:none}
+.optimizer-correction-preview img{
+ display:block;width:100%;height:auto;aspect-ratio:1/1;object-fit:contain;border-radius:8px;background:#f6f8fc
+}
+.optimizer-correction-preview figcaption{
+ margin-top:7px;font-size:11px;text-align:center;color:#65758e;font-weight:600
+}
+@media(max-width:640px){
+ .optimizer-image-correction-actions{grid-template-columns:1fr 1fr}
+ .optimizer-image-correction-actions button{font-size:12px}
+}
