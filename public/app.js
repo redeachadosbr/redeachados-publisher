@@ -6765,7 +6765,7 @@ function optimizerFiscalValues(){
 let optimizerImagesAutoBusy=false,optimizerImagesStopRequested=false;
 let optimizerImagesSavedSlots=new Set(),optimizerImagesApiConfigured=false;
 let optimizerImagesFilter='all';
-const optimizerCommercialPositionNames=['Capa','Dicas de uso','Especificações','Benefícios','Dor e solução','Copy persuasiva','Transformação','Objeções','Mockup'];
+const optimizerCommercialPositionNames=['Capa','Dimensões','Especificações','Benefícios','Dor e solução','Copy persuasiva','Transformação','Objeções','Mockup'];
 function optimizerCommercialSetFilter(filter){
  if(!['all','pending','saved'].includes(filter))return;
  optimizerImagesFilter=filter;
