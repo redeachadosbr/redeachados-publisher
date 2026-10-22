@@ -54,6 +54,13 @@
   head.append(text);els.rows.append(head);
   const label=e('div','ads-v3-diagnosis');label.append(e('strong','',c.statusGroup==='active'?'Em veiculação':'Status: '+String(c.status||'não confirmado')),e('p','',shortText(c)));els.rows.append(label);
   const info=e('div','ads-v3-insight');info.append(e('strong','','Solução identificada'),e('p','',shortText(c)));
+  if(c.priceEvidence){
+    const market=c.priceEvidence;
+    const money=v=>Number(v).toLocaleString('pt-BR',{style:'currency',currency:'BRL'});
+    info.append(e('p','ads-v3-price-evidence',
+     'Seu preço estimado: '+money(market.price)+' · Média comparável: '+money(market.marketAverage)+
+     ' · Diferença: '+market.differencePct.toLocaleString('pt-BR')+'%. '+market.note));
+   }
   if(c.clicks>=20&&c.directOrdersObserved&&c.directOrders===0){
    info.append(e('small','','Para comparar preço de mercado com precisão, use a pesquisa da SKU na Otimização. Ajustes de foto, título e preço seguem o fluxo de aprovação do anúncio.'));
   }
