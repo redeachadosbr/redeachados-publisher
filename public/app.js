@@ -7540,3 +7540,18 @@ $('#optimizerImagesUpload')?.addEventListener?.('click',async()=>{
  }catch(e){status.textContent='Importação interrompida: '+e.message+'. As imagens já salvas foram mantidas.';}
  finally{btn.disabled=false;}
 });
+
+
+/* Compact image studio API: exposes only the current SKU and existing safe refresh/review methods. */
+window.RACommercialStudioBridge={
+ getPlan:()=>optimizerWorkflowPlan,
+ reload:()=>optimizerImagesLoad(),
+ invalidate:()=>{
+  const plan=optimizerWorkflowPlan;
+  if(!plan)return;
+  const stage=plan.stages?.find(x=>x.key==='images');
+  if(stage){stage.reviewed=false;stage.status='pending';stage.reviewedAt=null;}
+  optimizerExecReset();
+  optimizerWorkflowRender(plan);
+ }
+};
