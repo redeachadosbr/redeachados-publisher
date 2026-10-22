@@ -35,7 +35,7 @@ export function createIndexedImageStore(idb=globalThis.indexedDB){
 }
 export function createImageUploadQueue({storage,send,onAck=()=>{},onSaved=()=>{},onWaiting=()=>{},
  onFailure=()=>{},setTimer=setTimeout,clearTimer=clearTimeout}){
- const inflight=new Map(),timers=new Map(),submitting=new Map();
+ const inflight=new Map(),timers=new Map(),submitting=new Map(),controllers=new Map(),stopped=new Set();
  // Observer failures must never change a confirmed upload into a failed ACK.
  const notify=(fn,...args)=>{try{Promise.resolve(fn(...args)).catch(()=>{});}catch{}};
  const keyOf=row=>row.nonce+':'+row.slot;
@@ -45,11 +45,14 @@ export function createImageUploadQueue({storage,send,onAck=()=>{},onSaved=()=>{}
    throw Error('Identificação da imagem inválida.');
  };
  function deliver(row){
+  if(stopped.has(row.nonce))return Promise.resolve({stopped:true});
   if(inflight.has(row.key))return inflight.get(row.key);
   if(timers.has(row.key)){clearTimer(timers.get(row.key));timers.delete(row.key);}
   const work=(async()=>{
    try{
-    const result=await send(row);
+    const controller=new AbortController();controllers.set(row.key,controller);
+   const result=await send(row,{signal:controller.signal});
+   if(stopped.has(row.nonce))return {stopped:true};
     const asset=result?.image;
     if(!asset||asset.sha256!==row.sha256||Number(asset.slot)!==row.slot||
      String(asset.sku)!==String(row.sku)||String(asset.item_id)!==String(row.itemId)||
@@ -64,6 +67,7 @@ export function createImageUploadQueue({storage,send,onAck=()=>{},onSaved=()=>{}
     notify(onSaved,saved,result);
     return {saved:true,image:asset};
    }catch(error){
+    if(stopped.has(row.nonce))return {stopped:true};
     const retryable=error.retryable!==false;
     const next={...row,status:retryable?'pending':'blocked',attempts:(row.attempts||0)+1,
      error:String(error.message||error).slice(0,300)};
@@ -77,13 +81,14 @@ export function createImageUploadQueue({storage,send,onAck=()=>{},onSaved=()=>{}
     notify(onAck,row,false,next.error);
     notify(onFailure,next);
     return {blocked:true,error:next.error};
-   }finally{inflight.delete(row.key);}
+   }finally{inflight.delete(row.key);controllers.delete(row.key);}
   })();
   inflight.set(row.key,work);
   return work;
  }
  function enqueue(input){
   valid(input);
+  if(stopped.has(input.nonce))throw Error('Este envio foi encerrado. Solicite nova imagem.');
   const key=keyOf(input);
   if(submitting.has(key)){
    const active=submitting.get(key);
@@ -107,6 +112,7 @@ export function createImageUploadQueue({storage,send,onAck=()=>{},onSaved=()=>{}
   return work;
  }
  async function resume(job,{includeBlocked=false}={}){
+  if(stopped.has(job?.nonce))return 0;
   const rows=(await storage.all()).filter(row=>sameImageJob(job,row)&&
    (row.status==='pending'||(includeBlocked&&row.status==='blocked')));
   for(const row of rows)void deliver(row);
@@ -115,5 +121,19 @@ export function createImageUploadQueue({storage,send,onAck=()=>{},onSaved=()=>{}
  async function pending(job){
   return (await storage.all()).filter(row=>sameImageJob(job,row)&&row.status!=='saved').length;
  }
- return {enqueue,resume,pending};
+ async function cancel(job){
+  const nonce=String(job?.nonce||'');
+  if(!nonce)return 0;
+  stopped.add(nonce);
+  for(const [key,timer] of timers){
+   if(key.startsWith(nonce+':')){clearTimer(timer);timers.delete(key);}
+  }
+  for(const [key,controller] of controllers){
+   if(key.startsWith(nonce+':'))controller.abort();
+  }
+  const rows=(await storage.all()).filter(row=>row.nonce===nonce&&row.status!=='saved');
+  for(const row of rows)await storage.put({...row,status:'paused',error:'Envio interrompido para corrigir imagem.'});
+  return rows.length;
+ }
+ return {enqueue,resume,pending,cancel};
 }
