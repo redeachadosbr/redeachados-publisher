@@ -67,6 +67,7 @@ import {findLiveShopeeSku} from './shopeeSkuFinder.js';
 import {optimizerSettings,saveOptimizerSettings} from './optimizerStore.js';
 import {quoteShopeePrice,normalizeShopeePricingSettings} from './shopeePricing.js';
 import {lookupShopeeCompetitors,marketResearchConfigured} from './shopeeMarketResearch.js';
+import {generateSeoTitlesByAi} from './shopeeSeoTitleAi.js';
 import {promotionFromQuote,promotionBasePrice,promotionMember,shopDiscountMembershipSignal,discountPlanSnapshot,signDiscountPreview,verifyDiscountPreview,readDiscountPages} from './shopeeDiscountPublish.js';
 import {shopeePricingPreferences,saveShopeePricingPreferences,
   shopeePricingSupplierCost,shopeePricingDirectSupplierCost,
@@ -872,6 +873,68 @@ async function checkedWorkflowAudit(req){
 
 // SEO research is read-only. These are observed offer titles, NOT search-volume rankings.
 // Some Shopee Affiliate offers are not comparable; never use their unconfirmed claims.
+
+// Text generation via server-side OpenAI API; never opens a ChatGPT tab,
+// exposes a credential, changes seller listings, or auto-approves content.
+const seoTitleAiCache=new Map();
+app.post('/api/shopee/optimizer/workflow/title-ai',mustLogin,requireWeDropAdmin,async(req,res)=>{
+ res.setHeader('Cache-Control','no-store');
+ if(!verifiedSameOrigin(req))return res.status(403).json({ok:false,error:'Origem não autorizada.'});
+ try{
+  const {auth,itemId,modelId,sku,record}=await checkedWorkflowAudit(req);
+  const apiKey=await openAiApiKey(auth.shopId);
+  if(!apiKey)return res.json({ok:true,configured:false,source:'local_fallback',
+    message:'Conecte a API OpenAI em Otimização → Ferramentas avançadas das imagens para ativar títulos por IA. As sugestões locais continuam disponíveis.',
+    titles:[]});
+  const extraTerms=String(req.body?.extraTerms||'').normalize('NFC').slice(0,300);
+  const refresh=req.body?.refresh===true;
+  const cacheKey=[auth.shopId,itemId,modelId,sku,record.title||'',extraTerms].join('|');
+  const now=Date.now(),old=seoTitleAiCache.get(cacheKey);
+  if(old&&now<old.expiresAt&&(!refresh||now-old.createdAt<60000)){
+   const result=await old.promise;
+   return res.json({...result,cached:true});
+  }
+  const job=(async()=>{
+   const supplierResult=await Promise.allSettled([
+    readWeDropProduct(auth.shopId,{sku,itemId,modelId}),
+    readShopeeSourceEvidence(auth.shopId,itemId,modelId,sku),
+    lookupShopeeCompetitors({title:record.title||'',ownShopId:auth.shopId,ownItemId:itemId})
+   ]);
+   const supplier=supplierResult[0].status==='fulfilled'?supplierResult[0].value?.product_data||{}:{};
+   const evidence=supplierResult[1].status==='fulfilled'?supplierResult[1].value?.sourceText||'':'';
+   const research=supplierResult[2].status==='fulfilled'?supplierResult[2].value:null;
+   const confirmed=research?.verified===true;
+   const sample=confirmed?(research.sample||[]).slice(0,5):[];
+   const attrs=(record.attributeAudit?.attributes||[]).filter(a=>a.state==='filled').slice(0,20);
+   const generated=await generateSeoTitlesByAi({
+    apiKey,sku,title:record.title||supplier.name||'',
+    supplierTitle:supplier.name||'',
+    brand:supplier.brand||'',
+    sourceText:evidence,
+    extraTerms,attributes:attrs,verifiedCompetitors:sample
+   });
+   return {ok:true,configured:true,source:'openai_api',model:generated.model,
+    titles:generated.titles,marketCount:sample.length,
+    marketVerified:confirmed,researchedAt:research?.researchedAt||null,
+    message:confirmed
+     ?'IA gerou 4 títulos com base na SKU e em '+sample.length+' ofertas semelhantes. Recorrência não equivale a volume de buscas.'
+     :'IA gerou 4 títulos a partir da ficha do produto. Não foi possível confirmar anúncios comparáveis; não há ranking oficial de buscas.'};
+  })();
+  seoTitleAiCache.set(cacheKey,{createdAt:now,expiresAt:now+10*60000,promise:job});
+  if(seoTitleAiCache.size>100)seoTitleAiCache.delete(seoTitleAiCache.keys().next().value);
+  try{
+   const result=await job;
+   return res.json({...result,cached:false});
+  }catch(err){
+   seoTitleAiCache.delete(cacheKey);
+   throw err;
+  }
+ }catch(err){
+  res.status(502).json({ok:false,configured:true,source:'local_fallback',
+   error:'Não foi possível gerar títulos pela API OpenAI: '+String(err.message||err).slice(0,200)+'. As alternativas locais foram preservadas.'});
+ }
+});
+
 app.get('/api/shopee/optimizer/workflow/title-research',mustLogin,requireWeDropAdmin,async(req,res)=>{
   res.setHeader('Cache-Control','no-store');
   try{
