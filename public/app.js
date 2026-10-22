@@ -2923,7 +2923,7 @@ async function optimizerImageCorrectionImportFile(file){
  if(!w||!optimizerImagesSameSku(w)||!Number.isInteger(slot)||slot<1||slot>9)
   throw Error('Abra a etapa de imagens e selecione uma posição.');
  if(optimizerImagesAutoBusy)throw Error('Uma importação ou edição pela API já está em andamento.');
- if(optimizerChatBridgeBusy)optimizerChatBridgeRelease('Envio antigo interrompido para receber a nova foto.');
+ if(optimizerChatBridgeBusy)await optimizerChatBridgeRelease('Envio antigo interrompido para receber a nova foto.');
  if(!file?.size)throw Error('Imagem não encontrada.');
  const previous=optimizerImageCorrectionPreviewMap.get(slot);
  optimizerImagesAutoBusy=true;optimizerImagesSetProgress();
@@ -6941,6 +6941,10 @@ function optimizerChatBridgeRelease(reason='Extensão interrompida. Fotos já sa
  optimizerChatBridgeBusy=false;
  const abort=$('#optimizerChatgptAbort');if(abort)abort.hidden=true;
  optimizerChatBridgeNotice(reason);
+ return job&&optimizerChatBridgeQueuePromise
+  ?optimizerChatBridgeQueuePromise.then(queue=>queue.cancel(job)).catch(error=>{
+    optimizerChatBridgeNotice('Envio interrompido, mas a fila local não respondeu: '+error.message);
+   }):Promise.resolve();
 }
 function optimizerChatBridgeIdentity(a,b){
  return Boolean(a&&b&&String(a.sku)===String(b.sku)&&String(a.itemId)===String(b.itemId)&&String(a.modelId)===String(b.modelId));
@@ -6983,11 +6987,11 @@ function optimizerChatBridgeQueue(){
  if(!optimizerChatBridgeQueuePromise)optimizerChatBridgeQueuePromise=import('/chatgptUploadQueue.js?v=1.20.23').then(({createImageUploadQueue,createIndexedImageStore})=>
   createImageUploadQueue({
    storage:createIndexedImageStore(),
-   send:async row=>{
+   send:async(row,{signal}={})=>{
     const response=await fetch('/api/shopee/optimizer/images/manual?'+new URLSearchParams({
      sku:row.sku,item_id:row.itemId,model_id:row.modelId,slot:row.slot
     }),{method:'POST',headers:{'Content-Type':row.blob.type,'X-Image-Filename':encodeURIComponent(row.filename)},
-     body:row.blob,signal:AbortSignal.timeout(90000)});
+     body:row.blob,signal:signal?AbortSignal.any([signal,AbortSignal.timeout(90000)]):AbortSignal.timeout(90000)});
     const data=await response.json().catch(()=>({}));
     if(!response.ok){
      const error=Error(data.error||'Não foi possível confirmar o envio (HTTP '+response.status+').');
