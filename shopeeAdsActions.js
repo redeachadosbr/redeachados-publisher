@@ -27,11 +27,11 @@ export function validateAdsChange(change){
  let value=null;
  if(action==='change_budget'){
   value=Number(change.value);
-  if(!Number.isFinite(value)||value<5||value>300||Math.round(value*100)!==value*100)
+  if(!Number.isFinite(value)||value<5||value>300||Math.abs(Math.round(value*100)-value*100)>1e-7)
    throw Error('Orçamento diário permitido nesta interface: de R$ 5,00 a R$ 300,00.');
  }else if(action==='change_roas_target'){
   value=Number(change.value);
-  if(!Number.isFinite(value)||value<1||value>100||Math.round(value*10)!==value*10)
+  if(!Number.isFinite(value)||value<1||value>100||Math.abs(Math.round(value*10)-value*10)>1e-7)
    throw Error('ROAS-alvo entre 1,0x e 100,0x em passos de 0,1x.');
  }else if(change.value!==undefined&&change.value!==null&&change.value!=='')
   throw Error('Esta ação não aceita valor.');
@@ -83,11 +83,11 @@ export function verifyAdsApproval(token,secret,{shopId,now=Date.now()}={}){
   p.nonce.length<16||p.nonce.length>80||!Number.isFinite(p.at)||
   p.at>now+30000||p.at<now-5*60*1000)
   throw Error('Prévia Ads expirada ou pertence a outra loja.');
- validateAdsChange(p.preview);
+ validateAdsChange({campaignId:p.preview.campaignId,action:p.preview.action,value:p.preview.value});
  return p;
 }
 export function adsEditRequest(preview,referenceId){
- const p=validateAdsChange(preview);
+ const p=validateAdsChange({campaignId:preview.campaignId,action:preview.action,value:preview.value});
  const kind=preview.type;
  if(!ADS_EDIT_PATHS[kind])throw Error('Tipo de campanha não suportado.');
  if(p.action==='change_roas_target'&&kind!=='gms')throw Error('ROAS nesta tela apenas GMS.');
