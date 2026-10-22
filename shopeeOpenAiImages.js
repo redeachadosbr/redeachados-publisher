@@ -3,15 +3,15 @@ import {spawn} from 'node:child_process';
 import {imageDimensions,MAX_IMAGE_BYTES} from './shopeePreparedImages.js';
 
 export const IMAGE_STORYBOARD=Object.freeze([
- 'Capa comercial limpa: o produto original ocupa cerca de 85% da composição, em ambiente moderno coerente, sem texto, preço ou logos novos.',
- 'Dicas de uso: demonstrar uma aplicação real correta e fácil, com o produto idêntico à referência.',
- 'Especificações técnicas: ilustrar até três características efetivamente comprovadas, sem inventar medidas, capacidade ou funções.',
- 'Benefícios reais: produto em uso verdadeiro, mostrar benefício visual sem criar funcionalidades.',
- 'Dor e solução: situação real de problema e como o produto de referência contribui de forma plausível.',
- 'Copy persuasiva: mostrar o principal diferencial comprovado, com frase curta somente se for fiel aos fatos.',
- 'Transformação: antes/depois ou resultado de uso plausível, com no máximo uma frase curta e sem promessas adicionais.',
- 'Três objeções: responder visualmente a até três dúvidas do comprador, exclusivamente com características verificadas.',
- 'Mockup comercial: mostrar o produto e a embalagem real quando houver referência; selos Compra segura, Entrega rápida e Produto em estoque somente quando tais afirmações forem comprovadas.'
+ 'FOTO 01 — CAPA: fundo ambientado coerente com a categoria. Produto original em primeiro plano ocupando aproximadamente 85% da composição, sem textos, nova marca ou acessórios inventados.',
+ 'FOTO 02 — DIMENSÕES: fundo ambientado, produto em perspectiva 3D realista e cotas aplicadas ao redor do próprio produto, apenas para altura/largura/profundidade comprovadas como medidas DO PRODUTO. Sem medidas confiáveis, destacar vista dimensional sem valores numéricos e sem inventar escala.',
+ 'FOTO 03 — PUBLICIDADE 3D ANAMÓRFICA: efeito convincente de profundidade e perspectiva com o MESMO produto parecendo saltar para fora de uma moldura, painel, caixa cenográfica ou espaço visual coerente com sua categoria; jamais criar partes ou funções no produto.',
+ 'FOTO 04 — DETALHES: ambiente coerente, destaque macro em acabamentos, materiais e elementos realmente visíveis na referência, com pequenas legendas em português somente para informações confirmadas.',
+ 'FOTO 05 — BENEFÍCIOS: fundo ambientado, evidenciar de forma visual motivos reais para a compra e benefícios efetivamente apoiados nas características do produto. Não criar promessas ou usos falsos.',
+ 'FOTO 06 — CARACTERÍSTICAS: fundo ambientado, ângulo diferente da capa, características verdadeiras do produto destacadas de maneira limpa e eventualmente com textos curtos em português.',
+ 'FOTO 07 — ANTES E DEPOIS: duas situações realistas mostrando a diferença entre não ter e ter o produto, sem prometer resultados não comprovados, com o produto idêntico à referência na cena DEPOIS.',
+ 'FOTO 08 — PRODUTO EM USO: mostrar pessoa ou contexto cotidiano usando o produto de forma realista, segura e correta, com o produto fiel à referência claramente destacado.',
+ 'FOTO 09 — CTA: fundo ambientado, produto original ocupando aproximadamente 85% da composição em ângulo visivelmente diferente da capa; chamada curta de venda em português, sem preço, urgência falsa ou promoções não confirmadas.'
 ]);
 
 export function imageGenerationStatus(){
@@ -40,8 +40,9 @@ export function imagePrompt({record,slot,masterPrompt='',note='',sourceImageCoun
   'SKU '+String(record?.sku||'').slice(0,120)+'. Produto: '+product+'.',
   'REFERÊNCIAS RECEBIDAS: '+sourceImageCount+'. Observe-as para preservar a identidade visual.',
   'POSIÇÃO '+position+'/9: '+IMAGE_STORYBOARD[position-1],
+  'CRIE UMA CENA VISUAL DIFERENTE DAS OUTRAS OITO: novo ângulo, enquadramento e narrativa. Mantenha idêntico o produto de referência, não apenas um produto parecido.',
   attributes.length?'CARACTERÍSTICAS CONFIRMADAS PELA FICHA ATUAL: '+attributes.join('; ').slice(0,1800):'Nenhuma especificação técnica independente foi confirmada. Evite inserir números, medidas, selos, certificações ou alegações técnicas.',
-  'REGRA FIXA: fotografia fotorrealista profissional, objeto em foco, ambiente limpo e moderno, 1200 × 1200, sem preço, marca d’água ou logo da loja. Sem textos exceto quando a posição prevê texto estritamente curto; texto sempre em português correto. Não invente embalagem, conteúdo, medidas ou funções. Se faltar prova, represente a ideia sem afirmações e sem texto.',
+  'REGRA FIXA: fotografia fotorrealista profissional, objeto em foco, ambiente ambientado à utilidade real do produto, 1200 × 1200, sem preço, marca d’água ou logo novo. Foto 01 sem texto; fotos 02, 04, 05, 06 e 09 podem conter apenas informações discretas e comprovadas em português. Não invente embalagem, conteúdo, medidas ou funções. Medidas de pacote/embalagem NÃO são medidas do produto. Na ausência de prova, não desenhe números ou atributos fictícios.',
   'INSTRUÇÕES COMERCIAIS SALVAS DA LOJA (subordinadas à fidelidade factual): '+String(masterPrompt||'Nenhuma adicional.').slice(0,9000),
   'AJUSTE ESPECÍFICO DESTA POSIÇÃO: '+String(note||'Manter fidelidade à foto original.').slice(0,500)
  ].join('\n');
