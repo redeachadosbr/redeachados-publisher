@@ -4075,3 +4075,7 @@ body.view-wedrop .page-intro{display:none!important}
 #optimizerImagesPanel .optimizer-image-ready-buttons button{min-height:34px;padding:7px 9px;border-radius:9px;font-weight:800;font-size:11px}
 #optimizerImagesPanel .optimizer-image-ready-actions>small{font-size:10px;line-height:1.45;color:#56708e}
 @media(max-width:600px){#optimizerImagesPanel .optimizer-image-ready-buttons{grid-template-columns:1fr}}
+
+/* 1.21.12: importar imagem pronta via drag and drop ou Ctrl+V */
+#optimizerImagesPanel .optimizer-image-correction-dropzone{padding:13px 10px;min-height:48px;text-align:center;background:#fff;border:2px dashed #97b7d0;border-radius:10px;color:#305a76;font-size:12px;font-weight:700;cursor:copy;outline-offset:2px}
+#optimizerImagesPanel .optimizer-image-correction-dropzone:hover,#optimizerImagesPanel .optimizer-image-correction-dropzone:focus-visible,#optimizerImagesPanel .optimizer-image-correction-dropzone.is-drop-target{border-color:#09856c;background:#edfdf7;outline:2px solid #62c6b0}
