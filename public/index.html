@@ -7,7 +7,7 @@
 <link rel="icon" type="image/svg+xml" href="/brand-logo.svg">
 <title>Rede Achados BR · Gestão Shopee</title>
 <link rel="stylesheet" href="/style.css?v=1.20.26-marketpro">
-<link rel="stylesheet" href="/optimizer-compact.css?v=1.20.12">
+<link rel="stylesheet" href="/optimizer-compact.css?v=1.20.13-wedrop">
 <link rel="stylesheet" href="/optimizer-fiscal-premium.css?v=1.20.13">
 <link rel="stylesheet" href="/optimizer-ads-reserve.css?v=1.20.15">
 <link rel="stylesheet" href="/shopee-discount-publish.css?v=1.20.16">
@@ -24,7 +24,7 @@
 <link rel="stylesheet" href="/optimizer-fiscal-commercial-layout.css?v=1.5-note-spacing">
 <link rel="stylesheet" href="/fiscal-single-action.css?v=6-autoprepare-send">
 <link rel="stylesheet" href="/fiscal-run-progress.css?v=1">
-<link rel="stylesheet" href="/optimizer-technical-compact.css?v=2">
+<link rel="stylesheet" href="/optimizer-technical-compact.css?v=3-wedrop-visible">
 <link rel="stylesheet" href="/ads-premium.css?v=2.4.0-seo-ads-location">
 <link rel="stylesheet" href="/sidebar-collapse.css?v=1.0.0">
 </head>
@@ -220,13 +220,16 @@
             <textarea id="optimizerSourceText" rows="5" maxlength="12000" placeholder="Ex.: Marca: Top Rio; Capacidade: 210 litros; Dimensões da piscina montada: ...; Registro INMETRO: ...; Idade recomendada: ..."></textarea>
           </label>
           <div class="optimizer-source-actions">
-            <button id="optimizerSourceSave" type="button">Salvar informações e atualizar sugestões</button>
-            <label class="optimizer-source-upload">Anexar print JPG/PNG
+            <button id="optimizerSourceSave" type="button">✓ Salvar informações</button>
+            <label class="optimizer-source-upload">▧ Anexar prints JPG/PNG
               <input id="optimizerSourceImage" type="file" accept="image/png,image/jpeg" multiple>
             </label>
+            <button id="optimizerSourceExtract" type="button" class="secondary">✦ Ler prints e completar dados</button>
           </div>
-          <!-- Miniaturas armazenadas são exibidas na única ficha técnica abaixo. -->
+          <div id="optimizerSourceCompactImages" class="optimizer-source-images" aria-label="Prints da WeDrop salvos para esta SKU"></div>
           <div id="optimizerSourceFacts" class="optimizer-source-facts" aria-live="polite"></div>
+          <small id="optimizerSourceSavedStatus" class="optimizer-source-saved-status" role="status">Selecione uma SKU. Texto e prints ficam vinculados ao produto.</small>
+          <small class="optimizer-source-usage">Os dados são reutilizados nas sugestões da ficha técnica, descrição e prompts de imagens. A leitura de prints usa créditos da API OpenAI quando conectada. Confira as informações antes de publicar.</small>
           <p id="optimizerSourceStatus" class="optimizer-notice" role="status" aria-live="polite">Os prints são privados. Confira manualmente as informações antes de publicar.</p>
         </section>
       </section>
