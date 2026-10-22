@@ -183,8 +183,9 @@
       const tokens=signature(text),novel=new Set(tokens);
       const extraWeight=Math.min(chosen.length,2)*8;
       // Prefer 109–119 characters, good readability and <= 3 distinct phrases.
-      const quality=(qualified?1500:0)+length*3-Math.abs(length-115)*5+
-        novel.size*1.8+extraWeight-Math.max(0,chosen.length-2)*15;
+      const priorityPenalty=chosen.reduce((sum,term)=>sum+Math.max(0,terms.indexOf(term)),0)*12;
+      const quality=(qualified?1500:0)+length*3-Math.abs(length-114)*4+
+        novel.size*1.8+extraWeight-Math.max(0,chosen.length-2)*18-priorityPenalty;
       if(quality>best.quality)best={text,quality};
     };
     inspect([]);
@@ -204,7 +205,7 @@
   function rating(title,kind){
     const n=count(title);
     const enough=n>=100&&n<=LIMIT?20:n>=90?6:0;
-    const front=/^(?:[^\p{L}\p{N}]*)(?:mochila|passadeira|vaporizador|porta|garrafa|kit|piscina|suporte)/iu.test(title)?22:15;
+    const front=/^(?:[^\p{L}\p{N}]*)(?:moto|motinha|bola|mochila|passadeira|vaporizador|porta|garrafa|kit|piscina|suporte|jogo|lixeira|carrinho|liquidificador|raquete|pote|cafeteira)/iu.test(title)?22:15;
     const emoji= /[\p{Extended_Pictographic}]/u.test(title)?12:5;
     const noHype=/\b(promo[cç][aã]o|gr[aá]tis|24h|certificado|melhor pre[cç]o|inmetro|25 acess[oó]rios)\b/i.test(title)?0:17;
     const natural=/([!]{2,}|\s{2,})/.test(title)?5:16;
