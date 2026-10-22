@@ -181,24 +181,7 @@
               
 <section class="tabpane" id="tab-optimizer" aria-label="Otimização de anúncios">
   <div class="optimizer-page optimizer-v15-page">
-    <section id="adsSeoSection" class="optimizer-panel ads-seo-shell" aria-labelledby="adsSeoHeading">
- <div class="ads-seo-head">
-  <div><span class="eyebrow">INTELIGÊNCIA SHOPEE ADS · SOMENTE LEITURA</span>
-   <h3 id="adsSeoHeading">SEO para Ads e monitor de campanhas</h3>
-   <p>Produtos recomendados, métricas oficiais, evolução semanal e soluções para problemas de desempenho.</p>
-  </div>
-  <button type="button" id="adsSeoRefresh" class="secondary">↻ Atualizar análise</button>
- </div>
- <div id="adsSeoStatus" class="ads-seo-status" role="status" aria-live="polite">A análise será carregada ao abrir a Otimização.</div>
- <div id="adsSeoSummary" class="ads-seo-summary"></div>
- <div class="ads-seo-section-heading"><div><h4>Produtos candidatos para Ads</h4><small>Imagem original, tráfego por campanha individual, ROAS e orçamento estimados</small></div>
-  <label class="ads-seo-sort-label">Ordenar <select id="adsSeoSort"><option value="score">Prioridade</option><option value="impressions">Impressões</option><option value="clicks">Cliques</option><option value="ctr">CTR</option></select></label>
- </div>
- <div id="adsSeoResults" class="ads-seo-cards"></div>
- <div class="ads-seo-section-heading"><div><h4>Monitor de campanhas e alertas</h4><small>Diagnóstico e solução por campanha: entrega, cliques, vendas, preço e ROAS</small></div></div>
- <div id="adsSeoCampaigns" class="ads-seo-cards"></div>
- <p class="ads-seo-footnote">Amostra histórica de 7 dias contra os 7 anteriores. CTR da API Ads não equivale a CTR orgânico. Métricas de campanhas com vários produtos não são atribuídas a uma SKU. Nada é publicado automaticamente.</p>
-</section>
+    
 <div class="optimizer-v15-intro optimizer-v18-journey">
       <div class="optimizer-v15-intro-left"><span class="optimizer-v18-journey-icon" aria-hidden="true"><svg class="nav-icon" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="5"/><path d="M12 12l8-8"/></svg></span>
         <span class="optimizer-v18-journey-title"><strong>Centro de otimização</strong></span></div>
@@ -1316,6 +1299,27 @@
           <label>Campaign IDs <input id="campaignIds" placeholder="Ex.: 11111,22222"></label>
           <button id="loadAdsBtn" type="button">Consultar IDs informados</button>
           <p class="hint">Diagnóstico de campanhas de produtos. Não modifica o orçamento, status ou lance.</p>
+        </details>
+        <details class="card ads-seo-disclosure" id="adsSeoDisclosure">
+          <summary>Inteligência Ads por SKU — produtos candidatos, ROAS e monitor detalhado</summary>
+          <section id="adsSeoSection" class="optimizer-panel ads-seo-shell" aria-labelledby="adsSeoHeading">
+ <div class="ads-seo-head">
+  <div><span class="eyebrow">INTELIGÊNCIA SHOPEE ADS · SOMENTE LEITURA</span>
+   <h3 id="adsSeoHeading">SEO para Ads e monitor de campanhas</h3>
+   <p>Produtos recomendados, métricas oficiais, evolução semanal e soluções para problemas de desempenho.</p>
+  </div>
+  <button type="button" id="adsSeoRefresh" class="secondary">↻ Atualizar análise</button>
+ </div>
+ <div id="adsSeoStatus" class="ads-seo-status" role="status" aria-live="polite">Abra esta seção para consultar recomendações de Ads.</div>
+ <div id="adsSeoSummary" class="ads-seo-summary"></div>
+ <div class="ads-seo-section-heading"><div><h4>Produtos candidatos para Ads</h4><small>Imagem original, tráfego por campanha individual, ROAS e orçamento estimados</small></div>
+  <label class="ads-seo-sort-label">Ordenar <select id="adsSeoSort"><option value="score">Prioridade</option><option value="impressions">Impressões</option><option value="clicks">Cliques</option><option value="ctr">CTR</option></select></label>
+ </div>
+ <div id="adsSeoResults" class="ads-seo-cards"></div>
+ <div class="ads-seo-section-heading"><div><h4>Monitor de campanhas e alertas</h4><small>Diagnóstico e solução por campanha: entrega, cliques, vendas, preço e ROAS</small></div></div>
+ <div id="adsSeoCampaigns" class="ads-seo-cards"></div>
+ <p class="ads-seo-footnote">Amostra histórica de 7 dias contra os 7 anteriores. CTR da API Ads não equivale a CTR orgânico. Métricas de campanhas com vários produtos não são atribuídas a uma SKU. Nada é publicado automaticamente.</p>
+</section>
         </details>
       </section>
               <section class="tabpane" id="tab-wedrop" aria-label="Fornecedor WeDrop">
