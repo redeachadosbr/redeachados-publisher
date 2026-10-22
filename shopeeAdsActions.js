@@ -4,6 +4,7 @@ import crypto from 'node:crypto';
 import {discoverShopeeCampaigns,fetchShopeeCampaignSettings} from './adsReport.js';
 export const ADS_EDIT_PATHS=Object.freeze({
  manual:'/api/v2/ads/edit_manual_product_ads',
+ auto:'/api/v2/ads/edit_auto_product_ads',
  gms:'/api/v2/ads/edit_gms_product_campaign'
 });
 const ALLOWED=new Set(['pause','resume','change_budget','change_roas_target']);
@@ -16,6 +17,7 @@ export function adsEditType(value){
  const s=String(value??'').toLowerCase();
  if(/gms|gmv|max|shop_ads/.test(s))return 'gms';
  if(/manual/.test(s))return 'manual';
+ if(/^auto$|auto_product/.test(s))return 'auto';
  return null;
 }
 export function validateAdsChange(change){
