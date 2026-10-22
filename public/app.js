@@ -1243,6 +1243,8 @@ function adsVisibleCampaigns(){
  const q=$('#adsCampaignSearch').value.trim().toLocaleLowerCase('pt-BR');
  const diag=$('#adsDiagnosisFilter').value,sort=$('#adsCampaignSort').value;
  const records=adsCampaignRows.filter(c=>{
+  // Mostrar apenas campanhas realmente rodando, não métricas históricas de pausadas.
+  if(c.statusGroup!=='active')return false;
   if(adsCurrentGroup!=='all'&&c.statusGroup!==adsCurrentGroup)return false;
   if(q&&![c.name,c.campaignId,c.adType,...(c.itemIdList||[])].join(' ').toLocaleLowerCase('pt-BR').includes(q))return false;
   const kind=adsDiagnose(c).kind;
@@ -1363,11 +1365,14 @@ document.querySelectorAll('.ads-status-tab').forEach(button=>{
 });
 function renderShopeeAds(data){
  const campaigns=Array.isArray(data.campaigns)?data.campaigns:[];
+ // Histórico de campanhas inativas permanece apenas no retorno original para auditoria.
+ // A interface, a prévia e a exportação usam exclusivamente status atual confirmado como ativo.
+ const activeCampaigns=campaigns.filter(c=>c.statusGroup==='active');
  const total=data.total||{};
- adsCampaignRows=campaigns;adsLastReport=data;adsSelected.clear();
- adsSuggestions=adsRecommendationsFor(campaigns);adsSuggestionsExpanded=false;
+ adsCampaignRows=activeCampaigns;adsLastReport=data;adsSelected.clear();
+ adsSuggestions=adsRecommendationsFor(activeCampaigns);adsSuggestionsExpanded=false;
  $('#adsResults').hidden=false;$('#adsReviewPanel').hidden=true;
- adsSetKpi('adsCampaignCount',data.campaignCount??campaigns.length);
+ adsSetKpi('adsCampaignCount',activeCampaigns.length);
  adsSetKpi('adsImpressions',adsNum(total.impressions));
  adsSetKpi('adsClicks',adsNum(total.clicks));
  adsSetKpi('adsCtr',adsMetric(total.ctr)+(total.ctr===null?'':'%'));
@@ -1379,11 +1384,11 @@ function renderShopeeAds(data){
  adsSetKpi('adsItemsSold','Não disponível');
  $('#adsStatusExplanation').textContent=data.statusWarning?
   'Status atual não confirmado: '+data.statusWarning:
-  'Situação atual confirmada pela API Shopee; métricas históricas incluem campanhas pausadas. GMV atribuído não é lucro.';
+  'A lista exibe somente campanhas ativas confirmadas. Indicadores financeiros do período incluem histórico de campanhas inativas; GMV atribuído não é lucro.';
  adsRenderHealth(data);adsRenderSuggestions();adsRenderExecution();
- globalThis.RedeAdsPremium?.onData?.(campaigns);
- $('#adsExportBtn').disabled=!campaigns.length;
- $('#adsExecuteSuggested').disabled=!campaigns.length;
+ globalThis.RedeAdsPremium?.onData?.(activeCampaigns);
+ $('#adsExportBtn').disabled=!activeCampaigns.length;
+ $('#adsExecuteSuggested').disabled=!activeCampaigns.length;
  displayAdsGroup('all');
 }
 $('#loadAdsAutoBtn').onclick=async()=>{
