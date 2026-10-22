@@ -83,8 +83,8 @@ function makeCampaignCard(c,prev,byItem,byPlan,{now=Date.now()}={}){
    ['Conferir alterações de orçamento, ROAS-alvo, saldo, concorrência e status do anúncio.']);
  const margin=Number(plan?.quote?.netMarginPct);
  const breakeven=Number.isFinite(margin)&&margin>0?round(100/margin):null;
- const directRoas=validPrice(c.directRoas);
- const attributedRoas=directRoas??validPrice(c.roas);
+ const directRoas=c.directRoas===null||c.directRoas===undefined?null:validPrice(c.directRoas);
+ const attributedRoas=directRoas??(c.roas===null||c.roas===undefined?null:validPrice(c.roas));
  const roasKind=directRoas!==null?'direto':'amplo';
  if(hasData&&n(c.expense)>=10&&breakeven!==null&&attributedRoas!==null&&attributedRoas<breakeven)
   addAlert(alert,'warning','roas_below_margin','ROAS abaixo do equilíbrio estimado',
@@ -107,8 +107,8 @@ function makeCampaignCard(c,prev,byItem,byPlan,{now=Date.now()}={}){
    'Campanha com vários produtos: métricas não atribuíveis a uma única SKU':'Produto não identificado na API',
   metrics:{impressions,clicks,ctr,expense:hasData?round(n(c.expense)):null,
    broadGmv:hasData?round(n(c.broadGmv)):null,
-   orders,ordersLabel:orderBasis,roas:hasData&&Number.isFinite(Number(c.roas))?Number(c.roas):null,
-   directRoas:hasData&&Number.isFinite(Number(c.directRoas))?Number(c.directRoas):null,
+   orders,ordersLabel:orderBasis,roas:hasData&&c.roas!==null&&c.roas!==undefined&&Number.isFinite(Number(c.roas))?Number(c.roas):null,
+   directRoas:hasData&&c.directRoas!==null&&c.directRoas!==undefined&&Number.isFinite(Number(c.directRoas))?Number(c.directRoas):null,
    priorImpressions:prevHasData?n(prev.impressions):null,impressionChangePct:change,
    daysWithData:n(c.daysWithData)},
   pricing,marginPct:Number.isFinite(margin)?margin:null,alerts:alert,severity};
