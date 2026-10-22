@@ -3139,8 +3139,9 @@ async function optimizerWorkflowLoad(record){
      optimizerWorkflowNotice('Não foi possível carregar as etapas: '+e.message+'. Refaça a análise desta SKU.','error');
  }
 }
-$('#optimizerWorkflowClose')?.addEventListener?.('click',()=>{$('#optimizerWorkflowEditor').hidden=true;optimizerWorkflowStage=null;});
+$('#optimizerWorkflowClose')?.addEventListener?.('click',()=>{globalThis.ShopeeTitleStudio?.close?.();$('#optimizerWorkflowEditor').hidden=true;optimizerWorkflowStage=null;});
 $('#optimizerShowExecution')?.addEventListener?.('click',()=>{
+ globalThis.ShopeeTitleStudio?.close?.();
  $('#optimizerWorkflowEditor').hidden=true;optimizerWorkflowStage=null;
  $('#optimizerExecutionPanel').hidden=false;
  for(const x of $('#optimizerWorkflowCards').querySelectorAll('.is-current'))x.classList.remove('is-current');
