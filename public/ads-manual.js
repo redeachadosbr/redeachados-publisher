@@ -20,6 +20,16 @@
  function editor(candidate){
   const root=el('details','ads-manual-editor'),head=el('summary','','Criar Anúncio Individual • GMV Max — Meta de ROAS');
   root.append(head);
+  root.addEventListener('toggle',()=>{
+   const card=root.closest('.ads-seo-card');
+   card?.classList.toggle('ads-card-expanded',root.open);
+   if(root.open){
+    // Um formulário por vez evita grandes espaços vazios entre os produtos.
+    for(const other of document.querySelectorAll('#adsSeoResults .ads-manual-editor[open]')){
+     if(other!==root)other.open=false;
+    }
+   }
+  });
   const inner=el('div','ads-manual-fields');
   const note=el('p','ads-manual-note',
    'Promover Meus Produtos → Anúncios Individuais → GMV Max - Meta de ROAS. Você escolhe o produto e define o ROAS; a Shopee otimiza os lances automaticamente.');
