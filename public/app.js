@@ -2448,6 +2448,26 @@ function optimizerWorkflowRender(data){
    btn.onclick=()=>optimizerWorkflowOpen(stage.key);
    cards.appendChild(btn);
  }
+ // Etapa 08: acesso ao desconto já calculado pelo Motor Matriz e publicado apenas com confirmação da Shopee.
+ const discountCard=optimizerMake('button','optimizer-workflow-card optimizer-workflow-pending');
+ discountCard.type='button';discountCard.dataset.stage='discount';
+ discountCard.setAttribute('aria-label','Abrir etapa 08: desconto do produto na Shopee');
+ const discountNumber=optimizerMake('span','optimizer-workflow-number','08');
+ const discountIcon=optimizerMake('span','optimizer-workflow-icon');
+ discountIcon.setAttribute('aria-hidden','true');
+ discountIcon.innerHTML='<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M20 12 12 20 3 11V4h7z"/><circle cx="7.5" cy="8" r="1.25"/></svg>';
+ const discountLabel=optimizerMake('span','optimizer-workflow-label');
+ discountLabel.append(optimizerMake('strong','','Desconto do produto'),optimizerMake('small','optimizer-discount-workflow-state','Preço e promoção · revisar'));
+ const discountMark=optimizerMake('span','optimizer-workflow-symbol','→');
+ discountCard.append(discountNumber,discountIcon,discountLabel,discountMark);
+ discountCard.onclick=()=>{
+   $('#optimizerShowExecution').click();
+   const target=$('#optimizerExecDiscountFinal');
+   if(target){target.hidden=false;target.scrollIntoView({behavior:'smooth',block:'center'});}
+   optimizerDiscountFinalPaint();
+ };
+ cards.append(discountCard);
+ optimizerDiscountWorkflowRefresh();
  if(optimizerWorkflowStage&&visible.some(x=>x.key===optimizerWorkflowStage))
    optimizerWorkflowOpen(optimizerWorkflowStage);
  // Se uma etapa foi eliminada em uma atualização, fechar o editor antigo.
@@ -3084,7 +3104,21 @@ function optimizerDiscountFinalEligible(q){
   Number.isFinite(Date.parse(q.marketResearch?.researchedAt))&&
   Date.now()-Date.parse(q.marketResearch.researchedAt)<48*3600000);
 }
+function optimizerDiscountWorkflowRefresh(){
+ const card=$('#optimizerWorkflowCards')?.querySelector('[data-stage="discount"]');
+ if(!card)return;
+ const w=optimizerWorkflowPlan,q=optimizerDiscountFinalQuote;
+ const matching=Boolean(w&&q&&optimizerDiscountFinalIdentityOf(w)===optimizerDiscountFinalIdentity);
+ const sent=matching&&optimizerDiscountFinalSent;
+ const state=card.querySelector('.optimizer-discount-workflow-state');
+ if(state)state.textContent=sent?'Envio realizado · conferir na Shopee':
+  !matching?'Calculando preço e desconto':
+  optimizerDiscountFinalEligible(q)?'Preço calculado · abrir e conferir':'Pesquisa/margem · revisar';
+ card.classList.toggle('optimizer-workflow-reviewed',Boolean(sent));
+ card.querySelector('.optimizer-workflow-symbol').textContent=sent?'✓':'→';
+}
 function optimizerDiscountFinalPaint(){
+ optimizerDiscountWorkflowRefresh();
  const block=$('#optimizerExecDiscountFinal'),w=optimizerWorkflowPlan;
  if(!block)return;
  const q=optimizerDiscountFinalQuote,key=optimizerDiscountFinalIdentityOf(w);
