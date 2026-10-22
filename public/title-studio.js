@@ -15,6 +15,7 @@
     String(data?.sku||''),String(data?.itemId||''),
     String(data?.modelId??data?.selectedModelId??'0'),
     clean(data?.productTitle||data?.title||''),
+    clean(data?.supplierProduct?.name||''),clean(data?.supplierProduct?.brand||''),
     clean(extraTerms||'')
   ].join('|');
   // Gratuito e local: não chamar serviços de IA pagos nem usar créditos de API.
