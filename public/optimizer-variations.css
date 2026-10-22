@@ -47,3 +47,22 @@
  font-size:11px;line-height:1.45;color:#755024
 }
 #optimizerVariationPanel .optimizer-variant-original-suggestion button{min-height:35px;padding:7px 10px;font-size:11px}
+
+/* Variações: edição compacta, sem painéis desproporcionais. */
+#optimizerVariationPanel .optimizer-variant-cards{grid-template-columns:minmax(0,1fr);max-width:100%;align-items:stretch}
+#optimizerVariationPanel .optimizer-variant-item{width:100%;box-sizing:border-box;overflow:hidden}
+#optimizerVariationPanel .optimizer-variant-body{grid-template-columns:minmax(160px,220px) minmax(0,1fr);align-items:start}
+#optimizerVariationPanel .optimizer-variant-photo{max-width:220px}
+#optimizerVariationPanel .optimizer-variant-photo-actions{display:grid;grid-template-columns:repeat(2,minmax(0,1fr))}
+#optimizerVariationPanel .optimizer-variant-photo-actions button{min-width:0;white-space:normal}
+#optimizerVariationPanel .optimizer-variant-inputs{grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}
+#optimizerVariationPanel .optimizer-variant-field input{overflow:hidden;text-overflow:ellipsis}
+#optimizerVariationPanel .optimizer-variant-check{overflow-wrap:anywhere}
+@media(max-width:720px){
+ #optimizerVariationPanel .optimizer-variant-body{grid-template-columns:minmax(0,1fr)}
+ #optimizerVariationPanel .optimizer-variant-photo{max-width:220px}
+}
+@media(max-width:480px){
+ #optimizerVariationPanel .optimizer-variant-inputs{grid-template-columns:minmax(0,1fr)}
+ #optimizerVariationPanel .optimizer-variant-photo-actions{grid-template-columns:minmax(0,1fr)}
+}
