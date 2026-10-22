@@ -8,7 +8,8 @@ import {fileURLToPath} from 'node:url';
 import {createAuthStore} from './authStore.js';
 import {mergeShopeeOrderDates,mergeShopeeOrderSummaries} from './orderView.js';
 import {createShopeeOrderMonitor} from './orderMonitor.js';
-import {loadShopeeAdsOverview} from './adsReport.js';
+import {loadShopeeAdsOverview,brazilAdsToday} from './adsReport.js';
+import {adsSevenDayWindows,buildAdsMonitor} from './shopeeAdsInsights.js';
 import {loadShopeeFinance,MAX_FINANCE_ORDERS} from './shopeeFinance.js';
 import {installFinanceBridge,installWalletBridge,installAdsFinanceBridge} from './financeBridge.js';
 import {buildAdsFinanceSnapshot} from './financeAdsBridge.js';
@@ -2453,12 +2454,34 @@ app.get('/api/shopee/finance/orders',mustLogin,requireWeDropAdmin,async(req,res)
 app.get('/api/shopee/ads/seo/candidates',mustLogin,async(req,res)=>{
  res.setHeader('Cache-Control','no-store');
  try{
-  const {auth}=await getValidAuth(req);
+  const {auth,cfg}=await getValidAuth(req);
   const [catalog,plans]=await Promise.all([readCatalogCache(auth.shopId),recentShopeePricePlans(auth.shopId)]);
-  const candidates=rankAdsCandidates(catalog.items,plans);
-  res.json({ok:true,mode:'read_only',scope:'Até 20 planos de preço recentes; não é análise completa da loja',
-    catalogUpdatedAt:catalog.lastSavedAt||null,examinedPlans:plans.length,candidates,
-    warning:'Sem impressões, CTR, pedidos por SKU e taxa de conversão, isto é uma triagem financeira, não previsão de vendas. ROAS e orçamento são estimativas. Nenhuma campanha é criada.'});
+  const financialCandidates=rankAdsCandidates(catalog.items,plans);
+  const windows=adsSevenDayWindows(brazilAdsToday());
+  let recent=null,previous=null,adsWarning=null;
+  // Disponibilidade parcial de Ads nunca deve esconder o ranking de produtos e margens.
+  try{
+   recent=await loadShopeeAdsOverview(cfg,auth,callShopeeShopApi,{
+    start:windows.recent.start,end:windows.recent.end,allowDateFallback:true
+   });
+   try{
+    previous=await loadShopeeAdsOverview(cfg,auth,callShopeeShopApi,{
+     start:windows.previous.start,end:windows.previous.end,allowDateFallback:true
+    });
+   }catch(e){adsWarning='Comparação com os sete dias anteriores indisponível: '+String(e.message||e).slice(0,180);}
+  }catch(e){
+   adsWarning='Dados de campanhas Ads indisponíveis: '+String(e.message||e).slice(0,180)+
+    '. Verifique permissão Ads no Open Platform. A triagem financeira continua disponível.';
+  }
+  const intelligence=buildAdsMonitor({
+   catalog:catalog.items,plans,candidates:financialCandidates,recent,previous
+  });
+  res.json({ok:true,mode:'read_only',scope:'Triagem de até 20 planos de preço recentes, com monitoramento de campanhas Ads retornadas pela Shopee',
+   catalogUpdatedAt:catalog.lastSavedAt||null,examinedPlans:plans.length,
+   period:{recent:recent?.dates||windows.recent,previous:previous?.dates||windows.previous},
+   adsAvailable:Boolean(recent),adsWarning:adsWarning||recent?.statusWarning||null,
+   ...intelligence,
+   warning:'Somente leitura. ROAS e orçamento sugeridos não são garantias de venda. Nenhuma campanha foi criada ou alterada.'});
  }catch(error){res.status(400).json({ok:false,error:String(error?.message||error).slice(0,260)});}
 });
 app.get('/api/shopee/ads/gms/eligibility',mustLogin,async(req,res)=>{
