@@ -27,7 +27,7 @@ export function validateImageSourceUrl(input){
   throw Error('Fotografia original fora dos domínios autorizados da Shopee.');
  return url.toString();
 }
-export function imagePrompt({record,slot,masterPrompt='',note='',sourceImageCount=1}){
+export function imagePrompt({record,slot,masterPrompt='',note='',sourceImageCount=1,hasPreparedReference=false}){
  const position=Number(slot);
  if(!Number.isInteger(position)||position<1||position>9)throw Error('Posição inválida (1 a 9).');
  const attributes=(record?.attributeAudit?.attributes||[])
@@ -39,6 +39,7 @@ export function imagePrompt({record,slot,masterPrompt='',note='',sourceImageCoun
   'O(s) arquivo(s) anexado(s) são fotos reais do MESMO produto comercializado. Preserve com prioridade absoluta a forma, proporções, peças, quantidade, cor, acabamento, textura, logotipos existentes, identificação e acessórios da referência. Não trocar modelo nem criar produto parecido.',
   'SKU '+String(record?.sku||'').slice(0,120)+'. Produto: '+product+'.',
   'REFERÊNCIAS RECEBIDAS: '+sourceImageCount+'. Observe-as para preservar a identidade visual.',
+  hasPreparedReference?'A PRIMEIRA FOTO ANEXADA É A IMAGEM COMERCIAL ATUAL, que você deve EDITAR, não substituir por um produto novo. Preserve cenário, ângulo, geometria e todos os elementos que não fazem parte do ajuste solicitado. As demais referências identificam o produto original. Mude somente o que está descrito em AJUSTE ESPECÍFICO.':'' ,
   'POSIÇÃO '+position+'/9: '+IMAGE_STORYBOARD[position-1],
   'CRIE UMA CENA VISUAL DIFERENTE DAS OUTRAS OITO: novo ângulo, enquadramento e narrativa. Mantenha idêntico o produto de referência, não apenas um produto parecido.',
   attributes.length?'CARACTERÍSTICAS CONFIRMADAS PELA FICHA ATUAL: '+attributes.join('; ').slice(0,1800):'Nenhuma especificação técnica independente foi confirmada. Evite inserir números, medidas, selos, certificações ou alegações técnicas.',
@@ -90,21 +91,27 @@ function resizeImagePng(bytes){
   ff.stdin.end(bytes);
  });
 }
-export async function generateOpenAiImage({record,slot,masterPrompt='',note='',referenceUrls=[],apiKey='',overridePrompt=null}){
+export async function generateOpenAiImage({record,slot,masterPrompt='',note='',referenceUrls=[],referenceImages=[],apiKey='',overridePrompt=null}){
  const status=imageGenerationStatus();
  const token=String(apiKey||process.env.OPENAI_API_KEY||'').trim();
  if(!token)throw Error('Conecte sua conta da API OpenAI em Otimização > Gerador de imagens.');
  const sources=[...new Set(referenceUrls.filter(Boolean))].slice(0,1);
- if(!sources.length)throw Error('Nenhuma fotografia original encontrada na Shopee. Importação manual necessária.');
  const originals=[];
+ for(const reference of referenceImages.slice(0,1)){
+  if(!Buffer.isBuffer(reference?.file)||!['image/png','image/jpeg'].includes(reference?.mime))
+   throw Error('A imagem comercial preparada é inválida para ajuste.');
+  imageDimensions(reference.file,reference.mime);
+  originals.push({file:reference.file,mime:reference.mime});
+ }
  for(const u of sources)originals.push(await fetchShopeeReference(u));
+ if(!originals.length)throw Error('Nenhuma fotografia de referência disponível para o ajuste.');
  const form=new FormData();
  form.set('model',status.model);
  form.set('size',status.model.startsWith('gpt-image-1')?'1024x1024':'1200x1200');
  form.set('quality',String(process.env.OPENAI_IMAGE_QUALITY||'medium'));
  form.set('output_format','png');
  form.set('n','1');
- form.set('prompt',overridePrompt||imagePrompt({record,slot,masterPrompt,note,sourceImageCount:originals.length}));
+ form.set('prompt',overridePrompt||imagePrompt({record,slot,masterPrompt,note,sourceImageCount:originals.length,hasPreparedReference:referenceImages.length>0}));
  for(const [i,x] of originals.entries())form.append('image[]',new Blob([x.file],{type:x.mime}),'original-'+i+(x.mime==='image/png'?'.png':x.mime==='image/webp'?'.webp':'.jpg'));
  const response=await fetch('https://api.openai.com/v1/images/edits',{
   method:'POST',headers:{Authorization:'Bearer '+token},
