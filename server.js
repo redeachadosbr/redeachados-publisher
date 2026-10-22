@@ -953,9 +953,9 @@ app.get('/api/shopee/optimizer/workflow',mustLogin,requireWeDropAdmin,async(req,
     // dessa correção para SKU 1175 era reconhecivelmente genérica e não
     // utilizava PVC, numeração nem registro do material fornecido.
     const storedDescription=String(review.draftDescription||'');
-    const staleGeneric=storedDescription&&
-      review.descriptionOrigin!=='manual'&&isGenericShopeeDescription(storedDescription);
-    if(staleGeneric&&composed.valid&&composed.description!==storedDescription){
+    const autoRefreshable=storedDescription&&review.descriptionOrigin!=='manual'&&
+      (review.descriptionOrigin==='auto-refreshed'||isGenericShopeeDescription(storedDescription));
+    if(autoRefreshable&&composed.valid&&composed.description!==storedDescription){
       // Substituir APENAS o modelo antigo identificável, preservar cópia e
       // invalidar a aprovação anterior para evitar publicação de texto novo sem revisão.
       const refreshed=await saveWorkflowReview(auth.shopId,itemId,modelId,sku,{
@@ -1032,6 +1032,7 @@ app.post('/api/shopee/optimizer/workflow/source',mustLogin,requireWeDropAdmin,as
   try{
    await saveWorkflowReview(auth.shopId,itemId,modelId,sku,{stage:'technical',reviewed:false});
    await saveWorkflowReview(auth.shopId,itemId,modelId,sku,{stage:'images',reviewed:false});
+   await saveWorkflowReview(auth.shopId,itemId,modelId,sku,{stage:'description',reviewed:false});
   }catch(error){
    reviewWarning='Fonte salva; não foi possível reabrir a revisão automaticamente.';
    console.warn('[supplier-evidence] review invalidation:',String(error.message||error).slice(0,160));
