@@ -134,3 +134,22 @@
 #optimizerVariationPanel .optimizer-variant-stage-controls button{font-size:11px;color:#fff;border:0;border-radius:8px;padding:10px 8px;background:#174e32;cursor:pointer}
 #optimizerVariationPanel .optimizer-variant-stage-controls .optimizer-variant-stage-publish{background:#f04a2e}
 #optimizerVariationPanel .optimizer-variant-stage-controls button:disabled{opacity:.48;cursor:not-allowed}
+
+/* Layout de referência aprovado 22/10: header compacto, cards lado a lado e barra de envio. */
+#optimizerVariationPanel .optimizer-variant-workspace{display:grid!important;grid-template-columns:minmax(0,1fr) minmax(245px,.27fr)!important;gap:11px!important;align-items:stretch!important}
+#optimizerVariationPanel .optimizer-variant-main{min-width:0!important}
+#optimizerVariationPanel .optimizer-variant-side{display:block!important;min-width:0!important;max-width:none!important;padding:13px!important;border:1px solid #dce7f5;border-radius:13px;background:#fff}
+#optimizerVariationPanel .optimizer-variant-side-heading strong{font-size:14px!important}
+#optimizerVariationPanel .optimizer-variant-side-actions{display:grid;gap:9px}
+#optimizerVariationPanel .optimizer-variant-side-actions button{width:100%!important;min-height:57px;border:0;border-radius:9px;color:#fff;font-size:12px;font-weight:800;padding:10px;cursor:pointer}
+#optimizerVariationPanel .optimizer-variant-stage-preview{background:linear-gradient(120deg,#1a5738,#103e29)!important}
+#optimizerVariationPanel .optimizer-variant-stage-publish{background:linear-gradient(115deg,#ff6243,#ed412b)!important}
+#optimizerVariationPanel .optimizer-variant-side-actions button:disabled{opacity:.52;cursor:not-allowed}
+#optimizerVariationPanel .optimizer-variant-side-note{background:#eef5ff;color:#5179ab;border:1px solid #d9e6fa;margin:11px 0 0;padding:11px;border-radius:9px;font-size:11px;line-height:1.4}
+#optimizerVariationPanel .optimizer-variant-main .optimizer-variant-cards{grid-template-columns:repeat(2,minmax(0,1fr))!important}
+#optimizerVariationPanel .optimizer-variant-stage-head{grid-template-columns:minmax(0,1.85fr) minmax(0,1fr)!important}
+#optimizerVariationPanel .optimizer-variation-chip{font-size:11px}
+#optimizerVariationPanel .optimizer-variant-photo-actions button{border-radius:8px}
+@media(max-width:1090px){#optimizerVariationPanel .optimizer-variant-workspace{grid-template-columns:minmax(0,1fr)!important}#optimizerVariationPanel .optimizer-variant-side-actions{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media(max-width:780px){#optimizerVariationPanel .optimizer-variant-main .optimizer-variant-cards{grid-template-columns:1fr!important}#optimizerVariationPanel .optimizer-variant-stage-head{grid-template-columns:1fr!important}}
+@media(max-width:550px){#optimizerVariationPanel .optimizer-variant-side-actions{grid-template-columns:1fr}}
