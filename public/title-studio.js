@@ -181,14 +181,15 @@
     mount.replaceChildren();mount.hidden=false;
     mount.classList.add('seo-studio');
     const f=facts(data),sku=clean(data.sku||'');
+    let marketSample=[],researchToken=0;
     const head=el('div','seo-studio-head');
     const hd=el('div','');
     hd.append(el('div','seo-studio-kicker','OTIMIZAÇÃO DE ANÚNCIOS · TÍTULO SEO'),
       el('h4','','Escolha um título que destaque seu produto'),
-      el('p','','4 opções com emojis, análise de estrutura e edição manual antes de salvar.'));
+      el('p','','4 opções elaboradas com termos do produto, de 100 a 120 caracteres, com edição manual.'));
     const badge=el('span','seo-studio-sku','SKU '+(sku||'—'));
     head.append(hd,badge);mount.append(head);
-    const note=el('div','seo-studio-alert','Avaliação estimada de estrutura, não pontuação real de vendas. Pesquisa de concorrentes e volume de buscas só aparecem quando verificados; nenhuma garantia de conversão.');
+    const note=el('div','seo-studio-alert','Pontuação estrutural estimada. A pesquisa verifica termos recorrentes em ofertas similares quando disponível, mas não mede o volume de buscas.');
     mount.append(note);
     const kw=el('div','seo-studio-facts');
     kw.append(el('strong','','Base confirmada: '),el('span','',f.title));
@@ -211,7 +212,7 @@
     function regenerate(){
       grid.replaceChildren();
       savedTerms.set(sku,inp.value);
-      const output=variants(f,inp.value).map(v=>({...v,title:assemble(v)}));
+      const output=variants(f,inp.value,marketSample).map(v=>({...v,title:assemble(v)}));
     const used=new Set();
     for(const o of output){
       if(used.has(key(o.title)))o.duplicate=true;
@@ -219,7 +220,7 @@
     }
       for(const [i,o] of output.entries()){
         const n=count(o.title),score=rating(o.title,f.kind);
-        const card=el('article','seo-studio-card'+(n>0&&n<=LIMIT&&!o.duplicate?' valid':' needs-review'));
+        const card=el('article','seo-studio-card'+(n>=MIN&&n<=LIMIT&&!o.duplicate?' valid':' needs-review'));
         const meta=el('div','seo-studio-card-top');
         const group=el('div','seo-studio-option');
         group.append(el('strong','','0'+(i+1)+' · '+o.name),el('small','',o.subtitle));
@@ -228,25 +229,55 @@
         meta.append(group,meter);card.append(meta);
         card.append(el('p','seo-studio-candidate',o.title));
         const keys=el('div','seo-studio-metrics');
-        keys.append(el('span',n>0&&n<=LIMIT&&!o.duplicate?'seo-studio-ok':'seo-studio-caution',n+'/120 caracteres'+(o.duplicate?' · opção repetida':'')),
-          el('span','','⚡ '+(n<=LIMIT?'Pronto para revisão':'Reduzir para até 120')));
+        keys.append(el('span',n>=MIN&&n<=LIMIT&&!o.duplicate?'seo-studio-ok':'seo-studio-caution',n+'/120 caracteres'+(o.duplicate?' · opção repetida':'')),
+          el('span','','⚡ '+(n>=MIN&&n<=LIMIT&&!o.duplicate?'Pronto para revisão':n<MIN?'Faltam '+(MIN-n)+' caracteres':n>LIMIT?'Reduzir para até 120':'Opção repetida')));
         card.append(keys,el('p','seo-studio-why',o.reason));
         const actions=el('div','seo-studio-card-actions');
         const choose=el('button','seo-studio-choose','✓ Usar este título');choose.type='button';
+        choose.disabled=n<MIN||n>LIMIT||Boolean(o.duplicate);
+        choose.title=choose.disabled?'Não atende os 100 a 120 caracteres ou repete outra opção.':'Aplicar título válido na revisão';
         choose.onclick=()=>{
+          if(choose.disabled)return;
           onChoose(o.title);
           for(const c of grid.querySelectorAll('.seo-studio-card'))c.classList.remove('selected');
           card.classList.add('selected');
-          setLabel(status,n<=LIMIT?'Título selecionado. Revise e registre a conferência para salvar.':'Título longo demais. Reduza para até 120 caracteres.');
+          setLabel(status,'Título válido selecionado ('+n+'/120). Revise e registre a conferência para salvar.');
         };
         const copy=el('button','secondary seo-studio-copy','Copiar');copy.type='button';
         copy.onclick=()=>copyText(o.title,status);
         actions.append(choose,copy);card.append(actions);grid.append(card);
       }
     }
-    btn.addEventListener('click',regenerate);
+    const marketNotice=el('div','seo-studio-market-status','🔎 Consultando ofertas Shopee para pesquisa de termos…');
+    marketNotice.setAttribute('role','status');note.insertAdjacentElement('afterend',marketNotice);
+    async function research(){
+      const token=++researchToken;
+      if(!data.itemId||!sku){setLabel(marketNotice,'Sem SKU/Item ID para pesquisa. Sugestões baseadas na ficha.');return;}
+      setLabel(marketNotice,'🔎 Pesquisando títulos em ofertas Shopee comparáveis…');
+      try{
+        const params=new URLSearchParams({item_id:String(data.itemId),model_id:String(data.modelId||'0'),sku});
+        const response=await fetch('/api/shopee/optimizer/workflow/title-research?'+params,{credentials:'same-origin',signal:AbortSignal.timeout(25000)});
+        if(!response.ok)throw Error('Falha de pesquisa HTTP '+response.status);
+        const result=await response.json();
+        if(token!==researchToken||!mount.isConnected)return;
+        marketSample=Array.isArray(result.sample)?result.sample.filter(x=>x.title).slice(0,5):[];
+        const total=marketSample.length;
+        setLabel(marketNotice,result.verifiedSample&&total
+          ?'🔎 '+total+' anúncios comparáveis encontrados. A ordem das palavras-chave foi ajustada por recorrência, sem supor volume de buscas.'
+          :total?'🔎 '+total+' oferta(s) parcial(is) localizada(s), comparabilidade não confirmada; sugestões seguem fatos do produto.'
+          :'🔎 Sem pesquisa externa verificável nesta consulta. Sugestões baseadas em dados confirmados da SKU.');
+        regenerate();
+      }catch(err){
+        if(token!==researchToken||!mount.isConnected)return;
+        marketSample=[];
+        setLabel(marketNotice,'🔎 Pesquisa externa indisponível: termos SEO derivados da ficha, sem alegar volume de buscas.');
+        regenerate();
+      }
+    }
+    btn.addEventListener('click',()=>{regenerate();void research();});
     inp.addEventListener('keydown',e=>{if(e.key==='Enter'){e.preventDefault();regenerate();}});
     regenerate();
+    void research();
   }
   globalThis.ShopeeTitleStudio={open};
 })();
