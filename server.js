@@ -31,6 +31,7 @@ import {saveWeDropCosts,getWeDropCoverage,compareIncomingCosts,pendingWeDropMode
 import {saveWeDropProducts,readWeDropProduct} from './wedropCosts.js';
 import {supplierWorkflowFacts} from './shopeeSupplierFacts.js';
 import {supplierAttributeSuggestions} from './shopeeSupplierEvidenceFacts.js';
+import {narrativeTechnicalSuggestions,mergeNarrativeTechnicalFacts} from './shopeeTechnicalNarrative.js';
 import {readShopeeSourceEvidence,saveShopeeSourceText,importShopeeEvidenceImage,removeShopeeEvidenceImage,downloadShopeeEvidenceImages} from './shopeeSourceEvidence.js';
 import {extractSupplierScreenshotText,mergeExtractedPrints,withoutExtractedPrints} from './shopeeEvidenceVision.js';
 import {fiscalMatrixSource,technicalMatrixSource,assertShopeeSupplierBrand,isShopeeCestConfirmed,REDE_ACHADOS_MARKET_RULES} from './shopeeMatrixRules.js';
@@ -943,9 +944,16 @@ app.get('/api/shopee/optimizer/workflow',mustLogin,requireWeDropAdmin,async(req,
       console.warn('[shopee-source-evidence] supplementary read unavailable:',String(error.message||error).slice(0,150));
     }
     const supplierFacts=supplierWorkflowFacts(supplier,record,settings);
-    let evidenceFacts=supplierAttributeSuggestions({attributes:technicalPreview.attributes,
-      proposed:review.attributes||[],supplier,sourceText:sourceEvidence.sourceText,
-      productDescription:record.description});
+    const collectEvidenceFacts=()=>{
+      const basic=supplierAttributeSuggestions({attributes:technicalPreview.attributes,
+        proposed:review.attributes||[],supplier,sourceText:sourceEvidence.sourceText,
+        productDescription:record.description});
+      const inferred=narrativeTechnicalSuggestions({attributes:technicalPreview.attributes,
+        supplier,sourceText:sourceEvidence.sourceText,productDescription:record.description,
+        existing:basic.suggestions});
+      return mergeNarrativeTechnicalFacts(basic,inferred);
+    };
+    let evidenceFacts=collectEvidenceFacts();
     // Brand/category option lists can be truncated. Resolve missing exact values
     // through Shopee's official search before prefilling, never manufacture IDs.
     const searchable=evidenceFacts.unresolved.filter(x=>x.value&&
@@ -969,9 +977,7 @@ app.get('/api/shopee/optimizer/workflow',mustLogin,requireWeDropAdmin,async(req,
         console.warn('[shopee-autofill] official category option unavailable:',String(error.message||error).slice(0,120));
       }
     }
-    if(extraOptions)evidenceFacts=supplierAttributeSuggestions({attributes:technicalPreview.attributes,
-      proposed:review.attributes||[],supplier,sourceText:sourceEvidence.sourceText,
-      productDescription:record.description});
+    if(extraOptions)evidenceFacts=collectEvidenceFacts();
     // Merge confirmed source-backed values into the SKU's existing draft,
     // not into the published listing and never over an earlier manual edit.
     let persistedTechnicalDraft=review.technicalDraft||null;
