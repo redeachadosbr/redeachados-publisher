@@ -6254,15 +6254,44 @@ const optimizerTechPtNames={
  'quantity per pack':'Quantidade por embalagem','ball size':'Tamanho da bola',
  'model':'Modelo','color':'Cor','colour':'Cor','brand':'Marca','size':'Tamanho',
  'pattern':'Estampa','product dimensions':'Dimensões do produto',
+ 'power source':'Fonte de alimentação','power supply':'Fonte de alimentação',
+ 'battery type':'Tipo de bateria','battery capacity':'Capacidade da bateria',
+ 'built-in battery':'Bateria integrada','build-in battery':'Bateria integrada',
+ 'has bsmi no.':'Possui certificação BSMI','has bsmi no':'Possui certificação BSMI',
+ 'recommended age':'Idade recomendada','age range':'Faixa etária',
+ 'quantity per pack':'Quantidade por embalagem','product condition':'Condição do produto',
+ 'region of origin':'País ou região de fabricação','country of origin':'País de fabricação',
+ 'indication':'Indicação de uso','indication of use':'Indicação de uso',
+ 'input voltage':'Tensão de entrada','voltage':'Voltagem',
+ 'power':'Potência','maximum load':'Peso máximo suportado',
+ 'maximum weight':'Peso máximo suportado','product weight':'Peso do produto',
+ 'item weight':'Peso do produto','custom product':'Produto personalizado',
+ 'material':'Material','composition':'Composição',
+ 'product model':'Modelo do produto','type':'Tipo',
+ 'has certification':'Possui certificação','certification':'Certificação',
  'certification':'Certificação','weight':'Peso'};
 function optimizerTechLabel(value){
  const raw=String(value||'').trim();
- return optimizerTechPtNames[raw.toLowerCase()]||raw;
+ const normalized=raw.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'');
+ return optimizerTechPtNames[normalized]||
+   (/\bpower source\b/i.test(raw)?'Fonte de alimentação':
+    /\b(?:recommended age|age recommendation)\b/i.test(raw)?'Idade recomendada':
+    /\bquantity per pack\b/i.test(raw)?'Quantidade por embalagem':
+    /\b(?:country|region) of origin\b/i.test(raw)?'País ou região de fabricação':
+    /\b(?:indication|usage recommendation)\b/i.test(raw)?'Indicação de uso':
+    /\bhas bsmi\b/i.test(raw)?'Possui certificação BSMI':
+    /\b(?:built.in|build.in) battery\b/i.test(raw)?'Bateria integrada':raw);
 }
 function optimizerTechValueLabel(value){
  const raw=String(value||'').trim();
  return ({yes:'Sim',no:'Não',new:'Novo',used:'Usado','not applicable':'Não se aplica',
- 'not specified':'Não informado',other:'Outro','no warranty':'Sem garantia'})[raw.toLowerCase()]||raw;
+ 'not specified':'Não informado',other:'Outro','no warranty':'Sem garantia',
+ 'battery':'Bateria','battery operated':'Alimentação por bateria',
+ 'battery powered':'Alimentação por bateria','rechargeable battery':'Bateria recarregável',
+ 'new':'Novo','used':'Usado','rechargeable':'Recarregável',
+ '3 years and above':'A partir de 3 anos','3 years old and above':'A partir de 3 anos',
+ '3 years and up':'A partir de 3 anos','3+ years':'A partir de 3 anos'})[raw.toLowerCase()]||
+   (/^\d+\s*-\s*\d+\s+years?$/i.test(raw)?raw.replace(/years?/i,'anos').replace('-', 'a'):raw);
 }
 // Guarda imediatamente tudo o que o usuário editar, antes da revisão formal.
 let techFieldTimer=0,techTextTimer=0,techFieldQueue=Promise.resolve(),techTextQueue=Promise.resolve();
