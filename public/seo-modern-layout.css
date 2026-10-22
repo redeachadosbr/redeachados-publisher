@@ -99,3 +99,5 @@
 @media(max-width:1280px){#optimizerTitleVariants .seo-modern-grid{grid-template-columns:repeat(2,minmax(0,1fr))!important}#optimizerTitleVariants .seo-modern-product{grid-template-columns:83px minmax(0,1fr) 155px}#optimizerTitleVariants .seo-modern-photo{width:80px;height:83px}}
 @media(max-width:900px){#optimizerTitleVariants .seo-modern-top,#optimizerTitleVariants .seo-modern-lower{grid-template-columns:1fr}#optimizerTitleVariants .seo-modern-product{grid-template-columns:75px minmax(0,1fr);padding-right:72px}#optimizerTitleVariants .seo-modern-shopee{grid-column:1/-1}}
 @media(max-width:650px){#optimizerTitleVariants .seo-modern-grid{grid-template-columns:1fr!important}#optimizerTitleVariants .seo-modern-product h3{font-size:15px!important}#optimizerTitleVariants .seo-modern-photo{width:70px;height:72px}#optimizerTitleVariants .seo-modern-product{grid-template-columns:70px minmax(0,1fr)}#optimizerTitleVariants .seo-modern-indicator{gap:4px}#optimizerTitleVariants .seo-modern-meter{width:38px}#optimizerTitleVariants .seo-modern-quick-grid{grid-template-columns:1fr}}
+
+#optimizerWorkflowEditor.seo-modern-editor[hidden]{display:none!important}
