@@ -67,8 +67,7 @@
   if(c.productSku){
    const edit=e('button','secondary','Revisar anúncio e pesquisa de preço');
    edit.type='button';edit.onclick=()=>{
-    document.querySelector('[data-tab="optimizer"]')?.click();
-    const sku=find('optimizerSku');if(sku){sku.value=c.productSku;sku.dispatchEvent(new Event('input',{bubbles:true}));}
+    globalThis.redeAdsOpenOptimizerSku?.(c.productSku);
    };info.append(edit);
   }
   els.rows.append(info);
