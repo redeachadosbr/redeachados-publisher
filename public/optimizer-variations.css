@@ -1,0 +1,42 @@
+/* Editor de variações por SKU — escopo exclusivo à Otimização. */
+#optimizerVariationPanel .optimizer-variation-preview{display:grid;gap:12px;min-width:0}
+#optimizerVariationPanel .optimizer-variant-status{padding:10px 12px;margin:0;border-radius:10px;
+ background:#eff5ff;color:#315b82;font-size:12px;line-height:1.4}
+#optimizerVariationPanel .optimizer-variant-status[data-level="success"]{background:#e9f8ef;color:#146b45}
+#optimizerVariationPanel .optimizer-variant-status[data-level="error"]{background:#fff0ee;color:#a73124}
+#optimizerVariationPanel .optimizer-variant-cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,420px),1fr));gap:12px;align-items:start}
+#optimizerVariationPanel .optimizer-variant-item{min-width:0;border:1px solid #d9e5f3;border-radius:13px;
+ background:#fff;padding:14px;display:grid;gap:12px;box-shadow:0 3px 12px #162e5408}
+#optimizerVariationPanel .optimizer-variant-heading{display:flex;justify-content:space-between;gap:12px;align-items:center;flex-wrap:wrap}
+#optimizerVariationPanel .optimizer-variant-heading strong{color:#15335e;font-size:15px}
+#optimizerVariationPanel .optimizer-variant-heading small{color:#7287a1;font-size:11px}
+#optimizerVariationPanel .optimizer-variant-body{display:grid;grid-template-columns:minmax(155px,0.85fr) minmax(0,1.6fr);gap:14px;min-width:0}
+#optimizerVariationPanel .optimizer-variant-photo{display:flex;flex-direction:column;align-items:stretch;gap:8px;min-width:0}
+#optimizerVariationPanel .optimizer-variant-photo>img,#optimizerVariationPanel .optimizer-variant-photo-placeholder{
+ display:grid;place-items:center;width:100%;aspect-ratio:1;object-fit:contain;background:#f4f7fd;
+ border:1px solid #e5ebf5;border-radius:10px;color:#7187a2;font-size:13px}
+#optimizerVariationPanel .optimizer-variant-photo-actions{display:flex;gap:6px;flex-wrap:wrap}
+#optimizerVariationPanel .optimizer-variant-photo-actions button{flex:1 1 110px;min-height:35px;font-size:11px;padding:7px 9px}
+#optimizerVariationPanel .optimizer-variant-inputs{min-width:0;display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;align-content:start}
+#optimizerVariationPanel .optimizer-variant-field{min-width:0;display:grid;gap:5px;color:#355477;font-size:11px;font-weight:700}
+#optimizerVariationPanel .optimizer-variant-field input{width:100%!important;min-width:0!important;max-width:100%!important;
+ height:40px;box-sizing:border-box;padding:8px 9px;border:1px solid #ccdbef;border-radius:9px;background:#fff;color:#15345d}
+#optimizerVariationPanel .optimizer-variant-check{display:grid!important;grid-column:1/-1;
+ grid-template-columns:20px minmax(0,1fr)!important;align-items:start!important;gap:8px!important;
+ background:#f6f9fd;border:1px solid #dce7f4;padding:9px 10px;border-radius:9px;
+ font-size:11px;line-height:1.4;font-weight:500;color:#405f83;min-width:0}
+#optimizerVariationPanel .optimizer-variant-check input[type="checkbox"]{appearance:auto!important;
+ width:18px!important;height:18px!important;max-width:18px!important;min-width:18px!important;
+ margin:1px 0!important;padding:0!important}
+#optimizerVariationPanel .optimizer-variant-check span{min-width:0;white-space:normal;overflow-wrap:break-word}
+#optimizerVariationPanel .optimizer-variant-save{grid-column:1/-1;min-height:40px;
+ padding:9px 13px;color:#fff;border:0;border-radius:9px;background:#173c70;font-size:12px;font-weight:760}
+#optimizerVariationPanel .optimizer-variant-footer{display:flex;gap:10px;flex-wrap:wrap;justify-content:flex-end}
+#optimizerVariationPanel .optimizer-variant-footer button{min-height:43px;padding:9px 16px;border-radius:9px;font-size:12px}
+#optimizerVariationPanel .optimizer-variant-publish{background:linear-gradient(120deg,#ff6339,#e93e24);color:white;font-weight:800;border:0}
+#optimizerVariationPanel .optimizer-variant-publish:disabled{opacity:.48;cursor:not-allowed}
+#optimizerVariationPanel .optimizer-variant-help{margin:0;color:#687d99;font-size:12px}
+@media(max-width:820px){#optimizerVariationPanel .optimizer-variant-body{grid-template-columns:1fr}
+ #optimizerVariationPanel .optimizer-variant-photo>img,#optimizerVariationPanel .optimizer-variant-photo-placeholder{max-width:220px}}
+@media(max-width:580px){#optimizerVariationPanel .optimizer-variant-inputs{grid-template-columns:1fr}
+ #optimizerVariationPanel .optimizer-variant-footer button{width:100%}}
