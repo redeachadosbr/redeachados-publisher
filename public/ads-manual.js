@@ -19,79 +19,72 @@
   return map.day+'-'+map.month+'-'+map.year;
  };
  function editor(candidate){
-  const root=el('details','ads-manual-editor'),head=el('summary','','Configurar campanha manual • CPC');
+  const root=el('details','ads-manual-editor'),head=el('summary','','Criar Anúncio Individual • GMV Max — Meta de ROAS');
   root.append(head);
-  const inner=el('div','ads-manual-fields'),note=el('p','ads-manual-note',
-   'Modo manual: você define palavras-chave e CPC. ROAS é referência de desempenho e NÃO é transmitido como lance automático.');
-  const price=field('Preço final planejado (R$)','number',candidate.quoteCustomerPrice||0,{min:0,step:0.01});
-  price.input.readOnly=true;
-  price.input.title='O preço não pode ser alterado na API Ads: use Descontos preparados.';
-  const budget=field('Orçamento diário (R$)','number',candidate.suggestedDailyBudget||10,{min:5,max:300,step:0.01});
-  const roas=field('ROAS de referência (x)','number',candidate.roasTarget||5,{min:1,max:100,step:0.1});
+  const inner=el('div','ads-manual-fields');
+  const note=el('p','ads-manual-note',
+   'Promover Meus Produtos → Anúncios Individuais → GMV Max - Meta de ROAS. Você escolhe o produto e define o ROAS; a Shopee otimiza os lances automaticamente.');
+  const budget=field('Orçamento diário por produto (R$)','number',candidate.suggestedDailyBudget||10,{min:5,max:300,step:0.01});
+  const roas=field('Meta de ROAS (x)','number',Math.round(Number(candidate.roasTarget||5)*10)/10,{min:0.1,max:100,step:0.1});
   const begin=field('Início • DD-MM-AAAA','text',textDate(1),{placeholder:'DD-MM-AAAA'});
-  const end=field('Fim opcional • DD-MM-AAAA','text','',{placeholder:'DD-MM-AAAA'});
-  const kwLabel=el('label','ads-manual-field ads-manual-full'),kwHelp=el('small','',
-   'Palavras-chave: uma por linha, no formato termo | exata ou ampla | CPC em R$');
-  const keywords=el('textarea','ads-manual-keywords');
-  keywords.rows=3;keywords.placeholder='ex.: mochila ferramentas | exata | 0.35';
-  kwLabel.append(kwHelp,keywords);
+  const end=field('Fim opcional • DD-MM-AAAA','text','',{placeholder:'Sem data final'});
+  const selected=el('div','ads-roas-choice');
+  selected.append(el('strong','','✓ Anúncios Individuais'),
+   el('small','','✓ Produto selecionado manualmente · 1 SKU por campanha'),
+   el('strong','','✓ GMV Max — Meta de ROAS'));
+  const warning=el('p','ads-manual-note',
+   'Impulsão Rápida, recomendação oficial de ROAS e Proteção ROAS não podem ser presumidas: dependem da elegibilidade Shopee e não são configuradas por este endpoint. ROAS-alvo não garante resultado.');
   const confirm=el('label','ads-manual-consent');
   const check=el('input');check.type='checkbox';
   confirm.append(check,el('span','',
-   'Confirmei que o preço e o desconto com a reserva Ads já foram publicados na Shopee. Quero criar uma campanha com custo real.'));
-  const previewBtn=el('button','ads-manual-cta','Conferir prévia manual');
-  previewBtn.type='button';const status=el('p','ads-manual-feedback','Nenhuma campanha foi criada.');
-  inner.append(note,price.wrap,budget.wrap,roas.wrap,begin.wrap,end.wrap,kwLabel,confirm,previewBtn,status);
-  const review=el('div','ads-manual-review');inner.append(review);
+   'Confirmei que o preço e o desconto já foram publicados com a reserva Ads necessária. Autorizarei o gasto somente ao clicar em Confirmar e criar campanha.'));
+  const previewBtn=el('button','ads-manual-cta','Conferir prévia de GMV Max');
+  previewBtn.type='button';
+  const status=el('p','ads-manual-feedback','Campanha não criada.');
+  const review=el('div','ads-manual-review');
+  inner.append(selected,note,roas.wrap,budget.wrap,begin.wrap,end.wrap,warning,confirm,previewBtn,status,review);
   root.append(inner);
   const setStatus=(message,kind='info')=>{status.textContent=message;status.dataset.kind=kind;};
-  const invalidate=()=>{review.replaceChildren();};
-  for(const input of [budget.input,roas.input,begin.input,end.input,keywords,check])
-   input.addEventListener('input',invalidate);
+  const invalidate=()=>review.replaceChildren();
+  for(const field of [budget.input,roas.input,begin.input,end.input,check])field.addEventListener('input',invalidate);
   previewBtn.addEventListener('click',async()=>{
-   invalidate();previewBtn.disabled=true;setStatus('Validando plano salvo e requisitos da campanha...');
+   invalidate();previewBtn.disabled=true;setStatus('Validando preço publicado, reserva e dados da campanha...');
    try{
-    const lines=keywords.value.split(/\r?\n/).map(x=>x.trim()).filter(Boolean);
-    const kw=lines.map(line=>{
-     const parts=line.split('|').map(x=>x.trim());
-     if(parts.length!==3)throw Error('Use termo | exata ou ampla | CPC por linha.');
-     return {keyword:parts[0],matchType:parts[1].toLowerCase()==='ampla'?'broad':
-      parts[1].toLowerCase()==='exata'?'exact':parts[1],bid:Number(parts[2].replace(',','.'))};
-    });
     const payload={sku:candidate.sku,itemId:candidate.itemId,
-     dailyBudget:Number(budget.input.value),roasReference:Number(roas.input.value),
+     dailyBudget:Number(budget.input.value),roasTarget:Number(roas.input.value),
      reservePct:Number(root.closest('.ads-seo-card')?.querySelector('.ads-manual-reserve-input')?.value||0),
-     startDate:begin.input.value.trim(),endDate:end.input.value.trim(),keywords:kw,
-     priceConfirmed:check.checked};
-    const resp=await fetch('/api/shopee/ads/manual/preview',{
-     method:'POST',credentials:'same-origin',cache:'no-store',
-     headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)});
-    const result=await resp.json();
-    if(!resp.ok||!result.ok)throw Error(result.error||'Prévia não autorizada.');
+     startDate:begin.input.value.trim(),endDate:end.input.value.trim(),priceConfirmed:check.checked};
+    const response=await fetch('/api/shopee/ads/product-roas/preview',{method:'POST',
+     credentials:'same-origin',cache:'no-store',headers:{'Content-Type':'application/json'},
+     body:JSON.stringify(payload)});
+    const result=await response.json();
+    if(!response.ok||!result.ok)throw Error(result.error||'Não foi possível preparar a campanha.');
     const p=result.preview,approval=result.approval;
-    review.append(el('strong','', 'Prévia da campanha MANUAL — confirme os dados'),
-     el('p','',candidate.sku+' · '+cash(p.product.currentPrice)+' preço planejado · '+p.draft.reservePct+'% reserva Ads · '+
-      cash(p.draft.dailyBudget)+'/dia · '+p.draft.keywords.length+' palavra(s)-chave'),
-     el('p','', 'ROAS '+p.draft.roasReference+'x é meta de acompanhamento, não estratégia automática. CPC e correspondência são enviados à API.'));
-    const execute=el('button','ads-manual-execute','Confirmar e criar campanha pela API');
+    review.append(el('strong','','Prévia — Anúncio Individual com Meta de ROAS'),
+     el('p','','Produto '+p.product.sku+' · Item ID '+p.product.itemId+' · Preço do plano '+cash(p.product.currentPrice)),
+     el('p','','ROAS-alvo '+p.draft.roasTarget+'x · Orçamento '+cash(p.draft.dailyBudget)+'/dia · Reserva Ads '+p.draft.reservePct+'%'),
+     el('p','',p.draft.endDate?'Período '+p.draft.startDate+' a '+p.draft.endDate:
+       'Início '+p.draft.startDate+' · sem data final'),
+     el('p','',p.warning));
+    const execute=el('button','ads-manual-execute','Confirmar e criar GMV Max na Shopee');
     execute.type='button';review.append(execute);
     execute.addEventListener('click',async()=>{
-     if(!window.confirm('Criar campanha MANUAL para '+candidate.sku+' com '+cash(p.draft.dailyBudget)+
-      ' de orçamento diário? Isso poderá gastar dinheiro real.'))return;
-     execute.disabled=true;setStatus('Criando uma campanha manual na Shopee. Não repita a operação se houver timeout.');
+     if(!window.confirm('Criar ANÚNCIO INDIVIDUAL GMV Max — Meta de ROAS para '+candidate.sku+
+      ', ROAS '+p.draft.roasTarget+'x e '+cash(p.draft.dailyBudget)+'/dia? A campanha pode gerar cobranças reais.'))return;
+     execute.disabled=true;setStatus('Enviando UMA criação para a Shopee. Em falha, não repita sem conferir.');
      try{
-      const response=await fetch('/api/shopee/ads/manual/create',{
-       method:'POST',credentials:'same-origin',cache:'no-store',
-       headers:{'Content-Type':'application/json'},
+      const api=await fetch('/api/shopee/ads/product-roas/create',{method:'POST',
+       credentials:'same-origin',cache:'no-store',headers:{'Content-Type':'application/json'},
        body:JSON.stringify({approval,confirm:true})});
-      const out=await response.json();
-      if(!response.ok||!out.ok)throw Error(out.error||'Shopee não confirmou criação.');
-      setStatus('Campanha MANUAL criada. ID Shopee: '+out.campaignId+'.','success');
-      review.replaceChildren();
-     }catch(e){setStatus('Não foi possível confirmar: '+e.message+' Não repita antes de conferir campanhas.','error');}
+      const outcome=await api.json();
+      if(!api.ok||!outcome.ok)throw Error(outcome.error||'A Shopee não confirmou a criação.');
+      setStatus('Campanha GMV Max Meta de ROAS criada! ID '+outcome.campaignId+'.','success');
+      review.replaceChildren();root.open=false;
+      document.getElementById('adsSeoRefresh')?.click();
+     }catch(e){setStatus('Criação não confirmada: '+e.message+' Confira a Shopee antes de repetir.','error');}
      finally{execute.disabled=false;}
     });
-    setStatus('Prévia pronta. Nada foi enviado à Shopee.','success');
+    setStatus('Prévia concluída. A campanha ainda NÃO foi publicada.','success');
    }catch(e){setStatus(e.message,'error');}
    finally{previewBtn.disabled=false;}
   });
