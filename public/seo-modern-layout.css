@@ -1,0 +1,101 @@
+/* REDE ACHADOS BR · Etapa 03 / Título SEO — layout aprovado */
+#optimizerWorkflowEditor.seo-modern-editor{position:relative;padding:12px 15px 14px!important;display:flex;flex-direction:column;min-width:0;gap:0}
+#optimizerWorkflowEditor.seo-modern-editor>.optimizer-workflow-editor-head{position:absolute;right:22px;top:19px;z-index:4;width:auto;padding:0;margin:0;background:none;border:0}
+#optimizerWorkflowEditor.seo-modern-editor>.optimizer-workflow-editor-head>div{display:none}
+#optimizerWorkflowEditor.seo-modern-editor>.optimizer-workflow-editor-head>button{font-size:11px;padding:7px 9px;border-radius:9px}
+#optimizerWorkflowEditor.seo-modern-editor>.optimizer-workflow-detail,
+#optimizerWorkflowEditor.seo-modern-editor>#optimizerWorkflowStageGuidance,
+#optimizerWorkflowEditor.seo-modern-editor>#optimizerSupplierFacts,
+#optimizerWorkflowEditor.seo-modern-editor>#optimizerContentResearch{display:none!important}
+#optimizerWorkflowEditor.seo-modern-editor #optimizerTitleVariants.seo-modern-studio{display:block!important;margin:0 0 10px!important;padding:0!important;background:transparent!important;border:0!important;border-radius:0!important;box-shadow:none!important}
+#optimizerWorkflowEditor.seo-modern-editor #optimizerTitleVariants.seo-modern-studio[hidden]{display:none!important}
+#optimizerTitleVariants .seo-modern-content{display:grid;gap:11px;min-width:0}
+#optimizerTitleVariants .seo-modern-product,
+#optimizerTitleVariants .seo-modern-editor-card,
+#optimizerTitleVariants .seo-modern-suggestions,
+#optimizerTitleVariants .seo-modern-source,
+#optimizerTitleVariants .seo-modern-shortcuts,
+#optimizerTitleVariants .seo-modern-grid{border:1px solid #dde7f7;background:#fff;border-radius:15px;box-shadow:0 4px 15px #244e7b0a;min-width:0}
+#optimizerTitleVariants .seo-modern-product{display:grid;grid-template-columns:112px minmax(0,1fr) 180px;gap:14px;align-items:center;padding:11px 75px 11px 11px;background:linear-gradient(110deg,#fff,#f4f8ff)}
+#optimizerTitleVariants .seo-modern-photo{width:109px;height:99px;border-radius:11px;overflow:hidden;display:grid;place-items:center;background:#eaf0fa;color:#7b95ba}
+#optimizerTitleVariants .seo-modern-photo img{width:100%;height:100%;object-fit:cover}
+#optimizerTitleVariants .seo-modern-tags{display:flex;align-items:center;gap:7px;flex-wrap:wrap;font-size:10px;color:#6b82a5}
+#optimizerTitleVariants .seo-modern-sku{padding:4px 8px;border-radius:8px;background:#e8f0ff;color:#155cbb;font-weight:800}
+#optimizerTitleVariants .seo-modern-file-source{max-width:100%;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+#optimizerTitleVariants .seo-modern-product-text{min-width:0}
+#optimizerTitleVariants .seo-modern-product h3{font-size:18px!important;margin:7px 0!important;color:#152a51;line-height:1.28;font-weight:850;overflow-wrap:anywhere}
+#optimizerTitleVariants .seo-modern-product-facts{font-size:11px!important;margin:0!important;color:#587397;line-height:1.4;overflow-wrap:anywhere}
+#optimizerTitleVariants .seo-modern-shopee{background:linear-gradient(110deg,#7537f6,#2d86ef);color:#fff;border:0;border-radius:10px;font-weight:800;font-size:12px;padding:12px 9px;cursor:pointer;box-shadow:0 5px 12px #5b53e029}
+#optimizerTitleVariants .seo-modern-top{display:grid;grid-template-columns:minmax(0,1fr) 245px;gap:11px;min-width:0}
+#optimizerTitleVariants .seo-modern-editor-card,#optimizerTitleVariants .seo-modern-suggestions{padding:13px;min-width:0}
+#optimizerTitleVariants .seo-modern-head{display:flex;justify-content:space-between;align-items:center;gap:9px;min-width:0;margin-bottom:9px}
+#optimizerTitleVariants .seo-modern-label{display:flex;align-items:center;gap:9px;min-width:0}
+#optimizerTitleVariants .seo-modern-label strong{font-size:14px;color:#14305b;font-weight:850}
+#optimizerTitleVariants .seo-modern-symbol{display:grid;place-items:center;background:linear-gradient(130deg,#e5e8ff,#dcd1ff);color:#6646c8;width:29px;height:29px;min-width:29px;border-radius:8px;font-size:18px;font-weight:800}
+#optimizerTitleVariants .seo-modern-indicator{display:flex;align-items:center;gap:9px;min-width:0}
+#optimizerTitleVariants .seo-modern-meter-label{font-size:10px;color:#567092;white-space:nowrap;font-weight:750}
+#optimizerTitleVariants .seo-modern-meter{height:7px;width:68px;accent-color:#1ba76e}
+#optimizerTitleVariants .seo-modern-indicator[data-valid="false"] .seo-modern-meter{accent-color:#dcaa4e}
+#optimizerTitleVariants .seo-modern-help{position:relative;margin-left:auto;flex:none}
+#optimizerTitleVariants .seo-modern-help summary{display:grid;place-items:center;width:24px;height:24px;border:1px solid #d5e3f7;background:#eff5ff;border-radius:50%;list-style:none;color:#3569a1;font-size:11px;font-weight:900;cursor:pointer}
+#optimizerTitleVariants .seo-modern-help summary::-webkit-details-marker{display:none}
+#optimizerTitleVariants .seo-modern-help-content{position:absolute;right:0;top:31px;width:min(275px,72vw);background:#153455;color:#fff;padding:11px 12px;border-radius:10px;z-index:20;font-size:11px;line-height:1.5;box-shadow:0 9px 20px #071f4239;white-space:normal}
+#optimizerTitleVariants #optimizerWorkflowDraftWrap{display:block!important;width:100%;padding:0;margin:0!important;max-width:none;min-width:0}
+#optimizerTitleVariants #optimizerWorkflowDraftLabel{display:none}
+#optimizerTitleVariants #optimizerWorkflowDraft{display:block;box-sizing:border-box;width:100%;min-height:52px;max-height:120px;border:1px solid #cadbf2;border-radius:10px;background:#fcfdff;padding:11px 12px;color:#203856;font-size:13px;line-height:1.4;resize:vertical}
+#optimizerTitleVariants #optimizerCopyCount{display:block!important;font-size:10px;margin:4px 0 0!important}
+#optimizerTitleVariants .seo-modern-keyword-row{margin-top:7px;display:flex;flex-wrap:wrap;gap:6px;align-items:center}
+#optimizerTitleVariants .seo-modern-keyword-list{display:flex;flex-wrap:wrap;gap:6px}
+#optimizerTitleVariants .seo-modern-keyword{background:#f0f5ff;color:#2e598d;border:1px solid #d6e3fa;border-radius:8px;padding:6px 8px;font-size:10px;cursor:pointer;white-space:nowrap}
+#optimizerTitleVariants .seo-modern-add-keyword{background:#fff;color:#6551d0;border:1px dashed #b2b5f0;border-radius:8px;padding:6px 8px;font-size:10px;cursor:pointer}
+#optimizerTitleVariants .seo-modern-keyword-editor{width:100%;display:flex;gap:6px;margin-top:4px}
+#optimizerTitleVariants .seo-modern-keyword-editor[hidden]{display:none!important}
+#optimizerTitleVariants .seo-modern-keyword-input{flex:1;min-width:0;border:1px solid #cad8f0;border-radius:8px;padding:7px 9px;font-size:11px}
+#optimizerTitleVariants .seo-modern-add-confirm{background:#6145de;color:#fff;border:0;border-radius:8px;padding:7px 10px;cursor:pointer;font-size:11px}
+#optimizerTitleVariants .seo-studio-status{font-size:10px;color:#527093;margin:6px 0 0!important}
+#optimizerTitleVariants .seo-modern-suggestions{display:grid;align-content:start;gap:8px}
+#optimizerTitleVariants .seo-modern-generate{background:linear-gradient(110deg,#4267f3,#8d35ee);color:#fff;border:0;padding:11px 8px;border-radius:9px;font-size:11px;font-weight:800;cursor:pointer;width:100%}
+#optimizerTitleVariants .seo-modern-generate:disabled{opacity:.6;cursor:wait}
+#optimizerTitleVariants .seo-modern-supplier-button{background:#fff;color:#5144bf;border:1px solid #898aed;border-radius:9px;padding:10px 8px;font-size:11px;font-weight:800;cursor:pointer}
+#optimizerTitleVariants .seo-modern-supplier-button:disabled{opacity:.5;cursor:not-allowed}
+#optimizerTitleVariants .seo-modern-extra summary{font-size:10px;color:#4f668e;cursor:pointer;font-weight:700}
+#optimizerTitleVariants .seo-modern-extra .seo-studio-custom{display:block!important;margin:5px 0!important}
+#optimizerTitleVariants .seo-modern-extra .seo-studio-custom label{font-size:10px}
+#optimizerTitleVariants .seo-modern-extra .seo-studio-custom input{font-size:11px;padding:7px;min-width:0}
+#optimizerTitleVariants .seo-modern-extra .seo-studio-rebuild{display:none!important}
+#optimizerTitleVariants .seo-studio-market-status{margin:2px 0 0!important;font-size:10px;line-height:1.4;padding:7px 8px;background:#f3f8ff;border:1px solid #dce8fb;border-radius:8px;font-weight:600}
+#optimizerTitleVariants .seo-modern-grid{display:grid!important;grid-template-columns:repeat(4,minmax(0,1fr))!important;gap:9px;padding:10px!important;margin:0!important;background:#f7faff}
+#optimizerTitleVariants .seo-modern-grid .seo-studio-card{display:flex;flex-direction:column;min-width:0;min-height:160px;padding:11px;border:1px solid #dce8f5;border-radius:11px;background:#fff;box-shadow:none;transform:none!important}
+#optimizerTitleVariants .seo-modern-grid .seo-studio-card:hover{border-color:#8176f6;box-shadow:0 4px 12px #324e7b15}
+#optimizerTitleVariants .seo-modern-grid .seo-studio-card.selected{border:2px solid #23865b;background:#f7fffb}
+#optimizerTitleVariants .seo-modern-grid .seo-studio-card-top{gap:6px}
+#optimizerTitleVariants .seo-modern-grid .seo-studio-option strong{font-size:11px;color:#284878}
+#optimizerTitleVariants .seo-modern-grid .seo-studio-option small{font-size:9px}
+#optimizerTitleVariants .seo-modern-grid .seo-studio-meter{display:none!important}
+#optimizerTitleVariants .seo-modern-grid .seo-studio-candidate{margin:10px 0 8px!important;font-size:12px!important;line-height:1.45!important;min-height:48px!important;flex:1}
+#optimizerTitleVariants .seo-modern-grid .seo-studio-metrics{gap:4px;font-size:9px}
+#optimizerTitleVariants .seo-modern-grid .seo-studio-metrics span{padding:3px 5px}
+#optimizerTitleVariants .seo-modern-grid .seo-studio-why{display:none!important}
+#optimizerTitleVariants .seo-modern-grid .seo-studio-card-actions{display:flex;gap:6px;margin-top:10px}
+#optimizerTitleVariants .seo-modern-grid .seo-studio-choose{background:linear-gradient(100deg,#4c69f4,#843dee);border:0;border-radius:8px;padding:9px 6px;font-size:10px;color:#fff}
+#optimizerTitleVariants .seo-modern-grid .seo-studio-choose:disabled{background:#aebbcf;opacity:.7}
+#optimizerTitleVariants .seo-modern-grid .seo-studio-copy{background:#fff;border:1px solid #dce6f9;border-radius:8px;padding:9px 7px;font-size:10px}
+#optimizerTitleVariants .seo-modern-lower{display:grid;grid-template-columns:1fr 1fr;gap:11px}
+#optimizerTitleVariants .seo-modern-source,#optimizerTitleVariants .seo-modern-shortcuts{padding:12px}
+#optimizerTitleVariants .seo-modern-source-action{border:0;background:none;color:#3868b3;font-size:10px;cursor:pointer;padding:3px}
+#optimizerTitleVariants .seo-modern-source-file{background:#f0f5ff;border:1px solid #e0e9fc;border-radius:10px;padding:9px;display:grid;gap:4px;font-size:11px}
+#optimizerTitleVariants .seo-modern-source-file small{font-size:10px;color:#7087a8}
+#optimizerTitleVariants .seo-modern-source-detail{font-size:10px!important;margin:7px 0 0!important;color:#587193;line-height:1.5;overflow-wrap:anywhere}
+#optimizerTitleVariants .seo-modern-quick-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:7px}
+#optimizerTitleVariants .seo-modern-quick-button,#optimizerTitleVariants .seo-modern-tips summary{display:block;width:100%;min-height:39px;background:#fbfcff;border:1px solid #dce7f7;border-radius:9px;color:#2d4e83;padding:9px 8px;font-size:10px;text-align:left;cursor:pointer}
+#optimizerTitleVariants .seo-modern-tips summary{list-style:none}
+#optimizerTitleVariants .seo-modern-tips summary::-webkit-details-marker{display:none}
+#optimizerTitleVariants .seo-modern-tips p{font-size:11px;color:#54708f;line-height:1.5;padding:7px}
+#optimizerWorkflowEditor.seo-modern-editor>.optimizer-workflow-actions{display:flex;gap:9px;flex-wrap:wrap;margin-top:6px}
+#optimizerWorkflowEditor.seo-modern-editor>.optimizer-workflow-actions>*{flex:1;padding:10px 7px;border-radius:9px;font-size:11px;font-weight:800;text-align:center}
+#optimizerWorkflowEditor.seo-modern-editor>.optimizer-workflow-actions>#optimizerWorkflowReview{flex:1.3;background:linear-gradient(90deg,#ff733f,#f4472c);color:#fff;border:0}
+#optimizerWorkflowEditor.seo-modern-editor>.optimizer-workflow-actions>#optimizerWorkflowNext{background:#163e2c;color:#fff;border:0}
+#optimizerWorkflowEditor.seo-modern-editor>.optimizer-workflow-disclaimer{font-size:10px;color:#7589a6;margin:6px 0 0!important}
+@media(max-width:1280px){#optimizerTitleVariants .seo-modern-grid{grid-template-columns:repeat(2,minmax(0,1fr))!important}#optimizerTitleVariants .seo-modern-product{grid-template-columns:83px minmax(0,1fr) 155px}#optimizerTitleVariants .seo-modern-photo{width:80px;height:83px}}
+@media(max-width:900px){#optimizerTitleVariants .seo-modern-top,#optimizerTitleVariants .seo-modern-lower{grid-template-columns:1fr}#optimizerTitleVariants .seo-modern-product{grid-template-columns:75px minmax(0,1fr);padding-right:72px}#optimizerTitleVariants .seo-modern-shopee{grid-column:1/-1}}
+@media(max-width:650px){#optimizerTitleVariants .seo-modern-grid{grid-template-columns:1fr!important}#optimizerTitleVariants .seo-modern-product h3{font-size:15px!important}#optimizerTitleVariants .seo-modern-photo{width:70px;height:72px}#optimizerTitleVariants .seo-modern-product{grid-template-columns:70px minmax(0,1fr)}#optimizerTitleVariants .seo-modern-indicator{gap:4px}#optimizerTitleVariants .seo-modern-meter{width:38px}#optimizerTitleVariants .seo-modern-quick-grid{grid-template-columns:1fr}}
