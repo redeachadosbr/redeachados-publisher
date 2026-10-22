@@ -6438,7 +6438,7 @@ function optimizerTechnicalSummary(data){
   const item=optimizerMake('div','optimizer-tech-summary-item');
   const desc=optimizerMake('div','optimizer-tech-summary-desc');
   desc.append(optimizerMake('strong','',optimizerTechLabel(String(attr.name||'Atributo '+change.attributeId))),
-   optimizerMake('span','',change.values.map(x=>x.valueName+(x.unit?' '+x.unit:'')).join(', ')));
+   optimizerMake('span','',change.values.map(x=>optimizerTechValueLabel(x.valueName)+(x.unit?' '+x.unit:'')).join(', ')));
   const proof=suggested.some(x=>Number(x.attributeId)===change.attributeId);
   item.append(desc,optimizerMake('small',proof?'Dado WeDrop · conferir':'Preenchimento registrado ou manual'));
   const edit=optimizerMake('button','secondary','Editar');edit.type='button';
@@ -6639,7 +6639,7 @@ function optimizerTechnicalRender(data){
    optionalDetails.append(field);optionalMissing++;
   }else requiredMissing++;
   if(auto)field.append(optimizerMake('p','optimizer-source-autofilled',
-    '✓ Preenchido automaticamente: '+auto.values.map(x=>x.valueName).join(', ')+
+    '✓ Preenchido automaticamente: '+auto.values.map(x=>optimizerTechValueLabel(x.valueName)).join(', ')+
     ' · Fonte: '+auto.evidence+'. Confirme na revisão para publicar.'));
   const enableLabel=optimizerMake('label','optimizer-attribute-toggle'),enabled=optimizerMake('input');
   enabled.type='checkbox';enabled.dataset.attributeEnabled='true';enabled.checked=manual?Boolean(manual.enabled):Boolean(existing);
