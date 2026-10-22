@@ -3017,6 +3017,7 @@ $('#optimizerImageCorrectionCopy')?.addEventListener?.('click',async()=>{
 
 function optimizerWorkflowOpen(key){
  optimizerContentRemember();
+ globalThis.ShopeeTitleStudio?.close?.();
  const data=optimizerWorkflowPlan;
  const stage=(data?.stages||[]).find(x=>x.key===key);
  if(!stage)return;
