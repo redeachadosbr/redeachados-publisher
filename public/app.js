@@ -7115,6 +7115,38 @@ function optimizerImagesSetProgress(){
  const p=$('#optimizerImagesProgress');if(p)p.value=count;
  const b=$('#optimizerImagesGenerateAll');if(b)b.disabled=optimizerImagesAutoBusy||!optimizerImagesApiConfigured;
 }
+async function optimizerImagesMove(w,fromSlot,toSlot,stored){
+ if(!optimizerImagesSameSku(w)||optimizerImagesAutoBusy||fromSlot===toSlot)return;
+ const source=stored.get(fromSlot),target=stored.get(toSlot);
+ if(!source)return;
+ const status=$('#optimizerImagesStatus');
+ optimizerImagesAutoBusy=true;optimizerImagesSetProgress();
+ let message='';
+ try{
+  status.textContent='Salvando nova posição da imagem '+fromSlot+'...';
+  const result=await json('/api/shopee/optimizer/images/reorder?'+new URLSearchParams({
+   sku:w.sku,item_id:w.itemId,model_id:w.modelId
+  }),{
+   method:'POST',headers:{'Content-Type':'application/json'},
+   body:JSON.stringify({
+    fromSlot,toSlot,fromSha256:source.sha256,toSha256:target?.sha256||null
+   }),signal:AbortSignal.timeout(60000)
+  });
+  const stage=w.stages?.find(x=>x.key==='images');
+  if(stage){stage.reviewed=false;stage.status='pending';stage.reviewedAt=null;}
+  optimizerWorkflowRender(w);optimizerExecReset();
+  message=result.mode==='swap'
+   ?'Imagens '+fromSlot+' e '+toSlot+' trocadas e salvas. Confira a nova sequência antes de aprovar.'
+   :'Imagem movida da posição '+fromSlot+' para '+toSlot+'. Confira a nova sequência antes de aprovar.';
+ }catch(e){message='Não foi possível reorganizar as imagens: '+e.message;}
+ finally{
+  optimizerImagesAutoBusy=false;optimizerImagesSetProgress();
+  if(optimizerImagesSameSku(w)){
+   await optimizerImagesLoad();
+   status.textContent=message;
+  }
+ }
+}
 async function optimizerImagesLoad(){
  const w=optimizerWorkflowPlan;if(!w)return;
  const status=$('#optimizerImagesStatus');if(!optimizerImagesAutoBusy)status.textContent='Consultando imagens salvas...';
@@ -7163,6 +7195,7 @@ async function optimizerImagesLoad(){
    reviewBtn.disabled=completed!==9&&!reviewStage?.reviewed;
    reviewBtn.title=completed===9?'Conferir as 9 imagens antes de aprovar.':'Prepare todas as nove imagens para registrar a conferência.';
   }
+  let draggedImageSlot=null;
   for(let slot=1;slot<=9;slot++){
    const image=stored.get(slot);
    if(optimizerImagesFilter==='saved'&&!image)continue;
@@ -7170,12 +7203,43 @@ async function optimizerImagesLoad(){
    const originalUrl=originals[slot-1]||null;
    const card=optimizerMake('article','optimizer-commercial-image-card');
    card.dataset.slot=String(slot);
+   card.draggable=Boolean(image)&&!optimizerImagesAutoBusy;
+   if(image){
+    card.title='Arraste esta imagem para outra posição.';
+    card.ondragstart=e=>{
+     if(optimizerImagesAutoBusy){e.preventDefault();return;}
+     draggedImageSlot=slot;
+     e.dataTransfer.effectAllowed='move';
+     e.dataTransfer.setData('text/plain','imagem-preparada-'+slot);
+     card.classList.add('optimizer-image-dragging');
+    };
+    card.ondragend=()=>{
+     draggedImageSlot=null;
+     gallery.querySelectorAll('.optimizer-image-drag-target,.optimizer-image-dragging')
+      .forEach(el=>el.classList.remove('optimizer-image-drag-target','optimizer-image-dragging'));
+    };
+   }
+   card.ondragover=e=>{
+    if(!optimizerImagesAutoBusy&&draggedImageSlot!==null&&draggedImageSlot!==slot){
+     e.preventDefault();e.dataTransfer.dropEffect='move';
+     card.classList.add('optimizer-image-drag-target');
+    }
+   };
+   card.ondragleave=e=>{if(!card.contains(e.relatedTarget))card.classList.remove('optimizer-image-drag-target');};
+   card.ondrop=e=>{
+    e.preventDefault();
+    const from=draggedImageSlot;
+    draggedImageSlot=null;
+    gallery.querySelectorAll('.optimizer-image-drag-target')
+     .forEach(el=>el.classList.remove('optimizer-image-drag-target'));
+    if(from!==null&&from!==slot)void optimizerImagesMove(w,from,slot,stored);
+   };
    const thumb=optimizerMake('div','optimizer-commercial-thumb');
    const url=image?.previewUrl||originalUrl;
    if(url){
     const photo=optimizerMake('img');photo.src=url;
     photo.alt=(image?'Imagem comercial preparada':'Foto original Shopee de referência')+' da posição '+slot;
-    photo.loading='lazy';thumb.append(photo);
+    photo.loading='lazy';photo.draggable=false;thumb.append(photo);
    }else thumb.append(optimizerMake('span','optimizer-image-placeholder','▧'));
    thumb.append(optimizerMake('span','optimizer-commercial-thumb-slot',String(slot)));
    card.append(thumb);
@@ -7233,7 +7297,27 @@ async function optimizerImagesLoad(){
     }catch(e){status.textContent='Não foi possível excluir: '+e.message;}
     finally{optimizerImagesAutoBusy=false;optimizerImagesSetProgress();if(optimizerImagesSameSku(w))await optimizerImagesLoad();}
    };
-   actions.append(remove);detail.append(actions);card.append(detail);gallery.append(card);
+   actions.append(remove);detail.append(actions);
+   if(image){
+    const moveSelect=optimizerMake('select','optimizer-commercial-move-select');
+    moveSelect.setAttribute('aria-label','Mover imagem '+slot+' para outra posição');
+    moveSelect.title='Mover ou trocar esta imagem de posição';
+    moveSelect.disabled=optimizerImagesAutoBusy;
+    const hint=optimizerMake('option','','↔ Mover para…');hint.value='';moveSelect.append(hint);
+    for(let destination=1;destination<=9;destination++){
+     if(destination===slot)continue;
+     const option=optimizerMake('option','',String(destination).padStart(2,'0')+' · '+optimizerCommercialPositionNames[destination-1]);
+     option.value=String(destination);moveSelect.append(option);
+    }
+    moveSelect.value='';
+    moveSelect.onchange=()=>{
+     const destination=Number(moveSelect.value);moveSelect.value='';
+     if(destination>=1&&destination<=9&&destination!==slot)
+      void optimizerImagesMove(w,slot,destination,stored);
+    };
+    detail.append(moveSelect);
+   }
+   card.append(detail);gallery.append(card);
   }
   if(!gallery.children.length)gallery.append(optimizerMake('p','optimizer-commercial-empty',
    optimizerImagesFilter==='saved'?'Nenhuma imagem comercial preparada nesta SKU.':'Nenhuma posição pendente.'));

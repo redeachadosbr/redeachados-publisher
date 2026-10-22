@@ -67,6 +67,22 @@ export async function importPreparedImage({shopId,itemId,modelId,sku,slot,file,m
   headers:{'Content-Type':'application/json',Prefer:'resolution=merge-duplicates,return=representation'},body:JSON.stringify([data])});
  return (await r.json())[0];
 }
+// Altera a ordem da galeria privada em uma transação. Não publica na Shopee.
+export async function reorderPreparedImage(shop,item,model,sku,fromSlot,toSlot,fromSha256,toSha256=null){
+ const from=num(fromSlot),to=num(toSlot);
+ if(from<1||from>9||to<1||to>9||from===to)throw Error('Escolha outra posição entre 1 e 9.');
+ if(!/^[a-f0-9]{64}$/.test(String(fromSha256||''))||
+    (toSha256!==null&&!/^[a-f0-9]{64}$/.test(String(toSha256))))
+  throw Error('Atualize a galeria antes de mover a imagem.');
+ const r=await api('/rest/v1/rpc/swap_shopee_optimizer_images',{
+  method:'POST',headers:{'Content-Type':'application/json'},
+  body:JSON.stringify({
+   p_shop_id:num(shop),p_item_id:num(item),p_model_id:num(model),p_sku:String(sku),
+   p_from_slot:from,p_to_slot:to,p_from_sha256:fromSha256,p_to_sha256:toSha256
+  })
+ });
+ return r.json();
+}
 // Remove somente o arquivo preparado na galeria privada; nunca toca nas imagens publicadas na Shopee.
 export async function deletePreparedImage(shop,item,model,sku,slot){
  const position=num(slot);

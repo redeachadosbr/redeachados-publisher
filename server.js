@@ -54,7 +54,7 @@ import {detectShopeeExecutionIssue,needsCestRevalidation} from './shopeeExecutio
 import {createShopeeMediaApi} from './shopeeMediaApi.js';
 import {normalizeManualVideo} from './shopeeVideoValidation.js';
 import * as ShopeeMarktPro from './shopeeMarktPro.js';
-import {readPreparedImages,importPreparedImage,deletePreparedImage,downloadPreparedImage,imagesSignature,MAX_IMAGE_BYTES,rememberPublishedImages} from './shopeePreparedImages.js';
+import {readPreparedImages,importPreparedImage,deletePreparedImage,reorderPreparedImage,downloadPreparedImage,imagesSignature,MAX_IMAGE_BYTES,rememberPublishedImages} from './shopeePreparedImages.js';
 import {generateOpenAiImage,imageGenerationStatus} from './shopeeOpenAiImages.js';
 import {validateVariationName,variationImagePrompt,saveVariationImage,variationImagePreview,variationImageBytes,validateVariationDetails,buildVariationPayload} from './shopeeVariationMedia.js';
 import {openAiKeyStatus,openAiApiKey,saveOpenAiApiKey,deleteOpenAiApiKey} from './shopeeOpenAiCredentials.js';
@@ -2199,6 +2199,31 @@ app.post('/api/shopee/optimizer/images/manual',mustLogin,requireWeDropAdmin,
   await saveWorkflowReview(x.shopId,x.itemId,x.modelId,x.sku,{stage:'images',reviewed:false});
   res.status(201).json({ok:true,image,requiresReview:true,marketplaceUpdated:false});
  }catch(e){res.status(400).json({error:String(e.message||e).slice(0,250)});}
+});
+
+// Reorganização da galeria comercial: só altera a posição privada, nunca a Shopee.
+app.post('/api/shopee/optimizer/images/reorder',mustLogin,requireWeDropAdmin,async(req,res)=>{
+ res.setHeader('Cache-Control','no-store');
+ if(!verifiedSameOrigin(req))return res.status(403).json({error:'Origem não autorizada.'});
+ try{
+  const x=await checkedManualVideoIdentity(req);
+  const from=Number(req.body?.fromSlot),to=Number(req.body?.toSlot);
+  if(!Number.isInteger(from)||!Number.isInteger(to)||from<1||from>9||to<1||to>9||from===to)
+   return res.status(400).json({error:'Escolha duas posições diferentes de 1 a 9.'});
+  const lock=[x.shopId,x.itemId,x.modelId,x.sku].join(':');
+  if(shopeeImageGenerationLocks.has(lock))
+   return res.status(409).json({error:'Existe uma geração de imagem em andamento. Aguarde terminar para reorganizar.'});
+  const job=await readShopeeExecution(x.shopId,x.itemId,x.modelId);
+  if(['running','uncertain'].includes(job?.state))
+   return res.status(409).json({error:'Há execução em andamento ou sem confirmação. Reorganize após a conferência.'});
+  // A ordem aprovada não pode continuar válida após mover imagens.
+  await saveWorkflowReview(x.shopId,x.itemId,x.modelId,x.sku,{stage:'images',reviewed:false});
+  const result=await reorderPreparedImage(
+   x.shopId,x.itemId,x.modelId,x.sku,from,to,
+   req.body?.fromSha256,req.body?.toSha256??null
+  );
+  res.json({ok:true,...result,requiresReview:true,marketplaceUpdated:false});
+ }catch(e){res.status(409).json({error:String(e.message||e).slice(0,260)});}
 });
 
 app.delete('/api/shopee/optimizer/images/manual',mustLogin,requireWeDropAdmin,async(req,res)=>{

@@ -4057,3 +4057,13 @@ body.view-wedrop .page-intro{display:none!important}
 #optimizerWorkflowEditor:has(#optimizerVideoManualPanel:not([hidden]))>.optimizer-workflow-actions #optimizerWorkflowCopy,
 #optimizerWorkflowEditor:has(#optimizerVideoManualPanel:not([hidden]))>.optimizer-workflow-actions #optimizerWorkflowShopee{display:none}
 @media(max-width:640px){#optimizerVideoManualPanel .optimizer-video-market-results{grid-template-columns:minmax(0,1fr)}}
+
+
+/* 1.21.9 — rearranjo da galeria comercial sem alterar imagens já publicadas */
+#optimizerImagesPanel .optimizer-gallery-move-hint{display:block;margin:4px 0 10px;font-size:11px;color:#4f6c87;line-height:1.4}
+#optimizerImagesPanel .optimizer-commercial-image-card[draggable="true"] .optimizer-commercial-thumb{cursor:grab;touch-action:auto}
+#optimizerImagesPanel .optimizer-commercial-image-card.optimizer-image-dragging{opacity:.55;border-style:dashed}
+#optimizerImagesPanel .optimizer-commercial-image-card.optimizer-image-drag-target{outline:2px solid #079d73;outline-offset:2px;background:#ebfff5}
+#optimizerImagesPanel .optimizer-commercial-move-select{margin-top:5px;display:block;max-width:100%;width:100%;min-height:29px;border:1px solid #c7d9eb;border-radius:8px;background:#f8fbff;color:#214d6e;font-size:11px;font-weight:750;padding:3px 7px;cursor:pointer}
+#optimizerImagesPanel .optimizer-commercial-move-select:focus-visible{outline:2px solid #09856c;outline-offset:2px}
+#optimizerImagesPanel .optimizer-commercial-move-select:disabled{opacity:.5;cursor:not-allowed}
