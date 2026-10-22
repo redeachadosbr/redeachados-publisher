@@ -2773,6 +2773,7 @@ function optimizerVariationValues(){
   values:$('#optimizerVariationValues').value.split(/\r?\n/).map(x=>x.trim()).filter(Boolean)};
 }
 function optimizerVariationPreview(){
+ if(globalThis.RedeVariants?.render)return globalThis.RedeVariants.render();
  const target=$('#optimizerVariationPreview');target.replaceChildren();
  if(!$('#optimizerHasVariants').checked)return;
  const type=$('#optimizerVariationType').value||'Variação';
@@ -2798,6 +2799,7 @@ function optimizerVariationRender(data){
  $('#optimizerVariationType').value=cfg.type||'';
  $('#optimizerVariationValues').value=(cfg.values||[]).join('\n');
  optimizerVariationPreview();
+ void globalThis.RedeVariants?.load?.(data);
 }
 $('#optimizerVariationType')?.addEventListener?.('change',()=>{optimizerVariationPreview();optimizerExecReset()});
 $('#optimizerVariationValues')?.addEventListener?.('input',()=>{optimizerVariationPreview();optimizerExecReset()});
