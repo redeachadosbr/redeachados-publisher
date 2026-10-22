@@ -15,7 +15,32 @@
     const raw=[title,supplier];
     let kind='generic',phrases=[];
     const joined=raw.join(' ');
-    if(/mochila|construtor|ferramentas/i.test(joined)&&/mochila|construtor/i.test(joined)){
+    if(/\bmoto\s*(?:el[eé]trica|infantil)|\bmotinha\b/iu.test(joined)){
+      kind='electric_moto';
+      phrases=[
+        'Motinha de Brinquedo para Crianças',
+        'Brinquedo Infantil Motorizado',
+        'Moto de Brinquedo Infantil',
+        'Para Passeio e Brincadeiras',
+        'Estilo Retrô para Crianças',
+        'Motinha Infantil Elétrica',
+        'Brinquedo de Passeio Infantil'
+      ];
+      // Material/bateria são adicionados somente quando a ficha desta SKU comprova.
+      const att=JSON.stringify(data.attributes||[]).toLowerCase();
+      if(/(?:build.in battery|bateria interna|bateria embutida).{0,90}(?:yes|sim|true)/i.test(att))phrases.push('Com Bateria Interna');
+      if(/(?:material).{0,50}(?:plastic|plástico|plastico)/i.test(att))phrases.push('Fabricada em Plástico');
+    } else if(/\bbola\b/i.test(joined)&&/\binfantil|futebol/i.test(joined)){
+      kind='ball';
+      phrases=['Bola de Futebol para Crianças','Brinquedo Esportivo Infantil',
+        'Para Chutes e Brincadeiras','Bola Infantil Recreativa','Para Jogos de Futebol Infantil'];
+      if(/infl[aá]vel/i.test(joined))phrases.push('Bola Inflável');
+      if(/vinil|pvc/i.test(joined))phrases.push('Vinil PVC');
+    } else if(/piscina\s+infl[aá]vel/i.test(joined)){
+      kind='pool';
+      phrases=['Piscina Infantil Inflável','Para Brincadeiras na Água','Lazer Infantil',
+        'Para Dias de Verão','Brinquedo de Água para Crianças'];
+    } else if(/mochila|construtor|ferramentas/i.test(joined)&&/mochila|construtor/i.test(joined)){
       kind='toy';
       phrases=['Brinquedo de Faz de Conta','Kit de Ferramentas de Brinquedo',
        'Brincadeira de Construção','Para Brincar','Para Crianças','Presente Infantil',
@@ -54,69 +79,93 @@
         /^(?:\d+(?:w|v|ml|l|cm|mm|kg)|n\d{1,2})$/i.test(token);
     }).join(' '));
   }
-  function variants(f,manual){
-    const confirmed=manual.split(/[,;\n]/).map(clean).filter(x=>x.length>=3&&count(x)<=45).slice(0,12);
+  const MIN=100;
+  function variants(f,manual,marketSample=[]){
+    const confirmed=manual.split(/[,;\n]/).map(clean).filter(x=>x.length>=3&&count(x)<=44).slice(0,12);
+    const frequency=term=>marketSample.reduce((sum,t)=>{
+      const normalized=clean(t.title||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase();
+      const part=clean(term).normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase();
+      return sum+(part&&normalized.includes(part)?1:0);
+    },0);
     const extra=[...new Map([...f.phrases,...confirmed].map(v=>[key(v),v])).values()];
-    const title=f.title;
-    const short=title.replace(/^(super|novo|novidade|promo[cç][aã]o|oferta)\s+/i,'');
-    const alternate=f.supplier&&key(f.supplier)!==key(title)?f.supplier:short;
-    const isToyKit=f.kind==='toy'&&/\b3\s*em\s*1\b/i.test(title)&&/mochila/i.test(title)&&/ferramentas/i.test(title);
-    const b2=isToyKit?'Mochila Construtor 3 em 1 com Ferramentas':short;
-    const b3=isToyKit?'Brinquedo Mochila Construtor 3 em 1 com Ferramentas':alternate;
-    const b4=isToyKit?'Mochila de Ferramentas Construtor 3 em 1':short;
-    const prefix=f.kind==='toy'?'🧰 ':f.kind==='camping_towel'?'🏕️ ':'✨ ';
-    const addAccessories=isToyKit?['Com Acessórios']:[],more=[...extra,...addAccessories];
+    // Ranking de RECORRÊNCIA nos anúncios equivalentes, nunca volume de busca.
+    // A origem de cada termo continua sendo produto/ficha ou digitação confirmada.
+    const ordered=extra.map((t,i)=>({t,i,frequency:frequency(t)}))
+      .sort((a,b)=>b.frequency-a.frequency||a.i-b.i).map(x=>x.t);
+    const title=f.title.replace(/^(super|novo|novidade|promo[cç][aã]o|oferta)\s+/i,'');
+    const alternate=f.supplier&&key(f.supplier)!==key(title)?f.supplier:title;
+    const brand=f.brand&&!key(title).includes(key(f.brand))?' '+f.brand:'';
+    let bases=[title+brand,title+brand,alternate+brand,title+brand];
+    if(f.kind==='electric_moto'){
+      const stripped=title.replace(/\s*[-–]\s*/g,' ').replace(/\s+/g,' ').trim();
+      bases=[
+       stripped+brand,
+       stripped.replace(/\bMoto El[eé]trica Infantil\b/i,'Motinha Elétrica Infantil')+brand,
+       stripped.replace(/\bMoto El[eé]trica Infantil\b/i,'Moto Infantil Elétrica')+brand,
+       stripped.replace(/\bVintage\b/i,'Estilo Vintage')+brand
+      ];
+    }else if(f.kind==='ball'){
+      bases=[title+brand,title.replace(/Bola\s+(?:de\s+)?Futebol\s+Infantil/i,'Bola Infantil de Futebol')+brand,
+       title.replace(/Bola\s+(?:de\s+)?Futebol\s+Infantil/i,'Bola de Futebol para Crianças')+brand,title+brand];
+    }
+    const shift=i=>ordered.slice(i).concat(ordered.slice(0,i));
+    const emoji=f.kind==='electric_moto'?'🏍️ ':f.kind==='ball'?'⚽ ':f.kind==='toy'?'🧰 ':f.kind==='camping_towel'?'🏕️ ':f.kind==='pool'?'🏖️ ':'✨ ';
     return [
-      {name:'Busca direta',subtitle:'Nome original em destaque',base:title,terms:more,emoji:prefix,tail:f.kind==='toy'?' 🎁':' ✨',
-       reason:'Preserva a descrição principal e acrescenta pesquisas relacionadas sem promessas fictícias.'},
-      {name:'Palavras-chave',subtitle:'Foco em buscas específicas',base:b2,terms:more.slice().reverse(),emoji:'🔎 ',tail:f.kind==='toy'?' 🎁':' ✨',
-       reason:'Destaca os termos principais de busca e a categoria do produto.'},
-      {name:'Uso e brincadeira',subtitle:'Contexto do comprador',base:b3,terms:more.slice(2).concat(more.slice(0,2)),emoji:'✨ ',tail:f.kind==='toy'?' 🎁':' ✨',
-       reason:'Testa a intenção de uso com termos compatíveis com o nome e a ficha original.'},
-      {name:'Presente e descoberta',subtitle:'Abordagem comercial',base:b4,terms:more.slice(4).concat(more.slice(0,4)),emoji:f.kind==='toy'?'🎁 ':'⭐ ',tail:f.kind==='toy'?' 🎁':' ✨',
-       reason:'Explora ocasião de compra sem usar urgência, brinde ou descontos não comprovados.'}
+      {name:'Busca direta',subtitle:'Nome principal + buscas relacionadas',base:bases[0],terms:shift(0),emoji,
+       reason:'Combina o nome comprovado com termos relevantes sem copiar o título bruto da WeDrop.'},
+      {name:'Palavras-chave',subtitle:'Sinônimos de busca do comprador',base:bases[1],terms:shift(2),emoji:'🔎 ',
+       reason:'Variante com sinônimos da categoria e termos sustentados pela ficha.'},
+      {name:'Uso e contexto',subtitle:'Finalidade real do produto',base:bases[2],terms:shift(4),emoji,
+       reason:'Destaca o contexto de utilização sem inventar funções ou acessórios.'},
+      {name:'Descoberta',subtitle:'Outra organização de SEO',base:bases[3],terms:shift(1),emoji:'⭐ ',
+       reason:'Prioriza uma redação alternativa com palavras-chave comprovadas.'}
     ];
   }
   function assemble(cfg){
-    const base=clean(cfg.base),prefix=cfg.emoji||'',tail=cfg.tail||' ✨',available=LIMIT-count(tail);
-    const start=count(prefix+base)<=available?prefix+base:prefix+[...base].slice(0,available-count(prefix)).join('').replace(/\s+\S*$/,'');
-    const words=s=>new Set(clean(s).normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase().split(/[^a-z0-9]+/).filter(x=>x.length>3&&!['para','como','mais','brinquedo'].includes(x)));
-    const baseWords=words(base);
-    const terms=cfg.terms.filter((t,i,a)=>{
-      if(!t||a.findIndex(v=>key(v)===key(t))!==i||key(base).includes(key(t))||count(t)>42)return false;
-      const ws=words(t);
-      if(ws.size>0&&[...ws].filter(w=>baseWords.has(w)).length/ws.size>=.75)return false;
-      return true;
-    });
-    // Otimiza somente combinações de palavras sustentadas pelo título e termos confirmados.
-    let states=new Map([[count(start),{text:start,score:0}]]);
-    for(const term of terms.slice(0,16)){
-      const next=new Map(states);
-      for(const [len,current] of states){
-        for(const sep of [' · ',' | ',' ']){
-          const part=sep+term,n=len+count(part);
-          if(n>available)continue;
-          const quality=current.score+(sep===' '?-3:9)+Math.min(7,count(term)*.25);
-          const old=next.get(n);
-          if(!old||quality>old.score)next.set(n,{text:current.text+part,score:quality});
-        }
+    const base=clean(cfg.base).replace(/\s*[-–]\s*/g,' ').replace(/[\s|·]+$/,'');
+    const prefix=cfg.emoji||'';
+    const core=clean(prefix+base);
+    if(count(core)>LIMIT){
+      return [...core].slice(0,LIMIT).join('').replace(/\s+\S*$/u,'').trim();
+    }
+    const signature=s=>clean(s).normalize('NFD').replace(/[\u0300-\u036f]/g,'')
+      .toLowerCase().split(/[^a-z0-9]+/g).filter(w=>w.length>=4&&!['para','infantil','crianças','criancas','brinquedo'].includes(w));
+    const baseWords=new Set(signature(core));
+    const terms=[...new Map((cfg.terms||[]).filter(Boolean).map(t=>[key(t),clean(t)])).values()].filter(t=>{
+      if(count(t)>48||key(core).includes(key(t)))return false;
+      const ws=signature(t),overlap=ws.filter(w=>baseWords.has(w)).length;
+      return ws.length===0||overlap/ws.length<.82;
+    }).slice(0,18);
+    let best={text:core,quality:-9999};
+    const inspect=(chosen)=>{
+      const text=chosen.length?core+' | '+chosen.join(' · '):core;
+      const length=count(text);
+      if(length>LIMIT)return;
+      const qualified=length>=MIN;
+      const tokens=signature(text),novel=new Set(tokens);
+      const extraWeight=Math.min(chosen.length,2)*8;
+      // Prefer 109–119 characters, good readability and <= 3 distinct phrases.
+      const quality=(qualified?1500:0)+length*3-Math.abs(length-115)*5+
+        novel.size*1.8+extraWeight-Math.max(0,chosen.length-2)*15;
+      if(quality>best.quality)best={text,quality};
+    };
+    inspect([]);
+    function visit(chosen,used,start){
+      if(chosen.length>=3)return;
+      for(let k=start;k<terms.length;k++){
+        const term=terms[k];
+        if(used.some(t=>key(t).includes(key(term))||key(term).includes(key(t))))continue;
+        const next=[...chosen,term];
+        if(count(core+' | '+next.join(' · '))>LIMIT)continue;
+        inspect(next);visit(next,[...used,term],k+1);
       }
-      states=next;
     }
-    let winner='',highest=-Infinity;
-    for(const [len,state] of states){
-      const final=len===available?500+state.score:len*3+state.score;
-      if(final>highest){winner=state.text;highest=final;}
-    }
-    let chosen=clean(winner||start);
-    // Não preencher o limite com palavras inventadas ou repetição artificial.
-    if(count(chosen)===available-1)chosen+='✨';
-    chosen+=tail;
-    return chosen;
+    visit([],[],0);
+    return best.text;
   }
   function rating(title,kind){
     const n=count(title);
-    const enough=n===LIMIT?20:n>=103?13:n>=90?8:2;
+    const enough=n>=100&&n<=LIMIT?20:n>=90?6:0;
     const front=/^(?:[^\p{L}\p{N}]*)(?:mochila|passadeira|vaporizador|porta|garrafa|kit|piscina|suporte)/iu.test(title)?22:15;
     const emoji= /[\p{Extended_Pictographic}]/u.test(title)?12:5;
     const noHype=/\b(promo[cç][aã]o|gr[aá]tis|24h|certificado|melhor pre[cç]o|inmetro|25 acess[oó]rios)\b/i.test(title)?0:17;
