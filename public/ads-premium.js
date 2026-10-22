@@ -17,7 +17,7 @@
  }
  function kind(c){
   const type=String(c?.adType||'').toLowerCase();
-  return /gms|gmv|max/.test(type)?'gms':/manual/.test(type)?'manual':null;
+  return /gms|gmv|max/.test(type)?'gms':/manual/.test(type)?'manual':/^auto$|auto_product/.test(type)?'auto':null;
  }
  function shortText(c){
   if(c.impressions>=100&&c.clicks===0)return 'Tem impressões, mas não houve cliques. Melhore capa, título e preço antes de investir mais.';
@@ -70,7 +70,7 @@
   area.append(e('strong','','Ajustar campanha pela API Shopee'),e('small','',
    'A execução exige prévia, confirmação e permissão Ads da sua conta.'));
   if(!available.length){
-   area.append(e('p','ads-v3-hint','Tipo de campanha não reconhecido como GMS ou manual pela API. Nenhuma alteração será enviada.'));
+   area.append(e('p','ads-v3-hint','Tipo de campanha não reconhecido pela API. Nenhuma alteração será enviada.'));
    els.rows.append(area);return;
   }
   const select=e('select','ads-v3-action-select');
