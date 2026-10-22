@@ -166,6 +166,8 @@
  button.addEventListener('click',refresh);
  const disclosure=document.getElementById('adsSeoDisclosure');
  disclosure?.addEventListener('toggle',()=>{if(disclosure.open&&!last)void refresh();});
+ // Exibir contador aptos mesmo quando a análise detalhada está recolhida.
+ if(document.body.classList.contains('view-ads'))void refresh();
  sort.addEventListener('change',()=>{if(last)displayCandidates(last);});
  if('IntersectionObserver' in window){
   const observer=new IntersectionObserver(entries=>{
