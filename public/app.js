@@ -31,6 +31,7 @@ const APP_PAGES={
 let activeAppPage='overview';
 // Handoff Ads -> Otimização: pré-preenchimento não dispara consulta automática.
 let optimizerAdsHandoffSku=null;
+let adsReserveRequest=null;
 function currentPageFromUrl(){
   const slug=decodeURIComponent(String(location.pathname||'').match(/^\/app\/([^/]+)\/?$/)?.[1]||'inicio');
   return Object.keys(APP_PAGES).find(k=>APP_PAGES[k].slug===slug)||'overview';
@@ -2355,6 +2356,12 @@ function adsFillOptimizerSku(value){
  return true;
 }
 globalThis.redeAdsOpenOptimizerSku=adsFillOptimizerSku;
+globalThis.redeAdsPrepareReserve=(sku,percent)=>{
+ const pct=Number(percent);
+ if(!Number.isFinite(pct)||pct<=0||pct>40)return false;
+ adsReserveRequest={sku:String(sku||'').trim(),pct};
+ return adsFillOptimizerSku(sku);
+};
 $('#optimizerSku').onkeydown=event=>{
  if(event.key==='Enter'){
   event.preventDefault();
@@ -4016,7 +4023,19 @@ async function optimizerRunAudit(itemId,sku,modelId=''){
     $('#priceResults').hidden=true;
     $('#optimizerQuickValues').hidden=true;
     $('#optimizerQuickStatus').textContent='Conferindo o custo WeDrop e calculando o preço bruto da SKU '+expectedSku+'...';
-    void shPriceLoadDefaults().then(()=>shPricePrepare());
+    void shPriceLoadDefaults().then(()=>{
+      const pending=adsReserveRequest;
+      if(pending&&pending.sku===expectedSku){
+        // Só depois que o usuário buscar e a Shopee confirmar a SKU.
+        $('#priceAdsEnabled').checked=true;
+        $('#priceAds').value=String(pending.pct);
+        shPriceAdsLoadedKey=[shPriceSelection.sku,shPriceSelection.itemId,shPriceSelection.modelId].join('|');
+        shPriceAdsRefreshUi();
+        adsReserveRequest=null;
+        shPriceSetStatus('Reserva Ads de '+pending.pct+'% selecionada para esta SKU. Revise os preços e o desconto preparado; nada foi publicado.','info');
+      }
+      return shPricePrepare();
+    });
     const params=new URLSearchParams({item_id:item,sku:expectedSku,model_id:String(modelId||'')});
     const data=await json('/api/shopee/optimizer/audit?'+params.toString(),{
       signal:AbortSignal.timeout(60000)
