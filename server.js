@@ -17,6 +17,7 @@ import {readShopeeAdsAccount} from './shopeeAdsAccount.js';
 import {checkGmsEligibility,prepareGmsDraft} from './shopeeAdsGmsIntegration.js';
 import {rankAdsCandidates} from './shopeeAdsSeo.js';
 import {manualAdsPreview,manualAdsPayload,manualAdsToken,decodeManualAdsToken,verifyManualAdsCandidate} from './shopeeAdsManualCreate.js';
+import {individualRoasPreview,individualRoasPayload,individualRoasToken,decodeIndividualRoasToken,validateIndividualRoasDraft} from './shopeeAdsIndividualRoas.js';
 import {liveAdsCampaign,buildAdsPreview,signAdsApproval,verifyAdsApproval,adsEditRequest} from './shopeeAdsActions.js';
 import {readShopeeWallet} from './shopeeWallet.js';
 import {financeAdsDates,matchFinanceAds} from './financeAdsSweep.js';
@@ -2551,6 +2552,64 @@ app.post('/api/shopee/ads/manual/create',mustLogin,async(req,res)=>{
  }catch(e){res.status(400).json({ok:false,created:false,error:String(e.message||e).slice(0,380),
   warning:'Se houve falha ou timeout após o envio, confira a Shopee antes de tentar novamente.'});}
 });
+// Produto escolhido manualmente + GMV Max Meta de ROAS (lances automáticos controlados pelo ROAS-alvo).
+// Rotas separadas de CPC por palavras-chave: nenhuma criação sem dupla confirmação do usuário.
+const adsRoasUsed=new Map();
+app.post('/api/shopee/ads/product-roas/preview',mustLogin,async(req,res)=>{
+ res.setHeader('Cache-Control','no-store');
+ if(!adsBrowserOrigin(req))return res.status(403).json({ok:false,error:'Origem não autorizada.'});
+ try{
+  const {auth}=await getValidAuth(req);
+  const [catalog,plans]=await Promise.all([
+   readCatalogCache(auth.shopId),recentShopeePricePlans(auth.shopId,{limit:1000})
+  ]);
+  const preview=individualRoasPreview(req.body,catalog.items,plans);
+  const approval=individualRoasToken({shopId:String(auth.shopId),at:Date.now(),
+   nonce:crypto.randomUUID(),draft:preview.draft},adsApprovalSecret());
+  res.json({ok:true,preview,approval,created:false});
+ }catch(e){res.status(400).json({ok:false,error:String(e.message||e).slice(0,380),created:false});}
+});
+app.post('/api/shopee/ads/product-roas/create',mustLogin,async(req,res)=>{
+ res.setHeader('Cache-Control','no-store');
+ if(!adsBrowserOrigin(req))return res.status(403).json({ok:false,error:'Origem não autorizada.'});
+ if(req.body?.confirm!==true)return res.status(400).json({ok:false,error:'Confirmação expressa obrigatória.'});
+ try{
+  const {auth,cfg}=await getValidAuth(req);
+  const signed=decodeIndividualRoasToken(req.body.approval,adsApprovalSecret(),{shopId:auth.shopId});
+  const nonce='individual-roas-'+signed.nonce;
+  if(adsRoasUsed.has(nonce))return res.status(409).json({ok:false,error:'Prévia já utilizada. Confira se a campanha existe antes de uma nova tentativa.'});
+  adsRoasUsed.set(nonce,'reserved');
+  const [catalog,plans]=await Promise.all([
+   readCatalogCache(auth.shopId),recentShopeePricePlans(auth.shopId,{limit:1000})
+  ]);
+  individualRoasPreview(signed.draft,catalog.items,plans,{today:new Date(signed.at)});
+  const live=await callShopeeShopApi(cfg,{path:'/api/v2/product/get_item_base_info',
+   accessToken:auth.accessToken,shopId:auth.shopId,query:{item_id_list:String(signed.draft.itemId)}});
+  const product=(live?.response?.item_list||[]).find(x=>String(x.item_id)===String(signed.draft.itemId));
+  if(!product||String(product.item_status||'').toUpperCase()!=='NORMAL')
+   throw Error('Produto não está ativo na Shopee. Campanha não criada.');
+  const liveSku=String(product.item_sku||'').trim();
+  if(liveSku&&liveSku!==signed.draft.sku)throw Error('SKU mudou na Shopee. Refaça a análise.');
+  const day=brazilAdsToday(),from=new Date(Date.parse(day+'T00:00:00Z')-7*86400000).toISOString().slice(0,10);
+  const existing=await loadShopeeAdsOverview(cfg,auth,callShopeeShopApi,{start:from,end:day,allowDateFallback:false});
+  if(existing.statusWarning)throw Error('Status Ads não confirmado. Criação bloqueada para evitar campanha duplicada.');
+  if((existing.campaigns||[]).some(c=>c.statusGroup==='active'&&
+    (c.itemIdList||[]).some(id=>String(id)===String(signed.draft.itemId))))
+   throw Error('Este produto já possui campanha ativa. Criação de duplicata bloqueada.');
+  const request=individualRoasPayload(signed.draft,signed.nonce);
+  adsRoasUsed.set(nonce,'sending');
+  // APENAS UMA CHAMADA POST. Em timeout, nunca repetir automaticamente.
+  const response=await callShopeeShopApi(cfg,{...request,accessToken:auth.accessToken,shopId:auth.shopId});
+  const campaignId=response?.response?.campaign_id;
+  if(!campaignId)throw Error('Shopee não confirmou o ID da campanha. Confira a plataforma antes de tentar de novo.');
+  adsRoasUsed.set(nonce,'created');
+  res.json({ok:true,created:true,campaignId:String(campaignId),
+   productSelection:'manual',biddingMethod:'auto',roasTarget:signed.draft.roasTarget,
+   message:'Campanha individual GMV Max Meta de ROAS criada. Lances são otimizados automaticamente pela Shopee.'});
+ }catch(e){res.status(400).json({ok:false,created:false,error:String(e.message||e).slice(0,380),
+  warning:'Em erro após envio, não repita sem confirmar se a campanha foi criada.'});}
+});
+
 app.get('/api/shopee/ads/gms/eligibility',mustLogin,async(req,res)=>{
  res.setHeader('Cache-Control','no-store');
  try{
