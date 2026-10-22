@@ -6,7 +6,7 @@ const el=(tag,cls,label)=>{
  if(label!==undefined)x.textContent=String(label);return x;
 };
 const $=id=>document.getElementById(id);
-let context=null,saved={type:'',options:[]},loadSerial=0,busy=false,originalColor='';
+let context=null,saved={type:'',options:[]},loadSerial=0,busy=false,originalColor='',suggestedPrice=null;
 const values=()=>String($('optimizerVariationValues')?.value||'').split(/\r?\n/).map(x=>x.trim()).filter(Boolean).slice(0,20);
 const type=()=>String($('optimizerVariationType')?.value||'').trim();
 const currentKey=()=>context?context.sku+'|'+context.itemId+'|'+context.modelId:'';
@@ -76,7 +76,7 @@ function render(){
   fileInput.onchange=()=>{if(fileInput.files?.[0])void transferImage(name,'upload',fileInput.files[0]);};
   buttons.append(upload,generate,fileInput);visual.append(buttons);
   const fields=el('div','optimizer-variant-inputs');
-  const price=field('Preço (R$)',prior.price>0?prior.price:'',{kind:'number',min:'0.01',placeholder:'Informe o preço'});
+  const price=field('Preço (R$)',prior.price>0?prior.price:(suggestedPrice||''),{kind:'number',min:'0.01',placeholder:'Informe o preço'});
   price.input.step='0.01';price.input.dataset.variantField='price';
   const stock=field('Estoque (mínimo 1)',Number.isInteger(Number(prior.stock))&&Number(prior.stock)>0?prior.stock:1,{kind:'number',min:1});
   stock.input.step='1';stock.input.dataset.variantField='stock';
@@ -222,11 +222,12 @@ async function load(data){
  const title=String(data?.draftTitle||'');
  const match=title.match(/(?:-|–|—)\s*(Vermelha|Vermelho|Preta|Preto|Azul|Rosa|Branca|Branco|Verde|Amarela|Amarelo)(?:\s|$)/i);
  originalColor=match?.[1]||'';
- saved={type:'',options:[]};
+ saved={type:'',options:[]};suggestedPrice=null;
  try{
   const result=await request('/api/shopee/optimizer/variants/draft','GET');
   if(seq!==loadSerial||currentKey()!==sku+'|'+itemId+'|'+modelId)return;
   saved=result.details||saved;
+  suggestedPrice=Number(result.suggestedPrice)>0?Number(result.suggestedPrice):null;
   if(saved?.type&&!type())$('optimizerVariationType').value=saved.type;
   if(saved?.options?.length&&!values().length)$('optimizerVariationValues').value=saved.options.map(o=>o.name).join('\n');
   render();
