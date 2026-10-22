@@ -2511,6 +2511,11 @@ app.post('/api/shopee/ads/gms/preview',mustLogin,(req,res)=>{
 // Cada mutação de Ads requer prévia assinada (5 minutos) e confirmação separada.
 // Nunca aplicar soluções textuais a campanhas sem aprovação explícita.
 const adsActionUsed=new Map();
+function adsApprovalSecret(){
+ const secret=envText('ADS_APPROVAL_SECRET')||envText('SESSION_SECRET');
+ if(secret.length<32)throw Error('Configure SESSION_SECRET ou ADS_APPROVAL_SECRET com 32+ caracteres no Render para liberar alterações de Ads.');
+ return secret;
+}
 function adsBrowserOrigin(req){
  const origin=String(req.get('origin')||'');
  const expected=req.protocol+'://'+req.get('host');
@@ -2524,7 +2529,7 @@ app.post('/api/shopee/ads/campaigns/preview',mustLogin,async(req,res)=>{
   const live=await liveAdsCampaign(cfg,auth,callShopeeShopApi,req.body?.campaignId);
   const preview=buildAdsPreview(req.body,live);
   const approval=signAdsApproval({shopId:String(auth.shopId),at:Date.now(),
-   nonce:crypto.randomUUID(),preview},stateSecret());
+   nonce:crypto.randomUUID(),preview},adsApprovalSecret());
   res.json({ok:true,preview,approval,requiresConfirmation:true,executed:false});
  }catch(error){res.status(400).json({ok:false,error:String(error?.message||error).slice(0,320),executed:false});}
 });
@@ -2534,7 +2539,7 @@ app.post('/api/shopee/ads/campaigns/apply',mustLogin,async(req,res)=>{
  if(req.body?.confirm!==true)return res.status(400).json({error:'Confirmação explícita obrigatória.'});
  try{
   const {cfg,auth}=await getValidAuth(req);
-  const approval=verifyAdsApproval(req.body.approval,stateSecret(),{shopId:auth.shopId});
+  const approval=verifyAdsApproval(req.body.approval,adsApprovalSecret(),{shopId:auth.shopId});
   const {preview,nonce}=approval;
   const prior=adsActionUsed.get(nonce);
   if(prior)return res.status(409).json({error:'Esta aprovação já foi usada; atualize as campanhas para confirmar a operação.',state:prior});
@@ -2575,7 +2580,8 @@ app.get('/api/shopee/ads/overview',mustLogin,async(req,res)=>{
     });
     // Ligação segura pelo item_id oficial. Campanhas multiproduto não têm miniatura atribuída.
     try{
-      const catalog=await readCatalogCache(auth.shopId);
+      const [catalog,plans]=await Promise.all([readCatalogCache(auth.shopId),recentShopeePricePlans(auth.shopId,{limit:1000})]);
+      const byPrice=new Map(plans.map(p=>[String(p.itemId)+'|'+String(p.sku),p]));
       const items=new Map((catalog.items||[]).map(c=>[String(c.itemId),c]));
       for(const c of result.campaigns||[]){
         if(c.itemIdList?.length!==1)continue;
@@ -2584,6 +2590,17 @@ app.get('/api/shopee/ads/overview',mustLogin,async(req,res)=>{
         c.productImage=String(product.imageUrl||'');
         c.productTitle=String(product.title||'');
         c.productSku=String(product.sku||'');
+        const plan=byPrice.get(String(c.itemIdList[0])+'|'+String(product.sku||''));
+        const q=plan?.quote||{},mr=q.marketResearch||{};
+        const observed=Date.parse(mr.researchedAt||'');
+        const fresh=mr.verified===true&&Number(mr.count)>=2&&Number(mr.count)<=5&&
+          Number.isFinite(observed)&&observed<=Date.now()&&Date.now()-observed<=48*3600000;
+        const price=Number(q.customerPrice),ref=Number(mr.reference);
+        if(fresh&&price>0&&ref>0){
+         c.priceEvidence={price,marketAverage:ref,compared:Number(mr.count),
+          differencePct:Math.round((price/ref-1)*1000)/10,
+          note:'Pesquisa de 2 a 5 ofertas Shopee Afiliados; não cobre todo o mercado.'};
+        }
       }
     }catch(e){result.productMediaWarning='Miniaturas indisponíveis: '+String(e.message||e).slice(0,120);}
     res.json({ok:true,...result});
