@@ -1022,8 +1022,7 @@ app.post('/api/shopee/optimizer/workflow/source',mustLogin,requireWeDropAdmin,as
    const merged=mergeExtractedPrints(evidence.sourceText,transcription.lines);
    if(!merged.count)throw Error('Não foi possível identificar especificações legíveis. Cole o texto da WeDrop.');
    await saveShopeeSourceText(auth.shopId,itemId,modelId,sku,merged.text);
-   return res.json({ok:true,extractedCount:merged.count,
-     sourceEvidence:await readShopeeSourceEvidence(auth.shopId,itemId,modelId,sku,{preview:true})});
+   req.supplierExtractedCount=merged.count;
   }
   else throw Error('Operação de evidência não reconhecida.');
   // Novas informações do fornecedor podem alterar a qualidade da descrição,
@@ -1037,7 +1036,7 @@ app.post('/api/shopee/optimizer/workflow/source',mustLogin,requireWeDropAdmin,as
    reviewWarning='Fonte salva; não foi possível reabrir a revisão automaticamente.';
    console.warn('[supplier-evidence] review invalidation:',String(error.message||error).slice(0,160));
   }
-  res.json({ok:true,reviewWarning,sourceEvidence:await readShopeeSourceEvidence(auth.shopId,itemId,modelId,sku,{preview:true})});
+  res.json({ok:true,reviewWarning,extractedCount:Number(req.supplierExtractedCount||0),sourceEvidence:await readShopeeSourceEvidence(auth.shopId,itemId,modelId,sku,{preview:true})});
  }catch(e){res.status(400).json({error:String(e.message||e).slice(0,270)});}
 });
 // Store user-entered technical values immediately, including incomplete drafts.
