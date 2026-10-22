@@ -2573,6 +2573,19 @@ app.get('/api/shopee/ads/overview',mustLogin,async(req,res)=>{
       end:String(req.query.end_date||''),
       allowDateFallback:true
     });
+    // Ligação segura pelo item_id oficial. Campanhas multiproduto não têm miniatura atribuída.
+    try{
+      const catalog=await readCatalogCache(auth.shopId);
+      const items=new Map((catalog.items||[]).map(c=>[String(c.itemId),c]));
+      for(const c of result.campaigns||[]){
+        if(c.itemIdList?.length!==1)continue;
+        const product=items.get(String(c.itemIdList[0]));
+        if(!product)continue;
+        c.productImage=String(product.imageUrl||'');
+        c.productTitle=String(product.title||'');
+        c.productSku=String(product.sku||'');
+      }
+    }catch(e){result.productMediaWarning='Miniaturas indisponíveis: '+String(e.message||e).slice(0,120);}
     res.json({ok:true,...result});
   }catch(error){
     const message=String(error.message||error).slice(0,320);
