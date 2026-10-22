@@ -2874,7 +2874,7 @@ $('#optimizerImageCorrectionGenerate')?.addEventListener?.('click',async()=>{
   optimizerImagesApiConfigured=true;
   optimizerImagesAutoBusy=true;optimizerImagesSetProgress();
   status.textContent='OpenAI editando a imagem '+slot+'... A foto anterior permanecerá intacta até o novo arquivo ser salvo.';
-  await optimizerImagesGenerateSlot(w,slot,true,{editCurrent:true});
+  await optimizerImagesGenerateSlot(w,slot,true,{editCurrent:optimizerImagesSavedSlots.has(slot)});
   if(optimizerImagesSameSku(w)){
    await optimizerImagesLoad();
    status.textContent='✓ Ajuste gerado e importado automaticamente na imagem '+slot+'. Confira a prévia e registre a revisão antes de publicar na Shopee.';
@@ -6824,6 +6824,12 @@ function optimizerChatBridgeRemember(w,slots=Array.from({length:9},(_,i)=>i+1),e
 }
 function optimizerChatBridgeNotice(message){
  const status=$('#optimizerChatgptBridgeStatus');if(status)status.textContent=message;
+ const job=optimizerChatBridgeJob,w=optimizerWorkflowPlan;
+ if(job?.slots?.length===1&&optimizerChatBridgeIdentity(w,job)&&
+    Number($('#optimizerImageCorrectionSlot')?.value)===Number(job.slots[0])){
+  const correction=$('#optimizerImageCorrectionStatus');
+  if(correction)correction.textContent=message;
+ }
 }
 function optimizerChatBridgeAck(row,ok,error=''){
  window.postMessage({kind:'RA_SITE_UPLOAD_RESULT',nonce:row.nonce,slot:row.slot,ok,error},location.origin);
@@ -6917,6 +6923,7 @@ globalThis.window?.addEventListener?.('message',async(event)=>{
    optimizerChatBridgeBusy=false;
    $('#optimizerChatgptAbort').hidden=true;
    if(status)status.textContent='Não foi possível iniciar a extensão: '+(m.error||'erro não identificado')+'. Verifique se está instalada e atualizada no Chrome.';
+   optimizerChatBridgeNotice('Não foi possível iniciar o ChatGPT: '+(m.error||'extensão indisponível')+'. A imagem anterior foi preservada.');
   }else if(status)status.textContent='Extensão iniciada para a SKU '+(optimizerWorkflowPlan?.sku||'')+'. O ChatGPT está gerando e cada foto será enviada à galeria automaticamente.';
   return;
  }
@@ -6928,8 +6935,8 @@ globalThis.window?.addEventListener?.('message',async(event)=>{
  if(!job||job.nonce!==m.nonce||!optimizerChatBridgeIdentity(job,m))return;
  if(m.kind==='RA_EXTENSION_PROGRESS'){
   const done=m.status==='9/9 imagens armazenadas. Confira e aprove a etapa no Shopee Manager antes de publicar na Shopee.';
-  if(status)status.textContent=m.status+(m.error?' '+m.error:'')+
-   (m.slot?' · posição '+Math.min(9,m.slot)+'/9':'');
+  optimizerChatBridgeNotice(m.status+(m.error?' '+m.error:'')+
+   (m.slot?' · posição '+Math.min(9,m.slot)+'/9':''));
   const paused=/pausad[ao]|interrompid[ao]|cancelad[ao]|falha (?:no |de )?(?:upload|importação)/i.test(m.status||'');
   if(paused){optimizerChatBridgeBusy=false;$('#optimizerChatgptAbort').hidden=true;}
   else if(!done){optimizerChatBridgeBusy=true;$('#optimizerChatgptAbort').hidden=false;}
