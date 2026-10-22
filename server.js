@@ -1922,7 +1922,15 @@ app.get('/api/shopee/optimizer/variants/draft',mustLogin,requireWeDropAdmin,asyn
   const draft=x.details||{type:'',options:[]};
   const options=await Promise.all((draft.options||[]).map(async o=>({...o,
    previewUrl:o.asset?await variationImagePreview(o.asset):null})));
-  res.json({ok:true,sku:x.sku,details:{...draft,options},marketplaceUpdated:false});
+  let suggestedPrice=null;
+  try{
+   const live=await shopeeLiveEditableItem(x.cfg,x.auth,x.itemId);
+   const priceRows=Array.isArray(live.price_info)?live.price_info:[live.price_info||{}];
+   const candidates=[...priceRows.map(p=>p?.original_price),live.original_price,live.price];
+   suggestedPrice=candidates.map(Number).find(p=>Number.isFinite(p)&&p>0)||null;
+  }catch{ /* não inventar preço quando a Shopee não fornecer */ }
+  res.json({ok:true,sku:x.sku,suggestedPrice,priceSource:suggestedPrice?'Shopee API':null,
+   details:{...draft,options},marketplaceUpdated:false});
  }catch(e){res.status(400).json({ok:false,error:String(e.message||e).slice(0,300)});}
 });
 app.post('/api/shopee/optimizer/variants/draft',mustLogin,requireWeDropAdmin,async(req,res)=>{
