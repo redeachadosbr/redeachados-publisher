@@ -22,7 +22,13 @@ export function rankAdsCandidates(items,plans,{limit=10}={}){
   const breakEven=money(Math.max(1,100/margin));
   const roas=money(Math.max(3,breakEven*1.4));
   const daily=money(Math.min(30,Math.max(5,Math.floor(Math.min(profit*1.5,stock*profit*0.1)/5)*5)));
+  const alreadyReserved=q.adsBudgetEnabled===true&&Number(q.adsBudgetPct)>0;
+  const savedPct=alreadyReserved?Number(q.adsBudgetPct):0;
+  // Reserva sugerida é somente uma referência. Recalcular todas as taxas no Motor de Preço.
+  const room=Math.max(0,margin-5),suggestion=alreadyReserved?savedPct:Math.min(12,Math.max(0,Math.floor(room*.5)));
   out.push({sku:p.sku,itemId:String(p.itemId),title:c.title,imageUrl:c.imageUrl||'',stock,marginPct:margin,
+   adsReserveIncluded:alreadyReserved,adsReservePct:savedPct,recommendedAdsReservePct:suggestion,
+   quoteCustomerPrice:price,quoteUpdatedAt:p.updatedAt,
    estimatedProfitBeforeAds:money(profit),score,roasTarget:roas,breakEvenRoasEstimate:breakEven,
    suggestedDailyBudget:daily,confidence:researched&&fresh?'moderada':'baixa',
    source:'Catálogo Shopee e plano de preço WeDrop',signals:{
