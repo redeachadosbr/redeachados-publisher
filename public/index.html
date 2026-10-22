@@ -18,6 +18,7 @@
 <link rel="stylesheet" href="/title-studio.css?v=1.20.27">
 <link rel="stylesheet" href="/optimizer-technical-import.css?v=1.20.28">
 <link rel="stylesheet" href="/optimizer-description.css?v=1.20.30">
+<link rel="stylesheet" href="/optimizer-image-correction.css?v=1.0.0">
 <link rel="stylesheet" href="/optimizer-fiscal-last.css?v=1.20.31">
 <link rel="stylesheet" href="/optimizer-discount-last.css?v=1.20.36">
 <link rel="stylesheet" href="/optimizer-fiscal-commercial-layout.css?v=1.5-note-spacing">
@@ -665,8 +666,17 @@
               <label class="optimizer-field">Posição<select id="optimizerImageCorrectionSlot"><option value="1">01 · Capa</option><option value="2">02</option><option value="3">03</option><option value="4">04</option><option value="5">05</option><option value="6">06</option><option value="7">07</option><option value="8">08</option><option value="9">09 · Mockup</option></select></label>
               <label class="optimizer-field">O que deseja alterar?<textarea id="optimizerImageCorrection" rows="5" maxlength="500" placeholder="Ex.: fundo mais claro, mantendo exatamente o mesmo produto."></textarea></label>
             </div>
-            <div class="optimizer-workflow-actions"><button id="optimizerImageCorrectionSave" class="secondary" type="button">Salvar alteração</button><button id="optimizerImageCorrectionCopy" class="secondary" type="button">Copiar pedido para criar / refazer</button></div>
-            <small>Importe a imagem gerada na posição correspondente. Sem um gerador conectado, o ChatGPT não envia imagens diretamente ao aplicativo.</small>
+            <div class="optimizer-workflow-actions optimizer-image-correction-actions">
+              <button id="optimizerImageCorrectionGenerate" type="button">✦ Gerar ajuste e importar</button>
+              <button id="optimizerImageCorrectionSave" class="secondary" type="button">Salvar orientação</button>
+              <button id="optimizerImageCorrectionCopy" class="secondary" type="button">Copiar prompt</button>
+            </div>
+            <p id="optimizerImageCorrectionStatus" class="optimizer-correction-status" role="status" aria-live="polite">Descreva o ajuste, escolha a posição e clique em Gerar ajuste e importar. A imagem será salva automaticamente para revisão, sem publicar na Shopee.</p>
+            <figure id="optimizerImageCorrectionPreview" class="optimizer-correction-preview" hidden>
+              <img id="optimizerImageCorrectionPreviewPhoto" alt="Prévia da imagem selecionada para o ajuste">
+              <figcaption id="optimizerImageCorrectionPreviewCaption">Imagem preparada desta posição</figcaption>
+            </figure>
+            <small>Usa a ponte ChatGPT instalada; sem ela, utiliza a API OpenAI conectada. A imagem original permanece salva até a substituição ser concluída. A publicação na Shopee continua exigindo revisão.</small>
           </div>
 
               <small id="optimizerImageCorrectionCount" class="optimizer-rework-count">0/500</small>
