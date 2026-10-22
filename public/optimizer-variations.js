@@ -101,15 +101,12 @@ function render(){
   body.append(visual,fields);row.append(header,body);cards.append(row);
  }
  left.append(cards);workspace.append(left);
- target.append(workspace);
- const head=$('optimizerVariationPanel')?.querySelector('.optimizer-variant-stage-head .stage-right');
- if(head){
-  head.querySelector('.optimizer-variant-stage-actions')?.remove();
-  const actions=el('div','optimizer-variant-stage-actions');
-  const trigger=el('button','optimizer-variant-stage-toggle','Conferir e aplicar ▾');
-  const controls=el('div','optimizer-variant-stage-controls');
-  controls.hidden=true;trigger.type='button';trigger.onclick=()=>{controls.hidden=!controls.hidden;trigger.setAttribute('aria-expanded',String(!controls.hidden));};
-  trigger.setAttribute('aria-expanded','false');
+ const side=el('aside','optimizer-variant-side');
+ const title=el('div','optimizer-variant-side-heading');
+ title.append(el('strong','','➤  Envio e aplicação'),el('small','','Após revisar as variações, confira o envio pela API e aplique na Shopee.'));
+ side.append(title);
+ const controls=el('div','optimizer-variant-side-actions');
+ {
   const preview=el('button','optimizer-variant-stage-preview','Conferir envio pela API');
   const send=el('button','optimizer-variant-stage-publish','Aplicar variações na Shopee');
   preview.type=send.type='button';send.disabled=true;let approval=null;
@@ -137,7 +134,8 @@ function render(){
    }catch(e){notify('Confira a Shopee antes de repetir: '+e.message,'error');}
    finally{busy=false;}
   };
-  controls.append(preview,send);actions.append(trigger,controls);head.append(actions);
+  const help=el('p','optimizer-variant-side-note','ⓘ Orientação: foto por variação, gerada via API OpenAI ou incluída manualmente. Confirme o estoque real antes de publicar.');
+  controls.append(preview,send);side.append(controls,help);workspace.append(side);target.append(workspace);
   target.querySelectorAll('input').forEach(i=>{if(i.type!=='file')i.addEventListener('input',()=>{approval=null;send.disabled=true;});});
  }
 }
