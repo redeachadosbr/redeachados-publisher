@@ -20,8 +20,15 @@ test('SEO Ads não ocupa grade principal e só atualiza após expansão',()=>{
  assert.match(css,/#tab-ads #adsSeoDisclosure\.ads-seo-disclosure\{/);
  assert.match(css,/grid-row:8!important/);
  assert.match(html,/ads-premium\.css\?v=2\.4\.0-seo-ads-location/);
- assert.match(html,/ads-seo\.js\?v=3-ads-tab-only/);
+ assert.match(html,/ads-seo\.js\?v=4-active-only/);
  assert.match(js,/observer\.observe\(root\)/);
  assert.match(js,/redeAdsOpenOptimizerSku\(sku\)/);
  assert.doesNotMatch(js,/input\.dispatchEvent\(new Event\('input'/);
+});
+
+test('monitor avançado só exibe campanhas ativas e não oferece histórico de pausadas',()=>{
+ assert.match(js,/filter\(c=>c\.statusGroup==='active'\)/);
+ assert.match(js,/Nenhuma campanha ativa\/rodando/);
+ assert.doesNotMatch(html,/data-ads-group="inactive"/);
+ assert.doesNotMatch(html,/data-ads-group="other"/);
 });
