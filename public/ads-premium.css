@@ -97,3 +97,90 @@
  #tab-ads .ads-v2-heading-actions{justify-content:flex-start}
  #tab-ads #adsManualPanel{grid-row:auto}
 }
+
+
+/* v2 FIX: estilo legado "#app>.tabpane.active{display:block}" ganhava do grid anterior. */
+body.view-ads .shell.app-layout{grid-template-columns:clamp(165px,14vw,230px) minmax(0,1fr)!important}
+body.view-ads .app-sidebar{padding:13px 9px}
+body.view-ads .app-sidebar .nav-link{font-size:11px;padding:9px 10px;min-height:38px;gap:8px}
+body.view-ads .app-sidebar .nav-group-title{font-size:9px}
+body.view-ads .app-sidebar .nav-link[data-tab="ads"].active{background:linear-gradient(115deg,#ff693b,#f13e24)!important;color:#fff!important;border-color:#ff5a30!important}
+body.view-ads .app-sidebar .nav-link[data-tab="ads"].active .nav-icon{color:#fff!important}
+body.view-ads header.workspace-topbar{height:52px;min-height:52px;padding:0 15px}
+body.view-ads .workspace-content{max-width:none;width:100%;padding:9px 14px 30px}
+#app>#tab-ads.tabpane.active{display:grid!important;grid-template-columns:repeat(12,minmax(0,1fr));gap:10px;align-content:start;align-items:start;min-width:0}
+#app>#tab-ads.tabpane:not(.active){display:none!important}
+#tab-ads .ads-v2-heading{grid-row:1;grid-column:1/-1;position:sticky;top:52px;z-index:38;display:flex;align-items:center;justify-content:space-between;flex-wrap:nowrap;gap:10px;min-height:71px;padding:7px 3px;margin:0;background:#f9fbff;border-bottom:1px solid #dfe8f4;border-radius:0;box-shadow:none}
+#tab-ads .ads-v3-title-wrap{display:grid;grid-template-columns:48px minmax(0,1fr);grid-template-rows:auto auto;column-gap:10px;align-items:center;flex:0 1 310px;min-width:205px}
+#tab-ads .ads-v3-brand{grid-column:1;grid-row:1/3;width:48px;height:48px;display:grid;place-items:center;background:linear-gradient(140deg,#ff7142,#ff4322);border-radius:12px;color:#fff;box-shadow:0 6px 16px #e7462926}
+#tab-ads .ads-v3-brand svg{width:31px;height:31px}
+#tab-ads .ads-v3-title-wrap .ads-v2-eyebrow{display:none}
+#tab-ads .ads-v3-title-wrap h2{grid-column:2;grid-row:1;font-size:clamp(19px,2.2vw,30px);margin:0;line-height:1.08}
+#tab-ads .ads-v3-title-wrap p{grid-column:2;grid-row:2;margin:3px 0 0;font-size:9px;line-height:1.3;display:block}
+#tab-ads .ads-v2-heading-actions{display:flex;flex-wrap:nowrap;justify-content:flex-end;gap:6px;min-width:0}
+#tab-ads .ads-v2-heading-actions>button,#tab-ads .ads-v2-heading-actions .ads-v2-daterange{min-height:36px;height:36px;font-size:9px;padding:7px 8px;gap:5px;white-space:nowrap}
+#tab-ads .ads-v2-heading-actions .ads-v2-daterange{min-width:177px;max-width:185px}
+#tab-ads .ads-v2-daterange input{width:70px;min-width:0;font-size:9px;padding:0}
+#tab-ads .ads-v2-heading-actions .ads-v2-icon{width:15px;height:15px}
+#tab-ads #adsResults:not([hidden]){display:contents!important}
+#tab-ads #adsResults[hidden]{display:none!important}
+#tab-ads #adsResults .ads-v2-main-grid{display:contents!important}
+#tab-ads .ads-v2-metrics{grid-row:2;grid-column:1/-1;display:grid;grid-template-columns:repeat(8,minmax(0,1fr));gap:7px;margin:0;min-width:0}
+#tab-ads .ads-v2-metrics .ads-v2-kpi:last-child{display:none!important}
+#tab-ads .ads-v2-kpi{min-height:85px;padding:8px 9px;gap:6px}
+#tab-ads .ads-v2-kpi strong{font-size:clamp(14px,1.45vw,20px)}
+#tab-ads .ads-v2-kpi-name{font-size:9px}
+#tab-ads .ads-pricing-report{grid-row:3;grid-column:1/5;align-self:stretch;min-width:0;margin:0;padding:12px!important;border-radius:13px}
+#tab-ads .ads-pricing-report .ads-pricing-scroll{max-height:160px}
+#tab-ads .ads-pricing-report .ads-pricing-table{min-width:0;width:100%}
+#tab-ads .ads-pricing-report .ads-pricing-table :is(th,td){font-size:9px;padding:7px 5px;white-space:normal}
+#tab-ads .ads-pricing-table :is(th,td):nth-child(4),#tab-ads .ads-pricing-table :is(th,td):nth-child(6),#tab-ads .ads-pricing-table :is(th,td):nth-child(7){display:none}
+#tab-ads .ads-pricing-report h3{font-size:13px;margin:2px 0 5px}
+#tab-ads .ads-pricing-report p{font-size:10px;margin:0 0 7px;line-height:1.35}
+#tab-ads .ads-pricing-report button{min-height:33px;padding:7px 9px}
+#tab-ads .ads-pricing-footnote{font-size:9px;line-height:1.4}
+#tab-ads .ads-v2-health{grid-row:3;grid-column:5/9;align-self:stretch}
+#tab-ads .ads-v2-improvements{grid-row:3;grid-column:9/13;align-self:stretch}
+#tab-ads .ads-v2-health,#tab-ads .ads-v2-improvements{min-height:237px;padding:12px}
+#tab-ads .ads-v2-health .ads-v2-gauge{width:108px;height:108px}
+#tab-ads .ads-v2-health .ads-v2-health-top{gap:12px}
+#tab-ads .ads-v2-campaigns{grid-row:4/6;grid-column:1/10;align-self:start;margin:0;min-width:0;padding:12px}
+#tab-ads .ads-v2-review-panel:not([hidden]){grid-row:4;grid-column:10/13;align-self:start;min-width:0;padding:12px;border-radius:13px}
+#tab-ads .ads-v2-execution{grid-row:5;grid-column:10/13;align-self:start;padding:12px}
+#tab-ads .ads-v2-table-wrap{max-height:540px;overflow:auto;overscroll-behavior:contain}
+#tab-ads .ads-v2-table{min-width:950px}
+#tab-ads .ads-v2-table thead th{position:sticky;top:0;z-index:5;background:#eaf3fc;box-shadow:0 2px #d3e2f2}
+#tab-ads .ads-v3-product-thumb{width:43px;height:43px;object-fit:contain;float:left;margin:0 8px 0 0;border-radius:8px}
+#tab-ads .ads-v3-product-copy{display:block;overflow:hidden}
+#tab-ads .ads-v3-product-copy strong{font-size:10px;display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:2;overflow:hidden}
+#tab-ads .ads-v3-product-copy small{font-size:9px}
+#tab-ads #adsSummary{grid-row:6;grid-column:1/-1;margin:0;min-height:0;padding:6px 9px;line-height:1.3;font-size:9px;opacity:.8}
+#tab-ads #adsManualPanel{grid-row:7;grid-column:1/-1}
+@media(max-width:1020px){
+ body.view-ads .shell.app-layout{grid-template-columns:150px minmax(0,1fr)!important}
+ body.view-ads .workspace-content{padding:8px}
+ #tab-ads .ads-v3-title-wrap{flex-basis:190px;min-width:170px;grid-template-columns:38px 1fr}
+ #tab-ads .ads-v3-brand{width:38px;height:38px}
+ #tab-ads .ads-v3-brand svg{width:26px;height:26px}
+ #tab-ads .ads-v2-heading-actions .ads-v2-daterange{min-width:155px;max-width:155px}
+ #tab-ads .ads-v2-daterange input{width:59px}
+ #tab-ads .ads-v2-heading-actions>button{font-size:8px;padding:6px}
+}
+@media(max-width:870px){
+ #tab-ads .ads-v2-heading{flex-wrap:wrap}
+ #tab-ads .ads-v2-heading-actions{flex-wrap:wrap;justify-content:flex-start}
+ #tab-ads .ads-v2-metrics{grid-template-columns:repeat(4,minmax(0,1fr))}
+ #tab-ads .ads-pricing-report{grid-row:3;grid-column:1/7}
+ #tab-ads .ads-v2-health{grid-row:3;grid-column:7/13}
+ #tab-ads .ads-v2-improvements{grid-row:4;grid-column:1/7}
+ #tab-ads .ads-v2-campaigns{grid-row:5/7;grid-column:1/9}
+ #tab-ads .ads-v2-review-panel:not([hidden]){grid-row:5;grid-column:9/13}
+ #tab-ads .ads-v2-execution{grid-row:6;grid-column:9/13}
+ #tab-ads #adsSummary{grid-row:7}
+ #tab-ads #adsManualPanel{grid-row:8}
+}
+@media(max-width:650px){
+ body.view-ads .shell.app-layout{grid-template-columns:minmax(0,1fr)!important}
+ #tab-ads .ads-v2-metrics{grid-template-columns:repeat(2,minmax(0,1fr))}
+ #tab-ads .ads-pricing-report,#tab-ads .ads-v2-health,#tab-ads .ads-v2-improvements,#tab-ads .ads-v2-campaigns,#tab-ads .ads-v2-review-panel:not([hidden]),#tab-ads .ads-v2-execution,#tab-ads #adsSummary,#tab-ads #adsManualPanel{grid-column:1/-1;grid-row:auto}
+}
