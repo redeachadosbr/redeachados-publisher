@@ -30,7 +30,7 @@ function render(){
  if(!target)return;
  target.replaceChildren();
  const options=values(),variationType=type();
- const tags=$('optimizerVariationTags');if(tags){tags.replaceChildren();for(const option of options){const chip=el('button','optimizer-variation-chip',option+'  ×');chip.type='button';chip.onclick=()=>{const t=$('optimizerVariationValues');t.value=values().filter(v=>v!==option).join('\n');t.dispatchEvent(new Event('input',{bubbles:true}));};tags.append(chip);}const add=el('button','optimizer-variation-add','＋ Adicionar opção');add.type='button';add.onclick=()=>{const next=window.prompt('Nome da nova opção:');if(next?.trim()){const t=$('optimizerVariationValues');t.value=[...values(),next.trim()].join('\n');t.dispatchEvent(new Event('input',{bubbles:true}));}};tags.append(add);}
+ const tags=$('optimizerVariationTags');if(tags){tags.replaceChildren();for(const option of options){const chip=el('button','optimizer-variation-chip');chip.type='button';if(variationType==='Cor'){const dot=el('span','optimizer-variation-color-dot');const color=String(option).normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase();const palette={vermelho:'#f04432',vermelha:'#f04432',rosa:'#f56da8',azul:'#3288e9',verde:'#36a86a',amarelo:'#f0c43d',amarela:'#f0c43d',preto:'#242b35',preta:'#242b35',branco:'#ffffff',branca:'#ffffff',laranja:'#f58b37',roxo:'#985dc7',roxa:'#985dc7'};dot.style.background=palette[color]||'#bdc9d7';chip.append(dot);}chip.append(el('span','',option),el('span','optimizer-variation-chip-close','×'));chip.onclick=()=>{const t=$('optimizerVariationValues');t.value=values().filter(v=>v!==option).join('\n');t.dispatchEvent(new Event('input',{bubbles:true}));};tags.append(chip);}const add=el('button','optimizer-variation-add','＋ Adicionar opção');add.type='button';add.onclick=()=>{const next=window.prompt('Nome da nova opção:');if(next?.trim()){const t=$('optimizerVariationValues');t.value=[...values(),next.trim()].join('\n');t.dispatchEvent(new Event('input',{bubbles:true}));}};tags.append(add);}
  const notice=$('optimizerVariationOriginalNotice');if(notice){const norm=v=>String(v||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase().replace(/[ao]$/,'');const missing=variationType==='Cor'&&originalColor&&!options.some(v=>norm(v)===norm(originalColor));notice.replaceChildren();if(missing){notice.append(el('span','','⚠ Este anúncio anuncia a cor '+originalColor+'. Inclua essa opção para preservar a cor original.'));const action=el('button','secondary','Adicionar cor original');action.type='button';action.onclick=()=>{const t=$('optimizerVariationValues');t.value=[originalColor,...values()].join('\n');t.dispatchEvent(new Event('input',{bubbles:true}));};notice.append(action);}notice.hidden=!missing;}
  if(!context||!variationType||!options.length){
   target.append(el('p','optimizer-variant-help',
@@ -56,7 +56,7 @@ function render(){
   const verifiedEan=prior.gtin||((sameOriginal&&supplierEan)?supplierEan:'');
   row.dataset.option=name;
   const header=el('div','optimizer-variant-heading');
-  const headingName=el('strong','', '●  '+variationType+' · '+name);
+  const headingName=el('strong','',variationType+' · '+name);
   header.append(headingName,el('small','',sameOriginal?'● Cor original':prior.asset?'Foto salva':'Foto pendente'));
   const body=el('div','optimizer-variant-body'),visual=el('div','optimizer-variant-photo');
   if(prior.previewUrl){
@@ -101,42 +101,10 @@ function render(){
   body.append(visual,fields);row.append(header,body);cards.append(row);
  }
  left.append(cards);workspace.append(left);
- const footer=el('div','optimizer-variant-footer');
- const preview=el('button','secondary','Conferir envio pela API');
- const send=el('button','optimizer-variant-publish','Aplicar variações na Shopee');
- preview.type=send.type='button';
- send.disabled=true;
- let approval=null;
- preview.onclick=async()=>{
-  if(busy)return;
-  try{
-   const confirmations=[...target.querySelectorAll('.optimizer-variant-item')];
-   if(!window.confirm('Confirma que as imagens correspondem às variações reais e que verificou a disponibilidade de estoque no fornecedor para todas as opções?'))return;
-   for(const card of confirmations){card.querySelector('[data-variant-field="photoConfirmed"]').checked=true;card.querySelector('[data-variant-field="stockConfirmed"]').checked=true;}
-   await persist();
-   const result=await request('/api/shopee/optimizer/variants/preview','POST',{});
-   approval=result.approval;
-   notify('Prévia validada: '+result.preview.options.map(o=>o.name+' • R$ '+o.price+' • '+o.stock+' em estoque').join('; ')+
-    '. Confira tudo antes de aplicar.','success');
-   send.disabled=false;
-  }catch(e){approval=null;send.disabled=true;notify(e.message,'error');}
- };
- send.onclick=async()=>{
-  if(!approval||busy)return;
-  if(!window.confirm('CONFIRMAR PUBLICAÇÃO: criar variações deste produto na Shopee com as fotos, preços e estoques informados? Isso altera o anúncio real.'))return;
-  busy=true;send.disabled=true;
-  try{
-   const result=await request('/api/shopee/optimizer/variants/apply','POST',{approval,confirm:true});
-   notify(result.message+' Atualize a auditoria da SKU.','success');
-   approval=null;
-  }catch(e){notify('A situação da publicação é incerta ou foi recusada: '+e.message+
-   '. Confira na Shopee antes de tentar novamente.','error');}
-  finally{busy=false;}
- };
- footer.append(preview,send);workspace.append(footer);target.append(workspace);
+ target.append(workspace);
  target.querySelectorAll('input').forEach(i=>{
   if(i.type==='file')return;
-  i.addEventListener('input',()=>{approval=null;send.disabled=true;});
+  i.addEventListener('input',()=>{});
  });
 }
 function collect(){
