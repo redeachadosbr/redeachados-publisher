@@ -2419,21 +2419,33 @@ function optimizerSourceRender(data){
  pane.dataset.sku=String(data.sku);
  const badge=pane.querySelector('.optimizer-source-tag');if(badge)badge.textContent='SKU '+data.sku;
  const evidence=data.sourceEvidence||{sourceText:'',screenshots:[]};
- $('#optimizerSourceText').value=evidence.sourceText||'';
- const images=$('#optimizerSourceImages');images.replaceChildren();
- for(const shot of evidence.screenshots||[]){
-  const card=optimizerMake('div','optimizer-source-image-card');
-  if(shot.previewUrl&&/^https:\/\//.test(shot.previewUrl)){
-   const image=optimizerMake('img');image.src=shot.previewUrl;
-   image.alt='Print da WeDrop: '+shot.filename;image.loading='lazy';
-   const link=optimizerMake('a');link.href=shot.previewUrl;link.target='_blank';link.rel='noopener noreferrer';
-   link.append(image);card.append(link);
+ const sourceText=$('#optimizerSourceText'),techText=$('#optimizerTechText');
+ if(sourceText&&document.activeElement!==sourceText)sourceText.value=evidence.sourceText||'';
+ if(techText&&document.activeElement!==techText)techText.value=evidence.sourceText||'';
+ const shots=evidence.screenshots||[];
+ // A seção recolhível e a ficha técnica mostram os mesmos prints privados.
+ for(const images of [$('#optimizerSourceCompactImages'),$('#optimizerSourceImages')].filter(Boolean)){
+  images.replaceChildren();
+  for(const shot of shots){
+   const card=optimizerMake('div','optimizer-source-image-card');
+   if(shot.previewUrl&&/^https:\/\//.test(shot.previewUrl)){
+    const image=optimizerMake('img');image.src=shot.previewUrl;
+    image.alt='Print da WeDrop: '+shot.filename;image.loading='lazy';
+    const link=optimizerMake('a');link.href=shot.previewUrl;link.target='_blank';link.rel='noopener noreferrer';
+    link.append(image);card.append(link);
+   }
+   card.append(optimizerMake('small','',shot.filename));
+   const remove=optimizerMake('button','secondary','Excluir');remove.type='button';
+   remove.onclick=()=>void optimizerSourceAction('remove',{id:shot.id});
+   card.append(remove);images.append(card);
   }
-  card.append(optimizerMake('small','',shot.filename));
-  const remove=optimizerMake('button','secondary','Excluir');remove.type='button';
-  remove.onclick=()=>void optimizerSourceAction('remove',{id:shot.id});
-  card.append(remove);images.append(card);
  }
+ const count=$('#optimizerSourceSavedStatus');
+ if(count)count.textContent='SKU '+data.sku+' · '+[...(evidence.sourceText||'')].length+
+  ' caracteres registrados · '+shots.length+'/4 prints salvos'+
+  (evidence.updatedAt?' · atualizado '+new Date(evidence.updatedAt).toLocaleString('pt-BR'):'');
+ const extractButton=$('#optimizerSourceExtract');
+ if(extractButton)extractButton.disabled=shots.length===0;
  const facts=$('#optimizerSourceFacts');facts.replaceChildren();
  const item=data.sourceFacts||{};
  for(const conflict of item.conflicts||[]){
@@ -2452,16 +2464,24 @@ function optimizerSourceRender(data){
 }
 async function optimizerSourceAction(action,extra={}){
  const w=optimizerWorkflowPlan;if(!w?.sku)return;
- const btn=$('#optimizerSourceSave');btn.disabled=true;
- optimizerSourceNotice(action==='image'?'Enviando print para a área privada...':'Salvando informações da SKU...');
+ const btn=$('#optimizerSourceSave'),extractButton=$('#optimizerSourceExtract');
+ btn.disabled=true;if(extractButton)extractButton.disabled=true;
+ optimizerSourceNotice(action==='image'?'Guardando print para esta SKU...':
+  action==='extract'?'Lendo prints e incorporando os dados identificados...':'Salvando informações da SKU...');
  try{
+  // Evita que uma gravação automática antiga sobrescreva o texto colado manualmente.
+  if(techTextTimer){clearTimeout(techTextTimer);techTextTimer=0;}
+  await techTextQueue.catch(()=>{});
+  const editor=$('#optimizerSourceText'),content=String(editor?.value||'');
+  if(action!=='text'&&content!==String(w.sourceEvidence?.sourceText||''))
+   await techTextSend(w,content);
   const response=await json('/api/shopee/optimizer/workflow/source',{
    method:'POST',headers:{'Content-Type':'application/json'},
    body:JSON.stringify({sku:w.sku,itemId:w.itemId,modelId:w.modelId,action,...extra}),
    signal:AbortSignal.timeout(90000)
   });
   if(optimizerWorkflowPlan!==w)return;
-  if(action!=='text')w.sourceEvidence=response.sourceEvidence;
+  w.sourceEvidence=response.sourceEvidence;
   const refresh=await json('/api/shopee/optimizer/workflow?'+new URLSearchParams({
    sku:w.sku,item_id:w.itemId,model_id:w.modelId}),{signal:AbortSignal.timeout(60000)});
   if(optimizerWorkflowPlan!==w)return;
@@ -2469,16 +2489,26 @@ async function optimizerSourceAction(action,extra={}){
     attributeSuggestions:refresh.attributeSuggestions,attributes:refresh.attributes});
   optimizerSourceRender(w);
   if(optimizerWorkflowStage==='technical')optimizerTechnicalRender(w);
-  optimizerSourceNotice('Informações salvas na SKU.','success');
-   if(optimizerWorkflowStage==='technical')optimizerTechNotice('✓ Print atualizado. Ficha técnica sincronizada e dados salvos na SKU.','success');
- }catch(error){optimizerSourceNotice('Falha ao salvar evidência: '+error.message,'error');}
- finally{btn.disabled=false;}
+  optimizerChatgptBrief=null;optimizerChatgptBriefSku='';
+  optimizerExecReset();
+  const amount=Number(response.extractedCount||0);
+  optimizerSourceNotice(action==='extract'?'✓ '+amount+' informações dos prints incorporadas. Confira dados e medidas na ficha técnica.':
+   '✓ Informações da WeDrop guardadas na SKU '+w.sku+' e disponíveis às etapas de otimização.','success');
+  if(optimizerWorkflowStage==='technical')optimizerTechNotice('✓ Fonte atualizada. Sugestões recalculadas, sem modificar informações manuais aprovadas.','success');
+ }catch(error){optimizerSourceNotice('Não foi possível concluir: '+error.message,'error');}
+ finally{btn.disabled=false;if(extractButton)extractButton.disabled=false;}
 }
 $('#optimizerSourceSave')?.addEventListener?.('click',()=>void optimizerSourceAction('text',{
  sourceText:$('#optimizerSourceText').value
 }));
+$('#optimizerSourceExtract')?.addEventListener?.('click',()=>void optimizerSourceAction('extract'));
 $('#optimizerSourceImage')?.addEventListener?.('change',async()=>{
- const input=$('#optimizerSourceImage'),files=[...(input.files||[])].slice(0,4);
+ const input=$('#optimizerSourceImage'),files=[...(input.files||[])];
+ const saved=optimizerWorkflowPlan?.sourceEvidence?.screenshots?.length||0;
+ if(files.length+saved>4){
+  optimizerSourceNotice('Máximo de quatro prints por SKU. Exclua um print salvo ou selecione menos arquivos.','warning');
+  input.value='';return;
+ }
  for(const file of files){
   if(!['image/jpeg','image/png'].includes(file.type)||file.size>4*1024*1024){
    optimizerSourceNotice('Aceitos apenas JPG ou PNG com até 4 MB cada.','warning');continue;
