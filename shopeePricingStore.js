@@ -83,10 +83,11 @@ export async function saveShopeePricePlan(shopId,{itemId,modelId,sku,supplierSku
       sku:String(sku),supplier_sku:String(supplierSku),quote,
       updated_at:new Date().toISOString()}]});
 }
-export async function recentShopeePricePlans(shopId){
+export async function recentShopeePricePlans(shopId,{limit=20}={}){
+  const safeLimit=Math.min(1000,Math.max(1,Math.trunc(Number(limit)||20)));
   const rows=await request('shopee_optimizer_price_plans',
     '?shop_id=eq.'+validShop(shopId)+
-    '&select=item_id,model_id,sku,supplier_sku,quote,updated_at&order=updated_at.desc&limit=20');
+    '&select=item_id,model_id,sku,supplier_sku,quote,updated_at&order=updated_at.desc&limit='+safeLimit);
   return rows.map(x=>({itemId:String(x.item_id),modelId:String(x.model_id),
     sku:x.sku,supplierSku:x.supplier_sku,updatedAt:x.updated_at,quote:x.quote}));
 }
