@@ -2458,7 +2458,7 @@ app.get('/api/shopee/ads/seo/candidates',mustLogin,async(req,res)=>{
  try{
   const {auth,cfg}=await getValidAuth(req);
   const [catalog,plans]=await Promise.all([readCatalogCache(auth.shopId),recentShopeePricePlans(auth.shopId,{limit:1000})]);
-  const financialCandidates=rankAdsCandidates(catalog.items,plans);
+  const financialCandidates=rankAdsCandidates(catalog.items,plans,{limit:1000});
   const windows=adsSevenDayWindows(brazilAdsToday());
   let recent=null,previous=null,adsWarning=null;
   // Disponibilidade parcial de Ads nunca deve esconder o ranking de produtos e margens.
