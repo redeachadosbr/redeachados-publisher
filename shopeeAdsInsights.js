@@ -126,6 +126,9 @@ export function buildAdsMonitor({catalog=[],plans=[],candidates=[],recent=null,p
   if(!c.itemId||c.sharedCampaign||!c.metrics.daysWithData)continue;
   const list=single.get(c.itemId)||[];list.push(c);single.set(c.itemId,list);
  }
+ const advertised=new Set();
+ for(const card of cards)for(const id of (recent?.campaigns||[]).find(c=>String(c.campaignId)===String(card.campaignId))?.itemIdList||[])
+  advertised.add(String(id));
  const ranked=(candidates||[]).map(candidate=>{
   const matches=(single.get(String(candidate.itemId))||[]).filter(c=>!c.productIsVariation);
   const complete=matches.length>0;
@@ -140,7 +143,7 @@ export function buildAdsMonitor({catalog=[],plans=[],candidates=[],recent=null,p
    (ctr>=2?18:ctr>=1?13:ctr>=0.6?8:0)+
    (orders>0?10:0),0,55):0;
   const score=complete?Math.round(candidate.score*0.45+trafficScore):candidate.score;
-  return {...candidate,score,adsMetrics:{impressions,clicks,ctr,orders,
+  return {...candidate,score,hasActiveCampaign:advertised.has(String(candidate.itemId)),adsMetrics:{impressions,clicks,ctr,orders,
    source:complete?'API Shopee Ads — campanhas de produto individual':'Não disponível: campanha Ads individual sem métricas'},
    confidence:complete?'observada em Ads':candidate.confidence,
    scoreBasis:complete?'Financeiro + tráfego Ads':'Financeiro, sem dados de tráfego',
@@ -148,7 +151,8 @@ export function buildAdsMonitor({catalog=[],plans=[],candidates=[],recent=null,p
  }).sort((a,b)=>b.score-a.score);
  cards.sort((a,b)=>Number(b.severity==='attention')-Number(a.severity==='attention')||
   n(b.metrics.expense)-n(a.metrics.expense));
- return {candidates:ranked,campaigns:cards.slice(0,100),
+ return {eligibleCount:ranked.filter(c=>!c.hasActiveCampaign&&c.recommendedAdsReservePct>0).length,
+  candidates:ranked,campaigns:cards.slice(0,100),
   monitoredCampaigns:cards.length,withAlerts:cards.filter(c=>c.severity==='attention').length,
   warnings:[
    'Impressões e CTR são exclusivamente de campanhas Ads. Produtos sem Ads não possuem CTR orgânico neste painel.',
