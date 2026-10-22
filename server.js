@@ -14,6 +14,7 @@ import {installFinanceBridge,installWalletBridge,installAdsFinanceBridge} from '
 import {buildAdsFinanceSnapshot} from './financeAdsBridge.js';
 import {readShopeeAdsAccount} from './shopeeAdsAccount.js';
 import {checkGmsEligibility,prepareGmsDraft} from './shopeeAdsGmsIntegration.js';
+import {rankAdsCandidates} from './shopeeAdsSeo.js';
 import {readShopeeWallet} from './shopeeWallet.js';
 import {financeAdsDates,matchFinanceAds} from './financeAdsSweep.js';
 import {financeRange} from './shopeeFinance.js';
@@ -2449,6 +2450,17 @@ app.get('/api/shopee/finance/orders',mustLogin,requireWeDropAdmin,async(req,res)
 });
 
 // Integração Ads exigida no Task Center: diagnóstico e prévia seguros.
+app.get('/api/shopee/ads/seo/candidates',mustLogin,async(req,res)=>{
+ res.setHeader('Cache-Control','no-store');
+ try{
+  const {auth}=await getValidAuth(req);
+  const [catalog,plans]=await Promise.all([readCatalogCache(auth.shopId),recentShopeePricePlans(auth.shopId)]);
+  const candidates=rankAdsCandidates(catalog.items,plans);
+  res.json({ok:true,mode:'read_only',scope:'Até 20 planos de preço recentes; não é análise completa da loja',
+    catalogUpdatedAt:catalog.lastSavedAt||null,examinedPlans:plans.length,candidates,
+    warning:'Sem impressões, CTR, pedidos por SKU e taxa de conversão, isto é uma triagem financeira, não previsão de vendas. ROAS e orçamento são estimativas. Nenhuma campanha é criada.'});
+ }catch(error){res.status(400).json({ok:false,error:String(error?.message||error).slice(0,260)});}
+});
 app.get('/api/shopee/ads/gms/eligibility',mustLogin,async(req,res)=>{
  res.setHeader('Cache-Control','no-store');
  try{
