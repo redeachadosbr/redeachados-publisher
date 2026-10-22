@@ -29,6 +29,8 @@ const APP_PAGES={
     description:'Conexão oficial, testes e diagnóstico da API Shopee.'}
 };
 let activeAppPage='overview';
+// Handoff Ads -> Otimização: pré-preenchimento não dispara consulta automática.
+let optimizerAdsHandoffSku=null;
 function currentPageFromUrl(){
   const slug=decodeURIComponent(String(location.pathname||'').match(/^\/app\/([^/]+)\/?$/)?.[1]||'inicio');
   return Object.keys(APP_PAGES).find(k=>APP_PAGES[k].slug===slug)||'overview';
@@ -41,6 +43,8 @@ function setSidebarOpen(open){
 }
 function setTab(name,{updateHistory=true,scroll=true}={}){
   if(!APP_PAGES[name])name='overview';
+  const pendingAdsHandoff=name==='optimizer'&&Boolean(optimizerAdsHandoffSku);
+  if(pendingAdsHandoff)optimizerAdsHandoffSku=null;
   const page=APP_PAGES[name];
   const pane=$('#tab-'+name);
   if(!pane)return;
@@ -89,6 +93,8 @@ function setTab(name,{updateHistory=true,scroll=true}={}){
   else if(name==='optimizer'||name==='pricing'){
     if(name==='optimizer')void optimizerLoadSettings();
     void shPriceLoadDefaults().then(()=>{
+      // Não restaurar SKU/preço da sessão anterior ao receber uma SKU da campanha Ads.
+      if(pendingAdsHandoff)return;
       if(!shPriceSelection){
         shPriceSelection=shPriceRestoredSelection();
         if(shPriceSelection)$('#optimizerSku').value=shPriceSelection.sku;
@@ -1163,14 +1169,7 @@ function adsRenderSuggestions(){
     if(review&&!review.hidden)review.scrollIntoView({behavior:'smooth',block:'nearest'});
    },
    onProduct:c=>{
-    const link=document.querySelector('.nav-link[data-tab="optimizer"]');
-    if(link)link.click();
-    const sku=$('#optimizerSku');
-    if(sku&&c.productSku){
-     sku.value=c.productSku;
-     sku.dispatchEvent(new Event('input',{bubbles:true}));
-     sku.scrollIntoView({behavior:'smooth',block:'center'});
-    }
+    adsFillOptimizerSku(c.productSku);
    }
   });
   if(ok)return;
@@ -2294,7 +2293,7 @@ async function optimizerFindSku({deep=false}={}){
  }
 }
 $('#optimizerFind').onclick=()=>void optimizerFindSku();
-$('#optimizerSku')?.addEventListener?.('input',()=>{
+$('#optimizerSku')?.addEventListener?.('input',event=>{
  const value=$('#optimizerSku').value.trim();
  if(optimizerSkuInputTimer)clearTimeout(optimizerSkuInputTimer);
  ++optimizerSkuLookupSerial;
@@ -2327,9 +2326,30 @@ $('#optimizerSku')?.addEventListener?.('input',()=>{
   optimizerNotice('Aguardando SKU completa para evitar buscas parciais.');
   return;
  }
+ if(event?.detail?.onlyPrefill===true){
+  $('#optimizerQuickStatus').textContent='SKU '+value+' preenchida a partir da Shopee Ads. Clique em Buscar SKU para consultar.';
+  optimizerNotice('SKU '+value+' pronta no campo. Clique em Buscar SKU quando desejar iniciar a análise.','info');
+  return;
+ }
  $('#optimizerQuickStatus').textContent='Aguardando o término da digitação para localizar a SKU '+value+'...';
  optimizerSkuInputTimer=setTimeout(()=>void optimizerFindSku(),1000);
 });
+function adsFillOptimizerSku(value){
+ const sku=String(value||'').trim();
+ if(!sku)return false;
+ const field=$('#optimizerSku');
+ if(!field)return false;
+ optimizerAdsHandoffSku=sku;
+ setTab('optimizer');
+ // O CustomEvent executa apenas a limpeza de dados antigos, sem agendar busca.
+ field.value=sku;
+ field.dispatchEvent(new CustomEvent('input',{bubbles:true,detail:{onlyPrefill:true}}));
+ $('#optimizerItemId').value='';
+ field.scrollIntoView({behavior:'smooth',block:'center'});
+ field.focus({preventScroll:true});
+ return true;
+}
+globalThis.redeAdsOpenOptimizerSku=adsFillOptimizerSku;
 $('#optimizerSku').onkeydown=event=>{
  if(event.key==='Enter'){
   event.preventDefault();
