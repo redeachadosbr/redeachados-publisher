@@ -2120,18 +2120,27 @@ app.post('/api/shopee/optimizer/images/generate',mustLogin,requireWeDropAdmin,as
   if(['running','uncertain'].includes(job?.state))
    throw Error('Aguarde a confirmação da execução em andamento antes de substituir fotografias.');
   const existing=await readPreparedImages(auth.shopId,itemId,modelId,sku);
-  if(existing.some(x=>Number(x.slot)===position)&&req.body?.replace!==true)
+  const selected=existing.find(x=>Number(x.slot)===position);
+  if(selected&&req.body?.replace!==true)
    return res.status(409).json({error:'A posição já possui imagem. Use Refazer para autorizar a substituição.'});
+  const editCurrent=req.body?.editCurrent===true;
+  if(editCurrent&&!selected)throw Error('Para ajustar uma foto existente, selecione uma posição com imagem preparada.');
+  const referenceImages=editCurrent?[{file:await downloadPreparedImage(selected),mime:selected.mime_type}]:[];
   const [settings,stored]=await Promise.all([
    optimizerSettings(auth.shopId),getWorkflowReview(auth.shopId,itemId,modelId)
   ]);
   const review=stored?.sku===sku?stored.review_state||{}:{};
   const references=(record.imageUrls||[]).slice(0,2);
-  if(!references.length)throw Error('Sem foto original disponível na Shopee para esta SKU. Faça a importação manual.');
+  if(!references.length&&!referenceImages.length)throw Error('Sem fotografia de referência disponível nesta SKU.');
   const output=await generateOpenAiImage({
-   record,slot:position,referenceUrls:references,apiKey,
+   record,slot:position,referenceUrls:references,referenceImages,apiKey,
    masterPrompt:settings.image_prompt||'',note:review.imageNotes?.[position]||''
   });
+  if(editCurrent){
+   const latest=await readPreparedImages(auth.shopId,itemId,modelId,sku);
+   if(latest.find(x=>Number(x.slot)===position)?.sha256!==selected.sha256)
+    return res.status(409).json({error:'A imagem mudou durante o ajuste. Atualize a galeria antes de gerar novamente.'});
+  }
   const image=await importPreparedImage({
    shopId:auth.shopId,itemId,modelId,sku,slot:position,file:output.file,mime:output.mime,
    filename:'openai-'+String(position).padStart(2,'0')+'.png'
