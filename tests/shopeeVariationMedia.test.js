@@ -52,3 +52,9 @@ test('interface contém upload, geração, prévia e confirmação de estoque',(
  assert.match(js,/\/api\/shopee\/optimizer\/variants\/apply/);
  assert.match(app,/RedeVariants\?\.load/);
 });
+
+test('novo anúncio exige opção original e nova opção no preview; não apaga a cor Vermelha',()=>{
+ const server=readFileSync(new URL('../server.js',import.meta.url),'utf8');
+ assert.match(server,/Para criar variações sem apagar a opção original/);
+ assert.match(server,/Informe a opção original e a nova variação/);
+});
