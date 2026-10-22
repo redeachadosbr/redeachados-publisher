@@ -85,7 +85,9 @@
    if(c.adsMetrics?.source)card.append(el('div',c.adsMetrics.source,'ads-seo-note'));
    const row=el('div',null,'ads-seo-actions');
    row.append(action('Ver SKU / pesquisar preço',()=>openSku(c.sku)));
-   card.append(row);cards.append(card);
+   card.append(row);
+   globalThis.RedeAdsManual?.attach?.(c,card);
+   cards.append(card);
   }
  }
  function displayCampaigns(data){
@@ -145,9 +147,11 @@
    const data=await response.json();
    if(!response.ok)throw Error(data.error||'Falha ao consultar a Shopee.');
    last=data;
+   const readyCount=document.getElementById('adsSeoReadyCount');
+   if(readyCount)readyCount.textContent=Number(data.eligibleCount||0).toLocaleString('pt-BR');
    summary.replaceChildren();
    for(const message of [
-    (data.candidates?.length||0)+' SKUs elegíveis nos planos recentes',
+    (data.eligibleCount||0)+' produtos aptos sem campanha ativa',
     (data.monitoredCampaigns||0)+' campanhas ativas monitoradas',
     (data.withAlerts||0)+' campanhas com alerta',
     'Acompanhamento de 7 dias vs 7 anteriores'
@@ -160,6 +164,8 @@
   finally{busy=false;button.disabled=false;}
  }
  button.addEventListener('click',refresh);
+ const disclosure=document.getElementById('adsSeoDisclosure');
+ disclosure?.addEventListener('toggle',()=>{if(disclosure.open&&!last)void refresh();});
  sort.addEventListener('change',()=>{if(last)displayCandidates(last);});
  if('IntersectionObserver' in window){
   const observer=new IntersectionObserver(entries=>{
