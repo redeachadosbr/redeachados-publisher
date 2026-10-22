@@ -13,6 +13,7 @@ import {loadShopeeFinance,MAX_FINANCE_ORDERS} from './shopeeFinance.js';
 import {installFinanceBridge,installWalletBridge,installAdsFinanceBridge} from './financeBridge.js';
 import {buildAdsFinanceSnapshot} from './financeAdsBridge.js';
 import {readShopeeAdsAccount} from './shopeeAdsAccount.js';
+import {checkGmsEligibility,prepareGmsDraft} from './shopeeAdsGmsIntegration.js';
 import {readShopeeWallet} from './shopeeWallet.js';
 import {financeAdsDates,matchFinanceAds} from './financeAdsSweep.js';
 import {financeRange} from './shopeeFinance.js';
@@ -2446,6 +2447,30 @@ app.get('/api/shopee/finance/orders',mustLogin,requireWeDropAdmin,async(req,res)
         :'Consulte um período menor ou verifique os detalhes dos pedidos na Shopee.'});
   }
 });
+
+// Integração Ads exigida no Task Center: diagnóstico e prévia seguros.
+app.get('/api/shopee/ads/gms/eligibility',mustLogin,async(req,res)=>{
+ res.setHeader('Cache-Control','no-store');
+ try{
+  const {cfg,auth}=await getValidAuth(req);
+  const result=await checkGmsEligibility(cfg,auth,callShopeeShopApi);
+  res.json({ok:true,...result});
+ }catch(error){
+  const message=String(error?.message||error).slice(0,260);
+  res.status(/permission|denied|403|forbidden/i.test(message)?403:400).json({
+   ok:false,error:message,creationEnabled:false,
+   help:'Confira permissão Ads, autorização da loja e elegibilidade para campanhas GMS na Shopee.'
+  });
+ }
+});
+app.post('/api/shopee/ads/gms/preview',mustLogin,(req,res)=>{
+ res.setHeader('Cache-Control','no-store');
+ try{
+  const draft=prepareGmsDraft(req.body);
+  res.json({ok:true,...draft});
+ }catch(error){res.status(400).json({ok:false,error:String(error?.message||error).slice(0,260)});}
+});
+// Nenhuma rota de criação/publicação é habilitada nesta implantação.
 
 app.get('/api/shopee/ads/overview',mustLogin,async(req,res)=>{
   res.setHeader('Cache-Control','no-store');
