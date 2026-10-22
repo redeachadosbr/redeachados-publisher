@@ -31,9 +31,10 @@ test('modo ChatGPT monta as nove instruções para a SKU, respeita roteiro e ima
  const backpack=createChatGptPrompts({sku:'TUD0667',title:'Super Mochila Construtor 3 em 1',
   imageUrls:['https://cf.shopee.com.br/file/original'],attributes:[]});
  assert.equal(backpack.prompts.length,9);
- assert.match(backpack.prompts[2],/SEM? medidas|sem cotas|APENAS com valores/i);
- assert.match(backpack.prompts[3],/flat lay|Foto de cima/i);
- assert.match(backpack.prompts[7],/Três recortes editoriais/i);
+ assert.match(backpack.prompts[1],/DIMENSÕES/i);
+ assert.match(backpack.prompts[2],/ANAMÓRFICA/i);
+ assert.match(backpack.prompts[3],/DETALHES/i);
+ assert.match(backpack.prompts[7],/EM USO/i);
  assert.notEqual(backpack.scenes[1].guide,backpack.scenes[3].guide);
 });
 test('arquivos numerados mapeiam os slots corretos independentemente da ordem de seleção',()=>{
