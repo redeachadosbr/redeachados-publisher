@@ -54,6 +54,11 @@ function render(){
    suggestion.append(add);target.append(suggestion);
  }
  const existing=new Map((saved.type===variationType?saved.options:[]).map(o=>[o.name,o]));
+ const workspace=el('div','optimizer-variant-workspace');
+ const left=el('div','optimizer-variant-main');
+ const sectionTitle=el('div','optimizer-variant-section-title');
+ sectionTitle.append(el('strong','','▣  Variações do produto'),el('small','','Preencha os dados de cada variação. O rascunho não publica automaticamente.'));
+ left.append(sectionTitle);
  const cards=el('div','optimizer-variant-cards');
  for(const name of options){
   const prior=existing.get(name)||{},row=el('article','optimizer-variant-item');
@@ -62,8 +67,8 @@ function render(){
   const verifiedEan=prior.gtin||((sameOriginal&&supplierEan)?supplierEan:'');
   row.dataset.option=name;
   const header=el('div','optimizer-variant-heading');
-  header.append(el('strong','',variationType+' · '+name),
-   el('small','',prior.asset?'Foto salva • revisar antes de publicar':'Foto da opção pendente'));
+  const headingName=el('strong','', '●  '+variationType+' · '+name);
+  header.append(headingName,el('small','',prior.asset?'Foto salva':'Foto pendente'));
   const body=el('div','optimizer-variant-body'),visual=el('div','optimizer-variant-photo');
   if(prior.previewUrl){
    const img=el('img');img.src=prior.previewUrl;img.alt='Prévia da opção '+name;
@@ -102,10 +107,14 @@ function render(){
    el('span','','Confirmei pelo fornecedor que esta opção existe e há estoque disponível'));
   const save=el('button','optimizer-variant-save','Salvar dados da variação');
   save.type='button';save.onclick=()=>void persist();
-  fields.append(price.label,stock.label,sku.label,gtin.label,noGtin,confirmPhoto,confirmStock,save);
+  fields.append(price.label,sku.label,stock.label,gtin.label,noGtin,confirmPhoto,confirmStock,save);
   body.append(visual,fields);row.append(header,body);cards.append(row);
  }
- target.append(cards);
+ left.append(cards);workspace.append(left);
+ const side=el('aside','optimizer-variant-side');
+ const sideHeading=el('div','optimizer-variant-side-heading');
+ sideHeading.append(el('strong','','➤  Envio e aplicação'),el('small','','Após revisar as variações, confira os dados e aplique pela API na Shopee.'));
+ side.append(sideHeading);
  const footer=el('div','optimizer-variant-footer');
  const preview=el('button','secondary','Conferir envio pela API');
  const send=el('button','optimizer-variant-publish','Aplicar variações na Shopee');
@@ -135,7 +144,9 @@ function render(){
    '. Confira na Shopee antes de tentar novamente.','error');}
   finally{busy=false;}
  };
- footer.append(preview,send);target.append(footer);
+ footer.append(preview,send);side.append(footer);
+ side.append(el('p','optimizer-variant-side-note','ⓘ  Foto por variação: gerar pela API OpenAI ou incluir imagem. Confira o estoque real antes de publicar.'));
+ workspace.append(side);target.append(workspace);
  target.querySelectorAll('input').forEach(i=>{
   if(i.type==='file')return;
   i.addEventListener('input',()=>{approval=null;send.disabled=true;});
