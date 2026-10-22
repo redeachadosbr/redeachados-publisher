@@ -13,9 +13,10 @@
  };
  const textDate=(shift=0)=>{
   const d=new Date(Date.now()+shift*86400000);
-  const brazil=new Intl.DateTimeFormat('en-CA',{timeZone:'America/Sao_Paulo',year:'numeric',month:'2-digit',day:'2-digit'}).format(d);
-  const [y,m,dd]=brazil.split('-');
-  return dd+'-'+m+'-'+y;
+  const parts=new Intl.DateTimeFormat('en-US',{timeZone:'America/Sao_Paulo',
+   year:'numeric',month:'2-digit',day:'2-digit'}).formatToParts(d);
+  const map=Object.fromEntries(parts.map(p=>[p.type,p.value]));
+  return map.day+'-'+map.month+'-'+map.year;
  };
  function editor(candidate){
   const root=el('details','ads-manual-editor'),head=el('summary','','Configurar campanha manual • CPC');
