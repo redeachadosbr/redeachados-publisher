@@ -4067,3 +4067,11 @@ body.view-wedrop .page-intro{display:none!important}
 #optimizerImagesPanel .optimizer-commercial-move-select{margin-top:5px;display:block;max-width:100%;width:100%;min-height:29px;border:1px solid #c7d9eb;border-radius:8px;background:#f8fbff;color:#214d6e;font-size:11px;font-weight:750;padding:3px 7px;cursor:pointer}
 #optimizerImagesPanel .optimizer-commercial-move-select:focus-visible{outline:2px solid #09856c;outline-offset:2px}
 #optimizerImagesPanel .optimizer-commercial-move-select:disabled{opacity:.5;cursor:not-allowed}
+
+/* Imagem corrigida já pronta: colar ou selecionar sem gastar novos créditos. */
+#optimizerImagesPanel .optimizer-image-ready-actions{border:1px solid #b9dbe2;background:#f5fbff;border-radius:12px;padding:10px 12px;display:grid;gap:7px;margin-top:9px}
+#optimizerImagesPanel .optimizer-image-ready-actions>strong{font-size:12px;color:#13395d}
+#optimizerImagesPanel .optimizer-image-ready-buttons{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:7px}
+#optimizerImagesPanel .optimizer-image-ready-buttons button{min-height:34px;padding:7px 9px;border-radius:9px;font-weight:800;font-size:11px}
+#optimizerImagesPanel .optimizer-image-ready-actions>small{font-size:10px;line-height:1.45;color:#56708e}
+@media(max-width:600px){#optimizerImagesPanel .optimizer-image-ready-buttons{grid-template-columns:1fr}}

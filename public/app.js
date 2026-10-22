@@ -2916,6 +2916,68 @@ $('#optimizerImageCorrectionGenerate')?.addEventListener?.('click',async()=>{
   btn.disabled=false;save.disabled=false;
  }
 });
+
+async function optimizerImageCorrectionImportFile(file){
+ const w=optimizerWorkflowPlan,slot=Number($('#optimizerImageCorrectionSlot')?.value);
+ const status=$('#optimizerImageCorrectionStatus');
+ if(!w||!optimizerImagesSameSku(w)||!Number.isInteger(slot)||slot<1||slot>9)
+  throw Error('Abra a etapa de imagens e selecione uma posição.');
+ if(optimizerImagesAutoBusy||optimizerChatBridgeBusy)throw Error('Uma geração ou importação está em andamento.');
+ if(!file?.size)throw Error('Imagem não encontrada.');
+ const previous=optimizerImageCorrectionPreviewMap.get(slot);
+ optimizerImagesAutoBusy=true;optimizerImagesSetProgress();
+ $('#optimizerImageCorrectionPaste').disabled=true;
+ $('#optimizerImageCorrectionChoose').disabled=true;
+ try{
+  status.textContent='Preparando imagem '+String(slot).padStart(2,'0')+' para salvar...';
+  const prepared=await optimizerChatgptScaleFile(file);
+  const mime=prepared.blob.type==='image/jpeg'?'image/jpeg':'image/png';
+  const extension=mime==='image/jpeg'?'jpg':'png';
+  const response=await fetch('/api/shopee/optimizer/images/manual?'+new URLSearchParams({
+   sku:w.sku,item_id:w.itemId,model_id:w.modelId,slot
+  }),{method:'POST',headers:{'Content-Type':mime,
+   'X-Image-Filename':encodeURIComponent('imagem-corrigida-'+String(slot).padStart(2,'0')+'.'+extension)},
+   body:prepared.blob,signal:AbortSignal.timeout(90000)});
+  const result=await response.json().catch(()=>({}));
+  if(!response.ok)throw Error(result.error||'Não foi possível gravar a imagem no servidor.');
+  if(!result.image?.sha256||Number(result.image.slot)!==slot||
+   String(result.image.sku)!==String(w.sku)||result.image.sha256===previous?.sha256)
+   throw Error('O arquivo recebido não substituiu a imagem anterior.');
+  const stage=w.stages?.find(x=>x.key==='images');
+  if(stage){stage.reviewed=false;stage.status='pending';stage.reviewedAt=null;}
+  optimizerExecReset();optimizerWorkflowRender(w);
+  await optimizerImagesLoad();
+  if(optimizerImageCorrectionPreviewMap.get(slot)?.sha256!==result.image.sha256)
+   throw Error('Arquivo salvo, mas a galeria ainda não confirmou a nova foto. Atualize a página.');
+  status.textContent='✓ Imagem '+String(slot).padStart(2,'0')+' substituída e confirmada na SKU '+w.sku+'. Revise antes de enviar à Shopee.';
+  $('#optimizerImageCorrectionFile').value='';
+ }finally{
+  optimizerImagesAutoBusy=false;optimizerImagesSetProgress();
+  $('#optimizerImageCorrectionPaste').disabled=false;
+  $('#optimizerImageCorrectionChoose').disabled=false;
+ }
+}
+$('#optimizerImageCorrectionChoose')?.addEventListener?.('click',()=>$('#optimizerImageCorrectionFile')?.click());
+$('#optimizerImageCorrectionFile')?.addEventListener?.('change',async e=>{
+ const file=e.target.files?.[0];if(!file)return;
+ try{await optimizerImageCorrectionImportFile(file);}
+ catch(error){$('#optimizerImageCorrectionStatus').textContent='Não foi possível importar: '+error.message;}
+});
+$('#optimizerImageCorrectionPaste')?.addEventListener?.('click',async()=>{
+ const status=$('#optimizerImageCorrectionStatus');
+ try{
+  if(!navigator.clipboard?.read)throw Error('Este navegador não permite ler imagens copiadas. Use Selecionar imagem.');
+  const items=await navigator.clipboard.read();
+  let file;
+  for(const item of items){
+   const mime=item.types.find(t=>/^image\/(?:png|jpeg|webp)$/.test(t));
+   if(mime){const blob=await item.getType(mime);file=new File([blob],'imagem-copiada.png',{type:mime});break;}
+  }
+  if(!file)throw Error('Não encontrei uma imagem copiada. No ChatGPT, use Copiar imagem e tente novamente.');
+  await optimizerImageCorrectionImportFile(file);
+ }catch(error){status.textContent='Não foi possível colar: '+error.message;}
+});
+
 $('#optimizerImageCorrectionCopy')?.addEventListener?.('click',async()=>{
  const w=optimizerWorkflowPlan;if(!w)return;
  const slot=Number($('#optimizerImageCorrectionSlot').value),note=$('#optimizerImageCorrection').value.trim();
@@ -6789,7 +6851,7 @@ async function optimizerCommercialRequestChatgptSlot(w,slot){
   return;
  }
  try{
-  if(optimizerChatBridgeIdentity(optimizerChatBridgeJob,w)&&await optimizerChatBridgeRecover({includeBlocked:true}))return;
+  if(optimizerChatBridgeIdentity(optimizerChatBridgeJob,w)&&optimizerChatBridgeJob?.slots?.length===1&&Number(optimizerChatBridgeJob.slots[0])===Number(slot)&&!optimizerChatBridgeJob.complete&&await optimizerChatBridgeRecover({includeBlocked:true}))return;
   const brief=await optimizerChatgptMakeBrief(w);
   if(!brief.original)throw Error('Não há fotografia original da Shopee para esta SKU.');
   optimizerChatBridgeNonce=crypto.randomUUID();
@@ -6916,14 +6978,23 @@ function optimizerChatBridgeQueue(){
     if(optimizerChatBridgeIdentity(w,row)){
      const status=$('#optimizerImageCorrectionStatus');
      if(status&&Number($('#optimizerImageCorrectionSlot')?.value)===Number(row.slot))
-      status.textContent='✓ ChatGPT gerou e importou automaticamente a imagem '+row.slot+'. Confira a prévia antes de aprovar a etapa.';
+      status.textContent='Arquivo recebido na posição '+row.slot+'. Verificando a substituição no servidor...';
      optimizerImagesSavedSlots.add(row.slot);
      const stage=w.stages?.find(x=>x.key==='images');
      if(stage){stage.reviewed=false;stage.status='pending';stage.reviewedAt=null;}
      optimizerExecReset();
      if(optimizerWorkflowStage==='images')await optimizerImagesLoad();
     }
-    if(optimizerChatBridgeJob?.nonce===row.nonce)await optimizerChatBridgeConfirmed(optimizerChatBridgeJob);
+    if(optimizerChatBridgeJob?.nonce===row.nonce){
+      const job=optimizerChatBridgeJob, confirmed=await optimizerChatBridgeConfirmed(job);
+      if(job?.slots?.length===1&&optimizerChatBridgeIdentity(w,job)&&
+       Number($('#optimizerImageCorrectionSlot')?.value)===Number(job.slots[0])){
+       const correction=$('#optimizerImageCorrectionStatus');
+       if(correction)correction.textContent=confirmed
+        ?'✓ Foto '+String(row.slot).padStart(2,'0')+' realmente substituída e confirmada no servidor. Revise antes de publicar.'
+        :'A foto foi enviada, mas não houve confirmação de substituição. Confira a prévia e importe a nova imagem.';
+      }
+     }
    }
   })).catch(error=>{optimizerChatBridgeQueuePromise=null;throw error;});
  return optimizerChatBridgeQueuePromise;

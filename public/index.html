@@ -6,7 +6,7 @@
 <meta name="theme-color" content="#0A1C3A">
 <link rel="icon" type="image/svg+xml" href="/brand-logo.svg">
 <title>Rede Achados BR · Gestão Shopee</title>
-<link rel="stylesheet" href="/style.css?v=1.20.27-gallery-reorder">
+<link rel="stylesheet" href="/style.css?v=1.20.28-image-correction-import">
 <link rel="stylesheet" href="/optimizer-compact.css?v=1.20.13-wedrop">
 <link rel="stylesheet" href="/optimizer-fiscal-premium.css?v=1.20.13">
 <link rel="stylesheet" href="/optimizer-ads-reserve.css?v=1.20.15">
@@ -673,6 +673,15 @@
               <button id="optimizerImageCorrectionGenerate" type="button">✦ Gerar ajuste e importar</button>
               <button id="optimizerImageCorrectionSave" class="secondary" type="button">Salvar orientação</button>
               <button id="optimizerImageCorrectionCopy" class="secondary" type="button">Copiar prompt</button>
+            </div>
+            <div class="optimizer-image-ready-actions">
+              <strong>Já tem a imagem pronta no ChatGPT?</strong>
+              <div class="optimizer-image-ready-buttons">
+                <button id="optimizerImageCorrectionPaste" class="secondary" type="button">▧ Colar imagem copiada</button>
+                <button id="optimizerImageCorrectionChoose" class="secondary" type="button">↑ Selecionar imagem</button>
+                <input id="optimizerImageCorrectionFile" type="file" accept="image/png,image/jpeg,image/webp,.png,.jpg,.jpeg,.webp" hidden>
+              </div>
+              <small>Escolha a posição e cole a foto do ChatGPT ou selecione o arquivo. A imagem será ajustada para 1200 × 1200 e salva sem nova geração, com confirmação real da substituição.</small>
             </div>
             <p id="optimizerImageCorrectionStatus" class="optimizer-correction-status" role="status" aria-live="polite">Descreva o ajuste, escolha a posição e clique em Gerar ajuste e importar. A imagem será salva automaticamente para revisão, sem publicar na Shopee.</p>
             <figure id="optimizerImageCorrectionPreview" class="optimizer-correction-preview" hidden>
@@ -1590,7 +1599,7 @@
 <script src="/optimizer-dashboard.js?v=1.20.12-wedrop-open"></script>
 <script src="/dashboard-new-listings.js?v=1.20.21-shopee"></script>
 <script src="/title-studio.js?v=1.20.52-sku1175-no-codes"></script>
-<script src="/app.js?v=1.21.9-gallery-reorder"></script>
+<script src="/app.js?v=1.21.10-image-correction-import"></script>
 <link rel="stylesheet" href="/optimizer-variations.css?v=1.2.0">
 <script src="/optimizer-variations.js?v=1.2.0"></script>
 

@@ -55,9 +55,12 @@ export async function importPreparedImage({shopId,itemId,modelId,sku,slot,file,m
  const sha256=crypto.createHash('sha256').update(file).digest('hex');
  // A lost response may cause the bridge to resend the same file. Reuse the
  // confirmed slot instead of uploading another object or clearing publication state.
- const existing=(await readPreparedImages(shopId,itemId,modelId,sku))
-  .find(row=>Number(row.slot)===position&&row.sha256===sha256);
+ const rows=await readPreparedImages(shopId,itemId,modelId,sku);
+ const existing=rows.find(row=>Number(row.slot)===position&&row.sha256===sha256);
  if(existing)return existing;
+ const duplicate=rows.find(row=>Number(row.slot)!==position&&row.sha256===sha256);
+ if(duplicate)throw Error('A foto é idêntica à imagem '+String(duplicate.slot).padStart(2,'0')+
+  '. Escolha uma imagem diferente para a posição '+String(position).padStart(2,'0')+'.');
  const storage_path=[num(shopId),num(itemId),num(modelId),crypto.randomUUID()+'.'+dims.extension].join('/');
  await api('/storage/v1/object/'+IMAGE_BUCKET+'/'+storage_path,{method:'POST',headers:{'Content-Type':mime,'x-upsert':'false'},body:file});
  const data={shop_id:num(shopId),item_id:num(itemId),model_id:num(modelId),sku,slot:position,storage_path,
