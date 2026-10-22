@@ -1,0 +1,68 @@
+/* Rede Achados BR — sidebar recolhível global v1.
+   Desktop: trilho de ícones com conteúdo responsivo. Mobile: preserva gaveta original. */
+.sidebar-brand-row{display:flex;align-items:flex-start;justify-content:space-between;gap:6px;min-width:0}
+.sidebar-brand-row>.sidebar-brand{flex:1;min-width:0;padding:5px 0 16px;overflow:hidden}
+.sidebar-brand-row .sidebar-brand-label{min-width:0;overflow:hidden}
+.sidebar-brand-row .sidebar-brand-label strong{overflow:hidden;text-overflow:ellipsis}
+.sidebar-collapse-control{display:grid;place-items:center;flex:none;width:34px;height:34px;padding:6px;margin:6px 0 0;
+ border:1px solid #7897c355;background:#ffffff13;color:#e7f0ff;border-radius:10px;
+ cursor:pointer;transition:background .18s,border-color .18s,transform .18s}
+.sidebar-collapse-control:hover{background:#ffffff26;border-color:#8fa9d0}
+.sidebar-collapse-control:focus-visible{outline:2px solid #fff;outline-offset:2px}
+.sidebar-collapse-control svg{width:19px;height:19px;transition:transform .2s}
+body.sidebar-collapsed .sidebar-collapse-control svg{transform:rotate(180deg)}
+@media(min-width:981px){
+ .shell.app-layout{transition:grid-template-columns .22s ease}
+ body.sidebar-collapsed .shell.app-layout,
+ body.view-ads.sidebar-collapsed .shell.app-layout{grid-template-columns:76px minmax(0,1fr)!important}
+ body.sidebar-collapsed .workspace-main{width:100%;min-width:0}
+ body.sidebar-collapsed .workspace-content{width:100%;max-width:none;min-width:0;
+  padding-left:clamp(12px,1.7vw,28px);padding-right:clamp(12px,1.7vw,28px)}
+ body.view-ads.sidebar-collapsed .workspace-content{max-width:none;width:100%;
+  padding-left:clamp(10px,1.2vw,20px);padding-right:clamp(10px,1.2vw,20px)}
+ body.sidebar-collapsed .app-sidebar,
+ body.view-ads.sidebar-collapsed .app-sidebar{padding:12px 8px 13px;align-items:stretch;overflow-x:hidden}
+ body.sidebar-collapsed .sidebar-brand-row{flex-direction:column;align-items:center;gap:5px}
+ body.sidebar-collapsed .sidebar-brand-row>.sidebar-brand{display:flex;justify-content:center;
+  align-items:center;flex:none;width:100%;padding:0;margin:0;min-height:45px;overflow:visible}
+ body.sidebar-collapsed .sidebar-logo{flex:none;width:41px;height:41px;display:grid;place-items:center}
+ body.sidebar-collapsed .sidebar-logo img{width:37px;height:37px;max-width:100%;object-fit:contain}
+ body.sidebar-collapsed .sidebar-collapse-control{margin:0 0 6px;width:40px;height:32px;align-self:center}
+ body.sidebar-collapsed .sidebar-brand-label,
+ body.sidebar-collapsed .sidebar-workspace,
+ body.sidebar-collapsed .nav-group-title,
+ body.sidebar-collapsed .app-sidebar .nav-name,
+ body.sidebar-collapsed .app-sidebar .nav-chevron,
+ body.sidebar-collapsed .app-sidebar .sidebar-help-copy,
+ body.sidebar-collapsed .sidebar-bottom{display:none!important}
+ body.sidebar-collapsed .sidebar-nav{gap:14px}
+ body.sidebar-collapsed .nav-group{gap:5px}
+ body.sidebar-collapsed .app-sidebar .nav-link,
+ body.sidebar-collapsed .app-sidebar .nav-link.tab,
+ body.sidebar-collapsed .app-sidebar .sidebar-reports>summary{position:relative;min-width:0;min-height:43px;
+  height:43px;width:100%;display:flex;align-items:center;justify-content:center;
+  padding:9px 0!important;gap:0;border-radius:10px;text-align:center}
+ body.sidebar-collapsed .app-sidebar .nav-link>.nav-icon,
+ body.sidebar-collapsed .app-sidebar .sidebar-reports>summary>.nav-icon{width:21px;height:21px;flex:none}
+ body.sidebar-collapsed .app-sidebar .sidebar-reports{width:100%;min-width:0}
+ body.sidebar-collapsed .app-sidebar .sidebar-subnav{margin:0;padding:2px 0 3px;border:0}
+ body.sidebar-collapsed .app-sidebar .sidebar-subnav .nav-link{height:37px;min-height:37px;padding:7px 0!important}
+ body.sidebar-collapsed .app-sidebar .sidebar-subnav .nav-icon{width:19px;height:19px;flex-basis:19px}
+ body.sidebar-collapsed .app-sidebar .sidebar-counter:not(:empty){position:absolute;right:0;top:2px;
+  font-size:9px;min-width:15px;padding:1px 3px;line-height:1.4}
+ body.sidebar-collapsed .app-sidebar .nav-link:focus-visible,
+ body.sidebar-collapsed .app-sidebar .sidebar-reports>summary:focus-visible{outline:2px solid #b5d1ff;outline-offset:-2px}
+}
+@media(max-width:980px){
+ .sidebar-collapse-control{display:none!important}
+ /* Ads já tem grade própria; o menu móvel continua sendo uma gaveta sobre o conteúdo. */
+ body.view-ads .shell.app-layout{display:block!important}
+ body.view-ads .app-sidebar{position:fixed;left:0;top:0;width:260px;max-width:85vw;
+  height:100vh;transform:translateX(-102%);transition:transform .22s ease;z-index:50}
+ body.view-ads.sidebar-open .app-sidebar{transform:translateX(0)}
+ body.view-ads .sidebar-scrim:not([hidden]){display:block}
+ body.view-ads button.topbar-icon-button{display:grid;place-items:center}
+}
+@media(prefers-reduced-motion:reduce){
+ .shell.app-layout,.sidebar-collapse-control,.sidebar-collapse-control svg{transition:none!important}
+}
