@@ -336,7 +336,7 @@
         const card=el('article','seo-studio-card'+(n>=MIN&&n<=LIMIT&&!o.duplicate?' valid':' needs-review'));
         const meta=el('div','seo-studio-card-top');
         const group=el('div','seo-studio-option');
-        group.append(el('strong','','0'+(i+1)+' · '+o.name),el('small','',o.ai?'✦ Elaborado pelo ChatGPT':'Gerador interno gratuito · '+o.subtitle));
+        group.append(el('strong','','0'+(i+1)+' · '+o.name),el('small','',o.ai?'Gerado sem API e sem créditos':'Sugestão interna · '+o.subtitle));
         const meter=el('div','seo-studio-meter');
         meter.append(el('strong','',score+'/100'),el('small','','nota estrutural estimada'));
         meta.append(group,meter);card.append(meta);
