@@ -36,3 +36,11 @@
 .seo-studio-status{font-size:12px;margin-top:5px;color:#0c775a;font-weight:700}
 @media(max-width:1000px){.seo-studio-grid{grid-template-columns:1fr}}
 @media(max-width:650px){#optimizerTitleVariants.seo-studio{padding:10px}.seo-studio-head{flex-direction:column}.seo-studio-custom{flex-direction:column;align-items:stretch}.seo-studio-rebuild{width:100%}}
+
+/* SEO 100–120 chars · truthful market sample messaging */
+.seo-studio-market-status{margin:8px 0 10px;padding:10px 12px;background:#f0f7ff;border:1px solid #cadff6;border-radius:10px;color:#205989;font-size:12px;line-height:1.5;font-weight:700}
+.seo-studio-card.needs-review{border-color:#f2cf9b;background:#fffcf7}
+.seo-studio-card.needs-review .seo-studio-meter strong{color:#956121}
+.seo-studio-choose:disabled{opacity:.46;cursor:not-allowed;background:#b2b9c3;border-color:#b2b9c3}
+.seo-studio-choose:disabled:hover{filter:none}
+.seo-studio-card .seo-studio-candidate{overflow-wrap:anywhere}
