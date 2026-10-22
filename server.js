@@ -16,6 +16,7 @@ import {buildAdsFinanceSnapshot} from './financeAdsBridge.js';
 import {readShopeeAdsAccount} from './shopeeAdsAccount.js';
 import {checkGmsEligibility,prepareGmsDraft} from './shopeeAdsGmsIntegration.js';
 import {rankAdsCandidates} from './shopeeAdsSeo.js';
+import {manualAdsPreview,manualAdsPayload,manualAdsToken,decodeManualAdsToken,verifyManualAdsCandidate} from './shopeeAdsManualCreate.js';
 import {liveAdsCampaign,buildAdsPreview,signAdsApproval,verifyAdsApproval,adsEditRequest} from './shopeeAdsActions.js';
 import {readShopeeWallet} from './shopeeWallet.js';
 import {financeAdsDates,matchFinanceAds} from './financeAdsSweep.js';
@@ -2484,6 +2485,56 @@ app.get('/api/shopee/ads/seo/candidates',mustLogin,async(req,res)=>{
    ...intelligence,
    warning:'Somente leitura. ROAS e orçamento sugeridos não são garantias de venda. Nenhuma campanha foi criada ou alterada.'});
  }catch(error){res.status(400).json({ok:false,error:String(error?.message||error).slice(0,260)});}
+});
+// Campanhas Shopee Ads com CPC MANUAL (nunca GMS/ROAS automático).
+// Preparar prévia e enviar só após confirmação expressa do usuário.
+const adsManualCreateUsed=new Map();
+app.post('/api/shopee/ads/manual/preview',mustLogin,async(req,res)=>{
+ res.setHeader('Cache-Control','no-store');
+ if(!adsBrowserOrigin(req))return res.status(403).json({ok:false,error:'Origem não permitida.'});
+ try{
+  const {auth}=await getValidAuth(req);
+  const [catalog,plans]=await Promise.all([readCatalogCache(auth.shopId),recentShopeePricePlans(auth.shopId,{limit:1000})]);
+  const preview=manualAdsPreview(req.body,catalog.items,plans);
+  const approval=manualAdsToken({shopId:String(auth.shopId),nonce:crypto.randomUUID(),
+   at:Date.now(),draft:preview.draft},adsApprovalSecret());
+  res.json({ok:true,preview,approval,created:false});
+ }catch(e){res.status(400).json({ok:false,error:String(e.message||e).slice(0,380),created:false});}
+});
+app.post('/api/shopee/ads/manual/create',mustLogin,async(req,res)=>{
+ res.setHeader('Cache-Control','no-store');
+ if(!adsBrowserOrigin(req))return res.status(403).json({ok:false,error:'Origem não permitida.'});
+ if(req.body?.confirm!==true)return res.status(400).json({ok:false,error:'Confirmação expressa obrigatória.'});
+ try{
+  const {auth,cfg}=await getValidAuth(req);
+  const signed=decodeManualAdsToken(req.body.approval,adsApprovalSecret(),{shopId:auth.shopId});
+  const nonce='manual-'+signed.nonce;
+  if(adsManualCreateUsed.has(nonce))
+   return res.status(409).json({ok:false,error:'Esta aprovação já foi usada. Confira a Shopee antes de tentar criar outra campanha.'});
+  adsManualCreateUsed.set(nonce,'reserved');
+  const [catalog,plans]=await Promise.all([readCatalogCache(auth.shopId),recentShopeePricePlans(auth.shopId,{limit:1000})]);
+  verifyManualAdsCandidate(signed.draft,catalog.items,plans);
+  // Conferência adicional do anúncio ao vivo: só produtos NORMAL podem receber anúncio.
+  const live=await callShopeeShopApi(cfg,{path:'/api/v2/product/get_item_base_info',
+   accessToken:auth.accessToken,shopId:auth.shopId,query:{item_id_list:String(signed.draft.itemId)}});
+  const info=(live?.response?.item_list||[]).find(x=>String(x.item_id)===String(signed.draft.itemId));
+  if(!info||String(info.item_status||'').toUpperCase()!=='NORMAL')
+   throw Error('Produto indisponível para Ads na Shopee; nenhuma campanha criada.');
+  const liveSku=String(info.item_sku||'').trim();
+  if(liveSku&&liveSku!==signed.draft.sku)
+   throw Error('SKU do produto mudou na Shopee. Refaça a prévia antes de anunciar.');
+  const reqApi=manualAdsPayload(signed.draft,signed.nonce);
+  // Não repetir chamada POST por timeout; reference_id permite deduplicação na Shopee.
+  adsManualCreateUsed.set(nonce,'sending');
+  const response=await callShopeeShopApi(cfg,{...reqApi,
+   accessToken:auth.accessToken,shopId:auth.shopId});
+  const campaignId=response?.response?.campaign_id;
+  if(!campaignId)throw Error('A Shopee não confirmou o ID da campanha criada. Verifique o painel antes de reenviar.');
+  adsManualCreateUsed.set(nonce,'created');
+  res.json({ok:true,created:true,campaignId:String(campaignId),biddingMethod:'manual',
+   note:'Campanha criada com lances CPC manuais. ROAS é indicador de desempenho, não controle automático de lance.'});
+ }catch(e){res.status(400).json({ok:false,created:false,error:String(e.message||e).slice(0,380),
+  warning:'Se houve falha ou timeout após o envio, confira a Shopee antes de tentar novamente.'});}
 });
 app.get('/api/shopee/ads/gms/eligibility',mustLogin,async(req,res)=>{
  res.setHeader('Cache-Control','no-store');
