@@ -1928,7 +1928,7 @@ app.get('/api/shopee/optimizer/variants/draft',mustLogin,requireWeDropAdmin,asyn
    const supplier=await readWeDropProduct(x.auth.shopId,{sku:x.sku,itemId:x.itemId,modelId:x.modelId});
    const facts=supplier?.product_data||{};
    const candidates=[facts.ean,facts.EAN,facts.gtin,facts.GTIN,facts.barcode,facts.codigo_barras,facts.codigoDeBarras];
-   supplierEan=candidates.map(v=>String(v??'').trim()).find(v=>/^\\d{8,14}$/.test(v))||null;
+   supplierEan=candidates.map(v=>String(v??'').trim()).find(v=>/^\d{8,14}$/.test(v))||null;
   }catch{ /* mantém edição manual se fornecedor indisponível */ }
   let suggestedPrice=null;
   try{
