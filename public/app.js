@@ -58,6 +58,7 @@ function setTab(name,{updateHistory=true,scroll=true}={}){
   document.body?.classList?.toggle?.('view-discounts',name==='discounts');
   document.body?.classList?.toggle?.('view-orders',name==='orders');
   document.body?.classList?.toggle?.('view-ads',name==='ads');
+  if(name==='ads')queueMicrotask(()=>globalThis.RedeAdsSeoRefresh?.());
   document.body?.classList?.toggle?.('view-wedrop',name==='wedrop');
   document.body?.classList?.toggle?.('view-finance',name==='finance');
   document.body?.classList?.toggle?.('view-alerts',name==='alerts');
