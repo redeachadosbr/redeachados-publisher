@@ -52,3 +52,12 @@ test('prévia assinada expira, exige loja certa e não aceita adulteração',()=
  assert.throws(()=>decodeIndividualRoasToken(token,secret,{shopId:'123',now:now.getTime()+400000}),/expirada/);
  assert.throws(()=>decodeIndividualRoasToken(token+'x',secret,{shopId:'123',now:now.getTime()}),/Assinatura/);
 });
+
+test('prévia assinada normalizada é revalidada na criação, sem alterar a estratégia',()=>{
+ const normalized=validateIndividualRoasDraft(form,{today:now});
+ const again=validateIndividualRoasDraft(normalized,{today:now});
+ assert.equal(again.productSelection,'manual');
+ assert.equal(again.biddingMethod,'auto');
+ assert.throws(()=>validateIndividualRoasDraft({...normalized,biddingMethod:'manual'},{today:now}),/lance automático/);
+ assert.throws(()=>validateIndividualRoasDraft({...normalized,productSelection:'auto'},{today:now}),/não é individual/);
+});
