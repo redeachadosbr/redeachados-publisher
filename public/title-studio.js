@@ -47,10 +47,11 @@
        'Mochila de Ferramentas','Brinquedo Infantil','Construtor 3 em 1'];
     } else if(/passadeira a vapor|vaporizador de roupas/i.test(joined)){
       kind='steam';
-      phrases=['Vaporizador para Roupas','Desamassa no Cabide','Cuidados com Roupas','Passadeira Portátil'];
+      phrases=['Vaporizador para Roupas','Para Desamassar Roupas','Cuidados com Roupas','Passadeira Portátil','Passadeira a Vapor para Vestuário','Para o Cuidado de Tecidos','Vaporizador Portátil de Roupas'];
     } else if(/porta.?shampoo|organizador de box/i.test(joined)){
       kind='bath';
-      phrases=['Organizador de Banheiro','Para Box de Banheiro','Suporte de Canto','Prateleira para Shampoo'];
+      phrases=['Organizador de Banheiro','Para Box de Banheiro','Prateleira para Shampoo','Organizador de Produtos de Banho','Suporte para Shampoo e Condicionador','Organização do Banheiro'];
+      if(/2\s*andares|dois\s*andares/i.test(joined))phrases.push('Porta Shampoo de Dois Andares');
     } else if(/toalha/i.test(joined)&&/camping|acampamento/i.test(joined)){
       kind='camping_towel';
       // Expressões de contexto derivadas do produto; não são volumes de busca verificados.
@@ -61,7 +62,44 @@
        'Para Viagens e Camping','Toalha de Viagem','Camping ao Ar Livre'];
     } else if(/garrafa t[eé]rmica/i.test(joined)){
       kind='bottle';
-      phrases=['Garrafa para Bebidas','Para o Dia a Dia','Garrafa Térmica'];
+      phrases=['Garrafa para Bebidas','Para o Dia a Dia','Para Transporte de Bebidas','Garrafa para Café e Chá','Para Uso em Casa e no Trabalho','Garrafa Portátil para Viagens','Acessórios para Bebidas'];
+    }  else if(/cafeteira italiana|cafeteira moka/i.test(joined)){
+      kind='coffee';
+      phrases=['Cafeteira Estilo Italiano','Cafeteira para Preparar Café','Preparo de Café na Cozinha',
+        'Cafeteira para Café no Dia a Dia','Cafeteira Tradicional Italiana','Utensílio para Preparo de Café'];
+    }else if(/jogo\s+de?\s*chaves|kit\s+de?\s*chaves|conjunto de chaves/i.test(joined)){
+      kind='keys';
+      phrases=['Kit de Chaves e Ferramentas','Conjunto de Chaves para Reparos','Ferramentas Manuais',
+        'Jogo de Chaves para Manutenção','Kit de Ferramentas para Oficina','Chaves para Uso Doméstico'];
+    }else if(/lixeira.+(?:telada|metal)|cesto de lixo.+metal/i.test(joined)){
+      kind='bin';
+      phrases=['Cesto de Lixo Metálico','Lixeira para Escritório','Lixeira de Tela Metálica',
+        'Lixeira para Home Office','Organização de Ambientes','Cesto para Resíduos'];
+    }else if(/carrinho.*compras|carrinho.*feira/i.test(joined)){
+      kind='cart';
+      phrases=['Carrinho para Compras e Feira','Carrinho Dobrável para Mercado',
+        'Para Transporte de Compras','Carrinho de Compras para Supermercado',
+        'Carrinho para Ir à Feira','Acessório para Compras do Dia a Dia'];
+    }else if(/liquidificador.*port[aá]til|mini liquidificador/i.test(joined)){
+      kind='blender';
+      phrases=['Mini Liquidificador Portátil','Liquidificador para Sucos',
+        'Preparo de Bebidas e Vitaminas','Para Bebidas no Dia a Dia',
+        'Liquidificador para Uso em Viagens','Liquidificador Compacto para Bebidas'];
+    }else if(/porta.?temperos|organizador de temperos/i.test(joined)){
+      kind='spices';
+      phrases=['Organizador de Temperos para Cozinha','Kit de Potes para Condimentos',
+        'Conjunto de Porta Temperos','Potes para Especiarias',
+        'Organização dos Temperos da Cozinha','Acessórios para Armazenar Temperos'];
+    }else if(/raquete.+(?:mosquito|inseto)/i.test(joined)){
+      kind='swatter';
+      phrases=['Raquete Mata Insetos','Raquete para Mosquitos',
+        'Controle de Mosquitos em Casa','Raquete para Eliminar Insetos',
+        'Acessório para Uso Doméstico','Raquete para Controle de Insetos'];
+    }else if(/pote.*herm[eé]tico|recipiente.*herm[eé]tico/i.test(joined)){
+      kind='container';
+      phrases=['Pote com Fechamento Hermético','Pote para Guardar Mantimentos',
+        'Recipiente Hermético para Cozinha','Organizador de Alimentos',
+        'Pote para Armazenamento na Cozinha','Pote de Cozinha com Tampa'];
     }
     // Nunca usar características de concorrentes ou promessa comercial como fato do produto.
     if(brand&&brand.length<35&&!/^(sem marca|gen[eé]rico|n[ãa]o informado|outros)$/i.test(brand))phrases.unshift(brand);
