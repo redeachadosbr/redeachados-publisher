@@ -159,7 +159,7 @@
     const opt=e('option','',String(item.productTitle||item.name||item.campaignId).slice(0,65));
     opt.value=String(item.campaignId);switcher.append(opt);
    }
-   switcher.addEventListener('change',()=>{const c=sorted.find(x=>String(x.campaignId)===switcher.value);if(c)chooseCampaign(c);});
+   switcher.addEventListener('change',()=>{const c=sorted.find(x=>String(x.campaignId)===switcher.value);if(c){chooseCampaign(c);els.rows.prepend(switcher);}});
    els.rows.prepend(switcher);
   }
   if(els.notice)els.notice.textContent='Diagnóstico no sistema, com prévia e execução pela API Shopee mediante confirmação.';
