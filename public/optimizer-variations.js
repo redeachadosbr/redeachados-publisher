@@ -56,7 +56,9 @@ function render(){
   const verifiedEan=prior.gtin||((sameOriginal&&supplierEan)?supplierEan:'');
   row.dataset.option=name;
   const header=el('div','optimizer-variant-heading');
-  const headingName=el('strong','',variationType+' · '+name);
+  const headingName=el('strong','optimizer-variant-title');
+  if(variationType==='Cor'){const dot=el('span','optimizer-variation-color-dot');const color=normalColor(name);const colors={vermelh:'#f44332',ros:'#f56da8',azul:'#348be9',verd:'#35a96a',amarel:'#eac53b',pret:'#263142',branc:'#ffffff'};dot.style.background=colors[color]||'#bdc9d7';headingName.append(dot);}
+  headingName.append(el('span','',variationType+' · '+name));
   header.append(headingName,el('small','',sameOriginal?'● Cor original':prior.asset?'Foto salva':'Foto pendente'));
   const body=el('div','optimizer-variant-body'),visual=el('div','optimizer-variant-photo');
   if(prior.previewUrl){
@@ -66,8 +68,8 @@ function render(){
   const buttons=el('div','optimizer-variant-photo-actions');
   const fileInput=el('input');fileInput.type='file';fileInput.accept='image/jpeg,image/png,image/webp';
   fileInput.hidden=true;fileInput.setAttribute('aria-label','Foto da opção '+name);
-  const upload=el('button','secondary','Incluir foto');
-  const generate=el('button','secondary','Gerar foto IA');
+  const upload=el('button','secondary');upload.append(el('span','optimizer-action-symbol','▧'),el('span','','Incluir foto'));
+  const generate=el('button','secondary');generate.append(el('span','optimizer-action-symbol','✦'),el('span','','Gerar foto IA'));
   upload.type=generate.type='button';upload.onclick=()=>{fileInput.value='';fileInput.click();};
   generate.onclick=()=>void transferImage(name,'generate');
   fileInput.onchange=()=>{const selected=fileInput.files?.[0];if(selected)void transferImage(name,'upload',selected);};
@@ -107,8 +109,8 @@ function render(){
  side.append(title);
  const controls=el('div','optimizer-variant-side-actions');
  {
-  const preview=el('button','optimizer-variant-stage-preview','Conferir envio pela API');
-  const send=el('button','optimizer-variant-stage-publish','Aplicar variações na Shopee');
+  const preview=el('button','optimizer-variant-stage-preview');preview.append(el('span','optimizer-side-action-icon','✓'),el('span','optimizer-side-action-copy'));preview.lastChild.append(el('strong','','Conferir envio pela API'),el('small','','Verificar dados e imagens'));
+  const send=el('button','optimizer-variant-stage-publish');send.append(el('span','optimizer-side-action-icon','ϟ'),el('span','optimizer-side-action-copy'));send.lastChild.append(el('strong','','Aplicar variações na Shopee'),el('small','','Publicar no anúncio'));
   preview.type=send.type='button';send.disabled=true;let approval=null;
   preview.onclick=async()=>{
    if(busy)return;
