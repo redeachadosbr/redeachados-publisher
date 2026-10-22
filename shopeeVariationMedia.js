@@ -74,7 +74,8 @@ export function validateVariationDetails(body,{requirePhotos=false}={}){
   if(names.has(key))throw Error('Opções repetidas não são permitidas.');
   names.add(key);
   const price=Number(entry.price),stock=Number(entry.stock),sku=clean(entry.sku);
-  if(!Number.isFinite(price)||price<0||price>999999)throw Error('Informe preço válido para '+name+'.');
+  if(!Number.isFinite(price)||price<0||price>999999||(requirePhotos&&price<=0))
+   throw Error('Informe preço maior que zero para '+name+'.');
   if(!Number.isInteger(stock)||stock<1||stock>999999)throw Error('Estoque de '+name+' deve ser pelo menos 1.');
   if(!sku||sku.length>100||/[\x00-\x1f]/.test(sku))throw Error('Informe SKU distinta para '+name+'.');
   const gtin=clean(entry.gtin),noGtin=entry.noGtin===true;
