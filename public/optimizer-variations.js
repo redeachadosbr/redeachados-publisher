@@ -101,10 +101,6 @@ function render(){
   body.append(visual,fields);row.append(header,body);cards.append(row);
  }
  left.append(cards);workspace.append(left);
- const side=el('aside','optimizer-variant-side');
- const sideHeading=el('div','optimizer-variant-side-heading');
- sideHeading.append(el('strong','','➤  Envio e aplicação'),el('small','','Após revisar as variações, confira os dados e aplique pela API na Shopee.'));
- side.append(sideHeading);
  const footer=el('div','optimizer-variant-footer');
  const preview=el('button','secondary','Conferir envio pela API');
  const send=el('button','optimizer-variant-publish','Aplicar variações na Shopee');
@@ -137,9 +133,7 @@ function render(){
    '. Confira na Shopee antes de tentar novamente.','error');}
   finally{busy=false;}
  };
- footer.append(preview,send);side.append(footer);
- side.append(el('p','optimizer-variant-side-note','ⓘ  Foto por variação: gerar pela API OpenAI ou incluir imagem. Confira o estoque real antes de publicar.'));
- workspace.append(side);target.append(workspace);
+ footer.append(preview,send);workspace.append(footer);target.append(workspace);
  target.querySelectorAll('input').forEach(i=>{
   if(i.type==='file')return;
   i.addEventListener('input',()=>{approval=null;send.disabled=true;});
