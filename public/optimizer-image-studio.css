@@ -25,7 +25,8 @@
 #optimizerImagesPanel .ra-studio-toolbar .ra-toolbar-gallery{color:#723fc1;border-color:#d6c1ff}
 #optimizerImagesPanel .ra-studio-toolbar .ra-toolbar-rules{color:#2264b5;background:#f5faff}
 #optimizerImagesPanel .ra-studio-workspace{display:grid;grid-template-columns:minmax(0,1fr) minmax(244px,274px);gap:10px;align-items:start;min-width:0}
-#optimizerImagesPanel .ra-studio-workspace>.optimizer-commercial-gallery-section{min-width:0;margin:0;gap:7px;padding:10px 11px}
+#optimizerImagesPanel .ra-studio-gallery-column{display:grid;gap:9px;min-width:0;align-content:start}
+#optimizerImagesPanel .ra-studio-gallery-column>.optimizer-commercial-gallery-section{min-width:0;margin:0;gap:7px;padding:10px 11px}
 #optimizerImagesPanel .ra-studio-workspace .optimizer-commercial-gallery-head>strong{display:none}
 #optimizerImagesPanel .ra-studio-workspace .optimizer-commercial-gallery-kpis{margin-right:auto}
 #optimizerImagesPanel .ra-studio-workspace #optimizerImagesGallery{grid-template-columns:repeat(3,minmax(0,1fr));gap:8px}
@@ -96,3 +97,34 @@
 @media(max-width:1020px){#optimizerImagesPanel .ra-studio-header{grid-template-columns:minmax(0,1fr) auto}#optimizerImagesPanel .ra-studio-product{grid-column:1/-1;grid-row:2}#optimizerImagesPanel .ra-studio-workspace{grid-template-columns:1fr}#optimizerImagesPanel .ra-studio-workspace>.optimizer-commercial-rework{order:2}#optimizerImagesPanel .ra-studio-workspace #optimizerImagesGallery{grid-template-columns:repeat(3,minmax(0,1fr))}}
 @media(max-width:680px){#optimizerImagesPanel .ra-studio-header{grid-template-columns:1fr}#optimizerImagesPanel .ra-studio-product{grid-column:auto;grid-row:auto}#optimizerImagesPanel .ra-studio-toolbar{grid-template-columns:repeat(2,minmax(0,1fr))}#optimizerImagesPanel .ra-studio-workspace #optimizerImagesGallery{grid-template-columns:repeat(2,minmax(0,1fr))}#optimizerImagesPanel .ra-studio-header .optimizer-commercial-heading h4{font-size:19px}#optimizerImagesPanel .ra-studio-bulk button{flex:1 1 135px}}
 @media(max-width:410px){#optimizerImagesPanel .ra-studio-toolbar{grid-template-columns:1fr}#optimizerImagesPanel .ra-studio-workspace #optimizerImagesGallery{grid-template-columns:1fr}}
+
+
+/* V1.0.2 · Evita faixa vazia sob a grade e recolhe a prévia de troca manual. */
+#optimizerImagesPanel.ra-studio .ra-studio-gallery-column .ra-studio-bulk{margin:0;align-self:start}
+#optimizerImagesPanel.ra-studio .ra-studio-extra-tools{border:0;padding:0;margin-top:6px;min-width:0}
+#optimizerImagesPanel.ra-studio .ra-studio-extra-tools>summary{
+ display:flex;align-items:center;justify-content:center;text-align:center;min-height:44px;gap:7px;
+ padding:11px 12px;border:1px solid #0a64d9;border-radius:10px;
+ background:linear-gradient(120deg,#096fe8,#034cae);color:#fff;list-style:none;
+ font-size:12px;font-weight:850;line-height:1.35;cursor:pointer;
+ box-shadow:0 4px 11px #0a52b52e
+}
+#optimizerImagesPanel.ra-studio .ra-studio-extra-tools>summary::-webkit-details-marker{display:none}
+#optimizerImagesPanel.ra-studio .ra-studio-extra-tools>summary::after{content:"⌄";font-size:17px;font-weight:700;margin-left:auto}
+#optimizerImagesPanel.ra-studio .ra-studio-extra-tools[open]>summary::after{content:"⌃"}
+#optimizerImagesPanel.ra-studio .ra-studio-extra-tools>summary:hover{filter:brightness(1.07)}
+#optimizerImagesPanel.ra-studio .ra-studio-extra-tools[open]{padding-bottom:10px;border:1px solid #caddf7;border-radius:12px;background:#f8fbff;overflow:hidden}
+#optimizerImagesPanel.ra-studio .ra-studio-extra-tools[open]>summary{border-radius:10px 10px 0 0;box-shadow:none}
+#optimizerImagesPanel.ra-studio .ra-studio-paste-help{margin:9px 10px 0;font-size:11px;line-height:1.45;color:#42648c}
+#optimizerImagesPanel.ra-studio .ra-studio-extra-tools .optimizer-correction-preview{margin:10px;background:#fff;border:1px solid #dce8f7;border-radius:10px;padding:8px}
+#optimizerImagesPanel.ra-studio .ra-studio-extra-tools .optimizer-correction-preview img{max-height:175px;width:100%;object-fit:contain}
+#optimizerImagesPanel.ra-studio .ra-studio-extra-tools .optimizer-image-ready-actions{margin:9px 10px 0;padding:7px;background:#fff;border-radius:9px}
+#optimizerImagesPanel.ra-studio .ra-studio-extra-tools .optimizer-image-ready-actions>strong{font-size:11px}
+#optimizerImagesPanel.ra-studio .ra-studio-extra-tools .optimizer-image-ready-actions>small{font-size:10px;line-height:1.45}
+#optimizerImagesPanel.ra-studio .ra-studio-extra-tools:not([open]) .optimizer-correction-preview,
+#optimizerImagesPanel.ra-studio .ra-studio-extra-tools:not([open]) .optimizer-image-ready-actions,
+#optimizerImagesPanel.ra-studio .ra-studio-extra-tools:not([open]) .ra-studio-paste-help{display:none!important}
+@media(max-width:650px){
+ #optimizerImagesPanel .ra-studio-gallery-column>.optimizer-commercial-gallery-section{padding:10px}
+ #optimizerImagesPanel.ra-studio .ra-studio-gallery-column .ra-studio-bulk{padding:9px}
+}
