@@ -6733,13 +6733,16 @@ function optimizerImagesRenderMode(){
  $('#optimizerModeApi').classList.toggle('is-active',!chat);
 }
 async function optimizerChatgptMakeBrief(w){
- const {createChatGptPrompts}=await import('/chatgptPrompts.js?v=1.20.25-distinct-scenes');
+ const {createChatGptPrompts}=await import('/chatgptPrompts.js?v=1.20.33-wedrop-facts');
  return createChatGptPrompts({
   sku:w.sku,title:w.draftTitle||'Produto Shopee',
   imageUrls:w.imageUrls||[],
   attributes:w.attributes||[],
   imageNotes:w.imageNotes||{},
-  masterPrompt:$('#optimizerPrompt')?.value||''
+  masterPrompt:$('#optimizerPrompt')?.value||'',
+  supplierSourceText:w.sourceEvidence?.sourceText||'',
+  supplierProduct:w.supplierProduct||null,
+  supplierMetrics:w.sourceFacts?.metrics||[]
  });
 }
 async function optimizerChatgptRender(w){
