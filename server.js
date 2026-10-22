@@ -1026,7 +1026,18 @@ app.post('/api/shopee/optimizer/workflow/source',mustLogin,requireWeDropAdmin,as
      sourceEvidence:await readShopeeSourceEvidence(auth.shopId,itemId,modelId,sku,{preview:true})});
   }
   else throw Error('Operação de evidência não reconhecida.');
-  res.json({ok:true,sourceEvidence:await readShopeeSourceEvidence(auth.shopId,itemId,modelId,sku,{preview:true})});
+  // Novas informações do fornecedor podem alterar a qualidade da descrição,
+  // dos atributos e das imagens. Não apagar conteúdos manuais nem aprovar
+  // publicação automaticamente: marcar apenas revisão necessária.
+  let reviewWarning=null;
+  try{
+   await saveWorkflowReview(auth.shopId,itemId,modelId,sku,{stage:'technical',reviewed:false});
+   await saveWorkflowReview(auth.shopId,itemId,modelId,sku,{stage:'images',reviewed:false});
+  }catch(error){
+   reviewWarning='Fonte salva; não foi possível reabrir a revisão automaticamente.';
+   console.warn('[supplier-evidence] review invalidation:',String(error.message||error).slice(0,160));
+  }
+  res.json({ok:true,reviewWarning,sourceEvidence:await readShopeeSourceEvidence(auth.shopId,itemId,modelId,sku,{preview:true})});
  }catch(e){res.status(400).json({error:String(e.message||e).slice(0,270)});}
 });
 // Store user-entered technical values immediately, including incomplete drafts.
@@ -2132,9 +2143,21 @@ app.post('/api/shopee/optimizer/images/generate',mustLogin,requireWeDropAdmin,as
   const review=stored?.sku===sku?stored.review_state||{}:{};
   const references=(record.imageUrls||[]).slice(0,2);
   if(!references.length&&!referenceImages.length)throw Error('Sem fotografia de referência disponível nesta SKU.');
+  // Aproveitar informações do fornecedor apenas como dados auxiliares.
+  // Falhas de leitura complementar não devem impedir a geração de imagens.
+  const [supplierEvidenceResult,supplierCatalogResult]=await Promise.allSettled([
+   readShopeeSourceEvidence(auth.shopId,itemId,modelId,sku),
+   readWeDropProduct(auth.shopId,{sku,itemId,modelId})
+  ]);
+  const supplierSourceText=supplierEvidenceResult.status==='fulfilled'
+   ?String(supplierEvidenceResult.value.sourceText||''):'';
+  const product=supplierCatalogResult.status==='fulfilled'?supplierCatalogResult.value?.product_data||{}:{};
+  const supplierCatalogInfo=[product.name,product.brand,product.description||product.details]
+   .filter(x=>typeof x==='string'&&x.trim()).join('\n').slice(0,1700);
   const output=await generateOpenAiImage({
    record,slot:position,referenceUrls:references,referenceImages,apiKey,
-   masterPrompt:settings.image_prompt||'',note:review.imageNotes?.[position]||''
+   masterPrompt:settings.image_prompt||'',note:review.imageNotes?.[position]||'',
+   supplierSourceText,supplierCatalogInfo
   });
   if(editCurrent){
    const latest=await readPreparedImages(auth.shopId,itemId,modelId,sku);
