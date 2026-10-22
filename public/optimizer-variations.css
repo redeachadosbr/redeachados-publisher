@@ -120,3 +120,8 @@
  #optimizerVariationPanel .optimizer-variant-footer{flex-direction:column!important}
  #optimizerVariationPanel .optimizer-variant-footer button{width:100%!important;min-width:0!important}
 }
+
+#optimizerVariationPanel .optimizer-variation-chip{display:inline-flex!important;align-items:center!important;gap:7px!important}
+#optimizerVariationPanel .optimizer-variation-color-dot{width:13px;height:13px;flex:0 0 13px;border:1px solid #a9bad1;border-radius:50%;display:inline-block}
+#optimizerVariationPanel .optimizer-variation-chip-close{font-size:15px;line-height:1;margin-left:2px;color:#58749a}
+#optimizerVariationPanel .optimizer-variant-footer{display:none!important}
