@@ -691,11 +691,12 @@
 
         </section>
         <section id="optimizerVariationPanel" class="optimizer-video-import" hidden>
-          <strong>Variações do produto</strong>
-          <p class="optimizer-video-help">Preencha apenas se este anúncio possuir variações reais. A configuração fica salva como prévia e não publica modelos sem confirmação.</p>
+          <div class="optimizer-variant-stage-head"><span class="stage-symbol" aria-hidden="true">⚙</span><div><small>ETAPA 06 · CONFIGURAÇÃO OPCIONAL</small><strong>Variações do produto</strong><small>Defina o tipo e as opções antes de revisar as imagens individuais.</small></div></div>
+          <div class="optimizer-variant-config"><strong class="config-heading">⚙ Configuração de variações</strong>
           <div class="optimizer-variation-grid">
             <label class="optimizer-field">Tipo de variação<select id="optimizerVariationType"><option value="">Selecione</option><option>Cor</option><option>Tamanho</option><option>Unidades por pacote</option><option>Modelo</option><option>Variação</option><option>Voltagem</option><option>Print</option><option>Quantidade</option></select></label>
             <label class="optimizer-field">Opções (uma por linha)<textarea id="optimizerVariationValues" rows="3" maxlength="1400" placeholder="Ex.: Azul&#10;Verde"></textarea></label>
+          </div>
           </div>
           <div id="optimizerVariationPreview" class="optimizer-variation-preview"></div>
           <small>Foto por variação: gerar via API OpenAI ou incluir imagem. Estoque sugerido de 1 unidade exige confirmação real do fornecedor. Salvar não publica; a Shopee será alterada apenas após prévia e confirmação expressa. A criação pela API está disponível inicialmente para anúncios sem modelos existentes.</small>
