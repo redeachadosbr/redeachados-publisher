@@ -1253,14 +1253,14 @@
               <div id="adsRecommendations" class="ads-v2-recommendations">Aguardando análise de campanhas.</div>
             </section>
             <section class="ads-v2-card ads-v2-execution">
-              <h3>Execução via API <span class="optimizer-tip ads-v2-help" tabindex="0" role="note" data-help="A integração instalada permite consultar relatórios; não há ainda um endpoint de escrita verificado para alterar lances, orçamentos ou pausar anúncios. Os ajustes ficam para revisão manual." aria-label="Ajuda: A integração instalada permite consultar relatórios; não há ainda um endpoint de escrita verificado para alterar lances, orçamentos ou pausar anúncios. Os ajustes ficam para revisão manual.">?</span></h3>
+              <h3>Execução via API <span class="optimizer-tip ads-v2-help" tabindex="0" role="note" data-help="Ações de pausa, retomada, orçamento e ROAS GMS possuem integração API, com prévia e confirmação explícita de cada campanha. Verificar permissão Ads e retorno da Shopee." aria-label="Ajuda: A integração instalada permite consultar relatórios; não há ainda um endpoint de escrita verificado para alterar lances, orçamentos ou pausar anúncios. Os ajustes ficam para revisão manual.">?</span></h3>
               <div id="adsExecutionSteps" class="ads-v2-steps">
                 <p>1. Consultar métricas <span>Pendente</span></p><p>2. Identificar baixo desempenho <span>Pendente</span></p>
                 <p>3. Gerar recomendações <span>Pendente</span></p><p>4. Revisar ajustes <span>Aguardando</span></p>
-                <p>5. Alterar campanha pela API <span>Não habilitado</span></p>
+                <p>5. Alterar campanha pela API <span>Após aprovação</span></p>
               </div>
               <button id="adsExecutionReviewBtn" type="button"><svg class="ads-v2-icon" aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="m4 20 12-12 4 4-12 12M13 5l1-3 1 3 3 1-3 1-1 3-1-3-3-1 3-1M20 2v3M18.5 3.5h3"/></svg> Revisar campanhas selecionadas</button>
-              <small id="adsExecutionNote">Nenhum ajuste será enviado automaticamente à Shopee.</small>
+              <small id="adsExecutionNote">Nenhum ajuste será enviado à Shopee sem sua confirmação.</small>
             </section>
           </div>
           <section class="ads-v2-card ads-v2-campaigns">
@@ -1293,8 +1293,8 @@
           </section>
           <section class="ads-v2-review-panel" id="adsReviewPanel" hidden aria-live="polite" tabindex="-1">
             <div class="ads-v2-review-title"><h3>Prévia dos ajustes recomendados</h3><button id="adsCloseReview" type="button" class="secondary">Fechar</button></div>
-            <p id="adsReviewNotice">As ações exigem avaliação manual na Central de Marketing da Shopee. Esta versão não executa alterações via API.</p>
-            <div id="adsReviewRows"></div><button id="adsOpenSeller" type="button" class="secondary">Abrir Central do Vendedor para revisar campanhas ↗</button>
+            <p id="adsReviewNotice">Selecione uma ação, gere a prévia assinada e confirme para executar pela API no próprio sistema.</p>
+            <div id="adsReviewRows"></div><button id="adsOpenSeller" type="button" class="secondary">Preparar ajuste pela API</button>
           </section>
         </div>
         <details class="card ads-manual" id="adsManualPanel"><summary>Consulta avançada por Campaign IDs (opcional)</summary>
@@ -1551,7 +1551,9 @@
 <script src="/optimizer-dashboard.js?v=1.20.11"></script>
 <script src="/dashboard-new-listings.js?v=1.20.21-shopee"></script>
 <script src="/title-studio.js?v=1.20.52-sku1175-no-codes"></script>
-<script src="/app.js?v=1.20.53-content-autosave-recovery"></script>
+<script src="/app.js?v=1.21.0-ads-actions"></script>
+<link rel="stylesheet" href="/ads-premium.css?v=1.0.0">
+<script src="/ads-premium.js?v=1.0.0"></script>
 <script src="/optimizer-fiscal-premium.js?v=1.20.47-fiscal-run"></script>
 <script src="/fiscal-migration-run.js?v=10-fast-resume"></script>
 <link rel="stylesheet" href="/ads-seo.css?v=2">
