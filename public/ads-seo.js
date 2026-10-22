@@ -50,11 +50,14 @@
   row.append(thumb(image,title),heading);return row;
  }
  function openSku(sku){
-  const input=document.getElementById('optimizerSku');
-  if(!input||!sku)return;
-  input.value=sku;input.dispatchEvent(new Event('input',{bubbles:true}));
-  input.scrollIntoView({behavior:'smooth',block:'center'});
-  try{input.focus({preventScroll:true});}catch{}
+  // A mesma transferência usada no monitor Ads: abrir Otimização e preencher, sem buscar automaticamente.
+  if(!sku)return;
+  if(typeof globalThis.redeAdsOpenOptimizerSku==='function'){
+   globalThis.redeAdsOpenOptimizerSku(sku);
+  }else{
+   status.dataset.state='error';
+   status.textContent='Não foi possível abrir a Otimização. Atualize a página e tente novamente.';
+  }
  }
  function action(label,callback){
   const btn=el('button',label,'secondary');btn.type='button';btn.addEventListener('click',callback);return btn;
