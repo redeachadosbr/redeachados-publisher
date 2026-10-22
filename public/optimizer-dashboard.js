@@ -124,7 +124,7 @@
  const bind=()=>{
   const handle={
    optimizerDashBack:()=>{reveal('optimizerSku');q('optimizerSku')?.focus()},
-   optimizerDashSourceOpen:()=>reveal('optimizerSourcePanel'),
+   optimizerDashSourceOpen:()=>{const details=q('optimizerSourceCompact');if(details)details.open=true;reveal('optimizerSourceCompact');q('optimizerSourceText')?.focus({preventScroll:true});},
    optimizerDashAllStages:()=>reveal('optimizerWorkflowPanel'),
    optimizerDashContinue:()=>{
     const stages=(workflow?.stages||[]).filter(x=>x.key!=='final'&&!x.skipped&&!x.reviewed);
