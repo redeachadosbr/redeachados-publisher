@@ -159,7 +159,7 @@
        reason:'Prioriza uma redação alternativa com palavras-chave comprovadas.'}
     ];
   }
-  function assemble(cfg){
+  function assemble(cfg,excluded=new Set()){
     const base=clean(cfg.base).replace(/\s*[-–]\s*/g,' ').replace(/[\s|·]+$/,'');
     const prefix=cfg.emoji||'';
     const core=clean(prefix+base);
@@ -178,7 +178,7 @@
     const inspect=(chosen)=>{
       const text=chosen.length?core+' | '+chosen.join(' · '):core;
       const length=count(text);
-      if(length>LIMIT)return;
+      if(length>LIMIT||excluded.has(key(text)))return;
       const qualified=length>=MIN;
       const tokens=signature(text),novel=new Set(tokens);
       const extraWeight=Math.min(chosen.length,2)*8;
@@ -251,7 +251,11 @@
     function regenerate(){
       grid.replaceChildren();
       savedTerms.set(sku,inp.value);
-      const output=variants(f,inp.value,marketSample).map(v=>({...v,title:assemble(v)}));
+      const reserved=new Set();
+      const output=variants(f,inp.value,marketSample).map(v=>{
+        const title=assemble(v,reserved);
+        reserved.add(key(title));return {...v,title};
+      });
     const used=new Set();
     for(const o of output){
       if(used.has(key(o.title)))o.duplicate=true;
@@ -299,7 +303,7 @@
         if(!response.ok)throw Error('Falha de pesquisa HTTP '+response.status);
         const result=await response.json();
         if(token!==researchToken||!mount.isConnected)return;
-        marketSample=Array.isArray(result.sample)?result.sample.filter(x=>x.title).slice(0,5):[];
+        marketSample=result.verifiedSample&&Array.isArray(result.sample)?result.sample.filter(x=>x.title).slice(0,5):[];
         const total=marketSample.length;
         setLabel(marketNotice,result.verifiedSample&&total
           ?'🔎 '+total+' anúncios comparáveis encontrados. A ordem das palavras-chave foi ajustada por recorrência, sem supor volume de buscas.'
