@@ -88,3 +88,44 @@
 @media(max-width:480px){
  #optimizerVariationPanel .optimizer-variant-inputs{grid-template-columns:minmax(0,1fr)!important}
 }
+
+/* Referência aprovada: etapa 06 com cards compactos e painel de publicação. */
+#optimizerVariationPanel{background:transparent!important;border:0!important;padding:0!important;box-shadow:none!important}
+#optimizerVariationPanel>.optimizer-variant-stage-head,
+#optimizerVariationPanel>.optimizer-variant-config{background:#fff;border:1px solid #e1e9f5;border-radius:15px;padding:16px;margin-bottom:12px}
+#optimizerVariationPanel .optimizer-variant-stage-head{display:flex;align-items:center;gap:14px}
+#optimizerVariationPanel .optimizer-variant-stage-head .stage-symbol{display:grid;place-items:center;width:56px;height:56px;border-radius:16px;background:#edf4ff;color:#226de0;font-size:25px}
+#optimizerVariationPanel .optimizer-variant-stage-head strong{display:block;font-size:21px;color:#09234b}
+#optimizerVariationPanel .optimizer-variant-stage-head small{display:block;color:#8194b3;font-size:12px}
+#optimizerVariationPanel .optimizer-variant-config>.config-heading{display:block;margin-bottom:11px;color:#09234b}
+#optimizerVariationPanel .optimizer-variation-grid{display:grid;grid-template-columns:minmax(190px,0.32fr) minmax(0,1fr);gap:12px}
+#optimizerVariationPanel .optimizer-variant-workspace{display:grid;grid-template-columns:minmax(0,1fr) minmax(225px,0.29fr);gap:12px;align-items:start}
+#optimizerVariationPanel .optimizer-variant-main,#optimizerVariationPanel .optimizer-variant-side{background:#fff;border:1px solid #e0e9f4;border-radius:14px;padding:14px;min-width:0}
+#optimizerVariationPanel .optimizer-variant-section-title,#optimizerVariationPanel .optimizer-variant-side-heading{display:grid;gap:4px;margin-bottom:12px}
+#optimizerVariationPanel .optimizer-variant-section-title strong,#optimizerVariationPanel .optimizer-variant-side-heading strong{color:#0c2959;font-size:15px}
+#optimizerVariationPanel .optimizer-variant-section-title small,#optimizerVariationPanel .optimizer-variant-side-heading small{color:#8193af;font-size:11px;line-height:1.5}
+#optimizerVariationPanel #optimizerVariationPreview .optimizer-variant-cards{display:grid!important;grid-template-columns:repeat(2,minmax(0,1fr))!important;gap:12px!important;width:100%!important}
+#optimizerVariationPanel #optimizerVariationPreview .optimizer-variant-item{padding:13px!important;border-radius:13px;gap:10px;max-width:none!important;min-width:0!important;box-shadow:0 4px 14px #163d7407}
+#optimizerVariationPanel .optimizer-variant-heading{flex-wrap:nowrap;min-width:0;gap:4px}
+#optimizerVariationPanel .optimizer-variant-heading strong{font-size:12px;color:#173460;overflow-wrap:anywhere}
+#optimizerVariationPanel .optimizer-variant-heading small{font-size:10px;white-space:nowrap}
+#optimizerVariationPanel .optimizer-variant-body{display:grid!important;grid-template-columns:minmax(112px,0.93fr) minmax(0,1.35fr)!important;gap:11px!important}
+#optimizerVariationPanel .optimizer-variant-photo{width:100%;max-width:none}
+#optimizerVariationPanel .optimizer-variant-photo>img,#optimizerVariationPanel .optimizer-variant-photo-placeholder{width:100%;aspect-ratio:1;max-width:none;border-radius:10px}
+#optimizerVariationPanel .optimizer-variant-photo-actions{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:6px}
+#optimizerVariationPanel .optimizer-variant-photo-actions button{padding:6px 4px;font-size:10px;min-width:0;min-height:34px;white-space:normal;border-radius:8px}
+#optimizerVariationPanel .optimizer-variant-inputs{display:grid!important;grid-template-columns:repeat(2,minmax(0,1fr))!important;gap:8px!important}
+#optimizerVariationPanel .optimizer-variant-field{font-size:10px}
+#optimizerVariationPanel .optimizer-variant-field input{height:37px!important;padding:6px!important;font-size:11px}
+#optimizerVariationPanel .optimizer-variant-check{grid-column:1/-1!important;background:transparent!important;border:0!important;padding:2px 0!important;gap:6px!important;font-size:10px!important;line-height:1.3}
+#optimizerVariationPanel .optimizer-variant-check input[type=checkbox]{width:15px!important;height:15px!important;max-width:15px!important;min-width:15px!important}
+#optimizerVariationPanel .optimizer-variant-save{grid-column:1/-1;min-height:30px;padding:6px;font-size:10px}
+#optimizerVariationPanel .optimizer-variant-footer{display:grid;grid-template-columns:1fr;gap:10px}
+#optimizerVariationPanel .optimizer-variant-footer button{width:100%;min-height:47px;border-radius:9px}
+#optimizerVariationPanel .optimizer-variant-footer button:first-child{background:#175332;color:#fff;border:0;font-weight:750}
+#optimizerVariationPanel .optimizer-variant-side-note{margin:13px 0 0;background:#edf5ff;color:#5177ad;border:1px solid #d5e3fc;border-radius:9px;padding:12px;font-size:11px;line-height:1.5}
+#optimizerVariationPanel>.optimizer-video-help{display:none}
+@media(max-width:1250px){#optimizerVariationPanel #optimizerVariationPreview .optimizer-variant-cards{grid-template-columns:1fr!important}}
+@media(max-width:900px){#optimizerVariationPanel .optimizer-variant-workspace{grid-template-columns:1fr}#optimizerVariationPanel #optimizerVariationPreview .optimizer-variant-cards{grid-template-columns:repeat(2,minmax(0,1fr))!important}}
+@media(max-width:700px){#optimizerVariationPanel .optimizer-variation-grid,#optimizerVariationPanel #optimizerVariationPreview .optimizer-variant-cards{grid-template-columns:1fr!important}}
+@media(max-width:420px){#optimizerVariationPanel .optimizer-variant-body{grid-template-columns:1fr!important}#optimizerVariationPanel .optimizer-variant-photo{max-width:235px}}
