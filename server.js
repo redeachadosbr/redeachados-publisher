@@ -1997,6 +1997,7 @@ app.post('/api/shopee/optimizer/variants/preview',mustLogin,requireWeDropAdmin,a
   const x=await variationContext(req);
   if(!x.details)throw Error('Salve o rascunho das opções.');
   const data=validateVariationDetails(x.details,{requirePhotos:true});
+  if(data.options.length<2)throw Error('Para criar variações sem apagar a opção original, informe também a cor/modelo original e a nova opção (mínimo duas).');
   if(!data.options.every(o=>variantAssetBelongsTo(o.asset,x.auth,x.itemId,x.modelId)))
    throw Error('Alguma foto não pertence a este anúncio.');
   const live=await shopeeLiveEditableItem(x.cfg,x.auth,x.itemId);
@@ -2027,6 +2028,7 @@ app.post('/api/shopee/optimizer/variants/apply',mustLogin,requireWeDropAdmin,asy
   if(!x.details||crypto.createHash('sha256').update(JSON.stringify(x.details)).digest('hex')!==token.fingerprint)
    throw Error('Dados da variação mudaram após a prévia.');
   const details=validateVariationDetails(x.details,{requirePhotos:true});
+  if(details.options.length<2)throw Error('Informe a opção original e a nova variação para preservar o produto atual.');
   if(details.options.some(o=>!variantAssetBelongsTo(o.asset,x.auth,x.itemId,x.modelId)))
    throw Error('Fotos não pertencem a esta loja.');
   const live=await shopeeLiveEditableItem(x.cfg,x.auth,x.itemId);
