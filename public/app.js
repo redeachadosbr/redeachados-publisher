@@ -6984,7 +6984,7 @@ async function optimizerChatBridgeConfirmed(job){
  return complete;
 }
 function optimizerChatBridgeQueue(){
- if(!optimizerChatBridgeQueuePromise)optimizerChatBridgeQueuePromise=import('/chatgptUploadQueue.js?v=1.20.23').then(({createImageUploadQueue,createIndexedImageStore})=>
+ if(!optimizerChatBridgeQueuePromise)optimizerChatBridgeQueuePromise=import('/chatgptUploadQueue.js?v=1.21.13-queue-cancel').then(({createImageUploadQueue,createIndexedImageStore})=>
   createImageUploadQueue({
    storage:createIndexedImageStore(),
    send:async(row,{signal}={})=>{
@@ -7097,7 +7097,7 @@ globalThis.window?.addEventListener?.('message',async(event)=>{
   const blob=await(await fetch(m.dataUrl)).blob();
   const file=new File([blob],'chatgpt-auto-'+String(m.slot).padStart(2,'0')+'.'+(blob.type==='image/jpeg'?'jpg':blob.type==='image/webp'?'webp':'png'),{type:blob.type});
   const prepared=await optimizerChatgptScaleFile(file);
-  const {imageBlobSha256}=await import('/chatgptUploadQueue.js?v=1.20.23');
+  const {imageBlobSha256}=await import('/chatgptUploadQueue.js?v=1.21.13-queue-cancel');
   const sha256=await imageBlobSha256(prepared.blob);
   if(job.expectedHashes?.[m.slot]===sha256)throw Error('A extensão reenviou a imagem antiga, não uma foto corrigida.');
   const existing=await json('/api/shopee/optimizer/images/manual?'+new URLSearchParams({

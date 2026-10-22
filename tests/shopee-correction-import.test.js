@@ -11,7 +11,7 @@ test('image correction supports importing a copied or chosen photo',()=>{
  assert.match(js,/optimizerImageCorrectionImportFile\(file\)/);
  assert.match(js,/optimizerChatgptScaleFile\(file\)/);
  assert.match(js,/optimizerImageCorrectionPreviewMap\.get\(slot\)\?\.sha256!==result\.image\.sha256/);
- assert.match(html,/app\.js\?v=1\.21\.12-bridge-unlock/);
+ assert.match(html,/app\.js\?v=1\.21\.13-queue-cancel/);
 });
 test('duplicate image in another slot is not imported',async()=>{
  const originalFetch=globalThis.fetch,oldUrl=process.env.SUPABASE_URL,oldKey=process.env.SUPABASE_SECRET_KEY;
