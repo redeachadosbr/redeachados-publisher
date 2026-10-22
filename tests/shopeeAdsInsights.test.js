@@ -65,8 +65,21 @@ test('API indisponível mantém triagem financeira e não inventa impressões ou
  assert.equal(out.candidates[0].adsMetrics.ctr,null);
  assert.equal(out.campaigns.length,0);
 });
-test('status pausado não deve classificar baixo tráfego como falha de entrega atual',()=>{
- const out=run({status:'paused',statusGroup:'inactive',impressions:0,clicks:0});
- assert.ok(out.campaigns[0].alerts.some(a=>a.code==='inactive'));
- assert.equal(out.campaigns[0].alerts.some(a=>a.code==='no_delivery'),false);
+test('campanhas pausadas não aparecem nos cartões, alertas ou tráfego por SKU',()=>{
+ const out=run({status:'paused',statusGroup:'inactive',impressions:1000,clicks:50});
+ assert.equal(out.campaigns.length,0);
+ assert.equal(out.monitoredCampaigns,0);
+ assert.equal(out.withAlerts,0);
+ assert.equal(out.candidates[0].adsMetrics.impressions,null);
+ assert.equal(out.candidates[0].adsMetrics.clicks,null);
+});
+test('só campanhas confirmadamente ativas aparecem quando há vários status',()=>{
+ const out=buildAdsMonitor({catalog:[product],plans:[quote],candidates:[candidate],
+  recent:{campaigns:[
+    campaign({campaignId:'40',status:'ongoing',statusGroup:'active'}),
+    campaign({campaignId:'41',status:'paused',statusGroup:'inactive'}),
+    campaign({campaignId:'42',status:'unknown',statusGroup:'other'})
+  ]},now:NOW});
+ assert.deepEqual(out.campaigns.map(c=>c.campaignId),['40']);
+ assert.equal(out.monitoredCampaigns,1);
 });
