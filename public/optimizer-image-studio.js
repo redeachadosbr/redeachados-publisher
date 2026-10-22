@@ -129,7 +129,7 @@
    setTimeout(()=>URL.revokeObjectURL(href),30000);
    status(entries.length+' imagens preparadas no arquivo ZIP. Nenhuma foto da Shopee foi alterada.');
   }catch(err){status('Não foi possível baixar: '+err.message);}finally{download.disabled=false;}
- }));
+ });
  const deleteAll=makeButton('▤ Limpar todas','ra-bulk-delete',async()=>{
   const w=currentPlan();
   if(!w){status('Selecione uma SKU antes de excluir.');return;}
@@ -204,7 +204,7 @@
   const w=currentPlan();
   const sku=w?.sku||$('#optimizerExecutionSku')?.textContent?.trim();
   if(sku&&sku!=='SKU')productSku.textContent='SKU '+String(sku).replace(/^SKU\s*/i,'');
-  const title=w?.title||w?.name||$('#optimizerExecutionProductTitle')?.textContent?.trim();
+  const title=w?.draftTitle||w?.title||w?.name||$('#optimizerExecutionProductTitle')?.textContent?.trim();
   if(title&&title!=='Anúncio Shopee')productName.textContent=title;
   const url=w?.imageUrls?.find?.(Boolean)||
    $('#optimizerExecutionProductImage')?.getAttribute('src')||
