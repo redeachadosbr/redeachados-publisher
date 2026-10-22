@@ -82,7 +82,7 @@ function render(){
   const gtin=field('GTIN / EAN',verifiedEan,{placeholder:'Somente se existir'});
   gtin.input.dataset.variantField='gtin';gtin.input.maxLength=14;
   const noGtin=el('label','optimizer-variant-check');
-  const n=el('input');n.type='checkbox';n.dataset.variantField='noGtin';n.checked=Boolean(prior.noGtin===true&&!verifiedEan);
+  const n=el('input');n.type='checkbox';n.dataset.variantField='noGtin';n.checked=false;
   noGtin.append(n,el('span','','Item sem GTIN informado'));
   n.onchange=()=>{gtin.input.disabled=n.checked;if(n.checked)gtin.input.value='';};
   gtin.input.disabled=n.checked;
