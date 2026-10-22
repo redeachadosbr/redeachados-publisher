@@ -117,7 +117,10 @@ export function buildAdsMonitor({catalog=[],plans=[],candidates=[],recent=null,p
  const byItem=new Map(catalog.map(c=>[String(c.itemId),c]));
  const byPlan=new Map(plans.map(p=>[unit(p.itemId)+'|'+unit(p.sku),p]));
  const past=new Map((previous?.campaigns||[]).map(c=>[unit(c.campaignId),c]));
- const cards=(recent?.campaigns||[]).map(c=>makeCampaignCard(c,past.get(unit(c.campaignId)),byItem,byPlan,{now}));
+ // Monitorar somente campanhas cuja situação ATUAL foi confirmada como ativa pela Shopee.
+ // Pausadas, encerradas, agendadas e status não confirmados ficam fora dos cartões e alertas.
+ const cards=(recent?.campaigns||[]).filter(c=>c.statusGroup==='active')
+  .map(c=>makeCampaignCard(c,past.get(unit(c.campaignId)),byItem,byPlan,{now}));
  const single=new Map();
  for(const c of cards){
   if(!c.itemId||c.sharedCampaign||!c.metrics.daysWithData)continue;
