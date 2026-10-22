@@ -167,13 +167,23 @@
               
 <section class="tabpane" id="tab-optimizer" aria-label="Otimização de anúncios">
   <div class="optimizer-page optimizer-v15-page">
-    <section id="adsSeoSection" class="optimizer-panel" style="margin:16px 0;padding:18px;border-radius:16px">
- <div style="display:flex;justify-content:space-between;gap:12px;align-items:center;flex-wrap:wrap">
-  <div><span class="eyebrow">ADS · INTELIGÊNCIA POR SKU</span><h3 style="margin:6px 0">SEO para Ads — produtos recomendados</h3><small>Triagem por estoque, margem WeDrop e pesquisa de preços. Sem ativar campanhas.</small></div>
-  <button type="button" id="adsSeoRefresh" class="secondary">Analisar meus produtos</button>
+    <section id="adsSeoSection" class="optimizer-panel ads-seo-shell" aria-labelledby="adsSeoHeading">
+ <div class="ads-seo-head">
+  <div><span class="eyebrow">INTELIGÊNCIA SHOPEE ADS · SOMENTE LEITURA</span>
+   <h3 id="adsSeoHeading">SEO para Ads e monitor de campanhas</h3>
+   <p>Produtos recomendados, métricas oficiais, evolução semanal e soluções para problemas de desempenho.</p>
+  </div>
+  <button type="button" id="adsSeoRefresh" class="secondary">↻ Atualizar análise</button>
  </div>
- <p id="adsSeoStatus" role="status" aria-live="polite">Clique em Analisar meus produtos para consultar as recomendações.</p>
- <div id="adsSeoResults" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(265px,1fr));gap:12px"></div>
+ <div id="adsSeoStatus" class="ads-seo-status" role="status" aria-live="polite">A análise será carregada ao abrir a Otimização.</div>
+ <div id="adsSeoSummary" class="ads-seo-summary"></div>
+ <div class="ads-seo-section-heading"><div><h4>Produtos candidatos para Ads</h4><small>Imagem original, tráfego por campanha individual, ROAS e orçamento estimados</small></div>
+  <label class="ads-seo-sort-label">Ordenar <select id="adsSeoSort"><option value="score">Prioridade</option><option value="impressions">Impressões</option><option value="clicks">Cliques</option><option value="ctr">CTR</option></select></label>
+ </div>
+ <div id="adsSeoResults" class="ads-seo-cards"></div>
+ <div class="ads-seo-section-heading"><div><h4>Monitor de campanhas e alertas</h4><small>Diagnóstico e solução por campanha: entrega, cliques, vendas, preço e ROAS</small></div></div>
+ <div id="adsSeoCampaigns" class="ads-seo-cards"></div>
+ <p class="ads-seo-footnote">Amostra histórica de 7 dias contra os 7 anteriores. CTR da API Ads não equivale a CTR orgânico. Métricas de campanhas com vários produtos não são atribuídas a uma SKU. Nada é publicado automaticamente.</p>
 </section>
 <div class="optimizer-v15-intro optimizer-v18-journey">
       <div class="optimizer-v15-intro-left"><span class="optimizer-v18-journey-icon" aria-hidden="true"><svg class="nav-icon" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="5"/><path d="M12 12l8-8"/></svg></span>
@@ -1544,6 +1554,7 @@
 <script src="/app.js?v=1.20.53-content-autosave-recovery"></script>
 <script src="/optimizer-fiscal-premium.js?v=1.20.47-fiscal-run"></script>
 <script src="/fiscal-migration-run.js?v=10-fast-resume"></script>
-<script src="/ads-seo.js?v=1"></script>
+<link rel="stylesheet" href="/ads-seo.css?v=2">
+<script src="/ads-seo.js?v=2"></script>
 </body>
 </html>
