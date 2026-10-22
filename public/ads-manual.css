@@ -81,3 +81,131 @@
 #tab-ads .ads-roas-estimate button{justify-self:start;min-height:33px;
  padding:8px 11px;font-size:10px;border-radius:8px;border:1px solid #a1c0eb}
 #tab-ads .ads-roas-estimate button:disabled{opacity:.5;cursor:not-allowed}
+
+
+/* Layout fix 1.4 — o formulário aberto ocupa uma linha completa, sem esticar outros produtos. */
+#tab-ads #adsSeoResults.ads-seo-cards{
+ display:grid!important;
+ grid-template-columns:repeat(auto-fit,minmax(min(100%,340px),1fr))!important;
+ gap:12px!important;
+ align-items:start!important;
+ grid-auto-rows:min-content;
+ min-width:0;
+}
+#tab-ads #adsSeoResults>.ads-seo-card{
+ width:100%;
+ max-width:100%;
+ min-width:0;
+ height:auto!important;
+ align-self:start!important;
+ display:grid;
+ grid-template-columns:minmax(0,1fr)!important;
+ align-content:start!important;
+ gap:10px;
+}
+#tab-ads #adsSeoResults>.ads-seo-card.ads-card-expanded{
+ grid-column:1/-1!important;
+}
+#tab-ads #adsSeoResults .ads-manual-editor{
+ min-width:0;width:100%;max-width:100%;
+ grid-column:1/-1;
+}
+#tab-ads #adsSeoResults .ads-manual-editor>summary{
+ line-height:1.4;
+ overflow-wrap:anywhere;
+}
+#tab-ads #adsSeoResults .ads-manual-fields{
+ width:100%;max-width:100%;min-width:0;
+ display:grid!important;
+ grid-template-columns:repeat(2,minmax(0,1fr))!important;
+ align-items:start!important;
+ gap:12px 14px!important;
+ padding:16px!important;
+}
+#tab-ads #adsSeoResults .ads-manual-fields>*{min-width:0;max-width:100%}
+#tab-ads #adsSeoResults .ads-manual-fields>.ads-roas-choice,
+#tab-ads #adsSeoResults .ads-manual-fields>.ads-roas-estimate,
+#tab-ads #adsSeoResults .ads-manual-fields>.ads-manual-note,
+#tab-ads #adsSeoResults .ads-manual-fields>.ads-manual-consent,
+#tab-ads #adsSeoResults .ads-manual-fields>.ads-manual-cta,
+#tab-ads #adsSeoResults .ads-manual-fields>.ads-manual-feedback,
+#tab-ads #adsSeoResults .ads-manual-fields>.ads-manual-review{
+ grid-column:1/-1!important;
+}
+#tab-ads #adsSeoResults .ads-manual-fields>.ads-manual-field{
+ display:grid!important;
+ gap:6px;
+ width:100%;min-width:0;
+}
+#tab-ads #adsSeoResults .ads-manual-field input:not([type="checkbox"]){
+ box-sizing:border-box!important;
+ width:100%!important;
+ max-width:100%;
+ margin:0!important;
+ min-height:40px;
+}
+#tab-ads #adsSeoResults .ads-manual-consent{
+ display:grid!important;
+ grid-template-columns:19px minmax(0,1fr)!important;
+ gap:10px!important;
+ align-items:start!important;
+ width:100%!important;
+ min-width:0!important;
+ max-width:100%!important;
+ margin:0!important;
+ padding:12px 13px!important;
+ background:#f3f8ff;
+ border:1px solid #d5e6f8;
+ border-radius:10px;
+ font-size:12px!important;
+ line-height:1.5!important;
+ font-weight:500!important;
+}
+#tab-ads #adsSeoResults .ads-manual-consent input[type="checkbox"]{
+ display:block!important;
+ appearance:auto!important;
+ box-sizing:border-box!important;
+ width:18px!important;
+ min-width:18px!important;
+ max-width:18px!important;
+ height:18px!important;
+ min-height:18px!important;
+ max-height:18px!important;
+ margin:2px 0 0!important;
+ padding:0!important;
+ flex:0 0 18px!important;
+ position:static!important;
+}
+#tab-ads #adsSeoResults .ads-manual-consent>span{
+ display:block!important;
+ box-sizing:border-box!important;
+ width:auto!important;
+ min-width:0!important;
+ max-width:100%!important;
+ margin:0!important;
+ white-space:normal!important;
+ word-break:normal!important;
+ overflow-wrap:break-word!important;
+ text-align:left!important;
+ font-size:12px!important;
+ line-height:1.5!important;
+}
+#tab-ads #adsSeoResults .ads-manual-fields>.ads-manual-cta{
+ width:100%;max-width:100%;justify-self:stretch;
+ min-height:43px;
+}
+#tab-ads #adsSeoResults .ads-manual-fields>.ads-manual-review{
+ min-width:0;overflow-wrap:anywhere;
+}
+#tab-ads #adsSeoResults .ads-manual-fields>.ads-manual-feedback{
+ font-size:11px!important;line-height:1.45;
+}
+@media(max-width:720px){
+ #tab-ads #adsSeoResults .ads-manual-fields{
+  grid-template-columns:minmax(0,1fr)!important;
+  padding:12px!important;
+ }
+ #tab-ads #adsSeoResults .ads-manual-consent{
+  grid-template-columns:19px minmax(0,1fr)!important;
+ }
+}
