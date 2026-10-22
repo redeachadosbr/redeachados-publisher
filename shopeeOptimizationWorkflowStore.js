@@ -75,8 +75,8 @@ export async function mergeWorkflowTechnicalAutofill(shop,item,model,sku,attribu
   if(!attr||attr.conditional||attr.legacy||attr.values?.length||savedMap.has(id))continue;
   const previous=manualMap.get(id);
   // Explicit manual choices, even drafts, take precedence.
-  if(previous&&(previous.evidence?.trim()||
-      previous.enabled&&previous.values?.some(x=>String(x.valueName||'').trim()||Number(x.valueId)>0)))
+  // Evidence-only notes do not mean that an actual option was filled.
+  if(previous?.values?.some(x=>String(x.valueName||'').trim()||Number(x.valueId)>0))
    continue;
   if(previous&&!previous.enabled&&previous.userDisabled)continue;
   const values=(suggestion.values||[]).filter(v=>
@@ -86,7 +86,10 @@ export async function mergeWorkflowTechnicalAutofill(shop,item,model,sku,attribu
     unit:String(v.unit||'').trim()
    }));
   if(!values.length)continue;
-  const field={attributeId:id,enabled:true,evidence:String(suggestion.evidence||'').slice(0,500),
+  const originalNote=previous?.source==='wedrop-auto'?'':String(previous?.evidence||'').trim();
+  const evidence=String(suggestion.evidence||'')+
+    (originalNote?' · Observação manual anterior: '+originalNote:'');
+  const field={attributeId:id,enabled:true,evidence:evidence.slice(0,500),
    source:'wedrop-auto',values};
   const old=manualMap.get(id);
   if(old?.source==='wedrop-auto'&&JSON.stringify(old.values)===JSON.stringify(values))continue;
