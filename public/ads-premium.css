@@ -238,3 +238,77 @@ body.view-ads .workspace-content{max-width:none;width:100%;padding:9px 14px 30px
  #tab-ads #adsSummary,#tab-ads #adsManualPanel{grid-row:auto}
  #tab-ads .ads-improvement-metrics{grid-template-columns:repeat(2,minmax(0,1fr))}
 }
+
+
+/* ADS GRID FIX 2.3: stable, non-overlapping rows */
+#app>#tab-ads.tabpane.active{
+ display:grid!important;
+ grid-template-columns:repeat(12,minmax(0,1fr))!important;
+ grid-auto-rows:min-content!important;
+ align-content:start!important;
+ align-items:start!important;
+ row-gap:12px!important;
+ column-gap:12px!important;
+}
+#tab-ads .ads-v2-heading{grid-row:1!important;grid-column:1/-1!important;}
+#tab-ads #adsResults:not([hidden]),
+#tab-ads #adsResults:not([hidden]) .ads-v2-main-grid{display:contents!important;}
+#tab-ads #adsResults[hidden]{display:none!important;}
+#tab-ads .ads-v2-metrics{grid-row:2!important;grid-column:1/-1!important;margin:0!important;}
+#tab-ads .ads-pricing-report{grid-row:3!important;grid-column:1/7!important;margin:0!important;min-width:0!important;align-self:stretch!important;}
+#tab-ads .ads-v2-health{grid-row:3!important;grid-column:7/13!important;margin:0!important;min-width:0!important;align-self:stretch!important;}
+#tab-ads .ads-v2-campaigns{grid-row:4!important;grid-column:1/10!important;margin:0!important;min-width:0!important;align-self:start!important;}
+#tab-ads .ads-v2-review-panel:not([hidden]){grid-row:4!important;grid-column:10/13!important;margin:0!important;min-width:0!important;align-self:start!important;}
+#tab-ads:has(#adsReviewPanel[hidden]) .ads-v2-campaigns{grid-column:1/-1!important;}
+#tab-ads .ads-v2-improvements{grid-row:5!important;grid-column:1/10!important;align-self:start!important;margin:0!important;min-height:0!important;}
+#tab-ads .ads-v2-execution{grid-row:5!important;grid-column:10/13!important;margin:0!important;min-width:0!important;align-self:start!important;}
+#tab-ads #adsSummary{grid-row:6!important;grid-column:1/-1!important;margin:0!important;min-width:0!important;}
+#tab-ads #adsManualPanel{grid-row:7!important;grid-column:1/-1!important;margin:0!important;}
+#tab-ads #adsRecommendations.ads-improvement-grid{
+ display:grid!important;
+ grid-template-columns:repeat(auto-fit,minmax(min(100%,300px),1fr))!important;
+ gap:10px!important;
+ align-items:start!important;
+}
+#tab-ads .ads-v2-table-wrap{max-height:520px!important;overflow:auto!important;}
+#tab-ads .ads-v2-table thead th{top:0!important;position:sticky!important;z-index:5!important;}
+#tab-ads .ads-v2-improvements .ads-improvement-card{align-self:start!important;min-width:0!important;}
+#tab-ads .ads-v2-execution .ads-v2-steps{max-height:none!important;overflow:visible!important;}
+@media (min-width:1181px){
+ #tab-ads .ads-pricing-report{grid-column:1/5!important;}
+ #tab-ads .ads-v2-health{grid-column:5/9!important;}
+ #tab-ads .ads-v2-improvements{grid-column:1/10!important;grid-row:5!important;}
+ /* Reserve and health need not take the width of an unavailable third card. */
+ #tab-ads .ads-pricing-report{grid-column:1/7!important;}
+ #tab-ads .ads-v2-health{grid-column:7/13!important;}
+}
+@media (max-width:1180px) and (min-width:881px){
+ #tab-ads .ads-v2-metrics{grid-template-columns:repeat(4,minmax(0,1fr))!important;}
+ #tab-ads .ads-v2-campaigns{grid-column:1/9!important;}
+ #tab-ads .ads-v2-review-panel:not([hidden]){grid-column:9/-1!important;}
+ #tab-ads .ads-v2-improvements{grid-column:1/9!important;}
+ #tab-ads .ads-v2-execution{grid-column:9/-1!important;}
+}
+@media (max-width:880px){
+ #tab-ads .ads-v2-metrics{grid-row:2!important;grid-column:1/-1!important;grid-template-columns:repeat(4,minmax(0,1fr))!important;}
+ #tab-ads .ads-pricing-report{grid-row:3!important;grid-column:1/7!important;}
+ #tab-ads .ads-v2-health{grid-row:3!important;grid-column:7/-1!important;}
+ #tab-ads .ads-v2-campaigns{grid-row:4!important;grid-column:1/-1!important;}
+ #tab-ads .ads-v2-review-panel:not([hidden]){grid-row:5!important;grid-column:1/-1!important;}
+ #tab-ads .ads-v2-improvements{grid-row:6!important;grid-column:1/-1!important;}
+ #tab-ads .ads-v2-execution{grid-row:7!important;grid-column:1/-1!important;}
+ #tab-ads #adsSummary{grid-row:8!important;}
+ #tab-ads #adsManualPanel{grid-row:9!important;}
+}
+@media (max-width:650px){
+ #tab-ads .ads-v2-heading{grid-row:1!important;}
+ #tab-ads .ads-v2-metrics{grid-row:2!important;grid-template-columns:repeat(2,minmax(0,1fr))!important;}
+ #tab-ads .ads-pricing-report{grid-row:3!important;grid-column:1/-1!important;}
+ #tab-ads .ads-v2-health{grid-row:4!important;grid-column:1/-1!important;}
+ #tab-ads .ads-v2-campaigns{grid-row:5!important;grid-column:1/-1!important;}
+ #tab-ads .ads-v2-review-panel:not([hidden]){grid-row:6!important;grid-column:1/-1!important;}
+ #tab-ads .ads-v2-improvements{grid-row:7!important;grid-column:1/-1!important;}
+ #tab-ads .ads-v2-execution{grid-row:8!important;grid-column:1/-1!important;}
+ #tab-ads #adsSummary{grid-row:9!important;}
+ #tab-ads #adsManualPanel{grid-row:10!important;}
+}
