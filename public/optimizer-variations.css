@@ -60,3 +60,26 @@
 @media(max-width:1150px){#optimizerVariationPanel .optimizer-variant-workspace{grid-template-columns:1fr!important}#optimizerVariationPanel .optimizer-variant-side{max-width:none!important}}
 @media(max-width:800px){#optimizerVariationPanel .optimizer-variant-stage-head{grid-template-columns:1fr}#optimizerVariationPanel .optimizer-variation-grid{grid-template-columns:1fr!important}#optimizerVariationPanel .optimizer-variant-cards{grid-template-columns:1fr!important}}
 @media(max-width:440px){#optimizerVariationPanel .optimizer-variant-body{grid-template-columns:1fr!important}#optimizerVariationPanel .optimizer-variant-photo{max-width:210px!important}}
+
+/* Layout refinado: campos compactos e sem duplicação visual */
+#optimizerVariationPanel .optimizer-variant-stage-head{gap:8px;margin-bottom:9px}
+#optimizerVariationPanel .stage-left,#optimizerVariationPanel .stage-right{padding:10px 13px;min-height:76px}
+#optimizerVariationPanel .stage-left .stage-symbol,#optimizerVariationPanel .stage-right .stage-symbol{flex-basis:44px;height:44px}
+#optimizerVariationPanel .stage-left strong{font-size:18px}
+#optimizerVariationPanel .stage-right small{font-size:11px}
+#optimizerVariationPanel .optimizer-variant-config{padding:12px 13px;margin-bottom:9px}
+#optimizerVariationPanel .optimizer-variant-config>.config-heading{margin-bottom:8px}
+#optimizerVariationPanel .optimizer-variation-grid{align-items:end}
+#optimizerVariationPanel #optimizerVariationType{height:38px;min-height:38px}
+#optimizerVariationPanel .optimizer-variation-tags{min-height:39px;padding:4px 5px}
+#optimizerVariationPanel .optimizer-variation-chip,#optimizerVariationPanel .optimizer-variation-add{padding:6px 8px}
+#optimizerVariationPanel #optimizerVariationValues{position:absolute!important;width:1px!important;height:1px!important;min-height:1px!important;padding:0!important;margin:0!important;opacity:0;pointer-events:none;border:0!important;overflow:hidden}
+#optimizerVariationPanel .optimizer-variation-original-notice{min-height:39px;display:flex;align-items:center;gap:8px;padding:8px 10px;font-size:10px}
+#optimizerVariationPanel .optimizer-variation-original-notice button{margin-left:auto;background:#18452d;color:#fff;border:0;border-radius:7px;padding:7px;font-size:10px;cursor:pointer}
+#optimizerVariationPanel .optimizer-variation-original-notice[hidden]{display:none!important}
+#optimizerVariationPanel .optimizer-variant-status{margin:0 0 8px;padding:7px 10px;font-size:11px}
+#optimizerVariationPanel .optimizer-variant-main,#optimizerVariationPanel .optimizer-variant-side{padding:11px}
+#optimizerVariationPanel .optimizer-variant-cards{gap:9px!important}
+#optimizerVariationPanel .optimizer-variant-item{padding:10px}
+#optimizerVariationPanel .optimizer-variant-photo-actions button{min-height:31px}
+#optimizerVariationPanel .optimizer-variant-field input{height:35px!important}
