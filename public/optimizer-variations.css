@@ -83,3 +83,18 @@
 #optimizerVariationPanel .optimizer-variant-item{padding:10px}
 #optimizerVariationPanel .optimizer-variant-photo-actions button{min-height:31px}
 #optimizerVariationPanel .optimizer-variant-field input{height:35px!important}
+
+/* Referência final: duas variações compactas e confirmação apenas no envio. */
+#optimizerVariationPanel .optimizer-variant-check{display:none!important}
+#optimizerVariationPanel .optimizer-variant-photo-actions{grid-column:1/-1!important;display:grid!important;grid-template-columns:repeat(2,minmax(0,1fr))!important;gap:7px}
+#optimizerVariationPanel .optimizer-variant-photo-actions button{min-height:39px!important;font-size:10px!important;padding:7px 5px!important;border-radius:8px}
+#optimizerVariationPanel .optimizer-variant-photo-actions button:first-child{background:#eef5ff!important;color:#153d75!important;border:1px solid #c9dcfb!important}
+#optimizerVariationPanel .optimizer-variant-photo-actions button:nth-child(2){background:#e3f8e9!important;color:#17672e!important;border:1px solid #b4e7c3!important}
+#optimizerVariationPanel .optimizer-variant-body{grid-template-columns:minmax(125px,.95fr) minmax(0,1.45fr)!important;align-items:start}
+#optimizerVariationPanel .optimizer-variant-inputs{grid-template-columns:repeat(2,minmax(0,1fr))!important;align-content:start!important;gap:8px!important}
+#optimizerVariationPanel .optimizer-variant-save{grid-column:1/-1!important;min-height:28px!important;border-radius:7px;background:#edf3fc!important;color:#275183!important;border:1px solid #d8e5f8!important}
+#optimizerVariationPanel .optimizer-variant-item{padding:10px!important;gap:8px!important}
+#optimizerVariationPanel .optimizer-variant-photo>img{aspect-ratio:1!important}
+#optimizerVariationPanel .optimizer-variant-status:not([data-level=error]):not([data-level=success]){display:none!important}
+#optimizerVariationPanel .optimizer-variant-footer button{min-height:51px!important}
+@media(min-width:1151px){#optimizerVariationPanel .optimizer-variant-workspace{grid-template-columns:minmax(0,1fr) minmax(225px,.29fr)!important}}
