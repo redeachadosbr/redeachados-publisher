@@ -71,7 +71,7 @@ function render(){
   upload.type=generate.type='button';upload.onclick=()=>{fileInput.value='';fileInput.click();};
   generate.onclick=()=>void transferImage(name,'generate');
   fileInput.onchange=()=>{const selected=fileInput.files?.[0];if(selected)void transferImage(name,'upload',selected);};
-  buttons.append(upload,generate,fileInput);visual.append(buttons);
+  buttons.append(upload,generate,fileInput);
   const fields=el('div','optimizer-variant-inputs');
   const price=field('Preço (R$)',prior.price>0?prior.price:(suggestedPrice||''),{kind:'number',min:'0.01',placeholder:'Informe o preço'});
   price.input.step='0.01';price.input.dataset.variantField='price';
@@ -96,7 +96,8 @@ function render(){
    el('span','','Confirmei pelo fornecedor que esta opção existe e há estoque disponível'));
   const save=el('button','optimizer-variant-save','Salvar dados da variação');
   save.type='button';save.onclick=()=>void persist();
-  fields.append(price.label,sku.label,gtin.label,stock.label,noGtin,confirmPhoto,confirmStock,save);
+  fields.append(price.label,sku.label,gtin.label,stock.label,buttons,noGtin,confirmPhoto,confirmStock,save);
+  gtin.input.addEventListener('input',()=>{if(gtin.input.value.trim()){n.checked=false;gtin.input.disabled=false;}});
   body.append(visual,fields);row.append(header,body);cards.append(row);
  }
  left.append(cards);workspace.append(left);
@@ -113,6 +114,9 @@ function render(){
  preview.onclick=async()=>{
   if(busy)return;
   try{
+   const confirmations=[...target.querySelectorAll('.optimizer-variant-item')];
+   if(!window.confirm('Confirma que as imagens correspondem às variações reais e que verificou a disponibilidade de estoque no fornecedor para todas as opções?'))return;
+   for(const card of confirmations){card.querySelector('[data-variant-field="photoConfirmed"]').checked=true;card.querySelector('[data-variant-field="stockConfirmed"]').checked=true;}
    await persist();
    const result=await request('/api/shopee/optimizer/variants/preview','POST',{});
    approval=result.approval;
