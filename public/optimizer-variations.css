@@ -66,3 +66,25 @@
  #optimizerVariationPanel .optimizer-variant-inputs{grid-template-columns:minmax(0,1fr)}
  #optimizerVariationPanel .optimizer-variant-photo-actions{grid-template-columns:minmax(0,1fr)}
 }
+
+/* Uma única coluna para o editor; elimina colunas visuais laterais sem função. */
+#optimizerVariationPanel #optimizerVariationPreview .optimizer-variant-cards{
+ display:flex!important;flex-direction:column!important;grid-template-columns:none!important;width:100%!important
+}
+#optimizerVariationPanel #optimizerVariationPreview .optimizer-variant-item{
+ flex:none!important;width:100%!important;max-width:100%!important;
+ grid-column:1/-1!important
+}
+#optimizerVariationPanel .optimizer-variant-body{
+ grid-template-columns:minmax(180px,260px) minmax(0,1fr)!important
+}
+#optimizerVariationPanel .optimizer-variant-inputs{
+ width:100%;grid-template-columns:repeat(2,minmax(180px,1fr))!important
+}
+@media(max-width:760px){
+ #optimizerVariationPanel .optimizer-variant-body{grid-template-columns:minmax(0,1fr)!important}
+ #optimizerVariationPanel .optimizer-variant-inputs{grid-template-columns:repeat(2,minmax(0,1fr))!important}
+}
+@media(max-width:480px){
+ #optimizerVariationPanel .optimizer-variant-inputs{grid-template-columns:minmax(0,1fr)!important}
+}
