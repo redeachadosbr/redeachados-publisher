@@ -39,7 +39,11 @@ test('não apresenta campanha pausada como alerta atual',()=>{
  assert.equal(result.length,0);
 });
 test('layout ocupa a área sob a tabela sem alterar painel da API',()=>{
- assert.match(css,/#tab-ads \.ads-v2-improvements\{grid-column:1\/10;grid-row:6/);
+ assert.match(css,/ADS GRID FIX 2\\.3/);
+ assert.match(css,/#tab-ads \\.ads-v2-campaigns\\{grid-row:4!important;grid-column:1\\/10!important/);
+ assert.match(css,/#tab-ads \\.ads-v2-improvements\\{grid-row:5!important;grid-column:1\\/10!important/);
+ assert.match(css,/#tab-ads \\.ads-v2-execution\\{grid-row:5!important;grid-column:10\\/13!important/);
+ assert.match(html,/ads-premium\\.css\\?v=2\\.3\\.0-stable-dashboard-grid/);
  assert.match(css,/#tab-ads \.ads-v2-review-panel:not\(\[hidden\]\)/);
  assert.match(html,/id="adsImprovementCount"/);
  assert.match(html,/ads-improvements\.js\?v=/);
