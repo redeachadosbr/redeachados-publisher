@@ -691,11 +691,11 @@
 
         </section>
         <section id="optimizerVariationPanel" class="optimizer-video-import" hidden>
-          <div class="optimizer-variant-stage-head"><span class="stage-symbol" aria-hidden="true">⚙</span><div><small>ETAPA 06 · CONFIGURAÇÃO OPCIONAL</small><strong>Variações do produto</strong><small>Defina o tipo e as opções antes de revisar as imagens individuais.</small></div></div>
+          <div class="optimizer-variant-stage-head"><div class="stage-left"><span class="stage-symbol" aria-hidden="true">⚙</span><div><small>ETAPA 06 · CONFIGURAÇÃO OPCIONAL</small><strong>Variações do produto</strong><small>Defina o tipo e as opções antes de revisar as imagens individuais.</small></div></div><div class="stage-right"><span class="stage-symbol">☷</span><div><b>Etapa opcional</b><small>Configure as variações para criar imagens e anunciar todas as opções.</small></div><span class="stage-pill">● Em configuração</span></div></div>
           <div class="optimizer-variant-config"><strong class="config-heading">⚙ Configuração de variações</strong>
           <div class="optimizer-variation-grid">
             <label class="optimizer-field">Tipo de variação<select id="optimizerVariationType"><option value="">Selecione</option><option>Cor</option><option>Tamanho</option><option>Unidades por pacote</option><option>Modelo</option><option>Variação</option><option>Voltagem</option><option>Print</option><option>Quantidade</option></select></label>
-            <label class="optimizer-field">Opções (uma por linha)<textarea id="optimizerVariationValues" rows="3" maxlength="1400" placeholder="Ex.: Azul&#10;Verde"></textarea></label>
+            <div class="optimizer-variant-option-widget"><label class="optimizer-field" for="optimizerVariationValues">Opções de variação (uma por linha ou como tags)</label><div id="optimizerVariationTags" class="optimizer-variation-tags"></div><textarea id="optimizerVariationValues" rows="2" maxlength="1400" placeholder="Ex.: Azul&#10;Verde"></textarea></div><div id="optimizerVariationOriginalNotice" class="optimizer-variation-original-notice"></div>
           </div>
           </div>
           <div id="optimizerVariationPreview" class="optimizer-variation-preview"></div>
