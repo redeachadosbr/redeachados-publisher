@@ -1151,7 +1151,31 @@ function adsStatusState(message,state='info'){
  const node=$('#adsSummary');node.textContent=message;node.dataset.state=state;
 }
 function adsRenderSuggestions(){
- const list=$('#adsRecommendations');list.replaceChildren();
+ const list=$('#adsRecommendations');
+ if(globalThis.RedeAdsImprovements?.render){
+  const ok=globalThis.RedeAdsImprovements.render({
+   campaigns:adsCampaignRows,expanded:adsSuggestionsExpanded,container:list,
+   onReview:c=>{
+    adsSelected=new Set([c.campaignId]);
+    adsShowReview([c.campaignId]);
+    adsDisplayCampaigns();
+    const review=$('#adsReviewPanel');
+    if(review&&!review.hidden)review.scrollIntoView({behavior:'smooth',block:'nearest'});
+   },
+   onProduct:c=>{
+    const link=document.querySelector('.nav-link[data-tab="optimizer"]');
+    if(link)link.click();
+    const sku=$('#optimizerSku');
+    if(sku&&c.productSku){
+     sku.value=c.productSku;
+     sku.dispatchEvent(new Event('input',{bubbles:true}));
+     sku.scrollIntoView({behavior:'smooth',block:'center'});
+    }
+   }
+  });
+  if(ok)return;
+ }
+ list.replaceChildren();
  const visible=adsSuggestionsExpanded?adsSuggestions:adsSuggestions.slice(0,3);
  $('#adsShowAllSuggestions').textContent=adsSuggestionsExpanded?'Ver menos':'Ver todas';
  for(const item of visible){
