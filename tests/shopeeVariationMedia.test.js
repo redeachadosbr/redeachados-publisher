@@ -44,7 +44,7 @@ test('interface contém upload, geração, prévia e confirmação de estoque',(
  const html=readFileSync(new URL('../public/index.html',import.meta.url),'utf8');
  const js=readFileSync(new URL('../public/optimizer-variations.js',import.meta.url),'utf8');
  const app=readFileSync(new URL('../public/app.js',import.meta.url),'utf8');
- assert.match(html,/optimizer-variations\.js\?v=1\.0\.0/);
+ assert.match(html,/optimizer-variations\.js\?v=[\d.]+/);
  assert.match(js,/Gerar foto IA/);
  assert.match(js,/Incluir foto/);
  assert.match(js,/Estoque \(mínimo 1\)/);

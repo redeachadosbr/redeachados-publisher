@@ -25,12 +25,23 @@ const field=(caption,value,{kind='text',min,max,placeholder}={})=>{
  if(placeholder)input.placeholder=placeholder;
  label.append(text,input);return {label,input};
 };
+const colorDot=name=>{
+ const dot=el('span','optimizer-variation-color-dot');
+ const color=String(name).normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase().trim();
+ const palette={vermelho:'#f04432',vermelha:'#f04432',rosa:'#ef62ab',azul:'#3288e9',verde:'#36a86a',amarelo:'#f0c43d',amarela:'#f0c43d',preto:'#242b35',preta:'#242b35',branco:'#ffffff',branca:'#ffffff',laranja:'#f58b37',roxo:'#985dc7',roxa:'#985dc7',lilas:'#b690d3',cinza:'#8995a5',prata:'#c2cbd5',dourado:'#c6a052',dourada:'#c6a052',marrom:'#8a5a3d',bege:'#dfceb5'};
+ dot.style.background=palette[color]||'#bdc9d7';dot.setAttribute('aria-hidden','true');return dot;
+};
+function rememberDraft(){
+ const draft=collect(),previous=new Map((saved.options||[]).map(o=>[o.name,o]));
+ saved={...draft,options:draft.options.map(o=>({...o,previewUrl:previous.get(o.name)?.previewUrl||null}))};
+}
 function render(){
  const target=$('optimizerVariationPreview');
  if(!target)return;
  target.replaceChildren();
+ const actionHost=$('optimizerVariationActions');actionHost?.replaceChildren();
  const options=values(),variationType=type();
- const tags=$('optimizerVariationTags');if(tags){tags.replaceChildren();for(const option of options){const chip=el('button','optimizer-variation-chip');chip.type='button';if(variationType==='Cor'){const dot=el('span','optimizer-variation-color-dot');const color=String(option).normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase();const palette={vermelho:'#f04432',vermelha:'#f04432',rosa:'#f56da8',azul:'#3288e9',verde:'#36a86a',amarelo:'#f0c43d',amarela:'#f0c43d',preto:'#242b35',preta:'#242b35',branco:'#ffffff',branca:'#ffffff',laranja:'#f58b37',roxo:'#985dc7',roxa:'#985dc7'};dot.style.background=palette[color]||'#bdc9d7';chip.append(dot);}chip.append(el('span','',option),el('span','optimizer-variation-chip-close','×'));chip.onclick=()=>{const t=$('optimizerVariationValues');t.value=values().filter(v=>v!==option).join('\n');t.dispatchEvent(new Event('input',{bubbles:true}));};tags.append(chip);}const add=el('button','optimizer-variation-add','＋ Adicionar opção');add.type='button';add.onclick=()=>{const next=window.prompt('Nome da nova opção:');if(next?.trim()){const t=$('optimizerVariationValues');t.value=[...values(),next.trim()].join('\n');t.dispatchEvent(new Event('input',{bubbles:true}));}};tags.append(add);}
+ const tags=$('optimizerVariationTags');if(tags){tags.replaceChildren();for(const option of options){const chip=el('button','optimizer-variation-chip');chip.type='button';chip.setAttribute('aria-label','Remover opção '+option);if(variationType==='Cor')chip.append(colorDot(option));chip.append(el('span','',option),el('span','optimizer-variation-chip-close','×'));chip.onclick=()=>{const t=$('optimizerVariationValues');t.value=values().filter(v=>v!==option).join('\n');t.dispatchEvent(new Event('input',{bubbles:true}));};tags.append(chip);}const add=el('button','optimizer-variation-add','＋ Adicionar opção');add.type='button';add.onclick=()=>{const next=window.prompt('Nome da nova opção:');if(next?.trim()){const t=$('optimizerVariationValues');t.value=[...values(),next.trim()].join('\n');t.dispatchEvent(new Event('input',{bubbles:true}));}};tags.append(add);}
  const notice=$('optimizerVariationOriginalNotice');if(notice){const norm=v=>String(v||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase().replace(/[ao]$/,'');const missing=variationType==='Cor'&&originalColor&&!options.some(v=>norm(v)===norm(originalColor));notice.replaceChildren();if(missing){notice.append(el('span','','⚠ Este anúncio anuncia a cor '+originalColor+'. Inclua essa opção para preservar a cor original.'));const action=el('button','secondary','Adicionar cor original');action.type='button';action.onclick=()=>{const t=$('optimizerVariationValues');t.value=[originalColor,...values()].join('\n');t.dispatchEvent(new Event('input',{bubbles:true}));};notice.append(action);}notice.hidden=!missing;}
  if(!context||!variationType||!options.length){
   target.append(el('p','optimizer-variant-help',
@@ -40,13 +51,15 @@ function render(){
  if(!document.getElementById('optimizerVariationStatus')){
   const note=el('p','optimizer-variant-status',
    'Preencha os dados e salve antes de gerar ou enviar fotos. Nenhuma modificação é publicada automaticamente.');
-  note.id='optimizerVariationStatus';target.append(note);
+  note.id='optimizerVariationStatus';note.setAttribute('role','status');note.setAttribute('aria-live','polite');target.append(note);
  }
  const existing=new Map((saved.type===variationType?saved.options:[]).map(o=>[o.name,o]));
  const workspace=el('div','optimizer-variant-workspace');
  const left=el('div','optimizer-variant-main');
  const sectionTitle=el('div','optimizer-variant-section-title');
- sectionTitle.append(el('strong','','▣  Variações do produto'),el('small','','Preencha os dados de cada variação. O rascunho não publica automaticamente.'));
+ const sectionCopy=el('div');
+ sectionCopy.append(el('strong','','Variações do produto'),el('small','','Preencha os dados de cada variação. A configuração fica salva como prévia.'));
+ sectionTitle.append(el('span','config-symbol','◇'),sectionCopy);
  left.append(sectionTitle);
  const cards=el('div','optimizer-variant-cards');
  for(const name of options){
@@ -57,9 +70,9 @@ function render(){
   row.dataset.option=name;
   const header=el('div','optimizer-variant-heading');
   const headingName=el('strong','optimizer-variant-title');
-  if(variationType==='Cor'){const dot=el('span','optimizer-variation-color-dot');const color=normalColor(name);const colors={vermelh:'#f44332',ros:'#f56da8',azul:'#348be9',verd:'#35a96a',amarel:'#eac53b',pret:'#263142',branc:'#ffffff'};dot.style.background=colors[color]||'#bdc9d7';headingName.append(dot);}
+  if(variationType==='Cor')headingName.append(colorDot(name));
   headingName.append(el('span','',variationType+' · '+name));
-  header.append(headingName,el('small','',sameOriginal?'● Cor original':prior.asset?'Foto salva':'Foto pendente'));
+  header.append(headingName,el('small',prior.asset||sameOriginal?'':'is-pending',sameOriginal?'✓ Cor original':prior.asset?'✓ Foto salva':'Foto pendente'));
   const body=el('div','optimizer-variant-body'),visual=el('div','optimizer-variant-photo');
   if(prior.previewUrl){
    const img=el('img');img.src=prior.previewUrl;img.alt='Prévia da opção '+name;
@@ -84,10 +97,11 @@ function render(){
   const gtin=field('GTIN / EAN',verifiedEan,{placeholder:'Somente se existir'});
   gtin.input.dataset.variantField='gtin';gtin.input.maxLength=14;
   const noGtin=el('label','optimizer-variant-check');
-  const n=el('input');n.type='checkbox';n.dataset.variantField='noGtin';n.checked=false;
+  const n=el('input');n.type='checkbox';n.dataset.variantField='noGtin';n.checked=prior.noGtin===true;
   noGtin.append(n,el('span','','Item sem GTIN informado'));
   n.onchange=()=>{gtin.input.disabled=n.checked;if(n.checked)gtin.input.value='';};
-  gtin.input.disabled=n.checked;
+  // O campo permanece editável; informar um GTIN substitui a opção salva sem GTIN.
+  gtin.input.disabled=false;
   const confirmPhoto=el('label','optimizer-variant-check');
   const pc=el('input');pc.type='checkbox';pc.dataset.variantField='photoConfirmed';
   pc.checked=prior.photoConfirmed===true;confirmPhoto.append(pc,
@@ -97,13 +111,22 @@ function render(){
   sc.checked=prior.stockConfirmed===true;confirmStock.append(sc,
    el('span','','Confirmei pelo fornecedor que esta opção existe e há estoque disponível'));
   const save=el('button','optimizer-variant-save','Salvar dados da variação');
-  save.type='button';save.onclick=()=>void persist();
+  save.type='button';save.onclick=async()=>{
+   save.disabled=true;
+   try{await persist();}catch(e){notify(e.message,'error');}finally{save.disabled=false;}
+  };
   fields.append(price.label,sku.label,gtin.label,stock.label,buttons,noGtin,confirmPhoto,confirmStock,save);
   gtin.input.addEventListener('input',()=>{if(gtin.input.value.trim()){n.checked=false;gtin.input.disabled=false;}});
   body.append(visual,fields);row.append(header,body);cards.append(row);
  }
  left.append(cards);workspace.append(left);
- const side=el('aside','optimizer-variant-side');
+ // Comandos recolhidos na própria etapa: não ocupam a lateral dos cartões.
+ const menu=el('details','optimizer-variant-stage-menu');
+ const toggle=el('summary','','Ações da etapa');
+ menu.append(toggle);menu.addEventListener('keydown',event=>{
+  if(event.key==='Escape'){menu.open=false;toggle.focus();}
+ });
+ const side=el('div','optimizer-variant-send-panel');
  const title=el('div','optimizer-variant-side-heading');
  title.append(el('strong','','➤  Envio e aplicação'),el('small','','Após revisar as variações, confira o envio pela API e aplique na Shopee.'));
  side.append(title);
@@ -137,8 +160,10 @@ function render(){
    finally{busy=false;}
   };
   const help=el('p','optimizer-variant-side-note','ⓘ Orientação: foto por variação, gerada via API OpenAI ou incluída manualmente. Confirme o estoque real antes de publicar.');
-  controls.append(preview,send);side.append(controls,help);workspace.append(side);target.append(workspace);
-  target.querySelectorAll('input').forEach(i=>{if(i.type!=='file')i.addEventListener('input',()=>{approval=null;send.disabled=true;});});
+  const close=el('button','optimizer-variant-close','Fechar etapa');close.type='button';
+  close.onclick=()=>{menu.open=false;$('optimizerWorkflowClose')?.click();};
+  controls.append(preview,send);side.append(controls,help,close);menu.append(side);actionHost?.append(menu);target.append(workspace);
+  target.querySelectorAll('input').forEach(i=>{if(i.type!=='file')i.addEventListener('input',()=>{approval=null;send.disabled=true;rememberDraft();});});
  }
 }
 function collect(){
