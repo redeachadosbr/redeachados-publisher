@@ -1222,7 +1222,7 @@
         </section>
         <div id="adsSummary" class="ads-v2-message" data-state="idle" role="status" aria-live="polite">Aguardando consulta da API Shopee Ads. Nenhum dado financeiro foi presumido.</div>
         <div id="adsResults" hidden>
-          <div class="ads-v2-metrics"><article class="ads-v2-kpi ads-v2-kpi-blue"><span class="ads-v2-kpi-icon"><svg class="ads-v2-icon" aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 21V12h4v9M10 21V3h4v18M17 21V8h4v13"/></svg></span><span class="ads-v2-kpi-name">Campanhas encontradas</span><span class="optimizer-tip ads-v2-help" tabindex="0" role="note" data-help="Total de campanhas de anúncios de produtos retornadas pela API Shopee." aria-label="Ajuda: Total de campanhas de anúncios de produtos retornadas pela API Shopee.">?</span><strong id="adsCampaignCount">—</strong></article>
+          <div class="ads-v2-metrics"><article class="ads-v2-kpi ads-v2-kpi-blue"><span class="ads-v2-kpi-icon"><svg class="ads-v2-icon" aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 21V12h4v9M10 21V3h4v18M17 21V8h4v13"/></svg></span><span class="ads-v2-kpi-name">Campanhas ativas</span><span class="optimizer-tip ads-v2-help" tabindex="0" role="note" data-help="Total de campanhas com status ativo confirmado na API Shopee. Pausadas, encerradas e não confirmadas não aparecem na lista." aria-label="Ajuda: Apenas campanhas ativas confirmadas pela API Shopee.">?</span><strong id="adsCampaignCount">—</strong></article>
 <article class="ads-v2-kpi ads-v2-kpi-violet"><span class="ads-v2-kpi-icon"><svg class="ads-v2-icon" aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M2 12s3.7-7 10-7 10 7 10 7-3.7 7-10 7S2 12 2 12Z"/><circle cx="12" cy="12" r="3"/></svg></span><span class="ads-v2-kpi-name">Impressões</span><span class="optimizer-tip ads-v2-help" tabindex="0" role="note" data-help="Soma de impressões do período." aria-label="Ajuda: Soma de impressões do período.">?</span><strong id="adsImpressions">—</strong></article>
 <article class="ads-v2-kpi ads-v2-kpi-green"><span class="ads-v2-kpi-icon"><svg class="ads-v2-icon" aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M5 3v14l4-4 3 7 3-1-3-7 6-1L5 3Z"/></svg></span><span class="ads-v2-kpi-name">Cliques</span><span class="optimizer-tip ads-v2-help" tabindex="0" role="note" data-help="Cliques atribuídos às campanhas no período." aria-label="Ajuda: Cliques atribuídos às campanhas no período.">?</span><strong id="adsClicks">—</strong></article>
 <article class="ads-v2-kpi ads-v2-kpi-amber"><span class="ads-v2-kpi-icon"><svg class="ads-v2-icon" aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 19V5M7 19v-8M12 19V8M17 19V3M21 19V10"/></svg></span><span class="ads-v2-kpi-name">CTR</span><span class="optimizer-tip ads-v2-help" tabindex="0" role="note" data-help="Taxa de cliques: cliques divididos por impressões, no período." aria-label="Ajuda: Taxa de cliques: cliques divididos por impressões, no período.">?</span><strong id="adsCtr">—</strong></article>
@@ -1268,11 +1268,8 @@
                 <button id="adsFilterToggle" type="button" class="secondary" aria-expanded="false"><svg class="ads-v2-icon" aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 6h16M7 12h10M10 18h4"/></svg> Filtros</button></div>
             </div>
             <div id="adsFiltersPanel" class="ads-v2-filter-panel" hidden>
-              <div class="ads-status-tabs" role="group" aria-label="Filtrar campanhas por situação">
-                <button type="button" class="secondary ads-status-tab selected" data-ads-group="all" aria-pressed="true">Todas</button>
-                <button type="button" class="secondary ads-status-tab" data-ads-group="active" aria-pressed="false">Ativas</button>
-                <button type="button" class="secondary ads-status-tab" data-ads-group="inactive" aria-pressed="false">Pausadas / Desativadas</button>
-                <button type="button" class="secondary ads-status-tab" data-ads-group="other" aria-pressed="false" id="adsOtherTab">Outras / Sem confirmação</button>
+              <div class="ads-status-tabs" role="group" aria-label="Exibindo apenas campanhas ativas">
+                <button type="button" class="secondary ads-status-tab selected" data-ads-group="all" aria-pressed="true">Somente ativas / Rodando</button>
               </div>
               <label>Diagnóstico <select id="adsDiagnosisFilter"><option value="all">Todos os diagnósticos</option>
                 <option value="attention">Requer atenção</option><option value="ok">Sem alerta</option></select></label>
@@ -1571,13 +1568,13 @@
 <script src="/optimizer-dashboard.js?v=1.20.11"></script>
 <script src="/dashboard-new-listings.js?v=1.20.21-shopee"></script>
 <script src="/title-studio.js?v=1.20.52-sku1175-no-codes"></script>
-<script src="/app.js?v=1.21.1-ads-sku-prefill"></script>
+<script src="/app.js?v=1.21.2-ads-active-only"></script>
 
 <script src="/ads-premium.js?v=1.0.1-ads-sku-prefill"></script>
 <script src="/ads-improvements.js?v=1.0.0-campaign-alerts"></script>
 <script src="/optimizer-fiscal-premium.js?v=1.20.47-fiscal-run"></script>
 <script src="/fiscal-migration-run.js?v=10-fast-resume"></script>
 <link rel="stylesheet" href="/ads-seo.css?v=2">
-<script src="/ads-seo.js?v=3-ads-tab-only"></script>
+<script src="/ads-seo.js?v=4-active-only"></script>
 </body>
 </html>
