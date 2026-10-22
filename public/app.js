@@ -2922,7 +2922,8 @@ async function optimizerImageCorrectionImportFile(file){
  const status=$('#optimizerImageCorrectionStatus');
  if(!w||!optimizerImagesSameSku(w)||!Number.isInteger(slot)||slot<1||slot>9)
   throw Error('Abra a etapa de imagens e selecione uma posição.');
- if(optimizerImagesAutoBusy||optimizerChatBridgeBusy)throw Error('Uma geração ou importação está em andamento.');
+ if(optimizerImagesAutoBusy)throw Error('Uma importação ou edição pela API já está em andamento.');
+ if(optimizerChatBridgeBusy)optimizerChatBridgeRelease('Envio antigo interrompido para receber a nova foto.');
  if(!file?.size)throw Error('Imagem não encontrada.');
  const previous=optimizerImageCorrectionPreviewMap.get(slot);
  optimizerImagesAutoBusy=true;optimizerImagesSetProgress();
@@ -2963,6 +2964,26 @@ $('#optimizerImageCorrectionFile')?.addEventListener?.('change',async e=>{
  try{await optimizerImageCorrectionImportFile(file);}
  catch(error){$('#optimizerImageCorrectionStatus').textContent='Não foi possível importar: '+error.message;}
 });
+const correctionDrop=$('#optimizerImageCorrectionDropzone');
+if(correctionDrop){
+ correctionDrop.addEventListener('dragover',e=>{e.preventDefault();correctionDrop.classList.add('is-drop-target');});
+ correctionDrop.addEventListener('dragleave',()=>correctionDrop.classList.remove('is-drop-target'));
+ correctionDrop.addEventListener('drop',async e=>{
+  e.preventDefault();correctionDrop.classList.remove('is-drop-target');
+  try{
+   const image=Array.from(e.dataTransfer?.files||[]).find(f=>/^image\/(?:png|jpeg|webp)$/.test(f.type));
+   if(!image)throw Error('Arraste uma imagem PNG, JPG ou WebP.');
+   await optimizerImageCorrectionImportFile(image);
+  }catch(err){$('#optimizerImageCorrectionStatus').textContent='Falha ao importar: '+err.message;}
+ });
+ correctionDrop.addEventListener('paste',async e=>{
+  const entry=Array.from(e.clipboardData?.items||[]).find(x=>x.kind==='file'&&/^image\/(?:png|jpeg|webp)$/.test(x.type));
+  if(!entry)return;
+  e.preventDefault();
+  try{await optimizerImageCorrectionImportFile(entry.getAsFile());}
+  catch(err){$('#optimizerImageCorrectionStatus').textContent='Falha ao colar: '+err.message;}
+ });
+}
 $('#optimizerImageCorrectionPaste')?.addEventListener?.('click',async()=>{
  const status=$('#optimizerImageCorrectionStatus');
  try{
@@ -2975,7 +2996,11 @@ $('#optimizerImageCorrectionPaste')?.addEventListener?.('click',async()=>{
   }
   if(!file)throw Error('Não encontrei uma imagem copiada. No ChatGPT, use Copiar imagem e tente novamente.');
   await optimizerImageCorrectionImportFile(file);
- }catch(error){status.textContent='Não foi possível colar: '+error.message;}
+ }catch(error){
+  const area=$('#optimizerImageCorrectionDropzone');if(area)area.focus();
+  status.textContent='Colagem direta indisponível: '+error.message+
+   ' Alternativa: clique na área de colagem, pressione Ctrl+V ou use Selecionar imagem.';
+ }
 });
 
 $('#optimizerImageCorrectionCopy')?.addEventListener?.('click',async()=>{
@@ -6909,6 +6934,14 @@ try{
  const saved=JSON.parse(sessionStorage.getItem(RA_CHAT_BRIDGE_JOB_KEY)||'null');
  if(saved?.nonce===optimizerChatBridgeNonce)optimizerChatBridgeJob=saved;
 }catch{}
+function optimizerChatBridgeRelease(reason='Extensão interrompida. Fotos já salvas foram preservadas.'){
+ const job=optimizerChatBridgeJob,nonce=optimizerChatBridgeNonce;
+ if(job&&!job.stopped&&nonce)window.postMessage({kind:'RA_SITE_ABORT',nonce},location.origin);
+ if(job){job.stopped=true;job.complete=true;sessionStorage.setItem(RA_CHAT_BRIDGE_JOB_KEY,JSON.stringify(job));}
+ optimizerChatBridgeBusy=false;
+ const abort=$('#optimizerChatgptAbort');if(abort)abort.hidden=true;
+ optimizerChatBridgeNotice(reason);
+}
 function optimizerChatBridgeIdentity(a,b){
  return Boolean(a&&b&&String(a.sku)===String(b.sku)&&String(a.itemId)===String(b.itemId)&&String(a.modelId)===String(b.modelId));
 }
@@ -6969,8 +7002,8 @@ function optimizerChatBridgeQueue(){
     optimizerChatBridgeNotice('Imagem '+row.slot+'/9 preservada na SKU '+row.sku+'. Reconectando para enviar em '+Math.ceil(delay/1000)+' s...');
    },
    onFailure:row=>{
-    optimizerChatBridgeBusy=false;$('#optimizerChatgptAbort').hidden=true;
-    optimizerChatBridgeNotice('Imagem '+row.slot+' preservada. '+row.error+' Use Gerar / retomar após resolver o aviso; o arquivo não será gerado novamente.');
+    optimizerChatBridgeRelease('Imagem '+String(row.slot).padStart(2,'0')+' rejeitada: '+row.error+
+     '. Reenvio encerrado. Agora você pode importar a foto correta manualmente.');
    },
    onSaved:async row=>{
     const w=optimizerWorkflowPlan;
@@ -7000,7 +7033,7 @@ function optimizerChatBridgeQueue(){
  return optimizerChatBridgeQueuePromise;
 }
 async function optimizerChatBridgeRecover({includeBlocked=false}={}){
- const job=optimizerChatBridgeJob;if(!job)return 0;
+ const job=optimizerChatBridgeJob;if(!job||job.complete||job.stopped)return 0;
  try{
   const queue=await optimizerChatBridgeQueue();
   const pending=await queue.resume(job,{includeBlocked});
@@ -7037,6 +7070,7 @@ globalThis.window?.addEventListener?.('message',async(event)=>{
  if(!optimizerChatBridgeJob&&optimizerChatBridgeIdentity(w,m))optimizerChatBridgeRemember(w);
  const job=optimizerChatBridgeJob;
  if(!job||job.nonce!==m.nonce||!optimizerChatBridgeIdentity(job,m))return;
+ if(job.stopped){if(m.kind==='RA_EXTENSION_IMAGE')optimizerChatBridgeAck(m,false,'Envio anterior interrompido.');return;}
  if(m.kind==='RA_EXTENSION_PROGRESS'){
   const done=m.status==='9/9 imagens armazenadas. Confira e aprove a etapa no Shopee Manager antes de publicar na Shopee.';
   optimizerChatBridgeNotice(m.status+(m.error?' '+m.error:'')+
@@ -7061,15 +7095,22 @@ globalThis.window?.addEventListener?.('message',async(event)=>{
   const prepared=await optimizerChatgptScaleFile(file);
   const {imageBlobSha256}=await import('/chatgptUploadQueue.js?v=1.20.23');
   const sha256=await imageBlobSha256(prepared.blob);
+  if(job.expectedHashes?.[m.slot]===sha256)throw Error('A extensão reenviou a imagem antiga, não uma foto corrigida.');
+  const existing=await json('/api/shopee/optimizer/images/manual?'+new URLSearchParams({
+   sku:job.sku,item_id:job.itemId,model_id:job.modelId
+  }));
+  const other=(existing.images||[]).find(row=>Number(row.slot)!==m.slot&&row.sha256===sha256);
+  if(other)throw Error('A extensão devolveu a foto da posição '+String(other.slot).padStart(2,'0')+
+   ' em vez da nova imagem '+String(m.slot).padStart(2,'0')+'.');
   const extension=prepared.blob.type==='image/jpeg'?'jpg':'png';
   const queue=await optimizerChatBridgeQueue();
   // The queue ACKs immediately after server confirmation. Rendering is independent.
   await queue.enqueue({...job,slot:m.slot,blob:prepared.blob,sha256,wasPadded:prepared.wasPadded,
    filename:'chatgpt-auto-'+String(m.slot).padStart(2,'0')+'.'+extension});
  }catch(e){
-  optimizerChatBridgeBusy=false;$('#optimizerChatgptAbort').hidden=true;
-  optimizerChatBridgeNotice('Não foi possível receber a imagem '+m.slot+': '+e.message+'. O envio não foi confirmado.');
   optimizerChatBridgeAck(m,false,String(e.message||e));
+  optimizerChatBridgeRelease('Importação da imagem '+String(m.slot).padStart(2,'0')+' interrompida: '+
+   e.message+'. A foto anterior permanece salva. Você pode colar ou selecionar outra foto.');
  }
 });
 $('#optimizerChatgptAuto')?.addEventListener?.('click',async()=>{
@@ -7111,11 +7152,7 @@ $('#optimizerChatgptAuto')?.addEventListener?.('click',async()=>{
  finally{btn.disabled=false;}
 });
 $('#optimizerChatgptAbort')?.addEventListener?.('click',()=>{
- if(!optimizerChatBridgeNonce)return;
- window.postMessage({kind:'RA_SITE_ABORT',nonce:optimizerChatBridgeNonce},location.origin);
- optimizerChatBridgeBusy=false;
- $('#optimizerChatgptAbort').hidden=true;
- $('#optimizerChatgptBridgeStatus').textContent='Pausa solicitada. Os arquivos já salvos permanecerão na galeria; continue pela extensão para não duplicar gerações.';
+ optimizerChatBridgeRelease('Geração pausada. As fotos já salvas foram preservadas. Para continuar, faça nova solicitação.');
 });
 globalThis.window?.postMessage?.({kind:'RA_EXTENSION_PROBE'},location.origin);
 
