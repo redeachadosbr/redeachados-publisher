@@ -2417,8 +2417,8 @@ function optimizerWorkflowRender(data){
  const visible=stages.filter(x=>x.key!=='final'),required=visible.filter(x=>!x.skipped);
  const reviews=required.filter(x=>x.reviewed).length;
  const progress=$('#optimizerWorkflowCounter');
- progress.textContent=reviews+' / '+required.length+' etapas conferidas';
- progress.style.setProperty('--stage-progress',String(required.length?Math.round(reviews/required.length*100):0)+'%');
+ progress.textContent=(reviews+(optimizerDiscountFinalSent?1:0))+' / '+(required.length+1)+' etapas conferidas';
+ progress.style.setProperty('--stage-progress',String(required.length?Math.round((reviews+(optimizerDiscountFinalSent?1:0))/(required.length+1)*100):0)+'%');
  $('#optimizerHasVariants').checked=Boolean(data.variationConfig?.enabled);
  for(const [i,stage] of visible.entries()){
    const btn=optimizerMake('button','optimizer-workflow-card optimizer-workflow-'+stage.status+(optimizerWorkflowStage===stage.key?' is-current':''));
@@ -3116,6 +3116,10 @@ function optimizerDiscountWorkflowRefresh(){
   optimizerDiscountFinalEligible(q)?'Preço calculado · abrir e conferir':'Pesquisa/margem · revisar';
  card.classList.toggle('optimizer-workflow-reviewed',Boolean(sent));
  card.querySelector('.optimizer-workflow-symbol').textContent=sent?'✓':'→';
+ const stages=(w?.stages||[]).filter(x=>x.key!=='final'&&!x.skipped);
+ const done=stages.filter(x=>x.reviewed).length+(sent?1:0);
+ const progress=$('#optimizerWorkflowCounter');
+ if(progress){progress.textContent=done+' / '+(stages.length+1)+' etapas conferidas';progress.style.setProperty('--stage-progress',String(Math.round(done/(stages.length+1)*100))+'%');}
 }
 function optimizerDiscountFinalPaint(){
  optimizerDiscountWorkflowRefresh();
