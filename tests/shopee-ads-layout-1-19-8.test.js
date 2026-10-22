@@ -41,7 +41,7 @@ test('Recomendações não executam ações financeiras automaticamente e exigem
  assert.equal(scope.adsDiagnose({daysWithData:1,impressions:200,ctr:2,broadGmv:0,acos:null,expense:15,directOrdersObserved:true,directOrders:0}).label,'Sem venda direta');
  assert.equal(scope.adsDiagnose({daysWithData:1,impressions:10,ctr:0,broadGmv:0,acos:null,expense:4,directOrdersObserved:false,directOrders:0}).kind,'unknown');
  assert.equal(scope.adsDiagnose({daysWithData:0}).kind,'unknown');
- assert.match(app,/adsSuggestions=adsRecommendationsFor\(campaigns\)/);
+ assert.match(app,/adsSuggestions=adsRecommendationsFor\(activeCampaigns\)/);
  assert.match(app,/globalThis\.RedeAdsPremium\?\.openReview/);
  assert.match(app,/Nenhum lance, orçamento ou status foi alterado|Nenhuma alteração enviada à Shopee/);
  assert.doesNotMatch(server,/app\.post\('\/api\/shopee\/ads\/(update|pause|budget)/);
@@ -63,4 +63,13 @@ test('métricas reais, consultas existentes, filtros e exportação por campanha
  assert.match(css,/#tab-ads \.ads-v2-metrics\{display:grid;grid-template-columns:repeat\(9,minmax\(0,1fr\)\)/);
  assert.match(css,/#tab-ads \.ads-v2-main-grid\{display:grid/);
  assert.match(css,/@media\(max-width:650px\)/);
+});
+
+test('tabela, exportação e seleção da Shopee Ads são somente de campanhas ativas',()=>{
+ assert.match(app,/const activeCampaigns=campaigns\.filter\(c=>c\.statusGroup==='active'\)/);
+ assert.match(app,/adsCampaignRows=activeCampaigns/);
+ assert.match(app,/if\(c\.statusGroup!=='active'\)return false/);
+ assert.match(ads,/data-ads-group="all"[^>]*>Somente ativas \/ Rodando/);
+ assert.doesNotMatch(ads,/data-ads-group="inactive"/);
+ assert.doesNotMatch(ads,/data-ads-group="other"/);
 });
