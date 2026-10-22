@@ -888,9 +888,11 @@ app.post('/api/shopee/optimizer/workflow/title-ai',mustLogin,requireWeDropAdmin,
     titles:[]});
   const extraTerms=String(req.body?.extraTerms||'').normalize('NFC').slice(0,300);
   const refresh=req.body?.refresh===true;
+  const previousTitles=Array.isArray(req.body?.previousTitles)?
+   req.body.previousTitles.slice(0,4).map(t=>String(t||'').slice(0,120)):[];
   const cacheKey=[auth.shopId,itemId,modelId,sku,record.title||'',extraTerms].join('|');
   const now=Date.now(),old=seoTitleAiCache.get(cacheKey);
-  if(old&&now<old.expiresAt&&(!refresh||now-old.createdAt<60000)){
+  if(old&&now<old.expiresAt&&(!refresh||now-old.createdAt<8000)){
    const result=await old.promise;
    return res.json({...result,cached:true});
   }
@@ -911,7 +913,7 @@ app.post('/api/shopee/optimizer/workflow/title-ai',mustLogin,requireWeDropAdmin,
     supplierTitle:supplier.name||'',
     brand:supplier.brand||'',
     sourceText:evidence,
-    extraTerms,attributes:attrs,verifiedCompetitors:sample
+    extraTerms,attributes:attrs,verifiedCompetitors:sample,previousTitles
    });
    return {ok:true,configured:true,source:'openai_api',model:generated.model,
     titles:generated.titles,marketCount:sample.length,
