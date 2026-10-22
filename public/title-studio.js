@@ -220,7 +220,7 @@
     mount.replaceChildren();mount.hidden=false;
     mount.classList.add('seo-studio');
     const f=facts(data),sku=clean(data.sku||'');
-    let marketSample=[],researchToken=0;
+    let marketSample=[],researchToken=0,aiOptions=null,aiBusy=false,aiRequested=false;
     const head=el('div','seo-studio-head');
     const hd=el('div','');
     hd.append(el('div','seo-studio-kicker','OTIMIZAÇÃO DE ANÚNCIOS · TÍTULO SEO'),
@@ -228,7 +228,7 @@
       el('p','','4 opções elaboradas com termos do produto, de 100 a 120 caracteres, com edição manual.'));
     const badge=el('span','seo-studio-sku','SKU '+(sku||'—'));
     head.append(hd,badge);mount.append(head);
-    const note=el('div','seo-studio-alert','Pontuação estrutural estimada. A pesquisa verifica termos recorrentes em ofertas similares quando disponível, mas não mede o volume de buscas.');
+    const note=el('div','seo-studio-alert','A IA gera títulos em segundo plano, usando dados da SKU e anúncios comparáveis quando disponíveis. Não é um ranking de volume de buscas.');
     mount.append(note);
     const kw=el('div','seo-studio-facts');
     kw.append(el('strong','','Base confirmada: '),el('span','',f.title));
@@ -240,7 +240,7 @@
     inp.placeholder='Ex.: número de peças, material, capacidade — somente se comprovados';
     inp.value=savedTerms.get(sku)||'';
     label.append(inp);
-    const btn=el('button','secondary seo-studio-rebuild','↻ Gerar novas opções');btn.type='button';
+    const btn=el('button','secondary seo-studio-rebuild','✦ Gerar títulos com IA');btn.type='button';
     manual.append(label,btn);
     const help=el('small','','Separe termos por vírgula. Não invente quantidade, INMETRO, entrega, brinde nem promoção.');
     mount.append(manual,help);
@@ -252,10 +252,16 @@
       grid.replaceChildren();
       savedTerms.set(sku,inp.value);
       const reserved=new Set();
-      const output=variants(f,inp.value,marketSample).map(v=>{
+      const fallback=variants(f,inp.value,marketSample).map(v=>{
         const title=assemble(v,reserved);
         reserved.add(key(title));return {...v,title};
       });
+      const output=Array.isArray(aiOptions)&&aiOptions.length===4
+        ?aiOptions.map((v,i)=>({
+          ...fallback[i],title:v.title,reason:v.reason||fallback[i].reason,
+          ai:true,name:['Busca principal','Sinônimos de busca','Uso e contexto','Descoberta'][i]
+        }))
+        :fallback;
     const used=new Set();
     for(const o of output){
       if(used.has(key(o.title)))o.duplicate=true;
@@ -266,7 +272,7 @@
         const card=el('article','seo-studio-card'+(n>=MIN&&n<=LIMIT&&!o.duplicate?' valid':' needs-review'));
         const meta=el('div','seo-studio-card-top');
         const group=el('div','seo-studio-option');
-        group.append(el('strong','','0'+(i+1)+' · '+o.name),el('small','',o.subtitle));
+        group.append(el('strong','','0'+(i+1)+' · '+o.name),el('small','',o.ai?'✦ Elaborado pela API OpenAI':'Sugestão local · '+o.subtitle));
         const meter=el('div','seo-studio-meter');
         meter.append(el('strong','',score+'/100'),el('small','','nota estrutural estimada'));
         meta.append(group,meter);card.append(meta);
@@ -291,36 +297,65 @@
         actions.append(choose,copy);card.append(actions);grid.append(card);
       }
     }
-    const marketNotice=el('div','seo-studio-market-status','🔎 Consultando ofertas Shopee para pesquisa de termos…');
-    marketNotice.setAttribute('role','status');note.insertAdjacentElement('afterend',marketNotice);
-    async function research(){
+    const marketNotice=el('div','seo-studio-market-status','✦ Preparando pesquisa e geração de títulos por IA…');
+    marketNotice.setAttribute('role','status');
+    marketNotice.setAttribute('aria-live','polite');
+    note.insertAdjacentElement('afterend',marketNotice);
+    async function generateByAi(refresh=false){
+      if(aiBusy)return;
       const token=++researchToken;
-      if(!data.itemId||!sku){setLabel(marketNotice,'Sem SKU/Item ID para pesquisa. Sugestões baseadas na ficha.');return;}
-      setLabel(marketNotice,'🔎 Pesquisando títulos em ofertas Shopee comparáveis…');
+      aiBusy=true;aiRequested=true;btn.disabled=true;
+      const desiredTerms=inp.value;
+      setLabel(marketNotice,'✦ IA consultando a ficha e pesquisando anúncios similares em segundo plano…');
       try{
-        const params=new URLSearchParams({item_id:String(data.itemId),model_id:String(data.modelId||'0'),sku});
-        const response=await fetch('/api/shopee/optimizer/workflow/title-research?'+params,{credentials:'same-origin',signal:AbortSignal.timeout(25000)});
-        if(!response.ok)throw Error('Falha de pesquisa HTTP '+response.status);
-        const result=await response.json();
+        if(!sku||!data.itemId)throw Error('SKU sem identificação completa.');
+        const res=await fetch('/api/shopee/optimizer/workflow/title-ai',{
+          method:'POST',credentials:'same-origin',
+          headers:{'Content-Type':'application/json'},
+          body:JSON.stringify({
+            sku,itemId:data.itemId,modelId:data.modelId||'0',
+            extraTerms:desiredTerms,refresh
+          }),
+          signal:AbortSignal.timeout(75000)
+        });
+        const result=await res.json().catch(()=>({}));
+        if(!res.ok)throw Error(result.error||'Serviço de IA indisponível (HTTP '+res.status+').');
         if(token!==researchToken||!mount.isConnected)return;
-        marketSample=result.verifiedSample&&Array.isArray(result.sample)?result.sample.filter(x=>x.title).slice(0,5):[];
-        const total=marketSample.length;
-        setLabel(marketNotice,result.verifiedSample&&total
-          ?'🔎 '+total+' anúncios comparáveis encontrados. A ordem das palavras-chave foi ajustada por recorrência, sem supor volume de buscas.'
-          :total?'🔎 '+total+' oferta(s) parcial(is) localizada(s), comparabilidade não confirmada; sugestões seguem fatos do produto.'
-          :'🔎 Sem pesquisa externa verificável nesta consulta. Sugestões baseadas em dados confirmados da SKU.');
+        if(result.source!=='openai_api'||!Array.isArray(result.titles)||result.titles.length!==4){
+          aiOptions=null;
+          setLabel(marketNotice,'◉ IA indisponível: '+(result.message||'Conecte a chave OpenAI no sistema.')+' As sugestões locais permanecem disponíveis.');
+        }else{
+          const candidates=result.titles.map(t=>({title:clean(t.title),reason:clean(t.reason)}));
+          const allValid=candidates.every(t=>count(t.title)>=MIN&&count(t.title)<=LIMIT);
+          const unique=new Set(candidates.map(t=>key(t.title))).size===4;
+          if(!allValid||!unique)throw Error('A API retornou títulos fora do intervalo ou repetidos.');
+          aiOptions=candidates;
+          setLabel(marketNotice,'✓ 4 títulos criados pela IA'+(result.cached?' (cache recente)':'')+
+            ' · '+(result.marketVerified?result.marketCount+' anúncios comparáveis considerados':'sem amostra externa verificada')+
+            '. Revise uma opção antes de aprovar.');
+        }
         regenerate();
       }catch(err){
         if(token!==researchToken||!mount.isConnected)return;
-        marketSample=[];
-        setLabel(marketNotice,'🔎 Pesquisa externa indisponível: termos SEO derivados da ficha, sem alegar volume de buscas.');
+        aiOptions=null;
+        setLabel(marketNotice,'◉ Falha na geração por IA: '+err.message+' Sugestões locais preservadas; nenhuma publicação realizada.');
         regenerate();
+      }finally{
+        if(token===researchToken){aiBusy=false;btn.disabled=false;}
       }
     }
-    btn.addEventListener('click',()=>{regenerate();void research();});
-    inp.addEventListener('keydown',e=>{if(e.key==='Enter'){e.preventDefault();regenerate();}});
+    btn.addEventListener('click',()=>{
+      if(aiBusy)return;
+      aiOptions=null;
+      regenerate();
+      void generateByAi(true);
+    });
+    inp.addEventListener('keydown',e=>{
+      if(e.key==='Enter'){e.preventDefault();aiOptions=null;regenerate();void generateByAi(true);}
+    });
     regenerate();
-    void research();
+    // A API é chamada pelo próprio Shopee Manager. Nenhuma aba do ChatGPT é aberta.
+    void generateByAi(false);
   }
   globalThis.ShopeeTitleStudio={open};
 })();
