@@ -139,7 +139,7 @@ function modernize(data){
  suggestionLabel.append(node('span','seo-modern-symbol','☆'),node('strong','','Sugestões de título'));
  suggestHead.append(suggestionLabel,help('As sugestões utilizam os dados da SKU e, quando disponíveis, ofertas verificadas. A pontuação é apenas estrutural, não representa volume de buscas.','Sobre as sugestões'));
  suggestions.append(suggestHead);
- aiButton.classList.add('seo-modern-generate');aiButton.textContent='✨ Gerar novas opções';suggestions.append(aiButton);
+ aiButton.classList.add('seo-modern-generate');aiButton.textContent='↻ Gerar novos títulos';suggestions.append(aiButton);
  const supplierButton=action('▤ Usar título da WeDrop',()=>{
   const name=clean(p.name||data.productTitle||'');
   if(!name)return;
