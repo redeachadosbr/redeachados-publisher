@@ -31,7 +31,7 @@ function render(){
  target.replaceChildren();
  const options=values(),variationType=type();
  const tags=$('optimizerVariationTags');if(tags){tags.replaceChildren();for(const option of options){const chip=el('button','optimizer-variation-chip',option+'  ×');chip.type='button';chip.onclick=()=>{const t=$('optimizerVariationValues');t.value=values().filter(v=>v!==option).join('\n');t.dispatchEvent(new Event('input',{bubbles:true}));};tags.append(chip);}const add=el('button','optimizer-variation-add','＋ Adicionar opção');add.type='button';add.onclick=()=>{const next=window.prompt('Nome da nova opção:');if(next?.trim()){const t=$('optimizerVariationValues');t.value=[...values(),next.trim()].join('\n');t.dispatchEvent(new Event('input',{bubbles:true}));}};tags.append(add);}
- const notice=$('optimizerVariationOriginalNotice');if(notice){const missing=variationType==='Cor'&&originalColor&&!options.some(v=>v.toLowerCase()===originalColor.toLowerCase());notice.textContent=missing?'⚠ Este anúncio anuncia a cor '+originalColor+'. Inclua essa cor para não retirar a original.':'';notice.hidden=!missing;}
+ const notice=$('optimizerVariationOriginalNotice');if(notice){const norm=v=>String(v||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase().replace(/[ao]$/,'');const missing=variationType==='Cor'&&originalColor&&!options.some(v=>norm(v)===norm(originalColor));notice.replaceChildren();if(missing){notice.append(el('span','','⚠ Este anúncio anuncia a cor '+originalColor+'. Inclua essa opção para preservar a cor original.'));const action=el('button','secondary','Adicionar cor original');action.type='button';action.onclick=()=>{const t=$('optimizerVariationValues');t.value=[originalColor,...values()].join('\n');t.dispatchEvent(new Event('input',{bubbles:true}));};notice.append(action);}notice.hidden=!missing;}
  if(!context||!variationType||!options.length){
   target.append(el('p','optimizer-variant-help',
    'Escolha o tipo e informe cada opção (uma por linha) para editar foto, preço e estoque.'));
@@ -41,19 +41,6 @@ function render(){
   const note=el('p','optimizer-variant-status',
    'Preencha os dados e salve antes de gerar ou enviar fotos. Nenhuma modificação é publicada automaticamente.');
   note.id='optimizerVariationStatus';target.append(note);
- }
- if(variationType==='Cor'&&originalColor&&
-    !options.some(v=>v.toLocaleLowerCase('pt-BR')===originalColor.toLocaleLowerCase('pt-BR'))){
-   const suggestion=el('div','optimizer-variant-original-suggestion');
-   suggestion.append(el('span','',
-    'Este anúncio anuncia a cor '+originalColor+'. Para criar uma segunda cor sem retirar a original, inclua também essa opção.'));
-   const add=el('button','secondary','Adicionar cor original: '+originalColor);
-   add.type='button';add.onclick=()=>{
-    const textarea=$('optimizerVariationValues');
-    textarea.value=[originalColor,...values()].join('\n');
-    textarea.dispatchEvent(new Event('input',{bubbles:true}));
-   };
-   suggestion.append(add);target.append(suggestion);
  }
  const existing=new Map((saved.type===variationType?saved.options:[]).map(o=>[o.name,o]));
  const workspace=el('div','optimizer-variant-workspace');
