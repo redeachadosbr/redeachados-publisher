@@ -1,0 +1,143 @@
+/* Rede Achados BR / Etapa 05 — descrição compacta (referência aprovada) */
+#optimizerWorkflowEditor.desc-modern-editor{
+ position:relative;display:flex;flex-direction:column;gap:0;
+ border:0!important;background:transparent!important;box-shadow:none!important;
+ padding:10px 0 0!important;min-width:0;max-width:100%
+}
+#optimizerWorkflowEditor.desc-modern-editor[hidden]{display:none!important}
+#optimizerWorkflowEditor.desc-modern-editor>.optimizer-workflow-editor-head{
+ position:absolute;z-index:5;right:14px;top:144px;margin:0;padding:0;border:0;background:transparent
+}
+#optimizerWorkflowEditor.desc-modern-editor>.optimizer-workflow-editor-head>div{display:none}
+#optimizerWorkflowEditor.desc-modern-editor>.optimizer-workflow-editor-head>button{font-size:11px;min-height:30px;padding:6px 11px;border-radius:9px}
+#optimizerWorkflowEditor.desc-modern-editor>.optimizer-workflow-detail,
+#optimizerWorkflowEditor.desc-modern-editor>#optimizerWorkflowStageGuidance,
+#optimizerWorkflowEditor.desc-modern-editor>#optimizerSupplierFacts,
+#optimizerWorkflowEditor.desc-modern-editor>#optimizerDescriptionReady,
+#optimizerWorkflowEditor.desc-modern-editor #optimizerContentResearch{display:none!important}
+#optimizerDescriptionModern.desc-modern-layout{display:grid;gap:10px;color:#122b52;min-width:0;width:100%}
+#optimizerDescriptionModern .desc-modern-hero{
+ display:grid;grid-template-columns:118px minmax(0,1fr) minmax(152px,204px);
+ gap:15px;align-items:center;padding:13px 14px;
+ background:linear-gradient(110deg,#fff,#f5f9ff);
+ border:1px solid #dce7f7;border-radius:15px;min-width:0
+}
+#optimizerDescriptionModern .desc-modern-photo{
+ width:112px;height:108px;border-radius:12px;display:grid;place-items:center;overflow:hidden;
+ background:#edf3ff;border:1px solid #e6edf7;color:#829ac0;font-size:29px
+}
+#optimizerDescriptionModern .desc-modern-photo img{width:100%;height:100%;object-fit:cover}
+#optimizerDescriptionModern .desc-modern-hero-text{min-width:0}
+#optimizerDescriptionModern .desc-modern-hero-badges{display:flex;flex-wrap:wrap;align-items:center;gap:9px;font-size:10px;color:#6280a8}
+#optimizerDescriptionModern .desc-modern-sku{font-size:11px;color:#155ecc;background:#ebf2ff;border-radius:7px;font-weight:850;padding:4px 7px}
+#optimizerDescriptionModern .desc-modern-origin{max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+#optimizerDescriptionModern .desc-modern-hero h3{font-size:19px;line-height:1.32;letter-spacing:-.02em;margin:7px 0!important;color:#102852;font-weight:850;overflow-wrap:anywhere}
+#optimizerDescriptionModern .desc-modern-metadata{font-size:11px;color:#56729c;line-height:1.45;margin:0!important;overflow-wrap:anywhere}
+#optimizerDescriptionModern .desc-modern-market{
+ border:0;border-radius:10px;background:linear-gradient(100deg,#7f35fa,#2586f3);color:#fff;
+ min-height:44px;padding:10px 11px;font-size:11px;font-weight:850;
+ box-shadow:0 7px 16px #3655ed25;cursor:pointer
+}
+#optimizerDescriptionModern .desc-modern-main{
+ min-width:0;border:1px solid #dce7f6;background:#fff;border-radius:16px;
+ padding:13px 14px 12px;box-shadow:0 5px 18px #20416a0b
+}
+#optimizerDescriptionModern .desc-modern-head{display:flex;align-items:center;gap:12px;min-width:0;margin-bottom:12px;padding-right:65px}
+#optimizerDescriptionModern .desc-modern-step{border-radius:9px;background:#edf7f3;color:#55718b;
+ padding:13px 12px;font-size:10px;font-weight:850;white-space:nowrap;letter-spacing:.035em}
+#optimizerDescriptionModern .desc-modern-heading-text{min-width:0;flex:1}
+#optimizerDescriptionModern .desc-modern-title-line{display:flex;align-items:center;gap:7px}
+#optimizerDescriptionModern .desc-modern-title-line>strong{font-size:18px;color:#112b56}
+#optimizerDescriptionModern .desc-modern-heading-text>p{font-size:11px;color:#607ca0;margin:5px 0 0!important;line-height:1.4}
+#optimizerDescriptionModern .desc-modern-state{display:grid;gap:3px;min-width:140px;max-width:310px;padding:9px 11px;background:#edfaf5;border:1px solid #d0ece0;border-radius:11px}
+#optimizerDescriptionModern .desc-modern-state strong{color:#107345;font-size:11px;line-height:1.35}
+#optimizerDescriptionModern .desc-modern-state small{color:#60816f;font-size:10px;line-height:1.4}
+#optimizerDescriptionModern .desc-modern-count{width:160px;flex:none;display:grid;gap:7px;align-content:center}
+#optimizerDescriptionModern .desc-modern-count-text{font-size:10px;color:#244671;font-weight:850;white-space:nowrap;text-align:center}
+#optimizerDescriptionModern .desc-modern-progress{width:100%;height:8px;accent-color:#19ae70}
+#optimizerDescriptionModern .desc-modern-count[data-valid="false"] .desc-modern-progress{accent-color:#db9631}
+#optimizerDescriptionModern .desc-modern-supplier{display:flex;gap:11px;align-items:center;background:#f2f7ff;border:1px solid #d4e4fb;border-radius:10px;padding:10px 12px;margin-bottom:11px;min-width:0}
+#optimizerDescriptionModern .desc-modern-supplier-icon{flex:none;border-radius:9px;background:#e6f0ff;color:#2b71e9;width:31px;height:31px;display:grid;place-items:center;font-size:18px}
+#optimizerDescriptionModern .desc-modern-supplier>div{min-width:0;display:grid;gap:4px}
+#optimizerDescriptionModern .desc-modern-supplier strong{font-size:12px;font-weight:850;color:#173862;overflow-wrap:anywhere}
+#optimizerDescriptionModern .desc-modern-supplier small{color:#6a82a1;font-size:10px;line-height:1.4;overflow-wrap:anywhere}
+#optimizerDescriptionModern .desc-modern-columns{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:11px;min-width:0}
+#optimizerDescriptionModern .desc-modern-panel{border:1px solid #dee8f7;border-radius:13px;padding:12px;min-width:0;display:flex;flex-direction:column;background:#fff}
+#optimizerDescriptionModern .desc-modern-panel-head{display:flex;gap:9px;align-items:center;justify-content:space-between;margin-bottom:9px;min-width:0}
+#optimizerDescriptionModern .desc-modern-panel-title{display:flex;gap:8px;align-items:center;min-width:0}
+#optimizerDescriptionModern .desc-modern-panel-title>strong{font-size:13px;color:#122e59;font-weight:850}
+#optimizerDescriptionModern .desc-modern-panel-icon{display:grid;place-items:center;flex:none;width:31px;height:31px;border-radius:9px;background:#e6f0ff;color:#2476e3;font-size:16px}
+#optimizerDescriptionModern .desc-modern-panel-icon.purple{background:#ece8ff;color:#7845ef}
+#optimizerDescriptionModern .desc-modern-editor-counter{color:#6682a2;font-size:10px;text-align:right}
+#optimizerDescriptionModern .desc-modern-help{position:relative;flex:none}
+#optimizerDescriptionModern .desc-modern-help summary{list-style:none;display:grid;place-items:center;width:23px;height:23px;border-radius:50%;border:1px solid #d5e3f6;background:#edf4ff;color:#3464a3;font-size:11px;font-weight:900;cursor:pointer}
+#optimizerDescriptionModern .desc-modern-help summary::-webkit-details-marker{display:none}
+#optimizerDescriptionModern .desc-modern-help p{position:absolute;z-index:8;top:25px;right:0;width:min(255px,75vw);font-size:11px;line-height:1.55;padding:12px;background:#132f53;color:#fff;border-radius:9px;box-shadow:0 7px 20px #11284a3b;margin:5px 0}
+#optimizerDescriptionModern #optimizerDescriptionToggle{font-size:10px;min-height:32px;padding:7px 9px;white-space:nowrap;background:#f8fbff;color:#2c5285;border:1px solid #dbe6f7;box-shadow:none}
+#optimizerDescriptionModern #optimizerDescriptionCompact{display:grid;gap:10px;border:0!important;background:transparent!important;margin:0!important;padding:0!important;border-radius:0;box-shadow:none}
+#optimizerDescriptionModern #optimizerDescriptionCompact[hidden]{display:none!important}
+#optimizerDescriptionModern .optimizer-description-compact-heading{display:none}
+#optimizerDescriptionModern #optimizerDescriptionCompactIntro{display:block!important;font-size:12px;line-height:1.55;color:#263c65;
+ max-height:140px;min-height:106px;overflow:auto;-webkit-line-clamp:unset!important;
+ margin:0!important;padding:12px 13px;border-radius:10px;border:1px solid #e0e9f6;background:#f7faff}
+#optimizerDescriptionModern .optimizer-description-compact-tags{display:flex;flex-wrap:wrap;gap:6px;min-height:31px}
+#optimizerDescriptionModern .optimizer-description-compact-tags span{font-size:10px;padding:7px 9px;border-radius:9px;font-weight:800;background:#eff1ff;color:#574cb0;border:0}
+#optimizerDescriptionModern .optimizer-description-compact-tags span[data-desc-part="measures"]{background:#e7f1ff;color:#215e9e}
+#optimizerDescriptionModern .optimizer-description-compact-tags span[data-desc-part="doubts"]{background:#ffedf1;color:#a72943}
+#optimizerDescriptionModern .optimizer-description-compact-tags span[data-desc-part="reasons"]{background:#fff3d7;color:#9b681b}
+#optimizerDescriptionModern .optimizer-description-compact-tags [hidden]{display:none!important}
+#optimizerDescriptionModern #optimizerDescriptionCompactCta{margin:0!important;padding:11px 12px!important;min-height:42px;
+ font-size:12px;line-height:1.45;color:#116641;background:#e8f9ef;border-radius:9px}
+#optimizerDescriptionModern #optimizerWorkflowDraftWrap{display:block!important;min-width:0;margin:0!important;padding:0!important}
+#optimizerDescriptionModern #optimizerWorkflowDraftWrap[hidden]{display:none!important}
+#optimizerDescriptionModern #optimizerWorkflowDraftLabel{display:none}
+#optimizerDescriptionModern #optimizerWorkflowDraft{box-sizing:border-box;width:100%;height:190px;min-height:190px!important;max-height:360px;
+ font-size:12px!important;line-height:1.6!important;color:#16335d;border:1px solid #bcd5fa;border-radius:10px;padding:11px 13px;background:#fff;resize:vertical;overflow:auto}
+#optimizerDescriptionModern #optimizerCopyCount{display:block!important;font-size:10px;color:#6480a5;margin:4px 0 0!important}
+#optimizerDescriptionModern .desc-modern-source{display:flex;gap:10px;align-items:flex-start;margin-top:auto;padding:10px 10px 8px;background:#f1f7ff;border:1px solid #e0eaf7;border-radius:9px;min-width:0}
+#optimizerDescriptionModern .desc-modern-source-icon{display:grid;place-items:center;flex:none;border-radius:8px;background:#e7f1ff;width:30px;height:30px;color:#2974dd}
+#optimizerDescriptionModern .desc-modern-source>div{flex:1;min-width:0}
+#optimizerDescriptionModern .desc-modern-source strong{font-size:11px;color:#1f467a}
+#optimizerDescriptionModern .desc-modern-source .desc-modern-help{display:inline-block;vertical-align:middle;margin-left:6px}
+#optimizerDescriptionModern .desc-modern-source .desc-modern-help summary{width:19px;height:19px}
+#optimizerDescriptionModern .desc-modern-source p:not(.desc-modern-help p){color:#6a82a5;font-size:10px;line-height:1.45;margin:5px 0 0!important;display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:2;overflow:hidden}
+#optimizerDescriptionModern .desc-modern-tools{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px;margin-top:11px}
+#optimizerDescriptionModern .desc-modern-tool{min-width:0;display:flex;align-items:center;gap:10px;text-align:left;background:#fff;
+ border:1px solid #dbe6f5;border-radius:11px;padding:11px 10px;color:#1d406e;cursor:pointer}
+#optimizerDescriptionModern .desc-modern-tool:hover,#optimizerDescriptionModern .desc-modern-tool:focus-visible{background:#f6faff;border-color:#95bff2;outline-offset:2px}
+#optimizerDescriptionModern .desc-modern-tool-icon{display:grid;place-items:center;flex:none;width:30px;height:30px;border-radius:8px;background:#e9f0ff;color:#356ee1;font-size:16px}
+#optimizerDescriptionModern .desc-modern-tool-copy{display:grid;gap:3px;min-width:0;flex:1}
+#optimizerDescriptionModern .desc-modern-tool strong{font-size:11px;color:#1b3763;line-height:1.25}
+#optimizerDescriptionModern .desc-modern-tool small{font-size:9px;color:#7189a9;line-height:1.4}
+#optimizerDescriptionModern .desc-modern-tool-arrow{font-size:20px;line-height:1;color:#527da8}
+#optimizerWorkflowEditor.desc-modern-editor>.optimizer-workflow-actions{display:grid;grid-template-columns:1fr 1.6fr 1.1fr 1.15fr;gap:9px;margin-top:11px;padding:9px;background:#fff;
+ border:1px solid #dfe9f6;border-radius:12px;position:sticky;bottom:0;z-index:4;box-shadow:0 -5px 16px #1538630e}
+#optimizerWorkflowEditor.desc-modern-editor>.optimizer-workflow-actions>*{min-width:0;text-align:center;border-radius:9px;font-size:11px;font-weight:800;padding:10px 8px;display:flex;align-items:center;justify-content:center;line-height:1.35}
+#optimizerWorkflowEditor.desc-modern-editor>.optimizer-workflow-actions>#optimizerWorkflowReview{border:0;background:linear-gradient(95deg,#ff713d,#f4492f);color:#fff}
+#optimizerWorkflowEditor.desc-modern-editor>.optimizer-workflow-actions>#optimizerWorkflowNext{border:0;background:#163e2c;color:#fff}
+#optimizerWorkflowEditor.desc-modern-editor>.optimizer-workflow-disclaimer{margin:6px 0!important;font-size:10px}
+@media(max-width:1360px){
+ #optimizerDescriptionModern .desc-modern-head{flex-wrap:wrap;padding-right:70px}
+ #optimizerDescriptionModern .desc-modern-state{margin-left:auto}
+ #optimizerDescriptionModern .desc-modern-count{width:145px}
+}
+@media(max-width:1050px){
+ #optimizerDescriptionModern .desc-modern-hero{grid-template-columns:82px minmax(0,1fr)}
+ #optimizerDescriptionModern .desc-modern-photo{width:79px;height:82px}
+ #optimizerDescriptionModern .desc-modern-market{grid-column:1/-1}
+ #optimizerDescriptionModern .desc-modern-columns{grid-template-columns:1fr}
+ #optimizerDescriptionModern .desc-modern-tools{grid-template-columns:1fr}
+ #optimizerWorkflowEditor.desc-modern-editor>.optimizer-workflow-actions{grid-template-columns:repeat(2,minmax(0,1fr))}
+}
+@media(max-width:650px){
+ #optimizerDescriptionModern .desc-modern-main{padding:10px}
+ #optimizerDescriptionModern .desc-modern-head{padding-right:0}
+ #optimizerDescriptionModern .desc-modern-heading-text{flex-basis:65%}
+ #optimizerDescriptionModern .desc-modern-state{flex-basis:100%;max-width:none}
+ #optimizerDescriptionModern .desc-modern-count{flex:1;width:100%}
+ #optimizerDescriptionModern .desc-modern-panel-head{flex-wrap:wrap}
+ #optimizerDescriptionModern .desc-modern-hero h3{font-size:15px}
+ #optimizerWorkflowEditor.desc-modern-editor>.optimizer-workflow-editor-head{top:11px;right:14px}
+ #optimizerWorkflowEditor.desc-modern-editor>.optimizer-workflow-actions{position:static}
+}
+@media(prefers-reduced-motion:reduce){#optimizerDescriptionModern *{scroll-behavior:auto}}
