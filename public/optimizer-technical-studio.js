@@ -28,7 +28,10 @@
  const close=element('button','secondary ra-tech-close','×  Fechar etapa');
  close.type='button';
  close.addEventListener('click',()=>$('#optimizerWorkflowClose')?.click());
- heading.append(titleWrap,close);
+ const originalSku=originalHeader.querySelector('#optimizerTechSku');
+ heading.append(titleWrap);
+ if(originalSku)heading.append(originalSku);
+ heading.append(close);
 
  const metrics=element('div','ra-tech-metrics');
  const metaCards=[
@@ -177,8 +180,9 @@
    // every keystroke. Each field stays attached with the original listeners.
    if(regroup)groups(data);
    const savedIds=new Set(attrs.filter(x=>Array.isArray(x.values)&&x.values.length).map(x=>Number(x.id)));
-   const suggestedIds=new Set((data.attributeChanges||[]).filter(x=>x?.values?.length).map(x=>Number(x.attributeId)));
-   for(const item of suggested)if(item?.values?.length)suggestedIds.add(Number(item.attributeId));
+   const suggestedIds=new Set();
+   // Only count enabled, populated inputs or already-filled Shopee fields.
+   // A mere suggestion must not become a confirmed attribute.
    const manuallySelected=[...fields.querySelectorAll('fieldset[data-attribute-id]')]
       .filter(field=>field.querySelector('[data-attribute-enabled]')?.checked&&
         [...field.querySelectorAll('[data-attribute-value]')].some(row=>{
