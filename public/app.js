@@ -7949,6 +7949,7 @@ globalThis.window?.addEventListener?.('message',async(event)=>{
     if(removal.deleted!==true)throw Error('Exclusão da posição '+slot+' não confirmada.');
    }
    optimizerImagesSavedSlots.clear();optimizerChatgptBrief=null;optimizerChatgptBriefSku='';
+   if(String(w.sku)==='303448')sessionStorage.setItem('redeAchadosFreshGenerated303448V1','1');
    await optimizerImagesLoad();
    if(status)status.textContent='SKU '+w.sku+' zerada. Iniciando o roteiro atualizado desde a imagem 01.';
    if(optimizerImagesSameSku(w))start.click();
@@ -7968,6 +7969,20 @@ $('#optimizerChatgptAuto')?.addEventListener?.('click',async()=>{
  }
  const notify=message=>{if(status)status.textContent=message;if(near)near.textContent=message;};
  if(!w||!optimizerImagesSameSku(w)){notify('Selecione a SKU e carregue a etapa Imagens comerciais antes de gerar.');return;}
+ // The two commercial slots already present on SKU 303448 were identified by
+ // the merchant as supplier (WeDrop) photos, NOT generated ChatGPT results.
+ // Do not resume from slot 03 until the merchant explicitly confirms resetting.
+ const resetKey='redeAchadosFreshGenerated303448V1';
+ if(String(w.sku)==='303448'&&!sessionStorage.getItem(resetKey)){
+  const gallery=await json('/api/shopee/optimizer/images/manual?'+new URLSearchParams({sku:w.sku,item_id:w.itemId,model_id:w.modelId}));
+  const slots=(gallery.images||[]).map(image=>Number(image.slot));
+  if(slots.includes(1)||slots.includes(2)){
+   notify('As imagens 01 e 02 são fotos WeDrop, não imagens geradas. Confirme o reinício para gerar desde 01/09.');
+   const fresh=$('#optimizerChatgptFreshStart');
+   if(fresh){fresh.click();return;}
+   return;
+  }
+ }
  notify('Preparando geração para a SKU '+w.sku+'...');
  // Um comando: selecionar ChatGPT e iniciar/retomar a geracao da SKU atual.
  optimizerImagesMode='chatgpt';optimizerImagesRenderMode();
