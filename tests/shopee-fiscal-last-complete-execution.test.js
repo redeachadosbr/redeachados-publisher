@@ -151,3 +151,23 @@ test('resposta incerta de promocao nao causa segunda escrita',async()=>{
  assert.ok(progress.percent<100);
  assert.equal(progress.steps.at(-1).id,'discount');
 });
+
+test('anúncio já atualizado pode executar somente desconto sem reenviar imagens ou texto',async()=>{
+ const current=structuredClone(live);current.item_name=approvedTitle;
+ current.tax_info=plan().finalFiscal;
+ const p=compileShopeeExecutionPlan({...base,record,review,live:current,
+  selectedStage:'all',allowDiscountOnly:true});
+ assert.equal(p.discountOnly,true);
+ assert.equal(p.canExecute,true);
+ assert.deepEqual(p.actions,['discount']);
+ p.commercialDiscount={snapshot:{sku:base.sku,discountId:'123456',gross:220},allowPriceChange:false};
+ let apiWrites=0;
+ const out=await advanceShopeeExecution({state:'running',plan:p,
+  result:{phase:'queued',events:[]}},{
+   read:async()=>current,validateIdentity:async()=>{},download:async()=>{},
+   update:async()=>{apiWrites++;},beforeWrite:async()=>{}
+  });
+ assert.equal(out.state,'running');
+ assert.equal(out.result.phase,'discount_ready');
+ assert.equal(apiWrites,0);
+});
