@@ -6814,7 +6814,7 @@ function optimizerTechnicalRender(data){
   }
   if(multi){const add=optimizerMake('button','secondary','Adicionar valor');add.type='button';
    add.onclick=()=>{if(rows.children.length<(Number(attr.maxValues)>0?Number(attr.maxValues):20))addRow();};controls.append(add);}
-  const evidence=optimizerMake('input');evidence.type='text';evidence.maxLength=500;evidence.placeholder='Fonte: ficha WeDrop, fabricante ou nota';
+  const evidence=optimizerMake('input');evidence.type='text';evidence.maxLength=500;evidence.placeholder='Fonte (opcional): WeDrop, fabricante, nota ou declaração do vendedor';
   evidence.dataset.evidenceFor=String(attr.id);evidence.setAttribute('aria-label',optimizerTechLabel(name)+' — fonte');
   evidence.value=optimizerSellerDeclaredEvidence(attr,existing?.values||[],existing?.evidence||'');
   if(evidence.value==='Informado e confirmado pelo vendedor'){
