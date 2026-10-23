@@ -25,7 +25,8 @@ export function shopeeExecutionProgress(job){
  const hasSavedProgress=uploaded>0||readyVideo;
  const resumable=state==='prepared'&&plan.canExecute===true&&hasSavedProgress;
  const fiscalPartial=state==='verified'&&phase==='verified_partial';
- const fullWorkflow=plan.selectedStage==='all';
+ const pendingOnly=plan.selectedStage==='remaining';
+ const fullWorkflow=plan.selectedStage==='all'||pendingOnly;
  const discountIncluded=Boolean(plan.commercialDiscount||plan.modelVariations?.promotion);
  const variationsIncluded=Boolean(plan.modelVariations);
  const variationsDone=variationsIncluded&&result.variation?.status==='verified';
@@ -33,7 +34,7 @@ export function shopeeExecutionProgress(job){
  const oldPlanNoApproval=fullWorkflow&&!discountIncluded;
  const discountDone=discountIncluded&&state==='verified'&&result.discount?.status==='verified';
  const verified=state==='verified'&&!fiscalPartial&&(!discountIncluded||discountDone);
- const commercialConfirmed=state==='verified'||Boolean(result.primaryVerified);
+ const commercialConfirmed=pendingOnly||state==='verified'||Boolean(result.primaryVerified);
  const fiscalActive=Boolean(plan.finalFiscal)&&/^fiscal_/.test(phase);
  const fiscalDone=Boolean(plan.finalFiscal)&&(result.fiscal?.status==='verified'||verified);
  const discountActive=discountIncluded&&/^discount_|^model_discount_/.test(phase);
@@ -43,9 +44,9 @@ export function shopeeExecutionProgress(job){
  const mediaFinished=images===0||uploaded===images||verified;
  const videoFinished=!video||Boolean(readyVideo)||verified;
  const updateAccepted=commercialConfirmed||phase==='verifying'||phase==='verified';
- const total=1+images+(video?1:0)+1+1+(variationsIncluded?1:0)+(plan.finalFiscal?1:0)+(discountIncluded?1:0);
- const completed=(started||resumable?1:0)+uploaded+(video&&readyVideo?1:0)+(updateAccepted?1:0)+
-  (commercialConfirmed?1:0)+(variationsDone?1:0)+(fiscalDone?1:0)+(discountDone?1:0);
+ const total=1+images+(video?1:0)+(pendingOnly?0:2)+(variationsIncluded?1:0)+(plan.finalFiscal?1:0)+(discountIncluded?1:0);
+ const completed=(started||resumable?1:0)+uploaded+(video&&readyVideo?1:0)+(pendingOnly?0:(updateAccepted?1:0)+(commercialConfirmed?1:0))+
+  (variationsDone?1:0)+(fiscalDone?1:0)+(discountDone?1:0);
  const percent=verified?100:Math.min(fiscalPartial?95:99,Math.round(completed/total*100));
  const failure=['failed','uncertain'].includes(state)||fiscalPartial;
  const phaseNames={
@@ -82,9 +83,9 @@ export function shopeeExecutionProgress(job){
    started&&phase==='images_upload'?'active':'waiting'),
   step('video','Envio de vídeo',!video?'skipped':videoFinished?'done':
    started&&mediaFinished&&['video_upload','video_processing'].includes(phase)?'active':'waiting'),
-  step('update','Atualização do anúncio',updateAccepted?'done':
+  step('update',pendingOnly?'Conteúdo existente: não alterar':'Atualização do anúncio',pendingOnly?'skipped':updateAccepted?'done':
    started&&phase==='updating'?'active':'waiting'),
-  step('verify','Conferência comercial na Shopee',commercialConfirmed?'done':
+  step('verify',pendingOnly?'Mídia existente: não alterar':'Conferência comercial na Shopee',pendingOnly?'skipped':commercialConfirmed?'done':
    started&&phase==='verifying'?'active':'waiting'),
   ...(variationsIncluded?[step('variants','06 · Variações na Shopee',
     variationsDone?'done':variationsActive?'active':'waiting')]:[]),
@@ -121,6 +122,7 @@ export function shopeeExecutionProgress(job){
     'Resultado não confirmado. Confira antes de tentar novamente.')
    :state==='failed'?uploaded+' imagens na mídia Shopee, '+(verified?images:0)+
      ' aplicadas ao anúncio. A Shopee recusou a atualização; veja a pendência para corrigir.'
+   :pendingOnly&&state==='prepared'?'Plano pronto: SOMENTE variações, dados fiscais e desconto; imagens, vídeo, título, descrição e ficha técnica não serão enviados.'
    :resumable?[uploaded?uploaded+' imagens já enviadas à mídia Shopee':null,
      readyVideo?'vídeo já processado':null].filter(Boolean).join(' · ')+
      '. Retome para conferir o anúncio e continuar as etapas pendentes, sem repetir esses envios.'
