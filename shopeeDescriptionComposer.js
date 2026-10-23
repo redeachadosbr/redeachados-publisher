@@ -165,7 +165,7 @@ function confirmedFacts(record,data,sourceText,type){
  if(type==='picnic'&&/\bimpermeavel\b/.test(fromTitle+' '+normalized))facts.push('💧 Material anunciado como impermeável');
  if(type==='moto'&&/bateria.*(?:recarregavel|interna)|(?:recarregavel|interna).*bateria/.test(normalized))
   facts.push('🔌 Bateria recarregável, conforme ficha do fornecedor');
- if(type==='moto'&&/pedal\s+(?:de\s+)?acelerador|acionamento\s+por\s+pedal/.test(normalized))
+ if(type==='moto'&&/pedal\s+(?:de\s+)?acelerador|(?:acionamento|aceleracao)\s+por\s+pedal/.test(normalized))
   facts.push('🦶 Aceleração por pedal, conforme ficha do fornecedor');
  if(type==='moto'){
   const speed=normalized.match(/(?:velocidade\s+(?:de\s+)?(?:at[eé]\s+)?|alcan[cç]a\s+(?:at[eé]\s+)?)(\d+(?:[.,]\d+)?)\s*km\s*\/\s*h/);
