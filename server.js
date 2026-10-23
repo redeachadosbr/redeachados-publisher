@@ -59,7 +59,7 @@ import {readPreparedImages,importPreparedImage,deletePreparedImage,reorderPrepar
 import {generateOpenAiImage,imageGenerationStatus} from './shopeeOpenAiImages.js';
 import {validateVariationName,variationImagePrompt,saveVariationImage,variationImagePreview,variationImageBytes,validateVariationDetails,buildVariationPayload} from './shopeeVariationMedia.js';
 import {openAiKeyStatus,openAiApiKey,saveOpenAiApiKey,deleteOpenAiApiKey} from './shopeeOpenAiCredentials.js';
-import {compileAttributes,compileTax,attributeAuditForChanges,validateTechnicalAttributeValues} from './shopeeStructuredFields.js';
+import {compileAttributes,compileTax,attributeAuditForChanges,selectValidTechnicalChanges} from './shopeeStructuredFields.js';
 import {scopeTechnicalReviewChanges} from './shopeeTechnicalReviewScope.js';
 import {applySellerDeclarations} from './shopeeTechnicalSellerEvidence.js';
 import {inspectAnatelCompliance} from './shopeeAnatel.js';
@@ -1246,26 +1246,9 @@ app.post('/api/shopee/optimizer/workflow/review',mustLogin,requireWeDropAdmin,as
       const proposed=scoped.changes;
       await hydrateCategoryChoices(record,proposed,cfg,auth,live);
       const proposedAudit=attributeAuditForChanges(proposed,record,live);
-      const valid=[],skipped=[];
-      // A conferência local não pode ser refém de um opcional com formato
-      // incompatível (p.ex. "indication" numérico preenchido com texto).
-      // O rascunho com todos os valores é preservado separadamente; somente
-      // alterações válidas entram na prévia de publicação.
-      for(const candidate of proposed){
-        const meta=(proposedAudit?.attributes||[]).find(a=>
-          Number(a.id)===Number(candidate.attributeId));
-        if(!meta)throw Error('Atributo não pertence mais à categoria oficial da Shopee.');
-        try{
-          validateTechnicalAttributeValues(candidate,meta);
-          valid.push(candidate);
-        }catch(error){
-          // Campos realmente obrigatórios ainda precisam respeitar o schema.
-          if(meta.mandatory)throw Error('Atributo obrigatório '+meta.name+': '+String(error.message||error));
-          skipped.push({attributeId:Number(candidate.attributeId),
-            name:String(meta.name||'Campo opcional').slice(0,90),
-            reason:String(error.message||error).slice(0,160)});
-        }
-      }
+      // Opcional inválido não impede registrar conferência local.
+      // Nenhuma sugestão descartada entra no plano de publicação.
+      const {valid,skipped}=selectValidTechnicalChanges(proposed,proposedAudit);
       change.attributes=valid;
       change.technicalSkipped=skipped;
       // Conferir não envia dados à Shopee; divergências de marca devem
