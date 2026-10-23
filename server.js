@@ -59,7 +59,7 @@ import {readPreparedImages,importPreparedImage,deletePreparedImage,reorderPrepar
 import {generateOpenAiImage,imageGenerationStatus} from './shopeeOpenAiImages.js';
 import {validateVariationName,variationImagePrompt,saveVariationImage,variationImagePreview,variationImageBytes,validateVariationDetails,buildVariationPayload} from './shopeeVariationMedia.js';
 import {openAiKeyStatus,openAiApiKey,saveOpenAiApiKey,deleteOpenAiApiKey} from './shopeeOpenAiCredentials.js';
-import {compileAttributes,compileTax,attributeAuditForChanges} from './shopeeStructuredFields.js';
+import {compileAttributes,compileTax,attributeAuditForChanges,validateTechnicalAttributeValues} from './shopeeStructuredFields.js';
 import {scopeTechnicalReviewChanges} from './shopeeTechnicalReviewScope.js';
 import {applySellerDeclarations} from './shopeeTechnicalSellerEvidence.js';
 import {inspectAnatelCompliance} from './shopeeAnatel.js';
@@ -1243,25 +1243,38 @@ app.post('/api/shopee/optimizer/workflow/review',mustLogin,requireWeDropAdmin,as
         applySellerDeclarations(change.attributes||[],record.attributeAudit?.attributes||[]),{
         record,live,auditChanges:attributeAuditForChanges
       });
-      const attributes=scoped.changes;
-      change.attributes=attributes;
-      await hydrateCategoryChoices(record,attributes,cfg,auth,live);
-      const supplier=await readWeDropProduct(auth.shopId,{sku,itemId,modelId});
-      // Conferir a etapa não publica valores da Shopee. Exigir a marca da WeDrop
-      // somente quando a marca fizer parte das alterações desta revisão:
-      // um valor antigo não editado (ex.: "Novo") não pode impedir o registro
-      // de uma ficha sem pendências obrigatórias. A validação de marca da
-      // execução/publicação continua separada e obrigatória.
-      const brandMeta=(record.attributeAudit?.attributes||[]).find(a=>
-        String(a.name||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'')
-          .trim().toLowerCase()==='marca');
-      if(brandMeta&&attributes.some(a=>Number(a.attributeId)===Number(brandMeta.id)))
-        assertShopeeSupplierBrand({record,attributes,supplier});
-      change.matrixTechnical=technicalMatrixSource({sku,record,attributes});
-      const verifiedAttributes=attributeAuditForChanges(attributes,record,live);
+      const proposed=scoped.changes;
+      await hydrateCategoryChoices(record,proposed,cfg,auth,live);
+      const proposedAudit=attributeAuditForChanges(proposed,record,live);
+      const valid=[],skipped=[];
+      // A conferência local não pode ser refém de um opcional com formato
+      // incompatível (p.ex. "indication" numérico preenchido com texto).
+      // O rascunho com todos os valores é preservado separadamente; somente
+      // alterações válidas entram na prévia de publicação.
+      for(const candidate of proposed){
+        const meta=(proposedAudit?.attributes||[]).find(a=>
+          Number(a.id)===Number(candidate.attributeId));
+        if(!meta)throw Error('Atributo não pertence mais à categoria oficial da Shopee.');
+        try{
+          validateTechnicalAttributeValues(candidate,meta);
+          valid.push(candidate);
+        }catch(error){
+          // Campos realmente obrigatórios ainda precisam respeitar o schema.
+          if(meta.mandatory)throw Error('Atributo obrigatório '+meta.name+': '+String(error.message||error));
+          skipped.push({attributeId:Number(candidate.attributeId),
+            name:String(meta.name||'Campo opcional').slice(0,90),
+            reason:String(error.message||error).slice(0,160)});
+        }
+      }
+      change.attributes=valid;
+      change.technicalSkipped=skipped;
+      // Conferir não envia dados à Shopee; divergências de marca devem
+      // ser bloqueadas apenas no preparo/execução, que já revalida a marca.
+      change.matrixTechnical=technicalMatrixSource({sku,record,attributes:valid});
+      const verifiedAttributes=attributeAuditForChanges(valid,record,live);
       if(Number(verifiedAttributes?.missingMandatory)>0)
         throw Error('Motor Matriz: a ficha técnica ainda possui '+verifiedAttributes.missingMandatory+' atributo(s) obrigatório(s) sem preenchimento. Corrija antes de aprovar.');
-      compileAttributes(attributes,record,live);
+      compileAttributes(valid,record,live);
     }else if(change.attributes)compileAttributes(change.attributes,record,await shopeeLiveEditableItem(cfg,auth,itemId));
     if(change.stage==='fiscal'&&change.reviewed){
       const supplier=await readWeDropProduct(auth.shopId,{sku,itemId,modelId});
@@ -1283,7 +1296,9 @@ app.post('/api/shopee/optimizer/workflow/review',mustLogin,requireWeDropAdmin,as
         cestOptional:true,cestProvided:Boolean(String(state.tax?.cest||'').trim()),
         message:'Dados fiscais cadastrados no Motor Matriz. CEST 00 poderá ser enviado após autorização explícita; nenhum dado foi alterado na Shopee por esta conferência.'
       }:null,
-      stages:buildStages(record,state),attributeChanges:state.attributes||[],taxDraft:state.tax||{},draftTitle:state.draftTitle||safeTitle(record.title),
+      stages:buildStages(record,state),attributeChanges:state.attributes||[],
+      ...(change.stage==='technical'?{technicalSkipped:change.technicalSkipped||[]}:{}),
+      taxDraft:state.tax||{},draftTitle:state.draftTitle||safeTitle(record.title),
       // Se outra etapa foi salva, mantenha o rascunho gerado na tela em vez de
       // substituí-lo silenciosamente pelo anúncio antigo.
       ...(state.draftDescription?{draftDescription:state.draftDescription}:{}),
