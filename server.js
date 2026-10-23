@@ -1339,12 +1339,13 @@ app.post('/api/shopee/optimizer/execution/prepare',mustLogin,requireWeDropAdmin,
     // Variações conferidas são parte da execução completa, nunca um envio
     // manual em outra tela. Dados e custos vêm do rascunho salvo da SKU.
     let modelVariations=null;
-    if(selectedStage==='all'&&reviewState.variationConfig?.enabled===true&&!live.has_model){
+    if(selectedStage==='all'&&reviewState.variationConfig?.enabled===true){
      if(!reviewState.variationDetails)throw Error('Configure as variações reais e suas fotos antes da prévia única.');
-     const details=validateVariationDetails(reviewState.variationDetails,{requirePhotos:true});
+     const details=validateVariationDetails(reviewState.variationDetails,{requirePhotos:!live.has_model});
      if(details.options.length<2)throw Error('A execução automática exige a opção original e pelo menos uma variação.');
      const source=await verifiedVariationSupplierCosts({auth,sku,itemId,modelId},details);
-     modelVariations={type:details.type,options:details.options.map(option=>({
+     modelVariations={type:details.type,alreadyCreated:live.has_model===true,
+      options:details.options.map(option=>({
       ...option,cost:source.find(o=>o.sku===option.sku)?.unitCost||null}))};
      if(modelVariations.options.some(o=>!o.cost))throw Error('Custo WeDrop não confirmado para todas as opções.');
     }
@@ -1353,7 +1354,8 @@ app.post('/api/shopee/optimizer/execution/prepare',mustLogin,requireWeDropAdmin,
      const campaignId=String(req.body?.campaignId||'').trim();
      if(!/^\d{1,18}$/.test(campaignId))
       throw Error('Informe uma vez a campanha Minha Promoção na etapa Desconto; ela será incluída automaticamente na prévia única.');
-     const financial=await discountExecutionInputs(req,sku,itemId,modelId,campaignId);
+     const financial=await discountExecutionInputs(req,sku,itemId,modelId,campaignId,{
+      allowModels:live.has_model===true,expectedModels:modelVariations});
      if(modelVariations.options.some(o=>Math.round(o.cost*100)!==Math.round(Number(financial.quote.unitCost)*100)))
       throw Error('As variações têm custos diferentes. É necessário precificar individualmente cada modelo antes da campanha.');
      const approved=financial.snapshot;
@@ -1746,7 +1748,8 @@ app.post('/api/shopee/optimizer/execution/execute',mustLogin,requireWeDropAdmin,
    const approved=verifyDiscountPreview(req.body?.discountApprovalToken,envText('SESSION_SECRET'),auth.shopId);
    if(approved.sku!==sku||String(approved.itemId)!==String(itemId)||String(approved.modelId)!==String(modelId))
     throw Error('A aprovação da campanha pertence a outra SKU.');
-   const fresh=(await discountExecutionInputs(req,sku,itemId,modelId,approved.discountId)).snapshot;
+   const fresh=(await discountExecutionInputs(req,sku,itemId,modelId,approved.discountId,{
+    allowModels:Boolean(plan.modelVariations),expectedModels:plan.modelVariations})).snapshot;
    for(const k of ['shopId','sku','itemId','modelId','discountId','gross','promo','buyerAfterCoupon',
      'couponPct','discountPct','quoteAt','originalPrice','action','existingPrice','promotionSignal','needsBasePriceUpdate'])
     if(String(fresh[k]??'')!==String(approved[k]??''))
@@ -1786,11 +1789,11 @@ app.post('/api/shopee/optimizer/execution/execute',mustLogin,requireWeDropAdmin,
    deferUnconfirmedFiscal:plan.fiscalDeferred===true,
    omitFiscal:false,selectedStage:plan.selectedStage||'all',
    allowDiscountOnly:plan.discountOnly===true,
-   modelVariations:plan.modelVariations&&!(live.has_model)?
+   modelVariations:plan.modelVariations?
     await (async()=>{
-     const details=validateVariationDetails(reviewState.variationDetails,{requirePhotos:true});
+     const details=validateVariationDetails(reviewState.variationDetails,{requirePhotos:!live.has_model});
      const supplier=await verifiedVariationSupplierCosts({auth,sku,itemId,modelId},details);
-     return {type:details.type,options:details.options.map(o=>({
+     return {type:details.type,alreadyCreated:live.has_model===true,options:details.options.map(o=>({
       ...o,cost:supplier.find(x=>x.sku===o.sku)?.unitCost||null})),
       promotion:plan.modelVariations.promotion};
     })():null});
@@ -2801,7 +2804,7 @@ app.post('/api/shopee/optimizer/pricing/prepare',mustLogin,requireWeDropAdmin,as
 
 // O ID vem do usuário e é confirmado pela API da loja. A prévia somente lê.
 const activeDiscountWrites=new Set();
-async function discountExecutionInputs(req,sku,itemId,modelId,discountId){
+async function discountExecutionInputs(req,sku,itemId,modelId,discountId,{allowModels=false,expectedModels=null}={}){
  const {auth,cfg}=await getValidAuth(req);
  const matches=await findExactCatalogSku(auth.shopId,sku);
  if(!matches.some(x=>String(x.itemId)===String(itemId)&&String(x.modelId)===String(modelId)))
@@ -2838,7 +2841,18 @@ async function discountExecutionInputs(req,sku,itemId,modelId,discountId){
   throw Error('O anúncio não está em situação NORMAL na Shopee; a promoção não será alterada.');
  if(typeof live.has_model!=='boolean')
   throw Error('Não foi possível confirmar se o anúncio possui variações. Nada foi enviado.');
- const originalPrice=promotionBasePrice(live);
+ let originalPrice;
+ if(live.has_model&&allowModels&&expectedModels){
+  const list=(await callShopeeShopApi(cfg,{
+   path:'/api/v2/product/get_model_list',accessToken:auth.accessToken,shopId:auth.shopId,
+   query:{item_id:Number(itemId)}})).response?.model||[];
+  if(list.length!==expectedModels.options.length||
+     expectedModels.options.some(o=>!list.some(m=>String(m.model_sku)===o.sku)))
+   throw Error('Modelos diferentes das variações aprovadas. Refaça a prévia.');
+  originalPrice=Number((list[0]?.price_info||[])[0]?.original_price??list[0]?.original_price);
+  if(!Number.isFinite(originalPrice)||originalPrice<=0)
+   throw Error('Preço do modelo original não foi confirmado na Shopee.');
+ }else originalPrice=promotionBasePrice(live);
  const {record,pages}=await readDiscountPages(callShopeeShopApi,{cfg,auth,discountId});
  const existing=promotionMember(pages,itemId);
  // has_promotion é genérico: NÃO comprova inscrição em outra Minha Promoção.
