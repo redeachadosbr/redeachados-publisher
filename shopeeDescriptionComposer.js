@@ -33,10 +33,10 @@ function skuType(name){
 }
 const profiles={
  moto:{
-  opening:'Uma motinha infantil de visual vintage para transformar as brincadeiras em passeios cheios de imaginação. O estilo retrô e a cor vermelha dão personalidade ao brinquedo.',
+  opening:'Uma motinha infantil de visual vintage para transformar as brincadeiras em passeios cheios de imaginação. O estilo retrô dá personalidade ao brinquedo.',
   benefit:'🎈 Uma proposta de diversão e faz de conta para os pequenos, com a experiência de brincar de pilotar em um espaço apropriado e com supervisão de um adulto.',
   advantages:'🎁 Um presente marcante para crianças que gostam de veículos e aventuras de faz de conta.',
-  details:['🏍️ Tipo: moto elétrica infantil de brinquedo','🎨 Estilo: vintage, na cor vermelha']
+  details:['🏍️ Tipo: moto elétrica infantil de brinquedo','🎨 Estilo: vintage']
  },
  ball:{
   opening:'Mais movimento e diversão para quem adora futebol! Esta bola infantil é uma opção para chutes, passes e partidas recreativas.',
@@ -154,6 +154,10 @@ function confirmedFacts(record,data,sourceText,type){
  if(age)facts.push('👧 Idade indicada: a partir de '+age+' anos');
  if(cap)facts.push('📦 Capacidade informada: '+cap[1]+' '+(cap[2]==='l'?'L':cap[2]));
  if(qty)facts.push('🔢 Quantidade informada: '+qty[1]+' '+(fromTitle.includes('potes')?'potes':'peças ou unidades'));
+ if(type==='moto'){
+  const match=name.match(/\b(vermelh[ao]|azul|rosa|pret[ao]|branc[ao]|verde|amarel[ao])\b/i);
+  if(match)facts.push('🎨 Cor anunciada: '+match[1]);
+ }
  if(type==='moto'&&/\b6\s*v\b/.test(fromTitle))facts.push('🔋 Alimentação do brinquedo: 6 V');
  if(dims)facts.push('📏 Dimensões declaradas do produto (A × L × C): '+dims.value);
  if(type==='ball'){
@@ -191,7 +195,7 @@ export function isCommercialDescription(value){
 // acessórios ou resultados técnicos que a SKU não comprove.
 const highlights={
  moto:[
-  '🎨 Um visual para impressionar: o estilo vintage e a cor vermelha dão personalidade à motinha e fazem dela um presente cheio de charme. É uma opção que chama atenção pelo visual inspirado nas motos clássicas.',
+  '🎨 Um visual para impressionar: o estilo vintage dá personalidade à motinha e fazem dela um presente cheio de charme. É uma opção que chama atenção pelo visual inspirado nas motos clássicas.',
   '🏍️ Brincadeiras que viram histórias: brincar de pilotar abre espaço para imaginar passeios e aventuras diferentes a cada dia. A proposta é transformar momentos de lazer em experiências de faz de conta, sempre em local adequado e sob supervisão de um adulto.',
   '🎁 Uma surpresa especial para os pequenos: para crianças que gostam de veículos, a moto pode ser o centro das brincadeiras e de bons momentos em família. Um presente que une a emoção de ganhar um brinquedo à vontade de começar a brincar.'
  ],
