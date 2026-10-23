@@ -7,7 +7,7 @@ import {supplierProductDimensions} from './shopeeSupplierEvidenceFacts.js';
 
 const clean=v=>String(v??'').normalize('NFC').replace(/\s+/g,' ').trim();
 const fold=v=>clean(v).normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase();
-const trunc=(v,n=150)=>[...clean(v)].slice(0,n).join('').replace(/\s+\S*$/u,'').trim();
+const trunc=(v,n=150)=>{const t=clean(v);return [...t].length<=n?t:[...t].slice(0,n).join('').replace(/\s+\S*$/u,'').trim();};
 const cta=REDE_ACHADOS_DESCRIPTION_RULES.cta;
 function titleOf(record,data){
  const name=clean(data.name||record.title||'Produto');
@@ -147,6 +147,9 @@ function confirmedFacts(record,data,sourceText,type){
    fromTitle.match(/\b(\d{1,3})\s*(?:pe[cç]as|potes|unidades)\b/));
  const dims=supplierProductDimensions(supplemental)||supplierProductDimensions(catalog);
  const facts=[];
+ const brand=clean(data.brand||'');
+ if(brand&&!/^(?:generico|gen[eé]rico|sem marca|importado|outros?|n\/a)$/i.test(brand))
+  facts.push('🏷️ Marca informada: '+trunc(brand,55));
  if(selectedMat)facts.push('🧩 Material informado: '+(materialMap[selectedMat]||selectedMat));
  if(age)facts.push('👧 Idade indicada: a partir de '+age+' anos');
  if(cap)facts.push('📦 Capacidade informada: '+cap[1]+' '+(cap[2]==='l'?'L':cap[2]));
@@ -162,6 +165,12 @@ function confirmedFacts(record,data,sourceText,type){
  if(type==='picnic'&&/\bimpermeavel\b/.test(fromTitle+' '+normalized))facts.push('💧 Material anunciado como impermeável');
  if(type==='moto'&&/bateria.*(?:recarregavel|interna)|(?:recarregavel|interna).*bateria/.test(normalized))
   facts.push('🔌 Bateria recarregável, conforme ficha do fornecedor');
+ if(type==='moto'&&/pedal\s+(?:de\s+)?acelerador|acionamento\s+por\s+pedal/.test(normalized))
+  facts.push('🦶 Aceleração por pedal, conforme ficha do fornecedor');
+ if(type==='moto'){
+  const speed=normalized.match(/(?:velocidade\s+(?:de\s+)?(?:at[eé]\s+)?|alcan[cç]a\s+(?:at[eé]\s+)?)(\d+(?:[.,]\d+)?)\s*km\s*\/\s*h/);
+  if(speed)facts.push('🚦 Velocidade informada: até '+speed[1]+' km/h');
+ }
  // 380 W, 220 V and certifications are deliberately NOT inferred from
  // arbitrary text: these need verified product-specific declarations.
  return [...new Set(facts)];
