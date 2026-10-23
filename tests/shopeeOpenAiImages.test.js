@@ -10,9 +10,15 @@ const sample={sku:'SKU-TESTE',title:'Chaleira de aço inox',attributeAudit:{attr
 test('roteiro de nove imagens na ordem aprovada pela loja',()=>{
  assert.equal(IMAGE_STORYBOARD.length,9);
  assert.match(IMAGE_STORYBOARD[0],/Capa/);
- assert.match(IMAGE_STORYBOARD[1],/DIMENSÕES/);
- assert.match(IMAGE_STORYBOARD[2],/ANAMÓRFICA/);
- assert.match(IMAGE_STORYBOARD[8],/CTA/);
+ assert.match(IMAGE_STORYBOARD[1],/Uso real/);
+ assert.match(IMAGE_STORYBOARD[2],/dimensões destacadas no produto/);
+ assert.match(IMAGE_STORYBOARD[3],/frases ou palavras curtas/);
+ assert.match(IMAGE_STORYBOARD[4],/Uma frase curta/);
+ assert.match(IMAGE_STORYBOARD[5],/Persuasão/);
+ assert.match(IMAGE_STORYBOARD[6],/Transformação/);
+ assert.match(IMAGE_STORYBOARD[7],/três principais dúvidas/);
+ assert.match(IMAGE_STORYBOARD[8],/Compra Segura, Entrega Rápida e Atendimento Online/);
+ assert.doesNotMatch(IMAGE_STORYBOARD.join(' '),/ANAMÓRFICA|ANTES E DEPOIS|CTA/);
  assert.throws(()=>imagePrompt({record:sample,slot:0}),/Posição inválida/);
  assert.throws(()=>imagePrompt({record:sample,slot:10}),/Posição inválida/);
  const prompt=imagePrompt({record:sample,slot:3,masterPrompt:'Fundo moderno',note:'Luz natural'});
