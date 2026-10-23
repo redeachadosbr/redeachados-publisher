@@ -2393,15 +2393,15 @@ $('#optimizerSku').onkeydown=event=>{
 // Etapas persistentes para o mesmo Item ID/modelo/SKU. Nenhum write na Shopee.
 let optimizerWorkflowPlan=null,optimizerWorkflowStage=null,optimizerWorkflowSerial=0;
 const workflowImageGuide=[
- '01 · Capa: produto real ocupando aproximadamente 85%, ambiente coerente, sem textos.',
- '02 · Dicas de uso: demonstrar uso correto e fácil.',
- '03 · Especificações: até três características comprovadas.',
- '04 · Benefícios reais: produto em situação de uso.',
- '05 · Dor e solução: problema real e melhoria possível.',
- '06 · Copy persuasiva: diferencial comprovado, frase curta quando útil.',
- '07 · Transformação: uma frase curta, sem descrições adicionais.',
- '08 · Três objeções: respostas visuais com informações verificadas.',
- '09 · Mockup: embalagem fiel e três selos da loja quando aplicáveis.'
+ 'Imagem 1 — Capa: produto em destaque, ocupando aproximadamente 85% da imagem.',
+ 'Imagem 2 — Uso real: mostrar o produto em um ambiente de utilização.',
+ 'Imagem 3 — Especificações: dimensões destacadas no produto.',
+ 'Imagem 4 — Benefícios: demonstrar visualmente as vantagens do produto, com frases ou palavras curtas, sem poluir a imagem.',
+ 'Imagem 5 — Dor e solução: mostrar como o produto resolve uma necessidade do comprador. Uma frase curta.',
+ 'Imagem 6 — Persuasão: destacar um diferencial real, com comunicação comercial.',
+ 'Imagem 7 — Transformação: mostrar o resultado ou a experiência proporcionada pelo produto. Frase curta.',
+ 'Imagem 8 — Quebra de objeções: responder às três principais dúvidas do comprador, com frases curtas e persuasivas, tirando dúvidas sem poluir a imagem.',
+ 'Imagem 9 — Mockup e confiança: apresentar o produto com três selos: Compra Segura, Entrega Rápida e Atendimento Online.'
 ].join('\n');
 // Prévia INTEGRAL da descrição: organizada visualmente, sem truncamento.
 // A Shopee recebe somente texto simples com emojis e quebras de linha.
@@ -7491,7 +7491,7 @@ function optimizerFiscalValues(){
 let optimizerImagesAutoBusy=false,optimizerImagesStopRequested=false;
 let optimizerImagesSavedSlots=new Set(),optimizerImagesApiConfigured=false;
 let optimizerImagesFilter='all';
-const optimizerCommercialPositionNames=['Capa','Dimensões','Especificações','Benefícios','Dor e solução','Copy persuasiva','Transformação','Objeções','Mockup'];
+const optimizerCommercialPositionNames=["Capa","Uso real","Especificações","Benefícios","Dor e solução","Persuasão","Transformação","Quebra de objeções","Mockup e confiança"];
 function optimizerCommercialSetFilter(filter){
  if(!['all','pending','saved'].includes(filter))return;
  optimizerImagesFilter=filter;
@@ -7521,7 +7521,7 @@ function optimizerImagesRenderMode(){
  $('#optimizerModeApi').classList.toggle('is-active',!chat);
 }
 async function optimizerChatgptMakeBrief(w){
- const {createChatGptPrompts}=await import('/chatgptPrompts.js?v=1.20.33-wedrop-facts');
+ const {createChatGptPrompts}=await import('/chatgptPrompts.js?v=1.20.34-nine-image-sequence');
  return createChatGptPrompts({
   sku:w.sku,title:w.draftTitle||'Produto Shopee',
   imageUrls:w.imageUrls||[],
