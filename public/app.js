@@ -4235,11 +4235,47 @@ try{
   void optimizerFiscalBatchRefresh();
  }
 }catch{}
+let optimizerAutoReadbackRecoveryKey='';
+function optimizerExecutionAutoRecoverStale(job){
+ const w=optimizerWorkflowPlan;
+ if(!w||job?.state!=='uncertain'||!['updating','verifying'].includes(String(job.result?.phase||''))||
+  String(job.sku)!==String(w.sku)||String(job.item_id)!==String(w.itemId))return;
+ const updated=Math.max(Date.parse(job.updated_at||'')||0,
+  Number(job.result?.updateStartedAt||0));
+ if(!updated||Date.now()-updated<180000)return;
+ const key=[w.sku,w.itemId,w.modelId,job.updated_at].join('|');
+ if(optimizerAutoReadbackRecoveryKey===key)return;
+ optimizerAutoReadbackRecoveryKey=key;
+ // Leitura de recuperação uma só vez para esta execução antiga. Não realiza
+ // update_item, publicação de desconto ou reenvio de imagens/vídeo.
+ void (async()=>{
+  try{
+   const data=await json('/api/shopee/optimizer/execution/reconcile',{
+    method:'POST',headers:{'Content-Type':'application/json'},
+    body:JSON.stringify({sku:w.sku,itemId:w.itemId,modelId:w.modelId,recover:true}),
+    signal:AbortSignal.timeout(65000)
+   });
+   if(optimizerWorkflowPlan?.sku!==w.sku||String(optimizerWorkflowPlan?.itemId)!==String(w.itemId))return;
+   if(data.recoveryReady){
+    optimizerExecutionJobView(data.job,data.progress,data.issue);
+    optimizerExecNotice('Recuperação automática: duas leituras da Shopee confirmaram o estado atual. Preparando apenas os campos pendentes, sem repetir envios.','success');
+    await optimizerExecutionPrepare();
+   }else if(data.job?.state!=='uncertain'){
+    optimizerExecutionJobView(data.job,data.progress,data.issue);
+   }
+  }catch(error){
+   if(optimizerWorkflowPlan?.sku===w.sku)
+    optimizerExecNotice('A recuperação automática não conseguiu confirmar duas leituras estáveis: '+
+     error.message+'. Use Conferir e destravar execução para tentar novamente; nenhum envio foi repetido.','warning');
+  }
+ })();
+}
 function optimizerExecutionJobView(job,progress=null,issue=null){
  optimizerExecutionTrackerRender(progress,job);
  optimizerExecutionIssueRender(issue);
  optimizerExecJob=job;
  optimizerDiscountFinalPaint();
+ if(job?.state==='uncertain')optimizerExecutionAutoRecoverStale(job);
  if(!job)globalThis.OptimizerSkuDashboard?.execution?.(null,null);
  // Continuar acompanhando a SKU automaticamente mesmo após recarregar a página.
  if(job&&['running','uncertain'].includes(job.state)){
