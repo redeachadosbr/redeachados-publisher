@@ -3365,6 +3365,7 @@ function optimizerExecReset(){
  }
  $('#optimizerExecutionReconcile').hidden=true;$('#optimizerExecutionRetry').hidden=true;
  $('#optimizerExecutionLaunch').hidden=true;
+ $('#optimizerExecutionRemaining').hidden=true;
  $('#optimizerExecutionShopeeLink').hidden=true;
  $('#optimizerExecutionIssue').hidden=true;
  optimizerExecSafeRecoveryKey='';optimizerExecSafeRecovering=false;
@@ -3382,6 +3383,7 @@ function optimizerExecReset(){
  $('#optimizerExecutionInput').value='';
  $('#optimizerExecutionRun').disabled=true;
  $('#optimizerExecutionLaunch').disabled=true;
+ $('#optimizerExecutionRemaining').disabled=true;
 }
 // Acompanhamento em tempo real, sempre com informações da própria SKU e da API.
 // Imagens em mídia não significam alteração publicada até status "verified".
@@ -4068,13 +4070,13 @@ function optimizerExecRender(data){
     optimizerExecRow(changes,'ETAPA FINAL 07 · Informações fiscais após confirmação do anúncio comercial.','heading');
     optimizerExecDiff(changes,'tax_info',plan.original.tax_info,plan.finalFiscal);
    }
-   if(plan.selectedStage==='all'&&optimizerExecAutoModelPreview){
+   if(['all','remaining'].includes(plan.selectedStage)&&optimizerExecAutoModelPreview){
     const m=optimizerExecAutoModelPreview;
     optimizerExecRow(changes,'ETAPA 08 · AUTOMÁTICA · Minha Promoção '+m.discountId+
      ' · '+shPricePercent(m.discountPct)+' · '+shPriceMoney(m.promo)+
      ' por variação · margem estimada '+shPricePercent(m.netMarginPct)+
      (m.modelPriceChange?' · preço bruto dos modelos será ajustado para '+shPriceMoney(m.gross):''), 'action');
-   }else if(plan.selectedStage==='all'&&optimizerDiscountApprovalReady()){
+   }else if(['all','remaining'].includes(plan.selectedStage)&&optimizerDiscountApprovalReady()){
     const v=optimizerDiscountFinalPreviewData.preview;
     optimizerExecRow(changes,'ETAPA 08 · '+shPricePercent(v.discountPct)+' na campanha '+v.discountId+
      ' · '+shPriceMoney(v.promo)+' (após confirmação do anúncio na Shopee).','action');
@@ -4111,7 +4113,7 @@ function optimizerExecRender(data){
    data.ready?'success':'warning');
 }
 function optimizerDiscountReviewedForExecution(plan){
- return plan?.selectedStage!=='all'||
+ return !['all','remaining'].includes(plan?.selectedStage)||
   (plan?.modelVariations?Boolean(optimizerExecAutoModelToken):optimizerDiscountApprovalReady());
 }
 function optimizerExecUpdateRunButton(){
@@ -4120,8 +4122,14 @@ function optimizerExecUpdateRunButton(){
    p.sku!==optimizerExecContext.sku||p.itemId!==optimizerExecContext.itemId||
    p.modelId!==optimizerExecContext.modelId||!optimizerDiscountReviewedForExecution(p);
  $('#optimizerExecutionLaunch').disabled=unavailable;
+ const justPending=p?.selectedStage==='remaining';
+ const offerPending=p?.selectedStage==='all'&&Boolean(p?.modelVariations?.promotion);
+ $('#optimizerExecutionRemaining').hidden=!offerPending;
+ $('#optimizerExecutionRemaining').disabled=unavailable;
  const resume=Boolean(p?.reusedMedia?.imageIds?.length||p?.reusedMedia?.video?.phase==='ready');
- $('#optimizerExecutionLaunch').textContent=resume?'▶ Retomar de onde parou':
+ $('#optimizerExecutionLaunch').textContent=justPending?'▶ Publicar variações + fiscal + desconto':
+  resume&&p?.modelVariations?'▶ Executar plano completo (inclui mídia)':
+  resume?'▶ Retomar de onde parou':
   p?.modelVariations?'▶ Executar anúncio + variações + fiscal + desconto':
   p?.selectedStage==='all'?'▶ Executar anúncio + desconto na Shopee':'▶ Executar etapa aprovada na Shopee';
  $('#optimizerExecutionLaunch').title=!optimizerDiscountReviewedForExecution(p)
@@ -4164,6 +4172,7 @@ async function optimizerExecutionPrepare(){
  $('#optimizerExecutionConfirmation').hidden=true;
  $('#optimizerExecutionLaunch').hidden=true;
  $('#optimizerExecutionLaunch').disabled=true;
+ $('#optimizerExecutionRemaining').hidden=true;
  $('#optimizerExecutionPrepare').hidden=false;
  $('#optimizerExecutionShopeeLink').hidden=true;
  const btn=$('#optimizerExecutionPrepare');btn.disabled=true;
@@ -4210,13 +4219,15 @@ $('#optimizerExecutionScope')?.addEventListener?.('change',()=>{
    '. Preparando somente os campos dessa etapa...');
  void optimizerExecutionPrepare();
 });
-$('#optimizerExecutionLaunch')?.addEventListener?.('click',()=>void optimizerExecuteApproved());
-$('#optimizerExecutionRun')?.addEventListener?.('click',()=>void optimizerExecuteApproved());
+$('#optimizerExecutionLaunch')?.addEventListener?.('click',()=>void optimizerExecuteApproved(false));
+$('#optimizerExecutionRemaining')?.addEventListener?.('click',()=>void optimizerExecuteApproved(true));
+$('#optimizerExecutionRun')?.addEventListener?.('click',()=>void optimizerExecuteApproved(false));
 function optimizerExecutionNeedsFreshPreview(message){
  return /Conteúdo ou aprovação mudou|Plano alterado em outra sessão|Plano mudou|Anúncio alterado após preparação|A ficha técnica da Shopee foi modificada|Os dados fiscais da Shopee mudaram|Imagens alteradas após preparação|Categoria alterada após preparação|A etapa escolhida mudou|Plano já executado, alterado/i.test(String(message||''));
 }
-async function optimizerExecuteApproved(){
+async function optimizerExecuteApproved(remainingOnly=false){
  const p=optimizerExecPlan,ctx=optimizerExecContext;
+ if(remainingOnly&&(p?.selectedStage!=='all'||!p?.modelVariations?.promotion))return;
  if(!p?.canExecute||!ctx||optimizerExecBusy||p.sku!==ctx.sku||
     p.itemId!==ctx.itemId||p.modelId!==ctx.modelId)return;
  if(!optimizerDiscountReviewedForExecution(p)){
@@ -4227,8 +4238,10 @@ async function optimizerExecuteApproved(){
  const btn=$('#optimizerExecutionLaunch');
  const discountIntent=optimizerDiscountAuthorizedIntent(p);
  optimizerExecStartError='';optimizerExecBusy=true;btn.disabled=true;$('#optimizerExecutionRun').disabled=true;
+ $('#optimizerExecutionRemaining').disabled=true;
  $('#optimizerExecutionPrepare').disabled=true;
  $('#optimizerExecutionLaunch').hidden=true;
+ $('#optimizerExecutionRemaining').hidden=true;
  let previewMustRefresh=false,recoverPrepared=false,failedStartReason='';
  optimizerExecNotice('Validando a prévia aprovada. O início só será confirmado após resposta do servidor...');
  $('#optimizerExecutionPanel').hidden=false;
@@ -4244,7 +4257,8 @@ async function optimizerExecuteApproved(){
      body:JSON.stringify({sku:ctx.sku,itemId:ctx.itemId,modelId:ctx.modelId,
        planId:p.planId,updatedAt:p.updatedAt,stage:p.selectedStage||'all',
        confirmation:'EXECUTAR '+p.sku,acceptPartialExecution:true,
-       ...(p.selectedStage==='all'?{discountApprovalToken:p.modelVariations?
+       ...(remainingOnly?{remainingOnly:true}:{}),
+       ...(['all','remaining'].includes(p.selectedStage)?{discountApprovalToken:p.modelVariations?
         optimizerExecAutoModelToken:optimizerDiscountFinalPreviewData?.approvalToken,
         allowPriceChange:p.modelVariations?Boolean(optimizerExecAutoModelPreview?.modelPriceChange):
          discountIntent?.consent===true}:{})}),
@@ -4254,6 +4268,7 @@ async function optimizerExecuteApproved(){
    optimizerExecPlan=null;
    $('#optimizerExecutionConfirmation').hidden=true;
    $('#optimizerExecutionLaunch').hidden=true;
+   $('#optimizerExecutionRemaining').hidden=true;
    optimizerExecNotice(out.marketplaceUpdated===true
      ?'A Shopee confirmou as alterações aprovadas.'
      :'Execução iniciada. O progresso será consultado automaticamente.',
@@ -4264,6 +4279,7 @@ async function optimizerExecuteApproved(){
    if(optimizerWorkflowPlan?.sku!==ctx.sku||optimizerWorkflowPlan?.itemId!==ctx.itemId||optimizerWorkflowPlan?.modelId!==ctx.modelId)return;
    optimizerExecPlan=null;$('#optimizerExecutionConfirmation').hidden=true;
    $('#optimizerExecutionLaunch').hidden=true;
+   $('#optimizerExecutionRemaining').hidden=true;
    optimizerExecStartError=String(e.message||e);
    failedStartReason=optimizerExecStartError;
    recoverPrepared=true;
@@ -4588,6 +4604,7 @@ function optimizerExecutionJobView(job,progress=null,issue=null){
  // A etapa de desconto agora é exclusivamente do worker persistido no servidor.
  if(active||verified){
   $('#optimizerExecutionLaunch').hidden=true;
+  $('#optimizerExecutionRemaining').hidden=true;
   optimizerExecPlan=null;$('#optimizerExecutionConfirmation').hidden=true;
   $('#optimizerExecutionRun').disabled=true;
  }
