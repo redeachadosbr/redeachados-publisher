@@ -34,14 +34,9 @@ export function validateContentRules({title,description}){
  }
  if(description!==undefined){
   const text=String(description).replace(/\r\n?/g,'\n').normalize('NFC').trim();
-  const count=codePointCount(text);
-  if(count<REDE_ACHADOS_DESCRIPTION_RULES.minChars)
-   throw Error('A descrição precisa ter pelo menos '+REDE_ACHADOS_DESCRIPTION_RULES.minChars+' caracteres. Acrescente uma apresentação real do produto.');
-  if(count>REDE_ACHADOS_DESCRIPTION_RULES.maxChars)
-   throw Error('A descrição excede '+REDE_ACHADOS_DESCRIPTION_RULES.maxChars+' caracteres.');
-  // Não obrigar título/seções, FAQ, quantidade artificial de texto ou CTA
-  // idêntico: o vendedor pode editar livremente e salvar sua descrição.
-  // O gerador padrão continua incluindo um CTA e fatos da SKU.
+  if(!text)throw Error('A descrição não pode ficar vazia.');
+  // Sem limite artificial de tamanho no rascunho: manter todo o texto editado
+  // pelo vendedor. A eventual restrição da Shopee é verificada na publicação.
 
  }
 }
@@ -82,7 +77,7 @@ export function validateReview(input){
   const title=input.title===undefined?undefined:normalizedTitle(input.title);
   const description=input.description===undefined?undefined:String(input.description||'').replace(/\r\n?/g,'\n').normalize('NFC').trim();
   if(title!==undefined&&!title)throw Error('Título vazio.');
-  if(description!==undefined&&codePointCount(description)>3000)throw Error('Descrição excede 3000 caracteres.');
+  // Texto longo pode ser salvo por SKU; limites reais são de responsabilidade da API Shopee.
   if(input.reviewed&&stage==='seo')validateContentRules({title:title??''});
   if(input.reviewed&&stage==='description')validateContentRules({description:description??''});
   const variationConfig=stage==='variants'?validateVariationConfig(input.variationConfig,input.reviewed):undefined;
