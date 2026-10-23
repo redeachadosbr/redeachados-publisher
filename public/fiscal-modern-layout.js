@@ -47,7 +47,7 @@ function field(fieldElement,key){
  const row=make('div','ra-fiscal-modern-field-label');
  // Preserve the existing label text, help text, provenance and input.
  const title=make('span','',name?.textContent?.trim()||key);
- if(name?.nodeType===Node.TEXT_NODE)name.textContent='';
+ if(name?.nodeType===3){fieldElement.dataset.originalFiscalLabel=name.textContent;name.textContent='';}
  row.append(title,info('Ajuda: '+title.textContent,tips[key]||'Verifique o cadastro deste produto.'));
  fieldElement.insertBefore(row,fieldElement.firstChild);
  return fieldElement;
@@ -86,12 +86,19 @@ function close(){
  if(fields){
   fields.querySelectorAll('label[data-fiscal-key]').forEach(label=>{
    const row=label.querySelector('.ra-fiscal-modern-field-label');
-   row?.remove();fields.append(label);label.classList.remove('ra-fiscal-modern-field');
+   row?.remove();
+   const textNode=label.firstChild;
+   if(textNode?.nodeType===3&&label.dataset.originalFiscalLabel!==undefined)
+    textNode.textContent=label.dataset.originalFiscalLabel;
+   delete label.dataset.originalFiscalLabel;
+   fields.append(label);label.classList.remove('ra-fiscal-modern-field');
    delete label.dataset.fiscalKey;
   });
   fields.querySelectorAll('.ra-fiscal-modern-card').forEach(card=>card.remove());
  }
  if(fiscal&&video)editor.insertBefore(fiscal,video);
+ fiscal?.querySelector(':scope > strong')?.removeAttribute('hidden');
+ fiscal?.querySelector(':scope > p.optimizer-video-help')?.removeAttribute('hidden');
  const disclaimer=editor.querySelector('.optimizer-workflow-disclaimer');
  if(actions&&disclaimer&&layout?.contains(actions))editor.insertBefore(actions,disclaimer);
  if(disclaimer&&layout?.contains(disclaimer))editor.append(disclaimer);
@@ -174,8 +181,8 @@ function open(data){
    '⚠ Confira o CEST de 7 dígitos quando aplicável. “00” não é um CEST válido para emissão.');
   cest.closest('label')?.append(caution);
  }
- // Only move the container for CSS positioning, its internal field descendants remain intact.
- fiscal.append(content);
+ // Keep the cards inside #optimizerFiscalFields; optimizerFiscalValues() reads these inputs.
+ fields.append(content);
  const disclaimer=editor.querySelector('.optimizer-workflow-disclaimer');
  root.append(actions);
  if(disclaimer)root.append(disclaimer);
