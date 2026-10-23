@@ -48,7 +48,7 @@ export async function saveWorkflowReview(shop,item,model,sku,change){
  if(change.titleOrigin!==undefined)next.titleOrigin=String(change.titleOrigin);
  if(change.descriptionOrigin!==undefined)next.descriptionOrigin=String(change.descriptionOrigin);
  if(change.previousGeneratedDescription!==undefined)
-   next.previousGeneratedDescription=String(change.previousGeneratedDescription).slice(0,3000);
+   next.previousGeneratedDescription=String(change.previousGeneratedDescription);
  await api('?on_conflict=shop_id,item_id,model_id',{
    method:'POST',body:[{shop_id:num(shop),item_id:num(item),model_id:num(model),
      sku,review_state:next,updated_at:new Date().toISOString()}]
