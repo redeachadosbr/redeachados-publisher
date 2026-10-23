@@ -8,9 +8,9 @@ import {isShopeeCestConfirmed} from './shopeeMatrixRules.js';
 // Preparation is deterministic for one verified item/model/SKU. This module
 // never calls Shopee, and never considers a reviewed checkbox a published item.
 const normal=s=>String(s??'').replace(/\r\n?/g,'\n').trim();
-export const SHOPEE_EXECUTION_STAGES=Object.freeze(['all','images','video','seo','technical','description','fiscal']);
+export const SHOPEE_EXECUTION_STAGES=Object.freeze(['all','images','video','seo','technical','description','fiscal','remaining']);
 export const SHOPEE_EXECUTION_STAGE_LABELS=Object.freeze({
- all:'Todas as etapas',images:'Imagens comerciais',video:'Vídeo do anúncio',
+ all:'Todas as etapas',remaining:'Somente variações, fiscal e desconto',images:'Imagens comerciais',video:'Vídeo do anúncio',
  seo:'Título SEO',technical:'Ficha técnica',description:'Descrição',fiscal:'Informações fiscais'
 });
 export function normalizeShopeeExecutionStage(stage='all'){
@@ -20,7 +20,8 @@ export function normalizeShopeeExecutionStage(stage='all'){
 }
 export function compileShopeeExecutionPlan({shopId,itemId,modelId,sku,record,review,live,manualVideo=null,verifiedVideoSha256=null,manualImages=[],deferUnconfirmedFiscal=false,omitFiscal=false,selectedStage='all',allowDiscountOnly=false,modelVariations=null}){
   selectedStage=normalizeShopeeExecutionStage(selectedStage);
-  const selected=name=>selectedStage==='all'||selectedStage===name;
+  const selected=name=>selectedStage==='all'||selectedStage===name||selectedStage==='remaining'&&name==='fiscal';
+  const wholeWorkflow=selectedStage==='all'||selectedStage==='remaining';
   const state=review||{},stages=state.stages||{};
   const title=normalizedTitle(state.draftTitle||'');
   const description=normal(state.draftDescription);
@@ -46,17 +47,19 @@ export function compileShopeeExecutionPlan({shopId,itemId,modelId,sku,record,rev
   }else if(selected('description')&&description&&description!==currentDescription)blocked.push('Revisar e registrar Descrição e variações antes de executar.');
   if(record?.hasModel||String(modelId)!=='0')
     warnings.push('As alterações são campos do anúncio-pai; a alteração afeta TODAS as variações deste Item ID.');
-  if(Number(record?.imageCount)<9)warnings.push('Imagens: '+record.imageCount+'/9; faltam arquivos aprovados, geração e upload.');
-  warnings.push('Vídeo: '+String(record?.videoStatus||'não verificado')+'. É necessário confirmar/upload autorizado.');
+  if(selectedStage!=='remaining'){
+   if(Number(record?.imageCount)<9)warnings.push('Imagens: '+record.imageCount+'/9; faltam arquivos aprovados, geração e upload.');
+   warnings.push('Vídeo: '+String(record?.videoStatus||'não verificado')+'. É necessário confirmar/upload autorizado.');
+  }else warnings.push('Título, descrição, ficha técnica, imagens e vídeo não serão alterados nesta execução.');
   if((record.attributeAudit?.missingMandatory||0)>0)warnings.push('Ficha técnica: atributos obrigatórios pendentes.');
   const changing=new Set(stages.technical?.reviewed?(state.attributes||[]).map(x=>Number(x.attributeId)):[]);
   const pendingAttributes=(record.attributeAudit?.attributes||[]).filter(x=>!x.conditional&&x.state==='missing'&&!changing.has(x.id));
   if(pendingAttributes.length)warnings.push('Ficha técnica: '+pendingAttributes.map(x=>x.name).join(', ')+'. Dados sem fonte permanecem pendentes; somente os campos revisados serão alterados.');
-  if(state.variationConfig?.enabled&&selectedStage==='all')warnings.push(modelVariations?
+  if(state.variationConfig?.enabled&&wholeWorkflow)warnings.push(modelVariations?
    'Variações reais incluídas no processamento automático antes dos dados fiscais e do desconto.':
    'Variações já publicadas ou sem rascunho confirmado: o sistema verifica os modelos reais antes de concluir.');
   if(!stages.fiscal?.reviewed||!state.tax)warnings.push('Fiscal: informe os dados e a fonte por SKU para preparar a alteração.');
-  warnings.push(selectedStage==='all'?'Desconto conferido será enviado como última etapa, somente após a confirmação comercial e fiscal.':'Preço e desconto não serão alterados nesta execução de etapa individual.');
+  warnings.push(wholeWorkflow?'Desconto conferido será enviado como última etapa, somente após a confirmação comercial e fiscal.':'Preço e desconto não serão alterados nesta execução de etapa individual.');
   if(selected('technical')&&stages.technical?.reviewed&&state.attributes?.length){
     try{const attributes=compileAttributes(state.attributes,record,live);
       if(!sameShopeeAttributes(attributes,live.attribute_list||[]))proposed.attribute_list=attributes;
@@ -65,7 +68,7 @@ export function compileShopeeExecutionPlan({shopId,itemId,modelId,sku,record,rev
   // Não bloquear uma alteração EXCLUSIVAMENTE fiscal por atributos técnicos
   // que NÃO serão modificados: Anatel continua obrigatório para conteúdo,
   // imagem, vídeo ou ficha técnica quando a árvore de atributos o exigir.
-  if(selectedStage!=='fiscal'){
+  if(selectedStage!=='fiscal'&&selectedStage!=='remaining'){
     try{
       const technicalDraft=selected('technical')&&stages.technical?.reviewed&&state.attributes?.length
         ?attributeAuditForChanges(state.attributes,record,live):record.attributeAudit;
@@ -92,16 +95,16 @@ export function compileShopeeExecutionPlan({shopId,itemId,modelId,sku,record,rev
     try{
       const tax=compileTax(state.tax,live);
       if(!sameData(tax,live.tax_info||{})){
-        if(selectedStage==='all')finalFiscal=tax;
+        if(wholeWorkflow)finalFiscal=tax;
         else proposed.tax_info=tax;
       }
     }catch(e){
       // Falha fiscal não deve apagar alterações comerciais previamente aprovadas.
-      if(selectedStage==='all')warnings.push('Fiscal pendente: '+e.message+' Revise o Motor Matriz.');
+      if(wholeWorkflow)warnings.push('Fiscal pendente: '+e.message+' Revise o Motor Matriz.');
       else blocked.push(e.message);
     }
   }
-  if(selectedStage==='all'&&finalFiscal)
+  if(wholeWorkflow&&finalFiscal)
     warnings.push('Fiscal será a ÚLTIMA etapa: primeiro confirmar conteúdo e mídia na Shopee; depois enviar e verificar os campos fiscais. Se recusado, mostrar pendência explícita.');
   let images=[];
   if(selected('images')&&stages.images?.reviewed&&manualImages.length){
@@ -147,7 +150,9 @@ export function compileShopeeExecutionPlan({shopId,itemId,modelId,sku,record,rev
     blocked,warnings,canExecute,
     fingerprint,fiscalDeferred,selectedStage,discountOnly,createdAt:new Date().toISOString(),marketplaceUpdated:false,
     requiresExplicitConfirmation:true,
-    scope:selectedStage==='all'?'Conteúdo e mídia → modelos → fiscal → desconto por variação':'Somente '+SHOPEE_EXECUTION_STAGE_LABELS[selectedStage]+'; outras etapas não serão enviadas'};
+    scope:selectedStage==='all'?'Conteúdo e mídia → modelos → fiscal → desconto por variação':
+     selectedStage==='remaining'?'Apenas modelos → fiscal → desconto (sem edição de conteúdo ou mídia)':
+     'Somente '+SHOPEE_EXECUTION_STAGE_LABELS[selectedStage]+'; outras etapas não serão enviadas'};
 }
 export function confirmShopeeExecution(plan,{sku,confirmation}={}){
   if(!plan||!plan.canExecute||(Object.keys(plan.proposed||{}).length===0&&!plan.finalFiscal&&!plan.video&&!plan.images?.length&&!plan.discountOnly&&!plan.modelVariations))
