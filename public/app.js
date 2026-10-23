@@ -3379,6 +3379,8 @@ async function optimizerFinalPendingRefresh(force=false){
  if(!wrap||!w?.sku||!w?.itemId)return;
  const key=[w.sku,w.itemId,w.modelId].join('|');
  const hasVariantDraft=w.variationConfig?.enabled===true;
+ // Quando a prévia única inclui os modelos, não exibir execução manual paralela.
+ if(optimizerExecPlan?.modelVariations||optimizerExecJob?.plan?.modelVariations){wrap.hidden=true;return;}
  if(!hasVariantDraft&&!optimizerExecJob?.state)return;
  wrap.hidden=false;
  const line=$('#optimizerFinalVariantsState'),last=$('#optimizerFinalDiscountState');
@@ -4014,6 +4016,7 @@ function optimizerExecRender(data){
  const plan=data.plan,context=optimizerExecContext;
  if(!plan||!context||context.sku!==plan.sku||context.itemId!==plan.itemId||context.modelId!==plan.modelId)return;
  optimizerExecPlan={...plan,updatedAt:data.updatedAt};
+ if(plan.modelVariations)$('#optimizerFinalPending').hidden=true;
  optimizerExecAutoModelToken=data.autoModelDiscountToken||null;
  optimizerExecAutoModelPreview=data.autoModelDiscountPreview||null;
  optimizerExecFiscalLast(plan);
@@ -4060,7 +4063,7 @@ function optimizerExecRender(data){
    optimizerExecRow(blocked,'Pendências que impedem a execução:','heading');
    for(const issue of plan.blocked)optimizerExecRow(blocked,'• '+issue,'blocker');
  }
- optimizerExecRow(warn,'Demais etapas ainda não executadas automaticamente:','heading');
+ optimizerExecRow(warn,'Verificações e cuidados incluídos no fluxo:','heading');
  for(const warning of plan.warnings)optimizerExecRow(warn,'• '+warning,'warning');
  $('#optimizerExecutionSummary').hidden=false;
  // As etapas já foram revisadas. Uma ação explícita no botão azul inicia o fluxo,
@@ -4074,7 +4077,9 @@ function optimizerExecRender(data){
  $('#optimizerExecutionInput').value='';
  $('#optimizerExecutionPhrase').textContent='EXECUTAR '+plan.sku;
  optimizerExecUpdateRunButton();
- optimizerExecNotice(data.ready
+ optimizerExecNotice(data.ready&&plan.modelVariations?
+   'Prévia única pronta: anúncio → variações → fiscal → desconto por modelo. Revise os preços e execute uma só vez.':
+   data.ready
    ?plan.fiscalDeferred===true
      ?'Fiscal ainda pendente: a etapa fiscal não foi incluída por validação anterior. O restante aprovado pode ser executado, sem afirmar envio fiscal.'
      :plan.finalFiscal
@@ -4140,7 +4145,8 @@ async function optimizerExecutionPrepare(){
      body:JSON.stringify({sku:w.sku,itemId:w.itemId,modelId:w.modelId,
        stage:$('#optimizerExecutionScope').value,
        campaignId:String($('#optimizerExecDiscountCampaign')?.value||
-        $('#optimizerFinalCampaignId')?.value||$('#discountPromotionId')?.value||'').trim(),
+        $('#optimizerFinalCampaignId')?.value||$('#discountPromotionId')?.value||
+        optimizerDiscountFinalPreviewData?.preview?.discountId||'').trim(),
        ...($('#optimizerExecutionScope').value==='all'&&optimizerDiscountApprovalReady()?
         {discountApprovalToken:optimizerDiscountFinalPreviewData?.approvalToken}:{})}),
      signal:AbortSignal.timeout(75000)
