@@ -113,7 +113,11 @@
    }),
    shortcut('◇','Auditoria técnica do anúncio','Fotos, atributos e revisão',()=>{
      const target=$('#optimizerAuditPanel')||$('#optimizerDashAudit');
-     if(target){target.hidden=false;target.scrollIntoView({behavior:'smooth',block:'start'});}
+     if(target){
+       target.hidden=false;
+       if(target.tagName==='DETAILS')target.open=true;
+       target.scrollIntoView({behavior:'smooth',block:'start'});
+     }
      if(target?.tagName==='BUTTON')target.click();
    })
  );
