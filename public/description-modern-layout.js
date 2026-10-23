@@ -1,0 +1,208 @@
+/* Rede Achados BR — Etapa 05 / Descrição compacta. Reutiliza os controles existentes. */
+(()=>{
+ 'use strict';
+ const $=id=>document.getElementById(id);
+ const el=(tag,cls,text)=>{
+  const node=document.createElement(tag);
+  if(cls)node.className=cls;
+  if(text!==undefined)node.textContent=String(text);
+  return node;
+ };
+ const button=(label,fn,cls='')=>{
+  const b=el('button',cls,label);b.type='button';b.addEventListener('click',fn);return b;
+ };
+ const help=(label,message)=>{
+  const wrap=el('details','desc-modern-help');
+  const trigger=el('summary','','?');trigger.title=label;trigger.setAttribute('aria-label',label);
+  wrap.append(trigger,el('p','',message));return wrap;
+ };
+ const safeText=s=>String(s??'').trim();
+ const sourceUrl=url=>typeof url==='string'&&/^https:\/\//i.test(url)?url:'';
+ let identity='',listeners=[],countNode=null,barNode=null,sourceNode=null;
+ const listen=(node,event,callback)=>{
+  node?.addEventListener(event,callback);
+  listeners.push(()=>node?.removeEventListener(event,callback));
+ };
+ function jump(id){
+  const dest=$(id);
+  if(!dest)return;
+  if(dest.tagName==='DETAILS')dest.open=true;
+  dest.hidden=false;
+  dest.scrollIntoView({behavior:'smooth',block:'center'});
+  dest.querySelector('summary')?.focus({preventScroll:true});
+ }
+ function close(){
+  for(const unsubscribe of listeners.splice(0))unsubscribe();
+  const editor=$('optimizerWorkflowEditor');
+  const preview=$('optimizerDescriptionCompact'),draft=$('optimizerWorkflowDraftWrap');
+  const research=$('optimizerContentResearch'),variants=$('optimizerTitleVariants');
+  const toggle=$('optimizerDescriptionToggle');
+  if(!editor)return;
+  // Restore DOM ownership so every other workflow stage retains its native controls.
+  if(toggle&&preview&&!preview.contains(toggle))preview.append(toggle);
+  if(preview&&variants)editor.insertBefore(preview,variants);
+  if(draft&&variants)editor.insertBefore(draft,variants);
+  if(research&&$('optimizerImagesPanel'))editor.insertBefore(research,$('optimizerImagesPanel'));
+  $('optimizerDescriptionModern')?.remove();
+  editor.classList.remove('desc-modern-editor');
+  countNode=null;barNode=null;sourceNode=null;identity='';
+ }
+ function sync(){
+  const editor=$('optimizerWorkflowEditor');
+  if(!editor?.classList.contains('desc-modern-editor')||!countNode)return;
+  const draft=$('optimizerWorkflowDraft');
+  const raw=safeText(draft?.value);
+  const length=[...raw.normalize('NFC')].length;
+  countNode.textContent=length+' / 1440 caracteres';
+  countNode.setAttribute('aria-label',length+' caracteres na descrição');
+  const pct=Math.min(100,Math.round(length/1440*100));
+  if(barNode){barNode.value=Math.min(length,1440);barNode.title=pct+'% do alvo de 1440 caracteres';}
+  const valid=length>=1400&&length<=1440;
+  const counts=editor.querySelectorAll('.desc-modern-count');
+  counts.forEach(n=>n.dataset.valid=valid?'true':'false');
+  const tags=editor.querySelectorAll('[data-desc-part]');
+  const tests={
+   specifications:/especifica[çc][õo]es|caracter[ií]sticas|material|composi[çc][ãa]o/i,
+   measures:/medidas|dimens[õo]es|comprimento|largura|altura/i,
+   doubts:/d[uú]vidas|perguntas frequentes|faq/i,
+   reasons:/motivos|benef[ií]cios|vantagens/i
+  };
+  for(const tag of tags){
+   const rule=tests[tag.dataset.descPart];
+   const exists=Boolean(rule?.test(raw));
+   tag.hidden=!exists;
+  }
+  const compact=$('optimizerDescriptionCompact');
+  if(compact&&!compact.hidden&&safeText($('optimizerDescriptionCompactIntro')?.textContent)==='')
+   $('optimizerDescriptionCompactIntro').textContent='A prévia será exibida quando houver uma descrição.';
+  if(sourceNode){
+   const source=safeText($('optimizerContentResearch')?.textContent);
+   sourceNode.textContent=source||'Dados da SKU e anúncio Shopee. Confira os fatos antes de publicar.';
+  }
+ }
+ function open(data){
+  close();
+  const editor=$('optimizerWorkflowEditor'),preview=$('optimizerDescriptionCompact');
+  const draft=$('optimizerWorkflowDraftWrap'),field=$('optimizerWorkflowDraft');
+  const research=$('optimizerContentResearch'),toggle=$('optimizerDescriptionToggle');
+  if(!editor||!preview||!draft||!field||!research||!toggle||!data)return;
+  identity=[data.sku,data.itemId,data.modelId].join(':');
+  editor.classList.add('desc-modern-editor');
+  const layout=el('div','desc-modern-layout');layout.id='optimizerDescriptionModern';
+  editor.insertBefore(layout,editor.firstChild);
+
+  const supplier=data.supplierProduct||{};
+  const headline=el('section','desc-modern-hero');
+  const photo=el('div','desc-modern-photo');
+  const imageUrl=(Array.isArray(data.imageUrls)?data.imageUrls:[]).map(sourceUrl).find(Boolean);
+  if(imageUrl){
+   const img=el('img');img.src=imageUrl;img.loading='lazy';
+   img.alt='Fotografia original do anúncio SKU '+safeText(data.sku);
+   photo.append(img);
+  }else photo.append(el('span','', '▧'));
+  const heroText=el('div','desc-modern-hero-text');
+  const badges=el('div','desc-modern-hero-badges');
+  badges.append(el('span','desc-modern-sku','SKU '+safeText(data.sku)));
+  if(supplier.source)badges.append(el('span','desc-modern-origin',safeText(supplier.source)));
+  heroText.append(badges,el('h3','',safeText(data.productTitle||supplier.name||data.draftTitle||'Produto Shopee')));
+  const meta=[supplier.brand||'',supplier.ncm?'NCM: '+supplier.ncm:'',supplier.ean?'EAN: '+supplier.ean:''].filter(Boolean);
+  if(meta.length)heroText.append(el('p','desc-modern-metadata',meta.join('  |  ')));
+  const market=button('◉ Conferir anúncio na Shopee ↗',()=>{
+   const link=$('optimizerWorkflowShopee');
+   if(link?.href&&link.href!=='#')window.open(link.href,'_blank','noopener,noreferrer');
+  },'desc-modern-market');
+  headline.append(photo,heroText,market);layout.append(headline);
+
+  const section=el('section','desc-modern-main');
+  const heading=el('div','desc-modern-head');
+  const step=el('span','desc-modern-step','ETAPA 05');
+  const headingText=el('div','desc-modern-heading-text');
+  const h=el('div','desc-modern-title-line');
+  h.append(el('strong','','Descrição'),
+   help('Revisão da descrição','Revise todas as informações antes de registrar a etapa. Registrar a conferência não publica alterações na Shopee.'));
+  headingText.append(h,el('p','','Revise, edite e valide o texto comercial antes de gravar na Shopee.'));
+  const state=el('div','desc-modern-state');
+  state.append(el('strong','','✓ '+(data.descriptionAutoGenerated?'Descrição gerada automaticamente':'Descrição preparada para revisão')),
+   el('small','',data.descriptionAutoGenerated?'Baseada nos dados da SKU, WeDrop e Shopee.':'Texto preservado para revisão da SKU.'));
+  const gauge=el('div','desc-modern-count');
+  countNode=el('span','desc-modern-count-text','0 / 1440 caracteres');
+  barNode=el('progress','desc-modern-progress');barNode.max=1440;barNode.value=0;
+  barNode.setAttribute('aria-label','Progresso de caracteres na descrição');
+  gauge.append(countNode,barNode);
+  heading.append(step,headingText,state,gauge);section.append(heading);
+
+  const strip=el('div','desc-modern-supplier');
+  strip.append(el('span','desc-modern-supplier-icon','▤'));
+  const stripText=el('div');
+  stripText.append(el('strong','',supplier.source||'Informações da WeDrop'),
+   el('small','',[supplier.name||data.productTitle||'SKU '+data.sku,supplier.brand||'',
+    supplier.ncm?'NCM: '+supplier.ncm:'',supplier.ean?'EAN: '+supplier.ean:''].filter(Boolean).join(' · ')));
+  strip.append(stripText);section.append(strip);
+
+  const columns=el('div','desc-modern-columns');
+  const left=el('section','desc-modern-panel desc-modern-preview-panel');
+  const leftHeader=el('div','desc-modern-panel-head');
+  const leftTitle=el('div','desc-modern-panel-title');
+  leftTitle.append(el('span','desc-modern-panel-icon','◉'),el('strong','','Prévia da descrição'),
+   help('Prévia resumida','A prévia exibe apenas a introdução e os principais blocos. O texto completo fica no editor à direita.'));
+  leftHeader.append(leftTitle);
+  leftHeader.append(toggle);columns.append(left);
+  left.append(leftHeader,preview);
+  preview.hidden=false;
+  const chips=preview.querySelector('.optimizer-description-compact-tags');
+  if(chips){
+   chips.replaceChildren();
+   for(const [name,label] of [
+    ['specifications','⚙ Especificações'],['measures','📏 Medidas'],
+    ['doubts','❓ Dúvidas'],['reasons','☀ Benefícios']]){
+    const chip=el('span','',label);chip.dataset.descPart=name;chips.append(chip);
+   }
+  }
+  draft.hidden=false;
+  toggle.textContent='Recolher edição ⌃';
+  toggle.setAttribute('aria-controls','optimizerWorkflowDraftWrap');
+
+  const right=el('section','desc-modern-panel desc-modern-editor-panel');
+  const rightHeader=el('div','desc-modern-panel-head');
+  const rightTitle=el('div','desc-modern-panel-title');
+  rightTitle.append(el('span','desc-modern-panel-icon purple','✎'),
+   el('strong','','Rascunho da descrição'),
+   help('Editor completo','O mesmo campo original do Shopee Manager, com salvamento automático por SKU. Use Registrar etapa como conferida para confirmar sua revisão.'));
+  rightHeader.append(rightTitle,el('small','desc-modern-editor-counter','Edição automática por SKU'));
+  right.append(rightHeader,draft);
+  field.rows=9;field.setAttribute('aria-label','Editar descrição do anúncio Shopee');
+  const source=el('div','desc-modern-source');
+  source.append(el('span','desc-modern-source-icon','▤'));
+  const sourceText=el('div');
+  sourceText.append(el('strong','','Fonte do rascunho'),
+   help('Origem do texto','As especificações usadas pelo sistema vêm do cadastro da SKU e das fontes salvas. Revise informações que possam estar incompletas.'));
+  sourceNode=el('p','','');
+  sourceText.append(sourceNode);
+  source.append(sourceText);right.append(source);
+  columns.append(right);section.append(columns);
+
+  const tools=el('div','desc-modern-tools');
+  for(const [icon,title,detail,id] of [
+   ['▤','Informações da WeDrop','Dados, textos e prints desta SKU','optimizerSourcePanel'],
+   ['◇','Regras salvas da loja','Diretrizes e padrões de descrições','optimizerRulesDetails'],
+   ['▣','Auditoria técnica do anúncio','Fotos, atributos e informações obrigatórias','optimizerAuditPanel']
+  ]){
+   const link=button('',()=>jump(id),'desc-modern-tool');
+   link.replaceChildren(el('span','desc-modern-tool-icon',icon));
+   const description=el('span','desc-modern-tool-copy');
+   description.append(el('strong','',title),el('small','',detail));
+   link.append(description,el('span','desc-modern-tool-arrow','›'));
+   tools.append(link);
+  }
+  section.append(tools);layout.append(section);
+  // Preserve the provenance text node and its source-refresh logic.
+  section.append(research);
+  research.hidden=false;
+  const onInput=()=>sync();
+  listen(field,'input',onInput);
+  const onToggle=()=>requestAnimationFrame(sync);
+  listen(toggle,'click',onToggle);
+  sync();
+ }
+ globalThis.ShopeeDescriptionStudio={open,close,sync};
+})();
