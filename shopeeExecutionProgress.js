@@ -14,9 +14,16 @@ export function shopeeExecutionProgress(job){
  if(!job)return null;
  const plan=job.plan||{},result=job.result||{},phase=String(result.phase||'');
  const state=String(job.state||'');
- const images=arr(plan.images).length,uploaded=Math.min(images,arr(result.imageIds).length);
- const video=Boolean(plan.video),readyVideo=result.video?.phase==='ready';
+ // A new preview keeps validated media from the previous attempt. Its result
+ // is still null until authorization; that must not erase the saved progress.
+ const media=plan.reusedMedia||{};
+ const imageIds=arr(result.imageIds).length?result.imageIds:arr(media.imageIds);
+ const savedVideo=result.video||media.video;
+ const images=arr(plan.images).length,uploaded=Math.min(images,imageIds.length);
+ const video=Boolean(plan.video),readyVideo=video&&savedVideo?.phase==='ready';
  const started=['running','failed','uncertain','verified'].includes(state);
+ const hasSavedProgress=uploaded>0||readyVideo;
+ const resumable=state==='prepared'&&plan.canExecute===true&&hasSavedProgress;
  const fiscalPartial=state==='verified'&&phase==='verified_partial';
  const fullWorkflow=plan.selectedStage==='all';
  const discountIncluded=Boolean(plan.commercialDiscount||plan.modelVariations?.promotion);
@@ -37,7 +44,7 @@ export function shopeeExecutionProgress(job){
  const videoFinished=!video||Boolean(readyVideo)||verified;
  const updateAccepted=commercialConfirmed||phase==='verifying'||phase==='verified';
  const total=1+images+(video?1:0)+1+1+(variationsIncluded?1:0)+(plan.finalFiscal?1:0)+(discountIncluded?1:0);
- const completed=(started?1:0)+uploaded+(video&&readyVideo?1:0)+(updateAccepted?1:0)+
+ const completed=(started||resumable?1:0)+uploaded+(video&&readyVideo?1:0)+(updateAccepted?1:0)+
   (commercialConfirmed?1:0)+(variationsDone?1:0)+(fiscalDone?1:0)+(discountDone?1:0);
  const percent=verified?100:Math.min(fiscalPartial?95:99,Math.round(completed/total*100));
  const failure=['failed','uncertain'].includes(state)||fiscalPartial;
@@ -66,6 +73,7 @@ export function shopeeExecutionProgress(job){
  };
  const title=fiscalPartial?'Comercial confirmado · Fiscal pendente':verified?'Alterações confirmadas':state==='uncertain'?'Confirmação pendente':
   state==='failed'?'Execução interrompida':state==='blocked'?'Pendências para executar':
+  resumable?'Progresso recuperado · pronto para retomar':
   state==='prepared'?'Pronto para executar':phaseNames[phase]||'Execução em andamento';
  const step=(id,label,s)=>({id,label,status:s});
  const steps=[
@@ -97,7 +105,7 @@ export function shopeeExecutionProgress(job){
   state,phase,title,percent,steps,events,startedAt:result.startedAt||null,
   updatedAt:job.updated_at||null,imagesTotal:images,imagesUploaded:uploaded,imagePercent,
   videoIncluded:video,videoReady:readyVideo,videoPublished:(verified||fiscalPartial)&&video,
-  imagesPublished:(verified||fiscalPartial)?images:0,hasStarted:started,verified,fiscalPartial,
+  imagesPublished:(verified||fiscalPartial)?images:0,hasStarted:started,hasSavedProgress,resumable,verified,fiscalPartial,
   fiscalStatus:fiscalPartial?'rejected':fiscalDone?'verified':fiscalActive?'in_progress':plan.finalFiscal?'pending':'not_included',
   variationsStatus:variationsDone?'verified':variationsActive?'in_progress':variationsIncluded?'pending':'not_included',
   discountStatus:discountDone?'verified':discountActive?'in_progress':
@@ -113,6 +121,9 @@ export function shopeeExecutionProgress(job){
     'Resultado não confirmado. Confira antes de tentar novamente.')
    :state==='failed'?uploaded+' imagens na mídia Shopee, '+(verified?images:0)+
      ' aplicadas ao anúncio. A Shopee recusou a atualização; veja a pendência para corrigir.'
+   :resumable?[uploaded?uploaded+' imagens já enviadas à mídia Shopee':null,
+     readyVideo?'vídeo já processado':null].filter(Boolean).join(' · ')+
+     '. Retome para conferir o anúncio e continuar as etapas pendentes, sem repetir esses envios.'
    :state==='prepared'?'Plano aprovado. Aguardando seu comando Executar na Shopee.'
    :state==='blocked'?'Corrija as pendências da prévia antes de executar.'
    :phaseNames[phase]||title

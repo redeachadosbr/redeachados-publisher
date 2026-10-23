@@ -3213,7 +3213,11 @@ async function optimizerWorkflowLoad(record){
 }
 $('#optimizerWorkflowClose')?.addEventListener?.('click',()=>{globalThis.ShopeeFiscalStudio?.close?.();globalThis.ShopeeDescriptionStudio?.close?.();globalThis.ShopeeTitleStudio?.close?.();$('#optimizerWorkflowEditor').hidden=true;optimizerWorkflowStage=null;});
 $('#optimizerShowExecution')?.addEventListener?.('click',()=>{
- if($('#optimizerExecutionScope')?.value==='all'&&!optimizerDiscountApprovalReady()){
+ const saved=optimizerExecJob&&String(optimizerExecJob.sku)===String(optimizerWorkflowPlan?.sku)&&
+  String(optimizerExecJob.item_id)===String(optimizerWorkflowPlan?.itemId)&&
+  String(optimizerExecJob.model_id||0)===String(optimizerWorkflowPlan?.modelId||0);
+ if(!saved&&optimizerWorkflowPlan?.variationConfig?.enabled!==true&&
+  $('#optimizerExecutionScope')?.value==='all'&&!optimizerDiscountApprovalReady()){
   optimizerDiscountOpenReview();
   optimizerWorkflowNotice('Conclua a conferência do desconto na etapa 08 acima para liberar a execução completa.','warning');
   return;
@@ -3345,20 +3349,30 @@ $('#optimizerWorkflowReview')?.addEventListener?.('click',async()=>{
 let optimizerExecPlan=null,optimizerExecContext=null,optimizerExecBusy=false,optimizerExecSerial=0;
 let optimizerExecAutoModelToken=null,optimizerExecAutoModelPreview=null;
 let optimizerExecPoll=null,optimizerExecJob=null,optimizerExecPolling=false,optimizerExecStartError='';
+let optimizerExecPreparation=null,optimizerExecProgress=null;
 let optimizerExecSafeRecoveryKey='',optimizerExecSafeRecovering=false;
 function optimizerExecNotice(message,state='info'){
  const e=$('#optimizerExecutionStatus');e.textContent=message;e.dataset.state=state;
 }
 function optimizerExecReset(){
  optimizerExecStartError='';
- if(optimizerExecPoll)clearTimeout(optimizerExecPoll);optimizerExecPoll=null;optimizerExecJob=null;
+ const keepProgress=optimizerExecProgress&&optimizerWorkflowPlan&&
+  String(optimizerExecProgress.sku)===String(optimizerWorkflowPlan.sku)&&
+  String(optimizerExecProgress.itemId)===String(optimizerWorkflowPlan.itemId)&&
+  String(optimizerExecProgress.modelId)===String(optimizerWorkflowPlan.modelId||0);
+ if(!keepProgress){
+  if(optimizerExecPoll)clearTimeout(optimizerExecPoll);optimizerExecPoll=null;optimizerExecJob=null;
+ }
  $('#optimizerExecutionReconcile').hidden=true;$('#optimizerExecutionRetry').hidden=true;
  $('#optimizerExecutionLaunch').hidden=true;
  $('#optimizerExecutionShopeeLink').hidden=true;
  $('#optimizerExecutionIssue').hidden=true;
  optimizerExecSafeRecoveryKey='';optimizerExecSafeRecovering=false;
- $('#optimizerExecutionTracker').hidden=true;
- $('#optimizerExecutionActivity').hidden=true;
+ if(!keepProgress){
+  optimizerExecProgress=null;
+  $('#optimizerExecutionTracker').hidden=true;
+  $('#optimizerExecutionActivity').hidden=true;
+ }
  ++optimizerExecSerial;optimizerExecPlan=null;optimizerExecContext=null;optimizerExecBusy=false;
  optimizerExecAutoModelToken=null;optimizerExecAutoModelPreview=null;
  $('#optimizerExecutionSummary').hidden=true;
@@ -3547,10 +3561,12 @@ function optimizerExecutionTrackerRender(progress,job){
  if(!progress)return;
  const tracker=$('#optimizerExecutionTracker'),activity=$('#optimizerExecutionActivity');
  if(!tracker||!activity)return;
- const visible=Boolean(progress.hasStarted);
+ const visible=Boolean(progress.hasStarted||progress.hasSavedProgress||progress.state==='prepared'||progress.state==='blocked');
  tracker.hidden=!visible;activity.hidden=!visible;
  if(!visible)return;
  const w=optimizerWorkflowPlan||{},sku=String(job?.sku||w.sku||'');
+ optimizerExecProgress={...progress,sku,itemId:String(job?.item_id||w.itemId||''),
+  modelId:String(job?.model_id??job?.plan?.modelId??w.modelId??0)};
  $('#optimizerExecutionSku').textContent='SKU '+sku;
  const itemId=String(job?.item_id||w.itemId||'');
  $('#optimizerExecutionItemId').textContent='Item ID '+itemId;
@@ -3573,7 +3589,8 @@ function optimizerExecutionTrackerRender(progress,job){
    new Date(at).toLocaleString('pt-BR',{day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'}):
    'Horário indisponível';
  const badge=$('#optimizerExecutionLiveBadge');
- badge.textContent=progress.verified?'✓ Confirmado':progress.attention?'! Atenção':'● Atualização automática';
+ badge.textContent=progress.verified?'✓ Confirmado':progress.attention?'! Atenção':
+  !progress.hasStarted?progress.resumable?'● Pronto para retomar':'● Aguardando execução':'● Atualização automática';
  badge.dataset.state=progress.fiscalPartial?'warning':progress.state;
  const pct=Math.max(0,Math.min(100,Number(progress.percent)||0));
  $('#optimizerExecutionPercent').textContent=pct+'%';
@@ -4016,6 +4033,8 @@ function optimizerExecRender(data){
  const plan=data.plan,context=optimizerExecContext;
  if(!plan||!context||context.sku!==plan.sku||context.itemId!==plan.itemId||context.modelId!==plan.modelId)return;
  optimizerExecPlan={...plan,updatedAt:data.updatedAt};
+ optimizerExecJob={sku:plan.sku,item_id:plan.itemId,model_id:plan.modelId,plan,
+  state:data.executionStatus||(data.ready?'prepared':'blocked'),updated_at:data.updatedAt,result:null};
  if(plan.modelVariations)$('#optimizerFinalPending').hidden=true;
  optimizerExecAutoModelToken=data.autoModelDiscountToken||null;
  optimizerExecAutoModelPreview=data.autoModelDiscountPreview||null;
@@ -4025,7 +4044,8 @@ function optimizerExecRender(data){
  void optimizerDiscountFinalLoad();
  $('#optimizerExecutionScope').value=plan.selectedStage||'all';
  optimizerExecutionIssueRender(data.issue||null);
- optimizerExecutionTrackerRender(data.progress,{sku:plan.sku,item_id:plan.itemId,plan});
+ optimizerExecutionTrackerRender(data.progress,optimizerExecJob);
+ if(data.progress?.hasSavedProgress)$('#optimizerExecutionPanel').hidden=false;
  const changes=$('#optimizerExecutionChanges'),blocked=$('#optimizerExecutionBlockers'),warn=$('#optimizerExecutionWarnings');
  changes.replaceChildren();blocked.replaceChildren();warn.replaceChildren();
  if(plan.actions.length){
@@ -4078,7 +4098,8 @@ function optimizerExecRender(data){
  $('#optimizerExecutionInput').value='';
  $('#optimizerExecutionPhrase').textContent='EXECUTAR '+plan.sku;
  optimizerExecUpdateRunButton();
- optimizerExecNotice(data.ready&&plan.modelVariations?
+ optimizerExecNotice(data.ready&&data.progress?.resumable?data.progress.message:
+   data.ready&&plan.modelVariations?
    'Prévia única pronta: anúncio → variações → fiscal → desconto por modelo. Revise os preços e execute uma só vez.':
    data.ready
    ?plan.fiscalDeferred===true
@@ -4099,7 +4120,9 @@ function optimizerExecUpdateRunButton(){
    p.sku!==optimizerExecContext.sku||p.itemId!==optimizerExecContext.itemId||
    p.modelId!==optimizerExecContext.modelId||!optimizerDiscountReviewedForExecution(p);
  $('#optimizerExecutionLaunch').disabled=unavailable;
- $('#optimizerExecutionLaunch').textContent=p?.modelVariations?'▶ Executar anúncio + variações + fiscal + desconto':
+ const resume=Boolean(p?.reusedMedia?.imageIds?.length||p?.reusedMedia?.video?.phase==='ready');
+ $('#optimizerExecutionLaunch').textContent=resume?'▶ Retomar de onde parou':
+  p?.modelVariations?'▶ Executar anúncio + variações + fiscal + desconto':
   p?.selectedStage==='all'?'▶ Executar anúncio + desconto na Shopee':'▶ Executar etapa aprovada na Shopee';
  $('#optimizerExecutionLaunch').title=!optimizerDiscountReviewedForExecution(p)
    ?'Conferir a promoção no bloco de desconto antes de executar a SKU':'Executar etapas aprovadas na Shopee';
@@ -4126,8 +4149,15 @@ $('#optimizerConnectionCheck')?.addEventListener?.('click',()=>void optimizerCon
 async function optimizerExecutionPrepare(){
  const w=optimizerWorkflowPlan;
  if(!w||optimizerExecBusy)return;
+ const key=[w.sku,w.itemId,w.modelId,$('#optimizerExecutionScope').value].join('|');
+ if(optimizerExecPreparation){
+  if(optimizerExecPreparation.key!==key||optimizerExecPreparation.serial!==optimizerExecSerial)
+   optimizerExecPreparation.again=true;
+  return;
+ }
  optimizerExecStartError='';
  const serial=++optimizerExecSerial;
+ const preparation={key,serial,again:false};optimizerExecPreparation=preparation;
  optimizerExecContext={sku:w.sku,itemId:w.itemId,modelId:w.modelId};
  optimizerExecPlan=null;optimizerExecAutoModelToken=null;optimizerExecAutoModelPreview=null;
  $('#optimizerExecutionSummary').hidden=true;
@@ -4162,7 +4192,13 @@ async function optimizerExecutionPrepare(){
      if(/SHOPEE_PARTNER_|SHOPEE_REDIRECT_|configur|Shopee HTTP/i.test(e.message))
        void optimizerConnectionCheck();
    }
- }finally{btn.disabled=false}
+ }finally{
+  optimizerExecPreparation=null;btn.disabled=false;
+  // A review saved while the API was reading invalidates that response. Prepare
+  // the current draft once, instead of leaving a blank panel or racing requests.
+  if((preparation.again||serial!==optimizerExecSerial)&&optimizerWorkflowPlan&&!optimizerExecBusy)
+   setTimeout(()=>void optimizerExecutionPrepare(),100);
+ }
 }
 $('#optimizerExecutionPrepare')?.addEventListener?.('click',()=>void optimizerExecutionPrepare());
 $('#optimizerExecutionScope')?.addEventListener?.('change',()=>{
@@ -4195,6 +4231,12 @@ async function optimizerExecuteApproved(){
  $('#optimizerExecutionLaunch').hidden=true;
  let previewMustRefresh=false;
  optimizerExecNotice('Validando a prévia e iniciando somente as alterações aprovadas...');
+ $('#optimizerExecutionPanel').hidden=false;
+ if(optimizerExecProgress){
+  optimizerExecutionTrackerRender({...optimizerExecProgress,
+   title:'Retomando execução',message:'Validando as etapas aprovadas; o progresso salvo será preservado.'},optimizerExecJob);
+  $('#optimizerExecutionTracker').scrollIntoView?.({behavior:'smooth',block:'nearest'});
+ }
  // A aprovação é registrada no job do servidor no mesmo clique único.
  try{
    const out=await json('/api/shopee/optimizer/execution/execute',{
@@ -4489,7 +4531,7 @@ function optimizerExecutionJobView(job,progress=null,issue=null){
  if(job?.state==='uncertain')optimizerExecutionAutoRecoverStale(job);
  if(!job)globalThis.OptimizerSkuDashboard?.execution?.(null,null);
  // Continuar acompanhando a SKU automaticamente mesmo após recarregar a página.
- if(job&&['running','uncertain'].includes(job.state)){
+ if(job&&(['running','uncertain'].includes(job.state)||progress?.hasSavedProgress)){
   $('#optimizerExecutionPanel').hidden=false;
   $('#optimizerWorkflowEditor').hidden=true;
  }
@@ -4518,7 +4560,8 @@ function optimizerExecutionJobView(job,progress=null,issue=null){
  if(job.state!=='prepared')optimizerExecStartError='';
  const labels={images_upload:'Enviando imagens',queued:'Na fila',video_upload:'Enviando vídeo',video_processing:'Shopee processando vídeo',
   updating:'Aplicando alterações',verifying:'Conferindo o anúncio na Shopee',verified:'Alterações confirmadas',retry_allowed:'Pronto para uma nova prévia'};
- let message=labels[job.result?.phase]||({failed:'Execução interrompida',uncertain:'Aguardando confirmação',prepared:'Prévia preparada',blocked:'Revisão pendente'}[job.state])||job.state;
+ let message=progress?.resumable?progress.message:
+  labels[job.result?.phase]||({failed:'Execução interrompida',uncertain:'Aguardando confirmação',prepared:'Prévia preparada',blocked:'Revisão pendente'}[job.state])||job.state;
  if(job.result?.phase==='images_upload')message+=' · '+(job.result.imageIds||[]).length+'/9';
  if(job.result?.video?.totalParts&&job.result.video.phase==='uploading')message+=' · parte '+job.result.video.nextPart+'/'+job.result.video.totalParts;
  if(job.last_error)message+=' · '+(issue?.code==='CEST_REQUIRED'

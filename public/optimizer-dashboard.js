@@ -35,7 +35,7 @@
    }
   }else{pic.hidden=true;placeholder.hidden=false;pic.removeAttribute('src');}
   const count=Number(w.imageCount),valid=Number.isInteger(count)&&count>=0;
-  if(progress?.hasStarted&&progress.imagesTotal){
+  if((progress?.hasStarted||progress?.hasSavedProgress)&&progress.imagesTotal){
    set('optimizerDashImages',progress.imagesUploaded+' / '+progress.imagesTotal);
    q('optimizerDashImageFill').style.width=Math.round(progress.imagesUploaded/progress.imagesTotal*100)+'%';
    set('optimizerDashImageCaption',progress.verified?
@@ -52,11 +52,11 @@
   set('optimizerDashNextTitle',next?next.name:'Todas as revisões conferidas');
   set('optimizerDashNextHelp',next?(next.hint||'Abra a próxima etapa para conferir.').slice(0,115):
    'Abra a prévia e acompanhe a execução quando desejar.');
-  set('optimizerDashContinue',next?'Continuar etapa →':'Abrir prévia →');
+  set('optimizerDashContinue',progress?.resumable?'Retomar execução →':next?'Continuar etapa →':'Abrir prévia →');
   const current=q('optimizerDashStatus');
   const messages={running:['Em andamento','running'],verified:['Confirmado na Shopee','verified'],
    failed:['Execução interrompida','attention'],uncertain:['Conferência pendente','attention'],
-   prepared:['Prévia preparada','prepared'],blocked:['Há pendências','attention']};
+   prepared:[progress?.resumable?'Progresso recuperado':'Prévia preparada','prepared'],blocked:['Há pendências','attention']};
   const status=messages[job?.state]||(next?['Em revisão','prepared']:['Etapas conferidas','verified']);
   current.textContent=status[0];current.dataset.state=status[1];
   const rail=q('optimizerDashStageRail');rail.replaceChildren();
@@ -115,7 +115,7 @@
   set('optimizerDashChangesState',job?.state==='verified'?'Alterações confirmadas na Shopee':
    'Revisar campos da prévia antes de executar');
   set('optimizerDashAuditState',(w.attributes||[]).length+' atributos na categoria · Item '+w.itemId);
-  set('optimizerDashExecutionNotice',progress?.hasStarted?
+  set('optimizerDashExecutionNotice',progress?.hasStarted||progress?.hasSavedProgress?
    progress.message+' · Envio de mídia não é confirmação de publicação.':
    'Dados salvos no Motor Matriz não significam publicação na Shopee. Confira a resposta da API.');
  }
@@ -127,6 +127,7 @@
    optimizerDashSourceOpen:()=>{const details=q('optimizerSourceCompact');if(details)details.open=true;reveal('optimizerSourceCompact');q('optimizerSourceText')?.focus({preventScroll:true});},
    optimizerDashAllStages:()=>reveal('optimizerWorkflowPanel'),
    optimizerDashContinue:()=>{
+    if(progress?.hasStarted||progress?.resumable){api?.openExecution?.();reveal('optimizerExecutionTracker');return;}
     const stages=(workflow?.stages||[]).filter(x=>x.key!=='final'&&!x.skipped&&!x.reviewed);
     if(stages.length)openStage(stages[0].key);
     else{api?.openExecution?.();reveal('optimizerExecutionPanel');}

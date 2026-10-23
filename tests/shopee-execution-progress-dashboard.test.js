@@ -21,6 +21,41 @@ test('nenhum dado ilustrativo vira horário, imagem ou histórico inventado',()=
  assert.deepEqual(pending.events,[]);
  assert.equal(pending.percent,0);
 });
+test('nova prévia recupera mídia e vídeo enviados sem afirmar que já publicou',()=>{
+ const resumed={...plan,reusedMedia:{imageIds:Array.from({length:9},(_,i)=>'media-'+i),
+  video:{phase:'ready',id:'uploaded-video'}}};
+ const before=shopeeExecutionProgress({state:'prepared',plan:resumed,result:null});
+ assert.equal(before.hasStarted,false);
+ assert.equal(before.hasSavedProgress,true);
+ assert.equal(before.resumable,true);
+ assert.equal(before.imagesUploaded,9);
+ assert.equal(before.videoReady,true);
+ assert.equal(before.imagesPublished,0);
+ assert.equal(before.videoPublished,false);
+ assert.equal(before.startedAt,null);
+ assert.equal(before.steps[1].status,'done');
+ assert.equal(before.steps[2].status,'done');
+ assert.equal(before.steps[3].status,'waiting');
+ assert.ok(before.percent>0&&before.percent<100);
+ const after=shopeeExecutionProgress({state:'running',plan:resumed,
+  result:{phase:'queued',...resumed.reusedMedia}});
+ assert.equal(after.percent,before.percent);
+ assert.equal(after.imagesUploaded,before.imagesUploaded);
+});
+test('worker retoma após mídia salva sem novo upload de imagem ou vídeo',async()=>{
+ let updates=0;
+ const saved={...job('running','queued'),result:{phase:'queued',
+  imageIds:Array.from({length:9},(_,i)=>'media-'+i),video:{phase:'ready',id:'uploaded-video'}}};
+ const denied=()=>{throw Error('Mídia já enviada não deve ser reenviada');};
+ const next=await advanceShopeeExecution(saved,{
+  validateIdentity:async()=>{},read:async()=>({item_id:555555,item_status:'NORMAL',...plan.original}),
+  downloadImage:denied,download:denied,media:{image:denied},beforeWrite:async()=>{},
+  update:async payload=>{updates++;assert.deepEqual(payload.image.image_id_list,saved.result.imageIds);
+   assert.deepEqual(payload.video_upload_id,['uploaded-video']);return {request_id:'fixture'};}
+ });
+ assert.equal(updates,1);
+ assert.equal(next.result.phase,'verifying');
+});
 test('status mostra 2 de 9 na mídia, nunca como imagens já publicadas',()=>{
  const progress=shopeeExecutionProgress(job('running','images_upload',{imageIds:['a','b']}));
  assert.equal(progress.imagesUploaded,2);
