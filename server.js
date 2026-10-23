@@ -61,6 +61,7 @@ import {validateVariationName,variationImagePrompt,saveVariationImage,variationI
 import {openAiKeyStatus,openAiApiKey,saveOpenAiApiKey,deleteOpenAiApiKey} from './shopeeOpenAiCredentials.js';
 import {compileAttributes,compileTax,attributeAuditForChanges} from './shopeeStructuredFields.js';
 import {scopeTechnicalReviewChanges} from './shopeeTechnicalReviewScope.js';
+import {applySellerDeclarations} from './shopeeTechnicalSellerEvidence.js';
 import {inspectAnatelCompliance} from './shopeeAnatel.js';
 import {assertSearchableAttribute,searchAttributeRequest,readSearchedAttributeOptions,hydrateSearchOptions} from './shopeeCategorySearch.js';
 import {MAX_VIDEO_BYTES,getShopeeManualVideo,importShopeeManualVideo,
@@ -1131,6 +1132,11 @@ app.post('/api/shopee/optimizer/workflow/technical-draft',mustLogin,requireWeDro
    });
    return {attributeId:id,enabled:f.enabled,userDisabled:f.userDisabled===true,evidence,values};
   });
+  // Preencher apenas a origem da informação, nunca inventar o valor do país
+  // ou da quantidade. Valor escolhido pelo vendedor é uma fonte legítima.
+  const normalizedFields=applySellerDeclarations(fields.filter(x=>x.enabled),record.attributeAudit?.attributes||[]);
+  const evidenceById=new Map(normalizedFields.map(f=>[f.attributeId,f.evidence]));
+  for(const field of fields)if(evidenceById.has(field.attributeId))field.evidence=evidenceById.get(field.attributeId);
   const technicalDraft={fields,updatedAt:new Date().toISOString()};
   await saveWorkflowReview(auth.shopId,itemId,modelId,sku,{
    stage:'technical',reviewed:false,technicalDraft
@@ -1233,7 +1239,8 @@ app.post('/api/shopee/optimizer/workflow/review',mustLogin,requireWeDropAdmin,as
       const live=await shopeeLiveEditableItem(cfg,auth,itemId);
       // Ignore inactive conditional children and the live values the seller did
       // not edit. A real mandatory child activated by a parent is still checked.
-      const scoped=scopeTechnicalReviewChanges(change.attributes||[],{
+      const scoped=scopeTechnicalReviewChanges(
+        applySellerDeclarations(change.attributes||[],record.attributeAudit?.attributes||[]),{
         record,live,auditChanges:attributeAuditForChanges
       });
       const attributes=scoped.changes;
