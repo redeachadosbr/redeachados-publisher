@@ -101,14 +101,14 @@ function optionsFor(attr,value,kind){
  const candidates=list(attr.options).filter(x=>Number(x.id)>0&&synonyms.includes(norm(x.name)));
  return candidates.length===1?candidates[0]:null;
 }
-export function narrativeTechnicalSuggestions({attributes=[],supplier=null,sourceText='',productDescription='',existing=[]}={}){
+export function narrativeTechnicalSuggestions({attributes=[],supplier=null,sourceText='',productDescription='',productTitle='',existing=[]}={}){
  const facts=supplier?.product_data||{},sources=[
   {text:sourceText,label:'Informações e prints salvos para esta SKU'},
   {text:facts.description||facts.details||'',label:'Descrição WeDrop'},
   {text:productDescription,label:'Descrição atual do anúncio Shopee'}
  ].filter(x=>clean(x.text));
  const found=[],unresolved=[],already=new Set(list(existing).map(x=>Number(x.attributeId)));
- const name=facts.name||facts.title||'';
+ const name=facts.name||facts.title||productTitle||'';
  for(const attr of attributes){
   if(attr.conditional||attr.legacy||blocked.test(norm(attr.name))||list(attr.values).length||already.has(Number(attr.id)))continue;
   const label=norm(attr.name);
