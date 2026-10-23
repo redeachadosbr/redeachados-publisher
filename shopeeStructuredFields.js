@@ -50,6 +50,19 @@ function attributeValue(raw,meta){
  if(unit&&!rules.units.includes(unit))throw Error('Unidade não permitida para '+meta.name+'.');
  return {value_id:0,original_value_name:value,...(unit?{value_unit:unit}:{})};
 }
+// Valida um único campo contra o schema oficial, independentemente de
+// outros campos opcionais. Usado no registro para não bloquear toda a
+// conferência por uma sugestão opcional incompatível.
+export function validateTechnicalAttributeValues(change,meta){
+ if(!meta||meta.conditional||meta.legacy)throw Error('Atributo não disponível nesta categoria.');
+ const values=Array.isArray(change?.values)?change.values:[change];
+ if(!values.length||values.length>attributeInputRules(meta).max)
+  throw Error('Quantidade de valores não permitida para '+meta.name+'.');
+ const compiled=values.map(x=>attributeValue(x,meta));
+ if(new Set(compiled.map(x=>JSON.stringify(x))).size!==compiled.length)
+  throw Error('Valores repetidos para '+meta.name+'.');
+ return compiled;
+}
 export function compileAttributes(changes,record,live){
  if(!Array.isArray(changes)||changes.length>300)throw Error('Ficha técnica inválida.');
  const audit=attributeAuditForChanges(changes,record,live);
@@ -60,10 +73,7 @@ export function compileAttributes(changes,record,live){
   if(!meta||meta.conditional||used.has(id))throw Error('Atributo não disponível nesta categoria.');
   // Fonte informativa opcional na conferência; os atributos continuam validados.
   used.add(id);
-  const values=Array.isArray(change.values)?change.values:[change];
-  if(!values.length||values.length>attributeInputRules(meta).max)throw Error('Quantidade de valores não permitida para '+meta.name+'.');
-  const compiled=values.map(x=>attributeValue(x,meta));
-  if(new Set(compiled.map(x=>JSON.stringify(x))).size!==compiled.length)throw Error('Valores repetidos para '+meta.name+'.');
+  const compiled=validateTechnicalAttributeValues(change,meta);
   merged.set(id,{attribute_id:id,attribute_value_list:compiled});
  }
  if(changes.length){
