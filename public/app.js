@@ -2309,6 +2309,22 @@ $('#optimizerSku')?.addEventListener?.('input',event=>{
  if(optimizerSkuInputTimer)clearTimeout(optimizerSkuInputTimer);
  ++optimizerSkuLookupSerial;
  optimizerCancelSkuLookup();
+ // A troca da SKU é um NOVO trabalho, não uma retomada da tarefa anterior.
+ // Pausar a ponte sem apagar as imagens já confirmadas no servidor.
+ void optimizerChatBridgeSwitchSku(value);
+ optimizerImagesStopRequested=true;
+ optimizerImagesSavedSlots=new Set();
+ optimizerImagesAutoBusy=false;
+ optimizerImageCorrectionPreviewMap=new Map();
+ const prepared=$('#optimizerCommercialPreparedCount');if(prepared)prepared.textContent='0';
+ const summary=$('#optimizerCommercialGallerySummary');if(summary)summary.textContent='0 / 9 imagens preparadas';
+ const saved=$('#optimizerImagesFilterSavedCount');if(saved)saved.textContent='0';
+ const pending=$('#optimizerImagesFilterPendingCount');if(pending)pending.textContent='9';
+ const all=$('#optimizerCommercialGalleryProgress');if(all)all.value=0;
+ const gallery=$('#optimizerImagesGallery');if(gallery)gallery.replaceChildren();
+ const bridgeStatus=$('#optimizerChatgptBridgeStatus');
+ if(bridgeStatus)bridgeStatus.textContent='Nova SKU '+(value||'a selecionar')+
+  ': ponte anterior desativada. A geração começa somente para esta SKU.';
  // Clear stale results immediately when the user changes the SKU.
  $('#optimizerCandidates').replaceChildren();
  $('#optimizerQuickValues').hidden=true;
@@ -3204,6 +3220,11 @@ async function optimizerWorkflowLoad(record){
    if(serial!==optimizerWorkflowSerial||$('#optimizerSku').value.trim()!==sku)return;
    optimizerContentRestore(data);
    optimizerWorkflowRender(data);
+   // A retomada automática pertence SOMENTE à SKU que foi carregada.
+   if(optimizerChatBridgeJob&&!optimizerChatBridgeIdentity(optimizerChatBridgeJob,data))
+    void optimizerChatBridgeSwitchSku(sku);
+   else if(optimizerChatBridgeIdentity(optimizerChatBridgeJob,data))
+    void optimizerChatBridgeRecover();
    void optimizerExecutionPrepare();
    optimizerWorkflowNotice('Plano da SKU '+sku+' carregado. As etapas são revisões, não alterações publicadas.','success');
  }catch(e){
@@ -7606,7 +7627,47 @@ let optimizerChatBridgeReady=false,optimizerChatBridgeBusy=false,optimizerChatBr
 let optimizerChatBridgeNonce=typeof sessionStorage==='undefined'?'':sessionStorage.getItem(RA_CHAT_BRIDGE_SESSION_KEY)||'';
 let optimizerChatBridgeSku='';
 const RA_CHAT_BRIDGE_JOB_KEY='redeAchadosBridgeJobV2';
+const RA_CHAT_BRIDGE_ACTIVE_KEY='redeAchadosBridgeActiveV3';
 let optimizerChatBridgeJob=null,optimizerChatBridgeQueuePromise=null;
+// A identificação é compartilhada entre abas do Manager (sem dados privados).
+// A fila de arquivos continua isolada por nonce/SKU e conserva imagens salvas.
+function optimizerChatBridgeActive(){
+ try{return JSON.parse(localStorage.getItem(RA_CHAT_BRIDGE_ACTIVE_KEY)||'null')}catch{return null}
+}
+function optimizerChatBridgeActiveSave(job){
+ try{
+  if(job?.nonce&&!job?.stopped&&!job?.complete)localStorage.setItem(RA_CHAT_BRIDGE_ACTIVE_KEY,
+   JSON.stringify({nonce:job.nonce,sku:job.sku,itemId:job.itemId,modelId:job.modelId}));
+ }catch{}
+}
+function optimizerChatBridgeActiveClear(nonce){
+ try{
+  if(optimizerChatBridgeActive()?.nonce===nonce)localStorage.removeItem(RA_CHAT_BRIDGE_ACTIVE_KEY);
+ }catch{}
+}
+function optimizerChatBridgeSwitchSku(newSku){
+ const target=String(newSku||'').trim();
+ const local=optimizerChatBridgeJob,active=optimizerChatBridgeActive();
+ const obsolete=[local,active].filter(x=>x?.nonce&&String(x.sku)!==target);
+ if(!obsolete.length)return Promise.resolve(false);
+ // O Chrome pode ter fechado a aba antiga: enviar a ordem de encerramento
+ // também para o nonce mantido em outra aba do mesmo domínio.
+ for(const old of obsolete){
+  window.postMessage({kind:'RA_SITE_ABORT',nonce:old.nonce,sku:old.sku,
+   reason:'A SKU mudou. Preservar imagens já importadas e parar a tarefa anterior.'},location.origin);
+  optimizerChatBridgeActiveClear(old.nonce);
+ }
+ const current=local&&String(local.sku)!==target;
+ const pending=current?optimizerChatBridgeRelease('Tarefa da SKU '+local.sku+
+  ' pausada. Agora trabalhando somente na SKU '+(target||'nova')+'.'):Promise.resolve();
+ if(current){
+  optimizerChatBridgeJob=null;optimizerChatBridgeBusy=false;optimizerChatBridgeUploading=false;
+  optimizerChatBridgeNonce='';optimizerChatBridgeSku='';
+  try{sessionStorage.removeItem(RA_CHAT_BRIDGE_JOB_KEY);sessionStorage.removeItem(RA_CHAT_BRIDGE_SESSION_KEY)}catch{}
+  const abort=$('#optimizerChatgptAbort');if(abort)abort.hidden=true;
+ }
+ return Promise.resolve(pending).then(()=>true);
+}
 try{
  const saved=JSON.parse(sessionStorage.getItem(RA_CHAT_BRIDGE_JOB_KEY)||'null');
  if(saved?.nonce===optimizerChatBridgeNonce)optimizerChatBridgeJob=saved;
@@ -7614,7 +7675,9 @@ try{
 function optimizerChatBridgeRelease(reason='Extensão interrompida. Fotos já salvas foram preservadas.'){
  const job=optimizerChatBridgeJob,nonce=optimizerChatBridgeNonce;
  if(job&&!job.stopped&&nonce)window.postMessage({kind:'RA_SITE_ABORT',nonce},location.origin);
- if(job){job.stopped=true;job.complete=true;sessionStorage.setItem(RA_CHAT_BRIDGE_JOB_KEY,JSON.stringify(job));}
+ if(job){job.stopped=true;job.complete=true;sessionStorage.setItem(RA_CHAT_BRIDGE_JOB_KEY,JSON.stringify(job));
+  optimizerChatBridgeActiveClear(job.nonce);
+ }
  optimizerChatBridgeBusy=false;
  const abort=$('#optimizerChatgptAbort');if(abort)abort.hidden=true;
  optimizerChatBridgeNotice(reason);
@@ -7630,6 +7693,7 @@ function optimizerChatBridgeRemember(w,slots=Array.from({length:9},(_,i)=>i+1),e
  optimizerChatBridgeJob={nonce:optimizerChatBridgeNonce,sku:String(w.sku),itemId:String(w.itemId),
   modelId:String(w.modelId),slots,expectedHashes};
  sessionStorage.setItem(RA_CHAT_BRIDGE_JOB_KEY,JSON.stringify(optimizerChatBridgeJob));
+ optimizerChatBridgeActiveSave(optimizerChatBridgeJob);
 }
 function optimizerChatBridgeNotice(message){
  const status=$('#optimizerChatgptBridgeStatus');if(status)status.textContent=message;
@@ -7653,6 +7717,7 @@ async function optimizerChatBridgeConfirmed(job){
  if(complete&&job.nonce===optimizerChatBridgeNonce){
   optimizerChatBridgeJob.complete=true;
   sessionStorage.setItem(RA_CHAT_BRIDGE_JOB_KEY,JSON.stringify(optimizerChatBridgeJob));
+  optimizerChatBridgeActiveClear(job.nonce);
   optimizerChatBridgeBusy=false;$('#optimizerChatgptAbort').hidden=true;
   optimizerChatBridgeNotice(job.slots.length===9
    ?'9/9 imagens novas salvas na SKU '+job.sku+'. Confira a galeria para executar na Shopee.'
