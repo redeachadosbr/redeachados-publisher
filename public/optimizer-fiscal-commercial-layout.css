@@ -348,3 +348,18 @@
 .optimizer-exec-step.is-review small{background:#fff0d8;color:#80501f}
 @media(max-width:960px){.optimizer-exec-steps{grid-template-columns:repeat(3,minmax(0,1fr));row-gap:34px}}
 @media(max-width:610px){.optimizer-exec-steps{grid-template-columns:repeat(2,minmax(0,1fr));row-gap:35px}}
+
+/* Foco nas únicas pendências restantes após a execução comercial. */
+.optimizer-final-pending{margin:15px 0 22px;padding:17px;border:1px solid #bcd8ee;border-radius:18px;background:linear-gradient(120deg,#fbfdff,#f2f7ff)}
+.optimizer-final-pending[hidden]{display:none!important}
+.optimizer-final-pending-head{display:flex;flex-direction:column;gap:5px;margin-bottom:13px}
+.optimizer-final-pending-head strong{font-size:17px;font-weight:800;color:#0b2b54}
+.optimizer-final-pending-head small,.optimizer-final-pending>small{color:#587292;font-size:12px;line-height:1.55}
+.optimizer-final-pending-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;margin-bottom:10px}
+.optimizer-final-pending-card{display:flex;align-items:start;gap:12px;padding:16px;border:1px solid #d5e5f3;border-radius:13px;background:#fff;min-width:0}
+.optimizer-final-step-num{display:grid;place-items:center;width:34px;height:34px;min-width:34px;border-radius:11px;background:#e1f0ff;color:#0b66bd;font-weight:850}
+.optimizer-final-pending-card>div{flex:1;min-width:0}
+.optimizer-final-pending-card strong{display:block;color:#103052;font-weight:850;font-size:14px}
+.optimizer-final-pending-card p{color:#546c87;font-size:12px;line-height:1.6;margin:7px 0 12px}
+.optimizer-final-pending-card button{font-size:12px;font-weight:800;border-radius:10px;padding:10px 13px;max-width:100%;white-space:normal}
+@media(max-width:800px){.optimizer-final-pending-grid{grid-template-columns:minmax(0,1fr)}}
