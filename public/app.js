@@ -6616,7 +6616,7 @@ function optimizerTechnicalRender(data){
   const suggested=(data.sourceFacts?.suggestions||[]).find(x=>Number(x.attributeId)===attr.id);
   const conflict=(data.sourceFacts?.conflicts||[]).find(x=>Number(x.attributeId)===attr.id);
   if(conflict)field.append(optimizerMake('p','optimizer-source-conflict',
-   'Divergência com fornecedor: '+conflict.current+' → '+conflict.recommended+' (Top Rio apenas quando corresponder a esta SKU).'));
+   'Divergência com a fonte desta SKU: '+conflict.current+' → '+conflict.recommended+' (confira o fabricante/fornecedor antes de aplicar).'));
   if(!suggested&&['marca','estampa','numero de registro inmetro'].some(n=>String(name).toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').includes(n))&&
      !attr.values?.length)field.append(optimizerMake('small','',
        'Sem comprovação automática: cole a ficha do fabricante acima ou selecione uma opção oficial.'));
