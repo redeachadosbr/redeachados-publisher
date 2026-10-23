@@ -1384,6 +1384,9 @@ app.post('/api/shopee/optimizer/execution/prepare',mustLogin,requireWeDropAdmin,
      modelVariations.promotion={discountId:campaignId,gross:approved.gross,promo:approved.promo,
       discountPct:approved.discountPct,couponPct:approved.couponPct,
       buyerAfterCoupon:approved.buyerAfterCoupon,quoteAt:approved.quoteAt,
+      originalPrice:approved.originalPrice,existingPrice:approved.existingPrice,
+      action:approved.action,promotionSignal:approved.promotionSignal,
+      needsBasePriceUpdate:approved.needsBasePriceUpdate,
       modelPriceChange:modelVariations.options.some(o=>Math.round(o.price*100)!==Math.round(approved.gross*100))};
      // Guardar a campanha escolhida nesta SKU: nas próximas variações
      // o Motor Matriz poderá reutilizar o ID após revalidar tudo pela API.
@@ -1446,7 +1449,7 @@ app.post('/api/shopee/optimizer/execution/prepare',mustLogin,requireWeDropAdmin,
     plan.reusedMedia=recyclableShopeeMedia(previous,plan);
     plan.mediaArchive=archiveShopeeMedia(previous,plan);
     const stored=await saveShopeePreparedExecution(auth.shopId,itemId,modelId,sku,plan);
-    res.json({ok:true,ready:plan.canExecute,plan,progress:shopeeExecutionProgress(stored),
+    res.json({ok:true,ready:stored.plan.canExecute,plan:stored.plan,progress:shopeeExecutionProgress(stored),
       issue:deferFiscal&&!plan.canExecute?
         detectShopeeExecutionIssue(previous.last_error,previous.plan):null,
       updatedAt:stored.updated_at,executionStatus:stored.state,marketplaceUpdated:false,
@@ -1771,18 +1774,33 @@ app.post('/api/shopee/optimizer/execution/execute',mustLogin,requireWeDropAdmin,
   let commercialDiscount=null;
   if(plan.selectedStage==='all'){
    if(plan.fiscalDeferred)throw Error('Etapa fiscal pendente: revise os dados fiscais antes de aprovar o desconto final.');
-   const approved=verifyDiscountPreview(req.body?.discountApprovalToken,envText('SESSION_SECRET'),auth.shopId);
-   if(approved.sku!==sku||String(approved.itemId)!==String(itemId)||String(approved.modelId)!==String(modelId))
+   // Em planos de variação, o clique autenticado + o plano imutável no banco
+   // autorizam a promoção exibida. O token de 10 minutos não pode bloquear
+   // anúncio e mídia depois de o usuário ter aprovado essa mesma prévia.
+   // A API, o custo WeDrop, a pesquisa e os valores permanecem revalidados.
+   const modelPromo=plan.modelVariations?.promotion||null;
+   if(plan.modelVariations&&!modelPromo)
+    throw Error('A promoção das variações não foi preparada. Revalide a prévia.');
+   const approved=plan.modelVariations?modelPromo:
+    verifyDiscountPreview(req.body?.discountApprovalToken,envText('SESSION_SECRET'),auth.shopId);
+   if(!plan.modelVariations&&
+     (approved.sku!==sku||String(approved.itemId)!==String(itemId)||String(approved.modelId)!==String(modelId)))
     throw Error('A aprovação da campanha pertence a outra SKU.');
    const fresh=(await discountExecutionInputs(req,sku,itemId,modelId,approved.discountId,{
     allowModels:Boolean(plan.modelVariations),expectedModels:plan.modelVariations})).snapshot;
-   for(const k of ['shopId','sku','itemId','modelId','discountId','gross','promo','buyerAfterCoupon',
-     'couponPct','discountPct','quoteAt','originalPrice','action','existingPrice','promotionSignal','needsBasePriceUpdate'])
+   const fields=plan.modelVariations?
+    ['discountId','gross','promo','buyerAfterCoupon','couponPct','discountPct','quoteAt']:
+    ['shopId','sku','itemId','modelId','discountId','gross','promo','buyerAfterCoupon',
+      'couponPct','discountPct','quoteAt','originalPrice','action','existingPrice','promotionSignal','needsBasePriceUpdate'];
+   if(plan.modelVariations)
+    for(const k of ['originalPrice','existingPrice','action','promotionSignal','needsBasePriceUpdate'])
+     if(Object.hasOwn(modelPromo,k))fields.push(k);
+   for(const k of fields)
     if(String(fresh[k]??'')!==String(approved[k]??''))
      throw Error('A prévia da promoção mudou ('+k+'). Refaça a conferência antes de executar.');
    if(fresh.needsBasePriceUpdate&&req.body?.allowPriceChange!==true)
     throw Error('Autorize também o ajuste do preço bruto na etapa 08.');
-   commercialDiscount={snapshot:approved,allowPriceChange:req.body?.allowPriceChange===true};
+   commercialDiscount={snapshot:fresh,allowPriceChange:req.body?.allowPriceChange===true};
   }
   if(Object.hasOwn(plan.proposed||{},'tax_info')&&plan.selectedStage!=='fiscal')
    throw Error('Informações fiscais só podem ser enviadas em execução fiscal individual, nunca junto das outras etapas.');
@@ -1825,7 +1843,15 @@ app.post('/api/shopee/optimizer/execution/execute',mustLogin,requireWeDropAdmin,
   res.status(202).json({ok:true,status:'running',marketplaceUpdated:false,
    message:'Execução iniciada. Acompanhe as etapas; você pode sair e voltar para esta SKU.'});
   void runOptimizerJobs();
- }catch(e){res.status(409).json({ok:false,error:String(e.message||e).slice(0,280)});}
+ }catch(e){
+   // Um 409 não pode desaparecer atrás de uma barra otimista de 69%.
+   // Log mínimo: nunca registrar tokens, headers, orçamento ou requisição bruta.
+   console.warn('[shopee-execution-start-rejected]',JSON.stringify({
+    sku:String(req.body?.sku||'').slice(0,36),
+    itemId:String(req.body?.itemId||'').slice(0,24),
+    reason:String(e.message||e).slice(0,280)}));
+   res.status(409).json({ok:false,error:String(e.message||e).slice(0,280)});
+ }
 });
 app.post('/api/shopee/optimizer/execution/reconcile',mustLogin,requireWeDropAdmin,async(req,res)=>{
  res.setHeader('Cache-Control','no-store');
