@@ -6284,6 +6284,13 @@ function optimizerTechLabel(value){
 }
 function optimizerTechValueLabel(value){
  const raw=String(value||'').trim();
+ const threshold=raw.match(/^(\d{1,2})\s*(?:years?|yrs?)\s*(?:old\s*)?and\s+(?:above|up|over)$/i)||
+  raw.match(/^(\d{1,2})\+\s*(?:years?|yrs?)$/i);
+ if(threshold)return 'A partir de '+Number(threshold[1])+' anos';
+ const band=raw.match(/^(\d{1,2})\s*[-–]\s*(\d{1,2})\s*(?:years?|yrs?)$/i);
+ if(band)return Number(band[1])+' a '+Number(band[2])+' anos';
+ const months=raw.match(/^(\d{1,2})\s*[-–]\s*(\d{1,2})\s*months?$/i);
+ if(months)return Number(months[1])+' a '+Number(months[2])+' meses';
  return ({yes:'Sim',no:'Não',new:'Novo',used:'Usado','not applicable':'Não se aplica',
  'not specified':'Não informado',other:'Outro','no warranty':'Sem garantia',
  'battery':'Bateria','battery operated':'Alimentação por bateria',
