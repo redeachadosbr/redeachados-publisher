@@ -204,8 +204,12 @@
    number('filled',completed.size,'de '+attrs.length+' atributos retornados');
    number('optional',optionalComplete,'de '+optionalCount+' opcionais');
    number('pending',missing,missing?'Verifique os obrigatórios':'Todos os obrigatórios atendidos');
-   number('review',Math.max(0,mandatory.length-missing)+'/'+mandatory.length,
-     conflicts?conflicts+' divergência(s) para conferir':missing?'Conferência pendente':'Sem divergências identificadas');
+   const recovered=[...fields.querySelectorAll('fieldset[data-attribute-id]')]
+     .filter(field=>field.dataset.autofilled==='true').length;
+   const checked=Math.max(0,recovered-conflicts);
+   number('review',checked+'/'+Math.max(1,recovered),
+     conflicts?conflicts+' divergência(s) para conferir':missing?'Obrigatórios ainda pendentes':
+       recovered?'Sem divergências identificadas':'Sem atributos recuperados');
    const supplier=data.supplierProduct||{};
    productName.textContent=supplier.name||data.productTitle||data.draftTitle||'Produto da SKU';
    productDetails.textContent=[
