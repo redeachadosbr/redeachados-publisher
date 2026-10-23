@@ -2335,8 +2335,14 @@ const normalizeVariationSource=v=>String(v||'').normalize('NFD')
 async function verifiedVariationSupplierCosts(x,details){
  const parent=await readWeDropProduct(x.auth.shopId,{sku:x.sku,itemId:x.itemId,modelId:x.modelId});
  const parentName=normalizeVariationSource(parent?.product_data?.name||'');
- const base=parentName.replace(/ (?:VERMELHA?|ROSA|PRETA?|AZUL|BRANCA?|AMARELA?|VERDE)$/,'');
- if(!base||base.length<12)throw Error('Nome do produto WeDrop insuficiente para vincular modelos com segurança.');
+ const original=details.options.find(o=>String(o.supplierSku)===String(x.sku));
+ const originalOption=normalizeVariationSource(original?.name||'');
+ // Remover a opção do produto de origem funciona também para Tamanho,
+ // Voltagem, Modelo e outros tipos além de Cor.
+ const baseByOption=originalOption&&parentName.endsWith(' '+originalOption)?
+  parentName.slice(0,-originalOption.length-1):parentName;
+ const base=baseByOption.replace(/ (?:VERMELHA?|VERMELHO|ROSA|PRETA?|PRETO|AZUL|BRANCA?|BRANCO|AMARELA?|AMARELO|VERDE)$/,'');
+ if(!base||base.length<8)throw Error('Nome do produto WeDrop insuficiente para vincular modelos com segurança.');
  const used=new Set(),rows=[];
  for(const option of details.options){
   const supplierSku=String(option.supplierSku||'').trim();
@@ -2351,7 +2357,7 @@ async function verifiedVariationSupplierCosts(x,details){
   const color=normalizeVariationSource(option.name);
   const genderStem=color.replace(/[AO]$/,'');
   if(!cost||!supplier||supplier.supplier_sku!==supplierSku||
-    !actual.startsWith(base+' ')||
+    !(actual===base||actual.startsWith(base+' '))||
     !(actual.endsWith(' '+color)||genderStem.length>=3&&actual.endsWith(' '+genderStem+'A')||
       genderStem.length>=3&&actual.endsWith(' '+genderStem+'O')))
    throw Error('A opção '+option.name+' não corresponde ao SKU WeDrop '+supplierSku+
