@@ -2615,11 +2615,15 @@ function optimizerWorkflowRender(data){
    alert.append(message,fix);cards.append(alert);
  }
  const stages=data.stages||[];
- const visible=stages.filter(x=>x.key!=='final'),required=visible.filter(x=>!x.skipped);
- const reviews=required.filter(x=>x.reviewed).length;
+ const visible=stages.filter(x=>x.key!=='final');
+ // Always show all eight workflow cards in the counter. A skipped optional
+ // variation is resolved (not applicable), rather than disappearing from totals.
+ const resolved=visible.filter(x=>x.reviewed||x.skipped).length;
+ const total=visible.length+1; // final discount card
+ const completed=resolved+(optimizerDiscountFinalSent?1:0);
  const progress=$('#optimizerWorkflowCounter');
- progress.textContent=(reviews+(optimizerDiscountFinalSent?1:0))+' / '+(required.length+1)+' etapas conferidas';
- progress.style.setProperty('--stage-progress',String(required.length?Math.round((reviews+(optimizerDiscountFinalSent?1:0))/(required.length+1)*100):0)+'%');
+ progress.textContent=completed+' / '+total+' etapas concluídas';
+ progress.style.setProperty('--stage-progress',String(total?Math.round(completed/total*100):0)+'%');
  $('#optimizerHasVariants').checked=Boolean(data.variationConfig?.enabled);
  for(const [i,stage] of visible.entries()){
    const btn=optimizerMake('button','optimizer-workflow-card optimizer-workflow-'+stage.status+(optimizerWorkflowStage===stage.key?' is-current':''));
