@@ -3252,8 +3252,9 @@ $('#optimizerWorkflowReview')?.addEventListener?.('click',async()=>{
       result.stages?.find(x=>x.key==='technical')?.reviewed!==true)
        throw Error('O servidor não confirmou a ficha técnica. Consulte os campos pendentes e tente novamente.');
    if(key==='technical'){
-    try{localStorage.removeItem(techKey(data,'fields'));}catch{}
-    data.technicalDraft=null;
+    // O rascunho permanece salvo por SKU: atributos opcionais incompatíveis
+    // ficam disponíveis para correção, mas não serão enviados à Shopee.
+    // Não excluir o draft após apenas registrar a conferência.
    }
    optimizerWorkflowRender({...data,...result,stages:result.stages});
    // A saved fiscal draft must never automatically re-attempt a rejected CEST
@@ -3263,10 +3264,16 @@ $('#optimizerWorkflowReview')?.addEventListener?.('click',async()=>{
    optimizerWorkflowNotice(key==='fiscal'?
      'Dados fiscais da SKU '+data.sku+' salvos no Motor Matriz. CEST 00 será considerado no envio se aparecer na próxima prévia; nenhum dado foi enviado só por salvar.':
      'Revisão da etapa '+stage.name+' salva. Nenhum dado do anúncio foi alterado na Shopee.','success');
-   if(key==='technical')
+   if(key==='technical'){
+     const ignored=Array.isArray(result.technicalSkipped)?result.technicalSkipped:[];
+     const ignoredNames=ignored.map(item=>item.name).join(', ');
      optimizerTechReviewFeedback(body.reviewed
-       ?'✓ Ficha técnica da SKU '+data.sku+' registrada como conferida. Nenhuma alteração publicada na Shopee.'
+       ?'✓ Ficha técnica da SKU '+data.sku+' registrada como conferida. '+
+          (ignored.length?ignored.length+' atributo(s) opcionais incompatíveis ('+ignoredNames+
+            ') preservados no rascunho e excluídos do envio. ':'')+
+          'Nenhuma alteração publicada na Shopee.'
        :'Ficha técnica reaberta para revisão. Nenhuma alteração publicada.', 'success');
+   }
  }catch(e){
    const message='Falha ao salvar conferência: '+e.message;
    optimizerWorkflowNotice(message,'error');
