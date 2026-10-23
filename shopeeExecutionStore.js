@@ -33,6 +33,15 @@ export async function saveShopeePreparedExecution(shopId,itemId,modelId,sku,plan
  const prev=await readShopeeExecution(shopId,itemId,modelId);
  if(['running','uncertain'].includes(prev?.state))
    throw Error('Execução já iniciada ou com resultado incerto. Verifique o anúncio antes de preparar novamente.');
+ // Revalidar não invalida um plano preparado idêntico enquanto a pessoa
+ // está iniciando a publicação. A identidade da mídia recuperada também
+ // precisa coincidir; uma prévia financeira diferente muda o fingerprint.
+ if(prev&&['prepared','blocked'].includes(prev.state)&&
+   prev.sku===String(sku)&&
+   prev.plan?.fingerprint===plan.fingerprint&&
+   prev.plan?.canExecute===plan.canExecute&&
+   JSON.stringify(prev.plan?.reusedMedia||{})===JSON.stringify(plan.reusedMedia||{}))
+   return prev;
  const state=plan.canExecute?'prepared':'blocked';
  const data={shop_id:num(shopId),item_id:num(itemId),model_id:model(modelId),
   sku:String(sku),state,plan,result:null,run_id:null,last_error:null,updated_at:new Date().toISOString()};
