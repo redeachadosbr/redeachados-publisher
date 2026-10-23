@@ -151,10 +151,15 @@ export function sameShopeeAttributes(left,right){
   JSON.stringify(x).localeCompare(JSON.stringify(y)));
  return JSON.stringify(normalize(left))===JSON.stringify(normalize(right));
 }
-export function sameData(a,b){
+// JSONB/API object keys may be returned in a different order. Preserve all
+// values and array positions while giving comparisons and hashes one encoding.
+export function stableDataJson(value){
  const normalize=value=>Array.isArray(value)?value.map(normalize):value&&typeof value==='object'
   ?Object.fromEntries(Object.keys(value).sort().map(k=>[k,normalize(value[k])])):value;
- return JSON.stringify(normalize(a))===JSON.stringify(normalize(b));
+ return JSON.stringify(normalize(value));
+}
+export function sameData(a,b){
+ return stableDataJson(a)===stableDataJson(b);
 }
 export function fieldsVerified(proposed,item){
  return Object.entries(proposed).every(([key,value])=>{

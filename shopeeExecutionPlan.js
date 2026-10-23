@@ -1,5 +1,5 @@
 import crypto from 'node:crypto';
-import {compileAttributes,compileTax,sameData,sameShopeeAttributes,fieldsVerified,attributeAuditForChanges} from './shopeeStructuredFields.js';
+import {compileAttributes,compileTax,sameData,stableDataJson,sameShopeeAttributes,fieldsVerified,attributeAuditForChanges} from './shopeeStructuredFields.js';
 import {inspectAnatelCompliance} from './shopeeAnatel.js';
 import {imagesSignature} from './shopeePreparedImages.js';
 import {normalizedTitle,validateContentRules} from './shopeeOptimizationWorkflow.js';
@@ -122,7 +122,7 @@ export function compileShopeeExecutionPlan({shopId,itemId,modelId,sku,record,rev
   const noOtherChange=Object.keys(proposed).length===0&&!finalFiscal&&!video&&images.length===0&&!modelVariations;
   const discountOnly=selectedStage==='all'&&Boolean(allowDiscountOnly)&&noOtherChange;
   const canExecute=blocked.length===0&&(!noOtherChange||discountOnly);
-  const fingerprint=crypto.createHash('sha256').update(JSON.stringify({
+  const fingerprint=crypto.createHash('sha256').update(stableDataJson({
     shopId:String(shopId),itemId:String(itemId),modelId:String(modelId),sku,
     selectedStage,discountOnly,modelVariations:modelVariations?{
      type:modelVariations.type,alreadyCreated:modelVariations.alreadyCreated===true,
@@ -161,7 +161,7 @@ export function assertLiveShopeeUnchanged(plan,base){
      normal(base.description)!==plan.original.description||
      String(base.description_type||'normal').toLowerCase()!==plan.original.description_type)
     throw Error('Anúncio alterado após preparação. Recalcule o plano antes de executar.');
-  if(plan.video&&JSON.stringify(base.video_info||[])!==JSON.stringify(plan.original.video_info||[]))
+  if(plan.video&&!sameData(base.video_info||[],plan.original.video_info||[]))
     throw Error('Vídeo do anúncio alterado após preparação. Prepare novamente.');
   if(plan.proposed.attribute_list&&!sameShopeeAttributes(base.attribute_list||[],plan.original.attribute_list||[]))
     throw Error('A ficha técnica da Shopee foi modificada após a prévia. Recalcule a prévia e confira os atributos antes de executar.');
