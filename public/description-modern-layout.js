@@ -39,7 +39,12 @@
   const toggle=$('optimizerDescriptionToggle');
   if(!editor)return;
   // Restore DOM ownership so every other workflow stage retains its native controls.
-  if(toggle&&preview&&!preview.contains(toggle))preview.append(toggle);
+  const full=$('optimizerDescriptionFullPreview');
+  const footer=preview?.querySelector('.ra-description-preview-footer');
+  if(full&&footer&&!preview.contains(full))preview.insertBefore(full,footer);
+  else if(full&&footer&&full.parentNode!==preview)preview.insertBefore(full,footer);
+  if(toggle&&footer&&!footer.contains(toggle))footer.append(toggle);
+  preview?.querySelectorAll('[data-description-generated]').forEach(node=>node.remove());
   if(preview&&variants)editor.insertBefore(preview,variants);
   if(draft&&variants)editor.insertBefore(draft,variants);
   if(research&&$('optimizerImagesPanel'))editor.insertBefore(research,$('optimizerImagesPanel'));
@@ -72,9 +77,18 @@
    const exists=Boolean(rule?.test(raw));
    tag.hidden=!exists;
   }
-  const compact=$('optimizerDescriptionCompact');
-  if(compact&&!compact.hidden&&safeText($('optimizerDescriptionCompactIntro')?.textContent)==='')
-   $('optimizerDescriptionCompactIntro').textContent='A prévia será exibida quando houver uma descrição.';
+  const intro=$('optimizerDescriptionPreviewSummary'),cta=$('optimizerDescriptionPreviewCta');
+  const parts=raw.replace(/\r\n?/g,'\n').split('\n').map(x=>x.trim()).filter(Boolean);
+  const first=parts.findIndex(x=>/descri[çc][ãa]o do produto/i.test(x));
+  const paragraphs=parts.slice(Math.max(0,first+1)).filter(x=>
+   !/^(?:🛒|⚙️|📦|📏)/u.test(x)&&
+   !/^(?:✨|⚙|📏|📦|🛒)\s+(?:descri|caracter|especific|medidas|cont[eé]m)/i.test(x));
+  const opening=paragraphs.slice(0,2).join(' ').trim();
+  if(intro)intro.textContent=opening?([...opening].slice(0,360).join('')+(opening.length>360?'…':'')):
+   'A prévia aparecerá quando a descrição estiver preenchida.';
+  const lastCta=parts.findLast(x=>x.startsWith('🛒'));
+  if(cta){cta.textContent=lastCta||'Convite à compra ainda não incluído — confira a descrição completa.';
+   cta.dataset.present=lastCta?'true':'false';}
   if(sourceNode){
    const source=safeText($('optimizerContentResearch')?.textContent);
    sourceNode.textContent=source||'Dados da SKU e anúncio Shopee. Confira os fatos antes de publicar.';
@@ -149,15 +163,20 @@
   leftHeader.append(toggle);columns.append(left);
   left.append(leftHeader,preview);
   preview.hidden=false;
-  const chips=preview.querySelector('.optimizer-description-compact-tags');
-  if(chips){
-   chips.replaceChildren();
-   for(const [name,label] of [
-    ['specifications','⚙ Especificações'],['measures','📏 Medidas'],
-    ['doubts','❓ Dúvidas'],['reasons','☀ Benefícios']]){
-    const chip=el('span','',label);chip.dataset.descPart=name;chips.append(chip);
-   }
+  const summary=el('div','desc-modern-preview-summary','');
+  summary.id='optimizerDescriptionPreviewSummary';summary.dataset.descriptionGenerated='true';
+  const chips=el('div','desc-modern-chips');chips.dataset.descriptionGenerated='true';
+  for(const [name,label] of [
+   ['specifications','⚙ Especificações'],['measures','📏 Medidas'],
+   ['doubts','❓ Dúvidas'],['reasons','☀ Benefícios']]){
+   const chip=el('span','',label);chip.dataset.descPart=name;chips.append(chip);
   }
+  const cta=el('div','desc-modern-cta');
+  cta.id='optimizerDescriptionPreviewCta';cta.dataset.descriptionGenerated='true';
+  const detail=el('details','desc-modern-full');detail.dataset.descriptionGenerated='true';
+  detail.append(el('summary','','Ver descrição completa ▾'));
+  const full=$('optimizerDescriptionFullPreview');if(full)detail.append(full);
+  preview.prepend(summary,chips,cta,detail);
   draft.hidden=false;
   toggle.textContent='Recolher edição ⌃';
   toggle.setAttribute('aria-controls','optimizerWorkflowDraftWrap');
