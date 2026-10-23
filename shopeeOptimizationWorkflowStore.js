@@ -29,7 +29,8 @@ export async function saveWorkflowReview(shop,item,model,sku,change){
  const existing=await getWorkflowReview(shop,item,model);
  if(existing&&existing.sku!==sku)throw Error('SKU do anúncio alterada: refaça a auditoria.');
  const state=existing?.review_state||{},stages={...(state.stages||{})};
- stages[change.stage]={reviewed:change.reviewed,reviewedAt:change.reviewed?new Date().toISOString():null};
+ if(change.stage)stages[change.stage]={reviewed:change.reviewed,
+  reviewedAt:change.reviewed?new Date().toISOString():null};
  const next={...state,stages};
  if(change.assetSha256!==undefined)next.videoSha256=change.assetSha256;
  if(change.attributes!==undefined)next.attributes=change.attributes;
@@ -42,6 +43,11 @@ export async function saveWorkflowReview(shop,item,model,sku,change){
  if(change.imagesSignature!==undefined)next.imagesSignature=change.imagesSignature;
  if(change.variationConfig!==undefined)next.variationConfig=change.variationConfig;
  if(change.variationDetails!==undefined)next.variationDetails=change.variationDetails;
+ if(change.modelDiscountCampaignId!==undefined){
+  const id=String(change.modelDiscountCampaignId||'').trim();
+  if(id&&!/^\d{1,18}$/.test(id))throw Error('ID Minha Promoção inválido.');
+  next.modelDiscountCampaignId=id;
+ }
  if(change.imageNotes!==undefined)next.imageNotes={...(state.imageNotes||{}),...change.imageNotes};
  if(change.title!==undefined)next.draftTitle=change.title;
  if(change.description!==undefined)next.draftDescription=change.description;
