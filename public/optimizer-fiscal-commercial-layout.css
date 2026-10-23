@@ -363,3 +363,18 @@
 .optimizer-final-pending-card p{color:#546c87;font-size:12px;line-height:1.6;margin:7px 0 12px}
 .optimizer-final-pending-card button{font-size:12px;font-weight:800;border-radius:10px;padding:10px 13px;max-width:100%;white-space:normal}
 @media(max-width:800px){.optimizer-final-pending-grid{grid-template-columns:minmax(0,1fr)}}
+
+/* Campanha após publicação das variações: prévia por modelo com aprovação única. */
+.optimizer-final-discount-campaign{display:flex;flex-direction:column;gap:6px;font-size:12px;color:#4a6583;font-weight:750;margin-bottom:9px}
+.optimizer-final-discount-campaign input{border:1px solid #bdd4ea;border-radius:10px;padding:11px 12px;font-size:13px;max-width:100%;width:100%;background:#fff;color:#183b5e}
+.optimizer-final-discount-review{display:flex;flex-direction:column;gap:7px;margin-top:12px;padding:12px;border:1px solid #b3e0ca;background:#f1faf5;border-radius:12px;color:#164b39}
+.optimizer-final-discount-review[hidden]{display:none!important}
+.optimizer-final-discount-review strong{font-size:13px;font-weight:850}
+.optimizer-final-discount-review p{font-size:12px;line-height:1.5;margin:0}
+.optimizer-final-discount-review small{font-size:11px;line-height:1.5}
+#optimizerFinalModelDiscountApply{background:#176543;color:white;border:0;border-radius:10px;padding:11px 13px;margin-top:10px;font-size:12px;font-weight:850;max-width:100%;white-space:normal;cursor:pointer}
+#optimizerFinalModelDiscountApply[hidden]{display:none!important}
+#optimizerFinalModelDiscountApply:disabled{opacity:.6;cursor:not-allowed}
+#optimizerFinalModelDiscountResult{font-size:12px;line-height:1.5;color:#506a85;margin:9px 0 0}
+#optimizerFinalModelDiscountResult[data-level=warning]{color:#9b4d21}
+#optimizerFinalModelDiscountResult[data-level=success]{color:#187449}
