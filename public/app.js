@@ -3200,6 +3200,9 @@ async function optimizerWorkflowLoad(record){
  const id=String(record?.itemId||'');
  const modelId=String(record?.selectedModelId||'0');
  const p=$('#optimizerWorkflowPanel');
+ // Mesmo quando a SKU chega por um atalho/deep link, desativar ponte
+ // de outra SKU sem depender de um evento de digitação.
+ void optimizerChatBridgeSwitchSku(sku);
  p.hidden=false;
  // Produto identificado pela auditoria: preparar 4 títulos imediatamente, antes
  // mesmo da abertura da etapa SEO. O estúdio reutiliza o resultado por SKU.
@@ -7670,8 +7673,19 @@ function optimizerChatBridgeSwitchSku(newSku){
 }
 try{
  const saved=JSON.parse(sessionStorage.getItem(RA_CHAT_BRIDGE_JOB_KEY)||'null');
- if(saved?.nonce===optimizerChatBridgeNonce)optimizerChatBridgeJob=saved;
+ if(saved?.nonce===optimizerChatBridgeNonce){
+  optimizerChatBridgeJob=saved;
+  if(!saved.stopped&&!saved.complete)optimizerChatBridgeActiveSave(saved);
+ }
 }catch{}
+window.addEventListener('storage',event=>{
+ if(event.key!==RA_CHAT_BRIDGE_ACTIVE_KEY||!optimizerChatBridgeJob||
+    optimizerChatBridgeJob.stopped||optimizerChatBridgeJob.complete)return;
+ const latest=optimizerChatBridgeActive();
+ if(!latest||latest.nonce!==optimizerChatBridgeJob.nonce){
+  void optimizerChatBridgeRelease('Outra aba iniciou uma nova SKU. Fotos salvas foram mantidas; esta ponte antiga foi pausada.');
+ }
+});
 function optimizerChatBridgeRelease(reason='Extensão interrompida. Fotos já salvas foram preservadas.'){
  const job=optimizerChatBridgeJob,nonce=optimizerChatBridgeNonce;
  if(job&&!job.stopped&&nonce)window.postMessage({kind:'RA_SITE_ABORT',nonce},location.origin);
