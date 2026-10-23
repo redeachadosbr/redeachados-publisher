@@ -7953,19 +7953,38 @@ globalThis.window?.addEventListener?.('message',async(event)=>{
 })();
 $('#optimizerChatgptAuto')?.addEventListener?.('click',async()=>{
  const w=optimizerWorkflowPlan,status=$('#optimizerChatgptBridgeStatus');
- if(!w||!optimizerImagesSameSku(w))return;
+ const button=$('#optimizerChatgptAuto');
+ // Always surface what happened beside the button, including an unavailable SKU.
+ let near=$('#optimizerChatgptActionStatus');
+ if(!near&&button){
+  near=document.createElement('div');near.id='optimizerChatgptActionStatus';
+  near.setAttribute('role','status');near.style.cssText='margin:8px 0;padding:10px;border-radius:8px;background:#eaf2ff;color:#18355e;font-weight:600';
+  button.insertAdjacentElement('afterend',near);
+ }
+ const notify=message=>{if(status)status.textContent=message;if(near)near.textContent=message;};
+ if(!w||!optimizerImagesSameSku(w)){notify('Selecione a SKU e carregue a etapa Imagens comerciais antes de gerar.');return;}
+ notify('Preparando geração para a SKU '+w.sku+'...');
  // Um comando: selecionar ChatGPT e iniciar/retomar a geracao da SKU atual.
  optimizerImagesMode='chatgpt';optimizerImagesRenderMode();
  void optimizerChatgptRender(w);
- if(optimizerChatBridgeBusy){void optimizerChatBridgeRecover();status.textContent='A geração ou o envio está em andamento. O progresso será preservado.';return;}
+ if(optimizerChatBridgeBusy){
+  const recovered=await optimizerChatBridgeRecover({includeBlocked:true});
+  if(recovered){notify('Retomando '+recovered+' imagem(ns) pendente(s). Progresso preservado.');return;}
+  // No durable image is pending: stale busy state must not permanently block the button.
+  optimizerChatBridgeBusy=false;optimizerChatBridgeUploading=false;
+  notify('Sessão anterior sem envio pendente. Iniciando um novo comando...');
+ }
  if(!optimizerChatBridgeReady){
   globalThis.window?.postMessage?.({kind:'RA_EXTENSION_PROBE'},location.origin);
-  status.textContent='Extensão não detectada. Instale a Ponte ChatGPT no Chrome e atualize esta página. O pacote de instalação acompanha a atualização do aplicativo.';
+  notify('Extensão não detectada. Verifique se a Ponte ChatGPT está ativa no Chrome; atualize esta página e tente novamente.');
   return;
  }
  const btn=$('#optimizerChatgptAuto');btn.disabled=true;
  try{
-  if(optimizerChatBridgeIdentity(optimizerChatBridgeJob,w)&&await optimizerChatBridgeRecover({includeBlocked:true}))return;
+  if(optimizerChatBridgeIdentity(optimizerChatBridgeJob,w)){
+   const recovered=await optimizerChatBridgeRecover({includeBlocked:true});
+   if(recovered){notify('Recuperando '+recovered+' imagem(ns) pendente(s); as já salvas foram preservadas.');return;}
+  }
   // Fresh server state is the only source of completed slots; originals never count.
   const current=await json('/api/shopee/optimizer/images/manual?'+new URLSearchParams({sku:w.sku,item_id:w.itemId,model_id:w.modelId}));
   if(!optimizerImagesSameSku(w))return;
@@ -7980,13 +7999,13 @@ $('#optimizerChatgptAuto')?.addEventListener?.('click',async()=>{
   optimizerChatBridgeRemember(w);
   optimizerChatBridgeBusy=true;
   $('#optimizerChatgptAbort').hidden=false;
-  status.textContent='Conectando à extensão e abrindo ChatGPT para a SKU '+w.sku+'...';
+  notify('Comando enviado à extensão para a SKU '+w.sku+'. Aguardando confirmação...');
   window.postMessage({kind:'RA_SITE_START',payload:{
     nonce:optimizerChatBridgeNonce,sku:w.sku,itemId:String(w.itemId),modelId:String(w.modelId),
     imageUrl:brief.original,prompts:brief.prompts,completed:[...optimizerImagesSavedSlots]
   }},location.origin);
-  setTimeout(()=>{if(optimizerChatBridgeBusy&&status?.textContent?.includes('Conectando'))status.textContent='Aguardando confirmação da extensão. Confira se ela está habilitada no Chrome.';},3500);
- }catch(e){optimizerChatBridgeBusy=false;$('#optimizerChatgptAbort').hidden=true;status.textContent='Não foi possível iniciar: '+e.message;}
+  setTimeout(()=>{if(optimizerChatBridgeBusy&&near?.textContent?.includes('Aguardando confirmação'))notify('A extensão não confirmou o início. Verifique a aba da Ponte ChatGPT ou use Reiniciar 9 imagens do zero para nova sessão.');},6500);
+ }catch(e){optimizerChatBridgeBusy=false;$('#optimizerChatgptAbort').hidden=true;notify('Não foi possível iniciar: '+e.message);}
  finally{btn.disabled=false;}
 });
 $('#optimizerChatgptAbort')?.addEventListener?.('click',()=>{
