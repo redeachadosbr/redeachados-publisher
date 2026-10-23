@@ -173,3 +173,68 @@ test('anúncio já atualizado pode executar somente desconto sem reenviar imagen
  assert.equal(out.result.phase,'discount_ready');
  assert.equal(apiWrites,0);
 });
+
+test('motor único: variações entram na prévia e são confirmadas antes do desconto',async()=>{
+ const opts=[{name:'VERMELHO',sku:'3747-VERMELHO',supplierSku:'3747',cost:349.99,
+  price:745.99,stock:1,asset:{sha256:'red-sha',mime:'image/png'}},
+  {name:'ROSA',sku:'3747-ROSA',supplierSku:'3746',cost:349.99,
+   price:745.99,stock:1,asset:{sha256:'pink-sha',mime:'image/png'}}];
+ const reviewed={stages:{},variationConfig:{enabled:true,type:'Cor',values:['VERMELHO','ROSA']}};
+ const publishedPlan=compileShopeeExecutionPlan({...base,record,review:reviewed,live,
+  modelVariations:{type:'Cor',options:opts,promotion:{discountId:'512820626272845',gross:741.77,promo:557.05}},
+  selectedStage:'all'});
+ assert.equal(publishedPlan.canExecute,true);
+ assert.ok(publishedPlan.actions.includes('model_variations'));
+ const signed={...publishedPlan,commercialDiscount:{snapshot:{
+  shopId:'9',sku:base.sku,itemId:base.itemId,modelId:'0',discountId:'512820626272845',
+  gross:741.77,promo:557.05,originalPrice:745.99},allowPriceChange:true}};
+ let modelsCreated=false,pricesAdjusted=false,promotion=false,uploads=0,links=0;
+ const writings=[];
+ const io={
+  read:async()=>live,validateIdentity:async()=>{},beforeWrite:async x=>writings.push('checkpoint:'+x.phase),
+  variationImage:async()=>String(++uploads),
+  variationRead:async()=>({item:{has_model:modelsCreated},models:modelsCreated?
+   opts.map((o,i)=>({model_sku:o.sku,model_id:i+1,
+    price_info:[{original_price:pricesAdjusted?741.77:745.99}]})):[]}),
+  variationPublish:async()=>{writings.push('create_variations');modelsCreated=true},
+  variationLink:async()=>{links++},
+  variationCost:async()=>({unitCost:349.99}),
+  variationUpdatePrices:async()=>{writings.push('update_model_prices');pricesAdjusted=true},
+  variationPromotionRead:async()=>({status:'ongoing',action:'add',member:promotion?
+   {model_list:[{model_id:1,model_promotion_price:557.05},
+    {model_id:2,model_promotion_price:557.05}]}:null}),
+  variationDiscountPublish:async()=>{writings.push('publish_model_promo');promotion=true}
+ };
+ let j={state:'running',plan:signed,result:{phase:'queued'}};
+ for(let i=0;i<17&&j.state==='running';i++){
+  const next=await advanceShopeeExecution(j,io);
+  j={...j,state:next.state,result:next.result};
+ }
+ assert.equal(j.state,'verified');
+ assert.equal(uploads,2);
+ assert.ok(links>=1);
+ assert.deepEqual(writings.filter(x=>!x.startsWith('checkpoint:')),
+  ['create_variations','update_model_prices','publish_model_promo']);
+ assert.equal(shopeeExecutionProgress(j).percent,100);
+ assert.deepEqual(shopeeExecutionProgress(j).steps.slice(-3).map(x=>x.id),
+  ['variants','fiscal','discount']);
+});
+test('resultado incerto de criação de modelos não gera segundo POST',async()=>{
+ const plan={requiresExplicitConfirmation:true,canExecute:true,
+  itemId:'58221125342',modelVariations:{type:'Cor',options:[{
+   name:'VERMELHO',sku:'3747-VERMELHO',supplierSku:'3747',cost:349.99,price:745.99,
+   asset:{mime:'image/png',sha256:'red'}}]}};
+ let writes=0;
+ const io={variationRead:async()=>({item:{has_model:false},models:[]}),
+  validateIdentity:async()=>{},beforeWrite:async()=>{},
+  variationPublish:async()=>{writes++;throw Error('Shopee timeout')},
+  variationImage:async()=>('id1')};
+ const first=await advanceShopeeExecution({state:'running',plan,
+  result:{phase:'variation_ready',variationImageIds:['id1']}},io);
+ assert.equal(first.state,'uncertain');
+ assert.equal(writes,1);
+ const second=await advanceShopeeExecution({state:'running',plan,
+  result:{...first.result,phase:'variation_verifying'}},io);
+ assert.equal(second.state,'running');
+ assert.equal(writes,1);
+});
