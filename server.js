@@ -1369,7 +1369,7 @@ app.post('/api/shopee/optimizer/execution/prepare',mustLogin,requireWeDropAdmin,
     // Variações conferidas são parte da execução completa, nunca um envio
     // manual em outra tela. Dados e custos vêm do rascunho salvo da SKU.
     let modelVariations=null;
-    if(selectedStage==='all'&&reviewState.variationConfig?.enabled===true)
+    if(['all','remaining'].includes(selectedStage)&&reviewState.variationConfig?.enabled===true)
      modelVariations=await prepareExecutionVariations({auth,cfg,sku,itemId,modelId},reviewState,live);
     let autoModelDiscountToken=null,autoModelDiscountPreview=null;
     if(modelVariations){
@@ -1433,7 +1433,7 @@ app.post('/api/shopee/optimizer/execution/prepare',mustLogin,requireWeDropAdmin,
         previous.plan?.proposed?.tax_info?.ncm||previous.plan?.original?.tax_info?.ncm||'').trim();
     const deferFiscal=selectedStage==='all'&&Boolean(previouslyRejected);
     if(deferFiscal)plan=compileShopeeExecutionPlan({...inputs,deferUnconfirmedFiscal:true,omitFiscal:false});
-    if(plan.finalFiscal&&selectedStage==='all'){
+    if(plan.finalFiscal&&['all','remaining'].includes(selectedStage)){
       // A última etapa usa o mesmo vínculo WeDrop/NCM que a execução fiscal isolada.
       const supplier=await readWeDropProduct(auth.shopId,{sku,itemId,modelId});
       fiscalMatrixSource({sku,supplier,tax:reviewState.tax,reviewSource:reviewState.matrixFiscal});
@@ -1768,11 +1768,45 @@ app.post('/api/shopee/optimizer/execution/execute',mustLogin,requireWeDropAdmin,
  try{
   if(req.body?.acceptPartialExecution!==true)throw Error('Confirme as alterações da prévia.');
   const {itemId,modelId,sku,auth,cfg,record}=await checkedWorkflowAudit(req);
-  const job=await readShopeeExecution(auth.shopId,itemId,modelId);
+  let job=await readShopeeExecution(auth.shopId,itemId,modelId);
   if(job?.sku!==sku||job.state!=='prepared')throw Error('Plano não preparado ou já iniciado. Confira o andamento.');
-  const plan=job.plan;
+  const previousPlan=job.plan;
+  let plan=previousPlan;
+  const remainingOnly=req.body.remainingOnly===true;
+  if(remainingOnly){
+   if(previousPlan.selectedStage!=='all'||!previousPlan.modelVariations?.promotion)
+    throw Error('A execução só das etapas pendentes exige variações e desconto aprovados no plano atual.');
+   // Autorização é o clique nesta ação específica. Reconstituir somente as
+   // três etapas pendentes a partir de dados atuais da Shopee e WeDrop:
+   // jamais escrever título, descrição, imagens, vídeo ou ficha técnica.
+   const savedReview=await getWorkflowReview(auth.shopId,itemId,modelId);
+   if(savedReview?.sku!==sku)throw Error('Revisão da SKU mudou. Reprepare antes de executar.');
+   const currentLive=await shopeeLiveEditableItem(cfg,auth,itemId);
+   const currentVariations=await prepareExecutionVariations({auth,cfg,sku,itemId,modelId},
+     savedReview?.review_state||{},currentLive);
+   const approvedOptions=previousPlan.modelVariations.options||[];
+   const identity=options=>JSON.stringify(options.map(o=>({
+    name:o.name,sku:o.sku,supplierSku:o.supplierSku,cost:Number(o.cost),
+    price:Number(o.price),stock:Number(o.stock),gtin:o.gtin||'',noGtin:o.noGtin===true,
+    photo:o.asset?.sha256||null,modelId:String(o.modelId||'')
+   })));
+   if(identity(approvedOptions)!==identity(currentVariations.options))
+    throw Error('Variações, custos ou estoque WeDrop mudaram desde a prévia. Reprepare a execução.');
+   plan=compileShopeeExecutionPlan({
+    shopId:auth.shopId,itemId,modelId,sku,record,
+    review:savedReview?.review_state||{},live:currentLive,selectedStage:'remaining',
+    deferUnconfirmedFiscal:previousPlan.fiscalDeferred===true,
+    modelVariations:{...currentVariations,promotion:previousPlan.modelVariations.promotion}
+   });
+   if(!plan.canExecute)
+    throw Error('Etapas pendentes não estão prontas: '+(plan.blocked.join('; ')||'sem alterações aprovadas'));
+   if(previousPlan.finalFiscal&&plan.finalFiscal&&
+     JSON.stringify(previousPlan.finalFiscal)!==JSON.stringify(plan.finalFiscal))
+    throw Error('Os dados fiscais mudaram após aprovação. Confira novamente os valores fiscais.');
+   plan.mediaArchive=archiveShopeeMedia(job,plan);
+  }
   let commercialDiscount=null;
-  if(plan.selectedStage==='all'){
+  if(['all','remaining'].includes(plan.selectedStage)){
    if(plan.fiscalDeferred)throw Error('Etapa fiscal pendente: revise os dados fiscais antes de aprovar o desconto final.');
    // Em planos de variação, o clique autenticado + o plano imutável no banco
    // autorizam a promoção exibida. O token de 10 minutos não pode bloquear
@@ -1804,9 +1838,9 @@ app.post('/api/shopee/optimizer/execution/execute',mustLogin,requireWeDropAdmin,
   }
   if(Object.hasOwn(plan.proposed||{},'tax_info')&&plan.selectedStage!=='fiscal')
    throw Error('Informações fiscais só podem ser enviadas em execução fiscal individual, nunca junto das outras etapas.');
-  if(normalizeShopeeExecutionStage(req.body.stage||'all')!==normalizeShopeeExecutionStage(plan?.selectedStage||'all'))
+  if(normalizeShopeeExecutionStage(req.body.stage||'all')!==normalizeShopeeExecutionStage(previousPlan?.selectedStage||'all'))
    throw Error('A etapa escolhida mudou desde a prévia. Reprepare.');
-  if(plan?.planId!==String(req.body.planId||'')||String(job.updated_at)!==String(req.body.updatedAt||''))
+  if(previousPlan?.planId!==String(req.body.planId||'')||String(job.updated_at)!==String(req.body.updatedAt||''))
    throw Error('Plano alterado em outra sessão. Prepare novamente.');
   confirmShopeeExecution(plan,{sku,confirmation:req.body.confirmation});
   const review=await getWorkflowReview(auth.shopId,itemId,modelId);
@@ -1837,11 +1871,17 @@ app.post('/api/shopee/optimizer/execution/execute',mustLogin,requireWeDropAdmin,
     {...await prepareExecutionVariations({auth,cfg,sku,itemId,modelId},reviewState,live),
      promotion:plan.modelVariations.promotion}:null});
   if(fresh.fingerprint!==plan.fingerprint||!fresh.canExecute)throw Error('Conteúdo ou aprovação mudou. Prepare novamente.');
+  if(remainingOnly){
+   // Só trocar o plano após TODAS as validações, sem duplicar alterações.
+   job=await saveShopeePreparedExecution(auth.shopId,itemId,modelId,sku,plan);
+  }
   await claimShopeePreparedExecution(auth.shopId,itemId,modelId,{
    planId:plan.planId,updatedAt:job.updated_at,runId:crypto.randomUUID(),commercialDiscount});
   // Only this explicit authenticated action starts the durable runner.
   res.status(202).json({ok:true,status:'running',marketplaceUpdated:false,
-   message:'Execução iniciada. Acompanhe as etapas; você pode sair e voltar para esta SKU.'});
+   mode:remainingOnly?'remaining':'standard',
+   message:remainingOnly?'Iniciando SOMENTE variações, fiscal e desconto, sem alterar imagens, vídeo, título, descrição nem ficha técnica.':
+    'Execução iniciada. Acompanhe as etapas; você pode sair e voltar para esta SKU.'});
   void runOptimizerJobs();
  }catch(e){
    // Um 409 não pode desaparecer atrás de uma barra otimista de 69%.
