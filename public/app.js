@@ -7636,6 +7636,7 @@ let optimizerChatBridgeSku='';
 const RA_CHAT_BRIDGE_JOB_KEY='redeAchadosBridgeJobV2';
 const RA_CHAT_BRIDGE_ACTIVE_KEY='redeAchadosBridgeActiveV3';
 let optimizerChatBridgeJob=null,optimizerChatBridgeQueuePromise=null;
+let optimizerChatBridgeStartConfirmed=false;
 // A identificação é compartilhada entre abas do Manager (sem dados privados).
 // A fila de arquivos continua isolada por nonce/SKU e conserva imagens salvas.
 function optimizerChatBridgeActive(){
@@ -7832,6 +7833,8 @@ void optimizerChatBridgeRecover();
 globalThis.window?.addEventListener?.('message',async(event)=>{
  if(event.source!==window||event.origin!==location.origin||!event.data||typeof event.data!=='object')return;
  const m=event.data,status=$('#optimizerChatgptBridgeStatus');
+ const actionStatus=$('#optimizerChatgptActionStatus');
+ const report=message=>{if(status)status.textContent=message;if(actionStatus)actionStatus.textContent=message;};
  // Only extension-origin event types belong here. Site-emitted control messages
  // (RA_SITE_ABORT / RA_SITE_UPLOAD_RESULT / RA_SITE_START) must never be
  // interpreted as extension input, or cancellation can recursively echo.
@@ -7848,6 +7851,8 @@ globalThis.window?.addEventListener?.('message',async(event)=>{
   return;
  }
  if(m.kind==='RA_EXTENSION_START_RESULT'&&m.nonce===optimizerChatBridgeNonce){
+  optimizerChatBridgeStartConfirmed=true;
+  report(m.ok?'Extensão confirmou o início. Gerando imagens individualmente, aguardando cada importação.':'Extensão recusou o comando: '+(m.error||'erro não identificado'));
   if(!m.ok){
    optimizerChatBridgeBusy=false;
    $('#optimizerChatgptAbort').hidden=true;
@@ -7958,7 +7963,7 @@ $('#optimizerChatgptAuto')?.addEventListener?.('click',async()=>{
  let near=$('#optimizerChatgptActionStatus');
  if(!near&&button){
   near=document.createElement('div');near.id='optimizerChatgptActionStatus';
-  near.setAttribute('role','status');near.style.cssText='margin:8px 0;padding:10px;border-radius:8px;background:#eaf2ff;color:#18355e;font-weight:600';
+  near.setAttribute('role','status');near.style.cssText='grid-column:1/-1;flex-basis:100%;width:100%;box-sizing:border-box;margin:8px 0;padding:10px;border-radius:8px;background:#eaf2ff;color:#18355e;font-size:14px;font-weight:600;line-height:1.5;white-space:normal;overflow-wrap:anywhere';
   button.insertAdjacentElement('afterend',near);
  }
  const notify=message=>{if(status)status.textContent=message;if(near)near.textContent=message;};
@@ -7998,13 +8003,21 @@ $('#optimizerChatgptAuto')?.addEventListener?.('click',async()=>{
   sessionStorage.setItem(RA_CHAT_BRIDGE_SESSION_KEY,optimizerChatBridgeNonce);
   optimizerChatBridgeRemember(w);
   optimizerChatBridgeBusy=true;
+  optimizerChatBridgeStartConfirmed=false;
   $('#optimizerChatgptAbort').hidden=false;
   notify('Comando enviado à extensão para a SKU '+w.sku+'. Aguardando confirmação...');
   window.postMessage({kind:'RA_SITE_START',payload:{
     nonce:optimizerChatBridgeNonce,sku:w.sku,itemId:String(w.itemId),modelId:String(w.modelId),
     imageUrl:brief.original,prompts:brief.prompts,completed:[...optimizerImagesSavedSlots]
   }},location.origin);
-  setTimeout(()=>{if(optimizerChatBridgeBusy&&near?.textContent?.includes('Aguardando confirmação'))notify('A extensão não confirmou o início. Verifique a aba da Ponte ChatGPT ou use Reiniciar 9 imagens do zero para nova sessão.');},6500);
+  const issuedNonce=optimizerChatBridgeNonce;
+  setTimeout(()=>{
+   if(!optimizerChatBridgeStartConfirmed&&optimizerChatBridgeBusy&&optimizerChatBridgeNonce===issuedNonce){
+    optimizerChatBridgeBusy=false;
+    $('#optimizerChatgptAbort').hidden=true;
+    notify('A extensão não respondeu ao comando de início. A geração não começou. Verifique se a Ponte ChatGPT está ativada e atualizada; depois tente novamente. As imagens salvas foram preservadas.');
+   }
+  },8000);
  }catch(e){optimizerChatBridgeBusy=false;$('#optimizerChatgptAbort').hidden=true;notify('Não foi possível iniciar: '+e.message);}
  finally{btn.disabled=false;}
 });
