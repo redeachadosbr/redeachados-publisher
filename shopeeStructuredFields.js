@@ -58,7 +58,7 @@ export function compileAttributes(changes,record,live){
  for(const change of changes){
   const id=Number(change.attributeId),meta=audit?.attributes?.find(x=>x.id===id);
   if(!meta||meta.conditional||used.has(id))throw Error('Atributo não disponível nesta categoria.');
-  if(String(change.evidence||'').trim().length<3)throw Error('Informe a fonte do atributo '+meta.name+'.');
+  // Fonte informativa opcional na conferência; os atributos continuam validados.
   used.add(id);
   const values=Array.isArray(change.values)?change.values:[change];
   if(!values.length||values.length>attributeInputRules(meta).max)throw Error('Quantidade de valores não permitida para '+meta.name+'.');
