@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import {approvedTitle} from './fixtures/approved-content.js';
 import {compileShopeeExecutionPlan,verifyShopeeFiscalExecution} from '../shopeeExecutionPlan.js';
 import {advanceShopeeExecution} from '../shopeeExecutionWorker.js';
+import {advanceVerifiedDiscount} from '../shopeeExecutionDiscount.js';
 import {shopeeExecutionProgress} from '../shopeeExecutionProgress.js';
 
 const base={shopId:9,itemId:'58220952395',modelId:'0',sku:'TUD0667'};
@@ -98,4 +99,55 @@ test('sem resposta fiscal confirmada, NUNCA repetir o envio automaticamente',asy
  assert.equal(out.state,'running');
  assert.equal(out.result.phase,'fiscal_verifying');
  assert.deepEqual(calls,[]);
+});
+
+test('etapa 08 ocorre após a verificação fiscal, e só conclui com desconto confirmado',async()=>{
+ const p=plan(),price={shopId:'9',sku:base.sku,itemId:base.itemId,modelId:'0',
+  discountId:'123456',gross:250,promo:200,buyerAfterCoupon:198,couponPct:1,
+  discountPct:20,quoteAt:'2026-10-23T00:00:00Z',originalPrice:230};
+ p.commercialDiscount={snapshot:price,allowPriceChange:true};
+ const shop=structuredClone(live);shop.item_name=approvedTitle;shop.tax_info={...p.finalFiscal};
+ let original=230,discountAdded=false,priceWrites=0,promoWrites=0;
+ const io={
+  read:async()=>shop,validateIdentity:async()=>{},beforeWrite:async()=>{},
+  discountRead:async()=>({...price,originalPrice:original,action:discountAdded?'already':'add'}),
+  discountUpdatePrice:async()=>{priceWrites++;original=250;},
+  discountPublish:async()=>{promoWrites++;discountAdded=true;}
+ };
+ let job={state:'running',plan:p,result:{phase:'fiscal_verifying',primaryVerified:true,
+  fiscalStartedAt:Date.now()}};
+ const phases=[];
+ for(let i=0;i<12;i++){
+  const out=await advanceShopeeExecution(job,io);
+  job={...job,state:out.state,result:out.result};phases.push(job.result.phase);
+  if(job.state!=='running')break;
+ }
+ assert.equal(job.state,'verified');
+ assert.ok(phases.indexOf('discount_ready')>phases.indexOf('fiscal_verifying')||phases[0]==='discount_ready');
+ assert.deepEqual([priceWrites,promoWrites],[1,1]);
+ const progress=shopeeExecutionProgress(job);
+ assert.equal(progress.percent,100);
+ assert.equal(progress.steps.at(-1).label,'08 · Desconto — última etapa');
+ assert.equal(progress.discountStatus,'verified');
+});
+
+test('resposta incerta de promocao nao causa segunda escrita',async()=>{
+ const snapshot={shopId:'9',sku:'3747',itemId:'12',modelId:'0',discountId:'12345',
+  gross:200,promo:160,buyerAfterCoupon:158,couponPct:1,discountPct:20,
+  quoteAt:'2026-10-23T00:00:00Z',originalPrice:200};
+ const p={requiresExplicitConfirmation:true,canExecute:true,itemId:'12',sku:'3747',
+  selectedStage:'all',commercialDiscount:{snapshot,allowPriceChange:false}};
+ let writes=0;
+ const io={beforeWrite:async()=>{},discountRead:async()=>({...snapshot,action:'add'}),
+  discountPublish:async()=>{writes++;throw Error('API sem resposta conclusiva');}};
+ const first=await advanceVerifiedDiscount({plan:p,result:{phase:'discount_ready'}},io);
+ assert.equal(first.state,'uncertain');
+ assert.equal(writes,1);
+ // Mesmo se uma leitura manual examinar o checkpoint, nao pode repetir o POST.
+ const later=await advanceVerifiedDiscount({plan:p,result:{...first.result,phase:'discount_verifying'}},io);
+ assert.equal(later.state,'running');
+ assert.equal(writes,1);
+ const progress=shopeeExecutionProgress({state:'uncertain',plan:p,result:first.result});
+ assert.ok(progress.percent<100);
+ assert.equal(progress.steps.at(-1).id,'discount');
 });
