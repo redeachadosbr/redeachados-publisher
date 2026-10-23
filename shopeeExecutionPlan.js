@@ -125,7 +125,8 @@ export function compileShopeeExecutionPlan({shopId,itemId,modelId,sku,record,rev
   const fingerprint=crypto.createHash('sha256').update(JSON.stringify({
     shopId:String(shopId),itemId:String(itemId),modelId:String(modelId),sku,
     selectedStage,discountOnly,modelVariations:modelVariations?{
-     type:modelVariations.type,options:modelVariations.options.map(x=>({name:x.name,sku:x.sku,
+     type:modelVariations.type,alreadyCreated:modelVariations.alreadyCreated===true,
+     options:modelVariations.options.map(x=>({name:x.name,sku:x.sku,
       supplierSku:x.supplierSku,cost:x.cost,price:x.price,stock:x.stock,sha256:x.asset?.sha256})),
      promotion:modelVariations.promotion||null}:null,
     from:{item_name:currentTitle,description:currentDescription,description_type:currentType},
@@ -166,6 +167,8 @@ export function assertLiveShopeeUnchanged(plan,base){
   if((plan.proposed.tax_info||plan.finalFiscal)&&!sameData(base.tax_info||{},plan.original.tax_info||{}))
     throw Error('Os dados fiscais da Shopee mudaram após a prévia. Recalcule e confira o NCM e os demais campos fiscais.');
   if(plan.images?.length&&!sameData(base.image?.image_id_list||[],plan.original.image?.image_id_list||[]))throw Error('Imagens alteradas após preparação. Refaça a prévia.');
+  if(plan.modelVariations&&Boolean(base.has_model)!==Boolean(plan.modelVariations.alreadyCreated))
+    throw Error('Variações do anúncio mudaram após a prévia. Refaça a preparação, sem repetir envios.');
   if(base.category_id&&plan.original.category_id&&Number(base.category_id)!==Number(plan.original.category_id))throw Error('Categoria alterada após preparação. Refaça a auditoria.');
   if(base.item_status&&!['NORMAL','UNLIST'].includes(base.item_status))throw Error('Anúncio não está mais editável.');
 }
