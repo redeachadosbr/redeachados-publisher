@@ -24,3 +24,129 @@
 #optimizerDescriptionToggle{font-size:12px;font-weight:750;padding:10px 13px;border-radius:9px;min-height:38px}
 #optimizerWorkflowEditor:has(#optimizerDescriptionCompact:not([hidden])) #optimizerWorkflowDraftWrap[hidden]{display:none!important}
 @media(max-width:650px){.optimizer-description-compact-heading{flex-wrap:wrap}#optimizerDescriptionCompactIntro{font-size:12px}}
+
+
+/* Prévia completa — sequência editorial legível que acompanha o texto da SKU.
+   Somente a visualização tem cartões; a Shopee recebe texto e quebras de linha. */
+#optimizerWorkflowEditor .optimizer-description-compact{
+ background:#f7faff;
+ border:1px solid #d9e5f4;
+ border-radius:15px;
+ padding:15px;
+ box-shadow:0 5px 18px rgba(27,60,105,.055)
+}
+#optimizerWorkflowEditor .optimizer-description-compact-heading{
+ padding:2px 2px 12px;
+ border-bottom:1px solid #deebf6
+}
+#optimizerWorkflowEditor .optimizer-description-compact-heading strong{
+ color:#15385f;font-size:15px;font-weight:800;letter-spacing:-.015em
+}
+#optimizerWorkflowEditor .ra-description-preview-note{
+ color:#6b83a0;font-size:11px;line-height:1.5;margin:12px 2px
+}
+#optimizerWorkflowEditor .ra-description-full-preview{
+ display:flex;
+ flex-direction:column;
+ align-items:stretch;
+ gap:10px;
+ width:100%;
+ max-width:100%;
+ box-sizing:border-box;
+ background:#fff;
+ border:1px solid #e1eaf6;
+ border-radius:13px;
+ padding:18px 20px;
+ font-family:inherit;
+ color:#243f61;
+ overflow-wrap:anywhere;
+ white-space:normal;
+}
+#optimizerWorkflowEditor .ra-description-full-preview .ra-description-hero{
+ margin:0;
+ font-size:20px;
+ font-weight:850;
+ line-height:1.4;
+ color:#123960;
+ letter-spacing:-.025em;
+ background:linear-gradient(120deg,#e9f4ff 0%,#f6fbff 100%);
+ border-radius:10px;
+ padding:13px 14px
+}
+#optimizerWorkflowEditor .ra-description-full-preview .ra-description-paragraph{
+ font-size:14px;
+ line-height:1.78;
+ font-weight:470;
+ margin:1px 3px;
+ max-width:86ch;
+ color:#324f6c
+}
+#optimizerWorkflowEditor .ra-description-full-preview .ra-description-section-title{
+ font-size:14px;
+ line-height:1.5;
+ font-weight:800;
+ margin:11px 0 2px;
+ color:#164b7b;
+ padding-bottom:6px;
+ border-bottom:1px solid #e7eef8
+}
+#optimizerWorkflowEditor .ra-description-full-preview .ra-description-detail{
+ font-size:13px;
+ line-height:1.65;
+ margin:0;
+ padding:7px 11px;
+ color:#294965;
+ background:#f8fbff;
+ border-left:3px solid #c2daf5;
+ border-radius:7px
+}
+#optimizerWorkflowEditor .ra-description-full-preview .ra-description-cta{
+ margin:10px 0 0;
+ padding:13px 16px;
+ border-radius:11px;
+ background:#eef9f2;
+ border:1px solid #c6e9d6;
+ color:#0b6841;
+ font-weight:800;
+ font-size:14px;
+ line-height:1.65
+}
+#optimizerWorkflowEditor .ra-description-full-preview .ra-description-empty{
+ font-size:13px;
+ color:#7088a2;
+ padding:15px 0;
+}
+#optimizerWorkflowEditor .ra-description-preview-footer{
+ display:flex;
+ justify-content:space-between;
+ align-items:center;
+ gap:12px;
+ flex-wrap:wrap;
+ margin-top:13px
+}
+#optimizerWorkflowEditor .ra-description-preview-footer>span{
+ font-size:10px;
+ color:#58789b;
+ font-weight:600
+}
+#optimizerWorkflowEditor .ra-description-preview-footer #optimizerDescriptionToggle{
+ background:white;
+ color:#155dab;
+ border:1px solid #c7ddf4;
+ padding:9px 14px;
+ box-shadow:none
+}
+#optimizerWorkflowEditor:has(#optimizerDescriptionReady:not([hidden])) #optimizerWorkflowDraft{
+ max-height:none;
+ min-height:280px;
+ height:auto;
+ resize:vertical;
+ line-height:1.68;
+}
+@media (max-width:740px){
+ #optimizerWorkflowEditor .optimizer-description-compact{padding:10px}
+ #optimizerWorkflowEditor .ra-description-full-preview{padding:12px}
+ #optimizerWorkflowEditor .ra-description-full-preview .ra-description-hero{font-size:17px}
+ #optimizerWorkflowEditor .ra-description-full-preview .ra-description-paragraph{font-size:13px}
+ #optimizerWorkflowEditor .ra-description-preview-footer #optimizerDescriptionToggle{width:100%}
+}
