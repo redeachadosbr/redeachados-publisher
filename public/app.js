@@ -2399,6 +2399,7 @@ function optimizerDescriptionCompactPreview(content){
  $('#optimizerDescriptionCompactCount').textContent=[...raw.normalize('NFC')].length+' caracteres';
  const cta=lines.filter(x=>x.trim()).at(-1)||'';
  $('#optimizerDescriptionCompactCta').textContent=cta.startsWith('🛒')?cta:'🛒 CTA final pendente de revisão.';
+ globalThis.ShopeeDescriptionStudio?.sync?.();
 }
 $('#optimizerDescriptionToggle')?.addEventListener?.('click',()=>{
  if(optimizerWorkflowStage!=='description')return;
@@ -2626,6 +2627,7 @@ function optimizerWorkflowRender(data){
    optimizerWorkflowOpen(optimizerWorkflowStage);
  // Se uma etapa foi eliminada em uma atualização, fechar o editor antigo.
  else{
+   globalThis.ShopeeDescriptionStudio?.close?.();
    optimizerWorkflowStage=null;
    $('#optimizerWorkflowEditor').hidden=true;
  }
@@ -3049,6 +3051,7 @@ $('#optimizerImageCorrectionCopy')?.addEventListener?.('click',async()=>{
 
 function optimizerWorkflowOpen(key){
  optimizerContentRemember();
+ globalThis.ShopeeDescriptionStudio?.close?.();
  globalThis.ShopeeTitleStudio?.close?.();
  const data=optimizerWorkflowPlan;
  const stage=(data?.stages||[]).find(x=>x.key===key);
@@ -3144,6 +3147,7 @@ function optimizerWorkflowOpen(key){
      (stage.reviewed?'Reabrir conferência':'Registrar etapa como conferida');
  }
  $('#optimizerWorkflowShopee').href='https://seller.shopee.com.br/portal/product/'+encodeURIComponent(data.itemId)+'?pageEntry=product_list';
+ if(isDescription)globalThis.ShopeeDescriptionStudio?.open?.(data);
  // Not an execution button: opens the Seller Center for an actual confirmed edit.
  // Do not scroll unexpectedly while revising a sequence of SKU steps.
 }
@@ -3162,6 +3166,7 @@ async function optimizerWorkflowLoad(record){
    titleJob?.catch(()=>{}); // Falhas da IA não bloqueiam a análise da SKU.
  }
  optimizerVideoReset();
+ globalThis.ShopeeDescriptionStudio?.close?.();
  optimizerWorkflowStage=null;$('#optimizerWorkflowEditor').hidden=true;
  optimizerWorkflowNotice('Preparando etapas de revisão da SKU '+sku+' com a auditoria oficial...');
  try{
@@ -3178,8 +3183,9 @@ async function optimizerWorkflowLoad(record){
      optimizerWorkflowNotice('Não foi possível carregar as etapas: '+e.message+'. Refaça a análise desta SKU.','error');
  }
 }
-$('#optimizerWorkflowClose')?.addEventListener?.('click',()=>{globalThis.ShopeeTitleStudio?.close?.();$('#optimizerWorkflowEditor').hidden=true;optimizerWorkflowStage=null;});
+$('#optimizerWorkflowClose')?.addEventListener?.('click',()=>{globalThis.ShopeeDescriptionStudio?.close?.();globalThis.ShopeeTitleStudio?.close?.();$('#optimizerWorkflowEditor').hidden=true;optimizerWorkflowStage=null;});
 $('#optimizerShowExecution')?.addEventListener?.('click',()=>{
+ globalThis.ShopeeDescriptionStudio?.close?.();
  globalThis.ShopeeTitleStudio?.close?.();
  $('#optimizerWorkflowEditor').hidden=true;optimizerWorkflowStage=null;
  $('#optimizerExecutionPanel').hidden=false;
