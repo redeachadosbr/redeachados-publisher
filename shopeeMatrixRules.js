@@ -2,7 +2,7 @@
 // Sugestões WeDrop nunca autorizam publicações ou mudanças fiscais automaticamente.
 // Motor Matriz: regras fixas da descrição para todas as SKUs.
 export const REDE_ACHADOS_DESCRIPTION_RULES=Object.freeze({
- minChars:40,maxChars:3000,cta:'🛒 Gostou? Adicione ao carrinho e aproveite!',
+ minChars:1,maxChars:null,cta:'🛒 Gostou? Adicione ao carrinho e aproveite!',
  sections:0,faqCount:0,reasonsCount:0,compactPreview:true,
  presentation:'2 parágrafos curtos, benefícios, fatos comprovados e CTA',
  manualDescriptionEditable:true
