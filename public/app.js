@@ -7521,7 +7521,7 @@ function optimizerImagesRenderMode(){
  $('#optimizerModeApi').classList.toggle('is-active',!chat);
 }
 async function optimizerChatgptMakeBrief(w){
- const {createChatGptPrompts}=await import('/chatgptPrompts.js?v=1.20.34-nine-image-sequence');
+ const {createChatGptPrompts}=await import('/chatgptPrompts.js?v=1.20.35-ambient-all-scenes');
  return createChatGptPrompts({
   sku:w.sku,title:w.draftTitle||'Produto Shopee',
   imageUrls:w.imageUrls||[],
@@ -7913,6 +7913,40 @@ globalThis.window?.addEventListener?.('message',async(event)=>{
    e.message+'. A foto anterior permanece salva. Você pode colar ou selecionar outra foto.');
  }
 });
+// Explicit fresh-start control. Stops the previous extension job, clears its identity,
+// and removes prepared images only after the user approves restarting this SKU.
+(function installChatgptFreshStart(){
+ const start=$('#optimizerChatgptAuto');if(!start||$('#optimizerChatgptFreshStart'))return;
+ const fresh=document.createElement('button');fresh.id='optimizerChatgptFreshStart';
+ fresh.type='button';fresh.className='secondary';fresh.textContent='↻ Reiniciar 9 imagens do zero';
+ start.insertAdjacentElement('afterend',fresh);
+ fresh.addEventListener('click',async()=>{
+  const w=optimizerWorkflowPlan;
+  if(!w||!optimizerImagesSameSku(w))return;
+  if(!confirm('Reiniciar a SKU '+w.sku+' do zero? As imagens comerciais preparadas (não as fotos originais da Shopee) serão excluídas, e a extensão receberá o roteiro atualizado.'))return;
+  fresh.disabled=true;
+  const status=$('#optimizerChatgptBridgeStatus');
+  try{
+   await optimizerChatBridgeRelease('Reiniciando a tarefa desta SKU com o novo roteiro.');
+   optimizerChatBridgeActiveClear(optimizerChatBridgeNonce);
+   optimizerChatBridgeJob=null;optimizerChatBridgeNonce='';optimizerChatBridgeSku='';
+   sessionStorage.removeItem(RA_CHAT_BRIDGE_JOB_KEY);
+   sessionStorage.removeItem(RA_CHAT_BRIDGE_SESSION_KEY);
+   const current=await json('/api/shopee/optimizer/images/manual?'+new URLSearchParams({sku:w.sku,item_id:w.itemId,model_id:w.modelId}));
+   for(const image of current.images||[]){
+    if(!optimizerImagesSameSku(w))throw Error('SKU alterada; reinício interrompido.');
+    const slot=Number(image.slot);
+    const removal=await json('/api/shopee/optimizer/images/manual?'+new URLSearchParams({sku:w.sku,item_id:w.itemId,model_id:w.modelId,slot}),{method:'DELETE'});
+    if(removal.deleted!==true)throw Error('Exclusão da posição '+slot+' não confirmada.');
+   }
+   optimizerImagesSavedSlots.clear();optimizerChatgptBrief=null;optimizerChatgptBriefSku='';
+   await optimizerImagesLoad();
+   if(status)status.textContent='SKU '+w.sku+' zerada. Iniciando o roteiro atualizado desde a imagem 01.';
+   if(optimizerImagesSameSku(w))start.click();
+  }catch(error){if(status)status.textContent='Não foi possível concluir o reinício: '+error.message;}
+  finally{fresh.disabled=false;}
+ });
+})();
 $('#optimizerChatgptAuto')?.addEventListener?.('click',async()=>{
  const w=optimizerWorkflowPlan,status=$('#optimizerChatgptBridgeStatus');
  if(!w||!optimizerImagesSameSku(w))return;
