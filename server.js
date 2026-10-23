@@ -961,15 +961,21 @@ app.get('/api/shopee/optimizer/workflow',mustLogin,requireWeDropAdmin,async(req,
     // Search category options only for values explicitly found in supplier evidence;
     // only exact official matches are ever used in the prepared draft.
     let extraOptions=false;
+    // Limit the total official lookups per SKU so dynamic research never
+    // multiplies into dozens of requests on a slow Shopee connection.
+    let categoryOptionLookups=0;
     for(const missing of searchable){
+      if(categoryOptionLookups>=10)break;
       const attr=technicalPreview.attributes.find(x=>Number(x.id)===Number(missing.attributeId));
       if(!attr?.supportSearch||attr.conditional)continue;
       try{
         // Motor Matriz: pesquisa para QUALQUER SKU e categoria, não apenas motos.
         // Consultar primeiro o valor literal e depois equivalentes exatos seguros.
         // O código/ID precisa ser devolvido pela API oficial da Shopee.
-        const variants=technicalOptionSearchTerms(attr.name,missing.value);
+        const variants=technicalOptionSearchTerms(attr.name,missing.value).slice(0,3);
         for(const value of variants){
+          if(categoryOptionLookups>=10)break;
+          categoryOptionLookups++;
           const request=searchAttributeRequest({attributeId:attr.id,valueName:value,limit:50});
           const items=readSearchedAttributeOptions(await matrixShopeeSearch(cfg,auth,request),0,50).options;
           const normalized=String(value).normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase().trim();
