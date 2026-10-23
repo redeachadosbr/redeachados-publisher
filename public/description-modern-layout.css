@@ -163,11 +163,32 @@
  font-size:12px;font-weight:800;line-height:1.5;overflow-wrap:anywhere
 }
 #optimizerDescriptionModern .desc-modern-cta[data-present="false"]{background:#fff8eb;color:#92652a}
-#optimizerDescriptionModern .desc-modern-full{border-radius:9px;border:1px solid #e0e9f7;background:#fafcff}
-#optimizerDescriptionModern .desc-modern-full>summary{
- padding:9px 12px;cursor:pointer;list-style:none;color:#346497;font-weight:800;font-size:10px
+
+/* Left side is a concise visual preview; the complete editable text is on the right.
+   Keep the original full-preview node hidden here for existing sync logic. */
+#optimizerDescriptionModern #optimizerDescriptionFullPreview{display:none!important}
+#optimizerDescriptionModern .desc-modern-preview-label{
+ color:#526ca0;font-size:10px;font-weight:800;background:#edf4ff;
+ border:1px solid #dce8fa;border-radius:8px;padding:6px 9px;white-space:nowrap
 }
-#optimizerDescriptionModern .desc-modern-full>summary::-webkit-details-marker{display:none}
-#optimizerDescriptionModern .desc-modern-full[open]>summary{border-bottom:1px solid #e0e9f7}
-#optimizerDescriptionModern #optimizerDescriptionFullPreview{padding:12px;font-size:12px;line-height:1.6;max-height:330px;overflow:auto;background:#fff}
-#optimizerDescriptionModern #optimizerDescriptionFullPreview :is(h4,h5,p,div){font-size:inherit;line-height:1.6;overflow-wrap:anywhere}
+#optimizerDescriptionModern .desc-modern-preview-panel{
+ background:linear-gradient(180deg,#fff,#fcfdff)
+}
+#optimizerDescriptionModern .desc-modern-preview-panel #optimizerDescriptionCompact{
+ display:flex!important;flex:1;flex-direction:column;gap:11px;
+ min-width:0;min-height:235px
+}
+#optimizerDescriptionModern .desc-modern-preview-panel .desc-modern-preview-summary{
+ flex:1;min-height:130px;max-height:215px;line-height:1.62;
+ overflow:auto;word-break:break-word
+}
+#optimizerDescriptionModern .desc-modern-preview-panel .desc-modern-chips{
+ align-items:center;min-height:30px
+}
+#optimizerDescriptionModern .desc-modern-preview-panel .desc-modern-cta{
+ margin-top:auto;min-height:46px
+}
+@media(max-width:1050px){
+ #optimizerDescriptionModern .desc-modern-preview-panel #optimizerDescriptionCompact{min-height:0}
+ #optimizerDescriptionModern .desc-modern-preview-panel .desc-modern-preview-summary{min-height:100px}
+}
