@@ -3503,7 +3503,7 @@ function optimizerDiscountApprovalReady(){
  if(!w||!q||!p||!optimizerDiscountFinalPreviewData?.approvalToken||
     optimizerDiscountFinalIdentityOf(w)!==optimizerDiscountFinalIdentity||!optimizerDiscountFinalEligible(q))return false;
  const id=String($('#optimizerExecDiscountCampaign')?.value||'').trim();
- return /^\\d{1,18}$/.test(id)&&String(p.sku)===String(w.sku)&&
+ return /^\d{1,18}$/.test(id)&&String(p.sku)===String(w.sku)&&
   String(p.itemId)===String(w.itemId)&&String(p.modelId)===String(w.modelId)&&
   String(p.discountId)===id&&
   (!p.needsBasePriceUpdate||Boolean($('#optimizerExecDiscountPriceConsent')?.checked));
