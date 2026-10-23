@@ -9,7 +9,7 @@ export const CHATGPT_IMAGE_SCENES=Object.freeze([
  {label:'06 · Persuasão',guide:'Imagem 6 — Persuasão: destacar um diferencial verdadeiro por imagem comercial realista com fundo ambientado, sem adicionar texto não solicitado.'},
  {label:'07 · Transformação',guide:'Imagem 7 — Transformação: mostrar experiência e resultado realista com produto fiel, cenário ambientado diferente; frase curta somente sob solicitação.'},
  {label:'08 · Quebra de objeções',guide:'Imagem 8 — Quebra de objeções: responder visualmente a três dúvidas reais sobre o produto em cenário ambientado; texto somente sob solicitação, sem alegações não comprovadas.'},
- {label:'09 · Mockup e confiança',guide:'Imagem 9 — Mockup e confiança: apresentar o produto em mockup ambientado sofisticado e realista, com três selos da loja: Compra Segura, Entrega Rápida e Produto Disponível; não inventar embalagem.'}
+ {label:'09 · Mockup e confiança',guide:'Imagem 9 — Mockup e confiança: apresentar o produto em mockup ambientado sofisticado e realista, com três selos da loja: Compra Segura, Entrega Rápida e Atendimento Online; não inventar embalagem.'}
 ]);
 function sceneSelection(){ return CHATGPT_IMAGE_SCENES; }
 const asText=(value,max=10000)=>String(value||'').normalize('NFC').slice(0,max);
