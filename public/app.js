@@ -7830,7 +7830,13 @@ globalThis.window?.addEventListener?.('message',async(event)=>{
  const m=event.data,status=$('#optimizerChatgptBridgeStatus');
  if(m.kind==='RA_EXTENSION_READY'){
   optimizerChatBridgeReady=true;
-  if(status&&!optimizerChatBridgeBusy)status.textContent='Extensão Rede Achados BR detectada. Clique em Gerar as 9 imagens para abrir o ChatGPT e receber cada foto automaticamente.';
+  const version=String(m.version||'');
+  const parts=version.split('.').map(Number);
+  const needsUpdate=parts.length!==3||parts.some(n=>!Number.isInteger(n))||
+   parts[0]<1||(parts[0]===1&&parts[1]===0&&parts[2]<9);
+  if(status&&!optimizerChatBridgeBusy)status.textContent=needsUpdate
+   ?'Extensão ChatGPT '+(version||'antiga')+' detectada: esta versão pode ficar presa na SKU anterior. Atualize a Ponte para 1.0.9 ou superior na mesma pasta da extensão e recarregue o Chrome.'
+   :'Extensão Rede Achados BR '+version+' detectada. Clique em Gerar as 9 imagens para abrir o ChatGPT e receber cada foto automaticamente.';
   return;
  }
  if(m.kind==='RA_EXTENSION_START_RESULT'&&m.nonce===optimizerChatBridgeNonce){
