@@ -169,13 +169,13 @@
        'Dependem de outros atributos da categoria','conditional',conditional)
    );
  }
- function render(data){
+ function render(data,{regroup=true}={}){
    if(!data||panel.hidden)return;
    const attrs=data.attributes||[],suggested=data.sourceFacts?.suggestions||[];
    const changes=[...fields.querySelectorAll('fieldset[data-attribute-id]')];
    // Called directly after the existing renderer; don't rebuild the form on
    // every keystroke. Each field stays attached with the original listeners.
-   groups(data);
+   if(regroup)groups(data);
    const savedIds=new Set(attrs.filter(x=>Array.isArray(x.values)&&x.values.length).map(x=>Number(x.id)));
    const suggestedIds=new Set((data.attributeChanges||[]).filter(x=>x?.values?.length).map(x=>Number(x.attributeId)));
    for(const item of suggested)if(item?.values?.length)suggestedIds.add(Number(item.attributeId));
@@ -217,6 +217,7 @@
      measureWarning.textContent='⚠ Peso e medidas precisam de conferência: podem ser dados da embalagem ou unidades diferentes.';
    }
    const cat=String(data.categoryId||'—');
+   if(!preview.contains(previewExtra))preview.append(previewExtra);
    previewExtra.replaceChildren();
    const head=element('strong','','☷ Resumo da categoria');
    previewExtra.append(head);
@@ -234,5 +235,5 @@
    reviewSummary?.querySelector('small')?.replaceChildren(document.createTextNode(
      missing+' obrigatório(s) pendente(s) · '+completed.size+' preenchido(s)'));
  }
- globalThis.RATechnicalStudio={render};
+ globalThis.RATechnicalStudio={render,refresh:data=>render(data,{regroup:false})};
 })();
