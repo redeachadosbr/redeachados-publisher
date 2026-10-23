@@ -196,7 +196,7 @@ const highlights={
   '🎁 Uma surpresa especial para os pequenos: para crianças que gostam de veículos, a moto pode ser o centro das brincadeiras e de bons momentos em família. Um presente que une a emoção de ganhar um brinquedo à vontade de começar a brincar.'
  ],
  ball:[
-  '⚽ Mais diversão em cada partida: a bola convida a criar pequenas partidas, treinar chutes e trocar passes em momentos de lazer. Uma opção para quem gosta de futebol desde cedo.',
+  '⚽ Mais diversão em cada partida: a bola convida a criar pequenas partidas, treinar chutes e trocar passes em momentos de lazer. Uma opção para crianças que gostam de futebol desde cedo e querem aproveitar mais momentos de brincadeira em espaços adequados.',
   '🏃 Brincadeira para compartilhar: reunir amigos ou familiares para jogar transforma um espaço apropriado em cenário de diversão e interação. Cada partida pode ser diferente, com novas jogadas e histórias.',
   '🎁 Um presente com jeito de futebol: para crianças que já gostam desse esporte, a bola aproxima o tema favorito da rotina de brincadeiras. Pode acompanhar atividades recreativas em ambientes adequados.'
  ],
