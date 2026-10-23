@@ -68,7 +68,8 @@ test('execução fiscal só começa DEPOIS de a Shopee confirmar a edição come
  const progress=shopeeExecutionProgress({...result.job,updated_at:new Date().toISOString()});
  assert.equal(progress.verified,true);
  assert.equal(progress.fiscalStatus,'verified');
- assert.equal(progress.steps.at(-1).status,'done');
+ assert.equal(progress.steps.find(x=>x.id==='fiscal').status,'done');
+ assert.equal(progress.steps.at(-1).status,'review');
 });
 
 test('se a Shopee rejeitar CEST, comercial é confirmado mas fiscal segue pendente',async()=>{
@@ -81,7 +82,8 @@ test('se a Shopee rejeitar CEST, comercial é confirmado mas fiscal segue penden
  assert.equal(progress.verified,false);
  assert.equal(progress.fiscalPartial,true);
  assert.equal(progress.fiscalStatus,'rejected');
- assert.equal(progress.steps.at(-1).status,'attention');
+ assert.equal(progress.steps.find(x=>x.id==='fiscal').status,'attention');
+ assert.equal(progress.steps.at(-1).status,'review');
  assert.ok(progress.percent<100);
 });
 
