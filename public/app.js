@@ -3423,7 +3423,8 @@ function optimizerFinalPendingPaint(data){
   full?'Depois de publicar e confirmar os modelos, conferir os descontos específicos das variações.':
   'Primeiro finalize as fotos, a disponibilidade e a publicação das variações.';
  const btn=$('#optimizerFinalVariantsOpen');
- if(btn)btn.textContent=published?'✓ Variações publicadas · conferir':'Conferir e publicar variações →';
+ if(btn)btn.textContent=published?'✓ Variações publicadas · conferir':
+  data.liveHasModel===true?'Atualizar confirmação dos modelos ↻':'Conferir e publicar variações →';
  const pending=$('#optimizerFinalPendingNotice');
  if(pending)pending.textContent=published?
   'Conteúdo comercial preservado. Próximo passo: preço e promoção por modelo, sujeitos à confirmação pela API Shopee.':
@@ -3431,6 +3432,11 @@ function optimizerFinalPendingPaint(data){
 }
 function optimizerFinalPendingOpenVariants(){
  if(!optimizerWorkflowPlan)return;
+ if(optimizerFinalSnapshot?.liveHasModel===true&&optimizerFinalSnapshot?.allModelsConfirmed!==true){
+  void optimizerFinalPendingRefresh(true);
+  optimizerExecNotice('Consultando novamente os modelos da Shopee, sem repetir a publicação.','info');
+  return;
+ }
  optimizerWorkflowOpen('variants');
  $('#optimizerWorkflowEditor')?.scrollIntoView?.({behavior:'smooth',block:'start'});
 }
