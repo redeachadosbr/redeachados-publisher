@@ -164,8 +164,7 @@ export function technicalMatrixSource({sku,record,attributes=[],reviewSource=nul
   if(!Number.isSafeInteger(id)||ids.has(id)||!schemaIds.has(id))
    throw Error('Motor Matriz: atributo não pertence à categoria oficial ou está repetido.');
   ids.add(id);
-  if(!normal(attr.evidence))
-   throw Error('Motor Matriz: informe a fonte de cada característica preenchida.');
+  // A referência da fonte é opcional na conferência da ficha técnica.
  }
  if(reviewSource&&(normal(reviewSource.sku)!==listingSku||Number(reviewSource.categoryId)!==categoryId))
   throw Error('Motor Matriz: a SKU ou a categoria técnica mudou após a revisão. Refaça a conferência.');
