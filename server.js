@@ -1888,6 +1888,62 @@ async function runOptimizerJobs(){
       download:downloadShopeeManualVideo,downloadImage:downloadPreparedImage,media:createShopeeMediaApi(cfg,auth),
       beforeWrite:result=>checkpointShopeeExecution(job,result,90000),
       update:body=>callShopeeShopApi(cfg,{...common,path:'/api/v2/product/update_item',method:'POST',body}),
+      // Fases duráveis por variação: biblioteca de mídia, UMA criação de
+      // modelos, leitura por modelo, NCM, preço e campanha como etapas distintas.
+      variationRead:async()=>{
+       const item=await shopeeLiveEditableItem(cfg,auth,job.item_id);
+       const models=item.has_model?(await callShopeeShopApi(cfg,{
+        ...common,path:'/api/v2/product/get_model_list',query:{item_id:Number(job.item_id)}
+       })).response?.model||[]:[];
+       return {item,models};
+      },
+      variationImage:async asset=>{
+       const file=await variationImageBytes(asset);
+       return createShopeeMediaApi(cfg,auth).image(file,asset.mime);
+      },
+      variationPublish:body=>callShopeeShopApi(cfg,{
+       ...common,path:'/api/v2/product/init_tier_variation',method:'POST',body
+      }),
+      variationLink:async(plan,models)=>{
+       for(let i=0;i<plan.modelVariations.options.length;i++){
+        const option=plan.modelVariations.options[i];
+        const fromWeDrop=await shopeePricingDirectSupplierCost(auth.shopId,option.supplierSku);
+        if(!fromWeDrop||Math.round(fromWeDrop.unitCost*100)!==Math.round(option.cost*100))
+         throw Error('Custo WeDrop mudou para '+option.name+'.');
+        await upsertWeDropSkuLink(auth.shopId,{itemId:plan.itemId,
+         modelId:models[i].model_id,shopeeSku:option.sku,supplierSku:option.supplierSku});
+       }
+      },
+      variationCost:sku=>shopeePricingDirectSupplierCost(auth.shopId,sku),
+      variationUpdatePrices:(models,gross)=>callShopeeShopApi(cfg,{
+       ...common,path:'/api/v2/product/update_price',method:'POST',
+       body:{item_id:Number(job.item_id),price_list:models.map(m=>({
+        model_id:Number(m.modelId),original_price:Number(gross)}))}
+      }),
+      variationPromotionRead:async(discountId,itemId)=>{
+       const d=await readDiscountPages(callShopeeShopApi,{cfg,auth,discountId});
+       const member=promotionMember(d.pages,itemId);
+       return {status:String(d.record?.status||'').toLowerCase(),member,action:member?'update':'add'};
+      },
+      variationDiscountPublish:async(approved,models,action)=>{
+       const key=[auth.shopId,job.item_id,approved.discountId].join(':');
+       if(activeDiscountWrites.has(key))throw Error('Promoção já em execução.');
+       activeDiscountWrites.add(key);
+       try{
+        const out=await callShopeeShopApi(cfg,{
+         ...common,path:action==='add'?'/api/v2/discount/add_discount_item':
+          '/api/v2/discount/update_discount_item',method:'POST',
+         body:{discount_id:Number(approved.discountId),item_list:[{
+          item_id:Number(job.item_id),...(action==='add'?{purchase_limit:0}:{}),
+          model_list:models.map(m=>({model_id:Number(m.modelId),model_promotion_price:m.promo}))
+         }]}
+        });
+        const errors=out.response?.error_list||[];
+        if(errors.length)throw Error('Shopee recusou a promoção: '+
+         String(errors[0].fail_message||errors[0].fail_error||'erro desconhecido'));
+        return out;
+       }finally{activeDiscountWrites.delete(key);}
+      },
       discountRead:async approved=>(await discountExecutionInputs(null,
        approved.sku,approved.itemId,approved.modelId,approved.discountId)).snapshot,
       discountUpdatePrice:async approved=>{
@@ -1930,6 +1986,9 @@ async function runOptimizerJobs(){
     // Uma falha após a escrita fiscal pode ter sido aceita pela Shopee.
     // NUNCA reenviar automaticamente; consultar o resultado antes de qualquer retry.
     const uncertain=['updating','verifying','fiscal_updating','fiscal_verifying',
+      'variation_updating','variation_verifying',
+      'model_discount_price_updating','model_discount_price_verifying',
+      'model_discount_updating','model_discount_verifying',
       'discount_price_updating','discount_price_verifying','discount_updating','discount_verifying']
       .includes(current.result?.phase);
     const attempts=Number(current.result?.attempts||0)+1;
