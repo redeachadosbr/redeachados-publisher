@@ -7828,6 +7828,10 @@ void optimizerChatBridgeRecover();
 globalThis.window?.addEventListener?.('message',async(event)=>{
  if(event.source!==window||event.origin!==location.origin||!event.data||typeof event.data!=='object')return;
  const m=event.data,status=$('#optimizerChatgptBridgeStatus');
+ // Only extension-origin event types belong here. Site-emitted control messages
+ // (RA_SITE_ABORT / RA_SITE_UPLOAD_RESULT / RA_SITE_START) must never be
+ // interpreted as extension input, or cancellation can recursively echo.
+ if(!['RA_EXTENSION_READY','RA_EXTENSION_START_RESULT','RA_EXTENSION_PROGRESS','RA_EXTENSION_IMAGE'].includes(m.kind))return;
  if(m.kind==='RA_EXTENSION_READY'){
   optimizerChatBridgeReady=true;
   const version=String(m.version||'');
