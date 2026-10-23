@@ -27,7 +27,7 @@ import {suggestFiscalMeasureUnit} from './shopeeFiscalMeasure.js';
 import {getShopeeNewListingsSummary,clearShopeeNewListingsCache} from './shopeeNewListings.js';
 import {storeCatalogItems,storeCatalogModels,readCatalogCache,catalogStoreReady,findExactCatalogSku,findCatalogSkuIgnoringCase} from './catalogStore.js';
 import {previewWeDropCsv,prepareWeDropImport,MAX_CSV_CHARS} from './wedropCsv.js';
-import {saveWeDropCosts,getWeDropCoverage,compareIncomingCosts,pendingWeDropModels} from './wedropCosts.js';
+import {saveWeDropCosts,getWeDropCoverage,compareIncomingCosts,pendingWeDropModels,upsertWeDropSkuLink} from './wedropCosts.js';
 import {saveWeDropProducts,readWeDropProduct} from './wedropCosts.js';
 import {supplierWorkflowFacts} from './shopeeSupplierFacts.js';
 import {supplierAttributeSuggestions} from './shopeeSupplierEvidenceFacts.js';
@@ -2223,6 +2223,38 @@ app.post('/api/shopee/optimizer/variants/generate',mustLogin,requireWeDropAdmin,
  }catch(e){res.status(400).json({ok:false,error:String(e.message||e).slice(0,350)});}
  finally{if(lock)activeVariationOps.delete(lock);}
 });
+// Ligação fornecedor por VARIAÇÃO, não por anúncio pai.
+const normalizeVariationSource=v=>String(v||'').normalize('NFD')
+ .replace(/[\u0300-\u036f]/g,'').toUpperCase().replace(/[^A-Z0-9]+/g,' ').trim();
+async function verifiedVariationSupplierCosts(x,details){
+ const parent=await readWeDropProduct(x.auth.shopId,{sku:x.sku,itemId:x.itemId,modelId:x.modelId});
+ const parentName=normalizeVariationSource(parent?.product_data?.name||'');
+ const base=parentName.replace(/ (?:VERMELHA?|ROSA|PRETA?|AZUL|BRANCA?|AMARELA?|VERDE)$/,'');
+ if(!base||base.length<12)throw Error('Nome do produto WeDrop insuficiente para vincular modelos com segurança.');
+ const used=new Set(),rows=[];
+ for(const option of details.options){
+  const supplierSku=String(option.supplierSku||'').trim();
+  if(!supplierSku)throw Error('Informe o SKU WeDrop da opção '+option.name+'.');
+  if(used.has(supplierSku))throw Error('Cada variação deve corresponder a um SKU WeDrop distinto.');
+  used.add(supplierSku);
+  const [supplier,cost]=await Promise.all([
+   readWeDropProduct(x.auth.shopId,{sku:supplierSku,itemId:x.itemId,modelId:x.modelId}),
+   shopeePricingDirectSupplierCost(x.auth.shopId,supplierSku)
+  ]);
+  const actual=normalizeVariationSource(supplier?.product_data?.name||'');
+  const color=normalizeVariationSource(option.name);
+  const genderStem=color.replace(/[AO]$/,'');
+  if(!cost||!supplier||supplier.supplier_sku!==supplierSku||
+    !actual.startsWith(base+' ')||
+    !(actual.endsWith(' '+color)||genderStem.length>=3&&actual.endsWith(' '+genderStem+'A')||
+      genderStem.length>=3&&actual.endsWith(' '+genderStem+'O')))
+   throw Error('A opção '+option.name+' não corresponde ao SKU WeDrop '+supplierSku+
+    ' ou está sem custo confirmado. Confira a origem real.');
+  rows.push({name:option.name,sku:option.sku,supplierSku,unitCost:cost.unitCost,
+   importedAt:cost.costUpdatedAt});
+ }
+ return rows;
+}
 app.post('/api/shopee/optimizer/variants/preview',mustLogin,requireWeDropAdmin,async(req,res)=>{
  res.setHeader('Cache-Control','no-store');
  if(!verifiedSameOrigin(req))return res.status(403).json({error:'Origem não autorizada.'});
@@ -2230,6 +2262,7 @@ app.post('/api/shopee/optimizer/variants/preview',mustLogin,requireWeDropAdmin,a
   const x=await variationContext(req);
   if(!x.details)throw Error('Salve o rascunho das opções.');
   const data=validateVariationDetails(x.details,{requirePhotos:true});
+  const suppliers=await verifiedVariationSupplierCosts(x,data);
   if(data.options.length<2)throw Error('Para criar variações sem apagar a opção original, informe também a cor/modelo original e a nova opção (mínimo duas).');
   if(!data.options.every(o=>variantAssetBelongsTo(o.asset,x.auth,x.itemId,x.modelId)))
    throw Error('Alguma foto não pertence a este anúncio.');
@@ -2240,7 +2273,9 @@ app.post('/api/shopee/optimizer/variants/preview',mustLogin,requireWeDropAdmin,a
    sku:x.sku,nonce:crypto.randomUUID(),at:Date.now(),
    fingerprint:crypto.createHash('sha256').update(JSON.stringify(x.details)).digest('hex')},adsApprovalSecret());
   res.json({ok:true,approval,preview:{type:data.type,options:data.options.map(o=>({
-   name:o.name,sku:o.sku,price:o.price,stock:o.stock,gtin:o.gtin||null,hasImage:true})),
+   name:o.name,sku:o.sku,price:o.price,stock:o.stock,gtin:o.gtin||null,hasImage:true,
+   supplierSku:suppliers.find(s=>s.sku===o.sku)?.supplierSku||null,
+   unitCost:suppliers.find(s=>s.sku===o.sku)?.unitCost||null})),
    itemId:x.itemId,notice:'Aplicar converterá o anúncio atual para modelos de uma variação. Estoque informado deve existir realmente na WeDrop. Não reenviar em erro de rede.'},
    marketplaceUpdated:false});
  }catch(e){res.status(400).json({ok:false,error:String(e.message||e).slice(0,350)});}
@@ -2261,6 +2296,7 @@ app.post('/api/shopee/optimizer/variants/apply',mustLogin,requireWeDropAdmin,asy
   if(!x.details||crypto.createHash('sha256').update(JSON.stringify(x.details)).digest('hex')!==token.fingerprint)
    throw Error('Dados da variação mudaram após a prévia.');
   const details=validateVariationDetails(x.details,{requirePhotos:true});
+  const suppliers=await verifiedVariationSupplierCosts(x,details);
   if(details.options.length<2)throw Error('Informe a opção original e a nova variação para preservar o produto atual.');
   if(details.options.some(o=>!variantAssetBelongsTo(o.asset,x.auth,x.itemId,x.modelId)))
    throw Error('Fotos não pertencem a esta loja.');
@@ -2280,8 +2316,22 @@ app.post('/api/shopee/optimizer/variants/apply',mustLogin,requireWeDropAdmin,asy
   const models=verified?.response?.model||[];
   const realSkus=new Set(models.map(m=>String(m.model_sku||'')));
   const allModelsConfirmed=details.options.length>=2&&details.options.every(o=>realSkus.has(o.sku));
+  let supplierLinksConfirmed=false,supplierLinkWarning=null;
+  if(allModelsConfirmed){
+   try{
+    for(const option of details.options){
+     const model=models.find(m=>String(m.model_sku)===option.sku);
+     const cost=suppliers.find(a=>a.sku===option.sku);
+     if(!Number.isSafeInteger(Number(model?.model_id))||Number(model.model_id)<=0||!cost)
+      throw Error('Modelo ou fornecedor não identificado no resultado da Shopee.');
+     await upsertWeDropSkuLink(x.auth.shopId,{itemId:x.itemId,modelId:model.model_id,
+      shopeeSku:option.sku,supplierSku:cost.supplierSku});
+    }
+    supplierLinksConfirmed=true;
+   }catch(error){supplierLinkWarning='Os modelos estão na Shopee, mas o vínculo WeDrop ainda precisa ser conferido: '+error.message;}
+  }
   res.json({ok:true,marketplaceUpdated:allModelsConfirmed,modelsConfirmed:models.length,
-   allModelsConfirmed,
+   allModelsConfirmed,supplierLinksConfirmed,supplierLinkWarning,
    message:allModelsConfirmed?
     'Variações confirmadas na Shopee: '+details.options.map(o=>o.name).join(' / ')+'.':
     'A Shopee recebeu a solicitação, mas ainda não confirmou todos os modelos. Consulte o anúncio; não repita o envio.'});
