@@ -8139,7 +8139,7 @@ async function optimizerImagesLoad(){
     if(from!==null&&from!==slot)void optimizerImagesMove(w,from,slot,stored);
    };
    const thumb=optimizerMake('div','optimizer-commercial-thumb');
-   const url=image?.previewUrl||originalUrl;
+   const url=image?.previewUrl||'';
    if(url){
     const photo=optimizerMake('img');photo.src=url;
     photo.alt=(image?'Imagem comercial preparada':'Foto original Shopee de referência')+' da posição '+slot;
@@ -8153,7 +8153,7 @@ async function optimizerImagesLoad(){
    heading.append(optimizerMake('span',image?'optimizer-slot-ready':'optimizer-slot-pending',
     image?'● Pronta':originalUrl?'◉ Original':'◆ Pendente'));
    detail.append(heading);
-   if(!image&&originalUrl)detail.append(optimizerMake('small','optimizer-commercial-original-caption','Foto da Shopee · ainda não preparada'));
+   if(!image)detail.append(optimizerMake('small','optimizer-commercial-original-caption','Posição vazia · foto original preservada na Shopee'));
    const actions=optimizerMake('div','optimizer-commercial-image-actions');
    const generate=optimizerMake('button','secondary',image?'↻ Refazer':'✧ Gerar');
    generate.type='button';generate.disabled=optimizerImagesAutoBusy;
@@ -8192,9 +8192,17 @@ async function optimizerImagesLoad(){
     optimizerImagesAutoBusy=true;optimizerImagesSetProgress();optimizerExecReset();
     try{
      status.textContent='Excluindo apenas a imagem preparada '+slot+'...';
-     await json('/api/shopee/optimizer/images/manual?'+new URLSearchParams({
+     const endpoint='/api/shopee/optimizer/images/manual?'+new URLSearchParams({
       sku:w.sku,item_id:w.itemId,model_id:w.modelId,slot
-     }),{method:'DELETE',signal:AbortSignal.timeout(60000)});
+     });
+     const removal=await json(endpoint,{method:'DELETE',signal:AbortSignal.timeout(60000)});
+     if(removal.deleted!==true)throw Error('O servidor não confirmou a exclusão. Atualize a galeria e confira a imagem.');
+     const check=await json('/api/shopee/optimizer/images/manual?'+new URLSearchParams({
+      sku:w.sku,item_id:w.itemId,model_id:w.modelId
+     }));
+     if((check.images||[]).some(row=>Number(row.slot)===slot))
+      throw Error('A imagem ainda consta no servidor após a exclusão.');
+     optimizerImagesSavedSlots.delete(slot);
      const stage=w.stages?.find(x=>x.key==='images');if(stage){stage.reviewed=false;stage.status='pending';stage.reviewedAt=null;}
      optimizerWorkflowRender(w);
      status.textContent='Posição '+slot+' limpa. As fotos da Shopee foram preservadas.';
