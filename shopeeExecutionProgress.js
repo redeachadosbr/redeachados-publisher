@@ -18,17 +18,22 @@ export function shopeeExecutionProgress(job){
  const video=Boolean(plan.video),readyVideo=result.video?.phase==='ready';
  const started=['running','failed','uncertain','verified'].includes(state);
  const fiscalPartial=state==='verified'&&phase==='verified_partial';
- const verified=state==='verified'&&!fiscalPartial,commercialConfirmed=state==='verified'||Boolean(result.primaryVerified);
+ const discountIncluded=Boolean(plan.commercialDiscount);
+ const discountDone=discountIncluded&&state==='verified'&&result.discount?.status==='verified';
+ const verified=state==='verified'&&!fiscalPartial&&(!discountIncluded||discountDone);
+ const commercialConfirmed=state==='verified'||Boolean(result.primaryVerified);
  const fiscalActive=Boolean(plan.finalFiscal)&&/^fiscal_/.test(phase);
- const fiscalDone=Boolean(plan.finalFiscal)&&verified;
+ const fiscalDone=Boolean(plan.finalFiscal)&&(result.fiscal?.status==='verified'||verified);
+ const discountActive=discountIncluded&&/^discount_/.test(phase);
  const pastImages=phase==='video_upload'||phase==='video_processing'||
    phase==='updating'||phase==='verifying'||phase==='verified';
  const pastVideo=['updating','verifying','verified'].includes(phase);
  const mediaFinished=images===0||uploaded===images||verified;
  const videoFinished=!video||Boolean(readyVideo)||verified;
  const updateAccepted=commercialConfirmed||phase==='verifying'||phase==='verified';
- const total=1+images+(video?1:0)+1+1+(plan.finalFiscal?1:0);
- const completed=(started?1:0)+uploaded+(video&&readyVideo?1:0)+(updateAccepted?1:0)+(commercialConfirmed?1:0)+(fiscalDone?1:0);
+ const total=1+images+(video?1:0)+1+1+(plan.finalFiscal?1:0)+(discountIncluded?1:0);
+ const completed=(started?1:0)+uploaded+(video&&readyVideo?1:0)+(updateAccepted?1:0)+
+  (commercialConfirmed?1:0)+(fiscalDone?1:0)+(discountDone?1:0);
  const percent=verified?100:Math.min(fiscalPartial?95:99,Math.round(completed/total*100));
  const failure=['failed','uncertain'].includes(state)||fiscalPartial;
  const phaseNames={
@@ -37,7 +42,12 @@ export function shopeeExecutionProgress(job){
   updating:'Aplicando alterações no anúncio',verifying:'Conferindo o anúncio na Shopee',
   verified:'Anúncio confirmado pela Shopee',verified_partial:'Comercial confirmado · fiscal pendente',
   fiscal_ready:'Preparando última etapa: dados fiscais',fiscal_updating:'Enviando dados fiscais à Shopee',
-  fiscal_verifying:'Conferindo os dados fiscais na Shopee',retry_allowed:'Revisão necessária'
+  fiscal_verifying:'Conferindo os dados fiscais na Shopee',
+  discount_ready:'Preparando desconto após confirmação fiscal',
+  discount_price_updating:'Atualizando preço bruto autorizado',
+  discount_price_verifying:'Conferindo preço bruto na Shopee',
+  discount_updating:'Enviando desconto à promoção',
+  discount_verifying:'Conferindo promoção na Shopee',retry_allowed:'Revisão necessária'
  };
  const title=fiscalPartial?'Comercial confirmado · Fiscal pendente':verified?'Alterações confirmadas':state==='uncertain'?'Confirmação pendente':
   state==='failed'?'Execução interrompida':state==='blocked'?'Pendências para executar':
@@ -53,9 +63,12 @@ export function shopeeExecutionProgress(job){
    started&&phase==='updating'?'active':'waiting'),
   step('verify','Conferência comercial na Shopee',commercialConfirmed?'done':
    started&&phase==='verifying'?'active':'waiting'),
-  ...(plan.finalFiscal?[step('fiscal','07 · Dados fiscais — etapa final',
+  ...(plan.finalFiscal?[step('fiscal','07 · Dados fiscais',
       fiscalPartial?'attention':fiscalDone?'done':fiscalActive?'active':'waiting')]:
-    [step('finish','Finalização',verified?'done':'waiting')])
+    discountIncluded?[step('fiscal','07 · Dados fiscais (sem alteração)',commercialConfirmed?'skipped':'waiting')]:
+    [step('finish','Finalização',verified?'done':'waiting')]),
+  ...(discountIncluded?[step('discount','08 · Desconto — última etapa',
+    discountDone?'done':discountActive?'active':'waiting')]:[])
  ];
  if(failure){const current=steps.find(x=>x.status==='active');
   if(current)current.status='attention';}
@@ -69,12 +82,13 @@ export function shopeeExecutionProgress(job){
   videoIncluded:video,videoReady:readyVideo,videoPublished:(verified||fiscalPartial)&&video,
   imagesPublished:(verified||fiscalPartial)?images:0,hasStarted:started,verified,fiscalPartial,
   fiscalStatus:fiscalPartial?'rejected':fiscalDone?'verified':fiscalActive?'in_progress':plan.finalFiscal?'pending':'not_included',
+  discountStatus:discountDone?'verified':discountActive?'in_progress':discountIncluded?'pending':'not_included',
   attention:failure,lastError:job.last_error||null,
   // Important distinction: uploaded media is not yet attached to the listing.
   message:images&&phase==='images_upload'
    ?uploaded+' de '+images+' imagens enviadas à mídia Shopee; anúncio ainda não atualizado.'
    :fiscalPartial?'O anúncio comercial foi confirmado, mas os dados fiscais NÃO foram aceitos pela Shopee.'
-   :verified?'Todas as alterações incluídas na execução foram verificadas na Shopee.'
+   :verified?'Todas as alterações, inclusive o desconto quando aprovado, foram verificadas na Shopee.'
    :state==='uncertain'?'Resultado não confirmado. Confira antes de tentar novamente.'
    :state==='failed'?uploaded+' imagens na mídia Shopee, '+(verified?images:0)+
      ' aplicadas ao anúncio. A Shopee recusou a atualização; veja a pendência para corrigir.'
