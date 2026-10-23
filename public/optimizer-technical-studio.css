@@ -134,3 +134,20 @@
  #tab-optimizer .ra-tech-studio .ra-tech-group-note{display:none}
  #tab-optimizer .ra-tech-studio .ra-tech-group-count{margin-left:auto}
 }
+
+/* Mensagens de conferência ao lado do botão: não esconder falhas no topo da página. */
+#optimizerWorkflowEditor:has(#optimizerTechnicalPanel.ra-tech-studio:not([hidden]))
+ >.optimizer-workflow-actions .optimizer-technical-review-feedback{
+ order:100;flex:1 1 100%;box-sizing:border-box;margin:0;padding:9px 12px;
+ border:1px solid #d5e4f7;border-radius:9px;background:#f2f7fe;color:#205381;
+ text-align:center;font-size:11px;font-weight:700;line-height:1.4
+}
+#optimizerWorkflowEditor:has(#optimizerTechnicalPanel.ra-tech-studio:not([hidden]))
+ >.optimizer-workflow-actions .optimizer-technical-review-feedback[data-state="error"]{
+ color:#a4342d;background:#fff3f2;border-color:#efb4ad
+}
+#optimizerWorkflowEditor:has(#optimizerTechnicalPanel.ra-tech-studio:not([hidden]))
+ >.optimizer-workflow-actions .optimizer-technical-review-feedback[data-state="success"]{
+ color:#0d7049;background:#eaf8f0;border-color:#b9e7ce
+}
+#optimizerWorkflowEditor .optimizer-technical-review-feedback[hidden]{display:none!important}
