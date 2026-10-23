@@ -61,3 +61,30 @@ test('Preço calculado mantém margem mínima caso mercado seja inviável',()=>{
  assert.ok(poor.netMarginPct>=5);
  assert.equal(poor.status,'MERCADO_ABAIXO_DO_PISO');
 });
+
+test('fechamento de variações e desconto usa os SKUs de fornecedor por modelo',()=>{
+ const variantJs=readFileSync(new URL('../public/optimizer-variations.js',import.meta.url),'utf8');
+ const media=readFileSync(new URL('../shopeeVariationMedia.js',import.meta.url),'utf8');
+ assert.match(html,/id="optimizerFinalPending"/);
+ assert.match(html,/id="optimizerFinalVariantsOpen"/);
+ assert.match(html,/id="optimizerFinalDiscountOpen"/);
+ assert.match(html,/id="optimizerFinalModelDiscountApply"/);
+ assert.match(variantJs,/supplierSku:String\(take\('supplierSku'\)/);
+ assert.match(media,/supplierSku,gtin:noGtin/);
+ assert.match(server,/async function verifiedVariationSupplierCosts\(x,details\)/);
+ assert.match(server,/await upsertWeDropSkuLink\(x\.auth\.shopId/);
+ assert.match(server,/allModelsConfirmed=details\.options\.length>=2/);
+});
+test('a promoção por modelos requer prévia assinada, custos por cor e confirmação explícita',()=>{
+ assert.match(server,/app\.post\('\/api\/shopee\/optimizer\/variants-discount\/preview'/);
+ assert.match(server,/app\.post\('\/api\/shopee\/optimizer\/variants-discount\/execute'/);
+ assert.match(server,/verifyDiscountPreview\(req\.body\.approvalToken/);
+ assert.match(server,/quote\.marketResearch\?\.verified!==true/);
+ assert.match(server,/shopeePricingSupplierCost\(x\.auth\.shopId/);
+ assert.match(server,/Math\.abs\(link\.unitCost-Number\(quote\.unitCost\)\)/);
+ assert.match(server,/model_list:approved\.models\.map/);
+ assert.match(server,/attempted=true/);
+ assert.match(app,/body:JSON\.stringify\(\{sku:w\.sku,itemId:w\.itemId,modelId:w\.modelId,/);
+ assert.match(app,/optimizerModelDiscountApproval=null/);
+ assert.match(app,/confirm\('PUBLICAÇÃO REAL:/);
+});
