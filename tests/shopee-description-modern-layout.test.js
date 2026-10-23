@@ -35,7 +35,7 @@ test('new view uses only existing reliable data and retains market approval acti
  const js=read('../public/description-modern-layout.js');
  assert.match(js,/data\.supplierProduct\|\|\{\}/);
  assert.match(js,/Array\.isArray\(data\.imageUrls\)/);
- assert.match(js,/sourceUrl\(url\)/); // only trusted https image URLs are used
+ assert.match(js,/const sourceUrl=url=>/); // only trusted https image URLs are used
  for(const target of ['optimizerSourcePanel','optimizerRulesDetails','optimizerAuditPanel','optimizerWorkflowShopee'])
   assert.ok(js.includes(target),target+' access is present');
  assert.match(js,/textContent=String\(text\)/);
