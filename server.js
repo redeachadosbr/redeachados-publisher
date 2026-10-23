@@ -61,7 +61,7 @@ import {readPreparedImages,importPreparedImage,deletePreparedImage,reorderPrepar
 import {generateOpenAiImage,imageGenerationStatus} from './shopeeOpenAiImages.js';
 import {validateVariationName,variationImagePrompt,saveVariationImage,variationImagePreview,variationImageBytes,validateVariationDetails,buildVariationPayload} from './shopeeVariationMedia.js';
 import {openAiKeyStatus,openAiApiKey,saveOpenAiApiKey,deleteOpenAiApiKey} from './shopeeOpenAiCredentials.js';
-import {compileAttributes,compileTax,attributeAuditForChanges,selectValidTechnicalChanges} from './shopeeStructuredFields.js';
+import {compileAttributes,compileTax,attributeAuditForChanges,selectValidTechnicalChanges,sameData,fieldsVerified} from './shopeeStructuredFields.js';
 import {scopeTechnicalReviewChanges} from './shopeeTechnicalReviewScope.js';
 import {applySellerDeclarations} from './shopeeTechnicalSellerEvidence.js';
 import {inspectAnatelCompliance} from './shopeeAnatel.js';
@@ -1800,9 +1800,12 @@ app.post('/api/shopee/optimizer/execution/execute',mustLogin,requireWeDropAdmin,
    });
    if(!plan.canExecute)
     throw Error('Etapas pendentes não estão prontas: '+(plan.blocked.join('; ')||'sem alterações aprovadas'));
-   if(previousPlan.finalFiscal&&plan.finalFiscal&&
-     JSON.stringify(previousPlan.finalFiscal)!==JSON.stringify(plan.finalFiscal))
-    throw Error('Os dados fiscais mudaram após aprovação. Confira novamente os valores fiscais.');
+   if(previousPlan.finalFiscal){
+    if(plan.finalFiscal&&!sameData(previousPlan.finalFiscal,plan.finalFiscal))
+     throw Error('Os dados fiscais mudaram após aprovação. Confira novamente os valores fiscais.');
+    if(!plan.finalFiscal&&!fieldsVerified({tax_info:previousPlan.finalFiscal},currentLive))
+     throw Error('Os dados fiscais antigos não foram confirmados na Shopee. Nova conferência fiscal necessária.');
+   }
    plan.mediaArchive=archiveShopeeMedia(job,plan);
   }
   let commercialDiscount=null;
