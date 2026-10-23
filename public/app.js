@@ -2409,6 +2409,22 @@ function optimizerWorkflowNotice(message,state='info'){
  const n=$('#optimizerWorkflowStatus');if(!n)return;
  n.textContent=message;n.dataset.state=state;
 }
+function optimizerTechReviewFeedback(message,state='info'){
+ const bar=$('#optimizerWorkflowEditor > .optimizer-workflow-actions');
+ if(!bar)return;
+ let status=$('#optimizerTechnicalReviewFeedback');
+ if(!status){
+  status=document.createElement('p');
+  status.id='optimizerTechnicalReviewFeedback';
+  status.className='optimizer-technical-review-feedback';
+  status.setAttribute('role','status');
+  status.setAttribute('aria-live','polite');
+  bar.append(status);
+ }
+ status.hidden=optimizerWorkflowStage!=='technical'||!message;
+ status.textContent=message||'';
+ status.dataset.state=state;
+}
 function optimizerSourceNotice(message,state='info'){
  const el=$('#optimizerSourceStatus');if(el){el.textContent=message;el.dataset.state=state;}
 }
@@ -3044,7 +3060,14 @@ function optimizerWorkflowOpen(key){
  $('#optimizerVariationPanel').hidden=key!=='variants'||!$('#optimizerHasVariants').checked;
  if(key==='variants')optimizerVariationRender(data);
  if(isImages){optimizerImageCorrectionLoad();void optimizerImagesLoad();}
- if(key==='technical'){$('#optimizerTechnicalAdvanced').open=false;optimizerTechnicalRender(data);}
+ if(key==='technical'){
+   $('#optimizerTechnicalAdvanced').open=false;
+   optimizerTechnicalRender(data);
+   optimizerTechReviewFeedback('', 'info');
+ }else{
+   const message=$('#optimizerTechnicalReviewFeedback');
+   if(message)message.hidden=true;
+ }
  if(key==='fiscal')optimizerFiscalRender(data);
  optimizerSupplierRender(data,key);
  $('#optimizerVideoManualPanel').hidden=!isVideo;
@@ -3194,6 +3217,11 @@ $('#optimizerWorkflowReview')?.addEventListener?.('click',async()=>{
  const stage=data?.stages?.find(x=>x.key===key);
  if(!stage||key==='final')return;
  const btn=$('#optimizerWorkflowReview');btn.disabled=true;
+ const originalButtonText=btn.textContent;
+ if(key==='technical'){
+   btn.textContent='Salvando conferência…';
+   optimizerTechReviewFeedback('Verificando os campos e salvando a revisão da SKU '+data.sku+'…','info');
+ }
  optimizerWorkflowNotice('Salvando a conferência da etapa '+stage.name+' na Shopee Manager...');
  try{
    if(key==='seo'&&!stage.reviewed){
@@ -3205,7 +3233,17 @@ $('#optimizerWorkflowReview')?.addEventListener?.('click',async()=>{
    if(key==='technical')await techFlush();
    const body={itemId:data.itemId,modelId:data.modelId,sku:data.sku,
      stage:key,reviewed:key==='fiscal'?true:key==='variants'?$('#optimizerHasVariants').checked:!stage.reviewed};
-   if(key==='technical')body.attributes=optimizerTechnicalValues();
+   if(key==='technical'){
+     body.attributes=optimizerTechnicalValues();
+     const noEvidence=body.attributes.find(c=>String(c.evidence||'').trim().length<3);
+     if(noEvidence){
+       const name=(data.attributes||[]).find(a=>Number(a.id)===Number(noEvidence.attributeId))?.name||'atributo '+noEvidence.attributeId;
+       const field=[...$('#optimizerTechnicalFields').querySelectorAll('fieldset[data-attribute-id]')]
+         .find(x=>Number(x.dataset.attributeId)===Number(noEvidence.attributeId));
+       if(field){field.closest('.ra-tech-attribute-group')?.setAttribute('open','');field.hidden=false;}
+       throw Error('Informe a fonte (WeDrop, fabricante ou nota) para '+name+' antes de conferir a etapa.');
+     }
+   }
    if(key==='fiscal')body.tax=optimizerFiscalValues();
    if(key==='variants')body.variationConfig=optimizerVariationValues();
    if(key==='seo')body.title=$('#optimizerWorkflowDraft').value;
@@ -3215,6 +3253,9 @@ $('#optimizerWorkflowReview')?.addEventListener?.('click',async()=>{
      body:JSON.stringify(body),signal:AbortSignal.timeout(60000)
    });
    if(optimizerWorkflowPlan?.sku!==data.sku||optimizerWorkflowPlan?.itemId!==data.itemId||optimizerWorkflowPlan?.modelId!==data.modelId)return;
+   if(key==='technical'&&body.reviewed&&
+      result.stages?.find(x=>x.key==='technical')?.reviewed!==true)
+       throw Error('O servidor não confirmou a ficha técnica. Consulte os campos pendentes e tente novamente.');
    if(key==='technical'){
     try{localStorage.removeItem(techKey(data,'fields'));}catch{}
     data.technicalDraft=null;
@@ -3227,8 +3268,19 @@ $('#optimizerWorkflowReview')?.addEventListener?.('click',async()=>{
    optimizerWorkflowNotice(key==='fiscal'?
      'Dados fiscais da SKU '+data.sku+' salvos no Motor Matriz. CEST 00 será considerado no envio se aparecer na próxima prévia; nenhum dado foi enviado só por salvar.':
      'Revisão da etapa '+stage.name+' salva. Nenhum dado do anúncio foi alterado na Shopee.','success');
- }catch(e){optimizerWorkflowNotice('Falha ao salvar conferência: '+e.message,'error');}
- finally{btn.disabled=false;}
+   if(key==='technical')
+     optimizerTechReviewFeedback(body.reviewed
+       ?'✓ Ficha técnica da SKU '+data.sku+' registrada como conferida. Nenhuma alteração publicada na Shopee.'
+       :'Ficha técnica reaberta para revisão. Nenhuma alteração publicada.', 'success');
+ }catch(e){
+   const message='Falha ao salvar conferência: '+e.message;
+   optimizerWorkflowNotice(message,'error');
+   if(key==='technical')optimizerTechReviewFeedback('⚠ '+message,'error');
+ }
+ finally{
+   btn.disabled=false;
+   if(btn.textContent==='Salvando conferência…')btn.textContent=originalButtonText;
+ }
 });
 // Pré-execução parcial Shopee. Only explicit interaction authorizes update_item.
 let optimizerExecPlan=null,optimizerExecContext=null,optimizerExecBusy=false,optimizerExecSerial=0;
