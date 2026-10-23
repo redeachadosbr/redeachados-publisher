@@ -1,0 +1,136 @@
+/* REDE ACHADOS BR — Etapa 04 · ficha técnica visual da referência.
+   Escopo só nesta etapa; dados, ações e formulários permanecem os originais. */
+#tab-optimizer #optimizerTechnicalPanel.ra-tech-studio{
+ display:grid!important;grid-template-columns:minmax(0,1fr);gap:11px;
+ padding:0!important;margin:0!important;background:transparent;border:0;box-shadow:none;
+ color:#122b52;min-width:0
+}
+#tab-optimizer #optimizerTechnicalPanel.ra-tech-studio[hidden]{display:none!important}
+#optimizerWorkflowEditor:has(#optimizerTechnicalPanel.ra-tech-studio:not([hidden]))>.optimizer-workflow-editor-head,
+#optimizerWorkflowEditor:has(#optimizerTechnicalPanel.ra-tech-studio:not([hidden]))>#optimizerWorkflowStageDetail,
+#optimizerWorkflowEditor:has(#optimizerTechnicalPanel.ra-tech-studio:not([hidden]))>#optimizerWorkflowStageGuidance,
+#optimizerWorkflowEditor:has(#optimizerTechnicalPanel.ra-tech-studio:not([hidden]))>#optimizerSupplierFacts{display:none!important}
+#tab-optimizer .ra-tech-studio .ra-tech-heading{display:flex;justify-content:space-between;align-items:flex-start;gap:15px;padding:1px 0 0}
+#tab-optimizer .ra-tech-studio .ra-tech-heading-copy{min-width:0}
+#tab-optimizer .ra-tech-studio .ra-tech-kicker{font-size:11px;color:#68819f;letter-spacing:.13em;font-weight:850}
+#tab-optimizer .ra-tech-studio .ra-tech-heading h2{font-size:25px;letter-spacing:-.03em;font-weight:850;color:#122b52;margin:2px 0}
+#tab-optimizer .ra-tech-studio .ra-tech-heading p{margin:0;color:#6b809c;font-size:12px;line-height:1.45}
+#tab-optimizer .ra-tech-studio .ra-tech-close{font-size:11px!important;border:1px solid #d8e3f4!important;min-height:35px!important;background:#f8fbff!important;color:#19375d!important;border-radius:9px!important;white-space:nowrap}
+#tab-optimizer .ra-tech-studio .ra-tech-metrics{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:9px}
+#tab-optimizer .ra-tech-studio .ra-tech-metric{border:1px solid #dce9f7;border-radius:12px;min-width:0;padding:10px 12px;display:flex;align-items:center;gap:10px;background:#f6faff}
+#tab-optimizer .ra-tech-studio .ra-tech-metric-icon{width:40px;height:40px;flex:none;display:grid;place-items:center;background:#e5f0ff;color:#0662ce;border-radius:12px;font-size:22px;font-weight:850}
+#tab-optimizer .ra-tech-studio .ra-tech-metric-copy{display:grid;gap:2px;min-width:0;line-height:1.3}
+#tab-optimizer .ra-tech-studio .ra-tech-metric-copy strong{font-size:23px;font-weight:850;color:#0c3867;line-height:1}
+#tab-optimizer .ra-tech-studio .ra-tech-metric-copy span{color:#2d4e78;font-size:11px;font-weight:750}
+#tab-optimizer .ra-tech-studio .ra-tech-metric-copy small{color:#738aa4;font-size:10px}
+#tab-optimizer .ra-tech-studio .ra-tech-metric-filled{background:#f2fbf7;border-color:#d2efe0}
+#tab-optimizer .ra-tech-studio .ra-tech-metric-filled .ra-tech-metric-icon{background:#d9f6e9;color:#078b5c}
+#tab-optimizer .ra-tech-studio .ra-tech-metric-filled strong{color:#086643}
+#tab-optimizer .ra-tech-studio .ra-tech-metric-pending{background:#fffcf7;border-color:#fae6c8}
+#tab-optimizer .ra-tech-studio .ra-tech-metric-pending .ra-tech-metric-icon{background:#fff0d9;color:#d57918}
+#tab-optimizer .ra-tech-studio .ra-tech-metric-pending strong{color:#ba5321}
+#tab-optimizer .ra-tech-studio .ra-tech-metric-review{background:#faf8ff;border-color:#e3dcfb}
+#tab-optimizer .ra-tech-studio .ra-tech-metric-review .ra-tech-metric-icon{background:#eee8ff;color:#5d40d0}
+#tab-optimizer .ra-tech-studio .ra-tech-metric-review strong{color:#4530bd}
+#tab-optimizer .ra-tech-studio .ra-tech-main{display:grid;grid-template-columns:minmax(0,1.68fr) minmax(270px,.95fr);gap:10px;align-items:stretch;min-width:0}
+#tab-optimizer #optimizerTechnicalPanel.ra-tech-studio .optimizer-technical-import,
+#tab-optimizer #optimizerTechnicalPanel.ra-tech-studio .ra-tech-preview{margin:0!important;min-width:0!important;padding:14px!important;background:#fff!important;border:1px solid #dce7f5!important;border-radius:14px!important;box-shadow:0 3px 10px #2749710a!important}
+#tab-optimizer .ra-tech-studio .optimizer-tech-import-title{display:flex;justify-content:space-between;gap:8px;align-items:center;margin:0 0 4px!important}
+#tab-optimizer .ra-tech-studio .optimizer-tech-import-title strong{color:#102e60!important;font-size:14px!important}
+#tab-optimizer .ra-tech-studio .optimizer-tech-import-title small{font-size:9px;color:#6f86a0;max-width:190px;text-align:right}
+#tab-optimizer .ra-tech-studio .ra-tech-intro{font-size:10px;color:#7790aa;margin:0 0 8px}
+#tab-optimizer .ra-tech-studio .ra-tech-product{display:flex;align-items:center;gap:11px;padding:9px;border:1px solid #d6e5f7;background:#f2f8ff;border-radius:10px;margin:5px 0 8px;min-width:0}
+#tab-optimizer .ra-tech-studio .ra-tech-product-photo{width:57px;height:51px;flex:none;background:#fff;border-radius:7px;object-fit:contain}
+#tab-optimizer .ra-tech-studio .ra-tech-product-description{display:grid;gap:4px;min-width:0;flex:1}
+#tab-optimizer .ra-tech-studio .ra-tech-product-description strong{font-size:12px;color:#112c55;line-height:1.3}
+#tab-optimizer .ra-tech-studio .ra-tech-product-description small{color:#55749b;font-size:10px;line-height:1.35;overflow-wrap:anywhere}
+#tab-optimizer .ra-tech-studio .ra-tech-product-sku{font-size:10px;font-weight:800;color:#0862bd;border:1px solid #c8e1ff;background:#eaf5ff;border-radius:20px;padding:6px 9px;white-space:nowrap;align-self:flex-start}
+#tab-optimizer .ra-tech-studio .ra-tech-measurements{font-size:10px;line-height:1.4;color:#66809e;margin:0 0 7px}
+#tab-optimizer .ra-tech-studio .ra-tech-measure-warning{color:#936013;background:#fff8e8;border:1px solid #ffe2a6;font-size:10px;line-height:1.4;padding:8px 11px;border-radius:9px;margin:0 0 8px}
+#tab-optimizer .ra-tech-studio .ra-tech-measurements[hidden],
+#tab-optimizer .ra-tech-studio .ra-tech-measure-warning[hidden]{display:none!important}
+#tab-optimizer .ra-tech-studio .ra-tech-source-more{margin:6px 0!important;border:1px solid #e0eafa;border-radius:9px;background:#fafcff}
+#tab-optimizer .ra-tech-studio .ra-tech-source-more>summary{cursor:pointer;padding:9px 10px;color:#215e9d;font-size:11px;font-weight:750}
+#tab-optimizer .ra-tech-studio .ra-tech-source-more>label{display:block;padding:0 10px 10px}
+#tab-optimizer .ra-tech-studio .ra-tech-source-more #optimizerTechText{min-height:72px!important;height:85px!important;max-height:170px}
+#tab-optimizer .ra-tech-studio .optimizer-tech-import-actions{display:grid!important;grid-template-columns:minmax(0,1fr) minmax(190px,1fr);gap:10px;align-items:stretch;margin:10px 0 4px!important}
+#tab-optimizer .ra-tech-studio .optimizer-tech-import-actions>*{min-width:0!important;min-height:44px!important;margin:0!important;flex:none!important}
+#tab-optimizer .ra-tech-studio .optimizer-tech-upload{padding:7px!important;gap:7px!important;display:flex!important;align-items:center;justify-content:space-between;flex-wrap:wrap;font-size:10px!important}
+#tab-optimizer .ra-tech-studio .optimizer-tech-upload input{font-size:10px!important;max-width:140px!important}
+#tab-optimizer .ra-tech-studio #optimizerTechFill{background:linear-gradient(115deg,#157be2,#0865ce)!important;border-radius:9px!important;min-height:44px!important;font-size:11px!important;box-shadow:0 5px 12px #136ec81c!important}
+#tab-optimizer .ra-tech-studio #optimizerTechImagesCount,
+#tab-optimizer .ra-tech-studio .optimizer-tech-privacy{font-size:9px!important;line-height:1.35!important;margin:5px 0!important;color:#6c89a7}
+#tab-optimizer .ra-tech-studio #optimizerTechStatus{padding:5px 8px!important;margin:5px 0 0!important;font-size:10px!important;line-height:1.35!important}
+#tab-optimizer .ra-tech-studio .ra-tech-preview{display:flex;flex-direction:column;gap:9px}
+#tab-optimizer .ra-tech-studio .optimizer-tech-summary-head{margin:0!important}
+#tab-optimizer .ra-tech-studio .optimizer-tech-summary-head strong{font-size:14px!important;color:#123765}
+#tab-optimizer .ra-tech-studio .optimizer-tech-summary-head small{font-size:10px}
+#tab-optimizer .ra-tech-studio .optimizer-tech-summary-stats{gap:6px!important}
+#tab-optimizer .ra-tech-studio .optimizer-tech-summary-stat{min-height:70px!important;padding:12px 5px!important}
+#tab-optimizer .ra-tech-studio .optimizer-tech-summary-stat strong{font-size:22px!important}
+#tab-optimizer .ra-tech-studio .optimizer-tech-summary-stat span{font-size:10px!important}
+#tab-optimizer .ra-tech-studio .optimizer-tech-summary-note{font-size:10px!important;margin:0!important}
+#tab-optimizer .ra-tech-studio .optimizer-tech-filled-list{padding:7px 9px;margin:0!important;border-radius:8px}
+#tab-optimizer .ra-tech-studio .optimizer-tech-filled-list>summary{font-size:10px}
+#tab-optimizer .ra-tech-studio .ra-tech-category{border:1px solid #e0eaf7;border-radius:10px;background:#fbfdff;padding:10px 12px;margin-top:auto}
+#tab-optimizer .ra-tech-studio .ra-tech-category>strong{font-size:11px;display:block;color:#174075;margin:0 0 5px}
+#tab-optimizer .ra-tech-studio .ra-tech-category-row{display:flex;gap:12px;align-items:center;justify-content:space-between;padding:6px 0;border-top:1px solid #e4edf7;font-size:10px;color:#607b9e}
+#tab-optimizer .ra-tech-studio .ra-tech-category-row strong{color:#244b78;font-size:10px;font-weight:800;text-align:right}
+#tab-optimizer #optimizerTechnicalPanel.ra-tech-studio .ra-tech-review{background:#fff!important;border:1px solid #dce8f5!important;border-radius:13px!important;box-shadow:0 3px 12px #13375f0b}
+#tab-optimizer .ra-tech-studio .ra-tech-review>summary{padding:12px 14px!important;background:#fff!important;color:#112d59!important}
+#tab-optimizer .ra-tech-studio .ra-tech-review>summary>span:first-child{font-size:13px;font-weight:850}
+#tab-optimizer .ra-tech-studio .ra-tech-review>summary small{font-size:10px}
+#tab-optimizer .ra-tech-studio .ra-tech-review .optimizer-technical-advanced-body{padding:7px 12px 11px!important;background:#fff}
+#tab-optimizer .ra-tech-studio .ra-tech-review .optimizer-video-help{font-size:10px!important;margin:0 0 8px!important;color:#7590a6}
+#tab-optimizer .ra-tech-studio #optimizerTechnicalFields{display:grid!important;grid-template-columns:1fr!important;gap:6px!important;margin:0!important}
+#tab-optimizer .ra-tech-studio .ra-tech-notices{display:grid;gap:5px}
+#tab-optimizer .ra-tech-studio .ra-tech-notices>*{font-size:10px!important;margin:0!important;padding:8px 10px!important}
+#tab-optimizer .ra-tech-studio .ra-tech-attribute-group{border:1px solid #dce8f6;background:#fbfcfe;border-radius:9px;min-width:0}
+#tab-optimizer .ra-tech-studio .ra-tech-attribute-group>summary{list-style:none;display:flex;align-items:center;gap:10px;padding:9px 11px;cursor:pointer;min-height:34px}
+#tab-optimizer .ra-tech-studio .ra-tech-attribute-group>summary::-webkit-details-marker{display:none}
+#tab-optimizer .ra-tech-studio .ra-tech-attribute-group>summary strong{font-size:11px;font-weight:850;color:#153965;min-width:145px}
+#tab-optimizer .ra-tech-studio .ra-tech-group-icon{font-size:13px;flex:none;color:#147edb;width:19px;display:grid;place-items:center}
+#tab-optimizer .ra-tech-studio .ra-tech-attribute-group.filled .ra-tech-group-icon{color:#029465}
+#tab-optimizer .ra-tech-studio .ra-tech-attribute-group.required .ra-tech-group-icon{color:#c27626}
+#tab-optimizer .ra-tech-studio .ra-tech-group-note{color:#7892aa;font-size:10px;flex:1}
+#tab-optimizer .ra-tech-studio .ra-tech-group-count{white-space:nowrap;background:#eef4fd;border-radius:13px;color:#527397;padding:3px 8px;font-size:10px}
+#tab-optimizer .ra-tech-studio .ra-tech-chevron{color:#2b689c;font-size:17px}
+#tab-optimizer .ra-tech-studio .ra-tech-attribute-group[open] .ra-tech-chevron{transform:rotate(180deg)}
+#tab-optimizer .ra-tech-studio .ra-tech-group-body{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:9px;padding:10px;border-top:1px solid #e0ebf8;background:#fff}
+#tab-optimizer .ra-tech-studio .ra-tech-group-body .optimizer-attribute{display:block!important;min-width:0!important;margin:0!important;background:#fff;border:1px solid #dce7f5;padding:10px;border-radius:10px}
+#tab-optimizer .ra-tech-studio .ra-tech-group-body .optimizer-attribute[hidden]{display:none!important}
+#tab-optimizer .ra-tech-studio .ra-tech-shortcuts{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:9px;min-width:0}
+#tab-optimizer .ra-tech-studio .ra-tech-shortcut{display:flex;align-items:center;min-width:0;gap:10px;text-align:left!important;border-radius:11px!important;border:1px solid #dce8f5!important;background:#fff!important;min-height:61px!important;padding:11px!important;color:#164475!important;box-shadow:0 2px 8px #1844720b}
+#tab-optimizer .ra-tech-studio .ra-tech-shortcut-icon{width:36px;height:36px;border-radius:10px;display:grid;place-items:center;background:#eaf4ff;color:#176bcb;font-size:20px;flex:none}
+#tab-optimizer .ra-tech-studio .ra-tech-shortcut-copy{display:grid;gap:3px;flex:1;min-width:0}
+#tab-optimizer .ra-tech-studio .ra-tech-shortcut-copy strong{font-size:11px;color:#163765}
+#tab-optimizer .ra-tech-studio .ra-tech-shortcut-copy small{font-size:9px;color:#7189a7;line-height:1.3}
+#tab-optimizer .ra-tech-studio .ra-tech-shortcut-arrow{font-size:21px;color:#1d6cb9}
+#optimizerWorkflowEditor:has(#optimizerTechnicalPanel.ra-tech-studio:not([hidden]))>.optimizer-workflow-actions{
+ position:sticky;bottom:0;z-index:8;display:flex;justify-content:center;align-items:center;gap:9px;flex-wrap:wrap;
+ padding:9px 12px!important;border:1px solid #dce8f4;background:#fffffff5;border-radius:12px;box-shadow:0 -5px 18px #23426510
+}
+#optimizerWorkflowEditor:has(#optimizerTechnicalPanel.ra-tech-studio:not([hidden]))>.optimizer-workflow-actions>*{min-height:37px!important;border-radius:8px!important;font-size:11px!important}
+#optimizerWorkflowEditor:has(#optimizerTechnicalPanel.ra-tech-studio:not([hidden])) #optimizerWorkflowReview{background:#f0513a!important;color:white!important}
+#optimizerWorkflowEditor:has(#optimizerTechnicalPanel.ra-tech-studio:not([hidden])) #optimizerWorkflowNext{background:#204c34!important;color:white!important}
+@media(max-width:1190px){
+ #tab-optimizer .ra-tech-studio .ra-tech-metrics{grid-template-columns:repeat(2,minmax(0,1fr))}
+ #tab-optimizer .ra-tech-studio .ra-tech-main{grid-template-columns:minmax(0,1fr) minmax(235px,.8fr)}
+}
+@media(max-width:860px){
+ #tab-optimizer .ra-tech-studio .ra-tech-main{grid-template-columns:1fr}
+ #tab-optimizer .ra-tech-studio .ra-tech-group-body{grid-template-columns:1fr}
+ #tab-optimizer .ra-tech-studio .ra-tech-shortcuts{grid-template-columns:1fr}
+}
+@media(max-width:580px){
+ #tab-optimizer .ra-tech-studio .ra-tech-metrics{grid-template-columns:1fr 1fr}
+ #tab-optimizer .ra-tech-studio .ra-tech-metric{padding:9px 7px;gap:6px}
+ #tab-optimizer .ra-tech-studio .ra-tech-metric-icon{width:29px;height:29px;font-size:15px}
+ #tab-optimizer .ra-tech-studio .ra-tech-metric-copy strong{font-size:18px}
+ #tab-optimizer .ra-tech-studio .ra-tech-metric-copy span{font-size:9px}
+ #tab-optimizer .ra-tech-studio .ra-tech-heading h2{font-size:21px}
+ #tab-optimizer .ra-tech-studio .optimizer-tech-import-actions{grid-template-columns:1fr}
+ #tab-optimizer .ra-tech-studio .ra-tech-attribute-group>summary{gap:5px;flex-wrap:wrap}
+ #tab-optimizer .ra-tech-studio .ra-tech-group-note{display:none}
+ #tab-optimizer .ra-tech-studio .ra-tech-group-count{margin-left:auto}
+}
