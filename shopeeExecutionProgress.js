@@ -18,7 +18,9 @@ export function shopeeExecutionProgress(job){
  const video=Boolean(plan.video),readyVideo=result.video?.phase==='ready';
  const started=['running','failed','uncertain','verified'].includes(state);
  const fiscalPartial=state==='verified'&&phase==='verified_partial';
+ const fullWorkflow=plan.selectedStage==='all';
  const discountIncluded=Boolean(plan.commercialDiscount);
+ const oldPlanNoApproval=fullWorkflow&&!discountIncluded;
  const discountDone=discountIncluded&&state==='verified'&&result.discount?.status==='verified';
  const verified=state==='verified'&&!fiscalPartial&&(!discountIncluded||discountDone);
  const commercialConfirmed=state==='verified'||Boolean(result.primaryVerified);
@@ -65,10 +67,10 @@ export function shopeeExecutionProgress(job){
    started&&phase==='verifying'?'active':'waiting'),
   ...(plan.finalFiscal?[step('fiscal','07 · Dados fiscais',
       fiscalPartial?'attention':fiscalDone?'done':fiscalActive?'active':'waiting')]:
-    discountIncluded?[step('fiscal','07 · Dados fiscais (sem alteração)',commercialConfirmed?'skipped':'waiting')]:
+    fullWorkflow?[step('fiscal','07 · Dados fiscais (sem alteração)',commercialConfirmed?'skipped':'waiting')]:
     [step('finish','Finalização',verified?'done':'waiting')]),
-  ...(discountIncluded?[step('discount','08 · Desconto — última etapa',
-    discountDone?'done':discountActive?'active':'waiting')]:[])
+  ...(fullWorkflow?[step('discount','08 · Desconto — última etapa',
+    oldPlanNoApproval?'review':discountDone?'done':discountActive?'active':'waiting')]:[])
  ];
  if(failure){const current=steps.find(x=>x.status==='active');
   if(current)current.status='attention';}
@@ -82,14 +84,17 @@ export function shopeeExecutionProgress(job){
   videoIncluded:video,videoReady:readyVideo,videoPublished:(verified||fiscalPartial)&&video,
   imagesPublished:(verified||fiscalPartial)?images:0,hasStarted:started,verified,fiscalPartial,
   fiscalStatus:fiscalPartial?'rejected':fiscalDone?'verified':fiscalActive?'in_progress':plan.finalFiscal?'pending':'not_included',
-  discountStatus:discountDone?'verified':discountActive?'in_progress':discountIncluded?'pending':'not_included',
+  discountStatus:discountDone?'verified':discountActive?'in_progress':
+   oldPlanNoApproval?'not_approved_for_this_run':discountIncluded?'pending':'not_included',
   attention:failure,lastError:job.last_error||null,
   // Important distinction: uploaded media is not yet attached to the listing.
   message:images&&phase==='images_upload'
    ?uploaded+' de '+images+' imagens enviadas à mídia Shopee; anúncio ainda não atualizado.'
    :fiscalPartial?'O anúncio comercial foi confirmado, mas os dados fiscais NÃO foram aceitos pela Shopee.'
    :verified?'Todas as alterações, inclusive o desconto quando aprovado, foram verificadas na Shopee.'
-   :state==='uncertain'?'Resultado não confirmado. Confira antes de tentar novamente.'
+   :state==='uncertain'?(oldPlanNoApproval?
+    'Resultado comercial não confirmado. Esta execução antiga não inclui o desconto. Confira o resultado antes de preparar outra execução.':
+    'Resultado não confirmado. Confira antes de tentar novamente.')
    :state==='failed'?uploaded+' imagens na mídia Shopee, '+(verified?images:0)+
      ' aplicadas ao anúncio. A Shopee recusou a atualização; veja a pendência para corrigir.'
    :state==='prepared'?'Plano aprovado. Aguardando seu comando Executar na Shopee.'
