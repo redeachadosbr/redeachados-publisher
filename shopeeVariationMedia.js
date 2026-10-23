@@ -79,10 +79,13 @@ export function validateVariationDetails(body,{requirePhotos=false}={}){
   if(!Number.isInteger(stock)||stock<1||stock>999999)throw Error('Estoque de '+name+' deve ser pelo menos 1.');
   if(!sku||sku.length>100||/[\x00-\x1f]/.test(sku))throw Error('Informe SKU distinta para '+name+'.');
   const gtin=clean(entry.gtin),noGtin=entry.noGtin===true;
+  const supplierSku=clean(entry.supplierSku);
+  if(supplierSku.length>120||/[\x00-\x1f]/.test(supplierSku))
+   throw Error('SKU WeDrop inválida na variação '+name+'.');
   if(!noGtin&&gtin&&!/^\d{8,14}$/.test(gtin))throw Error('GTIN de '+name+' deve ter de 8 a 14 dígitos.');
   const asset=entry.asset;
   if(requirePhotos&&(!asset?.storagePath||!asset.sha256))throw Error('Foto pendente da opção '+name+'.');
-  return {name,price,stock,sku,gtin:noGtin?'':gtin,noGtin,asset:asset||null,
+  return {name,price,stock,sku,supplierSku,gtin:noGtin?'':gtin,noGtin,asset:asset||null,
    stockConfirmed:entry.stockConfirmed===true,photoConfirmed:entry.photoConfirmed===true,
    index:i};
  });
