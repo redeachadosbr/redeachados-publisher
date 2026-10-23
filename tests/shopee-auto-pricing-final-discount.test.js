@@ -7,6 +7,8 @@ import {quoteShopeePrice} from '../shopeePricing.js';
 const app=readFileSync(new URL('../public/app.js',import.meta.url),'utf8');
 const html=readFileSync(new URL('../public/index.html',import.meta.url),'utf8');
 const server=readFileSync(new URL('../server.js',import.meta.url),'utf8');
+const progress=readFileSync(new URL('../shopeeExecutionProgress.js',import.meta.url),'utf8');
+const worker=readFileSync(new URL('../shopeeExecutionWorker.js',import.meta.url),'utf8');
 const liveQuote={
  sku:'TUD0667',itemId:'58220952395',modelId:'0',netMarginPct:10,minMarginPct:5,
  discountRecommendationSource:'researched',status:'COMPETITIVO',
@@ -20,28 +22,34 @@ test('Motor Matriz ativa precificação e pesquisa na localização de todas as 
  assert.match(app,/shPriceCurrentQuote=q;[\s\S]*?optimizerDiscountFinalSavedQuote\(q\)/);
  assert.match(app,/void optimizerDiscountFinalLoad\(\)/);
 });
-test('Desconto no fluxo aparece depois da etapa fiscal e sem trocar SKU/modelo',()=>{
- const fiscal=html.indexOf('id="optimizerExecFiscalLast"');
- const discount=html.indexOf('id="optimizerExecDiscountFinal"');
- assert.ok(fiscal>0&&discount>fiscal);
- assert.ok(html.includes('id="optimizerExecDiscountValues"'));
- assert.ok(html.includes('id="optimizerExecDiscountCampaign"'));
- assert.ok(html.includes('id="optimizerExecDiscountApply"'));
- assert.match(app,/optimizerDiscountFinalIdentityOf\(optimizerWorkflowPlan\)/);
- assert.match(app,/optimizerDiscountFinalPreviewData=null;optimizerDiscountFinalPreviewKey='';/);
+test('Etapa 08 fica acima da prévia para revisão e o envio vem depois da etapa fiscal',()=>{
+ const cards=html.indexOf('id="optimizerWorkflowCards"');
+ const discount=html.indexOf('id="optimizerDiscountReviewInline"');
+ const execute=html.indexOf('id="optimizerExecutionPanel"');
+ assert.ok(cards>0&&discount>cards&&execute>discount);
+ assert.match(app,/discountCard\.onclick=\(\)=>optimizerDiscountOpenReview\(\)/);
+ assert.match(app,/optimizerDiscountApprovalReady\(\)/);
+ assert.match(app,/discountApprovalToken:optimizerDiscountFinalPreviewData\?\.approvalToken/);
+ assert.match(server,/commercialDiscount=\{snapshot:approved,allowPriceChange:/);
+ assert.match(worker,/advanceVerifiedDiscount\(job,io\)/);
+ assert.ok(progress.indexOf("step('discount'")>progress.indexOf("step('fiscal'"));
+ assert.doesNotMatch(html,/id="optimizerExecDiscountApply"/);
 });
-test('Promoção requer pelo menos 2 anúncios válidos e autenticação da prévia',()=>{
+test('Campanha precisa de pesquisa, autorização assinada e confirmação fiscal',()=>{
  assert.match(server,/research\.count<REDE_ACHADOS_MARKET_RULES\.minimumOffers/);
  assert.match(app,/q\.marketResearch\?\.count>=2&&q\.marketResearch\?\.count<=5/);
  assert.match(app,/q\.marketResearch\?\.sourceType==='researched_affiliate_offers'/);
- assert.match(app,/optimizerExecJob\?\.state==='verified'/);
- assert.match(app,/optimizerExecJob\?\.result\?\.phase==='verified_partial'/);
- assert.match(app,/approvalToken:data\.approvalToken,confirm:true/);
- assert.match(app,/allowPriceChange:\$\('#optimizerExecDiscountPriceConsent'\)\.checked/);
- assert.match(app,/optimizerDiscountFinalSent=true/);
+ assert.match(server,/verifyDiscountPreview\(req\.body\?\.discountApprovalToken/);
+ assert.match(server,/if\(plan\.fiscalDeferred\)throw Error/);
+ assert.match(app,/allowPriceChange:discountIntent\?\.consent===true/);
+ assert.doesNotMatch(app,/if\(verified\)void optimizerDiscountFinishTogether\(job\)/);
 });
-test('Consulta de mercado demorada não estoura timeout antigo de 35 segundos',()=>{
- assert.match(app,/signal:AbortSignal\.timeout\(75000\)/);
+test('Falhas 502 na consulta de desconto são recuperadas sem reenviar promoção',()=>{
+ assert.match(app,/async function optimizerDiscountReadOnlyPreview\(request\)/);
+ assert.match(app,/attempt<=3/);
+ assert.match(app,/\[502,503,504\]/);
+ assert.match(app,/AbortSignal\.timeout\(22000\)/);
+ assert.match(server,/discountPublish:async\(approved,live\)/);
 });
 test('Preço calculado mantém margem mínima caso mercado seja inviável',()=>{
  const config={marginPct:10,minMarginPct:5,discountPct:20,couponPct:1,taxPct:4,
