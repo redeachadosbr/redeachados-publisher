@@ -126,7 +126,8 @@ export function compileShopeeExecutionPlan({shopId,itemId,modelId,sku,record,rev
     shopId:String(shopId),itemId:String(itemId),modelId:String(modelId),sku,
     selectedStage,discountOnly,modelVariations:modelVariations?{
      type:modelVariations.type,options:modelVariations.options.map(x=>({name:x.name,sku:x.sku,
-      supplierSku:x.supplierSku,cost:x.cost,price:x.price,stock:x.stock,sha256:x.asset?.sha256}))}:null,
+      supplierSku:x.supplierSku,cost:x.cost,price:x.price,stock:x.stock,sha256:x.asset?.sha256})),
+     promotion:modelVariations.promotion||null}:null,
     from:{item_name:currentTitle,description:currentDescription,description_type:currentType},
     to:proposed,finalFiscal,fiscalDeferred,
     // Não invalidar publicação de imagens/conteúdo por edição fiscal que NÃO será enviada.
