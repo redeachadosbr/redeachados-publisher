@@ -2788,9 +2788,20 @@ async function variationModelDiscountContext(req){
   const model=models.find(m=>String(m.model_sku||'')===option.sku);
   if(!model||!Number.isSafeInteger(Number(model.model_id))||Number(model.model_id)<=0)
    throw Error('A variação '+option.name+' não foi confirmada pelo SKU no anúncio da Shopee.');
-  const link=await shopeePricingSupplierCost(x.auth.shopId,{
-   sku:option.sku,itemId:x.itemId,modelId:model.model_id});
   const source=suppliers.find(a=>a.sku===option.sku);
+  let link;
+  try{
+   link=await shopeePricingSupplierCost(x.auth.shopId,{
+    sku:option.sku,itemId:x.itemId,modelId:model.model_id});
+  }catch(error){
+   // Modelo e SKU WeDrop já conferidos por nome/cor/custo: reparar SOMENTE
+   // o vínculo interno, sem editar preço nem anúncio na Shopee.
+   if(!source||source.supplierSku!==option.supplierSku)throw error;
+   await upsertWeDropSkuLink(x.auth.shopId,{
+    itemId:x.itemId,modelId:model.model_id,shopeeSku:option.sku,supplierSku:source.supplierSku});
+   link=await shopeePricingSupplierCost(x.auth.shopId,{
+    sku:option.sku,itemId:x.itemId,modelId:model.model_id});
+  }
   if(link.supplierSku!==option.supplierSku||link.supplierSku!==source?.supplierSku||
     Math.abs(link.unitCost-source.unitCost)>0.009||
     Math.abs(link.unitCost-Number(quote.unitCost))>0.009)
