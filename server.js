@@ -1348,6 +1348,25 @@ app.post('/api/shopee/optimizer/execution/prepare',mustLogin,requireWeDropAdmin,
       ...option,cost:source.find(o=>o.sku===option.sku)?.unitCost||null}))};
      if(modelVariations.options.some(o=>!o.cost))throw Error('Custo WeDrop não confirmado para todas as opções.');
     }
+    let autoModelDiscountToken=null,autoModelDiscountPreview=null;
+    if(modelVariations){
+     const campaignId=String(req.body?.campaignId||'').trim();
+     if(!/^\\d{1,18}$/.test(campaignId))
+      throw Error('Informe uma vez a campanha Minha Promoção na etapa Desconto; ela será incluída automaticamente na prévia única.');
+     const financial=await discountExecutionInputs(req,sku,itemId,modelId,campaignId);
+     if(modelVariations.options.some(o=>Math.round(o.cost*100)!==Math.round(Number(financial.quote.unitCost)*100)))
+      throw Error('As variações têm custos diferentes. É necessário precificar individualmente cada modelo antes da campanha.');
+     const approved=financial.snapshot;
+     modelVariations.promotion={discountId:campaignId,gross:approved.gross,promo:approved.promo,
+      discountPct:approved.discountPct,couponPct:approved.couponPct,
+      buyerAfterCoupon:approved.buyerAfterCoupon,quoteAt:approved.quoteAt,
+      modelPriceChange:modelVariations.options.some(o=>Math.round(o.price*100)!==Math.round(approved.gross*100))};
+     autoModelDiscountToken=signDiscountPreview(approved,envText('SESSION_SECRET'));
+     autoModelDiscountPreview={...modelVariations.promotion,
+      models:modelVariations.options.map(o=>({name:o.name,sku:o.sku,supplierSku:o.supplierSku,
+       cost:o.cost,originalPrice:o.price,finalPrice:approved.promo})),
+      netMarginPct:financial.quote.netMarginPct,minMarginPct:financial.quote.minMarginPct};
+    }
     if(selectedStage==='fiscal'&&reviewState.stages?.fiscal?.reviewed&&reviewState.tax){
       const supplier=await readWeDropProduct(auth.shopId,{sku,itemId,modelId});
       fiscalMatrixSource({sku,supplier,tax:reviewState.tax,reviewSource:reviewState.matrixFiscal});
@@ -1402,7 +1421,8 @@ app.post('/api/shopee/optimizer/execution/prepare',mustLogin,requireWeDropAdmin,
     res.json({ok:true,ready:plan.canExecute,plan,progress:shopeeExecutionProgress(stored),
       issue:deferFiscal&&!plan.canExecute?
         detectShopeeExecutionIssue(previous.last_error,previous.plan):null,
-      updatedAt:stored.updated_at,executionStatus:stored.state,marketplaceUpdated:false});
+      updatedAt:stored.updated_at,executionStatus:stored.state,marketplaceUpdated:false,
+      autoModelDiscountPreview,autoModelDiscountToken});
   }catch(e){res.status(409).json({error:String(e.message||e).slice(0,300)});}
 });
 // Validação fiscal leve: consulta apenas anúncio + eventual modelo. Não busca
@@ -1771,7 +1791,8 @@ app.post('/api/shopee/optimizer/execution/execute',mustLogin,requireWeDropAdmin,
      const details=validateVariationDetails(reviewState.variationDetails,{requirePhotos:true});
      const supplier=await verifiedVariationSupplierCosts({auth,sku,itemId,modelId},details);
      return {type:details.type,options:details.options.map(o=>({
-      ...o,cost:supplier.find(x=>x.sku===o.sku)?.unitCost||null}))};
+      ...o,cost:supplier.find(x=>x.sku===o.sku)?.unitCost||null})),
+      promotion:plan.modelVariations.promotion};
     })():null});
   if(fresh.fingerprint!==plan.fingerprint||!fresh.canExecute)throw Error('Conteúdo ou aprovação mudou. Prepare novamente.');
   await claimShopeePreparedExecution(auth.shopId,itemId,modelId,{
