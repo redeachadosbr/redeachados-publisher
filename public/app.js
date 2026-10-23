@@ -7745,14 +7745,19 @@ function optimizerChatBridgeQueue(){
    },
    onAck:optimizerChatBridgeAck,
    onWaiting:(row,delay)=>{
+    if(optimizerChatBridgeJob?.nonce!==row.nonce||
+       !optimizerChatBridgeIdentity(optimizerWorkflowPlan,row))return;
     optimizerChatBridgeNotice('Imagem '+row.slot+'/9 preservada na SKU '+row.sku+'. Reconectando para enviar em '+Math.ceil(delay/1000)+' s...');
    },
    onFailure:row=>{
+    if(optimizerChatBridgeJob?.nonce!==row.nonce||
+       !optimizerChatBridgeIdentity(optimizerWorkflowPlan,row))return;
     optimizerChatBridgeRelease('Imagem '+String(row.slot).padStart(2,'0')+' rejeitada: '+row.error+
      '. Reenvio encerrado. Agora você pode importar a foto correta manualmente.');
    },
    onSaved:async row=>{
     const w=optimizerWorkflowPlan;
+    if(optimizerChatBridgeJob?.nonce!==row.nonce||!optimizerChatBridgeIdentity(w,row))return;
     optimizerChatBridgeNotice('Imagem '+row.slot+'/9 salva na SKU '+row.sku+'. '+(row.wasPadded?'Formato ajustado para 1:1 com margens, sem cortes. ':'')+'Aguardando a próxima imagem.');
     if(optimizerChatBridgeIdentity(w,row)){
      const status=$('#optimizerImageCorrectionStatus');
@@ -7780,10 +7785,15 @@ function optimizerChatBridgeQueue(){
 }
 async function optimizerChatBridgeRecover({includeBlocked=false}={}){
  const job=optimizerChatBridgeJob;if(!job||job.complete||job.stopped)return 0;
+ // No carregamento e no retorno de páginas, NÃO reativar um trabalho cujo
+ // item/modelo não é exatamente a SKU exibida pelo Manager.
+ if(!optimizerChatBridgeIdentity(job,optimizerWorkflowPlan)||
+    String($('#optimizerSku')?.value||'').trim()!==String(job.sku))return 0;
  try{
   const queue=await optimizerChatBridgeQueue();
   const pending=await queue.resume(job,{includeBlocked});
   if(pending){
+   if(!optimizerChatBridgeIdentity(job,optimizerWorkflowPlan)||job.stopped)return 0;
    optimizerChatBridgeBusy=true;$('#optimizerChatgptAbort').hidden=false;
    optimizerChatBridgeNotice('Retomando o envio de '+pending+' imagem(ns) preservada(s) da SKU '+job.sku+'.');
   }
@@ -7810,9 +7820,21 @@ globalThis.window?.addEventListener?.('message',async(event)=>{
   }else if(status)status.textContent='Extensão iniciada para a SKU '+(optimizerWorkflowPlan?.sku||'')+'. O ChatGPT está gerando e cada foto será enviada à galeria automaticamente.';
   return;
  }
- if(m.nonce!==optimizerChatBridgeNonce||!m.nonce)return;
+ if(m.nonce!==optimizerChatBridgeNonce||!m.nonce){
+  if(m.kind==='RA_EXTENSION_IMAGE'&&m.nonce){
+   optimizerChatBridgeAck(m,false,'Tarefa de SKU anterior não está ativa neste anúncio.');
+   window.postMessage({kind:'RA_SITE_ABORT',nonce:m.nonce},location.origin);
+  }
+  return;
+ }
  // Bind delivery to the authorized job, not to the panel or SKU currently on screen.
  const w=optimizerWorkflowPlan;
+ if(String($('#optimizerSku')?.value||'').trim()!==String(m.sku||'')||
+    !optimizerChatBridgeIdentity(w,m)){
+  if(m.kind==='RA_EXTENSION_IMAGE')optimizerChatBridgeAck(m,false,'A SKU ativa foi alterada. Abra a nova SKU para gerar suas imagens.');
+  window.postMessage({kind:'RA_SITE_ABORT',nonce:m.nonce},location.origin);
+  return;
+ }
  if(!optimizerChatBridgeJob&&optimizerChatBridgeIdentity(w,m))optimizerChatBridgeRemember(w);
  const job=optimizerChatBridgeJob;
  if(!job||job.nonce!==m.nonce||!optimizerChatBridgeIdentity(job,m))return;
