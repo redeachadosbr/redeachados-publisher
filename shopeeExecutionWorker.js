@@ -92,7 +92,26 @@ export async function advanceShopeeExecution(job,io){
   }
  }
  await io.validateIdentity();
- assertLiveShopeeUnchanged(plan,await io.read());
+ const currentItem=await io.read();
+ // Regra GLOBAL para qualquer SKU: conferir o anúncio na Shopee antes
+ // de escrever. Se todo o conteúdo/mídia aprovado já estiver publicado,
+ // continuar diretamente nos modelos/fiscal/desconto, sem reenviar nada.
+ // A verificação exige correspondência de TODOS os campos incluídos
+ // nesta execução (inclusive os IDs da mídia quando houver).
+ if(verifyShopeeExecution(plan,currentItem,result)){
+  const next=plan.modelVariations?'variation_ready':
+   plan.finalFiscal?'fiscal_ready':
+   plan.commercialDiscount?'discount_ready':'verified';
+  const done=withExecutionEvent({...result,phase:next,primaryVerified:true,
+    ...(next==='verified'?{verified:true}:{})},
+    'commercial-already-confirmed',
+    'Anúncio já conferido na Shopee: imagens, vídeo, título, descrição e ficha técnica não serão reenviados. Continuando apenas com etapas pendentes.',
+    'success');
+  return next==='verified'?
+   {state:'verified',result:done,lastError:null}:
+   {state:'running',result:done,delay:500};
+ }
+ assertLiveShopeeUnchanged(plan,currentItem);
  if(plan.images?.length&&(result.imageIds||[]).length<plan.images.length){
   const index=(result.imageIds||[]).length,asset=plan.images[index];
   const file=await io.downloadImage(asset);
