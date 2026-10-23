@@ -6378,7 +6378,7 @@ function techFieldsSnapshot(){
  return [...$('#optimizerTechnicalFields').querySelectorAll('fieldset[data-attribute-id]')].map(f=>{
   const attributeId=Number(f.dataset.attributeId);
   const values=[...f.querySelectorAll('[data-attribute-value]')].map(row=>({
-   valueId:Number(row.querySelector('[data-value-id]')?.value??-1),
+   valueId:Number(row.querySelector('[data-value-id]')?.value||-1),
    valueName:String(row.querySelector('[data-value-name]')?.value||''),
    unit:String(row.querySelector('[data-value-unit]')?.value||'')
   }));
