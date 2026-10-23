@@ -140,7 +140,7 @@ function confirmedFacts(record,data,sourceText,type){
  // a paragraph describing a different component (e.g. motor 380, adapter 220V).
  const mat=normalized.match(/\b(?:composicao|material)\s*[:\-]\s*(?:100%\s*)?(vinil\s*\(pvc\)|plastico|abs|vinil|pvc|polipropileno|aco inoxidavel|aco|metal|silicone|vidro|aluminio|tnt|polietileno)\b/);
  const selectedMat=mat?.[1]?.replace('vinil (pvc)','vinil')||'';
- const age=(normalized.match(/\b(?:a partir de|idade indicada|idade recomendada|indicacao de uso|indicacao de idade)\s*[:\-]?\s*(?:\+|de\s*)?(\d{1,2})\s*anos?\b/)||fromTitle.match(/\b(?:\+|acima de )\s*(\d{1,2})\s*anos?\b/))?.[1];
+ const age=(normalized.match(/\b(?:a\s*partir\s*de|idade indicada|idade recomendada|indicacao de uso|indicacao de idade)\s*[:\-]?\s*(?:\+|de\s*)?(\d{1,2})\s*anos?\b/)||fromTitle.match(/\b(?:\+|acima de )\s*(\d{1,2})\s*anos?\b/))?.[1];
  const cap=(normalized.match(/\b(?:capacidade|volume)\s*[:\-]?\s*(\d{1,5}(?:[.,]\d+)?)\s*(ml|litros|l)\b/)||
    fromTitle.match(/\b(\d{2,5})\s*(ml|litros|l)\b/));
  const qty=(normalized.match(/\b(?:cont[eé]m|quantidade|itens inclusos|conte[uú]do)\s*[:\-]?\s*(\d{1,3})\s*(?:pe[cç]as|potes|unidades)\b/)||
