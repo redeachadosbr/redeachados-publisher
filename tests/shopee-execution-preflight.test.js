@@ -117,3 +117,13 @@ test('botão consultar e destravar prepara somente após retorno seguro, sem mar
   source.indexOf('let optimizerWorkerBusy=false;'));
  assert.doesNotMatch(route,/\/api\/v2\/product\/update_item|\/api\/v2\/discount\/add_discount_item/);
 });
+
+test('recuperação automática de execução antiga é somente leitura e executa no máximo uma vez por versão',()=>{
+ assert.match(js,/function optimizerExecutionAutoRecoverStale\(job\)/);
+ assert.match(js,/Date\.now\(\)-updated<180000/);
+ assert.match(js,/optimizerAutoReadbackRecoveryKey===key/);
+ assert.match(js,/body:JSON\.stringify\(\{sku:w\.sku,itemId:w\.itemId,modelId:w\.modelId,recover:true\}\)/);
+ assert.match(js,/if\(data\.recoveryReady\)/);
+ assert.doesNotMatch(js.slice(js.indexOf('function optimizerExecutionAutoRecoverStale('),
+  js.indexOf('function optimizerExecutionJobView(')),/optimizerExecuteApproved\(|\/discounts\/execute/);
+});
