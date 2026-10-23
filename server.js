@@ -2834,7 +2834,7 @@ app.post('/api/shopee/optimizer/variants-discount/execute',mustLogin,requireWeDr
  res.setHeader('Cache-Control','no-store');
  if(!verifiedSameOrigin(req)||req.body?.confirm!==true)
   return res.status(403).json({ok:false,error:'Aprovação explícita da promoção obrigatória.'});
- let key=null;
+ let key=null,attempted=false;
  try{
   const {auth}=await getValidAuth(req);
   const approved=verifyDiscountPreview(req.body.approvalToken,
@@ -2844,7 +2844,8 @@ app.post('/api/shopee/optimizer/variants-discount/execute',mustLogin,requireWeDr
   // A campanha e todos os modelos precisam continuar IDÊNTICOS à prévia.
   req.body.discountId=approved.discountId;
   const fresh=await variationModelDiscountContext(req);
-  if(JSON.stringify(fresh.snapshot)!==JSON.stringify(approved))
+  const {expiresAt,nonce,...approvedValues}=approved;
+  if(JSON.stringify(fresh.snapshot)!==JSON.stringify(approvedValues))
    throw Error('O preço, os modelos ou a campanha mudaram. Revise a prévia antes de aplicar.');
   key=[auth.shopId,approved.itemId,approved.discountId].join(':');
   if(activeDiscountWrites.has(key))throw Error('Essa campanha já está sendo alterada.');
@@ -2856,6 +2857,7 @@ app.post('/api/shopee/optimizer/variants-discount/execute',mustLogin,requireWeDr
    model_list:approved.models.map(m=>({model_id:Number(m.modelId),model_promotion_price:m.promo}))
   }]};
   // ÚNICO POST de escrita. Nunca repetir automaticamente após erro ou timeout.
+  attempted=true;
   const write=await callShopeeShopApi(fresh.cfg,{
    path:approved.action==='add'?'/api/v2/discount/add_discount_item':
     '/api/v2/discount/update_discount_item',
@@ -2873,9 +2875,10 @@ app.post('/api/shopee/optimizer/variants-discount/execute',mustLogin,requireWeDr
    message:verified?'Desconto confirmado na Shopee para todas as variações.':
     'A Shopee recebeu a atualização, mas ainda não confirmou todos os modelos. Consulte antes de tentar novamente.'});
  }catch(e){
-  res.status(409).json({ok:false,verified:false,uncertain:true,
-   error:'Desconto não confirmado: '+String(e.message||e).slice(0,270)+
-    '. Confira a campanha antes de qualquer nova tentativa.'});
+  res.status(attempted?409:400).json({ok:false,verified:false,uncertain:attempted,
+   error:(attempted?'Envio sem confirmação: ':'Prévia não validada: ')+
+    String(e.message||e).slice(0,260)+
+    (attempted?'. Confira a campanha antes de qualquer nova tentativa.':' Nenhum desconto foi enviado.')});
  }finally{if(key)activeDiscountWrites.delete(key);}
 });
 app.post('/api/shopee/optimizer/discounts/preview',mustLogin,requireWeDropAdmin,async(req,res)=>{
