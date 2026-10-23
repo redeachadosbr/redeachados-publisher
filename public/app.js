@@ -2404,7 +2404,7 @@ function optimizerDescriptionCompactPreview(content){
  const lines=raw.split('\n');
  const isHeading=line=>/^(?:🌟|⚙️|💛|📦|🔎|📏|✅)\s+(?:Por que|Benefícios|Características|Informações|Destaques|Detalhes|Material|Medidas|Especificações|Descrição do produto)/iu.test(line)
    ||/^(?:🌟|⚙️|📏|💎|🔎)\s+[A-ZÁÀÂÃÉÊÍÓÔÕÚÇ][A-ZÁÀÂÃÉÊÍÓÔÕÚÇ\s:]{5,}$/u.test(line);
- const emojiLine=line=>/^(?:[🎨🎈🛝⚽🏃💦☀️🏡🥤👜☕🎁👔✨🧴🚿🌿🍳🏕️🌳🎒🗑️🏠🛠️🔧🦟🛒🍓🏍️🏷️🧩👧📦🔢🔋📏🔌🦶🚦💧📐🎯✅⭐])\s/u.test(line);
+ const emojiLine=line=>/^\p{Extended_Pictographic}\uFE0F?\s/u.test(line);
  for(const rawLine of lines){
   const line=rawLine.trim();
   if(!line){currentGroup=null;continue;}
