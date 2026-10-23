@@ -1,0 +1,218 @@
+/* Rede Achados BR — Layout de Informações Fiscais / Etapa 07 */
+#optimizerWorkflowEditor.ra-fiscal-modern-active{
+ position:relative;display:block!important;background:transparent!important;
+ padding:10px 0 0!important;border:0!important;box-shadow:none!important;
+ min-width:0;overflow:visible
+}
+#optimizerWorkflowEditor.ra-fiscal-modern-active[hidden]{display:none!important}
+#optimizerWorkflowEditor.ra-fiscal-modern-active>.optimizer-workflow-editor-head{
+ position:absolute;top:23px;right:16px;z-index:4;margin:0;padding:0;border:0;background:transparent
+}
+#optimizerWorkflowEditor.ra-fiscal-modern-active>.optimizer-workflow-editor-head>div{display:none}
+#optimizerWorkflowEditor.ra-fiscal-modern-active>.optimizer-workflow-editor-head>button{
+ font-size:10px;padding:7px 11px;border-radius:8px
+}
+#optimizerWorkflowEditor.ra-fiscal-modern-active>.optimizer-workflow-detail,
+#optimizerWorkflowEditor.ra-fiscal-modern-active>#optimizerWorkflowStageGuidance,
+#optimizerWorkflowEditor.ra-fiscal-modern-active>#optimizerSupplierFacts,
+#optimizerWorkflowEditor.ra-fiscal-modern-active>#optimizerDescriptionReady{display:none!important}
+#raFiscalModernLayout.ra-fiscal-modern-layout{
+ display:grid;gap:12px;min-width:0;width:100%;box-sizing:border-box;color:#102b58
+}
+#raFiscalModernLayout .ra-fiscal-modern-header,
+#raFiscalModernLayout .ra-fiscal-modern-supplier,
+#raFiscalModernLayout .ra-fiscal-modern-card,
+#raFiscalModernLayout .ra-fiscal-modern-quick-link{
+ border:1px solid #dbe7f8;background:#fff;border-radius:15px;
+ box-shadow:0 3px 15px rgba(29,76,137,.045)
+}
+#raFiscalModernLayout .ra-fiscal-modern-header{
+ padding:19px 21px;display:flex;gap:14px;align-items:center;justify-content:space-between;
+ flex-wrap:wrap;min-width:0
+}
+#raFiscalModernLayout .ra-fiscal-modern-heading{min-width:0;flex:1}
+#raFiscalModernLayout .ra-fiscal-modern-step{
+ color:#266bd7;background:#ecf4ff;border-radius:99px;padding:7px 13px;
+ font-size:10px;font-weight:850;letter-spacing:.02em;display:inline-block
+}
+#raFiscalModernLayout .ra-fiscal-modern-heading h2{
+ font-size:22px!important;letter-spacing:-.025em;line-height:1.25;color:#122959;
+ margin:8px 0 6px!important;font-weight:900
+}
+#raFiscalModernLayout .ra-fiscal-modern-heading p{
+ font-size:12px;line-height:1.5;color:#607da5;margin:0!important
+}
+#raFiscalModernLayout .ra-fiscal-modern-header-actions{
+ display:flex;align-items:center;gap:12px;flex-wrap:wrap;padding-right:55px
+}
+#raFiscalModernLayout .ra-fiscal-modern-status{
+ display:flex;flex-direction:column;justify-content:center;min-width:188px;
+ background:#fff7e8;color:#8b611f;padding:10px 14px;border-radius:12px;gap:3px
+}
+#raFiscalModernLayout .ra-fiscal-modern-status.is-saved{background:#eaf8ef;color:#137a4d}
+#raFiscalModernLayout .ra-fiscal-modern-status strong{font-size:12px;font-weight:850}
+#raFiscalModernLayout .ra-fiscal-modern-status small{font-size:10px;color:inherit;opacity:.82}
+#raFiscalModernLayout .ra-fiscal-modern-open{
+ min-height:45px;min-width:165px;background:#fff;border:1px solid #cfe0f7;
+ padding:10px 14px;border-radius:11px;color:#1151ae;font-size:11px;font-weight:850;cursor:pointer
+}
+#raFiscalModernLayout .ra-fiscal-modern-open:hover{background:#f0f6ff}
+#raFiscalModernLayout .ra-fiscal-modern-supplier{
+ padding:13px 15px;display:flex;gap:15px;align-items:center;min-width:0
+}
+#raFiscalModernLayout .ra-fiscal-modern-photo{
+ width:92px;height:92px;flex:none;display:grid;place-items:center;
+ overflow:hidden;border-radius:10px;border:1px solid #e0e9f6;background:#f2f6fc;color:#6791bf
+}
+#raFiscalModernLayout .ra-fiscal-modern-photo img{width:100%;height:100%;object-fit:contain}
+#raFiscalModernLayout .ra-fiscal-modern-supplier-text{min-width:0;display:grid;gap:8px;flex:1}
+#raFiscalModernLayout .ra-fiscal-modern-supplier-text>strong{
+ font-size:13px;line-height:1.3;font-weight:850;color:#143362;overflow-wrap:anywhere
+}
+#raFiscalModernLayout .ra-fiscal-modern-supplier-text>p{
+ margin:0!important;font-size:11px;color:#57749f;line-height:1.45;overflow-wrap:anywhere
+}
+#raFiscalModernLayout .ra-fiscal-modern-warning{
+ padding:9px 12px;background:#fff5df;color:#a76010;font-size:11px;
+ line-height:1.45;border-radius:9px;overflow-wrap:anywhere
+}
+#raFiscalModernLayout #optimizerFiscalPanel{
+ display:block!important;min-width:0;margin:0!important;padding:0!important;
+ background:transparent!important;box-shadow:none!important;border:0!important
+}
+#raFiscalModernLayout #optimizerFiscalFields{
+ display:grid!important;grid-template-columns:minmax(0,1fr) minmax(0,1fr) minmax(0,1.04fr)!important;
+ gap:11px!important;align-items:stretch;margin:0!important;padding:0!important;min-width:0
+}
+#raFiscalModernLayout .ra-fiscal-modern-card{min-width:0;overflow:visible;display:flex;flex-direction:column;padding:0}
+#raFiscalModernLayout .ra-fiscal-modern-card-head{
+ display:flex;align-items:center;gap:10px;min-height:70px;
+ padding:13px 14px;border-radius:14px 14px 0 0;background:#f0f6ff
+}
+#raFiscalModernLayout .ra-fiscal-modern-card.operation .ra-fiscal-modern-card-head{background:#eaf9f3}
+#raFiscalModernLayout .ra-fiscal-modern-card.provenance .ra-fiscal-modern-card-head{background:#f5f1ff}
+#raFiscalModernLayout .ra-fiscal-modern-card-icon{
+ width:38px;height:38px;display:grid;place-items:center;flex:none;border-radius:10px;
+ font-size:20px;font-weight:850;background:linear-gradient(145deg,#007af2,#2668e5);color:#fff;
+ box-shadow:0 3px 8px #1d75e22a
+}
+#raFiscalModernLayout .ra-fiscal-modern-card.operation .ra-fiscal-modern-card-icon{background:linear-gradient(145deg,#10b868,#0e995a)}
+#raFiscalModernLayout .ra-fiscal-modern-card.provenance .ra-fiscal-modern-card-icon{background:linear-gradient(145deg,#a27af5,#754de1)}
+#raFiscalModernLayout .ra-fiscal-modern-card-words{display:grid;gap:5px;min-width:0}
+#raFiscalModernLayout .ra-fiscal-modern-card-words strong{font-size:14px;line-height:1.25;font-weight:900;color:#123462}
+#raFiscalModernLayout .ra-fiscal-modern-card.operation .ra-fiscal-modern-card-words strong{color:#126b4c}
+#raFiscalModernLayout .ra-fiscal-modern-card-words small{font-size:10px;color:#6c83a4;line-height:1.3}
+#raFiscalModernLayout .ra-fiscal-modern-card-body{
+ padding:14px 15px;display:grid;grid-template-columns:minmax(0,1fr);
+ grid-auto-rows:min-content;gap:12px;flex:1;align-content:start
+}
+#raFiscalModernLayout .ra-fiscal-modern-card.operation .ra-fiscal-modern-card-body{
+ grid-template-columns:repeat(2,minmax(0,1fr));gap:12px
+}
+#raFiscalModernLayout .ra-fiscal-modern-card.operation label[data-fiscal-key="operation_type"]{
+ grid-column:1/-1
+}
+#raFiscalModernLayout .ra-fiscal-modern-field{
+ display:flex;flex-direction:column;gap:6px;min-width:0;align-items:stretch;
+ margin:0!important;font-size:11px;color:#31557e;font-weight:700
+}
+#raFiscalModernLayout .ra-fiscal-modern-field-label{
+ display:flex;align-items:center;gap:6px;min-height:18px;color:#345881
+}
+#raFiscalModernLayout .ra-fiscal-modern-field-label>span{font-size:10px;font-weight:850;line-height:1.35;min-width:0}
+#raFiscalModernLayout .ra-fiscal-modern-field input[data-tax-field]{
+ box-sizing:border-box;width:100%;height:39px;min-height:39px;padding:8px 11px;
+ background:#fff;border:1px solid #cbdcf1;border-radius:9px;font-size:12px;
+ color:#113466;font-weight:750;outline-offset:2px
+}
+#raFiscalModernLayout .ra-fiscal-modern-field input[data-tax-field]:focus{
+ border-color:#4997ef;outline:2px solid #bed8fc
+}
+#raFiscalModernLayout .ra-fiscal-modern-field .optimizer-fiscal-filled{
+ font-size:9px;font-weight:650;color:#378467;margin:0!important;
+ line-height:1.3;order:3
+}
+#raFiscalModernLayout .ra-fiscal-modern-field .optimizer-fiscal-cest-help,
+#raFiscalModernLayout .ra-fiscal-modern-field .ra-fiscal-modern-cest-alert{
+ display:block;font-size:10px;font-weight:650;color:#9d5e13;line-height:1.5;margin:1px 0 0
+}
+#raFiscalModernLayout .ra-fiscal-modern-help{position:relative;flex:none;margin-left:2px}
+#raFiscalModernLayout .ra-fiscal-modern-help>summary{
+ list-style:none;display:grid;place-items:center;border-radius:50%;cursor:pointer;
+ width:19px;height:19px;background:#eaf2ff;color:#3467ad;border:1px solid #cbdcf7;
+ font-size:10px;font-weight:900
+}
+#raFiscalModernLayout .ra-fiscal-modern-help>summary::-webkit-details-marker{display:none}
+#raFiscalModernLayout .ra-fiscal-modern-popover{
+ position:absolute;z-index:40;top:24px;left:-10px;min-width:170px;width:clamp(175px,18vw,270px);
+ padding:11px 12px;color:#fff;background:#123657;border-radius:10px;
+ font-size:11px;line-height:1.5;box-shadow:0 10px 24px #11386440;font-weight:450
+}
+#raFiscalModernLayout .ra-fiscal-modern-tax-note{
+ padding:13px;background:#fff5df;border-radius:10px;color:#965718;line-height:1.45;margin-bottom:3px
+}
+#raFiscalModernLayout .ra-fiscal-modern-tax-note strong{display:block;font-size:11px;line-height:1.35}
+#raFiscalModernLayout .ra-fiscal-modern-tax-note p{font-size:11px;line-height:1.55;margin:7px 0 0!important}
+#raFiscalModernLayout .ra-fiscal-modern-card.provenance input[data-tax-field="evidence"]{font-size:11px}
+#raFiscalModernLayout .optimizer-workflow-actions{
+ display:grid;grid-template-columns:.9fr 1.55fr 1fr 1.2fr;gap:9px;align-items:stretch;
+ padding:12px 14px;margin:0!important;background:#fff;border:1px solid #dfebf9;
+ border-radius:12px;position:relative;box-shadow:0 4px 15px #21486a0b
+}
+#raFiscalModernLayout .optimizer-workflow-actions>button,
+#raFiscalModernLayout .optimizer-workflow-actions>a{
+ display:flex;align-items:center;justify-content:center;min-height:43px;
+ padding:10px 12px;text-align:center;border-radius:9px;font-size:11px;
+ font-weight:850;text-decoration:none;line-height:1.4;box-sizing:border-box
+}
+#raFiscalModernLayout .optimizer-workflow-actions #optimizerWorkflowCopy{background:#edf2f6;color:#365575;border:0}
+#raFiscalModernLayout .optimizer-workflow-actions #optimizerWorkflowReview{
+ background:linear-gradient(110deg,#fa713d,#f44331);color:#fff;border:0
+}
+#raFiscalModernLayout .optimizer-workflow-actions #optimizerWorkflowNext{background:#1d442f;color:#fff;border:0}
+#raFiscalModernLayout .optimizer-workflow-actions #optimizerWorkflowShopee{
+ color:#1753a2;border:1px solid #d3e2f7;background:#fff
+}
+#raFiscalModernLayout>.optimizer-workflow-disclaimer{
+ font-size:10px;color:#7587a3;line-height:1.45;margin:-6px 5px 0!important
+}
+#raFiscalModernLayout .ra-fiscal-modern-quick{
+ display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:11px
+}
+#raFiscalModernLayout .ra-fiscal-modern-quick-link{
+ display:flex;gap:11px;align-items:center;text-align:left;min-width:0;
+ min-height:70px;padding:12px 13px;cursor:pointer;color:#173968
+}
+#raFiscalModernLayout .ra-fiscal-modern-quick-link:hover{background:#f2f8ff;border-color:#96b9e8}
+#raFiscalModernLayout .ra-fiscal-modern-quick-icon{
+ width:36px;height:36px;border-radius:10px;flex:none;background:#e7f0ff;
+ display:grid;place-items:center;color:#296cce;font-size:15px;font-weight:900
+}
+#raFiscalModernLayout .ra-fiscal-modern-quick-text{display:grid;gap:4px;flex:1;min-width:0}
+#raFiscalModernLayout .ra-fiscal-modern-quick-text strong{font-size:11px;font-weight:850;color:#173a68}
+#raFiscalModernLayout .ra-fiscal-modern-quick-text small{font-size:10px;color:#6d86a6;line-height:1.3}
+#raFiscalModernLayout .ra-fiscal-modern-chevron{font-size:22px;color:#2d68aa;line-height:1}
+@media(max-width:1180px){
+ #raFiscalModernLayout #optimizerFiscalFields{grid-template-columns:repeat(2,minmax(0,1fr))!important}
+ #raFiscalModernLayout .ra-fiscal-modern-card.provenance{grid-column:1/-1}
+ #raFiscalModernLayout .ra-fiscal-modern-card.provenance .ra-fiscal-modern-card-body{grid-template-columns:1fr 1fr}
+ #raFiscalModernLayout .ra-fiscal-modern-header-actions{padding-right:50px}
+}
+@media(max-width:850px){
+ #raFiscalModernLayout #optimizerFiscalFields{grid-template-columns:1fr!important}
+ #raFiscalModernLayout .ra-fiscal-modern-card.provenance{grid-column:auto}
+ #raFiscalModernLayout .ra-fiscal-modern-card.provenance .ra-fiscal-modern-card-body{grid-template-columns:1fr}
+ #raFiscalModernLayout .ra-fiscal-modern-header{padding:15px}
+ #raFiscalModernLayout .ra-fiscal-modern-header-actions{padding-right:0}
+ #raFiscalModernLayout .ra-fiscal-modern-quick{grid-template-columns:1fr}
+ #raFiscalModernLayout .optimizer-workflow-actions{grid-template-columns:repeat(2,minmax(0,1fr))}
+}
+@media(max-width:530px){
+ #raFiscalModernLayout .ra-fiscal-modern-supplier{align-items:flex-start;flex-wrap:wrap}
+ #raFiscalModernLayout .ra-fiscal-modern-photo{width:72px;height:72px}
+ #raFiscalModernLayout .ra-fiscal-modern-card.operation .ra-fiscal-modern-card-body{grid-template-columns:1fr}
+ #raFiscalModernLayout .ra-fiscal-modern-card.operation label[data-fiscal-key="operation_type"]{grid-column:auto}
+ #raFiscalModernLayout .ra-fiscal-modern-header-actions{width:100%}
+ #raFiscalModernLayout .ra-fiscal-modern-header-actions>*{flex:1;min-width:0}
+ #raFiscalModernLayout .optimizer-workflow-actions{position:static;grid-template-columns:1fr}
+}
