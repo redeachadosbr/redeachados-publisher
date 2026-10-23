@@ -7674,8 +7674,16 @@ function optimizerChatBridgeSwitchSku(newSku){
 try{
  const saved=JSON.parse(sessionStorage.getItem(RA_CHAT_BRIDGE_JOB_KEY)||'null');
  if(saved?.nonce===optimizerChatBridgeNonce){
-  optimizerChatBridgeJob=saved;
-  if(!saved.stopped&&!saved.complete)optimizerChatBridgeActiveSave(saved);
+  const newer=optimizerChatBridgeActive();
+  if(!saved.stopped&&!saved.complete&&newer?.nonce&&newer.nonce!==saved.nonce){
+   // Uma aba antiga nunca pode roubar a tarefa ativa da nova SKU.
+   saved.stopped=true;saved.complete=true;
+   sessionStorage.setItem(RA_CHAT_BRIDGE_JOB_KEY,JSON.stringify(saved));
+   window.postMessage({kind:'RA_SITE_ABORT',nonce:saved.nonce},location.origin);
+  }else{
+   optimizerChatBridgeJob=saved;
+   if(!saved.stopped&&!saved.complete)optimizerChatBridgeActiveSave(saved);
+  }
  }
 }catch{}
 window.addEventListener('storage',event=>{
