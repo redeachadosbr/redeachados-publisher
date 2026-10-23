@@ -94,9 +94,11 @@ export async function checkpointShopeeExecution(job,result,delay=1000){
  return r[0];
 }
 export async function reconcileShopeeJob(job,{state,result,lastError}){
+ if(!['running','verified','failed'].includes(state))throw Error('Estado inválido na reconciliação.');
  const r=await rows(where(job.shop_id,job.item_id,job.model_id)+
   '&state=eq.uncertain&updated_at=eq.'+encodeURIComponent(job.updated_at),{method:'PATCH',
-  data:{state,result,last_error:lastError,updated_at:new Date().toISOString()},prefer:'return=representation'});
+  data:{state,result,last_error:lastError,updated_at:new Date().toISOString(),
+   ...(state==='running'?{lease_until:new Date().toISOString()}: {})},prefer:'return=representation'});
  if(r.length!==1)throw Error('Execução mudou durante a conferência. Atualize o status.');
  return r[0];
 }

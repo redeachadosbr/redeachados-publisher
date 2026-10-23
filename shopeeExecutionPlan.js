@@ -181,3 +181,17 @@ export function videoMatches(item,video){
     (paths.size>0&&paths.has(videoPath(x.video_url))));
 }
 function videoPath(value){try{return new URL(value).pathname.replace(/\/+$/,'');}catch{return '';}}
+
+export function shopeeExecutionUnconfirmedFields(plan,item,result={}){
+ if(!plan||!item)return ['Anúncio não pôde ser consultado na Shopee'];
+ const out=[];
+ if(String(item.item_id)!==String(plan.itemId))out.push('Identificação do anúncio diverge');
+ if(plan.images?.length&&!sameData(item.image?.image_id_list||[],result.imageIds||[]))
+  out.push('Imagens enviadas à mídia ainda não vinculadas ao anúncio');
+ if(plan.video&&!videoMatches(item,result.video))
+  out.push('Vídeo ainda não confirmado no anúncio');
+ if(!fieldsVerified(plan.proposed||{},item))out.push('Título, descrição ou ficha técnica ainda divergem');
+ if(plan.finalFiscal&&!fieldsVerified({tax_info:plan.finalFiscal},item))
+  out.push('Dados fiscais ainda não confirmados');
+ return out;
+}

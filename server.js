@@ -42,7 +42,7 @@ import {buildStages,safeTitle,validateReview} from './shopeeOptimizationWorkflow
 import {composeShopeeDescription,isCommercialDescription,isGenericShopeeDescription} from './shopeeDescriptionComposer.js';
 import {getWorkflowReview,saveWorkflowReview,mergeWorkflowTechnicalAutofill} from './shopeeOptimizationWorkflowStore.js';
 import {compileShopeeExecutionPlan,confirmShopeeExecution,
-  assertLiveShopeeUnchanged,verifyShopeeExecution,verifyShopeeFiscalExecution,normalizeShopeeExecutionStage} from './shopeeExecutionPlan.js';
+  assertLiveShopeeUnchanged,verifyShopeeExecution,verifyShopeeFiscalExecution,normalizeShopeeExecutionStage,shopeeExecutionUnconfirmedFields} from './shopeeExecutionPlan.js';
 import {readShopeeExecution,saveShopeePreparedExecution,
   claimShopeePreparedExecution,finishShopeeExecution,pendingShopeeExecutions,leaseShopeeExecution,
   checkpointShopeeExecution,reconcileShopeeJob} from './shopeeExecutionStore.js';
@@ -1699,6 +1699,21 @@ app.post('/api/shopee/optimizer/execution/execute',mustLogin,requireWeDropAdmin,
   const job=await readShopeeExecution(auth.shopId,itemId,modelId);
   if(job?.sku!==sku||job.state!=='prepared')throw Error('Plano não preparado ou já iniciado. Confira o andamento.');
   const plan=job.plan;
+  let commercialDiscount=null;
+  if(plan.selectedStage==='all'){
+   if(plan.fiscalDeferred)throw Error('Etapa fiscal pendente: revise os dados fiscais antes de aprovar o desconto final.');
+   const approved=verifyDiscountPreview(req.body?.discountApprovalToken,envText('SESSION_SECRET'),auth.shopId);
+   if(approved.sku!==sku||String(approved.itemId)!==String(itemId)||String(approved.modelId)!==String(modelId))
+    throw Error('A aprovação da campanha pertence a outra SKU.');
+   const fresh=(await discountExecutionInputs(req,sku,itemId,modelId,approved.discountId)).snapshot;
+   for(const k of ['shopId','sku','itemId','modelId','discountId','gross','promo','buyerAfterCoupon',
+     'couponPct','discountPct','quoteAt','originalPrice','action','existingPrice','promotionSignal','needsBasePriceUpdate'])
+    if(String(fresh[k]??'')!==String(approved[k]??''))
+     throw Error('A prévia da promoção mudou ('+k+'). Refaça a conferência antes de executar.');
+   if(fresh.needsBasePriceUpdate&&req.body?.allowPriceChange!==true)
+    throw Error('Autorize também o ajuste do preço bruto na etapa 08.');
+   commercialDiscount={snapshot:approved,allowPriceChange:req.body?.allowPriceChange===true};
+  }
   if(Object.hasOwn(plan.proposed||{},'tax_info')&&plan.selectedStage!=='fiscal')
    throw Error('Informações fiscais só podem ser enviadas em execução fiscal individual, nunca junto das outras etapas.');
   if(normalizeShopeeExecutionStage(req.body.stage||'all')!==normalizeShopeeExecutionStage(plan?.selectedStage||'all'))
@@ -1731,7 +1746,7 @@ app.post('/api/shopee/optimizer/execution/execute',mustLogin,requireWeDropAdmin,
    omitFiscal:false,selectedStage:plan.selectedStage||'all'});
   if(fresh.fingerprint!==plan.fingerprint||!fresh.canExecute)throw Error('Conteúdo ou aprovação mudou. Prepare novamente.');
   await claimShopeePreparedExecution(auth.shopId,itemId,modelId,{
-   planId:plan.planId,updatedAt:job.updated_at,runId:crypto.randomUUID()});
+   planId:plan.planId,updatedAt:job.updated_at,runId:crypto.randomUUID(),commercialDiscount});
   // Only this explicit authenticated action starts the durable runner.
   res.status(202).json({ok:true,status:'running',marketplaceUpdated:false,
    message:'Execução iniciada. Acompanhe as etapas; você pode sair e voltar para esta SKU.'});
@@ -1747,13 +1762,36 @@ app.post('/api/shopee/optimizer/execution/reconcile',mustLogin,requireWeDropAdmi
   if(job?.sku!==sku)throw Error('Nenhuma execução encontrada para esta SKU.');
   if(job.state!=='uncertain')return res.json({ok:true,job});
   const live=await shopeeLiveEditableItem(cfg,auth,itemId);
-  const fiscalPhase=/^fiscal_|^verified_partial$/.test(String(job.result?.phase||''));
-  const verified=fiscalPhase?verifyShopeeFiscalExecution(job.plan,live,job.result||{}):verifyShopeeExecution(job.plan,live,job.result||{});
+  const phase=String(job.result?.phase||'');
+  const fiscalPhase=/^fiscal_|^verified_partial$/.test(phase);
+  const discountPhase=/^discount_/.test(phase);
+  const verified=discountPhase?false:fiscalPhase?
+    verifyShopeeFiscalExecution(job.plan,live,job.result||{}):
+    verifyShopeeExecution(job.plan,live,job.result||{});
   let updated=job;
-  if(verified){
+  if(discountPhase&&job.plan?.commercialDiscount){
+   const approved=job.plan.commercialDiscount.snapshot;
+   const snap=(await discountExecutionInputs(req,sku,itemId,modelId,approved.discountId)).snapshot;
+   if(snap.action==='already'&&Math.abs(Number(snap.originalPrice)-Number(approved.gross))<0.011&&
+      Math.abs(Number(snap.promo)-Number(approved.promo))<0.011){
+    updated=await reconcileShopeeJob(job,{state:'verified',
+     result:withExecutionEvent({...job.result,phase:'verified',verified:true,
+       discount:{status:'verified'}},'discount-verified','Promoção confirmada pela Shopee.','success'),lastError:null});
+   }
+  }
+  else if(verified){
     await rememberPublishedVideo(job.plan,job.result||{});
     await rememberPublishedImages(job.plan,job.result||{});
-    updated=await reconcileShopeeJob(job,{state:'verified',result:withExecutionEvent({...job.result,phase:'verified',verified:true},'verified','A Shopee confirmou as alterações no anúncio.','success'),lastError:null});
+    const next=fiscalPhase?(job.plan.commercialDiscount?'discount_ready':'verified'):
+      job.plan.finalFiscal?'fiscal_ready':job.plan.commercialDiscount?'discount_ready':'verified';
+    updated=await reconcileShopeeJob(job,{state:next==='verified'?'verified':'running',
+     result:withExecutionEvent({...job.result,phase:next,primaryVerified:true,
+       ...(fiscalPhase?{fiscal:{status:'verified'}}:{})},
+       next==='verified'?'verified':'resume-readback',
+       next==='verified'?'Alterações confirmadas.':
+        'Confirmação obtida; continuando somente as etapas ainda não executadas.','success'),
+     lastError:null});
+    if(next!=='verified')void runOptimizerJobs();
   }
   else if(!fiscalPhase&&req.body.safeRecover===true&&detectShopeeExecutionIssue(job.last_error,job.plan)?.code==='CEST_REQUIRED'){
     // Reconcile a known field-level rejection without retrying any marketplace write.
@@ -1773,9 +1811,13 @@ app.post('/api/shopee/optimizer/execution/reconcile',mustLogin,requireWeDropAdmi
     updated=await reconcileShopeeJob(job,{state:'failed',result:{...job.result,phase:'retry_allowed'},
       lastError:'Leitura confirmou os valores anteriores. Uma nova prévia e aprovação são necessárias.'});
   }
+  const pending=updated.state==='uncertain'?shopeeExecutionUnconfirmedFields(job.plan,live,job.result||{}):[];
   res.json({ok:true,job:updated,progress:shopeeExecutionProgress(updated),
-    issue:detectShopeeExecutionIssue(updated.last_error,updated.plan),verified,message:verified?'Alterações confirmadas na Shopee.':
-    'Resultado ainda não confirmado. Nenhuma alteração foi reenviada.'});
+    issue:detectShopeeExecutionIssue(updated.last_error,updated.plan),
+    pendingChecks:pending,verified:updated.state==='verified',
+    message:updated.state==='verified'?'Todas as alterações confirmadas.':
+      updated.state==='running'?'Leitura confirmada; prosseguindo com as próximas etapas.':
+      'Ainda não confirmado: '+pending.join('; ')+'. Nenhuma alteração foi reenviada.'});
  }catch(e){res.status(409).json({ok:false,error:String(e.message||e).slice(0,280)});}
 });
 let optimizerWorkerBusy=false;
@@ -1797,7 +1839,34 @@ async function runOptimizerJobs(){
         {expectedSku:job.sku,expectedModelId:String(job.model_id)}),
       download:downloadShopeeManualVideo,downloadImage:downloadPreparedImage,media:createShopeeMediaApi(cfg,auth),
       beforeWrite:result=>checkpointShopeeExecution(job,result,90000),
-      update:body=>callShopeeShopApi(cfg,{...common,path:'/api/v2/product/update_item',method:'POST',body})
+      update:body=>callShopeeShopApi(cfg,{...common,path:'/api/v2/product/update_item',method:'POST',body}),
+      discountRead:async approved=>(await discountExecutionInputs(null,
+       approved.sku,approved.itemId,approved.modelId,approved.discountId)).snapshot,
+      discountUpdatePrice:async approved=>{
+       const {auth:a,cfg:c}=await getValidAuth();
+       return callShopeeShopApi(c,{path:'/api/v2/product/update_price',method:'POST',
+        accessToken:a.accessToken,shopId:a.shopId,
+        body:{item_id:Number(approved.itemId),price_list:[{original_price:approved.gross}]}});
+      },
+      discountPublish:async(approved,live)=>{
+       const {auth:a,cfg:c}=await getValidAuth();
+       const key=[approved.shopId,approved.itemId,approved.discountId].join(':');
+       if(activeDiscountWrites.has(key))throw Error('A promoção já está sendo atualizada em outro processo.');
+       activeDiscountWrites.add(key);
+       try{
+        const action=live.action;
+        const x=await callShopeeShopApi(c,{
+         path:action==='add'?'/api/v2/discount/add_discount_item':'/api/v2/discount/update_discount_item',
+         method:'POST',accessToken:a.accessToken,shopId:a.shopId,
+         body:{discount_id:Number(approved.discountId),item_list:[{item_id:Number(approved.itemId),
+           item_promotion_price:approved.promo,...(action==='add'?{purchase_limit:0}:{})}]}
+        });
+        const err=x.response?.error_list||[];
+        if(err.length)throw Error('Shopee rejeitou o desconto: '+String(err[0].fail_message||err[0].fail_error||'erro da promoção').slice(0,150));
+        if(action==='add'&&Number(x.response?.count)!==1)throw Error('A inclusão da SKU ainda não foi confirmada.');
+        return x;
+       }finally{activeDiscountWrites.delete(key);}
+      }
     });
     if(out.state==='running')await checkpointShopeeExecution(job,out.result,out.delay);
     else {
