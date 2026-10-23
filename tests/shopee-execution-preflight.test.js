@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
 import {approvedTitle,approvedDescription} from './fixtures/approved-content.js';
 import {compileShopeeExecutionPlan,confirmShopeeExecution,assertLiveShopeeUnchanged,
-  verifyShopeeExecution} from '../shopeeExecutionPlan.js';
+  verifyShopeeExecution,assessShopeeStableCommercialRecovery} from '../shopeeExecutionPlan.js';
 const source=readFileSync(new URL('../server.js',import.meta.url),'utf8');
 const html=readFileSync(new URL('../public/index.html',import.meta.url),'utf8');
 const js=readFileSync(new URL('../public/app.js',import.meta.url),'utf8');
@@ -86,3 +86,34 @@ test('executor keeps stock, prices and promotions out of the approved content fl
   assert.match(js,/optimizerExecutionRun'\)\?\.addEventListener/);
 });
 
+
+test('execução incerta com campos parciais pode liberar nova prévia após duas leituras estáveis',()=>{
+ const now=Date.now(),job={sku:'3747',state:'uncertain',
+  updated_at:new Date(now-5*60000).toISOString(),
+  plan:{itemId:'58221125342',sku:'3747',proposed:{item_name:'Novo título'},
+   images:[],video:null,finalFiscal:{ncm:'95030010'}},
+  result:{phase:'verifying',updateStartedAt:now-6*60000}};
+ const sho={item_id:58221125342,item_status:'NORMAL',item_name:'Novo título',
+  description:'Descrição anterior',attribute_list:[],tax_info:{},image:{image_id_list:[]},
+  video_info:[],category_id:100,description_type:'normal'};
+ const approved=assessShopeeStableCommercialRecovery(job,sho,structuredClone(sho),now);
+ assert.equal(approved.stable,true);
+ assert.equal(approved.previewRequired,true);
+ assert.ok(approved.pending.some(x=>/fiscais/.test(x)));
+ assert.throws(()=>assessShopeeStableCommercialRecovery(job,sho,
+  {...sho,description:'Mudou durante consulta'},now),/não coincidem/);
+ assert.throws(()=>assessShopeeStableCommercialRecovery({...job,
+  updated_at:new Date(now-30000).toISOString()},sho,sho,now),/3 minutos/);
+ assert.throws(()=>assessShopeeStableCommercialRecovery(job,sho,
+  {...sho,item_id:999},now),/Item ID/);
+});
+test('botão consultar e destravar prepara somente após retorno seguro, sem marketplace write',()=>{
+ assert.match(js,/recover:true/);
+ assert.match(js,/if\(d\.recoveryReady\)/);
+ assert.match(js,/await optimizerExecutionPrepare\(\)/);
+ assert.match(source,/assessShopeeStableCommercialRecovery\(job,live,confirmedAgain\)/);
+ assert.match(source,/reconcileShopeeJob\(job,\{state:'failed',result:nextResult/);
+ const route=source.slice(source.indexOf("app.post('/api/shopee/optimizer/execution/reconcile'"),
+  source.indexOf('let optimizerWorkerBusy=false;'));
+ assert.doesNotMatch(route,/\/api\/v2\/product\/update_item|\/api\/v2\/discount\/add_discount_item/);
+});
