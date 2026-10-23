@@ -141,7 +141,10 @@ function open(data){
  if(url){const img=make('img');img.src=url;img.loading='lazy';img.alt='Foto da SKU '+String(data.sku||'');photo.append(img);}
  else photo.append(make('span','','▧'));
  const details=make('div','ra-fiscal-modern-supplier-text');
- details.append(make('strong','',(supplier.source||'Catálogo WeDrop')+' · SKU '+String(data.sku||'')+(supplier.sourceLine?' · linha '+supplier.sourceLine:'')),
+ const sourceLabel=String(supplier.source||'Catálogo WeDrop');
+ const sourceHeader=/\bSKU\s*\S+/i.test(sourceLabel)?sourceLabel:
+  sourceLabel+' · SKU '+String(data.sku||'')+(supplier.sourceLine?' · linha '+supplier.sourceLine:'');
+ details.append(make('strong','',sourceHeader),
   make('p','',[supplier.name||data.productTitle||'Produto Shopee',supplier.brand||'',supplier.ncm?'NCM: '+supplier.ncm:'',supplier.ean?'EAN: '+supplier.ean:''].filter(Boolean).join(' · ')));
  const warnings=Array.isArray(supplier.warnings)?supplier.warnings.filter(Boolean):[];
  const warning=make('div','ra-fiscal-modern-warning',
