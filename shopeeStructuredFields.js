@@ -63,6 +63,26 @@ export function validateTechnicalAttributeValues(change,meta){
   throw Error('Valores repetidos para '+meta.name+'.');
  return compiled;
 }
+// Classifica sugestões contra o schema oficial: apenas alterações opcionais
+// incompatíveis são excluídas do conjunto aprovado. Campos obrigatórios e
+// valores legais continuam com validação obrigatória.
+export function selectValidTechnicalChanges(changes,audit){
+ const valid=[],skipped=[];
+ for(const change of changes||[]){
+  const meta=(audit?.attributes||[]).find(x=>Number(x.id)===Number(change.attributeId));
+  if(!meta)throw Error('Atributo não pertence mais à categoria oficial da Shopee.');
+  try{
+   validateTechnicalAttributeValues(change,meta);
+   valid.push(change);
+  }catch(error){
+   if(meta.mandatory)throw Error('Atributo obrigatório '+meta.name+': '+String(error.message||error));
+   skipped.push({attributeId:Number(change.attributeId),
+    name:String(meta.name||'Campo opcional').slice(0,90),
+    reason:String(error.message||error).slice(0,160)});
+  }
+ }
+ return {valid,skipped};
+}
 export function compileAttributes(changes,record,live){
  if(!Array.isArray(changes)||changes.length>300)throw Error('Ficha técnica inválida.');
  const audit=attributeAuditForChanges(changes,record,live);
