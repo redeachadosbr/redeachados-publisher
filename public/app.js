@@ -3992,13 +3992,15 @@ async function optimizerExecuteApproved(){
  $('#optimizerExecutionLaunch').hidden=true;
  let previewMustRefresh=false;
  optimizerExecNotice('Validando a prévia e iniciando somente as alterações aprovadas...');
- if(discountIntent)optimizerDiscountFlowSave(discountIntent);
+ // A aprovação é registrada no job do servidor no mesmo clique único.
  try{
    const out=await json('/api/shopee/optimizer/execution/execute',{
      method:'POST',headers:{'Content-Type':'application/json'},
      body:JSON.stringify({sku:ctx.sku,itemId:ctx.itemId,modelId:ctx.modelId,
        planId:p.planId,updatedAt:p.updatedAt,stage:p.selectedStage||'all',
-       confirmation:'EXECUTAR '+p.sku,acceptPartialExecution:true}),
+       confirmation:'EXECUTAR '+p.sku,acceptPartialExecution:true,
+       ...(p.selectedStage==='all'?{discountApprovalToken:optimizerDiscountFinalPreviewData?.approvalToken,
+        allowPriceChange:discountIntent?.consent===true}:{})}),
      signal:AbortSignal.timeout(85000)
    });
    if(optimizerWorkflowPlan?.sku!==ctx.sku||optimizerWorkflowPlan?.itemId!==ctx.itemId||optimizerWorkflowPlan?.modelId!==ctx.modelId)return;
@@ -4018,7 +4020,6 @@ async function optimizerExecuteApproved(){
    optimizerExecStartError=String(e.message||e);
    previewMustRefresh=optimizerExecutionNeedsFreshPreview(optimizerExecStartError);
    if(previewMustRefresh){
-     if(discountIntent)optimizerDiscountFlowSave({...discountIntent,state:'changed'});
      optimizerExecNotice('A prévia anterior ficou desatualizada. Atualizando a prévia com as alterações vigentes para sua nova conferência. Nenhum envio ocorreu nesta tentativa.','warning');
    }else{
      optimizerExecNotice('Execução não confirmada: '+optimizerExecStartError+
@@ -4272,7 +4273,7 @@ function optimizerExecutionJobView(job,progress=null,issue=null){
  else if(job.state==='verified')message+=' · Todas as alterações incluídas nesta execução foram verificadas.';
  optimizerExecNotice(message,fiscalPartial?'warning':job.state==='verified'?'success':
   job.state==='failed'||job.state==='uncertain'?'warning':'info');
- if(verified)void optimizerDiscountFinishTogether(job);
+ // A etapa de desconto agora é exclusivamente do worker persistido no servidor.
  if(active||verified){
   $('#optimizerExecutionLaunch').hidden=true;
   optimizerExecPlan=null;$('#optimizerExecutionConfirmation').hidden=true;
@@ -4333,7 +4334,11 @@ $('#optimizerExecutionReconcile')?.addEventListener?.('click',async()=>{
  try{
   const d=await json('/api/shopee/optimizer/execution/reconcile',{method:'POST',
    headers:{'Content-Type':'application/json'},body:JSON.stringify({sku:w.sku,itemId:w.itemId,modelId:w.modelId})});
-  if(optimizerWorkflowPlan===w)optimizerExecutionJobView(d.job,d.progress,d.issue);
+  if(optimizerWorkflowPlan===w){
+   optimizerExecutionJobView(d.job,d.progress,d.issue);
+   if(d.pendingChecks?.length)optimizerExecNotice('Ainda não confirmado: '+d.pendingChecks.join('; ')+'. Nada foi reenviado.','warning');
+   else if(d.message)optimizerExecNotice(d.message,d.job?.state==='verified'?'success':'info');
+  }
  }catch(e){optimizerExecNotice(e.message,'warning');}finally{btn.disabled=false;}
 });
 $('#optimizerExecutionRetry')?.addEventListener?.('click',async()=>{
