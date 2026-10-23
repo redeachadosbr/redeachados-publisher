@@ -1,15 +1,15 @@
 // Montagem local dos roteiros ChatGPT por SKU. Sem chave API e sem conexão a contas pessoais.
 // Cenas com enquadramentos e benefícios distintos; não repetir a fotografia em outro fundo.
 export const CHATGPT_IMAGE_SCENES=Object.freeze([
- {label:'01 · Capa',guide:'Imagem 1 — Capa: produto original ocupando 85% a 90% da imagem; fundo ambientado realista, moderno, limpo e contextualizado com o uso do produto; produto em primeiro plano.'},
- {label:'02 · Uso real',guide:'Imagem 2 — Uso real: mostrar o mesmo produto em uso em ambiente cotidiano realista, com pessoas somente quando pertinentes e cena diferente da capa.'},
- {label:'03 · Especificações',guide:'Imagem 3 — Especificações: apresentar dimensões REAIS e verificadas do produto integradas a um cenário ambientado; se não confirmadas, apresentar detalhes visuais sem números.'},
- {label:'04 · Benefícios',guide:'Imagem 4 — Benefícios: demonstrar visualmente vantagens comprovadas em cenário ambientado e distinto; não inserir frases ou palavras sem pedido explícito.'},
- {label:'05 · Dor e solução',guide:'Imagem 5 — Dor e solução: demonstrar a necessidade e solução visualmente em ambiente realista; inserir uma frase curta SOMENTE se solicitada.'},
- {label:'06 · Persuasão',guide:'Imagem 6 — Persuasão: destacar um diferencial verdadeiro por imagem comercial realista com fundo ambientado, sem adicionar texto não solicitado.'},
- {label:'07 · Transformação',guide:'Imagem 7 — Transformação: mostrar experiência e resultado realista com produto fiel, cenário ambientado diferente; frase curta somente sob solicitação.'},
- {label:'08 · Quebra de objeções',guide:'Imagem 8 — Quebra de objeções: responder visualmente a três dúvidas reais sobre o produto em cenário ambientado; texto somente sob solicitação, sem alegações não comprovadas.'},
- {label:'09 · Mockup e confiança',guide:'Imagem 9 — Mockup e confiança: apresentar o produto em mockup ambientado sofisticado e realista, com três selos da loja: Compra Segura, Entrega Rápida e Atendimento Online; não inventar embalagem.'}
+ {label:"01 · Capa",guide:"Imagem 01 — Capa: produto original ocupando aproximadamente 85% a 90% da imagem, fundo limpo e apresentação profissional. imagem com fundo ambientado"},
+ {label:"02 · Uso real",guide:"Imagem 02 — Uso real: mostrar o produto em um ambiente cotidiano de utilização, com composição diferente da capa. imagem com fundo ambientado"},
+ {label:"03 · Especificações",guide:"Imagem 03 — Especificações: apresentar as dimensões e características reais confirmadas. imagem com fundo ambientado"},
+ {label:"04 · Benefícios",guide:"Imagem 04 — Benefícios: demonstrar visualmente as principais vantagens do produto. imagem com fundo ambientado"},
+ {label:"05 · Dor e solução",guide:"Imagem 05 — Dor e solução: representar uma necessidade do comprador e como o produto atende a essa necessidade. imagem com fundo ambientado"},
+ {label:"06 · Persuasão",guide:"Imagem 06 — Persuasão: destacar um diferencial real com apresentação comercial. imagem com fundo ambientado"},
+ {label:"07 · Transformação",guide:"Imagem 07 — Transformação: demonstrar a experiência proporcionada pelo produto. imagem com fundo ambientado"},
+ {label:"08 · Quebra de objeções",guide:"Imagem 08 — Quebra de objeções: responder visualmente às três principais dúvidas do comprador, sem poluir a composição. imagem com fundo ambientado"},
+ {label:"09 · Mockup e confiança",guide:"Imagem 09 — Mockup e confiança: apresentar o produto em cenário profissional com os três selos da loja: Compra Segura, Entrega Rápida e Atendimento Online. imagem com fundo ambientado"},
 ]);
 function sceneSelection(){ return CHATGPT_IMAGE_SCENES; }
 const asText=(value,max=10000)=>String(value||'').normalize('NFC').slice(0,max);
