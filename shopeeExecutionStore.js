@@ -44,7 +44,7 @@ export async function saveShopeePreparedExecution(shopId,itemId,modelId,sku,plan
  if(result.length!==1||result[0].sku!==sku)throw Error('Plano não foi confirmado no banco Shopee.');
  return result[0];
 }
-export async function claimShopeePreparedExecution(shopId,itemId,modelId,{planId,updatedAt,runId}){
+export async function claimShopeePreparedExecution(shopId,itemId,modelId,{planId,updatedAt,runId,commercialDiscount=null}){
  const query=where(shopId,itemId,modelId)+
   '&state=eq.prepared&updated_at=eq.'+encodeURIComponent(updatedAt)+
   '&plan->>planId=eq.'+encodeURIComponent(planId)+
@@ -52,7 +52,7 @@ export async function claimShopeePreparedExecution(shopId,itemId,modelId,{planId
  const saved=await readShopeeExecution(shopId,itemId,modelId);
  const reused=saved?.plan?.planId===planId?saved.plan.reusedMedia:null;
  const result=await rows(query,{method:'PATCH',
-  data:{state:'running',run_id:runId,result:{phase:'queued',startedAt:new Date().toISOString(),
+  data:{state:'running',run_id:runId,plan:commercialDiscount?{...saved.plan,commercialDiscount}:saved.plan,result:{phase:'queued',startedAt:new Date().toISOString(),
   ...(reused?.imageIds?.length?{imageIds:reused.imageIds}:{}),
   ...(reused?.video?.phase==='ready'?{video:reused.video}:{}),
   events:[{key:'queued',label:'Execução autorizada e recebida para processamento.',kind:'info',at:new Date().toISOString()},

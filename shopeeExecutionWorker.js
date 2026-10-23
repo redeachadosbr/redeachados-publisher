@@ -3,17 +3,24 @@ import {sameData} from './shopeeStructuredFields.js';
 import {advanceVideoUpload} from './shopeeMediaApi.js';
 import {withExecutionEvent} from './shopeeExecutionProgress.js';
 import {isDefinitiveShopeeRejection} from './shopeeExecutionIssues.js';
+import {advanceVerifiedDiscount} from './shopeeExecutionDiscount.js';
 // One durable step per lease. No tokens or secret configuration are persisted.
 export async function advanceShopeeExecution(job,io){
  const plan=job.plan,result={...(job.result||{})};
  if(!plan?.requiresExplicitConfirmation||!plan.canExecute)throw Error('Plano sem aprovação válida.');
+ if(['discount_ready','discount_price_updating','discount_price_verifying',
+  'discount_updating','discount_verifying'].includes(String(result.phase||'')))
+  return advanceVerifiedDiscount(job,io);
  // A segunda escrita fiscal tem checkpoint separado: depois de qualquer queda
  // retomamos SOMENTE a leitura, evitando duplicidade de update_item.
  if(['fiscal_updating','fiscal_verifying'].includes(result.phase)){
   const live=await io.read();
   if(verifyShopeeFiscalExecution(plan,live,result))
-   return {state:'verified',result:withExecutionEvent({...result,phase:'verified',verified:true,
-    fiscal:{status:'verified'}},'fiscal-verified','Todas as etapas, inclusive os dados fiscais, foram confirmadas pela Shopee.','success'),lastError:null};
+   return plan.commercialDiscount?
+    {state:'running',result:withExecutionEvent({...result,phase:'discount_ready',primaryVerified:true,fiscal:{status:'verified'}},
+     'fiscal-verified','Dados fiscais confirmados. Iniciando desconto como última etapa.','success'),delay:500}:
+    {state:'verified',result:withExecutionEvent({...result,phase:'verified',verified:true,
+     fiscal:{status:'verified'}},'fiscal-verified','Todas as etapas, inclusive os dados fiscais, foram confirmadas pela Shopee.','success'),lastError:null};
   if(Date.now()-Number(result.fiscalStartedAt||0)>90000)
    return {state:'uncertain',result:withExecutionEvent(result,'fiscal-timeout',
     'Conteúdo enviado; ainda não há confirmação dos dados fiscais pela Shopee.','warning'),
@@ -27,8 +34,11 @@ export async function advanceShopeeExecution(job,io){
     return {state:'running',result:withExecutionEvent({...result,phase:'fiscal_ready',
      primaryVerified:true},'commerce-verified',
      'Imagens, vídeo e conteúdo confirmados. Iniciando a última etapa fiscal.','success'),delay:500};
-   return {state:'verified',result:withExecutionEvent({...result,phase:'verified',verified:true},
-    'verified','A Shopee confirmou as alterações no anúncio.','success'),lastError:null};
+   return plan.commercialDiscount?
+    {state:'running',result:withExecutionEvent({...result,phase:'discount_ready',primaryVerified:true},
+      'commerce-verified','Anúncio confirmado. Dados fiscais sem alterações; iniciando desconto.','success'),delay:500}:
+    {state:'verified',result:withExecutionEvent({...result,phase:'verified',verified:true},
+     'verified','A Shopee confirmou as alterações no anúncio.','success'),lastError:null};
   }
   if(Date.now()-Number(result.updateStartedAt||0)>90000)
     return {state:'uncertain',result:withExecutionEvent(result,'verify-timeout','A conferência da Shopee excedeu o tempo esperado.','warning'),lastError:'A Shopee ainda não confirmou todos os campos. Use Conferir resultado.'};
@@ -43,9 +53,12 @@ export async function advanceShopeeExecution(job,io){
     lastError:'Conteúdo alterado entre as duas etapas. Verifique o anúncio antes de continuar.'};
   if(!sameData(live.tax_info||{},plan.original.tax_info||{})){
    if(verifyShopeeFiscalExecution(plan,live,result))
-    return {state:'verified',result:withExecutionEvent({...result,phase:'verified',
-     verified:true,fiscal:{status:'verified'}},'fiscal-confirmed',
-     'Dados fiscais já conferidos na Shopee; não foi necessário reenviar.','success'),lastError:null};
+    return plan.commercialDiscount?
+      {state:'running',result:withExecutionEvent({...result,phase:'discount_ready',primaryVerified:true,
+        fiscal:{status:'verified'}},'fiscal-confirmed','Fiscal já atualizado; seguindo para desconto.','success'),delay:500}:
+      {state:'verified',result:withExecutionEvent({...result,phase:'verified',
+       verified:true,fiscal:{status:'verified'}},'fiscal-confirmed',
+       'Dados fiscais já conferidos na Shopee; não foi necessário reenviar.','success'),lastError:null};
    return {state:'uncertain',result:withExecutionEvent(result,'fiscal-changed',
     'Os campos fiscais mudaram após a prévia. Não foi feito novo envio.','warning'),
     lastError:'Dados fiscais alterados fora do plano. Confira antes de autorizar nova prévia.'};
