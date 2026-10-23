@@ -2275,9 +2275,14 @@ app.post('/api/shopee/optimizer/variants/apply',mustLogin,requireWeDropAdmin,asy
    method:'POST',accessToken:x.auth.accessToken,shopId:x.auth.shopId,body:payload});
   const verified=await callShopeeShopApi(x.cfg,{path:'/api/v2/product/get_model_list',
    accessToken:x.auth.accessToken,shopId:x.auth.shopId,query:{item_id:x.itemId}});
-  const modelCount=verified?.response?.model?.length||0;
-  res.json({ok:true,marketplaceUpdated:true,modelsConfirmed:modelCount,
-   message:'Variações enviadas à Shopee. Modelos identificados: '+modelCount+'.'});
+  const models=verified?.response?.model||[];
+  const realSkus=new Set(models.map(m=>String(m.model_sku||'')));
+  const allModelsConfirmed=details.options.length>=2&&details.options.every(o=>realSkus.has(o.sku));
+  res.json({ok:true,marketplaceUpdated:allModelsConfirmed,modelsConfirmed:models.length,
+   allModelsConfirmed,
+   message:allModelsConfirmed?
+    'Variações confirmadas na Shopee: '+details.options.map(o=>o.name).join(' / ')+'.':
+    'A Shopee recebeu a solicitação, mas ainda não confirmou todos os modelos. Consulte o anúncio; não repita o envio.'});
  }catch(e){res.status(400).json({ok:false,error:String(e.message||e).slice(0,360),
   warning:'Se houve timeout após envio, consulte a Shopee antes de tentar outra vez.'});}
  finally{if(key)activeVariationOps.delete(key);}
