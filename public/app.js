@@ -3411,12 +3411,15 @@ function optimizerExecutionTrackerRender(progress,job){
    progress.imagesUploaded+' / '+progress.imagesTotal+' na mídia · '+
    progress.imagesPublished+' / '+progress.imagesTotal+' publicadas no anúncio':'';
  const stageList=$('#optimizerExecutionSteps');stageList.replaceChildren();
- const statuses={done:'Concluído',active:'Em andamento',waiting:'Aguardando',skipped:'Não incluído',attention:'Verificar'};
+ const statuses={done:'Concluído',active:'Em andamento',waiting:'Aguardando',
+  skipped:'Não incluído',attention:'Verificar',review:'Não aprovado nesta execução'};
  for(const [i,step] of (progress.steps||[]).entries()){
   const li=optimizerMake('li','optimizer-exec-step is-'+step.status);
-  const marker=optimizerMake('span','optimizer-exec-step-number',step.status==='done'?'✓':String(i+1));
+  const marker=optimizerMake('span','optimizer-exec-step-number',
+   step.status==='done'?'✓':step.status==='review'?'!':String(i+1));
   const name=optimizerMake('strong','',step.label);
   const status=optimizerMake('small','',statuses[step.status]||'Aguardando');
+  if(step.status==='review')li.title='A execução antiga não inclui aprovação do desconto. Confira o anúncio antes de preparar outra execução.';
   li.append(marker,name,status);stageList.append(li);
  }
  const log=$('#optimizerExecutionEvents');log.replaceChildren();
