@@ -95,12 +95,13 @@ function close(){
    delete label.dataset.fiscalKey;
   });
   fields.querySelectorAll('.ra-fiscal-modern-card').forEach(card=>card.remove());
+  fields.querySelector('.ra-fiscal-modern-content')?.remove();
  }
  if(fiscal&&video)editor.insertBefore(fiscal,video);
  fiscal?.querySelector(':scope > strong')?.removeAttribute('hidden');
  fiscal?.querySelector(':scope > p.optimizer-video-help')?.removeAttribute('hidden');
  const disclaimer=editor.querySelector('.optimizer-workflow-disclaimer');
- if(actions&&disclaimer&&layout?.contains(actions))editor.insertBefore(actions,disclaimer);
+ if(actions&&layout?.contains(actions))editor.append(actions);
  if(disclaimer&&layout?.contains(disclaimer))editor.append(disclaimer);
  layout?.remove();
  editor.classList.remove('ra-fiscal-modern-active');
