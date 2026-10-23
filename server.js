@@ -1008,28 +1008,29 @@ app.get('/api/shopee/optimizer/workflow',mustLogin,requireWeDropAdmin,async(req,
     }
     const manualVideo=manualVideoPublicInfo(
       await getShopeeManualVideo(auth.shopId,itemId,modelId,sku));
-    // Já ao consultar a SKU, uma descrição comercial pronta substitui o texto bruto.
-    // Preservar somente o texto salvo que já segue integralmente as regras da loja.
+    // A descrição é preparada em segundo plano na primeira consulta da SKU,
+    // usando o catálogo WeDrop e as informações adicionais salvas pelo vendedor.
+    // Não chama a API OpenAI nem utiliza créditos de IA.
     const composed=composeShopeeDescription({record,supplier,sourceText:sourceEvidence.sourceText});
-    // Prioridade absoluta aos rascunhos manuais. A descrição gerada antes
-    // dessa correção para SKU 1175 era reconhecivelmente genérica e não
-    // utilizava PVC, numeração nem registro do material fornecido.
     const storedDescription=String(review.draftDescription||'');
-    const autoRefreshable=storedDescription&&review.descriptionOrigin!=='manual'&&
+    const manuallyEdited=review.descriptionOrigin==='manual';
+    const autoRefreshable=Boolean(storedDescription)&&!manuallyEdited&&
       (review.descriptionOrigin==='auto-refreshed'||isGenericShopeeDescription(storedDescription));
-    if(autoRefreshable&&composed.valid&&composed.description!==storedDescription){
-      // Substituir APENAS o modelo antigo identificável, preservar cópia e
-      // invalidar a aprovação anterior para evitar publicação de texto novo sem revisão.
+    const shouldSaveAuto=composed.valid&&(!storedDescription||
+      autoRefreshable&&composed.description!==storedDescription);
+    if(shouldSaveAuto){
+      // Publicação não é feita; apenas salva rascunho de descrição por SKU.
+      // A aprovação antiga é invalidada somente quando o texto automático muda.
       const refreshed=await saveWorkflowReview(auth.shopId,itemId,modelId,sku,{
         stage:'description',reviewed:false,description:composed.description,
-        descriptionOrigin:'auto-refreshed',previousGeneratedDescription:storedDescription
+        descriptionOrigin:'auto-refreshed',
+        ...(storedDescription?{previousGeneratedDescription:storedDescription}:{})
       });
       review=refreshed;
       stages=buildStages(record,review);
     }
     const finalDescription=review.draftDescription||composed.description;
-    const keepReviewedDescription=Boolean(review.draftDescription)&&
-      !isGenericShopeeDescription(review.draftDescription);
+
     res.json({ok:true,readOnlyMarketplace:true,sku,itemId,modelId,manualVideo,...supplierFacts,
       sourceEvidence,sourceEvidenceWarning,sourceFacts:evidenceFacts,technicalDraft:persistedTechnicalDraft,shopId:auth.shopId,
       contentVariants:review.contentVariants||null,contentResearch:review.contentResearch||null,
