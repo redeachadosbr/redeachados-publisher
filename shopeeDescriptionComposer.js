@@ -10,7 +10,7 @@ const fold=v=>clean(v).normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCa
 const trunc=(v,n=150)=>{const t=clean(v);return [...t].length<=n?t:[...t].slice(0,n).join('').replace(/\s+\S*$/u,'').trim();};
 const cta=REDE_ACHADOS_DESCRIPTION_RULES.cta;
 function titleOf(record,data){
- const name=clean(data.name||record.title||'Produto');
+ const name=clean(record.title||data.name||'Produto');
  return trunc(name.replace(/\b(?:SKU|c[oó]d(?:igo)?)\s*[:#-]?\s*\d{4,}\b/gi,'').replace(/[|]+/g,' '),115)||'Produto';
 }
 function skuType(name){
@@ -183,27 +183,124 @@ export function isGenericShopeeDescription(value){
 export function isCommercialDescription(value){
  try{validateContentRules({description:String(value||'')});return true;}catch{return false;}
 }
+
+// Destaques comerciais por categoria. São benefícios do uso proposto e do
+// formato reconhecido na SKU; características técnicas vêm somente da fonte.
+const highlights={
+ moto:[
+  '🎨 Visual vintage vermelho que dá personalidade ao brinquedo.',
+  '🎈 Inspira passeios imaginários e brincadeiras de faz de conta.',
+  '🛝 Para momentos de lazer em ambientes adequados, com supervisão.'
+ ],
+ ball:[
+  '⚽ Mais oportunidades para brincar de futebol.',
+  '🏃 Chutes, passes e jogos recreativos com outras crianças.',
+  '🎈 Uma forma divertida de explorar movimento e imaginação.'
+ ],
+ pool:[
+  '💦 Lazer com água para os dias quentes.',
+  '☀️ Convida a momentos de recreação em família.',
+  '🏡 Uso em superfície apropriada e sempre com supervisão adulta.'
+ ],
+ bottle:[
+  '🥤 Bebidas reunidas em uma garrafa para o dia a dia.',
+  '👜 Uma alternativa funcional para diferentes momentos da rotina.',
+  '✨ Escolha a capacidade adequada para sua necessidade.'
+ ],
+ coffee:[
+  '☕ Para quem aprecia o preparo tradicional do café.',
+  '🏡 Um momento especial de café no dia a dia.',
+  '🎁 Uma ideia para presentear amantes de café.'
+ ],
+ steamer:[
+  '👔 Ajuda a suavizar amassados de roupas compatíveis.',
+  '✨ Mais praticidade ao preparar peças para o uso.',
+  '🧳 Uma opção funcional para o cuidado do vestuário.'
+ ],
+ bath:[
+  '🧴 Shampoos e outros itens de banho mais organizados.',
+  '🚿 Ajuda a aproveitar o espaço disponível no banheiro.',
+  '✨ Frascos reunidos para tornar a rotina mais prática.'
+ ],
+ spices:[
+  '🌿 Temperos reunidos e fáceis de localizar.',
+  '🍳 Mais organização durante o preparo das receitas.',
+  '✨ Uma cozinha funcional começa nos pequenos detalhes.'
+ ],
+ picnic:[
+  '🏕️ Uma área para aproveitar piqueniques e passeios.',
+  '🌳 Ideal para momentos de lazer ao ar livre em espaços adequados.',
+  '🎒 Uma companheira para seus planos de fim de semana.'
+ ],
+ bin:[
+  '🗑️ Ajuda a manter pequenos resíduos em local definido.',
+  '🏠 Complementa a organização de ambientes compatíveis.',
+  '✨ Um item simples que facilita a rotina.'
+ ],
+ tools:[
+  '🛠️ Ferramentas reunidas para tarefas compatíveis com o kit.',
+  '🔧 Praticidade na organização do espaço de trabalho.',
+  '🏠 Uma opção para pequenos ajustes do dia a dia.'
+ ],
+ swatter:[
+  '🦟 Uma alternativa para lidar com insetos em casa.',
+  '🏡 Mais praticidade para a rotina doméstica.',
+  '✨ Utilize conforme os cuidados e instruções do fabricante.'
+ ],
+ cart:[
+  '🛒 Ajuda no transporte de compras compatíveis com sua capacidade.',
+  '🏡 Mais praticidade nos deslocamentos da rotina.',
+  '✨ Uma opção funcional para feiras e mercados.'
+ ],
+ blender:[
+  '🥤 Uma alternativa para preparar bebidas e misturas.',
+  '🍓 Mais possibilidades para a rotina de preparo em casa.',
+  '✨ Formato pensado para a finalidade anunciada.'
+ ],
+ general:[]
+};
+const closing={
+ moto:'🛒 Que tal levar mais imaginação para as brincadeiras? Escolha sua moto infantil e adicione ao carrinho!',
+ ball:'🛒 Prepare a próxima brincadeira com futebol: escolha sua bola infantil e adicione ao carrinho!',
+ pool:'🛒 Prepare momentos de lazer em família! Confira a versão e adicione ao carrinho.',
+ bottle:'🛒 Escolha a sua garrafa térmica e leve mais praticidade para o dia a dia!',
+ coffee:'🛒 Faça do café um momento especial: escolha sua cafeteira e adicione ao carrinho!',
+ steamer:'🛒 Simplifique os cuidados com as roupas: escolha sua passadeira e adicione ao carrinho!',
+ bath:'🛒 Dê um toque de organização ao banheiro: adicione ao carrinho!',
+ spices:'🛒 Organize os temperos da cozinha: escolha seu conjunto e adicione ao carrinho!',
+ picnic:'🛒 Prepare seu próximo passeio: escolha sua toalha e adicione ao carrinho!',
+ bin:'🛒 Complete a organização do ambiente: adicione ao carrinho!',
+ tools:'🛒 Complete seu conjunto de ferramentas: escolha o kit e adicione ao carrinho!',
+ swatter:'🛒 Escolha sua raquete e adicione ao carrinho!',
+ cart:'🛒 Leve mais praticidade para as compras: adicione ao carrinho!',
+ blender:'🛒 Escolha seu liquidificador e adicione ao carrinho!',
+ general:cta
+};
 export function composeShopeeDescription({record={},supplier=null,sourceText=''}={}){
  const data=supplier?.product_data||{};
  const title=titleOf(record,data),type=skuType(title),p=profiles[type];
  const facts=confirmedFacts(record,data,sourceText,type);
  const name=trunc(title,90);
  const paras=[
-  '✨ Descrição do produto',
-  '💛 '+name+': '+p.opening,
+  '✨ '+name,
+  '',
+  '💛 '+p.opening,
   '',
   p.benefit,
   '',
-  '🌟 Benefícios e por que comprar',
-  p.advantages,
+  '🌟 Por que escolher?',
+  ...(highlights[type]||[]),
+  '🎁 '+p.advantages.replace(/^[🎁✨🎯🌟]\s*/u,''),
   '',
-  '⚙️ Características confirmadas',
+  '⚙️ Características e informações do produto',
   ...(p.details.length?p.details:[]),
   ...facts
  ];
- // With sparse source information avoid invented generic specifications.
- if(!facts.length&&!p.details.length)paras.push('🔎 Produto: '+title);
- paras.push('','🛒 '+cta.replace(/^🛒\s*/,''));
+ // Informações do fornecedor são suporte para os detalhes, e não um
+ // catálogo repetido na apresentação publicitária.
+ if(!facts.length&&!p.details.length)
+  paras.push('🔎 Modelo anunciado: '+title);
+ paras.push('',closing[type]||cta);
  const description=paras.join('\n').trim();
  return {
   description,
