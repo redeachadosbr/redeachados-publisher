@@ -3946,7 +3946,9 @@ async function optimizerExecutionPrepare(){
    const result=await json('/api/shopee/optimizer/execution/prepare',{
      method:'POST',headers:{'Content-Type':'application/json'},
      body:JSON.stringify({sku:w.sku,itemId:w.itemId,modelId:w.modelId,
-       stage:$('#optimizerExecutionScope').value}),
+       stage:$('#optimizerExecutionScope').value,
+       ...($('#optimizerExecutionScope').value==='all'&&optimizerDiscountApprovalReady()?
+        {discountApprovalToken:optimizerDiscountFinalPreviewData?.approvalToken}:{})}),
      signal:AbortSignal.timeout(75000)
    });
    if(serial!==optimizerExecSerial||optimizerWorkflowPlan?.sku!==w.sku||
