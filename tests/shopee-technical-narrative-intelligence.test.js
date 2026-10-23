@@ -33,7 +33,7 @@ test('technical reader fills battery/quantity/age/indication from paragraphs and
  assert.deepEqual(at(actual,100057),{valueId:777,valueName:'Battery'});
  assert.deepEqual(at(actual,100999),{valueId:0,valueName:'1'});
  assert.deepEqual(at(actual,100998),{valueId:0,valueName:'1'});
- assert.match(at(actual,101029).valueName,/Passeio recreativo infantil/);
+ assert.match(at(actual,101029).valueName,/criancas a partir de 3 anos/i);
  assert.deepEqual(at(actual,101240),{valueId:34,valueName:'3 Years and Above'});
  assert.deepEqual(at(actual,101040),{valueId:60,valueName:'Yes'});
 });
