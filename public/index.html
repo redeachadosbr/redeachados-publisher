@@ -480,7 +480,13 @@
               <button id="optimizerFinalVariantsOpen" type="button" class="secondary">Conferir e publicar variações →</button></div></div>
             <div class="optimizer-final-pending-card"><span class="optimizer-final-step-num">2</span><div>
               <strong>Desconto — última etapa</strong><p id="optimizerFinalDiscountState">A promoção será analisada depois de conferir os modelos reais.</p>
-              <button id="optimizerFinalDiscountOpen" type="button" class="secondary">Conferir desconto →</button></div></div>
+              <label class="optimizer-final-discount-campaign">ID Minha Promoção
+                <input id="optimizerFinalCampaignId" type="text" inputmode="numeric" maxlength="18" placeholder="ID da campanha"></label>
+              <button id="optimizerFinalDiscountOpen" type="button" class="secondary">Conferir desconto por modelo →</button>
+              <div id="optimizerFinalModelDiscountPreview" class="optimizer-final-discount-review" hidden></div>
+              <button id="optimizerFinalModelDiscountApply" type="button" disabled hidden>✓ Confirmar e aplicar desconto nas variações</button>
+              <p id="optimizerFinalModelDiscountResult" role="status" aria-live="polite"></p>
+            </div></div>
           </div>
           <small id="optimizerFinalPendingNotice">A prévia e o envio dependem de sua confirmação. Nenhuma alteração será repetida automaticamente.</small>
         </section>
@@ -1630,7 +1636,7 @@
 <script src="/seo-modern-layout.js?v=1.0.1-auto-titles"></script>
 <script src="/description-modern-layout.js?v=1.0.3"></script>
 <script src="/fiscal-modern-layout.js?v=1.0.1-fiscal-cards"></script>
-<script src="/app.js?v=1.21.30-final-pending"></script>
+<script src="/app.js?v=1.21.31-model-discount"></script>
 <link rel="stylesheet" href="/optimizer-variations.css?v=1.2.0">
 <script src="/optimizer-variations.js?v=1.2.1-publish-focus"></script>
 
