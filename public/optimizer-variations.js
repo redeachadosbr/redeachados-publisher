@@ -92,8 +92,10 @@ function render(){
   price.input.step='0.01';price.input.dataset.variantField='price';
   const stock=field('Estoque (mínimo 1)',Number.isInteger(Number(prior.stock))&&Number(prior.stock)>0?prior.stock:1,{kind:'number',min:1});
   stock.input.step='1';stock.input.dataset.variantField='stock';
-  const sku=field('SKU da opção',prior.sku||((context.sku+'-'+safeName(name)).slice(0,100)),{placeholder:'SKU única'});
+  const sku=field('SKU da opção na Shopee',prior.sku||((context.sku+'-'+safeName(name)).slice(0,100)),{placeholder:'SKU única'});
   sku.input.dataset.variantField='sku';sku.input.maxLength=100;
+  const supplierSku=field('SKU WeDrop desta cor',prior.supplierSku||'',{placeholder:'Código exato do produto no fornecedor'});
+  supplierSku.input.dataset.variantField='supplierSku';supplierSku.input.maxLength=120;
   const gtin=field('GTIN / EAN',verifiedEan,{placeholder:'Somente se existir'});
   gtin.input.dataset.variantField='gtin';gtin.input.maxLength=14;
   const noGtin=el('label','optimizer-variant-check');
@@ -115,7 +117,7 @@ function render(){
    save.disabled=true;
    try{await persist();}catch(e){notify(e.message,'error');}finally{save.disabled=false;}
   };
-  fields.append(price.label,sku.label,gtin.label,stock.label,buttons,noGtin,confirmPhoto,confirmStock,save);
+  fields.append(price.label,sku.label,supplierSku.label,gtin.label,stock.label,buttons,noGtin,confirmPhoto,confirmStock,save);
   gtin.input.addEventListener('input',()=>{if(gtin.input.value.trim()){n.checked=false;gtin.input.disabled=false;}});
   body.append(visual,fields);row.append(header,body);cards.append(row);
  }
@@ -177,6 +179,7 @@ function collect(){
   options.push({
    name:row.dataset.option,price:Number(take('price')?.value),
    stock:Number(take('stock')?.value),sku:String(take('sku')?.value||'').trim(),
+   supplierSku:String(take('supplierSku')?.value||'').trim(),
    gtin:String(take('gtin')?.value||'').trim(),
    noGtin:take('noGtin')?.checked===true,
    photoConfirmed:take('photoConfirmed')?.checked===true,
