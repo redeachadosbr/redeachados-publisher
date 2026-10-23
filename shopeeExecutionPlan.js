@@ -197,3 +197,43 @@ export function shopeeExecutionUnconfirmedFields(plan,item,result={}){
   out.push('Dados fiscais ainda não confirmados');
  return out;
 }
+
+/**
+ * Reconcilia uma execução com resposta incerta por DUAS leituras estáveis.
+ * Não conclui publicação, não escreve na Shopee e não recicla aprovação antiga.
+ * A próxima preparação usará os campos atuais como linha de base e exigirá
+ * nova prévia/aprovação para apenas as alterações ainda pendentes.
+ */
+export function assessShopeeStableCommercialRecovery(job,first,second,at=Date.now()){
+ if(job?.state!=='uncertain')throw Error('Somente execuções sem confirmação podem ser recuperadas.');
+ if(!['updating','verifying'].includes(String(job.result?.phase||'')))
+  throw Error('Esta execução exige reconciliação específica de dados fiscais ou desconto.');
+ const lastSeen=Math.max(Date.parse(job.updated_at||'')||0,
+  Number(job.result?.updateStartedAt||0));
+ if(!lastSeen||at-lastSeen<180000)
+  throw Error('Aguardando a janela de consolidação Shopee de 3 minutos, sem repetir envios.');
+ const snapshot=item=>({
+  item_id:String(item?.item_id||''),item_status:String(item?.item_status||''),
+  item_name:String(item?.item_name||''),description:String(item?.description||''),
+  description_type:String(item?.description_type||'normal'),
+  category_id:Number(item?.category_id||0),
+  attribute_list:item?.attribute_list||[],tax_info:item?.tax_info||{},
+  image_ids:item?.image?.image_id_list||[],video_info:item?.video_info||[]
+ });
+ const before=snapshot(first),after=snapshot(second);
+ if(before.item_id!==String(job.plan?.itemId)||after.item_id!==String(job.plan?.itemId))
+  throw Error('Item ID divergente. Nenhuma recuperação realizada.');
+ if(!['NORMAL','UNLIST'].includes(before.item_status)||
+    !['NORMAL','UNLIST'].includes(after.item_status))
+  throw Error('O anúncio deixou de estar editável; nenhuma recuperação realizada.');
+ if(!sameData(before,after))
+  throw Error('A Shopee ainda está consolidando o anúncio. As duas leituras não coincidem; nenhuma alteração foi reenviada.');
+ return {
+  stable:true,
+  pending:shopeeExecutionUnconfirmedFields(job.plan,second,job.result||{}),
+  observedAt:new Date(at).toISOString(),
+  imagesInShop:(second?.image?.image_id_list||[]).length,
+  previouslyUploaded:(job.result?.imageIds||[]).length,
+  previewRequired:true
+ };
+}
