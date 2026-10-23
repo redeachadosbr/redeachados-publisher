@@ -226,10 +226,17 @@ export function assessShopeeStableCommercialRecovery(job,first,second,at=Date.no
  if(!['NORMAL','UNLIST'].includes(before.item_status)||
     !['NORMAL','UNLIST'].includes(after.item_status))
   throw Error('O anúncio deixou de estar editável; nenhuma recuperação realizada.');
- if(!sameData(before,after))
-  throw Error('A Shopee ainda está consolidando o anúncio. As duas leituras não coincidem; nenhuma alteração foi reenviada.');
+ // Mídia e descrições podem mudar entre duas leituras durante a propagação.
+ // Uma recuperação SEM escrita precisa confirmar identidade, categoria e estado,
+ // não uma igualdade byte-a-byte de todos os campos. A nova prévia consulta
+ // novamente o anúncio e revalida o fingerprint antes de QUALQUER envio.
+ if(before.category_id!==after.category_id)
+  throw Error('A categoria da Shopee mudou entre as consultas. Refaça a auditoria da SKU.');
+ const changed=Object.keys(before).filter(k=>!sameData(before[k],after[k]));
  return {
   stable:true,
+  readbacksDiffer:changed.length>0,
+  changedFields:changed,
   pending:shopeeExecutionUnconfirmedFields(job.plan,second,job.result||{}),
   observedAt:new Date(at).toISOString(),
   imagesInShop:(second?.image?.image_id_list||[]).length,
