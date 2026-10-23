@@ -3081,6 +3081,7 @@ $('#optimizerImageCorrectionCopy')?.addEventListener?.('click',async()=>{
 
 function optimizerWorkflowOpen(key){
  optimizerContentRemember();
+ globalThis.ShopeeFiscalStudio?.close?.();
  globalThis.ShopeeDescriptionStudio?.close?.();
  globalThis.ShopeeTitleStudio?.close?.();
  const data=optimizerWorkflowPlan;
@@ -3179,6 +3180,7 @@ function optimizerWorkflowOpen(key){
  }
  $('#optimizerWorkflowShopee').href='https://seller.shopee.com.br/portal/product/'+encodeURIComponent(data.itemId)+'?pageEntry=product_list';
  if(isDescription)globalThis.ShopeeDescriptionStudio?.open?.(data);
+ if(key==='fiscal')globalThis.ShopeeFiscalStudio?.open?.(data);
  // Not an execution button: opens the Seller Center for an actual confirmed edit.
  // Do not scroll unexpectedly while revising a sequence of SKU steps.
 }
@@ -3214,8 +3216,9 @@ async function optimizerWorkflowLoad(record){
      optimizerWorkflowNotice('Não foi possível carregar as etapas: '+e.message+'. Refaça a análise desta SKU.','error');
  }
 }
-$('#optimizerWorkflowClose')?.addEventListener?.('click',()=>{globalThis.ShopeeDescriptionStudio?.close?.();globalThis.ShopeeTitleStudio?.close?.();$('#optimizerWorkflowEditor').hidden=true;optimizerWorkflowStage=null;});
+$('#optimizerWorkflowClose')?.addEventListener?.('click',()=>{globalThis.ShopeeFiscalStudio?.close?.();globalThis.ShopeeDescriptionStudio?.close?.();globalThis.ShopeeTitleStudio?.close?.();$('#optimizerWorkflowEditor').hidden=true;optimizerWorkflowStage=null;});
 $('#optimizerShowExecution')?.addEventListener?.('click',()=>{
+ globalThis.ShopeeFiscalStudio?.close?.();
  globalThis.ShopeeDescriptionStudio?.close?.();
  globalThis.ShopeeTitleStudio?.close?.();
  $('#optimizerWorkflowEditor').hidden=true;optimizerWorkflowStage=null;
@@ -3310,6 +3313,7 @@ $('#optimizerWorkflowReview')?.addEventListener?.('click',async()=>{
     // Não excluir o draft após apenas registrar a conferência.
    }
    optimizerWorkflowRender({...data,...result,stages:result.stages});
+   if(key==='fiscal')globalThis.ShopeeFiscalStudio?.update?.({...data,...result,stages:result.stages});
    // A saved fiscal draft must never automatically re-attempt a rejected CEST
    // update in the background. Execution has its own explicit separate button.
    // Salvar fiscal atualiza a prévia, mas não faz qualquer chamada de publicação.
