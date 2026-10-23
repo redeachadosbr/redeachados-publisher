@@ -157,7 +157,7 @@ app.use(express.static(path.join(__dirname,'public'),{
 // URLs próprias por setor do painel: recarregar/compartilhar não causa 404.
 // A sessão e autenticação das APIs continuam protegidas pelos mesmos middlewares.
 const appPagePaths=new Set([
-  'inicio','produtos','otimizacao','precificacao','descontos','pedidos','envios','ads','wedrop','financeiro','configuracoes'
+  'inicio','produtos','otimizacao','precificacao','descontos','informacoes-fiscais','pedidos','envios','ads','wedrop','financeiro','configuracoes'
 ]);
 app.get('/app/:section',(req,res)=>{
   if(!appPagePaths.has(String(req.params.section||'')))return res.status(404).send('Página não encontrada.');
