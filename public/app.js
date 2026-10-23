@@ -4229,12 +4229,12 @@ async function optimizerExecuteApproved(){
  optimizerExecStartError='';optimizerExecBusy=true;btn.disabled=true;$('#optimizerExecutionRun').disabled=true;
  $('#optimizerExecutionPrepare').disabled=true;
  $('#optimizerExecutionLaunch').hidden=true;
- let previewMustRefresh=false;
- optimizerExecNotice('Validando a prévia e iniciando somente as alterações aprovadas...');
+ let previewMustRefresh=false,recoverPrepared=false,failedStartReason='';
+ optimizerExecNotice('Validando a prévia aprovada. O início só será confirmado após resposta do servidor...');
  $('#optimizerExecutionPanel').hidden=false;
  if(optimizerExecProgress){
   optimizerExecutionTrackerRender({...optimizerExecProgress,
-   title:'Retomando execução',message:'Validando as etapas aprovadas; o progresso salvo será preservado.'},optimizerExecJob);
+   title:'Confirmando início na Shopee',message:'Validando a autorização. A publicação ainda NÃO começou; imagens e vídeo existentes ficam preservados.'},optimizerExecJob);
   $('#optimizerExecutionTracker').scrollIntoView?.({behavior:'smooth',block:'nearest'});
  }
  // A aprovação é registrada no job do servidor no mesmo clique único.
@@ -4265,6 +4265,16 @@ async function optimizerExecuteApproved(){
    optimizerExecPlan=null;$('#optimizerExecutionConfirmation').hidden=true;
    $('#optimizerExecutionLaunch').hidden=true;
    optimizerExecStartError=String(e.message||e);
+   failedStartReason=optimizerExecStartError;
+   recoverPrepared=true;
+   // Mostrar a falha na própria barra da SKU; o andamento não pode
+   // continuar com título "Retomando" quando a API devolve erro.
+   if(optimizerExecProgress){
+    optimizerExecutionTrackerRender({...optimizerExecProgress,
+     title:'Execução não iniciada',
+     message:'O servidor não aceitou o início: '+failedStartReason+'. A mídia anterior está preservada.'
+    },optimizerExecJob);
+   }
    previewMustRefresh=optimizerExecutionNeedsFreshPreview(optimizerExecStartError);
    if(previewMustRefresh){
      optimizerExecNotice('A prévia anterior ficou desatualizada. Atualizando a prévia com as alterações vigentes para sua nova conferência. Nenhum envio ocorreu nesta tentativa.','warning');
@@ -4274,13 +4284,18 @@ async function optimizerExecuteApproved(){
      void optimizerExecutionRefresh(true);
    }
  }finally{optimizerExecBusy=false;$('#optimizerExecutionPrepare').disabled=false;}
- if(previewMustRefresh&&optimizerWorkflowPlan?.sku===ctx.sku&&
+ if(recoverPrepared&&optimizerWorkflowPlan?.sku===ctx.sku&&
     optimizerWorkflowPlan?.itemId===ctx.itemId&&optimizerWorkflowPlan?.modelId===ctx.modelId){
-   // Reconstituir a prévia é seguro; NUNCA repetir execute() automaticamente.
-   // O comprador precisa visualizar e clicar novamente, autorizando o novo plano.
-   await optimizerExecutionPrepare();
-   if(optimizerExecPlan?.canExecute&&optimizerExecPlan.sku===ctx.sku)
-     optimizerExecNotice('Prévia atualizada com segurança. Confira as alterações acima e clique em “Executar na Shopee” para autorizar esta NOVA prévia. Nenhum envio foi feito automaticamente.','warning');
+   // Recuperar somente o plano, nunca disparar outro POST de publicação
+   // sem confirmar primeiro no banco se o POST anterior iniciou o worker.
+   const state=await optimizerExecutionRefresh(true);
+   if(state?.state==='prepared'||state?.state==='blocked'||state?.state==='failed'){
+     await optimizerExecutionPrepare();
+     if(optimizerExecPlan?.canExecute&&optimizerExecPlan.sku===ctx.sku){
+       optimizerExecNotice('A Shopee não iniciou essa tentativa: '+failedStartReason+
+        '. Plano revalidado; o botão de retomada está disponível novamente. Nenhuma mídia foi reenviada.','warning');
+     }
+   }
  }
 }
 
