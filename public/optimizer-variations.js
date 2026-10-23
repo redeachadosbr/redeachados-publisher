@@ -155,7 +155,9 @@ function render(){
    busy=true;send.disabled=true;
    try{
     const result=await request('/api/shopee/optimizer/variants/apply','POST',{approval,confirm:true});
-    notify(result.message+' Atualize a auditoria da SKU.','success');approval=null;
+    notify(result.message+(result.allModelsConfirmed?' Modelos confirmados pela API.':' Aguardar verificação na Shopee antes de repetir.'),result.allModelsConfirmed?'success':'info');
+    approval=null;
+    globalThis.OptimizerFinalization?.onVariationsApplied?.();
    }catch(e){notify('Confira a Shopee antes de repetir: '+e.message,'error');}
    finally{busy=false;}
   };
