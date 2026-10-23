@@ -63,6 +63,14 @@ function makePanel(style,title,subtitle,symbol){
  card.append(fields);
  return {card,fields};
 }
+function markUnsaved(){
+ const status=get('raFiscalModernStatus');
+ if(!status)return;
+ status.classList.remove('is-saved');
+ const heading=status.querySelector('strong'),caption=status.querySelector('small');
+ if(heading)heading.textContent='◷ Alterações não salvas';
+ if(caption)caption.textContent='Salve novamente antes de executar';
+}
 function update(data){
  const editor=get('optimizerWorkflowEditor');if(!editor?.classList.contains('ra-fiscal-modern-active'))return;
  const stage=data?.stages?.find(s=>s.key==='fiscal')||active?.stages?.find(s=>s.key==='fiscal');
@@ -179,6 +187,10 @@ function open(data){
   make('p','',
    'Os dados seguem as regras salvas por SKU. PIS/COFINS CST 99 pode ser revisto pela contabilidade. O cadastro Shopee não substitui a emissão correta da NF-e.'));
  provenance.fields.insertBefore(notes,provenance.fields.firstChild);
+ for(const input of fields.querySelectorAll('input[data-tax-field]')){
+  input.addEventListener('input',markUnsaved);
+  unsubscribe.push(()=>input.removeEventListener('input',markUnsaved));
+ }
  const cest=fields.querySelector('input[data-tax-field="cest"]');
  if(cest){
   const caution=make('small','ra-fiscal-modern-cest-alert',
