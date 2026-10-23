@@ -111,7 +111,7 @@ export async function advanceShopeeExecution(job,io){
    {state:'verified',result:done,lastError:null}:
    {state:'running',result:done,delay:500};
  }
- assertLiveShopeeUnchanged(plan,currentItem);
+ assertLiveShopeeUnchanged(plan,currentItem,result);
  // A biblioteca pode ter os IDs exatos das imagens já vinculadas ao anúncio.
  // Nesse caso, pular o upload de forma comprovável para qualquer SKU.
  if(plan.images?.length&&!result.imageIds?.length){
