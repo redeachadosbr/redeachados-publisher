@@ -4257,6 +4257,8 @@ function optimizerExecutionJobView(job,progress=null,issue=null){
  if(verified&&optimizerWorkflowPlan?.itemId)
    resultLink.href='https://seller.shopee.com.br/portal/product/'+encodeURIComponent(optimizerWorkflowPlan.itemId)+'?pageEntry=product_list';
  $('#optimizerExecutionReconcile').hidden=job?.state!=='uncertain';
+ $('#optimizerExecutionReconcile').textContent=job?.state==='uncertain'?'Conferir e destravar execução':'Conferir resultado na Shopee';
+ $('#optimizerExecutionRetry').textContent=job?.state==='uncertain'?'Recuperar e preparar pendências':'Repreparar execução';
  $('#optimizerExecutionRetry').hidden=!['failed','uncertain'].includes(job?.state);
  if(!job)return;
  // A rejected start leaves the job prepared. Do not erase its actionable
@@ -4338,9 +4340,15 @@ $('#optimizerExecutionReconcile')?.addEventListener?.('click',async()=>{
  const btn=$('#optimizerExecutionReconcile');btn.disabled=true;
  try{
   const d=await json('/api/shopee/optimizer/execution/reconcile',{method:'POST',
-   headers:{'Content-Type':'application/json'},body:JSON.stringify({sku:w.sku,itemId:w.itemId,modelId:w.modelId})});
+   headers:{'Content-Type':'application/json'},body:JSON.stringify({sku:w.sku,itemId:w.itemId,modelId:w.modelId,recover:true}),
+   signal:AbortSignal.timeout(65000)});
   if(optimizerWorkflowPlan===w){
    optimizerExecutionJobView(d.job,d.progress,d.issue);
+   if(d.recoveryReady){
+    optimizerExecNotice('Execução antiga destravada após duas leituras estáveis. Preparando somente as pendências; nenhum envio foi repetido.','success');
+    await optimizerExecutionPrepare();
+    return;
+   }
    if(d.pendingChecks?.length)optimizerExecNotice('Ainda não confirmado: '+d.pendingChecks.join('; ')+'. Nada foi reenviado.','warning');
    else if(d.message)optimizerExecNotice(d.message,d.job?.state==='verified'?'success':'info');
   }
@@ -4349,12 +4357,16 @@ $('#optimizerExecutionReconcile')?.addEventListener?.('click',async()=>{
 $('#optimizerExecutionRetry')?.addEventListener?.('click',async()=>{
  const w=optimizerWorkflowPlan;if(!w)return;
  if(optimizerExecJob?.state==='uncertain'){
-  if(!confirm('Conferir o anúncio novamente e liberar uma nova prévia somente se os valores anteriores continuarem iguais? Nenhuma alteração será reenviada agora.'))return;
+  if(!confirm('Conferir duas vezes o anúncio na Shopee e liberar uma nova prévia apenas para o que falta? Nenhuma publicação será repetida por esta consulta.'))return;
   try{
    const d=await json('/api/shopee/optimizer/execution/reconcile',{method:'POST',
-    headers:{'Content-Type':'application/json'},body:JSON.stringify({sku:w.sku,itemId:w.itemId,modelId:w.modelId,
-     reprepare:true,confirmation:'REPREPARAR '+w.sku})});
-   if(d.job?.state==='uncertain')return optimizerExecutionJobView(d.job,d.progress,d.issue);
+    headers:{'Content-Type':'application/json'},body:JSON.stringify({sku:w.sku,itemId:w.itemId,modelId:w.modelId,recover:true}),
+    signal:AbortSignal.timeout(65000)});
+   if(d.job?.state==='uncertain'){
+    optimizerExecutionJobView(d.job,d.progress,d.issue);
+    return optimizerExecNotice(d.message||'Ainda aguardando confirmação Shopee; nenhum envio foi repetido.','warning');
+   }
+   optimizerExecutionJobView(d.job,d.progress,d.issue);
   }catch(e){return optimizerExecNotice(e.message,'warning');}
  }
  await optimizerExecutionPrepare();
