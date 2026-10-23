@@ -1351,7 +1351,7 @@ app.post('/api/shopee/optimizer/execution/prepare',mustLogin,requireWeDropAdmin,
     let autoModelDiscountToken=null,autoModelDiscountPreview=null;
     if(modelVariations){
      const campaignId=String(req.body?.campaignId||'').trim();
-     if(!/^\\d{1,18}$/.test(campaignId))
+     if(!/^\d{1,18}$/.test(campaignId))
       throw Error('Informe uma vez a campanha Minha Promoção na etapa Desconto; ela será incluída automaticamente na prévia única.');
      const financial=await discountExecutionInputs(req,sku,itemId,modelId,campaignId);
      if(modelVariations.options.some(o=>Math.round(o.cost*100)!==Math.round(Number(financial.quote.unitCost)*100)))
