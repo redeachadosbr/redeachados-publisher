@@ -108,6 +108,11 @@ export async function advanceShopeeExecution(job,io){
   return {state:'running',result:withExecutionEvent({...result,phase:'fiscal_ready',
    primaryVerified:true},'fiscal-only-last','Nenhuma alteração comercial pendente; preparando dados fiscais.'),
    delay:500};
+ // Se não há novos campos comerciais nem dados fiscais, executar somente
+ // o desconto já conferido, sem enviar update_item vazio ou repetir a mídia.
+ if(plan.commercialDiscount&&!Object.keys(plan.proposed||{}).length&&!plan.images?.length&&!plan.video&&!plan.finalFiscal)
+  return {state:'running',result:withExecutionEvent({...result,phase:'discount_ready',primaryVerified:true},
+    'commercial-already','Anúncio já atualizado; preparando somente o desconto autorizado.','success'),delay:500};
  // Persist intent before the external write. A crash resumes readback only.
  result.phase='updating';result.updateStartedAt=Date.now();
  const checkpoint=withExecutionEvent(result,'update-request','Enviando alteração aprovada para o anúncio.');
