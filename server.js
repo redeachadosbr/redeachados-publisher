@@ -2153,7 +2153,7 @@ app.get('/api/shopee/optimizer/variants/draft',mustLogin,requireWeDropAdmin,asyn
     expected.every(sku=>modelSkus.includes(sku));
   res.json({ok:true,sku:x.sku,supplierEan,eanSource:supplierEan?'WeDrop':null,suggestedPrice,
    priceSource:suggestedPrice?'Shopee API':null,liveHasModel,modelSkus,allModelsConfirmed,
-   details:{...draft,options},marketplaceUpdated:allModelsConfirmed});
+   details:{...draft,options},marketplaceUpdated:false});
  }catch(e){res.status(400).json({ok:false,error:String(e.message||e).slice(0,300)});}
 });
 app.post('/api/shopee/optimizer/variants/draft',mustLogin,requireWeDropAdmin,async(req,res)=>{
@@ -2178,7 +2178,9 @@ app.post('/api/shopee/optimizer/variants/photo',mustLogin,requireWeDropAdmin,
   const target=x.details?.options?.find(o=>o.name.toLocaleLowerCase('pt-BR')===value.toLocaleLowerCase('pt-BR'));
   if(!target)throw Error('Salve primeiro a opção da variação.');
   const job=await readShopeeExecution(x.auth.shopId,x.itemId,x.modelId);
-  if(['running','uncertain'].includes(job?.state))throw Error('Execução em andamento; aguarde confirmação.');
+  // Salvar imagem no rascunho não modifica a Shopee. Uma execução ANTIGA
+  // com resultado incerto não deve bloquear o preparo de fotos de variação.
+  if(job?.state==='running')throw Error('Execução em andamento; aguarde confirmação.');
   const asset=await saveVariationImage({shopId:x.auth.shopId,itemId:x.itemId,modelId:x.modelId,
    file:req.body,mime:String(req.get('content-type')||'').split(';')[0]});
   const details={...x.details,options:x.details.options.map(o=>o.name===target.name?
