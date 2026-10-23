@@ -6769,7 +6769,7 @@ function optimizerTechnicalValues(){
  const same=(a,b)=>{
   const normalized=rows=>(rows||[]).map(v=>{
    const id=Number(v.valueId);
-   return id>0?'id:'+id:'value:'+String(v.valueName||'').trim()+':'+String(v.unit||'').trim();
+   return id>0?'id:'+id:'value:'+String(v.valueName??v.name??'').trim()+':'+String(v.unit||'').trim();
   }).sort();
   const x=normalized(a),y=normalized(b);
   return x.length===y.length&&x.every((v,i)=>v===y[i]);
