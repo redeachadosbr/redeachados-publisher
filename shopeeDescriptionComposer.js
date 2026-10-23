@@ -186,78 +186,84 @@ export function isCommercialDescription(value){
 
 // Destaques comerciais por categoria. São benefícios do uso proposto e do
 // formato reconhecido na SKU; características técnicas vêm somente da fonte.
+// Benefícios persuasivos por categoria: cada texto explica O QUE o comprador
+// ganha na experiência de uso e POR QUE isso importa. Não afirmar desempenho,
+// acessórios ou resultados técnicos que a SKU não comprove.
 const highlights={
  moto:[
-  '🎨 Visual vintage vermelho que dá personalidade ao brinquedo.',
-  '🎈 Inspira passeios imaginários e brincadeiras de faz de conta.',
-  '🛝 Para momentos de lazer em ambientes adequados, com supervisão.'
+  '🎨 Um visual para impressionar: o estilo vintage e a cor vermelha dão personalidade à motinha e fazem dela um presente cheio de charme. É uma opção que chama atenção pelo visual inspirado nas motos clássicas.',
+  '🏍️ Brincadeiras que viram histórias: brincar de pilotar abre espaço para imaginar passeios e aventuras diferentes a cada dia. A proposta é transformar momentos de lazer em experiências de faz de conta, sempre em local adequado e sob supervisão de um adulto.',
+  '🎁 Uma surpresa especial para os pequenos: para crianças que gostam de veículos, a moto pode ser o centro das brincadeiras e de bons momentos em família. Um presente que une a emoção de ganhar um brinquedo à vontade de começar a brincar.'
  ],
  ball:[
-  '⚽ Mais oportunidades para brincar de futebol.',
-  '🏃 Chutes, passes e jogos recreativos com outras crianças.',
-  '🎈 Uma forma divertida de explorar movimento e imaginação.'
+  '⚽ Mais diversão em cada partida: a bola convida a criar pequenas partidas, treinar chutes e trocar passes em momentos de lazer. Uma opção para quem gosta de futebol desde cedo.',
+  '🏃 Brincadeira para compartilhar: reunir amigos ou familiares para jogar transforma um espaço apropriado em cenário de diversão e interação. Cada partida pode ser diferente, com novas jogadas e histórias.',
+  '🎁 Um presente com jeito de futebol: para crianças que já gostam desse esporte, a bola aproxima o tema favorito da rotina de brincadeiras. Pode acompanhar atividades recreativas em ambientes adequados.'
  ],
  pool:[
-  '💦 Lazer com água para os dias quentes.',
-  '☀️ Convida a momentos de recreação em família.',
-  '🏡 Uso em superfície apropriada e sempre com supervisão adulta.'
+  '💦 Um convite à diversão nos dias quentes: a piscina inflável ajuda a preparar um espaço de recreação com água. É uma opção para variar as brincadeiras da família em ambiente apropriado.',
+  '☀️ Momentos para aproveitar juntos: organizar uma atividade refrescante pode tornar o tempo livre mais especial. Mantenha sempre um adulto presente e supervisionando as crianças durante todo o uso.',
+  '🏡 Lazer no espaço disponível: quando instalada de acordo com as instruções e em superfície adequada, a piscina oferece uma proposta simples de recreação. Confira dimensões e capacidade antes de escolher.'
  ],
  bottle:[
-  '🥤 Bebidas reunidas em uma garrafa para o dia a dia.',
-  '👜 Uma alternativa funcional para diferentes momentos da rotina.',
-  '✨ Escolha a capacidade adequada para sua necessidade.'
+  '🥤 Praticidade que acompanha sua rotina: ter uma garrafa dedicada às bebidas ajuda a organizar o que levar para o trabalho, estudo ou passeio. Escolha a capacidade que melhor combina com seus hábitos.',
+  '👜 Um item para diferentes momentos: seja na mesa de trabalho ou durante atividades externas, a garrafa pode fazer parte dos acessórios do dia a dia. Seu uso deve seguir as orientações de conservação do fabricante.',
+  '🎁 Uma escolha funcional para presentear: produtos úteis também podem ser lembranças especiais. A garrafa térmica é uma alternativa para quem gosta de manter a rotina bem organizada.'
  ],
  coffee:[
-  '☕ Para quem aprecia o preparo tradicional do café.',
-  '🏡 Um momento especial de café no dia a dia.',
-  '🎁 Uma ideia para presentear amantes de café.'
+  '☕ O prazer de preparar o próprio café: a cafeteira italiana traz o ritual do preparo tradicional para dentro de casa. Do preparo ao momento de servir, cada etapa pode fazer parte de uma pausa especial.',
+  '🏡 Um toque de tradição na cozinha: para quem aprecia café, ter uma cafeteira dedicada ajuda a transformar um hábito em um momento mais pessoal. É uma opção para preparar a bebida do seu jeito, seguindo as instruções do produto.',
+  '🎁 Um presente para apaixonados por café: quem valoriza o aroma, o preparo e a experiência da bebida pode gostar de receber uma cafeteira italiana. Uma escolha ligada ao universo do café e dos encontros.'
  ],
  steamer:[
-  '👔 Ajuda a suavizar amassados de roupas compatíveis.',
-  '✨ Mais praticidade ao preparar peças para o uso.',
-  '🧳 Uma opção funcional para o cuidado do vestuário.'
+  '👕 Roupas preparadas com mais praticidade: a passadeira a vapor pode ajudar a suavizar amassados em peças adequadas a esse tipo de cuidado. Assim, a preparação do vestuário pode ficar mais integrada à rotina.',
+  '✨ Cuidado com a apresentação das peças: ao preparar roupas para compromissos, trabalho ou passeios, cada detalhe faz diferença. Use o vapor apenas em tecidos permitidos e conforme as instruções.',
+  '🧳 Uma aliada em diferentes momentos: da organização do armário à preparação de uma peça para vestir, a passadeira oferece outra opção de cuidado. Confira o modo correto de uso para cada tecido.'
  ],
  bath:[
-  '🧴 Shampoos e outros itens de banho mais organizados.',
-  '🚿 Ajuda a aproveitar o espaço disponível no banheiro.',
-  '✨ Frascos reunidos para tornar a rotina mais prática.'
+  '🧴 Cada coisa em seu lugar: reunir shampoos e outros produtos de banho em um suporte ajuda a reduzir a sensação de desorganização. Fica mais simples visualizar e localizar os itens que você usa.',
+  '🚿 Mais praticidade na hora do banho: com os frascos reunidos em uma área definida, você pode acessar o que precisa com menos procura. Confira as medidas e a instalação compatível com seu banheiro.',
+  '✨ Organização que valoriza o ambiente: pequenos acessórios ajudam a compor um banheiro visualmente mais arrumado. O porta-shampoo é uma maneira de começar pelos objetos usados todos os dias.'
  ],
  spices:[
-  '🌿 Temperos reunidos e fáceis de localizar.',
-  '🍳 Mais organização durante o preparo das receitas.',
-  '✨ Uma cozinha funcional começa nos pequenos detalhes.'
+  '🌿 Temperos organizados ao seu alcance: reunir condimentos em um espaço definido ajuda a localizar os ingredientes durante o preparo das refeições. Isso torna a bancada e a rotina de cozinha mais práticas.',
+  '🍳 Mais prazer em cozinhar: com os temperos agrupados, fica mais fácil encontrar a opção que combina com cada receita. Um detalhe de organização pode fazer diferença nas atividades diárias.',
+  '✨ Uma cozinha com visual mais harmonioso: um porta-temperos ajuda a concentrar itens que costumam ficar espalhados. Confira a quantidade e o formato dos recipientes antes de comprar.'
  ],
  picnic:[
-  '🏕️ Uma área para aproveitar piqueniques e passeios.',
-  '🌳 Ideal para momentos de lazer ao ar livre em espaços adequados.',
-  '🎒 Uma companheira para seus planos de fim de semana.'
+  '🏕️ Prepare seu cantinho ao ar livre: uma toalha para camping ou piquenique ajuda a delimitar um espaço para sentar e aproveitar o passeio. Ideal para levar o momento de descanso para ambientes apropriados.',
+  '🌳 Mais oportunidades para curtir bons momentos: parques, piqueniques e encontros em família ficam mais acolhedores com um espaço reservado. Confira o tamanho para escolher conforme o número de pessoas.',
+  '🎒 Um item pensado para passeios: incluir a toalha entre os acessórios do seu programa ajuda a planejar melhor a experiência. Verifique o material e os cuidados indicados pelo fabricante.'
  ],
  bin:[
-  '🗑️ Ajuda a manter pequenos resíduos em local definido.',
-  '🏠 Complementa a organização de ambientes compatíveis.',
-  '✨ Um item simples que facilita a rotina.'
+  '🗑️ Um lugar definido para pequenos resíduos: ter uma lixeira no ambiente ajuda a concentrar o descarte em vez de deixar objetos espalhados. É um detalhe simples que contribui para a organização.',
+  '🏠 Mais praticidade para o dia a dia: posicionar uma lixeira onde ela faz sentido pode facilitar hábitos de limpeza e descarte. Escolha um tamanho compatível com o espaço e sua necessidade.',
+  '✨ Organize sem complicar: a lixeira complementa a arrumação da casa, escritório ou outro ambiente adequado. Confira as dimensões e o material para decidir pelo modelo certo.'
  ],
  tools:[
-  '🛠️ Ferramentas reunidas para tarefas compatíveis com o kit.',
-  '🔧 Praticidade na organização do espaço de trabalho.',
-  '🏠 Uma opção para pequenos ajustes do dia a dia.'
+  '🛠️ Ferramentas reunidas para suas tarefas: um conjunto facilita manter diferentes peças organizadas em um mesmo local. Isso ajuda na preparação para pequenos ajustes compatíveis com o kit.',
+  '🔧 Mais organização na hora de trabalhar: localizar cada ferramenta antes de começar pode tornar a atividade menos trabalhosa. Confira os itens inclusos para saber o que o conjunto realmente oferece.',
+  '🏠 Uma escolha para quem gosta de estar preparado: manter um kit adequado em casa pode ser útil nas tarefas cotidianas. Use cada ferramenta conforme suas especificações e recomendações de segurança.'
  ],
  swatter:[
-  '🦟 Uma alternativa para lidar com insetos em casa.',
-  '🏡 Mais praticidade para a rotina doméstica.',
-  '✨ Utilize conforme os cuidados e instruções do fabricante.'
+  '🦟 Uma alternativa para lidar com insetos: a raquete foi pensada para auxiliar no controle de insetos em situações de uso doméstico. Siga sempre as instruções e os cuidados informados pelo fabricante.',
+  '🏡 Praticidade para a rotina da casa: ter uma opção destinada a essa finalidade pode ser útil em momentos de incômodo com insetos. Escolha o modelo considerando o tipo de uso descrito.',
+  '✨ Um acessório com finalidade definida: em vez de improvisar, você conta com um produto anunciado para essa tarefa. Confira as orientações de manuseio e armazenamento seguro.'
  ],
  cart:[
-  '🛒 Ajuda no transporte de compras compatíveis com sua capacidade.',
-  '🏡 Mais praticidade nos deslocamentos da rotina.',
-  '✨ Uma opção funcional para feiras e mercados.'
+  '🛒 Ajuda no transporte das compras: um carrinho pode tornar mais cômodo levar produtos compatíveis com sua capacidade. É uma opção para organizar melhor o trajeto entre a feira ou mercado e seu destino.',
+  '🏡 Mais praticidade no planejamento da rotina: reunir compras no carrinho permite transportar os itens de forma mais organizada. Confira dimensões e capacidade para escolher conforme seu uso.',
+  '✨ Um acessório pensado para a tarefa: para quem costuma fazer compras, ter um carrinho dedicado ao transporte pode ser conveniente. Use sempre respeitando as orientações do fabricante.'
  ],
  blender:[
-  '🥤 Uma alternativa para preparar bebidas e misturas.',
-  '🍓 Mais possibilidades para a rotina de preparo em casa.',
-  '✨ Formato pensado para a finalidade anunciada.'
+  '🥤 Bebidas preparadas no seu ritmo: um liquidificador oferece uma opção para misturar ingredientes adequados ao equipamento. Você pode incluir o preparo de bebidas entre os hábitos do dia a dia.',
+  '🍓 Mais possibilidades na cozinha: receitas simples de bebidas e misturas podem fazer parte da rotina, desde que compatíveis com o produto. Confira capacidade e instruções antes de usar.',
+  '✨ Praticidade na preparação: ter um aparelho dedicado a essa tarefa ajuda a organizar os momentos de preparo. Escolha o modelo considerando as informações técnicas confirmadas.'
  ],
- general:[]
+ general:[
+  '🎯 Uma escolha mais alinhada ao que você procura: considere a finalidade do produto e como ela se encaixa na sua rotina. As informações confirmadas da SKU ajudam a identificar a versão mais adequada.',
+  '✨ Um detalhe que pode fazer diferença: cada produto tem uma proposta de uso própria. Confira as características apresentadas no anúncio para descobrir quais benefícios são relevantes para você.'
+ ]
 };
 const closing={
  moto:'🛒 Que tal levar mais imaginação para as brincadeiras? Escolha sua moto infantil e adicione ao carrinho!',
@@ -288,9 +294,9 @@ export function composeShopeeDescription({record={},supplier=null,sourceText=''}
   '',
   p.benefit,
   '',
-  '🌟 Por que escolher?',
-  ...((highlights[type]||[]).length?highlights[type]:['🎯 '+p.advantages.replace(/^(?:\p{Extended_Pictographic}\uFE0F?\s*)+/u,'')]),
+  '🌟 Benefícios que fazem a diferença',
   '',
+  ...(highlights[type]||highlights.general).flatMap(benefit=>[benefit,'']),
   '⚙️ Características e informações do produto',
   ...(p.details.length?p.details:[]),
   ...facts
