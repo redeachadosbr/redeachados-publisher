@@ -339,3 +339,12 @@
 #tab-optimizer .optimizer-workflow-card[data-stage=discount].optimizer-workflow-reviewed{border-color:#a4e4c4;background:#f0faf4}
 #tab-optimizer .optimizer-workflow-card[data-stage=discount].is-current{box-shadow:0 0 0 2px #147948}
 @media(max-width:720px){#tab-optimizer #optimizerDiscountReviewInline #optimizerExecDiscountFinal{padding:12px!important}#tab-optimizer #optimizerDiscountReviewInline .optimizer-exec-discount-controls>*{flex:1 1 100%}}
+
+/* Fluxo com sete ou mais pontos na mesma linha, sem cortar a ultima etapa. */
+.optimizer-exec-steps{grid-template-columns:repeat(auto-fit,minmax(106px,1fr));}
+.optimizer-exec-step.is-review{border-color:#efbc7b}
+.optimizer-exec-step.is-review .optimizer-exec-step-number{background:#e99836}
+.optimizer-exec-step.is-review strong{color:#8a501e}
+.optimizer-exec-step.is-review small{background:#fff0d8;color:#80501f}
+@media(max-width:960px){.optimizer-exec-steps{grid-template-columns:repeat(3,minmax(0,1fr));row-gap:34px}}
+@media(max-width:610px){.optimizer-exec-steps{grid-template-columns:repeat(2,minmax(0,1fr));row-gap:35px}}
