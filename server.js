@@ -950,7 +950,7 @@ app.get('/api/shopee/optimizer/workflow',mustLogin,requireWeDropAdmin,async(req,
         productDescription:record.description});
       const inferred=narrativeTechnicalSuggestions({attributes:technicalPreview.attributes,
         supplier,sourceText:sourceEvidence.sourceText,productDescription:record.description,
-        existing:basic.suggestions});
+        productTitle:record.title,existing:basic.suggestions});
       return mergeNarrativeTechnicalFacts(basic,inferred);
     };
     let evidenceFacts=collectEvidenceFacts();
