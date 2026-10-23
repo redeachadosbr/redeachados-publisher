@@ -1,5 +1,6 @@
 /* Fill official Shopee category attributes from already-saved SKU text, never from guessed facts. */
 const norm=s=>String(s??'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase().trim();
+const textNorm=s=>String(s??'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase().replace(/[^\S\r\n]+/g,' ').trim();
 const clean=s=>String(s??'').trim();
 const list=x=>Array.isArray(x)?x:[];
 const key=s=>norm(s).replace(/[^a-z0-9]/g,'');
@@ -14,7 +15,7 @@ const labels={
 const blocked=/^(?:region of origin|country of origin|pais de origem|pais de fabricacao|regiao de origem|made in|certific|bsmi|inmetro|anatel|homologac)/;
 function fromText(sources,re,format=x=>x){
  for(const source of sources){
-  const match=norm(source.text).match(re);
+  const match=textNorm(source.text).match(re);
   if(match)return {value:format(match),evidence:source.label+' · informação expressa na descrição da SKU'};
  }
  return null;
@@ -28,7 +29,7 @@ function quantity(sources,name){
   .slice(0,3);
  if(!common.length)return null;
  for(const source of sources){
-  const lines=norm(source.text).split(/\r?\n/);
+  const lines=textNorm(source.text).split(/\r?\n/);
   let within=false;
   for(const raw of lines){
    const line=raw.trim();
@@ -47,8 +48,10 @@ function declaredAge(sources){
   m=>'A partir de '+Number(m[1])+' anos');
 }
 function powerSource(sources){
- return fromText(sources,/\b(?:bateria\s+(?:recarregavel|integrada|interna|embutida)|equipad[oa]\s+com\s+bateria)\b/,
-  ()=>'Bateria');
+ const explicit=fromText(sources,/(?:^|\n)\s*(?:power source|power supply|fonte de energia|fonte de alimentacao|alimentacao)\s*:\s*(bateria|pilhas|eletricidade|tomada|energia solar)\b/,m=>m[1]);
+ if(explicit)return explicit;
+ return fromText(sources,/\b(?:bateria\s+(?:recarregavel|integrada|interna|embutida)|equipad[oa]\s+com\s+bateria|alimentad[oa]\s+por\s+bateria|funciona\s+(?:com|a)\s+pilhas)\b/,
+  m=>/pilhas/.test(m[0])?'Pilhas':'Bateria');
 }
 function indication(sources){
  // Independente do produto: a descrição deve declarar o uso.
