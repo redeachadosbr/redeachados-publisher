@@ -1317,6 +1317,14 @@ app.post('/api/shopee/optimizer/execution/prepare',mustLogin,requireWeDropAdmin,
   try{
     const {itemId,modelId,sku,auth,cfg,record}=await checkedWorkflowAudit(req);
     const selectedStage=normalizeShopeeExecutionStage(req.body.stage||'all');
+    let allowDiscountOnly=false;
+    if(selectedStage==='all'&&req.body?.discountApprovalToken){
+     const approved=verifyDiscountPreview(req.body.discountApprovalToken,envText('SESSION_SECRET'),auth.shopId);
+     if(approved.sku!==sku||String(approved.itemId)!==String(itemId)||
+       String(approved.modelId)!==String(modelId))
+      throw Error('A prévia de desconto não corresponde à SKU preparada.');
+     allowDiscountOnly=true;
+    }
     // CPF/CNPJ não impede guardar rascunho. all publica fiscal por último, em segunda escrita com conferência.
     const review=await getWorkflowReview(auth.shopId,itemId,modelId);
     if(review&&review.sku!==sku)throw Error('SKU do plano revisado é diferente. Refaça a auditoria.');
@@ -1342,7 +1350,7 @@ app.post('/api/shopee/optimizer/execution/prepare',mustLogin,requireWeDropAdmin,
       await hydrateCategoryChoices(record,reviewState.attributes||[],cfg,auth,live);
     }
     const inputs={shopId:auth.shopId,itemId,modelId,sku,record,
-      review:review?.review_state||{},live,manualVideo,verifiedVideoSha256,manualImages,selectedStage};
+      review:review?.review_state||{},live,manualVideo,verifiedVideoSha256,manualImages,selectedStage,allowDiscountOnly};
     let plan=compileShopeeExecutionPlan({...inputs,omitFiscal:false});
     // Previous Shopee validation can mean tax_info was rejected while other
     // approved changes are independent. A first explicit "00" submission is allowed,
@@ -1743,7 +1751,8 @@ app.post('/api/shopee/optimizer/execution/execute',mustLogin,requireWeDropAdmin,
   const fresh=compileShopeeExecutionPlan({shopId:auth.shopId,itemId,modelId,sku,record,
    review:review.review_state,live,manualVideo,manualImages,
    deferUnconfirmedFiscal:plan.fiscalDeferred===true,
-   omitFiscal:false,selectedStage:plan.selectedStage||'all'});
+   omitFiscal:false,selectedStage:plan.selectedStage||'all',
+   allowDiscountOnly:plan.discountOnly===true});
   if(fresh.fingerprint!==plan.fingerprint||!fresh.canExecute)throw Error('Conteúdo ou aprovação mudou. Prepare novamente.');
   await claimShopeePreparedExecution(auth.shopId,itemId,modelId,{
    planId:plan.planId,updatedAt:job.updated_at,runId:crypto.randomUUID(),commercialDiscount});
