@@ -160,19 +160,33 @@ export function confirmShopeeExecution(plan,{sku,confirmation}={}){
   if(String(sku)!==plan.sku||String(confirmation)!=='EXECUTAR '+plan.sku)
     throw Error('Confirmação da SKU incorreta. Digite EXECUTAR '+plan.sku);
 }
-export function assertLiveShopeeUnchanged(plan,base){
+export function assertLiveShopeeUnchanged(plan,base,result={}){
   if(String(base?.item_id)!==String(plan.itemId))throw Error('Item ID divergente; execução cancelada.');
-  if(normal(base.item_name)!==plan.original.item_name||
-     normal(base.description)!==plan.original.description||
+  // Alterações já publicadas com os valores EXATOS aprovados não significam
+  // alteração indevida. Elas não podem forçar um segundo update_item.
+  const matchesApproved=(key)=>Object.hasOwn(plan.proposed||{},key)&&
+   fieldsVerified({[key]:plan.proposed[key]},base);
+  if(normal(base.item_name)!==plan.original.item_name&&!matchesApproved('item_name')||
+     normal(base.description)!==plan.original.description&&!matchesApproved('description')||
      String(base.description_type||'normal').toLowerCase()!==plan.original.description_type)
     throw Error('Anúncio alterado após preparação. Recalcule o plano antes de executar.');
-  if(plan.video&&!sameData(base.video_info||[],plan.original.video_info||[]))
+  if(plan.video&&!sameData(base.video_info||[],plan.original.video_info||[])&&
+     !videoMatches(base,result.video||plan.reusedMedia?.video||plan.video?.publication?.video))
     throw Error('Vídeo do anúncio alterado após preparação. Prepare novamente.');
-  if(plan.proposed.attribute_list&&!sameShopeeAttributes(base.attribute_list||[],plan.original.attribute_list||[]))
+  if(plan.proposed.attribute_list&&!sameShopeeAttributes(base.attribute_list||[],plan.original.attribute_list||[])&&
+     !matchesApproved('attribute_list'))
     throw Error('A ficha técnica da Shopee foi modificada após a prévia. Recalcule a prévia e confira os atributos antes de executar.');
-  if((plan.proposed.tax_info||plan.finalFiscal)&&!sameData(base.tax_info||{},plan.original.tax_info||{}))
+  if((plan.proposed.tax_info||plan.finalFiscal)&&!sameData(base.tax_info||{},plan.original.tax_info||{})&&
+     !fieldsVerified({tax_info:plan.proposed.tax_info||plan.finalFiscal},base))
     throw Error('Os dados fiscais da Shopee mudaram após a prévia. Recalcule e confira o NCM e os demais campos fiscais.');
-  if(plan.images?.length&&!sameData(base.image?.image_id_list||[],plan.original.image?.image_id_list||[]))throw Error('Imagens alteradas após preparação. Refaça a prévia.');
+  if(plan.images?.length&&!sameData(base.image?.image_id_list||[],plan.original.image?.image_id_list||[])){
+   const expected=arr=>Array.isArray(arr)?arr:[];
+   const known=expected(result.imageIds).length?result.imageIds:
+    expected(plan.reusedMedia?.imageIds).length?plan.reusedMedia.imageIds:
+    expected(plan.images).map(x=>x.shopee_image_id);
+   if(!known.length||!sameData(base.image?.image_id_list||[],known))
+    throw Error('Imagens alteradas após preparação. Refaça a prévia.');
+  }
   if(plan.modelVariations&&Boolean(base.has_model)!==Boolean(plan.modelVariations.alreadyCreated))
     throw Error('Variações do anúncio mudaram após a prévia. Refaça a preparação, sem repetir envios.');
   if(base.category_id&&plan.original.category_id&&Number(base.category_id)!==Number(plan.original.category_id))throw Error('Categoria alterada após preparação. Refaça a auditoria.');
