@@ -56,6 +56,40 @@ export function calculateShopeeSale(grossCents,c,costCents){
     tax:brl(tax),flash:brl(flash),ads:brl(ads),profit:brl(profit),
     marginPct:sale>0?profit*100/sale:-Infinity,tier:t,saleCents:sale};
 }
+// Motor Matriz — finais psicológicos permitidos para o PREÇO REAL pago pelo comprador.
+// Ajustamos o preço BRUTO, não apenas o texto da tela: descontos, taxas,
+// lucro e dados enviados à Shopee precisam permanecer matematicamente iguais.
+export const SHOPEE_ATTRACTIVE_CENTS=Object.freeze([50,59,60,70,79,89,90,99]);
+const attractiveCents=new Set(SHOPEE_ATTRACTIVE_CENTS);
+export function adjustShopeeCustomerPriceEnding({grossCents,settings,unitCostCents,referenceSaleCents,
+  minimumMarginPct=0,maximumSaleCents=null}){
+ const current=calculateShopeeSale(grossCents,settings,unitCostCents);
+ const originalSaleCents=referenceSaleCents??current.saleCents;
+ const allowed=sale=>attractiveCents.has(((sale%100)+100)%100);
+ if(allowed(current.saleCents))return {grossCents,financial:current,adjusted:false};
+ const factor=(1-settings.discountPct/100)*(1-settings.couponPct/100);
+ if(factor<=0)return {grossCents,financial:current,adjusted:false};
+ // Os centavos são arredondados para a terminação segura MAIS PRÓXIMA.
+ // Sem preços arbitrários: até R$ 0,99 no valor pago, com teto para alterar
+ // o preço bruto; nenhuma margem ou referência de mercado é ultrapassada.
+ const range=Math.min(1200,Math.ceil(105/factor)+5);
+ let best=null;
+ for(let delta=-range;delta<=range;delta++){
+  const candidateGross=grossCents+delta;
+  if(candidateGross<=0||candidateGross>BRL_LIMIT)continue;
+  const candidate=calculateShopeeSale(candidateGross,settings,unitCostCents);
+  const difference=candidate.saleCents-originalSaleCents;
+  if(Math.abs(difference)>99||!allowed(candidate.saleCents))continue;
+  if(maximumSaleCents!==null&&candidate.saleCents>maximumSaleCents)continue;
+  if(candidate.marginPct+1e-8<minimumMarginPct)continue;
+  const rank=[Math.abs(difference),difference<0?1:0,Math.abs(delta)];
+  if(!best||rank.some((n,i)=>n!==best.rank[i]&&rank.slice(0,i).every((x,j)=>x===best.rank[j])&&n<best.rank[i])){
+   best={grossCents:candidateGross,financial:candidate,rank};
+  }
+ }
+ return best?{grossCents:best.grossCents,financial:best.financial,adjusted:true}:
+  {grossCents,financial:current,adjusted:false,reason:'Sem terminação atrativa dentro da margem e dos limites competitivos aprovados.'};
+}
 function saleCents(gross,c){
   return Math.round(Math.round(gross*(1-c.discountPct/100))*(1-c.couponPct/100));
 }
@@ -130,9 +164,30 @@ export function quoteShopeePrice({unitCost,settings={},marketAverage=null,margin
     }
   }else note+=' Média de mercado não informada; não foi feita pesquisa de concorrentes.';
   if(financial.marginPct+1e-8<c.minMarginPct)throw Error('Cotação rejeitada: abaixo da margem líquida mínima.');
+  const previousFinalPrice=financial.finalPrice;
+  const originalMargin=financial.marginPct;
+  // Se a simulação já respeitava a margem desejada, preserve essa margem.
+  // Em planos competitivos abaixo da meta, não reduza a margem já aprovada.
+  const protectedMargin=Math.max(c.minMarginPct,Math.min(desired,originalMargin));
+  const marketCeiling=state==='COMPETITIVO'&&market!==null?
+   financial.saleCents<=money(market)?money(market):Math.round(money(market)*1.02):null;
+  const charm=adjustShopeeCustomerPriceEnding({
+   grossCents:money(financial.gross),settings:proposed,unitCostCents:money(cost),
+   minimumMarginPct:protectedMargin,maximumSaleCents:marketCeiling
+  });
+  financial=charm.financial;
+  if(charm.adjusted)
+   note+=' Final ao comprador ajustado para R$ '+financial.finalPrice.toFixed(2).replace('.',',')+
+    ' (terminação comercial, sem reduzir a margem protegida).';
+  else if(charm.reason)note+=' '+charm.reason;
+  if(financial.marginPct+1e-8<c.minMarginPct)throw Error('Arredondamento rejeitado: abaixo da margem mínima.');
   const floorSale=calculateShopeeSale(floor,c,money(cost));
   return {unitCost:cost,grossPrice:financial.gross,discountPct:proposed.discountPct,
-    couponPct:c.couponPct,customerPrice:financial.finalPrice,netProfit:financial.profit,
+    couponPct:c.couponPct,customerPrice:financial.finalPrice,
+    customerPriceBeforeRounding:previousFinalPrice,
+    attractiveEndingApplied:charm.adjusted,
+    attractiveEndingOptions:SHOPEE_ATTRACTIVE_CENTS,
+    netProfit:financial.profit,
     netMarginPct:Number(financial.marginPct.toFixed(3)),minMarginPct:c.minMarginPct,
     targetMarginPct:c.marginPct,marketAverage:market,
     marketGapPct:market===null?null:Number(((financial.finalPrice/market-1)*100).toFixed(2)),
