@@ -2426,6 +2426,7 @@ function optimizerDescriptionCompactPreview(content){
  }
  if(!target.childElementCount)target.append(create('p','ra-description-empty','Nenhuma descrição preenchida. Você pode editar o texto diretamente.'));
  $('#optimizerDescriptionCompactCount').textContent=[...raw].length+' caracteres · texto completo';
+ globalThis.ShopeeDescriptionStudio?.sync?.();
 }
 $('#optimizerDescriptionToggle')?.addEventListener?.('click',()=>{
  if(optimizerWorkflowStage!=='description')return;
