@@ -3598,6 +3598,45 @@ function optimizerDiscountFinalSavedQuote(q){
   'Preço provisório salvo. Sem 2 anúncios comparáveis, não haverá publicação de desconto.',
   q.marketResearch?.verified?'success':'warning');
 }
+// Somente leitura: falhas transitórias do Render não devem virar recusa
+// comercial nem disparar inclusão de desconto na API Shopee.
+async function optimizerDiscountReadOnlyPreview(request){
+ const endpoint='/api/shopee/optimizer/discounts/preview';
+ for(let attempt=1;attempt<=3;attempt++){
+  let gatewayStatus=0;
+  try{
+   const response=await fetch(endpoint,{
+    method:'POST',headers:{'Content-Type':'application/json'},
+    body:JSON.stringify(request),cache:'no-store',
+    signal:AbortSignal.timeout(22000)
+   });
+   const data=await response.json().catch(()=>({}));
+   if(response.ok)return data;
+   if(![502,503,504].includes(response.status)){
+    const error=new Error(data.error||('HTTP '+response.status));
+    error.nonRetryable=true;
+    throw error;
+   }
+   gatewayStatus=response.status;
+  }catch(error){
+   if(error.nonRetryable)throw error;
+   if(!gatewayStatus&&!['TypeError','TimeoutError','AbortError'].includes(error.name))
+    throw error;
+  }
+  if(attempt<3){
+   optimizerDiscountFinalStatus('Comunicação temporariamente indisponível'+
+    (gatewayStatus?' (HTTP '+gatewayStatus+')':'')+
+    '. Repetindo somente a conferência, sem publicar desconto ('+(attempt+1)+'/3)...','info');
+   await new Promise(resolve=>setTimeout(resolve,900*attempt));
+   continue;
+  }
+  const error=new Error('Falha temporária de comunicação'+
+   (gatewayStatus?' (HTTP '+gatewayStatus+')':'')+
+   ' após 3 consultas. Nenhum desconto foi enviado à Shopee. Confira novamente quando o serviço estabilizar.');
+  error.transient=true;
+  throw error;
+ }
+}
 async function optimizerDiscountFinalPrepare({automatic=false}={}){
  const w=optimizerWorkflowPlan,q=optimizerDiscountFinalQuote;
  if(!w||!q||optimizerDiscountFinalBusy||optimizerDiscountFinalSent)return;
@@ -3612,10 +3651,9 @@ async function optimizerDiscountFinalPrepare({automatic=false}={}){
  optimizerDiscountFinalBusy=true;optimizerDiscountFinalPaint();
  optimizerDiscountFinalStatus('Conferindo preço e promoção na API Shopee sem publicar...','info');
  try{
-  const data=await json('/api/shopee/optimizer/discounts/preview',{
-   method:'POST',headers:{'Content-Type':'application/json'},
-   body:JSON.stringify({sku:w.sku,itemId:w.itemId,modelId:w.modelId,discountId:campaign}),
-   signal:AbortSignal.timeout(75000)});
+  const data=await optimizerDiscountReadOnlyPreview({
+   sku:w.sku,itemId:w.itemId,modelId:w.modelId,discountId:campaign
+  });
   if(optimizerDiscountFinalIdentityOf(optimizerWorkflowPlan)!==key||
      String($('#optimizerExecDiscountCampaign').value||'').trim()!==campaign)return;
   if(!data.approvalToken||data.preview?.sku!==w.sku||String(data.preview?.itemId)!==String(w.itemId))
@@ -3631,8 +3669,8 @@ async function optimizerDiscountFinalPrepare({automatic=false}={}){
   if(data.preview.action==='already')optimizerDiscountFinalSent=true;
  }catch(error){
   optimizerDiscountFinalPreviewData=null;optimizerDiscountFinalPreviewKey='';
-  optimizerDiscountFinalStatus('Desconto não liberado: '+error.message+
-   '. Os demais dados da SKU permanecem intactos.','warning');
+  optimizerDiscountFinalStatus((error.transient?'Conferência pendente: ':'Desconto não liberado: ')+
+   error.message+(error.transient?'':' Os demais dados da SKU permanecem intactos.'),'warning');
  }finally{optimizerDiscountFinalBusy=false;optimizerDiscountFinalPaint();}
 }
 let optimizerDiscountCampaignTimer=null;
