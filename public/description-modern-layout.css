@@ -141,3 +141,33 @@
  #optimizerWorkflowEditor.desc-modern-editor>.optimizer-workflow-actions{position:static}
 }
 @media(prefers-reduced-motion:reduce){#optimizerDescriptionModern *{scroll-behavior:auto}}
+
+/* Preserve the full rendered preview added by the description composer. */
+#optimizerDescriptionModern .ra-description-preview-note,
+#optimizerDescriptionModern .ra-description-preview-footer,
+#optimizerDescriptionModern .optimizer-description-compact-heading{display:none!important}
+#optimizerDescriptionModern .desc-modern-preview-summary{
+ color:#2b446f;font-size:12px;line-height:1.65;min-height:102px;max-height:153px;overflow:auto;
+ background:#f7faff;border:1px solid #e0e9f8;border-radius:10px;padding:12px 13px;white-space:pre-wrap
+}
+#optimizerDescriptionModern .desc-modern-chips{display:flex;align-items:center;flex-wrap:wrap;gap:6px}
+#optimizerDescriptionModern .desc-modern-chips span{
+ background:#f0edff;color:#6653c3;border-radius:8px;padding:7px 8px;font-size:10px;font-weight:850
+}
+#optimizerDescriptionModern .desc-modern-chips span[data-desc-part="measures"]{background:#e6f2ff;color:#2266a8}
+#optimizerDescriptionModern .desc-modern-chips span[data-desc-part="doubts"]{background:#ffecef;color:#b12f4d}
+#optimizerDescriptionModern .desc-modern-chips span[data-desc-part="reasons"]{background:#fff3d9;color:#986a16}
+#optimizerDescriptionModern .desc-modern-chips [hidden]{display:none!important}
+#optimizerDescriptionModern .desc-modern-cta{
+ background:#e7f8ed;color:#176d46;border-radius:9px;min-height:44px;padding:12px;
+ font-size:12px;font-weight:800;line-height:1.5;overflow-wrap:anywhere
+}
+#optimizerDescriptionModern .desc-modern-cta[data-present="false"]{background:#fff8eb;color:#92652a}
+#optimizerDescriptionModern .desc-modern-full{border-radius:9px;border:1px solid #e0e9f7;background:#fafcff}
+#optimizerDescriptionModern .desc-modern-full>summary{
+ padding:9px 12px;cursor:pointer;list-style:none;color:#346497;font-weight:800;font-size:10px
+}
+#optimizerDescriptionModern .desc-modern-full>summary::-webkit-details-marker{display:none}
+#optimizerDescriptionModern .desc-modern-full[open]>summary{border-bottom:1px solid #e0e9f7}
+#optimizerDescriptionModern #optimizerDescriptionFullPreview{padding:12px;font-size:12px;line-height:1.6;max-height:330px;overflow:auto;background:#fff}
+#optimizerDescriptionModern #optimizerDescriptionFullPreview :is(h4,h5,p,div){font-size:inherit;line-height:1.6;overflow-wrap:anywhere}
