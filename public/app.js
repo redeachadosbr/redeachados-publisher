@@ -6454,6 +6454,7 @@ function optimizerTechnicalSummary(data){
    const field=[...$('#optimizerTechnicalFields').querySelectorAll('fieldset')].find(x=>
       Number(x.dataset.attributeId)===change.attributeId);
    if(field){field.hidden=false;const optional=field.closest('.optimizer-tech-optional');if(optional)optional.open=true;
+    const group=field.closest('.ra-tech-attribute-group');if(group)group.open=true;
     field.scrollIntoView({behavior:'smooth',block:'center'});field.querySelector('input,select')?.focus({preventScroll:true});}
   };
   item.append(edit);list.append(item);
@@ -6562,6 +6563,7 @@ $('#optimizerTechFiles')?.addEventListener('change',()=>{
 $('#optimizerTechnicalFields')?.addEventListener?.('change',()=>{
  if(optimizerWorkflowPlan&&optimizerWorkflowStage==='technical'){
   optimizerTechnicalSummary(optimizerWorkflowPlan);
+  globalThis.RATechnicalStudio?.refresh?.(optimizerWorkflowPlan);
   void techSaveFields();
  }
 });
@@ -6757,6 +6759,7 @@ function optimizerTechnicalRender(data){
   '✓ '+autoHidden+' preenchidos/recuperados · '+requiredMissing+
   ' precisam de conferência'+(optionalMissing?' · '+optionalMissing+' opcionais recolhidos':'')));
  optimizerTechnicalSummary(data);
+ globalThis.RATechnicalStudio?.render?.(data);
 }
 function optimizerTechnicalValues(){
  return [...$('#optimizerTechnicalFields').querySelectorAll('fieldset')].filter(x=>x.querySelector('[data-attribute-enabled]')?.checked).map(field=>({
