@@ -1013,9 +1013,13 @@ app.get('/api/shopee/optimizer/workflow',mustLogin,requireWeDropAdmin,async(req,
     // Não chama a API OpenAI nem utiliza créditos de IA.
     const composed=composeShopeeDescription({record,supplier,sourceText:sourceEvidence.sourceText});
     const storedDescription=String(review.draftDescription||'');
-    const manuallyEdited=review.descriptionOrigin==='manual';
+    // Texto do antigo modelo genérico é identificável mesmo se uma
+    // conferência antiga o rotulou incorretamente como "manual".
+    // Edição verdadeiramente personalizada continua protegida.
+    const legacyTemplate=isGenericShopeeDescription(storedDescription);
+    const manuallyEdited=review.descriptionOrigin==='manual'&&!legacyTemplate;
     const autoRefreshable=Boolean(storedDescription)&&!manuallyEdited&&
-      (review.descriptionOrigin==='auto-refreshed'||isGenericShopeeDescription(storedDescription));
+      (review.descriptionOrigin==='auto-refreshed'||legacyTemplate);
     const shouldSaveAuto=composed.valid&&(!storedDescription||
       autoRefreshable&&composed.description!==storedDescription);
     if(shouldSaveAuto){
