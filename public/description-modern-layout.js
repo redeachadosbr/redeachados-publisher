@@ -159,8 +159,8 @@
   const leftTitle=el('div','desc-modern-panel-title');
   leftTitle.append(el('span','desc-modern-panel-icon','◉'),el('strong','','Prévia da descrição'),
    help('Prévia resumida','A prévia exibe apenas a introdução e os principais blocos. O texto completo fica no editor à direita.'));
-  leftHeader.append(leftTitle);
-  leftHeader.append(toggle);columns.append(left);
+  leftHeader.append(leftTitle,el('span','desc-modern-preview-label','Resumo visual'));
+  columns.append(left);
   left.append(leftHeader,preview);
   preview.hidden=false;
   const summary=el('div','desc-modern-preview-summary','');
@@ -173,13 +173,13 @@
   }
   const cta=el('div','desc-modern-cta');
   cta.id='optimizerDescriptionPreviewCta';cta.dataset.descriptionGenerated='true';
-  const detail=el('details','desc-modern-full');detail.dataset.descriptionGenerated='true';
-  detail.append(el('summary','','Ver descrição completa ▾'));
-  const full=$('optimizerDescriptionFullPreview');if(full)detail.append(full);
-  preview.prepend(summary,chips,cta,detail);
+  // Manter a prévia integral ligada ao código existente, mas oculta na coluna
+  // esquerda. O texto completo permanece acessível pelo editor à direita.
+  preview.prepend(summary,chips,cta);
   draft.hidden=false;
+  // O editor permanece sempre aberto à direita. O botão antigo da prévia
+  // continua em seu rodapé original, oculto enquanto esta etapa está aberta.
   toggle.textContent='Recolher edição ⌃';
-  toggle.setAttribute('aria-controls','optimizerWorkflowDraftWrap');
 
   const right=el('section','desc-modern-panel desc-modern-editor-panel');
   const rightHeader=el('div','desc-modern-panel-head');
