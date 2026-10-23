@@ -328,3 +328,14 @@
 #tab-fiscal #optimizerFiscalBatch{margin:0 0 20px;max-width:none}
 #tab-optimizer .ra-optimizer-side-by-side{grid-template-columns:minmax(0,1fr)}
 @media(max-width:720px){#tab-fiscal .ra-fiscal-page-intro{padding:16px}#tab-fiscal .ra-fiscal-page-intro h2{font-size:18px}}
+
+/* Desconto: 8ª etapa no próprio painel de revisão, acima da prévia. */
+#tab-optimizer #optimizerDiscountReviewInline[hidden]{display:none!important}
+#tab-optimizer #optimizerDiscountReviewInline:not([hidden]){display:grid!important;grid-template-columns:minmax(0,1fr)!important;margin:14px 0 22px!important}
+#tab-optimizer #optimizerDiscountReviewInline #optimizerExecDiscountFinal{margin:0!important;width:100%;padding:18px!important;background:linear-gradient(135deg,#fff,#f5faff);border:1px solid #c9deed;border-radius:17px}
+#tab-optimizer #optimizerDiscountReviewInline .optimizer-exec-discount-heading strong{font-size:17px!important}
+#tab-optimizer #optimizerDiscountReviewInline .optimizer-exec-discount-controls{display:flex;align-items:flex-end;flex-wrap:wrap;gap:12px}
+#tab-optimizer #optimizerDiscountReviewInline #optimizerExecDiscountPreview{padding:12px 16px!important;min-height:45px;font-weight:800}
+#tab-optimizer .optimizer-workflow-card[data-stage=discount].optimizer-workflow-reviewed{border-color:#a4e4c4;background:#f0faf4}
+#tab-optimizer .optimizer-workflow-card[data-stage=discount].is-current{box-shadow:0 0 0 2px #147948}
+@media(max-width:720px){#tab-optimizer #optimizerDiscountReviewInline #optimizerExecDiscountFinal{padding:12px!important}#tab-optimizer #optimizerDiscountReviewInline .optimizer-exec-discount-controls>*{flex:1 1 100%}}

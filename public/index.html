@@ -23,7 +23,7 @@
 <link rel="stylesheet" href="/optimizer-image-correction.css?v=1.0.0">
 <link rel="stylesheet" href="/optimizer-fiscal-last.css?v=1.20.31">
 <link rel="stylesheet" href="/optimizer-discount-last.css?v=1.20.36">
-<link rel="stylesheet" href="/optimizer-fiscal-commercial-layout.css?v=1.5-note-spacing">
+<link rel="stylesheet" href="/optimizer-fiscal-commercial-layout.css?v=1.6-discount-step8">
 <link rel="stylesheet" href="/fiscal-modern-layout.css?v=1.0.1-fiscal-cards">
 <link rel="stylesheet" href="/fiscal-single-action.css?v=6-autoprepare-send">
 <link rel="stylesheet" href="/fiscal-run-progress.css?v=1">
@@ -377,6 +377,29 @@
       </div>
       <p class="optimizer-notice" id="optimizerWorkflowStatus" role="status" aria-live="polite">Aguardando a auditoria oficial da SKU.</p>
       <div class="optimizer-workflow-cards" id="optimizerWorkflowCards" aria-label="Etapas de otimização"></div>
+      <div class="ra-optimizer-side-by-side optimizer-discount-review-inline" id="optimizerDiscountReviewInline" hidden aria-label="Etapa 08: conferir preço e desconto">
+          <section id="optimizerExecDiscountFinal" class="optimizer-exec-discount-last" aria-label="Última etapa comercial: preço e desconto">
+            <div class="optimizer-exec-discount-heading">
+              <span class="ra-panel-heading-icon" aria-hidden="true"><svg class="ra-panel-icon" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2v20M17 6H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6M17 6l-2-2M6 20l2 2"/></svg></span>
+              <div><strong>Etapa 08 · Conferir preço e desconto</strong>
+                <small id="optimizerExecDiscountState">Preparando custo WeDrop e pesquisa de mercado da SKU...</small>
+              </div>
+            </div>
+            <div id="optimizerExecDiscountValues" class="optimizer-exec-discount-values" aria-live="polite"></div>
+            <p id="optimizerExecDiscountMessage">O desconto é calculado ao localizar a SKU; a publicação exige uma campanha Shopee validada e sua autorização.</p>
+            <div class="optimizer-exec-discount-controls">
+              <label for="optimizerExecDiscountCampaign">ID da campanha Minha Promoção
+                <input id="optimizerExecDiscountCampaign" inputmode="numeric" maxlength="18" placeholder="Informe o ID da promoção" autocomplete="off">
+              </label>
+              <button type="button" id="optimizerExecDiscountPreview" class="secondary" disabled>✓ Conferir desconto e liberar execução</button>
+            </div>
+            <label id="optimizerExecDiscountPriceApproval" class="optimizer-exec-discount-price-approval" hidden>
+              <input id="optimizerExecDiscountPriceConsent" type="checkbox">
+              Autorizo também atualizar o preço bruto na Shopee, se necessário. Se o desconto falhar, o preço bruto poderá permanecer alterado.
+            </label>
+            <p id="optimizerExecDiscountResult" class="optimizer-notice" role="status" aria-live="polite">Nenhuma alteração de preço ou promoção enviada à Shopee.</p>
+          </section>
+          </div>
       <section class="optimizer-exec-panel optimizer-exec-panel-v21" id="optimizerExecutionPanel" hidden aria-label="Pré-execução automatizada por SKU">
         <div class="optimizer-stage-execute-switch">
           <div><strong>O que executar nesta SKU?</strong><small>Escolha uma etapa ou mantenha a execução completa.</small></div>
@@ -484,30 +507,6 @@
             <ol id="optimizerExecutionEvents" class="optimizer-exec-events"></ol>
           </section>
         </div>
-          <div class="ra-optimizer-side-by-side" aria-label="Painéis fiscal e comercial da SKU">
-          <section id="optimizerExecDiscountFinal" class="optimizer-exec-discount-last" aria-label="Última etapa comercial: preço e desconto">
-            <div class="optimizer-exec-discount-heading">
-              <span class="ra-panel-heading-icon" aria-hidden="true"><svg class="ra-panel-icon" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2v20M17 6H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6M17 6l-2-2M6 20l2 2"/></svg></span>
-              <div><strong>Preço e desconto — última etapa comercial</strong>
-                <small id="optimizerExecDiscountState">Preparando custo WeDrop e pesquisa de mercado da SKU...</small>
-              </div>
-            </div>
-            <div id="optimizerExecDiscountValues" class="optimizer-exec-discount-values" aria-live="polite"></div>
-            <p id="optimizerExecDiscountMessage">O desconto é calculado ao localizar a SKU; a publicação exige uma campanha Shopee validada e sua autorização.</p>
-            <div class="optimizer-exec-discount-controls">
-              <label for="optimizerExecDiscountCampaign">ID da campanha Minha Promoção
-                <input id="optimizerExecDiscountCampaign" inputmode="numeric" maxlength="18" placeholder="Informe o ID da promoção" autocomplete="off">
-              </label>
-              <button type="button" id="optimizerExecDiscountPreview" class="secondary" disabled>✓ Conferir desconto e liberar execução</button>
-              <button type="button" id="optimizerExecDiscountApply" disabled hidden>Aplicar desconto final na Shopee</button>
-            </div>
-            <label id="optimizerExecDiscountPriceApproval" class="optimizer-exec-discount-price-approval" hidden>
-              <input id="optimizerExecDiscountPriceConsent" type="checkbox">
-              Autorizo também atualizar o preço bruto na Shopee, se necessário. Se o desconto falhar, o preço bruto poderá permanecer alterado.
-            </label>
-            <p id="optimizerExecDiscountResult" class="optimizer-notice" role="status" aria-live="polite">Nenhuma alteração de preço ou promoção enviada à Shopee.</p>
-          </section>
-          </div>
         <small class="optimizer-workflow-disclaimer">A execução é gravada por SKU e prossegue automaticamente. Imagens enviadas à mídia Shopee só serão aplicadas ao anúncio quando a API confirmar a atualização.</small>
       </section>
 
