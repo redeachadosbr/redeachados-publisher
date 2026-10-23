@@ -31,7 +31,7 @@ import {saveWeDropCosts,getWeDropCoverage,compareIncomingCosts,pendingWeDropMode
 import {saveWeDropProducts,readWeDropProduct} from './wedropCosts.js';
 import {supplierWorkflowFacts} from './shopeeSupplierFacts.js';
 import {supplierAttributeSuggestions} from './shopeeSupplierEvidenceFacts.js';
-import {narrativeTechnicalSuggestions,mergeNarrativeTechnicalFacts} from './shopeeTechnicalNarrative.js';
+import {narrativeTechnicalSuggestions,mergeNarrativeTechnicalFacts,technicalOptionSearchTerms} from './shopeeTechnicalNarrative.js';
 import {readShopeeSourceEvidence,saveShopeeSourceText,importShopeeEvidenceImage,removeShopeeEvidenceImage,downloadShopeeEvidenceImages} from './shopeeSourceEvidence.js';
 import {extractSupplierScreenshotText,mergeExtractedPrints,withoutExtractedPrints} from './shopeeEvidenceVision.js';
 import {fiscalMatrixSource,technicalMatrixSource,assertShopeeSupplierBrand,isShopeeCestConfirmed,REDE_ACHADOS_MARKET_RULES} from './shopeeMatrixRules.js';
@@ -965,12 +965,10 @@ app.get('/api/shopee/optimizer/workflow',mustLogin,requireWeDropAdmin,async(req,
       const attr=technicalPreview.attributes.find(x=>Number(x.id)===Number(missing.attributeId));
       if(!attr?.supportSearch||attr.conditional)continue;
       try{
-        const original=String(missing.value).normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase().trim();
-        const label=String(attr.name||'').toLowerCase();
-        const variants=[missing.value];
-        if(/power source|fonte de alimenta/.test(label)&&original==='bateria')variants.push('Battery');
-        if(/recommended age|idade recomendada/.test(label)&&/a partir de 3 anos/.test(original))
-          variants.push('3 years and above','3 years old and above');
+        // Motor Matriz: pesquisa para QUALQUER SKU e categoria, não apenas motos.
+        // Consultar primeiro o valor literal e depois equivalentes exatos seguros.
+        // O código/ID precisa ser devolvido pela API oficial da Shopee.
+        const variants=technicalOptionSearchTerms(attr.name,missing.value);
         for(const value of variants){
           const request=searchAttributeRequest({attributeId:attr.id,valueName:value,limit:50});
           const items=readSearchedAttributeOptions(await matrixShopeeSearch(cfg,auth,request),0,50).options;
