@@ -128,3 +128,30 @@ test('aceite da atualização muda imediatamente o monitor para conferência sem
  assert.ok(next.result.events.some(x=>x.key==='update-accepted'));
  assert.ok(shopeeExecutionProgress({...saved,result:next.result}).percent<100);
 });
+
+test('fluxo completo antigo exibe etapa 08 após a fiscal, sem fingir autorização',()=>{
+ const old={...plan,selectedStage:'all',finalFiscal:{ncm:'95030010'}};
+ const progress=shopeeExecutionProgress({...job('uncertain','verifying',{
+  imageIds:Array(9).fill('id'),video:{phase:'ready'}}),plan:old});
+ assert.deepEqual(progress.steps.slice(-2).map(x=>x.id),['fiscal','discount']);
+ assert.equal(progress.steps.at(-1).status,'review');
+ assert.equal(progress.discountStatus,'not_approved_for_this_run');
+ assert.equal(progress.imagesPublished,0);
+ assert.equal(progress.verified,false);
+ assert.ok(progress.percent<100);
+});
+test('desconto aparece como ultima etapa e só conclui quando Shopee confirma',()=>{
+ const flow={...plan,selectedStage:'all',finalFiscal:{ncm:'95030010'},
+  commercialDiscount:{snapshot:{sku:'TRC1525'}}};
+ const running=shopeeExecutionProgress({...job('running','discount_ready',{
+  imageIds:Array(9).fill('id'),video:{phase:'ready'},primaryVerified:true,
+  fiscal:{status:'verified'}}),plan:flow});
+ assert.equal(running.steps.at(-1).id,'discount');
+ assert.equal(running.steps.at(-1).status,'active');
+ assert.ok(running.percent<100);
+ const success=shopeeExecutionProgress({...job('verified','verified',{
+  imageIds:Array(9).fill('id'),video:{phase:'ready'},primaryVerified:true,
+  fiscal:{status:'verified'},discount:{status:'verified'}}),plan:flow});
+ assert.equal(success.steps.at(-1).status,'done');
+ assert.equal(success.percent,100);
+});
