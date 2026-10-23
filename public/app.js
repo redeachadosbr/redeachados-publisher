@@ -3234,15 +3234,10 @@ $('#optimizerWorkflowReview')?.addEventListener?.('click',async()=>{
    const body={itemId:data.itemId,modelId:data.modelId,sku:data.sku,
      stage:key,reviewed:key==='fiscal'?true:key==='variants'?$('#optimizerHasVariants').checked:!stage.reviewed};
    if(key==='technical'){
+     // A fonte é opcional para registrar a conferência local. Não exigir que
+     // o vendedor declare WeDrop, fabricante ou nota quando não há tal prova.
+     // Os valores continuam validados pela categoria oficial no servidor.
      body.attributes=optimizerTechnicalValues();
-     const noEvidence=body.attributes.find(c=>String(c.evidence||'').trim().length<3);
-     if(noEvidence){
-       const name=(data.attributes||[]).find(a=>Number(a.id)===Number(noEvidence.attributeId))?.name||'atributo '+noEvidence.attributeId;
-       const field=[...$('#optimizerTechnicalFields').querySelectorAll('fieldset[data-attribute-id]')]
-         .find(x=>Number(x.dataset.attributeId)===Number(noEvidence.attributeId));
-       if(field){field.closest('.ra-tech-attribute-group')?.setAttribute('open','');field.hidden=false;}
-       throw Error('Informe a fonte (WeDrop, fabricante ou nota) para '+name+' antes de conferir a etapa.');
-     }
    }
    if(key==='fiscal')body.tax=optimizerFiscalValues();
    if(key==='variants')body.variationConfig=optimizerVariationValues();
