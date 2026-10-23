@@ -6604,7 +6604,8 @@ function optimizerTechnicalRender(data){
  wrap.append(optimizerMake('p','optimizer-category-summary',
   'Ficha técnica oficial da categoria Shopee '+String(data.categoryId||'não identificada')+
   ' · '+(data.attributes||[]).filter(x=>x.mandatory&&!x.conditional).length+
-  ' atributos obrigatórios ativos · '+(data.attributes||[]).length+' campos retornados pela API.'));
+  ' atributos obrigatórios ativos · '+(data.attributes||[]).filter(x=>!x.conditional).length+
+  ' campos aplicáveis. Dependências inativas ficam ocultas.'));
  $('#optimizerTechnicalRefresh').hidden=!(data.attributes||[]).some(x=>x.parentId);
  // Campos já cadastrados ou com sugestão comprovada ficam somente na prévia.
  const optionalDetails=optimizerMake('details','optimizer-tech-optional');
@@ -6612,6 +6613,9 @@ function optimizerTechnicalRender(data){
  optionalDetails.append(optionalSummary);
  let optionalMissing=0,autoHidden=0,requiredMissing=0;
  for(const attr of data.attributes||[]){
+  // Children listed by the API but not activated by the current parent choice
+  // are not fields to review and must not appear with a misleading "*" marker.
+  if(attr.conditional)continue;
   const name=attr.name||'Atributo '+attr.id,type=Number(attr.inputType),custom=[2,3,5].includes(type),multi=[4,5].includes(type);
   const field=optimizerMake('fieldset','optimizer-attribute');field.dataset.attributeId=String(attr.id);
   field.append(optimizerMake('legend','',optimizerTechLabel(name)+(attr.mandatory?' *':'')));
@@ -6620,7 +6624,6 @@ function optimizerTechnicalRender(data){
   field.append(optimizerMake('small','',attr.conditional?'Condicional • depende do atributo pai':
     attr.mandatory?'Obrigatório na categoria '+data.categoryId:'Opcional na categoria '+data.categoryId));
   wrap.append(field);
-  if(attr.conditional){field.append(optimizerMake('p','','Campo dependente de outra opção da categoria.'));optionalDetails.append(field);optionalMissing++;continue;}
   if(![1,2,3,4,5].includes(type)&&!attr.options?.length){field.append(optimizerMake('p','','Campo existente sem esquema editável retornado pela Shopee.'));continue;}
   const suggested=(data.sourceFacts?.suggestions||[]).find(x=>Number(x.attributeId)===attr.id);
   const conflict=(data.sourceFacts?.conflicts||[]).find(x=>Number(x.attributeId)===attr.id);
@@ -6762,17 +6765,36 @@ function optimizerTechnicalRender(data){
  globalThis.RATechnicalStudio?.render?.(data);
 }
 function optimizerTechnicalValues(){
- return [...$('#optimizerTechnicalFields').querySelectorAll('fieldset')].filter(x=>x.querySelector('[data-attribute-enabled]')?.checked).map(field=>({
-  attributeId:Number(field.dataset.attributeId),evidence:field.querySelector('[data-evidence-for]').value.trim(),
-  values:[...field.querySelectorAll('[data-attribute-value]')].map(row=>{
-   const input=row.querySelector('[data-value-name]'),raw=input.value.trim(),selected=row.querySelector('[data-value-id]').value;
-   const attr=(optimizerWorkflowPlan?.attributes||[]).find(a=>Number(a.id)===Number(field.dataset.attributeId));
-   const official=selected!==''&&Number(selected)>0?(attr?.options||[]).find(o=>Number(o.id)===Number(selected)):null;
-   return {valueId:selected===''?-1:Number(selected),
-    valueName:official?.name||(input.type==='date'&&raw?String(Date.parse(raw+'T00:00:00Z')/1000):raw),
-    unit:row.querySelector('[data-value-unit]')?.value||''};
-  })
- }));
+ const metadata=optimizerWorkflowPlan?.attributes||[];
+ const same=(a,b)=>{
+  const normalized=rows=>(rows||[]).map(v=>{
+   const id=Number(v.valueId);
+   return id>0?'id:'+id:'value:'+String(v.valueName||'').trim()+':'+String(v.unit||'').trim();
+  }).sort();
+  const x=normalized(a),y=normalized(b);
+  return x.length===y.length&&x.every((v,i)=>v===y[i]);
+ };
+ return [...$('#optimizerTechnicalFields').querySelectorAll('fieldset[data-attribute-id]')]
+  .filter(field=>field.querySelector('[data-attribute-enabled]')?.checked)
+  .map(field=>{
+   const attributeId=Number(field.dataset.attributeId);
+   const attr=metadata.find(a=>Number(a.id)===attributeId);
+   if(!attr||attr.conditional)return null;
+   const values=[...field.querySelectorAll('[data-attribute-value]')].map(row=>{
+    const input=row.querySelector('[data-value-name]'),
+     raw=String(input?.value||'').trim(),
+     selected=row.querySelector('[data-value-id]')?.value??'';
+    const official=Number(selected)>0?(attr.options||[]).find(o=>Number(o.id)===Number(selected)):null;
+    return {valueId:selected===''?-1:Number(selected),
+     valueName:official?.name||(input?.type==='date'&&raw?String(Date.parse(raw+'T00:00:00Z')/1000):raw),
+     unit:row.querySelector('[data-value-unit]')?.value||''};
+   });
+   // Incomplete optional controls and values already live on Shopee are not edits.
+   // Server independently rechecks real mandatory fields after parent changes.
+   if(!values.length||values.some(v=>!(v.valueId>0||(v.valueId===0&&v.valueName.trim()))))return null;
+   if(same(values,attr.values))return null;
+   return {attributeId,evidence:field.querySelector('[data-evidence-for]')?.value.trim()||'',values};
+  }).filter(Boolean);
 }
 $('#optimizerTechnicalRefresh')?.addEventListener?.('click',async()=>{
  const w=optimizerWorkflowPlan,attributes=optimizerTechnicalValues(),btn=$('#optimizerTechnicalRefresh');if(!w)return;
