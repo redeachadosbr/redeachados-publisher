@@ -153,14 +153,28 @@ const variationStatus=(r,phase,key,label,kind='info')=>
  withExecutionEvent({...r,phase},key,label,kind);
 const modelError=(r,key,label)=>({state:'uncertain',result:variationStatus(r,r.phase,key,label,'warning'),
  lastError:label});
-const approvedModels=(plan,live)=>{
+export const approvedShopeeModels=(plan,live)=>{
  const options=plan.modelVariations?.options||[],models=live.models||[];
  if(!live.item?.has_model||models.length!==options.length)return null;
+ if(new Set(models.map(m=>String(m.model_id))).size!==models.length||
+    new Set(models.map(m=>String(m.model_sku))).size!==models.length)return null;
  const checked=options.map(o=>models.find(m=>String(m.model_sku)===String(o.sku)));
  if(checked.some(m=>!m||!Number.isSafeInteger(Number(m.model_id))||Number(m.model_id)<=0))
   return null;
+ if(checked.some((m,i)=>options[i].modelId&&String(m.model_id)!==String(options[i].modelId)))return null;
  return checked;
 };
+// A confirmação do anúncio-pai nunca substitui a leitura dos modelos.
+export function nextShopeePhaseAfterReadback(plan,{fiscalVerified=false}={}){
+ if(!fiscalVerified&&plan.modelVariations)return 'variation_ready';
+ if(!fiscalVerified&&plan.finalFiscal)return 'fiscal_ready';
+ return plan.commercialDiscount?(plan.modelVariations?'model_discount_ready':'discount_ready'):'verified';
+}
+export async function reconcileShopeeModelExecution(job,io){
+ if(job.state!=='uncertain'||!/^variation_|^model_discount_/.test(String(job.result?.phase||'')))
+  throw Error('Reconciliação de modelos exige uma etapa de variações com resultado incerto.');
+ return advanceShopeeModelStages(job,io,{readOnly:true});
+}
 const nextAfterModels=(plan,r)=>{
  if(plan.finalFiscal)return {state:'running',result:variationStatus({...r,variation:{...(r.variation||{}),status:'verified'},
     primaryVerified:true},'fiscal_ready','variation-verified',
@@ -176,27 +190,31 @@ const nextAfterModels=(plan,r)=>{
 const modelPrice=m=>Number((m.price_info||[])[0]?.original_price??m.original_price);
 const confirmedPromo=(approved,list)=>approved.every(m=>
  list.some(o=>String(o.model_id)===String(m.modelId)&&money(o.model_promotion_price)===money(m.promo)));
-async function advanceShopeeModelStages(job,io){
+async function advanceShopeeModelStages(job,io,{readOnly=false}={}){
  const plan=job.plan,r={...(job.result||{})},phase=String(r.phase||'');
  const specs=plan.modelVariations;
  if(!specs?.options?.length)throw Error('Plano de variações não confirmado.');
  if(phase==='variation_ready'||phase==='variation_media'||
     phase==='variation_updating'||phase==='variation_verifying'){
   const shop=await io.variationRead();
-  const found=approvedModels(plan,shop);
+  const found=approvedShopeeModels(plan,shop);
   if(found){
+   if(readOnly)return {state:'running',result:variationStatus(r,'variation_verifying',
+    'variant-readback','Modelos localizados. Retomando a conferência e o vínculo WeDrop sem recriar variações.'),delay:500};
    // Persistir SKUs WeDrop pelos model IDs oficiais é idempotente e
    // não modifica o marketplace.
    await io.variationLink(plan,found);
    return nextAfterModels(plan,r);
   }
-  if(shop.item?.has_model)
+  if(shop.item?.has_model||specs.alreadyCreated)
    return modelError(r,'models-mismatch','A Shopee possui modelos diferentes da prévia. Nenhum modelo foi sobrescrito.');
   if(['variation_updating','variation_verifying'].includes(phase)){
    if(Date.now()-Number(r.variationStartedAt||0)>120000)
     return modelError(r,'variation-timeout','A Shopee ainda não confirmou as variações. A solicitação NÃO será repetida.');
+   if(readOnly)return modelError(r,'variation-awaiting','A criação das variações ainda não foi confirmada pela Shopee. Nenhum envio foi repetido.');
    return {state:'running',result:{...r,phase:'variation_verifying'},delay:7000};
   }
+  if(readOnly)return {state:'running',result:r,delay:500};
   const ids=r.variationImageIds||[];
   if(ids.length<specs.options.length){
    const option=specs.options[ids.length];
@@ -222,7 +240,7 @@ async function advanceShopeeModelStages(job,io){
  const approved=plan.commercialDiscount?.snapshot;
  if(!approved)throw Error('Desconto do anúncio não foi autorizado na prévia.');
  const consent=plan.commercialDiscount?.allowPriceChange===true;
- const shop=await io.variationRead(),models=approvedModels(plan,shop);
+ const shop=await io.variationRead(),models=approvedShopeeModels(plan,shop);
  if(!models)return modelError(r,'models-gone','Os modelos mudaram antes da promoção. Nenhuma alteração foi enviada.');
  const rows=specs.options.map((o,i)=>({
   name:o.name,sku:o.sku,modelId:String(models[i].model_id),supplierSku:o.supplierSku,
@@ -243,13 +261,14 @@ async function advanceShopeeModelStages(job,io){
     'model-price-verified','Preços brutos das variações confirmados.'),delay:500};
   if(Date.now()-Number(r.modelPriceStartedAt||0)>90000)
    return modelError(r,'model-price-uncertain','Preço bruto ainda não confirmado. Não repetir alteração.');
+  if(readOnly)return modelError(r,'model-price-awaiting','A Shopee ainda não confirmou o preço bruto de todas as variações. Nenhum preço foi reenviado.');
   return {state:'running',result:{...r,phase:'model_discount_price_verifying'},delay:7000};
  }
  const promo=await io.variationPromotionRead(approved.discountId,plan.itemId);
  if(promo.status!=='ongoing'&&promo.status!=='upcoming')
   return modelError(r,'campaign-inactive','Campanha Minha Promoção não está válida.');
  const promoRows=promo.member?.model_list||[];
- if(confirmedPromo(rows,promoRows))
+ if(confirmedPromo(rows,promoRows)&&rows.every(x=>money(x.base)===money(approved.gross)))
   return {state:'verified',result:variationStatus({...r,verified:true,
    discount:{status:'verified'},variation:{status:'verified'}},'verified',
    'models-discount-verified','Desconto confirmado em todas as variações pela Shopee.','success'),
@@ -257,11 +276,13 @@ async function advanceShopeeModelStages(job,io){
  if(['model_discount_updating','model_discount_verifying'].includes(phase)){
   if(Date.now()-Number(r.modelDiscountStartedAt||0)>90000)
    return modelError(r,'model-discount-uncertain','A Shopee ainda não confirmou o desconto por modelo. Não repetir a promoção.');
+  if(readOnly)return modelError(r,'model-discount-awaiting','A Shopee ainda não confirmou preço e desconto em todas as variações. Nenhuma promoção foi reenviada.');
   return {state:'running',result:{...r,phase:'model_discount_verifying'},delay:7000};
  }
  if(rows.some(x=>money(x.base)!==money(approved.gross))){
   if(!consent||rows.some(x=>money(x.base)!==money(x.expectedBase)))
    return modelError(r,'variant-base-changed','Os preços das variações mudaram desde a prévia. Não aplicar promoção.');
+  if(readOnly)return {state:'running',result:r,delay:500};
   const checkpoint=variationStatus({...r,modelPriceStartedAt:Date.now()},
    'model_discount_price_updating','model-price-write','Enviando preço bruto autorizado aos modelos.');
   await io.beforeWrite(checkpoint);
@@ -275,6 +296,7 @@ async function advanceShopeeModelStages(job,io){
  }
  if(!['add','update'].includes(promo.action))
   return modelError(r,'promotion-state-unknown','A promoção não permite inclusão/atualização segura de modelos.');
+ if(readOnly)return {state:'running',result:r,delay:500};
  const checkpoint=variationStatus({...r,modelDiscountStartedAt:Date.now()},
   'model_discount_updating','model-promotion-write','Aplicando promoção autorizada para todos os modelos.');
  await io.beforeWrite(checkpoint);

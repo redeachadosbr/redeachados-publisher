@@ -47,7 +47,8 @@ import {compileShopeeExecutionPlan,confirmShopeeExecution,
 import {readShopeeExecution,saveShopeePreparedExecution,
   claimShopeePreparedExecution,finishShopeeExecution,pendingShopeeExecutions,leaseShopeeExecution,
   checkpointShopeeExecution,reconcileShopeeJob} from './shopeeExecutionStore.js';
-import {advanceShopeeExecution} from './shopeeExecutionWorker.js';
+import {advanceShopeeExecution,approvedShopeeModels,reconcileShopeeModelExecution,
+ nextShopeePhaseAfterReadback} from './shopeeExecutionWorker.js';
 import {shopeeExecutionProgress,withExecutionEvent} from './shopeeExecutionProgress.js';
 import {recyclableShopeeMedia,archiveShopeeMedia} from './shopeeExecutionMediaReuse.js';
 import {normalizedShopeeFiscalBatchSkus,checkedShopeeFiscalBatchEntries} from './shopeeExecutionBatch.js';
@@ -1312,6 +1313,35 @@ async function shopeeLiveEditableItem(cfg,auth,itemId){
   if(!x)throw Error('O anúncio não pôde ser confirmado na Shopee.');
   return x;
 }
+async function shopeeLiveVariationState(cfg,auth,itemId,knownItem=null){
+ const item=knownItem||await shopeeLiveEditableItem(cfg,auth,itemId);
+ const models=item.has_model?(await callShopeeShopApi(cfg,{
+  path:'/api/v2/product/get_model_list',accessToken:auth.accessToken,shopId:auth.shopId,
+  query:{item_id:Number(itemId)}})).response?.model||[]:[];
+ return {item,models};
+}
+async function prepareExecutionVariations({auth,cfg,sku,itemId,modelId},reviewState,live){
+ if(!reviewState.variationDetails)throw Error('Configure as variações reais e suas fotos antes da prévia única.');
+ const details=validateVariationDetails(reviewState.variationDetails,{requirePhotos:!live.has_model});
+ if(details.options.length<2)throw Error('A execução automática exige a opção original e pelo menos uma variação.');
+ if(!live.has_model&&details.options.some(o=>!variantAssetBelongsTo(o.asset,auth,itemId,modelId)))
+  throw Error('Alguma foto de variação não pertence a este anúncio.');
+ const source=await verifiedVariationSupplierCosts({auth,sku,itemId,modelId},details);
+ const prepared={type:details.type,alreadyCreated:live.has_model===true,
+  options:details.options.map(o=>({...o,cost:source.find(s=>s.sku===o.sku)?.unitCost||null}))};
+ if(prepared.options.some(o=>!o.cost))throw Error('Custo WeDrop não confirmado para todas as opções.');
+ if(live.has_model){
+  const current=approvedShopeeModels({modelVariations:prepared},
+   await shopeeLiveVariationState(cfg,auth,itemId,live));
+  if(!current)throw Error('Modelos diferentes das variações aprovadas. Refaça a prévia.');
+  prepared.options=prepared.options.map((o,i)=>{
+   const price=Number(current[i].price_info?.[0]?.original_price??current[i].original_price);
+   if(!Number.isFinite(price)||price<=0)throw Error('Preço atual não confirmado para '+o.name+'.');
+   return {...o,price,modelId:String(current[i].model_id)};
+  });
+ }
+ return prepared;
+}
 app.post('/api/shopee/optimizer/execution/prepare',mustLogin,requireWeDropAdmin,async(req,res)=>{
   res.setHeader('Cache-Control','no-store');
   if(!verifiedSameOrigin(req))return res.status(403).json({error:'Origem não autorizada.'});
@@ -1339,16 +1369,8 @@ app.post('/api/shopee/optimizer/execution/prepare',mustLogin,requireWeDropAdmin,
     // Variações conferidas são parte da execução completa, nunca um envio
     // manual em outra tela. Dados e custos vêm do rascunho salvo da SKU.
     let modelVariations=null;
-    if(selectedStage==='all'&&reviewState.variationConfig?.enabled===true){
-     if(!reviewState.variationDetails)throw Error('Configure as variações reais e suas fotos antes da prévia única.');
-     const details=validateVariationDetails(reviewState.variationDetails,{requirePhotos:!live.has_model});
-     if(details.options.length<2)throw Error('A execução automática exige a opção original e pelo menos uma variação.');
-     const source=await verifiedVariationSupplierCosts({auth,sku,itemId,modelId},details);
-     modelVariations={type:details.type,alreadyCreated:live.has_model===true,
-      options:details.options.map(option=>({
-      ...option,cost:source.find(o=>o.sku===option.sku)?.unitCost||null}))};
-     if(modelVariations.options.some(o=>!o.cost))throw Error('Custo WeDrop não confirmado para todas as opções.');
-    }
+    if(selectedStage==='all'&&reviewState.variationConfig?.enabled===true)
+     modelVariations=await prepareExecutionVariations({auth,cfg,sku,itemId,modelId},reviewState,live);
     let autoModelDiscountToken=null,autoModelDiscountPreview=null;
     if(modelVariations){
      const campaignId=String(req.body?.campaignId||reviewState.modelDiscountCampaignId||'').trim();
@@ -1794,13 +1816,8 @@ app.post('/api/shopee/optimizer/execution/execute',mustLogin,requireWeDropAdmin,
    omitFiscal:false,selectedStage:plan.selectedStage||'all',
    allowDiscountOnly:plan.discountOnly===true,
    modelVariations:plan.modelVariations?
-    await (async()=>{
-     const details=validateVariationDetails(reviewState.variationDetails,{requirePhotos:!live.has_model});
-     const supplier=await verifiedVariationSupplierCosts({auth,sku,itemId,modelId},details);
-     return {type:details.type,alreadyCreated:live.has_model===true,options:details.options.map(o=>({
-      ...o,cost:supplier.find(x=>x.sku===o.sku)?.unitCost||null})),
-      promotion:plan.modelVariations.promotion};
-    })():null});
+    {...await prepareExecutionVariations({auth,cfg,sku,itemId,modelId},reviewState,live),
+     promotion:plan.modelVariations.promotion}:null});
   if(fresh.fingerprint!==plan.fingerprint||!fresh.canExecute)throw Error('Conteúdo ou aprovação mudou. Prepare novamente.');
   await claimShopeePreparedExecution(auth.shopId,itemId,modelId,{
    planId:plan.planId,updatedAt:job.updated_at,runId:crypto.randomUUID(),commercialDiscount});
@@ -1822,11 +1839,28 @@ app.post('/api/shopee/optimizer/execution/reconcile',mustLogin,requireWeDropAdmi
   const phase=String(job.result?.phase||'');
   const fiscalPhase=/^fiscal_|^verified_partial$/.test(phase);
   const discountPhase=/^discount_/.test(phase);
-  const verified=discountPhase?false:fiscalPhase?
+  const modelPhase=/^variation_|^model_discount_/.test(phase);
+  const verified=discountPhase||modelPhase?false:fiscalPhase?
     verifyShopeeFiscalExecution(job.plan,live,job.result||{}):
     verifyShopeeExecution(job.plan,live,job.result||{});
-  let updated=job,recoveryReady=false,recoveryDetails=null;
-  if(discountPhase&&job.plan?.commercialDiscount){
+  let updated=job,recoveryReady=false,recoveryDetails=null,modelPending='';
+  if(modelPhase){
+   const outcome=await reconcileShopeeModelExecution(job,{
+    variationRead:()=>shopeeLiveVariationState(cfg,auth,itemId,live),
+    variationCost:supplierSku=>shopeePricingDirectSupplierCost(auth.shopId,supplierSku),
+    variationPromotionRead:async(discountId,targetItemId)=>{
+     const d=await readDiscountPages(callShopeeShopApi,{cfg,auth,discountId});
+     const member=promotionMember(d.pages,targetItemId);
+     return {status:String(d.record?.status||'').toLowerCase(),member,action:member?'update':'add'};
+    }
+   });
+   if(outcome.state==='uncertain')modelPending=outcome.lastError;
+   else{
+    updated=await reconcileShopeeJob(job,outcome);
+    if(outcome.state==='running')void runOptimizerJobs();
+   }
+  }
+  else if(discountPhase&&job.plan?.commercialDiscount){
    const approved=job.plan.commercialDiscount.snapshot;
    const snap=(await discountExecutionInputs(req,sku,itemId,modelId,approved.discountId)).snapshot;
    if(snap.action==='already'&&Math.abs(Number(snap.originalPrice)-Number(approved.gross))<0.011&&
@@ -1839,8 +1873,7 @@ app.post('/api/shopee/optimizer/execution/reconcile',mustLogin,requireWeDropAdmi
   else if(verified){
     await rememberPublishedVideo(job.plan,job.result||{});
     await rememberPublishedImages(job.plan,job.result||{});
-    const next=fiscalPhase?(job.plan.commercialDiscount?'discount_ready':'verified'):
-      job.plan.finalFiscal?'fiscal_ready':job.plan.commercialDiscount?'discount_ready':'verified';
+    const next=nextShopeePhaseAfterReadback(job.plan,{fiscalVerified:fiscalPhase});
     updated=await reconcileShopeeJob(job,{state:next==='verified'?'verified':'running',
      result:withExecutionEvent({...job.result,phase:next,primaryVerified:true,
        ...(fiscalPhase?{fiscal:{status:'verified'}}:{})},
@@ -1886,7 +1919,8 @@ app.post('/api/shopee/optimizer/execution/reconcile',mustLogin,requireWeDropAdmi
     updated=await reconcileShopeeJob(job,{state:'failed',result:{...job.result,phase:'retry_allowed'},
       lastError:'Leitura confirmou os valores anteriores. Uma nova prévia e aprovação são necessárias.'});
   }
-  const pending=updated.state==='uncertain'?shopeeExecutionUnconfirmedFields(job.plan,live,job.result||{}):[];
+  const pending=updated.state==='uncertain'?(modelPhase?[modelPending||'Variações aguardando confirmação individual.']:
+   shopeeExecutionUnconfirmedFields(job.plan,live,job.result||{})):[];
   res.json({ok:true,job:updated,recoveryReady,recoveryDetails,progress:shopeeExecutionProgress(updated),
     issue:detectShopeeExecutionIssue(updated.last_error,updated.plan),
     pendingChecks:pending,verified:updated.state==='verified',
@@ -1918,13 +1952,7 @@ async function runOptimizerJobs(){
       update:body=>callShopeeShopApi(cfg,{...common,path:'/api/v2/product/update_item',method:'POST',body}),
       // Fases duráveis por variação: biblioteca de mídia, UMA criação de
       // modelos, leitura por modelo, NCM, preço e campanha como etapas distintas.
-      variationRead:async()=>{
-       const item=await shopeeLiveEditableItem(cfg,auth,job.item_id);
-       const models=item.has_model?(await callShopeeShopApi(cfg,{
-        ...common,path:'/api/v2/product/get_model_list',query:{item_id:Number(job.item_id)}
-       })).response?.model||[]:[];
-       return {item,models};
-      },
+      variationRead:()=>shopeeLiveVariationState(cfg,auth,job.item_id),
       variationImage:async asset=>{
        const file=await variationImageBytes(asset);
        return createShopeeMediaApi(cfg,auth).image(file,asset.mime);
@@ -2853,11 +2881,9 @@ async function discountExecutionInputs(req,sku,itemId,modelId,discountId,{allowM
   throw Error('Não foi possível confirmar se o anúncio possui variações. Nada foi enviado.');
  let originalPrice;
  if(live.has_model&&allowModels&&expectedModels){
-  const list=(await callShopeeShopApi(cfg,{
-   path:'/api/v2/product/get_model_list',accessToken:auth.accessToken,shopId:auth.shopId,
-   query:{item_id:Number(itemId)}})).response?.model||[];
-  if(list.length!==expectedModels.options.length||
-     expectedModels.options.some(o=>!list.some(m=>String(m.model_sku)===o.sku)))
+  const list=approvedShopeeModels({modelVariations:expectedModels},
+   await shopeeLiveVariationState(cfg,auth,itemId,live));
+  if(!list)
    throw Error('Modelos diferentes das variações aprovadas. Refaça a prévia.');
   originalPrice=Number((list[0]?.price_info||[])[0]?.original_price??list[0]?.original_price);
   if(!Number.isFinite(originalPrice)||originalPrice<=0)

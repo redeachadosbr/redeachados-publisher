@@ -4036,12 +4036,13 @@ function optimizerExecRender(data){
    if(plan.images?.length)optimizerExecRow(changes,'Imagens: substituir pela sequência de nove imagens revisadas.','action');
    if(plan.video)optimizerExecRow(changes,'Vídeo: '+plan.video.filename+' · validar, enviar, processar e confirmar no anúncio.','action');
    if(plan.modelVariations){
-    optimizerExecRow(changes,'ETAPA 06 · Criar e confirmar automaticamente as '+
+    optimizerExecRow(changes,'ETAPA 06 · '+(plan.modelVariations.alreadyCreated?'Reconhecer e confirmar':'Criar e confirmar')+' automaticamente as '+
      plan.modelVariations.options.length+' variações na Shopee.','heading');
     for(const option of plan.modelVariations.options)optimizerExecRow(changes,
      '• '+option.name+' · SKU Shopee '+option.sku+' · WeDrop '+option.supplierSku+
      ' · custo '+shPriceMoney(option.cost)+' · preço atual '+shPriceMoney(option.price)+
-     ' · foto conferida · estoque '+option.stock,'action');
+     (plan.modelVariations.alreadyCreated?' · fotos e estoque já cadastrados na Shopee':
+      ' · foto conferida · estoque '+option.stock),'action');
    }
    if(plan.finalFiscal){
     optimizerExecRow(changes,'ETAPA FINAL 07 · Informações fiscais após confirmação do anúncio comercial.','heading');
@@ -4437,16 +4438,19 @@ try{
 let optimizerAutoReadbackRecoveryKey='';
 function optimizerExecutionAutoRecoverStale(job){
  const w=optimizerWorkflowPlan;
- if(!w||job?.state!=='uncertain'||!['updating','verifying'].includes(String(job.result?.phase||''))||
-  String(job.sku)!==String(w.sku)||String(job.item_id)!==String(w.itemId))return;
+ const phase=String(job?.result?.phase||'');
+ const modelPhase=/^variation_|^model_discount_/.test(phase);
+ if(!w||job?.state!=='uncertain'||(!modelPhase&&!/^fiscal_|^discount_/.test(phase)&&!['updating','verifying'].includes(phase))||
+  String(job.sku)!==String(w.sku)||String(job.item_id)!==String(w.itemId)||
+  String(job.model_id||0)!==String(w.modelId||0))return;
  const updated=Math.max(Date.parse(job.updated_at||'')||0,
   Number(job.result?.updateStartedAt||0));
  if(!updated||Date.now()-updated<180000)return;
  const key=[w.sku,w.itemId,w.modelId,job.updated_at].join('|');
  if(optimizerAutoReadbackRecoveryKey===key)return;
  optimizerAutoReadbackRecoveryKey=key;
- // Leitura de recuperação uma só vez para esta execução antiga. Não realiza
- // update_item, publicação de desconto ou reenvio de imagens/vídeo.
+ // Reconciliação uma vez por versão. Escritas com resultado incerto não são
+ // repetidas; as próximas etapas da execução já autorizada podem prosseguir.
  void (async()=>{
   try{
    const data=await json('/api/shopee/optimizer/execution/reconcile',{
@@ -4454,17 +4458,24 @@ function optimizerExecutionAutoRecoverStale(job){
     body:JSON.stringify({sku:w.sku,itemId:w.itemId,modelId:w.modelId,recover:true}),
     signal:AbortSignal.timeout(65000)
    });
-   if(optimizerWorkflowPlan?.sku!==w.sku||String(optimizerWorkflowPlan?.itemId)!==String(w.itemId))return;
+   if(optimizerWorkflowPlan?.sku!==w.sku||String(optimizerWorkflowPlan?.itemId)!==String(w.itemId)||
+    String(optimizerWorkflowPlan?.modelId||0)!==String(w.modelId||0))return;
    if(data.recoveryReady){
     optimizerExecutionJobView(data.job,data.progress,data.issue);
     optimizerExecNotice('Recuperação automática: duas leituras da Shopee confirmaram o estado atual. Preparando apenas os campos pendentes, sem repetir envios.','success');
     await optimizerExecutionPrepare();
    }else if(data.job?.state!=='uncertain'){
     optimizerExecutionJobView(data.job,data.progress,data.issue);
+    if(data.job?.state==='running'){
+     if(optimizerExecPoll)clearTimeout(optimizerExecPoll);
+     optimizerExecPoll=setTimeout(()=>void optimizerExecutionRefresh(true),500);
+    }
+   }else if(data.pendingChecks?.length){
+    optimizerExecNotice(data.pendingChecks.join('; '),'warning');
    }
   }catch(error){
    if(optimizerWorkflowPlan?.sku===w.sku)
-    optimizerExecNotice('A recuperação automática não conseguiu confirmar duas leituras estáveis: '+
+    optimizerExecNotice('A recuperação automática não conseguiu confirmar a etapa na Shopee: '+
      error.message+'. Use Conferir e destravar execução para tentar novamente; nenhum envio foi repetido.','warning');
   }
  })();
@@ -4558,9 +4569,11 @@ async function optimizerExecutionRefresh(poll=false){
   optimizerExecutionJobView(data.job,data.progress,data.issue);
   if(data.job?.state==='uncertain'&&data.issue?.code==='CEST_REQUIRED')
    void optimizerExecutionSafeRecoverCest(data.job,w);
-  if(data.job?.state==='running'){
+  const awaitingReadback=data.job?.state==='uncertain'&&
+   Date.now()-(Date.parse(data.job.updated_at||'')||0)<180000;
+  if(data.job?.state==='running'||awaitingReadback){
    if(optimizerExecPoll)clearTimeout(optimizerExecPoll);
-   optimizerExecPoll=setTimeout(()=>void optimizerExecutionRefresh(true),4000);
+   optimizerExecPoll=setTimeout(()=>void optimizerExecutionRefresh(true),awaitingReadback?15000:4000);
   }
   return data.job;
  }catch(e){

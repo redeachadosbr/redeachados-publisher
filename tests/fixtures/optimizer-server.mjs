@@ -4,7 +4,10 @@ const nativeFetch=globalThis.fetch;
 const send=x=>new Response(JSON.stringify(x),{headers:{'Content-Type':'application/json'}});
 const listing={item_id:2,item_name:'Título atual',item_sku:'SKU',item_status:'NORMAL',category_id:3,
  description:'Descrição atual do produto com as características já confirmadas pelo fornecedor.',description_type:'normal',has_model:false,image:{image_id_list:[]},video_info:[]};
-let job=null;
+let job=process.env.FIXTURE_RECOVERY_JOB?JSON.parse(process.env.FIXTURE_RECOVERY_JOB):null;
+const fixtureModels=JSON.parse(process.env.FIXTURE_MODELS||'[]');
+if(fixtureModels.length)listing.has_model=true;
+listing.tax_info=JSON.parse(process.env.FIXTURE_TAX||'{}');
 const sessions=new Map();
 globalThis.fetch=async(url,request={})=>{
  const u=new URL(url);
@@ -22,6 +25,7 @@ globalThis.fetch=async(url,request={})=>{
   if(u.pathname==='/rest/v1/shopee_optimizer_workflow_reviews')return send([{sku:'SKU',review_state:{stages:{seo:{reviewed:true}},draftTitle:approvedTitle}}]);
   if(u.pathname==='/rest/v1/shopee_optimizer_execution_jobs'){
    if(request.method==='POST'){job=JSON.parse(request.body)[0];return send([job]);}
+   if(request.method==='PATCH'){Object.assign(job,JSON.parse(request.body));return send([job]);}
    if(u.searchParams.get('state')==='eq.running')return send([]);
    return send(job?[job]:[]);
   }
@@ -30,6 +34,7 @@ globalThis.fetch=async(url,request={})=>{
  if(u.hostname==='partner.shopeemobile.com'){
   if(request.method==='POST')throw Error('Unexpected external mutation in preflight test');
   if(u.pathname.endsWith('/get_item_base_info'))return send({response:{item_list:[listing]}});
+  if(u.pathname.endsWith('/get_model_list'))return send({response:{model:fixtureModels}});
   if(u.pathname.endsWith('/get_attribute_tree'))return send({response:{list:[{category_id:3,attribute_tree:[]}]}});
   return send({response:{}});
  }

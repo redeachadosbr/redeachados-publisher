@@ -127,7 +127,8 @@ export function compileShopeeExecutionPlan({shopId,itemId,modelId,sku,record,rev
     selectedStage,discountOnly,modelVariations:modelVariations?{
      type:modelVariations.type,alreadyCreated:modelVariations.alreadyCreated===true,
      options:modelVariations.options.map(x=>({name:x.name,sku:x.sku,
-      supplierSku:x.supplierSku,cost:x.cost,price:x.price,stock:x.stock,sha256:x.asset?.sha256})),
+      supplierSku:x.supplierSku,modelId:x.modelId||null,cost:x.cost,price:x.price,stock:x.stock,
+      gtin:x.gtin||'',noGtin:x.noGtin===true,sha256:x.asset?.sha256})),
      promotion:modelVariations.promotion||null}:null,
     from:{item_name:currentTitle,description:currentDescription,description_type:currentType},
     to:proposed,finalFiscal,fiscalDeferred,

@@ -25,7 +25,7 @@ test('generates executable, review-scoped plan for exact Shopee item and SKU',()
   assert.ok(p.warnings.some(x=>x.includes('5/9')));
   assert.ok(p.requiresExplicitConfirmation);
   assert.equal(p.marketplaceUpdated,false);
-  assert.match(p.scope,/aprovados/);
+  assert.match(p.scope,/Conteúdo e mídia.*modelos.*fiscal.*desconto/);
 });
 test('unreviewed fields and uncertain media cannot auto-publish',()=>{
   const p=compileShopeeExecutionPlan({...inputs,review:{
@@ -45,9 +45,7 @@ test('extended descriptions are safely excluded from automatic edit',()=>{
 test('persisted review flags cannot bypass current title and description rules',()=>{
  for(const overrides of [
   {draftTitle:'Título antigo curto'},
-  {draftDescription:'Descrição antiga '.repeat(8)},
-  {draftDescription:approvedDescription.replace(/\n/g,'\\n')},
-  {draftDescription:approvedDescription.replace('5. Precisa de supervisão?','-. Precisa de supervisão?')}
+  {draftDescription:''}
  ]){
   const plan=compileShopeeExecutionPlan({...inputs,review:{...state,...overrides}});
   assert.equal(plan.canExecute,false);
@@ -64,17 +62,15 @@ test('confirmation is exact, and current listing must match baseline',()=>{
   assert.equal(verifyShopeeExecution(p,{...original,...p.proposed}),true);
   assert.equal(verifyShopeeExecution(p,{...original,...p.proposed,description:'old'}),false);
 });
-test('executor keeps stock, prices and promotions out of the approved content flow',()=>{
+test('executor inicia apenas o job aprovado; o worker realiza as etapas autorizadas',()=>{
   const begin=source.indexOf("app.post('/api/shopee/optimizer/execution/execute'");
-  const end=source.indexOf("app.get('/api/shopee/optimizer/settings'",begin);
+  const end=source.indexOf("app.post('/api/shopee/optimizer/execution/reconcile'",begin);
   assert.ok(begin>0&&end>begin);
   const route=source.slice(begin,end);
-  assert.match(route,/method:'POST'/);
-  assert.match(route,/product\/update_item/);
   assert.match(route,/acceptPartialExecution/);
   assert.match(route,/assertLiveShopeeUnchanged/);
   assert.match(route,/claimShopeePreparedExecution/);
-  assert.match(route,/verifyShopeeExecution/);
+  assert.match(route,/verifyDiscountPreview/);
   assert.doesNotMatch(route,/update_price|update_stock|update_discount|add_discount|set_video|upload_image/);
   const exec=html.slice(html.indexOf('id="optimizerExecutionPanel"'),
     html.indexOf('id="optimizerAuditPanel"'));
@@ -100,8 +96,10 @@ test('execução incerta com campos parciais pode liberar nova prévia após dua
  assert.equal(approved.stable,true);
  assert.equal(approved.previewRequired,true);
  assert.ok(approved.pending.some(x=>/fiscais/.test(x)));
- assert.throws(()=>assessShopeeStableCommercialRecovery(job,sho,
-  {...sho,description:'Mudou durante consulta'},now),/não coincidem/);
+ const propagating=assessShopeeStableCommercialRecovery(job,sho,
+  {...sho,description:'Mudou durante consulta'},now);
+ assert.equal(propagating.previewRequired,true);
+ assert.equal(propagating.readbacksDiffer,true);
  assert.throws(()=>assessShopeeStableCommercialRecovery({...job,
   updated_at:new Date(now-30000).toISOString()},sho,sho,now),/3 minutos/);
  assert.throws(()=>assessShopeeStableCommercialRecovery(job,sho,

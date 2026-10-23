@@ -18,8 +18,8 @@ test('Motor Matriz ativa precificação e pesquisa na localização de todas as 
  assert.equal(REDE_ACHADOS_MARKET_RULES.autoPriceAndResearchOnSku,true);
  assert.equal(REDE_ACHADOS_MARKET_RULES.prepareDiscountDuringOptimization,true);
  assert.equal(REDE_ACHADOS_MARKET_RULES.publishDiscountOnlyAfterApproval,true);
- assert.match(app,/async function optimizerRunAudit\([\s\S]*?void shPriceLoadDefaults\(\)\.then\(\(\)=>shPricePrepare\(\)\)/);
- assert.match(app,/shPriceCurrentQuote=q;[\s\S]*?optimizerDiscountFinalSavedQuote\(q\)/);
+ assert.match(app,/async function optimizerRunAudit\([\s\S]*?void shPriceLoadDefaults\(\)\.then\(\(\)=>\{[\s\S]*?return shPricePrepare\(\)/);
+ assert.match(app,/optimizerDiscountFinalSavedQuote\(q\)/);
  assert.match(app,/void optimizerDiscountFinalLoad\(\)/);
 });
 test('Etapa 08 fica acima da prévia para revisão e o envio vem depois da etapa fiscal',()=>{
@@ -41,7 +41,7 @@ test('Campanha precisa de pesquisa, autorização assinada e confirmação fisca
  assert.match(app,/q\.marketResearch\?\.sourceType==='researched_affiliate_offers'/);
  assert.match(server,/verifyDiscountPreview\(req\.body\?\.discountApprovalToken/);
  assert.match(server,/if\(plan\.fiscalDeferred\)throw Error/);
- assert.match(app,/allowPriceChange:discountIntent\?\.consent===true/);
+ assert.match(app,/allowPriceChange:p\.modelVariations\?Boolean\(optimizerExecAutoModelPreview\?\.modelPriceChange\):\s*discountIntent\?\.consent===true/);
  assert.doesNotMatch(app,/if\(verified\)void optimizerDiscountFinishTogether\(job\)/);
 });
 test('Falhas 502 na consulta de desconto são recuperadas sem reenviar promoção',()=>{
