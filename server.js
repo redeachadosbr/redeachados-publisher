@@ -42,7 +42,8 @@ import {buildStages,safeTitle,validateReview} from './shopeeOptimizationWorkflow
 import {composeShopeeDescription,isCommercialDescription,isGenericShopeeDescription} from './shopeeDescriptionComposer.js';
 import {getWorkflowReview,saveWorkflowReview,mergeWorkflowTechnicalAutofill} from './shopeeOptimizationWorkflowStore.js';
 import {compileShopeeExecutionPlan,confirmShopeeExecution,
-  assertLiveShopeeUnchanged,verifyShopeeExecution,verifyShopeeFiscalExecution,normalizeShopeeExecutionStage,shopeeExecutionUnconfirmedFields} from './shopeeExecutionPlan.js';
+  assertLiveShopeeUnchanged,verifyShopeeExecution,verifyShopeeFiscalExecution,normalizeShopeeExecutionStage,
+  shopeeExecutionUnconfirmedFields,assessShopeeStableCommercialRecovery} from './shopeeExecutionPlan.js';
 import {readShopeeExecution,saveShopeePreparedExecution,
   claimShopeePreparedExecution,finishShopeeExecution,pendingShopeeExecutions,leaseShopeeExecution,
   checkpointShopeeExecution,reconcileShopeeJob} from './shopeeExecutionStore.js';
@@ -1777,7 +1778,7 @@ app.post('/api/shopee/optimizer/execution/reconcile',mustLogin,requireWeDropAdmi
   const verified=discountPhase?false:fiscalPhase?
     verifyShopeeFiscalExecution(job.plan,live,job.result||{}):
     verifyShopeeExecution(job.plan,live,job.result||{});
-  let updated=job;
+  let updated=job,recoveryReady=false,recoveryDetails=null;
   if(discountPhase&&job.plan?.commercialDiscount){
    const approved=job.plan.commercialDiscount.snapshot;
    const snap=(await discountExecutionInputs(req,sku,itemId,modelId,approved.discountId)).snapshot;
@@ -1812,6 +1813,24 @@ app.post('/api/shopee/optimizer/execution/reconcile',mustLogin,requireWeDropAdmi
         'cest-confirmed-rejection','CEST pendente: a Shopee rejeitou a edição; o anúncio foi conferido sem reenvio.','warning'),
       lastError:job.last_error});
   }
+  else if(!fiscalPhase&&!discountPhase&&(req.body.recover===true||req.body.reprepare===true)){
+    // Conferência e liberação são SOMENTE leituras. O write antigo nunca é repetido.
+    // Duas observações Shopee após a janela de propagação permitem preparar
+    // uma nova prévia baseada no anúncio atual, mesmo parcialmente atualizado.
+    if(req.body.reprepare===true&&req.body.confirmation!=='REPREPARAR '+sku)
+     throw Error('Confirme REPREPARAR '+sku+'.');
+    await new Promise(resolve=>setTimeout(resolve,1600));
+    const confirmedAgain=await shopeeLiveEditableItem(cfg,auth,itemId);
+    recoveryDetails=assessShopeeStableCommercialRecovery(job,live,confirmedAgain);
+    const notes=recoveryDetails.pending;
+    const nextResult=withExecutionEvent({...job.result,phase:'retry_allowed',
+      recovery:{...recoveryDetails,kind:'stable_readback_no_write'}},
+      'stable-recovery','Shopee consultada duas vezes. Nova prévia liberada sem reenviar a atualização anterior.','success');
+    updated=await reconcileShopeeJob(job,{state:'failed',result:nextResult,
+      lastError:notes.length?'Nova prévia necessária: '+notes.join('; ').slice(0,175):
+        'Leitura estável. Refazer prévia apenas para o que estiver pendente.'});
+    recoveryReady=true;
+  }
   else if(req.body.reprepare===true){
     if(fiscalPhase)throw Error('Parte comercial já executada. O resultado fiscal precisa de conferência antes de outra tentativa.');
     if(req.body.confirmation!=='REPREPARAR '+sku)throw Error('Confirme REPREPARAR '+sku+'.');
@@ -1821,11 +1840,12 @@ app.post('/api/shopee/optimizer/execution/reconcile',mustLogin,requireWeDropAdmi
       lastError:'Leitura confirmou os valores anteriores. Uma nova prévia e aprovação são necessárias.'});
   }
   const pending=updated.state==='uncertain'?shopeeExecutionUnconfirmedFields(job.plan,live,job.result||{}):[];
-  res.json({ok:true,job:updated,progress:shopeeExecutionProgress(updated),
+  res.json({ok:true,job:updated,recoveryReady,recoveryDetails,progress:shopeeExecutionProgress(updated),
     issue:detectShopeeExecutionIssue(updated.last_error,updated.plan),
     pendingChecks:pending,verified:updated.state==='verified',
     message:updated.state==='verified'?'Todas as alterações confirmadas.':
       updated.state==='running'?'Leitura confirmada; prosseguindo com as próximas etapas.':
+      recoveryReady?'Execução antiga liberada com duas leituras estáveis. Gere nova prévia apenas das alterações pendentes. Nenhum envio foi repetido.':
       'Ainda não confirmado: '+pending.join('; ')+'. Nenhuma alteração foi reenviada.'});
  }catch(e){res.status(409).json({ok:false,error:String(e.message||e).slice(0,280)});}
 });
