@@ -1269,8 +1269,16 @@ app.post('/api/shopee/optimizer/workflow/review',mustLogin,requireWeDropAdmin,as
       // compileTax accepts an omitted CEST; it does not invent a substitute.
       compileTax(change.tax,{tax_info:{}});
     }else if(change.tax)compileTax(change.tax,{tax_info:{}});
-    if(change.stage==='description'&&change.description!==undefined)
-      change.descriptionOrigin='manual';
+    if(change.stage==='description'&&change.description!==undefined){
+      // Aprovar uma sugestão automática sem editar não é edição manual.
+      // Só a edição efetiva do vendedor deve impedir futura regeneração
+      // ao salvar novas informações da WeDrop.
+      const currentReview=await getWorkflowReview(auth.shopId,itemId,modelId);
+      const previous=currentReview?.sku===sku?currentReview.review_state||{}:{};
+      const same=String(previous.draftDescription||'')===String(change.description||'');
+      change.descriptionOrigin=same&&previous.descriptionOrigin==='auto-refreshed'
+        ?'auto-refreshed':'manual';
+    }
     if(change.stage==='seo'&&change.title!==undefined)
       change.titleOrigin='manual';
     const state=await saveWorkflowReview(auth.shopId,itemId,modelId,sku,change);
