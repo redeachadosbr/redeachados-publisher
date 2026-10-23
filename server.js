@@ -2135,15 +2135,25 @@ app.get('/api/shopee/optimizer/variants/draft',mustLogin,requireWeDropAdmin,asyn
    const candidates=[facts.ean,facts.EAN,facts.gtin,facts.GTIN,facts.barcode,facts.codigo_barras,facts.codigoDeBarras];
    supplierEan=candidates.map(v=>String(v??'').trim()).find(v=>/^\d{8,14}$/.test(v))||null;
   }catch{ /* mantém edição manual se fornecedor indisponível */ }
-  let suggestedPrice=null;
+  let suggestedPrice=null,liveHasModel=null,modelSkus=[];
   try{
    const live=await shopeeLiveEditableItem(x.cfg,x.auth,x.itemId);
+   liveHasModel=live.has_model===true;
    const priceRows=Array.isArray(live.price_info)?live.price_info:[live.price_info||{}];
    const candidates=[...priceRows.map(p=>p?.original_price),live.original_price,live.price];
    suggestedPrice=candidates.map(Number).find(p=>Number.isFinite(p)&&p>0)||null;
-  }catch{ /* não inventar preço quando a Shopee não fornecer */ }
-  res.json({ok:true,sku:x.sku,supplierEan,eanSource:supplierEan?'WeDrop':null,suggestedPrice,priceSource:suggestedPrice?'Shopee API':null,
-   details:{...draft,options},marketplaceUpdated:false});
+   if(liveHasModel){
+    const models=await callShopeeShopApi(x.cfg,{path:'/api/v2/product/get_model_list',
+      accessToken:x.auth.accessToken,shopId:x.auth.shopId,query:{item_id:Number(x.itemId)}});
+    modelSkus=(models.response?.model||[]).map(m=>String(m.model_sku||'')).filter(Boolean);
+   }
+  }catch{ /* não inventar informações se a Shopee não responder */ }
+  const expected=(draft.options||[]).map(o=>o.sku);
+  const allModelsConfirmed=liveHasModel===true&&expected.length>=2&&
+    expected.every(sku=>modelSkus.includes(sku));
+  res.json({ok:true,sku:x.sku,supplierEan,eanSource:supplierEan?'WeDrop':null,suggestedPrice,
+   priceSource:suggestedPrice?'Shopee API':null,liveHasModel,modelSkus,allModelsConfirmed,
+   details:{...draft,options},marketplaceUpdated:allModelsConfirmed});
  }catch(e){res.status(400).json({ok:false,error:String(e.message||e).slice(0,300)});}
 });
 app.post('/api/shopee/optimizer/variants/draft',mustLogin,requireWeDropAdmin,async(req,res)=>{
