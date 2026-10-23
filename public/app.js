@@ -6358,18 +6358,37 @@ function techKey(w,type){return ['ra-tech-draft-v1',w.shopId,w.itemId,w.modelId,
 function techCached(w,type){try{return JSON.parse(localStorage.getItem(techKey(w,type))||'null');}catch{return null;}}
 function techCache(w,type,data){try{localStorage.setItem(techKey(w,type),
  JSON.stringify({...data,updatedAt:new Date().toISOString()}));}catch{}}
+// Fonte padrão apenas para atributos simples confirmados pelo próprio vendedor.
+// O valor do país de fabricação nunca é escolhido a partir do país da loja.
+function optimizerSellerDeclaredEvidence(meta,values,current=''){
+ const evidence=String(current||'').trim();
+ if(evidence)return evidence;
+ const name=String(meta?.name||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'')
+   .toLowerCase().replace(/\s+/g,' ').trim();
+ if(!['pais ou regiao de origem','country or region of origin','country of origin',
+   'quantidade','quantity'].includes(name))return '';
+ if(!Array.isArray(values)||!values.length||values.some(v=>{
+   const id=Number(v?.valueId);
+   return !(id>0||(id===0&&String(v?.valueName??'').trim()));
+ }))return '';
+ return 'Informado e confirmado pelo vendedor';
+}
 function techFieldsSnapshot(){
- return [...$('#optimizerTechnicalFields').querySelectorAll('fieldset[data-attribute-id]')].map(f=>({
-  attributeId:Number(f.dataset.attributeId),
-  enabled:Boolean(f.querySelector('[data-attribute-enabled]')?.checked),
-  userDisabled:f.dataset.userDisabled==='true',
-  evidence:String(f.querySelector('[data-evidence-for]')?.value||''),
-  values:[...f.querySelectorAll('[data-attribute-value]')].map(row=>({
-   valueId:Number(row.querySelector('[data-value-id]')?.value||-1),
+ const metadata=optimizerWorkflowPlan?.attributes||[];
+ return [...$('#optimizerTechnicalFields').querySelectorAll('fieldset[data-attribute-id]')].map(f=>{
+  const attributeId=Number(f.dataset.attributeId);
+  const values=[...f.querySelectorAll('[data-attribute-value]')].map(row=>({
+   valueId:Number(row.querySelector('[data-value-id]')?.value??-1),
    valueName:String(row.querySelector('[data-value-name]')?.value||''),
    unit:String(row.querySelector('[data-value-unit]')?.value||'')
-  }))
- }));
+  }));
+  const source=f.querySelector('[data-evidence-for]');
+  const evidence=optimizerSellerDeclaredEvidence(metadata.find(a=>Number(a.id)===attributeId),
+    values,source?.value);
+  if(source&&evidence&&!source.value.trim())source.value=evidence;
+  return {attributeId,enabled:Boolean(f.querySelector('[data-attribute-enabled]')?.checked),
+   userDisabled:f.dataset.userDisabled==='true',evidence,values};
+ });
 }
 function techFieldSend(w,fields){
  techFieldQueue=techFieldQueue.catch(()=>{}).then(async()=>{
@@ -6801,7 +6820,11 @@ function optimizerTechnicalRender(data){
   if(multi){const add=optimizerMake('button','secondary','Adicionar valor');add.type='button';
    add.onclick=()=>{if(rows.children.length<(Number(attr.maxValues)>0?Number(attr.maxValues):20))addRow();};controls.append(add);}
   const evidence=optimizerMake('input');evidence.type='text';evidence.maxLength=500;evidence.placeholder='Fonte: ficha WeDrop, fabricante ou nota';
-  evidence.dataset.evidenceFor=String(attr.id);evidence.setAttribute('aria-label',optimizerTechLabel(name)+' — fonte');evidence.value=existing?.evidence||'';
+  evidence.dataset.evidenceFor=String(attr.id);evidence.setAttribute('aria-label',optimizerTechLabel(name)+' — fonte');
+  evidence.value=optimizerSellerDeclaredEvidence(attr,existing?.values||[],existing?.evidence||'');
+  if(evidence.value==='Informado e confirmado pelo vendedor'){
+    evidence.title='Fonte declarada por você. Valor do país ou quantidade definido no campo acima; não inferido pelo sistema.';
+  }
   evidence.oninput=()=>optimizerExecReset();controls.append(evidence);
   enabled.onchange=()=>{field.dataset.userDisabled=(!enabled.checked).toString();controls.hidden=!enabled.checked;optimizerExecReset();};
  }
@@ -6845,7 +6868,10 @@ function optimizerTechnicalValues(){
    // Server independently rechecks real mandatory fields after parent changes.
    if(!values.length||values.some(v=>!(v.valueId>0||(v.valueId===0&&v.valueName.trim()))))return null;
    if(same(values,attr.values))return null;
-   return {attributeId,evidence:field.querySelector('[data-evidence-for]')?.value.trim()||'',values};
+   const source=field.querySelector('[data-evidence-for]');
+   const evidence=optimizerSellerDeclaredEvidence(attr,values,source?.value);
+   if(source&&evidence&&!source.value.trim())source.value=evidence;
+   return {attributeId,evidence,values};
   }).filter(Boolean);
 }
 $('#optimizerTechnicalRefresh')?.addEventListener?.('click',async()=>{
