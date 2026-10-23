@@ -1,5 +1,5 @@
-import {assertLiveShopeeUnchanged,verifyShopeeExecution,verifyShopeeFiscalExecution} from './shopeeExecutionPlan.js';
-import {sameData} from './shopeeStructuredFields.js';
+import {assertLiveShopeeUnchanged,verifyShopeeExecution,verifyShopeeFiscalExecution,videoMatches} from './shopeeExecutionPlan.js';
+import {sameData,fieldsVerified} from './shopeeStructuredFields.js';
 import {advanceVideoUpload} from './shopeeMediaApi.js';
 import {withExecutionEvent} from './shopeeExecutionProgress.js';
 import {isDefinitiveShopeeRejection} from './shopeeExecutionIssues.js';
@@ -112,6 +112,16 @@ export async function advanceShopeeExecution(job,io){
    {state:'running',result:done,delay:500};
  }
  assertLiveShopeeUnchanged(plan,currentItem);
+ // A biblioteca pode ter os IDs exatos das imagens já vinculadas ao anúncio.
+ // Nesse caso, pular o upload de forma comprovável para qualquer SKU.
+ if(plan.images?.length&&!result.imageIds?.length){
+  const prepared=plan.images.map(x=>String(x.shopee_image_id||''));
+  if(prepared.every(x=>x.length>5)&&sameData(prepared,currentItem.image?.image_id_list||[])){
+   return {state:'running',result:withExecutionEvent({...result,imageIds:prepared},
+    'images-already-published',
+    'As imagens aprovadas já estão vinculadas ao anúncio. Sem novo upload.','success'),delay:500};
+  }
+ }
  if(plan.images?.length&&(result.imageIds||[]).length<plan.images.length){
   const index=(result.imageIds||[]).length,asset=plan.images[index];
   const file=await io.downloadImage(asset);
@@ -148,9 +158,17 @@ export async function advanceShopeeExecution(job,io){
  const checkpoint=withExecutionEvent(result,'update-request','Enviando alteração aprovada para o anúncio.');
  await io.beforeWrite(checkpoint);
  try{
-  const response=await io.update({item_id:Number(plan.itemId),...plan.proposed,
-    ...(plan.images?.length?{image:{image_id_list:result.imageIds}}:{}),
-    ...(plan.video?{video_upload_id:[result.video.id]}:{})});
+  // Montar somente os campos ainda divergentes após uma última leitura.
+  // Ao corrigir o título, por exemplo, nunca republicar as imagens e o vídeo
+  // que já foram confirmados na Shopee.
+  const pending=Object.fromEntries(Object.entries(plan.proposed||{}).
+   filter(([key,value])=>!fieldsVerified({[key]:value},currentItem)));
+  const imagesMissing=plan.images?.length&&
+   !sameData(currentItem.image?.image_id_list||[],result.imageIds||[]);
+  const videoMissing=plan.video&&!videoMatches(currentItem,result.video);
+  const response=await io.update({item_id:Number(plan.itemId),...pending,
+    ...(imagesMissing?{image:{image_id_list:result.imageIds}}:{}),
+    ...(videoMissing?{video_upload_id:[result.video.id]}:{})});
   result.requestId=String(response?.request_id||'').slice(0,100);
   result.phase='verifying';
   Object.assign(result,withExecutionEvent({...checkpoint,phase:'verifying',requestId:result.requestId},
