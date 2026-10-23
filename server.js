@@ -1351,7 +1351,7 @@ app.post('/api/shopee/optimizer/execution/prepare',mustLogin,requireWeDropAdmin,
     }
     let autoModelDiscountToken=null,autoModelDiscountPreview=null;
     if(modelVariations){
-     const campaignId=String(req.body?.campaignId||'').trim();
+     const campaignId=String(req.body?.campaignId||reviewState.modelDiscountCampaignId||'').trim();
      if(!/^\d{1,18}$/.test(campaignId))
       throw Error('Informe uma vez a campanha Minha Promoção na etapa Desconto; ela será incluída automaticamente na prévia única.');
      const financial=await discountExecutionInputs(req,sku,itemId,modelId,campaignId,{
@@ -1363,6 +1363,10 @@ app.post('/api/shopee/optimizer/execution/prepare',mustLogin,requireWeDropAdmin,
       discountPct:approved.discountPct,couponPct:approved.couponPct,
       buyerAfterCoupon:approved.buyerAfterCoupon,quoteAt:approved.quoteAt,
       modelPriceChange:modelVariations.options.some(o=>Math.round(o.price*100)!==Math.round(approved.gross*100))};
+     // Guardar a campanha escolhida nesta SKU: nas próximas variações
+     // o Motor Matriz poderá reutilizar o ID após revalidar tudo pela API.
+     if(String(reviewState.modelDiscountCampaignId||'')!==campaignId)
+      await saveWorkflowReview(auth.shopId,itemId,modelId,sku,{modelDiscountCampaignId:campaignId});
      autoModelDiscountToken=signDiscountPreview(approved,envText('SESSION_SECRET'));
      autoModelDiscountPreview={...modelVariations.promotion,
       models:modelVariations.options.map(o=>({name:o.name,sku:o.sku,supplierSku:o.supplierSku,
