@@ -132,8 +132,8 @@
     else{api?.openExecution?.();reveal('optimizerExecutionPanel');}
    },
    optimizerDashTechnicalOpen:()=>openStage('technical'),
-   optimizerDashFiscalOpen:()=>openStage('fiscal'),
-   optimizerDashFiscalBatchOpen:()=>{api?.openExecution?.();const a=q('optimizerFiscalBatch');if(a)a.open=true;reveal('optimizerFiscalBatch');},
+   optimizerDashFiscalOpen:()=>{api?.openFiscal?.();reveal('optimizerExecFiscalLast');},
+   optimizerDashFiscalBatchOpen:()=>{api?.openFiscal?.();const a=q('optimizerFiscalBatch');if(a)a.open=true;reveal('optimizerFiscalBatch');},
    optimizerDashConnection:()=>{api?.openExecution?.();const a=q('optimizerConnectionTools');if(a)a.open=true;reveal('optimizerConnectionTools');q('optimizerConnectionCheck')?.click()},
    optimizerDashChanges:()=>{api?.openExecution?.();const a=q('optimizerExecutionSummary')?.querySelector('.optimizer-exec-review');if(a)a.open=true;reveal('optimizerExecutionPanel')},
    optimizerDashPending:()=>reveal('optimizerWorkflowCards'),

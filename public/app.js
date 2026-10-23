@@ -15,6 +15,8 @@ const APP_PAGES={
     description:'Margens, valores de anúncio e configurações de taxas editáveis da Shopee.'},
   discounts:{slug:'descontos',title:'Descontos preparados',group:'Operação',
     description:'Preço bruto e desconto recuperados da SKU já informada na Otimização.'},
+  fiscal:{slug:'informacoes-fiscais',title:'Informações Fiscais',group:'Operação',
+    description:'Conferência fiscal de cada SKU e atualização fiscal em lote na Shopee.'},
   orders:{slug:'pedidos',title:'Pedidos e vendas',group:'Operação',
     description:'Acompanhe pedidos, status, quantidades e desempenho do período.'},
   alerts:{slug:'envios',title:'Monitor de envios',group:'Operação',
@@ -56,6 +58,7 @@ function setTab(name,{updateHistory=true,scroll=true}={}){
   document.body?.classList?.toggle?.('view-products',name==='products');
   document.body?.classList?.toggle?.('view-pricing',name==='pricing');
   document.body?.classList?.toggle?.('view-discounts',name==='discounts');
+  document.body?.classList?.toggle?.('view-fiscal',name==='fiscal');
   document.body?.classList?.toggle?.('view-orders',name==='orders');
   document.body?.classList?.toggle?.('view-ads',name==='ads');
   if(name==='ads')queueMicrotask(()=>globalThis.RedeAdsSeoRefresh?.());
@@ -3497,14 +3500,16 @@ function optimizerDiscountWorkflowRefresh(){
  const w=optimizerWorkflowPlan,q=optimizerDiscountFinalQuote;
  const matching=Boolean(w&&q&&optimizerDiscountFinalIdentityOf(w)===optimizerDiscountFinalIdentity);
  const sent=matching&&optimizerDiscountFinalSent;
+ const reviewed=matching&&Boolean(optimizerDiscountFinalPreviewData?.approvalToken);
  const state=card.querySelector('.optimizer-discount-workflow-state');
  if(state)state.textContent=sent?'Envio realizado · conferir na Shopee':
+  reviewed?'Desconto conferido na prévia · pronto para execução':
   !matching?'Calculando preço e desconto':
-  optimizerDiscountFinalEligible(q)?'Preço calculado · abrir e conferir':'Pesquisa/margem · revisar';
- card.classList.toggle('optimizer-workflow-reviewed',Boolean(sent));
- card.querySelector('.optimizer-workflow-symbol').textContent=sent?'✓':'→';
+  optimizerDiscountFinalEligible(q)?'Preço calculado · conferir antes de executar':'Pesquisa/margem · revisar';
+ card.classList.toggle('optimizer-workflow-reviewed',Boolean(sent||reviewed));
+ card.querySelector('.optimizer-workflow-symbol').textContent=sent||reviewed?'✓':'→';
  const stages=(w?.stages||[]).filter(x=>x.key!=='final'&&!x.skipped);
- const done=stages.filter(x=>x.reviewed).length+(sent?1:0);
+ const done=stages.filter(x=>x.reviewed).length+(sent||reviewed?1:0);
  const progress=$('#optimizerWorkflowCounter');
  if(progress){progress.textContent=done+' / '+(stages.length+1)+' etapas conferidas';progress.style.setProperty('--stage-progress',String(Math.round(done/(stages.length+1)*100))+'%');}
 }
@@ -3540,22 +3545,23 @@ function optimizerDiscountFinalPaint(){
   String(optimizerExecJob.plan?.itemId||'')===String(w?.itemId);
  const campaign=String($('#optimizerExecDiscountCampaign')?.value||'').trim();
  const campaignValid=/^\d{1,18}$/.test(campaign)&&Number.isSafeInteger(Number(campaign));
- $('#optimizerExecDiscountPreview').disabled=!eligible||!verified||!campaignValid||optimizerDiscountFinalBusy||optimizerDiscountFinalSent;
- $('#optimizerExecDiscountApply').disabled=!optimizerDiscountFinalPreviewData||optimizerDiscountFinalBusy||optimizerDiscountFinalSent||
+ $('#optimizerExecDiscountPreview').disabled=!eligible||!campaignValid||optimizerDiscountFinalBusy||optimizerDiscountFinalSent;
+ $('#optimizerExecDiscountApply').disabled=!verified||!optimizerDiscountFinalPreviewData||optimizerDiscountFinalBusy||optimizerDiscountFinalSent||
   (optimizerDiscountFinalPreviewData.preview?.needsBasePriceUpdate&&!$('#optimizerExecDiscountPriceConsent').checked);
- $('#optimizerExecDiscountApply').hidden=!optimizerDiscountFinalPreviewData||optimizerDiscountFinalSent;
+ $('#optimizerExecDiscountApply').hidden=!verified||!optimizerDiscountFinalPreviewData||optimizerDiscountFinalSent;
  $('#optimizerExecDiscountPriceApproval').hidden=!optimizerDiscountFinalPreviewData?.preview?.needsBasePriceUpdate;
  $('#optimizerExecDiscountState').textContent=!active?'Calculando automaticamente desde a seleção da SKU':
   !eligible?q.marketResearch?.verified?
    'Margem ou pesquisa vencida — revisar preço':'Aguardando no mínimo dois anúncios reais':
-  !verified?'Preço e desconto salvos · aguarda confirmação das etapas anteriores':
-  optimizerDiscountFinalPreviewData?'Prévia assinada pronta para publicação':
-  'Preço e desconto calculados · conferir a promoção';
+  optimizerDiscountFinalPreviewData?(verified?'Prévia conferida · pronta para aplicar promoção':'Prévia conferida · execução da SKU liberável'):
+  'Preço e desconto calculados · clique em Conferir desconto';
  $('#optimizerExecDiscountMessage').textContent=!active?
   'O sistema consulta automaticamente o custo WeDrop e os anúncios concorrentes ao localizar a SKU.':
   !eligible?'Plano financeiro salvo somente como simulação; sem pesquisa validada de 2 a 5 lojas, desconto não será enviado.':
-  !verified?'Plano já preparado. Assim que a Shopee confirmar as etapas anteriores, a última etapa será habilitada.':
-  'Informe a campanha Minha Promoção. A prévia verificará a SKU, o custo e o preço vigente antes da autorização final.';
+  !optimizerDiscountFinalPreviewData?'Informe a campanha Minha Promoção e clique em Conferir desconto para autorizar a prévia junto às demais etapas.':
+  !verified?'Desconto conferido. A promoção só será publicada depois que a Shopee confirmar as demais etapas da SKU.':
+  'Prévia revisada. Confira os valores e aplique a promoção somente após a confirmação das demais etapas.';
+ optimizerExecUpdateRunButton();
 }
 async function optimizerDiscountFinalLoad(){
  const w=optimizerWorkflowPlan,key=optimizerDiscountFinalIdentityOf(w);
@@ -3583,9 +3589,6 @@ function optimizerDiscountFinalSavedQuote(q){
  optimizerDiscountFinalQuote=q;optimizerDiscountFinalIdentity=key;
  optimizerDiscountFinalPreviewData=null;optimizerDiscountFinalPreviewKey='';
  optimizerDiscountFinalPaint();
- if(optimizerExecJob?.state==='verified'&&optimizerExecJob?.plan?.selectedStage==='all'&&
-    optimizerDiscountFinalEligible(q))
-  void optimizerDiscountFinalPrepare({automatic:true});
  optimizerDiscountFinalStatus(
   q.marketResearch?.verified?'Preço, pesquisa e desconto salvos no Motor Matriz. Serão revisados ao final da execução.':
   'Preço provisório salvo. Sem 2 anúncios comparáveis, não haverá publicação de desconto.',
@@ -3598,9 +3601,7 @@ async function optimizerDiscountFinalPrepare({automatic=false}={}){
  if(key!==optimizerDiscountFinalIdentity||
     key!==[String(q.sku),String(q.itemId),String(q.modelId)].join('|'))return;
  const campaign=String($('#optimizerExecDiscountCampaign').value||'').trim();
- if(!optimizerDiscountFinalEligible(q)||!/^\d{1,18}$/.test(campaign)||
-   optimizerExecJob?.state!=='verified'||optimizerExecJob?.plan?.selectedStage!=='all'||
-   optimizerExecJob?.result?.phase==='verified_partial')
+ if(!optimizerDiscountFinalEligible(q)||!/^\d{1,18}$/.test(campaign))
    return optimizerDiscountFinalPaint();
  const previewKey=key+'|'+campaign+'|'+String(q.calculatedAt||'');
  if(automatic&&previewKey===optimizerDiscountFinalPreviewKey)return;
@@ -3622,7 +3623,7 @@ async function optimizerDiscountFinalPrepare({automatic=false}={}){
    'Prévia confirmada: '+shPricePercent(data.preview.discountPct)+' de desconto · campanha '+
    campaign+' · preço promocional '+shPriceMoney(data.preview.promo)+
    (data.preview.needsBasePriceUpdate?' · requer autorização para ajustar preço bruto.':
-    '. Clique em Aplicar desconto final quando conferir.'),'success');
+    '. A promoção poderá ser aplicada depois da confirmação das outras etapas.'),'success');
   if(data.preview.action==='already')optimizerDiscountFinalSent=true;
  }catch(error){
   optimizerDiscountFinalPreviewData=null;optimizerDiscountFinalPreviewKey='';
@@ -3639,8 +3640,7 @@ $('#optimizerExecDiscountCampaign')?.addEventListener('input',()=>{
  const candidate=String($('#optimizerExecDiscountCampaign').value||'');
  if(/^\d{1,18}$/.test(candidate)&&$('#discountPromotionId'))
   $('#discountPromotionId').value=candidate;
- if(/^\d{1,18}$/.test(candidate))optimizerDiscountCampaignTimer=setTimeout(()=>
-  void optimizerDiscountFinalPrepare({automatic:true}),450);
+ // A prévia exige clique explícito na conferência, não uma chamada automática ao digitar.
 });
 $('#optimizerExecDiscountPriceConsent')?.addEventListener('change',optimizerDiscountFinalPaint);
 $('#optimizerExecDiscountPreview')?.addEventListener('click',()=>void optimizerDiscountFinalPrepare());
@@ -3724,9 +3724,13 @@ function optimizerExecFiscalLast(plan){
   'A conferência registrada não significa publicação. Corrija o Motor Matriz e revalide a prévia se houver pendência.';
 }
 $('#optimizerExecFiscalEdit')?.addEventListener?.('click',()=>{
+ setTab('optimizer');
+ if(!optimizerWorkflowPlan){optimizerWorkflowNotice('Localize uma SKU para conferir os dados fiscais.','warning');return;}
  $('#optimizerWorkflowEditor').hidden=false;
  optimizerWorkflowOpen('fiscal');
+ $('#optimizerWorkflowEditor').scrollIntoView?.({behavior:'smooth',block:'start'});
 });
+$('#optimizerFiscalBackToSku')?.addEventListener?.('click',()=>setTab('optimizer'));
 function optimizerExecRender(data){
  const plan=data.plan,context=optimizerExecContext;
  if(!plan||!context||context.sku!==plan.sku||context.itemId!==plan.itemId||context.modelId!==plan.modelId)return;
@@ -3779,12 +3783,24 @@ function optimizerExecRender(data){
    : 'Nenhuma alteração aprovada está pronta. Revise as etapas e confira as pendências.',
    data.ready?'success':'warning');
 }
+function optimizerDiscountReviewedForExecution(plan){
+ if(plan?.selectedStage!=='all'||!optimizerDiscountFinalEligible(optimizerDiscountFinalQuote)||
+   optimizerDiscountFinalIdentityOf(optimizerWorkflowPlan)!==optimizerDiscountFinalIdentity||
+   !/^\d{1,18}$/.test(String($('#optimizerExecDiscountCampaign')?.value||'').trim()))return true;
+ const preview=optimizerDiscountFinalPreviewData;
+ return Boolean(preview?.approvalToken&&preview.preview?.sku===plan.sku&&
+   String(preview.preview?.itemId)===String(plan.itemId)&&
+   String(preview.preview?.modelId)===String(plan.modelId)&&
+   String(preview.preview?.discountId)===String($('#optimizerExecDiscountCampaign').value).trim());
+}
 function optimizerExecUpdateRunButton(){
  const p=optimizerExecPlan;
  const unavailable=optimizerExecBusy||!p?.canExecute||!optimizerExecContext||
    p.sku!==optimizerExecContext.sku||p.itemId!==optimizerExecContext.itemId||
-   p.modelId!==optimizerExecContext.modelId;
+   p.modelId!==optimizerExecContext.modelId||!optimizerDiscountReviewedForExecution(p);
  $('#optimizerExecutionLaunch').disabled=unavailable;
+ $('#optimizerExecutionLaunch').title=!optimizerDiscountReviewedForExecution(p)
+   ?'Conferir a promoção no bloco de desconto antes de executar a SKU':'Executar etapas aprovadas na Shopee';
  // Mantido somente para compatibilidade com o fluxo legado oculto.
  $('#optimizerExecutionRun').disabled=unavailable;
 }
@@ -3860,6 +3876,9 @@ async function optimizerExecuteApproved(){
  const p=optimizerExecPlan,ctx=optimizerExecContext;
  if(!p?.canExecute||!ctx||optimizerExecBusy||p.sku!==ctx.sku||
     p.itemId!==ctx.itemId||p.modelId!==ctx.modelId)return;
+ if(!optimizerDiscountReviewedForExecution(p)){
+  optimizerExecNotice('Conferência pendente: clique em Conferir desconto no bloco da promoção antes de executar.','warning');return;
+ }
  // Apenas a ação de clicar neste comando autoriza as modificações da prévia.
  const btn=$('#optimizerExecutionLaunch');
  optimizerExecStartError='';optimizerExecBusy=true;btn.disabled=true;$('#optimizerExecutionRun').disabled=true;
@@ -4107,10 +4126,6 @@ function optimizerExecutionJobView(job,progress=null,issue=null){
  optimizerExecutionIssueRender(issue);
  optimizerExecJob=job;
  optimizerDiscountFinalPaint();
- if(job?.state==='verified'&&job?.plan?.selectedStage==='all'&&
-    job?.result?.phase!=='verified_partial'&&
-    optimizerDiscountFinalEligible(optimizerDiscountFinalQuote))
-  void optimizerDiscountFinalPrepare({automatic:true});
  if(!job)globalThis.OptimizerSkuDashboard?.execution?.(null,null);
  // Continuar acompanhando a SKU automaticamente mesmo após recarregar a página.
  if(job&&['running','uncertain'].includes(job.state)){
@@ -4228,7 +4243,8 @@ $('#optimizerExecutionRetry')?.addEventListener?.('click',async()=>{
 // Display-only compact dashboard: all actions reuse the original workflow.
 globalThis.OptimizerSkuDashboard?.bind?.({
  openStage:key=>optimizerWorkflowOpen(key),
- openExecution:()=>$('#optimizerShowExecution')?.click?.()
+ openExecution:()=>$('#optimizerShowExecution')?.click?.(),
+ openFiscal:()=>setTab('fiscal')
 });
 function optimizerCell(row,textValue,className=''){
   const td=optimizerMake('td',className,textValue);row.appendChild(td);return td;
