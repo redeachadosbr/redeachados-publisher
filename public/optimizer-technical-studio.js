@@ -167,14 +167,17 @@
      notices.append(notice);
    }
    if(notices.childElementCount)fields.append(notices);
-   fields.append(
+   // Inactive children of official parent options must never appear as
+   // unresolved fields. They are checked only once the parent activates them.
+   const sections=[
      disclosure('Preenchidos ou recuperados',saved.length,'Valores da SKU, Shopee e WeDrop', 'filled',saved),
      disclosure('Obrigatórios para revisar',required.length,
        required.length?'Precisam de informação comprovada':'Nenhum obrigatório pendente','required',required),
-     disclosure('Opcionais sugeridos',optional.length,'Abra apenas se desejar preencher','optional',optional),
-     disclosure('Dependências e condicionais',conditional.length,
-       'Dependem de outros atributos da categoria','conditional',conditional)
-   );
+     disclosure('Opcionais sugeridos',optional.length,'Abra apenas se desejar preencher','optional',optional)
+   ];
+   if(conditional.length)sections.push(disclosure('Dependências ativas',conditional.length,
+     'Verifique a opção do atributo pai','conditional',conditional));
+   fields.append(...sections);
  }
  function render(data,{regroup=true}={}){
    if(!data||panel.hidden)return;
