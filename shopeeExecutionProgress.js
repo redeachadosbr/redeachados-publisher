@@ -19,7 +19,7 @@ export function shopeeExecutionProgress(job){
  const started=['running','failed','uncertain','verified'].includes(state);
  const fiscalPartial=state==='verified'&&phase==='verified_partial';
  const fullWorkflow=plan.selectedStage==='all';
- const discountIncluded=Boolean(plan.commercialDiscount);
+ const discountIncluded=Boolean(plan.commercialDiscount||plan.modelVariations?.promotion);
  const variationsIncluded=Boolean(plan.modelVariations);
  const variationsDone=variationsIncluded&&result.variation?.status==='verified';
  const variationsActive=variationsIncluded&&/^variation_/.test(phase);
