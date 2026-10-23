@@ -13,7 +13,7 @@ test('SKU 3747: descrição persuasiva e organizada com fatos da WeDrop e CTA',(
  const out=composeShopeeDescription(moto);
  assert.equal(out.valid,true);
  assert.ok(out.characterCount>=300);
- for(const term of ['Vermelha','6 V','UNITOYS','plástico','3 anos','pedal','🌟 Por que escolher?','⚙️ Características','🛒'])
+ for(const term of ['Vermelha','6 V','UNITOYS','plástico','3 anos','pedal','🌟 Benefícios que fazem a diferença','⚙️ Características','🛒'])
   assert.ok(out.description.includes(term),'Esperado no texto: '+term);
  for(const unsafe of ['220 V','380 W','5 dúvidas frequentes','10 motivos para comprar agora','014015/2025'])
   assert.ok(!out.description.includes(unsafe),'Não usar: '+unsafe);
@@ -63,10 +63,42 @@ test('descrição mantém seções harmoniosas e CTA contextual sem repetir FAQ 
  const result=composeShopeeDescription(moto);
  const text=result.description;
  const title=text.indexOf('✨ Moto Elétrica Infantil');
- const benefits=text.indexOf('🌟 Por que escolher?');
+ const benefits=text.indexOf('🌟 Benefícios que fazem a diferença');
  const specs=text.indexOf('⚙️ Características');
  const cta=text.lastIndexOf('🛒');
  assert.ok(title>=0&&benefits>title&&specs>benefits&&cta>specs);
  assert.ok(text.split('\n\n').length>=4);
  assert.match(text,/passeios|aventuras|brincadeiras/);
+});
+
+
+test('benefícios comerciais têm explicação desenvolvida, não frases soltas',()=>{
+ const out=composeShopeeDescription(moto);
+ const section=out.description.split('🌟 Benefícios que fazem a diferença')[1]
+   .split('⚙️ Características')[0].trim();
+ const paragraphs=section.split(/\n\s*\n/).map(x=>x.trim()).filter(Boolean);
+ assert.equal(paragraphs.length,3);
+ for(const paragraph of paragraphs){
+  assert.ok(paragraph.length>=180,'Parágrafo curto demais: '+paragraph);
+  assert.ok(paragraph.split(/[.!?]/).filter(Boolean).length>=2,
+   'O benefício deve ter explicação contextual: '+paragraph);
+ }
+ assert.ok(out.description.indexOf('🌟 Benefícios')<out.description.indexOf('⚙️ Características'));
+ assert.ok(!/380 W|220 V|014015\/2025/.test(out.description));
+});
+
+test('outras categorias explicam benefícios de uso antes dos dados técnicos',()=>{
+ const products=[
+  ['Cafeteira Italiana 300 ml','preparo tradicional'],
+  ['Porta Shampoo 2 andares','frascos'],
+  ['Garrafa Térmica 900 ml','rotina'],
+  ['Bola Futebol Infantil Vinil N2','partida']
+ ];
+ for(const [title,term] of products){
+  const out=composeShopeeDescription({record:{title},supplier:{product_data:{name:title}}});
+  assert.equal(out.valid,true,title);
+  const benefits=out.description.split('🌟 Benefícios que fazem a diferença')[1].split('⚙️ Características')[0];
+  assert.ok(benefits.length>=380,title+' com benefícios insuficientes');
+  assert.match(benefits,new RegExp(term,'i'),title);
+ }
 });
