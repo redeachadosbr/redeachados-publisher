@@ -60,6 +60,7 @@ import {generateOpenAiImage,imageGenerationStatus} from './shopeeOpenAiImages.js
 import {validateVariationName,variationImagePrompt,saveVariationImage,variationImagePreview,variationImageBytes,validateVariationDetails,buildVariationPayload} from './shopeeVariationMedia.js';
 import {openAiKeyStatus,openAiApiKey,saveOpenAiApiKey,deleteOpenAiApiKey} from './shopeeOpenAiCredentials.js';
 import {compileAttributes,compileTax,attributeAuditForChanges} from './shopeeStructuredFields.js';
+import {scopeTechnicalReviewChanges} from './shopeeTechnicalReviewScope.js';
 import {inspectAnatelCompliance} from './shopeeAnatel.js';
 import {assertSearchableAttribute,searchAttributeRequest,readSearchedAttributeOptions,hydrateSearchOptions} from './shopeeCategorySearch.js';
 import {MAX_VIDEO_BYTES,getShopeeManualVideo,importShopeeManualVideo,
@@ -1230,7 +1231,13 @@ app.post('/api/shopee/optimizer/workflow/review',mustLogin,requireWeDropAdmin,as
     }
     if(change.stage==='technical'&&change.reviewed){
       const live=await shopeeLiveEditableItem(cfg,auth,itemId);
-      const attributes=change.attributes||[];
+      // Ignore inactive conditional children and the live values the seller did
+      // not edit. A real mandatory child activated by a parent is still checked.
+      const scoped=scopeTechnicalReviewChanges(change.attributes||[],{
+        record,live,auditChanges:attributeAuditForChanges
+      });
+      const attributes=scoped.changes;
+      change.attributes=attributes;
       await hydrateCategoryChoices(record,attributes,cfg,auth,live);
       const supplier=await readWeDropProduct(auth.shopId,{sku,itemId,modelId});
       assertShopeeSupplierBrand({record,attributes,supplier});
