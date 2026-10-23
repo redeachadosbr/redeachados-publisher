@@ -2752,6 +2752,132 @@ async function discountExecutionInputs(req,sku,itemId,modelId,discountId){
    promotionNotice:promoMembership.warning};
  return {auth,cfg,quote,snapshot,originalPrice};
 }
+// Desconto por MODELO (após init_tier_variation) — não reutiliza IDs do
+// anúncio sem modelos. Custos e SKUs são conferidos individualmente na WeDrop.
+// O preço bruto de cada modelo não é alterado nesta operação.
+async function variationModelDiscountContext(req){
+ const x=await variationContext(req);
+ const discountId=String(req.body?.discountId||req.query?.discountId||'').trim();
+ if(!/^\d{1,18}$/.test(discountId))throw Error('Informe o ID da campanha Minha Promoção.');
+ const details=validateVariationDetails(x.details,{requirePhotos:true});
+ if(details.options.length<2)throw Error('Conclua as variações antes de preparar a campanha.');
+ const suppliers=await verifiedVariationSupplierCosts(x,details);
+ const live=await shopeeLiveEditableItem(x.cfg,x.auth,x.itemId);
+ if(live.has_model!==true||String(live.item_status).toUpperCase()!=='NORMAL')
+  throw Error('A Shopee ainda não confirmou as variações neste anúncio ativo.');
+ const modelsResult=await callShopeeShopApi(x.cfg,{path:'/api/v2/product/get_model_list',
+  accessToken:x.auth.accessToken,shopId:x.auth.shopId,query:{item_id:Number(x.itemId)}});
+ const models=modelsResult.response?.model||[];
+ if(models.length!==details.options.length)throw Error('A Shopee retornou uma quantidade de modelos diferente das opções aprovadas.');
+ const plan=await savedShopeePricePlan(x.auth.shopId,x.itemId,0);
+ const quote=plan?.quote;
+ if(plan?.sku!==x.sku||!quote||String(quote.sku)!==x.sku||
+   quote.marketResearch?.verified!==true||
+   quote.marketResearch.source!=='shopee_affiliate_product_offers'||
+   quote.marketResearch.count<REDE_ACHADOS_MARKET_RULES.minimumOffers||
+   !Number.isFinite(Date.parse(quote.marketResearch.researchedAt))||
+   Date.now()-Date.parse(quote.marketResearch.researchedAt)>48*3600000||
+   quote.discountRecommendationSource!=='researched'||
+   quote.status==='MERCADO_ABAIXO_DO_PISO'||
+   !Number.isFinite(Date.parse(quote.calculatedAt))||
+   Date.now()-Date.parse(quote.calculatedAt)>7*86400000)
+  throw Error('Preço e pesquisa de concorrentes precisam ser recalculados antes de publicar a promoção por variação.');
+ const pricePlan=promotionFromQuote(quote);
+ const checked=[];
+ for(const option of details.options){
+  const model=models.find(m=>String(m.model_sku||'')===option.sku);
+  if(!model||!Number.isSafeInteger(Number(model.model_id))||Number(model.model_id)<=0)
+   throw Error('A variação '+option.name+' não foi confirmada pelo SKU no anúncio da Shopee.');
+  const link=await shopeePricingSupplierCost(x.auth.shopId,{
+   sku:option.sku,itemId:x.itemId,modelId:model.model_id});
+  const source=suppliers.find(a=>a.sku===option.sku);
+  if(link.supplierSku!==option.supplierSku||link.supplierSku!==source?.supplierSku||
+    Math.abs(link.unitCost-source.unitCost)>0.009||
+    Math.abs(link.unitCost-Number(quote.unitCost))>0.009)
+   throw Error('Custo WeDrop da cor '+option.name+' mudou ou não corresponde ao preço aprovado.');
+  const row=(model.price_info||[])[0]||{};
+  const base=Number(row.original_price??model.original_price);
+  if(!Number.isFinite(base)||base<=pricePlan.promo||base>pricePlan.gross*1.35)
+   throw Error('Preço base da cor '+option.name+' incompatível com a promoção. Revise a precificação.');
+  checked.push({name:option.name,sku:option.sku,modelId:String(model.model_id),
+   supplierSku:link.supplierSku,cost:link.unitCost,base:Number(base.toFixed(2)),promo:pricePlan.promo});
+ }
+ const {record,pages}=await readDiscountPages(callShopeeShopApi,
+  {cfg:x.cfg,auth:x.auth,discountId});
+ if(!['upcoming','ongoing'].includes(String(record.status||'').toLowerCase())||
+    Number(record.end_time)<=Math.floor(Date.now()/1000))
+  throw Error('Campanha não ativa ou agendada. Escolha uma Minha Promoção válida.');
+ const existing=promotionMember(pages,x.itemId);
+ const existingModels=existing?.model_list||[];
+ const already=Boolean(existing)&&checked.every(m=>
+  existingModels.some(o=>String(o.model_id)===m.modelId&&
+   Math.abs(Number(o.model_promotion_price)-m.promo)<=0.011));
+ const action=already?'already':existing?'update':'add';
+ const snap={kind:'variation_models_discount',shopId:String(x.auth.shopId),
+  sku:x.sku,itemId:String(x.itemId),discountId,quoteAt:String(quote.calculatedAt),
+  unitCost:Number(quote.unitCost),discountPct:Number(quote.discountPct),
+  couponPct:Number(quote.couponPct),netMarginPct:Number(quote.netMarginPct),
+  minMarginPct:Number(quote.minMarginPct),action,
+  models:checked.map(o=>({...o}))};
+ return {...x,discountId,quote,snapshot:snap,record};
+}
+app.post('/api/shopee/optimizer/variants-discount/preview',mustLogin,requireWeDropAdmin,async(req,res)=>{
+ res.setHeader('Cache-Control','no-store');
+ if(!verifiedSameOrigin(req))return res.status(403).json({error:'Origem não autorizada.'});
+ try{
+  const data=await variationModelDiscountContext(req);
+  res.json({ok:true,approvalToken:signDiscountPreview(data.snapshot,envText('SESSION_SECRET')),
+   preview:data.snapshot,notice:'Valores conferidos por modelo e custo WeDrop. Nenhuma promoção foi publicada.'});
+ }catch(e){res.status(400).json({ok:false,error:String(e.message||e).slice(0,370)});}
+});
+app.post('/api/shopee/optimizer/variants-discount/execute',mustLogin,requireWeDropAdmin,async(req,res)=>{
+ res.setHeader('Cache-Control','no-store');
+ if(!verifiedSameOrigin(req)||req.body?.confirm!==true)
+  return res.status(403).json({ok:false,error:'Aprovação explícita da promoção obrigatória.'});
+ let key=null;
+ try{
+  const {auth}=await getValidAuth(req);
+  const approved=verifyDiscountPreview(req.body.approvalToken,
+   envText('SESSION_SECRET'),auth.shopId);
+  if(approved.kind!=='variation_models_discount')
+   throw Error('A autorização não pertence à promoção por variações.');
+  // A campanha e todos os modelos precisam continuar IDÊNTICOS à prévia.
+  req.body.discountId=approved.discountId;
+  const fresh=await variationModelDiscountContext(req);
+  if(JSON.stringify(fresh.snapshot)!==JSON.stringify(approved))
+   throw Error('O preço, os modelos ou a campanha mudaram. Revise a prévia antes de aplicar.');
+  key=[auth.shopId,approved.itemId,approved.discountId].join(':');
+  if(activeDiscountWrites.has(key))throw Error('Essa campanha já está sendo alterada.');
+  activeDiscountWrites.add(key);
+  if(fresh.snapshot.action==='already')
+   return res.json({ok:true,verified:true,status:'already',message:'Todos os modelos já têm o preço promocional confirmado.'});
+  const payload={discount_id:Number(approved.discountId),item_list:[{
+   item_id:Number(approved.itemId),purchase_limit:0,
+   model_list:approved.models.map(m=>({model_id:Number(m.modelId),model_promotion_price:m.promo}))
+  }]};
+  // ÚNICO POST de escrita. Nunca repetir automaticamente após erro ou timeout.
+  const write=await callShopeeShopApi(fresh.cfg,{
+   path:approved.action==='add'?'/api/v2/discount/add_discount_item':
+    '/api/v2/discount/update_discount_item',
+   method:'POST',accessToken:fresh.auth.accessToken,shopId:fresh.auth.shopId,body:payload});
+  const errors=write.response?.error_list||[];
+  if(errors.length)throw Error('Shopee recusou a promoção: '+
+    String(errors[0].fail_message||errors[0].fail_error||'erro da campanha').slice(0,170));
+  const checked=await readDiscountPages(callShopeeShopApi,
+   {cfg:fresh.cfg,auth:fresh.auth,discountId:approved.discountId});
+  const member=promotionMember(checked.pages,approved.itemId);
+  const list=member?.model_list||[];
+  const verified=approved.models.every(m=>list.some(x=>String(x.model_id)===m.modelId&&
+   Math.abs(Number(x.model_promotion_price)-m.promo)<=0.011));
+  res.json({ok:true,verified,status:verified?'verified':'confirmation_pending',
+   message:verified?'Desconto confirmado na Shopee para todas as variações.':
+    'A Shopee recebeu a atualização, mas ainda não confirmou todos os modelos. Consulte antes de tentar novamente.'});
+ }catch(e){
+  res.status(409).json({ok:false,verified:false,uncertain:true,
+   error:'Desconto não confirmado: '+String(e.message||e).slice(0,270)+
+    '. Confira a campanha antes de qualquer nova tentativa.'});
+ }finally{if(key)activeDiscountWrites.delete(key);}
+});
 app.post('/api/shopee/optimizer/discounts/preview',mustLogin,requireWeDropAdmin,async(req,res)=>{
  res.setHeader('Cache-Control','no-store');
  if(!verifiedSameOrigin(req))return res.status(403).json({error:'Origem não autorizada.'});
