@@ -32,6 +32,21 @@
 <link rel="stylesheet" href="/sidebar-collapse.css?v=1.0.0">
 <link rel="stylesheet" href="/optimizer-image-studio.css?v=1.0.2">
 <link rel="stylesheet" href="/optimizer-technical-studio.css?v=1.0.1-review-feedback">
+<style>
+/* Retomada da SKU visível junto à barra de acompanhamento. A API só é
+   acionada pelo clique explícito, depois de validar a prévia/desconto. */
+.optimizer-exec-resume-bar{display:flex;align-items:center;justify-content:space-between;gap:18px;flex-wrap:wrap;margin:12px 0 16px;padding:14px 18px;border:1px solid #b5d4e9;border-radius:15px;background:#f3f9ff}
+.optimizer-exec-resume-bar:not(:has(#optimizerExecutionLaunch:not([hidden]))){display:none!important}
+.optimizer-exec-resume-copy{display:flex;flex:1 1 280px;min-width:0;flex-direction:column;gap:5px}
+.optimizer-exec-resume-copy strong{color:#103c6d;font-size:14px;font-weight:850}
+.optimizer-exec-resume-copy small{color:#426485;line-height:1.5;font-size:12px}
+.optimizer-exec-resume-bar #optimizerExecutionLaunch{flex:0 0 auto;min-height:46px;padding:12px 20px;border:0;border-radius:12px;background:#0c63c7;color:#fff;font-size:13px;font-weight:850;box-shadow:0 5px 12px #0c63c729;cursor:pointer;max-width:100%;white-space:normal}
+.optimizer-exec-resume-bar #optimizerExecutionLaunch:hover:not(:disabled){background:#084e9c}
+.optimizer-exec-resume-bar #optimizerExecutionLaunch:focus-visible{outline:3px solid #ffae54;outline-offset:3px}
+.optimizer-exec-resume-bar #optimizerExecutionLaunch:disabled{background:#a7b9cd;box-shadow:none;cursor:not-allowed}
+.optimizer-exec-resume-bar #optimizerExecutionLaunch[hidden]{display:none!important}
+@media(max-width:700px){.optimizer-exec-resume-bar{padding:13px;gap:12px}.optimizer-exec-resume-bar #optimizerExecutionLaunch{width:100%;flex:1 1 100%}}
+</style>
 </head>
 <body>
 <div class="shell app-layout">
@@ -419,7 +434,6 @@
           </div>
           <div class="optimizer-exec-top-actions">
             <button id="optimizerExecutionPrepare" type="button" class="secondary">Revalidar e preparar</button>
-            <button id="optimizerExecutionLaunch" type="button" hidden>▶ Executar na Shopee</button>
           </div>
         </div>
         <section id="optimizerExecutionTracker" class="optimizer-exec-tracker" hidden aria-label="Acompanhamento em tempo real da execução">
@@ -429,6 +443,13 @@
               <div><h4>Acompanhamento da execução</h4><p>Etapas reais da SKU e confirmação da Shopee, atualizadas automaticamente.</p></div>
             </div>
             <span id="optimizerExecutionLiveBadge" class="optimizer-exec-live-badge">● Sincronizando</span>
+          </div>
+          <div class="optimizer-exec-resume-bar" aria-label="Retomar execução preparada">
+            <div class="optimizer-exec-resume-copy">
+              <strong>Próximo passo: continuar a publicação na Shopee</strong>
+              <small>As 9 imagens e o vídeo já enviados serão reaproveitados. O comando autoriza apenas a prévia conferida; anúncio, variações, fiscal e desconto serão verificados em sequência. Se estiver desabilitado, confira a aprovação da etapa 08.</small>
+            </div>
+            <button id="optimizerExecutionLaunch" type="button" hidden>▶ Retomar de onde parou</button>
           </div>
           <div class="optimizer-exec-product">
             <div class="optimizer-exec-product-visual">
