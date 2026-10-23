@@ -122,7 +122,8 @@ function render(){
  left.append(cards);workspace.append(left);
  // Comandos recolhidos na própria etapa: não ocupam a lateral dos cartões.
  const menu=el('details','optimizer-variant-stage-menu');
- const toggle=el('summary','','Ações da etapa');
+ menu.open=true; // Conferência e publicação ficam visíveis sem submenu escondido.
+ const toggle=el('summary','','Conferir e aplicar variações na Shopee');
  menu.append(toggle);menu.addEventListener('keydown',event=>{
   if(event.key==='Escape'){menu.open=false;toggle.focus();}
  });
