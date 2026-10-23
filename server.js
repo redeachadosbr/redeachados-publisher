@@ -1240,7 +1240,16 @@ app.post('/api/shopee/optimizer/workflow/review',mustLogin,requireWeDropAdmin,as
       change.attributes=attributes;
       await hydrateCategoryChoices(record,attributes,cfg,auth,live);
       const supplier=await readWeDropProduct(auth.shopId,{sku,itemId,modelId});
-      assertShopeeSupplierBrand({record,attributes,supplier});
+      // Conferir a etapa não publica valores da Shopee. Exigir a marca da WeDrop
+      // somente quando a marca fizer parte das alterações desta revisão:
+      // um valor antigo não editado (ex.: "Novo") não pode impedir o registro
+      // de uma ficha sem pendências obrigatórias. A validação de marca da
+      // execução/publicação continua separada e obrigatória.
+      const brandMeta=(record.attributeAudit?.attributes||[]).find(a=>
+        String(a.name||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'')
+          .trim().toLowerCase()==='marca');
+      if(brandMeta&&attributes.some(a=>Number(a.attributeId)===Number(brandMeta.id)))
+        assertShopeeSupplierBrand({record,attributes,supplier});
       change.matrixTechnical=technicalMatrixSource({sku,record,attributes});
       const verifiedAttributes=attributeAuditForChanges(attributes,record,live);
       if(Number(verifiedAttributes?.missingMandatory)>0)
