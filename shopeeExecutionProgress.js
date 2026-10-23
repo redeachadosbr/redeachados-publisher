@@ -20,22 +20,25 @@ export function shopeeExecutionProgress(job){
  const fiscalPartial=state==='verified'&&phase==='verified_partial';
  const fullWorkflow=plan.selectedStage==='all';
  const discountIncluded=Boolean(plan.commercialDiscount);
+ const variationsIncluded=Boolean(plan.modelVariations);
+ const variationsDone=variationsIncluded&&result.variation?.status==='verified';
+ const variationsActive=variationsIncluded&&/^variation_/.test(phase);
  const oldPlanNoApproval=fullWorkflow&&!discountIncluded;
  const discountDone=discountIncluded&&state==='verified'&&result.discount?.status==='verified';
  const verified=state==='verified'&&!fiscalPartial&&(!discountIncluded||discountDone);
  const commercialConfirmed=state==='verified'||Boolean(result.primaryVerified);
  const fiscalActive=Boolean(plan.finalFiscal)&&/^fiscal_/.test(phase);
  const fiscalDone=Boolean(plan.finalFiscal)&&(result.fiscal?.status==='verified'||verified);
- const discountActive=discountIncluded&&/^discount_/.test(phase);
+ const discountActive=discountIncluded&&/^discount_|^model_discount_/.test(phase);
  const pastImages=phase==='video_upload'||phase==='video_processing'||
    phase==='updating'||phase==='verifying'||phase==='verified';
  const pastVideo=['updating','verifying','verified'].includes(phase);
  const mediaFinished=images===0||uploaded===images||verified;
  const videoFinished=!video||Boolean(readyVideo)||verified;
  const updateAccepted=commercialConfirmed||phase==='verifying'||phase==='verified';
- const total=1+images+(video?1:0)+1+1+(plan.finalFiscal?1:0)+(discountIncluded?1:0);
+ const total=1+images+(video?1:0)+1+1+(variationsIncluded?1:0)+(plan.finalFiscal?1:0)+(discountIncluded?1:0);
  const completed=(started?1:0)+uploaded+(video&&readyVideo?1:0)+(updateAccepted?1:0)+
-  (commercialConfirmed?1:0)+(fiscalDone?1:0)+(discountDone?1:0);
+  (commercialConfirmed?1:0)+(variationsDone?1:0)+(fiscalDone?1:0)+(discountDone?1:0);
  const percent=verified?100:Math.min(fiscalPartial?95:99,Math.round(completed/total*100));
  const failure=['failed','uncertain'].includes(state)||fiscalPartial;
  const phaseNames={
@@ -49,7 +52,17 @@ export function shopeeExecutionProgress(job){
   discount_price_updating:'Atualizando preço bruto autorizado',
   discount_price_verifying:'Conferindo preço bruto na Shopee',
   discount_updating:'Enviando desconto à promoção',
-  discount_verifying:'Conferindo promoção na Shopee',retry_allowed:'Revisão necessária'
+  discount_verifying:'Conferindo promoção na Shopee',
+  variation_ready:'Preparando automaticamente modelos e fotos individuais',
+  variation_media:'Enviando fotos de variação à mídia Shopee',
+  variation_updating:'Criando variações na Shopee',
+  variation_verifying:'Conferindo modelos criados na Shopee',
+  model_discount_ready:'Preparando descontos aprovados por modelo',
+  model_discount_price_updating:'Atualizando preços brutos dos modelos',
+  model_discount_price_verifying:'Conferindo preços dos modelos na Shopee',
+  model_discount_updating:'Enviando desconto das variações à promoção',
+  model_discount_verifying:'Conferindo descontos por modelo',
+  retry_allowed:'Revisão necessária'
  };
  const title=fiscalPartial?'Comercial confirmado · Fiscal pendente':verified?'Alterações confirmadas':state==='uncertain'?'Confirmação pendente':
   state==='failed'?'Execução interrompida':state==='blocked'?'Pendências para executar':
@@ -65,6 +78,8 @@ export function shopeeExecutionProgress(job){
    started&&phase==='updating'?'active':'waiting'),
   step('verify','Conferência comercial na Shopee',commercialConfirmed?'done':
    started&&phase==='verifying'?'active':'waiting'),
+  ...(variationsIncluded?[step('variants','06 · Variações na Shopee',
+    variationsDone?'done':variationsActive?'active':'waiting')]:[]),
   ...(plan.finalFiscal?[step('fiscal','07 · Dados fiscais',
       fiscalPartial?'attention':fiscalDone?'done':fiscalActive?'active':'waiting')]:
     fullWorkflow?[step('fiscal','07 · Dados fiscais (sem alteração)',commercialConfirmed?'skipped':'waiting')]:
@@ -84,6 +99,7 @@ export function shopeeExecutionProgress(job){
   videoIncluded:video,videoReady:readyVideo,videoPublished:(verified||fiscalPartial)&&video,
   imagesPublished:(verified||fiscalPartial)?images:0,hasStarted:started,verified,fiscalPartial,
   fiscalStatus:fiscalPartial?'rejected':fiscalDone?'verified':fiscalActive?'in_progress':plan.finalFiscal?'pending':'not_included',
+  variationsStatus:variationsDone?'verified':variationsActive?'in_progress':variationsIncluded?'pending':'not_included',
   discountStatus:discountDone?'verified':discountActive?'in_progress':
    oldPlanNoApproval?'not_approved_for_this_run':discountIncluded?'pending':'not_included',
   attention:failure,lastError:job.last_error||null,
