@@ -471,6 +471,19 @@
           </div>
         </section>
         <p id="optimizerExecutionStatus" class="optimizer-notice" role="status" aria-live="polite">Aguardando análise das etapas.</p>
+        <section id="optimizerFinalPending" class="optimizer-final-pending" hidden aria-label="Últimas pendências do anúncio">
+          <div class="optimizer-final-pending-head"><strong>Concluir anúncio · Variações e desconto</strong>
+            <small>Não reenviar imagens, vídeo, título ou descrição já confirmados. Conferir somente o que falta na Shopee.</small></div>
+          <div class="optimizer-final-pending-grid">
+            <div class="optimizer-final-pending-card"><span class="optimizer-final-step-num">1</span><div>
+              <strong>Variações do produto</strong><p id="optimizerFinalVariantsState">Consultando fotos e opções já salvas...</p>
+              <button id="optimizerFinalVariantsOpen" type="button" class="secondary">Conferir e publicar variações →</button></div></div>
+            <div class="optimizer-final-pending-card"><span class="optimizer-final-step-num">2</span><div>
+              <strong>Desconto — última etapa</strong><p id="optimizerFinalDiscountState">A promoção será analisada depois de conferir os modelos reais.</p>
+              <button id="optimizerFinalDiscountOpen" type="button" class="secondary">Conferir desconto →</button></div></div>
+          </div>
+          <small id="optimizerFinalPendingNotice">A prévia e o envio dependem de sua confirmação. Nenhuma alteração será repetida automaticamente.</small>
+        </section>
         <a id="optimizerExecutionShopeeLink" class="optimizer-exec-result-link" hidden target="_blank" rel="noopener noreferrer">✓ Alterações confirmadas. Ver anúncio na Central do Vendedor Shopee ↗</a>
         <div class="optimizer-workflow-actions">
           <button id="optimizerExecutionRefresh" type="button" class="secondary" hidden>Atualizar andamento</button>
@@ -1617,7 +1630,7 @@
 <script src="/seo-modern-layout.js?v=1.0.1-auto-titles"></script>
 <script src="/description-modern-layout.js?v=1.0.3"></script>
 <script src="/fiscal-modern-layout.js?v=1.0.1-fiscal-cards"></script>
-<script src="/app.js?v=1.21.29-auto-recovery"></script>
+<script src="/app.js?v=1.21.30-final-pending"></script>
 <link rel="stylesheet" href="/optimizer-variations.css?v=1.2.0">
 <script src="/optimizer-variations.js?v=1.2.0"></script>
 
