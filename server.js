@@ -1336,6 +1336,18 @@ app.post('/api/shopee/optimizer/execution/prepare',mustLogin,requireWeDropAdmin,
       verifyShopeeExecution(previous.plan,live,previous.result)?previous.plan.video?.sha256:null;
     const manualImages=await readPreparedImages(auth.shopId,itemId,modelId,sku);
     const reviewState=review?.review_state||{};
+    // Variações conferidas são parte da execução completa, nunca um envio
+    // manual em outra tela. Dados e custos vêm do rascunho salvo da SKU.
+    let modelVariations=null;
+    if(selectedStage==='all'&&reviewState.variationConfig?.enabled===true&&!live.has_model){
+     if(!reviewState.variationDetails)throw Error('Configure as variações reais e suas fotos antes da prévia única.');
+     const details=validateVariationDetails(reviewState.variationDetails,{requirePhotos:true});
+     if(details.options.length<2)throw Error('A execução automática exige a opção original e pelo menos uma variação.');
+     const source=await verifiedVariationSupplierCosts({auth,sku,itemId,modelId},details);
+     modelVariations={type:details.type,options:details.options.map(option=>({
+      ...option,cost:source.find(o=>o.sku===option.sku)?.unitCost||null}))};
+     if(modelVariations.options.some(o=>!o.cost))throw Error('Custo WeDrop não confirmado para todas as opções.');
+    }
     if(selectedStage==='fiscal'&&reviewState.stages?.fiscal?.reviewed&&reviewState.tax){
       const supplier=await readWeDropProduct(auth.shopId,{sku,itemId,modelId});
       fiscalMatrixSource({sku,supplier,tax:reviewState.tax,reviewSource:reviewState.matrixFiscal});
@@ -1351,7 +1363,7 @@ app.post('/api/shopee/optimizer/execution/prepare',mustLogin,requireWeDropAdmin,
       await hydrateCategoryChoices(record,reviewState.attributes||[],cfg,auth,live);
     }
     const inputs={shopId:auth.shopId,itemId,modelId,sku,record,
-      review:review?.review_state||{},live,manualVideo,verifiedVideoSha256,manualImages,selectedStage,allowDiscountOnly};
+      review:review?.review_state||{},live,manualVideo,verifiedVideoSha256,manualImages,selectedStage,allowDiscountOnly,modelVariations};
     let plan=compileShopeeExecutionPlan({...inputs,omitFiscal:false});
     // Previous Shopee validation can mean tax_info was rejected while other
     // approved changes are independent. A first explicit "00" submission is allowed,
@@ -1753,7 +1765,14 @@ app.post('/api/shopee/optimizer/execution/execute',mustLogin,requireWeDropAdmin,
    review:review.review_state,live,manualVideo,manualImages,
    deferUnconfirmedFiscal:plan.fiscalDeferred===true,
    omitFiscal:false,selectedStage:plan.selectedStage||'all',
-   allowDiscountOnly:plan.discountOnly===true});
+   allowDiscountOnly:plan.discountOnly===true,
+   modelVariations:plan.modelVariations&&!(live.has_model)?
+    await (async()=>{
+     const details=validateVariationDetails(reviewState.variationDetails,{requirePhotos:true});
+     const supplier=await verifiedVariationSupplierCosts({auth,sku,itemId,modelId},details);
+     return {type:details.type,options:details.options.map(o=>({
+      ...o,cost:supplier.find(x=>x.sku===o.sku)?.unitCost||null}))};
+    })():null});
   if(fresh.fingerprint!==plan.fingerprint||!fresh.canExecute)throw Error('Conteúdo ou aprovação mudou. Prepare novamente.');
   await claimShopeePreparedExecution(auth.shopId,itemId,modelId,{
    planId:plan.planId,updatedAt:job.updated_at,runId:crypto.randomUUID(),commercialDiscount});
