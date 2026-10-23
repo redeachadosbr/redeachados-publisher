@@ -10,7 +10,7 @@ test('Fiscal stage loads the approved layout before main app and preserves origi
  const script=html.indexOf('/fiscal-modern-layout.js?v=');
  const main=html.indexOf('/app.js?v=1.21.26-fiscal-modern');
  assert.ok(script>0&&main>script,'Layout must load before the app.');
- assert.match(html,/fiscal-modern-layout\.css\?v=1\.0\.0-approved/);
+ assert.match(html,/fiscal-modern-layout\.css\?v=1\.0\.1-fiscal-cards/);
  assert.match(layout,/globalThis\.ShopeeFiscalStudio=\{open,close,update\}/);
  assert.match(layout,/const originalLabels=\[\.\.\.fields\.querySelectorAll\('label'\)\]/);
  assert.match(layout,/fields\.append\(content\)/);
