@@ -8156,6 +8156,8 @@ function optimizerBridgeRecoverFromExtension(payload){
   window.postMessage({kind:'RA_SITE_CONTINUE',requestId,payload},location.origin);
  });
 }
+// Impedir execução duplicada mesmo se a galeria reativar o botão durante uma consulta.
+let optimizerChatgptContinueBusy=false;
 // Clique principal executa DIRETAMENTE a continuação, sem outro botão oculto.
 async function optimizerChatgptContinueFromServer(){
  const w=optimizerWorkflowPlan,button=$('#optimizerChatgptAuto');
@@ -8175,8 +8177,8 @@ async function optimizerChatgptContinueFromServer(){
  };
  notify('Consultando a primeira posição pendente diretamente no servidor...');
  if(!w||!optimizerImagesSameSku(w)){notify('Abra a etapa Imagens de uma SKU válida antes de continuar.',true);return;}
- if(!button||button.disabled){notify('O comando já está em execução ou não existem imagens pendentes.',true);return;}
- button.disabled=true;
+ if(!button||optimizerChatgptContinueBusy||button.disabled){notify('O comando já está em execução ou não existem imagens pendentes.',true);return;}
+ optimizerChatgptContinueBusy=true;button.disabled=true;
  try{
   optimizerImagesMode='chatgpt';optimizerImagesRenderMode();
   if(!optimizerChatBridgeReady){
@@ -8252,7 +8254,7 @@ async function optimizerChatgptContinueFromServer(){
  }catch(e){
   optimizerChatBridgeBusy=false;$('#optimizerChatgptAbort').hidden=true;
   notify('Não foi possível continuar a sequência: '+String(e.message||e)+'. Nenhuma foto salva foi apagada.',true);
- }finally{if(button)button.disabled=false;}
+ }finally{optimizerChatgptContinueBusy=false;if(button)button.disabled=false;}
 }
 $('#optimizerChatgptAuto')?.addEventListener?.('click',()=>void optimizerChatgptContinueFromServer());
 $('#optimizerChatgptResume')?.addEventListener?.('click',()=>void optimizerChatgptContinueFromServer());
