@@ -111,9 +111,14 @@ export function createImageUploadQueue({storage,send,onAck=()=>{},onSaved=()=>{}
   submitting.set(key,{sha256:input.sha256,promise:work});
   return work;
  }
- async function resume(job,{includeBlocked=false}={}){
+ async function resume(job,{includeBlocked=false,onlySlots=null}={}){
   if(stopped.has(job?.nonce))return 0;
+  // O servidor já confirmou os demais slots. Nunca reimportar um arquivo
+  // de uma posição que deixou de estar pendente, mesmo se o ACK se perdeu.
+  const permitted=Array.isArray(onlySlots)?
+   new Set(onlySlots.filter(x=>Number.isInteger(x)&&x>=1&&x<=9)):null;
   const rows=(await storage.all()).filter(row=>sameImageJob(job,row)&&
+   (!permitted||permitted.has(row.slot))&&
    (row.status==='pending'||(includeBlocked&&row.status==='blocked')));
   for(const row of rows)void deliver(row);
   return rows.length;
