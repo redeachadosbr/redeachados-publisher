@@ -8098,7 +8098,7 @@ async function optimizerChatBridgeConfirmed(job){
  return complete;
 }
 function optimizerChatBridgeQueue(){
- if(!optimizerChatBridgeQueuePromise)optimizerChatBridgeQueuePromise=import('/chatgptUploadQueue.js?v=1.21.13-queue-cancel').then(({createImageUploadQueue,createIndexedImageStore})=>
+ if(!optimizerChatBridgeQueuePromise)optimizerChatBridgeQueuePromise=import('/chatgptUploadQueue.js?v=1.21.14-db-reconcile').then(({createImageUploadQueue,createIndexedImageStore})=>
   createImageUploadQueue({
    storage:createIndexedImageStore(),
    send:async(row,{signal}={})=>{
@@ -8286,7 +8286,7 @@ globalThis.window?.addEventListener?.('message',async(event)=>{
    const annotated=await addConfirmedSpecificationCard(prepared.blob,spec);
    prepared={...prepared,blob:annotated,filename:'imagem-03-especificacoes.png'};
   }
-  const {imageBlobSha256}=await import('/chatgptUploadQueue.js?v=1.21.13-queue-cancel');
+  const {imageBlobSha256}=await import('/chatgptUploadQueue.js?v=1.21.14-db-reconcile');
   const sha256=await imageBlobSha256(prepared.blob);
   if(job.expectedHashes?.[m.slot]===sha256)throw Error('A extensão reenviou a imagem antiga, não uma foto corrigida.');
   const existing=await json('/api/shopee/optimizer/images/manual?'+new URLSearchParams({
