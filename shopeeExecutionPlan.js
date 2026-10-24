@@ -233,7 +233,21 @@ export function shopeeExecutionUnconfirmedFields(plan,item,result={}){
   out.push('Imagens enviadas à mídia ainda não vinculadas ao anúncio');
  if(plan.video&&!videoMatches(item,result.video))
   out.push('Vídeo ainda não confirmado no anúncio');
- if(!fieldsVerified(plan.proposed||{},item))out.push('Título, descrição ou ficha técnica ainda divergem');
+ // Diagnóstico por campo: a ausência de UM atributo nunca deve fazer
+ // título/descrição já confirmados parecerem não publicados.
+ const proposed=plan.proposed||{};
+ if(Object.hasOwn(proposed,'item_name')&&
+   !fieldsVerified({item_name:proposed.item_name},item))
+   out.push('Título SEO ainda diferente do valor aprovado');
+ if(Object.hasOwn(proposed,'description')&&
+   !fieldsVerified({description:proposed.description},item))
+   out.push('Descrição ainda diferente do texto aprovado');
+ if(Array.isArray(proposed.attribute_list)&&proposed.attribute_list.length){
+   const missing=proposed.attribute_list.filter(value=>
+     !fieldsVerified({attribute_list:[value]},item));
+   if(missing.length)out.push('Ficha técnica: '+missing.length+' atributo(s) ainda não confirmados (ID '+
+     missing.slice(0,8).map(x=>String(x.attribute_id)).join(', ')+').');
+ }
  if(plan.finalFiscal&&!fieldsVerified({tax_info:plan.finalFiscal},item))
   out.push('Dados fiscais ainda não confirmados');
  return out;
