@@ -64,18 +64,18 @@
 #optimizerTitleVariants .seo-modern-extra .seo-studio-custom input{font-size:11px;padding:7px;min-width:0}
 #optimizerTitleVariants .seo-modern-extra .seo-studio-rebuild{display:none!important}
 #optimizerTitleVariants .seo-studio-market-status{margin:2px 0 0!important;font-size:10px;line-height:1.4;padding:7px 8px;background:#f3f8ff;border:1px solid #dce8fb;border-radius:8px;font-weight:600}
-#optimizerTitleVariants .seo-modern-grid{display:grid!important;grid-template-columns:repeat(4,minmax(0,1fr))!important;gap:9px;padding:10px!important;margin:0!important;background:#f7faff}
-#optimizerTitleVariants .seo-modern-grid .seo-studio-card{display:flex;flex-direction:column;min-width:0;min-height:160px;padding:11px;border:1px solid #dce8f5;border-radius:11px;background:#fff;box-shadow:none;transform:none!important}
+#optimizerTitleVariants .seo-modern-grid{display:grid!important;grid-template-columns:repeat(2,minmax(0,1fr))!important;gap:12px;padding:12px!important;margin:0!important;background:#f7faff}
+#optimizerTitleVariants .seo-modern-grid .seo-studio-card{display:flex;flex-direction:column;min-width:0;min-height:212px;padding:15px;border:1px solid #dce8f5;border-radius:12px;background:#fff;box-shadow:none;transform:none!important}
 #optimizerTitleVariants .seo-modern-grid .seo-studio-card:hover{border-color:#8176f6;box-shadow:0 4px 12px #324e7b15}
 #optimizerTitleVariants .seo-modern-grid .seo-studio-card.selected{border:2px solid #23865b;background:#f7fffb}
 #optimizerTitleVariants .seo-modern-grid .seo-studio-card-top{gap:6px}
-#optimizerTitleVariants .seo-modern-grid .seo-studio-option strong{font-size:11px;color:#284878}
-#optimizerTitleVariants .seo-modern-grid .seo-studio-option small{font-size:9px}
-#optimizerTitleVariants .seo-modern-grid .seo-studio-meter{display:none!important}
-#optimizerTitleVariants .seo-modern-grid .seo-studio-candidate{margin:10px 0 8px!important;font-size:12px!important;line-height:1.45!important;min-height:48px!important;flex:1}
-#optimizerTitleVariants .seo-modern-grid .seo-studio-metrics{gap:4px;font-size:9px}
+#optimizerTitleVariants .seo-modern-grid .seo-studio-option strong{font-size:13px;color:#284878}
+#optimizerTitleVariants .seo-modern-grid .seo-studio-option small{font-size:10px;line-height:1.5}
+#optimizerTitleVariants .seo-modern-grid .seo-studio-meter{display:flex!important;flex-direction:column;align-items:flex-end;min-width:70px!important;text-align:right;gap:2px}
+#optimizerTitleVariants .seo-modern-grid .seo-studio-candidate{margin:12px 0 8px!important;font-size:14px!important;line-height:1.5!important;min-height:64px!important;font-weight:780!important;overflow-wrap:anywhere}
+#optimizerTitleVariants .seo-modern-grid .seo-studio-metrics{gap:6px;font-size:10px}
 #optimizerTitleVariants .seo-modern-grid .seo-studio-metrics span{padding:3px 5px}
-#optimizerTitleVariants .seo-modern-grid .seo-studio-why{display:none!important}
+#optimizerTitleVariants .seo-modern-grid .seo-studio-why{display:block!important;line-height:1.45!important;color:#4e6580;margin:8px 0!important;font-size:11px!important;min-height:32px}
 #optimizerTitleVariants .seo-modern-grid .seo-studio-card-actions{display:flex;gap:6px;margin-top:10px}
 #optimizerTitleVariants .seo-modern-grid .seo-studio-choose{background:linear-gradient(100deg,#4c69f4,#843dee);border:0;border-radius:8px;padding:9px 6px;font-size:10px;color:#fff}
 #optimizerTitleVariants .seo-modern-grid .seo-studio-choose:disabled{background:#aebbcf;opacity:.7}
@@ -101,3 +101,52 @@
 @media(max-width:650px){#optimizerTitleVariants .seo-modern-grid{grid-template-columns:1fr!important}#optimizerTitleVariants .seo-modern-product h3{font-size:15px!important}#optimizerTitleVariants .seo-modern-photo{width:70px;height:72px}#optimizerTitleVariants .seo-modern-product{grid-template-columns:70px minmax(0,1fr)}#optimizerTitleVariants .seo-modern-indicator{gap:4px}#optimizerTitleVariants .seo-modern-meter{width:38px}#optimizerTitleVariants .seo-modern-quick-grid{grid-template-columns:1fr}}
 
 #optimizerWorkflowEditor.seo-modern-editor[hidden]{display:none!important}
+
+/* Quatro títulos, duas colunas, nota visível e sugestão ideal. */
+#optimizerTitleVariants .seo-modern-grid .seo-studio-card.seo-studio-ideal{
+ border:2px solid #169164!important;
+ background:linear-gradient(170deg,#f0fff7 0%,#fff 58%)!important;
+ box-shadow:0 0 0 2px #d5f5e1!important
+}
+#optimizerTitleVariants .seo-modern-grid .seo-studio-card.seo-studio-ideal .seo-studio-option small{
+ color:#087447!important;font-weight:800!important
+}
+#optimizerTitleVariants .seo-modern-grid .seo-studio-meter strong{
+ display:block!important;font-size:21px!important;color:#25497b!important;line-height:1.15!important;
+ font-variant-numeric:tabular-nums;font-weight:850!important
+}
+#optimizerTitleVariants .seo-modern-grid .seo-studio-card.seo-studio-ideal .seo-studio-meter strong{
+ color:#087b52!important;font-size:23px!important
+}
+#optimizerTitleVariants .seo-modern-grid .seo-studio-meter small{
+ font-size:10px!important;line-height:1.25!important;color:#67809c!important
+}
+#optimizerTitleVariants .seo-modern-grid .seo-studio-score-track{
+ height:6px;width:100%;margin-top:4px;border-radius:50px;background:#e8edf7;overflow:hidden
+}
+#optimizerTitleVariants .seo-modern-grid .seo-studio-score-fill{
+ height:100%;background:linear-gradient(90deg,#668bf7,#8261ed);border-radius:50px
+}
+#optimizerTitleVariants .seo-modern-grid .seo-studio-ideal .seo-studio-score-fill{
+ background:linear-gradient(90deg,#20ab72,#087b52)
+}
+#optimizerTitleVariants .seo-modern-grid .seo-studio-score-detail{
+ display:block;font-size:10px!important;line-height:1.4!important;color:#667f9a!important;
+ margin:6px 0 0!important
+}
+#optimizerTitleVariants .seo-modern-grid .seo-studio-card-actions{
+ margin-top:auto!important;padding-top:12px
+}
+#optimizerTitleVariants .seo-modern-grid .seo-studio-ideal .seo-studio-choose{
+ background:#137c56!important;color:#fff!important
+}
+#optimizerTitleVariants .seo-modern-grid .seo-studio-empty-card{
+ border-style:dashed!important;background:#fdfefe!important
+}
+#optimizerTitleVariants .seo-modern-grid .seo-studio-empty-card .seo-studio-candidate{
+ color:#6d809a!important;font-weight:500!important
+}
+@media(max-width:650px){
+ #optimizerTitleVariants .seo-modern-grid{grid-template-columns:1fr!important}
+ #optimizerTitleVariants .seo-modern-grid .seo-studio-card{min-height:195px}
+}
