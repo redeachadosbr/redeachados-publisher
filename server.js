@@ -3149,7 +3149,7 @@ app.post('/api/shopee/optimizer/discounts/preview',mustLogin,requireWeDropAdmin,
    signDiscountPreview(data.snapshot,envText('SESSION_SECRET'));
   res.json({ok:true,readOnly:true,preview:data.snapshot,approvalToken:signature,
    deferred:data.deferred,liveItemStatus:data.liveItemStatus,
-   warning:data.deferred?'Anúncio UNLIST: valores conferidos para aprovação antecipada. Nenhum desconto será enviado antes de a Shopee confirmar NORMAL e gerar nova prévia assinada.':
+   warning:data.deferred?'Status '+data.liveItemStatus+' na Shopee: valores conferidos para autorização antecipada, sem escrever na campanha. A promoção só será aplicada se a Shopee posteriormente retornar NORMAL, após nova verificação de preço, margem e campanha.':
     'Nenhum desconto ou preço foi alterado. Execute apenas após verificar os valores.'});
  }catch(e){res.status(400).json({error:String(e.message||e).slice(0,350)});}
 });
