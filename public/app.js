@@ -8029,6 +8029,9 @@ globalThis.window?.addEventListener?.('message',async(event)=>{
   const done=m.status==='9/9 imagens armazenadas. Confira e aprove a etapa no Shopee Manager antes de publicar na Shopee.';
   optimizerChatBridgeNotice(m.status+(m.error?' '+m.error:'')+
    (m.slot?' · posição '+Math.min(9,m.slot)+'/9':''));
+  optimizerCommercialActionMessage('Ponte ChatGPT · imagem '+String(Math.min(9,Number(m.slot)||1)).padStart(2,'0')+
+   '/09: '+String(m.status||'Aguardando atualização')+(m.error?' · '+m.error:''),
+   Boolean(m.error)||/falh|pausad|recusad|interrompid/i.test(String(m.status||'')));
   const paused=/pausad[ao]|interrompid[ao]|cancelad[ao]|falha (?:no |de )?(?:upload|importação)/i.test(m.status||'');
   if(paused){optimizerChatBridgeBusy=false;$('#optimizerChatgptAbort').hidden=true;}
   else if(!done){optimizerChatBridgeBusy=true;$('#optimizerChatgptAbort').hidden=false;}
