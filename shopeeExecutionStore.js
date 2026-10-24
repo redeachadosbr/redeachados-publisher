@@ -40,7 +40,8 @@ export async function saveShopeePreparedExecution(shopId,itemId,modelId,sku,plan
    prev.sku===String(sku)&&
    prev.plan?.fingerprint===plan.fingerprint&&
    prev.plan?.canExecute===plan.canExecute&&
-   JSON.stringify(prev.plan?.reusedMedia||{})===JSON.stringify(plan.reusedMedia||{}))
+   JSON.stringify(prev.plan?.reusedMedia||{})===JSON.stringify(plan.reusedMedia||{})&&
+   JSON.stringify(prev.plan?.confirmedStages||{})===JSON.stringify(plan.confirmedStages||{}))
    return prev;
  const state=plan.canExecute?'prepared':'blocked';
  const data={shop_id:num(shopId),item_id:num(itemId),model_id:model(modelId),
