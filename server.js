@@ -842,7 +842,7 @@ app.get('/api/shopee/optimizer/find',mustLogin,requireWeDropAdmin,async(req,res)
     // Atualizar somente os IDs encontrados ATIVOS no anúncio verdadeiro.
     // Não transferir plano de preço, descrição ou autorização entre item IDs.
     await storeCatalogItems(auth.shopId,matches.map(x=>({
-     ...x,hasModel:false,baseLoaded:true
+     ...x,baseLoaded:true
     })));
    }
   });
