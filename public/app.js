@@ -7614,15 +7614,17 @@ async function optimizerChatgptCopyAll({open=false}={}){
  const key=[w.sku,w.itemId,w.modelId].join('|');
  const recent=optimizerChatgptBriefSku===key?optimizerChatgptBrief:null;
  try{
-  // Cópia iniciada durante o clique para preservar permissão de área de transferência.
+  // Fallback manual: sempre copia apenas a PRIMEIRA posição ainda pendente, nunca um lote.
+  const slot=Array.from({length:9},(_,i)=>i+1).find(x=>!optimizerImagesSavedSlots.has(x))||1;
+  const pos=String(slot).padStart(2,'0');
   const copy=recent
-   ?navigator.clipboard.writeText(recent.batch)
-   :optimizerChatgptMakeBrief(w).then(brief=>navigator.clipboard.writeText(brief.batch));
+   ?navigator.clipboard.writeText(recent.prompts[slot-1])
+   :optimizerChatgptMakeBrief(w).then(brief=>navigator.clipboard.writeText(brief.prompts[slot-1]));
   if(open)window.open('https://chatgpt.com/','_blank','noopener,noreferrer');
   await copy;
   status.textContent=open
-   ?'Pedido das nove imagens copiado. No ChatGPT, anexe a foto original da Shopee e cole o texto (Ctrl + V).'
-   :'Os nove roteiros foram copiados. Cole no ChatGPT junto com a fotografia original do produto.';
+   ?'Comando SOMENTE da imagem '+pos+'/09 copiado. Anexe a foto original e cole (Ctrl + V) no ChatGPT.'
+   :'Comando individual da imagem '+pos+'/09 copiado. Anexe a fotografia original no ChatGPT e importe a imagem nessa posição.';
  }catch(e){status.textContent='Falha ao copiar os roteiros: '+e.message+'. Use os botões individuais abaixo.';}
 }
 $('#optimizerModeApi')?.addEventListener?.('click',()=>{
