@@ -10,4 +10,7 @@ test('retomada confirma resultado real do Manager só após RA_SITE_CONTINUE e W
  assert.match(fn,/String\(w\.sku\)!==String\(identity\?\.sku\)/);
  assert.match(fn,/optimizerChatgptContinueBusy/);
  assert.match(fn,/return result\?\.ok===true\?result:/);
+ assert.match(main,/function optimizerWaitBridgeReply\(kind,nonce,timeoutMs=18000\)/);
+ assert.match(fn,/const wakeResult=await wakeAck/);
+ assert.match(fn,/const startResult=await startAck/);
 });
