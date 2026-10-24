@@ -7737,13 +7737,11 @@ function optimizerFiscalRender(data){
  for(const [key,value] of Object.entries(defaults)){
   if(!String(draft[key]??'').trim()&&String(value??'').trim())draft[key]=value;
  }
- // A escolha revisada da loja é prioritária, mesmo quando for "00".
- // Um CEST retornado pela Shopee deve aparecer apenas como valor de
- // marketplace, sem reescrever silenciosamente a escolha do vendedor.
- const sellerCest=String(saved.cest??'').trim();
+ // CEST do formulário vem EXCLUSIVAMENTE do CSV WeDrop da SKU vinculada.
+ // Jamais reutilizar o CEST salvo anteriormente ou o valor recebido da Shopee.
  const liveCest=String(data.taxCurrent?.cest??'').trim();
  const suggestedCest=String(defaults.cest??'').trim();
- draft.cest=sellerCest||liveCest||suggestedCest||'00';
+ draft.cest=/^\d{7}$/.test(suggestedCest)?suggestedCest:'00';
  const existingPis=String(saved.pis_cofins_cst||data.taxCurrent?.pis_cofins_cst||'').trim();
  if(existingPis)draft.pis_cofins_cst=existingPis;
  const summary=optimizerMake('p','optimizer-category-summary',
@@ -7754,10 +7752,12 @@ function optimizerFiscalRender(data){
   const field=optimizerMake('label','optimizer-field',label),input=optimizerMake('input');
   const value=String(draft[key]??'');
   input.type='text';input.dataset.taxField=key;input.value=value;input.maxLength=key==='evidence'?300:20;
+  if(key==='cest'){input.readOnly=true;input.title='CEST somente da planilha WeDrop da SKU; sem informação, 00.';}
   if(value&&key!=='evidence'){
    const savedValue=Object.hasOwn(saved,key)&&String(saved[key]??'').trim()!==''&&saved[key]===draft[key];
-   const origin=savedValue?'Revisão salva desta SKU':
-     key==='cest'&&value===liveCest?'Shopee (API do anúncio; conferência fiscal necessária)':
+   const origin=key==='cest'?
+     ((data.taxSuggestionSources||{}).cest||'Motor Matriz · 00, sem CEST informado pela WeDrop'):
+     savedValue?'Revisão salva desta SKU':
      (data.taxSuggestionSources||{})[key]||'Informação fiscal obtida do anúncio';
    const provenance=optimizerMake('small','optimizer-fiscal-filled',
      '✓ '+(savedValue?'Valor já salvo':'Pré-preenchido automaticamente')+' · '+origin);
@@ -7774,10 +7774,11 @@ function optimizerFiscalRender(data){
  if(cest){
   const marker=String(draft.cest||'').trim()==='00';
   const info=optimizerMake('small','optimizer-fiscal-cest-help',marker
-    ?'Motor Matriz: 00 é apenas o marcador interno da loja, não um CEST fiscal válido. '+
-     (liveCest&&liveCest!=='00'?'A Shopee informa '+liveCest+' para este anúncio: esse valor publicado NÃO foi alterado. ':'')+
-     'Confirme o enquadramento com a contabilidade antes de enviar informações fiscais.'
-    :'CEST do anúncio: confira a correspondência deste código com o NCM e o produto antes de enviar dados fiscais.');
+    ?'WeDrop sem CEST confirmado para esta SKU: usar 00 somente no cadastro interno (não é um CEST fiscal). '+
+     (liveCest&&liveCest!=='00'?'CEST publicado na Shopee: '+liveCest+' — não foi modificado. ':'')+
+     'Para emissão fiscal, confirmar o enquadramento com a contabilidade.'
+    :'CEST de 7 dígitos obtido da planilha WeDrop desta SKU. Confira o enquadramento fiscal antes do envio. '+
+     (liveCest&&liveCest!==draft.cest?'Shopee informa '+liveCest+' — não foi modificado.':'') );
   cest.closest('label')?.append(info);
  }
 }
