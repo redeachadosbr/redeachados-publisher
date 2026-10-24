@@ -169,37 +169,19 @@ function modernize(data){
  if(importPanel)suggestions.append(importPanel);
  top.append(suggestions);content.append(top);
  grid.classList.add('seo-modern-grid');content.append(grid);
- if(researchPanel)content.append(researchPanel);
+ // As fontes e os termos permanecem disponíveis, mas começam recolhidos.
+ // O DOM original recebe atualizações assíncronas do ChatGPT: manter o mesmo nó.
+ if(researchPanel){
+  const references=node('details','seo-modern-research-details');
+  const summary=node('summary','','▸ Ver palavras-chave e URLs da pesquisa');
+  summary.setAttribute('aria-label','Expandir ou recolher fontes e palavras-chave da pesquisa');
+  references.append(summary,researchPanel);
+  content.append(references);
+ }
+ // Os blocos duplicados "Informações da WeDrop" e "Ações rápidas" foram
+ // removidos APENAS deste resumo visual. A ficha original e demais áreas
+ // do Shopee Manager continuam disponíveis e alimentam a pesquisa SEO.
 
- const lower=node('div','seo-modern-lower');
- const supplier=node('section','seo-modern-source'),sourceHead=node('div','seo-modern-head');
- const sourceLabel=node('div','seo-modern-label');
- sourceLabel.append(node('span','seo-modern-symbol','▤'),node('strong','','Informações da WeDrop'));
- sourceHead.append(sourceLabel,help('Consulte a ficha original antes de usar medidas, marcas ou certificações. Os dados do fornecedor não são inseridos automaticamente no título.','Informações da WeDrop'));
- sourceHead.append(action('Adicionar texto ou prints ↗',()=>jump('optimizerSourcePanel'),'seo-modern-source-action'));
- supplier.append(sourceHead);
- const supplierFile=node('div','seo-modern-source-file');
- supplierFile.append(node('strong','',p.source||'Catálogo WeDrop indisponível'),
-   node('small','','SKU '+sku+(p.brand?' · '+p.brand:'')));
- supplier.append(supplierFile,node('p','seo-modern-source-detail',
-  [p.name||'Sem nome de produto no catálogo',p.ncm?'NCM: '+p.ncm:'',p.ean?'EAN: '+p.ean:''].filter(Boolean).join(' · ')));
- lower.append(supplier);
-
- const quick=node('section','seo-modern-shortcuts'),quickHead=node('div','seo-modern-head');
- const quickLabel=node('div','seo-modern-label');
- quickLabel.append(node('span','seo-modern-symbol','⚙'),node('strong','','Ações rápidas'));
- quickHead.append(quickLabel,help('Acesse os painéis existentes da loja. Abrir um painel não atualiza o anúncio na Shopee.','Ações rápidas'));
- quick.append(quickHead);
- const quickGrid=node('div','seo-modern-quick-grid');
- for(const [symbol,name,id] of [
-  ['☼','Regras salvas da loja','optimizerRulesDetails'],
-  ['◇','Auditoria técnica do anúncio','optimizerAuditPanel'],
-  ['▤','Informações e prints WeDrop','optimizerSourcePanel']
- ])quickGrid.append(action(symbol+'  '+name+' ›',()=>jump(id),'seo-modern-quick-button'));
- const tips=node('details','seo-modern-tips');
- tips.append(node('summary','','ⓘ  Dicas SEO e boas práticas ›'),
-   node('p','','Use nome, tipo e termos relevantes comprovados. Evite códigos internos, promessas e características não confirmadas.'));
- quickGrid.append(tips);quick.append(quickGrid);lower.append(quick);content.append(lower);
  mount.replaceChildren(content);draftHandler();
 }
 function open(data,onChoose){
