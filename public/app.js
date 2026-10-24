@@ -2931,8 +2931,8 @@ function optimizerImageCorrectionRefreshPreview(){
  preview.hidden=!asset?.previewUrl;
  const photo=$('#optimizerImageCorrectionPreviewPhoto');
  if(photo){
-  if(asset?.previewUrl)photo.src=asset.previewUrl;
-  else photo.removeAttribute('src');
+  if(asset?.previewUrl&&photo.src!==asset.previewUrl)photo.src=asset.previewUrl;
+  else if(!asset?.previewUrl)photo.removeAttribute('src');
  }
  const caption=$('#optimizerImageCorrectionPreviewCaption');
  if(caption)caption.textContent='Posição '+String(slot).padStart(2,'0')+' · imagem atualmente salva para revisão';
@@ -8705,8 +8705,16 @@ async function optimizerImagesLoad(){
   $('#optimizerImagesProvider').textContent=optimizerImagesApiConfigured
    ?'✓ API OpenAI conectada · '+provider.model
    :'API OpenAI desconectada · conecte abaixo para liberar as imagens';
-  const gallery=$('#optimizerImagesGallery');gallery.replaceChildren();
+  const gallery=$('#optimizerImagesGallery');
+  // Reuse loaded image elements across the 9-slot gallery rebuilds. Recreating
+  // their IMG elements after every upload caused repeated decodes and blank frames.
+  const existingThumbs=new Map();
+  for(const oldCard of gallery.querySelectorAll('.optimizer-commercial-image-card[data-slot]')){
+   const photo=oldCard.querySelector('.optimizer-commercial-thumb img');
+   if(photo?.src)existingThumbs.set(Number(oldCard.dataset.slot),photo);
+  }
   const stored=new Map((data.images||[]).map(image=>[Number(image.slot),image]));
+  gallery.replaceChildren();
   optimizerImageCorrectionPreviewMap=stored;
   optimizerImageCorrectionRefreshPreview();
   optimizerImagesSavedSlots=new Set(stored.keys());
@@ -8781,9 +8789,16 @@ async function optimizerImagesLoad(){
    const thumb=optimizerMake('div','optimizer-commercial-thumb');
    const url=image?.previewUrl||'';
    if(url){
-    const photo=optimizerMake('img');photo.src=url;
-    photo.alt=(image?'Imagem comercial preparada':'Foto original Shopee de referência')+' da posição '+slot;
-    photo.loading='lazy';photo.draggable=false;thumb.append(photo);
+    const previousPhoto=existingThumbs.get(slot);
+    const photo=previousPhoto?.src===url?previousPhoto:optimizerMake('img');
+    if(photo.src!==url)photo.src=url;
+    photo.alt='Imagem comercial preparada da posição '+slot;
+    // The first row is always visible; lazy loading caused empty thumbnails
+    // after scrolling the page or during successive saved-image refreshes.
+    photo.loading=slot<=3?'eager':'lazy';
+    if(slot<=3)photo.setAttribute('fetchpriority','high');
+    photo.decoding='async';
+    photo.draggable=false;thumb.append(photo);
    }else thumb.append(optimizerMake('span','optimizer-image-placeholder','▧'));
    thumb.append(optimizerMake('span','optimizer-commercial-thumb-slot',String(slot)));
    card.append(thumb);
