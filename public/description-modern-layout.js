@@ -62,7 +62,8 @@
   countNode.setAttribute('aria-label',length+' caracteres na descrição');
   const pct=Math.min(100,Math.round(length/1440*100));
   if(barNode){barNode.value=Math.min(length,1440);barNode.title=pct+'% do alvo de 1440 caracteres';}
-  const valid=length>=1400&&length<=1440;
+  // Descrição verdadeira pode ser curta; não premiar enchimento artificial.
+  const valid=length>=400&&length<=1440;
   const counts=editor.querySelectorAll('.desc-modern-count');
   counts.forEach(n=>n.dataset.valid=valid?'true':'false');
   const tags=editor.querySelectorAll('[data-desc-part]');
@@ -165,6 +166,8 @@
    if(!globalThis.ShopeeDescriptionSaveChatGPT)throw Error('Salvamento do Manager indisponível. Recarregue a página.');
    const saved=await globalThis.ShopeeDescriptionSaveChatGPT(result.description,descIdentity);
    if(!saved?.saved)throw Error('O banco não confirmou o salvamento.');
+   generate.textContent='↻ Gerar nova descrição com ChatGPT';
+   state.querySelector('strong').textContent='✓ Descrição gerada pelo ChatGPT e salva para revisão';
    status.textContent='✓ Descrição importada e salva para SKU '+descIdentity.sku+
     ' ('+saved.length+' caracteres). Revise o conteúdo antes de publicar.';
    sync();
