@@ -372,9 +372,11 @@
     const paste=el('textarea','seo-studio-paste');paste.rows=5;
     paste.placeholder='Cole aqui o JSON completo com os quatro títulos produzido pelo ChatGPT.';
     const insert=el('button','secondary','Importar 4 títulos recebidos');insert.type='button';
+    const pasteDirect=el('button','secondary seo-studio-direct-import','📋 Importar resposta copiada do ChatGPT');
+    pasteDirect.type='button';
     const research=el('div','seo-studio-research');research.setAttribute('role','status');
     importer.append(openChat,paste,insert);
-    mount.append(importer,research);
+    mount.append(pasteDirect,importer,research);
     function displayResearch(result){
       research.replaceChildren();
       const verified=result.researchStatus==='verified';
@@ -416,6 +418,24 @@
        if(!result)throw Error('Validador do ChatGPT não carregado.');
        accept(result);
       }catch(error){setLabel(marketNotice,'Resposta não importada: '+error.message);}
+    };
+    pasteDirect.onclick=async()=>{
+     // Clique explícito: pedir acesso somente ao texto copiado pelo usuário.
+     try{
+      const raw=await navigator.clipboard.readText();
+      if(!raw?.trim())throw Error('Área de transferência vazia.');
+      const result=globalThis.RASeoChatGPT?.parse(raw);
+      if(!result)throw Error('Validador SEO não carregado.');
+      accept(result);
+      if(grid.querySelectorAll('article.seo-studio-card').length!==4)
+       throw Error('Não foi possível apresentar os quatro títulos.');
+      setLabel(marketNotice,'✓ Quatro títulos importados do texto copiado, classificados e salvos. Nenhuma pesquisa nova foi iniciada.');
+     }catch(error){
+      importer.open=true;
+      paste.focus();
+      setLabel(marketNotice,'Não foi possível ler a resposta copiada: '+error.message+
+       ' Clique em Copiar no ChatGPT, cole no campo aberto com Ctrl+V e pressione Importar 4 títulos recebidos.');
+     }
     };
     async function generateTitles(refresh=false){
       if(aiBusy)return;
@@ -484,7 +504,7 @@
     }else{
       // NÃO abrir chats automaticamente: o usuário decide recuperar a conversa
       // já gerada ou começar nova pesquisa clicando no botão correspondente.
-      setLabel(marketNotice,'Nenhum título importado. Clique em Recuperar títulos da aba ChatGPT para aproveitar a pesquisa aberta; ou em Gerar 4 títulos com ChatGPT para criar uma nova.');
+      setLabel(marketNotice,'Nenhum título importado. Clique em Recuperar títulos da aba ChatGPT ou copie a resposta e use Importar resposta copiada. Não é necessário pesquisar novamente.');
     }
   }
   globalThis.ShopeeTitleStudio={open,prefetch};
