@@ -73,6 +73,7 @@ import {optimizerSettings,saveOptimizerSettings} from './optimizerStore.js';
 import {quoteShopeePrice,normalizeShopeePricingSettings} from './shopeePricing.js';
 import {lookupShopeeCompetitors,marketResearchConfigured} from './shopeeMarketResearch.js';
 import {promotionFromQuote,promotionBasePrice,promotionMember,shopDiscountMembershipSignal,discountPlanSnapshot,signDiscountPreview,verifyDiscountPreview,readDiscountPages} from './shopeeDiscountPublish.js';
+import {discountPreviewStatus} from './shopeeDiscountDeferred.js';
 import {shopeePricingPreferences,saveShopeePricingPreferences,
   shopeePricingSupplierCost,shopeePricingDirectSupplierCost,
   saveShopeePricePlan,recentShopeePricePlans,
@@ -2931,7 +2932,7 @@ app.post('/api/shopee/optimizer/pricing/prepare',mustLogin,requireWeDropAdmin,as
 
 // O ID vem do usuário e é confirmado pela API da loja. A prévia somente lê.
 const activeDiscountWrites=new Set();
-async function discountExecutionInputs(req,sku,itemId,modelId,discountId,{allowModels=false,expectedModels=null}={}){
+async function discountExecutionInputs(req,sku,itemId,modelId,discountId,{allowModels=false,expectedModels=null,allowDeferredPreview=false}={}){
  const {auth,cfg}=await getValidAuth(req);
  const matches=await findExactCatalogSku(auth.shopId,sku);
  if(!matches.some(x=>String(x.itemId)===String(itemId)&&String(x.modelId)===String(modelId)))
@@ -2964,8 +2965,7 @@ async function discountExecutionInputs(req,sku,itemId,modelId,discountId,{allowM
  const live=await shopeeLiveEditableItem(cfg,auth,itemId);
  if(live.item_sku&&String(live.item_sku)!==sku)
   throw Error('A SKU da Shopee mudou. Publicação cancelada.');
- if(live.item_status&&String(live.item_status)!=='NORMAL')
-  throw Error('O anúncio não está em situação NORMAL na Shopee; a promoção não será alterada.');
+ const publicationState=discountPreviewStatus(live.item_status,{allowDeferred:allowDeferredPreview});
  if(typeof live.has_model!=='boolean')
   throw Error('Não foi possível confirmar se o anúncio possui variações. Nada foi enviado.');
  let originalPrice;
@@ -2988,7 +2988,8 @@ async function discountExecutionInputs(req,sku,itemId,modelId,discountId,{allowM
    quote,record,existing,originalPrice}),
    promotionSignal:promoMembership.kind,
    promotionNotice:promoMembership.warning};
- return {auth,cfg,quote,snapshot,originalPrice};
+ return {auth,cfg,quote,snapshot,originalPrice,deferred:publicationState.deferred,
+  liveItemStatus:publicationState.status};
 }
 // Desconto por MODELO (após init_tier_variation) — não reutiliza IDs do
 // anúncio sem modelos. Custos e SKUs são conferidos individualmente na WeDrop.
@@ -3139,10 +3140,17 @@ app.post('/api/shopee/optimizer/discounts/preview',mustLogin,requireWeDropAdmin,
   const discountId=String(req.body?.discountId||'').trim();
   if(!/^\d{1,18}$/.test(discountId)||!Number.isSafeInteger(Number(discountId))||
      !/^\d{1,18}$/.test(modelId))throw Error('ID de promoção ou variação inválido.');
-  const data=await discountExecutionInputs(req,sku,itemId,modelId,discountId);
-  const signature=signDiscountPreview(data.snapshot,envText('SESSION_SECRET'));
+  // UNLIST pode ser conferido/assinalado para o fluxo completo, mas nunca
+  // recebe autorização de ESCRITA. A execução pedirá prévia NORMAL atualizada.
+  const data=await discountExecutionInputs(req,sku,itemId,modelId,discountId,{
+   allowDeferredPreview:req.body?.allowDeferredPreview===true
+  });
+  const signature=data.deferred?null:
+   signDiscountPreview(data.snapshot,envText('SESSION_SECRET'));
   res.json({ok:true,readOnly:true,preview:data.snapshot,approvalToken:signature,
-   warning:'Nenhum desconto ou preço foi alterado. Execute apenas após verificar os valores.'});
+   deferred:data.deferred,liveItemStatus:data.liveItemStatus,
+   warning:data.deferred?'Anúncio UNLIST: valores conferidos para aprovação antecipada. Nenhum desconto será enviado antes de a Shopee confirmar NORMAL e gerar nova prévia assinada.':
+    'Nenhum desconto ou preço foi alterado. Execute apenas após verificar os valores.'});
  }catch(e){res.status(400).json({error:String(e.message||e).slice(0,350)});}
 });
 app.post('/api/shopee/optimizer/discounts/execute',mustLogin,requireWeDropAdmin,async(req,res)=>{
