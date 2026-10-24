@@ -28,9 +28,13 @@
  }
  function rank(titles,context={}){
   if(!Array.isArray(titles)||titles.length!==4)throw Error('Precisamos de exatamente quatro opções.');
-  return titles.map((v,i)=>({...v,originalOrder:i+1,...scoreTitle(v.title,context)}))
-   .sort((a,b)=>b.score-a.score||b.length-a.length||a.originalOrder-b.originalOrder)
-   .map((v,i)=>({...v,rank:i+1,ideal:i===0}));
+  const ranked=titles.map((v,i)=>{
+   const score=scoreTitle(v.title,context);
+   return {...v,originalOrder:i+1,...score,
+    usable:v.valid!==false&&score.length>=100&&score.length<=120&&score.breakdown.emojis===10};
+  }).sort((a,b)=>Number(b.usable)-Number(a.usable)||b.score-a.score||b.length-a.length||a.originalOrder-b.originalOrder);
+  const firstValid=ranked.findIndex(v=>v.usable);
+  return ranked.map((v,i)=>({...v,rank:i+1,ideal:firstValid>=0&&i===firstValid}));
  }
  root.RASeoTitleScore={scoreTitle,rank};
 })(globalThis);
