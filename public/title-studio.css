@@ -44,3 +44,15 @@
 .seo-studio-choose:disabled{opacity:.46;cursor:not-allowed;background:#b2b9c3;border-color:#b2b9c3}
 .seo-studio-choose:disabled:hover{filter:none}
 .seo-studio-card .seo-studio-candidate{overflow-wrap:anywhere}
+
+/* Quatro sugestões ChatGPT verificadas + alternativa manual */
+.seo-studio-empty{grid-column:1/-1;padding:17px;border:1px dashed #aabfda;border-radius:10px;background:#fff;color:#34516c;font-size:13px}
+.seo-studio-manual-import{padding:8px 2px;font-size:11px;color:#23496d}
+.seo-studio-manual-import>summary{cursor:pointer;font-weight:700}
+.seo-studio-manual-import>button{display:block;margin:8px 0;padding:8px 10px;font-size:11px}
+.seo-studio-paste{width:100%;min-height:85px;border:1px solid #bfd5ee;border-radius:9px;padding:9px;color:#163b61;font-size:11px;background:#fff}
+.seo-studio-research{font-size:11px;line-height:1.5;padding:8px 0;color:#294b6b}
+.seo-studio-research>strong{display:block}
+.seo-studio-research-link{display:block;max-width:100%;overflow-wrap:anywhere;margin-top:4px}
+.seo-modern-save-manual{margin:10px 0 4px;min-height:39px;border:0;border-radius:8px;background:#148252;color:#fff;font-size:12px;font-weight:800;cursor:pointer}
+.seo-modern-save-manual:disabled{opacity:.55;cursor:wait}
