@@ -4,7 +4,7 @@ const clean=value=>String(value||'').trim();
 // Fonte exclusiva do CEST no Motor Matriz: catálogo WeDrop vinculado à SKU.
 // Sem código de sete dígitos confirmado na planilha, guardar somente o marcador interno 00.
 export function wedropCestForSku(supplier){
- const linked=Boolean(supplier&&['exact-sku','reviewed-link'].includes(supplier.matchedBy));
+ const linked=Boolean(supplier&&(!supplier.matchedBy||['exact-sku','reviewed-link'].includes(supplier.matchedBy)));
  const value=linked?String(supplier.product_data?.cest??'').trim():'';
  return /^\d{7}$/.test(value)?value:'00';
 }
