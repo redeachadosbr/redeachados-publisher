@@ -40,3 +40,18 @@ test('o módulo de pesquisa inclui o texto salvo em Informações da WeDrop',()=
  assert.match(prompt,/buscar 120 quando houver palavras-chave confirmadas/);
  assert.match(prompt,/um emoji NO INÍCIO e outro NO FIM/);
 });
+
+test('quatro cartões em grade 2x2 exibem notas e destacam a recomendação',()=>{
+ const css=readFileSync(new URL('../public/seo-modern-layout.css',import.meta.url),'utf8');
+ const studio=readFileSync(new URL('../public/title-studio.js',import.meta.url),'utf8');
+ const page=readFileSync(new URL('../public/index.html',import.meta.url),'utf8');
+ assert.match(css,/#optimizerTitleVariants \.seo-modern-grid\{display:grid!important;grid-template-columns:repeat\(2,minmax\(0,1fr\)\)!important/);
+ assert.match(css,/#optimizerTitleVariants \.seo-modern-grid \.seo-studio-meter\{display:flex!important/);
+ assert.doesNotMatch(css,/#optimizerTitleVariants \.seo-modern-grid \.seo-studio-meter\{display:none!important/);
+ assert.match(css,/\.seo-studio-card\.seo-studio-ideal/);
+ assert.match(studio,/RASeoTitleScore\?\.rank/);
+ assert.match(studio,/seo-studio-score-track/);
+ assert.match(studio,/RECOMENDADO — maior nota SEO/);
+ assert.match(studio,/Aguardando título validado de 100 a 120 caracteres/);
+ assert.match(page,/seo-modern-layout\.css\?v=1\.0\.2-four-cards-rank-scores/);
+});
