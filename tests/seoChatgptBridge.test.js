@@ -20,9 +20,18 @@ test('quatro títulos ChatGPT são distintos, têm 100-120 caracteres e dois emo
 });
 test('não aceitar quatro títulos iguais, emojis faltando ou títulos curtos',()=>{
  const t=[1,2,3,4].map(n=>({title:make(n)}));
- assert.throws(()=>parse(JSON.stringify({titles:[t[0],t[0],t[2],t[3]]})),/repetiu/);
- assert.throws(()=>parse(JSON.stringify({titles:[{title:make(1).replace('🚚','a')},...t.slice(1)]})),/exatamente 2 emojis/);
- assert.throws(()=>parse(JSON.stringify({titles:[{title:'🦖 🚚 curto'},...t.slice(1)]})),/100 a 120/);
+ const duplicate=parse(JSON.stringify({titles:[t[0],t[0],t[2],t[3]]}));
+ assert.equal(duplicate.titles.length,4);
+ assert.equal(duplicate.titles[1].valid,false);
+ assert.match(duplicate.titles[1].warning,/repetido/i);
+ const emoji=parse(JSON.stringify({titles:[{title:make(1).replace('🚚','a')},...t.slice(1)]}));
+ assert.equal(emoji.titles.length,4);
+ assert.equal(emoji.titles[0].valid,false);
+ assert.match(emoji.titles[0].warning,/2 emojis/);
+ const short=parse(JSON.stringify({titles:[{title:'🦖 🚚 curto'},...t.slice(1)]}));
+ assert.equal(short.titles.length,4);
+ assert.equal(short.titles[0].valid,false);
+ assert.match(short.titles[0].warning,/100 a 120/);
 });
 test('prompt obriga pesquisa real, sem declarar volumes não verificados',()=>{
  const p=prompt({sku:'303448',itemId:'1',productTitle:'Caminhão Dinossauro com 3 Mini Carrinhos - Verde',supplierProduct:{brand:'TOYS & TOYS'}});
@@ -30,6 +39,14 @@ test('prompt obriga pesquisa real, sem declarar volumes não verificados',()=>{
  assert.match(p,/EXATAMENTE DOIS EMOJIS DISTRIBUÍDOS/);
  assert.match(p,/100 a 120 caracteres Unicode/);
  assert.match(p,/volumes absolutos/);
+});
+test('quatro sugestões incluem títulos incompletos sem descartar outros três',()=>{
+ const titles=[1,2,3,4].map(n=>({title:make(n),reason:'Palavra-chave contextual'}));
+ titles[1].title='🦖 Caminhão Dinossauro Verde com 3 Mini Carrinhos 🚚';
+ const parsed=parse(JSON.stringify({titles,keywords:['caminhão dinossauro']}));
+ assert.equal(parsed.titles.length,4);
+ assert.equal(parsed.titles[1].valid,false);
+ assert.equal(parsed.titles.filter(t=>t.valid).length,3);
 });
 test('importa JSON com texto antes e depois e separa dois emojis inicialmente grudados',()=>{
  const titles=[1,2,3,4].map(n=>({title:make(n),reason:'Busca comercial do produto'}));
