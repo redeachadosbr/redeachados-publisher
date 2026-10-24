@@ -43,7 +43,8 @@ import {composeShopeeDescription,isCommercialDescription,isGenericShopeeDescript
 import {getWorkflowReview,saveWorkflowReview,mergeWorkflowTechnicalAutofill} from './shopeeOptimizationWorkflowStore.js';
 import {compileShopeeExecutionPlan,confirmShopeeExecution,
   assertLiveShopeeUnchanged,verifyShopeeExecution,verifyShopeeFiscalExecution,normalizeShopeeExecutionStage,
-  shopeeExecutionUnconfirmedFields,assessShopeeStableCommercialRecovery} from './shopeeExecutionPlan.js';
+  shopeeExecutionUnconfirmedFields,assessShopeeStableCommercialRecovery,
+  approvedShopeeReadbackConvergence} from './shopeeExecutionPlan.js';
 import {readShopeeExecution,saveShopeePreparedExecution,
   claimShopeePreparedExecution,finishShopeeExecution,pendingShopeeExecutions,leaseShopeeExecution,
   checkpointShopeeExecution,reconcileShopeeJob} from './shopeeExecutionStore.js';
@@ -1911,7 +1912,13 @@ app.post('/api/shopee/optimizer/execution/execute',mustLogin,requireWeDropAdmin,
    modelVariations:plan.modelVariations?
     {...await prepareExecutionVariations({auth,cfg,sku,itemId,modelId},reviewState,live),
      promotion:plan.modelVariations.promotion}:null});
-  if(fresh.fingerprint!==plan.fingerprint||!fresh.canExecute)throw Error('Conteúdo ou aprovação mudou. Prepare novamente.');
+  if(fresh.fingerprint!==plan.fingerprint||!fresh.canExecute){
+   // Conteúdo que a Shopee acabou de confirmar não deve invalidar a autorização
+   // para os OUTROS campos idênticos da mesma prévia. Esta exceção só permite
+   // uma convergência monotônica: o conjunto aprovado ENCOLHE, nunca cresce.
+   if(!approvedShopeeReadbackConvergence(plan,fresh,live))
+    throw Error('A prévia tem alterações novas ou divergentes. Atualize a prévia antes de executar.');
+  }
   if(remainingOnly){
    // Só trocar o plano após TODAS as validações, sem duplicar alterações.
    job=await saveShopeePreparedExecution(auth.shopId,itemId,modelId,sku,plan);
