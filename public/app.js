@@ -4027,8 +4027,16 @@ async function optimizerDiscountFinalPrepare({automatic=false}={}){
   if(data.preview.action==='already'&&!data.deferred)optimizerDiscountFinalSent=true;
  }catch(error){
   optimizerDiscountFinalPreviewData=null;optimizerDiscountFinalPreviewKey='';
-  optimizerDiscountFinalStatus((error.transient?'Conferência pendente: ':'Desconto não liberado: ')+
+  const stale=/VINCULO_DESATUALIZADO/.test(String(error.message||''));
+  optimizerDiscountFinalStatus(stale?
+   'Foi encontrado anúncio EXCLUÍDO vinculado ao SKU. O Manager está consultando automaticamente o anúncio ativo correto. Planos antigos não serão transferidos; revise novamente o novo preço e desconto.':
+   (error.transient?'Conferência pendente: ':'Desconto não liberado: ')+
    error.message+(error.transient?'':' Os demais dados da SKU permanecem intactos.'),'warning');
+  if(stale&&String($('#optimizerSku').value||'').trim()===String(w.sku)){
+   optimizerNotice('Vínculo antigo da SKU '+w.sku+
+    ' detectado. Procurando o Item ID NORMAL correto antes de qualquer execução.','warning');
+   void optimizerFindSku();
+  }
  }finally{optimizerDiscountFinalBusy=false;optimizerDiscountFinalPaint();}
 }
 let optimizerDiscountCampaignTimer=null;
