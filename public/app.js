@@ -7568,17 +7568,21 @@ async function optimizerChatgptRender(w){
 async function optimizerCommercialRequestChatgptSlot(w,slot){
  if(!optimizerImagesSameSku(w))return;
  const status=$('#optimizerImagesStatus');
- if(optimizerChatBridgeBusy){status.textContent='A ponte ChatGPT já está em execução. Espere terminar ou pause antes de solicitar outra posição.';return;}
+ if(optimizerChatBridgeBusy){
+  const job=optimizerChatBridgeJob;
+  if(optimizerChatBridgeIdentity(job,w)&&job?.slots?.length===1&&Number(job.slots[0])===Number(slot)){
+   if(await optimizerChatBridgeRecover({includeBlocked:true})){
+    const msg='A imagem '+String(slot).padStart(2,'0')+' já está sendo recuperada. Aguarde o upload, ou pause a geração para refazer.';
+    status.textContent=msg;optimizerCommercialActionMessage(msg);return;
+   }
+  }
+  // Refazer é uma ordem explícita: interromper a tentativa antiga da SKU
+  // antes de iniciar a posição selecionada. Imagens anteriores permanecem no servidor.
+  await optimizerChatBridgeRelease('Execução anterior pausada para refazer somente a imagem '+slot+'.');
+ }
  if(!optimizerChatBridgeReady){
-  // Manual fallback is an explicit action; never silently claims the file was created.
-  const chatTab=window.open('https://chatgpt.com/','_blank','noopener,noreferrer');
-  try{
-   const brief=await optimizerChatgptMakeBrief(w);
-   await navigator.clipboard.writeText(brief.prompts[slot-1]);
-   status.textContent='Prompt da posição '+slot+' copiado. No ChatGPT, anexe a foto original, cole o texto e importe a imagem resultante na mesma posição.';
-  }catch(e){status.textContent='Não foi possível preparar o prompt da posição '+slot+': '+e.message;}
-  if(!chatTab)status.textContent+=' Permita pop-ups para abrir o ChatGPT.';
-  return;
+  const msg='Não foi possível refazer a imagem '+String(slot).padStart(2,'0')+': a Ponte ChatGPT v1.0.17 ou superior não está detectada. Ative uma única extensão no Chrome e atualize esta página. Nenhuma imagem foi apagada.';
+  status.textContent=msg;optimizerCommercialActionMessage(msg,true);return;
  }
  try{
   if(optimizerChatBridgeIdentity(optimizerChatBridgeJob,w)&&optimizerChatBridgeJob?.slots?.length===1&&Number(optimizerChatBridgeJob.slots[0])===Number(slot)&&!optimizerChatBridgeJob.complete&&await optimizerChatBridgeRecover({includeBlocked:true}))return;
@@ -7605,6 +7609,7 @@ async function optimizerCommercialRequestChatgptSlot(w,slot){
  }catch(e){
   optimizerChatBridgeBusy=false;$('#optimizerChatgptAbort').hidden=true;
   status.textContent='Não foi possível iniciar a posição '+slot+': '+e.message;
+  optimizerCommercialActionMessage(status.textContent,true);
  }
 }
 async function optimizerChatgptCopyAll({open=false}={}){
@@ -8151,6 +8156,19 @@ function optimizerImagesSetProgress(){
  const p=$('#optimizerImagesProgress');if(p)p.value=count;
  const b=$('#optimizerImagesGenerateAll');if(b)b.disabled=optimizerImagesAutoBusy||!optimizerImagesApiConfigured;
 }
+// Result messages live OUTSIDE the gallery because each refresh rebuilds its cards.
+function optimizerCommercialActionMessage(message,isError=false){
+ const gallery=$('#optimizerImagesGallery');if(!gallery)return;
+ let notice=$('#optimizerCommercialActionNotice');
+ if(!notice){
+  notice=document.createElement('div');notice.id='optimizerCommercialActionNotice';
+  notice.style.cssText='margin:10px 0;padding:11px 14px;border:1px solid currentColor;border-radius:10px;line-height:1.5;font-weight:600;white-space:normal;overflow-wrap:anywhere';
+  gallery.parentNode?.insertBefore(notice,gallery);
+ }
+ notice.hidden=false;notice.setAttribute('role',isError?'alert':'status');
+ notice.style.color=isError?'#a02a21':'#165b3f';
+ notice.textContent=message;
+}
 async function optimizerImagesMove(w,fromSlot,toSlot,stored){
  if(!optimizerImagesSameSku(w)||optimizerImagesAutoBusy||fromSlot===toSlot)return;
  const source=stored.get(fromSlot),target=stored.get(toSlot);
@@ -8196,7 +8214,7 @@ async function optimizerImagesLoad(){
    optimizerChatgptBrief=null;optimizerChatgptBriefSku='';
   }
   optimizerImagesApiConfigured=provider.configured===true;
-  if(optimizerImagesMode===null)optimizerImagesMode=optimizerImagesApiConfigured?'api':'chatgpt';
+  if(optimizerImagesMode===null)optimizerImagesMode='chatgpt';
   optimizerImagesRenderMode();
   if(optimizerImagesMode==='chatgpt')void optimizerChatgptRender(w);
   const connect=$('#optimizerOpenAiConnect'),connected=$('#optimizerOpenAiConnected');
@@ -8293,13 +8311,18 @@ async function optimizerImagesLoad(){
    generate.setAttribute('aria-label',(image?'Refazer':'Gerar')+' imagem '+slot);
    generate.onclick=async()=>{
     if(optimizerImagesAutoBusy)return;
+    if(!optimizerImagesSameSku(w))return;
     $('#optimizerImageCorrectionSlot').value=String(slot);optimizerImageCorrectionLoad();
-    if(image&&!window.confirm('Refazer somente a imagem '+slot+' da SKU '+w.sku+'? A imagem anterior será mantida até a nova ser salva e exigirá revisão novamente.'))return;
+    // A loja escolheu ChatGPT: a API paga só pode ser usada quando selecionada
+    // explicitamente, e nunca como fallback automático do botão Refazer.
     if(optimizerImagesMode!=='api'){
+     const msg=(image?'Refazendo':'Gerando')+' imagem '+String(slot).padStart(2,'0')+
+      ' pelo ChatGPT. A versão anterior permanece salva até a nova imagem ser confirmada.';
+     optimizerCommercialActionMessage(msg);
      await optimizerCommercialRequestChatgptSlot(w,slot);return;
     }
     if(!optimizerImagesApiConfigured){
-     $('#optimizerImagesStatus').textContent='Conecte a API OpenAI ou escolha o ChatGPT para gerar esta posição.';return;
+     optimizerCommercialActionMessage('API não conectada. Selecione ChatGPT para refazer esta imagem sem consumir créditos da API.',true);return;
     }
     optimizerImagesAutoBusy=true;optimizerImagesSetProgress();optimizerExecReset();
     try{
@@ -8319,28 +8342,62 @@ async function optimizerImagesLoad(){
    remove.title=image?'Excluir apenas a imagem comercial preparada':'Não há imagem comercial preparada para excluir';
    remove.setAttribute('aria-label','Excluir imagem preparada '+slot);
    remove.disabled=!image||optimizerImagesAutoBusy;
-   remove.onclick=async()=>{
-    if(!image||optimizerImagesAutoBusy)return;
-    if(!window.confirm('Excluir a imagem preparada '+slot+' da SKU '+w.sku+'?\nA foto publicada na Shopee NÃO será alterada.'))return;
-    optimizerImagesAutoBusy=true;optimizerImagesSetProgress();optimizerExecReset();
-    try{
-     status.textContent='Excluindo apenas a imagem preparada '+slot+'...';
-     const endpoint='/api/shopee/optimizer/images/manual?'+new URLSearchParams({
-      sku:w.sku,item_id:w.itemId,model_id:w.modelId,slot
-     });
-     const removal=await json(endpoint,{method:'DELETE',signal:AbortSignal.timeout(60000)});
-     if(removal.deleted!==true)throw Error('O servidor não confirmou a exclusão. Atualize a galeria e confira a imagem.');
-     const check=await json('/api/shopee/optimizer/images/manual?'+new URLSearchParams({
-      sku:w.sku,item_id:w.itemId,model_id:w.modelId
-     }));
-     if((check.images||[]).some(row=>Number(row.slot)===slot))
-      throw Error('A imagem ainda consta no servidor após a exclusão.');
-     optimizerImagesSavedSlots.delete(slot);
-     const stage=w.stages?.find(x=>x.key==='images');if(stage){stage.reviewed=false;stage.status='pending';stage.reviewedAt=null;}
-     optimizerWorkflowRender(w);
-     status.textContent='Posição '+slot+' limpa. As fotos da Shopee foram preservadas.';
-    }catch(e){status.textContent='Não foi possível excluir: '+e.message;}
-    finally{optimizerImagesAutoBusy=false;optimizerImagesSetProgress();if(optimizerImagesSameSku(w))await optimizerImagesLoad();}
+   remove.onclick=()=>{
+    if(!image||optimizerImagesAutoBusy||!optimizerImagesSameSku(w))return;
+    // Confirmação DENTRO do cartão: o navegador pode bloquear window.confirm
+    // e antes isso deixava o clique aparentemente sem resposta.
+    let confirmPanel=card.querySelector('.optimizer-delete-inline-confirm');
+    if(confirmPanel){confirmPanel.hidden=false;return;}
+    confirmPanel=optimizerMake('div','optimizer-delete-inline-confirm');
+    confirmPanel.style.cssText='margin-top:8px;padding:9px;border:1px solid #d2a39c;border-radius:8px;background:#fff8f6;font-size:12px;line-height:1.45';
+    confirmPanel.setAttribute('role','group');
+    confirmPanel.setAttribute('aria-label','Confirmar exclusão da imagem '+slot);
+    confirmPanel.append(optimizerMake('div','', 'Excluir somente a imagem comercial '+String(slot).padStart(2,'0')+'? A imagem publicada na Shopee não será alterada.'));
+    const buttons=optimizerMake('div','');
+    buttons.style.cssText='display:flex;gap:6px;flex-wrap:wrap;margin-top:7px';
+    const yes=optimizerMake('button','secondary','Confirmar exclusão');
+    yes.type='button';yes.style.cssText='font-size:12px;padding:7px;background:#8e302c;color:white';
+    const no=optimizerMake('button','secondary','Cancelar');
+    no.type='button';no.style.cssText='font-size:12px;padding:7px';
+    no.onclick=()=>{confirmPanel.remove();};
+    yes.onclick=async()=>{
+     if(optimizerImagesAutoBusy||!optimizerImagesSameSku(w))return;
+     yes.disabled=true;no.disabled=true;
+     optimizerImagesAutoBusy=true;optimizerImagesSetProgress();optimizerExecReset();
+     let msg='',failed=false;
+     try{
+      optimizerCommercialActionMessage('Excluindo imagem '+String(slot).padStart(2,'0')+' da SKU '+w.sku+'... Aguarde a confirmação no servidor.');
+      // Uma imagem não pode ser excluída durante a geração no mesmo slot.
+      if(optimizerChatBridgeBusy&&optimizerChatBridgeIdentity(optimizerChatBridgeJob,w))
+       await optimizerChatBridgeRelease('Pausado para excluir a imagem '+slot+'.');
+      const params=new URLSearchParams({sku:w.sku,item_id:w.itemId,model_id:w.modelId});
+      const before=await json('/api/shopee/optimizer/images/manual?'+params);
+      const currently=(before.images||[]).find(row=>Number(row.slot)===slot);
+      if(!currently)throw Error('A imagem já não consta no servidor. A galeria será atualizada.');
+      if(currently.sha256!==image.sha256)throw Error('A imagem foi alterada desde a abertura desta tela. Confira a galeria antes de excluir.');
+      params.set('slot',String(slot));
+      const removal=await json('/api/shopee/optimizer/images/manual?'+params,{
+       method:'DELETE',signal:AbortSignal.timeout(60000)});
+      if(removal.deleted!==true)throw Error('O servidor não confirmou a exclusão da posição '+slot+'.');
+      params.delete('slot');
+      const check=await json('/api/shopee/optimizer/images/manual?'+params);
+      if((check.images||[]).some(row=>Number(row.slot)===slot))
+       throw Error('O servidor ainda mostra a imagem '+slot+' após a exclusão.');
+      optimizerImagesSavedSlots.delete(slot);
+      const stage=w.stages?.find(x=>x.key==='images');
+      if(stage){stage.reviewed=false;stage.status='pending';stage.reviewedAt=null;}
+      optimizerWorkflowRender(w);
+      msg='✓ Imagem '+String(slot).padStart(2,'0')+' excluída e conferida no servidor. Posição livre para gerar novamente. As imagens da Shopee estão intactas.';
+     }catch(e){
+      failed=true;msg='Não foi possível excluir a imagem '+String(slot).padStart(2,'0')+': '+String(e.message||e);
+     }finally{
+      optimizerImagesAutoBusy=false;optimizerImagesSetProgress();
+      if(optimizerImagesSameSku(w))await optimizerImagesLoad();
+      optimizerCommercialActionMessage(msg,failed);
+     }
+    };
+    buttons.append(yes,no);confirmPanel.append(buttons);card.append(confirmPanel);
+    optimizerCommercialActionMessage('Confirme a exclusão da imagem '+String(slot).padStart(2,'0')+' no próprio cartão. Nenhum arquivo foi apagado ainda.');
    };
    actions.append(remove);detail.append(actions);
    if(image){
