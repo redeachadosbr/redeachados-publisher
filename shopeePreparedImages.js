@@ -58,7 +58,7 @@ const signedPreviewCache=new Map();
 const pendingPreviewSignatures=new Map();
 async function signedPreparedPreview(storagePath){
  const path=String(storagePath||'');
- if(!/^\\d+\\/\\d+\\/\\d+\\/[a-f0-9-]+\\.(?:png|jpg)$/.test(path))
+ if(!/^\d+\/\d+\/\d+\/[a-f0-9-]+\.(?:png|jpg)$/.test(path))
   throw Error('Caminho da imagem preparada inválido.');
  const cached=signedPreviewCache.get(path);
  if(cached&&cached.expiresAt>Date.now())return cached.url;
