@@ -13,15 +13,12 @@ test('SKU 303448: somente medidas do caminhão, nunca dimensões de embalagem We
  const asText=JSON.stringify(specs);
  assert(!asText.includes('48 cm')&&!asText.includes('18 cm')&&!asText.includes('15 cm'));
 });
-test('prompt imagem 03 deixa espaço para ficha técnica determinística e mostra 3 carrinhos',()=>{
- const x=createChatGptPrompts({sku:'303448',title:'Caminhão Dinossauro com 3 Mini Carrinhos - Verde',imageUrls:['https://shopee.com.br/foto']});
- assert.equal(x.prompts.length,9);
- assert(x.prompts[2].includes('FICHA DE ESPECIFICAÇÕES'));
- assert(x.prompts[2].includes('Manager imprimirá as dimensões'));
- assert(x.prompts[2].includes('3 mini carrinhos'));
- assert(x.prompts[2].includes('não escrever')||x.prompts[2].includes('Não adicione'));
- assert(!x.prompts[0].includes('FICHA DE ESPECIFICAÇÕES'));
- assert(!x.prompts[1].includes('FICHA DE ESPECIFICAÇÕES'));
+test('prompt 03 é exatamente a instrução do usuário; informações WeDrop não entram na mensagem',()=>{
+ const x=createChatGptPrompts({sku:'303448',title:'Caminhão Dinossauro com 3 Mini Carrinhos - Verde'});
+ assert.equal(x.prompts[2],'Imagem 03 — Especificações: apresentar as dimensões e características reais confirmadas. imagem com fundo ambientado');
+ assert(!x.prompts[2].includes('Manager'));
+ assert(!x.prompts[2].includes('SKU 303448'));
+ assert(!x.prompts[2].includes('35 cm'));
 });
 test('upload ponte aplica ficha técnica antes da confirmação no servidor',()=>{
  const app=readFileSync(new URL('../public/app.js',import.meta.url),'utf8');
