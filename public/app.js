@@ -2915,6 +2915,7 @@ function optimizerVariationRender(data){
 $('#optimizerVariationType')?.addEventListener?.('change',()=>{optimizerVariationPreview();optimizerExecReset()});
 $('#optimizerVariationValues')?.addEventListener?.('input',()=>{optimizerVariationPreview();optimizerExecReset()});
 let optimizerImageCorrectionPreviewMap=new Map();
+let optimizerImagePromptEditorIdentity='';
 function optimizerImageCorrectionRefreshPreview(){
  const slot=Number($('#optimizerImageCorrectionSlot')?.value);
  const asset=optimizerImageCorrectionPreviewMap.get(slot);
@@ -2931,11 +2932,80 @@ function optimizerImageCorrectionRefreshPreview(){
 }
 function optimizerImageCorrectionLoad(){
  const slot=$('#optimizerImageCorrectionSlot').value;
+ const pane=$('#optimizerImagePromptEditorPanel');
+ if(pane)pane.hidden=true;
+ optimizerImagePromptEditorIdentity='';
  $('#optimizerImageCorrection').value=optimizerWorkflowPlan?.imageNotes?.[slot]||'';
  const counter=$('#optimizerImageCorrectionCount');if(counter)counter.textContent=[...$('#optimizerImageCorrection').value].length+'/500';
  optimizerImageCorrectionRefreshPreview();
 }
 $('#optimizerImageCorrectionSlot')?.addEventListener?.('change',optimizerImageCorrectionLoad);
+function optimizerImageEditorActive(w,slot){
+ return !$('#optimizerImagePromptEditorPanel').hidden&&optimizerImagePromptEditorIdentity===
+  [w.sku,w.itemId,w.modelId,slot].join('|');
+}
+async function optimizerOpenImagePromptEditor(){
+ const w=optimizerWorkflowPlan,slot=Number($('#optimizerImageCorrectionSlot')?.value);
+ if(!w||!optimizerImagesSameSku(w)||!Number.isInteger(slot)||slot<1||slot>9)return;
+ const status=$('#optimizerImageCorrectionStatus');
+ try{
+  const brief=await optimizerChatgptMakeBrief(w);
+  if(!optimizerImagesSameSku(w))return;
+  const editor=$('#optimizerImagePromptEditor');
+  editor.value=w.imagePrompts?.[slot]||brief.prompts[slot-1]||'';
+  optimizerImagePromptEditorIdentity=[w.sku,w.itemId,w.modelId,slot].join('|');
+  $('#optimizerImagePromptEditorPanel').hidden=false;
+  status.textContent='Prompt original da imagem '+String(slot).padStart(2,'0')+' aberto. Edite e clique em Salvar orientação. Nenhuma geração foi iniciada.';
+  editor.focus();
+ }catch(e){status.textContent='Falha ao abrir prompt: '+String(e.message||e);}
+}
+$('#optimizerImageEditOrientation')?.addEventListener?.('click',()=>void optimizerOpenImagePromptEditor());
+$('#optimizerImageRestorePrompt')?.addEventListener?.('click',async()=>{
+ const w=optimizerWorkflowPlan,slot=Number($('#optimizerImageCorrectionSlot')?.value);
+ if(!w||!optimizerImageEditorActive(w,slot))return;
+ try{
+  const brief=await optimizerChatgptMakeBrief(w,{defaultOnly:true});
+  $('#optimizerImagePromptEditor').value=brief.prompts[slot-1];
+  $('#optimizerImageCorrectionStatus').textContent='Prompt padrão da imagem '+slot+' carregado no editor. Clique em Salvar orientação para confirmar a alteração.';
+ }catch(e){$('#optimizerImageCorrectionStatus').textContent='Falha ao restaurar: '+e.message;}
+});
+async function optimizerImagePromptSave(w,slot){
+ const text=$('#optimizerImagePromptEditor').value.trim();
+ if(text.length<60||[...text].length>16000)throw Error('O prompt deve ter de 60 a 16.000 caracteres.');
+ if(!optimizerImageEditorActive(w,slot))throw Error('O editor não corresponde à SKU e posição atuais.');
+ const result=await json('/api/shopee/optimizer/workflow/review',{
+  method:'POST',headers:{'Content-Type':'application/json'},
+  body:JSON.stringify({itemId:w.itemId,modelId:w.modelId,sku:w.sku,
+   stage:'images',reviewed:false,imagePrompts:{[slot]:text}}),
+  signal:AbortSignal.timeout(60000)
+ });
+ if(!optimizerImagesSameSku(w))throw Error('SKU alterada enquanto o prompt era salvo.');
+ w.imagePrompts={...(w.imagePrompts||{}),...(result.imagePrompts||{})};
+ optimizerChatgptBrief=null;optimizerChatgptBriefSku='';
+ optimizerExecReset();
+ const stage=w.stages?.find(x=>x.key==='images');
+ if(stage){stage.reviewed=false;stage.status='pending';stage.reviewedAt=null;}
+ return result;
+}
+async function optimizerImageSelectedAction(mode){
+ const w=optimizerWorkflowPlan,slot=Number($('#optimizerImageCorrectionSlot')?.value);
+ const status=$('#optimizerImageCorrectionStatus');
+ if(!w||!optimizerImagesSameSku(w)||!Number.isInteger(slot)||slot<1||slot>9)return;
+ if(!optimizerImageCorrectionPreviewMap.get(slot)){
+  status.textContent='A posição '+String(slot).padStart(2,'0')+' não tem imagem salva. Gere uma imagem antes de solicitar edição.';
+  return;
+ }
+ if(optimizerImagesAutoBusy){status.textContent='Já há uma importação em andamento. Aguarde antes de editar.';return;}
+ const action=mode==='white-bg'?'Removendo fundo e aplicando branco puro':'Melhorando o ângulo e a apresentação';
+ try{
+  status.textContent=action+' da imagem '+String(slot).padStart(2,'0')+' pelo ChatGPT (sem API paga)...';
+  if(optimizerImageEditorActive(w,slot))await optimizerImagePromptSave(w,slot);
+  await optimizerCommercialRequestChatgptSlot(w,slot,{editMode:mode});
+ }catch(e){status.textContent='Não foi possível editar a imagem '+slot+': '+String(e.message||e);}
+}
+$('#optimizerImageImproveAI')?.addEventListener?.('click',()=>void optimizerImageSelectedAction('improve'));
+$('#optimizerImageRemoveBackground')?.addEventListener?.('click',()=>void optimizerImageSelectedAction('white-bg'));
+
 $('#optimizerImageCorrection')?.addEventListener?.('input',()=>{const count=$('#optimizerImageCorrectionCount');if(count)count.textContent=[...$('#optimizerImageCorrection').value].length+'/500';});
 async function optimizerImageCorrectionSaveNote(w,slot,note){
  const result=await json('/api/shopee/optimizer/workflow/review',{
@@ -2952,12 +3022,18 @@ async function optimizerImageCorrectionSaveNote(w,slot,note){
 }
 $('#optimizerImageCorrectionSave')?.addEventListener?.('click',async()=>{
  const w=optimizerWorkflowPlan;if(!w||optimizerWorkflowStage!=='images')return;
- const slot=$('#optimizerImageCorrectionSlot').value,note=$('#optimizerImageCorrection').value.trim();
+ const slot=Number($('#optimizerImageCorrectionSlot').value),note=$('#optimizerImageCorrection').value.trim();
  const btn=$('#optimizerImageCorrectionSave');btn.disabled=true;
+ const status=$('#optimizerImageCorrectionStatus');
  try{
-  await optimizerImageCorrectionSaveNote(w,slot,note);
-  optimizerWorkflowNotice('Orientação da imagem '+slot+' salva na SKU. Clique em Gerar ajuste e importar para criar a nova foto.','success');
- }catch(e){optimizerWorkflowNotice('Não foi possível salvar o ajuste: '+e.message,'error');}
+  if(optimizerImageEditorActive(w,slot)){
+   await optimizerImagePromptSave(w,slot);
+   status.textContent='✓ Prompt completo da imagem '+String(slot).padStart(2,'0')+' salvo nesta SKU. Gerar ajuste e importar usará exatamente esta orientação.';
+  }else{
+   await optimizerImageCorrectionSaveNote(w,String(slot),note);
+   status.textContent='✓ Ajuste da imagem '+String(slot).padStart(2,'0')+' salvo. Gerar ajuste e importar usará esta orientação.';
+  }
+ }catch(e){status.textContent='Não foi possível salvar a orientação: '+e.message;}
  finally{btn.disabled=false;}
 });
 $('#optimizerImageCorrectionGenerate')?.addEventListener?.('click',async()=>{
@@ -2966,28 +3042,19 @@ $('#optimizerImageCorrectionGenerate')?.addEventListener?.('click',async()=>{
  const note=$('#optimizerImageCorrection').value.trim();
  const status=$('#optimizerImageCorrectionStatus');
  const btn=$('#optimizerImageCorrectionGenerate'),save=$('#optimizerImageCorrectionSave');
- if(!note){status.textContent='Descreva primeiro o ajuste desejado para a imagem '+slot+'.';$('#optimizerImageCorrection').focus();return;}
- if(optimizerImagesAutoBusy||optimizerChatBridgeBusy){status.textContent='Já existe uma geração em andamento. Aguarde a confirmação da imagem anterior.';return;}
+ const fullEditor=optimizerImageEditorActive(w,slot);
+ if(!note&&!fullEditor){status.textContent='Escreva o ajuste ou clique em Editar orientação para abrir o prompt original da imagem '+slot+'.';return;}
+ if(optimizerImagesAutoBusy){status.textContent='Existe uma importação em andamento. Aguarde a confirmação.';return;}
  btn.disabled=true;save.disabled=true;
  try{
   status.textContent='Salvando o pedido de ajuste da posição '+slot+'...';
-  await optimizerImageCorrectionSaveNote(w,String(slot),note);
+  if(fullEditor)await optimizerImagePromptSave(w,slot);
+  else await optimizerImageCorrectionSaveNote(w,String(slot),note);
   if(!optimizerImagesSameSku(w))return;
-  if(optimizerChatBridgeReady){
-   status.textContent='Enviando o ajuste ao ChatGPT. A nova imagem será importada automaticamente na posição '+slot+'.';
-   await optimizerCommercialRequestChatgptSlot(w,slot);
-   return;
-  }
-  const provider=await json('/api/shopee/optimizer/images/generation/status',{signal:AbortSignal.timeout(25000)});
-  if(!provider.configured)throw Error('Nem a ponte ChatGPT nem a API OpenAI estão conectadas. Conecte uma delas para gerar e importar automaticamente.');
-  optimizerImagesApiConfigured=true;
-  optimizerImagesAutoBusy=true;optimizerImagesSetProgress();
-  status.textContent='OpenAI editando a imagem '+slot+'... A foto anterior permanecerá intacta até o novo arquivo ser salvo.';
-  await optimizerImagesGenerateSlot(w,slot,true,{editCurrent:optimizerImagesSavedSlots.has(slot)});
-  if(optimizerImagesSameSku(w)){
-   await optimizerImagesLoad();
-   status.textContent='✓ Ajuste gerado e importado automaticamente na imagem '+slot+'. Confira a prévia e registre a revisão antes de publicar na Shopee.';
-  }
+  if(!optimizerChatBridgeReady)throw Error('Ative a Ponte ChatGPT v1.0.18 no Chrome. A API paga não será utilizada automaticamente.');
+  const editMode=optimizerImageCorrectionPreviewMap.has(slot)?'custom':'';
+  status.textContent='Enviando o prompt exclusivamente da imagem '+slot+' ao ChatGPT. A foto anterior fica salva até confirmar o novo upload.';
+  await optimizerCommercialRequestChatgptSlot(w,slot,{editMode});
  }catch(e){
   status.textContent='Não foi possível gerar o ajuste: '+e.message+'. A imagem anterior foi preservada.';
  }finally{
@@ -7524,13 +7591,14 @@ function optimizerImagesRenderMode(){
  $('#optimizerModeApi').setAttribute('aria-pressed',String(!chat));
  $('#optimizerModeApi').classList.toggle('is-active',!chat);
 }
-async function optimizerChatgptMakeBrief(w){
+async function optimizerChatgptMakeBrief(w,{defaultOnly=false}={}){
  const {createChatGptPrompts}=await import('/chatgptPrompts.js?v=1.20.36-single-slot-commands');
  return createChatGptPrompts({
   sku:w.sku,title:w.draftTitle||'Produto Shopee',
   imageUrls:w.imageUrls||[],
   attributes:w.attributes||[],
   imageNotes:w.imageNotes||{},
+  imagePrompts:defaultOnly?{}:(w.imagePrompts||{}),
   masterPrompt:$('#optimizerPrompt')?.value||'',
   supplierSourceText:w.sourceEvidence?.sourceText||'',
   supplierProduct:w.supplierProduct||null,
