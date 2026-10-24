@@ -340,12 +340,16 @@
         keys.append(el('span',eligible?'seo-studio-ok':'seo-studio-caution',n+'/120 caracteres'+(repeated?' · repetido':'')),
           el('span','',o.matchedKeywords.length+' termos da pesquisa incorporados'),
           el('span','',o.warning||('Emojis separados · pesquisa '+(researchResult?.researchStatus==='verified'?'com URLs citadas':'sem fonte comprovada'))));
-        card.append(keys,el('p','seo-studio-why',o.reason));
+        card.append(keys);
+        // Reduzir a altura dos cartões: explicação e metodologia sob demanda.
+        const analysis=el('details','seo-studio-analysis-details');
+        const analysisSummary=el('summary','','▸ Ver análise e critérios da nota');
         const explain=el('small','seo-studio-score-detail',
          'Nota: aproveitamento do limite '+o.breakdown.length+'/30 · palavras-chave '+o.breakdown.keywords+
          '/35 · posição da busca '+o.breakdown.front+'/10 · nome do produto '+o.breakdown.product+
          '/10 · emojis '+o.breakdown.emojis+'/10 · clareza '+o.breakdown.readability+'/5.');
-        card.append(explain);
+        analysis.append(analysisSummary,el('p','seo-studio-why',o.reason),explain);
+        card.append(analysis);
         const actions=el('div','seo-studio-card-actions');
         const choose=el('button','seo-studio-choose',o.ideal?'✓ Usar título recomendado':'✓ Usar este título');choose.type='button';
         choose.disabled=!eligible;
