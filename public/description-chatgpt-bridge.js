@@ -94,7 +94,20 @@
    const content=rest.slice(0,tail.index).replace(/\\"/g,'"');
    found={description:content,factsUsed:[],unverified:[]};
   }
-  return found;
+  if(found)return found;
+  // Desde 1.0.50 o ChatGPT entrega uma descrição legível, SEM JSON.
+  // Permite também colar esse texto no Manager quando o Chrome não autoriza
+  // leitura direta da aba; nunca interpretar o pedido do usuário como resposta.
+  const plain=s.replace(/^\`{3}(?:text|plaintext)?\s*/iu,'')
+   .replace(/\s*\`{3}\s*$/u,'').trim();
+  if(!/["“]description["”]\s*:/iu.test(plain)&&plain.length>=250&&plain.length<=5000&&
+     /(?:✅\s*)?benef[ií]cios/iu.test(plain)&&
+     /(?:💡\s*)?por que comprar/iu.test(plain)&&
+     /(?:⚙️?\s*)?caracter[ií]sticas/iu.test(plain)&&
+     /(?:📦\s*)?(?:o que (?:vai|vem|acompanha)|conte[uú]do da embalagem)/iu.test(plain)&&
+     /🛒/u.test(plain))
+   return {description:plain,factsUsed:[],unverified:[]};
+  return null;
  }
  function parse(raw){
   const found=extract(raw);
