@@ -1,6 +1,13 @@
 // Suggestions have explicit provenance and are never an approval to publish.
 import {fiscalStoreDefaults} from './shopeeMatrixRules.js';
 const clean=value=>String(value||'').trim();
+// Fonte exclusiva do CEST no Motor Matriz: catálogo WeDrop vinculado à SKU.
+// Sem código de sete dígitos confirmado na planilha, guardar somente o marcador interno 00.
+export function wedropCestForSku(supplier){
+ const linked=Boolean(supplier&&['exact-sku','reviewed-link'].includes(supplier.matchedBy));
+ const value=linked?String(supplier.product_data?.cest??'').trim():'';
+ return /^\d{7}$/.test(value)?value:'00';
+}
 export function supplierWorkflowFacts(supplier,record,settings={}){
  const facts=supplier?.product_data||{},taxSuggestion={},attributeSuggestions=[];
  const source=supplier?'WeDrop '+supplier.source_file+' · SKU '+supplier.supplier_sku+' · linha '+supplier.source_line:'';
@@ -15,8 +22,8 @@ export function supplierWorkflowFacts(supplier,record,settings={}){
  for(const [key,re] of Object.entries(rules)){const value=notes.match(re)?.[1];if(value)taxSuggestion[key]=value;}
  if(/tipo de (?:serviço|operac[aã]o|operaç[aã]o)\s*:\s*revendedor/i.test(notes))taxSuggestion.operation_type='1';
  if(/^\d{8}$/.test(facts.ncm||''))taxSuggestion.ncm=facts.ncm;
- if(/^\d{7}$/.test(facts.cest||''))taxSuggestion.cest=facts.cest;
- // Ausência de CEST na ficha do fornecedor: manter marcador 00 do Motor Matriz.
+ taxSuggestion.cest=wedropCestForSku(supplier);
+ // Ausência de CEST válido na planilha: manter marcador 00 do Motor Matriz.
  if(source)taxSuggestion.evidence=source+'; demais campos conforme regras fiscais salvas da loja.';
  // Unidade padrão só é inferida quando há comprovação explícita para esta SKU.
  // Não tratar kit, metro ou pacote como UN apenas porque a loja é revendedora.
