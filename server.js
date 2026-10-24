@@ -834,6 +834,7 @@ app.get('/api/shopee/optimizer/find',mustLogin,requireWeDropAdmin,async(req,res)
   const cached=await findExactCatalogSku(auth.shopId,sku);
   // Antigos IDs SELLER_DELETE permanecem no cache; não são candidatos ativos.
   // SEMPRE consultar a listagem NORMAL em tempo real antes de escolher o item.
+  let catalogWriteWarning='';
   const authoritative=await scanLiveNormalSku({
    sku,cached,
    maxPages:deep?40:15,
@@ -841,20 +842,27 @@ app.get('/api/shopee/optimizer/find',mustLogin,requireWeDropAdmin,async(req,res)
    onMatch:async matches=>{
     // Atualizar somente os IDs encontrados ATIVOS no anúncio verdadeiro.
     // Não transferir plano de preço, descrição ou autorização entre item IDs.
-    await storeCatalogItems(auth.shopId,matches.map(x=>({
-     ...x,baseLoaded:true
-    })));
+    try{
+     await storeCatalogItems(auth.shopId,matches.map(x=>({
+      ...x,baseLoaded:true
+     })));
+    }catch(error){
+     // A prova oficial NORMAL pode ser exibida mesmo com cache indisponível,
+     // mas não tratar como pronta para promoção sem plano atrelado ao ID real.
+     catalogWriteWarning='A lista ativa confirmou a SKU, mas o cache não foi atualizado: '+
+      String(error.message||error).slice(0,130);
+    }
    }
   });
   let matches=authoritative.matches;
-  let warnings=[],lookup='live_normal_verified';
+  let warnings=catalogWriteWarning?[catalogWriteWarning]:[],lookup='live_normal_verified';
   if(!matches.length){
    // Listagem ativa foi percorrida integralmente; procurar UNLIST/REVIEWING
    // apenas na busca direcionada, NUNCA trazer SELLER_DELETE do cache.
    const alternative=await findLiveShopeeSku(cfg,auth,callShopeeShopApi,sku,{
     fastOnly:!deep
    });
-   warnings=alternative.warnings||[];
+   warnings.push(...(alternative.warnings||[]));
    matches=catalogCandidatesIfNoActive({
     cached,sku,live:alternative.matches,normalScanComplete:true
    });
