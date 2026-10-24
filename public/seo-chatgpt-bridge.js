@@ -130,8 +130,8 @@
     if(m.kind==='RA_EXTENSION_READY'&&!started){
      const parts=String(m.version||'').split('.').map(Number);
      const updated=parts.length===3&&parts.every(Number.isInteger)&&
-      (parts[0]>1||(parts[0]===1&&(parts[1]>0||(parts[1]===0&&parts[2]   >=31))));
-     if(!updated)return finish(Error('Ponte ChatGPT '+(m.version||'antiga')+' detectada. Para títulos, atualize para a versão 1.0.31.'));
+      (parts[0]>1||(parts[0]===1&&(parts[1]>0||(parts[1]===0&&parts[2]   >=32))));
+     if(!updated)return finish(Error('Ponte ChatGPT '+(m.version||'antiga')+' detectada. Para títulos, atualize para a versão 1.0.32.'));
      started=true;window.clearTimeout(probeTimer);
      window.postMessage({kind:'RA_SITE_SEO_START',payload:{nonce,sku,itemId,modelId,
       prompt:prompt(data,extraTerms,previousTitles)}},ORIGIN);
@@ -150,7 +150,7 @@
    };
    window.addEventListener('message',listener);
    const timer=window.setTimeout(()=>finish(Error('Sem resposta do ChatGPT. Confira a aba aberta ou importe a resposta manualmente.')),285000);
-   const probeTimer=window.setTimeout(()=>finish(Error('Ponte v1.0.31 não detectada neste Chrome. Atualize a extensão ou use a importação manual.')),4500);
+   const probeTimer=window.setTimeout(()=>finish(Error('Ponte v1.0.32 não detectada neste Chrome. Atualize a extensão ou use a importação manual.')),4500);
    window.postMessage({kind:'RA_EXTENSION_PROBE'},ORIGIN);
   });
  }
@@ -177,7 +177,7 @@
     try{finish(null,{...parse(m.rawText),requestIdentity:{nonce,sku,itemId,modelId},recovered:true});}
     catch(error){finish(error);}
    };
-   const timeout=setTimeout(()=>finish(Error('Sem resposta da Ponte. Confirme que a extensão 1.0.31 está instalada.')),14000);
+   const timeout=setTimeout(()=>finish(Error('Sem resposta da Ponte. Confirme que a extensão 1.0.32 está instalada.')),14000);
    window.addEventListener('message',listener);
    window.postMessage({kind:'RA_SITE_SEO_RECOVER',payload:{nonce,sku,itemId,modelId}},ORIGIN);
   });
