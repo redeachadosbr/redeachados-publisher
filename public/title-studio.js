@@ -389,10 +389,14 @@
     function accept(result){
       aiOptions=result.titles;researchResult=result;
       researchKeywords=result.keywords||[];
-      try{localStorage.setItem(persistKey,JSON.stringify({
+      try{
+       localStorage.setItem(persistKey,JSON.stringify({
         product:f.title,supplierUpdatedAt:data.sourceEvidence?.updatedAt||null,
         savedAt:new Date().toISOString(),result
-      }));}catch{}
+       }));
+       if(JSON.parse(localStorage.getItem(persistKey)||'null')?.result?.titles?.length!==4)
+        throw Error('O armazenamento não confirmou os quatro títulos.');
+      }catch(error){throw Error('Os cartões não foram salvos no navegador; a aba ChatGPT permanecerá aberta. '+error.message);}
       displayResearch(result);
       setLabel(marketNotice,'✓ 4 títulos importados e classificados por nota SEO de 0 a 100. O cartão 01 é a opção recomendada. A pontuação estima qualidade estrutural, não volume oficial de buscas.');
       regenerate();
@@ -478,9 +482,9 @@
       displayResearch(researchResult);
       setLabel(marketNotice,'✓ Quatro títulos e suas notas restaurados para esta SKU. Clique em Gerar novos títulos para uma NOVA pesquisa ChatGPT.');
     }else{
-      // A pesquisa inicial ocorre apenas uma vez; reabrir a etapa com 4 títulos
-      // salvos não dispara automaticamente outra aba no Chrome.
-      void generateTitles(false);
+      // NÃO abrir chats automaticamente: o usuário decide recuperar a conversa
+      // já gerada ou começar nova pesquisa clicando no botão correspondente.
+      setLabel(marketNotice,'Nenhum título importado. Clique em Recuperar títulos da aba ChatGPT para aproveitar a pesquisa aberta; ou em Gerar 4 títulos com ChatGPT para criar uma nova.');
     }
   }
   globalThis.ShopeeTitleStudio={open,prefetch};
