@@ -6870,6 +6870,24 @@ async function optimizerContentFlush(){
  });
  return optimizerContentQueue;
 }
+// Usado pelo botão explícito "Salvar título manual" do editor SEO.
+globalThis.ShopeeSeoSaveManual=async()=>{
+ const w=optimizerWorkflowPlan;
+ if(optimizerWorkflowStage!=='seo'||!w)throw Error('Abra a etapa Título SEO de uma SKU.');
+ const title=$('#optimizerWorkflowDraft')?.value||'';
+ if(!title.trim())throw Error('Digite um título antes de salvar.');
+ optimizerContentRemember();
+ await optimizerContentFlush();
+ const result=await json('/api/shopee/optimizer/workflow/content-draft',{
+  method:'POST',headers:{'Content-Type':'application/json'},
+  body:JSON.stringify({itemId:w.itemId,modelId:w.modelId,sku:w.sku,stage:'seo',title}),
+  signal:AbortSignal.timeout(45000)
+ });
+ if(optimizerWorkflowPlan?.sku!==w.sku||optimizerWorkflowPlan?.itemId!==w.itemId)
+  throw Error('A SKU mudou durante o salvamento. Reabra o anúncio.');
+ if(result.saved!==true)throw Error('O servidor não confirmou o salvamento.');
+ return {saved:true,length:[...title.normalize('NFC').replace(/\s+/g,' ').trim()].length};
+};
 function optimizerContentRestore(w){
  if(!w)return w;
  const unsaved=[];
