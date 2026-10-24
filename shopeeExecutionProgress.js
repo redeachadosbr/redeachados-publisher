@@ -35,6 +35,17 @@ export function shopeeExecutionProgress(job){
  const uploaded=Math.min(images,imageIds.length);
  const video=Boolean(plan.video);
  const proposed=plan.proposed||{};
+ const confirmedStages=plan.confirmedStages||{};
+ // As fotos efetivamente lidas da Shopee na preparação também podem coincidir
+ // com os IDs exatos do lote recuperado. Este fato independe da escrita fiscal.
+ const imageList=arr(plan.original?.image?.image_id_list);
+ const imageReadback=images>0&&imageIds.length===images&&imageList.length===images&&
+  imageList.every((id,i)=>String(id)===String(imageIds[i]));
+ const ready=arr(plan.original?.video_info);
+ const videoRef=(result.video||media.video)?.id;
+ const videoReadback=readyVideo&&Boolean(videoRef)&&ready.some(x=>
+  String(x?.video_upload_id||'')===String(videoRef)||
+  String(x?.video_id||'')===String(videoRef));
  const commercialConfirmed=Boolean(result.primaryVerified)||state==='verified'||result.verified===true;
  // Recuperação após duas leituras oficiais pode confirmar a mídia mesmo
  // que título/atributos permaneçam pendentes. Não confundir com upload.
@@ -42,10 +53,10 @@ export function shopeeExecutionProgress(job){
  const confirmedReadback=recovery.kind==='stable_readback_no_write'&&
   recovery.stable===true&&Array.isArray(recovery.pending);
  const recoverPending=confirmedReadback?recovery.pending:[];
- const imagesConfirmed=commercialConfirmed||
+ const imagesConfirmed=imageReadback||commercialConfirmed||
   (confirmedReadback&&images>0&&Number(recovery.imagesInShop)===images&&
    !recoverPending.some(x=>/imagens enviadas|imagens.*vinculadas/i.test(x)));
- const videoConfirmed=commercialConfirmed||
+ const videoConfirmed=videoReadback||commercialConfirmed||
   (confirmedReadback&&readyVideo&&
    !recoverPending.some(x=>/vídeo.*confirmado/i.test(x)));
  const fiscalPartial=state==='verified'&&phase==='verified_partial';
@@ -72,9 +83,9 @@ export function shopeeExecutionProgress(job){
  const needs={
   images:images>0,
   video,
-  seo:Object.hasOwn(proposed,'item_name'),
-  description:Object.hasOwn(proposed,'description'),
-  technical:Object.hasOwn(proposed,'attribute_list'),
+  seo:Object.hasOwn(proposed,'item_name')||confirmedStages.seo===true,
+  description:Object.hasOwn(proposed,'description')||confirmedStages.description===true,
+  technical:Object.hasOwn(proposed,'attribute_list')||confirmedStages.technical===true,
   variants:hasVariants,
   fiscal:fiscalIncluded,
   discount:discountIncluded
@@ -82,9 +93,9 @@ export function shopeeExecutionProgress(job){
  const done={
   images:needs.images&&imagesConfirmed,
   video:needs.video&&videoConfirmed,
-  seo:needs.seo&&commercialConfirmed,
-  description:needs.description&&commercialConfirmed,
-  technical:needs.technical&&commercialConfirmed,
+  seo:needs.seo&&(confirmedStages.seo===true||commercialConfirmed),
+  description:needs.description&&(confirmedStages.description===true||commercialConfirmed),
+  technical:needs.technical&&(confirmedStages.technical===true||commercialConfirmed),
   variants:variantsDone,
   fiscal:fiscalDone,
   discount:discountDone
@@ -163,9 +174,11 @@ export function shopeeExecutionProgress(job){
    (confirmedReadback?'Conferência parcial: mídia confirmada na Shopee; as demais etapas requerem nova prévia. ':'')+
    'Execução interrompida: '+String(job.last_error||'confira a ocorrência'):
   state==='prepared'?pendingOnly?'Pronto para publicar somente variações, fiscal e desconto. O conteúdo comercial existente ficará intacto.':
-   [uploaded?uploaded+' imagens na biblioteca Shopee (publicação não presumida)':null,
-    readyVideo?'vídeo processado (publicação não presumida)':null,
-    'Plano pronto para executar apenas o que ainda não foi confirmado'].filter(Boolean).join(' · '):
+   [confirmedStages.seo?'Título SEO já confirmado na Shopee':null,
+    confirmedStages.description?'Descrição já confirmada na Shopee':null,
+    imagesConfirmed?'Imagens confirmadas no anúncio':uploaded?uploaded+' imagens na biblioteca da Shopee':null,
+    videoConfirmed?'Vídeo confirmado no anúncio':readyVideo?'Vídeo processado na mídia':null,
+    'Somente campos ainda divergentes serão enviados após a aprovação'].filter(Boolean).join(' · '):
   titles[phase]||title;
  return {
   state,phase,title,percent,progressMeaning:'andamento_operacional_nao_publicacao',
