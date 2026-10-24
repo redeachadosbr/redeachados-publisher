@@ -120,12 +120,23 @@ export async function deletePreparedImage(shop,item,model,sku,slot){
  const deleted=await removed.json();
  if(!Array.isArray(deleted)||deleted.length!==1)
   throw Error('A imagem foi alterada durante a exclusão. Atualize a galeria antes de tentar novamente.');
- // Metadata is authoritative. If storage cleanup fails, the orphan is private
- // and must never be reused: its database record was already invalidated.
+ // Preserve the original Storage asset when a recovered/relinked SKU still
+ // references it under a previous Item ID. Metadata can be deleted without
+ // deleting a private file that is still used by another protected row.
+ // Fail closed: if reference lookup is unavailable, NEVER delete the asset.
  try{
-  await api('/storage/v1/object/'+IMAGE_BUCKET+'/'+current.storage_path,{method:'DELETE'});
+  const references=await api('/rest/v1/shopee_optimizer_images?storage_path=eq.'+
+   encodeURIComponent(current.storage_path)+'&select=item_id,model_id,slot&limit=1');
+  const linked=await references.json();
+  if(!Array.isArray(linked))throw Error('Referências de mídia não confirmadas.');
+  if(linked.length===0){
+   await api('/storage/v1/object/'+IMAGE_BUCKET+'/'+current.storage_path,{method:'DELETE'});
+  }else{
+   console.info('[optimizer-images] Arquivo privado preservado: compartilhado com cadastro anterior da mesma SKU.');
+  }
  }catch(e){
-  console.warn('[optimizer-images] A limpeza privada ficou pendente após excluir um slot.',String(e.message||e).slice(0,140));
+  console.warn('[optimizer-images] Arquivo privado preservado após falha de limpeza segura.',
+   String(e.message||e).slice(0,140));
  }
  return {deleted:true,slot:position,marketplaceUpdated:false};
 }
