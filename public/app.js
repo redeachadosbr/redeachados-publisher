@@ -3464,12 +3464,15 @@ $('#optimizerWorkflowReview')?.addEventListener?.('click',async()=>{
 let optimizerExecPlan=null,optimizerExecContext=null,optimizerExecBusy=false,optimizerExecSerial=0;
 let optimizerExecAutoModelToken=null,optimizerExecAutoModelPreview=null;
 let optimizerExecPoll=null,optimizerExecJob=null,optimizerExecPolling=false,optimizerExecStartError='';
-let optimizerExecPreparation=null,optimizerExecProgress=null;
+let optimizerExecPreparation=null,optimizerExecPrepareController=null,optimizerExecProgress=null;
 let optimizerExecSafeRecoveryKey='',optimizerExecSafeRecovering=false;
 function optimizerExecNotice(message,state='info'){
  const e=$('#optimizerExecutionStatus');e.textContent=message;e.dataset.state=state;
 }
 function optimizerExecReset(){
+ // Um request de pré-execução antigo não pode ocupar a fila da próxima SKU.
+ if(optimizerExecPrepareController){optimizerExecPrepareController.abort();optimizerExecPrepareController=null;}
+ optimizerExecPreparation=null;
  optimizerExecStartError='';
  const keepProgress=optimizerExecProgress&&optimizerWorkflowPlan&&
   String(optimizerExecProgress.sku)===String(optimizerWorkflowPlan.sku)&&
@@ -4343,13 +4346,21 @@ async function optimizerExecutionPrepare(){
  if(!w||optimizerExecBusy)return;
  const key=[w.sku,w.itemId,w.modelId,$('#optimizerExecutionScope').value].join('|');
  if(optimizerExecPreparation){
-  if(optimizerExecPreparation.key!==key||optimizerExecPreparation.serial!==optimizerExecSerial)
+  if(optimizerExecPreparation.key===key&&optimizerExecPreparation.serial===optimizerExecSerial){
    optimizerExecPreparation.again=true;
-  return;
+   return;
+  }
+  // Uma consulta antiga não pode bloquear a próxima SKU durante timeout de API.
+  optimizerExecPrepareController?.abort();
+  optimizerExecPrepareController=null;
+  optimizerExecPreparation=null;
  }
  optimizerExecStartError='';
  const serial=++optimizerExecSerial;
- const preparation={key,serial,again:false};optimizerExecPreparation=preparation;
+ const controller=new AbortController();
+ const preparation={key,serial,again:false,controller};
+ optimizerExecPreparation=preparation;
+ optimizerExecPrepareController=controller;
  optimizerExecContext={sku:w.sku,itemId:w.itemId,modelId:w.modelId};
  optimizerExecPlan=null;optimizerExecAutoModelToken=null;optimizerExecAutoModelPreview=null;
  $('#optimizerExecutionSummary').hidden=true;
@@ -4373,7 +4384,7 @@ async function optimizerExecutionPrepare(){
         optimizerDiscountFinalPreviewData?.preview?.discountId||'').trim(),
        ...($('#optimizerExecutionScope').value==='all'&&optimizerDiscountApprovalReady()?
         {discountApprovalToken:optimizerDiscountFinalPreviewData?.approvalToken}:{})}),
-     signal:AbortSignal.timeout(75000)
+     signal:AbortSignal.any([controller.signal,AbortSignal.timeout(75000)])
    });
    if(serial!==optimizerExecSerial||optimizerWorkflowPlan?.sku!==w.sku||
       optimizerWorkflowPlan?.itemId!==w.itemId||optimizerWorkflowPlan?.modelId!==w.modelId)return;
@@ -4386,11 +4397,14 @@ async function optimizerExecutionPrepare(){
        void optimizerConnectionCheck();
    }
  }finally{
-  optimizerExecPreparation=null;btn.disabled=false;
-  // A review saved while the API was reading invalidates that response. Prepare
-  // the current draft once, instead of leaving a blank panel or racing requests.
-  if((preparation.again||serial!==optimizerExecSerial)&&optimizerWorkflowPlan&&!optimizerExecBusy)
-   setTimeout(()=>void optimizerExecutionPrepare(),100);
+  // Resposta tardia de outra SKU não pode limpar o pedido novo nem seu botão.
+  if(optimizerExecPreparation===preparation){
+   optimizerExecPreparation=null;
+   if(optimizerExecPrepareController===controller)optimizerExecPrepareController=null;
+   btn.disabled=false;
+   if(preparation.again&&optimizerWorkflowPlan&&!optimizerExecBusy)
+    setTimeout(()=>void optimizerExecutionPrepare(),100);
+  }
  }
 }
 $('#optimizerExecutionPrepare')?.addEventListener?.('click',()=>void optimizerExecutionPrepare());
@@ -4421,6 +4435,7 @@ async function optimizerExecuteApproved(remainingOnly=false){
  // Apenas a ação de clicar neste comando autoriza as modificações da prévia.
  const btn=$('#optimizerExecutionLaunch');
  const discountIntent=optimizerDiscountAuthorizedIntent(p);
+ const executionSerial=optimizerExecSerial;
  optimizerExecStartError='';optimizerExecBusy=true;btn.disabled=true;$('#optimizerExecutionRun').disabled=true;
  $('#optimizerExecutionRemaining').disabled=true;
  $('#optimizerExecutionPrepare').disabled=true;
@@ -4483,7 +4498,10 @@ async function optimizerExecuteApproved(remainingOnly=false){
        '. Consultando o andamento antes de permitir qualquer nova tentativa.','error');
      void optimizerExecutionRefresh(true);
    }
- }finally{optimizerExecBusy=false;$('#optimizerExecutionPrepare').disabled=false;}
+ }finally{
+  // Finalização tardia de outra SKU não interfere na execução ativa.
+  if(executionSerial===optimizerExecSerial){optimizerExecBusy=false;$('#optimizerExecutionPrepare').disabled=false;}
+ }
  if(recoverPrepared&&optimizerWorkflowPlan?.sku===ctx.sku&&
     optimizerWorkflowPlan?.itemId===ctx.itemId&&optimizerWorkflowPlan?.modelId===ctx.modelId){
    // Recuperar somente o plano, nunca disparar outro POST de publicação
