@@ -56,3 +56,9 @@
 .seo-studio-research-link{display:block;max-width:100%;overflow-wrap:anywhere;margin-top:4px}
 .seo-modern-save-manual{margin:10px 0 4px;min-height:39px;border:0;border-radius:8px;background:#148252;color:#fff;font-size:12px;font-weight:800;cursor:pointer}
 .seo-modern-save-manual:disabled{opacity:.55;cursor:wait}
+.seo-studio-card.seo-studio-ideal{border:2px solid #158653;box-shadow:0 0 0 2px #d2f4df,0 7px 15px #0e694320;background:linear-gradient(180deg,#f3fff8,#fff 65%)}
+.seo-studio-card.seo-studio-ideal .seo-studio-meter strong{font-size:23px;color:#077347}
+.seo-studio-card.seo-studio-ideal .seo-studio-option small{color:#087349;font-weight:900}
+.seo-studio-score-detail{display:block;margin-top:8px;color:#537088;font-size:10px;line-height:1.4}
+.seo-studio-research{padding:12px;border-radius:10px;background:#f4f9ff;border:1px solid #d5e4f5}
+.seo-modern-generate:disabled{cursor:wait;opacity:.7}
