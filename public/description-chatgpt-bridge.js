@@ -27,29 +27,55 @@
    'DADOS DA SKU: '+JSON.stringify(facts(data))
   ].join('\n\n');
  }
- function parse(raw){
+ function normalizeDescription(value){
+  let text=clean(value).replace(/\r\n?/g,'\n');
+  // O ChatGPT às vezes devolve "\\n" duplamente escapado no JSON visível.
+  for(let n=0;n<2;n++)text=text.replace(/\\n/g,'\n').replace(/\\t/g,' ');
+  text=text.replace(/[ \t]*\n[ \t]*/g,'\n').replace(/\n{3,}/g,'\n\n');
+  text=text.replace(/(?:^|\n)\s*(✨|✅|💡|⚙️?|📦|❓|🛒)\s*/gu,(match,emoji)=>'\n\n'+emoji+' ');
+  return text.replace(/\n{3,}/g,'\n\n').trim();
+ }
+ function extract(raw){
   const s=clean(raw).slice(-120000);let found=null;
   try{const obj=JSON.parse(s);if(typeof obj?.description==='string')found=obj;}catch{}
-  if(!found){
-   for(let start=s.indexOf('{');start>=0;start=s.indexOf('{',start+1)){
-    let depth=0,quoted=false,escaped=false;
-    for(let i=start;i<s.length;i++){
-     const c=s[i];if(escaped){escaped=false;continue;}
-     if(quoted&&c.charCodeAt(0)===92){escaped=true;continue;}
-     if(c==='"'){quoted=!quoted;continue;}
-     if(quoted)continue;if(c==='{')depth++;
-     if(c==='}'&&--depth===0){
-      try{const o=JSON.parse(s.slice(start,i+1));if(typeof o?.description==='string'&&o.description.length>=250)found=o;}catch{}
-      break;
-     }
+  // Aceitar JSON acompanhado de "Analisado", markdown e blocos anteriores.
+  for(let start=s.indexOf('{');start>=0;start=s.indexOf('{',start+1)){
+   let depth=0,quoted=false,escaped=false;
+   for(let i=start;i<s.length;i++){
+    const c=s[i];if(escaped){escaped=false;continue;}
+    if(quoted&&c.charCodeAt(0)===92){escaped=true;continue;}
+    if(c==='"'){quoted=!quoted;continue;}
+    if(quoted)continue;if(c==='{')depth++;
+    if(c==='}'&&--depth===0){
+     try{const o=JSON.parse(s.slice(start,i+1));
+      if(typeof o?.description==='string'&&o.description.length>=250)found=o;
+     }catch{}
+     break;
     }
    }
   }
-  if(!found)throw Error('A resposta do ChatGPT não contém uma descrição JSON íntegra.');
-  const description=found.description.normalize('NFC').replace(/\r\n?/g,'\n').replace(/[ \t]+\n/g,'\n').replace(/\n{4,}/g,'\n\n').trim();
-  if(count(description)<250||count(description)>5000||!description.includes('📦')||!description.includes('🛒'))
-   throw Error('Descrição incompleta: faltam itens inclusos, CTA ou texto suficiente.');
-  return {description,length:count(description),factsUsed:Array.isArray(found.factsUsed)?found.factsUsed:[],
+  if(found)return found;
+  // Fallback: interface que transformou quebras JSON em caracteres literais.
+  // Só extrair um campo description isolado se houver factsUsed/unverified no
+  // MESMO corpo, evitando capturar o exemplo de formato dentro do prompt.
+  const boundaries=[...s.matchAll(/["“]description["”]\s*:\s*"/gu)];
+  for(const match of boundaries){
+   const rest=s.slice(match.index+match[0].length);
+   const tail=/["”]\s*,\s*["“](?:factsUsed|unverified)["”]\s*:/u.exec(rest);
+   if(!tail||tail.index<250)continue;
+   const content=rest.slice(0,tail.index).replace(/\\"/g,'"');
+   found={description:content,factsUsed:[],unverified:[]};
+  }
+  return found;
+ }
+ function parse(raw){
+  const found=extract(raw);
+  if(!found)throw Error('O ChatGPT ainda não entregou a descrição completa. Use Recuperar ou copie a resposta integral.');
+  const description=normalizeDescription(found.description);
+  const length=count(description);
+  if(length<250||length>5000||!description.includes('📦')||!description.includes('🛒'))
+   throw Error('A descrição está incompleta: faltam itens inclusos, CTA ou conteúdo suficiente.');
+  return {description,length,factsUsed:Array.isArray(found.factsUsed)?found.factsUsed:[],
    unverified:Array.isArray(found.unverified)?found.unverified:[]};
  }
  function request(data,onProgress=()=>{}){
@@ -64,8 +90,8 @@
     const m=ev.data||{};
     if(m.kind==='RA_EXTENSION_READY'&&!started){
      const v=String(m.version||'').split('.').map(Number);
-     if(v.length!==3||v.some(n=>!Number.isInteger(n))||!(v[0]>1||(v[0]===1&&(v[1]>0||v[2]>=34))))
-      return finish(Error('Atualize a Ponte ChatGPT para 1.0.34.'));
+     if(v.length!==3||v.some(n=>!Number.isInteger(n))||!(v[0]>1||(v[0]===1&&(v[1]>0||v[2]>=35))))
+      return finish(Error('Atualize a Ponte ChatGPT para 1.0.35.'));
      started=true;clearTimeout(probe);
      window.postMessage({kind:'RA_SITE_DESC_START',payload:{nonce,sku,itemId,modelId,prompt:prompt(data)}},ORIGIN);return;
     }
@@ -79,12 +105,41 @@
     }
    };
    const timer=setTimeout(()=>finish(Error('Descrição não recebida. A aba ChatGPT foi preservada.')),295000);
-   const probe=setTimeout(()=>finish(Error('A extensão 1.0.34 não respondeu.')),5000);
+   const probe=setTimeout(()=>finish(Error('A extensão 1.0.35 não respondeu.')),5000);
    window.addEventListener('message',listener);
    window.postMessage({kind:'RA_EXTENSION_PROBE'},ORIGIN);
   });
  }
+ function recover(data,onProgress=()=>{}){
+  if(location.origin!==ORIGIN)return Promise.reject(Error('Origem não autorizada.'));
+  const sku=clean(data.sku),itemId=String(data.itemId||''),modelId=String(data.modelId??0),nonce=crypto.randomUUID();
+  return new Promise((resolve,reject)=>{
+   let finished=false;
+   const finish=(error,value)=>{
+    if(finished)return;finished=true;clearTimeout(timer);window.removeEventListener('message',listener);
+    error?reject(error):resolve(value);
+   };
+   const listener=event=>{
+    if(event.source!==window||event.origin!==ORIGIN)return;
+    const m=event.data||{};
+    if(m.kind==='RA_EXTENSION_DESC_PROGRESS'&&m.nonce===nonce){onProgress(clean(m.status));return;}
+    if(m.kind!=='RA_EXTENSION_DESC_RECOVER_RESULT'||m.nonce!==nonce)return;
+    if(!m.ok)return finish(Error(m.error||'Não foi possível recuperar a descrição.'));
+    if(String(m.sku)!==sku||String(m.itemId)!==itemId||String(m.modelId)!==modelId)
+     return finish(Error('A resposta pertence a outra SKU.'));
+    try{finish(null,{...parse(m.rawText),requestIdentity:{nonce,sku,itemId,modelId},recovered:true});}
+    catch(e){finish(e);}
+   };
+   const timer=setTimeout(()=>finish(Error('A extensão não respondeu à recuperação. Verifique a versão 1.0.35.')),30000);
+   window.addEventListener('message',listener);
+   window.postMessage({kind:'RA_SITE_DESC_RECOVER',payload:{nonce,sku,itemId,modelId}},ORIGIN);
+  });
+ }
+ function acknowledgeRecovery(result){
+  const id=result?.requestIdentity;if(!id?.nonce)return false;
+  window.postMessage({kind:'RA_SITE_DESC_RECOVER_ACK',...id,ok:true},ORIGIN);return true;
+ }
  function acknowledge(result){const id=result?.requestIdentity;if(!id?.nonce)return false;
   window.postMessage({kind:'RA_SITE_DESC_ACK',...id,ok:true},ORIGIN);return true;}
- globalThis.RADescriptionChatGPT={prompt,parse,request,acknowledge,count};
+ globalThis.RADescriptionChatGPT={prompt,parse,request,recover,acknowledge,acknowledgeRecovery,normalizeDescription,count};
 })();
