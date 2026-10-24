@@ -37,5 +37,6 @@ test('o módulo de pesquisa inclui o texto salvo em Informações da WeDrop',()=
  });
  assert.match(prompt,/WeDrop confirmado: produto verde, 3 mini carrinhos/);
  assert.match(prompt,/PESQUISE AGORA NA WEB/);
- assert.match(prompt,/buscar 120 quando houver palavras-chave confirmadas/);\n assert.match(prompt,/um emoji NO INÍCIO e outro NO FIM/);
+ assert.match(prompt,/buscar 120 quando houver palavras-chave confirmadas/);
+ assert.match(prompt,/um emoji NO INÍCIO e outro NO FIM/);
 });
