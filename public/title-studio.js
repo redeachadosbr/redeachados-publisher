@@ -441,7 +441,7 @@
        ' Clique em Copiar no ChatGPT, cole no campo aberto com Ctrl+V e pressione Importar 4 títulos recebidos.');
      }
     };
-    async function generateTitles(refresh=false){
+    async function generateTitles(refresh=false,launch=null){
       if(aiBusy)return;
       const token=++researchToken,oldOptions=aiOptions;
       aiBusy=true;btn.disabled=true;
@@ -451,6 +451,7 @@
         if(!globalThis.RASeoChatGPT?.request)throw Error('Módulo SEO ChatGPT não carregado. Recarregue com Ctrl+Shift+R.');
         const result=await globalThis.RASeoChatGPT.request(data,{
           extraTerms:inp.value,previousTitles:refresh&&oldOptions?oldOptions.map(x=>x.title):[],
+          launchNonce:launch?.nonce||'',
           onProgress:msg=>{if(token===researchToken&&mount.isConnected&&mount.dataset.seoStudioIdentity===currentIdentity)setLabel(marketNotice,msg);}
         });
         if(token!==researchToken||!mount.isConnected||mount.dataset.seoStudioIdentity!==currentIdentity)return;
@@ -496,10 +497,19 @@
     });
     btn.addEventListener('click',()=>{
       if(aiBusy)return;
-      void generateTitles(true);
+      // A aba abre no próprio clique, antes das esperas assíncronas da Ponte.
+      // Não mexer nos jobs das nove imagens ou na descrição.
+      let launch=null;
+      try{launch=globalThis.RASeoChatGPT?.prepare?.(data)||null;}
+      catch(e){setLabel(marketNotice,'Falha ao abrir ChatGPT: '+e.message);}
+      void generateTitles(true,launch);
     });
     inp.addEventListener('keydown',e=>{
-      if(e.key==='Enter'){e.preventDefault();void generateTitles(true);}
+      if(e.key==='Enter'){
+       e.preventDefault();
+       let launch=null;try{launch=globalThis.RASeoChatGPT?.prepare?.(data)||null;}catch{}
+       void generateTitles(true,launch);
+      }
     });
     regenerate();
     if(researchResult){
