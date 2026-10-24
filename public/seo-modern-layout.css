@@ -159,3 +159,13 @@
 }
 #optimizerTitleVariants .seo-modern-recover:hover{background:#eef5ff}
 #optimizerTitleVariants .seo-modern-recover:disabled{opacity:.55;cursor:wait}
+
+/* Resposta pronta do ChatGPT: alternativa direta, sem nova pesquisa. */
+#optimizerTitleVariants .seo-studio-direct-import{
+ display:block;width:100%;min-height:39px;border-radius:9px;border:1px solid #136f9c;
+ background:#edf9ff;color:#125784;font-size:11px;font-weight:800;
+ cursor:pointer;padding:9px;text-align:center
+}
+#optimizerTitleVariants .seo-studio-direct-import:hover{background:#def2ff}
+#optimizerTitleVariants .seo-studio-manual-import[open]{margin-top:3px}
+#optimizerTitleVariants .seo-studio-manual-import textarea{min-height:105px}
