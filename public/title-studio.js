@@ -395,7 +395,8 @@
       try{
         if(!globalThis.RASeoChatGPT?.request)throw Error('Módulo SEO ChatGPT não carregado. Recarregue com Ctrl+Shift+R.');
         const result=await globalThis.RASeoChatGPT.request(data,{
-          extraTerms:inp.value,previousTitles:refresh&&oldOptions?oldOptions.map(x=>x.title):[]
+          extraTerms:inp.value,previousTitles:refresh&&oldOptions?oldOptions.map(x=>x.title):[],
+          onProgress:msg=>{if(token===researchToken&&mount.isConnected&&mount.dataset.seoStudioIdentity===currentIdentity)setLabel(marketNotice,msg);}
         });
         if(token!==researchToken||!mount.isConnected||mount.dataset.seoStudioIdentity!==currentIdentity)return;
         accept(result);
