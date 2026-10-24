@@ -7525,7 +7525,7 @@ function optimizerImagesRenderMode(){
  $('#optimizerModeApi').classList.toggle('is-active',!chat);
 }
 async function optimizerChatgptMakeBrief(w){
- const {createChatGptPrompts}=await import('/chatgptPrompts.js?v=1.20.35-ambient-all-scenes');
+ const {createChatGptPrompts}=await import('/chatgptPrompts.js?v=1.20.36-single-slot-commands');
  return createChatGptPrompts({
   sku:w.sku,title:w.draftTitle||'Produto Shopee',
   imageUrls:w.imageUrls||[],
@@ -7630,7 +7630,7 @@ $('#optimizerModeApi')?.addEventListener?.('click',()=>{
 });
 
 const RA_CHAT_BRIDGE_SESSION_KEY='redeAchadosBridgeNonceV1';
-let optimizerChatBridgeReady=false,optimizerChatBridgeBusy=false,optimizerChatBridgeUploading=false;
+let optimizerChatBridgeReady=false,optimizerChatBridgeVersion='',optimizerChatBridgeBusy=false,optimizerChatBridgeUploading=false;
 let optimizerChatBridgeNonce=typeof sessionStorage==='undefined'?'':sessionStorage.getItem(RA_CHAT_BRIDGE_SESSION_KEY)||'';
 let optimizerChatBridgeSku='';
 const RA_CHAT_BRIDGE_JOB_KEY='redeAchadosBridgeJobV2';
@@ -7840,13 +7840,14 @@ globalThis.window?.addEventListener?.('message',async(event)=>{
  // interpreted as extension input, or cancellation can recursively echo.
  if(!['RA_EXTENSION_READY','RA_EXTENSION_START_RESULT','RA_EXTENSION_WAKE_RESULT','RA_EXTENSION_PROGRESS','RA_EXTENSION_IMAGE'].includes(m.kind))return;
  if(m.kind==='RA_EXTENSION_READY'){
-  optimizerChatBridgeReady=true;
   const version=String(m.version||'');
+  optimizerChatBridgeVersion=version;
   const parts=version.split('.').map(Number);
   const needsUpdate=parts.length!==3||parts.some(n=>!Number.isInteger(n))||
-   parts[0]<1||(parts[0]===1&&parts[1]===0&&parts[2]<9);
+   parts[0]<1||(parts[0]===1&&parts[1]===0&&parts[2]<17);
+  optimizerChatBridgeReady=!needsUpdate;
   if(status&&!optimizerChatBridgeBusy)status.textContent=needsUpdate
-   ?'Extensão ChatGPT '+(version||'antiga')+' detectada: esta versão pode ficar presa na SKU anterior. Atualize a Ponte para 1.0.9 ou superior na mesma pasta da extensão e recarregue o Chrome.'
+   ?'Extensão ChatGPT '+(version||'antiga')+' detectada: para enviar um prompt individual por posição é necessária a Ponte v1.0.17 ou superior. Atualize a extensão e recarregue o Chrome.'
    :'Extensão Rede Achados BR '+version+' detectada. Clique em Gerar as 9 imagens para abrir o ChatGPT e receber cada foto automaticamente.';
   return;
  }
@@ -7947,7 +7948,7 @@ $('#optimizerChatgptAuto')?.addEventListener?.('click',async()=>{
   optimizerImagesMode='chatgpt';optimizerImagesRenderMode();
   if(!optimizerChatBridgeReady){
    window.postMessage({kind:'RA_EXTENSION_PROBE'},location.origin);
-   throw Error('Extensão Ponte ChatGPT não detectada. Ative a extensão e atualize a página.');
+   throw Error('Extensão ChatGPT indisponível ou antiga ('+(optimizerChatBridgeVersion||'não detectada')+'). Instale a Ponte v1.0.17 e recarregue o Chrome.');
   }
   // Validate the original photo and the 9 scene prompts before mutating anything.
   const brief=await optimizerChatgptMakeBrief(w);
@@ -8000,7 +8001,7 @@ function optimizerBridgeRecoverFromExtension(payload){
  return new Promise((resolve,reject)=>{
   const timer=setTimeout(()=>{
    window.removeEventListener('message',receive);
-   reject(Error('A Ponte não respondeu à recuperação. Atualize a extensão para v1.0.16 e recarregue o Chrome.'));
+   reject(Error('A Ponte não respondeu à recuperação. Atualize a extensão para v1.0.17 e recarregue o Chrome.'));
   },12000);
   function receive(event){
    if(event.source!==window||event.origin!==location.origin||
@@ -8020,7 +8021,7 @@ $('#optimizerChatgptResume')?.addEventListener?.('click',async()=>{
  button.disabled=true;
  try{
   optimizerImagesMode='chatgpt';optimizerImagesRenderMode();
-  if(!optimizerChatBridgeReady)throw Error('Extensão Ponte ChatGPT não detectada. Instale a versão 1.0.16 e recarregue a página.');
+  if(!optimizerChatBridgeReady)throw Error('Extensão ChatGPT indisponível ou antiga. Instale a Ponte v1.0.17 e recarregue o Chrome.');
   const brief=await optimizerChatgptMakeBrief(w);
   if(!brief.original||brief.prompts?.length!==9)throw Error('Foto original ou os nove roteiros não estão disponíveis.');
   const data=await json('/api/shopee/optimizer/images/manual?'+new URLSearchParams({sku:w.sku,item_id:w.itemId,model_id:w.modelId}));
@@ -8064,7 +8065,7 @@ $('#optimizerChatgptResume')?.addEventListener?.('click',async()=>{
    setTimeout(()=>{
     if(!optimizerChatBridgeStartConfirmed&&optimizerChatBridgeBusy&&optimizerChatBridgeNonce===issuedNonce){
      void optimizerChatBridgeRelease('A extensão não confirmou o reinício pela posição '+first+'. Imagens anteriores preservadas.');
-     notify('A extensão não confirmou o comando para posição '+first+'/09. Verifique se a Ponte 1.0.16 está ativa.');
+     notify('A extensão não confirmou o comando para posição '+first+'/09. Verifique se a Ponte 1.0.17 está ativa.');
     }
    },18000);
   }else{
