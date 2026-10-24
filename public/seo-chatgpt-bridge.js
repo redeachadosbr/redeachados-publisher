@@ -23,6 +23,7 @@
    value:String(x?.value||x?.valueName||x?.value_name||'').slice(0,160)
   })).filter(x=>x.name&&x.value):[];
   const facts={
+   identidadeAnuncio:{sku:String(data?.sku||''),itemId:String(data?.itemId||''),modelId:String(data?.modelId??data?.selectedModelId??'0')},
    produto:clean(data?.productTitle||data?.title||data?.draftTitle||supplier?.name||'').slice(0,280),
    nomeFornecedor:clean(supplier?.name||'').slice(0,280),
    marcaConfirmada:clean(supplier?.brand||'').slice(0,80),
@@ -124,10 +125,10 @@
   const listeners=new Set();
   if(typeof options.onProgress==='function')listeners.add(options.onProgress);
   const entry={listeners,promise:null};
-  const run=requestCore(data,{...options,onProgress:status=>{
+  const run=requestCore(data,{...options,onCancel:cancel=>{entry.cancel=cancel;},onProgress:status=>{
    for(const listener of listeners){try{listener(status);}catch{}}
   }}).then(result=>{
-   seoUnconfirmedResults.set(id,result);
+   if(result)seoUnconfirmedResults.set(id,result);
    return result;
   }).finally(()=>{
    if(seoRequests.get(id)===entry)seoRequests.delete(id);
@@ -150,7 +151,7 @@
   const tab=window.open(url,'_blank');
   return {nonce,opened:Boolean(tab)};
  }
- function requestCore(data,{extraTerms='',previousTitles=[],launchNonce='',onProgress=()=>{}}={}){
+ function requestCore(data,{extraTerms='',previousTitles=[],launchNonce='',resumeOnly=false,onCancel=()=>{},onProgress=()=>{}}={}){
   if(location.origin!==ORIGIN)return Promise.reject(Error('Abra o Shopee Manager oficial para usar a ponte.'));
   if(!crypto?.randomUUID)return Promise.reject(Error('Chrome não suporta esta sessão. Atualize o navegador.'));
   const nonce=/^[a-f0-9-]{30,50}$/i.test(launchNonce)?launchNonce:crypto.randomUUID(),sku=clean(data?.sku||''),itemId=String(data?.itemId||'');
@@ -165,6 +166,7 @@
     if(error)reject(error instanceof Error?error:Error(String(error)));
     else resolve(result);
    };
+   onCancel(reason=>finish(Error(reason||'Pesquisa substituída pela recuperação dos títulos.')));
    const listener=event=>{
     if(event.source!==window||event.origin!==ORIGIN)return;
     const m=event.data||{};
@@ -172,14 +174,22 @@
      const parts=String(m.version||'').split('.').map(Number);
      const updated=parts.length===3&&parts.every(Number.isInteger)&&
       (parts[0]>1||(parts[0]===1&&(parts[1]>0||(parts[1]===0&&parts[2]>=46))));
-     if(!updated)return finish(Error('Ponte ChatGPT '+(m.version||'antiga')+' detectada. Instale a Ponte 1.0.46 para abrir automaticamente a aba dos títulos. Sua SKU e o trabalho salvo permanecem intactos.'));
+     if(!updated)return finish(Error('Ponte ChatGPT '+(m.version||'antiga')+' detectada. Instale a Ponte 1.0.47 para abrir automaticamente a aba dos títulos. Sua SKU e o trabalho salvo permanecem intactos.'));
+     if(resumeOnly&&parts[0]===1&&parts[1]===0&&parts[2]<47)return finish(null,null);
      started=true;window.clearTimeout(probeTimer);
      startAckTimer=window.setTimeout(()=>finish(Error('A Ponte não confirmou a abertura dos títulos em 15 segundos. A aba do ChatGPT foi preservada; não é preciso refazer a SKU.')),15000);
-     window.postMessage({kind:'RA_SITE_SEO_START',payload:{nonce,sku,itemId,modelId,
+     window.postMessage({kind:resumeOnly?'RA_SITE_SEO_RESUME':'RA_SITE_SEO_START',payload:{nonce,sku,itemId,modelId,
       prompt:prompt(data,extraTerms,previousTitles)}},ORIGIN);
      return;
     }
     if(m.nonce!==nonce)return;
+    if(m.kind==='RA_EXTENSION_SEO_RESUME_RESULT'){
+     window.clearTimeout(startAckTimer);
+     if(m.ok!==true)return finish(Error(m.error||'Não foi possível retomar a pesquisa.'));
+     if(!m.pending)return finish(null,null);
+     try{onProgress('Retomando a importação automática dos quatro títulos desta SKU…');}catch{}
+     return;
+    }
     if(m.kind==='RA_EXTENSION_SEO_PROGRESS'){
      window.clearTimeout(startAckTimer);
      try{onProgress(String(m.status||'').slice(0,240));}catch{}return;
@@ -198,8 +208,8 @@
     }
    };
    window.addEventListener('message',listener);
-   const timer=window.setTimeout(()=>finish(Error('Sem resposta do ChatGPT. Confira a aba aberta ou importe a resposta manualmente.')),285000);
-   const probeTimer=window.setTimeout(()=>finish(Error('Ponte v1.0.46 não detectada neste Chrome. A aba ChatGPT aberta foi preservada e sua SKU continua salva. Verifique a extensão em chrome://extensions.')),6500);
+   const timer=window.setTimeout(()=>finish(Error('A pesquisa continua na aba ChatGPT. Reabra a etapa SEO para retomar a importação automática.')),32*60*1000);
+   const probeTimer=window.setTimeout(()=>finish(Error('Ponte v1.0.47 não detectada neste Chrome. A aba ChatGPT aberta foi preservada e sua SKU continua salva. Verifique a extensão em chrome://extensions.')),6500);
    window.postMessage({kind:'RA_EXTENSION_PROBE'},ORIGIN);
   });
  }
@@ -226,7 +236,7 @@
     try{finish(null,{...parse(m.rawText),requestIdentity:{nonce,sku,itemId,modelId},recovered:true});}
     catch(error){finish(error);}
    };
-   const timeout=setTimeout(()=>finish(Error('Sem resposta da Ponte. Confirme que a extensão 1.0.32 está instalada.')),14000);
+   const timeout=setTimeout(()=>finish(Error('Sem resposta da Ponte. Confirme que a Ponte 1.0.47 está carregada.')),60000);
    window.addEventListener('message',listener);
    window.postMessage({kind:'RA_SITE_SEO_RECOVER',payload:{nonce,sku,itemId,modelId}},ORIGIN);
   });
@@ -239,9 +249,12 @@
    itemId:id.itemId,modelId:id.modelId,ok:true},ORIGIN);
   return true;
  }
- globalThis.RASeoChatGPT={request,recover,hasPending,prepare,parse,prompt,count,emojiCount,separateEmojis,acknowledge,
+ globalThis.RASeoChatGPT={request,recover,resume:(data,options={})=>request(data,{...options,resumeOnly:true}),hasPending,prepare,parse,prompt,count,emojiCount,separateEmojis,acknowledge,
  acknowledgeRecovery(result){
   const id=result?.requestIdentity;if(!id?.nonce)return false;
+  const key=seoIdentity(id);
+  seoRequests.get(key)?.cancel?.('Títulos importados pela recuperação.');
+  seoUnconfirmedResults.delete(key);
   window.postMessage({kind:'RA_SITE_SEO_RECOVER_ACK',
    nonce:id.nonce,sku:id.sku,itemId:id.itemId,modelId:id.modelId,ok:true},ORIGIN);
   return true;

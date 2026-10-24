@@ -240,6 +240,8 @@
     const f=facts(data),sku=clean(data.sku||'');
     const identity=prefetchKey(data);
     mount.dataset.seoStudioIdentity=identity;
+    const viewToken={};mount.__raSeoView=viewToken;
+    const isCurrent=()=>mount.isConnected&&mount.__raSeoView===viewToken&&mount.dataset.seoStudioIdentity===identity;
     let researchToken=0,aiOptions=null,aiBusy=false,researchKeywords=[],researchResult=null;
     const persistKey=['ra-seo-four-chatgpt-v2',data.shopId||'shop',data.itemId,data.modelId||0,sku].join(':');
     try{
@@ -441,57 +443,64 @@
        ' Clique em Copiar no ChatGPT, cole no campo aberto com Ctrl+V e pressione Importar 4 títulos recebidos.');
      }
     };
-    async function generateTitles(refresh=false,launch=null){
+    async function generateTitles(refresh=false,launch=null,resumeOnly=false){
       if(aiBusy)return;
       const token=++researchToken,oldOptions=aiOptions;
       aiBusy=true;btn.disabled=true;
-      const currentIdentity=identity;
-      setLabel(marketNotice,'Abrindo o ChatGPT pela extensão e pesquisando termos do produto. Aguarde o retorno na tela.');
+      setLabel(marketNotice,resumeOnly?'Conferindo títulos pendentes desta SKU…':'Abrindo o ChatGPT e aguardando a importação automática dos quatro títulos…');
       try{
         if(!globalThis.RASeoChatGPT?.request)throw Error('Módulo SEO ChatGPT não carregado. Recarregue com Ctrl+Shift+R.');
-        const result=await globalThis.RASeoChatGPT.request(data,{
+        const requestTitles=resumeOnly?globalThis.RASeoChatGPT.resume:globalThis.RASeoChatGPT.request;
+        const result=await requestTitles(data,{
           extraTerms:inp.value,previousTitles:refresh&&oldOptions?oldOptions.map(x=>x.title):[],
           launchNonce:launch?.nonce||'',
-          onProgress:msg=>{if(token===researchToken&&mount.isConnected&&mount.dataset.seoStudioIdentity===currentIdentity)setLabel(marketNotice,msg);}
+          onProgress:msg=>{if(token===researchToken&&isCurrent())setLabel(marketNotice,msg);}
         });
-        if(token!==researchToken||!mount.isConnected||mount.dataset.seoStudioIdentity!==currentIdentity)return;
+        if(token!==researchToken||!isCurrent())return;
+        if(!result){setLabel(marketNotice,'Clique em Gerar 4 títulos com ChatGPT. Os quatro serão importados automaticamente ao terminar.');return;}
         accept(result);
-        if(grid.querySelectorAll('article.seo-studio-card').length!==4)
+        if(!mount.contains(grid)||grid.querySelectorAll('article.seo-studio-card').length!==4)
          throw Error('O Manager não conseguiu apresentar as quatro opções. A aba ChatGPT será mantida para recuperação.');
         // ACK somente depois da importação, ordenação e armazenamento por SKU.
         globalThis.RASeoChatGPT.acknowledge(result);
       }catch(err){
-        if(token!==researchToken||!mount.isConnected||mount.dataset.seoStudioIdentity!==currentIdentity)return;
+        if(token!==researchToken||!isCurrent())return;
         aiOptions=oldOptions;
-        setLabel(marketNotice,'A pesquisa não foi importada: '+err.message+' A aba ChatGPT foi preservada; copie o JSON e use Importar 4 títulos recebidos ou clique em Gerar novamente.');
+        setLabel(marketNotice,resumeOnly?'Clique em Gerar 4 títulos com ChatGPT para iniciar, ou Recuperar títulos para buscar uma resposta já pronta.':'A importação está pendente: '+err.message+' A resposta será preservada para retomada.');
         regenerate();
       }finally{
-        if(token===researchToken&&mount.dataset.seoStudioIdentity===currentIdentity){
+        if(token===researchToken&&isCurrent()){
           aiBusy=false;btn.disabled=false;
         }
       }
     }
     recover.addEventListener('click',()=>{
-      if(aiBusy)return;
+      if(recover.disabled)return;
       void (async()=>{
        const token=++researchToken;
        aiBusy=true;recover.disabled=true;btn.disabled=true;
        const oldOptions=aiOptions;
+       let reattach=false;
        setLabel(marketNotice,'Recuperando os quatro títulos da aba do ChatGPT sem iniciar outra pesquisa…');
        try{
-        if(!globalThis.RASeoChatGPT?.recover)throw Error('Instale a Ponte 1.0.31 e atualize o Manager.');
+        if(!globalThis.RASeoChatGPT?.recover)throw Error('Instale a Ponte 1.0.47 e atualize o Manager.');
         const result=await globalThis.RASeoChatGPT.recover(data);
-        if(token!==researchToken||!mount.isConnected||mount.dataset.seoStudioIdentity!==identity)return;
+        if(token!==researchToken||!isCurrent())return;
         accept(result);
         if(grid.querySelectorAll('article.seo-studio-card').length!==4)
          throw Error('O Manager ainda não conseguiu exibir os quatro títulos.');
         globalThis.RASeoChatGPT.acknowledgeRecovery(result);
         setLabel(marketNotice,'✓ 4 títulos recuperados e classificados por nota. A aba da pesquisa foi liberada para fechamento.');
        }catch(error){
+        if(token!==researchToken||!isCurrent())return;
         aiOptions=oldOptions;regenerate();
         setLabel(marketNotice,'Recuperação não concluída: '+error.message+' Confira a aba e tente novamente.');
+        reattach=globalThis.RASeoChatGPT?.hasPending?.(data)===true;
        }finally{
-        if(token===researchToken){aiBusy=false;recover.disabled=false;btn.disabled=false;}
+        if(token===researchToken&&isCurrent()){
+         aiBusy=false;recover.disabled=false;btn.disabled=false;
+         if(reattach)void generateTitles(false);
+        }
        }
       })();
     });
@@ -521,7 +530,9 @@
       setLabel(marketNotice,'Retomando automaticamente os títulos desta SKU, sem repetir a pesquisa ChatGPT…');
       void generateTitles(false);
     }else{
-      setLabel(marketNotice,'Nenhum título importado. Clique em Gerar 4 títulos com ChatGPT ou Recuperar títulos da aba ChatGPT. As etapas anteriores permanecem salvas.');
+      // Só consulta a entrega persistida da mesma SKU. Nunca abre chat nem
+      // cria outra pesquisa ao entrar nesta etapa ou recarregar a página.
+      void generateTitles(false,null,true);
     }
   }
   globalThis.ShopeeTitleStudio={open,prefetch};
