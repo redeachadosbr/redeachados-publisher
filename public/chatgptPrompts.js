@@ -16,7 +16,7 @@ const asText=(value,max=10000)=>String(value||'').normalize('NFC').slice(0,max);
 const factsFrom=attributes=>(Array.isArray(attributes)?attributes:[]).filter(a=>a?.state==='filled'&&Array.isArray(a.values)&&a.values.length)
  .slice(0,20).map(a=>asText(a.name,80)+': '+a.values.map(v=>asText(v?.name,100)+(v?.unit?' '+asText(v.unit,20):'')).join(', '))
  .filter(x=>!x.endsWith(': ')).join('; ').slice(0,1600);
-export function createChatGptPrompts({sku='',title='',masterPrompt='',imageNotes={},attributes=[],imageUrls=[],supplierSourceText='',supplierProduct=null,supplierMetrics=[]}={}){
+export function createChatGptPrompts({sku='',title='',masterPrompt='',imageNotes={},attributes=[],imageUrls=[],supplierSourceText='',supplierProduct=null,supplierMetrics=[],imagePrompts={}}={}){
  const original=(Array.isArray(imageUrls)?imageUrls:[]).find(x=>/^https:\/\//i.test(String(x||'')))||'';
  const header=[
   'PROJETO: REDE ACHADOS BR — UMA IMAGEM INDIVIDUAL DE UM ÚNICO ANÚNCIO SHOPEE',
@@ -52,6 +52,11 @@ export function createChatGptPrompts({sku='',title='',masterPrompt='',imageNotes
   'Exiba a imagem gerada diretamente na conversa com a ferramenta nativa de imagens. Não entregue apenas um link de arquivo, um prompt ou uma resposta em texto. A extensão precisa receber o resultado visual desta posição antes de solicitar a próxima.'
  ].join('\n\n'));
  // A cópia manual não deve reintroduzir o antigo comando das nove imagens de uma vez.
+ // Orientação completa editada pelo vendedor, isolada pela SKU/posição e persistida no Manager.
+ for(let i=0;i<9;i++){
+  const custom=asText(imagePrompts?.[i+1],16000).trim();
+  if(custom)prompts[i]=custom;
+ }
  const batch=prompts[0]||header;
  return {batch,prompts,scenes,original};
 
