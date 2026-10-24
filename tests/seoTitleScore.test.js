@@ -64,5 +64,5 @@ test('quatro cartões em grade 2x2 exibem notas e destacam a recomendação',()=
  assert.match(studio,/seo-studio-score-track/);
  assert.match(studio,/RECOMENDADO — maior nota SEO/);
  assert.match(studio,/Aguardando título validado de 100 a 120 caracteres/);
- assert.match(page,/seo-modern-layout\.css\?v=1\.0\.2-four-cards-rank-scores/);
+ assert.match(page,/seo-modern-layout\.css\?v=1\.0\.3-recover31/);
 });
