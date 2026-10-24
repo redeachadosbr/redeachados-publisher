@@ -166,6 +166,40 @@ export function compileShopeeExecutionPlan({shopId,itemId,modelId,sku,record,rev
      selectedStage==='remaining'?'Apenas modelos → fiscal → desconto (sem edição de conteúdo ou mídia)':
      'Somente '+SHOPEE_EXECUTION_STAGE_LABELS[selectedStage]+'; outras etapas não serão enviadas'};
 }
+// Readback-only monotonic resume: a stored authorization may safely continue
+// when the marketplace has ALREADY applied one or more of its exact approved
+// fields between preview and execute. No new or modified value is authorized.
+// This function itself performs no Shopee writes and never changes the saved plan.
+export function approvedShopeeReadbackConvergence(plan,fresh,live){
+ if(!plan||!fresh||!live||fresh.blocked?.length)return false;
+ if(plan.selectedStage!==fresh.selectedStage||plan.sku!==fresh.sku||
+  String(plan.itemId)!==String(fresh.itemId)||String(plan.modelId)!==String(fresh.modelId)||
+  Boolean(plan.fiscalDeferred)!==Boolean(fresh.fiscalDeferred)||
+  Boolean(plan.discountOnly)!==Boolean(fresh.discountOnly)||
+  !sameData(plan.finalFiscal||null,fresh.finalFiscal||null)||
+  !sameData(plan.modelVariations||null,fresh.modelVariations||null))return false;
+ const previous=plan.proposed||{},current=fresh.proposed||{};
+ // A fresh preview cannot add or change ANY proposed modification.
+ for(const [key,value] of Object.entries(current)){
+  if(!Object.hasOwn(previous,key)||!sameData(previous[key],value))return false;
+ }
+ for(const [key,value] of Object.entries(previous)){
+  // Only an approved field that now matches Shopee exactly may disappear.
+  if(!Object.hasOwn(current,key)&&!fieldsVerified({[key]:value},live))return false;
+ }
+ const mediaKey=x=>(x||[]).map(a=>({
+  slot:Number(a.slot),sha256:String(a.sha256||'')
+ }));
+ const oldImages=mediaKey(plan.images),newImages=mediaKey(fresh.images);
+ if(!sameData(oldImages,newImages)){
+  if(newImages.length>0||!oldImages.length||
+   !sameData(live.image?.image_id_list||[],plan.reusedMedia?.imageIds||[]))return false;
+ }
+ if(String(plan.video?.sha256||'')!==String(fresh.video?.sha256||'')){
+  if(fresh.video||!plan.video||!videoMatches(live,plan.reusedMedia?.video))return false;
+ }
+ return true;
+}
 export function confirmShopeeExecution(plan,{sku,confirmation}={}){
   if(!plan||!plan.canExecute||(Object.keys(plan.proposed||{}).length===0&&!plan.finalFiscal&&!plan.video&&!plan.images?.length&&!plan.discountOnly&&!plan.modelVariations))
     throw Error('Não existem alterações aprovadas e elegíveis para executar.');
