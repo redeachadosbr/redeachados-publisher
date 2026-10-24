@@ -3886,7 +3886,7 @@ function optimizerDiscountFinalPaint(){
   !eligible?q.marketResearch?.verified?
    'Margem ou pesquisa vencida — revisar preço':'Aguardando no mínimo dois anúncios reais':
   optimizerDiscountFinalPreviewData?(deferred?
-    (approved?'Desconto autorizado · aguardará NORMAL':'Anúncio UNLIST · marque a autorização antecipada'):
+    (approved?'Desconto autorizado · aguardará NORMAL':'Anúncio '+(optimizerDiscountFinalPreviewData.liveItemStatus||'em espera')+' · marque a autorização antecipada'):
     (approved?'Desconto conferido · 8ª etapa liberada':'Autorize alteração do preço bruto para liberar')):
   'Preço e desconto calculados · clique em Conferir desconto';
  $('#optimizerExecDiscountMessage').textContent=!active?
