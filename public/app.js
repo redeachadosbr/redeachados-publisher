@@ -7698,11 +7698,11 @@ async function optimizerCommercialRequestChatgptSlot(w,slot,{editMode=''}={}){
    if(editMode==='improve')prompts[slot-1]=[
     brief.prompts[slot-1],
     'EDIÇÃO DA FOTO PREPARADA ANEXADA DA POSIÇÃO '+pos+': crie uma nova versão da MESMA fotografia e do MESMO produto, com ângulo de câmera claramente diferente, enquadramento mais sofisticado, iluminação refinada e fundo ambientado moderno relacionado ao uso real. Não mudar o formato, as cores, os materiais, o número de peças, as marcas nem o conteúdo do produto. A imagem comercial anterior está anexada como referência. Gere somente UMA imagem nova, individual.',
-   ].join('\\n\\n');
+   ].join('\n\n');
    if(editMode==='white-bg')prompts[slot-1]=[
     'REDE ACHADOS BR — EDIÇÃO DA IMAGEM '+pos+'/09 DA SKU '+w.sku+' — '+(w.draftTitle||'Produto'),
     'Edite EXCLUSIVAMENTE a imagem preparada anexada. Recorte fielmente o mesmo produto e retire totalmente o fundo atual. Substitua o cenário por BRANCO PURO (#FFFFFF), sem objetos, sem textura e sem decoração. Preserve geometria, escala, cores, componentes, número de peças, marcas originais e a disposição real. Permita apenas sombra suave e discreta, sem inventar acessórios. Remova quaisquer rótulos promocionais da fotografia anterior, sem apagar marcas físicas reais do produto. Imagem única, quadrada, para 1200 × 1200 pixels. Não colocar títulos nem textos. NÃO usar fundo ambientado nesta edição. Gere apenas esta imagem.',
-   ].join('\\n\\n');
+   ].join('\n\n');
   }
   optimizerChatBridgeNonce=crypto.randomUUID();
   optimizerChatBridgeSku=w.sku;
