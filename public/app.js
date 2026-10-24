@@ -8490,11 +8490,26 @@ async function optimizerChatgptContinueFromServer(){
    throw Error(recovered.error||'Não foi possível recuperar o estado da extensão.');
   }
   void optimizerImagesLoad();
+  // Só confirmar à Ponte APÓS reconciliação da sessão e solicitação de wake.
+  return {ok:true,nonce:optimizerChatBridgeNonce,sku:String(w.sku),itemId:String(w.itemId),modelId:String(w.modelId),slot:missing[0]};
  }catch(e){
   optimizerChatBridgeBusy=false;$('#optimizerChatgptAbort').hidden=true;
   notify('Não foi possível continuar a sequência: '+String(e.message||e)+'. Nenhuma foto salva foi apagada.',true);
+  return {ok:false,error:String(e.message||e)};
  }finally{optimizerChatgptContinueBusy=false;if(button)button.disabled=false;}
 }
+// O coordenador da extensão espera um resultado REAL, não apenas button.click().
+// Expor somente a mesma ação de interface após conferir SKU/item/modelo ativos.
+globalThis.__RA_SHOPEE_RESUME_BRIDGE=async identity=>{
+ const w=optimizerWorkflowPlan;
+ if(!w||String(w.sku)!==String(identity?.sku)||String(w.itemId)!==String(identity?.itemId)||String(w.modelId)!==String(identity?.modelId)||
+    String($('#optimizerSku')?.value||'').trim()!==String(identity.sku))
+  return {ok:false,error:'A SKU/item/variação exibida não corresponde à execução da Ponte.'};
+ if(optimizerChatgptContinueBusy)
+  return {ok:false,error:'O Manager ainda está reconciliando a sessão anterior. Não iniciar outro comando.'};
+ const result=await optimizerChatgptContinueFromServer();
+ return result?.ok===true?result:{ok:false,error:result?.error||String($('#optimizerChatgptActionStatus')?.textContent||$('#optimizerChatgptBridgeStatus')?.textContent||'Manager não confirmou a retomada.').slice(0,330)};
+};
 $('#optimizerChatgptAuto')?.addEventListener?.('click',()=>void optimizerChatgptContinueFromServer());
 $('#optimizerChatgptResume')?.addEventListener?.('click',()=>void optimizerChatgptContinueFromServer());
 $('#optimizerChatgptAbort')?.addEventListener?.('click',()=>{
