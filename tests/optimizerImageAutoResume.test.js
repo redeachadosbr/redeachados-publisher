@@ -30,7 +30,7 @@ test('botão principal executa a retomada diretamente, sem proxy oculto',()=>{
 });
 
 test('retomada consulta sempre banco e informa slots confirmados para a Ponte',()=>{
- const start=app.indexOf("$('#optimizerChatgptResume')?.addEventListener");
+ const start=app.indexOf('async function optimizerChatgptContinueFromServer()');
  const end=app.indexOf("$('#optimizerChatgptAbort')?.addEventListener",start);
  assert(start>0&&end>start,'handler de retomada ausente');
  const resume=app.slice(start,end);
