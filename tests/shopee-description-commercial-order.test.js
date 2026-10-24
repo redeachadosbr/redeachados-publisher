@@ -13,7 +13,7 @@ test('ordem comercial do motor e embalagem confirmada',()=>{
  assert.ok(out.description.split('\n\n').length>=7);
 });
 test('omite FAQ sem provas e não inventa conteúdo da embalagem',()=>{
- const out=composeShopeeDescription({record:{title:'Garrafa Térmica 900 ml'}});
+ const out=composeShopeeDescription({record:{title:'Cesto Organizador para Casa'}});
  assert.doesNotMatch(out.description,/❓ DÚVIDAS FREQUENTES/);
  assert.match(out.description,/confirme os itens com o vendedor antes de comprar/);
  assert.ok(out.description.split('\n\n').at(-1).startsWith('🛒'));
