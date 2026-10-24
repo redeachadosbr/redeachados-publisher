@@ -49,6 +49,7 @@ export async function saveWorkflowReview(shop,item,model,sku,change){
   next.modelDiscountCampaignId=id;
  }
  if(change.imageNotes!==undefined)next.imageNotes={...(state.imageNotes||{}),...change.imageNotes};
+ if(change.imagePrompts!==undefined)next.imagePrompts={...(state.imagePrompts||{}),...change.imagePrompts};
  if(change.title!==undefined)next.draftTitle=change.title;
  if(change.description!==undefined)next.draftDescription=change.description;
  if(change.titleOrigin!==undefined)next.titleOrigin=String(change.titleOrigin);
