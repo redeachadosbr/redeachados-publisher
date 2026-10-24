@@ -18,7 +18,8 @@
    keywords:terms.reduce((sum,term,i)=>sum+(standard.includes(term)?weights[i]:0),0),
    front:terms.some(t=>standard.slice(0,45).includes(t))?10:0,
    product:base.split(' ').filter(x=>x.length>3).slice(0,3).some(t=>standard.includes(t))?10:0,
-   emojis:emojiCount(name)===2?10:0,
+   emojis:emojiCount(name)===2&&/^\p{Extended_Pictographic}/u.test(name)&&
+    /\p{Extended_Pictographic}(?:\uFE0F|\uFE0E)?$/u.test(name)?10:0,
    readability:!/\b(gr[aá]tis|melhor pre[cç]o|100% garantido|frete 24h)\b/iu.test(name)&&
     !/[!]{2,}|\s{2,}/.test(name)?5:0
   };
