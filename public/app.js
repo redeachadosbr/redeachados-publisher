@@ -8165,8 +8165,19 @@ async function optimizerChatBridgeRecover({includeBlocked=false}={}){
  if(!optimizerChatBridgeIdentity(job,optimizerWorkflowPlan)||
     String($('#optimizerSku')?.value||'').trim()!==String(job.sku))return 0;
  try{
+  // Somente as posições efetivamente ausentes devem ser reenviadas.
+  // Um ACK perdido não autoriza sobrescrever a foto que já está no banco.
+  const server=await json('/api/shopee/optimizer/images/manual?'+new URLSearchParams({
+   sku:job.sku,item_id:job.itemId,model_id:job.modelId
+  }));
+  const stored=new Map((server.images||[]).map(img=>[Number(img.slot),img]));
+  const missing=job.slots.filter(slot=>!stored.has(slot)||
+   // Correção individual explicitamente iniciada: repetir somente enquanto
+   // o servidor ainda contém a imagem antiga que o usuário quis substituir.
+   job.slots.length===1&&Boolean(job.expectedHashes?.[slot])&&
+   stored.get(slot)?.sha256===job.expectedHashes[slot]);
   const queue=await optimizerChatBridgeQueue();
-  const pending=await queue.resume(job,{includeBlocked});
+  const pending=await queue.resume(job,{includeBlocked,onlySlots:missing});
   if(pending){
    if(!optimizerChatBridgeIdentity(job,optimizerWorkflowPlan)||job.stopped)return 0;
    optimizerChatBridgeBusy=true;$('#optimizerChatgptAbort').hidden=false;
