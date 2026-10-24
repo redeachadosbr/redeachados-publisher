@@ -110,7 +110,36 @@
     ?'ChatGPT retornou quatro títulos e links de pesquisa para conferência.'
     :'ChatGPT retornou quatro títulos, mas NÃO apresentou fontes verificáveis de pesquisa. Confira palavras-chave antes de usar.'};
  }
- function request(data,{extraTerms='',previousTitles=[],onProgress=()=>{}}={}){
+ // A mesma pesquisa pode sobreviver à troca/recriação da etapa SEO sem novo prompt.
+ const seoRequests=new Map(),seoUnconfirmedResults=new Map();
+ const seoIdentity=data=>[String(data?.sku||''),String(data?.itemId||''),String(data?.modelId??data?.selectedModelId??'0')].join('|');
+ function request(data,options={}){
+  const id=seoIdentity(data);
+  if(seoUnconfirmedResults.has(id))return Promise.resolve(seoUnconfirmedResults.get(id));
+  const active=seoRequests.get(id);
+  if(active){
+   if(typeof options.onProgress==='function')active.listeners.add(options.onProgress);
+   return active.promise;
+  }
+  const listeners=new Set();
+  if(typeof options.onProgress==='function')listeners.add(options.onProgress);
+  const entry={listeners,promise:null};
+  const run=requestCore(data,{...options,onProgress:status=>{
+   for(const listener of listeners){try{listener(status);}catch{}}
+  }}).then(result=>{
+   seoUnconfirmedResults.set(id,result);
+   return result;
+  }).finally(()=>{
+   if(seoRequests.get(id)===entry)seoRequests.delete(id);
+  });
+  entry.promise=run;seoRequests.set(id,entry);
+  return run;
+ }
+ function hasPending(data){
+  const id=seoIdentity(data);
+  return seoRequests.has(id)||seoUnconfirmedResults.has(id);
+ }
+ function requestCore(data,{extraTerms='',previousTitles=[],onProgress=()=>{}}={}){
   if(location.origin!==ORIGIN)return Promise.reject(Error('Abra o Shopee Manager oficial para usar a ponte.'));
   if(!crypto?.randomUUID)return Promise.reject(Error('Chrome não suporta esta sessão. Atualize o navegador.'));
   const nonce=crypto.randomUUID(),sku=clean(data?.sku||''),itemId=String(data?.itemId||'');
@@ -139,8 +168,11 @@
     }
     if(m.nonce!==nonce)return;
     if(m.kind==='RA_EXTENSION_SEO_PROGRESS'){try{onProgress(String(m.status||'').slice(0,240));}catch{}return;}
-    if(m.kind==='RA_EXTENSION_SEO_START_RESULT'&&m.ok===false)
-     return finish(Error(m.error||'A extensão rejeitou a pesquisa.'));
+    if(m.kind==='RA_EXTENSION_SEO_START_RESULT'){
+     if(m.ok===false)return finish(Error(m.error||'A extensão rejeitou a pesquisa.'));
+     try{onProgress(m.reused?'Pesquisa existente retomada na aba ChatGPT.':'Ponte conectada. Abrindo a pesquisa de títulos no ChatGPT…');}catch{}
+     return;
+    }
     if(m.kind==='RA_EXTENSION_SEO_RESULT'){
      if(m.sku!==sku||String(m.itemId)!==itemId||String(m.modelId)!==modelId)return;
      if(m.ok!==true)return finish(Error(m.error||'O ChatGPT não retornou os títulos.'));
@@ -185,11 +217,12 @@
  function acknowledge(result){
   const id=result?.requestIdentity;
   if(!id?.nonce||!id?.sku||!id?.itemId)return false;
+  seoUnconfirmedResults.delete([String(id.sku),String(id.itemId),String(id.modelId??'0')].join('|'));
   window.postMessage({kind:'RA_SITE_SEO_ACK',nonce:id.nonce,sku:id.sku,
    itemId:id.itemId,modelId:id.modelId,ok:true},ORIGIN);
   return true;
  }
- globalThis.RASeoChatGPT={request,recover,parse,prompt,count,emojiCount,separateEmojis,acknowledge,
+ globalThis.RASeoChatGPT={request,recover,hasPending,parse,prompt,count,emojiCount,separateEmojis,acknowledge,
  acknowledgeRecovery(result){
   const id=result?.requestIdentity;if(!id?.nonce)return false;
   window.postMessage({kind:'RA_SITE_SEO_RECOVER_ACK',
