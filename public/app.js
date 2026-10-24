@@ -7838,7 +7838,7 @@ globalThis.window?.addEventListener?.('message',async(event)=>{
  // Only extension-origin event types belong here. Site-emitted control messages
  // (RA_SITE_ABORT / RA_SITE_UPLOAD_RESULT / RA_SITE_START) must never be
  // interpreted as extension input, or cancellation can recursively echo.
- if(!['RA_EXTENSION_READY','RA_EXTENSION_START_RESULT','RA_EXTENSION_PROGRESS','RA_EXTENSION_IMAGE'].includes(m.kind))return;
+ if(!['RA_EXTENSION_READY','RA_EXTENSION_START_RESULT','RA_EXTENSION_WAKE_RESULT','RA_EXTENSION_PROGRESS','RA_EXTENSION_IMAGE'].includes(m.kind))return;
  if(m.kind==='RA_EXTENSION_READY'){
   optimizerChatBridgeReady=true;
   const version=String(m.version||'');
@@ -7880,6 +7880,11 @@ globalThis.window?.addEventListener?.('message',async(event)=>{
  const job=optimizerChatBridgeJob;
  if(!job||job.nonce!==m.nonce||!optimizerChatBridgeIdentity(job,m))return;
  if(job.stopped){if(m.kind==='RA_EXTENSION_IMAGE')optimizerChatBridgeAck(m,false,'Envio anterior interrompido.');return;}
+ if(m.kind==='RA_EXTENSION_WAKE_RESULT'){
+  if(!m.ok){optimizerChatBridgeBusy=false;$('#optimizerChatgptAbort').hidden=true;
+   report('A Ponte não conseguiu retomar a imagem pendente: '+(m.error||'erro não identificado'));}
+  return;
+ }
  if(m.kind==='RA_EXTENSION_PROGRESS'){
   const done=m.status==='9/9 imagens armazenadas. Confira e aprove a etapa no Shopee Manager antes de publicar na Shopee.';
   optimizerChatBridgeNotice(m.status+(m.error?' '+m.error:'')+
@@ -8041,6 +8046,8 @@ $('#optimizerChatgptResume')?.addEventListener?.('click',async()=>{
    optimizerChatBridgeBusy=true;optimizerChatBridgeStartConfirmed=true;
    $('#optimizerChatgptAbort').hidden=false;
    notify('Recuperando a imagem '+first+'/09 da SKU '+w.sku+'. Imagens existentes preservadas. Se a conversa não puder ser recuperada, use “Recomeçar somente imagem pendente” na Ponte.');
+   // O runner recebe autorização somente DEPOIS que esta aba registrou o nonce antigo.
+   window.postMessage({kind:'RA_SITE_WAKE',nonce:optimizerChatBridgeNonce},location.origin);
   }else if(recovered.reason==='NO_RECOVERABLE_JOB'||recovered.reason==='ALREADY_COMPLETE'){
    // Nenhuma execução ativa no Chrome: nova sessão, mantendo o progresso real do servidor.
    optimizerChatBridgeNonce=crypto.randomUUID();optimizerChatBridgeSku=w.sku;
