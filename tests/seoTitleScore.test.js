@@ -64,5 +64,16 @@ test('quatro cartões em grade 2x2 exibem notas e destacam a recomendação',()=
  assert.match(studio,/seo-studio-score-track/);
  assert.match(studio,/RECOMENDADO — maior nota SEO/);
  assert.match(studio,/Aguardando título validado de 100 a 120 caracteres/);
- assert.match(page,/seo-modern-layout\.css\?v=1\.0\.3-recover31/);
+ assert.match(page,/seo-modern-layout\.css\?v=1\.0\.4-clipboard-button33/);
+});
+
+test('botão de importação de resposta copiada é visível e gera quatro cartões sem pesquisa nova',()=>{
+ const studio=readFileSync(new URL('../public/title-studio.js',import.meta.url),'utf8');
+ const ui=readFileSync(new URL('../public/seo-modern-layout.js',import.meta.url),'utf8');
+ const css=readFileSync(new URL('../public/seo-modern-layout.css',import.meta.url),'utf8');
+ assert.match(studio,/Importar resposta copiada do ChatGPT/);
+ assert.match(studio,/navigator\.clipboard\.readText\(\)/);
+ assert.match(studio,/pasteDirect\.onclick/);
+ assert.match(ui,/suggestions\.append\(pasteDirect\)/);
+ assert.match(css,/\.seo-studio-direct-import/);
 });
