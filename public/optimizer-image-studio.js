@@ -78,20 +78,23 @@
  next.setAttribute('aria-label','Próxima imagem');
  nav.append(navLabel,prev,next);
  rework.insertBefore(nav,rework.querySelector('.optimizer-rework-fields'));
+ // Reutilizar os botões originais com os listeners de app.js já associados.
+ // Não criar controles visuais duplicados nem redirecionar para geração genérica.
  const quick=el('div','ra-studio-quick-actions');
  const editField=$('#optimizerImageCorrection');
- quick.append(
-  makeButton('▧ Trocar imagem','',()=>$('#optimizerImageCorrectionChoose')?.click()),
-  makeButton('✎ Editar orientação','',()=>editField?.focus()),
-  makeButton('✦ Melhorar com IA','',()=>$('#optimizerImageCorrectionGenerate')?.click()),
-  makeButton('▨ Remover fundo','',()=>{
-   if(editField){
-    editField.value='Remover o fundo atual e substituir por um fundo claro, limpo e profissional, preservando rigorosamente o produto original, suas cores, marcas, componentes e proporções.';
-    editField.dispatchEvent(new Event('input',{bubbles:true}));
-   }
-   $('#optimizerImageCorrectionGenerate')?.click();
-  })
- );
+ const editOrientation=$('#optimizerImageEditOrientation');
+ const improveAI=$('#optimizerImageImproveAI');
+ const removeBackground=$('#optimizerImageRemoveBackground');
+ const duplicateToolbar=rework.querySelector('.optimizer-image-edit-toolbar');
+ const swapPhoto=makeButton('▧ Trocar imagem','',()=>$('#optimizerImageCorrectionChoose')?.click());
+ quick.append(swapPhoto);
+ for(const button of [editOrientation,improveAI,removeBackground]){
+  if(!button)continue;
+  button.classList.remove('secondary');
+  if(button===removeBackground)button.textContent='▨ Remover fundo';
+  quick.append(button); // mover conserva listeners e IDs
+ }
+ duplicateToolbar?.remove(); // wrapper verde já não contém os botões
  rework.insertBefore(quick,rework.querySelector('.optimizer-workflow-actions'));
  const originalReady=rework.querySelector('.optimizer-image-ready-actions');
  const savedPreview=rework.querySelector('#optimizerImageCorrectionPreview');
