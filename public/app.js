@@ -3707,6 +3707,7 @@ function optimizerExecutionTrackerRender(progress,job){
  badge.dataset.state=progress.fiscalPartial?'warning':progress.state;
  const pct=Math.max(0,Math.min(100,Number(progress.percent)||0));
  $('#optimizerExecutionPercent').textContent=pct+'%';
+ $('#optimizerExecutionPercent').title='Progresso técnico real. Apenas a confirmação pela Shopee significa publicação concluída.';
  $('#optimizerExecutionBar').setAttribute('aria-valuenow',String(pct));
  $('#optimizerExecutionBarFill').style.width=pct+'%';
  $('#optimizerExecutionProgressDetail').textContent=progress.message;
@@ -3714,15 +3715,18 @@ function optimizerExecutionTrackerRender(progress,job){
    progress.imagesUploaded+' / '+progress.imagesTotal+' na mídia · '+
    progress.imagesPublished+' / '+progress.imagesTotal+' publicadas no anúncio':'';
  const stageList=$('#optimizerExecutionSteps');stageList.replaceChildren();
- const statuses={done:'Concluído',active:'Em andamento',waiting:'Aguardando',
-  skipped:'Não incluído',attention:'Verificar',review:'Não aprovado nesta execução'};
+ const statuses={done:'Confirmado no anúncio',staged:'✓ Na mídia Shopee',checking:'Enviado · conferindo',
+  active:'Em andamento',waiting:'Aguardando',skipped:'Não incluído',
+  attention:'Verificar na Shopee',review:'Não aprovado nesta execução'};
  for(const [i,step] of (progress.steps||[]).entries()){
   const li=optimizerMake('li','optimizer-exec-step is-'+step.status);
   const marker=optimizerMake('span','optimizer-exec-step-number',
-   step.status==='done'?'✓':step.status==='review'?'!':String(i+1));
+   ['done','staged'].includes(step.status)?'✓':step.status==='review'?'!':String(i+1));
   const name=optimizerMake('strong','',step.label);
   const status=optimizerMake('small','',statuses[step.status]||'Aguardando');
   if(step.status==='review')li.title='A execução antiga não inclui aprovação do desconto. Confira o anúncio antes de preparar outra execução.';
+  if(step.status==='staged')li.title='Arquivo confirmado na biblioteca de mídia da Shopee; a publicação neste anúncio ainda precisa ser verificada.';
+  if(step.status==='checking')li.title='A API recebeu a atualização; ainda falta a confirmação de leitura do anúncio.';
   li.append(marker,name,status);stageList.append(li);
  }
  const log=$('#optimizerExecutionEvents');log.replaceChildren();
@@ -4693,8 +4697,13 @@ function optimizerExecutionAutoRecoverStale(job){
   String(job.model_id||0)!==String(w.modelId||0))return;
  const updated=Math.max(Date.parse(job.updated_at||'')||0,
   Number(job.result?.updateStartedAt||0));
- if(!updated||Date.now()-updated<180000)return;
- const key=[w.sku,w.itemId,w.modelId,job.updated_at].join('|');
+ const age=Date.now()-updated;
+ if(!updated||age<25000)return;
+ // Ler automaticamente a Shopee em intervalos limitados, sem POST de
+ // publicação. Após 3 minutos, aplicar recuperação segura existente.
+ const recover=age>=180000;
+ const attempt=recover?'recover':'check-'+Math.floor((age-25000)/30000);
+ const key=[w.sku,w.itemId,w.modelId,job.updated_at,attempt].join('|');
  if(optimizerAutoReadbackRecoveryKey===key)return;
  optimizerAutoReadbackRecoveryKey=key;
  // Reconciliação uma vez por versão. Escritas com resultado incerto não são
@@ -4703,7 +4712,7 @@ function optimizerExecutionAutoRecoverStale(job){
   try{
    const data=await json('/api/shopee/optimizer/execution/reconcile',{
     method:'POST',headers:{'Content-Type':'application/json'},
-    body:JSON.stringify({sku:w.sku,itemId:w.itemId,modelId:w.modelId,recover:true}),
+    body:JSON.stringify({sku:w.sku,itemId:w.itemId,modelId:w.modelId,recover}),
     signal:AbortSignal.timeout(65000)
    });
    if(optimizerWorkflowPlan?.sku!==w.sku||String(optimizerWorkflowPlan?.itemId)!==String(w.itemId)||
@@ -4719,7 +4728,8 @@ function optimizerExecutionAutoRecoverStale(job){
      optimizerExecPoll=setTimeout(()=>void optimizerExecutionRefresh(true),500);
     }
    }else if(data.pendingChecks?.length){
-    optimizerExecNotice(data.pendingChecks.join('; '),'warning');
+    optimizerExecNotice('Conferência automática: '+data.pendingChecks.join('; ')+
+     '. Imagens e vídeo já enviados continuam preservados; nenhuma escrita será repetida.','warning');
    }
   }catch(error){
    if(optimizerWorkflowPlan?.sku===w.sku)
