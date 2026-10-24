@@ -412,11 +412,16 @@
               </label>
               <button type="button" id="optimizerExecDiscountPreview" class="secondary" disabled>✓ Conferir desconto e liberar execução</button>
             </div>
+            <label id="optimizerExecDiscountDeferredApproval" class="optimizer-exec-discount-price-approval" hidden>
+              <input id="optimizerExecDiscountDeferredConsent" type="checkbox">
+              ✓ Autorizo preparar este desconto e incluí-lo no fluxo completo. Aplicar somente quando a Shopee confirmar o anúncio em situação NORMAL, após revalidar preço, margem, campanha e SKU. Se não estiver NORMAL, manter pendente, sem publicar.
+            </label>
             <label id="optimizerExecDiscountPriceApproval" class="optimizer-exec-discount-price-approval" hidden>
               <input id="optimizerExecDiscountPriceConsent" type="checkbox">
               Autorizo também atualizar o preço bruto na Shopee, se necessário. Se o desconto falhar, o preço bruto poderá permanecer alterado.
             </label>
             <p id="optimizerExecDiscountResult" class="optimizer-notice" role="status" aria-live="polite">Nenhuma alteração de preço ou promoção enviada à Shopee.</p>
+            <button type="button" id="optimizerExecDiscountResume" class="secondary" hidden>↻ Conferir desconto pendente após ativação</button>
           </section>
           </div>
       <section class="optimizer-exec-panel optimizer-exec-panel-v21" id="optimizerExecutionPanel" hidden aria-label="Pré-execução automatizada por SKU">
