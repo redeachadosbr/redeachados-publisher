@@ -3463,7 +3463,7 @@ $('#optimizerWorkflowReview')?.addEventListener?.('click',async()=>{
 // Pré-execução parcial Shopee. Only explicit interaction authorizes update_item.
 let optimizerExecPlan=null,optimizerExecContext=null,optimizerExecBusy=false,optimizerExecSerial=0;
 let optimizerExecAutoModelToken=null,optimizerExecAutoModelPreview=null;
-let optimizerExecPoll=null,optimizerExecJob=null,optimizerExecPolling=false,optimizerExecStartError='';
+let optimizerExecPoll=null,optimizerExecJob=null,optimizerExecPolling=false,optimizerExecPollingIdentity='',optimizerExecStartError='';
 let optimizerExecPreparation=null,optimizerExecPrepareController=null,optimizerExecProgress=null;
 let optimizerExecSafeRecoveryKey='',optimizerExecSafeRecovering=false;
 function optimizerExecNotice(message,state='info'){
@@ -4841,9 +4841,11 @@ async function optimizerExecutionSafeRecoverCest(job,w){
  }finally{optimizerExecSafeRecovering=false;}
 }
 async function optimizerExecutionRefresh(poll=false){
- const w=optimizerWorkflowPlan;if(!w||optimizerExecPolling)return null;
+ const w=optimizerWorkflowPlan;if(!w)return null;
  const identity=w.sku+':'+w.itemId+':'+w.modelId;
- optimizerExecPolling=true;
+ // Consulta de andamento antiga nunca impede a próxima SKU.
+ if(optimizerExecPolling&&optimizerExecPollingIdentity===identity)return null;
+ optimizerExecPolling=true;optimizerExecPollingIdentity=identity;
  try{
   const data=await json('/api/shopee/optimizer/execution/status?'+new URLSearchParams({
    sku:w.sku,item_id:w.itemId,model_id:w.modelId}),{signal:AbortSignal.timeout(25000)});
@@ -4860,11 +4862,17 @@ async function optimizerExecutionRefresh(poll=false){
   }
   return data.job;
  }catch(e){
-  optimizerExecNotice('Não foi possível consultar o andamento: '+e.message+'. Nova tentativa automática em 15 segundos.','warning');
-  if(optimizerExecPoll)clearTimeout(optimizerExecPoll);
-  optimizerExecPoll=setTimeout(()=>void optimizerExecutionRefresh(true),15000);
+  // Erros tardios não podem substituir o status de outra SKU.
+  const current=optimizerWorkflowPlan;
+  if(current&&current.sku+':'+current.itemId+':'+current.modelId===identity){
+   optimizerExecNotice('Não foi possível consultar o andamento: '+e.message+'. Nova tentativa automática em 15 segundos.','warning');
+   if(optimizerExecPoll)clearTimeout(optimizerExecPoll);
+   optimizerExecPoll=setTimeout(()=>void optimizerExecutionRefresh(true),15000);
+  }
   return null;
- }finally{optimizerExecPolling=false;}
+ }finally{
+  if(optimizerExecPollingIdentity===identity){optimizerExecPolling=false;optimizerExecPollingIdentity='';}
+ }
 }
 $('#optimizerExecutionRefresh')?.addEventListener?.('click',()=>void optimizerExecutionRefresh(true));
 $('#optimizerExecutionReconcile')?.addEventListener?.('click',async()=>{
