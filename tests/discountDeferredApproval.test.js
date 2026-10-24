@@ -13,9 +13,14 @@ const example={
 test('UNLIST somente pré-aprovação, NORMAL publicação, demais estados recusados',()=>{
  assert.equal(discountPreviewStatus('NORMAL').deferred,false);
  assert.equal(discountPreviewStatus('UNLIST',{allowDeferred:true}).deferred,true);
- assert.throws(()=>discountPreviewStatus('UNLIST'),/NORMAL/);
- assert.throws(()=>discountPreviewStatus('DELETED',{allowDeferred:true}),/NORMAL/);
- assert.throws(()=>discountPreviewStatus('BANNED',{allowDeferred:true}),/NORMAL/);
+ assert.equal(discountPreviewStatus('REVIEWING',{allowDeferred:true}).deferred,true);
+ assert.equal(discountPreviewStatus('reviewing',{allowDeferred:true}).status,'REVIEWING');
+ assert.throws(()=>discountPreviewStatus('UNLIST'),/Status real na Shopee: UNLIST/);
+ assert.throws(()=>discountPreviewStatus('REVIEWING'),/Status real na Shopee: REVIEWING/);
+ assert.throws(()=>discountPreviewStatus('SELLER_DELETE',{allowDeferred:true}),/regularizado/);
+ assert.throws(()=>discountPreviewStatus('SHOPEE_DELETE',{allowDeferred:true}),/regularizado/);
+ assert.throws(()=>discountPreviewStatus('BANNED',{allowDeferred:true}),/regularizado/);
+ assert.throws(()=>discountPreviewStatus(null,{allowDeferred:true}),/NÃO INFORMADO/);
 });
 test('revisão diferida aceita alteração esperada de status/preço atual, não altera parâmetros da oferta',()=>{
  assert.equal(validateDeferredDiscountPlan(example,{
