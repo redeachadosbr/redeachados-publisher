@@ -144,6 +144,63 @@
   barNode.setAttribute('aria-label','Progresso de caracteres na descrição');
   gauge.append(countNode,barNode);
   heading.append(step,headingText,state,gauge);section.append(heading);
+  // O usuário controla cada geração. Nunca abrir uma aba ao carregar a SKU.
+  const descIdentity={sku:String(data.sku||''),itemId:String(data.itemId||''),
+   modelId:String(data.modelId??data.selectedModelId??0)};
+  const sourceIdentity=identity;
+  const controls=el('div','desc-modern-chatgpt-controls');
+  const status=el('div','desc-modern-chatgpt-status',
+   'O ChatGPT usa a ficha da WeDrop e as informações salvas desta SKU. Nada é publicado automaticamente.');
+  status.setAttribute('role','status');status.setAttribute('aria-live','polite');
+  const generate=button('✨ Gerar descrição com ChatGPT',()=>{void runGenerate();},'desc-modern-chatgpt-generate');
+  const importCopied=button('📋 Importar descrição copiada',()=>{void runImportCopied();},'desc-modern-chatgpt-import');
+  const line=el('div','desc-modern-chatgpt-buttons');
+  line.append(generate,importCopied);controls.append(line,status);section.append(controls);
+  let busy=false;
+  const current=()=>identity===sourceIdentity&&
+   $('optimizerWorkflowEditor')?.classList.contains('desc-modern-editor')&&
+   $('optimizerWorkflowDraft')===field;
+  async function applyDescription(result){
+   if(!current())throw Error('A SKU ou etapa de descrição mudou. Reabra a etapa.');
+   if(!globalThis.ShopeeDescriptionSaveChatGPT)throw Error('Salvamento do Manager indisponível. Recarregue a página.');
+   const saved=await globalThis.ShopeeDescriptionSaveChatGPT(result.description,descIdentity);
+   if(!saved?.saved)throw Error('O banco não confirmou o salvamento.');
+   status.textContent='✓ Descrição importada e salva para SKU '+descIdentity.sku+
+    ' ('+saved.length+' caracteres). Revise o conteúdo antes de publicar.';
+   sync();
+   return true;
+  }
+  async function runGenerate(){
+   if(busy)return;
+   busy=true;generate.disabled=true;importCopied.disabled=true;
+   status.textContent='Preparando descrição comercial com dados da WeDrop…';
+   try{
+    if(!globalThis.RADescriptionChatGPT?.request)
+     throw Error('Módulo da descrição não carregou. Recarregue com Ctrl+Shift+R.');
+    const result=await globalThis.RADescriptionChatGPT.request(data,
+     text=>{if(current())status.textContent=text;});
+    await applyDescription(result);
+    // Fecha SOMENTE a aba que a própria Ponte abriu, após gravar o rascunho.
+    globalThis.RADescriptionChatGPT.acknowledge(result);
+   }catch(error){
+    if(current())status.textContent='Não foi possível importar automaticamente: '+error.message+
+     ' A aba da pesquisa fica aberta para recuperar a resposta.';
+   }finally{
+    busy=false;generate.disabled=false;importCopied.disabled=false;
+   }
+  }
+  async function runImportCopied(){
+   if(busy)return;
+   busy=true;generate.disabled=true;importCopied.disabled=true;
+   try{
+    const raw=await navigator.clipboard.readText();
+    const result=globalThis.RADescriptionChatGPT?.parse(raw);
+    if(!result)throw Error('Copie primeiro a resposta JSON completa do ChatGPT.');
+    await applyDescription(result);
+   }catch(error){
+    if(current())status.textContent='Não foi possível importar a descrição copiada: '+error.message;
+   }finally{busy=false;generate.disabled=false;importCopied.disabled=false;}
+  }
 
   const strip=el('div','desc-modern-supplier');
   strip.append(el('span','desc-modern-supplier-icon','▤'));
