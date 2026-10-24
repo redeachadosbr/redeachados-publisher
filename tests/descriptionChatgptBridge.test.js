@@ -13,8 +13,8 @@ test('prompt usa informações reais da WeDrop e impede características inventa
  const p=api.prompt(data);
  assert.match(p,/informacoesWeDropSalvas/);
  assert.match(p,/três mini carrinhos/);
- assert.match(p,/O que acompanha/);
- assert.match(p,/Dúvidas frequentes/);
+ assert.match(p,/O QUE VAI NA EMBALAGEM/);
+ assert.match(p,/DÚVIDAS FREQUENTES/);
  assert.match(p,/CTA/);
  assert.match(p,/PROIBIDO inventar/);
 });
@@ -69,7 +69,7 @@ test('descrição JSON com \\n literais chega ao editor com parágrafos reais, s
   unverified:['idade recomendada não confirmada']})+'\nPesquisa concluída.';
  const parsed=api.parse(text);
  assert.match(parsed.description,/\n\n✅ BENEFÍCIOS/);
- assert.match(parsed.description,/\n\n📦 O QUE ACOMPANHA/);
+ assert.match(parsed.description,/\n\n📦 O QUE VAI NA EMBALAGEM/);
  assert.match(parsed.description,/\n\n🛒 Escolha/);
  assert.doesNotMatch(parsed.description,/\\n/);
  assert.doesNotMatch(parsed.description,/factsUsed|unverified|"description":/);
@@ -101,6 +101,6 @@ test('reorganiza as dúvidas antes das características mesmo que o ChatGPT troq
  const out=api.parse(JSON.stringify({description:source})).description;
  const headings=['✅ BENEFÍCIOS','💡 POR QUE COMPRAR','❓ DÚVIDAS FREQUENTES','⚙️ CARACTERÍSTICAS','📦 O QUE VAI NA EMBALAGEM','🛒'];
  let old=-1;for(const heading of headings){const at=out.indexOf(heading);assert.ok(at>old,heading);old=at;}
- assert.match(out,/\\n\\n✅ BENEFÍCIOS\\n/);
+ assert.ok(out.includes('\n\n✅ BENEFÍCIOS\n'));
  assert.ok(out.endsWith('🛒 Adicione ao carrinho e prepare novas brincadeiras!'));
 });
