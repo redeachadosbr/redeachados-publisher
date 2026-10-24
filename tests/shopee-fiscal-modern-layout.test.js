@@ -59,3 +59,14 @@ test('responsive design keeps real input serializer within fiscal fields',()=>{
  assert.match(js,/editor\.insertBefore\(fiscal,video\)/);
  assert.match(js,/root\.append\(actions\)/);
 });
+
+
+test('CEST 00 salvo tem prioridade sobre CEST real devolvido pela Shopee, sem alterar valor publicado',()=>{
+ const app=read('../public/app.js');
+ assert.match(app,/const sellerCest=String\(saved\.cest\?\?''\)\.trim\(\)/);
+ assert.match(app,/const liveCest=String\(data\.taxCurrent\?\.cest\?\?''\)\.trim\(\)/);
+ assert.match(app,/draft\.cest=sellerCest\|\|liveCest\|\|suggestedCest\|\|'00'/);
+ assert.match(app,/Shopee \(API do anúncio; conferência fiscal necessária\)/);
+ assert.match(app,/esse valor publicado NÃO foi alterado/);
+ assert.doesNotMatch(app,/cestEntries\.find\(v=>\/\^\\d\{7\}\$\//);
+});
