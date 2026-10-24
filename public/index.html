@@ -676,6 +676,18 @@
             <div class="optimizer-rework-fields">
               <label class="optimizer-field">Posição<select id="optimizerImageCorrectionSlot"><option value="1">01 · Capa</option><option value="2">02</option><option value="3">03</option><option value="4">04</option><option value="5">05</option><option value="6">06</option><option value="7">07</option><option value="8">08</option><option value="9">09 · Mockup</option></select></label>
               <label class="optimizer-field">O que deseja alterar?<textarea id="optimizerImageCorrection" rows="5" maxlength="500" placeholder="Ex.: fundo mais claro, mantendo exatamente o mesmo produto."></textarea></label>
+              <div class="optimizer-image-edit-toolbar" style="display:grid;grid-template-columns:1fr;gap:8px">
+                <button id="optimizerImageEditOrientation" type="button" class="secondary">✎ Editar orientação</button>
+                <button id="optimizerImageImproveAI" type="button" class="secondary">✦ Melhorar com IA</button>
+                <button id="optimizerImageRemoveBackground" type="button" class="secondary">▧ Remover fundo → branco</button>
+              </div>
+              <section id="optimizerImagePromptEditorPanel" hidden style="border:1px solid #b4cbe5;padding:10px;border-radius:10px;background:#f7fbff">
+                <label class="optimizer-field" for="optimizerImagePromptEditor">Prompt original completo desta imagem (edite como desejar)
+                  <textarea id="optimizerImagePromptEditor" rows="11" maxlength="16000" style="min-height:200px;font-family:inherit;line-height:1.45"></textarea>
+                </label>
+                <button id="optimizerImageRestorePrompt" type="button" class="secondary">Restaurar prompt padrão desta posição</button>
+                <small>Salve a orientação antes de gerar. Este texto fica vinculado somente à SKU e à posição selecionadas.</small>
+              </section>
             </div>
             <div class="optimizer-workflow-actions optimizer-image-correction-actions">
               <button id="optimizerImageCorrectionGenerate" type="button">✦ Gerar ajuste e importar</button>
@@ -697,7 +709,7 @@
               <img id="optimizerImageCorrectionPreviewPhoto" alt="Prévia da imagem selecionada para o ajuste">
               <figcaption id="optimizerImageCorrectionPreviewCaption">Imagem preparada desta posição</figcaption>
             </figure>
-            <small>Usa a ponte ChatGPT instalada; sem ela, utiliza a API OpenAI conectada. A imagem original permanece salva até a substituição ser concluída. A publicação na Shopee continua exigindo revisão.</small>
+            <small>Melhorar com IA e Remover fundo usam a imagem comercial já salva como referência na Ponte ChatGPT v1.0.18. Sem a extensão, nenhuma API paga é acionada automaticamente. A foto anterior só muda depois que o novo arquivo é confirmado. A publicação exige revisão.</small>
           </div>
 
               <small id="optimizerImageCorrectionCount" class="optimizer-rework-count">0/500</small>
