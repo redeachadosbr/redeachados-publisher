@@ -98,8 +98,8 @@
   // Desde 1.0.50 o ChatGPT entrega uma descrição legível, SEM JSON.
   // Permite também colar esse texto no Manager quando o Chrome não autoriza
   // leitura direta da aba; nunca interpretar o pedido do usuário como resposta.
-  const plain=s.replace(/^\`{3}(?:text|plaintext)?\s*/iu,'')
-   .replace(/\s*\`{3}\s*$/u,'').trim();
+  const plain=s.replace(/^\x60{3}(?:text|plaintext)?\s*/iu,'')
+   .replace(/\s*\x60{3}\s*$/u,'').trim();
   if(!/["“]description["”]\s*:/iu.test(plain)&&plain.length>=250&&plain.length<=5000&&
      /(?:✅\s*)?benef[ií]cios/iu.test(plain)&&
      /(?:💡\s*)?por que comprar/iu.test(plain)&&
