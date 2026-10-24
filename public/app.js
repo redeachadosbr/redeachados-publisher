@@ -3799,8 +3799,10 @@ function optimizerDiscountFinalEligible(q){
 }
 function optimizerDiscountApprovalReady(){
  const w=optimizerWorkflowPlan,q=optimizerDiscountFinalQuote,p=optimizerDiscountFinalPreviewData?.preview;
- if(!w||!q||!p||!optimizerDiscountFinalPreviewData?.approvalToken||
+ const deferred=optimizerDiscountFinalPreviewData?.deferred===true;
+ if(!w||!q||!p||(!deferred&&!optimizerDiscountFinalPreviewData?.approvalToken)||
     optimizerDiscountFinalIdentityOf(w)!==optimizerDiscountFinalIdentity||!optimizerDiscountFinalEligible(q))return false;
+ if(deferred&&!$('#optimizerExecDiscountDeferredConsent')?.checked)return false;
  const id=String($('#optimizerExecDiscountCampaign')?.value||'').trim();
  return /^\d{1,18}$/.test(id)&&String(p.sku)===String(w.sku)&&
   String(p.itemId)===String(w.itemId)&&String(p.modelId)===String(w.modelId)&&
@@ -3873,20 +3875,34 @@ function optimizerDiscountFinalPaint(){
  const campaign=String($('#optimizerExecDiscountCampaign')?.value||'').trim();
  const campaignValid=/^\d{1,18}$/.test(campaign)&&Number.isSafeInteger(Number(campaign));
  $('#optimizerExecDiscountPreview').disabled=!eligible||!campaignValid||optimizerDiscountFinalBusy||optimizerDiscountFinalSent;
+ const deferred=optimizerDiscountFinalPreviewData?.deferred===true;
+ $('#optimizerExecDiscountDeferredApproval').hidden=!deferred;
  $('#optimizerExecDiscountPriceApproval').hidden=!optimizerDiscountFinalPreviewData?.preview?.needsBasePriceUpdate;
  const approved=optimizerDiscountApprovalReady();
- $('#optimizerExecDiscountPreview').textContent=approved?'✓ Desconto conferido · etapa 08 liberada':'✓ Conferir desconto e liberar execução';
+ $('#optimizerExecDiscountPreview').textContent=approved?
+  (deferred?'✓ Desconto programado · fluxo liberado':'✓ Desconto conferido · etapa 08 liberada'):
+  '✓ Conferir desconto e liberar execução';
  $('#optimizerExecDiscountState').textContent=!active?'Calculando automaticamente desde a seleção da SKU':
   !eligible?q.marketResearch?.verified?
    'Margem ou pesquisa vencida — revisar preço':'Aguardando no mínimo dois anúncios reais':
-  optimizerDiscountFinalPreviewData?(approved?'Desconto conferido · 8ª etapa liberada':'Autorize alteração do preço bruto para liberar'):
+  optimizerDiscountFinalPreviewData?(deferred?
+    (approved?'Desconto autorizado · aguardará NORMAL':'Anúncio UNLIST · marque a autorização antecipada'):
+    (approved?'Desconto conferido · 8ª etapa liberada':'Autorize alteração do preço bruto para liberar')):
   'Preço e desconto calculados · clique em Conferir desconto';
  $('#optimizerExecDiscountMessage').textContent=!active?
   'O sistema consulta automaticamente o custo WeDrop e os anúncios concorrentes ao localizar a SKU.':
   !eligible?'Plano financeiro salvo somente como simulação; sem pesquisa validada de 2 a 5 lojas, desconto não será enviado.':
   !optimizerDiscountFinalPreviewData?'Informe a campanha Minha Promoção e clique em Conferir desconto para autorizar a prévia junto às demais etapas.':
-  !approved?'Ajuste a autorização de preço bruto acima para concluir esta etapa.':
-  'Etapa 08 liberada. O botão único enviará a promoção somente após confirmar todas as outras etapas na Shopee.';
+  !approved?(deferred?'Marque a autorização antecipada e, se solicitado, a autorização para ajustar o preço bruto.':
+    'Ajuste a autorização de preço bruto acima para concluir esta etapa.'):
+  deferred?'Etapa 08 autorizada. O fluxo executará o anúncio primeiro. Depois consultará a Shopee: somente se NORMAL, revalidará a campanha, custos, preços e margem antes de enviar a promoção.':
+    'Etapa 08 liberada. O botão único enviará a promoção somente após confirmar todas as outras etapas na Shopee.';
+ const pending=optimizerDiscountFlowRead();
+ const canRetry=Boolean(pending&&pending.deferred&&
+  ['authorized','deferred_pending'].includes(pending.state)&&pending.identity===key&&
+  optimizerExecJob?.state==='verified'&&
+  String(optimizerExecJob?.plan?.planId||'')===String(pending.planId));
+ $('#optimizerExecDiscountResume').hidden=!canRetry;
  optimizerExecUpdateRunButton();
 }
 async function optimizerDiscountFinalLoad(){
@@ -3974,21 +3990,29 @@ async function optimizerDiscountFinalPrepare({automatic=false}={}){
  optimizerDiscountFinalStatus('Conferindo preço e promoção na API Shopee sem publicar...','info');
  try{
   const data=await optimizerDiscountReadOnlyPreview({
-   sku:w.sku,itemId:w.itemId,modelId:w.modelId,discountId:campaign
+   sku:w.sku,itemId:w.itemId,modelId:w.modelId,discountId:campaign,
+   allowDeferredPreview:true
   });
   if(optimizerDiscountFinalIdentityOf(optimizerWorkflowPlan)!==key||
      String($('#optimizerExecDiscountCampaign').value||'').trim()!==campaign)return;
-  if(!data.approvalToken||data.preview?.sku!==w.sku||String(data.preview?.itemId)!==String(w.itemId))
-   throw Error('Prévia devolvida para outra SKU; nenhuma publicação.');
+  if((!data.approvalToken&&!data.deferred)||data.preview?.sku!==w.sku||
+     String(data.preview?.itemId)!==String(w.itemId)||
+     String(data.preview?.modelId)!==String(w.modelId)||
+     String(data.preview?.discountId)!==campaign)
+   throw Error('Prévia devolvida para outra SKU/campanha; nenhuma publicação.');
   optimizerDiscountFinalPreviewData=data;optimizerDiscountFinalPreviewKey=previewKey;
   $('#optimizerExecDiscountPriceConsent').checked=false;
-  optimizerDiscountFinalStatus(data.preview.action==='already'?
-   'Desconto já está confirmado nesta campanha; não será reenviado.':
-   'Prévia confirmada: '+shPricePercent(data.preview.discountPct)+' de desconto · campanha '+
-   campaign+' · preço promocional '+shPriceMoney(data.preview.promo)+
-   (data.preview.needsBasePriceUpdate?' · requer autorização para ajustar preço bruto.':
-    '. A promoção poderá ser aplicada depois da confirmação das outras etapas.'),'success');
-  if(data.preview.action==='already')optimizerDiscountFinalSent=true;
+  $('#optimizerExecDiscountDeferredConsent').checked=false;
+  optimizerDiscountFinalStatus(data.deferred?
+   'Anúncio '+data.liveItemStatus+': desconto conferido SEM publicação. Marque a autorização antecipada para executar o anúncio primeiro e aplicar a promoção somente após NORMAL e nova verificação de preço/margem/campanha.':
+   data.preview.action==='already'?
+    'Desconto já está confirmado nesta campanha; não será reenviado.':
+    'Prévia confirmada: '+shPricePercent(data.preview.discountPct)+' de desconto · campanha '+
+    campaign+' · preço promocional '+shPriceMoney(data.preview.promo)+
+    (data.preview.needsBasePriceUpdate?' · requer autorização para ajustar preço bruto.':
+     '. A promoção poderá ser aplicada depois da confirmação das outras etapas.'),
+   data.deferred?'warning':'success');
+  if(data.preview.action==='already'&&!data.deferred)optimizerDiscountFinalSent=true;
  }catch(error){
   optimizerDiscountFinalPreviewData=null;optimizerDiscountFinalPreviewKey='';
   optimizerDiscountFinalStatus((error.transient?'Conferência pendente: ':'Desconto não liberado: ')+
@@ -3999,6 +4023,7 @@ let optimizerDiscountCampaignTimer=null;
 $('#optimizerExecDiscountCampaign')?.addEventListener('input',()=>{
  optimizerDiscountFinalPreviewData=null;optimizerDiscountFinalPreviewKey='';
  $('#optimizerExecDiscountPriceConsent').checked=false;
+ $('#optimizerExecDiscountDeferredConsent').checked=false;
  optimizerDiscountFinalPaint();
  if(optimizerDiscountCampaignTimer)clearTimeout(optimizerDiscountCampaignTimer);
  const candidate=String($('#optimizerExecDiscountCampaign').value||'');
@@ -4007,7 +4032,17 @@ $('#optimizerExecDiscountCampaign')?.addEventListener('input',()=>{
  // A prévia exige clique explícito na conferência, não uma chamada automática ao digitar.
 });
 $('#optimizerExecDiscountPriceConsent')?.addEventListener('change',optimizerDiscountFinalPaint);
+$('#optimizerExecDiscountDeferredConsent')?.addEventListener('change',optimizerDiscountFinalPaint);
 $('#optimizerExecDiscountPreview')?.addEventListener('click',()=>void optimizerDiscountFinalPrepare());
+// Retomada MANUAL segura da intenção já autorizada, sem repetir atualização do anúncio.
+$('#optimizerExecDiscountResume')?.addEventListener('click',()=>{
+ const intent=optimizerDiscountFlowRead();
+ if(!intent?.deferred||!['authorized','deferred_pending'].includes(intent.state)||
+    intent.identity!==optimizerDiscountFinalIdentityOf(optimizerWorkflowPlan)||
+    optimizerExecJob?.state!=='verified'||
+    String(optimizerExecJob?.plan?.planId||'')!==String(intent.planId))return;
+ void optimizerDiscountFinishTogether(optimizerExecJob);
+});
 // Uma execução completa inclui o desconto aprovado como último passo.
 // Após uma escrita iniciada, nunca reenvia automaticamente (inclusive após reload).
 const SHOPEE_DISCOUNT_FLOW_KEY='ra-shopee-discount-fullflow-v1';
@@ -4029,11 +4064,12 @@ function optimizerDiscountAuthorizedIntent(plan){
  const p=optimizerDiscountFinalPreviewData.preview;
  return {identity:optimizerDiscountFinalIdentityOf(optimizerWorkflowPlan),planId:plan.planId,
   expected:Object.fromEntries(APPROVED_DISCOUNT_KEYS.map(k=>[k,p[k]??null])),
+  deferred:optimizerDiscountFinalPreviewData.deferred===true,
   consent:Boolean($('#optimizerExecDiscountPriceConsent').checked),when:Date.now(),state:'authorized'};
 }
 async function optimizerDiscountFinishTogether(job){
  const intent=optimizerDiscountFlowRead();
- if(optimizerDiscountAutoBusy||!intent||intent.state!=='authorized'||
+ if(optimizerDiscountAutoBusy||!intent||!['authorized','deferred_pending'].includes(intent.state)||
     job?.state!=='verified'||job?.plan?.selectedStage!=='all'||
     String(job.plan?.planId)!==String(intent.planId)||
     intent.identity!==optimizerDiscountFinalIdentityOf(optimizerWorkflowPlan))return;
@@ -4050,7 +4086,16 @@ async function optimizerDiscountFinishTogether(job){
   });
   if(intent.identity!==optimizerDiscountFinalIdentityOf(optimizerWorkflowPlan))return;
   const live=fresh.preview||{};
-  const changed=APPROVED_DISCOUNT_KEYS.find(k=>String(live[k]??'')!==String(intent.expected[k]??''));
+  const fixedKeys=['shopId','sku','itemId','modelId','discountId','gross','promo',
+    'buyerAfterCoupon','discountPct','couponPct','quoteAt'];
+  const keys=intent.deferred?fixedKeys:APPROVED_DISCOUNT_KEYS;
+  const changed=keys.find(k=>String(live[k]??'')!==String(intent.expected[k]??''));
+  if(!changed&&intent.deferred&&live.needsBasePriceUpdate&&!intent.consent){
+   optimizerDiscountFlowSave({...intent,state:'changed'});
+   optimizerExecNotice('Preço bruto da Shopee diferente e sem autorização. Desconto não enviado; revise a etapa 08.','warning');
+   optimizerDiscountFinalStatus('Preço bruto exige sua autorização. Nenhum desconto foi enviado.','warning');
+   optimizerDiscountFinalPaint();return;
+  }
   if(changed){
    optimizerDiscountFlowSave({...intent,state:'changed'});
    optimizerExecNotice('Promoção alterada após revisão ('+changed+'). Desconto NÃO enviado; revise a etapa 08.','warning');
@@ -4086,10 +4131,16 @@ async function optimizerDiscountFinishTogether(job){
  }catch(e){
   if(intent.identity===optimizerDiscountFinalIdentityOf(optimizerWorkflowPlan)){
    const attempted=optimizerDiscountFlowRead()?.state==='posting';
-   optimizerDiscountFlowSave({...intent,state:attempted?'uncertain':'authorized'});
-   optimizerExecNotice('Desconto pendente: '+e.message+
+   const notNormal=/não está em situação NORMAL|não está.*NORMAL/i.test(String(e.message||''));
+   optimizerDiscountFlowSave({...intent,state:attempted?'uncertain':
+    intent.deferred&&notNormal?'deferred_pending':'authorized'});
+   optimizerExecNotice(intent.deferred&&notNormal?
+    'Anúncio concluído, mas a Shopee ainda não o confirmou como NORMAL. Desconto autorizado e PENDENTE, sem escrita. Use Conferir desconto pendente quando o anúncio estiver ativo.':
+    'Desconto pendente: '+e.message+
     (attempted?' Confira a campanha antes de novo envio.':' A consulta de prévia pode ser refeita.'),'warning');
-   optimizerDiscountFinalStatus(attempted?'Resposta incerta; nenhuma repetição automática.':'Consulta da promoção ainda pendente.','warning');
+   optimizerDiscountFinalStatus(attempted?'Resposta incerta; nenhuma repetição automática.':
+    intent.deferred&&notNormal?'Pendente até NORMAL. Nenhuma promoção enviada.':'Consulta da promoção ainda pendente.','warning');
+   optimizerDiscountFinalPaint();
   }
  }finally{optimizerDiscountAutoBusy=false;}
 }
