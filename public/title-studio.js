@@ -270,7 +270,8 @@
     inp.value=savedTerms.get(sku)||'';
     label.append(inp);
     const btn=el('button','secondary seo-studio-rebuild','✦ Gerar 4 títulos com ChatGPT');btn.type='button';
-    manual.append(label,btn);
+    const recover=el('button','secondary seo-studio-recover','↻ Recuperar títulos da aba ChatGPT');recover.type='button';
+    manual.append(label,btn,recover);
     const help=el('small','','Separe termos por vírgula. Não invente quantidade, INMETRO, entrega, brinde nem promoção.');
     mount.append(manual,help);
     const grid=el('div','seo-studio-grid');mount.append(grid);
@@ -315,7 +316,8 @@
       for(const [i,o] of ranking.entries()){
         const n=count(o.title),score=o.score;
         const repeated=used.has(key(o.title));used.add(key(o.title));
-        const card=el('article','seo-studio-card'+(n>=MIN&&n<=LIMIT&&!repeated?' valid':' needs-review')+
+        const eligible=n>=MIN&&n<=LIMIT&&!repeated&&o.valid!==false;
+        const card=el('article','seo-studio-card'+(eligible?' valid':' needs-review')+
          (o.ideal?' seo-studio-ideal':''));
         const meta=el('div','seo-studio-card-top');
         const group=el('div','seo-studio-option');
@@ -335,9 +337,9 @@
         meta.append(group,meter);card.append(meta);
         card.append(el('p','seo-studio-candidate',o.title));
         const keys=el('div','seo-studio-metrics');
-        keys.append(el('span',n>=MIN&&n<=LIMIT&&!repeated?'seo-studio-ok':'seo-studio-caution',n+'/120 caracteres'+(repeated?' · repetido':'')),
+        keys.append(el('span',eligible?'seo-studio-ok':'seo-studio-caution',n+'/120 caracteres'+(repeated?' · repetido':'')),
           el('span','',o.matchedKeywords.length+' termos da pesquisa incorporados'),
-          el('span','','2 emojis · pesquisa '+(researchResult?.researchStatus==='verified'?'com URLs citadas':'sem fonte comprovada')));
+          el('span','',o.warning||('Emojis separados · pesquisa '+(researchResult?.researchStatus==='verified'?'com URLs citadas':'sem fonte comprovada'))));
         card.append(keys,el('p','seo-studio-why',o.reason));
         const explain=el('small','seo-studio-score-detail',
          'Nota: aproveitamento do limite '+o.breakdown.length+'/30 · palavras-chave '+o.breakdown.keywords+
@@ -346,8 +348,8 @@
         card.append(explain);
         const actions=el('div','seo-studio-card-actions');
         const choose=el('button','seo-studio-choose',o.ideal?'✓ Usar título recomendado':'✓ Usar este título');choose.type='button';
-        choose.disabled=n<MIN||n>LIMIT||repeated;
-        choose.title=choose.disabled?'Não atende os requisitos de 100 a 120 caracteres.':'Usar esta opção como rascunho da SKU';
+        choose.disabled=!eligible;
+        choose.title=choose.disabled?(o.warning||'Título exige correção antes de usar.'): 'Usar esta opção como rascunho da SKU';
         choose.onclick=()=>{
           if(choose.disabled)return;
           onChoose(o.title);
@@ -440,6 +442,30 @@
         }
       }
     }
+    recover.addEventListener('click',()=>{
+      if(aiBusy)return;
+      void (async()=>{
+       const token=++researchToken;
+       aiBusy=true;recover.disabled=true;btn.disabled=true;
+       const oldOptions=aiOptions;
+       setLabel(marketNotice,'Recuperando os quatro títulos da aba do ChatGPT sem iniciar outra pesquisa…');
+       try{
+        if(!globalThis.RASeoChatGPT?.recover)throw Error('Instale a Ponte 1.0.31 e atualize o Manager.');
+        const result=await globalThis.RASeoChatGPT.recover(data);
+        if(token!==researchToken||!mount.isConnected||mount.dataset.seoStudioIdentity!==identity)return;
+        accept(result);
+        if(grid.querySelectorAll('article.seo-studio-card').length!==4)
+         throw Error('O Manager ainda não conseguiu exibir os quatro títulos.');
+        globalThis.RASeoChatGPT.acknowledgeRecovery(result);
+        setLabel(marketNotice,'✓ 4 títulos recuperados e classificados por nota. A aba da pesquisa foi liberada para fechamento.');
+       }catch(error){
+        aiOptions=oldOptions;regenerate();
+        setLabel(marketNotice,'Recuperação não concluída: '+error.message+' Confira a aba e tente novamente.');
+       }finally{
+        if(token===researchToken){aiBusy=false;recover.disabled=false;btn.disabled=false;}
+       }
+      })();
+    });
     btn.addEventListener('click',()=>{
       if(aiBusy)return;
       void generateTitles(true);
