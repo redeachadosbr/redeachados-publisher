@@ -3,17 +3,34 @@ export const IMAGE_BUCKET='shopee-optimizer-images';
 export const MAX_IMAGE_BYTES=10*1024*1024;
 function config(){
  const url=String(process.env.SUPABASE_URL||'').trim().replace(/\/$/,'');
- const key=String(process.env.SUPABASE_SECRET_KEY||process.env.SUPABASE_SERVICE_ROLE_KEY||'').trim();
- if(!/^https:\/\//.test(url)||!key)throw Error('Armazenamento de imagens indisponível.');
- const headers={apikey:key,Accept:'application/json'};
- if(key.startsWith('eyJ'))headers.Authorization='Bearer '+key;
- return {url,headers};
+ const primary=String(process.env.SUPABASE_SERVICE_ROLE_KEY||process.env.SUPABASE_SECRET_KEY||'').trim();
+ const secondary=String(process.env.SUPABASE_SECRET_KEY||'').trim();
+ if(!/^https:\/\//.test(url)||!primary)throw Error('Armazenamento de imagens indisponível: configuração do servidor incompleta.');
+ const headers=key=>{
+  const h={apikey:key,Accept:'application/json'};
+  if(key.startsWith('eyJ'))h.Authorization='Bearer '+key;
+  return h;
+ };
+ return {url,headers,primary,secondary:secondary!==primary?secondary:null};
 }
 const num=v=>{const n=Number(v);if(!Number.isSafeInteger(n)||n<0)throw Error('Identificador inválido.');return n};
 const where=(shop,item,model)=>'?shop_id=eq.'+num(shop)+'&item_id=eq.'+num(item)+'&model_id=eq.'+num(model);
 async function api(path,options={}){
- const c=config();const res=await fetch(c.url+path,{...options,headers:{...c.headers,...options.headers},signal:AbortSignal.timeout(60000)});
- if(!res.ok)throw Error('Armazenamento de imagens retornou HTTP '+res.status+'.');
+ const c=config();
+ const call=key=>fetch(c.url+path,{...options,headers:{...c.headers(key),...options.headers},signal:AbortSignal.timeout(60000)});
+ let res=await call(c.primary);
+ if((res.status===401||res.status===403)&&c.secondary)res=await call(c.secondary);
+ if(!res.ok){
+  let detail='';
+  try{
+   const raw=await res.text(),parsed=JSON.parse(raw);
+   detail=String(parsed.message||parsed.error||parsed.msg||'').slice(0,130);
+  }catch{}
+  const scope=path.startsWith('/storage/')?'Supabase Storage':'Supabase Database';
+  const op=String(options.method||'GET').toUpperCase();
+  console.error('[optimizer-images]',scope,op,'HTTP',res.status,detail);
+  throw Error(scope+' recusou '+op+' (HTTP '+res.status+')'+(detail?': '+detail:'')+'. Verifique as credenciais de serviço e as permissões do bucket.');
+ }
  return res;
 }
 export function imageDimensions(b,mime){
