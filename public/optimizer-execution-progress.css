@@ -1,0 +1,26 @@
+/* Rede Achados BR – progresso operacional verificado, distinto da publicação. */
+.optimizer-exec-progress-track span {
+  background: linear-gradient(90deg,#31c48d,#0f9a62);
+  box-shadow: 0 1px 5px #09855233;
+}
+.optimizer-exec-step.is-staged {
+  border-top-color: #35ad7b;
+}
+.optimizer-exec-step.is-staged .optimizer-exec-step-number {
+  background: #139b67;
+  box-shadow: 0 0 0 3px #ddf9ea;
+}
+.optimizer-exec-step.is-staged strong { color: #146b49; }
+.optimizer-exec-step.is-staged small {
+  background: #d9f7e5;
+  color: #126e42;
+}
+.optimizer-exec-step.is-checking .optimizer-exec-step-number {
+  background: #2779d6;
+}
+.optimizer-exec-step.is-checking small {
+  color: #155ea3;
+  background: #e3efff;
+}
+.optimizer-exec-percent strong { color: #0e9860; }
+.optimizer-exec-progress-track[aria-valuenow="0"] span { box-shadow: none; }
