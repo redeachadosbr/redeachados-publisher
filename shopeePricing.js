@@ -49,7 +49,8 @@ export function calculateShopeeSale(grossCents,c,costCents){
   const ads=Math.round(sale*c.adsPct/100);
   const productPlusExtras=costCents+money(c.shipping+c.packing);
   const profit=sale-productPlusExtras-commission-fixed-extraCpf-tax-flash-ads;
-  return {gross:brl(grossCents),campaignDiscount:brl(grossCents-afterCampaign),
+  return {gross:brl(grossCents),marketplaceDisplayPrice:brl(afterCampaign),
+    campaignDiscount:brl(grossCents-afterCampaign),
     couponDiscount:brl(afterCampaign-sale),finalPrice:brl(sale),unitCost:brl(costCents),
     shipping:brl(money(c.shipping)),packing:brl(money(c.packing)),
     commission:brl(commission),fixedFee:brl(fixed),cpfExtra:brl(extraCpf),
@@ -66,11 +67,15 @@ export const SHOPEE_ATTRACTIVE_CENTS=Object.freeze(
 );
 const attractiveCents=new Set(SHOPEE_ATTRACTIVE_CENTS);
 export function adjustShopeeCustomerPriceEnding({grossCents,settings,unitCostCents,referenceSaleCents,
-  minimumMarginPct=0,maximumSaleCents=null}){
+  minimumMarginPct=0,maximumSaleCents=null,requireMarketplaceEnding=false}){
  const current=calculateShopeeSale(grossCents,settings,unitCostCents);
  const originalSaleCents=referenceSaleCents??current.saleCents;
  const allowed=sale=>attractiveCents.has(((sale%100)+100)%100);
- if(allowed(current.saleCents))return {grossCents,financial:current,adjusted:false};
+ const visibleCents=financial=>money(financial.marketplaceDisplayPrice);
+ // A Shopee exibe o valor de Minha Promoção ANTES do cupom. Um cupom
+ // possível não pode ocultar um final inválido (,27) na vitrine.
+ if(allowed(current.saleCents)&&(!requireMarketplaceEnding||allowed(visibleCents(current))))
+  return {grossCents,financial:current,adjusted:false};
  const factor=(1-settings.discountPct/100)*(1-settings.couponPct/100);
  if(factor<=0)return {grossCents,financial:current,adjusted:false};
  // Os centavos são arredondados para a terminação segura MAIS PRÓXIMA.
@@ -83,7 +88,8 @@ export function adjustShopeeCustomerPriceEnding({grossCents,settings,unitCostCen
   if(candidateGross<=0||candidateGross>BRL_LIMIT)continue;
   const candidate=calculateShopeeSale(candidateGross,settings,unitCostCents);
   const difference=candidate.saleCents-originalSaleCents;
-  if(Math.abs(difference)>99||!allowed(candidate.saleCents))continue;
+  if(Math.abs(difference)>99||!allowed(candidate.saleCents)||
+     (requireMarketplaceEnding&&!allowed(visibleCents(candidate))))continue;
   if(maximumSaleCents!==null&&candidate.saleCents>maximumSaleCents)continue;
   if(candidate.marginPct+1e-8<minimumMarginPct)continue;
   const rank=[Math.abs(difference),difference<0?1:0,Math.abs(delta)];
@@ -181,21 +187,28 @@ export function quoteShopeePrice({unitCost,settings={},marketAverage=null,margin
    financial.saleCents<=money(market)?money(market):Math.round(money(market)*1.02):null;
   const charm=adjustShopeeCustomerPriceEnding({
    grossCents:money(financial.gross),settings:proposed,unitCostCents:money(cost),
-   minimumMarginPct:protectedMargin,maximumSaleCents:marketCeiling
+   minimumMarginPct:protectedMargin,maximumSaleCents:marketCeiling,
+   requireMarketplaceEnding:true
   });
   financial=charm.financial;
   // Não apresentar nem salvar um preço fora da regra como recomendação final.
   // Se não houver final 0/9 que preserve piso e teto, requer revisão do plano.
-  if(!attractiveCents.has(Math.round(financial.finalPrice*100)%100))
-   throw Error('Sem preço final terminando em 0 ou 9 centavos que preserve a margem mínima e o limite competitivo. Reveja o desconto ou a referência de mercado; nenhum preço foi enviado à Shopee.');
+  if(!attractiveCents.has(Math.round(financial.finalPrice*100)%100)||
+     !attractiveCents.has(money(financial.marketplaceDisplayPrice)%100))
+   throw Error('Sem combinação que deixe o preço VISÍVEL na Shopee e o preço após cupom terminando em 0 ou 9 centavos, com a margem protegida. Recalcule antes de publicar; nenhum preço foi enviado à Shopee.');
   if(charm.adjusted)
-   note+=' Final ao comprador ajustado para R$ '+financial.finalPrice.toFixed(2).replace('.',',')+
-    ' (terminação comercial, sem reduzir a margem protegida).';
+   note+=' Preço visível na Shopee ajustado para R$ '+financial.marketplaceDisplayPrice.toFixed(2).replace('.',',')+
+    ' e preço com cupom para R$ '+financial.finalPrice.toFixed(2).replace('.',',')+
+    ' (terminações comerciais e margem mínima protegidas).';
   else if(charm.reason)note+=' '+charm.reason;
   if(financial.marginPct+1e-8<c.minMarginPct)throw Error('Arredondamento rejeitado: abaixo da margem mínima.');
   const floorSale=calculateShopeeSale(floor,c,money(cost));
   return {unitCost:cost,grossPrice:financial.gross,discountPct:proposed.discountPct,
-    couponPct:c.couponPct,customerPrice:financial.finalPrice,
+    couponPct:c.couponPct,
+    marketplaceDisplayPrice:financial.marketplaceDisplayPrice,
+    buyerAfterCoupon:financial.finalPrice,
+    priceEndingRuleVersion:2,
+    customerPrice:financial.finalPrice,
     customerPriceBeforeRounding:previousFinalPrice,
     attractiveEndingApplied:charm.adjusted,
     attractiveEndingOptions:SHOPEE_ATTRACTIVE_CENTS,
@@ -211,5 +224,5 @@ export function quoteShopeePrice({unitCost,settings={},marketAverage=null,margin
       commission:financial.commission,fixedFee:financial.fixedFee,
       cpfExtra:financial.cpfExtra,tax:financial.tax,flash:financial.flash,ads:financial.ads
     },status:state,notice:note,readyForManualReview:true,appliedInShopee:false,
-    assumptions:'Taxas editáveis, Shopee outubro/2026 (referência). Cupom reduz receita; oferta relâmpago tratada como custo. Não é confirmação de campanha real.'};
+    assumptions:'Taxas editáveis, Shopee outubro/2026 (referência). Preço exibido pela Shopee é o da promoção sem cupom; cupom de loja é condicional e apenas a margem conservadora o considera como aplicado. Não é confirmação de campanha real.'};
 }
