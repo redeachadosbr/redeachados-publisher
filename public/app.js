@@ -7762,6 +7762,28 @@ $('#optimizerModeApi')?.addEventListener?.('click',()=>{
 
 const RA_CHAT_BRIDGE_SESSION_KEY='redeAchadosBridgeNonceV1';
 let optimizerChatBridgeReady=false,optimizerChatBridgeVersion='',optimizerChatBridgeBusy=false,optimizerChatBridgeUploading=false;
+// Cada clique confirma novamente a comunicação com a Ponte, sem depender da
+// única sondagem enviada no carregamento do navegador.
+async function optimizerChatBridgeWaitReady(maxWait=5500){
+ if(optimizerChatBridgeReady)return true;
+ return new Promise(resolve=>{
+  let finished=false;
+  const stop=()=>{
+   if(finished)return;
+   finished=true;clearInterval(poll);clearTimeout(limit);
+   window.removeEventListener('message',observe);resolve(optimizerChatBridgeReady);
+  };
+  const observe=event=>{
+   if(event.source!==window||event.origin!==location.origin||event.data?.kind!=='RA_EXTENSION_READY')return;
+   queueMicrotask(()=>{if(optimizerChatBridgeReady)stop();});
+  };
+  window.addEventListener('message',observe);
+  const probe=()=>window.postMessage({kind:'RA_EXTENSION_PROBE'},location.origin);
+  const poll=setInterval(()=>{if(optimizerChatBridgeReady)stop();else probe();},650);
+  const limit=setTimeout(stop,maxWait);
+  probe();
+ });
+}
 let optimizerChatBridgeNonce=typeof sessionStorage==='undefined'?'':sessionStorage.getItem(RA_CHAT_BRIDGE_SESSION_KEY)||'';
 let optimizerChatBridgeSku='';
 const RA_CHAT_BRIDGE_JOB_KEY='redeAchadosBridgeJobV2';
@@ -7979,6 +8001,7 @@ globalThis.window?.addEventListener?.('message',async(event)=>{
   const parts=version.split('.').map(Number);
   const needsUpdate=parts.length!==3||parts.some(n=>!Number.isInteger(n))||
    parts[0]<1||(parts[0]===1&&parts[1]===0&&parts[2]<22);
+  if(needsUpdate&&optimizerChatBridgeReady)return;
   optimizerChatBridgeReady=!needsUpdate;
   if(status&&!optimizerChatBridgeBusy)status.textContent=needsUpdate
    ?'Extensão ChatGPT '+(version||'antiga')+' detectada: para enviar um prompt individual por posição é necessária a Ponte v1.0.22 ou superior. Atualize a extensão e recarregue o Chrome.'
@@ -8181,9 +8204,8 @@ async function optimizerChatgptContinueFromServer(){
  optimizerChatgptContinueBusy=true;button.disabled=true;
  try{
   optimizerImagesMode='chatgpt';optimizerImagesRenderMode();
-  if(!optimizerChatBridgeReady){
-   window.postMessage({kind:'RA_EXTENSION_PROBE'},location.origin);
-   throw Error('A Ponte ChatGPT não confirmou conexão com esta aba. Confira uma única extensão v1.0.22 ativa e atualize a página.');
+  if(!await optimizerChatBridgeWaitReady()){
+   throw Error('Ponte não conectada ao Manager. Em chrome://extensions, ative a Ponte e em Detalhes → Acesso a sites permita redeachados-shopee.onrender.com. Se tiver a Ponte v1.0.23, clique em Reconectar ao Manager no ícone da extensão. As fotos salvas permanecem intactas.');
   }
   const brief=await optimizerChatgptMakeBrief(w);
   if(!brief.original||brief.prompts?.length!==9)throw Error('Foto original ou os nove roteiros não estão disponíveis.');
