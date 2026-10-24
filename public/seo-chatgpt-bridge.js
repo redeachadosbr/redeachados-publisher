@@ -139,16 +139,28 @@
   const id=seoIdentity(data);
   return seoRequests.has(id)||seoUnconfirmedResults.has(id);
  }
- function requestCore(data,{extraTerms='',previousTitles=[],onProgress=()=>{}}={}){
+ // Abrir diretamente durante o clique real do usuário evita popups bloqueados
+ // quando a extensão demora para despertar; somente o módulo SEO usa essa aba.
+ function prepare(data){
+  if(location.origin!==ORIGIN)throw Error('Abertura permitida somente no Manager.');
+  if(hasPending(data))return null;
+  const nonce=crypto.randomUUID();
+  const url='https://chatgpt.com/?ra_seo_nonce='+encodeURIComponent(nonce);
+  // O token permite que a extensão identifique SOMENTE esta aba.
+  const tab=window.open(url,'_blank');
+  return {nonce,opened:Boolean(tab)};
+ }
+ function requestCore(data,{extraTerms='',previousTitles=[],launchNonce='',onProgress=()=>{}}={}){
   if(location.origin!==ORIGIN)return Promise.reject(Error('Abra o Shopee Manager oficial para usar a ponte.'));
   if(!crypto?.randomUUID)return Promise.reject(Error('Chrome não suporta esta sessão. Atualize o navegador.'));
-  const nonce=crypto.randomUUID(),sku=clean(data?.sku||''),itemId=String(data?.itemId||'');
+  const nonce=/^[a-f0-9-]{30,50}$/i.test(launchNonce)?launchNonce:crypto.randomUUID(),sku=clean(data?.sku||''),itemId=String(data?.itemId||'');
   const modelId=String(data?.modelId??data?.selectedModelId??'0');
   if(!sku||!itemId)return Promise.reject(Error('Carregue a SKU antes de pesquisar títulos.'));
   return new Promise((resolve,reject)=>{
-   let done=false,started=false;
+   let done=false,started=false,startAckTimer=null;
    const finish=(error,result)=>{
     if(done)return;done=true;window.clearTimeout(timer);window.clearTimeout(probeTimer);
+    window.clearTimeout(startAckTimer);
     window.removeEventListener('message',listener);
     if(error)reject(error instanceof Error?error:Error(String(error)));
     else resolve(result);
@@ -159,18 +171,23 @@
     if(m.kind==='RA_EXTENSION_READY'&&!started){
      const parts=String(m.version||'').split('.').map(Number);
      const updated=parts.length===3&&parts.every(Number.isInteger)&&
-      (parts[0]>1||(parts[0]===1&&(parts[1]>0||(parts[1]===0&&parts[2]>=45))));
-     if(!updated)return finish(Error('Ponte ChatGPT '+(m.version||'antiga')+' detectada. Instale a versão 1.0.45 para abrir títulos sem bloquear as imagens. Sua SKU e o trabalho salvo permanecem intactos.'));
+      (parts[0]>1||(parts[0]===1&&(parts[1]>0||(parts[1]===0&&parts[2]>=46))));
+     if(!updated)return finish(Error('Ponte ChatGPT '+(m.version||'antiga')+' detectada. Instale a Ponte 1.0.46 para abrir automaticamente a aba dos títulos. Sua SKU e o trabalho salvo permanecem intactos.'));
      started=true;window.clearTimeout(probeTimer);
+     startAckTimer=window.setTimeout(()=>finish(Error('A Ponte não confirmou a abertura dos títulos em 15 segundos. A aba do ChatGPT foi preservada; não é preciso refazer a SKU.')),15000);
      window.postMessage({kind:'RA_SITE_SEO_START',payload:{nonce,sku,itemId,modelId,
       prompt:prompt(data,extraTerms,previousTitles)}},ORIGIN);
      return;
     }
     if(m.nonce!==nonce)return;
-    if(m.kind==='RA_EXTENSION_SEO_PROGRESS'){try{onProgress(String(m.status||'').slice(0,240));}catch{}return;}
+    if(m.kind==='RA_EXTENSION_SEO_PROGRESS'){
+     window.clearTimeout(startAckTimer);
+     try{onProgress(String(m.status||'').slice(0,240));}catch{}return;
+    }
     if(m.kind==='RA_EXTENSION_SEO_START_RESULT'){
+     window.clearTimeout(startAckTimer);
      if(m.ok===false)return finish(Error(m.error||'A extensão rejeitou a pesquisa.'));
-     try{onProgress(m.reused?'Pesquisa existente retomada na aba ChatGPT.':'Ponte conectada. Abrindo a pesquisa de títulos no ChatGPT…');}catch{}
+     try{onProgress(m.reused?'Pesquisa existente retomada na aba ChatGPT.':'Ponte iniciou a pesquisa SEO. Conferindo a aba ChatGPT…');}catch{}
      return;
     }
     if(m.kind==='RA_EXTENSION_SEO_RESULT'){
@@ -182,7 +199,7 @@
    };
    window.addEventListener('message',listener);
    const timer=window.setTimeout(()=>finish(Error('Sem resposta do ChatGPT. Confira a aba aberta ou importe a resposta manualmente.')),285000);
-   const probeTimer=window.setTimeout(()=>finish(Error('Ponte v1.0.32 não detectada neste Chrome. Atualize a extensão ou use a importação manual.')),4500);
+   const probeTimer=window.setTimeout(()=>finish(Error('Ponte v1.0.46 não detectada neste Chrome. A aba ChatGPT aberta foi preservada e sua SKU continua salva. Verifique a extensão em chrome://extensions.')),6500);
    window.postMessage({kind:'RA_EXTENSION_PROBE'},ORIGIN);
   });
  }
@@ -222,7 +239,7 @@
    itemId:id.itemId,modelId:id.modelId,ok:true},ORIGIN);
   return true;
  }
- globalThis.RASeoChatGPT={request,recover,hasPending,parse,prompt,count,emojiCount,separateEmojis,acknowledge,
+ globalThis.RASeoChatGPT={request,recover,hasPending,prepare,parse,prompt,count,emojiCount,separateEmojis,acknowledge,
  acknowledgeRecovery(result){
   const id=result?.requestIdentity;if(!id?.nonce)return false;
   window.postMessage({kind:'RA_SITE_SEO_RECOVER_ACK',
