@@ -28,7 +28,15 @@ export function createChatGptPrompts({sku='',title='',imageNotes={},imagePrompts
    'Use a foto original anexada como referência obrigatória. Se não estiver anexada, não gere.',
    'Preserve exatamente o mesmo produto, suas cores, geometria e peças reais. Não invente acessórios, funções ou embalagem.',
    scene.guide,
-   index===8?'Somente os três selos solicitados, sem outros textos ou preços.':'Sem títulos, subtítulos, frases ou preços.',
+   ...(index===2?[
+    'ATENÇÃO: esta é a base fotográfica de uma FICHA DE ESPECIFICAÇÕES, NÃO uma segunda foto de uso real.',
+    'Fotografe apenas o produto real em destaque na parte superior e central (aprox. 75% do quadro), com fundo ambientado discreto e área inferior livre para a ficha técnica que o Shopee Manager acrescentará depois da geração.',
+    'Não adicione pessoas, brinquedos extras, gráficos, números ou textos na FOTO BASE. O Manager imprimirá as dimensões e o material verificados na imagem final.',
+    String(sku)==='303448'?'Mostrar exatamente 1 caminhão dinossauro verde e 3 mini carrinhos, sem uma quarta miniatura.':'Não adicionar peças além das comprovadas na foto original.'
+   ]:[]),
+   index===8?'Somente os três selos solicitados, sem outros textos ou preços.':index===2
+    ?'Os textos técnicos e as medidas serão aplicados AUTOMATICAMENTE no arquivo final pelo Manager; preservar espaço para eles.'
+    :'Sem títulos, subtítulos, frases ou preços.',
    'Uma única imagem quadrada, fotorrealista, composição para 1200 × 1200 pixels. Não crie outras posições.'
   ];
   if(note)compact.push('Alteração solicitada para esta imagem: '+note);
