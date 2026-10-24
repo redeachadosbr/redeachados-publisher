@@ -7746,8 +7746,8 @@ async function optimizerChatBridgeConfirmed(job){
   sessionStorage.setItem(RA_CHAT_BRIDGE_JOB_KEY,JSON.stringify(optimizerChatBridgeJob));
   optimizerChatBridgeActiveClear(job.nonce);
   optimizerChatBridgeBusy=false;$('#optimizerChatgptAbort').hidden=true;
-  optimizerChatBridgeNotice(job.slots.length===9
-   ?'9/9 imagens novas salvas na SKU '+job.sku+'. Confira a galeria para executar na Shopee.'
+  optimizerChatBridgeNotice(slots.size===9
+   ?'9/9 imagens comerciais salvas na SKU '+job.sku+'. Confira todas antes de executar na Shopee.'
    :'Imagem salva na SKU '+job.sku+'.');
  }
  return complete;
@@ -7989,6 +7989,86 @@ $('#optimizerChatgptAuto')?.addEventListener?.('click',async()=>{
  }catch(e){optimizerChatBridgeBusy=false;$('#optimizerChatgptAbort').hidden=true;notify('Falha ao iniciar a imagem 01/09: '+e.message);}
  finally{button.disabled=false;}
 });
+// Recuperação não destrutiva: posições já confirmadas continuam no servidor.
+function optimizerBridgeRecoverFromExtension(payload){
+ const requestId=crypto.randomUUID();
+ return new Promise((resolve,reject)=>{
+  const timer=setTimeout(()=>{
+   window.removeEventListener('message',receive);
+   reject(Error('A Ponte não respondeu à recuperação. Atualize a extensão para v1.0.16 e recarregue o Chrome.'));
+  },12000);
+  function receive(event){
+   if(event.source!==window||event.origin!==location.origin||
+      event.data?.kind!=='RA_EXTENSION_CONTINUE_RESULT'||event.data.requestId!==requestId)return;
+   clearTimeout(timer);window.removeEventListener('message',receive);resolve(event.data);
+  }
+  window.addEventListener('message',receive);
+  window.postMessage({kind:'RA_SITE_CONTINUE',requestId,payload},location.origin);
+ });
+}
+$('#optimizerChatgptResume')?.addEventListener?.('click',async()=>{
+ const w=optimizerWorkflowPlan,button=$('#optimizerChatgptResume');
+ const status=$('#optimizerChatgptBridgeStatus');
+ const notify=message=>{if(status)status.textContent=message;const near=$('#optimizerChatgptActionStatus');if(near)near.textContent=message;};
+ if(!w||!optimizerImagesSameSku(w)){notify('Selecione uma SKU válida para recuperar as imagens.');return;}
+ if(button.disabled)return;
+ button.disabled=true;
+ try{
+  optimizerImagesMode='chatgpt';optimizerImagesRenderMode();
+  if(!optimizerChatBridgeReady)throw Error('Extensão Ponte ChatGPT não detectada. Instale a versão 1.0.16 e recarregue a página.');
+  const brief=await optimizerChatgptMakeBrief(w);
+  if(!brief.original||brief.prompts?.length!==9)throw Error('Foto original ou os nove roteiros não estão disponíveis.');
+  const data=await json('/api/shopee/optimizer/images/manual?'+new URLSearchParams({sku:w.sku,item_id:w.itemId,model_id:w.modelId}));
+  if(!optimizerImagesSameSku(w))throw Error('A SKU mudou durante a consulta. Nenhuma tarefa foi iniciada.');
+  const stored=[...new Set((data.images||[]).map(row=>Number(row.slot)).filter(x=>Number.isInteger(x)&&x>=1&&x<=9))].sort((a,b)=>a-b);
+  const missing=Array.from({length:9},(_,i)=>i+1).filter(x=>!stored.includes(x));
+  if(!missing.length){notify('9/9 imagens já preparadas. Revise a galeria ou use Gerar 9 imagens para refazer desde 01.');return;}
+  const first=String(missing[0]).padStart(2,'0');
+  // Esta ação NÃO deleta arquivos: preserva inclusive importações pendentes.
+  // Se já há uma tentativa no Chrome, retomá-la recupera a imagem antes de criar outra.
+  notify('Procurando a execução anterior da SKU '+w.sku+'. Primeira posição pendente: '+first+'/09. Posições salvas preservadas.');
+  await optimizerChatBridgeRelease('Recuperando execução da SKU '+w.sku+' sem apagar imagens.');
+  optimizerChatBridgeActiveClear(optimizerChatBridgeNonce);
+  optimizerChatBridgeJob=null;optimizerChatBridgeNonce='';optimizerChatBridgeSku='';
+  optimizerChatBridgeBusy=false;optimizerChatBridgeUploading=false;
+  sessionStorage.removeItem(RA_CHAT_BRIDGE_JOB_KEY);sessionStorage.removeItem(RA_CHAT_BRIDGE_SESSION_KEY);
+  const recovered=await optimizerBridgeRecoverFromExtension({sku:String(w.sku),itemId:String(w.itemId),modelId:String(w.modelId),completed:stored});
+  if(!optimizerImagesSameSku(w))throw Error('A SKU mudou; o comando de recuperação foi interrompido.');
+  if(recovered.ok){
+   optimizerChatBridgeNonce=recovered.nonce;optimizerChatBridgeSku=w.sku;
+   sessionStorage.setItem(RA_CHAT_BRIDGE_SESSION_KEY,optimizerChatBridgeNonce);
+   optimizerChatBridgeRemember(w,missing);
+   optimizerChatBridgeBusy=true;optimizerChatBridgeStartConfirmed=true;
+   $('#optimizerChatgptAbort').hidden=false;
+   notify('Recuperando a imagem '+first+'/09 da SKU '+w.sku+'. Imagens existentes preservadas. Se a conversa não puder ser recuperada, use “Recomeçar somente imagem pendente” na Ponte.');
+  }else if(recovered.reason==='NO_RECOVERABLE_JOB'||recovered.reason==='ALREADY_COMPLETE'){
+   // Nenhuma execução ativa no Chrome: nova sessão, mantendo o progresso real do servidor.
+   optimizerChatBridgeNonce=crypto.randomUUID();optimizerChatBridgeSku=w.sku;
+   sessionStorage.setItem(RA_CHAT_BRIDGE_SESSION_KEY,optimizerChatBridgeNonce);
+   optimizerChatBridgeRemember(w,missing);
+   optimizerChatBridgeBusy=true;optimizerChatBridgeStartConfirmed=false;
+   $('#optimizerChatgptAbort').hidden=false;
+   notify('Iniciando nova sessão pela primeira imagem pendente '+first+'/09. '+stored.length+' imagem(ns) salva(s) preservada(s).');
+   window.postMessage({kind:'RA_SITE_START',payload:{
+    nonce:optimizerChatBridgeNonce,sku:w.sku,itemId:String(w.itemId),modelId:String(w.modelId),
+    imageUrl:brief.original,prompts:brief.prompts,completed:stored
+   }},location.origin);
+   const issuedNonce=optimizerChatBridgeNonce;
+   setTimeout(()=>{
+    if(!optimizerChatBridgeStartConfirmed&&optimizerChatBridgeBusy&&optimizerChatBridgeNonce===issuedNonce){
+     void optimizerChatBridgeRelease('A extensão não confirmou o reinício pela posição '+first+'. Imagens anteriores preservadas.');
+     notify('A extensão não confirmou o comando para posição '+first+'/09. Verifique se a Ponte 1.0.16 está ativa.');
+    }
+   },18000);
+  }else{
+   throw Error(recovered.error||'Não foi possível recuperar o estado da extensão.');
+  }
+  void optimizerImagesLoad();
+ }catch(e){
+  optimizerChatBridgeBusy=false;$('#optimizerChatgptAbort').hidden=true;
+  notify('Não foi possível continuar a sequência: '+String(e.message||e)+'. Nenhuma foto já salva foi apagada.');
+ }finally{button.disabled=false;}
+});
 $('#optimizerChatgptAbort')?.addEventListener?.('click',()=>{
  optimizerChatBridgeRelease('Geração pausada. As fotos já salvas foram preservadas. Para continuar, faça nova solicitação.');
 });
@@ -8122,7 +8202,8 @@ async function optimizerImagesLoad(){
   optimizerImageCorrectionRefreshPreview();
   optimizerImagesSavedSlots=new Set(stored.keys());
    const runButton=$('#optimizerChatgptAuto');
-   if(runButton)runButton.textContent=stored.size>0&&stored.size<9?'✦ Gerar / retomar 9 imagens':'✦ Gerar 9 imagens com ChatGPT';
+   if(runButton)runButton.textContent=stored.size>0?'✦ Recomeçar 9 imagens desde 01':'✦ Gerar 9 imagens com ChatGPT';
+   const resumeButton=$('#optimizerChatgptResume');if(resumeButton)resumeButton.disabled=stored.size===9;
   const completed=stored.size,pending=9-completed;
   const originals=Array.isArray(w.imageUrls)?w.imageUrls.filter(Boolean):[];
   const counters={
