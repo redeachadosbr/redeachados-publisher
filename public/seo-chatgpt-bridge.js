@@ -66,7 +66,7 @@
     for(let i=start;i<body.length;i++){
      const ch=body[i];
      if(escaped){escaped=false;continue;}
-     if(quoted&&ch==='\\\\'){escaped=true;continue;}
+     if(quoted&&ch.charCodeAt(0)===92){escaped=true;continue;}
      if(ch==='"'){quoted=!quoted;continue;}
      if(quoted)continue;
      if(ch==='{')depth++;
@@ -83,16 +83,22 @@
   }
   if(!answer||!Array.isArray(answer.titles)||answer.titles.length!==4)
    throw Error('O ChatGPT precisa retornar exatamente quatro títulos.');
+  // Importar as quatro sugestões mesmo quando UMA estiver fora do limite:
+  // marcar o cartão individualmente, sem descartar a pesquisa inteira.
   const seen=new Set();
   const titles=answer.titles.map((item,i)=>{
-   const title=separateEmojis(typeof item==='string'?item:item?.title);
+   const original=clean(typeof item==='string'?item:item?.title);
+   if(original.length<12)throw Error('A opção '+(i+1)+' está vazia ou foi cortada.');
+   let title=original,problem='';
+   try{title=separateEmojis(original);}catch(error){problem=error.message;}
    const length=count(title);
-   if(length<100||length>120)throw Error('Opção '+(i+1)+' possui '+length+' caracteres; exigidos 100 a 120.');
-   if(emojiCount(title)!==2)throw Error('Opção '+(i+1)+' precisa ter exatamente 2 emojis.');
+   if(length<100||length>120)problem=(problem?problem+' ':'')+
+    'Título com '+length+' caracteres: permitido 100 a 120.';
    const k=signature(title);
-   if(seen.has(k))throw Error('O ChatGPT repetiu uma sugestão. Gere quatro opções distintas.');
+   if(seen.has(k))problem=(problem?problem+' ':'')+'Texto repetido.';
    seen.add(k);
-   return {title,length,reason:clean(item?.reason||'Termos comerciais sugeridos pelo ChatGPT').slice(0,320)};
+   return {title,length,valid:!problem,warning:problem,
+    reason:clean(item?.reason||'Termos sugeridos pelo ChatGPT').slice(0,320)};
   });
   const sources=(Array.isArray(answer.sources)?answer.sources:[]).map(String)
    .filter(v=>{try{const u=new URL(v);return (u.protocol==='https:'||u.protocol==='http:')&&u.hostname.includes('.');}catch{return false;}})
@@ -124,8 +130,8 @@
     if(m.kind==='RA_EXTENSION_READY'&&!started){
      const parts=String(m.version||'').split('.').map(Number);
      const updated=parts.length===3&&parts.every(Number.isInteger)&&
-      (parts[0]>1||(parts[0]===1&&(parts[1]>0||(parts[1]===0&&parts[2]  >=30))));
-     if(!updated)return finish(Error('Ponte ChatGPT '+(m.version||'antiga')+' detectada. Para títulos, atualize para a versão 1.0.30.'));
+      (parts[0]>1||(parts[0]===1&&(parts[1]>0||(parts[1]===0&&parts[2]   >=31))));
+     if(!updated)return finish(Error('Ponte ChatGPT '+(m.version||'antiga')+' detectada. Para títulos, atualize para a versão 1.0.31.'));
      started=true;window.clearTimeout(probeTimer);
      window.postMessage({kind:'RA_SITE_SEO_START',payload:{nonce,sku,itemId,modelId,
       prompt:prompt(data,extraTerms,previousTitles)}},ORIGIN);
@@ -144,8 +150,36 @@
    };
    window.addEventListener('message',listener);
    const timer=window.setTimeout(()=>finish(Error('Sem resposta do ChatGPT. Confira a aba aberta ou importe a resposta manualmente.')),285000);
-   const probeTimer=window.setTimeout(()=>finish(Error('Ponte v1.0.30 não detectada neste Chrome. Atualize a extensão ou use a importação manual.')),4500);
+   const probeTimer=window.setTimeout(()=>finish(Error('Ponte v1.0.31 não detectada neste Chrome. Atualize a extensão ou use a importação manual.')),4500);
    window.postMessage({kind:'RA_EXTENSION_PROBE'},ORIGIN);
+  });
+ }
+ async function recover(data){
+  if(location.origin!==ORIGIN)throw Error('Recuperação permitida somente no Shopee Manager.');
+  const nonce=crypto.randomUUID(),sku=clean(data?.sku||''),
+   itemId=String(data?.itemId||''),modelId=String(data?.modelId??data?.selectedModelId??'0');
+  if(!sku||!/^\d+$/.test(itemId)||!/^\d+$/.test(modelId))
+   throw Error('Abra uma SKU válida antes de recuperar títulos.');
+  return new Promise((resolve,reject)=>{
+   let ended=false;
+   const finish=(err,result)=>{
+    if(ended)return;ended=true;window.removeEventListener('message',listener);
+    clearTimeout(timeout);
+    if(err)reject(err);else resolve(result);
+   };
+   const listener=event=>{
+    if(event.origin!==ORIGIN||event.source!==window)return;
+    const m=event.data;
+    if(m?.kind!=='RA_EXTENSION_SEO_RECOVER_RESULT'||m.nonce!==nonce)return;
+    if(m.ok!==true)return finish(Error(m.error||'A Ponte não encontrou a pesquisa.'));
+    if(String(m.sku)!==sku||String(m.itemId)!==itemId||String(m.modelId)!==modelId)
+     return finish(Error('A pesquisa recuperada não pertence a esta SKU.'));
+    try{finish(null,{...parse(m.rawText),requestIdentity:{nonce,sku,itemId,modelId},recovered:true});}
+    catch(error){finish(error);}
+   };
+   const timeout=setTimeout(()=>finish(Error('Sem resposta da Ponte. Confirme que a extensão 1.0.31 está instalada.')),14000);
+   window.addEventListener('message',listener);
+   window.postMessage({kind:'RA_SITE_SEO_RECOVER',payload:{nonce,sku,itemId,modelId}},ORIGIN);
   });
  }
  function acknowledge(result){
@@ -155,5 +189,11 @@
    itemId:id.itemId,modelId:id.modelId,ok:true},ORIGIN);
   return true;
  }
- globalThis.RASeoChatGPT={request,parse,prompt,count,emojiCount,separateEmojis,acknowledge};
+ globalThis.RASeoChatGPT={request,recover,parse,prompt,count,emojiCount,separateEmojis,acknowledge,
+ acknowledgeRecovery(result){
+  const id=result?.requestIdentity;if(!id?.nonce)return false;
+  window.postMessage({kind:'RA_SITE_SEO_RECOVER_ACK',
+   nonce:id.nonce,sku:id.sku,itemId:id.itemId,modelId:id.modelId,ok:true},ORIGIN);
+  return true;
+ }};
 })();
