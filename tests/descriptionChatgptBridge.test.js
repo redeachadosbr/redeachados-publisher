@@ -48,3 +48,40 @@ test('botão preserva edição, importação e confirmação de rascunho por SKU
  assert.match(app,/await optimizerContentFlush\(\)/);
  assert.match(page,/description-chatgpt-bridge\.js/);
 });
+
+test('descrição JSON com \\n literais chega ao editor com parágrafos reais, sem fatos JSON',()=>{
+ const content=[
+  '✨ Caminhão Dinossauro verde com três mini carrinhos para uma brincadeira criativa com o tema dos dinossauros.',
+  '✅ BENEFÍCIOS',
+  '🚚 O conjunto permite criar histórias e brincar com os mini carrinhos sem precisar de acessórios extras.',
+  '💡 POR QUE COMPRAR',
+  'Uma opção temática para fãs de dinossauros, baseada somente nas informações do produto.',
+  '⚙️ CARACTERÍSTICAS',
+  'Cor verde e três mini carrinhos confirmados pelo catálogo WeDrop.',
+  '📦 O QUE ACOMPANHA',
+  'Um caminhão dinossauro e três mini carrinhos.',
+  '🛒 Escolha o conjunto e prepare novas aventuras!'
+ ].join('\\n\\n'); // o ChatGPT às vezes duplica o escape
+ const text='Resposta comercial pronta:\n'+JSON.stringify({
+  description:content,factsUsed:['SKU 303448','3 mini carrinhos'],
+  unverified:['idade recomendada não confirmada']})+'\nPesquisa concluída.';
+ const parsed=api.parse(text);
+ assert.match(parsed.description,/\n\n✅ BENEFÍCIOS/);
+ assert.match(parsed.description,/\n\n📦 O QUE ACOMPANHA/);
+ assert.match(parsed.description,/\n\n🛒 Escolha/);
+ assert.doesNotMatch(parsed.description,/\\n/);
+ assert.doesNotMatch(parsed.description,/factsUsed|unverified|"description":/);
+ assert.equal(parsed.factsUsed.length,2);
+});
+test('descrição pode ser recuperada sem outra geração e exige confirmação do banco',()=>{
+ const modern=readFileSync(new URL('../public/description-modern-layout.js',import.meta.url),'utf8');
+ const bridge=readFileSync(new URL('../public/description-chatgpt-bridge.js',import.meta.url),'utf8');
+ assert.match(bridge,/RA_SITE_DESC_RECOVER/);
+ assert.match(bridge,/RA_EXTENSION_DESC_RECOVER_RESULT/);
+ assert.match(bridge,/RA_SITE_DESC_RECOVER_ACK/);
+ assert.match(modern,/Recuperar descrição do ChatGPT/);
+ assert.match(modern,/await applyDescription\(result\)/);
+ assert.match(modern,/acknowledgeRecovery\(result\)/);
+ assert.match(modern,/Importar texto colado/);
+ assert.match(modern,/manualArea\.value/);
+});
