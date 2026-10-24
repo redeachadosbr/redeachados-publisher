@@ -600,6 +600,7 @@
 
           <div class="optimizer-image-mode-selector" role="group" aria-label="Geração de imagens comerciais">
             <button id="optimizerChatgptAuto" type="button">✦ Gerar 9 imagens com ChatGPT</button>
+            <button id="optimizerChatgptResume" type="button" class="secondary" title="Preserva as imagens comerciais já salvas e retoma a partir da primeira posição ainda não preenchida">↻ Continuar da primeira imagem pendente</button>
             <button id="optimizerModeApi" type="button" class="secondary" aria-pressed="false">⚙ Gerar automaticamente pela API</button>
           </div>
           <div id="optimizerImagesChatgptPanel" class="optimizer-chatgpt-panel" hidden>
@@ -607,7 +608,7 @@
               <strong>✦ ChatGPT · 9 imagens comerciais</strong>
               <small>Uma sequência de 9 imagens, com envio e progresso por SKU.</small>
             </div>
-            <p>Clique uma vez para gerar as 9 imagens. Cada foto recebida substitui a original na galeria e o envio é confirmado antes da próxima. Se a conexão cair, o sistema preserva a imagem para reenviar. Ao final, confira as 9 fotos antes de executar na Shopee.</p>
+            <p><strong>Gerar 9 imagens:</strong> recomeça na imagem 01, substituindo somente as fotos comerciais preparadas. <strong>Continuar da primeira pendente:</strong> preserva as posições salvas, recupera um envio interrompido quando possível e só gera as imagens restantes. A posição seguinte começa após confirmação do servidor. Confira as nove imagens antes de publicar.</p>
             <div class="optimizer-chatgpt-bridge-actions">
               <button type="button" id="optimizerChatgptAbort" class="secondary" hidden>Pausar geração</button>
             </div>
