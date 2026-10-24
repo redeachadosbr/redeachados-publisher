@@ -70,16 +70,27 @@
   const modelId=String(data?.modelId??data?.selectedModelId??'0');
   if(!sku||!itemId)return Promise.reject(Error('Carregue a SKU antes de pesquisar títulos.'));
   return new Promise((resolve,reject)=>{
-   let done=false;
+   let done=false,started=false;
    const finish=(error,result)=>{
-    if(done)return;done=true;window.clearTimeout(timer);
+    if(done)return;done=true;window.clearTimeout(timer);window.clearTimeout(probeTimer);
     window.removeEventListener('message',listener);
     if(error)reject(error instanceof Error?error:Error(String(error)));
     else resolve(result);
    };
    const listener=event=>{
-    if(event.source!==window||event.origin!==ORIGIN||event.data?.nonce!==nonce)return;
-    const m=event.data;
+    if(event.source!==window||event.origin!==ORIGIN)return;
+    const m=event.data||{};
+    if(m.kind==='RA_EXTENSION_READY'&&!started){
+     const parts=String(m.version||'').split('.').map(Number);
+     const updated=parts.length===3&&parts.every(Number.isInteger)&&
+      (parts[0]>1||(parts[0]===1&&(parts[1]>0||(parts[1]===0&&parts[2]>=27))));
+     if(!updated)return finish(Error('Ponte ChatGPT '+(m.version||'antiga')+' detectada. Para títulos, atualize para a versão 1.0.27.'));
+     started=true;window.clearTimeout(probeTimer);
+     window.postMessage({kind:'RA_SITE_SEO_START',payload:{nonce,sku,itemId,modelId,
+      prompt:prompt(data,extraTerms,previousTitles)}},ORIGIN);
+     return;
+    }
+    if(m.nonce!==nonce)return;
     if(m.kind==='RA_EXTENSION_SEO_START_RESULT'&&m.ok===false)
      return finish(Error(m.error||'A extensão rejeitou a pesquisa.'));
     if(m.kind==='RA_EXTENSION_SEO_RESULT'){
@@ -89,9 +100,9 @@
     }
    };
    window.addEventListener('message',listener);
-   const timer=window.setTimeout(()=>finish(Error('Sem resposta da Ponte ChatGPT. Instale a versão 1.0.27, confira o login do ChatGPT e tente novamente.')),145000);
-   window.postMessage({kind:'RA_SITE_SEO_START',payload:{nonce,sku,itemId,modelId,
-    prompt:prompt(data,extraTerms,previousTitles)}},ORIGIN);
+   const timer=window.setTimeout(()=>finish(Error('Sem resposta do ChatGPT. Confira a aba aberta ou importe a resposta manualmente.')),145000);
+   const probeTimer=window.setTimeout(()=>finish(Error('Ponte v1.0.27 não detectada neste Chrome. Atualize a extensão ou use a importação manual.')),4500);
+   window.postMessage({kind:'RA_EXTENSION_PROBE'},ORIGIN);
   });
  }
  globalThis.RASeoChatGPT={request,parse,prompt,count,emojiCount};
