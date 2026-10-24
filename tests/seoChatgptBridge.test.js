@@ -21,7 +21,7 @@ test('quatro títulos ChatGPT são distintos, têm 100-120 caracteres e dois emo
 test('não aceitar quatro títulos iguais, emojis faltando ou títulos curtos',()=>{
  const t=[1,2,3,4].map(n=>({title:make(n)}));
  assert.throws(()=>parse(JSON.stringify({titles:[t[0],t[0],t[2],t[3]]})),/repetiu/);
- assert.throws(()=>parse(JSON.stringify({titles:[{title:'🦖 '+make(1).replace('🚚','')},...t.slice(1)]})),/exatamente 2 emojis/);
+ assert.throws(()=>parse(JSON.stringify({titles:[{title:make(1).replace('🚚','a')},...t.slice(1)]})),/exatamente 2 emojis/);
  assert.throws(()=>parse(JSON.stringify({titles:[{title:'🦖 🚚 curto'},...t.slice(1)]})),/100 a 120/);
 });
 test('prompt obriga pesquisa real, sem declarar volumes não verificados',()=>{
