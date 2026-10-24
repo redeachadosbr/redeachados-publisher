@@ -4003,14 +4003,19 @@ async function optimizerDiscountFinalPrepare({automatic=false}={}){
   optimizerDiscountFinalPreviewData=data;optimizerDiscountFinalPreviewKey=previewKey;
   $('#optimizerExecDiscountPriceConsent').checked=false;
   $('#optimizerExecDiscountDeferredConsent').checked=false;
-  optimizerDiscountFinalStatus(data.deferred?
-   'Anúncio '+data.liveItemStatus+': desconto conferido SEM publicação. Marque a autorização antecipada para executar o anúncio primeiro e aplicar a promoção somente após NORMAL e nova verificação de preço/margem/campanha.':
+  const realStatus='Anúncio '+String(data.itemId||w.itemId)+' · status Shopee '+
+   String(data.liveItemStatus||'não informado')+
+   ' (fonte: '+(data.liveStatusSource==='get_item_list'?'lista de anúncios ativos':'ficha do anúncio')+')'+
+   (data.baseItemStatus&&data.baseItemStatus!==data.liveItemStatus?
+    ' · ficha retornou '+data.baseItemStatus+'; lista ativa foi conferida pelo ID.':'')+'. ';
+  optimizerDiscountFinalStatus(realStatus+(data.deferred?
+   'Desconto conferido SEM publicação. Marque a autorização antecipada para executar o anúncio primeiro e aplicar a promoção somente após NORMAL e nova verificação de preço/margem/campanha.':
    data.preview.action==='already'?
     'Desconto já está confirmado nesta campanha; não será reenviado.':
     'Prévia confirmada: '+shPricePercent(data.preview.discountPct)+' de desconto · campanha '+
     campaign+' · preço promocional '+shPriceMoney(data.preview.promo)+
     (data.preview.needsBasePriceUpdate?' · requer autorização para ajustar preço bruto.':
-     '. A promoção poderá ser aplicada depois da confirmação das outras etapas.'),
+     '. A promoção poderá ser aplicada depois da confirmação das outras etapas.')),
    data.deferred?'warning':'success');
   if(data.preview.action==='already'&&!data.deferred)optimizerDiscountFinalSent=true;
  }catch(error){
