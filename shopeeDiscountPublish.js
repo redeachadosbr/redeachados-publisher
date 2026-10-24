@@ -17,8 +17,18 @@ export function promotionFromQuote(q){
  const couponPct=Number(q.couponPct||0);
  if(!Number.isFinite(couponPct)||couponPct<0||couponPct>=90)throw Error('Cupom da loja inválido.');
  const buyerAfterCoupon=brl(promo*(1-couponPct/100));
- if(Math.abs(buyerAfterCoupon-Number(q.customerPrice))>0.02)
+ if(Math.abs(buyerAfterCoupon-Number(q.customerPrice))>0.011)
   throw Error('Preço após cupom não confere com o plano salvo. Recalcule antes de publicar.');
+ // Planos novos precisam comprovar o preço que A SHOPEE MOSTRA NA VITRINE,
+ // não apenas o preço hipotético com cupom aplicado no checkout.
+ if(q.priceEndingRuleVersion===2){
+  const allowed=x=>Math.round(x*100)%10===0||Math.round(x*100)%10===9;
+  if(!Number.isFinite(Number(q.marketplaceDisplayPrice))||
+     Math.abs(promo-Number(q.marketplaceDisplayPrice))>0.011)
+   throw Error('Preço promocional visível divergente do plano salvo. Recalcule.');
+  if(!allowed(promo)||!allowed(buyerAfterCoupon))
+   throw Error('Preço da Shopee ou após cupom fora da regra de centavos 0/9. Recalcule e aprove o novo valor.');
+ }
  if(promo<=0||promo>=gross)throw Error('Desconto inválido para publicação.');
  return {gross,promo,buyerAfterCoupon,couponPct,discountPct:Number(q.discountPct)};
 }
