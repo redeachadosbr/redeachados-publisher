@@ -88,7 +88,7 @@
   const seen=new Set();
   const titles=answer.titles.map((item,i)=>{
    const original=clean(typeof item==='string'?item:item?.title);
-   if(original.length<12)throw Error('A opção '+(i+1)+' está vazia ou foi cortada.');
+   if(original.length<3)throw Error('A opção '+(i+1)+' está vazia ou foi cortada.');
    let title=original,problem='';
    try{title=separateEmojis(original);}catch(error){problem=error.message;}
    const length=count(title);
