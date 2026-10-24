@@ -400,10 +400,14 @@
         });
         if(token!==researchToken||!mount.isConnected||mount.dataset.seoStudioIdentity!==currentIdentity)return;
         accept(result);
+        if(grid.querySelectorAll('article.seo-studio-card').length!==4)
+         throw Error('O Manager não conseguiu apresentar as quatro opções. A aba ChatGPT será mantida para recuperação.');
+        // ACK somente depois da importação, ordenação e armazenamento por SKU.
+        globalThis.RASeoChatGPT.acknowledge(result);
       }catch(err){
         if(token!==researchToken||!mount.isConnected||mount.dataset.seoStudioIdentity!==currentIdentity)return;
         aiOptions=oldOptions;
-        setLabel(marketNotice,'Não foi possível receber quatro títulos do ChatGPT: '+err.message+' Use a importação manual abaixo ou tente novamente.');
+        setLabel(marketNotice,'A pesquisa não foi importada: '+err.message+' A aba ChatGPT foi preservada; copie o JSON e use Importar 4 títulos recebidos ou clique em Gerar novamente.');
         regenerate();
       }finally{
         if(token===researchToken&&mount.dataset.seoStudioIdentity===currentIdentity){
