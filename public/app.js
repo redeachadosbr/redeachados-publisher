@@ -7633,7 +7633,35 @@ async function optimizerChatgptRender(w){
   }
  }catch(e){$('#optimizerChatgptCopyStatus').textContent='Não foi possível preparar os pedidos: '+e.message;}
 }
-async function optimizerCommercialRequestChatgptSlot(w,slot){
+// A imagem preparada é lida de forma autenticada e comprimida apenas para
+// ser anexada no ChatGPT. Nenhum dado privado é enviado a serviços adicionais.
+async function optimizerImageEditReference(w,slot){
+ const q=new URLSearchParams({sku:w.sku,item_id:w.itemId,model_id:w.modelId,slot});
+ const res=await fetch('/api/shopee/optimizer/images/reference?'+q,{credentials:'same-origin',cache:'no-store',signal:AbortSignal.timeout(45000)});
+ if(!res.ok){
+  const data=await res.json().catch(()=>({}));
+  throw Error(data.error||'Não foi possível carregar a imagem '+slot+' para edição (HTTP '+res.status+').');
+ }
+ const raw=await res.blob();
+ if(!/^image\/(png|jpeg)$/.test(raw.type)||raw.size<1024||raw.size>10*1024*1024)
+  throw Error('Arquivo da imagem preparada inválido para edição.');
+ const bitmap=await createImageBitmap(raw);
+ try{
+  const canvas=document.createElement('canvas');
+  const ratio=Math.min(1,1024/Math.max(bitmap.width,bitmap.height));
+  canvas.width=Math.max(1,Math.round(bitmap.width*ratio));
+  canvas.height=Math.max(1,Math.round(bitmap.height*ratio));
+  const ctx=canvas.getContext('2d',{alpha:false});
+  if(!ctx)throw Error('Chrome não permitiu preparar a imagem de referência.');
+  ctx.fillStyle='#ffffff';ctx.fillRect(0,0,canvas.width,canvas.height);
+  ctx.drawImage(bitmap,0,0,canvas.width,canvas.height);
+  const dataUrl=canvas.toDataURL('image/jpeg',0.88);
+  if(!/^data:image\/jpeg;base64,[A-Za-z0-9+/=]+$/.test(dataUrl)||dataUrl.length>5*1024*1024)
+   throw Error('A imagem preparada excede o limite de envio à extensão.');
+  return dataUrl;
+ }finally{bitmap.close();}
+}
+async function optimizerCommercialRequestChatgptSlot(w,slot,{editMode=''}={}){
  if(!optimizerImagesSameSku(w))return;
  const status=$('#optimizerImagesStatus');
  if(optimizerChatBridgeBusy){
@@ -7649,13 +7677,30 @@ async function optimizerCommercialRequestChatgptSlot(w,slot){
   await optimizerChatBridgeRelease('Execução anterior pausada para refazer somente a imagem '+slot+'.');
  }
  if(!optimizerChatBridgeReady){
-  const msg='Não foi possível refazer a imagem '+String(slot).padStart(2,'0')+': a Ponte ChatGPT v1.0.17 ou superior não está detectada. Ative uma única extensão no Chrome e atualize esta página. Nenhuma imagem foi apagada.';
+  const msg='Não foi possível refazer a imagem '+String(slot).padStart(2,'0')+': a Ponte ChatGPT v1.0.18 ou superior não está detectada. Ative uma única extensão no Chrome e atualize esta página. Nenhuma imagem foi apagada.';
   status.textContent=msg;optimizerCommercialActionMessage(msg,true);return;
  }
  try{
   if(optimizerChatBridgeIdentity(optimizerChatBridgeJob,w)&&optimizerChatBridgeJob?.slots?.length===1&&Number(optimizerChatBridgeJob.slots[0])===Number(slot)&&!optimizerChatBridgeJob.complete&&await optimizerChatBridgeRecover({includeBlocked:true}))return;
   const brief=await optimizerChatgptMakeBrief(w);
   if(!brief.original)throw Error('Não há fotografia original da Shopee para esta SKU.');
+  if(editMode&&!['improve','white-bg','custom'].includes(editMode))throw Error('Tipo de edição não permitido.');
+  const prompts=[...brief.prompts];
+  let referenceDataUrl='';
+  if(editMode){
+   if(!optimizerImageCorrectionPreviewMap.has(slot))throw Error('A imagem '+slot+' não está salva. Não é possível editar sem a fotografia atual.');
+   referenceDataUrl=await optimizerImageEditReference(w,slot);
+   if(!optimizerImagesSameSku(w))throw Error('A SKU mudou durante o carregamento da imagem.');
+   const pos=String(slot).padStart(2,'0');
+   if(editMode==='improve')prompts[slot-1]=[
+    brief.prompts[slot-1],
+    'EDIÇÃO DA FOTO PREPARADA ANEXADA DA POSIÇÃO '+pos+': crie uma nova versão da MESMA fotografia e do MESMO produto, com ângulo de câmera claramente diferente, enquadramento mais sofisticado, iluminação refinada e fundo ambientado moderno relacionado ao uso real. Não mudar o formato, as cores, os materiais, o número de peças, as marcas nem o conteúdo do produto. A imagem comercial anterior está anexada como referência. Gere somente UMA imagem nova, individual.',
+   ].join('\\n\\n');
+   if(editMode==='white-bg')prompts[slot-1]=[
+    'REDE ACHADOS BR — EDIÇÃO DA IMAGEM '+pos+'/09 DA SKU '+w.sku+' — '+(w.draftTitle||'Produto'),
+    'Edite EXCLUSIVAMENTE a imagem preparada anexada. Recorte fielmente o mesmo produto e retire totalmente o fundo atual. Substitua o cenário por BRANCO PURO (#FFFFFF), sem objetos, sem textura e sem decoração. Preserve geometria, escala, cores, componentes, número de peças, marcas originais e a disposição real. Permita apenas sombra suave e discreta, sem inventar acessórios. Remova quaisquer rótulos promocionais da fotografia anterior, sem apagar marcas físicas reais do produto. Imagem única, quadrada, para 1200 × 1200 pixels. Não colocar títulos nem textos. NÃO usar fundo ambientado nesta edição. Gere apenas esta imagem.',
+   ].join('\\n\\n');
+  }
   optimizerChatBridgeNonce=crypto.randomUUID();
   optimizerChatBridgeSku=w.sku;
   sessionStorage.setItem(RA_CHAT_BRIDGE_SESSION_KEY,optimizerChatBridgeNonce);
@@ -7672,14 +7717,14 @@ async function optimizerCommercialRequestChatgptSlot(w,slot){
   const activeNonce=optimizerChatBridgeNonce;
   window.postMessage({kind:'RA_SITE_START',payload:{
    nonce:optimizerChatBridgeNonce,sku:w.sku,itemId:String(w.itemId),modelId:String(w.modelId),
-   imageUrl:brief.original,prompts:brief.prompts,
+   imageUrl:brief.original,prompts,referenceDataUrl,imageMode:editMode,
    // Só esta posição é autorizada. A próxima requer outro comando.
    completed:Array.from({length:9},(_,i)=>i+1).filter(n=>n!==slot)
   }},location.origin);
   setTimeout(()=>{
    if(!optimizerChatBridgeStartConfirmed&&optimizerChatBridgeNonce===activeNonce&&optimizerChatBridgeBusy){
     void optimizerChatBridgeRelease('A extensão não confirmou o comando de imagem '+slot+'.');
-    optimizerCommercialActionMessage('A Ponte v1.0.17 não confirmou o pedido da imagem '+String(slot).padStart(2,'0')+' em 12 segundos. Confira a extensão do Chrome e use Refazer novamente. A imagem anterior foi mantida.',true);
+    optimizerCommercialActionMessage('A Ponte v1.0.18 não confirmou o pedido da imagem '+String(slot).padStart(2,'0')+' em 12 segundos. Confira a extensão do Chrome e use Refazer novamente. A imagem anterior foi mantida.',true);
    }
   },12000);
  }catch(e){
@@ -7930,10 +7975,10 @@ globalThis.window?.addEventListener?.('message',async(event)=>{
   optimizerChatBridgeVersion=version;
   const parts=version.split('.').map(Number);
   const needsUpdate=parts.length!==3||parts.some(n=>!Number.isInteger(n))||
-   parts[0]<1||(parts[0]===1&&parts[1]===0&&parts[2]<17);
+   parts[0]<1||(parts[0]===1&&parts[1]===0&&parts[2]<18);
   optimizerChatBridgeReady=!needsUpdate;
   if(status&&!optimizerChatBridgeBusy)status.textContent=needsUpdate
-   ?'Extensão ChatGPT '+(version||'antiga')+' detectada: para enviar um prompt individual por posição é necessária a Ponte v1.0.17 ou superior. Atualize a extensão e recarregue o Chrome.'
+   ?'Extensão ChatGPT '+(version||'antiga')+' detectada: para enviar um prompt individual por posição é necessária a Ponte v1.0.18 ou superior. Atualize a extensão e recarregue o Chrome.'
    :'Extensão Rede Achados BR '+version+' detectada. Clique em Gerar as 9 imagens para abrir o ChatGPT e receber cada foto automaticamente.';
   return;
  }
@@ -7945,7 +7990,7 @@ globalThis.window?.addEventListener?.('message',async(event)=>{
    $('#optimizerChatgptAbort').hidden=true;
    if(status)status.textContent='Não foi possível iniciar a extensão: '+(m.error||'erro não identificado')+'. Verifique se está instalada e atualizada no Chrome.';
    optimizerChatBridgeNotice('Não foi possível iniciar o ChatGPT: '+(m.error||'extensão indisponível')+'. A imagem anterior foi preservada.');
-   optimizerCommercialActionMessage('Falha ao iniciar o ChatGPT: '+(m.error||'Ponte indisponível')+'. Verifique a extensão v1.0.17.',true);
+   optimizerCommercialActionMessage('Falha ao iniciar o ChatGPT: '+(m.error||'Ponte indisponível')+'. Verifique a extensão v1.0.18.',true);
   }else if(status){
    status.textContent='Extensão iniciada para a SKU '+(optimizerWorkflowPlan?.sku||'')+'. O ChatGPT está gerando e cada foto será enviada à galeria automaticamente.';
    if(optimizerChatBridgeJob?.slots?.length===1)
@@ -8039,7 +8084,7 @@ $('#optimizerChatgptAuto')?.addEventListener?.('click',async()=>{
   optimizerImagesMode='chatgpt';optimizerImagesRenderMode();
   if(!optimizerChatBridgeReady){
    window.postMessage({kind:'RA_EXTENSION_PROBE'},location.origin);
-   throw Error('Extensão ChatGPT indisponível ou antiga ('+(optimizerChatBridgeVersion||'não detectada')+'). Instale a Ponte v1.0.17 e recarregue o Chrome.');
+   throw Error('Extensão ChatGPT indisponível ou antiga ('+(optimizerChatBridgeVersion||'não detectada')+'). Instale a Ponte v1.0.18 e recarregue o Chrome.');
   }
   // Validate the original photo and the 9 scene prompts before mutating anything.
   const brief=await optimizerChatgptMakeBrief(w);
@@ -8092,7 +8137,7 @@ function optimizerBridgeRecoverFromExtension(payload){
  return new Promise((resolve,reject)=>{
   const timer=setTimeout(()=>{
    window.removeEventListener('message',receive);
-   reject(Error('A Ponte não respondeu à recuperação. Atualize a extensão para v1.0.17 e recarregue o Chrome.'));
+   reject(Error('A Ponte não respondeu à recuperação. Atualize a extensão para v1.0.18 e recarregue o Chrome.'));
   },12000);
   function receive(event){
    if(event.source!==window||event.origin!==location.origin||
@@ -8112,7 +8157,7 @@ $('#optimizerChatgptResume')?.addEventListener?.('click',async()=>{
  button.disabled=true;
  try{
   optimizerImagesMode='chatgpt';optimizerImagesRenderMode();
-  if(!optimizerChatBridgeReady)throw Error('Extensão ChatGPT indisponível ou antiga. Instale a Ponte v1.0.17 e recarregue o Chrome.');
+  if(!optimizerChatBridgeReady)throw Error('Extensão ChatGPT indisponível ou antiga. Instale a Ponte v1.0.18 e recarregue o Chrome.');
   const brief=await optimizerChatgptMakeBrief(w);
   if(!brief.original||brief.prompts?.length!==9)throw Error('Foto original ou os nove roteiros não estão disponíveis.');
   const data=await json('/api/shopee/optimizer/images/manual?'+new URLSearchParams({sku:w.sku,item_id:w.itemId,model_id:w.modelId}));
@@ -8156,7 +8201,7 @@ $('#optimizerChatgptResume')?.addEventListener?.('click',async()=>{
    setTimeout(()=>{
     if(!optimizerChatBridgeStartConfirmed&&optimizerChatBridgeBusy&&optimizerChatBridgeNonce===issuedNonce){
      void optimizerChatBridgeRelease('A extensão não confirmou o reinício pela posição '+first+'. Imagens anteriores preservadas.');
-     notify('A extensão não confirmou o comando para posição '+first+'/09. Verifique se a Ponte 1.0.17 está ativa.');
+     notify('A extensão não confirmou o comando para posição '+first+'/09. Verifique se a Ponte 1.0.18 está ativa.');
     }
    },18000);
   }else{
