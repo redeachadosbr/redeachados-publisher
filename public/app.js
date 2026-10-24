@@ -2247,7 +2247,7 @@ async function optimizerFindSku({deep=false}={}){
   // Supplier price lookup remains independent of the Shopee listing.
   void shPricePreviewSupplierSku(sku,serial);
   const d=await json('/api/shopee/optimizer/find?'+new URLSearchParams({sku,...(deep?{deep:'1'}:{})}),{
-   signal:AbortSignal.any([controller.signal,AbortSignal.timeout(deep?90000:25000)])
+   signal:AbortSignal.any([controller.signal,AbortSignal.timeout(deep?120000:90000)])
   });
   if(serial!==optimizerSkuLookupSerial||$('#optimizerSku').value.trim()!==sku)return;
   const matches=d.matches||[];
@@ -2263,12 +2263,19 @@ async function optimizerFindSku({deep=false}={}){
    return;
   }
   if(matches.length===1){
-   optimizerNotice('Produto encontrado. Conferindo a ficha técnica pela API...');
+   const replaced=(d.retiredItemIds||[]).filter(id=>String(id)!==String(matches[0].itemId));
+   optimizerNotice(replaced.length?
+    'Vínculo antigo '+replaced.join(', ')+' descartado: SKU '+sku+
+     ' localizada em anúncio NORMAL ID '+matches[0].itemId+
+     '. Consultando a nova ficha. Preços e planos do anúncio excluído NÃO serão transferidos.':
+    'Produto confirmado na Shopee: ID '+matches[0].itemId+
+     ' · situação '+matches[0].status+'. Conferindo ficha técnica...','success');
    $('#optimizerItemId').value=matches[0].itemId;
    await optimizerRunAudit(matches[0].itemId,sku,matches[0].modelId);
    return;
   }
-  optimizerNotice('Mais de um anúncio ou variação possui esse SKU. Escolha o produto correto abaixo; não é necessário informar Item ID.','warning');
+  optimizerNotice('A Shopee confirmou '+matches.length+' anúncios/variações para a SKU '+sku+
+   '. Selecione o Item ID do produto que deseja atualizar. Anúncios excluídos foram filtrados.','warning');
   for(const match of matches){
    const el=optimizerMake('button','optimizer-candidate');el.type='button';
    if(match.imageUrl&&financeCatalogImage(match.imageUrl)){
