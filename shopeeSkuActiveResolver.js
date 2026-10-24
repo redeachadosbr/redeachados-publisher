@@ -20,6 +20,8 @@ export function reconcileActiveSkuCandidates({sku,cached=[],pages=[]}={}){
    active.set(id+':0',{
     itemId:id,modelId:'0',sku:query,title:String(item.title||'Produto Shopee'),
     imageUrl:String(item.imageUrl||''),status:'NORMAL',
+    hasModel:Boolean(item.hasModel),price:item.price??null,stock:item.stock??null,
+    updateTime:item.updateTime??null,
     source:'shopee_normal_listing_exact_sku'
    });
   }
