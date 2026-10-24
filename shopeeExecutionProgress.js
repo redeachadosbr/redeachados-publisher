@@ -36,6 +36,18 @@ export function shopeeExecutionProgress(job){
  const video=Boolean(plan.video);
  const proposed=plan.proposed||{};
  const commercialConfirmed=Boolean(result.primaryVerified)||state==='verified'||result.verified===true;
+ // Recuperação após duas leituras oficiais pode confirmar a mídia mesmo
+ // que título/atributos permaneçam pendentes. Não confundir com upload.
+ const recovery=result.recovery||{};
+ const confirmedReadback=recovery.kind==='stable_readback_no_write'&&
+  recovery.stable===true&&Array.isArray(recovery.pending);
+ const recoverPending=confirmedReadback?recovery.pending:[];
+ const imagesConfirmed=commercialConfirmed||
+  (confirmedReadback&&images>0&&Number(recovery.imagesInShop)===images&&
+   !recoverPending.some(x=>/imagens enviadas|imagens.*vinculadas/i.test(x)));
+ const videoConfirmed=commercialConfirmed||
+  (confirmedReadback&&readyVideo&&
+   !recoverPending.some(x=>/vídeo.*confirmado/i.test(x)));
  const fiscalPartial=state==='verified'&&phase==='verified_partial';
  const verified=state==='verified'&&!fiscalPartial;
  const discountIncluded=Boolean(plan.commercialDiscount||plan.modelVariations?.promotion);
@@ -53,7 +65,8 @@ export function shopeeExecutionProgress(job){
  const activeDiscount=/^(?:discount_|model_discount_)/.test(phase);
  const attempt=['running','failed','uncertain','verified'].includes(state);
  const failure=['failed','uncertain'].includes(state)||fiscalPartial;
- const hasSavedProgress=uploaded>0||readyVideo||variantsDone||commercialConfirmed;
+ const hasSavedProgress=uploaded>0||readyVideo||variantsDone||
+  commercialConfirmed||imagesConfirmed||videoConfirmed;
  const resumable=state==='prepared'&&plan.canExecute===true&&
   (hasSavedProgress||hasVariants||fiscalIncluded||discountIncluded);
  const needs={
@@ -67,8 +80,8 @@ export function shopeeExecutionProgress(job){
   discount:discountIncluded
  };
  const done={
-  images:needs.images&&commercialConfirmed,
-  video:needs.video&&commercialConfirmed,
+  images:needs.images&&imagesConfirmed,
+  video:needs.video&&videoConfirmed,
   seo:needs.seo&&commercialConfirmed,
   description:needs.description&&commercialConfirmed,
   technical:needs.technical&&commercialConfirmed,
@@ -146,7 +159,9 @@ export function shopeeExecutionProgress(job){
     readyVideo?'vídeo processado na mídia':null,
     updateAccepted?'alteração recebida pela API':null,
     'publicação no anúncio ainda não confirmada. O sistema consulta o resultado sem repetir a escrita'].filter(Boolean).join(' · '):
-  state==='failed'?'Execução interrompida: '+String(job.last_error||'confira a ocorrência'):
+  state==='failed'?
+   (confirmedReadback?'Conferência parcial: mídia confirmada na Shopee; as demais etapas requerem nova prévia. ':'')+
+   'Execução interrompida: '+String(job.last_error||'confira a ocorrência'):
   state==='prepared'?pendingOnly?'Pronto para publicar somente variações, fiscal e desconto. O conteúdo comercial existente ficará intacto.':
    [uploaded?uploaded+' imagens na biblioteca Shopee (publicação não presumida)':null,
     readyVideo?'vídeo processado (publicação não presumida)':null,
@@ -158,8 +173,8 @@ export function shopeeExecutionProgress(job){
   updatedAt:job.updated_at||null,imagesTotal:images,imagesUploaded:uploaded,
   imagePercent:images?Math.round(uploaded/images*100):null,
   videoIncluded:video,videoReady:video&&readyVideo,
-  imagesPublished:commercialConfirmed?images:0,
-  videoPublished:video&&commercialConfirmed,
+  imagesPublished:imagesConfirmed?images:0,
+  videoPublished:video&&videoConfirmed,
   hasStarted:attempt,hasSavedProgress,resumable,verified:verified&&(!discountIncluded||discountDone),
   fiscalPartial,
   fiscalStatus:fiscalPartial?'rejected':fiscalDone?'verified':activeFiscal?'in_progress':fiscalIncluded?'pending':'not_included',
