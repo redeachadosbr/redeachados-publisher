@@ -20,55 +20,9 @@
   ].join('|');
   // Gratuito e local: não chamar serviços de IA pagos nem usar créditos de API.
   // A assinatura ChatGPT Plus não é uma credencial de API do sistema.
-  function prefetch(data,{force=false,extraTerms='',previousTitles=[]}={}){
-    const sku=clean(data?.sku||''),itemId=String(data?.itemId||'');
-    if(!sku||!itemId)return Promise.resolve({
-      ok:false,source:'local_generator',message:'SKU ainda não identificada.',titles:[]
-    });
-    const cacheId=prefetchKey(data,extraTerms),old=seoAiPrefetchCache.get(cacheId);
-    if(old&&!force)return old.promise;
-    const version=force?(Number(old?.version||0)+1):0;
-    const previous=new Set((Array.isArray(previousTitles)?previousTitles:[]).map(key));
-    const product=facts(data);
-    const plans=variants(product,String(extraTerms||''),[]);
-    const collected=[],seen=new Set(previous);
-    for(let i=0;i<plans.length;i++){
-      const cfg=plans[i],terms=cfg.terms||[];
-      let selected='';
-      const times=terms.length?Math.min(36,terms.length*3):1;
-      for(let attempt=0;attempt<times;attempt++){
-        const rotation=terms.length?(version*3+i*2+attempt)%terms.length:0;
-        const ordered=terms.slice(rotation).concat(terms.slice(0,rotation));
-        const alt={...cfg,terms:ordered};
-        const candidate=assemble(alt,seen);
-        const length=count(candidate),signature=key(candidate);
-        if(length>=MIN&&length<=LIMIT&&signature&&!seen.has(signature)){
-          selected=candidate;break;
-        }
-      }
-      if(!selected){
-        // Sem fatos suficientes, nunca preencher com características inventadas.
-        const fallback=assemble(cfg,seen),n=count(fallback);
-        if(n>=MIN&&n<=LIMIT&&!seen.has(key(fallback)))selected=fallback;
-      }
-      if(selected){
-        seen.add(key(selected));
-        collected.push({title:selected,length:count(selected),
-          reason:cfg.reason||'Termos de produto e finalidade compatíveis com o cadastro.'});
-      }
-    }
-    const result={
-      ok:true,configured:false,source:'local_generator',titles:collected,
-      cached:false,marketVerified:false,marketCount:0,
-      message:collected.length===4
-        ?'Quatro títulos elaborados no gerador interno, sem uso da API OpenAI ou créditos.'
-        :'Somente '+collected.length+' título(s) válidos com os dados confirmados. Adicione termos comprovados para completar as quatro opções.'
-    };
-    const promise=Promise.resolve(result);
-    seoAiPrefetchCache.set(cacheId,{promise,version,createdAt:Date.now()});
-    if(seoAiPrefetchCache.size>36)seoAiPrefetchCache.delete(seoAiPrefetchCache.keys().next().value);
-    return promise;
-  }
+  // Sem ChatGPT conectado, não simular "IA" por frases locais repetidas.
+  // A pesquisa começa ao abrir a etapa SEO; não abre abas no carregamento da SKU.
+  function prefetch(){return Promise.resolve({ok:false,source:'chatgpt_extension',titles:[],message:'Aguardando geração pelo ChatGPT.'});}
 
   const setLabel=(e,v)=>{e.textContent=v;return e;};
   function facts(data){
@@ -294,7 +248,7 @@
       el('p','','4 opções elaboradas com termos do produto, de 100 a 120 caracteres, com edição manual.'));
     const badge=el('span','seo-studio-sku','SKU '+(sku||'—'));
     head.append(hd,badge);mount.append(head);
-    const note=el('div','seo-studio-alert','Geração automática gratuita no Shopee Manager, sem consumir créditos da API. Não utiliza o ChatGPT Plus; termos são baseados na SKU e na ficha do produto.');
+    const note=el('div','seo-studio-alert','Os quatro títulos são pedidos ao ChatGPT pela Ponte do Chrome (sem API paga). Palavras-chave pesquisadas terão fontes indicadas, quando o ChatGPT conseguir consultá-las.');
     mount.append(note);
     const kw=el('div','seo-studio-facts');
     kw.append(el('strong','','Base confirmada: '),el('span','',f.title));
@@ -306,12 +260,12 @@
     inp.placeholder='Ex.: número de peças, material, capacidade — somente se comprovados';
     inp.value=savedTerms.get(sku)||'';
     label.append(inp);
-    const btn=el('button','secondary seo-studio-rebuild','↻ Gerar novos títulos');btn.type='button';
+    const btn=el('button','secondary seo-studio-rebuild','✦ Gerar 4 títulos com ChatGPT');btn.type='button';
     manual.append(label,btn);
     const help=el('small','','Separe termos por vírgula. Não invente quantidade, INMETRO, entrega, brinde nem promoção.');
     mount.append(manual,help);
     const grid=el('div','seo-studio-grid');mount.append(grid);
-    const bottom=el('p','seo-studio-bottom','Selecione uma opção e edite livremente no campo “Título SEO proposto” abaixo. Nada é publicado automaticamente.');
+    const bottom=el('p','seo-studio-bottom','Selecione uma opção ou escreva manualmente. O título é salvo primeiro como rascunho desta SKU, sem publicar na Shopee.');
     mount.append(bottom);
     const status=el('div','seo-studio-status');status.setAttribute('role','status');mount.append(status);
     function regenerate(){
@@ -327,7 +281,8 @@
           ...fallback[i],title:v.title,reason:v.reason||fallback[i].reason,
           ai:true,name:['Busca principal','Sinônimos de busca','Uso e contexto','Descoberta'][i]
         }))
-        :fallback;
+        :[];
+      if(!output.length)grid.append(el('p','seo-studio-empty','Nenhuma sugestão do ChatGPT recebida. Clique em Gerar 4 títulos ou importe a resposta manualmente.'));
     const used=new Set();
     for(const o of output){
       if(used.has(key(o.title)))o.duplicate=true;
@@ -338,7 +293,7 @@
         const card=el('article','seo-studio-card'+(n>=MIN&&n<=LIMIT&&!o.duplicate?' valid':' needs-review'));
         const meta=el('div','seo-studio-card-top');
         const group=el('div','seo-studio-option');
-        group.append(el('strong','','0'+(i+1)+' · '+o.name),el('small','',o.ai?'Gerado sem API e sem créditos':'Sugestão interna · '+o.subtitle));
+        group.append(el('strong','','0'+(i+1)+' · '+o.name),el('small','',o.ai?'ChatGPT · revisar dados do produto':'Ainda não pesquisado · '+o.subtitle));
         const meter=el('div','seo-studio-meter');
         meter.append(el('strong','',score+'/100'),el('small','','nota estrutural estimada'));
         meta.append(group,meter);card.append(meta);
@@ -363,35 +318,69 @@
         actions.append(choose,copy);card.append(actions);grid.append(card);
       }
     }
-    const marketNotice=el('div','seo-studio-market-status','Preparando quatro títulos sem custo de API…');
+    const marketNotice=el('div','seo-studio-market-status','Ponte ChatGPT: pronta para gerar as quatro opções.');
     marketNotice.setAttribute('role','status');
     marketNotice.setAttribute('aria-live','polite');
     note.insertAdjacentElement('afterend',marketNotice);
+    const importer=el('details','seo-studio-manual-import');
+    importer.append(el('summary','','Se a extensão não estiver instalada: usar ChatGPT manualmente ▾'));
+    const openChat=el('button','secondary','Copiar pesquisa e abrir ChatGPT');openChat.type='button';
+    const paste=el('textarea','seo-studio-paste');paste.rows=5;
+    paste.placeholder='Cole aqui o JSON completo com os quatro títulos produzido pelo ChatGPT.';
+    const insert=el('button','secondary','Importar 4 títulos recebidos');insert.type='button';
+    const research=el('div','seo-studio-research');research.setAttribute('role','status');
+    importer.append(openChat,paste,insert);
+    mount.append(importer,research);
+    function displayResearch(result){
+      research.replaceChildren();
+      const verified=result.researchStatus==='verified';
+      research.append(el('strong','',verified?'Fontes de pesquisa citadas pelo ChatGPT:':'Termos não verificados por fonte: não são volumes oficiais de busca.'));
+      if(Array.isArray(result.keywords)&&result.keywords.length)
+       research.append(el('p','','Palavras-chave sugeridas: '+result.keywords.join(' · ')));
+      for(const url of result.sources||[]){
+       const anchor=el('a','seo-studio-research-link',url);anchor.href=url;anchor.target='_blank';anchor.rel='noopener noreferrer';
+       research.append(anchor);
+      }
+    }
+    function accept(result){
+      aiOptions=result.titles;
+      displayResearch(result);
+      setLabel(marketNotice,'✓ '+result.message+' Escolha um dos quatro títulos ou digite manualmente.');
+      regenerate();
+    }
+    openChat.onclick=async()=>{
+      try{
+       const prompt=globalThis.RASeoChatGPT?.prompt(data,inp.value,aiOptions?.map(x=>x.title)||[]);
+       if(!prompt)throw Error('Ponte do site não carregada.');
+       await navigator.clipboard.writeText(prompt);
+       window.open('https://chatgpt.com/','_blank','noopener,noreferrer');
+       setLabel(marketNotice,'Pesquisa copiada. Cole no ChatGPT e importe a resposta JSON nas quatro opções.');
+      }catch(error){setLabel(marketNotice,'Não foi possível copiar a pesquisa: '+error.message);}
+    };
+    insert.onclick=()=>{
+      try{
+       const result=globalThis.RASeoChatGPT?.parse(paste.value);
+       if(!result)throw Error('Validador do ChatGPT não carregado.');
+       accept(result);
+      }catch(error){setLabel(marketNotice,'Resposta não importada: '+error.message);}
+    };
     async function generateTitles(refresh=false){
       if(aiBusy)return;
-      const token=++researchToken;
+      const token=++researchToken,oldOptions=aiOptions;
       aiBusy=true;btn.disabled=true;
       const currentIdentity=identity;
-      setLabel(marketNotice,'Preparando títulos automaticamente no gerador interno, sem cobrança de API…');
+      setLabel(marketNotice,'Abrindo o ChatGPT pela extensão e pesquisando termos do produto. Aguarde o retorno na tela.');
       try{
-        const oldTitles=refresh&&Array.isArray(aiOptions)?aiOptions.map(x=>x.title):[];
-        const result=await prefetch(data,{
-          force:refresh,extraTerms:inp.value,previousTitles:oldTitles
+        if(!globalThis.RASeoChatGPT?.request)throw Error('Módulo SEO ChatGPT não carregado. Recarregue com Ctrl+Shift+R.');
+        const result=await globalThis.RASeoChatGPT.request(data,{
+          extraTerms:inp.value,previousTitles:refresh&&oldOptions?oldOptions.map(x=>x.title):[]
         });
         if(token!==researchToken||!mount.isConnected||mount.dataset.seoStudioIdentity!==currentIdentity)return;
-        const titles=Array.isArray(result.titles)?result.titles:[];
-        const candidates=titles.map(t=>({title:clean(t.title),reason:clean(t.reason)}));
-        if(candidates.some(t=>count(t.title)<MIN||count(t.title)>LIMIT))
-          throw Error('Uma sugestão não atende a regra de 100 a 120 caracteres.');
-        aiOptions=candidates.length===4?candidates:null;
-        setLabel(marketNotice,candidates.length===4
-          ?'✓ Quatro títulos preparados automaticamente por gerador interno, sem créditos de API. Selecione um ou clique em Gerar novos títulos.'
-          :result.message||'A ficha não tem dados suficientes para preparar quatro títulos válidos.');
-        regenerate();
+        accept(result);
       }catch(err){
         if(token!==researchToken||!mount.isConnected||mount.dataset.seoStudioIdentity!==currentIdentity)return;
-        aiOptions=null;
-        setLabel(marketNotice,'Falha ao preparar títulos locais: '+err.message);
+        aiOptions=oldOptions;
+        setLabel(marketNotice,'Não foi possível receber quatro títulos do ChatGPT: '+err.message+' Use a importação manual abaixo ou tente novamente.');
         regenerate();
       }finally{
         if(token===researchToken&&mount.dataset.seoStudioIdentity===currentIdentity){
@@ -407,7 +396,8 @@
       if(e.key==='Enter'){e.preventDefault();void generateTitles(true);}
     });
     regenerate();
-    // Processo local ao Shopee Manager: não abre o ChatGPT nem chama API paga.
+    // Abrir a etapa SEO inicia uma única pesquisa: não repetir cliques
+    // nem gerar quatro variações locais fictícias.
     void generateTitles(false);
   }
   globalThis.ShopeeTitleStudio={open,prefetch};
