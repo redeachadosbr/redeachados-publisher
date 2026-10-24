@@ -35,7 +35,7 @@ export function reconcileActiveSkuCandidates({sku,cached=[],pages=[]}={}){
 }
 export async function scanLiveNormalSku({sku,cached=[],getPage,maxPages=20,onMatch}={}){
  if(typeof getPage!=='function')throw Error('Consulta ao vivo indisponível.');
- const pages=[];let offset=0,completed=false;
+ const pages=[];let offset=0,completed=false,detailsIncomplete=false;
  const seen=new Set();
  for(let index=0;index<maxPages;index++){
   if(seen.has(offset))throw Error('Paginação repetida: não foi possível confirmar o anúncio ativo.');
@@ -44,6 +44,7 @@ export async function scanLiveNormalSku({sku,cached=[],getPage,maxPages=20,onMat
   if(page?.status!=='NORMAL'||!Array.isArray(page?.items))
    throw Error('A Shopee não confirmou a lista de anúncios NORMAL.');
   pages.push(page);
+  if(Array.isArray(page.warnings)&&page.warnings.length)detailsIncomplete=true;
   // Mesmo com a primeira correspondência, continuar lendo a lista completa:
   // duplicidade de SKU entre dois anúncios ativos exige seleção explícita.
   if(!page.hasNext){completed=true;break;}
@@ -53,6 +54,8 @@ export async function scanLiveNormalSku({sku,cached=[],getPage,maxPages=20,onMat
  }
  if(!completed)throw Error('Lista de anúncios ativos maior que o limite da pesquisa; use busca aprofundada. Nenhum anúncio antigo foi selecionado.');
  const result=reconcileActiveSkuCandidates({sku,cached,pages});
+ if(detailsIncomplete&&!result.matches.length)
+  throw Error('A Shopee não devolveu todos os detalhes das páginas NORMAL; não é seguro selecionar um anúncio antigo.');
  if(typeof onMatch==='function'&&result.matches.length)await onMatch(result.matches);
  return {...result,verified:true,pagesChecked:pages.length};
 }
