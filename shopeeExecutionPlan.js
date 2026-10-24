@@ -54,7 +54,9 @@ export function compileShopeeExecutionPlan({shopId,itemId,modelId,sku,record,rev
   if((record.attributeAudit?.missingMandatory||0)>0)warnings.push('Ficha técnica: atributos obrigatórios pendentes.');
   const changing=new Set(stages.technical?.reviewed?(state.attributes||[]).map(x=>Number(x.attributeId)):[]);
   const pendingAttributes=(record.attributeAudit?.attributes||[]).filter(x=>!x.conditional&&x.state==='missing'&&!changing.has(x.id));
-  if(pendingAttributes.length)warnings.push('Ficha técnica: '+pendingAttributes.map(x=>x.name).join(', ')+'. Dados sem fonte permanecem pendentes; somente os campos revisados serão alterados.');
+  if(pendingAttributes.length)warnings.push('Ficha técnica · campos opcionais não preenchidos: '+
+    pendingAttributes.map(x=>x.name).join(', ')+
+    '. Opcionais ausentes não são falha de execução nem impedem avançar.');
   if(state.variationConfig?.enabled&&wholeWorkflow)warnings.push(modelVariations?
    'Variações reais incluídas no processamento automático antes dos dados fiscais e do desconto.':
    'Variações já publicadas ou sem rascunho confirmado: o sistema verifica os modelos reais antes de concluir.');
@@ -62,7 +64,10 @@ export function compileShopeeExecutionPlan({shopId,itemId,modelId,sku,record,rev
   warnings.push(wholeWorkflow?'Desconto conferido será enviado como última etapa, somente após a confirmação comercial e fiscal.':'Preço e desconto não serão alterados nesta execução de etapa individual.');
   if(selected('technical')&&stages.technical?.reviewed&&state.attributes?.length){
     try{const attributes=compileAttributes(state.attributes,record,live);
-      if(!sameShopeeAttributes(attributes,live.attribute_list||[]))proposed.attribute_list=attributes;
+      // A API pode devolver o atributo "Condição: NOVO" em condition="NEW".
+      // Se TODOS os atributos revisados já corresponderem ao anúncio,
+      // nunca reenviar a ficha técnica.
+      if(!fieldsVerified({attribute_list:attributes},live))proposed.attribute_list=attributes;
     }catch(e){blocked.push(e.message);}
   }
   // Não bloquear uma alteração EXCLUSIVAMENTE fiscal por atributos técnicos
