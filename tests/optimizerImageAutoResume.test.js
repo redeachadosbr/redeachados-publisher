@@ -17,13 +17,16 @@ test('retomada automática identifica a primeira posição realmente vazia (mesm
  assert.deepEqual(slotsFromServer([]),[1,2,3,4,5,6,7,8,9]);
 });
 
-test('botão principal delega a retomada e nunca à limpeza total',()=>{
+test('botão principal executa a retomada diretamente, sem proxy oculto',()=>{
  assert.match(html,/id="optimizerChatgptAuto"[^>]*>[^<]*Gerar \/ continuar automaticamente/);
  assert.match(html,/id="optimizerChatgptRestartAll"/);
- assert.match(app,/\$\('#optimizerChatgptAuto'\)\?\.addEventListener\?\.\('click',\(\)=>\{/);
- assert.match(app,/if\(resume&&!resume\.disabled\)resume\.click\(\)/);
- const handler=app.slice(app.indexOf("$('#optimizerChatgptAuto')?.addEventListener"),app.indexOf("$('#optimizerChatgptResume')?.addEventListener"));
- assert.doesNotMatch(handler,/DELETE|restart:true/);
+ assert.match(app,/async function optimizerChatgptContinueFromServer\(\)/);
+ assert.match(app,/\$\('#optimizerChatgptAuto'\)\?\.addEventListener\?\.\('click',\(\)=>void optimizerChatgptContinueFromServer\(\)\)/);
+ assert.doesNotMatch(app,/resume\.click\(\)/);
+ const handler=app.slice(app.indexOf('async function optimizerChatgptContinueFromServer'),app.indexOf("$('#optimizerChatgptAbort')?.addEventListener"));
+ assert.match(handler,/Consultando a primeira posição pendente diretamente no servidor/);
+ assert.match(handler,/optimizerChatgptContinueBusy/);
+ assert.doesNotMatch(handler,/method:'DELETE'|restart:true/);
 });
 
 test('retomada consulta sempre banco e informa slots confirmados para a Ponte',()=>{
