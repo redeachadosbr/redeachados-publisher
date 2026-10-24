@@ -46,6 +46,7 @@ function modernize(data){
  const grid=mount.querySelector('.seo-studio-grid');
  const manual=mount.querySelector('.seo-studio-custom');
  const aiButton=mount.querySelector('.seo-studio-rebuild');
+ const recoverButton=mount.querySelector('.seo-studio-recover');
  const notice=mount.querySelector('.seo-studio-market-status');
  const status=mount.querySelector('.seo-studio-status');
  const importPanel=mount.querySelector('.seo-studio-manual-import');
@@ -152,6 +153,7 @@ function modernize(data){
  suggestHead.append(suggestionLabel,help('As sugestões utilizam os dados da SKU e, quando disponíveis, ofertas verificadas. A pontuação é apenas estrutural, não representa volume de buscas.','Sobre as sugestões'));
  suggestions.append(suggestHead);
  aiButton.classList.add('seo-modern-generate');aiButton.textContent='✦ Gerar 4 títulos com ChatGPT';suggestions.append(aiButton);
+ if(recoverButton){recoverButton.classList.add('seo-modern-recover');suggestions.append(recoverButton);}
  const supplierButton=action('▤ Usar título da WeDrop',()=>{
   const name=clean(p.name||data.productTitle||'');
   if(!name)return;
