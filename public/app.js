@@ -8072,8 +8072,8 @@ globalThis.window?.addEventListener?.('message',async(event)=>{
 });
 // A new nine-image action is atomic: clear only commercial staging and
 // start a fresh extension job from image 01. No nested click/confirm recursion.
-$('#optimizerChatgptAuto')?.addEventListener?.('click',async()=>{
- const w=optimizerWorkflowPlan,button=$('#optimizerChatgptAuto');
+$('#optimizerChatgptRestartAll')?.addEventListener?.('click',async()=>{
+ const w=optimizerWorkflowPlan,button=$('#optimizerChatgptRestartAll');
  const status=$('#optimizerChatgptBridgeStatus');
  let near=$('#optimizerChatgptActionStatus');
  if(!near&&button){
@@ -8156,6 +8156,11 @@ function optimizerBridgeRecoverFromExtension(payload){
   window.postMessage({kind:'RA_SITE_CONTINUE',requestId,payload},location.origin);
  });
 }
+// A ação principal sempre delega ao fluxo que confere os slots no servidor.
+$('#optimizerChatgptAuto')?.addEventListener?.('click',()=>{
+ const resume=$('#optimizerChatgptResume');
+ if(resume&&!resume.disabled)resume.click();
+});
 $('#optimizerChatgptResume')?.addEventListener?.('click',async()=>{
  const w=optimizerWorkflowPlan,button=$('#optimizerChatgptResume');
  const status=$('#optimizerChatgptBridgeStatus');
@@ -8176,15 +8181,25 @@ $('#optimizerChatgptResume')?.addEventListener?.('click',async()=>{
   const first=String(missing[0]).padStart(2,'0');
   // Esta ação NÃO deleta arquivos: preserva inclusive importações pendentes.
   // Se já há uma tentativa no Chrome, retomá-la recupera a imagem antes de criar outra.
-  notify('Procurando a execução anterior da SKU '+w.sku+'. Primeira posição pendente: '+first+'/09. Posições salvas preservadas.');
-  await optimizerChatBridgeRelease('Recuperando execução da SKU '+w.sku+' sem apagar imagens.');
-  optimizerChatBridgeActiveClear(optimizerChatBridgeNonce);
-  optimizerChatBridgeJob=null;optimizerChatBridgeNonce='';optimizerChatBridgeSku='';
-  optimizerChatBridgeBusy=false;optimizerChatBridgeUploading=false;
-  sessionStorage.removeItem(RA_CHAT_BRIDGE_JOB_KEY);sessionStorage.removeItem(RA_CHAT_BRIDGE_SESSION_KEY);
-  const recovered=await optimizerBridgeRecoverFromExtension({sku:String(w.sku),itemId:String(w.itemId),modelId:String(w.modelId),completed:stored,imageUrl:brief.original,prompts:brief.prompts});
+  notify('Servidor conferido: '+stored.length+'/9 salvas. Primeira pendente: '+first+'/09. Sincronizando a Ponte sem excluir fotos.');
+  // NÃO enviar RA_SITE_ABORT antes de RA_SITE_CONTINUE: isso causava
+  // competição e podia pausar a mesma execução que deveria ser retomada.
+  const priorJob=optimizerChatBridgeJob;
+  if(priorJob&&!optimizerChatBridgeIdentity(priorJob,w))
+   await optimizerChatBridgeRelease('Outra SKU pausada. Continuando '+w.sku+'.');
+  else if(priorJob&&!priorJob.stopped&&!priorJob.complete){
+   const pendingUploads=await optimizerChatBridgeRecover({includeBlocked:true});
+   if(pendingUploads)notify('Recuperando '+pendingUploads+' arquivo(s) capturado(s) antes de continuar na imagem '+first+'/09.');
+  }
+  const recovered=await optimizerBridgeRecoverFromExtension({
+   sku:String(w.sku),itemId:String(w.itemId),modelId:String(w.modelId),
+   completed:stored,imageUrl:brief.original,prompts:brief.prompts
+  });
   if(!optimizerImagesSameSku(w))throw Error('A SKU mudou; o comando de recuperação foi interrompido.');
   if(recovered.ok){
+   // Só encerrar uma sessão anterior se seu nonce NÃO for o recuperado.
+   if(optimizerChatBridgeJob?.nonce&&optimizerChatBridgeJob.nonce!==recovered.nonce)
+    await optimizerChatBridgeRelease('Sessão antiga substituída pela reconciliação.');
    optimizerChatBridgeNonce=recovered.nonce;optimizerChatBridgeSku=w.sku;
    sessionStorage.setItem(RA_CHAT_BRIDGE_SESSION_KEY,optimizerChatBridgeNonce);
    optimizerChatBridgeRemember(w,missing);
@@ -8194,7 +8209,13 @@ $('#optimizerChatgptResume')?.addEventListener?.('click',async()=>{
    // O runner recebe autorização somente DEPOIS que esta aba registrou o nonce antigo.
    window.postMessage({kind:'RA_SITE_WAKE',nonce:optimizerChatBridgeNonce},location.origin);
   }else if(recovered.reason==='NO_RECOVERABLE_JOB'||recovered.reason==='ALREADY_COMPLETE'){
-   // Nenhuma execução ativa no Chrome: nova sessão, mantendo o progresso real do servidor.
+   // Sem job recuperável na extensão: novo trabalho começando na primeira vaga
+   // do servidor, sem restart total nem remoção dos arquivos já salvos.
+   if(optimizerChatBridgeJob)await optimizerChatBridgeRelease('Sessão antiga encerrada; fotos já salvas preservadas.');
+   optimizerChatBridgeActiveClear(optimizerChatBridgeNonce);
+   optimizerChatBridgeJob=null;optimizerChatBridgeNonce='';optimizerChatBridgeSku='';
+   sessionStorage.removeItem(RA_CHAT_BRIDGE_JOB_KEY);
+   sessionStorage.removeItem(RA_CHAT_BRIDGE_SESSION_KEY);
    optimizerChatBridgeNonce=crypto.randomUUID();optimizerChatBridgeSku=w.sku;
    sessionStorage.setItem(RA_CHAT_BRIDGE_SESSION_KEY,optimizerChatBridgeNonce);
    optimizerChatBridgeRemember(w,missing);
@@ -8366,9 +8387,17 @@ async function optimizerImagesLoad(){
   optimizerImageCorrectionPreviewMap=stored;
   optimizerImageCorrectionRefreshPreview();
   optimizerImagesSavedSlots=new Set(stored.keys());
+   // Servidor define a PRIMEIRA posição realmente vazia.
+   const firstMissing=Array.from({length:9},(_,i)=>i+1).find(n=>!stored.has(n));
    const runButton=$('#optimizerChatgptAuto');
-   if(runButton)runButton.textContent=stored.size>0?'✦ Recomeçar 9 imagens desde 01':'✦ Gerar 9 imagens com ChatGPT';
-   const resumeButton=$('#optimizerChatgptResume');if(resumeButton)resumeButton.disabled=stored.size===9;
+   if(runButton){
+    runButton.disabled=!firstMissing;
+    runButton.textContent=firstMissing
+     ?'✦ Gerar / continuar da imagem '+String(firstMissing).padStart(2,'0')+'/09'
+     :'✓ 9/9 imagens prontas';
+   }
+   const resumeButton=$('#optimizerChatgptResume');
+   if(resumeButton)resumeButton.disabled=!firstMissing;
   const completed=stored.size,pending=9-completed;
   const originals=Array.isArray(w.imageUrls)?w.imageUrls.filter(Boolean):[];
   const counters={
