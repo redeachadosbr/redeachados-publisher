@@ -281,7 +281,23 @@
       grid.replaceChildren();
       savedTerms.set(sku,inp.value);
       if(!Array.isArray(aiOptions)||aiOptions.length!==4){
-       grid.append(el('p','seo-studio-empty','Ainda não há quatro títulos recebidos do ChatGPT. Clique em Gerar novos títulos ou importe a resposta manualmente.'));
+       const names=['Busca principal','Palavras-chave','Uso e contexto','Descoberta'];
+       for(let i=0;i<4;i++){
+        const card=el('article','seo-studio-card seo-studio-empty-card');
+        const top=el('div','seo-studio-card-top'),group=el('div','seo-studio-option');
+        group.append(el('strong','','0'+(i+1)+' · '+names[i]),
+         el('small','','Aguardando pesquisa do ChatGPT'));
+        const meter=el('div','seo-studio-meter');
+        meter.append(el('strong','','— /100'),el('small','','nota SEO'));
+        top.append(group,meter);
+        const title=el('p','seo-studio-candidate','Aguardando título validado de 100 a 120 caracteres.');
+        const info=el('div','seo-studio-metrics');
+        info.append(el('span','seo-studio-caution','Sem título recebido'));
+        const action=el('div','seo-studio-card-actions');
+        const choose=el('button','seo-studio-choose','✓ Usar este título');
+        choose.type='button';choose.disabled=true;action.append(choose);
+        card.append(top,title,info,action);grid.append(card);
+       }
        return;
       }
       const options=aiOptions.map((v,i)=>({
@@ -304,9 +320,18 @@
         const meta=el('div','seo-studio-card-top');
         const group=el('div','seo-studio-option');
         group.append(el('strong','','0'+(i+1)+' · '+o.name),
-          el('small','',o.ideal?'★ MELHOR NOTA — opção ideal sugerida':'Classificação '+(i+1)+' de 4 · ChatGPT'));
+          el('small','',o.ideal?'★ RECOMENDADO — maior nota SEO':'Classificado em '+(i+1)+'º lugar · ChatGPT'));
         const meter=el('div','seo-studio-meter');
         meter.append(el('strong','',score+'/100'),el('small','','nota SEO estimada'));
+        const track=el('div','seo-studio-score-track');
+        track.setAttribute('role','progressbar');
+        track.setAttribute('aria-label','Nota SEO do título '+(i+1));
+        track.setAttribute('aria-valuemin','0');
+        track.setAttribute('aria-valuemax','100');
+        track.setAttribute('aria-valuenow',String(score));
+        const fill=el('div','seo-studio-score-fill');
+        fill.style.width=Math.max(0,Math.min(100,score))+'%';
+        track.append(fill);meter.append(track);
         meta.append(group,meter);card.append(meta);
         card.append(el('p','seo-studio-candidate',o.title));
         const keys=el('div','seo-studio-metrics');
@@ -320,7 +345,7 @@
          '/10 · emojis '+o.breakdown.emojis+'/10 · clareza '+o.breakdown.readability+'/5.');
         card.append(explain);
         const actions=el('div','seo-studio-card-actions');
-        const choose=el('button','seo-studio-choose','✓ Usar este título');choose.type='button';
+        const choose=el('button','seo-studio-choose',o.ideal?'✓ Usar título recomendado':'✓ Usar este título');choose.type='button';
         choose.disabled=n<MIN||n>LIMIT||repeated;
         choose.title=choose.disabled?'Não atende os requisitos de 100 a 120 caracteres.':'Usar esta opção como rascunho da SKU';
         choose.onclick=()=>{
@@ -367,7 +392,7 @@
         savedAt:new Date().toISOString(),result
       }));}catch{}
       displayResearch(result);
-      setLabel(marketNotice,'✓ 4 títulos classificados da maior para a menor nota. A primeira opção tem a melhor pontuação SEO estimada; confira as fontes antes de usar.');
+      setLabel(marketNotice,'✓ 4 títulos importados e classificados por nota SEO de 0 a 100. O cartão 01 é a opção recomendada. A pontuação estima qualidade estrutural, não volume oficial de buscas.');
       regenerate();
     }
     openChat.onclick=async()=>{
