@@ -44,12 +44,12 @@ export function shopeeExecutionProgress(job){
  const ready=arr(plan.original?.video_info);
  const videoRef=(result.video||media.video)?.id;
  const paths=new Set(arr((result.video||media.video)?.videoInfo?.video_url_list)
-  .map(x=>{try{return new URL(x.video_url).pathname.replace(/\\/+$/,'');}catch{return null;}})
+  .map(x=>{try{return new URL(x.video_url).pathname;}catch{return null;}})
   .filter(Boolean));
  const videoReadback=readyVideo&&Boolean(videoRef)&&ready.some(x=>
   String(x?.video_upload_id||'')===String(videoRef)||
   String(x?.video_id||'')===String(videoRef)||
-  (paths.size>0&&(()=>{try{return paths.has(new URL(x?.video_url).pathname.replace(/\\/+$/,''));}catch{return false;}})()));
+  (paths.size>0&&(()=>{try{return paths.has(new URL(x?.video_url).pathname);}catch{return false;}})()));
  const commercialConfirmed=Boolean(result.primaryVerified)||state==='verified'||result.verified===true;
  // Recuperação após duas leituras oficiais pode confirmar a mídia mesmo
  // que título/atributos permaneçam pendentes. Não confundir com upload.
