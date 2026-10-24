@@ -59,7 +59,11 @@ export function calculateShopeeSale(grossCents,c,costCents){
 // Motor Matriz — finais psicológicos permitidos para o PREÇO REAL pago pelo comprador.
 // Ajustamos o preço BRUTO, não apenas o texto da tela: descontos, taxas,
 // lucro e dados enviados à Shopee precisam permanecer matematicamente iguais.
-export const SHOPEE_ATTRACTIVE_CENTS=Object.freeze([50,59,60,70,79,89,90,99]);
+// Todo preço final termina em 0 ou 9 centavos: inclui ,40 e ,49.
+// A seleção usa o valor REAL depois de promoção e cupom, não uma máscara na UI.
+export const SHOPEE_ATTRACTIVE_CENTS=Object.freeze(
+ Array.from({length:10},(_,i)=>[i*10,i*10+9]).flat()
+);
 const attractiveCents=new Set(SHOPEE_ATTRACTIVE_CENTS);
 export function adjustShopeeCustomerPriceEnding({grossCents,settings,unitCostCents,referenceSaleCents,
   minimumMarginPct=0,maximumSaleCents=null}){
@@ -168,7 +172,11 @@ export function quoteShopeePrice({unitCost,settings={},marketAverage=null,margin
   const originalMargin=financial.marginPct;
   // Se a simulação já respeitava a margem desejada, preserve essa margem.
   // Em planos competitivos abaixo da meta, não reduza a margem já aprovada.
-  const protectedMargin=Math.max(c.minMarginPct,Math.min(desired,originalMargin));
+  // Se o mercado impôs uma margem menor que a desejada, proteger o piso
+  // mínimo configurado, NÃO exigir conservar cada centésimo da margem atual:
+  // isso impedia ajustar, por exemplo, R$103,42 -> R$103,40 sem violar 5%.
+  // Se a meta desejada já foi alcançada, essa meta continua protegida.
+  const protectedMargin=originalMargin+1e-8>=desired?desired:c.minMarginPct;
   const marketCeiling=state==='COMPETITIVO'&&market!==null?
    financial.saleCents<=money(market)?money(market):Math.round(money(market)*1.02):null;
   const charm=adjustShopeeCustomerPriceEnding({
@@ -176,6 +184,10 @@ export function quoteShopeePrice({unitCost,settings={},marketAverage=null,margin
    minimumMarginPct:protectedMargin,maximumSaleCents:marketCeiling
   });
   financial=charm.financial;
+  // Não apresentar nem salvar um preço fora da regra como recomendação final.
+  // Se não houver final 0/9 que preserve piso e teto, requer revisão do plano.
+  if(!attractiveCents.has(Math.round(financial.finalPrice*100)%100))
+   throw Error('Sem preço final terminando em 0 ou 9 centavos que preserve a margem mínima e o limite competitivo. Reveja o desconto ou a referência de mercado; nenhum preço foi enviado à Shopee.');
   if(charm.adjusted)
    note+=' Final ao comprador ajustado para R$ '+financial.finalPrice.toFixed(2).replace('.',',')+
     ' (terminação comercial, sem reduzir a margem protegida).';
