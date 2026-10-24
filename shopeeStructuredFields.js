@@ -161,13 +161,32 @@ export function stableDataJson(value){
 export function sameData(a,b){
  return stableDataJson(a)===stableDataJson(b);
 }
+// Na Open API da Shopee, "Condição" (atributo 100413) pode ser
+// devolvida em get_item_base_info.condition ("NEW"/"USED"), e não em
+// attribute_list. Não inferir publicação por texto/categoria ou cadastro
+// interno: exigir que o campo oficial esteja presente e seja equivalente.
+// A checagem cobre APENAS o atributo 100413, com valor customizado único.
+export function conditionAttributeVerified(attribute,item){
+ if(Number(attribute?.attribute_id)!==100413)return false;
+ const values=list(attribute?.attribute_value_list);
+ if(values.length!==1||Number(values[0]?.value_id)!==0)return false;
+ const canonical=v=>{
+  const s=String(v??'').normalize('NFD').replace(/[\u0300-\u036f]/g,'')
+   .trim().toUpperCase();
+  return s==='NOVO'||s==='NEW'?'NEW':s==='USADO'||s==='USED'?'USED':null;
+ };
+ const desired=canonical(values[0]?.original_value_name);
+ const actual=canonical(item?.condition);
+ return Boolean(desired&&actual&&desired===actual);
+}
 export function fieldsVerified(proposed,item){
  return Object.entries(proposed).every(([key,value])=>{
   if(key==='attribute_list')return value.every(x=>{
    const actual=list(item.attribute_list).find(y=>Number(y.attribute_id)===Number(x.attribute_id));
-   return x.attribute_value_list?.every(v=>actual?.attribute_value_list?.some(w=>
+   if(actual)return x.attribute_value_list?.every(v=>actual?.attribute_value_list?.some(w=>
     Number(w.value_id)===Number(v.value_id)&&(Number(v.value_id)>0||String(w.original_value_name)===String(v.original_value_name))&&
     String(w.value_unit||'')===String(v.value_unit||'')));
+   return conditionAttributeVerified(x,item);
   });
   if(key==='tax_info')return Object.entries(value).every(([k,v])=>String(item.tax_info?.[k]??'')===String(v??''));
   return String(item?.[key]??'').replace(/\r\n?/g,'\n').trim()===String(value??'').replace(/\r\n?/g,'\n').trim();
