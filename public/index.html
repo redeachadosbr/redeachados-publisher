@@ -599,8 +599,8 @@
               </div>
 
           <div class="optimizer-image-mode-selector" role="group" aria-label="Geração de imagens comerciais">
-            <button id="optimizerChatgptAuto" type="button">✦ Gerar 9 imagens com ChatGPT</button>
-            <button id="optimizerChatgptResume" type="button" class="secondary" title="Preserva as imagens comerciais já salvas e retoma a partir da primeira posição ainda não preenchida">↻ Continuar da primeira imagem pendente</button>
+            <button id="optimizerChatgptAuto" type="button" title="Consulta as imagens salvas no servidor e continua automaticamente da primeira posição vazia, sem excluir nada">✦ Gerar / continuar automaticamente</button>
+            <button id="optimizerChatgptResume" type="button" class="secondary" style="display:none" aria-hidden="true" tabindex="-1" title="Rotina interna de retomada automática">↻ Continuar da primeira imagem pendente</button>
             <button id="optimizerModeApi" type="button" class="secondary" aria-pressed="false">⚙ Gerar automaticamente pela API</button>
           </div>
           <div id="optimizerImagesChatgptPanel" class="optimizer-chatgpt-panel" hidden>
@@ -608,7 +608,11 @@
               <strong>✦ ChatGPT · 9 imagens comerciais</strong>
               <small>Um comando individual por posição. A próxima imagem só começa quando a anterior for salva.</small>
             </div>
-            <p><strong>Gerar 9 imagens:</strong> recomeça na imagem 01, substituindo somente as fotos comerciais preparadas. <strong>Continuar da primeira pendente:</strong> preserva as posições salvas, recupera um envio interrompido quando possível e só gera as imagens restantes. A posição seguinte começa após confirmação do servidor. Confira as nove imagens antes de publicar.</p>
+            <p><strong>Gerar / continuar automaticamente:</strong> confere no servidor as nove posições da SKU, inicia na primeira imagem ainda vazia e mantém todas as anteriores. A próxima posição só começa depois da confirmação do upload. Confira as fotos antes de publicar.</p>
+            <details class="optimizer-chatgpt-danger-reset"><summary>Recomeçar tudo desde a imagem 01 (apaga fotos preparadas)</summary>
+              <p>Somente use esta opção se quiser substituir todas as imagens comerciais já salvas desta SKU. As fotos originais publicadas na Shopee não serão modificadas.</p>
+              <button type="button" class="secondary" id="optimizerChatgptRestartAll">Reiniciar e substituir as 9 imagens</button>
+            </details>
             <div class="optimizer-chatgpt-bridge-actions">
               <button type="button" id="optimizerChatgptAbort" class="secondary" hidden>Pausar geração</button>
             </div>
@@ -1676,7 +1680,7 @@
 <script src="/seo-modern-layout.js?v=1.0.1-auto-titles"></script>
 <script src="/description-modern-layout.js?v=1.0.3"></script>
 <script src="/fiscal-modern-layout.js?v=1.0.1-fiscal-cards"></script>
-<script src="/app.js?v=1.21.44-capture-status"></script>
+<script src="/app.js?v=1.21.45-auto-resume-server-slots"></script>
 <link rel="stylesheet" href="/optimizer-variations.css?v=1.2.0">
 <script src="/optimizer-variations.js?v=1.2.2-supplier-color"></script>
 
