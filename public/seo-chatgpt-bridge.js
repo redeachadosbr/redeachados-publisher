@@ -159,8 +159,8 @@
     if(m.kind==='RA_EXTENSION_READY'&&!started){
      const parts=String(m.version||'').split('.').map(Number);
      const updated=parts.length===3&&parts.every(Number.isInteger)&&
-      (parts[0]>1||(parts[0]===1&&(parts[1]>0||(parts[1]===0&&parts[2]   >=32))));
-     if(!updated)return finish(Error('Ponte ChatGPT '+(m.version||'antiga')+' detectada. Para títulos, atualize para a versão 1.0.32.'));
+      (parts[0]>1||(parts[0]===1&&(parts[1]>0||(parts[1]===0&&parts[2]>=45))));
+     if(!updated)return finish(Error('Ponte ChatGPT '+(m.version||'antiga')+' detectada. Instale a versão 1.0.45 para abrir títulos sem bloquear as imagens. Sua SKU e o trabalho salvo permanecem intactos.'));
      started=true;window.clearTimeout(probeTimer);
      window.postMessage({kind:'RA_SITE_SEO_START',payload:{nonce,sku,itemId,modelId,
       prompt:prompt(data,extraTerms,previousTitles)}},ORIGIN);
