@@ -155,8 +155,16 @@
   status.setAttribute('role','status');status.setAttribute('aria-live','polite');
   const generate=button('✨ Gerar descrição com ChatGPT',()=>{void runGenerate();},'desc-modern-chatgpt-generate');
   const importCopied=button('📋 Importar descrição copiada',()=>{void runImportCopied();},'desc-modern-chatgpt-import');
+  const recover=button('↻ Recuperar descrição do ChatGPT',()=>{void runRecover();},'desc-modern-chatgpt-recover');
   const line=el('div','desc-modern-chatgpt-buttons');
-  line.append(generate,importCopied);controls.append(line,status);section.append(controls);
+  line.append(generate,recover,importCopied);controls.append(line);
+  const manual=el('details','desc-modern-manual-import');
+  const manualSummary=el('summary','','Se necessário, cole a resposta completa do ChatGPT ▾');
+  const manualArea=el('textarea','desc-modern-manual-text');
+  manualArea.rows=5;manualArea.placeholder='Cole aqui a resposta completa do ChatGPT com o campo description.';
+  const manualButton=button('Importar texto colado',()=>{void runManual();},'desc-modern-manual-confirm');
+  manual.append(manualSummary,manualArea,manualButton);controls.append(manual,status);
+  section.append(controls);
   let busy=false;
   const current=()=>identity===sourceIdentity&&
    $('optimizerWorkflowEditor')?.classList.contains('desc-modern-editor')&&
@@ -175,7 +183,7 @@
   }
   async function runGenerate(){
    if(busy)return;
-   busy=true;generate.disabled=true;importCopied.disabled=true;
+   busy=true;generate.disabled=true;recover.disabled=true;importCopied.disabled=true;
    status.textContent='Preparando descrição comercial com dados da WeDrop…';
    try{
     if(!globalThis.RADescriptionChatGPT?.request)
@@ -189,20 +197,46 @@
     if(current())status.textContent='Não foi possível importar automaticamente: '+error.message+
      ' A aba da pesquisa fica aberta para recuperar a resposta.';
    }finally{
-    busy=false;generate.disabled=false;importCopied.disabled=false;
+    busy=false;generate.disabled=false;recover.disabled=false;importCopied.disabled=false;
    }
+  }
+  async function runRecover(){
+   if(busy)return;
+   busy=true;generate.disabled=true;recover.disabled=true;importCopied.disabled=true;
+   status.textContent='Recuperando a descrição já gerada para esta SKU no ChatGPT…';
+   try{
+    if(!globalThis.RADescriptionChatGPT?.recover)throw Error('Instale a Ponte 1.0.35 e atualize o Manager.');
+    const result=await globalThis.RADescriptionChatGPT.recover(data,
+     message=>{if(current())status.textContent=message;});
+    await applyDescription(result);
+    globalThis.RADescriptionChatGPT.acknowledgeRecovery(result);
+   }catch(error){
+    if(current())status.textContent='Recuperação não concluída: '+error.message+
+     ' Se necessário, copie a resposta completa e cole no campo abaixo.';
+   }finally{busy=false;generate.disabled=false;recover.disabled=false;importCopied.disabled=false;}
+  }
+  async function runManual(){
+   if(busy)return;
+   try{
+    const result=globalThis.RADescriptionChatGPT?.parse(manualArea.value);
+    if(!result)throw Error('Cole a resposta completa do ChatGPT antes de importar.');
+    await applyDescription(result);
+    manual.open=false;manualArea.value='';
+   }catch(error){manual.open=true;status.textContent='Não foi possível importar: '+error.message;}
   }
   async function runImportCopied(){
    if(busy)return;
-   busy=true;generate.disabled=true;importCopied.disabled=true;
+   busy=true;generate.disabled=true;recover.disabled=true;importCopied.disabled=true;
    try{
     const raw=await navigator.clipboard.readText();
     const result=globalThis.RADescriptionChatGPT?.parse(raw);
     if(!result)throw Error('Copie primeiro a resposta JSON completa do ChatGPT.');
     await applyDescription(result);
    }catch(error){
-    if(current())status.textContent='Não foi possível importar a descrição copiada: '+error.message;
-   }finally{busy=false;generate.disabled=false;importCopied.disabled=false;}
+    manual.open=true;manualArea.focus();
+    if(current())status.textContent='Falha na importação copiada: '+error.message+
+     ' Copie toda a resposta no ChatGPT, cole no campo aberto com Ctrl+V e clique em Importar texto colado.';
+   }finally{busy=false;generate.disabled=false;recover.disabled=false;importCopied.disabled=false;}
   }
 
   const strip=el('div','desc-modern-supplier');
