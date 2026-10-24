@@ -7737,8 +7737,13 @@ function optimizerFiscalRender(data){
  for(const [key,value] of Object.entries(defaults)){
   if(!String(draft[key]??'').trim()&&String(value??'').trim())draft[key]=value;
  }
- const cestEntries=[saved.cest,data.taxCurrent?.cest,defaults.cest].map(v=>String(v??'').trim());
- draft.cest=cestEntries.find(v=>/^\d{7}$/.test(v))||cestEntries.find(Boolean)||'00';
+ // A escolha revisada da loja é prioritária, mesmo quando for "00".
+ // Um CEST retornado pela Shopee deve aparecer apenas como valor de
+ // marketplace, sem reescrever silenciosamente a escolha do vendedor.
+ const sellerCest=String(saved.cest??'').trim();
+ const liveCest=String(data.taxCurrent?.cest??'').trim();
+ const suggestedCest=String(defaults.cest??'').trim();
+ draft.cest=sellerCest||liveCest||suggestedCest||'00';
  const existingPis=String(saved.pis_cofins_cst||data.taxCurrent?.pis_cofins_cst||'').trim();
  if(existingPis)draft.pis_cofins_cst=existingPis;
  const summary=optimizerMake('p','optimizer-category-summary',
@@ -7752,6 +7757,7 @@ function optimizerFiscalRender(data){
   if(value&&key!=='evidence'){
    const savedValue=Object.hasOwn(saved,key)&&String(saved[key]??'').trim()!==''&&saved[key]===draft[key];
    const origin=savedValue?'Revisão salva desta SKU':
+     key==='cest'&&value===liveCest?'Shopee (API do anúncio; conferência fiscal necessária)':
      (data.taxSuggestionSources||{})[key]||'Informação fiscal obtida do anúncio';
    const provenance=optimizerMake('small','optimizer-fiscal-filled',
      '✓ '+(savedValue?'Valor já salvo':'Pré-preenchido automaticamente')+' · '+origin);
@@ -7768,8 +7774,10 @@ function optimizerFiscalRender(data){
  if(cest){
   const marker=String(draft.cest||'').trim()==='00';
   const info=optimizerMake('small','optimizer-fiscal-cest-help',marker
-    ?'Motor Matriz: 00 é o valor escolhido pela loja. Ao executar, será enviado literalmente para teste na Shopee; a plataforma poderá rejeitá-lo. Confira a prévia.'
-    :'CEST da SKU: confira o código de 7 dígitos com a WeDrop/contabilidade antes de enviar os dados fiscais.');
+    ?'Motor Matriz: 00 é apenas o marcador interno da loja, não um CEST fiscal válido. '+
+     (liveCest&&liveCest!=='00'?'A Shopee informa '+liveCest+' para este anúncio: esse valor publicado NÃO foi alterado. ':'')+
+     'Confirme o enquadramento com a contabilidade antes de enviar informações fiscais.'
+    :'CEST do anúncio: confira a correspondência deste código com o NCM e o produto antes de enviar dados fiscais.');
   cest.closest('label')?.append(info);
  }
 }
