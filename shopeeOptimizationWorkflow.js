@@ -20,6 +20,12 @@ export function validateImageNotes(input){
  if(entries.length>9||entries.some(([k,v])=>!/^[1-9]$/.test(k)||typeof v!=='string'||[...v].length>500))throw Error('Informe instruções de até 500 caracteres por posição (1–9).');
  return Object.fromEntries(entries.map(([k,v])=>[k,v.trim()]));
 }
+export function validateImagePrompts(input){
+ if(!input||typeof input!=='object'||Array.isArray(input))throw Error('Prompts de imagens inválidos.');
+ const entries=Object.entries(input);
+ if(entries.length>9||entries.some(([k,v])=>!/^[1-9]$/.test(k)||typeof v!=='string'||[...v].length>16000))throw Error('Informe um prompt de até 16.000 caracteres por posição (1–9).');
+ return Object.fromEntries(entries.map(([k,v])=>[k,v.replace(/\r\n?/g,'\n').normalize('NFC').trim()]));
+}
 export const normalizedTitle=value=>String(value||'').normalize('NFC').replace(/\s+/g,' ').trim();
 export const safeTitle=value=>[...normalizedTitle(value)].slice(0,120).join('');
 export const codePointCount=value=>[...String(value||'')].length;
@@ -82,9 +88,11 @@ export function validateReview(input){
   if(input.reviewed&&stage==='description')validateContentRules({description:description??''});
   const variationConfig=stage==='variants'?validateVariationConfig(input.variationConfig,input.reviewed):undefined;
   const imageNotes=stage==='images'&&input.imageNotes!==undefined?validateImageNotes(input.imageNotes):undefined;
+  const imagePrompts=stage==='images'&&input.imagePrompts!==undefined?validateImagePrompts(input.imagePrompts):undefined;
   return {stage,reviewed:input.reviewed,title,description,
     ...(variationConfig!==undefined?{variationConfig}:{}),
     ...(imageNotes!==undefined?{imageNotes}:{}),
+    ...(imagePrompts!==undefined?{imagePrompts}:{}),
     ...(stage==='technical'&&Array.isArray(input.attributes)?{attributes:input.attributes}:{}),
     ...(stage==='fiscal'&&input.tax?{tax:input.tax}:{})};
 }
