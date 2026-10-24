@@ -48,6 +48,8 @@ function modernize(data){
  const aiButton=mount.querySelector('.seo-studio-rebuild');
  const notice=mount.querySelector('.seo-studio-market-status');
  const status=mount.querySelector('.seo-studio-status');
+ const importPanel=mount.querySelector('.seo-studio-manual-import');
+ const researchPanel=mount.querySelector('.seo-studio-research');
  if(!grid||!manual||!aiButton||!notice||!status)return;
  const p=data.supplierProduct||{},sku=clean(data.sku||'');
  editor.classList.add('seo-modern-editor');
@@ -88,6 +90,16 @@ function modernize(data){
  editorHeader.append(label,indicator);
  editorCard.append(editorHeader);
  draft.hidden=false;field.rows=2;field.setAttribute('aria-label','Título SEO editável');editorCard.append(draft);
+ const saveManual=action('💾 Salvar título manual',async()=>{
+  saveManual.disabled=true;
+  try{
+   const out=await globalThis.ShopeeSeoSaveManual?.();
+   if(!out?.saved)throw Error('A confirmação do servidor não foi recebida.');
+   status.textContent='✓ Título manual salvo na SKU '+sku+' ('+out.length+'/120). '+
+    (out.length>=100&&out.length<=120?'Pronto para conferência.':'Rascunho salvo; ajuste para 100 a 120 caracteres antes de aprovar.');
+  }catch(error){status.textContent='Não foi possível salvar: '+error.message;}
+  finally{saveManual.disabled=false;}
+ },'seo-modern-save-manual');
  const chipRow=node('div','seo-modern-keyword-row'),chips=node('div','seo-modern-keyword-list');
  const keywordEntry=node('div','seo-modern-keyword-editor');keywordEntry.hidden=true;
  const keywordInput=node('input','seo-modern-keyword-input');keywordInput.type='text';keywordInput.maxLength=55;
@@ -106,7 +118,7 @@ function modernize(data){
  const addKeyword=action('＋ Adicionar palavra-chave',()=>{
   keywordEntry.hidden=!keywordEntry.hidden;if(!keywordEntry.hidden)keywordInput.focus();
  },'seo-modern-add-keyword');
- chipRow.append(chips,addKeyword,keywordEntry);editorCard.append(chipRow,status);
+ chipRow.append(chips,addKeyword,keywordEntry);editorCard.append(chipRow,saveManual,status);
 
  function showKeywords(){
   chips.replaceChildren();const seen=new Set();
@@ -139,7 +151,7 @@ function modernize(data){
  suggestionLabel.append(node('span','seo-modern-symbol','☆'),node('strong','','Sugestões de título'));
  suggestHead.append(suggestionLabel,help('As sugestões utilizam os dados da SKU e, quando disponíveis, ofertas verificadas. A pontuação é apenas estrutural, não representa volume de buscas.','Sobre as sugestões'));
  suggestions.append(suggestHead);
- aiButton.classList.add('seo-modern-generate');aiButton.textContent='↻ Gerar novos títulos';suggestions.append(aiButton);
+ aiButton.classList.add('seo-modern-generate');aiButton.textContent='✦ Gerar 4 títulos com ChatGPT';suggestions.append(aiButton);
  const supplierButton=action('▤ Usar título da WeDrop',()=>{
   const name=clean(p.name||data.productTitle||'');
   if(!name)return;
@@ -150,8 +162,10 @@ function modernize(data){
  suggestions.append(supplierButton);
  const extra=node('details','seo-modern-extra'),extraSummary=node('summary','','Termos extras confirmados ▾');
  extra.append(extraSummary,manual);suggestions.append(extra,notice);
+ if(importPanel)suggestions.append(importPanel);
  top.append(suggestions);content.append(top);
  grid.classList.add('seo-modern-grid');content.append(grid);
+ if(researchPanel)content.append(researchPanel);
 
  const lower=node('div','seo-modern-lower');
  const supplier=node('section','seo-modern-source'),sourceHead=node('div','seo-modern-head');
