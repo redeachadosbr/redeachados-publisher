@@ -217,3 +217,24 @@
 @media(max-width:690px){
  #optimizerDescriptionModern .desc-modern-chatgpt-buttons{flex-direction:column}
 }
+
+/* Recuperação de descrições comerciais ChatGPT, sem mexer nas imagens. */
+#optimizerDescriptionModern .desc-modern-chatgpt-recover{
+ background:#fff;border:1px solid #a5bee8;color:#315d9c;border-radius:9px;
+ padding:10px 12px;font-size:11px;font-weight:800;cursor:pointer;min-height:40px
+}
+#optimizerDescriptionModern .desc-modern-manual-import{
+ border-top:1px solid #e0e9f7;padding-top:6px;display:block;font-size:11px
+}
+#optimizerDescriptionModern .desc-modern-manual-import>summary{
+ color:#3a5f93;font-weight:750;cursor:pointer;list-style:none;padding:7px 3px
+}
+#optimizerDescriptionModern .desc-modern-manual-text{
+ display:block;box-sizing:border-box;width:100%;min-height:130px;
+ background:#fff;border:1px solid #bfd4ed;padding:10px;border-radius:9px;
+ font-size:12px;line-height:1.5;resize:vertical
+}
+#optimizerDescriptionModern .desc-modern-manual-confirm{
+ margin-top:9px;border:0;border-radius:9px;background:#137e54;color:#fff;
+ padding:10px 14px;font-weight:800;cursor:pointer
+}
