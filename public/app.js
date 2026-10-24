@@ -3150,15 +3150,18 @@ $('#optimizerImageCorrectionPaste')?.addEventListener?.('click',async()=>{
 });
 
 $('#optimizerImageCorrectionCopy')?.addEventListener?.('click',async()=>{
- const w=optimizerWorkflowPlan;if(!w)return;
- const slot=Number($('#optimizerImageCorrectionSlot').value),note=$('#optimizerImageCorrection').value.trim();
- const prompt='SKU '+w.sku+' | Imagem '+slot+' de 9. '+workflowImageGuide[slot-1]+
-  '\nUse exatamente o produto real da capa, 1200x1200. '+
-  '\nREGRAS: '+($('#optimizerPrompt')?.value||'Verificar as regras do produto.')+
-  '\nAJUSTE: '+(note||'Conferir fidelidade e melhorar o enquadramento.');
- try{await navigator.clipboard.writeText(prompt);
-  optimizerWorkflowNotice('Prompt da imagem '+slot+' copiado. Gere a imagem e importe na mesma posição.','success')}
- catch{optimizerWorkflowNotice('Não foi possível copiar o prompt.','warning')}
+ const w=optimizerWorkflowPlan;if(!w||!optimizerImagesSameSku(w))return;
+ const slot=Number($('#optimizerImageCorrectionSlot').value);
+ const status=$('#optimizerImageCorrectionStatus');
+ try{
+  const brief=await optimizerChatgptMakeBrief(w);
+  if(!optimizerImagesSameSku(w))return;
+  const prompt=optimizerImageEditorActive(w,slot)
+   ?$('#optimizerImagePromptEditor').value.trim():brief.prompts[slot-1];
+  if(!prompt)throw Error('Prompt da posição indisponível.');
+  await navigator.clipboard.writeText(prompt);
+  status.textContent='Prompt completo da imagem '+String(slot).padStart(2,'0')+' copiado. A foto original deve ser anexada ao ChatGPT.';
+ }catch(e){status.textContent='Não foi possível copiar o prompt: '+e.message;}
 });
 
 function optimizerWorkflowOpen(key){
@@ -8464,7 +8467,7 @@ async function optimizerImagesLoad(){
    actions.append(generate);
    const adjust=optimizerMake('button','secondary','✎');adjust.type='button';
    adjust.title='Ajustar pedido da imagem '+slot;adjust.setAttribute('aria-label','Ajustar imagem '+slot);
-   adjust.onclick=()=>{$('#optimizerImageCorrectionSlot').value=String(slot);optimizerImageCorrectionLoad();$('#optimizerImageCorrection').focus();};
+   adjust.onclick=()=>{$('#optimizerImageCorrectionSlot').value=String(slot);optimizerImageCorrectionLoad();void optimizerOpenImagePromptEditor();};
    actions.append(adjust);
    const remove=optimizerMake('button','secondary','⌫');remove.type='button';
    remove.classList.add('optimizer-commercial-delete');
