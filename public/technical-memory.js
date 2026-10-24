@@ -36,8 +36,9 @@
  function learn(data,attr,values,{explicit=false}={}){
   const k=id(data,attr),v=Array.isArray(values)&&values.length===1?values[0]:null;
   if(!k||!explicit||!v)return false;
-  const type=kind(attr.name),label=String(v.valueName||'').trim();
-  if(!safe(type,label)||!resolved(attr,v))return false;
+  const option=(attr.options||[]).find(o=>Number(o.id)===Number(v.valueId));
+  const type=kind(attr.name),label=String(option?.name||v.valueName||'').trim();
+  if(!safe(type,label)||!resolved(attr,{...v,valueName:label}))return false;
   const now=read(),last=now[k];
   now[k]={valueId:Number(v.valueId),valueName:label,updatedAt:new Date().toISOString(),
    observations:Math.min(999,Number(last?.observations||0)+1)};
