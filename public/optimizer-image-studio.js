@@ -214,8 +214,17 @@
    trigger.setAttribute('aria-label','Mais ações da imagem '+target);
    const content=el('div','ra-card-menu-content');
    content.append(el('label','','Mover ou trocar de posição'));
-   if(move)content.append(move);
+   if(move){
+    content.append(move);
+    // Um select dentro de um cartão arrastável deve continuar clicável no Chrome.
+    move.addEventListener('pointerdown',event=>event.stopPropagation());
+    move.addEventListener('click',event=>event.stopPropagation());
+   }
    menu.append(trigger,content);
+   menu.addEventListener('pointerdown',()=>{card.draggable=false;});
+   menu.addEventListener('toggle',()=>{
+    card.draggable=Boolean(move)&&!menu.open&&!move.disabled;
+   });
    card.append(menu);
    const edit=card.querySelector('.optimizer-commercial-image-actions button:nth-child(2)');
    edit?.addEventListener('click',()=>{setSlot(target);editField?.focus();});
