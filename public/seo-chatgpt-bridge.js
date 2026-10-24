@@ -59,9 +59,27 @@
   body=body.replace(/^\x60{3}(?:json)?\s*/i,'').replace(/\s*\x60{3}$/,'');
   let answer;
   try{answer=JSON.parse(body);}catch{
-   const a=body.indexOf('{'),b=body.lastIndexOf('}');
-   if(a<0||b<=a)throw Error('O ChatGPT não devolveu JSON. Peça para responder somente no formato solicitado.');
-   try{answer=JSON.parse(body.slice(a,b+1));}catch{throw Error('A resposta não é um JSON válido com quatro títulos.');}
+   // ChatGPT pode anteceder o JSON com "Analisado" ou acrescentar notas:
+   // extrair objeto com chaves balanceadas, respeitando aspas e escapes.
+   for(let start=body.indexOf('{');start>=0&&!answer;start=body.indexOf('{',start+1)){
+    let depth=0,quoted=false,escaped=false;
+    for(let i=start;i<body.length;i++){
+     const ch=body[i];
+     if(escaped){escaped=false;continue;}
+     if(quoted&&ch==='\\\\'){escaped=true;continue;}
+     if(ch==='"'){quoted=!quoted;continue;}
+     if(quoted)continue;
+     if(ch==='{')depth++;
+     if(ch==='}'&&--depth===0){
+      try{
+       const parsed=JSON.parse(body.slice(start,i+1));
+       if(Array.isArray(parsed?.titles))answer=parsed;
+      }catch{}
+      break;
+     }
+    }
+   }
+   if(!answer)throw Error('O ChatGPT não devolveu um JSON íntegro com quatro títulos. A aba será preservada para recuperação.');
   }
   if(!answer||!Array.isArray(answer.titles)||answer.titles.length!==4)
    throw Error('O ChatGPT precisa retornar exatamente quatro títulos.');
@@ -125,7 +143,7 @@
     }
    };
    window.addEventListener('message',listener);
-   const timer=window.setTimeout(()=>finish(Error('Sem resposta do ChatGPT. Confira a aba aberta ou importe a resposta manualmente.')),145000);
+   const timer=window.setTimeout(()=>finish(Error('Sem resposta do ChatGPT. Confira a aba aberta ou importe a resposta manualmente.')),285000);
    const probeTimer=window.setTimeout(()=>finish(Error('Ponte v1.0.30 não detectada neste Chrome. Atualize a extensão ou use a importação manual.')),4500);
    window.postMessage({kind:'RA_EXTENSION_PROBE'},ORIGIN);
   });
