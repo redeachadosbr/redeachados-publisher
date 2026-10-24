@@ -505,10 +505,13 @@
     if(researchResult){
       displayResearch(researchResult);
       setLabel(marketNotice,'✓ Quatro títulos e suas notas restaurados para esta SKU. Clique em Gerar novos títulos para uma NOVA pesquisa ChatGPT.');
+    }else if(globalThis.RASeoChatGPT?.hasPending?.(data)){
+      // A etapa SEO pode ser redesenhada pelo Motor Matriz enquanto o ChatGPT trabalha.
+      // Reanexar à requisição original sem abrir nova aba ou perder o retorno.
+      setLabel(marketNotice,'Retomando automaticamente os títulos desta SKU, sem repetir a pesquisa ChatGPT…');
+      void generateTitles(false);
     }else{
-      // NÃO abrir chats automaticamente: o usuário decide recuperar a conversa
-      // já gerada ou começar nova pesquisa clicando no botão correspondente.
-      setLabel(marketNotice,'Nenhum título importado. Clique em Recuperar títulos da aba ChatGPT ou copie a resposta e use Importar resposta copiada. Não é necessário pesquisar novamente.');
+      setLabel(marketNotice,'Nenhum título importado. Clique em Gerar 4 títulos com ChatGPT ou Recuperar títulos da aba ChatGPT. As etapas anteriores permanecem salvas.');
     }
   }
   globalThis.ShopeeTitleStudio={open,prefetch};
