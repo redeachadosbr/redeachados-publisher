@@ -28,7 +28,7 @@ test('prompt obriga pesquisa real, sem declarar volumes não verificados',()=>{
  const p=prompt({sku:'303448',itemId:'1',productTitle:'Caminhão Dinossauro com 3 Mini Carrinhos - Verde',supplierProduct:{brand:'TOYS & TOYS'}});
  assert.match(p,/PESQUISE AGORA NA WEB/);
  assert.match(p,/EXATAMENTE DOIS EMOJIS DISTRIBUÍDOS/);
- assert.match(p,/mínimo 100 e máximo 120/);
+ assert.match(p,/100 a 120 caracteres Unicode/);
  assert.match(p,/volumes absolutos/);
 });
 test('importa JSON com texto antes e depois e separa dois emojis inicialmente grudados',()=>{
