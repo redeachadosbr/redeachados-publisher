@@ -240,7 +240,16 @@
     const f=facts(data),sku=clean(data.sku||'');
     const identity=prefetchKey(data);
     mount.dataset.seoStudioIdentity=identity;
-    let marketSample=[],researchToken=0,aiOptions=null,aiBusy=false,aiRequested=false;
+    let researchToken=0,aiOptions=null,aiBusy=false,researchKeywords=[],researchResult=null;
+    const persistKey=['ra-seo-four-chatgpt-v2',data.shopId||'shop',data.itemId,data.modelId||0,sku].join(':');
+    try{
+     const saved=JSON.parse(localStorage.getItem(persistKey)||'null');
+     if(saved?.product===f.title&&saved?.supplierUpdatedAt===(data.sourceEvidence?.updatedAt||null)
+       &&Array.isArray(saved.result?.titles)&&saved.result.titles.length===4){
+      researchResult=saved.result;aiOptions=saved.result.titles;
+      researchKeywords=saved.result.keywords||[];
+     }
+    }catch{}
     const head=el('div','seo-studio-head');
     const hd=el('div','');
     hd.append(el('div','seo-studio-kicker','OTIMIZAÇÃO DE ANÚNCIOS · TÍTULO SEO'),
@@ -271,47 +280,55 @@
     function regenerate(){
       grid.replaceChildren();
       savedTerms.set(sku,inp.value);
-      const reserved=new Set();
-      const fallback=variants(f,inp.value,marketSample).map(v=>{
-        const title=assemble(v,reserved);
-        reserved.add(key(title));return {...v,title};
+      if(!Array.isArray(aiOptions)||aiOptions.length!==4){
+       grid.append(el('p','seo-studio-empty','Ainda não há quatro títulos recebidos do ChatGPT. Clique em Gerar novos títulos ou importe a resposta manualmente.'));
+       return;
+      }
+      const options=aiOptions.map((v,i)=>({
+        ...v,name:['Busca principal','Sinônimos de busca','Uso e contexto','Descoberta'][i],
+        reason:v.reason||'Termos sugeridos na pesquisa de mercado'
+      }));
+      const ranking=globalThis.RASeoTitleScore?.rank(options,{
+       keywords:researchKeywords,productTitle:f.supplier||f.title
       });
-      const output=Array.isArray(aiOptions)&&aiOptions.length===4
-        ?aiOptions.map((v,i)=>({
-          ...fallback[i],title:v.title,reason:v.reason||fallback[i].reason,
-          ai:true,name:['Busca principal','Sinônimos de busca','Uso e contexto','Descoberta'][i]
-        }))
-        :[];
-      if(!output.length)grid.append(el('p','seo-studio-empty','Nenhuma sugestão do ChatGPT recebida. Clique em Gerar 4 títulos ou importe a resposta manualmente.'));
-    const used=new Set();
-    for(const o of output){
-      if(used.has(key(o.title)))o.duplicate=true;
-      used.add(key(o.title));
-    }
-      for(const [i,o] of output.entries()){
-        const n=count(o.title),score=rating(o.title,f.kind);
-        const card=el('article','seo-studio-card'+(n>=MIN&&n<=LIMIT&&!o.duplicate?' valid':' needs-review'));
+      if(!ranking||ranking.length!==4){
+       grid.append(el('p','seo-studio-empty','O módulo de classificação não carregou. Atualize a página com Ctrl+Shift+R.'));
+       return;
+      }
+      const used=new Set();
+      for(const [i,o] of ranking.entries()){
+        const n=count(o.title),score=o.score;
+        const repeated=used.has(key(o.title));used.add(key(o.title));
+        const card=el('article','seo-studio-card'+(n>=MIN&&n<=LIMIT&&!repeated?' valid':' needs-review')+
+         (o.ideal?' seo-studio-ideal':''));
         const meta=el('div','seo-studio-card-top');
         const group=el('div','seo-studio-option');
-        group.append(el('strong','','0'+(i+1)+' · '+o.name),el('small','',o.ai?'ChatGPT · revisar dados do produto':'Ainda não pesquisado · '+o.subtitle));
+        group.append(el('strong','','0'+(i+1)+' · '+o.name),
+          el('small','',o.ideal?'★ MELHOR NOTA — opção ideal sugerida':'Classificação '+(i+1)+' de 4 · ChatGPT'));
         const meter=el('div','seo-studio-meter');
-        meter.append(el('strong','',score+'/100'),el('small','','nota estrutural estimada'));
+        meter.append(el('strong','',score+'/100'),el('small','','nota SEO estimada'));
         meta.append(group,meter);card.append(meta);
         card.append(el('p','seo-studio-candidate',o.title));
         const keys=el('div','seo-studio-metrics');
-        keys.append(el('span',n>=MIN&&n<=LIMIT&&!o.duplicate?'seo-studio-ok':'seo-studio-caution',n+'/120 caracteres'+(o.duplicate?' · opção repetida':'')),
-          el('span','','⚡ '+(n>=MIN&&n<=LIMIT&&!o.duplicate?'Pronto para revisão':n<MIN?'Faltam '+(MIN-n)+' caracteres':n>LIMIT?'Reduzir para até 120':'Opção repetida')));
+        keys.append(el('span',n>=MIN&&n<=LIMIT&&!repeated?'seo-studio-ok':'seo-studio-caution',n+'/120 caracteres'+(repeated?' · repetido':'')),
+          el('span','',o.matchedKeywords.length+' termos da pesquisa incorporados'),
+          el('span','','2 emojis · pesquisa '+(researchResult?.researchStatus==='verified'?'com URLs citadas':'sem fonte comprovada')));
         card.append(keys,el('p','seo-studio-why',o.reason));
+        const explain=el('small','seo-studio-score-detail',
+         'Nota: aproveitamento do limite '+o.breakdown.length+'/30 · palavras-chave '+o.breakdown.keywords+
+         '/35 · posição da busca '+o.breakdown.front+'/10 · nome do produto '+o.breakdown.product+
+         '/10 · emojis '+o.breakdown.emojis+'/10 · clareza '+o.breakdown.readability+'/5.');
+        card.append(explain);
         const actions=el('div','seo-studio-card-actions');
         const choose=el('button','seo-studio-choose','✓ Usar este título');choose.type='button';
-        choose.disabled=n<MIN||n>LIMIT||Boolean(o.duplicate);
-        choose.title=choose.disabled?'Não atende os 100 a 120 caracteres ou repete outra opção.':'Aplicar título válido na revisão';
+        choose.disabled=n<MIN||n>LIMIT||repeated;
+        choose.title=choose.disabled?'Não atende os requisitos de 100 a 120 caracteres.':'Usar esta opção como rascunho da SKU';
         choose.onclick=()=>{
           if(choose.disabled)return;
           onChoose(o.title);
           for(const c of grid.querySelectorAll('.seo-studio-card'))c.classList.remove('selected');
           card.classList.add('selected');
-          setLabel(status,'Título válido selecionado ('+n+'/120). Revise e registre a conferência para salvar.');
+          setLabel(status,'Título na posição '+(i+1)+' selecionado ('+n+'/120). Salve manualmente ou registre a conferência antes de publicar.');
         };
         const copy=el('button','secondary seo-studio-copy','Copiar');copy.type='button';
         copy.onclick=()=>copyText(o.title,status);
@@ -334,18 +351,23 @@
     function displayResearch(result){
       research.replaceChildren();
       const verified=result.researchStatus==='verified';
-      research.append(el('strong','',verified?'Fontes de pesquisa citadas pelo ChatGPT:':'Termos não verificados por fonte: não são volumes oficiais de busca.'));
+      research.append(el('strong','',verified?'URLs citadas pelo ChatGPT (verifique as fontes):':'Sem fontes verificáveis: não afirmar que são as palavras mais buscadas.'));
       if(Array.isArray(result.keywords)&&result.keywords.length)
-       research.append(el('p','','Palavras-chave sugeridas: '+result.keywords.join(' · ')));
+       research.append(el('p','','Palavras-chave por relevância apontada na pesquisa: '+result.keywords.map((t,i)=>(i+1)+'º '+t).join(' · ')));
       for(const url of result.sources||[]){
        const anchor=el('a','seo-studio-research-link',url);anchor.href=url;anchor.target='_blank';anchor.rel='noopener noreferrer';
        research.append(anchor);
       }
     }
     function accept(result){
-      aiOptions=result.titles;
+      aiOptions=result.titles;researchResult=result;
+      researchKeywords=result.keywords||[];
+      try{localStorage.setItem(persistKey,JSON.stringify({
+        product:f.title,supplierUpdatedAt:data.sourceEvidence?.updatedAt||null,
+        savedAt:new Date().toISOString(),result
+      }));}catch{}
       displayResearch(result);
-      setLabel(marketNotice,'✓ '+result.message+' Escolha um dos quatro títulos ou digite manualmente.');
+      setLabel(marketNotice,'✓ 4 títulos classificados da maior para a menor nota. A primeira opção tem a melhor pontuação SEO estimada; confira as fontes antes de usar.');
       regenerate();
     }
     openChat.onclick=async()=>{
@@ -396,9 +418,14 @@
       if(e.key==='Enter'){e.preventDefault();void generateTitles(true);}
     });
     regenerate();
-    // Abrir a etapa SEO inicia uma única pesquisa: não repetir cliques
-    // nem gerar quatro variações locais fictícias.
-    void generateTitles(false);
+    if(researchResult){
+      displayResearch(researchResult);
+      setLabel(marketNotice,'✓ Quatro títulos e suas notas restaurados para esta SKU. Clique em Gerar novos títulos para uma NOVA pesquisa ChatGPT.');
+    }else{
+      // A pesquisa inicial ocorre apenas uma vez; reabrir a etapa com 4 títulos
+      // salvos não dispara automaticamente outra aba no Chrome.
+      void generateTitles(false);
+    }
   }
   globalThis.ShopeeTitleStudio={open,prefetch};
 })();
