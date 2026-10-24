@@ -80,10 +80,9 @@
   }
   const intro=$('optimizerDescriptionPreviewSummary'),cta=$('optimizerDescriptionPreviewCta');
   const parts=raw.replace(/\r\n?/g,'\n').split('\n').map(x=>x.trim()).filter(Boolean);
-  const first=parts.findIndex(x=>/descri[çc][ãa]o do produto/i.test(x));
-  const paragraphs=parts.slice(Math.max(0,first+1)).filter(x=>
-   !/^(?:🛒|⚙️|📦|📏)/u.test(x)&&
-   !/^(?:✨|⚙|📏|📦|🛒)\s+(?:descri|caracter|especific|medidas|cont[eé]m)/i.test(x));
+  const firstSection=parts.findIndex(x=>/^(?:✅\s*benef[ií]cios|💡\s*por que comprar|❓\s*d[uú]vidas|⚙️?\s*caracter[ií]sticas|📦\s*o que)/iu.test(x));
+  const paragraphs=(firstSection<0?parts:parts.slice(0,firstSection))
+   .filter(x=>!/^(?:🛒|⚙️|📦|📏)/u.test(x));
   const opening=paragraphs.slice(0,2).join(' ').trim();
   if(intro)intro.textContent=opening?([...opening].slice(0,360).join('')+(opening.length>360?'…':'')):
    'A prévia aparecerá quando a descrição estiver preenchida.';
@@ -262,7 +261,7 @@
   const chips=el('div','desc-modern-chips');chips.dataset.descriptionGenerated='true';
   for(const [name,label] of [
    ['specifications','⚙ Especificações'],['measures','📏 Medidas'],
-   ['doubts','❓ Dúvidas'],['reasons','☀ Benefícios']]){
+   ['doubts','❓ Dúvidas'],['reasons','✅ Benefícios']]){
    const chip=el('span','',label);chip.dataset.descPart=name;chips.append(chip);
   }
   const cta=el('div','desc-modern-cta');

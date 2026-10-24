@@ -286,34 +286,45 @@ const closing={
  blender:'🛒 Escolha seu liquidificador e adicione ao carrinho!',
  general:cta
 };
+function verifiedPackage(data,sourceText){
+ const supplier=[String(sourceText||''),String(data.description||data.details||'')].join('\n');
+ const found=supplier.match(/(?:conte[uú]do da embalagem|itens inclusos|o que acompanha)\s*:\s*([^\n.;]{4,170})/iu);
+ return found?'Itens informados pela WeDrop: '+clean(found[1]):'Conteúdo da embalagem: confirme os itens com o vendedor antes de comprar.';
+}
+function verifiedFaq(facts){
+ const fields=[
+  ['📦 Capacidade informada:','Qual é a capacidade informada?'],
+  ['🧩 Material informado:','Qual é o material informado?'],
+  ['👧 Idade indicada:','Qual é a idade indicada?'],
+  ['📏 Dimensões declaradas','Quais são as dimensões informadas?']
+ ];
+ return fields.flatMap(([prefix,q])=>{
+  const fact=facts.find(x=>x.startsWith(prefix));
+  return fact?['❓ '+q+'\n'+fact]:[];
+ }).slice(0,2);
+}
 export function composeShopeeDescription({record={},supplier=null,sourceText=''}={}){
  const data=supplier?.product_data||{};
  const title=titleOf(record,data),type=skuType(title),p=profiles[type];
  const facts=confirmedFacts(record,data,sourceText,type);
  const name=trunc(title,90);
- const paras=[
-  '✨ '+name,
-  '',
-  '💛 '+p.opening,
-  '',
-  p.benefit,
-  '',
-  '🌟 Benefícios que fazem a diferença',
-  '',
-  ...(highlights[type]||highlights.general).flatMap(benefit=>[benefit,'']),
-  '⚙️ Características e informações do produto',
-  ...(p.details.length?p.details:[]),
-  ...facts
+ const opening=p.opening.split(/(?<=[.!?])\s+/u)[0];
+ const benefits=(highlights[type]||highlights.general).slice(0,3)
+  .map(x=>x.split(/(?<=[.!?])\s+/u)[0]);
+ const faq=verifiedFaq(facts);
+ const details=[...p.details,...facts];
+ if(!details.length)details.push('🔎 Modelo anunciado: '+name);
+ const blocks=[
+  '✨ '+name+': '+opening,
+  '✅ BENEFÍCIOS\n'+benefits.join('\n'),
+  '💡 POR QUE COMPRAR\n'+p.advantages,
+  ...(faq.length?['❓ DÚVIDAS FREQUENTES\n'+faq.join('\n')]:[]),
+  '⚙️ CARACTERÍSTICAS\n'+details.join('\n'),
+  '📦 O QUE VAI NA EMBALAGEM\n'+verifiedPackage(data,sourceText),
+  closing[type]||cta
  ];
- // Informações do fornecedor são suporte para os detalhes, e não um
- // catálogo repetido na apresentação publicitária.
- if(!facts.length&&!p.details.length)
-  paras.push('🔎 Modelo anunciado: '+title);
- paras.push('',closing[type]||cta);
- const description=paras.join('\n').trim();
- return {
-  description,
-  valid:isCommercialDescription(description),
+ const description=blocks.join('\n\n').trim();
+ return {description,valid:isCommercialDescription(description),
   characterCount:codePointCount(description),
   source:supplier?'Catálogo WeDrop + anúncio Shopee':'Anúncio Shopee + informações adicionais',
   warnings:[

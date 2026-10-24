@@ -29,12 +29,14 @@ test('importa JSON completo com emojis, itens inclusos, benefícios e CTA',()=>{
  '🛒 Escolha o conjunto e aproveite para criar suas próprias aventuras!'
  ].join('\n\n');
  const result=api.parse('Analisado\n'+JSON.stringify({description,factsUsed:['3 mini carrinhos']})+'\nFim');
- assert.equal(result.description,description);
+ assert.ok(result.description.indexOf('❓ DÚVIDAS FREQUENTES')<result.description.indexOf('⚙️ CARACTERÍSTICAS'));
+ assert.match(result.description,/✅ BENEFÍCIOS/);
+ assert.match(result.description,/💡 POR QUE COMPRAR/);
  assert.ok(result.length>250);
  assert.equal(result.factsUsed.length,1);
 });
 test('descrição incompleta sem itens inclusos ou CTA não pode ser publicada',()=>{
- assert.throws(()=>api.parse(JSON.stringify({description:'✨ descrição de teste '.repeat(30)})),/faltam itens inclusos/);
+ assert.throws(()=>api.parse(JSON.stringify({description:'✨ descrição de teste '.repeat(30)})),/incompleta/);
 });
 test('botão preserva edição, importação e confirmação de rascunho por SKU',()=>{
  const modern=readFileSync(new URL('../public/description-modern-layout.js',import.meta.url),'utf8');
@@ -84,4 +86,21 @@ test('descrição pode ser recuperada sem outra geração e exige confirmação 
  assert.match(modern,/acknowledgeRecovery\(result\)/);
  assert.match(modern,/Importar texto colado/);
  assert.match(modern,/manualArea\.value/);
+});
+
+test('reorganiza as dúvidas antes das características mesmo que o ChatGPT troque a ordem',()=>{
+ const source=[
+ '✨ Caminhão dinossauro verde para criar histórias com os três mini carrinhos do conjunto.',
+ '✅ BENEFÍCIOS','🚚 Brincadeira temática com mini carrinhos e caminhão dinossauro.',
+ '💡 POR QUE COMPRAR','O produto reúne um caminhão e três mini carrinhos anunciados.',
+ '⚙️ CARACTERÍSTICAS','Cor verde, brinquedo temático conforme ficha WeDrop.',
+ '📦 O QUE ACOMPANHA','Um caminhão dinossauro e três mini carrinhos.',
+ '❓ DÚVIDAS FREQUENTES','Quantos carrinhos acompanham? Três mini carrinhos.',
+ '🛒 Adicione ao carrinho e prepare novas brincadeiras!'
+ ].join('\\n\\n');
+ const out=api.parse(JSON.stringify({description:source})).description;
+ const headings=['✅ BENEFÍCIOS','💡 POR QUE COMPRAR','❓ DÚVIDAS FREQUENTES','⚙️ CARACTERÍSTICAS','📦 O QUE VAI NA EMBALAGEM','🛒'];
+ let old=-1;for(const heading of headings){const at=out.indexOf(heading);assert.ok(at>old,heading);old=at;}
+ assert.match(out,/\\n\\n✅ BENEFÍCIOS\\n/);
+ assert.ok(out.endsWith('🛒 Adicione ao carrinho e prepare novas brincadeiras!'));
 });
