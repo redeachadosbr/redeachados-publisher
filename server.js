@@ -75,6 +75,7 @@ import {lookupShopeeCompetitors,marketResearchConfigured} from './shopeeMarketRe
 import {promotionFromQuote,promotionBasePrice,promotionMember,shopDiscountMembershipSignal,discountPlanSnapshot,signDiscountPreview,verifyDiscountPreview,readDiscountPages} from './shopeeDiscountPublish.js';
 import {discountPreviewStatus} from './shopeeDiscountDeferred.js';
 import {verifyShopeeListingStatus} from './shopeeListingStatus.js';
+import {scanLiveNormalSku,catalogCandidatesIfNoActive} from './shopeeSkuActiveResolver.js';
 import {shopeePricingPreferences,saveShopeePricingPreferences,
   shopeePricingSupplierCost,shopeePricingDirectSupplierCost,
   saveShopeePricePlan,recentShopeePricePlans,
@@ -825,30 +826,57 @@ app.get('/api/shopee/products/extra-info',mustLogin,async(req,res)=>{
 // Preparação assistida de anúncios. Somente leitura da Shopee nesta versão;
 // auditoria jamais dispara update_item, mídia, alteração de preço ou estoque.
 app.get('/api/shopee/optimizer/find',mustLogin,requireWeDropAdmin,async(req,res)=>{
-  res.setHeader('Cache-Control','no-store');
-  try{
-    const sku=validateSkuLookup(req.query.sku);
-    const {auth,cfg}=await getValidAuth(req);
-    const deep=req.query.deep==='1';
-    let matches=await findExactCatalogSku(auth.shopId,sku);
-    let lookup='saved_catalog',warnings=[];
-    if(!matches.length){
-      // Fast path: direct official SKU search, no 12-page catalog scan for each keystroke.
-      // Users can explicitly request the full fallback if directed search misses.
-      const live=await findLiveShopeeSku(cfg,auth,callShopeeShopApi,sku,{fastOnly:!deep});
-      warnings=live.warnings||[];
-      matches=live.matches.length?await findExactCatalogSku(auth.shopId,sku):[];
-      lookup=matches.length?'live_verified':deep?'not_found':'fast_not_found';
-      if(live.matches.length&&!matches.length)
-        throw Error('A Shopee encontrou a SKU, mas não foi possível salvar o vínculo no catálogo. Tente novamente.');
-    }
-    res.json({ok:true,sku,matches,lookup,canDeepSearch:!deep&&!matches.length,warnings:warnings.slice(0,3),
-      message:matches.length
-        ?'SKU exata localizada '+(lookup==='live_verified'?'na Shopee e salva no catálogo.':'no catálogo salvo.')+
-         ' Item ID obtido automaticamente.'
-        :deep?'Busca completa não confirmou a SKU. Confira a loja e sincronize o catálogo.':
-         'Pesquisa direta sem resultado; a busca aprofundada pode verificar o restante do catálogo.'});
-  }catch(e){res.status(400).json({error:String(e.message||e).slice(0,240)});}
+ res.setHeader('Cache-Control','no-store');
+ try{
+  const sku=validateSkuLookup(req.query.sku);
+  const {auth,cfg}=await getValidAuth(req);
+  const deep=req.query.deep==='1';
+  const cached=await findExactCatalogSku(auth.shopId,sku);
+  // Antigos IDs SELLER_DELETE permanecem no cache; não são candidatos ativos.
+  // SEMPRE consultar a listagem NORMAL em tempo real antes de escolher o item.
+  const authoritative=await scanLiveNormalSku({
+   sku,cached,
+   maxPages:deep?40:15,
+   getPage:args=>fetchCatalogPage(cfg,auth,callShopeeShopApi,args),
+   onMatch:async matches=>{
+    // Atualizar somente os IDs encontrados ATIVOS no anúncio verdadeiro.
+    // Não transferir plano de preço, descrição ou autorização entre item IDs.
+    await storeCatalogItems(auth.shopId,matches.map(x=>({
+     ...x,hasModel:false,baseLoaded:true
+    })));
+   }
+  });
+  let matches=authoritative.matches;
+  let warnings=[],lookup='live_normal_verified';
+  if(!matches.length){
+   // Listagem ativa foi percorrida integralmente; procurar UNLIST/REVIEWING
+   // apenas na busca direcionada, NUNCA trazer SELLER_DELETE do cache.
+   const alternative=await findLiveShopeeSku(cfg,auth,callShopeeShopApi,sku,{
+    fastOnly:!deep
+   });
+   warnings=alternative.warnings||[];
+   matches=catalogCandidatesIfNoActive({
+    cached,sku,live:alternative.matches,normalScanComplete:true
+   });
+   lookup=matches.length?'live_secondary_verified':'not_found';
+  }
+  const retired=authoritative.replacedIds;
+  const active=matches.filter(x=>String(x.status||'').toUpperCase()==='NORMAL');
+  const notice=retired.length&&active.length
+   ?' Vínculo antigo do catálogo ('+retired.slice(0,4).join(', ')+') ignorado; foi encontrado anúncio ativo ID '+active.map(x=>x.itemId).join(', ')+'. O plano de preço antigo NÃO será transferido automaticamente.'
+   :'';
+  res.json({
+   ok:true,sku,matches,lookup,verifiedLive:true,
+   retiredItemIds:retired,canDeepSearch:!deep&&!matches.length,
+   warnings:warnings.slice(0,3),
+   message:matches.length
+    ?'SKU exata localizada na Shopee, IDs verificados no catálogo ativo.'+notice
+    :'Nenhum anúncio NORMAL confirmado para esta SKU. IDs excluídos do cache não serão selecionados.'
+  });
+ }catch(error){
+  res.status(409).json({ok:false,error:'Não foi possível identificar o anúncio ativo da SKU: '+
+   String(error.message||error).slice(0,270)+'. Nenhuma alteração será enviada à Shopee.'});
+ }
 });
 app.get('/api/shopee/optimizer/audit',mustLogin,requireWeDropAdmin,async(req,res)=>{
   res.setHeader('Cache-Control','no-store');
