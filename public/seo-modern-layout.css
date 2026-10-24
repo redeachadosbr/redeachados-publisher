@@ -169,3 +169,67 @@
 #optimizerTitleVariants .seo-studio-direct-import:hover{background:#def2ff}
 #optimizerTitleVariants .seo-studio-manual-import[open]{margin-top:3px}
 #optimizerTitleVariants .seo-studio-manual-import textarea{min-height:105px}
+
+/* SEO compacto: 4 títulos em grade 2x2, notas e CTA sempre visíveis. */
+#optimizerTitleVariants .seo-modern-content{gap:9px}
+#optimizerTitleVariants .seo-modern-grid{
+ gap:9px!important;padding:9px!important
+}
+#optimizerTitleVariants .seo-modern-grid .seo-studio-card{
+ min-height:176px!important;padding:11px!important;gap:4px!important
+}
+#optimizerTitleVariants .seo-modern-grid .seo-studio-card-top{gap:5px!important}
+#optimizerTitleVariants .seo-modern-grid .seo-studio-candidate{
+ min-height:0!important;margin:7px 0 5px!important;
+ font-size:13px!important;line-height:1.38!important;font-weight:760!important
+}
+#optimizerTitleVariants .seo-modern-grid .seo-studio-metrics{
+ gap:4px!important;margin:2px 0!important
+}
+#optimizerTitleVariants .seo-modern-grid .seo-studio-metrics span{
+ padding:3px 6px!important;font-size:9px!important
+}
+#optimizerTitleVariants .seo-modern-grid .seo-studio-card-actions{
+ gap:6px!important;margin-top:auto!important;padding-top:6px!important
+}
+#optimizerTitleVariants .seo-modern-grid .seo-studio-choose,
+#optimizerTitleVariants .seo-modern-grid .seo-studio-copy{
+ padding:8px 7px!important;min-height:34px!important
+}
+#optimizerTitleVariants .seo-modern-grid .seo-studio-analysis-details{
+ margin:3px 0 0;font-size:10px;line-height:1.4;color:#567392
+}
+#optimizerTitleVariants .seo-modern-grid .seo-studio-analysis-details>summary{
+ cursor:pointer;font-size:10px;font-weight:700;color:#466eaa;list-style:none
+}
+#optimizerTitleVariants .seo-modern-grid .seo-studio-analysis-details>summary::-webkit-details-marker{display:none}
+#optimizerTitleVariants .seo-modern-grid .seo-studio-analysis-details[open]{
+ padding:7px 9px;background:#f6faff;border:1px solid #e3eaf5;border-radius:8px
+}
+#optimizerTitleVariants .seo-modern-grid .seo-studio-analysis-details .seo-studio-why{
+ margin:7px 0 4px!important;min-height:0!important;font-size:10px!important
+}
+#optimizerTitleVariants .seo-modern-grid .seo-studio-analysis-details .seo-studio-score-detail{
+ margin:4px 0 0!important;font-size:9px!important
+}
+/* Links continuam acessíveis sem ocupar espaço ou esticar a página. */
+#optimizerTitleVariants .seo-modern-research-details{
+ border:1px solid #d9e6f6;border-radius:11px;background:#f9fbff;
+ min-width:0;padding:0 10px;box-shadow:none
+}
+#optimizerTitleVariants .seo-modern-research-details>summary{
+ display:block;cursor:pointer;list-style:none;
+ padding:10px 5px;font-size:11px;color:#315a8f;font-weight:800
+}
+#optimizerTitleVariants .seo-modern-research-details>summary::-webkit-details-marker{display:none}
+#optimizerTitleVariants .seo-modern-research-details[open]{
+ padding-bottom:9px
+}
+#optimizerTitleVariants .seo-modern-research-details .seo-studio-research{
+ margin:0!important;padding:8px!important;border-radius:8px;
+ max-width:100%;min-width:0;overflow-wrap:anywhere
+}
+@media(max-width:650px){
+ #optimizerTitleVariants .seo-modern-grid{grid-template-columns:1fr!important}
+ #optimizerTitleVariants .seo-modern-grid .seo-studio-card{min-height:160px!important}
+}
