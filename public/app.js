@@ -6870,6 +6870,33 @@ async function optimizerContentFlush(){
  });
  return optimizerContentQueue;
 }
+// Geração pela Ponte ChatGPT: usar exatamente o MESMO pipeline de rascunho
+// serializado do Manager; não publicar na Shopee nem confirmar antes de gravar.
+globalThis.ShopeeDescriptionSaveChatGPT=async(description,identity)=>{
+ const w=optimizerWorkflowPlan;
+ if(optimizerWorkflowStage!=='description'||!w)throw Error('Abra a etapa Descrição antes de importar.');
+ if(String(w.sku)!==String(identity?.sku)||String(w.itemId)!==String(identity?.itemId)||
+    String(w.modelId)!==String(identity?.modelId))
+  throw Error('A SKU mudou durante a geração. O texto não foi importado em outro produto.');
+ const value=String(description||'').replace(/\r\n?/g,'\n').normalize('NFC').trim();
+ if([...value].length<250||[...value].length>5000)throw Error('Descrição incompleta ou extensa demais.');
+ const field=$('#optimizerWorkflowDraft');
+ if(!field)throw Error('Editor da descrição indisponível.');
+ // Concluir salvamentos antigos antes de aplicar este retorno.
+ await optimizerContentFlush();
+ if(optimizerWorkflowStage!=='description'||optimizerWorkflowPlan!==w)
+  throw Error('A etapa foi alterada antes da importação.');
+ field.value=value;
+ field.dispatchEvent(new Event('input',{bubbles:true}));
+ optimizerContentRemember();
+ const result=await optimizerContentFlush();
+ if(result?.saved!==true)throw Error('Banco não confirmou o salvamento da descrição.');
+ if(optimizerWorkflowPlan!==w||optimizerWorkflowStage!=='description')
+  throw Error('SKU alterada durante o salvamento. Confira o rascunho.');
+ optimizerDescriptionCompactPreview(value);
+ globalThis.ShopeeDescriptionStudio?.sync?.();
+ return {saved:true,sku:w.sku,length:[...value].length};
+};
 // Usado pelo botão explícito "Salvar título manual" do editor SEO.
 globalThis.ShopeeSeoSaveManual=async()=>{
  const w=optimizerWorkflowPlan;
