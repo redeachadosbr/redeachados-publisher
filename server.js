@@ -2656,6 +2656,26 @@ app.get('/api/shopee/optimizer/images/manual',mustLogin,requireWeDropAdmin,async
   res.json({ok:true,images});
  }catch(e){res.status(400).json({error:String(e.message||e).slice(0,250)});}
 });
+// Referência PRIVADA da posição selecionada para edição no ChatGPT.
+// Só pode ser lida pelo vendedor autenticado e pela SKU exata; sem link público.
+app.get('/api/shopee/optimizer/images/reference',mustLogin,requireWeDropAdmin,async(req,res)=>{
+ res.setHeader('Cache-Control','private, no-store');
+ res.setHeader('X-Content-Type-Options','nosniff');
+ try{
+  const x=await checkedManualVideoIdentity(req);
+  const slot=Number(req.query.slot);
+  if(!Number.isInteger(slot)||slot<1||slot>9)return res.status(400).json({error:'Posição de imagem inválida.'});
+  const images=await readPreparedImages(x.shopId,x.itemId,x.modelId,x.sku);
+  const selected=images.find(row=>Number(row.slot)===slot);
+  if(!selected)return res.status(404).json({error:'Esta posição ainda não tem imagem comercial preparada.'});
+  const file=await downloadPreparedImage(selected);
+  res.setHeader('Content-Type',selected.mime_type==='image/jpeg'?'image/jpeg':'image/png');
+  res.setHeader('Content-Length',String(file.length));
+  res.setHeader('X-Image-SHA256',selected.sha256);
+  res.status(200).end(file);
+ }catch(e){res.status(400).json({error:String(e.message||e).slice(0,230)});}
+});
+
 app.post('/api/shopee/optimizer/images/manual',mustLogin,requireWeDropAdmin,
  express.raw({type:['image/png','image/jpeg'],limit:MAX_IMAGE_BYTES}),async(req,res)=>{
  res.setHeader('Cache-Control','no-store');
