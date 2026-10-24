@@ -150,3 +150,12 @@
  #optimizerTitleVariants .seo-modern-grid{grid-template-columns:1fr!important}
  #optimizerTitleVariants .seo-modern-grid .seo-studio-card{min-height:195px}
 }
+
+/* Resgate de títulos já gerados: botão acessível ao lado do gerador. */
+#optimizerTitleVariants .seo-modern-recover{
+ display:block;width:100%;min-height:37px;background:#fff;color:#315b9e;
+ border:1px solid #a8c0e4;border-radius:9px;padding:9px;
+ font-size:11px;font-weight:800;cursor:pointer
+}
+#optimizerTitleVariants .seo-modern-recover:hover{background:#eef5ff}
+#optimizerTitleVariants .seo-modern-recover:disabled{opacity:.55;cursor:wait}
