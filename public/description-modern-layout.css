@@ -192,3 +192,28 @@
  #optimizerDescriptionModern .desc-modern-preview-panel #optimizerDescriptionCompact{min-height:0}
  #optimizerDescriptionModern .desc-modern-preview-panel .desc-modern-preview-summary{min-height:100px}
 }
+
+/* Descrição por ChatGPT: mesmo fluxo de importação do Manager, visual compacto. */
+#optimizerDescriptionModern .desc-modern-chatgpt-controls{
+ padding:11px 13px;margin:1px 0 12px;background:#f3f8ff;
+ border:1px solid #d8e5fa;border-radius:11px;display:grid;gap:7px
+}
+#optimizerDescriptionModern .desc-modern-chatgpt-buttons{display:flex;gap:9px;flex-wrap:wrap}
+#optimizerDescriptionModern .desc-modern-chatgpt-generate,
+#optimizerDescriptionModern .desc-modern-chatgpt-import{
+ border:0;border-radius:9px;cursor:pointer;padding:10px 14px;font-size:12px;font-weight:800;
+ min-height:40px
+}
+#optimizerDescriptionModern .desc-modern-chatgpt-generate{
+ background:linear-gradient(105deg,#4d61f1,#9339e8);color:#fff;flex:1
+}
+#optimizerDescriptionModern .desc-modern-chatgpt-import{
+ background:#fff;border:1px solid #9bb8e9;color:#365aa4;flex:0 1 auto
+}
+#optimizerDescriptionModern .desc-modern-chatgpt-buttons button:disabled{opacity:.5;cursor:wait}
+#optimizerDescriptionModern .desc-modern-chatgpt-status{
+ color:#43617c;font-size:11px;line-height:1.45;overflow-wrap:anywhere
+}
+@media(max-width:690px){
+ #optimizerDescriptionModern .desc-modern-chatgpt-buttons{flex-direction:column}
+}
