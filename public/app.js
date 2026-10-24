@@ -3076,7 +3076,11 @@ async function optimizerImageCorrectionImportFile(file){
  if(!w||!optimizerImagesSameSku(w)||!Number.isInteger(slot)||slot<1||slot>9)
   throw Error('Abra a etapa de imagens e selecione uma posição.');
  if(optimizerImagesAutoBusy)throw Error('Uma importação ou edição pela API já está em andamento.');
- if(optimizerChatBridgeBusy)await optimizerChatBridgeRelease('Envio antigo interrompido para receber a nova foto.');
+ // Importar/corrigir uma foto manualmente nesta SKU NÃO encerra o lote
+ // ChatGPT que prepara as outras posições. O servidor é a fonte de verdade.
+ // A ponte se sincroniza pelas posições confirmadas antes da retomada.
+ if(optimizerChatBridgeBusy&&optimizerChatBridgeIdentity(optimizerChatBridgeJob,w))
+  optimizerChatBridgeNotice('Importação manual da posição '+slot+' sem interromper a geração das outras imagens.');
  if(!file?.size)throw Error('Imagem não encontrada.');
  const previous=optimizerImageCorrectionPreviewMap.get(slot);
  let importedSha='';
@@ -8120,8 +8124,11 @@ function optimizerChatBridgeQueue(){
    onFailure:row=>{
     if(optimizerChatBridgeJob?.nonce!==row.nonce||
        !optimizerChatBridgeIdentity(optimizerWorkflowPlan,row))return;
-    optimizerChatBridgeRelease('Imagem '+String(row.slot).padStart(2,'0')+' rejeitada: '+row.error+
-     '. Reenvio encerrado. Agora você pode importar a foto correta manualmente.');
+    // Falha de uma posição não cancela a sessão inteira, nem a mídia ainda
+    // capturada. A extensão decidirá a retomada após a leitura do servidor.
+    optimizerChatBridgeBusy=false;
+    optimizerChatBridgeNotice('Imagem '+String(row.slot).padStart(2,'0')+
+     ' ainda não confirmada. Arquivo preservado. Use Gerar / continuar automaticamente para sincronizar sem repetir imagens: '+row.error);
    },
    onSaved:async row=>{
     const w=optimizerWorkflowPlan;
@@ -8283,9 +8290,13 @@ globalThis.window?.addEventListener?.('message',async(event)=>{
   await queue.enqueue({...job,slot:m.slot,blob:prepared.blob,sha256,wasPadded:prepared.wasPadded,
    filename:'chatgpt-auto-'+String(m.slot).padStart(2,'0')+'.'+extension});
  }catch(e){
+  // ACK negativo informa apenas o slot. NÃO enviar RA_SITE_ABORT, pois
+  // isso transforma uma falha isolada em bloqueio de toda a automação.
   optimizerChatBridgeAck(m,false,String(e.message||e));
-  optimizerChatBridgeRelease('Importação da imagem '+String(m.slot).padStart(2,'0')+' interrompida: '+
-   e.message+'. A foto anterior permanece salva. Você pode colar ou selecionar outra foto.');
+  optimizerChatBridgeBusy=false;
+  optimizerChatBridgeNotice('Imagem '+String(m.slot).padStart(2,'0')+
+   ' não confirmada nesta tentativa: '+String(e.message||e)+
+   '. As fotos já salvas permanecem. Retomar fará nova conferência pelo servidor.');
  }
 });
 // A new nine-image action is atomic: clear only commercial staging and
