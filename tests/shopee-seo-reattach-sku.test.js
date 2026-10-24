@@ -19,8 +19,8 @@ test('resultado SEO preservado até o Manager salvar e confirmar ACK da mesma SK
  assert.match(bridge,/seoUnconfirmedResults\.delete\(/);
  assert.match(bridge,/RA_SITE_SEO_ACK/);
  assert.match(bridge,/RA_EXTENSION_SEO_START_RESULT/);
- assert.match(index,/seo-chatgpt-bridge\.js\?v=1\.0\.8-persistent-sku-seo/);
- assert.match(index,/title-studio\.js\?v=1\.21\.26-reattach-seo/);
+ assert.match(index,/seo-chatgpt-bridge\.js\?v=1\.0\.9-immediate-tab-ack/);
+ assert.match(index,/title-studio\.js\?v=1\.21\.27-immediate-seo-tab/);
 });
 
 test('clique dos títulos abre a aba imediatamente antes da pesquisa assíncrona',()=>{
