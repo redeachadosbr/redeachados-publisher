@@ -4,6 +4,8 @@ WORKDIR /app
 COPY package*.json ./
 RUN npm install --omit=dev
 COPY . .
+# Bloquear deploys com sintaxe inválida no editor de imagens e nas rotas Shopee.
+RUN node --check public/app.js && node --check public/chatgptPrompts.js && node --check shopeeOptimizationWorkflow.js && node --check shopeeOptimizationWorkflowStore.js && node --check server.js
 ENV NODE_ENV=production
 EXPOSE 10000
 CMD ["npm","start"]
