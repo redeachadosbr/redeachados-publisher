@@ -2999,7 +2999,17 @@ async function discountExecutionInputs(req,sku,itemId,modelId,discountId,{allowM
   throw Error('Desconto ainda sem pesquisa de concorrentes validada. Conecte a API de ofertas Shopee e recalcule a SKU em Precificação antes de executar.');
  if(quote.status==='MERCADO_ABAIXO_DO_PISO')
   throw Error('Preços de concorrentes abaixo da margem mínima. Nenhum desconto será aplicado.');
- promotionFromQuote(quote);
+ const beforePublish=promotionFromQuote(quote);
+ const attractiveVisiblePrice=value=>{
+  const cents=Math.round(Number(value)*100)%10;
+  return cents===0||cents===9;
+ };
+ // Cotação antiga não pode publicar um valor R$ xx,27 escondendo uma
+ // terminação xx,29 calculada após cupom. Revalidar antes do envio.
+ if(!attractiveVisiblePrice(beforePublish.promo)||
+    !attractiveVisiblePrice(beforePublish.buyerAfterCoupon))
+  throw Error('Plano antigo: a Shopee exibiria '+beforePublish.promo.toFixed(2)+
+   ' antes do cupom, fora da regra dos centavos 0/9. Recalcule o preço e aprove a nova prévia antes de executar.');
  if(!Number.isFinite(Date.parse(quote.calculatedAt))||
     Date.now()-Date.parse(quote.calculatedAt)>7*86400000)
   throw Error('Plano de preço antigo. Recalcule na Precificação antes de executar.');
