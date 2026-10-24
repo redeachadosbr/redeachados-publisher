@@ -18,7 +18,7 @@ test('retomada automática identifica a primeira posição realmente vazia (mesm
 });
 
 test('botão principal delega a retomada e nunca à limpeza total',()=>{
- assert.match(html,/id="optimizerChatgptAuto"[^>]*Gerar \/ continuar automaticamente/);
+ assert.match(html,/id="optimizerChatgptAuto"[^>]*>[^<]*Gerar \/ continuar automaticamente/);
  assert.match(html,/id="optimizerChatgptRestartAll"/);
  assert.match(app,/\$\('#optimizerChatgptAuto'\)\?\.addEventListener\?\.\('click',\(\)=>\{/);
  assert.match(app,/if\(resume&&!resume\.disabled\)resume\.click\(\)/);
