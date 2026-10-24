@@ -7595,7 +7595,7 @@ function optimizerImagesRenderMode(){
  $('#optimizerModeApi').classList.toggle('is-active',!chat);
 }
 async function optimizerChatgptMakeBrief(w,{defaultOnly=false}={}){
- const {createChatGptPrompts}=await import('/chatgptPrompts.js?v=1.20.37-nine-approved-scenes-short');
+ const {createChatGptPrompts}=await import('/chatgptPrompts.js?v=1.20.38-specifications-base-photo');
  return createChatGptPrompts({
   sku:w.sku,title:w.draftTitle||'Produto Shopee',
   imageUrls:w.imageUrls||[],
@@ -8072,7 +8072,17 @@ globalThis.window?.addEventListener?.('message',async(event)=>{
   optimizerChatBridgeNotice('Imagem '+m.slot+'/9 recebida. Preparando e preservando o envio para a SKU '+job.sku+'...');
   const blob=await(await fetch(m.dataUrl)).blob();
   const file=new File([blob],'chatgpt-auto-'+String(m.slot).padStart(2,'0')+'.'+(blob.type==='image/jpeg'?'jpg':blob.type==='image/webp'?'webp':'png'),{type:blob.type});
-  const prepared=await optimizerChatgptScaleFile(file);
+  let prepared=await optimizerChatgptScaleFile(file);
+  if(Number(m.slot)===3){
+   // A foto gerada é SOMENTE a base. Montar a ficha com números de produto
+   // confirmados, não confiar em textos/medidas imaginados pelo gerador.
+   const {confirmedSpecCard,addConfirmedSpecificationCard}=await import('/specificationCard.js?v=1.0.0');
+   const spec=confirmedSpecCard({sku:job.sku,attributes:w.attributes||[]});
+   if(!spec)throw Error('Imagem 03 requer especificações confirmadas nesta SKU. Confira a ficha técnica em vez de importar outra foto sem informações.');
+   optimizerChatBridgeNotice('Imagem 03 capturada. Aplicando medidas e características confirmadas na foto...');
+   const annotated=await addConfirmedSpecificationCard(prepared.blob,spec);
+   prepared={...prepared,blob:annotated,filename:'imagem-03-especificacoes.png'};
+  }
   const {imageBlobSha256}=await import('/chatgptUploadQueue.js?v=1.21.13-queue-cancel');
   const sha256=await imageBlobSha256(prepared.blob);
   if(job.expectedHashes?.[m.slot]===sha256)throw Error('A extensão reenviou a imagem antiga, não uma foto corrigida.');
