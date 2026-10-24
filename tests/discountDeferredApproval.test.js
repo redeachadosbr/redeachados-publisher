@@ -47,7 +47,7 @@ test('interface exige consentimento antecipado e reconsulta após anúncio NORMA
  assert.match(page,/id="optimizerExecDiscountResume"/);
  assert.match(app,/if\(deferred&&!.*DeferredConsent.*checked\)return false/);
  assert.match(app,/allowDeferredPreview:true/);
- assert.match(app,/state:'deferred_pending'/);
+ assert.match(app,/\?'deferred_pending':'authorized'/);
  assert.match(app,/const keys=intent\.deferred\?fixedKeys:APPROVED_DISCOUNT_KEYS/);
  assert.match(app,/optimizerDiscountFlowSave\(\{\.\.\.intent,state:'posting'\}\)/);
 });
