@@ -3051,7 +3051,7 @@ $('#optimizerImageCorrectionGenerate')?.addEventListener?.('click',async()=>{
   if(fullEditor)await optimizerImagePromptSave(w,slot);
   else await optimizerImageCorrectionSaveNote(w,String(slot),note);
   if(!optimizerImagesSameSku(w))return;
-  if(!optimizerChatBridgeReady)throw Error('Ative a Ponte ChatGPT v1.0.19 no Chrome. A API paga não será utilizada automaticamente.');
+  if(!optimizerChatBridgeReady)throw Error('Ative a Ponte ChatGPT v1.0.20 no Chrome. A API paga não será utilizada automaticamente.');
   const editMode=optimizerImageCorrectionPreviewMap.has(slot)?'custom':'';
   status.textContent='Enviando o prompt exclusivamente da imagem '+slot+' ao ChatGPT. A foto anterior fica salva até confirmar o novo upload.';
   await optimizerCommercialRequestChatgptSlot(w,slot,{editMode});
@@ -7595,7 +7595,7 @@ function optimizerImagesRenderMode(){
  $('#optimizerModeApi').classList.toggle('is-active',!chat);
 }
 async function optimizerChatgptMakeBrief(w,{defaultOnly=false}={}){
- const {createChatGptPrompts}=await import('/chatgptPrompts.js?v=1.20.36-single-slot-commands');
+ const {createChatGptPrompts}=await import('/chatgptPrompts.js?v=1.20.37-nine-approved-scenes-short');
  return createChatGptPrompts({
   sku:w.sku,title:w.draftTitle||'Produto Shopee',
   imageUrls:w.imageUrls||[],
@@ -7680,7 +7680,7 @@ async function optimizerCommercialRequestChatgptSlot(w,slot,{editMode=''}={}){
   await optimizerChatBridgeRelease('Execução anterior pausada para refazer somente a imagem '+slot+'.');
  }
  if(!optimizerChatBridgeReady){
-  const msg='Não foi possível refazer a imagem '+String(slot).padStart(2,'0')+': a Ponte ChatGPT v1.0.19 ou superior não está detectada. Ative uma única extensão no Chrome e atualize esta página. Nenhuma imagem foi apagada.';
+  const msg='Não foi possível refazer a imagem '+String(slot).padStart(2,'0')+': a Ponte ChatGPT v1.0.20 ou superior não está detectada. Ative uma única extensão no Chrome e atualize esta página. Nenhuma imagem foi apagada.';
   status.textContent=msg;optimizerCommercialActionMessage(msg,true);return;
  }
  try{
@@ -7727,7 +7727,7 @@ async function optimizerCommercialRequestChatgptSlot(w,slot,{editMode=''}={}){
   setTimeout(()=>{
    if(!optimizerChatBridgeStartConfirmed&&optimizerChatBridgeNonce===activeNonce&&optimizerChatBridgeBusy){
     void optimizerChatBridgeRelease('A extensão não confirmou o comando de imagem '+slot+'.');
-    optimizerCommercialActionMessage('A Ponte v1.0.19 não confirmou o pedido da imagem '+String(slot).padStart(2,'0')+' em 12 segundos. Confira a extensão do Chrome e use Refazer novamente. A imagem anterior foi mantida.',true);
+    optimizerCommercialActionMessage('A Ponte v1.0.20 não confirmou o pedido da imagem '+String(slot).padStart(2,'0')+' em 12 segundos. Confira a extensão do Chrome e use Refazer novamente. A imagem anterior foi mantida.',true);
    }
   },12000);
  }catch(e){
@@ -7978,10 +7978,10 @@ globalThis.window?.addEventListener?.('message',async(event)=>{
   optimizerChatBridgeVersion=version;
   const parts=version.split('.').map(Number);
   const needsUpdate=parts.length!==3||parts.some(n=>!Number.isInteger(n))||
-   parts[0]<1||(parts[0]===1&&parts[1]===0&&parts[2]<19);
+   parts[0]<1||(parts[0]===1&&parts[1]===0&&parts[2]<20);
   optimizerChatBridgeReady=!needsUpdate;
   if(status&&!optimizerChatBridgeBusy)status.textContent=needsUpdate
-   ?'Extensão ChatGPT '+(version||'antiga')+' detectada: para enviar um prompt individual por posição é necessária a Ponte v1.0.19 ou superior. Atualize a extensão e recarregue o Chrome.'
+   ?'Extensão ChatGPT '+(version||'antiga')+' detectada: para enviar um prompt individual por posição é necessária a Ponte v1.0.20 ou superior. Atualize a extensão e recarregue o Chrome.'
    :'Extensão Rede Achados BR '+version+' detectada. Clique em Gerar as 9 imagens para abrir o ChatGPT e receber cada foto automaticamente.';
   return;
  }
@@ -7993,7 +7993,7 @@ globalThis.window?.addEventListener?.('message',async(event)=>{
    $('#optimizerChatgptAbort').hidden=true;
    if(status)status.textContent='Não foi possível iniciar a extensão: '+(m.error||'erro não identificado')+'. Verifique se está instalada e atualizada no Chrome.';
    optimizerChatBridgeNotice('Não foi possível iniciar o ChatGPT: '+(m.error||'extensão indisponível')+'. A imagem anterior foi preservada.');
-   optimizerCommercialActionMessage('Falha ao iniciar o ChatGPT: '+(m.error||'Ponte indisponível')+'. Verifique a extensão v1.0.19.',true);
+   optimizerCommercialActionMessage('Falha ao iniciar o ChatGPT: '+(m.error||'Ponte indisponível')+'. Verifique a extensão v1.0.20.',true);
   }else if(status){
    status.textContent='Extensão iniciada para a SKU '+(optimizerWorkflowPlan?.sku||'')+'. O ChatGPT está gerando e cada foto será enviada à galeria automaticamente.';
    if(optimizerChatBridgeJob?.slots?.length===1)
@@ -8087,7 +8087,7 @@ $('#optimizerChatgptAuto')?.addEventListener?.('click',async()=>{
   optimizerImagesMode='chatgpt';optimizerImagesRenderMode();
   if(!optimizerChatBridgeReady){
    window.postMessage({kind:'RA_EXTENSION_PROBE'},location.origin);
-   throw Error('Extensão ChatGPT indisponível ou antiga ('+(optimizerChatBridgeVersion||'não detectada')+'). Instale a Ponte v1.0.19 e recarregue o Chrome.');
+   throw Error('Extensão ChatGPT indisponível ou antiga ('+(optimizerChatBridgeVersion||'não detectada')+'). Instale a Ponte v1.0.20 e recarregue o Chrome.');
   }
   // Validate the original photo and the 9 scene prompts before mutating anything.
   const brief=await optimizerChatgptMakeBrief(w);
@@ -8142,7 +8142,7 @@ function optimizerBridgeRecoverFromExtension(payload){
  return new Promise((resolve,reject)=>{
   const timer=setTimeout(()=>{
    window.removeEventListener('message',receive);
-   reject(Error('A Ponte não respondeu à recuperação. Atualize a extensão para v1.0.19 e recarregue o Chrome.'));
+   reject(Error('A Ponte não respondeu à recuperação. Atualize a extensão para v1.0.20 e recarregue o Chrome.'));
   },12000);
   function receive(event){
    if(event.source!==window||event.origin!==location.origin||
@@ -8162,7 +8162,7 @@ $('#optimizerChatgptResume')?.addEventListener?.('click',async()=>{
  button.disabled=true;
  try{
   optimizerImagesMode='chatgpt';optimizerImagesRenderMode();
-  if(!optimizerChatBridgeReady)throw Error('Extensão ChatGPT indisponível ou antiga. Instale a Ponte v1.0.19 e recarregue o Chrome.');
+  if(!optimizerChatBridgeReady)throw Error('Extensão ChatGPT indisponível ou antiga. Instale a Ponte v1.0.20 e recarregue o Chrome.');
   const brief=await optimizerChatgptMakeBrief(w);
   if(!brief.original||brief.prompts?.length!==9)throw Error('Foto original ou os nove roteiros não estão disponíveis.');
   const data=await json('/api/shopee/optimizer/images/manual?'+new URLSearchParams({sku:w.sku,item_id:w.itemId,model_id:w.modelId}));
@@ -8206,7 +8206,7 @@ $('#optimizerChatgptResume')?.addEventListener?.('click',async()=>{
    setTimeout(()=>{
     if(!optimizerChatBridgeStartConfirmed&&optimizerChatBridgeBusy&&optimizerChatBridgeNonce===issuedNonce){
      void optimizerChatBridgeRelease('A extensão não confirmou o reinício pela posição '+first+'. Imagens anteriores preservadas.');
-     notify('A extensão não confirmou o comando para posição '+first+'/09. Verifique se a Ponte 1.0.19 está ativa.');
+     notify('A extensão não confirmou o comando para posição '+first+'/09. Verifique se a Ponte 1.0.20 está ativa.');
     }
    },18000);
   }else{
