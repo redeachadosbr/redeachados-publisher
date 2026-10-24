@@ -9,6 +9,7 @@ RUN node --check shopeeSkuActiveResolver.js && node --test tests/shopeeActiveSku
 RUN node --check shopeeDescriptionComposer.js && node --test tests/shopee-description-commercial-order.test.js
 RUN node --test tests/shopee-resume-manager-handshake.test.js
 RUN node --test tests/shopee-independent-sku-preparation.test.js
+RUN node --test tests/shopee-fast-image-gallery.test.js
 RUN node --check public/chatgptUploadQueue.js && node --test tests/shopee-chatgpt-delivery.test.js && node --test tests/shopee-chatgpt-auto-import-repair.test.js
 RUN node --check shopeeExecutionProgress.js && node --check public/app.js && node --test tests/shopee-real-progress-media-recovery.test.js && node --check shopeePricing.js && node --check shopeeDiscountPublish.js && node --test tests/shopee-303448-visible-coupon-ending.test.js && node --test tests/shopee-303448-live-readback-stage-progress.test.js && node --test tests/shopee-303448-readback-convergence.test.js && node --test tests/shopee-303448-condition-api-readback.test.js
 ENV NODE_ENV=production
