@@ -9,10 +9,10 @@ const {scoreTitle,rank}=context.RASeoTitleScore;
 const example='🦖 🚚 Caminhão Dinossauro Verde 3 Mini Carrinhos Brinquedo Infantil para Crianças Presente e Diversão com Amigos';
 test('quatro títulos retornam na ordem de maior para menor nota, com vencedor único',()=>{
  const source=[
- {title:'🦖 🚚 Caminhão Dinossauro Verde 3 Mini Carrinhos Brinquedo Infantil para Crianças Presente e Diversão com Amigos'},
- {title:'🦖 🚚 Dino Caminhão Brinquedo Infantil Verde com Mini Carrinhos para Crianças Presentear e Brincar no Dia a Dia'},
- {title:'🦖 🚚 Caminhão Verde com Mini Carrinhos e Dinossauro Brinquedo Infantil para Crianças em Momentos de Lazer'},
- {title:'🦖 🚚 Caminhão Dinossauro Brinquedo com Mini Carrinhos Verde para Crianças Diversão Criativa Infantil'}
+ {title:'🦖 Caminhão Dinossauro Verde 3 Mini Carrinhos Brinquedo Infantil para Crianças Presente e Diversão com Amigos 🚚'},
+ {title:'🦖 Dino Caminhão Brinquedo Infantil Verde com Mini Carrinhos para Crianças Presentear e Brincar no Dia a Dia 🚚'},
+ {title:'🦖 Caminhão Verde com Mini Carrinhos e Dinossauro Brinquedo Infantil para Crianças em Momentos de Lazer 🚚'},
+ {title:'🦖 Caminhão Dinossauro Brinquedo com Mini Carrinhos Verde para Crianças Diversão Criativa Infantil 🚚'}
  ];
  const list=rank(source,{productTitle:'Caminhão Dinossauro com 3 Mini Carrinhos - Verde',keywords:['caminhão dinossauro','mini carrinhos','brinquedo infantil','para crianças']});
  assert.equal(list.length,4);
@@ -21,6 +21,17 @@ test('quatro títulos retornam na ordem de maior para menor nota, com vencedor �
  assert.equal(list[0].ideal,true);
  for(let i=1;i<4;i++)assert.ok(list[i-1].score>=list[i].score);
  for(const s of list){assert.ok(s.score>=0&&s.score<=100);assert.equal(Object.values(s.breakdown).reduce((a,b)=>a+b,0),s.score);}
+});
+test('título incompleto recebe nota, mas nunca ganha destaque como ideal',()=>{
+ const original='🦖 Caminhão Dinossauro Verde com 3 Mini Carrinhos Infantil para Crianças Aventura Brinquedo de Transporte 🚚';
+ const rows=rank([{title:original,valid:false,warning:'Não confirmado'},
+ {title:original+' Especial',valid:false}, {title:original.replace('Infantil','Brinquedo Infantil'),valid:true},
+ {title:original.replace('Transporte','Brincadeira'),valid:false}],
+ {productTitle:'Caminhão Dinossauro 3 Mini Carrinhos',keywords:['caminhão dinossauro']});
+ assert.equal(rows.length,4);
+ assert.equal(rows.filter(x=>x.ideal).length,1);
+ assert.equal(rows[0].usable,true);
+ assert.equal(rows[0].ideal,true);
 });
 test('nota não representa volume oficial nem inventa prova de mercado',()=>{
  const plain=scoreTitle(example,{productTitle:'Caminhão Dinossauro',keywords:[]});
