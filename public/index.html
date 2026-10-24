@@ -606,7 +606,7 @@
           <div id="optimizerImagesChatgptPanel" class="optimizer-chatgpt-panel" hidden>
             <div class="optimizer-chatgpt-head">
               <strong>✦ ChatGPT · 9 imagens comerciais</strong>
-              <small>Uma sequência de 9 imagens, com envio e progresso por SKU.</small>
+              <small>Um comando individual por posição. A próxima imagem só começa quando a anterior for salva.</small>
             </div>
             <p><strong>Gerar 9 imagens:</strong> recomeça na imagem 01, substituindo somente as fotos comerciais preparadas. <strong>Continuar da primeira pendente:</strong> preserva as posições salvas, recupera um envio interrompido quando possível e só gera as imagens restantes. A posição seguinte começa após confirmação do servidor. Confira as nove imagens antes de publicar.</p>
             <div class="optimizer-chatgpt-bridge-actions">
@@ -615,8 +615,8 @@
             <p id="optimizerChatgptBridgeStatus" role="status" aria-live="polite">Gerar → receber → salvar → próxima imagem. As fotos originais da WeDrop servem como referência e não contam como imagens novas.</p>
             <details class="optimizer-chatgpt-assist-fallback"><summary>Opção manual (sem extensão)</summary>
             <div class="optimizer-chatgpt-actions">
-              <button type="button" id="optimizerChatgptOpen">✦ Copiar pedido das 9 imagens e abrir ChatGPT</button>
-              <button type="button" class="secondary" id="optimizerChatgptCopyAll">Copiar somente os 9 roteiros</button>
+              <button type="button" id="optimizerChatgptOpen">✦ Copiar imagem pendente e abrir ChatGPT</button>
+              <button type="button" class="secondary" id="optimizerChatgptCopyAll">Copiar somente o comando pendente</button>
               <a id="optimizerChatgptOriginal" class="optimizer-chatgpt-original" target="_blank" rel="noopener noreferrer" hidden>Ver foto original Shopee ↗</a>
             </div>
             <p id="optimizerChatgptCopyStatus" role="status" aria-live="polite"></p>
