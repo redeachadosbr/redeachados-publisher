@@ -3072,6 +3072,7 @@ async function optimizerImageCorrectionImportFile(file){
  if(optimizerChatBridgeBusy)await optimizerChatBridgeRelease('Envio antigo interrompido para receber a nova foto.');
  if(!file?.size)throw Error('Imagem não encontrada.');
  const previous=optimizerImageCorrectionPreviewMap.get(slot);
+ let importedSha='';
  optimizerImagesAutoBusy=true;optimizerImagesSetProgress();
  $('#optimizerImageCorrectionPaste').disabled=true;
  $('#optimizerImageCorrectionChoose').disabled=true;
@@ -3093,15 +3094,20 @@ async function optimizerImageCorrectionImportFile(file){
   const stage=w.stages?.find(x=>x.key==='images');
   if(stage){stage.reviewed=false;stage.status='pending';stage.reviewedAt=null;}
   optimizerExecReset();optimizerWorkflowRender(w);
-  await optimizerImagesLoad();
-  if(optimizerImageCorrectionPreviewMap.get(slot)?.sha256!==result.image.sha256)
-   throw Error('Arquivo salvo, mas a galeria ainda não confirmou a nova foto. Atualize a página.');
-  status.textContent='✓ Imagem '+String(slot).padStart(2,'0')+' substituída e confirmada na SKU '+w.sku+'. Revise antes de enviar à Shopee.';
+  importedSha=result.image.sha256;
+  status.textContent='✓ Imagem '+String(slot).padStart(2,'0')+' substituída na SKU '+w.sku+'. Revise antes de enviar à Shopee.';
   $('#optimizerImageCorrectionFile').value='';
  }finally{
   optimizerImagesAutoBusy=false;optimizerImagesSetProgress();
   $('#optimizerImageCorrectionPaste').disabled=false;
   $('#optimizerImageCorrectionChoose').disabled=false;
+  // Recarregar a galeria SOMENTE depois de liberar a operação; caso contrário
+  // o select "Mover para" fica permanentemente disabled após colar uma foto.
+  if(optimizerImagesSameSku(w)){
+   await optimizerImagesLoad();
+   if(importedSha&&optimizerImageCorrectionPreviewMap.get(slot)?.sha256!==importedSha)
+    throw Error('Arquivo salvo, mas a galeria ainda não confirmou a nova foto. Atualize a página.');
+  }
  }
 }
 $('#optimizerImageCorrectionChoose')?.addEventListener?.('click',()=>$('#optimizerImageCorrectionFile')?.click());
@@ -8361,6 +8367,14 @@ function optimizerImagesSetProgress(){
  const count=optimizerImagesSavedSlots.size;
  const p=$('#optimizerImagesProgress');if(p)p.value=count;
  const b=$('#optimizerImagesGenerateAll');if(b)b.disabled=optimizerImagesAutoBusy||!optimizerImagesApiConfigured;
+ // A galeria pode ter sido renderizada durante um upload: nunca deixar
+ // o seletor de movimento preso em disabled depois que a operação termina.
+ for(const select of document.querySelectorAll('#optimizerImagesGallery .optimizer-commercial-move-select')){
+  select.disabled=optimizerImagesAutoBusy;
+  select.title=optimizerImagesAutoBusy
+   ?'Conclua a importação atual para reorganizar as imagens.'
+   :'Mover ou trocar esta imagem de posição';
+ }
 }
 // Result messages live OUTSIDE the gallery because each refresh rebuilds its cards.
 function optimizerCommercialActionMessage(message,isError=false){
