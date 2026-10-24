@@ -8156,21 +8156,33 @@ function optimizerBridgeRecoverFromExtension(payload){
   window.postMessage({kind:'RA_SITE_CONTINUE',requestId,payload},location.origin);
  });
 }
-// A ação principal sempre delega ao fluxo que confere os slots no servidor.
-$('#optimizerChatgptAuto')?.addEventListener?.('click',()=>{
- const resume=$('#optimizerChatgptResume');
- if(resume&&!resume.disabled)resume.click();
-});
-$('#optimizerChatgptResume')?.addEventListener?.('click',async()=>{
- const w=optimizerWorkflowPlan,button=$('#optimizerChatgptResume');
+// Clique principal executa DIRETAMENTE a continuação, sem outro botão oculto.
+async function optimizerChatgptContinueFromServer(){
+ const w=optimizerWorkflowPlan,button=$('#optimizerChatgptAuto');
  const status=$('#optimizerChatgptBridgeStatus');
- const notify=message=>{if(status)status.textContent=message;const near=$('#optimizerChatgptActionStatus');if(near)near.textContent=message;};
- if(!w||!optimizerImagesSameSku(w)){notify('Selecione uma SKU válida para recuperar as imagens.');return;}
- if(button.disabled)return;
+ let near=$('#optimizerChatgptActionStatus');
+ if(!near&&button){
+  near=document.createElement('div');
+  near.id='optimizerChatgptActionStatus';
+  near.setAttribute('role','status');
+  near.setAttribute('aria-live','polite');
+  near.style.cssText='grid-column:1/-1;flex-basis:100%;width:100%;box-sizing:border-box;margin:8px 0;padding:12px;border-radius:8px;background:#eaf2ff;color:#18355e;font-size:14px;font-weight:600;line-height:1.5;white-space:normal;overflow-wrap:anywhere';
+  button.insertAdjacentElement('afterend',near);
+ }
+ const notify=(message,isError=false)=>{
+  if(status)status.textContent=message;
+  if(near){near.textContent=message;near.style.background=isError?'#fff1ef':'#eaf2ff';near.style.color=isError?'#a02a21':'#18355e';}
+ };
+ notify('Consultando a primeira posição pendente diretamente no servidor...');
+ if(!w||!optimizerImagesSameSku(w)){notify('Abra a etapa Imagens de uma SKU válida antes de continuar.',true);return;}
+ if(!button||button.disabled){notify('O comando já está em execução ou não existem imagens pendentes.',true);return;}
  button.disabled=true;
  try{
   optimizerImagesMode='chatgpt';optimizerImagesRenderMode();
-  if(!optimizerChatBridgeReady)throw Error('Extensão ChatGPT indisponível ou antiga. Instale a Ponte v1.0.22 e recarregue o Chrome.');
+  if(!optimizerChatBridgeReady){
+   window.postMessage({kind:'RA_EXTENSION_PROBE'},location.origin);
+   throw Error('A Ponte ChatGPT não confirmou conexão com esta aba. Confira uma única extensão v1.0.22 ativa e atualize a página.');
+  }
   const brief=await optimizerChatgptMakeBrief(w);
   if(!brief.original||brief.prompts?.length!==9)throw Error('Foto original ou os nove roteiros não estão disponíveis.');
   const data=await json('/api/shopee/optimizer/images/manual?'+new URLSearchParams({sku:w.sku,item_id:w.itemId,model_id:w.modelId}));
@@ -8239,9 +8251,11 @@ $('#optimizerChatgptResume')?.addEventListener?.('click',async()=>{
   void optimizerImagesLoad();
  }catch(e){
   optimizerChatBridgeBusy=false;$('#optimizerChatgptAbort').hidden=true;
-  notify('Não foi possível continuar a sequência: '+String(e.message||e)+'. Nenhuma foto já salva foi apagada.');
- }finally{button.disabled=false;}
-});
+  notify('Não foi possível continuar a sequência: '+String(e.message||e)+'. Nenhuma foto salva foi apagada.',true);
+ }finally{if(button)button.disabled=false;}
+}
+$('#optimizerChatgptAuto')?.addEventListener?.('click',()=>void optimizerChatgptContinueFromServer());
+$('#optimizerChatgptResume')?.addEventListener?.('click',()=>void optimizerChatgptContinueFromServer());
 $('#optimizerChatgptAbort')?.addEventListener?.('click',()=>{
  optimizerChatBridgeRelease('Geração pausada. As fotos já salvas foram preservadas. Para continuar, faça nova solicitação.');
 });
