@@ -44,12 +44,18 @@ test('itens banidos ou excluídos não podem ser desbloqueados pela listagem',as
  }
 });
 test('API incompleta, paginação repetida e falso NORMAL falham sem liberar promoção',async()=>{
- await assert.rejects(verifyShopeeListingStatus({itemId:SKU_ITEM_ID,baseStatus:null,
-  fetchNormalPage:async()=>({response:{}}}),/íntegra/);
- await assert.rejects(verifyShopeeListingStatus({itemId:SKU_ITEM_ID,baseStatus:null,
-  fetchNormalPage:async()=>({response:{item:[],has_next_page:true,next_offset:0}})}),/inconsistente/);
- await assert.rejects(verifyShopeeListingStatus({itemId:SKU_ITEM_ID,baseStatus:null,
-  fetchNormalPage:async()=>({response:{item:[{item_id:SKU_ITEM_ID,item_status:'BANNED'}]}})}),/divergente/);
+ const malformed=async()=>({response:{}});
+ const repeated=async()=>({response:{item:[],has_next_page:true,next_offset:0}});
+ const conflicting=async()=>({response:{item:[{item_id:SKU_ITEM_ID,item_status:'BANNED'}]}});
+ await assert.rejects(verifyShopeeListingStatus({
+  itemId:SKU_ITEM_ID,baseStatus:null,fetchNormalPage:malformed
+ }),/íntegra/);
+ await assert.rejects(verifyShopeeListingStatus({
+  itemId:SKU_ITEM_ID,baseStatus:null,fetchNormalPage:repeated
+ }),/inconsistente/);
+ await assert.rejects(verifyShopeeListingStatus({
+  itemId:SKU_ITEM_ID,baseStatus:null,fetchNormalPage:conflicting
+ }),/divergente/);
 });
 test('desconto consulta o item exato na listagem e informa origem da confirmação',()=>{
  const server=readFileSync(new URL('../server.js',import.meta.url),'utf8');
