@@ -79,16 +79,16 @@ export function adjustShopeeCustomerPriceEnding({grossCents,settings,unitCostCen
  const factor=(1-settings.discountPct/100)*(1-settings.couponPct/100);
  if(factor<=0)return {grossCents,financial:current,adjusted:false};
  // Os centavos são arredondados para a terminação segura MAIS PRÓXIMA.
- // Sem preços arbitrários: até R$ 0,99 no valor pago, com teto para alterar
+ // Sem preços arbitrários: procura primeiro o menor ajuste real que preserve a margem.
  // o preço bruto; nenhuma margem ou referência de mercado é ultrapassada.
- const range=Math.min(1200,Math.ceil(105/factor)+5);
+ const range=Math.min(4000,Math.ceil((requireMarketplaceEnding?505:105)/factor)+5);
  let best=null;
  for(let delta=-range;delta<=range;delta++){
   const candidateGross=grossCents+delta;
   if(candidateGross<=0||candidateGross>BRL_LIMIT)continue;
   const candidate=calculateShopeeSale(candidateGross,settings,unitCostCents);
   const difference=candidate.saleCents-originalSaleCents;
-  if(Math.abs(difference)>99||!allowed(candidate.saleCents)||
+  if(Math.abs(difference)>(requireMarketplaceEnding?499:99)||!allowed(candidate.saleCents)||
      (requireMarketplaceEnding&&!allowed(visibleCents(candidate))))continue;
   if(maximumSaleCents!==null&&candidate.saleCents>maximumSaleCents)continue;
   if(candidate.marginPct+1e-8<minimumMarginPct)continue;
