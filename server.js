@@ -74,6 +74,7 @@ import {quoteShopeePrice,normalizeShopeePricingSettings} from './shopeePricing.j
 import {lookupShopeeCompetitors,marketResearchConfigured} from './shopeeMarketResearch.js';
 import {promotionFromQuote,promotionBasePrice,promotionMember,shopDiscountMembershipSignal,discountPlanSnapshot,signDiscountPreview,verifyDiscountPreview,readDiscountPages} from './shopeeDiscountPublish.js';
 import {discountPreviewStatus} from './shopeeDiscountDeferred.js';
+import {verifyShopeeListingStatus} from './shopeeListingStatus.js';
 import {shopeePricingPreferences,saveShopeePricingPreferences,
   shopeePricingSupplierCost,shopeePricingDirectSupplierCost,
   saveShopeePricePlan,recentShopeePricePlans,
@@ -2965,7 +2966,24 @@ async function discountExecutionInputs(req,sku,itemId,modelId,discountId,{allowM
  const live=await shopeeLiveEditableItem(cfg,auth,itemId);
  if(live.item_sku&&String(live.item_sku)!==sku)
   throw Error('A SKU da Shopee mudou. Publicação cancelada.');
- const publicationState=discountPreviewStatus(live.item_status,{allowDeferred:allowDeferredPreview});
+ // A Central do Vendedor usa a listagem de anúncios ativos. Confirmar nela
+ // o item_id EXATO se get_item_base_info informar status antigo/ausente.
+ const listingStatus=await verifyShopeeListingStatus({
+  itemId,baseStatus:live.item_status,
+  fetchNormalPage:async({offset,pageSize})=>
+   callShopeeShopApi(cfg,{path:'/api/v2/product/get_item_list',
+    accessToken:auth.accessToken,shopId:auth.shopId,
+    query:{item_status:'NORMAL',offset,page_size:pageSize}})
+ });
+ let publicationState;
+ try{publicationState=discountPreviewStatus(listingStatus.status,{
+  allowDeferred:allowDeferredPreview
+ });}
+ catch(error){
+  throw Error('Anúncio '+itemId+' · status da ficha '+listingStatus.baseStatus+
+   ' · conferência da lista de ativos: '+(listingStatus.listConfirmed?'NORMAL':'não encontrado')+
+   '. '+error.message);
+ }
  if(typeof live.has_model!=='boolean')
   throw Error('Não foi possível confirmar se o anúncio possui variações. Nada foi enviado.');
  let originalPrice;
@@ -2989,7 +3007,9 @@ async function discountExecutionInputs(req,sku,itemId,modelId,discountId,{allowM
    promotionSignal:promoMembership.kind,
    promotionNotice:promoMembership.warning};
  return {auth,cfg,quote,snapshot,originalPrice,deferred:publicationState.deferred,
-  liveItemStatus:publicationState.status};
+  liveItemStatus:publicationState.status,
+  liveStatusSource:listingStatus.source,baseItemStatus:listingStatus.baseStatus,
+  listingPagesChecked:listingStatus.pagesChecked};
 }
 // Desconto por MODELO (após init_tier_variation) — não reutiliza IDs do
 // anúncio sem modelos. Custos e SKUs são conferidos individualmente na WeDrop.
@@ -3149,8 +3169,13 @@ app.post('/api/shopee/optimizer/discounts/preview',mustLogin,requireWeDropAdmin,
    signDiscountPreview(data.snapshot,envText('SESSION_SECRET'));
   res.json({ok:true,readOnly:true,preview:data.snapshot,approvalToken:signature,
    deferred:data.deferred,liveItemStatus:data.liveItemStatus,
-   warning:data.deferred?'Status '+data.liveItemStatus+' na Shopee: valores conferidos para autorização antecipada, sem escrever na campanha. A promoção só será aplicada se a Shopee posteriormente retornar NORMAL, após nova verificação de preço, margem e campanha.':
-    'Nenhum desconto ou preço foi alterado. Execute apenas após verificar os valores.'});
+   itemId:String(itemId),baseItemStatus:data.baseItemStatus,
+   liveStatusSource:data.liveStatusSource,
+   listingPagesChecked:data.listingPagesChecked,
+   warning:data.deferred?'Anúncio '+itemId+' · status '+data.liveItemStatus+
+    ' confirmado. Desconto preparado, sem escrita até NORMAL e nova verificação da campanha.':
+    'Anúncio '+itemId+' confirmado como NORMAL por '+data.liveStatusSource+
+    '. Nenhum desconto ou preço foi alterado; a promoção está pronta para a conferência.'});
  }catch(e){res.status(400).json({error:String(e.message||e).slice(0,350)});}
 });
 app.post('/api/shopee/optimizer/discounts/execute',mustLogin,requireWeDropAdmin,async(req,res)=>{
