@@ -3002,6 +3002,20 @@ async function discountExecutionInputs(req,sku,itemId,modelId,discountId,{allowM
  const live=await shopeeLiveEditableItem(cfg,auth,itemId);
  if(live.item_sku&&String(live.item_sku)!==sku)
   throw Error('A SKU da Shopee mudou. Publicação cancelada.');
+ // Mesmo se o vendedor mantiver a tela aberta com um plano antigo, detectar
+ // o vínculo SELLER_DELETE antes de liberar uma nova promoção.
+ if(String(live.item_status||'').toUpperCase()==='SELLER_DELETE'){
+  const activeSku=await scanLiveNormalSku({
+   sku,cached:[],getPage:args=>fetchCatalogPage(cfg,auth,callShopeeShopApi,args),
+   maxPages:20
+  });
+  const replacement=activeSku.matches.filter(x=>String(x.itemId)!==String(itemId));
+  if(replacement.length)
+   throw Error('VINCULO_DESATUALIZADO: SKU '+sku+' está ativa no Item ID '+
+    replacement.map(x=>x.itemId).join(', ')+
+    ', mas a prévia utiliza o anúncio excluído '+itemId+
+    '. O Manager precisa recarregar o anúncio ativo e recalcular o desconto; nenhum preço ou promoção foi enviado.');
+ }
  // A Central do Vendedor usa a listagem de anúncios ativos. Confirmar nela
  // o item_id EXATO se get_item_base_info informar status antigo/ausente.
  const listingStatus=await verifyShopeeListingStatus({
