@@ -27,9 +27,29 @@ test('não aceitar quatro títulos iguais, emojis faltando ou títulos curtos',(
 test('prompt obriga pesquisa real, sem declarar volumes não verificados',()=>{
  const p=prompt({sku:'303448',itemId:'1',productTitle:'Caminhão Dinossauro com 3 Mini Carrinhos - Verde',supplierProduct:{brand:'TOYS & TOYS'}});
  assert.match(p,/PESQUISE AGORA NA WEB/);
- assert.match(p,/exatamente 2 EMOJIS/);
+ assert.match(p,/EXATAMENTE DOIS EMOJIS DISTRIBUÍDOS/);
  assert.match(p,/mínimo 100 e máximo 120/);
  assert.match(p,/volumes absolutos/);
+});
+test('importa JSON com texto antes e depois e separa dois emojis inicialmente grudados',()=>{
+ const titles=[1,2,3,4].map(n=>({title:make(n),reason:'Busca comercial do produto'}));
+ const response='Analisado\\n'+JSON.stringify({titles,keywords:['caminhão dinossauro','mini carrinhos'],
+   sources:[],researchStatus:'unverified'})+'\\nVerifique os detalhes antes de publicar.';
+ const parsed=parse(response);
+ assert.equal(parsed.titles.length,4);
+ for(const t of parsed.titles){
+  assert.ok(t.title.startsWith('🦖 '));
+  assert.ok(t.title.endsWith(' 🚚'));
+  assert.equal(emojiCount(t.title),2);
+  assert.ok(count(t.title)>=100&&count(t.title)<=120);
+ }
+});
+test('títulos retornados exigem confirmação explícita do Manager para fechar o ChatGPT',()=>{
+ const site=readFileSync(new URL('../public/title-studio.js',import.meta.url),'utf8');
+ const bridge=readFileSync(new URL('../public/seo-chatgpt-bridge.js',import.meta.url),'utf8');
+ assert.match(site,/grid\.querySelectorAll\('article\.seo-studio-card'\)\.length!==4/);
+ assert.match(site,/RASeoChatGPT\.acknowledge\(result\)/);
+ assert.match(bridge,/RA_SITE_SEO_ACK/);
 });
 test('editor manual e botão visível não dependem da ponte',()=>{
  const site=readFileSync(new URL('../public/seo-modern-layout.js',import.meta.url),'utf8');
