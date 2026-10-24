@@ -3867,7 +3867,8 @@ function optimizerDiscountFinalPaint(){
   ['Média de mercado',q.marketResearch?.verified?shPriceMoney(q.marketResearch.reference):'Não validada'],
   ['Preço bruto',shPriceMoney(q.grossPrice)],
   ['Desconto',shPricePercent(q.discountPct)],
-  ['Preço final',shPriceMoney(q.customerPrice)],
+  ['Preço exibido na Shopee',shPriceMoney(shPriceVisiblePromotion(q))],
+  ['Após cupom de '+shPricePercent(q.couponPct),shPriceMoney(q.customerPrice)],
   ['Lucro líquido',shPriceMoney(q.netProfit)],
   ['Margem líquida',shPricePercent(q.netMarginPct)],
   ['Anúncios comparados',q.marketResearch?.verified?String(q.marketResearch.count):'Insuficientes']
@@ -6056,6 +6057,15 @@ async function shPriceLoadDefaults(){
 function shPriceMoney(n){
   return Number(n||0).toLocaleString('pt-BR',{style:'currency',currency:'BRL'});
 }
+// Minha Promoção mostra este valor SEM cupom. Não confundir com a
+// simulação conservadora do checkout caso o comprador aplique o cupom.
+function shPriceVisiblePromotion(q){
+ const saved=Number(q?.marketplaceDisplayPrice);
+ if(q?.marketplaceDisplayPrice!==undefined&&Number.isFinite(saved)&&saved>0)return saved;
+ const gross=Number(q?.grossPrice),pct=Number(q?.discountPct);
+ return Number.isFinite(gross)&&gross>0&&Number.isFinite(pct)?
+  Math.round(gross*(1-pct/100)*100)/100:0;
+}
 function shPricePercent(n){return Number(n||0).toLocaleString('pt-BR',
   {minimumFractionDigits:1,maximumFractionDigits:2})+'%';}
 function shPriceBreakdown(q){
@@ -6147,7 +6157,9 @@ function shPriceRender(q){
   const marketVerified=q.marketResearch?.verified===true;
   $('#optimizerQuickDiscountLabel').textContent=q.marginOverride?'Desconto base · margem personalizada':marketVerified?'Desconto baseado no mercado':'Desconto base · sem pesquisa';
   $('#pricePromoLabel').textContent=q.marginOverride?'Desconto mantido · margem manual':marketVerified?'Desconto competitivo calculado':'Desconto base · não pesquisado';
-  $('#optimizerQuickFinal').textContent=shPriceMoney(q.customerPrice);
+  $('#optimizerQuickFinal').textContent=shPriceMoney(shPriceVisiblePromotion(q));
+  $('#optimizerQuickAfterCoupon').textContent='Com cupom de '+shPricePercent(q.couponPct)+
+    ', se utilizado: '+shPriceMoney(q.customerPrice);
   $('#optimizerQuickProfit').textContent=shPriceMoney(q.netProfit);
   $('#optimizerQuickMarginPercent').textContent=shPricePercent(q.netMarginPct)+' de margem';
   shQuickSetStatus('SKU '+q.sku+' · Custo WeDrop '+shPriceMoney(q.unitCost)+
@@ -6160,7 +6172,9 @@ function shPriceRender(q){
   $('#priceResults').hidden=false;
   $('#priceGross').textContent=shPriceMoney(q.grossPrice);
   $('#pricePromoPct').textContent=shPricePercent(q.discountPct);
-  $('#priceFinal').textContent=shPriceMoney(q.customerPrice);
+  $('#priceFinal').textContent=shPriceMoney(shPriceVisiblePromotion(q));
+  $('#priceAfterCoupon').textContent='Com cupom de '+shPricePercent(q.couponPct)+
+    ', se utilizado: '+shPriceMoney(q.customerPrice);
   $('#priceProfit').textContent=shPriceMoney(q.netProfit);
   $('#priceMarginActual').textContent=shPricePercent(q.netMarginPct);
   $('#pricingSummaryCost').textContent=shPriceMoney(q.unitCost);
@@ -6690,7 +6704,9 @@ function shDiscountRender(q){
   $('#discountPct').textContent=shPricePercent(q.discountPct);
   $('#discountPromoLabel').textContent=q.marketResearch?.verified===true
     ?'Desconto baseado no mercado':'Desconto base · sem pesquisa';
-  $('#discountFinal').textContent=shPriceMoney(q.customerPrice);
+  $('#discountFinal').textContent=shPriceMoney(shPriceVisiblePromotion(q));
+  $('#discountAfterCoupon').textContent='Com cupom de '+shPricePercent(q.couponPct)+
+    ', se utilizado: '+shPriceMoney(q.customerPrice);
   $('#discountMargin').textContent=shPricePercent(q.netMarginPct);
   $('#discountProfit').textContent=shPriceMoney(q.netProfit);
   $('#discountSupplierCost').textContent=shPriceMoney(q.unitCost);
@@ -6699,8 +6715,9 @@ function shDiscountRender(q){
   const promoPrice=Math.round(gross*(1-discount/100)*100)/100;
   $('#discountOneClickExplainer').textContent='Ao clicar, o sistema poderá ajustar o preço bruto para '+
    shPriceMoney(gross)+' e aplicará '+shPricePercent(discount)+
-   ' de desconto na Minha Promoção (preço promocional '+shPriceMoney(promoPrice)+
-   '). O cupom é considerado separadamente e nenhuma outra SKU será modificada.';
+   ' de desconto na Minha Promoção (preço exibido na Shopee '+shPriceMoney(promoPrice)+
+   '). Com cupom de '+shPricePercent(q.couponPct)+' (se utilizado): '+shPriceMoney(q.customerPrice)+
+   '. A margem projetada já considera o cupom; nenhuma outra SKU será modificada.';
   shDiscountResetReview();
   discountOneClickStatus(q.marketResearch?.verified===true
     ?q.status==='MERCADO_ABAIXO_DO_PISO'
@@ -6865,7 +6882,8 @@ $('#discountCopy').onclick=async()=>{
     'Preço bruto: '+shPriceMoney(q.grossPrice),
     'Desconto do anúncio: '+shPricePercent(q.discountPct),
     'Cupom da loja: '+shPricePercent(q.couponPct),
-    'Preço final estimado: '+shPriceMoney(q.customerPrice),
+    'Preço visível na Shopee, sem cupom: '+shPriceMoney(shPriceVisiblePromotion(q)),
+    'Preço se o comprador usar cupom: '+shPriceMoney(q.customerPrice),
     'Lucro líquido previsto: '+shPriceMoney(q.netProfit),
     'Margem líquida prevista: '+shPricePercent(q.netMarginPct),
     'Custo WeDrop: '+shPriceMoney(q.unitCost),
