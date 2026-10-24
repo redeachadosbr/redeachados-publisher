@@ -16,7 +16,7 @@ test('preço final permite qualquer centavo terminado em 0 ou 9, inclusive ,40 e
 test('reproduz SKU 303448: R$ 103,42 vira R$ 103,40 sem cair abaixo de 5% nem superar teto',()=>{
  const c=normalizeShopeePricingSettings({
   marginPct:8,minMarginPct:5,discountPct:22.7,couponPct:1,
-  taxPct:4,flashPct:3,shipping:4,packing:0,adsPct:0,sellerType:'cpf',
+  taxPct:4,flashPct:3,shipping:0,packing:0,adsPct:0,sellerType:'cpf',
   commissionRates:[20,14,14,14],fixedFees:[4.5,16,20,26]
  });
  const original=calculateShopeeSale(13514,c,5599);
@@ -58,7 +58,7 @@ test('preço mostrado é o mesmo simulado após promoção e cupom, sem alterar 
 });
 test('se houver conflito entre terminação e margem/teto, o ajustador não inventa preço',()=>{
  const c=normalizeShopeePricingSettings({
-  discountPct:22.7,couponPct:1,shipping:4,marginPct:8,minMarginPct:5,
+  discountPct:22.7,couponPct:1,shipping:0,marginPct:8,minMarginPct:5,
   taxPct:4,flashPct:3
  });
  const result=adjustShopeeCustomerPriceEnding({
