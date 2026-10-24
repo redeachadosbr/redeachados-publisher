@@ -61,12 +61,12 @@ test('responsive design keeps real input serializer within fiscal fields',()=>{
 });
 
 
-test('CEST 00 salvo tem prioridade sobre CEST real devolvido pela Shopee, sem alterar valor publicado',()=>{
- const app=read('../public/app.js');
- assert.match(app,/const sellerCest=String\(saved\.cest\?\?''\)\.trim\(\)/);
- assert.match(app,/const liveCest=String\(data\.taxCurrent\?\.cest\?\?''\)\.trim\(\)/);
- assert.match(app,/draft\.cest=sellerCest\|\|liveCest\|\|suggestedCest\|\|'00'/);
- assert.match(app,/Shopee \(API do anúncio; conferência fiscal necessária\)/);
- assert.match(app,/esse valor publicado NÃO foi alterado/);
- assert.doesNotMatch(app,/cestEntries\.find\(v=>\/\^\\d\{7\}\$\//);
+test('CEST da tela somente da WeDrop, 00 quando ausente, sem substituir a Shopee',()=>{
+ const app=read('../public/app.js'),server=read('../server.js');
+ assert.match(app,/draft\.cest=\/\^\\d\{7\}\$\/\.test\(suggestedCest\)\?suggestedCest:'00'/);
+ assert.match(app,/input\.readOnly=true/);
+ assert.doesNotMatch(app,/draft\.cest=sellerCest\|\|liveCest/);
+ assert.match(app,/CEST publicado na Shopee:/);
+ assert.match(server,/tax:\{\.\.\.review\.tax,cest:sourceCest\}/);
+ assert.match(server,/change\.tax=\{\.\.\.change\.tax,cest:wedropCestForSku\(taxSupplier\)\}/);
 });
