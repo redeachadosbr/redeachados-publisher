@@ -51,17 +51,42 @@ export function imageDimensions(b,mime){
  }
  throw Error('Arquivo não é uma imagem JPG ou PNG válida.');
 }
+// Keep signed URLs stable across gallery refreshes. New file paths are immutable,
+// so a replaced image always receives a different cache key and browser URL.
+const PREVIEW_TTL_MS=4*60*1000;
+const signedPreviewCache=new Map();
+const pendingPreviewSignatures=new Map();
+async function signedPreparedPreview(storagePath){
+ const path=String(storagePath||'');
+ if(!/^\\d+\\/\\d+\\/\\d+\\/[a-f0-9-]+\\.(?:png|jpg)$/.test(path))
+  throw Error('Caminho da imagem preparada inválido.');
+ const cached=signedPreviewCache.get(path);
+ if(cached&&cached.expiresAt>Date.now())return cached.url;
+ if(pendingPreviewSignatures.has(path))return pendingPreviewSignatures.get(path);
+ const sign=(async()=>{
+  const r=await api('/storage/v1/object/sign/'+IMAGE_BUCKET+'/'+path,{method:'POST',
+   headers:{'Content-Type':'application/json'},body:JSON.stringify({expiresIn:600})});
+  const data=await r.json(),relative=String(data.signedURL||data.signedUrl||'');
+  if(!relative.startsWith('/object/sign/'))throw Error('Prévia de imagem inválida.');
+  const url=config().url+'/storage/v1'+relative;
+  signedPreviewCache.set(path,{url,expiresAt:Date.now()+PREVIEW_TTL_MS});
+  if(signedPreviewCache.size>240){
+   const oldest=signedPreviewCache.keys().next().value;
+   signedPreviewCache.delete(oldest);
+  }
+  return url;
+ })();
+ pendingPreviewSignatures.set(path,sign);
+ try{return await sign;}finally{pendingPreviewSignatures.delete(path);}
+}
 export async function readPreparedImages(shop,item,model,sku,{preview=false}={}){
  const r=await api('/rest/v1/shopee_optimizer_images'+where(shop,item,model)+'&select=*&order=slot.asc');
  const images=(await r.json()).filter(x=>x.sku===sku);
- if(preview){
-  for(const row of images){
-   const r=await api('/storage/v1/object/sign/'+IMAGE_BUCKET+'/'+row.storage_path,{method:'POST',
-    headers:{'Content-Type':'application/json'},body:JSON.stringify({expiresIn:600})});
-   const j=await r.json(),relative=String(j.signedURL||j.signedUrl||'');
-   if(!relative.startsWith('/object/sign/'))throw Error('Prévia de imagem inválida.');
-   row.previewUrl=config().url+'/storage/v1'+relative;
-  }
+ if(preview&&images.length){
+  // A previous implementation signed each slot serially (up to 9 roundtrips).
+  await Promise.all(images.map(async row=>{
+   row.previewUrl=await signedPreparedPreview(row.storage_path);
+  }));
  }
  return images;
 }
