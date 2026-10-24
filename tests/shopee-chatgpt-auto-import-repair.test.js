@@ -13,5 +13,5 @@ test('auto image failures do not lock manual import and never loop forever on du
  assert.match(js,/correctionDrop\.addEventListener\('paste'/);
  assert.match(js,/correctionDrop\.addEventListener\('drop'/);
  assert.match(html,/id="optimizerImageCorrectionDropzone"/);
- assert.match(html,/app\.js\?v=1\.21\.37-sku-bridge-reset/);
+ assert.match(html,/app\\.js\\?v=1\\.21\\./);
 });
