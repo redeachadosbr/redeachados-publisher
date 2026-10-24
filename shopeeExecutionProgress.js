@@ -46,6 +46,8 @@ export function shopeeExecutionProgress(job){
   (result.fiscal?.status==='verified'||(verified&&!plan.finalFiscal));
  const discountDone=discountIncluded&&result.discount?.status==='verified';
  const activeCommercial=['updating','verifying','images_upload','video_upload','video_processing'].includes(phase);
+ // Uma atualização aceita é um avanço operacional, mas NÃO comprova publicação.
+ const updateAccepted=Boolean(result.requestId||arr(result.events).some(e=>e?.key==='update-accepted'));
  const activeVariants=/^variation_/.test(phase);
  const activeFiscal=/^fiscal_/.test(phase);
  const activeDiscount=/^(?:discount_|model_discount_)/.test(phase);
@@ -89,17 +91,29 @@ export function shopeeExecutionProgress(job){
   if(id==='discount'&&fullWorkflow&&!discountIncluded)status='review';
   else if(!needs[id])status='skipped';
   else if(done[id])status='done';
+  else if(id==='images'&&uploaded>0&&uploaded===images)status='staged';
+  else if(id==='video'&&readyVideo)status='staged';
   else if(active[id])status=failure?'attention':'active';
+  else if(updateAccepted&&['seo','description','technical'].includes(id)&&needs[id])
+   status=failure?'attention':'checking';
   else status='waiting';
   if(fiscalPartial&&id==='fiscal')status='attention';
   return {id,label,status};
  });
- // Não confundir "mídia enviada à biblioteca" com publicação no anúncio.
- // O percentual mede somente alterações efetivamente verificadas, não uploads.
+ // A barra acompanha marcos REAIS: upload/aceite/validação. O progresso
+ // operacional jamais é apresentado como percentual publicado na Shopee.
+ // Cada etapa só atinge 100% após confirmação pelo readback oficial.
  const required=steps.filter(x=>x.status!=='skipped'&&x.status!=='review');
- const completed=required.filter(x=>x.status==='done').length;
+ const contribution=step=>{
+  const id=step.id;
+  if(done[id])return 1;
+  if(id==='images'&&images>0)return Math.min(.85,uploaded/images*.85);
+  if(id==='video'&&readyVideo)return .85;
+  if(['seo','description','technical'].includes(id)&&updateAccepted)return .65;
+  return 0;
+ };
  const percent=verified&&(!discountIncluded||discountDone)?100:
-  Math.min(99,required.length?Math.round(100*completed/required.length):0);
+  Math.min(99,required.length?Math.round(100*required.reduce((sum,s)=>sum+contribution(s),0)/required.length):0);
  const titles={
   queued:'Preparando execução',images_upload:'Enviando imagens à mídia',
   video_upload:'Enviando vídeo à mídia',video_processing:'Processando vídeo',
@@ -127,7 +141,11 @@ export function shopeeExecutionProgress(job){
   events.push({label:title,at:job.updated_at||null,kind:failure?'warning':verified?'success':'info'});
  const message=fiscalPartial?'O anúncio e as variações foram processados, mas a Shopee recusou os dados fiscais. Confira o motivo antes de aplicar o desconto.':
   verified?'Todas as alterações incluídas nesta execução foram verificadas na Shopee. Etapas dispensadas não foram reenviadas.':
-  state==='uncertain'?'A resposta da Shopee ainda não foi confirmada. A escrita com resultado incerto não será repetida.':
+  state==='uncertain'?
+   [uploaded?uploaded+' de '+images+' imagens guardadas na mídia Shopee':null,
+    readyVideo?'vídeo processado na mídia':null,
+    updateAccepted?'alteração recebida pela API':null,
+    'publicação no anúncio ainda não confirmada. O sistema consulta o resultado sem repetir a escrita'].filter(Boolean).join(' · '):
   state==='failed'?'Execução interrompida: '+String(job.last_error||'confira a ocorrência'):
   state==='prepared'?pendingOnly?'Pronto para publicar somente variações, fiscal e desconto. O conteúdo comercial existente ficará intacto.':
    [uploaded?uploaded+' imagens na biblioteca Shopee (publicação não presumida)':null,
@@ -135,7 +153,8 @@ export function shopeeExecutionProgress(job){
     'Plano pronto para executar apenas o que ainda não foi confirmado'].filter(Boolean).join(' · '):
   titles[phase]||title;
  return {
-  state,phase,title,percent,steps,events,startedAt:result.startedAt||null,
+  state,phase,title,percent,progressMeaning:'andamento_operacional_nao_publicacao',
+  steps,events,startedAt:result.startedAt||null,
   updatedAt:job.updated_at||null,imagesTotal:images,imagesUploaded:uploaded,
   imagePercent:images?Math.round(uploaded/images*100):null,
   videoIncluded:video,videoReady:video&&readyVideo,
