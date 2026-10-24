@@ -99,3 +99,24 @@ test('a response for a different image or item is never accepted as saved',async
  assert.deepEqual(acks,[false]);
  assert.equal((await storage.all())[0].status,'blocked');
 });
+
+test('retomada não sobrescreve posições já confirmadas no Manager após perder ACK',async()=>{
+ const storage=memoryStore([
+  {...input,key:job.nonce+':1',slot:1,status:'blocked'},
+  {...input,key:job.nonce+':2',slot:2,status:'pending'},
+  {...input,key:job.nonce+':3',slot:3,status:'pending'}
+ ]);
+ const sent=[];
+ const queue=createImageUploadQueue({storage,
+  send:async row=>{sent.push(row.slot);return confirmed(row);}});
+ // Servidor informou que imagens 01, 02 e 03 já existem. Não reenviar.
+ assert.equal(await queue.resume(job,{includeBlocked:true,onlySlots:[4,5,6,7,8,9]}),0);
+ await flush();
+ assert.deepEqual(sent,[]);
+ // O slot 4 é o único ausente, mesmo com outros registros antigos.
+ const fourth={...input,key:job.nonce+':4',slot:4,status:'pending'};
+ await storage.put(fourth);
+ assert.equal(await queue.resume(job,{includeBlocked:true,onlySlots:[4,5,6,7,8,9]}),1);
+ await flush();
+ assert.deepEqual(sent,[4]);
+});
