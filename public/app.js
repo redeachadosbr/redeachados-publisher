@@ -7600,12 +7600,20 @@ async function optimizerCommercialRequestChatgptSlot(w,slot){
   optimizerChatBridgeBusy=true;
   $('#optimizerChatgptAbort').hidden=false;
   status.textContent='Solicitando à extensão a imagem '+slot+' da SKU '+w.sku+'. Aguarde confirmação do upload.';
+  optimizerChatBridgeStartConfirmed=false;
+  const activeNonce=optimizerChatBridgeNonce;
   window.postMessage({kind:'RA_SITE_START',payload:{
    nonce:optimizerChatBridgeNonce,sku:w.sku,itemId:String(w.itemId),modelId:String(w.modelId),
    imageUrl:brief.original,prompts:brief.prompts,
-   // The extension skips all other positions for this individual request.
+   // Só esta posição é autorizada. A próxima requer outro comando.
    completed:Array.from({length:9},(_,i)=>i+1).filter(n=>n!==slot)
   }},location.origin);
+  setTimeout(()=>{
+   if(!optimizerChatBridgeStartConfirmed&&optimizerChatBridgeNonce===activeNonce&&optimizerChatBridgeBusy){
+    void optimizerChatBridgeRelease('A extensão não confirmou o comando de imagem '+slot+'.');
+    optimizerCommercialActionMessage('A Ponte v1.0.17 não confirmou o pedido da imagem '+String(slot).padStart(2,'0')+' em 12 segundos. Confira a extensão do Chrome e use Refazer novamente. A imagem anterior foi mantida.',true);
+   }
+  },12000);
  }catch(e){
   optimizerChatBridgeBusy=false;$('#optimizerChatgptAbort').hidden=true;
   status.textContent='Não foi possível iniciar a posição '+slot+': '+e.message;
@@ -7737,6 +7745,9 @@ function optimizerChatBridgeNotice(message){
   const correction=$('#optimizerImageCorrectionStatus');
   if(correction)correction.textContent=message;
  }
+ if(job?.slots?.length===1&&optimizerChatBridgeIdentity(w,job)){
+  optimizerCommercialActionMessage(message,/erro|falh|recusad|rejeitad|interrompid|não conseguiu|não foi possível|pausad/i.test(message));
+ }
 }
 function optimizerChatBridgeAck(row,ok,error=''){
  window.postMessage({kind:'RA_SITE_UPLOAD_RESULT',nonce:row.nonce,slot:row.slot,ok,error},location.origin);
@@ -7866,7 +7877,12 @@ globalThis.window?.addEventListener?.('message',async(event)=>{
    $('#optimizerChatgptAbort').hidden=true;
    if(status)status.textContent='Não foi possível iniciar a extensão: '+(m.error||'erro não identificado')+'. Verifique se está instalada e atualizada no Chrome.';
    optimizerChatBridgeNotice('Não foi possível iniciar o ChatGPT: '+(m.error||'extensão indisponível')+'. A imagem anterior foi preservada.');
-  }else if(status)status.textContent='Extensão iniciada para a SKU '+(optimizerWorkflowPlan?.sku||'')+'. O ChatGPT está gerando e cada foto será enviada à galeria automaticamente.';
+   optimizerCommercialActionMessage('Falha ao iniciar o ChatGPT: '+(m.error||'Ponte indisponível')+'. Verifique a extensão v1.0.17.',true);
+  }else if(status){
+   status.textContent='Extensão iniciada para a SKU '+(optimizerWorkflowPlan?.sku||'')+'. O ChatGPT está gerando e cada foto será enviada à galeria automaticamente.';
+   if(optimizerChatBridgeJob?.slots?.length===1)
+    optimizerCommercialActionMessage('ChatGPT confirmou a geração da imagem '+String(optimizerChatBridgeJob.slots[0]).padStart(2,'0')+'. Aguarde o arquivo ser salvo antes de refazer outra posição.');
+  }
   return;
  }
  if(m.nonce!==optimizerChatBridgeNonce||!m.nonce){
