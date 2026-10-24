@@ -8399,6 +8399,19 @@ function optimizerBridgeRecoverFromExtension(payload){
 // Impedir execução duplicada mesmo se a galeria reativar o botão durante uma consulta.
 let optimizerChatgptContinueBusy=false;
 // Clique principal executa DIRETAMENTE a continuação, sem outro botão oculto.
+// Espera resposta da extensão, vinculada ao mesmo nonce. Um clique sem ACK nunca é sucesso.
+function optimizerWaitBridgeReply(kind,nonce,timeoutMs=18000){
+ return new Promise(resolve=>{
+  const cleanup=()=>{clearTimeout(timer);window.removeEventListener('message',onMessage);};
+  const onMessage=e=>{
+   if(e.source!==window||e.origin!==location.origin||
+      e.data?.kind!==kind||e.data?.nonce!==nonce)return;
+   cleanup();resolve({ok:e.data.ok===true,error:String(e.data.error||'').slice(0,200)});
+  };
+  const timer=setTimeout(()=>{cleanup();resolve({ok:false,error:'Confirmação não recebida no prazo'});},timeoutMs);
+  window.addEventListener('message',onMessage);
+ });
+}
 async function optimizerChatgptContinueFromServer(){
  const w=optimizerWorkflowPlan,button=$('#optimizerChatgptAuto');
  const status=$('#optimizerChatgptBridgeStatus');
@@ -8460,7 +8473,10 @@ async function optimizerChatgptContinueFromServer(){
    $('#optimizerChatgptAbort').hidden=false;
    notify('Recuperando a imagem '+first+'/09 da SKU '+w.sku+'. Imagens existentes preservadas. Se a conversa não puder ser recuperada, use “Recomeçar somente imagem pendente” na Ponte.');
    // O runner recebe autorização somente DEPOIS que esta aba registrou o nonce antigo.
+   const wakeAck=optimizerWaitBridgeReply('RA_EXTENSION_WAKE_RESULT',optimizerChatBridgeNonce,18000);
    window.postMessage({kind:'RA_SITE_WAKE',nonce:optimizerChatBridgeNonce},location.origin);
+   const wakeResult=await wakeAck;
+   if(!wakeResult?.ok)throw Error('A Ponte não confirmou a reativação: '+(wakeResult?.error||'sem confirmação'));
   }else if(recovered.reason==='NO_RECOVERABLE_JOB'||recovered.reason==='ALREADY_COMPLETE'){
    // Sem job recuperável na extensão: novo trabalho começando na primeira vaga
    // do servidor, sem restart total nem remoção dos arquivos já salvos.
@@ -8475,10 +8491,13 @@ async function optimizerChatgptContinueFromServer(){
    optimizerChatBridgeBusy=true;optimizerChatBridgeStartConfirmed=false;
    $('#optimizerChatgptAbort').hidden=false;
    notify('Iniciando nova sessão pela primeira imagem pendente '+first+'/09. '+stored.length+' imagem(ns) salva(s) preservada(s).');
+   const startAck=optimizerWaitBridgeReply('RA_EXTENSION_START_RESULT',optimizerChatBridgeNonce,18000);
    window.postMessage({kind:'RA_SITE_START',payload:{
     nonce:optimizerChatBridgeNonce,sku:w.sku,itemId:String(w.itemId),modelId:String(w.modelId),
     imageUrl:brief.original,prompts:brief.prompts,completed:stored
    }},location.origin);
+   const startResult=await startAck;
+   if(!startResult?.ok)throw Error('A Ponte não confirmou a nova sessão: '+(startResult?.error||'sem confirmação'));
    const issuedNonce=optimizerChatBridgeNonce;
    setTimeout(()=>{
     if(!optimizerChatBridgeStartConfirmed&&optimizerChatBridgeBusy&&optimizerChatBridgeNonce===issuedNonce){
