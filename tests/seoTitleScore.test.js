@@ -64,7 +64,7 @@ test('quatro cartões em grade 2x2 exibem notas e destacam a recomendação',()=
  assert.match(studio,/seo-studio-score-track/);
  assert.match(studio,/RECOMENDADO — maior nota SEO/);
  assert.match(studio,/Aguardando título validado de 100 a 120 caracteres/);
- assert.match(page,/seo-modern-layout\.css\?v=1\.0\.4-clipboard-button33/);
+ assert.match(page,/seo-modern-layout\.css\?v=1\.0\.5-compact-cards/);
 });
 
 test('botão de importação de resposta copiada é visível e gera quatro cartões sem pesquisa nova',()=>{
@@ -76,4 +76,21 @@ test('botão de importação de resposta copiada é visível e gera quatro cart�
  assert.match(studio,/pasteDirect\.onclick/);
  assert.match(ui,/suggestions\.append\(pasteDirect\)/);
  assert.match(css,/\.seo-studio-direct-import/);
+});
+
+test('SEO compacto mantém os 4 cartões com notas e recolhe justificativas e URLs por padrão',()=>{
+ const studio=readFileSync(new URL('../public/title-studio.js',import.meta.url),'utf8');
+ const layout=readFileSync(new URL('../public/seo-modern-layout.js',import.meta.url),'utf8');
+ const css=readFileSync(new URL('../public/seo-modern-layout.css',import.meta.url),'utf8');
+ assert.match(studio,/seo-studio-analysis-details/);
+ assert.match(studio,/Ver análise e critérios da nota/);
+ assert.match(layout,/seo-modern-research-details/);
+ assert.match(layout,/Ver palavras-chave e URLs da pesquisa/);
+ assert.match(layout,/references\.append\(summary,researchPanel\)/);
+ assert.doesNotMatch(layout,/lower\.append\(supplier\)/);
+ assert.doesNotMatch(layout,/lower\.append\(quick\)/);
+ assert.doesNotMatch(layout,/content\.append\(lower\)/);
+ assert.match(css,/SEO compacto: 4 títulos/);
+ assert.match(css,/seo-modern-research-details/);
+ assert.match(css,/seo-studio-choose/);
 });
