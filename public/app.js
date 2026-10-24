@@ -8032,7 +8032,7 @@ $('#optimizerChatgptResume')?.addEventListener?.('click',async()=>{
   optimizerChatBridgeJob=null;optimizerChatBridgeNonce='';optimizerChatBridgeSku='';
   optimizerChatBridgeBusy=false;optimizerChatBridgeUploading=false;
   sessionStorage.removeItem(RA_CHAT_BRIDGE_JOB_KEY);sessionStorage.removeItem(RA_CHAT_BRIDGE_SESSION_KEY);
-  const recovered=await optimizerBridgeRecoverFromExtension({sku:String(w.sku),itemId:String(w.itemId),modelId:String(w.modelId),completed:stored});
+  const recovered=await optimizerBridgeRecoverFromExtension({sku:String(w.sku),itemId:String(w.itemId),modelId:String(w.modelId),completed:stored,imageUrl:brief.original,prompts:brief.prompts});
   if(!optimizerImagesSameSku(w))throw Error('A SKU mudou; o comando de recuperação foi interrompido.');
   if(recovered.ok){
    optimizerChatBridgeNonce=recovered.nonce;optimizerChatBridgeSku=w.sku;
