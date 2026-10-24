@@ -125,6 +125,18 @@ export function compileShopeeExecutionPlan({shopId,itemId,modelId,sku,record,rev
   const noOtherChange=Object.keys(proposed).length===0&&!finalFiscal&&!video&&images.length===0&&!modelVariations;
   const discountOnly=selectedStage==='all'&&Boolean(allowDiscountOnly)&&noOtherChange;
   const canExecute=blocked.length===0&&(!noOtherChange||discountOnly);
+  // A prévia consulta a Shopee. Conteúdo que já coincide EXATAMENTE com
+  // o rascunho aprovado não integra o payload de alteração e deve aparecer
+  // como "confirmado no anúncio", não "não incluído".
+  const confirmedStages={
+    seo:selected('seo')&&stages.seo?.reviewed===true&&Boolean(title)&&title===currentTitle,
+    description:selected('description')&&stages.description?.reviewed===true&&
+      Boolean(description)&&description===currentDescription,
+    technical:selected('technical')&&stages.technical?.reviewed===true&&
+      !Object.hasOwn(proposed,'attribute_list')&&
+      Boolean(state.attributes?.length)&&
+      !blocked.some(x=>/atributo|ficha técnica|anatel/i.test(x))
+  };
   const fingerprint=crypto.createHash('sha256').update(stableDataJson({
     shopId:String(shopId),itemId:String(itemId),modelId:String(modelId),sku,
     selectedStage,discountOnly,modelVariations:modelVariations?{
@@ -145,7 +157,7 @@ export function compileShopeeExecutionPlan({shopId,itemId,modelId,sku,record,rev
       item_name:currentTitle,description:currentDescription,description_type:currentType,video_info:live?.video_info||[],
       item_sku:String(live?.item_sku||''),category_id:live?.category_id,
       attribute_list:live?.attribute_list||[],tax_info:live?.tax_info||{},image:live?.image||{}
-    },proposed,video,images,finalFiscal,modelVariations,
+    },proposed,video,images,finalFiscal,modelVariations,confirmedStages,
     actions:[...Object.keys(proposed),...(images.length?['images']:[]),...(video?['video']:[]),...(modelVariations?['model_variations']:[]),...(finalFiscal?['tax_info']:[]),...(discountOnly?['discount']:[])],
     blocked,warnings,canExecute,
     fingerprint,fiscalDeferred,selectedStage,discountOnly,createdAt:new Date().toISOString(),marketplaceUpdated:false,
