@@ -68,3 +68,21 @@ test('se houver conflito entre terminação e margem/teto, o ajustador não inve
  assert.equal(result.adjusted,false);
  assert.match(result.reason,/margem|limites/);
 });
+
+test('SKU 2392: custo R$569,99 e margem 5% geram preco com dois finais 0/9 sem travar',()=>{
+ const settings=normalizeShopeePricingSettings({
+  marginPct:5,minMarginPct:5,discountPct:20,couponPct:1,
+  taxPct:4,flashPct:3,adsPct:0,shipping:0,packing:0,
+  sellerType:'cnpj',commissionRates:[20,14,14,14],fixedFees:[4.5,16,20,26]
+ });
+ const q=quoteShopeePrice({unitCost:569.99,settings});
+ assert.equal(q.unitCost,569.99);
+ assert.ok(q.netMarginPct>=5);
+ assert.equal(Math.round(q.marketplaceDisplayPrice*100)%10===0||
+  Math.round(q.marketplaceDisplayPrice*100)%10===9,true);
+ assert.equal(Math.round(q.customerPrice*100)%10===0||
+  Math.round(q.customerPrice*100)%10===9,true);
+ assert.ok(q.customerPrice>=810.40,'Primeiro preco duplamente valido deve proteger a margem');
+ const simulated=calculateShopeeSale(Math.round(q.grossPrice*100),settings,56999);
+ assert.equal(simulated.finalPrice,q.customerPrice);
+});
