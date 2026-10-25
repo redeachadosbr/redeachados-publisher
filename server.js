@@ -61,7 +61,7 @@ import {normalizeManualVideo} from './shopeeVideoValidation.js';
 import * as ShopeeMarktPro from './shopeeMarktPro.js';
 import {readPreparedImages,importPreparedImage,deletePreparedImage,reorderPreparedImage,downloadPreparedImage,imagesSignature,MAX_IMAGE_BYTES,rememberPublishedImages} from './shopeePreparedImages.js';
 import {generateOpenAiImage,imageGenerationStatus} from './shopeeOpenAiImages.js';
-import {validateVariationName,variationImagePrompt,saveVariationImage,variationImagePreview,variationImageBytes,validateVariationDetails,buildVariationPayload} from './shopeeVariationMedia.js';
+import {validateVariationName,variationImagePrompt,saveVariationImage,variationImagePreview,variationImageBytes,validateVariationDetails,reviewedVariationEvidence,variationSupplierIdentity,buildVariationPayload} from './shopeeVariationMedia.js';
 import {openAiKeyStatus,openAiApiKey,saveOpenAiApiKey,deleteOpenAiApiKey} from './shopeeOpenAiCredentials.js';
 import {compileAttributes,compileTax,attributeAuditForChanges,selectValidTechnicalChanges,sameData,fieldsVerified} from './shopeeStructuredFields.js';
 import {scopeTechnicalReviewChanges} from './shopeeTechnicalReviewScope.js';
@@ -1401,6 +1401,12 @@ async function shopeeLiveVariationState(cfg,auth,itemId,knownItem=null){
   query:{item_id:Number(itemId)}})).response?.model||[]:[];
  return {item,models};
 }
+// Regra única de evidência aplicável a toda SKU e aos múltiplos caminhos de execução.
+function variationEvidenceApproved(details,reviewState){
+ const options=details?.options||[];
+ return reviewedVariationEvidence(details,reviewState?.stages?.variants)||
+  (options.length>0&&options.every(o=>o.photoConfirmed===true&&o.stockConfirmed===true));
+}
 async function prepareExecutionVariations({auth,cfg,sku,itemId,modelId},reviewState,live){
  if(!reviewState.variationDetails)throw Error('Configure as variações reais e suas fotos antes da prévia única.');
  const details=validateVariationDetails(reviewState.variationDetails,{
@@ -1410,7 +1416,7 @@ async function prepareExecutionVariations({auth,cfg,sku,itemId,modelId},reviewSt
  if(!live.has_model&&details.options.some(o=>!variantAssetBelongsTo(o.asset,auth,itemId,modelId)))
   throw Error('Alguma foto de variação não pertence a este anúncio.');
  const source=await verifiedVariationSupplierCosts({auth,sku,itemId,modelId},{
-  ...details,reviewed:reviewState.stages?.variants?.reviewed===true
+  ...details,reviewed:variationEvidenceApproved(reviewState.variationDetails,reviewState)
  });
  const prepared={type:details.type,alreadyCreated:live.has_model===true,
   options:details.options.map(o=>({...o,cost:source.find(s=>s.sku===o.sku)?.unitCost||null}))};
@@ -1459,8 +1465,8 @@ app.post('/api/shopee/optimizer/execution/prepare',mustLogin,requireWeDropAdmin,
      modelVariations=await prepareExecutionVariations({auth,cfg,sku,itemId,modelId},reviewState,live);
     let autoModelDiscountToken=null,autoModelDiscountPreview=null;
     if(modelVariations){
-     const campaignId=String(req.body?.campaignId||reviewState.modelDiscountCampaignId||
-      approvedCampaignId||'').trim();
+     const campaignId=String(req.body?.campaignId||approvedCampaignId||
+      reviewState.modelDiscountCampaignId||'').trim();
      if(approvedCampaignId&&campaignId!==approvedCampaignId)
       throw Error('A campanha selecionada difere da que foi autorizada nesta SKU. Refaça a prévia da promoção.');
      if(!/^\d{1,18}$/.test(campaignId))
@@ -2554,20 +2560,10 @@ app.post('/api/shopee/optimizer/variants/generate',mustLogin,requireWeDropAdmin,
  }catch(e){res.status(400).json({ok:false,error:String(e.message||e).slice(0,350)});}
  finally{if(lock)activeVariationOps.delete(lock);}
 });
-// Ligação fornecedor por VARIAÇÃO, não por anúncio pai.
-const normalizeVariationSource=v=>String(v||'').normalize('NFD')
- .replace(/[\u0300-\u036f]/g,'').toUpperCase().replace(/[^A-Z0-9]+/g,' ').trim();
+// Vínculo genérico por opção/SKU/EAN físico, independente do título comercial.
 async function verifiedVariationSupplierCosts(x,details){
  const parent=await readWeDropProduct(x.auth.shopId,{sku:x.sku,itemId:x.itemId,modelId:x.modelId});
- const parentName=normalizeVariationSource(parent?.product_data?.name||'');
  const original=details.options.find(o=>String(o.supplierSku)===String(x.sku));
- const originalOption=normalizeVariationSource(original?.name||'');
- // Remover a opção do produto de origem funciona também para Tamanho,
- // Voltagem, Modelo e outros tipos além de Cor.
- const baseByOption=originalOption&&parentName.endsWith(' '+originalOption)?
-  parentName.slice(0,-originalOption.length-1):parentName;
- const base=baseByOption.replace(/ (?:VERMELHA?|VERMELHO|ROSA|PRETA?|PRETO|AZUL|BRANCA?|BRANCO|AMARELA?|AMARELO|VERDE)$/,'');
- if(!base||base.length<8)throw Error('Nome do produto WeDrop insuficiente para vincular modelos com segurança.');
  const used=new Set(),rows=[];
  for(const option of details.options){
   const supplierSku=String(option.supplierSku||'').trim();
@@ -2579,33 +2575,18 @@ async function verifiedVariationSupplierCosts(x,details){
    shopeePricingDirectSupplierCost(x.auth.shopId,supplierSku)
   ]);
   const facts=supplier?.product_data||{};
-  const actual=normalizeVariationSource(facts.name||'');
-  const color=normalizeVariationSource(option.name);
-  const genderStem=color.replace(/[AO]$/,'');
-  const correctOption=actual.endsWith(' '+color)||
-    genderStem.length>=3&&(actual.endsWith(' '+genderStem+'A')||
-      actual.endsWith(' '+genderStem+'O'));
-  const normalFamily=actual===base||actual.startsWith(base+' ');
-  // Nomes comerciais WeDrop podem diferir por cor (ex.: Patinete Infantil
-  // vs Patinete Speed Fun). Só aceitar título distinto quando o produto
-  // pertence à MESMA família, a opção confere e o EAN do SKU físico bate
-  // exatamente com o EAN que o vendedor revisou para essa variação.
   const supplierEan=[
-    facts.ean,facts.EAN,facts.gtin,facts.GTIN,facts.barcode,
-    facts.codigo_barras,facts.codigoDeBarras
-  ].map(v=>String(v??'').trim()).find(v=>/^\\d{8,14}$/.test(v))||'';
-  const approvedEan=String(option.gtin||'').trim();
-  const family=parentName.split(' ')[0];
-  const sameCategory=family.length>=6&&
-    actual.startsWith(family+' ')&&parentName.startsWith(family+' ');
-  const exactEan=supplierEan&&approvedEan&&supplierEan===approvedEan;
-  const reviewedDifferentTitle=details.reviewed===true&&
-    details.type==='Cor'&&sameCategory&&correctOption&&exactEan;
-  if(!cost||!supplier||supplier.supplier_sku!==supplierSku||
-    !correctOption||!(normalFamily||reviewedDifferentTitle)||
-    (supplierEan&&approvedEan&&supplierEan!==approvedEan))
-   throw Error('A opção '+option.name+' não corresponde ao SKU WeDrop '+supplierSku+
-    ' ou está sem custo/EAN confirmado. Confira a origem real.');
+   facts.ean,facts.EAN,facts.gtin,facts.GTIN,facts.barcode,
+   facts.codigo_barras,facts.codigoDeBarras
+  ].map(v=>String(v??'').trim()).find(v=>/^[0-9]{8,14}$/.test(v))||'';
+  const identity=variationSupplierIdentity({
+   parentName:parent?.product_data?.name,supplierName:facts.name,
+   originalOption:original?.name,optionName:option.name,
+   expectedEan:option.gtin,sourceEan:supplierEan,reviewed:details.reviewed===true
+  });
+  if(!cost||!supplier||supplier.supplier_sku!==supplierSku||!identity.ok)
+   throw Error('A variação '+option.name+' não foi confirmada para o SKU WeDrop '+
+    supplierSku+': '+(identity.reason||'custo ou identidade indisponíveis')+'.');
   rows.push({name:option.name,sku:option.sku,supplierSku,unitCost:cost.unitCost,
    importedAt:cost.costUpdatedAt});
  }
@@ -2620,7 +2601,7 @@ app.post('/api/shopee/optimizer/variants/preview',mustLogin,requireWeDropAdmin,a
   const data=validateVariationDetails(x.details,{requirePhotos:true,
    approvedReview:x.review?.stages?.variants});
   const suppliers=await verifiedVariationSupplierCosts(x,{...data,
-   reviewed:x.review?.stages?.variants?.reviewed===true});
+   reviewed:variationEvidenceApproved(x.details,x.review)});
   if(data.options.length<2)throw Error('Para criar variações sem apagar a opção original, informe também a cor/modelo original e a nova opção (mínimo duas).');
   if(!data.options.every(o=>variantAssetBelongsTo(o.asset,x.auth,x.itemId,x.modelId)))
    throw Error('Alguma foto não pertence a este anúncio.');
@@ -2656,7 +2637,7 @@ app.post('/api/shopee/optimizer/variants/apply',mustLogin,requireWeDropAdmin,asy
   const details=validateVariationDetails(x.details,{requirePhotos:true,
    approvedReview:x.review?.stages?.variants});
   const suppliers=await verifiedVariationSupplierCosts(x,{...details,
-   reviewed:x.review?.stages?.variants?.reviewed===true});
+   reviewed:variationEvidenceApproved(x.details,x.review)});
   if(details.options.length<2)throw Error('Informe a opção original e a nova variação para preservar o produto atual.');
   if(details.options.some(o=>!variantAssetBelongsTo(o.asset,x.auth,x.itemId,x.modelId)))
    throw Error('Fotos não pertencem a esta loja.');
@@ -3210,7 +3191,7 @@ async function variationModelDiscountContext(req){
   approvedReview:x.review?.stages?.variants});
  if(details.options.length<2)throw Error('Conclua as variações antes de preparar a campanha.');
  const suppliers=await verifiedVariationSupplierCosts(x,{...details,
-  reviewed:x.review?.stages?.variants?.reviewed===true});
+  reviewed:variationEvidenceApproved(x.details,x.review)});
  const live=await shopeeLiveEditableItem(x.cfg,x.auth,x.itemId);
  if(live.has_model!==true||String(live.item_status).toUpperCase()!=='NORMAL')
   throw Error('A Shopee ainda não confirmou as variações neste anúncio ativo.');
