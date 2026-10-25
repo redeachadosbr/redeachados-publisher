@@ -1403,11 +1403,15 @@ async function shopeeLiveVariationState(cfg,auth,itemId,knownItem=null){
 }
 async function prepareExecutionVariations({auth,cfg,sku,itemId,modelId},reviewState,live){
  if(!reviewState.variationDetails)throw Error('Configure as variações reais e suas fotos antes da prévia única.');
- const details=validateVariationDetails(reviewState.variationDetails,{requirePhotos:!live.has_model});
+ const details=validateVariationDetails(reviewState.variationDetails,{
+  requirePhotos:!live.has_model,approvedReview:reviewState.stages?.variants
+ });
  if(details.options.length<2)throw Error('A execução automática exige a opção original e pelo menos uma variação.');
  if(!live.has_model&&details.options.some(o=>!variantAssetBelongsTo(o.asset,auth,itemId,modelId)))
   throw Error('Alguma foto de variação não pertence a este anúncio.');
- const source=await verifiedVariationSupplierCosts({auth,sku,itemId,modelId},details);
+ const source=await verifiedVariationSupplierCosts({auth,sku,itemId,modelId},{
+  ...details,reviewed:reviewState.stages?.variants?.reviewed===true
+ });
  const prepared={type:details.type,alreadyCreated:live.has_model===true,
   options:details.options.map(o=>({...o,cost:source.find(s=>s.sku===o.sku)?.unitCost||null}))};
  if(prepared.options.some(o=>!o.cost))throw Error('Custo WeDrop não confirmado para todas as opções.');
@@ -2570,15 +2574,34 @@ async function verifiedVariationSupplierCosts(x,details){
    readWeDropProduct(x.auth.shopId,{sku:supplierSku,itemId:x.itemId,modelId:x.modelId}),
    shopeePricingDirectSupplierCost(x.auth.shopId,supplierSku)
   ]);
-  const actual=normalizeVariationSource(supplier?.product_data?.name||'');
+  const facts=supplier?.product_data||{};
+  const actual=normalizeVariationSource(facts.name||'');
   const color=normalizeVariationSource(option.name);
   const genderStem=color.replace(/[AO]$/,'');
+  const correctOption=actual.endsWith(' '+color)||
+    genderStem.length>=3&&(actual.endsWith(' '+genderStem+'A')||
+      actual.endsWith(' '+genderStem+'O'));
+  const normalFamily=actual===base||actual.startsWith(base+' ');
+  // Nomes comerciais WeDrop podem diferir por cor (ex.: Patinete Infantil
+  // vs Patinete Speed Fun). Só aceitar título distinto quando o produto
+  // pertence à MESMA família, a opção confere e o EAN do SKU físico bate
+  // exatamente com o EAN que o vendedor revisou para essa variação.
+  const supplierEan=[
+    facts.ean,facts.EAN,facts.gtin,facts.GTIN,facts.barcode,
+    facts.codigo_barras,facts.codigoDeBarras
+  ].map(v=>String(v??'').trim()).find(v=>/^\\d{8,14}$/.test(v))||'';
+  const approvedEan=String(option.gtin||'').trim();
+  const family=parentName.split(' ')[0];
+  const sameCategory=family.length>=6&&
+    actual.startsWith(family+' ')&&parentName.startsWith(family+' ');
+  const exactEan=supplierEan&&approvedEan&&supplierEan===approvedEan;
+  const reviewedDifferentTitle=details.reviewed===true&&
+    details.type==='Cor'&&sameCategory&&correctOption&&exactEan;
   if(!cost||!supplier||supplier.supplier_sku!==supplierSku||
-    !(actual===base||actual.startsWith(base+' '))||
-    !(actual.endsWith(' '+color)||genderStem.length>=3&&actual.endsWith(' '+genderStem+'A')||
-      genderStem.length>=3&&actual.endsWith(' '+genderStem+'O')))
+    !correctOption||!(normalFamily||reviewedDifferentTitle)||
+    (supplierEan&&approvedEan&&supplierEan!==approvedEan))
    throw Error('A opção '+option.name+' não corresponde ao SKU WeDrop '+supplierSku+
-    ' ou está sem custo confirmado. Confira a origem real.');
+    ' ou está sem custo/EAN confirmado. Confira a origem real.');
   rows.push({name:option.name,sku:option.sku,supplierSku,unitCost:cost.unitCost,
    importedAt:cost.costUpdatedAt});
  }
