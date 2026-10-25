@@ -136,3 +136,10 @@
  #optimizerWorkflowEditor:has(#optimizerVariationPanel:not([hidden]))>.optimizer-workflow-actions{display:grid;grid-template-columns:1fr}
  #optimizerWorkflowEditor:has(#optimizerVariationPanel:not([hidden]))>.optimizer-workflow-actions>*{width:100%;margin:0!important;text-align:center}
 }
+
+/* A publicação só ocorre pela execução completa; a etapa 06 é preparação. */
+#optimizerVariationPanel .optimizer-variant-flow-note{
+ margin:12px 0 0;padding:12px 14px;border:1px solid #cee5df;
+ border-radius:12px;background:#f0faf6;color:#1c6553;
+ font-size:12px;line-height:1.55
+}
