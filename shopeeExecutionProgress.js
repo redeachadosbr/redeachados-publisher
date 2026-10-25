@@ -82,8 +82,10 @@ export function shopeeExecutionProgress(job){
  const failure=['failed','uncertain'].includes(state)||fiscalPartial;
  const hasSavedProgress=uploaded>0||readyVideo||variantsDone||
   commercialConfirmed||imagesConfirmed||videoConfirmed;
- const resumable=state==='prepared'&&plan.canExecute===true&&
-  (hasSavedProgress||hasVariants||fiscalIncluded||discountIncluded);
+ // Um plano preparado com zero upload e sem run_id não é uma execução
+ // interrompida; ele AGUARDA o clique de autorização do vendedor.
+ const resumable=state==='prepared'&&plan.canExecute===true&&hasSavedProgress;
+ const awaitingAuthorization=state==='prepared'&&!hasSavedProgress;
  const needs={
   images:images>0,
   video,
@@ -116,7 +118,8 @@ export function shopeeExecutionProgress(job){
  };
  const steps=SHOPEE_MATRIX_8_STAGES.map(({id,label})=>{
   let status;
-  if(id==='discount'&&fullWorkflow&&!discountIncluded)status='review';
+  if(id==='discount'&&fullWorkflow&&!discountIncluded)
+    status=state==='prepared'?'authorization':'review';
   else if(!needs[id])status='skipped';
   else if(done[id])status='done';
   else if(id==='images'&&uploaded>0&&uploaded===images)status='staged';
@@ -131,7 +134,7 @@ export function shopeeExecutionProgress(job){
  // A barra acompanha marcos REAIS: upload/aceite/validação. O progresso
  // operacional jamais é apresentado como percentual publicado na Shopee.
  // Cada etapa só atinge 100% após confirmação pelo readback oficial.
- const required=steps.filter(x=>x.status!=='skipped'&&x.status!=='review');
+ const required=steps.filter(x=>!['skipped','review','authorization'].includes(x.status));
  const contribution=step=>{
   const id=step.id;
   if(done[id])return 1;
@@ -161,7 +164,7 @@ export function shopeeExecutionProgress(job){
  const title=fiscalPartial?'Dados fiscais pendentes de correção':
   verified?'Etapas aprovadas confirmadas':state==='uncertain'?'Confirmação pendente':
   state==='failed'?'Execução interrompida':state==='blocked'?'Pendências para executar':
-  state==='prepared'?'Pronto para executar etapas pendentes':
+  state==='prepared'?(resumable?'Mídia já enviada · confirmar retomada':'Prévia pronta · aguardando autorização'):
   titles[phase]||'Execução em andamento';
  const events=arr(result.events).filter(x=>x&&typeof x.label==='string'&&typeof x.at==='string')
   .slice(-15).reverse().map(x=>({label:x.label,at:x.at,kind:x.kind||'info'}));
@@ -177,12 +180,12 @@ export function shopeeExecutionProgress(job){
   state==='failed'?
    (confirmedReadback?'Conferência parcial: mídia confirmada na Shopee; as demais etapas requerem nova prévia. ':'')+
    'Execução interrompida: '+String(job.last_error||'confira a ocorrência'):
-  state==='prepared'?pendingOnly?'Pronto para publicar somente variações, fiscal e desconto. O conteúdo comercial existente ficará intacto.':
+  state==='prepared'?pendingOnly?'Prévia pronta. Clique em Executar para autorizar somente variações, fiscal e desconto; o conteúdo existente ficará intacto.':
    [confirmedStages.seo?'Título SEO já confirmado na Shopee':null,
     confirmedStages.description?'Descrição já confirmada na Shopee':null,
     imagesConfirmed?'Imagens confirmadas no anúncio':uploaded?uploaded+' imagens na biblioteca da Shopee':null,
     videoConfirmed?'Vídeo confirmado no anúncio':readyVideo?'Vídeo processado na mídia':null,
-    'Somente campos ainda divergentes serão enviados após a aprovação'].filter(Boolean).join(' · '):
+    'Nenhuma publicação foi iniciada. Clique em Executar na Shopee após conferir a prévia e o desconto.'].filter(Boolean).join(' · '):
   titles[phase]||title;
  return {
   state,phase,title,percent,progressMeaning:'andamento_operacional_nao_publicacao',
@@ -192,12 +195,13 @@ export function shopeeExecutionProgress(job){
   videoIncluded:video,videoReady:video&&readyVideo,
   imagesPublished:imagesConfirmed?images:0,
   videoPublished:video&&videoConfirmed,
-  hasStarted:attempt,hasSavedProgress,resumable,verified:verified&&(!discountIncluded||discountDone),
+  hasStarted:attempt,hasSavedProgress,resumable,awaitingAuthorization,verified:verified&&(!discountIncluded||discountDone),
   fiscalPartial,
   fiscalStatus:fiscalPartial?'rejected':fiscalDone?'verified':activeFiscal?'in_progress':fiscalIncluded?'pending':'not_included',
   variationsStatus:variantsDone?'verified':activeVariants?'in_progress':hasVariants?'pending':'not_included',
   discountStatus:discountDone?'verified':activeDiscount?'in_progress':
-   fullWorkflow&&!discountIncluded?'not_approved_for_this_run':discountIncluded?'pending':'not_included',
+   fullWorkflow&&!discountIncluded?(state==='prepared'?'awaiting_execution_confirmation':'not_approved_for_this_run'):
+    discountIncluded?'pending':'not_included',
   attention:failure,lastError:job.last_error||null,message
  };
 }
