@@ -1,5 +1,6 @@
 // Montagem local dos roteiros ChatGPT por SKU. Sem chave API e sem conexão a contas pessoais.
 import {confirmedProductDimensionsFromWeDrop} from './productDimensions.js';
+import {imageScenePrompt} from './imageSceneDiversity.js';
 // Cenas com enquadramentos e benefícios distintos; não repetir a fotografia em outro fundo.
 // As nove instruções autorizadas pelo vendedor — NÃO acrescentar texto,
 // SKU, informações de catálogo, cabeçalho, notas, outro prompt ou rodapé.
@@ -16,16 +17,18 @@ export const CHATGPT_IMAGE_SCENES=Object.freeze([
  {label:"08 · Quebra de objeções",guide:"Imagem 08 — Quebra de objeções: responder visualmente às três principais dúvidas do comprador, sem poluir a composição. imagem com fundo ambientado. FRASES CURTAS"},
  {label:"09 · Mockup e confiança",guide:"Imagem 09 — Mockup e confiança: apresentar o produto em cenário profissional com os três selos da loja: Compra Segura, Entrega Rápida e Atendimento Online. imagem com fundo ambientado"}
 ]);
-export function createChatGptPrompts({imageUrls=[],supplierSourceText=''}={}){
+export function createChatGptPrompts({imageUrls=[],supplierSourceText='',title=''}={}){
  const original=(Array.isArray(imageUrls)?imageUrls:[]).find(x=>/^https:\/\//i.test(String(x||'')))||'';
  const scenes=CHATGPT_IMAGE_SCENES;
- const prompts=scenes.map(({guide})=>guide);
+ // Cada slot leva seu próprio roteiro visual. Funciona em chat novo ou no
+ // mesmo chat, sem depender da memória das imagens geradas anteriormente.
+ const prompts=scenes.map(({guide},i)=>[guide,imageScenePrompt({slot:i+1,title})].join('\n\n'));
  const dims=confirmedProductDimensionsFromWeDrop(supplierSourceText);
  // A imagem gerada no ChatGPT deve ser uma BASE limpa: o Manager insere
  // SOMENTE os números exatos da WeDrop na imagem final. Não confiar em
  // letras/números que o modelo possa inventar, nem usar peso da caixa.
  prompts[2]=[
-  scenes[2].guide,
+  prompts[2],
   dims?('MEDIDAS DO PRODUTO CONFIRMADAS NO TEXTO WEDROP DA SKU: '+
    dims.measurements.map(x=>x.label+': '+x.value).join('; ')+'.'):
    'NÃO HÁ MEDIDAS DO PRODUTO CONFIRMADAS NO TEXTO WEDROP DESTA SKU.',
