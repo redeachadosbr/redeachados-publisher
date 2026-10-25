@@ -25,3 +25,23 @@ test('sem autorização a barra diz o motivo e não chama API automaticamente',(
  assert.match(js,/void optimizerExecuteApproved\(false\)/);
  assert.match(js,/confirmati[oó]n:'EXECUTAR '\+p\.sku/);
 });
+
+test('Motor Matriz: 0% preparado sempre possui ação recuperável dentro da barra',()=>{
+ const area=html.slice(html.indexOf('class="optimizer-exec-progress-card"'),html.indexOf('id="optimizerExecutionIssue"'));
+ for(const id of ['optimizerExecutionRecoverStart','optimizerExecutionSwitchFull','optimizerExecutionLaunch'])
+  assert.match(area,new RegExp('id="'+id+'"'));
+ assert.match(js,/optimizerExecutionVisibleCommands\(progress,job\)/);
+ assert.match(js,/optimizerExecutionRecoverStart'\)\?\.addEventListener/);
+ assert.match(js,/optimizerExecutionSwitchFull'\)\?\.addEventListener/);
+ assert.match(js,/\$\('#optimizerExecutionScope'\)\.value='all'/);
+ assert.match(html,/optimizer-exec-resume-bar\[hidden\]/);
+ assert.doesNotMatch(html,/optimizer-exec-resume-bar:not\(:has/);
+});
+test('Motor Matriz: troca de SKU não herda execução parcial, escopo fica explícito',()=>{
+ assert.match(js,/optimizerExecScopeOwner!==scopeIdentity/);
+ assert.match(js,/optimizerExecScopeOwner=scopeIdentity/);
+ assert.match(js,/nextTitle\.textContent='Prévia PARCIAL: '\+mode/);
+ assert.match(js,/NÃO constam nesta prévia/);
+ assert.match(js,/optimizerExecPrepareError=String\(e\.message\|\|e\)/);
+ assert.match(js,/Não foi possível preparar/);
+});
