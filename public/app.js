@@ -3324,6 +3324,13 @@ async function optimizerWorkflowLoad(record){
  const id=String(record?.itemId||'');
  const modelId=String(record?.selectedModelId||'0');
  const p=$('#optimizerWorkflowPanel');
+ // Toda NOVA SKU inicia no modo completo. Não herdar "Somente imagens" da anterior.
+ // O operador pode escolher uma etapa isolada para a SKU atual, sem alteração automática.
+ const scopeIdentity=[sku,id,modelId].join('|');
+ if(optimizerExecScopeOwner!==scopeIdentity){
+  optimizerExecScopeOwner=scopeIdentity;
+  $('#optimizerExecutionScope').value='all';
+ }
  // Mesmo quando a SKU chega por um atalho/deep link, desativar ponte
  // de outra SKU sem depender de um evento de digitação.
  void optimizerChatBridgeSwitchSku(sku);
@@ -3516,6 +3523,7 @@ let optimizerExecPlan=null,optimizerExecContext=null,optimizerExecBusy=false,opt
 let optimizerExecAutoModelToken=null,optimizerExecAutoModelPreview=null;
 let optimizerExecPoll=null,optimizerExecJob=null,optimizerExecPolling=false,optimizerExecPollingIdentity='',optimizerExecStartError='';
 let optimizerExecPreparation=null,optimizerExecPrepareController=null,optimizerExecProgress=null;
+let optimizerExecScopeOwner='',optimizerExecPrepareError='';
 let optimizerExecSafeRecoveryKey='',optimizerExecSafeRecovering=false;
 function optimizerExecNotice(message,state='info'){
  const e=$('#optimizerExecutionStatus');e.textContent=message;e.dataset.state=state;
@@ -3524,7 +3532,7 @@ function optimizerExecReset(){
  // Um request de pré-execução antigo não pode ocupar a fila da próxima SKU.
  if(optimizerExecPrepareController){optimizerExecPrepareController.abort();optimizerExecPrepareController=null;}
  optimizerExecPreparation=null;
- optimizerExecStartError='';
+ optimizerExecStartError='';optimizerExecPrepareError='';
  const keepProgress=optimizerExecProgress&&optimizerWorkflowPlan&&
   String(optimizerExecProgress.sku)===String(optimizerWorkflowPlan.sku)&&
   String(optimizerExecProgress.itemId)===String(optimizerWorkflowPlan.itemId)&&
@@ -3727,6 +3735,22 @@ globalThis.OptimizerFinalization={
  onVariationsApplied:()=>{optimizerModelDiscountClear();optimizerFinalSnapshot=null;void optimizerFinalPendingRefresh(true);},
  refresh:()=>{optimizerFinalSnapshot=null;void optimizerFinalPendingRefresh(true);}
 };
+function optimizerExecutionVisibleCommands(progress,job){
+ const recover=$('#optimizerExecutionRecoverStart'),full=$('#optimizerExecutionSwitchFull');
+ const launch=$('#optimizerExecutionLaunch');
+ if(!recover||!full||!launch)return;
+ const allowed=Boolean(progress&&['prepared','blocked'].includes(progress.state)&&!progress.hasStarted);
+ const current=optimizerWorkflowPlan;
+ const matching=Boolean(current&&job?.plan&&String(job.sku)===String(current.sku)&&
+  String(job.item_id)===String(current.itemId)&&
+  String(job.model_id||0)===String(current.modelId||0));
+ const stage=matching?String(job.plan.selectedStage||'all'):
+  String(optimizerExecPlan?.selectedStage||'all');
+ recover.hidden=!(allowed&&matching&&launch.hidden&&!optimizerExecBusy);
+ recover.disabled=Boolean(optimizerExecBusy||optimizerExecPreparation);
+ full.hidden=!(allowed&&matching&&stage!=='all'&&!optimizerExecBusy);
+ full.disabled=Boolean(optimizerExecBusy||optimizerExecPreparation);
+}
 function optimizerExecutionTrackerRender(progress,job){
  // O GET de status e a preparação automática não podem encobrir uma
  // tentativa recusada com "aguardando autorização" na própria barra.
@@ -3746,6 +3770,7 @@ function optimizerExecutionTrackerRender(progress,job){
  // da execução. Em running/verified o botão desaparece para evitar repetição.
  const resumeBar=tracker.querySelector('.optimizer-exec-resume-bar');
  if(resumeBar)resumeBar.hidden=!['prepared','blocked'].includes(progress.state);
+ optimizerExecutionVisibleCommands(progress,job);
  if(!visible)return;
  const w=optimizerWorkflowPlan||{},sku=String(job?.sku||w.sku||'');
  optimizerExecProgress={...progress,sku,itemId:String(job?.item_id||w.itemId||''),
@@ -3781,6 +3806,24 @@ function optimizerExecutionTrackerRender(progress,job){
  $('#optimizerExecutionBar').setAttribute('aria-valuenow',String(pct));
  $('#optimizerExecutionBarFill').style.width=pct+'%';
  $('#optimizerExecutionProgressDetail').textContent=progress.message;
+ const savedScope=String(job?.plan?.selectedStage||'all');
+ const scopeLabels={images:'SOMENTE IMAGENS',video:'SOMENTE VÍDEO',seo:'SOMENTE TÍTULO SEO',
+  technical:'SOMENTE FICHA TÉCNICA',description:'SOMENTE DESCRIÇÃO',
+  fiscal:'SOMENTE DADOS FISCAIS',remaining:'SOMENTE VARIAÇÕES + FISCAL + DESCONTO'};
+ if(progress.state==='prepared'&&savedScope!=='all'){
+  const scopeLabel=scopeLabels[savedScope]||'PARCIAL';
+  $('#optimizerExecutionPhaseTitle').textContent='Prévia PARCIAL: '+scopeLabel;
+  const explanation='O plano salvo inclui '+scopeLabel+'. As demais etapas NÃO serão enviadas.'+
+   ' Para executar tudo, clique em “Preparar TODAS as etapas aprovadas”.';
+  $('#optimizerExecutionPhaseSubtitle').textContent=explanation;
+  $('#optimizerExecutionProgressDetail').textContent=explanation+
+   (Number(progress.percent)===0?' Ainda não houve envio à Shopee.':'');
+ }
+ if(optimizerExecPrepareError){
+  $('#optimizerExecutionPhaseTitle').textContent='Prévia completa não preparada';
+  $('#optimizerExecutionPhaseSubtitle').textContent=optimizerExecPrepareError;
+  $('#optimizerExecutionProgressDetail').textContent='Falha na preparação: '+optimizerExecPrepareError;
+ }
  $('#optimizerExecutionMediaCount').textContent=progress.imagesTotal?
    progress.imagesUploaded+' / '+progress.imagesTotal+' na mídia · '+
    progress.imagesPublished+' / '+progress.imagesTotal+' publicadas no anúncio':'';
@@ -4377,6 +4420,7 @@ function optimizerExecRender(data){
  $('#optimizerExecutionInput').value='';
  $('#optimizerExecutionPhrase').textContent='EXECUTAR '+plan.sku;
  optimizerExecUpdateRunButton();
+ optimizerExecutionVisibleCommands(data.progress,optimizerExecJob);
  const reviewTechnicalPending=Boolean(
    optimizerWorkflowPlan?.stages?.some(x=>x.key==='technical'&&!x.reviewed&&!x.skipped));
  if(reviewTechnicalPending&&plan.selectedStage==='all'){
@@ -4431,6 +4475,7 @@ function optimizerExecUpdateRunButton(){
  const resume=Boolean(p?.reusedMedia?.imageIds?.length||p?.reusedMedia?.video?.phase==='ready');
  $('#optimizerExecutionLaunch').textContent=!canPublish?
   p?.canExecute?'🛠 Conferir desconto e liberar execução':'🛠 Corrigir pendências e revalidar':
+  p?.selectedStage==='images'?'▶ EXECUTAR SOMENTE '+(p.images?.length||0)+' IMAGENS':
   justPending?'▶ Publicar variações + fiscal + desconto':
   resume&&p?.modelVariations?'▶ Executar plano completo (inclui mídia)':
   resume?'▶ Retomar de onde parou':
@@ -4453,6 +4498,10 @@ function optimizerExecUpdateRunButton(){
   }else if(!optimizerDiscountReviewedForExecution(p)){
    nextTitle.textContent='Falta conferir o desconto da etapa 08';
    nextDescription.textContent='A prévia comercial está preparada. Use “Conferir desconto para liberar execução” aqui e depois execute uma única vez.';
+  }else if(p.selectedStage!=='all'){
+   const mode=$('#optimizerExecutionScope')?.selectedOptions?.[0]?.textContent||p.selectedStage;
+   nextTitle.textContent='Prévia PARCIAL: '+mode;
+   nextDescription.textContent='Só esta etapa será publicada. As demais etapas, incluindo desconto e variações, NÃO constam nesta prévia. Use “Preparar TODAS as etapas aprovadas” para executar o anúncio completo.';
   }else if(optimizerExecBusy){
    nextTitle.textContent='Autorização enviada — verificando início';
    nextDescription.textContent='O servidor ainda precisa confirmar o recebimento. Não repita o comando.';
@@ -4461,6 +4510,7 @@ function optimizerExecUpdateRunButton(){
    nextDescription.textContent='0% significa aguardando sua autorização. O botão abaixo iniciará a execução única da prévia revisada; os resultados serão conferidos na API Shopee.';
   }
  }
+ optimizerExecutionVisibleCommands(optimizerExecProgress,optimizerExecJob);
 }
 async function optimizerConnectionCheck(){
  const el=$('#optimizerConnectionStatus');const btn=$('#optimizerConnectionCheck');
@@ -4494,6 +4544,7 @@ async function optimizerExecutionPrepare({preserveStartError=false}={}){
   optimizerExecPreparation=null;
  }
  if(!preserveStartError)optimizerExecStartError='';
+ optimizerExecPrepareError='';
  const serial=++optimizerExecSerial;
  const controller=new AbortController();
  const preparation={key,serial,again:false,controller};
@@ -4529,8 +4580,13 @@ async function optimizerExecutionPrepare({preserveStartError=false}={}){
    optimizerExecRender(result);
  }catch(e){
    if(serial===optimizerExecSerial){
-     optimizerExecNotice('Pré-execução bloqueada: '+e.message+
-       '. Confira o anúncio ou espere eventual execução anterior ser reconciliada.','error');
+     optimizerExecPrepareError=String(e.message||e);
+     optimizerExecNotice('Não foi possível preparar '+($('#optimizerExecutionScope').value==='all'?'TODAS as etapas':'esta etapa')+
+       ': '+optimizerExecPrepareError+'. Nenhum envio foi iniciado.','error');
+     if(optimizerExecProgress){
+      optimizerExecutionTrackerRender({...optimizerExecProgress},optimizerExecJob);
+      optimizerExecutionVisibleCommands(optimizerExecProgress,optimizerExecJob);
+     }
      if(/SHOPEE_PARTNER_|SHOPEE_REDIRECT_|configur|Shopee HTTP/i.test(e.message))
        void optimizerConnectionCheck();
    }
@@ -4546,6 +4602,15 @@ async function optimizerExecutionPrepare({preserveStartError=false}={}){
  }
 }
 $('#optimizerExecutionPrepare')?.addEventListener?.('click',()=>void optimizerExecutionPrepare());
+$('#optimizerExecutionRecoverStart')?.addEventListener?.('click',()=>{
+ if(optimizerWorkflowPlan&&!optimizerExecBusy)void optimizerExecutionPrepare();
+});
+$('#optimizerExecutionSwitchFull')?.addEventListener?.('click',()=>{
+ if(!optimizerWorkflowPlan||optimizerExecBusy)return;
+ $('#optimizerExecutionScope').value='all';
+ optimizerExecNotice('Preparando todas as etapas revisadas desta SKU. Nenhum envio é iniciado sem clicar em Executar.','info');
+ void optimizerExecutionPrepare();
+});
 $('#optimizerExecutionScope')?.addEventListener?.('change',()=>{
  const stage=$('#optimizerExecutionScope').value;
  optimizerExecPlan=null;
