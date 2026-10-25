@@ -3743,7 +3743,7 @@ function optimizerExecutionTrackerRender(progress,job){
    'Horário indisponível';
  const badge=$('#optimizerExecutionLiveBadge');
  badge.textContent=progress.verified?'✓ Confirmado':progress.attention?'! Atenção':
-  !progress.hasStarted?progress.resumable?'● Pronto para retomar':'● Aguardando execução':'● Atualização automática';
+  !progress.hasStarted?progress.resumable?'● Mídia pronta · autorizar retomada':'● Aguardando sua autorização':'● Atualização automática';
  badge.dataset.state=progress.fiscalPartial?'warning':progress.state;
  const pct=Math.max(0,Math.min(100,Number(progress.percent)||0));
  $('#optimizerExecutionPercent').textContent=pct+'%';
@@ -3757,14 +3757,16 @@ function optimizerExecutionTrackerRender(progress,job){
  const stageList=$('#optimizerExecutionSteps');stageList.replaceChildren();
  const statuses={done:'Confirmado no anúncio',staged:'✓ Na mídia Shopee',checking:'Enviado · conferindo',
   active:'Em andamento',waiting:'Aguardando',skipped:'Não incluído',
-  attention:'Verificar na Shopee',review:'Não aprovado nesta execução'};
+  attention:'Verificar na Shopee',review:'Não incluído nesta execução',
+  authorization:'Aguardando confirmação para executar'};
  for(const [i,step] of (progress.steps||[]).entries()){
   const li=optimizerMake('li','optimizer-exec-step is-'+step.status);
   const marker=optimizerMake('span','optimizer-exec-step-number',
    ['done','staged'].includes(step.status)?'✓':step.status==='review'?'!':String(i+1));
   const name=optimizerMake('strong','',step.label);
   const status=optimizerMake('small','',statuses[step.status]||'Aguardando');
-  if(step.status==='review')li.title='A execução antiga não inclui aprovação do desconto. Confira o anúncio antes de preparar outra execução.';
+  if(step.status==='review')li.title='Esta execução já iniciada não contém o desconto aprovado; consulte a etapa 08 antes de uma nova execução.';
+  if(step.status==='authorization')li.title='O desconto é confirmado somente no clique explícito Executar na Shopee. Nenhum desconto foi enviado nem recusado.';
   if(step.status==='staged')li.title='Arquivo confirmado na biblioteca de mídia da Shopee; a publicação neste anúncio ainda precisa ser verificada.';
   if(step.status==='checking')li.title='A API recebeu a atualização; ainda falta a confirmação de leitura do anúncio.';
   li.append(marker,name,status);stageList.append(li);
@@ -4320,6 +4322,12 @@ function optimizerExecRender(data){
  $('#optimizerExecutionInput').value='';
  $('#optimizerExecutionPhrase').textContent='EXECUTAR '+plan.sku;
  optimizerExecUpdateRunButton();
+ const reviewTechnicalPending=Boolean(
+   optimizerWorkflowPlan?.stages?.some(x=>x.key==='technical'&&!x.reviewed&&!x.skipped));
+ if(reviewTechnicalPending&&plan.selectedStage==='all'){
+  optimizerExecRow(warn,
+   'Ficha técnica foi reaberta por correção na SKU. Está preservada no Manager, mas NÃO será enviada nesta prévia sem nova conferência. Abra a etapa Ficha técnica para incluir os dados corrigidos.','warning');
+ }
  optimizerExecNotice(data.ready&&data.progress?.resumable?data.progress.message:
    data.ready&&plan.modelVariations?
    'Prévia única pronta: anúncio → variações → fiscal → desconto por modelo. Revise os preços e execute uma só vez.':
@@ -4342,6 +4350,21 @@ function optimizerExecUpdateRunButton(){
    p.sku!==optimizerExecContext.sku||p.itemId!==optimizerExecContext.itemId||
    p.modelId!==optimizerExecContext.modelId||!optimizerDiscountReviewedForExecution(p);
  $('#optimizerExecutionLaunch').disabled=unavailable;
+ // Nunca deixar o único botão de execução desabilitado sem um caminho
+ // clicável para corrigir a aprovação comercial da mesma SKU.
+ const launch=$('#optimizerExecutionLaunch');
+ if(launch){
+  let action=$('#optimizerExecutionFixDiscount');
+  if(!action){
+   action=optimizerMake('button','secondary','Conferir desconto para liberar execução');
+   action.id='optimizerExecutionFixDiscount';action.type='button';action.hidden=true;
+   action.onclick=()=>optimizerDiscountOpenReview();
+   launch.parentElement?.append(action);
+  }
+  action.hidden=!p?.canExecute||optimizerDiscountReviewedForExecution(p)||
+   !['all','remaining'].includes(p?.selectedStage)||Boolean(p?.modelVariations);
+  if(!action.hidden)launch.title='Conclua a conferência do desconto na mesma SKU usando o botão ao lado.';
+ }
  const justPending=p?.selectedStage==='remaining';
  const offerPending=p?.selectedStage==='all'&&Boolean(p?.modelVariations?.promotion);
  $('#optimizerExecutionRemaining').hidden=!offerPending;
