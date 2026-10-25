@@ -3840,11 +3840,31 @@ function optimizerDiscountFinalStatus(message,state='info'){
  const el=$('#optimizerExecDiscountResult');
  if(el){el.textContent=message;el.dataset.state=state;}
 }
+// Pesquisa validada e preco de mercado sao coisas diferentes. Se a MEDIA
+// dos concorrentes estiver abaixo do piso, o vendedor pode revisar o preco
+// ACIMA da media quando a margem/projecao continuam protegidas.
+function optimizerDiscountMarketFloorProtected(q){
+ const r=q?.marketResearch||{},n=x=>Number(x);
+ const above= n(q?.marketGapPct),sale=n(q?.buyerAfterCoupon??q?.customerPrice);
+ return Boolean(q?.status==='MERCADO_ABAIXO_DO_PISO'&&
+  r.verified===true&&r.source==='shopee_affiliate_product_offers'&&
+  r.sourceType==='researched_affiliate_offers'&&Number.isInteger(r.count)&&r.count>=2&&r.count<=5&&
+  Number.isFinite(n(r.reference))&&n(r.reference)>0&&
+  Number.isFinite(n(q.priceFloor))&&n(q.priceFloor)>0&&n(r.reference)<n(q.priceFloor)&&
+  Number.isFinite(n(q.netMarginPct))&&n(q.netMarginPct)+0.0001>=n(q.minMarginPct)&&
+  Number.isFinite(n(q.netProfit))&&n(q.netProfit)>0&&
+  Number.isFinite(sale)&&sale>=n(q.priceFloor)-0.01&&
+  Number.isFinite(above)&&above>=0&&above<=25&&
+  Number.isFinite(n(q.grossPrice))&&n(q.grossPrice)>0&&
+  Number.isFinite(n(q.discountPct))&&n(q.discountPct)>0&&n(q.discountPct)<90&&
+  q.discountRecommendationSource==='researched');
+}
 function optimizerDiscountFinalEligible(q){
  return Boolean(q&&q.marketResearch?.verified===true&&
+  q.marketResearch?.source==='shopee_affiliate_product_offers'&&
   q.marketResearch?.sourceType==='researched_affiliate_offers'&&
   q.marketResearch?.count>=2&&q.marketResearch?.count<=5&&
-  q.status!=='MERCADO_ABAIXO_DO_PISO'&&
+  (q.status!=='MERCADO_ABAIXO_DO_PISO'||optimizerDiscountMarketFloorProtected(q))&&
   q.discountRecommendationSource==='researched'&&
   Number(q.netMarginPct)+0.001>=Number(q.minMarginPct)&&
   Number.isFinite(Date.parse(q.marketResearch?.researchedAt))&&
@@ -3907,6 +3927,7 @@ function optimizerDiscountFinalPaint(){
  const vals=active?[
   ['Custo WeDrop',shPriceMoney(q.unitCost)],
   ['Média de mercado',q.marketResearch?.verified?shPriceMoney(q.marketResearch.reference):'Não validada'],
+  ...(optimizerDiscountMarketFloorProtected(q)?[['Acima da média',shPricePercent(q.marketGapPct)]]:[]),
   ['Preço bruto',shPriceMoney(q.grossPrice)],
   ['Desconto',shPricePercent(q.discountPct)],
   ['Preço exibido na Shopee',shPriceMoney(shPriceVisiblePromotion(q))],
@@ -3938,14 +3959,18 @@ function optimizerDiscountFinalPaint(){
   '✓ Conferir desconto e liberar execução';
  $('#optimizerExecDiscountState').textContent=!active?'Calculando automaticamente desde a seleção da SKU':
   !eligible?q.marketResearch?.verified?
-   'Margem ou pesquisa vencida — revisar preço':'Aguardando no mínimo dois anúncios reais':
+   (q.status==='MERCADO_ABAIXO_DO_PISO'?'Preço abaixo do piso seguro ou variação acima do limite · revisar':'Margem ou pesquisa vencida — revisar preço'):'Aguardando no mínimo dois anúncios reais':
   optimizerDiscountFinalPreviewData?(deferred?
     (approved?'Desconto autorizado · aguardará NORMAL':'Anúncio '+(optimizerDiscountFinalPreviewData.liveItemStatus||'em espera')+' · marque a autorização antecipada'):
     (approved?'Desconto conferido · 8ª etapa liberada':'Autorize alteração do preço bruto para liberar')):
   'Preço e desconto calculados · clique em Conferir desconto';
  $('#optimizerExecDiscountMessage').textContent=!active?
   'O sistema consulta automaticamente o custo WeDrop e os anúncios concorrentes ao localizar a SKU.':
-  !eligible?'Plano financeiro salvo somente como simulação; sem pesquisa validada de 2 a 5 lojas, desconto não será enviado.':
+  !eligible?(q.marketResearch?.verified?
+   'A pesquisa possui '+q.marketResearch.count+' anúncios, mas o preço planejado não atende à margem ou ao limite de diferença da média; ajuste a precificação antes de conferir.':
+   'Plano salvo como simulação: ainda faltam 2 a 5 anúncios comparáveis verificados para publicar.') :
+  optimizerDiscountMarketFloorProtected(q)?
+   '⚠ A pesquisa de '+q.marketResearch.count+' concorrentes foi validada, porém a média está abaixo do piso seguro. O preço promocional desta SKU está '+shPricePercent(q.marketGapPct)+' acima da média e preserva '+shPricePercent(q.netMarginPct)+' de margem. Ao clicar em Conferir desconto você aprova a prévia desse preço MAIOR, sem reduzi-lo à média. A Shopee ainda validará a campanha; nada foi publicado.':
   !optimizerDiscountFinalPreviewData?'Informe a campanha Minha Promoção e clique em Conferir desconto para autorizar a prévia junto às demais etapas.':
   !approved?(deferred?'Marque a autorização antecipada e, se solicitado, a autorização para ajustar o preço bruto.':
     'Ajuste a autorização de preço bruto acima para concluir esta etapa.'):
