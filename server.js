@@ -1710,6 +1710,12 @@ app.post('/api/shopee/optimizer/batch/fiscal/prepare',mustLogin,requireWeDropAdm
      throw Error('CEST salvo não corresponde à planilha WeDrop da SKU. Reabra a ficha fiscal.');
     fiscalMatrixSource({sku,supplier,tax:review.review_state.tax,
       reviewSource:review.review_state.matrixFiscal});
+    // Nunca reutilizar um plano fiscal preparado com CEST antigo da API:
+    // a execução em lote só autoriza CEST idêntico ao CSV WeDrop da SKU.
+    const expectedCest=wedropCestForSku(supplier);
+    if(String(job.plan?.proposed?.tax_info?.cest??'')!==expectedCest)
+      throw Error('CEST da prévia fiscal diverge da WeDrop ('+expectedCest+
+        '). Reprepare a SKU antes de autorizar; não foi enviado nenhum valor.');
     const live=await shopeeLiveEditableItem(cfg,auth,itemId);
     const plan=compileShopeeExecutionPlan({shopId:auth.shopId,itemId,modelId,sku,
       record,review:review.review_state,live,selectedStage:'fiscal'});
@@ -1935,6 +1941,14 @@ app.post('/api/shopee/optimizer/execution/execute',mustLogin,requireWeDropAdmin,
   if((plan.selectedStage==='fiscal'||plan.finalFiscal)&&reviewState.stages?.fiscal?.reviewed&&reviewState.tax){
     const supplier=await readWeDropProduct(auth.shopId,{sku,itemId,modelId});
     fiscalMatrixSource({sku,supplier,tax:reviewState.tax,reviewSource:reviewState.matrixFiscal});
+    // Protege tanto fluxo completo como exclusivamente fiscal: mesmo se
+    // a revisão persistida diz 00, um plano antigo não pode carregar 2806100.
+    const expectedCest=wedropCestForSku(supplier);
+    const plannedTax=plan.finalFiscal||plan.proposed?.tax_info;
+    if(plannedTax&&String(plannedTax.cest??'')!==expectedCest)
+      throw Error('CEST antigo na prévia ('+String(plannedTax.cest||'vazio')+
+        '). A WeDrop desta SKU informa '+expectedCest+
+        '. Prepare uma nova prévia fiscal; nada foi enviado.');
   }
   const live=await shopeeLiveEditableItem(cfg,auth,itemId);
   const supplierForBrand=await readWeDropProduct(auth.shopId,{sku,itemId,modelId});
