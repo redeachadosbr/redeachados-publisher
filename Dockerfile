@@ -12,7 +12,7 @@ RUN node --check shopeeMarktPro.js && node --test tests/shopee-marktpro-video.te
 RUN node --check shopeeOpenAiImages.js && node --test tests/shopeeOpenAiImages.test.js
 RUN node --check wedropExcel.js && node --test tests/wedrop-excel-import.test.js
 RUN node --check shopeeDescriptionComposer.js && node --test tests/shopee-description-commercial-order.test.js
-RUN node --test tests/shopee-execution-progress-dashboard.test.js
+RUN node --check shopeeExecutionProgress.js && node --test tests/shopee-2392-prepared-not-stuck.test.js
 RUN node --test tests/shopee-resume-manager-handshake.test.js
 RUN node --test tests/shopee-independent-sku-preparation.test.js
 RUN node --test tests/shopee-fast-image-gallery.test.js
