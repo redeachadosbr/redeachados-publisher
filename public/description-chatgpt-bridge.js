@@ -29,6 +29,10 @@
  }
  function normalizeDescription(value){
   let text=clean(value).replace(/\r\n?/g,'\n');
+  // O ChatGPT pode entregar a descrição dentro do cartão "Escrita"
+  // com títulos Markdown. Normalizar só a apresentação, não os fatos.
+  text=text.replace(/^\s*(?:Escrita|Writing)\s*$/gim,'')
+   .replace(/^\s*#{1,4}\s*/gm,'').replace(/\*\*/g,'').trim();
   for(let i=0;i<2;i++)text=text.replace(/\\n/g,'\n').replace(/\\t/g,' ');
   text=text.replace(/[ \t]*\n[ \t]*/g,'\n').replace(/\n{3,}/g,'\n\n');
   const sections={intro:[],benefits:[],why:[],doubts:[],specs:[],package:[],cta:[]};
@@ -99,7 +103,9 @@
   // Permite também colar esse texto no Manager quando o Chrome não autoriza
   // leitura direta da aba; nunca interpretar o pedido do usuário como resposta.
   const plain=s.replace(/^\x60{3}(?:text|plaintext)?\s*/iu,'')
-   .replace(/\s*\x60{3}\s*$/u,'').trim();
+   .replace(/\s*\x60{3}\s*$/u,'')
+   .replace(/^\s*(?:Escrita|Writing)\s*$/gim,'')
+   .replace(/^\s*#{1,4}\s*/gm,'').replace(/\*\*/g,'').trim();
   if(!/["“]description["”]\s*:/iu.test(plain)&&plain.length>=250&&plain.length<=5000&&
      /(?:✅\s*)?benef[ií]cios/iu.test(plain)&&
      /(?:💡\s*)?por que comprar/iu.test(plain)&&
@@ -119,13 +125,15 @@
   return {description,length,factsUsed:Array.isArray(found.factsUsed)?found.factsUsed:[],
    unverified:Array.isArray(found.unverified)?found.unverified:[]};
  }
- function request(data,onProgress=()=>{}){
+ function request(data,onProgress=()=>{},{signal}={}){
   if(location.origin!==ORIGIN)return Promise.reject(Error('Origem não autorizada.'));
+  if(signal?.aborted)return Promise.reject(Error('Captura cancelada após importação.'));
   const sku=clean(data.sku),itemId=String(data.itemId||''),modelId=String(data.modelId??0),nonce=crypto.randomUUID();
   if(!sku||!/^\d{1,18}$/.test(itemId)||!/^\d{1,18}$/.test(modelId))return Promise.reject(Error('SKU inválida.'));
   return new Promise((resolve,reject)=>{
    let finished=false,started=false;
-   const finish=(e,v)=>{if(finished)return;finished=true;clearTimeout(timer);clearTimeout(probe);window.removeEventListener('message',listener);e?reject(e):resolve(v);};
+   const finish=(e,v)=>{if(finished)return;finished=true;clearTimeout(timer);clearTimeout(probe);window.removeEventListener('message',listener);signal?.removeEventListener('abort',abort);e?reject(e):resolve(v);};
+   const abort=()=>finish(Error('Captura cancelada: a descrição já foi importada e salva.'));
    const listener=ev=>{
     if(ev.source!==window||ev.origin!==ORIGIN)return;
     const m=ev.data||{};
@@ -148,6 +156,7 @@
    const timer=setTimeout(()=>finish(Error('Descrição não recebida. A aba ChatGPT foi preservada.')),295000);
    const probe=setTimeout(()=>finish(Error('A extensão 1.0.35 não respondeu.')),5000);
    window.addEventListener('message',listener);
+   signal?.addEventListener('abort',abort,{once:true});
    window.postMessage({kind:'RA_EXTENSION_PROBE'},ORIGIN);
   });
  }
