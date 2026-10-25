@@ -161,10 +161,16 @@ export function shopeeExecutionProgress(job){
   model_discount_updating:'Aplicando desconto por modelo',
   model_discount_verifying:'Conferindo desconto por modelo'
  };
+ const modeLabels={images:'SOMENTE IMAGENS',video:'SOMENTE VÍDEO',seo:'SOMENTE TÍTULO',
+  description:'SOMENTE DESCRIÇÃO',technical:'SOMENTE FICHA TÉCNICA',
+  fiscal:'SOMENTE FISCAL',remaining:'SOMENTE VARIAÇÕES, FISCAL E DESCONTO'};
+ const partial=plan.selectedStage&&plan.selectedStage!=='all';
+ const partialName=modeLabels[plan.selectedStage]||'ETAPA ISOLADA';
  const title=fiscalPartial?'Dados fiscais pendentes de correção':
   verified?'Etapas aprovadas confirmadas':state==='uncertain'?'Confirmação pendente':
   state==='failed'?'Execução interrompida':state==='blocked'?'Pendências para executar':
-  state==='prepared'?(resumable?'Mídia já enviada · confirmar retomada':'Prévia pronta · aguardando autorização'):
+  state==='prepared'?(partial?'Prévia PARCIAL · '+partialName+' · aguardando autorização':
+   resumable?'Mídia já enviada · confirmar retomada':'Prévia completa · aguardando autorização'):
   titles[phase]||'Execução em andamento';
  const events=arr(result.events).filter(x=>x&&typeof x.label==='string'&&typeof x.at==='string')
   .slice(-15).reverse().map(x=>({label:x.label,at:x.at,kind:x.kind||'info'}));
@@ -180,7 +186,11 @@ export function shopeeExecutionProgress(job){
   state==='failed'?
    (confirmedReadback?'Conferência parcial: mídia confirmada na Shopee; as demais etapas requerem nova prévia. ':'')+
    'Execução interrompida: '+String(job.last_error||'confira a ocorrência'):
-  state==='prepared'?pendingOnly?'Prévia pronta. Clique em Executar para autorizar somente variações, fiscal e desconto; o conteúdo existente ficará intacto.':
+  state==='prepared'&&partial?
+   'Atenção: prévia PARCIAL — '+partialName+'. Outras etapas NÃO estão incluídas. '+
+   'Nenhuma publicação foi iniciada. Para executar o anúncio inteiro, selecione “Todas as etapas aprovadas” e prepare novamente. '+
+   'Para executar apenas esta etapa, clique no botão explícito de autorização.':
+  state==='prepared'?
    [confirmedStages.seo?'Título SEO já confirmado na Shopee':null,
     confirmedStages.description?'Descrição já confirmada na Shopee':null,
     imagesConfirmed?'Imagens confirmadas no anúncio':uploaded?uploaded+' imagens na biblioteca da Shopee':null,
