@@ -27,7 +27,7 @@ test('troca de SKU mantém motor matriz independente da Ponte ChatGPT',()=>{
  assert.match(onInput,/optimizerWorkflowPlan=null;optimizerWorkflowStage=null;optimizerWorkflowSerial\+\+/);
  assert.match(onInput,/optimizerExecReset\(\)/);
  assert.match(onInput,/void optimizerChatBridgeSwitchSku\(value\)/);
- assert.match(html,/app\.js\?v=1\.21\.69-video-gallery-url/);
+ assert.match(html,/app\.js\?v=1\.21\.70-technical-wedrop/);
 });
 
 test('polling de uma SKU antiga não bloqueia a verificação de nova SKU',()=>{
