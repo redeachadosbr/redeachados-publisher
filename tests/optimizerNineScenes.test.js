@@ -19,7 +19,7 @@ test('os 9 comandos são literalmente os 9 textos aprovados',()=>{
 });
 test('o Motor Matriz muda somente a imagem 03 e usa o texto colado da WeDrop',()=>{
  const supplierSourceText=['ALTURA','66cm','LARGURA','100cm','COMPRIMENTO','27cm',
-  'Especificações:', 'Dimensões: 75cm altura x 63cm largura x 117cm comprimento'].join('\\n');
+  'Especificações:', 'Dimensões: 75cm altura x 63cm largura x 117cm comprimento'].join('\n');
  const result=createChatGptPrompts({
   sku:'2392',title:'Bicicleta Infantil Moto Cross Rosa',
   imageUrls:['https://cf.shopee.com.br/file/reference'],
@@ -39,7 +39,7 @@ test('o Motor Matriz muda somente a imagem 03 e usa o texto colado da WeDrop',()
 });
 test('sem medidas confirmadas a foto 03 não pode inferir dimensões',()=>{
  const {prompts,confirmedDimensions}=createChatGptPrompts({
-  sku:'2392',supplierSourceText:'ALTURA\\n66cm\\nLARGURA\\n100cm\\nCOMPRIMENTO\\n27cm'
+  sku:'2392',supplierSourceText:'ALTURA\n66cm\nLARGURA\n100cm\nCOMPRIMENTO\n27cm'
  });
  assert.equal(confirmedDimensions,null);
  assert.match(prompts[2],/NÃO HÁ MEDIDAS DO PRODUTO CONFIRMADAS/);
