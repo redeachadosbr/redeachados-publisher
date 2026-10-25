@@ -48,5 +48,5 @@ test('reuses loaded card images and prioritizes first visible row',()=>{
  assert.match(frontend,/previousPhoto\?\.src===url\?previousPhoto/);
  assert.match(frontend,/photo\.loading=slot<=3\?'eager':'lazy'/);
  assert.match(frontend,/photo\.decoding='async'/);
- assert.match(index,/app\.js\?v=1\.21\.70-technical-wedrop/);
+ assert.match(index,/app\.js\?v=1\.21\.71-execution-ready/);
 });
