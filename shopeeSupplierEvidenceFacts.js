@@ -199,6 +199,13 @@ export function supplierAttributeSuggestions({attributes=[],proposed=[],supplier
   }else if(/^(?:aro|tamanho do aro|wheel size|rim size)$/.test(n)){
    if(confirmed.rim)suggest(attr,confirmed.rim,
     'Nome e descrição WeDrop da SKU · número do aro explicitamente informado.',{onlyIfMissing:true});
+  }else if(/^(?:freio|freios|tipo de freio|brake type|brakes?)$/.test(n)){
+   if(/(?:freio traseiro e dianteiro|freio dianteiro e traseiro)/i.test(plain(notes)))
+    suggest(attr,'Dianteiro e traseiro',
+     'Informações WeDrop · característica expressa: freios dianteiro e traseiro.',{onlyIfMissing:true});
+  }else if(/^(?:rodinhas de apoio|rodinhas laterais|training wheels|support wheels)$/.test(n)){
+   if(/rodinhas de apoio removiveis|rodinhas laterais/i.test(plain(notes)))
+    suggest(attr,'Sim','Informações WeDrop · rodinhas laterais/de apoio declaradas.',{onlyIfMissing:true});
   }else if(n.includes('inmetro')||n.includes('certificacao')||n.includes('certificado')){
    const officialNumber=specifiedText(/(?:registro|certificado|certificacao|numero\s+de\s+registro)\s*(?:do\s*)?inmetro\s*[:\-]\s*(\d{3,12}\/\d{4}|\d{5,14})\b/)||
     specifiedText(/(?:registro|numero)\s*(?:do\s*)?inmetro\s*(?:n[oº°]\.?)?\s*(\d{3,12}\/\d{4}|\d{5,14})\b/);
@@ -215,6 +222,11 @@ export function supplierAttributeSuggestions({attributes=[],proposed=[],supplier
   }else if(n.includes('estampa')||n.includes('padrao')||n.includes('estampado')){
    const stamp=specifiedText(/(?:^|\n)\s*(?:estampa|padrao)\s*[:\-]\s*(estampad[oa])\b/);
    if(stamp)suggest(attr,'Estampado',stamp.source+' — estampa explicitamente declarada.',{onlyIfMissing:true});
+  }else if(/^(?:dimension\s*\(\s*l\s*x\s*w\s*x\s*h\s*\)|dimensions?\s*\(\s*l\s*x\s*w\s*x\s*h\s*\)|dimensoes?\s*\(\s*c\s*x\s*l\s*x\s*a\s*\))$/.test(n)){
+   // Não transpor a ordem: na categoria, Dimension (L x W x H)
+   // significa comprimento x largura x altura.
+   if(dims)suggest(attr,[dims.length,dims.width,dims.height].join(' x ')+' cm',
+    dimSource+' — dimensões montadas do produto (C x L x A), não embalagem.',{onlyIfMissing:true});
   }else if(isDimensions(n)){
    if(dims)suggest(attr,dims.value,dimSource+' — medidas do produto (A x L x C); NÃO são dimensões da embalagem.',{onlyIfMissing:true});
   }else if(isPackageDimensions(n)){
