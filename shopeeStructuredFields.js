@@ -121,10 +121,12 @@ export function compileTax(input,live){
   // preparar a otimização; valores já existentes no anúncio são preservados.
   if(input[key]===undefined||String(input[key]).trim()==='')continue;
   const value=String(input[key]).trim();if(!regex.test(value))throw Error('Campo fiscal '+key+' inválido.');
-  // "00" foi solicitado pelo vendedor como valor literal a testar na Shopee.
-  // Não inventar código de 7 dígitos. Preservar eventual CEST real já publicado.
-  // A API valida a aceitação do valor; prévia NÃO prova publicação.
-  if(key==='cest'&&value==='00'&&isShopeeCestConfirmed(tax.cest))continue;
+  // REGRA ÚNICA: o CEST revisado e confirmado pelo vínculo WeDrop da
+  // própria SKU sempre prevalece sobre o dado antigo retornado pela Shopee.
+  // Se a WeDrop não tem CEST, a prévia contém literalmente "00" para
+  // aprovação explícita. NUNCA reintroduzir um CEST de sete dígitos da API.
+  // "00" é marcador interno, não código CEST fiscal de sete dígitos:
+  // o envio só ocorre após aprovação e a Shopee poderá rejeitá-lo.
   tax[key]=value;
  }
  if(!patterns.ncm.test(String(tax.ncm||'')))throw Error('NCM confirmado com 8 dígitos é obrigatório para preparar o fiscal.');
