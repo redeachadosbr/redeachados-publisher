@@ -2772,8 +2772,8 @@ async function optimizerVideoFindMarket(){
   if(!data?.candidates?.length){
    notice.textContent=data.inventoryCount
     ?'Nenhum vídeo compatível com o título desta SKU foi encontrado no acervo.'
-    :'O catálogo Markt Pro não retornou itens. Confira a disponibilidade do acervo.';
-   const link=document.createElement('a');link.href='https://drive-vid-gallery.lovable.app/';
+    :'A galeria WeDrop respondeu, mas nenhum arquivo de vídeo verificável foi localizado. Não foi feita importação.';
+   const link=document.createElement('a');link.href='https://packvideoswedrop.lovable.app/';
    link.target='_blank';link.rel='noopener noreferrer';link.textContent='Consultar catálogo original ↗';wrap.append(link);
    return;
   }
@@ -2818,9 +2818,9 @@ async function optimizerVideoFindMarket(){
   }
  }catch(e){
   if(!optimizerVideoStillViewing(identity))return;
-  notice.textContent='Não foi possível consultar o Markt Pro agora: '+e.message+
+  notice.textContent='Não foi possível consultar a galeria de vídeos WeDrop: '+e.message+
    '. Você pode usar a importação manual abaixo.';
-  const link=document.createElement('a');link.href='https://drive-vid-gallery.lovable.app/';
+  const link=document.createElement('a');link.href='https://packvideoswedrop.lovable.app/';
   link.target='_blank';link.rel='noopener noreferrer';link.textContent='Abrir catálogo Markt Pro ↗';wrap.append(link);
  }
 }
