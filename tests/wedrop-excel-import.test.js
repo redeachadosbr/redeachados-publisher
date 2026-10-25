@@ -48,7 +48,7 @@ test('rejeita arquivo malicioso com extensao falsa ou base64 invalido',()=>{
  assert.throws(()=>excelBufferToWeDropCsv(workbook('xlsx'),{fileName:'catalogo.xls'}),/extensão/);
  assert.throws(()=>convertWeDropExcelBase64('zzz%%','catalogo.xlsx'),/inválido/);
 });
-test('interface e rota reaproveitam validacao existente e aceitam Excel',()=>{
+test('interface e rota reaproveitam validacao existente e aceitam Excel',async()=>{
  const {readFileSync}=await import('node:fs');
  const app=readFileSync(new URL('../public/app.js',import.meta.url),'utf8');
  const html=readFileSync(new URL('../public/index.html',import.meta.url),'utf8');
