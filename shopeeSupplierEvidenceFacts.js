@@ -114,7 +114,9 @@ export function supplierAttributeSuggestions({attributes=[],proposed=[],supplier
   if(active&&!conflicts.some(c=>Number(c.attributeId)===Number(attr.id)))
    conflicts.push({attributeId:attr.id,name:attr.name,current:active,recommended:value,
     evidence:String(evidence||'').slice(0,250)});
-  if(onlyIfMissing&&active)return;
+  // Mesmo com revisão anterior, manter a SUGESTÃO no relatório para que
+  // o vendedor possa comparar e aplicar após conferir; persistência não
+  // substitui revisão ou escolha manual automaticamente.
   // Tamanho N2/Nº 2 pode estar grafado de formas diferentes na opção oficial.
   // Só reconciliar essas grafias para atributo de tamanho, mantendo ID original.
   const isNumericSize=/^(?:ball size|tamanho da bola)$/.test(plain(attr.name));
