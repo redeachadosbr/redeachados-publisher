@@ -18,6 +18,10 @@ test('sem autorização a barra diz o motivo e não chama API automaticamente',(
  assert.match(js,/Falta conferir o desconto da etapa 08/);
  assert.match(js,/Execução bloqueada — corrigir pendências/);
  assert.match(js,/resumeBar\.hidden=!\['prepared','blocked'\]\.includes\(progress\.state\)/);
- assert.match(js,/optimizerExecutionLaunch'\)\?\.addEventListener\?\.\('click',\(\)=>void optimizerExecuteApproved\(false\)\)/);
+ assert.match(js,/optimizerExecutionLaunch'\)\?\.addEventListener\?\.\('click'/);
+ assert.match(js,/optimizerResolveExecutionBlockers/);
+ assert.match(js,/optimizerSaveChecklistReview/);
+ assert.match(js,/if\(optimizerExecPlan\?\.canExecute&&optimizerDiscountReviewedForExecution\(optimizerExecPlan\)\)/);
+ assert.match(js,/void optimizerExecuteApproved\(false\)/);
  assert.match(js,/confirmati[oó]n:'EXECUTAR '\+p\.sku/);
 });
