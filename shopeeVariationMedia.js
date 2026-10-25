@@ -78,6 +78,39 @@ export function reviewedVariationEvidence(body,review){
   return Boolean(media?.storagePath&&media?.sha256)&&Number.isFinite(saved)&&saved<=approved;
  });
 }
+// Validador universal de identidade fornecedor ↔ opção: dados comprovados
+// (SKU, EAN e opção) têm prioridade sobre nomes comerciais inconsistentes.
+const normalizedVariationText=value=>String(value||'').normalize('NFD')
+ .replace(/[\u0300-\u036f]/g,'').toUpperCase().replace(/[^A-Z0-9]+/g,' ').trim();
+export function variationSupplierIdentity({
+ parentName,supplierName,originalOption,optionName,expectedEan='',sourceEan='',reviewed=false
+}={}){
+ const parent=normalizedVariationText(parentName);
+ const actual=normalizedVariationText(supplierName);
+ const option=normalizedVariationText(optionName);
+ const original=normalizedVariationText(originalOption);
+ if(!parent||!actual||!option)return {ok:false,reason:'Dados de identidade da variação incompletos'};
+ const baseByOption=original&&parent.endsWith(' '+original)
+  ?parent.slice(0,-original.length-1):parent;
+ // Remove sufixos de cor SOMENTE ao comparar nomes, não da SKU/EAN.
+ const base=baseByOption.replace(/ (?:VERMELHA?|VERMELHO|ROSA|PRETA?|PRETO|AZUL|BRANCA?|BRANCO|AMARELA?|AMARELO|VERDE)$/,'');
+ const stem=option.replace(/[AO]$/,'');
+ const hasOption=actual.endsWith(' '+option)||
+  stem.length>=3&&(actual.endsWith(' '+stem+'A')||actual.endsWith(' '+stem+'O'))||
+  (' '+actual+' ').includes(' '+option+' ');
+ if(!hasOption)return {ok:false,reason:'O fornecedor não confirma a opção '+option};
+ const normalFamily=base.length>=8&&(actual===base||actual.startsWith(base+' '));
+ const validEan=value=>/^[0-9]{8,14}$/.test(String(value||''));
+ const expected=String(expectedEan||'').trim(),source=String(sourceEan||'').trim();
+ if(validEan(expected)&&validEan(source)&&expected!==source)
+  return {ok:false,reason:'EAN do fornecedor divergente do EAN aprovado'};
+ // Títulos com nomes distintos (inclusive outras categorias e modelos)
+ // só passam com SKU físico validado à parte, EAN exato e revisão registrada.
+ const exactEan=validEan(expected)&&validEan(source)&&expected===source;
+ if(!normalFamily&&!(reviewed===true&&exactEan))
+  return {ok:false,reason:'Nome comercial distinto sem aprovação de SKU/EAN exatos'};
+ return {ok:true,reason:normalFamily?'família e opção confirmadas':'EAN e opção revisados'};
+}
 export function validateVariationDetails(body,{requirePhotos=false,approvedReview=null}={}){
  const type=clean(body?.type),raw=body?.options;
  if(!type||type.length>50||!Array.isArray(raw)||!raw.length||raw.length>20)
