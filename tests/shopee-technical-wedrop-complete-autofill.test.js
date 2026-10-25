@@ -89,7 +89,7 @@ test('dados sem comprovacao no texto NUNCA viram supostas garantias, wireless ou
 test('a UI sinaliza divergencias e deixa editar sem publicar automaticamente',()=>{
  const src=readFileSync(new URL('../public/app.js',import.meta.url),'utf8');
  const server=readFileSync(new URL('../server.js',import.meta.url),'utf8');
- assert.match(src,/Conferir divergências WeDrop/);
+ assert.match(src,/Divergências WeDrop/);
  assert.match(src,/Conferir e corrigir/);
  assert.match(src,/Aplicar dado WeDrop:/);
  assert.match(server,/mergeWorkflowTechnicalAutofill/);
