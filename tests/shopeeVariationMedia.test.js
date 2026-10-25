@@ -49,7 +49,13 @@ test('interface contém upload, geração, prévia e confirmação de estoque',(
  assert.match(js,/Incluir foto/);
  assert.match(js,/Estoque \(mínimo 1\)/);
  assert.match(js,/Confirmei pelo fornecedor/);
- assert.match(js,/\/api\/shopee\/optimizer\/variants\/apply/);
+ assert.doesNotMatch(js,/\/api\/shopee\/optimizer\/variants\/apply/);
+ assert.doesNotMatch(js,/Aplicar variações na Shopee|Conferir envio pela API/);
+ assert.match(js,/prévia e execução únicas/);
+ assert.match(js,/saveDraft:persist/);
+ assert.match(app,/await globalThis\.RedeVariants\.saveDraft\(\)/);
+ assert.match(app,/optimizerSaveChecklistReview/);
+ assert.match(app,/\/api\/shopee\/optimizer\/execution\/prepare/);
  assert.match(app,/RedeVariants\?\.load/);
 });
 
