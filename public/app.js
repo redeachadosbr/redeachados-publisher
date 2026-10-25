@@ -7861,8 +7861,9 @@ function optimizerFiscalRender(data){
  const defaults=data.taxSuggestion||{},saved=data.taxDraft||{};
  // Regras da loja sugerem CST 99 de PIS/COFINS para o cadastro Shopee.
  // Valores específicos já salvos ou presentes na Shopee não são sobrescritos.
- // CEST 00 é padrão do Motor Matriz para cadastro interno, não um código válido para emissão.
- // Nunca substituir um CEST verdadeiro (7 dígitos) trazido da SKU/fornecedor.
+ // CEST 00 = ausência de código na WeDrop, para esta SKU.
+ // CEST de 7 dígitos só vem da planilha WeDrop, não da API da Shopee,
+ // nem de valores fiscais antigos carregados da publicação.
  const draft={...(data.taxCurrent||{}),...defaults,...saved};
  // Rascunho antigo vazio não pode esconder uma sugestão comprovada pela WeDrop
  // ou pelas regras já cadastradas no Motor Matriz.
@@ -7880,6 +7881,14 @@ function optimizerFiscalRender(data){
   'Motor Matriz · preenchimento automático da SKU '+(data.sku||'')+
   '. Os campos abaixo são uma prévia do Shopee Manager; a Central do Vendedor só muda após execução e confirmação da API.');
  wrap.append(summary);
+ if(liveCest&&liveCest!==draft.cest){
+  const divergence=optimizerMake('p','optimizer-warning',
+    '⚠ CEST DIVERGENTE: Shopee apresenta '+liveCest+', mas a planilha WeDrop da SKU '+
+    (data.sku||'')+' '+(draft.cest==='00'?'NÃO informa CEST.':'informa '+draft.cest+'.')+
+    ' Valor preparado no Motor Matriz: '+draft.cest+
+    '. O CEST antigo não será reutilizado. Para corrigir a Shopee, faça uma NOVA prévia exclusivamente fiscal e autorize o envio; a Shopee poderá recusar 00 porque não é CEST de 7 dígitos. O resultado precisa ser verificado.');
+  wrap.append(divergence);
+ }
  for(const [key,label] of Object.entries(optimizerTaxLabels)){
   const field=optimizerMake('label','optimizer-field',label),input=optimizerMake('input');
   const value=String(draft[key]??'');
@@ -7906,7 +7915,7 @@ function optimizerFiscalRender(data){
  if(cest){
   const marker=String(draft.cest||'').trim()==='00';
   const info=optimizerMake('small','optimizer-fiscal-cest-help',marker
-    ?'WeDrop sem CEST confirmado para esta SKU: usar 00 somente no cadastro interno (não é um CEST fiscal). '+
+    ?'WeDrop sem CEST confirmado para esta SKU: 00 é um marcador de ausência, NÃO é um CEST fiscal de 7 dígitos. Uma tentativa explícita de edição poderá ser recusada pela Shopee. '+
      (liveCest&&liveCest!=='00'?'CEST publicado na Shopee: '+liveCest+' — não foi modificado. ':'')+
      'Para emissão fiscal, confirmar o enquadramento com a contabilidade.'
     :'CEST de 7 dígitos obtido da planilha WeDrop desta SKU. Confira o enquadramento fiscal antes do envio. '+
