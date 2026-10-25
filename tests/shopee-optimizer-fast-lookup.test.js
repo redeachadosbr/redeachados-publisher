@@ -13,7 +13,7 @@ test('typing a new SKU immediately cancels an older in-flight request',()=>{
 });
 test('short partial SKU does not trigger automatic expensive lookup',()=>{
  assert.match(app,/if\(value\.length<4\)/);
- assert.match(app,/setTimeout\(\(\)=>void optimizerFindSku\(\),1000\)/);
+ assert.match(app,/setTimeout\(\(\)=>void optimizerFindSku\(\),350\)/);
  assert.match(app,/if\(event\.key==='Enter'\)/);
 });
 test('fast lookup offers explicit deeper lookup and preserves full verification',()=>{
@@ -22,4 +22,14 @@ test('fast lookup offers explicit deeper lookup and preserves full verification'
  assert.match(server,/const deep=req\.query\.deep==='1'/);
  assert.match(server,/findLiveShopeeSku\(cfg,auth,callShopeeShopApi,sku,\{fastOnly:!deep\}\)/);
  assert.match(server,/canDeepSearch:!deep&&!matches\.length/);
+});
+
+test('busca vazia usa consulta SKU direta e nao varre 15 paginas antes da precificacao',()=>{
+ assert.match(server,/if\(!deep&&!cached\.length\)/);
+ assert.match(server,/fastOnly:true/);
+ assert.match(server,/lookup:'direct_not_found'/);
+ assert.match(server,/verifiedLive:false/);
+ assert.match(app,/void shPricePreviewSupplierSku\(sku,serial\)/);
+ assert.match(app,/pricingError/);
+ assert.match(app,/Custo WeDrop/);
 });
