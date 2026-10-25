@@ -1,13 +1,13 @@
 // Geração de imagens comerciais via API OpenAI. Nunca publica diretamente na Shopee.
 import {spawn} from 'node:child_process';
 import {imageDimensions,MAX_IMAGE_BYTES} from './shopeePreparedImages.js';
-import {confirmedProductDimensionsFromWeDrop} from './public/productDimensions.js';
+import {confirmedProductDimensionsFromWeDrop,confirmedProductSideFactsFromWeDrop} from './public/productDimensions.js';
 import {imageScenePrompt} from './public/imageSceneDiversity.js';
 
 export const IMAGE_STORYBOARD=Object.freeze([
  'Imagem 1 — Capa: produto em destaque, ocupando aproximadamente 85% da imagem.',
  'Imagem 2 — Uso real: mostrar o produto em um ambiente de utilização.',
- 'Imagem 3 — Especificações: destacar somente dimensões do PRODUTO confirmadas na WeDrop, com setas discretas. Sem título, benefícios ou valores inferidos.',
+ 'Imagem 3 — Medidas: destacar junto ao produto somente dimensões reais WeDrop com setas finas; dados laterais pequenos somente se confirmados. Fundo moderno HD visível. Sem título, painéis, textos grandes ou números inventados.',
  'Imagem 4 — Benefícios: demonstrar visualmente as vantagens do produto, com frases ou palavras curtas, sem poluir a imagem.',
  'Imagem 5 — Dor e solução: mostrar como o produto resolve uma necessidade do comprador. Uma frase curta.',
  'Imagem 6 — Persuasão: destacar um diferencial real, com comunicação comercial.',
@@ -38,11 +38,13 @@ export function imagePrompt({record,slot,masterPrompt='',note='',sourceImageCoun
  const product=String(record?.title||'Produto do anúncio Shopee').slice(0,240);
  const image03=position===3;
  const dimensions=image03?confirmedProductDimensionsFromWeDrop(supplierSourceText):null;
+ const sideFacts=image03?confirmedProductSideFactsFromWeDrop(supplierSourceText):[];
  const dimensionRule=image03?
   (dimensions?'MEDIDAS EXATAS DO PRODUTO extraídas do texto WeDrop desta SKU: '+
     dimensions.measurements.map(x=>x.label+': '+x.value).join('; ')+'. ':
    'NÃO HÁ MEDIDAS DO PRODUTO CONFIRMADAS NO TEXTO WEDROP DESTA SKU. NÃO escreva números. ')+
-   'Somente cotas reais junto ao produto, sem título, subtítulo, outros dados ou dimensões estimadas. '+
+   'Mostrar cotas reais com setas FINAS junto aos contornos do produto, sem título ESPECIFICAÇÕES, sem quadros grandes, tabelas ou dimensões estimadas. '+
+   (sideFacts.length?'Somente estes dados secundários em microetiquetas laterais: '+sideFacts.slice(0,3).map(x=>x.label+': '+x.value).join('; ')+'. ':'Não inserir dados laterais não comprovados. ')+
    'NUNCA invente altura do selim ou guidão nem diâmetro da roda a partir do aro anunciado. '+
    'NÃO use dimensões de embalagem, logística, frete ou números soltos.':'';
  return [
@@ -58,9 +60,9 @@ export function imagePrompt({record,slot,masterPrompt='',note='',sourceImageCoun
   'CRIE UMA CENA VISUAL DIFERENTE DAS OUTRAS OITO nas gerações novas. Mantenha idêntico o PRODUTO da foto original, não o cenário, o personagem ou o produto de uma foto comercial anterior.',
   image03?dimensionRule:
   (attributes.length?'CARACTERÍSTICAS CONFIRMADAS PELA FICHA ATUAL: '+attributes.join('; ').slice(0,1800):'Nenhuma especificação técnica independente foi confirmada. Evite inserir números, medidas, selos, certificações ou alegações técnicas.'),
-  'REGRA FIXA: fotografia fotorrealista profissional, objeto em foco, ambiente coerente com a utilidade real do produto, 1200 × 1200, sem preço nem marca d’água. Seguir exclusivamente o roteiro da posição informada: não criar títulos, subtítulos, frases ou elementos não pedidos. Incluir somente fatos comprovados em português. Não inventar embalagem, conteúdo, medidas ou funções. Medidas de embalagem/pacote NÃO são medidas do produto. Na ausência de prova, omitir números e atributos incertos.',
+  'REGRA FIXA: fotografia fotorrealista profissional, objeto em foco, fundo ambientado moderno de alta definição com detalhes arquitetônicos legíveis e visíveis (não excessivamente desfocado ou lavado), ambiente coerente com a utilidade real do produto, 1200 × 1200, sem preço nem marca d’água. Seguir exclusivamente o roteiro da posição informada: não criar títulos, subtítulos, frases ou elementos não pedidos. Incluir somente fatos comprovados em português. Não inventar embalagem, conteúdo, medidas ou funções. Medidas de embalagem/pacote NÃO são medidas do produto. Na ausência de prova, omitir números e atributos incertos.',
   'INSTRUÇÕES COMERCIAIS SALVAS DA LOJA (subordinadas à fidelidade factual): '+String(masterPrompt||'Nenhuma adicional.').slice(0,9000),
-  'PRIORIDADE VISUAL SOBRE INSTRUÇÕES COMERCIAIS GENÉRICAS: respeitar o limite de textos da posição e as regras de direção de arte premium acima. Não criar listagens, cabeçalhos, fichas longas, painéis ou mais textos para mostrar todas as características do fornecedor. Informações de catálogo servem para validar o produto, não para preencher a foto.',
+  'PRIORIDADE VISUAL SOBRE INSTRUÇÕES COMERCIAIS GENÉRICAS: respeitar as últimas regras visuais da loja, o limite de textos da posição e as regras de direção de arte premium acima. Não criar listagens, cabeçalhos, fichas longas, painéis ou mais textos para mostrar todas as características do fornecedor. Informações de catálogo servem para validar o produto, não para preencher a foto.',
   image03?
    'SOMENTE MEDIDAS EXPLÍCITAS DO PRODUTO WEDROP CONFIRMADAS: '+
    (dimensions?dimensions.measurements.map(x=>x.label+': '+x.value).join('; '):'nenhuma. Não inserir valores.'):
