@@ -2285,8 +2285,14 @@ async function runOptimizerJobs(){
        }finally{activeDiscountWrites.delete(key);}
       }
     });
-    if(out.state==='running')await checkpointShopeeExecution(job,out.result,out.delay);
-    else {
+    if(out.state==='running'){
+      await checkpointShopeeExecution(job,out.result,out.delay);
+      // Ao concluir uma parte/imagem, acionar o próximo checkpoint na data
+      // de liberação da lease, sem aguardar o tick genérico de 4 segundos.
+      // O CAS no Supabase evita execução simultânea/dobrada no Render.
+      setTimeout(()=>void runOptimizerJobs(),
+       Math.max(500,Math.min(15000,Number(out.delay)||1000))).unref();
+    }else {
       if(out.state==='verified'){
         await rememberPublishedVideo(job.plan,out.result);
         await rememberPublishedImages(job.plan,out.result);
