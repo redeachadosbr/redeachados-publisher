@@ -42,7 +42,7 @@ test('interface e servidor usam os mesmos limites e nunca publicam desconto dura
  const client=readFileSync(new URL('../public/app.js',import.meta.url),'utf8');
  const server=readFileSync(new URL('../server.js',import.meta.url),'utf8');
  assert.match(client,/function optimizerDiscountMarketFloorProtected/);
- assert.match(client,/n\(q\.marketGapPct\)/);
+ assert.match(client,/n\(q\?\.marketGapPct\)/);
  assert.match(client,/above<=25/);
  assert.match(client,/optimizerDiscountFinalEligible\(q\)/);
  assert.match(client,/A pesquisa possui/);
