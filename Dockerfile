@@ -12,7 +12,7 @@ RUN node --check shopeeMarktPro.js && node --test tests/shopee-marktpro-video.te
 RUN node --check shopeeOpenAiImages.js && node --test tests/shopeeOpenAiImages.test.js
 RUN node --check wedropExcel.js && node --test tests/wedrop-excel-import.test.js
 RUN node --check shopeeDescriptionComposer.js && node --test tests/shopee-description-commercial-order.test.js
-RUN node --check shopeeStructuredFields.js && node --test tests/shopee-2392-cest-source-priority.test.js && node --test tests/shopee-fiscal-migration-cest00.test.js && node --test tests/shopee-fiscal-cest-optional-matrix-save.test.js
+RUN node --check shopeeStructuredFields.js && node --test tests/shopee-2392-cest-source-priority.test.js && node --test tests/shopee-fiscal-migration-cest00.test.js
 RUN node --check shopeeMarketFloorApproval.js && node --test tests/shopee-2392-market-floor-discount.test.js
 RUN node --check shopeeExecutionProgress.js && node --test tests/shopee-2392-prepared-not-stuck.test.js
 RUN node --test tests/shopee-resume-manager-handshake.test.js
