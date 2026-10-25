@@ -60,6 +60,7 @@ export function imagePrompt({record,slot,masterPrompt='',note='',sourceImageCoun
   (attributes.length?'CARACTERÍSTICAS CONFIRMADAS PELA FICHA ATUAL: '+attributes.join('; ').slice(0,1800):'Nenhuma especificação técnica independente foi confirmada. Evite inserir números, medidas, selos, certificações ou alegações técnicas.'),
   'REGRA FIXA: fotografia fotorrealista profissional, objeto em foco, ambiente coerente com a utilidade real do produto, 1200 × 1200, sem preço nem marca d’água. Seguir exclusivamente o roteiro da posição informada: não criar títulos, subtítulos, frases ou elementos não pedidos. Incluir somente fatos comprovados em português. Não inventar embalagem, conteúdo, medidas ou funções. Medidas de embalagem/pacote NÃO são medidas do produto. Na ausência de prova, omitir números e atributos incertos.',
   'INSTRUÇÕES COMERCIAIS SALVAS DA LOJA (subordinadas à fidelidade factual): '+String(masterPrompt||'Nenhuma adicional.').slice(0,9000),
+  'PRIORIDADE VISUAL SOBRE INSTRUÇÕES COMERCIAIS GENÉRICAS: respeitar o limite de textos da posição e as regras de direção de arte premium acima. Não criar listagens, cabeçalhos, fichas longas, painéis ou mais textos para mostrar todas as características do fornecedor. Informações de catálogo servem para validar o produto, não para preencher a foto.',
   image03?
    'SOMENTE MEDIDAS EXPLÍCITAS DO PRODUTO WEDROP CONFIRMADAS: '+
    (dimensions?dimensions.measurements.map(x=>x.label+': '+x.value).join('; '):'nenhuma. Não inserir valores.'):
