@@ -3,7 +3,7 @@
 // campos isolados do fornecedor ou medidas de caixa/transporte.
 const normalized=value=>String(value??'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase();
 const fmtNumber=value=>String(Number(String(value).replace(',','.'))).replace('.',',');
-const axisNames=Object.freeze({altura:'altura',largura:'largura',comprimento:'comprimento',profundidade:'comprimento'});
+const axisNames=Object.freeze({altura:'altura',largura:'largura',comprimento:'comprimento',profundidade:'profundidade'});
 const number='(\\d{1,4}(?:[.,]\\d{1,2})?)';
 const axisPattern=new RegExp(number+'\\s*(cm|mm|m)\\s*(?:de\\s+)?(altura|largura|comprimento|profundidade)\\b','gi');
 export function confirmedProductDimensionsFromWeDrop(sourceText){
@@ -29,7 +29,7 @@ export function confirmedProductDimensionsFromWeDrop(sourceText){
   }
   if(axes.invalid)continue;
   // Apenas grandezas explicitamente nomeadas, nao assumir que x/y/z sejam A/L/C.
-  const measurements=['altura','largura','comprimento'].filter(axis=>axes[axis]).map(axis=>({
+  const measurements=['altura','largura','comprimento','profundidade'].filter(axis=>axes[axis]).map(axis=>({
    label:axis.toUpperCase(),value:axes[axis],axis
   }));
   if(measurements.length>=2)entries.push({measurements,sourceLine:lineTrim});
@@ -39,4 +39,33 @@ export function confirmedProductDimensionsFromWeDrop(sourceText){
  if(entries.some(x=>signature(x)!==signature(entries[0])))return null;
  return {measurements:entries[0].measurements,source:'Informacoes da WeDrop coladas na SKU',
   sourceLine:entries[0].sourceLine};
+}
+
+
+// Informações laterais opcionais da imagem 03. A fonte é EXCLUSIVAMENTE
+// o campo "Informações da WeDrop" da mesma SKU, nunca dados logísticos.
+export function confirmedProductSideFactsFromWeDrop(sourceText){
+ const text=normalized(sourceText).replace(/\r/g,'').slice(0,12000);
+ if(!text.trim())return [];
+ const facts=[];
+ const definitions=[
+  {name:'Capacidade',re:/^(?:capacidade\s*(?:litros|em\s*litros|volumetrica)|capacidade)\s*[:\-]\s*(\d{1,4}(?:[.,]\d{1,3})?)\s*(litros?|l)\b/i,unit:'L'},
+  {name:'Suporta',re:/^(?:capacidade\s*(?:peso|de\s*peso)|peso\s*(?:suportado|maximo)|suporta)\s*[:\-]\s*(\d{1,4}(?:[.,]\d{1,3})?)\s*(kg|g)\b/i,unit:null},
+  {name:'Peso',re:/^peso\s*(?:do\s*produto|liquido)?\s*[:\-]\s*(\d{1,4}(?:[.,]\d{1,3})?)\s*(kg|g)\b/i,unit:null},
+  {name:'Cor',re:/^cor\s*[:\-]\s*([\p{L}]+(?:\s+[\p{L}]+){0,2})\s*$/iu,unit:null}
+ ];
+ for(const definition of definitions){
+  const values=[];
+  for(const raw of text.split('\n')){
+   const line=raw.trim();
+   if(/embalagem|caixa|pacote|frete|logistic|transporte|bruto/i.test(line))continue;
+   const m=line.match(definition.re);
+   if(!m)continue;
+   const value=definition.name==='Cor'?m[1].trim():
+    m[1].trim().replace('.',',')+' '+(definition.unit||m[2]);
+   if(!values.includes(value))values.push(value);
+  }
+  if(values.length===1)facts.push({label:definition.name,value:values[0]});
+ }
+ return facts.slice(0,4);
 }
