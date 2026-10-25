@@ -2433,14 +2433,15 @@ $('#optimizerSku').onkeydown=event=>{
 let optimizerWorkflowPlan=null,optimizerWorkflowStage=null,optimizerWorkflowSerial=0;
 const workflowImageGuide=[
  'Imagem 1 — Capa: produto em destaque, ocupando aproximadamente 85% da imagem.',
- 'Imagem 2 — Uso real: mostrar o produto em um ambiente de utilização.',
- 'Imagem 3 — Especificações: somente cotas de altura, largura e comprimento confirmadas no texto WeDrop desta SKU, destacadas no produto. Sem títulos, subtítulos ou medidas estimadas.',
+ 'Imagem 2 — Uso real: ambiente, personagem e câmera diferentes das outras oito imagens; sem reutilizar a fotografia anterior.',
+ 'Imagem 3 — Especificações: produto sem pessoas, ângulo lateral completo e apenas cotas reais confirmadas na WeDrop; não repetir cenário da capa.',
  'Imagem 4 — Benefícios: demonstrar visualmente as vantagens do produto, com frases ou palavras curtas, sem poluir a imagem.',
  'Imagem 5 — Dor e solução: mostrar como o produto resolve uma necessidade do comprador. Uma frase curta.',
  'Imagem 6 — Persuasão: destacar um diferencial real, com comunicação comercial.',
  'Imagem 7 — Transformação: mostrar o resultado ou a experiência proporcionada pelo produto. Frase curta.',
  'Imagem 8 — Quebra de objeções: responder às três principais dúvidas do comprador, com frases curtas e persuasivas, tirando dúvidas sem poluir a imagem.',
- 'Imagem 9 — Mockup e confiança: apresentar o produto com três selos: Compra Segura, Entrega Rápida e Atendimento Online.'
+ 'Imagem 9 — Mockup e confiança: apresentar o produto com três selos: Compra Segura, Entrega Rápida e Atendimento Online.',
+ 'VARIAÇÃO OBRIGATÓRIA: cada foto usa ambiente, ponto de vista, iluminação e (quando houver) pessoa diferentes. Preservar produto exato; não clonar pose, parque ou personagem de outras imagens.'
 ].join('\n');
 // Prévia INTEGRAL da descrição: organizada visualmente, sem truncamento.
 // A Shopee recebe somente texto simples com emojis e quebras de linha.
@@ -7868,7 +7869,7 @@ function optimizerImagesRenderMode(){
  $('#optimizerModeApi').classList.toggle('is-active',!chat);
 }
 async function optimizerChatgptMakeBrief(w,{defaultOnly=false}={}){
- const {createChatGptPrompts}=await import('/chatgptPrompts.js?v=1.20.40-wedrop-dimensions-image03');
+ const {createChatGptPrompts}=await import('/chatgptPrompts.js?v=1.20.41-unique-scene-angles');
  return createChatGptPrompts({
   sku:w.sku,title:w.draftTitle||'Produto Shopee',
   imageUrls:w.imageUrls||[],
