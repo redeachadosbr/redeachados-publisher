@@ -139,8 +139,8 @@ export function compileTax(input,live){
 }
 // Shopee may reorder the attribute list and its value lists on readback.
 // Compare ALL attribute identities and value triples, not array order or volatile API metadata.
-export function sameShopeeAttributes(left,right){
- const normalize=raw=>(Array.isArray(raw)?raw:[]).map(a=>({
+export function canonicalShopeeAttributes(raw){
+ return (Array.isArray(raw)?raw:[]).map(a=>({
   attribute_id:String(a?.attribute_id??''),
   attribute_value_list:(Array.isArray(a?.attribute_value_list)?a.attribute_value_list:[])
    .map(v=>({
@@ -151,7 +151,9 @@ export function sameShopeeAttributes(left,right){
    .sort((x,y)=>JSON.stringify(x).localeCompare(JSON.stringify(y)))
  })).sort((x,y)=>Number(x.attribute_id)-Number(y.attribute_id)||
   JSON.stringify(x).localeCompare(JSON.stringify(y)));
- return JSON.stringify(normalize(left))===JSON.stringify(normalize(right));
+}
+export function sameShopeeAttributes(left,right){
+ return JSON.stringify(canonicalShopeeAttributes(left))===JSON.stringify(canonicalShopeeAttributes(right));
 }
 // JSONB/API object keys may be returned in a different order. Preserve all
 // values and array positions while giving comparisons and hashes one encoding.
@@ -194,3 +196,4 @@ export function fieldsVerified(proposed,item){
   return String(item?.[key]??'').replace(/\r\n?/g,'\n').trim()===String(value??'').replace(/\r\n?/g,'\n').trim();
  });
 }
+

@@ -8,7 +8,7 @@ test('trocar SKU aborta só pré-consulta pendente e não herda lock',()=>{
  const reset=code.slice(code.indexOf('function optimizerExecReset(){'),code.indexOf('let optimizerFinalSnapshot='));
  assert.match(reset,/optimizerExecPrepareController\.abort\(\)/);
  assert.match(reset,/optimizerExecPreparation=null/);
- const prepare=code.slice(code.indexOf('async function optimizerExecutionPrepare(){'),code.indexOf("$('#optimizerExecutionPrepare')?.addEventListener"));
+ const prepare=code.slice(code.indexOf('async function optimizerExecutionPrepare('),code.indexOf("$('#optimizerExecutionPrepare')?.addEventListener"));
  assert.match(prepare,/optimizerExecPrepareController\?\.abort\(\)/);
  assert.match(prepare,/optimizerExecPreparation=null/);
  assert.match(prepare,/AbortSignal\.any\(\[controller\.signal,AbortSignal\.timeout\(75000\)\]\)/);
@@ -27,7 +27,7 @@ test('troca de SKU mantém motor matriz independente da Ponte ChatGPT',()=>{
  assert.match(onInput,/optimizerWorkflowPlan=null;optimizerWorkflowStage=null;optimizerWorkflowSerial\+\+/);
  assert.match(onInput,/optimizerExecReset\(\)/);
  assert.match(onInput,/void optimizerChatBridgeSwitchSku\(value\)/);
- assert.match(html,/app\.js\?v=1\.21\.75-execution-action-visible/);
+ assert.match(html,/app\.js\?v=1\.21\.76-execution-attribute-order/);
 });
 
 test('polling de uma SKU antiga não bloqueia a verificação de nova SKU',()=>{
@@ -37,3 +37,4 @@ test('polling de uma SKU antiga não bloqueia a verificação de nova SKU',()=>{
  assert.match(refresh,/if\(current&&current\.sku\+':'\+current\.itemId\+':'\+current\.modelId===identity\)/);
  assert.match(refresh,/if\(optimizerExecPollingIdentity===identity\)\{optimizerExecPolling=false;/);
 });
+

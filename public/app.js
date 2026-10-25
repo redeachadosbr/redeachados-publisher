@@ -3710,6 +3710,14 @@ globalThis.OptimizerFinalization={
  refresh:()=>{optimizerFinalSnapshot=null;void optimizerFinalPendingRefresh(true);}
 };
 function optimizerExecutionTrackerRender(progress,job){
+ // O GET de status e a preparação automática não podem encobrir uma
+ // tentativa recusada com "aguardando autorização" na própria barra.
+ if(progress&&optimizerExecStartError&&!progress.hasStarted&&
+    ['prepared','blocked'].includes(progress.state)){
+  progress={...progress,attention:true,title:'Execução não iniciada',
+   message:'Última tentativa recusada: '+optimizerExecStartError+
+    '. Confira a prévia atualizada antes de executar novamente.',lastError:optimizerExecStartError};
+ }
  globalThis.OptimizerSkuDashboard?.execution?.(progress,job);
  if(!progress)return;
  const tracker=$('#optimizerExecutionTracker'),activity=$('#optimizerExecutionActivity');
@@ -4447,7 +4455,7 @@ async function optimizerConnectionCheck(){
 }
 $('#optimizerConnectionCheck')?.addEventListener?.('click',()=>void optimizerConnectionCheck());
 
-async function optimizerExecutionPrepare(){
+async function optimizerExecutionPrepare({preserveStartError=false}={}){
  const w=optimizerWorkflowPlan;
  if(!w||optimizerExecBusy)return;
  const key=[w.sku,w.itemId,w.modelId,$('#optimizerExecutionScope').value].join('|');
@@ -4461,7 +4469,7 @@ async function optimizerExecutionPrepare(){
   optimizerExecPrepareController=null;
   optimizerExecPreparation=null;
  }
- optimizerExecStartError='';
+ if(!preserveStartError)optimizerExecStartError='';
  const serial=++optimizerExecSerial;
  const controller=new AbortController();
  const preparation={key,serial,again:false,controller};
@@ -4509,7 +4517,7 @@ async function optimizerExecutionPrepare(){
    if(optimizerExecPrepareController===controller)optimizerExecPrepareController=null;
    btn.disabled=false;
    if(preparation.again&&optimizerWorkflowPlan&&!optimizerExecBusy)
-    setTimeout(()=>void optimizerExecutionPrepare(),100);
+    setTimeout(()=>void optimizerExecutionPrepare({preserveStartError}),100);
   }
  }
 }
@@ -4527,7 +4535,7 @@ $('#optimizerExecutionLaunch')?.addEventListener?.('click',()=>void optimizerExe
 $('#optimizerExecutionRemaining')?.addEventListener?.('click',()=>void optimizerExecuteApproved(true));
 $('#optimizerExecutionRun')?.addEventListener?.('click',()=>void optimizerExecuteApproved(false));
 function optimizerExecutionNeedsFreshPreview(message){
- return /Conteúdo ou aprovação mudou|Plano alterado em outra sessão|Plano mudou|Anúncio alterado após preparação|A ficha técnica da Shopee foi modificada|Os dados fiscais da Shopee mudaram|Imagens alteradas após preparação|Categoria alterada após preparação|A etapa escolhida mudou|Plano já executado, alterado/i.test(String(message||''));
+ return /Conteúdo ou aprovação mudou|A prévia tem alterações novas ou divergentes|Plano alterado em outra sessão|Plano mudou|Anúncio alterado após preparação|A ficha técnica da Shopee foi modificada|Os dados fiscais da Shopee mudaram|Imagens alteradas após preparação|Categoria alterada após preparação|A etapa escolhida mudou|Plano já executado, alterado/i.test(String(message||''));
 }
 async function optimizerExecuteApproved(remainingOnly=false){
  const p=optimizerExecPlan,ctx=optimizerExecContext;
@@ -4614,7 +4622,7 @@ async function optimizerExecuteApproved(remainingOnly=false){
    // sem confirmar primeiro no banco se o POST anterior iniciou o worker.
    const state=await optimizerExecutionRefresh(true);
    if(state?.state==='prepared'||state?.state==='blocked'||state?.state==='failed'){
-     await optimizerExecutionPrepare();
+     await optimizerExecutionPrepare({preserveStartError:true});
      if(optimizerExecPlan?.canExecute&&optimizerExecPlan.sku===ctx.sku){
        optimizerExecNotice('A Shopee não iniciou essa tentativa: '+failedStartReason+
         '. Plano revalidado; o botão de retomada está disponível novamente. Nenhuma mídia foi reenviada.','warning');

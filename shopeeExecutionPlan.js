@@ -1,5 +1,5 @@
 import crypto from 'node:crypto';
-import {compileAttributes,compileTax,sameData,stableDataJson,sameShopeeAttributes,fieldsVerified,attributeAuditForChanges} from './shopeeStructuredFields.js';
+import {compileAttributes,compileTax,sameData,stableDataJson,sameShopeeAttributes,canonicalShopeeAttributes,fieldsVerified,attributeAuditForChanges} from './shopeeStructuredFields.js';
 import {inspectAnatelCompliance} from './shopeeAnatel.js';
 import {imagesSignature} from './shopeePreparedImages.js';
 import {normalizedTitle,validateContentRules} from './shopeeOptimizationWorkflow.js';
@@ -151,7 +151,11 @@ export function compileShopeeExecutionPlan({shopId,itemId,modelId,sku,record,rev
       gtin:x.gtin||'',noGtin:x.noGtin===true,sha256:x.asset?.sha256})),
      promotion:modelVariations.promotion||null}:null,
     from:{item_name:currentTitle,description:currentDescription,description_type:currentType},
-    to:proposed,finalFiscal,fiscalDeferred,
+    // A ordem dos atributos/valores e os metadados de leitura da API não
+    // alteram a ficha aprovada. Usar a mesma equivalência do readback,
+    // sem ordenar imagens, variações ou modificar o payload a publicar.
+    to:{...proposed,...(Object.hasOwn(proposed,'attribute_list')?
+      {attribute_list:canonicalShopeeAttributes(proposed.attribute_list)}:{})},finalFiscal,fiscalDeferred,
     // Não invalidar publicação de imagens/conteúdo por edição fiscal que NÃO será enviada.
     // A prévia fiscal individual continua protegida por proposed.tax_info.
     deferredTaxDraft:fiscalDeferred&&!omitFiscal?state.tax||{}:null,
@@ -186,7 +190,8 @@ export function approvedShopeeReadbackConvergence(plan,fresh,live){
  const previous=plan.proposed||{},current=fresh.proposed||{};
  // A fresh preview cannot add or change ANY proposed modification.
  for(const [key,value] of Object.entries(current)){
-  if(!Object.hasOwn(previous,key)||!sameData(previous[key],value))return false;
+  if(!Object.hasOwn(previous,key)||!(key==='attribute_list'?
+   sameShopeeAttributes(previous[key],value):sameData(previous[key],value)))return false;
  }
  for(const [key,value] of Object.entries(previous)){
   // Only an approved field that now matches Shopee exactly may disappear.
@@ -338,3 +343,4 @@ export function assessShopeeStableCommercialRecovery(job,first,second,at=Date.no
   previewRequired:true
  };
 }
+
