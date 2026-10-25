@@ -2300,9 +2300,25 @@ function marktProTitle(req,info,matches){
  return (official&&!/^Variação do Item \d+$/i.test(official)?official:suggested)||info.sku;
 }
 async function marktProCandidates(req,info){
- const matches=await findExactCatalogSku(info.shopId,info.sku);
- const title=marktProTitle(req,info,matches);
- const results=await ShopeeMarktPro.search(title);
+ const [matches,supplier]=await Promise.all([
+  findExactCatalogSku(info.shopId,info.sku),
+  readWeDropProduct(info.shopId,{sku:info.sku,itemId:info.itemId,modelId:info.modelId})
+   .catch(()=>null)
+ ]);
+ const shopeeTitle=marktProTitle(req,info,matches);
+ // A busca do produto do vídeo deve começar pelo título exato do catálogo
+ // WeDrop, quando houver vínculo inequívoco. SEO da Shopee pode ser longo
+ // ou ter palavras promocionais que atrapalham a correspondência.
+ const data=supplier?.product_data||{};
+ const name=String(data.name||data.title||'').trim().slice(0,250);
+ const title=name||shopeeTitle;
+ const color=String(data.color||'').trim().slice(0,60);
+ const product={product:title,color};
+ let results=await ShopeeMarktPro.search(product);
+ if(!results.candidates.length&&name&&name.toLocaleLowerCase('pt-BR')!==shopeeTitle.toLocaleLowerCase('pt-BR')){
+  const second=await ShopeeMarktPro.search(shopeeTitle);
+  if(second.candidates.length)results=second;
+ }
  return {title,results};
 }
 function marktProCandidateFor(id,results){
@@ -2319,6 +2335,7 @@ app.get('/api/shopee/optimizer/video/marktpro/search',mustLogin,requireWeDropAdm
   const {title,results}=await marktProCandidates(req,info);
   res.json({ok:true,sku:info.sku,itemId:info.itemId,modelId:info.modelId,title,
    inventoryCount:results.inventoryCount,bestQuery:results.bestQuery,
+   diagnostic:results.diagnostic,
    candidates:results.candidates.slice(0,5).map(x=>({id:x.id,title:x.title,score:x.score,durationMs:x.durationMs,
     category:x.category,hardMismatch:x.hardMismatch,variantReasons:x.variantReasons})),source:'MarktPro',publication:false});
  }catch(e){res.status(503).json({error:'Busca MarktPro indisponível: '+String(e.message||e).slice(0,210)});}
