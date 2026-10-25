@@ -23,7 +23,7 @@
  titleWrap.append(
    element('small','ra-tech-kicker','ETAPA 04'),
    element('h2','','Ficha técnica'),
-   element('p','','Preencha e revise as informações técnicas do produto. Use os dados da WeDrop e confira os campos antes de continuar.')
+   element('p','','Confira o que já está na Shopee e as alterações comprovadas pela WeDrop. Opcionais sem dados podem ficar vazios.')
  );
  const close=element('button','secondary ra-tech-close','×  Fechar etapa');
  close.type='button';
@@ -35,10 +35,10 @@
 
  const metrics=element('div','ra-tech-metrics');
  const metaCards=[
-   ['filled','▤','Atributos preenchidos','Dados disponíveis'],
-   ['optional','☷','Opcionais preenchidos','Da categoria'],
-   ['pending','⚠','Obrigatórios pendentes','Requerem atenção'],
-   ['review','✓','Conferência de campos','Resumo atual']
+   ['filled','▤','Já na Shopee','Confirmados pela API'],
+   ['optional','☷','Alterações propostas','Aguardando sua revisão'],
+   ['pending','⚠','Obrigatórios pendentes','Somente campos exigidos'],
+   ['review','✓','Revisão da etapa','Confirmação do vendedor']
  ];
  const metricMap={};
  for(const [id,icon,name,hint] of metaCards){
@@ -53,7 +53,7 @@
  const main=element('div','ra-tech-main');
  const sourceTitle=source.querySelector('.optimizer-tech-import-title');
  sourceTitle?.querySelector('strong')?.replaceChildren(document.createTextNode('Fonte de dados da SKU'));
- const intro=element('p','ra-tech-intro','Preencha pela WeDrop ou confirme os dados abaixo.');
+ const intro=element('p','ra-tech-intro','A ficha já traz os dados identificados. Campos opcionais sem comprovação são dispensáveis.');
  sourceTitle?.insertAdjacentElement('afterend',intro);
  const product=element('div','ra-tech-product');
  const photo=element('img','ra-tech-product-photo');photo.alt='Imagem do produto na Shopee';
@@ -170,11 +170,13 @@
    // Inactive children of official parent options must never appear as
    // unresolved fields. They are checked only once the parent activates them.
    const sections=[
-     disclosure('Preenchidos ou recuperados',saved.length,'Valores da SKU, Shopee e WeDrop', 'filled',saved),
-     disclosure('Obrigatórios para revisar',required.length,
-       required.length?'Precisam de informação comprovada':'Nenhum obrigatório pendente','required',required),
-     disclosure('Opcionais sugeridos',optional.length,'Abra apenas se desejar preencher','optional',optional)
+     disclosure('Dados já preenchidos ou propostos',saved.length,
+       'Valores da Shopee e dados comprovados da SKU','filled',saved)
    ];
+   if(required.length)sections.push(disclosure('Obrigatórios pendentes',required.length,
+     'Exigem conferência antes de avançar','required',required));
+   if(optional.length)sections.push(disclosure('Opcionais dispensáveis',optional.length,
+     'Não precisam de preenchimento para concluir','optional',optional));
    if(conditional.length)sections.push(disclosure('Dependências ativas',conditional.length,
      'Verifique a opção do atributo pai','conditional',conditional));
    fields.append(...sections);
@@ -203,16 +205,22 @@
    const optionalComplete=attrs.filter(x=>!x.mandatory&&!x.conditional&&completed.has(Number(x.id))).length;
    const mandatory=attrs.filter(x=>x.mandatory&&!x.conditional);
    const missing=mandatory.filter(x=>!completed.has(Number(x.id))).length;
-   const conflicts=(data.sourceFacts?.conflicts||[]).length;
-   number('filled',completed.size,'de '+attrs.length+' atributos retornados');
-   number('optional',optionalComplete,'de '+optionalCount+' opcionais');
-   number('pending',missing,missing?'Verifique os obrigatórios':'Todos os obrigatórios atendidos');
-   const recovered=[...fields.querySelectorAll('fieldset[data-attribute-id]')]
-     .filter(field=>field.dataset.autofilled==='true').length;
-   const checked=Math.max(0,recovered-conflicts);
-   number('review',checked+'/'+Math.max(1,recovered),
-     conflicts?conflicts+' divergência(s) para conferir':missing?'Obrigatórios ainda pendentes':
-       recovered?'Sem divergências identificadas':'Sem atributos recuperados');
+   const stats=globalThis.RATechnicalStatus?.compute({
+     attributes:attrs,changes:globalThis.optimizerTechnicalValues?.()||[],
+     conflicts:data.sourceFacts?.conflicts||[],
+     reviewed:data.stages?.find(x=>x.key==='technical')?.reviewed===true
+   });
+   const requiredMissing=stats?.mandatoryMissing??missing;
+   const divergences=stats?.conflicts??(data.sourceFacts?.conflicts||[]).length;
+   number('filled',stats?.inShopee??savedIds.size,
+     'Dados existentes, não precisam ser reenviados');
+   number('optional',stats?.prepared??Math.max(0,completed.size-savedIds.size),
+     'Rascunhos; não publicados');
+   number('pending',requiredMissing,
+     requiredMissing?'Verifique os campos exigidos':'Nenhum obrigatório faltando');
+   number('review',stats?.reviewed?'Conferida':'Pendente',
+     divergences?divergences+' divergência(s) para conferir':
+       stats?.reviewed?'Registrada nesta SKU':'Aguardando seu registro, sem divergências');
    const supplier=data.supplierProduct||{};
    productName.textContent=supplier.name||data.productTitle||data.draftTitle||'Produto da SKU';
    productDetails.textContent=[
@@ -238,17 +246,18 @@
    previewExtra.append(head);
    for(const [label,value] of [
      ['Categoria Shopee',cat],
-     ['Atributos obrigatórios',mandatory.length-missing+' de '+mandatory.length],
-     ['Opcionais preenchidos',optionalComplete+' de '+optionalCount],
+     ['Atributos obrigatórios atendidos',mandatory.length-requiredMissing+' de '+mandatory.length],
+     ['Opcionais com valores',optionalComplete+'; os demais são dispensáveis'],
      ['Atributos retornados pela API',attrs.length+' campos']
    ]){
      const row=element('div','ra-tech-category-row');
      row.append(element('span','',label),element('strong','',value));
      previewExtra.append(row);
    }
-   review.open=true;
+   if(regroup)review.open=requiredMissing>0||divergences>0;
    reviewSummary?.querySelector('small')?.replaceChildren(document.createTextNode(
-     missing+' obrigatório(s) pendente(s) · '+completed.size+' preenchido(s)'));
+     requiredMissing+' obrigatório(s) pendente(s) · '+divergences+
+     ' divergência(s) · opcionais sem valor não bloqueiam'));
  }
  globalThis.RATechnicalStudio={render,refresh:data=>render(data,{regroup:false})};
 })();
