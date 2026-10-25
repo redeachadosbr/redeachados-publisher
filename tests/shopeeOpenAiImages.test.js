@@ -11,7 +11,7 @@ test('roteiro de nove imagens na ordem aprovada pela loja',()=>{
  assert.equal(IMAGE_STORYBOARD.length,9);
  assert.match(IMAGE_STORYBOARD[0],/Capa/);
  assert.match(IMAGE_STORYBOARD[1],/Uso real/);
- assert.match(IMAGE_STORYBOARD[2],/somente dimensões do PRODUTO confirmadas na WeDrop/);
+ assert.match(IMAGE_STORYBOARD[2],/dimensões reais WeDrop com setas finas/);
  assert.match(IMAGE_STORYBOARD[3],/frases ou palavras curtas/);
  assert.match(IMAGE_STORYBOARD[4],/Uma frase curta/);
  assert.match(IMAGE_STORYBOARD[5],/Persuasão/);
