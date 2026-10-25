@@ -21,7 +21,7 @@ test('roteiro de nove imagens na ordem aprovada pela loja',()=>{
  assert.doesNotMatch(IMAGE_STORYBOARD.join(' '),/ANAMÓRFICA|ANTES E DEPOIS|CTA/);
  assert.throws(()=>imagePrompt({record:sample,slot:0}),/Posição inválida/);
  assert.throws(()=>imagePrompt({record:sample,slot:10}),/Posição inválida/);
- const prompt=imagePrompt({record:sample,slot:3,masterPrompt:'Fundo moderno',note:'Luz natural'});
+ const prompt=imagePrompt({record:sample,slot:4,masterPrompt:'Fundo moderno',note:'Luz natural'});
  assert.match(prompt,/1200 x 1200/);
  assert.match(prompt,/Aço inox/);
  assert.match(prompt,/Fundo moderno/);
