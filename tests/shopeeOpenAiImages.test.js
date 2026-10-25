@@ -26,7 +26,7 @@ test('roteiro de nove imagens na ordem aprovada pela loja',()=>{
  assert.match(prompt,/Aço inox/);
  assert.match(prompt,/Fundo moderno/);
  assert.match(prompt,/Luz natural/);
- assert.match(prompt,/não invente|Não invente/);
+ assert.match(prompt,/[Nn]ão invent/);
 });
 
 test('validação bloqueia URLs externas, HTTP e redirecionamentos inseguros',()=>{
