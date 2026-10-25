@@ -5089,6 +5089,15 @@ function optimizerExecutionJobView(job,progress=null,issue=null){
  }
  const active=['running','uncertain'].includes(job?.state);
  const verified=job?.state==='verified';
+ const technicalReviewed=optimizerWorkflowPlan?.stages?.some(x=>
+  x.key==='technical'&&x.reviewed===true);
+ const technicalDraft=optimizerWorkflowPlan?.technicalDraft?.fields||[];
+ const technicalPending=Boolean(verified&&technicalReviewed&&technicalDraft.some(x=>
+  x.enabled===true&&!x.userDisabled&&x.values?.some(v=>Number(v.valueId)>0||
+   Number(v.valueId)===0&&String(v.valueName||'').trim()))&&
+  !job?.plan?.proposed?.attribute_list&&!job?.plan?.confirmedStages?.technical);
+ const techPanel=$('#optimizerExecutionTechnicalPending');
+ if(techPanel)techPanel.hidden=!technicalPending;
  const fiscalPartial=verified&&job?.result?.phase==='verified_partial';
  const resultLink=$('#optimizerExecutionShopeeLink');
  resultLink.hidden=!verified;
@@ -5187,6 +5196,13 @@ async function optimizerExecutionRefresh(poll=false){
   if(optimizerExecPollingIdentity===identity){optimizerExecPolling=false;optimizerExecPollingIdentity='';}
  }
 }
+$('#optimizerExecutionTechnicalOnly')?.addEventListener?.('click',()=>{
+ const w=optimizerWorkflowPlan;
+ if(!w||optimizerExecBusy)return;
+ $('#optimizerExecutionScope').value='technical';
+ optimizerExecNotice('Preparando SOMENTE ficha técnica aprovada. Nenhuma imagem, vídeo, variação ou desconto será reenviado.','info');
+ void optimizerExecutionPrepare();
+});
 $('#optimizerExecutionRefresh')?.addEventListener?.('click',()=>void optimizerExecutionRefresh(true));
 $('#optimizerExecutionReconcile')?.addEventListener?.('click',async()=>{
  const w=optimizerWorkflowPlan;if(!w)return;
