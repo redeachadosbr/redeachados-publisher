@@ -2,6 +2,7 @@
 import {spawn} from 'node:child_process';
 import {imageDimensions,MAX_IMAGE_BYTES} from './shopeePreparedImages.js';
 import {confirmedProductDimensionsFromWeDrop} from './public/productDimensions.js';
+import {imageScenePrompt} from './public/imageSceneDiversity.js';
 
 export const IMAGE_STORYBOARD=Object.freeze([
  'Imagem 1 — Capa: produto em destaque, ocupando aproximadamente 85% da imagem.',
@@ -51,7 +52,10 @@ export function imagePrompt({record,slot,masterPrompt='',note='',sourceImageCoun
   'REFERÊNCIAS RECEBIDAS: '+sourceImageCount+'. Observe-as para preservar a identidade visual.',
   hasPreparedReference?'A PRIMEIRA FOTO ANEXADA É A IMAGEM COMERCIAL ATUAL, que você deve EDITAR, não substituir por um produto novo. Preserve cenário, ângulo, geometria e todos os elementos que não fazem parte do ajuste solicitado. As demais referências identificam o produto original. Mude somente o que está descrito em AJUSTE ESPECÍFICO.':'' ,
   'POSIÇÃO '+position+'/9: '+IMAGE_STORYBOARD[position-1],
-  'CRIE UMA CENA VISUAL DIFERENTE DAS OUTRAS OITO: novo ângulo, enquadramento e narrativa. Mantenha idêntico o produto de referência, não apenas um produto parecido.',
+  hasPreparedReference?
+   'EDIÇÃO LOCAL SOLICITADA: preservar a composição atual salvo se a orientação de ajuste pedir mudança de ângulo ou fundo.':
+   imageScenePrompt({slot:position,title:product}),
+  'CRIE UMA CENA VISUAL DIFERENTE DAS OUTRAS OITO nas gerações novas. Mantenha idêntico o PRODUTO da foto original, não o cenário, o personagem ou o produto de uma foto comercial anterior.',
   image03?dimensionRule:
   (attributes.length?'CARACTERÍSTICAS CONFIRMADAS PELA FICHA ATUAL: '+attributes.join('; ').slice(0,1800):'Nenhuma especificação técnica independente foi confirmada. Evite inserir números, medidas, selos, certificações ou alegações técnicas.'),
   'REGRA FIXA: fotografia fotorrealista profissional, objeto em foco, ambiente coerente com a utilidade real do produto, 1200 × 1200, sem preço nem marca d’água. Seguir exclusivamente o roteiro da posição informada: não criar títulos, subtítulos, frases ou elementos não pedidos. Incluir somente fatos comprovados em português. Não inventar embalagem, conteúdo, medidas ou funções. Medidas de embalagem/pacote NÃO são medidas do produto. Na ausência de prova, omitir números e atributos incertos.',
