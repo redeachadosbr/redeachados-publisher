@@ -31,14 +31,14 @@ export function createChatGptPrompts({imageUrls=[],supplierSourceText='',title='
   const mandatory=[
    'REGRA ATUAL DA REDE ACHADOS BR (prevalece sobre roteiros antigos e orientações gerais): imagem única 1200×1200, foto realista fiel ao produto original; fundo ambientado moderno, nítido e visível em HD, com luz, ângulo e ambiente diferentes em cada uma das 9 posições. Nunca repetir personagens, poses e composição.',
    'Produto prioritário, tipografia discreta e sofisticada, frases curtas de conversão quando previstas; sem excesso de textos, painéis, números inventados ou títulos grandes. Imagem 01 com produto 85%–90%; imagem 09 com os três selos discretos.'
-  ].join('\\n');
+  ].join('\n');
   return [
    customized||guide,
    imageScenePrompt({slot,title}),
    storeRule?'REGRAS DA LOJA (apenas se compatíveis com as instruções atuais): '+storeRule:'',
    note?'AJUSTE SALVO ESPECÍFICO DESTA IMAGEM: '+note:'',
    mandatory
-  ].filter(Boolean).join('\\n\\n');
+  ].filter(Boolean).join('\n\n');
  });
  const dims=confirmedProductDimensionsFromWeDrop(supplierSourceText);
  const facts=confirmedProductSideFactsFromWeDrop(supplierSourceText);
