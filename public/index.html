@@ -36,7 +36,9 @@
 /* Retomada da SKU visível junto à barra de acompanhamento. A API só é
    acionada pelo clique explícito, depois de validar a prévia/desconto. */
 .optimizer-exec-resume-bar{display:flex;align-items:center;justify-content:space-between;gap:18px;flex-wrap:wrap;margin:12px 0 16px;padding:14px 18px;border:1px solid #b5d4e9;border-radius:15px;background:#f3f9ff}
-.optimizer-exec-resume-bar:not(:has(#optimizerExecutionLaunch:not([hidden]))):not(:has(#optimizerExecutionRemaining:not([hidden]))){display:none!important}
+.optimizer-exec-resume-bar[hidden]{display:none!important}
+.optimizer-exec-resume-bar #optimizerExecutionRecoverStart,.optimizer-exec-resume-bar #optimizerExecutionSwitchFull{min-height:44px;padding:10px 15px;border:1px solid #83add4;border-radius:11px;background:#eaf3ff;color:#123e6c;font-weight:800;cursor:pointer}
+.optimizer-exec-resume-bar button[hidden]{display:none!important}
 .optimizer-exec-resume-copy{display:flex;flex:1 1 280px;min-width:0;flex-direction:column;gap:5px}
 .optimizer-exec-resume-copy strong{color:#103c6d;font-size:14px;font-weight:850}
 .optimizer-exec-resume-copy small{color:#426485;line-height:1.5;font-size:12px}
@@ -481,6 +483,8 @@
               <strong id="optimizerExecutionNextActionTitle">Próximo passo: preparar autorização</strong>
               <small id="optimizerExecutionNextActionDescription">O anúncio não será publicado antes de você autorizar a prévia.</small>
             </div>
+            <button id="optimizerExecutionSwitchFull" type="button" hidden>✓ Preparar TODAS as etapas aprovadas</button>
+            <button id="optimizerExecutionRecoverStart" type="button" hidden>↻ Preparar autorização desta SKU</button>
             <button id="optimizerExecutionRemaining" type="button" hidden>▶ Executar só variações + fiscal + desconto</button>
             <button id="optimizerExecutionLaunch" type="button" hidden>▶ Retomar plano completo</button>
           </div>
