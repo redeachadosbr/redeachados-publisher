@@ -835,6 +835,22 @@ app.get('/api/shopee/optimizer/find',mustLogin,requireWeDropAdmin,async(req,res)
   const {auth,cfg}=await getValidAuth(req);
   const deep=req.query.deep==='1';
   const cached=await findExactCatalogSku(auth.shopId,sku);
+  // Para SKUs ausentes do cache, pesquisar pelo SKU EXATO na API antes de
+  // fazer 15 páginas de varredura. Não presumir ausência definitiva:
+  // a busca aprofundada continua disponível se o endpoint dirigido não achar.
+  // Se encontrar candidato, a verificação NORMAL atual permanece obrigatória.
+  if(!deep&&!cached.length){
+    const quick=await findLiveShopeeSku(cfg,auth,callShopeeShopApi,sku,{fastOnly:true});
+    const candidates=(quick.matches||[]).filter(x=>
+      ['NORMAL','UNLIST','REVIEWING'].includes(String(x.status||'').toUpperCase()));
+    if(!candidates.length){
+      return res.json({ok:true,sku,matches:[],lookup:'direct_not_found',
+        verifiedLive:false,canDeepSearch:true,retiredItemIds:[],
+        warnings:(quick.warnings||[]).slice(0,3),
+        message:'SKU não localizada no catálogo salvo nem na busca direta. '+
+          'A busca aprofundada verifica as páginas restantes; a precificação WeDrop é independente.'});
+    }
+  }
   // Antigos IDs SELLER_DELETE permanecem no cache; não são candidatos ativos.
   // SEMPRE consultar a listagem NORMAL em tempo real antes de escolher o item.
   let catalogWriteWarning='';
@@ -2826,20 +2842,31 @@ app.post('/api/shopee/optimizer/pricing/supplier-preview',mustLogin,requireWeDro
   try{
     const sku=validateSkuLookup(req.body?.sku);
     const {auth}=await getValidAuth(req);
-    const cost=await shopeePricingDirectSupplierCost(auth.shopId,sku);
+    // Preço e custo são consultas independentes. Mesmo quando a simulação
+    // não encontra uma terminação segura, devolver o custo WeDrop confirmado.
+    const [cost,baseSettings]=await Promise.all([
+      shopeePricingDirectSupplierCost(auth.shopId,sku),
+      req.body?.settings===undefined?shopeePricingPreferences(auth.shopId):
+        Promise.resolve(normalizeShopeePricingSettings(req.body.settings))
+    ]);
     if(!cost)return res.json({ok:true,found:false,sku,
       message:'Esta SKU ainda não possui custo WeDrop salvo. Consulte a área Fornecedor WeDrop.'});
-    const settings=req.body?.settings===undefined
-      ?await shopeePricingPreferences(auth.shopId)
-      :normalizeShopeePricingSettings(req.body.settings);
+    const settings=req.body?.marginOverride===true&&req.body.marginPct!==undefined
+      ?normalizeShopeePricingSettings({...baseSettings,marginPct:req.body.marginPct}):baseSettings;
     const marketAverage=req.body?.marketAverage===undefined?null:req.body.marketAverage;
-    const quote=quoteShopeePrice({unitCost:cost.unitCost,settings,marketAverage,
-      marginOverride:req.body?.marginOverride===true});
-    res.json({ok:true,found:true,sku,costUpdatedAt:cost.costUpdatedAt,
-      quote:{...quote,sku,supplierSku:cost.supplierSku,
+    let quote=null,pricingError=null;
+    try{
+      quote=quoteShopeePrice({unitCost:cost.unitCost,settings,marketAverage,
+        marginOverride:req.body?.marginOverride===true});
+    }catch(error){pricingError=String(error.message||error).slice(0,240);}
+    res.json({ok:true,found:true,sku,supplierSku:cost.supplierSku,
+      unitCost:cost.unitCost,costUpdatedAt:cost.costUpdatedAt,
+      pricingError,
+      quote:quote?{...quote,sku,supplierSku:cost.supplierSku,
         source:'wedrop_only',saved:false,listingVerified:false,
-        notice:quote.notice+' SKU reconhecida na WeDrop; vínculo com anúncio Shopee ainda em verificação.'},
-      message:'SKU '+sku+' localizada no catálogo WeDrop. A associação com a Shopee será conferida separadamente.'});
+        notice:quote.notice+' SKU reconhecida na WeDrop; vínculo com anúncio Shopee ainda em verificação.'}:null,
+      message:pricingError?'Custo WeDrop localizado; ajuste de preço pendente: '+pricingError:
+        'SKU '+sku+' localizada no catálogo WeDrop. A associação com a Shopee será conferida separadamente.'});
   }catch(e){res.status(400).json({error:String(e.message||e).slice(0,280)});}
 });
 
