@@ -60,7 +60,7 @@ const places=Object.freeze({
  home:[
   'Ambiente minimalista claro de exposição com produto em destaque sozinho.',
   'Cômodo residencial real de uso adequado à função do produto, pessoa A se necessária.',
-  'Parede lisa com piso uniforme e luz neutra, produto inteiro para medidas.',
+  'Interior contemporâneo com revestimentos de madeira e pedra bem visíveis, produto inteiro em foco, espaço mínimo para cotas e informações discretas.',
   'Interior de apartamento iluminado lateralmente por janela, close real de acabamento.',
   'Segundo cômodo doméstico de uso coerente com a função, pessoa B diferente da foto 02 se útil.',
   'Espaço contemporâneo organizado com pedra e madeira, produto como protagonista sem pessoas.',
@@ -82,7 +82,7 @@ const places=Object.freeze({
  toys:[
   'Estúdio alegre porém limpo, produto sozinho em piso claro.',
   'Sala de brincar residencial iluminada pela manhã, criança A adequada ao produto e supervisionada se necessário.',
-  'Piso neutro liso com fundo claro para mostrar o produto inteiro sem personagens.',
+  'Sala de brinquedos contemporânea com mobiliário discreto nítido e luz suave, produto inteiro em ambiente diferente da capa e margens leves para medidas.',
   'Cantinho de brincar com tapete liso e luz lateral, detalhe real do produto sem mãos.',
   'Espaço infantil comunitário diferente da sala inicial, criança B de aparência e roupa diferentes, uso apropriado.',
   'Estúdio colorido de apresentação do produto sem personagens.',
@@ -93,7 +93,7 @@ const places=Object.freeze({
  general:[
   'Estúdio comercial neutro com textura arquitetônica discreta e produto sozinho.',
   'Ambiente real coerente com o uso do produto, usuário A se apropriado.',
-  'Superfície lisa neutra com espaço livre ao redor do produto para cotas.',
+  'Hall de apartamento moderno e bem iluminado, piso de pedra e painel arquitetônico nítidos, objeto inteiro em perspectiva com margens pequenas para cotas e informações discretas.',
   'Ambiente claro com janela lateral, close editorial do acabamento real.',
   'Segundo ambiente de uso diferente da foto 02, usuário B se necessário.',
   'Cenário elegante de exposição profissional, produto sozinho.',
@@ -131,7 +131,7 @@ export function imageSceneDirection({slot,title=''}={}){
 const premiumCopyRules=Object.freeze([
  'CAPA SEM TEXTO: produto original ocupa aproximadamente 85% a 90% da foto; fundo ambientado sofisticado, limpo e sem tarjas.',
  'USO REAL: no máximo UMA frase curta de 2 a 5 palavras; tipografia pequena e elegante, sem outros blocos.',
- 'ESPECIFICAÇÕES: mostrar apenas medidas do PRODUTO comprovadas e, quando autorizado, setas finas junto a ele. Sem peso logístico, aro inferido, tabelas ou lista de características.',
+ 'IMAGEM 03: destacar as medidas reais diretamente junto aos contornos do produto com setas FINAS e elegantes, dimensões confirmadas na WeDrop. Microinformações laterais somente se confirmadas (capacidade, peso do produto, cor), sem título ESPECIFICAÇÕES, quadros brancos, painéis ou informações logísticas.',
  'BENEFÍCIOS: no máximo UMA frase de 2 a 5 palavras; apresentar vantagens principalmente pela fotografia.',
  'DOR E SOLUÇÃO: no máximo UMA frase de 2 a 5 palavras em canto discreto, sem caixas, listas ou painel comparativo.',
  'PERSUASÃO: no máximo UMA frase de 2 a 5 palavras, texto secundário e produto dominante.',
@@ -147,9 +147,9 @@ export function imageScenePrompt({slot,title=''}={}){
   'ÂNGULO E ENQUADRAMENTO: '+s.camera,
   'PERSONAGEM: '+s.people,
   'ILUMINAÇÃO: '+s.light,
-  'DIREÇÃO DE ARTE PREMIUM: produto é o protagonista, ambientação contemporânea, cores harmoniosas, acabamento de campanha publicitária. Textos sempre ocupam no máximo 10% da foto; tipografia discreta com boa legibilidade. Nunca preencher a imagem com blocos, tarjas, tópicos, emojis ou características empilhadas.',
+  'DIREÇÃO DE ARTE PREMIUM: produto em primeiro plano, cenário REAL moderno e visível em alta definição, cores harmônicas e acabamento profissional de e-commerce. Fundo NÃO pode ficar excessivamente desfocado, estourado, vazio ou lavado: detalhes de arquitetura, piso e contexto devem ser reconhecíveis sem competir com o produto. Textos ocupam no máximo 10% da foto, em tipografia pequena e elegante. Proibidos títulos grandes, placas brancas opacas, tarjas, tabelas, emojis, listas e excesso de informações.',
   'TEXTO PERMITIDO NESTA POSIÇÃO: '+premiumCopyRules[s.slot-1],
-  'Imagem comercial sofisticada: manter área de respiro nas bordas, sem sobrepor texto ao produto; não adicionar textos apenas para decorar.',
+  'Imagem comercial sofisticada: reservar pouco espaço para microtextos nas bordas, com contraste discreto. Na imagem 03 as setas devem acompanhar visualmente as bordas do produto sem esconder sua forma. Em todas as fotos preservar detalhes reais nítidos, sem alterar produto, fundo artificial genérico ou textos decorativos.',
   'Não reutilize o mesmo fundo, parque, jardim, rua, roupa, pessoa, pose, direção da câmera ou enquadramento das outras imagens desta série.',
   'A FOTO DE REFERÊNCIA serve apenas para preservar o PRODUTO EXATO: mesma cor, peças, formato, marca, adesivos, proporções e acessórios realmente presentes. Não copie o cenário nem a pessoa da referência.',
   'Não inventar componentes, medidas, certificações ou alegações. Se a cena prevista não for compatível com o uso real do produto, adapte apenas o ambiente a outro local apropriado mantendo o ângulo e a distinção visual.',
