@@ -54,19 +54,21 @@ test('catalogo real informado pelo lojista usa packvideoswedrop e encontra a bic
    };
    if(target===MARKTPRO_GALLERY_URL+'assets/index-2026.js')return {
     ok:true,status:200,url:target,
-    text:async()=>'[{"id":"1BxVideoDriveId_EXEMPLO_12345678","title":"Bicicleta Infantil Moto Cross Aro 16 - Rosa","duration_ms":27000,"category":"Infantil & Brinquedos"},{"id":"1BxVideoDriveId_Cozinha_12345678","title":"Cafeteira Italiana 300 ml","duration_ms":19000}]'
+    text:async()=>`[{"id":"1BxVideoDriveId_EXEMPLO_12345678","title":"Bicicleta Infantil Moto Cross Aro 16 - Rosa","duration_ms":27000,"category":"Infantil & Brinquedos"}, {id:"1BxVideoDriveId_Cozinha_12345678",title:"Cafeteira Italiana 300 ml",durationMs:19000}, {title:"Lixeira Telada de Metal",id:"1BxVideoDriveId_Lixeira_12345678"}]`
    };
    throw Error('Consulta fora do dominio autorizado: '+target);
   };
   assert.equal(MARKTPRO_GALLERY_URL,'https://packvideoswedrop.lovable.app/');
   const catalog=await load(true);
-  assert.equal(catalog.records.length,2);
+  assert.equal(catalog.records.length,3);
   const found=await search('Bicicleta Infantil Moto Cross Aro 16 - Rosa');
   assert.equal(found.candidates.length,1);
   assert.equal(found.candidates[0].title,'Bicicleta Infantil Moto Cross Aro 16 - Rosa');
-  assert.equal(found.inventoryCount,2);
+  assert.equal(found.inventoryCount,3);
   assert(requests.every(v=>v.startsWith(MARKTPRO_GALLERY_URL)));
   assert(!requests.some(v=>v.includes('drive-vid-gallery.lovable.app')));
+  assert(catalog.records.some(r=>r.title==='Lixeira Telada de Metal'));
+  assert(catalog.records.some(r=>r.title==='Cafeteira Italiana 300 ml'));
  }finally{globalThis.fetch=originalFetch;}
 });
 test('URL na interface abre apenas a galeria WeDrop correta',()=>{
