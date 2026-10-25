@@ -2434,7 +2434,7 @@ let optimizerWorkflowPlan=null,optimizerWorkflowStage=null,optimizerWorkflowSeri
 const workflowImageGuide=[
  'Imagem 1 — Capa: produto em destaque, ocupando aproximadamente 85% da imagem.',
  'Imagem 2 — Uso real: mostrar o produto em um ambiente de utilização.',
- 'Imagem 3 — Especificações: dimensões destacadas no produto.',
+ 'Imagem 3 — Especificações: somente cotas de altura, largura e comprimento confirmadas no texto WeDrop desta SKU, destacadas no produto. Sem títulos, subtítulos ou medidas estimadas.',
  'Imagem 4 — Benefícios: demonstrar visualmente as vantagens do produto, com frases ou palavras curtas, sem poluir a imagem.',
  'Imagem 5 — Dor e solução: mostrar como o produto resolve uma necessidade do comprador. Uma frase curta.',
  'Imagem 6 — Persuasão: destacar um diferencial real, com comunicação comercial.',
@@ -7868,7 +7868,7 @@ function optimizerImagesRenderMode(){
  $('#optimizerModeApi').classList.toggle('is-active',!chat);
 }
 async function optimizerChatgptMakeBrief(w,{defaultOnly=false}={}){
- const {createChatGptPrompts}=await import('/chatgptPrompts.js?v=1.20.39-exact-nine-seller-prompts');
+ const {createChatGptPrompts}=await import('/chatgptPrompts.js?v=1.20.40-wedrop-dimensions-image03');
  return createChatGptPrompts({
   sku:w.sku,title:w.draftTitle||'Produto Shopee',
   imageUrls:w.imageUrls||[],
@@ -8363,10 +8363,10 @@ globalThis.window?.addEventListener?.('message',async(event)=>{
   if(Number(m.slot)===3){
    // A foto gerada é SOMENTE a base. Montar a ficha com números de produto
    // confirmados, não confiar em textos/medidas imaginados pelo gerador.
-   const {confirmedSpecCard,addConfirmedSpecificationCard}=await import('/specificationCard.js?v=1.0.0');
-   const spec=confirmedSpecCard({sku:job.sku,attributes:w.attributes||[]});
-   if(!spec)throw Error('Imagem 03 requer especificações confirmadas nesta SKU. Confira a ficha técnica em vez de importar outra foto sem informações.');
-   optimizerChatBridgeNotice('Imagem 03 capturada. Aplicando medidas e características confirmadas na foto...');
+   const {confirmedSpecCard,addConfirmedSpecificationCard}=await import('/specificationCard.js?v=1.0.1-wedrop-only-dimensions');
+   const spec=confirmedSpecCard({sourceText:w.sourceEvidence?.sourceText||''});
+   if(!spec)throw Error('Imagem 03 precisa das dimensões DO PRODUTO (ex.: Dimensões: 75cm altura x 63cm largura x 117cm comprimento) no texto Informações da WeDrop da SKU. Nenhuma medida será inventada.');
+   optimizerChatBridgeNotice('Imagem 03 recebida. Aplicando SOMENTE as dimensões confirmadas no texto WeDrop desta SKU...');
    const annotated=await addConfirmedSpecificationCard(prepared.blob,spec);
    prepared={...prepared,blob:annotated,filename:'imagem-03-especificacoes.png'};
   }
