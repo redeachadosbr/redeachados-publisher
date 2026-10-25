@@ -55,6 +55,36 @@
   const value=resolved(attr,past);
   return value?{values:[value],evidence:'Padrão informado anteriormente pelo vendedor nesta categoria; revisar antes de publicar',learned:true}:null;
  }
+
+ // Recuperar valores efetivamente existentes na Shopee, por SKU e atributo.
+ // Não deduzir valores ausentes nem inventar IDs de opções de categoria.
+ function liveDraft(attr){
+  if(!attr||attr.conditional||attr.legacy||!Array.isArray(attr.values)||!attr.values.length)return null;
+  const kind=Number(attr.inputType),custom=[2,3,5].includes(kind);
+  const units=(attr.allowedUnits||[]).map(u=>typeof u==='string'?u:u?.unit||u?.name||'').filter(Boolean);
+  const values=[];
+  for(const row of attr.values){
+   const id=Number(row?.valueId),name=String(row?.name||'').trim();
+   let unit=String(row?.unit||'').trim();
+   if(!Number.isSafeInteger(id)||id<0||!name)return null;
+   const matchedUnit=units.find(u=>norm(u)===norm(unit));
+   if(matchedUnit)unit=matchedUnit;
+   if(id>0){
+    let option=(attr.options||[]).find(o=>Number(o.id)===id);
+    if(!option){
+     // Um valor positivo devolvido no próprio anúncio pela API é oficial,
+     // ainda que a árvore da categoria tenha omitido essa opção.
+     option={id,name,unit};
+     attr.options=[...(attr.options||[]),option];
+    }
+    values.push({valueId:id,valueName:String(option.name||name),unit:unit||String(option.unit||'')});
+   }else if(custom){
+    values.push({valueId:0,valueName:name,unit});
+   }else return null;
+  }
+  return {values,evidence:'Valor já cadastrado na Shopee (API oficial); sem alteração automática',
+   source:'shopee-live'};
+ }
  function modelSuggestion(data,attr){
   if(kind(attr?.name)!=='model-name'||attr?.values?.length||attr?.conditional)return null;
   if(![2,3,5].includes(Number(attr.inputType)))return null;
@@ -63,5 +93,5 @@
   return {values:[{valueId:0,valueName:name,unit:''}],
    evidence:'Nome comercial da ficha WeDrop desta SKU; confira a designação oficial do modelo',learned:false};
  }
- root.RATechnicalMemory={kind,learn,suggest,modelSuggestion};
+ root.RATechnicalMemory={kind,learn,suggest,modelSuggestion,liveDraft};
 })(globalThis);

@@ -7663,21 +7663,38 @@ function optimizerTechnicalRender(data){
   const invalidNewBrand=String(name).normalize('NFD').replace(/[\u0300-\u036f]/g,'')
     .toLowerCase()==='marca'&&reviewed?.values?.[0]?.valueName?.trim().toLowerCase()==='novo';
   const manual=manualById.get(Number(attr.id));
-  // Ordem de precedência: decisão já salva da SKU > WeDrop comprovado >
-  // escolha manual anterior da MESMA categoria > modelo comercial WeDrop.
-  // Não reutilizar país, idade, bateria, material ou certificações entre SKUs.
-  const reusable=!manual&&!reviewed&&!suggested&&!attr.values?.length?
+  // Um rascunho vazio e não desabilitado intencionalmente NÃO pode apagar
+  // um valor que já existe na Shopee ou que foi comprovado pela WeDrop.
+  const manualHasValue=Boolean(manual?.values?.some(v=>
+   Number(v.valueId)>0||String(v.valueName||'').trim()));
+  const manualChoice=Boolean(manual&&(manual.userDisabled||manualHasValue));
+  // Ordem: decisão manual efetiva da SKU > revisão salva > valor na Shopee >
+  // sugestão comprovada WeDrop para campos ausentes > padrão seguro da loja.
+  // Nunca transferir idade, bateria, país, material entre SKUs.
+  const reusable=!manualChoice&&!reviewed&&!suggested&&!attr.values?.length?
    memory?.suggest?.(data,attr):null;
-  const modelFromSupplier=!manual&&!reviewed&&!suggested&&!attr.values?.length?
+  const modelFromSupplier=!manualChoice&&!reviewed&&!suggested&&!attr.values?.length?
    memory?.modelSuggestion?.(data,attr):null;
-  const auto=(!reviewed||invalidNewBrand)?(suggested||reusable||modelFromSupplier):null;
+  const live=memory?.liveDraft?.(attr)||null;
+  // Em valores existentes, divergências são para conferência; não substituir
+  // silenciosamente o que veio da API pelo texto de fornecedor.
+  const auto=(!reviewed||invalidNewBrand)&&(!attr.values?.length||invalidNewBrand)&&!conflict?
+   (suggested||reusable||modelFromSupplier):null;
   if(reusable||modelFromSupplier)reusedDefaults++;
   field.dataset.userDisabled=manual?.userDisabled?'true':'false';
-  const existing=manual?{values:manual.values,evidence:manual.evidence}:auto||reviewed||
-    (data.attributeSuggestions||[]).find(x=>Number(x.attributeId)===attr.id);
+  const existing=manualChoice?{values:manual.values,evidence:manual.evidence}:
+   (invalidNewBrand&&auto?auto:reviewed||live||auto||
+    (data.attributeSuggestions||[]).find(x=>Number(x.attributeId)===attr.id));
   const hasCurrentValue=Boolean(attr.values?.length);
-  const hasDraft=Boolean((manual?manual.enabled:true)&&existing?.values?.some(v=>Number(v.valueId)>0||String(v.valueName||'').trim()));
-  if((hasCurrentValue||hasDraft)&&!conflict){
+  const hasDraft=Boolean((manualChoice?manual.enabled:true)&&existing?.values?.some(v=>Number(v.valueId)>0||String(v.valueName||'').trim()));
+  // Medidas não devem ser interpretadas como finalidade/indicação de uso.
+  const normalizedLabel=String(name).normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase();
+  const suspiciousUsage=/^(?:indicacao de uso|indication|indication of use|uso indicado)$/.test(normalizedLabel)&&
+   (attr.values||[]).some(v=>/^\d+(?:[.,]\d+)?\s*(?:cm|mm|m)$/i.test(
+    [v.name,v.unit].filter(Boolean).join(' ').trim()));
+  if(suspiciousUsage)field.append(optimizerMake('p','optimizer-source-conflict',
+   '⚠ A Shopee retornou uma medida em Indicação de uso. Esse dado precisa ser conferido com a ficha WeDrop; não foi alterado.'));
+  if((hasCurrentValue||hasDraft)&&!conflict&&!suspiciousUsage){
    field.hidden=true;field.dataset.autofilled='true';autoHidden++;
   }else if(!attr.mandatory&&!attr.conditional){
    optionalDetails.append(field);optionalMissing++;
@@ -7687,7 +7704,7 @@ function optimizerTechnicalRender(data){
     auto.values.map(x=>optimizerTechValueLabel(x.valueName)).join(', ')+
     ' · Origem: '+auto.evidence+'. Confirme na revisão antes de publicar.'));
   const enableLabel=optimizerMake('label','optimizer-attribute-toggle'),enabled=optimizerMake('input');
-  enabled.type='checkbox';enabled.dataset.attributeEnabled='true';enabled.checked=manual?Boolean(manual.enabled):Boolean(existing);
+  enabled.type='checkbox';enabled.dataset.attributeEnabled='true';enabled.checked=manualChoice?Boolean(manual.enabled):Boolean(existing);
   enabled.setAttribute('aria-label','Preencher '+optimizerTechLabel(name));enableLabel.append(enabled,document.createTextNode(' Preencher este campo'));field.append(enableLabel);
   const controls=optimizerMake('div','optimizer-attribute-controls');controls.hidden=!enabled.checked;field.append(controls);
   const rows=optimizerMake('div');rows.dataset.attributeRows='true';controls.append(rows);
@@ -7812,7 +7829,7 @@ function optimizerTechnicalValues(){
  const same=(a,b)=>{
   const normalized=rows=>(rows||[]).map(v=>{
    const id=Number(v.valueId);
-   return id>0?'id:'+id:'value:'+String(v.valueName??v.name??'').trim()+':'+String(v.unit||'').trim();
+   return id>0?'id:'+id:'value:'+String(v.valueName??v.name??'').trim()+':'+String(v.unit||'').trim().toLowerCase();
   }).sort();
   const x=normalized(a),y=normalized(b);
   return x.length===y.length&&x.every((v,i)=>v===y[i]);
