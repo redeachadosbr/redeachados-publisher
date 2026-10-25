@@ -3,44 +3,30 @@ import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
 import {createChatGptPrompts,assignChatGptFiles,CHATGPT_IMAGE_SCENES} from '../public/chatgptPrompts.js';
 
-test('modo ChatGPT monta as nove instruções para a SKU, respeita roteiro e imagens separadas',()=>{
+test('nove prompts independentes com cenários e câmeras diferentes por produto',()=>{
  const brief=createChatGptPrompts({
-  sku:'TRC1525',title:'Produto original TRC1525',
-  masterPrompt:'Fundo galpão claro sem trocar o modelo',
-  imageNotes:{5:'Destacar uso doméstico'},
-  attributes:[{state:'filled',name:'Material',values:[{name:'Aço inoxidável'}]},
-   {state:'missing',name:'Potência',values:[]}],
+  sku:'2392',title:'Bicicleta Infantil Moto Cross Aro 16 Rosa',
+  supplierSourceText:'Dimensões: 75cm altura x 63cm largura x 117cm comprimento',
   imageUrls:['https://down-br.img.susercontent.com/file/xyz']
  });
  assert.equal(CHATGPT_IMAGE_SCENES.length,9);
  assert.equal(brief.prompts.length,9);
- assert.match(brief.batch,/TRC1525/);
- assert.match(brief.batch,/Fundo galpão claro/);
- assert.match(brief.batch,/Aço inoxidável/);
- assert.doesNotMatch(brief.batch,/Potência:/);
- assert.match(brief.batch,/01 \/ 09/);
- assert.match(brief.batch,/09 \/ 09/);
- assert.match(brief.batch,/01.png, 02.png/);
- assert.match(brief.prompts[0],/GERAR APENAS A IMAGEM 01/);
- assert.match(brief.prompts[8],/GERAR APENAS A IMAGEM 09/);
- assert.match(brief.prompts[4],/Destacar uso doméstico/);
- assert.match(brief.batch,/anexe a foto original/i);
+ assert.equal(brief.batch,brief.prompts[0]);
  assert.equal(brief.original,'https://down-br.img.susercontent.com/file/xyz');
- assert.match(brief.prompts[0],/DIVERSIDADE OBRIGATÓRIA/);
- assert.match(brief.prompts[2],/MEDIDAS DO PRODUTO/);
- const backpack=createChatGptPrompts({sku:'TUD0667',title:'Super Mochila Construtor 3 em 1',
-  imageUrls:['https://cf.shopee.com.br/file/original'],attributes:[]});
- assert.equal(backpack.prompts.length,9);
- assert.match(backpack.prompts[1],/Imagem 2 — Uso real: mostrar o produto em um ambiente de utilização/i);
- assert.match(backpack.prompts[2],/Imagem 3 — Especificações: dimensões destacadas no produto/i);
- assert.match(backpack.prompts[3],/frases ou palavras curtas, sem poluir a imagem/i);
- assert.match(backpack.prompts[4],/Uma frase curta/i);
- assert.match(backpack.prompts[5],/com comunicação comercial/i);
- assert.match(backpack.prompts[6],/Frase curta/i);
- assert.match(backpack.prompts[7],/três principais dúvidas do comprador/i);
- assert.match(backpack.prompts[8],/Compra Segura, Entrega Rápida e Atendimento Online/i);
- assert.doesNotMatch(backpack.batch,/ANAMÓRFICA|ANTES E DEPOIS|CHAMADA DE VENDA/i);
- assert.notEqual(backpack.scenes[1].guide,backpack.scenes[3].guide);
+ const environments=brief.prompts.map(p=>p.match(/AMBIENTE EXCLUSIVO: ([^\\n]+)/)?.[1]);
+ assert.equal(new Set(environments).size,9);
+ for(let i=0;i<9;i++){
+  assert.match(brief.prompts[i],new RegExp('CENA ÚNICA '+String(i+1).padStart(2,'0')+'/09'));
+  assert.match(brief.prompts[i],/ÂNGULO E ENQUADRAMENTO:/);
+  assert.match(brief.prompts[i],/preservar o PRODUTO EXATO/);
+ }
+ assert.match(brief.prompts[1],/Criança A/);
+ assert.match(brief.prompts[4],/Criança B/);
+ assert.match(brief.prompts[6],/Criança C/);
+ assert.match(brief.prompts[2],/ALTURA: 75 cm/);
+ assert.match(brief.prompts[2],/LARGURA: 63 cm/);
+ assert.match(brief.prompts[2],/COMPRIMENTO: 117 cm/);
+ assert.match(brief.prompts[8],/Compra Segura, Entrega Rápida e Atendimento Online/);
 });
 test('arquivos numerados mapeiam os slots corretos independentemente da ordem de seleção',()=>{
  const input=[{name:'09.png'},{name:'02.webp'},{name:'01.png'}];
