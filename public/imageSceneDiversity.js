@@ -127,6 +127,18 @@ export function imageSceneDirection({slot,title=''}={}){
   light:light[i]
  };
 }
+// Hierarquia visual compartilhada pelo ChatGPT e pelo gerador via API.
+const premiumCopyRules=Object.freeze([
+ 'CAPA SEM TEXTO: produto original ocupa aproximadamente 85% a 90% da foto; fundo ambientado sofisticado, limpo e sem tarjas.',
+ 'USO REAL: no máximo UMA frase curta de 2 a 5 palavras; tipografia pequena e elegante, sem outros blocos.',
+ 'ESPECIFICAÇÕES: mostrar apenas medidas do PRODUTO comprovadas e, quando autorizado, setas finas junto a ele. Sem peso logístico, aro inferido, tabelas ou lista de características.',
+ 'BENEFÍCIOS: no máximo UMA frase de 2 a 5 palavras; apresentar vantagens principalmente pela fotografia.',
+ 'DOR E SOLUÇÃO: no máximo UMA frase de 2 a 5 palavras em canto discreto, sem caixas, listas ou painel comparativo.',
+ 'PERSUASÃO: no máximo UMA frase de 2 a 5 palavras, texto secundário e produto dominante.',
+ 'TRANSFORMAÇÃO: no máximo UMA frase de 2 a 5 palavras, sem títulos grandes ou sobreposições.',
+ 'OBJEÇÕES: no máximo TRÊS microetiquetas de 1 a 3 palavras baseadas em fatos reais, sem perguntas completas ou parágrafos.',
+ 'CONFIANÇA: somente os três pequenos selos Compra Segura, Entrega Rápida e Atendimento Online em uma linha discreta no rodapé; sem outros textos.'
+]);
 export function imageScenePrompt({slot,title=''}={}){
  const s=imageSceneDirection({slot,title});
  return [
@@ -135,6 +147,9 @@ export function imageScenePrompt({slot,title=''}={}){
   'ÂNGULO E ENQUADRAMENTO: '+s.camera,
   'PERSONAGEM: '+s.people,
   'ILUMINAÇÃO: '+s.light,
+  'DIREÇÃO DE ARTE PREMIUM: produto é o protagonista, ambientação contemporânea, cores harmoniosas, acabamento de campanha publicitária. Textos sempre ocupam no máximo 10% da foto; tipografia discreta com boa legibilidade. Nunca preencher a imagem com blocos, tarjas, tópicos, emojis ou características empilhadas.',
+  'TEXTO PERMITIDO NESTA POSIÇÃO: '+premiumCopyRules[s.slot-1],
+  'Imagem comercial sofisticada: manter área de respiro nas bordas, sem sobrepor texto ao produto; não adicionar textos apenas para decorar.',
   'Não reutilize o mesmo fundo, parque, jardim, rua, roupa, pessoa, pose, direção da câmera ou enquadramento das outras imagens desta série.',
   'A FOTO DE REFERÊNCIA serve apenas para preservar o PRODUTO EXATO: mesma cor, peças, formato, marca, adesivos, proporções e acessórios realmente presentes. Não copie o cenário nem a pessoa da referência.',
   'Não inventar componentes, medidas, certificações ou alegações. Se a cena prevista não for compatível com o uso real do produto, adapte apenas o ambiente a outro local apropriado mantendo o ângulo e a distinção visual.',
