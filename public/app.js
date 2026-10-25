@@ -4370,7 +4370,7 @@ function optimizerExecRender(data){
  // sem checkbox, nova digitação ou segunda confirmação.
  $('#optimizerExecutionConfirmation').hidden=true;
  $('#optimizerExecutionConfirmation').open=false;
- $('#optimizerExecutionLaunch').hidden=!data.ready;
+ $('#optimizerExecutionLaunch').hidden=!data.ready&&!(plan.blocked||[]).length;
  $('#optimizerExecutionPrepare').hidden=Boolean(data.ready);
  $('#optimizerExecutionShopeeLink').hidden=true;
  $('#optimizerExecutionAccept').checked=false;
@@ -4401,10 +4401,14 @@ function optimizerDiscountReviewedForExecution(plan){
 }
 function optimizerExecUpdateRunButton(){
  const p=optimizerExecPlan;
- const unavailable=optimizerExecBusy||!p?.canExecute||!optimizerExecContext||
+ const wrongIdentity=optimizerExecBusy||!p||!optimizerExecContext||
    p.sku!==optimizerExecContext.sku||p.itemId!==optimizerExecContext.itemId||
-   p.modelId!==optimizerExecContext.modelId||!optimizerDiscountReviewedForExecution(p);
- $('#optimizerExecutionLaunch').disabled=unavailable;
+   p.modelId!==optimizerExecContext.modelId;
+ const canPublish=Boolean(p?.canExecute&&optimizerDiscountReviewedForExecution(p));
+ const unavailable=wrongIdentity||!canPublish;
+ // Mesmo bloqueado, o controle principal fica disponível para CORRIGIR
+ // rascunhos válidos da própria SKU, nunca publicar sem prévia e autorização.
+ $('#optimizerExecutionLaunch').disabled=wrongIdentity;
  // Nunca deixar o único botão de execução desabilitado sem um caminho
  // clicável para corrigir a aprovação comercial da mesma SKU.
  const launch=$('#optimizerExecutionLaunch');
@@ -4425,7 +4429,9 @@ function optimizerExecUpdateRunButton(){
  $('#optimizerExecutionRemaining').hidden=!offerPending;
  $('#optimizerExecutionRemaining').disabled=unavailable;
  const resume=Boolean(p?.reusedMedia?.imageIds?.length||p?.reusedMedia?.video?.phase==='ready');
- $('#optimizerExecutionLaunch').textContent=justPending?'▶ Publicar variações + fiscal + desconto':
+ $('#optimizerExecutionLaunch').textContent=!canPublish?
+  p?.canExecute?'🛠 Conferir desconto e liberar execução':'🛠 Corrigir pendências e revalidar':
+  justPending?'▶ Publicar variações + fiscal + desconto':
   resume&&p?.modelVariations?'▶ Executar plano completo (inclui mídia)':
   resume?'▶ Retomar de onde parou':
   p?.modelVariations?'▶ Executar anúncio + variações + fiscal + desconto':
@@ -4549,7 +4555,89 @@ $('#optimizerExecutionScope')?.addEventListener?.('change',()=>{
    '. Preparando somente os campos dessa etapa...');
  void optimizerExecutionPrepare();
 });
-$('#optimizerExecutionLaunch')?.addEventListener?.('click',()=>void optimizerExecuteApproved(false));
+async function optimizerResolveExecutionBlockers(){
+ const w=optimizerWorkflowPlan,p=optimizerExecPlan;
+ if(!w||!p||optimizerExecBusy||p.sku!==w.sku||
+    String(p.itemId)!==String(w.itemId)||String(p.modelId)!==String(w.modelId))return;
+ if(p.canExecute&&!optimizerDiscountReviewedForExecution(p)){
+  optimizerDiscountOpenReview();
+  optimizerExecNotice('Ajustes comerciais preparados: confira a promoção da SKU antes de executar. Nenhuma publicação foi iniciada.','warning');
+  return;
+ }
+ const identity=[w.sku,String(w.itemId),String(w.modelId)].join('|');
+ const sameSku=()=>optimizerWorkflowPlan===w&&[w.sku,String(w.itemId),String(w.modelId)].join('|')===identity;
+ const blockers=(p.blocked||[]).join(' · ');
+ const textStages=[
+  {key:'seo',pattern:/título seo|revisar.*título/i,field:'title',value:String(w.draftTitle||'')},
+  {key:'description',pattern:/descrição|descricao/i,field:'description',value:String(w.draftDescription||'')}
+ ];
+ let fixed=0,manualStage='',reason='';
+ optimizerExecNotice('Corrigindo rascunhos completos e revalidando a SKU '+w.sku+' sem alterar a Shopee...');
+ try{
+  for(const candidate of textStages){
+   if(!candidate.pattern.test(blockers))continue;
+   const stage=(w.stages||[]).find(x=>x.key===candidate.key);
+   if(stage?.reviewed===true||!candidate.value.trim())continue;
+   try{
+    const saved=await optimizerSaveChecklistReview({
+     sku:w.sku,itemId:w.itemId,modelId:w.modelId,
+     stage:candidate.key,reviewed:true,[candidate.field]:candidate.value
+    });
+    if(!sameSku())return;
+    w.stages=saved.stages||w.stages;
+    fixed++;
+   }catch(error){
+    manualStage=manualStage||candidate.key;
+    reason=reason||String(error.message||error);
+   }
+  }
+  if(fixed){
+   const fresh=await json('/api/shopee/optimizer/workflow?'+new URLSearchParams({
+    sku:w.sku,item_id:w.itemId,model_id:w.modelId}),{signal:AbortSignal.timeout(60000)});
+   if(!sameSku())return;
+   Object.assign(w,fresh);
+   optimizerWorkflowRender(w);
+  }
+  // Uma ficha com atributos/Anatel/Marca só é corrigida pelos fatos
+  // confirmados e pelas opções oficiais; nunca preencher certificações falsas.
+  if(!manualStage&&/anatel|marca|atributo|ficha técnica|ficha tecnica/i.test(blockers)){
+   manualStage='technical';
+   optimizerWorkflowOpen('technical');
+   await optimizerTechImport();
+   if(!sameSku())return;
+  }
+  if(!manualStage&&/variaç|varia[cç][oõ]es|modelo/i.test(blockers))
+   manualStage='variants';
+  if(!manualStage&&/ncm|cest|fiscal/i.test(blockers))
+   manualStage='fiscal';
+  if(!manualStage&&/desconto|promoção|promocao|campanha/i.test(blockers)){
+   optimizerDiscountOpenReview();
+   optimizerExecNotice('A campanha precisa de aprovação comercial da própria SKU. Nenhum desconto foi enviado.','warning');
+   return;
+  }
+  if(!sameSku())return;
+  await optimizerExecutionPrepare({preserveStartError:true});
+  if(!sameSku())return;
+  if(manualStage){
+   optimizerWorkflowOpen(manualStage);
+   optimizerWorkflowNotice('Correção automática executada onde havia dados confirmados. '+(reason?
+    'Campo não aprovado: '+reason+'. ':'')+
+    'Confira apenas os valores ainda sem confirmação e registre a revisão.','warning');
+  }else{
+   optimizerExecNotice(fixed?
+    fixed+' etapa(s) do rascunho validada(s). Prévia recalculada; autorize a publicação no botão azul se estiver pronta.':
+    'Prévia revalidada sem alteração. Confira as pendências específicas da SKU antes de autorizar.','info');
+  }
+ }catch(error){
+  optimizerExecNotice('Correção incompleta: '+String(error.message||error)+
+   '. Os campos já salvos permaneceram na SKU. Nenhuma publicação foi iniciada.','error');
+ }
+}
+$('#optimizerExecutionLaunch')?.addEventListener?.('click',()=>{
+ if(optimizerExecPlan?.canExecute&&optimizerDiscountReviewedForExecution(optimizerExecPlan))
+  return void optimizerExecuteApproved(false);
+ void optimizerResolveExecutionBlockers();
+});
 $('#optimizerExecutionRemaining')?.addEventListener?.('click',()=>void optimizerExecuteApproved(true));
 $('#optimizerExecutionRun')?.addEventListener?.('click',()=>void optimizerExecuteApproved(false));
 function optimizerExecutionNeedsFreshPreview(message){
