@@ -2434,8 +2434,8 @@ let optimizerWorkflowPlan=null,optimizerWorkflowStage=null,optimizerWorkflowSeri
 const workflowImageGuide=[
  'Imagem 1 — Capa: produto em destaque, ocupando aproximadamente 85% da imagem.',
  'Imagem 2 — Uso real: ambiente, personagem e câmera diferentes das outras oito imagens; sem reutilizar a fotografia anterior.',
- 'Imagem 3 — Especificações: produto sem pessoas, ângulo lateral completo e apenas cotas reais confirmadas na WeDrop; não repetir cenário da capa.',
- 'Imagem 4 — Benefícios: demonstrar visualmente as vantagens do produto, com frases ou palavras curtas, sem poluir a imagem.',
+ 'Imagem 3 — Medidas: dimensões reais junto aos contornos do produto com setas finas; capacidade e peso laterais pequenos somente se confirmados na WeDrop. Fundo HD moderno visível, sem título ESPECIFICAÇÕES ou quadros brancos.',
+ 'Imagem 4 — Benefícios: vantagens visuais reais, com UMA frase de 2 a 5 palavras pequena, tipografia premium e outro ângulo e cenário.',
  'Imagem 5 — Dor e solução: mostrar como o produto resolve uma necessidade do comprador. Uma frase curta.',
  'Imagem 6 — Persuasão: destacar um diferencial real, com comunicação comercial.',
  'Imagem 7 — Transformação: mostrar o resultado ou a experiência proporcionada pelo produto. Frase curta.',
@@ -8254,7 +8254,7 @@ function optimizerImagesRenderMode(){
  $('#optimizerModeApi').classList.toggle('is-active',!chat);
 }
 async function optimizerChatgptMakeBrief(w,{defaultOnly=false}={}){
- const {createChatGptPrompts}=await import('/chatgptPrompts.js?v=1.20.41-unique-scene-angles');
+ const {createChatGptPrompts}=await import('/chatgptPrompts.js?v=1.21.83-prompts-hd-wedrop');
  return createChatGptPrompts({
   sku:w.sku,title:w.draftTitle||'Produto Shopee',
   imageUrls:w.imageUrls||[],
@@ -8749,12 +8749,15 @@ globalThis.window?.addEventListener?.('message',async(event)=>{
   if(Number(m.slot)===3){
    // A foto gerada é SOMENTE a base. Montar a ficha com números de produto
    // confirmados, não confiar em textos/medidas imaginados pelo gerador.
-   const {confirmedSpecCard,addConfirmedSpecificationCard}=await import('/specificationCard.js?v=1.0.1-wedrop-only-dimensions');
+   const {confirmedSpecCard,addConfirmedSpecificationCard}=await import('/specificationCard.js?v=1.1.0-wedrop-premium-specs');
    const spec=confirmedSpecCard({sourceText:w.sourceEvidence?.sourceText||''});
-   if(!spec)throw Error('Imagem 03 precisa das dimensões DO PRODUTO (ex.: Dimensões: 75cm altura x 63cm largura x 117cm comprimento) no texto Informações da WeDrop da SKU. Nenhuma medida será inventada.');
-   optimizerChatBridgeNotice('Imagem 03 recebida. Aplicando SOMENTE as dimensões confirmadas no texto WeDrop desta SKU...');
-   const annotated=await addConfirmedSpecificationCard(prepared.blob,spec);
-   prepared={...prepared,blob:annotated,filename:'imagem-03-especificacoes.png'};
+   if(spec){
+    optimizerChatBridgeNotice('Imagem 03 recebida. Aplicando cotas finas e somente dados confirmados na WeDrop da SKU...');
+    const annotated=await addConfirmedSpecificationCard(prepared.blob,spec);
+    prepared={...prepared,blob:annotated,filename:'imagem-03-medidas.png'};
+   }else{
+    optimizerChatBridgeNotice('Imagem 03 sem medidas confirmadas na WeDrop: mantendo a foto fiel sem inventar dimensões, sem interromper a sequência.');
+   }
   }
   const {imageBlobSha256}=await import('/chatgptUploadQueue.js?v=1.21.14-db-reconcile');
   const sha256=await imageBlobSha256(prepared.blob);
@@ -9022,7 +9025,7 @@ $('#optimizerChatgptImport')?.addEventListener?.('click',async()=>{
  const status=$('#optimizerChatgptImportStatus'),button=$('#optimizerChatgptImport');
  let ordered;
  try{
-  const {assignChatGptFiles}=await import('/chatgptPrompts.js?v=1.20.25-distinct-scenes');
+  const {assignChatGptFiles}=await import('/chatgptPrompts.js?v=1.21.83-prompts-hd-wedrop');
   ordered=assignChatGptFiles(chosen,{startSlot:Number($('#optimizerChatgptStart').value)});
  }catch(e){status.textContent=e.message;return;}
  const mapping=ordered.map(x=>String(x.slot).padStart(2,'0')+' ← '+x.file.name).join('\n');
