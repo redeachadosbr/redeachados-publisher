@@ -7336,6 +7336,9 @@ function optimizerTechnicalSummary(data){
  target.replaceChildren();
  const attrs=(data.attributes||[]),changes=optimizerTechnicalValues();
  const suggested=data.sourceFacts?.suggestions||[];
+ const conflicts=(data.sourceFacts?.conflicts||[]).filter(x=>
+   (data.attributes||[]).some(a=>Number(a.id)===Number(x.attributeId)));
+ const unresolved=(data.sourceFacts?.unresolved||[]).filter(x=>x.value);
  const index=new Map(attrs.map(x=>[Number(x.id),x]));
  const chosen=changes.filter(x=>x.values?.some(v=>v.valueName&&v.valueId!==-1));
  const current=attrs.filter(x=>x.values?.length).length;
@@ -7355,9 +7358,37 @@ function optimizerTechnicalSummary(data){
  tile(chosen.length,'Preparados para revisão','ok');
  tile(current,'Preenchidos na ficha','neutral');
  tile(mandatory.length,'Obrigatórios pendentes','warn');
+ tile(conflicts.length,'Conferir divergências WeDrop','warn');
  target.append(stats);
+ if(conflicts.length){
+  const box=optimizerMake('div','optimizer-tech-source-conflicts');
+  box.append(optimizerMake('strong','','⚠ Divergências entre a ficha salva e as informações WeDrop desta SKU'));
+  for(const conflict of conflicts.slice(0,12)){
+   const item=optimizerMake('p','optimizer-source-conflict',
+    optimizerTechLabel(conflict.name)+': salvo "'+String(conflict.current).slice(0,100)+
+    '" · WeDrop informa "'+String(conflict.recommended).slice(0,100)+'".');
+   const go=optimizerMake('button','secondary','Conferir e corrigir');
+   go.type='button';
+   go.onclick=()=>{
+    const details=$('#optimizerTechnicalAdvanced');if(details)details.open=true;
+    const field=[...$('#optimizerTechnicalFields').querySelectorAll('fieldset')].find(f=>
+      Number(f.dataset.attributeId)===Number(conflict.attributeId));
+    if(!field)return;
+    field.hidden=false;
+    const opt=field.closest('.optimizer-tech-optional');if(opt)opt.open=true;
+    field.scrollIntoView({behavior:'smooth',block:'center'});
+    field.querySelector('input,select')?.focus({preventScroll:true});
+   };
+   item.append(document.createTextNode(' '),go);box.append(item);
+  }
+  target.append(box);
+ }
+ if(unresolved.length){
+  target.append(optimizerMake('p','optimizer-tech-warning',
+   unresolved.length+' informação(ões) explícita(s) da WeDrop precisam de uma opção oficial da categoria Shopee antes de serem preenchidas; nenhuma opção foi inventada.'));
+ }
  const summaryNote=optimizerMake('p','optimizer-tech-summary-note',chosen.length?
-   '✓ '+chosen.length+' atributo(s) preenchidos com dados da SKU. Só os '+mandatory.length+' obrigatório(s) sem informação precisam da sua intervenção; nenhuma publicação foi feita.':
+   '✓ '+chosen.length+' atributo(s) preparados na SKU. Confira '+conflicts.length+' divergência(s) com a WeDrop e '+mandatory.length+' obrigatório(s) pendente(s) antes de aprovar; nenhuma publicação foi feita.':
    'Nenhuma nova alteração técnica pronta. Cole informações na área acima, ou abra os campos individuais.');
  target.append(summaryNote);
  const list=optimizerMake('div','optimizer-tech-summary-list');
@@ -7543,6 +7574,9 @@ function optimizerTechnicalRender(data){
  }
  if(data.technicalWarning)wrap.append(optimizerMake('p','optimizer-warning',
   'Atenção: os dados da ficha técnica salva precisam de nova conferência nesta categoria: '+data.technicalWarning));
+ const sourceDifferences=data.sourceFacts?.conflicts||[];
+ if(sourceDifferences.length)wrap.append(optimizerMake('p','optimizer-warning',
+  '⚠ '+sourceDifferences.length+' campo(s) da ficha diferem do texto WeDrop salvo. As escolhas anteriores foram preservadas e precisam de conferência: abra as divergências na prévia e aplique os dados confirmados.'));
  wrap.append(optimizerMake('p','optimizer-category-summary',
   'Ficha técnica oficial da categoria Shopee '+String(data.categoryId||'não identificada')+
   ' · '+(data.attributes||[]).filter(x=>x.mandatory&&!x.conditional).length+
