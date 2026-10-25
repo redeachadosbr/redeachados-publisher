@@ -1433,13 +1433,14 @@ app.post('/api/shopee/optimizer/execution/prepare',mustLogin,requireWeDropAdmin,
   try{
     const {itemId,modelId,sku,auth,cfg,record}=await checkedWorkflowAudit(req);
     const selectedStage=normalizeShopeeExecutionStage(req.body.stage||'all');
-    let allowDiscountOnly=false;
+    let allowDiscountOnly=false,approvedCampaignId='';
     if(selectedStage==='all'&&req.body?.discountApprovalToken){
      const approved=verifyDiscountPreview(req.body.discountApprovalToken,envText('SESSION_SECRET'),auth.shopId);
      if(approved.sku!==sku||String(approved.itemId)!==String(itemId)||
        String(approved.modelId)!==String(modelId))
       throw Error('A prévia de desconto não corresponde à SKU preparada.');
      allowDiscountOnly=true;
+     approvedCampaignId=String(approved.discountId||'').trim();
     }
     // CPF/CNPJ não impede guardar rascunho. all publica fiscal por último, em segunda escrita com conferência.
     const review=await getWorkflowReview(auth.shopId,itemId,modelId);
@@ -1458,7 +1459,10 @@ app.post('/api/shopee/optimizer/execution/prepare',mustLogin,requireWeDropAdmin,
      modelVariations=await prepareExecutionVariations({auth,cfg,sku,itemId,modelId},reviewState,live);
     let autoModelDiscountToken=null,autoModelDiscountPreview=null;
     if(modelVariations){
-     const campaignId=String(req.body?.campaignId||reviewState.modelDiscountCampaignId||'').trim();
+     const campaignId=String(req.body?.campaignId||reviewState.modelDiscountCampaignId||
+      approvedCampaignId||'').trim();
+     if(approvedCampaignId&&campaignId!==approvedCampaignId)
+      throw Error('A campanha selecionada difere da que foi autorizada nesta SKU. Refaça a prévia da promoção.');
      if(!/^\d{1,18}$/.test(campaignId))
       throw Error('Informe uma vez a campanha Minha Promoção na etapa Desconto; ela será incluída automaticamente na prévia única.');
      const financial=await discountExecutionInputs(req,sku,itemId,modelId,campaignId,{
