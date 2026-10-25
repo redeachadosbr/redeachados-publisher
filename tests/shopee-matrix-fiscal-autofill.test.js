@@ -32,8 +32,8 @@ test('Motor Matriz mostra 00 no CEST sem enviar um código inventado à Shopee',
  const output=compileTax({...values,evidence:values.evidence}, {tax_info:{}});
  assert.equal(output.ncm,'95069900');
  assert.equal(output.same_state_cfop,'5106');
- assert.equal(Object.hasOwn(output,'cest'),false);
- assert.equal(Object.hasOwn(output,'pis_cofins_cst'),false);
+ assert.equal(output.cest,'00');
+ assert.equal(output.pis_cofins_cst,'99');
 });
 test('não inventar unidade ou impostos sem fonte da SKU nem regras salvas',()=>{
  const data=supplierWorkflowFacts({supplier_sku:'KIT01',source_file:'s.csv',
