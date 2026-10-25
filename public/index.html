@@ -1477,13 +1477,13 @@
           <p id="wedropSourceLoadError" class="notice" hidden role="status" aria-live="polite"></p>
           <p id="wedropNoCatalogMessage" class="notice" hidden>Nenhum custo salvo nesta loja. Importe um catálogo oficial da WeDrop uma única vez para começar.</p>
           <details id="wedropUploadDetails" class="wedrop-upload-details">
-            <summary>Enviar nova versão do CSV da WeDrop (somente quando houver atualização)</summary>
-            <p class="hint">O CSV é necessário apenas para substituir os custos pelos dados de uma nova exportação. O sistema reconhece automaticamente SKU e Preço do formato oficial.</p>
-            <label>Nova versão do catálogo CSV <input id="wedropFile" type="file" accept=".csv,text/csv,text/plain"></label>
+            <summary>Enviar catálogo da WeDrop: CSV ou Excel (quando houver atualização)</summary>
+            <p class="hint">Aceita CSV, Excel .xlsx e .xls. O sistema converte o Excel e reconhece SKU e Preço no layout oficial WeDrop, preservando a conferência antes de gravar.</p>
+            <label>Catálogo CSV ou Excel <input id="wedropFile" type="file" accept=".csv,.xlsx,.xls,text/csv,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/vnd.ms-excel"></label>
             <p id="wedropAutoStatus" class="notice" role="status" aria-live="polite">Nenhum novo arquivo selecionado. O catálogo já salvo continuará disponível.</p>
-            <details class="wedrop-manual-fallback"><summary>Importação manual avançada (outros formatos CSV)</summary>
+            <details class="wedrop-manual-fallback"><summary>Importação manual avançada (CSV ou Excel)</summary>
           <p class="hint">Use somente quando o catálogo não for reconhecido. Confira as colunas antes de importar.</p>
-          <button id="wedropPreviewBtn" type="button">Conferir colunas do CSV</button>
+          <button id="wedropPreviewBtn" type="button">Conferir colunas do arquivo</button>
           <div id="wedropPreviewArea" hidden>
             <p id="wedropPreviewSummary" class="notice" role="status"></p>
             <div class="wedrop-mapping">
