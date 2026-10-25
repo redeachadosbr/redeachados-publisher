@@ -67,3 +67,12 @@ test('envio mídia economiza transferências, mantém confirmação durável e i
  assert.match(server,/setTimeout\(\(\)=>void runOptimizerJobs\(\)/);
  assert.match(worker,/result\.imageIds/);
 });
+
+test('técnica aprovada e não publicada mostra correção isolada sem repetir a mídia',()=>{
+ assert.match(html,/id="optimizerExecutionTechnicalPending"/);
+ assert.match(html,/id="optimizerExecutionTechnicalOnly"/);
+ assert.match(js,/const technicalPending=Boolean\(verified&&technicalReviewed/);
+ assert.match(js,/optimizerExecutionTechnicalOnly'\)\?\.addEventListener/);
+ assert.match(js,/\$\('#optimizerExecutionScope'\)\.value='technical'/);
+ assert.match(js,/Nenhuma imagem, vídeo, variação ou desconto será reenviado/);
+});
