@@ -4370,7 +4370,7 @@ function optimizerExecRender(data){
  // sem checkbox, nova digitação ou segunda confirmação.
  $('#optimizerExecutionConfirmation').hidden=true;
  $('#optimizerExecutionConfirmation').open=false;
- $('#optimizerExecutionLaunch').hidden=!data.ready&&!(plan.blocked||[]).length;
+ $('#optimizerExecutionLaunch').hidden=false;
  $('#optimizerExecutionPrepare').hidden=Boolean(data.ready);
  $('#optimizerExecutionShopeeLink').hidden=true;
  $('#optimizerExecutionAccept').checked=false;
@@ -4449,7 +4449,7 @@ function optimizerExecUpdateRunButton(){
   }else if(!p.canExecute){
    nextTitle.textContent='Execução bloqueada — corrigir pendências';
    nextDescription.textContent=(p.blocked||[]).slice(0,2).join(' · ')||
-    'Revalide a prévia antes de autorizar uma execução.';
+    'Nenhuma alteração revisada incluída. Use Corrigir pendências: o sistema validará os rascunhos salvos da SKU e mostrará o que ainda falta.';
   }else if(!optimizerDiscountReviewedForExecution(p)){
    nextTitle.textContent='Falta conferir o desconto da etapa 08';
    nextDescription.textContent='A prévia comercial está preparada. Use “Conferir desconto para liberar execução” aqui e depois execute uma única vez.';
@@ -4575,9 +4575,11 @@ async function optimizerResolveExecutionBlockers(){
  optimizerExecNotice('Corrigindo rascunhos completos e revalidando a SKU '+w.sku+' sem alterar a Shopee...');
  try{
   for(const candidate of textStages){
-   if(!candidate.pattern.test(blockers))continue;
    const stage=(w.stages||[]).find(x=>x.key===candidate.key);
-   if(stage?.reviewed===true||!candidate.value.trim())continue;
+   const currentField=candidate.key==='seo'?'item_name':'description';
+   const changed=Boolean(candidate.value.trim()&&candidate.value.trim()!==String(p.original?.[currentField]||'').trim());
+   if(stage?.reviewed===true||!candidate.value.trim()||
+      (!candidate.pattern.test(blockers)&&!changed))continue;
    try{
     const saved=await optimizerSaveChecklistReview({
      sku:w.sku,itemId:w.itemId,modelId:w.modelId,
@@ -4591,6 +4593,28 @@ async function optimizerResolveExecutionBlockers(){
     reason=reason||String(error.message||error);
    }
   }
+  // O cenário sem bloqueios detalhados também pode ter mídias já salvas,
+  // porém ainda sem a revisão da etapa. Conferir as mídias pela identidade
+  // SKU/item/model no servidor e exigir aprovação de publicação separada.
+  if(['all','images','video'].includes(p.selectedStage)){
+   for(const media of ['images','video']){
+    if(!['all',media].includes(p.selectedStage))continue;
+    const stage=(w.stages||[]).find(x=>x.key===media);
+    if(stage?.reviewed||stage?.skipped)continue;
+    const eligible=media==='images'||Boolean(w.manualVideo);
+    if(!eligible)continue;
+    try{
+     const saved=await optimizerSaveChecklistReview({sku:w.sku,itemId:w.itemId,modelId:w.modelId,
+      stage:media,reviewed:true});
+     if(!sameSku())return;
+     w.stages=saved.stages||w.stages;
+     fixed++;
+    }catch(error){
+     // Ausência de mídia ou revisão incompatível não cria autorização falsa.
+     reason=reason||String(error.message||error);
+    }
+   }
+  }
   if(fixed){
    const fresh=await json('/api/shopee/optimizer/workflow?'+new URLSearchParams({
     sku:w.sku,item_id:w.itemId,model_id:w.modelId}),{signal:AbortSignal.timeout(60000)});
@@ -4600,7 +4624,9 @@ async function optimizerResolveExecutionBlockers(){
   }
   // Uma ficha com atributos/Anatel/Marca só é corrigida pelos fatos
   // confirmados e pelas opções oficiais; nunca preencher certificações falsas.
-  if(!manualStage&&/anatel|marca|atributo|ficha técnica|ficha tecnica/i.test(blockers)){
+  const technicalPending=Boolean((w.stages||[]).some(x=>x.key==='technical'&&!x.reviewed&&!x.skipped));
+  if(!manualStage&&(/anatel|marca|atributo|ficha técnica|ficha tecnica/i.test(blockers)||
+    (!fixed&&technicalPending&&['all','technical'].includes(p.selectedStage)))){
    manualStage='technical';
    optimizerWorkflowOpen('technical');
    await optimizerTechImport();
