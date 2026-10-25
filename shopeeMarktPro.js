@@ -7,7 +7,31 @@ function cleanTitle(v){return String(v||'').replace(/[|•·]+/g,' ').replace(/[
 function scoreCandidate(query,text){const q=new Set(tokens(query)),t=new Set(tokens(text));if(!q.size||!t.size)return 0;let common=0;for(const x of q)if(t.has(x))common++;const recall=common/q.size,precision=common/Math.max(1,Math.min(t.size,q.size*3));return Math.min(1,recall*.86+precision*.14);}
 function progressiveQueries(title){const out=[];const add=v=>{v=cleanTitle(v);if(!v)return;const k=normalizeText(v);if(k&&!out.some(x=>normalizeText(x)===k))out.push(v)};const full=cleanTitle(title);add(full);const words=full.split(/\s+/).filter(Boolean);for(let n=Math.min(7,words.length);n>=2;n--){const v=words.slice(0,n).join(' ');if(tokens(v).length>=2)add(v)}for(let n=words.length-1;n>=2&&out.length<24;n--){const v=words.slice(0,n).join(' ');if(tokens(v).length>=2)add(v)}const removable=new Set(['branco','branca','preto','preta','azul','rosa','vermelho','vermelha','verde','cinza','sortido','sortida','grande','medio','media','pequeno','pequena']);const filtered=words.filter(w=>!removable.has(normalizeText(w)));if(filtered.length>=2)add(filtered.join(' '));return out.slice(0,24)}
 function decodeJsString(v){return String(v||'').replace(/\\u([0-9a-f]{4})/gi,(_,h)=>String.fromCharCode(parseInt(h,16))).replace(/\\n/g,' ').replace(/\\\//g,'/').replace(/\\u0026/g,'&');}
-function parseRecords(text){const src=String(text||''),out=[];const re=/["']id["']\s*:\s*["']([^"']{8,200})["']\s*,\s*["']title["']\s*:\s*["']([^"']{2,500})["']/g;for(const m of src.matchAll(re)){const id=decodeJsString(m[1]).trim(),title=decodeJsString(m[2]).trim();if(!id||!title)continue;const near=src.slice(m.index,Math.min(src.length,m.index+1200));const dm=near.match(/["']duration_ms["']\s*:\s*["']?(\d{2,12})["']?/);const cm=near.match(/["']category["']\s*:\s*["']([^"']{2,120})["']/i);out.push({id,title,durationMs:dm?Number(dm[1]):0,category:cm?decodeJsString(cm[1]).trim():''})}const seen=new Set();return out.filter(x=>!seen.has(x.id)&&(seen.add(x.id),true))}
+function parseRecords(text){
+ const src=String(text||'').slice(0,24_000_000),out=[];
+ // Lovable/Vite publica frequentemente objetos minificados com chaves sem
+ // aspas: {id:"...",title:"..."}. O leitor antigo aceitava apenas JSON.
+ const idKey=String.raw`(?:["']?(?:id|videoId|video_id|driveId|drive_id|fileId|file_id)["']?)`;
+ const titleKey=String.raw`(?:["']?(?:title|titulo|nome|name)["']?)`;
+ const ident=String.raw`["']([A-Za-z0-9_-]{12,200})["']`;
+ const name=String.raw`["']([^"'{}]{4,500})["']`;
+ const patterns=[
+  new RegExp(idKey+'\\s*:\\s*'+ident+'[^}]{0,650}?'+titleKey+'\\s*:\\s*'+name,'g'),
+  new RegExp(titleKey+'\\s*:\\s*'+name+'[^}]{0,650}?'+idKey+'\\s*:\\s*'+ident,'g')
+ ];
+ for(const [pindex,re] of patterns.entries()){
+  for(const m of src.matchAll(re)){
+   const id=decodeJsString(pindex===0?m[1]:m[2]).trim();
+   const title=decodeJsString(pindex===0?m[2]:m[1]).trim();
+   if(!id||!title)continue;
+   const near=src.slice(Math.max(0,m.index-160),Math.min(src.length,m.index+m[0].length+400));
+   const dm=near.match(/["']?(?:duration_ms|durationMs)["']?\s*:\s*["']?(\d{2,12})["']?/);
+   const cm=near.match(/["']?category["']?\s*:\s*["']([^"']{2,120})["']/i);
+   out.push({id,title,durationMs:dm?Number(dm[1]):0,category:cm?decodeJsString(cm[1]).trim():''});
+  }
+ }
+ const seen=new Set();return out.filter(x=>!seen.has(x.id)&&(seen.add(x.id),true));
+}
 async function fetchText(url,headers,label='recurso'){const r=await fetch(url,{headers,redirect:'follow'});if(!r.ok)throw new Error(`${label} HTTP ${r.status}`);return{text:await r.text(),finalUrl:r.url||url,status:r.status}}
 function extractJsAssets(text,base){const out=[];const add=raw=>{raw=String(raw||'').replace(/\\u0026/g,'&').replace(/\\\//g,'/').trim();if(!raw||!(/\.js(?:[?#]|$)/i.test(raw)))return;try{const u=new URL(raw,base);if(u.protocol==='https:'&&u.hostname===new URL(base).hostname)out.push(u.href)}catch{}};for(const m of String(text||'').matchAll(/<(?:script|link)\b[^>]*(?:src|href)=["']([^"']+\.js(?:\?[^"']*)?)["'][^>]*>/gi))add(m[1]);for(const m of String(text||'').matchAll(/["'`](\.?\/?(?:assets\/)?[A-Za-z0-9_./~-]+\.js(?:\?[^"'`]*)?)["'`]/g))add(m[1]);for(const m of String(text||'').matchAll(/(?:^|[^A-Za-z0-9_-])(routes-[A-Za-z0-9_-]+\.js)(?:[^A-Za-z0-9_-]|$)/g))add('/assets/'+m[1]);return[...new Set(out)]}
 export const MARKTPRO_GALLERY_URL='https://packvideoswedrop.lovable.app/';
