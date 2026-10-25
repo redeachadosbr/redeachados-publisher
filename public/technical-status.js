@@ -5,10 +5,11 @@
  const id=x=>Number(x?.attributeId??x?.id);
  const validValue=v=>Number(v?.valueId)>0||
   (Number(v?.valueId)===0&&Boolean(String(v?.valueName??v?.name??'').trim()));
- const hasValues=values=>Array.isArray(values)&&values.some(v=>
-  v&&((v.valueId!==undefined&&validValue(v))||
-  (v.name!==undefined&&String(v.name).trim())||
-  (v.valueName!==undefined&&String(v.valueName).trim())));
+ const hasValues=values=>Array.isArray(values)&&values.some(v=>{
+  if(!v)return false;
+  if(v.valueId!==undefined)return validValue(v);
+  return Boolean(String(v.name??v.valueName??'').trim());
+ });
  const normalize=x=>String(x??'').normalize('NFD').replace(/[\u0300-\u036f]/g,'')
   .toLowerCase().replace(/\s+/g,' ').trim();
  function compute({attributes=[],changes=[],conflicts=[],reviewed=false}={}){
