@@ -131,7 +131,7 @@ test('cartão Escrita do ChatGPT: colagem com Markdown importa texto real sem ca
 test('fallback de colagem continua disponível durante espera de geração e cancela espera após salvar',()=>{
  const modern=readFileSync(new URL('../public/description-modern-layout.js',import.meta.url),'utf8');
  const bridge=readFileSync(new URL('../public/description-chatgpt-bridge.js',import.meta.url),'utf8');
- assert.match(modern,/generationAbort=new AbortController\(\)/);
+ assert.match(modern,/const controller=new AbortController\(\);generationAbort=controller/);
  assert.match(modern,/if\(fallback\)generationAbort\?\.abort\(\)/);
  assert.match(modern,/listen\(manualArea,'input'/);
  assert.match(modern,/runManual\(\{automatic:true\}\)/);
