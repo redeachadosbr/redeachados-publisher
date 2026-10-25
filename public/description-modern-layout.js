@@ -164,78 +164,108 @@
   const manualButton=button('Importar texto colado',()=>{void runManual();},'desc-modern-manual-confirm');
   manual.append(manualSummary,manualArea,manualButton);controls.append(manual,status);
   section.append(controls);
-  let busy=false;
+  let busy=false,saving=false,recovering=false,importingCopied=false;
+  let generationAbort=null,autoPasteTimer=null;
   const current=()=>identity===sourceIdentity&&
    $('optimizerWorkflowEditor')?.classList.contains('desc-modern-editor')&&
    $('optimizerWorkflowDraft')===field;
-  async function applyDescription(result){
+  async function applyDescription(result,{fallback=false}={}){
+   if(saving)throw Error('Um salvamento de descrição já está em andamento.');
    if(!current())throw Error('A SKU ou etapa de descrição mudou. Reabra a etapa.');
    if(!globalThis.ShopeeDescriptionSaveChatGPT)throw Error('Salvamento do Manager indisponível. Recarregue a página.');
-   const saved=await globalThis.ShopeeDescriptionSaveChatGPT(result.description,descIdentity);
-   if(!saved?.saved)throw Error('O banco não confirmou o salvamento.');
-   generate.textContent='↻ Gerar nova descrição com ChatGPT';
-   state.querySelector('strong').textContent='✓ Descrição gerada pelo ChatGPT e salva para revisão';
-   status.textContent='✓ Descrição importada e salva para SKU '+descIdentity.sku+
-    ' ('+saved.length+' caracteres). Revise o conteúdo antes de publicar.';
-   sync();
-   return true;
+   saving=true;
+   try{
+    const saved=await globalThis.ShopeeDescriptionSaveChatGPT(result.description,descIdentity);
+    if(!saved?.saved)throw Error('O banco não confirmou o salvamento.');
+    generate.textContent='↻ Gerar nova descrição com ChatGPT';
+    state.querySelector('strong').textContent='✓ Descrição gerada pelo ChatGPT e salva para revisão';
+    status.textContent='✓ Descrição importada e salva para SKU '+descIdentity.sku+
+     ' ('+saved.length+' caracteres). Revise o conteúdo antes de publicar.';
+    sync();
+    // O fallback pode concluir mesmo enquanto a extensão está aguardando resposta.
+    // Cancelar a espera SÓ após confirmação no servidor impede retorno antigo
+    // de substituir o texto já salvo (ou exibir erro falso cinco minutos depois).
+    if(fallback)generationAbort?.abort();
+    return true;
+   }finally{saving=false;}
   }
   async function runGenerate(){
-   if(busy)return;
-   busy=true;generate.disabled=true;recover.disabled=true;importCopied.disabled=true;
+   if(busy||saving||recovering)return;
+   busy=true;generate.disabled=true;
+   const controller=new AbortController();generationAbort=controller;
    status.textContent='Preparando descrição comercial com dados da WeDrop…';
    try{
     if(!globalThis.RADescriptionChatGPT?.request)
      throw Error('Módulo da descrição não carregou. Recarregue com Ctrl+Shift+R.');
     const result=await globalThis.RADescriptionChatGPT.request(data,
-     text=>{if(current())status.textContent=text;});
+     message=>{if(current()&&!controller.signal.aborted)status.textContent=message;},
+     {signal:controller.signal});
+    if(controller.signal.aborted)return;
     await applyDescription(result);
     // Fecha SOMENTE a aba que a própria Ponte abriu, após gravar o rascunho.
     globalThis.RADescriptionChatGPT.acknowledge(result);
    }catch(error){
-    if(current())status.textContent='Não foi possível importar automaticamente: '+error.message+
-     ' A aba da pesquisa fica aberta para recuperar a resposta.';
+    if(current()&&!controller.signal.aborted)
+     status.textContent='Não foi possível importar automaticamente: '+error.message+
+      ' Você pode recuperar ou colar a resposta completa sem precisar reiniciar a etapa.';
    }finally{
-    busy=false;generate.disabled=false;recover.disabled=false;importCopied.disabled=false;
+    if(generationAbort===controller)generationAbort=null;
+    busy=false;generate.disabled=false;
    }
   }
   async function runRecover(){
-   if(busy)return;
-   busy=true;generate.disabled=true;recover.disabled=true;importCopied.disabled=true;
+   if(recovering||saving)return;
+   recovering=true;recover.disabled=true;
    status.textContent='Recuperando a descrição já gerada para esta SKU no ChatGPT…';
    try{
     if(!globalThis.RADescriptionChatGPT?.recover)throw Error('Instale a Ponte 1.0.35 e atualize o Manager.');
     const result=await globalThis.RADescriptionChatGPT.recover(data,
      message=>{if(current())status.textContent=message;});
-    await applyDescription(result);
+    await applyDescription(result,{fallback:true});
     globalThis.RADescriptionChatGPT.acknowledgeRecovery(result);
    }catch(error){
     if(current())status.textContent='Recuperação não concluída: '+error.message+
-     ' Se necessário, copie a resposta completa e cole no campo abaixo.';
-   }finally{busy=false;generate.disabled=false;recover.disabled=false;importCopied.disabled=false;}
+     ' Copie o texto do ChatGPT e cole no campo abaixo: a importação ocorrerá automaticamente.';
+   }finally{recovering=false;recover.disabled=false;}
   }
-  async function runManual(){
-   if(busy)return;
+  async function runManual({automatic=false}={}){
+   if(saving)return;
    try{
     const result=globalThis.RADescriptionChatGPT?.parse(manualArea.value);
-    if(!result)throw Error('Cole a resposta completa do ChatGPT antes de importar.');
-    await applyDescription(result);
+    if(!result)throw Error('Cole a descrição completa do ChatGPT antes de importar.');
+    await applyDescription(result,{fallback:true});
     manual.open=false;manualArea.value='';
-   }catch(error){manual.open=true;status.textContent='Não foi possível importar: '+error.message;}
+   }catch(error){
+    if(!automatic){manual.open=true;status.textContent='Não foi possível importar: '+error.message;}
+   }
   }
+  // A própria colagem é a confirmação de importação: assim que o texto
+  // estiver completo, gravar na SKU sem exigir outro clique. Isso continua
+  // funcionando se a extensão ficar em "aguardando" por vários minutos.
+  listen(manualArea,'input',()=>{
+   clearTimeout(autoPasteTimer);
+   if(!current()||manualArea.value.trim().length<250)return;
+   autoPasteTimer=setTimeout(()=>{
+    if(!current()||saving||manualArea.value.trim().length<250)return;
+    try{globalThis.RADescriptionChatGPT?.parse(manualArea.value);}
+    catch{return;} // Não importar um texto ainda sendo composto.
+    void runManual({automatic:true});
+   },750);
+  });
+  listeners.push(()=>clearTimeout(autoPasteTimer));
   async function runImportCopied(){
-   if(busy)return;
-   busy=true;generate.disabled=true;recover.disabled=true;importCopied.disabled=true;
+   if(importingCopied||saving)return;
+   importingCopied=true;importCopied.disabled=true;
    try{
     const raw=await navigator.clipboard.readText();
     const result=globalThis.RADescriptionChatGPT?.parse(raw);
-    if(!result)throw Error('Copie primeiro a resposta JSON completa do ChatGPT.');
-    await applyDescription(result);
+    if(!result)throw Error('Copie toda a descrição pronta do ChatGPT.');
+    await applyDescription(result,{fallback:true});
    }catch(error){
     manual.open=true;manualArea.focus();
-    if(current())status.textContent='Falha na importação copiada: '+error.message+
-     ' Copie toda a resposta no ChatGPT, cole no campo aberto com Ctrl+V e clique em Importar texto colado.';
-   }finally{busy=false;generate.disabled=false;recover.disabled=false;importCopied.disabled=false;}
+    if(current())status.textContent='Não foi possível ler a área de transferência: '+error.message+
+     ' Cole toda a resposta com Ctrl+V no campo aberto; o salvamento é automático.';
+   }finally{importingCopied=false;importCopied.disabled=false;}
   }
 
   const strip=el('div','desc-modern-supplier');
