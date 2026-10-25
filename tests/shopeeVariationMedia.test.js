@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
 import {
- validateVariationName,variationImagePrompt,validateVariationDetails,reviewedVariationEvidence,buildVariationPayload
+ validateVariationName,variationImagePrompt,validateVariationDetails,reviewedVariationEvidence,variationSupplierIdentity,buildVariationPayload
 } from '../shopeeVariationMedia.js';
 
 const asset={storagePath:'123/456/0/variations/fe30c932-1122-44ab-88dd-aabb99887766.png',
@@ -90,9 +90,73 @@ test('a preparação confere a revisão geral e o vínculo exato SKU/EAN por cor
  const server=readFileSync(new URL('../server.js',import.meta.url),'utf8');
  const client=readFileSync(new URL('../public/app.js',import.meta.url),'utf8');
  assert.match(server,/approvedReview:reviewState\.stages\?\.variants/);
- assert.match(server,/supplierEan===approvedEan/);
- assert.match(server,/details\.reviewed===true/);
- assert.match(server,/sameCategory&&correctOption&&exactEan/);
+ assert.match(server,/variationSupplierIdentity\(/);
+ assert.match(server,/variationEvidenceApproved\(/);
+ assert.match(server,/supplierEan=/);
+ assert.match(server,/\^\[0-9\]\{8,14\}\$/);
+ assert.doesNotMatch(server,/TUD0887/);
  assert.match(client,/optimizerExecAutoModelPreview\?\.needsBasePriceUpdate/);
+ assert.match(server,/fresh\.needsBasePriceUpdate&&req\.body\?\.allowPriceChange!==true/);
+});
+
+test('Motor Matriz: SKU e EAN válidos vencem diferenças de título em diversas categorias',()=>{
+ const cases=[
+  {parentName:'Patinete Infantil 3 Rodas com LED - Azul',
+   supplierName:'Patinete Speed Fun com Luzes LED - Vermelha',
+   originalOption:'Azul',optionName:'Vermelha',expectedEan:'7898696008881',sourceEan:'7898696008881'},
+  {parentName:'Tênis Esportivo Corrida Azul',
+   supplierName:'Tênis Casual Conforto Azul',
+   originalOption:'Azul',optionName:'Azul',expectedEan:'7891234567890',sourceEan:'7891234567890'},
+  {parentName:'Garrafa Térmica 900ml - Preta',
+   supplierName:'Garrafa de Água Premium - Branca',
+   originalOption:'Preta',optionName:'Branca',expectedEan:'7892222222222',sourceEan:'7892222222222'},
+  {parentName:'Brinquedo Patinete 3 Rodas Rosa',
+   supplierName:'Brinquedo Patinete 3 Rodas Azul',
+   originalOption:'Rosa',optionName:'Azul',expectedEan:'7893333333333',sourceEan:'7893333333333'},
+  {parentName:'Bicicleta Infantil Aro 16 Vermelha',
+   supplierName:'Bicicleta Infantil Aro 16 Azul',
+   originalOption:'Vermelha',optionName:'Azul',expectedEan:'7894444444444',sourceEan:'7894444444444'}
+ ];
+ for(const input of cases){
+  assert.equal(variationSupplierIdentity({...input,reviewed:true}).ok,true,input.supplierName);
+ }
+});
+test('Motor Matriz: nunca aceitar EAN divergente, opção trocada ou aprovação inexistente',()=>{
+ const sample={parentName:'Patinete Infantil LED Azul',supplierName:'Patinete Speed Fun Vermelha',
+  originalOption:'Azul',optionName:'Vermelha',expectedEan:'7898696008881',sourceEan:'7898696008881'};
+ assert.equal(variationSupplierIdentity({...sample,sourceEan:'7898696008874',reviewed:true}).ok,false);
+ assert.equal(variationSupplierIdentity({...sample,optionName:'Preta',reviewed:true}).ok,false);
+ assert.equal(variationSupplierIdentity({...sample,reviewed:false}).ok,false);
+ assert.equal(variationSupplierIdentity({...sample,expectedEan:'',reviewed:true}).ok,false);
+ assert.equal(variationSupplierIdentity({...sample,sourceEan:'',reviewed:true}).ok,false);
+ const sameTitle={parentName:'Liquidificador Portátil Azul',
+  supplierName:'Liquidificador Portátil Vermelho',originalOption:'Azul',
+  optionName:'Vermelho',reviewed:false};
+ assert.equal(variationSupplierIdentity(sameTitle).ok,true);
+});
+test('Motor Matriz: aprovação global caduca quando o rascunho ou a foto mudar',()=>{
+ const preview={type:'Cor',updatedAt:'2026-10-25T10:00:00Z',options:[
+  {name:'Preta',sku:'ABC-P',supplierSku:'SKU-P',price:199.99,stock:1,gtin:'7895555555555',
+   photoConfirmed:false,stockConfirmed:false,
+   asset:{storagePath:'1/2/0/variations/a.png',sha256:'abc',savedAt:'2026-10-25T10:01:00Z'}},
+  {name:'Branca',sku:'ABC-B',supplierSku:'SKU-B',price:199.99,stock:1,gtin:'7896666666666',
+   photoConfirmed:false,stockConfirmed:false,
+   asset:{storagePath:'1/2/0/variations/b.png',sha256:'def',savedAt:'2026-10-25T10:02:00Z'}}
+ ]};
+ const reviewed={reviewed:true,reviewedAt:'2026-10-25T10:03:00Z'};
+ assert.doesNotThrow(()=>validateVariationDetails(preview,{requirePhotos:true,approvedReview:reviewed}));
+ assert.throws(()=>validateVariationDetails({...preview,updatedAt:'2026-10-25T10:04:00Z'},
+  {requirePhotos:true,approvedReview:reviewed}),/Confirme foto/);
+ assert.throws(()=>validateVariationDetails({...preview,options:[
+  {...preview.options[0],asset:{...preview.options[0].asset,savedAt:'2026-10-25T10:05:00Z'}},
+  preview.options[1]]},{requirePhotos:true,approvedReview:reviewed}),/Confirme foto/);
+});
+test('Motor Matriz: desconto e preço bruto não dependem da mudança do preço das variações',async()=>{
+ const {readFileSync}=await import('node:fs');
+ const server=readFileSync(new URL('../server.js',import.meta.url),'utf8');
+ const client=readFileSync(new URL('../public/app.js',import.meta.url),'utf8');
+ assert.match(client,/needsBasePriceUpdate\|\|/);
+ assert.match(client,/modelPriceChange/);
+ assert.match(server,/req\.body\?\.campaignId\|\|approvedCampaignId\|\|/);
  assert.match(server,/fresh\.needsBasePriceUpdate&&req\.body\?\.allowPriceChange!==true/);
 });
