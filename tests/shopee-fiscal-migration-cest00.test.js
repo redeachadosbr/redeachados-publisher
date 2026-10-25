@@ -7,8 +7,8 @@ test('CEST 00 é padrão de cadastro e passa para prévia, não é confirmação
  assert.equal(fiscalStoreDefaults().cest,'00');
  assert.equal(compileTax({...base,cest:'00'},{tax_info:{}}).cest,'00');
 });
-test('não substituir CEST real previamente publicado por 00',()=>{
- assert.equal(compileTax({...base,cest:'00'},{tax_info:{cest:'1234567'}}).cest,'1234567');
+test('CEST de sete dígitos publicado sem prova WeDrop não substitui marcador 00 da SKU',()=>{
+ assert.equal(compileTax({...base,cest:'00'},{tax_info:{cest:'1234567'}}).cest,'00');
 });
 test('unidades KIT JOGO UN são aceitas na preparação fiscal',()=>{
  for(const unit of ['KIT','JOGO','UN'])assert.equal(compileTax({...base,measure_unit:unit},{tax_info:{}}).measure_unit,unit);
