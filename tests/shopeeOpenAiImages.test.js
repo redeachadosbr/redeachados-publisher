@@ -11,7 +11,7 @@ test('roteiro de nove imagens na ordem aprovada pela loja',()=>{
  assert.equal(IMAGE_STORYBOARD.length,9);
  assert.match(IMAGE_STORYBOARD[0],/Capa/);
  assert.match(IMAGE_STORYBOARD[1],/Uso real/);
- assert.match(IMAGE_STORYBOARD[2],/dimensões destacadas no produto/);
+ assert.match(IMAGE_STORYBOARD[2],/somente dimensões do PRODUTO confirmadas na WeDrop/);
  assert.match(IMAGE_STORYBOARD[3],/frases ou palavras curtas/);
  assert.match(IMAGE_STORYBOARD[4],/Uma frase curta/);
  assert.match(IMAGE_STORYBOARD[5],/Persuasão/);
@@ -82,4 +82,18 @@ test('edição OpenAI recebe foto original e retorna imagem 1200x1200 pronta par
   if(oldKey===undefined)delete process.env.OPENAI_API_KEY;else process.env.OPENAI_API_KEY=oldKey;
   if(oldModel===undefined)delete process.env.OPENAI_IMAGE_MODEL;else process.env.OPENAI_IMAGE_MODEL=oldModel;
  }
+});
+
+test('slot 03 API usa apenas medidas de produto da WeDrop colada, sem inferir medidas de selim',()=>{
+ const text=[
+ 'ALTURA','66cm','LARGURA','100cm','COMPRIMENTO','27cm',
+ 'Especificações:','Dimensões: 75cm altura x 63cm largura x 117cm comprimento',
+ 'Aro 16','Peso: 11kg'
+ ].join('\n');
+ const prompt=imagePrompt({record:{...sample,sku:'2392'},slot:3,
+  supplierSourceText:text,supplierCatalogInfo:'Altura:66; Largura:100; Comprimento:27'});
+ for(const p of ['ALTURA: 75 cm','LARGURA: 63 cm','COMPRIMENTO: 117 cm','NUNCA invente altura do selim'])
+  assert.match(prompt,new RegExp(p));
+ for(const forbidden of ['66cm','100cm','27cm','Altura:66','Largura:100'])
+  assert(!prompt.includes(forbidden));
 });
