@@ -63,7 +63,22 @@ export async function variationImagePreview(asset){
  if(!relative.startsWith('/object/sign/'))throw Error('Assinatura de foto inválida.');
  return url+'/storage/v1'+relative;
 }
-export function validateVariationDetails(body,{requirePhotos=false}={}){
+// A revisão geral equivale à conferência de cada opção SOMENTE quando
+// posterior ao último salvamento de rascunho e das imagens associadas.
+export function reviewedVariationEvidence(body,review){
+ if(review?.reviewed!==true)return false;
+ const approved=Date.parse(String(review.reviewedAt||''));
+ if(!Number.isFinite(approved))return false;
+ const modified=Date.parse(String(body?.updatedAt||''));
+ if(!Number.isFinite(modified)||modified>approved)return false;
+ const options=body?.options;
+ return Array.isArray(options)&&options.length>0&&options.every(option=>{
+  const media=option?.asset;
+  const saved=Date.parse(String(media?.savedAt||''));
+  return Boolean(media?.storagePath&&media?.sha256)&&Number.isFinite(saved)&&saved<=approved;
+ });
+}
+export function validateVariationDetails(body,{requirePhotos=false,approvedReview=null}={}){
  const type=clean(body?.type),raw=body?.options;
  if(!type||type.length>50||!Array.isArray(raw)||!raw.length||raw.length>20)
   throw Error('Informe tipo e até 20 opções de variação.');
@@ -91,7 +106,11 @@ export function validateVariationDetails(body,{requirePhotos=false}={}){
  });
  if(new Set(options.map(x=>x.sku.toLowerCase())).size!==options.length)
   throw Error('Cada variação exige SKU diferente.');
- if(requirePhotos&&options.some(x=>!x.stockConfirmed||!x.photoConfirmed))
+ // A conferência global registrada depois das duas fotos e do rascunho
+ // não deve exigir duas caixas redundantes por opção. Uma foto/edição posterior
+ // invalida esta equivalência (e exige nova conferência da etapa).
+ if(requirePhotos&&!reviewedVariationEvidence(body,approvedReview)&&
+    options.some(x=>!x.stockConfirmed||!x.photoConfirmed))
   throw Error('Confirme foto e disponibilidade real de cada variação no fornecedor.');
  return {type,options};
 }
