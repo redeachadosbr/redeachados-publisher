@@ -7435,8 +7435,16 @@ function optimizerTechnicalSummary(data){
  target.replaceChildren();
  const attrs=(data.attributes||[]),changes=optimizerTechnicalValues();
  const suggested=data.sourceFacts?.suggestions||[];
+ const technicalStats=globalThis.RATechnicalStatus?.compute({
+  attributes:attrs,changes,conflicts:data.sourceFacts?.conflicts||[],
+  reviewed:data.stages?.find(x=>x.key==='technical')?.reviewed===true
+ });
  const conflicts=(data.sourceFacts?.conflicts||[]).filter(x=>
-   (data.attributes||[]).some(a=>Number(a.id)===Number(x.attributeId)));
+   attrs.some(a=>Number(a.id)===Number(x.attributeId)&&!a.conditional)&&
+   !changes.some(change=>Number(change.attributeId)===Number(x.attributeId)&&
+    change.values?.some(v=>String(v.valueName||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'')
+     .trim().toLowerCase()===String(x.recommended||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'')
+     .trim().toLowerCase())));
  const unresolved=(data.sourceFacts?.unresolved||[]).filter(x=>x.value);
  const index=new Map(attrs.map(x=>[Number(x.id),x]));
  const chosen=changes.filter(x=>x.values?.some(v=>v.valueName&&v.valueId!==-1));
@@ -7454,10 +7462,10 @@ function optimizerTechnicalSummary(data){
   div.append(optimizerMake('strong','',String(number)),optimizerMake('span','',label));
   stats.append(div);
  };
- tile(chosen.length,'Preparados para revisão','ok');
- tile(current,'Preenchidos na ficha','neutral');
- tile(mandatory.length,'Obrigatórios pendentes','warn');
- tile(conflicts.length,'Conferir divergências WeDrop','warn');
+ tile(technicalStats?.prepared??chosen.length,'Alterações para revisar','ok');
+ tile(technicalStats?.inShopee??current,'Já preenchidos na Shopee','neutral');
+ tile(technicalStats?.mandatoryMissing??mandatory.length,'Obrigatórios pendentes',mandatory.length?'warn':'ok');
+ tile(technicalStats?.conflicts??conflicts.length,'Divergências WeDrop',conflicts.length?'warn':'neutral');
  target.append(stats);
  if(conflicts.length){
   const box=optimizerMake('div','optimizer-tech-source-conflicts');
@@ -7483,12 +7491,31 @@ function optimizerTechnicalSummary(data){
   target.append(box);
  }
  if(unresolved.length){
-  target.append(optimizerMake('p','optimizer-tech-warning',
-   unresolved.length+' informação(ões) explícita(s) da WeDrop precisam de uma opção oficial da categoria Shopee antes de serem preenchidas; nenhuma opção foi inventada.'));
+  const requiredUnresolved=unresolved.filter(x=>attrs.some(a=>
+   Number(a.id)===Number(x.attributeId)&&a.mandatory&&!a.conditional&&
+   !a.values?.length&&!chosen.some(v=>v.attributeId===Number(a.id))));
+  if(requiredUnresolved.length)target.append(optimizerMake('p','optimizer-tech-warning',
+   requiredUnresolved.length+' atributo(s) obrigatório(s) dependem de uma opção oficial da Shopee. Confira antes de concluir.'));
+  const optionalUnresolved=unresolved.length-requiredUnresolved.length;
+  if(optionalUnresolved>0){
+   const more=optimizerMake('details','optimizer-tech-nonblocking-suggestions');
+   more.append(optimizerMake('summary','',optionalUnresolved+
+    ' informação(ões) complementares da WeDrop sem opção oficial — opcionais, não bloqueiam'));
+   more.append(optimizerMake('p','',
+    'O sistema não inventará uma opção da categoria. Essas sugestões permanecem disponíveis para consulta, sem exigir preenchimento ou impedir a conferência.'));
+   target.append(more);
+  }
  }
- const summaryNote=optimizerMake('p','optimizer-tech-summary-note',chosen.length?
-   '✓ '+chosen.length+' atributo(s) preparados na SKU. Confira '+conflicts.length+' divergência(s) com a WeDrop e '+mandatory.length+' obrigatório(s) pendente(s) antes de aprovar; nenhuma publicação foi feita.':
-   'Nenhuma nova alteração técnica pronta. Cole informações na área acima, ou abra os campos individuais.');
+ const remaining=technicalStats?.optionalRemaining??0;
+ const summaryNote=optimizerMake('p','optimizer-tech-summary-note',
+  mandatory.length||conflicts.length?
+   'Atenção: '+mandatory.length+' obrigatório(s) pendente(s) e '+conflicts.length+
+    ' divergência(s) para conferir. Alterações são somente rascunhos, ainda não publicadas.':
+   '✓ Sem pendências obrigatórias ou divergências identificadas. '+
+   (chosen.length?chosen.length+' alteração(ões) preparadas para revisão; ':'Nenhuma alteração técnica adicional necessária; ')+
+   (technicalStats?.inShopee??current)+' atributo(s) já constam na Shopee. '+
+   (remaining?remaining+' campo(s) opcionais podem permanecer vazios. ':'')+
+   'Registre a revisão desta etapa quando estiver de acordo.');
  target.append(summaryNote);
  const list=optimizerMake('div','optimizer-tech-summary-list');
  for(const change of chosen.slice(0,18)){
@@ -7520,7 +7547,9 @@ function optimizerTechnicalSummary(data){
   'Pendente: '+mandatory.map(x=>optimizerTechLabel(x.name)).slice(0,4).join(', ')+
   (mandatory.length>4?' e outros.':'.')+' Abra os campos apenas quando precisar corrigir.'));
  const info=$('#optimizerTechnicalAdvancedCount');
- if(info)info.textContent=mandatory.length+' obrigatório(s) ainda sem informação · '+(current+chosen.length)+' preenchidos/preparados';
+ if(info)info.textContent=mandatory.length+
+  ' obrigatório(s) pendente(s) · '+(technicalStats?.filled??(current+chosen.length))+
+  ' atributo(s) com valor · opcionais vazios não bloqueiam';
 }
 async function optimizerTechRequest(w,action,extra={}){
  return json('/api/shopee/optimizer/workflow/source',{
