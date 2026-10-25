@@ -1304,6 +1304,32 @@ app.post('/api/shopee/optimizer/workflow/content-draft',mustLogin,requireWeDropA
  }
 });
 
+// Uma revisão aprovada não pode ficar com atributos de publicação vazios
+// enquanto o próprio rascunho contém opções completas. Fonte por SKU.
+function approvedTechnicalDraftChanges(draft,{reviewedAt=null}={}){
+ const fields=Array.isArray(draft?.fields)?draft.fields:[];
+ if(fields.length>300)throw Error('Rascunho técnico inválido.');
+ if(reviewedAt){
+  const a=Date.parse(String(reviewedAt||'')),b=Date.parse(String(draft?.updatedAt||''));
+  if(!Number.isFinite(a)||!Number.isFinite(b)||b>a)
+   throw Error('Ficha técnica alterada após aprovação. Reabra e confira a revisão.');
+ }
+ const ids=new Set(),changes=[];
+ for(const f of fields){
+  const id=Number(f?.attributeId);
+  if(!Number.isSafeInteger(id)||id<=0||ids.has(id))
+   throw Error('Identificador técnico inválido ou duplicado.');
+  ids.add(id);
+  if(!f.enabled||f.userDisabled)continue;
+  const values=Array.isArray(f.values)?f.values:[];
+  if(!values.length||values.some(v=>!(Number(v?.valueId)>0||
+    Number(v?.valueId)===0&&String(v?.valueName||'').trim())))continue;
+  changes.push({attributeId:id,values:values.map(v=>({valueId:Number(v.valueId),
+   valueName:String(v.valueName||''),unit:String(v.unit||'')})),
+   evidence:String(f.evidence||'').slice(0,350)});
+ }
+ return changes;
+}
 app.post('/api/shopee/optimizer/workflow/review',mustLogin,requireWeDropAdmin,async(req,res)=>{
   res.setHeader('Cache-Control','no-store');
   if(!verifiedSameOrigin(req))return res.status(403).json({error:'Origem da solicitação não permitida.'});
@@ -1321,6 +1347,16 @@ app.post('/api/shopee/optimizer/workflow/review',mustLogin,requireWeDropAdmin,as
       change.imagesSignature=imagesSignature(images);
     }
     if(change.stage==='technical'&&change.reviewed){
+      const storedTechnical=await getWorkflowReview(auth.shopId,itemId,modelId);
+      if(storedTechnical?.sku&&storedTechnical.sku!==sku)
+       throw Error('O rascunho técnico salvo pertence a outra SKU.');
+      // O editor conserva sugestões e decisões em technicalDraft. Se o array
+      // do formulário estiver vazio, não converter "conferido" em "nada a enviar".
+      if(!change.attributes?.length){
+       const source=storedTechnical?.review_state?.technicalDraft;
+       if(Array.isArray(source?.fields)&&source.fields.length)
+        change.attributes=approvedTechnicalDraftChanges(source);
+      }
       const live=await shopeeLiveEditableItem(cfg,auth,itemId);
       // Ignore inactive conditional children and the live values the seller did
       // not edit. A real mandatory child activated by a parent is still checked.
@@ -1457,7 +1493,32 @@ app.post('/api/shopee/optimizer/execution/prepare',mustLogin,requireWeDropAdmin,
     const verifiedVideoSha256=previous?.state==='verified'&&
       verifyShopeeExecution(previous.plan,live,previous.result)?previous.plan.video?.sha256:null;
     const manualImages=await readPreparedImages(auth.shopId,itemId,modelId,sku);
-    const reviewState=review?.review_state||{};
+    const reviewState={...(review?.review_state||{})};
+    // Evitar ficha técnica aprovada e invisível na publicação. O rascunho
+    // precisa ser anterior à revisão e os campos devem continuar elegíveis
+    // pela categoria Shopee atual. Não aprovar dados novos automaticamente.
+    if(['all','technical'].includes(selectedStage)&&
+       reviewState.stages?.technical?.reviewed===true&&
+       !reviewState.attributes?.length&&
+       Array.isArray(reviewState.technicalDraft?.fields)&&
+       reviewState.technicalDraft.fields.length){
+      const source=approvedTechnicalDraftChanges(reviewState.technicalDraft,{
+       reviewedAt:reviewState.stages.technical.reviewedAt
+      });
+      if(source.length){
+       const scoped=scopeTechnicalReviewChanges(
+        applySellerDeclarations(source,record.attributeAudit?.attributes||[]),{
+         record,live,auditChanges:attributeAuditForChanges
+        });
+       await hydrateCategoryChoices(record,scoped.changes,cfg,auth,live);
+       const audited=attributeAuditForChanges(scoped.changes,record,live);
+       const classified=selectValidTechnicalChanges(scoped.changes,audited);
+       // Os campos incompatíveis continuam como pendência explícita.
+       reviewState.attributes=classified.valid;
+       reviewState._technicalRecoveredFromApprovedDraft=true;
+       reviewState._technicalSkipped=classified.skipped;
+      }
+    }
     // Variações conferidas são parte da execução completa, nunca um envio
     // manual em outra tela. Dados e custos vêm do rascunho salvo da SKU.
     let modelVariations=null;
@@ -1508,8 +1569,14 @@ app.post('/api/shopee/optimizer/execution/prepare',mustLogin,requireWeDropAdmin,
       await hydrateCategoryChoices(record,reviewState.attributes||[],cfg,auth,live);
     }
     const inputs={shopId:auth.shopId,itemId,modelId,sku,record,
-      review:review?.review_state||{},live,manualVideo,verifiedVideoSha256,manualImages,selectedStage,allowDiscountOnly,modelVariations};
+      review:reviewState,live,manualVideo,verifiedVideoSha256,manualImages,selectedStage,allowDiscountOnly,modelVariations};
     let plan=compileShopeeExecutionPlan({...inputs,omitFiscal:false});
+    if(['all','technical'].includes(selectedStage)&&reviewState.stages?.technical?.reviewed&&
+       !reviewState.attributes?.length&&reviewState.technicalDraft?.fields?.length&&
+       !plan.confirmedStages?.technical){
+      plan.warnings.push('Ficha técnica aprovada sem atributos elegíveis para envio. '+
+       'Confira a etapa técnica; a Shopee não recebeu esses campos.');
+    }
     // Previous Shopee validation can mean tax_info was rejected while other
     // approved changes are independent. A first explicit "00" submission is allowed,
     // and let the next explicit execution try only non-fiscal changes.
@@ -1528,6 +1595,10 @@ app.post('/api/shopee/optimizer/execution/prepare',mustLogin,requireWeDropAdmin,
         previous.plan?.proposed?.tax_info?.ncm||previous.plan?.original?.tax_info?.ncm||'').trim();
     const deferFiscal=selectedStage==='all'&&Boolean(previouslyRejected);
     if(deferFiscal)plan=compileShopeeExecutionPlan({...inputs,deferUnconfirmedFiscal:true,omitFiscal:false});
+    if(reviewState._technicalRecoveredFromApprovedDraft)
+     plan.warnings.push('Ficha técnica: recuperação validada do rascunho aprovado desta SKU. '+
+      (reviewState.attributes?.length||0)+' campo(s) elegível(is) conferidos para a prévia; '+
+      (reviewState._technicalSkipped?.length||0)+' campo(s) opcional(is) incompatível(is) mantidos como pendência.');
     if(plan.finalFiscal&&['all','remaining'].includes(selectedStage)){
       // A última etapa usa o mesmo vínculo WeDrop/NCM que a execução fiscal isolada.
       const supplier=await readWeDropProduct(auth.shopId,{sku,itemId,modelId});
