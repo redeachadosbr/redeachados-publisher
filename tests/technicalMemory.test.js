@@ -53,7 +53,7 @@ test('nome comercial da WeDrop só é sugerido no campo Model Name customizável
 test('integra à ficha técnica sem alterar a ponte das nove imagens',()=>{
  const app=readFileSync(new URL('../public/app.js',import.meta.url),'utf8');
  const page=readFileSync(new URL('../public/index.html',import.meta.url),'utf8');
- assert.match(page,/technical-memory\.js\?v=1\.0\.0-category-safe-defaults/);
+ assert.match(page,/technical-memory\.js\?v=1\.0\.1-live-sku-preload/);
  assert.match(app,/RATechnicalMemory\?\.learn/);
  assert.match(app,/memory\?\.modelSuggestion/);
  assert.match(app,/memory\?\.suggest/);
