@@ -31,12 +31,12 @@ test('campos do contador ficam aproveitáveis nas próximas SKUs com NCM própri
  assert.equal(result.csosn,'102');
  assert.equal(result.cest,'00');
 });
-test('Marcador 00 nunca substitui CEST fiscal real de 7 dígitos',()=>{
+test('CEST de 7 dígitos só prevalece se estiver comprovado na WeDrop; API Shopee não prevalece sobre 00',()=>{
  const actual=supplierWorkflowFacts({...supplier,product_data:{...supplier.product_data,cest:'1234567'}},
   {title:'Piscina Inflável',description:'',attributeAudit:{attributes:[]}},{fiscal_notes:''}).taxSuggestion;
  assert.equal(actual.cest,'1234567');
  const verified=compileTax({...fiscal,cest:'00'},{tax_info:{cest:'7654321'}});
- assert.equal(verified.cest,'7654321');
+ assert.equal(verified.cest,'00');
  const blank=compileTax({...fiscal,cest:'00'},{tax_info:{}});
  assert.equal(blank.cest,'00');
 });
