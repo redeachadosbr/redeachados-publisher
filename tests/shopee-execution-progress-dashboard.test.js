@@ -190,3 +190,38 @@ test('desconto aparece como ultima etapa e só conclui quando Shopee confirma',(
  assert.equal(success.steps.at(-1).status,'done');
  assert.equal(success.percent,100);
 });
+
+test('SKU 2392: sete revisões são diferente de zero publicações e desconto não foi recusado',()=>{
+ const prepared={...plan,sku:'2392',itemId:'58221348619',
+  selectedStage:'all',finalFiscal:{ncm:'87120010'},
+  images:Array.from({length:9},(_,i)=>({slot:i+1})),
+  video:{filename:'Bicicleta_rosa.mp4'},
+  proposed:{item_name:'Bicicleta Infantil Moto Cross Aro 16 Rosa'}};
+ const progress=shopeeExecutionProgress({
+  sku:'2392',item_id:'58221348619',model_id:'0',state:'prepared',
+  plan:prepared,run_id:null,result:null,last_error:null
+ });
+ assert.equal(progress.percent,0);
+ assert.equal(progress.hasStarted,false);
+ assert.equal(progress.resumable,false);
+ assert.equal(progress.awaitingAuthorization,true);
+ assert.match(progress.title,/aguardando autorização/i);
+ assert.match(progress.message,/Nenhuma publicação foi iniciada/);
+ assert.equal(progress.imagesUploaded,0);
+ assert.equal(progress.steps.at(-1).status,'authorization');
+ assert.equal(progress.discountStatus,'awaiting_execution_confirmation');
+ assert.equal(progress.attention,false);
+});
+test('uma execução já iniciada sem desconto continua mostrando revisão necessária sem forjar aprovação',()=>{
+ const p={...plan,selectedStage:'all',finalFiscal:{ncm:'87120010'}};
+ const progress=shopeeExecutionProgress({...job('running','updating'),plan:p});
+ assert.equal(progress.steps.at(-1).status,'review');
+ assert.equal(progress.discountStatus,'not_approved_for_this_run');
+});
+test('UI oferece reabrir desconto em vez de deixar execução desabilitada sem solução',()=>{
+ const js=readFileSync(new URL('../public/app.js',import.meta.url),'utf8');
+ assert.match(js,/optimizerExecutionFixDiscount/);
+ assert.match(js,/optimizerDiscountOpenReview\(\)/);
+ assert.match(js,/Aguardando sua autorização/);
+ assert.match(js,/Ficha técnica foi reaberta por correção/);
+});
