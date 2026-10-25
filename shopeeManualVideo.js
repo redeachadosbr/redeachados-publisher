@@ -95,10 +95,21 @@ export function manualVideoPublicInfo(saved){
 }
 
 
+// Cache curto por objeto imutável + SHA do vídeo revisado. Uma execução
+// multipartes não deve baixar TODO o MP4 do Supabase a cada parte de 4 MB.
+// Em reinício o cache some e a cópia é baixada/validada de novo.
+const verifiedVideoDownloads=new Map(),VIDEO_DOWNLOAD_TTL=12*60*1000;
+export function clearVerifiedVideoDownloadCache(){verifiedVideoDownloads.clear();}
+function verifiedVideoCacheKey(asset){
+ return [asset.storage_path,asset.sha256,asset.size_bytes].join('|');
+}
 // Only read the immutable object referenced by a server-side approved plan.
 export async function downloadShopeeManualVideo(asset){
  if(!asset||!/^\d+\/\d+\/\d+\/[a-f0-9-]+\.(mp4|mov|webm)$/.test(asset.storage_path||''))
   throw Error('Arquivo privado do plano inválido.');
+ const key=verifiedVideoCacheKey(asset),hit=verifiedVideoDownloads.get(key);
+ if(hit&&Date.now()<hit.expiresAt){return hit.file;}
+ if(hit)verifiedVideoDownloads.delete(key);
  const {url,headers}=config();
  const res=await fetch(url+'/storage/v1/object/authenticated/'+VIDEO_BUCKET+'/'+asset.storage_path,
   {headers,signal:AbortSignal.timeout(60000)});
@@ -107,6 +118,11 @@ export async function downloadShopeeManualVideo(asset){
  if(file.length!==asset.size_bytes||file.length>MAX_VIDEO_BYTES||
    crypto.createHash('sha256').update(file).digest('hex')!==asset.sha256)
   throw Error('O vídeo armazenado difere do arquivo aprovado. Importe novamente.');
+ // Não armazenar arquivos maiores do que o limite oficial de importação.
+ // Guardar até duas mídias ativas; nenhuma cópia é compartilhada por outra SKU.
+ verifiedVideoDownloads.set(key,{file,expiresAt:Date.now()+VIDEO_DOWNLOAD_TTL});
+ while(verifiedVideoDownloads.size>2)
+  verifiedVideoDownloads.delete(verifiedVideoDownloads.keys().next().value);
  return file;
 }
 export async function rememberPublishedVideo(plan,result){
