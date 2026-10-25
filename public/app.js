@@ -3420,6 +3420,21 @@ $('#optimizerWorkflowCopy')?.addEventListener?.('click',async()=>{
  try{await navigator.clipboard.writeText(value);optimizerWorkflowNotice('Orientação da etapa copiada para revisão.','success');}
  catch{optimizerWorkflowNotice('Não foi possível copiar automaticamente; selecione o texto manualmente.','warning');}
 });
+// O salvamento do checklist é idempotente por SKU. Repetir UMA vez somente
+// quando o gateway Render devolver 502/503/504; nunca repetir publicações.
+async function optimizerSaveChecklistReview(body){
+ for(let attempt=0;attempt<2;attempt++){
+  try{
+   return await json('/api/shopee/optimizer/workflow/review',{
+    method:'POST',headers:{'Content-Type':'application/json'},
+    body:JSON.stringify(body),signal:AbortSignal.timeout(60000)
+   });
+  }catch(error){
+   if(attempt||!/^HTTP (?:502|503|504)\b/.test(String(error.message||'')))throw error;
+   await new Promise(resolve=>setTimeout(resolve,1100));
+  }
+ }
+}
 $('#optimizerWorkflowReview')?.addEventListener?.('click',async()=>{
  const data=optimizerWorkflowPlan,key=optimizerWorkflowStage;
  const stage=data?.stages?.find(x=>x.key===key);
@@ -3448,13 +3463,16 @@ $('#optimizerWorkflowReview')?.addEventListener?.('click',async()=>{
      body.attributes=optimizerTechnicalValues();
    }
    if(key==='fiscal')body.tax=optimizerFiscalValues();
-   if(key==='variants')body.variationConfig=optimizerVariationValues();
+   if(key==='variants'){
+     body.variationConfig=optimizerVariationValues();
+     if(body.reviewed){
+       if(typeof globalThis.RedeVariants?.saveDraft!=='function')throw Error('Editor de variações indisponível. Atualize a página.');
+       await globalThis.RedeVariants.saveDraft(); // Persiste cada opção antes da conferência.
+     }
+   }
    if(key==='seo')body.title=$('#optimizerWorkflowDraft').value;
    if(key==='description')body.description=$('#optimizerWorkflowDraft').value;
-   const result=await json('/api/shopee/optimizer/workflow/review',{
-     method:'POST',headers:{'Content-Type':'application/json'},
-     body:JSON.stringify(body),signal:AbortSignal.timeout(60000)
-   });
+   const result=await optimizerSaveChecklistReview(body);
    if(optimizerWorkflowPlan?.sku!==data.sku||optimizerWorkflowPlan?.itemId!==data.itemId||optimizerWorkflowPlan?.modelId!==data.modelId)return;
    if(key==='technical'&&body.reviewed&&
       result.stages?.find(x=>x.key==='technical')?.reviewed!==true)
