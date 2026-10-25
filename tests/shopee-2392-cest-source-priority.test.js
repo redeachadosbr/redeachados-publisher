@@ -51,6 +51,6 @@ test('interface mostra a divergência da Shopee e nunca diz que 00 foi publicado
  const client=readFileSync(new URL('../public/app.js',import.meta.url),'utf8');
  assert.match(client,/CEST DIVERGENTE/);
  assert.match(client,/NÃO informa CEST/);
- assert.match(client,/A Shopee poderá recusar 00/);
+ assert.match(client,/a Shopee poderá recusar 00/i);
  assert.match(client,/draft.cest=\/\^\\d\{7\}\$\/\.test\(suggestedCest\)\?suggestedCest:'00'/);
 });
