@@ -104,3 +104,38 @@ test('reorganiza as dúvidas antes das características mesmo que o ChatGPT troq
  assert.ok(out.includes('\n\n✅ BENEFÍCIOS\n'));
  assert.ok(out.endsWith('🛒 Adicione ao carrinho e prepare novas brincadeiras!'));
 });
+
+test('cartão Escrita do ChatGPT: colagem com Markdown importa texto real sem cabeçalho',()=>{
+ const raw=[
+  'Escrita',
+  '✨ Uma mala infantil rosa para organizar pertences e trazer charme aos passeios. Seu formato divertido transforma cada aventura em uma experiência especial.',
+  '## **✅ BENEFÍCIOS**',
+  '🎀 Interior com compartimentos para guardar os objetos do dia a dia.',
+  '🧳 Rodinhas e alça para deslocamento mais prático durante os passeios.',
+  '💡 **POR QUE COMPRAR**',
+  '💖 Design infantil inspirado em carrinho com detalhes que valorizam o produto, sem precisar inventar acessórios.',
+  '## ⚙️ CARACTERÍSTICAS',
+  'Cor rosa e design conversível em formato de carro, conforme a descrição do produto.',
+  '📦 **O QUE VAI NA EMBALAGEM**',
+  'Uma mala infantil rosa, conforme a descrição fornecida.',
+  '🛒 Leve mais organização e encanto às aventuras do dia a dia!'
+ ].join('\n\n');
+ const parsed=api.parse(raw);
+ assert.ok(parsed.length>250);
+ assert.match(parsed.description,/✅ BENEFÍCIOS\n/);
+ assert.match(parsed.description,/📦 O QUE VAI NA EMBALAGEM/);
+ assert.ok(!parsed.description.startsWith('Escrita'));
+ assert.doesNotMatch(parsed.description,/\*\*|^##/m);
+ assert.ok(parsed.description.split('\n\n').at(-1).startsWith('🛒'));
+});
+test('fallback de colagem continua disponível durante espera de geração e cancela espera após salvar',()=>{
+ const modern=readFileSync(new URL('../public/description-modern-layout.js',import.meta.url),'utf8');
+ const bridge=readFileSync(new URL('../public/description-chatgpt-bridge.js',import.meta.url),'utf8');
+ assert.match(modern,/generationAbort=new AbortController\(\)/);
+ assert.match(modern,/if\(fallback\)generationAbort\?\.abort\(\)/);
+ assert.match(modern,/listen\(manualArea,'input'/);
+ assert.match(modern,/runManual\(\{automatic:true\}\)/);
+ assert.match(modern,/await applyDescription\(result,\{fallback:true\}\)/);
+ assert.doesNotMatch(modern,/async function runManual\(\)\{\s*if\(busy\)return/);
+ assert.match(bridge,/signal\?\.addEventListener\('abort',abort/);
+});
