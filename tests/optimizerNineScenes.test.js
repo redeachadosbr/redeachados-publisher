@@ -42,7 +42,7 @@ test('o Motor Matriz muda somente a imagem 03 e usa o texto colado da WeDrop',()
  assert.match(result.prompts[6],/Criança C/);
  assert.match(result.prompts[2],/Sem personagens/);
  const p=result.prompts[2];
- for(const expected of ['ALTURA: 75 cm','LARGURA: 63 cm','COMPRIMENTO: 117 cm','SOMENTE'])
+ for(const expected of ['ALTURA: 75 cm','LARGURA: 63 cm','COMPRIMENTO: 117 cm','NÃO escreva'])
   assert.match(p,new RegExp(expected));
  for(const disallowed of ['66 cm','100 cm','27 cm','selim 48'])
   assert(!p.includes(disallowed));
