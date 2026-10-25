@@ -1501,8 +1501,8 @@ async function wdReadCatalogText(file){
  }
  if(!wedropWorkbookReadPromise){
   wedropWorkbookReadPromise=(async()=>{
-   if(/\\.csv$/i.test(file.name))return file.text();
-   if(!/\\.xlsx?$/i.test(file.name))
+   if(/\.csv$/i.test(file.name))return file.text();
+   if(!/\.xlsx?$/i.test(file.name))
     throw Error('Formato não aceito. Envie CSV, Excel .xlsx ou .xls.');
    const bytes=new Uint8Array(await file.arrayBuffer());
    let binary='';
