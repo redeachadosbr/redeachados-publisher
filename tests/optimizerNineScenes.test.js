@@ -28,8 +28,19 @@ test('o Motor Matriz muda somente a imagem 03 e usa o texto colado da WeDrop',()
  });
  assert.equal(result.original,'https://cf.shopee.com.br/file/reference');
  assert.equal(result.prompts.length,9);
- assert.deepEqual(result.prompts.filter((_,i)=>i!==2),approved.filter((_,i)=>i!==2));
- assert.equal(result.batch,approved[0]);
+ for(let i=0;i<9;i++){
+  assert.ok(result.prompts[i].startsWith(approved[i]),'roteiro original preservado na posição '+(i+1));
+  assert.match(result.prompts[i],/DIVERSIDADE OBRIGATÓRIA — CENA ÚNICA/);
+  assert.match(result.prompts[i],/ÂNGULO E ENQUADRAMENTO:/);
+  assert.match(result.prompts[i],/A FOTO DE REFERÊNCIA serve apenas para preservar o PRODUTO EXATO/);
+ }
+ assert.equal(result.batch,result.prompts[0]);
+ const environments=result.prompts.map(p=>p.match(/AMBIENTE EXCLUSIVO: ([^\n]+)/)?.[1]);
+ assert.equal(new Set(environments).size,9,'as nove cenas devem ter cenários distintos');
+ assert.match(result.prompts[1],/criança A|Criança A/);
+ assert.match(result.prompts[4],/Criança B/);
+ assert.match(result.prompts[6],/Criança C/);
+ assert.match(result.prompts[2],/Sem personagens/);
  const p=result.prompts[2];
  for(const expected of ['ALTURA: 75 cm','LARGURA: 63 cm','COMPRIMENTO: 117 cm','SOMENTE'])
   assert.match(p,new RegExp(expected));
