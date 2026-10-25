@@ -122,54 +122,14 @@ function render(){
   body.append(visual,fields);row.append(header,body);cards.append(row);
  }
  left.append(cards);workspace.append(left);
- // Comandos recolhidos na própria etapa: não ocupam a lateral dos cartões.
- const menu=el('details','optimizer-variant-stage-menu');
- menu.open=true; // Conferência e publicação ficam visíveis sem submenu escondido.
- const toggle=el('summary','','Conferir e aplicar variações na Shopee');
- menu.append(toggle);menu.addEventListener('keydown',event=>{
-  if(event.key==='Escape'){menu.open=false;toggle.focus();}
+ // Esta etapa apenas salva e confirma o rascunho. A publicação de variações,
+ // fiscal e desconto pertence à execução única do anúncio-pai.
+ const note=el('p','optimizer-variant-flow-note',
+  'As variações serão incluídas na prévia e execução únicas, junto com imagens, título, descrição, ficha técnica, dados fiscais e desconto. Salve os dados, confira fotos e estoque reais e registre esta etapa como conferida. Nenhuma alteração é enviada à Shopee aqui.');
+ target.append(workspace,note);
+ target.querySelectorAll('input').forEach(input=>{
+  if(input.type!=='file')input.addEventListener('input',rememberDraft);
  });
- const side=el('div','optimizer-variant-send-panel');
- const title=el('div','optimizer-variant-side-heading');
- title.append(el('strong','','➤  Envio e aplicação'),el('small','','Após revisar as variações, confira o envio pela API e aplique na Shopee.'));
- side.append(title);
- const controls=el('div','optimizer-variant-side-actions');
- {
-  const preview=el('button','optimizer-variant-stage-preview');preview.append(el('span','optimizer-side-action-icon','✓'),el('span','optimizer-side-action-copy'));preview.lastChild.append(el('strong','','Conferir envio pela API'),el('small','','Verificar dados e imagens'));
-  const send=el('button','optimizer-variant-stage-publish');send.append(el('span','optimizer-side-action-icon','ϟ'),el('span','optimizer-side-action-copy'));send.lastChild.append(el('strong','','Aplicar variações na Shopee'),el('small','','Publicar no anúncio'));
-  preview.type=send.type='button';send.disabled=true;let approval=null;
-  preview.onclick=async()=>{
-   if(busy)return;
-   try{
-    if(!window.confirm('Confirma que verificou as fotos reais e a disponibilidade do estoque de todas as variações no fornecedor?'))return;
-    for(const card of target.querySelectorAll('.optimizer-variant-item')){
-     card.querySelector('[data-variant-field="photoConfirmed"]').checked=true;
-     card.querySelector('[data-variant-field="stockConfirmed"]').checked=true;
-    }
-    await persist();
-    const result=await request('/api/shopee/optimizer/variants/preview','POST',{});
-    approval=result.approval;send.disabled=false;
-    notify('Conferência pela API concluída. Revise as opções antes de aplicar.','success');
-   }catch(e){approval=null;send.disabled=true;notify(e.message,'error');}
-  };
-  send.onclick=async()=>{
-   if(!approval||busy)return;
-   if(!window.confirm('CONFIRMAR PUBLICAÇÃO: deseja aplicar as variações na Shopee? Esta operação altera o anúncio real.'))return;
-   busy=true;send.disabled=true;
-   try{
-    const result=await request('/api/shopee/optimizer/variants/apply','POST',{approval,confirm:true});
-    notify(result.message+(result.allModelsConfirmed?' Modelos confirmados pela API.':' Aguardar verificação na Shopee antes de repetir.'),result.allModelsConfirmed?'success':'info');
-    approval=null;
-    globalThis.OptimizerFinalization?.onVariationsApplied?.();
-   }catch(e){notify('Confira a Shopee antes de repetir: '+e.message,'error');}
-   finally{busy=false;}
-  };
-  const help=el('p','optimizer-variant-side-note','ⓘ Orientação: foto por variação, gerada via API OpenAI ou incluída manualmente. Confirme o estoque real antes de publicar.');
-  const close=el('button','optimizer-variant-close','Fechar etapa');close.type='button';
-  close.onclick=()=>{menu.open=false;$('optimizerWorkflowClose')?.click();};
-  controls.append(preview,send);side.append(controls,help,close);menu.append(side);actionHost?.append(menu);target.append(workspace);
-  target.querySelectorAll('input').forEach(i=>{if(i.type!=='file')i.addEventListener('input',()=>{approval=null;send.disabled=true;rememberDraft();});});
- }
 }
 function collect(){
  const variationType=type(),options=[];
@@ -269,5 +229,5 @@ async function load(data){
   render();
  }catch(e){if(seq===loadSerial)notify('Dados da variação indisponíveis: '+e.message,'error');}
 }
-globalThis.RedeVariants={load,render,transfer:transferImage};
+globalThis.RedeVariants={load,render,transfer:transferImage,saveDraft:persist};
 })();
