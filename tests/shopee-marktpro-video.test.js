@@ -40,7 +40,7 @@ test('UI mostra candidatos e importação manual sem excesso de comandos',()=>{
  assert.match(app,/optimizerVideoFindMarket\(\)/);
  assert.match(app,/queueMicrotask\(\(\)=>\$\('#optimizerVideoUpload'\)\?\.click\(\)\)/);
  assert.match(app,/Usar este vídeo/);
- assert.match(html,/\/app\.js\?v=1\.21\.76-execution-attribute-order/);
+ assert.match(html,/\/app\.js\?v=1\.21\.77-variations-single-flow/);
 });
 
 test('catalogo real informado pelo lojista usa packvideoswedrop e encontra a bicicleta 2392',async()=>{
