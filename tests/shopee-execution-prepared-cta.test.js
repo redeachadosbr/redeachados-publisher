@@ -45,3 +45,25 @@ test('Motor Matriz: troca de SKU não herda execução parcial, escopo fica expl
  assert.match(js,/optimizerExecPrepareError=String\(e\.message\|\|e\)/);
  assert.match(js,/Não foi possível preparar/);
 });
+
+test('ficha técnica revisada com draft salvo não desaparece silenciosamente da prévia',()=>{
+ const server=readFileSync(new URL('../server.js',import.meta.url),'utf8');
+ assert.match(server,/function approvedTechnicalDraftChanges\(/);
+ assert.match(server,/reviewState\._technicalRecoveredFromApprovedDraft=true/);
+ assert.match(server,/reviewState\.attributes=classified\.valid/);
+ assert.match(server,/Ficha técnica aprovada sem atributos elegíveis para envio/);
+ assert.match(server,/approvedTechnicalDraftChanges\(source\)/);
+ assert.match(server,/technicalDraft\.fields\.length/);
+ assert.match(server,/draftTime|draft\?\.updatedAt|Date\.parse\(String\(draft\?\.updatedAt/);
+});
+test('envio mídia economiza transferências, mantém confirmação durável e impede duplicidade',()=>{
+ const video=readFileSync(new URL('../shopeeManualVideo.js',import.meta.url),'utf8');
+ const server=readFileSync(new URL('../server.js',import.meta.url),'utf8');
+ const worker=readFileSync(new URL('../shopeeExecutionWorker.js',import.meta.url),'utf8');
+ assert.match(video,/verifiedVideoDownloads=new Map\(\)/);
+ assert.match(video,/asset\.storage_path,asset\.sha256,asset\.size_bytes/);
+ assert.match(video,/crypto\.createHash\('sha256'\)/);
+ assert.match(server,/await checkpointShopeeExecution\(job,out\.result,out\.delay\)/);
+ assert.match(server,/setTimeout\(\(\)=>void runOptimizerJobs\(\)/);
+ assert.match(worker,/result\.imageIds/);
+});
