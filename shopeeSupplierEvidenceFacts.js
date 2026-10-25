@@ -67,6 +67,34 @@ export function supplierProductDimensions(text){
    value:match.slice(1,4).map(sizeNumber).join(' x ')+' cm',provenance:match[0]};
  return null;
 }
+// Evidências literais já salvas pelo vendedor, na mesma SKU.
+// Não converter afirmações sobre embalagem/logística em dimensões do produto.
+export function supplierConfirmedTextFacts(sourceText=''){
+ const text=String(sourceText||'').slice(0,24000);
+ const normalized=plain(text);
+ const oneLine=(re)=>{const m=normalized.match(re);return m?.[1]?.trim()||null;};
+ const packageBlock=normalized.match(/(?:^|\n)\s*(?:contem|itens? inclusos?|conteudo da embalagem|acompanha)\s*:\s*\n([\s\S]*?)(?=\n\s*(?:especificacoes|caracteristicas|dados tecnicos|registro inmetro|ncm)\s*:|$)/i)?.[1]||'';
+ let quantity=null,packageEvidence='';
+ const lines=packageBlock.split(/\n/).map(x=>x.trim()).filter(Boolean);
+ // Uma linha com "01 Bicicleta ..." indica UMA unidade do produto, não
+ // uma string para gravar no campo numérico "Quantidade".
+ if(lines.length===1){
+  const q=lines[0].match(/^[-•]?\s*0*([1-9]\d{0,2})\s*(?:x|×|-)?\s+(.{5,160})$/);
+  if(q){quantity=String(Number(q[1]));packageEvidence='Contém: '+lines[0];}
+ }
+ const explicitQuantity=oneLine(/(?:^|\n)\s*(?:quantidade(?:\s+(?:por|da)\s+embalagem)?|quantity(?: per pack)?)\s*:\s*([1-9]\d{0,2})\b/);
+ if(explicitQuantity){quantity=explicitQuantity;packageEvidence='Quantidade declarada: '+explicitQuantity;}
+ const age=oneLine(/(?:idade recomendada\s*:\s*|(?:indicado|indicada|indicados|indicadas)\s+para\s+criancas\s+|a partir de\s+)(?:acima\s+de\s+|maiores?\s+de\s+)?(\d{1,2})\s*anos?\b/)||
+  oneLine(/(?:indicado|indicada|indicados|indicadas)\s+para\s+criancas\s+(?:acima\s+de|maiores?\s+de)\s+(\d{1,2})\s*anos?\b/);
+ const material=oneLine(/(?:^|\n)\s*(?:composicao|material)\s*:\s*([^\n.;]{3,90})/);
+ const weight=oneLine(/(?:^|\n)\s*peso\s+(?:aprox(?:imado)?\.?|do\s+produto)\s*:\s*(\d{1,4}(?:[.,]\d{1,2})?\s*(?:kg|g))\b/);
+ const supportedWeight=oneLine(/(?:^|\n)\s*(?:peso\s+(?:maximo\s+)?suportado|suporta\s+ate)\s*:\s*(?:ate\s*)?(\d{1,4}(?:[.,]\d{1,2})?\s*(?:kg|g))\b/);
+ const rim=oneLine(/\baro\s*(\d{1,2})\b/);
+ const color=oneLine(/(?:^|\n)\s*cor\s*:\s*([a-z ]{3,36})(?:\n|$)/);
+ const inmetroReference=oneLine(/(?:^|\n)\s*registro\s+inmetro\s*:\s*([^\n]{6,100})/);
+ return {quantity,packageEvidence,age,material,weight,supportedWeight,rim,color,inmetroReference};
+}
+
 export function supplierAttributeSuggestions({attributes=[],proposed=[],supplier=null,sourceText='',productDescription=''}={}){
  const facts=supplier?.product_data||{},notes=clean(sourceText).slice(0,12000);
  const officialDescription=clean(facts.description||facts.details||'').slice(0,12000);
@@ -75,11 +103,17 @@ export function supplierAttributeSuggestions({attributes=[],proposed=[],supplier
   {text:officialDescription,label:'Descrição do catálogo WeDrop'},
   {text:fallbackDescription,label:'Descrição existente do anúncio (conferir com fabricante)'}].filter(x=>x.text);
  const supplierName=supplier?'WeDrop '+supplier.source_file+' · SKU '+supplier.supplier_sku:'';
+ const confirmed=supplierConfirmedTextFacts(notes);
  const suggestions=[],conflicts=[],unresolved=[];
  function suggest(attr,value,evidence,{onlyIfMissing=false}={}){
   if(!value||attr.legacy||attr.conditional)return;
   const active=selectedValue(attr,proposed);
   if(equal(value,active))return;
+  // Se um valor anterior divergir da fonte explícita, exibir conflito
+  // mesmo quando ele foi revisado manualmente: NUNCA sobrescrever por conta.
+  if(active&&!conflicts.some(c=>Number(c.attributeId)===Number(attr.id)))
+   conflicts.push({attributeId:attr.id,name:attr.name,current:active,recommended:value,
+    evidence:String(evidence||'').slice(0,250)});
   if(onlyIfMissing&&active)return;
   // Tamanho N2/Nº 2 pode estar grafado de formas diferentes na opção oficial.
   // Só reconciliar essas grafias para atributo de tamanho, mantendo ID original.
@@ -121,7 +155,7 @@ export function supplierAttributeSuggestions({attributes=[],proposed=[],supplier
   const entry={attributeId:attr.id,values:[{valueId:official?.id||0,valueName:official?.name||value}],
    evidence,autoFilled:true};
   suggestions.push(entry);
-  if(active)conflicts.push({attributeId:attr.id,name:attr.name,current:active,recommended:value});
+
  }
  function specifiedText(re){
   for(const src of sources){const m=plain(src.text).match(re);if(m)return {value:m[1]||m[0],source:src.label};}
@@ -144,6 +178,25 @@ export function supplierAttributeSuggestions({attributes=[],proposed=[],supplier
    const explicit=(catalogMaterial?{value:catalogMaterial,source:supplierName+' · material informado no catálogo'}:null)||specifiedText(/(?:^|\n)\s*(?:material|composicao)\s*[:\-]\s*([^\n.;]{2,75})/)||
     specifiedText(/(?:produto|brinquedo|conjunto)\s+(?:fabricado|feito|produzido)\s+em\s+([a-z]{2,32})\b/);
    if(explicit)suggest(attr,plain(explicit.value)==='pp'?'PP':clean(explicit.value),explicit.source+' — material expresso no texto desta SKU.',{onlyIfMissing:true});
+  }else if(/^(?:quantidade|quantity)$/.test(n)){
+   if(confirmed.quantity)suggest(attr,confirmed.quantity,
+    'Informações WeDrop da SKU · '+confirmed.packageEvidence,{onlyIfMissing:true});
+  }else if(/^(?:quantidade por embalagem|quantidade por pacote|quantity per pack|unidades por pacote|unidades por embalagem)$/.test(n)){
+   if(confirmed.quantity)suggest(attr,confirmed.quantity,
+    'Informações WeDrop da SKU · '+confirmed.packageEvidence,{onlyIfMissing:true});
+  }else if(/^(?:idade recomendada|recommended age|idade indicada|age recommendation|age range)$/.test(n)){
+   if(confirmed.age)suggest(attr,'Acima de '+confirmed.age+' anos',
+    'Informações WeDrop da SKU · idade indicada expressamente (não arredondar para faixa etária diferente).',
+    {onlyIfMissing:true});
+  }else if(/^(?:peso maximo suportado|peso suportado|maximum load|maximum weight|weight capacity)$/.test(n)){
+   if(confirmed.supportedWeight)suggest(attr,'Até '+confirmed.supportedWeight,
+    'Informações WeDrop · peso SUPORTADO do produto, não peso da embalagem.',{onlyIfMissing:true});
+  }else if(/^(?:product weight|peso do produto|peso aproximado)$/.test(n)){
+   if(confirmed.weight)suggest(attr,confirmed.weight,
+    'Informações WeDrop · peso aproximado do PRODUTO, não peso da embalagem.',{onlyIfMissing:true});
+  }else if(/^(?:aro|tamanho do aro|wheel size|rim size)$/.test(n)){
+   if(confirmed.rim)suggest(attr,confirmed.rim,
+    'Nome e descrição WeDrop da SKU · número do aro explicitamente informado.',{onlyIfMissing:true});
   }else if(n.includes('inmetro')||n.includes('certificacao')||n.includes('certificado')){
    const officialNumber=specifiedText(/(?:registro|certificado|certificacao|numero\s+de\s+registro)\s*(?:do\s*)?inmetro\s*[:\-]\s*(\d{3,12}\/\d{4}|\d{5,14})\b/)||
     specifiedText(/(?:registro|numero)\s*(?:do\s*)?inmetro\s*(?:n[oº°]\.?)?\s*(\d{3,12}\/\d{4}|\d{5,14})\b/);
@@ -297,6 +350,20 @@ export function supplierAttributeSuggestions({attributes=[],proposed=[],supplier
  }
 
  const metrics=[];
+ if(confirmed.quantity)metrics.push({name:'Unidades do produto',value:confirmed.quantity,
+  note:'Texto WeDrop · '+confirmed.packageEvidence+'. Campo Quantidade recebe número, não nome do produto.'});
+ if(confirmed.age)metrics.push({name:'Idade indicada na WeDrop',value:'Acima de '+confirmed.age+' anos',
+  note:'Não converter automaticamente para uma faixa da Shopee que exclua idades informadas.'});
+ if(confirmed.material)metrics.push({name:'Composição declarada',value:confirmed.material,
+  note:'Texto WeDrop da SKU; considerar campo Material da categoria.'});
+ if(confirmed.weight)metrics.push({name:'Peso aproximado do produto',value:confirmed.weight,
+  note:'Fonte WeDrop · diferente de peso logístico e peso máximo suportado.'});
+ if(confirmed.supportedWeight)metrics.push({name:'Peso máximo suportado',value:confirmed.supportedWeight,
+  note:'Fonte WeDrop · limite suportado, não peso do produto.'});
+ if(confirmed.rim)metrics.push({name:'Aro informado',value:confirmed.rim,
+  note:'Fonte WeDrop · conferir opção exata da categoria.'});
+ if(confirmed.inmetroReference)metrics.push({name:'Referência INMETRO informada pelo fornecedor',value:confirmed.inmetroReference,
+  note:'Não é certificação conferida. Validar identificação e situação no registro oficial antes de publicar.'});
  if(dims)metrics.push({name:'Dimensões do produto (A × L × C)',value:dims.value,
   note:dimSource+'; confirmar medidas montadas. Não utilizar dimensões logísticas.'});
  const capacity=specifiedText(/(?:capacidade|volume)\s*[:\-]?\s*(\d{2,5})\s*(?:litros|l\b)/);
