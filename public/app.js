@@ -1492,6 +1492,36 @@ $('#loadAdsBtn').onclick=async()=>{
 };
 // Custos WeDrop: importação exige prévia e mapeamento explícito do arquivo CSV.
 let weDropCsvText=null;
+let wedropWorkbookRef=null,wedropWorkbookReadPromise=null;
+async function wdReadCatalogText(file){
+ if(!file)throw Error('Selecione um catálogo WeDrop CSV, XLSX ou XLS.');
+ if(file.size>4_000_000)throw Error('Arquivo acima de 4 MB. Divida o catálogo.');
+ if(wedropWorkbookRef!==file){
+  wedropWorkbookRef=file;wedropWorkbookReadPromise=null;
+ }
+ if(!wedropWorkbookReadPromise){
+  wedropWorkbookReadPromise=(async()=>{
+   if(/\\.csv$/i.test(file.name))return file.text();
+   if(!/\\.xlsx?$/i.test(file.name))
+    throw Error('Formato não aceito. Envie CSV, Excel .xlsx ou .xls.');
+   const bytes=new Uint8Array(await file.arrayBuffer());
+   let binary='';
+   for(let i=0;i<bytes.length;i+=32768)
+    binary+=String.fromCharCode(...bytes.subarray(i,i+32768));
+   const converted=await json('/api/shopee/wedrop/convert-excel',{
+    method:'POST',headers:{'Content-Type':'application/json'},
+    body:JSON.stringify({base64:btoa(binary),fileName:file.name}),
+    signal:AbortSignal.timeout(60000)
+   });
+   if(!converted?.csv)throw Error('Excel sem linhas reconhecidas.');
+   wdSetNotice('#wedropImportStatus',
+    'Aba Excel '+converted.sheetName+' convertida para conferência: '+
+     converted.rows+' linhas. Aplicando validação de custos e SKUs.','info');
+   return converted.csv;
+  })().catch(error=>{wedropWorkbookReadPromise=null;throw error;});
+ }
+ return wedropWorkbookReadPromise;
+}
 let weDropPreview=null;
 let weDropValidation=null;
 let weDropImportBusy=false;
@@ -1546,9 +1576,9 @@ $('#wedropPreviewBtn').onclick=async()=>{
   weDropCsvText=null;weDropPreview=null;
   try{
     const file=$('#wedropFile').files?.[0];
-    if(!file)throw Error('Selecione um arquivo CSV exportado da WeDrop.');
-    if(file.size>4_000_000)throw Error('Arquivo acima de 4 MB. Divida o CSV em partes menores.');
-    const raw=await file.text();
+    if(!file)throw Error('Selecione um arquivo CSV ou Excel exportado da WeDrop.');
+    if(file.size>4_000_000)throw Error('Arquivo acima de 4 MB. Divida o catálogo em partes menores.');
+    const raw=await wdReadCatalogText(file);
     const data=await json('/api/shopee/wedrop/preview',{
       method:'POST',headers:{'Content-Type':'application/json'},
       body:JSON.stringify({csv:raw}),signal:AbortSignal.timeout(30000)
@@ -1570,7 +1600,7 @@ $('#wedropPreviewBtn').onclick=async()=>{
   }catch(e){
     wdSetNotice('#wedropImportStatus','Falha na prévia: '+e.message,'error');
   }finally{
-    button.disabled=false;button.textContent='Conferir colunas do CSV';
+    button.disabled=false;button.textContent='Conferir colunas do arquivo';
   }
 };
 async function loadWeDropSourceState(){
@@ -1598,7 +1628,7 @@ async function loadWeDropSourceState(){
       $('#wedropUploadDetails').open=true;
       $('#wedropNoCatalogMessage').textContent=
         'Ainda não há custos WeDrop cadastrados nesta loja. '+
-        'Selecione um CSV oficial uma única vez para começar.';
+        'Selecione um CSV ou Excel oficial uma única vez para começar.';
     }
     $('#wedropSourceStatus').textContent=
       status.feedConfigured
@@ -1656,6 +1686,7 @@ $('#wedropCheckFeedBtn').onclick=async()=>{
   }finally{button.disabled=false;}
 };
 $('#wedropFile').onchange=async()=>{
+  wedropWorkbookRef=null;wedropWorkbookReadPromise=null;
   weDropCsvText=null;weDropPreview=null;weDropValidation=null;
   $('#wedropImportBtn').disabled=true;
   $('#wedropPreviewArea').hidden=true;
@@ -1665,14 +1696,14 @@ $('#wedropFile').onchange=async()=>{
   const control=$('#wedropFile');
   if(file.size>4_000_000){
     wdSetNotice('#wedropAutoStatus',
-      'Arquivo acima de 4 MB. Divida o CSV ou utilize uma origem de feed autorizada.','error');
+      'Arquivo acima de 4 MB. Divida o catálogo ou utilize uma origem de feed autorizada.','error');
     return;
   }
   control.disabled=true;
   wdSetNotice('#wedropAutoStatus',
     'Lendo catálogo oficial WeDrop e atualizando custos por SKU automaticamente...','info');
   try{
-    const raw=await file.text();
+    const raw=await wdReadCatalogText(file);
     const result=await json('/api/shopee/wedrop/auto/import',{
       method:'POST',headers:{'Content-Type':'application/json'},
       body:JSON.stringify({csv:raw,fileName:file.name}),
@@ -1690,7 +1721,7 @@ $('#wedropFile').onchange=async()=>{
   }catch(error){
     wdSetNotice('#wedropAutoStatus',
       'A atualização automática foi bloqueada: '+error.message+
-      '. Se este CSV não segue o layout oficial, abra a importação manual avançada.','error');
+      '. Se o arquivo não segue o layout oficial, abra a importação manual avançada.','error');
   }finally{control.disabled=false;}
 };
 
