@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
 import {
- validateVariationName,variationImagePrompt,validateVariationDetails,buildVariationPayload
+ validateVariationName,variationImagePrompt,validateVariationDetails,reviewedVariationEvidence,buildVariationPayload
 } from '../shopeeVariationMedia.js';
 
 const asset={storagePath:'123/456/0/variations/fe30c932-1122-44ab-88dd-aabb99887766.png',
@@ -63,4 +63,36 @@ test('novo anúncio exige opção original e nova opção no preview; não apaga
  const server=readFileSync(new URL('../server.js',import.meta.url),'utf8');
  assert.match(server,/Para criar variações sem apagar a opção original/);
  assert.match(server,/Informe a opção original e a nova variação/);
+});
+
+test('TUD0887: revisão geral posterior às imagens cobre confirmação por opção',()=>{
+ const assetFor=(time,hash)=>({storagePath:'852701218/58221373138/0/variations/'+hash+'.png',
+  sha256:hash,savedAt:time});
+ const options=[
+  {name:'Vermelha',sku:'TUD0887-VERMELHA',supplierSku:'TUD0888',gtin:'7898696008881',
+   price:270.99,stock:1,photoConfirmed:false,stockConfirmed:false,
+   asset:assetFor('2026-10-25T17:01:18.853Z','f72bae')},
+  {name:'Azul',sku:'TUD0887-AZUL',supplierSku:'TUD0887',gtin:'7898696008874',
+   price:270.99,stock:1,photoConfirmed:false,stockConfirmed:false,
+   asset:assetFor('2026-10-25T16:56:34.127Z','c17b00')}
+ ];
+ const approvedReview={reviewed:true,reviewedAt:'2026-10-25T17:01:34.599Z'};
+ const reviewed={type:'Cor',updatedAt:'2026-10-25T17:01:07.231Z',options};
+ assert.equal(reviewedVariationEvidence(reviewed,approvedReview),true);
+ assert.equal(validateVariationDetails(reviewed,{requirePhotos:true,approvedReview}).options.length,2);
+ assert.throws(()=>validateVariationDetails(reviewed,{requirePhotos:true}),/Confirme foto/);
+ assert.equal(reviewedVariationEvidence({...reviewed,updatedAt:'2026-10-25T17:02:00.000Z'},approvedReview),false);
+ assert.equal(reviewedVariationEvidence({...reviewed,options:[{...options[0],asset:assetFor('2026-10-25T17:03:00.000Z','new')},options[1]]},approvedReview),false);
+ assert.throws(()=>validateVariationDetails({...reviewed,options:[{...options[0],asset:null},options[1]]},{requirePhotos:true,approvedReview}),/Foto pendente/);
+});
+test('a preparação confere a revisão geral e o vínculo exato SKU/EAN por cor',async()=>{
+ const {readFileSync}=await import('node:fs');
+ const server=readFileSync(new URL('../server.js',import.meta.url),'utf8');
+ const client=readFileSync(new URL('../public/app.js',import.meta.url),'utf8');
+ assert.match(server,/approvedReview:reviewState\.stages\?\.variants/);
+ assert.match(server,/supplierEan===approvedEan/);
+ assert.match(server,/details\.reviewed===true/);
+ assert.match(server,/sameCategory&&correctOption&&exactEan/);
+ assert.match(client,/optimizerExecAutoModelPreview\?\.needsBasePriceUpdate/);
+ assert.match(server,/fresh\.needsBasePriceUpdate&&req\.body\?\.allowPriceChange!==true/);
 });
