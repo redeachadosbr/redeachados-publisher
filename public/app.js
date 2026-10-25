@@ -4705,7 +4705,9 @@ async function optimizerExecuteApproved(remainingOnly=false){
        ...(remainingOnly?{remainingOnly:true}:{}),
        ...(['all','remaining'].includes(p.selectedStage)?{discountApprovalToken:p.modelVariations?
         optimizerExecAutoModelToken:optimizerDiscountFinalPreviewData?.approvalToken,
-        allowPriceChange:p.modelVariations?Boolean(optimizerExecAutoModelPreview?.modelPriceChange):
+        allowPriceChange:p.modelVariations?Boolean(
+         optimizerExecAutoModelPreview?.needsBasePriceUpdate||
+         optimizerExecAutoModelPreview?.modelPriceChange):
          discountIntent?.consent===true}:{})}),
      signal:AbortSignal.timeout(85000)
    });
