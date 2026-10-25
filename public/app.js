@@ -3716,6 +3716,10 @@ function optimizerExecutionTrackerRender(progress,job){
  if(!tracker||!activity)return;
  const visible=Boolean(progress.hasStarted||progress.hasSavedProgress||progress.state==='prepared'||progress.state==='blocked');
  tracker.hidden=!visible;activity.hidden=!visible;
+ // A autorização fica JUNTO do indicador 0%, nunca acima da parte visível
+ // da execução. Em running/verified o botão desaparece para evitar repetição.
+ const resumeBar=tracker.querySelector('.optimizer-exec-resume-bar');
+ if(resumeBar)resumeBar.hidden=!['prepared','blocked'].includes(progress.state);
  if(!visible)return;
  const w=optimizerWorkflowPlan||{},sku=String(job?.sku||w.sku||'');
  optimizerExecProgress={...progress,sku,itemId:String(job?.item_id||w.itemId||''),
@@ -4404,6 +4408,27 @@ function optimizerExecUpdateRunButton(){
    ?'Conferir a promoção no bloco de desconto antes de executar a SKU':'Executar etapas aprovadas na Shopee';
  // Mantido somente para compatibilidade com o fluxo legado oculto.
  $('#optimizerExecutionRun').disabled=unavailable;
+ const nextTitle=$('#optimizerExecutionNextActionTitle');
+ const nextDescription=$('#optimizerExecutionNextActionDescription');
+ if(nextTitle&&nextDescription){
+  if(!p){
+   nextTitle.textContent='Verificando prévia da SKU';
+   nextDescription.textContent='Aguardando a validação do anúncio e das etapas; nenhum envio foi iniciado.';
+  }else if(!p.canExecute){
+   nextTitle.textContent='Execução bloqueada — corrigir pendências';
+   nextDescription.textContent=(p.blocked||[]).slice(0,2).join(' · ')||
+    'Revalide a prévia antes de autorizar uma execução.';
+  }else if(!optimizerDiscountReviewedForExecution(p)){
+   nextTitle.textContent='Falta conferir o desconto da etapa 08';
+   nextDescription.textContent='A prévia comercial está preparada. Use “Conferir desconto para liberar execução” aqui e depois execute uma única vez.';
+  }else if(optimizerExecBusy){
+   nextTitle.textContent='Autorização enviada — verificando início';
+   nextDescription.textContent='O servidor ainda precisa confirmar o recebimento. Não repita o comando.';
+  }else{
+   nextTitle.textContent='Prévia pronta — executar SKU '+p.sku;
+   nextDescription.textContent='0% significa aguardando sua autorização. O botão abaixo iniciará a execução única da prévia revisada; os resultados serão conferidos na API Shopee.';
+  }
+ }
 }
 async function optimizerConnectionCheck(){
  const el=$('#optimizerConnectionStatus');const btn=$('#optimizerConnectionCheck');

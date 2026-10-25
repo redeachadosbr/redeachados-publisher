@@ -454,14 +454,6 @@
             </div>
             <span id="optimizerExecutionLiveBadge" class="optimizer-exec-live-badge">● Sincronizando</span>
           </div>
-          <div class="optimizer-exec-resume-bar" aria-label="Retomar execução preparada">
-            <div class="optimizer-exec-resume-copy">
-              <strong>Próximo passo: continuar a publicação na Shopee</strong>
-              <small>Imagens e vídeo já enviados serão reutilizados quando disponíveis. O comando autoriza apenas a prévia conferida; anúncio, variações, fiscal e desconto serão verificados em sequência conforme o plano aprovado. Se estiver desabilitado, confira as aprovações pendentes.</small>
-            </div>
-            <button id="optimizerExecutionRemaining" type="button" hidden>▶ Executar só variações + fiscal + desconto</button>
-            <button id="optimizerExecutionLaunch" type="button" hidden>▶ Retomar plano completo</button>
-          </div>
           <div class="optimizer-exec-product">
             <div class="optimizer-exec-product-visual">
               <img id="optimizerExecutionProductImage" alt="Foto atual do anúncio na Shopee" hidden>
@@ -484,6 +476,15 @@
               <div><strong>Progresso técnico da execução</strong><p id="optimizerExecutionProgressDetail">Upload, envio e conferência; o percentual não representa anúncios publicados.</p></div>
               <div class="optimizer-exec-percent"><span id="optimizerExecutionMediaCount"></span><strong id="optimizerExecutionPercent">0%</strong></div>
             </div>
+          <div class="optimizer-exec-resume-bar" aria-label="Retomar execução preparada">
+            <div class="optimizer-exec-resume-copy">
+              <strong id="optimizerExecutionNextActionTitle">Próximo passo: preparar autorização</strong>
+              <small id="optimizerExecutionNextActionDescription">O anúncio não será publicado antes de você autorizar a prévia.</small>
+            </div>
+            <button id="optimizerExecutionRemaining" type="button" hidden>▶ Executar só variações + fiscal + desconto</button>
+            <button id="optimizerExecutionLaunch" type="button" hidden>▶ Retomar plano completo</button>
+          </div>
+
             <div id="optimizerExecutionBar" class="optimizer-exec-progress-track" role="progressbar" aria-label="Progresso operacional de uploads e verificações, não percentual publicado" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0"><span id="optimizerExecutionBarFill"></span></div>
             <ol id="optimizerExecutionSteps" class="optimizer-exec-steps" aria-label="Etapas reais do processamento"></ol>
           </div>
@@ -1680,7 +1681,7 @@
 <script src="/sidebar-collapse.js?v=1.0.0"></script>
 <script src="/optimizer-compact.js?v=1.20.12"></script>
 <script src="/optimizer-dashboard.js?v=1.21.36-resume-progress"></script>
-<link rel="stylesheet" href="/optimizer-execution-progress.css?v=1.0.0">
+<link rel="stylesheet" href="/optimizer-execution-progress.css?v=1.0.1-visible-next-step">
 <script src="/dashboard-new-listings.js?v=1.20.21-shopee"></script>
 <script src="/seo-chatgpt-bridge.js?v=1.0.10-durable-auto-import"></script>
 <script src="/seo-title-scoring.js?v=1.0.2-valid-title-ranking"></script>
@@ -1690,7 +1691,7 @@
 <script src="/description-modern-layout.js?v=1.0.7-sections-ordered"></script>
 <script src="/fiscal-modern-layout.js?v=1.0.1-fiscal-cards"></script>
 <script src="/technical-memory.js?v=1.0.1-live-sku-preload"></script>
-<script src="/app.js?v=1.21.74-live-technical-fields"></script>
+<script src="/app.js?v=1.21.75-execution-action-visible"></script>
 <link rel="stylesheet" href="/optimizer-variations.css?v=1.2.0">
 <script src="/optimizer-variations.js?v=1.2.2-supplier-color"></script>
 

@@ -24,3 +24,16 @@
 }
 .optimizer-exec-percent strong { color: #0e9860; }
 .optimizer-exec-progress-track[aria-valuenow="0"] span { box-shadow: none; }
+
+/* Etapa preparada: CTA ao lado dos 0%, dentro do enquadramento visível. */
+.optimizer-exec-progress-card .optimizer-exec-resume-bar {
+ display:flex;align-items:center;justify-content:space-between;
+ flex-wrap:wrap;gap:12px;margin:15px 0;
+ padding:14px;border:1px solid #b8d5f5;
+ border-radius:12px;background:#fff;
+}
+.optimizer-exec-progress-card .optimizer-exec-resume-bar[hidden]{display:none!important}
+.optimizer-exec-progress-card .optimizer-exec-resume-copy{flex:1 1 250px;min-width:0}
+.optimizer-exec-progress-card .optimizer-exec-resume-copy strong{display:block;font-size:14px;color:#123360}
+.optimizer-exec-progress-card .optimizer-exec-resume-copy small{display:block;margin-top:5px;font-size:12px;line-height:1.5;color:#526987}
+.optimizer-exec-progress-card .optimizer-exec-resume-bar button:not([hidden]){max-width:100%;white-space:normal}
