@@ -1,37 +1,54 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {confirmedSpecCard} from '../public/specificationCard.js';
+import {confirmedProductDimensionsFromWeDrop} from '../public/productDimensions.js';
 import {createChatGptPrompts} from '../public/chatgptPrompts.js';
 import {readFileSync} from 'node:fs';
 
-test('SKU 303448: somente medidas do caminhão, nunca dimensões de embalagem WeDrop',()=>{
- const specs=confirmedSpecCard({sku:'303448'});
- assert.equal(specs.title,'MEDIDAS DO CAMINHÃO');
- assert.deepEqual(specs.measurements.map(x=>x.value),['35 cm','16 cm','9 cm']);
- assert(specs.details.some(x=>x.includes('ABS')));
- assert(specs.details.some(x=>x.includes('3 mini carrinhos')));
- const asText=JSON.stringify(specs);
- assert(!asText.includes('48 cm')&&!asText.includes('18 cm')&&!asText.includes('15 cm'));
+const evidence=[
+ 'MARCA','UNITOYS','NCM','87120010','PESO','12500g',
+ 'ALTURA','66cm','LARGURA','100cm','COMPRIMENTO','27cm',
+ 'Perfeita para passeios ao ar livre.',
+ 'Especificações:',
+ 'Dimensões: 75cm altura x 63cm largura x 117cm comprimento',
+ 'Peso suportado: Até 50kg','Cor: Rosa','Aro 16'
+].join('\n');
+
+test('SKU 2392: usa somente dimensoes declaradas na secao Especificacoes do texto WeDrop',()=>{
+ const spec=confirmedSpecCard({sku:'2392',sourceText:evidence,attributes:[]});
+ assert.deepEqual(spec.measurements.map(x=>x.value),['75 cm','63 cm','117 cm']);
+ assert.deepEqual(spec.measurements.map(x=>x.label),['ALTURA','LARGURA','COMPRIMENTO']);
+ assert.equal(spec.details,undefined);
+ const raw=JSON.stringify(spec);
+ for(const forbidden of ['66 cm','100 cm','27 cm','48 cm','72 cm','95 cm','35 cm','50 kg'])
+  assert(!raw.includes(forbidden),'nao utilizar '+forbidden);
 });
-test('prompt 03 é exatamente a instrução do usuário; informações WeDrop não entram na mensagem',()=>{
- const x=createChatGptPrompts({sku:'303448',title:'Caminhão Dinossauro com 3 Mini Carrinhos - Verde'});
- assert.equal(x.prompts[2],'Imagem 03 — Especificações: apresentar as dimensões e características reais confirmadas. imagem com fundo ambientado');
- assert(!x.prompts[2].includes('Manager'));
- assert(!x.prompts[2].includes('SKU 303448'));
- assert(!x.prompts[2].includes('35 cm'));
+test('prompt 03 informa somente medidas confirmadas pela SKU e fotografa sem numeros inventados',()=>{
+ const x=createChatGptPrompts({sku:'2392',title:'Bicicleta Infantil Moto Cross Rosa',
+  supplierSourceText:evidence});
+ assert.match(x.prompts[2],/ALTURA: 75 cm/);
+ assert.match(x.prompts[2],/LARGURA: 63 cm/);
+ assert.match(x.prompts[2],/COMPRIMENTO: 117 cm/);
+ assert.match(x.prompts[2],/NÃO escreva nenhuma palavra, número, unidade/);
+ assert.doesNotMatch(x.prompts[2],/48 cm|58 cm|68 cm|72 cm|35 cm/);
 });
-test('upload ponte aplica ficha técnica antes da confirmação no servidor',()=>{
+test('imagem 03 aplica apenas medidas depois de receber a foto no Manager',()=>{
  const app=readFileSync(new URL('../public/app.js',import.meta.url),'utf8');
+ const card=readFileSync(new URL('../public/specificationCard.js',import.meta.url),'utf8');
  const img=app.indexOf("if(Number(m.slot)===3)");
  const hash=app.indexOf("const sha256=await imageBlobSha256(prepared.blob)",img);
  assert(img>0&&hash>img);
  const block=app.slice(img,hash);
- assert(block.includes('addConfirmedSpecificationCard'));
- assert(block.includes('Imagem 03 requer especificações confirmadas'));
+ assert.match(block,/confirmedSpecCard\(\{sourceText:w\.sourceEvidence\?\.sourceText\|\|''\}\)/);
+ assert.match(block,/addConfirmedSpecificationCard/);
+ assert.match(card,/confirmedProductDimensionsFromWeDrop\(sourceText\)/);
+ assert.doesNotMatch(card,/MEDIDAS DO CAMINHÃO|CARACTERÍSTICAS CONFIRMADAS|Material: plástico/);
 });
-test('outras SKUs sem dados verificados nunca recebem dimensões inventadas',()=>{
- assert.equal(confirmedSpecCard({sku:'aleatorio',attributes:[]}),null);
- const known=confirmedSpecCard({sku:'aleatorio',attributes:[{name:'Cor',value:'Verde'}]});
- assert.deepEqual(known.details,['Cor: Verde']);
- assert.equal(known.measurements.length,0);
+test('rejeita peso, medidas soltas, medida da embalagem e conflitos',()=>{
+ const isolated='ALTURA\n66cm\nLARGURA\n100cm\nCOMPRIMENTO\n27cm';
+ assert.equal(confirmedProductDimensionsFromWeDrop(isolated),null);
+ assert.equal(confirmedSpecCard({sku:'2392',sourceText:isolated}),null);
+ assert.equal(confirmedProductDimensionsFromWeDrop('Dimensões da embalagem: 40cm altura x 50cm largura x 60cm comprimento'),null);
+ const conflicts='Dimensões: 75cm altura x 63cm largura x 117cm comprimento\nDimensões: 90cm altura x 63cm largura x 117cm comprimento';
+ assert.equal(confirmedProductDimensionsFromWeDrop(conflicts),null);
 });
