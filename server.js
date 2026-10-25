@@ -76,6 +76,7 @@ import {quoteShopeePrice,normalizeShopeePricingSettings} from './shopeePricing.j
 import {lookupShopeeCompetitors,marketResearchConfigured} from './shopeeMarketResearch.js';
 import {promotionFromQuote,promotionBasePrice,promotionMember,shopDiscountMembershipSignal,discountPlanSnapshot,signDiscountPreview,verifyDiscountPreview,readDiscountPages} from './shopeeDiscountPublish.js';
 import {discountPreviewStatus} from './shopeeDiscountDeferred.js';
+import {marketFloorDiscountEligibility} from './shopeeMarketFloorApproval.js';
 import {verifyShopeeListingStatus} from './shopeeListingStatus.js';
 import {scanLiveNormalSku,catalogCandidatesIfNoActive} from './shopeeSkuActiveResolver.js';
 import {shopeePricingPreferences,saveShopeePricingPreferences,
@@ -3068,8 +3069,11 @@ async function discountExecutionInputs(req,sku,itemId,modelId,discountId,{allowM
     research.count<REDE_ACHADOS_MARKET_RULES.minimumOffers||
     quote.discountRecommendationSource!=='researched')
   throw Error('Desconto ainda sem pesquisa de concorrentes validada. Conecte a API de ofertas Shopee e recalcule a SKU em Precificação antes de executar.');
- if(quote.status==='MERCADO_ABAIXO_DO_PISO')
-  throw Error('Preços de concorrentes abaixo da margem mínima. Nenhum desconto será aplicado.');
+ // A pesquisa é VÁLIDA. Quando o PREÇO escolhIDO pelo vendedor preserva
+ // margem mínima acima do piso, não confundir preço do concorrente abaixo
+ // do piso com desconto do vendedor abaixo do piso.
+ const marketFloor=marketFloorDiscountEligibility(quote);
+ if(!marketFloor.allowed)throw Error(marketFloor.message);
  const beforePublish=promotionFromQuote(quote);
  const attractiveVisiblePrice=value=>{
   const cents=Math.round(Number(value)*100)%10;
@@ -3143,7 +3147,8 @@ async function discountExecutionInputs(req,sku,itemId,modelId,discountId,{allowM
  const snapshot={...discountPlanSnapshot({shopId:auth.shopId,sku,itemId,modelId,discountId,
    quote,record,existing,originalPrice}),
    promotionSignal:promoMembership.kind,
-   promotionNotice:promoMembership.warning};
+   promotionNotice:promoMembership.warning,
+   marketFloorNotice:marketFloor.message};
  return {auth,cfg,quote,snapshot,originalPrice,deferred:publicationState.deferred,
   liveItemStatus:publicationState.status,
   liveStatusSource:listingStatus.source,baseItemStatus:listingStatus.baseStatus,
@@ -3175,7 +3180,7 @@ async function variationModelDiscountContext(req){
    !Number.isFinite(Date.parse(quote.marketResearch.researchedAt))||
    Date.now()-Date.parse(quote.marketResearch.researchedAt)>48*3600000||
    quote.discountRecommendationSource!=='researched'||
-   quote.status==='MERCADO_ABAIXO_DO_PISO'||
+   !marketFloorDiscountEligibility(quote).allowed||
    !Number.isFinite(Date.parse(quote.calculatedAt))||
    Date.now()-Date.parse(quote.calculatedAt)>7*86400000)
   throw Error('Preço e pesquisa de concorrentes precisam ser recalculados antes de publicar a promoção por variação.');
