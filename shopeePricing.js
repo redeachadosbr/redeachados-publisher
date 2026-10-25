@@ -81,14 +81,18 @@ export function adjustShopeeCustomerPriceEnding({grossCents,settings,unitCostCen
  // Os centavos são arredondados para a terminação segura MAIS PRÓXIMA.
  // Sem preços arbitrários: procura primeiro o menor ajuste real que preserve a margem.
  // o preço bruto; nenhuma margem ou referência de mercado é ultrapassada.
- const range=Math.min(4000,Math.ceil((requireMarketplaceEnding?505:105)/factor)+5);
+ // Dois finais de vitrine (antes do cupom) e checkout (após cupom)
+ // podem ficar separados por mais de R$4,99. Ex.: SKU 2392, custo
+ // R$569,99, alvo 5%: a primeira combinação segura exige R$5,01.
+ // Buscar até R$19,99, sem jamais baixar margem nem romper teto de mercado.
+ const range=Math.min(4000,Math.ceil((requireMarketplaceEnding?2020:105)/factor)+5);
  let best=null;
  for(let delta=-range;delta<=range;delta++){
   const candidateGross=grossCents+delta;
   if(candidateGross<=0||candidateGross>BRL_LIMIT)continue;
   const candidate=calculateShopeeSale(candidateGross,settings,unitCostCents);
   const difference=candidate.saleCents-originalSaleCents;
-  if(Math.abs(difference)>(requireMarketplaceEnding?499:99)||!allowed(candidate.saleCents)||
+  if(Math.abs(difference)>(requireMarketplaceEnding?1999:99)||!allowed(candidate.saleCents)||
      (requireMarketplaceEnding&&!allowed(visibleCents(candidate))))continue;
   if(maximumSaleCents!==null&&candidate.saleCents>maximumSaleCents)continue;
   if(candidate.marginPct+1e-8<minimumMarginPct)continue;
