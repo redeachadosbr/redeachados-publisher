@@ -43,3 +43,19 @@ test('interface oferece recuperação do desconto e diferencia aprovação fisca
  assert.match(js,/optimizerDiscountOpenReview\(\)/);
  assert.match(js,/optimizerExecutionPrepare\(\)/);
 });
+
+test('qualquer SKU: prévia parcial não pode parecer pronta para anúncio inteiro',()=>{
+ const progress=shopeeExecutionProgress({
+  sku:'SKU-GENERICA',item_id:'919293',model_id:'0',state:'prepared',run_id:null,result:null,
+  plan:{...sku2392,sku:'SKU-GENERICA',itemId:'919293',selectedStage:'images',
+   images:Array.from({length:9},(_,slot)=>({slot:slot+1})),
+   video:null,proposed:{},finalFiscal:null,modelVariations:null}
+ });
+ assert.equal(progress.percent,0);
+ assert.equal(progress.hasStarted,false);
+ assert.match(progress.title,/PARCIAL.*SOMENTE IMAGENS.*aguardando autorização/i);
+ assert.match(progress.message,/Outras etapas NÃO estão incluídas/);
+ assert.match(progress.message,/Nenhuma publicação foi iniciada/);
+ assert.equal(progress.imagesUploaded,0);
+ assert.equal(progress.steps.at(-1).status,'skipped');
+});
