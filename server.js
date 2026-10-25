@@ -27,6 +27,7 @@ import {suggestFiscalMeasureUnit} from './shopeeFiscalMeasure.js';
 import {getShopeeNewListingsSummary,clearShopeeNewListingsCache} from './shopeeNewListings.js';
 import {storeCatalogItems,storeCatalogModels,readCatalogCache,catalogStoreReady,findExactCatalogSku,findCatalogSkuIgnoringCase} from './catalogStore.js';
 import {previewWeDropCsv,prepareWeDropImport,MAX_CSV_CHARS} from './wedropCsv.js';
+import {convertWeDropExcelBase64} from './wedropExcel.js';
 import {saveWeDropCosts,getWeDropCoverage,compareIncomingCosts,pendingWeDropModels,upsertWeDropSkuLink} from './wedropCosts.js';
 import {saveWeDropProducts,readWeDropProduct} from './wedropCosts.js';
 import {supplierWorkflowFacts,wedropCestForSku} from './shopeeSupplierFacts.js';
@@ -340,6 +341,16 @@ app.get('/api/shopee/wedrop/auto/status',mustLogin,requireWeDropAdmin,async(req,
         ?'Feed autorizado configurado; consulta periódica depende do serviço estar em execução.'
         :'Atualização automática disponível ao receber um novo CSV. Para detectar alterações na WeDrop sem upload, configure um feed autorizado.'});
   }catch(e){res.status(400).json({error:String(e.message||e).slice(0,350)});}
+});
+// XLS/XLSX percorre o MESMO validador CSV. Só converte arquivo para texto
+// estruturado; nenhuma operação de importação ou publicação ocorre aqui.
+app.post('/api/shopee/wedrop/convert-excel',mustLogin,requireWeDropAdmin,(req,res)=>{
+  res.setHeader('Cache-Control','no-store');
+  if(!verifiedSameOrigin(req))return res.status(403).json({error:'Origem não autorizada.'});
+  try{
+    const result=convertWeDropExcelBase64(req.body?.base64,req.body?.fileName);
+    res.json({ok:true,...result});
+  }catch(error){res.status(400).json({error:String(error.message||error).slice(0,330)});}
 });
 app.post('/api/shopee/wedrop/auto/import',mustLogin,requireWeDropAdmin,async(req,res)=>{
   res.setHeader('Cache-Control','no-store');
