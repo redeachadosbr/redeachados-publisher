@@ -42,7 +42,7 @@ test('Kits exigem atualização recente e excluem indisponíveis mesmo com custo
   const u=new URL(raw);
   assert.equal(u.searchParams.get('shop_id'),'eq.'+shopId);
   const path=u.pathname,now=new Date().toISOString(),yesterday=new Date(Date.now()-26*3600000).toISOString();
-  if(path.endsWith('shopee_wedrop_products'))return Response.json(products);
+  if(path.endsWith('shopee_wedrop_products'))return Response.json(Number(u.searchParams.get('offset')||0)===0?products:[]);
   if(path.endsWith('shopee_wedrop_costs'))return Response.json(products.map(p=>({
     supplier_sku:p.supplier_sku,unit_cost:12
   })));
@@ -70,7 +70,8 @@ test('Kits exigem atualização recente e excluem indisponíveis mesmo com custo
   assert.throws(()=>assertKitComponentsAvailable([{sku:'SKU-FAIL',stockStatus:'INDISPONIVEL'}],stock),/INDISPONÍVEL/);
   await assert.rejects(()=>composeKit(shopId,['SKU-OK','SKU-FAIL']),/INDISPONÍVEL/);
   await assert.rejects(()=>composeKit(shopId,['SKU-OK','SKU-UNKNOWN']),/sem disponibilidade/);
-  await assert.rejects(()=>suggestKits(shopId,{category:'Brinquedos',size:2}),/.*|.*/); // só um SKU elegível
+  const proposed=await suggestKits(shopId,{category:'Brinquedos',size:2});
+  assert.equal(proposed.results.length,0,'não pode combinar um SKU disponível com outro indisponível');
   const brief=await kitPlusResearchBrief(shopId,{category:'Brinquedos',size:2});
   assert.match(brief.prompt,/SKU-OK/);
   assert.doesNotMatch(brief.prompt,/SKU-FAIL|SKU-UNKNOWN/);
