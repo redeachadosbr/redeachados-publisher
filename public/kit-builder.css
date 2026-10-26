@@ -506,3 +506,39 @@
  #tab-kits .kit-import-finish,#tab-kits .kit-builder-stock-notice{flex-wrap:wrap}
  #tab-kits .kit-import-finish button,#tab-kits .kit-builder-stock-notice button{width:100%}
 }
+
+
+/* v2.4: uma só seleção CSV/XLS/XLSX para catálogo e estoque.
+   Os cartões continuam como painéis de resultado, não uploads duplicados. */
+#tab-kits .kit-unified-import{display:grid;gap:11px;padding:15px 18px;margin:8px 0 15px;border:1px solid #c8def4;background:linear-gradient(120deg,#fff,#f5faff);border-radius:13px}
+#tab-kits .kit-unified-intro{display:flex;align-items:center;gap:12px}
+#tab-kits .kit-unified-icon{height:40px;width:40px;flex-shrink:0;display:grid;place-items:center;color:#226adb;background:#e8f1ff;border-radius:11px;font-weight:900;font-size:23px}
+#tab-kits .kit-unified-intro h3{font-size:14px;font-weight:900;margin:0;color:#12365e}
+#tab-kits .kit-unified-intro p{font-size:11px;color:#607f9f;margin:5px 0 0;line-height:1.4}
+#tab-kits .kit-unified-actions{display:grid;grid-template-columns:minmax(0,1fr) minmax(200px,auto);gap:10px;align-items:stretch}
+#tab-kits .kit-unified-actions .kit-import-file{min-width:0;background:#fff}
+#tab-kits .kit-unified-actions button{min-height:42px}
+#tab-kits .kit-unified-hint{margin:0;font-size:10px;line-height:1.6;color:#547493}
+#tab-kits #kitUnifiedStatus{font-size:11px;line-height:1.65;margin:0;color:#617f9f;font-weight:650}
+#tab-kits #kitUnifiedStatus[data-state=success]{color:#167c48}
+#tab-kits #kitUnifiedStatus[data-state=warning]{color:#af6410}
+#tab-kits #kitUnifiedStatus[data-state=error]{color:#bf3333}
+#tab-kits .kit-cost-mapping{display:grid;gap:10px;background:#fff9ef;border:1px solid #f0d4a1;border-radius:10px;padding:12px 14px;color:#704612}
+#tab-kits .kit-cost-mapping[hidden]{display:none!important}
+#tab-kits .kit-cost-mapping strong{font-size:12px}
+#tab-kits .kit-cost-mapping p{font-size:11px;line-height:1.55;margin:5px 0}
+#tab-kits .kit-cost-mapping label{font-size:11px;font-weight:650;display:grid;gap:5px}
+#tab-kits .kit-cost-mapping select{width:100%;min-height:36px;border:1px solid #debd83;background:#fff;border-radius:8px;padding:7px;font-size:11px}
+#tab-kits .kit-cost-mapping .kit-cost-approve{display:flex;flex-direction:row;align-items:flex-start;gap:8px;line-height:1.5}
+#tab-kits .kit-cost-mapping .kit-cost-approve input{margin-top:2px;flex-shrink:0}
+#tab-kits .kit-cost-mapping button{width:max-content;max-width:100%}
+#tab-kits #kitCatalogCard .kit-import-card-actions,#tab-kits #kitAvailabilityCard .kit-import-card-actions{display:none!important}
+#tab-kits #kitStockGate{margin-top:0}
+#tab-kits #kitStockGate .kit-stock-card{min-height:160px}
+#tab-kits .kit-stock-gate[data-ready=yes] #kitStockImportStatus{display:none}
+#tab-kits #kitStockStamp{white-space:normal;text-align:center}
+@media(max-width:660px){
+ #tab-kits .kit-unified-actions{grid-template-columns:1fr}
+ #tab-kits .kit-unified-import{padding:12px}
+ #tab-kits .kit-unified-actions button{width:100%}
+}
