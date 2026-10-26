@@ -30,6 +30,8 @@ import {previewWeDropCsv,prepareWeDropImport,MAX_CSV_CHARS} from './wedropCsv.js
 import {convertWeDropExcelBase64} from './wedropExcel.js';
 import {saveWeDropCosts,getWeDropCoverage,compareIncomingCosts,pendingWeDropModels,upsertWeDropSkuLink} from './wedropCosts.js';
 import {saveWeDropProducts,readWeDropProduct} from './wedropCosts.js';
+import {kitCatalog,suggestKits,composeKit,kitCreative,kitPrompts} from './shopeeKitBuilder.js';
+import {generateKitImage} from './shopeeKitImages.js';
 import {supplierWorkflowFacts,wedropCestForSku} from './shopeeSupplierFacts.js';
 import {supplierAttributeSuggestions} from './shopeeSupplierEvidenceFacts.js';
 import {narrativeTechnicalSuggestions,mergeNarrativeTechnicalFacts,technicalOptionSearchTerms} from './shopeeTechnicalNarrative.js';
@@ -165,7 +167,7 @@ app.use(express.static(path.join(__dirname,'public'),{
 // URLs próprias por setor do painel: recarregar/compartilhar não causa 404.
 // A sessão e autenticação das APIs continuam protegidas pelos mesmos middlewares.
 const appPagePaths=new Set([
-  'inicio','produtos','otimizacao','precificacao','descontos','informacoes-fiscais','pedidos','envios','ads','wedrop','financeiro','configuracoes'
+  'inicio','produtos','kits','otimizacao','precificacao','descontos','informacoes-fiscais','pedidos','envios','ads','wedrop','financeiro','configuracoes'
 ]);
 app.get('/app/:section',(req,res)=>{
   if(!appPagePaths.has(String(req.params.section||'')))return res.status(404).send('Página não encontrada.');
@@ -193,6 +195,65 @@ app.post('/api/logout',(req,res)=>req.session.destroy(error=>error
   ?res.status(503).json({error:'Não foi possível encerrar a sessão. Tente novamente.'})
   :res.clearCookie('connect.sid').json({ok:true})));
 
+// Kits Inteligentes WeDrop: somente leitura/rascunho, isolado de quaisquer
+// operações de publicação Shopee. Valores derivados de catálogo e custo
+// da loja autenticada. Nenhuma rota abaixo altera anúncio, estoque ou promoção.
+app.get('/api/shopee/kits/catalog',mustLogin,requireWeDropAdmin,async(req,res)=>{
+ res.setHeader('Cache-Control','no-store');
+ try{
+  const {auth}=await getValidAuth(req);
+  const data=await kitCatalog(auth.shopId,{
+   category:String(req.query.category||'Todos').slice(0,90),
+   search:String(req.query.search||'').slice(0,100),
+   limit:80
+  });
+  res.json({ok:true,...data});
+ }catch(error){res.status(400).json({error:String(error.message||error).slice(0,300)});}
+});
+app.post('/api/shopee/kits/suggest',mustLogin,requireWeDropAdmin,async(req,res)=>{
+ res.setHeader('Cache-Control','no-store');
+ if(!verifiedSameOrigin(req))return res.status(403).json({error:'Origem não autorizada.'});
+ try{
+  const {auth}=await getValidAuth(req);
+  const data=await suggestKits(auth.shopId,{
+   category:String(req.body.category||'Brinquedos').slice(0,90),
+   size:Number(req.body.size||2),marginPct:Number(req.body.marginPct??15),
+   packing:Number(req.body.packing||0),shipping:Number(req.body.shipping||0),
+   ai:req.body.useAi!==false
+  });
+  res.json({ok:true,...data});
+ }catch(error){res.status(400).json({error:String(error.message||error).slice(0,300)});}
+});
+app.post('/api/shopee/kits/prepare',mustLogin,requireWeDropAdmin,async(req,res)=>{
+ res.setHeader('Cache-Control','no-store');
+ if(!verifiedSameOrigin(req))return res.status(403).json({error:'Origem não autorizada.'});
+ try{
+  const {auth}=await getValidAuth(req);
+  const kit=await composeKit(auth.shopId,req.body?.skus,{
+   marginPct:Number(req.body.marginPct??15),
+   packing:Number(req.body.packing||0),shipping:Number(req.body.shipping||0)
+  });
+  const creative=await kitCreative(auth.shopId,kit,{ai:req.body.useAi!==false});
+  res.json({ok:true,kit,creative,readOnly:true,requiresReview:true});
+ }catch(error){res.status(400).json({error:String(error.message||error).slice(0,300)});}
+});
+app.post('/api/shopee/kits/image',mustLogin,requireWeDropAdmin,async(req,res)=>{
+ res.setHeader('Cache-Control','no-store');
+ if(!verifiedSameOrigin(req))return res.status(403).json({error:'Origem não autorizada.'});
+ try{
+  const {auth}=await getValidAuth(req);
+  const slot=Number(req.body.slot);
+  if(!Number.isInteger(slot)||slot<1||slot>9)throw Error('Foto do kit inválida.');
+  const kit=await composeKit(auth.shopId,req.body?.skus,{
+   marginPct:Number(req.body.marginPct??15),
+   packing:Number(req.body.packing||0),shipping:Number(req.body.shipping||0)
+  });
+  const key=await openAiApiKey(auth.shopId);
+  const prompts=kitPrompts(kit);
+  const result=await generateKitImage({kit,slot,key,prompt:prompts[slot-1]});
+  res.json({ok:true,kitSku:kit.kitSku,...result,requiresReview:true,marketplaceUpdated:false});
+ }catch(error){res.status(400).json({error:String(error.message||error).slice(0,300)});}
+});
 app.get('/api/shopee/status',mustLogin,async(req,res)=>{
   try{
     const cfg=shopeeConfig(baseUrl(req));
