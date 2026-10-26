@@ -383,3 +383,29 @@
  #tab-kits .kit-drafts-panel .kit-card{grid-template-columns:1fr}
  #tab-kits .kit-draft-metrics,#tab-kits .kit-drafts-panel .kit-card>button{grid-column:1;grid-row:auto}
 }
+
+/* Rascunhos — miniaturas reais da WeDrop + valores resumidos */
+#tab-kits .kit-drafts-panel .kit-card{grid-template-columns:125px minmax(0,1.6fr) minmax(0,1.35fr) auto}
+#tab-kits .kit-draft-images{display:flex;gap:4px;width:100%;align-items:center;overflow:hidden;min-height:61px}
+#tab-kits .kit-draft-images img{width:calc((100% - 8px)/3);height:61px;object-fit:contain;border-radius:6px;background:#f8fbff;border:1px solid #edf2fa;box-sizing:border-box}
+#tab-kits .kit-draft-images img:only-child{width:65px}
+#tab-kits .kit-draft-images span{display:grid;place-items:center;width:65px;height:61px;background:#eff5fc;color:#8aa7c5;border-radius:6px}
+#tab-kits .kit-drafts-panel .kit-card .kit-draft-description{grid-column:2;grid-row:1}
+#tab-kits .kit-drafts-panel .kit-card .kit-draft-metrics{grid-column:3;grid-row:1;grid-template-columns:repeat(4,minmax(0,1fr))}
+#tab-kits .kit-drafts-panel .kit-card>button{grid-column:4;grid-row:1}
+@media(max-width:900px){
+ #tab-kits .kit-drafts-panel .kit-card{grid-template-columns:75px minmax(0,1.4fr) minmax(0,1.3fr)}
+ #tab-kits .kit-draft-images{width:75px}
+ #tab-kits .kit-draft-images img{height:50px}
+ #tab-kits .kit-drafts-panel .kit-card .kit-draft-description{grid-column:2;grid-row:1}
+ #tab-kits .kit-drafts-panel .kit-card .kit-draft-metrics{grid-column:3;grid-row:1}
+ #tab-kits .kit-drafts-panel .kit-card>button{grid-column:3;grid-row:2;justify-self:end}
+}
+@media(max-width:580px){
+ #tab-kits .kit-drafts-panel .kit-card{grid-template-columns:80px minmax(0,1fr)}
+ #tab-kits .kit-drafts-panel .kit-card .kit-draft-description{grid-column:2;grid-row:1}
+ #tab-kits .kit-drafts-panel .kit-card .kit-draft-metrics{grid-column:1 / -1;grid-row:2}
+ #tab-kits .kit-drafts-panel .kit-card>button{grid-column:1 / -1;grid-row:3;justify-self:start}
+}
+#tab-kits .kit-hero{flex-direction:row}
+@media(max-width:500px){#tab-kits .kit-hero{flex-direction:column}}
