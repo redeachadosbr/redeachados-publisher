@@ -19,7 +19,8 @@ test('regressão SKU 303448: 122,84 menos 20% exibe 98,27, cupom opcional result
 });
 test('novas cotações garantem finais 0/9 na Shopee visível E no checkout eventual com cupom, margem >=5%',()=>{
  const q=quoteShopeePrice({unitCost:55.99,settings,marketAverage:99.91});
- assert.equal(q.priceEndingRuleVersion,2);
+ assert.equal(q.priceEndingRuleVersion,4);
+ assert.equal(q.priceEndingPolicy,'both_checkout_and_visible');
  assert.equal(q.grossPrice,123.24);
  assert.equal(q.marketplaceDisplayPrice,98.59);
  assert.equal(q.customerPrice,97.60);
