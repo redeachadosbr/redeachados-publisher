@@ -106,12 +106,10 @@
    .replace(/\s*\x60{3}\s*$/u,'')
    .replace(/^\s*(?:Escrita|Writing)\s*$/gim,'')
    .replace(/^\s*#{1,4}\s*/gm,'').replace(/\*\*/g,'').trim();
-  if(!/["“]description["”]\s*:/iu.test(plain)&&plain.length>=250&&plain.length<=5000&&
-     /(?:✅\s*)?benef[ií]cios/iu.test(plain)&&
-     /(?:💡\s*)?por que comprar/iu.test(plain)&&
-     /(?:⚙️?\s*)?caracter[ií]sticas/iu.test(plain)&&
-     /(?:📦\s*)?(?:o que (?:vai|vem|acompanha)|conte[uú]do da embalagem)/iu.test(plain)&&
-     /🛒/u.test(plain))
+  if(!/["“]description["”]\\s*:/iu.test(plain)&&plain.length>=250&&plain.length<=5000&&
+     /benef[ií]cios/iu.test(plain)&&/por que comprar/iu.test(plain)&&
+     /(?:caracter[ií]sticas|especifica[çc][õo]es)/iu.test(plain)&&
+     /(?:embalagem|itens inclusos)/iu.test(plain))
    return {description:plain,factsUsed:[],unverified:[]};
   return null;
  }
@@ -120,8 +118,12 @@
   if(!found)throw Error('O ChatGPT ainda não entregou a descrição completa. Use Recuperar ou copie a resposta integral.');
   const description=normalizeDescription(found.description);
   const length=count(description);
-  if(length<250||length>5000||!description.includes('✅ BENEFÍCIOS')||!description.includes('💡 POR QUE COMPRAR')||!description.includes('⚙️ CARACTERÍSTICAS')||!description.includes('📦 O QUE VAI NA EMBALAGEM')||!description.split('\n\n').at(-1)?.startsWith('🛒'))
-   throw Error('A descrição está incompleta: confira introdução, benefícios, por que comprar, características, embalagem e CTA final.');
+  // Não bloquear descrições comerciais completas por falta de emoji no CTA.
+  if(length<250||length>5000||!/benef[ií]cios/iu.test(description)||
+     !/por que comprar/iu.test(description)||
+     !/(?:caracter[ií]sticas|especifica[çc][õo]es)/iu.test(description)||
+     !/(?:embalagem|itens inclusos)/iu.test(description))
+   throw Error('A descrição está incompleta: confira benefícios, por que comprar, características e embalagem.');
   return {description,length,factsUsed:Array.isArray(found.factsUsed)?found.factsUsed:[],
    unverified:Array.isArray(found.unverified)?found.unverified:[]};
  }
