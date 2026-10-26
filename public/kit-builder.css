@@ -352,3 +352,34 @@
  #tab-kits .kit-publish-fields{grid-template-columns:1fr}
  #tab-kits .kit-section-heading{flex-wrap:wrap}
 }
+
+/* Ajustes de componentes que são montados dinamicamente pelo JS. */
+#tab-kits .kit-picture-row .kit-margin-bubble{position:absolute;right:8px;top:8px;display:inline-block;width:auto;height:auto;padding:5px 7px;border:1px solid #ffe3c0;background:#fff7ee;color:#ec6125;border-radius:6px;font-size:9px;font-weight:900;white-space:nowrap;z-index:1}
+#tab-kits .kit-picture-row span:not(.kit-margin-bubble){width:calc((100% - 6px)/2);height:100%}
+#tab-kits .kit-candidate-reason{max-height:30px;overflow:hidden;display:block;font-size:9px;line-height:1.35;color:#6a7f98}
+#tab-kits .kit-drafts-panel .kit-card{display:grid;grid-template-columns:minmax(0,1.8fr) minmax(0,1.1fr) auto;align-items:center;gap:12px}
+#tab-kits .kit-drafts-panel .kit-draft-description{display:grid;gap:4px;min-width:0}
+#tab-kits .kit-drafts-panel .kit-draft-description strong{font-size:11px}
+#tab-kits .kit-draft-state{font-size:9px;font-weight:900;color:#fa552e;white-space:nowrap}
+#tab-kits .kit-draft-metrics{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:7px}
+#tab-kits .kit-draft-metrics>div{padding:6px;border-left:1px solid #e2e8f0;display:grid;gap:4px;min-width:0}
+#tab-kits .kit-draft-metrics small{font-size:9px;color:#7185a0}
+#tab-kits .kit-draft-metrics strong{font-size:11px;color:#104270}
+#tab-kits .kit-drafts-panel .kit-card>button{grid-row:1;grid-column:3;min-width:115px;white-space:nowrap}
+#tab-kits .kit-images-heading #kitGenerateAll{background:linear-gradient(135deg,#ff552e,#ff7527)}
+#tab-kits .kit-detail-facts[open]>summary{margin-bottom:8px}
+#tab-kits #kitImages .kit-image-card img{aspect-ratio:1;max-height:165px;object-fit:contain}
+#tab-kits .kit-photo-upload::file-selector-button:hover{background:#f4e0ca;cursor:pointer}
+#tab-kits #kitDetail[hidden]{display:none!important}
+#tab-kits .kit-research-details[open]{background:#fff}
+#tab-kits .kit-section-heading>button{margin-left:auto}
+#tab-kits .kit-field-footer small{font-variant-numeric:tabular-nums}
+@media(max-width:740px){
+ #tab-kits .kit-drafts-panel .kit-card{grid-template-columns:1fr auto}
+ #tab-kits .kit-draft-metrics{grid-column:1;grid-row:2}
+ #tab-kits .kit-drafts-panel .kit-card>button{grid-column:2;grid-row:1 / span 2}
+}
+@media(max-width:440px){
+ #tab-kits .kit-drafts-panel .kit-card{grid-template-columns:1fr}
+ #tab-kits .kit-draft-metrics,#tab-kits .kit-drafts-panel .kit-card>button{grid-column:1;grid-row:auto}
+}
