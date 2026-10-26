@@ -131,7 +131,7 @@ export function imageSceneDirection({slot,title=''}={}){
 const premiumCopyRules=Object.freeze([
  'CAPA SEM TEXTO: produto original ocupa aproximadamente 85% a 90% da foto; fundo ambientado sofisticado, limpo e sem tarjas.',
  'USO REAL: no máximo UMA frase curta de 2 a 5 palavras; tipografia pequena e elegante, sem outros blocos.',
- 'IMAGEM 03: destacar as medidas reais diretamente junto aos contornos do produto com setas FINAS e elegantes, dimensões confirmadas na WeDrop. Microinformações laterais somente se confirmadas (capacidade, peso do produto, cor), sem título ESPECIFICAÇÕES, quadros brancos, painéis ou informações logísticas.',
+ 'IMAGEM 03 BASE: somente fotografia do produto, SEM palavras, números, medidas, setas ou gráficos. O Manager adicionará qualquer camada técnica confirmada da mesma SKU DEPOIS da geração.',
  'BENEFÍCIOS: no máximo UMA frase de 2 a 5 palavras; apresentar vantagens principalmente pela fotografia.',
  'DOR E SOLUÇÃO: no máximo UMA frase de 2 a 5 palavras em canto discreto, sem caixas, listas ou painel comparativo.',
  'PERSUASÃO: no máximo UMA frase de 2 a 5 palavras, texto secundário e produto dominante.',
@@ -149,7 +149,7 @@ export function imageScenePrompt({slot,title=''}={}){
   'ILUMINAÇÃO: '+s.light,
   'DIREÇÃO DE ARTE PREMIUM: produto em primeiro plano, cenário REAL moderno e visível em alta definição, cores harmônicas e acabamento profissional de e-commerce. Fundo NÃO pode ficar excessivamente desfocado, estourado, vazio ou lavado: detalhes de arquitetura, piso e contexto devem ser reconhecíveis sem competir com o produto. Textos ocupam no máximo 10% da foto, em tipografia pequena e elegante. Proibidos títulos grandes, placas brancas opacas, tarjas, tabelas, emojis, listas e excesso de informações.',
   'TEXTO PERMITIDO NESTA POSIÇÃO: '+premiumCopyRules[s.slot-1],
-  'Imagem comercial sofisticada: reservar pouco espaço para microtextos nas bordas, com contraste discreto. Na imagem 03 as setas devem acompanhar visualmente as bordas do produto sem esconder sua forma. Em todas as fotos preservar detalhes reais nítidos, sem alterar produto, fundo artificial genérico ou textos decorativos.',
+  'Imagem comercial sofisticada: usar pouco espaço para microtextos nas demais imagens. Na imagem 03 a base gerada deve ser inteiramente SEM texto nem seta. Em todas as fotos preservar detalhes reais nítidos, sem alterar produto, fundo artificial genérico ou textos decorativos.',
   'Não reutilize o mesmo fundo, parque, jardim, rua, roupa, pessoa, pose, direção da câmera ou enquadramento das outras imagens desta série.',
   'A FOTO DE REFERÊNCIA serve apenas para preservar o PRODUTO EXATO: mesma cor, peças, formato, marca, adesivos, proporções e acessórios realmente presentes. Não copie o cenário nem a pessoa da referência.',
   'Não inventar componentes, medidas, certificações ou alegações. Se a cena prevista não for compatível com o uso real do produto, adapte apenas o ambiente a outro local apropriado mantendo o ângulo e a distinção visual.',
