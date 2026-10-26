@@ -299,7 +299,7 @@ app.post('/api/shopee/kits/publish/media',mustLogin,requireWeDropAdmin,async(req
  try{
   const {auth,cfg}=await getValidAuth(req);
   const uploaded=await kitUploadPhoto({auth,cfg,
-   kitSku:String(req.body?.kitSku||''),
+   kitSku:String(req.body?.kitSku||''),slot:Number(req.body?.slot),
    base64:req.body?.imageBase64,mime:req.body?.mime});
   res.json({ok:true,...uploaded,kitPublished:false});
  }catch(e){res.status(400).json({error:String(e.message||e).slice(0,460)});}
