@@ -491,7 +491,7 @@ function catalogRender(){
     const promotion=catalogCell(tr,'');
     const promoBadge=document.createElement('span');
     promoBadge.className='catalog-promo-badge'+(x.promotion&&x.baseLoaded?' is-active':'');
-    promoBadge.textContent=!x.baseLoaded?'Não confirmado':x.promotion?'Sim':'Não';
+    promoBadge.textContent=!x.baseLoaded||x.promotion==null||!catalogDone?'A confirmar':x.promotion?'Sim':'Não';
     promotion.append(promoBadge);
     const stock=catalogCell(tr,x.stock===null||x.stock===undefined?'Não informado':catalogNumber(x.stock));
     stock.className='catalog-value-stock';
