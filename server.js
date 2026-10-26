@@ -30,8 +30,7 @@ import {previewWeDropCsv,prepareWeDropImport,MAX_CSV_CHARS} from './wedropCsv.js
 import {convertWeDropExcelBase64} from './wedropExcel.js';
 import {saveWeDropCosts,getWeDropCoverage,compareIncomingCosts,pendingWeDropModels,upsertWeDropSkuLink} from './wedropCosts.js';
 import {saveWeDropProducts,readWeDropProduct} from './wedropCosts.js';
-import {kitCatalog,suggestKits,composeKit,kitCreative,kitPrompts} from './shopeeKitBuilder.js';
-import {generateKitImage} from './shopeeKitImages.js';
+import {kitCatalog,suggestKits,composeKit,kitCreative,kitPrompts,kitPlusResearchBrief,kitPlusContentPrompt} from './shopeeKitBuilder.js';
 import {saveKitDraft,listKitDrafts,loadKitDraft} from './shopeeKitDraftStore.js';
 import {supplierWorkflowFacts,wedropCestForSku} from './shopeeSupplierFacts.js';
 import {supplierAttributeSuggestions} from './shopeeSupplierEvidenceFacts.js';
@@ -220,7 +219,7 @@ app.post('/api/shopee/kits/suggest',mustLogin,requireWeDropAdmin,async(req,res)=
    category:String(req.body.category||'Brinquedos').slice(0,90),
    size:Number(req.body.size||2),marginPct:Number(req.body.marginPct??15),
    packing:Number(req.body.packing||0),shipping:Number(req.body.shipping||0),
-   ai:req.body.useAi!==false
+   ai:false
   });
   res.json({ok:true,...data});
  }catch(error){res.status(400).json({error:String(error.message||error).slice(0,300)});}
@@ -234,7 +233,7 @@ app.post('/api/shopee/kits/prepare',mustLogin,requireWeDropAdmin,async(req,res)=
    marginPct:Number(req.body.marginPct??15),
    packing:Number(req.body.packing||0),shipping:Number(req.body.shipping||0)
   });
-  const creative=await kitCreative(auth.shopId,kit,{ai:req.body.useAi!==false});
+  const creative=await kitCreative(auth.shopId,kit,{ai:false});
   res.json({ok:true,kit,creative,readOnly:true,requiresReview:true});
  }catch(error){res.status(400).json({error:String(error.message||error).slice(0,300)});}
 });
@@ -275,22 +274,70 @@ app.post('/api/shopee/kits/drafts/load',mustLogin,requireWeDropAdmin,async(req,r
    savedAt:stored.updatedAt,refreshedCosts:true,requiresReview:true});
  }catch(error){res.status(400).json({error:String(error.message||error).slice(0,260)});}
 });
-app.post('/api/shopee/kits/image',mustLogin,requireWeDropAdmin,async(req,res)=>{
+// Modo ChatGPT Plus: nenhuma rota de kits pode consumir tokens/imagens
+// cobrados pela API. A seleção e a importação são ações explícitas.
+app.post('/api/shopee/kits/plus-brief',mustLogin,requireWeDropAdmin,async(req,res)=>{
  res.setHeader('Cache-Control','no-store');
  if(!verifiedSameOrigin(req))return res.status(403).json({error:'Origem não autorizada.'});
  try{
   const {auth}=await getValidAuth(req);
-  const slot=Number(req.body.slot);
-  if(!Number.isInteger(slot)||slot<1||slot>9)throw Error('Foto do kit inválida.');
-  const kit=await composeKit(auth.shopId,req.body?.skus,{
-   marginPct:Number(req.body.marginPct??15),
-   packing:Number(req.body.packing||0),shipping:Number(req.body.shipping||0)
-  });
-  const key=await openAiApiKey(auth.shopId);
-  const prompts=kitPrompts(kit);
-  const result=await generateKitImage({kit,slot,key,prompt:prompts[slot-1]});
-  res.json({ok:true,kitSku:kit.kitSku,...result,requiresReview:true,marketplaceUpdated:false});
+  res.json({ok:true,...await kitPlusResearchBrief(auth.shopId,{
+   category:String(req.body?.category||'Brinquedos').slice(0,90),
+   size:Number(req.body?.size||2)
+  })});
  }catch(error){res.status(400).json({error:String(error.message||error).slice(0,300)});}
+});
+app.post('/api/shopee/kits/plus-import',mustLogin,requireWeDropAdmin,async(req,res)=>{
+ res.setHeader('Cache-Control','no-store');
+ if(!verifiedSameOrigin(req))return res.status(403).json({error:'Origem não autorizada.'});
+ try{
+  const {auth}=await getValidAuth(req);
+  const category=String(req.body?.category||'Brinquedos').slice(0,90);
+  const size=Number(req.body?.size||2),raw=req.body?.kits;
+  if(![2,3].includes(size)||!Array.isArray(raw)||raw.length<1||raw.length>8)
+   throw Error('Informe até 8 kits de dois ou três SKUs.');
+  const {products}=await kitCatalog(auth.shopId,{category:'Todos',limit:160});
+  // Não utilizar a página de 160 como fonte de validação: composeKit faz
+  // consulta completa ao catálogo da loja e valida SKU por SKU e custo.
+  void products;
+  const seen=new Set(),kits=[];
+  for(const input of raw){
+   if(!Array.isArray(input)||input.length!==size||
+      input.some(x=>typeof x!=='string'||x.length>120)||new Set(input).size!==size)
+    throw Error('Cada linha deve ter '+size+' SKUs diferentes.');
+   const key=input.slice().sort().join('|');
+   if(seen.has(key))continue;
+   seen.add(key);
+   const kit=await composeKit(auth.shopId,input,{
+    marginPct:Number(req.body?.marginPct??15),
+    packing:Number(req.body?.packing||0),
+    shipping:Number(req.body?.shipping||0)
+   });
+   // Confirmar a categoria escolhida e impedir a seleção de itens aleatórios.
+   if(!kit.components.some(p=>p.category===category||category==='Todos'||
+       (category==='Brinquedos'&&/brinquedos|bonecas|pistas|jogos|fantasias/i.test(p.category))))
+    throw Error('Kit de SKU '+input.join(', ')+' não corresponde à categoria selecionada.');
+   kits.push({...kit,businessReason:'Seleção sugerida no ChatGPT Plus; os SKUs e custos foram revalidados pela WeDrop.'});
+  }
+  kits.sort((a,b)=>b.quote.netProfit-a.quote.netProfit);
+  res.json({ok:true,source:'Sugestões ChatGPT Plus, SKUs verificados no servidor',disclaimer:'Estimativa, sem dados comprovados de vendas e estoque.',results:kits});
+ }catch(error){res.status(400).json({error:String(error.message||error).slice(0,300)});}
+});
+app.post('/api/shopee/kits/plus-content',mustLogin,requireWeDropAdmin,async(req,res)=>{
+ res.setHeader('Cache-Control','no-store');
+ if(!verifiedSameOrigin(req))return res.status(403).json({error:'Origem não autorizada.'});
+ try{
+  const {auth}=await getValidAuth(req);
+  const kit=await composeKit(auth.shopId,req.body?.skus,{
+   marginPct:Number(req.body?.marginPct??15),
+   packing:Number(req.body?.packing||0),
+   shipping:Number(req.body?.shipping||0)
+  });
+  res.json({ok:true,kitSku:kit.kitSku,prompt:kitPlusContentPrompt(kit)});
+ }catch(error){res.status(400).json({error:String(error.message||error).slice(0,300)});}
+});
+app.post('/api/shopee/kits/image',mustLogin,requireWeDropAdmin,(_req,res)=>{
+ res.status(410).json({error:'Geração paga desativada para kits. Use os prompts no ChatGPT Plus e importe os arquivos PNG manualmente.'});
 });
 app.get('/api/shopee/status',mustLogin,async(req,res)=>{
   try{
