@@ -5,7 +5,7 @@ import {CHATGPT_IMAGE_SCENES,createChatGptPrompts} from '../public/chatgptPrompt
 const approved=[
 'Imagem 01 — Capa: produto original ocupando aproximadamente 85% a 90% da imagem, fundo limpo e apresentação profissional. imagem com fundo ambientado',
 'Imagem 02 — Uso real: mostrar o produto em um ambiente cotidiano de utilização, com composição diferente da capa. imagem com fundo ambientado. FRASES CURTAS DE CONVERSÃO',
-'Imagem 03 — Medidas reais: destacar as dimensões confirmadas SOBRE O CONTORNO DO PRODUTO com setas finas, e, quando confirmadas na WeDrop da SKU, microinformações laterais de capacidade e peso. Fundo ambientado moderno e nítido em HD. Sem título ESPECIFICAÇÕES, sem tabelas, faixas opacas nem excesso de textos.',
+'Imagem 03 — Base fotográfica para ficha técnica: somente o produto original em fundo ambientado moderno, nítido e HD, sem texto, números, setas, títulos ou medidas na imagem gerada.',
 'Imagem 04 — Benefícios: demonstrar visualmente as principais vantagens do produto. imagem com fundo ambientado. FRASES CURTAS DE BENEFICIO',
 'Imagem 05 — Dor e solução: representar uma necessidade do comprador e como o produto atende a essa necessidade. imagem com fundo ambientado FRASE CURTA',
 'Imagem 06 — Persuasão: destacar um diferencial real com apresentação comercial. imagem com fundo ambientado. FRASE DE CONVERSÃO',
@@ -51,7 +51,7 @@ test('o Motor Matriz muda somente a imagem 03 e usa o texto colado da WeDrop',()
  assert.match(p,/NENHUMA medida, número, palavra/);
  assert.match(result.prompts[0],/INJETAR_CUSTOM/);
  assert.match(result.prompts[0],/INJETAR_PROMPT_MESTRE/);
- assert.match(result.prompts[2],/INJETAR_NOTA/);
+ assert.doesNotMatch(result.prompts[2],/INJETAR_NOTA/); // notas antigas não podem voltar a pedir texto na imagem 03
  assert.match(p,/ambiente moderno HD visível/);
 });
 test('sem medidas confirmadas a foto 03 não pode inferir dimensões',()=>{
