@@ -130,7 +130,7 @@ export async function composeKit(shop,skus,{marginPct=15,packing=0,shipping=0}={
  if(products.some(x=>!x))throw Error('SKU não encontrada com custo WeDrop válido na mesma loja.');
  const costs=brl(products.reduce((a,p)=>a+p.unitCost,0));
  const n=Number(marginPct),extra=Number(packing),freight=Number(shipping);
- if(!Number.isFinite(n)||n<5||n>65||!Number.isFinite(extra)||extra<0||extra>500||
+ if(!Number.isFinite(n)||n<0||n>70||!Number.isFinite(extra)||extra<0||extra>500||
    !Number.isFinite(freight)||freight<0||freight>500)
   throw Error('Margem ou custo adicional do kit inválido.');
  const settings=await shopeePricingPreferences(shop);
