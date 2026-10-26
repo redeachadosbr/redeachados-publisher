@@ -39,6 +39,7 @@ export function imagePrompt({record,slot,masterPrompt='',note='',sourceImageCoun
   return [
    'FOTOGRAFIA BASE LIMPA 1200 x 1200, imagem 03. Produto exato: '+product+'. SKU '+String(record?.sku||'').slice(0,120)+'.',
    'Manter produto ORIGINAL, mesmas cores, formato e peças das referências, com cenário moderno realista e nítido em HD.',
+   /pista|conjunto|kit/i.test(product)?'O produto é um CONJUNTO, não só um carrinho: mostrar toda a montagem real de pista e acessórios vistos na referência, sem criar componentes.':'',
    hasPreparedReference?'Editar a foto anterior removendo completamente TODA palavra, número, desenho de cota, seta, selo, legenda, infográfico, painel e características. Preservar apenas o produto e seu fundo realista.':'Gerar uma fotografia ambientada sem qualquer sobreposição gráfica.',
    imageScenePrompt({slot:position,title:product}),
    'REGRA FINAL MAIS IMPORTANTE: imagem SOMENTE FOTOGRÁFICA, nenhuma letra, algarismo, peso, altura, largura, comprimento, profundidade, quantidade, idade, rótulo, régua, linha de dimensão, seta, placa, etiqueta, ícone ou painel. Não desenhar especificações. IGNORAR qualquer comando anterior que solicite medidas ou características escritas.',
