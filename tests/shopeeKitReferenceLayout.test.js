@@ -90,3 +90,36 @@ test('importação WeDrop do modelo contém dois cartões, aviso de bloqueio e s
  assert.match(css,/kit-blocked-banner/);
  assert.match(css,/kit-empty-drafts/);
 });
+
+test('duas telas: importação isolada e montagem completa preservada mesmo sem estoque',()=>{
+ const importTab=page.indexOf('id="kitModeImport"'),builderTab=page.indexOf('id="kitModeBuilder"');
+ const importStart=page.indexOf('id="kitViewImport"'),builderStart=page.indexOf('id="kitViewBuilder"');
+ const header=page.indexOf('kit-hero'),catalog=page.indexOf('id="kitCatalogCard"');
+ const stock=page.indexOf('id="kitAvailabilityCard"'),blocked=page.indexOf('id="kitStockBlocked"');
+ const overview=page.indexOf('class="kit-overview"'),form=page.indexOf('id="kitForm"');
+ const candidates=page.indexOf('id="kitSuggestions"'),drafts=page.indexOf('id="kitDraftList"');
+ const images=page.indexOf('id="kitImages"'),publish=page.indexOf('id="kitPublishPanel"');
+ assert.ok(header<importTab&&builderTab<importStart);
+ assert.ok(importStart<catalog&&catalog<stock&&stock<blocked&&blocked<builderStart);
+ assert.ok(builderStart<overview&&overview<form&&form<candidates&&candidates<drafts&&drafts<images&&images<publish);
+ for(const id of ['kitModeImport','kitModeBuilder','kitViewImport','kitViewBuilder',
+  'kitBuilderStockNotice','kitGoImport','kitGoBuilder']){
+  assert.equal((page.match(new RegExp('id="'+id+'"','g'))||[]).length,1,id);
+ }
+ assert.match(page,/id="kitViewImport"[^>]*hidden/);
+ assert.match(page,/id="kitViewBuilder"/);
+ assert.match(js,/function setKitMode\(next/);
+ assert.match(js,/setKitMode\('builder'/);
+ assert.match(js,/setKitMode\('import'/);
+ assert.match(js,/\$\('#kitViewImport'\)\.hidden=next!=='import'/);
+ assert.match(js,/\$\('#kitViewBuilder'\)\.hidden=next!=='builder'/);
+ assert.match(js,/\$\('#kitBuilderStockNotice'\)\.hidden=kitStockReady/);
+ const gate=js.slice(js.indexOf('function displayKitStockGate('),js.indexOf('function kitUploadFeedback(',js.indexOf('function displayKitStockGate(')));
+ assert.doesNotMatch(gate,/prepared=null/);
+ assert.doesNotMatch(gate,/images\.clear\(/);
+ assert.doesNotMatch(gate,/kitDetail'\)\.hidden=true/);
+ assert.match(gate,/disabled=!kitStockReady/);
+ assert.match(css,/kit-view-pane\[hidden\]\{display:none!important\}/);
+ assert.doesNotMatch(css,/kit-stock-blocked \.kit-overview.*display:none/);
+ assert.doesNotMatch(css,/kit-stock-blocked #kitSuggestions\{display:none\}/);
+});
