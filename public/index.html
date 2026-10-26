@@ -31,7 +31,7 @@
 <link rel="stylesheet" href="/ads-premium.css?v=2.4.0-seo-ads-location">
 <link rel="stylesheet" href="/sidebar-collapse.css?v=1.0.0">
 <link rel="stylesheet" href="/optimizer-image-studio.css?v=1.0.2">
-<link rel="stylesheet" href="/kit-builder.css?v=2.2.0-import-panel-excel">
+<link rel="stylesheet" href="/kit-builder.css?v=2.3.0-dual-layouts">
 <link rel="stylesheet" href="/optimizer-technical-studio.css?v=1.0.1-review-feedback">
 <style>
 /* Retomada da SKU visível junto à barra de acompanhamento. A API só é
@@ -860,6 +860,13 @@
    </div></div>
    <span class="kit-status-pill">ChatGPT Plus · Sem API paga</span>
  </header>
+ <nav class="kit-mode-tabs" role="tablist" aria-label="Seções de Kits Inteligentes WeDrop">
+  <button id="kitModeBuilder" class="kit-mode-tab" type="button" role="tab" aria-controls="kitViewBuilder" aria-selected="true">✦ Montagem de Kits <small>Pesquisar, editar e publicar</small></button>
+  <button id="kitModeImport" class="kit-mode-tab" type="button" role="tab" aria-controls="kitViewImport" aria-selected="false">▤ Importação WeDrop <small>Atualizar catálogo e estoque</small></button>
+  <span class="kit-mode-subtitle">Duas telas independentes · mesmas SKUs WeDrop</span>
+ </nav>
+ <div id="kitViewImport" class="kit-view-pane" role="tabpanel" aria-labelledby="kitModeImport" hidden>
+  <div class="kit-pane-intro"><div><h3>Importação de Catálogo e Estoque</h3><p>Atualize SKUs, custos e disponibilidade antes de montar os kits. Aceita CSV, XLS e XLSX.</p></div></div>
  <section id="kitStockGate" class="kit-stock-gate" aria-label="Atualização de catálogo e disponibilidade WeDrop">
   <div class="kit-stock-card kit-catalog-card" id="kitCatalogCard">
    <div class="kit-import-card-header">
@@ -908,6 +915,18 @@
   <p>Não serão usados SKUs sem status confiável.</p></div>
   <span id="kitBlockedTag" class="kit-blocked-tag">⊘ Geração de kits indisponível</span>
  </section>
+ <div class="kit-import-finish">
+  <p id="kitImportNextHint">Após atualizar o catálogo e o estoque, abra a tela de montagem para pesquisar as combinações.</p>
+  <button id="kitGoBuilder" type="button" class="kit-primary">Ir para Montagem de Kits →</button>
+ </div>
+ </div>
+ <div id="kitViewBuilder" class="kit-view-pane" role="tabpanel" aria-labelledby="kitModeBuilder">
+  <div class="kit-builder-stock-notice" id="kitBuilderStockNotice" hidden role="status" aria-live="polite">
+    <span class="kit-builder-stock-notice-icon" aria-hidden="true">!</span>
+    <div><strong>Catálogo ou estoque WeDrop sem validação atualizada.</strong>
+    <p>O layout de montagem continua disponível, mas pesquisar e publicar kits exige SKUs DISPONÍVEIS confirmadas.</p></div>
+    <button id="kitGoImport" type="button" class="kit-secondary">Atualizar na Importação →</button>
+  </div>
  <div class="kit-overview" aria-label="Resumo da configuração de kits">
   <div class="kit-overview-card"><span class="kit-overview-icon kit-icon-blue" aria-hidden="true">⬡</span>
    <div><small>Categoria selecionada</small><strong id="kitOverviewCategory">Brinquedos</strong><span>Produtos infantis e educativos</span></div>
@@ -1053,6 +1072,7 @@
    </div>
   </section>
  </section>
+ </div>
 </section>
 <section class="tabpane" id="tab-fiscal" aria-label="Informações fiscais da Shopee">
   <div class="ra-fiscal-page-intro">
@@ -1907,7 +1927,7 @@
 <script src="/technical-memory.js?v=1.0.1-live-sku-preload"></script>
 <script src="/technical-status.js?v=1.0.0-optional-coherence"></script>
 <script src="/app.js?v=1.21.82-media-technical-fix-dual-centavos-09-v4"></script>
-<script type="module" src="/kit-builder.js?v=2.2.0-import-panel-excel"></script>
+<script type="module" src="/kit-builder.js?v=2.3.0-dual-layouts"></script>
 <link rel="stylesheet" href="/optimizer-variations.css?v=1.2.1-single-flow">
 <script src="/optimizer-variations.js?v=1.2.3-single-flow"></script>
 
