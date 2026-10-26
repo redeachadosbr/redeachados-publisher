@@ -855,8 +855,8 @@
               <section class="tabpane" id="tab-kits" aria-label="Kits Inteligentes WeDrop">
  <div class="kit-hero">
   <div><span class="kit-kicker">WE<b>DROP</b> · INTELIGÊNCIA COMERCIAL</span>
-   <h2>Kits Inteligentes</h2><p>Combine produtos reais por categoria, confira o custo de cada SKU e prepare uma oferta completa com precificação, texto comercial e nove fotografias.</p></div>
-  <div class="kit-status-pill">● Catálogo WeDrop e calculadora Shopee</div>
+   <h2>Kits Inteligentes</h2><p>Combine SKUs reais da WeDrop, calcule custo e lucro e prepare anúncios e fotografias no ChatGPT Plus, sem custos adicionais de API.</p></div>
+  <div class="kit-status-pill">● ChatGPT Plus · Sem API paga</div>
  </div>
  <div class="kit-form" id="kitForm">
   <label>Categoria WeDrop<select id="kitCategory"><option value="Brinquedos">Brinquedos</option></select></label>
@@ -864,13 +864,23 @@
   <label>Margem líquida mínima<input id="kitMargin" type="number" min="5" max="65" value="15" step="1"><small>O preço real pode superar a meta pela regra 0/9.</small></label>
   <label>Embalagem adicional (R$)<input id="kitPacking" type="number" min="0" max="500" value="0" step="0.01"></label>
   <label>Frete assumido pela loja (R$)<input id="kitShipping" type="number" min="0" max="500" value="0" step="0.01"></label>
-  <label class="kit-check"><input id="kitUseAi" type="checkbox" checked> Usar ChatGPT para analisar combinações e redigir anúncio (quando API conectada)</label>
+  <div class="kit-plus-banner"><strong>ChatGPT Plus · Sem API</strong><small>Você utiliza seu ChatGPT no navegador. O sistema não faz chamadas pagas nem gera imagens por API.</small></div>
   <button id="kitSuggest" type="button" class="kit-primary">✦ Pesquisar kits inteligentes</button>
  </div>
  <p class="kit-info">Somente SKUs e custos existentes na WeDrop. Previsão de lucro não representa vendas reais; frete conjunto, estoque, disponibilidade e composição física precisam de confirmação. Nenhum anúncio é criado ou publicado sem aprovação.</p>
  <p id="kitStatus" role="status" aria-live="polite" class="kit-status">Carregando categorias cadastradas...</p>
  <div class="kit-bar"><h3>Sugestões de kits</h3><span id="kitSource"></span></div>
- <div id="kitSuggestions" class="kit-suggestions"><p>Escolha uma categoria para iniciar.</p></div>
+ <div class="kit-plus-workflow">
+   <strong>Pesquisa avançada com ChatGPT Plus</strong>
+   <p>Envie uma seleção de SKUs reais da WeDrop ao ChatGPT e importe as sugestões: o Manager valida os códigos e refaz o cálculo.</p>
+   <div class="kit-actions">
+    <button type="button" class="kit-primary" id="kitPlusResearch">Copiar pesquisa e abrir ChatGPT Plus</button>
+   </div>
+   <label for="kitPlusOutput">Cole aqui as linhas de SKUs sugeridas no ChatGPT, por exemplo: SKU1 | SKU2</label>
+   <textarea id="kitPlusOutput" rows="4" placeholder="SKU1 | SKU2&#10;SKU3 | SKU4"></textarea>
+   <button type="button" id="kitPlusImport" class="kit-secondary">Importar kits sugeridos e recalcular</button>
+  </div>
+  <div id="kitSuggestions" class="kit-suggestions"><p>Escolha uma categoria para iniciar.</p></div>
  <section class="kit-drafts-panel"><div class="kit-bar"><h3>Kits salvos para revisão</h3><button type="button" class="kit-secondary" id="kitRefreshDrafts">Atualizar rascunhos</button></div>
  <div id="kitDraftList" class="kit-suggestions"><p>Consultando kits salvos nesta loja...</p></div></section>
  <section id="kitDetail" class="kit-detail" hidden>
@@ -882,15 +892,24 @@
    <label>Título SEO <small>Até 120 caracteres — confira antes de usar.</small><textarea id="kitTitle" rows="2"></textarea><button type="button" id="kitCopyTitle" class="kit-secondary">Copiar título</button></label>
    <label>Descrição do anúncio <small>Produtos incluídos e quantidades exatos por SKU.</small><textarea id="kitDescription" rows="13"></textarea><button type="button" id="kitCopyDescription" class="kit-secondary">Copiar descrição</button></label>
   </div>
-  <div class="kit-bar"><h3>Imagens profissionais do kit — 1200 × 1200</h3><span>Uma referência de cada SKU WeDrop</span></div>
+  <div class="kit-plus-workflow">
+   <strong>Preparar título e descrição no ChatGPT Plus</strong>
+   <p>O prompt contém as SKUs conferidas. Use seu ChatGPT Plus e cole a resposta aqui; não há conexão automática nem cobrança de API.</p>
+   <div class="kit-actions"><button id="kitPlusText" type="button" class="kit-primary">Copiar prompt e abrir ChatGPT Plus</button></div>
+   <label for="kitPlusTextResult">Resposta do ChatGPT (TÍTULO: e DESCRIÇÃO:)</label>
+   <textarea id="kitPlusTextResult" rows="6" placeholder="TÍTULO: Kit ...&#10;DESCRIÇÃO: ✨ ..."></textarea>
+   <button id="kitImportText" type="button" class="kit-secondary">Importar título e descrição da resposta</button>
+  </div>
+  <div class="kit-bar"><h3>Imagens profissionais do kit — 1200 × 1200</h3><span>ChatGPT Plus · sem API</span></div>
+  <p class="kit-info">Para cada imagem, clique em "Copiar prompt + abrir ChatGPT", anexe as fotografias originais das SKUs no ChatGPT, gere a imagem e importe o arquivo neste painel. Não confunda a foto de uma SKU com outra.</p>
   <div id="kitImages" class="kit-images"></div>
   <div class="kit-actions">
-   <button id="kitGenerateAll" type="button" class="kit-primary">✦ Gerar 9 fotos pela API OpenAI</button>
+   <button id="kitGenerateAll" type="button" class="kit-primary">Abrir ChatGPT Plus para gerar as 9 imagens</button>
    <button id="kitSaveDraft" type="button" class="kit-secondary">Salvar rascunho no sistema</button>
    <button id="kitDownloadPack" type="button" class="kit-secondary">Baixar ficha do kit e 9 prompts</button>
    <button id="kitCopyAllPrompts" type="button" class="kit-secondary">Copiar 9 prompts para o ChatGPT</button>
   </div>
-  <p id="kitImageStatus" class="kit-status">As imagens requerem API OpenAI habilitada e podem gerar cobrança. Verifique cada foto antes de usar. Os arquivos gerados podem ser baixados individualmente.</p>
+  <p id="kitImageStatus" class="kit-status">Não há chamadas nem créditos de API. As imagens geradas no seu ChatGPT Plus devem ser salvas e importadas aqui, uma por vez. O plano Plus pode ter limites próprios de uso. Fotos importadas ficam nesta aba até você fechá-la.</p>
  </section>
 </section>
 <section class="tabpane" id="tab-fiscal" aria-label="Informações fiscais da Shopee">
