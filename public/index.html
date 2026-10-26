@@ -31,7 +31,7 @@
 <link rel="stylesheet" href="/ads-premium.css?v=2.4.0-seo-ads-location">
 <link rel="stylesheet" href="/sidebar-collapse.css?v=1.0.0">
 <link rel="stylesheet" href="/optimizer-image-studio.css?v=1.0.2">
-<link rel="stylesheet" href="/kit-builder.css?v=2.1.0-reference-functional">
+<link rel="stylesheet" href="/kit-builder.css?v=2.2.0-import-panel-excel">
 <link rel="stylesheet" href="/optimizer-technical-studio.css?v=1.0.1-review-feedback">
 <style>
 /* Retomada da SKU visível junto à barra de acompanhamento. A API só é
@@ -860,6 +860,54 @@
    </div></div>
    <span class="kit-status-pill">ChatGPT Plus · Sem API paga</span>
  </header>
+ <section id="kitStockGate" class="kit-stock-gate" aria-label="Atualização de catálogo e disponibilidade WeDrop">
+  <div class="kit-stock-card kit-catalog-card" id="kitCatalogCard">
+   <div class="kit-import-card-header">
+    <span class="kit-import-card-icon kit-catalog-icon" aria-hidden="true">▤</span>
+    <div class="kit-import-card-main"><h3 id="kitCatalogHeadline">Verificando catálogo WeDrop...</h3><p id="kitCatalogDate">Consultando última importação</p></div>
+    <span id="kitCatalogBadge" class="kit-import-badge">Verificando</span>
+   </div>
+   <p class="kit-import-card-copy">Mantenha o catálogo atualizado para utilizar SKUs, custos e informações corretas.</p>
+   <div class="kit-import-card-actions">
+    <label class="kit-import-file" for="kitCatalogFile">
+     <span class="kit-upload-button">▣ Escolher catálogo (CSV ou Excel)</span>
+     <span id="kitCatalogFileName">Nenhum arquivo selecionado</span>
+     <input id="kitCatalogFile" type="file" accept=".csv,.xlsx,.xls,text/csv,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/vnd.ms-excel"/>
+    </label>
+    <div class="kit-import-buttons">
+     <button id="kitCatalogImport" type="button" class="kit-secondary" disabled>↻ Atualizar catálogo WeDrop</button>
+     <a id="kitOpenWeDropImport" href="/app/wedrop" class="kit-import-help-link">Abrir importador completo</a>
+    </div>
+   </div>
+   <p id="kitCatalogImportStatus" class="kit-import-feedback" role="status" aria-live="polite"></p>
+  </div>
+  <div class="kit-stock-card kit-availability-card" id="kitAvailabilityCard">
+   <div class="kit-import-card-header">
+    <span class="kit-import-card-icon kit-stock-icon" aria-hidden="true">▤</span>
+    <div class="kit-import-card-main"><h3 id="kitStockHeadline">Verificando estoque WeDrop...</h3><p id="kitStockSubhead">Consultando disponibilidade por SKU</p></div>
+    <span id="kitStockStamp" class="kit-import-badge">Verificando</span>
+   </div>
+   <p id="kitStockExplanation" class="kit-import-card-copy">Importe os status DISPONÍVEL/INDISPONÍVEL para liberar a geração segura de kits.</p>
+   <div class="kit-import-card-actions">
+    <label class="kit-import-file" for="kitStockCsv">
+     <span class="kit-upload-button">▣ Escolher estoque (CSV ou Excel)</span>
+     <span id="kitStockFileName">Nenhum arquivo selecionado</span>
+     <input id="kitStockCsv" type="file" accept=".csv,.xlsx,.xls,text/csv,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/vnd.ms-excel"/>
+    </label>
+    <div class="kit-import-buttons">
+     <button id="kitStockImport" type="button" class="kit-primary" disabled>▤ Validar e importar estoque</button>
+     <button id="kitStockReload" type="button" class="kit-secondary">▥ Conferir atualização</button>
+    </div>
+   </div>
+   <p id="kitStockImportStatus" class="kit-import-feedback" role="status" aria-live="polite">O arquivo precisa ter as colunas SKU e Disponibilidade. Status desconhecido bloqueia a SKU.</p>
+  </div>
+ </section>
+ <section id="kitStockBlocked" class="kit-blocked-banner" role="status" aria-live="polite">
+  <span class="kit-blocked-icon" aria-hidden="true">♙</span>
+  <div><strong>Geração bloqueada até importar a disponibilidade WeDrop.</strong>
+  <p>Não serão usados SKUs sem status confiável.</p></div>
+  <span id="kitBlockedTag" class="kit-blocked-tag">⊘ Geração de kits indisponível</span>
+ </section>
  <div class="kit-overview" aria-label="Resumo da configuração de kits">
   <div class="kit-overview-card"><span class="kit-overview-icon kit-icon-blue" aria-hidden="true">⬡</span>
    <div><small>Categoria selecionada</small><strong id="kitOverviewCategory">Brinquedos</strong><span>Produtos infantis e educativos</span></div>
@@ -894,23 +942,9 @@
   <div class="kit-plus-banner"><strong>ChatGPT Plus · Sem API</strong><small>Você utiliza seu ChatGPT no navegador. O sistema não faz chamadas pagas nem gera imagens por API.</small></div>
   <button id="kitSuggest" type="button" class="kit-primary"><span aria-hidden="true">⌕</span> Pesquisar kits inteligentes</button>
  </div>
- <section id="kitStockGate" class="kit-stock-gate" role="status" aria-live="polite">
-  <div class="kit-stock-gate-head"><strong id="kitStockHeadline">Verificando atualização do catálogo e estoque WeDrop...</strong><span id="kitStockStamp">Sem conferência</span></div>
-  <p id="kitStockExplanation">O sistema precisa do estado DISPONÍVEL/INDISPONÍVEL de cada SKU. Ausência, arquivo vencido ou status desconhecido bloqueiam a geração de kits.</p>
-  <div class="kit-stock-import-actions">
-   <a href="/app/wedrop" id="kitOpenWeDropImport" class="kit-secondary">1. Atualizar catálogo WeDrop (custos e SKUs)</a>
-   <label for="kitStockCsv">2. Importar disponibilidade da WeDrop (CSV)
-    <input id="kitStockCsv" type="file" accept=".csv,text/csv,text/plain"/>
-    <small>O CSV deve conter SKU e Disponibilidade (DISPONÍVEL ou INDISPONÍVEL). O arquivo padrão com 16 colunas não informa estoque; exporte os status à parte ou inclua a coluna Disponibilidade.</small>
-   </label>
-   <button id="kitStockImport" type="button" class="kit-primary" disabled>Validar e importar estoque</button>
-   <button id="kitStockReload" type="button" class="kit-secondary">Conferir atualização</button>
-  </div>
-  <p id="kitStockImportStatus" class="kit-status">Nenhum estoque será presumido a partir do custo ou da localização do fornecedor.</p>
- </section>
-  <p class="kit-info kit-stock-disclaimer">Somente SKUs disponíveis no catálogo importado da WeDrop. Margens e lucros são estimativas; envio conjunto e estoque devem ser confirmados antes da publicação.</p>
+ <p class="kit-info kit-stock-disclaimer">Somente SKUs disponíveis no catálogo importado da WeDrop. Margens e lucros são estimativas; envio conjunto e estoque devem ser confirmados antes da publicação.</p>
  <p id="kitStatus" role="status" aria-live="polite" class="kit-status">Carregando categorias cadastradas...</p>
- <div class="kit-bar kit-section-heading"><span class="kit-heading-icon kit-icon-purple">♧</span><div class="kit-section-heading-text"><h3>Sugestões de kits</h3><p>Kits baseados em SKUs reais da WeDrop, com custos e lucros calculados automaticamente.</p></div><span id="kitSource">Origem: catálogo WeDrop + regras comerciais</span></div>
+ <div class="kit-bar kit-section-heading kit-suggestion-header"><span class="kit-heading-icon kit-icon-purple">♧</span><div class="kit-section-heading-text"><h3>Sugestões de kits</h3><p>Kits baseados em SKUs reais da WeDrop, com custos e lucros calculados automaticamente.</p></div><span id="kitSource">Aguardando estoque disponível</span><button id="kitExpandResearch" type="button" class="kit-secondary" aria-controls="kitResearchDetails" aria-expanded="false">⌄ Expandir pesquisa de combinações</button></div>
   <div id="kitSuggestions" class="kit-suggestions"><p>Escolha uma categoria para iniciar.</p></div>
 <details class="kit-plus-workflow kit-research-details" id="kitResearchDetails">
    <summary>Pesquisa avançada com ChatGPT Plus <span>Expandir pesquisa de combinações</span></summary>
@@ -1873,7 +1907,7 @@
 <script src="/technical-memory.js?v=1.0.1-live-sku-preload"></script>
 <script src="/technical-status.js?v=1.0.0-optional-coherence"></script>
 <script src="/app.js?v=1.21.82-media-technical-fix-dual-centavos-09-v4"></script>
-<script type="module" src="/kit-builder.js?v=2.1.0-reference-functional"></script>
+<script type="module" src="/kit-builder.js?v=2.2.0-import-panel-excel"></script>
 <link rel="stylesheet" href="/optimizer-variations.css?v=1.2.1-single-flow">
 <script src="/optimizer-variations.js?v=1.2.3-single-flow"></script>
 
