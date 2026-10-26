@@ -1,6 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {categoryMatches,kitCatalog,kitSku,composeKit,suggestKits,kitCreative,kitPrompts,kitPlusResearchBrief,kitPlusContentPrompt} from '../shopeeKitBuilder.js';
+import {clearKitStockCache} from '../shopeeKitAvailability.js';
 
 test('kits por categoria: custo exato, somatório, dois finais 0/9, prompts e proteção por SKU',async()=>{
  const oldFetch=globalThis.fetch,oldBase=process.env.SUPABASE_URL,oldKey=process.env.SUPABASE_SECRET_KEY;
@@ -24,6 +25,18 @@ test('kits por categoria: custo exato, somatório, dois finais 0/9, prompts e pr
   if(u.pathname.endsWith('/shopee_wedrop_costs')){
    const offset=Number(u.searchParams.get('offset')||0);
    return Response.json(costs.slice(offset,offset+1000));
+  }
+  if(u.pathname.endsWith('/shopee_wedrop_availability_imports'))
+   return Response.json([{last_success_at:new Date().toISOString(),batch_hash:'stock-fixture-1',
+    available_count:4,unavailable_count:0,imported_count:4}]);
+  if(u.pathname.endsWith('/shopee_wedrop_sync_state'))
+   return Response.json([{status:'success',last_success_at:new Date().toISOString()}]);
+  if(u.pathname.endsWith('/shopee_wedrop_availability')){
+   const offset=Number(u.searchParams.get('offset')||0);
+   return Response.json(items.map(p=>({
+    supplier_sku:p.supplier_sku,availability:'DISPONIVEL',batch_hash:'stock-fixture-1',
+    checked_at:new Date().toISOString()
+   })).slice(offset,offset+1000));
   }
   if(u.pathname.endsWith('/shopee_optimizer_pricing_preferences')){
    return Response.json([{settings:{marginPct:15,minMarginPct:5,discountPct:20,couponPct:1,taxPct:4,flashPct:3}}]);
@@ -71,6 +84,7 @@ test('kits por categoria: custo exato, somatório, dois finais 0/9, prompts e pr
   assert.equal(proposed.results[0].shopeePublished,false);
   assert.match(proposed.source,/heurística/);
  }finally{
+  clearKitStockCache(935127);
   globalThis.fetch=oldFetch;
   if(oldBase===undefined)delete process.env.SUPABASE_URL;else process.env.SUPABASE_URL=oldBase;
   if(oldKey===undefined)delete process.env.SUPABASE_SECRET_KEY;else process.env.SUPABASE_SECRET_KEY=oldKey;
@@ -104,6 +118,12 @@ test('interface e endpoints de kits isolam publicações',async()=>{
  assert.match(server,/\/api\/shopee\/kits\/plus-brief/);
  assert.match(server,/\/api\/shopee\/kits\/plus-import/);
  assert.match(server,/\/api\/shopee\/kits\/plus-content/);
+ assert.match(server,/\/api\/shopee\/kits\/availability\/import/);
+ assert.match(html,/id="kitStockGate"/);
+ assert.match(html,/id="kitStockCsv"/);
+ assert.match(html,/id="kitStockImport"/);
+ assert.match(html,/id="kitStockReload"/);
+ assert.match(browser,/if\(!kitStockReady\)/);
 });
 
 test('barra manual de margem dos kits é equivalente ao controle da Otimização',async()=>{
