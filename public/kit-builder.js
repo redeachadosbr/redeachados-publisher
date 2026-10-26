@@ -437,53 +437,67 @@ async function kitVerifyPublished(){
 function renderSuggestions(data){
  suggestions=data.results||[];
  const root=$('#kitSuggestions');root.replaceChildren();
- $('#kitSource').textContent='Origem: '+data.source;
- if(!suggestions.length){root.append(elt('p','', 'Nenhum kit confiável encontrado com esses filtros. Experimente outra categoria.'));return;}
- for(const [index,kit] of suggestions.entries()){
-  const card=elt('article','kit-card');
-  const pics=elt('div','kit-picture-row');
-  kit.components.forEach(p=>addImage(pics,p));card.append(pics);
-  card.append(elt('strong','',kit.components.map(p=>p.name).join(' + ')));
-  card.append(elt('small','',kit.components.map(p=>'SKU '+p.sku+' · '+money(p.unitCost)).join(' | ')));
-  const pricing=elt('div','kit-mini-prices');
-  const pairs=[['Custo WeDrop (soma)',money(kit.componentCost)],
-   ['Anúncio bruto',money(kit.quote.grossPrice)],
-   ['Preço exibido Shopee',money(kit.quote.marketplacePrice)],
-   ['Lucro líquido estimado',money(kit.quote.netProfit)]];
-  for(const [label,value] of pairs){
-   const cell=elt('div');cell.append(elt('span','',label),elt('b','',value));pricing.append(cell);
+ $('#kitSource').textContent='Origem: '+String(data.source||'WeDrop + calculadora Shopee');
+ if(!suggestions.length){
+  root.append(elt('p','', 'Nenhum kit elegível. Apenas SKUs com estoque WeDrop confirmado podem ser sugeridas.'));return;
+ }
+ for(const kit of suggestions){
+  const card=elt('article','kit-card'),pics=elt('div','kit-picture-row');
+  kit.components.forEach(product=>addImage(pics,product));
+  pics.append(elt('span','kit-margin-bubble',pct(kit.quote.netMarginPct)+' margem'));
+  card.append(pics);
+  card.append(elt('strong','kit-candidate-title',kit.components.map(x=>x.name).join(' + ')));
+  card.append(elt('small','kit-candidate-skus',
+   kit.components.map(x=>'SKU '+x.sku+' · '+money(x.unitCost)).join(' | ')));
+  const prices=elt('div','kit-mini-prices');
+  for(const [label,value] of [
+   ['Custo WeDrop',money(kit.componentCost)],['Anúncio bruto',money(kit.quote.grossPrice)],
+   ['Preço Shopee',money(kit.quote.marketplacePrice)],['Lucro líquido',money(kit.quote.netProfit)]
+  ]){
+   const p=elt('div');p.append(elt('span','',label),elt('b','',value));prices.append(p);
   }
-  card.append(pricing);
-  card.append(elt('small','',pct(kit.quote.netMarginPct)+' margem · '+kit.businessReason));
-  const open=elt('button','kit-primary','Preparar kit e anúncio →');open.type='button';
-  open.addEventListener('click',()=>void prepare(kit));
+  card.append(prices);
+  const reason=elt('small','kit-candidate-reason',kit.businessReason||'Produtos complementares');
+  reason.title='Estimativa comercial, sem comprovação de demanda de vendas.';
+  card.append(reason);
+  const open=elt('button','kit-primary','Preparar kit e anúncio →');
+  open.type='button';open.addEventListener('click',()=>void prepare(kit));
   card.append(open);root.append(card);
  }
 }
 async function loadDrafts(){
  const root=$('#kitDraftList');if(!root)return;
  try{
-  const data=await api('/api/shopee/kits/drafts');
+  const result=await api('/api/shopee/kits/drafts');
   root.replaceChildren();
-  if(!data.drafts.length){root.append(elt('p','','Nenhum kit salvo. Prepare uma opção e clique em Salvar rascunho.'));return;}
-  for(const draft of data.drafts){
-   const card=elt('article','kit-card');
-   card.append(elt('strong','',draft.title||draft.kitSku));
-   card.append(elt('small','',draft.kitSku+' · '+draft.skus.join(' + ')));
-   card.append(elt('small','',draft.updatedAt?'Atualizado '+new Date(draft.updatedAt).toLocaleString('pt-BR'):'Rascunho'));
-   if(draft.quote){
-    const pricing=elt('div','kit-mini-prices');
-    for(const [name,value] of [['Preço bruto',money(draft.quote.grossPrice)],
-      ['Lucro líquido estimado',money(draft.quote.netProfit)]]){
-     const cell=elt('div');cell.append(elt('span','',name),elt('b','',value));pricing.append(cell);
-    }
-    card.append(pricing);
-   }
-   const btn=elt('button','kit-secondary','Reabrir e recalcular custo');
-   btn.addEventListener('click',()=>void openDraft(draft.kitSku));
-   card.append(btn);root.append(card);
+  if(!result.drafts.length){
+   root.append(elt('p','', 'Nenhum rascunho salvo. Prepare um kit para iniciar a revisão.'));return;
   }
- }catch(error){root.replaceChildren(elt('p','', 'Rascunhos indisponíveis: '+error.message));}
+  for(const draft of result.drafts){
+   const card=elt('article','kit-card');
+   const info=elt('div','kit-draft-description');
+   info.append(elt('span','kit-draft-state','RASCUNHO NÃO PUBLICADO'));
+   info.append(elt('strong','',draft.title||draft.kitSku));
+   info.append(elt('small','',draft.skus.join(' + ')+' · '+draft.skus.length+' unidades'));
+   info.append(elt('small','',draft.updatedAt?'Atualizado '+new Date(draft.updatedAt).toLocaleString('pt-BR'):'Em revisão'));
+   card.append(info);
+   if(draft.quote){
+    const prices=elt('div','kit-draft-metrics');
+    for(const [label,value] of [
+     ['Preço bruto',money(draft.quote.grossPrice)],
+     ['Desconto',pct(draft.quote.discountPct)],['Margem',pct(draft.quote.netMarginPct)]
+    ]){
+     const cell=elt('div');cell.append(elt('small','',label),elt('strong','',value));prices.append(cell);
+    }
+    card.append(prices);
+   }
+   const open=elt('button','kit-secondary','Editar e continuar →');
+   open.type='button';open.addEventListener('click',()=>void openDraft(draft.kitSku));
+   card.append(open);root.append(card);
+  }
+ }catch(error){
+  root.replaceChildren(elt('p','', 'Não foi possível consultar rascunhos: '+error.message));
+ }
 }
 async function openDraft(kitSku){
  status('Recuperando '+kitSku+' e recalculando com preços WeDrop atuais...');
