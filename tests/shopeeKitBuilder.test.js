@@ -37,7 +37,8 @@ test('kits por categoria: custo exato, somatório, dois finais 0/9, prompts e pr
   assert.equal(list.catalogCount,4);
   assert.equal(list.matched,4);
   assert.equal(list.products[0].sku,'GA500');
-  assert.equal(kitSku(['GA500','CO400']),'KIT-GA500-CO400');
+  assert.equal(kitSku(['GA500','CO400']),'KIT-CO400-GA500');
+  assert.equal(kitSku(['CO400','GA500']),kitSku(['GA500','CO400']));
   assert.equal(kitSku(['GA500','GA500']),'KIT-GA500-GA500');
   await assert.rejects(()=>composeKit(935127,['GA500','GA500']),/distintos/);
   await assert.rejects(()=>composeKit(935127,['GA500','INVENTADO']),/não encontrada/);
@@ -73,7 +74,8 @@ test('interface e endpoints de kits isolam publicações',async()=>{
  const html=fs.readFileSync(new URL('../public/index.html',import.meta.url),'utf8');
  const app=fs.readFileSync(new URL('../public/app.js',import.meta.url),'utf8');
  for(const route of ['/api/shopee/kits/catalog','/api/shopee/kits/suggest',
-  '/api/shopee/kits/prepare','/api/shopee/kits/image'])assert.ok(server.includes(route));
+  '/api/shopee/kits/prepare','/api/shopee/kits/image',
+  '/api/shopee/kits/drafts','/api/shopee/kits/drafts/save','/api/shopee/kits/drafts/load'])assert.ok(server.includes(route));
  assert.match(server,/getValidAuth\(req\)/);
  assert.match(server,/verifiedSameOrigin\(req\)/);
  assert.match(html,/data-tab="kits"/);
