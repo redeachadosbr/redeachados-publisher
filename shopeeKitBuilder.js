@@ -3,6 +3,7 @@
 import {readWeDropCosts} from './wedropCosts.js';
 import {shopeePricingPreferences} from './shopeePricingStore.js';
 import {quoteShopeePrice} from './shopeePricing.js';
+import {readKitStockSnapshot,assertKitStockSnapshot,assertKitComponentsAvailable} from './shopeeKitAvailability.js';
 
 
 const CACHE_MS=5*60*1000;
@@ -62,14 +63,21 @@ async function readCatalog(shop){
  cached.set(id,{at:Date.now(),rows});return rows;
 }
 export async function kitCatalog(shop,{category='Todos',search='',limit=80}={}){
- const rows=await readCatalog(shop);
+ const [rows,stock]=await Promise.all([readCatalog(shop),readKitStockSnapshot(shop)]);
  const categories=[...new Set(rows.map(x=>x.category))].sort((a,b)=>a.localeCompare(b,'pt-BR'));
  const groups=Object.keys(GROUPS).filter(x=>GROUPS[x].some(c=>categories.includes(c)));
  const term=norm(search).trim();
  const filtered=rows.filter(x=>categoryMatches(x.category,category)&&(!term||norm(x.name+' '+x.sku).includes(term)));
+ const available=filtered.filter(x=>stock.map.get(x.sku)==='DISPONIVEL');
+ const stockSummary={ready:stock.ready,reason:stock.reason,
+  importedCount:stock.importedCount,availableCount:stock.availableCount,
+  unavailableCount:stock.unavailableCount,lastSuccessAt:stock.lastSuccessAt,
+  catalogLastImportedAt:stock.catalogLastImportedAt,expiresAt:stock.expiresAt};
  return {categories:['Todos',...groups,...categories],catalogCount:rows.length,matched:filtered.length,
-  products:filtered.slice(0,Math.max(1,Math.min(160,Number(limit)||80))),
-  snapshotAt:new Date(cached.get(validShop(shop)).at).toISOString()};
+  availableMatched:stock.ready?available.length:0,
+  products:stock.ready?available.slice(0,Math.max(1,Math.min(160,Number(limit)||80)))
+   .map(x=>({...x,stockStatus:'DISPONIVEL'})):[],
+  stock:stockSummary,snapshotAt:new Date(cached.get(validShop(shop)).at).toISOString()};
 }
 const RELATED=[
  [/garrafa|termica/,/copo|caneca|escova|suporte|porta/],
@@ -122,12 +130,17 @@ export function kitSku(skus){
  return 'KIT-'+ids.join('-').slice(0,112);
 }
 export async function composeKit(shop,skus,{marginPct=15,packing=0,shipping=0}={}){
- const items=await readCatalog(shop);
+ const [items,stock]=await Promise.all([readCatalog(shop),readKitStockSnapshot(shop)]);
+ assertKitStockSnapshot(stock);
  if(!Array.isArray(skus)||skus.length<2||skus.length>3||new Set(skus).size!==skus.length)
   throw Error('Selecione dois ou três SKUs distintos da WeDrop.');
  const lookup=new Map(items.map(x=>[x.sku,x]));
- const products=skus.map(x=>lookup.get(String(x)));
+ const products=skus.map(x=>{
+  const p=lookup.get(String(x));
+  return p?{...p,stockStatus:stock.map.get(p.sku)||'DESCONHECIDO'}:null;
+ });
  if(products.some(x=>!x))throw Error('SKU não encontrada com custo WeDrop válido na mesma loja.');
+ assertKitComponentsAvailable(products,stock);
  const costs=brl(products.reduce((a,p)=>a+p.unitCost,0));
  const n=Number(marginPct),extra=Number(packing),freight=Number(shipping);
  if(!Number.isFinite(n)||n<0||n>70||!Number.isFinite(extra)||extra<0||extra>500||
@@ -146,8 +159,9 @@ export async function composeKit(shop,skus,{marginPct=15,packing=0,shipping=0}={
    fixedFee:quote.breakdown.fixedFee,tax:quote.breakdown.tax,
    flash:quote.breakdown.flash,campaign:quote.breakdown.campaignDiscount,
    ads:quote.breakdown.ads,priceEndingRuleVersion:quote.priceEndingRuleVersion},
-  warning:'Simulação usando tarifas cadastradas e custo WeDrop salvo. Frete conjunto, estoque, volume de vendas e disponibilidade de kit físico precisam de confirmação antes de anunciar.',
-  verifiedSales:false,marketResearchVerified:false,shopeePublished:false};
+  warning:'Simulação com custo WeDrop e status DISPONÍVEL na importação. Estoque pode mudar; revalide antes de publicar. Frete conjunto e disponibilidade do kit físico exigem confirmação.',
+  verifiedSales:false,marketResearchVerified:false,shopeePublished:false,
+  wedropAvailabilityConfirmedAt:stock.lastSuccessAt};
 }
 export function kitPrompts(kit){
  const exact=kit.components.map((x,i)=>(i+1)+'. SKU '+x.sku+' — '+x.name+' — 1 unidade').join('; ');
@@ -166,8 +180,10 @@ export function kitPrompts(kit){
 }
 export async function suggestKits(shop,{category='Brinquedos',size=2,marginPct=15,packing=0,shipping=0,ai=true}={}){
  if(![2,3].includes(Number(size)))throw Error('Selecione 2 ou 3 produtos no kit.');
- const rows=await readCatalog(shop);
- if(!rows.some(x=>categoryMatches(x.category,category)))throw Error('Categoria sem produtos com custo válido.');
+ const [catalog,stock]=await Promise.all([readCatalog(shop),readKitStockSnapshot(shop)]);
+ assertKitStockSnapshot(stock);
+ const rows=catalog.filter(p=>stock.map.get(p.sku)==='DISPONIVEL');
+ if(!rows.some(x=>categoryMatches(x.category,category)))throw Error('Categoria sem produtos DISPONÍVEIS na importação WeDrop. Se necessário, atualize o catálogo e a disponibilidade.');
  let picks=pairCandidates(rows,category,Math.max(16,Number(size)*8));
  let source='compatibilidade de categorias e preços (heurística)';
  let commentary='Potencial de venda inferido pela complementaridade, sem dados reais de pedidos ou buscas.';
@@ -212,7 +228,9 @@ export async function kitCreative(shop,kit,{ai=true}={}){
 }
 export async function kitPlusResearchBrief(shop,{category='Brinquedos',size=2}={}){
  if(![2,3].includes(Number(size)))throw Error('Escolha dois ou três SKUs por kit.');
- const rows=(await readCatalog(shop)).filter(x=>categoryMatches(x.category,category))
+ const [catalog,stock]=await Promise.all([readCatalog(shop),readKitStockSnapshot(shop)]);
+ assertKitStockSnapshot(stock);
+ const rows=catalog.filter(x=>categoryMatches(x.category,category)&&stock.map.get(x.sku)==='DISPONIVEL')
   .sort((a,b)=>a.unitCost-b.unitCost);
  if(!rows.length)throw Error('Nenhum produto WeDrop encontrado nesta categoria.');
  // Enviar nomes e custos somente como evidência. Não incluir IDs de loja,
@@ -224,6 +242,7 @@ export async function kitPlusResearchBrief(shop,{category='Brinquedos',size=2}={
   'Você é especialista brasileiro em cross-sell de kits para a Shopee.',
   'Loja: Rede Achados BR. Usar APENAS as SKUs listadas. Categoria: '+category+'.',
   'Monte até 8 kits com EXATAMENTE '+size+' SKUs diferentes por kit, de produtos de uso real complementar. Não invente códigos, custos, certificações, atributos, imagens, nem estoque.',
+  'Todos os SKUs listados tinham status DISPONÍVEL na última importação WeDrop. Confirme novamente a disponibilidade antes de publicar; nunca invente estoque.',
   'Evite combinar meras variações de cor do mesmo produto. Não repita SKU dentro do kit.',
   'Avalie potencial comercial e relevância, mas NÃO diga que são os mais vendidos sem volumes comprovados. Os custos são da WeDrop e o lucro real será calculado no Shopee Manager.',
   'RESPOSTA OBRIGATÓRIA: somente uma linha por kit, com os códigos exatos separados pelo caractere |. Não use Markdown nem comentários. Exemplo: SKU_A | SKU_B.',
