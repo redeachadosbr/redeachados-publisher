@@ -124,10 +124,19 @@ export async function advanceShopeeExecution(job,io){
  }
  if(plan.images?.length&&(result.imageIds||[]).length<plan.images.length){
   const index=(result.imageIds||[]).length,asset=plan.images[index];
-  const file=await io.downloadImage(asset);
-  const id=await io.media.image(file,asset.mime_type);
+  // Operações externas não podem manter a execução presa indefinidamente.
+  // O timeout preserva os IDs confirmados; o próximo checkpoint recomeça
+  // exclusivamente pela posição não confirmada.
+  const bounded=async(promise,ms,label)=>{
+   let timer;
+   try{return await Promise.race([promise,new Promise((_,reject)=>{
+    timer=setTimeout(()=>reject(Error('timeout: '+label+' excedeu '+Math.ceil(ms/1000)+' segundos')),ms);
+   })]);}finally{clearTimeout(timer);}
+  };
+  const file=await bounded(io.downloadImage(asset),90000,'download da imagem '+(index+1));
+  const id=await bounded(io.media.image(file,asset.mime_type),90000,'envio da imagem '+(index+1));
   const current=[...(result.imageIds||[]),id];
-  return {state:'running',result:withExecutionEvent({...result,phase:'images_upload',imageIds:current},
+  return {state:'running',result:withExecutionEvent({...result,phase:'images_upload',imageIds:current,attempts:0},
    'image-'+current.length,'Imagem '+current.length+' de '+plan.images.length+' enviada à biblioteca de mídia da Shopee.','success'),delay:500};
  }
  if(plan.video&&result.video?.phase!=='ready'){
