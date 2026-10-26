@@ -67,14 +67,16 @@ export const SHOPEE_ATTRACTIVE_CENTS=Object.freeze(
 );
 const attractiveCents=new Set(SHOPEE_ATTRACTIVE_CENTS);
 export function adjustShopeeCustomerPriceEnding({grossCents,settings,unitCostCents,referenceSaleCents,
-  minimumMarginPct=0,maximumSaleCents=null,requireMarketplaceEnding=false}){
+  minimumMarginPct=0,maximumSaleCents=null,requireMarketplaceEnding=false,
+  requireCheckoutEnding=true}){
  const current=calculateShopeeSale(grossCents,settings,unitCostCents);
  const originalSaleCents=referenceSaleCents??current.saleCents;
  const allowed=sale=>attractiveCents.has(((sale%100)+100)%100);
  const visibleCents=financial=>money(financial.marketplaceDisplayPrice);
  // A Shopee exibe o valor de Minha Promoção ANTES do cupom. Um cupom
  // possível não pode ocultar um final inválido (,27) na vitrine.
- if(allowed(current.saleCents)&&(!requireMarketplaceEnding||allowed(visibleCents(current))))
+ if((!requireCheckoutEnding||allowed(current.saleCents))&&
+    (!requireMarketplaceEnding||allowed(visibleCents(current))))
   return {grossCents,financial:current,adjusted:false};
  const factor=(1-settings.discountPct/100)*(1-settings.couponPct/100);
  if(factor<=0)return {grossCents,financial:current,adjusted:false};
@@ -92,7 +94,8 @@ export function adjustShopeeCustomerPriceEnding({grossCents,settings,unitCostCen
   if(candidateGross<=0||candidateGross>BRL_LIMIT)continue;
   const candidate=calculateShopeeSale(candidateGross,settings,unitCostCents);
   const difference=candidate.saleCents-originalSaleCents;
-  if(Math.abs(difference)>(requireMarketplaceEnding?1999:99)||!allowed(candidate.saleCents)||
+  if(Math.abs(difference)>(requireMarketplaceEnding?1999:99)||
+     (requireCheckoutEnding&&!allowed(candidate.saleCents))||
      (requireMarketplaceEnding&&!allowed(visibleCents(candidate))))continue;
   if(maximumSaleCents!==null&&candidate.saleCents>maximumSaleCents)continue;
   if(candidate.marginPct+1e-8<minimumMarginPct)continue;
@@ -189,17 +192,26 @@ export function quoteShopeePrice({unitCost,settings={},marketAverage=null,margin
   const protectedMargin=originalMargin+1e-8>=desired?desired:c.minMarginPct;
   const marketCeiling=state==='COMPETITIVO'&&market!==null?
    financial.saleCents<=money(market)?money(market):Math.round(money(market)*1.02):null;
+  // Quando o vendedor move a barra, a margem MANUAL é o objetivo principal.
+  // Forçar ao mesmo tempo finais 0/9 na vitrine E após cupom de 1%
+  // transforma pequenos ajustes em saltos grandes (SKU 684BR: 5% -> 11,89%).
+  // O preço visível na Shopee deve continuar com terminação comercial, mas
+  // o valor após um cupom OPCIONAL pode terminar em qualquer centavo.
+  // Em preços automáticos manter a política dupla anterior sem alterações.
+  const manualMarginPriority=Boolean(marginOverride);
   const charm=adjustShopeeCustomerPriceEnding({
    grossCents:money(financial.gross),settings:proposed,unitCostCents:money(cost),
    minimumMarginPct:protectedMargin,maximumSaleCents:marketCeiling,
-   requireMarketplaceEnding:true
+   requireMarketplaceEnding:true,requireCheckoutEnding:!manualMarginPriority
   });
   financial=charm.financial;
   // Não apresentar nem salvar um preço fora da regra como recomendação final.
   // Se não houver final 0/9 que preserve piso e teto, requer revisão do plano.
-  if(!attractiveCents.has(Math.round(financial.finalPrice*100)%100)||
+  if((!manualMarginPriority&&!attractiveCents.has(Math.round(financial.finalPrice*100)%100))||
      !attractiveCents.has(money(financial.marketplaceDisplayPrice)%100))
    throw Error('Sem combinação que deixe o preço VISÍVEL na Shopee e o preço após cupom terminando em 0 ou 9 centavos, com a margem protegida. Recalcule antes de publicar; nenhum preço foi enviado à Shopee.');
+  if(manualMarginPriority)
+   note+=' Margem definida na barra é prioritária. Preço visível com terminação comercial; cupom opcional calculado nos centavos reais, sem elevar artificialmente o lucro.';
   if(charm.adjusted)
    note+=' Preço visível na Shopee ajustado para R$ '+financial.marketplaceDisplayPrice.toFixed(2).replace('.',',')+
     ' e preço com cupom para R$ '+financial.finalPrice.toFixed(2).replace('.',',')+
@@ -211,7 +223,8 @@ export function quoteShopeePrice({unitCost,settings={},marketAverage=null,margin
     couponPct:c.couponPct,
     marketplaceDisplayPrice:financial.marketplaceDisplayPrice,
     buyerAfterCoupon:financial.finalPrice,
-    priceEndingRuleVersion:2,
+    priceEndingRuleVersion:manualMarginPriority?3:2,
+    priceEndingPolicy:manualMarginPriority?'visible_price_margin_priority':'both_checkout_and_visible',
     customerPrice:financial.finalPrice,
     customerPriceBeforeRounding:previousFinalPrice,
     attractiveEndingApplied:charm.adjusted,
