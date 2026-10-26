@@ -43,11 +43,21 @@ export async function shopeePricingDirectSupplierCost(shopId,sku){
   const rows=await request('shopee_wedrop_costs',
     '?shop_id=eq.'+id+'&supplier_sku=eq.'+encodeURIComponent(code)+
     '&select=supplier_sku,unit_cost,imported_at&limit=2');
-  if(rows.length!==1)return null;
-  const cost=Number(rows[0].unit_cost);
+  // The imported supplier SKU is authoritative. Only permit a case-insensitive
+  // fallback when it identifies exactly one supplier record; never guess a cost
+  // from a different SKU, substring, Shopee product or model.
+  let matches=rows;
+  if(matches.length===0&&/^[a-zA-Z0-9-]+$/.test(code)){
+    const candidates=await request('shopee_wedrop_costs',
+      '?shop_id=eq.'+id+'&supplier_sku=ilike.'+encodeURIComponent(code)+
+      '&select=supplier_sku,unit_cost,imported_at&limit=20');
+    matches=candidates.filter(row=>String(row.supplier_sku).toUpperCase()===code.toUpperCase());
+  }
+  if(matches.length!==1)return null;
+  const cost=Number(matches[0].unit_cost);
   if(!Number.isFinite(cost)||cost<=0)return null;
-  return {supplierSku:String(rows[0].supplier_sku),unitCost:cost,
-    costUpdatedAt:rows[0].imported_at||null};
+  return {supplierSku:String(matches[0].supplier_sku),unitCost:cost,
+    costUpdatedAt:matches[0].imported_at||null};
 }
 
 export async function shopeePricingSupplierCost(shopId,{sku,itemId,modelId}){
