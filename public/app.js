@@ -7720,7 +7720,7 @@ function optimizerTechnicalSummary(data){
     if(details)details.open=true;
     if(!container){optimizerTechNotice('Os campos da ficha técnica não estão disponíveis. Recarregue a ficha e tente novamente.','warning');return;}
     const fields=[...container.querySelectorAll('fieldset[data-attribute-id]')];
-    const normalize=value=>String(value||'').normalize('NFD').replace(/[\\u0300-\\u036f]/g,'').toLowerCase().replace(/[^a-z0-9]/g,'');
+    const normalize=value=>String(value||'').normalize('NFD').replace(/\p{M}/gu,'').toLowerCase().replace(/[^a-z0-9]/g,'');
     const field=fields.find(f=>Number(f.dataset.attributeId)===Number(conflict.attributeId))||
       fields.find(f=>normalize(f.querySelector('legend')?.textContent)===normalize(optimizerTechLabel(conflict.name)))||
       fields.find(f=>normalize(f.querySelector('legend')?.textContent).includes(normalize(optimizerTechLabel(conflict.name))));
