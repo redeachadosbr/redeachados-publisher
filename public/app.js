@@ -7105,6 +7105,18 @@ function shDiscountRender(q){
     q.marketResearch?.verified===true&&q.status!=='MERCADO_ABAIXO_DO_PISO'?'success':'warning');
   discountOneClickReady();
 }
+function shDiscountQuoteHasValidCents(q){
+ const cents=v=>Math.round(Number(v)*100)%10;
+ const gross=Number(q?.grossPrice),discount=Number(q?.discountPct);
+ const promo=Math.round(gross*(1-discount/100)*100)/100;
+ const checkout=Math.round(promo*(1-Number(q?.couponPct||0)/100)*100)/100;
+ return Number(q?.priceEndingRuleVersion)===4&&
+  q?.priceEndingPolicy==='both_checkout_and_visible'&&
+  Number.isFinite(promo)&&Number.isFinite(checkout)&&promo>0&&checkout>0&&
+  [0,9].includes(cents(promo))&&[0,9].includes(cents(checkout))&&
+  Math.abs(promo-Number(q.marketplaceDisplayPrice))<0.011&&
+  Math.abs(checkout-Number(q.customerPrice))<0.011;
+}
 function shDiscountStatus(message,state='info'){
   const n=$('#discountPlanStatus');
   n.textContent=message;n.dataset.state=state;
@@ -7131,15 +7143,37 @@ async function shDiscountChoose(row){
     });
     if(requestId!==discountLoadRequestId)return;
     if(!data?.quote||data?.saved!==true)throw Error('O servidor não confirmou o salvamento do plano.');
+    let quote=data.quote,recalculated=false;
+    if(!shDiscountQuoteHasValidCents(quote)){
+     if(!quote.pricingSettings)
+      throw Error('Plano antigo sem configurações de custo e margem recuperáveis. Use Otimização > Buscar SKU para recalcular.');
+     shDiscountStatus('Plano anterior fora da regra 0/9. Recalculando automaticamente com custo WeDrop, margem da SKU e cupom salvos; NADA será publicado...','warning');
+     const fixed=await json('/api/shopee/optimizer/pricing/prepare',{
+      method:'POST',headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({sku:row.sku,itemId:row.itemId,modelId:row.modelId,
+       settings:quote.pricingSettings,marginOverride:quote.marginOverride===true,
+       adsBudgetEnabled:quote.adsBudgetEnabled===true,
+       adsBudgetPct:quote.adsBudgetEnabled===true?Number(quote.adsBudgetPct||0):0,
+       marketAverage:quote.marketResearch?.manualMarketReference??null}),
+      signal:AbortSignal.timeout(90000)
+     });
+     if(requestId!==discountLoadRequestId)return;
+     quote=fixed?.quote;
+     if(!quote||!shDiscountQuoteHasValidCents(quote))
+      throw Error('A atualização não conseguiu proteger simultaneamente preço da Shopee, cupom e margem. Nenhum desconto foi enviado.');
+     recalculated=true;
+    }
     shPriceSelection={sku:row.sku,itemId:String(row.itemId),modelId:String(row.modelId)};
     shPriceSaveSelection(shPriceSelection);
-    shDiscountRender(data.quote);
+    shDiscountRender(quote);
     const select=$('#discountOneClickSku');
     const index=discountOneClickRows.findIndex(x=>
       x.sku===row.sku&&String(x.itemId)===String(row.itemId)&&
       String(x.modelId)===String(row.modelId));
     if(index>=0)select.value=String(index);
-    shDiscountStatus('Plano da SKU '+row.sku+' recuperado sem recalcular. Pronto para execução simplificada.','success');
+    shDiscountStatus(recalculated
+     ?'✓ Plano da SKU '+row.sku+' recalculado com ambos os preços terminando em 0/9. Confira os novos valores e autorize a prévia; nenhuma alteração foi enviada à Shopee.'
+     :'Plano da SKU '+row.sku+' recuperado com preço Shopee e cupom dentro da regra 0/9. Confira e autorize somente após a prévia.','success');
     shDiscountHighlight(row);
   }catch(e){
     if(requestId!==discountLoadRequestId)return;
