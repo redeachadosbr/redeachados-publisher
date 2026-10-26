@@ -106,7 +106,7 @@
    .replace(/\s*\x60{3}\s*$/u,'')
    .replace(/^\s*(?:Escrita|Writing)\s*$/gim,'')
    .replace(/^\s*#{1,4}\s*/gm,'').replace(/\*\*/g,'').trim();
-  if(!/["“]description["”]\\s*:/iu.test(plain)&&plain.length>=250&&plain.length<=5000&&
+  if(!/["“]description["”]\s*:/iu.test(plain)&&plain.length>=250&&plain.length<=5000&&
      /benef[ií]cios/iu.test(plain)&&/por que comprar/iu.test(plain)&&
      /(?:caracter[ií]sticas|especifica[çc][õo]es)/iu.test(plain)&&
      /(?:embalagem|itens inclusos)/iu.test(plain))
