@@ -12,7 +12,7 @@ const input={
  title:'Kit Garrafa 500ml com Copo para Agua',
  description:'✨ Kit original com garrafa e copo em peças individuais. ✅ BENEFÍCIOS: itens para servir bebidas. 📦 O QUE VAI NA EMBALAGEM: uma garrafa e um copo, sem itens adicionais.',
  mainSku:'GA500',weightKg:1.12,lengthCm:30,widthCm:25,heightCm:18,
- logisticId:'90003',imageIds:photos,preOrder:false,photosReviewed:true,
+ logisticId:'90003',imageIds:photos,preOrder:false,photosReviewed:true,singleParcelConfirmed:true,
  contentsReviewed:true,autoSyncDts:false
 };
 const linked=[
@@ -22,7 +22,7 @@ const linked=[
 test('Kit Formal precisa validação humana de foto, SKU principal e envio real',()=>{
  for(const diff of [
   {mainSku:'INVENTADO'},{photosReviewed:false},{contentsReviewed:false},
-  {weightKg:0},{lengthCm:0},{logisticId:''},{imageIds:[]},
+  {weightKg:0},{lengthCm:0},{logisticId:''},{imageIds:[]},{singleParcelConfirmed:false},
   {preOrder:true,daysToShip:0}
  ])assert.throws(()=>kitPublishFields({...input,...diff},kit));
  const fields=kitPublishFields(input,kit);
@@ -70,4 +70,23 @@ test('Manager mostra ordem: revisar, publicar, desconto; rotas autenticadas',()=
  assert.match(browser,/kitPublishExecute/);
  assert.match(browser,/window\.confirm/);
  assert.doesNotMatch(browser,/function refreshKitPrices\(kit\)\{\s*refreshKitPrices\(kit\)/);
+});
+
+test('desconto não pode ser solicitado na criação; só após publicação Shopee e prévia separada',()=>{
+ const server=fs.readFileSync(new URL('../server.js',import.meta.url),'utf8');
+ const discount=fs.readFileSync(new URL('../shopeeKitDiscountService.js',import.meta.url),'utf8');
+ const html=fs.readFileSync(new URL('../public/index.html',import.meta.url),'utf8');
+ for(const name of ['/api/shopee/kits/discount/preview','/api/shopee/kits/discount/execute'])
+  assert.ok(server.includes(name));
+ assert.match(discount,/publication\?\.status!=='published'/);
+ assert.match(discount,/get_item_base_info/);
+ assert.match(discount,/get_model_list/);
+ assert.match(discount,/lookupShopeeCompetitors/);
+ assert.match(discount,/REDE_ACHADOS_MARKET_RULES\.minimumOffers/);
+ assert.match(discount,/\[0,9\]/);
+ assert.match(discount,/readDiscountPages/);
+ assert.match(discount,/add_discount_item/);
+ assert.match(discount,/update_discount_item/);
+ assert.match(html,/id="kitDiscountExecute"/);
+ assert.match(html,/id="kitSingleParcelConfirmed"/);
 });
