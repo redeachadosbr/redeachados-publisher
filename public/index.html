@@ -31,7 +31,7 @@
 <link rel="stylesheet" href="/ads-premium.css?v=2.4.0-seo-ads-location">
 <link rel="stylesheet" href="/sidebar-collapse.css?v=1.0.0">
 <link rel="stylesheet" href="/optimizer-image-studio.css?v=1.0.2">
-<link rel="stylesheet" href="/kit-builder.css?v=1.1.0-saved-kit-drafts">
+<link rel="stylesheet" href="/kit-builder.css?v=1.2.0-chatgpt-plus-only">
 <link rel="stylesheet" href="/optimizer-technical-studio.css?v=1.0.1-review-feedback">
 <style>
 /* Retomada da SKU visível junto à barra de acompanhamento. A API só é
@@ -874,8 +874,11 @@
    <strong>Pesquisa avançada com ChatGPT Plus</strong>
    <p>Envie uma seleção de SKUs reais da WeDrop ao ChatGPT e importe as sugestões: o Manager valida os códigos e refaz o cálculo.</p>
    <div class="kit-actions">
-    <button type="button" class="kit-primary" id="kitPlusResearch">Copiar pesquisa e abrir ChatGPT Plus</button>
+    <button type="button" class="kit-primary" id="kitPlusResearch">Preparar pesquisa para ChatGPT Plus</button>
    </div>
+   <label for="kitResearchPrompt">Prompt de pesquisa (somente produtos verificados)</label>
+   <textarea id="kitResearchPrompt" rows="5" readonly placeholder="O prompt aparecerá aqui após preparar a pesquisa."></textarea>
+   <button type="button" class="kit-secondary" id="kitOpenResearchPrompt">Copiar prompt + abrir ChatGPT Plus</button>
    <label for="kitPlusOutput">Cole aqui as linhas de SKUs sugeridas no ChatGPT, por exemplo: SKU1 | SKU2</label>
    <textarea id="kitPlusOutput" rows="4" placeholder="SKU1 | SKU2&#10;SKU3 | SKU4"></textarea>
    <button type="button" id="kitPlusImport" class="kit-secondary">Importar kits sugeridos e recalcular</button>
@@ -895,7 +898,9 @@
   <div class="kit-plus-workflow">
    <strong>Preparar título e descrição no ChatGPT Plus</strong>
    <p>O prompt contém as SKUs conferidas. Use seu ChatGPT Plus e cole a resposta aqui; não há conexão automática nem cobrança de API.</p>
-   <div class="kit-actions"><button id="kitPlusText" type="button" class="kit-primary">Copiar prompt e abrir ChatGPT Plus</button></div>
+   <div class="kit-actions"><button id="kitPlusText" type="button" class="kit-primary">Preparar orientação para título e descrição</button></div>
+   <textarea id="kitContentPrompt" rows="5" readonly placeholder="A orientação com SKUs corretas aparecerá aqui."></textarea>
+   <button id="kitOpenContentPrompt" type="button" class="kit-secondary">Copiar orientação + abrir ChatGPT Plus</button>
    <label for="kitPlusTextResult">Resposta do ChatGPT (TÍTULO: e DESCRIÇÃO:)</label>
    <textarea id="kitPlusTextResult" rows="6" placeholder="TÍTULO: Kit ...&#10;DESCRIÇÃO: ✨ ..."></textarea>
    <button id="kitImportText" type="button" class="kit-secondary">Importar título e descrição da resposta</button>
@@ -1765,7 +1770,7 @@
 <script src="/technical-memory.js?v=1.0.1-live-sku-preload"></script>
 <script src="/technical-status.js?v=1.0.0-optional-coherence"></script>
 <script src="/app.js?v=1.21.82-media-technical-fix-dual-centavos-09-v4"></script>
-<script type="module" src="/kit-builder.js?v=1.1.0-saved-kit-drafts"></script>
+<script type="module" src="/kit-builder.js?v=1.2.0-chatgpt-plus-only"></script>
 <link rel="stylesheet" href="/optimizer-variations.css?v=1.2.1-single-flow">
 <script src="/optimizer-variations.js?v=1.2.3-single-flow"></script>
 
