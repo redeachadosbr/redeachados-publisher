@@ -1,7 +1,7 @@
 // Motor Matriz - leitura deterministica das MEDIDAS DO PRODUTO do texto
 // WeDrop colado pelo vendedor. Nunca infere dimensoes de fotos, NCM, nome,
 // campos isolados do fornecedor ou medidas de caixa/transporte.
-const normalized=value=>String(value??'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase();
+const normalized=value=>String(value??'').replace(/\\r\\n|\\n|\\r/g,'\n').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase();
 const fmtNumber=value=>String(Number(String(value).replace(',','.'))).replace('.',',');
 const axisNames=Object.freeze({altura:'altura',largura:'largura',comprimento:'comprimento',profundidade:'profundidade'});
 const number='(\\d{1,4}(?:[.,]\\d{1,2})?)';
@@ -44,12 +44,39 @@ export function confirmedProductDimensionsFromWeDrop(sourceText){
 
 // Informações laterais opcionais da imagem 03. A fonte é EXCLUSIVAMENTE
 // o campo "Informações da WeDrop" da mesma SKU, nunca dados logísticos.
+// Medidas de uma PISTA montada são do conjunto, NUNCA do carrinho
+// individual. Só podem aparecer com esse sujeito explícito em legenda,
+// nunca como setas de altura/largura/comprimento sobre a miniatura.
+export function confirmedAssembledTrackDimensionsFromWeDrop(sourceText){
+ const text=normalized(sourceText).slice(0,12000);
+ const lines=text.split('\n').map(x=>x.trim());
+ const result=[];
+ for(const line of lines){
+  if(!/^dimensoes\s+da\s+pista\s+montada\s*[:\-]/.test(line))continue;
+  const found={};
+  for(const m of line.matchAll(axisPattern)){
+   const raw=Number(m[1].replace(',','.'));
+   const cm=m[2]==='m'?raw*100:m[2]==='mm'?raw/10:raw;
+   const axis=m[3];
+   if(!Number.isFinite(cm)||cm<=0||cm>10000)continue;
+   found[axis]=fmtNumber(cm)+' cm';
+  }
+  if(found.comprimento&&found.largura&&found.altura)
+   result.push(found.comprimento+' × '+found.largura+' × '+found.altura);
+ }
+ return result.length&&result.every(x=>x===result[0])?{
+  subject:'pista montada',value:result[0]
+ }:null;
+}
 export function confirmedProductSideFactsFromWeDrop(sourceText){
  const text=normalized(sourceText).replace(/\r/g,'').slice(0,12000);
  if(!text.trim())return [];
  const facts=[];
+ const assembled=confirmedAssembledTrackDimensionsFromWeDrop(sourceText);
+ if(assembled)facts.push({label:'Pista montada',value:assembled.value});
  const definitions=[
   {name:'Capacidade',re:/^(?:capacidade\s*(?:litros|em\s*litros|volumetrica)|capacidade)\s*[:\-]\s*(\d{1,4}(?:[.,]\d{1,3})?)\s*(litros?|l)\b/i,unit:'L'},
+  {name:'Conjunto',re:/^capacidade\s*[:\-]\s*(\d{1,4})\s*(pecas?)\b/i,unit:'peças'},
   {name:'Suporta',re:/^(?:capacidade\s*(?:peso|de\s*peso)|peso\s*(?:suportado|maximo)|suporta)\s*[:\-]\s*(\d{1,4}(?:[.,]\d{1,3})?)\s*(kg|g)\b/i,unit:null},
   {name:'Peso',re:/^peso\s*(?:do\s*produto|liquido)?\s*[:\-]\s*(\d{1,4}(?:[.,]\d{1,3})?)\s*(kg|g)\b/i,unit:null},
   {name:'Cor',re:/^cor\s*[:\-]\s*([\p{L}]+(?:\s+[\p{L}]+){0,2})\s*$/iu,unit:null}
