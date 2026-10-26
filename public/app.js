@@ -8254,7 +8254,7 @@ function optimizerImagesRenderMode(){
  $('#optimizerModeApi').classList.toggle('is-active',!chat);
 }
 async function optimizerChatgptMakeBrief(w,{defaultOnly=false}={}){
- const {createChatGptPrompts}=await import('/chatgptPrompts.js?v=1.21.83-prompts-hd-wedrop');
+ const {createChatGptPrompts}=await import('/chatgptPrompts.js?v=1.21.84-clean-photo03-sku');
  return createChatGptPrompts({
   sku:w.sku,title:w.draftTitle||'Produto Shopee',
   imageUrls:w.imageUrls||[],
@@ -8262,7 +8262,10 @@ async function optimizerChatgptMakeBrief(w,{defaultOnly=false}={}){
   imageNotes:w.imageNotes||{},
   imagePrompts:defaultOnly?{}:(w.imagePrompts||{}),
   masterPrompt:$('#optimizerPrompt')?.value||'',
-  supplierSourceText:w.sourceEvidence?.sourceText||'',
+  supplierSourceText:(String(w.sourceEvidence?.sku||'')===String(w.sku)&&
+   ['exact-sku','reviewed-link'].includes(String(w.supplierProduct?.matchedBy||'')))?
+   (w.sourceEvidence?.sourceText||''):'',
+
   supplierProduct:w.supplierProduct||null,
   supplierMetrics:w.sourceFacts?.metrics||[]
  });
@@ -8749,14 +8752,18 @@ globalThis.window?.addEventListener?.('message',async(event)=>{
   if(Number(m.slot)===3){
    // A foto gerada é SOMENTE a base. Montar a ficha com números de produto
    // confirmados, não confiar em textos/medidas imaginados pelo gerador.
-   const {confirmedSpecCard,addConfirmedSpecificationCard}=await import('/specificationCard.js?v=1.1.0-wedrop-premium-specs');
-   const spec=confirmedSpecCard({sourceText:w.sourceEvidence?.sourceText||''});
+   const {confirmedSpecCard,addConfirmedSpecificationCard}=await import('/specificationCard.js?v=1.2.0-sku-verified-technical');
+   const spec=confirmedSpecCard({
+    sourceText:w.sourceEvidence?.sourceText||'',
+    sku:w.sku,sourceEvidenceSku:w.sourceEvidence?.sku||'',
+    supplierMatchedBy:w.supplierProduct?.matchedBy||''
+   });
    if(spec){
     optimizerChatBridgeNotice('Imagem 03 recebida. Aplicando cotas finas e somente dados confirmados na WeDrop da SKU...');
     const annotated=await addConfirmedSpecificationCard(prepared.blob,spec);
     prepared={...prepared,blob:annotated,filename:'imagem-03-medidas.png'};
    }else{
-    optimizerChatBridgeNotice('Imagem 03 sem medidas confirmadas na WeDrop: mantendo a foto fiel sem inventar dimensões, sem interromper a sequência.');
+    optimizerChatBridgeNotice('Imagem 03 sem vínculo WeDrop validado da mesma SKU ou sem medidas explícitas: nenhuma informação técnica será inventada. Revise a foto limpa.');
    }
   }
   const {imageBlobSha256}=await import('/chatgptUploadQueue.js?v=1.21.14-db-reconcile');
