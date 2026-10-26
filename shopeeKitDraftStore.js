@@ -46,6 +46,10 @@ export async function listKitDrafts(shopId){
   '&select=kit_sku,component_skus,draft,updated_at&order=updated_at.desc&limit=30');
  return rows.map(x=>({kitSku:x.kit_sku,skus:x.component_skus,
   title:String(x.draft?.creative?.title||''),quote:x.draft?.kit?.quote,
+  kitCost:Number(x.draft?.kit?.kitCost)||null,
+  images:(x.draft?.kit?.components||[]).slice(0,3)
+    .map(p=>String(p.imageUrl||'')).filter(url=>/^https:\/\/wedrop-products-images\.nyc3\.cdn\.digitaloceanspaces\.com\//.test(url)),
+  publication:x.draft?.publication?.status||'local_draft',
   updatedAt:x.updated_at}));
 }
 export async function loadKitDraft(shopId,kitSku){
