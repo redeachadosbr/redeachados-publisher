@@ -65,6 +65,22 @@ export function supplierProductDimensions(text){
  if(match&&match.slice(1,4).every(x=>Number(sizeNumber(x))>0))
   return {height:sizeNumber(match[1]),width:sizeNumber(match[2]),length:sizeNumber(match[3]),
    value:match.slice(1,4).map(sizeNumber).join(' x ')+' cm',provenance:match[0]};
+ // Catálogo WeDrop copiado da ficha técnica: rótulos em linhas separadas.
+ // Ex.: ALTURA [quebra] 28cm [quebra] LARGURA [quebra] 40cm.
+ // Não usar dimensões logísticas nem escolher entre variantes diferentes.
+ const normalized=plain(source);
+ const labels=[['height','altura'],['width','largura'],['length','comprimento']];
+ const values={};
+ for(const [axis,label] of labels){
+  const re=new RegExp('(?:^|\\\\n)\\\\s*'+label+'\\\\s*[:\\\\-]?\\\\s*(?:\\\\n\\\\s*)?'+n+'\\\\s*cm\\\\b','i');
+  const hit=normalized.match(re);
+  if(hit&&Number(sizeNumber(hit[1]))>0&&Number(sizeNumber(hit[1]))<10000)values[axis]=sizeNumber(hit[1]);
+ }
+ if(labels.every(([axis])=>values[axis])){
+  return {height:values.height,width:values.width,length:values.length,
+   value:[values.height,values.width,values.length].join(' x ')+' cm',
+   provenance:'Ficha técnica WeDrop: ALTURA / LARGURA / COMPRIMENTO (campos separados)'};
+ }
  return null;
 }
 // Evidências literais já salvas pelo vendedor, na mesma SKU.
