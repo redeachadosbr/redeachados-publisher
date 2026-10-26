@@ -32,6 +32,18 @@ export function supplierWorkflowFacts(supplier,record,settings={}){
  else if(['KIT','KT'].includes(explicitUnit))taxSuggestion.measure_unit='KIT';
  else if(['M','MT','METRO'].includes(explicitUnit))taxSuggestion.measure_unit='M';
  else if(['KG','QUILOGRAMA'].includes(explicitUnit))taxSuggestion.measure_unit='KG';
+ // O catálogo WeDrop frequentemente não contém measure_unit, mas declara
+ // claramente a unidade comercial no nome. KIT é o conjunto vendido como
+ // UMA oferta; UN é o artigo avulso. Não usar quantidade de peças para
+ // supor a unidade e jamais substituir unidade explicitamente cadastrada.
+ if(!taxSuggestion.measure_unit){
+  const commercialName=clean(facts.name||facts.title||record.title);
+  const normalizedName=commercialName.normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase();
+  const declaredKit=/\b(?:kit|conjunto|jogo)\b/.test(normalizedName);
+  const avulso=/\b(?:avulso|unidade avulsa|peca avulsa)\b/.test(normalizedName);
+  if(declaredKit&&!avulso)taxSuggestion.measure_unit='KIT';
+  else if(commercialName&&!declaredKit)taxSuggestion.measure_unit='UN';
+ }
  const description=clean(record.description);
  const attrs=record.attributeAudit?.attributes||[];
  const singularQuantity=attrs.find(x=>/quantidade\s+(?:da|por)\s+embalagem|quantidade\s+incluida/i.test(
