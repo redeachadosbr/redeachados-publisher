@@ -31,6 +31,7 @@
 <link rel="stylesheet" href="/ads-premium.css?v=2.4.0-seo-ads-location">
 <link rel="stylesheet" href="/sidebar-collapse.css?v=1.0.0">
 <link rel="stylesheet" href="/optimizer-image-studio.css?v=1.0.2">
+<link rel="stylesheet" href="/kit-builder.css?v=1.0.0">
 <link rel="stylesheet" href="/optimizer-technical-studio.css?v=1.0.1-review-feedback">
 <style>
 /* Retomada da SKU visível junto à barra de acompanhamento. A API só é
@@ -75,7 +76,7 @@
     <nav class="sidebar-nav" id="sidebarNav" aria-label="Menu principal">
       <div class="nav-group"><div class="nav-group-title">VISÃO GERAL</div><a class="tab nav-link active" href="/app/inicio" data-tab="overview" data-page="inicio" aria-current="page"><svg class="nav-icon" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7" rx="1.3"/><rect x="14" y="3" width="7" height="7" rx="1.3"/><rect x="3" y="14" width="7" height="7" rx="1.3"/><rect x="14" y="14" width="7" height="7" rx="1.3"/></svg><span class="nav-name">Painel inicial</span></a></div>
       <div class="nav-group"><div class="nav-group-title">OPERAÇÃO</div>
-        <a class="tab nav-link" href="/app/produtos" data-tab="products" data-page="produtos"><svg class="nav-icon" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="m12 2 9 5-9 5-9-5 9-5Z"/><path d="M3 7v10l9 5 9-5V7M12 12v10"/></svg><span class="nav-name">Produtos e anúncios</span></a><a class="tab nav-link" href="/app/otimizacao" data-tab="optimizer" data-page="otimizacao"><svg class="nav-icon" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M4.5 17.5l-2 3 3-1 4-4M14 3c3 .2 5 2 7 5-1 4-4 8-7 10l-5-5c2-5 3-7 5-10Z"/><path d="M9 13 6 10l3-2m5 10-2 3-3-3"/><circle cx="16" cy="8" r="1.5"/></svg><span class="nav-name">Otimização de anúncios</span></a><a class="tab nav-link" href="/app/precificacao" data-tab="pricing" data-page="precificacao"><svg class="nav-icon" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M5 21V12h3v9M11 21V5h3v16M17 21V9h3v12"/><path d="M3 21h19"/></svg><span class="nav-name">Precificação</span></a><a class="tab nav-link" href="/app/descontos" data-tab="discounts" data-page="descontos"><svg class="nav-icon" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M3 7V3h5l13 13-5 5L3 8V7Z"/><circle cx="7.5" cy="7.5" r="1"/></svg><span class="nav-name">Descontos preparados</span></a><a class="tab nav-link" href="/app/informacoes-fiscais" data-tab="fiscal" data-page="informacoes-fiscais"><svg class="nav-icon" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="3" width="14" height="19" rx="2"/><path d="M9 8h6M9 12h6M9 16h4"/></svg><span class="nav-name">Informações Fiscais</span></a><a class="tab nav-link" href="/app/pedidos" data-tab="orders" data-page="pedidos"><svg class="nav-icon" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3h2l2.6 12.5a2 2 0 0 0 2 1.5h9.3a2 2 0 0 0 2-1.5L22 7H6"/><circle cx="10" cy="21" r="1"/><circle cx="19" cy="21" r="1"/></svg><span class="nav-name">Pedidos e vendas</span></a><a class="tab nav-link" href="/app/envios" data-tab="alerts" data-page="envios"><svg class="nav-icon" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="5" width="13" height="12" rx="1.5"/><path d="M15 9h4l3 4v4h-7M7 17h1M18 17h1"/></svg><span class="nav-name">Monitor de envios</span><span class="sidebar-counter" id="monitorBadge"></span></a>
+        <a class="tab nav-link" href="/app/produtos" data-tab="products" data-page="produtos"><svg class="nav-icon" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="m12 2 9 5-9 5-9-5 9-5Z"/><path d="M3 7v10l9 5 9-5V7M12 12v10"/></svg><span class="nav-name">Produtos e anúncios</span></a><a class="tab nav-link" href="/app/kits" data-tab="kits" data-page="kits"><svg class="nav-icon" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><path d="M13 17h9m-4.5-4.5v9"/></svg><span class="nav-name">Kits Inteligentes WeDrop</span></a><a class="tab nav-link" href="/app/otimizacao" data-tab="optimizer" data-page="otimizacao"><svg class="nav-icon" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M4.5 17.5l-2 3 3-1 4-4M14 3c3 .2 5 2 7 5-1 4-4 8-7 10l-5-5c2-5 3-7 5-10Z"/><path d="M9 13 6 10l3-2m5 10-2 3-3-3"/><circle cx="16" cy="8" r="1.5"/></svg><span class="nav-name">Otimização de anúncios</span></a><a class="tab nav-link" href="/app/precificacao" data-tab="pricing" data-page="precificacao"><svg class="nav-icon" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M5 21V12h3v9M11 21V5h3v16M17 21V9h3v12"/><path d="M3 21h19"/></svg><span class="nav-name">Precificação</span></a><a class="tab nav-link" href="/app/descontos" data-tab="discounts" data-page="descontos"><svg class="nav-icon" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M3 7V3h5l13 13-5 5L3 8V7Z"/><circle cx="7.5" cy="7.5" r="1"/></svg><span class="nav-name">Descontos preparados</span></a><a class="tab nav-link" href="/app/informacoes-fiscais" data-tab="fiscal" data-page="informacoes-fiscais"><svg class="nav-icon" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="3" width="14" height="19" rx="2"/><path d="M9 8h6M9 12h6M9 16h4"/></svg><span class="nav-name">Informações Fiscais</span></a><a class="tab nav-link" href="/app/pedidos" data-tab="orders" data-page="pedidos"><svg class="nav-icon" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3h2l2.6 12.5a2 2 0 0 0 2 1.5h9.3a2 2 0 0 0 2-1.5L22 7H6"/><circle cx="10" cy="21" r="1"/><circle cx="19" cy="21" r="1"/></svg><span class="nav-name">Pedidos e vendas</span></a><a class="tab nav-link" href="/app/envios" data-tab="alerts" data-page="envios"><svg class="nav-icon" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="5" width="13" height="12" rx="1.5"/><path d="M15 9h4l3 4v4h-7M7 17h1M18 17h1"/></svg><span class="nav-name">Monitor de envios</span><span class="sidebar-counter" id="monitorBadge"></span></a>
       </div>
       <div class="nav-group"><div class="nav-group-title">GESTÃO</div>
         <a class="tab nav-link" id="centralFinanceLink" href="https://redeachadosbrfinancas.netlify.app/" target="_blank" rel="noopener noreferrer" aria-label="Central Financeira (abre em nova aba)" title="Saldos, movimentações e despesas. Abre em nova aba com o acesso próprio da Central Financeira."><svg class="nav-icon" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M20 8V5a2 2 0 0 0-2-2H6a3 3 0 0 0 0 6h14a1 1 0 0 1 1 1v10a1 1 0 0 1-1 1H6a3 3 0 0 1-3-3V6"/><path d="M21 12h-5a2 2 0 0 0 0 4h5"/><circle cx="16" cy="14" r=".5" fill="currentColor"/></svg><span class="nav-name">Central Financeira</span><span class="nav-chevron" aria-hidden="true">↗</span></a>
@@ -851,7 +852,45 @@
       </div></details>
   </div>
 </section>
-              <section class="tabpane" id="tab-fiscal" aria-label="Informações fiscais da Shopee">
+              <section class="tabpane" id="tab-kits" aria-label="Kits Inteligentes WeDrop">
+ <div class="kit-hero">
+  <div><span class="kit-kicker">WE<b>DROP</b> · INTELIGÊNCIA COMERCIAL</span>
+   <h2>Kits Inteligentes</h2><p>Combine produtos reais por categoria, confira o custo de cada SKU e prepare uma oferta completa com precificação, texto comercial e nove fotografias.</p></div>
+  <div class="kit-status-pill">● Catálogo WeDrop e calculadora Shopee</div>
+ </div>
+ <div class="kit-form" id="kitForm">
+  <label>Categoria WeDrop<select id="kitCategory"><option value="Brinquedos">Brinquedos</option></select></label>
+  <label>Produtos por kit<select id="kitSize"><option value="2">2 SKUs</option><option value="3">3 SKUs</option></select></label>
+  <label>Margem líquida mínima<input id="kitMargin" type="number" min="5" max="65" value="15" step="1"><small>O preço real pode superar a meta pela regra 0/9.</small></label>
+  <label>Embalagem adicional (R$)<input id="kitPacking" type="number" min="0" max="500" value="0" step="0.01"></label>
+  <label>Frete assumido pela loja (R$)<input id="kitShipping" type="number" min="0" max="500" value="0" step="0.01"></label>
+  <label class="kit-check"><input id="kitUseAi" type="checkbox" checked> Usar ChatGPT para analisar combinações e redigir anúncio (quando API conectada)</label>
+  <button id="kitSuggest" type="button" class="kit-primary">✦ Pesquisar kits inteligentes</button>
+ </div>
+ <p class="kit-info">Somente SKUs e custos existentes na WeDrop. Previsão de lucro não representa vendas reais; frete conjunto, estoque, disponibilidade e composição física precisam de confirmação. Nenhum anúncio é criado ou publicado sem aprovação.</p>
+ <p id="kitStatus" role="status" aria-live="polite" class="kit-status">Carregando categorias cadastradas...</p>
+ <div class="kit-bar"><h3>Sugestões de kits</h3><span id="kitSource"></span></div>
+ <div id="kitSuggestions" class="kit-suggestions"><p>Escolha uma categoria para iniciar.</p></div>
+ <section id="kitDetail" class="kit-detail" hidden>
+  <div class="kit-detail-title"><div><span class="kit-kicker">RASCUNHO NÃO PUBLICADO</span><h3 id="kitSkuTitle">Kit</h3></div><button id="kitClose" type="button" class="kit-secondary">Fechar</button></div>
+  <div id="kitComponents" class="kit-components"></div>
+  <div id="kitNumbers" class="kit-numbers"></div>
+  <p id="kitWarning" class="kit-info"></p>
+  <div class="kit-copy-grid">
+   <label>Título SEO <small>Até 120 caracteres — confira antes de usar.</small><textarea id="kitTitle" rows="2"></textarea><button type="button" id="kitCopyTitle" class="kit-secondary">Copiar título</button></label>
+   <label>Descrição do anúncio <small>Produtos incluídos e quantidades exatos por SKU.</small><textarea id="kitDescription" rows="13"></textarea><button type="button" id="kitCopyDescription" class="kit-secondary">Copiar descrição</button></label>
+  </div>
+  <div class="kit-bar"><h3>Imagens profissionais do kit — 1200 × 1200</h3><span>Uma referência de cada SKU WeDrop</span></div>
+  <div id="kitImages" class="kit-images"></div>
+  <div class="kit-actions">
+   <button id="kitGenerateAll" type="button" class="kit-primary">✦ Gerar 9 fotos pela API OpenAI</button>
+   <button id="kitDownloadPack" type="button" class="kit-secondary">Baixar ficha do kit e 9 prompts</button>
+   <button id="kitCopyAllPrompts" type="button" class="kit-secondary">Copiar 9 prompts para o ChatGPT</button>
+  </div>
+  <p id="kitImageStatus" class="kit-status">As imagens requerem API OpenAI habilitada e podem gerar cobrança. Verifique cada foto antes de usar. Os arquivos gerados podem ser baixados individualmente.</p>
+ </section>
+</section>
+<section class="tabpane" id="tab-fiscal" aria-label="Informações fiscais da Shopee">
   <div class="ra-fiscal-page-intro">
     <div><span class="ra-fiscal-page-kicker">ÁREA FISCAL · SHOPEE</span><h2>Dados fiscais e atualização em lote</h2><p>Conferência por SKU e envio em lote organizados aqui. Nenhuma ação altera preços ou descontos.</p></div>
     <button id="optimizerFiscalBackToSku" type="button" class="secondary">↗ Abrir SKU na Otimização</button>
@@ -1704,6 +1743,7 @@
 <script src="/technical-memory.js?v=1.0.1-live-sku-preload"></script>
 <script src="/technical-status.js?v=1.0.0-optional-coherence"></script>
 <script src="/app.js?v=1.21.82-media-technical-fix-dual-centavos-09-v4"></script>
+<script type="module" src="/kit-builder.js?v=1.0.0"></script>
 <link rel="stylesheet" href="/optimizer-variations.css?v=1.2.1-single-flow">
 <script src="/optimizer-variations.js?v=1.2.3-single-flow"></script>
 
