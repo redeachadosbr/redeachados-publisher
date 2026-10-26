@@ -192,26 +192,29 @@ export function quoteShopeePrice({unitCost,settings={},marketAverage=null,margin
   const protectedMargin=originalMargin+1e-8>=desired?desired:c.minMarginPct;
   const marketCeiling=state==='COMPETITIVO'&&market!==null?
    financial.saleCents<=money(market)?money(market):Math.round(money(market)*1.02):null;
-  // Quando o vendedor move a barra, a margem MANUAL é o objetivo principal.
-  // Forçar ao mesmo tempo finais 0/9 na vitrine E após cupom de 1%
-  // transforma pequenos ajustes em saltos grandes (SKU 684BR: 5% -> 11,89%).
-  // O preço visível na Shopee deve continuar com terminação comercial, mas
-  // o valor após um cupom OPCIONAL pode terminar em qualquer centavo.
-  // Em preços automáticos manter a política dupla anterior sem alterações.
+  // Regra 0/9 é única e compartilhada pelas duas etapas: preço exibido
+  // na Shopee (promoção) E preço após o cupom informado (checkout).
+  // Com cupom de 1%, há faixas sem dupla terminação 0/9 (SKU 684BR).
+  // A margem da barra é um MÍNIMO, nunca reduzir taxas/lucro para mascarar
+  // uma terminação inválida nem inventar um cupom diferente.
   const manualMarginPriority=Boolean(marginOverride);
   const charm=adjustShopeeCustomerPriceEnding({
    grossCents:money(financial.gross),settings:proposed,unitCostCents:money(cost),
    minimumMarginPct:protectedMargin,maximumSaleCents:marketCeiling,
-   requireMarketplaceEnding:true,requireCheckoutEnding:!manualMarginPriority
+   requireMarketplaceEnding:true,requireCheckoutEnding:true
   });
   financial=charm.financial;
   // Não apresentar nem salvar um preço fora da regra como recomendação final.
   // Se não houver final 0/9 que preserve piso e teto, requer revisão do plano.
-  if((!manualMarginPriority&&!attractiveCents.has(Math.round(financial.finalPrice*100)%100))||
+  if(!attractiveCents.has(Math.round(financial.finalPrice*100)%100)||
      !attractiveCents.has(money(financial.marketplaceDisplayPrice)%100))
    throw Error('Sem combinação que deixe o preço VISÍVEL na Shopee e o preço após cupom terminando em 0 ou 9 centavos, com a margem protegida. Recalcule antes de publicar; nenhum preço foi enviado à Shopee.');
-  if(manualMarginPriority)
-   note+=' Margem definida na barra é prioritária. Preço visível com terminação comercial; cupom opcional calculado nos centavos reais, sem elevar artificialmente o lucro.';
+  if(manualMarginPriority){
+   note+=' O preço da promoção e o preço após cupom devem terminar em 0 ou 9. A margem selecionada é mínima, não valor exato.';
+   if(financial.marginPct>desired+0.3)
+    note+=' A combinação mais próxima que atende simultaneamente ao cupom, às terminações de centavos e à margem selecionada resulta em '+
+     financial.marginPct.toFixed(2).replace('.',',')+'% de margem: não é possível aproximar mais sem mudar o cupom ou violar a regra.';
+  }
   if(charm.adjusted)
    note+=' Preço visível na Shopee ajustado para R$ '+financial.marketplaceDisplayPrice.toFixed(2).replace('.',',')+
     ' e preço com cupom para R$ '+financial.finalPrice.toFixed(2).replace('.',',')+
@@ -223,8 +226,8 @@ export function quoteShopeePrice({unitCost,settings={},marketAverage=null,margin
     couponPct:c.couponPct,
     marketplaceDisplayPrice:financial.marketplaceDisplayPrice,
     buyerAfterCoupon:financial.finalPrice,
-    priceEndingRuleVersion:manualMarginPriority?3:2,
-    priceEndingPolicy:manualMarginPriority?'visible_price_margin_priority':'both_checkout_and_visible',
+    priceEndingRuleVersion:4,
+    priceEndingPolicy:'both_checkout_and_visible',
     customerPrice:financial.finalPrice,
     customerPriceBeforeRounding:previousFinalPrice,
     attractiveEndingApplied:charm.adjusted,
