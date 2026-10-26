@@ -71,6 +71,57 @@ function renderSuggestions(data){
   card.append(open);root.append(card);
  }
 }
+async function loadDrafts(){
+ const root=$('#kitDraftList');if(!root)return;
+ try{
+  const data=await api('/api/shopee/kits/drafts');
+  root.replaceChildren();
+  if(!data.drafts.length){root.append(elt('p','','Nenhum kit salvo. Prepare uma opção e clique em Salvar rascunho.'));return;}
+  for(const draft of data.drafts){
+   const card=elt('article','kit-card');
+   card.append(elt('strong','',draft.title||draft.kitSku));
+   card.append(elt('small','',draft.kitSku+' · '+draft.skus.join(' + ')));
+   card.append(elt('small','',draft.updatedAt?'Atualizado '+new Date(draft.updatedAt).toLocaleString('pt-BR'):'Rascunho'));
+   if(draft.quote){
+    const pricing=elt('div','kit-mini-prices');
+    for(const [name,value] of [['Preço bruto',money(draft.quote.grossPrice)],
+      ['Lucro líquido estimado',money(draft.quote.netProfit)]]){
+     const cell=elt('div');cell.append(elt('span','',name),elt('b','',value));pricing.append(cell);
+    }
+    card.append(pricing);
+   }
+   const btn=elt('button','kit-secondary','Reabrir e recalcular custo');
+   btn.addEventListener('click',()=>void openDraft(draft.kitSku));
+   card.append(btn);root.append(card);
+  }
+ }catch(error){root.replaceChildren(elt('p','', 'Rascunhos indisponíveis: '+error.message));}
+}
+async function openDraft(kitSku){
+ status('Recuperando '+kitSku+' e recalculando com preços WeDrop atuais...');
+ try{
+  const d=await api('/api/shopee/kits/drafts/load',{body:{kitSku}});
+  prepared=d;images.clear();
+  $('#kitMargin').value=String(d.kit.quote.targetMarginPct);
+  $('#kitPacking').value=String(d.kit.packing);
+  $('#kitShipping').value=String(d.kit.shipping);
+  renderKit();
+  status('Rascunho recuperado. Custos foram recalculados; confira preços e estoque antes de anunciar.','success');
+ }catch(error){status('Não foi possível recuperar o kit: '+error.message,'error');}
+}
+async function saveDraft(){
+ if(!prepared)return;
+ const b=$('#kitSaveDraft');b.disabled=true;
+ try{
+  const res=await api('/api/shopee/kits/drafts/save',{body:{
+   skus:prepared.kit.components.map(x=>x.sku),
+   ...currentSettings(),title:$('#kitTitle').value,description:$('#kitDescription').value
+  }});
+  if(!res.saved)throw Error('O servidor não confirmou a gravação do rascunho.');
+  status('✓ Rascunho '+res.kitSku+' salvo nesta loja. A Shopee não foi alterada.','success');
+  void loadDrafts();
+ }catch(error){status('Não foi possível salvar kit: '+error.message,'error');}
+ finally{b.disabled=false;}
+}
 async function search(){
  if(generationBusy)return;
  const btn=$('#kitSuggest');btn.disabled=true;prepared=null;
@@ -212,10 +263,12 @@ function exportPack(){
 $('#kitSuggest')?.addEventListener('click',()=>void search());
 $('#kitGenerateAll')?.addEventListener('click',()=>void generateAll());
 $('#kitDownloadPack')?.addEventListener('click',exportPack);
+$('#kitSaveDraft')?.addEventListener('click',()=>void saveDraft());
+$('#kitRefreshDrafts')?.addEventListener('click',()=>void loadDrafts());
 $('#kitCopyTitle')?.addEventListener('click',()=>void copy($('#kitTitle').value));
 $('#kitCopyDescription')?.addEventListener('click',()=>void copy($('#kitDescription').value));
 $('#kitCopyAllPrompts')?.addEventListener('click',()=>prepared&&void copy(prepared.creative.prompts.join('\n\n\n')));
 $('#kitClose')?.addEventListener('click',()=>{$('#kitDetail').hidden=true;});
-window.RAKitBuilderLoad=()=>void categories();
-if(location.pathname.replace(/\/$/,'').endsWith('/kits'))void categories();
-document.querySelector('a[data-tab="kits"]')?.addEventListener('click',()=>void categories());
+window.RAKitBuilderLoad=()=>{void categories();void loadDrafts();};
+if(location.pathname.replace(/\/$/,'').endsWith('/kits'))window.RAKitBuilderLoad();
+document.querySelector('a[data-tab="kits"]')?.addEventListener('click',()=>window.RAKitBuilderLoad());
