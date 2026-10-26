@@ -475,8 +475,16 @@ async function loadDrafts(){
   }
   for(const draft of result.drafts){
    const card=elt('article','kit-card');
+   const pic=elt('div','kit-draft-images');
+   for(const url of (draft.images||[]).slice(0,3)){
+    const img=elt('img');img.src=url;img.alt='Produto do rascunho '+draft.kitSku;
+    img.loading='lazy';img.referrerPolicy='no-referrer';pic.append(img);
+   }
+   if(!pic.children.length)pic.append(elt('span','','▧'));
+   card.append(pic);
    const info=elt('div','kit-draft-description');
-   info.append(elt('span','kit-draft-state','RASCUNHO NÃO PUBLICADO'));
+   info.append(elt('span','kit-draft-state',draft.publication==='published'?'PUBLICADO NA SHOPEE':
+    draft.publication==='uncertain'?'PUBLICAÇÃO A CONFERIR':'RASCUNHO NÃO PUBLICADO'));
    info.append(elt('strong','',draft.title||draft.kitSku));
    info.append(elt('small','',draft.skus.join(' + ')+' · '+draft.skus.length+' unidades'));
    info.append(elt('small','',draft.updatedAt?'Atualizado '+new Date(draft.updatedAt).toLocaleString('pt-BR'):'Em revisão'));
@@ -484,6 +492,7 @@ async function loadDrafts(){
    if(draft.quote){
     const prices=elt('div','kit-draft-metrics');
     for(const [label,value] of [
+     ...(Number.isFinite(draft.kitCost)?[['Custo total',money(draft.kitCost)]]:[]),
      ['Preço bruto',money(draft.quote.grossPrice)],
      ['Desconto',pct(draft.quote.discountPct)],['Margem',pct(draft.quote.netMarginPct)]
     ]){
@@ -769,9 +778,17 @@ for(const [selector,step] of [['#kitMarginPlus',1],['#kitMarginMinus',-1]]){
 }
 setKitMargin($('#kitMargin').value);
 updateKitOverview();
-$('#kitCategory')?.addEventListener('change',()=>{updateKitOverview();suggestionContext=null;});
-$('#kitSize')?.addEventListener('change',()=>{updateKitOverview();suggestionContext=null;});
-$('#kitShipping')?.addEventListener('input',updateKitOverview);
+function clearKitSearchSelection(){
+ updateKitOverview();suggestionContext=null;suggestions=[];
+ $('#kitSuggestions').replaceChildren(elt('p','', 'Configuração alterada. Pesquise novamente para recalcular sugestões desta categoria.'));
+ $('#kitSource').textContent='Aguardando pesquisa com filtros atuais';
+}
+$('#kitCategory')?.addEventListener('change',clearKitSearchSelection);
+$('#kitSize')?.addEventListener('change',clearKitSearchSelection);
+$('#kitShipping')?.addEventListener('input',()=>{
+ updateKitOverview();scheduleKitMarginReprice();
+});
+$('#kitPacking')?.addEventListener('input',()=>scheduleKitMarginReprice());
 $('#kitTitle')?.addEventListener('input',onKitContentEdit);
 $('#kitDescription')?.addEventListener('input',onKitContentEdit);
 $('#kitStockCsv')?.addEventListener('change',()=>{
