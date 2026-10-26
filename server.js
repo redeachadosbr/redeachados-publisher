@@ -272,6 +272,7 @@ app.post('/api/shopee/kits/drafts/load',mustLogin,requireWeDropAdmin,async(req,r
    packing:Number(original.packing||0),shipping:Number(original.shipping||0)
   });
   res.json({ok:true,kit,creative:{...stored.creative,prompts:kitPrompts(kit)},
+   publication:stored.publication||{status:'local_draft',itemId:null},
    savedAt:stored.updatedAt,refreshedCosts:true,requiresReview:true});
  }catch(error){res.status(400).json({error:String(error.message||error).slice(0,260)});}
 });
