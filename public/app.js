@@ -7715,14 +7715,30 @@ function optimizerTechnicalSummary(data){
    const go=optimizerMake('button','secondary','Conferir e corrigir');
    go.type='button';
    go.onclick=()=>{
-    const details=$('#optimizerTechnicalAdvanced');if(details)details.open=true;
-    const field=[...$('#optimizerTechnicalFields').querySelectorAll('fieldset')].find(f=>
-      Number(f.dataset.attributeId)===Number(conflict.attributeId));
-    if(!field)return;
+    const details=$('#optimizerTechnicalAdvanced');
+    const container=$('#optimizerTechnicalFields');
+    if(details)details.open=true;
+    if(!container){optimizerTechNotice('Os campos da ficha técnica não estão disponíveis. Recarregue a ficha e tente novamente.','warning');return;}
+    const fields=[...container.querySelectorAll('fieldset[data-attribute-id]')];
+    const normalize=value=>String(value||'').normalize('NFD').replace(/[\\u0300-\\u036f]/g,'').toLowerCase().replace(/[^a-z0-9]/g,'');
+    const field=fields.find(f=>Number(f.dataset.attributeId)===Number(conflict.attributeId))||
+      fields.find(f=>normalize(f.querySelector('legend')?.textContent)===normalize(optimizerTechLabel(conflict.name)))||
+      fields.find(f=>normalize(f.querySelector('legend')?.textContent).includes(normalize(optimizerTechLabel(conflict.name))));
+    if(!field){
+      optimizerTechNotice('O atributo '+optimizerTechLabel(conflict.name)+' não está disponível nos campos editáveis desta categoria. Atualize a ficha técnica ou confira a categoria Shopee antes de corrigir.','warning');
+      return;
+    }
     field.hidden=false;
+    for(let parent=field.parentElement;parent&&parent!==container.parentElement;parent=parent.parentElement){
+      if(parent.tagName==='DETAILS')parent.open=true;
+      if(parent.hidden)parent.hidden=false;
+    }
     const opt=field.closest('.optimizer-tech-optional');if(opt)opt.open=true;
+    const group=field.closest('.ra-tech-attribute-group');if(group)group.open=true;
     field.scrollIntoView({behavior:'smooth',block:'center'});
-    field.querySelector('input,select')?.focus({preventScroll:true});
+    const input=field.querySelector('input:not([type=hidden]),select,textarea');
+    if(input)input.focus({preventScroll:true});
+    else optimizerTechNotice('O campo foi localizado, mas não oferece edição nesta categoria. Verifique os dados oficiais antes de prosseguir.','warning');
    };
    item.append(document.createTextNode(' '),go);box.append(item);
   }
