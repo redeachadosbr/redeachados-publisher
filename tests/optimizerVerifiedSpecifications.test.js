@@ -68,3 +68,41 @@ test('medidas do conjunto/pista montada não são medidas individuais do caminh�
  assert.equal(confirmedSpecCard({sourceText:source,sku:'684BR',sourceEvidenceSku:'684BR',
   supplierMatchedBy:'reviewed-link'}),null);
 });
+
+test('A388105: dados da pista não viram medidas do carrinho e metadados logísticos não são usados',async()=>{
+ const {confirmedProductSideFactsFromWeDrop,confirmedAssembledTrackDimensionsFromWeDrop}=
+  await import('../public/productDimensions.js');
+ const source=[
+  'Dimensões da pista montada: Aproximadamente 60cm de comprimento x 52,1cm de largura x 13,4cm de altura',
+  'Alimentação do carrinho: 01 pilha AA de 1,5V (Pilha Não inclusa)',
+  'Idade recomendada: Acima de 3 anos',
+  'Composição: Plástico',
+  'Capacidade: 30 peças',
+  'Cor: Multicolorido',
+  'Peso:400g',
+  'PESO',
+  '550g',
+  'ALTURA',
+  '23cm',
+  'LARGURA',
+  '36cm',
+  'COMPRIMENTO',
+  '6cm'
+ ].join('\\n'); // WeDrop chega muitas vezes com quebras literais
+ const track=confirmedAssembledTrackDimensionsFromWeDrop(source);
+ assert.equal(track?.subject,'pista montada');
+ assert.equal(track?.value,'60 cm × 52,1 cm × 13,4 cm');
+ const facts=confirmedProductSideFactsFromWeDrop(source);
+ assert.deepEqual(facts.slice(0,3),[
+  {label:'Pista montada',value:'60 cm × 52,1 cm × 13,4 cm'},
+  {label:'Conjunto',value:'30 peças'},
+  {label:'Peso',value:'400 g'}
+ ]);
+ assert.equal(confirmedProductDimensionsFromWeDrop(source),null);
+ const spec=confirmedSpecCard({sku:'A388105',sourceEvidenceSku:'A388105',
+  supplierMatchedBy:'exact-sku',sourceText:source});
+ assert.equal(spec.measurements.length,0,'não desenhar setas de dimensão no carrinho');
+ assert.deepEqual(spec.facts.slice(0,3),facts.slice(0,3));
+ assert.ok(!JSON.stringify(spec).includes('272 g'));
+ assert.ok(!JSON.stringify(spec).includes('550 g'));
+});
