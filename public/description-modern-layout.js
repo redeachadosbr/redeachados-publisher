@@ -224,8 +224,13 @@
     await applyDescription(result,{fallback:true});
     globalThis.RADescriptionChatGPT.acknowledgeRecovery(result);
    }catch(error){
-    if(current())status.textContent='Recuperação não concluída: '+error.message+
-     ' Copie o texto do ChatGPT e cole no campo abaixo: a importação ocorrerá automaticamente.';
+    if(current()){
+     manual.open=true;
+     manualArea.focus({preventScroll:true});
+     status.textContent='A Ponte não localizou uma resposta vinculada à SKU '+descIdentity.sku+
+      ': '+error.message+
+      ' A descrição exibida na prévia não foi recuperada do ChatGPT. Copie somente a resposta desta SKU e cole no campo aberto; o sistema validará e salvará sem outro clique.';
+    }
    }finally{recovering=false;recover.disabled=false;}
   }
   async function runManual({automatic=false}={}){
