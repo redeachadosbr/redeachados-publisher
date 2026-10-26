@@ -1,3 +1,4 @@
+import fs from 'node:fs';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import * as XLSX from '@stackline/xlsx';
@@ -58,4 +59,35 @@ test('interface e rota reaproveitam validacao existente e aceitam Excel',async()
  assert.match(app,/\/api\/shopee\/wedrop\/convert-excel/);
  assert.match(server,/app\.post\('\/api\/shopee\/wedrop\/convert-excel'/);
  assert.match(server,/importSupplierAutomatically\(auth.shopId,costCsvFromBody\(req\)/);
+});
+
+test('kits: XLSX com aba Estoque e aba Catálogo escolhe a aba certa para a disponibilidade',()=>{
+ const book=XLSX.utils.book_new();
+ XLSX.utils.book_append_sheet(book,XLSX.utils.aoa_to_sheet([headers,product]),'Catalogo');
+ XLSX.utils.book_append_sheet(book,XLSX.utils.aoa_to_sheet([
+  ['SKU','Disponibilidade'],
+  ['002392','DISPONÍVEL'],['SKU-B','INDISPONÍVEL']
+ ]),'Disponibilidade');
+ const data=XLSX.write(book,{bookType:'xlsx',type:'buffer'});
+ const selected=convertWeDropExcelBase64(data.toString('base64'),'catalogo-estoque.xlsx',{purpose:'availability'});
+ assert.equal(selected.sheetName,'Disponibilidade');
+ assert.match(selected.csv,/002392;DISPONÍVEL/);
+ assert.match(selected.csv,/SKU-B;INDISPONÍVEL/);
+ const catalog=convertWeDropExcelBase64(data.toString('base64'),'catalogo-estoque.xlsx',{purpose:'catalog'});
+ assert.equal(catalog.sheetName,'Catalogo');
+});
+test('kits: planilha Excel sem Disponibilidade nunca habilita estoque',()=>{
+ const data=workbook('xlsx');
+ assert.throws(()=>convertWeDropExcelBase64(data.toString('base64'),'catalogo.xlsx',{purpose:'availability'}),/Nenhuma aba.*SKU e Disponibilidade/);
+});
+test('kits: interface permite selecionar CSV, XLS e XLSX para catálogo e estoque',()=>{
+ const html=fs.readFileSync(new URL('../public/index.html',import.meta.url),'utf8');
+ const js=fs.readFileSync(new URL('../public/kit-builder.js',import.meta.url),'utf8');
+ for(const id of ['kitCatalogFile','kitStockCsv']){
+  assert.match(html,new RegExp('id="'+id+'"[^>]*accept="[^"]*\\.csv,\\.xlsx,\\.xls'));
+ }
+ assert.match(js,/\/api\/shopee\/wedrop\/convert-excel/);
+ assert.match(js,/\/api\/shopee\/wedrop\/auto\/import/);
+ assert.match(js,/\/api\/shopee\/kits\/availability\/import/);
+ assert.match(js,/fileName:file\.name,purpose/);
 });
