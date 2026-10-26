@@ -29,8 +29,12 @@ export async function saveKitDraft(shopId,{kit,creative}){
  const title=String(creative?.title||'').trim().slice(0,120);
  const description=String(creative?.description||'').trim().slice(0,2000);
  if(title.length<10||description.length<80)throw Error('Preencha o título e a descrição antes de salvar.');
+ const previous=await loadKitDraft(id,kit.kitSku);
+ if(previous?.publication?.itemId||['publishing','uncertain'].includes(previous?.publication?.status))
+  throw Error('Kit enviado à Shopee ou com publicação incerta; não regrave. Consulte o status primeiro.');
  const draft={kit,creative:{title,description,source:String(creative.source||'rascunho revisado').slice(0,90)},
-  reviewed:false,shopeePublished:false};
+  reviewed:false,shopeePublished:false,
+  publication:previous?.publication||{status:'local_draft',itemId:null}};
  const rows=await request('?on_conflict=shop_id,kit_sku',{
   method:'POST',prefer:'resolution=merge-duplicates,return=representation',
   data:[{shop_id:id,kit_sku:kit.kitSku,component_skus:codes,draft,updated_at:new Date().toISOString()}]
@@ -52,5 +56,21 @@ export async function loadKitDraft(shopId,kitSku){
  const row=rows[0];
  if(!row)return null;
  return {kitSku:row.kit_sku,skus:row.component_skus,
-  creative:row.draft?.creative||{},kit:row.draft?.kit||null,updatedAt:row.updated_at};
+  creative:row.draft?.creative||{},kit:row.draft?.kit||null,
+  publication:row.draft?.publication||{status:'local_draft',itemId:null},updatedAt:row.updated_at};
+}
+
+export async function recordKitPublication(shopId,kitSku,publication){
+ const current=await loadKitDraft(shopId,kitSku);
+ if(!current)throw Error('Salve o rascunho do kit antes de enviar à Shopee.');
+ if(current.publication?.itemId&&current.publication.status==='published')
+  throw Error('Este kit já está publicado na Shopee. Não criar outro anúncio.');
+ const draft={kit:current.kit,creative:current.creative,reviewed:true,
+  shopeePublished:publication.status==='published',
+  publication:{status:publication.status,itemId:publication.itemId||null,
+   updatedAt:new Date().toISOString(),message:String(publication.message||'').slice(0,400)}};
+ await request('?shop_id=eq.'+shop(shopId)+'&kit_sku=eq.'+encodeURIComponent(kitSku),{
+  method:'PATCH',data:{draft,updated_at:new Date().toISOString()},prefer:'return=representation'
+ });
+ return draft.publication;
 }
