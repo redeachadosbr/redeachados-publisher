@@ -31,7 +31,7 @@
 <link rel="stylesheet" href="/ads-premium.css?v=2.4.0-seo-ads-location">
 <link rel="stylesheet" href="/sidebar-collapse.css?v=1.0.0">
 <link rel="stylesheet" href="/optimizer-image-studio.css?v=1.0.2">
-<link rel="stylesheet" href="/kit-builder.css?v=1.3.0-margin-slider">
+<link rel="stylesheet" href="/kit-builder.css?v=1.4.0-kit-publication">
 <link rel="stylesheet" href="/optimizer-technical-studio.css?v=1.0.1-review-feedback">
 <style>
 /* Retomada da SKU visível junto à barra de acompanhamento. A API só é
@@ -925,6 +925,51 @@
    <button id="kitCopyAllPrompts" type="button" class="kit-secondary">Copiar 9 prompts para o ChatGPT</button>
   </div>
   <p id="kitImageStatus" class="kit-status">Não há chamadas nem créditos de API. As imagens geradas no seu ChatGPT Plus devem ser salvas e importadas aqui, uma por vez. O plano Plus pode ter limites próprios de uso. Fotos importadas ficam nesta aba até você fechá-la.</p>
+  <section class="kit-publish-panel" id="kitPublishPanel" aria-label="Criar Kit Formal na Shopee">
+   <div class="kit-bar"><h3>Criar Kit Formal na Shopee</h3><span>Publicação com revisão e aprovação</span></div>
+   <p class="kit-info">Primeiro confirme os componentes da Shopee e a logística. Salve o rascunho; depois envie as fotos, confira a prévia e autorize a publicação. A promoção só poderá ser preparada DEPOIS que a Shopee confirmar o novo Item ID.</p>
+   <div class="kit-publish-steps">
+    <div><b>01</b> Salvar kit</div><div><b>02</b> Validar SKUs Shopee</div><div><b>03</b> Enviar fotos</div>
+    <div><b>04</b> Prévia final</div><div><b>05</b> Publicar kit</div><div><b>06</b> Desconto separado</div>
+   </div>
+   <div class="kit-actions"><button id="kitPublishCheck" class="kit-secondary" type="button">Verificar componentes e logística na Shopee</button></div>
+   <p id="kitPublishStatus" class="kit-status" role="status" aria-live="polite">Salve o kit para iniciar a conferência. Nenhum anúncio é criado nesta etapa.</p>
+   <div id="kitPublishLinks" class="kit-components"></div>
+   <div class="kit-publish-fields">
+    <label>Componente principal<select id="kitMainSku"><option value="">Selecione</option></select></label>
+    <label>Canal de envio Shopee<select id="kitLogisticId"><option value="">Consultar opções</option></select></label>
+    <label>Peso total embalado (kg)<input id="kitWeightKg" type="number" step="0.001" min="0.001" max="30" placeholder="Medir pacote completo" /></label>
+    <label>Comprimento pacote (cm)<input id="kitLengthCm" type="number" step="1" min="1" max="200" placeholder="Ex.: 30" /></label>
+    <label>Largura pacote (cm)<input id="kitWidthCm" type="number" step="1" min="1" max="200" placeholder="Ex.: 25" /></label>
+    <label>Altura pacote (cm)<input id="kitHeightCm" type="number" step="1" min="1" max="200" placeholder="Ex.: 20" /></label>
+    <label class="kit-inline-checkbox"><input id="kitAutoSyncDts" type="checkbox"/> Sincronizar dias de envio com componente principal (quando permitido)</label>
+    <label class="kit-inline-checkbox"><input id="kitPreOrder" type="checkbox"/> Kit sob encomenda</label>
+    <label>Dias para enviar (sob encomenda)<input id="kitDaysToShip" type="number" min="3" max="30" value="7" disabled /></label>
+   </div>
+   <div class="kit-review-checkboxes">
+    <label><input type="checkbox" id="kitContentsReviewed"/> Confirmei que as SKUs, quantidades e o componente principal são os corretos.</label>
+    <label><input type="checkbox" id="kitPhotosReviewed"/> Conferi todas as fotos: mostram os componentes reais do kit, sem imagens ou especificações inventadas.</label>
+   </div>
+   <div class="kit-actions">
+    <button id="kitSendPhotos" type="button" class="kit-secondary">Enviar imagens importadas à galeria da Shopee</button>
+    <button id="kitPublishPreview" type="button" class="kit-primary">Preparar prévia segura do Kit Formal</button>
+   </div>
+   <p class="kit-status" id="kitShopeePhotoCount">0 imagens enviadas à Shopee (ainda não publicadas).</p>
+   <div id="kitPublishPreviewBox" hidden class="kit-publish-preview">
+    <h4>Revisão final antes da publicação</h4><pre id="kitPublishSummary"></pre>
+    <button id="kitPublishExecute" type="button" class="kit-primary">Confirmar e publicar o Kit Formal na Shopee</button>
+   </div>
+   <div class="kit-discount-next" id="kitDiscountNext" hidden>
+    <h4>Kit criado — agora preparar desconto</h4>
+    <p id="kitPublishedMessage"></p>
+    <div class="kit-actions">
+     <button id="kitVerifyPublished" type="button" class="kit-secondary">Confirmar publicação na Shopee</button>
+     <a id="kitOpenDiscounts" href="/app/descontos" class="kit-secondary">Abrir Descontos preparados</a>
+     <a id="kitOpenSeller" href="https://seller.shopee.com.br/portal/vsku/list" class="kit-secondary" target="_blank" rel="noopener noreferrer">Ver Meus Kits na Shopee</a>
+    </div>
+    <p class="kit-info">A oferta será preparada com o novo Item ID da Shopee. A Minha Promoção exige campanha válida e validações do sistema; não é aplicada automaticamente na criação do kit.</p>
+   </div>
+  </section>
  </section>
 </section>
 <section class="tabpane" id="tab-fiscal" aria-label="Informações fiscais da Shopee">
@@ -1780,7 +1825,7 @@
 <script src="/technical-memory.js?v=1.0.1-live-sku-preload"></script>
 <script src="/technical-status.js?v=1.0.0-optional-coherence"></script>
 <script src="/app.js?v=1.21.82-media-technical-fix-dual-centavos-09-v4"></script>
-<script type="module" src="/kit-builder.js?v=1.3.0-margin-slider"></script>
+<script type="module" src="/kit-builder.js?v=1.4.0-kit-publication"></script>
 <link rel="stylesheet" href="/optimizer-variations.css?v=1.2.1-single-flow">
 <script src="/optimizer-variations.js?v=1.2.3-single-flow"></script>
 
