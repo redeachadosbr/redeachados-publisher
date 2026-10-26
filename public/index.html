@@ -871,6 +871,8 @@
  <p id="kitStatus" role="status" aria-live="polite" class="kit-status">Carregando categorias cadastradas...</p>
  <div class="kit-bar"><h3>Sugestões de kits</h3><span id="kitSource"></span></div>
  <div id="kitSuggestions" class="kit-suggestions"><p>Escolha uma categoria para iniciar.</p></div>
+ <section class="kit-drafts-panel"><div class="kit-bar"><h3>Kits salvos para revisão</h3><button type="button" class="kit-secondary" id="kitRefreshDrafts">Atualizar rascunhos</button></div>
+ <div id="kitDraftList" class="kit-suggestions"><p>Consultando kits salvos nesta loja...</p></div></section>
  <section id="kitDetail" class="kit-detail" hidden>
   <div class="kit-detail-title"><div><span class="kit-kicker">RASCUNHO NÃO PUBLICADO</span><h3 id="kitSkuTitle">Kit</h3></div><button id="kitClose" type="button" class="kit-secondary">Fechar</button></div>
   <div id="kitComponents" class="kit-components"></div>
@@ -884,6 +886,7 @@
   <div id="kitImages" class="kit-images"></div>
   <div class="kit-actions">
    <button id="kitGenerateAll" type="button" class="kit-primary">✦ Gerar 9 fotos pela API OpenAI</button>
+   <button id="kitSaveDraft" type="button" class="kit-secondary">Salvar rascunho no sistema</button>
    <button id="kitDownloadPack" type="button" class="kit-secondary">Baixar ficha do kit e 9 prompts</button>
    <button id="kitCopyAllPrompts" type="button" class="kit-secondary">Copiar 9 prompts para o ChatGPT</button>
   </div>
