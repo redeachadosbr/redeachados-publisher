@@ -101,6 +101,7 @@ export async function readKitStockSnapshot(shopId){
   !newerThanCatalog?'O status de estoque é anterior à última importação do catálogo. Atualize a disponibilidade após importar os produtos.':
   'Disponibilidade WeDrop importada; apenas SKUs DISPONÍVEIS podem compor kits.';
  const snapshot={ready,reason,map,lastSuccessAt:importState?.last_success_at||null,
+  catalogRecent,stockRecent:recent,stockAfterCatalog:newerThanCatalog,
   catalogLastImportedAt:catalogSync?.last_success_at||null,
   importedCount:importState?.imported_count||0,
   availableCount:importState?.available_count||0,
