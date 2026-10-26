@@ -589,7 +589,8 @@ app.post('/api/shopee/wedrop/convert-excel',mustLogin,requireWeDropAdmin,(req,re
   res.setHeader('Cache-Control','no-store');
   if(!verifiedSameOrigin(req))return res.status(403).json({error:'Origem não autorizada.'});
   try{
-    const result=convertWeDropExcelBase64(req.body?.base64,req.body?.fileName);
+    const purpose=req.body?.purpose==='availability'?'availability':'catalog';
+    const result=convertWeDropExcelBase64(req.body?.base64,req.body?.fileName,{purpose});
     res.json({ok:true,...result});
   }catch(error){res.status(400).json({error:String(error.message||error).slice(0,330)});}
 });
