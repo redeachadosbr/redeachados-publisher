@@ -11,7 +11,7 @@
 #tab-kits .kit-status-pill{font-weight:700;font-size:12px;border-radius:30px;background:#ffffff19;padding:13px;white-space:nowrap}
 #tab-kits .kit-form{background:white;border:1px solid #d8e4f0;border-radius:20px;padding:22px;display:grid;grid-template-columns:repeat(5,minmax(130px,1fr));gap:15px;align-items:end}
 #tab-kits .kit-form label{display:flex;flex-direction:column;gap:7px;font-size:12px;font-weight:800;color:#264566}
-#tab-kits .kit-form input:not([type=checkbox]),#tab-kits .kit-form select{width:100%;border:1px solid #d4dfeb;border-radius:10px;padding:13px 10px;font-size:14px;color:#142e52;background:#f8fbff;min-width:0;box-sizing:border-box}
+#tab-kits .kit-form input[type=number],#tab-kits .kit-form select{width:100%;border:1px solid #d4dfeb;border-radius:10px;padding:13px 10px;font-size:14px;color:#142e52;background:#f8fbff;min-width:0;box-sizing:border-box}
 #tab-kits label small{font-weight:400;color:#64778e;line-height:1.4}
 #tab-kits .kit-form .kit-check{grid-column:span 3;display:flex;flex-direction:row;align-items:center;font-size:12px;line-height:1.45}
 #tab-kits .kit-form .kit-check input{width:18px;height:18px;accent-color:#f36138}
@@ -88,3 +88,23 @@
 #tab-kits .kit-prompt-fallback{font-size:11px;color:#45627b;border:1px solid #d9e7f1;background:#f7fbff;border-radius:9px;padding:8px}
 #tab-kits .kit-prompt-fallback summary{cursor:pointer;font-weight:700}
 #tab-kits .kit-prompt-fallback textarea{width:100%;box-sizing:border-box;margin-top:8px;resize:vertical;padding:8px;font:11px/1.5 Arial,sans-serif;border:1px solid #cedfea;border-radius:8px;background:white;color:#193a56}
+
+/* Mesma experiência de margem manual da Otimização: trilho + percentual + setas */
+#tab-kits .kit-margin-field{grid-column:span 2;min-width:0;display:flex;flex-direction:column;gap:9px;background:#f3f7fc;border:1px solid #d8e6f3;border-radius:15px;padding:12px 14px;box-sizing:border-box}
+#tab-kits .kit-margin-heading{display:flex;align-items:center;gap:9px}
+#tab-kits .kit-form .kit-margin-heading label{color:#1d446f;font-size:12px;font-weight:850;display:inline;margin:0}
+#tab-kits .kit-margin-help{display:inline-flex;align-items:center;justify-content:center;border:1px solid #d2def0;background:#e7f1fe;border-radius:50%;width:21px;height:21px;font-size:12px;font-weight:800;color:#315b91;cursor:help}
+#tab-kits .kit-margin-slider-group{display:flex;align-items:center;gap:13px;width:100%}
+#tab-kits .kit-margin-slider-group input[type=range]{-webkit-appearance:none;appearance:none;flex:1;min-width:0;width:100%;height:7px;background:linear-gradient(to right,#f36a25 0%,#f36a25 var(--kit-margin-fill,21.43%),#273444 var(--kit-margin-fill,21.43%),#273444 100%);border:0;box-shadow:none;outline-offset:6px;border-radius:999px;padding:0;margin:0;cursor:pointer}
+#tab-kits .kit-margin-slider-group input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;appearance:none;width:21px;height:21px;border-radius:50%;background:#f36a25;border:0;box-shadow:0 0 0 1px #df6427}
+#tab-kits .kit-margin-slider-group input[type=range]::-moz-range-thumb{width:21px;height:21px;border-radius:50%;background:#f36a25;border:0}
+#tab-kits .kit-margin-stepper{display:flex;align-items:center;justify-content:space-between;min-width:109px;border-radius:12px;background:#fff;border:1px solid #d5e2f1;overflow:hidden}
+#tab-kits .kit-margin-stepper strong{min-width:63px;text-align:center;font-size:19px;color:#f0611c;white-space:nowrap;font-weight:850}
+#tab-kits .kit-margin-stepper>div{border-left:1px solid #e1e7f1;display:grid;grid-template-rows:1fr 1fr}
+#tab-kits .kit-margin-stepper button{font-family:inherit;color:#12385c;background:#fff;min-width:30px;height:22px;border:0;padding:0;line-height:1;font-weight:800;font-size:18px}
+#tab-kits .kit-margin-stepper button+button{border-top:1px solid #e1e7f1}
+#tab-kits .kit-margin-stepper button:hover{background:#e9f3fd}
+#tab-kits .kit-margin-stepper button:disabled{opacity:.35}
+#tab-kits .kit-margin-field>small{font-size:10px;line-height:1.4;color:#54718e}
+@media(max-width:950px){#tab-kits .kit-margin-field{grid-column:span 2}}
+@media(max-width:560px){#tab-kits .kit-margin-field{grid-column:span 1}}
