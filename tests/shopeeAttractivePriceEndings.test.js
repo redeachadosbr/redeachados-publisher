@@ -10,7 +10,7 @@ const cents=amount=>Math.round(amount*100);
 const ending=amount=>((cents(amount)%100)+100)%100;
 
 test('All the customer-price ending options are enabled',()=>{
- assert.deepEqual(SHOPEE_ATTRACTIVE_CENTS,[50,59,60,70,79,89,90,99]);
+ assert.deepEqual(SHOPEE_ATTRACTIVE_CENTS,Array.from({length:10},(_,i)=>[i*10,i*10+9]).flat());
 });
 
 test('R$ 63,82 becomes R$ 63,89 when R$ 63,79 breaks an 8% margin',()=>{
