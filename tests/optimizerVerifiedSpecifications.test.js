@@ -65,8 +65,10 @@ test('imagem 03 NÃO combina especificações de outra SKU ou WeDrop sem víncul
 test('medidas do conjunto/pista montada não são medidas individuais do caminhão',()=>{
  const source='Dimensões da pista montada: Aproximadamente 60cm de comprimento x 52,1cm de largura x 13,4cm de altura';
  assert.equal(confirmedProductDimensionsFromWeDrop(source),null);
- assert.equal(confirmedSpecCard({sourceText:source,sku:'684BR',sourceEvidenceSku:'684BR',
-  supplierMatchedBy:'reviewed-link'}),null);
+ const spec=confirmedSpecCard({sourceText:source,sku:'684BR',sourceEvidenceSku:'684BR',
+  supplierMatchedBy:'reviewed-link'});
+ assert.equal(spec?.measurements.length,0,'sem cotas sobre caminhão isolado');
+ assert.equal(spec?.facts[0]?.label,'Pista montada');
 });
 
 test('A388105: dados da pista não viram medidas do carrinho e metadados logísticos não são usados',async()=>{
