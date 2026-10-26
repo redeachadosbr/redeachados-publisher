@@ -1,6 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {quoteShopeePrice} from '../shopeePricing.js';
+import {promotionFromQuote} from '../shopeeDiscountPublish.js';
 const settings={marginPct:25,minMarginPct:5,discountPct:20,couponPct:1,taxPct:4};
 test('margem manual tem prioridade à referência de mercado',()=>{
  const auto=quoteShopeePrice({unitCost:90,settings,marketAverage:120});
@@ -46,4 +47,16 @@ test('alterar a barra para 15% recalcula tudo e mantém a margem acima da meta',
   assert.equal(q.targetMarginPct,marginPct);
   assert.equal(q.discountPct,20);
  }
+});
+
+test('prévia de desconto da margem manual preserva valores reais e não bloqueia cupom',()=>{
+ const q=quoteShopeePrice({unitCost:36.99,
+  settings:{marginPct:5,minMarginPct:5,discountPct:20,couponPct:1,taxPct:4,flashPct:3},
+  marginOverride:true});
+ const p=promotionFromQuote(q);
+ assert.equal(p.gross,77.12);
+ assert.equal(p.promo,61.70);
+ assert.equal(p.buyerAfterCoupon,61.08);
+ assert.equal(p.discountPct,20);
+ assert.equal(q.appliedInShopee,false);
 });
