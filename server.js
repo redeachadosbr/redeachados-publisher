@@ -3182,12 +3182,14 @@ async function discountExecutionInputs(req,sku,itemId,modelId,discountId,{allowM
   const cents=Math.round(Number(value)*100)%10;
   return cents===0||cents===9;
  };
- // Cotação antiga não pode publicar um valor R$ xx,27 escondendo uma
- // terminação xx,29 calculada após cupom. Revalidar antes do envio.
+ // Revalidar sempre AMBOS os preços efetivos do plano salvo e a versão
+ // da política. Não confundir a vitrine com checkout após o cupom opcional.
  if(!attractiveVisiblePrice(beforePublish.promo)||
     !attractiveVisiblePrice(beforePublish.buyerAfterCoupon))
-  throw Error('Plano antigo: a Shopee exibiria '+beforePublish.promo.toFixed(2)+
-   ' antes do cupom, fora da regra dos centavos 0/9. Recalcule o preço e aprove a nova prévia antes de executar.');
+  throw Error('Plano de desconto fora da regra 0/9: Shopee R$ '+
+   beforePublish.promo.toFixed(2)+' e com cupom R$ '+
+   beforePublish.buyerAfterCoupon.toFixed(2)+
+   '. Recalcule a SKU na Otimização. Nenhum preço ou desconto foi enviado.');
  if(!Number.isFinite(Date.parse(quote.calculatedAt))||
     Date.now()-Date.parse(quote.calculatedAt)>7*86400000)
   throw Error('Plano de preço antigo. Recalcule na Precificação antes de executar.');
