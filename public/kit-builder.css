@@ -84,3 +84,7 @@
 #tab-kits .kit-reference-link{display:block;margin-top:8px;color:#1268c7;font-size:11px;font-weight:800;text-decoration:underline}
 @media(max-width:900px){#tab-kits .kit-plus-banner{grid-column:span 2}}
 @media(max-width:570px){#tab-kits .kit-plus-banner{grid-column:span 1}}
+
+#tab-kits .kit-prompt-fallback{font-size:11px;color:#45627b;border:1px solid #d9e7f1;background:#f7fbff;border-radius:9px;padding:8px}
+#tab-kits .kit-prompt-fallback summary{cursor:pointer;font-weight:700}
+#tab-kits .kit-prompt-fallback textarea{width:100%;box-sizing:border-box;margin-top:8px;resize:vertical;padding:8px;font:11px/1.5 Arial,sans-serif;border:1px solid #cedfea;border-radius:8px;background:white;color:#193a56}
