@@ -92,8 +92,10 @@ test('slot 03 API usa apenas medidas de produto da WeDrop colada, sem inferir me
  ].join('\n');
  const prompt=imagePrompt({record:{...sample,sku:'2392'},slot:3,
   supplierSourceText:text,supplierCatalogInfo:'Altura:66; Largura:100; Comprimento:27'});
- for(const p of ['ALTURA: 75 cm','LARGURA: 63 cm','COMPRIMENTO: 117 cm','NUNCA invente altura do selim'])
-  assert.match(prompt,new RegExp(p));
+ assert.match(prompt,/FOTOGRAFIA BASE LIMPA/);
+ assert.match(prompt,/nenhuma letra, algarismo, peso/);
+ assert.match(prompt,/NÃO invente altura do selim/);
+ assert.doesNotMatch(prompt,/ALTURA: 75 cm|LARGURA: 63 cm|COMPRIMENTO: 117 cm|Peso: 11kg/);
  for(const forbidden of ['66cm','100cm','27cm','Altura:66','Largura:100'])
   assert(!prompt.includes(forbidden));
 });
