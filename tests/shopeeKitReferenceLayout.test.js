@@ -68,3 +68,25 @@ test('layout responsivo contém cartões, nove imagens, configuração e publica
  assert.match(page,/id="kitSingleParcelConfirmed"/);
  assert.match(page,/id="kitStockCsv"/);
 });
+
+test('importação WeDrop do modelo contém dois cartões, aviso de bloqueio e seleção de arquivos válidos',()=>{
+ const catalog=page.indexOf('id="kitCatalogCard"'),stock=page.indexOf('id="kitAvailabilityCard"');
+ const gate=page.indexOf('id="kitStockGate"'),blocked=page.indexOf('id="kitStockBlocked"');
+ const form=page.indexOf('id="kitForm"'),suggestions=page.indexOf('id="kitSuggestions"');
+ assert.ok(gate>=0&&catalog>gate&&stock>catalog&&blocked>stock&&form>blocked&&suggestions>form);
+ for(const id of ['kitCatalogFile','kitCatalogImport','kitStockCsv','kitStockImport',
+  'kitCatalogDate','kitStockSubhead','kitStockStamp','kitExpandResearch','kitCatalogBadge']){
+  assert.equal((page.match(new RegExp('id="'+id+'"','g'))||[]).length,1);
+ }
+ assert.match(page,/id="kitCatalogFile"[^>]*accept="[^"]*\.csv,\.xlsx,\.xls/);
+ assert.match(page,/id="kitStockCsv"[^>]*accept="[^"]*\.csv,\.xlsx,\.xls/);
+ assert.match(js,/async function readKitImportFile\(file,purpose\)/);
+ assert.match(js,/async function importKitCatalogFile\(/);
+ assert.match(js,/async function importKitStockCsv\(/);
+ assert.match(js,/\/api\/shopee\/wedrop\/auto\/import/);
+ assert.match(js,/\/api\/shopee\/kits\/availability\/import/);
+ assert.match(js,/kit-stock-blocked/);
+ assert.match(css,/kit-stock-gate\{display:grid;grid-template-columns:repeat\(2/);
+ assert.match(css,/kit-blocked-banner/);
+ assert.match(css,/kit-empty-drafts/);
+});
