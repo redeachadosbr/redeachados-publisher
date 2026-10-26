@@ -21,13 +21,20 @@ export function promotionFromQuote(q){
   throw Error('Preço após cupom não confere com o plano salvo. Recalcule antes de publicar.');
  // Planos novos precisam comprovar o preço que A SHOPEE MOSTRA NA VITRINE,
  // não apenas o preço hipotético com cupom aplicado no checkout.
- if(q.priceEndingRuleVersion===2){
+ if(q.priceEndingRuleVersion===2||q.priceEndingRuleVersion===3){
   const allowed=x=>Math.round(x*100)%10===0||Math.round(x*100)%10===9;
   if(!Number.isFinite(Number(q.marketplaceDisplayPrice))||
      Math.abs(promo-Number(q.marketplaceDisplayPrice))>0.011)
    throw Error('Preço promocional visível divergente do plano salvo. Recalcule.');
-  if(!allowed(promo)||!allowed(buyerAfterCoupon))
-   throw Error('Preço da Shopee ou após cupom fora da regra de centavos 0/9. Recalcule e aprove o novo valor.');
+  // v2: política antiga, exige final 0/9 na vitrine E após cupom.
+  // v3: margem escolhida manualmente tem prioridade; cupom é opcional,
+  // portanto o preço real após cupom é validado em centavos, não arredondado.
+  if(!allowed(promo)||(q.priceEndingRuleVersion===2&&!allowed(buyerAfterCoupon)))
+   throw Error('Preço da Shopee ou após cupom fora da política de centavos do plano. Recalcule e aprove o novo valor.');
+  if(q.priceEndingRuleVersion===3&&
+     (q.marginOverride!==true||q.priceEndingPolicy!=='visible_price_margin_priority'||
+      Number(q.netMarginPct)+0.001<Number(q.targetMarginPct)))
+   throw Error('Plano com margem manual não corresponde à escolha da barra. Recalcule.');
  }
  if(promo<=0||promo>=gross)throw Error('Desconto inválido para publicação.');
  return {gross,promo,buyerAfterCoupon,couponPct,discountPct:Number(q.discountPct)};
