@@ -30,8 +30,8 @@ import {previewWeDropCsv,prepareWeDropImport,MAX_CSV_CHARS} from './wedropCsv.js
 import {convertWeDropExcelBase64} from './wedropExcel.js';
 import {saveWeDropCosts,getWeDropCoverage,compareIncomingCosts,pendingWeDropModels,upsertWeDropSkuLink} from './wedropCosts.js';
 import {saveWeDropProducts,readWeDropProduct} from './wedropCosts.js';
-import {kitCatalog,suggestKits,composeKit,kitCreative,kitPrompts,kitPlusResearchBrief,kitPlusContentPrompt,categoryMatches} from './shopeeKitBuilder.js';
-import {saveKitStockImport} from './shopeeKitAvailability.js';
+import {kitCatalog,suggestKits,composeKit,kitCreative,kitPrompts,kitPlusResearchBrief,kitPlusContentPrompt,categoryMatches,clearKitCatalogCache} from './shopeeKitBuilder.js';
+import {saveKitStockImport,clearKitStockCache} from './shopeeKitAvailability.js';
 import {saveKitDraft,listKitDrafts,loadKitDraft} from './shopeeKitDraftStore.js';
 import {kitUploadPhoto,kitPublicationReadiness,kitPublicationPreview,kitPublishApproved,checkKitPublication} from './shopeeKitPublicationService.js';
 import {previewKitDiscount,executeKitDiscount} from './shopeeKitDiscountService.js';
@@ -601,6 +601,10 @@ app.post('/api/shopee/wedrop/auto/import',mustLogin,requireWeDropAdmin,async(req
     const result=await importSupplierAutomatically(auth.shopId,costCsvFromBody(req),{
       sourceKind:'upload',sourceName:String(req.body?.fileName||'wedrop.csv').slice(0,130)
     });
+    // Importação manual: a próxima consulta de kits deve buscar o catálogo
+    // e status recém-importados, não a janela anterior de cache.
+    clearKitCatalogCache(auth.shopId);
+    clearKitStockCache(auth.shopId);
     res.json({ok:true,shopId:auth.shopId,...result});
   }catch(e){res.status(400).json({error:String(e.message||e).slice(0,400)});}
 });
