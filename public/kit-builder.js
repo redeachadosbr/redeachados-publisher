@@ -504,11 +504,15 @@ async function loadDrafts(){
    open.type='button';open.addEventListener('click',()=>void openDraft(draft.kitSku));
    card.append(open);root.append(card);
   }
+  if(!prepared&&kitStockReady&&result.drafts.length){
+   // Ao voltar ao menu, retomar o rascunho mais recente sem deslocar a página.
+   void openDraft(result.drafts[0].kitSku,{scroll:false});
+  }
  }catch(error){
   root.replaceChildren(elt('p','', 'Não foi possível consultar rascunhos: '+error.message));
  }
 }
-async function openDraft(kitSku){
+async function openDraft(kitSku,{scroll=true}={}){
  status('Recuperando '+kitSku+' e recalculando com preços WeDrop atuais...');
  try{
   const d=await api('/api/shopee/kits/drafts/load',{body:{kitSku}});
@@ -517,7 +521,7 @@ async function openDraft(kitSku){
   $('#kitPacking').value=String(d.kit.packing);
   $('#kitShipping').value=String(d.kit.shipping);
   updateKitOverview();
-  renderKit();
+  renderKit({scroll});
   status('Rascunho recuperado. Custos foram recalculados; confira preços e estoque antes de anunciar.','success');
  }catch(error){status('Não foi possível recuperar o kit: '+error.message,'error');}
 }
@@ -554,7 +558,7 @@ async function search(){
  }catch(error){status(error.message,'error');}
  finally{btn.disabled=false;}
 }
-function renderKit(){
+function renderKit({scroll=true}={}){
  if(!prepared)return;
  const {kit,creative}=prepared;
  $('#kitDetail').hidden=false;
@@ -590,7 +594,7 @@ function renderKit(){
  $('#kitDescription').value=creative.description;
  updateKitTextCounters();
  renderImageSlots();
- $('#kitDetail').scrollIntoView({behavior:'smooth',block:'start'});
+ if(scroll)$('#kitDetail').scrollIntoView({behavior:'smooth',block:'start'});
 }
 function renderImageSlots(){
  const root=$('#kitImages');root.replaceChildren();
@@ -836,6 +840,6 @@ $('#kitCopyTitle')?.addEventListener('click',()=>void copy($('#kitTitle').value)
 $('#kitCopyDescription')?.addEventListener('click',()=>void copy($('#kitDescription').value));
 $('#kitCopyAllPrompts')?.addEventListener('click',()=>prepared&&void copy(prepared.creative.prompts.join('\n\n\n')));
 $('#kitClose')?.addEventListener('click',()=>{$('#kitDetail').hidden=true;});
-window.RAKitBuilderLoad=()=>{void categories();void loadDrafts();};
+window.RAKitBuilderLoad=async()=>{await categories();await loadDrafts();};
 if(location.pathname.replace(/\/$/,'').endsWith('/kits'))window.RAKitBuilderLoad();
 document.querySelector('a[data-tab="kits"]')?.addEventListener('click',()=>window.RAKitBuilderLoad());
