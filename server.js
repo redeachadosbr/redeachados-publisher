@@ -32,6 +32,7 @@ import {saveWeDropCosts,getWeDropCoverage,compareIncomingCosts,pendingWeDropMode
 import {saveWeDropProducts,readWeDropProduct} from './wedropCosts.js';
 import {kitCatalog,suggestKits,composeKit,kitCreative,kitPrompts,kitPlusResearchBrief,kitPlusContentPrompt,categoryMatches} from './shopeeKitBuilder.js';
 import {saveKitDraft,listKitDrafts,loadKitDraft} from './shopeeKitDraftStore.js';
+import {kitUploadPhoto,kitPublicationReadiness,kitPublicationPreview,kitPublishApproved,checkKitPublication} from './shopeeKitPublicationService.js';
 import {supplierWorkflowFacts,wedropCestForSku} from './shopeeSupplierFacts.js';
 import {supplierAttributeSuggestions} from './shopeeSupplierEvidenceFacts.js';
 import {narrativeTechnicalSuggestions,mergeNarrativeTechnicalFacts,technicalOptionSearchTerms} from './shopeeTechnicalNarrative.js';
@@ -195,9 +196,8 @@ app.post('/api/logout',(req,res)=>req.session.destroy(error=>error
   ?res.status(503).json({error:'Não foi possível encerrar a sessão. Tente novamente.'})
   :res.clearCookie('connect.sid').json({ok:true})));
 
-// Kits Inteligentes WeDrop: somente leitura/rascunho, isolado de quaisquer
-// operações de publicação Shopee. Valores derivados de catálogo e custo
-// da loja autenticada. Nenhuma rota abaixo altera anúncio, estoque ou promoção.
+// Kits Inteligentes WeDrop: catálogo e rascunhos não fazem operações na Shopee.
+// A publicação nativa é isolada em rotas próprias de prévia + aprovação explícita.
 app.get('/api/shopee/kits/catalog',mustLogin,requireWeDropAdmin,async(req,res)=>{
  res.setHeader('Cache-Control','no-store');
  try{
@@ -276,6 +276,64 @@ app.post('/api/shopee/kits/drafts/load',mustLogin,requireWeDropAdmin,async(req,r
 });
 // Modo ChatGPT Plus: nenhuma rota de kits pode consumir tokens/imagens
 // cobrados pela API. A seleção e a importação são ações explícitas.
+// Kit Formal nativo da Shopee. Os cinco passos são distintos:
+// resolver SKUs -> subir mídia -> prévia assinada -> aprovação -> verificar
+// a publicação. NUNCA aplicar promoções dentro de add_kit_item.
+app.post('/api/shopee/kits/publish/readiness',mustLogin,requireWeDropAdmin,async(req,res)=>{
+ res.setHeader('Cache-Control','no-store');
+ if(!verifiedSameOrigin(req))return res.status(403).json({error:'Origem não autorizada.'});
+ try{
+  const {auth,cfg}=await getValidAuth(req);
+  const kitSku=String(req.body?.kitSku||'');
+  const {linked,blockers,options,uploadedImageIds}=await kitPublicationReadiness({cfg,auth,kitSku});
+  res.json({ok:true,kitSku,linked,blockers,channels:options.channels,
+   limits:options.limits,uploadedImageIds,
+   note:'Somente prévia. A criação real exige outra aprovação explícita.'});
+ }catch(e){res.status(409).json({error:String(e.message||e).slice(0,460)});}
+});
+app.post('/api/shopee/kits/publish/media',mustLogin,requireWeDropAdmin,async(req,res)=>{
+ res.setHeader('Cache-Control','no-store');
+ if(!verifiedSameOrigin(req))return res.status(403).json({error:'Origem não autorizada.'});
+ try{
+  const {auth,cfg}=await getValidAuth(req);
+  const uploaded=await kitUploadPhoto({auth,cfg,
+   kitSku:String(req.body?.kitSku||''),
+   base64:req.body?.imageBase64,mime:req.body?.mime});
+  res.json({ok:true,...uploaded,kitPublished:false});
+ }catch(e){res.status(400).json({error:String(e.message||e).slice(0,460)});}
+});
+app.post('/api/shopee/kits/publish/preview',mustLogin,requireWeDropAdmin,async(req,res)=>{
+ res.setHeader('Cache-Control','no-store');
+ if(!verifiedSameOrigin(req))return res.status(403).json({error:'Origem não autorizada.'});
+ try{
+  const {auth,cfg}=await getValidAuth(req);
+  const preview=await kitPublicationPreview({cfg,auth,
+   kitSku:String(req.body?.kitSku||''),input:req.body?.fields||{},secret:stateSecret()});
+  res.json({ok:true,...preview,marketplaceUpdated:false});
+ }catch(e){res.status(409).json({error:String(e.message||e).slice(0,460)});}
+});
+app.post('/api/shopee/kits/publish/execute',mustLogin,requireWeDropAdmin,async(req,res)=>{
+ res.setHeader('Cache-Control','no-store');
+ if(!verifiedSameOrigin(req))return res.status(403).json({error:'Origem não autorizada.'});
+ if(req.body?.confirm!==true)
+  return res.status(400).json({error:'Aprovação explícita de publicação não recebida.'});
+ try{
+  const {auth,cfg}=await getValidAuth(req);
+  const output=await kitPublishApproved({cfg,auth,
+   kitSku:String(req.body?.kitSku||''),input:req.body?.fields||{},
+   token:req.body?.token,secret:stateSecret()});
+  res.json({ok:true,...output,requiresDiscountApproval:true});
+ }catch(e){res.status(409).json({error:String(e.message||e).slice(0,550)});}
+});
+app.post('/api/shopee/kits/publish/status',mustLogin,requireWeDropAdmin,async(req,res)=>{
+ res.setHeader('Cache-Control','no-store');
+ if(!verifiedSameOrigin(req))return res.status(403).json({error:'Origem não autorizada.'});
+ try{
+  const {auth,cfg}=await getValidAuth(req);
+  res.json({ok:true,...await checkKitPublication({cfg,auth,
+   kitSku:String(req.body?.kitSku||'')})});
+ }catch(e){res.status(409).json({error:String(e.message||e).slice(0,400)});}
+});
 app.post('/api/shopee/kits/plus-brief',mustLogin,requireWeDropAdmin,async(req,res)=>{
  res.setHeader('Cache-Control','no-store');
  if(!verifiedSameOrigin(req))return res.status(403).json({error:'Origem não autorizada.'});
