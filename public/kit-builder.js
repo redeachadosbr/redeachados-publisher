@@ -29,6 +29,7 @@ function setKitMode(next,{scroll=false}={}){
  if(scroll)$('#kitMode'+(next==='import'?'Import':'Builder')).scrollIntoView({behavior:'smooth',block:'start'});
 }
 let kitStockReady=false,kitStockLastCheck=null;
+let kitUnifiedState=null;
 let kitPublishToken=null,kitDiscountToken=null,kitSaved=false,kitPublishBusy=false,kitReadiness=null,kitShopeePhotoSlots=new Map(),kitItemId=null;
 let marginTimer=null,marginRevision=0,suggestionContext=null,marginUpdatePending=false;
 function updateKitOverview(){
@@ -175,17 +176,33 @@ function displayKitStockGate(stock,catalogCount){
  $('#kitCatalogHeadline').textContent=catalogFresh?'Catálogo WeDrop atualizado':'Catálogo WeDrop desatualizado';
  $('#kitCatalogDate').textContent='Última atualização: '+kitDateTime(stock?.catalogLastImportedAt);
  $('#kitCatalogBadge').textContent=catalogFresh?'Atualizado':'Desatualizado';
- $('#kitStockHeadline').textContent=kitStockReady?'Estoque WeDrop atualizado':'Estoque WeDrop não importado';
+ const hasStock=Number(stock?.importedCount||0)>0;
+ const stockFresh=stock?.stockRecent===true;
+ $('#kitStockHeadline').textContent=stockFresh?
+  'Estoque WeDrop importado':hasStock?'Estoque WeDrop vencido':'Estoque WeDrop não importado';
  $('#kitStockSubhead').textContent='Última importação: '+kitDateTime(stock?.lastSuccessAt)+
   ' · SKUs com status: '+Number(stock?.importedCount||0);
- $('#kitStockStamp').textContent=kitStockReady?'Disponibilidade validada':'Importação pendente';
- $('#kitStockExplanation').textContent=kitStockReady?
+ $('#kitStockStamp').textContent=stockFresh?
+  (kitStockReady?'Disponibilidade validada':'Estoque importado · catálogo pendente'):
+  (hasStock?'Atualização vencida':'Importação pendente');
+ $('#kitStockExplanation').textContent=hasStock?
   'Disponíveis: '+Number(stock?.availableCount||0)+' · Indisponíveis: '+
   Number(stock?.unavailableCount||0)+' · Sem informação no arquivo: '+
   Math.max(0,Number(catalogCount||0)-Number(stock?.importedCount||0))+
-  '. A validade termina em '+kitDateTime(stock.expiresAt)+'.':
-  'Importe a disponibilidade da WeDrop para liberar a geração de kits. CSV e Excel com SKU + Disponibilidade são aceitos.';
- $('#kitBlockedTag').textContent=kitStockReady?'Geração liberada':'⊘ Geração de kits indisponível';
+  '. '+(stockFresh?'Disponibilidade importada; '+(catalogFresh?'aguardando alinhamento com o catálogo.':
+  'falta atualizar o catálogo de custos.'):'Atualize o arquivo de estoque WeDrop.'):
+  'Importe os status DISPONÍVEL / INDISPONÍVEL de um CSV ou Excel WeDrop.';
+ $('#kitBlockedTag').textContent=kitStockReady?'Geração liberada':
+  (!catalogFresh?'⊘ Catálogo pendente':'⊘ Atualização pendente');
+ $('#kitStockBlocked').querySelector('strong').textContent=kitStockReady?
+  'Catálogo e estoque válidos para montar kits.':
+  (!catalogFresh?'Geração bloqueada: catálogo de custos WeDrop desatualizado.':
+   !stockFresh?'Geração bloqueada: atualize a disponibilidade da WeDrop.':
+   'Geração bloqueada: confirme estoque após atualizar o catálogo.');
+ $('#kitStockBlocked').querySelector('p').textContent=kitStockReady?
+  'Somente SKUs DISPONÍVEIS poderão ser selecionadas.':
+  (stockFresh?'O estoque já foi importado. Não precisa reenviar o mesmo arquivo só por causa do aviso.':
+    'As SKUs sem disponibilidade confirmada não serão utilizadas.');
  for(const selector of ['#kitSuggest','#kitPlusResearch','#kitPlusImport'])
   $(selector).disabled=!kitStockReady;
  $('#kitSource').textContent=kitStockReady?'Origem: WeDrop · estoque verificado':'ⓘ Indisponível no momento';
@@ -259,6 +276,126 @@ async function importKitStockCsv(){
   kitUploadFeedback('#kitStockImportStatus','Importação não concluída: '+error.message+
    '. Nenhuma disponibilidade será presumida.',true);
  }finally{btn.disabled=!$('#kitStockCsv').files?.length;}
+}
+function kitUnifiedStatus(message,state='info'){
+ const e=$('#kitUnifiedStatus');e.textContent=message;e.dataset.state=state;
+}
+function chooseKitCostColumns(preview){
+ const panel=$('#kitCostMappingPanel'),select=$('#kitCostColumn');
+ select.replaceChildren(new Option('Selecione o custo unitário do fornecedor',''));
+ const headers=preview?.headers||[];
+ for(let i=0;i<headers.length;i++){
+  const normalized=String(headers[i]).normalize('NFD')
+   .replace(/[\u0300-\u036f]/g,'').toLowerCase();
+  if(normalized.trim()==='sku'||/dispon|estoque|status|estado|marca|imagem|ean|ncm|cest|nome|categoria/.test(normalized))continue;
+  if(/venda|anuncio|promoc|varejo|marketplace|lucro|margem|comissao/.test(normalized))continue;
+  if(/custo|preco|valor|cost|price/.test(normalized)){
+   select.append(new Option(headers[i]+' · exemplo: '+String(preview.examples?.[0]?.[i]||'—'),String(i)));
+  }
+ }
+ panel.hidden=select.options.length<=1;
+ if(!panel.hidden){
+  $('#kitCostMappingReason').textContent='A coluna genérica de preço NÃO será considerada custo automaticamente. '+
+   'Selecione apenas o custo unitário real da WeDrop, confirme e revise quantas SKUs serão alteradas.';
+  $('#kitCostConfirm').checked=false;$('#kitCostMappingApply').disabled=true;
+ }
+ return !panel.hidden;
+}
+async function refreshKitImportData(){
+ categoriesLoaded=false;
+ await categories(true);
+}
+async function analyzeAndImportWeDrop(){
+ const file=$('#kitUnifiedFile').files?.[0],button=$('#kitUnifiedImport');
+ if(!file)return kitUnifiedStatus('Escolha um CSV, XLS ou XLSX da WeDrop.','error');
+ button.disabled=true;$('#kitCostMappingPanel').hidden=true;kitUnifiedState=null;
+ kitUnifiedStatus('Lendo o arquivo uma vez e identificando custo e disponibilidade...');
+ try{
+  const catalog=await readKitImportFile(file,'catalog');
+  let stockCsv=null;
+  try{
+   const separate=await readKitImportFile(file,'availability');
+   stockCsv=separate.csv;
+  }catch{stockCsv=catalog.csv;}
+  const [catalogInspect,stockInspect]=await Promise.all([
+   api('/api/shopee/kits/import/inspect',{body:{csv:catalog.csv}})
+    .catch(e=>({ok:false,error:e.message})),
+   stockCsv!==catalog.csv?
+    api('/api/shopee/kits/import/inspect',{body:{csv:stockCsv}})
+     .catch(e=>({ok:false,error:e.message})):Promise.resolve(null)
+  ]);
+  const costKnown=catalogInspect.ok&&catalogInspect.automaticLayout?.recognized===true;
+  const stockAvailable=stockInspect?.stock?.recognized===true||
+   catalogInspect?.stock?.recognized===true;
+  if(!costKnown&&!stockAvailable)throw Error(
+   'Planilha não tem custo reconhecido nem disponibilidade válida. '+
+   (catalogInspect.error||stockInspect?.error||'Confirme as colunas do fornecedor.')
+  );
+  let catalogImported=null,stockImported=null;
+  if(costKnown){
+   kitUnifiedStatus('Custo de compra reconhecido. Atualizando catálogo WeDrop...');
+   catalogImported=await api('/api/shopee/wedrop/auto/import',{
+    body:{csv:catalog.csv,fileName:file.name}
+   });
+  }
+  if(stockAvailable&&!catalogImported?.stockImported){
+   kitUnifiedStatus('Verificando disponibilidade das SKUs no catálogo WeDrop...');
+   const source=stockInspect?.stock?.recognized?stockCsv:catalog.csv;
+   stockImported=await api('/api/shopee/kits/availability/import',{body:{csv:source}});
+  }else if(catalogImported?.stockImported)stockImported=catalogImported.stockImported;
+  kitUnifiedState={catalogCsv:catalog.csv,stockCsv:stockInspect?.stock?.recognized?
+   stockCsv:catalogInspect?.stock?.recognized?catalog.csv:null,preview:catalogInspect,
+   fileName:file.name};
+  const summary=[
+   catalogImported?'Catálogo atualizado: '+catalogImported.uniqueCosts+' custos WeDrop.':
+    'Custos NÃO alterados: layout sem identificação segura de custo.',
+   stockImported?'Estoque importado: '+(stockImported.imported??stockImported.total??'?')+
+    ' SKUs.':'Arquivo sem coluna de disponibilidade validada.'
+  ].join(' ');
+  const mappingNeeded=!costKnown&&catalogInspect.ok&&chooseKitCostColumns(catalogInspect);
+  kitUnifiedStatus(summary+(mappingNeeded?
+   ' Confirme a coluna de custo abaixo para concluir a atualização do catálogo.':
+   !costKnown?' Para atualizar preços, use uma planilha com custo de aquisição explícito.':''),
+   catalogImported&&stockImported?'success':stockImported?'warning':'info');
+  await refreshKitImportData();
+ }catch(e){
+  kitUnifiedStatus('Não foi possível concluir: '+e.message,'error');
+  await refreshKitImportData().catch(()=>{});
+ }finally{button.disabled=!$('#kitUnifiedFile').files?.length;}
+}
+async function confirmKitMappedCost(){
+ const state=kitUnifiedState,option=$('#kitCostColumn').value,button=$('#kitCostMappingApply');
+ if(!state||!state.preview||option===''||!$('#kitCostConfirm').checked)
+  return kitUnifiedStatus('Selecione e confirme o custo unitário antes de prosseguir.','error');
+ button.disabled=true;
+ try{
+  const skuColumn=state.preview.headers.findIndex(x=>String(x).trim().toLowerCase()==='sku');
+  const costColumn=Number(option);
+  const preview=await api('/api/shopee/wedrop/validate',{body:{
+   csv:state.catalogCsv,skuColumn,costColumn
+  }});
+  if(!preview.canImport)throw Error('Nenhuma SKU dessa coluna corresponde à loja. Não alterar custos.');
+  const quantity=preview.uniqueCosts;
+  const matched=preview.comparison?.matchedCount||0;
+  if(!window.confirm('CONFIRMAR IMPORTAÇÃO DOS CUSTOS UNITÁRIOS WEDROP?\n'+
+   'Coluna: '+preview.costHeader+'\nSKUs: '+quantity+
+   '\nCorrespondências Shopee: '+matched+
+   '\nOs custos internos serão atualizados, sem modificar preços publicados.\nConfirma?'))return;
+  kitUnifiedStatus('Importando custos confirmados. Os preços da Shopee não serão alterados...');
+  const catalog=await api('/api/shopee/wedrop/auto/import',{body:{
+   csv:state.catalogCsv,fileName:state.fileName,
+   approvedCostMapping:{skuColumn,costColumn,confirmed:true}
+  }});
+  let stock=null;
+  if(state.stockCsv){
+   stock=await api('/api/shopee/kits/availability/import',{body:{csv:state.stockCsv}});
+  }
+  $('#kitCostMappingPanel').hidden=true;
+  kitUnifiedStatus('✓ Catálogo confirmado: '+catalog.uniqueCosts+' custos WeDrop atualizados.'+
+   (stock?' Disponibilidade sincronizada: '+stock.imported+' SKUs.':' Atualize disponibilidade para gerar kits.'),'success');
+  await refreshKitImportData();
+ }catch(e){kitUnifiedStatus('Atualização de custo bloqueada: '+e.message,'error');}
+ finally{button.disabled=!$('#kitCostConfirm').checked||!$('#kitCostColumn').value;}
 }
 async function categories(force=false){
  if(categoriesLoaded&&!force)return;
@@ -889,6 +1026,22 @@ $('#kitModeBuilder')?.addEventListener('click',()=>setKitMode('builder'));
 $('#kitModeImport')?.addEventListener('click',()=>setKitMode('import'));
 $('#kitGoImport')?.addEventListener('click',()=>setKitMode('import',{scroll:true}));
 $('#kitGoBuilder')?.addEventListener('click',()=>setKitMode('builder',{scroll:true}));
+$('#kitUnifiedFile')?.addEventListener('change',()=>{
+ const file=$('#kitUnifiedFile').files?.[0];
+ $('#kitUnifiedImport').disabled=!file;
+ $('#kitUnifiedFileName').textContent=file?file.name:'Nenhum arquivo selecionado';
+ $('#kitCostMappingPanel').hidden=true;kitUnifiedState=null;
+ kitUnifiedStatus(file?'Arquivo selecionado. Clique em Verificar e atualizar.':
+  'Selecione um arquivo da WeDrop para começar.');
+});
+$('#kitUnifiedImport')?.addEventListener('click',()=>void analyzeAndImportWeDrop());
+$('#kitCostColumn')?.addEventListener('change',()=>{
+ $('#kitCostConfirm').checked=false;$('#kitCostMappingApply').disabled=true;
+});
+$('#kitCostConfirm')?.addEventListener('change',()=>{
+ $('#kitCostMappingApply').disabled=!$('#kitCostConfirm').checked||!$('#kitCostColumn').value;
+});
+$('#kitCostMappingApply')?.addEventListener('click',()=>void confirmKitMappedCost());
 $('#kitCatalogImport')?.addEventListener('click',()=>void importKitCatalogFile());
 $('#kitStockImport')?.addEventListener('click',()=>void importKitStockCsv());
 $('#kitStockReload')?.addEventListener('click',()=>{categoriesLoaded=false;void categories(true);});
