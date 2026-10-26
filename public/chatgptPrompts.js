@@ -9,7 +9,7 @@ import {imageScenePrompt} from './imageSceneDiversity.js';
 export const CHATGPT_IMAGE_SCENES=Object.freeze([
  {label:"01 · Capa",guide:"Imagem 01 — Capa: produto original ocupando aproximadamente 85% a 90% da imagem, fundo limpo e apresentação profissional. imagem com fundo ambientado"},
  {label:"02 · Uso real",guide:"Imagem 02 — Uso real: mostrar o produto em um ambiente cotidiano de utilização, com composição diferente da capa. imagem com fundo ambientado. FRASES CURTAS DE CONVERSÃO"},
- {label:"03 · Especificações",guide:"Imagem 03 — Medidas reais: destacar as dimensões confirmadas SOBRE O CONTORNO DO PRODUTO com setas finas, e, quando confirmadas na WeDrop da SKU, microinformações laterais de capacidade e peso. Fundo ambientado moderno e nítido em HD. Sem título ESPECIFICAÇÕES, sem tabelas, faixas opacas nem excesso de textos."},
+ {label:"03 · Especificações",guide:"Imagem 03 — Base fotográfica para ficha técnica: somente o produto original em fundo ambientado moderno, nítido e HD, sem texto, números, setas, títulos ou medidas na imagem gerada."},
  {label:"04 · Benefícios",guide:"Imagem 04 — Benefícios: demonstrar visualmente as principais vantagens do produto. imagem com fundo ambientado. FRASES CURTAS DE BENEFICIO"},
  {label:"05 · Dor e solução",guide:"Imagem 05 — Dor e solução: representar uma necessidade do comprador e como o produto atende a essa necessidade. imagem com fundo ambientado FRASE CURTA"},
  {label:"06 · Persuasão",guide:"Imagem 06 — Persuasão: destacar um diferencial real com apresentação comercial. imagem com fundo ambientado. FRASE DE CONVERSÃO"},
@@ -46,6 +46,8 @@ export function createChatGptPrompts({imageUrls=[],supplierSourceText='',title='
  // SOMENTE os números exatos da WeDrop na imagem final. Não confiar em
  // letras/números que o modelo possa inventar, nem usar peso da caixa.
  prompts[2]=[
+  scenes[2].guide,
+  imageScenePrompt({slot:3,title}),
   'IMAGEM 03 — FOTOGRAFIA BASE SEM QUALQUER TEXTO.',
   'O gerador é responsável SOMENTE PELA FOTO AMBIENTADA do produto original. NENHUMA medida, número, palavra, letra, unidade, seta, ícone, régua, tabela, etiqueta, subtítulo, selo, painel lateral ou composição textual deve aparecer na imagem produzida.',
   'Não tente extrair nem apresentar dimensões da foto, da ficha técnica, de outro produto, de um brinquedo montado ou da embalagem. Não crie absolutamente nenhum detalhe gráfico técnico.',
