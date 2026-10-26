@@ -31,7 +31,7 @@
 <link rel="stylesheet" href="/ads-premium.css?v=2.4.0-seo-ads-location">
 <link rel="stylesheet" href="/sidebar-collapse.css?v=1.0.0">
 <link rel="stylesheet" href="/optimizer-image-studio.css?v=1.0.2">
-<link rel="stylesheet" href="/kit-builder.css?v=2.3.0-dual-layouts">
+<link rel="stylesheet" href="/kit-builder.css?v=2.4.0-import-onefile">
 <link rel="stylesheet" href="/optimizer-technical-studio.css?v=1.0.1-review-feedback">
 <style>
 /* Retomada da SKU visível junto à barra de acompanhamento. A API só é
@@ -866,7 +866,29 @@
   <span class="kit-mode-subtitle">Duas telas independentes · mesmas SKUs WeDrop</span>
  </nav>
  <div id="kitViewImport" class="kit-view-pane" role="tabpanel" aria-labelledby="kitModeImport" hidden>
-  <div class="kit-pane-intro"><div><h3>Importação de Catálogo e Estoque</h3><p>Atualize SKUs, custos e disponibilidade antes de montar os kits. Aceita CSV, XLS e XLSX.</p></div></div>
+  <div class="kit-pane-intro"><div><h3>Importação de Catálogo e Estoque</h3><p>Importe uma única vez: o sistema identifica custos WeDrop e disponibilidade sem confundir preços de venda.</p></div></div>
+ <section class="kit-unified-import" aria-label="Importação única WeDrop">
+  <div class="kit-unified-intro">
+   <span class="kit-unified-icon" aria-hidden="true">▤</span>
+   <div><h3>Atualizar catálogo e estoque juntos</h3><p>Selecione um arquivo WeDrop CSV, XLS ou XLSX. O sistema verifica o que pode ser importado com segurança.</p></div>
+  </div>
+  <div class="kit-unified-actions">
+   <label class="kit-import-file" for="kitUnifiedFile"><span class="kit-upload-button">Escolher arquivo CSV ou Excel</span>
+    <span id="kitUnifiedFileName">Nenhum arquivo selecionado</span>
+    <input id="kitUnifiedFile" type="file" accept=".csv,.xlsx,.xls,text/csv,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/vnd.ms-excel"/>
+   </label>
+   <button id="kitUnifiedImport" type="button" class="kit-primary" disabled>Verificar e atualizar</button>
+  </div>
+  <p class="kit-unified-hint">Se a planilha contém apenas disponibilidade, o estoque será atualizado e os custos existentes serão preservados. A atualização de custos precisa de coluna identificada ou confirmação explícita.</p>
+  <p id="kitUnifiedStatus" role="status" aria-live="polite">Selecione o arquivo exportado da WeDrop para iniciar.</p>
+  <div id="kitCostMappingPanel" class="kit-cost-mapping" hidden>
+   <div><strong>Confirmação de coluna de custo necessária</strong>
+    <p id="kitCostMappingReason">O arquivo não identifica automaticamente o custo unitário WeDrop.</p></div>
+   <label>Coluna de custo unitário<select id="kitCostColumn"><option value="">Selecione a coluna correta</option></select></label>
+   <label class="kit-cost-approve"><input id="kitCostConfirm" type="checkbox"/> Confirmo que a coluna selecionada é o custo de compra unitário cobrado pela WeDrop, não um preço de venda.</label>
+   <button id="kitCostMappingApply" type="button" class="kit-secondary" disabled>Validar custos e concluir atualização</button>
+  </div>
+ </section>
  <section id="kitStockGate" class="kit-stock-gate" aria-label="Atualização de catálogo e disponibilidade WeDrop">
   <div class="kit-stock-card kit-catalog-card" id="kitCatalogCard">
    <div class="kit-import-card-header">
@@ -1927,7 +1949,7 @@
 <script src="/technical-memory.js?v=1.0.1-live-sku-preload"></script>
 <script src="/technical-status.js?v=1.0.0-optional-coherence"></script>
 <script src="/app.js?v=1.21.82-media-technical-fix-dual-centavos-09-v4"></script>
-<script type="module" src="/kit-builder.js?v=2.3.0-dual-layouts"></script>
+<script type="module" src="/kit-builder.js?v=2.4.0-import-onefile"></script>
 <link rel="stylesheet" href="/optimizer-variations.css?v=1.2.1-single-flow">
 <script src="/optimizer-variations.js?v=1.2.3-single-flow"></script>
 
