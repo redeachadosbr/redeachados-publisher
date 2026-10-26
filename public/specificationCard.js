@@ -1,7 +1,7 @@
 // Imagem 03: cotas sobre o entorno do produto e dados laterais mínimos.
 // Fonte única: "Informações da WeDrop" SALVAS DA PRÓPRIA SKU.
 // Fotografia com fundo moderno/visível; preservar integralmente a base HD.
-import {confirmedProductDimensionsFromWeDrop,confirmedProductSideFactsFromWeDrop} from './productDimensions.js';
+import {confirmedProductDimensionsFromWeDrop,confirmedProductSideFactsFromWeDrop,confirmedAssembledTrackDimensionsFromWeDrop} from './productDimensions.js';
 
 export function confirmedSpecCard({sourceText='',sku='',sourceEvidenceSku='',supplierMatchedBy=''}={}){
  // Se a origem estiver associada a uma SKU real, não aceitar informações
@@ -11,7 +11,10 @@ export function confirmedSpecCard({sourceText='',sku='',sourceEvidenceSku='',sup
      !['exact-sku','reviewed-link'].includes(String(supplierMatchedBy||'')))
    return null;
  }
- const dims=confirmedProductDimensionsFromWeDrop(sourceText);
+ const assembled=confirmedAssembledTrackDimensionsFromWeDrop(sourceText);
+ // Quando existe uma pista montada, não desenhar setas ao redor de
+ // um caminhão/carrinho isolado, mesmo se outra frase traz medidas gerais.
+ const dims=assembled?null:confirmedProductDimensionsFromWeDrop(sourceText);
  const facts=confirmedProductSideFactsFromWeDrop(sourceText);
  if(!dims&&!facts.length)return null;
  return {measurements:dims?.measurements||[],facts,source:'Informações da WeDrop da SKU'};
