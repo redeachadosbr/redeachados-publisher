@@ -14,6 +14,80 @@ async function api(path,{body,signal}={}){
  return data;
 }
 let categoriesLoaded=false,suggestions=[],prepared=null,images=new Map(),generationBusy=false;
+let marginTimer=null,marginRevision=0,suggestionContext=null,marginUpdatePending=false;
+const MARGIN_MIN=0,MARGIN_MAX=70;
+function normalizeKitMargin(value){
+ return Math.max(MARGIN_MIN,Math.min(MARGIN_MAX,Math.round(Number(value)||0)));
+}
+function setKitMargin(value,{recalculate=false}={}){
+ const slider=$('#kitMargin'),number=normalizeKitMargin(value);
+ slider.value=String(number);
+ slider.style.setProperty('--kit-margin-fill',((number-MARGIN_MIN)/(MARGIN_MAX-MARGIN_MIN)*100).toFixed(2)+'%');
+ slider.setAttribute('aria-valuetext',number+' por cento');
+ $('#kitMarginLabel').textContent=number+'%';
+ $('#kitMarginMinus').disabled=number===MARGIN_MIN;
+ $('#kitMarginPlus').disabled=number===MARGIN_MAX;
+ if(recalculate)scheduleKitMarginReprice();
+}
+function scheduleKitMarginReprice(){
+ marginRevision++;
+ if(marginTimer)clearTimeout(marginTimer);
+ if(!suggestions.length&&!prepared){
+  status('Margem ajustada para '+$('#kitMargin').value+'%. Clique em Pesquisar kits inteligentes para calcular os valores.','info');
+  return;
+ }
+ marginUpdatePending=true;
+ $('#kitSaveDraft').disabled=true;
+ status('Margem ajustada para '+$('#kitMargin').value+'%. Atualizando os preços e o lucro dos kits pela calculadora Shopee...','info');
+ marginTimer=setTimeout(()=>void repriceKitMargin(marginRevision),420);
+}
+function refreshKitPrices(kit){
+ refreshKitPrices(kit);
+}
+async function repriceKitMargin(revision){
+ try{
+  const settings=currentSettings();
+  const calls=[];
+  const context=suggestionContext;
+  if(suggestions.length&&context&&context.category===$('#kitCategory').value&&context.size===Number($('#kitSize').value)){
+   const current=suggestions.map(kit=>kit.components.map(p=>p.sku));
+   calls.push(api('/api/shopee/kits/plus-import',{body:{
+    category:context.category,size:context.size,kits:current,...settings
+   }}).then(data=>({kind:'suggestions',data})));
+  }
+  if(prepared){
+   calls.push(api('/api/shopee/kits/prepare',{body:{
+    skus:prepared.kit.components.map(x=>x.sku),...settings
+   }}).then(data=>({kind:'prepared',data})));
+  }
+  const outcomes=await Promise.all(calls);
+  if(revision!==marginRevision)return;
+  for(const outcome of outcomes){
+   if(outcome.kind==='suggestions'){
+    const reasons=new Map(suggestions.map(k=>[k.components.map(p=>p.sku).sort().join('|'),k.businessReason]));
+    const repriced=outcome.data.results.map(k=>({
+     ...k,businessReason:reasons.get(k.components.map(p=>p.sku).sort().join('|'))||k.businessReason
+    }));
+    renderSuggestions({...outcome.data,results:repriced,source:context.source});
+   }
+   if(outcome.kind==='prepared'){
+    if(outcome.data.kit.kitSku!==prepared.kit.kitSku)throw Error('A cotação retornou um kit diferente.');
+    prepared={...prepared,kit:outcome.data.kit};
+    refreshKitPrices(prepared.kit); // Preserva textos já editados e imagens importadas.
+    $('#kitWarning').textContent=prepared.kit.warning+
+     ' Os preços foram recalculados para a margem escolhida e NÃO foram enviados à Shopee.';
+   }
+  }
+  status('✓ Margem manual '+$('#kitMargin').value+'% aplicada aos kits. Preços, descontos e lucro líquido recalculados com centavos 0/9.','success');
+ }catch(error){
+  if(revision===marginRevision)status('Não foi possível recalcular a margem: '+error.message+'. Tente pesquisar novamente; valores antigos não devem ser publicados.','error');
+ }finally{
+  if(revision===marginRevision){
+   marginUpdatePending=false;
+   $('#kitSaveDraft').disabled=false;
+  }
+ }
+}
 function elt(tag,className='',text=''){
  const e=document.createElement(tag);if(className)e.className=className;if(text)e.textContent=text;return e;
 }
@@ -26,7 +100,7 @@ function addImage(parent,product){
 function currentSettings(){
  const marginPct=Number($('#kitMargin').value),packing=Number($('#kitPacking').value),
  shipping=Number($('#kitShipping').value);
- if(!Number.isFinite(marginPct)||marginPct<5||marginPct>65)throw Error('Margem deve ficar entre 5% e 65%.');
+ if(!Number.isFinite(marginPct)||marginPct<MARGIN_MIN||marginPct>MARGIN_MAX)throw Error('Margem deve ficar entre 0% e 70%.');
  if(!Number.isFinite(packing)||packing<0||packing>500||!Number.isFinite(shipping)||shipping<0||shipping>500)
   throw Error('Custos adicionais devem estar entre R$ 0 e R$ 500.');
  return {marginPct,packing,shipping,useAi:false};
@@ -101,7 +175,7 @@ async function openDraft(kitSku){
  try{
   const d=await api('/api/shopee/kits/drafts/load',{body:{kitSku}});
   prepared=d;images.clear();
-  $('#kitMargin').value=String(d.kit.quote.targetMarginPct);
+  setKitMargin(d.kit.quote.targetMarginPct);
   $('#kitPacking').value=String(d.kit.packing);
   $('#kitShipping').value=String(d.kit.shipping);
   renderKit();
@@ -110,6 +184,7 @@ async function openDraft(kitSku){
 }
 async function saveDraft(){
  if(!prepared)return;
+ if(marginUpdatePending){status('Finalize o recálculo da barra de margem antes de salvar o kit.','error');return;}
  const b=$('#kitSaveDraft');b.disabled=true;
  try{
   const res=await api('/api/shopee/kits/drafts/save',{body:{
@@ -124,12 +199,15 @@ async function saveDraft(){
 }
 async function search(){
  if(generationBusy)return;
+ if(marginTimer)clearTimeout(marginTimer);
+ marginRevision++;marginUpdatePending=false;$('#kitSaveDraft').disabled=false;
  const btn=$('#kitSuggest');btn.disabled=true;prepared=null;
  $('#kitDetail').hidden=true;
  try{
   const data=await api('/api/shopee/kits/suggest',{body:{
    category:$('#kitCategory').value,size:Number($('#kitSize').value),...currentSettings()
   }});
+  suggestionContext={category:$('#kitCategory').value,size:Number($('#kitSize').value),source:data.source};
   renderSuggestions(data);
   status('Análise concluída: '+suggestions.length+' opções. '+data.disclaimer,'success');
  }catch(error){status(error.message,'error');}
@@ -260,6 +338,7 @@ async function importPlusSuggestions(){
   const r=await api('/api/shopee/kits/plus-import',{body:{
    category:$('#kitCategory').value,size,kits,...currentSettings()
   }});
+  suggestionContext={category:$('#kitCategory').value,size,source:r.source};
   renderSuggestions(r);
   status('Sugestões do ChatGPT Plus recebidas. Todos os SKUs e custos foram revalidados pelo sistema.','success');
  }catch(error){status('Não foi possível importar sugestões: '+error.message,'error');}
@@ -296,7 +375,7 @@ function importPlusText(){
 }
 
 async function prepare(kit){
- if(generationBusy)return;
+ if(generationBusy||marginUpdatePending)return;
  status('Gerando composição comercial do kit '+kit.kitSku+'...', 'info');
  try{
   const data=await api('/api/shopee/kits/prepare',{body:{
@@ -343,6 +422,12 @@ function exportPack(){
  downloadData(url,kit.kitSku+'-ficha-prompts.txt');
  setTimeout(()=>URL.revokeObjectURL(url),60000);
 }
+// Mesmo mecanismo da barra de Otimização: arraste, toque ou use as setas.
+$('#kitMargin')?.addEventListener('input',()=>setKitMargin($('#kitMargin').value,{recalculate:true}));
+for(const [selector,step] of [['#kitMarginPlus',1],['#kitMarginMinus',-1]]){
+ $(selector)?.addEventListener('click',()=>setKitMargin(Number($('#kitMargin').value)+step,{recalculate:true}));
+}
+setKitMargin($('#kitMargin').value);
 $('#kitSuggest')?.addEventListener('click',()=>void search());
 $('#kitPlusResearch')?.addEventListener('click',()=>void plusResearch());
 $('#kitPlusImport')?.addEventListener('click',()=>void importPlusSuggestions());
