@@ -1,4 +1,4 @@
-// Kits Inteligentes WeDrop — somente prévias, não executa escrita Shopee.
+// Kits Inteligentes WeDrop — Kit Formal enviado à Shopee somente após aprovação explícita.
 const $=s=>document.querySelector(s);
 const money=n=>Number(n).toLocaleString('pt-BR',{style:'currency',currency:'BRL'});
 const pct=n=>Number(n).toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2})+'%';
@@ -43,7 +43,19 @@ function scheduleKitMarginReprice(){
  marginTimer=setTimeout(()=>void repriceKitMargin(marginRevision),420);
 }
 function refreshKitPrices(kit){
- refreshKitPrices(kit);
+ const root=$('#kitNumbers');root.replaceChildren();
+ for(const [label,value] of [
+  ['Custos dos produtos',money(kit.componentCost)],
+  ['Custo total com extras',money(kit.kitCost)],
+  ['Preço bruto',money(kit.quote.grossPrice)],
+  ['Desconto base',pct(kit.quote.discountPct)],
+  ['Vitrine Shopee',money(kit.quote.marketplacePrice)],
+  ['Com cupom',money(kit.quote.afterCoupon)],
+  ['Lucro líquido',money(kit.quote.netProfit)],
+  ['Margem líquida',pct(kit.quote.netMarginPct)]
+ ]){
+  const card=elt('div');card.append(elt('span','',label),elt('b','',value));root.append(card);
+ }
 }
 async function repriceKitMargin(revision){
  try{
@@ -74,6 +86,8 @@ async function repriceKitMargin(revision){
    if(outcome.kind==='prepared'){
     if(outcome.data.kit.kitSku!==prepared.kit.kitSku)throw Error('A cotação retornou um kit diferente.');
     prepared={...prepared,kit:outcome.data.kit};
+    kitSaved=false;clearKitPublishApproval();
+    kitPublishStatus('Custo ou margem alterados. Salve novamente o rascunho e refaça a prévia antes de publicar.','info');
     refreshKitPrices(prepared.kit); // Preserva textos já editados e imagens importadas.
     $('#kitWarning').textContent=prepared.kit.warning+
      ' Os preços foram recalculados para a margem escolhida e NÃO foram enviados à Shopee.';
