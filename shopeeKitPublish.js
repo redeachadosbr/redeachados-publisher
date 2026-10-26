@@ -28,13 +28,16 @@ export function kitPublishFields(input,kit){
   throw Error('Envie de 1 a 9 imagens aprovadas do kit à mídia Shopee.');
  if(input?.photosReviewed!==true||input?.contentsReviewed!==true)
   throw Error('Confira os produtos de TODAS as imagens e a composição antes de publicar.');
+ if(input?.singleParcelConfirmed!==true)
+  throw Error('Confirme que todos os itens serão enviados juntos no mesmo pacote, com logística compatível com a WeDrop.');
  const days=Number(input?.daysToShip);
  const preorder=input?.preOrder===true;
  if(preorder&&(!Number.isInteger(days)||days<3||days>30))
   throw Error('Pré-encomenda exige dias para envio permitidos pela Shopee.');
  return {title,description,mainSku,weight,dimensions,logisticId:Number(logisticId),
   photoIds,preorder,days:preorder?days:null,
-  syncDts:input?.autoSyncDts===true,contentsReviewed:true,photosReviewed:true};
+  syncDts:input?.autoSyncDts===true,contentsReviewed:true,photosReviewed:true,
+  singleParcelConfirmed:true};
 }
 export function kitPublishPayload(kit,fields,linked,{maxTitleLength=120}={}){
  if(fields.title.length>maxTitleLength)
