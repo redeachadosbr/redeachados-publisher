@@ -6,8 +6,10 @@ import {promotionFromQuote,promotionBasePrice,promotionMember,discountPlanSnapsh
   readDiscountPages,signDiscountPreview,verifyDiscountPreview,
   shopDiscountMembershipSignal} from '../shopeeDiscountPublish.js';
 
-const q={sku:'TRC1525',itemId:'22095398152',modelId:'0',grossPrice:219.6,
- discountPct:20,couponPct:1,customerPrice:173.92,unitCost:99.99,
+const q={sku:'TRC1525',itemId:'22095398152',modelId:'0',grossPrice:223.24,
+ discountPct:20,couponPct:1,customerPrice:176.80,unitCost:99.99,
+ marketplaceDisplayPrice:178.59,priceEndingRuleVersion:4,
+ priceEndingPolicy:'both_checkout_and_visible',
  netMarginPct:10.01,minMarginPct:5,readyForManualReview:true,
  appliedInShopee:false,calculatedAt:new Date().toISOString()};
 const activity={discount_id:512820626272845,status:'ongoing',
@@ -15,19 +17,19 @@ const activity={discount_id:512820626272845,status:'ongoing',
  end_time:Math.floor(Date.now()/1000)+86400,item_list:[],more:false};
 test('Preço enviado na campanha exclui o cupom que já é deduzido separadamente',()=>{
  const v=promotionFromQuote(q);
- assert.equal(v.gross,219.60);
- assert.equal(v.promo,175.68);
- assert.equal(v.buyerAfterCoupon,173.92);
+ assert.equal(v.gross,223.24);
+ assert.equal(v.promo,178.59);
+ assert.equal(v.buyerAfterCoupon,176.80);
  assert.equal(v.discountPct,20);
 });
 test('Prévia detecta adição, atualização e desconto já aplicado sem duplicar',()=>{
  const base={shopId:'1234',sku:q.sku,itemId:q.itemId,modelId:'0',
-  discountId:String(activity.discount_id),quote:q,record:activity,originalPrice:219.6};
+  discountId:String(activity.discount_id),quote:q,record:activity,originalPrice:223.24};
  assert.equal(discountPlanSnapshot({...base,existing:null}).action,'add');
  assert.equal(discountPlanSnapshot({...base,existing:{item_id:q.itemId,item_promotion_price:169}}).action,'update');
- assert.equal(discountPlanSnapshot({...base,existing:{item_id:q.itemId,item_promotion_price:175.68}}).action,'already');
+ assert.equal(discountPlanSnapshot({...base,existing:{item_id:q.itemId,item_promotion_price:178.59}}).action,'already');
  const changed=discountPlanSnapshot({...base,originalPrice:149.9,
-  existing:{item_id:q.itemId,item_promotion_price:175.68}});
+  existing:{item_id:q.itemId,item_promotion_price:178.59}});
  assert.equal(changed.action,'update');
  assert.equal(changed.needsBasePriceUpdate,true);
 });
@@ -39,20 +41,20 @@ test('Recusa produto com variantes, preço desconhecido ou moeda diferente',()=>
 });
 test('Prévia exige correspondência de campanha e pagina todos os itens',async()=>{
  const result=await readDiscountPages(async(_cfg,{query})=>({response:{
-  ...activity,item_list:query.page_no===1?[{item_id:'10'}]:[{item_id:q.itemId,item_promotion_price:175.68}],
+  ...activity,item_list:query.page_no===1?[{item_id:'10'}]:[{item_id:q.itemId,item_promotion_price:178.59}],
   more:query.page_no<2
  }}),{cfg:{},auth:{accessToken:'test',shopId:'1234'},discountId:String(activity.discount_id)});
  assert.equal(result.pages.length,2);
- assert.equal(promotionMember(result.pages,q.itemId).item_promotion_price,175.68);
+ assert.equal(promotionMember(result.pages,q.itemId).item_promotion_price,178.59);
 });
 test('Aprovação assinada é vinculada à loja e expira',()=>{
  const preview=discountPlanSnapshot({shopId:'1234',sku:q.sku,itemId:q.itemId,
   modelId:'0',discountId:String(activity.discount_id),quote:q,record:activity,
-  originalPrice:219.6,existing:null});
+  originalPrice:223.24,existing:null});
  const secret='test-secret-very-long';
  const signed=signDiscountPreview(preview,secret);
  const value=verifyDiscountPreview(signed,secret,'1234');
- assert.equal(value.promo,175.68);
+ assert.equal(value.promo,178.59);
  assert.throws(()=>verifyDiscountPreview(signed,secret,'9999'),/outra loja/);
  assert.throws(()=>verifyDiscountPreview(signed+'x',secret,'1234'),/alterada/);
 });
@@ -130,4 +132,10 @@ test('Botão Executar libera com a prévia correta e apenas as confirmações da
  assert.equal(check({inProgress:true}),false,'Execução em andamento não pode ser repetida');
  assert.doesNotMatch(evaluator,/\[data-discount-review\]/,
   'Checklist informativo não pode interferir no botão Executar');
+});
+
+test('plano antigo com preço após cupom terminado em 2 é rejeitado antes da Shopee',()=>{
+ const invalid={...q,grossPrice:83.24,marketplaceDisplayPrice:66.59,customerPrice:65.92,
+  priceEndingRuleVersion:3,priceEndingPolicy:'visible_price_margin_priority',marginOverride:true};
+ assert.throws(()=>promotionFromQuote(invalid),/fora da regra de centavos 0\/9/);
 });
