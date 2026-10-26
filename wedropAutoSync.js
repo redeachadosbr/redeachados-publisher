@@ -1,6 +1,6 @@
 // Automação WeDrop da loja Shopee. Sem credenciais de terceiros persistidas aqui.
 import crypto from 'node:crypto';
-import {prepareAutomaticWeDropImport,MAX_CSV_CHARS} from './wedropCsv.js';
+import {prepareAutomaticWeDropImport,prepareWeDropImport,identifyWeDropLayout,parseCsv,MAX_CSV_CHARS} from './wedropCsv.js';
 import {saveKitStockImport} from './shopeeKitAvailability.js';
 import {
   readWeDropCosts,saveWeDropCosts,compareIncomingCosts,
@@ -27,8 +27,26 @@ export function changedSupplierCosts(incoming,existing){
   const old=new Map(existing.map(x=>[String(x.supplier_sku),Number(x.unit_cost)]));
   return incoming.filter(x=>!old.has(x.sku)||old.get(x.sku)!==x.unitCost);
 }
-export async function importSupplierAutomatically(shopId,csv,{sourceKind='upload',sourceName='catalogo.csv'}={}){
-  const prepared=prepareAutomaticWeDropImport(csv);
+export async function importSupplierAutomatically(shopId,csv,{
+  sourceKind='upload',sourceName='catalogo.csv',approvedCostMapping=null
+}={}){
+  let prepared;
+  if(approvedCostMapping){
+    const parsed=parseCsv(csv),schema=identifyWeDropLayout(parsed.headers);
+    if(schema.recognized)throw Error('O layout tem custo reconhecido; não é necessário mapeamento manual.');
+    const skuColumn=Number(approvedCostMapping.skuColumn),costColumn=Number(approvedCostMapping.costColumn);
+    const skuLabel=parsed.headers[skuColumn]||'',costLabel=parsed.headers[costColumn]||'';
+    const normalized=costLabel.normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase();
+    if(!/^sku$/i.test(skuLabel.trim())||!Number.isInteger(costColumn)||
+      costColumn<0||costColumn>=parsed.headers.length||costColumn===skuColumn)
+      throw Error('O mapeamento precisa selecionar SKU e uma coluna de custo distinta.');
+    if(/venda|anuncio|promoc|varejo|marketplace|lucro|margem|comissao/.test(normalized))
+      throw Error('Coluna "'+costLabel+'" pode ser preço de venda. Não é permitido cadastrá-la como custo WeDrop.');
+    if(approvedCostMapping.confirmed!==true)
+      throw Error('Confirme explicitamente que a coluna escolhida representa o custo unitário WeDrop.');
+    const imported=prepareWeDropImport(csv,{skuColumn,costColumn,skipInvalid:false});
+    prepared={...imported,layout:'approved-cost-mapping',automatic:false};
+  }else prepared=prepareAutomaticWeDropImport(csv);
   const compared=await compareIncomingCosts(shopId,prepared.costs);
   // Se todos os IDs são EAN ou NCM, não confundir custo com outro produto.
   if(compared.matchedCount===0)
