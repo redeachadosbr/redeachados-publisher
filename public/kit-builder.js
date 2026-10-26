@@ -233,8 +233,8 @@ async function plusResearch(){
   const r=await api('/api/shopee/kits/plus-brief',{body:{
    category:$('#kitCategory').value,size:Number($('#kitSize').value)
   }});
-  chatgptHandoff(r.prompt);
-  status('Pesquisa preparada para ChatGPT Plus com '+r.candidatesCount+' SKUs reais. Depois cole aqui somente os códigos por kit, separados por |.','success');
+  $('#kitResearchPrompt').value=r.prompt;
+  status('Pesquisa preparada com '+r.candidatesCount+' SKUs reais. Clique em "Copiar prompt + abrir ChatGPT Plus" e cole o texto no chat.','success');
  }catch(error){status(error.message,'error');}
  finally{btn.disabled=false;}
 }
@@ -265,8 +265,8 @@ async function plusText(){
    skus:prepared.kit.components.map(x=>x.sku),...currentSettings()
   }});
   if(r.kitSku!==prepared.kit.kitSku)throw Error('SKU de kit diferente.');
-  chatgptHandoff(r.prompt);
-  status('Prompt para título e descrição copiado. Cole no ChatGPT Plus e importe a resposta neste painel.','success');
+  $('#kitContentPrompt').value=r.prompt;
+  status('Orientação pronta. Clique em "Copiar orientação + abrir ChatGPT Plus" e depois importe a resposta neste painel.','success');
  }catch(error){status('Não foi possível preparar texto: '+error.message,'error');}
  finally{btn.disabled=false;}
 }
@@ -338,6 +338,14 @@ function exportPack(){
 $('#kitSuggest')?.addEventListener('click',()=>void search());
 $('#kitPlusResearch')?.addEventListener('click',()=>void plusResearch());
 $('#kitPlusImport')?.addEventListener('click',()=>void importPlusSuggestions());
+$('#kitOpenResearchPrompt')?.addEventListener('click',()=>{
+ const prompt=$('#kitResearchPrompt').value;
+ if(prompt)chatgptHandoff(prompt);else status('Prepare primeiro a pesquisa com os SKUs WeDrop.','error');
+});
+$('#kitOpenContentPrompt')?.addEventListener('click',()=>{
+ const prompt=$('#kitContentPrompt').value;
+ if(prompt)chatgptHandoff(prompt);else status('Prepare primeiro o prompt de título e descrição.','error');
+});
 $('#kitPlusText')?.addEventListener('click',()=>void plusText());
 $('#kitImportText')?.addEventListener('click',importPlusText);
 
