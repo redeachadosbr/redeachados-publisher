@@ -14,6 +14,20 @@ async function api(path,{body,signal}={}){
  return data;
 }
 let categoriesLoaded=false,suggestions=[],prepared=null,images=new Map(),generationBusy=false;
+let kitCurrentMode='builder';
+function setKitMode(next,{scroll=false}={}){
+ if(next!=='import'&&next!=='builder')return;
+ kitCurrentMode=next;
+ $('#kitViewImport').hidden=next!=='import';
+ $('#kitViewBuilder').hidden=next!=='builder';
+ for(const [mode,id] of [['import','#kitModeImport'],['builder','#kitModeBuilder']]){
+  const active=mode===next;
+  $(id).setAttribute('aria-selected',active?'true':'false');
+  $(id).tabIndex=active?0:-1;
+ }
+ $('#tab-kits').dataset.kitMode=next;
+ if(scroll)$('#kitMode'+(next==='import'?'Import':'Builder')).scrollIntoView({behavior:'smooth',block:'start'});
+}
 let kitStockReady=false,kitStockLastCheck=null;
 let kitPublishToken=null,kitDiscountToken=null,kitSaved=false,kitPublishBusy=false,kitReadiness=null,kitShopeePhotoSlots=new Map(),kitItemId=null;
 let marginTimer=null,marginRevision=0,suggestionContext=null,marginUpdatePending=false;
@@ -152,6 +166,10 @@ function displayKitStockGate(stock,catalogCount){
  gate.dataset.ready=kitStockReady?'yes':'no';
  $('#tab-kits').classList.toggle('kit-stock-blocked',!kitStockReady);
  $('#kitStockBlocked').hidden=kitStockReady;
+ $('#kitBuilderStockNotice').hidden=kitStockReady;
+ $('#kitImportNextHint').textContent=kitStockReady?
+  '✓ Catálogo e estoque confirmados. Abra a montagem para pesquisar kits com SKUs DISPONÍVEIS.':
+  'Atualize o catálogo e os status de estoque. A montagem permanece acessível para consulta e revisão, mas a geração fica bloqueada.';
  $('#kitCatalogCard').dataset.ready=catalogFresh?'yes':'no';
  $('#kitAvailabilityCard').dataset.ready=kitStockReady?'yes':'no';
  $('#kitCatalogHeadline').textContent=catalogFresh?'Catálogo WeDrop atualizado':'Catálogo WeDrop desatualizado';
@@ -172,11 +190,13 @@ function displayKitStockGate(stock,catalogCount){
   $(selector).disabled=!kitStockReady;
  $('#kitSource').textContent=kitStockReady?'Origem: WeDrop · estoque verificado':'ⓘ Indisponível no momento';
  if(!kitStockReady){
-  suggestions=[];suggestionContext=null;prepared=null;images.clear();
+  // Estoque desatualizado bloqueia ações novas, não apaga edições nem
+  // esconde o construtor completo anteriormente criado.
+  suggestions=[];suggestionContext=null;
+  clearKitPublishApproval();
   $('#kitSuggestions').replaceChildren(elt('p','',
-   'Geração bloqueada até atualizar o catálogo e importar a disponibilidade WeDrop.'));
-  $('#kitDetail').hidden=true;
-  status('Atualização obrigatória: '+(stock?.reason||'Importe o catálogo e os status WeDrop.'),'error');
+   'Geração bloqueada até importar a disponibilidade WeDrop. A tela completa de montagem continua disponível.'));
+  status('Estoque sem validação atual. Acesse a aba Importação WeDrop para liberar novas pesquisas.','error');
  }else status('Estoque WeDrop confirmado. Escolha a categoria e pesquise kits compatíveis.','success');
 }
 function kitUploadFeedback(selector,message,error=false){
@@ -865,6 +885,10 @@ for(const [fileSelector,buttonSelector,nameSelector] of [
   $(nameSelector).textContent=file?file.name:'Nenhum arquivo selecionado';
  });
 }
+$('#kitModeBuilder')?.addEventListener('click',()=>setKitMode('builder'));
+$('#kitModeImport')?.addEventListener('click',()=>setKitMode('import'));
+$('#kitGoImport')?.addEventListener('click',()=>setKitMode('import',{scroll:true}));
+$('#kitGoBuilder')?.addEventListener('click',()=>setKitMode('builder',{scroll:true}));
 $('#kitCatalogImport')?.addEventListener('click',()=>void importKitCatalogFile());
 $('#kitStockImport')?.addEventListener('click',()=>void importKitStockCsv());
 $('#kitStockReload')?.addEventListener('click',()=>{categoriesLoaded=false;void categories(true);});
@@ -916,6 +940,10 @@ $('#kitCopyTitle')?.addEventListener('click',()=>void copy($('#kitTitle').value)
 $('#kitCopyDescription')?.addEventListener('click',()=>void copy($('#kitDescription').value));
 $('#kitCopyAllPrompts')?.addEventListener('click',()=>prepared&&void copy(prepared.creative.prompts.join('\n\n\n')));
 $('#kitClose')?.addEventListener('click',()=>{$('#kitDetail').hidden=true;});
-window.RAKitBuilderLoad=async()=>{await categories();await loadDrafts();};
+window.RAKitBuilderLoad=async()=>{
+ setKitMode(kitCurrentMode);
+ await categories();
+ await loadDrafts();
+};
 if(location.pathname.replace(/\/$/,'').endsWith('/kits'))window.RAKitBuilderLoad();
 document.querySelector('a[data-tab="kits"]')?.addEventListener('click',()=>window.RAKitBuilderLoad());
