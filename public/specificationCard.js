@@ -3,7 +3,14 @@
 // Fotografia com fundo moderno/visível; preservar integralmente a base HD.
 import {confirmedProductDimensionsFromWeDrop,confirmedProductSideFactsFromWeDrop} from './productDimensions.js';
 
-export function confirmedSpecCard({sourceText=''}={}){
+export function confirmedSpecCard({sourceText='',sku='',sourceEvidenceSku='',supplierMatchedBy=''}={}){
+ // Se a origem estiver associada a uma SKU real, não aceitar informações
+ // importadas de outra SKU ou catálogo WeDrop sem vínculo confirmado.
+ if(sku){
+  if(String(sourceEvidenceSku||'').trim()!==String(sku).trim()||
+     !['exact-sku','reviewed-link'].includes(String(supplierMatchedBy||'')))
+   return null;
+ }
  const dims=confirmedProductDimensionsFromWeDrop(sourceText);
  const facts=confirmedProductSideFactsFromWeDrop(sourceText);
  if(!dims&&!facts.length)return null;
