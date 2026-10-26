@@ -6521,7 +6521,11 @@ function shPriceRender(q){
     ', se utilizado: '+shPriceMoney(q.customerPrice);
   $('#optimizerQuickProfit').textContent=shPriceMoney(q.netProfit);
   $('#optimizerQuickMarginPercent').textContent=shPricePercent(q.netMarginPct)+' de margem';
-  shQuickSetStatus('SKU '+q.sku+' · Custo WeDrop '+shPriceMoney(q.unitCost)+
+  const centsMarginNotice=q.marginOverride===true&&
+    Number(q.netMarginPct)>Number(q.targetMarginPct)+0.3?
+    ' · Meta mínima '+shPricePercent(q.targetMarginPct)+'; margem real '+
+    shPricePercent(q.netMarginPct)+' porque os dois preços (Shopee e cupom) devem terminar em 0/9.':'';
+  shQuickSetStatus('SKU '+q.sku+' · Custo WeDrop '+shPriceMoney(q.unitCost)+centsMarginNotice+
     (isSupplierPreview
       ?'. Simulação disponível. Aguarde a confirmação do anúncio Shopee para salvar na etapa Descontos.'
       :q.marketResearch?.verified===true
