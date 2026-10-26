@@ -14,6 +14,7 @@ async function api(path,{body,signal}={}){
  return data;
 }
 let categoriesLoaded=false,suggestions=[],prepared=null,images=new Map(),generationBusy=false;
+let kitPublishToken=null,kitSaved=false,kitPublishBusy=false,kitReadiness=null,kitShopeePhotoSlots=new Map(),kitItemId=null;
 let marginTimer=null,marginRevision=0,suggestionContext=null,marginUpdatePending=false;
 const MARGIN_MIN=0,MARGIN_MAX=70;
 function normalizeKitMargin(value){
@@ -119,6 +120,180 @@ async function categories(){
   status(data.catalogCount+' SKUs com custos conferidos na WeDrop. Escolha a categoria e inicie a pesquisa.','success');
  }catch(error){categoriesLoaded=false;status('Não foi possível acessar as categorias: '+error.message,'error');}
 }
+function kitPublishStatus(text,state='info'){
+ const node=$('#kitPublishStatus');node.textContent=text;node.dataset.state=state;
+}
+function clearKitPublishApproval(){
+ kitPublishToken=null;
+ $('#kitPublishPreviewBox').hidden=true;
+}
+function resetKitPublication({saved=false,publication=null}={}){
+ kitSaved=saved;kitPublishBusy=false;kitReadiness=null;kitShopeePhotoSlots.clear();
+ clearKitPublishApproval();
+ kitItemId=publication?.itemId||null;
+ $('#kitShopeePhotoCount').textContent='0 fotos enviadas à galeria da Shopee nesta sessão (não publicadas).';
+ $('#kitContentsReviewed').checked=false;$('#kitPhotosReviewed').checked=false;
+ $('#kitMainSku').replaceChildren();
+ const root=$('#kitMainSku');
+ root.append(new Option('Selecione o SKU principal',''));
+ for(const p of prepared?.kit?.components||[])root.append(new Option(p.sku+' · '+p.name,p.sku));
+ $('#kitLogisticId').replaceChildren(new Option('Consultar opções da Shopee',''));
+ $('#kitPublishLinks').replaceChildren();
+ $('#kitDiscountNext').hidden=!kitItemId;
+ $('#kitPublishPreview').disabled=!saved||Boolean(kitItemId);
+ $('#kitSendPhotos').disabled=!saved||Boolean(kitItemId);
+ $('#kitPublishCheck').disabled=!saved||Boolean(kitItemId);
+ $('#kitPublishExecute').disabled=!saved||Boolean(kitItemId);
+ $('#kitPublishedMessage').textContent=kitItemId?
+  'Kit criado com Item ID '+kitItemId+' · Estado: '+String(publication.status)+
+  '. O desconto será uma operação posterior, com aprovação própria.':'';
+ kitPublishStatus(kitItemId?'Kit já enviado à Shopee. Verifique a publicação antes de preparar o desconto.':
+  saved?'Rascunho salvo. Consulte os vínculos dos componentes para preparar o kit na Shopee.':
+  'Primeiro salve o rascunho com título, descrição e margem revisados.',
+  kitItemId?'success':'info');
+}
+function kitPublishFields(){
+ if(!prepared)throw Error('Selecione um kit.');
+ return {
+  title:$('#kitTitle').value.trim(),description:$('#kitDescription').value.trim(),
+  mainSku:$('#kitMainSku').value,logisticId:$('#kitLogisticId').value,
+  weightKg:Number($('#kitWeightKg').value),lengthCm:Number($('#kitLengthCm').value),
+  widthCm:Number($('#kitWidthCm').value),heightCm:Number($('#kitHeightCm').value),
+  autoSyncDts:$('#kitAutoSyncDts').checked,preOrder:$('#kitPreOrder').checked,
+  daysToShip:Number($('#kitDaysToShip').value),
+  contentsReviewed:$('#kitContentsReviewed').checked,
+  photosReviewed:$('#kitPhotosReviewed').checked
+ };
+}
+async function kitReadinessCheck(){
+ if(!prepared||!kitSaved)return kitPublishStatus('Salve o kit antes de consultar a Shopee.','error');
+ if(kitPublishBusy)return;
+ kitPublishBusy=true;$('#kitPublishCheck').disabled=true;clearKitPublishApproval();
+ kitPublishStatus('Validando itens, variações, canais e limites do Kit Formal na Shopee...');
+ try{
+  const result=await api('/api/shopee/kits/publish/readiness',{body:{kitSku:prepared.kit.kitSku}});
+  kitReadiness=result;
+  const components=$('#kitPublishLinks');components.replaceChildren();
+  for(const x of result.linked){
+   const line=elt('div','kit-component');
+   line.textContent='WeDrop '+x.supplierSku+' → Shopee Item ID '+x.itemId+
+    (Number(x.modelId)>0?' · Modelo '+x.modelId:'')+
+    ' · '+x.title;components.append(line);
+  }
+  const channelSelect=$('#kitLogisticId'),chosen=channelSelect.value;
+  channelSelect.replaceChildren(new Option('Selecione um canal ativo',''));
+  for(const x of result.channels)channelSelect.append(new Option(x.name+' (ID '+x.id+')',x.id));
+  if(result.channels.some(x=>x.id===chosen))channelSelect.value=chosen;
+  kitPublishStatus(result.blockers?.length?
+   'PUBLICAÇÃO BLOQUEADA: '+result.blockers.join(' | '):
+   'Todos os componentes estão vinculados a anúncios ativos. Confirme peso e dimensões medidos e envie as fotografias.',
+   result.blockers?.length?'error':'success');
+ }catch(error){kitPublishStatus('Falha na conferência: '+error.message,'error');}
+ finally{kitPublishBusy=false;$('#kitPublishCheck').disabled=false;}
+}
+async function kitSendPhotos(){
+ if(!prepared||!kitSaved)return kitPublishStatus('Salve o rascunho antes de enviar imagens.','error');
+ if(kitPublishBusy)return;
+ if(!kitReadiness||kitReadiness.blockers?.length)
+  return kitPublishStatus('Conclua primeiro a verificação dos componentes Shopee.','error');
+ if(!images.size)return kitPublishStatus('Importe ao menos uma foto do kit gerada no ChatGPT Plus.','error');
+ if(!$('#kitPhotosReviewed').checked)
+  return kitPublishStatus('Confirme que todas as imagens representam fielmente os componentes.','error');
+ kitPublishBusy=true;$('#kitSendPhotos').disabled=true;clearKitPublishApproval();
+ try{
+  for(const [slot,photo] of [...images.entries()].sort((a,b)=>a[0]-b[0])){
+   if(kitShopeePhotoSlots.has(slot))continue;
+   kitPublishStatus('Enviando foto '+slot+' para Shopee MediaSpace, SEM publicar o anúncio...');
+   const result=await api('/api/shopee/kits/publish/media',{body:{
+    kitSku:prepared.kit.kitSku,mime:'image/png',imageBase64:photo.split(',')[1]
+   }});
+   kitShopeePhotoSlots.set(slot,result.imageId);
+   $('#kitShopeePhotoCount').textContent=kitShopeePhotoSlots.size+
+    ' foto(s) armazenada(s) na galeria Shopee, ainda SEM publicação.';
+  }
+  kitPublishStatus('Fotos enviadas. Gere a prévia final para verificar preços, IDs, composição e logística.','success');
+ }catch(error){kitPublishStatus('Envio interrompido: '+error.message+
+  '. Fotos confirmadas permanecem na galeria; retome sem reenviar as mesmas posições.','error');}
+ finally{kitPublishBusy=false;$('#kitSendPhotos').disabled=false;}
+}
+async function kitPreparePublishPreview(){
+ if(!prepared||!kitSaved)return kitPublishStatus('Salve o kit primeiro.','error');
+ if(kitPublishBusy)return;
+ if(!kitReadiness||kitReadiness.blockers?.length)
+  return kitPublishStatus('Resolva todos os vínculos de SKU e logística antes da prévia.','error');
+ kitPublishBusy=true;$('#kitPublishPreview').disabled=true;clearKitPublishApproval();
+ try{
+  const result=await api('/api/shopee/kits/publish/preview',{body:{
+   kitSku:prepared.kit.kitSku,fields:kitPublishFields()
+  }});
+  kitPublishToken=result.token;
+  const x=result.payloadSummary;
+  $('#kitPublishSummary').textContent=[
+   'KIT '+result.kitSku,
+   'Componentes: '+x.skus.join(' + '),
+   'Nome: '+x.title,
+   'Preço BRUTO de cadastro: '+money(x.gross),
+   'Preço da Minha Promoção DEPOIS da publicação: '+money(x.promoAfterPublication),
+   'Preço com cupom de loja (simulado): '+money(x.couponAfterPromo),
+   'Lucro líquido estimado: '+pct(x.margin),
+   'Fotografias: '+x.images,
+   'Peso total: '+x.weightKg+' kg',
+   'Embalagem: '+x.dimensions.join(' × ')+' cm',
+   'Canal logístico: '+x.logisticId,
+   'ATENÇÃO: esta ação cria um novo Kit Formal NA SHOPEE, com preço BRUTO, sem desconto.'
+  ].join('\n');
+  $('#kitPublishPreviewBox').hidden=false;
+  kitPublishStatus('Prévia segura gerada. Confira os dados e confirme a publicação com o botão destacado abaixo.','success');
+ }catch(error){kitPublishStatus('Prévia bloqueada: '+error.message,'error');}
+ finally{kitPublishBusy=false;$('#kitPublishPreview').disabled=false;}
+}
+async function kitPublishExecute(){
+ if(!prepared||!kitPublishToken||kitPublishBusy)return;
+ const name=prepared.kit.kitSku;
+ const confirmed=window.confirm('PUBLICAR NOVO KIT FORMAL NA SHOPEE?\n'+
+  name+'\nPreço bruto: '+money(prepared.kit.quote.grossPrice)+
+  '\nA promoção não será aplicada agora. Esta criação pode gerar um anúncio real. Confirma?');
+ if(!confirmed)return;
+ kitPublishBusy=true;$('#kitPublishExecute').disabled=true;
+ kitPublishStatus('Shopee recebendo criação do Kit Formal. Não repita o envio se houver erro ou tempo esgotado...');
+ try{
+  const done=await api('/api/shopee/kits/publish/execute',{body:{
+   kitSku:name,fields:kitPublishFields(),token:kitPublishToken,confirm:true
+  }});
+  kitItemId=done.itemId;clearKitPublishApproval();
+  $('#kitDiscountNext').hidden=false;
+  $('#kitPublishedMessage').textContent='Kit '+name+' · Item ID '+done.itemId+
+   ' · Status '+done.status+'. '+done.message;
+  kitPublishStatus('✓ Shopee retornou Item ID '+done.itemId+'. O desconto ainda NÃO foi aplicado.','success');
+  $('#kitPublishCheck').disabled=true;$('#kitSendPhotos').disabled=true;
+  $('#kitPublishPreview').disabled=true;
+  void loadDrafts();
+ }catch(error){
+  clearKitPublishApproval();
+  kitPublishStatus('Atenção: '+error.message+
+   ' Não tente publicar novamente antes de consultar Meus Kits na Shopee.','error');
+  $('#kitVerifyPublished').disabled=false;
+  $('#kitDiscountNext').hidden=false;
+  $('#kitPublishedMessage').textContent='Verifique a existência deste kit pelo código '+name+
+   ' na Central do Vendedor antes de qualquer novo envio.';
+ }finally{kitPublishBusy=false;$('#kitPublishExecute').disabled=false;}
+}
+async function kitVerifyPublished(){
+ if(!prepared||kitPublishBusy)return;
+ kitPublishBusy=true;
+ try{
+  const v=await api('/api/shopee/kits/publish/status',{body:{kitSku:prepared.kit.kitSku}});
+  kitItemId=v.publication?.itemId||null;
+  $('#kitDiscountNext').hidden=!kitItemId&&v.publication?.status!=='uncertain';
+  $('#kitPublishedMessage').textContent=v.publication?.message||
+   'Status da Shopee não confirmado. Consulte Meus Kits antes de qualquer novo envio.';
+  kitPublishStatus(v.discountReady?
+   '✓ Kit NORMAL confirmado. Agora selecione uma Minha Promoção em Descontos preparados para preparar o desconto.':
+   'Kit ainda pendente de confirmação; desconto não pode ser aplicado.',
+   v.discountReady?'success':'info');
+ }catch(error){kitPublishStatus('Status não confirmado: '+error.message,'error');}
+ finally{kitPublishBusy=false;}
+}
 function renderSuggestions(data){
  suggestions=data.results||[];
  const root=$('#kitSuggestions');root.replaceChildren();
@@ -174,7 +349,7 @@ async function openDraft(kitSku){
  status('Recuperando '+kitSku+' e recalculando com preços WeDrop atuais...');
  try{
   const d=await api('/api/shopee/kits/drafts/load',{body:{kitSku}});
-  prepared=d;images.clear();
+  prepared=d;images.clear();resetKitPublication({saved:true,publication:d.publication});
   setKitMargin(d.kit.quote.targetMarginPct);
   $('#kitPacking').value=String(d.kit.packing);
   $('#kitShipping').value=String(d.kit.shipping);
@@ -192,6 +367,7 @@ async function saveDraft(){
    ...currentSettings(),title:$('#kitTitle').value,description:$('#kitDescription').value
   }});
   if(!res.saved)throw Error('O servidor não confirmou a gravação do rascunho.');
+  resetKitPublication({saved:true});
   status('✓ Rascunho '+res.kitSku+' salvo nesta loja. A Shopee não foi alterada.','success');
   void loadDrafts();
  }catch(error){status('Não foi possível salvar kit: '+error.message,'error');}
@@ -308,6 +484,8 @@ async function uploadPhoto(slot,file){
    const w=Math.round(bitmap.width*scale),h=Math.round(bitmap.height*scale);
    ctx.drawImage(bitmap,Math.floor((1200-w)/2),Math.floor((1200-h)/2),w,h);
    images.set(slot,canvas.toDataURL('image/png'));
+   kitShopeePhotoSlots.delete(slot);
+   clearKitPublishApproval();
   }finally{bitmap.close();}
   renderImageSlots();
   imageStatus('Imagem '+slot+' importada em PNG 1200 × 1200 para conferência. Imagens permanecem nesta aba e não são publicadas.','success');
@@ -371,7 +549,8 @@ function importPlusText(){
  }
  $('#kitTitle').value=title[1].trim();
  $('#kitDescription').value=description;
- status('Título e descrição importados para revisão. Salve o rascunho quando estiverem corretos.','success');
+ kitSaved=false;clearKitPublishApproval();
+ status('Título e descrição importados. Salve o rascunho atualizado antes de publicar.','success');
 }
 
 async function prepare(kit){
@@ -381,7 +560,7 @@ async function prepare(kit){
   const data=await api('/api/shopee/kits/prepare',{body:{
    skus:kit.components.map(x=>x.sku),...currentSettings()
   }});
-  prepared=data;images.clear();renderKit();
+  prepared=data;images.clear();resetKitPublication({saved:false});renderKit();
   status('Kit '+data.kit.kitSku+' preparado para revisão. Nenhum anúncio criado na Shopee.','success');
  }catch(error){status('Preparação não concluída: '+error.message,'error');}
 }
@@ -445,6 +624,20 @@ $('#kitImportText')?.addEventListener('click',importPlusText);
 $('#kitGenerateAll')?.addEventListener('click',openChatGPTImages);
 $('#kitDownloadPack')?.addEventListener('click',exportPack);
 $('#kitSaveDraft')?.addEventListener('click',()=>void saveDraft());
+$('#kitPublishCheck')?.addEventListener('click',()=>void kitReadinessCheck());
+$('#kitSendPhotos')?.addEventListener('click',()=>void kitSendPhotos());
+$('#kitPublishPreview')?.addEventListener('click',()=>void kitPreparePublishPreview());
+$('#kitPublishExecute')?.addEventListener('click',()=>void kitPublishExecute());
+$('#kitVerifyPublished')?.addEventListener('click',()=>void kitVerifyPublished());
+$('#kitPreOrder')?.addEventListener('change',()=>{
+ $('#kitDaysToShip').disabled=!$('#kitPreOrder').checked;clearKitPublishApproval();
+});
+for(const selector of ['#kitMainSku','#kitLogisticId','#kitWeightKg','#kitLengthCm',
+ '#kitWidthCm','#kitHeightCm','#kitAutoSyncDts','#kitPreOrder','#kitDaysToShip',
+ '#kitContentsReviewed','#kitPhotosReviewed','#kitTitle','#kitDescription']){
+ $(selector)?.addEventListener('change',clearKitPublishApproval);
+}
+
 $('#kitRefreshDrafts')?.addEventListener('click',()=>void loadDrafts());
 $('#kitCopyTitle')?.addEventListener('click',()=>void copy($('#kitTitle').value));
 $('#kitCopyDescription')?.addEventListener('click',()=>void copy($('#kitDescription').value));
