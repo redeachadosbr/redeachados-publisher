@@ -138,6 +138,6 @@ test('importação única CSV/Excel com dois cartões de status e mapeamento exp
  assert.match(js,/\/api\/shopee\/wedrop\/auto\/import/);
  assert.match(js,/\/api\/shopee\/kits\/availability\/import/);
  assert.match(js,/if\(!window\.confirm\('CONFIRMAR IMPORTAÇÃO DOS CUSTOS UNITÁRIOS WEDROP/);
- assert.match(js,/stockFresh\?'Estoque WeDrop importado'/);
+ assert.match(js,/stockFresh\?\s*'Estoque WeDrop importado'/);
  assert.match(js,/!catalogFresh\?'Geração bloqueada: catálogo de custos WeDrop desatualizado\.'/);
 });
