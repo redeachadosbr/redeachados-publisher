@@ -36,6 +36,10 @@ test('IDs funcionais existentes permanecem únicos e vinculados à interface',()
  }
  assert.match(js,/updateKitOverview\(/);
  assert.match(js,/updateKitTextCounters\(/);
+ assert.match(js,/kitOverviewFreight/);
+ assert.match(js,/kitTitleCount/);
+ assert.match(js,/kitDraftImages|kit-draft-images/);
+ assert.match(js,/scheduleKitMarginReprice\(/);
  assert.match(js,/renderSuggestions\(/);
  assert.match(js,/loadDrafts\(/);
  assert.match(js,/kitPreparePublishPreview\(/);
