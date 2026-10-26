@@ -1,6 +1,7 @@
 // Automação WeDrop da loja Shopee. Sem credenciais de terceiros persistidas aqui.
 import crypto from 'node:crypto';
 import {prepareAutomaticWeDropImport,MAX_CSV_CHARS} from './wedropCsv.js';
+import {saveKitStockImport} from './shopeeKitAvailability.js';
 import {
   readWeDropCosts,saveWeDropCosts,compareIncomingCosts,
   saveWeDropSyncState,saveWeDropProducts
@@ -45,6 +46,11 @@ export async function importSupplierAutomatically(shopId,csv,{sourceKind='upload
     importedSkus:prepared.uniqueSkus,changedSkus:changes.length,
     matchedSkus:compared.matchedCount
   });
+  // O arquivo tradicional (16 colunas) NÃO contém estoque: jamais presumir
+  // DISPONÍVEL. Quando WeDrop incluir a coluna 17 Disponibilidade, importar
+  // o lote explícito e atualizar o selo de validade dos kits.
+  const stockImported=prepared.layout==='wedrop-catalog-17-stock'
+   ?await saveKitStockImport(shopId,csv):null;
   return {
     fileName:sourceName,sourceKind,sourceHash:hash,
     sourceRows:prepared.totalRows,uniqueCosts:prepared.uniqueSkus,
@@ -52,7 +58,7 @@ export async function importSupplierAutomatically(shopId,csv,{sourceKind='upload
     unchangedCosts:prepared.uniqueSkus-changes.length,
     matchingSupplierSkus:compared.matchedCount,
     supplierSkusWithoutShopeeMatch:compared.unmatchedCount,
-    layout:prepared.layout,productFactsSaved,
+    layout:prepared.layout,productFactsSaved,stockImported,
     ...saved,
     message:'Custos sincronizados no Supabase Shopee. Nenhum preço, estoque ou promoção da Shopee foi modificado.'
   };
