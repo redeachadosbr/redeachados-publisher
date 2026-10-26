@@ -31,6 +31,7 @@ import {convertWeDropExcelBase64} from './wedropExcel.js';
 import {saveWeDropCosts,getWeDropCoverage,compareIncomingCosts,pendingWeDropModels,upsertWeDropSkuLink} from './wedropCosts.js';
 import {saveWeDropProducts,readWeDropProduct} from './wedropCosts.js';
 import {kitCatalog,suggestKits,composeKit,kitCreative,kitPrompts,kitPlusResearchBrief,kitPlusContentPrompt,categoryMatches} from './shopeeKitBuilder.js';
+import {saveKitStockImport} from './shopeeKitAvailability.js';
 import {saveKitDraft,listKitDrafts,loadKitDraft} from './shopeeKitDraftStore.js';
 import {kitUploadPhoto,kitPublicationReadiness,kitPublicationPreview,kitPublishApproved,checkKitPublication} from './shopeeKitPublicationService.js';
 import {previewKitDiscount,executeKitDiscount} from './shopeeKitDiscountService.js';
@@ -199,6 +200,19 @@ app.post('/api/logout',(req,res)=>req.session.destroy(error=>error
 
 // Kits Inteligentes WeDrop: catálogo e rascunhos não fazem operações na Shopee.
 // A publicação nativa é isolada em rotas próprias de prévia + aprovação explícita.
+// Disponibilidade explícita do fornecedor: somente importação de CSV WeDrop
+// com SKU e coluna Disponibilidade. Não aceita declaração de estoque da Shopee.
+app.post('/api/shopee/kits/availability/import',mustLogin,requireWeDropAdmin,async(req,res)=>{
+ res.setHeader('Cache-Control','no-store');
+ if(!verifiedSameOrigin(req))return res.status(403).json({error:'Origem não autorizada.'});
+ try{
+  if(typeof req.body?.csv!=='string'||req.body.csv.length>4_000_000)
+   throw Error('Envie um arquivo CSV de até 4 MB com SKU e Disponibilidade.');
+  const {auth}=await getValidAuth(req);
+  const imported=await saveKitStockImport(auth.shopId,req.body.csv);
+  res.json({ok:true,...imported,marketplaceUpdated:false});
+ }catch(error){res.status(400).json({error:String(error.message||error).slice(0,520)});}
+});
 app.get('/api/shopee/kits/catalog',mustLogin,requireWeDropAdmin,async(req,res)=>{
  res.setHeader('Cache-Control','no-store');
  try{
