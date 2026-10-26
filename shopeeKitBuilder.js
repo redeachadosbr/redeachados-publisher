@@ -8,6 +8,7 @@ import {readKitStockSnapshot,assertKitStockSnapshot,assertKitComponentsAvailable
 
 const CACHE_MS=5*60*1000;
 const cached=new Map();
+export function clearKitCatalogCache(shopId){cached.delete(Number(shopId));}
 const norm=s=>String(s||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase();
 const clean=s=>String(s||'').trim().slice(0,240);
 const brl=n=>Math.round(Number(n)*100)/100;
