@@ -36,9 +36,9 @@ export async function kitUploadPhoto({cfg,auth,kitSku,base64,mime}){
  if(!png&&!jpeg&&!webp)throw Error('Arquivo sem assinatura PNG/JPG/WebP válida.');
  const actual=png?'image/png':jpeg?'image/jpeg':'image/webp';
  if(actual!==mime)throw Error('Tipo de arquivo inconsistente.');
- const id=await createShopeeMediaApi(cfg,auth).image(data,actual);
  const k=key(auth.shopId,kitSku),photos=media.get(k)||[];
  if(photos.length>=9)throw Error('Limite de nove fotos Shopee por kit.');
+ const id=await createShopeeMediaApi(cfg,auth).image(data,actual);
  photos.push({imageId:id,uploadedAt:Date.now()});media.set(k,photos);
  return {imageId:id,count:photos.length,storedIn:'Shopee MediaSpace',
   note:'Imagem enviada somente à galeria de mídia Shopee. O kit ainda não foi publicado.'};
@@ -132,7 +132,13 @@ export async function kitPublishApproved({cfg,auth,kitSku,input,token,secret}){
    throw Error('A resposta da Shopee não foi confirmada. O kit pode ter sido criado. Verifique Meus Kits pelo SKU '+
      kitSku+' antes de tentar novamente. '+String(e.message).slice(0,160));
   }
-  const itemId=validatePublishedKitResponse(response);
+  let itemId;
+  try{itemId=validatePublishedKitResponse(response);}
+  catch(e){
+   await recordKitPublication(auth.shopId,kitSku,{status:'uncertain',
+    message:'A API respondeu sem Item ID: '+String(e.message).slice(0,220)});
+   throw Error('A Shopee respondeu sem confirmar Item ID. Verifique Meus Kits pelo SKU antes de tentar novamente.');
+  }
   let status='published_pending',message='Kit criado com Item ID '+itemId+
    '. Aguardando confirmação de anúncio ativo para avançar ao desconto.';
   try{
