@@ -9,6 +9,8 @@ const APP_PAGES={
     description:'Acompanhe as informações essenciais e tenha acesso rápido aos principais setores da sua loja na Shopee.'},
   products:{slug:'produtos',title:'Produtos e anúncios',group:'Operação',
     description:'Catálogo, variações, estoque e situação dos anúncios Shopee.'},
+  kits:{slug:'kits',title:'Kits Inteligentes WeDrop',group:'Operação',
+    description:'Pesquisa de oportunidades de kits por categoria, SKUs e custo WeDrop, lucro líquido e criação comercial com ChatGPT.'},
   optimizer:{slug:'otimizacao',title:'Otimização de anúncios',group:'Operação',
     description:'Localize o SKU, calcule preços, prepare descontos e faça a revisão completa do anúncio.'},
   pricing:{slug:'precificacao',title:'Precificação',group:'Otimização',
@@ -89,6 +91,7 @@ function setTab(name,{updateHistory=true,scroll=true}={}){
     history.pushState({page:name},'',nextUrl);
   setSidebarOpen(false);
   if(name==='overview')void window.dashboardNewListingsLoad?.();
+  if(name==='kits')void window.RAKitBuilderLoad?.();
   if(name==='wedrop'){refreshWeDropCoverage();loadWeDropSourceState();void loadWeDropSkuReview();}
   else if(name==='finance'){refreshWeDropCoverage();}
   else if(name==='orders')ordersEnsureLoaded();
