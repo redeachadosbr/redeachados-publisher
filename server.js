@@ -30,7 +30,7 @@ import {previewWeDropCsv,prepareWeDropImport,MAX_CSV_CHARS} from './wedropCsv.js
 import {convertWeDropExcelBase64} from './wedropExcel.js';
 import {saveWeDropCosts,getWeDropCoverage,compareIncomingCosts,pendingWeDropModels,upsertWeDropSkuLink} from './wedropCosts.js';
 import {saveWeDropProducts,readWeDropProduct} from './wedropCosts.js';
-import {kitCatalog,suggestKits,composeKit,kitCreative,kitPrompts,kitPlusResearchBrief,kitPlusContentPrompt} from './shopeeKitBuilder.js';
+import {kitCatalog,suggestKits,composeKit,kitCreative,kitPrompts,kitPlusResearchBrief,kitPlusContentPrompt,categoryMatches} from './shopeeKitBuilder.js';
 import {saveKitDraft,listKitDrafts,loadKitDraft} from './shopeeKitDraftStore.js';
 import {supplierWorkflowFacts,wedropCestForSku} from './shopeeSupplierFacts.js';
 import {supplierAttributeSuggestions} from './shopeeSupplierEvidenceFacts.js';
@@ -296,10 +296,7 @@ app.post('/api/shopee/kits/plus-import',mustLogin,requireWeDropAdmin,async(req,r
   const size=Number(req.body?.size||2),raw=req.body?.kits;
   if(![2,3].includes(size)||!Array.isArray(raw)||raw.length<1||raw.length>8)
    throw Error('Informe até 8 kits de dois ou três SKUs.');
-  const {products}=await kitCatalog(auth.shopId,{category:'Todos',limit:160});
-  // Não utilizar a página de 160 como fonte de validação: composeKit faz
-  // consulta completa ao catálogo da loja e valida SKU por SKU e custo.
-  void products;
+
   const seen=new Set(),kits=[];
   for(const input of raw){
    if(!Array.isArray(input)||input.length!==size||
@@ -314,8 +311,7 @@ app.post('/api/shopee/kits/plus-import',mustLogin,requireWeDropAdmin,async(req,r
     shipping:Number(req.body?.shipping||0)
    });
    // Confirmar a categoria escolhida e impedir a seleção de itens aleatórios.
-   if(!kit.components.some(p=>p.category===category||category==='Todos'||
-       (category==='Brinquedos'&&/brinquedos|bonecas|pistas|jogos|fantasias/i.test(p.category))))
+   if(!kit.components.some(p=>categoryMatches(p.category,category)))
     throw Error('Kit de SKU '+input.join(', ')+' não corresponde à categoria selecionada.');
    kits.push({...kit,businessReason:'Seleção sugerida no ChatGPT Plus; os SKUs e custos foram revalidados pela WeDrop.'});
   }
