@@ -32,6 +32,7 @@ import {saveWeDropCosts,getWeDropCoverage,compareIncomingCosts,pendingWeDropMode
 import {saveWeDropProducts,readWeDropProduct} from './wedropCosts.js';
 import {kitCatalog,suggestKits,composeKit,kitCreative,kitPrompts} from './shopeeKitBuilder.js';
 import {generateKitImage} from './shopeeKitImages.js';
+import {saveKitDraft,listKitDrafts,loadKitDraft} from './shopeeKitDraftStore.js';
 import {supplierWorkflowFacts,wedropCestForSku} from './shopeeSupplierFacts.js';
 import {supplierAttributeSuggestions} from './shopeeSupplierEvidenceFacts.js';
 import {narrativeTechnicalSuggestions,mergeNarrativeTechnicalFacts,technicalOptionSearchTerms} from './shopeeTechnicalNarrative.js';
@@ -236,6 +237,43 @@ app.post('/api/shopee/kits/prepare',mustLogin,requireWeDropAdmin,async(req,res)=
   const creative=await kitCreative(auth.shopId,kit,{ai:req.body.useAi!==false});
   res.json({ok:true,kit,creative,readOnly:true,requiresReview:true});
  }catch(error){res.status(400).json({error:String(error.message||error).slice(0,300)});}
+});
+app.get('/api/shopee/kits/drafts',mustLogin,requireWeDropAdmin,async(req,res)=>{
+ res.setHeader('Cache-Control','no-store');
+ try{const {auth}=await getValidAuth(req);res.json({ok:true,drafts:await listKitDrafts(auth.shopId)});}
+ catch(error){res.status(400).json({error:String(error.message||error).slice(0,260)});}
+});
+app.post('/api/shopee/kits/drafts/save',mustLogin,requireWeDropAdmin,async(req,res)=>{
+ res.setHeader('Cache-Control','no-store');
+ if(!verifiedSameOrigin(req))return res.status(403).json({error:'Origem não autorizada.'});
+ try{
+  const {auth}=await getValidAuth(req);
+  // O cliente NÃO define custos nem preços: recompor sempre do catálogo salvo.
+  const kit=await composeKit(auth.shopId,req.body?.skus,{
+   marginPct:Number(req.body.marginPct??15),
+   packing:Number(req.body.packing||0),shipping:Number(req.body.shipping||0)
+  });
+  const creative={title:req.body.title,description:req.body.description,source:'rascunho revisado'};
+  const saved=await saveKitDraft(auth.shopId,{kit,creative});
+  res.json({ok:true,...saved,shopeePublished:false});
+ }catch(error){res.status(400).json({error:String(error.message||error).slice(0,260)});}
+});
+app.post('/api/shopee/kits/drafts/load',mustLogin,requireWeDropAdmin,async(req,res)=>{
+ res.setHeader('Cache-Control','no-store');
+ if(!verifiedSameOrigin(req))return res.status(403).json({error:'Origem não autorizada.'});
+ try{
+  const {auth}=await getValidAuth(req);
+  const stored=await loadKitDraft(auth.shopId,req.body?.kitSku);
+  if(!stored)return res.status(404).json({error:'Rascunho não encontrado nesta loja.'});
+  const original=stored.kit||{};
+  // Recalcular preços usando o custo atual da WeDrop antes da revisão.
+  const kit=await composeKit(auth.shopId,stored.skus,{
+   marginPct:Number(original.quote?.targetMarginPct??15),
+   packing:Number(original.packing||0),shipping:Number(original.shipping||0)
+  });
+  res.json({ok:true,kit,creative:{...stored.creative,prompts:kitPrompts(kit)},
+   savedAt:stored.updatedAt,refreshedCosts:true,requiresReview:true});
+ }catch(error){res.status(400).json({error:String(error.message||error).slice(0,260)});}
 });
 app.post('/api/shopee/kits/image',mustLogin,requireWeDropAdmin,async(req,res)=>{
  res.setHeader('Cache-Control','no-store');
