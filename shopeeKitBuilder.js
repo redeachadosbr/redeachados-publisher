@@ -3,7 +3,7 @@
 import {readWeDropCosts} from './wedropCosts.js';
 import {shopeePricingPreferences} from './shopeePricingStore.js';
 import {quoteShopeePrice} from './shopeePricing.js';
-import {openAiApiKey} from './shopeeOpenAiCredentials.js';
+
 
 const CACHE_MS=5*60*1000;
 const cached=new Map();
@@ -164,21 +164,6 @@ export function kitPrompts(kit){
   '09 MOCKUP: conjunto em embalagem neutra ilustrativa, não afirmar que a embalagem acompanha; três pequenos selos Compra Segura, Entrega Rápida e Atendimento Online, sujeitos à política real da loja.'
  ].map((slot,i)=>'Imagem '+String(i+1).padStart(2,'0')+'/09.\n'+intro+'\n'+slot);
 }
-async function chatJson(shop,messages,{tokens=1400}={}){
- const key=await openAiApiKey(shop);
- if(!key)return null;
- const r=await fetch('https://api.openai.com/v1/chat/completions',{
-  method:'POST',headers:{Authorization:'Bearer '+key,'Content-Type':'application/json'},
-  body:JSON.stringify({model:process.env.OPENAI_KIT_MODEL||'gpt-4.1-mini',
-   temperature:0.25,response_format:{type:'json_object'},max_tokens:tokens,messages}),
-  signal:AbortSignal.timeout(55000)
- });
- if(!r.ok)throw Error('Pesquisa inteligente OpenAI indisponível (HTTP '+r.status+').');
- const data=await r.json();
- const raw=String(data.choices?.[0]?.message?.content||'');
- if(raw.length>22000)throw Error('Resposta de análise grande demais.');
- return JSON.parse(raw);
-}
 export async function suggestKits(shop,{category='Brinquedos',size=2,marginPct=15,packing=0,shipping=0,ai=true}={}){
  if(![2,3].includes(Number(size)))throw Error('Selecione 2 ou 3 produtos no kit.');
  const rows=await readCatalog(shop);
@@ -186,31 +171,9 @@ export async function suggestKits(shop,{category='Brinquedos',size=2,marginPct=1
  let picks=pairCandidates(rows,category,Math.max(16,Number(size)*8));
  let source='compatibilidade de categorias e preços (heurística)';
  let commentary='Potencial de venda inferido pela complementaridade, sem dados reais de pedidos ou buscas.';
- if(ai){
-  try{
-   const shortlist=rows.filter(x=>categoryMatches(x.category,category)).sort((a,b)=>a.unitCost-b.unitCost)
-    .slice(0,70).map(x=>({sku:x.sku,name:x.name,category:x.category,cost:x.unitCost}));
-   const output=await chatJson(shop,[
-    {role:'system',content:'Você analisa combos e cross-sell no varejo brasileiro, sem inventar volume de vendas ou atribuições de SKUs. Retorne somente JSON {"kits":[{"skus":["SKU1","SKU2"],"reason":"motivo comercial"}]}. Use somente SKUs listadas, distintos, com complementaridade verificável. Não repita variações de cor da mesma peça. Não afirme sucesso de vendas, tendências ou demanda sem métricas.'},
-    {role:'user',content:JSON.stringify({category,size,products:shortlist,task:'Sugira até 8 conjuntos funcionais, 2 a 3 produtos; lucro vem da calculadora externa.'})}
-   ],{tokens:1500});
-   const map=new Map(rows.map(x=>[x.sku,x]));
-   const aiPicks=[];
-   for(const suggestion of (Array.isArray(output?.kits)?output.kits:[]).slice(0,12)){
-    const ids=suggestion.skus;
-    if(!Array.isArray(ids)||ids.length!==Number(size)||new Set(ids).size!==ids.length)continue;
-    const components=ids.map(s=>map.get(String(s)));
-    if(components.some(x=>!x)||!components.some(x=>categoryMatches(x.category,category)))continue;
-    if(related(components[0],components[1])<2)continue;
-    const key=ids.slice().sort().join('|');
-    if(aiPicks.some(x=>x.key===key))continue;
-    aiPicks.push({key,skus:ids,items:components,
-     compatibility:Math.max(3,related(components[0],components[1])),
-     reason:clean(suggestion.reason)});
-   }
-   if(aiPicks.length){picks=aiPicks;source='ChatGPT via API OpenAI, com SKUs e custos revalidados';}
-  }catch(error){commentary+=' IA indisponível nesta consulta; utilizadas regras comerciais locais.';}
- }
+ // A recomendação não consulta a API paga. O ChatGPT Plus funciona
+ // somente através da cópia/colagem da seleção em uma aba autenticada
+ // do usuário; esta etapa local apenas produz sugestões preliminares.
  // Para kits de 3 itens sem resposta da IA, acrescentar um terceiro
  // componente real com compatibilidade e custo seguros.
  if(Number(size)===3&&source.startsWith('compatibilidade')){
@@ -244,19 +207,44 @@ export async function kitCreative(shop,kit,{ai=true}={}){
   products.map(x=>'• 1 '+x).join('\n')+
   '\n\n🛒 Confira todos os componentes antes de finalizar sua compra.';
  let source='modelo determinístico com SKUs verificados';
- if(ai){
-  try{
-   const out=await chatJson(shop,[
-    {role:'system',content:'Redator de anúncios Shopee Brasil. JSON puro {"title":"...","description":"..."}. Título até 120 caracteres, forte e natural. Descrição com ✨ ✅ BENEFÍCIOS 💡 POR QUE COMPRAR ⚙️ CARACTERÍSTICAS 📦 O QUE VAI NA EMBALAGEM, blocos curtos, até 1400 caracteres, emojis discretos. Não inventar propriedades, marcas, benefícios de desconto, certificações, funcionalidades ou acessórios. Não inventar dados de pesquisa de demanda, nem prometer frete. Mencione exatamente as unidades dos SKUs.'},
-    {role:'user',content:JSON.stringify({items:kit.components.map(x=>({sku:x.sku,name:x.name,quantity:1})),
-     kitSku:kit.kitSku,task:'Produza título SEO e descrição persuasiva para ESTE kit físico.'})}
-   ],{tokens:1300});
-   if(typeof out?.title==='string'&&out.title.trim()&&typeof out?.description==='string'&&out.description.length>120){
-    title=out.title.trim().slice(0,120);description=out.description.trim().slice(0,1400);source='ChatGPT API OpenAI';
-   }
-  }catch{}
- }
+
  return {title,description,source,prompts:kitPrompts(kit)};
+}
+export async function kitPlusResearchBrief(shop,{category='Brinquedos',size=2}={}){
+ if(![2,3].includes(Number(size)))throw Error('Escolha dois ou três SKUs por kit.');
+ const rows=(await readCatalog(shop)).filter(x=>categoryMatches(x.category,category))
+  .sort((a,b)=>a.unitCost-b.unitCost);
+ if(!rows.length)throw Error('Nenhum produto WeDrop encontrado nesta categoria.');
+ // Enviar nomes e custos somente como evidência. Não incluir IDs de loja,
+ // tokens, nomes de clientes nem dados privados nas mensagens do ChatGPT.
+ const candidates=rows.slice(0,110).map(x=>({
+  sku:x.sku,name:x.name,category:x.category,unitCost:x.unitCost,imageUrl:x.imageUrl
+ }));
+ const prompt=[
+  'Você é especialista brasileiro em cross-sell de kits para a Shopee.',
+  'Loja: Rede Achados BR. Usar APENAS as SKUs listadas. Categoria: '+category+'.',
+  'Monte até 8 kits com EXATAMENTE '+size+' SKUs diferentes por kit, de produtos de uso real complementar. Não invente códigos, custos, certificações, atributos, imagens, nem estoque.',
+  'Evite combinar meras variações de cor do mesmo produto. Não repita SKU dentro do kit.',
+  'Avalie potencial comercial e relevância, mas NÃO diga que são os mais vendidos sem volumes comprovados. Os custos são da WeDrop e o lucro real será calculado no Shopee Manager.',
+  'RESPOSTA OBRIGATÓRIA: somente uma linha por kit, com os códigos exatos separados pelo caractere |. Não use Markdown nem comentários. Exemplo: SKU_A | SKU_B.',
+  'LISTA DE PRODUTOS REAIS WE DROP:',
+  ...candidates.map(x=>x.sku+' | '+x.name+' | categoria '+x.category+' | custo R$ '+x.unitCost.toFixed(2).replace('.',','))
+ ].join('\n');
+ return {prompt,candidatesCount:candidates.length,category,size:Number(size),
+  truncated:rows.length>candidates.length,source:'WeDrop real, preparado para ChatGPT Plus sem API'};
+}
+export function kitPlusContentPrompt(kit){
+ const lines=kit.components.map(x=>'- SKU '+x.sku+': '+x.name+' (quantidade 1)').join('\n');
+ return [
+ 'Você é redator de alta conversão Shopee da Rede Achados BR.',
+ 'Gere UM título SEO com até 120 caracteres e UMA descrição organizada com 700 a 1400 caracteres ou menor se necessário para não inventar informações.',
+ 'Estilo natural brasileiro, emojis discretos, parágrafos curtos. Estrutura ✨ introdução; ✅ BENEFÍCIOS; 💡 POR QUE COMPRAR; ⚙️ CARACTERÍSTICAS; 📦 O QUE VAI NA EMBALAGEM; 🛒 chamada final.',
+ 'Este kit tem EXATAMENTE estes produtos, 1 unidade de cada:',''+lines,
+ 'Identificador de rascunho: '+kit.kitSku+'.',
+ 'Não adicionar medidas, marcas, certificações, funções, brindes, prazos, frete grátis nem economia sem fatos confirmados. Nunca confundir SKUs.',
+ 'Você pode considerar termos de busca atuais se verificar fontes; não invente volume ou ranking.',
+ 'Formato de saída: primeira linha TÍTULO: ...; depois uma linha DESCRIÇÃO: ... e os blocos da descrição.'
+ ].join('\n\n');
 }
 export async function kitProductImages(shop,skus){
  const rows=await readCatalog(shop);
