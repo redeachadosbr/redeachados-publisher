@@ -14,7 +14,7 @@ async function api(path,{body,signal}={}){
  return data;
 }
 let categoriesLoaded=false,suggestions=[],prepared=null,images=new Map(),generationBusy=false;
-let kitPublishToken=null,kitSaved=false,kitPublishBusy=false,kitReadiness=null,kitShopeePhotoSlots=new Map(),kitItemId=null;
+let kitPublishToken=null,kitDiscountToken=null,kitSaved=false,kitPublishBusy=false,kitReadiness=null,kitShopeePhotoSlots=new Map(),kitItemId=null;
 let marginTimer=null,marginRevision=0,suggestionContext=null,marginUpdatePending=false;
 const MARGIN_MIN=0,MARGIN_MAX=70;
 function normalizeKitMargin(value){
@@ -138,13 +138,15 @@ function kitPublishStatus(text,state='info'){
  const node=$('#kitPublishStatus');node.textContent=text;node.dataset.state=state;
 }
 function clearKitPublishApproval(){
- kitPublishToken=null;
+ kitPublishToken=null;kitDiscountToken=null;
  $('#kitPublishPreviewBox').hidden=true;
+ $('#kitDiscountPreviewBox').hidden=true;
 }
 function resetKitPublication({saved=false,publication=null}={}){
  kitSaved=saved;kitPublishBusy=false;kitReadiness=null;kitShopeePhotoSlots.clear();
  clearKitPublishApproval();
  kitItemId=publication?.itemId||null;
+ kitDiscountToken=null;$('#kitDiscountPreviewBox').hidden=true;
  $('#kitShopeePhotoCount').textContent='0 fotos enviadas à galeria da Shopee nesta sessão (não publicadas).';
  $('#kitContentsReviewed').checked=false;$('#kitPhotosReviewed').checked=false;
  $('#kitMainSku').replaceChildren();
@@ -176,7 +178,8 @@ function kitPublishFields(){
   autoSyncDts:$('#kitAutoSyncDts').checked,preOrder:$('#kitPreOrder').checked,
   daysToShip:Number($('#kitDaysToShip').value),
   contentsReviewed:$('#kitContentsReviewed').checked,
-  photosReviewed:$('#kitPhotosReviewed').checked
+  photosReviewed:$('#kitPhotosReviewed').checked,
+  singleParcelConfirmed:$('#kitSingleParcelConfirmed').checked
  };
 }
 async function kitReadinessCheck(){
@@ -291,6 +294,59 @@ async function kitPublishExecute(){
   $('#kitPublishedMessage').textContent='Verifique a existência deste kit pelo código '+name+
    ' na Central do Vendedor antes de qualquer novo envio.';
  }finally{kitPublishBusy=false;$('#kitPublishExecute').disabled=false;}
+}
+async function kitDiscountPrepare(){
+ if(!prepared||!kitItemId)return kitPublishStatus('Confirme o novo Item ID antes do desconto.','error');
+ if(kitPublishBusy)return;
+ const discountId=$('#kitDiscountId').value.trim();
+ if(!/^[1-9]\d{0,17}$/.test(discountId))
+  return kitPublishStatus('Informe o ID válido de uma campanha Minha Promoção ativa ou agendada.','error');
+ kitPublishBusy=true;$('#kitDiscountPreview').disabled=true;
+ kitDiscountToken=null;$('#kitDiscountPreviewBox').hidden=true;
+ kitPublishStatus('Conferindo Kit Formal publicado, preços 0/9, pesquisa de concorrentes e Minha Promoção...');
+ try{
+  const preview=await api('/api/shopee/kits/discount/preview',{body:{
+   kitSku:prepared.kit.kitSku,discountId
+  }});
+  kitDiscountToken=preview.token;
+  $('#kitDiscountSummary').textContent=[
+   'Kit '+preview.kitSku+' · Item ID '+preview.itemId,
+   'Campanha: '+preview.discountName+' (ID '+preview.discountId+')',
+   'Ação: '+(preview.action==='add'?'ADICIONAR à promoção':'ATUALIZAR promoção existente'),
+   'Preço bruto publicado: '+money(preview.gross),
+   'Preço promocional desejado: '+money(preview.promo),
+   'Após cupom opcional: '+money(preview.afterCoupon),
+   'Margem líquida: '+pct(preview.margin),
+   'Comparáveis verificados: '+preview.marketOffers,
+   'Esta operação altera APENAS o desconto do kit e requer outra aprovação.'
+  ].join('\n');
+  $('#kitDiscountPreviewBox').hidden=false;
+  kitPublishStatus('Prévia do desconto preparada. Confira a campanha e autorize a segunda etapa.','success');
+ }catch(error){kitPublishStatus('Desconto bloqueado: '+error.message+
+  ' O Kit Formal continua cadastrado na Shopee.','error');}
+ finally{kitPublishBusy=false;$('#kitDiscountPreview').disabled=false;}
+}
+async function kitDiscountApply(){
+ if(!prepared||!kitDiscountToken||kitPublishBusy)return;
+ const discountId=$('#kitDiscountId').value.trim();
+ if(!window.confirm('CONFIRMAR DESCONTO NA SHOPEE?\n'+prepared.kit.kitSku+
+  '\nCampanha ID '+discountId+'\nPreço promocional conforme a prévia acima.\nConfirma?'))return;
+ kitPublishBusy=true;$('#kitDiscountExecute').disabled=true;
+ kitPublishStatus('Aplicando desconto ao novo Kit Formal. Não repita a operação se a resposta for incerta...');
+ try{
+  const data=await api('/api/shopee/kits/discount/execute',{body:{
+   kitSku:prepared.kit.kitSku,discountId,token:kitDiscountToken,confirm:true
+  }});
+  kitDiscountToken=null;$('#kitDiscountPreviewBox').hidden=true;
+  kitPublishStatus(data.status==='discount_confirmed'?
+   '✓ Minha Promoção confirmada na Shopee. Preço: '+money(data.promo):
+   data.message,data.status==='discount_confirmed'?'success':'info');
+  $('#kitPublishedMessage').textContent=data.message;
+ }catch(error){
+  kitDiscountToken=null;$('#kitDiscountPreviewBox').hidden=true;
+  kitPublishStatus('Status do desconto não confirmado: '+error.message+
+   ' Consulte Minha Promoção antes de enviar novamente.','error');
+ }finally{kitPublishBusy=false;$('#kitDiscountExecute').disabled=false;}
 }
 async function kitVerifyPublished(){
  if(!prepared||kitPublishBusy)return;
@@ -643,12 +699,16 @@ $('#kitSendPhotos')?.addEventListener('click',()=>void kitSendPhotos());
 $('#kitPublishPreview')?.addEventListener('click',()=>void kitPreparePublishPreview());
 $('#kitPublishExecute')?.addEventListener('click',()=>void kitPublishExecute());
 $('#kitVerifyPublished')?.addEventListener('click',()=>void kitVerifyPublished());
+$('#kitDiscountPreview')?.addEventListener('click',()=>void kitDiscountPrepare());
+$('#kitDiscountExecute')?.addEventListener('click',()=>void kitDiscountApply());
+$('#kitDiscountId')?.addEventListener('input',()=>{kitDiscountToken=null;$('#kitDiscountPreviewBox').hidden=true;});
+
 $('#kitPreOrder')?.addEventListener('change',()=>{
  $('#kitDaysToShip').disabled=!$('#kitPreOrder').checked;clearKitPublishApproval();
 });
 for(const selector of ['#kitMainSku','#kitLogisticId','#kitWeightKg','#kitLengthCm',
  '#kitWidthCm','#kitHeightCm','#kitAutoSyncDts','#kitPreOrder','#kitDaysToShip',
- '#kitContentsReviewed','#kitPhotosReviewed','#kitTitle','#kitDescription']){
+ '#kitContentsReviewed','#kitPhotosReviewed','#kitSingleParcelConfirmed','#kitTitle','#kitDescription']){
  $(selector)?.addEventListener('change',clearKitPublishApproval);
 }
 
