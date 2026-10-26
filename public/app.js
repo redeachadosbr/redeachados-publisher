@@ -8752,7 +8752,7 @@ globalThis.window?.addEventListener?.('message',async(event)=>{
   if(Number(m.slot)===3){
    // A foto gerada é SOMENTE a base. Montar a ficha com números de produto
    // confirmados, não confiar em textos/medidas imaginados pelo gerador.
-   const {confirmedSpecCard,addConfirmedSpecificationCard}=await import('/specificationCard.js?v=1.2.0-sku-verified-technical');
+   const {confirmedSpecCard,addConfirmedSpecificationCard}=await import('/specificationCard.js?v=1.3.0-assembled-track-no-fake-specs');
    const spec=confirmedSpecCard({
     sourceText:w.sourceEvidence?.sourceText||'',
     sku:w.sku,sourceEvidenceSku:w.sourceEvidence?.sku||'',
