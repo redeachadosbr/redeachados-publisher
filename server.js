@@ -31,7 +31,7 @@ import {convertWeDropExcelBase64} from './wedropExcel.js';
 import {saveWeDropCosts,getWeDropCoverage,compareIncomingCosts,pendingWeDropModels,upsertWeDropSkuLink} from './wedropCosts.js';
 import {saveWeDropProducts,readWeDropProduct} from './wedropCosts.js';
 import {kitCatalog,suggestKits,composeKit,kitCreative,kitPrompts,kitPlusResearchBrief,kitPlusContentPrompt,categoryMatches,clearKitCatalogCache} from './shopeeKitBuilder.js';
-import {saveKitStockImport,clearKitStockCache} from './shopeeKitAvailability.js';
+import {saveKitStockImport,clearKitStockCache,parseWeDropAvailabilityCsv} from './shopeeKitAvailability.js';
 import {saveKitDraft,listKitDrafts,loadKitDraft} from './shopeeKitDraftStore.js';
 import {kitUploadPhoto,kitPublicationReadiness,kitPublicationPreview,kitPublishApproved,checkKitPublication} from './shopeeKitPublicationService.js';
 import {previewKitDiscount,executeKitDiscount} from './shopeeKitDiscountService.js';
@@ -594,12 +594,35 @@ app.post('/api/shopee/wedrop/convert-excel',mustLogin,requireWeDropAdmin,(req,re
     res.json({ok:true,...result});
   }catch(error){res.status(400).json({error:String(error.message||error).slice(0,330)});}
 });
+// Prévia sem escrita: um arquivo WeDrop pode ter SKUs/estoque e custo
+// identificável ou não. Evitar importar a mesma planilha em dois controles.
+app.post('/api/shopee/kits/import/inspect',mustLogin,requireWeDropAdmin,(req,res)=>{
+ res.setHeader('Cache-Control','no-store');
+ if(!verifiedSameOrigin(req))return res.status(403).json({error:'Origem não autorizada.'});
+ try{
+  const preview=previewWeDropCsv(costCsvFromBody(req));
+  let stock=null;
+  try{const parsed=parseWeDropAvailabilityCsv(costCsvFromBody(req));
+   stock={recognized:true,count:parsed.total,available:parsed.availableCount,
+    unavailable:parsed.unavailableCount};
+  }catch(error){stock={recognized:false,reason:String(error.message).slice(0,260)};}
+  if(!preview.automaticLayout?.recognized&&!stock.recognized)
+   return res.status(400).json({error:
+    'Arquivo não contém custo WeDrop identificado nem disponibilidade validada. '+preview.automaticLayout?.reason,
+    preview});
+  res.json({ok:true,headers:preview.headers,rows:preview.rowCount,
+   examples:preview.examples.slice(0,3),automaticLayout:preview.automaticLayout,
+   stock,mappingRequired:!preview.automaticLayout?.recognized});
+ }catch(error){res.status(400).json({error:String(error.message||error).slice(0,420)});}
+});
 app.post('/api/shopee/wedrop/auto/import',mustLogin,requireWeDropAdmin,async(req,res)=>{
   res.setHeader('Cache-Control','no-store');
   try{
+    if(!verifiedSameOrigin(req))return res.status(403).json({error:'Origem não autorizada.'});
     const {auth}=await getValidAuth(req);
     const result=await importSupplierAutomatically(auth.shopId,costCsvFromBody(req),{
-      sourceKind:'upload',sourceName:String(req.body?.fileName||'wedrop.csv').slice(0,130)
+      sourceKind:'upload',sourceName:String(req.body?.fileName||'wedrop.csv').slice(0,130),
+      approvedCostMapping:req.body?.approvedCostMapping||null
     });
     // Importação manual: a próxima consulta de kits deve buscar o catálogo
     // e status recém-importados, não a janela anterior de cache.
