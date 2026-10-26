@@ -606,9 +606,11 @@ app.post('/api/shopee/kits/import/inspect',mustLogin,requireWeDropAdmin,(req,res
    stock={recognized:true,count:parsed.total,available:parsed.availableCount,
     unavailable:parsed.unavailableCount};
   }catch(error){stock={recognized:false,reason:String(error.message).slice(0,260)};}
-  if(!preview.automaticLayout?.recognized&&!stock.recognized)
+  const mayMapCost=preview.headers.some(h=>/custo|pre[çc]o|valor|cost|price/i.test(h)&&
+   !/venda|an[uú]ncio|promoc|varejo|marketplace|lucro|margem|comiss[aã]o/i.test(h));
+  if(!preview.automaticLayout?.recognized&&!stock.recognized&&!mayMapCost)
    return res.status(400).json({error:
-    'Arquivo não contém custo WeDrop identificado nem disponibilidade validada. '+preview.automaticLayout?.reason,
+    'Arquivo não contém custo WeDrop identificável nem disponibilidade válida. '+preview.automaticLayout?.reason,
     preview});
   res.json({ok:true,headers:preview.headers,rows:preview.rowCount,
    examples:preview.examples.slice(0,3),automaticLayout:preview.automaticLayout,
