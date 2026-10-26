@@ -72,7 +72,7 @@ export function supplierProductDimensions(text){
  const labels=[['height','altura'],['width','largura'],['length','comprimento']];
  const values={};
  for(const [axis,label] of labels){
-  const re=new RegExp('(?:^|\\\\n)\\\\s*'+label+'\\\\s*[:\\\\-]?\\\\s*(?:\\\\n\\\\s*)?'+n+'\\\\s*cm\\\\b','i');
+  const re=new RegExp('(?:^|\\n)\\s*'+label+'\\s*[:\\-]?\\s*(?:\\n\\s*)?'+n+'\\s*cm\\b','i');
   const hit=normalized.match(re);
   if(hit&&Number(sizeNumber(hit[1]))>0&&Number(sizeNumber(hit[1]))<10000)values[axis]=sizeNumber(hit[1]);
  }
