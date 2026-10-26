@@ -17,6 +17,21 @@ let categoriesLoaded=false,suggestions=[],prepared=null,images=new Map(),generat
 let kitStockReady=false,kitStockLastCheck=null;
 let kitPublishToken=null,kitDiscountToken=null,kitSaved=false,kitPublishBusy=false,kitReadiness=null,kitShopeePhotoSlots=new Map(),kitItemId=null;
 let marginTimer=null,marginRevision=0,suggestionContext=null,marginUpdatePending=false;
+function updateKitOverview(){
+ $('#kitOverviewCategory').textContent=$('#kitCategory')?.value||'Brinquedos';
+ $('#kitOverviewSize').textContent=($('#kitSize')?.value||2)+' SKUs';
+ $('#kitOverviewMargin').textContent=$('#kitMargin')?.value+'%';
+ $('#kitOverviewFreight').textContent=money(Number($('#kitShipping')?.value||0));
+}
+function updateKitTextCounters(){
+ $('#kitTitleCount').textContent=$('#kitTitle').value.length+'/120';
+ $('#kitDescriptionCount').textContent=$('#kitDescription').value.length+'/2000';
+}
+function onKitContentEdit(){
+ if(!prepared)return;
+ kitSaved=false;clearKitPublishApproval();updateKitTextCounters();
+ kitPublishStatus('Título/descrição alterados: salve novamente o rascunho antes de publicar.','info');
+}
 const MARGIN_MIN=0,MARGIN_MAX=70;
 function normalizeKitMargin(value){
  return Math.max(MARGIN_MIN,Math.min(MARGIN_MAX,Math.round(Number(value)||0)));
@@ -29,6 +44,7 @@ function setKitMargin(value,{recalculate=false}={}){
  $('#kitMarginLabel').textContent=number+'%';
  $('#kitMarginMinus').disabled=number===MARGIN_MIN;
  $('#kitMarginPlus').disabled=number===MARGIN_MAX;
+ updateKitOverview();
  if(recalculate)scheduleKitMarginReprice();
 }
 function scheduleKitMarginReprice(){
@@ -179,6 +195,7 @@ async function categories(force=false){
    const option=elt('option','',name);option.value=name;select.append(option);
   }
   select.value=data.categories.includes(keep)?keep:data.categories.includes('Brinquedos')?'Brinquedos':'Todos';
+  updateKitOverview();
   displayKitStockGate(data.stock,data.catalogCount);
   if(data.stock?.ready)status(data.availableMatched+' SKUs DISPONÍVEIS nesta categoria para montar kits. Apenas esses produtos serão usados.','success');
  }catch(error){categoriesLoaded=false;displayKitStockGate(null,0);status('Não foi possível acessar as categorias: '+error.message,'error');}
@@ -476,6 +493,7 @@ async function openDraft(kitSku){
   setKitMargin(d.kit.quote.targetMarginPct);
   $('#kitPacking').value=String(d.kit.packing);
   $('#kitShipping').value=String(d.kit.shipping);
+  updateKitOverview();
   renderKit();
   status('Rascunho recuperado. Custos foram recalculados; confira preços e estoque antes de anunciar.','success');
  }catch(error){status('Não foi possível recuperar o kit: '+error.message,'error');}
@@ -547,6 +565,7 @@ function renderKit(){
  $('#kitWarning').textContent=kit.warning+' Texto criado por '+creative.source+'. Verifique estoque e capacidade de envio de vários SKUs.';
  $('#kitTitle').value=creative.title;
  $('#kitDescription').value=creative.description;
+ updateKitTextCounters();
  renderImageSlots();
  $('#kitDetail').scrollIntoView({behavior:'smooth',block:'start'});
 }
@@ -555,20 +574,20 @@ function renderImageSlots(){
  if(!prepared)return;
  for(let slot=1;slot<=9;slot++){
   const card=elt('div','kit-image-card'),image=images.get(slot);
-  card.append(elt('strong','', 'Imagem '+String(slot).padStart(2,'0')));
+  card.append(elt('strong','', String(slot).padStart(2,'0')+'/09'));
   if(image){
    const pic=elt('img');pic.src=image;pic.alt='Imagem '+slot+' do kit importada para revisão';card.append(pic);
    const download=elt('button','kit-secondary','Baixar PNG '+slot);
    download.addEventListener('click',()=>downloadData(image,
     prepared.kit.kitSku+'-foto-'+String(slot).padStart(2,'0')+'.png'));
    card.append(download);
-  }else card.append(elt('div','kit-placeholder','Imagem '+slot+' · gere no ChatGPT Plus e importe aqui'));
-  const prompt=elt('button','kit-secondary','Copiar prompt + abrir ChatGPT');
+  }else card.append(elt('div','kit-placeholder','▧'));
+  const prompt=elt('button','kit-secondary','Copiar prompt');
   prompt.type='button';
-  prompt.addEventListener('click',()=>chatgptHandoff(prepared.creative.prompts[slot-1]));
+  prompt.addEventListener('click',()=>void copy(prepared.creative.prompts[slot-1]));
   card.append(prompt);
   const details=elt('details','kit-prompt-fallback');
-  const summary=elt('summary','','Ver prompt para copiar manualmente');
+  const summary=elt('summary','','Ver prompt');
   const field=elt('textarea');field.readOnly=true;field.rows=5;
   field.value=prepared.creative.prompts[slot-1];
   details.append(summary,field);card.append(details);
@@ -657,6 +676,7 @@ async function plusText(){
   }});
   if(r.kitSku!==prepared.kit.kitSku)throw Error('SKU de kit diferente.');
   $('#kitContentPrompt').value=r.prompt;
+  $('#kitContentDetails').open=true;
   status('Orientação pronta. Clique em "Copiar orientação + abrir ChatGPT Plus" e depois importe a resposta neste painel.','success');
  }catch(error){status('Não foi possível preparar texto: '+error.message,'error');}
  finally{btn.disabled=false;}
@@ -675,6 +695,7 @@ function importPlusText(){
  }
  $('#kitTitle').value=title[1].trim();
  $('#kitDescription').value=description;
+ updateKitTextCounters();
  kitSaved=false;clearKitPublishApproval();
  status('Título e descrição importados. Salve o rascunho atualizado antes de publicar.','success');
 }
@@ -733,6 +754,12 @@ for(const [selector,step] of [['#kitMarginPlus',1],['#kitMarginMinus',-1]]){
  $(selector)?.addEventListener('click',()=>setKitMargin(Number($('#kitMargin').value)+step,{recalculate:true}));
 }
 setKitMargin($('#kitMargin').value);
+updateKitOverview();
+$('#kitCategory')?.addEventListener('change',()=>{updateKitOverview();suggestionContext=null;});
+$('#kitSize')?.addEventListener('change',()=>{updateKitOverview();suggestionContext=null;});
+$('#kitShipping')?.addEventListener('input',updateKitOverview);
+$('#kitTitle')?.addEventListener('input',onKitContentEdit);
+$('#kitDescription')?.addEventListener('input',onKitContentEdit);
 $('#kitStockCsv')?.addEventListener('change',()=>{
  $('#kitStockImport').disabled=!$('#kitStockCsv').files?.length;
 });
