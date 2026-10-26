@@ -33,6 +33,7 @@ import {saveWeDropProducts,readWeDropProduct} from './wedropCosts.js';
 import {kitCatalog,suggestKits,composeKit,kitCreative,kitPrompts,kitPlusResearchBrief,kitPlusContentPrompt,categoryMatches} from './shopeeKitBuilder.js';
 import {saveKitDraft,listKitDrafts,loadKitDraft} from './shopeeKitDraftStore.js';
 import {kitUploadPhoto,kitPublicationReadiness,kitPublicationPreview,kitPublishApproved,checkKitPublication} from './shopeeKitPublicationService.js';
+import {previewKitDiscount,executeKitDiscount} from './shopeeKitDiscountService.js';
 import {supplierWorkflowFacts,wedropCestForSku} from './shopeeSupplierFacts.js';
 import {supplierAttributeSuggestions} from './shopeeSupplierEvidenceFacts.js';
 import {narrativeTechnicalSuggestions,mergeNarrativeTechnicalFacts,technicalOptionSearchTerms} from './shopeeTechnicalNarrative.js';
@@ -333,6 +334,30 @@ app.post('/api/shopee/kits/publish/status',mustLogin,requireWeDropAdmin,async(re
   res.json({ok:true,...await checkKitPublication({cfg,auth,
    kitSku:String(req.body?.kitSku||'')})});
  }catch(e){res.status(409).json({error:String(e.message||e).slice(0,400)});}
+});
+// A promoção é SEMPRE uma segunda operação, após Shopee confirmar NORMAL.
+// Reutiliza Minha Promoção e a mesma política de pesquisa e finais 0/9.
+app.post('/api/shopee/kits/discount/preview',mustLogin,requireWeDropAdmin,async(req,res)=>{
+ res.setHeader('Cache-Control','no-store');
+ if(!verifiedSameOrigin(req))return res.status(403).json({error:'Origem não autorizada.'});
+ try{
+  const {auth,cfg}=await getValidAuth(req);
+  const preview=await previewKitDiscount({cfg,auth,kitSku:String(req.body?.kitSku||''),
+   discountId:String(req.body?.discountId||''),secret:stateSecret()});
+  res.json({ok:true,...preview,marketplaceUpdated:false});
+ }catch(e){res.status(409).json({error:String(e.message||e).slice(0,500)});}
+});
+app.post('/api/shopee/kits/discount/execute',mustLogin,requireWeDropAdmin,async(req,res)=>{
+ res.setHeader('Cache-Control','no-store');
+ if(!verifiedSameOrigin(req))return res.status(403).json({error:'Origem não autorizada.'});
+ if(req.body?.confirm!==true)return res.status(400).json({error:'Aprovação do desconto ausente.'});
+ try{
+  const {auth,cfg}=await getValidAuth(req);
+  const out=await executeKitDiscount({cfg,auth,kitSku:String(req.body?.kitSku||''),
+   discountId:String(req.body?.discountId||''),
+   token:String(req.body?.token||''),secret:stateSecret()});
+  res.json(out);
+ }catch(e){res.status(409).json({error:String(e.message||e).slice(0,500)});}
 });
 app.post('/api/shopee/kits/plus-brief',mustLogin,requireWeDropAdmin,async(req,res)=>{
  res.setHeader('Cache-Control','no-store');
