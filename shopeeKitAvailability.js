@@ -5,6 +5,8 @@ import crypto from 'node:crypto';
 import {parseCsv} from './wedropCsv.js';
 import {readWeDropSyncState} from './wedropCosts.js';
 export const KIT_STOCK_MAX_AGE_MS=24*60*60*1000;
+const stockCache=new Map();
+export function clearKitStockCache(shopId){stockCache.delete(Number(shopId));}
 const clean=x=>String(x??'').trim();
 const norm=x=>clean(x).normalize('NFD').replace(/[\u0300-\u036f]/g,'')
  .toLowerCase().replace(/[\s_-]+/g,' ').trim();
@@ -72,6 +74,11 @@ async function allRows(table,shopId,columns,extra=''){
 }
 export async function readKitStockSnapshot(shopId){
  const id=Number(shopId);
+ const saved=stockCache.get(id);
+ if(saved&&Date.now()-saved.checkedAt<30000&&
+  (!saved.snapshot.lastSuccessAt||
+   Date.now()-new Date(saved.snapshot.lastSuccessAt).getTime()<=KIT_STOCK_MAX_AGE_MS))
+  return saved.snapshot;
  const [state,catalogSync,entries]=await Promise.all([
   db('shopee_wedrop_availability_imports','?shop_id=eq.'+id+
    '&select=last_success_at,source_name,batch_hash,available_count,unavailable_count,imported_count&limit=1'),
@@ -93,12 +100,13 @@ export async function readKitStockSnapshot(shopId){
   !recent?'Disponibilidade não importada nas últimas 24 horas. Atualize o arquivo da WeDrop com SKU e Disponibilidade.':
   !newerThanCatalog?'O status de estoque é anterior à última importação do catálogo. Atualize a disponibilidade após importar os produtos.':
   'Disponibilidade WeDrop importada; apenas SKUs DISPONÍVEIS podem compor kits.';
- return {ready,reason,map,lastSuccessAt:importState?.last_success_at||null,
+ const snapshot={ready,reason,map,lastSuccessAt:importState?.last_success_at||null,
   catalogLastImportedAt:catalogSync?.last_success_at||null,
   importedCount:importState?.imported_count||0,
   availableCount:importState?.available_count||0,
   unavailableCount:importState?.unavailable_count||0,
-  expiresAt:ready?new Date(last+KIT_STOCK_MAX_AGE_MS).toISOString():null};
+  expiresAt:ready?new Date(Math.min(last,catalogLast)+KIT_STOCK_MAX_AGE_MS).toISOString():null};
+ stockCache.set(id,{checkedAt:Date.now(),snapshot});return snapshot;
 }
 export function assertKitStockSnapshot(stock){
  if(!stock?.ready)throw Error('ATUALIZE A IMPORTAÇÃO WEDROP ANTES DE GERAR KITS. '+(stock?.reason||'Disponibilidade não verificada.'));
@@ -139,6 +147,7 @@ export async function saveKitStockImport(shopId,csv){
    batch_hash:parsed.hash,available_count:parsed.availableCount,
    unavailable_count:parsed.unavailableCount,imported_count:parsed.total}]
  });
+ clearKitStockCache(id);
  return {imported:parsed.total,available:parsed.availableCount,
   unavailable:parsed.unavailableCount,notCovered:Math.max(0,catalog.length-parsed.total),
   lastSuccessAt:at,message:'Importação validada. Produtos ausentes do arquivo NÃO recebem disponibilidade presumida. A Shopee não foi alterada.'};
