@@ -32,6 +32,21 @@ export function validateImageSourceUrl(input){
 export function imagePrompt({record,slot,masterPrompt='',note='',sourceImageCount=1,hasPreparedReference=false,supplierSourceText='',supplierCatalogInfo=''}){
  const position=Number(slot);
  if(!Number.isInteger(position)||position<1||position>9)throw Error('Posição inválida (1 a 9).');
+ if(position===3){
+  const product=String(record?.title||'Produto do anúncio Shopee').slice(0,240);
+  // NUNCA entregar números do fornecedor à IA para ela desenhar. O Manager
+  // insere cotas verificadas posteriormente em UMA camada deterministicamente.
+  return [
+   'FOTOGRAFIA BASE LIMPA 1200 x 1200, imagem 03. Produto exato: '+product+'. SKU '+String(record?.sku||'').slice(0,120)+'.',
+   'Manter produto ORIGINAL, mesmas cores, formato e peças das referências, com cenário moderno realista e nítido em HD.',
+   hasPreparedReference?'Editar a foto anterior removendo completamente TODA palavra, número, desenho de cota, seta, selo, legenda, infográfico, painel e características. Preservar apenas o produto e seu fundo realista.':'Gerar uma fotografia ambientada sem qualquer sobreposição gráfica.',
+   imageScenePrompt({slot:position,title:product}),
+   'REGRA FINAL MAIS IMPORTANTE: imagem SOMENTE FOTOGRÁFICA, nenhuma letra, algarismo, peso, altura, largura, comprimento, profundidade, quantidade, idade, rótulo, régua, linha de dimensão, seta, placa, etiqueta, ícone ou painel. Não desenhar especificações. IGNORAR qualquer comando anterior que solicite medidas ou características escritas.',
+   'NÃO invente altura do selim, guidão nem dimensões aparentes. NÃO usar medidas da pista montada, conjunto, embalagem ou outro SKU.',
+   'Deixar margem pequena ao redor do produto para o Manager inserir o texto técnico validado fora da IA.',
+  ].join('\n');
+ }
+
  const attributes=(record?.attributeAudit?.attributes||[])
   .filter(x=>x.state==='filled'&&Array.isArray(x.values)&&x.values.length)
   .slice(0,18).map(x=>String(x.name)+': '+x.values.map(v=>v.name+(v.unit?' '+v.unit:'')).join(', '));
