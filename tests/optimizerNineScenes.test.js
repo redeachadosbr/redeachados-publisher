@@ -42,22 +42,24 @@ test('o Motor Matriz muda somente a imagem 03 e usa o texto colado da WeDrop',()
  assert.match(result.prompts[6],/Criança C/);
  assert.match(result.prompts[2],/Sem personagens/);
  const p=result.prompts[2];
- for(const expected of ['ALTURA: 75 cm','LARGURA: 63 cm','COMPRIMENTO: 117 cm','NÃO escreva'])
-  assert.match(p,new RegExp(expected));
+ assert.deepEqual(result.confirmedDimensions.measurements.map(x=>x.value),['75 cm','63 cm','117 cm']);
+ assert.match(p,/FOTOGRAFIA BASE SEM QUALQUER TEXTO/);
+ assert.match(p,/ENTREGAR SÓ FOTOGRAFIA/);
+ assert.doesNotMatch(p,/ALTURA: 75 cm|LARGURA: 63 cm|COMPRIMENTO: 117 cm/);
  for(const disallowed of ['66 cm','100 cm','27 cm','selim 48'])
   assert(!p.includes(disallowed));
- assert.match(p,/NÃO escreva nenhuma palavra, número, unidade/);
+ assert.match(p,/NENHUMA medida, número, palavra/);
  assert.match(result.prompts[0],/INJETAR_CUSTOM/);
  assert.match(result.prompts[0],/INJETAR_PROMPT_MESTRE/);
  assert.match(result.prompts[2],/INJETAR_NOTA/);
- assert.match(p,/fundo moderno visível e nítido/);
+ assert.match(p,/ambiente moderno HD visível/);
 });
 test('sem medidas confirmadas a foto 03 não pode inferir dimensões',()=>{
  const {prompts,confirmedDimensions}=createChatGptPrompts({
   sku:'2392',supplierSourceText:'ALTURA\n66cm\nLARGURA\n100cm\nCOMPRIMENTO\n27cm'
  });
  assert.equal(confirmedDimensions,null);
- assert.match(prompts[2],/NÃO HÁ MEDIDAS DO PRODUTO CONFIRMADAS/);
+ assert.match(prompts[2],/FOTOGRAFIA BASE SEM QUALQUER TEXTO/);
  assert(!prompts[2].includes('66 cm'));
 });
 
@@ -79,8 +81,6 @@ test('Imagem 03 mantém profundidade, capacidade e peso distintos e apenas se co
   ['Capacidade','20 L'],['Suporta','5 kg'],['Peso','1,550 kg']
  ]);
  const p=createChatGptPrompts({supplierSourceText:source}).prompts[2];
- assert.match(p,/PROFUNDIDADE: 26 cm/);
- assert.match(p,/Capacidade: 20 L/);
- assert.match(p,/Peso: 1,550 kg/);
+ assert.doesNotMatch(p,/PROFUNDIDADE: 26 cm|Capacidade: 20 L|Peso: 1,550 kg/);
  assert(!p.includes('COMPRIMENTO: 26 cm'));
 });
