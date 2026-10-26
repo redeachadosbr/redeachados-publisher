@@ -51,6 +51,7 @@ export function createChatGptPrompts({imageUrls=[],supplierSourceText='',title='
   'IMAGEM 03 — FOTOGRAFIA BASE SEM QUALQUER TEXTO.',
   'O gerador é responsável SOMENTE PELA FOTO AMBIENTADA do produto original. NENHUMA medida, número, palavra, letra, unidade, seta, ícone, régua, tabela, etiqueta, subtítulo, selo, painel lateral ou composição textual deve aparecer na imagem produzida.',
   'Não tente extrair nem apresentar dimensões da foto, da ficha técnica, de outro produto, de um brinquedo montado ou da embalagem. Não crie absolutamente nenhum detalhe gráfico técnico.',
+  /pista|conjunto|kit/i.test(title)?'Esta SKU vende um CONJUNTO: mostrar o produto completo com os componentes reais da foto original. Não isolar apenas um caminhão se a referência mostrar pista, carrinho e personagem. Não inventar peças ou acessórios.':'',
   'Crie uma foto comercial limpa com produto fiel em destaque, ambiente moderno HD visível e espaço nas bordas para o Manager adicionar as informações verificadas DEPOIS.',
   // Não repassar os valores da WeDrop ao modelo de imagem: o próprio
   // modelo já gerou números conflitantes e o Manager desenhou outra camada.
