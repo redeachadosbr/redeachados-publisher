@@ -205,8 +205,10 @@ function renderImageSlots(){
 function chatgptHandoff(prompt){
  // A aba precisa abrir no clique, não depois de um await, para que o
  // navegador não a bloqueie. Nenhuma credencial ou cookie é repassado.
+ // Solicitar a cópia ainda com foco nesta aba, antes de abrir o ChatGPT.
+ const copying=navigator.clipboard.writeText(prompt);
  window.open('https://chatgpt.com/','_blank','noopener,noreferrer');
- navigator.clipboard.writeText(prompt).then(()=>{
+ copying.then(()=>{
   imageStatus('Prompt copiado. No ChatGPT Plus, cole com Ctrl+V; para imagens, anexe as fotos originais de TODAS as SKUs. Ao terminar, volte e importe o resultado.','success');
  }).catch(()=>imageStatus('Cópia automática bloqueada: utilize os botões de copiar ou selecione o prompt no campo.','error'));
  // Por segurança a nova aba não recebe acesso à janela da loja.
