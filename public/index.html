@@ -31,7 +31,7 @@
 <link rel="stylesheet" href="/ads-premium.css?v=2.4.0-seo-ads-location">
 <link rel="stylesheet" href="/sidebar-collapse.css?v=1.0.0">
 <link rel="stylesheet" href="/optimizer-image-studio.css?v=1.0.2">
-<link rel="stylesheet" href="/kit-builder.css?v=1.6.0-wedrop-stock">
+<link rel="stylesheet" href="/kit-builder.css?v=2.0.0-reference-layout">
 <link rel="stylesheet" href="/optimizer-technical-studio.css?v=1.0.1-review-feedback">
 <style>
 /* Retomada da SKU visível junto à barra de acompanhamento. A API só é
@@ -853,12 +853,29 @@
   </div>
 </section>
               <section class="tabpane" id="tab-kits" aria-label="Kits Inteligentes WeDrop">
- <div class="kit-hero">
-  <div><span class="kit-kicker">WE<b>DROP</b> · INTELIGÊNCIA COMERCIAL</span>
-   <h2>Kits Inteligentes</h2><p>Combine SKUs reais da WeDrop, calcule custo e lucro e prepare anúncios e fotografias no ChatGPT Plus, sem custos adicionais de API.</p></div>
-  <div class="kit-status-pill">● ChatGPT Plus · Sem API paga</div>
+ <header class="kit-hero">
+   <div class="kit-hero-title"><span class="kit-hero-symbol" aria-hidden="true">✨</span><div>
+    <h2>Kits Inteligentes WeDrop</h2>
+    <p>Encontre oportunidades de kits, calcule custos e lucros e crie anúncios completos com o auxílio do ChatGPT.</p>
+   </div></div>
+   <span class="kit-status-pill">ChatGPT Plus · Sem API paga</span>
+ </header>
+ <div class="kit-overview" aria-label="Resumo da configuração de kits">
+  <div class="kit-overview-card"><span class="kit-overview-icon kit-icon-blue" aria-hidden="true">⬡</span>
+   <div><small>Categoria selecionada</small><strong id="kitOverviewCategory">Brinquedos</strong><span>Produtos infantis e educativos</span></div>
+  </div>
+  <div class="kit-overview-card"><span class="kit-overview-icon kit-icon-cyan" aria-hidden="true">▱</span>
+   <div><small>SKUs por kit</small><strong id="kitOverviewSize">2 SKUs</strong><span>Produtos combinados</span></div>
+  </div>
+  <div class="kit-overview-card"><span class="kit-overview-icon kit-icon-blue" aria-hidden="true">▥</span>
+   <div><small>Margem líquida</small><strong id="kitOverviewMargin">15%</strong><span>Lucro estimado por kit</span></div>
+  </div>
+  <div class="kit-overview-card"><span class="kit-overview-icon kit-icon-cyan" aria-hidden="true">▣</span>
+   <div><small>Frete assumido pela loja</small><strong id="kitOverviewFreight">R$ 0,00</strong><span>No cálculo do lucro</span></div>
+  </div>
  </div>
  <div class="kit-form" id="kitForm">
+  <div class="kit-form-heading"><span class="kit-heading-icon kit-icon-orange">⚙</span><div><strong>Configuração da pesquisa de kits</strong><small>Defina os parâmetros para encontrar os melhores kits na WeDrop</small></div></div>
   <label>Categoria WeDrop<select id="kitCategory"><option value="Brinquedos">Brinquedos</option></select></label>
   <label>Produtos por kit<select id="kitSize"><option value="2">2 SKUs</option><option value="3">3 SKUs</option></select></label>
   <div class="kit-margin-field">
@@ -875,7 +892,7 @@
   <label>Embalagem adicional (R$)<input id="kitPacking" type="number" min="0" max="500" value="0" step="0.01"></label>
   <label>Frete assumido pela loja (R$)<input id="kitShipping" type="number" min="0" max="500" value="0" step="0.01"></label>
   <div class="kit-plus-banner"><strong>ChatGPT Plus · Sem API</strong><small>Você utiliza seu ChatGPT no navegador. O sistema não faz chamadas pagas nem gera imagens por API.</small></div>
-  <button id="kitSuggest" type="button" class="kit-primary">✦ Pesquisar kits inteligentes</button>
+  <button id="kitSuggest" type="button" class="kit-primary"><span aria-hidden="true">⌕</span> Pesquisar kits inteligentes</button>
  </div>
  <section id="kitStockGate" class="kit-stock-gate" role="status" aria-live="polite">
   <div class="kit-stock-gate-head"><strong id="kitStockHeadline">Verificando atualização do catálogo e estoque WeDrop...</strong><span id="kitStockStamp">Sem conferência</span></div>
@@ -891,10 +908,12 @@
   </div>
   <p id="kitStockImportStatus" class="kit-status">Nenhum estoque será presumido a partir do custo ou da localização do fornecedor.</p>
  </section>
-  <p class="kit-info">Somente SKUs e custos existentes na WeDrop. Previsão de lucro não representa vendas reais; frete conjunto, estoque, disponibilidade e composição física precisam de confirmação. Nenhum anúncio é criado ou publicado sem aprovação.</p>
+  <p class="kit-info kit-stock-disclaimer">Somente SKUs disponíveis no catálogo importado da WeDrop. Margens e lucros são estimativas; envio conjunto e estoque devem ser confirmados antes da publicação.</p>
  <p id="kitStatus" role="status" aria-live="polite" class="kit-status">Carregando categorias cadastradas...</p>
- <div class="kit-bar"><h3>Sugestões de kits</h3><span id="kitSource"></span></div>
- <div class="kit-plus-workflow">
+ <div class="kit-bar kit-section-heading"><span class="kit-heading-icon kit-icon-purple">♧</span><div class="kit-section-heading-text"><h3>Sugestões de kits</h3><p>Kits baseados em SKUs reais da WeDrop, com custos e lucros calculados automaticamente.</p></div><span id="kitSource">Origem: catálogo WeDrop + regras comerciais</span></div>
+ <details class="kit-plus-workflow kit-research-details" id="kitResearchDetails">
+   <summary>Pesquisa avançada com ChatGPT Plus <span>Expandir pesquisa de combinações</span></summary>
+   <div class="kit-research-content">
    <strong>Pesquisa avançada com ChatGPT Plus</strong>
    <p>Envie uma seleção de SKUs reais da WeDrop ao ChatGPT e importe as sugestões: o Manager valida os códigos e refaz o cálculo.</p>
    <div class="kit-actions">
@@ -906,47 +925,49 @@
    <label for="kitPlusOutput">Cole aqui as linhas de SKUs sugeridas no ChatGPT, por exemplo: SKU1 | SKU2</label>
    <textarea id="kitPlusOutput" rows="4" placeholder="SKU1 | SKU2&#10;SKU3 | SKU4"></textarea>
    <button type="button" id="kitPlusImport" class="kit-secondary">Importar kits sugeridos e recalcular</button>
-  </div>
+   </div>
+  </details>
   <div id="kitSuggestions" class="kit-suggestions"><p>Escolha uma categoria para iniciar.</p></div>
- <section class="kit-drafts-panel"><div class="kit-bar"><h3>Kits salvos para revisão</h3><button type="button" class="kit-secondary" id="kitRefreshDrafts">Atualizar rascunhos</button></div>
+ <section class="kit-drafts-panel"><div class="kit-bar kit-section-heading"><span class="kit-heading-icon kit-icon-purple">▧</span><div class="kit-section-heading-text"><h3>Kits salvos para revisão</h3><p>Rascunhos de kits gerados para você revisar, editar e publicar.</p></div><button type="button" class="kit-secondary" id="kitRefreshDrafts">↻ Atualizar rascunhos</button></div>
  <div id="kitDraftList" class="kit-suggestions"><p>Consultando kits salvos nesta loja...</p></div></section>
  <section id="kitDetail" class="kit-detail" hidden>
-  <div class="kit-detail-title"><div><span class="kit-kicker">RASCUNHO NÃO PUBLICADO</span><h3 id="kitSkuTitle">Kit</h3></div><button id="kitClose" type="button" class="kit-secondary">Fechar</button></div>
-  <div id="kitComponents" class="kit-components"></div>
-  <div id="kitNumbers" class="kit-numbers"></div>
-  <p id="kitWarning" class="kit-info"></p>
+  <div class="kit-detail-title"><div><span class="kit-kicker">RASCUNHO EM EDIÇÃO</span><h3 id="kitSkuTitle">Kit</h3></div><button id="kitClose" type="button" class="kit-secondary">Fechar edição</button></div>
+  <details class="kit-detail-facts"><summary>Ver composição das SKUs e cálculo detalhado do kit</summary>
+   <div id="kitComponents" class="kit-components"></div>
+   <div id="kitNumbers" class="kit-numbers"></div>
+   <p id="kitWarning" class="kit-info"></p>
+  </details>
   <div class="kit-copy-grid">
-   <label>Título SEO <small>Até 120 caracteres — confira antes de usar.</small><textarea id="kitTitle" rows="2"></textarea><button type="button" id="kitCopyTitle" class="kit-secondary">Copiar título</button></label>
-   <label>Descrição do anúncio <small>Produtos incluídos e quantidades exatos por SKU.</small><textarea id="kitDescription" rows="13"></textarea><button type="button" id="kitCopyDescription" class="kit-secondary">Copiar descrição</button></label>
+   <label><span class="kit-field-title"><span class="kit-heading-icon kit-icon-blue">✎</span><span><strong>Título SEO</strong><small>Até 120 caracteres — confira antes de usar.</small></span></span><textarea id="kitTitle" rows="3" maxlength="120"></textarea><div class="kit-field-footer"><button type="button" id="kitCopyTitle" class="kit-secondary">▤ Copiar título</button><small id="kitTitleCount">0/120</small></div></label>
+   <label><span class="kit-field-title"><span class="kit-heading-icon kit-icon-blue">▤</span><span><strong>Descrição do anúncio</strong><small>Produtos incluídos e quantidades exatas por SKU.</small></span></span><textarea id="kitDescription" rows="6" maxlength="2000"></textarea><div class="kit-field-footer"><button type="button" id="kitCopyDescription" class="kit-secondary">▤ Copiar descrição</button><small id="kitDescriptionCount">0/2000</small></div></label>
   </div>
-  <div class="kit-plus-workflow">
-   <strong>Preparar título e descrição no ChatGPT Plus</strong>
-   <p>O prompt contém as SKUs conferidas. Use seu ChatGPT Plus e cole a resposta aqui; não há conexão automática nem cobrança de API.</p>
-   <div class="kit-actions"><button id="kitPlusText" type="button" class="kit-primary">Preparar orientação para título e descrição</button></div>
+  <section class="kit-chatgpt-strip"><span class="kit-openai-symbol" aria-hidden="true">◎</span><div><strong>Preparar título e descrição no ChatGPT Plus</strong><p>Use as SKUs e as informações do kit para gerar conteúdo completo sem API paga.</p></div><button id="kitPlusText" type="button" class="kit-primary">Preparar com ChatGPT Plus →</button></section>
+  <details class="kit-plus-workflow kit-content-details" id="kitContentDetails"><summary>Importar texto gerado no ChatGPT Plus</summary><div class="kit-content-details-body">
    <textarea id="kitContentPrompt" rows="5" readonly placeholder="A orientação com SKUs corretas aparecerá aqui."></textarea>
    <button id="kitOpenContentPrompt" type="button" class="kit-secondary">Copiar orientação + abrir ChatGPT Plus</button>
    <label for="kitPlusTextResult">Resposta do ChatGPT (TÍTULO: e DESCRIÇÃO:)</label>
    <textarea id="kitPlusTextResult" rows="6" placeholder="TÍTULO: Kit ...&#10;DESCRIÇÃO: ✨ ..."></textarea>
    <button id="kitImportText" type="button" class="kit-secondary">Importar título e descrição da resposta</button>
+  </div></details>
+  <div class="kit-bar kit-section-heading kit-images-heading"><span class="kit-heading-icon kit-icon-purple">▧</span><div class="kit-section-heading-text"><h3>Imagens profissionais do kit — 1200 × 1200</h3><p>Gere no ChatGPT Plus e importe cada imagem com o respectivo produto e enquadramento.</p></div>
+   <button id="kitGenerateAll" type="button" class="kit-primary">↗ Abrir ChatGPT Plus para gerar 9 imagens</button>
+   <button id="kitCopyAllPrompts" type="button" class="kit-secondary">Copiar 9 prompts</button>
   </div>
-  <div class="kit-bar"><h3>Imagens profissionais do kit — 1200 × 1200</h3><span>ChatGPT Plus · sem API</span></div>
   <p class="kit-info">Para cada imagem, clique em "Copiar prompt + abrir ChatGPT", anexe as fotografias originais das SKUs no ChatGPT, gere a imagem e importe o arquivo neste painel. Não confunda a foto de uma SKU com outra.</p>
   <div id="kitImages" class="kit-images"></div>
-  <div class="kit-actions">
-   <button id="kitGenerateAll" type="button" class="kit-primary">Abrir ChatGPT Plus para gerar as 9 imagens</button>
-   <button id="kitSaveDraft" type="button" class="kit-secondary">Salvar rascunho no sistema</button>
+  <div class="kit-actions kit-image-actions">
+   <button id="kitSaveDraft" type="button" class="kit-secondary">Salvar rascunho ▾</button>
    <button id="kitDownloadPack" type="button" class="kit-secondary">Baixar ficha do kit e 9 prompts</button>
-   <button id="kitCopyAllPrompts" type="button" class="kit-secondary">Copiar 9 prompts para o ChatGPT</button>
   </div>
   <p id="kitImageStatus" class="kit-status">Não há chamadas nem créditos de API. As imagens geradas no seu ChatGPT Plus devem ser salvas e importadas aqui, uma por vez. O plano Plus pode ter limites próprios de uso. Fotos importadas ficam nesta aba até você fechá-la.</p>
   <section class="kit-publish-panel" id="kitPublishPanel" aria-label="Criar Kit Formal na Shopee">
-   <div class="kit-bar"><h3>Criar Kit Formal na Shopee</h3><span>Publicação com revisão e aprovação</span></div>
+   <div class="kit-bar kit-section-heading"><span class="kit-heading-icon kit-icon-orange">🛒</span><div class="kit-section-heading-text"><h3>Criar Kit Formal na Shopee</h3><p>Siga o passo a passo para publicar seu kit na Shopee com segurança.</p></div></div>
    <p class="kit-info">Primeiro confirme os componentes da Shopee e a logística. Salve o rascunho; depois envie as fotos, confira a prévia e autorize a publicação. A promoção só poderá ser preparada DEPOIS que a Shopee confirmar o novo Item ID.</p>
    <div class="kit-publish-steps">
-    <div><b>01</b> Salvar kit</div><div><b>02</b> Validar SKUs Shopee</div><div><b>03</b> Enviar fotos</div>
-    <div><b>04</b> Prévia final</div><div><b>05</b> Publicar kit</div><div><b>06</b> Desconto separado</div>
+    <div><b>01</b><span>Salvar kit</span></div><div><b>02</b><span>Validar SKUs Shopee</span></div><div><b>03</b><span>Enviar fotos</span></div>
+    <div><b>04</b><span>Prévia final</span></div><div><b>05</b><span>Publicar kit</span></div><div><b>06</b><span>Desconto separado</span></div>
    </div>
-   <div class="kit-actions"><button id="kitPublishCheck" class="kit-secondary" type="button">Verificar componentes e logística na Shopee</button></div>
+   <div class="kit-publish-subheading"><div><strong>🚚 Logística e validação do kit</strong><small>Confirme as informações antes de publicar na Shopee.</small></div><button id="kitPublishCheck" class="kit-secondary" type="button">Verificar SKUs e opções da Shopee</button></div>
    <p id="kitPublishStatus" class="kit-status" role="status" aria-live="polite">Salve o kit para iniciar a conferência. Nenhum anúncio é criado nesta etapa.</p>
    <div id="kitPublishLinks" class="kit-components"></div>
    <div class="kit-publish-fields">
@@ -967,7 +988,7 @@
    </div>
    <div class="kit-actions">
     <button id="kitSendPhotos" type="button" class="kit-secondary">Enviar imagens importadas à galeria da Shopee</button>
-    <button id="kitPublishPreview" type="button" class="kit-primary">Preparar prévia segura do Kit Formal</button>
+    <button id="kitPublishPreview" type="button" class="kit-primary">Preparar prévia segura do Kit Formal →</button>
    </div>
    <p class="kit-status" id="kitShopeePhotoCount">0 imagens enviadas à Shopee (ainda não publicadas).</p>
    <div id="kitPublishPreviewBox" hidden class="kit-publish-preview">
@@ -1851,7 +1872,7 @@
 <script src="/technical-memory.js?v=1.0.1-live-sku-preload"></script>
 <script src="/technical-status.js?v=1.0.0-optional-coherence"></script>
 <script src="/app.js?v=1.21.82-media-technical-fix-dual-centavos-09-v4"></script>
-<script type="module" src="/kit-builder.js?v=1.6.0-wedrop-stock"></script>
+<script type="module" src="/kit-builder.js?v=2.0.0-reference-layout"></script>
 <link rel="stylesheet" href="/optimizer-variations.css?v=1.2.1-single-flow">
 <script src="/optimizer-variations.js?v=1.2.3-single-flow"></script>
 
