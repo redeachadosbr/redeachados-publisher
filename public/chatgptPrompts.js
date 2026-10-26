@@ -46,17 +46,15 @@ export function createChatGptPrompts({imageUrls=[],supplierSourceText='',title='
  // SOMENTE os números exatos da WeDrop na imagem final. Não confiar em
  // letras/números que o modelo possa inventar, nem usar peso da caixa.
  prompts[2]=[
-  prompts[2],
-  dims?('MEDIDAS DO PRODUTO CONFIRMADAS NO TEXTO WEDROP DA SKU: '+
-   dims.measurements.map(x=>x.label+': '+x.value).join('; ')+'.'):
-   'NÃO HÁ MEDIDAS DO PRODUTO CONFIRMADAS NO TEXTO WEDROP DESTA SKU.',
-  facts.length?'DADOS LATERAIS DISCRETOS CONFIRMADOS NA MESMA SKU: '+facts.map(x=>x.label+': '+x.value).join('; ')+'.':'NÃO adicionar informações laterais sem comprovação.',
-  'IMPORTANTE: gere somente a fotografia original fiel do produto, com fundo moderno visível e nítido, e pequena área nas bordas para setas finas sobre o contorno.'+
-  ' NÃO escreva nenhuma palavra, número, unidade, título, etiqueta, selo ou medida na foto gerada.'+
-  ' O Manager adicionará setas finas, medidas sobre o contorno e dados laterais discretos verificados DEPOIS da geração.'+
-  ' NUNCA estimar altura do selim, altura do guidão, tamanho/diâmetro da roda, largura ou comprimento por aparência.'+
-  ' Não copiar dimensões de embalagem, frete ou campos isolados sem a indicação de dimensões do produto. Fundo em alta definição com arquitetura e detalhes reconhecíveis, sem aparência desfocada ou lavada.'
- ].join(' ');
+  'IMAGEM 03 — FOTOGRAFIA BASE SEM QUALQUER TEXTO.',
+  'O gerador é responsável SOMENTE PELA FOTO AMBIENTADA do produto original. NENHUMA medida, número, palavra, letra, unidade, seta, ícone, régua, tabela, etiqueta, subtítulo, selo, painel lateral ou composição textual deve aparecer na imagem produzida.',
+  'Não tente extrair nem apresentar dimensões da foto, da ficha técnica, de outro produto, de um brinquedo montado ou da embalagem. Não crie absolutamente nenhum detalhe gráfico técnico.',
+  'Crie uma foto comercial limpa com produto fiel em destaque, ambiente moderno HD visível e espaço nas bordas para o Manager adicionar as informações verificadas DEPOIS.',
+  // Não repassar os valores da WeDrop ao modelo de imagem: o próprio
+  // modelo já gerou números conflitantes e o Manager desenhou outra camada.
+  'ORDEM FINAL OBRIGATÓRIA: ENTREGAR SÓ FOTOGRAFIA, 100% SEM TEXTO. Mesmo que uma orientação antiga acima solicite cotas, ignore-a. A camada técnica será feita fora da IA.'
+ ].join('\\n\\n');
+
  return {batch:prompts[0],prompts,scenes,original,confirmedDimensions:dims};
 }
 export function assignChatGptFiles(files,{startSlot=1}={}){
