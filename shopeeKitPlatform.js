@@ -4,6 +4,13 @@ import {findExactCatalogSku} from './catalogStore.js';
 import {readWeDropSkuLinks} from './wedropCosts.js';
 import {callShopeeShopApi} from './shopee.js';
 const safeId=x=>/^[1-9]\d{0,17}$/.test(String(x))&&Number.isSafeInteger(Number(x));
+function availableStock(record){
+ const value=record?.stock_info_v2?.summary_info?.total_available_stock;
+ if(Number.isFinite(Number(value))&&value!==undefined&&value!==null&&value!=='')
+  return Number(value);
+ const older=record?.stock_info?.find?.(x=>Number.isFinite(Number(x.current_stock)));
+ return older?Number(older.current_stock):null;
+}
 const call=(cfg,auth,path,query={})=>callShopeeShopApi(cfg,{
  path,accessToken:auth.accessToken,shopId:auth.shopId,query
 });
@@ -46,12 +53,20 @@ export async function resolveKitShopeeComponents(cfg,auth,kit){
     if(!model||String(model.model_sku)!==String(selected.sku)){
      blockers.push('SKU '+component.sku+': variação/SKU não confere mais na Shopee.');continue;
     }
-    if(model.model_status&&String(model.model_status).toUpperCase()!=='NORMAL'){
+    if(model.model_status&&!['NORMAL','MODEL_NORMAL'].includes(String(model.model_status).toUpperCase())){
      blockers.push('SKU '+component.sku+': variação inativa.');continue;
+    }
+    const qty=availableStock(model);
+    if(qty===null||qty<1){
+     blockers.push('SKU '+component.sku+': estoque da variação não confirmado ou zerado na Shopee.');continue;
     }
    }else{
     if(modelId!==0||String(live.item_sku)!==String(selected.sku)){
      blockers.push('SKU '+component.sku+': código do anúncio foi alterado ou possui vínculo desatualizado.');continue;
+    }
+    const qty=availableStock(live);
+    if(qty===null||qty<1){
+     blockers.push('SKU '+component.sku+': estoque atual não confirmado ou zerado na Shopee.');continue;
     }
    }
    if(live.item_type==='KIT'||live.is_kit===true){
