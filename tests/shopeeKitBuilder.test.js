@@ -105,3 +105,27 @@ test('interface e endpoints de kits isolam publicações',async()=>{
  assert.match(server,/\/api\/shopee\/kits\/plus-import/);
  assert.match(server,/\/api\/shopee\/kits\/plus-content/);
 });
+
+test('barra manual de margem dos kits é equivalente ao controle da Otimização',async()=>{
+ const fs=await import('node:fs');
+ const html=fs.readFileSync(new URL('../public/index.html',import.meta.url),'utf8');
+ const js=fs.readFileSync(new URL('../public/kit-builder.js',import.meta.url),'utf8');
+ const css=fs.readFileSync(new URL('../public/kit-builder.css',import.meta.url),'utf8');
+ const engine=fs.readFileSync(new URL('../shopeeKitBuilder.js',import.meta.url),'utf8');
+ assert.match(html,/id="optimizerQuickMargin"[^>]*type="range"[^>]*min="0" max="70"/);
+ assert.match(html,/id="kitMargin"[^>]*type="range" min="0" max="70" step="1"/);
+ assert.match(html,/id="kitMarginLabel"[^>]*>15%/);
+ assert.match(html,/id="kitMarginPlus"/);
+ assert.match(html,/id="kitMarginMinus"/);
+ assert.doesNotMatch(html,/id="kitMargin"\s+type="number"/);
+ assert.match(css,/kit-margin-slider-group input\[type=range\]/);
+ assert.match(css,/kit-margin-stepper/);
+ assert.match(js,/addEventListener\('input',\(\)=>setKitMargin/);
+ assert.match(js,/scheduleKitMarginReprice\(\)/);
+ assert.match(js,/setTimeout\(\(\)=>void repriceKitMargin\(marginRevision\),420\)/);
+ assert.match(js,/api\('\/api\/shopee\/kits\/plus-import'/);
+ assert.match(js,/api\('\/api\/shopee\/kits\/prepare'/);
+ assert.match(js,/refreshKitPrices\(prepared\.kit\)/);
+ assert.match(js,/if\(marginUpdatePending\)/);
+ assert.match(engine,/n<0\|\|n>70/);
+});
