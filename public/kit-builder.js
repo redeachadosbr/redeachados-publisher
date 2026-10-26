@@ -527,7 +527,11 @@ async function loadDrafts(){
   const result=await api('/api/shopee/kits/drafts');
   root.replaceChildren();
   if(!result.drafts.length){
-   root.append(elt('p','', 'Nenhum rascunho salvo. Prepare um kit para iniciar a revisão.'));return;
+   const empty=elt('div','kit-empty-drafts');
+   empty.append(elt('span','kit-empty-drafts-illustration','▤'),
+    elt('strong','','Nenhum rascunho salvo.'),
+    elt('p','','Prepare um kit para iniciar a revisão.'));
+   root.append(empty);return;
   }
   for(const draft of result.drafts){
    const card=elt('article','kit-card');
