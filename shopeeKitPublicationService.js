@@ -24,7 +24,8 @@ async function checkedDraft(auth,kitSku){
   throw Error('Custo WeDrop ou preço do kit mudou desde o rascunho. Reabra, recalcule e salve antes de publicar.');
  return {stored,kit};
 }
-export async function kitUploadPhoto({cfg,auth,kitSku,base64,mime}){
+export async function kitUploadPhoto({cfg,auth,kitSku,slot,base64,mime}){
+ if(!Number.isInteger(Number(slot))||Number(slot)<1||Number(slot)>9)throw Error('Posição da imagem inválida.');
  await checkedDraft(auth,kitSku);
  const raw=String(base64||'').replace(/^data:image\/(?:png|jpeg|webp);base64,/,'');
  if(!/^[a-zA-Z0-9+/=]+$/.test(raw)||raw.length>5_000_000||raw.length<200)
@@ -37,10 +38,13 @@ export async function kitUploadPhoto({cfg,auth,kitSku,base64,mime}){
  const actual=png?'image/png':jpeg?'image/jpeg':'image/webp';
  if(actual!==mime)throw Error('Tipo de arquivo inconsistente.');
  const k=key(auth.shopId,kitSku),photos=media.get(k)||[];
- if(photos.length>=9)throw Error('Limite de nove fotos Shopee por kit.');
+ if(photos.length>=9&&!photos.some(x=>x.slot===Number(slot)))
+  throw Error('Limite de nove fotos Shopee por kit.');
  const id=await createShopeeMediaApi(cfg,auth).image(data,actual);
- photos.push({imageId:id,uploadedAt:Date.now()});media.set(k,photos);
- return {imageId:id,count:photos.length,storedIn:'Shopee MediaSpace',
+ const rest=photos.filter(x=>x.slot!==Number(slot));
+ rest.push({slot:Number(slot),imageId:id,uploadedAt:Date.now()});
+ rest.sort((a,b)=>a.slot-b.slot);media.set(k,rest);
+ return {imageId:id,count:rest.length,storedIn:'Shopee MediaSpace',
   note:'Imagem enviada somente à galeria de mídia Shopee. O kit ainda não foi publicado.'};
 }
 export async function kitPublicationReadiness({cfg,auth,kitSku}){
@@ -55,7 +59,11 @@ export async function kitPublicationReadiness({cfg,auth,kitSku}){
 export async function kitPublicationPreview({cfg,auth,kitSku,input,secret}){
  const ready=await kitPublicationReadiness({cfg,auth,kitSku});
  if(ready.blockers.length)throw Error('Publicação bloqueada: '+ready.blockers.join(' | '));
- const fields=kitPublishFields({...input,imageIds:ready.uploadedImageIds},ready.kit);
+ const accepted=(input?.imageIds||[]).map(String);
+ if(!accepted.length||accepted.some(x=>!ready.uploadedImageIds.includes(x))||
+    new Set(accepted).size!==accepted.length)
+  throw Error('Fotos escolhidas não conferem com a galeria Shopee. Envie e aprove novamente as imagens.');
+ const fields=kitPublishFields({...input,imageIds:accepted},ready.kit);
  if(!ready.options.channels.some(x=>Number(x.id)===fields.logisticId))
   throw Error('Canal logístico não habilitado na Shopee. Atualize a prévia.');
  const limit=ready.options.limits;
@@ -107,7 +115,11 @@ export async function kitPublishApproved({cfg,auth,kitSku,input,token,secret}){
   if(verified.kitSku!==kitSku)throw Error('Prévia pertence a outro kit.');
   const ready=await kitPublicationReadiness({cfg,auth,kitSku});
   if(ready.blockers.length)throw Error(ready.blockers.join(' | '));
-  const fields=kitPublishFields({...input,imageIds:ready.uploadedImageIds},ready.kit);
+  const accepted=(input?.imageIds||[]).map(String);
+  if(!accepted.length||accepted.some(x=>!ready.uploadedImageIds.includes(x))||
+     new Set(accepted).size!==accepted.length)
+   throw Error('A seleção de fotos mudou. Refaça a prévia.');
+  const fields=kitPublishFields({...input,imageIds:accepted},ready.kit);
   if(!ready.options.channels.some(x=>Number(x.id)===fields.logisticId))
    throw Error('Canal de envio mudou. Refaça a prévia.');
   const fingerprint=kitApprovalFingerprint(ready.kit,fields,ready.linked);
