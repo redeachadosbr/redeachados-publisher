@@ -19,23 +19,19 @@ export function promotionFromQuote(q){
  const buyerAfterCoupon=brl(promo*(1-couponPct/100));
  if(Math.abs(buyerAfterCoupon-Number(q.customerPrice))>0.011)
   throw Error('Preço após cupom não confere com o plano salvo. Recalcule antes de publicar.');
- // Planos novos precisam comprovar o preço que A SHOPEE MOSTRA NA VITRINE,
- // não apenas o preço hipotético com cupom aplicado no checkout.
- if(q.priceEndingRuleVersion===2||q.priceEndingRuleVersion===3){
-  const allowed=x=>Math.round(x*100)%10===0||Math.round(x*100)%10===9;
-  if(!Number.isFinite(Number(q.marketplaceDisplayPrice))||
-     Math.abs(promo-Number(q.marketplaceDisplayPrice))>0.011)
-   throw Error('Preço promocional visível divergente do plano salvo. Recalcule.');
-  // v2: política antiga, exige final 0/9 na vitrine E após cupom.
-  // v3: margem escolhida manualmente tem prioridade; cupom é opcional,
-  // portanto o preço real após cupom é validado em centavos, não arredondado.
-  if(!allowed(promo)||(q.priceEndingRuleVersion===2&&!allowed(buyerAfterCoupon)))
-   throw Error('Preço da Shopee ou após cupom fora da política de centavos do plano. Recalcule e aprove o novo valor.');
-  if(q.priceEndingRuleVersion===3&&
-     (q.marginOverride!==true||q.priceEndingPolicy!=='visible_price_margin_priority'||
-      Number(q.netMarginPct)+0.001<Number(q.targetMarginPct)))
-   throw Error('Plano com margem manual não corresponde à escolha da barra. Recalcule.');
- }
+ // Preço da Minha Promoção (vitrine) e preço com cupom seguem a MESMA
+ // regra 0/9. Rejeitar planos v3 gerados pelo algoritmo antigo, nos quais
+ // o cupom ficou com centavos inválidos. Recalcular sem enviar nada à Shopee.
+ const allowed=x=>Math.round(x*100)%10===0||Math.round(x*100)%10===9;
+ if(!Number.isFinite(Number(q.marketplaceDisplayPrice))||
+    Math.abs(promo-Number(q.marketplaceDisplayPrice))>0.011)
+  throw Error('Preço promocional visível divergente do plano salvo. Recalcule a SKU.');
+ if(!allowed(promo)||!allowed(buyerAfterCoupon))
+  throw Error('Preço na Shopee ou após cupom fora da regra de centavos 0/9. Recalcule a SKU em Otimização para obter os dois valores corretos.');
+ if(q.priceEndingRuleVersion!==4||q.priceEndingPolicy!=='both_checkout_and_visible')
+  throw Error('Plano calculado pela versão anterior da regra de centavos. Recalcule a SKU em Otimização antes de concluir o desconto.');
+ if(q.marginOverride===true&&Number(q.netMarginPct)+0.001<Number(q.targetMarginPct))
+  throw Error('A margem escolhida na barra não foi preservada. Recalcule a SKU.');
  if(promo<=0||promo>=gross)throw Error('Desconto inválido para publicação.');
  return {gross,promo,buyerAfterCoupon,couponPct,discountPct:Number(q.discountPct)};
 }
