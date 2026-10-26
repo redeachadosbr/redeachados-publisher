@@ -14,6 +14,7 @@ async function api(path,{body,signal}={}){
  return data;
 }
 let categoriesLoaded=false,suggestions=[],prepared=null,images=new Map(),generationBusy=false;
+let kitStockReady=false,kitStockLastCheck=null;
 let kitPublishToken=null,kitDiscountToken=null,kitSaved=false,kitPublishBusy=false,kitReadiness=null,kitShopeePhotoSlots=new Map(),kitItemId=null;
 let marginTimer=null,marginRevision=0,suggestionContext=null,marginUpdatePending=false;
 const MARGIN_MIN=0,MARGIN_MAX=70;
@@ -120,8 +121,55 @@ function currentSettings(){
   throw Error('Custos adicionais devem estar entre R$ 0 e R$ 500.');
  return {marginPct,packing,shipping,useAi:false};
 }
-async function categories(){
- if(categoriesLoaded)return;
+function displayKitStockGate(stock,catalogCount){
+ kitStockReady=stock?.ready===true;
+ kitStockLastCheck=stock||null;
+ const gate=$('#kitStockGate');
+ gate.dataset.ready=kitStockReady?'yes':'no';
+ $('#kitStockHeadline').textContent=kitStockReady?
+  '✓ Catálogo e estoque WeDrop atualizados — somente SKUs DISPONÍVEIS':
+  'Atualize o catálogo e importe os status de estoque antes de gerar kits';
+ const date=value=>value?new Date(value).toLocaleString('pt-BR'):'não informado';
+ $('#kitStockStamp').textContent=kitStockReady?
+  'Válido até '+date(stock.expiresAt):'Bloqueado';
+ $('#kitStockExplanation').textContent=(stock?.reason||'Não foi possível comprovar estoque.')+
+  ' · Catálogo: '+date(stock?.catalogLastImportedAt)+
+  ' · Estoque: '+date(stock?.lastSuccessAt)+
+  ' · Disponíveis: '+Number(stock?.availableCount||0)+
+  ' · Indisponíveis: '+Number(stock?.unavailableCount||0)+
+  ' · Sem status no último arquivo: '+Math.max(0,Number(catalogCount||0)-Number(stock?.importedCount||0))+
+  '. Atualize no máximo a cada 24 horas.';
+ for(const selector of ['#kitSuggest','#kitPlusResearch','#kitPlusImport'])
+  $(selector).disabled=!kitStockReady;
+ if(!kitStockReady){
+  suggestions=[];suggestionContext=null;prepared=null;images.clear();
+  $('#kitSuggestions').replaceChildren(elt('p','', 'Geração bloqueada até importar a disponibilidade WeDrop. Não serão usados SKUs sem status confiável.'));
+  $('#kitDetail').hidden=true;
+  status('Atualização obrigatória: '+(stock?.reason||'Importe o catálogo e os status WeDrop.'),'error');
+ }
+}
+async function importKitStockCsv(){
+ const file=$('#kitStockCsv').files?.[0];
+ if(!file)return $('#kitStockImportStatus').textContent='Selecione um CSV exportado da WeDrop com SKU e Disponibilidade.';
+ if(file.size>4_000_000||file.size===0)
+  return $('#kitStockImportStatus').textContent='Arquivo deve conter dados e ter no máximo 4 MB.';
+ const button=$('#kitStockImport');button.disabled=true;
+ $('#kitStockImportStatus').textContent='Conferindo linhas, SKUs e disponibilidade do catálogo...';
+ try{
+  const csv=await file.text();
+  const result=await api('/api/shopee/kits/availability/import',{body:{csv}});
+  $('#kitStockImportStatus').textContent='✓ '+result.imported+
+   ' status importados: '+result.available+' DISPONÍVEIS e '+
+   result.unavailable+' INDISPONÍVEIS; '+result.notCovered+
+   ' SKUs não constam no arquivo e permanecem bloqueadas.';
+  categoriesLoaded=false;await categories(true);
+ }catch(error){
+  $('#kitStockImportStatus').textContent='Importação não concluída: '+error.message+
+   ' Nenhum kit será gerado sem estoque confirmado.';
+ }finally{button.disabled=!$('#kitStockCsv').files?.length;}
+}
+async function categories(force=false){
+ if(categoriesLoaded&&!force)return;
  categoriesLoaded=true;
  try{
   const data=await api('/api/shopee/kits/catalog?category=Todos&limit=1');
@@ -131,8 +179,9 @@ async function categories(){
    const option=elt('option','',name);option.value=name;select.append(option);
   }
   select.value=data.categories.includes(keep)?keep:data.categories.includes('Brinquedos')?'Brinquedos':'Todos';
-  status(data.catalogCount+' SKUs com custos conferidos na WeDrop. Escolha a categoria e inicie a pesquisa.','success');
- }catch(error){categoriesLoaded=false;status('Não foi possível acessar as categorias: '+error.message,'error');}
+  displayKitStockGate(data.stock,data.catalogCount);
+  if(data.stock?.ready)status(data.availableMatched+' SKUs DISPONÍVEIS nesta categoria para montar kits. Apenas esses produtos serão usados.','success');
+ }catch(error){categoriesLoaded=false;displayKitStockGate(null,0);status('Não foi possível acessar as categorias: '+error.message,'error');}
 }
 function kitPublishStatus(text,state='info'){
  const node=$('#kitPublishStatus');node.textContent=text;node.dataset.state=state;
@@ -448,6 +497,7 @@ async function saveDraft(){
  finally{b.disabled=false;}
 }
 async function search(){
+ if(!kitStockReady)return status('Atualize o catálogo e importe a disponibilidade WeDrop antes de gerar kits.','error');
  if(generationBusy)return;
  if(marginTimer)clearTimeout(marginTimer);
  marginRevision++;marginUpdatePending=false;$('#kitSaveDraft').disabled=false;
@@ -566,6 +616,7 @@ async function uploadPhoto(slot,file){
  }catch(error){imageStatus('Falha ao importar imagem: '+error.message,'error');}
 }
 async function plusResearch(){
+ if(!kitStockReady)return status('Estoque WeDrop não conferido; importação obrigatória.','error');
  const btn=$('#kitPlusResearch');btn.disabled=true;
  try{
   const r=await api('/api/shopee/kits/plus-brief',{body:{
@@ -577,6 +628,7 @@ async function plusResearch(){
  finally{btn.disabled=false;}
 }
 async function importPlusSuggestions(){
+ if(!kitStockReady)return status('Estoque WeDrop não conferido; não é permitido importar kits.','error');
  const btn=$('#kitPlusImport');btn.disabled=true;
  try{
   const size=Number($('#kitSize').value);
@@ -681,6 +733,11 @@ for(const [selector,step] of [['#kitMarginPlus',1],['#kitMarginMinus',-1]]){
  $(selector)?.addEventListener('click',()=>setKitMargin(Number($('#kitMargin').value)+step,{recalculate:true}));
 }
 setKitMargin($('#kitMargin').value);
+$('#kitStockCsv')?.addEventListener('change',()=>{
+ $('#kitStockImport').disabled=!$('#kitStockCsv').files?.length;
+});
+$('#kitStockImport')?.addEventListener('click',()=>void importKitStockCsv());
+$('#kitStockReload')?.addEventListener('click',()=>{categoriesLoaded=false;void categories(true);});
 $('#kitSuggest')?.addEventListener('click',()=>void search());
 $('#kitPlusResearch')?.addEventListener('click',()=>void plusResearch());
 $('#kitPlusImport')?.addEventListener('click',()=>void importPlusSuggestions());
