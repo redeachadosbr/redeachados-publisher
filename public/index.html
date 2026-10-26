@@ -31,7 +31,7 @@
 <link rel="stylesheet" href="/ads-premium.css?v=2.4.0-seo-ads-location">
 <link rel="stylesheet" href="/sidebar-collapse.css?v=1.0.0">
 <link rel="stylesheet" href="/optimizer-image-studio.css?v=1.0.2">
-<link rel="stylesheet" href="/kit-builder.css?v=1.4.0-kit-publication">
+<link rel="stylesheet" href="/kit-builder.css?v=1.5.0-formal-kit-promo">
 <link rel="stylesheet" href="/optimizer-technical-studio.css?v=1.0.1-review-feedback">
 <style>
 /* Retomada da SKU visível junto à barra de acompanhamento. A API só é
@@ -949,6 +949,7 @@
    <div class="kit-review-checkboxes">
     <label><input type="checkbox" id="kitContentsReviewed"/> Confirmei que as SKUs, quantidades e o componente principal são os corretos.</label>
     <label><input type="checkbox" id="kitPhotosReviewed"/> Conferi todas as fotos: mostram os componentes reais do kit, sem imagens ou especificações inventadas.</label>
+    <label><input type="checkbox" id="kitSingleParcelConfirmed"/> Confirmei que todos os componentes da WeDrop poderão ser enviados JUNTOS, no mesmo pacote, dentro do prazo e com embalagem adequada.</label>
    </div>
    <div class="kit-actions">
     <button id="kitSendPhotos" type="button" class="kit-secondary">Enviar imagens importadas à galeria da Shopee</button>
@@ -967,7 +968,18 @@
      <a id="kitOpenDiscounts" href="/app/descontos" class="kit-secondary">Abrir Descontos preparados</a>
      <a id="kitOpenSeller" href="https://seller.shopee.com.br/portal/vsku/list" class="kit-secondary" target="_blank" rel="noopener noreferrer">Ver Meus Kits na Shopee</a>
     </div>
-    <p class="kit-info">A oferta será preparada com o novo Item ID da Shopee. A Minha Promoção exige campanha válida e validações do sistema; não é aplicada automaticamente na criação do kit.</p>
+    <div class="kit-publish-fields">
+     <label>ID da Minha Promoção existente na Shopee<input type="text" inputmode="numeric" id="kitDiscountId" placeholder="ID da campanha" autocomplete="off"></label>
+    </div>
+    <div class="kit-actions">
+     <button id="kitDiscountPreview" type="button" class="kit-secondary">Preparar prévia do desconto do kit</button>
+    </div>
+    <div id="kitDiscountPreviewBox" hidden class="kit-publish-preview">
+     <h4>Prévia da Minha Promoção — aprovação separada</h4>
+     <pre id="kitDiscountSummary"></pre>
+     <button id="kitDiscountExecute" type="button" class="kit-primary">Confirmar e aplicar desconto ao Kit Formal</button>
+    </div>
+        <p class="kit-info">A oferta será preparada com o novo Item ID da Shopee. A Minha Promoção exige campanha válida e validações do sistema; não é aplicada automaticamente na criação do kit.</p>
    </div>
   </section>
  </section>
@@ -1825,7 +1837,7 @@
 <script src="/technical-memory.js?v=1.0.1-live-sku-preload"></script>
 <script src="/technical-status.js?v=1.0.0-optional-coherence"></script>
 <script src="/app.js?v=1.21.82-media-technical-fix-dual-centavos-09-v4"></script>
-<script type="module" src="/kit-builder.js?v=1.4.0-kit-publication"></script>
+<script type="module" src="/kit-builder.js?v=1.5.0-formal-kit-promo"></script>
 <link rel="stylesheet" href="/optimizer-variations.css?v=1.2.1-single-flow">
 <script src="/optimizer-variations.js?v=1.2.3-single-flow"></script>
 
