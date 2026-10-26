@@ -15,7 +15,7 @@ const evidence=[
 ].join('\n');
 
 test('SKU 2392: usa somente dimensoes declaradas na secao Especificacoes do texto WeDrop',()=>{
- const spec=confirmedSpecCard({sku:'2392',sourceText:evidence,attributes:[]});
+ const spec=confirmedSpecCard({sku:'2392',sourceText:evidence,sourceEvidenceSku:'2392',supplierMatchedBy:'exact-sku',attributes:[]});
  assert.deepEqual(spec.measurements.map(x=>x.value),['75 cm','63 cm','117 cm']);
  assert.deepEqual(spec.measurements.map(x=>x.label),['ALTURA','LARGURA','COMPRIMENTO']);
  assert.equal(spec.details,undefined);
@@ -26,10 +26,9 @@ test('SKU 2392: usa somente dimensoes declaradas na secao Especificacoes do text
 test('prompt 03 informa somente medidas confirmadas pela SKU e fotografa sem numeros inventados',()=>{
  const x=createChatGptPrompts({sku:'2392',title:'Bicicleta Infantil Moto Cross Rosa',
   supplierSourceText:evidence});
- assert.match(x.prompts[2],/ALTURA: 75 cm/);
- assert.match(x.prompts[2],/LARGURA: 63 cm/);
- assert.match(x.prompts[2],/COMPRIMENTO: 117 cm/);
- assert.match(x.prompts[2],/NÃO escreva nenhuma palavra, número, unidade/);
+ assert.match(x.prompts[2],/FOTOGRAFIA BASE SEM QUALQUER TEXTO/);
+ assert.doesNotMatch(x.prompts[2],/ALTURA: 75 cm|LARGURA: 63 cm|COMPRIMENTO: 117 cm/);
+ assert.deepEqual(x.confirmedDimensions.measurements.map(x=>x.value),['75 cm','63 cm','117 cm']);
  assert.doesNotMatch(x.prompts[2],/48 cm|58 cm|68 cm|72 cm|35 cm/);
 });
 test('imagem 03 aplica apenas medidas depois de receber a foto no Manager',()=>{
@@ -39,7 +38,9 @@ test('imagem 03 aplica apenas medidas depois de receber a foto no Manager',()=>{
  const hash=app.indexOf("const sha256=await imageBlobSha256(prepared.blob)",img);
  assert(img>0&&hash>img);
  const block=app.slice(img,hash);
- assert.match(block,/confirmedSpecCard\(\{sourceText:w\.sourceEvidence\?\.sourceText\|\|''\}\)/);
+ assert.match(block,/confirmedSpecCard\(\{/);
+ assert.match(block,/sourceEvidenceSku:w\.sourceEvidence\?\.sku/);
+ assert.match(block,/supplierMatchedBy:w\.supplierProduct\?\.matchedBy/);
  assert.match(block,/addConfirmedSpecificationCard/);
  assert.match(card,/confirmedProductDimensionsFromWeDrop\(sourceText\)/);
  assert.doesNotMatch(card,/MEDIDAS DO CAMINHÃO|CARACTERÍSTICAS CONFIRMADAS|Material: plástico/);
@@ -51,4 +52,19 @@ test('rejeita peso, medidas soltas, medida da embalagem e conflitos',()=>{
  assert.equal(confirmedProductDimensionsFromWeDrop('Dimensões da embalagem: 40cm altura x 50cm largura x 60cm comprimento'),null);
  const conflicts='Dimensões: 75cm altura x 63cm largura x 117cm comprimento\nDimensões: 90cm altura x 63cm largura x 117cm comprimento';
  assert.equal(confirmedProductDimensionsFromWeDrop(conflicts),null);
+});
+
+test('imagem 03 NÃO combina especificações de outra SKU ou WeDrop sem vínculo',()=>{
+ const correct={sku:'684BR',sourceEvidenceSku:'684BR',supplierMatchedBy:'exact-sku',
+  sourceText:'Dimensões: 18cm altura x 14cm largura x 20cm comprimento'};
+ assert.equal(confirmedSpecCard({...correct,sourceEvidenceSku:'2392'}),null);
+ assert.equal(confirmedSpecCard({...correct,supplierMatchedBy:''}),null);
+ assert.equal(confirmedSpecCard({...correct,supplierMatchedBy:'inferred'}),null);
+ assert.deepEqual(confirmedSpecCard(correct)?.measurements.map(x=>x.value),['18 cm','14 cm','20 cm']);
+});
+test('medidas do conjunto/pista montada não são medidas individuais do caminhão',()=>{
+ const source='Dimensões da pista montada: Aproximadamente 60cm de comprimento x 52,1cm de largura x 13,4cm de altura';
+ assert.equal(confirmedProductDimensionsFromWeDrop(source),null);
+ assert.equal(confirmedSpecCard({sourceText:source,sku:'684BR',sourceEvidenceSku:'684BR',
+  supplierMatchedBy:'reviewed-link'}),null);
 });
