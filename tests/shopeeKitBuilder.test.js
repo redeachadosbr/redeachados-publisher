@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {categoryMatches,kitCatalog,kitSku,composeKit,suggestKits,kitCreative,kitPrompts} from '../shopeeKitBuilder.js';
+import {categoryMatches,kitCatalog,kitSku,composeKit,suggestKits,kitCreative,kitPrompts,kitPlusResearchBrief,kitPlusContentPrompt} from '../shopeeKitBuilder.js';
 
 test('kits por categoria: custo exato, somatório, dois finais 0/9, prompts e proteção por SKU',async()=>{
  const oldFetch=globalThis.fetch,oldBase=process.env.SUPABASE_URL,oldKey=process.env.SUPABASE_SECRET_KEY;
@@ -58,7 +58,15 @@ test('kits por categoria: custo exato, somatório, dois finais 0/9, prompts e pr
   assert.ok(creative.title.includes('Garrafa'));
   assert.ok(creative.description.includes('CO400'));
   assert.equal(creative.prompts.length,9);
-  const proposed=await suggestKits(935127,{category:'Cozinha',size:2,ai:false,marginPct:15});
+  const brief=await kitPlusResearchBrief(935127,{category:'Cozinha',size:2});
+  assert.match(brief.prompt,/GA500/);
+  assert.match(brief.prompt,/ES01/);
+  assert.match(brief.prompt,/somente uma linha por kit/i);
+  assert.ok(brief.candidatesCount>=2);
+  const contentPrompt=kitPlusContentPrompt(kit);
+  assert.match(contentPrompt,/GA500/);
+  assert.match(contentPrompt,/CO400/);
+  const proposed=await suggestKits(935127,{category:'Cozinha',size:2,ai:true,marginPct:15});
   assert.ok(proposed.results.length>=1);
   assert.equal(proposed.results[0].shopeePublished,false);
   assert.match(proposed.source,/heurística/);
@@ -83,4 +91,17 @@ test('interface e endpoints de kits isolam publicações',async()=>{
  assert.match(html,/id="kitSuggest"/);
  assert.match(html,/id="kitGenerateAll"/);
  assert.match(app,/kits:\{slug:'kits'/);
+ assert.match(html,/id="kitPlusResearch"/);
+ assert.match(html,/id="kitPlusImport"/);
+ assert.match(html,/id="kitPlusTextResult"/);
+ assert.match(html,/id="kitOpenContentPrompt"/);
+ assert.match(html,/ChatGPT Plus · Sem API/);
+ const builder=fs.readFileSync(new URL('../shopeeKitBuilder.js',import.meta.url),'utf8');
+ const browser=fs.readFileSync(new URL('../public/kit-builder.js',import.meta.url),'utf8');
+ assert.doesNotMatch(builder,/api\.openai\.com|openAiApiKey|chatJson\(/);
+ assert.doesNotMatch(browser,/\/api\/shopee\/kits\/image|generatePhoto\(/);
+ assert.match(server,/Geração paga desativada para kits/);
+ assert.match(server,/\/api\/shopee\/kits\/plus-brief/);
+ assert.match(server,/\/api\/shopee\/kits\/plus-import/);
+ assert.match(server,/\/api\/shopee\/kits\/plus-content/);
 });
