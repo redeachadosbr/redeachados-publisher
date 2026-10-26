@@ -97,8 +97,13 @@ export function identifyWeDropLayout(headers){
     'peso (kg)','largura (cm)','altura (cm)','comprimento (cm)',
     'peso da caixa (kg)','imagem principal'
   ];
-  const isOfficial=expected.length===named.length&&expected.every((x,i)=>x===named[i]);
-  if(isOfficial)return {recognized:true,skuColumn:0,costColumn:6,schema:'wedrop-catalog-16'};
+  const validBase=expected.every((x,i)=>x===named[i]);
+  const withAvailability=validBase&&named.length===17&&named[16]==='disponibilidade';
+  const isOfficial=validBase&&named.length===16;
+  if(isOfficial||withAvailability)
+    return {recognized:true,skuColumn:0,costColumn:6,
+     schema:withAvailability?'wedrop-catalog-17-stock':'wedrop-catalog-16',
+     availabilityColumn:withAvailability?16:null};
   return {recognized:false,reason:'Layout não reconhecido com segurança. A coluna Preço de uma planilha genérica pode ser preço de venda.'};
 }
 export function prepareAutomaticWeDropImport(raw,{skipInvalid=false}={}){
@@ -153,7 +158,7 @@ export function prepareWeDropImport(raw,{skuColumn,costColumn,skipInvalid=false}
 // Product facts are trusted only in the official catalog layout. Preserve raw
 // values: supplier shipping measurements must not become assembled dimensions.
 export function prepareWeDropProducts(headers,rows,allowedSkus){
-  if(identifyWeDropLayout(headers).schema!=='wedrop-catalog-16')return [];
+  if(!['wedrop-catalog-16','wedrop-catalog-17-stock'].includes(identifyWeDropLayout(headers).schema))return [];
   const products=new Map();
   const code=(value,length)=>{
     const raw=String(value||'').trim();
@@ -163,6 +168,7 @@ export function prepareWeDropProducts(headers,rows,allowedSkus){
   for(const [index,row] of rows.entries()){
     const sku=skuText(row[0]);if(!sku||!allowedSkus.has(sku))continue;
     const data={name:row[1]||'',brand:row[2]||'',category:row[3]||'',supplier:row[4]||'',supplierState:row[5]||'',
+      ...(headers.length===17?{rawAvailability:String(row[16]||'').trim()}:{}),
       ean:String(row[7]||'').trim(),ncm:code(row[8],8),cest:code(row[9],7),
       rawNcm:String(row[8]||''),rawCest:String(row[9]||''),
       catalogMeasurements:{weightKg:String(row[10]||''),widthCm:String(row[11]||''),heightCm:String(row[12]||''),
