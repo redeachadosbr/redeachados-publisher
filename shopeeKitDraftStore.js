@@ -1,0 +1,56 @@
+// Rascunhos de kits WeDrop isolados por shop_id. Somente chave privada no servidor.
+const TABLE='shopee_wedrop_kit_drafts';
+const shop=id=>{const n=Number(id);if(!Number.isSafeInteger(n)||n<=0)throw Error('Loja inválida.');return n;};
+function cfg(){
+ const base=String(process.env.SUPABASE_URL||'').replace(/\/$/,'');
+ const key=String(process.env.SUPABASE_SECRET_KEY||process.env.SUPABASE_SERVICE_ROLE_KEY||'');
+ if(!base.startsWith('https://')||!key)throw Error('Armazenamento de kits indisponível.');
+ const headers={apikey:key,Accept:'application/json','Content-Type':'application/json'};
+ if(key.startsWith('eyJ'))headers.Authorization='Bearer '+key;
+ return {base,headers};
+}
+async function request(query,options={}){
+ const c=cfg();
+ const r=await fetch(c.base+'/rest/v1/'+TABLE+query,{
+  method:options.method||'GET',
+  headers:{...c.headers,...(options.prefer?{Prefer:options.prefer}:{})},
+  ...(options.data?{body:JSON.stringify(options.data)}:{}),
+  signal:AbortSignal.timeout(17000)
+ });
+ if(!r.ok)throw Error('Não foi possível salvar/consultar o rascunho (HTTP '+r.status+').');
+ return r.status===204?[]:r.json();
+}
+export async function saveKitDraft(shopId,{kit,creative}){
+ const id=shop(shopId);
+ if(!/^KIT-[A-Z0-9-]{4,115}$/.test(String(kit?.kitSku||'')))throw Error('Código de kit inválido.');
+ const codes=kit.components?.map(x=>String(x.sku));
+ if(!Array.isArray(codes)||codes.length<2||codes.length>3||new Set(codes).size!==codes.length)
+  throw Error('Componentes inválidos.');
+ const title=String(creative?.title||'').trim().slice(0,120);
+ const description=String(creative?.description||'').trim().slice(0,2000);
+ if(title.length<10||description.length<80)throw Error('Preencha o título e a descrição antes de salvar.');
+ const draft={kit,creative:{title,description,source:String(creative.source||'rascunho revisado').slice(0,90)},
+  reviewed:false,shopeePublished:false};
+ const rows=await request('?on_conflict=shop_id,kit_sku',{
+  method:'POST',prefer:'resolution=merge-duplicates,return=representation',
+  data:[{shop_id:id,kit_sku:kit.kitSku,component_skus:codes,draft,updated_at:new Date().toISOString()}]
+ });
+ return {saved:Boolean(rows[0]),kitSku:kit.kitSku,updatedAt:rows[0]?.updated_at||null};
+}
+export async function listKitDrafts(shopId){
+ const rows=await request('?shop_id=eq.'+shop(shopId)+
+  '&select=kit_sku,component_skus,draft,updated_at&order=updated_at.desc&limit=30');
+ return rows.map(x=>({kitSku:x.kit_sku,skus:x.component_skus,
+  title:String(x.draft?.creative?.title||''),quote:x.draft?.kit?.quote,
+  updatedAt:x.updated_at}));
+}
+export async function loadKitDraft(shopId,kitSku){
+ const id=shop(shopId),code=String(kitSku||'').trim();
+ if(!/^KIT-[A-Z0-9-]{4,115}$/.test(code))throw Error('Código de kit inválido.');
+ const rows=await request('?shop_id=eq.'+id+'&kit_sku=eq.'+
+  encodeURIComponent(code)+'&select=kit_sku,component_skus,draft,updated_at&limit=1');
+ const row=rows[0];
+ if(!row)return null;
+ return {kitSku:row.kit_sku,skus:row.component_skus,
+  creative:row.draft?.creative||{},kit:row.draft?.kit||null,updatedAt:row.updated_at};
+}
