@@ -29,7 +29,7 @@ function currentSettings(){
  if(!Number.isFinite(marginPct)||marginPct<5||marginPct>65)throw Error('Margem deve ficar entre 5% e 65%.');
  if(!Number.isFinite(packing)||packing<0||packing>500||!Number.isFinite(shipping)||shipping<0||shipping>500)
   throw Error('Custos adicionais devem estar entre R$ 0 e R$ 500.');
- return {marginPct,packing,shipping,useAi:$('#kitUseAi').checked};
+ return {marginPct,packing,shipping,useAi:false};
 }
 async function categories(){
  if(categoriesLoaded)return;
@@ -59,7 +59,7 @@ function renderSuggestions(data){
   const pricing=elt('div','kit-mini-prices');
   const pairs=[['Custo WeDrop (soma)',money(kit.componentCost)],
    ['Anúncio bruto',money(kit.quote.grossPrice)],
-   ['Shopee após 20% / plano',money(kit.quote.marketplacePrice)],
+   ['Preço exibido Shopee',money(kit.quote.marketplacePrice)],
    ['Lucro líquido estimado',money(kit.quote.netProfit)]];
   for(const [label,value] of pairs){
    const cell=elt('div');cell.append(elt('span','',label),elt('b','',value));pricing.append(cell);
@@ -146,6 +146,11 @@ function renderKit(){
   const text=elt('div');text.append(elt('strong','',p.name),
     elt('small','','')); // Corrigido imediatamente abaixo sem HTML dinâmico.
   text.lastChild.textContent='SKU '+p.sku+' · 1 unidade · Custo '+money(p.unitCost);
+  if(p.imageUrl){
+   const link=elt('a','kit-reference-link','Abrir foto WeDrop para anexar no ChatGPT');
+   link.href=p.imageUrl;link.target='_blank';link.rel='noopener noreferrer';
+   text.append(link);
+  }
   card.append(text);items.append(card);
  }
  const prices=$('#kitNumbers');prices.replaceChildren();
@@ -169,28 +174,119 @@ function renderKit(){
 }
 function renderImageSlots(){
  const root=$('#kitImages');root.replaceChildren();
+ if(!prepared)return;
  for(let slot=1;slot<=9;slot++){
   const card=elt('div','kit-image-card'),image=images.get(slot);
   card.append(elt('strong','', 'Imagem '+String(slot).padStart(2,'0')));
   if(image){
-   const pic=elt('img');pic.src='data:image/png;base64,'+image;pic.alt='Imagem '+slot+' do kit gerada pela IA';card.append(pic);
+   const pic=elt('img');pic.src=image;pic.alt='Imagem '+slot+' do kit importada para revisão';card.append(pic);
    const download=elt('button','kit-secondary','Baixar PNG '+slot);
-   download.addEventListener('click',()=>downloadData('data:image/png;base64,'+image,
+   download.addEventListener('click',()=>downloadData(image,
     prepared.kit.kitSku+'-foto-'+String(slot).padStart(2,'0')+'.png'));
    card.append(download);
-  }else{
-   card.append(elt('div','kit-placeholder','Fotografia comercial '+slot+' ainda não gerada'));
-   const generate=elt('button','kit-secondary','Gerar esta foto');
-   generate.disabled=generationBusy;
-   generate.addEventListener('click',()=>void generatePhoto(slot));
-   card.append(generate);
-  }
-  const prompt=elt('button','kit-secondary','Copiar prompt '+slot);
-  prompt.disabled=generationBusy;
-  prompt.addEventListener('click',()=>void copy(prepared.creative.prompts[slot-1]));
-  card.append(prompt);root.append(card);
+  }else card.append(elt('div','kit-placeholder','Imagem '+slot+' · gere no ChatGPT Plus e importe aqui'));
+  const prompt=elt('button','kit-secondary','Copiar prompt + abrir ChatGPT');
+  prompt.type='button';
+  prompt.addEventListener('click',()=>chatgptHandoff(prepared.creative.prompts[slot-1]));
+  card.append(prompt);
+  const chooser=elt('input','kit-photo-upload');chooser.type='file';
+  chooser.accept='image/png,image/jpeg,image/webp';
+  chooser.setAttribute('aria-label','Importar foto '+slot+' gerada no ChatGPT Plus');
+  chooser.addEventListener('change',()=>void uploadPhoto(slot,chooser.files?.[0]));
+  card.append(chooser);
+  root.append(card);
  }
 }
+function chatgptHandoff(prompt){
+ // A aba precisa abrir no clique, não depois de um await, para que o
+ // navegador não a bloqueie. Nenhuma credencial ou cookie é repassado.
+ const opened=window.open('https://chatgpt.com/','_blank','noopener,noreferrer');
+ navigator.clipboard.writeText(prompt).then(()=>{
+  imageStatus('Prompt copiado. No ChatGPT Plus, cole com Ctrl+V; para imagens, anexe as fotos originais de TODAS as SKUs. Ao terminar, volte e importe o resultado.','success');
+ }).catch(()=>imageStatus('Cópia automática bloqueada: utilize os botões de copiar ou selecione o prompt no campo.','error'));
+ if(!opened)imageStatus('O navegador pode ter bloqueado a nova aba. Abra chatgpt.com manualmente; o prompt pode estar na área de transferência.','info');
+}
+async function uploadPhoto(slot,file){
+ if(!file)return;
+ if(!['image/png','image/jpeg','image/webp'].includes(file.type)||file.size>12*1024*1024){
+  imageStatus('Imagem '+slot+': envie PNG, JPG ou WebP até 12 MB.','error');return;
+ }
+ try{
+  const bitmap=await createImageBitmap(file);
+  try{
+   const canvas=document.createElement('canvas');
+   canvas.width=1200;canvas.height=1200;
+   const ctx=canvas.getContext('2d');
+   ctx.fillStyle='#ffffff';ctx.fillRect(0,0,1200,1200);
+   const scale=Math.min(1200/bitmap.width,1200/bitmap.height);
+   const w=Math.round(bitmap.width*scale),h=Math.round(bitmap.height*scale);
+   ctx.drawImage(bitmap,Math.floor((1200-w)/2),Math.floor((1200-h)/2),w,h);
+   images.set(slot,canvas.toDataURL('image/png'));
+  }finally{bitmap.close();}
+  renderImageSlots();
+  imageStatus('Imagem '+slot+' importada em PNG 1200 × 1200 para conferência. Imagens permanecem nesta aba e não são publicadas.','success');
+ }catch(error){imageStatus('Falha ao importar imagem: '+error.message,'error');}
+}
+async function plusResearch(){
+ const btn=$('#kitPlusResearch');btn.disabled=true;
+ try{
+  const r=await api('/api/shopee/kits/plus-brief',{body:{
+   category:$('#kitCategory').value,size:Number($('#kitSize').value)
+  }});
+  chatgptHandoff(r.prompt);
+  status('Pesquisa preparada para ChatGPT Plus com '+r.candidatesCount+' SKUs reais. Depois cole aqui somente os códigos por kit, separados por |.','success');
+ }catch(error){status(error.message,'error');}
+ finally{btn.disabled=false;}
+}
+async function importPlusSuggestions(){
+ const btn=$('#kitPlusImport');btn.disabled=true;
+ try{
+  const size=Number($('#kitSize').value);
+  const lines=$('#kitPlusOutput').value.split(/\r?\n/).map(x=>x.trim()).filter(Boolean);
+  if(!lines.length||lines.length>8)throw Error('Cole entre 1 e 8 linhas com SKUs reais.');
+  const kits=lines.map(l=>{
+   const sku=l.replace(/^[•*-\s]+/,'').split('|').map(x=>x.trim()).filter(Boolean);
+   if(sku.length!==size||new Set(sku).size!==size)throw Error('Cada linha precisa conter '+size+' SKUs diferentes separados por |.');
+   return sku;
+  });
+  const r=await api('/api/shopee/kits/plus-import',{body:{
+   category:$('#kitCategory').value,size,kits,...currentSettings()
+  }});
+  renderSuggestions(r);
+  status('Sugestões do ChatGPT Plus recebidas. Todos os SKUs e custos foram revalidados pelo sistema.','success');
+ }catch(error){status('Não foi possível importar sugestões: '+error.message,'error');}
+ finally{btn.disabled=false;}
+}
+async function plusText(){
+ if(!prepared)return;
+ const btn=$('#kitPlusText');btn.disabled=true;
+ try{
+  const r=await api('/api/shopee/kits/plus-content',{body:{
+   skus:prepared.kit.components.map(x=>x.sku),...currentSettings()
+  }});
+  if(r.kitSku!==prepared.kit.kitSku)throw Error('SKU de kit diferente.');
+  chatgptHandoff(r.prompt);
+  status('Prompt para título e descrição copiado. Cole no ChatGPT Plus e importe a resposta neste painel.','success');
+ }catch(error){status('Não foi possível preparar texto: '+error.message,'error');}
+ finally{btn.disabled=false;}
+}
+function importPlusText(){
+ if(!prepared)return;
+ const raw=$('#kitPlusTextResult').value.trim();
+ const title=raw.match(/(?:^|\n)\s*(?:T[ÍI]TULO)\s*:\s*(.+)/i);
+ const start=raw.search(/(?:^|\n)\s*DESCRI[ÇC][ÃA]O\s*:/i);
+ if(!title||start<0){
+  status('A resposta precisa ter TÍTULO: e DESCRIÇÃO: para evitar importar texto incompleto.','error');return;
+ }
+ const description=raw.slice(start).replace(/^\s*DESCRI[ÇC][ÃA]O\s*:\s*/i,'').trim();
+ if(title[1].trim().length<10||title[1].trim().length>120||description.length<80||description.length>2000){
+  status('Título de 10 a 120 caracteres e descrição de 80 a 2000 caracteres são necessários.','error');return;
+ }
+ $('#kitTitle').value=title[1].trim();
+ $('#kitDescription').value=description;
+ status('Título e descrição importados para revisão. Salve o rascunho quando estiverem corretos.','success');
+}
+
 async function prepare(kit){
  if(generationBusy)return;
  status('Gerando composição comercial do kit '+kit.kitSku+'...', 'info');
@@ -209,33 +305,12 @@ async function copy(text){
 function downloadData(url,name){
  const a=elt('a');a.href=url;a.download=name;document.body.append(a);a.click();a.remove();
 }
-async function generatePhoto(slot){
- if(!prepared||generationBusy)return false;
- generationBusy=true;renderImageSlots();$('#kitGenerateAll').disabled=true;
- imageStatus('Gerando imagem '+slot+'/9 com referências WeDrop das '+prepared.kit.components.length+' SKUs...', 'info');
- try{
-  const result=await api('/api/shopee/kits/image',{body:{
-   skus:prepared.kit.components.map(x=>x.sku),slot,...currentSettings()
-  }});
-  if(result.kitSku!==prepared.kit.kitSku)throw Error('Imagem retornou uma SKU de kit diferente.');
-  images.set(slot,result.base64);
-  imageStatus('Foto '+slot+' disponível para baixar. Confira cada componente antes de aprovar.','success');
-  return true;
- }catch(error){imageStatus('Foto '+slot+' não gerada: '+error.message,'error');return false;}
- finally{generationBusy=false;$('#kitGenerateAll').disabled=false;renderImageSlots();}
+function openChatGPTImages(){
+ if(!prepared)return;
+ chatgptHandoff(prepared.creative.prompts.join('\n\n--- PRÓXIMA IMAGEM ---\n\n'));
+ imageStatus('Copiadas as nove instruções. Gere e importe cada imagem separadamente; anexe ao ChatGPT as fotos de referência de todas as SKUs.','success');
 }
-async function generateAll(){
- if(!prepared||generationBusy)return;
- $('#kitGenerateAll').disabled=true;
- try{
-  for(let i=1;i<=9;i++){
-   if(images.has(i))continue;
-   const ok=await generatePhoto(i);
-   if(!ok)break;
-  }
-  if(images.size===9)imageStatus('As 9 fotografias foram geradas. Confira fidelidade e baixe cada PNG; não foram enviadas à Shopee.','success');
- }finally{$('#kitGenerateAll').disabled=false;}
-}
+
 function exportPack(){
  if(!prepared)return;
  const {kit,creative}=prepared;
@@ -261,7 +336,12 @@ function exportPack(){
  setTimeout(()=>URL.revokeObjectURL(url),60000);
 }
 $('#kitSuggest')?.addEventListener('click',()=>void search());
-$('#kitGenerateAll')?.addEventListener('click',()=>void generateAll());
+$('#kitPlusResearch')?.addEventListener('click',()=>void plusResearch());
+$('#kitPlusImport')?.addEventListener('click',()=>void importPlusSuggestions());
+$('#kitPlusText')?.addEventListener('click',()=>void plusText());
+$('#kitImportText')?.addEventListener('click',importPlusText);
+
+$('#kitGenerateAll')?.addEventListener('click',openChatGPTImages);
 $('#kitDownloadPack')?.addEventListener('click',exportPack);
 $('#kitSaveDraft')?.addEventListener('click',()=>void saveDraft());
 $('#kitRefreshDrafts')?.addEventListener('click',()=>void loadDrafts());
