@@ -118,7 +118,7 @@ function pairCandidates(rows,category,limit=9){
  .slice(0,limit);
 }
 export function kitSku(skus){
- const ids=skus.map(s=>String(s).toUpperCase().replace(/[^A-Z0-9]/g,'').slice(0,22));
+ const ids=skus.map(s=>String(s).toUpperCase().replace(/[^A-Z0-9]/g,'').slice(0,22)).sort();
  return 'KIT-'+ids.join('-').slice(0,112);
 }
 export async function composeKit(shop,skus,{marginPct=15,packing=0,shipping=0}={}){
