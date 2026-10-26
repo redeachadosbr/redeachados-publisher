@@ -137,52 +137,108 @@ function currentSettings(){
   throw Error('Custos adicionais devem estar entre R$ 0 e R$ 500.');
  return {marginPct,packing,shipping,useAi:false};
 }
+function kitDateTime(value){
+ if(!value)return 'Não informado';
+ const n=Date.parse(value);
+ return Number.isFinite(n)?new Date(n).toLocaleString('pt-BR'):'Não informado';
+}
 function displayKitStockGate(stock,catalogCount){
  kitStockReady=stock?.ready===true;
  kitStockLastCheck=stock||null;
+ const catalogDate=Date.parse(stock?.catalogLastImportedAt||'');
+ const catalogFresh=Number.isFinite(catalogDate)&&catalogDate<=Date.now()&&
+  Date.now()-catalogDate<=24*60*60*1000;
  const gate=$('#kitStockGate');
  gate.dataset.ready=kitStockReady?'yes':'no';
- $('#kitStockHeadline').textContent=kitStockReady?
-  '✓ Catálogo e estoque WeDrop atualizados — somente SKUs DISPONÍVEIS':
-  'Atualize o catálogo e importe os status de estoque antes de gerar kits';
- const date=value=>value?new Date(value).toLocaleString('pt-BR'):'não informado';
- $('#kitStockStamp').textContent=kitStockReady?
-  'Válido até '+date(stock.expiresAt):'Bloqueado';
- $('#kitStockExplanation').textContent=(stock?.reason||'Não foi possível comprovar estoque.')+
-  ' · Catálogo: '+date(stock?.catalogLastImportedAt)+
-  ' · Estoque: '+date(stock?.lastSuccessAt)+
-  ' · Disponíveis: '+Number(stock?.availableCount||0)+
-  ' · Indisponíveis: '+Number(stock?.unavailableCount||0)+
-  ' · Sem status no último arquivo: '+Math.max(0,Number(catalogCount||0)-Number(stock?.importedCount||0))+
-  '. Atualize no máximo a cada 24 horas.';
+ $('#tab-kits').classList.toggle('kit-stock-blocked',!kitStockReady);
+ $('#kitStockBlocked').hidden=kitStockReady;
+ $('#kitCatalogCard').dataset.ready=catalogFresh?'yes':'no';
+ $('#kitAvailabilityCard').dataset.ready=kitStockReady?'yes':'no';
+ $('#kitCatalogHeadline').textContent=catalogFresh?'Catálogo WeDrop atualizado':'Catálogo WeDrop desatualizado';
+ $('#kitCatalogDate').textContent='Última atualização: '+kitDateTime(stock?.catalogLastImportedAt);
+ $('#kitCatalogBadge').textContent=catalogFresh?'Atualizado':'Desatualizado';
+ $('#kitStockHeadline').textContent=kitStockReady?'Estoque WeDrop atualizado':'Estoque WeDrop não importado';
+ $('#kitStockSubhead').textContent='Última importação: '+kitDateTime(stock?.lastSuccessAt)+
+  ' · SKUs com status: '+Number(stock?.importedCount||0);
+ $('#kitStockStamp').textContent=kitStockReady?'Disponibilidade validada':'Importação pendente';
+ $('#kitStockExplanation').textContent=kitStockReady?
+  'Disponíveis: '+Number(stock?.availableCount||0)+' · Indisponíveis: '+
+  Number(stock?.unavailableCount||0)+' · Sem informação no arquivo: '+
+  Math.max(0,Number(catalogCount||0)-Number(stock?.importedCount||0))+
+  '. A validade termina em '+kitDateTime(stock.expiresAt)+'.':
+  'Importe a disponibilidade da WeDrop para liberar a geração de kits. CSV e Excel com SKU + Disponibilidade são aceitos.';
+ $('#kitBlockedTag').textContent=kitStockReady?'Geração liberada':'⊘ Geração de kits indisponível';
  for(const selector of ['#kitSuggest','#kitPlusResearch','#kitPlusImport'])
   $(selector).disabled=!kitStockReady;
+ $('#kitSource').textContent=kitStockReady?'Origem: WeDrop · estoque verificado':'ⓘ Indisponível no momento';
  if(!kitStockReady){
   suggestions=[];suggestionContext=null;prepared=null;images.clear();
-  $('#kitSuggestions').replaceChildren(elt('p','', 'Geração bloqueada até importar a disponibilidade WeDrop. Não serão usados SKUs sem status confiável.'));
+  $('#kitSuggestions').replaceChildren(elt('p','',
+   'Geração bloqueada até atualizar o catálogo e importar a disponibilidade WeDrop.'));
   $('#kitDetail').hidden=true;
   status('Atualização obrigatória: '+(stock?.reason||'Importe o catálogo e os status WeDrop.'),'error');
- }
+ }else status('Estoque WeDrop confirmado. Escolha a categoria e pesquise kits compatíveis.','success');
+}
+function kitUploadFeedback(selector,message,error=false){
+ const node=$(selector);node.textContent=message;node.dataset.state=error?'error':'success';
+}
+async function readKitImportFile(file,purpose){
+ if(!file||!file.size||file.size>4_000_000)
+  throw Error('Selecione um CSV ou Excel de até 4 MB.');
+ const ext=(file.name.split('.').pop()||'').toLowerCase();
+ if(!['csv','xlsx','xls'].includes(ext))
+  throw Error('Formato inválido. Envie CSV, XLSX ou XLS da WeDrop.');
+ if(ext==='csv')return {csv:await file.text(),name:file.name,format:'csv'};
+ const base64=await new Promise((resolve,reject)=>{
+  const reader=new FileReader();
+  reader.onload=()=>resolve(String(reader.result||'').split(',')[1]||'');
+  reader.onerror=()=>reject(Error('Não foi possível ler a planilha Excel.'));
+  reader.readAsDataURL(file);
+ });
+ if(!base64)throw Error('O Excel está vazio.');
+ const result=await api('/api/shopee/wedrop/convert-excel',{body:{
+  base64,fileName:file.name,purpose
+ }});
+ return {csv:result.csv,name:file.name,format:result.format,sheet:result.sheetName};
+}
+async function importKitCatalogFile(){
+ const file=$('#kitCatalogFile').files?.[0],btn=$('#kitCatalogImport');
+ if(!file)return kitUploadFeedback('#kitCatalogImportStatus','Escolha um catálogo CSV ou Excel.',true);
+ btn.disabled=true;
+ kitUploadFeedback('#kitCatalogImportStatus','Validando arquivo, SKUs, custos e informações WeDrop...');
+ try{
+  const incoming=await readKitImportFile(file,'catalog');
+  const result=await api('/api/shopee/wedrop/auto/import',{body:{
+   csv:incoming.csv,fileName:incoming.name
+  }});
+  kitUploadFeedback('#kitCatalogImportStatus','✓ Catálogo atualizado: '+
+   result.uniqueCosts+' SKUs com custo. '+(result.stockImported?
+   'Disponibilidade importada no mesmo arquivo.':'A disponibilidade ainda precisa ser importada separadamente. ')+
+   (incoming.sheet?'Aba Excel: '+incoming.sheet+'.':''));
+  categoriesLoaded=false;
+  await categories(true);
+ }catch(error){
+  kitUploadFeedback('#kitCatalogImportStatus','Importação não concluída: '+error.message,true);
+ }finally{btn.disabled=!$('#kitCatalogFile').files?.length;}
 }
 async function importKitStockCsv(){
- const file=$('#kitStockCsv').files?.[0];
- if(!file)return $('#kitStockImportStatus').textContent='Selecione um CSV exportado da WeDrop com SKU e Disponibilidade.';
- if(file.size>4_000_000||file.size===0)
-  return $('#kitStockImportStatus').textContent='Arquivo deve conter dados e ter no máximo 4 MB.';
- const button=$('#kitStockImport');button.disabled=true;
- $('#kitStockImportStatus').textContent='Conferindo linhas, SKUs e disponibilidade do catálogo...';
+ const file=$('#kitStockCsv').files?.[0],btn=$('#kitStockImport');
+ if(!file)return kitUploadFeedback('#kitStockImportStatus','Escolha o arquivo de disponibilidade CSV ou Excel.',true);
+ btn.disabled=true;
+ kitUploadFeedback('#kitStockImportStatus','Conferindo SKUs e status DISPONÍVEL/INDISPONÍVEL...');
  try{
-  const csv=await file.text();
-  const result=await api('/api/shopee/kits/availability/import',{body:{csv}});
-  $('#kitStockImportStatus').textContent='✓ '+result.imported+
-   ' status importados: '+result.available+' DISPONÍVEIS e '+
-   result.unavailable+' INDISPONÍVEIS; '+result.notCovered+
-   ' SKUs não constam no arquivo e permanecem bloqueadas.';
-  categoriesLoaded=false;await categories(true);
+  const incoming=await readKitImportFile(file,'availability');
+  const result=await api('/api/shopee/kits/availability/import',{body:{csv:incoming.csv}});
+  kitUploadFeedback('#kitStockImportStatus','✓ '+result.imported+' status importados: '+
+   result.available+' DISPONÍVEIS, '+result.unavailable+' INDISPONÍVEIS; '+
+   result.notCovered+' SKUs sem informação permanecem bloqueadas. '+
+   (incoming.sheet?'Aba Excel: '+incoming.sheet+'.':''));
+  categoriesLoaded=false;
+  await categories(true);
  }catch(error){
-  $('#kitStockImportStatus').textContent='Importação não concluída: '+error.message+
-   ' Nenhum kit será gerado sem estoque confirmado.';
- }finally{button.disabled=!$('#kitStockCsv').files?.length;}
+  kitUploadFeedback('#kitStockImportStatus','Importação não concluída: '+error.message+
+   '. Nenhuma disponibilidade será presumida.',true);
+ }finally{btn.disabled=!$('#kitStockCsv').files?.length;}
 }
 async function categories(force=false){
  if(categoriesLoaded&&!force)return;
@@ -795,14 +851,30 @@ $('#kitShipping')?.addEventListener('input',()=>{
 $('#kitPacking')?.addEventListener('input',()=>scheduleKitMarginReprice());
 $('#kitTitle')?.addEventListener('input',onKitContentEdit);
 $('#kitDescription')?.addEventListener('input',onKitContentEdit);
-$('#kitStockCsv')?.addEventListener('change',()=>{
- $('#kitStockImport').disabled=!$('#kitStockCsv').files?.length;
-});
+for(const [fileSelector,buttonSelector,nameSelector] of [
+ ['#kitCatalogFile','#kitCatalogImport','#kitCatalogFileName'],
+ ['#kitStockCsv','#kitStockImport','#kitStockFileName']
+]){
+ $(fileSelector)?.addEventListener('change',()=>{
+  const file=$(fileSelector).files?.[0];
+  $(buttonSelector).disabled=!file;
+  $(nameSelector).textContent=file?file.name:'Nenhum arquivo selecionado';
+ });
+}
+$('#kitCatalogImport')?.addEventListener('click',()=>void importKitCatalogFile());
 $('#kitStockImport')?.addEventListener('click',()=>void importKitStockCsv());
 $('#kitStockReload')?.addEventListener('click',()=>{categoriesLoaded=false;void categories(true);});
 $('#kitSuggest')?.addEventListener('click',()=>void search());
 $('#kitPlusResearch')?.addEventListener('click',()=>void plusResearch());
 $('#kitPlusImport')?.addEventListener('click',()=>void importPlusSuggestions());
+$('#kitExpandResearch')?.addEventListener('click',()=>{
+ const expanded=$('#kitResearchDetails');
+ expanded.open=!expanded.open;
+ $('#kitExpandResearch').setAttribute('aria-expanded',expanded.open?'true':'false');
+});
+$('#kitResearchDetails')?.addEventListener('toggle',()=>{
+ $('#kitExpandResearch')?.setAttribute('aria-expanded',$('#kitResearchDetails').open?'true':'false');
+});
 $('#kitOpenResearchPrompt')?.addEventListener('click',()=>{
  const prompt=$('#kitResearchPrompt').value;
  if(prompt)chatgptHandoff(prompt);else status('Prepare primeiro a pesquisa com os SKUs WeDrop.','error');
