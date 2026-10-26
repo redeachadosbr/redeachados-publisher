@@ -189,6 +189,11 @@ function renderImageSlots(){
   prompt.type='button';
   prompt.addEventListener('click',()=>chatgptHandoff(prepared.creative.prompts[slot-1]));
   card.append(prompt);
+  const details=elt('details','kit-prompt-fallback');
+  const summary=elt('summary','','Ver prompt para copiar manualmente');
+  const field=elt('textarea');field.readOnly=true;field.rows=5;
+  field.value=prepared.creative.prompts[slot-1];
+  details.append(summary,field);card.append(details);
   const chooser=elt('input','kit-photo-upload');chooser.type='file';
   chooser.accept='image/png,image/jpeg,image/webp';
   chooser.setAttribute('aria-label','Importar foto '+slot+' gerada no ChatGPT Plus');
@@ -200,11 +205,12 @@ function renderImageSlots(){
 function chatgptHandoff(prompt){
  // A aba precisa abrir no clique, não depois de um await, para que o
  // navegador não a bloqueie. Nenhuma credencial ou cookie é repassado.
- const opened=window.open('https://chatgpt.com/','_blank','noopener,noreferrer');
+ window.open('https://chatgpt.com/','_blank','noopener,noreferrer');
  navigator.clipboard.writeText(prompt).then(()=>{
   imageStatus('Prompt copiado. No ChatGPT Plus, cole com Ctrl+V; para imagens, anexe as fotos originais de TODAS as SKUs. Ao terminar, volte e importe o resultado.','success');
  }).catch(()=>imageStatus('Cópia automática bloqueada: utilize os botões de copiar ou selecione o prompt no campo.','error'));
- if(!opened)imageStatus('O navegador pode ter bloqueado a nova aba. Abra chatgpt.com manualmente; o prompt pode estar na área de transferência.','info');
+ // Por segurança a nova aba não recebe acesso à janela da loja.
+ // Com noopener o navegador pode retornar null mesmo tendo aberto a aba.
 }
 async function uploadPhoto(slot,file){
  if(!file)return;
