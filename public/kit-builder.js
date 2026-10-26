@@ -146,6 +146,8 @@ function resetKitPublication({saved=false,publication=null}={}){
  kitSaved=saved;kitPublishBusy=false;kitReadiness=null;kitShopeePhotoSlots.clear();
  clearKitPublishApproval();
  kitItemId=publication?.itemId||null;
+ const uncertain=['publishing','uncertain','published_pending','published']
+  .includes(String(publication?.status||''));
  kitDiscountToken=null;$('#kitDiscountPreviewBox').hidden=true;
  $('#kitShopeePhotoCount').textContent='0 fotos enviadas à galeria da Shopee nesta sessão (não publicadas).';
  $('#kitContentsReviewed').checked=false;$('#kitPhotosReviewed').checked=false;
@@ -155,18 +157,19 @@ function resetKitPublication({saved=false,publication=null}={}){
  for(const p of prepared?.kit?.components||[])root.append(new Option(p.sku+' · '+p.name,p.sku));
  $('#kitLogisticId').replaceChildren(new Option('Consultar opções da Shopee',''));
  $('#kitPublishLinks').replaceChildren();
- $('#kitDiscountNext').hidden=!kitItemId;
- $('#kitPublishPreview').disabled=!saved||Boolean(kitItemId);
- $('#kitSendPhotos').disabled=!saved||Boolean(kitItemId);
- $('#kitPublishCheck').disabled=!saved||Boolean(kitItemId);
- $('#kitPublishExecute').disabled=!saved||Boolean(kitItemId);
+ $('#kitDiscountNext').hidden=!kitItemId&&!uncertain;
+ $('#kitPublishPreview').disabled=!saved||uncertain;
+ $('#kitSendPhotos').disabled=!saved||uncertain;
+ $('#kitPublishCheck').disabled=!saved||uncertain;
+ $('#kitPublishExecute').disabled=!saved||uncertain;
  $('#kitPublishedMessage').textContent=kitItemId?
   'Kit criado com Item ID '+kitItemId+' · Estado: '+String(publication.status)+
   '. O desconto será uma operação posterior, com aprovação própria.':'';
- kitPublishStatus(kitItemId?'Kit já enviado à Shopee. Verifique a publicação antes de preparar o desconto.':
+ kitPublishStatus(uncertain?
+  'Kit já enviado ou com resposta incerta. NÃO publique novamente; consulte Meus Kits e confirme o status com a Shopee.':
   saved?'Rascunho salvo. Consulte os vínculos dos componentes para preparar o kit na Shopee.':
   'Primeiro salve o rascunho com título, descrição e margem revisados.',
-  kitItemId?'success':'info');
+  kitItemId?'success':uncertain?'error':'info');
 }
 function kitPublishFields(){
  if(!prepared)throw Error('Selecione um kit.');
