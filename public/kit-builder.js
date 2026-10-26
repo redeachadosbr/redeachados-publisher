@@ -179,6 +179,7 @@ function kitPublishFields(){
   daysToShip:Number($('#kitDaysToShip').value),
   contentsReviewed:$('#kitContentsReviewed').checked,
   photosReviewed:$('#kitPhotosReviewed').checked,
+  imageIds:[...kitShopeePhotoSlots.entries()].sort((a,b)=>a[0]-b[0]).map(x=>x[1]),
   singleParcelConfirmed:$('#kitSingleParcelConfirmed').checked
  };
 }
@@ -222,7 +223,7 @@ async function kitSendPhotos(){
    if(kitShopeePhotoSlots.has(slot))continue;
    kitPublishStatus('Enviando foto '+slot+' para Shopee MediaSpace, SEM publicar o anúncio...');
    const result=await api('/api/shopee/kits/publish/media',{body:{
-    kitSku:prepared.kit.kitSku,mime:'image/png',imageBase64:photo.split(',')[1]
+    kitSku:prepared.kit.kitSku,slot,mime:'image/png',imageBase64:photo.split(',')[1]
    }});
    kitShopeePhotoSlots.set(slot,result.imageId);
    $('#kitShopeePhotoCount').textContent=kitShopeePhotoSlots.size+
