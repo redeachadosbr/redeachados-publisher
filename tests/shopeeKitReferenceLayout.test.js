@@ -123,3 +123,21 @@ test('duas telas: importação isolada e montagem completa preservada mesmo sem 
  assert.doesNotMatch(css,/kit-stock-blocked \.kit-overview.*display:none/);
  assert.doesNotMatch(css,/kit-stock-blocked #kitSuggestions\{display:none\}/);
 });
+
+test('importação única CSV/Excel com dois cartões de status e mapeamento explícito de custo',()=>{
+ const ids=['kitUnifiedFile','kitUnifiedImport','kitUnifiedStatus',
+  'kitCostMappingPanel','kitCostColumn','kitCostConfirm','kitCostMappingApply'];
+ for(const id of ids)assert.equal((page.match(new RegExp('id="'+id+'"','g'))||[]).length,1,id);
+ assert.match(page,/id="kitUnifiedFile"[^>]*accept="[^"]*\.csv,\.xlsx,\.xls/);
+ assert.ok(page.indexOf('id="kitUnifiedFile"')<page.indexOf('id="kitCatalogCard"'));
+ assert.match(css,/#tab-kits #kitCatalogCard \.kit-import-card-actions,#tab-kits #kitAvailabilityCard \.kit-import-card-actions\{display:none!important\}/);
+ assert.match(js,/async function analyzeAndImportWeDrop/);
+ assert.match(js,/async function confirmKitMappedCost/);
+ assert.match(js,/\/api\/shopee\/kits\/import\/inspect/);
+ assert.match(js,/\/api\/shopee\/wedrop\/validate/);
+ assert.match(js,/\/api\/shopee\/wedrop\/auto\/import/);
+ assert.match(js,/\/api\/shopee\/kits\/availability\/import/);
+ assert.match(js,/if\(!window\.confirm\('CONFIRMAR IMPORTAÇÃO DOS CUSTOS UNITÁRIOS WEDROP/);
+ assert.match(js,/stockFresh\?'Estoque WeDrop importado'/);
+ assert.match(js,/!catalogFresh\?'Geração bloqueada: catálogo de custos WeDrop desatualizado\.'/);
+});
