@@ -1803,7 +1803,8 @@ app.post('/api/shopee/optimizer/execution/prepare',mustLogin,requireWeDropAdmin,
      if(!/^\d{1,18}$/.test(campaignId))
       throw Error('Informe uma vez a campanha Minha Promoção na etapa Desconto; ela será incluída automaticamente na prévia única.');
      const financial=await discountExecutionInputs(req,sku,itemId,modelId,campaignId,{
-      allowModels:live.has_model===true,expectedModels:modelVariations});
+      allowModels:live.has_model===true,expectedModels:modelVariations,
+      allowOver25:req.body?.allowOver25===true});
      // Cada modelo tem custo próprio; a barra principal fornece UMA meta de margem.
      // Recalcular o preço BRUTO individual sem reduzir o desconto para mascarar custos.
      const settings=normalizeShopeePricingSettings({
@@ -2290,7 +2291,8 @@ app.post('/api/shopee/optimizer/execution/execute',mustLogin,requireWeDropAdmin,
      (approved.sku!==sku||String(approved.itemId)!==String(itemId)||String(approved.modelId)!==String(modelId)))
     throw Error('A aprovação da campanha pertence a outra SKU.');
    const fresh=(await discountExecutionInputs(req,sku,itemId,modelId,approved.discountId,{
-    allowModels:Boolean(plan.modelVariations),expectedModels:plan.modelVariations})).snapshot;
+    allowModels:Boolean(plan.modelVariations),expectedModels:plan.modelVariations,
+    allowOver25:approved.allowOver25===true&&req.body?.allowOver25===true})).snapshot;
    const fields=plan.modelVariations?
     ['discountId','gross','promo','buyerAfterCoupon','couponPct','discountPct','quoteAt']:
     ['shopId','sku','itemId','modelId','discountId','gross','promo','buyerAfterCoupon',
@@ -2433,7 +2435,7 @@ app.post('/api/shopee/optimizer/execution/reconcile',mustLogin,requireWeDropAdmi
   }
   else if(discountPhase&&job.plan?.commercialDiscount){
    const approved=job.plan.commercialDiscount.snapshot;
-   const snap=(await discountExecutionInputs(req,sku,itemId,modelId,approved.discountId)).snapshot;
+   const snap=(await discountExecutionInputs(req,sku,itemId,modelId,approved.discountId,{allowOver25:approved.allowOver25===true})).snapshot;
    if(snap.action==='already'&&Math.abs(Number(snap.originalPrice)-Number(approved.gross))<0.011&&
       Math.abs(Number(snap.promo)-Number(approved.promo))<0.011){
     updated=await reconcileShopeeJob(job,{state:'verified',
@@ -2572,7 +2574,7 @@ async function runOptimizerJobs(){
        }finally{activeDiscountWrites.delete(key);}
       },
       discountRead:async approved=>(await discountExecutionInputs(null,
-       approved.sku,approved.itemId,approved.modelId,approved.discountId)).snapshot,
+       approved.sku,approved.itemId,approved.modelId,approved.discountId,{allowOver25:approved.allowOver25===true})).snapshot,
       discountUpdatePrice:async approved=>{
        const {auth:a,cfg:c}=await getValidAuth();
        return callShopeeShopApi(c,{path:'/api/v2/product/update_price',method:'POST',
@@ -3465,7 +3467,7 @@ app.post('/api/shopee/optimizer/pricing/prepare',mustLogin,requireWeDropAdmin,as
 
 // O ID vem do usuário e é confirmado pela API da loja. A prévia somente lê.
 const activeDiscountWrites=new Set();
-async function discountExecutionInputs(req,sku,itemId,modelId,discountId,{allowModels=false,expectedModels=null,allowDeferredPreview=false}={}){
+async function discountExecutionInputs(req,sku,itemId,modelId,discountId,{allowModels=false,expectedModels=null,allowDeferredPreview=false,allowOver25=false}={}){
  const {auth,cfg}=await getValidAuth(req);
  const matches=await findExactCatalogSku(auth.shopId,sku);
  if(!matches.some(x=>String(x.itemId)===String(itemId)&&String(x.modelId)===String(modelId)))
@@ -3489,7 +3491,7 @@ async function discountExecutionInputs(req,sku,itemId,modelId,discountId,{allowM
  // A pesquisa é VÁLIDA. Quando o PREÇO escolhIDO pelo vendedor preserva
  // margem mínima acima do piso, não confundir preço do concorrente abaixo
  // do piso com desconto do vendedor abaixo do piso.
- const marketFloor=marketFloorDiscountEligibility(quote);
+ const marketFloor=marketFloorDiscountEligibility(quote,{allowOver25});
  if(!marketFloor.allowed)throw Error(marketFloor.message);
  const beforePublish=promotionFromQuote(quote);
  const attractiveVisiblePrice=value=>{
@@ -3567,7 +3569,7 @@ async function discountExecutionInputs(req,sku,itemId,modelId,discountId,{allowM
    quote,record,existing,originalPrice}),
    promotionSignal:promoMembership.kind,
    promotionNotice:promoMembership.warning,
-   marketFloorNotice:marketFloor.message};
+   marketFloorNotice:marketFloor.message,allowOver25:allowOver25===true};
  return {auth,cfg,quote,snapshot,originalPrice,deferred:publicationState.deferred,
   liveItemStatus:publicationState.status,
   liveStatusSource:listingStatus.source,baseItemStatus:listingStatus.baseStatus,
@@ -3727,7 +3729,8 @@ app.post('/api/shopee/optimizer/discounts/preview',mustLogin,requireWeDropAdmin,
   // UNLIST pode ser conferido/assinalado para o fluxo completo, mas nunca
   // recebe autorização de ESCRITA. A execução pedirá prévia NORMAL atualizada.
   const data=await discountExecutionInputs(req,sku,itemId,modelId,discountId,{
-   allowDeferredPreview:req.body?.allowDeferredPreview===true
+   allowDeferredPreview:req.body?.allowDeferredPreview===true,
+   allowOver25:req.body?.allowOver25===true
   });
   const signature=data.deferred?null:
    signDiscountPreview(data.snapshot,envText('SESSION_SECRET'));
@@ -3755,7 +3758,7 @@ app.post('/api/shopee/optimizer/discounts/execute',mustLogin,requireWeDropAdmin,
   activeDiscountWrites.add(lock);
   // Reconsultar preço, custo, SKU, campanha inteira e estado antes de QUALQUER escrita.
   const data=await discountExecutionInputs(req,approved.sku,approved.itemId,
-    approved.modelId,approved.discountId);
+    approved.modelId,approved.discountId,{allowOver25:approved.allowOver25===true&&req.body?.allowOver25===true});
   const current=data.snapshot;
   for(const key of ['shopId','sku','itemId','modelId','discountId','gross','promo',
     'buyerAfterCoupon','discountPct','couponPct','originalPrice','action','existingPrice','quoteAt',
