@@ -66,7 +66,7 @@ import {normalizeManualVideo} from './shopeeVideoValidation.js';
 import * as ShopeeMarktPro from './shopeeMarktPro.js';
 import {readPreparedImages,importPreparedImage,deletePreparedImage,reorderPreparedImage,downloadPreparedImage,imagesSignature,MAX_IMAGE_BYTES,rememberPublishedImages} from './shopeePreparedImages.js';
 import {generateOpenAiImage,imageGenerationStatus} from './shopeeOpenAiImages.js';
-import {generateKitImage} from './shopeeKitImages.js';
+import {generateKitImage,reference as kitReferencePhoto} from './shopeeKitImages.js';
 import {validateVariationName,variationImagePrompt,saveVariationImage,variationImagePreview,variationImageBytes,validateVariationDetails,reviewedVariationEvidence,variationSupplierIdentity,buildVariationPayload} from './shopeeVariationMedia.js';
 import {openAiKeyStatus,openAiApiKey,saveOpenAiApiKey,deleteOpenAiApiKey} from './shopeeOpenAiCredentials.js';
 import {compileAttributes,compileTax,attributeAuditForChanges,selectValidTechnicalChanges,sameData,fieldsVerified} from './shopeeStructuredFields.js';
@@ -526,6 +526,26 @@ app.post('/api/shopee/kits/plus-content',mustLogin,requireWeDropAdmin,async(req,
   });
   res.json({ok:true,kitSku:kit.kitSku,...kitContentBrief(kit,{manualFacts:req.body?.manualFacts||{}}),requiresReview:true,marketplaceUpdated:false});
  }catch(error){res.status(400).json({error:String(error.message||error).slice(0,300)});}
+});
+// Foto real de referência da WeDrop para cada SKU confirmada do kit.
+ // Proxy de imagens restrito ao domínio oficial do fornecedor: não usa API paga.
+app.get('/api/shopee/kits/reference-photo',mustLogin,requireWeDropAdmin,async(req,res)=>{
+ res.setHeader('Cache-Control','no-store');
+ try{
+  const {auth}=await getValidAuth(req);
+  const skus=String(req.query?.skus||'').split(',').map(x=>x.trim());
+  const index=Number(req.query?.index);
+  if(skus.length<2||skus.length>3||skus.some(x=>!x||x.length>90)||
+    !Number.isInteger(index)||index<0||index>=skus.length)
+   return res.status(400).json({error:'Selecione 2 ou 3 SKUs e a fotografia correspondente.'});
+  const kit=await composeKit(auth.shopId,skus,{marginPct:15,packing:0,shipping:0});
+  if(kit.components[index]?.sku!==skus[index])throw Error('O kit foi alterado. Reabra-o.');
+  if(!kit.components[index]?.imageUrl)return res.status(409).json({error:'SKU sem foto WeDrop.'});
+  const photo=await kitReferencePhoto(kit.components[index].imageUrl);
+  res.setHeader('Content-Type',photo.mime);
+  res.setHeader('Content-Length',String(photo.data.length));
+  res.send(photo.data);
+ }catch(error){res.status(400).json({error:String(error.message||error).slice(0,200)});}
 });
 const kitImageOperations=new Set();
 app.get('/api/shopee/kits/image/status',mustLogin,requireWeDropAdmin,async(req,res)=>{

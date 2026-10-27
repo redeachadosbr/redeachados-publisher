@@ -2,7 +2,7 @@
 // Não salva nem publica na Shopee; devolve PNG ao navegador para conferência.
 import {imageGenerationStatus} from './shopeeOpenAiImages.js';
 const HOST='wedrop-products-images.nyc3.cdn.digitaloceanspaces.com';
-async function reference(url){
+export async function reference(url){
  const target=new URL(url);
  if(target.protocol!=='https:'||target.hostname!==HOST||target.username||target.password)
   throw Error('Foto de produto WeDrop de origem não autorizada.');
