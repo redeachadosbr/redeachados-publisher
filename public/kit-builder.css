@@ -1609,3 +1609,12 @@
 #tab-kits #kitDetail .kit-plus-generation-status{padding:8px 10px;border-radius:8px;font-size:10.5px;line-height:1.45;background:#e6f2fd;color:#235583}
 #tab-kits #kitDetail .kit-plus-generation-status[data-state=success]{background:#e6f7ed;color:#137146}
 #tab-kits #kitDetail .kit-plus-generation-status[data-state=error]{background:#fff0ec;color:#9a3030}
+
+/* Ponte ChatGPT exclusiva do kit, sem API paga */
+#tab-kits #kitDetail .kit-extension-status{display:block;min-width:0;margin:7px 0;padding:10px 12px;border-radius:9px;border:1px solid #cbdff6;background:#eaf4ff;color:#244f80;font-size:11px;font-weight:750;line-height:1.5}
+#tab-kits #kitDetail .kit-extension-status[data-state=success]{background:#e8f8ee;color:#106c45;border-color:#bfe5d2}
+#tab-kits #kitDetail .kit-extension-status[data-state=error]{background:#fff0ed;color:#a13c35;border-color:#edc7c1}
+#tab-kits #kitDetail .kit-plus-primary-mode>#kitPlusManualFallback{align-self:flex-start;padding:7px 11px;min-height:32px;background:#fff;font-size:10px;color:#325b86}
+#tab-kits #kitDetail #kitStopExtension{background:#fff5ed;color:#a65126;border-color:#e9ccb6}
+#tab-kits #kitDetail #kitStopExtension[hidden]{display:none!important}
+#tab-kits #kitDetail #kitGenerateAll{background:linear-gradient(115deg,#ff5c35,#ff7830);color:#fff}

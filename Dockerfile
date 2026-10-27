@@ -29,6 +29,7 @@ RUN node --check shopeeExecutionProgress.js && node --check public/app.js && nod
 RUN node --check public/kit-seo-helper.js && node --test tests/kitContentSeo.test.js
 RUN node --check public/kit-measurements.js && node --test tests/kitSkuMeasurements.test.js
 RUN node --test tests/kitImageMasterPrompt.test.js && node --test tests/kitGalleryOrder.test.js && node --test tests/kitPlusImageBrief.test.js
+RUN node --check public/kit-extension-runtime.js && node --check public/kit-extension-bridge.js && node --test tests/kitExtensionBridge.test.js
 RUN node --check shopeeKitAvailability.js && node --check shopeeKitBuilder.js && node --check shopeeKitImages.js && node --check public/kit-chat-result-parser.js && node --check public/kit-builder.js && node --test tests/kitChatResultParser.test.js tests/kitThemeValidation.test.js tests/shopeeKitAvailability.test.js tests/shopeeKitBuilder.test.js tests/shopeeKitReferenceLayout.test.js
 RUN node --check shopeeKitPublish.js && node --check shopeeKitPlatform.js && node --check shopeeKitPublicationService.js && node --check shopeeKitDiscountService.js && node --check shopeeKitDraftStore.js && node --check public/kit-builder.js && node --check server.js && node --test tests/shopeeKitPublish.test.js
 ENV NODE_ENV=production

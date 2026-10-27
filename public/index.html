@@ -31,7 +31,7 @@
 <link rel="stylesheet" href="/ads-premium.css?v=2.4.0-seo-ads-location">
 <link rel="stylesheet" href="/sidebar-collapse.css?v=1.0.0">
 <link rel="stylesheet" href="/optimizer-image-studio.css?v=1.0.2">
-<link rel="stylesheet" href="/kit-builder.css?v=3.3.1-chatgpt-plus-image-start">
+<link rel="stylesheet" href="/kit-builder.css?v=3.4.0-kit-extension-bridge">
 <link rel="stylesheet" href="/optimizer-technical-studio.css?v=1.0.1-review-feedback">
 <style>
 /* Autorização >25%: campo compacto, sem o input global width:100%.
@@ -1155,10 +1155,14 @@
    <div class="kit-generation-head"><strong>Gerador inteligente · Prompt Mestre Rede Achados BR</strong><span>Fotos WeDrop de todas as SKUs como referência · 9 cenas diferentes</span></div>
    <div class="kit-generation-options">
     <div class="kit-generation-mode kit-plus-primary-mode">
-     <strong>ChatGPT Plus — gerar imagens sem API paga</strong>
-     <p>Abre o ChatGPT com um pedido de criação das 9 imagens do kit, não só com instruções soltas. Confirme o texto, anexe as fotos originais de cada SKU e clique em Enviar. Salve as imagens na pasta monitorada para importar automaticamente.</p>
-     <button id="kitGenerateAll" type="button" class="kit-primary">Preparar geração de 9 imagens no ChatGPT Plus</button>
-     <p class="kit-plus-unavoidable">O ChatGPT Plus não autoriza aplicativos externos a clicar em Enviar, gerar ou baixar imagens pela sua conta. Essas ações precisam ser feitas na conversa.</p>
+     <strong>Ponte ChatGPT Rede Achados BR — extensão existente</strong>
+     <p>Usa a mesma extensão da geração de anúncios individuais, mas com o Prompt Mestre do KIT. Anexa uma folha com as fotos reais de todas as SKUs e gera as 9 imagens, uma por vez, recebendo cada arquivo diretamente nas posições 01–09.</p>
+     <div class="kit-plus-instruction-buttons">
+      <button id="kitGenerateAll" type="button" class="kit-primary">Gerar 9 imagens automaticamente pela extensão</button>
+      <button id="kitStopExtension" type="button" class="kit-secondary" hidden>Parar geração</button>
+     </div>
+     <p id="kitExtensionStatus" class="kit-extension-status" role="status" aria-live="polite">Verificando Ponte ChatGPT. Requer extensão v1.0.26+ ativa no Chrome. Não utiliza API paga.</p>
+     <button id="kitPlusManualFallback" type="button" class="kit-secondary">Modo alternativo: abrir ChatGPT e copiar prompt</button>
      <div id="kitPlusInstructions" class="kit-plus-instructions" hidden>
       <strong>Pedido de geração preparado</strong>
       <p>Se o chat abrir vazio, use Ctrl+V. Anexe as fotos de todas as SKUs e clique em Enviar. Para gerar a próxima imagem, use o botão abaixo na mesma conversa.</p>
@@ -1182,10 +1186,10 @@
     </div>
    </div>
    <div class="kit-generation-progress" id="kitGenerationProgress" hidden><div class="kit-progress-track"><div id="kitGenerationProgressBar"></div></div><span id="kitGenerationProgressText">0 de 9 imagens</span></div>
-   <p class="kit-generation-note">Sem API paga: gere na conversa do ChatGPT Plus e salve as imagens na pasta autorizada. O Manager detecta os novos arquivos e os posiciona para revisão. Não existe publicação automática.</p>
+   <p class="kit-generation-note">A extensão existente deve confirmar o início para o kit. Cada imagem só libera a próxima após ser recebida e salva localmente. Se sua versão rejeitar kits, o sistema informa o erro e mantém os modos manual e pasta monitorada. Nenhuma imagem é enviada à Shopee sem revisão.</p>
   </section>
   <section class="kit-plus-gallery-transfer" aria-label="Importação de imagens do ChatGPT Plus">
-   <div class="kit-plus-gallery-title"><strong>Importar imagens do ChatGPT Plus</strong><span>2 formas de importação · arraste imagens entre posições</span></div>
+   <div class="kit-plus-gallery-title"><strong>Importação pela extensão, pasta ou arquivos</strong><span>Fotos da Ponte chegam automaticamente · você também pode arrastar e reordenar</span></div>
    <div class="kit-plus-gallery-actions">
     <div class="kit-plus-gallery-option">
      <strong>Automática com pasta autorizada</strong>
@@ -1208,7 +1212,7 @@
    <button id="kitSaveDraft" type="button" class="kit-secondary">Salvar rascunho ▾</button>
    <button id="kitDownloadPack" type="button" class="kit-secondary">Baixar ficha do kit e 9 prompts</button>
   </div>
-  <p id="kitImageStatus" class="kit-status" role="status" aria-live="polite">Sem API paga: o Manager prepara o pedido e abre o ChatGPT; você anexa as fotos, envia a mensagem e salva as imagens. A pasta autorizada pode importar os downloads automaticamente. Nada é publicado na Shopee sem revisão.</p>
+  <p id="kitImageStatus" class="kit-status" role="status" aria-live="polite">A Ponte ChatGPT existente pode gerar e entregar imagens do kit automaticamente. Se a versão instalada não reconhecer kits, use a importação manual ou por pasta até atualizar a extensão. As fotos exigem conferência antes de enviar à Shopee.</p>
   <section class="kit-publish-panel" id="kitPublishPanel" aria-label="Criar Kit Formal na Shopee">
    <div class="kit-bar kit-section-heading"><span class="kit-heading-icon kit-icon-orange">🛒</span><div class="kit-section-heading-text"><h3>Criar Kit Formal na Shopee</h3><p>Siga o passo a passo para publicar seu kit na Shopee com segurança.</p></div></div>
    <p class="kit-info">Primeiro confirme os componentes da Shopee e a logística. Salve o rascunho; depois envie as fotos, confira a prévia e autorize a publicação. A promoção só poderá ser preparada DEPOIS que a Shopee confirmar o novo Item ID.</p>
@@ -2132,8 +2136,8 @@
 <script src="/fiscal-modern-layout.js?v=1.0.1-fiscal-cards"></script>
 <script src="/technical-memory.js?v=1.0.1-live-sku-preload"></script>
 <script src="/technical-status.js?v=1.0.0-optional-coherence"></script>
-<script src="/app.js?v=1.20.44-price-column-fit"></script>
-<script type="module" src="/kit-builder.js?v=3.3.1-chatgpt-plus-image-start"></script>
+<script src="/app.js?v=3.4.0-kit-extension-guard"></script>
+<script type="module" src="/kit-builder.js?v=3.4.0-kit-extension-bridge"></script>
 <link rel="stylesheet" href="/optimizer-variations.css?v=1.2.1-single-flow">
 <script src="/optimizer-variations.js?v=1.2.3-single-flow"></script>
 
