@@ -17,6 +17,7 @@ async function api(path,{body,signal}={}){
  return data;
 }
 let categoriesLoaded=false,suggestions=[],prepared=null,images=new Map(),generationBusy=false;
+let kitAutoImageBusy=false,kitAutoImageStop=false,kitAutoImageApiConnected=false,kitAutoImageSku=null;
 let kitActiveDraftSku=null,kitDraftOpenRevision=0;
 let kitContentSku='',kitContentManualFacts=new Map(),kitContentSeoTitles=[],
  kitContentAwaitingResponse=false,kitContentBusy=false;
@@ -1054,6 +1055,8 @@ function renderKit({scroll=true,displayTitle=''}={}){
  if(kitContentSeoTitles.length===3)
   kitShowSeoTitles(kitContentSeoTitles);
  renderImageSlots();
+ kitAutoImageUi();
+ void kitCheckAutoImageAvailability();
  if(scroll)$('#kitDetail').scrollIntoView({behavior:'smooth',block:'start'});
 }
 function kitImagePromptAt(slot){
@@ -1106,6 +1109,11 @@ function renderImageSlots(){
   prompt.type='button';
   prompt.addEventListener('click',()=>void copy(kitImagePromptAt(slot)));
   card.append(prompt);
+  const generate=elt('button','kit-secondary kit-image-generate-one','Gerar esta imagem (API paga)');
+  generate.type='button';
+  generate.disabled=!kitAutoImageApiConnected||kitAutoImageBusy||!$('#kitApprovePaidImages')?.checked;
+  generate.addEventListener('click',()=>void kitGeneratePaidImages({singleSlot:slot}));
+  card.append(generate);
   const details=elt('details','kit-prompt-fallback');
   const summary=elt('summary','','Ver prompt');
   const field=elt('textarea');field.readOnly=true;field.rows=5;
@@ -1120,6 +1128,93 @@ function renderImageSlots(){
  }
  kitUpdateImageGuidance();
 }
+
+function kitAutoImageUi(){
+ const agreed=$('#kitApprovePaidImages')?.checked===true;
+ const action=$('#kitGenerateAutomatic'),stop=$('#kitStopAutomatic');
+ if(action)action.disabled=kitAutoImageBusy||!kitAutoImageApiConnected||!agreed||!prepared;
+ if(stop)stop.hidden=!kitAutoImageBusy;
+ if(action)action.textContent=kitAutoImageBusy?'Gerando imagens...':
+  images.size?'Gerar imagens faltantes ou retomar':'Gerar 9 imagens automaticamente';
+}
+async function kitCheckAutoImageAvailability(){
+ const state=$('#kitAutomaticImageAvailability');
+ if(!state)return;
+ try{
+  const data=await api('/api/shopee/kits/image/status');
+  kitAutoImageApiConnected=data.automaticAvailable===true;
+  state.dataset.state=kitAutoImageApiConnected?'ready':'inactive';
+  state.textContent=kitAutoImageApiConnected?
+   'API conectada · exige autorização para gerar imagens pagas':
+   'API não conectada · modo automático indisponível (ChatGPT Plus permanece manual)';
+ }catch(error){
+  kitAutoImageApiConnected=false;
+  state.textContent='Não foi possível verificar a API: '+error.message;
+  state.dataset.state='inactive';
+ }
+ kitAutoImageUi();
+}
+function kitSetImageProgress(done,total,label){
+ const panel=$('#kitGenerationProgress');if(!panel)return;
+ panel.hidden=false;
+ $('#kitGenerationProgressBar').style.width=(Math.max(0,Math.min(1,done/total))*100).toFixed(1)+'%';
+ $('#kitGenerationProgressText').textContent=label||done+' de '+total+' imagens concluídas';
+}
+async function kitStoreGeneratedPhoto(slot,b64){
+ const bin=atob(b64),bytes=new Uint8Array(bin.length);
+ for(let i=0;i<bin.length;i++)bytes[i]=bin.charCodeAt(i);
+ const bitmap=await createImageBitmap(new Blob([bytes],{type:'image/png'}));
+ try{
+  const canvas=document.createElement('canvas');
+  canvas.width=1200;canvas.height=1200;
+  const ctx=canvas.getContext('2d');
+  if(!ctx)throw Error('Navegador não conseguiu preparar a imagem.');
+  // A imagem de origem é quadrada; redimensiona para 1200 × 1200 se necessário.
+  ctx.drawImage(bitmap,0,0,1200,1200);
+  images.set(slot,canvas.toDataURL('image/png'));
+  kitShopeePhotoSlots.delete(slot);
+  clearKitPublishApproval();
+ }finally{bitmap.close();}
+ renderImageSlots();
+}
+async function kitGeneratePaidImages({singleSlot=null}={}){
+ if(kitAutoImageBusy||!prepared)return;
+ if(!kitAutoImageApiConnected)return imageStatus('API não conectada. No modo ChatGPT Plus a geração é manual.','error');
+ if(!$('#kitApprovePaidImages').checked)
+  return imageStatus('Marque a autorização explícita de API paga antes de gerar imagens.','error');
+ const kit=prepared.kit,sku=kit.kitSku;
+ const pending=singleSlot?[singleSlot]:Array.from({length:9},(_,i)=>i+1).filter(i=>!images.has(i));
+ if(!pending.length)return imageStatus('As 9 posições já têm imagens. Para refazer uma, use o botão individual de cada posição.','success');
+ const ok=window.confirm(
+  'AUTORIZAÇÃO DE CUSTO: gerar '+pending.length+' imagem(ns) deste kit pela API OpenAI. Cada solicitação pode ser cobrada separadamente e NÃO está incluída no ChatGPT Plus. Nenhum anúncio será publicado. Continuar?');
+ if(!ok)return;
+ kitAutoImageBusy=true;kitAutoImageStop=false;kitAutoImageSku=sku;kitAutoImageUi();
+ const success=[];
+ try{
+  for(const slot of pending){
+   if(kitAutoImageStop||prepared?.kit?.kitSku!==sku)break;
+   imageStatus('Gerando '+String(slot).padStart(2,'0')+'/09 com as fotos originais das '+kit.components.length+' SKUs...','info');
+   kitSetImageProgress(images.size,9,'Gerando imagem '+slot+'/09 · '+images.size+' prontas');
+   const data=await api('/api/shopee/kits/image',{body:{
+    slot,skus:kit.components.map(p=>p.sku),...currentSettings(),
+    manualFacts:Object.fromEntries(kitContentManualFacts.entries()),confirmPaidApi:true
+   }});
+   if(prepared?.kit?.kitSku!==sku||data.kitSku!==sku)
+    throw Error('O kit mudou durante a geração. Não é seguro importar esta imagem.');
+   await kitStoreGeneratedPhoto(slot,data.base64);
+   success.push(slot);
+   kitSetImageProgress(images.size,9,images.size+' de 9 imagens no editor');
+  }
+  imageStatus(kitAutoImageStop?'Geração interrompida após a imagem atual. '+images.size+' imagem(ns) disponíveis. Clique novamente para retomar apenas faltantes.':
+   'Geração concluída neste lote: '+success.length+' imagem(ns). Revise se TODOS os produtos aparecem em cada cena; depois baixe as imagens.','success');
+ }catch(error){
+  imageStatus('Geração interrompida: '+error.message+' · '+success.length+
+   ' imagem(ns) deste lote foram preservadas no editor. Clique novamente para retomar apenas faltantes.','error');
+ }finally{
+  kitAutoImageBusy=false;kitAutoImageSku=null;kitAutoImageUi();
+ }
+}
+
 function chatgptHandoff(prompt){
  // A aba precisa abrir no clique, não depois de um await, para que o
  // navegador não a bloqueie. Nenhuma credencial ou cookie é repassado.
@@ -1152,6 +1247,7 @@ async function uploadPhoto(slot,file){
    clearKitPublishApproval();
   }finally{bitmap.close();}
   renderImageSlots();
+  kitAutoImageUi();
   imageStatus('Imagem '+slot+' importada em PNG 1200 × 1200 para conferência. Imagens permanecem nesta aba e não são publicadas.','success');
  }catch(error){imageStatus('Falha ao importar imagem: '+error.message,'error');}
 }
@@ -1803,6 +1899,14 @@ $('#kitSaveSeoContent')?.addEventListener('click',async()=>{
 });
 
 $('#kitGenerateAll')?.addEventListener('click',openChatGPTImages);
+$('#kitApprovePaidImages')?.addEventListener('change',()=>{
+ kitAutoImageUi();if(prepared)renderImageSlots();
+});
+$('#kitGenerateAutomatic')?.addEventListener('click',()=>void kitGeneratePaidImages());
+$('#kitStopAutomatic')?.addEventListener('click',()=>{
+ kitAutoImageStop=true;
+ imageStatus('Parada solicitada. A imagem que já está sendo gerada poderá ser cobrada e será recebida antes da interrupção.','info');
+});
 $('#kitDownloadPack')?.addEventListener('click',exportPack);
 $('#kitSaveDraft')?.addEventListener('click',()=>void saveDraft());
 $('#kitPublishCheck')?.addEventListener('click',()=>void kitReadinessCheck());

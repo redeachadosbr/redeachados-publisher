@@ -1534,3 +1534,34 @@
  display:block;margin:4px 0 7px;color:#146244;font-size:10px;font-weight:850;
  background:#e9f8f0;border-radius:6px;padding:4px 6px;
 }
+
+/* Gerador de imagens dos kits: modos explícitos, progresso real, consentimento pago. */
+#tab-kits #kitDetail .kit-generation-panel{
+ margin:10px 0 12px;padding:13px;border-radius:13px;border:1px solid #d0e0f2;
+ background:linear-gradient(115deg,#f8fbff,#edf5ff);
+ box-shadow:0 4px 18px rgba(28,67,120,.06);
+}
+#tab-kits #kitDetail .kit-generation-head{display:flex;gap:6px 13px;align-items:baseline;flex-wrap:wrap;margin-bottom:10px}
+#tab-kits #kitDetail .kit-generation-head strong{font-size:13px;font-weight:900;color:#143d71}
+#tab-kits #kitDetail .kit-generation-head span{font-size:10px;color:#426585}
+#tab-kits #kitDetail .kit-generation-options{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
+#tab-kits #kitDetail .kit-generation-mode{min-width:0;padding:13px;background:#fff;border:1px solid #dce7f5;border-radius:11px;display:flex;flex-direction:column;gap:7px}
+#tab-kits #kitDetail .kit-generation-mode strong{font-size:12px;color:#163b70;font-weight:900}
+#tab-kits #kitDetail .kit-generation-mode p{font-size:10.5px;line-height:1.55;color:#3b5b7e;margin:0;flex:1}
+#tab-kits #kitDetail .kit-generation-mode button{min-height:35px;padding:9px 11px;font-size:10.5px;font-weight:850;border-radius:8px;white-space:normal}
+#tab-kits #kitDetail .kit-generation-auto{background:linear-gradient(140deg,#fff,#fffcf4);border-color:#eedfc1}
+#tab-kits #kitDetail .kit-api-indicator{font-size:10px;line-height:1.4;font-weight:750;color:#966124}
+#tab-kits #kitDetail .kit-api-indicator[data-state="ready"]{color:#088455}
+#tab-kits #kitDetail .kit-explicit-consent{display:flex;align-items:flex-start;gap:8px;padding:8px;background:#fff8e8;border:1px solid #efd7a8;border-radius:8px;font-size:10px;line-height:1.5;color:#704616;font-weight:750}
+#tab-kits #kitDetail .kit-explicit-consent input{accent-color:#c67a05;flex:0 0 16px;width:16px;height:16px;margin:1px 0 0}
+#tab-kits #kitDetail .kit-generation-buttons{display:flex;gap:7px;flex-wrap:wrap}
+#tab-kits #kitDetail .kit-generation-buttons button{flex:1 1 150px}
+#tab-kits #kitDetail .kit-generation-buttons button:disabled{opacity:.5;cursor:not-allowed}
+#tab-kits #kitDetail .kit-generation-progress{display:flex;gap:10px;align-items:center;margin:10px 0 4px}
+#tab-kits #kitDetail .kit-progress-track{flex:1;height:9px;background:#dce8f8;border-radius:999px;overflow:hidden}
+#tab-kits #kitDetail #kitGenerationProgressBar{background:linear-gradient(90deg,#287deb,#00ab76);width:0;height:100%;transition:width .2s}
+#tab-kits #kitDetail #kitGenerationProgressText{min-width:96px;font-size:10px;font-weight:800;color:#194b86}
+#tab-kits #kitDetail .kit-generation-note{font-size:10px;line-height:1.5;color:#3a628a;margin:10px 0 0}
+#tab-kits #kitDetail .kit-image-generate-one{font-size:9px;min-height:28px;padding:5px 7px;white-space:normal}
+#tab-kits #kitDetail .kit-image-generate-one:disabled{opacity:.48}
+@media(max-width:950px){#tab-kits #kitDetail .kit-generation-options{grid-template-columns:1fr}}
