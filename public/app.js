@@ -4043,7 +4043,7 @@ function optimizerDiscountFinalPaint(){
  $('#optimizerExecDiscountMessage').textContent=!active?
   'O sistema consulta automaticamente o custo WeDrop e os anúncios concorrentes ao localizar a SKU.':
   !eligible?(q.marketResearch?.verified?
-   'A pesquisa possui '+q.marketResearch.count+' anúncios, mas o preço planejado não atende à margem ou ao limite de diferença da média; ajuste a precificação antes de conferir.':
+   'A pesquisa possui '+q.marketResearch.count+' anúncios, mas o preço planejado não atende à margem ou ao limite de diferença da média. '+(q.status==='MERCADO_ABAIXO_DO_PISO'&&Number.isFinite(Number(q.marketGapPct))?'Preço após cupom '+shPricePercent(q.marketGapPct)+' acima da média; limite de exceção: 25%. Não reduza abaixo da margem mínima. ':'')+'Recalcule por variação, revise os anúncios comparados e prepare uma nova prévia.':
    'Plano salvo como simulação: ainda faltam 2 a 5 anúncios comparáveis verificados para publicar.') :
   optimizerDiscountMarketFloorProtected(q)?
    '⚠ A pesquisa de '+q.marketResearch.count+' concorrentes foi validada, porém a média está abaixo do piso seguro. O preço promocional desta SKU está '+shPricePercent(q.marketGapPct)+' acima da média e preserva '+shPricePercent(q.netMarginPct)+' de margem. Ao clicar em Conferir desconto você aprova a prévia desse preço MAIOR, sem reduzi-lo à média. A Shopee ainda validará a campanha; nada foi publicado.':
