@@ -134,6 +134,33 @@ test('Motor Matriz: nunca aceitar EAN divergente, opção trocada ou aprovação
   optionName:'Vermelho',reviewed:false};
  assert.equal(variationSupplierIdentity(sameTitle).ok,true);
 });
+test('Tamanho: a SKU WeDrop 26cm confirma FRIGIDEIRA 26 CM mesmo com palavras intermediárias',()=>{
+ const option={
+  parentName:'Frigideira Antiaderente cerâmica 24cm - Azul',
+  supplierName:'Frigideira Antiaderente cerâmica 26cm - Azul',
+  originalOption:'FRIGIDEIRA 24 CM',optionName:'FRIGIDEIRA 26 CM',
+  expectedEan:'7898426962452',sourceEan:'7898426962452',reviewed:true
+ };
+ const identity=variationSupplierIdentity(option);
+ assert.equal(identity.ok,true,identity.reason);
+ assert.equal(variationSupplierIdentity({...option,reviewed:false}).ok,true,
+  'Mesmo catálogo físico e tamanho exato independem de repetir confirmação após cada leitura');
+ assert.equal(variationSupplierIdentity({...option,supplierName:'Frigideira Cerâmica 20cm - Azul'}).ok,false,
+  'Variação 26 CM não pode vincular a SKU 20 CM');
+ assert.equal(variationSupplierIdentity({...option,supplierName:'Panela Antiaderente 26cm - Azul'}).ok,false,
+  'Mesmo tamanho não basta quando a categoria é outra');
+ assert.equal(variationSupplierIdentity({...option,sourceEan:'7898426962445'}).ok,false,
+  'Não vincular GTIN de outra variação');
+ assert.equal(variationSupplierIdentity({...option,supplierName:'Frigideira cerâmica 24cm e 26cm - Azul'}).ok,false,
+  'Anúncios de tamanhos múltiplos no título exigem confirmação exata');
+});
+test('Variações dimensionais: unidades compactas e espaçadas têm a mesma identidade',()=>{
+ const initial={parentName:'Frigideira Cerâmica 24cm Azul',originalOption:'FRIGIDEIRA 24 CM',
+  optionName:'FRIGIDEIRA 20 CM',expectedEan:'7898426962421',
+  sourceEan:'7898426962421',reviewed:true};
+ for(const name of ['Frigideira Cerâmica 20cm Azul','Frigideira Cerâmica 20 cm Azul'])
+  assert.equal(variationSupplierIdentity({...initial,supplierName:name}).ok,true,name);
+});
 test('Motor Matriz: aprovação global caduca quando o rascunho ou a foto mudar',()=>{
  const preview={type:'Cor',updatedAt:'2026-10-25T10:00:00Z',options:[
   {name:'Preta',sku:'ABC-P',supplierSku:'SKU-P',price:199.99,stock:1,gtin:'7895555555555',
