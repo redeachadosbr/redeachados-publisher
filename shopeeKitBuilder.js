@@ -481,44 +481,45 @@ export function kitPrompts(kit,{manualFacts={}}={}){
  if(components.length<2||components.length>3)throw Error('Imagens exigem 2 ou 3 SKUs reais do kit.');
  const allowed=new Set(components.map(p=>String(p.sku)));
  const safeFacts=manualFacts&&typeof manualFacts==='object'&&!Array.isArray(manualFacts)?manualFacts:{};
- if(Object.keys(safeFacts).some(sku=>!allowed.has(sku)))
-  throw Error('As medidas foram atribuídas a uma SKU que não pertence ao kit.');
+ if(Object.keys(safeFacts).some(sku=>!allowed.has(sku)))throw Error('Dados atribuídos a uma SKU fora deste kit.');
  const exact=components.map((p,i)=>(i+1)+'. SKU '+p.sku+' — '+p.name+' — 1 unidade').join('; ');
- const references=components.map((p,i)=>{
-  const verified=fact(p.dimensions,320);
-  const seller=fact(safeFacts[p.sku],1700);
-  const measurements=detectSkuMeasurements(seller);
-  const sellerDimensions=measurements.filter(x=>x.kind==='dimensions').map(x=>x.value).join(' · ');
-  const sellerExtra=measurements.filter(x=>x.kind!=='dimensions').map(x=>x.value).join(' · ');
-  return 'Referência '+(i+1)+' = SKU '+p.sku+' ('+p.name+'): '+(verified?
-   'Medidas no catálogo WeDrop: '+verified:
-   'Medidas no catálogo WeDrop: NÃO INFORMADAS')+
-   (sellerDimensions?' | Medidas extraídas do texto da SKU pelo vendedor (NÃO verificadas): '+sellerDimensions:'')+
-   (sellerExtra?' | Outros números explicitamente medidos pelo vendedor (NÃO verificados): '+sellerExtra:'')+
-   '. Somente esta SKU pode receber estas medidas.';
+ const descriptions=components.map((p,i)=>{
+  const seller=fact(safeFacts[p.sku],1700),found=detectSkuMeasurements(seller);
+  const fromSeller=found.map(x=>x.value).join(' · ');
+  return 'REFERÊNCIA '+(i+1)+': SKU '+p.sku+' = '+p.name+'. Marca da ficha: '+(p.brand||'não informada')+
+   '. Descrição WeDrop: '+(fact(p.description,900)||'NÃO INFORMADA')+
+   '. Medidas WeDrop: '+(fact(p.dimensions,200)||'NÃO INFORMADAS')+
+   '. Medidas extraídas apenas da descrição fornecida pelo vendedor (NÃO verificadas): '+(fromSeller||'nenhuma')+
+   '. Texto extra do vendedor, NÃO verificado: '+(seller.slice(0,450)||'nenhum')+'.';
  }).join('\n');
- const together='OBRIGATÓRIO EM CADA UMA DAS 9 ARTES: uma ÚNICA fotografia quadrada com TODOS os '+components.length+
-  ' produtos reais deste kit JUNTOS, completos, reconhecíveis, na MESMA cena e no MESMO enquadramento. '+
-  'Para kit de 2 SKUs, mostrar a DUPLA com os DOIS produtos juntos em TODAS as imagens, lado a lado ou em uso coerente. '+
-  'Não criar foto individual de cada SKU, não dividir em mosaico, duas molduras ou painéis separados; não ocultar produto, não duplicar, não fundir produtos. '+
-  'Utilizar as fotografias originais de cada SKU como referência fiel; manter forma, modelo, acessórios reais e proporções plausíveis. ';
- const intro='Kits Rede Achados BR. Produtos EXATOS e inalteráveis: '+exact+'.\n'+
-  'REFERÊNCIAS DE IDENTIDADE E TAMANHOS POR SKU (NUNCA TROCAR ENTRE PRODUTOS):\n'+references+'\n'+together+
-  'Medidas de texto colado pelo vendedor exigem conferência ANTES de aparecer em arte comercial. '+
-  'Não inferir medidas, pesos, idades, certificações ou acessórios. Arte 1200×1200, moderna, limpa, ambientada, sem logo, preço ou marca d’água.';
- return [
-  '01 CAPA: todos os produtos do kit juntos, ocupando 85–90% da imagem, sem título ou palavras; fundo premium ambientado, limpo.',
-  '02 USO REAL: ambos os produtos juntos em ambiente cotidiano coerente, em primeiro plano; usos podem ser diferentes, não simular interação impossível; frase breve somente se comprovada.',
-  '03 DIMENSÕES POR SKU: manter todos os produtos juntos. Se houver medidas confirmadas, colocar setas ou legendas de dimensão PRÓXIMAS do produto correspondente, identificadas pela SKU. Medidas coladas pelo vendedor só se previamente conferidas; se não houver, mostrar composição e quantidades SEM inventar números.',
-  '04 BENEFÍCIOS: todos os produtos juntos e claramente visíveis, destacar complementaridade real com duas frases curtas e confirmadas.',
-  '05 DOR E SOLUÇÃO: cena única com o conjunto completo resolvendo a necessidade, sem fingir utilidades ou idades não comprovadas; uma frase curta.',
-  '06 PERSUASÃO: dupla ou conjunto lado a lado na mesma cena, com mensagem curta "Leve juntos"; não alegar economia não comprovada.',
-  '07 TRANSFORMAÇÃO: os produtos juntos em cenário lifestyle HD diferente da capa; uma frase de conversão específica e comprovada.',
-  '08 QUEBRA DE OBJEÇÕES: todos os componentes visíveis juntos, 2–3 respostas curtas apenas de informações verificadas; não inventar compatibilidade ou prazo.',
-  '09 MOCKUP/CONFIANÇA: conjunto completo e fiel ocupando cerca de 90% em UMA composição ambientada; selos Compra Segura, Entrega Rápida, Atendimento Online só se corresponderem à política da loja. Embalagem ilustrativa não implica embalagem inclusa.'
- ].map((slot,i)=>'Imagem '+String(i+1).padStart(2,'0')+'/09.\n'+intro+'\n'+slot);
+ const master=[
+  'PROMPT MESTRE — REDE ACHADOS BR: 09 IMAGENS INDIVIDUAIS DE UM KIT SHOPEE.',
+  'Você é especialista em fotografia publicitária, design de e-commerce e criação de imagens para Shopee Brasil.',
+  'Identificador do kit: '+String(kit.kitSku||'kit').slice(0,120)+'. Componentes exatos: '+exact+'.',
+  'FOTOGRAFIAS ORIGINAIS: receber as fotos individuais da WeDrop; imagem de referência 1 = SKU 1, imagem 2 = SKU 2, e imagem 3 = SKU 3 (se houver). Preservar cores, formas, acabamento, proporções, texturas, peças e acessórios originalmente mostrados.',
+  descriptions,
+  'REGRA CRÍTICA: nesta imagem TODOS OS '+components.length+' SKUS devem aparecer simultaneamente JUNTOS na MESMA CENA, completos, sem um esconder outro. Kit de 2 = UMA DUPLA visível; kit de 3 = TODOS os três visíveis. Nunca mostrar apenas a SKU principal. Nunca separar em duas fotos, quadros ou mosaico.',
+  'CRIE SOMENTE UMA IMAGEM FINAL para a posição solicitada. Há 9 posições independentes; não gerar colagem, grade, sequência ou os nove quadros juntos.',
+  'IMAGEM COMERCIAL QUADRADA 1:1 DE 1200 × 1200 PIXELS. Luz premium, nitidez HD, fundo ambientado realista e moderno, aparência fotográfica. Variar cenário, perspectiva, enquadramento e disposição entre as posições, mantendo fidelidade integral aos componentes.',
+  'Não inventar marca, função, idade, material, dimensão, certificação, peça, brinde, acessório nem produto extra. Não deformar, fundir, duplicar, trocar ou omitir SKUs. Não incluir terceiros itens que pareçam produtos inclusos.',
+  'Textos apenas quando a posição solicitar, em português brasileiro, curtos, discretos, legíveis e comprovados. Nunca usar preços, links, marcas d’água ou títulos desnecessários.',
+  'MEDIDAS POR SKU: não somar dimensões. Vincular cada dimensão SOMENTE ao componente correspondente. Medidas coladas pelo vendedor NÃO estão verificadas pela WeDrop e só devem aparecer escritas na arte após validação explícita; na dúvida, omita.'
+ ].join('\n');
+  const directions=[
+  'IMAGEM 01 — CAPA PRINCIPAL. Os componentes juntos ocupam aproximadamente 85% a 90% da área. Proporções relativas plausíveis, fundo moderno sofisticado suavemente desfocado, luz premium, sem título, selos, preço, frase ou QUALQUER texto.',
+  'IMAGEM 02 — USO REAL. Todos os componentes juntos num cenário de utilização cotidiana. Para brinquedos, ambiente de quarto infantil ou espaço de brincadeiras. Mostrar usos complementares sem simular funções inexistentes. Cenário e perspectiva diferentes da capa. Apenas uma frase curta fundamentada nos produtos.',
+  'IMAGEM 03 — ESPECIFICAÇÕES. Todos os produtos juntos lado a lado em cenário real. Identifique discretamente CADA SKU. Medidas do catálogo WeDrop podem ser mostradas junto ao produto EXATO usando linhas discretas; medidas coladas pelo vendedor somente após validação humana explícita, caso contrário OMITE os números. NÃO somar ou transferir dimensões entre produtos; se não houver prova, mostrar sem medidas.',
+  'IMAGEM 04 — BENEFÍCIOS. Composição elegante com todos os produtos lado a lado, mostrar benefícios reais específicos da ficha de cada SKU. Usar 2 a 3 frases curtas e discretas somente quando comprovadas, sem letras enormes.',
+  'IMAGEM 05 — DOR E SOLUÇÃO. Cena única, acolhedora, com todos os componentes juntos oferecendo variedade ou utilidades complementares reais. Somente UMA frase curta e persuasiva sem exageros.',
+  'IMAGEM 06 — PERSUASÃO. Destacar valor de adquirir os componentes como um único kit. Todos juntos em ângulo e cenário diferentes. Uma frase curta de conversão, como “Um kit, duas experiências!”, quando fizer sentido. Sem alegar desconto ou economia não verificados.',
+  'IMAGEM 07 — TRANSFORMAÇÃO. Mostrar experiência realista com todos os produtos visíveis na mesma cena, ambiente lifestyle diferente da capa. Uma frase positiva e discreta, sem prometer desenvolvimento ou benefícios médicos não confirmados.',
+  'IMAGEM 08 — QUEBRA DE OBJEÇÕES. Todos os produtos juntos em foto limpa. Inserir até 3 perguntas e respostas pequenas baseadas em composição realmente confirmada; por exemplo “Vêm os dois produtos? Sim!”, “SKU A incluso? Sim!”, “SKU B incluso? Sim!”. Nenhuma afirmação de frete ou qualidade não verificada.',
+  'IMAGEM 09 — MOCKUP E CONFIANÇA. Kit completo, todos os componentes com 85% a 90% de destaque, cenário premium diferente dos anteriores. Usar 3 selos discretos 🛡️ Compra Segura, 🚚 Entrega Rápida, 💬 Atendimento Online somente se corresponderem às políticas reais da loja. Sem acessórios ou caixas fictícias que pareçam inclusos.'
+ ];
+ return directions.map((direction,index)=>
+  'GERAR IMAGEM '+String(index+1).padStart(2,'0')+'/09 — APENAS ESTA POSIÇÃO, um único arquivo, não mosaico.\n'+master+'\n'+direction+
+  '\nAVALIAÇÃO VISUAL OBRIGATÓRIA: cada SKU deve estar presente e reconhecível; se faltar um componente ou houver atributos incorretos, o resultado exige refazer antes da publicação.');
 }
-
 export async function suggestKits(shop,{category='Brinquedos',size=2,marginPct=15,packing=0,shipping=0,ai=true}={}){
  if(![2,3].includes(Number(size)))throw Error('Selecione 2 ou 3 produtos no kit.');
  const [catalog,stock]=await Promise.all([readCatalog(shop),readKitStockSnapshot(shop)]);

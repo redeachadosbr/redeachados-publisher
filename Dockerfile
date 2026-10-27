@@ -28,6 +28,7 @@ RUN node --check public/chatgptUploadQueue.js && node --test tests/shopee-chatgp
 RUN node --check shopeeExecutionProgress.js && node --check public/app.js && node --test tests/shopee-real-progress-media-recovery.test.js && node --check shopeePricing.js && node --check shopeeDiscountPublish.js && node --test tests/shopee-303448-visible-coupon-ending.test.js && node --test tests/shopee-303448-live-readback-stage-progress.test.js && node --test tests/shopee-303448-readback-convergence.test.js && node --test tests/shopee-303448-condition-api-readback.test.js
 RUN node --check public/kit-seo-helper.js && node --test tests/kitContentSeo.test.js
 RUN node --check public/kit-measurements.js && node --test tests/kitSkuMeasurements.test.js
+RUN node --test tests/kitImageMasterPrompt.test.js
 RUN node --check shopeeKitAvailability.js && node --check shopeeKitBuilder.js && node --check shopeeKitImages.js && node --check public/kit-chat-result-parser.js && node --check public/kit-builder.js && node --test tests/kitChatResultParser.test.js tests/kitThemeValidation.test.js tests/shopeeKitAvailability.test.js tests/shopeeKitBuilder.test.js tests/shopeeKitReferenceLayout.test.js
 RUN node --check shopeeKitPublish.js && node --check shopeeKitPlatform.js && node --check shopeeKitPublicationService.js && node --check shopeeKitDiscountService.js && node --check shopeeKitDraftStore.js && node --check public/kit-builder.js && node --check server.js && node --test tests/shopeeKitPublish.test.js
 ENV NODE_ENV=production

@@ -122,8 +122,10 @@ test('interface e endpoints de kits isolam publicações',async()=>{
  const builder=fs.readFileSync(new URL('../shopeeKitBuilder.js',import.meta.url),'utf8');
  const browser=fs.readFileSync(new URL('../public/kit-builder.js',import.meta.url),'utf8');
  assert.doesNotMatch(builder,/api\.openai\.com|openAiApiKey|chatJson\(/);
- assert.doesNotMatch(browser,/\/api\/shopee\/kits\/image|generatePhoto\(/);
- assert.match(server,/Geração paga desativada para kits/);
+ assert.match(server,/\/api\/shopee\/kits\/image\/status/);
+ assert.match(server,/req\.body\?\.confirmPaidApi!==true/);
+ assert.match(server,/generateKitImage\(/);
+ assert.match(html,/ChatGPT Plus · Sem API/);
  assert.match(server,/\/api\/shopee\/kits\/plus-brief/);
  assert.match(server,/\/api\/shopee\/kits\/plus-import/);
  assert.match(server,/\/api\/shopee\/kits\/plus-content/);

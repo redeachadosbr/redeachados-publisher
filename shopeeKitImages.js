@@ -29,11 +29,13 @@ export async function generateKitImage({kit,slot,key,prompt}){
  const originals=await Promise.all(kit.components.map(p=>reference(p.imageUrl)));
  const form=new FormData(),status=imageGenerationStatus();
  form.set('model',status.model);
- form.set('size',status.model.startsWith('gpt-image-1')?'1024x1024':'1200x1200');
+ // gpt-image-2 aceita resolução quadrada 1200x1200; modelos antigos recebem 1024x1024
+ // e o navegador normaliza o resultado para 1200x1200 no editor.
+ form.set('size',/^(gpt-image-2(?:[.\w-]*)?)$/.test(status.model)?'1200x1200':'1024x1024');
  form.set('quality',String(process.env.OPENAI_IMAGE_QUALITY||'medium'));
  form.set('n','1');
  form.set('output_format','png');
- form.set('prompt',String(prompt).slice(0,6000)+
+ form.set('prompt',String(prompt).slice(0,19000)+
   '\nREFERÊNCIAS VISUAIS: cada imagem original corresponde a uma SKU diferente, todas devem aparecer juntas, preservando o número correto de produtos. NÃO transformar em um produto único, NÃO misturar SKUs e não inventar componentes.');
  for(const [i,x] of originals.entries())
   form.append('image[]',new Blob([x.data],{type:x.mime}),
@@ -49,5 +51,5 @@ export async function generateKitImage({kit,slot,key,prompt}){
  const body=await r.json(),base64=String(body?.data?.[0]?.b64_json||'');
  if(base64.length<1000||base64.length>15_000_000)throw Error('Resposta de imagem fora do tamanho permitido.');
  return {base64,mime:'image/png',slot,model:status.model,generated:true,
-  warning:'Imagem de IA: confira visualmente a fidelidade de todos os componentes antes de usar.'};
+  warning:'Imagem gerada por IA mediante API paga: confira a presença, fidelidade e medidas de TODAS as SKUs antes de usar. Não publicada.'};
 }

@@ -66,6 +66,7 @@ import {normalizeManualVideo} from './shopeeVideoValidation.js';
 import * as ShopeeMarktPro from './shopeeMarktPro.js';
 import {readPreparedImages,importPreparedImage,deletePreparedImage,reorderPreparedImage,downloadPreparedImage,imagesSignature,MAX_IMAGE_BYTES,rememberPublishedImages} from './shopeePreparedImages.js';
 import {generateOpenAiImage,imageGenerationStatus} from './shopeeOpenAiImages.js';
+import {generateKitImage} from './shopeeKitImages.js';
 import {validateVariationName,variationImagePrompt,saveVariationImage,variationImagePreview,variationImageBytes,validateVariationDetails,reviewedVariationEvidence,variationSupplierIdentity,buildVariationPayload} from './shopeeVariationMedia.js';
 import {openAiKeyStatus,openAiApiKey,saveOpenAiApiKey,deleteOpenAiApiKey} from './shopeeOpenAiCredentials.js';
 import {compileAttributes,compileTax,attributeAuditForChanges,selectValidTechnicalChanges,sameData,fieldsVerified} from './shopeeStructuredFields.js';
@@ -526,8 +527,44 @@ app.post('/api/shopee/kits/plus-content',mustLogin,requireWeDropAdmin,async(req,
   res.json({ok:true,kitSku:kit.kitSku,...kitContentBrief(kit,{manualFacts:req.body?.manualFacts||{}}),requiresReview:true,marketplaceUpdated:false});
  }catch(error){res.status(400).json({error:String(error.message||error).slice(0,300)});}
 });
-app.post('/api/shopee/kits/image',mustLogin,requireWeDropAdmin,(_req,res)=>{
- res.status(410).json({error:'Geração paga desativada para kits. Use os prompts no ChatGPT Plus e importe os arquivos PNG manualmente.'});
+const kitImageOperations=new Set();
+app.get('/api/shopee/kits/image/status',mustLogin,requireWeDropAdmin,async(req,res)=>{
+ res.setHeader('Cache-Control','no-store');
+ try{
+  const {auth}=await getValidAuth(req);
+  const key=await openAiKeyStatus(auth.shopId);
+  res.json({ok:true,automaticAvailable:key.configured===true,
+   mode:'opt_in_paid_api',requiresExplicitConsent:true,oneImagePerRequest:true,
+   chatGptPlusMode:'manual',marketplaceUpdated:false,source:key.source,
+   message:key.configured?'API de imagem disponível apenas mediante confirmação do custo por geração.':
+    'ChatGPT Plus não automatiza imagens de aplicações externas. Conecte uma API paga para geração automática ou use o modo manual.'});
+ }catch(e){res.status(503).json({error:String(e.message||e).slice(0,220)});}
+});
+app.post('/api/shopee/kits/image',mustLogin,requireWeDropAdmin,async(req,res)=>{
+ res.setHeader('Cache-Control','no-store');
+ if(!verifiedSameOrigin(req))return res.status(403).json({error:'Origem não autorizada.'});
+ if(req.body?.confirmPaidApi!==true)return res.status(403).json({
+  error:'Esta geração pode gerar custo na API OpenAI. Marque a autorização explícita de API paga para cada lote.'});
+ const slot=Number(req.body?.slot);
+ if(!Number.isInteger(slot)||slot<1||slot>9)return res.status(400).json({error:'Selecione uma imagem de 1 a 9.'});
+ let lock='';
+ try{
+  const {auth}=await getValidAuth(req);
+  const key=await openAiApiKey(auth.shopId);
+  if(!key)return res.status(409).json({error:'API de imagens não conectada. ChatGPT Plus não é uma chave de API. Configure sua chave antes de gerar automaticamente.'});
+  const kit=await composeKit(auth.shopId,req.body?.skus,{
+   marginPct:Number(req.body?.marginPct??15),
+   packing:Number(req.body?.packing||0),shipping:Number(req.body?.shipping||0)});
+  const manualFacts=req.body?.manualFacts||{};
+  const prompt=kitPrompts(kit,{manualFacts})[slot-1];
+  lock=auth.shopId+':'+kit.kitSku;
+  if(kitImageOperations.has(lock))return res.status(409).json({error:'Já existe uma imagem sendo gerada para este kit. Não inicie outra solicitação.'});
+  kitImageOperations.add(lock);
+  const result=await generateKitImage({kit,slot,key,prompt});
+  res.json({ok:true,...result,kitSku:kit.kitSku,marketplaceUpdated:false,
+   requiresManualReview:true,autoPublished:false});
+ }catch(e){res.status(400).json({error:String(e.message||e).slice(0,360)});}
+ finally{if(lock)kitImageOperations.delete(lock);}
 });
 app.get('/api/shopee/status',mustLogin,async(req,res)=>{
   try{
