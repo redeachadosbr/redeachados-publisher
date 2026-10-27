@@ -2881,9 +2881,34 @@ app.get('/api/shopee/optimizer/variants/draft',mustLogin,requireWeDropAdmin,asyn
   const expected=(draft.options||[]).map(o=>o.sku);
   const allModelsConfirmed=liveHasModel===true&&expected.length>=2&&
     expected.every(sku=>modelSkus.includes(sku));
+  // Prévia financeira por SKU física: a mesma barra da precificação do anúncio-pai.
+  // Somente leitura; nenhuma alteração na Shopee. Nunca inventar custo ausente.
+  const parentPlan=await savedShopeePricePlan(x.auth.shopId,x.itemId,x.modelId).catch(()=>null);
+  const preferences=await shopeePricingPreferences(x.auth.shopId);
+  const parentQuote=parentPlan?.quote;
+  const variantSettings=normalizeShopeePricingSettings({...preferences,
+   marginPct:Number(parentQuote?.targetMarginPct??preferences.marginPct),
+   minMarginPct:Math.max(8,Number(parentQuote?.minMarginPct??preferences.minMarginPct??8)),
+   discountPct:Number(parentQuote?.discountPct??preferences.discountPct),
+   couponPct:Number(parentQuote?.couponPct??preferences.couponPct)});
+  const prices=await Promise.all(options.map(async option=>{
+   const supplierSku=String(option.supplierSku||'').trim();
+   if(!supplierSku)return {name:option.name,status:'missing_sku'};
+   try{
+    const source=await shopeePricingDirectSupplierCost(x.auth.shopId,supplierSku);
+    if(!source||Number(source.unitCost)<=0)return {name:option.name,status:'missing_cost'};
+    const quote=quoteShopeePrice({unitCost:Number(source.unitCost),
+     settings:variantSettings,marginOverride:true});
+    return {name:option.name,supplierSku,status:'calculated',cost:Number(source.unitCost),
+     gross:quote.grossPrice,promo:quote.marketplaceDisplayPrice,
+     checkout:quote.buyerAfterCoupon,profit:quote.netProfit,margin:quote.netMarginPct,
+     discountPct:quote.discountPct,marginTarget:variantSettings.marginPct};
+   }catch(error){return {name:option.name,status:'blocked',
+    message:String(error.message||error).slice(0,180)};}
+  }));
   res.json({ok:true,sku:x.sku,supplierEan,eanSource:supplierEan?'WeDrop':null,suggestedPrice,
    priceSource:suggestedPrice?'Shopee API':null,liveHasModel,modelSkus,allModelsConfirmed,
-   details:{...draft,options},marketplaceUpdated:false});
+   details:{...draft,options},variantPriceQuotes:prices,marketplaceUpdated:false});
  }catch(e){res.status(400).json({ok:false,error:String(e.message||e).slice(0,300)});}
 });
 app.post('/api/shopee/optimizer/variants/draft',mustLogin,requireWeDropAdmin,async(req,res)=>{
