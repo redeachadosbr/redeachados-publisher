@@ -415,9 +415,9 @@ app.post('/api/shopee/kits/plus-import',mustLogin,requireWeDropAdmin,async(req,r
   const seen=new Set(),kits=[],rejected=[];
   for(const input of raw.slice(0,desiredKits)){
    try{
-    if(!Array.isArray(input)||input.length!==size||
-       input.some(x=>typeof x!=='string'||x.length>120)||new Set(input).size!==size)
-     throw Error('Cada kit precisa de '+size+' SKUs diferentes.');
+    if(!Array.isArray(input)||input.length<2||input.length>3||
+       input.some(x=>typeof x!=='string'||x.length>120)||new Set(input).size!==input.length)
+     throw Error('Cada kit precisa de 2 ou 3 SKUs diferentes e válidas.');
     const key=input.slice().sort().join('|');
     if(seen.has(key))continue;
     seen.add(key);
