@@ -3935,12 +3935,41 @@ function optimizerDiscountMarketFloorProtected(q){
   Number.isFinite(n(q.discountPct))&&n(q.discountPct)>0&&n(q.discountPct)<90&&
   q.discountRecommendationSource==='researched');
 }
+function optimizerMarketExceptionReady(q){
+ return Boolean(q?.status==='MERCADO_ABAIXO_DO_PISO'&&Number(q.marketGapPct)>25&&
+  q.marketResearch?.verified===true&&q.marketResearch?.count>=2&&q.marketResearch?.count<=5&&
+  Number(q.netMarginPct)>=Math.max(8,Number(q.minMarginPct)||8)&&Number(q.netProfit)>0&&
+  Number(q.customerPrice)>=Number(q.priceFloor)-0.01);
+}
+function optimizerMarketExceptionConsent(q){
+ return optimizerMarketExceptionReady(q)&&
+  document.getElementById('optimizerMarketOver25Consent')?.checked===true;
+}
+function optimizerMarketExceptionWidget(q){
+ const host=$('#optimizerExecDiscountCampaign')?.parentElement;
+ if(!host)return;
+ let label=document.getElementById('optimizerMarketOver25Approval');
+ if(!label){
+  label=document.createElement('label');label.id='optimizerMarketOver25Approval';
+  label.style.cssText='display:flex;gap:10px;align-items:flex-start;margin:12px 0;font-weight:600;color:#8b3e13;';
+  const checkbox=document.createElement('input');checkbox.type='checkbox';
+  checkbox.id='optimizerMarketOver25Consent';checkbox.style.marginTop='4px';
+  checkbox.addEventListener('change',()=>{optimizerDiscountFinalPreviewData=null;optimizerDiscountFinalPaint();});
+  const description=document.createElement('span');description.id='optimizerMarketOver25Description';
+  label.append(checkbox,description);host.append(label);
+ }
+ const visible=optimizerMarketExceptionReady(q);label.hidden=!visible;
+ if(visible)$('#optimizerMarketOver25Description').textContent=
+  'Autorizo excepcionalmente o preço '+shPricePercent(q.marketGapPct)+
+  ' acima da média verificada, mantendo a margem de '+shPricePercent(q.netMarginPct)+
+  ' e lucro '+shPriceMoney(q.netProfit)+'. A autorização vale apenas para esta prévia e não publica automaticamente.';
+}
 function optimizerDiscountFinalEligible(q){
  return Boolean(q&&q.marketResearch?.verified===true&&
   q.marketResearch?.source==='shopee_affiliate_product_offers'&&
   q.marketResearch?.sourceType==='researched_affiliate_offers'&&
   q.marketResearch?.count>=2&&q.marketResearch?.count<=5&&
-  (q.status!=='MERCADO_ABAIXO_DO_PISO'||optimizerDiscountMarketFloorProtected(q))&&
+  (q.status!=='MERCADO_ABAIXO_DO_PISO'||optimizerDiscountMarketFloorProtected(q)||optimizerMarketExceptionConsent(q))&&
   q.discountRecommendationSource==='researched'&&
   Number(q.netMarginPct)+0.001>=Number(q.minMarginPct)&&
   Number.isFinite(Date.parse(q.marketResearch?.researchedAt))&&
@@ -4017,6 +4046,7 @@ function optimizerDiscountFinalPaint(){
   tile.append(optimizerMake('small','',label),optimizerMake('strong','',value));
   target.append(tile);
  }
+ optimizerMarketExceptionWidget(active?q:null);
  const eligible=active&&optimizerDiscountFinalEligible(q);
  const verified=optimizerExecJob?.state==='verified'&&
   optimizerExecJob?.plan?.selectedStage==='all'&&
@@ -4139,14 +4169,14 @@ async function optimizerDiscountFinalPrepare({automatic=false}={}){
  const campaign=String($('#optimizerExecDiscountCampaign').value||'').trim();
  if(!optimizerDiscountFinalEligible(q)||!/^\d{1,18}$/.test(campaign))
    return optimizerDiscountFinalPaint();
- const previewKey=key+'|'+campaign+'|'+String(q.calculatedAt||'');
+ const previewKey=key+'|'+campaign+'|'+String(q.calculatedAt||'')+'|'+String(optimizerMarketExceptionConsent(q));
  if(automatic&&previewKey===optimizerDiscountFinalPreviewKey)return;
  optimizerDiscountFinalBusy=true;optimizerDiscountFinalPaint();
  optimizerDiscountFinalStatus('Conferindo preço e promoção na API Shopee sem publicar...','info');
  try{
   const data=await optimizerDiscountReadOnlyPreview({
    sku:w.sku,itemId:w.itemId,modelId:w.modelId,discountId:campaign,
-   allowDeferredPreview:true
+   allowDeferredPreview:true,allowOver25:optimizerMarketExceptionConsent(q)
   });
   if(optimizerDiscountFinalIdentityOf(optimizerWorkflowPlan)!==key||
      String($('#optimizerExecDiscountCampaign').value||'').trim()!==campaign)return;
@@ -4575,7 +4605,8 @@ async function optimizerExecutionPrepare({preserveStartError=false}={}){
         $('#optimizerFinalCampaignId')?.value||$('#discountPromotionId')?.value||
         optimizerDiscountFinalPreviewData?.preview?.discountId||'').trim(),
        ...($('#optimizerExecutionScope').value==='all'&&optimizerDiscountApprovalReady()?
-        {discountApprovalToken:optimizerDiscountFinalPreviewData?.approvalToken}:{})}),
+        {discountApprovalToken:optimizerDiscountFinalPreviewData?.approvalToken,
+        allowOver25:optimizerMarketExceptionConsent(optimizerDiscountFinalQuote)}:{})}),
      signal:AbortSignal.any([controller.signal,AbortSignal.timeout(75000)])
    });
    if(serial!==optimizerExecSerial||optimizerWorkflowPlan?.sku!==w.sku||
@@ -4776,7 +4807,8 @@ async function optimizerExecuteApproved(remainingOnly=false){
         allowPriceChange:p.modelVariations?Boolean(
          optimizerExecAutoModelPreview?.needsBasePriceUpdate||
          optimizerExecAutoModelPreview?.modelPriceChange):
-         discountIntent?.consent===true}:{})}),
+         discountIntent?.consent===true,
+         allowOver25:optimizerMarketExceptionConsent(optimizerDiscountFinalQuote)}:{})}),
      signal:AbortSignal.timeout(85000)
    });
    if(optimizerWorkflowPlan?.sku!==ctx.sku||optimizerWorkflowPlan?.itemId!==ctx.itemId||optimizerWorkflowPlan?.modelId!==ctx.modelId)return;
