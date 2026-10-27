@@ -942,6 +942,20 @@ function kitChatExtractLines(raw,size,allowedCodes){
 }
 async function plusResearch({openChat=false}={}){
  if(!kitStockReady)return kitPlusNotice('Estoque WeDrop não conferido; atualize antes da pesquisa.','error');
+ // Pesquisa previamente preparada: COPIAR durante o clique (gesto do vendedor),
+ // antes de abrir a aba. Isso evita perder a permissão ao trocar o foco.
+ if(openChat&&kitChatPending&&$('#kitResearchPrompt').value){
+  try{
+   kitChatValidateContext();
+   const copy=navigator.clipboard.writeText($('#kitResearchPrompt').value);
+   window.open('https://chatgpt.com/','_blank','noopener,noreferrer');
+   try{
+    await copy;
+    kitPlusNotice('Prompt copiado e ChatGPT aberto. Cole com Ctrl+V, envie, copie as linhas de SKUs da resposta e retorne para montar os kits.','success');
+   }catch{kitPlusNotice('ChatGPT aberto. Cópia bloqueada pelo Chrome; copie o prompt manualmente do campo da pesquisa.','warning');}
+   return;
+  }catch{ /* Parâmetros da pesquisa mudaram: preparar nova lista WeDrop. */ }
+ }
  if(openChat)window.open('https://chatgpt.com/','_blank','noopener,noreferrer');
  const btn=openChat?$('#kitPlusAutoStart'):$('#kitPlusResearch');btn.disabled=true;
  try{
@@ -1175,7 +1189,15 @@ $('#kitExpandResearch')?.addEventListener('click',()=>{
  $('#kitExpandResearch').setAttribute('aria-expanded',expanded.open?'true':'false');
 });
 $('#kitResearchDetails')?.addEventListener('toggle',()=>{
- $('#kitExpandResearch')?.setAttribute('aria-expanded',$('#kitResearchDetails').open?'true':'false');
+ const open=$('#kitResearchDetails').open;
+ $('#kitExpandResearch')?.setAttribute('aria-expanded',open?'true':'false');
+ // Ao abrir a pesquisa avançada, preparar a lista WeDrop em leitura,
+ // permitindo que o botão "Abrir ChatGPT" copie ANTES da troca de abas.
+ if(open&&kitStockReady){
+  let same=false;
+  try{kitChatValidateContext();same=Boolean($('#kitResearchPrompt').value);}catch{}
+  if(!same)void plusResearch();
+ }
 });
 $('#kitOpenResearchPrompt')?.addEventListener('click',()=>{
  const prompt=$('#kitResearchPrompt').value;
