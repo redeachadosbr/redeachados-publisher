@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {categoryMatches,kitCatalog,kitSku,composeKit,suggestKits,rankKitIdeaProducts,suggestKitsForIdea,kitCreative,kitPrompts,kitPlusResearchBrief,kitPlusContentPrompt} from '../shopeeKitBuilder.js';
+import {categoryMatches,kitCatalog,kitSku,composeKit,suggestKits,rankKitIdeaProducts,suggestKitsForIdea,assessKitBuyerFit,kitCreative,kitPrompts,kitPlusResearchBrief,kitPlusContentPrompt} from '../shopeeKitBuilder.js';
 import {clearKitStockCache} from '../shopeeKitAvailability.js';
 
 test('kits por categoria: custo exato, somatório, dois finais 0/9, prompts e proteção por SKU',async()=>{
@@ -175,4 +175,35 @@ test('rotas de kits por ideia reutilizam composição de estoque e aprovação s
  assert.match(server,/marketplaceUpdated:false/);
  assert.match(ui,/id="kitIdea"/);
  assert.match(frontend,/api\('\/api\/shopee\/kits\/idea-search'/);
+});
+
+test('motor comercial só recomenda kits de uso conjunto, não combinações aleatórias',()=>{
+ const item=(sku,name,category='Utensílios e Talheres',unitCost=20)=>({sku,name,category,unitCost});
+ const cutting=item('T1','Tábua de Madeira para Churrasco 30cm');
+ const tong=item('P1','Pegador de Carne Inox');
+ const knife=item('F1','Faca para Churrasco');
+ const pan=item('FR24','Frigideira Cerâmica 24cm Azul','Panelas e Frigideiras');
+ const pan26=item('FR26','Frigideira Cerâmica 26cm Azul','Panelas e Frigideiras');
+ const exercise=item('EX1','Roda para abdominal com pegadores ergonômicos','Utensílios e Talheres');
+ const perfume=item('PE1','Perfume Floral 100ml','Perfumaria');
+ assert.equal(assessKitBuyerFit([cutting,tong]).ok,true);
+ assert.equal(assessKitBuyerFit([cutting,tong,knife]).ok,true);
+ assert.equal(assessKitBuyerFit([cutting,tong,perfume]).ok,false);
+ assert.equal(assessKitBuyerFit([cutting,exercise]).ok,false);
+ assert.equal(assessKitBuyerFit([pan,pan26]).ok,false);
+ assert.equal(assessKitBuyerFit([cutting,item('T2','Tábua Corte Churrasco 40cm')]).ok,false);
+ assert.equal(assessKitBuyerFit([cutting,cutting]).ok,false);
+ assert.match(assessKitBuyerFit([cutting,tong]).evidence,/vendas e buscas não verificadas/);
+});
+test('kits por ocasião de compra não misturam caderno com panela nem produtos fitness',()=>{
+ const item=(sku,name,category)=>({sku,name,category,unitCost:20});
+ const backpack=item('M1','Mochila Escolar Infantil','Mochilas, Estojos e Lancheiras');
+ const notebook=item('N1','Caderno Universitário 10 Matérias','Cadernos');
+ const pot=item('FP','Panela Inox 2 Litros','Panelas e Frigideiras');
+ const bottle=item('G1','Garrafa para Água 500ml','Garrafas e Térmicas');
+ const mug=item('C1','Copo Água 300ml','Copos, Jarras e Servir');
+ assert.equal(assessKitBuyerFit([backpack,notebook]).ok,true);
+ assert.equal(assessKitBuyerFit([backpack,pot]).ok,false);
+ assert.equal(assessKitBuyerFit([bottle,mug]).ok,true);
+ assert.equal(assessKitBuyerFit([pot,mug]).ok,false);
 });
