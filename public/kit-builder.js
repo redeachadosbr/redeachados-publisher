@@ -1,4 +1,5 @@
 import {parseKitChatResult} from './kit-chat-result-parser.js?v=2.5.2-theme-review';
+import {scoreKitSeoTitle,parseKitSeoResponse} from './kit-seo-helper.js';
 // Kits Inteligentes WeDrop — Kit Formal enviado à Shopee somente após aprovação explícita.
 const $=s=>document.querySelector(s);
 const money=n=>Number(n).toLocaleString('pt-BR',{style:'currency',currency:'BRL'});
@@ -16,6 +17,8 @@ async function api(path,{body,signal}={}){
 }
 let categoriesLoaded=false,suggestions=[],prepared=null,images=new Map(),generationBusy=false;
 let kitActiveDraftSku=null,kitDraftOpenRevision=0;
+let kitContentSku='',kitContentManualFacts=new Map(),kitContentSeoTitles=[],
+ kitContentAwaitingResponse=false,kitContentBusy=false;
 let kitCurrentMode='builder';
 function setKitMode(next,{scroll=false}={}){
  if(next!=='import'&&next!=='builder')return;
@@ -990,6 +993,13 @@ async function search(){
 function renderKit({scroll=true,displayTitle=''}={}){
  if(!prepared)return;
  const {kit,creative}=prepared;
+ if(kitContentSku!==kit.kitSku){
+  kitContentSku=kit.kitSku;kitContentManualFacts.clear();kitContentSeoTitles=[];
+  kitContentAwaitingResponse=false;
+  $('#kitMissingFacts').hidden=true;$('#kitMissingFactFields').replaceChildren();
+  $('#kitSeoOptions').hidden=true;$('#kitSeoOptionList').replaceChildren();
+  $('#kitContentPrompt').value='';$('#kitPlusTextResult').value='';
+ }
  $('#kitDetail').hidden=false;
  $('#kitSkuTitle').textContent=String(displayTitle||creative?.title||
   kit.components.map(p=>p.name).join(' + ')).trim();
@@ -1330,38 +1340,160 @@ document.addEventListener('visibilitychange',()=>{
  if(document.visibilityState==='visible')void kitChatTryAutoClipboard();
 });
 
-async function plusText(){
- if(!prepared)return;
- const btn=$('#kitPlusText');btn.disabled=true;
+function kitContentFeedback(message,state='info'){
+ const el=$('#kitContentFeedback');if(el){el.textContent=message;el.dataset.state=state;}
+ status(message,state);
+}
+function kitContentOpenTab(){
+ // Abrir no clique do usuário, ANTES do await, para evitar bloqueio de popup.
+ const tab=window.open('about:blank','_blank');
+ if(tab)tab.opener=null;
+ return tab;
+}
+function kitContentHandoff(prompt,tab=null){
+ if(!prompt.trim())throw Error('Orientação vazia. Prepare o conteúdo novamente.');
+ // O link preenche a caixa de texto do ChatGPT quando suportado pelo navegador.
+ // O envio depende do ChatGPT e poderá requerer clique em Enviar.
+ const url='https://chatgpt.com/?prompt='+encodeURIComponent(prompt);
+ if(tab){try{tab.location.replace(url);}catch{tab.location.href=url;}}
+ else window.open(url,'_blank','noopener,noreferrer');
+ if(navigator.clipboard?.writeText)
+  void navigator.clipboard.writeText(prompt).catch(()=>{});
+ kitContentAwaitingResponse=true;
+ $('#kitContentDetails').open=true;
+ kitContentFeedback('ChatGPT aberto com orientação preparada. Se o texto não for enviado automaticamente, clique em Enviar no ChatGPT. Depois copie a resposta completa e importe as 3 opções.','success');
+}
+function kitContentReadManual(){
+ const data={};
+ for(const box of $('#kitMissingFactFields').querySelectorAll('textarea[data-kit-fact-sku]')){
+  const sku=box.dataset.kitFactSku,value=box.value.trim();
+  if(value)data[sku]=value.slice(0,1700);
+  kitContentManualFacts.set(sku,value);
+ }
+ return data;
+}
+function kitContentShowMissing(rows){
+ const root=$('#kitMissingFactFields');
+ root.replaceChildren();
+ for(const component of rows){
+  const card=elt('div','kit-missing-card');
+  card.append(elt('strong','',component.name+' · SKU '+component.sku));
+  card.append(elt('small','','Falta no catálogo: '+component.fields.join(' e ')+
+    '. Cole a informação correspondente somente a esta SKU.'));
+  const box=elt('textarea');box.maxLength=1700;box.rows=4;
+  box.dataset.kitFactSku=component.sku;
+  box.placeholder='Ex.: descrição, dimensões e características reais da SKU '+component.sku+'...';
+  box.value=kitContentManualFacts.get(component.sku)||'';
+  box.setAttribute('aria-label','Informações adicionais SKU '+component.sku);
+  box.addEventListener('input',()=>kitContentManualFacts.set(component.sku,box.value));
+  card.append(box);root.append(card);
+ }
+ $('#kitMissingFacts').hidden=false;
+ $('#kitContentDetails').open=true;
+ $('#kitMissingFacts').scrollIntoView({behavior:'smooth',block:'nearest'});
+}
+async function plusText({proceedWithoutDetails=false}={}){
+ if(!prepared||kitContentBusy)return;
+ const currentSku=prepared.kit.kitSku;
+ const button=proceedWithoutDetails?$('#kitContinueContent'):$('#kitPlusText');
+ const tab=kitContentOpenTab();
+ kitContentBusy=true;button.disabled=true;
+ kitContentFeedback('Consultando descrições e medidas de cada SKU no catálogo WeDrop...','info');
  try{
-  const r=await api('/api/shopee/kits/plus-content',{body:{
-   skus:prepared.kit.components.map(x=>x.sku),...currentSettings()
+  const data=await api('/api/shopee/kits/plus-content',{body:{
+   skus:prepared.kit.components.map(p=>p.sku),...currentSettings(),
+   manualFacts:proceedWithoutDetails?kitContentReadManual():
+    Object.fromEntries(kitContentManualFacts.entries())
   }});
-  if(r.kitSku!==prepared.kit.kitSku)throw Error('SKU de kit diferente.');
-  $('#kitContentPrompt').value=r.prompt;
+  if(prepared?.kit?.kitSku!==currentSku||data.kitSku!==currentSku)
+   throw Error('A composição do kit mudou. Reabra a geração para evitar misturar SKUs.');
+  $('#kitContentPrompt').value=data.prompt;
   $('#kitContentDetails').open=true;
-  status('Orientação pronta. Clique em "Copiar orientação + abrir ChatGPT Plus" e depois importe a resposta neste painel.','success');
- }catch(error){status('Não foi possível preparar texto: '+error.message,'error');}
- finally{btn.disabled=false;}
+  if(data.missingDetails?.length&&!proceedWithoutDetails){
+   tab?.close();
+   kitContentShowMissing(data.missingDetails);
+   kitContentFeedback('A WeDrop não trouxe todos os dados. Cole informações dos produtos se tiver, ou continue sem inventar medidas.','info');
+  }else{
+   $('#kitMissingFacts').hidden=true;
+   kitContentHandoff(data.prompt,tab);
+  }
+ }catch(error){
+  tab?.close();
+  kitContentFeedback('Não foi possível preparar o kit: '+error.message,'error');
+ }finally{kitContentBusy=false;button.disabled=false;}
 }
-function importPlusText(){
- if(!prepared)return;
- const raw=$('#kitPlusTextResult').value.trim();
- const title=raw.match(/(?:^|\n)\s*(?:T[ÍI]TULO)\s*:\s*(.+)/i);
- const start=raw.search(/(?:^|\n)\s*DESCRI[ÇC][ÃA]O\s*:/i);
- if(!title||start<0){
-  status('A resposta precisa ter TÍTULO: e DESCRIÇÃO: para evitar importar texto incompleto.','error');return;
+function kitShowSeoTitles(options){
+ const root=$('#kitSeoOptionList');root.replaceChildren();
+ for(const title of options){
+  const metrics=scoreKitSeoTitle(title.title,prepared.kit.components);
+  const button=elt('button','kit-seo-option'+($('#kitTitle').value===title.title?' is-selected':''));
+  button.type='button';button.setAttribute('aria-pressed',$('#kitTitle').value===title.title?'true':'false');
+  const head=elt('span','kit-seo-option-head');
+  head.append(elt('span','','Opção '+title.number+' · '+metrics.label),
+   elt('span','kit-seo-option-score',metrics.score+'/100 · Nota SEO estimada'));
+  button.append(head,elt('span','kit-seo-option-title',title.title));
+  button.title=metrics.note;
+  button.addEventListener('click',()=>{
+   $('#kitTitle').value=title.title;
+   for(const b of root.querySelectorAll('.kit-seo-option')){
+    b.classList.remove('is-selected');b.setAttribute('aria-pressed','false');
+   }
+   button.classList.add('is-selected');button.setAttribute('aria-pressed','true');
+   onKitContentEdit();
+   $('#kitSkuTitle').textContent=title.title;
+   kitContentFeedback('Título '+title.number+' selecionado (nota SEO estimada '+metrics.score+'/100). Salve o rascunho para preservar a escolha.','success');
+  });
+  root.append(button);
  }
- const description=raw.slice(start).replace(/^\s*DESCRI[ÇC][ÃA]O\s*:\s*/i,'').trim();
- if(title[1].trim().length<10||title[1].trim().length>120||description.length<80||description.length>2000){
-  status('Título de 10 a 120 caracteres e descrição de 80 a 2000 caracteres são necessários.','error');return;
- }
- $('#kitTitle').value=title[1].trim();
- $('#kitDescription').value=description;
- updateKitTextCounters();
- kitSaved=false;clearKitPublishApproval();
- status('Título e descrição importados. Salve o rascunho atualizado antes de publicar.','success');
+ $('#kitSeoOptions').hidden=false;
 }
+function importPlusText({silent=false}={}){
+ if(!prepared)return false;
+ try{
+  const result=parseKitSeoResponse($('#kitPlusTextResult').value);
+  // Exibir a classificação por critérios objetivos, não inventar ranking da Shopee.
+  const scored=result.titles.map(x=>({...x,...scoreKitSeoTitle(x.title,prepared.kit.components)}))
+   .sort((a,b)=>b.score-a.score||a.number-b.number);
+  kitContentSeoTitles=result.titles;
+  $('#kitTitle').value=scored[0].title;
+  $('#kitDescription').value=result.description;
+  $('#kitSkuTitle').textContent=scored[0].title;
+  kitShowSeoTitles(scored);
+  onKitContentEdit();updateKitTextCounters();
+  kitSaved=false;clearKitPublishApproval();
+  kitContentAwaitingResponse=false;
+  $('#kitContentDetails').open=false;
+  kitContentFeedback('Descrição e 3 títulos importados. Opção com melhor nota estimada selecionada; revise todos os dados e salve o rascunho.','success');
+  return true;
+ }catch(error){
+  if(!silent)kitContentFeedback('Resposta não importada: '+error.message,'error');
+  return false;
+ }
+}
+async function kitImportCopiedContent(){
+ if(!navigator.clipboard?.readText){
+  kitContentFeedback('O navegador não autorizou colar automaticamente. Use Ctrl+V no campo de resposta.','error');return;
+ }
+ try{
+  const content=await navigator.clipboard.readText();
+  if(!content.trim())throw Error('Área de transferência vazia.');
+  $('#kitPlusTextResult').value=content;
+  importPlusText();
+ }catch(error){kitContentFeedback('Não foi possível colar: '+error.message+'. Use Ctrl+V manualmente.','error');}
+}
+async function kitTryAutoContentImport(){
+ if(!kitContentAwaitingResponse||!prepared||!document.hasFocus()||
+  !navigator.permissions?.query||!navigator.clipboard?.readText)return;
+ try{
+  const permission=await navigator.permissions.query({name:'clipboard-read'});
+  if(permission.state!=='granted')return;
+  const text=await navigator.clipboard.readText();
+  if(!/^\s*T[ÍI]TULO\s*1\s*:/im.test(text)||!/DESCRI[ÇC][ÃA]O\s*:/i.test(text))return;
+  $('#kitPlusTextResult').value=text;
+  importPlusText({silent:true});
+ }catch{}
+}
+window.addEventListener('focus',()=>void kitTryAutoContentImport());
 
 async function prepare(kit){
  if(generationBusy||marginUpdatePending)return;
@@ -1548,10 +1680,13 @@ $('#kitOpenResearchPrompt')?.addEventListener('click',()=>{
 });
 $('#kitOpenContentPrompt')?.addEventListener('click',()=>{
  const prompt=$('#kitContentPrompt').value;
- if(prompt)chatgptHandoff(prompt);else status('Prepare primeiro o prompt de título e descrição.','error');
+ if(prompt)kitContentHandoff(prompt);
+ else kitContentFeedback('Prepare primeiro o texto com as SKUs verificadas.','error');
 });
 $('#kitPlusText')?.addEventListener('click',()=>void plusText());
-$('#kitImportText')?.addEventListener('click',importPlusText);
+$('#kitContinueContent')?.addEventListener('click',()=>void plusText({proceedWithoutDetails:true}));
+$('#kitImportCopiedText')?.addEventListener('click',()=>void kitImportCopiedContent());
+$('#kitImportText')?.addEventListener('click',()=>importPlusText());
 
 $('#kitGenerateAll')?.addEventListener('click',openChatGPTImages);
 $('#kitDownloadPack')?.addEventListener('click',exportPack);
