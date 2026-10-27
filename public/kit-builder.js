@@ -682,7 +682,8 @@ function renderSuggestions(data){
   reason.title='Os componentes foram relacionados por função. Isto não é comprovação de vendas.';
   card.append(reason);
   if(kit.buyerFitScore!=null){
-   const explanation=elt('small','kit-candidate-evidence',
+   const explanation=elt('small','kit-candidate-evidence',kit.reviewRequired?
+    '⚠ RASCUNHO — REVISAR COERÊNCIA · Compatibilidade física não confirmada · SKUs WeDrop verificadas':
     '✓ Uso complementar · ✓ SKUs WeDrop verificadas · Vendas: ainda não comprovadas');
    explanation.title='A coerência comercial é uma estimativa de compra conjunta, não uma taxa de conversão.';
    card.append(explanation);
@@ -715,7 +716,8 @@ async function loadDrafts(){
    card.append(pic);
    const info=elt('div','kit-draft-description');
    info.append(elt('span','kit-draft-state',draft.publication==='published'?'PUBLICADO NA SHOPEE':
-    draft.publication==='uncertain'?'PUBLICAÇÃO A CONFERIR':'RASCUNHO NÃO PUBLICADO'));
+    draft.publication==='uncertain'?'PUBLICAÇÃO A CONFERIR':
+    draft.reviewRequired?'RASCUNHO — REVISAR COERÊNCIA':'RASCUNHO NÃO PUBLICADO'));
    info.append(elt('strong','',draft.title||draft.kitSku));
    info.append(elt('small','',draft.skus.join(' + ')+' · '+draft.skus.length+' unidades'));
    info.append(elt('small','',draft.updatedAt?'Atualizado '+new Date(draft.updatedAt).toLocaleString('pt-BR'):'Em revisão'));
@@ -1022,6 +1024,29 @@ async function plusResearch({openChat=false}={}){
  }catch(error){kitPlusNotice('Pesquisa não preparada: '+error.message,'error');}
  finally{btn.disabled=false;}
 }
+function renderKitImportReport(result,parserRejected=0){
+ const root=$('#kitImportReport');if(!root)return;
+ root.replaceChildren();
+ const received=Number(result.received||0)+parserRejected;
+ const saved=Number(result.saved??(result.results||[]).filter(k=>k.draftSaved).length);
+ const pending=Number(result.pendingReview??(result.results||[]).filter(k=>k.reviewRequired).length);
+ const rejected=(result.rejected||[]).length+parserRejected;
+ root.append(elt('strong','','Resultado: '+received+' recebidos · '+saved+
+  ' rascunhos salvos · '+pending+' para revisão · '+rejected+' rejeitados.'));
+ for(const kit of result.results||[]){
+  root.append(elt('p','', '✓ Kit '+(kit.importIndex||'?')+' ('+
+   kit.components.map(p=>p.sku).join(' + ')+'): '+
+   (kit.reviewRequired?'Rascunho — revisar coerência. '+kit.reviewNotes.join('; '):
+    'Rascunho verificado; confira o anúncio antes de publicar.')));
+ }
+ for(const item of result.rejected||[]){
+  root.append(elt('p','', '✕ Kit '+(item.index||'?')+' ('+(item.skus||[]).join(' + ')+
+   '): '+item.reason));
+ }
+ if(parserRejected)root.append(elt('p','','⚠ '+parserRejected+
+  ' combinação(ões) rejeitada(s) na leitura por SKU ausente, duplicada ou estrutura inválida.'));
+ root.hidden=false;
+}
 async function importPlusSuggestions({readClipboard=false,silent=false,uploadedText=null}={}){
  // Importação explícita nunca depende apenas do indicador visual de estoque:
  // a API atualiza a disponibilidade e valida cada SKU novamente no servidor.
@@ -1055,6 +1080,7 @@ async function importPlusSuggestions({readClipboard=false,silent=false,uploadedT
   const r=await api('/api/shopee/kits/plus-import',{body:{
    ...context,kits:rows,...currentSettings()
   }});
+  renderKitImportReport(r,parsed.rejected);
   if(!Array.isArray(r.results)||!r.results.length){
    const firstRejected=(r.rejected||[]).slice(0,2).map(x=>x.reason).join(' / ');
    throw Error('Nenhum dos '+rows.length+' kits passou na validação WeDrop. '+firstRejected);
@@ -1068,9 +1094,12 @@ async function importPlusSuggestions({readClipboard=false,silent=false,uploadedT
   await loadDrafts();
   const skipped=(r.rejected||[]).length;
   const reasons=(r.rejected||[]).slice(0,2).map(x=>x.reason).join('; ');
-  kitPlusNotice('✓ '+r.results.length+' kits montados e salvos automaticamente como rascunhos! '+
-   (skipped?skipped+' combinação(ões) rejeitada(s): '+reasons+'. ':'')+
-   'Nenhuma publicação realizada. Confira os rascunhos abaixo.','success');
+  kitPlusNotice('✓ '+(r.received||rows.length)+' kits recebidos; '+
+   (r.saved??r.results.length)+' rascunhos salvos; '+
+   (r.pendingReview||0)+' para revisão; '+
+   (skipped+parsed.rejected)+' rejeitados. '+
+   (skipped?'Motivos: '+reasons+'. ':'')+
+   'Nenhuma publicação na Shopee. Confira o relatório por kit abaixo.','success');
   $('#kitSuggestions')?.scrollIntoView({behavior:'smooth',block:'start'});
   return true;
  }catch(error){

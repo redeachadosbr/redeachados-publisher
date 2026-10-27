@@ -413,7 +413,7 @@ app.post('/api/shopee/kits/plus-import',mustLogin,requireWeDropAdmin,async(req,r
       !Array.isArray(raw)||raw.length<1||raw.length>10)
    throw Error('Informe até dez kits de dois ou três SKUs, com meta entre 5 e 10.');
   const seen=new Set(),kits=[],rejected=[];
-  for(const input of raw.slice(0,desiredKits)){
+  for(const [index,input] of raw.slice(0,desiredKits).entries()){
    try{
     if(!Array.isArray(input)||input.length<2||input.length>3||
        input.some(x=>typeof x!=='string'||x.length>120)||new Set(input).size!==input.length)
@@ -434,13 +434,30 @@ app.post('/api/shopee/kits/plus-import',mustLogin,requireWeDropAdmin,async(req,r
     if(idea&&!rankKitIdeaProducts(idea,kit.components).products.length)
      throw Error('Produtos sem correspondência com a ideia informada.');
     const fit=assessKitBuyerFit(kit.components);
-    if(!fit.ok)throw Error('Falta coerência de uso: '+fit.reason);
-    const created=await saveKitDraft(auth.shopId,{kit,creative:await kitCreative(auth.shopId,kit,{ai:false})});
-    kits.push({...kit,buyerFitScore:fit.score,matchSignals:fit.signals,
-     businessReason:fit.reason+'. Proposta do ChatGPT Plus, verificada na WeDrop. Vendas não comprovadas.',
+    // Rejeitar erros objetivos; compatibilidade comercial incerta NÃO apaga
+    // um kit infantil cuja composição, custo e estoque foram verificados.
+    const allToys=kit.components.every(p=>/brinqued|boneca|casinha|carrinho|pista|jogos|educativ|bebe|passeio/.test(
+     String(p.category||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase()));
+    if(!fit.ok&&!allToys)throw Error('Falta coerência de uso: '+fit.reason);
+    const reviewRequired=fit.reviewRequired===true||!fit.ok;
+    kit.reviewRequired=reviewRequired;
+    kit.reviewNotes=reviewRequired?(fit.reviewNotes||[
+     'Coerência comercial ainda não comprovada: '+fit.reason,
+     'Compatibilidade física não confirmada; verificar antes de publicar'
+    ]):[];
+    if(reviewRequired)kit.warning+=' Kit temático em revisão: '+kit.reviewNotes.join('; ')+'.';
+    const previous=await loadKitDraft(auth.shopId,kit.kitSku);
+    const creative=previous?.creative?.title&&previous?.creative?.description?
+     previous.creative:await kitCreative(auth.shopId,kit,{ai:false});
+    const created=await saveKitDraft(auth.shopId,{kit,creative});
+    kits.push({...kit,buyerFitScore:fit.ok?fit.score:0,
+     matchSignals:fit.signals||[],reviewRequired,reviewNotes:kit.reviewNotes,
+     importIndex:index+1,status:reviewRequired?'pending_review':'draft',
+     businessReason:(fit.ok?fit.reason:'Coerência a revisar: '+fit.reason)+
+      '. Sugestão ChatGPT Plus conferida no catálogo WeDrop. Vendas não comprovadas.',
      demandEvidence:'não verificada',draftSaved:created.saved===true});
    }catch(error){
-    rejected.push({skus:Array.isArray(input)?input.map(x=>String(x).slice(0,40)):[],
+    rejected.push({index:index+1,skus:Array.isArray(input)?input.map(x=>String(x).slice(0,40)):[],
      reason:String(error.message||error).slice(0,180)});
    }
   }
@@ -448,6 +465,9 @@ app.post('/api/shopee/kits/plus-import',mustLogin,requireWeDropAdmin,async(req,r
   res.json({ok:true,source:'ChatGPT Plus + catálogo completo WeDrop verificado',
    disclaimer:'Kits salvos como rascunhos para revisão, sem publicação. Potencial comercial estimado, sem vendas comprovadas.',
    results:kits,accepted:kits.length,rejected,
+   received:raw.slice(0,desiredKits).length,
+   saved:kits.filter(x=>x.draftSaved).length,
+   pendingReview:kits.filter(x=>x.reviewRequired).length,
    targetCount:desiredKits,marketplaceUpdated:false,shopeePublished:false});
  }catch(error){res.status(400).json({error:String(error.message||error).slice(0,300)});}
 });

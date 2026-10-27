@@ -172,11 +172,44 @@ function buyerPair(a,b){
  }
  return null;
 }
+// Temas de compra em brinquedos não exigem encaixe físico nem uso simultâneo.
+// Toda combinação temática permanece sujeita à revisão do vendedor.
+const TOY_CATEGORY=/brinqued|boneca|casinha|carrinho|pista|jogos|educativ|bebe|passeio/;
+const KIT_THEMES=[
+ {id:'parque',reason:'Brinquedos de parque de diversões',all:/parque|paraiso|carrossel|diversao/},
+ {id:'esportes-mesa',reason:'Minijogos esportivos de mesa',all:/mini jogo|jogo de mesa|arena|basquete|futebol|penalti/},
+ {id:'massinha',reason:'Atividades criativas com massinha de modelar',all:/massinha|modelar/},
+ {id:'dinossauros',reason:'Brincadeiras temáticas de dinossauros',all:/dinossaur/},
+ {id:'cozinha-infantil',reason:'Brincadeira de cozinha e casinha',all:/cozinha|geladeira|fogao|forno|liquidificador/},
+ {id:'jogos-familia',reason:'Jogos distintos para atividades em grupo',all:/jogo|pula pirata|tabuleiro|derruba torre/},
+ {id:'educativo',reason:'Atividades educativas com letras e animais',all:/alfabeto|letras|aprendizado|quebra.cabeca|bilingue|animais/},
+ {id:'joias',reason:'Criação de acessórios e miçangas',all:/joia|micanga|pulseira|colar|bijuteria/},
+ {id:'sensorial-musical',reason:'Brinquedos musicais e chocalhos',all:/musical|chocalho|elefante|torre|bola/}
+];
+function themedBuyerFit(items){
+ if(!items.every(p=>TOY_CATEGORY.test(norm(p.category))))return null;
+ const names=items.map(p=>norm(p.name));
+ // Impede mesmo produto repetido como variação de cor, tamanho ou embalagem.
+ if(new Set(items.map(p=>ideaFamily(p))).size!==items.length)return null;
+ let theme=KIT_THEMES.find(t=>names.every(n=>t.all.test(n)));
+ if(!theme&&items.length===2&&
+   names.some(n=>/maleta|ferrament|oficina/.test(n))&&
+   names.some(n=>/dinossaur|montar|desmontar|parafusadeira/.test(n)))
+  theme={id:'oficina',reason:'Brincadeira de faz de conta com ferramentas e montagem'};
+ if(!theme)return null;
+ return {ok:true,score:62,reviewRequired:true,reason:'Kit temático: '+theme.reason,
+  signals:['Tema/ocasião de compra compartilhado','Produtos WeDrop distintos'],
+  reviewNotes:['Compatibilidade física não confirmada',
+   'Conferir faixa etária, conteúdo físico e apresentação de cada SKU antes do anúncio'],
+  evidence:'Hipótese comercial por temática; compatibilidade, vendas e buscas não verificadas'};
+}
 export function assessKitBuyerFit(items){
  if(!Array.isArray(items)||items.length<2||items.length>3)
   return {ok:false,score:0,reason:'Kit precisa de dois ou três produtos.'};
  if(new Set(items.map(p=>p.sku)).size!==items.length)
   return {ok:false,score:0,reason:'SKU duplicada.'};
+ const themed=themedBuyerFit(items);
+ if(themed)return themed;
  if(new Set(items.map(buyerRole)).size!==items.length)
   return {ok:false,score:0,reason:'Produtos com a mesma função; possível variação de cor ou tamanho.'};
  const links=[],connected=new Set();

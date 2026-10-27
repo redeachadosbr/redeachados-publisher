@@ -29,12 +29,14 @@ export function parseKitChatResult(input,{allowedCodes=[],limit=10}={}){
   const key=values.slice().sort().join('|');
   if(!seen.has(key)){seen.add(key);if(kits.length<limit)kits.push(values);}
  };
- function parts(v,depth=0){
+ function parts(v,depth=0,explicitSku=false){
   if(depth>5)return [];
-  if(typeof v==='string'||typeof v==='number')return fromText(v,allowed);
-  if(Array.isArray(v))return v.flatMap(x=>parts(x,depth+1));
+  if(typeof v==='string'||typeof v==='number')
+   return explicitSku?String(v).split(/[\s+,;|]+/).map(asSku).filter(Boolean):fromText(v,allowed);
+  if(Array.isArray(v))return v.flatMap(x=>parts(x,depth+1,explicitSku));
   if(v&&typeof v==='object'){
-   for(const [k,x] of Object.entries(v))if(SKU_FIELDS.has(normalizedKey(k)))return parts(x,depth+1);
+   for(const [k,x] of Object.entries(v))if(SKU_FIELDS.has(normalizedKey(k)))
+    return parts(x,depth+1,true);
   }
   return [];
  }
@@ -49,12 +51,12 @@ export function parseKitChatResult(input,{allowedCodes=[],limit=10}={}){
   }
   if(typeof v!=='object')return;
   for(const [k,x] of Object.entries(v))if(KIT_FIELDS.has(normalizedKey(k))){
-   const list=parts(x);
+   const list=parts(x,depth+1,true);
    if(list.length){add(list);return;}
   }
   const columns=[];
   for(const [k,x] of Object.entries(v))if(/^sku[123]$/.test(normalizedKey(k))||
-   /^codigoproduto[123]$/.test(normalizedKey(k)))columns.push(...parts(x));
+   /^codigoproduto[123]$/.test(normalizedKey(k)))columns.push(...parts(x,depth+1,true));
   if(columns.length){add(columns);return;}
   for(const [k,x] of Object.entries(v))if(ROOT_FIELDS.has(normalizedKey(k)))walk(x,depth+1);
  }

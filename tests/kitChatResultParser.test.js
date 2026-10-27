@@ -55,6 +55,14 @@ test('limite de 10 e ausência de whitelist protegem o catálogo',()=>{
  assert.throws(()=>parseKitChatResult(txt,{allowedCodes:[]}),/WeDrop/);
 });
 
+test('JSON com SKU desconhecida não descarta silenciosamente componente e não cria kit truncado',()=>{
+ const result=parseKitChatResult({kits:[
+  {itens:[{sku:'DTY1126'},{sku:'SKU_DESCONHECIDA'},{sku:'DTY1127'}]},
+  {itens:[{sku:'050'},{sku:'1509'},{sku:'CO0961295'}]}
+ ]},{allowedCodes:whitelist,limit:10});
+ assert.deepEqual(result.kits,[['050','1509','CO0961295']]);
+ assert.equal(result.rejected,1);
+});
 test('campo de arquivo mantém nome e mostra feedback visível mesmo com importação automática concorrente',async()=>{
  const {readFileSync}=await import('node:fs');
  const app=readFileSync(new URL('../public/kit-builder.js',import.meta.url),'utf8');
