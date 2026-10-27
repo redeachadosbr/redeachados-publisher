@@ -13,3 +13,24 @@ test('kit importa três títulos SEO distintos e uma descrição única',()=>{
  assert.match(rank.note,/não é ranking oficial/);
  assert.throws(()=>parseKitSeoResponse('TÍTULO: Único\nDESCRIÇÃO: curta'),/TÍTULO 1/);
 });
+
+test('cópia de bloco Escrita do ChatGPT com 3 títulos e descrição é importada',async()=>{
+ const {kitSeoRiskFlags}=await import('../public/kit-seo-helper.js');
+ const source='Escrita\n\n**TÍTULO 1:** Kit Elefante Brincalhão Musical com Luzes + Torre Chocalho 🐘 🎶\n\n'+
+  '**TÍTULO 2:** Kit Infantil Sensorial Elefante e Torre com Bola Chocalho 🐘 ✨\n\n'+
+  '**TÍTULO 3:** Kit Brinquedos para Bebê Elefante Musical e Torre com Chocalho 🎁 🐘\n\n'+
+  '**DESCRIÇÃO:**\n\n✨ Kit com dois brinquedos para brincar.\n\n✅ BENEFÍCIOS\n• Elefante musical\n• Torre e bola chocalho\n\n💡 POR QUE COMPRAR\nDois componentes em um kit.\n\n📦 O QUE VAI NA EMBALAGEM\n1 de cada produto.';
+ const parsed=parseKitSeoResponse(source);
+ assert.equal(parsed.titles.length,3);
+ assert.match(parsed.description,/DOIS/i);
+ assert.deepEqual(kitSeoRiskFlags('Kit para Bebê 12 Meses',[
+  {name:'Elefante Musical',description:'Brinquedo Musical'}]),[
+   'Faixa etária “12 meses” não confirmada nos dados WeDrop disponíveis'
+  ]);
+});
+test('colagem de prompt no campo de resposta mostra erro orientado ao usuário',()=>{
+ const input='Você é redator brasileiro especializado em conversão e SEO Shopee da Rede Achados BR.\n'+
+  'Informações por produto (dados do fornecedor):\nSKU 310200\nResponda apenas neste formato:\n'+
+  'TÍTULO 1: Kit exemplo um\nTÍTULO 2: Kit exemplo dois\nTÍTULO 3: Kit exemplo três\nDESCRIÇÃO: ✨ o prompt não é anúncio, e não deve importar.';
+ assert.throws(()=>parseKitSeoResponse(input),/ORIENTAÇÃO enviada/);
+});
