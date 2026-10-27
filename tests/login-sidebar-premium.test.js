@@ -54,7 +54,7 @@ test('fundo de página inteira com login branco independente sobreposto à direi
  assert.match(c,/transform:translateY\(-50%\)/);
  assert.match(c,/#loginScreen\.login-overlay-scene \.login-auth-panel\{[\s\S]*?border-radius:30px/);
  assert.match(c,/@media\(max-width:950px\)/);
- assert.match(h,/login-sidebar-premium\.css\?v=2\\.2\\.0-compact-gold/);
+ assert.match(h,/login-sidebar-premium\.css\?v=2\.2\.0-compact-gold/);
 });
 
 test('desktop sem rolagem e botões alinhados com cartão compacto e dourado mais luminoso',()=>{
