@@ -37,3 +37,9 @@ test('nove imagens mostram todos componentes juntos mesmo quando faltam medidas'
  assert(!prompts.join('\n').includes('20 × 30'));
  assert.throws(()=>kitPrompts(kit,{manualFacts:{C:'10 cm'}}),/não pertence/);
 });
+
+test('dimensões com unidade após cada eixo também são lidas sem inventar',()=>{
+ const measures=detectSkuMeasurements('Medidas: 20cm x 30cm x 40cm. Peso: 1,5kg.');
+ assert.deepEqual(measures.map(x=>x.value),['20 × 30 × 40 cm','peso: 1,5 kg']);
+ assert.equal(dimensionsFromSkuText('Idade 12 meses, 5 peças.'),'');
+});

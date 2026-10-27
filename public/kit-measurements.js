@@ -26,6 +26,10 @@ export function detectSkuMeasurements(input){
  const triples=new RegExp(wordBoundaryBefore+'('+NUMBER+'(?:\\s*[x×]\\s*'+NUMBER+'){1,2})\\s*('+LENGTH+')'+trailingBoundary,'giu');
  let m;
  while((m=triples.exec(s))!==null)add('dimensions',m[1].replace(/\s*[x×]\s*/g,' × ')+' '+canonicalUnit(m[2]));
+ // 20 cm x 30 cm x 40 cm, com unidade individual em cada eixo.
+ const everyUnit=new RegExp(wordBoundaryBefore+'('+NUMBER+')\\s*('+LENGTH+')\\s*[x×]\\s*('+NUMBER+')\\s*\\2(?:\\s*[x×]\\s*('+NUMBER+')\\s*\\2)?'+trailingBoundary,'giu');
+ while((m=everyUnit.exec(s))!==null)
+  add('dimensions',[m[1],m[3],m[4]].filter(Boolean).join(' × ')+' '+canonicalUnit(m[2]));
  // comprimento: 20 cm, altura de 12 cm, largura 8 cm, diâmetro 9 cm.
  const named=new RegExp(wordBoundaryBefore+'(comprimento|largura|altura|profundidade|di[aâ]metro|espessura)\\s*(?::|=|de|do|da)?\\s*('+NUMBER+')\\s*('+LENGTH+')'+trailingBoundary,'giu');
  while((m=named.exec(s))!==null)add('dimensions',m[1].toLowerCase()+': '+m[2]+' '+canonicalUnit(m[3]));
