@@ -1,3 +1,4 @@
+import {parseKitChatResult} from './kit-chat-result-parser.js';
 // Kits Inteligentes WeDrop — Kit Formal enviado à Shopee somente após aprovação explícita.
 const $=s=>document.querySelector(s);
 const money=n=>Number(n).toLocaleString('pt-BR',{style:'currency',currency:'BRL'});
@@ -930,24 +931,40 @@ function kitChatValidateContext(){
  return context;
 }
 function kitChatExtractLines(raw,size,allowedCodes,targetCount=10){
- const value=String(raw||'');
- if(value.length>18000)throw Error('Resposta muito longa. Copie apenas linhas com SKUs.');
- const whitelist=new Map(allowedCodes.map(code=>[String(code).trim().toUpperCase(),String(code).trim()]));
- const rows=[],seen=new Set();
- for(const src of value.split(/\r?\n/)){
-  const line=src.trim().replace(/^\s*(?:[-*•]\s*|\d+[.):]\s*)/,'')
-   .replace(/^\|+|\|+$/g,'').trim();
-  if(!line.includes('|'))continue;
-  const parts=line.split('|').map(x=>x.replace(/^[\s\x60"'*]+|[\s\x60"'*.]+$/g,'').trim());
-  if(parts.length!==size)continue;
-  const ids=parts.map(x=>whitelist.get(x.toUpperCase()));
-  if(ids.some(x=>!x)||new Set(ids).size!==size)continue;
-  const key=ids.slice().sort().join('|');
-  if(seen.has(key))continue;
-  seen.add(key);rows.push(ids);
-  if(rows.length>=targetCount)break;
+ // A resposta pode ser JSON, tabela Markdown, texto integral, 2 ou 3 SKUs.
+ // Cada código deve pertencer ao catálogo WeDrop selecionado.
+ return parseKitChatResult(raw,{allowedCodes,limit:targetCount});
+}
+async function kitChatEnsureFreshResearch(){
+ const context=kitResearchContext();
+ try{
+  kitChatValidateContext();
+  return context;
+ }catch{
+  // A importação de um arquivo gerado anteriormente não deve obrigar o
+  // vendedor a copiar códigos nem reiniciar a pesquisa no ChatGPT.
+  // Atualiza a whitelist da categoria WeDrop antes de aceitar qualquer SKU.
+  const response=await api('/api/shopee/kits/plus-brief',{body:context});
+  kitChatPending={...context,at:Date.now(),nonce:crypto.randomUUID(),
+   candidateSkus:response.candidateSkus||[],
+   requiresAttachment:Boolean(response.requiresAttachment)};
+  sessionStorage.setItem(KIT_CHAT_SESSION_KEY,JSON.stringify(kitChatPending));
+  return context;
  }
- return rows;
+}
+async function kitChatImportFile(file){
+ if(!file)return;
+ if(!/\.(?:json|txt|md)$/i.test(file.name||'')||file.size>1000000){
+  kitPlusNotice('Envie um arquivo .json, .txt ou .md de até 1 MB com os kits gerados pelo ChatGPT.','error');
+  return;
+ }
+ try{
+  const data=await file.text();
+  kitPlusNotice('Lendo arquivo '+file.name+' e validando SKUs WeDrop...','info');
+  await importPlusSuggestions({uploadedText:data});
+ }catch(error){
+  kitPlusNotice('Não foi possível importar o arquivo completo: '+error.message,'error');
+ }
 }
 async function plusResearch({openChat=false}={}){
  if(!kitStockReady)return kitPlusNotice('Estoque WeDrop não conferido; atualize antes da pesquisa.','error');
@@ -996,7 +1013,7 @@ async function plusResearch({openChat=false}={}){
  }catch(error){kitPlusNotice('Pesquisa não preparada: '+error.message,'error');}
  finally{btn.disabled=false;}
 }
-async function importPlusSuggestions({readClipboard=false,silent=false}={}){
+async function importPlusSuggestions({readClipboard=false,silent=false,uploadedText=null}={}){
  if(!kitStockReady){
   if(!silent)kitPlusNotice('Estoque WeDrop não conferido; atualize antes de importar kits.','error');
   return false;
@@ -1006,22 +1023,27 @@ async function importPlusSuggestions({readClipboard=false,silent=false}={}){
  const btn=$('#kitPlusImport'),clipBtn=$('#kitPlusClipboardImport');
  btn.disabled=true;if(clipBtn)clipBtn.disabled=true;
  try{
-  const context=kitChatValidateContext();
-  let response=$('#kitPlusOutput').value;
+  const context=await kitChatEnsureFreshResearch();
+  let response=uploadedText!==null?uploadedText:$('#kitPlusOutput').value;
   if(readClipboard){
    if(!navigator.clipboard?.readText)throw Error('O navegador não permite ler a área de transferência.');
    response=await navigator.clipboard.readText();
   }
-  const rows=kitChatExtractLines(response,context.size,kitChatPending.candidateSkus,context.desiredKits);
+  const parsed=kitChatExtractLines(response,context.size,kitChatPending.candidateSkus,context.desiredKits);
+  const rows=parsed.kits;
   if(!rows.length){
-   if(!silent)throw Error('Não encontrei linhas SKU1 | SKU2 com códigos reais desta pesquisa. Copie somente a resposta do ChatGPT.');
+   if(!silent)throw Error('Nenhuma combinação de 2 ou 3 SKUs reais foi identificada no arquivo ou na resposta. Confira a categoria WeDrop selecionada e o arquivo JSON.');
    return false;
   }
+  kitPlusNotice('Importando '+rows.length+' kits do '+(parsed.format==='json'?'JSON':'texto')+
+   '; validando custos, estoque e coerência na WeDrop...','info');
   const r=await api('/api/shopee/kits/plus-import',{body:{
    ...context,kits:rows,...currentSettings()
   }});
-  if(!Array.isArray(r.results)||!r.results.length)
-   throw Error('Nenhuma sugestão passou pela validação de coerência, estoque e preço.');
+  if(!Array.isArray(r.results)||!r.results.length){
+   const firstRejected=(r.rejected||[]).slice(0,2).map(x=>x.reason).join(' / ');
+   throw Error('Nenhum dos '+rows.length+' kits passou na validação WeDrop. '+firstRejected);
+  }
   $('#kitPlusOutput').value=rows.map(x=>x.join(' | ')).join('\n');
   suggestionContext={category:context.category,size:context.size,idea:context.idea,source:r.source};
   renderSuggestions(r);
@@ -1030,9 +1052,10 @@ async function importPlusSuggestions({readClipboard=false,silent=false}={}){
   $('#kitPlusDownloadCatalog').hidden=true;
   await loadDrafts();
   const skipped=(r.rejected||[]).length;
-  kitPlusNotice('✓ '+r.results.length+' kits montados e salvos como rascunhos com custo, estoque e margem conferidos. '+
-   (skipped?skipped+' combinação(ões) rejeitada(s) por incoerência ou dados inválidos. ':'')+
-   'Revise os kits abaixo. Nenhum anúncio foi publicado.','success');
+  const reasons=(r.rejected||[]).slice(0,2).map(x=>x.reason).join('; ');
+  kitPlusNotice('✓ '+r.results.length+' kits montados e salvos automaticamente como rascunhos! '+
+   (skipped?skipped+' combinação(ões) rejeitada(s): '+reasons+'. ':'')+
+   'Nenhuma publicação realizada. Confira os rascunhos abaixo.','success');
   $('#kitSuggestions')?.scrollIntoView({behavior:'smooth',block:'start'});
   return true;
  }catch(error){
@@ -1208,6 +1231,25 @@ $('#kitSuggest')?.addEventListener('click',()=>void search());
 $('#kitPlusDownloadCatalog')?.addEventListener('click',()=>{
  try{kitDownloadFullCatalog();}catch(error){kitPlusNotice(error.message,'error');}
 });
+$('#kitPlusFile')?.addEventListener('change',event=>{
+ const file=event.target.files?.[0];
+ if(file)void kitChatImportFile(file);
+ // Permite importar novamente o mesmo arquivo após correção de parâmetros.
+ event.target.value='';
+});
+const drop=$('.kit-chat-file-import');
+if(drop){
+ for(const type of ['dragenter','dragover'])drop.addEventListener(type,event=>{
+  event.preventDefault();drop.classList.add('kit-chat-file-drag');
+ });
+ for(const type of ['dragleave','drop'])drop.addEventListener(type,event=>{
+  event.preventDefault();drop.classList.remove('kit-chat-file-drag');
+ });
+ drop.addEventListener('drop',event=>{
+  const file=event.dataTransfer?.files?.[0];
+  if(file)void kitChatImportFile(file);
+ });
+}
 $('#kitPlusAutoStart')?.addEventListener('click',()=>void plusResearch({openChat:true}));
 $('#kitPlusResearch')?.addEventListener('click',()=>void plusResearch());
 $('#kitPlusClipboardImport')?.addEventListener('click',()=>void importPlusSuggestions({readClipboard:true}));
