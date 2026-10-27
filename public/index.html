@@ -489,6 +489,10 @@
             <button id="optimizerExecutionRemaining" type="button" hidden>▶ Executar só variações + fiscal + desconto</button>
             <button id="optimizerExecutionLaunch" type="button" hidden>▶ Retomar plano completo</button>
           </div>
+          <label id="optimizerExecutionOver25Approval" class="optimizer-exec-discount-price-approval" hidden style="display:flex;align-items:flex-start;gap:10px;margin:12px 0;padding:12px;border:1px solid var(--border-color,#e1caa5);border-radius:12px;">
+            <input id="optimizerExecutionOver25Consent" type="checkbox" style="margin-top:3px;flex-shrink:0;">
+            <span id="optimizerExecutionOver25Text">Autorizo excepcionalmente preço superior a 25% da média, conforme valores e margem da prévia desta SKU. Nenhuma publicação ocorre ao marcar.</span>
+          </label>
 
             <div id="optimizerExecutionBar" class="optimizer-exec-progress-track" role="progressbar" aria-label="Progresso operacional de uploads e verificações, não percentual publicado" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0"><span id="optimizerExecutionBarFill"></span></div>
             <ol id="optimizerExecutionSteps" class="optimizer-exec-steps" aria-label="Etapas reais do processamento"></ol>
