@@ -587,3 +587,19 @@
 #tab-kits .kit-chat-file-label input{display:block;margin-top:10px;max-width:100%;box-sizing:border-box;font-size:12px}
 #tab-kits .kit-chat-file-import p{color:#54718d;font-size:11px;line-height:1.5;margin:8px 0 0}
 @media(max-width:550px){#tab-kits .kit-chat-file-import{padding:10px}}
+
+#tab-kits .kit-chat-file-status{
+ display:block;margin:10px 0 0;padding:10px 12px;
+ border-radius:8px;background:#edf5ff;border:1px solid #bad5f3;
+ font-size:12px;line-height:1.5;color:#123d70;
+ white-space:normal;overflow-wrap:anywhere;
+}
+#tab-kits .kit-chat-file-status[data-state="error"]{
+ background:#fff0f0;border-color:#e5a7a7;color:#992b28;
+}
+#tab-kits .kit-chat-file-status[data-state="success"]{
+ background:#e8f8ee;border-color:#a8dfbd;color:#146a3e;
+}
+#tab-kits .kit-chat-file-status[data-state="warning"]{
+ background:#fff9eb;border-color:#ebd09e;color:#8b590c;
+}
