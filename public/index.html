@@ -16,7 +16,7 @@
   <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="/styles.css?v=5523-confirm-inbox" />
   <link rel="stylesheet" href="/studio-depth.css?v=1.0.0-layered-premium" />
-  <link rel="stylesheet" href="/login-sidebar-premium.css?v=2.1.0-overlay" />
+  <link rel="stylesheet" href="/login-sidebar-premium.css?v=2.2.0-compact-gold" />
 </head>
 <body class="ui-compact-pro">
   <svg class="icon-definitions" xmlns="http://www.w3.org/2000/svg" aria-hidden="true"><defs>
@@ -37,7 +37,7 @@
     <symbol id="i-copy" viewBox="0 0 24 24"><rect x="8" y="8" width="11" height="11" rx="2"/><path d="M16 8V5a2 2 0 0 0-2-2H5a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h3"/></symbol>
     <symbol id="i-message" viewBox="0 0 24 24"><path d="M4 5h16v11H8l-4 4V5Z"/></symbol>
     <symbol id="i-megaphone" viewBox="0 0 24 24"><path d="m4 13 11-5v8L4 11v2Z"/><path d="M15 10h3a2 2 0 0 1 0 4h-3M7 14l1 5h3l-1-4"/></symbol>
-    <symbol id="i-eye" viewBox="0 0 24 24"><path d="M2.5 12s3.5-6 9.5-6 9.5 6 9.5 6-3.5 6-9.5 6-9.5-6-9.5-6Z"/><circle cx="12" cy="12" r="2.5"/></symbol><symbol id="i-chevron-down" viewBox="0 0 24 24"><path d="m7 9 5 5 5-5"/></symbol><symbol id="i-bolt" viewBox="0 0 24 24"><path d="m13 2-8 12h7l-1 8 8-12h-7l1-8Z"/></symbol><symbol id="i-circle-check" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="m8 12 2.5 2.5L16 9"/></symbol>
+    <symbol id="i-lock-login" viewBox="0 0 24 24"><rect x="5" y="10" width="14" height="11" rx="2"/><path d="M8 10V7a4 4 0 0 1 8 0v3"/></symbol><symbol id="i-eye" viewBox="0 0 24 24"><path d="M2.5 12s3.5-6 9.5-6 9.5 6 9.5 6-3.5 6-9.5 6-9.5-6-9.5-6Z"/><circle cx="12" cy="12" r="2.5"/></symbol><symbol id="i-chevron-down" viewBox="0 0 24 24"><path d="m7 9 5 5 5-5"/></symbol><symbol id="i-bolt" viewBox="0 0 24 24"><path d="m13 2-8 12h7l-1 8 8-12h-7l1-8Z"/></symbol><symbol id="i-circle-check" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="m8 12 2.5 2.5L16 9"/></symbol>
   </defs></svg>
   <div id="toast" role="status" aria-live="polite" aria-atomic="false"></div>
   <a class="skip-link" href="#create">Ir para o conteúdo</a>
@@ -100,8 +100,8 @@
           
           <h2 id="loginTitle">Bem-vindo de volta!</h2>
           <p>Entre com sua senha para acessar o Publisher Studio da Rede Achados BR e continuar criando conteúdo para suas vendas.</p>
-          <label for="loginPassword">🔒 Senha do aplicativo</label>
-          <div class="login-password-control"><span aria-hidden="true" class="login-pass-lock">♙</span><input id="loginPassword" type="password" autocomplete="current-password" placeholder="Digite sua senha" /><button id="loginPasswordToggle" type="button" aria-label="Mostrar senha" aria-pressed="false" title="Mostrar senha"><svg class="icon"><use href="#i-eye"/></svg></button></div>
+          <label for="loginPassword"><svg class="icon login-label-lock" aria-hidden="true"><use href="#i-lock-login"/></svg> Senha do aplicativo</label>
+          <div class="login-password-control"><svg class="icon login-pass-lock" aria-hidden="true"><use href="#i-lock-login"/></svg><input id="loginPassword" type="password" autocomplete="current-password" placeholder="Digite sua senha" /><button id="loginPasswordToggle" type="button" aria-label="Mostrar senha" aria-pressed="false" title="Mostrar senha"><svg class="icon"><use href="#i-eye"/></svg></button></div>
           <button id="loginBtn" type="button" class="primary">Entrar no estúdio <svg class="icon" aria-hidden="true"><use href="#i-arrow"/></svg></button>
           <div class="login-social-summary"><span class="login-social-summary-icons"><span><svg class="icon"><use href="#i-tiktok"/></svg></span><span><svg class="icon"><use href="#i-instagram"/></svg></span></span><span><strong>Crie posts incríveis para TikTok e Instagram</strong><small>Mais alcance, mais engajamento e mais vendas.</small></span></div>
           <div class="login-safe-note"><svg class="icon" aria-hidden="true"><use href="#i-check"/></svg><span>Área de acesso restrito da Rede Achados BR.</span></div>

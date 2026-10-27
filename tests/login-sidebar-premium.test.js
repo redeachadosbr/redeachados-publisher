@@ -54,5 +54,19 @@ test('fundo de página inteira com login branco independente sobreposto à direi
  assert.match(c,/transform:translateY\(-50%\)/);
  assert.match(c,/#loginScreen\.login-overlay-scene \.login-auth-panel\{[\s\S]*?border-radius:30px/);
  assert.match(c,/@media\(max-width:950px\)/);
- assert.match(h,/login-sidebar-premium\.css\?v=2\.1\.0-overlay/);
+ assert.match(h,/login-sidebar-premium\.css\?v=2\\.2\\.0-compact-gold/);
+});
+
+test('desktop sem rolagem e botões alinhados com cartão compacto e dourado mais luminoso',()=>{
+ const h=fs.readFileSync(new URL('../public/index.html',import.meta.url),'utf8');
+ const c=fs.readFileSync(new URL('../public/login-sidebar-premium.css',import.meta.url),'utf8');
+ assert.match(h,/login-sidebar-premium\.css\?v=2\.2\.0-compact-gold/);
+ assert.match(h,/id="i-lock-login"/);
+ assert.match(h,/class="icon login-pass-lock"/);
+ assert.match(c,/@media\(min-width:951px\) and \(min-height:665px\)/);
+ assert.match(c,/overflow:hidden;/);
+ assert.match(c,/max-height:calc\(100dvh - 36px\)/);
+ assert.match(c,/#loginScreen\.login-overlay-scene #loginBtn\{/);
+ assert.match(c,/transform:translateY\(-50%\)/);
+ assert.match(c,/#loginScreen\.login-overlay-scene \.login-3d-platform\{/);
 });
