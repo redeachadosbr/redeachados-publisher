@@ -305,7 +305,8 @@ app.post('/api/shopee/kits/drafts/save',mustLogin,requireWeDropAdmin,async(req,r
    marginPct:Number(req.body.marginPct??15),
    packing:Number(req.body.packing||0),shipping:Number(req.body.shipping||0)
   });
-  const creative={title:req.body.title,description:req.body.description,source:'rascunho revisado'};
+  const creative={title:req.body.title,description:req.body.description,
+   seoTitles:req.body.seoTitles,source:'rascunho revisado'};
   const saved=await saveKitDraft(auth.shopId,{kit,creative});
   res.json({ok:true,...saved,shopeePublished:false});
  }catch(error){res.status(400).json({error:String(error.message||error).slice(0,260)});}

@@ -31,7 +31,7 @@
 <link rel="stylesheet" href="/ads-premium.css?v=2.4.0-seo-ads-location">
 <link rel="stylesheet" href="/sidebar-collapse.css?v=1.0.0">
 <link rel="stylesheet" href="/optimizer-image-studio.css?v=1.0.2">
-<link rel="stylesheet" href="/kit-builder.css?v=3.1.0-chatgpt-seo">
+<link rel="stylesheet" href="/kit-builder.css?v=3.1.1-import-chat-oneclick">
 <link rel="stylesheet" href="/optimizer-technical-studio.css?v=1.0.1-review-feedback">
 <style>
 /* Autorização >25%: campo compacto, sem o input global width:100%.
@@ -1117,15 +1117,36 @@
    <div id="kitMissingFactFields" class="kit-missing-grid"></div>
    <div class="kit-missing-actions"><button id="kitContinueContent" type="button" class="kit-primary">Continuar e abrir ChatGPT Plus</button><small>É possível continuar sem preencher: nenhum dado faltante deve ser inventado.</small></div>
   </section>
-  <details class="kit-plus-workflow kit-content-details" id="kitContentDetails"><summary>Importar resposta do ChatGPT Plus — 3 títulos e descrição</summary><div class="kit-content-details-body">
-   <p id="kitContentFeedback" class="kit-content-feedback" role="status" aria-live="polite">Prepare o conteúdo para abrir o ChatGPT com as SKUs corretas.</p>
-   <textarea id="kitContentPrompt" rows="5" readonly placeholder="A orientação com SKUs corretas aparecerá aqui."></textarea>
-   <button id="kitOpenContentPrompt" type="button" class="kit-secondary">Abrir ChatGPT com orientação pronta</button>
-   <label for="kitPlusTextResult">Resposta do ChatGPT: TÍTULO 1, TÍTULO 2, TÍTULO 3 e DESCRIÇÃO</label>
-   <textarea id="kitPlusTextResult" rows="6" placeholder="TÍTULO 1: ...&#10;TÍTULO 2: ...&#10;TÍTULO 3: ...&#10;DESCRIÇÃO: ✨ ..."></textarea>
-   <div class="kit-content-import-actions"><button id="kitImportCopiedText" type="button" class="kit-secondary">Colar resposta copiada</button><button id="kitImportText" type="button" class="kit-secondary">Importar e classificar títulos SEO</button></div>
+  <section class="kit-copy-assistant" aria-label="Importação simplificada do anúncio gerado">
+   <div class="kit-import-steps">
+    <div class="kit-import-step"><span class="kit-step-number">1</span><span><strong>No ChatGPT</strong><small>Clique no ícone <b>Copiar</b> dentro do bloco que contém os 3 títulos e a descrição. Não copie a orientação enviada.</small></span></div>
+    <div class="kit-import-step"><span class="kit-step-number">2</span><span><strong>Volte para esta tela</strong><small>Clique no botão azul para trazer o anúncio pronto de uma vez.</small></span></div>
+    <div class="kit-import-step"><span class="kit-step-number">3</span><span><strong>Conferir e salvar</strong><small>O sistema preenche título e descrição, classifica as opções e salva o rascunho.</small></span></div>
+   </div>
+   <div class="kit-import-actionbar">
+    <button id="kitImportCopiedText" type="button" class="kit-primary kit-import-main-button">⇩ Importar anúncio copiado do ChatGPT</button>
+    <button id="kitManualContentPaste" type="button" class="kit-secondary">Colar manualmente</button>
+    <span id="kitImportState" class="kit-import-state" data-state="info">Aguardando texto do ChatGPT</span>
+   </div>
+   <p id="kitContentFeedback" class="kit-content-feedback" role="status" aria-live="polite">Traga os 3 títulos e a descrição completos de uma única vez. Não precisa copiar os campos separadamente.</p>
+  </section>
+  <details class="kit-plus-workflow kit-content-details" id="kitContentDetails"><summary>Opções avançadas — colar texto ou conferir orientação</summary><div class="kit-content-details-body">
+   <label for="kitPlusTextResult">Somente a RESPOSTA do ChatGPT (3 títulos + descrição)</label>
+   <textarea id="kitPlusTextResult" rows="5" placeholder="TÍTULO 1: ...&#10;TÍTULO 2: ...&#10;TÍTULO 3: ...&#10;DESCRIÇÃO: ✨ ..."></textarea>
+   <button id="kitImportText" type="button" class="kit-secondary">Importar texto colado manualmente</button>
+   <details class="kit-content-prompt-details"><summary>Ver orientação enviada ao ChatGPT (não é a resposta)</summary>
+    <textarea id="kitContentPrompt" rows="3" readonly placeholder="A orientação com as SKUs corretas aparece aqui. Não cole este texto no campo de resposta."></textarea>
+    <button id="kitOpenContentPrompt" type="button" class="kit-secondary">Abrir ChatGPT com orientação pronta</button>
+   </details>
   </div></details>
-  <section id="kitSeoOptions" class="kit-seo-options" hidden aria-label="Três títulos SEO classificados"><div class="kit-seo-heading"><strong>3 títulos SEO do kit</strong><small>Notas estimadas por tamanho e termos presentes; não são métricas oficiais da Shopee.</small></div><div id="kitSeoOptionList" class="kit-seo-list"></div></section>
+  <section id="kitSeoOptions" class="kit-seo-options" hidden aria-label="Três títulos SEO classificados">
+   <div class="kit-seo-heading"><strong>3 títulos SEO importados</strong><small>Escolha o que será usado no anúncio. A nota é apenas uma estimativa textual.</small></div>
+   <div id="kitSeoWarnings" class="kit-seo-warning" hidden></div>
+   <div id="kitSeoOptionList" class="kit-seo-list"></div>
+   <div class="kit-seo-review-actions"><span id="kitSeoSaveStatus">Título selecionado e descrição preenchida no editor.</span>
+    <button id="kitSaveSeoContent" class="kit-primary" type="button">Salvar textos no rascunho</button>
+   </div>
+  </section>
   <div class="kit-bar kit-section-heading kit-images-heading"><span class="kit-heading-icon kit-icon-blue" aria-hidden="true">▧</span><div class="kit-section-heading-text"><h3>Imagens profissionais do kit</h3><p>Gere no ChatGPT Plus e importe cada imagem com o respectivo produto e enquadramento (1200 × 1200).</p></div>
    <button id="kitGenerateAll" type="button" class="kit-primary">✦ Abrir ChatGPT Plus para gerar imagens</button>
    <button id="kitImportImages" type="button" class="kit-secondary">⇧ Importar imagens</button>
@@ -2062,7 +2083,7 @@
 <script src="/technical-memory.js?v=1.0.1-live-sku-preload"></script>
 <script src="/technical-status.js?v=1.0.0-optional-coherence"></script>
 <script src="/app.js?v=1.20.44-price-column-fit"></script>
-<script type="module" src="/kit-builder.js?v=3.1.0-chatgpt-seo"></script>
+<script type="module" src="/kit-builder.js?v=3.1.1-import-chat-oneclick"></script>
 <link rel="stylesheet" href="/optimizer-variations.css?v=1.2.1-single-flow">
 <script src="/optimizer-variations.js?v=1.2.3-single-flow"></script>
 

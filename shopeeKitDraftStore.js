@@ -32,7 +32,12 @@ export async function saveKitDraft(shopId,{kit,creative}){
  const previous=await loadKitDraft(id,kit.kitSku);
  if(previous?.publication?.itemId||['publishing','uncertain'].includes(previous?.publication?.status))
   throw Error('Kit enviado à Shopee ou com publicação incerta; não regrave. Consulte o status primeiro.');
- const draft={kit,creative:{title,description,source:String(creative.source||'rascunho revisado').slice(0,90)},
+ const seoTitles=Array.isArray(creative?.seoTitles)?creative.seoTitles
+  .filter(x=>typeof x==='string'&&x.trim().length>=10&&Array.from(x.trim()).length<=120)
+  .map(x=>x.trim()).slice(0,3):[];
+ const uniqueTitles=[...new Set(seoTitles)];
+ const draft={kit,creative:{title,description,seoTitles:uniqueTitles.length===3?uniqueTitles:[],
+  source:String(creative.source||'rascunho revisado').slice(0,90)},
   reviewed:false,shopeePublished:false,
   publication:previous?.publication||{status:'local_draft',itemId:null}};
  const rows=await request('?on_conflict=shop_id,kit_sku',{

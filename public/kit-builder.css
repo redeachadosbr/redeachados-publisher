@@ -1483,3 +1483,35 @@
 #tab-kits .kit-seo-option-title{font-size:11.5px;line-height:1.5;font-weight:800;overflow-wrap:anywhere}
 #tab-kits .kit-seo-option-score{border-radius:6px;padding:5px 7px;background:#e4f4ea;color:#086b43;font-size:10px;font-weight:900}
 @media(max-width:650px){#tab-kits .kit-missing-facts{padding:9px}#tab-kits .kit-content-import-actions button{width:100%}}
+
+/* 3.1.1 — retorno do ChatGPT em uma ação, sem confundir prompt e resultado. */
+#tab-kits #kitDetail .kit-copy-assistant{
+ border:1px solid #bcd6f2;border-radius:12px;padding:12px 14px;margin:8px 0 9px;
+ background:linear-gradient(115deg,#f2f8ff,#fff);box-shadow:0 5px 18px rgba(25,76,133,.055);
+}
+#tab-kits #kitDetail .kit-import-steps{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:9px}
+#tab-kits #kitDetail .kit-import-step{display:flex;align-items:flex-start;gap:8px;min-width:0}
+#tab-kits #kitDetail .kit-step-number{flex-shrink:0;width:24px;height:24px;border-radius:7px;display:grid;place-items:center;font-size:11px;font-weight:900;color:#0a5ba2;background:#dceeff}
+#tab-kits #kitDetail .kit-import-step>span:last-child{display:grid;gap:3px;min-width:0}
+#tab-kits #kitDetail .kit-import-step strong{font-size:11px;font-weight:900;color:#153c69}
+#tab-kits #kitDetail .kit-import-step small{font-size:10px;color:#466788;line-height:1.45}
+#tab-kits #kitDetail .kit-import-actionbar{display:flex;gap:9px;align-items:center;flex-wrap:wrap;margin-top:12px;padding-top:10px;border-top:1px solid #dce9f5}
+#tab-kits #kitDetail .kit-import-main-button{padding:11px 18px;min-height:43px;border-radius:9px;font-size:12px;font-weight:900;background:linear-gradient(120deg,#1677ed,#1d5ecf);color:#fff;box-shadow:0 6px 12px #115bb01c;white-space:normal}
+#tab-kits #kitDetail #kitManualContentPaste{padding:10px 12px;min-height:39px}
+#tab-kits #kitDetail .kit-import-state{font-size:10px;color:#466986;font-weight:750}
+#tab-kits #kitDetail .kit-import-state[data-state=success]{color:#0a7b4f}
+#tab-kits #kitDetail .kit-import-state[data-state=error]{color:#b02c34}
+#tab-kits #kitDetail .kit-copy-assistant .kit-content-feedback{margin:8px 0 0;font-size:10.5px;line-height:1.45}
+#tab-kits #kitDetail .kit-content-prompt-details{border-top:1px solid #e2eaf4;padding-top:9px;margin-top:6px}
+#tab-kits #kitDetail .kit-content-prompt-details summary{font-weight:800;font-size:10px;color:#426c9c;cursor:pointer;margin-bottom:8px}
+#tab-kits #kitDetail .kit-content-prompt-details textarea{max-height:105px;resize:vertical}
+#tab-kits #kitDetail #kitContentDetails{margin:4px 0 8px}
+#tab-kits #kitDetail .kit-seo-warning{font-size:11px;color:#a04e07;border:1px solid #f1d1a0;background:#fff6e7;border-radius:8px;padding:9px 12px;margin:6px 0 11px}
+#tab-kits #kitDetail .kit-seo-review-actions{margin-top:12px;display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap;border-top:1px solid #dce8f5;padding-top:11px}
+#tab-kits #kitDetail .kit-seo-review-actions span{font-size:10.5px;color:#3f658c;line-height:1.5}
+#tab-kits #kitDetail #kitSaveSeoContent{font-size:11px;font-weight:900;min-height:36px;padding:9px 13px;border-radius:8px}
+@media(max-width:900px){
+ #tab-kits #kitDetail .kit-import-steps{grid-template-columns:1fr}
+ #tab-kits #kitDetail .kit-import-step{align-items:center}
+ #tab-kits #kitDetail .kit-import-main-button{width:100%}
+}
