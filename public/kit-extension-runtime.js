@@ -56,7 +56,7 @@ export function createKitExtensionController({
  getKit,getPrompts,getImages,onPhoto,onStatus=()=>{},onProgress=()=>{}
 }){
  let ready=false,version='',busy=false,started=false;
- let job=null,timeout=null;
+ let job=null,timeout=null,imageStallTimer=null;
  try{const v=JSON.parse(sessionStorage.getItem(KIT_BRIDGE_SESSION_KEY)||'null');
   if(v?.nonce&&v?.kitSku)job=v;}catch{}
  const post=message=>window.postMessage(message,location.origin);
@@ -67,8 +67,22 @@ export function createKitExtensionController({
    else sessionStorage.removeItem(KIT_BRIDGE_SESSION_KEY);}catch{}
  };
  const ack=(nonce,slot,ok,error='')=>post({kind:'RA_SITE_UPLOAD_RESULT',nonce,slot,ok,error});
+ const clearImageStall=()=>{if(imageStallTimer!==null){clearTimeout(imageStallTimer);imageStallTimer=null;}};
+ // Confirmação de início da extensão não prova que o ChatGPT gerou uma imagem.
+ // Avisa sem abortar automaticamente: imagens podem levar mais tempo para renderizar.
+ const watchImage=slot=>{
+  clearImageStall();
+  const nonce=job?.nonce;
+  if(!nonce)return;
+  imageStallTimer=setTimeout(()=>{
+   if(job?.nonce!==nonce)return;
+   feedback('A Ponte recebeu o pedido, mas nenhuma imagem nova foi importada para a posição '+
+    pos(slot)+'. Apenas abrir o ChatGPT NÃO inicia a geração. Confira se a extensão envia o prompt, anexa as referências, aciona a geração de imagem e devolve o arquivo. Use o modo manual se necessário.','error');
+  },150000);
+ };
  function stop(reason='Geração interrompida.',{notice=true}={}){
   if(timeout){clearTimeout(timeout);timeout=null;}
+  clearImageStall();
   const last=job;
   if(last?.nonce)post({kind:'RA_SITE_ABORT',nonce:last.nonce,sku:last.kitSku,reason});
   busy=false;started=false;saveJob(null);
@@ -90,10 +104,14 @@ export function createKitExtensionController({
   if(m.kind==='RA_EXTENSION_START_RESULT'){
    if(timeout){clearTimeout(timeout);timeout=null;}
    started=m.ok===true;
-   if(!started){busy=false;saveJob(null);feedback('A Ponte recusou este kit: '+
+   if(!started){busy=false;clearImageStall();saveJob(null);feedback('A Ponte recusou este kit: '+
     (m.error||'formato de kit não aceito pela versão instalada')+
     '. Atualize a extensão para suportar referências de múltiplas SKUs.','error');}
-   else feedback('✓ Extensão confirmou o kit. Gerando e importando as imagens 01–09 uma por vez.','success');
+   else {
+    const first=Array.from({length:9},(_,i)=>i+1).find(slot=>!getImages().has(slot));
+    if(first)watchImage(first);
+    feedback('Ponte confirmou o recebimento dos prompts do kit. Aguardando a primeira imagem gerada e importada; abrir a aba do ChatGPT não comprova geração.','info');
+   }
    return;
   }
   if(m.kind==='RA_EXTENSION_WAKE_RESULT'){
@@ -120,6 +138,8 @@ export function createKitExtensionController({
     throw Error('O kit em edição mudou; imagem recusada para evitar misturar SKUs.');
    if(getImages().has(slot)){
     ack(snapshot.nonce,slot,true);
+    const next=Array.from({length:9},(_,i)=>i+1).find(n=>!getImages().has(n));
+    if(next)watchImage(next);else clearImageStall();
     feedback('Posição '+pos(slot)+' já estava salva. Confirmada sem duplicar.','info');
     return;
    }
@@ -127,12 +147,16 @@ export function createKitExtensionController({
    const accepted=await onPhoto({slot,dataUrl:m.dataUrl,kitSku:snapshot.kitSku});
    if(accepted!==true)throw Error('A imagem não foi armazenada; não é seguro avançar.');
    ack(snapshot.nonce,slot,true);
+   if(job?.nonce===snapshot.nonce){
+    const next=Array.from({length:9},(_,i)=>i+1).find(n=>!getImages().has(n));
+    if(next)watchImage(next);else clearImageStall();
+   }
    onProgress(slot);
    const count=getImages().size;
    feedback('✓ Imagem '+pos(slot)+' recebida e preservada no kit ('+count+'/9). '+
     (count<9?'Ponte liberada para próxima posição.':'Nove imagens recebidas; revise antes de publicar.'),
     'success');
-   if(count>=9){busy=false;started=false;saveJob(null);}
+   if(count>=9){busy=false;started=false;clearImageStall();saveJob(null);}
   }catch(error){
    ack(snapshot.nonce,Number(m.slot)||0,false,String(error.message||error).slice(0,240));
    feedback('Falha na imagem '+pos(Number(m.slot)||0)+': '+String(error.message||error),'error');
