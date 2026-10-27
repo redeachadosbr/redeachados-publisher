@@ -30,7 +30,7 @@ import {previewWeDropCsv,prepareWeDropImport,MAX_CSV_CHARS} from './wedropCsv.js
 import {convertWeDropExcelBase64} from './wedropExcel.js';
 import {saveWeDropCosts,getWeDropCoverage,compareIncomingCosts,pendingWeDropModels,upsertWeDropSkuLink} from './wedropCosts.js';
 import {saveWeDropProducts,readWeDropProduct} from './wedropCosts.js';
-import {kitCatalog,suggestKits,suggestKitsForIdea,composeKit,kitCreative,kitPrompts,kitPlusResearchBrief,kitPlusContentPrompt,categoryMatches,clearKitCatalogCache} from './shopeeKitBuilder.js';
+import {kitCatalog,suggestKits,suggestKitsForIdea,assessKitBuyerFit,composeKit,kitCreative,kitPrompts,kitPlusResearchBrief,kitPlusContentPrompt,categoryMatches,clearKitCatalogCache} from './shopeeKitBuilder.js';
 import {saveKitStockImport,clearKitStockCache,parseWeDropAvailabilityCsv} from './shopeeKitAvailability.js';
 import {saveKitDraft,listKitDrafts,loadKitDraft} from './shopeeKitDraftStore.js';
 import {kitUploadPhoto,kitPublicationReadiness,kitPublicationPreview,kitPublishApproved,checkKitPublication} from './shopeeKitPublicationService.js';
@@ -422,10 +422,16 @@ app.post('/api/shopee/kits/plus-import',mustLogin,requireWeDropAdmin,async(req,r
     packing:Number(req.body?.packing||0),
     shipping:Number(req.body?.shipping||0)
    });
-   // Confirmar a categoria escolhida e impedir a seleção de itens aleatórios.
+   // A IA sugere; o servidor decide com base em SKUs reais e função
+   // complementar de cada componente. Nunca confiar só no texto da IA.
    if(!kit.components.some(p=>categoryMatches(p.category,category)))
     throw Error('Kit de SKU '+input.join(', ')+' não corresponde à categoria selecionada.');
-   kits.push({...kit,businessReason:'Seleção sugerida no ChatGPT Plus; os SKUs e custos foram revalidados pela WeDrop.'});
+   const fit=assessKitBuyerFit(kit.components);
+   if(!fit.ok)throw Error('Kit de SKU '+input.join(', ')+
+    ' sem coerência de uso: '+fit.reason);
+   kits.push({...kit,buyerFitScore:fit.score,matchSignals:fit.signals,
+    businessReason:fit.reason+'. Sugerido pelo ChatGPT Plus, SKUs e custos revalidados na WeDrop; vendas não comprovadas.',
+    demandEvidence:'não verificada'});
   }
   kits.sort((a,b)=>b.quote.netProfit-a.quote.netProfit);
   res.json({ok:true,source:'Sugestões ChatGPT Plus, SKUs verificados no servidor',disclaimer:'Estimativa, sem dados comprovados de vendas e estoque.',results:kits});
