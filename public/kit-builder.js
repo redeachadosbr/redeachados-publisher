@@ -1118,21 +1118,23 @@ function kitInvalidatePhotoPositions(slots=[]){
  clearKitPublishApproval();
  kitPublishStatus('Posições de imagens alteradas: confira todas as SKUs, aprove novamente as fotos e envie as posições modificadas antes de publicar.','info');
 }
-function kitRepositionImage(from,to){
+async function kitRepositionImage(from,to){
  if(!prepared||kitAutoImageBusy||kitGalleryImportBusy)return;
  if(from===to)return;
+ const kitSku=prepared.kit.kitSku;
+ kitGalleryImportBusy=true;
  try{
-  images=kitMoveImage(images,from,to);
+  const moved=kitMoveImage(images,from,to);
+  await kitPhotoStore.move(kitSku,from,to);
+  if(prepared?.kit?.kitSku!==kitSku)return;
+  images=moved;
   kitInvalidatePhotoPositions([from,to]);
-  const kitSku=prepared.kit.kitSku;
-  void Promise.all([from,to].map(slot=>images.has(slot)?
-   kitPhotoStore.put(kitSku,slot,images.get(slot)):kitPhotoStore.remove(kitSku,slot)))
-   .catch(e=>imageStatus('Ordem alterada, mas houve erro ao guardar localmente: '+e.message,'error'));
   renderImageSlots();kitAutoImageUi();
   imageStatus('✓ Posição '+String(from).padStart(2,'0')+' movida para '+
    String(to).padStart(2,'0')+'. Se havia imagem no destino, as duas foram trocadas. '+
-   'Confira o conteúdo visual; nenhuma imagem foi publicada.','success');
- }catch(error){imageStatus('Não foi possível mudar a ordem: '+error.message,'error');}
+   'As posições foram salvas juntas; nenhuma foto foi publicada.','success');
+ }catch(error){imageStatus('Troca não aplicada: '+error.message+'. Fotos anteriores preservadas.','error');}
+ finally{kitGalleryImportBusy=false;}
 }
 function kitImageDragStart(event,slot){
  if(!images.has(slot)||kitAutoImageBusy||kitGalleryImportBusy){event.preventDefault();return;}
@@ -1985,12 +1987,12 @@ async function kitRestoreImageGallery(kitSku){
   const rows=await kitPhotoStore.list(kitSku);
   if(prepared?.kit?.kitSku!==kitSku)return;
   let count=0;
-  for(const row of rows)if(!images.has(row.slot)&&/^data:image\/png;base64,/.test(row.dataUrl)){
+  for(const row of rows)if(!images.has(row.slot)&&/^data:image\/(?:png|jpeg|webp);base64,/i.test(row.dataUrl)){
    images.set(row.slot,row.dataUrl);count++;
   }
   if(count){renderImageSlots();kitAutoImageUi();
    kitExtensionStatus(count+' imagens antigas recuperadas deste kit. Revise todas antes de publicar.','success');}
- }catch(error){kitExtensionStatus('Recuperação de fotos indisponível: '+error.message,'error');}
+ }catch(error){kitRestoredSku='';kitExtensionStatus('Recuperação de fotos indisponível: '+error.message,'error');}
 }
 async function kitStartExtensionImages(){
  const btn=$('#kitGenerateAll');
