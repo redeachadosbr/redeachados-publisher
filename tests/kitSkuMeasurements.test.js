@@ -35,7 +35,7 @@ test('nove imagens mostram todos componentes juntos mesmo quando faltam medidas'
  assert.equal(prompts.length,9);
  for(const p of prompts)assert.match(p,/Kit de 2 = UMA DUPLA visível/);
  assert(!prompts.join('\n').includes('20 × 30'));
- assert.throws(()=>kitPrompts(kit,{manualFacts:{C:'10 cm'}}),/não pertence/);
+ assert.throws(()=>kitPrompts(kit,{manualFacts:{C:'10 cm'}}),/fora deste kit/);
 });
 
 test('dimensões com unidade após cada eixo também são lidas sem inventar',()=>{
