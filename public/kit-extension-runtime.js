@@ -194,6 +194,60 @@ export function createKitExtensionController({
    }
   },16000);
  }
- return {start,stop,probe,ready:()=>ready,busy:()=>busy,version:()=>version,
+
+ // Exclusivo de kits: o botão verde da Ponte solicita ao Manager a posição
+ // efetivamente salva antes de tentar recuperar a imagem já pronta.
+ async function resumeFromExtension(identity){
+  const current=getKit(),nonce=String(identity?.nonce||'');
+  if(!current||current.kitSku!==String(identity?.sku||'')||
+     String(identity?.itemId)!=='0'||String(identity?.modelId)!=='0')
+   return {ok:false,error:'Abra o mesmo kit no editor de rascunhos para recuperar a foto.'};
+  if(!/^[a-z0-9_-]{12,90}$/i.test(nonce))
+   return {ok:false,error:'Sessão da Ponte inválida; nenhum prompt foi reenviado.'};
+  if(job&&(job.nonce!==nonce||job.kitSku!==current.kitSku))
+   return {ok:false,error:'Existe outra sessão ativa. Confira o kit e a Ponte antes de retomar.'};
+  const completed=[...getImages().keys()].filter(n=>Number.isInteger(n)&&n>=1&&n<=9)
+   .sort((a,b)=>a-b);
+  const prompts=getPrompts();
+  if(!Array.isArray(prompts)||prompts.length!==9||prompts.some(p=>typeof p!=='string'||p.length<40))
+   return {ok:false,error:'Os nove prompts do kit não estão prontos.'};
+  const requestId=crypto.randomUUID();
+  const continued=await new Promise(resolve=>{
+   const finish=data=>{clearTimeout(timer);window.removeEventListener('message',listener);resolve(data);};
+   const timer=setTimeout(()=>finish({ok:false,error:'A Ponte não confirmou a reconciliação deste kit.'}),18000);
+   const listener=event=>{
+    if(event.source!==window||event.origin!==location.origin||
+       event.data?.kind!=='RA_EXTENSION_CONTINUE_RESULT'||
+       event.data.requestId!==requestId)return;
+    finish(event.data);
+   };
+   window.addEventListener('message',listener);
+   post({kind:'RA_SITE_CONTINUE',requestId,payload:{
+    sku:current.kitSku,itemId:'0',modelId:'0',completed,prompts
+   }});
+  });
+  if(!continued?.ok||continued.nonce!==nonce)
+   return {ok:false,error:String(continued?.error||'Sessão de kit não confirmada pela Ponte.').slice(0,320)};
+  if(!job)saveJob({nonce,kitSku:current.kitSku,itemId:'0',modelId:'0',createdAt:Date.now()});
+  const wake=await new Promise(resolve=>{
+   const finish=data=>{clearTimeout(timer);window.removeEventListener('message',listener);resolve(data);};
+   const timer=setTimeout(()=>finish({ok:false,error:'Ponte não confirmou a retomada.'}),18000);
+   const listener=event=>{
+    if(event.source!==window||event.origin!==location.origin||
+       event.data?.kind!=='RA_EXTENSION_WAKE_RESULT'||event.data.nonce!==nonce)return;
+    finish(event.data);
+   };
+   window.addEventListener('message',listener);
+   post({kind:'RA_SITE_WAKE',nonce});
+  });
+  if(!wake?.ok)return {ok:false,error:String(wake?.error||'A Ponte não conseguiu retomar o kit.').slice(0,320)};
+  busy=true;started=true;
+  const slot=Number(continued.slot);
+  if(Number.isInteger(slot)&&slot>=1&&slot<=9)watchImage(slot);
+  feedback('✓ Recuperação confirmada para o kit '+current.kitSku+
+   ', imagem '+pos(slot)+'/09. A Ponte buscará a foto já gerada SEM repetir o prompt.','success');
+  return {ok:true,nonce,sku:current.kitSku,itemId:'0',modelId:'0',slot};
+ }
+ return {start,stop,resumeFromExtension,probe,ready:()=>ready,busy:()=>busy,version:()=>version,
   activeJob:()=>job,dispose:()=>{stop('Encerrando sessão do kit.',{notice:false});window.removeEventListener('message',onMessage);}};
 }
