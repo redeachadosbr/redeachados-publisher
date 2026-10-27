@@ -1449,3 +1449,37 @@
   grid-template-columns:1fr;
  }
 }
+
+
+/* v3.1 – redação de kits, complementos por SKU e títulos SEO compactos */
+#tab-kits .kit-missing-facts{margin:9px 0;padding:12px;border:1px solid #f0c97d;border-radius:12px;background:linear-gradient(130deg,#fff8e9,#fffdf8)}
+#tab-kits .kit-missing-title{display:flex;align-items:baseline;gap:7px 14px;flex-wrap:wrap;margin-bottom:9px}
+#tab-kits .kit-missing-title strong{font-size:12px;color:#875015;font-weight:900}
+#tab-kits .kit-missing-title span,#tab-kits .kit-missing-actions small{font-size:10.5px;color:#775c3b;line-height:1.5}
+#tab-kits .kit-missing-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,300px),1fr));gap:9px}
+#tab-kits .kit-missing-card{padding:11px;border:1px solid #e9d7b4;background:#fff;border-radius:10px;min-width:0}
+#tab-kits .kit-missing-card strong{display:block;color:#153d70;font-size:11.5px;line-height:1.4}
+#tab-kits .kit-missing-card small{display:block;color:#765d38;font-size:10px;margin:5px 0}
+#tab-kits .kit-missing-card textarea{display:block;width:100%;min-height:94px;box-sizing:border-box;padding:9px;border-radius:7px;font:11px/1.5 inherit;color:#163b60;border:1px solid #d6c2a4;background:#fff;resize:vertical}
+#tab-kits .kit-missing-actions{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-top:10px}
+#tab-kits .kit-missing-actions button{font-size:11px;min-height:37px;padding:9px 13px}
+#tab-kits .kit-content-feedback{font-size:11px;font-weight:700;color:#2c5e8d;line-height:1.5;margin:0 0 7px}
+#tab-kits .kit-content-feedback[data-state=error]{color:#ac2632}
+#tab-kits .kit-content-feedback[data-state=success]{color:#0e784a}
+#tab-kits .kit-content-details-body{display:grid;gap:8px}
+#tab-kits .kit-content-details-body label{font-size:11px;font-weight:800;color:#153c67}
+#tab-kits .kit-content-details-body textarea{width:100%;box-sizing:border-box}
+#tab-kits .kit-content-import-actions{display:flex;gap:8px;flex-wrap:wrap}
+#tab-kits .kit-content-import-actions button{font-size:11px;min-height:35px}
+#tab-kits .kit-seo-options{margin:10px 0;border:1px solid #cedef2;border-radius:12px;padding:12px;background:#f8fbff}
+#tab-kits .kit-seo-heading{display:flex;align-items:baseline;gap:8px 12px;flex-wrap:wrap;margin-bottom:9px}
+#tab-kits .kit-seo-heading strong{font-size:12.5px;font-weight:900;color:#0d3b71}
+#tab-kits .kit-seo-heading small{font-size:10px;line-height:1.4;color:#466484}
+#tab-kits .kit-seo-list{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,250px),1fr));gap:8px}
+#tab-kits .kit-seo-option{min-width:0;padding:10px;border:1px solid #cbdcef;background:#fff;border-radius:9px;text-align:left;cursor:pointer;display:grid;gap:6px;color:#173b69}
+#tab-kits .kit-seo-option:hover{border-color:#70a4e6;background:#f3f8ff}
+#tab-kits .kit-seo-option.is-selected{border-color:#2479e0;box-shadow:0 0 0 2px #4a98ff22;background:#ebf5ff}
+#tab-kits .kit-seo-option-head{display:flex;justify-content:space-between;gap:8px;font-size:10px;font-weight:850;color:#295b95}
+#tab-kits .kit-seo-option-title{font-size:11.5px;line-height:1.5;font-weight:800;overflow-wrap:anywhere}
+#tab-kits .kit-seo-option-score{border-radius:6px;padding:5px 7px;background:#e4f4ea;color:#086b43;font-size:10px;font-weight:900}
+@media(max-width:650px){#tab-kits .kit-missing-facts{padding:9px}#tab-kits .kit-content-import-actions button{width:100%}}
