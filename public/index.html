@@ -1053,10 +1053,16 @@
    <textarea id="kitResearchPrompt" rows="5" readonly placeholder="O prompt aparecerá aqui após preparar a pesquisa."></textarea>
    <button id="kitPlusDownloadCatalog" type="button" class="kit-secondary" hidden>📄 Baixar todas as SKUs da categoria para anexar ao ChatGPT</button>
    <button type="button" class="kit-secondary" id="kitOpenResearchPrompt">Copiar prompt + abrir ChatGPT Plus</button>
-   <button type="button" class="kit-secondary" id="kitPlusClipboardImport">↻ Importar resposta copiada e montar kits</button>
-   <label for="kitPlusOutput">Alternativa: cole aqui as linhas de SKUs do ChatGPT, por exemplo: SKU1 | SKU2</label>
-   <textarea id="kitPlusOutput" rows="4" placeholder="SKU1 | SKU2&#10;SKU3 | SKU4"></textarea>
-   <button type="button" id="kitPlusImport" class="kit-secondary">Importar kits sugeridos e recalcular</button>
+   <div class="kit-chat-file-import">
+    <label for="kitPlusFile" class="kit-chat-file-label">📥 IMPORTAR OS KITS AUTOMATICAMENTE — selecione o arquivo JSON ou TXT gerado pelo ChatGPT
+     <input id="kitPlusFile" type="file" accept=".json,.txt,.md,application/json,text/plain" aria-describedby="kitPlusFileHelp">
+    </label>
+    <p id="kitPlusFileHelp">Selecione um único arquivo com as 5–10 combinações. O sistema extrai todas as SKUs, recalcula os preços WeDrop e salva os kits válidos como rascunhos. Não precisa copiar códigos.</p>
+   </div>
+   <button type="button" class="kit-secondary" id="kitPlusClipboardImport">↻ Importar resposta completa copiada (uma única vez)</button>
+   <label for="kitPlusOutput">Outra opção: cole a resposta INTEIRA do ChatGPT, inclusive tabela ou JSON</label>
+   <textarea id="kitPlusOutput" rows="4" placeholder="Cole uma vez a tabela inteira do ChatGPT, linhas SKU1 + SKU2 ou o arquivo JSON."></textarea>
+   <button type="button" id="kitPlusImport" class="kit-secondary">Importar todas as combinações e montar kits</button>
    </div>
   </details>
 
@@ -2005,7 +2011,7 @@
 <script src="/technical-memory.js?v=1.0.1-live-sku-preload"></script>
 <script src="/technical-status.js?v=1.0.0-optional-coherence"></script>
 <script src="/app.js?v=1.21.82-media-technical-fix-dual-centavos-09-v4"></script>
-<script type="module" src="/kit-builder.js?v=2.4.0-import-onefile"></script>
+<script type="module" src="/kit-builder.js?v=2.5.0-import-json-bulk"></script>
 <link rel="stylesheet" href="/optimizer-variations.css?v=1.2.1-single-flow">
 <script src="/optimizer-variations.js?v=1.2.3-single-flow"></script>
 
