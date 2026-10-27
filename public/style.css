@@ -4113,7 +4113,7 @@ body.view-wedrop .page-intro{display:none!important}
 /* v1.20.44 — ajustar colunas para preço longo, com valor completo e sem sobrepor a promoção.
    Restringe o ajuste à tabela de anúncios; em telas pequenas preserva a visualização em cards. */
 @media(min-width:851px){
- #tab-products .catalog-list{overflow-x:auto;max-width:100%;scrollbar-gutter:stable}
+ #tab-products .catalog-list{max-width:100%} /* preserva dropdowns da tabela */
  #tab-products .catalog-products-table{width:100%;min-width:1320px;table-layout:fixed}
  #tab-products .catalog-products-table th:first-child{width:22%}
  #tab-products .catalog-products-table th:nth-child(2){width:15%}
