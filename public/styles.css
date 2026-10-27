@@ -467,3 +467,7 @@ dialog[open]>#toast .toast{box-shadow:0 12px 34px rgba(20,28,16,.28);}
 .tiktok-channel-card .channel-dot[data-connection="reconnect"],
 .tiktok-channel-card .channel-dot[data-connection="disconnected"]{background:#b45345;box-shadow:0 0 0 6px rgba(180,83,69,.10)}
 .tiktok-channel-card .channel-dot[data-connection="unverified"]{background:#bd923e;box-shadow:0 0 0 6px rgba(189,146,62,.12)}
+
+/* Catálogo: confirmação de backup legível sem depender apenas da cor. */
+#catalogStatus[data-state="saved"]{background:#edf7ef;border:1px solid #bedcc2;color:#234e31;font-weight:600}
+#catalogStatus[data-state="warning"]{background:#fff2ea;border:1px solid #e7b7a1;color:#803d2c;font-weight:600}

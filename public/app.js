@@ -273,8 +273,33 @@ $('#settingsBtn').onclick=()=>$('#settingsDialog').showModal();
 $('#saveSettingsBtn').onclick=async e=>{e.preventDefault();try{await api('/api/settings',{method:'POST',body:JSON.stringify({brandName:$('#brandName').value,shopeeStoreUrl:$('#shopeeStoreUrl').value,geminiApiKey:$('#geminiApiKey').value,geminiModel:$('#geminiModel').value,tiktokClientKey:$('#tiktokClientKey').value,tiktokClientSecret:$('#tiktokClientSecret').value,instagramAccessToken:$('#instagramAccessToken')?.value||'',instagramUserId:$('#instagramUserId')?.value||'',metaGraphVersion:$('#metaGraphVersion')?.value||'v26.0',instagramDmEnabled:Boolean($('#instagramDmEnabled')?.checked),instagramDmKeyword:$('#instagramDmKeyword')?.value||'QUERO',instagramDmTemplate:$('#instagramDmTemplate')?.value||'',instagramPublicReplyEnabled:Boolean($('#instagramPublicReplyEnabled')?.checked),instagramPublicReplyTemplate:$('#instagramPublicReplyTemplate')?.value||'',metaPageId:$('#metaPageId')?.value||'',metaAdAccountId:$('#metaAdAccountId')?.value||'',metaAdSetId:$('#metaAdSetId')?.value||'',metaAdsAccessToken:$('#metaAdsAccessToken')?.value||'',metaWebhookVerifyToken:$('#metaWebhookVerifyToken')?.value||'',metaCreateAdDefault:Boolean($('#metaCreateAdDefault')?.checked),metaAdDefaultStatus:$('#metaAdDefaultStatus')?.value||'PAUSED'})});$('#settingsDialog').close();toast('Configuração salva.');await loadConfig();if(selectedFile)await analyze()}catch(err){toast(err.message,true)}};
 
 async function loadCatalogStatus(){
-  try{const c=await api('/api/catalog');$('#catalogStatus').textContent=c.count?`Catálogo carregado: ${c.count} produtos · ${c.variationSkuCount||0} SKUs adicionais/variações. ${c.duplicateSkuCount?`${c.duplicateSkuCount} SKUs aparecem em mais de um anúncio; a busca pedirá sua escolha. `:''}Última importação: ${c.importedAt?new Date(c.importedAt).toLocaleString('pt-BR'):'não informada'}.`:'Nenhum catálogo carregado ainda.';}catch{$('#catalogStatus').textContent='Não foi possível consultar o catálogo.'}
+ const el=$('#catalogStatus');
+ try{
+  const c=await api('/api/catalog'),backup=c.backup||{};
+  const source=backup.source==='shopee_api_sync'?'sincronização com anúncios da Shopee':
+   backup.source==='shopee_excel'?'planilha importada':
+   backup.source==='sku_link_edit'?'catálogo com SKUs vinculadas':'cópia recuperada';
+  const detail=c.count?
+   c.count+' produtos · '+(c.skuCount||0)+' SKUs identificadas · '+
+   (c.variationSkuCount||0)+' SKUs adicionais/variações. '+
+   (c.duplicateSkuCount?c.duplicateSkuCount+' SKUs em mais de um anúncio. ':'')+
+   'Origem: '+(c.sourceFile||'catálogo salvo')+'. ':'Nenhum produto cadastrado. ';
+  if(backup.saved){
+   el.textContent='✅ Catálogo salvo permanentemente no Supabase. '+detail+
+    'Última cópia: '+(backup.updatedAt?new Date(backup.updatedAt).toLocaleString('pt-BR'):'confirmada')+
+    ' ('+source+'). Não precisa baixar ou carregar a planilha novamente para usar os produtos.';
+   el.dataset.state='saved';
+  }else{
+   el.textContent='⚠️ Backup permanente não confirmado. '+detail+
+    (backup.message||'Verifique a conexão com o Supabase antes de atualizar o catálogo.');
+   el.dataset.state='warning';
+  }
+ }catch(e){
+  el.textContent='⚠️ Não foi possível conferir o catálogo: '+e.message;
+  el.dataset.state='warning';
+ }
 }
+
 function catalogImportMessage(message='',kind='info'){
   const el=$('#catalogImportNotice');if(!el)return;el.hidden=!message;el.textContent=message;el.className='status small catalog-import-notice '+kind;
 }
@@ -292,6 +317,19 @@ $('#importCatalogBtn').onclick=async()=>{
     toast(detail,true);
   }finally{btn.disabled=false;btn.textContent='Atualizar catálogo'}
 };
+
+$('#recoverCatalogBtn')?.addEventListener('click',async()=>{
+ const btn=$('#recoverCatalogBtn');
+ btn.disabled=true;btn.textContent='Recuperando...';
+ try{
+  const r=await api('/api/catalog/recover',{method:'POST',body:JSON.stringify({})});
+  catalogImportMessage('✅ '+r.count+' produtos recuperados do backup no Supabase, sem planilha.','success');
+  toast('Catálogo restaurado: '+r.count+' produtos.');await loadCatalogStatus();
+ }catch(e){
+  catalogImportMessage('⚠️ Recuperação não concluída: '+e.message,'error');
+  toast(e.message,true);await loadCatalogStatus();
+ }finally{btn.disabled=false;btn.textContent='↻ Recuperar catálogo salvo';}
+});
 
 $('#saveSkuAliasBtn')?.addEventListener('click',async()=>{
   const button=$('#saveSkuAliasBtn');

@@ -8,6 +8,7 @@ import path from 'node:path';
 import * as XLSX from 'xlsx';
 import QRCode from 'qrcode';
 import { parseCatalogSheets, lookupCatalogSku, linkCatalogSku, catalogStats } from './catalog.js';
+import {readPublisherCatalog,savePublisherCatalog,validatePublisherCatalog,PUBLISHER_SHOPEE_SHOP_ID} from './publisherShopeeCatalogStore.js';
 import { fileURLToPath } from 'node:url';
 import { Readable } from 'node:stream';
 import { spawn } from 'node:child_process';
@@ -285,6 +286,21 @@ function loadCatalog(){
   catch { return {shopId:'852701218',importedAt:null,sourceFile:null,products:[]}; }
 }
 function saveCatalog(c){ fs.writeFileSync(CATALOG_FILE, JSON.stringify(c,null,2)); }
+let catalogBackup={saved:false,source:'',updatedAt:null,message:'Backup ainda não verificado.'};
+let catalogEditQueue=Promise.resolve();
+function updateCatalogAtomically(run){
+ const result=catalogEditQueue.then(run,run);
+ catalogEditQueue=result.catch(()=>{});
+ return result;
+}
+function backupStatus(info){
+ catalogBackup={saved:true,source:info.source,updatedAt:info.updatedAt,
+  message:'Catálogo preservado no Supabase. Não é necessário reenviar a planilha.'};
+}
+function catalogBackupError(error){
+ catalogBackup={...catalogBackup,saved:false,
+  message:'A cópia permanente não foi confirmada: '+String(error?.message||'falha de conexão').slice(0,130)};
+}
 function catalogTokens(v){
   const stop=new Set(['para','com','sem','kit','produto','branco','preto','sortido','unidade','unidades','novo','nova','oferta']);
   return normalizeText(v).split(' ').filter(x=>x.length>=3&&!stop.has(x));
@@ -311,25 +327,54 @@ function parseShopeeCatalog(buffer,filename){
   return parseCatalogSheets(sheets,{filename,previous:loadCatalog(),importedAt:now()});
 }
 
-app.get('/api/catalog', mustLogin, (_req,res)=>{
-  const c=loadCatalog(); res.json({...catalogStats(c), importedAt:c.importedAt, sourceFile:c.sourceFile, shopId:c.shopId||'852701218'});
+app.get('/api/catalog',mustLogin,(_req,res)=>{
+ const c=loadCatalog();
+ res.setHeader('Cache-Control','no-store');
+ res.json({...catalogStats(c),importedAt:c.importedAt,sourceFile:c.sourceFile,
+  shopId:c.shopId||PUBLISHER_SHOPEE_SHOP_ID,backup:catalogBackup});
 });
-app.post('/api/catalog/import', mustLogin, catalogUpload.single('catalog'), (req,res)=>{
-  try{
-    if(!req.file) return res.status(400).json({error:'Selecione a planilha da Shopee.'});
-    const c=parseShopeeCatalog(req.file.buffer,req.file.originalname); saveCatalog(c);
-    res.json({ok:true,...catalogStats(c),importedAt:c.importedAt,sourceFile:c.sourceFile});
-  }catch(e){res.status(400).json({error:e.message});}
+app.post('/api/catalog/import',mustLogin,catalogUpload.single('catalog'),async(req,res)=>{
+ try{
+  if(!req.file)return res.status(400).json({error:'Selecione a planilha da Shopee.'});
+  const result=await updateCatalogAtomically(async()=>{
+   const c=parseShopeeCatalog(req.file.buffer,req.file.originalname);
+   // Confirma o backup remoto ANTES de substituir o catálogo local.
+   const backup=await savePublisherCatalog(c,{source:'shopee_excel'});
+   saveCatalog(c);backupStatus(backup);
+   return {ok:true,...catalogStats(c),importedAt:c.importedAt,sourceFile:c.sourceFile,backup:catalogBackup};
+  });
+  res.json(result);
+ }catch(e){
+  if(/backup|Supabase|permanente|HTTP/.test(String(e.message)))catalogBackupError(e);
+  res.status(/backup|Supabase|permanente|HTTP/.test(String(e.message))?503:400).json({error:e.message});
+ }
 });
-
-app.post('/api/catalog/sku-alias', mustLogin, (req,res)=>{
-  try{
-    const c=linkCatalogSku(loadCatalog(),req.body.productId,req.body.sku);
-    saveCatalog(c);
-    res.json({ok:true,...catalogStats(c)});
-  }catch(e){res.status(400).json({error:e.message});}
+app.post('/api/catalog/sku-alias',mustLogin,async(req,res)=>{
+ try{
+  const result=await updateCatalogAtomically(async()=>{
+   const c=linkCatalogSku(loadCatalog(),req.body.productId,req.body.sku);
+   const backup=await savePublisherCatalog(c,{source:'sku_link_edit'});
+   saveCatalog(c);backupStatus(backup);
+   return {ok:true,...catalogStats(c),backup:catalogBackup};
+  });
+  res.json(result);
+ }catch(e){
+  if(/backup|Supabase|permanente|HTTP/.test(String(e.message)))catalogBackupError(e);
+  res.status(/backup|Supabase|permanente|HTTP/.test(String(e.message))?503:400).json({error:e.message});
+ }
 });
-
+app.post('/api/catalog/recover',mustLogin,async(_req,res)=>{
+ try{
+  const saved=await updateCatalogAtomically(async()=>{
+   const record=await readPublisherCatalog(PUBLISHER_SHOPEE_SHOP_ID);
+   if(!record)throw Error('Ainda não existe uma cópia permanente do catálogo.');
+   saveCatalog(record.catalog);backupStatus(record);
+   return {...catalogStats(record.catalog),sourceFile:record.catalog.sourceFile,
+    importedAt:record.catalog.importedAt,backup:catalogBackup};
+  });
+  res.json({ok:true,...saved});
+ }catch(e){catalogBackupError(e);res.status(503).json({error:e.message});}
+});
 
 function findCatalogBySku(sku,productId=''){
   return lookupCatalogSku(loadCatalog(),sku,productId);
@@ -1779,5 +1824,27 @@ async function restoreTikTokSession(){
   if(token){s.token=token;saveStore(s);console.info('TikTok: token persistente restaurado.');}
  }catch(e){console.warn('TikTok: recuperação de token indisponível:',e.message);}
 }
+async function restorePublisherCatalog(){
+ try{
+  const existing=await readPublisherCatalog(PUBLISHER_SHOPEE_SHOP_ID);
+  if(existing){
+   saveCatalog(existing.catalog);
+   backupStatus(existing);
+   console.info('Shopee Publisher: catálogo permanente restaurado ('+
+    existing.catalog.products.length+' anúncios).');
+   return;
+  }
+  // Somente a instalação inicial, sem snapshot: migração da cópia local existente.
+  const local=loadCatalog();
+  validatePublisherCatalog(local,PUBLISHER_SHOPEE_SHOP_ID);
+  const backup=await savePublisherCatalog(local,{source:'first_install_local'});
+  backupStatus(backup);
+  console.info('Shopee Publisher: catálogo local migrado para Supabase.');
+ }catch(e){
+  catalogBackupError(e);
+  console.warn('Shopee Publisher: catálogo permanente indisponível:',e.message);
+ }
+}
+await restorePublisherCatalog();
 await restoreTikTokSession();
 app.listen(PORT,()=>console.log('REDEACHADOS BR Publisher Web V5.5.19 em http://localhost:'+PORT));
