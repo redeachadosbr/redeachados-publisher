@@ -1,0 +1,211 @@
+/* Rede Achados BR Publisher Studio — v1.0
+   Acabamento 3D de profundidade SOMENTE VISUAL. Mantém os elementos, IDs,
+   fluxos, acessibilidade e estados da interface existente. */
+body.reference-publisher-layout {
+ --depth-ink:#13243c;
+ --depth-edge:rgba(177,193,211,.76);
+ --depth-base:0 18px 43px rgba(27,46,74,.13),0 6px 14px rgba(25,50,83,.065);
+ --depth-raised:0 12px 27px rgba(25,48,80,.13),0 3px 9px rgba(21,45,76,.07);
+ --depth-gold:0 13px 25px rgba(168,113,25,.20),0 4px 8px rgba(140,93,15,.13);
+ background:#eaf0f7;
+}
+body.reference-publisher-layout .page-stage {
+ min-height:100vh;
+ background:
+   radial-gradient(ellipse 65% 32% at 52% 0%,rgba(255,255,255,.98),transparent 85%),
+   radial-gradient(circle at 95% 30%,rgba(233,205,148,.13),transparent 32%),
+   linear-gradient(146deg,#eff5fb 0%,#e7eef7 48%,#f6f8fc 100%);
+}
+body.reference-publisher-layout .app-topbar {
+ background:linear-gradient(105deg,rgba(255,255,255,.98),rgba(247,250,255,.98));
+ border-bottom:1px solid #d5e1ef;
+ box-shadow:0 7px 22px rgba(28,51,83,.08),inset 0 1px 0 #fff;
+}
+body.reference-publisher-layout .sidebar{
+ background:linear-gradient(165deg,#141e1d 0%,#101a19 57%,#182321 100%);
+ border-right:1px solid rgba(214,189,115,.16);
+ box-shadow:8px 0 27px rgba(18,32,38,.14),inset -1px 0 rgba(255,255,255,.04);
+}
+body.reference-publisher-layout .sidebar .brand-mark{
+ background:linear-gradient(135deg,#28312b,#0d1618);
+ border:1px solid #ad873e;
+ box-shadow:0 8px 18px rgba(0,0,0,.28),inset 0 1px rgba(255,255,255,.12);
+}
+body.reference-publisher-layout .sidebar .nav-link.active{
+ background:linear-gradient(115deg,#ffe397 0%,#f1c357 55%,#dda82e 100%);
+ box-shadow:0 10px 23px rgba(222,170,68,.20),inset 0 1px 0 rgba(255,255,255,.60),inset 0 -2px 0 rgba(132,92,10,.13);
+ border:1px solid rgba(255,231,165,.6);
+}
+body.reference-publisher-layout .header-global-search,
+body.reference-publisher-layout .header-profile>summary,
+body.reference-publisher-layout #settingsBtn{
+ background:linear-gradient(160deg,#fff,#f8faff);
+ border-color:#d1dcec;
+ box-shadow:0 5px 13px rgba(27,50,75,.08),inset 0 1px 0 #fff;
+}
+body.reference-publisher-layout #create.app-page{
+ position:relative;
+ isolation:isolate;
+}
+body.reference-publisher-layout #create .hero{
+ position:relative;
+ border-radius:18px;
+ background:linear-gradient(140deg,rgba(255,255,255,.71),rgba(246,250,255,.5));
+ border:1px solid rgba(255,255,255,.7);
+ box-shadow:0 8px 24px rgba(33,59,87,.055),inset 0 1px 0 rgba(255,255,255,.96);
+ padding:14px 17px;
+}
+body.reference-publisher-layout #create .reference-hero-icon{
+ background:linear-gradient(135deg,#fff4d9 0%,#f6d68e 60%,#edb948 100%);
+ border:1px solid #f2d69b;
+ box-shadow:0 10px 21px rgba(178,127,31,.18),inset 0 2px 1px #fff8e9,inset 0 -3px 8px rgba(142,92,23,.09);
+}
+body.reference-publisher-layout #create .hero .platform-tag{
+ background:linear-gradient(135deg,#fffdf7 0%,#f9ecd6 100%);
+ border-color:#efd9ae;
+ box-shadow:0 9px 22px rgba(147,106,42,.12),inset 0 1px 0 #fff;
+}
+body.reference-publisher-layout #create .card{
+ border:1px solid #d0ddec;
+ border-radius:18px;
+ background:linear-gradient(155deg,#fff 0%,#fff 65%,#fafdff 100%);
+ box-shadow:var(--depth-base),inset 0 1px 0 #fff;
+}
+body.reference-publisher-layout #create .source-card{
+ box-shadow:0 22px 48px rgba(25,43,72,.15),0 5px 14px rgba(31,62,101,.08),inset 0 1px 0 #fff;
+}
+body.reference-publisher-layout #create .source-card .section-head,
+body.reference-publisher-layout #create .editor-card .section-head{
+ background:linear-gradient(90deg,#fff 0%,#f5f9ff 100%);
+ border-bottom:1px solid #e6edf5;
+}
+body.reference-publisher-layout #create .step-number,
+body.reference-publisher-layout #create .publish-heading .step-number{
+ background:linear-gradient(142deg,#fff0bb 0%,#f8cf6e 44%,#e7ae38 100%);
+ border:1px solid #e9bb5f;
+ box-shadow:0 0 0 6px #fff9eb,0 8px 17px rgba(167,105,18,.24),inset 0 2px 1px rgba(255,255,255,.86),inset 0 -3px 6px rgba(114,76,16,.13);
+ color:#223047;
+}
+body.reference-publisher-layout #create .dropzone,
+body.reference-publisher-layout #create .upload-selected{
+ border:1px dashed #d2bb84;
+ background:
+   radial-gradient(circle at 50% 5%,rgba(255,255,255,1) 0%,transparent 62%),
+   linear-gradient(158deg,#fff9e9 0%,#f3f6fc 56%,#e9f0fa 100%);
+ box-shadow:inset 0 3px 6px rgba(255,255,255,.95),inset 0 -11px 22px rgba(105,131,168,.09),0 8px 20px rgba(58,85,120,.12);
+ border-radius:14px;
+ transition:border-color .18s ease,box-shadow .18s ease,background-color .18s ease,transform .18s ease;
+}
+body.reference-publisher-layout #create .dropzone:hover,
+body.reference-publisher-layout #create .dropzone.drag{
+ border-color:#c09337;
+ box-shadow:inset 0 3px 6px rgba(255,255,255,1),inset 0 -9px 18px rgba(105,131,168,.09),0 12px 25px rgba(55,80,109,.17),0 0 0 3px rgba(231,184,77,.12);
+}
+body.reference-publisher-layout #create .upload-icon,
+body.reference-publisher-layout #create .source-icon{
+ background:linear-gradient(145deg,#fffdf2,#f2dfb4);
+ border:1px solid #eedbb5;
+ box-shadow:0 6px 12px rgba(136,97,35,.11),inset 0 2px 1px #fff;
+}
+body.reference-publisher-layout #create .dropzone .primary,
+body.reference-publisher-layout #create .sku-search .publish{
+ background:linear-gradient(115deg,#ffe4a3 0%,#f4c65e 54%,#e6b03b 100%);
+ color:#23211e;
+ border:1px solid #e8bc60;
+ box-shadow:var(--depth-gold),inset 0 2px 1px rgba(255,255,255,.5),inset 0 -2px 1px rgba(144,95,14,.10);
+ font-weight:850;
+ transition:box-shadow .18s ease,filter .18s ease,transform .18s ease;
+}
+body.reference-publisher-layout #create .dropzone .primary:hover:not(:disabled),
+body.reference-publisher-layout #create .sku-search .publish:hover:not(:disabled){
+ filter:brightness(1.025);
+ transform:translateY(-2px);
+ box-shadow:0 16px 26px rgba(172,113,20,.26),0 6px 10px rgba(141,96,19,.13),inset 0 1px #fff5cf;
+}
+body.reference-publisher-layout #create .dropzone .primary:active:not(:disabled),
+body.reference-publisher-layout #create .sku-search .publish:active:not(:disabled){transform:translateY(0)}
+body.reference-publisher-layout #create .sku-card{
+ background:linear-gradient(138deg,#fff 0%,#f6faff 60%,#eef5fd 100%);
+ border:1px solid #d4e0ee;
+ border-radius:15px;
+ box-shadow:var(--depth-raised),inset 0 1px #fff;
+ padding:15px 18px;
+}
+body.reference-publisher-layout #create .sku-search input,
+body.reference-publisher-layout #create .generated input,
+body.reference-publisher-layout #create .generated textarea,
+body.reference-publisher-layout #create .tab-panel textarea{
+ background:linear-gradient(180deg,#fbfcff 0%,#fff 28%);
+ border:1px solid #bdcddd;
+ color:#20344e;
+ box-shadow:inset 0 2px 4px rgba(29,51,79,.055),0 1px 1px rgba(255,255,255,.96);
+}
+body.reference-publisher-layout #create .sku-search input:focus,
+body.reference-publisher-layout #create .generated input:focus,
+body.reference-publisher-layout #create .generated textarea:focus,
+body.reference-publisher-layout #create .tab-panel textarea:focus{
+ border-color:#c69e48;
+ box-shadow:inset 0 1px 3px rgba(27,52,84,.055),0 0 0 3px rgba(226,178,67,.16),0 5px 12px rgba(39,65,96,.08);
+}
+body.reference-publisher-layout #create .reference-video-preview .preview-frame{
+ box-shadow:0 12px 24px rgba(11,22,34,.20),0 2px 6px rgba(11,22,34,.13);
+ border:1px solid #bccddd;
+}
+body.reference-publisher-layout #create .video-result{
+ background:linear-gradient(145deg,#fff,#f7fbff);
+ border:1px solid #d3deee;
+ box-shadow:0 4px 10px rgba(36,57,83,.07);
+}
+body.reference-publisher-layout #create .reference-caption-details,
+body.reference-publisher-layout #create .reference-publish-extra{
+ background:linear-gradient(140deg,#fff,#f6f9ff);
+ border-color:#d2dfec;
+ box-shadow:0 7px 16px rgba(29,52,86,.07),inset 0 1px 0 #fff;
+}
+body.reference-publisher-layout #create .commerce-shortcut{
+ background:linear-gradient(136deg,#fffefa 0%,#fff3d8 100%);
+ border-color:#e7cf99;
+ box-shadow:0 10px 22px rgba(143,104,36,.12),inset 0 1px 0 #fff;
+ transition:transform .18s ease,box-shadow .18s ease;
+}
+body.reference-publisher-layout #create .commerce-shortcut:hover{
+ transform:translateY(-2px);
+ box-shadow:0 15px 28px rgba(143,104,36,.17),inset 0 1px 0 #fff;
+}
+body.reference-publisher-layout #create .social-actions .social-publish-btn{
+ box-shadow:0 14px 26px rgba(38,43,71,.20),inset 0 1px 0 rgba(255,255,255,.2);
+ transition:transform .18s ease,box-shadow .18s ease;
+}
+body.reference-publisher-layout #create .social-actions .social-publish-btn:hover:not(:disabled){
+ transform:translateY(-2px);
+ box-shadow:0 18px 31px rgba(35,45,70,.23),inset 0 1px 0 rgba(255,255,255,.22);
+}
+body.reference-publisher-layout #create .empty-workspace{
+ background:linear-gradient(120deg,rgba(255,255,255,.28),rgba(246,250,255,.67));
+ border-radius:15px;
+}
+body.reference-publisher-layout #create .empty-workspace .empty-icon{
+ background:linear-gradient(140deg,#fcf8e9,#e9efe5);
+ box-shadow:0 6px 14px rgba(60,84,75,.10),inset 0 2px 1px #fff;
+}
+body.reference-publisher-layout #create .section-head h2,
+body.reference-publisher-layout #create .source-heading h3{color:var(--depth-ink)}
+@media(max-width:950px){
+ body.reference-publisher-layout .page-stage{background:linear-gradient(150deg,#eef4fa,#f9fbff)}
+ body.reference-publisher-layout #create .hero{padding:12px 13px}
+ body.reference-publisher-layout #create .source-card{box-shadow:0 13px 27px rgba(25,43,72,.12),0 4px 9px rgba(31,62,101,.07)}
+}
+@media(max-width:480px){
+ body.reference-publisher-layout #create .hero{padding:10px}
+ body.reference-publisher-layout #create .sku-card{padding:12px}
+ body.reference-publisher-layout #create .dropzone{min-height:200px}
+ body.reference-publisher-layout #create .card{box-shadow:0 9px 19px rgba(25,43,72,.13)}
+ body.reference-publisher-layout .sidebar{box-shadow:0 6px 18px rgba(18,32,38,.10)}
+}
+@media(prefers-reduced-motion:reduce){
+ body.reference-publisher-layout #create .dropzone,
+ body.reference-publisher-layout #create .dropzone .primary,
+ body.reference-publisher-layout #create .sku-search .publish,
+ body.reference-publisher-layout #create .commerce-shortcut,
+ body.reference-publisher-layout #create .social-actions .social-publish-btn{transition:none!important}
+}
