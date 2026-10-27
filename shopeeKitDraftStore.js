@@ -41,6 +41,27 @@ export async function saveKitDraft(shopId,{kit,creative}){
  });
  return {saved:Boolean(rows[0]),kitSku:kit.kitSku,updatedAt:rows[0]?.updated_at||null};
 }
+function mayDeleteKitDraft(publication){
+ return String(publication?.status||'local_draft')==='local_draft'&&!publication?.itemId;
+}
+export async function deleteKitDraft(shopId,kitSku){
+ const id=shop(shopId),code=String(kitSku||'').trim();
+ if(!/^KIT-[A-Z0-9-]{4,115}$/.test(code))throw Error('Código de kit inválido.');
+ const existing=await loadKitDraft(id,code);
+ if(!existing)return {deleted:false,notFound:true,kitSku:code};
+ if(!mayDeleteKitDraft(existing.publication))
+  throw Error('Este kit já foi enviado à Shopee ou tem publicação em andamento/incerta. Não é possível excluir.');
+ // A condição no DELETE também impede apagar uma publicação que mude de status após a leitura.
+ const rows=await request('?shop_id=eq.'+id+
+  '&kit_sku=eq.'+encodeURIComponent(code)+
+  '&draft->publication->>status=eq.local_draft'+
+  '&draft->publication->>itemId=is.null',{
+  method:'DELETE',prefer:'return=representation'
+ });
+ if(!Array.isArray(rows)||rows.length!==1)
+  throw Error('Exclusão não confirmada. Atualize a lista e confira se o kit ainda está salvo.');
+ return {deleted:true,kitSku:code,marketplaceUpdated:false};
+}
 export async function listKitDrafts(shopId){
  const rows=await request('?shop_id=eq.'+shop(shopId)+
   '&select=kit_sku,component_skus,draft,updated_at&order=updated_at.desc&limit=30');
@@ -51,6 +72,7 @@ export async function listKitDrafts(shopId){
   images:(x.draft?.kit?.components||[]).slice(0,3)
     .map(p=>String(p.imageUrl||'')).filter(url=>/^https:\/\/wedrop-products-images\.nyc3\.cdn\.digitaloceanspaces\.com\//.test(url)),
   publication:x.draft?.publication?.status||'local_draft',
+  deletable:mayDeleteKitDraft(x.draft?.publication),
   updatedAt:x.updated_at}));
 }
 export async function loadKitDraft(shopId,kitSku){

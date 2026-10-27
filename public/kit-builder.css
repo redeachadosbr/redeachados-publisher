@@ -844,3 +844,42 @@
   #tab-kits #kitResearchDetails .kit-research-toolbar-actions{flex:1 1 100%}
   #tab-kits #kitResearchDetails .kit-research-toolbar-actions button{flex:1 1 175px}
 }
+
+/* v2.8 — botões Editar e Excluir, restritos à lista de rascunhos. */
+#tab-kits .kit-drafts-panel .kit-card>.kit-draft-actions{
+ grid-column:4;grid-row:1;display:flex;align-items:center;justify-content:flex-end;
+ gap:7px;flex-wrap:wrap;min-width:0;
+}
+#tab-kits .kit-drafts-panel .kit-draft-actions>button{
+ min-height:37px;padding:8px 11px;white-space:nowrap;
+ border-radius:9px;font-size:11px;font-weight:850;
+}
+#tab-kits .kit-drafts-panel .kit-draft-actions>.kit-draft-remove{
+ border:1px solid #edb8b8;background:#fff3f2;color:#ad2933;
+ cursor:pointer;transition:background .15s,border-color .15s;
+}
+#tab-kits .kit-drafts-panel .kit-draft-actions>.kit-draft-remove:hover:not(:disabled){
+ background:#ffe3e0;border-color:#e88b8b;color:#8e1e27;
+}
+#tab-kits .kit-drafts-panel .kit-draft-actions>button:disabled{opacity:.6;cursor:wait}
+#tab-kits .kit-drafts-panel .kit-draft-actions>button:focus-visible{
+ outline:2px solid #2d7be0;outline-offset:2px;
+}
+#tab-kits .kit-draft-delete-status{
+ margin:0 0 9px;padding:9px 12px;border-radius:9px;
+ border:1px solid #b4e2c5;background:#e9f8ef;color:#0a663c;
+ font-size:11px;font-weight:700;line-height:1.45;
+}
+#tab-kits .kit-draft-delete-status[data-state="error"]{
+ background:#fff0f0;color:#a22d2d;border-color:#f0baba;
+}
+@media(max-width:1100px){
+ #tab-kits .kit-drafts-panel .kit-card>.kit-draft-actions{
+  grid-column:3;grid-row:2;justify-self:end;
+ }
+}
+@media(max-width:580px){
+ #tab-kits .kit-drafts-panel .kit-card>.kit-draft-actions{
+  grid-column:1 / -1;grid-row:3;justify-self:start;
+ }
+}

@@ -32,7 +32,7 @@ import {saveWeDropCosts,getWeDropCoverage,compareIncomingCosts,pendingWeDropMode
 import {saveWeDropProducts,readWeDropProduct} from './wedropCosts.js';
 import {kitCatalog,suggestKits,suggestKitsForIdea,rankKitIdeaProducts,assessKitBuyerFit,composeKit,kitCreative,kitPrompts,kitPlusResearchBrief,kitPlusContentPrompt,categoryMatches,clearKitCatalogCache} from './shopeeKitBuilder.js';
 import {saveKitStockImport,clearKitStockCache,parseWeDropAvailabilityCsv} from './shopeeKitAvailability.js';
-import {saveKitDraft,listKitDrafts,loadKitDraft} from './shopeeKitDraftStore.js';
+import {saveKitDraft,listKitDrafts,loadKitDraft,deleteKitDraft} from './shopeeKitDraftStore.js';
 import {kitUploadPhoto,kitPublicationReadiness,kitPublicationPreview,kitPublishApproved,checkKitPublication} from './shopeeKitPublicationService.js';
 import {previewKitDiscount,executeKitDiscount} from './shopeeKitDiscountService.js';
 import {supplierWorkflowFacts,wedropCestForSku} from './shopeeSupplierFacts.js';
@@ -284,6 +284,16 @@ app.post('/api/shopee/kits/drafts/save',mustLogin,requireWeDropAdmin,async(req,r
   const creative={title:req.body.title,description:req.body.description,source:'rascunho revisado'};
   const saved=await saveKitDraft(auth.shopId,{kit,creative});
   res.json({ok:true,...saved,shopeePublished:false});
+ }catch(error){res.status(400).json({error:String(error.message||error).slice(0,260)});}
+});
+app.post('/api/shopee/kits/drafts/delete',mustLogin,requireWeDropAdmin,async(req,res)=>{
+ res.setHeader('Cache-Control','no-store');
+ if(!verifiedSameOrigin(req))return res.status(403).json({error:'Origem não autorizada.'});
+ try{
+  const {auth}=await getValidAuth(req);
+  const outcome=await deleteKitDraft(auth.shopId,req.body?.kitSku);
+  if(!outcome.deleted)return res.status(404).json({error:'Rascunho não encontrado nesta loja.'});
+  res.json({ok:true,...outcome});
  }catch(error){res.status(400).json({error:String(error.message||error).slice(0,260)});}
 });
 app.post('/api/shopee/kits/drafts/load',mustLogin,requireWeDropAdmin,async(req,res)=>{

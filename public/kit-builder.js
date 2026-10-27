@@ -693,7 +693,7 @@ function renderSuggestions(data){
   card.append(open);root.append(card);
  }
 }
-async function loadDrafts(){
+async function loadDrafts({restoreCurrent=true}={}){
  const root=$('#kitDraftList');if(!root)return;
  try{
   const result=await api('/api/shopee/kits/drafts');
@@ -733,16 +733,50 @@ async function loadDrafts(){
     }
     card.append(prices);
    }
+   const actions=elt('div','kit-draft-actions');
    const open=elt('button','kit-secondary','Editar e continuar →');
    open.type='button';open.addEventListener('click',()=>void openDraft(draft.kitSku));
-   card.append(open);root.append(card);
+   actions.append(open);
+   if(draft.deletable===true){
+    const remove=elt('button','kit-draft-remove','Excluir');
+    remove.type='button';
+    remove.title='Excluir somente este rascunho da loja, sem alterar a Shopee';
+    remove.setAttribute('aria-label','Excluir rascunho '+(draft.title||draft.kitSku));
+    remove.addEventListener('click',()=>void deleteDraft(draft,remove));
+    actions.append(remove);
+   }
+   card.append(actions);root.append(card);
   }
-  if(!prepared&&kitStockReady&&result.drafts.length){
+  if(restoreCurrent&&!prepared&&kitStockReady&&result.drafts.length){
    // Ao voltar ao menu, retomar o rascunho mais recente sem deslocar a página.
    void openDraft(result.drafts[0].kitSku,{scroll:false});
   }
  }catch(error){
   root.replaceChildren(elt('p','', 'Não foi possível consultar rascunhos: '+error.message));
+ }
+}
+async function deleteDraft(draft,button){
+ const name=String(draft.title||draft.kitSku);
+ const confirmed=window.confirm('Excluir definitivamente este rascunho?\n\n'+
+  name+'\nSKU: '+draft.kitSku+'\n\nEsta ação remove apenas o rascunho salvo nesta loja. Não exclui produtos da WeDrop nem anúncios da Shopee.');
+ if(!confirmed)return;
+ button.disabled=true;
+ button.textContent='Excluindo…';
+ const notice=$('#kitDraftDeleteStatus');
+ try{
+  const result=await api('/api/shopee/kits/drafts/delete',{body:{kitSku:draft.kitSku}});
+  if(result.deleted!==true)throw Error('O servidor não confirmou a exclusão.');
+  if(prepared?.kit?.kitSku===draft.kitSku){
+   prepared=null;images.clear();$('#kitDetail').hidden=true;
+   resetKitPublication();
+  }
+  await loadDrafts({restoreCurrent:false});
+  if(notice){notice.textContent='✓ Rascunho '+draft.kitSku+' excluído. Nenhum anúncio foi alterado na Shopee.';notice.dataset.state='success';notice.hidden=false;}
+  status('✓ Rascunho '+draft.kitSku+' excluído. A Shopee não foi alterada.','success');
+ }catch(error){
+  if(notice){notice.textContent='Não foi possível excluir: '+error.message;notice.dataset.state='error';notice.hidden=false;}
+  status('Não foi possível excluir rascunho: '+error.message,'error');
+  button.disabled=false;button.textContent='Excluir';
  }
 }
 async function openDraft(kitSku,{scroll=true}={}){
