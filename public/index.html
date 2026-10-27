@@ -31,7 +31,7 @@
 <link rel="stylesheet" href="/ads-premium.css?v=2.4.0-seo-ads-location">
 <link rel="stylesheet" href="/sidebar-collapse.css?v=1.0.0">
 <link rel="stylesheet" href="/optimizer-image-studio.css?v=1.0.2">
-<link rel="stylesheet" href="/kit-builder.css?v=3.0.1-inline-draft-editor">
+<link rel="stylesheet" href="/kit-builder.css?v=3.1-reference-config">
 <link rel="stylesheet" href="/optimizer-technical-studio.css?v=1.0.1-review-feedback">
 <style>
 /* Autorização >25%: campo compacto, sem o input global width:100%.
@@ -984,27 +984,27 @@
     <button id="kitGoImport" type="button" class="kit-secondary">Atualizar na Importação →</button>
   </div>
  <div class="kit-overview" aria-label="Resumo da configuração de kits">
-  <div class="kit-overview-card"><span class="kit-overview-icon kit-icon-blue" aria-hidden="true">⬡</span>
+  <div class="kit-overview-card"><span class="kit-overview-icon kit-icon-blue" aria-hidden="true"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m12 2 9 5v10l-9 5-9-5V7l9-5Z"/><path d="m3 7 9 5 9-5M12 12v10"/></svg></span>
    <div><small>Categoria selecionada</small><strong id="kitOverviewCategory">Brinquedos</strong><span>Produtos infantis e educativos</span></div>
   </div>
-  <div class="kit-overview-card"><span class="kit-overview-icon kit-icon-cyan" aria-hidden="true">▱</span>
+  <div class="kit-overview-card"><span class="kit-overview-icon kit-icon-green" aria-hidden="true"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 4h12l6 6-11 11a2 2 0 0 1-3 0l-5-5a2 2 0 0 1 0-3L3 4Z"/><circle cx="9" cy="9" r="1.5"/></svg></span>
    <div><small>SKUs por kit</small><strong id="kitOverviewSize">2 SKUs</strong><span>Produtos combinados</span></div>
   </div>
-  <div class="kit-overview-card"><span class="kit-overview-icon kit-icon-blue" aria-hidden="true">▥</span>
+  <div class="kit-overview-card"><span class="kit-overview-icon kit-icon-amber" aria-hidden="true"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 20V13h4v7m4 0V8h4v12m4 0V4h3v16"/><path d="M2 21h21"/></svg></span>
    <div><small>Margem líquida</small><strong id="kitOverviewMargin">15%</strong><span>Lucro estimado por kit</span></div>
   </div>
-  <div class="kit-overview-card"><span class="kit-overview-icon kit-icon-cyan" aria-hidden="true">▣</span>
+  <div class="kit-overview-card"><span class="kit-overview-icon kit-icon-purple" aria-hidden="true"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M2 6h12v11H2zM14 10h4l4 4v3h-8"/><circle cx="6" cy="18" r="2"/><circle cx="18" cy="18" r="2"/></svg></span>
    <div><small>Frete assumido pela loja</small><strong id="kitOverviewFreight">R$ 0,00</strong><span>No cálculo do lucro</span></div>
   </div>
  </div>
  <div class="kit-form" id="kitForm">
-  <div class="kit-form-heading"><span class="kit-heading-icon kit-icon-orange">⚙</span><div><strong>Configuração da pesquisa de kits</strong><small>Defina os parâmetros para encontrar os melhores kits na WeDrop</small></div></div>
-  <label>Categoria WeDrop<select id="kitCategory"><option value="Brinquedos">Brinquedos</option></select></label>
+  <div class="kit-form-heading"><span class="kit-heading-icon kit-icon-orange" aria-hidden="true"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m9.7 2-.5 2.3-2 1.1L5 4.5l-2.1 3.7 1.6 1.8v2.2l-1.6 1.8L5 17.7l2.2-.9 2 1.1.5 2.3h4.6l.5-2.3 2-1.1 2.2.9 2.1-3.7-1.6-1.8V10l1.6-1.8L19 4.5l-2.2.9-2-1.1-.5-2.3H9.7Z"/><circle cx="12" cy="11.2" r="3"/></svg></span><div><strong>Configuração da pesquisa de kits</strong><small>Defina os parâmetros para encontrar os melhores kits na WeDrop.</small></div><div class="kit-config-tip"><span aria-hidden="true"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 19h6m-5 3h4M8 15c-1.4-1.2-2.5-3-2.5-5A6.5 6.5 0 0 1 12 3.5 6.5 6.5 0 0 1 18.5 10c0 2-1.1 3.8-2.5 5l-.5 2h-7L8 15Z"/><path d="M12 1v1m-9 8H2m20 0h-1M4 4l1.5 1.5M20 4l-1.5 1.5"/></svg></span><p>Encontre combinações relevantes com base nos produtos da WeDrop.</p></div></div>
+  <label class="kit-category-field">Categoria WeDrop<span class="kit-input-shell"><span class="kit-control-icon" aria-hidden="true"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m12 2 9 5v10l-9 5-9-5V7l9-5Z"/><path d="m3 7 9 5 9-5M12 12v10"/></svg></span><select id="kitCategory"><option value="Brinquedos">Brinquedos</option></select></span></label>
   <label class="kit-idea-field" for="kitIdea">Ideia de kit (opcional)
-    <input id="kitIdea" type="text" maxlength="160" autocomplete="off" placeholder="Ex.: kit churrasco com tábua e pegador">
+    <span class="kit-input-shell"><span class="kit-control-icon" aria-hidden="true"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5H5a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-7"/><path d="m9 15 2.8-.5L21 5.3 18.7 3l-9.2 9.2L9 15Z"/></svg></span><input id="kitIdea" type="text" maxlength="160" autocomplete="off" placeholder="Ex.: kit churrasco com tábua e pegador"></span>
     <small>Ao escrever, pesquisa produtos compatíveis em todas as categorias WeDrop importadas.</small>
   </label>
-  <label>Produtos por kit<select id="kitSize"><option value="2">2 SKUs</option><option value="3">3 SKUs</option></select></label>
+  <label class="kit-size-field">Produtos por kit<span class="kit-input-shell"><span class="kit-control-icon" aria-hidden="true"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m12 3 9 5-9 5-9-5 9-5ZM3 12l9 5 9-5M3 16l9 5 9-5"/></svg></span><select id="kitSize"><option value="2">2 SKUs</option><option value="3">3 SKUs</option></select></span></label>
   <div class="kit-margin-field">
    <div class="kit-margin-heading"><label id="kitMarginHeading" for="kitMargin">Margem líquida desejada</label><span class="kit-margin-help" title="Arraste a barra ou use as setas. A margem escolhida será utilizada como margem mínima nas cotações dos kits. Os preços serão recalculados sem alterar a Shopee." aria-label="A margem escolhida é o mínimo a atingir na simulação do kit.">?</span></div>
    <div class="kit-margin-slider-group">
@@ -1016,10 +1016,10 @@
    </div>
    <small>0% a 70% · ajuste manual de 1 em 1 ponto. A regra de centavos 0/9 pode elevar a margem real.</small>
   </div>
-  <label>Embalagem adicional (R$)<input id="kitPacking" type="number" min="0" max="500" value="0" step="0.01"></label>
-  <label>Frete assumido pela loja (R$)<input id="kitShipping" type="number" min="0" max="500" value="0" step="0.01"></label>
-  <div class="kit-plus-banner"><strong>ChatGPT Plus · Sem API</strong><small>Você utiliza seu ChatGPT no navegador. O sistema não faz chamadas pagas nem gera imagens por API.</small></div>
-  <button id="kitSuggest" type="button" class="kit-primary"><span aria-hidden="true">⌕</span> Pesquisar kits inteligentes</button>
+  <label class="kit-packing-field">Embalagem adicional (R$)<span class="kit-input-shell"><span class="kit-control-icon" aria-hidden="true"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m12 2 9 5v10l-9 5-9-5V7l9-5Z"/><path d="m3 7 9 5 9-5m-9 5v10M8 4l9 5"/></svg></span><input id="kitPacking" type="number" min="0" max="500" value="0" step="0.01"></span></label>
+  <label class="kit-shipping-field">Frete assumido pela loja (R$)<span class="kit-input-shell"><span class="kit-control-icon" aria-hidden="true"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M2 6h12v11H2zM14 10h4l4 4v3h-8"/><circle cx="6" cy="18" r="2"/><circle cx="18" cy="18" r="2"/></svg></span><input id="kitShipping" type="number" min="0" max="500" value="0" step="0.01"></span></label>
+  <div class="kit-plus-banner"><span class="kit-chat-mark" aria-hidden="true">✳</span><span class="kit-chat-copy"><strong>ChatGPT Plus · Sem API</strong><small>Você utiliza seu ChatGPT no navegador. O sistema não faz chamadas pagas nem gera imagens por API.</small></span></div>
+  <button id="kitSuggest" type="button" class="kit-primary"><span class="kit-search-symbol" aria-hidden="true"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="10.5" cy="10.5" r="6"/><path d="m15 15 6 6"/></svg></span><span>Pesquisar kits inteligentes</span><span class="kit-search-arrow" aria-hidden="true"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 12h16m-6-6 6 6-6 6"/></svg></span></button>
  </div>
  <p class="kit-info kit-stock-disclaimer">Somente SKUs disponíveis no catálogo importado da WeDrop. Margens e lucros são estimativas; envio conjunto e estoque devem ser confirmados antes da publicação.</p>
  <p id="kitStatus" role="status" aria-live="polite" class="kit-status">Carregando categorias cadastradas...</p>

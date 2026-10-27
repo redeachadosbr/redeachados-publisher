@@ -152,3 +152,19 @@ test('importação única CSV/Excel com dois cartões de status e mapeamento exp
  assert.match(js,/stockFresh\?\s*'Estoque WeDrop importado'/);
  assert.match(js,/!catalogFresh\?'Geração bloqueada: catálogo de custos WeDrop desatualizado\.'/);
 });
+
+test('layout compacto da imagem, isolado ao resumo e ao formulário de kits',()=>{
+ const page=html.slice(html.indexOf('id="tab-kits"'),html.indexOf('id="tab-fiscal"',html.indexOf('id="tab-kits"')));
+ for(const cls of ['kit-category-field','kit-idea-field','kit-size-field','kit-packing-field','kit-shipping-field','kit-config-tip','kit-input-shell','kit-chat-mark','kit-search-arrow']){
+  assert.ok(page.includes(cls),'Classe de interface ausente: '+cls);
+ }
+ for(const id of ['kitOverviewCategory','kitOverviewSize','kitOverviewMargin','kitOverviewFreight','kitCategory','kitIdea','kitSize','kitMargin','kitMarginLabel','kitMarginPlus','kitMarginMinus','kitPacking','kitShipping','kitSuggest']){
+  assert.equal((page.match(new RegExp('id="'+id+'"','g'))||[]).length,1,id+' deve continuar vinculado');
+ }
+ assert.match(css,/#tab-kits #kitForm\.kit-form\{/);
+ assert.match(css,/grid-template-columns:repeat\(12,minmax\(0,1fr\)\)/);
+ assert.match(css,/#tab-kits #kitViewBuilder \.kit-overview\{/);
+ assert.match(css,/#tab-kits #kitForm #kitSuggest\{/);
+ assert.match(css,/@media\(max-width:720px\)/);
+ assert.match(html,/kit-builder\.css\?v=3\.1-reference-config/);
+});

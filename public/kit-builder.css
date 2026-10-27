@@ -1004,3 +1004,198 @@
  #tab-kits #kitDetail .kit-manual-row label,
  #tab-kits #kitDetail .kit-manual-row button{grid-column:1/-1}
 }
+
+
+/* v3.1 — APENAS resumo e configuração da pesquisa de kits.
+   Layout da referência visual, sem alterar regras de busca, precificação ou publicação. */
+#tab-kits #kitViewBuilder .kit-overview{
+  display:grid;grid-template-columns:repeat(4,minmax(0,1fr));
+  gap:12px;margin:0 0 14px;
+}
+#tab-kits #kitViewBuilder .kit-overview-card{
+  min-width:0;min-height:86px;box-sizing:border-box;
+  display:flex;align-items:center;gap:12px;
+  padding:12px 14px;background:#fff;border:1px solid #dbe6f4;
+  border-radius:17px;box-shadow:0 6px 18px rgba(31,76,131,.045),inset 0 1px #fff;
+}
+#tab-kits #kitViewBuilder .kit-overview-card>div{display:flex;flex-direction:column;align-items:flex-start;justify-content:center;gap:5px;min-width:0}
+#tab-kits #kitViewBuilder .kit-overview-card small{font-size:11px;line-height:1.2;color:#537296;font-weight:600}
+#tab-kits #kitViewBuilder .kit-overview-card strong{font-size:17px;font-weight:900;line-height:1.15;color:#0b2851;letter-spacing:-.015em}
+#tab-kits #kitViewBuilder .kit-overview-card div>span{font-size:10px;color:#6b83a0;line-height:1.3}
+#tab-kits #kitViewBuilder .kit-overview-icon{
+  flex:0 0 54px;width:54px;height:54px;display:grid;place-items:center;
+  border-radius:15px;
+}
+#tab-kits #kitViewBuilder .kit-overview-icon svg{width:27px;height:27px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+#tab-kits #kitViewBuilder .kit-icon-blue{background:linear-gradient(140deg,#dfebff,#eef5ff);color:#246ff7}
+#tab-kits #kitViewBuilder .kit-icon-green{background:linear-gradient(140deg,#dbf8ea,#ecfbf3);color:#20b66c}
+#tab-kits #kitViewBuilder .kit-icon-amber{background:linear-gradient(140deg,#fff0d9,#fff8eb);color:#f59a0b}
+#tab-kits #kitViewBuilder .kit-icon-purple{background:linear-gradient(140deg,#f1e0ff,#faf1ff);color:#9440ea}
+#tab-kits #kitForm.kit-form{
+  display:grid;grid-template-columns:repeat(12,minmax(0,1fr));
+  align-items:start;column-gap:14px;row-gap:16px;
+  margin:0;padding:0 19px 18px;border:1px solid #dbe7f4;border-radius:18px;
+  background:linear-gradient(180deg,#fff,#fff);
+  box-shadow:0 8px 26px rgba(25,75,135,.06);
+  overflow:hidden;
+}
+#tab-kits #kitForm .kit-form-heading{
+  grid-column:1/-1;min-width:0;
+  display:flex;align-items:center;gap:13px;
+  padding:18px 3px 17px;margin:0 -19px 2px;
+  padding-inline:19px;
+  background:linear-gradient(105deg,#ffffff,#f4f9ff 100%);
+  border-bottom:1px solid #ebf1f9;
+}
+#tab-kits #kitForm .kit-heading-icon{
+  flex:0 0 51px;width:51px;height:51px;border-radius:14px;
+  display:grid;place-items:center;
+  background:linear-gradient(145deg,#ffe5d7,#fff1ee);
+  color:#fa5a36;box-shadow:0 7px 17px rgba(252,97,51,.11);
+}
+#tab-kits #kitForm .kit-heading-icon svg{height:27px;width:27px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+#tab-kits #kitForm .kit-form-heading>div:not(.kit-config-tip){min-width:0;display:grid;gap:4px}
+#tab-kits #kitForm .kit-form-heading strong{font-size:19px;line-height:1.2;font-weight:900;letter-spacing:-.02em;color:#0b2c59}
+#tab-kits #kitForm .kit-form-heading small{font-size:11px;color:#58799b;line-height:1.4}
+#tab-kits #kitForm .kit-config-tip{
+  min-width:0;display:flex;align-items:center;gap:10px;
+  margin-left:auto;max-width:305px;
+  padding:9px 12px;border:1px solid #ffdfbb;border-radius:13px;
+  background:linear-gradient(110deg,#fffaf1,#fffefd);color:#82522c;
+}
+#tab-kits #kitForm .kit-config-tip>span{flex:0 0 24px;color:#ff900e}
+#tab-kits #kitForm .kit-config-tip svg{width:23px;height:23px;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
+#tab-kits #kitForm .kit-config-tip p{margin:0;font-size:10.5px;line-height:1.45;font-weight:600}
+#tab-kits #kitForm>label{
+  min-width:0;align-self:start;display:flex;flex-direction:column;gap:7px;
+  font-size:12px;font-weight:850;line-height:1.25;color:#0f2e58;
+}
+#tab-kits #kitForm>.kit-category-field{grid-column:span 4}
+#tab-kits #kitForm>.kit-idea-field{grid-column:span 5}
+#tab-kits #kitForm>.kit-size-field{grid-column:span 3}
+#tab-kits #kitForm>.kit-margin-field{grid-column:span 5!important}
+#tab-kits #kitForm>.kit-packing-field{grid-column:span 3}
+#tab-kits #kitForm>.kit-shipping-field{grid-column:span 4}
+#tab-kits #kitForm .kit-input-shell{position:relative;min-width:0;display:block;width:100%;height:45px}
+#tab-kits #kitForm .kit-control-icon{
+  position:absolute;z-index:1;left:12px;top:50%;
+  transform:translateY(-50%);display:grid;place-items:center;
+  width:22px;height:22px;color:#6e88ac;pointer-events:none;
+}
+#tab-kits #kitForm .kit-control-icon svg{width:21px;height:21px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+#tab-kits #kitForm .kit-category-field .kit-control-icon{color:#216bf7}
+#tab-kits #kitForm .kit-size-field .kit-control-icon{color:#fc7b17}
+#tab-kits #kitForm .kit-input-shell>input,
+#tab-kits #kitForm .kit-input-shell>select{
+  box-sizing:border-box;display:block;width:100%;height:45px;min-height:45px;
+  margin:0;padding:10px 12px 10px 45px;
+  border:1px solid #ceddf0;border-radius:11px;background:#f8fbff;
+  color:#15345d;font-family:inherit;font-size:12px;font-weight:650;line-height:1.25;
+  transition:border-color .15s,box-shadow .15s;
+}
+#tab-kits #kitForm .kit-input-shell>select{padding-right:29px;cursor:pointer}
+#tab-kits #kitForm .kit-input-shell>input::placeholder{color:#849ab4;font-weight:450;opacity:1}
+#tab-kits #kitForm .kit-input-shell :is(input,select):focus-visible{
+  outline:none;border-color:#4896ed;box-shadow:0 0 0 3px rgba(68,144,239,.14);
+}
+#tab-kits #kitForm .kit-size-field .kit-input-shell>select{
+  border-color:#f7ab53;box-shadow:0 0 0 2px rgba(247,158,46,.12);
+}
+#tab-kits #kitForm .kit-idea-field{gap:7px}
+#tab-kits #kitForm .kit-idea-field small{
+  font-size:10px;line-height:1.45;font-weight:500;color:#5e7d9d;
+  min-height:15px;overflow-wrap:anywhere;
+}
+#tab-kits #kitForm>.kit-margin-field{
+  min-width:0;display:flex;flex-direction:column;gap:7px;
+  align-self:stretch;justify-content:flex-start;
+  border:1px solid #d5e5f7;border-radius:12px;background:#f5f9ff;
+  padding:11px 13px;
+}
+#tab-kits #kitForm .kit-margin-heading{display:flex;align-items:center;gap:8px}
+#tab-kits #kitForm .kit-margin-heading label{font-size:12px!important;font-weight:850;color:#15365e}
+#tab-kits #kitForm .kit-margin-help{width:18px;height:18px;font-size:11px}
+#tab-kits #kitForm .kit-margin-slider-group{min-height:45px;gap:12px}
+#tab-kits #kitForm .kit-margin-slider-group input[type=range]{
+  min-width:0;height:7px;flex:1;
+}
+#tab-kits #kitForm .kit-margin-slider-group input[type=range]::-webkit-slider-thumb{height:23px;width:23px;box-shadow:0 2px 6px rgba(252,98,29,.28)}
+#tab-kits #kitForm .kit-margin-stepper{min-width:100px;height:45px;border-radius:10px;border-color:#d2e0f2}
+#tab-kits #kitForm .kit-margin-stepper strong{min-width:64px;font-size:20px;font-weight:900}
+#tab-kits #kitForm .kit-margin-stepper button{min-width:30px;height:22px;font-size:16px}
+#tab-kits #kitForm .kit-margin-field>small{font-size:10px;line-height:1.45;color:#5b799b}
+#tab-kits #kitForm>.kit-packing-field,#tab-kits #kitForm>.kit-shipping-field{align-self:start;padding-top:13px}
+#tab-kits #kitForm>.kit-plus-banner{
+  grid-column:span 7!important;
+  display:flex;flex-direction:row;align-items:center;gap:14px;
+  min-width:0;min-height:74px;box-sizing:border-box;
+  padding:12px 15px;background:linear-gradient(120deg,#e9f9f0,#f3fcf7);
+  border:1px solid #c0e9d2;border-radius:13px;
+}
+#tab-kits #kitForm .kit-chat-mark{
+  flex:0 0 52px;width:52px;height:52px;display:grid;place-items:center;
+  border-right:1px solid #aee0c6;padding-right:13px;box-sizing:border-box;
+  color:#078c63;font-size:36px;font-weight:900;line-height:1;
+}
+#tab-kits #kitForm .kit-chat-copy{display:grid;gap:4px;min-width:0}
+#tab-kits #kitForm .kit-plus-banner strong{font-size:13px;color:#087a55;font-weight:900}
+#tab-kits #kitForm .kit-plus-banner small{font-size:10.5px;color:#3e7869;line-height:1.45}
+#tab-kits #kitForm #kitSuggest{
+  grid-column:span 5;align-self:stretch;justify-self:stretch;
+  min-height:74px;width:100%;max-width:none;
+  display:flex;align-items:center;justify-content:center;gap:10px;
+  margin:0;padding:10px 16px;
+  border:0;border-radius:13px;
+  background:linear-gradient(110deg,#ff4c36 0%,#ff7227 100%);
+  color:#fff;font-size:14px;font-weight:900;line-height:1.25;
+  box-shadow:0 9px 18px rgba(249,91,35,.23),inset 0 1px rgba(255,255,255,.14);
+  transition:transform .14s,box-shadow .14s,filter .14s;
+}
+#tab-kits #kitForm #kitSuggest:hover:not(:disabled){transform:translateY(-1px);filter:brightness(1.03);box-shadow:0 12px 20px rgba(249,91,35,.3)}
+#tab-kits #kitForm #kitSuggest:focus-visible{outline:3px solid #fca064;outline-offset:3px}
+#tab-kits #kitForm #kitSuggest .kit-search-symbol{width:23px;height:23px;flex:0 0 23px;margin:0;display:grid;place-items:center}
+#tab-kits #kitForm #kitSuggest .kit-search-arrow{width:21px;height:21px;flex:0 0 21px;margin-left:auto;display:grid;place-items:center}
+#tab-kits #kitForm #kitSuggest svg{height:100%;width:100%;stroke:currentColor;stroke-width:2.4;fill:none;stroke-linecap:round;stroke-linejoin:round}
+#tab-kits #kitForm #kitSuggest span:nth-child(2){flex:1;text-align:center;min-width:0}
+@media(max-width:1320px){
+ #tab-kits #kitViewBuilder .kit-overview-card{gap:9px;padding:10px}
+ #tab-kits #kitViewBuilder .kit-overview-icon{flex-basis:45px;width:45px;height:45px}
+ #tab-kits #kitViewBuilder .kit-overview-icon svg{width:23px;height:23px}
+ #tab-kits #kitViewBuilder .kit-overview-card strong{font-size:15px}
+ #tab-kits #kitForm .kit-config-tip{max-width:245px}
+}
+@media(max-width:1140px){
+ #tab-kits #kitViewBuilder .kit-overview{grid-template-columns:repeat(2,minmax(0,1fr))}
+ #tab-kits #kitForm>.kit-category-field{grid-column:span 5}
+ #tab-kits #kitForm>.kit-idea-field{grid-column:span 7}
+ #tab-kits #kitForm>.kit-size-field{grid-column:span 4}
+ #tab-kits #kitForm>.kit-margin-field{grid-column:span 8!important}
+ #tab-kits #kitForm>.kit-packing-field,#tab-kits #kitForm>.kit-shipping-field{grid-column:span 6;padding-top:0}
+ #tab-kits #kitForm>.kit-plus-banner,#tab-kits #kitForm #kitSuggest{grid-column:span 6!important}
+ #tab-kits #kitForm .kit-config-tip{display:none}
+}
+@media(max-width:720px){
+ #tab-kits #kitForm.kit-form{padding:0 13px 14px;column-gap:10px;row-gap:13px}
+ #tab-kits #kitForm .kit-form-heading{margin:0 -13px;padding:14px 13px}
+ #tab-kits #kitForm .kit-form-heading strong{font-size:16px}
+ #tab-kits #kitForm .kit-heading-icon{height:43px;width:43px;flex-basis:43px}
+ #tab-kits #kitForm>.kit-category-field,#tab-kits #kitForm>.kit-idea-field,
+ #tab-kits #kitForm>.kit-size-field,#tab-kits #kitForm>.kit-margin-field,
+ #tab-kits #kitForm>.kit-packing-field,#tab-kits #kitForm>.kit-shipping-field,
+ #tab-kits #kitForm>.kit-plus-banner,#tab-kits #kitForm #kitSuggest{grid-column:1/-1!important}
+ #tab-kits #kitForm>.kit-margin-field{padding:12px}
+ #tab-kits #kitForm .kit-margin-slider-group{gap:8px}
+ #tab-kits #kitForm .kit-margin-stepper{min-width:95px}
+ #tab-kits #kitForm #kitSuggest{min-height:59px}
+ #tab-kits #kitViewBuilder .kit-overview-icon{flex-basis:44px;width:44px;height:44px}
+ #tab-kits #kitViewBuilder .kit-overview-card{min-height:73px}
+}
+@media(max-width:470px){
+ #tab-kits #kitViewBuilder .kit-overview{grid-template-columns:1fr 1fr;gap:8px}
+ #tab-kits #kitViewBuilder .kit-overview-card{flex-direction:column;align-items:flex-start;gap:7px;padding:10px}
+ #tab-kits #kitViewBuilder .kit-overview-card strong{font-size:14px}
+ #tab-kits #kitViewBuilder .kit-overview-card small{font-size:10px}
+ #tab-kits #kitViewBuilder .kit-overview-card div>span{font-size:9px}
+ #tab-kits #kitForm .kit-plus-banner{align-items:flex-start;padding:10px}
+ #tab-kits #kitForm .kit-chat-mark{flex-basis:37px;width:37px;height:43px;font-size:28px;padding-right:7px}
+}
