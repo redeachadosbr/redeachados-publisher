@@ -35,7 +35,8 @@ async function request(config,query,options={}){
   signal:AbortSignal.timeout(10000)
  });
  if(!r.ok)throw Error('Persistência TikTok indisponível (HTTP '+r.status+').');
- return r.status===204?[]:r.json();
+ if(r.status===204)return [];
+ const body=await r.text();return body?JSON.parse(body):[];
 }
 export async function readPersistentTikTokToken(settings={}){
  const config=cfg(settings);if(!config)return null;

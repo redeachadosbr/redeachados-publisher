@@ -22,3 +22,26 @@ test('status real da API e erro OAuth antigo não entram em conflito',()=>{
  assert.doesNotMatch(server,/req\.query\.state!==req\.session\.oauthState/);
  assert.match(server,/await restoreTikTokSession\(\)/);
 });
+
+test('persistência REST aceita HTTP 201 sem body e mantém envelope criptografado',async()=>{
+ const oldEnv={SUPABASE_URL:process.env.SUPABASE_URL,SUPABASE_SECRET_KEY:process.env.SUPABASE_SECRET_KEY,TIKTOK_CLIENT_SECRET:process.env.TIKTOK_CLIENT_SECRET};
+ const fetchOld=globalThis.fetch;
+ process.env.SUPABASE_URL='https://fixture-tiktok.supabase.co';
+ process.env.SUPABASE_SECRET_KEY='sb_secret_test';
+ process.env.TIKTOK_CLIENT_SECRET='local-test';
+ try{
+  globalThis.fetch=async(url,opts)=>{
+   assert.match(String(url),/publisher_tiktok_oauth/);
+   assert.equal(opts.method,'POST');
+   const payload=JSON.parse(opts.body);
+   assert.equal(payload[0].id,'primary');
+   assert.ok(!opts.body.includes('refresh-secret'));
+   return new Response('',{status:201});
+  };
+  const {writePersistentTikTokToken}=await import('../publisherTikTokAuthStore.js');
+  assert.equal(await writePersistentTikTokToken({access_token:'a',refresh_token:'refresh-secret',expires_in:123}),true);
+ }finally{
+  globalThis.fetch=fetchOld;
+  for(const [key,value] of Object.entries(oldEnv))if(value===undefined)delete process.env[key];else process.env[key]=value;
+ }
+});
