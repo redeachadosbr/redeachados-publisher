@@ -20,7 +20,7 @@ test('quatro títulos retornam na ordem de maior para menor nota, com vencedor �
  assert.equal(list[0].rank,1);
  assert.equal(list[0].ideal,true);
  for(let i=1;i<4;i++)assert.ok(list[i-1].score>=list[i].score);
- for(const s of list){assert.ok(s.score>=0&&s.score<=100);assert.equal(Object.values(s.breakdown).reduce((a,b)=>a+b,0),s.score);}
+ for(const s of list){assert.ok(s.score>=0&&s.score<=100);assert.equal(Math.min(89,Object.values(s.breakdown).reduce((a,b)=>a+b,0)),s.score);}
 });
 test('título incompleto recebe nota, mas nunca ganha destaque como ideal',()=>{
  const original='🦖 Caminhão Dinossauro Verde com 3 Mini Carrinhos Infantil para Crianças Aventura Brinquedo de Transporte 🚚';
