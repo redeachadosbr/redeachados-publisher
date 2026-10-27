@@ -1802,9 +1802,14 @@ app.post('/api/shopee/optimizer/execution/prepare',mustLogin,requireWeDropAdmin,
       throw Error('A campanha selecionada difere da que foi autorizada nesta SKU. Refaça a prévia da promoção.');
      if(!/^\d{1,18}$/.test(campaignId))
       throw Error('Informe uma vez a campanha Minha Promoção na etapa Desconto; ela será incluída automaticamente na prévia única.');
+     // Preparar é uma consulta SEM ESCRITA. Avaliar a exceção >25% aqui
+     // permite apresentar os valores e solicitar autorização depois.
+     // A execução exige consentimento EXPLÍCITO separado, revalidado na API.
      const financial=await discountExecutionInputs(req,sku,itemId,modelId,campaignId,{
       allowModels:live.has_model===true,expectedModels:modelVariations,
-      allowOver25:req.body?.allowOver25===true});
+      allowOver25:true});
+     const marketOverrideRequired=financial.quote.status==='MERCADO_ABAIXO_DO_PISO'&&
+      Number(financial.quote.marketGapPct)>25;
      // Cada modelo tem custo próprio; a barra principal fornece UMA meta de margem.
      // Recalcular o preço BRUTO individual sem reduzir o desconto para mascarar custos.
      const settings=normalizeShopeePricingSettings({
@@ -1835,6 +1840,11 @@ app.post('/api/shopee/optimizer/execution/prepare',mustLogin,requireWeDropAdmin,
       action:approved.action,promotionSignal:approved.promotionSignal,
       needsBasePriceUpdate:approved.needsBasePriceUpdate,
       modelQuotes,marginPct:settings.marginPct,minMarginPct:settings.minMarginPct,
+      allowOver25:marketOverrideRequired,
+      marketOverrideRequired,marketGapPct:Number(financial.quote.marketGapPct),
+      marketReference:Number(financial.quote.marketResearch?.reference),
+      netMarginPct:Number(financial.quote.netMarginPct),
+      netProfit:Number(financial.quote.netProfit),
       modelPriceChange:modelVariations.options.some(o=>
        Math.round(o.price*100)!==Math.round(modelQuotes.find(m=>m.sku===o.sku).gross*100))};
      // Guardar a campanha escolhida nesta SKU: nas próximas variações
@@ -1845,7 +1855,10 @@ app.post('/api/shopee/optimizer/execution/prepare',mustLogin,requireWeDropAdmin,
      autoModelDiscountPreview={...modelVariations.promotion,
       models:modelVariations.options.map(o=>({name:o.name,sku:o.sku,supplierSku:o.supplierSku,
        cost:o.cost,originalPrice:o.price,...modelQuotes.find(m=>m.sku===o.sku)})),
-      netMarginPct:financial.quote.netMarginPct,minMarginPct:financial.quote.minMarginPct};
+      netMarginPct:financial.quote.netMarginPct,minMarginPct:financial.quote.minMarginPct,
+      marketOverrideRequired,marketGapPct:Number(financial.quote.marketGapPct),
+      marketReference:Number(financial.quote.marketResearch?.reference),
+      netProfit:Number(financial.quote.netProfit)};
     }
     if(selectedStage==='fiscal'&&reviewState.stages?.fiscal?.reviewed&&reviewState.tax){
       const supplier=await readWeDropProduct(auth.shopId,{sku,itemId,modelId});
@@ -2290,9 +2303,12 @@ app.post('/api/shopee/optimizer/execution/execute',mustLogin,requireWeDropAdmin,
    if(!plan.modelVariations&&
      (approved.sku!==sku||String(approved.itemId)!==String(itemId)||String(approved.modelId)!==String(modelId)))
     throw Error('A aprovação da campanha pertence a outra SKU.');
+   const over25Consent=req.body?.allowOver25===true;
+   if(plan.modelVariations?.promotion?.marketOverrideRequired&&!over25Consent)
+    throw Error('Preço mais de 25% acima da média. Marque a autorização excepcional na prévia da SKU antes de executar. Nenhum envio foi iniciado.');
    const fresh=(await discountExecutionInputs(req,sku,itemId,modelId,approved.discountId,{
     allowModels:Boolean(plan.modelVariations),expectedModels:plan.modelVariations,
-    allowOver25:approved.allowOver25===true&&req.body?.allowOver25===true})).snapshot;
+    allowOver25:approved.allowOver25===true&&over25Consent})).snapshot;
    const fields=plan.modelVariations?
     ['discountId','gross','promo','buyerAfterCoupon','couponPct','discountPct','quoteAt']:
     ['shopId','sku','itemId','modelId','discountId','gross','promo','buyerAfterCoupon',
