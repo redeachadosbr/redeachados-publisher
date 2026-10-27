@@ -72,6 +72,12 @@ test('kits por categoria: custo exato, somatório, dois finais 0/9, prompts e pr
   assert.ok(creative.description.includes('CO400'));
   assert.equal(creative.prompts.length,9);
   const brief=await kitPlusResearchBrief(935127,{category:'Cozinha',size:2});
+  assert.ok(brief.candidateSkus.includes('GA500'));
+  const ideaBrief=await kitPlusResearchBrief(935127,{category:'Brinquedos',size:2,idea:'garrafa e copo'});
+  assert.ok(ideaBrief.candidateSkus.includes('GA500'));
+  assert.ok(ideaBrief.candidateSkus.includes('CO400'));
+  assert.ok(!ideaBrief.candidateSkus.includes('FR240'));
+  assert.match(ideaBrief.prompt,/IDEIA DE COMPRA DO VENDEDOR:/);
   assert.match(brief.prompt,/GA500/);
   assert.match(brief.prompt,/ES01/);
   assert.match(brief.prompt,/somente uma linha por kit/i);
@@ -206,4 +212,21 @@ test('kits por ocasião de compra não misturam caderno com panela nem produtos 
  assert.equal(assessKitBuyerFit([backpack,pot]).ok,false);
  assert.equal(assessKitBuyerFit([bottle,mug]).ok,true);
  assert.equal(assessKitBuyerFit([pot,mug]).ok,false);
+});
+
+test('pesquisa ChatGPT de kits mantém abertura guiada e importação sem confundir SKUs',async()=>{
+ const fs=await import('node:fs');
+ const frontend=fs.readFileSync(new URL('../public/kit-builder.js',import.meta.url),'utf8');
+ const ui=fs.readFileSync(new URL('../public/index.html',import.meta.url),'utf8');
+ const server=fs.readFileSync(new URL('../server.js',import.meta.url),'utf8');
+ for(const id of ['kitPlusAutoStart','kitPlusClipboardImport','kitPlusAutoStatus','kitPlusOutput'])
+  assert.match(ui,new RegExp('id="'+id+'"'));
+ assert.match(frontend,/kitChatExtractLines/);
+ assert.match(frontend,/kitChatValidateContext/);
+ assert.match(frontend,/navigator\.clipboard\.readText\(\)/);
+ assert.match(frontend,/permission\.state!=='granted'/);
+ assert.match(frontend,/suggestionContext=\{category:context\.category/);
+ assert.match(server,/rankKitIdeaProducts\(idea,kit\.components\)/);
+ assert.match(server,/assessKitBuyerFit\(kit\.components\)/);
+ assert.doesNotMatch(frontend,/fetch\(['"]https:\/\/chatgpt\.com/);
 });
