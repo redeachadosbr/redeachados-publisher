@@ -126,6 +126,129 @@ function pairCandidates(rows,category,limit=9){
   (a.items[0].unitCost+a.items[1].unitCost)-(b.items[0].unitCost+b.items[1].unitCost))
  .slice(0,limit);
 }
+
+// Pesquisa determinística por ideia escrita: somente produtos reais, com custos
+// e disponibilidade importados da WeDrop. Não faz busca web nem usa API de IA.
+// Um conceito pode abranger várias categorias: não restringir à categoria do menu.
+const IDEA_STOPWORDS=new Set(['kit','kits','ideia','ideias','sugestao','sugestoes','montar','montagem',
+ 'produto','produtos','para','pra','com','sem','uma','uns','dos','das','que','quero','preciso',
+ 'combinar','monta','fazer','meu','minha','seu','sua','mais','de','da','do','e','o','a','os','as']);
+const IDEA_THEMES=[
+ {pattern:/churrasc|grelha/,groups:[
+  ['churrasc','tabua','corte','faca','cutelo','espet','grelha'],
+  ['pegador','garfo','espatul','espet','avental','pincel','tempero','saleiro','churrasc']
+ ]},
+ {pattern:/cafe|cafeteir|capuccin/,groups:[
+  ['cafe','cafeteir','prensa','french','moedor'],
+  ['xicara','caneca','copo','colher','leiteir','bule','termic']
+ ]},
+ {pattern:/escolar|escola|volta as aulas/,groups:[
+  ['mochil','lancheir','bolsa','estojo'],
+  ['lapis','cadern','canet','garrafa','apontador','borrach','estojo']
+ ]},
+ {pattern:/bebe|maternidad|recem nascid/,groups:[
+  ['bebe','fralda','mamadeir','chupet','banho','higiene'],
+  ['brinqued','mordedor','sonaj','musical','toalha','escova','pente','termometro']
+ ]},
+ {pattern:/limpeza|faxina|lavander/,groups:[
+  ['mop','vassoura','rodo','balde','escova','limpeza'],
+  ['pano','esponja','borrifador','refil','organizador','saco']
+ ]},
+ {pattern:/cozinh|culinari|preparo/,groups:[
+  ['panela','frigideir','assadeira','forma','processador','tabua'],
+  ['colher','espatul','pegador','concha','faca','pote','escorredor']
+ ]},
+ {pattern:/banho|banheiro/,groups:[
+  ['toalha','banho','saboneteir','escova'],
+  ['porta','organiz','tapete','lixeira','suporte','gancho']
+ ]},
+ {pattern:/praia|piscina|verao/,groups:[
+  ['piscina','boia','colchao','bald','praia'],
+  ['brinquedo','bola','oculos','toalha','bolsa','guarda','flutuador']
+ ]}
+];
+const ideaWords=value=>norm(value).replace(/[^a-z0-9]+/g,' ').split(' ')
+ .filter(word=>word.length>=3&&!IDEA_STOPWORDS.has(word)).slice(0,15);
+const sameIdeaWord=(a,b)=>a===b||(a.length>=5&&b.length>=5&&a.slice(0,5)===b.slice(0,5));
+const matchesRoots=(haystack,roots)=>roots.some(root=>haystack.some(word=>word.startsWith(root)));
+const ideaFamily=p=>norm(p.name).replace(/\b(?:azul|preto|preta|branco|branca|rosa|verde|vermelho|vermelha|amarelo|cinza|sortido|sortida)\b/g,' ')
+ .replace(/\b\d+(?:[.,]\d+)?\s*(?:cm|mm|ml|litros?|l|kg|g|pecas?|unidades?)\b/g,' ')
+ .replace(/[^a-z]+/g,' ').replace(/\s+/g,' ').trim();
+export function rankKitIdeaProducts(idea,products){
+ const phrase=clean(idea).slice(0,160),words=ideaWords(phrase);
+ if(words.length===0)throw Error('Descreva a ideia com pelo menos uma palavra útil (ex.: churrasco, café, escolar).');
+ const theme=IDEA_THEMES.find(x=>x.pattern.test(norm(phrase)));
+ const scored=products.map(product=>{
+  const text=ideaWords(product.name+' '+product.category),name=ideaWords(product.name);
+  const explicit=words.filter(w=>text.some(t=>sameIdeaWord(w,t)));
+  const roles=theme?theme.groups.flatMap((group,i)=>matchesRoots(name,group)?[i]:[]):[];
+  const points=explicit.reduce((sum,w)=>sum+(name.some(t=>sameIdeaWord(w,t))?16:6),0)+
+   roles.length*15;
+  return {...product,ideaScore:points,ideaRoles:roles,ideaMatched:explicit};
+ }).filter(x=>x.ideaScore>=10).sort((a,b)=>b.ideaScore-a.ideaScore||a.unitCost-b.unitCost);
+ return {products:scored.slice(0,75),theme:theme||null,words};
+}
+export async function suggestKitsForIdea(shop,{idea,size=2,marginPct=10,packing=0,shipping=0}={}){
+ if(![2,3].includes(Number(size)))throw Error('Selecione 2 ou 3 produtos por kit.');
+ const phrase=String(idea||'').trim();
+ if(phrase.length<3||phrase.length>160)throw Error('Escreva uma ideia de kit entre 3 e 160 caracteres.');
+ const [catalog,stock]=await Promise.all([readCatalog(shop),readKitStockSnapshot(shop)]);
+ assertKitStockSnapshot(stock);
+ const available=catalog.filter(x=>stock.map.get(x.sku)==='DISPONIVEL');
+ const result=rankKitIdeaProducts(phrase,available),pool=result.products.slice(0,40);
+ if(pool.length<Number(size))return {results:[],source:'Catálogo WeDrop importado · pesquisa pela ideia',
+  idea:phrase,candidatesFound:pool.length,disclaimer:'Não foram encontradas SKUs DISPONÍVEIS suficientes para esta ideia. Revise os termos ou atualize a importação WeDrop.'};
+ const ranked=[];
+ const suitable=(items)=>{
+  if(new Set(items.map(x=>ideaFamily(x))).size!==items.length)return false;
+  if(items.reduce((total,p)=>total+p.unitCost,0)>400)return false;
+  const roles=new Set(items.flatMap(p=>p.ideaRoles));
+  return !result.theme||roles.size>=2;
+ };
+ for(let i=0;i<pool.length;i++){
+  for(let j=i+1;j<pool.length;j++){
+   const pair=[pool[i],pool[j]];
+   if(Number(size)===2){
+    if(!suitable(pair))continue;
+    ranked.push({items:pair,score:pair.reduce((v,x)=>v+x.ideaScore,0)+related(...pair)*2});
+   }else{
+    for(let k=j+1;k<pool.length;k++){
+     const items=[...pair,pool[k]];
+     if(!suitable(items))continue;
+     const compatibility=related(items[0],items[1])+related(items[0],items[2])+related(items[1],items[2]);
+     ranked.push({items,score:items.reduce((v,x)=>v+x.ideaScore,0)+compatibility});
+    }
+   }
+  }
+ }
+ ranked.sort((a,b)=>b.score-a.score||
+  a.items.reduce((v,p)=>v+p.unitCost,0)-b.items.reduce((v,p)=>v+p.unitCost,0));
+ const chosen=[],seen=new Set(),maxPerProduct=2;
+ const usage=new Map();
+ for(const item of ranked){
+  const skus=item.items.map(p=>p.sku),key=skus.slice().sort().join('|');
+  if(seen.has(key)||skus.some(s=>(usage.get(s)||0)>=maxPerProduct))continue;
+  seen.add(key);chosen.push(item);
+  skus.forEach(s=>usage.set(s,(usage.get(s)||0)+1));
+  if(chosen.length>=8)break;
+ }
+ const kits=[];
+ for(const match of chosen){
+  try{
+   const kit=await composeKit(shop,match.items.map(x=>x.sku),{marginPct,packing,shipping});
+   kits.push({...kit,ideaMatchScore:match.score,
+    businessReason:'Sugestão para: "'+phrase+'". Produtos existentes e complementares encontrados no catálogo WeDrop importado.'});
+  }catch(err){
+   // Um kit sem preço seguro ou estoque validado não deve aparecer como pronto.
+   if(!/combina|cotacao|centavos|Margem|margem|preco|preço/i.test(String(err.message||err)))throw err;
+  }
+ }
+ return {results:kits,source:'Catálogo WeDrop importado · pesquisa pela ideia',idea:phrase,
+  candidatesFound:pool.length,disclaimer:kits.length?
+  'Combinações por nomes e usos relacionados; custos e estoque WeDrop revalidados. Não confirma procura de compradores nem disponibilidade do site em tempo real.':
+  'Nenhuma combinação segura encontrada para a ideia. Revise os termos ou a disponibilidade importada.'};
+}
+
 export function kitSku(skus){
  const ids=skus.map(s=>String(s).toUpperCase().replace(/[^A-Z0-9]/g,'').slice(0,22)).sort();
  return 'KIT-'+ids.join('-').slice(0,112);
