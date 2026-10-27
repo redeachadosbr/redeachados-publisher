@@ -80,46 +80,148 @@ export async function kitCatalog(shop,{category='Todos',search='',limit=80}={}){
    .map(x=>({...x,stockStatus:'DISPONIVEL'})):[],
   stock:stockSummary,snapshotAt:new Date(cached.get(validShop(shop)).at).toISOString()};
 }
-const RELATED=[
- [/garrafa|termica/,/copo|caneca|escova|suporte|porta/],
- [/cafe|cafeteira/,/xicar|colher|copo|caneca/],
- [/panela|frigideira|assadeira/,/espatula|colher|pegador|concha|luva/],
- [/organiz|cesto|caixa/,/gancho|cabide|prateleira|etiqueta/],
- [/mochila|lancheira/,/estojo|caderno|garrafa|lapis/],
- [/boneca|casinha/,/roupinha|moveis|acessorio|cozinha|carrinho/],
- [/carrinho|caminhao|pista/,/pista|garagem|boneco|carrinho|helicoptero/],
- [/praia|piscina/,/boia|balde|brinquedo|oculos/],
- [/banheiro|shampoo/,/saboneteira|gancho|suporte|organizador/],
- [/limpeza|vassoura/,/pano|balde|escova|rodo/]
+// Matriz conservadora de complementaridade para uma mesma ocasião de compra.
+// Categoria igual NUNCA é prova suficiente. A regra exige funções diferentes,
+// valida o contexto e não combina a mesma função em cores/tamanhos diferentes.
+const BUNDLE_PATTERNS=[
+ {id:'churrasco',reason:'Preparar e servir carnes com utensílios complementares',
+  categories:/utensilios|talheres|panelas|frigideiras|churrasco|cozinha/,
+  left:/tabua|tábua|churrasqueira|grelha|grelhador/,
+  right:/pegador|faca|cutelo|espet|garfo|avental|pincel|luva|talheres/},
+ {id:'churrasco-servir',reason:'Cortar e manipular carnes no preparo do churrasco',
+  categories:/utensilios|talheres|cozinha/,
+  left:/faca|cutelo|chaira/,right:/pegador|garfo|espet|avental|pincel/},
+ {id:'cafe',reason:'Preparar e servir café no mesmo momento de consumo',
+  categories:/copos|jarras|servir|eletroportateis|cozinha|garrafas|termicas/,
+  left:/cafeteira|prensa francesa|coador|filtro de cafe|moedor de cafe/,
+  right:/xicara|caneca|copo|colher|leiteira|garrafa termica/},
+ {id:'hidratar',reason:'Transportar a bebida e utilizar um recipiente para servir',
+  categories:/garrafas|termicas|copos|jarras|servir|utensilios/,
+  left:/garrafa|squeeze|jarra|termica/,
+  right:/copo|caneca|xicara/},
+ {id:'cozinhar',reason:'Preparar alimentos com panela e utensílio de uso complementar',
+  categories:/panelas|frigideiras|utensilios|talheres|cozinha/,
+  left:/frigideira|panela|caçarola|assadeira|wok/,
+  right:/espatula|colher de silicone|concha|pegador|luva termica|descanso de panela/},
+ {id:'escola',reason:'Transportar material e organizar os acessórios escolares',
+  categories:/mochilas|estojos|lancheiras|cadernos|papelaria|garrafas|termicas/,
+  left:/mochila|bolsa escolar|lancheira/,
+  right:/estojo|caderno|garrafa|squeeze|lapis|caneta|borracha|apontador/},
+ {id:'material-escolar',reason:'Organização de escrita e atividades escolares',
+  categories:/estojos|cadernos|papelaria/,
+  left:/caderno|bloco de notas/,
+  right:/estojo|lapis|caneta|borracha|apontador/},
+ {id:'boneca',reason:'Brinquedos e acessórios para a mesma brincadeira',
+  categories:/bonecas|casinhas|brinquedos|jogos/,
+  left:/boneca|casinha/,right:/roupinha|vestido de boneca|moveis de boneca|acessorio de boneca/},
+ {id:'carrinhos',reason:'Brincadeira com veículo e pista ou garagem',
+  categories:/carrinhos|pistas|brinquedos|jogos/,
+  left:/carrinho|caminhao|caminhão|miniatura de carro/,
+  right:/pista|garagem|estacionamento de brinquedo/},
+ {id:'piscina',reason:'Uso conjunto em atividades de praia ou piscina',
+  categories:/praia|piscina|camping|brinquedos/,
+  left:/piscina|colchao inflavel|boia|flutuador/,
+  right:/balde|bola de praia|brinquedo de praia|oculos de natacao|boia|toalha de praia/},
+ {id:'limpeza',reason:'Limpeza de superfícies com ferramenta e acessório',
+  categories:/limpeza|lavanderia|utensilios/,
+  left:/mop|vassoura|rodo|balde|escova de limpeza/,
+  right:/pano|refil|borrifador|esponja|balde/},
+ {id:'organizacao',reason:'Organizar e identificar objetos em um mesmo ambiente',
+  categories:/organizadores|cestos|prateleiras|suportes|potes|mantimentos/,
+  left:/organizador|caixa organizadora|cesto|pote/,
+  right:/etiqueta|divisoria|separador|gancho|suporte de organizacao/},
+ {id:'banheiro',reason:'Itens complementares para organização do banheiro',
+  categories:/banheiro|lixeiras|organizadores|suportes/,
+  left:/toalha|saboneteira|dispensador/,
+  right:/porta toalha|gancho|suporte|tapete para banheiro|organizador/}
 ];
-function related(a,b){
- const x=norm(a.name),y=norm(b.name);
- if(x===y)return -10;
- let score=a.category===b.category?2:0;
- for(const [one,two] of RELATED){
-  if((one.test(x)&&two.test(y))||(one.test(y)&&two.test(x)))score+=9;
+const CATEGORY_CONFLICT=/\b(?:fitness|musculacao|abdominal|flexao|academia|halter|treino|reabilitacao)\b/;
+const BUYER_ROLES=[
+ ['tabua',/tabua/],['pegador',/pegador/],['faca',/faca|cutelo|chaira/],
+ ['espetos',/espet/],['grelha',/grelha|churrasqueira/],
+ ['cafeteira',/cafeteira|prensa francesa|coador|moedor de cafe/],
+ ['caneca',/xicara|caneca|copo/],['garrafa',/garrafa|squeeze|termica/],
+ ['panela',/frigideira|panela|caçarola|assadeira|wok/],
+ ['espatula',/espatula|concha|colher de silicone/],
+ ['mochila',/mochila|bolsa escolar/],['lancheira',/lancheira/],
+ ['estojo',/estojo/],['caderno',/caderno|bloco de notas/],
+ ['boneca',/boneca/],['casinha',/casinha/],
+ ['carrinho',/carrinho|caminhao/],['pista',/pista|garagem/],
+ ['boia',/boia|flutuador/],['piscina',/piscina|colchao inflavel/],
+ ['limpeza-ferramenta',/mop|vassoura|rodo|escova de limpeza/],
+ ['limpeza-insumo',/pano|refil|borrifador|esponja/]
+];
+const buyerRole=p=>BUYER_ROLES.find(([,pattern])=>pattern.test(norm(p.name)))?.[0]||
+ norm(p.name).replace(/[^a-z ]/g,' ').split(' ').filter(x=>x.length>4).slice(0,2).join('-');
+function buyerPair(a,b){
+ if(!a||!b||a.sku===b.sku||!a.name||!b.name)return null;
+ const first=norm(a.name),second=norm(b.name);
+ const categoryA=norm(a.category),categoryB=norm(b.category);
+ if(CATEGORY_CONFLICT.test(first+' '+categoryA)||CATEGORY_CONFLICT.test(second+' '+categoryB))
+  return null;
+ if(buyerRole(a)===buyerRole(b))return null;
+ for(const rule of BUNDLE_PATTERNS){
+  if(!rule.categories.test(categoryA)||!rule.categories.test(categoryB))continue;
+  if((rule.left.test(first)&&rule.right.test(second))||
+   (rule.left.test(second)&&rule.right.test(first))){
+   // A família/ocasião precisa realmente aparecer nos nomes: não atribuir
+   // automaticamente sucesso comercial porque dois produtos dividem categoria.
+   return {id:rule.id,reason:rule.reason,score:20+
+    (categoryA!==categoryB?3:0)};
+  }
  }
- if(norm(a.name).replace(/azul|rosa|verde|preto|branco|vermelho|amarelo|sortido|sortida/g,'').trim()===
-    norm(b.name).replace(/azul|rosa|verde|preto|branco|vermelho|amarelo|sortido|sortida/g,'').trim())
-  score-=12;
- // Não apresentar combinações sem conexão funcional como "alto potencial".
- return score;
+ return null;
+}
+export function assessKitBuyerFit(items){
+ if(!Array.isArray(items)||items.length<2||items.length>3)
+  return {ok:false,score:0,reason:'Kit precisa de dois ou três produtos.'};
+ if(new Set(items.map(p=>p.sku)).size!==items.length)
+  return {ok:false,score:0,reason:'SKU duplicada.'};
+ if(new Set(items.map(buyerRole)).size!==items.length)
+  return {ok:false,score:0,reason:'Produtos com a mesma função; possível variação de cor ou tamanho.'};
+ const links=[],connected=new Set();
+ for(let i=0;i<items.length;i++)for(let j=i+1;j<items.length;j++){
+  const link=buyerPair(items[i],items[j]);if(!link)continue;
+  links.push(link);connected.add(i);connected.add(j);
+ }
+ if(links.length<items.length-1||connected.size!==items.length)
+  return {ok:false,score:0,reason:'Não há complementaridade comprovada entre todos os componentes.'};
+ const categories=new Set(items.map(p=>p.category));
+ const cost=items.reduce((sum,p)=>sum+Number(p.unitCost||0),0);
+ const ratios=items.map(p=>Number(p.unitCost||0)/cost);
+ const accessoryBalance=ratios.every(x=>x>0.035&&x<0.93);
+ const score=Math.min(100,Math.round(25+links.length*20+
+  (accessoryBalance?10:0)+(categories.size>1?5:0)));
+ return {ok:true,score,
+  reason:[...new Set(links.map(x=>x.reason))].join(' + '),
+  signals:['Produtos com funções diferentes','Complementaridade de uso',
+   ...(accessoryBalance?['Itens com custos proporcionais']:[])],
+  evidence:'Heurística de complementaridade; vendas e buscas não verificadas'};
+}
+function related(a,b){
+ const match=buyerPair(a,b);
+ return match?match.score:-20;
 }
 function pairCandidates(rows,category,limit=9){
+ // Nunca preencher kit apenas porque a categoria é a mesma.
  const anchors=rows.filter(x=>categoryMatches(x.category,category))
-  .sort((a,b)=>a.unitCost-b.unitCost).slice(0,140);
- const other=rows.filter(x=>categoryMatches(x.category,category)||RELATED.some(([x,y])=>x.test(norm(category))||y.test(norm(category))))
-  .sort((a,b)=>a.unitCost-b.unitCost).slice(0,240);
- const choices=[];
+  .sort((a,b)=>a.unitCost-b.unitCost).slice(0,260);
+ const other=rows.filter(x=>categoryMatches(x.category,category)||
+  BUNDLE_PATTERNS.some(rule=>rule.categories.test(norm(x.category))))
+  .sort((a,b)=>a.unitCost-b.unitCost).slice(0,500);
+ const choices=[],seen=new Set();
  for(const a of anchors){
   if(a.unitCost>300)continue;
   const partners=other.filter(b=>a.sku!==b.sku&&a.unitCost+b.unitCost<400)
-   .map(b=>({b,score:related(a,b)}))
-   .filter(x=>x.score>=2).sort((x,y)=>y.score-x.score||x.b.unitCost-y.b.unitCost);
-  for(const item of partners.slice(0,3)){
+   .map(b=>({b,fit:assessKitBuyerFit([a,b])}))
+   .filter(x=>x.fit.ok)
+   .sort((x,y)=>y.fit.score-x.fit.score||x.b.unitCost-y.b.unitCost);
+  for(const item of partners.slice(0,4)){
    const skus=[a.sku,item.b.sku].sort(),key=skus.join('|');
-   if(choices.some(x=>x.key===key))continue;
-   choices.push({key,skus,compatibility:item.score,items:[a,item.b]});
+   if(seen.has(key))continue;
+   seen.add(key);
+   choices.push({key,skus,compatibility:item.fit.score,
+    reason:item.fit.reason,items:[a,item.b]});
   }
  }
  return choices.sort((a,b)=>b.compatibility-a.compatibility||
