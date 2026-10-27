@@ -71,7 +71,9 @@ export function mapPersistedCatalogRow(x){
     imageUrl:x.image_url||'',
     price:x.price===null?null:Number(x.price),
     stock:x.stock===null?null:Number(x.stock),
-    hasModel:Boolean(x.has_model),promotion:Boolean(x.has_promotion),
+    hasModel:Boolean(x.has_model),
+    // Cache anterior nao demonstra o estado atual do desconto.
+    promotion:null,promotionCached:Boolean(x.has_promotion),
     updateTime:x.item_updated_at===null?null:Number(x.item_updated_at),
     baseLoaded:Boolean(x.base_loaded),
     lastSeenAt:x.last_seen_at||null

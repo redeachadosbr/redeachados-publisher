@@ -6,7 +6,7 @@
 <meta name="theme-color" content="#0A1C3A">
 <link rel="icon" type="image/svg+xml" href="/brand-logo.svg">
 <title>Rede Achados BR · Gestão Shopee</title>
-<link rel="stylesheet" href="/style.css?v=1.20.29-bridge-unlock">
+<link rel="stylesheet" href="/style.css?v=1.20.42-promotions-audit">
 <link rel="stylesheet" href="/optimizer-compact.css?v=1.20.13-wedrop">
 <link rel="stylesheet" href="/optimizer-fiscal-premium.css?v=1.20.13">
 <link rel="stylesheet" href="/optimizer-ads-reserve.css?v=1.20.15">
@@ -1456,7 +1456,8 @@
             <button type="button" class="catalog-filter-chip" data-catalog-filter="inactive" aria-pressed="false">Inativos</button>
             <button type="button" class="catalog-filter-chip" data-catalog-filter="noSku" aria-pressed="false">Sem SKU</button>
             <button type="button" class="catalog-filter-chip" data-catalog-filter="stockZero" aria-pressed="false">Estoque zero</button>
-            <button type="button" class="catalog-filter-chip" data-catalog-filter="promotion" aria-pressed="false">Com promoção</button>
+            <button type="button" class="catalog-filter-chip" data-catalog-filter="promotion" aria-pressed="false">Desconto ativo confirmado</button>
+            <button type="button" class="catalog-filter-chip" data-catalog-filter="discountMissing" aria-pressed="false">Fora de Minha Promoção</button>
             </div>
             <button id="catalogAdvancedToggle" type="button" class="catalog-extra-toggle" aria-expanded="false" aria-controls="catalogAdvancedFilters"><svg class="catalog-icon-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 6h16M7 12h10M10 18h4"/></svg> Mais filtros <svg class="catalog-icon-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m9 6 6 6-6 6"/></svg></button>
           </div>
@@ -1491,6 +1492,10 @@
           <p id="productDetailsStatus" class="hint">Consulte as variações de um anúncio.</p>
           <div class="table-wrap"><table><thead><tr><th>Variação</th><th>SKU</th><th>Status</th><th>Preço</th><th>Estoque</th></tr></thead><tbody id="productModelsBody"></tbody></table></div>
         </section>
+        <div class="catalog-promotion-audit">
+          <div><strong>Verificar descontos Shopee</strong><p id="catalogAuditStatus" role="status" aria-live="polite">O indicador geral da Shopee não confirma Minha Promoção. Confira as campanhas ativas e programadas para identificar pendências.</p></div>
+          <button id="catalogAuditPromotions" type="button" class="secondary">Conferir descontos na Shopee</button>
+        </div>
         <div class="catalog-list-heading"><div class="catalog-title-count"><h3>Anúncios encontrados</h3><span id="catalogResultCount">— anúncios</span></div>
           <div class="catalog-pagination-toolbar"><label for="catalogPageSize">Itens por página</label>
             <select id="catalogPageSize" aria-label="Quantidade de anúncios por página"><option value="10" selected>10</option><option value="20">20</option><option value="50">50</option><option value="100">100</option></select>
@@ -1502,7 +1507,7 @@
           </div>
         </div>
         <div class="table-wrap catalog-list"><table class="catalog-products-table">
-          <thead><tr><th>Produto</th><th>Item ID / SKU</th><th>Preço</th><th>Promoção</th><th>Estoque</th><th>Situação</th><th>Última atualização</th><th>Ações</th></tr></thead>
+          <thead><tr><th>Produto</th><th>Item ID / SKU</th><th>Preço</th><th title="Participação em Minha Promoção requer conferência">Promoção / desconto</th><th>Estoque</th><th>Situação</th><th>Última atualização</th><th>Ações</th></tr></thead>
           <tbody id="productsBody"></tbody>
         </table></div>
         <div class="catalog-paging"><span id="productsRowsShown" class="hint"></span><button id="productsMoreBtn" class="secondary" type="button" hidden>Mostrar mais anúncios</button></div>
@@ -2027,7 +2032,7 @@
 <script src="/fiscal-modern-layout.js?v=1.0.1-fiscal-cards"></script>
 <script src="/technical-memory.js?v=1.0.1-live-sku-preload"></script>
 <script src="/technical-status.js?v=1.0.0-optional-coherence"></script>
-<script src="/app.js?v=1.21.82-media-technical-fix-dual-centavos-09-v4"></script>
+<script src="/app.js?v=1.20.42-promotions-audit"></script>
 <script type="module" src="/kit-builder.js?v=2.8.0-delete-draft"></script>
 <link rel="stylesheet" href="/optimizer-variations.css?v=1.2.1-single-flow">
 <script src="/optimizer-variations.js?v=1.2.3-single-flow"></script>

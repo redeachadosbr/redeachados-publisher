@@ -339,6 +339,7 @@ let catalogProgress={statusIndex:0,offset:0,page:0};
 let catalogBusy=false,catalogStop=false,catalogDone=false,catalogRowsLimit=10;
 let catalogCurrentPage=1,catalogPageSize=10,catalogQuickFilter='all';
 let catalogCachedAt=null,catalogLastSyncAt=null,catalogScannedIds=new Set();
+let catalogDiscountAudit=null,catalogDiscountAuditBusy=false;
 let catalogProblems=[];
 const catalogMoney=n=>n===null||n===undefined?'—':new Intl.NumberFormat('pt-BR',{style:'currency',currency:'BRL'}).format(n);
 const catalogNumber=n=>n===null||n===undefined?'—':new Intl.NumberFormat('pt-BR').format(n);
@@ -365,7 +366,8 @@ function catalogFiltered(){
        ||catalogQuickFilter==='inactive'&&x.status==='UNLIST'
        ||catalogQuickFilter==='noSku'&&x.baseLoaded&&!String(x.sku||'').trim()
        ||catalogQuickFilter==='stockZero'&&x.baseLoaded&&x.stock===0
-       ||catalogQuickFilter==='promotion'&&x.baseLoaded&&x.promotion===true)&&
+       ||catalogQuickFilter==='promotion'&&catalogPromotionView(x).kind==='active'
+       ||catalogQuickFilter==='discountMissing'&&catalogPromotionView(x).kind==='missing')&&
       (advanced==='any'
        ||advanced==='complete'&&x.baseLoaded
        ||advanced==='incomplete'&&!x.baseLoaded
@@ -452,6 +454,16 @@ function catalogOpenSeller(item){
 function catalogCell(tr,value){
   const td=document.createElement('td');td.textContent=String(value??'—');tr.appendChild(td);return td;
 }
+function catalogPromotionView(item){
+ const read=catalogDiscountAudit?.items?.[String(item.itemId)];
+ if(read?.kind==='active')return {kind:'active',text:read.text||'Desconto ativo',note:read.note||'Minha Promoção confirmada'};
+ if(read?.kind==='scheduled')return {kind:'scheduled',text:'Programado',note:read.note||'Desconto programado'};
+ if(read?.kind==='missing'&&catalogDiscountAudit?.complete===true&&item.baseLoaded)
+  return {kind:'missing',text:'Fora da campanha',note:'Não consta em Minha Promoção ativa ou programada na auditoria completa.'};
+ if(item.baseLoaded&&item.promotion===true)
+  return {kind:'generic',text:'Promoção sinalizada',note:'A Shopee sinaliza promoção genérica, mas isso não comprova desconto em Minha Promoção.'};
+ return {kind:'unknown',text:'A verificar',note:item.promotionCached?'Registro antigo em cache, requer nova conferência.':'Aguardando conferência em Minha Promoção.'};
+}
 function catalogRender(){
   const rows=catalogFiltered(),all=catalogAll();
   const size=catalogPageSize,totalPages=Math.max(1,Math.ceil(rows.length/size));
@@ -490,8 +502,11 @@ function catalogRender(){
     const price=catalogCell(tr,catalogMoney(x.price));price.className='catalog-value-price';
     const promotion=catalogCell(tr,'');
     const promoBadge=document.createElement('span');
-    promoBadge.className='catalog-promo-badge'+(x.promotion&&x.baseLoaded?' is-active':'');
-    promoBadge.textContent=!x.baseLoaded||x.promotion==null||!catalogDone?'A confirmar':x.promotion?'Sim':'Não';
+    const info=catalogPromotionView(x);
+    promoBadge.className='catalog-promo-badge is-'+info.kind;
+    promoBadge.textContent=info.text;
+    promoBadge.title=info.note;
+    promoBadge.setAttribute('aria-label',info.text+'. '+info.note);
     promotion.append(promoBadge);
     const stock=catalogCell(tr,x.stock===null||x.stock===undefined?'Não informado':catalogNumber(x.stock));
     stock.className='catalog-value-stock';
@@ -516,7 +531,14 @@ function catalogRender(){
         $('#optimizerSku')?.focus?.();
       });
     };
-    options.append(optimize);menu.append(options);
+    options.append(optimize);
+    if(catalogPromotionView(x).kind==='missing'&&String(x.sku||'').trim()){
+      const review=document.createElement('button');review.type='button';
+      review.textContent='Conferir e preparar desconto';
+      review.onclick=()=>catalogReviewMissingDiscount(x);
+      options.append(review);
+    }
+    menu.append(options);
     action.append(b,menu);tr.append(action);body.append(tr);
   }
   if(!rows.length){
@@ -554,6 +576,43 @@ function catalogRender(){
   catalogSyncFilterChips();
   catalogHistoryUpdate();
 }
+function catalogReviewMissingDiscount(item){
+ if(!String(item.sku||'').trim())return;
+ setTab('optimizer');
+ const field=$('#optimizerSku');if(field){field.value=String(item.sku);field.focus();}
+ const info=$('#optimizerStatus');
+ if(info)info.textContent='SKU '+item.sku+': confira custo WeDrop, preço bruto, desconto e campanha antes de executar. Nenhuma alteração foi aplicada.';
+}
+async function catalogAuditDiscounts(){
+ if(catalogDiscountAuditBusy)return;
+ const button=$('#catalogAuditPromotions'),status=$('#catalogAuditStatus');
+ const ids=catalogAll().filter(x=>x.baseLoaded).map(x=>String(x.itemId)).filter(x=>/^[1-9][0-9]{0,17}$/.test(x));
+ if(!ids.length){status.textContent='Sincronize os anúncios antes de auditar descontos.';return;}
+ catalogDiscountAuditBusy=true;button.disabled=true;button.textContent='Conferindo...';
+ status.textContent='Lendo campanhas ativas e programadas da Shopee. Consulta sem qualquer alteração.';
+ try{
+  const response=await json('/api/shopee/catalog/discount-audit',{
+   method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({itemIds:ids}),
+   signal:AbortSignal.timeout(175000)
+  });
+  catalogDiscountAudit={complete:response.complete===true,items:response.items||{},verifiedAt:response.verifiedAt};
+  catalogRender();
+  const results=Object.values(catalogDiscountAudit.items);
+  const active=results.filter(x=>x.kind==='active').length;
+  const scheduled=results.filter(x=>x.kind==='scheduled').length;
+  const missing=results.filter(x=>x.kind==='missing').length;
+  status.textContent='Auditoria '+(response.complete?'concluída':'parcial')+
+   ': '+active+' com desconto ativo, '+scheduled+' programados, '+
+   (response.complete?missing+' fora de Minha Promoção.':'demais sem comprovação.')+
+   (response.warning?' '+response.warning:'')+
+   ' Nenhuma promoção foi alterada.';
+  status.dataset.state=response.complete?'success':'warning';
+ }catch(error){
+  status.textContent='Não foi possível confirmar as campanhas: '+error.message+'. Nenhum desconto foi enviado.';
+  status.dataset.state='error';
+ }finally{catalogDiscountAuditBusy=false;button.disabled=false;button.textContent='Conferir descontos na Shopee';}
+}
+$('#catalogAuditPromotions')?.addEventListener('click',()=>void catalogAuditDiscounts());
 function catalogSummaryText(prefix=''){
   const all=catalogAll();
   const unknown=all.filter(x=>!x.baseLoaded).length;
@@ -604,7 +663,8 @@ $('#closeProductDetails').onclick=()=>{$('#productDetailsPanel').hidden=true;};
 async function catalogScan(){
   if(catalogBusy)return;
   if(catalogDone){
-    catalogMap.clear();catalogProgress={statusIndex:0,offset:0,page:0};
+    catalogMap.clear();catalogDiscountAudit=null;
+    catalogProgress={statusIndex:0,offset:0,page:0};
     catalogProblems=[];catalogDone=false;catalogScannedIds=new Set();catalogLastSyncAt=null;
   }
   if(catalogProgress.statusIndex===0&&catalogProgress.offset===0&&catalogProgress.page===0)
@@ -718,7 +778,7 @@ $('#productsMoreBtn').onclick=()=>{
 $('#exportProductsBtn').onclick=()=>{
   const headers=['Item ID','SKU','Título','Status','Preço BRL','Estoque','Tem variações','Promoção','Atualização','Detalhes confirmados'];
   const data=catalogFiltered().map(x=>[x.itemId,x.sku,x.title,x.status,
-    x.price??'',x.stock??'',x.hasModel?'Sim':'Não',x.promotion?'Sim':'Não',fmtDate(x.updateTime),x.baseLoaded?'Sim':'Não']);
+    x.price??'',x.stock??'',x.hasModel?'Sim':'Não',catalogPromotionView(x).text,fmtDate(x.updateTime),x.baseLoaded?'Sim':'Não']);
   const csv='\uFEFF'+[headers,...data].map(row=>row.map(catalogCsvProtect).join(';')).join('\r\n');
   const url=URL.createObjectURL(new Blob([csv],{type:'text/csv;charset=utf-8'}));
   const anchor=document.createElement('a');anchor.href=url;anchor.download='shopee-catalogo-'+new Date().toISOString().slice(0,10)+'.csv';
