@@ -1592,3 +1592,20 @@
 #tab-kits #kitDetail .kit-image-card.kit-drop-target{border:2px dashed #1879df;background:#e5f4ff;box-shadow:0 0 0 3px #1879df22}
 #tab-kits #kitDetail #kitMultiPhotoFiles[hidden]{display:none!important}
 @media(max-width:880px){#tab-kits #kitDetail .kit-plus-gallery-actions{grid-template-columns:1fr}}
+
+/* Fluxo ChatGPT Plus sem cobrança de API — pedido completo e retorno para galeria */
+#tab-kits #kitDetail .kit-generation-options{grid-template-columns:minmax(0,1fr)}
+#tab-kits #kitDetail .kit-generation-auto[hidden]{display:none!important}
+#tab-kits #kitDetail .kit-plus-primary-mode{background:linear-gradient(125deg,#fff,#f0f8ff);border-color:#bcd8f7}
+#tab-kits #kitDetail .kit-plus-primary-mode>strong{font-size:13px}
+#tab-kits #kitDetail .kit-plus-primary-mode>#kitGenerateAll{align-self:flex-start;max-width:100%;min-height:40px;padding:10px 17px;background:linear-gradient(120deg,#ff5c35,#ff782e);color:#fff;box-shadow:0 5px 12px rgba(235,95,39,.14)}
+#tab-kits #kitDetail .kit-plus-unavoidable{color:#91602e!important;font-weight:750}
+#tab-kits #kitDetail .kit-plus-instructions{padding:11px;border:1px solid #bed8f1;border-radius:10px;background:#fff;display:grid;gap:7px}
+#tab-kits #kitDetail .kit-plus-instructions[hidden]{display:none!important}
+#tab-kits #kitDetail .kit-plus-instructions strong{font-size:11px}
+#tab-kits #kitDetail .kit-plus-instructions textarea{box-sizing:border-box;width:100%;max-height:120px;min-height:68px;padding:8px;font-size:10px;line-height:1.5;background:#f5f9ff;border:1px solid #d9e7f6;border-radius:7px;color:#143a66;resize:vertical}
+#tab-kits #kitDetail .kit-plus-instruction-buttons{display:flex;gap:8px;flex-wrap:wrap}
+#tab-kits #kitDetail .kit-plus-instruction-buttons button{flex:1 1 200px}
+#tab-kits #kitDetail .kit-plus-generation-status{padding:8px 10px;border-radius:8px;font-size:10.5px;line-height:1.45;background:#e6f2fd;color:#235583}
+#tab-kits #kitDetail .kit-plus-generation-status[data-state=success]{background:#e6f7ed;color:#137146}
+#tab-kits #kitDetail .kit-plus-generation-status[data-state=error]{background:#fff0ec;color:#9a3030}

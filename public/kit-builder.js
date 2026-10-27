@@ -2,6 +2,7 @@ import {parseKitChatResult} from './kit-chat-result-parser.js?v=2.5.2-theme-revi
 import {scoreKitSeoTitle,parseKitSeoResponse,kitSeoRiskFlags} from './kit-seo-helper.js';
 import {detectSkuMeasurements,skuMeasurementSummary} from './kit-measurements.js';
 import {kitImageFilenameSlot,kitImageNextSlot,kitPlanImageImports,kitMoveImage} from './kit-gallery-order.js';
+import {buildKitPlusImageBrief,kitPlusPromptLink} from './kit-plus-image-brief.js';
 // Kits Inteligentes WeDrop — Kit Formal enviado à Shopee somente após aprovação explícita.
 const $=s=>document.querySelector(s);
 const money=n=>Number(n).toLocaleString('pt-BR',{style:'currency',currency:'BRL'});
@@ -1916,11 +1917,30 @@ async function copy(text){
 function downloadData(url,name){
  const a=elt('a');a.href=url;a.download=name;document.body.append(a);a.click();a.remove();
 }
+function kitPlusGenerationStatus(message,state='info'){
+ const node=$('#kitPlusGenerationStatus');
+ if(node){node.textContent=message;node.dataset.state=state;}
+}
 function openChatGPTImages(){
- if(!prepared)return;
- chatgptHandoff(Array.from({length:9},(_,i)=>kitImagePromptAt(i+1)).join('\n\n--- PRÓXIMA IMAGEM ---\n\n'));
- imageStatus('9 instruções copiadas: em CADA imagem, os '+prepared.kit.components.length+
-  ' produtos precisam aparecer juntos em uma só cena. Anexe as fotos reais de todas as SKUs.','success');
+ if(!prepared)return imageStatus('Abra o kit antes de iniciar as imagens.','error');
+ let prompt;
+ try{prompt=buildKitPlusImageBrief(prepared.kit,{manualFacts:Object.fromEntries(kitContentManualFacts.entries())});}
+ catch(error){return imageStatus(error.message,'error');}
+ // Gesto direto do usuário: cópia começa antes da abertura da aba.
+ const clipboardPromise=navigator.clipboard?.writeText?
+  navigator.clipboard.writeText(prompt):Promise.reject(new Error('Área de transferência indisponível'));
+ const url=kitPlusPromptLink(prompt);
+ const tab=window.open(url,'_blank','noopener,noreferrer');
+ $('#kitPlusImagePrompt').value=prompt;
+ $('#kitPlusInstructions').hidden=false;
+ kitPlusGenerationStatus('Prompt preparado. Na aba do ChatGPT, anexe as fotos reais das '+prepared.kit.components.length+
+  ' SKUs, confira se o pedido foi preenchido e clique em Enviar. Depois baixe cada imagem para a pasta monitorada.','info');
+ imageStatus('Abertura do ChatGPT Plus solicitada com o pedido de imagens. Sem API, o envio e a geração dependem da sua ação no ChatGPT. A importação dos arquivos baixados pode ser automática por pasta.','info');
+ void clipboardPromise.then(()=>kitPlusGenerationStatus('Prompt copiado e abertura solicitada. Se o ChatGPT aparecer vazio, pressione Ctrl+V, anexe as fotos reais das SKUs e clique em Enviar.','success'))
+ .catch(()=>kitPlusGenerationStatus('Não foi possível copiar automaticamente. Use o botão Copiar prompt no painel, anexe as fotos e clique em Enviar no ChatGPT.','error'));
+ if(!tab&&url.startsWith('https://chatgpt.com/')){
+  // noopener pode retornar null mesmo abrindo a aba: não afirmar bloqueio.
+ }
 }
 
 function exportPack(){
@@ -2111,6 +2131,17 @@ $('#kitSaveSeoContent')?.addEventListener('click',async()=>{
 });
 
 $('#kitGenerateAll')?.addEventListener('click',openChatGPTImages);
+$('#kitPlusCopyGeneratedPrompt')?.addEventListener('click',()=>void copy($('#kitPlusImagePrompt').value));
+$('#kitPlusNextImagePrompt')?.addEventListener('click',()=>{
+ if(!prepared)return;
+ const next=kitImageNextSlot(images.keys());
+ if(next===null)return kitPlusGenerationStatus('As nove imagens estão ocupadas. Revise a galeria.','success');
+ const prompt=kitImagePromptAt(next)+'\n\nGERE AGORA A IMAGEM '+String(next).padStart(2,'0')+
+  '/09, não escreva apenas o prompt. Use as fotos anexadas nesta conversa como referências. Entregue uma imagem individual.';
+ void copy(prompt);
+ kitPlusGenerationStatus('Prompt da imagem '+String(next).padStart(2,'0')+
+  ' copiado. Cole na conversa do ChatGPT em andamento, gere e baixe a imagem para a pasta monitorada.','success');
+});
 $('#kitApprovePaidImages')?.addEventListener('change',()=>{
  kitAutoImageUi();if(prepared)renderImageSlots();
 });
