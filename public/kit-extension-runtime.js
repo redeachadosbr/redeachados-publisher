@@ -1,0 +1,175 @@
+import {KIT_BRIDGE_SESSION_KEY,kitBridgePayload,isKitBridgeEvent} from './kit-extension-bridge.js';
+
+const pos=n=>String(n).padStart(2,'0');
+function extensionVersionOk(version){
+ const parts=String(version||'').split('.').map(Number);
+ return parts.length===3&&parts.every(Number.isInteger)&&
+  (parts[0]>1||(parts[0]===1&&(parts[1]>0||(parts[1]===0&&parts[2]>=26))));
+}
+export async function kitReferenceSheet(kit,{fetcher=fetch}={}){
+ const components=kit?.components||[];
+ if(![2,3].includes(components.length)||components.some(x=>!x.imageUrl))
+  throw Error('O kit precisa de foto WeDrop original de cada SKU para usar a Ponte.');
+ const search=new URLSearchParams({skus:components.map(p=>p.sku).join(',')});
+ const photos=[];
+ for(let i=0;i<components.length;i++){
+  const params=new URLSearchParams(search);params.set('index',String(i));
+  const response=await fetcher('/api/shopee/kits/reference-photo?'+params);
+  if(!response.ok){
+   const error=await response.json().catch(()=>({}));
+   throw Error('Não foi possível carregar a foto WeDrop de '+components[i].sku+': '+
+    (error.error||'HTTP '+response.status));
+  }
+  const blob=await response.blob();
+  if(!/^image\/(?:png|jpeg|webp)$/.test(blob.type)||blob.size>6*1024*1024)
+   throw Error('Imagem de referência inválida para a SKU '+components[i].sku);
+  photos.push(await createImageBitmap(blob));
+ }
+ try{
+  const canvas=document.createElement('canvas');canvas.width=1024;canvas.height=1024;
+  const ctx=canvas.getContext('2d',{alpha:false});
+  if(!ctx)throw Error('Chrome não conseguiu combinar as referências dos produtos.');
+  ctx.fillStyle='#ffffff';ctx.fillRect(0,0,1024,1024);
+  ctx.fillStyle='#172d4d';ctx.font='bold 21px sans-serif';
+  ctx.fillText('REFERÊNCIAS ORIGINAIS DO KIT — NÃO É A IMAGEM FINAL',24,38);
+  const count=components.length,columnWidth=(1024-44-(count-1)*16)/count;
+  for(let i=0;i<count;i++){
+   const bmp=photos[i],x=22+i*(columnWidth+16),y=100,w=columnWidth,h=770;
+   const factor=Math.min(w/bmp.width,h/bmp.height);
+   const rw=bmp.width*factor,rh=bmp.height*factor;
+   ctx.fillStyle='#f0f5fc';ctx.fillRect(x-3,y-3,w+6,h+6);
+   ctx.fillStyle='#fff';ctx.fillRect(x,y,w,h);
+   ctx.drawImage(bmp,x+(w-rw)/2,y+(h-rh)/2,rw,rh);
+   ctx.fillStyle='#172d4d';ctx.font='bold 19px sans-serif';
+   ctx.fillText('PRODUTO '+(i+1),x,920);
+   ctx.font='16px sans-serif';ctx.fillText('SKU '+components[i].sku,x,948);
+  }
+  ctx.fillStyle='#45546b';ctx.font='16px sans-serif';
+  ctx.fillText('GERAR UMA CENA ÚNICA COM TODOS OS PRODUTOS — NÃO CRIAR MOSAICO',22,992);
+  const data=canvas.toDataURL('image/jpeg',0.85);
+  if(data.length>5*1024*1024)throw Error('Folha de referências muito grande para a Ponte.');
+  return data;
+ }finally{for(const bmp of photos)bmp.close();}
+}
+
+export function createKitExtensionController({
+ getKit,getPrompts,getImages,onPhoto,onStatus=()=>{},onProgress=()=>{}
+}){
+ let ready=false,version='',busy=false,started=false;
+ let job=null,timeout=null;
+ try{const v=JSON.parse(sessionStorage.getItem(KIT_BRIDGE_SESSION_KEY)||'null');
+  if(v?.nonce&&v?.kitSku)job=v;}catch{}
+ const post=message=>window.postMessage(message,location.origin);
+ const feedback=(s,type='info')=>{try{onStatus(s,type);}catch{}};
+ const saveJob=value=>{
+  job=value;
+  try{if(value)sessionStorage.setItem(KIT_BRIDGE_SESSION_KEY,JSON.stringify(value));
+   else sessionStorage.removeItem(KIT_BRIDGE_SESSION_KEY);}catch{}
+ };
+ const ack=(nonce,slot,ok,error='')=>post({kind:'RA_SITE_UPLOAD_RESULT',nonce,slot,ok,error});
+ function stop(reason='Geração interrompida.',{notice=true}={}){
+  if(timeout){clearTimeout(timeout);timeout=null;}
+  const last=job;
+  if(last?.nonce)post({kind:'RA_SITE_ABORT',nonce:last.nonce,sku:last.kitSku,reason});
+  busy=false;started=false;saveJob(null);
+  if(notice)feedback(reason,'info');
+ }
+ const onMessage=async event=>{
+  if(event.source!==window||event.origin!==location.origin)return;
+  const m=event.data;
+  if(!m||typeof m!=='object')return;
+  if(m.kind==='RA_EXTENSION_READY'){
+   version=String(m.version||'');ready=extensionVersionOk(version);
+   feedback(ready?'Ponte ChatGPT '+version+' detectada · pronta para kits.':
+    'Ponte não detectada na versão exigida (1.0.26 ou mais recente).','info');
+   return;
+  }
+  if(!job||!['RA_EXTENSION_START_RESULT','RA_EXTENSION_PROGRESS','RA_EXTENSION_IMAGE','RA_EXTENSION_WAKE_RESULT'].includes(m.kind)||
+     !isKitBridgeEvent(m,job))return;
+  const snapshot=job;
+  if(m.kind==='RA_EXTENSION_START_RESULT'){
+   if(timeout){clearTimeout(timeout);timeout=null;}
+   started=m.ok===true;
+   if(!started){busy=false;saveJob(null);feedback('A Ponte recusou este kit: '+
+    (m.error||'formato de kit não aceito pela versão instalada')+
+    '. Atualize a extensão para suportar referências de múltiplas SKUs.','error');}
+   else feedback('✓ Extensão confirmou o kit. Gerando e importando as imagens 01–09 uma por vez.','success');
+   return;
+  }
+  if(m.kind==='RA_EXTENSION_WAKE_RESULT'){
+   if(!m.ok)feedback('A Ponte não conseguiu retomar a geração: '+(m.error||'erro desconhecido'),'error');
+   return;
+  }
+  if(m.kind==='RA_EXTENSION_PROGRESS'){
+   const slot=Number(m.slot);
+   if(Number.isInteger(slot)&&slot>=1&&slot<=9)onProgress(slot);
+   feedback('Ponte ChatGPT · '+String(m.status||'Gerando imagens')+
+    (Number.isInteger(slot)?' · '+pos(slot)+'/09':'')+
+    (m.error?' · '+m.error:''),m.error?'error':'info');
+   return;
+  }
+  if(m.kind!=='RA_EXTENSION_IMAGE')return;
+  try{
+   const slot=Number(m.slot);
+   if(!Number.isInteger(slot)||slot<1||slot>9)throw Error('Posição fora da galeria de nove imagens.');
+   if(!m.dataUrl||typeof m.dataUrl!=='string'||m.dataUrl.length>28*1024*1024||
+      !/^data:image\/(?:png|jpeg|webp);base64,/i.test(m.dataUrl))
+    throw Error('A extensão não devolveu um arquivo de imagem válido.');
+   const current=getKit();
+   if(!current||current.kitSku!==snapshot.kitSku||job?.nonce!==snapshot.nonce)
+    throw Error('O kit em edição mudou; imagem recusada para evitar misturar SKUs.');
+   if(getImages().has(slot)){
+    ack(snapshot.nonce,slot,true);
+    feedback('Posição '+pos(slot)+' já estava salva. Confirmada sem duplicar.','info');
+    return;
+   }
+   // onPhoto normaliza 1200x1200 e confirma IndexedDB antes de sinalizar sucesso.
+   const accepted=await onPhoto({slot,dataUrl:m.dataUrl,kitSku:snapshot.kitSku});
+   if(accepted!==true)throw Error('A imagem não foi armazenada; não é seguro avançar.');
+   ack(snapshot.nonce,slot,true);
+   onProgress(slot);
+   const count=getImages().size;
+   feedback('✓ Imagem '+pos(slot)+' recebida e preservada no kit ('+count+'/9). '+
+    (count<9?'Ponte liberada para próxima posição.':'Nove imagens recebidas; revise antes de publicar.'),
+    'success');
+   if(count>=9){busy=false;started=false;saveJob(null);}
+  }catch(error){
+   ack(snapshot.nonce,Number(m.slot)||0,false,String(error.message||error).slice(0,240));
+   feedback('Falha na imagem '+pos(Number(m.slot)||0)+': '+String(error.message||error),'error');
+  }
+ };
+ window.addEventListener('message',onMessage);
+ function probe(){post({kind:'RA_EXTENSION_PROBE'});return ready;}
+ async function waitReady(){
+  if(ready)return true;
+  probe();
+  for(let i=0;i<7&&!ready;i++){await new Promise(r=>setTimeout(r,550));probe();}
+  return ready;
+ }
+ async function start(){
+  if(busy)return feedback('A Ponte já está gerando este kit. Use Parar ou aguarde a próxima imagem.','info');
+  const kit=getKit();
+  if(!kit)throw Error('Abra o rascunho de kit antes de iniciar as nove imagens.');
+  if(!await waitReady())throw Error('A extensão Rede Achados BR — Ponte ChatGPT v1.0.26+ não foi detectada. Ative a extensão e atualize esta página.');
+  const other=localStorage.getItem('redeAchadosBridgeActiveV3');
+  try{if(JSON.parse(other||'null')?.nonce)
+   throw Error('Há geração de uma SKU individual na Ponte. Finalize ou pause esse trabalho primeiro.');}
+  catch(error){if(error.message?.includes('SKU individual'))throw error;}
+  const prompts=getPrompts();
+  const referenceDataUrl=await kitReferenceSheet(kit);
+  if(getKit()?.kitSku!==kit.kitSku)throw Error('O kit mudou enquanto carregava as fotos.');
+  const nonce=crypto.randomUUID();
+  const payload=kitBridgePayload({kit,nonce,referenceDataUrl,prompts,completed:[...getImages().keys()]});
+  busy=true;started=false;
+  saveJob({nonce,kitSku:kit.kitSku,itemId:'0',modelId:'0',createdAt:Date.now()});
+  feedback('Enviando kit com '+kit.components.length+' SKUs e nove prompts para a Ponte ChatGPT...','info');
+  post({kind:'RA_SITE_START',payload});
+  timeout=setTimeout(()=>{
+   if(job?.nonce===nonce&&!started){
+    stop('A extensão não confirmou o início do kit. Confira sua versão e se ela aceita geração com 2–3 produtos.',{notice:true});
+   }
+  },16000);
+ }
+ return {start,stop,probe,ready:()=>ready,busy:()=>busy,version:()=>version,
+  activeJob:()=>job,dispose:()=>{stop('Encerrando sessão do kit.',{notice:false});window.removeEventListener('message',onMessage);}};
+}
