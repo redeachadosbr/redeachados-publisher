@@ -290,10 +290,12 @@ async function advanceShopeeModelStages(job,io,{readOnly=false}={}){
  if(!models)return modelError(r,'models-gone','Os modelos mudaram antes da promoção. Nenhuma alteração foi enviada.');
  const rows=specs.options.map((o,i)=>({
   name:o.name,sku:o.sku,modelId:String(models[i].model_id),supplierSku:o.supplierSku,
-  base:modelPrice(models[i]),expectedBase:Number(o.price),cost:Number(o.cost),promo:Number(approved.promo)
+  base:modelPrice(models[i]),expectedBase:Number(o.price),cost:Number(o.cost),
+  promo:Number(approved.modelQuotes?.find(q=>q.sku===o.sku)?.promo??approved.promo),
+  gross:Number(approved.modelQuotes?.find(q=>q.sku===o.sku)?.gross??approved.gross)
  }));
  if(rows.some(x=>!Number.isFinite(x.base)||x.base<=0||!Number.isFinite(x.promo)||
-    x.promo<=0||x.promo>=Number(approved.gross)||
+    x.promo<=0||x.promo>=x.gross||
     x.cost<=0||x.promo<=x.cost))
   return modelError(r,'model-price-invalid','O preço atual de uma variação diverge do custo e da promoção aprovada.');
  for(const row of rows){
@@ -302,7 +304,7 @@ async function advanceShopeeModelStages(job,io,{readOnly=false}={}){
    return modelError(r,'variant-cost-changed','O custo WeDrop mudou para '+row.name+'. A promoção exige nova prévia.');
  }
  if(['model_discount_price_updating','model_discount_price_verifying'].includes(phase)){
-  if(rows.every(x=>money(x.base)===money(approved.gross)))
+  if(rows.every(x=>money(x.base)===money(x.gross)))
    return {state:'running',result:variationStatus(r,'model_discount_ready',
     'model-price-verified','Preços brutos das variações confirmados.'),delay:500};
   if(Date.now()-Number(r.modelPriceStartedAt||0)>90000)
@@ -314,7 +316,7 @@ async function advanceShopeeModelStages(job,io,{readOnly=false}={}){
  if(promo.status!=='ongoing'&&promo.status!=='upcoming')
   return modelError(r,'campaign-inactive','Campanha Minha Promoção não está válida.');
  const promoRows=promo.member?.model_list||[];
- if(confirmedPromo(rows,promoRows)&&rows.every(x=>money(x.base)===money(approved.gross)))
+ if(confirmedPromo(rows,promoRows)&&rows.every(x=>money(x.base)===money(x.gross)))
   return {state:'verified',result:variationStatus({...r,verified:true,
    discount:{status:'verified'},variation:{status:'verified'}},'verified',
    'models-discount-verified','Desconto confirmado em todas as variações pela Shopee.','success'),
@@ -325,7 +327,7 @@ async function advanceShopeeModelStages(job,io,{readOnly=false}={}){
   if(readOnly)return modelError(r,'model-discount-awaiting','A Shopee ainda não confirmou preço e desconto em todas as variações. Nenhuma promoção foi reenviada.');
   return {state:'running',result:{...r,phase:'model_discount_verifying'},delay:7000};
  }
- if(rows.some(x=>money(x.base)!==money(approved.gross))){
+ if(rows.some(x=>money(x.base)!==money(x.gross))){
   if(!consent||rows.some(x=>money(x.base)!==money(x.expectedBase)))
    return modelError(r,'variant-base-changed','Os preços das variações mudaram desde a prévia. Não aplicar promoção.');
   if(readOnly)return {state:'running',result:r,delay:500};
@@ -333,7 +335,7 @@ async function advanceShopeeModelStages(job,io,{readOnly=false}={}){
    'model_discount_price_updating','model-price-write','Enviando preço bruto autorizado aos modelos.');
   await io.beforeWrite(checkpoint);
   try{
-   await io.variationUpdatePrices(rows,approved.gross);
+   await io.variationUpdatePrices(rows);
    return {state:'running',result:variationStatus(checkpoint,
     'model_discount_price_verifying','model-price-accepted',
     'Preços enviados; aguardando confirmação por modelo.'),delay:3000};
