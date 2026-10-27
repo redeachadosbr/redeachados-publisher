@@ -2303,7 +2303,29 @@ app.post('/api/shopee/optimizer/execution/execute',mustLogin,requireWeDropAdmin,
      throw Error('A prévia da promoção mudou ('+k+'). Refaça a conferência antes de executar.');
    if(fresh.needsBasePriceUpdate&&req.body?.allowPriceChange!==true)
     throw Error('Autorize também o ajuste do preço bruto na etapa 08.');
-   commercialDiscount={snapshot:fresh,allowPriceChange:req.body?.allowPriceChange===true};
+   if(plan.modelVariations){
+    const sourceSettings=await shopeePricingPreferences(auth.shopId);
+    const settings=normalizeShopeePricingSettings({...sourceSettings,
+     marginPct:Number(modelPromo.marginPct),minMarginPct:Number(modelPromo.minMarginPct),
+     discountPct:Number(modelPromo.discountPct),couponPct:Number(modelPromo.couponPct)});
+    if(!Array.isArray(modelPromo.modelQuotes)||
+       modelPromo.modelQuotes.length!==plan.modelVariations.options.length)
+     throw Error('Faltam preços individuais no plano de variações. Refaça a prévia.');
+    for(const option of plan.modelVariations.options){
+     const approvedModel=modelPromo.modelQuotes.find(m=>m.sku===option.sku);
+     if(!approvedModel||Math.abs(Number(approvedModel.cost)-Number(option.cost))>0.009)
+      throw Error('Custo ou SKU de variação mudou. Refaça a prévia.');
+     const newQuote=quoteShopeePrice({unitCost:Number(option.cost),settings,marginOverride:true});
+     if(Math.round(Number(newQuote.grossPrice)*100)!==Math.round(Number(approvedModel.gross)*100)||
+      Math.round(Number(newQuote.marketplaceDisplayPrice)*100)!==Math.round(Number(approvedModel.promo)*100)||
+      newQuote.netMarginPct+1e-7<Math.max(8,settings.minMarginPct))
+      throw Error('Margem ou desconto de '+option.name+' mudou. Refaça a prévia.');
+    }
+    if(modelPromo.modelPriceChange&&req.body?.allowPriceChange!==true)
+     throw Error('Autorize o preço bruto individual das variações antes de executar.');
+   }
+   commercialDiscount={snapshot:plan.modelVariations?{...fresh,modelQuotes:modelPromo.modelQuotes}:fresh,
+    allowPriceChange:req.body?.allowPriceChange===true};
   }
   if(Object.hasOwn(plan.proposed||{},'tax_info')&&plan.selectedStage!=='fiscal')
    throw Error('Informações fiscais só podem ser enviadas em execução fiscal individual, nunca junto das outras etapas.');
