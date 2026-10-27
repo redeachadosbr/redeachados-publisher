@@ -81,7 +81,7 @@
    if(timer!==null){cancel(timer);timer=null;}
    current={publishId:id,fingerprint:String(fingerprint||'').slice(0,260),
     startedAt:Number(startedAt)||now(),state:'processing',lastStatus:'PROCESSING_UPLOAD',
-    checkedAt:null,message:'Arquivo transferido ao TikTok. A confirmação de entrega na caixa de entrada ainda está pendente.'};
+    checkedAt:null,message:'Arquivo transferido ao TikTok. A entrega na caixa de entrada ainda não foi confirmada.'};
    persist();notify();queue(5000);
   }
   function restore(){
