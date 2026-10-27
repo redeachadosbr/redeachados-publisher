@@ -542,3 +542,31 @@
  #tab-kits .kit-unified-import{padding:12px}
  #tab-kits .kit-unified-actions button{width:100%}
 }
+
+/* Busca guiada por ideia: a caixa participa do mesmo formulário, com largura
+   confortável e sem modificar o estado de publicação ou outras etapas. */
+#tab-kits .kit-form .kit-idea-field{
+ grid-column:span 2;min-width:0;align-self:end;
+ display:flex;flex-direction:column;gap:6px;
+}
+#tab-kits .kit-form .kit-idea-field input{
+ display:block;width:100%;min-width:0;min-height:40px;box-sizing:border-box;
+ border:1px solid #b7d0ec;border-radius:9px;
+ padding:9px 12px;background:#f8fbff;color:#14345f;
+ font-size:12px;font-weight:600;line-height:1.5;
+}
+#tab-kits .kit-form .kit-idea-field input::placeholder{
+ font-weight:400;color:#7189a4;
+}
+#tab-kits .kit-form .kit-idea-field input:focus{
+ border-color:#2983dd;outline:2px solid #c6e1ff;outline-offset:1px;
+}
+#tab-kits .kit-form .kit-idea-field small{
+ font-size:10px;font-weight:500;line-height:1.3;color:#627f9c;
+}
+@media(max-width:740px){
+ #tab-kits .kit-form .kit-idea-field{grid-column:span 2}
+}
+@media(max-width:500px){
+ #tab-kits .kit-form .kit-idea-field{grid-column:1}
+}
