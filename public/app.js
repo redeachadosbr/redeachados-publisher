@@ -3556,6 +3556,7 @@ function optimizerExecReset(){
  }
  ++optimizerExecSerial;optimizerExecPlan=null;optimizerExecContext=null;optimizerExecBusy=false;
  optimizerExecAutoModelToken=null;optimizerExecAutoModelPreview=null;
+ optimizerModelMarketApprovalPaint(null);
  $('#optimizerExecutionSummary').hidden=true;
  $('#optimizerExecutionConfirmation').hidden=true;
  $('#optimizerExecutionConfirmation').open=false;
@@ -4393,6 +4394,10 @@ function optimizerExecRender(data){
  if(plan.modelVariations)$('#optimizerFinalPending').hidden=true;
  optimizerExecAutoModelToken=data.autoModelDiscountToken||null;
  optimizerExecAutoModelPreview=data.autoModelDiscountPreview||null;
+ // Uma nova prévia precisa de uma NOVA autorização para ultrapassar 25%.
+ const marketConsent=$('#optimizerExecutionOver25Consent');
+ if(marketConsent)marketConsent.checked=false;
+ optimizerModelMarketApprovalPaint(plan);
  optimizerExecFiscalLast(plan);
  if(!$('#optimizerExecDiscountCampaign').value&&$('#discountPromotionId')?.value)
   $('#optimizerExecDiscountCampaign').value=String($('#discountPromotionId').value).trim();
@@ -4472,9 +4477,34 @@ function optimizerExecRender(data){
    : 'Nenhuma alteração aprovada está pronta. Revise as etapas e confira as pendências.',
    data.ready?'success':'warning');
 }
+function optimizerModelMarketConsent(plan=optimizerExecPlan){
+ const promo=plan?.modelVariations?.promotion;
+ return !promo?.marketOverrideRequired||
+  (promo.allowOver25===true&&
+   document.getElementById('optimizerExecutionOver25Consent')?.checked===true);
+}
+function optimizerModelMarketApprovalPaint(plan=optimizerExecPlan){
+ const label=$('#optimizerExecutionOver25Approval');
+ const input=$('#optimizerExecutionOver25Consent');
+ const description=$('#optimizerExecutionOver25Text');
+ if(!label||!input||!description)return;
+ const promo=plan?.modelVariations?.promotion;
+ const required=Boolean(promo?.marketOverrideRequired);
+ label.hidden=!required;
+ if(!required){input.checked=false;return;}
+ const gap=Number(promo.marketGapPct),margin=Number(promo.netMarginPct);
+ const profit=Number(promo.netProfit);
+ description.textContent='Autorizo EXCEPCIONALMENTE este anúncio com preço '+
+  (Number.isFinite(gap)?shPricePercent(gap):'superior a 25%')+
+  ' acima da média pesquisada. Margem '+shPricePercent(margin)+
+  ', lucro estimado '+shPriceMoney(profit)+
+  '. A autorização vale apenas para esta prévia; a Shopee só recebe alterações após clicar em EXECUTAR.';
+}
 function optimizerDiscountReviewedForExecution(plan){
  return !['all','remaining'].includes(plan?.selectedStage)||
-  (plan?.modelVariations?Boolean(optimizerExecAutoModelToken):optimizerDiscountApprovalReady());
+  (plan?.modelVariations?
+   Boolean(optimizerExecAutoModelToken)&&optimizerModelMarketConsent(plan):
+   optimizerDiscountApprovalReady());
 }
 function optimizerExecUpdateRunButton(){
  const p=optimizerExecPlan;
@@ -4529,8 +4559,11 @@ function optimizerExecUpdateRunButton(){
    nextDescription.textContent=(p.blocked||[]).slice(0,2).join(' · ')||
     'Nenhuma alteração revisada incluída. Use Corrigir pendências: o sistema validará os rascunhos salvos da SKU e mostrará o que ainda falta.';
   }else if(!optimizerDiscountReviewedForExecution(p)){
-   nextTitle.textContent='Falta conferir o desconto da etapa 08';
-   nextDescription.textContent='A prévia comercial está preparada. Use “Conferir desconto para liberar execução” aqui e depois execute uma única vez.';
+   nextTitle.textContent=p.modelVariations?.promotion?.marketOverrideRequired?
+    'Autorização de preço acima de 25% pendente':'Falta conferir o desconto da etapa 08';
+   nextDescription.textContent=p.modelVariations?.promotion?.marketOverrideRequired?
+    'Marque a autorização excepcional imediatamente abaixo e depois clique em Executar. Nada foi enviado à Shopee.':
+    'A prévia comercial está preparada. Use “Conferir desconto para liberar execução” e depois execute uma única vez.';
   }else if(p.selectedStage!=='all'){
    const mode=$('#optimizerExecutionScope')?.selectedOptions?.[0]?.textContent||p.selectedStage;
    nextTitle.textContent='Prévia PARCIAL: '+mode;
@@ -4659,6 +4692,11 @@ async function optimizerResolveExecutionBlockers(){
  if(!w||!p||optimizerExecBusy||p.sku!==w.sku||
     String(p.itemId)!==String(w.itemId)||String(p.modelId)!==String(w.modelId))return;
  if(p.canExecute&&!optimizerDiscountReviewedForExecution(p)){
+  if(p.modelVariations?.promotion?.marketOverrideRequired){
+   optimizerExecNotice('Confirme a autorização acima de 25% na barra de execução antes de prosseguir.','warning');
+   $('#optimizerExecutionOver25Consent')?.focus();
+   return;
+  }
   optimizerDiscountOpenReview();
   optimizerExecNotice('Ajustes comerciais preparados: confira a promoção da SKU antes de executar. Nenhuma publicação foi iniciada.','warning');
   return;
@@ -4763,6 +4801,9 @@ $('#optimizerExecutionLaunch')?.addEventListener?.('click',()=>{
   return void optimizerExecuteApproved(false);
  void optimizerResolveExecutionBlockers();
 });
+$('#optimizerExecutionOver25Consent')?.addEventListener?.('change',()=>{
+ optimizerExecUpdateRunButton();
+});
 $('#optimizerExecutionRemaining')?.addEventListener?.('click',()=>void optimizerExecuteApproved(true));
 $('#optimizerExecutionRun')?.addEventListener?.('click',()=>void optimizerExecuteApproved(false));
 function optimizerExecutionNeedsFreshPreview(message){
@@ -4774,6 +4815,11 @@ async function optimizerExecuteApproved(remainingOnly=false){
  if(!p?.canExecute||!ctx||optimizerExecBusy||p.sku!==ctx.sku||
     p.itemId!==ctx.itemId||p.modelId!==ctx.modelId)return;
  if(!optimizerDiscountReviewedForExecution(p)){
+  if(p.modelVariations?.promotion?.marketOverrideRequired&&!optimizerModelMarketConsent(p)){
+   optimizerExecNotice('Para continuar, marque a autorização excepcional acima de 25% ao lado do andamento. O preço e a margem foram conferidos na prévia; nada foi enviado.','warning');
+   $('#optimizerExecutionOver25Consent')?.focus();
+   return;
+  }
   optimizerExecNotice('Não foi possível gerar a aprovação automática do desconto. Confira a campanha da SKU na prévia.','warning');
   if(!p.modelVariations)optimizerDiscountOpenReview();return;
  }
@@ -4808,7 +4854,9 @@ async function optimizerExecuteApproved(remainingOnly=false){
          optimizerExecAutoModelPreview?.needsBasePriceUpdate||
          optimizerExecAutoModelPreview?.modelPriceChange):
          discountIntent?.consent===true,
-         allowOver25:optimizerMarketExceptionConsent(optimizerDiscountFinalQuote)}:{})}),
+         allowOver25:p.modelVariations?
+          (p.modelVariations.promotion?.marketOverrideRequired===true&&optimizerModelMarketConsent(p)):
+          optimizerMarketExceptionConsent(optimizerDiscountFinalQuote)}:{})}),
      signal:AbortSignal.timeout(85000)
    });
    if(optimizerWorkflowPlan?.sku!==ctx.sku||optimizerWorkflowPlan?.itemId!==ctx.itemId||optimizerWorkflowPlan?.modelId!==ctx.modelId)return;
