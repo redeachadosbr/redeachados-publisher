@@ -4491,6 +4491,7 @@ function optimizerModelMarketApprovalPaint(plan=optimizerExecPlan){
  const promo=plan?.modelVariations?.promotion;
  const required=Boolean(promo?.marketOverrideRequired);
  label.hidden=!required;
+ label.style.display=required?'flex':'none';
  if(!required){input.checked=false;return;}
  const gap=Number(promo.marketGapPct),margin=Number(promo.netMarginPct);
  const profit=Number(promo.netProfit);
