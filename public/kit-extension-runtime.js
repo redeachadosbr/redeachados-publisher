@@ -4,7 +4,7 @@ const pos=n=>String(n).padStart(2,'0');
 function extensionVersionOk(version){
  const parts=String(version||'').split('.').map(Number);
  return parts.length===3&&parts.every(Number.isInteger)&&
-  (parts[0]>1||(parts[0]===1&&(parts[1]>0||(parts[1]===0&&parts[2]>=26))));
+  (parts[0]>1||(parts[0]===1&&(parts[1]>0||(parts[1]===0&&parts[2]>=54))));
 }
 export async function kitReferenceSheet(kit,{fetcher=fetch}={}){
  const components=kit?.components||[];
@@ -95,7 +95,7 @@ export function createKitExtensionController({
   if(m.kind==='RA_EXTENSION_READY'){
    version=String(m.version||'');ready=extensionVersionOk(version);
    feedback(ready?'Ponte ChatGPT '+version+' detectada · pronta para kits.':
-    'Ponte não detectada na versão exigida (1.0.26 ou mais recente).','info');
+    'Para recuperar fotos de kits, atualize a Ponte ChatGPT para v1.0.54 ou superior e recarregue o Chrome.','info');
    return;
   }
   if(!job||!['RA_EXTENSION_START_RESULT','RA_EXTENSION_PROGRESS','RA_EXTENSION_IMAGE','RA_EXTENSION_WAKE_RESULT'].includes(m.kind)||
@@ -174,7 +174,7 @@ export function createKitExtensionController({
   if(busy)return feedback('A Ponte já está gerando este kit. Use Parar ou aguarde a próxima imagem.','info');
   const kit=getKit();
   if(!kit)throw Error('Abra o rascunho de kit antes de iniciar as nove imagens.');
-  if(!await waitReady())throw Error('A extensão Rede Achados BR — Ponte ChatGPT v1.0.26+ não foi detectada. Ative a extensão e atualize esta página.');
+  if(!await waitReady())throw Error('A extensão Rede Achados BR — Ponte ChatGPT v1.0.54+ não foi detectada. Ative a extensão e atualize esta página.');
   const other=localStorage.getItem('redeAchadosBridgeActiveV3');
   try{if(JSON.parse(other||'null')?.nonce)
    throw Error('Há geração de uma SKU individual na Ponte. Finalize ou pause esse trabalho primeiro.');}
