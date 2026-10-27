@@ -30,7 +30,7 @@ import {previewWeDropCsv,prepareWeDropImport,MAX_CSV_CHARS} from './wedropCsv.js
 import {convertWeDropExcelBase64} from './wedropExcel.js';
 import {saveWeDropCosts,getWeDropCoverage,compareIncomingCosts,pendingWeDropModels,upsertWeDropSkuLink} from './wedropCosts.js';
 import {saveWeDropProducts,readWeDropProduct} from './wedropCosts.js';
-import {kitCatalog,suggestKits,composeKit,kitCreative,kitPrompts,kitPlusResearchBrief,kitPlusContentPrompt,categoryMatches,clearKitCatalogCache} from './shopeeKitBuilder.js';
+import {kitCatalog,suggestKits,suggestKitsForIdea,composeKit,kitCreative,kitPrompts,kitPlusResearchBrief,kitPlusContentPrompt,categoryMatches,clearKitCatalogCache} from './shopeeKitBuilder.js';
 import {saveKitStockImport,clearKitStockCache,parseWeDropAvailabilityCsv} from './shopeeKitAvailability.js';
 import {saveKitDraft,listKitDrafts,loadKitDraft} from './shopeeKitDraftStore.js';
 import {kitUploadPhoto,kitPublicationReadiness,kitPublicationPreview,kitPublishApproved,checkKitPublication} from './shopeeKitPublicationService.js';
@@ -224,6 +224,20 @@ app.get('/api/shopee/kits/catalog',mustLogin,requireWeDropAdmin,async(req,res)=>
   });
   res.json({ok:true,...data});
  }catch(error){res.status(400).json({error:String(error.message||error).slice(0,300)});}
+});
+app.post('/api/shopee/kits/idea-search',mustLogin,requireWeDropAdmin,async(req,res)=>{
+ res.setHeader('Cache-Control','no-store');
+ if(!verifiedSameOrigin(req))return res.status(403).json({error:'Origem não autorizada.'});
+ try{
+  const {auth}=await getValidAuth(req);
+  const idea=String(req.body?.idea||'').trim();
+  if(idea.length<3||idea.length>160)throw Error('Escreva uma ideia entre 3 e 160 caracteres.');
+  const data=await suggestKitsForIdea(auth.shopId,{
+   idea,size:Number(req.body?.size||2),marginPct:Number(req.body?.marginPct??10),
+   packing:Number(req.body?.packing||0),shipping:Number(req.body?.shipping||0)
+  });
+  res.json({ok:true,...data,readOnly:true,requiresReview:true,marketplaceUpdated:false});
+ }catch(error){res.status(400).json({error:String(error.message||error).slice(0,350)});}
 });
 app.post('/api/shopee/kits/suggest',mustLogin,requireWeDropAdmin,async(req,res)=>{
  res.setHeader('Cache-Control','no-store');
