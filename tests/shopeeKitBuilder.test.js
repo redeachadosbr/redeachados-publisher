@@ -299,3 +299,19 @@ test('Editor de rascunho abre sob o cartão certo e mantém título e ações',a
  assert.match(css,/kit-manual-row\[data-mode="add"\]/);
  assert.match(css,/scroll-margin-top:248px/);
 });
+
+test('texto do kit reúne descrições e medidas sem inventar dados para SKU faltante',async()=>{
+ const {kitWeDropFacts,kitContentBrief}=await import('../shopeeKitBuilder.js');
+ assert.deepEqual(kitWeDropFacts({description:'<p>Musical</p>',dimensions:'20 x 30 cm'}),{description:'Musical',dimensions:'20 x 30 cm'});
+ const brief=kitContentBrief({kitSku:'KIT-1-2',components:[
+  {sku:'1',name:'Elefante Musical',description:'Brinquedo musical',dimensions:'20 x 30 cm'},
+  {sku:'2',name:'Kit Higiene Bebê'}]},{manualFacts:{'2':'Conjunto com 6 peças, dado conferido pelo vendedor'}});
+ assert.equal(brief.missingDetails.length,1);
+ assert.equal(brief.missingDetails[0].sku,'2');
+ assert.match(brief.prompt,/TÍTULO 1/);
+ assert.match(brief.prompt,/TÍTULO 3/);
+ assert.match(brief.prompt,/DESCRIÇÃO/);
+ assert.match(brief.prompt,/20 x 30 cm/);
+ assert.match(brief.prompt,/NÃO verificad/);
+ assert.throws(()=>kitContentBrief({kitSku:'KIT-1-2',components:[{sku:'1'},{sku:'2'}]},{manualFacts:{'3':'invasão'}}),/não pertence/);
+});
