@@ -301,24 +301,26 @@ export async function suggestKitsForIdea(shop,{idea,size=2,marginPct=10,packing=
  if(pool.length<Number(size))return {results:[],source:'Catálogo WeDrop importado · pesquisa pela ideia',
   idea:phrase,candidatesFound:pool.length,disclaimer:'Não foram encontradas SKUs DISPONÍVEIS suficientes para esta ideia. Revise os termos ou atualize a importação WeDrop.'};
  const ranked=[];
- const suitable=(items)=>{
-  if(new Set(items.map(x=>ideaFamily(x))).size!==items.length)return false;
-  if(items.reduce((total,p)=>total+p.unitCost,0)>400)return false;
+ const candidate=(items)=>{
+  if(new Set(items.map(x=>ideaFamily(x))).size!==items.length)return null;
+  if(items.reduce((total,p)=>total+p.unitCost,0)>400)return null;
   const roles=new Set(items.flatMap(p=>p.ideaRoles));
-  return !result.theme||roles.size>=2;
+  if(result.theme&&roles.size<2)return null;
+  const fit=assessKitBuyerFit(items);
+  if(!fit.ok)return null;
+  return {items,fit,score:fit.score*2+
+   items.reduce((total,p)=>total+p.ideaScore,0)};
  };
  for(let i=0;i<pool.length;i++){
   for(let j=i+1;j<pool.length;j++){
    const pair=[pool[i],pool[j]];
    if(Number(size)===2){
-    if(!suitable(pair))continue;
-    ranked.push({items:pair,score:pair.reduce((v,x)=>v+x.ideaScore,0)+related(...pair)*2});
+    const match=candidate(pair);
+    if(match)ranked.push(match);
    }else{
     for(let k=j+1;k<pool.length;k++){
-     const items=[...pair,pool[k]];
-     if(!suitable(items))continue;
-     const compatibility=related(items[0],items[1])+related(items[0],items[2])+related(items[1],items[2]);
-     ranked.push({items,score:items.reduce((v,x)=>v+x.ideaScore,0)+compatibility});
+     const match=candidate([...pair,pool[k]]);
+     if(match)ranked.push(match);
     }
    }
   }
@@ -339,7 +341,9 @@ export async function suggestKitsForIdea(shop,{idea,size=2,marginPct=10,packing=
   try{
    const kit=await composeKit(shop,match.items.map(x=>x.sku),{marginPct,packing,shipping});
    kits.push({...kit,ideaMatchScore:match.score,
-    businessReason:'Sugestão para: "'+phrase+'". Produtos existentes e complementares encontrados no catálogo WeDrop importado.'});
+    buyerFitScore:match.fit.score,matchSignals:match.fit.signals,
+    businessReason:match.fit.reason+'. Origem: ideia "'+phrase+'". A chance de venda é uma hipótese, não um resultado comprovado.',
+    demandEvidence:'não verificada'});
   }catch(err){
    // Um kit sem preço seguro ou estoque validado não deve aparecer como pronto.
    if(!/combina|cotacao|centavos|Margem|margem|preco|preço/i.test(String(err.message||err)))throw err;
@@ -420,22 +424,30 @@ export async function suggestKits(shop,{category='Brinquedos',size=2,marginPct=1
  // componente real com compatibilidade e custo seguros.
  if(Number(size)===3&&source.startsWith('compatibilidade')){
   picks=picks.map(pair=>{
-   const extra=rows.filter(x=>!pair.skus.includes(x.sku)&&categoryMatches(x.category,category)&&
+   const extra=rows.filter(x=>!pair.skus.includes(x.sku)&&
     pair.items.reduce((v,p)=>v+p.unitCost,0)+x.unitCost<400)
-    .map(x=>({x,score:Math.max(...pair.items.map(item=>related(item,x)))}))
-    .filter(z=>z.score>=3).sort((a,b)=>b.score-a.score||a.x.unitCost-b.x.unitCost)[0];
+    .map(x=>({x,fit:assessKitBuyerFit([...pair.items,x])}))
+    .filter(z=>z.fit.ok).sort((a,b)=>b.fit.score-a.fit.score||a.x.unitCost-b.x.unitCost)[0];
    if(!extra)return null;
-   return {...pair,items:[...pair.items,extra.x],skus:[...pair.skus,extra.x.sku]};
+   return {...pair,items:[...pair.items,extra.x],skus:[...pair.skus,extra.x.sku],
+    compatibility:extra.fit.score,reason:extra.fit.reason};
   }).filter(Boolean);
  }
  const result=[];
  for(const pick of picks.slice(0,10)){
   const item=await composeKit(shop,pick.skus,{marginPct,packing,shipping});
-  result.push({...item,compatibilityScore:pick.compatibility,
-   businessReason:pick.reason||'Itens com usos complementares identificados por categoria e nome.'});
+  const fit=assessKitBuyerFit(item.components);
+  if(!fit.ok)continue;
+  result.push({...item,compatibilityScore:fit.score,buyerFitScore:fit.score,
+   matchSignals:fit.signals,
+   businessReason:fit.reason+'. Potencial comercial estimado; vendas e buscas não verificadas.',
+   demandEvidence:'não verificada'});
  }
- // Ordenar por lucro líquido simulado, sem confundir isso com vendas reais.
- result.sort((a,b)=>b.quote.netProfit-a.quote.netProfit);
+ // Coerência vem antes de lucro absoluto: margem e lucro já foram
+ // validados pela precificação; jamais promover combinações aleatórias.
+ result.sort((a,b)=>b.buyerFitScore-a.buyerFitScore||
+  b.quote.netMarginPct-a.quote.netMarginPct||
+  b.quote.netProfit-a.quote.netProfit);
  return {source,disclaimer:commentary,category,results:result.slice(0,8)};
 }
 export async function kitCreative(shop,kit,{ai=true}={}){
