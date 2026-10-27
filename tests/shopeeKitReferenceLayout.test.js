@@ -166,5 +166,20 @@ test('layout compacto da imagem, isolado ao resumo e ao formulário de kits',()=
  assert.match(css,/#tab-kits #kitViewBuilder \.kit-overview\{/);
  assert.match(css,/#tab-kits #kitForm #kitSuggest\{/);
  assert.match(css,/@media\(max-width:720px\)/);
- assert.match(html,/kit-builder\.css\?v=3\.1-reference-config/);
+ assert.match(html,/kit-builder\.css\?v=3\.2-draft-editor-reference/);
+});
+
+test('editor do rascunho exibe fotos e indicadores do próprio kit e controles existentes',()=>{
+ const section=page.slice(page.indexOf('id="kitDetail"'),page.indexOf('id="kitPublishPanel"',page.indexOf('id="kitDetail"')));
+ for(const id of ['kitEditorProductPhotos','kitEditorCost','kitEditorGross','kitEditorDiscount','kitEditorMargin','kitClose','kitManualComposition','kitManualStatus','kitTitle','kitDescription','kitCopyTitle','kitCopyDescription','kitGenerateAll','kitImportImages','kitCopyAllPrompts']){
+  assert.equal((section.match(new RegExp('id="'+id+'"','g'))||[]).length,1,id+' deve existir no editor');
+ }
+ assert.match(css,/#tab-kits #kitDetail\.kit-editor-reference/);
+ assert.match(css,/#tab-kits #kitDetail \.kit-editor-summary/);
+ assert.match(css,/#tab-kits #kitDetail \.kit-manual-composition/);
+ assert.match(js,/function refreshKitEditorOverview\(kit\)/);
+ assert.match(js,/refreshKitEditorOverview\(kit\);/);
+ assert.match(js,/\$\('#kitImportImages'\)\?\.addEventListener\('click'/);
+ assert.match(js,/\/api\/shopee\/kits\/modify/);
+ assert.match(html,/kit-builder\.css\?v=3\.2-draft-editor-reference/);
 });

@@ -76,7 +76,28 @@ function scheduleKitMarginReprice(){
  status('Margem ajustada para '+$('#kitMargin').value+'%. Atualizando os preços e o lucro dos kits pela calculadora Shopee...','info');
  marginTimer=setTimeout(()=>void repriceKitMargin(marginRevision),420);
 }
+function refreshKitEditorOverview(kit){
+ const photos=$('#kitEditorProductPhotos');
+ if(!photos)return;
+ photos.replaceChildren();
+ kit.components.forEach((p,index)=>{
+   if(index){
+     const plus=elt('span','kit-editor-photo-plus','+');
+     plus.setAttribute('aria-hidden','true');
+     photos.append(plus);
+   }
+   const tile=elt('div','kit-editor-product-tile');
+   tile.title=p.name+' · SKU '+p.sku;
+   addImage(tile,p);
+   photos.append(tile);
+ });
+ $('#kitEditorCost').textContent=money(kit.kitCost);
+ $('#kitEditorGross').textContent=money(kit.quote.grossPrice);
+ $('#kitEditorDiscount').textContent=pct(kit.quote.discountPct);
+ $('#kitEditorMargin').textContent=pct(kit.quote.netMarginPct);
+}
 function refreshKitPrices(kit){
+ refreshKitEditorOverview(kit);
  const root=$('#kitNumbers');root.replaceChildren();
  for(const [label,value] of [
   ['Custos dos produtos',money(kit.componentCost)],
@@ -664,21 +685,36 @@ function kitManualControls(kit,{editor=false}={}){
  root.append(note);
  const feedback=editor?$('#kitManualStatus'):elt('p','kit-manual-status','Prévia sem publicar; estoque e custo verificados pela WeDrop.');
  const row=(name,mode)=>{
-  const line=elt('div','kit-manual-row');
+  const line=elt('section','kit-manual-row');
   line.dataset.mode=mode;
-  const label=elt('label','',name);
-  const input=elt('input');input.type='text';input.maxLength=120;
-  input.placeholder=mode==='add'?'Ex.: 118004':'SKU complementar substituta';
-  input.autocomplete='off';input.setAttribute('aria-label',name);
-  label.append(input);line.append(label);
+  const header=elt('div','kit-manual-row-heading');
+  const icon=elt('span','kit-manual-row-icon',mode==='add'?'+':'⇄');
+  icon.setAttribute('aria-hidden','true');
+  const headerText=elt('div','kit-manual-row-intro');
+  headerText.append(elt('strong','',name),elt('small','',mode==='add'?
+    'Inclua um produto complementar (2 a 3 SKUs por kit).':
+    'Troque um produto do kit por outro do catálogo WeDrop.'));
+  header.append(icon,headerText);
+  line.append(header);
+  const fields=elt('div','kit-manual-row-fields');
   let select=null;
   if(mode==='replace'){
-   const choice=elt('label','','Substituir qual SKU?');
+   const choice=elt('label','','Produto a substituir');
    select=elt('select');
    for(const p of kit.components)select.append(new Option(p.sku+' · '+p.name.slice(0,38),p.sku));
-   choice.append(select);line.append(choice);
+   choice.append(select);fields.append(choice);
   }
-  const button=elt('button','',''+(mode==='add'?'Adicionar SKU + recalcular':'Substituir SKU + recalcular'));
+  const label=elt('label','',mode==='add'?'SKU complementar':'Novo SKU');
+  const inputWrap=elt('span','kit-manual-input-wrap');
+  const input=elt('input');input.type='text';input.maxLength=120;
+  input.placeholder='Ex.: 118004';
+  input.autocomplete='off';input.setAttribute('aria-label',name);
+  const lens=elt('span','kit-manual-input-lens','⌕');
+  lens.setAttribute('aria-hidden','true');
+  inputWrap.append(input,lens);
+  label.append(inputWrap);fields.append(label);
+  line.append(fields);
+  const button=elt('button','kit-manual-apply',mode==='add'?'⊕  Adicionar SKU + recalcular':'⇄  Substituir SKU + recalcular');
   button.type='button';button.disabled=mode==='add'&&kit.components.length>=3;
   button.title=button.disabled?'Máximo de 3 produtos por kit':name;
   line.append(button);
@@ -959,6 +995,7 @@ function renderKit({scroll=true,displayTitle=''}={}){
   kit.components.map(p=>p.name).join(' + ')).trim();
  $('#kitEditingSkuCode').textContent='Código do kit: '+kit.kitSku+
   ' · '+kit.components.length+' produtos';
+ refreshKitEditorOverview(kit);
  $('#kitManualComposition').replaceChildren(kitManualControls(kit,{editor:true}));
  const items=$('#kitComponents');items.replaceChildren();
  for(const p of kit.components){
@@ -1393,6 +1430,13 @@ $('#kitShipping')?.addEventListener('input',()=>{
  updateKitOverview();scheduleKitMarginReprice();
 });
 $('#kitPacking')?.addEventListener('input',()=>scheduleKitMarginReprice());
+$('#kitImportImages')?.addEventListener('click',()=>{
+ if(!prepared)return imageStatus('Abra um rascunho antes de importar imagens.','error');
+ const slot=Array.from({length:9},(_,i)=>i+1).find(n=>!images.has(n))||1;
+ const chooser=$('#kitImages')?.children?.[slot-1]?.querySelector('input[type="file"]');
+ if(!chooser)return imageStatus('A galeria ainda não está pronta. Reabra o rascunho.','error');
+ chooser.click();
+});
 $('#kitTitle')?.addEventListener('input',onKitContentEdit);
 $('#kitDescription')?.addEventListener('input',onKitContentEdit);
 for(const [fileSelector,buttonSelector,nameSelector] of [
