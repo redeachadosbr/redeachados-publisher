@@ -308,7 +308,7 @@
         reason:v.reason||'Termos sugeridos na pesquisa de mercado'
       }));
       const ranking=globalThis.RASeoTitleScore?.rank(options,{
-       keywords:researchKeywords,productTitle:f.supplier||f.title
+       keywords:researchKeywords,productTitle:f.title||f.supplier, researchStatus:researchResult?.researchStatus||'unverified'
       });
       if(!ranking||ranking.length!==4){
        grid.append(el('p','seo-studio-empty','O módulo de classificação não carregou. Atualize a página com Ctrl+Shift+R.'));
