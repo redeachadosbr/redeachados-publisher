@@ -14,7 +14,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="/styles.css?v=5522-reference-layout" />
+  <link rel="stylesheet" href="/styles.css?v=5523-confirm-inbox" />
 </head>
 <body class="ui-compact-pro">
   <svg class="icon-definitions" xmlns="http://www.w3.org/2000/svg" aria-hidden="true"><defs>
@@ -90,6 +90,16 @@
                     <button id="publishBtn" type="button" class="social-publish-btn tiktok-publish" aria-label="Enviar rascunho ao TikTok"><svg class="icon social-button-icon"><use href="#i-tiktok"/></svg><span class="social-button-copy"><b>Enviar rascunho ao TikTok</b><small>Finalize a publicação no aplicativo</small></span></button>
                     <button id="instagramPublishBtn" type="button" class="social-publish-btn instagram-publish" aria-label="Publicar Reel no Instagram"><svg class="icon social-button-icon"><use href="#i-instagram"/></svg><span class="social-button-copy"><b>Publicar Reel no Instagram</b><small>Publicação automática do Reel</small></span></button>
                   </div>
+                  <section id="tiktokDeliveryPanel" class="tiktok-delivery-panel" data-state="processing"
+                    aria-label="Acompanhamento da entrega do TikTok" aria-live="polite" hidden>
+                    <span class="tiktok-delivery-symbol" aria-hidden="true"><svg class="icon"><use href="#i-tiktok"/></svg></span>
+                    <div class="tiktok-delivery-copy">
+                      <strong id="tiktokDeliveryTitle">Aguardando a confirmação do TikTok</strong>
+                      <p id="tiktokDeliveryMessage">O arquivo foi transferido, mas a caixa de entrada ainda não confirmou o recebimento.</p>
+                      <small id="tiktokDeliveryElapsed"></small>
+                    </div>
+                    <button type="button" class="ghost" id="tiktokCheckDeliveryBtn">Verificar agora</button>
+                  </section>
                   <section class="story-box" aria-label="Stories do Instagram"><div class="story-head"><div><span class="eyebrow">STORIES</span><h4>Story do produto</h4></div><span class="story-badge">INSTAGRAM</span></div><div class="story-actions"><button id="prepareStoryBtn" type="button" class="story-btn story-link"><svg class="icon"><use href="#i-copy"/></svg><span><b>Copiar link do produto</b><small>Copia somente o link da Shopee para você usar no adesivo Link de um Story manual.</small></span></button><button id="instagramStoryPublishBtn" type="button" class="story-btn story-auto"><svg class="icon"><use href="#i-instagram"/></svg><span><b>Publicar Story automático</b><small>API oficial · publica o vídeo sem adesivo de link.</small></span></button></div><p id="storyStatus" class="small story-status">O botão da esquerda apenas copia o link do produto. O Story automático é publicado diretamente no Instagram sem link clicável.</p></section>
                   <div class="sync-reel-row"><button id="syncLatestReelBtn" type="button" class="ghost sync-reel-btn">↻ Sincronizar último Reel com o Direct</button><span class="small">Use apenas para reparar um Reel já publicado que ainda não apareceu em <b>reel_links</b>.</span></div><p id="draftModeInfo" class="small"><b>No TikTok, você finaliza a publicação no aplicativo.</b> O vídeo vai para a caixa de entrada; privacidade, comentários, Dueto, Costurar e marcação de IA são definidos por lá. No Instagram, o Reel é publicado automaticamente. Stories podem ser publicados automaticamente pela API sem link. Para um Story manual, use “Copiar link do produto”.</p></div>
               </div>
@@ -150,7 +160,7 @@
   </dialog>
 
 
-  <script src="/app.js?v=5521-catalog-persistent"></script><script src="/ui.js?v=5522-reference-layout"></script>
+  <script src="/tiktok-delivery.js?v=5523-confirm-inbox"></script><script src="/app.js?v=5523-confirm-inbox"></script><script src="/ui.js?v=5522-reference-layout"></script>
   <script>if('serviceWorker' in navigator){navigator.serviceWorker.register('/sw.js').catch(()=>{})}</script>
 </body>
 </html>

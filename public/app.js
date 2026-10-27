@@ -13,6 +13,17 @@ let captionManual=false;
 let commentManual=false;
 let instagramManual=false;
 let tiktokAuthInvalid=false;
+function currentTikTokVideoFingerprint(){
+ if(selectedRemoteVideo?.id)return 'drive:'+selectedRemoteVideo.id;
+ if(selectedFile)return 'file:'+selectedFile.name+':'+selectedFile.size+':'+selectedFile.lastModified;
+ return '';
+}
+const tiktokDelivery=window.PublisherTikTokDelivery.create({
+ request:(path,options)=>api(path,options),
+ onChange:()=>{
+  if(config)syncTikTokPublishState();
+ }
+});
 let activeDraftSku='';
 let tiktokAuthChannel=null;
 
@@ -23,7 +34,8 @@ function socialButtonMarkup(platform,state='idle'){
     idle:['Enviar rascunho ao TikTok','Finalize a publicação no aplicativo'],
     loading:['Enviando rascunho...','Aguarde a transferência do vídeo'],
     success:['Rascunho enviado','Abra o TikTok para finalizar'],
-    reconnect:['Reconectar TikTok','Autorização inválida ou expirada']
+    reconnect:['Reconectar TikTok','Autorização inválida ou expirada'],
+    pending:['Aguardando confirmação TikTok','Arquivo transferido; entrega na caixa de entrada ainda pendente']
   }:isStory?{
     idle:['Publicar Story automático','API oficial · sem adesivo de link'],
     loading:['Publicando Story...','Aguarde a confirmação da Meta'],
@@ -45,6 +57,10 @@ function setSocialButton(platform,state='idle'){
 function syncTikTokPublishState(){
   // Estados antigos da URL OAuth nunca prevalecem sobre a API.
   if(!config?.tiktokConnected||tiktokAuthInvalid){setSocialButton('tiktok','reconnect');return false;}
+  if(tiktokDelivery.state()?.state==='processing'||tiktokDelivery.state()?.state==='unverified'||
+     tiktokDelivery.state()?.state==='delayed'){
+   setSocialButton('tiktok','pending');return true;
+  }
   setSocialButton('tiktok','idle');return true;
 }
 function openDraftDb(){
@@ -218,7 +234,7 @@ async function api(url,opt={}){const r=await fetch(url,{...opt,headers:{...(opt.
 async function boot(){
   const a=await api('/api/auth-state');
   if(a.locked&&!a.loggedIn){$('#loginScreen').classList.remove('hidden');return}
-  $('#app').classList.remove('hidden'); initTikTokAuthBridge(); await loadConfig(); await restoreDraft(); await loadHistory();
+  $('#app').classList.remove('hidden'); initTikTokAuthBridge(); await loadConfig(); await restoreDraft(); tiktokDelivery.restore(); await loadHistory();
 }
 async function loadConfig(){
   config=await api('/api/config');
@@ -562,6 +578,12 @@ async function loadCreator(){
 $('#publishBtn').onclick=async()=>{
   if(!selectedFile&&!selectedRemoteVideo)return toast('Escolha um vídeo.',true);if(!generated)return toast('Aguarde a geração da publicação.',true);
   if(!config.tiktokConnected||tiktokAuthInvalid){syncTikTokPublishState();location.hash='#channels';toast('Reconecte sua conta TikTok antes de enviar o rascunho.',true);setTimeout(()=>$('#connectBtn')?.focus(),120);return;}
+  const fingerprint=currentTikTokVideoFingerprint();
+  if(tiktokDelivery.isUndelivered(fingerprint)){
+   const resend=window.confirm('Este vídeo já foi transferido ao TikTok e a entrega ainda está pendente. Reenviar agora pode criar rascunhos duplicados. Deseja enviar uma segunda cópia mesmo assim?');
+   if(!resend){tiktokDelivery.check();return;}
+  }
+  const startedAt=Date.now();
   const b=$('#publishBtn');b.disabled=true;setSocialButton('tiktok','loading');
   try{
     let r;
@@ -571,11 +593,13 @@ $('#publishBtn').onclick=async()=>{
       const fd=new FormData();fd.append('video',selectedFile);fd.append('meta',JSON.stringify(currentMeta()));fd.append('caption',$('#captionPreview').value.trim());fd.append('duration',String(duration||0));
       r=await api('/api/upload-draft',{method:'POST',body:fd});
     }
-    setSocialButton('tiktok','success');
-    toast('Rascunho enviado. Abra o TikTok e toque na notificação da caixa de entrada para concluir.');
+    // A confirmação HTTP indica transferência concluída, NÃO entrega na caixa de entrada.
+    tiktokDelivery.track({publishId:r.publishId,fingerprint,startedAt});
+    setSocialButton('tiktok','pending');
+    toast('Arquivo transferido ao TikTok. Aguardando confirmação da notificação; não reenvie enquanto estiver processando.');
     try{await navigator.clipboard.writeText($('#captionPreview').value.trim())}catch{}
     await loadHistory();saveDraft();setTimeout(()=>syncTikTokPublishState(),1400);
-  }catch(e){if(/token|oauth|authoriz|expir|invalid/i.test(e.message||'')){tiktokAuthInvalid=true;syncTikTokPublishState();$('#connectionText').textContent='Autorização expirada. Reconecte o TikTok para voltar a enviar rascunhos.';}toast(e.message,true)}finally{b.disabled=false;if(!tiktokAuthInvalid)setTimeout(()=>setSocialButton('tiktok','idle'),1600)}
+  }catch(e){if(/token|oauth|authoriz|expir|invalid/i.test(e.message||'')){tiktokAuthInvalid=true;syncTikTokPublishState();$('#connectionText').textContent='Autorização expirada. Reconecte o TikTok para voltar a enviar rascunhos.';}toast(e.message,true)}finally{b.disabled=false;if(!tiktokAuthInvalid)setTimeout(()=>syncTikTokPublishState(),1600)}
 };
 async function resetPublication({preserveSku='',preserveQuery='',silent=false}={}){
   selectedFile=null;selectedRemoteVideo=null;preparedStoryFile=null;preparedStoryVideoId='';frames=[];generated=null;duration=0;captionManual=false;commentManual=false;instagramManual=false;activeDraftSku=String(preserveSku||'').trim();

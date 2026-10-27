@@ -1718,6 +1718,7 @@ function chunkPlan(size){
 }
 
 async function uploadDraftFile(file){
+  const uploadStartedAt=Date.now();
   const size=file.size, {chunkSize,totalChunks}=chunkPlan(size);
   const payload={
     source_info:{source:'FILE_UPLOAD',video_size:size,chunk_size:chunkSize,total_chunk_count:totalChunks}
@@ -1725,6 +1726,7 @@ async function uploadDraftFile(file){
   const init=await tiktokJson('https://open.tiktokapis.com/v2/post/publish/inbox/video/init/',{method:'POST',body:JSON.stringify(payload)});
   const uploadUrl=init?.data?.upload_url,publishId=init?.data?.publish_id;
   if(!uploadUrl||!publishId) throw new Error('TikTok não retornou os dados de upload do rascunho.');
+  const uploadInitMs=Date.now()-uploadStartedAt;
   const fd=fs.openSync(file.path,'r'); let start=0;
   try{
     while(start<size){
@@ -1735,6 +1737,9 @@ async function uploadDraftFile(file){
       start=end;
     }
   }finally{fs.closeSync(fd);}
+  console.info('[tiktok-draft] file_transfer_completed bytes='+size+
+   ' init_ms='+uploadInitMs+' transfer_ms='+(Date.now()-uploadStartedAt-uploadInitMs)+
+   ' total_ms='+(Date.now()-uploadStartedAt)+' inbox_delivery=unconfirmed');
   return publishId;
 }
 
@@ -1776,11 +1781,15 @@ app.post('/api/upload-draft-remote', mustLogin, async(req,res)=>{
     const meta=req.body.meta||{}; const s=loadStore(), settings=effectiveSettings(s.settings||{});
     const manualCaption=String(req.body.caption||'').trim();
     const caption=(manualCaption||buildCaption(meta,settings)).slice(0,2200);
+    const sourceStartedAt=Date.now();
     remoteFile=await downloadDriveToTemp(id,String(req.body.filename||meta.product||'wedrop-video'));
+    console.info('[tiktok-draft] remote_download_completed bytes='+remoteFile.size+
+     ' duration_ms='+(Date.now()-sourceStartedAt));
     const publishId=await uploadDraftFile(remoteFile);
-    s.history.unshift({id:crypto.randomUUID(),publishId,filename:remoteFile.originalname,product:meta.product||'',shopeeUrl:meta.shopeeUrl||'',caption,status:'SENT_TO_TIKTOK_INBOX',mode:'draft-remote',createdAt:now()});
+    s.history.unshift({id:crypto.randomUUID(),publishId,filename:remoteFile.originalname,product:meta.product||'',shopeeUrl:meta.shopeeUrl||'',caption,status:'PROCESSING_UPLOAD',mode:'draft-remote',createdAt:now()});
     s.history=s.history.slice(0,200); saveStore(s); removeFile(remoteFile.path);
-    res.json({ok:true,publishId,caption,message:'Vídeo remoto enviado como rascunho ao TikTok.'});
+    res.json({ok:true,publishId,caption,deliveryStatus:'PROCESSING_UPLOAD',
+      message:'Arquivo transferido para o TikTok. A notificação da caixa de entrada ainda não foi confirmada.'});
   }catch(e){ if(remoteFile?.path) removeFile(remoteFile.path); res.status(400).json({error:e.message}); }
 });
 
@@ -1791,9 +1800,10 @@ app.post('/api/upload-draft', mustLogin, upload.single('video'), async(req,res)=
     const manualCaption=String(req.body.caption||'').trim();
     const caption=(manualCaption||buildCaption(meta,settings)).slice(0,2200);
     const publishId=await uploadDraftFile(req.file);
-    s.history.unshift({id:crypto.randomUUID(),publishId,filename:req.file.originalname,product:meta.product||'',shopeeUrl:meta.shopeeUrl||'',caption,status:'SENT_TO_TIKTOK_INBOX',mode:'draft',createdAt:now()});
+    s.history.unshift({id:crypto.randomUUID(),publishId,filename:req.file.originalname,product:meta.product||'',shopeeUrl:meta.shopeeUrl||'',caption,status:'PROCESSING_UPLOAD',mode:'draft',createdAt:now()});
     s.history=s.history.slice(0,200); saveStore(s); removeFile(req.file.path);
-    res.json({ok:true,publishId,caption,message:'Vídeo enviado como rascunho. Abra o TikTok e toque na notificação da caixa de entrada para concluir a edição e publicar.'});
+    res.json({ok:true,publishId,caption,deliveryStatus:'PROCESSING_UPLOAD',
+      message:'Arquivo transferido para o TikTok. A notificação da caixa de entrada ainda não foi confirmada.'});
   }catch(e){ if(req.file) removeFile(req.file.path); res.status(400).json({error:e.message}); }
 });
 
@@ -1813,8 +1823,25 @@ app.post('/api/publish', mustLogin, upload.single('video'), async(req,res)=>{
   }catch(e){ if(req.file) removeFile(req.file.path); res.status(400).json({error:e.message}); }
 });
 app.get('/api/history', mustLogin, (_req,res)=>res.json(loadStore().history||[]));
-app.post('/api/status/:publishId', mustLogin, async(req,res)=>{
-  try{const d=await tiktokJson('https://open.tiktokapis.com/v2/post/publish/status/fetch/',{method:'POST',body:JSON.stringify({publish_id:req.params.publishId})});res.json(d.data||{});}catch(e){res.status(400).json({error:e.message});}
+app.post('/api/status/:publishId',mustLogin,async(req,res)=>{
+ try{
+  const publishId=String(req.params.publishId||'').trim();
+  if(!publishId||publishId.length>100)return res.status(400).json({error:'Identificador TikTok inválido.'});
+  const d=await tiktokJson('https://open.tiktokapis.com/v2/post/publish/status/fetch/',{
+   method:'POST',body:JSON.stringify({publish_id:publishId})});
+  const data=d.data||{},status=String(data.status||'').trim().toUpperCase();
+  if(status){
+   const s=loadStore(),row=(s.history||[]).find(x=>x.publishId===publishId);
+   if(row&&row.status!==status){
+    row.status=status;row.updatedAt=now();
+    if(status==='FAILED'&&data.fail_reason)row.failReason=String(data.fail_reason).slice(0,140);
+    saveStore(s);
+    console.info('[tiktok-draft] status_changed status='+status+
+     ' elapsed_ms='+(Date.now()-Date.parse(row.createdAt||now())));
+   }
+  }
+  res.setHeader('Cache-Control','no-store');res.json(data);
+ }catch(e){res.status(400).json({error:e.message});}
 });
 
 async function restoreTikTokSession(){
