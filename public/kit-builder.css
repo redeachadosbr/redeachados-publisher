@@ -1565,3 +1565,30 @@
 #tab-kits #kitDetail .kit-image-generate-one{font-size:9px;min-height:28px;padding:5px 7px;white-space:normal}
 #tab-kits #kitDetail .kit-image-generate-one:disabled{opacity:.48}
 @media(max-width:950px){#tab-kits #kitDetail .kit-generation-options{grid-template-columns:1fr}}
+
+/* 3.3.0 — importação assistida do ChatGPT Plus, arquivos em lote e ordenação de imagens */
+#tab-kits #kitDetail .kit-plus-gallery-transfer{margin:10px 0 12px;padding:12px;border:1px solid #d5e3f4;border-radius:13px;background:linear-gradient(120deg,#fff,#f5faff);box-shadow:0 5px 17px rgba(20,65,115,.055)}
+#tab-kits #kitDetail .kit-plus-gallery-title{display:flex;justify-content:space-between;align-items:baseline;gap:6px 12px;flex-wrap:wrap;margin-bottom:10px}
+#tab-kits #kitDetail .kit-plus-gallery-title strong{font-size:13px;color:#153a6b;font-weight:900}
+#tab-kits #kitDetail .kit-plus-gallery-title span{font-size:10px;color:#416487}
+#tab-kits #kitDetail .kit-plus-gallery-actions{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:9px}
+#tab-kits #kitDetail .kit-plus-gallery-option{border:1px solid #dce8f5;border-radius:11px;background:#fff;padding:11px;display:flex;flex-direction:column;gap:6px;min-width:0}
+#tab-kits #kitDetail .kit-plus-gallery-option strong{font-size:11.5px;font-weight:900;color:#124276}
+#tab-kits #kitDetail .kit-plus-gallery-option p{font-size:10.5px;color:#446683;line-height:1.5;flex:1;margin:0}
+#tab-kits #kitDetail .kit-plus-gallery-buttons{display:flex;gap:7px;flex-wrap:wrap}
+#tab-kits #kitDetail .kit-plus-gallery-buttons button{min-height:34px;padding:7px 11px;border-radius:8px;font-size:10.5px;font-weight:850;flex:1 1 130px;white-space:normal}
+#tab-kits #kitDetail .kit-auto-import-feedback{margin:9px 0 0;padding:9px 11px;border-radius:8px;font-size:10.5px;line-height:1.5;color:#255b85;border:1px solid #dfebf9;background:#eef6ff}
+#tab-kits #kitDetail .kit-auto-import-feedback[data-state=success]{background:#e9f8ee;border-color:#c2e6d0;color:#096f43}
+#tab-kits #kitDetail .kit-auto-import-feedback[data-state=error]{background:#fff0ed;border-color:#f1cec8;color:#9e3533}
+#tab-kits #kitDetail .kit-gallery-toolbar{display:flex;gap:7px 14px;align-items:baseline;flex-wrap:wrap;margin:8px 0 9px}
+#tab-kits #kitDetail .kit-gallery-toolbar strong{font-size:12px;font-weight:900;color:#153a67}
+#tab-kits #kitDetail .kit-gallery-toolbar span{font-size:10px;font-weight:850;color:#0c854f}
+#tab-kits #kitDetail .kit-gallery-toolbar small{flex:1 1 260px;font-size:10px;line-height:1.4;color:#4d6a8d}
+#tab-kits #kitDetail .kit-image-position-controls{display:flex;gap:4px;min-width:0}
+#tab-kits #kitDetail .kit-image-position-controls button{flex:1 1 0;min-height:23px;padding:3px;font-size:11px;font-weight:900}
+#tab-kits #kitDetail .kit-image-position-controls button:disabled{opacity:.3;cursor:not-allowed}
+#tab-kits #kitDetail .kit-image-card img[draggable=true]{cursor:grab;user-select:none}
+#tab-kits #kitDetail .kit-image-card img[draggable=true]:active{cursor:grabbing}
+#tab-kits #kitDetail .kit-image-card.kit-drop-target{border:2px dashed #1879df;background:#e5f4ff;box-shadow:0 0 0 3px #1879df22}
+#tab-kits #kitDetail #kitMultiPhotoFiles[hidden]{display:none!important}
+@media(max-width:880px){#tab-kits #kitDetail .kit-plus-gallery-actions{grid-template-columns:1fr}}
