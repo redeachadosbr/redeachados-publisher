@@ -2520,10 +2520,10 @@ async function runOptimizerJobs(){
        }
       },
       variationCost:sku=>shopeePricingDirectSupplierCost(auth.shopId,sku),
-      variationUpdatePrices:(models,gross)=>callShopeeShopApi(cfg,{
+      variationUpdatePrices:(models)=>callShopeeShopApi(cfg,{
        ...common,path:'/api/v2/product/update_price',method:'POST',
        body:{item_id:Number(job.item_id),price_list:models.map(m=>({
-        model_id:Number(m.modelId),original_price:Number(gross)}))}
+        model_id:Number(m.modelId),original_price:Number(m.gross)}))}
       }),
       variationPromotionRead:async(discountId,itemId)=>{
        const d=await readDiscountPages(callShopeeShopApi,{cfg,auth,discountId});
