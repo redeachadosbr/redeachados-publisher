@@ -23,8 +23,8 @@ test('briefing reconhece medidas do vendedor por SKU e não pede medidas já inf
  for(const prompt of result.imagePrompts){
   assert.match(prompt,/SKU 310200/);
   assert.match(prompt,/SKU 278CHOCALHO/);
-  assert.match(prompt,/TODOS os 2 produtos reais deste kit JUNTOS/);
-  assert.match(prompt,/não dividir em mosaico/);
+  assert.match(prompt,/TODOS OS 2 SKUS.*JUNTOS na MESMA CENA/);
+  assert.match(prompt,/Nunca separar em duas fotos, quadros ou mosaico/);
   assert.match(prompt,/27 × 21 × 16 cm/);
   assert.match(prompt,/altura: 19 cm/);
  }
@@ -33,7 +33,7 @@ test('nove imagens mostram todos componentes juntos mesmo quando faltam medidas'
  const kit={components:[{sku:'A',name:'Elefante'},{sku:'B',name:'Chocalho'}]};
  const prompts=kitPrompts(kit);
  assert.equal(prompts.length,9);
- for(const p of prompts)assert.match(p,/DUPLA com os DOIS produtos juntos/);
+ for(const p of prompts)assert.match(p,/Kit de 2 = UMA DUPLA visível/);
  assert(!prompts.join('\n').includes('20 × 30'));
  assert.throws(()=>kitPrompts(kit,{manualFacts:{C:'10 cm'}}),/não pertence/);
 });

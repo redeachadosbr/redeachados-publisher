@@ -20,7 +20,7 @@ test('prompt mestre tem 9 posições independentes com dupla de SKUs visível e 
  }
  assert.match(prompts[0],/sem título, selos, preço, frase ou QUALQUER texto/);
  assert.match(prompts[2],/não somar ou transferir dimensões/i);
- assert.match(prompts[7],/3 perguntas e respostas/);
+ assert.match(prompts[7],/até 3 perguntas e respostas/);
  assert.match(prompts[8],/Compra Segura/);
 });
 test('geração automática requer confirmação explícita e não publica',()=>{
