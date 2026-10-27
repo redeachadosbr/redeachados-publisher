@@ -408,11 +408,19 @@ function updateShopeeLinkNotice(){
   '✅ Link com ID válido da sua loja. Confira o modelo na Shopee antes de publicar.';
  el.dataset.state=(!valid||linkNeedsReview)?'warning':'ok';
 }
+function syncPublicationProductLinks(){
+ const correct=canonicalShopeeLink($('#shopeeUrl')?.value);if(!correct)return;
+ const pattern=/https:\/\/(?:www\.)?shopee\.com\.br\/product\/\d+\/\d+\/?/gi;
+ for(const id of ['captionPreview','purchaseComment','instagramCaption']){
+  const el=$('#'+id);if(el&&el.value)el.value=el.value.replace(pattern,correct);
+ }
+}
 function verifyPublicationLink(){
  if(!canonicalShopeeLink($('#shopeeUrl')?.value)||linkNeedsReview){
   updateShopeeLinkNotice();$('#shopeeUrl')?.focus();
   toast('Confira e selecione o anúncio correto da Shopee antes de publicar.',true);return false;
  }
+ syncPublicationProductLinks();
  return true;
 }
 function selectShopeeListing(p){
@@ -423,11 +431,11 @@ function selectShopeeListing(p){
   selectedRemoteVideo.catalogProductUrl=url;
   selectedRemoteVideo.catalogProductId=p.id||'';
   selectedRemoteVideo.catalogProductName=p.name||'';
-  if(p.sku)selectedRemoteVideo.catalogSku=p.sku;
+  selectedRemoteVideo.catalogSku=p.sku||''; // Evita reutilizar SKU antiga de outro modelo.
  }
  if(generated){generated.shopeeUrl=url;generated.product=$('#product').value;generated.catalogMatch={id:p.id,sku:p.sku||'',name:p.name,score:1,source:'manually-selected'};}
  linkNeedsReview=false;$('#shopeeLinkResults').hidden=true;
- updateShopeeLinkNotice();updateCaption(true);updatePurchaseComment(true);updateInstagramCaption(true);saveDraft();
+ updateShopeeLinkNotice();updateCaption(true);updatePurchaseComment(true);updateInstagramCaption(true);syncPublicationProductLinks();saveDraft();
  toast('Anúncio escolhido. Confira o modelo na Shopee.');
 }
 async function searchShopeeListings(query=''){
@@ -456,7 +464,7 @@ $('#shopeeUrl')?.addEventListener('input',()=>{
  if(generated){generated.shopeeUrl=$('#shopeeUrl').value;generated.catalogMatch=null;}
  linkNeedsReview=false;
  if(selectedRemoteVideo)selectedRemoteVideo.catalogProductUrl=$('#shopeeUrl').value.trim();
- updateShopeeLinkNotice();
+ syncPublicationProductLinks();updateShopeeLinkNotice();
 });
 
 function currentMeta(){return{product:$('#product').value.trim(),shopeeUrl:$('#shopeeUrl').value.trim(),title:$('#title').value.trim(),description:$('#description').value.trim(),cta:$('#cta').value.trim(),hashtags:$('#hashtags').value.trim().split(/\s+/).filter(x=>x.startsWith('#'))}}
