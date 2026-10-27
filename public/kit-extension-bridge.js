@@ -44,6 +44,33 @@ export function createKitPhotoStore(indexedDB=globalThis.indexedDB){
   put:(kit,slot,dataUrl)=>run('readwrite',s=>s.put({key:key(kit,slot),kitSku:kit,slot,
    dataUrl,updatedAt:Date.now()})),
   remove:(kit,slot)=>run('readwrite',s=>s.delete(key(kit,slot))),
+  // Uma única transação garante que arrastar ou trocar não perca uma das fotos.
+  move:async(kit,from,to)=>{
+   if(!Number.isInteger(from)||!Number.isInteger(to)||from<1||from>9||to<1||to>9)
+    throw Error('Posição de imagem inválida.');
+   if(from===to)return true;
+   const database=await db();
+   return new Promise((resolve,reject)=>{
+    const tx=database.transaction('photos','readwrite');
+    const store=tx.objectStore('photos');
+    const origin=store.get(key(kit,from)),destination=store.get(key(kit,to));
+    let first,second,loaded=0;
+    const persist=()=>{
+     if(++loaded!==2)return;
+     if(!first){tx.abort();return;}
+     const updatedAt=Date.now();
+     store.put({...first,key:key(kit,to),slot:to,updatedAt});
+     if(second)store.put({...second,key:key(kit,from),slot:from,updatedAt});
+     else store.delete(key(kit,from));
+    };
+    origin.onsuccess=()=>{first=origin.result;persist();};
+    destination.onsuccess=()=>{second=destination.result;persist();};
+    tx.oncomplete=()=>resolve(true);
+    tx.onerror=()=>reject(tx.error||Error('Falha na troca de imagens.'));
+    tx.onabort=()=>reject(first?Error('Troca de imagens interrompida.'):
+     Error('Imagem de origem não encontrada para troca.'));
+   });
+  },
   list:async kit=>(await run('readonly',s=>s.getAll())).filter(r=>r.kitSku===kit&&Number.isInteger(r.slot)&&r.slot>=1&&r.slot<=9)
  };
 }
