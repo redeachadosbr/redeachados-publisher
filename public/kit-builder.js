@@ -676,9 +676,16 @@ function renderSuggestions(data){
    const p=elt('div');p.append(elt('span','',label),elt('b','',value));prices.append(p);
   }
   card.append(prices);
-  const reason=elt('small','kit-candidate-reason',kit.businessReason||'Produtos complementares');
-  reason.title='Estimativa comercial, sem comprovação de demanda de vendas.';
+  const reason=elt('small','kit-candidate-reason',
+   kit.businessReason||'Complementaridade de uso estimada pelo nome e pela categoria dos produtos.');
+  reason.title='Os componentes foram relacionados por função. Isto não é comprovação de vendas.';
   card.append(reason);
+  if(kit.buyerFitScore!=null){
+   const explanation=elt('small','kit-candidate-evidence',
+    '✓ Uso complementar · ✓ SKUs WeDrop verificadas · Vendas: ainda não comprovadas');
+   explanation.title='A coerência comercial é uma estimativa de compra conjunta, não uma taxa de conversão.';
+   card.append(explanation);
+  }
   const open=elt('button','kit-primary','Preparar kit e anúncio →');
   open.type='button';open.addEventListener('click',()=>void prepare(kit));
   card.append(open);root.append(card);
