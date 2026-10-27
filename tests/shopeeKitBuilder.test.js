@@ -73,14 +73,17 @@ test('kits por categoria: custo exato, somatório, dois finais 0/9, prompts e pr
   assert.equal(creative.prompts.length,9);
   const brief=await kitPlusResearchBrief(935127,{category:'Cozinha',size:2});
   assert.ok(brief.candidateSkus.includes('GA500'));
-  const ideaBrief=await kitPlusResearchBrief(935127,{category:'Brinquedos',size:2,idea:'garrafa e copo'});
+  const ideaBrief=await kitPlusResearchBrief(935127,{category:'Cozinha',size:2,idea:'garrafa e copo'});
   assert.ok(ideaBrief.candidateSkus.includes('GA500'));
   assert.ok(ideaBrief.candidateSkus.includes('CO400'));
-  assert.ok(!ideaBrief.candidateSkus.includes('FR240'));
-  assert.match(ideaBrief.prompt,/IDEIA DE COMPRA DO VENDEDOR:/);
+  assert.ok(ideaBrief.candidateSkus.includes('FR240'));
+  assert.equal(ideaBrief.candidatesCount,4);
+  assert.equal(ideaBrief.truncated,false);
+  assert.equal(ideaBrief.requiresAttachment,false);
+  assert.match(ideaBrief.prompt,/Ideia opcional de kit:/);
   assert.match(brief.prompt,/GA500/);
   assert.match(brief.prompt,/ES01/);
-  assert.match(brief.prompt,/somente uma linha por kit/i);
+  assert.match(brief.prompt,/somente linhas no formato/i);
   assert.ok(brief.candidatesCount>=2);
   const contentPrompt=kitPlusContentPrompt(kit);
   assert.match(contentPrompt,/GA500/);
@@ -229,4 +232,52 @@ test('pesquisa ChatGPT de kits mantém abertura guiada e importação sem confun
  assert.match(server,/rankKitIdeaProducts\(idea,kit\.components\)/);
  assert.match(server,/assessKitBuyerFit\(kit\.components\)/);
  assert.doesNotMatch(frontend,/fetch\(['"]https:\/\/chatgpt\.com/);
+ assert.match(frontend,/kitDownloadFullCatalog/);
+ assert.match(ui,/id="kitTargetCount"/);
+ assert.match(ui,/id="kitPlusDownloadCatalog"/);
+ assert.match(server,/saveKitDraft\(auth\.shopId/);
+});
+
+test('pesquisa avançada entrega todas 125 SKUs, sem truncar, em arquivo para o ChatGPT',async()=>{
+ const oldFetch=globalThis.fetch,base=process.env.SUPABASE_URL,key=process.env.SUPABASE_SECRET_KEY;
+ process.env.SUPABASE_URL='https://fixture-kits-all.supabase.co';
+ process.env.SUPABASE_SECRET_KEY='fixture-key';
+ const products=Array.from({length:125},(_,i)=>({
+  supplier_sku:'TEST'+String(i+1).padStart(4,'0'),
+  product_data:{name:'Utensílio Cozinha Número '+i,category:'Utensílios e Talheres'}
+ }));
+ const prices=products.map(p=>({supplier_sku:p.supplier_sku,unit_cost:9}));
+ globalThis.fetch=async(url)=>{
+  const u=new URL(url),offset=Number(u.searchParams.get('offset')||0);
+  if(u.pathname.endsWith('/shopee_wedrop_products'))return Response.json(products.slice(offset,offset+1000));
+  if(u.pathname.endsWith('/shopee_wedrop_costs'))return Response.json(prices.slice(offset,offset+1000));
+  if(u.pathname.endsWith('/shopee_wedrop_availability_imports'))
+   return Response.json([{last_success_at:new Date().toISOString(),batch_hash:'all-fixture',available_count:125,unavailable_count:0,imported_count:125}]);
+  if(u.pathname.endsWith('/shopee_wedrop_sync_state'))
+   return Response.json([{status:'success',last_success_at:new Date().toISOString()}]);
+  if(u.pathname.endsWith('/shopee_wedrop_availability'))
+   return Response.json(products.map(x=>({supplier_sku:x.supplier_sku,
+    availability:'DISPONIVEL',batch_hash:'all-fixture',checked_at:new Date().toISOString()
+   })).slice(offset,offset+1000));
+  if(u.pathname.endsWith('/shopee_optimizer_pricing_preferences'))
+   return Response.json([{settings:{marginPct:10,minMarginPct:5,discountPct:20,couponPct:1,taxPct:4,flashPct:3}}]);
+  throw Error('URL inesperada: '+u.pathname);
+ };
+ try{
+  const brief=await kitPlusResearchBrief(935128,{category:'Cozinha',size:2,desiredKits:10});
+  assert.equal(brief.candidatesCount,125);
+  assert.equal(brief.candidateSkus.length,125);
+  assert.equal(brief.requiresAttachment,true);
+  assert.equal(brief.truncated,false);
+  assert.match(brief.catalogFileContent,/TEST0001/);
+  assert.match(brief.catalogFileContent,/TEST0125/);
+  assert.match(brief.prompt,/ARQUIVO TXT anexo/);
+  assert.ok(!brief.prompt.includes('TEST0125'));
+  assert.equal(brief.desiredKits,10);
+  await assert.rejects(()=>kitPlusResearchBrief(935128,{category:'Cozinha',desiredKits:11}),/entre 5 e 10/);
+ }finally{
+  clearKitStockCache(935128);globalThis.fetch=oldFetch;
+  if(base===undefined)delete process.env.SUPABASE_URL;else process.env.SUPABASE_URL=base;
+  if(key===undefined)delete process.env.SUPABASE_SECRET_KEY;else process.env.SUPABASE_SECRET_KEY=key;
+ }
 });
