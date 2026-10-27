@@ -570,3 +570,7 @@
 @media(max-width:500px){
  #tab-kits .kit-form .kit-idea-field{grid-column:1}
 }
+
+/* Sinalização factual da coerência dos kits — sem promessa de venda */
+#tab-kits .kit-candidate-evidence{display:block;margin:6px 0 10px;padding:7px 9px;border-radius:8px;background:#f2f8f6;border:1px solid #d7e9e1;color:#245944;font-size:10px;line-height:1.55;font-weight:600}
+#tab-kits .kit-candidate-reason{display:block;line-height:1.55;overflow-wrap:anywhere}
