@@ -6,24 +6,24 @@
  const norm=s=>clean(s).normalize('NFD').replace(/[\u0300-\u036f]/g,'')
   .toLocaleLowerCase('pt-BR').replace(/[\p{P}\p{S}]/gu,' ').replace(/\s+/g,' ').trim();
  const emojiCount=s=>(String(s||'').match(/\p{Extended_Pictographic}/gu)||[]).length;
- function scoreTitle(title,{keywords=[],productTitle=''}={}){
+ function scoreTitle(title,{keywords=[],productTitle='',researchStatus='unverified'}={}){
   const name=clean(title),n=count(name),standard=norm(name);
   const base=norm(productTitle);
   const terms=[...new Set((Array.isArray(keywords)?keywords:[])
    .map(x=>norm(typeof x==='string'?x:x?.term||'')).filter(x=>x.length>=3))].slice(0,5);
-  const weights=[10,9,7,5,4];
+  const weights=[12,10,8,6,4];
   const matched=terms.filter(t=>standard.includes(t));
   const points={
-   length:n>=100&&n<=120?20+Math.min(10,Math.round((n-100)/2)):0,
+   length:n>=100&&n<=120?20:0,
    keywords:terms.reduce((sum,term,i)=>sum+(standard.includes(term)?weights[i]:0),0),
-   front:terms.some(t=>standard.slice(0,45).includes(t))?10:0,
-   product:base.split(' ').filter(x=>x.length>3).slice(0,3).some(t=>standard.includes(t))?10:0,
+   front:terms.some(t=>standard.slice(0,55).includes(t))?15:0,
+   product:base.split(' ').filter(x=>x.length>3).slice(0,4).some(t=>standard.includes(t))?10:0,
    emojis:emojiCount(name)===2&&/^\p{Extended_Pictographic}/u.test(name)&&
     /\p{Extended_Pictographic}(?:\uFE0F|\uFE0E)?$/u.test(name)?10:0,
    readability:!/\b(gr[aá]tis|melhor pre[cç]o|100% garantido|frete 24h)\b/iu.test(name)&&
     !/[!]{2,}|\s{2,}/.test(name)?5:0
   };
-  return {score:Math.min(100,Object.values(points).reduce((a,b)=>a+b,0)),length:n,
+  return {score:Math.min(researchStatus==='verified'?100:89,Object.values(points).reduce((a,b)=>a+b,0)),length:n,
    matchedKeywords:matched,breakdown:points};
  }
  function rank(titles,context={}){
