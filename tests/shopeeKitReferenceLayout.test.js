@@ -8,7 +8,7 @@ const start=html.indexOf('id="tab-kits"'),end=html.indexOf('id="tab-fiscal"',sta
 const page=html.slice(start,end);
 test('a nova página reproduz seções da referência na sequência correta',()=>{
  const markers=[
-  'kit-hero','kit-overview','id="kitForm"','id="kitSuggestions"',
+  'kit-mode-tabs','kit-overview','id="kitForm"','id="kitSuggestions"',
   'id="kitResearchDetails"','kit-drafts-panel','id="kitDetail"',
   'id="kitTitle"','id="kitDescription"','kit-chatgpt-strip',
   'id="kitImages"','id="kitPublishPanel"','kit-publish-steps'
@@ -19,6 +19,17 @@ test('a nova página reproduz seções da referência na sequência correta',()=
   assert.ok(found>=offset,'seção faltando ou fora de ordem: '+marker);
   offset=found+marker.length;
  }
+});
+test('cabeçalhos redundantes removidos e pesquisa avançada continua expansível',()=>{
+ assert.doesNotMatch(page,/<header class="kit-hero">/);
+ assert.doesNotMatch(page,/class="kit-bar kit-section-heading kit-suggestion-header"/);
+ assert.doesNotMatch(page,/id="kitExpandResearch"/);
+ assert.equal((page.match(/id="kitSource"/g)||[]).length,1);
+ assert.match(page,/id="kitSource" hidden/);
+ assert.match(page,/<details[^>]*id="kitResearchDetails"/);
+ assert.match(page,/class="kit-research-summary-action">Expandir pesquisa de combinações/);
+ assert.match(page,/id="kitSuggestions"/);
+ assert.match(page,/id="kitDraftList"/);
 });
 test('IDs funcionais existentes permanecem únicos e vinculados à interface',()=>{
  const ids=[
@@ -75,7 +86,7 @@ test('importação WeDrop do modelo contém dois cartões, aviso de bloqueio e s
  const form=page.indexOf('id="kitForm"'),suggestions=page.indexOf('id="kitSuggestions"');
  assert.ok(gate>=0&&catalog>gate&&stock>catalog&&blocked>stock&&form>blocked&&suggestions>form);
  for(const id of ['kitCatalogFile','kitCatalogImport','kitStockCsv','kitStockImport',
-  'kitCatalogDate','kitStockSubhead','kitStockStamp','kitExpandResearch','kitCatalogBadge']){
+  'kitCatalogDate','kitStockSubhead','kitStockStamp','kitResearchDetails','kitCatalogBadge']){
   assert.equal((page.match(new RegExp('id="'+id+'"','g'))||[]).length,1);
  }
  assert.match(page,/id="kitCatalogFile"[^>]*accept="[^"]*\.csv,\.xlsx,\.xls/);
@@ -94,12 +105,12 @@ test('importação WeDrop do modelo contém dois cartões, aviso de bloqueio e s
 test('duas telas: importação isolada e montagem completa preservada mesmo sem estoque',()=>{
  const importTab=page.indexOf('id="kitModeImport"'),builderTab=page.indexOf('id="kitModeBuilder"');
  const importStart=page.indexOf('id="kitViewImport"'),builderStart=page.indexOf('id="kitViewBuilder"');
- const header=page.indexOf('kit-hero'),catalog=page.indexOf('id="kitCatalogCard"');
+ const catalog=page.indexOf('id="kitCatalogCard"');
  const stock=page.indexOf('id="kitAvailabilityCard"'),blocked=page.indexOf('id="kitStockBlocked"');
  const overview=page.indexOf('class="kit-overview"'),form=page.indexOf('id="kitForm"');
  const candidates=page.indexOf('id="kitSuggestions"'),drafts=page.indexOf('id="kitDraftList"');
  const images=page.indexOf('id="kitImages"'),publish=page.indexOf('id="kitPublishPanel"');
- assert.ok(header<importTab&&builderTab<importStart);
+ assert.ok(importTab>=0&&builderTab>=0&&builderTab<importStart);
  assert.ok(importStart<catalog&&catalog<stock&&stock<blocked&&blocked<builderStart);
  assert.ok(builderStart<overview&&overview<form&&form<candidates&&candidates<drafts&&drafts<images&&images<publish);
  for(const id of ['kitModeImport','kitModeBuilder','kitViewImport','kitViewBuilder',
