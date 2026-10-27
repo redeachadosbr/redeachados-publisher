@@ -1,4 +1,4 @@
-import {parseKitChatResult} from './kit-chat-result-parser.js';
+import {parseKitChatResult} from './kit-chat-result-parser.js?v=2.5.2-theme-review';
 // Kits Inteligentes WeDrop — Kit Formal enviado à Shopee somente após aprovação explícita.
 const $=s=>document.querySelector(s);
 const money=n=>Number(n).toLocaleString('pt-BR',{style:'currency',currency:'BRL'});
