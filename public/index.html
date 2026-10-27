@@ -1036,14 +1036,17 @@
    <summary>Pesquisa avançada com ChatGPT Plus <span>Expandir pesquisa de combinações</span></summary>
    <div class="kit-research-content">
    <strong>Pesquisa avançada com ChatGPT Plus</strong>
-   <p>Envie uma seleção de SKUs reais da WeDrop ao ChatGPT e importe as sugestões: o Manager valida os códigos e refaz o cálculo.</p>
+   <p>Gere sugestões de kits com SKUs WeDrop reais. O Manager confere os códigos, os custos, o estoque e a coerência antes de montar os rascunhos.</p>
    <div class="kit-actions">
-    <button type="button" class="kit-primary" id="kitPlusResearch">Preparar pesquisa para ChatGPT Plus</button>
+    <button type="button" class="kit-primary" id="kitPlusAutoStart">✨ Abrir ChatGPT e pesquisar kits</button>
+    <button type="button" class="kit-secondary" id="kitPlusResearch">Somente preparar pesquisa</button>
    </div>
+   <p id="kitPlusAutoStatus" role="status" aria-live="polite" class="kit-info">No ChatGPT, cole a pesquisa e envie. Quando receber a resposta, copie as linhas de SKUs e volte: o Manager tentará importar e montar os kits automaticamente. O Chrome pode solicitar permissão para ler a área de transferência.</p>
    <label for="kitResearchPrompt">Prompt de pesquisa (somente produtos verificados)</label>
    <textarea id="kitResearchPrompt" rows="5" readonly placeholder="O prompt aparecerá aqui após preparar a pesquisa."></textarea>
    <button type="button" class="kit-secondary" id="kitOpenResearchPrompt">Copiar prompt + abrir ChatGPT Plus</button>
-   <label for="kitPlusOutput">Cole aqui as linhas de SKUs sugeridas no ChatGPT, por exemplo: SKU1 | SKU2</label>
+   <button type="button" class="kit-secondary" id="kitPlusClipboardImport">↻ Importar resposta copiada e montar kits</button>
+   <label for="kitPlusOutput">Alternativa: cole aqui as linhas de SKUs do ChatGPT, por exemplo: SKU1 | SKU2</label>
    <textarea id="kitPlusOutput" rows="4" placeholder="SKU1 | SKU2&#10;SKU3 | SKU4"></textarea>
    <button type="button" id="kitPlusImport" class="kit-secondary">Importar kits sugeridos e recalcular</button>
    </div>
