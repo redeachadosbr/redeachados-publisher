@@ -1515,3 +1515,22 @@
  #tab-kits #kitDetail .kit-import-step{align-items:center}
  #tab-kits #kitDetail .kit-import-main-button{width:100%}
 }
+
+/* 3.1.2 — medidas por SKU e as duas peças juntas em toda imagem */
+#tab-kits #kitDetail .kit-measure-identified{
+ margin:7px 0 0;padding:8px 9px;border-radius:7px;
+ font-size:10.5px;line-height:1.48;color:#216395;background:#eef7ff;
+ border:1px solid #d3e8fa;font-weight:700;overflow-wrap:anywhere;
+}
+#tab-kits #kitDetail .kit-measure-identified[data-state="found"]{
+ background:#e8f8ee;color:#12623e;border-color:#c1e7d1;
+}
+#tab-kits #kitDetail .kit-image-duo-status{
+ padding:9px 11px;margin:7px 0 10px;border-radius:9px;
+ background:#e8f5ef;color:#086747;border:1px solid #c8e5d6;
+ font-size:10.5px;line-height:1.55;font-weight:750;overflow-wrap:anywhere;
+}
+#tab-kits #kitDetail .kit-duo-label{
+ display:block;margin:4px 0 7px;color:#146244;font-size:10px;font-weight:850;
+ background:#e9f8f0;border-radius:6px;padding:4px 6px;
+}

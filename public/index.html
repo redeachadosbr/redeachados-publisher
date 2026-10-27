@@ -31,7 +31,7 @@
 <link rel="stylesheet" href="/ads-premium.css?v=2.4.0-seo-ads-location">
 <link rel="stylesheet" href="/sidebar-collapse.css?v=1.0.0">
 <link rel="stylesheet" href="/optimizer-image-studio.css?v=1.0.2">
-<link rel="stylesheet" href="/kit-builder.css?v=3.1.1-import-chat-oneclick">
+<link rel="stylesheet" href="/kit-builder.css?v=3.1.2-sku-measures-duos">
 <link rel="stylesheet" href="/optimizer-technical-studio.css?v=1.0.1-review-feedback">
 <style>
 /* Autorização >25%: campo compacto, sem o input global width:100%.
@@ -1147,11 +1147,12 @@
     <button id="kitSaveSeoContent" class="kit-primary" type="button">Salvar textos no rascunho</button>
    </div>
   </section>
-  <div class="kit-bar kit-section-heading kit-images-heading"><span class="kit-heading-icon kit-icon-blue" aria-hidden="true">▧</span><div class="kit-section-heading-text"><h3>Imagens profissionais do kit</h3><p>Gere no ChatGPT Plus e importe cada imagem com o respectivo produto e enquadramento (1200 × 1200).</p></div>
+  <div class="kit-bar kit-section-heading kit-images-heading"><span class="kit-heading-icon kit-icon-blue" aria-hidden="true">▧</span><div class="kit-section-heading-text"><h3>Imagens profissionais do kit · todos os produtos juntos</h3><p>Cada uma das 9 imagens deve mostrar os 2 ou 3 produtos do kit juntos, no MESMO ambiente e enquadramento (1200 × 1200). Não gerar uma foto por SKU.</p></div>
    <button id="kitGenerateAll" type="button" class="kit-primary">✦ Abrir ChatGPT Plus para gerar imagens</button>
    <button id="kitImportImages" type="button" class="kit-secondary">⇧ Importar imagens</button>
   </div>
-  <p class="kit-info">Para cada imagem, clique em "Copiar prompt + abrir ChatGPT", anexe as fotografias originais das SKUs no ChatGPT, gere a imagem e importe o arquivo neste painel. Não confunda a foto de uma SKU com outra.</p>
+  <p class="kit-info">Anexe ao ChatGPT a fotografia original de CADA SKU. Em cada arte, os produtos devem aparecer juntos como uma dupla ou conjunto, sem mosaico nem mistura de componentes. Revise as medidas individuais antes de exibi-las.</p>
+  <p id="kitImageDuoStatus" class="kit-image-duo-status" role="status" aria-live="polite">Aguardando a composição do kit.</p>
   <div id="kitImages" class="kit-images"></div>
   <div class="kit-actions kit-image-actions">
    <button id="kitCopyAllPrompts" type="button" class="kit-secondary">Copiar 9 prompts</button>
@@ -2083,7 +2084,7 @@
 <script src="/technical-memory.js?v=1.0.1-live-sku-preload"></script>
 <script src="/technical-status.js?v=1.0.0-optional-coherence"></script>
 <script src="/app.js?v=1.20.44-price-column-fit"></script>
-<script type="module" src="/kit-builder.js?v=3.1.1-import-chat-oneclick"></script>
+<script type="module" src="/kit-builder.js?v=3.1.2-sku-measures-duos"></script>
 <link rel="stylesheet" href="/optimizer-variations.css?v=1.2.1-single-flow">
 <script src="/optimizer-variations.js?v=1.2.3-single-flow"></script>
 

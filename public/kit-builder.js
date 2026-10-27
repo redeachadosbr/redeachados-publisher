@@ -1,5 +1,6 @@
 import {parseKitChatResult} from './kit-chat-result-parser.js?v=2.5.2-theme-review';
 import {scoreKitSeoTitle,parseKitSeoResponse,kitSeoRiskFlags} from './kit-seo-helper.js';
+import {detectSkuMeasurements,skuMeasurementSummary} from './kit-measurements.js';
 // Kits Inteligentes WeDrop — Kit Formal enviado à Shopee somente após aprovação explícita.
 const $=s=>document.querySelector(s);
 const money=n=>Number(n).toLocaleString('pt-BR',{style:'currency',currency:'BRL'});
@@ -960,7 +961,8 @@ async function saveDraft(){
   const res=await api('/api/shopee/kits/drafts/save',{body:{
    skus:prepared.kit.components.map(x=>x.sku),
    ...currentSettings(),title:$('#kitTitle').value,description:$('#kitDescription').value,
-   seoTitles:kitContentSeoTitles.map(x=>x.title)
+   seoTitles:kitContentSeoTitles.map(x=>x.title),
+   manualFacts:Object.fromEntries(kitContentManualFacts.entries())
   }});
   if(!res.saved)throw Error('O servidor não confirmou a gravação do rascunho.');
   resetKitPublication({saved:true});
@@ -1001,7 +1003,9 @@ function renderKit({scroll=true,displayTitle=''}={}){
  if(!prepared)return;
  const {kit,creative}=prepared;
  if(kitContentSku!==kit.kitSku){
-  kitContentSku=kit.kitSku;kitContentManualFacts.clear();
+  kitContentSku=kit.kitSku;
+  kitContentManualFacts=new Map(Object.entries(creative?.manualFacts||{})
+   .filter(([sku,value])=>kit.components.some(p=>p.sku===sku)&&typeof value==='string'));
   kitContentSeoTitles=Array.isArray(creative?.seoTitles)&&creative.seoTitles.length===3?
    creative.seoTitles.map((title,i)=>({number:i+1,title})):[];
   kitContentAwaitingResponse=false;
@@ -1052,12 +1056,45 @@ function renderKit({scroll=true,displayTitle=''}={}){
  renderImageSlots();
  if(scroll)$('#kitDetail').scrollIntoView({behavior:'smooth',block:'start'});
 }
+function kitImagePromptAt(slot){
+ if(!prepared)return '';
+ const components=prepared.kit.components;
+ const original=prepared.creative?.prompts?.[slot-1]||'';
+ const measurements=components.map(p=>{
+  const manual=kitContentManualFacts.get(p.sku)||'';
+  const found=detectSkuMeasurements(manual);
+  return 'SKU '+p.sku+' — '+p.name+
+   ': medidas WeDrop: '+(p.dimensions||'NÃO INFORMADAS')+
+   '; medidas extraídas somente do texto desta SKU, ainda NÃO verificadas: '+
+   (found.length?found.map(x=>x.value).join(' · '):'nenhuma com unidade explícita');
+ }).join('\n');
+ return original+'\n\nREGRA FINAL INEGOCIÁVEL PARA ESTA IMAGEM: mostrar TODOS os '+components.length+
+  ' produtos juntos na MESMA foto, SEM colagem, SEM mosaico, SEM fotos individuais. '+ 
+  (components.length===2?'Os dois produtos formam uma DUPLA e ambos aparecem inteiros, lado a lado ou num mesmo contexto realista. ':'')+
+  'Dimensões e informações pertencem SOMENTE à SKU descrita. Medidas fornecidas pelo vendedor dependem de conferência antes de serem escritas em imagens:\n'+measurements;
+}
+function kitImageMeasurementsSummary(){
+ if(!prepared)return '';
+ return prepared.kit.components.map(p=>{
+  const found=detectSkuMeasurements(kitContentManualFacts.get(p.sku)||'');
+  return 'SKU '+p.sku+': '+(p.dimensions?
+   'catálogo WeDrop '+p.dimensions:'sem medida cadastrada na WeDrop')+
+   (found.length?' · texto do vendedor (conferir): '+found.map(x=>x.value).join(' · '):'');
+ }).join(' | ');
+}
+function kitUpdateImageGuidance(){
+ const helper=$('#kitImageDuoStatus');
+ if(helper&&prepared)helper.textContent='✓ '+prepared.kit.components.length+
+   ' produtos juntos em cada imagem, mesmo cenário, não um por foto. Medidas por SKU: '+
+   kitImageMeasurementsSummary();
+}
 function renderImageSlots(){
  const root=$('#kitImages');root.replaceChildren();
  if(!prepared)return;
  for(let slot=1;slot<=9;slot++){
   const card=elt('div','kit-image-card'),image=images.get(slot);
   card.append(elt('strong','', String(slot).padStart(2,'0')+'/09'));
+  card.append(elt('small','kit-duo-label',prepared.kit.components.length+' SKUs juntas · uma cena'));
   if(image){
    const pic=elt('img');pic.src=image;pic.alt='Imagem '+slot+' do kit importada para revisão';card.append(pic);
    const download=elt('button','kit-secondary','Baixar PNG '+slot);
@@ -1067,12 +1104,12 @@ function renderImageSlots(){
   }else card.append(elt('div','kit-placeholder','▧'));
   const prompt=elt('button','kit-secondary','Copiar prompt');
   prompt.type='button';
-  prompt.addEventListener('click',()=>void copy(prepared.creative.prompts[slot-1]));
+  prompt.addEventListener('click',()=>void copy(kitImagePromptAt(slot)));
   card.append(prompt);
   const details=elt('details','kit-prompt-fallback');
   const summary=elt('summary','','Ver prompt');
   const field=elt('textarea');field.readOnly=true;field.rows=5;
-  field.value=prepared.creative.prompts[slot-1];
+  field.value=kitImagePromptAt(slot);
   details.append(summary,field);card.append(details);
   const chooser=elt('input','kit-photo-upload');chooser.type='file';
   chooser.accept='image/png,image/jpeg,image/webp';
@@ -1081,6 +1118,7 @@ function renderImageSlots(){
   card.append(chooser);
   root.append(card);
  }
+ kitUpdateImageGuidance();
 }
 function chatgptHandoff(prompt){
  // A aba precisa abrir no clique, não depois de um await, para que o
@@ -1402,8 +1440,20 @@ function kitContentShowMissing(rows){
   box.placeholder='Ex.: descrição, dimensões e características reais da SKU '+component.sku+'...';
   box.value=kitContentManualFacts.get(component.sku)||'';
   box.setAttribute('aria-label','Informações adicionais SKU '+component.sku);
-  box.addEventListener('input',()=>kitContentManualFacts.set(component.sku,box.value));
-  card.append(box);root.append(card);
+  const measurements=elt('p','kit-measure-identified');
+  measurements.setAttribute('aria-live','polite');
+  const refresh=()=>{
+   const found=detectSkuMeasurements(box.value);
+   measurements.textContent='SKU '+component.sku+' — '+(found.length?
+    'Medidas reconhecidas (conferir): '+found.map(x=>x.value).join(' · '):
+    'Nenhuma medida com unidade detectada. Ex.: 20 × 15 × 10 cm ou altura: 15 cm.');
+   measurements.dataset.state=found.length?'found':'missing';
+   kitContentManualFacts.set(component.sku,box.value);
+   kitUpdateImageGuidance();
+  };
+  box.addEventListener('input',refresh);
+  refresh();
+  card.append(box,measurements);root.append(card);
  }
  $('#kitMissingFacts').hidden=false;
  $('#kitContentDetails').open=true;
@@ -1425,6 +1475,11 @@ async function plusText({proceedWithoutDetails=false}={}){
   if(prepared?.kit?.kitSku!==currentSku||data.kitSku!==currentSku)
    throw Error('A composição do kit mudou. Reabra a geração para evitar misturar SKUs.');
   $('#kitContentPrompt').value=data.prompt;
+  if(Array.isArray(data.imagePrompts)&&data.imagePrompts.length===9){
+   prepared.creative.prompts=data.imagePrompts;
+   prepared.creative.manualFacts=Object.fromEntries(kitContentManualFacts.entries());
+   renderImageSlots();
+  }
   $('#kitContentDetails').open=true;
   if(data.missingDetails?.length&&!proceedWithoutDetails){
    tab?.close();
@@ -1561,8 +1616,9 @@ function downloadData(url,name){
 }
 function openChatGPTImages(){
  if(!prepared)return;
- chatgptHandoff(prepared.creative.prompts.join('\n\n--- PRÓXIMA IMAGEM ---\n\n'));
- imageStatus('Copiadas as nove instruções. Gere e importe cada imagem separadamente; anexe ao ChatGPT as fotos de referência de todas as SKUs.','success');
+ chatgptHandoff(Array.from({length:9},(_,i)=>kitImagePromptAt(i+1)).join('\n\n--- PRÓXIMA IMAGEM ---\n\n'));
+ imageStatus('9 instruções copiadas: em CADA imagem, os '+prepared.kit.components.length+
+  ' produtos precisam aparecer juntos em uma só cena. Anexe as fotos reais de todas as SKUs.','success');
 }
 
 function exportPack(){
@@ -1582,7 +1638,7 @@ function exportPack(){
   'Margem líquida estimada: '+pct(kit.quote.netMarginPct),
   'AVISO: sem comprovação de demanda, frete de kit ou estoque; não publicado.',
   'TÍTULO:', $('#kitTitle').value,'DESCRIÇÃO:',$('#kitDescription').value,
-  ...creative.prompts.map((p,i)=>'\n===== IMAGEM '+(i+1)+' =====\n'+p)
+  ...creative.prompts.map((p,i)=>'\n===== IMAGEM '+(i+1)+' =====\n'+kitImagePromptAt(i+1))
  ].join('\n');
  const blob=new Blob([txt],{type:'text/plain;charset=utf-8'});
  const url=URL.createObjectURL(blob);
@@ -1775,7 +1831,8 @@ $('#kitTitle')?.addEventListener('input',()=>{
 });
 $('#kitCopyTitle')?.addEventListener('click',()=>void copy($('#kitTitle').value));
 $('#kitCopyDescription')?.addEventListener('click',()=>void copy($('#kitDescription').value));
-$('#kitCopyAllPrompts')?.addEventListener('click',()=>prepared&&void copy(prepared.creative.prompts.join('\n\n\n')));
+$('#kitCopyAllPrompts')?.addEventListener('click',()=>prepared&&void copy(
+ Array.from({length:9},(_,i)=>kitImagePromptAt(i+1)).join('\n\n--- PRÓXIMA IMAGEM ---\n\n')));
 $('#kitClose')?.addEventListener('click',()=>kitCloseInlineEditor());
 window.RAKitBuilderLoad=async()=>{
  setKitMode(kitCurrentMode);
