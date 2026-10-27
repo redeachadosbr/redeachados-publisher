@@ -889,3 +889,22 @@
 #tab-kits #kitSuggestions{margin-top:6px}
 #tab-kits #kitSource[hidden]{display:none!important}
 #tab-kits #kitSuggestions:empty{margin:0}
+
+
+/* Controles de complementação em cada sugestão e no editor do kit */
+#tab-kits .kit-complement-head{display:flex;align-items:baseline;gap:8px;flex-wrap:wrap;margin:13px 0 7px}
+#tab-kits .kit-complement-head strong{color:#123d71;font-size:13px;font-weight:900}
+#tab-kits .kit-complement-head span{font-size:11px;color:#435f7d}
+#tab-kits .kit-manual-composition{display:grid;gap:9px;padding:11px;border:1px solid #d3e3f6;border-radius:12px;background:linear-gradient(115deg,#f1f7ff,#fff);margin:9px 0}
+#tab-kits .kit-manual-composition.is-card{padding:10px;border-radius:9px;background:#f8fbff;border-color:#dfebf8}
+#tab-kits .kit-manual-row{display:flex;gap:7px;align-items:end;flex-wrap:wrap}
+#tab-kits .kit-manual-row label{display:grid;gap:5px;min-width:0;flex:1 1 115px;font-size:10px;font-weight:800;color:#163b6a}
+#tab-kits .kit-manual-row input,#tab-kits .kit-manual-row select{width:100%;max-width:100%;box-sizing:border-box;min-height:35px;padding:8px 9px;border:1px solid #bcd3ed;border-radius:8px;background:#fff;color:#173b68;font:12px inherit;font-weight:600}
+#tab-kits .kit-manual-row button{flex:0 1 auto;min-height:35px;padding:8px 11px;white-space:normal;font-size:10px;font-weight:800;color:#074d99;background:#e6f2ff;border:1px solid #a6cdf6;border-radius:8px;cursor:pointer}
+#tab-kits .kit-manual-row button:hover:not(:disabled){background:#d2e8ff}
+#tab-kits .kit-manual-row button:disabled{opacity:.45;cursor:not-allowed}
+#tab-kits .kit-manual-status{font-size:10px;line-height:1.5;color:#315b83;margin:4px 0 8px}
+#tab-kits .kit-manual-status[data-state=error]{color:#ae3038}
+#tab-kits .kit-manual-status[data-state=success]{color:#087447}
+#tab-kits .kit-manual-explain{font-size:10px;line-height:1.45;margin:0;color:#43698f}
+@media(max-width:600px){#tab-kits .kit-manual-row label{flex:1 1 100%}#tab-kits .kit-manual-row button{width:100%}}

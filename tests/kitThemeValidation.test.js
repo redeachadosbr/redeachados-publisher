@@ -41,3 +41,26 @@ test('servidor preserva títulos editados e só salva rascunhos; interface infor
  assert.match(browser,/id.*kitImportReport|#kitImportReport/);
  assert.match(browser,/RASCUNHO — REVISAR COERÊNCIA/);
 });
+
+test('bebê: higiene da rotina complementa brinquedo musical sem confundir produtos',()=>{
+ const hygiene={sku:'118004',name:'Kit Cuidados e Higiene Para Bebês 06 Peças Sortido',
+  category:'Bebês',unitCost:22};
+ const toy={sku:'310200',name:'Elefante Brincalhão Musical',category:'Brinquedos',unitCost:30};
+ const chocalho={sku:'278CHOCALHO',name:'Conjunto com Torre e Bola Chocalho',category:'Brinquedos',unitCost:15};
+ const combo=assessKitBuyerFit([hygiene,toy]);
+ assert.equal(combo.ok,true);
+ assert.ok(combo.score>assessKitBuyerFit([toy,chocalho]).score);
+ assert.match(combo.reason,/cuidados de higiene/);
+ assert.equal(assessKitBuyerFit([hygiene,{sku:'FRY',name:'Frigideira Inox',
+  category:'Panelas e Frigideiras',unitCost:30}]).ok,false);
+});
+test('alteração manual exige SKU distinta e respeita limite de três produtos',async()=>{
+ const {modifyKitSkus}=await import('../shopeeKitBuilder.js');
+ assert.deepEqual(modifyKitSkus(['310200','278CHOCALHO'],{mode:'add',sku:'118004'}),
+  ['310200','278CHOCALHO','118004']);
+ assert.deepEqual(modifyKitSkus(['310200','278CHOCALHO'],{
+  mode:'replace',replaceSku:'278CHOCALHO',sku:'118004'}),['310200','118004']);
+ assert.throws(()=>modifyKitSkus(['A','B','C'],{mode:'add',sku:'D'}),/Máximo de 3/);
+ assert.throws(()=>modifyKitSkus(['A','B'],{mode:'replace',replaceSku:'Z',sku:'C'}),/Selecione uma SKU/);
+ assert.throws(()=>modifyKitSkus(['A','B'],{mode:'add',sku:'b'}),/já faz parte/);
+});

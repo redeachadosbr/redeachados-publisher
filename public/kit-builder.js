@@ -654,6 +654,70 @@ async function kitVerifyPublished(){
  }catch(error){kitPublishStatus('Status não confirmado: '+error.message,'error');}
  finally{kitPublishBusy=false;}
 }
+
+let kitCompositionBusy=false;
+function kitManualControls(kit,{editor=false}={}){
+ const root=elt('div','kit-manual-composition'+(editor?'':' is-card'));
+ const note=elt('p','kit-manual-explain',
+  'Complemente com uma SKU de outra função, quando fizer sentido. 2 a 3 SKUs; custos, descontos, impostos e lucro serão recalculados.');
+ root.append(note);
+ const feedback=editor?$('#kitManualStatus'):elt('p','kit-manual-status','Prévia sem publicar; estoque e custo verificados pela WeDrop.');
+ const row=(name,mode)=>{
+  const line=elt('div','kit-manual-row');
+  const label=elt('label','',name);
+  const input=elt('input');input.type='text';input.maxLength=120;
+  input.placeholder=mode==='add'?'Ex.: 118004':'SKU complementar substituta';
+  input.autocomplete='off';input.setAttribute('aria-label',name);
+  label.append(input);line.append(label);
+  let select=null;
+  if(mode==='replace'){
+   const choice=elt('label','','Substituir qual SKU?');
+   select=elt('select');
+   for(const p of kit.components)select.append(new Option(p.sku+' · '+p.name.slice(0,38),p.sku));
+   choice.append(select);line.append(choice);
+  }
+  const button=elt('button','',''+(mode==='add'?'Adicionar SKU + recalcular':'Substituir SKU + recalcular'));
+  button.type='button';button.disabled=mode==='add'&&kit.components.length>=3;
+  button.title=button.disabled?'Máximo de 3 produtos por kit':name;
+  line.append(button);
+  button.addEventListener('click',async()=>{
+   if(kitCompositionBusy||marginUpdatePending)return;
+   const sku=input.value.trim();
+   if(!sku){feedback.textContent='Informe a SKU exata antes de recalcular.';feedback.dataset.state='error';return;}
+   if(editor&&(['published','published_pending','publishing','uncertain'].includes(prepared?.publication?.status)||kitItemId)){
+    feedback.textContent='Kit já publicado ou com envio pendente. Não é permitido mudar esta composição.';feedback.dataset.state='error';return;
+   }
+   kitCompositionBusy=true;button.disabled=true;feedback.textContent='Consultando SKU e recalculando todos os valores...';feedback.dataset.state='info';
+   try{
+    const result=await api('/api/shopee/kits/modify',{body:{
+      skus:kit.components.map(x=>x.sku),mode,sku,
+      replaceSku:select?.value||'',...currentSettings()
+    }});
+    if(!result?.kit?.components?.length)throw Error('Resposta sem composição confirmada.');
+    // Rascunhos/imagens de outra composição não podem contaminar o kit alterado.
+    images.clear();prepared=result;resetKitPublication({saved:false});
+    renderKit();
+    const from=kit.components.map(x=>x.sku).join(' + ');
+    const to=result.kit.components.map(x=>x.sku).join(' + ');
+    if(!editor){
+      suggestions=suggestions.map(s=>s===kit?result.kit:s);
+      renderSuggestions({results:suggestions,source:suggestionContext?.source||'WeDrop + cálculo'});
+    }
+    const msg='✓ '+from+' → '+to+'. Custos, impostos, descontos, preço e lucro recalculados. '+(result.kit.reviewRequired?'Revisar coerência e logística antes da publicação.':'Confira embalagem e envio conjunto.');
+    $('#kitManualStatus').textContent=msg;$('#kitManualStatus').dataset.state='success';
+    status(msg,'success');
+   }catch(error){
+    feedback.textContent='Alteração não aplicada: '+error.message;feedback.dataset.state='error';
+    status('SKU não alterada: '+error.message,'error');
+   }finally{kitCompositionBusy=false;button.disabled=false;}
+  });
+  return line;
+ };
+ if(kit.components.length<3)root.append(row('Adicionar SKU complementar','add'));
+ root.append(row('Substituir SKU existente','replace'));
+ if(!editor)root.append(feedback);
+ return root;
+}
 function renderSuggestions(data){
  suggestions=data.results||[];
  const root=$('#kitSuggestions');root.replaceChildren();
@@ -681,6 +745,7 @@ function renderSuggestions(data){
    kit.businessReason||'Complementaridade de uso estimada pelo nome e pela categoria dos produtos.');
   reason.title='Os componentes foram relacionados por função. Isto não é comprovação de vendas.';
   card.append(reason);
+  card.append(kitManualControls(kit));
   if(kit.buyerFitScore!=null){
    const explanation=elt('small','kit-candidate-evidence',kit.reviewRequired?
     '⚠ RASCUNHO — REVISAR COERÊNCIA · Compatibilidade física não confirmada · SKUs WeDrop verificadas':
@@ -834,6 +899,7 @@ function renderKit({scroll=true}={}){
  const {kit,creative}=prepared;
  $('#kitDetail').hidden=false;
  $('#kitSkuTitle').textContent=kit.kitSku;
+ $('#kitManualComposition').replaceChildren(kitManualControls(kit,{editor:true}));
  const items=$('#kitComponents');items.replaceChildren();
  for(const p of kit.components){
   const card=elt('div','kit-component');addImage(card,p);

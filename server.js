@@ -30,7 +30,7 @@ import {previewWeDropCsv,prepareWeDropImport,MAX_CSV_CHARS} from './wedropCsv.js
 import {convertWeDropExcelBase64} from './wedropExcel.js';
 import {saveWeDropCosts,getWeDropCoverage,compareIncomingCosts,pendingWeDropModels,upsertWeDropSkuLink} from './wedropCosts.js';
 import {saveWeDropProducts,readWeDropProduct} from './wedropCosts.js';
-import {kitCatalog,suggestKits,suggestKitsForIdea,rankKitIdeaProducts,assessKitBuyerFit,composeKit,kitCreative,kitPrompts,kitPlusResearchBrief,kitPlusContentPrompt,categoryMatches,clearKitCatalogCache} from './shopeeKitBuilder.js';
+import {kitCatalog,suggestKits,suggestKitsForIdea,rankKitIdeaProducts,assessKitBuyerFit,composeKit,kitCreative,kitPrompts,kitPlusResearchBrief,kitPlusContentPrompt,categoryMatches,modifyKitSkus,clearKitCatalogCache} from './shopeeKitBuilder.js';
 import {saveKitStockImport,clearKitStockCache,parseWeDropAvailabilityCsv} from './shopeeKitAvailability.js';
 import {saveKitDraft,listKitDrafts,loadKitDraft,deleteKitDraft} from './shopeeKitDraftStore.js';
 import {kitUploadPhoto,kitPublicationReadiness,kitPublicationPreview,kitPublishApproved,checkKitPublication} from './shopeeKitPublicationService.js';
@@ -254,6 +254,29 @@ app.post('/api/shopee/kits/suggest',mustLogin,requireWeDropAdmin,async(req,res)=
   res.json({ok:true,...data});
  }catch(error){res.status(400).json({error:String(error.message||error).slice(0,300)});}
 });
+app.post('/api/shopee/kits/modify',mustLogin,requireWeDropAdmin,async(req,res)=>{
+ res.setHeader('Cache-Control','no-store');
+ if(!verifiedSameOrigin(req))return res.status(403).json({error:'Origem não autorizada.'});
+ try{
+  const {auth}=await getValidAuth(req);
+  const requested=modifyKitSkus(req.body?.skus,{
+   mode:req.body?.mode,sku:req.body?.sku,replaceSku:req.body?.replaceSku
+  });
+  const kit=await composeKit(auth.shopId,requested,{
+   marginPct:Number(req.body?.marginPct??15),
+   packing:Number(req.body?.packing||0),shipping:Number(req.body?.shipping||0)
+  });
+  const fit=assessKitBuyerFit(kit.components);
+  kit.buyerFitScore=fit.ok?fit.score:0;
+  kit.reviewRequired=fit.reviewRequired===true||!fit.ok;
+  kit.reviewNotes=kit.reviewRequired?(fit.reviewNotes||['Complementaridade comercial a revisar: '+fit.reason]):[];
+  kit.businessReason=fit.ok?fit.reason:'REVISAR COMPOSIÇÃO: '+fit.reason;
+  if(kit.reviewRequired)kit.warning+=' Atenção: '+kit.reviewNotes.join('; ')+'.';
+  const creative=await kitCreative(auth.shopId,kit,{ai:false});
+  res.json({ok:true,kit,creative,requiresReview:true,marketplaceUpdated:false,
+   shopeePublished:false,compositionChanged:true});
+ }catch(error){res.status(400).json({error:String(error.message||error).slice(0,360)});}
+});
 app.post('/api/shopee/kits/prepare',mustLogin,requireWeDropAdmin,async(req,res)=>{
  res.setHeader('Cache-Control','no-store');
  if(!verifiedSameOrigin(req))return res.status(403).json({error:'Origem não autorizada.'});
@@ -439,8 +462,13 @@ app.post('/api/shopee/kits/plus-import',mustLogin,requireWeDropAdmin,async(req,r
      packing:Number(req.body?.packing||0),
      shipping:Number(req.body?.shipping||0)
     });
-    if(!kit.components.every(p=>categoryMatches(p.category,category)))
-     throw Error('Uma ou mais SKUs estão fora da categoria selecionada.');
+    if(!kit.components.every(p=>categoryMatches(p.category,category))){
+     // A pesquisa de brinquedos também inclui acessórios úteis à rotina do bebê.
+     const hasToy=kit.components.some(p=>categoryMatches(p.category,category));
+     const complementary=assessKitBuyerFit(kit.components);
+     if(!hasToy||!complementary.ok||!complementary.reason.includes('cuidados de higiene'))
+      throw Error('Uma ou mais SKUs estão fora da categoria e não complementam o kit.');
+    }
     // A ideia direciona a pesquisa, mas não autoriza resultados irrelevantes.
     if(idea&&!rankKitIdeaProducts(idea,kit.components).products.length)
      throw Error('Produtos sem correspondência com a ideia informada.');
