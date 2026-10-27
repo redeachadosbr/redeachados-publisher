@@ -31,7 +31,7 @@
 <link rel="stylesheet" href="/ads-premium.css?v=2.4.0-seo-ads-location">
 <link rel="stylesheet" href="/sidebar-collapse.css?v=1.0.0">
 <link rel="stylesheet" href="/optimizer-image-studio.css?v=1.0.2">
-<link rel="stylesheet" href="/kit-builder.css?v=2.4.0-import-onefile">
+<link rel="stylesheet" href="/kit-builder.css?v=2.6.0-compact-research">
 <link rel="stylesheet" href="/optimizer-technical-studio.css?v=1.0.1-review-feedback">
 <style>
 /* Autorização >25%: campo compacto, sem o input global width:100%.
@@ -1032,11 +1032,18 @@
  <p id="kitStatus" role="status" aria-live="polite" class="kit-status">Carregando categorias cadastradas...</p>
  <div class="kit-bar kit-section-heading kit-suggestion-header"><span class="kit-heading-icon kit-icon-purple">♧</span><div class="kit-section-heading-text"><h3>Sugestões de kits</h3><p>Kits baseados em SKUs reais da WeDrop, com custos e lucros calculados automaticamente.</p></div><span id="kitSource">Aguardando estoque disponível</span><button id="kitExpandResearch" type="button" class="kit-secondary" aria-controls="kitResearchDetails" aria-expanded="false">⌄ Expandir pesquisa de combinações</button></div>
   <div id="kitSuggestions" class="kit-suggestions"><p>Escolha uma categoria para iniciar.</p></div>
-<details class="kit-plus-workflow kit-research-details" id="kitResearchDetails">
-   <summary>Pesquisa avançada com ChatGPT Plus <span>Expandir pesquisa de combinações</span></summary>
-   <div class="kit-research-content">
-   <strong>Pesquisa avançada com ChatGPT Plus</strong>
-   <p>O ChatGPT pesquisa todas as SKUs DISPONÍVEIS da categoria escolhida. Com muitos produtos, será baixada uma lista completa para anexar à conversa. Após copiar o resultado, os kits validados serão salvos como rascunhos, nunca publicados automaticamente.</p>
+
+<details class="kit-plus-workflow kit-research-details kit-research-compact" id="kitResearchDetails">
+ <summary>
+  <span class="kit-research-summary-copy"><strong>Pesquisa avançada com ChatGPT Plus</strong><small>Combinações de produtos disponíveis na WeDrop</small></span>
+  <span class="kit-research-summary-action">Expandir pesquisa de combinações</span>
+ </summary>
+ <div class="kit-research-content">
+  <div class="kit-research-intro">
+   <div><strong>Configurar pesquisa de kits</strong><p>Pesquise as SKUs disponíveis da categoria e importe combinações coerentes. Somente kits validados serão salvos como rascunhos, nunca publicados automaticamente.</p></div>
+   <span class="kit-research-chip">WeDrop · estoque verificado</span>
+  </div>
+  <div class="kit-research-toolbar">
    <label for="kitTargetCount" class="kit-target-count-field">Quantos kits pesquisar?
     <select id="kitTargetCount">
      <option value="5">5 kits</option><option value="6">6 kits</option>
@@ -1044,29 +1051,43 @@
      <option value="9">9 kits</option><option value="10" selected>10 kits</option>
     </select>
    </label>
-   <div class="kit-actions">
+   <div class="kit-research-toolbar-actions">
     <button type="button" class="kit-primary" id="kitPlusAutoStart">✨ Abrir ChatGPT e pesquisar kits</button>
     <button type="button" class="kit-secondary" id="kitPlusResearch">Somente preparar pesquisa</button>
    </div>
-   <p id="kitPlusAutoStatus" role="status" aria-live="polite" class="kit-info">Clique em Abrir ChatGPT. Se o catálogo for grande, anexe no ChatGPT o arquivo TXT que será baixado; cole e envie a pesquisa. Depois copie a resposta: o Manager tentará importar automaticamente, ou use o botão de importação.</p>
-   <label for="kitResearchPrompt">Prompt de pesquisa (somente produtos verificados)</label>
-   <textarea id="kitResearchPrompt" rows="5" readonly placeholder="O prompt aparecerá aqui após preparar a pesquisa."></textarea>
-   <button id="kitPlusDownloadCatalog" type="button" class="kit-secondary" hidden>📄 Baixar todas as SKUs da categoria para anexar ao ChatGPT</button>
-   <button type="button" class="kit-secondary" id="kitOpenResearchPrompt">Copiar prompt + abrir ChatGPT Plus</button>
-   <div class="kit-chat-file-import">
-    <label for="kitPlusFile" class="kit-chat-file-label">📥 IMPORTAR OS KITS AUTOMATICAMENTE — selecione o arquivo JSON ou TXT gerado pelo ChatGPT
+  </div>
+  <p id="kitPlusAutoStatus" role="status" aria-live="polite" class="kit-info kit-research-feedback">Clique em Abrir ChatGPT. Se o catálogo for grande, anexe o TXT baixado. Depois copie a resposta: o Manager tentará importar automaticamente, ou use as opções de importação abaixo.</p>
+  <div class="kit-research-prompt-panel">
+   <details class="kit-research-prompt-details">
+    <summary>Visualizar prompt preparado <span>Mostrar instruções completas</span></summary>
+    <label for="kitResearchPrompt">Prompt de pesquisa (somente produtos verificados)</label>
+    <textarea id="kitResearchPrompt" rows="4" readonly placeholder="O prompt aparecerá aqui após preparar a pesquisa."></textarea>
+   </details>
+   <div class="kit-research-prompt-actions">
+    <button id="kitPlusDownloadCatalog" type="button" class="kit-secondary" hidden>📄 Baixar todas as SKUs da categoria para anexar ao ChatGPT</button>
+    <button type="button" class="kit-secondary" id="kitOpenResearchPrompt">Copiar prompt + abrir ChatGPT Plus</button>
+   </div>
+  </div>
+  <div class="kit-research-import-grid">
+   <section class="kit-research-import-card kit-chat-file-import" aria-labelledby="kitResearchFileTitle">
+    <div class="kit-research-card-head"><span class="kit-research-step">1</span><div><strong id="kitResearchFileTitle">Importar arquivo</strong><small>JSON ou TXT gerado pelo ChatGPT</small></div></div>
+    <label for="kitPlusFile" class="kit-chat-file-label">Selecionar arquivo dos kits
      <input id="kitPlusFile" type="file" accept=".json,.txt,.md,application/json,text/plain" aria-describedby="kitPlusFileHelp">
     </label>
-    <p id="kitPlusFileHelp">Selecione um único arquivo com as 5–10 combinações. O sistema extrai todas as SKUs, recalcula os preços WeDrop e salva os kits válidos como rascunhos. Não precisa copiar códigos.</p>
-    <p id="kitPlusFileStatus" class="kit-chat-file-status" data-state="info" role="status" aria-live="polite">Selecione o JSON ou TXT. Aqui aparecerão a leitura do arquivo, o resultado da importação e qualquer erro.</p>
+    <p id="kitPlusFileHelp">Envie um arquivo com as 5–10 combinações. O sistema extrai as SKUs, recalcula os preços WeDrop e salva os kits válidos como rascunhos. Não precisa copiar códigos.</p>
+    <p id="kitPlusFileStatus" class="kit-chat-file-status" data-state="info" role="status" aria-live="polite">Selecione o JSON ou TXT. O resultado da importação ou qualquer erro aparecerá aqui.</p>
     <div id="kitImportReport" class="kit-chat-file-status" role="status" aria-live="polite" hidden></div>
-   </div>
-   <button type="button" class="kit-secondary" id="kitPlusClipboardImport">↻ Importar resposta completa copiada (uma única vez)</button>
-   <label for="kitPlusOutput">Outra opção: cole a resposta INTEIRA do ChatGPT, inclusive tabela ou JSON</label>
-   <textarea id="kitPlusOutput" rows="4" placeholder="Cole uma vez a tabela inteira do ChatGPT, linhas SKU1 + SKU2 ou o arquivo JSON."></textarea>
-   <button type="button" id="kitPlusImport" class="kit-secondary">Importar todas as combinações e montar kits</button>
-   </div>
-  </details>
+   </section>
+   <section class="kit-research-import-card kit-research-manual" aria-labelledby="kitResearchTextTitle">
+    <div class="kit-research-card-head"><span class="kit-research-step">2</span><div><strong id="kitResearchTextTitle">Importar resposta copiada</strong><small>Da área de transferência ou texto completo</small></div></div>
+    <button type="button" class="kit-secondary" id="kitPlusClipboardImport">↻ Importar resposta completa copiada (uma única vez)</button>
+    <label for="kitPlusOutput">Ou cole a resposta INTEIRA, inclusive tabela ou JSON</label>
+    <textarea id="kitPlusOutput" rows="3" placeholder="Cole uma vez a tabela inteira do ChatGPT, linhas SKU1 + SKU2 ou o arquivo JSON."></textarea>
+    <button type="button" id="kitPlusImport" class="kit-secondary">Importar todas as combinações e montar kits</button>
+   </section>
+  </div>
+ </div>
+</details>
 
  <section class="kit-drafts-panel"><div class="kit-bar kit-section-heading"><span class="kit-heading-icon kit-icon-purple">▧</span><div class="kit-section-heading-text"><h3>Kits salvos para revisão</h3><p>Rascunhos de kits gerados para você revisar, editar e publicar.</p></div><button type="button" class="kit-secondary" id="kitRefreshDrafts">↻ Atualizar rascunhos</button></div>
  <div id="kitDraftList" class="kit-suggestions"><p>Consultando kits salvos nesta loja...</p></div></section>

@@ -603,3 +603,67 @@
 #tab-kits .kit-chat-file-status[data-state="warning"]{
  background:#fff9eb;border-color:#ebd09e;color:#8b590c;
 }
+
+/* Somente a pesquisa expandida de combinações; outros blocos da página não mudam. */
+#tab-kits #kitResearchDetails{display:block;padding:11px 13px;margin:10px 0 14px;border:1px solid #d8e5f1;border-radius:13px;background:#fff;box-shadow:0 2px 10px #143a5e08}
+#tab-kits #kitResearchDetails>summary{display:flex;align-items:center;justify-content:space-between;gap:12px;cursor:pointer;list-style:none;padding:1px 3px}
+#tab-kits #kitResearchDetails>summary::-webkit-details-marker,
+#tab-kits #kitResearchDetails .kit-research-prompt-details>summary::-webkit-details-marker{display:none}
+#tab-kits #kitResearchDetails>summary::after{content:"⌄";color:#496e96;font-size:18px;font-weight:700;line-height:1;transition:transform .15s}
+#tab-kits #kitResearchDetails[open]>summary::after{transform:rotate(180deg)}
+#tab-kits #kitResearchDetails .kit-research-summary-copy{display:flex;flex-direction:column;gap:2px;flex:1;min-width:0}
+#tab-kits #kitResearchDetails .kit-research-summary-copy strong{font-size:12px;color:#143e68}
+#tab-kits #kitResearchDetails .kit-research-summary-copy small{font-size:10px;color:#70869c;font-weight:500}
+#tab-kits #kitResearchDetails .kit-research-summary-action{font-size:10px;font-weight:750;color:#416b96;white-space:nowrap}
+#tab-kits #kitResearchDetails .kit-research-content{display:grid;gap:10px;padding-top:11px}
+#tab-kits #kitResearchDetails .kit-research-intro{display:flex;align-items:center;justify-content:space-between;gap:12px}
+#tab-kits #kitResearchDetails .kit-research-intro strong{font-size:13px;color:#103c66}
+#tab-kits #kitResearchDetails .kit-research-intro p{font-size:11px;line-height:1.4;margin:2px 0 0;color:#637b92}
+#tab-kits #kitResearchDetails .kit-research-chip{flex-shrink:0;font-size:10px;font-weight:750;color:#317659;border:1px solid #cfe9dc;background:#ecf9f1;padding:5px 9px;border-radius:999px}
+#tab-kits #kitResearchDetails .kit-research-toolbar{display:flex;align-items:end;gap:12px;flex-wrap:wrap;padding:10px 11px;border:1px solid #e1eaf4;border-radius:10px;background:#f8fbff}
+#tab-kits #kitResearchDetails .kit-target-count-field{display:flex;flex-direction:column;align-items:flex-start;gap:5px;margin:0;font-size:11px;color:#234e74;flex:0 0 135px}
+#tab-kits #kitResearchDetails .kit-target-count-field select{width:135px;min-height:35px;padding:6px 9px;font-size:12px;border-radius:8px;background:#fff}
+#tab-kits #kitResearchDetails .kit-research-toolbar-actions{display:flex;flex:1 1 330px;flex-wrap:wrap;justify-content:flex-start;gap:7px;min-width:0}
+#tab-kits #kitResearchDetails .kit-primary,
+#tab-kits #kitResearchDetails .kit-secondary{display:inline-flex;align-items:center;justify-content:center;min-height:35px;max-width:100%;box-sizing:border-box;padding:8px 11px;font-size:11px;line-height:1.35;border-radius:8px;text-align:center;white-space:normal}
+#tab-kits #kitResearchDetails .kit-research-feedback{margin:0;padding:8px 11px;max-height:88px;overflow:auto;border-left-width:3px;font-size:11px;line-height:1.45;background:#f2f7fd}
+#tab-kits #kitResearchDetails .kit-research-prompt-panel{display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:7px 10px;padding:8px 11px;border:1px solid #e0e8f1;background:#fff;border-radius:10px}
+#tab-kits #kitResearchDetails .kit-research-prompt-details{flex:1 1 220px;min-width:0}
+#tab-kits #kitResearchDetails .kit-research-prompt-details>summary{cursor:pointer;list-style:none;font-size:11px;font-weight:800;color:#214f78}
+#tab-kits #kitResearchDetails .kit-research-prompt-details>summary::before{content:"▸";margin-right:6px;color:#527ba2}
+#tab-kits #kitResearchDetails .kit-research-prompt-details[open]>summary::before{content:"▾"}
+#tab-kits #kitResearchDetails .kit-research-prompt-details>summary span{font-weight:400;font-size:10px;color:#8393a5;margin-left:5px}
+#tab-kits #kitResearchDetails .kit-research-prompt-details>label{display:block;margin:9px 0 4px;font-size:10px}
+#tab-kits #kitResearchDetails #kitResearchPrompt{display:block;min-height:90px;max-height:250px;padding:9px;font-size:11px;margin-top:5px}
+#tab-kits #kitResearchDetails .kit-research-prompt-actions{display:flex;gap:7px;flex-wrap:wrap;align-items:center;justify-content:flex-end}
+#tab-kits #kitResearchDetails #kitPlusDownloadCatalog:not([hidden]){margin:0;min-height:35px}
+#tab-kits #kitResearchDetails .kit-research-import-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,360px),1fr));gap:10px;align-items:stretch}
+#tab-kits #kitResearchDetails .kit-research-import-card{box-sizing:border-box;display:flex;flex-direction:column;gap:8px;min-width:0;margin:0;padding:12px;border-radius:11px;background:#fff;border:1px solid #dce6f1}
+#tab-kits #kitResearchDetails .kit-chat-file-import{border:1px dashed #90b6db;background:#f8fbff}
+#tab-kits #kitResearchDetails .kit-chat-file-import.kit-chat-file-drag{border-color:#2171b6;background:#e8f4ff}
+#tab-kits #kitResearchDetails .kit-research-card-head{display:flex;gap:9px;align-items:center;padding-bottom:7px;border-bottom:1px solid #e8eef5}
+#tab-kits #kitResearchDetails .kit-research-card-head>div{display:flex;flex-direction:column;gap:1px;min-width:0}
+#tab-kits #kitResearchDetails .kit-research-card-head strong{font-size:12px;color:#143e69}
+#tab-kits #kitResearchDetails .kit-research-card-head small{font-size:10px;color:#6c839a}
+#tab-kits #kitResearchDetails .kit-research-step{display:grid;place-items:center;flex-shrink:0;width:24px;height:24px;background:#e9f2ff;border-radius:7px;font-size:11px;color:#2163a1;font-weight:900}
+#tab-kits #kitResearchDetails .kit-research-import-card label{font-size:11px;font-weight:750;line-height:1.35}
+#tab-kits #kitResearchDetails .kit-chat-file-label input{width:100%;font-size:11px;margin:5px 0 0;padding:5px;min-height:37px;border-radius:7px;border:1px solid #dae5f0;background:#fff;color:#4b6480}
+#tab-kits #kitResearchDetails .kit-chat-file-label input::file-selector-button{border:1px solid #b6cfe5;border-radius:6px;background:#e9f3fc;color:#235884;font-size:11px;font-weight:750;padding:6px 9px;margin-right:9px;cursor:pointer}
+#tab-kits #kitResearchDetails .kit-chat-file-import p{font-size:10px;line-height:1.4;margin:0;color:#617b91}
+#tab-kits #kitResearchDetails .kit-chat-file-status{margin:0;padding:8px 9px;border-radius:7px;font-size:10px;line-height:1.4;max-height:110px;overflow:auto;flex-shrink:0}
+#tab-kits #kitResearchDetails .kit-research-manual>button:last-child{align-self:flex-start;margin-top:auto}
+#tab-kits #kitResearchDetails #kitPlusClipboardImport{align-self:flex-start}
+#tab-kits #kitResearchDetails #kitPlusOutput{font-family:inherit;min-height:68px;height:68px;resize:vertical;padding:8px 9px;font-size:11px;line-height:1.4;background:#fff}
+#tab-kits #kitResearchDetails textarea:focus-visible,
+#tab-kits #kitResearchDetails select:focus-visible,
+#tab-kits #kitResearchDetails button:focus-visible,
+#tab-kits #kitResearchDetails summary:focus-visible{outline:2px solid #3180cf;outline-offset:2px}
+@media(max-width:700px){
+ #tab-kits #kitResearchDetails{padding:9px}
+ #tab-kits #kitResearchDetails .kit-research-summary-action{display:none}
+ #tab-kits #kitResearchDetails .kit-research-intro{align-items:flex-start;flex-wrap:wrap}
+ #tab-kits #kitResearchDetails .kit-research-toolbar-actions{flex:1 1 100%}
+ #tab-kits #kitResearchDetails .kit-research-prompt-actions{justify-content:flex-start}
+ #tab-kits #kitResearchDetails .kit-research-prompt-panel{align-items:flex-start}
+ #tab-kits #kitResearchDetails .kit-research-prompt-details{flex:1 1 100%}
+}
