@@ -2,7 +2,7 @@
 // com prejuízo. Aprovação acontece SOMENTE mediante prévia e clique do lojista.
 // Isto NÃO muda a cotação, margem, preço bruto, campanha ou desconto calculados.
 const num=x=>Number(x);
-export function aboveMarketMarginProtected(quote){
+export function aboveMarketMarginProtected(quote,{allowOver25=false}={}){
  if(!quote||quote.status!=='MERCADO_ABAIXO_DO_PISO')return false;
  const min=num(quote.minMarginPct),margin=num(quote.netMarginPct),
   profit=num(quote.netProfit),market=num(quote.marketResearch?.reference),
@@ -18,13 +18,13 @@ export function aboveMarketMarginProtected(quote){
   Number.isFinite(profit)&&profit>0&&
   Number.isFinite(market)&&market>0&&Number.isFinite(floor)&&floor>0&&market<floor&&
   Number.isFinite(effective)&&effective>=floor-0.01&&
-  Number.isFinite(gap)&&gap>=0&&gap<=25&&
+  Number.isFinite(gap)&&gap>=0&&(gap<=25||allowOver25===true)&&
   Number.isFinite(gross)&&gross>0&&Number.isFinite(discount)&&discount>0&&discount<90&&
   quote.discountRecommendationSource==='researched'
  );
 }
-export function marketFloorDiscountEligibility(quote){
- if(!quote||quote.status==='MERCADO_ABAIXO_DO_PISO'&&!aboveMarketMarginProtected(quote))
+export function marketFloorDiscountEligibility(quote,{allowOver25=false}={}){
+ if(!quote||quote.status==='MERCADO_ABAIXO_DO_PISO'&&!aboveMarketMarginProtected(quote,{allowOver25}))
   return {allowed:false,aboveMarket:false,
    message:'Concorrentes abaixo do preço mínimo seguro. Revise custo e margem; preço abaixo do piso continua bloqueado.'};
  if(quote?.status==='MERCADO_ABAIXO_DO_PISO')
