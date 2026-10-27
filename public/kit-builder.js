@@ -213,7 +213,7 @@ function displayKitStockGate(stock,catalogCount){
  $('#kitBuilderStockNotice').hidden=kitStockReady;
  $('#kitImportNextHint').textContent=kitStockReady?
   '✓ Catálogo e estoque confirmados. Abra a montagem para pesquisar kits com SKUs DISPONÍVEIS.':
-  'Atualize o catálogo e os status de estoque. A montagem permanece acessível para consulta e revisão, mas a geração fica bloqueada.';
+  'Catálogo e rascunhos estão salvos. Para criar novos kits ou publicar, atualize catálogo e estoque; para continuar editando um kit, abra seu rascunho.';
  $('#kitCatalogCard').dataset.ready=catalogFresh?'yes':'no';
  $('#kitAvailabilityCard').dataset.ready=kitStockReady?'yes':'no';
  $('#kitCatalogHeadline').textContent=catalogFresh?'Catálogo WeDrop atualizado':'Catálogo salvo · atualização vencida';
@@ -239,9 +239,9 @@ function displayKitStockGate(stock,catalogCount){
   (!catalogFresh?'⊘ Catálogo pendente':'⊘ Atualização pendente');
  $('#kitStockBlocked').querySelector('strong').textContent=kitStockReady?
   'Catálogo e estoque válidos para montar kits.':
-  (!catalogFresh?'Geração bloqueada: catálogo de custos WeDrop desatualizado.':
-   !stockFresh?'Geração bloqueada: atualize a disponibilidade da WeDrop.':
-   'Geração bloqueada: confirme estoque após atualizar o catálogo.');
+  (!catalogFresh?'Atualização do catálogo pendente para novos kits e publicação.':
+   !stockFresh?'Atualização de estoque pendente para novos kits e publicação.':
+   'Confirme a disponibilidade após atualizar o catálogo para novos kits e publicação.');
  $('#kitStockBlocked').querySelector('p').textContent=kitStockReady?
   'Somente SKUs DISPONÍVEIS poderão ser selecionadas.':
   'O catálogo continua salvo e os rascunhos podem ser abertos e editados. Para novas combinações, alterar valores ou publicar, atualize os dados WeDrop e a disponibilidade. Não apague nem recrie seus kits.';
@@ -254,7 +254,7 @@ function displayKitStockGate(stock,catalogCount){
   suggestions=[];suggestionContext=null;
   clearKitPublishApproval();
   $('#kitSuggestions').replaceChildren(elt('p','',
-   'Geração bloqueada até importar a disponibilidade WeDrop. A tela completa de montagem continua disponível.'));
+   'Novos kits aguardam atualização da WeDrop. Os rascunhos salvos continuam acessíveis para editar textos, imagens e posições.'));
   status('Estoque sem validação atual. Acesse a aba Importação WeDrop para liberar novas pesquisas.','error');
  }else status('Estoque WeDrop confirmado. Escolha a categoria e pesquise kits compatíveis.','success');
 }
