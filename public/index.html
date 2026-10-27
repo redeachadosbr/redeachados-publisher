@@ -34,6 +34,40 @@
 <link rel="stylesheet" href="/kit-builder.css?v=2.4.0-import-onefile">
 <link rel="stylesheet" href="/optimizer-technical-studio.css?v=1.0.1-review-feedback">
 <style>
+/* Autorização >25%: campo compacto, sem o input global width:100%.
+   O estado e o consentimento continuam vinculados à prévia; CSS apenas visual. */
+#optimizerExecutionOver25Approval{
+ display:flex;flex-direction:row;align-items:flex-start;justify-content:flex-start;
+ gap:11px;margin:10px 0;padding:12px 14px;box-sizing:border-box;
+ width:100%;max-width:100%;min-width:0;min-height:0;height:auto;
+ border:1px solid #e7c27a;border-radius:12px;background:#fffaf1;
+ color:#805114;text-align:left;white-space:normal;
+}
+#optimizerExecutionOver25Approval[hidden]{display:none!important}
+#optimizerExecutionOver25Consent,
+#optimizerExecutionOver25Approval input[type="checkbox"]{
+ -webkit-appearance:checkbox;appearance:auto;
+ display:block;position:static;
+ flex:0 0 18px!important;width:18px!important;min-width:18px!important;max-width:18px!important;
+ height:18px!important;min-height:18px!important;max-height:18px!important;
+ padding:0!important;margin:2px 0 0!important;box-sizing:border-box;cursor:pointer;
+}
+#optimizerExecutionOver25Approval .optimizer-exec-over25-copy{
+ display:flex;flex:1 1 auto;flex-direction:column;align-items:flex-start;
+ min-width:0;max-width:100%;width:auto;gap:3px;
+ font-size:13px;line-height:1.42;overflow-wrap:anywhere;word-break:normal;
+}
+#optimizerExecutionOver25Approval .optimizer-exec-over25-copy strong{
+ font-size:13px;line-height:1.35;font-weight:800;color:#805114;
+}
+#optimizerExecutionOver25Text{
+ display:block;width:100%;min-width:0;white-space:normal;overflow-wrap:anywhere;
+ font-size:13px;line-height:1.44;font-weight:500;color:#805114;
+}
+@media(max-width:600px){
+ #optimizerExecutionOver25Approval{gap:9px;padding:10px 11px}
+ #optimizerExecutionOver25Text{font-size:12px}
+}
 /* Retomada da SKU visível junto à barra de acompanhamento. A API só é
    acionada pelo clique explícito, depois de validar a prévia/desconto. */
 .optimizer-exec-resume-bar{display:flex;align-items:center;justify-content:space-between;gap:18px;flex-wrap:wrap;margin:12px 0 16px;padding:14px 18px;border:1px solid #b5d4e9;border-radius:15px;background:#f3f9ff}
@@ -489,9 +523,12 @@
             <button id="optimizerExecutionRemaining" type="button" hidden>▶ Executar só variações + fiscal + desconto</button>
             <button id="optimizerExecutionLaunch" type="button" hidden>▶ Retomar plano completo</button>
           </div>
-          <label id="optimizerExecutionOver25Approval" class="optimizer-exec-discount-price-approval" hidden style="align-items:flex-start;gap:10px;margin:12px 0;padding:12px;border:1px solid var(--border-color,#e1caa5);border-radius:12px;">
-            <input id="optimizerExecutionOver25Consent" type="checkbox" style="margin-top:3px;flex-shrink:0;">
-            <span id="optimizerExecutionOver25Text">Autorizo excepcionalmente preço superior a 25% da média, conforme valores e margem da prévia desta SKU. Nenhuma publicação ocorre ao marcar.</span>
+          <label id="optimizerExecutionOver25Approval" class="optimizer-exec-over25-approval" hidden>
+            <input id="optimizerExecutionOver25Consent" type="checkbox">
+            <span class="optimizer-exec-over25-copy">
+              <strong>Autorização excepcional de preço</strong>
+              <span id="optimizerExecutionOver25Text">Autorizo excepcionalmente preço superior a 25% da média, conforme valores e margem da prévia desta SKU. Nenhuma publicação ocorre ao marcar.</span>
+            </span>
           </label>
 
             <div id="optimizerExecutionBar" class="optimizer-exec-progress-track" role="progressbar" aria-label="Progresso operacional de uploads e verificações, não percentual publicado" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0"><span id="optimizerExecutionBarFill"></span></div>
