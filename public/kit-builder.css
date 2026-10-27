@@ -1156,7 +1156,7 @@
 #tab-kits #kitForm #kitSuggest .kit-search-symbol{width:23px;height:23px;flex:0 0 23px;margin:0;display:grid;place-items:center}
 #tab-kits #kitForm #kitSuggest .kit-search-arrow{width:21px;height:21px;flex:0 0 21px;margin-left:auto;display:grid;place-items:center}
 #tab-kits #kitForm #kitSuggest svg{height:100%;width:100%;stroke:currentColor;stroke-width:2.4;fill:none;stroke-linecap:round;stroke-linejoin:round}
-#tab-kits #kitForm #kitSuggest span:nth-child(2){flex:1;text-align:center;min-width:0}
+#tab-kits #kitForm #kitSuggest span:nth-child(2){flex:1;text-align:center;min-width:0;font-size:14px;font-weight:900;margin:0;line-height:1.25}
 @media(max-width:1320px){
  #tab-kits #kitViewBuilder .kit-overview-card{gap:9px;padding:10px}
  #tab-kits #kitViewBuilder .kit-overview-icon{flex-basis:45px;width:45px;height:45px}
