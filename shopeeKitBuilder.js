@@ -464,30 +464,39 @@ export async function kitCreative(shop,kit,{ai=true}={}){
 
  return {title,description,source,prompts:kitPrompts(kit)};
 }
-export async function kitPlusResearchBrief(shop,{category='Brinquedos',size=2}={}){
+export async function kitPlusResearchBrief(shop,{category='Brinquedos',size=2,idea=''}={}){
  if(![2,3].includes(Number(size)))throw Error('Escolha dois ou três SKUs por kit.');
+ const phrase=String(idea||'').trim();
+ if(phrase.length>160)throw Error('Ideia muito longa: máximo 160 caracteres.');
  const [catalog,stock]=await Promise.all([readCatalog(shop),readKitStockSnapshot(shop)]);
  assertKitStockSnapshot(stock);
- const rows=catalog.filter(x=>categoryMatches(x.category,category)&&stock.map.get(x.sku)==='DISPONIVEL')
-  .sort((a,b)=>a.unitCost-b.unitCost);
- if(!rows.length)throw Error('Nenhum produto WeDrop encontrado nesta categoria.');
- // Enviar nomes e custos somente como evidência. Não incluir IDs de loja,
- // tokens, nomes de clientes nem dados privados nas mensagens do ChatGPT.
+ const available=catalog.filter(x=>stock.map.get(x.sku)==='DISPONIVEL');
+ const rows=phrase?rankKitIdeaProducts(phrase,available).products:
+  available.filter(x=>categoryMatches(x.category,category)).sort((a,b)=>a.unitCost-b.unitCost);
+ if(!rows.length)throw Error(phrase?
+  'Nenhuma SKU DISPONÍVEL corresponde à ideia informada. Ajuste a ideia ou atualize o estoque WeDrop.':
+  'Nenhum produto WeDrop encontrado nesta categoria.');
+ // Um kit não pode vir de SKUs fora da lista entregue ao ChatGPT.
+ // Somente nome/código/custo do catálogo de produtos. Nunca enviar chaves,
+ // pedidos, cliente, ID da loja ou dados fiscais.
  const candidates=rows.slice(0,110).map(x=>({
-  sku:x.sku,name:x.name,category:x.category,unitCost:x.unitCost,imageUrl:x.imageUrl
+  sku:x.sku,name:x.name,category:x.category,unitCost:x.unitCost
  }));
  const prompt=[
   'Você é especialista brasileiro em cross-sell de kits para a Shopee.',
-  'Loja: Rede Achados BR. Usar APENAS as SKUs listadas. Categoria: '+category+'.',
-  'Monte até 8 kits com EXATAMENTE '+size+' SKUs diferentes por kit, de produtos de uso real complementar. Não invente códigos, custos, certificações, atributos, imagens, nem estoque.',
-  'Todos os SKUs listados tinham status DISPONÍVEL na última importação WeDrop. Confirme novamente a disponibilidade antes de publicar; nunca invente estoque.',
-  'Evite combinar meras variações de cor do mesmo produto. Não repita SKU dentro do kit.',
-  'Avalie potencial comercial e relevância, mas NÃO diga que são os mais vendidos sem volumes comprovados. Os custos são da WeDrop e o lucro real será calculado no Shopee Manager.',
-  'RESPOSTA OBRIGATÓRIA: somente uma linha por kit, com os códigos exatos separados pelo caractere |. Não use Markdown nem comentários. Exemplo: SKU_A | SKU_B.',
+  'Loja: Rede Achados BR. Use APENAS SKUs desta lista. '+(phrase?
+   'IDEIA DE COMPRA DO VENDEDOR: '+phrase+'. Pode combinar categorias diferentes quando fizer sentido.':
+   'Categoria de pesquisa: '+category+'.'),
+  'Monte até 8 kits com EXATAMENTE '+size+' SKUs diferentes por kit, de produtos de uso real complementar. Cada componente deve contribuir com uma função distinta no mesmo momento de uso.',
+  'PROIBIDO: unir variações iguais de tamanho/cor; misturar áreas não relacionadas (ex.: academia e cozinha); inventar SKU, custo, estoque, certificações ou promessas de vendas.',
+  'Só use códigos listados abaixo. Todos estavam DISPONÍVEIS na última importação WeDrop, mas estoque deve ser validado outra vez antes de publicar.',
+  'Avalie o potencial comercial como HIPÓTESE. Não afirme volume de buscas, conversão ou vendas sem evidência externa verificável. O Manager calcula taxas e lucro do KIT único.',
+  'FORMATO OBRIGATÓRIO: somente uma linha por kit, exatamente os códigos separados por |. Sem títulos, comentários, Markdown, JSON, cabeçalhos nem explicações. Exemplo: SKU_A | SKU_B.',
   'LISTA DE PRODUTOS REAIS WE DROP:',
   ...candidates.map(x=>x.sku+' | '+x.name+' | categoria '+x.category+' | custo R$ '+x.unitCost.toFixed(2).replace('.',','))
  ].join('\n');
- return {prompt,candidatesCount:candidates.length,category,size:Number(size),
+ return {prompt,candidatesCount:candidates.length,candidateSkus:candidates.map(x=>x.sku),
+  category,size:Number(size),idea:phrase,
   truncated:rows.length>candidates.length,source:'WeDrop real, preparado para ChatGPT Plus sem API'};
 }
 export function kitPlusContentPrompt(kit){
