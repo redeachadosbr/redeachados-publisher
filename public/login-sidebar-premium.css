@@ -277,3 +277,130 @@
 @media(prefers-reduced-motion:reduce){
   #loginScreen .login-platform,#loginScreen #loginBtn{transition:none}
 }
+
+
+/* V2 - entrada sofisticada inspirada na arte, mantendo formulário HTML e logo oficial. */
+#loginScreen.login-gold-3d{padding:clamp(10px,2.2vw,32px);background:radial-gradient(circle at 6% 0%,#dbbd81aa,transparent 35%),linear-gradient(140deg,#ece7dd,#eef1f4 50%,#dfe3e9)}
+#loginScreen.login-gold-3d .login-shell{
+ width:min(1610px,100%);min-height:min(830px,calc(100dvh - 28px));
+ grid-template-columns:minmax(0,1.48fr) minmax(410px,1fr);
+ border-radius:31px;border:1px solid #f0daa7;background:#fff;
+ box-shadow:0 42px 95px #18222b52,0 11px 28px #39291222;overflow:hidden
+}
+#loginScreen.login-gold-3d .login-showcase{
+ padding:clamp(22px,2.9vw,46px);overflow:hidden;
+ background:radial-gradient(circle at 76% 42%,#a6773228,transparent 38%),linear-gradient(130deg,#060809,#101315 65%,#0d0b09)
+}
+#loginScreen.login-gold-3d .login-showcase:before{width:690px;height:690px;top:auto;bottom:-430px;left:-290px;right:auto;border-radius:50%;border:2px solid #cb962c66;box-shadow:0 0 0 30px #bc802315,0 0 0 72px #c18e2810;transform:none}
+#loginScreen.login-gold-3d .login-store-lockup{gap:15px}
+#loginScreen.login-gold-3d .login-store-mark{display:block;flex:0 0 75px;width:75px;height:75px;object-fit:contain;border-radius:20px;background:#111;border:1px solid #e0ba6a;box-shadow:0 11px 24px #0008,0 0 14px #bd842820}
+#loginScreen.login-gold-3d .login-store-lockup strong{font-size:clamp(15px,1.5vw,21px);color:#fff}
+#loginScreen.login-gold-3d .login-store-lockup small{color:#edc478;letter-spacing:.25em}
+#loginScreen.login-gold-3d .login-showcase-header{position:relative;z-index:10}
+#loginScreen.login-gold-3d .login-showcase-center{position:relative;z-index:5;display:block;padding:50px 0 18px;max-width:none;min-height:570px;flex:1}
+#loginScreen.login-gold-3d .login-showcase-center>.login-hero-eyebrow,
+#loginScreen.login-gold-3d .login-showcase-center>h1,
+#loginScreen.login-gold-3d .login-showcase-center>p,
+#loginScreen.login-gold-3d .login-benefits{max-width:43%;position:relative;z-index:7}
+#loginScreen.login-gold-3d .login-hero-eyebrow{color:#f3d18b;letter-spacing:.18em}
+#loginScreen.login-gold-3d .login-showcase h1{font-size:clamp(30px,3vw,52px);line-height:1.11;margin-bottom:19px}
+#loginScreen.login-gold-3d .login-showcase-center>p{font-size:clamp(12px,.98vw,15px);line-height:1.75;color:#d4d6d5}
+#loginScreen.login-gold-3d .login-benefits{display:grid;gap:10px;margin-top:26px}
+#loginScreen.login-gold-3d .login-benefit{min-height:67px;display:flex;align-items:center;gap:12px;padding:9px 12px;border:1px solid #baa05c4a;border-radius:14px;background:linear-gradient(145deg,#090b0bcc,#2624207a);box-shadow:0 10px 20px #0005,inset 0 1px #ffffff13}
+#loginScreen.login-gold-3d .login-benefit-icon{flex:0 0 41px;width:41px;height:41px;display:grid;place-items:center;border:1px solid #ca953daa;border-radius:11px;color:#e7bb60;background:linear-gradient(145deg,#29200e,#090909);box-shadow:0 6px 12px #0008}
+#loginScreen.login-gold-3d .login-benefit-icon .icon{width:21px;height:21px}
+#loginScreen.login-gold-3d .login-benefit strong{display:block;color:#fff;font-size:11px;line-height:1.35}
+#loginScreen.login-gold-3d .login-benefit small{display:block;color:#b8bfbd;font-size:10px;line-height:1.4;margin-top:3px}
+#loginScreen.login-gold-3d .login-platforms{position:absolute;z-index:9;left:51%;top:7%;margin:0;width:42%;pointer-events:none}
+#loginScreen.login-gold-3d .login-platform{justify-content:center;background:transparent;border:0;padding:0;box-shadow:none}
+#loginScreen.login-gold-3d .login-platform .login-platform-icon{width:67px;height:67px;flex:0 0 67px;border-radius:20px;box-shadow:8px 16px 13px #0009,inset 0 2px #ffffff55}
+#loginScreen.login-gold-3d .login-platform-icon .icon{width:40px;height:40px}
+#loginScreen.login-gold-3d .login-platform>span:last-child{display:none}
+#loginScreen.login-gold-3d .login-platform-tiktok{transform:rotate(-16deg) translate(-22px,12px)}
+#loginScreen.login-gold-3d .login-platform-instagram{transform:rotate(13deg) translate(11px,-9px)}
+#loginScreen.login-gold-3d .login-showcase-footer{position:relative;z-index:8;color:#d3b575;font-weight:700}
+
+/* Ilustração do celular, painel e carrinho desenhada no HTML/CSS. */
+#loginScreen .login-3d-illustration{position:absolute;right:-1%;top:11%;width:53%;height:87%;pointer-events:none;z-index:4;perspective:900px}
+#loginScreen .login-3d-glow{position:absolute;inset:10% 0 0;background:radial-gradient(circle,#c793363d,transparent 68%);filter:blur(15px)}
+#loginScreen .login-3d-platform{position:absolute;left:0;bottom:1%;width:95%;height:48px;border-radius:50%;background:linear-gradient(#68522a,#211b14 45%,#080908 55%,#1b140d);border-top:2px solid #d9a854;box-shadow:0 20px 20px #0009}
+#loginScreen .login-3d-screen{position:absolute;right:-6%;top:22%;height:57%;width:50%;padding:18px 13px;background:linear-gradient(135deg,#383938,#111516);transform:rotateY(-18deg) rotate(4deg);border:6px solid #101312;border-radius:13px;box-shadow:0 18px 27px #000c}
+#loginScreen .login-3d-browser-dots{font-size:9px;color:#c39b50;letter-spacing:4px}
+#loginScreen .login-browser-head{width:80%;height:8px;background:#cda354;margin:18px 0 15px;border-radius:5px}
+#loginScreen .login-3d-tiles{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+#loginScreen .login-3d-tiles i{height:62px;border:1px solid #6b5e4a;border-radius:8px;background:linear-gradient(145deg,#53524a,#1a1f21)}
+#loginScreen .login-3d-phone{position:absolute;left:5%;top:24%;width:60%;height:67%;display:flex;align-items:center;justify-content:center;background:linear-gradient(140deg,#222,#050506 23%,#080708 90%);border:7px solid #131414;border-radius:31px;transform:rotate(-10deg) rotateY(-13deg);box-shadow:-9px 11px 2px #806132,-17px 24px 22px #000d,0 0 0 2px #c6a05d,inset 0 0 15px #d69d2433}
+#loginScreen .login-3d-notch{position:absolute;top:0;width:30%;height:15px;background:#070707;border-radius:0 0 12px 12px}
+#loginScreen .login-3d-phone-content{display:flex;flex-direction:column;align-items:center;gap:8px;text-align:center}
+#loginScreen .login-3d-phone-content img{width:70px;height:70px;object-fit:contain;border-radius:18px;box-shadow:0 8px 18px #0009}
+#loginScreen .login-3d-phone-content strong{font-size:clamp(10px,.95vw,14px);color:#fff;letter-spacing:.02em}
+#loginScreen .login-3d-phone-content span{font-size:9px;color:#f3ca76;letter-spacing:.14em}
+#loginScreen .login-3d-phone-content i{width:48px;height:4px;background:#ecc36b;border-radius:4px;margin-top:20px;box-shadow:0 0 14px #e3b65c88}
+#loginScreen .login-3d-box{position:absolute;bottom:15%;width:76px;height:64px;z-index:6;background:linear-gradient(130deg,#dfb76e,#79552d);border:1px solid #f4d297;box-shadow:7px 9px 15px #0007}
+#loginScreen .login-3d-box-one{left:2%}#loginScreen .login-3d-box-two{left:15%;bottom:13%;height:53px}
+#loginScreen .login-3d-cart{position:absolute;z-index:9;bottom:2%;left:9%;width:155px;transform:rotate(-8deg);filter:drop-shadow(4px 8px 5px #000)}
+#loginScreen .login-3d-cart svg{display:block;width:100%}
+#loginScreen .login-3d-growth{position:absolute;right:0%;bottom:17%;width:112px;height:131px;z-index:8;border:2px solid #a98244;border-radius:19px;background:linear-gradient(140deg,#4f351a,#111413 74%);box-shadow:9px 13px 18px #000b,inset 0 0 12px #e0aa4b44}
+#loginScreen .login-3d-growth>span{position:absolute;top:-6px;right:10px;font-size:49px;color:#f8ce72}
+#loginScreen .login-3d-growth>div{position:absolute;bottom:18px;left:18px;display:flex;align-items:end;gap:7px;height:65px}
+#loginScreen .login-3d-growth i{display:block;width:15px;background:linear-gradient(#ffe19b,#ad7b2e);border-radius:4px 4px 0 0}
+#loginScreen .login-3d-growth i:nth-child(1){height:24%}#loginScreen .login-3d-growth i:nth-child(2){height:42%}#loginScreen .login-3d-growth i:nth-child(3){height:63%}#loginScreen .login-3d-growth i:nth-child(4){height:90%}
+
+/* Formulário vivo, logo original e acabamento dourado. */
+#loginScreen.login-gold-3d .login-auth-panel{background:linear-gradient(155deg,#fff 10%,#fbfaf7 70%,#f2f0e9);padding:clamp(25px,3.5vw,56px)}
+#loginScreen.login-gold-3d .login-auth-brand{width:70px;padding:7px 11px;display:flex;justify-content:space-between;gap:6px;border-color:#ddbc7c}
+#loginScreen.login-gold-3d .login-card{padding:18px 0;max-width:none}
+#loginScreen.login-gold-3d .login-auth-symbol{width:88px;height:88px;display:block;object-fit:contain;border-radius:21px;background:#080809;border:1px solid #e0b85b;box-shadow:0 12px 21px #4e371a38;margin-bottom:12px}
+#loginScreen.login-gold-3d .login-auth-identity strong{display:block;font-size:21px;font-weight:850;color:#131a22}
+#loginScreen.login-gold-3d .login-auth-identity small{display:block;font-size:11px;letter-spacing:.2em;color:#bd8b35;margin-top:2px}
+#loginScreen.login-gold-3d .login-card h2{font-size:clamp(28px,2.4vw,36px);margin:30px 0 10px}
+#loginScreen.login-gold-3d .login-card>p{font-size:13px;line-height:1.7;max-width:420px;margin-bottom:20px}
+#loginScreen.login-gold-3d .login-password-control{position:relative;display:flex;align-items:center}
+#loginScreen.login-gold-3d #loginPassword{height:58px;padding-left:45px;padding-right:50px;margin-top:0;border-radius:12px}
+#loginScreen.login-gold-3d .login-pass-lock{position:absolute;left:14px;color:#9a8a72;font-size:21px}
+#loginScreen.login-gold-3d #loginPasswordToggle{position:absolute;right:7px;top:7px;display:grid;place-items:center;width:44px;height:44px;background:transparent;color:#5f6770;border-radius:9px}
+#loginScreen.login-gold-3d #loginPasswordToggle:hover{background:#f8f1e5;color:#a97a29}
+#loginScreen.login-gold-3d #loginBtn{height:63px;margin-top:17px;justify-content:center;font-size:14px}
+#loginScreen.login-gold-3d #loginBtn .icon{position:absolute;right:23px}
+#loginScreen.login-gold-3d .login-social-summary{display:flex;align-items:center;gap:15px;padding:14px;margin-top:34px;border:1px solid #e6e7e9;border-radius:15px;background:#fff;box-shadow:0 14px 25px #2632410e}
+#loginScreen.login-gold-3d .login-social-summary-icons{display:flex;gap:7px;flex-shrink:0}
+#loginScreen.login-gold-3d .login-social-summary-icons>span{width:39px;height:39px;display:grid;place-items:center;background:#07080a;border-radius:11px}
+#loginScreen.login-gold-3d .login-social-summary-icons>span+span{background:linear-gradient(130deg,#803dcc,#e53883,#ffbd56)}
+#loginScreen.login-gold-3d .login-social-summary-icons .icon{width:24px;height:24px;color:#fff}
+#loginScreen.login-gold-3d .login-social-summary strong{display:block;color:#1b2730;font-size:12px}
+#loginScreen.login-gold-3d .login-social-summary small{display:block;color:#6d7783;font-size:10px;margin-top:4px;line-height:1.5}
+#loginScreen.login-gold-3d .login-safe-note{justify-content:center;margin-top:27px}
+/* Menus laterais continuam com a correção de rolagem existente. */
+@media(min-width:901px) and (max-width:1280px){
+ #loginScreen.login-gold-3d .login-shell{grid-template-columns:minmax(0,1.15fr) minmax(400px,1fr)}
+ #loginScreen.login-gold-3d .login-showcase{padding:25px}
+ #loginScreen.login-gold-3d .login-showcase-center>.login-hero-eyebrow,#loginScreen.login-gold-3d .login-showcase-center>h1,#loginScreen.login-gold-3d .login-showcase-center>p,#loginScreen.login-gold-3d .login-benefits{max-width:49%}
+ #loginScreen .login-3d-illustration{transform:scale(.85);transform-origin:right center}
+}
+@media(max-width:900px){
+ #loginScreen.login-gold-3d .login-shell{grid-template-columns:1fr;width:min(670px,100%);min-height:0}
+ #loginScreen.login-gold-3d .login-showcase-center{min-height:0;padding:25px 0}
+ #loginScreen.login-gold-3d .login-showcase-center>.login-hero-eyebrow,#loginScreen.login-gold-3d .login-showcase-center>h1,#loginScreen.login-gold-3d .login-showcase-center>p,#loginScreen.login-gold-3d .login-benefits{max-width:100%}
+ #loginScreen .login-3d-illustration{display:none}
+ #loginScreen.login-gold-3d .login-platforms{position:static;width:100%;margin-top:16px;pointer-events:auto;gap:12px}
+ #loginScreen.login-gold-3d .login-platform{transform:none}
+ #loginScreen.login-gold-3d .login-platform>span:last-child{display:block}
+ #loginScreen.login-gold-3d .login-platform{justify-content:start;background:#ffffff13;border:1px solid #ffffff30;padding:8px}
+ #loginScreen.login-gold-3d .login-platform .login-platform-icon{width:38px;height:38px;flex:0 0 38px;border-radius:11px}
+ #loginScreen.login-gold-3d .login-platform-icon .icon{width:22px;height:22px}
+ #loginScreen.login-gold-3d .login-benefits{grid-template-columns:1fr;margin-top:18px}
+ #loginScreen.login-gold-3d .login-showcase{padding:28px}
+ #loginScreen.login-gold-3d .login-auth-panel{padding:32px}
+}
+@media(max-width:520px){
+ #loginScreen.login-gold-3d{padding:0}
+ #loginScreen.login-gold-3d .login-shell{width:100%;border-radius:0}
+ #loginScreen.login-gold-3d .login-showcase{padding:22px}
+ #loginScreen.login-gold-3d .login-store-mark{width:56px;height:56px;flex:0 0 56px}
+ #loginScreen.login-gold-3d .login-showcase h1{font-size:32px}
+ #loginScreen.login-gold-3d .login-benefit:nth-child(2){display:none}
+ #loginScreen.login-gold-3d .login-showcase-footer{display:none}
+ #loginScreen.login-gold-3d .login-auth-panel{padding:25px 22px}
+ #loginScreen.login-gold-3d .login-card h2{margin-top:24px}
+ #loginScreen.login-gold-3d .login-social-summary{margin-top:22px;padding:11px}
+}

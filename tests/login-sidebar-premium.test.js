@@ -32,3 +32,14 @@ test('autenticação e envio preservados com ids únicos',()=>{
  assert.match(app,/\/api\/login/);
  assert.match(ui,/byId\('loginPassword'\)\.addEventListener\('keydown'/);
 });
+
+test('login gold 3D preserva login e logo original e adapta ao celular',()=>{
+ const h=fs.readFileSync(new URL('../public/index.html',import.meta.url),'utf8');
+ const c=fs.readFileSync(new URL('../public/login-sidebar-premium.css',import.meta.url),'utf8');
+ const u=fs.readFileSync(new URL('../public/ui.js',import.meta.url),'utf8');
+ assert.equal((h.match(/src="\/icon-512.png"/g)||[]).length,3);
+ for(const id of ['loginBtn','loginPassword','loginPasswordToggle'])assert.equal((h.match(new RegExp('id="'+id+'"','g'))||[]).length,1);
+ assert.match(h,/login-3d-phone/);assert.match(h,/login-3d-cart/);assert.match(h,/login-3d-growth/);
+ assert.match(c,/login-gold-3d/);assert.match(c,/@media\(max-width:520px\)/);
+ assert.match(u,/password\.type=showing\?'text':'password'/);
+});

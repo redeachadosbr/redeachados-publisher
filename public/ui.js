@@ -259,6 +259,16 @@
     requestAnimationFrame(() => window.scrollTo({top:0,left:0,behavior:'auto'}));
   }
   window.addEventListener('hashchange', updateNav);
+  const passwordToggle=byId('loginPasswordToggle');
+  if(passwordToggle)passwordToggle.addEventListener('click',()=>{
+    const password=byId('loginPassword');
+    const showing=password.type==='password';
+    password.type=showing?'text':'password';
+    passwordToggle.setAttribute('aria-pressed',String(showing));
+    passwordToggle.setAttribute('aria-label',showing?'Ocultar senha':'Mostrar senha');
+    passwordToggle.title=showing?'Ocultar senha':'Mostrar senha';
+    password.focus({preventScroll:true});
+  });
   byId('loginPassword').addEventListener('keydown', event => {if (event.key === 'Enter') byId('loginBtn').click()});
   updateCounts();
   updateNav();
