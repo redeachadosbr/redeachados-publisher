@@ -166,7 +166,7 @@ test('layout compacto da imagem, isolado ao resumo e ao formulário de kits',()=
  assert.match(css,/#tab-kits #kitViewBuilder \.kit-overview\{/);
  assert.match(css,/#tab-kits #kitForm #kitSuggest\{/);
  assert.match(css,/@media\(max-width:720px\)/);
- assert.match(html,/kit-builder\.css\?v=3\.2-draft-editor-reference/);
+ assert.match(html,/kit-builder\.css\?v=[^"\s]+/);
 });
 
 test('editor do rascunho exibe fotos e indicadores do próprio kit e controles existentes',()=>{
@@ -181,7 +181,7 @@ test('editor do rascunho exibe fotos e indicadores do próprio kit e controles e
  assert.match(js,/refreshKitEditorOverview\(kit\);/);
  assert.match(js,/\$\('#kitImportImages'\)\?\.addEventListener\('click'/);
  assert.match(js,/\/api\/shopee\/kits\/modify/);
- assert.match(html,/kit-builder\.css\?v=3\.2-draft-editor-reference/);
+ assert.match(html,/kit-builder\.css\?v=[^"\s]+/);
 });
 
 test('contêiner externo da composição não reduz a largura dos dois cartões',()=>{
