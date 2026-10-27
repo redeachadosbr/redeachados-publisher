@@ -26,7 +26,7 @@ let kitWatchHandle=null,kitWatchSku=null,kitWatchTimer=null,kitWatchBusy=false;
 let kitWatchSeen=new Set(),kitGalleryImportBusy=false,kitDraggingSlot=null;
 const kitPhotoStore=createKitPhotoStore();
 let kitBridgeController=null,kitRestoredSku='';
-let kitActiveDraftSku=null,kitDraftOpenRevision=0;
+let kitActiveDraftSku=null,kitDraftOpenRevision=0,kitDraftNeedsRefresh=false;
 let kitContentSku='',kitContentManualFacts=new Map(),kitContentSeoTitles=[],
  kitContentAwaitingResponse=false,kitContentBusy=false;
 let kitCurrentMode='builder';
@@ -159,6 +159,7 @@ async function repriceKitMargin(revision){
    }
    if(outcome.kind==='prepared'){
     if(outcome.data.kit.kitSku!==prepared.kit.kitSku)throw Error('A cotação retornou um kit diferente.');
+    kitDraftNeedsRefresh=false;
     prepared={...prepared,kit:outcome.data.kit};
     kitSaved=false;clearKitPublishApproval();
     kitPublishStatus('Custo ou margem alterados. Salve novamente o rascunho e refaça a prévia antes de publicar.','info');
@@ -215,7 +216,7 @@ function displayKitStockGate(stock,catalogCount){
   'Atualize o catálogo e os status de estoque. A montagem permanece acessível para consulta e revisão, mas a geração fica bloqueada.';
  $('#kitCatalogCard').dataset.ready=catalogFresh?'yes':'no';
  $('#kitAvailabilityCard').dataset.ready=kitStockReady?'yes':'no';
- $('#kitCatalogHeadline').textContent=catalogFresh?'Catálogo WeDrop atualizado':'Catálogo WeDrop desatualizado';
+ $('#kitCatalogHeadline').textContent=catalogFresh?'Catálogo WeDrop atualizado':'Catálogo salvo · atualização vencida';
  $('#kitCatalogDate').textContent='Última atualização: '+kitDateTime(stock?.catalogLastImportedAt);
  $('#kitCatalogBadge').textContent=catalogFresh?'Atualizado':'Desatualizado';
  const hasStock=Number(stock?.importedCount||0)>0;
@@ -243,8 +244,7 @@ function displayKitStockGate(stock,catalogCount){
    'Geração bloqueada: confirme estoque após atualizar o catálogo.');
  $('#kitStockBlocked').querySelector('p').textContent=kitStockReady?
   'Somente SKUs DISPONÍVEIS poderão ser selecionadas.':
-  (stockFresh?'O estoque já foi importado. Não precisa reenviar o mesmo arquivo só por causa do aviso.':
-    'As SKUs sem disponibilidade confirmada não serão utilizadas.');
+  'O catálogo continua salvo e os rascunhos podem ser abertos e editados. Para novas combinações, alterar valores ou publicar, atualize os dados WeDrop e a disponibilidade. Não apague nem recrie seus kits.';
  for(const selector of ['#kitSuggest','#kitPlusResearch','#kitPlusAutoStart','#kitPlusClipboardImport','#kitPlusImport'])
   $(selector).disabled=!kitStockReady;
  $('#kitSource').textContent=kitStockReady?'Origem: WeDrop · estoque verificado':'ⓘ Indisponível no momento';
@@ -469,6 +469,7 @@ function resetKitPublication({saved=false,publication=null}={}){
  kitItemId=publication?.itemId||null;
  const uncertain=['publishing','uncertain','published_pending','published']
   .includes(String(publication?.status||''));
+ const commercialBlocked=uncertain||kitDraftNeedsRefresh;
  kitDiscountToken=null;$('#kitDiscountPreviewBox').hidden=true;
  $('#kitShopeePhotoCount').textContent='0 fotos enviadas à galeria da Shopee nesta sessão (não publicadas).';
  $('#kitContentsReviewed').checked=false;$('#kitPhotosReviewed').checked=false;
@@ -479,15 +480,16 @@ function resetKitPublication({saved=false,publication=null}={}){
  $('#kitLogisticId').replaceChildren(new Option('Consultar opções da Shopee',''));
  $('#kitPublishLinks').replaceChildren();
  $('#kitDiscountNext').hidden=!kitItemId&&!uncertain;
- $('#kitPublishPreview').disabled=!saved||uncertain;
- $('#kitSendPhotos').disabled=!saved||uncertain;
- $('#kitPublishCheck').disabled=!saved||uncertain;
- $('#kitPublishExecute').disabled=!saved||uncertain;
+ $('#kitPublishPreview').disabled=!saved||commercialBlocked;
+ $('#kitSendPhotos').disabled=!saved||commercialBlocked;
+ $('#kitPublishCheck').disabled=!saved||commercialBlocked;
+ $('#kitPublishExecute').disabled=!saved||commercialBlocked;
  $('#kitPublishedMessage').textContent=kitItemId?
   'Kit criado com Item ID '+kitItemId+' · Estado: '+String(publication.status)+
   '. O desconto será uma operação posterior, com aprovação própria.':'';
  kitPublishStatus(uncertain?
   'Kit já enviado ou com resposta incerta. NÃO publique novamente; consulte Meus Kits e confirme o status com a Shopee.':
+  kitDraftNeedsRefresh?'Rascunho disponível para editar e gerar imagens. Valores salvos são históricos. Atualize catálogo e estoque WeDrop antes de salvar novos preços ou publicar.':
   saved?'Rascunho salvo. Consulte os vínculos dos componentes para preparar o kit na Shopee.':
   'Primeiro salve o rascunho com título, descrição e margem revisados.',
   kitItemId?'success':uncertain?'error':'info');
@@ -747,7 +749,7 @@ function kitManualControls(kit,{editor=false}={}){
     if(!result?.kit?.components?.length)throw Error('Resposta sem composição confirmada.');
     // Rascunhos/imagens de outra composição não podem contaminar o kit alterado.
     kitStopAutoFolder({notice:false});
-    images.clear();prepared=result;resetKitPublication({saved:false});
+    images.clear();kitDraftNeedsRefresh=false;prepared=result;resetKitPublication({saved:false});
     renderKit();
     const from=kit.components.map(x=>x.sku).join(' + ');
     const to=result.kit.components.map(x=>x.sku).join(' + ');
@@ -907,7 +909,7 @@ async function loadDrafts({restoreCurrent=true}={}){
     kitEditorReturnHome();
     kitActiveDraftSku=null;
    }
-  }else if(restoreCurrent&&!prepared&&kitStockReady&&result.drafts.length){
+  }else if(restoreCurrent&&!prepared&&result.drafts.length){
    // Rascunho mais recente restaurado sob o cartão sem mover a página.
    void openDraft(result.drafts[0].kitSku,{scroll:false,
     targetCard:root.querySelector('[data-kit-draft-sku]'),title:result.drafts[0].title});
@@ -953,6 +955,7 @@ async function openDraft(kitSku,{scroll=true,targetCard=null,title=''}={}){
   kitStopKitExtension('Outro kit selecionado.');
   kitStopAutoFolder({notice:false});
   kitRestoredSku='';
+  kitDraftNeedsRefresh=d.stockRevalidationRequired===true;
   prepared=d;images.clear();resetKitPublication({saved:true,publication:d.publication});
   setKitMargin(d.kit.quote.targetMarginPct);
   $('#kitPacking').value=String(d.kit.packing);
@@ -961,7 +964,10 @@ async function openDraft(kitSku,{scroll=true,targetCard=null,title=''}={}){
   kitActiveDraftSku=kitSku;
   kitPlaceEditorUnderDraft(kitSku,{targetCard});
   renderKit({scroll,displayTitle:title||d.creative?.title});
-  status('Rascunho selecionado: '+(title||d.creative?.title||kitSku)+'. Custos e estoque recalculados.','success');
+  status(kitDraftNeedsRefresh?
+   '✓ Kit '+kitSku+' recuperado. Você pode editar textos e imagens. Custos e estoque NÃO foram atualizados; a publicação continua bloqueada. '+(d.stockReason||''):
+   'Rascunho selecionado: '+(title||d.creative?.title||kitSku)+'. Custos e estoque recalculados.',
+   kitDraftNeedsRefresh?'info':'success');
  }catch(error){
   if(revision===kitDraftOpenRevision)
    status('Não foi possível recuperar o kit '+kitSku+': '+error.message,'error');
@@ -975,15 +981,18 @@ async function saveDraft(){
  const b=$('#kitSaveDraft');b.disabled=true;
  try{
   const res=await api('/api/shopee/kits/drafts/save',{body:{
-   skus:prepared.kit.components.map(x=>x.sku),
+   skus:prepared.kit.components.map(x=>x.sku),kitSku:prepared.kit.kitSku,
    ...currentSettings(),title:$('#kitTitle').value,description:$('#kitDescription').value,
    seoTitles:kitContentSeoTitles.map(x=>x.title),
    manualFacts:Object.fromEntries(kitContentManualFacts.entries())
   }});
   if(!res.saved)throw Error('O servidor não confirmou a gravação do rascunho.');
+  kitDraftNeedsRefresh=res.stockRevalidationRequired===true;
   resetKitPublication({saved:true});
   if(kitActiveDraftSku)kitActiveDraftSku=res.kitSku;
-  status('✓ Rascunho '+res.kitSku+' salvo nesta loja. A Shopee não foi alterada.','success');
+  status(kitDraftNeedsRefresh?
+   '✓ Textos do rascunho '+res.kitSku+' salvos. Os preços e o estoque antigos ainda precisam de atualização antes de publicar.':
+   '✓ Rascunho '+res.kitSku+' salvo nesta loja. A Shopee não foi alterada.','success');
   kitImportState('Textos salvos no rascunho · sem publicar na Shopee','success');
   void loadDrafts();
   return true;
@@ -999,7 +1008,7 @@ async function search(){
  if(generationBusy)return;
  if(marginTimer)clearTimeout(marginTimer);
  marginRevision++;marginUpdatePending=false;$('#kitSaveDraft').disabled=false;
- const btn=$('#kitSuggest');btn.disabled=true;prepared=null;
+ const btn=$('#kitSuggest');btn.disabled=true;prepared=null;kitDraftNeedsRefresh=false;
  kitCloseInlineEditor();
  try{
   const idea=String($('#kitIdea')?.value||'').trim(),size=Number($('#kitSize').value);
@@ -1063,7 +1072,9 @@ function renderKit({scroll=true,displayTitle=''}={}){
  ]){
   const cell=elt('div');cell.append(elt('span','',label),elt('b','',value));prices.append(cell);
  }
- $('#kitWarning').textContent=kit.warning+' Texto criado por '+creative.source+'. Verifique estoque e capacidade de envio de vários SKUs.';
+ $('#kitWarning').textContent=(kitDraftNeedsRefresh?
+  '⚠️ RASCUNHO RECUPERADO: custos, preços, margens e estoque são da última gravação, não são valores atuais. Atualize a WeDrop antes de novos preços ou publicação. ':'')+
+  kit.warning+' Texto criado por '+creative.source+'. Verifique estoque e capacidade de envio de vários SKUs.';
  $('#kitTitle').value=creative.title;
  $('#kitDescription').value=creative.description;
  updateKitTextCounters();
@@ -1926,6 +1937,7 @@ async function prepare(kit){
   }});
   kitCloseInlineEditor();
   kitRestoredSku='';
+  kitDraftNeedsRefresh=false;
   prepared=data;images.clear();resetKitPublication({saved:false});renderKit();
   status('Kit '+data.kit.kitSku+' preparado para revisão. Nenhum anúncio criado na Shopee.','success');
  }catch(error){status('Preparação não concluída: '+error.message,'error');}
