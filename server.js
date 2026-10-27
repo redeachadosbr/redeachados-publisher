@@ -395,7 +395,8 @@ app.post('/api/shopee/kits/plus-brief',mustLogin,requireWeDropAdmin,async(req,re
   const {auth}=await getValidAuth(req);
   res.json({ok:true,...await kitPlusResearchBrief(auth.shopId,{
    category:String(req.body?.category||'Brinquedos').slice(0,90),
-   size:Number(req.body?.size||2),idea:String(req.body?.idea||'').slice(0,160)
+   size:Number(req.body?.size||2),idea:String(req.body?.idea||'').slice(0,160),
+   desiredKits:Number(req.body?.desiredKits||10)
   })});
  }catch(error){res.status(400).json({error:String(error.message||error).slice(0,300)});}
 });
@@ -407,37 +408,47 @@ app.post('/api/shopee/kits/plus-import',mustLogin,requireWeDropAdmin,async(req,r
   const category=String(req.body?.category||'Brinquedos').slice(0,90);
   const idea=String(req.body?.idea||'').trim().slice(0,160);
   const size=Number(req.body?.size||2),raw=req.body?.kits;
-  if(![2,3].includes(size)||!Array.isArray(raw)||raw.length<1||raw.length>8)
-   throw Error('Informe até 8 kits de dois ou três SKUs.');
-
-  const seen=new Set(),kits=[];
-  for(const input of raw){
-   if(!Array.isArray(input)||input.length!==size||
-      input.some(x=>typeof x!=='string'||x.length>120)||new Set(input).size!==size)
-    throw Error('Cada linha deve ter '+size+' SKUs diferentes.');
-   const key=input.slice().sort().join('|');
-   if(seen.has(key))continue;
-   seen.add(key);
-   const kit=await composeKit(auth.shopId,input,{
-    marginPct:Number(req.body?.marginPct??15),
-    packing:Number(req.body?.packing||0),
-    shipping:Number(req.body?.shipping||0)
-   });
-   // A IA sugere; o servidor decide com base em SKUs reais e função
-   // complementar de cada componente. Nunca confiar só no texto da IA.
-   if(!idea&&!kit.components.some(p=>categoryMatches(p.category,category)))
-    throw Error('Kit de SKU '+input.join(', ')+' não corresponde à categoria selecionada.');
-   if(idea&&!rankKitIdeaProducts(idea,kit.components).products.length)
-    throw Error('Kit de SKU '+input.join(', ')+' não corresponde à ideia: '+idea);
-   const fit=assessKitBuyerFit(kit.components);
-   if(!fit.ok)throw Error('Kit de SKU '+input.join(', ')+
-    ' sem coerência de uso: '+fit.reason);
-   kits.push({...kit,buyerFitScore:fit.score,matchSignals:fit.signals,
-    businessReason:fit.reason+'. Sugerido pelo ChatGPT Plus, SKUs e custos revalidados na WeDrop; vendas não comprovadas.',
-    demandEvidence:'não verificada'});
+  const desiredKits=Number(req.body?.desiredKits||10);
+  if(![2,3].includes(size)||!Number.isInteger(desiredKits)||desiredKits<5||desiredKits>10||
+      !Array.isArray(raw)||raw.length<1||raw.length>10)
+   throw Error('Informe até dez kits de dois ou três SKUs, com meta entre 5 e 10.');
+  const seen=new Set(),kits=[],rejected=[];
+  for(const input of raw.slice(0,desiredKits)){
+   try{
+    if(!Array.isArray(input)||input.length!==size||
+       input.some(x=>typeof x!=='string'||x.length>120)||new Set(input).size!==size)
+     throw Error('Cada kit precisa de '+size+' SKUs diferentes.');
+    const key=input.slice().sort().join('|');
+    if(seen.has(key))continue;
+    seen.add(key);
+    // Não confiar em códigos gerados por IA: só componentes reais, com
+    // custo e estoque disponíveis no fornecedor, podem entrar no kit.
+    const kit=await composeKit(auth.shopId,input,{
+     marginPct:Number(req.body?.marginPct??15),
+     packing:Number(req.body?.packing||0),
+     shipping:Number(req.body?.shipping||0)
+    });
+    if(!kit.components.every(p=>categoryMatches(p.category,category)))
+     throw Error('Uma ou mais SKUs estão fora da categoria selecionada.');
+    // A ideia direciona a pesquisa, mas não autoriza resultados irrelevantes.
+    if(idea&&!rankKitIdeaProducts(idea,kit.components).products.length)
+     throw Error('Produtos sem correspondência com a ideia informada.');
+    const fit=assessKitBuyerFit(kit.components);
+    if(!fit.ok)throw Error('Falta coerência de uso: '+fit.reason);
+    const created=await saveKitDraft(auth.shopId,{kit,creative:await kitCreative(auth.shopId,kit,{ai:false})});
+    kits.push({...kit,buyerFitScore:fit.score,matchSignals:fit.signals,
+     businessReason:fit.reason+'. Proposta do ChatGPT Plus, verificada na WeDrop. Vendas não comprovadas.',
+     demandEvidence:'não verificada',draftSaved:created.saved===true});
+   }catch(error){
+    rejected.push({skus:Array.isArray(input)?input.map(x=>String(x).slice(0,40)):[],
+     reason:String(error.message||error).slice(0,180)});
+   }
   }
-  kits.sort((a,b)=>b.quote.netProfit-a.quote.netProfit);
-  res.json({ok:true,source:'Sugestões ChatGPT Plus, SKUs verificados no servidor',disclaimer:'Estimativa, sem dados comprovados de vendas e estoque.',results:kits});
+  kits.sort((a,b)=>b.buyerFitScore-a.buyerFitScore||b.quote.netProfit-a.quote.netProfit);
+  res.json({ok:true,source:'ChatGPT Plus + catálogo completo WeDrop verificado',
+   disclaimer:'Kits salvos como rascunhos para revisão, sem publicação. Potencial comercial estimado, sem vendas comprovadas.',
+   results:kits,accepted:kits.length,rejected,
+   targetCount:desiredKits,marketplaceUpdated:false,shopeePublished:false});
  }catch(error){res.status(400).json({error:String(error.message||error).slice(0,300)});}
 });
 app.post('/api/shopee/kits/plus-content',mustLogin,requireWeDropAdmin,async(req,res)=>{
