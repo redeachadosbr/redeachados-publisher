@@ -95,13 +95,13 @@ function render(){
   const promoField=field('Preço final da promoção por variação',
    quote?.status==='calculated'?formatMoney(quote.promo):'',{placeholder:'Aguardando custo e cálculo WeDrop'});
   promoField.input.readOnly=true;promoField.input.setAttribute('aria-label','Preço promocional calculado '+name);
+  // Manter apenas o preço promocional visível; cálculos completos continuam
+  // sendo realizados no servidor e validados antes da execução.
   const detail=el('small','optimizer-variation-price-feedback',
-   quote?.status==='calculated'?
-    'Custo '+formatMoney(quote.cost)+' · preço bruto '+formatMoney(quote.gross)+
-    ' · após cupom '+formatMoney(quote.checkout)+' · margem '+Number(quote.margin).toFixed(2).replace('.',',')+
-    '% · lucro '+formatMoney(quote.profit)+' · desconto '+quote.discountPct+'%':
-    quote?.message||'Salve o SKU WeDrop e consulte novamente a variação para calcular. Nenhum preço foi enviado.');
-  detail.style.cssText='display:block;font-size:12px;line-height:1.4;margin:4px 0 10px;';
+   quote?.status==='calculated'?'':quote?.message||
+    'Custo não confirmado. Consulte novamente esta SKU WeDrop.');
+  detail.hidden=quote?.status==='calculated';
+  detail.style.cssText='display:block;font-size:12px;line-height:1.4;margin:3px 0 6px;';
 
   const stock=field('Estoque (mínimo 1)',Number.isInteger(Number(prior.stock))&&Number(prior.stock)>0?prior.stock:1,{kind:'number',min:1});
   stock.input.step='1';stock.input.dataset.variantField='stock';
