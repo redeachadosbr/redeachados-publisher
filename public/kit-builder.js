@@ -896,7 +896,15 @@ async function uploadPhoto(slot,file){
  }catch(error){imageStatus('Falha ao importar imagem: '+error.message,'error');}
 }
 const KIT_CHAT_SESSION_KEY='raKitPlusResearchV1';
-let kitChatPending=null,kitChatClipboardBusy=false;
+let kitChatPending=null,kitChatClipboardBusy=false,kitResearchCatalogContent='';
+function kitDownloadFullCatalog(){
+ if(!kitResearchCatalogContent)throw Error('Prepare novamente a pesquisa para baixar o catálogo completo.');
+ const content=new Blob([kitResearchCatalogContent],{type:'text/plain;charset=utf-8'});
+ const url=URL.createObjectURL(content);
+ try{downloadData(url,'wedrop-skus-pesquisa-kits.txt');}
+ finally{setTimeout(()=>URL.revokeObjectURL(url),30000);}
+}
+
 try{
  const stored=JSON.parse(sessionStorage.getItem(KIT_CHAT_SESSION_KEY)||'null');
  if(stored&&Date.now()-stored.at<60*60*1000&&Array.isArray(stored.candidateSkus))kitChatPending=stored;
@@ -908,19 +916,20 @@ function kitPlusNotice(message,state='info'){
 }
 function kitResearchContext(){
  return {category:$('#kitCategory').value,size:Number($('#kitSize').value),
-  idea:String($('#kitIdea')?.value||'').trim()};
+  idea:String($('#kitIdea')?.value||'').trim(),desiredKits:Number($('#kitTargetCount').value||10)};
 }
 function kitChatValidateContext(){
  if(!kitChatPending)throw Error('Prepare a pesquisa antes de importar o retorno do ChatGPT.');
  const context=kitResearchContext();
  if(kitChatPending.category!==context.category||
-    kitChatPending.size!==context.size||kitChatPending.idea!==context.idea)
+    kitChatPending.size!==context.size||kitChatPending.idea!==context.idea||
+    kitChatPending.desiredKits!==context.desiredKits)
   throw Error('Categoria, ideia ou quantidade mudaram. Prepare nova pesquisa antes de importar SKUs.');
  if(Date.now()-kitChatPending.at>60*60*1000)
   throw Error('A pesquisa expirou. Atualize a lista de SKUs e disponibilidade WeDrop.');
  return context;
 }
-function kitChatExtractLines(raw,size,allowedCodes){
+function kitChatExtractLines(raw,size,allowedCodes,targetCount=10){
  const value=String(raw||'');
  if(value.length>18000)throw Error('Resposta muito longa. Copie apenas linhas com SKUs.');
  const whitelist=new Map(allowedCodes.map(code=>[String(code).trim().toUpperCase(),String(code).trim()]));
@@ -936,7 +945,7 @@ function kitChatExtractLines(raw,size,allowedCodes){
   const key=ids.slice().sort().join('|');
   if(seen.has(key))continue;
   seen.add(key);rows.push(ids);
-  if(rows.length>=8)break;
+  if(rows.length>=targetCount)break;
  }
  return rows;
 }
@@ -947,11 +956,14 @@ async function plusResearch({openChat=false}={}){
  if(openChat&&kitChatPending&&$('#kitResearchPrompt').value){
   try{
    kitChatValidateContext();
+   if(kitChatPending.requiresAttachment)kitDownloadFullCatalog();
    const copy=navigator.clipboard.writeText($('#kitResearchPrompt').value);
    window.open('https://chatgpt.com/','_blank','noopener,noreferrer');
    try{
     await copy;
-    kitPlusNotice('Prompt copiado e ChatGPT aberto. Cole com Ctrl+V, envie, copie as linhas de SKUs da resposta e retorne para montar os kits.','success');
+    kitPlusNotice('Pesquisa de '+kitChatPending.candidateSkus.length+' SKUs preparada. ChatGPT aberto: '+
+     (kitChatPending.requiresAttachment?'ANEXE o TXT baixado, depois cole (Ctrl+V) e envie. ':'Cole (Ctrl+V) e envie. ')+
+     'Copie a resposta com até '+kitChatPending.desiredKits+' kits e volte para importar e salvar os rascunhos.','success');
    }catch{kitPlusNotice('ChatGPT aberto. Cópia bloqueada pelo Chrome; copie o prompt manualmente do campo da pesquisa.','warning');}
    return;
   }catch{ /* Parâmetros da pesquisa mudaram: preparar nova lista WeDrop. */ }
@@ -961,18 +973,26 @@ async function plusResearch({openChat=false}={}){
  try{
   const context=kitResearchContext();
   const r=await api('/api/shopee/kits/plus-brief',{body:context});
-  kitChatPending={...context,nonce:crypto.randomUUID(),at:Date.now(),candidateSkus:r.candidateSkus||[]};
+  kitChatPending={...context,nonce:crypto.randomUUID(),at:Date.now(),
+   candidateSkus:r.candidateSkus||[],requiresAttachment:Boolean(r.requiresAttachment)};
+  kitResearchCatalogContent=r.catalogFileContent||'';
+  $('#kitPlusDownloadCatalog').hidden=!r.requiresAttachment;
   sessionStorage.setItem(KIT_CHAT_SESSION_KEY,JSON.stringify(kitChatPending));
+  if(openChat&&r.requiresAttachment)kitDownloadFullCatalog();
   $('#kitResearchPrompt').value=r.prompt;
   $('#kitPlusOutput').value='';
   if(openChat){
    try{
     await navigator.clipboard.writeText(r.prompt);
-    kitPlusNotice('ChatGPT aberto. Cole (Ctrl+V) e envie a pesquisa. Copie a resposta com SKUs e volte: tentarei importar e montar os kits.','success');
+    kitPlusNotice('ChatGPT aberto com '+r.candidatesCount+' SKUs da categoria. '+
+     (r.requiresAttachment?'ANEXE o TXT baixado, ':'')+
+     'cole o comando com Ctrl+V e envie. Copie as sugestões e retorne: tentarei importar automaticamente.','success');
    }catch{
     kitPlusNotice('ChatGPT aberto, mas o Chrome bloqueou a cópia automática. Volte ao Manager, copie o prompt no campo, cole no ChatGPT e copie a resposta.','warning');
    }
-  }else kitPlusNotice('Pesquisa preparada com '+r.candidatesCount+' SKUs. Use “Copiar prompt + abrir ChatGPT Plus”.','success');
+  }else kitPlusNotice('Pesquisa completa preparada com '+r.candidatesCount+
+   ' SKUs disponíveis'+(r.requiresAttachment?' e arquivo TXT para anexar':'')+
+   '. Selecione Abrir ChatGPT e pesquisar kits.','success');
  }catch(error){kitPlusNotice('Pesquisa não preparada: '+error.message,'error');}
  finally{btn.disabled=false;}
 }
@@ -992,7 +1012,7 @@ async function importPlusSuggestions({readClipboard=false,silent=false}={}){
    if(!navigator.clipboard?.readText)throw Error('O navegador não permite ler a área de transferência.');
    response=await navigator.clipboard.readText();
   }
-  const rows=kitChatExtractLines(response,context.size,kitChatPending.candidateSkus);
+  const rows=kitChatExtractLines(response,context.size,kitChatPending.candidateSkus,context.desiredKits);
   if(!rows.length){
    if(!silent)throw Error('Não encontrei linhas SKU1 | SKU2 com códigos reais desta pesquisa. Copie somente a resposta do ChatGPT.');
    return false;
@@ -1006,7 +1026,13 @@ async function importPlusSuggestions({readClipboard=false,silent=false}={}){
   suggestionContext={category:context.category,size:context.size,idea:context.idea,source:r.source};
   renderSuggestions(r);
   kitChatPending=null;sessionStorage.removeItem(KIT_CHAT_SESSION_KEY);
-  kitPlusNotice('✓ '+r.results.length+' kits montados com SKUs, custos, estoque e margem conferidos. Revise as opções; nada foi publicado.','success');
+  kitResearchCatalogContent='';
+  $('#kitPlusDownloadCatalog').hidden=true;
+  await loadDrafts();
+  const skipped=(r.rejected||[]).length;
+  kitPlusNotice('✓ '+r.results.length+' kits montados e salvos como rascunhos com custo, estoque e margem conferidos. '+
+   (skipped?skipped+' combinação(ões) rejeitada(s) por incoerência ou dados inválidos. ':'')+
+   'Revise os kits abaixo. Nenhum anúncio foi publicado.','success');
   $('#kitSuggestions')?.scrollIntoView({behavior:'smooth',block:'start'});
   return true;
  }catch(error){
@@ -1179,6 +1205,9 @@ $('#kitIdea')?.addEventListener('keydown',event=>{
  if(event.key==='Enter'){event.preventDefault();void search();}
 });
 $('#kitSuggest')?.addEventListener('click',()=>void search());
+$('#kitPlusDownloadCatalog')?.addEventListener('click',()=>{
+ try{kitDownloadFullCatalog();}catch(error){kitPlusNotice(error.message,'error');}
+});
 $('#kitPlusAutoStart')?.addEventListener('click',()=>void plusResearch({openChat:true}));
 $('#kitPlusResearch')?.addEventListener('click',()=>void plusResearch());
 $('#kitPlusClipboardImport')?.addEventListener('click',()=>void importPlusSuggestions({readClipboard:true}));
