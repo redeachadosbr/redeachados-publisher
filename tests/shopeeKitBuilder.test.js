@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {categoryMatches,kitCatalog,kitSku,composeKit,suggestKits,kitCreative,kitPrompts,kitPlusResearchBrief,kitPlusContentPrompt} from '../shopeeKitBuilder.js';
+import {categoryMatches,kitCatalog,kitSku,composeKit,suggestKits,rankKitIdeaProducts,suggestKitsForIdea,kitCreative,kitPrompts,kitPlusResearchBrief,kitPlusContentPrompt} from '../shopeeKitBuilder.js';
 import {clearKitStockCache} from '../shopeeKitAvailability.js';
 
 test('kits por categoria: custo exato, somatório, dois finais 0/9, prompts e proteção por SKU',async()=>{
@@ -148,4 +148,31 @@ test('barra manual de margem dos kits é equivalente ao controle da Otimização
  assert.match(js,/refreshKitPrices\(prepared\.kit\)/);
  assert.match(js,/if\(marginUpdatePending\)/);
  assert.match(engine,/n<0\|\|n>70/);
+});
+
+test('ideias de kits: identifica SKUs distintas com complementaridade e não inventa catálogo',()=>{
+ const products=[
+  {sku:'T1',name:'Tábua de Madeira para Churrasco 30cm',category:'Utensílios e Talheres',unitCost:22},
+  {sku:'P1',name:'Pegador de Carnes em Aço Inox',category:'Utensílios e Talheres',unitCost:10},
+  {sku:'T2',name:'Tábua de Madeira para Churrasco 40cm',category:'Utensílios e Talheres',unitCost:29},
+  {sku:'C1',name:'Cafeteira Francesa 300 ml',category:'Copos, Jarras e Servir',unitCost:19},
+  {sku:'F1',name:'Faca para Churrasco',category:'Utensílios e Talheres',unitCost:15}
+ ];
+ const result=rankKitIdeaProducts('quero um kit para churrasco',products);
+ assert.ok(result.products.some(x=>x.sku==='T1'));
+ assert.ok(result.products.some(x=>x.sku==='P1'));
+ assert.ok(result.products.some(x=>x.sku==='F1'));
+ assert.ok(!result.products.some(x=>x.sku==='C1'));
+ assert.throws(()=>rankKitIdeaProducts('kit e para',products),/palavra útil/);
+ assert.ok(rankKitIdeaProducts('kit para café',products).products.some(x=>x.sku==='C1'));
+});
+test('rotas de kits por ideia reutilizam composição de estoque e aprovação sem publicar',async()=>{
+ const {readFileSync}=await import('node:fs');
+ const server=readFileSync(new URL('../server.js',import.meta.url),'utf8');
+ const ui=readFileSync(new URL('../public/index.html',import.meta.url),'utf8');
+ const frontend=readFileSync(new URL('../public/kit-builder.js',import.meta.url),'utf8');
+ assert.match(server,/\/api\/shopee\/kits\/idea-search/);
+ assert.match(server,/marketplaceUpdated:false/);
+ assert.match(ui,/id="kitIdea"/);
+ assert.match(frontend,/api\('\/api\/shopee\/kits\/idea-search'/);
 });
