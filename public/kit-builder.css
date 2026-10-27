@@ -579,3 +579,11 @@
 #tab-kits .kit-target-count-field select{width:135px;min-height:40px;padding:7px 10px;border:1px solid #c6d7e7;border-radius:8px;background:#fff;color:#19345b}
 #tab-kits #kitPlusDownloadCatalog:not([hidden]){display:inline-flex;align-items:center;margin:6px 0 9px;max-width:100%;white-space:normal;text-align:left}
 #tab-kits #kitPlusAutoStatus{white-space:normal;overflow-wrap:anywhere;line-height:1.55}
+
+/* Importação em lote de resultados ChatGPT (sem copiar SKU individual). */
+#tab-kits .kit-chat-file-import{margin:12px 0;padding:14px 16px;border:2px dashed #6c9fcf;border-radius:12px;background:#f5faff;max-width:100%;box-sizing:border-box}
+#tab-kits .kit-chat-file-import.kit-chat-file-drag{background:#dff1ff;border-color:#1667bc}
+#tab-kits .kit-chat-file-label{display:block;font-size:12px;font-weight:800;line-height:1.65;color:#114a8a;cursor:pointer}
+#tab-kits .kit-chat-file-label input{display:block;margin-top:10px;max-width:100%;box-sizing:border-box;font-size:12px}
+#tab-kits .kit-chat-file-import p{color:#54718d;font-size:11px;line-height:1.5;margin:8px 0 0}
+@media(max-width:550px){#tab-kits .kit-chat-file-import{padding:10px}}
