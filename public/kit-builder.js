@@ -95,10 +95,16 @@ async function repriceKitMargin(revision){
   const calls=[];
   const context=suggestionContext;
   if(suggestions.length&&context&&context.category===$('#kitCategory').value&&context.size===Number($('#kitSize').value)){
-   const current=suggestions.map(kit=>kit.components.map(p=>p.sku));
-   calls.push(api('/api/shopee/kits/plus-import',{body:{
-    category:context.category,size:context.size,kits:current,...settings
-   }}).then(data=>({kind:'suggestions',data})));
+   if(context.idea){
+    calls.push(api('/api/shopee/kits/idea-search',{body:{
+     idea:context.idea,size:context.size,...settings
+    }}).then(data=>({kind:'suggestions',data})));
+   }else{
+    const current=suggestions.map(kit=>kit.components.map(p=>p.sku));
+    calls.push(api('/api/shopee/kits/plus-import',{body:{
+     category:context.category,size:context.size,kits:current,...settings
+    }}).then(data=>({kind:'suggestions',data})));
+   }
   }
   if(prepared){
    calls.push(api('/api/shopee/kits/prepare',{body:{
@@ -766,12 +772,16 @@ async function search(){
  const btn=$('#kitSuggest');btn.disabled=true;prepared=null;
  $('#kitDetail').hidden=true;
  try{
-  const data=await api('/api/shopee/kits/suggest',{body:{
-   category:$('#kitCategory').value,size:Number($('#kitSize').value),...currentSettings()
-  }});
-  suggestionContext={category:$('#kitCategory').value,size:Number($('#kitSize').value),source:data.source};
+  const idea=String($('#kitIdea')?.value||'').trim(),size=Number($('#kitSize').value);
+  if(idea&&idea.length<3)throw Error('Descreva a ideia com pelo menos 3 caracteres.');
+  const data=idea?
+   await api('/api/shopee/kits/idea-search',{body:{idea,size,...currentSettings()}}):
+   await api('/api/shopee/kits/suggest',{body:{category:$('#kitCategory').value,
+    size,...currentSettings()}});
+  suggestionContext={category:$('#kitCategory').value,size,idea:idea||null,source:data.source};
   renderSuggestions(data);
-  status('Análise concluída: '+suggestions.length+' opções. '+data.disclaimer,'success');
+  status((suggestions.length?'✓ Kits montados para revisão: ':'Nenhum kit elegível: ')+
+   suggestions.length+' opção(ões). '+data.disclaimer,suggestions.length?'success':'info');
  }catch(error){status(error.message,'error');}
  finally{btn.disabled=false;}
 }
@@ -1045,6 +1055,16 @@ $('#kitCostMappingApply')?.addEventListener('click',()=>void confirmKitMappedCos
 $('#kitCatalogImport')?.addEventListener('click',()=>void importKitCatalogFile());
 $('#kitStockImport')?.addEventListener('click',()=>void importKitStockCsv());
 $('#kitStockReload')?.addEventListener('click',()=>{categoriesLoaded=false;void categories(true);});
+$('#kitIdea')?.addEventListener('input',()=>{
+ const idea=String($('#kitIdea').value||'').trim();
+ $('#kitSuggest').lastChild.textContent=idea?' Encontrar SKUs e montar kit':' Pesquisar kits inteligentes';
+ if(suggestionContext?.idea!==idea)status(idea?
+  'Ideia pronta. Clique em Encontrar SKUs e montar kit para consultar a WeDrop importada.':
+  'Pesquisa por categoria pronta. Clique em Pesquisar kits inteligentes.','info');
+});
+$('#kitIdea')?.addEventListener('keydown',event=>{
+ if(event.key==='Enter'){event.preventDefault();void search();}
+});
 $('#kitSuggest')?.addEventListener('click',()=>void search());
 $('#kitPlusResearch')?.addEventListener('click',()=>void plusResearch());
 $('#kitPlusImport')?.addEventListener('click',()=>void importPlusSuggestions());
