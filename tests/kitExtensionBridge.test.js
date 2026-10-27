@@ -41,3 +41,20 @@ test('backend limita as fotos WeDrop à composição validada do kit',()=>{
  assert.match(server,/composeKit\(auth.shopId,skus/);
  assert.match(server,/kitReferencePhoto/);
 });
+
+test('ponte não declara imagem gerada somente porque abriu o chat',()=>{
+ const runtime=fs.readFileSync(new URL('../public/kit-extension-runtime.js',import.meta.url),'utf8');
+ assert.match(runtime,/Aguardando a primeira imagem gerada e importada/);
+ assert.match(runtime,/watchImage\(first\)/);
+ assert.match(runtime,/150000/);
+ assert.match(runtime,/abrir o ChatGPT NÃO inicia a geração/);
+ assert.match(runtime,/if\(accepted!==true\)throw Error/);
+});
+test('troca de fotos é atômica e galeria não confirma antes de salvar',()=>{
+ const store=fs.readFileSync(new URL('../public/kit-extension-bridge.js',import.meta.url),'utf8');
+ const ui=fs.readFileSync(new URL('../public/kit-builder.js',import.meta.url),'utf8');
+ assert.match(store,/move:async\(kit,from,to\)/);
+ assert.match(store,/database.transaction\('photos','readwrite'\)/);
+ assert.match(ui,/await kitPhotoStore.move\(kitSku,from,to\);/);
+ assert.match(ui,/if\(!images.has\(row.slot\)&&\/\^data:image/);
+});
