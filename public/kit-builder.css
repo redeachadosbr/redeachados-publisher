@@ -883,3 +883,9 @@
   grid-column:1 / -1;grid-row:3;justify-self:start;
  }
 }
+
+/* v2.9: remove cabeçalho duplicado e card redundante de sugestões.
+   Mantém a grade de resultados, o painel de pesquisa avançada e o acesso a rascunhos. */
+#tab-kits #kitSuggestions{margin-top:6px}
+#tab-kits #kitSource[hidden]{display:none!important}
+#tab-kits #kitSuggestions:empty{margin:0}

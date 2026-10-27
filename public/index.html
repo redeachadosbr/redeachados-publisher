@@ -31,7 +31,7 @@
 <link rel="stylesheet" href="/ads-premium.css?v=2.4.0-seo-ads-location">
 <link rel="stylesheet" href="/sidebar-collapse.css?v=1.0.0">
 <link rel="stylesheet" href="/optimizer-image-studio.css?v=1.0.2">
-<link rel="stylesheet" href="/kit-builder.css?v=2.8.0-delete-draft">
+<link rel="stylesheet" href="/kit-builder.css?v=2.9.0-clean-headings">
 <link rel="stylesheet" href="/optimizer-technical-studio.css?v=1.0.1-review-feedback">
 <style>
 /* Autorização >25%: campo compacto, sem o input global width:100%.
@@ -894,13 +894,6 @@
   </div>
 </section>
               <section class="tabpane" id="tab-kits" aria-label="Kits Inteligentes WeDrop">
- <header class="kit-hero">
-   <div class="kit-hero-title"><span class="kit-hero-symbol" aria-hidden="true">✨</span><div>
-    <h2>Kits Inteligentes WeDrop</h2>
-    <p>Encontre oportunidades de kits, calcule custos e lucros e crie anúncios completos com o auxílio do ChatGPT.</p>
-   </div></div>
-   <span class="kit-status-pill">ChatGPT Plus · Sem API paga</span>
- </header>
  <nav class="kit-mode-tabs" role="tablist" aria-label="Seções de Kits Inteligentes WeDrop">
   <button id="kitModeBuilder" class="kit-mode-tab" type="button" role="tab" aria-controls="kitViewBuilder" aria-selected="true">✦ Montagem de Kits <small>Pesquisar, editar e publicar</small></button>
   <button id="kitModeImport" class="kit-mode-tab" type="button" role="tab" aria-controls="kitViewImport" aria-selected="false">▤ Importação WeDrop <small>Atualizar catálogo e estoque</small></button>
@@ -1030,7 +1023,7 @@
  </div>
  <p class="kit-info kit-stock-disclaimer">Somente SKUs disponíveis no catálogo importado da WeDrop. Margens e lucros são estimativas; envio conjunto e estoque devem ser confirmados antes da publicação.</p>
  <p id="kitStatus" role="status" aria-live="polite" class="kit-status">Carregando categorias cadastradas...</p>
- <div class="kit-bar kit-section-heading kit-suggestion-header"><span class="kit-heading-icon kit-icon-purple">♧</span><div class="kit-section-heading-text"><h3>Sugestões de kits</h3><p>Kits baseados em SKUs reais da WeDrop, com custos e lucros calculados automaticamente.</p></div><span id="kitSource">Aguardando estoque disponível</span><button id="kitExpandResearch" type="button" class="kit-secondary" aria-controls="kitResearchDetails" aria-expanded="false">⌄ Expandir pesquisa de combinações</button></div>
+ <span id="kitSource" hidden>Aguardando estoque disponível</span>
   <div id="kitSuggestions" class="kit-suggestions"><p>Escolha uma categoria para iniciar.</p></div>
 
 <details class="kit-plus-workflow kit-research-details kit-research-compact" id="kitResearchDetails">
