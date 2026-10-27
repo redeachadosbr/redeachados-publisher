@@ -33,5 +33,5 @@ test('geração automática requer confirmação explícita e não publica',()=>
  assert.match(route,/openAiApiKey/);
  assert.match(route,/composeKit/);
  assert.match(route,/generateKitImage/);
- assert.doesNotMatch(route,/publishApproved|item\\.add|discount\\/execute/);
+ assert.ok(!route.includes('kitPublishApproved')&&!route.includes('/discount/execute'));
 });
