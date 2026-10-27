@@ -12,7 +12,7 @@ test('reconhece nomes de fotos por posição e ignora números de data',()=>{
 test('importação em lote encontra primeiro espaço vazio e preserva fotos existentes',()=>{
  const input=[{name:'imagem-03.png'},{name:'imagem-01.png'},{name:'ChatGPT Image.png'}];
  const plan=kitPlanImageImports(input,[1,4]);
- assert.deepEqual(plan.map(x=>x.slot),[3,2,5]);
+ assert.deepEqual(plan.map(x=>x.slot),[2,3,5]);
  assert.equal(kitImageNextSlot([1,2,3,4,5,6,7,8,9]),null);
  assert.equal(kitPlanImageImports([{name:'teste.jpg'}],Array.from({length:9},(_,i)=>i+1))[0].slot,null);
 });

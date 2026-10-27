@@ -26,6 +26,8 @@ export function kitPlanImageImports(files,occupiedSlots=[]){
   if(x!==null&&y!==null&&x!==y)return x-y;
   if(x!==null&&y===null)return -1;
   if(x===null&&y!==null)return 1;
+  if(Number.isFinite(a.lastModified)&&Number.isFinite(b.lastModified)&&a.lastModified!==b.lastModified)
+   return a.lastModified-b.lastModified;
   return String(a.name||'').localeCompare(String(b.name||''),'pt-BR',{numeric:true});
  });
  for(const file of sorted){

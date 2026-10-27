@@ -1127,10 +1127,10 @@ function kitImageDragStart(event,slot){
  event.dataTransfer.setData('text/plain',String(slot));
 }
 function kitImageDragOver(event,card){
- if(!kitDraggingSlot&&event.dataTransfer?.types?.includes('Files'))return;
- if(!kitDraggingSlot)return;
+ const files=event.dataTransfer?.types?.includes('Files');
+ if(!kitDraggingSlot&&!files)return;
  event.preventDefault();card.classList.add('kit-drop-target');
- event.dataTransfer.dropEffect='move';
+ event.dataTransfer.dropEffect=kitDraggingSlot?'move':'copy';
 }
 function kitImageDrop(event,slot){
  if(kitDraggingSlot!==null){
@@ -1437,7 +1437,8 @@ async function kitStartAutoFolder(){
  try{
   // A escolha deve ocorrer no clique do vendedor; nenhuma pasta é acessada sem permissão.
   const handle=await window.showDirectoryPicker({mode:'read',id:'kit-chatgpt-images'});
-  const permission=await handle.requestPermission({mode:'read'});
+  let permission=await handle.queryPermission({mode:'read'});
+  if(permission!=='granted')permission=await handle.requestPermission({mode:'read'});
   if(permission!=='granted')throw Error('Permissão de leitura não concedida.');
   const current=prepared.kit.kitSku;
   const entries=await kitFolderImageEntries(handle);
