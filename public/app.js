@@ -8989,6 +8989,14 @@ globalThis.window?.addEventListener?.('message',async(event)=>{
  // (RA_SITE_ABORT / RA_SITE_UPLOAD_RESULT / RA_SITE_START) must never be
  // interpreted as extension input, or cancellation can recursively echo.
  if(!['RA_EXTENSION_READY','RA_EXTENSION_START_RESULT','RA_EXTENSION_WAKE_RESULT','RA_EXTENSION_PROGRESS','RA_EXTENSION_IMAGE'].includes(m.kind))return;
+ // Ponte compartilhada: mensagens de kits são tratadas pelo editor de kits.
+ // Não enviar ACK negativo nem RA_SITE_ABORT apenas porque não há SKU individual.
+ if(m.kind!=='RA_EXTENSION_READY'&&m.nonce){
+  try{
+   const activeKit=JSON.parse(sessionStorage.getItem('raKitExtensionActiveV1')||'null');
+   if(activeKit?.nonce===m.nonce&&activeKit.kitSku)return;
+  }catch{}
+ }
  if(m.kind==='RA_EXTENSION_READY'){
   const version=String(m.version||'');
   optimizerChatBridgeVersion=version;
