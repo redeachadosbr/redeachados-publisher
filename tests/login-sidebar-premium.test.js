@@ -43,3 +43,16 @@ test('login gold 3D preserva login e logo original e adapta ao celular',()=>{
  assert.match(c,/login-gold-3d/);assert.match(c,/@media\(max-width:520px\)/);
  assert.match(u,/password\.type=showing\?'text':'password'/);
 });
+
+test('fundo de página inteira com login branco independente sobreposto à direita',()=>{
+ const h=fs.readFileSync(new URL('../public/index.html',import.meta.url),'utf8');
+ const c=fs.readFileSync(new URL('../public/login-sidebar-premium.css',import.meta.url),'utf8');
+ assert.match(h,/id="loginScreen" class="center hidden login-gold-3d login-overlay-scene"/);
+ assert.match(c,/#loginScreen\.login-overlay-scene \.login-shell\{[\s\S]*?display:block/);
+ assert.match(c,/#loginScreen\.login-overlay-scene \.login-showcase\{[\s\S]*?position:absolute/);
+ assert.match(c,/#loginScreen\.login-overlay-scene \.login-auth-panel\{[\s\S]*?position:absolute/);
+ assert.match(c,/transform:translateY\(-50%\)/);
+ assert.match(c,/#loginScreen\.login-overlay-scene \.login-auth-panel\{[\s\S]*?border-radius:30px/);
+ assert.match(c,/@media\(max-width:950px\)/);
+ assert.match(h,/login-sidebar-premium\.css\?v=2\.1\.0-overlay/);
+});
