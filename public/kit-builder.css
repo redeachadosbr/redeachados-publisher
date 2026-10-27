@@ -667,3 +667,180 @@
  #tab-kits #kitResearchDetails .kit-research-prompt-panel{align-items:flex-start}
  #tab-kits #kitResearchDetails .kit-research-prompt-details{flex:1 1 100%}
 }
+
+/* v2.7.0 – pesquisa de combinações: contraste alto e acabamento premium.
+   Escopo rigoroso: apenas #kitResearchDetails. Não altera lógica dos kits. */
+#tab-kits #kitResearchDetails{
+  padding:13px 16px 15px;background:#fff;border:1px solid #cbdff6;
+  border-radius:16px;box-shadow:0 4px 17px rgba(20,74,145,.09);color:#153760;
+}
+#tab-kits #kitResearchDetails>summary{min-height:45px;gap:14px;padding:1px 4px 12px}
+#tab-kits #kitResearchDetails .kit-research-summary-copy{
+  position:relative;min-height:39px;justify-content:center;padding-left:56px;gap:3px;
+}
+#tab-kits #kitResearchDetails .kit-research-summary-copy::before{
+  content:"✦";position:absolute;left:0;top:50%;transform:translateY(-50%);
+  width:43px;height:43px;display:grid;place-items:center;border-radius:50%;
+  background:#e6f2ff;color:#0766eb;font-size:25px;font-weight:900;
+}
+#tab-kits #kitResearchDetails .kit-research-summary-copy strong{font-size:16px;font-weight:900;line-height:1.25;color:#0b2f75}
+#tab-kits #kitResearchDetails .kit-research-summary-copy small{font-size:11.5px;line-height:1.4;font-weight:650;color:#395f95}
+#tab-kits #kitResearchDetails .kit-research-summary-action{font-size:11px;font-weight:800;color:#084dae}
+#tab-kits #kitResearchDetails>summary::after{content:"⌃";font-size:23px;line-height:1;color:#0d50a9;transform:none}
+#tab-kits #kitResearchDetails[open]>summary::after{transform:none}
+#tab-kits #kitResearchDetails:not([open])>summary::after{transform:rotate(180deg)}
+#tab-kits #kitResearchDetails .kit-research-content{gap:11px;padding-top:4px}
+#tab-kits #kitResearchDetails .kit-research-intro{gap:12px 16px}
+#tab-kits #kitResearchDetails .kit-research-intro strong{font-size:14px;font-weight:900;color:#0c2f70}
+#tab-kits #kitResearchDetails .kit-research-intro p{
+  margin:4px 0 0;font-size:11.75px;line-height:1.52;font-weight:500;color:#365775;
+}
+#tab-kits #kitResearchDetails .kit-research-chip{
+  display:inline-flex;align-items:center;gap:7px;padding:8px 12px;
+  border:1px solid #a9e2c4;border-radius:999px;
+  background:#e2f8ec;font-size:10.5px;font-weight:850;color:#076537;
+}
+#tab-kits #kitResearchDetails .kit-research-chip::before{
+  content:"✓";display:grid;place-items:center;width:17px;height:17px;
+  border-radius:50%;background:#079f55;color:#fff;font-size:11px;font-weight:900;
+}
+#tab-kits #kitResearchDetails .kit-research-toolbar{
+  padding:11px 13px;gap:10px;border:1px solid #d0e2f8;
+  border-radius:12px;background:linear-gradient(110deg,#eff6ff,#f8fbff);
+}
+#tab-kits #kitResearchDetails .kit-target-count-field{
+  flex:0 0 160px;gap:5px;font-size:11.5px;font-weight:900;color:#0a3473;
+}
+#tab-kits #kitResearchDetails .kit-target-count-field select{
+  width:160px;min-height:40px;padding:8px 11px;border:1px solid #b6d0ee;
+  border-radius:9px;background:#fff;color:#153e73;font-size:12px;font-weight:700;
+}
+#tab-kits #kitResearchDetails .kit-research-toolbar-actions{gap:8px}
+#tab-kits #kitResearchDetails .kit-primary,
+#tab-kits #kitResearchDetails .kit-secondary{
+  padding:9px 12px;min-height:39px;line-height:1.3;font-size:11.5px;
+  font-weight:850;border-radius:9px;transition:background-color .15s,border-color .15s,box-shadow .15s;
+}
+#tab-kits #kitResearchDetails .kit-primary{
+  color:#fff;border:1px solid #fa5616;
+  background:linear-gradient(110deg,#ff7615,#ff4e18);
+  box-shadow:0 5px 12px rgba(251,81,29,.22);
+}
+#tab-kits #kitResearchDetails .kit-primary:hover:not(:disabled){
+  background:linear-gradient(110deg,#f46d0c,#ed4116);box-shadow:0 6px 14px rgba(249,82,29,.3);
+}
+#tab-kits #kitResearchDetails .kit-secondary{
+  border:1px solid #a9cefc;background:#f4f9ff;color:#0645a6;
+  box-shadow:0 2px 5px rgba(33,103,196,.07);
+}
+#tab-kits #kitResearchDetails .kit-secondary:hover:not(:disabled){
+  background:#e8f3ff;border-color:#73aaef;color:#033888;
+}
+#tab-kits #kitResearchDetails .kit-research-feedback{
+  position:relative;display:block;margin:0;padding:10px 12px 10px 40px;
+  max-height:100px;overflow:auto;border:1px solid #c9e2ff;
+  border-left:4px solid #197bfa;border-radius:9px;
+  background:#e9f4ff;color:#08499e;font-size:11.5px;line-height:1.5;font-weight:750;
+}
+#tab-kits #kitResearchDetails .kit-research-feedback::before{
+  content:"i";position:absolute;top:10px;left:12px;
+  display:grid;place-items:center;width:18px;height:18px;border-radius:50%;
+  background:#1676f5;color:#fff;font-size:12px;font-weight:900;font-style:normal;
+}
+#tab-kits #kitResearchDetails .kit-research-prompt-panel{
+  padding:9px 12px;border:1px solid #cfdef2;border-radius:10px;background:#fff;gap:9px;
+}
+#tab-kits #kitResearchDetails .kit-research-prompt-details>summary{
+  color:#083977;font-size:11.5px;font-weight:900;
+}
+#tab-kits #kitResearchDetails .kit-research-prompt-details>summary::before{color:#0e64d5}
+#tab-kits #kitResearchDetails .kit-research-prompt-details>summary span{
+  color:#476b96;font-size:10.5px;font-weight:600;
+}
+#tab-kits #kitResearchDetails .kit-research-prompt-details>label{
+  color:#143e7a;font-size:11px;font-weight:800;
+}
+#tab-kits #kitResearchDetails #kitResearchPrompt{
+  border:1px solid #b1cceb;background:#f7fbff;color:#1f446e;
+  font-size:11.5px;
+}
+#tab-kits #kitResearchDetails .kit-research-prompt-actions{gap:8px}
+#tab-kits #kitResearchDetails .kit-research-import-grid{gap:10px}
+#tab-kits #kitResearchDetails .kit-research-import-card{
+  padding:13px;gap:8px;border-radius:12px;
+  border:1px solid #d2e2f5;background:#fff;
+  box-shadow:0 2px 8px rgba(22,75,143,.05);
+}
+#tab-kits #kitResearchDetails .kit-research-import-card.kit-chat-file-import{
+  border:1px solid #bcd7fa;background:linear-gradient(135deg,#f0f7ff,#fafcff);
+}
+#tab-kits #kitResearchDetails .kit-chat-file-import.kit-chat-file-drag{
+  background:#e2f2ff;border-color:#2182ed;box-shadow:0 0 0 2px rgba(33,130,237,.15);
+}
+#tab-kits #kitResearchDetails .kit-research-card-head{
+  padding-bottom:9px;gap:10px;border-bottom:1px solid #dbe6f5;
+}
+#tab-kits #kitResearchDetails .kit-research-step{
+  width:35px;height:35px;background:#dceaff;border-radius:50%;
+  font-size:17px;font-weight:900;color:#0954c1;
+}
+#tab-kits #kitResearchDetails .kit-research-card-head strong{
+  color:#0a3274;font-size:13.5px;font-weight:900;
+}
+#tab-kits #kitResearchDetails .kit-research-card-head small{
+  color:#476a92;font-size:11px;font-weight:600;line-height:1.4;
+}
+#tab-kits #kitResearchDetails .kit-research-import-card label{
+  color:#0c316a;font-size:11.5px;font-weight:850;
+}
+#tab-kits #kitResearchDetails .kit-chat-file-label input{
+  min-height:40px;border:1px solid #b7d1f1;border-radius:8px;
+  color:#294e7c;background:#fff;font-size:11.5px;
+}
+#tab-kits #kitResearchDetails .kit-chat-file-label input::file-selector-button{
+  border:1px solid #b5d0f0;border-radius:7px;
+  padding:7px 11px;background:#dfedff;
+  color:#07458f;font-size:11.5px;font-weight:850;
+}
+#tab-kits #kitResearchDetails .kit-chat-file-import p:not(.kit-chat-file-status){
+  color:#395b82;font-size:11px;line-height:1.5;font-weight:500;
+}
+#tab-kits #kitResearchDetails .kit-chat-file-status{
+  padding:9px 11px;max-height:112px;overflow:auto;
+  border:1px solid #bddcf5;border-radius:9px;
+  background:#eaf5ff;color:#0a477d;
+  font-size:11px;font-weight:650;line-height:1.48;
+}
+#tab-kits #kitResearchDetails .kit-chat-file-status[data-state="success"]{
+  border-color:#9edfc0;background:#e5f8ed;color:#06633a;
+}
+#tab-kits #kitResearchDetails .kit-chat-file-status[data-state="warning"]{
+  border-color:#f0d08e;background:#fff7df;color:#825000;
+}
+#tab-kits #kitResearchDetails .kit-chat-file-status[data-state="error"]{
+  border-color:#ecacac;background:#fff0f0;color:#a3222a;
+}
+#tab-kits #kitResearchDetails #kitPlusOutput{
+  height:68px;min-height:68px;padding:9px 11px;
+  border:1px solid #b5d0f0;border-radius:9px;
+  background:#fff;color:#183a63;
+  font-size:11.5px;line-height:1.42;font-weight:500;
+}
+#tab-kits #kitResearchDetails #kitPlusOutput::placeholder{color:#596e87;opacity:1}
+#tab-kits #kitResearchDetails #kitPlusOutput:focus,
+#tab-kits #kitResearchDetails #kitResearchPrompt:focus{
+  border-color:#3387e9;outline:2px solid rgba(52,132,229,.18);
+}
+#tab-kits #kitResearchDetails .kit-research-manual>button:last-child{margin-top:auto}
+@media(max-width:700px){
+  #tab-kits #kitResearchDetails{padding:10px}
+  #tab-kits #kitResearchDetails .kit-research-summary-copy{padding-left:44px}
+  #tab-kits #kitResearchDetails .kit-research-summary-copy::before{width:35px;height:35px;font-size:21px}
+  #tab-kits #kitResearchDetails .kit-research-summary-copy strong{font-size:14px}
+  #tab-kits #kitResearchDetails .kit-research-summary-copy small{font-size:11px}
+  #tab-kits #kitResearchDetails .kit-research-chip{flex-shrink:1}
+  #tab-kits #kitResearchDetails .kit-target-count-field{flex-basis:140px}
+  #tab-kits #kitResearchDetails .kit-target-count-field select{width:140px}
+  #tab-kits #kitResearchDetails .kit-research-toolbar-actions{flex:1 1 100%}
+  #tab-kits #kitResearchDetails .kit-research-toolbar-actions button{flex:1 1 175px}
+}
