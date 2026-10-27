@@ -1058,6 +1058,7 @@
      <input id="kitPlusFile" type="file" accept=".json,.txt,.md,application/json,text/plain" aria-describedby="kitPlusFileHelp">
     </label>
     <p id="kitPlusFileHelp">Selecione um único arquivo com as 5–10 combinações. O sistema extrai todas as SKUs, recalcula os preços WeDrop e salva os kits válidos como rascunhos. Não precisa copiar códigos.</p>
+    <p id="kitPlusFileStatus" class="kit-chat-file-status" data-state="info" role="status" aria-live="polite">Selecione o JSON ou TXT. Aqui aparecerão a leitura do arquivo, o resultado da importação e qualquer erro.</p>
    </div>
    <button type="button" class="kit-secondary" id="kitPlusClipboardImport">↻ Importar resposta completa copiada (uma única vez)</button>
    <label for="kitPlusOutput">Outra opção: cole a resposta INTEIRA do ChatGPT, inclusive tabela ou JSON</label>
@@ -2011,7 +2012,7 @@
 <script src="/technical-memory.js?v=1.0.1-live-sku-preload"></script>
 <script src="/technical-status.js?v=1.0.0-optional-coherence"></script>
 <script src="/app.js?v=1.21.82-media-technical-fix-dual-centavos-09-v4"></script>
-<script type="module" src="/kit-builder.js?v=2.5.0-import-json-bulk"></script>
+<script type="module" src="/kit-builder.js?v=2.5.1-upload-status-race-fix"></script>
 <link rel="stylesheet" href="/optimizer-variations.css?v=1.2.1-single-flow">
 <script src="/optimizer-variations.js?v=1.2.3-single-flow"></script>
 
