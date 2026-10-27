@@ -748,7 +748,7 @@ async function handleTikTokAuthEvent(payload={}){
   if(payload.status==='connected'){
     tiktokAuthInvalid=false;
     try{await loadConfig();await loadCreator();
-     toast(config.tiktokConnected?'TikTok conectado e validado. Sua publicação continua como estava.':'TikTok autorizado. Verifique a conexão antes de publicar.',!config.tiktokConnected);}
+     toast(config.tiktokConnected?'TikTok conectado e validado. Sua publicação continua exatamente como estava.':'TikTok autorizado. Verifique a conexão antes de publicar.',!config.tiktokConnected);}
     catch(e){toast('TikTok conectado, mas não consegui atualizar o status automaticamente: '+e.message,true)}
   }else if(payload.status==='error'){
     tiktokAuthInvalid=true;syncTikTokPublishState();$('#connectionText').textContent='Não foi possível concluir a conexão do TikTok.';toast(payload.message||'Falha ao conectar o TikTok.',true);
