@@ -1036,12 +1036,19 @@
    <summary>Pesquisa avançada com ChatGPT Plus <span>Expandir pesquisa de combinações</span></summary>
    <div class="kit-research-content">
    <strong>Pesquisa avançada com ChatGPT Plus</strong>
-   <p>Gere sugestões de kits com SKUs WeDrop reais. O Manager confere os códigos, os custos, o estoque e a coerência antes de montar os rascunhos.</p>
+   <p>O ChatGPT pesquisa todas as SKUs DISPONÍVEIS da categoria escolhida. Com muitos produtos, será baixada uma lista completa para anexar à conversa. Após copiar o resultado, os kits validados serão salvos como rascunhos, nunca publicados automaticamente.</p>
+   <label for="kitTargetCount" class="kit-target-count-field">Quantos kits pesquisar?
+    <select id="kitTargetCount">
+     <option value="5">5 kits</option><option value="6">6 kits</option>
+     <option value="7">7 kits</option><option value="8">8 kits</option>
+     <option value="9">9 kits</option><option value="10" selected>10 kits</option>
+    </select>
+   </label>
    <div class="kit-actions">
     <button type="button" class="kit-primary" id="kitPlusAutoStart">✨ Abrir ChatGPT e pesquisar kits</button>
     <button type="button" class="kit-secondary" id="kitPlusResearch">Somente preparar pesquisa</button>
    </div>
-   <p id="kitPlusAutoStatus" role="status" aria-live="polite" class="kit-info">No ChatGPT, cole a pesquisa e envie. Quando receber a resposta, copie as linhas de SKUs e volte: o Manager tentará importar e montar os kits automaticamente. O Chrome pode solicitar permissão para ler a área de transferência.</p>
+   <p id="kitPlusAutoStatus" role="status" aria-live="polite" class="kit-info">Clique em Abrir ChatGPT. Se o catálogo for grande, anexe no ChatGPT o arquivo TXT que será baixado; cole e envie a pesquisa. Depois copie a resposta: o Manager tentará importar automaticamente, ou use o botão de importação.</p>
    <label for="kitResearchPrompt">Prompt de pesquisa (somente produtos verificados)</label>
    <textarea id="kitResearchPrompt" rows="5" readonly placeholder="O prompt aparecerá aqui após preparar a pesquisa."></textarea>
    <button type="button" class="kit-secondary" id="kitOpenResearchPrompt">Copiar prompt + abrir ChatGPT Plus</button>
