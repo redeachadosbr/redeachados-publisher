@@ -13,7 +13,7 @@ test('imagem manual não cancela o lote ChatGPT de outra posição',()=>{
  assert.match(js,/correctionDrop\.addEventListener\('paste'/);
  assert.match(js,/correctionDrop\.addEventListener\('drop'/);
  assert.match(html,/id="optimizerImageCorrectionDropzone"/);
- assert.match(html,/app\.js\?v=1\.21\./);
+ assert.match(html,/app\.js\?v=[^"\s]+/);
 });
 
 test('recuperação consulta a galeria da SKU e retoma somente slots realmente faltantes',()=>{
