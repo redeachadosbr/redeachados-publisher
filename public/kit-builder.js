@@ -3,6 +3,8 @@ import {scoreKitSeoTitle,parseKitSeoResponse,kitSeoRiskFlags} from './kit-seo-he
 import {detectSkuMeasurements,skuMeasurementSummary} from './kit-measurements.js';
 import {kitImageFilenameSlot,kitImageNextSlot,kitPlanImageImports,kitMoveImage} from './kit-gallery-order.js';
 import {buildKitPlusImageBrief,kitPlusPromptLink} from './kit-plus-image-brief.js';
+import {createKitPhotoStore} from './kit-extension-bridge.js';
+import {createKitExtensionController} from './kit-extension-runtime.js';
 // Kits Inteligentes WeDrop — Kit Formal enviado à Shopee somente após aprovação explícita.
 const $=s=>document.querySelector(s);
 const money=n=>Number(n).toLocaleString('pt-BR',{style:'currency',currency:'BRL'});
@@ -22,6 +24,8 @@ let categoriesLoaded=false,suggestions=[],prepared=null,images=new Map(),generat
 let kitAutoImageBusy=false,kitAutoImageStop=false,kitAutoImageApiConnected=false,kitAutoImageSku=null;
 let kitWatchHandle=null,kitWatchSku=null,kitWatchTimer=null,kitWatchBusy=false;
 let kitWatchSeen=new Set(),kitGalleryImportBusy=false,kitDraggingSlot=null;
+const kitPhotoStore=createKitPhotoStore();
+let kitBridgeController=null,kitRestoredSku='';
 let kitActiveDraftSku=null,kitDraftOpenRevision=0;
 let kitContentSku='',kitContentManualFacts=new Map(),kitContentSeoTitles=[],
  kitContentAwaitingResponse=false,kitContentBusy=false;
@@ -829,6 +833,7 @@ function kitPlaceEditorUnderDraft(kitSku,{targetCard=null}={}){
  return true;
 }
 function kitCloseInlineEditor(){
+ kitStopKitExtension('Editor do kit encerrado.');
  kitStopAutoFolder({notice:false});
  kitActiveDraftSku=null;
  kitDraftOpenRevision++;
@@ -945,7 +950,9 @@ async function openDraft(kitSku,{scroll=true,targetCard=null,title=''}={}){
  try{
   const d=await api('/api/shopee/kits/drafts/load',{body:{kitSku}});
   if(revision!==kitDraftOpenRevision)return; // Uma escolha mais recente tem prioridade.
+  kitStopKitExtension('Outro kit selecionado.');
   kitStopAutoFolder({notice:false});
+  kitRestoredSku='';
   prepared=d;images.clear();resetKitPublication({saved:true,publication:d.publication});
   setKitMargin(d.kit.quote.targetMarginPct);
   $('#kitPacking').value=String(d.kit.packing);
@@ -1065,6 +1072,8 @@ function renderKit({scroll=true,displayTitle=''}={}){
  renderImageSlots();
  kitAutoImageUi();
  void kitCheckAutoImageAvailability();
+ getKitExtensionBridge().probe();
+ void kitRestoreImageGallery(kit.kitSku);
  if(scroll)$('#kitDetail').scrollIntoView({behavior:'smooth',block:'start'});
 }
 function kitImagePromptAt(slot){
@@ -1115,6 +1124,10 @@ function kitRepositionImage(from,to){
  try{
   images=kitMoveImage(images,from,to);
   kitInvalidatePhotoPositions([from,to]);
+  const kitSku=prepared.kit.kitSku;
+  void Promise.all([from,to].map(slot=>images.has(slot)?
+   kitPhotoStore.put(kitSku,slot,images.get(slot)):kitPhotoStore.remove(kitSku,slot)))
+   .catch(e=>imageStatus('Ordem alterada, mas houve erro ao guardar localmente: '+e.message,'error'));
   renderImageSlots();kitAutoImageUi();
   imageStatus('✓ Posição '+String(from).padStart(2,'0')+' movida para '+
    String(to).padStart(2,'0')+'. Se havia imagem no destino, as duas foram trocadas. '+
@@ -1318,7 +1331,11 @@ async function uploadPhoto(slot,file,{quiet=false,kitSku=prepared?.kit?.kitSku}=
    const w=Math.round(bitmap.width*scale),h=Math.round(bitmap.height*scale);
    ctx.drawImage(bitmap,Math.floor((1200-w)/2),Math.floor((1200-h)/2),w,h);
    if(prepared?.kit?.kitSku!==kitSku)throw Error('O kit mudou durante a importação. Selecione novamente as imagens.');
-   images.set(slot,canvas.toDataURL('image/png'));
+   const dataUrl=canvas.toDataURL('image/png');
+   // Persistência antes da confirmação enviada à extensão.
+   await kitPhotoStore.put(kitSku,slot,dataUrl);
+   if(prepared?.kit?.kitSku!==kitSku)throw Error('A composição mudou enquanto salvava a imagem.');
+   images.set(slot,dataUrl);
    kitInvalidatePhotoPositions([slot]);
   }finally{bitmap.close();}
   renderImageSlots();
@@ -1906,6 +1923,7 @@ async function prepare(kit){
    skus:kit.components.map(x=>x.sku),...currentSettings()
   }});
   kitCloseInlineEditor();
+  kitRestoredSku='';
   prepared=data;images.clear();resetKitPublication({saved:false});renderKit();
   status('Kit '+data.kit.kitSku+' preparado para revisão. Nenhum anúncio criado na Shopee.','success');
  }catch(error){status('Preparação não concluída: '+error.message,'error');}
@@ -1921,6 +1939,70 @@ function kitPlusGenerationStatus(message,state='info'){
  const node=$('#kitPlusGenerationStatus');
  if(node){node.textContent=message;node.dataset.state=state;}
 }
+
+function kitExtensionStatus(message,state='info'){
+ const element=$('#kitExtensionStatus');
+ if(element){element.textContent=message;element.dataset.state=state;}
+ imageStatus(message,state);
+}
+function getKitExtensionBridge(){
+ if(kitBridgeController)return kitBridgeController;
+ kitBridgeController=createKitExtensionController({
+  getKit:()=>prepared?.kit||null,
+  getPrompts:()=>Array.from({length:9},(_,i)=>kitImagePromptAt(i+1)),
+  getImages:()=>images,
+  onPhoto:async({slot,dataUrl,kitSku})=>{
+   const blob=await(await fetch(dataUrl)).blob();
+   if(blob.size>12*1024*1024||!/^image\/(?:png|jpeg|webp)$/.test(blob.type))
+    throw Error('Arquivo devolvido pela extensão não é imagem válida.');
+   const ext=blob.type==='image/jpeg'?'jpg':blob.type==='image/webp'?'webp':'png';
+   return uploadPhoto(slot,new File([blob],'kit-ext-'+slot+'.'+ext,{type:blob.type}),
+    {quiet:true,kitSku});
+  },
+  onProgress:slot=>kitSetImageProgress(images.size,9,
+   'Ponte ChatGPT · imagem '+slot+'/09 · '+images.size+' salvas'),
+  onStatus:(msg,state)=>{
+   kitExtensionStatus(msg,state);
+   const active=Boolean(kitBridgeController?.activeJob());
+   const stop=$('#kitStopExtension');if(stop)stop.hidden=!active;
+   const button=$('#kitGenerateAll');
+   if(button)button.textContent=active?'Geração em andamento pela extensão...':
+    'Gerar 9 imagens automaticamente pela extensão';
+  }
+ });
+ return kitBridgeController;
+}
+function kitStopKitExtension(reason='Geração de imagens do kit interrompida.'){
+ if(kitBridgeController?.activeJob())kitBridgeController.stop(reason,{notice:false});
+ const stop=$('#kitStopExtension');if(stop)stop.hidden=true;
+ const btn=$('#kitGenerateAll');
+ if(btn)btn.textContent='Gerar 9 imagens automaticamente pela extensão';
+}
+async function kitRestoreImageGallery(kitSku){
+ if(!kitSku||kitRestoredSku===kitSku)return;
+ kitRestoredSku=kitSku;
+ try{
+  const rows=await kitPhotoStore.list(kitSku);
+  if(prepared?.kit?.kitSku!==kitSku)return;
+  let count=0;
+  for(const row of rows)if(!images.has(row.slot)&&/^data:image\/png;base64,/.test(row.dataUrl)){
+   images.set(row.slot,row.dataUrl);count++;
+  }
+  if(count){renderImageSlots();kitAutoImageUi();
+   kitExtensionStatus(count+' imagens antigas recuperadas deste kit. Revise todas antes de publicar.','success');}
+ }catch(error){kitExtensionStatus('Recuperação de fotos indisponível: '+error.message,'error');}
+}
+async function kitStartExtensionImages(){
+ const btn=$('#kitGenerateAll');
+ if(btn.disabled)return;
+ btn.disabled=true;
+ try{
+  await getKitExtensionBridge().start();
+  $('#kitStopExtension').hidden=false;
+ }catch(error){kitExtensionStatus(error.message,'error');}
+ finally{btn.disabled=false;}
+}
+
 function openChatGPTImages(){
  if(!prepared)return imageStatus('Abra o kit antes de iniciar as imagens.','error');
  let prompt;
@@ -2130,7 +2212,9 @@ $('#kitSaveSeoContent')?.addEventListener('click',async()=>{
  }
 });
 
-$('#kitGenerateAll')?.addEventListener('click',openChatGPTImages);
+$('#kitGenerateAll')?.addEventListener('click',()=>void kitStartExtensionImages());
+$('#kitStopExtension')?.addEventListener('click',()=>kitStopKitExtension('Geração pausada por solicitação. Fotos já salvas preservadas.'));
+$('#kitPlusManualFallback')?.addEventListener('click',openChatGPTImages);
 $('#kitPlusCopyGeneratedPrompt')?.addEventListener('click',()=>void copy($('#kitPlusImagePrompt').value));
 $('#kitPlusNextImagePrompt')?.addEventListener('click',()=>{
  if(!prepared)return;
