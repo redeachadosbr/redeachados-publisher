@@ -22,7 +22,7 @@ import {liveAdsCampaign,buildAdsPreview,signAdsApproval,verifyAdsApproval,adsEdi
 import {readShopeeWallet} from './shopeeWallet.js';
 import {financeAdsDates,matchFinanceAds} from './financeAdsSweep.js';
 import {financeRange} from './shopeeFinance.js';
-import {fetchCatalogPage,normalizeShopeeModels,validItemId} from './catalog.js';
+import {fetchCatalogPage,fetchCatalogPrices,normalizeShopeeModels,validItemId} from './catalog.js';
 import {suggestFiscalMeasureUnit} from './shopeeFiscalMeasure.js';
 import {getShopeeNewListingsSummary,clearShopeeNewListingsCache} from './shopeeNewListings.js';
 import {storeCatalogItems,storeCatalogModels,readCatalogCache,catalogStoreReady,findExactCatalogSku,findCatalogSkuIgnoringCase} from './catalogStore.js';
@@ -913,6 +913,23 @@ app.get('/api/shopee/dashboard/new-listings',mustLogin,async(req,res)=>{
   res.status(503).json({ok:false,unavailable:true,
    error:String(error?.message||error).slice(0,230)});
  }
+});
+// Atualiza o histórico com preços CONSULTADOS, sem alterar anúncios na Shopee.
+app.post('/api/shopee/catalog/prices/recover',mustLogin,async(req,res)=>{
+ res.setHeader('Cache-Control','no-store');
+ if(!verifiedSameOrigin(req))return res.status(403).json({error:'Origem não autorizada.'});
+ const ids=req.body?.itemIds;
+ if(!Array.isArray(ids)||!ids.length||ids.length>10||
+  ids.some(x=>!/^[1-9][0-9]{0,17}$/.test(String(x))))
+  return res.status(400).json({error:'Selecione de 1 a 10 Item IDs válidos.'});
+ try{
+  const {auth,cfg}=await getValidAuth(req);
+  const report=await fetchCatalogPrices(cfg,auth,callShopeeShopApi,ids.map(String));
+  let persistence;
+  try{persistence=await storeCatalogItems(auth.shopId,report.verified);}
+  catch(error){persistence={stored:0,warning:'Preço consultado, mas não salvo no histórico: '+String(error.message||error).slice(0,100)};}
+  res.json({ok:true,...report,persistence,marketplaceUpdated:false});
+ }catch(error){res.status(503).json({error:String(error.message||error).slice(0,280)});}
 });
 app.get('/api/shopee/catalog/page',mustLogin,async(req,res)=>{
   res.setHeader('Cache-Control','no-store');

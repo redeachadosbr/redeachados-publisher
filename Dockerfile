@@ -12,6 +12,7 @@ RUN node --test tests/shopee-execution-prepared-cta.test.js
 RUN node --test tests/shopee-execution-attribute-order.test.js tests/shopee-execution-rejected-start-recovery.test.js
 RUN node --check public/imageSceneDiversity.js && node --check public/chatgptPrompts.js && node --test tests/imageSceneDiversity.test.js tests/shopeeChatgptPrompts.test.js
 RUN node --check shopeeSupplierEvidenceFacts.js && node --test tests/shopee-technical-wedrop-complete-autofill.test.js
+RUN node --check catalog.js && node --test tests/catalogPriceRecovery.test.js
 RUN node --check shopeeMarktPro.js && node --test tests/shopee-marktpro-video.test.js
 RUN node --check shopeeOpenAiImages.js && node --test tests/shopeeOpenAiImages.test.js
 RUN node --check wedropExcel.js && node --test tests/wedrop-excel-import.test.js

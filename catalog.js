@@ -31,10 +31,11 @@ function stockValue(obj){
   return null;
 }
 function priceValue(obj){
+  // current_price é o preço vigente; original_price pode ignorar descontos.
   const prices=Array.isArray(obj?.price_info)?obj.price_info:[];
   for(const x of prices){
     const v=safeNonnegative(x.current_price);
-    if(v!==null)return v;
+    if(v!==null&&v>0)return v;
   }
   return null;
 }
@@ -67,6 +68,49 @@ export function normalizeShopeeModels(data){
     price:priceValue(x),
     stock:stockValue(x)
   }));
+}
+// O preço de anúncios com variações é fornecido por get_model_list.
+export function modelPriceRange(models){
+ const prices=(Array.isArray(models)?models:[])
+  .map(x=>safeNonnegative(x.price)).filter(x=>x!==null&&x>0);
+ if(!prices.length)return null;
+ return {price:Math.min(...prices),priceMax:Math.max(...prices),
+  confirmedModels:prices.length,priceSource:'model_current_price'};
+}
+export async function enrichCatalogModelPrices(cfg,auth,callApi,items,{maxItems=12,concurrency=3}={}){
+ const targets=items.filter(x=>x.baseLoaded&&x.hasModel&&x.price==null).slice(0,maxItems);
+ const warnings=[];let cursor=0;
+ await Promise.all(Array.from({length:Math.min(concurrency,targets.length)},async()=>{
+  while(cursor<targets.length){
+   const item=targets[cursor++];
+   try{
+    const data=await callApi(cfg,{path:'/api/v2/product/get_model_list',
+     accessToken:auth.accessToken,shopId:auth.shopId,query:{item_id:item.itemId}});
+    const range=modelPriceRange(normalizeShopeeModels(data));
+    if(!range)throw Error('Nenhuma variação retornou current_price válido.');
+    Object.assign(item,range);
+   }catch(error){
+    warnings.push('Item '+item.itemId+': preço das variações não confirmado: '+String(error.message||error).slice(0,110));
+   }
+  }
+ }));
+ return {items,warnings,checked:targets.length};
+}
+export async function fetchCatalogPrices(cfg,auth,callApi,itemIds){
+ const ids=[...new Set(itemIds.map(validItemId))];
+ if(!ids.length||ids.length>10)throw Error('Consulte de 1 a 10 anúncios por vez.');
+ const data=await callApi(cfg,{path:'/api/v2/product/get_item_base_info',
+  accessToken:auth.accessToken,shopId:auth.shopId,query:{item_id_list:ids.join(',')}});
+ if(!Array.isArray(data?.response?.item_list))
+  throw Error('A Shopee não confirmou os dados básicos dos anúncios.');
+ const allowed=new Set(ids);
+ const items=data.response.item_list.filter(x=>{
+  try{return allowed.has(validItemId(x.item_id));}catch{return false;}
+ }).map(x=>normalizeCatalogItem({item_id:x.item_id,item_status:x.item_status},x));
+ const result=await enrichCatalogModelPrices(cfg,auth,callApi,items,{maxItems:10,concurrency:3});
+ return {items,verified:items.filter(x=>Number.isFinite(x.price)&&x.price>0),
+  missing:ids.filter(id=>!items.some(x=>x.itemId===id)),
+  warnings:result.warnings,checked:ids.length};
 }
 export async function fetchCatalogPage(cfg,auth,callApi,{status='NORMAL',offset=0,pageSize=50}={}){
   status=normalStatus(status);
@@ -119,6 +163,8 @@ export async function fetchCatalogPage(cfg,auth,callApi,{status='NORMAL',offset=
     }
   }
   const items=ids.map(id=>normalizeCatalogItem(unique.get(id),enriched.get(id)));
+  const prices=await enrichCatalogModelPrices(cfg,auth,callApi,items,{maxItems:12,concurrency:3});
+  warnings.push(...prices.warnings);
   const nextOffset=Number(body.next_offset);
   const calculated=Number.isSafeInteger(nextOffset)&&nextOffset>at?nextOffset:at+entries.length;
   if(hasNext&&calculated<=at)throw Error('Paginação Shopee não avançou.');
