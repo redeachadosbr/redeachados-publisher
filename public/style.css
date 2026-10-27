@@ -4095,3 +4095,17 @@ body.view-wedrop .page-intro{display:none!important}
 #tab-products .catalog-promo-badge.is-generic{background:#eaf3ff;color:#1c5c99}
 #tab-products .catalog-promo-badge.is-unknown{background:#eef2f7;color:#526981}
 @media(max-width:650px){#tab-products #catalogAuditPromotions{width:100%}}
+
+/* Recuperação de preços: somente catálogo. Sem alteração dos anúncios. */
+#tab-products .catalog-price-recovery{display:flex;gap:12px;justify-content:space-between;align-items:center;flex-wrap:wrap;border:1px solid #c7e0f4;border-radius:12px;margin:10px 0 13px;padding:12px 16px;background:linear-gradient(120deg,#f0f8ff,#fff);box-shadow:0 5px 15px #123d6c0a}
+#tab-products .catalog-price-recovery strong{color:#113d73;font-size:12px;font-weight:850}
+#tab-products .catalog-price-recovery p{margin:3px 0 0;font-size:11px;line-height:1.45;color:#416487}
+#tab-products .catalog-price-recovery #catalogPriceRecoveryCount{color:#07538d;font-weight:800}
+#tab-products .catalog-price-recovery #catalogPriceRecoveryStatus[data-state="error"]{color:#ae2832}
+#tab-products .catalog-price-recovery #catalogPriceRecoveryStatus[data-state="warning"]{color:#94601a}
+#tab-products .catalog-price-recovery #catalogPriceRecoveryStatus[data-state="success"]{color:#087b45}
+#tab-products .catalog-price-recovery button{padding:10px 13px;min-height:37px;border:1px solid #a9d1f6;border-radius:9px;background:#ecf6ff;color:#12538b;font-size:11px;font-weight:850}
+#tab-products .catalog-price-recovery button:disabled{opacity:.55;cursor:not-allowed}
+#tab-products .catalog-value-price.is-pending{color:#995c1f!important;font-size:10px!important}
+#tab-products .catalog-value-price{white-space:normal;min-width:112px;font-variant-numeric:tabular-nums}
+@media(max-width:700px){#tab-products .catalog-price-recovery button{width:100%}}

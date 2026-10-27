@@ -340,6 +340,8 @@ let catalogBusy=false,catalogStop=false,catalogDone=false,catalogRowsLimit=10;
 let catalogCurrentPage=1,catalogPageSize=10,catalogQuickFilter='all';
 let catalogCachedAt=null,catalogLastSyncAt=null,catalogScannedIds=new Set();
 let catalogDiscountAudit=null,catalogDiscountAuditBusy=false;
+let catalogPriceBusy=false,catalogPriceAllBusy=false,catalogPriceStop=false;
+const catalogPriceAttempted=new Set();
 let catalogProblems=[];
 const catalogMoney=n=>n===null||n===undefined?'—':new Intl.NumberFormat('pt-BR',{style:'currency',currency:'BRL'}).format(n);
 const catalogNumber=n=>n===null||n===undefined?'—':new Intl.NumberFormat('pt-BR').format(n);
@@ -454,6 +456,97 @@ function catalogOpenSeller(item){
 function catalogCell(tr,value){
   const td=document.createElement('td');td.textContent=String(value??'—');tr.appendChild(td);return td;
 }
+function catalogPriceIsMissing(item){
+ return item.price==null||!Number.isFinite(Number(item.price))||Number(item.price)<=0;
+}
+function catalogPriceText(item){
+ if(catalogPriceIsMissing(item))return catalogPriceBusy&&catalogPriceAttempted.has(String(item.itemId))
+  ?'Consultando preço...':'Preço a consultar';
+ if(item.hasModel)return 'A partir de '+catalogMoney(item.price);
+ return catalogMoney(item.price);
+}
+function catalogPriceStatus(message,state='info'){
+ const status=$('#catalogPriceRecoveryStatus');if(!status)return;
+ status.textContent=message;status.dataset.state=state;
+}
+async function catalogRecoverPriceBatch(ids){
+ catalogPriceBusy=true;
+ for(const id of ids)catalogPriceAttempted.add(String(id));
+ try{
+  const response=await json('/api/shopee/catalog/prices/recover',{
+   method:'POST',headers:{'Content-Type':'application/json'},
+   body:JSON.stringify({itemIds:ids}),signal:AbortSignal.timeout(90000)
+  });
+  let updated=0;
+  for(const entry of response.verified||[]){
+   const old=catalogMap.get(String(entry.itemId));
+   if(!old||catalogPriceIsMissing(entry))continue;
+   catalogMap.set(String(entry.itemId),{...old,price:entry.price,
+    priceMax:entry.priceMax??entry.price,priceSource:entry.priceSource||'item_current_price',
+    hasModel:entry.hasModel,baseLoaded:true});
+   updated++;
+  }
+  if(response.persistence?.warning)
+   catalogPriceStatus('Preços consultados, mas houve problema ao salvar no histórico: '+response.persistence.warning,'warning');
+  return {updated,warnings:response.warnings||[]};
+ }finally{catalogPriceBusy=false;catalogRender();}
+}
+async function catalogRecoverVisiblePrices(){
+ if(catalogBusy||catalogPriceBusy||catalogPriceAllBusy)return;
+ const filtered=catalogFiltered();
+ const visible=filtered.slice((catalogCurrentPage-1)*catalogPageSize,catalogCurrentPage*catalogPageSize);
+ const ids=visible.filter(x=>catalogPriceIsMissing(x)&&!catalogPriceAttempted.has(String(x.itemId)))
+  .map(x=>String(x.itemId)).slice(0,10);
+ if(!ids.length)return;
+ try{
+  const outcome=await catalogRecoverPriceBatch(ids);
+  const remaining=catalogAll().filter(catalogPriceIsMissing).length;
+  catalogPriceStatus('Recuperação automática: '+outcome.updated+' preço(s) confirmado(s) pela Shopee nesta página. '+
+   remaining+' anúncio(s) ainda precisam de conferência.'+
+   (outcome.warnings.length?' Alguns modelos não retornaram valores.':''),outcome.warnings.length?'warning':'info');
+ }catch(error){
+  catalogPriceStatus('A consulta de preços da página falhou: '+error.message+
+   '. Você pode tentar novamente em Recuperar preços faltantes.','warning');
+ }
+}
+async function catalogRecoverAllPrices(){
+ if(catalogPriceAllBusy)return;
+ catalogPriceAllBusy=true;catalogPriceStop=false;
+ const button=$('#catalogRecoverPrices');button.textContent='Interromper recuperação';
+ button.disabled=false;
+ const missing=catalogAll().filter(catalogPriceIsMissing).map(x=>String(x.itemId));
+ for(const id of missing)catalogPriceAttempted.delete(id);
+ let checked=0,found=0,unresolved=0;
+ try{
+  for(let i=0;i<missing.length&&!catalogPriceStop;i+=10){
+   const ids=missing.slice(i,i+10);
+   try{
+    const result=await catalogRecoverPriceBatch(ids);
+    checked+=ids.length;found+=result.updated;unresolved+=Math.max(0,ids.length-result.updated);
+    catalogPriceStatus('Recuperação em andamento: '+checked+' de '+missing.length+
+     ' anúncios conferidos; '+found+' preço(s) recuperado(s) e '+unresolved+
+     ' ainda não confirmados.',result.warnings.length?'warning':'info');
+   }catch(error){
+    catalogPriceStatus('Recuperação interrompida por falha na consulta: '+error.message+
+     '. '+found+' preços foram recuperados; tente novamente depois.','error');
+    break;
+   }
+  }
+  if(!catalogPriceStop&&checked===missing.length)
+   catalogPriceStatus('Recuperação concluída: '+found+' preço(s) recuperado(s). '+
+    unresolved+' anúncio(s) ainda não tiveram preço confirmado pela Shopee. '+
+    'Nenhum valor foi alterado na loja.',unresolved?'warning':'success');
+  else if(catalogPriceStop)
+   catalogPriceStatus('Recuperação interrompida a pedido. '+found+' preço(s) já recuperado(s) foram preservados.','warning');
+ }finally{
+  catalogPriceAllBusy=false;button.textContent='Recuperar preços faltantes';
+  catalogRender();
+ }
+}
+$('#catalogRecoverPrices')?.addEventListener('click',()=>{
+ if(catalogPriceAllBusy){catalogPriceStop=true;return;}
+ void catalogRecoverAllPrices();
+});
 function catalogPromotionView(item){
  const read=catalogDiscountAudit?.items?.[String(item.itemId)];
  if(read?.kind==='active')return {kind:'active',text:read.text||'Desconto ativo',note:read.note||'Minha Promoção confirmada'};
@@ -499,7 +592,15 @@ function catalogRender(){
       }).catch(()=>{copy.textContent='Copiar indisponível';});
     };
     sku.append(copy);
-    const price=catalogCell(tr,catalogMoney(x.price));price.className='catalog-value-price';
+    const price=catalogCell(tr,catalogPriceText(x));price.className='catalog-value-price';
+    if(x.hasModel&&!catalogPriceIsMissing(x)){
+      const range=x.priceMax!=null&&Number(x.priceMax)>Number(x.price)
+       ?catalogMoney(x.price)+' a '+catalogMoney(x.priceMax):'Variações disponíveis';
+      price.title='Menor preço corrente confirmado na Shopee. '+range;
+    }else if(catalogPriceIsMissing(x)){
+      price.classList.add('is-pending');
+      price.title='Preço não recuperado. Será consultado diretamente na API de produtos e variações.';
+    }else price.title='Preço vigente informado pela Shopee';
     const promotion=catalogCell(tr,'');
     const promoBadge=document.createElement('span');
     const info=catalogPromotionView(x);
@@ -575,6 +676,13 @@ function catalogRender(){
   $('#exportProductsBtn').disabled=!all.length;
   catalogSyncFilterChips();
   catalogHistoryUpdate();
+  const pending=all.filter(catalogPriceIsMissing).length;
+  const caption=$('#catalogPriceRecoveryCount');
+  if(caption)caption.textContent=pending+' anúncio(s) sem preço confirmado de '+all.length+' carregados.';
+  const button=$('#catalogRecoverPrices');
+  if(button&&!catalogPriceAllBusy)button.disabled=!pending||catalogBusy;
+  if(pending&&!catalogBusy&&!catalogPriceBusy&&!catalogPriceAllBusy)
+    queueMicrotask(()=>void catalogRecoverVisiblePrices());
 }
 function catalogReviewMissingDiscount(item){
  if(!String(item.sku||'').trim())return;
