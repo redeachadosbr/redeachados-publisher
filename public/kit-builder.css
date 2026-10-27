@@ -908,3 +908,99 @@
 #tab-kits .kit-manual-status[data-state=success]{color:#087447}
 #tab-kits .kit-manual-explain{font-size:10px;line-height:1.45;margin:0;color:#43698f}
 @media(max-width:600px){#tab-kits .kit-manual-row label{flex:1 1 100%}#tab-kits .kit-manual-row button{width:100%}}
+
+
+/* v3.0.1: editor contextual de rascunho e personalização compacta. */
+#tab-kits #kitDraftList > #kitDetail{
+ grid-column:1/-1;min-width:0;box-sizing:border-box;margin:0 0 13px;
+ padding:14px 16px 16px;border:1px solid #c1d9f1;border-radius:14px;
+ background:linear-gradient(135deg,#f9fcff,#f1f7ff 68%,#fff);
+ box-shadow:0 12px 28px rgba(13,55,102,.11),0 2px 6px rgba(13,55,102,.05);
+ scroll-margin-top:248px;
+}
+#tab-kits #kitDraftList > .kit-card.kit-draft-editing{
+ border-color:#4d9fe8;box-shadow:0 0 0 2px #3f91df22,0 4px 14px #173d6a10;
+ background:#f6fbff;
+}
+#tab-kits #kitDraftList > .kit-card.kit-draft-editing::after{
+ content:'EM EDIÇÃO';position:absolute;left:14px;top:-9px;
+ font-size:9px;letter-spacing:.04em;font-weight:900;color:#155a9e;
+ background:#e8f3ff;border:1px solid #acd1f5;border-radius:5px;padding:2px 7px;
+}
+#tab-kits #kitDetail .kit-detail-title{
+ display:flex;justify-content:space-between;align-items:flex-start;gap:14px;
+ border-bottom:1px solid #dce9f6;margin:0 0 10px;padding-bottom:10px;
+}
+#tab-kits #kitDetail .kit-detail-title>div{min-width:0}
+#tab-kits #kitDetail .kit-detail-title .kit-kicker{
+ display:block;margin-bottom:4px;color:#f15b32;font-size:10px;font-weight:900;
+}
+#tab-kits #kitDetail .kit-detail-title h3{
+ font-size:17px!important;font-weight:900;line-height:1.35;color:#0c2d5c;
+ overflow-wrap:anywhere;margin:0 0 3px;
+}
+#tab-kits #kitDetail .kit-editing-sku{
+ display:block;color:#39618a;font-size:11px;font-weight:700;line-height:1.45;
+}
+#tab-kits #kitDetail #kitClose{flex-shrink:0;min-height:34px;font-size:11px;font-weight:800}
+#tab-kits #kitDetail .kit-complement-head{
+ display:flex;gap:5px 9px;align-items:baseline;margin:9px 0 5px;
+}
+#tab-kits #kitDetail .kit-complement-head strong{font-size:13px;font-weight:900;color:#113d70}
+#tab-kits #kitDetail .kit-complement-head span{font-size:10.5px;color:#3f5c7a}
+#tab-kits #kitDetail .kit-manual-composition{
+ display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);
+ gap:8px;padding:9px;background:linear-gradient(120deg,#eaf4ff,#f7fbff);
+ border:1px solid #cbdff4;border-radius:11px;margin:5px 0 4px;
+}
+#tab-kits #kitDetail .kit-manual-composition .kit-manual-explain{
+ grid-column:1/-1;margin:0;padding:0 2px 2px;font-size:10px;
+ font-weight:600;color:#3b638c;line-height:1.4;
+}
+#tab-kits #kitDetail .kit-manual-row{
+ display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:6px 9px;
+ align-content:start;align-items:end;min-width:0;padding:10px;
+ border:1px solid #d6e5f4;border-radius:9px;background:#fff;
+ box-shadow:0 2px 8px rgba(11,56,104,.045);
+}
+#tab-kits #kitDetail .kit-manual-row label{
+ display:flex;flex-direction:column;gap:5px;min-width:0;
+ color:#13365e;font-weight:850;font-size:10.5px;line-height:1.2;
+}
+#tab-kits #kitDetail .kit-manual-row[data-mode="add"] label{grid-column:1/-1}
+#tab-kits #kitDetail .kit-manual-row input,
+#tab-kits #kitDetail .kit-manual-row select{
+ min-height:35px;height:35px;width:100%;min-width:0;box-sizing:border-box;
+ padding:7px 10px;border:1px solid #b9cfe8;border-radius:7px;
+ font-size:12px!important;color:#122e55;background:#fff;
+}
+#tab-kits #kitDetail .kit-manual-row input:focus-visible,
+#tab-kits #kitDetail .kit-manual-row select:focus-visible{
+ outline:2px solid #6aa8ef;outline-offset:1px;border-color:#4487ce;
+}
+#tab-kits #kitDetail .kit-manual-row button{
+ grid-column:1/-1;justify-self:start;max-width:100%;min-height:32px;
+ padding:7px 12px;font-size:10.5px;border:1px solid #b0d1f4;
+ border-radius:7px;background:#e6f1ff;color:#0c4d91;font-weight:900;
+ box-shadow:0 2px 5px rgba(13,73,143,.08);
+}
+#tab-kits #kitDetail #kitManualStatus{
+ margin:4px 0 10px;font-size:10.5px;line-height:1.5;font-weight:650;
+ color:#29547d;
+}
+#tab-kits #kitDetail #kitManualStatus[data-state="success"]{color:#087847}
+#tab-kits #kitDetail #kitManualStatus[data-state="error"]{color:#a42435}
+#tab-kits #kitDetail .kit-detail-facts{margin:5px 0 9px}
+@media(max-width:1320px){
+ #tab-kits #kitDetail .kit-manual-composition{grid-template-columns:1fr}
+ #tab-kits #kitDetail .kit-manual-row[data-mode="add"] label{grid-column:1/-1}
+}
+@media(max-width:680px){
+ #tab-kits #kitDraftList > #kitDetail{padding:11px 9px;scroll-margin-top:148px}
+ #tab-kits #kitDetail .kit-detail-title{gap:8px}
+ #tab-kits #kitDetail .kit-detail-title h3{font-size:14px!important}
+ #tab-kits #kitDetail .kit-manual-composition{padding:7px}
+ #tab-kits #kitDetail .kit-manual-row{grid-template-columns:1fr;padding:9px}
+ #tab-kits #kitDetail .kit-manual-row label,
+ #tab-kits #kitDetail .kit-manual-row button{grid-column:1/-1}
+}

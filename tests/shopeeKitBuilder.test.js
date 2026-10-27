@@ -281,3 +281,21 @@ test('pesquisa avançada entrega todas 125 SKUs, sem truncar, em arquivo para o 
   if(key===undefined)delete process.env.SUPABASE_SECRET_KEY;else process.env.SUPABASE_SECRET_KEY=key;
  }
 });
+
+test('Editor de rascunho abre sob o cartão certo e mantém título e ações',async()=>{
+ const fs=await import('node:fs');
+ const html=fs.readFileSync(new URL('../public/index.html',import.meta.url),'utf8');
+ const js=fs.readFileSync(new URL('../public/kit-builder.js',import.meta.url),'utf8');
+ const css=fs.readFileSync(new URL('../public/kit-builder.css',import.meta.url),'utf8');
+ assert.match(html,/id="kitDetailHome"/);
+ assert.match(html,/id="kitEditingSkuCode"/);
+ assert.equal((html.match(/id="kitDetail"/g)||[]).length,1);
+ assert.match(js,/card\.after\(editor\)/);
+ assert.match(js,/kitPlaceEditorUnderDraft\(kitSku,\{targetCard\}\)/);
+ assert.match(js,/kitEditorReturnHome\(\);\s*root\.replaceChildren\(\)/);
+ assert.match(js,/renderKit\(\{scroll,displayTitle:title\|\|d\.creative\?\.title\}\)/);
+ assert.match(js,/kitDraftOpenRevision/);
+ assert.match(css,/#tab-kits #kitDraftList > #kitDetail/);
+ assert.match(css,/kit-manual-row\[data-mode="add"\]/);
+ assert.match(css,/scroll-margin-top:248px/);
+});

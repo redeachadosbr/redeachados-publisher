@@ -31,7 +31,7 @@
 <link rel="stylesheet" href="/ads-premium.css?v=2.4.0-seo-ads-location">
 <link rel="stylesheet" href="/sidebar-collapse.css?v=1.0.0">
 <link rel="stylesheet" href="/optimizer-image-studio.css?v=1.0.2">
-<link rel="stylesheet" href="/kit-builder.css?v=3.0.0-complementary-skus">
+<link rel="stylesheet" href="/kit-builder.css?v=3.0.1-inline-draft-editor">
 <link rel="stylesheet" href="/optimizer-technical-studio.css?v=1.0.1-review-feedback">
 <style>
 /* Autorização >25%: campo compacto, sem o input global width:100%.
@@ -1085,8 +1085,9 @@
  <section class="kit-drafts-panel"><div class="kit-bar kit-section-heading"><span class="kit-heading-icon kit-icon-purple">▧</span><div class="kit-section-heading-text"><h3>Kits salvos para revisão</h3><p>Rascunhos de kits gerados para você revisar, editar e publicar.</p></div><button type="button" class="kit-secondary" id="kitRefreshDrafts">↻ Atualizar rascunhos</button></div>
  <p id="kitDraftDeleteStatus" class="kit-draft-delete-status" role="status" aria-live="polite" hidden></p>
  <div id="kitDraftList" class="kit-suggestions"><p>Consultando kits salvos nesta loja...</p></div></section>
- <section id="kitDetail" class="kit-detail" hidden>
-  <div class="kit-detail-title"><div><span class="kit-kicker">RASCUNHO EM EDIÇÃO</span><h3 id="kitSkuTitle">Kit</h3></div><button id="kitClose" type="button" class="kit-secondary">Fechar edição</button></div>
+ <span id="kitDetailHome" hidden aria-hidden="true"></span>
+ <section id="kitDetail" class="kit-detail" hidden aria-label="Editor do kit selecionado">
+  <div class="kit-detail-title"><div><span class="kit-kicker">EDITANDO ESTE KIT</span><h3 id="kitSkuTitle">Kit</h3><span class="kit-editing-sku" id="kitEditingSkuCode">Identificador do rascunho</span></div><button id="kitClose" type="button" class="kit-secondary">Fechar edição</button></div>
   <div class="kit-complement-head"><strong>Personalizar a composição do kit</strong><span>Adicione um complemento ou substitua uma SKU. Os valores são recalculados na WeDrop.</span></div>
   <div id="kitManualComposition" class="kit-manual-composition"></div>
   <p id="kitManualStatus" class="kit-manual-status" role="status" aria-live="polite">Selecione uma SKU para adicionar ou substituir. Até 3 produtos por kit.</p>
@@ -2042,7 +2043,7 @@
 <script src="/technical-memory.js?v=1.0.1-live-sku-preload"></script>
 <script src="/technical-status.js?v=1.0.0-optional-coherence"></script>
 <script src="/app.js?v=1.20.44-price-column-fit"></script>
-<script type="module" src="/kit-builder.js?v=3.0.0-complementary-skus"></script>
+<script type="module" src="/kit-builder.js?v=3.0.1-inline-draft-editor"></script>
 <link rel="stylesheet" href="/optimizer-variations.css?v=1.2.1-single-flow">
 <script src="/optimizer-variations.js?v=1.2.3-single-flow"></script>
 
