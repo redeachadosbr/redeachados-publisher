@@ -43,7 +43,7 @@ test('API de execução mantém bloqueio NORMAL; só prévia tem permissão UNLI
  assert.match(server,/allowDeferredPreview:req\.body\?\.allowDeferredPreview===true/);
  assert.match(server,/approvalToken:signature,\s*\n\s*deferred:data\.deferred/);
  assert.match(server,/const signature=data\.deferred\?null/);
- assert.match(server,/discountExecutionInputs\(req,approved\.sku,approved\.itemId,[\s\S]*?approved\.modelId,approved\.discountId\)/);
+ assert.match(server,/discountExecutionInputs\(req,approved\.sku,approved\.itemId,[\s\S]*?approved\.modelId,approved\.discountId,\{allowOver25:approved\.allowOver25===true&&req\.body\?\.allowOver25===true\}\)/);
 });
 test('interface exige consentimento antecipado e reconsulta após anúncio NORMAL',()=>{
  const app=readFileSync(new URL('../public/app.js',import.meta.url),'utf8');
