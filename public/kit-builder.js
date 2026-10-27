@@ -898,6 +898,7 @@ async function uploadPhoto(slot,file){
 }
 const KIT_CHAT_SESSION_KEY='raKitPlusResearchV1';
 let kitChatPending=null,kitChatClipboardBusy=false,kitResearchCatalogContent='';
+let kitChatFilePickerOpen=false,kitChatQueuedManualImport=null;
 function kitDownloadFullCatalog(){
  if(!kitResearchCatalogContent)throw Error('Prepare novamente a pesquisa para baixar o catálogo completo.');
  const content=new Blob([kitResearchCatalogContent],{type:'text/plain;charset=utf-8'});
@@ -913,6 +914,12 @@ try{
 function kitPlusNotice(message,state='info'){
  const node=$('#kitPlusAutoStatus');
  if(node){node.textContent=message;node.dataset.state=state;}
+ const fileStatus=$('#kitPlusFileStatus');
+ if(fileStatus){
+  fileStatus.textContent=message;
+  fileStatus.dataset.state=state;
+  fileStatus.hidden=false;
+ }
  status(message,state);
 }
 function kitResearchContext(){
@@ -954,13 +961,15 @@ async function kitChatEnsureFreshResearch(){
 }
 async function kitChatImportFile(file){
  if(!file)return;
+ kitPlusNotice('Arquivo selecionado: '+file.name+' ('+Math.ceil(file.size/1024)+' KB). Iniciando leitura...','info');
  if(!/\.(?:json|txt|md)$/i.test(file.name||'')||file.size>1000000){
   kitPlusNotice('Envie um arquivo .json, .txt ou .md de até 1 MB com os kits gerados pelo ChatGPT.','error');
   return;
  }
  try{
   const data=await file.text();
-  kitPlusNotice('Lendo arquivo '+file.name+' e validando SKUs WeDrop...','info');
+  if(!data.trim())throw Error('Arquivo vazio. Verifique o download no ChatGPT.');
+  kitPlusNotice('Arquivo '+file.name+' lido. Identificando kits e validando SKUs WeDrop...','info');
   await importPlusSuggestions({uploadedText:data});
  }catch(error){
   kitPlusNotice('Não foi possível importar o arquivo completo: '+error.message,'error');
@@ -1014,11 +1023,17 @@ async function plusResearch({openChat=false}={}){
  finally{btn.disabled=false;}
 }
 async function importPlusSuggestions({readClipboard=false,silent=false,uploadedText=null}={}){
- if(!kitStockReady){
-  if(!silent)kitPlusNotice('Estoque WeDrop não conferido; atualize antes de importar kits.','error');
+ // Importação explícita nunca depende apenas do indicador visual de estoque:
+ // a API atualiza a disponibilidade e valida cada SKU novamente no servidor.
+ if(kitChatClipboardBusy){
+  if(!silent&&uploadedText!==null){
+   kitChatQueuedManualImport={uploadedText,silent:false};
+   kitPlusNotice('Arquivo lido. Aguardando a verificação anterior terminar para importar os kits deste arquivo.','info');
+  }else if(!silent){
+   kitPlusNotice('Outra importação está em andamento. Acompanhe o resultado neste campo.','info');
+  }
   return false;
  }
- if(kitChatClipboardBusy)return false;
  kitChatClipboardBusy=true;
  const btn=$('#kitPlusImport'),clipBtn=$('#kitPlusClipboardImport');
  btn.disabled=true;if(clipBtn)clipBtn.disabled=true;
@@ -1032,7 +1047,7 @@ async function importPlusSuggestions({readClipboard=false,silent=false,uploadedT
   const parsed=kitChatExtractLines(response,context.size,kitChatPending.candidateSkus,context.desiredKits);
   const rows=parsed.kits;
   if(!rows.length){
-   if(!silent)throw Error('Nenhuma combinação de 2 ou 3 SKUs reais foi identificada no arquivo ou na resposta. Confira a categoria WeDrop selecionada e o arquivo JSON.');
+   if(!silent)throw Error('Arquivo lido, mas nenhum kit de 2 ou 3 SKUs corresponde ao catálogo disponível da categoria selecionada. Verifique se a categoria está correta ou se o JSON contém códigos válidos.');
    return false;
   }
   kitPlusNotice('Importando '+rows.length+' kits do '+(parsed.format==='json'?'JSON':'texto')+
@@ -1064,13 +1079,19 @@ async function importPlusSuggestions({readClipboard=false,silent=false,uploadedT
  }finally{
   kitChatClipboardBusy=false;btn.disabled=!kitStockReady;
   if(clipBtn)clipBtn.disabled=!kitStockReady;
+  // O retorno da caixa de seleção pode disparar importação silenciosa pelo
+  // clipboard no mesmo instante do upload manual. O arquivo sempre vence.
+  const queued=kitChatQueuedManualImport;
+  kitChatQueuedManualImport=null;
+  if(queued)void importPlusSuggestions(queued);
  }
 }
 // Outra aba não pode ser lida por segurança do navegador. Com permissão
 // já concedida, o Manager tenta reconhecer as SKUs copiadas quando voltar.
 // Caso contrário, o botão explícito solicita a permissão no clique.
 async function kitChatTryAutoClipboard(){
- if(!kitChatPending||!kitStockReady||!document.hasFocus()||kitChatClipboardBusy)return;
+ if(!kitChatPending||!kitStockReady||!document.hasFocus()||kitChatClipboardBusy||
+     kitChatFilePickerOpen||kitChatQueuedManualImport)return;
  try{
   if(!navigator.permissions?.query)return;
   const permission=await navigator.permissions.query({name:'clipboard-read'});
@@ -1231,10 +1252,19 @@ $('#kitSuggest')?.addEventListener('click',()=>void search());
 $('#kitPlusDownloadCatalog')?.addEventListener('click',()=>{
  try{kitDownloadFullCatalog();}catch(error){kitPlusNotice(error.message,'error');}
 });
-$('#kitPlusFile')?.addEventListener('change',event=>{
+const fileInput=$('#kitPlusFile');
+fileInput?.addEventListener('pointerdown',()=>{kitChatFilePickerOpen=true;});
+fileInput?.addEventListener('keydown',event=>{
+ if(event.key==='Enter'||event.key===' ')kitChatFilePickerOpen=true;
+});
+fileInput?.addEventListener('cancel',()=>{kitChatFilePickerOpen=false;});
+fileInput?.addEventListener('change',event=>{
  const file=event.target.files?.[0];
+ // Priorizar o arquivo selecionado, mesmo se voltar à aba disparar focus.
+ kitChatFilePickerOpen=false;
  if(file)void kitChatImportFile(file);
- // Permite importar novamente o mesmo arquivo após correção de parâmetros.
+ else kitPlusNotice('Nenhum arquivo selecionado. Escolha o JSON ou TXT gerado pelo ChatGPT.','info');
+ // Permite selecionar novamente o mesmo arquivo.
  event.target.value='';
 });
 const drop=$('.kit-chat-file-import');
