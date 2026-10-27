@@ -307,19 +307,29 @@ function catalogTokens(v){
 }
 function scoreCatalog(query,name){
   const q=normalizeText(query), n=normalizeText(name); if(!q||!n) return 0;
-  if(n.includes(q)||q.includes(n)) return 0.98;
+  if(n===q) return 1;
   const qa=new Set(catalogTokens(q)), na=new Set(catalogTokens(n)); if(!qa.size||!na.size) return 0;
   let common=0; for(const t of qa) if(na.has(t)) common++;
   const recall=common/qa.size, precision=common/na.size;
   return Math.min(0.95, recall*0.78 + precision*0.22);
 }
+function catalogCandidates(query,limit=10){
+  const c=loadCatalog(), q=normalizeText(query);
+  if(!q)return [];
+  const originals=c.products||[],ids=new Set(originals.map(p=>String(p.id)));
+  const manual={id:'58221348619',sku:'',name:'Bicicleta Infantil Moto Cross Aro 16 Rosa Unitoys com Carenagens de Moto, Placa Frontal e Manopla Estilo Aceleração',url:'https://shopee.com.br/product/852701218/58221348619/'};
+  const all=ids.has(manual.id)?originals:[...originals,manual];
+  return all.map(p=>({id:String(p.id),sku:String(p.sku||''),name:p.name,url:p.url,score:String(p.id)===q?1:scoreCatalog(query,p.name)}))
+    .filter(p=>p.score>.15).sort((a,b)=>b.score-a.score||a.id.localeCompare(b.id)).slice(0,Math.min(20,Math.max(1,limit)));
+}
 function findCatalogMatch(query){
-  const c=loadCatalog(); let best=null, bestScore=0;
-  for(const p of c.products||[]){
-    const score=scoreCatalog(query,p.name);
-    if(score>bestScore){best=p;bestScore=score;}
-  }
-  return bestScore>=0.78 ? {...best,score:Number(bestScore.toFixed(3))} : null;
+  const q=normalizeText(query),words=catalogTokens(query),sorted=catalogCandidates(query,3);
+  if(!sorted.length)return null;
+  const top=sorted[0],next=sorted[1];
+  if(normalizeText(top.name)===q)return {...top,matchSource:'ai-exact'};
+  // Nomes genéricos ou empate entre modelos exigem decisão humana.
+  if(words.length<4||top.score<.90||(next&&top.score-next.score<.10))return null;
+  return {...top,matchSource:'ai-unique'};
 }
 function parseShopeeCatalog(buffer,filename){
   const book=XLSX.read(buffer,{type:'buffer'});
@@ -327,6 +337,7 @@ function parseShopeeCatalog(buffer,filename){
   return parseCatalogSheets(sheets,{filename,previous:loadCatalog(),importedAt:now()});
 }
 
+app.get('/api/catalog/search',mustLogin,(req,res)=>{res.setHeader('Cache-Control','no-store');res.json({candidates:catalogCandidates(String(req.query.q||'').trim().slice(0,180),10)});});
 app.get('/api/catalog',mustLogin,(_req,res)=>{
  const c=loadCatalog();
  res.setHeader('Cache-Control','no-store');
@@ -1652,7 +1663,8 @@ app.post('/api/ai/generate-remote', mustLogin, async(req,res)=>{
     const catalogProductId=String(req.body.catalogProductId||'').trim();
     let authoritativeProduct=null;
     if(catalogSku&&catalogProductId){
-      try{authoritativeProduct=findCatalogBySku(catalogSku,catalogProductId);}catch{}
+      authoritativeProduct=findCatalogBySku(catalogSku,catalogProductId);
+       if(!authoritativeProduct)throw Error('Anúncio e SKU não conferem com o catálogo. Selecione o anúncio correto.');
     }
     const productContext=authoritativeProduct?{id:authoritativeProduct.id,sku:catalogSku,name:authoritativeProduct.name,url:authoritativeProduct.url}:null;
     const out=await generateCopyWithGemini({images,filename,productContext});
@@ -1662,7 +1674,7 @@ app.post('/api/ai/generate-remote', mustLogin, async(req,res)=>{
       out.catalogMatch={id:authoritativeProduct.id,sku:catalogSku,name:authoritativeProduct.name,score:1,source:'sku-selected'};
     }else{
       const match=findCatalogMatch(out.product);
-      if(match){ out.shopeeUrl=match.url; out.catalogMatch={id:match.id,sku:match.sku,name:match.name,score:match.score,source:'ai-fuzzy'}; }
+      if(match){ out.shopeeUrl=match.url; out.catalogMatch={id:match.id,sku:match.sku,name:match.name,score:match.score,source:match.matchSource}; }
     }
     out.analysisMode='server-ffmpeg';
     res.json(out);
@@ -1673,7 +1685,7 @@ app.post('/api/ai/generate', mustLogin, async(req,res)=>{
   try{
     const out=await generateCopyWithGemini({images:req.body.images,filename:req.body.filename});
     const match=findCatalogMatch(out.product);
-    if(match){ out.shopeeUrl=match.url; out.catalogMatch={id:match.id,sku:match.sku,name:match.name,score:match.score}; }
+    if(match){ out.shopeeUrl=match.url; out.catalogMatch={id:match.id,sku:match.sku,name:match.name,score:match.score,source:match.matchSource}; }
     res.json(out);
   }catch(e){ res.status(400).json({error:e.message}); }
 });

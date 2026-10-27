@@ -898,3 +898,5 @@ body.ui-compact-pro.reference-publisher-layout{
  .tiktok-delivery-copy{flex:1 1 calc(100% - 60px)}
  .tiktok-delivery-panel>button.ghost{width:100%}
 }
+
+.shopee-link-tools{display:flex;flex-direction:column;gap:9px;min-width:0}.shopee-link-tools p{margin:0;color:#526172;font-weight:550}.shopee-link-tools p[data-state="warning"]{color:#aa5d07}.shopee-link-tools p[data-state="ok"]{color:#23734b}.shopee-link-actions{display:flex;gap:8px;flex-wrap:wrap}.shopee-link-actions button{min-height:35px;padding:7px 12px}.shopee-link-results{border:1px solid #d5deea;border-radius:12px;background:#fff;padding:10px;max-height:300px;overflow:auto}.shopee-link-results[hidden]{display:none}.shopee-listing-option{padding:9px 4px;display:flex;justify-content:space-between;align-items:center;gap:14px;border-top:1px solid #e9edf4}.shopee-listing-option b{display:block;font-size:13px;color:#16263c}.shopee-listing-option small{display:block;font-size:12px;color:#60708a;margin-top:3px}.shopee-listing-option button{flex-shrink:0}@media(max-width:680px){.shopee-listing-option{align-items:flex-start;flex-direction:column}}

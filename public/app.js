@@ -12,6 +12,7 @@ const TIKTOK_AUTH_EVENT_KEY='redeachados_tiktok_auth_event_v1';
 let captionManual=false;
 let commentManual=false;
 let instagramManual=false;
+let linkNeedsReview=false;
 let tiktokAuthInvalid=false;
 function currentTikTokVideoFingerprint(){
  if(selectedRemoteVideo?.id)return 'drive:'+selectedRemoteVideo.id;
@@ -107,7 +108,7 @@ function safeRemoteVideoSnapshot(){
 function saveDraft(){
   try{
     const data={
-      draftVersion:2,activeSku:activeDraftSku||selectedRemoteVideo?.catalogSku||'',wedropSku:$('#wedropSku')?.value||'',wedropQuery:$('#wedropQuery')?.value||'',
+      draftVersion:3,linkNeedsReview,activeSku:activeDraftSku||selectedRemoteVideo?.catalogSku||'',wedropSku:$('#wedropSku')?.value||'',wedropQuery:$('#wedropQuery')?.value||'',
       mediaType:selectedRemoteVideo?.id?'remote':selectedFile?'manual':'',selectedRemoteVideo:safeRemoteVideoSnapshot(),
       manualVideo:selectedFile?{name:selectedFile.name,type:selectedFile.type,size:selectedFile.size,lastModified:selectedFile.lastModified}:null,duration:Number(duration||0),
       product:$('#product')?.value||'', shopeeUrl:$('#shopeeUrl')?.value||'', title:$('#title')?.value||'',
@@ -163,6 +164,7 @@ async function restoreDraft(){
   if($('#wedropSku'))$('#wedropSku').value=d.wedropSku||activeDraftSku||'';
   if($('#wedropQuery'))$('#wedropQuery').value=d.wedropQuery||'';
   if(d.selectedRemoteVideo?.id)selectedRemoteVideo={...d.selectedRemoteVideo};
+   linkNeedsReview=d.linkNeedsReview===undefined?Boolean(d.generatedSnapshot?.catalogMatch&&!['sku-selected','ai-exact','ai-unique','manually-selected'].includes(d.generatedSnapshot.catalogMatch.source)):Boolean(d.linkNeedsReview);
   for(const id of ['product','shopeeUrl','title','description','cta','hashtags']) if(d[id]!==undefined && $('#'+id)) $('#'+id).value=d[id]||'';
   if(d.privacy && $('#privacy')) $('#privacy').value=d.privacy;
   if($('#disableComment')) $('#disableComment').checked=Boolean(d.disableComment);
@@ -176,6 +178,7 @@ async function restoreDraft(){
   if($('#metaAdStatus')&&d.metaAdStatus) $('#metaAdStatus').value=d.metaAdStatus;
   captionManual=Boolean(d.captionManual);commentManual=Boolean(d.commentManual);instagramManual=Boolean(d.instagramManual);
   if(d.product||d.title||d.description||d.cta||d.hashtags){generated={...(d.generatedSnapshot||{}),product:d.product||'',shopeeUrl:d.shopeeUrl||'',title:d.title||'',description:d.description||'',cta:d.cta||'',hashtags:String(d.hashtags||'').split(/\s+/).filter(x=>x.startsWith('#')),instagramDescription:d.instagramDescription||d.generatedSnapshot?.instagramDescription||''};}
+   updateShopeeLinkNotice();
   if(captionManual && d.caption && $('#captionPreview')) $('#captionPreview').value=d.caption; else updateCaption(true);
   if(commentManual && d.purchaseComment && $('#purchaseComment')) $('#purchaseComment').value=d.purchaseComment; else updatePurchaseComment(true);
   if(instagramManual && d.instagramCaption && $('#instagramCaption')) $('#instagramCaption').value=d.instagramCaption; else updateInstagramCaption(true);
@@ -380,12 +383,83 @@ async function analyze(){
   catch(e){toast(e.message,true);$('#aiStatus').textContent='Não foi possível gerar o conteúdo.'}finally{$('#regenerateBtn').disabled=false}
 }
 function fillGenerated(){
-  $('#product').value=generated.product||'';$('#shopeeUrl').value=generated.shopeeUrl||'';$('#title').value=generated.title||'';$('#description').value=generated.description||'';$('#cta').value=generated.cta||'';$('#hashtags').value=(generated.hashtags||[]).join(' ');
+  $('#product').value=generated.product||'';$('#shopeeUrl').value=generated.shopeeUrl||'';
+   linkNeedsReview=Boolean(generated.shopeeUrl&&generated.catalogMatch&&!['sku-selected','ai-exact','ai-unique','manually-selected'].includes(generated.catalogMatch.source));$('#title').value=generated.title||'';$('#description').value=generated.description||'';$('#cta').value=generated.cta||'';$('#hashtags').value=(generated.hashtags||[]).join(' ');
   if(generated.catalogMatch) toast(`Produto vinculado ao catálogo: ${generated.catalogMatch.name}`);
-  captionManual=false;commentManual=false;instagramManual=false;updateCaption(true);updatePurchaseComment(true);updateInstagramCaption(true);saveDraft();
+  captionManual=false;commentManual=false;instagramManual=false;updateCaption(true);updatePurchaseComment(true);updateInstagramCaption(true);updateShopeeLinkNotice();saveDraft();
+   if(!generated.shopeeUrl&&generated.product)searchShopeeListings(generated.product).catch(()=>{});
 }
 
-function currentMeta(){return{product:$('#product').value.trim(),shopeeUrl:selectedRemoteVideo?.catalogProductUrl||$('#shopeeUrl').value.trim(),title:$('#title').value.trim(),description:$('#description').value.trim(),cta:$('#cta').value.trim(),hashtags:$('#hashtags').value.trim().split(/\s+/).filter(x=>x.startsWith('#'))}}
+
+function canonicalShopeeLink(raw){
+ try{
+  const u=new URL(String(raw||'').trim());
+  const m=u.pathname.match(/^\/product\/(\d+)\/(\d+)\/?$/i);
+  return u.protocol==='https:'&&['shopee.com.br','www.shopee.com.br'].includes(u.hostname.toLowerCase())&&m&&m[1]==='852701218'
+    ?'https://shopee.com.br/product/'+m[1]+'/'+m[2]+'/':'';
+ }catch{return ''}
+}
+function updateShopeeLinkNotice(){
+ const el=$('#shopeeLinkNotice');if(!el)return;
+ const raw=$('#shopeeUrl')?.value.trim()||'',valid=canonicalShopeeLink(raw);
+ el.textContent=linkNeedsReview?'⚠️ Link associado por aproximação. Escolha o anúncio correto antes de publicar.':
+  !raw?'⚠️ Nenhum anúncio exato confirmado. Pesquise no catálogo ou cole o link correto.':
+  !valid?'⚠️ Use o link de produto da sua loja: shopee.com.br/product/852701218/ID/.':
+  '✅ Link com ID válido da sua loja. Confira o modelo na Shopee antes de publicar.';
+ el.dataset.state=(!valid||linkNeedsReview)?'warning':'ok';
+}
+function verifyPublicationLink(){
+ if(!canonicalShopeeLink($('#shopeeUrl')?.value)||linkNeedsReview){
+  updateShopeeLinkNotice();$('#shopeeUrl')?.focus();
+  toast('Confira e selecione o anúncio correto da Shopee antes de publicar.',true);return false;
+ }
+ return true;
+}
+function selectShopeeListing(p){
+ const url=canonicalShopeeLink(p.url);if(!url)return toast('Link da Shopee inválido.',true);
+ $('#shopeeUrl').value=url;
+ if(p.name)$('#product').value=p.name;
+ if(selectedRemoteVideo){
+  selectedRemoteVideo.catalogProductUrl=url;
+  selectedRemoteVideo.catalogProductId=p.id||'';
+  selectedRemoteVideo.catalogProductName=p.name||'';
+  if(p.sku)selectedRemoteVideo.catalogSku=p.sku;
+ }
+ if(generated){generated.shopeeUrl=url;generated.product=$('#product').value;generated.catalogMatch={id:p.id,sku:p.sku||'',name:p.name,score:1,source:'manually-selected'};}
+ linkNeedsReview=false;$('#shopeeLinkResults').hidden=true;
+ updateShopeeLinkNotice();updateCaption(true);updatePurchaseComment(true);updateInstagramCaption(true);saveDraft();
+ toast('Anúncio escolhido. Confira o modelo na Shopee.');
+}
+async function searchShopeeListings(query=''){
+ const term=String(query||$('#product')?.value||'').trim(),box=$('#shopeeLinkResults');
+ if(!term)return toast('Informe o produto identificado para pesquisar.',true);
+ box.hidden=false;box.textContent='Pesquisando anúncios no catálogo…';
+ try{
+  const d=await api('/api/catalog/search?q='+encodeURIComponent(term));box.innerHTML='';
+  if(!d.candidates?.length){box.textContent='Não encontrei no catálogo. Cole o link certo no campo acima.';return}
+  const hint=document.createElement('p');hint.className='small';hint.textContent='Selecione pelo modelo completo, não apenas pela cor.';box.appendChild(hint);
+  for(const p of d.candidates){
+   const row=document.createElement('div');row.className='shopee-listing-option';
+   row.innerHTML='<div><b>'+esc(p.name)+'</b><small>ID: '+esc(p.id)+(p.sku?' · SKU: '+esc(p.sku):'')+'</small></div>';
+   const button=document.createElement('button');button.type='button';button.className='ghost';button.textContent='Usar anúncio';button.onclick=()=>selectShopeeListing(p);
+   row.appendChild(button);box.appendChild(row);
+  }
+ }catch(e){box.textContent='Pesquisa indisponível: '+e.message}
+}
+$('#shopeeLookupBtn')?.addEventListener('click',()=>searchShopeeListings());
+$('#shopeeOpenLinkBtn')?.addEventListener('click',()=>{
+ const url=canonicalShopeeLink($('#shopeeUrl')?.value);
+ if(!url)return toast('Cole primeiro o link do anúncio da sua loja.',true);
+ window.open(url,'_blank','noopener');
+});
+$('#shopeeUrl')?.addEventListener('input',()=>{
+ if(generated){generated.shopeeUrl=$('#shopeeUrl').value;generated.catalogMatch=null;}
+ linkNeedsReview=false;
+ if(selectedRemoteVideo)selectedRemoteVideo.catalogProductUrl=$('#shopeeUrl').value.trim();
+ updateShopeeLinkNotice();
+});
+
+function currentMeta(){return{product:$('#product').value.trim(),shopeeUrl:$('#shopeeUrl').value.trim(),title:$('#title').value.trim(),description:$('#description').value.trim(),cta:$('#cta').value.trim(),hashtags:$('#hashtags').value.trim().split(/\s+/).filter(x=>x.startsWith('#'))}}
 function productEmoji(m={}){const t=`${m.product||''} ${m.title||''} ${m.description||''}`.toLowerCase();if(/avental|mini chef|chef|cozinha infantil/.test(t))return'👩‍🍳';if(/cozinha|panela|cafeteira|chaleira|frigideira|utens[ií]lio|assadeira|pote|galheteiro/.test(t))return'🍳';if(/brinqued|infantil|crian[cç]a|bonec|carrinho|pista|jogo/.test(t))return'🎁';if(/organiz|gaveta|prateleira|porta joia|armazen/.test(t))return'✨';if(/limp|mop|escova|pano|vassoura/.test(t))return'🧼';if(/luz|led|lumin[aá]ria|sensor/.test(t))return'💡';if(/beleza|maquiagem|pincel|joia|brinco/.test(t))return'💖';if(/fitness|balan[cç]a|treino|academia/.test(t))return'💪';return'✨'}
 function cleanEmoji(t=''){return String(t||'').replace(/^\s*[\p{Extended_Pictographic}\uFE0F\u200D]+\s*/u,'').trim()}
 function buildAutoCaption(){if(!config)return'';const m=currentMeta(),e=productEmoji(m),parts=[];if(m.title)parts.push(`${e} ${cleanEmoji(m.title)}`);if(m.description)parts.push(`📝 ${cleanEmoji(m.description)}`);if(m.cta)parts.push(`🛍️ ${cleanEmoji(m.cta)}`);const directLink=String(m.shopeeUrl||config?.settings?.shopeeStoreUrl||'').trim();if(directLink)parts.push(`🔗 ${directLink}`);if(m.hashtags.length)parts.push(m.hashtags.join(' '));return parts.filter(Boolean).join('\n\n').slice(0,2200)}
@@ -468,7 +542,7 @@ $('#testMetaAdsBtn')?.addEventListener('click',async()=>{
   try{const d=await api('/api/meta/ads/status');if(d.connected){$('#metaAdsStatus').textContent=`✅ ${d.account?.name||'Conta conectada'} · conjunto: ${d.adset?.name||d.adset?.id||'OK'} · ${d.adset?.effective_status||d.adset?.status||''}`;toast('Conexão com Meta Ads confirmada.')}else{throw new Error(d.error||'Não foi possível validar a conta.')}}catch(e){$('#metaAdsStatus').textContent='⚠️ '+e.message;toast(e.message,true)}finally{b.disabled=false;b.textContent='Testar conexão com Meta Ads';}
 });
 function instagramCommercePayload(){
-  return {sku:selectedRemoteVideo?.catalogSku||$('#wedropSku')?.value.trim()||'',product:$('#product')?.value.trim()||'',shopeeUrl:selectedRemoteVideo?.catalogProductUrl||$('#shopeeUrl')?.value.trim()||'',dmEnabled:Boolean($('#dmEnabled')?.checked),dmKeyword:$('#dmKeyword')?.value.trim()||'QUERO',publicReplyEnabled:Boolean($('#publicReplyEnabled')?.checked),createAd:Boolean($('#createMetaAd')?.checked),adStatus:$('#metaAdStatus')?.value||'PAUSED'};
+  return {sku:selectedRemoteVideo?.catalogSku||$('#wedropSku')?.value.trim()||'',product:$('#product')?.value.trim()||'',shopeeUrl:$('#shopeeUrl')?.value.trim()||'',dmEnabled:Boolean($('#dmEnabled')?.checked),dmKeyword:$('#dmKeyword')?.value.trim()||'QUERO',publicReplyEnabled:Boolean($('#publicReplyEnabled')?.checked),createAd:Boolean($('#createMetaAd')?.checked),adStatus:$('#metaAdStatus')?.value||'PAUSED'};
 }
 function describeInstagramResult(r){
   const bits=['Reel publicado no Instagram ✅'];
@@ -486,7 +560,7 @@ async function loadInstagramStatus(){
   try{const d=await api('/api/instagram/status');if(!d.configured){el.textContent='Configure o token da Meta em Configurações.';return;}if(d.connected){el.textContent=`Conectado: @${d.username||'redeachadosbr'}`;}else el.textContent='Token configurado, mas a Meta recusou a conexão: '+(d.error||'verifique o token.');}catch(e){el.textContent=e.message;}
 }
 async function publishInstagram(){
-  if(!selectedFile&&!selectedRemoteVideo)return toast('Escolha um vídeo.',true);if(!generated)return toast('Aguarde a geração da publicação.',true);if(!config?.settings?.instagramConfigured){location.hash='#channels';return toast('Abra Canais de conexão e configure o Instagram / Meta.',true);}
+  if(!selectedFile&&!selectedRemoteVideo)return toast('Escolha um vídeo.',true);if(!generated)return toast('Aguarde a geração da publicação.',true);if(!verifyPublicationLink())return;if(!config?.settings?.instagramConfigured){location.hash='#channels';return toast('Abra Canais de conexão e configure o Instagram / Meta.',true);}
   const caption=$('#instagramCaption')?.value.trim()||''; if(!caption)return toast('A legenda do Instagram está vazia.',true);
   const commerce=instagramCommercePayload();if((commerce.dmEnabled||commerce.createAd)&&!commerce.shopeeUrl)return toast('Informe o Link do produto Shopee para ativar Direct ou anúncio com compra.',true);
   const b=$('#instagramPublishBtn');b.disabled=true;setSocialButton('instagram','loading');
@@ -514,7 +588,7 @@ async function publishInstagram(){
 }
 $('#instagramPublishBtn')?.addEventListener('click',publishInstagram);
 
-function storyProductLink(){return String(selectedRemoteVideo?.catalogProductUrl||$('#shopeeUrl')?.value||config?.settings?.shopeeStoreUrl||'').trim()}
+function storyProductLink(){return String($('#shopeeUrl')?.value||'').trim()}
 async function copyStoryProductLink(){
   const link=storyProductLink();
   if(!link)return toast('Informe o link do produto Shopee antes de copiar.',true);
@@ -577,6 +651,7 @@ async function loadCreator(){
 }
 $('#publishBtn').onclick=async()=>{
   if(!selectedFile&&!selectedRemoteVideo)return toast('Escolha um vídeo.',true);if(!generated)return toast('Aguarde a geração da publicação.',true);
+  if(!verifyPublicationLink())return;
   if(!config.tiktokConnected||tiktokAuthInvalid){syncTikTokPublishState();location.hash='#channels';toast('Reconecte sua conta TikTok antes de enviar o rascunho.',true);setTimeout(()=>$('#connectBtn')?.focus(),120);return;}
   const fingerprint=currentTikTokVideoFingerprint();
   if(tiktokDelivery.isUndelivered(fingerprint)){
@@ -602,13 +677,14 @@ $('#publishBtn').onclick=async()=>{
   }catch(e){if(/token|oauth|authoriz|expir|invalid/i.test(e.message||'')){tiktokAuthInvalid=true;syncTikTokPublishState();$('#connectionText').textContent='Autorização expirada. Reconecte o TikTok para voltar a enviar rascunhos.';}toast(e.message,true)}finally{b.disabled=false;if(!tiktokAuthInvalid)setTimeout(()=>syncTikTokPublishState(),1600)}
 };
 async function resetPublication({preserveSku='',preserveQuery='',silent=false}={}){
-  selectedFile=null;selectedRemoteVideo=null;preparedStoryFile=null;preparedStoryVideoId='';frames=[];generated=null;duration=0;captionManual=false;commentManual=false;instagramManual=false;activeDraftSku=String(preserveSku||'').trim();
+  selectedFile=null;selectedRemoteVideo=null;preparedStoryFile=null;preparedStoryVideoId='';frames=[];generated=null;duration=0;captionManual=false;commentManual=false;instagramManual=false;linkNeedsReview=false;activeDraftSku=String(preserveSku||'').trim();
   if(previewObjectUrl){try{URL.revokeObjectURL(previewObjectUrl)}catch{}previewObjectUrl=''}
   clearDraft();await deleteStoredManualVideo();
   const preview=$('#preview');try{preview.pause()}catch{}preview.removeAttribute('src');try{preview.load()}catch{}
   $('#workArea').classList.add('hidden');$('#dropzone').classList.remove('hidden');$('#videoInput').value='';$('#fileName').textContent='';
   for(const id of ['product','shopeeUrl','title','description','cta','hashtags','captionPreview','purchaseComment','instagramCaption'])if($('#'+id))$('#'+id).value='';
   if($('#wedropSku'))$('#wedropSku').value=preserveSku||'';if($('#wedropQuery'))$('#wedropQuery').value=preserveQuery||'';
+  if($('#shopeeLinkResults')){$('#shopeeLinkResults').hidden=true;$('#shopeeLinkResults').innerHTML='';}updateShopeeLinkNotice();
   if($('#wedropStatus'))$('#wedropStatus').textContent='';if($('#wedropResults')){$('#wedropResults').innerHTML='';$('#wedropResults').classList.add('hidden')}if($('#wedropAttempts')){$('#wedropAttempts').innerHTML='';$('#wedropAttempts').classList.add('hidden')}
   if($('#privacy'))$('#privacy').value=config?.settings?.defaultPrivacy||'SELF_ONLY';for(const id of ['disableComment','disableDuet','disableStitch','isAigc'])if($('#'+id))$('#'+id).checked=false;
   if($('#dmEnabled'))$('#dmEnabled').checked=config?.settings?.instagramDmEnabled!==false;if($('#dmKeyword'))$('#dmKeyword').value=config?.settings?.instagramDmKeyword||'QUERO';if($('#publicReplyEnabled'))$('#publicReplyEnabled').checked=config?.settings?.instagramPublicReplyEnabled!==false;if($('#createMetaAd'))$('#createMetaAd').checked=Boolean(config?.settings?.metaCreateAdDefault);if($('#metaAdStatus'))$('#metaAdStatus').value=config?.settings?.metaAdDefaultStatus||'PAUSED';
