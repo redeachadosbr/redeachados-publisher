@@ -6,7 +6,7 @@ const el=(tag,cls,label)=>{
  if(label!==undefined)x.textContent=String(label);return x;
 };
 const $=id=>document.getElementById(id);
-let context=null,saved={type:'',options:[]},loadSerial=0,busy=false,originalColor='',suggestedPrice=null,supplierEan=null;
+let context=null,saved={type:'',options:[]},loadSerial=0,busy=false,originalColor='',suggestedPrice=null,supplierEan=null,variantPrices=[];
 const values=()=>String($('optimizerVariationValues')?.value||'').split(/\r?\n/).map(x=>x.trim()).filter(Boolean).slice(0,20);
 const type=()=>String($('optimizerVariationType')?.value||'').trim();
 const currentKey=()=>context?context.sku+'|'+context.itemId+'|'+context.modelId:'';
@@ -90,6 +90,19 @@ function render(){
   const fields=el('div','optimizer-variant-inputs');
   const price=field('Preço (R$)',prior.price>0?prior.price:(suggestedPrice||''),{kind:'number',min:'0.01',placeholder:'Informe o preço'});
   price.input.step='0.01';price.input.dataset.variantField='price';
+  const quote=variantPrices.find(q=>q.name===name&&q.supplierSku===String(prior.supplierSku||'').trim());
+  const formatMoney=v=>'R$ '+Number(v).toFixed(2).replace('.',',');
+  const promoField=field('Preço final da promoção por variação',
+   quote?.status==='calculated'?formatMoney(quote.promo):'',{placeholder:'Aguardando custo e cálculo WeDrop'});
+  promoField.input.readOnly=true;promoField.input.setAttribute('aria-label','Preço promocional calculado '+name);
+  const detail=el('small','optimizer-variation-price-feedback',
+   quote?.status==='calculated'?
+    'Custo '+formatMoney(quote.cost)+' · preço bruto '+formatMoney(quote.gross)+
+    ' · após cupom '+formatMoney(quote.checkout)+' · margem '+Number(quote.margin).toFixed(2).replace('.',',')+
+    '% · lucro '+formatMoney(quote.profit)+' · desconto '+quote.discountPct+'%':
+    quote?.message||'Salve o SKU WeDrop e consulte novamente a variação para calcular. Nenhum preço foi enviado.');
+  detail.style.cssText='display:block;font-size:12px;line-height:1.4;margin:4px 0 10px;';
+
   const stock=field('Estoque (mínimo 1)',Number.isInteger(Number(prior.stock))&&Number(prior.stock)>0?prior.stock:1,{kind:'number',min:1});
   stock.input.step='1';stock.input.dataset.variantField='stock';
   const sku=field('SKU da opção na Shopee',prior.sku||((context.sku+'-'+safeName(name)).slice(0,100)),{placeholder:'SKU única'});
@@ -117,7 +130,7 @@ function render(){
    save.disabled=true;
    try{await persist();}catch(e){notify(e.message,'error');}finally{save.disabled=false;}
   };
-  fields.append(price.label,sku.label,supplierSku.label,gtin.label,stock.label,buttons,noGtin,confirmPhoto,confirmStock,save);
+  fields.append(price.label,promoField.label,detail,sku.label,supplierSku.label,gtin.label,stock.label,buttons,noGtin,confirmPhoto,confirmStock,save);
   gtin.input.addEventListener('input',()=>{if(gtin.input.value.trim()){n.checked=false;gtin.input.disabled=false;}});
   body.append(visual,fields);row.append(header,body);cards.append(row);
  }
@@ -217,12 +230,13 @@ async function load(data){
  const title=String(data?.draftTitle||'');
  const match=title.match(/(?:-|–|—)\s*(Vermelha|Vermelho|Preta|Preto|Azul|Rosa|Branca|Branco|Verde|Amarela|Amarelo)(?:\s|$)/i);
  originalColor=match?.[1]||'';
- saved={type:'',options:[]};suggestedPrice=null;supplierEan=null;
+ saved={type:'',options:[]};suggestedPrice=null;supplierEan=null;variantPrices=[];
  try{
   const result=await request('/api/shopee/optimizer/variants/draft','GET');
   if(seq!==loadSerial||currentKey()!==sku+'|'+itemId+'|'+modelId)return;
   saved=result.details||saved;
   suggestedPrice=Number(result.suggestedPrice)>0?Number(result.suggestedPrice):null;
+  variantPrices=Array.isArray(result.variantPriceQuotes)?result.variantPriceQuotes:[];
   supplierEan=/^\d{8,14}$/.test(String(result.supplierEan||''))?String(result.supplierEan):null;
   if(saved?.type&&!type())$('optimizerVariationType').value=saved.type;
   if(saved?.options?.length&&!values().length)$('optimizerVariationValues').value=saved.options.map(o=>o.name).join('\n');
