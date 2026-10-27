@@ -183,3 +183,8 @@ test('editor do rascunho exibe fotos e indicadores do próprio kit e controles e
  assert.match(js,/\/api\/shopee\/kits\/modify/);
  assert.match(html,/kit-builder\.css\?v=3\.2-draft-editor-reference/);
 });
+
+test('contêiner externo da composição não reduz a largura dos dois cartões',()=>{
+ assert.match(css,/#tab-kits #kitDetail #kitManualComposition\{[\s\S]*?display:block/);
+ assert.match(css,/#tab-kits #kitDetail #kitManualComposition>\.kit-manual-composition\{[\s\S]*?grid-template-columns:repeat\(2,minmax\(0,1fr\)\)/);
+});

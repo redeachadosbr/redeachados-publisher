@@ -1424,3 +1424,28 @@
  #tab-kits #kitDetail .kit-editor-composition-panel{padding:12px}
  #tab-kits #kitDetail .kit-manual-row[data-mode="replace"] .kit-manual-row-fields{grid-template-columns:1fr}
 }
+
+/* v3.2.1 — evitar grade aninhada: o elemento externo é apenas suporte do editor. */
+#tab-kits #kitDetail #kitManualComposition{
+  display:block;min-width:0;margin:0;padding:0;border:0;
+  background:transparent;border-radius:0;box-shadow:none;
+}
+#tab-kits #kitDetail #kitManualComposition>.kit-manual-composition{
+  display:grid;grid-template-columns:repeat(2,minmax(0,1fr));
+  gap:11px;width:100%;margin:0;padding:0;
+  border:0;background:transparent;
+}
+@media(min-width:1051px) and (max-width:1320px){
+ #tab-kits #kitDetail .kit-editor-summary{
+  grid-template-columns:minmax(155px,1.45fr) repeat(4,minmax(0,1fr));
+ }
+ #tab-kits #kitDetail .kit-editor-product-photos{
+  grid-column:auto;justify-content:flex-start;
+ }
+ #tab-kits #kitDetail .kit-editor-product-tile{flex:1 1 0;min-width:0}
+}
+@media(max-width:800px){
+ #tab-kits #kitDetail #kitManualComposition>.kit-manual-composition{
+  grid-template-columns:1fr;
+ }
+}
