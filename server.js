@@ -306,7 +306,8 @@ app.post('/api/shopee/kits/drafts/save',mustLogin,requireWeDropAdmin,async(req,r
    packing:Number(req.body.packing||0),shipping:Number(req.body.shipping||0)
   });
   const creative={title:req.body.title,description:req.body.description,
-   seoTitles:req.body.seoTitles,source:'rascunho revisado'};
+   seoTitles:req.body.seoTitles,manualFacts:req.body.manualFacts,
+   source:'rascunho revisado'};
   const saved=await saveKitDraft(auth.shopId,{kit,creative});
   res.json({ok:true,...saved,shopeePublished:false});
  }catch(error){res.status(400).json({error:String(error.message||error).slice(0,260)});}
@@ -334,7 +335,8 @@ app.post('/api/shopee/kits/drafts/load',mustLogin,requireWeDropAdmin,async(req,r
    marginPct:Number(original.quote?.targetMarginPct??15),
    packing:Number(original.packing||0),shipping:Number(original.shipping||0)
   });
-  res.json({ok:true,kit,creative:{...stored.creative,prompts:kitPrompts(kit)},
+  res.json({ok:true,kit,creative:{...stored.creative,
+   prompts:kitPrompts(kit,{manualFacts:stored.creative?.manualFacts||{}})},
    publication:stored.publication||{status:'local_draft',itemId:null},
    savedAt:stored.updatedAt,refreshedCosts:true,requiresReview:true});
  }catch(error){res.status(400).json({error:String(error.message||error).slice(0,260)});}

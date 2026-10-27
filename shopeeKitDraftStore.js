@@ -36,8 +36,11 @@ export async function saveKitDraft(shopId,{kit,creative}){
   .filter(x=>typeof x==='string'&&x.trim().length>=10&&Array.from(x.trim()).length<=120)
   .map(x=>x.trim()).slice(0,3):[];
  const uniqueTitles=[...new Set(seoTitles)];
+ const manualFacts=creative?.manualFacts&&typeof creative.manualFacts==='object'&&!Array.isArray(creative.manualFacts)
+  ?Object.fromEntries(codes.filter(sku=>typeof creative.manualFacts[sku]==='string')
+   .map(sku=>[sku,creative.manualFacts[sku].replace(/[\u0000-\u001f]/g,' ').trim().slice(0,1700)])):{};
  const draft={kit,creative:{title,description,seoTitles:uniqueTitles.length===3?uniqueTitles:[],
-  source:String(creative.source||'rascunho revisado').slice(0,90)},
+  manualFacts,source:String(creative.source||'rascunho revisado').slice(0,90)},
   reviewed:false,shopeePublished:false,
   publication:previous?.publication||{status:'local_draft',itemId:null}};
  const rows=await request('?on_conflict=shop_id,kit_sku',{
