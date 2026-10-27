@@ -16,6 +16,7 @@
   <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="/styles.css?v=5523-confirm-inbox" />
   <link rel="stylesheet" href="/studio-depth.css?v=1.0.0-layered-premium" />
+  <link rel="stylesheet" href="/login-sidebar-premium.css?v=1.0.0" />
 </head>
 <body class="ui-compact-pro">
   <svg class="icon-definitions" xmlns="http://www.w3.org/2000/svg" aria-hidden="true"><defs>
@@ -40,8 +41,53 @@
   </defs></svg>
   <div id="toast" role="status" aria-live="polite" aria-atomic="false"></div>
   <a class="skip-link" href="#create">Ir para o conteúdo</a>
-  <section id="loginScreen" class="center hidden">
-    <div class="card login-card"><div class="logo">RA<span>•</span></div><span class="eyebrow">REDE ACHADOS BR</span><h1>Bem-vindo ao Publisher.</h1><p>Seu estúdio de conteúdo, em um só lugar.</p><label for="loginPassword">Senha do aplicativo</label><input id="loginPassword" type="password" autocomplete="current-password" placeholder="Digite sua senha"><button id="loginBtn" type="button" class="primary">Entrar no estúdio <svg class="icon"><use href="#i-arrow"/></svg></button></div>
+  <section id="loginScreen" class="center hidden" aria-labelledby="loginTitle">
+    <div class="login-shell">
+      <div class="login-showcase">
+        <div class="login-showcase-header">
+          <div class="login-store-lockup">
+            <span class="login-store-mark" aria-hidden="true">RA<span>•</span></span>
+            <div><strong>REDE ACHADOS BR</strong><small>PUBLISHER STUDIO</small></div>
+          </div>
+          <span class="login-edition">CREATOR STUDIO</span>
+        </div>
+        <div class="login-showcase-center">
+          <span class="login-hero-eyebrow"><svg class="icon" aria-hidden="true"><use href="#i-spark"/></svg> SEU ESTÚDIO DE CONTEÚDO</span>
+          <h1>Conteúdo que<br><em>conecta e vende.</em></h1>
+          <p>Crie, organize e compartilhe suas publicações em uma experiência feita para a Rede Achados BR.</p>
+          <div class="login-platforms" aria-label="Plataformas de publicação">
+            <div class="login-platform login-platform-tiktok">
+              <span class="login-platform-icon" aria-hidden="true"><svg class="icon"><use href="#i-tiktok"/></svg></span>
+              <span><strong>TikTok</strong><small>Vídeos e alcance</small></span>
+            </div>
+            <div class="login-platform login-platform-instagram">
+              <span class="login-platform-icon" aria-hidden="true"><svg class="icon"><use href="#i-instagram"/></svg></span>
+              <span><strong>Instagram</strong><small>Reels e Stories</small></span>
+            </div>
+          </div>
+          <div class="login-store-feature">
+            <div class="login-feature-icon" aria-hidden="true"><svg class="icon"><use href="#i-bag"/></svg></div>
+            <div><strong>Sua loja no centro de tudo</strong><small>Publicações, produtos e oportunidades em um só lugar.</small></div>
+            <svg class="icon login-feature-spark" aria-hidden="true"><use href="#i-spark"/></svg>
+          </div>
+        </div>
+        <div class="login-showcase-footer"><span class="login-showcase-line"></span><span>REDE ACHADOS BR <i>•</i> CONTEÚDO COM PROPÓSITO</span></div>
+      </div>
+      <div class="login-auth-panel">
+        <div class="login-auth-top"><span class="login-auth-tag"><span aria-hidden="true"></span> ACESSO AO ESTÚDIO</span><span class="login-auth-brand">RA<span>•</span></span></div>
+        <div class="card login-card">
+          <div class="login-auth-symbol" aria-hidden="true"><svg class="icon"><use href="#i-spark"/></svg></div>
+          <span class="eyebrow">BEM-VINDO DE VOLTA</span>
+          <h2 id="loginTitle">Tudo pronto para<br>criar o próximo destaque.</h2>
+          <p>Entre com sua senha para acessar o Publisher Studio da Rede Achados BR.</p>
+          <label for="loginPassword">Senha do aplicativo</label>
+          <input id="loginPassword" type="password" autocomplete="current-password" placeholder="Digite sua senha" />
+          <button id="loginBtn" type="button" class="primary">Entrar no estúdio <svg class="icon" aria-hidden="true"><use href="#i-arrow"/></svg></button>
+          <div class="login-safe-note"><svg class="icon" aria-hidden="true"><use href="#i-check"/></svg><span>Área de acesso restrito da Rede Achados BR.</span></div>
+        </div>
+        <div class="login-auth-footer">REDE ACHADOS BR <span>•</span> PUBLISHER STUDIO</div>
+      </div>
+    </div>
   </section>
   <div id="app" class="hidden">
     <aside class="sidebar" aria-label="Menu principal">
