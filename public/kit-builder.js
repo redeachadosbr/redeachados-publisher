@@ -2017,6 +2017,43 @@ async function kitStartExtensionImages(){
  finally{btn.disabled=false;}
 }
 
+
+let kitResumeExtensionBusy=false;
+// Exclusivo da aba Kits: o Runner antigo chamava a função global de SKU individual,
+// que recusava todos os kits por terem Item ID/Modelo 0.
+globalThis.__RA_KIT_RESUME_BRIDGE=async identity=>{
+ if(kitResumeExtensionBusy)return {ok:false,error:'A recuperação do kit já está em andamento.'};
+ const kitSku=String(identity?.sku||'');
+ if(!prepared?.kit||prepared.kit.kitSku!==kitSku||
+    String(identity?.itemId)!=='0'||String(identity?.modelId)!=='0')
+  return {ok:false,error:'Abra o rascunho '+kitSku+' no editor de Kits Inteligentes WeDrop e mantenha-o selecionado.'};
+ kitResumeExtensionBusy=true;
+ try{
+  // Fonte de verdade da galeria: IndexedDB. Uma atualização da página não
+  // deve fazer a extensão refazer as imagens 01..N que já foram salvas.
+  const saved=await kitPhotoStore.list(kitSku);
+  if(prepared?.kit?.kitSku!==kitSku)throw Error('Você mudou de kit durante a recuperação.');
+  let restored=0;
+  for(const row of saved){
+   if(Number.isInteger(row.slot)&&row.slot>=1&&row.slot<=9&&
+      /^data:image\/(?:png|jpeg|webp);base64,/i.test(row.dataUrl)&&!images.has(row.slot)){
+    images.set(row.slot,row.dataUrl);restored++;
+   }
+  }
+  if(restored){renderImageSlots();kitAutoImageUi();}
+  const result=await getKitExtensionBridge().resumeFromExtension(identity);
+  if(result.ok){
+   $('#kitStopExtension').hidden=false;
+   kitExtensionStatus('✓ Ponte recuperando imagem '+String(result.slot).padStart(2,'0')+
+    '/09 do kit, sem gerar outra versão. '+images.size+' imagem(ns) já preservada(s).','success');
+  }
+  return result;
+ }catch(error){
+  kitExtensionStatus('Não foi possível retomar o kit: '+error.message,'error');
+  return {ok:false,error:String(error.message||error).slice(0,350)};
+ }finally{kitResumeExtensionBusy=false;}
+};
+
 function openChatGPTImages(){
  if(!prepared)return imageStatus('Abra o kit antes de iniciar as imagens.','error');
  let prompt;
