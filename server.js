@@ -1804,8 +1804,28 @@ app.post('/api/shopee/optimizer/execution/prepare',mustLogin,requireWeDropAdmin,
       throw Error('Informe uma vez a campanha Minha Promoção na etapa Desconto; ela será incluída automaticamente na prévia única.');
      const financial=await discountExecutionInputs(req,sku,itemId,modelId,campaignId,{
       allowModels:live.has_model===true,expectedModels:modelVariations});
-     if(modelVariations.options.some(o=>Math.round(o.cost*100)!==Math.round(Number(financial.quote.unitCost)*100)))
-      throw Error('As variações têm custos diferentes. É necessário precificar individualmente cada modelo antes da campanha.');
+     // Cada modelo tem custo próprio; a barra principal fornece UMA meta de margem.
+     // Recalcular o preço BRUTO individual sem reduzir o desconto para mascarar custos.
+     const settings=normalizeShopeePricingSettings({
+      ...await shopeePricingPreferences(auth.shopId),
+      marginPct:Number(financial.quote.targetMarginPct),
+      minMarginPct:Math.max(8,Number(financial.quote.minMarginPct)||8),
+      discountPct:Number(financial.snapshot.discountPct),
+      couponPct:Number(financial.snapshot.couponPct)
+     });
+     const modelQuotes=modelVariations.options.map(option=>{
+      const quote=quoteShopeePrice({unitCost:Number(option.cost),settings,marginOverride:true});
+      const promo=Number(quote.marketplaceDisplayPrice),gross=Number(quote.grossPrice);
+      if(!Number.isFinite(gross)||!Number.isFinite(promo)||promo>=gross||
+       quote.netMarginPct+1e-7<settings.minMarginPct)
+       throw Error('Margem ou preço inválido na variação '+option.name);
+      const ending=value=>Math.round(value*100)%10;
+      if(![0,9].includes(ending(promo))||![0,9].includes(ending(quote.buyerAfterCoupon)))
+       throw Error('Não existe terminação 0/9 segura para '+option.name);
+      return {name:option.name,sku:option.sku,supplierSku:option.supplierSku,
+       cost:option.cost,gross,promo,buyerAfterCoupon:quote.buyerAfterCoupon,
+       profit:quote.netProfit,margin:quote.netMarginPct};
+     });
      const approved=financial.snapshot;
      modelVariations.promotion={discountId:campaignId,gross:approved.gross,promo:approved.promo,
       discountPct:approved.discountPct,couponPct:approved.couponPct,
@@ -1813,7 +1833,9 @@ app.post('/api/shopee/optimizer/execution/prepare',mustLogin,requireWeDropAdmin,
       originalPrice:approved.originalPrice,existingPrice:approved.existingPrice,
       action:approved.action,promotionSignal:approved.promotionSignal,
       needsBasePriceUpdate:approved.needsBasePriceUpdate,
-      modelPriceChange:modelVariations.options.some(o=>Math.round(o.price*100)!==Math.round(approved.gross*100))};
+      modelQuotes,marginPct:settings.marginPct,minMarginPct:settings.minMarginPct,
+      modelPriceChange:modelVariations.options.some(o=>
+       Math.round(o.price*100)!==Math.round(modelQuotes.find(m=>m.sku===o.sku).gross*100))};
      // Guardar a campanha escolhida nesta SKU: nas próximas variações
      // o Motor Matriz poderá reutilizar o ID após revalidar tudo pela API.
      if(String(reviewState.modelDiscountCampaignId||'')!==campaignId)
@@ -1821,7 +1843,7 @@ app.post('/api/shopee/optimizer/execution/prepare',mustLogin,requireWeDropAdmin,
      autoModelDiscountToken=signDiscountPreview(approved,envText('SESSION_SECRET'));
      autoModelDiscountPreview={...modelVariations.promotion,
       models:modelVariations.options.map(o=>({name:o.name,sku:o.sku,supplierSku:o.supplierSku,
-       cost:o.cost,originalPrice:o.price,finalPrice:approved.promo})),
+       cost:o.cost,originalPrice:o.price,...modelQuotes.find(m=>m.sku===o.sku)})),
       netMarginPct:financial.quote.netMarginPct,minMarginPct:financial.quote.minMarginPct};
     }
     if(selectedStage==='fiscal'&&reviewState.stages?.fiscal?.reviewed&&reviewState.tax){
