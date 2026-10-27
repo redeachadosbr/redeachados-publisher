@@ -80,6 +80,7 @@ import {optimizerSettings,saveOptimizerSettings} from './optimizerStore.js';
 import {quoteShopeePrice,normalizeShopeePricingSettings} from './shopeePricing.js';
 import {lookupShopeeCompetitors,marketResearchConfigured} from './shopeeMarketResearch.js';
 import {promotionFromQuote,promotionBasePrice,promotionMember,shopDiscountMembershipSignal,discountPlanSnapshot,signDiscountPreview,verifyDiscountPreview,readDiscountPages} from './shopeeDiscountPublish.js';
+import {auditCatalogDiscounts} from './shopeeCatalogDiscountAudit.js';
 import {discountPreviewStatus} from './shopeeDiscountDeferred.js';
 import {marketFloorDiscountEligibility} from './shopeeMarketFloorApproval.js';
 import {verifyShopeeListingStatus} from './shopeeListingStatus.js';
@@ -875,6 +876,21 @@ app.get('/api/shopee/wedrop/coverage',mustLogin,requireWeDropAdmin,async(req,res
   }
 });
 
+// Auditoria somente leitura: acesso à mesma loja autenticada, sem alterar anúncios.
+app.post('/api/shopee/catalog/discount-audit',mustLogin,async(req,res)=>{
+ res.setHeader('Cache-Control','no-store');
+ if(!verifiedSameOrigin(req))return res.status(403).json({error:'Origem não autorizada.'});
+ const ids=req.body?.itemIds;
+ if(!Array.isArray(ids)||!ids.length||ids.length>2000||
+  ids.some(x=>!/^[1-9][0-9]{0,17}$/.test(String(x))))
+  return res.status(400).json({error:'Informe de 1 a 2000 Item IDs válidos.'});
+ try{
+  const {auth,cfg}=await getValidAuth(req);
+  const report=await auditCatalogDiscounts({cfg,auth,call:callShopeeShopApi,
+   readPages:readDiscountPages,itemIds:[...new Set(ids.map(String))]});
+  res.json({ok:true,...report,marketplaceUpdated:false});
+ }catch(error){res.status(503).json({error:String(error.message||error).slice(0,260)});}
+});
 app.get('/api/shopee/catalog/cache',mustLogin,async(req,res)=>{
   res.setHeader('Cache-Control','no-store');
   try{
