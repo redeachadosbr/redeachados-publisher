@@ -82,6 +82,27 @@ export function reviewedVariationEvidence(body,review){
 // (SKU, EAN e opção) têm prioridade sobre nomes comerciais inconsistentes.
 const normalizedVariationText=value=>String(value||'').normalize('NFD')
  .replace(/[\u0300-\u036f]/g,'').toUpperCase().replace(/[^A-Z0-9]+/g,' ').trim();
+
+const dimensionUnits='CM|MM|ML|KG|G|L|M';
+const sizeTokens=value=>{
+ const normalized=normalizedVariationText(value);
+ return [...normalized.matchAll(new RegExp('\\b([0-9]{1,4})\\s*('+dimensionUnits+')\\b','g'))]
+  .map(match=>match[1]+match[2]);
+};
+const dimensionFamily=value=>normalizedVariationText(value)
+ .replace(new RegExp('\\b[0-9]{1,4}\\s*(?:'+dimensionUnits+')\\b','g'),' ')
+ .replace(/\b(?:AZUL|VERMELHA?|VERMELHO|PRETA?|PRETO|BRANCA?|BRANCO|VERDE|AMARELA?|AMARELO|ROSA|LILAS|CINZA)\b/g,' ')
+ .replace(/\s+/g,' ').trim();
+const dimensionalProductFamily=(parent,actual,option)=>{
+ const optionFamily=dimensionFamily(option);
+ const parentTokens=dimensionFamily(parent).split(' ').filter(token=>token.length>=6);
+ const actualTokens=new Set(dimensionFamily(actual).split(' '));
+ const optionTokens=optionFamily.split(' ').filter(token=>token.length>=6&&token!=='TAMANHO'&&token!=='MODELO');
+ const shared=parentTokens.filter(token=>actualTokens.has(token));
+ // Nomes como FRIGIDEIRA 26 CM exigem a categoria FRIGIDEIRA nos dois títulos.
+ return shared.some(token=>optionTokens.length===0||optionTokens.includes(token));
+};
+
 export function variationSupplierIdentity({
  parentName,supplierName,originalOption,optionName,expectedEan='',sourceEan='',reviewed=false
 }={}){
@@ -95,11 +116,22 @@ export function variationSupplierIdentity({
  // Remove sufixos de cor SOMENTE ao comparar nomes, não da SKU/EAN.
  const base=baseByOption.replace(/ (?:VERMELHA?|VERMELHO|ROSA|PRETA?|PRETO|AZUL|BRANCA?|BRANCO|AMARELA?|AMARELO|VERDE)$/,'');
  const stem=option.replace(/[AO]$/,'');
- const hasOption=actual.endsWith(' '+option)||
+ const optionMeasurements=sizeTokens(option),actualMeasurements=sizeTokens(actual);
+ const dimensionOption=optionMeasurements.length>0;
+ // Ex.: "FRIGIDEIRA 26 CM" equivale a "Frigideira Antiaderente 26cm - Azul".
+ // O tamanho deve ser exato e inequívoco: nunca aceitar 24/20/28 cm para 26 cm.
+ const exactDimension=dimensionOption&&optionMeasurements.length===1&&
+  actualMeasurements.length===1&&optionMeasurements[0]===actualMeasurements[0];
+ const dimensionalFamily=exactDimension&&dimensionalProductFamily(parent,actual,option);
+ const hasOption=dimensionOption?dimensionalFamily:
+  actual.endsWith(' '+option)||
   stem.length>=3&&(actual.endsWith(' '+stem+'A')||actual.endsWith(' '+stem+'O'))||
   (' '+actual+' ').includes(' '+option+' ');
- if(!hasOption)return {ok:false,reason:'O fornecedor não confirma a opção '+option};
- const normalFamily=base.length>=8&&(actual===base||actual.startsWith(base+' '));
+ if(!hasOption)return {ok:false,reason:dimensionOption?
+  'O título WeDrop não comprova tamanho e tipo exatos para '+option:
+  'O fornecedor não confirma a opção '+option};
+ const normalFamily=base.length>=8&&(actual===base||actual.startsWith(base+' '))||
+  (dimensionalFamily&&dimensionFamily(parent)===dimensionFamily(actual));
  const validEan=value=>/^[0-9]{8,14}$/.test(String(value||''));
  const expected=String(expectedEan||'').trim(),source=String(sourceEan||'').trim();
  if(validEan(expected)&&validEan(source)&&expected!==source)
