@@ -30,9 +30,10 @@ import {previewWeDropCsv,prepareWeDropImport,MAX_CSV_CHARS} from './wedropCsv.js
 import {convertWeDropExcelBase64} from './wedropExcel.js';
 import {saveWeDropCosts,getWeDropCoverage,compareIncomingCosts,pendingWeDropModels,upsertWeDropSkuLink} from './wedropCosts.js';
 import {saveWeDropProducts,readWeDropProduct} from './wedropCosts.js';
-import {kitCatalog,suggestKits,suggestKitsForIdea,rankKitIdeaProducts,assessKitBuyerFit,composeKit,kitCreative,kitPrompts,kitPlusResearchBrief,kitPlusContentPrompt,kitContentBrief,categoryMatches,modifyKitSkus,clearKitCatalogCache} from './shopeeKitBuilder.js';
-import {saveKitStockImport,clearKitStockCache,parseWeDropAvailabilityCsv} from './shopeeKitAvailability.js';
+import {kitCatalog,suggestKits,suggestKitsForIdea,rankKitIdeaProducts,assessKitBuyerFit,composeKit,kitCreative,kitPrompts,kitPlusResearchBrief,kitPlusContentPrompt,kitContentBrief,categoryMatches,modifyKitSkus,clearKitCatalogCache,kitSku} from './shopeeKitBuilder.js';
+import {saveKitStockImport,clearKitStockCache,parseWeDropAvailabilityCsv,readKitStockSnapshot} from './shopeeKitAvailability.js';
 import {saveKitDraft,listKitDrafts,loadKitDraft,deleteKitDraft} from './shopeeKitDraftStore.js';
+import {recoverKitDraftForEditing,matchesStoredKitPhotos,validateStoredKitDraft} from './shopeeKitDraftRecovery.js';
 import {kitUploadPhoto,kitPublicationReadiness,kitPublicationPreview,kitPublishApproved,checkKitPublication} from './shopeeKitPublicationService.js';
 import {previewKitDiscount,executeKitDiscount} from './shopeeKitDiscountService.js';
 import {supplierWorkflowFacts,wedropCestForSku} from './shopeeSupplierFacts.js';
@@ -301,16 +302,35 @@ app.post('/api/shopee/kits/drafts/save',mustLogin,requireWeDropAdmin,async(req,r
  if(!verifiedSameOrigin(req))return res.status(403).json({error:'Origem não autorizada.'});
  try{
   const {auth}=await getValidAuth(req);
-  // O cliente NÃO define custos nem preços: recompor sempre do catálogo salvo.
-  const kit=await composeKit(auth.shopId,req.body?.skus,{
-   marginPct:Number(req.body.marginPct??15),
-   packing:Number(req.body.packing||0),shipping:Number(req.body.shipping||0)
-  });
+  // A edição textual de um kit JÁ salvo pode continuar quando a atualização de
+  // estoque vence. Nunca aceitar custos/preços do cliente nem alterar composição.
+  const settings={
+   marginPct:Number(req.body?.marginPct??15),packing:Number(req.body?.packing||0),
+   shipping:Number(req.body?.shipping||0)
+  };
+  const stock=await readKitStockSnapshot(auth.shopId);
+  let kit,stockRevalidationRequired=false;
+  if(stock.ready){
+   kit=await composeKit(auth.shopId,req.body?.skus,settings);
+  }else{
+   const requested=Array.isArray(req.body?.skus)?req.body.skus.map(String):[];
+   const stored=await loadKitDraft(auth.shopId,String(req.body?.kitSku||''));
+   if(!stored||requested.length!==stored.skus.length||
+      requested.some((sku,i)=>sku!==String(stored.skus[i])))
+    throw Error('Estoque vencido: apenas a edição textual de um kit já salvo está disponível. Atualize a WeDrop para criar ou trocar SKUs.');
+   kit=validateStoredKitDraft(stored);
+   if(settings.marginPct!==Number(kit.quote.targetMarginPct??15)||
+      settings.packing!==Number(kit.packing||0)||
+      settings.shipping!==Number(kit.shipping||0))
+    throw Error('Para mudar margem, frete ou custos, atualize primeiro o catálogo e a disponibilidade WeDrop.');
+   stockRevalidationRequired=true;
+  }
   const creative={title:req.body.title,description:req.body.description,
    seoTitles:req.body.seoTitles,manualFacts:req.body.manualFacts,
    source:'rascunho revisado'};
   const saved=await saveKitDraft(auth.shopId,{kit,creative});
-  res.json({ok:true,...saved,shopeePublished:false});
+  res.json({ok:true,...saved,shopeePublished:false,stockRevalidationRequired,
+   refreshedCosts:!stockRevalidationRequired});
  }catch(error){res.status(400).json({error:String(error.message||error).slice(0,260)});}
 });
 app.post('/api/shopee/kits/drafts/delete',mustLogin,requireWeDropAdmin,async(req,res)=>{
@@ -330,16 +350,17 @@ app.post('/api/shopee/kits/drafts/load',mustLogin,requireWeDropAdmin,async(req,r
   const {auth}=await getValidAuth(req);
   const stored=await loadKitDraft(auth.shopId,req.body?.kitSku);
   if(!stored)return res.status(404).json({error:'Rascunho não encontrado nesta loja.'});
-  const original=stored.kit||{};
-  // Recalcular preços usando o custo atual da WeDrop antes da revisão.
-  const kit=await composeKit(auth.shopId,stored.skus,{
-   marginPct:Number(original.quote?.targetMarginPct??15),
-   packing:Number(original.packing||0),shipping:Number(original.shipping||0)
+  // Recuperar sempre o rascunho salvo, mesmo se o estoque expirou após 24 h.
+  // A publicação continua exigindo uma recomposição atualizada no serviço.
+  const review=await recoverKitDraftForEditing(stored,{
+   shopId:auth.shopId,readStock:readKitStockSnapshot,compose:composeKit
   });
-  res.json({ok:true,kit,creative:{...stored.creative,
-   prompts:kitPrompts(kit,{manualFacts:stored.creative?.manualFacts||{}})},
+  res.json({ok:true,kit:review.kit,creative:{...stored.creative,
+   prompts:kitPrompts(review.kit,{manualFacts:stored.creative?.manualFacts||{}})},
    publication:stored.publication||{status:'local_draft',itemId:null},
-   savedAt:stored.updatedAt,refreshedCosts:true,requiresReview:true});
+   savedAt:stored.updatedAt,refreshedCosts:review.refreshedCosts,
+   stockRevalidationRequired:review.stockRevalidationRequired,
+   stockReason:review.stockReason,requiresReview:true});
  }catch(error){res.status(400).json({error:String(error.message||error).slice(0,260)});}
 });
 // Modo ChatGPT Plus: nenhuma rota de kits pode consumir tokens/imagens
@@ -538,7 +559,11 @@ app.get('/api/shopee/kits/reference-photo',mustLogin,requireWeDropAdmin,async(re
   if(skus.length<2||skus.length>3||skus.some(x=>!x||x.length>90)||
     !Number.isInteger(index)||index<0||index>=skus.length)
    return res.status(400).json({error:'Selecione 2 ou 3 SKUs e a fotografia correspondente.'});
-  const kit=await composeKit(auth.shopId,skus,{marginPct:15,packing:0,shipping:0});
+  // Fotos de um kit já salvo continuam acessíveis mesmo com estoque vencido.
+  // Referências fora do kit persistido precisam da composição WeDrop atual.
+  const saved=await loadKitDraft(auth.shopId,kitSku(skus));
+  const kit=saved&&matchesStoredKitPhotos(saved,skus)?saved.kit:
+   await composeKit(auth.shopId,skus,{marginPct:15,packing:0,shipping:0});
   if(kit.components[index]?.sku!==skus[index])throw Error('O kit foi alterado. Reabra-o.');
   if(!kit.components[index]?.imageUrl)return res.status(409).json({error:'SKU sem foto WeDrop.'});
   const photo=await kitReferencePhoto(kit.components[index].imageUrl);
