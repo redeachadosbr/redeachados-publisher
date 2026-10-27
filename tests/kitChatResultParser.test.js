@@ -54,3 +54,24 @@ test('limite de 10 e ausência de whitelist protegem o catálogo',()=>{
  assert.equal(parseKitChatResult(txt,{allowedCodes:whitelist,limit:1}).kits.length,1);
  assert.throws(()=>parseKitChatResult(txt,{allowedCodes:[]}),/WeDrop/);
 });
+
+test('campo de arquivo mantém nome e mostra feedback visível mesmo com importação automática concorrente',async()=>{
+ const {readFileSync}=await import('node:fs');
+ const app=readFileSync(new URL('../public/kit-builder.js',import.meta.url),'utf8');
+ const html=readFileSync(new URL('../public/index.html',import.meta.url),'utf8');
+ assert.match(html,/id="kitPlusFileStatus"[\s\S]{0,150}role="status"/);
+ assert.match(app,/kitChatQueuedManualImport=\{uploadedText,silent:false\}/);
+ assert.match(app,/if\(queued\)void importPlusSuggestions\(queued\)/);
+ assert.match(app,/kitChatFilePickerOpen\|\|kitChatQueuedManualImport/);
+ assert.match(app,/event\.currentTarget\.value=''/);
+ assert.doesNotMatch(app,/event\.target\.value='';[\s\S]{0,12}\}\);\nconst drop=/);
+});
+test('JSON com nomes de produtos e preços é aceito somente com SKU WeDrop da whitelist',()=>{
+ const rows={kits:[
+  {nome:'Kit mini parque',componentes:[{sku:'DTY1126',preco:999},{sku:'DTY1127',custo:1}]},
+  {nome:'Kit falsificado',componentes:[{sku:'DTY1126'}, {sku:'SKU_INVENTADO'}]}
+ ]};
+ const result=parseKitChatResult(JSON.stringify(rows),{allowedCodes:whitelist,limit:10});
+ assert.deepEqual(result.kits,[['DTY1126','DTY1127']]);
+ assert.equal(result.rejected,1);
+});
