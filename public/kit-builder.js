@@ -1254,18 +1254,26 @@ $('#kitPlusDownloadCatalog')?.addEventListener('click',()=>{
 });
 const fileInput=$('#kitPlusFile');
 fileInput?.addEventListener('pointerdown',()=>{kitChatFilePickerOpen=true;});
+fileInput?.addEventListener('click',event=>{
+ // Limpar ANTES do seletor, não depois: após escolher, o nome fica
+ // visível e o mesmo arquivo poderá ser escolhido novamente.
+ event.currentTarget.value='';
+ kitChatFilePickerOpen=true;
+});
 fileInput?.addEventListener('keydown',event=>{
  if(event.key==='Enter'||event.key===' ')kitChatFilePickerOpen=true;
 });
-fileInput?.addEventListener('cancel',()=>{kitChatFilePickerOpen=false;});
+fileInput?.addEventListener('cancel',()=>{
+ kitChatFilePickerOpen=false;
+ kitPlusNotice('Seleção cancelada. Nenhum arquivo novo foi enviado.','info');
+});
 fileInput?.addEventListener('change',event=>{
  const file=event.target.files?.[0];
  // Priorizar o arquivo selecionado, mesmo se voltar à aba disparar focus.
  kitChatFilePickerOpen=false;
  if(file)void kitChatImportFile(file);
  else kitPlusNotice('Nenhum arquivo selecionado. Escolha o JSON ou TXT gerado pelo ChatGPT.','info');
- // Permite selecionar novamente o mesmo arquivo.
- event.target.value='';
+ // Não limpar event.target.value aqui: o usuário precisa VER o nome.
 });
 const drop=$('.kit-chat-file-import');
 if(drop){
