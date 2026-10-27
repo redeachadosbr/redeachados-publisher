@@ -30,7 +30,7 @@ import {previewWeDropCsv,prepareWeDropImport,MAX_CSV_CHARS} from './wedropCsv.js
 import {convertWeDropExcelBase64} from './wedropExcel.js';
 import {saveWeDropCosts,getWeDropCoverage,compareIncomingCosts,pendingWeDropModels,upsertWeDropSkuLink} from './wedropCosts.js';
 import {saveWeDropProducts,readWeDropProduct} from './wedropCosts.js';
-import {kitCatalog,suggestKits,suggestKitsForIdea,assessKitBuyerFit,composeKit,kitCreative,kitPrompts,kitPlusResearchBrief,kitPlusContentPrompt,categoryMatches,clearKitCatalogCache} from './shopeeKitBuilder.js';
+import {kitCatalog,suggestKits,suggestKitsForIdea,rankKitIdeaProducts,assessKitBuyerFit,composeKit,kitCreative,kitPrompts,kitPlusResearchBrief,kitPlusContentPrompt,categoryMatches,clearKitCatalogCache} from './shopeeKitBuilder.js';
 import {saveKitStockImport,clearKitStockCache,parseWeDropAvailabilityCsv} from './shopeeKitAvailability.js';
 import {saveKitDraft,listKitDrafts,loadKitDraft} from './shopeeKitDraftStore.js';
 import {kitUploadPhoto,kitPublicationReadiness,kitPublicationPreview,kitPublishApproved,checkKitPublication} from './shopeeKitPublicationService.js';
@@ -395,7 +395,7 @@ app.post('/api/shopee/kits/plus-brief',mustLogin,requireWeDropAdmin,async(req,re
   const {auth}=await getValidAuth(req);
   res.json({ok:true,...await kitPlusResearchBrief(auth.shopId,{
    category:String(req.body?.category||'Brinquedos').slice(0,90),
-   size:Number(req.body?.size||2)
+   size:Number(req.body?.size||2),idea:String(req.body?.idea||'').slice(0,160)
   })});
  }catch(error){res.status(400).json({error:String(error.message||error).slice(0,300)});}
 });
@@ -405,6 +405,7 @@ app.post('/api/shopee/kits/plus-import',mustLogin,requireWeDropAdmin,async(req,r
  try{
   const {auth}=await getValidAuth(req);
   const category=String(req.body?.category||'Brinquedos').slice(0,90);
+  const idea=String(req.body?.idea||'').trim().slice(0,160);
   const size=Number(req.body?.size||2),raw=req.body?.kits;
   if(![2,3].includes(size)||!Array.isArray(raw)||raw.length<1||raw.length>8)
    throw Error('Informe até 8 kits de dois ou três SKUs.');
@@ -424,8 +425,10 @@ app.post('/api/shopee/kits/plus-import',mustLogin,requireWeDropAdmin,async(req,r
    });
    // A IA sugere; o servidor decide com base em SKUs reais e função
    // complementar de cada componente. Nunca confiar só no texto da IA.
-   if(!kit.components.some(p=>categoryMatches(p.category,category)))
+   if(!idea&&!kit.components.some(p=>categoryMatches(p.category,category)))
     throw Error('Kit de SKU '+input.join(', ')+' não corresponde à categoria selecionada.');
+   if(idea&&!rankKitIdeaProducts(idea,kit.components).products.length)
+    throw Error('Kit de SKU '+input.join(', ')+' não corresponde à ideia: '+idea);
    const fit=assessKitBuyerFit(kit.components);
    if(!fit.ok)throw Error('Kit de SKU '+input.join(', ')+
     ' sem coerência de uso: '+fit.reason);
