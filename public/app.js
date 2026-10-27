@@ -379,7 +379,13 @@ async function extractFrames(video,points){
 }
 async function analyze(){
   if(!selectedFile&&!selectedRemoteVideo)return;$('#aiStatus').textContent='Analisando produto e criando a publicação...';$('#regenerateBtn').disabled=true;
-  try{generated=await api('/api/ai/generate',{method:'POST',body:JSON.stringify({filename:(selectedFile?.name||selectedRemoteVideo?.title||'video-wedrop.mp4'),images:frames})});fillGenerated();$('#aiStatus').textContent=generated.confidence==='ai'?'Pronto: conteúdo criado automaticamente pela IA.':'Pronto: modo básico usado. Configure a chave da IA para análise visual.'}
+  // Ao gerar textos novamente para o mesmo vídeo, preserve o anúncio que já foi conferido.
+  const reviewedLink=!linkNeedsReview?canonicalShopeeLink($('#shopeeUrl')?.value):'';
+  const reviewedName=reviewedLink?$('#product')?.value.trim():'';
+  const reviewedMatch=reviewedLink?generated?.catalogMatch:null;
+  try{generated=await api('/api/ai/generate',{method:'POST',body:JSON.stringify({filename:(selectedFile?.name||selectedRemoteVideo?.title||'video-wedrop.mp4'),images:frames})});
+    if(reviewedLink){generated.shopeeUrl=reviewedLink;generated.product=reviewedName||generated.product;generated.catalogMatch=reviewedMatch||{id:reviewedLink.match(/\/(\d+)\/$/)?.[1]||'',name:reviewedName,source:'manually-selected',score:1};}
+    fillGenerated();$('#aiStatus').textContent=generated.confidence==='ai'?'Pronto: conteúdo criado automaticamente pela IA.':'Pronto: modo básico usado. Configure a chave da IA para análise visual.'}
   catch(e){toast(e.message,true);$('#aiStatus').textContent='Não foi possível gerar o conteúdo.'}finally{$('#regenerateBtn').disabled=false}
 }
 function fillGenerated(){
