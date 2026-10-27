@@ -27,21 +27,27 @@ export function summarizeDiscountMembership(itemIds,campaigns,{complete=true,war
 }
 export async function auditCatalogDiscounts({cfg,auth,call,readPages,itemIds}){
  const collected=[],campaigns=[],warnings=[];let complete=true;
+ let successfulLists=0;
  for(const status of ['ongoing','upcoming']){
   for(let page=1;page<=5;page++){
    try{
     const response=(await call(cfg,{path:'/api/v2/discount/get_discount_list',
       method:'POST',accessToken:auth.accessToken,shopId:auth.shopId,
-      body:{discount_status:status,page_no:page,page_size:100}}))?.response;
+      // A implementação da Shopee para esta loja espera strings no JSON
+      // (OpenGetDiscountListRequest.page_no e page_size); números geram erro Go.
+      body:{discount_status:status,page_no:String(page),page_size:'100'}}))?.response;
     if(!Array.isArray(response?.discount_list)||typeof response.more!=='boolean')
       throw Error('A Shopee não retornou uma lista completa');
+    successfulLists++;
     for(const d of response.discount_list)
       if(valid(d.discount_id))collected.push({discountId:String(d.discount_id),status,name:String(d.discount_name||'')});
     if(!response.more)break;
     if(page===5){complete=false;warnings.push('Muitas campanhas; consulta parcial.');}
-   }catch(e){complete=false;warnings.push('Lista '+status+': '+String(e.message||e).slice(0,95));break;}
+   }catch(e){complete=false;warnings.push('Lista '+status+': '+String(e.message||e).slice(0,180));break;}
   }
  }
+ // Não mostrar "0 com desconto" quando nem a listagem de campanhas funcionou.
+ if(successfulLists===0)throw Error('Auditoria não iniciada: a API Shopee recusou a consulta das campanhas. '+warnings.join(' | ').slice(0,340));
  const unique=[...new Map(collected.map(x=>[x.discountId,x])).values()];
  if(unique.length>60){complete=false;warnings.push('Mais de 60 campanhas; consulta parcial.');}
  for(const c of unique.slice(0,60)){

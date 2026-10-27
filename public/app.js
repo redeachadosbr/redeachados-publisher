@@ -601,14 +601,25 @@ async function catalogAuditDiscounts(){
   const active=results.filter(x=>x.kind==='active').length;
   const scheduled=results.filter(x=>x.kind==='scheduled').length;
   const missing=results.filter(x=>x.kind==='missing').length;
-  status.textContent='Auditoria '+(response.complete?'concluída':'parcial')+
-   ': '+active+' com desconto ativo, '+scheduled+' programados, '+
-   (response.complete?missing+' fora de Minha Promoção.':'demais sem comprovação.')+
-   (response.warning?' '+response.warning:'')+
-   ' Nenhuma promoção foi alterada.';
+  const checkedCampaigns=Number(response.scannedCampaigns||0);
+  const foundCampaigns=Number(response.campaignsFound||0);
+  if(response.complete!==true&&checkedCampaigns===0){
+   status.textContent='Auditoria inconclusiva: nenhuma campanha pôde ser detalhada.'+
+    (response.warning?' Motivo: '+response.warning:'')+
+    ' Não é possível afirmar que anúncios estejam sem desconto.';
+  }else{
+   status.textContent='Auditoria '+(response.complete?'concluída':'parcial')+
+    ': '+active+' com desconto ativo confirmado, '+scheduled+' programados. '+
+    (response.complete?missing+' não localizados nas campanhas Minha Promoção.':
+     'Demais anúncios não verificados; não significa ausência de desconto.')+
+    ' Campanhas detalhadas: '+checkedCampaigns+' de '+foundCampaigns+'.'+
+    (response.warning?' Aviso: '+response.warning:'')+
+    ' Nenhuma promoção foi alterada.';
+  }
   status.dataset.state=response.complete?'success':'warning';
  }catch(error){
-  status.textContent='Não foi possível confirmar as campanhas: '+error.message+'. Nenhum desconto foi enviado.';
+  status.textContent='Falha de comunicação com a Shopee. Descontos NÃO verificados: '+
+   error.message+'. Não conclua que qualquer anúncio esteja sem desconto. Nenhuma alteração feita.';
   status.dataset.state='error';
  }finally{catalogDiscountAuditBusy=false;button.disabled=false;button.textContent='Conferir descontos na Shopee';}
 }
