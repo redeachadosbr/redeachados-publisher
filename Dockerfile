@@ -6,6 +6,7 @@ RUN apt-get update \
 COPY package*.json ./
 RUN npm install --omit=dev
 COPY . .
+RUN npm run check && node --test tests/tiktok-connection.test.js
 ENV NODE_ENV=production
 ENV FFMPEG_PATH=/usr/bin/ffmpeg
 EXPOSE 3000

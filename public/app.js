@@ -43,8 +43,7 @@ function setSocialButton(platform,state='idle'){
   if(platform==='tiktok'&&state==='reconnect') b.classList.add('needs-reconnect'); else b.classList.remove('needs-reconnect');
 }
 function syncTikTokPublishState(){
-  const invalidFromUrl=/tiktok/i.test(new URLSearchParams(location.search).get('error')||'')&&/(inválid|expirad)/i.test(new URLSearchParams(location.search).get('error')||'');
-  tiktokAuthInvalid=tiktokAuthInvalid||invalidFromUrl;
+  // Estados antigos da URL OAuth nunca prevalecem sobre a API.
   if(!config?.tiktokConnected||tiktokAuthInvalid){setSocialButton('tiktok','reconnect');return false;}
   setSocialButton('tiktok','idle');return true;
 }
@@ -229,11 +228,18 @@ async function loadConfig(){
   $('#tiktokClientKey').placeholder=s.tiktokConfigured?'Configurado ✓ — deixe em branco para manter':'Client Key do TikTok';
   $('#tiktokClientSecret').placeholder=s.tiktokConfigured?'Configurado ✓ — deixe em branco para manter':'Client Secret do TikTok';
   await loadCatalogStatus();
-  const authError=new URLSearchParams(location.search).get('error')||'';
-  const urlTikTokInvalid=/tiktok/i.test(authError)&&/(inválid|expirad)/i.test(authError);
-  if(urlTikTokInvalid)tiktokAuthInvalid=true;
-  $('#connectionText').textContent=tiktokAuthInvalid?'Autorização expirada. Reconecte o TikTok para voltar a enviar rascunhos.':(config.tiktokConnected?'Conta conectada e pronta para enviar rascunhos.':'Conta ainda não conectada.');
-  $('#connectBtn').textContent=(config.tiktokConnected||tiktokAuthInvalid)?'Reconectar TikTok':'Conectar TikTok';
+  // A API do TikTok é a fonte real do estado, não só a presença de token salvo.
+  let tik;
+  try{tik=await api('/api/tiktok/status')}catch{
+   tik={status:'unverified',connected:false,message:'Não foi possível verificar a conexão TikTok. Tente novamente.'};
+  }
+  config.tiktokConnected=tik.status==='connected';
+  tiktokAuthInvalid=tik.status==='reconnect'||tik.status==='disconnected';
+  $('#connectionText').textContent=tik.message;
+  $('#connectBtn').textContent=config.tiktokConnected?'Reconectar TikTok':
+   tik.status==='disconnected'?'Conectar TikTok':'Reconectar TikTok';
+  const connectionDot=document.querySelector('.tiktok-channel-card .channel-dot');
+  if(connectionDot){connectionDot.dataset.connection=tik.status;connectionDot.title=tik.message;}
   syncTikTokPublishState();
   if($('#instagramUserId')) $('#instagramUserId').value=s.instagramUserId||'17841480462088551';
   if($('#metaGraphVersion')) $('#metaGraphVersion').value=s.metaGraphVersion||'v26.0';
@@ -513,7 +519,7 @@ $('#connectBtn').addEventListener('click',()=>{saveDraft();if(selectedFile)persi
 $('#regenerateBtn').onclick=analyze;
 async function loadCreator(){
   if(!config?.tiktokConnected){syncTikTokPublishState();return;}
-  try{const c=await api('/api/creator');tiktokAuthInvalid=false;syncTikTokPublishState();const p=$('#privacy'),previousPrivacy=p.value,options=c.privacy_level_options||['SELF_ONLY'];p.innerHTML='';for(const x of options){const o=document.createElement('option');o.value=x;o.textContent={PUBLIC_TO_EVERYONE:'Público',MUTUAL_FOLLOW_FRIENDS:'Amigos',FOLLOWER_OF_CREATOR:'Seguidores',SELF_ONLY:'Somente eu'}[x]||x;p.appendChild(o)} if(options.includes(previousPrivacy))p.value=previousPrivacy;else if(options.includes(config.settings.defaultPrivacy))p.value=config.settings.defaultPrivacy;saveDraft();}catch(e){if(/token|oauth|authoriz|expir|invalid/i.test(e.message||'')){tiktokAuthInvalid=true;syncTikTokPublishState();$('#connectionText').textContent='Autorização expirada. Reconecte o TikTok para voltar a enviar rascunhos.';}else toast(e.message,true)}
+  try{const c=await api('/api/creator');tiktokAuthInvalid=false;config.tiktokConnected=true;$('#connectionText').textContent='Conexão TikTok validada pela API. Pronto para enviar rascunhos.';syncTikTokPublishState();const p=$('#privacy'),previousPrivacy=p.value,options=c.privacy_level_options||['SELF_ONLY'];p.innerHTML='';for(const x of options){const o=document.createElement('option');o.value=x;o.textContent={PUBLIC_TO_EVERYONE:'Público',MUTUAL_FOLLOW_FRIENDS:'Amigos',FOLLOWER_OF_CREATOR:'Seguidores',SELF_ONLY:'Somente eu'}[x]||x;p.appendChild(o)} if(options.includes(previousPrivacy))p.value=previousPrivacy;else if(options.includes(config.settings.defaultPrivacy))p.value=config.settings.defaultPrivacy;saveDraft();}catch(e){if(/token|oauth|authoriz|expir|invalid/i.test(e.message||'')){tiktokAuthInvalid=true;syncTikTokPublishState();$('#connectionText').textContent='Autorização expirada. Reconecte o TikTok para voltar a enviar rascunhos.';}else toast(e.message,true)}
 }
 $('#publishBtn').onclick=async()=>{
   if(!selectedFile&&!selectedRemoteVideo)return toast('Escolha um vídeo.',true);if(!generated)return toast('Aguarde a geração da publicação.',true);
@@ -557,7 +563,14 @@ async function prepareSkuDraft(sku,query=''){
 }
 async function loadHistory(){try{const h=await api('/api/history');$('#history').innerHTML=h.length?h.slice(0,10).map(x=>`<div class="history-item"><div><b>${esc(x.product||x.filename)}</b><br><small>${new Date(x.createdAt).toLocaleString('pt-BR')}</small></div><div><small>${esc(x.status||'PROCESSING')}</small></div></div>`).join(''):'<p class="small">Nenhuma publicação ainda.</p>'}catch{}}
 function esc(s){return String(s||'').replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;'}[m]))}
-const q=new URLSearchParams(location.search);if(q.get('error')){toast(q.get('error'),true);if(/tiktok/i.test(q.get('error'))&&/(inválid|expirad)/i.test(q.get('error')))tiktokAuthInvalid=true;}if(q.get('tiktok')==='connected'){tiktokAuthInvalid=false;toast('TikTok conectado com sucesso. Você pode fechar esta aba e voltar ao vídeo anterior.');}
+const q=new URLSearchParams(location.search);
+if(q.get('error'))toast(q.get('error'),true);
+if(q.get('tiktok')==='connected')toast('Autorização TikTok recebida. Validando conexão pela API.');
+// Não reativar um erro OAuth antigo a cada clique/publicação.
+if(q.has('error')||q.has('tiktok')){
+ q.delete('error');q.delete('tiktok');
+ history.replaceState(history.state,'',location.pathname+(q.toString()?'?'+q.toString():'')+location.hash);
+}
 window.addEventListener('focus',async()=>{try{if(!$('#app').classList.contains('hidden')){await loadConfig();await loadCreator();}}catch{}});
 
 async function loadRemoteVideo(candidate,product){
@@ -696,7 +709,8 @@ async function handleTikTokAuthEvent(payload={}){
   if(!payload||payload.source!=='redeachados-publisher-tiktok')return;
   if(payload.status==='connected'){
     tiktokAuthInvalid=false;
-    try{await loadConfig();await loadCreator();$('#connectionText').textContent='Conta conectada e pronta para enviar rascunhos.';toast('TikTok conectado. Sua publicação continua exatamente como estava.');}
+    try{await loadConfig();await loadCreator();
+     toast(config.tiktokConnected?'TikTok conectado e validado. Sua publicação continua como estava.':'TikTok autorizado. Verifique a conexão antes de publicar.',!config.tiktokConnected);}
     catch(e){toast('TikTok conectado, mas não consegui atualizar o status automaticamente: '+e.message,true)}
   }else if(payload.status==='error'){
     tiktokAuthInvalid=true;syncTikTokPublishState();$('#connectionText').textContent='Não foi possível concluir a conexão do TikTok.';toast(payload.message||'Falha ao conectar o TikTok.',true);

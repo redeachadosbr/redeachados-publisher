@@ -2,6 +2,7 @@ import express from 'express';
 import session from 'express-session';
 import multer from 'multer';
 import crypto from 'node:crypto';
+import {readPersistentTikTokToken,writePersistentTikTokToken,deletePersistentTikTokToken,tiktokStorageConfigured} from './publisherTikTokAuthStore.js';
 import fs from 'node:fs';
 import path from 'node:path';
 import * as XLSX from 'xlsx';
@@ -209,6 +210,35 @@ async function makeStoryShareResponse(req,payload){
   return {ok:true,url,qrDataUrl,expiresAt:new Date(payload.exp).toISOString()};
 }
 function redirectUri(req){ return `${baseUrl(req)}/auth/tiktok/callback`; }
+
+function tiktokOAuthSecret(){
+ const settings=effectiveSettings(loadStore().settings||{});
+ return envText('SESSION_SECRET')||settings.tiktokClientSecret||envText('APP_PASSWORD')||'';
+}
+function tiktokOAuthSignature(source,secret){
+ return crypto.createHmac('sha256',secret).update(source).digest('base64url');
+}
+function validTikTokState(req){
+ const state=String(req.query.state||'');
+ let cookie='';
+ try{
+  const row=String(req.headers.cookie||'').split(';').map(x=>x.trim())
+   .find(x=>x.startsWith('ra_tiktok_oauth_state='));
+  cookie=decodeURIComponent(row?.slice('ra_tiktok_oauth_state='.length)||'');
+ }catch{}
+ const [nonce,expires,sig,...rest]=state.split('.');
+ const secret=tiktokOAuthSecret(),until=Number(expires);
+ if(!secret||!nonce||!/^[a-f0-9]{48}$/.test(nonce)||!sig||rest.length||cookie!==state||
+  !Number.isSafeInteger(until)||until<Date.now()||until>Date.now()+600000)return false;
+ const expected=tiktokOAuthSignature(nonce+'.'+expires,secret);
+ return Buffer.byteLength(expected)===Buffer.byteLength(sig)&&
+  crypto.timingSafeEqual(Buffer.from(expected),Buffer.from(sig));
+}
+function clearTikTokState(req,res){
+ res.clearCookie('ra_tiktok_oauth_state',{path:'/auth/tiktok/callback',sameSite:'lax',
+  secure:req.secure||req.get('x-forwarded-proto')==='https'});
+}
+
 function safeSettings(stored){
   const s=effectiveSettings(stored||{});
   return {
@@ -1395,16 +1425,23 @@ app.post('/api/instagram/finalize',mustLogin,async(req,res)=>{
 });
 
 async function refreshTokenIfNeeded(force=false){
-  const s=loadStore(); const token=s.token; const cfg=effectiveSettings(s.settings||{});
-  if(!token?.refresh_token) throw new Error('Conecte sua conta TikTok primeiro.');
-  const expiresAt=Number(token.obtained_at||0)+Number(token.expires_in||0)*1000;
-  if(!force && Date.now()<expiresAt-10*60*1000) return token.access_token;
-  const form=new URLSearchParams({client_key:cfg.tiktokClientKey,client_secret:cfg.tiktokClientSecret,grant_type:'refresh_token',refresh_token:token.refresh_token});
-  const r=await fetch('https://open.tiktokapis.com/v2/oauth/token/',{method:'POST',headers:{'Content-Type':'application/x-www-form-urlencoded'},body:form});
-  const d=await r.json();
-  if(!r.ok||d.error) throw new Error(d.error_description||d.error||'Não foi possível renovar o acesso ao TikTok.');
-  s.token={...d,obtained_at:Date.now()}; saveStore(s); return d.access_token;
+ const s=loadStore(),token=s.token,cfg=effectiveSettings(s.settings||{});
+ if(!token?.refresh_token)throw Error('Conecte sua conta TikTok primeiro.');
+ const expiresAt=Number(token.obtained_at||0)+Number(token.expires_in||0)*1000;
+ if(!force&&token.access_token&&Date.now()<expiresAt-600000)return token.access_token;
+ const form=new URLSearchParams({client_key:cfg.tiktokClientKey,client_secret:cfg.tiktokClientSecret,
+  grant_type:'refresh_token',refresh_token:token.refresh_token});
+ const r=await fetch('https://open.tiktokapis.com/v2/oauth/token/',{method:'POST',
+  headers:{'Content-Type':'application/x-www-form-urlencoded'},body:form,signal:AbortSignal.timeout(12000)});
+ const d=await r.json().catch(()=>({}));
+ if(!r.ok||d.error||!d.access_token)throw Error(d.error_description||d.error?.message||d.error||'Não foi possível renovar o acesso TikTok.');
+ s.token={...token,...d,obtained_at:Date.now()};
+ saveStore(s);
+ try{await writePersistentTikTokToken(s.token,cfg)}
+ catch(e){console.warn('TikTok: persistência após refresh indisponível:',e.message);}
+ return s.token.access_token;
 }
+
 async function tiktokJson(url,options={}){
   const token=await refreshTokenIfNeeded();
   const r=await fetch(url,{...options,headers:{Authorization:`Bearer ${token}`,'Content-Type':'application/json; charset=UTF-8',...(options.headers||{})}});
@@ -1419,13 +1456,21 @@ async function tiktokJson(url,options={}){
 }
 async function creatorInfo(){ const d=await tiktokJson('https://open.tiktokapis.com/v2/post/publish/creator_info/query/',{method:'POST',body:'{}'}); return d.data||{}; }
 
-app.get('/auth/tiktok', mustLogin, (req,res)=>{
-  const cfg=effectiveSettings(loadStore().settings||{});
-  if(!cfg.tiktokClientKey||!cfg.tiktokClientSecret) return res.status(400).send('Abra Configurações e informe Client Key e Client Secret do TikTok Developers.');
-  const state=crypto.randomBytes(24).toString('hex'); req.session.oauthState=state;
-  const p=new URLSearchParams({client_key:cfg.tiktokClientKey,response_type:'code',scope:'user.info.basic,video.publish,video.upload',redirect_uri:redirectUri(req),state});
-  res.redirect(`https://www.tiktok.com/v2/auth/authorize/?${p}`);
+app.get('/auth/tiktok',mustLogin,(req,res)=>{
+ const cfg=effectiveSettings(loadStore().settings||{});
+ if(!cfg.tiktokClientKey||!cfg.tiktokClientSecret)
+  return res.status(400).send('Configure Client Key e Client Secret do TikTok Developers.');
+ const secret=tiktokOAuthSecret();
+ if(!secret)return res.status(500).send('Configure SESSION_SECRET no Render.');
+ const nonce=crypto.randomBytes(24).toString('hex'),expires=String(Date.now()+600000);
+ const payload=nonce+'.'+expires,state=payload+'.'+tiktokOAuthSignature(payload,secret);
+ res.cookie('ra_tiktok_oauth_state',state,{httpOnly:true,sameSite:'lax',
+  secure:req.secure||req.get('x-forwarded-proto')==='https',path:'/auth/tiktok/callback',maxAge:600000});
+ const params=new URLSearchParams({client_key:cfg.tiktokClientKey,response_type:'code',
+  scope:'user.info.basic,video.publish,video.upload',redirect_uri:redirectUri(req),state});
+ res.redirect('https://www.tiktok.com/v2/auth/authorize/?'+params);
 });
+
 function tiktokAuthResultPage(status,message=''){
   const payload=JSON.stringify({source:'redeachados-publisher-tiktok',status,message:String(message||''),at:Date.now()}).replace(/</g,'\\u003c');
   const ok=status==='connected';
@@ -1434,18 +1479,59 @@ function tiktokAuthResultPage(status,message=''){
   const detail=rawDetail.replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;'}[c]));
   return `<!doctype html><html lang="pt-BR"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>${title}</title><style>body{margin:0;font-family:Inter,system-ui,sans-serif;background:#f6f8f3;color:#273027;display:grid;place-items:center;min-height:100vh}.box{width:min(520px,calc(100% - 32px));background:#fff;border:1px solid #dfe6db;border-radius:18px;padding:28px;box-shadow:0 18px 55px rgba(33,44,31,.10);text-align:center}h1{font-size:24px;margin:0 0 10px}p{color:#667161;line-height:1.6}a{display:inline-block;margin-top:10px;padding:11px 16px;border-radius:10px;background:#263126;color:#fff;text-decoration:none;font-weight:700}</style></head><body><main class="box"><h1>${title}</h1><p>${detail}</p><a href="/">Voltar ao Publisher</a></main><script>(()=>{const payload=${payload};try{localStorage.setItem('redeachados_tiktok_auth_event_v1',JSON.stringify(payload))}catch{}try{const c=new BroadcastChannel('redeachados_tiktok_auth_v1');c.postMessage(payload);setTimeout(()=>c.close(),500)}catch{}try{if(window.opener)window.opener.postMessage(payload,location.origin)}catch{}${ok?"setTimeout(()=>{try{window.close()}catch{}},900);":""}})();</script></body></html>`;
 }
-app.get('/auth/tiktok/callback', async(req,res)=>{
-  try{
-    if(req.query.error) throw new Error(req.query.error_description||req.query.error);
-    if(!req.query.code||req.query.state!==req.session.oauthState) throw new Error('Autorização TikTok inválida ou expirada.');
-    const s=loadStore(), cfg=effectiveSettings(s.settings||{});
-    const form=new URLSearchParams({client_key:cfg.tiktokClientKey,client_secret:cfg.tiktokClientSecret,code:String(req.query.code),grant_type:'authorization_code',redirect_uri:redirectUri(req)});
-    const r=await fetch('https://open.tiktokapis.com/v2/oauth/token/',{method:'POST',headers:{'Content-Type':'application/x-www-form-urlencoded'},body:form});
-    const d=await r.json(); if(!r.ok||d.error) throw new Error(d.error_description||d.error||'Falha ao conectar o TikTok.');
-    s.token={...d,obtained_at:Date.now()}; saveStore(s); delete req.session.oauthState; res.type('html').send(tiktokAuthResultPage('connected'));
-  }catch(e){res.status(400).type('html').send(tiktokAuthResultPage('error',e.message));}
+app.get('/auth/tiktok/callback',async(req,res)=>{
+ try{
+  if(req.query.error)throw Error(req.query.error_description||req.query.error);
+  if(!req.query.code||!validTikTokState(req))
+   throw Error('Autorização TikTok inválida ou expirada. Abra Reconectar TikTok novamente.');
+  const s=loadStore(),cfg=effectiveSettings(s.settings||{});
+  const form=new URLSearchParams({client_key:cfg.tiktokClientKey,
+   client_secret:cfg.tiktokClientSecret,code:String(req.query.code),
+   grant_type:'authorization_code',redirect_uri:redirectUri(req)});
+  const r=await fetch('https://open.tiktokapis.com/v2/oauth/token/',{method:'POST',
+   headers:{'Content-Type':'application/x-www-form-urlencoded'},body:form,
+   signal:AbortSignal.timeout(12000)});
+  const d=await r.json().catch(()=>({}));
+  if(!r.ok||d.error||!d.access_token||!d.refresh_token)
+   throw Error(d.error_description||d.error?.message||d.error||'Falha ao conectar TikTok.');
+  s.token={...d,obtained_at:Date.now()};saveStore(s);
+  if(tiktokStorageConfigured(cfg)){
+   try{await writePersistentTikTokToken(s.token,cfg)}
+   catch(e){console.warn('TikTok: persistência de OAuth falhou:',e.message);
+    throw Error('TikTok autorizado, mas não foi possível persistir o token. Verifique o Supabase antes de tentar novamente.');}
+  }
+  clearTikTokState(req,res);
+  res.type('html').send(tiktokAuthResultPage('connected'));
+ }catch(e){
+  clearTikTokState(req,res);
+  res.status(400).type('html').send(tiktokAuthResultPage('error',e.message));
+ }
 });
-app.post('/api/tiktok/disconnect', mustLogin, (_req,res)=>{ const s=loadStore(); s.token=null; saveStore(s); res.json({ok:true}); });
+
+app.post('/api/tiktok/disconnect',mustLogin,async(_req,res)=>{
+ try{
+  const s=loadStore(),cfg=effectiveSettings(s.settings||{});
+  await deletePersistentTikTokToken(cfg);s.token=null;saveStore(s);res.json({ok:true});
+ }catch{res.status(503).json({error:'Não foi possível desconectar o TikTok com segurança. Tente novamente.'});}
+});
+app.get('/api/tiktok/status',mustLogin,async(_req,res)=>{
+ res.setHeader('Cache-Control','no-store');
+ const s=loadStore();
+ if(!s.token?.refresh_token)return res.json({status:'disconnected',connected:false,
+  message:'TikTok não conectado. Conecte sua conta.'});
+ try{
+  const info=await creatorInfo();
+  res.json({status:'connected',connected:true,
+   username:String(info.creator_username||'').slice(0,80),
+   message:'Conexão com a API do TikTok confirmada. Pronto para enviar rascunhos.'});
+ }catch(e){
+  const diagnostic=String(e.message||'').slice(0,230);
+  const authIssue=/token|oauth|authoriz|expir|invalid|revok|unauthor|scope|permission|401|403/i.test(diagnostic);
+  res.json({status:authIssue?'reconnect':'unverified',connected:false,
+   message:authIssue?'A autorização TikTok expirou ou foi revogada. Reconecte para publicar.':
+    'Não foi possível confirmar a conexão agora. Tente verificar novamente.',diagnostic});
+ }
+});
 app.get('/api/creator', mustLogin, async(_req,res)=>{ try{res.json(await creatorInfo());}catch(e){res.status(400).json({error:e.message});} });
 
 function sanitizeJsonText(text){
@@ -1686,4 +1772,12 @@ app.post('/api/status/:publishId', mustLogin, async(req,res)=>{
   try{const d=await tiktokJson('https://open.tiktokapis.com/v2/post/publish/status/fetch/',{method:'POST',body:JSON.stringify({publish_id:req.params.publishId})});res.json(d.data||{});}catch(e){res.status(400).json({error:e.message});}
 });
 
-app.listen(PORT,()=>console.log(`REDEACHADOS BR Publisher Web V5.5.19 em http://localhost:${PORT}`));
+async function restoreTikTokSession(){
+ const s=loadStore();if(s.token?.access_token)return;
+ try{
+  const token=await readPersistentTikTokToken(effectiveSettings(s.settings||{}));
+  if(token){s.token=token;saveStore(s);console.info('TikTok: token persistente restaurado.');}
+ }catch(e){console.warn('TikTok: recuperação de token indisponível:',e.message);}
+}
+await restoreTikTokSession();
+app.listen(PORT,()=>console.log('REDEACHADOS BR Publisher Web V5.5.19 em http://localhost:'+PORT));
