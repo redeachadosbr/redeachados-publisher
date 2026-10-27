@@ -1,5 +1,5 @@
 import {parseKitChatResult} from './kit-chat-result-parser.js?v=2.5.2-theme-review';
-import {scoreKitSeoTitle,parseKitSeoResponse} from './kit-seo-helper.js';
+import {scoreKitSeoTitle,parseKitSeoResponse,kitSeoRiskFlags} from './kit-seo-helper.js';
 // Kits Inteligentes WeDrop — Kit Formal enviado à Shopee somente após aprovação explícita.
 const $=s=>document.querySelector(s);
 const money=n=>Number(n).toLocaleString('pt-BR',{style:'currency',currency:'BRL'});
@@ -959,14 +959,21 @@ async function saveDraft(){
  try{
   const res=await api('/api/shopee/kits/drafts/save',{body:{
    skus:prepared.kit.components.map(x=>x.sku),
-   ...currentSettings(),title:$('#kitTitle').value,description:$('#kitDescription').value
+   ...currentSettings(),title:$('#kitTitle').value,description:$('#kitDescription').value,
+   seoTitles:kitContentSeoTitles.map(x=>x.title)
   }});
   if(!res.saved)throw Error('O servidor não confirmou a gravação do rascunho.');
   resetKitPublication({saved:true});
   if(kitActiveDraftSku)kitActiveDraftSku=res.kitSku;
   status('✓ Rascunho '+res.kitSku+' salvo nesta loja. A Shopee não foi alterada.','success');
+  kitImportState('Textos salvos no rascunho · sem publicar na Shopee','success');
   void loadDrafts();
- }catch(error){status('Não foi possível salvar kit: '+error.message,'error');}
+  return true;
+ }catch(error){
+  status('Não foi possível salvar kit: '+error.message,'error');
+  kitImportState('Erro ao salvar: '+error.message,'error');
+  return false;
+ }
  finally{b.disabled=false;}
 }
 async function search(){
@@ -994,11 +1001,14 @@ function renderKit({scroll=true,displayTitle=''}={}){
  if(!prepared)return;
  const {kit,creative}=prepared;
  if(kitContentSku!==kit.kitSku){
-  kitContentSku=kit.kitSku;kitContentManualFacts.clear();kitContentSeoTitles=[];
+  kitContentSku=kit.kitSku;kitContentManualFacts.clear();
+  kitContentSeoTitles=Array.isArray(creative?.seoTitles)&&creative.seoTitles.length===3?
+   creative.seoTitles.map((title,i)=>({number:i+1,title})):[];
   kitContentAwaitingResponse=false;
   $('#kitMissingFacts').hidden=true;$('#kitMissingFactFields').replaceChildren();
   $('#kitSeoOptions').hidden=true;$('#kitSeoOptionList').replaceChildren();
   $('#kitContentPrompt').value='';$('#kitPlusTextResult').value='';
+  kitImportState('Clique em Importar anúncio copiado do ChatGPT após copiar a resposta.','info');
  }
  $('#kitDetail').hidden=false;
  $('#kitSkuTitle').textContent=String(displayTitle||creative?.title||
@@ -1037,6 +1047,8 @@ function renderKit({scroll=true,displayTitle=''}={}){
  $('#kitTitle').value=creative.title;
  $('#kitDescription').value=creative.description;
  updateKitTextCounters();
+ if(kitContentSeoTitles.length===3)
+  kitShowSeoTitles(kitContentSeoTitles);
  renderImageSlots();
  if(scroll)$('#kitDetail').scrollIntoView({behavior:'smooth',block:'start'});
 }
@@ -1340,6 +1352,10 @@ document.addEventListener('visibilitychange',()=>{
  if(document.visibilityState==='visible')void kitChatTryAutoClipboard();
 });
 
+function kitImportState(message,state='info'){
+ const el=$('#kitImportState');
+ if(el){el.textContent=message;el.dataset.state=state;}
+}
 function kitContentFeedback(message,state='info'){
  const el=$('#kitContentFeedback');if(el){el.textContent=message;el.dataset.state=state;}
  status(message,state);
@@ -1360,8 +1376,9 @@ function kitContentHandoff(prompt,tab=null){
  if(navigator.clipboard?.writeText)
   void navigator.clipboard.writeText(prompt).catch(()=>{});
  kitContentAwaitingResponse=true;
- $('#kitContentDetails').open=true;
- kitContentFeedback('ChatGPT aberto com orientação preparada. Se o texto não for enviado automaticamente, clique em Enviar no ChatGPT. Depois copie a resposta completa e importe as 3 opções.','success');
+ $('#kitContentDetails').open=false; // Prompt enviado é avançado; importação simples permanece visível.
+ kitImportState('Aguardando resposta do ChatGPT · copie o bloco do anúncio','info');
+ kitContentFeedback('No ChatGPT, gere a resposta e clique no ícone Copiar no bloco com os 3 títulos e a descrição. Volte aqui e clique em Importar anúncio copiado.','info');
 }
 function kitContentReadManual(){
  const data={};
@@ -1459,14 +1476,34 @@ function importPlusText({silent=false}={}){
   $('#kitDescription').value=result.description;
   $('#kitSkuTitle').textContent=scored[0].title;
   kitShowSeoTitles(scored);
+  const review=kitSeoRiskFlags(result.titles.map(x=>x.title).join(' ')+' '+result.description,
+   prepared.kit.components);
+  const box=$('#kitSeoWarnings');
+  box.hidden=review.length===0;
+  box.textContent=review.length?'⚠ Revisão necessária antes de publicar: '+review.join(' · ')+
+   '. Confira também as informações acrescentadas pelo vendedor.':'';
   onKitContentEdit();updateKitTextCounters();
   kitSaved=false;clearKitPublishApproval();
   kitContentAwaitingResponse=false;
   $('#kitContentDetails').open=false;
-  kitContentFeedback('Descrição e 3 títulos importados. Opção com melhor nota estimada selecionada; revise todos os dados e salve o rascunho.','success');
+  kitImportState('3 títulos e descrição importados · salvando rascunho...','info');
+  kitContentFeedback('Os 3 títulos e a descrição foram colocados no editor. Confirme a opção escolhida e revise eventuais alertas.','success');
+  $('#kitSeoOptions').scrollIntoView({behavior:'smooth',block:'nearest'});
+  void saveDraft().then(saved=>{
+   if(saved){
+    kitImportState('✓ Anúncio importado e salvo no rascunho','success');
+    const line=$('#kitSeoSaveStatus');
+    if(line)line.textContent='✓ Três títulos e descrição salvos. Se mudar o título, clique em Salvar textos.';
+   }
+  });
   return true;
  }catch(error){
-  if(!silent)kitContentFeedback('Resposta não importada: '+error.message,'error');
+  if(!silent){
+   kitImportState('Importação não concluída','error');
+   kitContentFeedback('Resposta não importada: '+error.message,'error');
+   $('#kitContentDetails').open=true;
+   $('#kitPlusTextResult').focus();
+  }
   return false;
  }
 }
@@ -1479,7 +1516,12 @@ async function kitImportCopiedContent(){
   if(!content.trim())throw Error('Área de transferência vazia.');
   $('#kitPlusTextResult').value=content;
   importPlusText();
- }catch(error){kitContentFeedback('Não foi possível colar: '+error.message+'. Use Ctrl+V manualmente.','error');}
+ }catch(error){
+  kitImportState('Use Colar manualmente','error');
+  kitContentFeedback('Não foi possível acessar o texto copiado: '+error.message+
+    '. Clique em Colar manualmente, use Ctrl+V e depois Importar texto colado.','error');
+  $('#kitContentDetails').open=true;
+ }
 }
 async function kitTryAutoContentImport(){
  if(!kitContentAwaitingResponse||!prepared||!document.hasFocus()||
@@ -1488,7 +1530,10 @@ async function kitTryAutoContentImport(){
   const permission=await navigator.permissions.query({name:'clipboard-read'});
   if(permission.state!=='granted')return;
   const text=await navigator.clipboard.readText();
-  if(!/^\s*T[ÍI]TULO\s*1\s*:/im.test(text)||!/DESCRI[ÇC][ÃA]O\s*:/i.test(text))return;
+  // Se o clipboard ainda contém a orientação, não sobrescrever campos nem exibir sucesso.
+  if(!/(?:^|\n)\s*(?:\*\*)?T[ÍI]TULO\s*1\s*:/im.test(text)||
+    !/DESCRI[ÇC][ÃA]O\s*:/i.test(text))return;
+  try{parseKitSeoResponse(text);}catch{return;}
   $('#kitPlusTextResult').value=text;
   importPlusText({silent:true});
  }catch{}
@@ -1686,7 +1731,20 @@ $('#kitOpenContentPrompt')?.addEventListener('click',()=>{
 $('#kitPlusText')?.addEventListener('click',()=>void plusText());
 $('#kitContinueContent')?.addEventListener('click',()=>void plusText({proceedWithoutDetails:true}));
 $('#kitImportCopiedText')?.addEventListener('click',()=>void kitImportCopiedContent());
+$('#kitManualContentPaste')?.addEventListener('click',()=>{
+ $('#kitContentDetails').open=true;
+ $('#kitPlusTextResult').focus();
+ kitImportState('Cole a resposta completa no campo abaixo e clique Importar texto colado','info');
+});
 $('#kitImportText')?.addEventListener('click',()=>importPlusText());
+$('#kitSaveSeoContent')?.addEventListener('click',async()=>{
+ kitImportState('Salvando os textos selecionados...','info');
+ const saved=await saveDraft();
+ if(saved){
+  kitImportState('✓ Três títulos e descrição salvos no rascunho','success');
+  $('#kitSeoSaveStatus').textContent='✓ Textos atualizados no rascunho, sem publicar.';
+ }
+});
 
 $('#kitGenerateAll')?.addEventListener('click',openChatGPTImages);
 $('#kitDownloadPack')?.addEventListener('click',exportPack);
