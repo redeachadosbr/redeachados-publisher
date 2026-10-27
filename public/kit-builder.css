@@ -574,3 +574,8 @@
 /* Sinalização factual da coerência dos kits — sem promessa de venda */
 #tab-kits .kit-candidate-evidence{display:block;margin:6px 0 10px;padding:7px 9px;border-radius:8px;background:#f2f8f6;border:1px solid #d7e9e1;color:#245944;font-size:10px;line-height:1.55;font-weight:600}
 #tab-kits .kit-candidate-reason{display:block;line-height:1.55;overflow-wrap:anywhere}
+
+#tab-kits .kit-target-count-field{display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin:13px 0;font-size:13px;font-weight:700;color:#16345e}
+#tab-kits .kit-target-count-field select{width:135px;min-height:40px;padding:7px 10px;border:1px solid #c6d7e7;border-radius:8px;background:#fff;color:#19345b}
+#tab-kits #kitPlusDownloadCatalog:not([hidden]){display:inline-flex;align-items:center;margin:6px 0 9px;max-width:100%;white-space:normal;text-align:left}
+#tab-kits #kitPlusAutoStatus{white-space:normal;overflow-wrap:anywhere;line-height:1.55}
