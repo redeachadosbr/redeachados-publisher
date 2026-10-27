@@ -462,7 +462,8 @@ function catalogPriceIsMissing(item){
 function catalogPriceText(item){
  if(catalogPriceIsMissing(item))return catalogPriceBusy&&catalogPriceAttempted.has(String(item.itemId))
   ?'Consultando preço...':'Preço a consultar';
- if(item.hasModel)return 'A partir de '+catalogMoney(item.price);
+ // Divide o rótulo e o valor em duas linhas, sem perder centavos ou o preço completo.
+ if(item.hasModel)return 'A partir de\n'+catalogMoney(item.price);
  return catalogMoney(item.price);
 }
 function catalogPriceStatus(message,state='info'){
