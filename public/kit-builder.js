@@ -950,6 +950,106 @@ async function kitPreparePublishPreview(){
  }catch(error){kitPublishStatus('Prévia bloqueada: '+error.message,'error');}
  finally{kitPublishBusy=false;$('#kitPublishPreview').disabled=false;}
 }
+// Fluxo guiado: automatiza conferência e envio de mídia, mas NUNCA o botão
+// de publicar. A autorização final continua explícita após a prévia assinada.
+let kitPublishGuideBusy=false;
+function kitPublishGuideNotice(message,state='info'){
+ const el=$('#kitPublishGuideInfo');if(el){el.textContent=message;el.dataset.state=state;}
+}
+function kitPublishGuideFocus(selector){
+ const element=$(selector);
+ if(!element)return;
+ element.scrollIntoView({behavior:'smooth',block:'center'});
+ if(element.matches('button,select,input,textarea'))element.focus({preventScroll:true});
+}
+async function kitPublishGuideNext(){
+ if(kitPublishGuideBusy||kitPublishBusy)return;
+ if(!prepared?.kit)return kitPublishGuideNotice('Escolha ou abra um rascunho de kit antes de continuar.','error');
+ const btn=$('#kitPublishGuideNext'),sku=prepared.kit.kitSku;
+ kitPublishGuideBusy=true;btn.disabled=true;btn.textContent='Conferindo etapa...';
+ try{
+  if(kitItemId){
+   kitPublishGuideNotice('Este kit já tem Item ID '+kitItemId+'. Não envie novamente; confirme o anúncio existente na Shopee.','success');
+   kitPublishGuideFocus('#kitVerifyPublished');return;
+  }
+  if(!kitSaved){
+   kitPublishGuideNotice('Etapa 01/05: salvando o rascunho e os dados de logística...');
+   const saved=await saveDraft();
+   if(!saved){
+    kitPublishGuideNotice('O rascunho não foi salvo. Confira título, descrição e os avisos do editor.','error');
+    kitPublishGuideFocus('#kitSaveDraft');return;
+   }
+  }
+  if(prepared?.kit?.kitSku!==sku)return;
+  if(kitDraftNeedsRefresh){
+   kitPublishGuideNotice('Estoque ou catálogo WeDrop desatualizado. Atualize os dados e recalcule o kit antes da publicação; valores históricos não serão enviados à Shopee.','error');
+   kitPublishGuideFocus('#kitPublishStatus');return;
+  }
+  if(!kitReadiness||kitReadiness.blockers?.length){
+   kitPublishGuideNotice('Etapa 02/05: conferindo SKUs, anúncios vinculados e opções da Shopee...');
+   await kitReadinessCheck();
+   if(!kitReadiness){
+    kitPublishGuideNotice('A validação da Shopee não foi concluída. Confira o aviso abaixo.','error');
+    kitPublishGuideFocus('#kitPublishStatus');return;
+   }
+   if(kitReadiness.blockers?.length){
+    kitPublishGuideNotice('A Shopee encontrou pendências nos componentes: '+
+     kitReadiness.blockers.join(' | '),'error');
+    kitPublishGuideFocus('#kitPublishLinks');return;
+   }
+  }
+  if(!$('#kitMainSku').value){
+   kitPublishGuideNotice('Etapa 02/05: selecione qual SKU será o componente principal do kit.','info');
+   kitPublishGuideFocus('#kitMainSku');return;
+  }
+  if(!$('#kitLogisticId').value){
+   kitPublishGuideNotice('Etapa 02/05: selecione um canal de envio habilitado na Shopee. Os canais disponíveis estão no campo abaixo.','info');
+   kitPublishGuideFocus('#kitLogisticId');return;
+  }
+  if(!$('#kitWeightKg').value||!$('#kitLengthCm').value||
+     !$('#kitWidthCm').value||!$('#kitHeightCm').value){
+   kitPublishGuideNotice('Etapa 02/05: confirme peso e três dimensões reais do pacote completo.','info');
+   kitPublishGuideFocus('#kitWeightKg');return;
+  }
+  if(!$('#kitContentsReviewed').checked||!$('#kitPhotosReviewed').checked||
+     !$('#kitSingleParcelConfirmed').checked){
+   kitPublishGuideNotice('Etapa 02/05: marque as três confirmações apenas após conferir produtos, fotos e envio em um pacote.','info');
+   kitPublishGuideFocus('#kitContentsReviewed');return;
+  }
+  if(images.size!==9){
+   kitPublishGuideNotice('Etapa 03/05: a galeria possui '+images.size+
+    '/9 imagens. Complete e revise todas as posições antes do envio à Shopee.','info');
+   kitPublishGuideFocus('#kitGallerySection');return;
+  }
+  if(kitShopeePhotoSlots.size<9){
+   kitPublishGuideNotice('Etapa 03/05: enviando as nove imagens aprovadas ao MediaSpace da Shopee. Nenhum anúncio será publicado.');
+   await kitSendPhotos();
+   if(kitShopeePhotoSlots.size<9){
+    kitPublishGuideNotice('O envio de imagens parou em '+kitShopeePhotoSlots.size+
+     '/9. Veja o erro na seção de publicação e clique novamente para retomar.','error');
+    kitPublishGuideFocus('#kitShopeePhotoCount');return;
+   }
+  }
+  if(kitVideoData&&!kitVideoRemote?.ready){
+   kitPublishGuideNotice('Etapa 03/05: nove fotos enviadas. Existe um vídeo salvo, mas ainda não confirmado pela Shopee. Envie o vídeo acima ou prossiga sem ele pela prévia final.','info');
+   kitPublishGuideFocus('#kitVideoPanel');return;
+  }
+  if(!kitPublishToken){
+   kitPublishGuideNotice('Etapa 04/05: gerando a prévia de preço, título, descrição, logística e componentes...');
+   await kitPreparePublishPreview();
+   if(!kitPublishToken){
+    kitPublishGuideNotice('Não foi possível preparar a prévia. Confira o motivo exibido na seção de publicação.','error');
+    kitPublishGuideFocus('#kitPublishStatus');return;
+   }
+  }
+  kitPublishGuideNotice('Etapa 05/05: prévia pronta. Confira todas as informações e clique em “Confirmar e publicar” somente se estiverem corretas.','success');
+  kitPublishGuideFocus('#kitPublishPreviewBox');
+ }catch(error){
+  kitPublishGuideNotice('Não foi possível avançar: '+String(error?.message||error),'error');
+ }finally{
+  kitPublishGuideBusy=false;btn.disabled=false;btn.textContent='Continuar publicação na Shopee →';
+ }
+}
 async function kitPublishExecute(){
  if(!prepared||!kitPublishToken||kitPublishBusy)return;
  const name=prepared.kit.kitSku;
@@ -2923,6 +3023,7 @@ for(const selector of kitLogisticsKeeper.selectors){
   $(selector)?.addEventListener('input',kitLogisticsKeeper.queue);
 }
 
+$('#kitPublishGuideNext')?.addEventListener('click',()=>void kitPublishGuideNext());
 $('#kitPublishPreview')?.addEventListener('click',()=>void kitPreparePublishPreview());
 $('#kitPublishExecute')?.addEventListener('click',()=>void kitPublishExecute());
 $('#kitVerifyPublished')?.addEventListener('click',()=>void kitVerifyPublished());
