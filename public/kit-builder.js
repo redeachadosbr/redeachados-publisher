@@ -5,6 +5,8 @@ import {kitImageFilenameSlot,kitImageNextSlot,kitPlanImageImports,kitMoveImage} 
 import {buildKitPlusImageBrief,kitPlusPromptLink} from './kit-plus-image-brief.js';
 import {createKitPhotoStore} from './kit-extension-bridge.js';
 import {createKitExtensionController} from './kit-extension-runtime.js';
+import {parseKitLogisticsText} from './kit-logistics-parser.js';
+import {recognizeKitLogisticsPrint} from './kit-logistics-ocr.js';
 import {kitImagesLookDuplicated} from './kit-image-guard.js';
 // Kits Inteligentes WeDrop — Kit Formal enviado à Shopee somente após aprovação explícita.
 const $=s=>document.querySelector(s);
@@ -495,6 +497,178 @@ function resetKitPublication({saved=false,publication=null}={}){
   'Primeiro salve o rascunho com título, descrição e margem revisados.',
   kitItemId?'success':uncertain?'error':'info');
 }
+const KIT_LOGISTICS_FORM_FIELDS={
+ mainSku:'#kitMainSku',logisticId:'#kitLogisticId',weightKg:'#kitWeightKg',
+ lengthCm:'#kitLengthCm',widthCm:'#kitWidthCm',heightCm:'#kitHeightCm',
+ autoSyncDts:'#kitAutoSyncDts',preOrder:'#kitPreOrder',daysToShip:'#kitDaysToShip'
+};
+const KIT_LOGISTICS_NAMES={
+ mainSku:'Componente principal',logisticId:'Canal de envio Shopee',
+ weightKg:'Peso total embalado',lengthCm:'Comprimento',widthCm:'Largura',
+ heightCm:'Altura',autoSyncDts:'Sincronizar prazo',
+ preOrder:'Kit sob encomenda',daysToShip:'Dias para enviar'
+};
+let kitLogisticsPrint=null,kitLogisticsPreviewUrl=null;
+let kitLogisticsUndoSnapshot=null,kitPendingLogistic=null,kitLogisticsImportBusy=false;
+function kitLogisticsStatus(message,state='info'){
+ const el=$('#kitLogisticsSmartStatus');
+ if(el){el.textContent=message;el.dataset.state=state;}
+}
+function kitLogisticsSetFile(file){
+ if(!file||!['image/png','image/jpeg','image/webp'].includes(file.type))
+  return kitLogisticsStatus('Use um print PNG, JPG ou WebP.','error');
+ if(file.size>12*1024*1024)
+  return kitLogisticsStatus('O arquivo ultrapassa 12 MB. Recorte ou comprima o print.','error');
+ if(kitLogisticsPreviewUrl)URL.revokeObjectURL(kitLogisticsPreviewUrl);
+ kitLogisticsPrint=file;
+ kitLogisticsPreviewUrl=URL.createObjectURL(file);
+ $('#kitLogisticsImagePreview').src=kitLogisticsPreviewUrl;
+ $('#kitLogisticsImagePreviewWrap').hidden=false;
+ kitLogisticsStatus('Print selecionado: '+file.name+'. Clique em Identificar e preencher campos.','info');
+}
+function kitLogisticsClearFile(){
+ if(kitLogisticsPreviewUrl)URL.revokeObjectURL(kitLogisticsPreviewUrl);
+ kitLogisticsPreviewUrl=null;kitLogisticsPrint=null;
+ $('#kitLogisticsImagePreviewWrap').hidden=true;
+ $('#kitLogisticsImagePreview').removeAttribute('src');
+ $('#kitLogisticsSourceImage').value='';
+}
+const kitLogisticsNorm=s=>String(s||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'')
+ .toLowerCase().replace(/\s*\(id\s+\d+\)\s*/g,' ').replace(/\s+/g,' ').trim();
+function kitResolveLogisticOption(name){
+ const dropdown=$('#kitLogisticId'),wanted=kitLogisticsNorm(name);
+ if(!dropdown||wanted.length<5)return null;
+ const options=[...dropdown.options].filter(o=>o.value);
+ const matches=options.filter(option=>{
+  const label=kitLogisticsNorm(option.textContent);
+  return label===wanted||label.startsWith(wanted+' ')||
+   wanted.startsWith(label+' ')||kitLogisticsNorm(option.value)===wanted;
+ });
+ return matches.length===1?matches[0].value:null;
+}
+function kitApplyPendingLogisticName(){
+ if(!kitPendingLogistic||kitPendingLogistic.kitSku!==prepared?.kit?.kitSku)return;
+ const value=kitResolveLogisticOption(kitPendingLogistic.name);
+ if(!value)return;
+ const field=$('#kitLogisticId');
+ field.value=value;field.dispatchEvent(new Event('change',{bubbles:true}));
+ field.classList.add('kit-smart-filled');
+ kitLogisticsStatus('Canal de envio reconhecido e selecionado após consultar a Shopee. Confira os dados antes de publicar.','success');
+ kitPendingLogistic=null;
+}
+function kitLogisticsSnapshot(){
+ return Object.fromEntries(Object.entries(KIT_LOGISTICS_FORM_FIELDS).map(([key,selector])=>{
+  const element=$(selector);
+  return [key,element?.type==='checkbox'?Boolean(element.checked):String(element?.value||'')];
+ }));
+}
+function kitLogisticsSetValue(field,value){
+ const element=$(KIT_LOGISTICS_FORM_FIELDS[field]);
+ if(!element)return;
+ if(element.type==='checkbox')element.checked=Boolean(value);
+ else element.value=String(value);
+ element.dispatchEvent(new Event('change',{bubbles:true}));
+ element.classList.add('kit-smart-filled');
+}
+function kitLogisticsRestore(snapshot){
+ for(const [key,value] of Object.entries(snapshot))kitLogisticsSetValue(key,value);
+ $('#kitDaysToShip').disabled=!$('#kitPreOrder').checked;
+ clearKitPublishApproval();
+}
+function kitLogisticsDisplayResults(filled,skipped,warnings){
+ const root=$('#kitLogisticsSmartResults');root.replaceChildren();
+ const add=(title,items,klass)=>{
+  if(!items.length)return;
+  const section=elt('div',klass);
+  section.append(elt('strong','',title));
+  const ul=elt('ul');
+  for(const item of items)ul.append(elt('li','',item));
+  section.append(ul);root.append(section);
+ };
+ add('Campos preenchidos:',filled,'kit-smart-result-success');
+ add('Precisam de conferência:',skipped,'kit-smart-result-warning');
+ add('Avisos de leitura:',warnings,'kit-smart-result-warning');
+ root.hidden=!root.childElementCount;
+}
+function kitLogisticsApplyParsed(data){
+ const {values,warnings}=data;
+ const filled=[],skipped=[];
+ const snapshot=kitLogisticsSnapshot();
+ let changes=0;
+ for(const key of ['weightKg','lengthCm','widthCm','heightCm','autoSyncDts','preOrder','daysToShip']){
+  if(!Object.prototype.hasOwnProperty.call(values,key))continue;
+  const current=$(KIT_LOGISTICS_FORM_FIELDS[key]);
+  if(!current)continue;
+  const newValue=values[key];
+  if(current.type==='checkbox'?
+     current.checked===newValue:String(current.value)===String(newValue))continue;
+  kitLogisticsSetValue(key,newValue);changes++;
+  filled.push(KIT_LOGISTICS_NAMES[key]+': '+(typeof newValue==='boolean'?(newValue?'Sim':'Não'):
+   String(newValue)+(key==='weightKg'?' kg':(['lengthCm','widthCm','heightCm'].includes(key)?' cm':''))));
+ }
+ if(values.mainSku){
+  const dropdown=$('#kitMainSku');
+  const option=[...dropdown.options].find(opt=>opt.value.toUpperCase()===values.mainSku);
+  if(option){if(dropdown.value!==option.value){kitLogisticsSetValue('mainSku',option.value);changes++;}
+   filled.push('Componente principal: '+option.textContent);}
+  else skipped.push('SKU principal "'+values.mainSku+'" não pertence aos componentes deste kit.');
+ }
+ if(values.logisticName){
+  const value=kitResolveLogisticOption(values.logisticName);
+  if(value){
+   if($('#kitLogisticId').value!==value){kitLogisticsSetValue('logisticId',value);changes++;}
+   filled.push('Canal de envio: '+$('#kitLogisticId').selectedOptions[0]?.textContent);
+   kitPendingLogistic=null;
+  }else{
+   kitPendingLogistic={kitSku:prepared.kit.kitSku,name:values.logisticName};
+   skipped.push('Canal "'+values.logisticName+'" identificado, mas não confirmado nas opções da Shopee. Use Verificar SKUs e opções; o sistema tentará selecionar o canal depois.');
+  }
+ }
+ $('#kitDaysToShip').disabled=!$('#kitPreOrder').checked;
+ if(changes){kitLogisticsUndoSnapshot={kitSku:prepared.kit.kitSku,values:snapshot};
+  $('#kitLogisticsUndo').hidden=false;clearKitPublishApproval();}
+ kitLogisticsDisplayResults(filled,skipped,warnings);
+ if(changes)kitLogisticsStatus(changes+' campo(s) atualizado(s) automaticamente. Confira as medidas do pacote real e as opções antes de publicar. Nenhuma publicação foi efetuada.','success');
+ else kitLogisticsStatus(filled.length?'Os dados extraídos já coincidiam com os campos atuais; confira os valores.':
+   skipped.length?'As informações encontradas precisam de conferência; nenhum campo foi alterado.':
+   'Não encontrei valores suficientemente claros. Cole texto com rótulos como “Peso total embalado: 1,5 kg” ou um print com os valores visíveis.','info');
+ return changes;
+}
+async function kitLogisticsAutofill(){
+ if(kitLogisticsImportBusy)return;
+ if(!prepared?.kit)return kitLogisticsStatus('Abra primeiro o rascunho do kit que deseja preencher.','error');
+ const typed=$('#kitLogisticsSourceText').value.trim(),file=kitLogisticsPrint;
+ if(!typed&&!file)return kitLogisticsStatus('Cole um texto ou escolha/cole um print antes de identificar.','error');
+ const button=$('#kitLogisticsAutofill'),kitSku=prepared.kit.kitSku;
+ kitLogisticsImportBusy=true;button.disabled=true;button.textContent='Lendo informações...';
+ try{
+  let extracted='';
+  if(file){
+   extracted=await recognizeKitLogisticsPrint(file,message=>kitLogisticsStatus(message,'info'));
+   if(prepared?.kit?.kitSku!==kitSku)throw Error('O kit foi trocado durante a leitura. Nenhum campo foi alterado.');
+   // Expor o OCR, permitindo corrigir algum número antes de tentar novamente.
+   $('#kitLogisticsSourceText').value=(typed?typed+'\n':'')+extracted;
+  }
+  if(prepared?.kit?.kitSku!==kitSku)throw Error('O kit foi trocado durante a leitura.');
+  const parsed=parseKitLogisticsText(typed+'\n'+extracted);
+  kitLogisticsApplyParsed(parsed);
+ }catch(error){
+  kitLogisticsStatus('Não foi possível ler/preencher: '+String(error.message||error)+'. Você pode colar o texto manualmente.','error');
+ }finally{kitLogisticsImportBusy=false;button.disabled=false;button.textContent='✦ Identificar e preencher campos';}
+}
+async function kitLogisticsPasteFromClipboard(){
+ if(!navigator.clipboard?.read)return kitLogisticsStatus('Use Ctrl+V na área de texto para colar uma imagem ou escolha um arquivo.','error');
+ try{
+  const items=await navigator.clipboard.read();
+  for(const item of items)for(const type of item.types){
+   if(!['image/png','image/jpeg','image/webp'].includes(type))continue;
+   const blob=await item.getType(type);
+   kitLogisticsSetFile(new File([blob],'print-colado.'+type.split('/')[1],{type}));
+   return;
+  }
+  kitLogisticsStatus('Não há imagem copiada. Copie o print ou cole texto no campo ao lado.','error');
+ }catch(error){kitLogisticsStatus('Permissão da área de transferência não concedida. Use Escolher print ou Ctrl+V no texto.','error');}
+}
 function kitPublishFields(){
  if(!prepared)throw Error('Selecione um kit.');
  return {
@@ -529,6 +703,7 @@ async function kitReadinessCheck(){
   channelSelect.replaceChildren(new Option('Selecione um canal ativo',''));
   for(const x of result.channels)channelSelect.append(new Option(x.name+' (ID '+x.id+')',x.id));
   if(result.channels.some(x=>x.id===chosen))channelSelect.value=chosen;
+  kitApplyPendingLogisticName();
   kitPublishStatus(result.blockers?.length?
    'PUBLICAÇÃO BLOQUEADA: '+result.blockers.join(' | '):
    'Todos os componentes estão vinculados a anúncios ativos. Confirme peso e dimensões medidos e envie as fotografias.',
@@ -2479,6 +2654,32 @@ $('#kitStopAutomatic')?.addEventListener('click',()=>{
 });
 $('#kitDownloadPack')?.addEventListener('click',exportPack);
 $('#kitSaveDraft')?.addEventListener('click',()=>void saveDraft());
+$('#kitLogisticsAutofill')?.addEventListener('click',()=>void kitLogisticsAutofill());
+$('#kitLogisticsPasteImage')?.addEventListener('click',()=>void kitLogisticsPasteFromClipboard());
+$('#kitLogisticsSourceImage')?.addEventListener('change',event=>{
+ if(event.target.files?.[0])kitLogisticsSetFile(event.target.files[0]);
+});
+$('#kitLogisticsSourceText')?.addEventListener('paste',event=>{
+ const item=[...(event.clipboardData?.items||[])].find(x=>x.type.startsWith('image/'));
+ if(!item)return;
+ const file=item.getAsFile();
+ if(file){event.preventDefault();kitLogisticsSetFile(file);}
+});
+$('#kitLogisticsRemoveImage')?.addEventListener('click',()=>{
+ kitLogisticsClearFile();kitLogisticsStatus('Print removido; o texto permanece disponível.');
+});
+$('#kitLogisticsClear')?.addEventListener('click',()=>{
+ $('#kitLogisticsSourceText').value='';kitLogisticsClearFile();
+ $('#kitLogisticsSmartResults').replaceChildren();$('#kitLogisticsSmartResults').hidden=true;
+ kitLogisticsStatus('Entrada limpa. Os campos já preenchidos permanecem inalterados.');
+});
+$('#kitLogisticsUndo')?.addEventListener('click',()=>{
+ if(!kitLogisticsUndoSnapshot||kitLogisticsUndoSnapshot.kitSku!==prepared?.kit?.kitSku)
+  return kitLogisticsStatus('Não há preenchimento recente deste kit para desfazer.','error');
+ kitLogisticsRestore(kitLogisticsUndoSnapshot.values);kitLogisticsUndoSnapshot=null;
+ $('#kitLogisticsUndo').hidden=true;
+ kitLogisticsStatus('Preenchimento desfeito. Os valores anteriores foram restaurados; nenhuma alteração foi enviada à Shopee.','success');
+});
 $('#kitPublishCheck')?.addEventListener('click',()=>void kitReadinessCheck());
 $('#kitSendPhotos')?.addEventListener('click',()=>void kitSendPhotos());
 $('#kitPublishPreview')?.addEventListener('click',()=>void kitPreparePublishPreview());
