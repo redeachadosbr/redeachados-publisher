@@ -1910,3 +1910,9 @@
  #tab-kits #kitDetail .kit-logistics-smart-file-actions{grid-template-columns:1fr}
  #tab-kits #kitDetail .kit-logistics-smart-footer button{flex:1 1 100%}
 }
+
+/* Kits: deixar o modo sob encomenda sempre oculto. Não afeta os outros formulários. */
+#tab-kits #kitDetail .kit-publish-fields .kit-preorder-hidden,
+#tab-kits #kitDetail .kit-publish-fields .kit-preorder-hidden[hidden]{
+ display:none!important;
+}
