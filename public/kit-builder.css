@@ -2143,14 +2143,14 @@
 }
 #tab-kits #kitDetail .kit-formal-logistics-card #kitPublishLinks:empty{display:none}
 #tab-kits #kitDetail .kit-formal-logistics-card>.kit-publish-fields{
- display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:8px;
+ display:grid;grid-template-columns:repeat(12,minmax(0,1fr));gap:8px;
  margin:2px 0 0;
 }
 #tab-kits #kitDetail .kit-formal-logistics-card>.kit-publish-fields>label{
- grid-column:span 2;gap:5px;min-width:0;font-size:10px;line-height:1.35;
+ grid-column:span 3;gap:5px;min-width:0;font-size:10px;line-height:1.35;
 }
 #tab-kits #kitDetail .kit-formal-logistics-card>.kit-publish-fields>label:nth-child(-n+2){
- grid-column:span 3;
+ grid-column:span 6;
 }
 #tab-kits #kitDetail .kit-formal-logistics-card>.kit-publish-fields>label.kit-inline-checkbox{
  grid-column:1/-1;font-size:10px;align-items:center;gap:8px;margin:0;
@@ -2215,12 +2215,32 @@
 }
 #tab-kits #kitDetail .kit-formal-redesign>#kitPublishPreviewBox,
 #tab-kits #kitDetail .kit-formal-redesign>#kitDiscountNext{margin-top:12px}
+/* No desktop com zoom, manter 2 colunas: zoom reduz o viewport CSS. */
 @media(max-width:1320px){
  #tab-kits #kitDetail .kit-formal-workspace{
-  grid-template-columns:1fr;grid-template-areas:"video" "logistics" "smart" "assistant";
+  grid-template-columns:repeat(2,minmax(0,1fr));
+  grid-template-areas:"video logistics" "smart assistant";
  }
  #tab-kits #kitDetail .kit-formal-workspace>#kitVideoPanel .kit-video-body{
-  grid-template-columns:minmax(0,1.18fr) minmax(190px,.82fr);
+  grid-template-columns:minmax(0,1.12fr) minmax(0,.78fr);
+ }
+ #tab-kits #kitDetail .kit-formal-workspace>#kitVideoPanel .kit-video-details{
+  grid-template-columns:minmax(0,85px) minmax(0,1fr);
+ }
+ #tab-kits #kitDetail .kit-formal-assistant-card .kit-publish-guide{
+  grid-template-columns:minmax(0,1fr) minmax(118px,.76fr);
+ }
+}
+@media(max-width:820px){
+ #tab-kits #kitDetail .kit-formal-workspace{
+  grid-template-columns:minmax(0,1fr);
+  grid-template-areas:"video" "logistics" "smart" "assistant";
+ }
+ #tab-kits #kitDetail .kit-formal-workspace>#kitVideoPanel .kit-video-body{
+  grid-template-columns:minmax(0,1.18fr) minmax(0,.82fr);
+ }
+ #tab-kits #kitDetail .kit-formal-assistant-card .kit-publish-guide{
+  grid-template-columns:minmax(0,1fr) auto;
  }
 }
 @media(max-width:850px){
