@@ -1206,14 +1206,27 @@
    <p id="kitAutoImportStatus" class="kit-auto-import-feedback" role="status" aria-live="polite">Nenhuma pasta monitorada. O Chrome não permite acessar automaticamente a aba do ChatGPT; a importação ocorre a partir das imagens que você salvar ou copiar.</p>
   </section>
   <p id="kitImageDuoStatus" class="kit-image-duo-status" role="status" aria-live="polite">Aguardando a composição do kit.</p>
-  <div class="kit-gallery-toolbar"><strong>Galeria · reorganizar fotos</strong><span id="kitGalleryCount">0 / 9 imagens prontas</span><small>Arraste uma foto sobre outra para trocar; ou use as setas ← → em cada posição. Solte um arquivo diretamente numa posição para substituir.</small></div>
-  <div id="kitImages" class="kit-images"></div>
-  <div class="kit-actions kit-image-actions">
-   <button id="kitCopyAllPrompts" type="button" class="kit-secondary">Copiar 9 prompts</button>
-   <button id="kitSaveDraft" type="button" class="kit-secondary">Salvar rascunho ▾</button>
-   <button id="kitDownloadPack" type="button" class="kit-secondary">Baixar ficha do kit e 9 prompts</button>
-  </div>
-  <p id="kitImageStatus" class="kit-status" role="status" aria-live="polite">A Ponte ChatGPT existente pode gerar e entregar imagens do kit automaticamente. Se a versão instalada não reconhecer kits, use a importação manual ou por pasta até atualizar a extensão. As fotos exigem conferência antes de enviar à Shopee.</p>
+  <section class="kit-gallery-section" id="kitGallerySection" aria-label="Galeria de imagens do kit">
+   <div class="kit-gallery-toolbar">
+    <div class="kit-gallery-heading"><strong>Galeria de imagens</strong><small>9 posições · Arraste para reordenar, use as setas ou solte uma foto na posição desejada.</small></div>
+    <span id="kitGalleryCount" aria-live="polite">0 / 9 imagens prontas</span>
+    <div class="kit-gallery-toolbar-actions">
+     <button id="kitGalleryViewAll" type="button" class="kit-secondary" aria-label="Visualizar as imagens do kit">◉ Visualizar todas</button>
+     <button id="kitGalleryOrganize" type="button" class="kit-secondary" aria-pressed="false">⇅ Organizar</button>
+    </div>
+   </div>
+   <div id="kitImages" class="kit-images" aria-label="Nove posições de imagens e dicas do kit"></div>
+   <div class="kit-actions kit-image-actions">
+    <button id="kitCopyAllPrompts" type="button" class="kit-secondary">Copiar 9 prompts</button>
+    <button id="kitSaveDraft" type="button" class="kit-secondary">Salvar rascunho ▾</button>
+    <button id="kitDownloadPack" type="button" class="kit-secondary">Baixar ficha do kit e 9 prompts</button>
+   </div>
+   <p id="kitImageStatus" class="kit-status" role="status" aria-live="polite">A Ponte ChatGPT existente pode gerar e entregar imagens do kit automaticamente. Se a versão instalada não reconhecer kits, use a importação manual ou por pasta até atualizar a extensão. As fotos exigem conferência antes de enviar à Shopee.</p>
+  </section>
+  <dialog id="kitGalleryPreview" class="kit-gallery-preview" aria-label="Visualizar imagens do kit">
+   <div class="kit-gallery-preview-header"><strong>Visualizar fotos do kit</strong><button id="kitGalleryClosePreview" type="button" class="kit-secondary">Fechar ✕</button></div>
+   <div id="kitGalleryPreviewImages" class="kit-gallery-preview-images"></div>
+  </dialog>
   <section class="kit-publish-panel" id="kitPublishPanel" aria-label="Criar Kit Formal na Shopee">
    <div class="kit-bar kit-section-heading"><span class="kit-heading-icon kit-icon-orange">🛒</span><div class="kit-section-heading-text"><h3>Criar Kit Formal na Shopee</h3><p>Siga o passo a passo para publicar seu kit na Shopee com segurança.</p></div></div>
    <p class="kit-info">Primeiro confirme os componentes da Shopee e a logística. Salve o rascunho; depois envie as fotos, confira a prévia e autorize a publicação. A promoção só poderá ser preparada DEPOIS que a Shopee confirmar o novo Item ID.</p>
