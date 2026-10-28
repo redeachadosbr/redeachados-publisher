@@ -202,7 +202,7 @@ test('galeria compacta premium é isolada no editor de kits e mantém nove posi�
  assert.match(css,/@media\(max-width:660px\)/);
  assert.match(html,/kit-builder\.css\?v=[^"\s]+/);
  assert.match(css,/#tab-kits #kitDetail \.kit-gallery-heading small\{[\s\S]*?flex:0 0 auto/);
- assert.match(html,/kit-builder\.js\?v=3\.6\.1-preorder-off/);
+ assert.match(html,/kit-builder\.js\?v=3\.6\.2-ocr-totals/);
 });
 test('cada ação do cartão continua funcional e visualização e organização têm eventos reais',()=>{
  assert.match(js,/for\(let slot=1;slot<=9;slot\+\+\)/);
