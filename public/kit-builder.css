@@ -2017,3 +2017,29 @@
  #tab-kits #kitDetail .kit-video-heading{flex-wrap:wrap}
  #tab-kits #kitDetail .kit-video-details{grid-template-columns:1fr}
 }
+
+/* Continuação guiada do Kit Formal — mantém confirmação explícita para publicar */
+#tab-kits #kitDetail .kit-publish-guide{
+ display:flex;align-items:center;justify-content:space-between;gap:14px;
+ margin:12px 0 15px;padding:13px 15px;background:linear-gradient(118deg,#eaf3ff,#fff 80%);
+ border:1px solid #cbdff7;border-radius:12px;
+}
+#tab-kits #kitDetail .kit-publish-guide-copy{min-width:0;flex:1 1 420px}
+#tab-kits #kitDetail .kit-publish-guide-copy strong{
+ font-size:13px;font-weight:900;color:#143b71;
+}
+#tab-kits #kitDetail .kit-publish-guide-copy p{
+ font-size:11px;line-height:1.5;color:#506f91;margin:5px 0 0;
+}
+#tab-kits #kitDetail .kit-publish-guide-copy p[data-state=error]{color:#aa3e33}
+#tab-kits #kitDetail .kit-publish-guide-copy p[data-state=success]{color:#12774c}
+#tab-kits #kitDetail #kitPublishGuideNext{
+ flex:0 0 auto;min-height:39px;max-width:100%;padding:10px 14px;
+ font-size:11px;font-weight:900;border-radius:8px;
+ background:#1764ca;border:1px solid #165cb8;color:#fff;
+}
+#tab-kits #kitDetail #kitPublishGuideNext:disabled{opacity:.6;cursor:progress}
+@media(max-width:770px){
+ #tab-kits #kitDetail .kit-publish-guide{flex-wrap:wrap}
+ #tab-kits #kitDetail #kitPublishGuideNext{flex:1 1 100%}
+}
