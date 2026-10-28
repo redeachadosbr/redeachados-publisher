@@ -22,13 +22,13 @@ test('link de transferência do texto oferece prefill e fallback seguro',()=>{
  assert(url.startsWith('https://chatgpt.com/?prompt='));
  assert.equal(kitPlusPromptLink('x'.repeat(9000)),'https://chatgpt.com/');
 });
-test('modo Plus sem API paga e importação de pasta permanecem juntos',()=>{
+test('modo Plus e Ponte continuam funcionais sem seção redundante de pasta',()=>{
  const html=fs.readFileSync(new URL('../public/index.html',import.meta.url),'utf8');
  const js=fs.readFileSync(new URL('../public/kit-builder.js',import.meta.url),'utf8');
- for(const id of ['kitGenerateAll','kitPlusImagePrompt','kitPlusNextImagePrompt','kitWatchDownloads','kitPlusGenerationStatus'])
+ for(const id of ['kitGenerateAll','kitPlusImagePrompt','kitPlusNextImagePrompt','kitPlusGenerationStatus','kitImportImages'])
   assert(html.includes('id="'+id+'"'));
  assert.match(js,/kitPlusPromptLink\(prompt\)/);
  assert.match(js,/window.open\(url,'_blank'/);
- assert.match(js,/kitStartAutoFolder/);
+ assert.doesNotMatch(js,/kitStartAutoFolder|kitStopAutoFolder/);
  assert.match(html,/class="kit-generation-mode kit-generation-auto" hidden/);
 });
