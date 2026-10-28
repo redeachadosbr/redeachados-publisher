@@ -1,4 +1,5 @@
 // Rascunhos de kits WeDrop isolados por shop_id. Somente chave privada no servidor.
+import {normalizeKitLogistics} from './shopeeKitLogisticsDraft.js';
 const TABLE='shopee_wedrop_kit_drafts';
 const shop=id=>{const n=Number(id);if(!Number.isSafeInteger(n)||n<=0)throw Error('Loja inválida.');return n;};
 function cfg(){
@@ -20,7 +21,7 @@ async function request(query,options={}){
  if(!r.ok)throw Error('Não foi possível salvar/consultar o rascunho (HTTP '+r.status+').');
  return r.status===204?[]:r.json();
 }
-export async function saveKitDraft(shopId,{kit,creative}){
+export async function saveKitDraft(shopId,{kit,creative,logistics}){
  const id=shop(shopId);
  if(!/^KIT-[A-Z0-9-]{4,115}$/.test(String(kit?.kitSku||'')))throw Error('Código de kit inválido.');
  const codes=kit.components?.map(x=>String(x.sku));
@@ -39,7 +40,8 @@ export async function saveKitDraft(shopId,{kit,creative}){
  const manualFacts=creative?.manualFacts&&typeof creative.manualFacts==='object'&&!Array.isArray(creative.manualFacts)
   ?Object.fromEntries(codes.filter(sku=>typeof creative.manualFacts[sku]==='string')
    .map(sku=>[sku,creative.manualFacts[sku].replace(/[\u0000-\u001f]/g,' ').trim().slice(0,1700)])):{};
- const draft={kit,creative:{title,description,seoTitles:uniqueTitles.length===3?uniqueTitles:[],
+ const savedLogistics=logistics===undefined?previous?.logistics||null:normalizeKitLogistics(logistics,kit);
+ const draft={kit,logistics:savedLogistics,creative:{title,description,seoTitles:uniqueTitles.length===3?uniqueTitles:[],
   manualFacts,source:String(creative.source||'rascunho revisado').slice(0,90)},
   reviewed:false,shopeePublished:false,
   publication:previous?.publication||{status:'local_draft',itemId:null}};
@@ -92,15 +94,35 @@ export async function loadKitDraft(shopId,kitSku){
  if(!row)return null;
  return {kitSku:row.kit_sku,skus:row.component_skus,
   creative:row.draft?.creative||{},kit:row.draft?.kit||null,
+  logistics:row.draft?.logistics||null,
   publication:row.draft?.publication||{status:'local_draft',itemId:null},updatedAt:row.updated_at};
 }
 
+export async function saveKitDraftLogistics(shopId,kitSku,input){
+ const id=shop(shopId);
+ const current=await loadKitDraft(id,kitSku);
+ if(!current?.kit)throw Error('Salve primeiro o rascunho do kit para sincronizar a logística.');
+ const status=String(current.publication?.status||'local_draft');
+ if(current.publication?.itemId||status!=='local_draft')
+  throw Error('Kit enviado ou com publicação pendente: os campos de logística não podem mais ser alterados.');
+ const logistics=normalizeKitLogistics(input,current.kit);
+ if(!logistics)throw Error('Dados de logística inválidos.');
+ const draft={kit:current.kit,creative:current.creative,logistics,
+  reviewed:false,shopeePublished:false,publication:current.publication};
+ const rows=await request('?shop_id=eq.'+id+'&kit_sku=eq.'+encodeURIComponent(kitSku)+
+   '&draft->publication->>status=eq.local_draft',{
+   method:'PATCH',data:{draft,updated_at:new Date().toISOString()},prefer:'return=representation'
+ });
+ if(!Array.isArray(rows)||rows.length!==1)
+  throw Error('Não foi possível confirmar a gravação da logística do rascunho.');
+ return {saved:true,kitSku,logistics};
+}
 export async function recordKitPublication(shopId,kitSku,publication){
  const current=await loadKitDraft(shopId,kitSku);
  if(!current)throw Error('Salve o rascunho do kit antes de enviar à Shopee.');
  if(current.publication?.itemId&&current.publication.status==='published')
   throw Error('Este kit já está publicado na Shopee. Não criar outro anúncio.');
- const draft={kit:current.kit,creative:current.creative,reviewed:true,
+ const draft={kit:current.kit,creative:current.creative,logistics:current.logistics||null,reviewed:true,
   shopeePublished:publication.status==='published',
   publication:{status:publication.status,itemId:publication.itemId||null,
    updatedAt:new Date().toISOString(),message:String(publication.message||'').slice(0,400)}};
