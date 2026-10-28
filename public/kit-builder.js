@@ -27,8 +27,7 @@ async function api(path,{body,signal}={}){
 }
 let categoriesLoaded=false,suggestions=[],prepared=null,images=new Map(),generationBusy=false;
 let kitAutoImageBusy=false,kitAutoImageStop=false,kitAutoImageApiConnected=false,kitAutoImageSku=null;
-let kitWatchHandle=null,kitWatchSku=null,kitWatchTimer=null,kitWatchBusy=false;
-let kitWatchSeen=new Set(),kitGalleryImportBusy=false,kitDraggingSlot=null;
+let kitGalleryImportBusy=false,kitDraggingSlot=null;
 const kitPhotoStore=createKitPhotoStore();
 const kitVideoStore=createKitVideoStore();
 let kitBridgeController=null,kitRestoredSku='';
@@ -1291,7 +1290,6 @@ function kitManualControls(kit,{editor=false}={}){
     }});
     if(!result?.kit?.components?.length)throw Error('Resposta sem composição confirmada.');
     // Rascunhos/imagens de outra composição não podem contaminar o kit alterado.
-    kitStopAutoFolder({notice:false});
     images.clear();kitDraftNeedsRefresh=false;prepared=result;resetKitPublication({saved:false});
     renderKit();
     const from=kit.components.map(x=>x.sku).join(' + ');
@@ -1379,7 +1377,6 @@ function kitPlaceEditorUnderDraft(kitSku,{targetCard=null}={}){
 }
 function kitCloseInlineEditor(){
  kitStopKitExtension('Editor do kit encerrado.');
- kitStopAutoFolder({notice:false});
  kitActiveDraftSku=null;
  kitDraftOpenRevision++;
  $('#kitDetail').hidden=true;
@@ -1474,8 +1471,7 @@ async function deleteDraft(draft,button){
   const result=await api('/api/shopee/kits/drafts/delete',{body:{kitSku:draft.kitSku}});
   if(result.deleted!==true)throw Error('O servidor não confirmou a exclusão.');
   if(prepared?.kit?.kitSku===draft.kitSku){
-   kitStopAutoFolder({notice:false});
-   prepared=null;images.clear();kitCloseInlineEditor();
+     prepared=null;images.clear();kitCloseInlineEditor();
    resetKitPublication();
   }
   await loadDrafts({restoreCurrent:false});
@@ -1496,8 +1492,7 @@ async function openDraft(kitSku,{scroll=true,targetCard=null,title=''}={}){
   const d=await api('/api/shopee/kits/drafts/load',{body:{kitSku}});
   if(revision!==kitDraftOpenRevision)return; // Uma escolha mais recente tem prioridade.
   kitStopKitExtension('Outro kit selecionado.');
-  kitStopAutoFolder({notice:false});
-  kitRestoredSku='';
+   kitRestoredSku='';
   kitDraftNeedsRefresh=d.stockRevalidationRequired===true;
   prepared=d;images.clear();resetKitPublication({saved:true,publication:d.publication});
   kitLogisticsKeeper.restore(d.logistics,kitSku);
@@ -2016,13 +2011,6 @@ async function uploadPhoto(slot,file,{quiet=false,kitSku=prepared?.kit?.kitSku}=
   return true;
  }catch(error){imageStatus('Falha ao importar imagem: '+error.message,'error');return false;}
 }
-function kitAutoImportStatus(message,state='info'){
- const node=$('#kitAutoImportStatus');
- if(node){node.textContent=message;node.dataset.state=state;}
-}
-function kitPhotoFileKey(file){
- return [String(file.name||'').toLowerCase(),file.size,file.lastModified].join('|');
-}
 function kitImageFileAllowed(file){
  return /\.(png|jpe?g|webp)$/i.test(file?.name||'')&&
   file?.size>0&&file.size<=12*1024*1024;
@@ -2051,102 +2039,12 @@ async function kitImportPhotoFiles(files,{targetSlot=null,automatic=false}={}){
    imported+' imagem(ns) colocada(s) nas posições disponíveis.'+
    (skipped?' '+skipped+' não importada(s); confira espaços disponíveis e formato.':'')+
    ' Revise as fotos antes de enviar à Shopee.','success');
-  kitAutoImportStatus(imported?
-   imported+' arquivo(s) novo(s) importado(s) para este kit.':
-   'Nenhum arquivo novo importado.',imported?'success':'info');
   return {imported,skipped};
  }catch(error){
   imageStatus('Falha na importação: '+error.message,'error');
   return {imported,skipped};
  }finally{kitGalleryImportBusy=false;}
 }
-async function kitImportCopiedImage(){
- if(!prepared)return imageStatus('Abra um kit para importar a imagem.','error');
- if(!navigator.clipboard?.read)return imageStatus('Seu navegador não suporta imagens copiadas. Use Importar arquivos.','error');
- try{
-  const items=await navigator.clipboard.read();
-  const item=items.find(i=>i.types.some(t=>/^image\/(png|jpeg|webp)$/i.test(t)));
-  if(!item)throw Error('Não existe uma imagem copiada. No ChatGPT, abra a imagem e use Copiar imagem.');
-  const type=item.types.find(t=>/^image\/(png|jpeg|webp)$/i.test(t));
-  const source=await item.getType(type);
-  const extension=type.includes('png')?'png':type.includes('webp')?'webp':'jpg';
-  const file=new File([source],'chatgpt-imagem.'+extension,{type,lastModified:Date.now()});
-  const slot=kitImageNextSlot(images.keys());
-  if(slot===null)throw Error('As nove posições estão ocupadas. Arraste imagens para trocar de lugar ou use Escolher arquivo numa posição para substituí-la.');
-  await kitImportPhotoFiles([file]);
- }catch(error){imageStatus('Cópia do ChatGPT não importada: '+error.message,'error');}
-}
-function kitStopAutoFolder({notice=true}={}){
- if(kitWatchTimer!==null){clearInterval(kitWatchTimer);kitWatchTimer=null;}
- kitWatchHandle=null;kitWatchSku=null;kitWatchSeen=new Set();kitWatchBusy=false;
- const button=$('#kitWatchDownloads'),stop=$('#kitStopWatchDownloads');
- if(button)button.textContent='Ativar importação automática por pasta';
- if(stop)stop.hidden=true;
- if(notice)kitAutoImportStatus('Monitoramento desligado. Você ainda pode importar arquivos manualmente.','info');
-}
-async function kitFolderImageEntries(handle){
- const records=[];
- for await(const entry of handle.values()){
-  if(entry.kind!=='file'||!/\.(png|jpe?g|webp)$/i.test(entry.name))continue;
-  const file=await entry.getFile();
-  if(!kitImageFileAllowed(file))continue;
-  records.push({key:kitPhotoFileKey(file),file});
-  if(records.length>=2500)break;
- }
- return records;
-}
-async function kitScanWatchedFolder(){
- if(kitWatchBusy||!kitWatchHandle||!kitWatchSku||!prepared)return;
- if(prepared.kit.kitSku!==kitWatchSku){kitStopAutoFolder();return;}
- if(kitGalleryImportBusy||kitAutoImageBusy)return;
- kitWatchBusy=true;
- try{
-  const permission=await kitWatchHandle.queryPermission({mode:'read'});
-  if(permission!=='granted'){kitStopAutoFolder();kitAutoImportStatus('Permissão da pasta revogada; selecione novamente.','error');return;}
-  const records=await kitFolderImageEntries(kitWatchHandle);
-  const unseen=records.filter(x=>!kitWatchSeen.has(x.key))
-   .sort((a,b)=>a.file.lastModified-b.file.lastModified||
-    a.file.name.localeCompare(b.file.name,'pt-BR',{numeric:true}));
-  for(const record of unseen)kitWatchSeen.add(record.key);
-  if(unseen.length){
-   const imported=await kitImportPhotoFiles(unseen.map(x=>x.file),{automatic:true});
-   if(imported.skipped)kitAutoImportStatus(
-    imported.imported+' imagem(ns) importada(s), '+imported.skipped+
-    ' não encaixada(s). Ajuste a galeria e importe as restantes manualmente.','info');
-  }
- }catch(error){
-  kitAutoImportStatus('Monitoramento interrompido: '+error.message,'error');
-  kitStopAutoFolder({notice:false});
- }finally{kitWatchBusy=false;}
-}
-async function kitStartAutoFolder(){
- if(!prepared)return imageStatus('Abra um kit antes de selecionar a pasta.','error');
- if(!window.showDirectoryPicker){
-  return kitAutoImportStatus('Este navegador não oferece acesso autorizado a pastas. Use Chrome no computador ou importação manual.','error');
- }
- try{
-  // A escolha deve ocorrer no clique do vendedor; nenhuma pasta é acessada sem permissão.
-  const handle=await window.showDirectoryPicker({mode:'read',id:'kit-chatgpt-images'});
-  let permission=await handle.queryPermission({mode:'read'});
-  if(permission!=='granted')permission=await handle.requestPermission({mode:'read'});
-  if(permission!=='granted')throw Error('Permissão de leitura não concedida.');
-  const current=prepared.kit.kitSku;
-  const entries=await kitFolderImageEntries(handle);
-  if(prepared?.kit?.kitSku!==current)throw Error('O kit foi alterado. Selecione a pasta novamente.');
-  kitStopAutoFolder({notice:false});
-  kitWatchHandle=handle;kitWatchSku=current;
-  kitWatchSeen=new Set(entries.map(x=>x.key)); // Não importa arquivos antigos da pasta por engano.
-  kitWatchTimer=setInterval(()=>void kitScanWatchedFolder(),4500);
-  $('#kitWatchDownloads').textContent='Trocar pasta monitorada';
-  $('#kitStopWatchDownloads').hidden=false;
-  kitAutoImportStatus('✓ Monitorando "'+handle.name+'" neste navegador. Baixe as imagens do ChatGPT NESTA pasta: arquivos novos serão importados nas posições vazias. Arquivos anteriores não serão importados automaticamente.','success');
- }catch(error){
-  if(error.name!=='AbortError')kitAutoImportStatus('Não foi possível ativar a pasta: '+error.message,'error');
- }
-}
-window.addEventListener('focus',()=>{if(kitWatchHandle)void kitScanWatchedFolder();});
-document.addEventListener('visibilitychange',()=>{if(!document.hidden&&kitWatchHandle)void kitScanWatchedFolder();});
-
 const KIT_CHAT_SESSION_KEY='raKitPlusResearchV1';
 let kitChatPending=null,kitChatClipboardBusy=false,kitResearchCatalogContent='';
 let kitChatFilePickerOpen=false,kitChatQueuedManualImport=null;
@@ -2903,10 +2801,6 @@ $('#kitMultiPhotoFiles')?.addEventListener('change',event=>{
  if(selected?.length)void kitImportPhotoFiles(selected);
  event.target.value='';
 });
-$('#kitImportCopiedImage')?.addEventListener('click',()=>void kitImportCopiedImage());
-$('#kitImportImagesAlt')?.addEventListener('click',()=>$('#kitMultiPhotoFiles').click());
-$('#kitWatchDownloads')?.addEventListener('click',()=>void kitStartAutoFolder());
-$('#kitStopWatchDownloads')?.addEventListener('click',()=>kitStopAutoFolder());
 $('#kitTitle')?.addEventListener('input',onKitContentEdit);
 $('#kitDescription')?.addEventListener('input',onKitContentEdit);
 for(const [fileSelector,buttonSelector,nameSelector] of [
