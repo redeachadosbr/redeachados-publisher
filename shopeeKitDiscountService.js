@@ -2,6 +2,8 @@
 // Usa Minha Promoção, pesquisa comparável e regra de centavos existentes.
 import {callShopeeShopApi} from './shopee.js';
 import {loadKitDraft} from './shopeeKitDraftStore.js';
+import {kitOptimizationLinkIsCurrent} from './shopeeKitOptimization.js';
+import {readShopeeExecution} from './shopeeExecutionStore.js';
 import {composeKit} from './shopeeKitBuilder.js';
 import {lookupShopeeCompetitors} from './shopeeMarketResearch.js';
 import {REDE_ACHADOS_MARKET_RULES} from './shopeeMatrixRules.js';
@@ -13,9 +15,18 @@ const money=x=>Math.round(Number(x)*100)/100;
 async function context(cfg,auth,kitSku,discountId){
  if(!validId(discountId))throw Error('Informe o ID da Minha Promoção criada na Shopee.');
  const saved=await loadKitDraft(auth.shopId,kitSku);
- if(!saved||saved.publication?.status!=='published'||!validId(saved.publication?.itemId))
-  throw Error('O Kit Formal precisa estar confirmado como NORMAL antes do desconto.');
- const itemId=Number(saved.publication.itemId);
+ const existingListing=Boolean(saved?.optimization?.itemId);
+ if(existingListing){
+  const link=saved.optimization;
+  if(!kitOptimizationLinkIsCurrent(saved,link)||!validId(link.itemId))
+   throw Error('Vínculo do kit com anúncio existente desatualizado.');
+  const job=await readShopeeExecution(auth.shopId,link.itemId,link.modelId);
+  if(job?.state!=='verified'||job?.sku!==link.sku||
+    !(Date.parse(job.updated_at)>=Date.parse(link.preparedAt)))
+   throw Error('Execute e confirme a otimização do anúncio de kit antes do desconto.');
+ }else if(!saved||saved.publication?.status!=='published'||!validId(saved.publication?.itemId))
+  throw Error('O Kit Formal precisa estar publicado como NORMAL antes do desconto.');
+ const itemId=Number(existingListing?saved.optimization.itemId:saved.publication.itemId);
  const kit=await composeKit(auth.shopId,saved.skus,{
   marginPct:Number(saved.kit?.quote?.targetMarginPct),
   packing:Number(saved.kit?.packing||0),shipping:Number(saved.kit?.shipping||0)
@@ -49,13 +60,20 @@ async function context(cfg,auth,kitSku,discountId){
   const models=await callShopeeShopApi(cfg,{path:'/api/v2/product/get_model_list',
    accessToken:auth.accessToken,shopId:auth.shopId,query:{item_id:itemId}});
   const list=models.response?.model||[];
-  if(list.length!==1||list[0].model_sku!==kitSku)
-   throw Error('Kit Formal possui modelos diferentes da variação única aprovada.');
-  modelId=Number(list[0].model_id);
-  if(!validId(modelId))throw Error('Model ID do kit não foi confirmado.');
-  original=Number(list[0].price_info?.[0]?.original_price??list[0].original_price);
- }else original=Number(live.price_info?.[0]?.original_price??live.original_price);
- if(!Number.isFinite(original)||Math.abs(original-gross)>.011)
+  const selected=existingListing?
+    list.find(m=>String(m.model_id)===String(saved.optimization.modelId)&&
+      String(m.model_sku)===String(saved.optimization.sku)):
+    (list.length===1&&list[0].model_sku===kitSku?list[0]:null);
+   if(!selected)throw Error('Variação vinculada do kit não corresponde ao anúncio da Shopee.');
+   modelId=Number(selected.model_id);
+   if(!validId(modelId))throw Error('Model ID do kit não confirmado.');
+   original=Number(selected.price_info?.[0]?.original_price??selected.original_price);
+  }else{
+   if(existingListing&&String(saved.optimization.modelId)!=='0')
+    throw Error('A variação vinculada não corresponde ao anúncio sem modelos.');
+   original=Number(live.price_info?.[0]?.original_price??live.original_price);
+  }
+  if(!Number.isFinite(original)||Math.abs(original-gross)>.011)
   throw Error('Preço bruto da Shopee diverge da calculadora. Ajuste o anúncio antes de aplicar desconto.');
  return {kit,saved,itemId,modelId,gross,promo,afterCoupon,record,existing};
 }
@@ -79,7 +97,7 @@ export async function previewKitDiscount({cfg,auth,kitSku,discountId,secret}){
   discountId:String(discountId),action,discountName:String(x.record.discount_name||''),
   gross:x.gross,promo:x.promo,afterCoupon:x.afterCoupon,
   margin:x.kit.quote.netMarginPct,marketOffers:market.count,
-  message:'Somente prévia. A criação do kit já está confirmada; a campanha ainda NÃO foi alterada.'};
+  message:'Somente prévia. O anúncio do kit está confirmado; a campanha ainda NÃO foi alterada.'};
 }
 export async function executeKitDiscount({cfg,auth,kitSku,discountId,token,secret}){
  const k=auth.shopId+':'+kitSku;
