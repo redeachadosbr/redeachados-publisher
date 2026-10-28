@@ -2001,7 +2001,7 @@ app.post('/api/shopee/optimizer/workflow/review',mustLogin,requireWeDropAdmin,as
     if(change.tax)change.tax={...change.tax,cest:wedropCestForSku(taxSupplier)};
     if(change.stage==='fiscal'&&change.reviewed){
       const supplier=taxSupplier;
-      change.matrixFiscal=fiscalMatrixSource({sku,supplier,tax:change.tax});
+      change.matrixFiscal=fiscalMatrixSource({sku,supplier:linkedKit?null:supplier,tax:change.tax});
       // Register the accountant-supplied SKU fields in Motor Matriz even if
       // Shopee previously rejected the fiscal update due to missing CEST.
       // Validating a LOCAL draft must never require a Shopee tax_info read/write.
@@ -2085,6 +2085,21 @@ async function prepareExecutionVariations({auth,cfg,sku,itemId,modelId},reviewSt
  }
  return prepared;
 }
+// Comparar a soma dos SKUs WeDrop novamente antes de qualquer execução.
+async function verifiedLinkedKitQuote(auth,link){
+ const draft=await loadKitDraft(auth.shopId,link.kitSku);
+ if(!kitOptimizationLinkIsCurrent(draft,link))
+  throw Error('O kit, os custos ou o vínculo foram alterados. Prepare novamente.');
+ const live=await composeKit(auth.shopId,draft.skus,{
+  marginPct:Number(draft.kit.quote?.targetMarginPct??15),
+  packing:Number(draft.kit.packing||0),shipping:Number(draft.kit.shipping||0)
+ });
+ if(Math.abs(Number(live.kitCost)-Number(link.kitCost))>.011||
+    Math.abs(Number(live.quote.grossPrice)-Number(link.grossPrice))>.011||
+    Math.abs(Number(live.quote.marketplacePrice)-Number(link.promoPrice))>.011)
+  throw Error('Os custos, margem ou preço do kit mudaram. Recalcule antes de executar.');
+ return {draft,live};
+}
 app.post('/api/shopee/optimizer/execution/prepare',mustLogin,requireWeDropAdmin,async(req,res)=>{
   res.setHeader('Cache-Control','no-store');
   if(!verifiedSameOrigin(req))return res.status(403).json({error:'Origem não autorizada.'});
@@ -2103,6 +2118,14 @@ app.post('/api/shopee/optimizer/execution/prepare',mustLogin,requireWeDropAdmin,
     // CPF/CNPJ não impede guardar rascunho. all publica fiscal por último, em segunda escrita com conferência.
     const review=await getWorkflowReview(auth.shopId,itemId,modelId);
     if(review&&review.sku!==sku)throw Error('SKU do plano revisado é diferente. Refaça a auditoria.');
+    const kitLink=review?.review_state?.kitOptimization;
+    if(kitLink){
+     await verifiedLinkedKitQuote(auth,kitLink);
+     if(req.body?.discountApprovalToken)
+      throw Error('Kit composto: prepare o desconto específico após otimização confirmada.');
+     if(review.review_state?.variationConfig?.enabled===true)
+      throw Error('Kit: criação de variações com custo individual bloqueada. Mantenha apenas as variações existentes.');
+    }
     const live=await shopeeLiveEditableItem(cfg,auth,itemId);
     const manualVideo=await getShopeeManualVideo(auth.shopId,itemId,modelId,sku);
     const previous=await readShopeeExecution(auth.shopId,itemId,modelId);
@@ -2207,12 +2230,13 @@ app.post('/api/shopee/optimizer/execution/prepare',mustLogin,requireWeDropAdmin,
       netProfit:Number(financial.quote.netProfit)};
     }
     if(selectedStage==='fiscal'&&reviewState.stages?.fiscal?.reviewed&&reviewState.tax){
-      const supplier=await readWeDropProduct(auth.shopId,{sku,itemId,modelId});
+      const supplier=kitLink?null:await readWeDropProduct(auth.shopId,{sku,itemId,modelId});
       fiscalMatrixSource({sku,supplier,tax:reviewState.tax,reviewSource:reviewState.matrixFiscal});
     }
     // Marca proveniente da WeDrop precisa coincidir com a categoria mesmo que a
     // ficha técnica não esteja aprovada; nunca publicar com Marca: Novo por engano.
-    const supplierForBrand=await readWeDropProduct(auth.shopId,{sku,itemId,modelId});
+    const supplierForBrand=await readWeDropProduct(auth.shopId,kitLink?
+     {sku:kitLink.mainSku}:{sku,itemId,modelId});
     if(['all','technical'].includes(selectedStage))
       assertShopeeSupplierBrand({record,attributes:reviewState.stages?.technical?.reviewed?
         reviewState.attributes||[]:[],supplier:supplierForBrand});
@@ -2253,7 +2277,7 @@ app.post('/api/shopee/optimizer/execution/prepare',mustLogin,requireWeDropAdmin,
       (reviewState._technicalSkipped?.length||0)+' campo(s) opcional(is) incompatível(is) mantidos como pendência.');
     if(plan.finalFiscal&&['all','remaining'].includes(selectedStage)){
       // A última etapa usa o mesmo vínculo WeDrop/NCM que a execução fiscal isolada.
-      const supplier=await readWeDropProduct(auth.shopId,{sku,itemId,modelId});
+      const supplier=kitLink?null:await readWeDropProduct(auth.shopId,{sku,itemId,modelId});
       fiscalMatrixSource({sku,supplier,tax:reviewState.tax,reviewSource:reviewState.matrixFiscal});
     }
     if(selectedStage==='fiscal'){
@@ -2596,6 +2620,12 @@ app.post('/api/shopee/optimizer/execution/execute',mustLogin,requireWeDropAdmin,
   const {itemId,modelId,sku,auth,cfg,record}=await checkedWorkflowAudit(req);
   let job=await readShopeeExecution(auth.shopId,itemId,modelId);
   if(job?.sku!==sku||job.state!=='prepared')throw Error('Plano não preparado ou já iniciado. Confira o andamento.');
+  const linkedKit=(await getWorkflowReview(auth.shopId,itemId,modelId))?.review_state?.kitOptimization;
+  if(linkedKit){
+   await verifiedLinkedKitQuote(auth,linkedKit);
+   if(!(Date.parse(job.updated_at)>=Date.parse(linkedKit.preparedAt)))
+    throw Error('A prévia é anterior à preparação do kit. Gere uma nova prévia antes de executar.');
+  }
   const previousPlan=job.plan;
   let plan=previousPlan;
   const remainingOnly=req.body.remainingOnly===true;
