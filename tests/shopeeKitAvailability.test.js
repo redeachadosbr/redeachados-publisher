@@ -26,7 +26,7 @@ test('Catálogo 17 colunas preserva a disponibilidade, 16 antigas não comprovam
  const row=['SKU-OK','Jogo de copos','','Copos, Jarras e Servir','Fornecedor X','SP','12,00','','','','','','','','','','DISPONÍVEL'];
  assert.equal(prepareWeDropProducts([...base,'Disponibilidade'],[row],new Set(['SKU-OK']))[0].data.rawAvailability,'DISPONÍVEL');
 });
-test('Kits exigem atualização recente e excluem indisponíveis mesmo com custo válido',async()=>{
+test('Catálogo e estoque importados continuam válidos após 24 horas, sem liberar SKUs indisponíveis',async()=>{
  const shopId=852701219,backup={
   url:process.env.SUPABASE_URL,key:process.env.SUPABASE_SECRET_KEY,fetch:globalThis.fetch
  };
@@ -77,9 +77,13 @@ test('Kits exigem atualização recente e excluem indisponíveis mesmo com custo
   assert.doesNotMatch(brief.prompt,/SKU-FAIL|SKU-UNKNOWN/);
   stale=true;clearKitStockCache(shopId);
   const overdue=await readKitStockSnapshot(shopId);
-  assert.equal(overdue.ready,false);
-  assert.throws(()=>assertKitStockSnapshot(overdue),/ATUALIZE A IMPORTAÇÃO/);
-  await assert.rejects(()=>composeKit(shopId,['SKU-OK','SKU-FAIL']),/ATUALIZE A IMPORTAÇÃO/);
+  assert.equal(overdue.ready,true,'as importações não expiram depois de 24 horas');
+  assert.equal(overdue.warningOutdated,true);
+  assert.equal(overdue.catalogRecent,false);
+  assert.equal(overdue.stockRecent,false);
+  assertKitStockSnapshot(overdue);
+  assert.equal(overdue.map.get('SKU-OK'),'DISPONIVEL');
+  await assert.rejects(()=>composeKit(shopId,['SKU-OK','SKU-FAIL']),/INDISPONÍVEL/);
   stale=false;unknown=true;clearKitStockCache(shopId);
   const now=await readKitStockSnapshot(shopId);
   assert.equal(now.ready,true);
