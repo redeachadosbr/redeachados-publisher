@@ -34,7 +34,7 @@ import {kitCatalog,suggestKits,suggestKitsForIdea,rankKitIdeaProducts,assessKitB
 import {saveKitStockImport,clearKitStockCache,parseWeDropAvailabilityCsv,readKitStockSnapshot} from './shopeeKitAvailability.js';
 import {saveKitDraft,listKitDrafts,loadKitDraft,deleteKitDraft} from './shopeeKitDraftStore.js';
 import {recoverKitDraftForEditing,matchesStoredKitPhotos,validateStoredKitDraft} from './shopeeKitDraftRecovery.js';
-import {kitUploadPhoto,kitPublicationReadiness,kitPublicationPreview,kitPublishApproved,checkKitPublication} from './shopeeKitPublicationService.js';
+import {kitUploadPhoto,kitPublicationReadiness,kitPublicationPreview,kitPublishApproved,checkKitPublication,kitVideoPrepare,kitVideoAdvance,kitVideoStatus,kitVideoDiscard} from './shopeeKitPublicationService.js';
 import {previewKitDiscount,executeKitDiscount} from './shopeeKitDiscountService.js';
 import {supplierWorkflowFacts,wedropCestForSku} from './shopeeSupplierFacts.js';
 import {supplierAttributeSuggestions} from './shopeeSupplierEvidenceFacts.js';
@@ -368,6 +368,44 @@ app.post('/api/shopee/kits/drafts/load',mustLogin,requireWeDropAdmin,async(req,r
 // Kit Formal nativo da Shopee. Os cinco passos são distintos:
 // resolver SKUs -> subir mídia -> prévia assinada -> aprovação -> verificar
 // a publicação. NUNCA aplicar promoções dentro de add_kit_item.
+// Vídeo opcional do Kit Formal: primeiro importar à mídia; depois associar ao
+// add_kit_item na prévia assinada. NUNCA publicar no momento de importar.
+app.post('/api/shopee/kits/video/prepare',mustLogin,requireWeDropAdmin,
+ express.raw({type:'application/octet-stream',limit:'31mb'}),async(req,res)=>{
+ res.setHeader('Cache-Control','no-store');
+ if(!verifiedSameOrigin(req))return res.status(403).json({error:'Origem não autorizada.'});
+ try{
+  const {auth}=await getValidAuth(req);
+  const kitSku=String(req.get('x-kit-sku')||'');
+  const filename=decodeURIComponent(String(req.get('x-video-filename')||'video.mp4'));
+  const result=await kitVideoPrepare({auth,kitSku,buffer:req.body,filename});
+  res.json({ok:true,...result,kitPublished:false});
+ }catch(e){res.status(400).json({error:String(e.message||e).slice(0,460)});}
+});
+app.post('/api/shopee/kits/video/advance',mustLogin,requireWeDropAdmin,async(req,res)=>{
+ res.setHeader('Cache-Control','no-store');
+ if(!verifiedSameOrigin(req))return res.status(403).json({error:'Origem não autorizada.'});
+ try{
+  const {auth,cfg}=await getValidAuth(req);
+  res.json({ok:true,...await kitVideoAdvance({cfg,auth,kitSku:String(req.body?.kitSku||'')}),kitPublished:false});
+ }catch(e){res.status(409).json({error:String(e.message||e).slice(0,460)});}
+});
+app.post('/api/shopee/kits/video/status',mustLogin,requireWeDropAdmin,async(req,res)=>{
+ res.setHeader('Cache-Control','no-store');
+ if(!verifiedSameOrigin(req))return res.status(403).json({error:'Origem não autorizada.'});
+ try{
+  const {auth}=await getValidAuth(req);
+  res.json({ok:true,...kitVideoStatus(auth.shopId,String(req.body?.kitSku||''))});
+ }catch(e){res.status(409).json({error:String(e.message||e).slice(0,400)});}
+});
+app.post('/api/shopee/kits/video/discard',mustLogin,requireWeDropAdmin,async(req,res)=>{
+ res.setHeader('Cache-Control','no-store');
+ if(!verifiedSameOrigin(req))return res.status(403).json({error:'Origem não autorizada.'});
+ try{
+  const {auth}=await getValidAuth(req);
+  res.json({ok:true,...kitVideoDiscard(auth.shopId,String(req.body?.kitSku||'')),kitPublished:false});
+ }catch(e){res.status(409).json({error:String(e.message||e).slice(0,400)});}
+});
 app.post('/api/shopee/kits/publish/readiness',mustLogin,requireWeDropAdmin,async(req,res)=>{
  res.setHeader('Cache-Control','no-store');
  if(!verifiedSameOrigin(req))return res.status(403).json({error:'Origem não autorizada.'});
