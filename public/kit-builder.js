@@ -1191,23 +1191,84 @@ function kitImageDrop(event,slot){
  }
 }
 
+let kitGalleryOrganizing=false;
+function openKitGalleryPreview(focusSlot=null){
+ const dialog=$('#kitGalleryPreview'),root=$('#kitGalleryPreviewImages');
+ if(!prepared||!dialog||!root)return;
+ root.replaceChildren();
+ for(let slot=1;slot<=9;slot++){
+  if(focusSlot!==null&&slot!==focusSlot)continue;
+  const figure=elt('figure','kit-preview-item');
+  figure.append(elt('figcaption','',String(slot).padStart(2,'0')+'/09 · '+(images.has(slot)?'Pronta':'Pendente')));
+  if(images.has(slot)){
+   const img=elt('img');img.src=images.get(slot);img.alt='Imagem '+slot+' do kit, visualização ampliada';
+   figure.append(img);
+   const download=elt('button','kit-secondary','⬇ Baixar PNG '+slot);
+   download.type='button';download.addEventListener('click',()=>downloadData(images.get(slot),
+    prepared.kit.kitSku+'-foto-'+String(slot).padStart(2,'0')+'.png'));
+   figure.append(download);
+  }else figure.append(elt('div','kit-preview-pending','Imagem ainda não importada.'));
+  root.append(figure);
+ }
+ if(!dialog.open)dialog.showModal();
+}
+async function kitDeleteGalleryPhoto(slot){
+ if(!prepared||!images.has(slot))return;
+ if(kitAutoImageBusy||kitGalleryImportBusy||kitBridgeController?.activeJob()){
+  imageStatus('Pause a geração/importação antes de excluir uma foto do kit.','error');return;
+ }
+ if(!confirm('Excluir somente a foto '+String(slot).padStart(2,'0')+
+  ' deste kit? Ela deixará de aparecer na galeria, mas nenhuma foto será excluída da conversa ChatGPT nem da Shopee.'))return;
+ const kitSku=prepared.kit.kitSku;
+ kitGalleryImportBusy=true;
+ try{
+  await kitPhotoStore.remove(kitSku,slot);
+  if(prepared?.kit?.kitSku!==kitSku)return;
+  images.delete(slot);
+  kitInvalidatePhotoPositions([slot]);
+  renderImageSlots();kitAutoImageUi();
+  imageStatus('✓ Imagem '+String(slot).padStart(2,'0')+' excluída da galeria local. As outras fotos foram preservadas.','success');
+ }catch(error){imageStatus('Falha ao excluir foto: '+error.message,'error');}
+ finally{kitGalleryImportBusy=false;}
+}
 function renderImageSlots(){
  const root=$('#kitImages');root.replaceChildren();
  if(!prepared)return;
  for(let slot=1;slot<=9;slot++){
-  const card=elt('div','kit-image-card'),image=images.get(slot);
+  const image=images.get(slot),card=elt('article','kit-image-card');
   card.dataset.slot=String(slot);
   card.addEventListener('dragover',event=>kitImageDragOver(event,card));
   card.addEventListener('dragleave',()=>card.classList.remove('kit-drop-target'));
   card.addEventListener('drop',event=>kitImageDrop(event,slot));
   card.addEventListener('dragend',()=>{kitDraggingSlot=null;card.classList.remove('kit-drop-target');});
-  card.append(elt('strong','', String(slot).padStart(2,'0')+'/09'));
+  const head=elt('div','kit-card-heading');
+  head.append(elt('strong','',String(slot).padStart(2,'0')));
+  head.append(elt('span','kit-card-state '+(image?'is-ready':'is-pending'),image?'● Pronta':'● Pendente'));
+  const menu=elt('details','kit-card-menu');
+  const menuToggle=elt('summary','','⋮');
+  menuToggle.title='Mais ações da imagem '+slot;
+  menuToggle.setAttribute('aria-label','Mais ações da imagem '+slot);
+  const menuContent=elt('div','kit-card-menu-content');
+  const menuCopy=elt('button','kit-secondary','Copiar prompt');
+  menuCopy.type='button';menuCopy.addEventListener('click',()=>{void copy(kitImagePromptAt(slot));menu.open=false;});
+  menuContent.append(menuCopy);
+  if(image){
+   const menuPreview=elt('button','kit-secondary','Visualizar imagem');
+   menuPreview.type='button';menuPreview.addEventListener('click',()=>{menu.open=false;openKitGalleryPreview(slot);});
+   const menuDelete=elt('button','kit-danger','Excluir foto do kit');
+   menuDelete.type='button';menuDelete.addEventListener('click',()=>{menu.open=false;void kitDeleteGalleryPhoto(slot);});
+   menuContent.append(menuPreview,menuDelete);
+  }
+  menu.append(menuToggle,menuContent);
+  head.append(menu);card.append(head);
   card.append(elt('small','kit-duo-label',prepared.kit.components.length+' SKUs juntas · uma cena'));
+  const media=elt('div','kit-gallery-media');
   if(image){
    const pic=elt('img');pic.src=image;pic.alt='Imagem '+slot+' do kit importada para revisão';
    pic.draggable=true;pic.title='Arraste esta imagem para outra posição na galeria';
    pic.addEventListener('dragstart',event=>kitImageDragStart(event,slot));
-   card.append(pic);
+   pic.addEventListener('click',()=>openKitGalleryPreview(slot));
+   media.append(pic);
    const movers=elt('div','kit-image-position-controls');
    const left=elt('button','kit-secondary','←'),right=elt('button','kit-secondary','→');
    left.type='button';right.type='button';
@@ -1217,15 +1278,24 @@ function renderImageSlots(){
    left.disabled=slot===1;right.disabled=slot===9;
    left.addEventListener('click',()=>kitRepositionImage(slot,slot-1));
    right.addEventListener('click',()=>kitRepositionImage(slot,slot+1));
-   movers.append(left,right);card.append(movers);
-   const download=elt('button','kit-secondary','Baixar PNG '+slot);
-   download.addEventListener('click',()=>downloadData(image,
+   movers.append(left,right);media.append(movers);
+  }else{
+   const placeholder=elt('div','kit-placeholder','');
+   placeholder.append(elt('span','kit-placeholder-icon','☁'));
+   placeholder.append(elt('span','','Imagem '+String(slot).padStart(2,'0')+' pendente'));
+   placeholder.append(elt('small','','Importe um arquivo ou use a Ponte'));
+   media.append(placeholder);
+  }
+  card.append(media);
+  if(image){
+   const download=elt('button','kit-secondary kit-card-download','⬇ Baixar PNG '+slot);
+   download.type='button';
+   download.addEventListener('click',()=>downloadData(images.get(slot),
     prepared.kit.kitSku+'-foto-'+String(slot).padStart(2,'0')+'.png'));
    card.append(download);
-  }else card.append(elt('div','kit-placeholder','▧'));
-  const prompt=elt('button','kit-secondary','Copiar prompt');
-  prompt.type='button';
-  prompt.addEventListener('click',()=>void copy(kitImagePromptAt(slot)));
+  }
+  const prompt=elt('button','kit-secondary kit-card-copy','Copiar prompt');
+  prompt.type='button';prompt.addEventListener('click',()=>void copy(kitImagePromptAt(slot)));
   card.append(prompt);
   const generate=elt('button','kit-secondary kit-image-generate-one','Gerar esta imagem (API paga)');
   generate.type='button';
@@ -1234,20 +1304,31 @@ function renderImageSlots(){
   card.append(generate);
   const details=elt('details','kit-prompt-fallback');
   const summary=elt('summary','','Ver prompt');
-  const field=elt('textarea');field.readOnly=true;field.rows=5;
-  field.value=kitImagePromptAt(slot);
+  const field=elt('textarea');field.readOnly=true;field.rows=5;field.value=kitImagePromptAt(slot);
   details.append(summary,field);card.append(details);
+  const upload=elt('label','kit-gallery-upload-label','Escolher arquivo');
   const chooser=elt('input','kit-photo-upload');chooser.type='file';
   chooser.accept='image/png,image/jpeg,image/webp';
   chooser.setAttribute('aria-label','Importar foto '+slot+' gerada no ChatGPT Plus');
   chooser.addEventListener('change',()=>void uploadPhoto(slot,chooser.files?.[0]));
-  card.append(chooser);
+  upload.append(chooser);card.append(upload);
   root.append(card);
  }
- kitUpdateImageGuidance();
- const occupied=$('#kitGalleryCount');if(occupied)occupied.textContent=images.size+' / 9 imagens prontas';
+ const tips=elt('aside','kit-gallery-tips');
+ tips.append(elt('h4','','✧ Dicas para melhores resultados'));
+ const ul=elt('ul');
+ for(const line of [
+  'Cada posição deve ter um ângulo ou cena diferente.',
+  'Use o Prompt Mestre do KIT.',
+  'Mantenha todos os produtos juntos.',
+  'Use boa iluminação e preserve as cores reais.'
+ ])ul.append(elt('li','',line));
+ tips.append(ul);root.append(tips);
+ const occupied=$('#kitGalleryCount');
+ if(occupied)occupied.textContent=images.size+' / 9 imagens prontas';
+ const section=$('#kitGallerySection');
+ if(section)section.classList.toggle('is-organizing',kitGalleryOrganizing);
 }
-
 function kitAutoImageUi(){
  const agreed=$('#kitApprovePaidImages')?.checked===true;
  const action=$('#kitGenerateAutomatic'),stop=$('#kitStopAutomatic');
@@ -2424,6 +2505,23 @@ $('#kitTitle')?.addEventListener('input',()=>{
 });
 $('#kitCopyTitle')?.addEventListener('click',()=>void copy($('#kitTitle').value));
 $('#kitCopyDescription')?.addEventListener('click',()=>void copy($('#kitDescription').value));
+$('#kitGalleryViewAll')?.addEventListener('click',()=>openKitGalleryPreview());
+$('#kitGalleryClosePreview')?.addEventListener('click',()=>$('#kitGalleryPreview')?.close());
+$('#kitGalleryPreview')?.addEventListener('click',event=>{
+ if(event.target?.id==='kitGalleryPreview')event.target.close();
+});
+$('#kitGalleryOrganize')?.addEventListener('click',()=>{
+ kitGalleryOrganizing=!kitGalleryOrganizing;
+ $('#kitGallerySection')?.classList.toggle('is-organizing',kitGalleryOrganizing);
+ const button=$('#kitGalleryOrganize');
+ if(button){
+  button.setAttribute('aria-pressed',String(kitGalleryOrganizing));
+  button.textContent=kitGalleryOrganizing?'✓ Concluir organização':'⇅ Organizar';
+ }
+ imageStatus(kitGalleryOrganizing?
+  'Modo de organização ativo: arraste uma foto para outra posição ou use as setas em cada imagem. A ordem é salva automaticamente.':
+  'Organização concluída. As fotos permanecem salvas no kit.','info');
+});
 $('#kitCopyAllPrompts')?.addEventListener('click',()=>prepared&&void copy(
  Array.from({length:9},(_,i)=>kitImagePromptAt(i+1)).join('\n\n--- PRÓXIMA IMAGEM ---\n\n')));
 $('#kitClose')?.addEventListener('click',()=>kitCloseInlineEditor());
