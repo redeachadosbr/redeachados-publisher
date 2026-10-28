@@ -1,6 +1,9 @@
 // Sequência segura: rascunho -> mídia Shopee -> prévia assinada ->
 // add_kit_item (uma única vez) -> confirmação -> etapa de desconto separada.
-import {createShopeeMediaApi} from './shopeeMediaApi.js';
+import crypto from 'node:crypto';
+import {createShopeeMediaApi,advanceVideoUpload} from './shopeeMediaApi.js';
+import {normalizeManualVideo} from './shopeeVideoValidation.js';
+import {MAX_VIDEO_BYTES} from './shopeeManualVideo.js';
 import {callShopeeShopApi} from './shopee.js';
 import {loadKitDraft,recordKitPublication} from './shopeeKitDraftStore.js';
 import {composeKit} from './shopeeKitBuilder.js';
@@ -23,6 +26,63 @@ async function checkedDraft(auth,kitSku){
   Math.abs(kit.quote.grossPrice-Number(stored.kit.quote.grossPrice))>.01)
   throw Error('Custo WeDrop ou preço do kit mudou desde o rascunho. Reabra, recalcule e salve antes de publicar.');
  return {stored,kit};
+}
+// 1 vídeo por kit, temporário até a prévia/publicação. O arquivo permanece
+// no navegador do vendedor para recuperação após eventual reinício do Render.
+const kitVideos=new Map();
+function activeKitVideo(shop,sku){
+ const k=key(shop,sku),state=kitVideos.get(k);
+ if(!state)return null;
+ if(Date.now()-state.updatedAt>60*60*1000){kitVideos.delete(k);return null;}
+ return state;
+}
+function summaryVideo(state){
+ if(!state)return {phase:'none',ready:false,videoUploadId:null};
+ return {phase:state.state.phase,ready:state.state.phase==='ready',
+  videoUploadId:state.state.phase==='ready'?state.state.id:null,
+  nextPart:state.state.nextPart||0,totalParts:Math.ceil(state.file.length/(4*1024*1024)),
+  duration:state.duration,filename:state.filename};
+}
+export function kitVideoStatus(shopId,kitSku){return summaryVideo(activeKitVideo(shopId,kitSku));}
+export async function kitVideoPrepare({auth,kitSku,buffer,filename}){
+ await checkedDraft(auth,kitSku);
+ if(!Buffer.isBuffer(buffer)||buffer.length<1000||buffer.length>MAX_VIDEO_BYTES)
+  throw Error('O vídeo deve ter até 30 MB.');
+ const normalized=await normalizeManualVideo(buffer);
+ const file=normalized.buffer;
+ const k=key(auth.shopId,kitSku),hash=crypto.createHash('sha256').update(file).digest('hex');
+ const previous=activeKitVideo(auth.shopId,kitSku);
+ if(previous?.hash===hash)return summaryVideo(previous);
+ if(!previous&&kitVideos.size>=6)throw Error('Há muitos vídeos em preparação. Conclua um envio antes de começar outro.');
+ kitVideos.set(k,{file,hash,filename:String(filename||'kit.mp4').slice(0,120),
+  duration:normalized.duration,state:{},updatedAt:Date.now()});
+ return summaryVideo(kitVideos.get(k));
+}
+export async function kitVideoAdvance({cfg,auth,kitSku}){
+ await checkedDraft(auth,kitSku);
+ const record=activeKitVideo(auth.shopId,kitSku);
+ if(!record)throw Error('Vídeo temporário não encontrado. Reenvie o arquivo salvo no navegador.');
+ if(record.busy)throw Error('O envio de vídeo já está processando uma etapa. Aguarde.');
+ record.busy=true;
+ try{
+  const next=await advanceVideoUpload({state:record.state,file:record.file,
+   api:createShopeeMediaApi(cfg,auth)});
+  record.state=next;record.updatedAt=Date.now();
+  return summaryVideo(record);
+ }finally{record.busy=false;}
+}
+export function kitVideoDiscard(shopId,kitSku){
+ const record=activeKitVideo(shopId,kitSku);
+ if(record?.busy)throw Error('Aguarde a operação de envio atual.');
+ kitVideos.delete(key(shopId,kitSku));
+ return {removed:true};
+}
+function readyVideoId(auth,kitSku,requested){
+ if(requested!==true)return null;
+ const video=activeKitVideo(auth.shopId,kitSku);
+ if(video?.state.phase!=='ready'||!/^[-_a-z0-9]{15,190}$/i.test(String(video.state.id||'')))
+  throw Error('O vídeo ainda não foi confirmado pela Shopee. Termine o envio ou desmarque a inclusão do vídeo.');
+ return String(video.state.id);
 }
 export async function kitUploadPhoto({cfg,auth,kitSku,slot,base64,mime}){
  if(!Number.isInteger(Number(slot))||Number(slot)<1||Number(slot)>9)throw Error('Posição da imagem inválida.');
@@ -54,7 +114,8 @@ export async function kitPublicationReadiness({cfg,auth,kitSku}){
   kitShopeeOptions(cfg,auth)
  ]);
  return {kit,stored,linked:components.linked,blockers:[...components.blockers,...options.blockers],
-  options,uploadedImageIds:(media.get(key(auth.shopId,kitSku))||[]).map(x=>x.imageId)};
+  options,uploadedImageIds:(media.get(key(auth.shopId,kitSku))||[]).map(x=>x.imageId),
+  video:kitVideoStatus(auth.shopId,kitSku)};
 }
 export async function kitPublicationPreview({cfg,auth,kitSku,input,secret}){
  const ready=await kitPublicationReadiness({cfg,auth,kitSku});
@@ -64,6 +125,7 @@ export async function kitPublicationPreview({cfg,auth,kitSku,input,secret}){
     new Set(accepted).size!==accepted.length)
   throw Error('Fotos escolhidas não conferem com a galeria Shopee. Envie e aprove novamente as imagens.');
  const fields=kitPublishFields({...input,imageIds:accepted},ready.kit);
+ const videoUploadId=readyVideoId(auth,kitSku,input?.includeVideo);
  if(!ready.options.channels.some(x=>Number(x.id)===fields.logisticId))
   throw Error('Canal logístico não habilitado na Shopee. Atualize a prévia.');
  const limit=ready.options.limits;
@@ -83,12 +145,12 @@ export async function kitPublicationPreview({cfg,auth,kitSku,input,secret}){
    throw Error('Prazo de pré-encomenda não permitido nesta categoria.');
  }
  const payload=kitPublishPayload(ready.kit,fields,ready.linked,{
-  maxTitleLength:Number(limit?.item_name_length_limit?.max_limit||120)
+  maxTitleLength:Number(limit?.item_name_length_limit?.max_limit||120),videoUploadId
  });
  // O título e a descrição aprovados devem ser idênticos aos do rascunho.
  if(fields.title!==ready.stored.creative.title||fields.description!==ready.stored.creative.description)
   throw Error('Salve o título e a descrição revisados antes de gerar a prévia final.');
- const fingerprint=kitApprovalFingerprint(ready.kit,fields,ready.linked);
+ const fingerprint=kitApprovalFingerprint(ready.kit,{...fields,videoUploadId},ready.linked);
  const token=signDiscountPreview({shopId:String(auth.shopId),kitSku,fingerprint,
   imageIds:fields.photoIds,linked:ready.linked},secret);
  return {token,kitSku,linked:ready.linked,
@@ -103,6 +165,7 @@ export async function kitPublicationPreview({cfg,auth,kitSku,input,secret}){
    weightKg:fields.weight,
    dimensions:fields.dimensions,logisticId:fields.logisticId,
    images:fields.photoIds.length,
+   videoIncluded:Boolean(videoUploadId),
    note:'A Shopee criará primeiro o kit com PREÇO BRUTO, sem aplicar descontos. A campanha será etapa posterior.'
   }};
 }
@@ -120,15 +183,16 @@ export async function kitPublishApproved({cfg,auth,kitSku,input,token,secret}){
      new Set(accepted).size!==accepted.length)
    throw Error('A seleção de fotos mudou. Refaça a prévia.');
   const fields=kitPublishFields({...input,imageIds:accepted},ready.kit);
+  const videoUploadId=readyVideoId(auth,kitSku,input?.includeVideo);
   if(!ready.options.channels.some(x=>Number(x.id)===fields.logisticId))
    throw Error('Canal de envio mudou. Refaça a prévia.');
-  const fingerprint=kitApprovalFingerprint(ready.kit,fields,ready.linked);
+  const fingerprint=kitApprovalFingerprint(ready.kit,{...fields,videoUploadId},ready.linked);
   if(fingerprint!==verified.fingerprint)
    throw Error('Imagem, preço, composição ou logística mudou. Refaça a prévia.');
   if(fields.title!==ready.stored.creative.title||fields.description!==ready.stored.creative.description)
    throw Error('Título ou descrição mudaram. Salve antes de publicar.');
   const payload=kitPublishPayload(ready.kit,fields,ready.linked,{
-   maxTitleLength:Number(ready.options.limits?.item_name_length_limit?.max_limit||120)
+   maxTitleLength:Number(ready.options.limits?.item_name_length_limit?.max_limit||120),videoUploadId
   });
   await recordKitPublication(auth.shopId,kitSku,{status:'publishing',
    message:'Solicitação de criação autorizada; não repetir em caso de falha de rede.'});
