@@ -44,7 +44,7 @@ test('o painel aparece somente nos kits, abaixo das imagens e antes da publicaç
  const start=html.indexOf('id="kitGallerySection"');
  const video=html.indexOf('id="kitVideoPanel"',start);
  const publication=html.indexOf('id="kitPublishPanel"',video);
- assert.ok(start>0&&video>start&&publication>video);
+ assert.ok(start>0&&publication>start&&video>publication,'vídeo fica no painel formal ao lado da logística');
  for(const id of ['kitVideoFile','kitVideoSendShopee','kitVideoPreview','kitVideoInclude',
   'kitVideoDownload','kitVideoRemove','kitVideoStatus','kitVideoState'])
   assert.equal((html.match(new RegExp('id="'+id+'"','g'))||[]).length,1,id);

@@ -31,7 +31,7 @@
 <link rel="stylesheet" href="/ads-premium.css?v=2.4.0-seo-ads-location">
 <link rel="stylesheet" href="/sidebar-collapse.css?v=1.0.0">
 <link rel="stylesheet" href="/optimizer-image-studio.css?v=1.0.2">
-<link rel="stylesheet" href="/kit-builder.css?v=3.7.3-kit-freshness">
+<link rel="stylesheet" href="/kit-builder.css?v=3.7.3-kit-freshness-formal-premium-1">
 <link rel="stylesheet" href="/optimizer-technical-studio.css?v=1.0.1-review-feedback">
 <style>
 /* Autorização >25%: campo compacto, sem o input global width:100%.
@@ -1227,7 +1227,21 @@
    </div>
    <p id="kitImageStatus" class="kit-status" role="status" aria-live="polite">A Ponte ChatGPT existente pode gerar e entregar imagens do kit automaticamente. Se a versão instalada não reconhecer kits, use a importação manual ou por pasta até atualizar a extensão. As fotos exigem conferência antes de enviar à Shopee.</p>
   </section>
-  <section class="kit-video-panel" id="kitVideoPanel" aria-label="Vídeo do Kit para Shopee">
+  <dialog id="kitGalleryPreview" class="kit-gallery-preview" aria-label="Visualizar imagens do kit">
+   <div class="kit-gallery-preview-header"><strong>Visualizar fotos do kit</strong><button id="kitGalleryClosePreview" type="button" class="kit-secondary">Fechar ✕</button></div>
+   <div id="kitGalleryPreviewImages" class="kit-gallery-preview-images"></div>
+  </dialog>
+  <section class="kit-publish-panel kit-formal-redesign" id="kitPublishPanel" aria-label="Criar Kit Formal na Shopee">
+   <div class="kit-formal-header">
+ <div class="kit-bar kit-section-heading"><span class="kit-heading-icon kit-icon-orange">🛒</span><div class="kit-section-heading-text"><h3>Criar Kit Formal na Shopee</h3><p>Siga o passo a passo para publicar seu kit na Shopee com segurança.</p></div></div>
+ <p class="kit-info kit-formal-notice">Primeiro confirme os componentes da Shopee e a logística. Salve o rascunho; depois envie as fotos e o vídeo opcional, confira a prévia e autorize a publicação. A promoção só poderá ser preparada DEPOIS que a Shopee confirmar o novo Item ID.</p>
+</div>
+   <div class="kit-publish-steps">
+    <div><b>01</b><span>Salvar kit</span></div><div><b>02</b><span>Validar SKUs Shopee</span></div><div><b>03</b><span>Enviar mídia</span></div>
+    <div><b>04</b><span>Prévia final</span></div><div><b>05</b><span>Publicar kit</span></div><div><b>06</b><span>Desconto separado</span></div>
+   </div>
+   <div class="kit-formal-workspace">
+    <section class="kit-video-panel" id="kitVideoPanel" aria-label="Vídeo do Kit para Shopee">
    <div class="kit-video-heading">
     <div><h3>🎬 Vídeo do Kit</h3><p>Adicione um vídeo com TODOS os produtos do kit. O arquivo fica salvo neste navegador até você autorizar o envio à Shopee.</p></div>
     <span id="kitVideoState" class="kit-video-state">Sem vídeo</span>
@@ -1253,38 +1267,29 @@
    </div>
    <p id="kitVideoStatus" class="kit-status" role="status" aria-live="polite">Selecione um vídeo do kit. Os nove arquivos de imagem continuam independentes.</p>
   </section>
-  <dialog id="kitGalleryPreview" class="kit-gallery-preview" aria-label="Visualizar imagens do kit">
-   <div class="kit-gallery-preview-header"><strong>Visualizar fotos do kit</strong><button id="kitGalleryClosePreview" type="button" class="kit-secondary">Fechar ✕</button></div>
-   <div id="kitGalleryPreviewImages" class="kit-gallery-preview-images"></div>
-  </dialog>
-  <section class="kit-publish-panel" id="kitPublishPanel" aria-label="Criar Kit Formal na Shopee">
-   <div class="kit-bar kit-section-heading"><span class="kit-heading-icon kit-icon-orange">🛒</span><div class="kit-section-heading-text"><h3>Criar Kit Formal na Shopee</h3><p>Siga o passo a passo para publicar seu kit na Shopee com segurança.</p></div></div>
-   <p class="kit-info">Primeiro confirme os componentes da Shopee e a logística. Salve o rascunho; depois envie as fotos e o vídeo opcional, confira a prévia e autorize a publicação. A promoção só poderá ser preparada DEPOIS que a Shopee confirmar o novo Item ID.</p>
-   <div class="kit-publish-steps">
-    <div><b>01</b><span>Salvar kit</span></div><div><b>02</b><span>Validar SKUs Shopee</span></div><div><b>03</b><span>Enviar mídia</span></div>
-    <div><b>04</b><span>Prévia final</span></div><div><b>05</b><span>Publicar kit</span></div><div><b>06</b><span>Desconto separado</span></div>
-   </div>
-   <div class="kit-publish-guide" id="kitPublishGuide">
-    <div class="kit-publish-guide-copy">
-     <strong><span aria-hidden="true">✦</span> Assistente de publicação do Kit Formal</strong>
-     <p id="kitPublishGuideInfo" aria-live="polite">Continue na ordem correta: salvar, validar componentes e canal, enviar mídias, revisar prévia e confirmar publicação.</p>
-    </div>
-    <button id="kitPublishGuideNext" type="button" class="kit-primary">Continuar publicação na Shopee →</button>
-   </div>
-   <div id="kitPublishFreshness" class="kit-publish-freshness" hidden>
-    <div><strong>Atualização WeDrop necessária antes de publicar</strong>
-     <p id="kitPublishFreshnessReason" aria-live="polite">Verificando datas do catálogo e estoque...</p>
-    </div>
-    <div class="kit-publish-freshness-actions">
-     <button id="kitPublishGoImport" type="button" class="kit-secondary">1. Atualizar catálogo e estoque</button>
-     <button id="kitPublishRevalidate" type="button" class="kit-primary">2. Conferir e recalcular este kit</button>
-    </div>
-    <small>As nove fotos, o vídeo, os textos e as medidas permanecem vinculados ao kit. Não publicar sem disponibilidade e custos atuais.</small>
-   </div>
-   <div class="kit-publish-subheading"><div><strong>🚚 Logística e validação do kit</strong><small>Confirme as informações antes de publicar na Shopee.</small></div><button id="kitPublishCheck" class="kit-secondary" type="button">Verificar SKUs e opções da Shopee</button></div>
+    <section class="kit-formal-logistics-card" aria-label="Logística e validação do kit">
+     <div class="kit-publish-subheading"><div><strong>🚚 Logística e validação do kit</strong><small>Confirme as informações antes de publicar na Shopee.</small></div><button id="kitPublishCheck" class="kit-secondary" type="button">Verificar SKUs e opções da Shopee</button></div>
    <p id="kitPublishStatus" class="kit-status" role="status" aria-live="polite">Salve o kit para iniciar a conferência. Nenhum anúncio é criado nesta etapa.</p>
    <div id="kitPublishLinks" class="kit-components"></div>
-   <section class="kit-logistics-smart-import" id="kitLogisticsSmartImport" aria-label="Preencher logística a partir de texto ou print">
+     <div class="kit-publish-fields">
+    <label>Componente principal<select id="kitMainSku"><option value="">Selecione</option></select></label>
+    <label>Canal de envio Shopee<select id="kitLogisticId"><option value="">Consultar opções</option></select></label>
+    <label>Peso total embalado (kg)<input id="kitWeightKg" type="number" step="0.001" min="0.001" max="30" placeholder="Medir pacote completo" /></label>
+    <label>Comprimento pacote (cm)<input id="kitLengthCm" type="number" step="1" min="1" max="200" placeholder="Ex.: 30" /></label>
+    <label>Largura pacote (cm)<input id="kitWidthCm" type="number" step="1" min="1" max="200" placeholder="Ex.: 25" /></label>
+    <label>Altura pacote (cm)<input id="kitHeightCm" type="number" step="1" min="1" max="200" placeholder="Ex.: 20" /></label>
+    <label class="kit-inline-checkbox"><input id="kitAutoSyncDts" type="checkbox"/> Sincronizar dias de envio com componente principal (quando permitido)</label>
+    <label hidden class="kit-inline-checkbox kit-preorder-hidden"><input id="kitPreOrder" type="checkbox" disabled aria-hidden="true" tabindex="-1"/> Kit sob encomenda — Não</label>
+    <label hidden class="kit-preorder-hidden">Dias para enviar (sob encomenda)<input id="kitDaysToShip" type="number" min="3" max="30" value="7" disabled tabindex="-1" /></label>
+   </div>
+   <p id="kitLogisticsSaveStatus" class="kit-logistics-draft-status" aria-live="polite">Peso, dimensões e opções serão preservados neste kit ao preencher.</p>
+   <div class="kit-review-checkboxes">
+    <label><input type="checkbox" id="kitContentsReviewed"/> Confirmei que as SKUs, quantidades e o componente principal são os corretos.</label>
+    <label><input type="checkbox" id="kitPhotosReviewed"/> Conferi todas as fotos: mostram os componentes reais do kit, sem imagens ou especificações inventadas.</label>
+    <label><input type="checkbox" id="kitSingleParcelConfirmed"/> Confirmei que todos os componentes da WeDrop poderão ser enviados JUNTOS, no mesmo pacote, dentro do prazo e com embalagem adequada.</label>
+   </div>
+    </section>
+    <section class="kit-logistics-smart-import" id="kitLogisticsSmartImport" aria-label="Preencher logística a partir de texto ou print">
     <div class="kit-logistics-smart-heading">
      <div><strong>✦ Preenchimento inteligente da logística</strong><p>Cole informações ou um print da Shopee/fornecedor para identificar peso, medidas, componente principal e canal de envio.</p></div>
      <span>Sem API paga</span>
@@ -1314,28 +1319,31 @@
     <p id="kitLogisticsSmartStatus" class="kit-logistics-smart-status" role="status" aria-live="polite">Os valores identificados serão aplicados aos campos abaixo e precisarão de conferência antes de publicar. As imagens são lidas no navegador.</p>
     <div id="kitLogisticsSmartResults" class="kit-logistics-smart-results" hidden></div>
    </section>
-   <div class="kit-publish-fields">
-    <label>Componente principal<select id="kitMainSku"><option value="">Selecione</option></select></label>
-    <label>Canal de envio Shopee<select id="kitLogisticId"><option value="">Consultar opções</option></select></label>
-    <label>Peso total embalado (kg)<input id="kitWeightKg" type="number" step="0.001" min="0.001" max="30" placeholder="Medir pacote completo" /></label>
-    <label>Comprimento pacote (cm)<input id="kitLengthCm" type="number" step="1" min="1" max="200" placeholder="Ex.: 30" /></label>
-    <label>Largura pacote (cm)<input id="kitWidthCm" type="number" step="1" min="1" max="200" placeholder="Ex.: 25" /></label>
-    <label>Altura pacote (cm)<input id="kitHeightCm" type="number" step="1" min="1" max="200" placeholder="Ex.: 20" /></label>
-    <label class="kit-inline-checkbox"><input id="kitAutoSyncDts" type="checkbox"/> Sincronizar dias de envio com componente principal (quando permitido)</label>
-    <label hidden class="kit-inline-checkbox kit-preorder-hidden"><input id="kitPreOrder" type="checkbox" disabled aria-hidden="true" tabindex="-1"/> Kit sob encomenda — Não</label>
-    <label hidden class="kit-preorder-hidden">Dias para enviar (sob encomenda)<input id="kitDaysToShip" type="number" min="3" max="30" value="7" disabled tabindex="-1" /></label>
+    <section class="kit-formal-assistant-card" aria-label="Assistente de publicação do Kit Formal">
+     <div class="kit-publish-guide" id="kitPublishGuide">
+    <div class="kit-publish-guide-copy">
+     <strong><span aria-hidden="true">✦</span> Assistente de publicação do Kit Formal</strong>
+     <p id="kitPublishGuideInfo" aria-live="polite">Continue na ordem correta: salvar, validar componentes e canal, enviar mídias, revisar prévia e confirmar publicação.</p>
+    </div>
+    <button id="kitPublishGuideNext" type="button" class="kit-primary">Continuar publicação na Shopee →</button>
    </div>
-   <p id="kitLogisticsSaveStatus" class="kit-logistics-draft-status" aria-live="polite">Peso, dimensões e opções serão preservados neste kit ao preencher.</p>
-   <div class="kit-review-checkboxes">
-    <label><input type="checkbox" id="kitContentsReviewed"/> Confirmei que as SKUs, quantidades e o componente principal são os corretos.</label>
-    <label><input type="checkbox" id="kitPhotosReviewed"/> Conferi todas as fotos: mostram os componentes reais do kit, sem imagens ou especificações inventadas.</label>
-    <label><input type="checkbox" id="kitSingleParcelConfirmed"/> Confirmei que todos os componentes da WeDrop poderão ser enviados JUNTOS, no mesmo pacote, dentro do prazo e com embalagem adequada.</label>
+     <div id="kitPublishFreshness" class="kit-publish-freshness" hidden>
+    <div><strong>Atualização WeDrop necessária antes de publicar</strong>
+     <p id="kitPublishFreshnessReason" aria-live="polite">Verificando datas do catálogo e estoque...</p>
+    </div>
+    <div class="kit-publish-freshness-actions">
+     <button id="kitPublishGoImport" type="button" class="kit-secondary">1. Atualizar catálogo e estoque</button>
+     <button id="kitPublishRevalidate" type="button" class="kit-primary">2. Conferir e recalcular este kit</button>
+    </div>
+    <small>As nove fotos, o vídeo, os textos e as medidas permanecem vinculados ao kit. Não publicar sem disponibilidade e custos atuais.</small>
    </div>
-   <div class="kit-actions">
+     <div class="kit-actions">
     <button id="kitSendPhotos" type="button" class="kit-secondary">Enviar imagens importadas à galeria da Shopee</button>
     <button id="kitPublishPreview" type="button" class="kit-primary">Preparar prévia segura do Kit Formal →</button>
    </div>
    <p class="kit-status" id="kitShopeePhotoCount">0 imagens enviadas à Shopee (ainda não publicadas).</p>
+    </section>
+   </div>
    <div id="kitPublishPreviewBox" hidden class="kit-publish-preview">
     <h4>Revisão final antes da publicação</h4><pre id="kitPublishSummary"></pre>
     <button id="kitPublishExecute" type="button" class="kit-primary">Confirmar e publicar o Kit Formal na Shopee</button>
@@ -1362,7 +1370,6 @@
         <p class="kit-info">A oferta será preparada com o novo Item ID da Shopee. A Minha Promoção exige campanha válida e validações do sistema; não é aplicada automaticamente na criação do kit.</p>
    </div>
   </section>
- </section>
  </div>
 </section>
 <section class="tabpane" id="tab-fiscal" aria-label="Informações fiscais da Shopee">

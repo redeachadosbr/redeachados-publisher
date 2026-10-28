@@ -9,7 +9,7 @@ test('assistente guiado fica dentro do Kit Formal e preserva etapa final manual'
  const guide=html.indexOf('id="kitPublishGuide"',kit);
  const controls=html.indexOf('id="kitPublishCheck"',guide);
  const confirmation=html.indexOf('id="kitPublishExecute"',guide);
- assert.ok(kit>0&&guide>kit&&controls>guide&&confirmation>controls);
+ assert.ok(kit>0&&guide>kit&&controls>kit&&confirmation>controls);
  for(const id of ['kitPublishGuide','kitPublishGuideInfo','kitPublishGuideNext'])
   assert.equal((html.match(new RegExp('id="'+id+'"','g'))||[]).length,1,id);
  assert.match(css,/#tab-kits #kitDetail \.kit-publish-guide/);

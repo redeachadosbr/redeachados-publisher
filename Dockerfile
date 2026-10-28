@@ -29,7 +29,7 @@ RUN node --check shopeeExecutionProgress.js && node --check public/app.js && nod
 RUN node --check public/kit-seo-helper.js && node --test tests/kitContentSeo.test.js
 RUN node --check public/kit-measurements.js && node --test tests/kitSkuMeasurements.test.js
 RUN node --test tests/kitImageMasterPrompt.test.js && node --test tests/kitGalleryOrder.test.js && node --test tests/kitPlusImageBrief.test.js
-RUN node --check public/kit-logistics-parser.js && node --check public/kit-logistics-ocr.js && node --test tests/kitLogisticsSmartImport.test.js
+RUN node --check public/kit-logistics-parser.js && node --check public/kit-logistics-ocr.js && node --test tests/kitLogisticsSmartImport.test.js tests/kitFormalPremiumLayout.test.js
 RUN node --check public/kit-extension-runtime.js && node --check public/kit-extension-bridge.js && node --test tests/kitExtensionBridge.test.js
 RUN node --check shopeeKitAvailability.js && node --check shopeeKitBuilder.js && node --check shopeeKitImages.js && node --check public/kit-chat-result-parser.js && node --check public/kit-builder.js && node --test tests/kitChatResultParser.test.js tests/kitThemeValidation.test.js tests/shopeeKitAvailability.test.js tests/shopeeKitBuilder.test.js tests/shopeeKitReferenceLayout.test.js
 RUN node --check shopeeKitLogisticsDraft.js && node --check public/kit-logistics-draft-ui.js && node --test tests/kitLogisticsPersistence.test.js

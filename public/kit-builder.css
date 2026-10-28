@@ -2067,3 +2067,181 @@
 @media(max-width:680px){
  #tab-kits #kitDetail .kit-publish-freshness-actions button{flex:1 1 100%}
 }
+
+/* Kit Formal — organização premium em duas colunas; somente visual, mesmas ações e IDs. */
+#tab-kits #kitDetail #kitPublishPanel.kit-formal-redesign{
+ margin:12px 0 0;padding:13px;min-width:0;border:1px solid #d9e5f4;
+ border-radius:16px;background:#f9fbff;box-shadow:0 8px 24px rgba(17,49,86,.045);
+}
+#tab-kits #kitDetail .kit-formal-header{
+ display:flex;align-items:center;justify-content:space-between;gap:14px;
+ margin-bottom:7px;padding:1px 3px 10px;border-bottom:1px solid #e6edf7;
+}
+#tab-kits #kitDetail .kit-formal-header .kit-section-heading{
+ flex:1 1 330px;min-width:0;margin:0;padding:0;
+}
+#tab-kits #kitDetail .kit-formal-header .kit-formal-notice{
+ flex:0 1 440px;min-width:240px;margin:0;padding:9px 12px;
+ border:1px solid #e1e9f5;background:#f2f6fc;border-radius:10px;
+ color:#547292;font-size:10px;line-height:1.5;
+}
+#tab-kits #kitDetail .kit-formal-redesign>.kit-publish-steps{
+ display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:6px;
+ margin:9px 0 12px;padding:0 12px 3px;
+}
+#tab-kits #kitDetail .kit-formal-redesign>.kit-publish-steps:before{
+ left:7%;right:7%;background:linear-gradient(90deg,#ff7b50 0 20%,#cad7e8 20% 100%);
+}
+#tab-kits #kitDetail .kit-formal-redesign>.kit-publish-steps>div b{
+ background:#91a4c3;color:#fff;box-shadow:0 0 0 3px #f9fbff;
+}
+#tab-kits #kitDetail .kit-formal-redesign>.kit-publish-steps>div:first-child b{background:#ff613c}
+#tab-kits #kitDetail .kit-formal-workspace{
+ display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);
+ grid-template-areas:"video logistics" "smart assistant";
+ gap:12px;align-items:stretch;
+}
+#tab-kits #kitDetail .kit-formal-workspace>*{min-width:0;margin:0}
+#tab-kits #kitDetail .kit-formal-workspace>#kitVideoPanel{grid-area:video}
+#tab-kits #kitDetail .kit-formal-logistics-card{grid-area:logistics}
+#tab-kits #kitDetail .kit-formal-workspace>#kitLogisticsSmartImport{grid-area:smart}
+#tab-kits #kitDetail .kit-formal-assistant-card{grid-area:assistant}
+#tab-kits #kitDetail .kit-formal-workspace>#kitVideoPanel,
+#tab-kits #kitDetail .kit-formal-logistics-card,
+#tab-kits #kitDetail .kit-formal-workspace>#kitLogisticsSmartImport,
+#tab-kits #kitDetail .kit-formal-assistant-card{
+ border:1px solid #d8e4f2;border-radius:14px;background:#fff;
+ padding:13px;box-shadow:0 3px 13px rgba(23,61,106,.035);min-width:0;
+}
+#tab-kits #kitDetail .kit-formal-workspace>#kitVideoPanel{
+ display:flex;flex-direction:column;gap:8px;background:linear-gradient(130deg,#f9fbff,#fff);
+}
+#tab-kits #kitDetail .kit-formal-workspace>#kitVideoPanel .kit-video-heading{margin:0;gap:7px}
+#tab-kits #kitDetail .kit-formal-workspace>#kitVideoPanel .kit-video-heading h3{font-size:15px}
+#tab-kits #kitDetail .kit-formal-workspace>#kitVideoPanel .kit-video-heading p{font-size:10px;line-height:1.35}
+#tab-kits #kitDetail .kit-formal-workspace>#kitVideoPanel .kit-video-body{
+ grid-template-columns:minmax(0,1.12fr) minmax(160px,.78fr);gap:9px;align-items:stretch;
+}
+#tab-kits #kitDetail .kit-formal-workspace>#kitVideoPanel .kit-video-file-zone,
+#tab-kits #kitDetail .kit-formal-workspace>#kitVideoPanel .kit-video-tools{
+ gap:7px;padding:9px;border-radius:9px;
+}
+#tab-kits #kitDetail .kit-formal-workspace>#kitVideoPanel .kit-video-file-button{min-height:53px}
+#tab-kits #kitDetail .kit-formal-workspace>#kitVideoPanel .kit-video-details{grid-template-columns:minmax(0,115px) minmax(0,1fr);gap:7px;padding:6px}
+#tab-kits #kitDetail .kit-formal-workspace>#kitVideoPanel .kit-video-details video{max-height:92px}
+#tab-kits #kitDetail .kit-formal-workspace>#kitVideoPanel #kitVideoStatus{margin:1px 0 0;font-size:10px}
+#tab-kits #kitDetail .kit-formal-logistics-card{
+ display:flex;flex-direction:column;gap:7px;background:linear-gradient(130deg,#fff,#fcfdff);
+}
+#tab-kits #kitDetail .kit-formal-logistics-card .kit-publish-subheading{
+ background:transparent;border:0;border-bottom:1px solid #edf1f7;
+ padding:0 0 9px;margin:0;align-items:center;
+}
+#tab-kits #kitDetail .kit-formal-logistics-card .kit-publish-subheading strong{font-size:13px}
+#tab-kits #kitDetail .kit-formal-logistics-card #kitPublishStatus{
+ margin:0;font-size:10px;line-height:1.35;
+}
+#tab-kits #kitDetail .kit-formal-logistics-card #kitPublishLinks:empty{display:none}
+#tab-kits #kitDetail .kit-formal-logistics-card>.kit-publish-fields{
+ display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:8px;
+ margin:2px 0 0;
+}
+#tab-kits #kitDetail .kit-formal-logistics-card>.kit-publish-fields>label{
+ grid-column:span 2;gap:5px;min-width:0;font-size:10px;line-height:1.35;
+}
+#tab-kits #kitDetail .kit-formal-logistics-card>.kit-publish-fields>label:nth-child(-n+2){
+ grid-column:span 3;
+}
+#tab-kits #kitDetail .kit-formal-logistics-card>.kit-publish-fields>label.kit-inline-checkbox{
+ grid-column:1/-1;font-size:10px;align-items:center;gap:8px;margin:0;
+}
+#tab-kits #kitDetail .kit-formal-logistics-card>.kit-publish-fields :is(input:not([type=checkbox]),select){
+ min-height:36px;height:36px;padding:7px 9px;font-size:11px!important;
+ border-radius:8px;
+}
+#tab-kits #kitDetail .kit-formal-logistics-card #kitLogisticsSaveStatus{
+ margin:1px 0 0;font-size:10px;line-height:1.35;
+}
+#tab-kits #kitDetail .kit-formal-logistics-card .kit-review-checkboxes{
+ gap:5px;margin-top:2px;padding:9px;border-color:#d9eedf;background:#f0faf3;
+ border-radius:9px;font-size:10px;
+}
+#tab-kits #kitDetail .kit-formal-logistics-card .kit-review-checkboxes label{gap:7px}
+#tab-kits #kitDetail .kit-formal-workspace>#kitLogisticsSmartImport{
+ display:grid;align-content:start;gap:9px;
+ background:linear-gradient(140deg,#f8fbff,#fff 75%);
+}
+#tab-kits #kitDetail .kit-formal-workspace>#kitLogisticsSmartImport .kit-logistics-smart-heading strong{font-size:13px}
+#tab-kits #kitDetail .kit-formal-workspace>#kitLogisticsSmartImport .kit-logistics-smart-heading p{font-size:10px;line-height:1.4}
+#tab-kits #kitDetail .kit-formal-workspace>#kitLogisticsSmartImport .kit-logistics-smart-inputs{
+ grid-template-columns:minmax(0,1.2fr) minmax(0,.8fr);gap:8px;
+}
+#tab-kits #kitDetail .kit-formal-workspace>#kitLogisticsSmartImport .kit-logistics-smart-inputs>label,
+#tab-kits #kitDetail .kit-formal-workspace>#kitLogisticsSmartImport .kit-logistics-smart-image{padding:9px;gap:6px}
+#tab-kits #kitDetail .kit-formal-workspace>#kitLogisticsSmartImport #kitLogisticsSourceText{
+ min-height:95px;max-height:220px;
+}
+#tab-kits #kitDetail .kit-formal-workspace>#kitLogisticsSmartImport .kit-logistics-smart-footer{gap:7px}
+#tab-kits #kitDetail .kit-formal-workspace>#kitLogisticsSmartImport .kit-logistics-smart-footer button{
+ min-height:33px;padding:7px 10px;
+}
+#tab-kits #kitDetail .kit-formal-assistant-card{
+ display:flex;flex-direction:column;gap:9px;
+ background:linear-gradient(140deg,#fff,#fafdff);
+}
+#tab-kits #kitDetail .kit-formal-assistant-card .kit-publish-guide{
+ display:grid;grid-template-columns:minmax(0,1fr) auto;gap:10px;
+ align-items:center;padding:0;margin:0;border:0;background:transparent;
+}
+#tab-kits #kitDetail .kit-formal-assistant-card .kit-publish-guide-copy{min-width:0}
+#tab-kits #kitDetail .kit-formal-assistant-card .kit-publish-guide-copy strong{font-size:13px}
+#tab-kits #kitDetail .kit-formal-assistant-card .kit-publish-guide-copy p{font-size:10px;line-height:1.4}
+#tab-kits #kitDetail .kit-formal-assistant-card #kitPublishGuideNext{min-height:39px;padding:9px 12px}
+#tab-kits #kitDetail .kit-formal-assistant-card .kit-publish-freshness{margin:0}
+#tab-kits #kitDetail .kit-formal-assistant-card>.kit-actions{
+ display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1.15fr);gap:9px;
+ margin:auto 0 0;
+}
+#tab-kits #kitDetail .kit-formal-assistant-card>.kit-actions>button{
+ white-space:normal;min-width:0;min-height:45px;padding:8px 10px;
+ border-radius:9px;font-size:10.5px;line-height:1.3;
+}
+#tab-kits #kitDetail .kit-formal-assistant-card #kitPublishPreview{
+ background:linear-gradient(120deg,#ff5534,#fb6e2b);color:white;border:0;
+ box-shadow:0 4px 11px rgba(249,88,48,.12);
+}
+#tab-kits #kitDetail .kit-formal-assistant-card #kitShopeePhotoCount{
+ font-size:10px;margin:0;line-height:1.4;
+}
+#tab-kits #kitDetail .kit-formal-redesign>#kitPublishPreviewBox,
+#tab-kits #kitDetail .kit-formal-redesign>#kitDiscountNext{margin-top:12px}
+@media(max-width:1320px){
+ #tab-kits #kitDetail .kit-formal-workspace{
+  grid-template-columns:1fr;grid-template-areas:"video" "logistics" "smart" "assistant";
+ }
+ #tab-kits #kitDetail .kit-formal-workspace>#kitVideoPanel .kit-video-body{
+  grid-template-columns:minmax(0,1.18fr) minmax(190px,.82fr);
+ }
+}
+@media(max-width:850px){
+ #tab-kits #kitDetail .kit-formal-header{align-items:stretch;flex-direction:column;gap:7px}
+ #tab-kits #kitDetail .kit-formal-header .kit-formal-notice{min-width:0;flex:auto}
+ #tab-kits #kitDetail .kit-formal-redesign>.kit-publish-steps{grid-template-columns:repeat(3,minmax(0,1fr));row-gap:11px}
+ #tab-kits #kitDetail .kit-formal-redesign>.kit-publish-steps:before{display:none}
+}
+@media(max-width:620px){
+ #tab-kits #kitDetail #kitPublishPanel.kit-formal-redesign{padding:9px}
+ #tab-kits #kitDetail .kit-formal-workspace>#kitVideoPanel .kit-video-body,
+ #tab-kits #kitDetail .kit-formal-workspace>#kitLogisticsSmartImport .kit-logistics-smart-inputs{grid-template-columns:1fr}
+ #tab-kits #kitDetail .kit-formal-logistics-card>.kit-publish-fields{grid-template-columns:repeat(2,minmax(0,1fr))}
+ #tab-kits #kitDetail .kit-formal-logistics-card>.kit-publish-fields>label,
+ #tab-kits #kitDetail .kit-formal-logistics-card>.kit-publish-fields>label:nth-child(-n+2){grid-column:span 1}
+ #tab-kits #kitDetail .kit-formal-logistics-card>.kit-publish-fields>label.kit-inline-checkbox{grid-column:1/-1}
+ #tab-kits #kitDetail .kit-formal-assistant-card .kit-publish-guide{grid-template-columns:1fr}
+ #tab-kits #kitDetail .kit-formal-assistant-card .kit-publish-guide #kitPublishGuideNext{width:100%}
+ #tab-kits #kitDetail .kit-formal-assistant-card>.kit-actions{grid-template-columns:1fr}
+}
+@media(max-width:420px){
+ #tab-kits #kitDetail .kit-formal-redesign>.kit-publish-steps{grid-template-columns:repeat(2,minmax(0,1fr))}
+ #tab-kits #kitDetail .kit-formal-logistics-card>.kit-publish-fields{grid-template-columns:1fr}
+}

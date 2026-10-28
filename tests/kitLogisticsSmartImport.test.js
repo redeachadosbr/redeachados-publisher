@@ -44,7 +44,7 @@ test('os controles do assistente estão ligados à seção logística e não à 
  const js=fs.readFileSync(new URL('../public/kit-builder.js',import.meta.url),'utf8');
  const css=fs.readFileSync(new URL('../public/kit-builder.css',import.meta.url),'utf8');
  const begin=html.indexOf('id="kitLogisticsSmartImport"'),fields=html.indexOf('class="kit-publish-fields"',begin);
- assert.ok(begin>0&&fields>begin&&html.indexOf('id="kitPublishPanel"')<begin);
+ assert.ok(begin>0&&fields>0&&html.indexOf('id="kitPublishPanel"')<fields&&html.indexOf('id="kitPublishPanel"')<begin);
  for(const id of ['kitLogisticsSourceText','kitLogisticsSourceImage','kitLogisticsPasteImage',
   'kitLogisticsAutofill','kitLogisticsUndo','kitLogisticsClear','kitLogisticsSmartStatus'])
   assert.equal((html.match(new RegExp('id="'+id+'"','g'))||[]).length,1,id);
