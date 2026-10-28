@@ -10,7 +10,7 @@ function decimal(raw){
   const decimalSeparator=s.lastIndexOf(',')>s.lastIndexOf('.')?',':'.';
   s=s.replace(decimalSeparator===','?/\./g:/,/g,'').replace(decimalSeparator, '.');
  }else if(s.includes(','))s=s.replace(',','.');
- else if(/^\d{1,3}(?:\.\d{3})+$/.test(s))s=s.replace(/\./g,'');
+ else if(/^\d{1,3}(?:\.\d{3})+$/.test(s)&&!/^0\./.test(s))s=s.replace(/\./g,'');
  return Number(s);
 }
 const asPositive=(num,max)=>Number.isFinite(num)&&num>0&&num<=max;
