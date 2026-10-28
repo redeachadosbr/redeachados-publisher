@@ -1,4 +1,4 @@
-import {parseKitLogisticsText} from './kit-logistics-parser.js';
+import {parseKitLogisticsText} from './kit-logistics-parser.js?v=2-total-fields';
 // OCR opcional no navegador para prints dos campos de logística do kit.
 // Não envia o print ao servidor do Shopee Manager nem chama API paga.
 let tesseractLoader=null;
