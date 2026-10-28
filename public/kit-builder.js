@@ -5,8 +5,8 @@ import {kitImageFilenameSlot,kitImageNextSlot,kitPlanImageImports,kitMoveImage} 
 import {buildKitPlusImageBrief,kitPlusPromptLink} from './kit-plus-image-brief.js';
 import {createKitPhotoStore} from './kit-extension-bridge.js';
 import {createKitExtensionController} from './kit-extension-runtime.js';
-import {parseKitLogisticsText} from './kit-logistics-parser.js';
-import {recognizeKitLogisticsPrint} from './kit-logistics-ocr.js';
+import {parseKitLogisticsText} from './kit-logistics-parser.js?v=2-total-fields';
+import {recognizeKitLogisticsPrint} from './kit-logistics-ocr.js?v=2-dark-table';
 import {kitImagesLookDuplicated} from './kit-image-guard.js';
 // Kits Inteligentes WeDrop — Kit Formal enviado à Shopee somente após aprovação explícita.
 const $=s=>document.querySelector(s);
@@ -508,7 +508,7 @@ const KIT_LOGISTICS_NAMES={
  weightKg:'Peso total embalado',lengthCm:'Comprimento',widthCm:'Largura',
  heightCm:'Altura',autoSyncDts:'Sincronizar prazo'
 };
-let kitLogisticsPrint=null,kitLogisticsPreviewUrl=null;
+let kitLogisticsPrint=null,kitLogisticsPreviewUrl=null,kitLogisticsLastOcr='';
 let kitLogisticsUndoSnapshot=null,kitPendingLogistic=null,kitLogisticsImportBusy=false;
 function kitLogisticsStatus(message,state='info'){
  const el=$('#kitLogisticsSmartStatus');
@@ -646,7 +646,10 @@ function kitLogisticsApplyParsed(data){
 async function kitLogisticsAutofill(){
  if(kitLogisticsImportBusy)return;
  if(!prepared?.kit)return kitLogisticsStatus('Abra primeiro o rascunho do kit que deseja preencher.','error');
- const typed=$('#kitLogisticsSourceText').value.trim(),file=kitLogisticsPrint;
+ const originalText=$('#kitLogisticsSourceText').value.trim();
+ const typed=kitLogisticsLastOcr&&originalText.endsWith(kitLogisticsLastOcr)?
+  originalText.slice(0,-kitLogisticsLastOcr.length).trim():originalText;
+ const file=kitLogisticsPrint;
  if(!typed&&!file)return kitLogisticsStatus('Cole um texto ou escolha/cole um print antes de identificar.','error');
  const button=$('#kitLogisticsAutofill'),kitSku=prepared.kit.kitSku;
  kitLogisticsImportBusy=true;button.disabled=true;button.textContent='Lendo informações...';
@@ -656,6 +659,7 @@ async function kitLogisticsAutofill(){
    extracted=await recognizeKitLogisticsPrint(file,message=>kitLogisticsStatus(message,'info'));
    if(prepared?.kit?.kitSku!==kitSku)throw Error('O kit foi trocado durante a leitura. Nenhum campo foi alterado.');
    // Expor o OCR, permitindo corrigir algum número antes de tentar novamente.
+   kitLogisticsLastOcr=extracted;
    $('#kitLogisticsSourceText').value=(typed?typed+'\n':'')+extracted;
   }
   if(prepared?.kit?.kitSku!==kitSku)throw Error('O kit foi trocado durante a leitura.');
@@ -2713,7 +2717,7 @@ $('#kitLogisticsRemoveImage')?.addEventListener('click',()=>{
  kitLogisticsClearFile();kitLogisticsStatus('Print removido; o texto permanece disponível.');
 });
 $('#kitLogisticsClear')?.addEventListener('click',()=>{
- $('#kitLogisticsSourceText').value='';kitLogisticsClearFile();
+ $('#kitLogisticsSourceText').value='';kitLogisticsLastOcr='';kitLogisticsClearFile();
  $('#kitLogisticsSmartResults').replaceChildren();$('#kitLogisticsSmartResults').hidden=true;
  kitLogisticsStatus('Entrada limpa. Os campos já preenchidos permanecem inalterados.');
 });
