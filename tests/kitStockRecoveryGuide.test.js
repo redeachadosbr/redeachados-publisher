@@ -11,7 +11,7 @@ test('exibe motivo de atualização vencida e ações ligadas à importação We
  assert.ok(guide>0&&recovery>guide&&logistics>recovery);
  for(const id of ['kitPublishFreshness','kitPublishFreshnessReason','kitPublishGoImport','kitPublishRevalidate'])
   assert.equal((html.match(new RegExp('id="'+id+'"','g'))||[]).length,1,id);
- assert.match(js,/stock\?\.reason\|\|'Atualização da WeDrop ainda não confirmada/);
+ assert.match(js,/stock\?\.reason\|\|'Não há dados completos de catálogo e disponibilidade/);
  assert.match(js,/kitDateTime\(stock\?\.catalogLastImportedAt\)/);
  assert.match(js,/kitDateTime\(stock\?\.lastSuccessAt\)/);
  assert.match(js,/setKitMode\('import',\{scroll:true\}\)/);
@@ -34,6 +34,6 @@ test('recálculo exige confirmação e mantém kit, SKUs, textos, fotos e vídeo
 test('sem estoque atual o fluxo não envia mídia nem solicita publicação',()=>{
  const routine=js.slice(js.indexOf('async function kitPublishGuideNext(){'),js.indexOf('async function kitPublishExecute(){'));
  assert.ok(routine.indexOf('if(kitDraftNeedsRefresh||!kitStockReady)')>=0);
- assert.ok(routine.indexOf('kitStockReady?')<routine.indexOf('kitSendPhotos()'));
+ assert.ok(routine.indexOf('if(!kitStockReady)')<routine.indexOf('kitSendPhotos()'));
  assert.doesNotMatch(routine,/kitPublishExecute\(\)|\/publish\/execute/);
 });
