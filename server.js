@@ -32,7 +32,7 @@ import {saveWeDropCosts,getWeDropCoverage,compareIncomingCosts,pendingWeDropMode
 import {saveWeDropProducts,readWeDropProduct} from './wedropCosts.js';
 import {kitCatalog,suggestKits,suggestKitsForIdea,rankKitIdeaProducts,assessKitBuyerFit,composeKit,kitCreative,kitPrompts,kitPlusResearchBrief,kitPlusContentPrompt,kitContentBrief,categoryMatches,modifyKitSkus,clearKitCatalogCache,kitSku} from './shopeeKitBuilder.js';
 import {saveKitStockImport,clearKitStockCache,parseWeDropAvailabilityCsv,readKitStockSnapshot} from './shopeeKitAvailability.js';
-import {saveKitDraft,listKitDrafts,loadKitDraft,deleteKitDraft} from './shopeeKitDraftStore.js';
+import {saveKitDraft,saveKitDraftLogistics,listKitDrafts,loadKitDraft,deleteKitDraft} from './shopeeKitDraftStore.js';
 import {recoverKitDraftForEditing,matchesStoredKitPhotos,validateStoredKitDraft} from './shopeeKitDraftRecovery.js';
 import {kitUploadPhoto,kitPublicationReadiness,kitPublicationPreview,kitPublishApproved,checkKitPublication,kitVideoPrepare,kitVideoAdvance,kitVideoStatus,kitVideoDiscard} from './shopeeKitPublicationService.js';
 import {previewKitDiscount,executeKitDiscount} from './shopeeKitDiscountService.js';
@@ -328,10 +328,20 @@ app.post('/api/shopee/kits/drafts/save',mustLogin,requireWeDropAdmin,async(req,r
   const creative={title:req.body.title,description:req.body.description,
    seoTitles:req.body.seoTitles,manualFacts:req.body.manualFacts,
    source:'rascunho revisado'};
-  const saved=await saveKitDraft(auth.shopId,{kit,creative});
+  const saved=await saveKitDraft(auth.shopId,{kit,creative,logistics:req.body?.logistics});
   res.json({ok:true,...saved,shopeePublished:false,stockRevalidationRequired,
    refreshedCosts:!stockRevalidationRequired});
  }catch(error){res.status(400).json({error:String(error.message||error).slice(0,260)});}
+});
+app.post('/api/shopee/kits/drafts/logistics',mustLogin,requireWeDropAdmin,async(req,res)=>{
+ res.setHeader('Cache-Control','no-store');
+ if(!verifiedSameOrigin(req))return res.status(403).json({error:'Origem não autorizada.'});
+ try{
+  const {auth}=await getValidAuth(req);
+  const result=await saveKitDraftLogistics(auth.shopId,
+   String(req.body?.kitSku||''),req.body?.logistics);
+  res.json({ok:true,...result,shopeePublished:false});
+ }catch(e){res.status(409).json({error:String(e.message||e).slice(0,400)});}
 });
 app.post('/api/shopee/kits/drafts/delete',mustLogin,requireWeDropAdmin,async(req,res)=>{
  res.setHeader('Cache-Control','no-store');
@@ -355,7 +365,7 @@ app.post('/api/shopee/kits/drafts/load',mustLogin,requireWeDropAdmin,async(req,r
   const review=await recoverKitDraftForEditing(stored,{
    shopId:auth.shopId,readStock:readKitStockSnapshot,compose:composeKit
   });
-  res.json({ok:true,kit:review.kit,creative:{...stored.creative,
+  res.json({ok:true,kit:review.kit,logistics:stored.logistics||null,creative:{...stored.creative,
    prompts:kitPrompts(review.kit,{manualFacts:stored.creative?.manualFacts||{}})},
    publication:stored.publication||{status:'local_draft',itemId:null},
    savedAt:stored.updatedAt,refreshedCosts:review.refreshedCosts,
