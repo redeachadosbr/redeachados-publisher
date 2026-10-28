@@ -31,7 +31,7 @@
 <link rel="stylesheet" href="/ads-premium.css?v=2.4.0-seo-ads-location">
 <link rel="stylesheet" href="/sidebar-collapse.css?v=1.0.0">
 <link rel="stylesheet" href="/optimizer-image-studio.css?v=1.0.2">
-<link rel="stylesheet" href="/kit-builder.css?v=3.7.6-formal-grid-two-columns">
+<link rel="stylesheet" href="/kit-builder.css?v=3.7.5-gallery-direct">
 <link rel="stylesheet" href="/optimizer-technical-studio.css?v=1.0.1-review-feedback">
 <style>
 /* Autorização >25%: campo compacto, sem o input global width:100%.
@@ -1181,7 +1181,7 @@
        <button id="kitPlusNextImagePrompt" type="button" class="kit-secondary">Copiar pedido da próxima imagem</button>
       </div>
      </div>
-     <p id="kitPlusGenerationStatus" class="kit-plus-generation-status" aria-live="polite">Para importar sem selecionar arquivos toda vez, ative a pasta monitorada abaixo antes de gerar.</p>
+     <p id="kitPlusGenerationStatus" class="kit-plus-generation-status" aria-live="polite">A Ponte ChatGPT importa automaticamente cada imagem na posição correta. Para ajustes manuais, use a galeria abaixo.</p>
     </div>
     <div class="kit-generation-mode kit-generation-auto" hidden>
      <strong>Gerar as 9 automaticamente — API de imagens</strong>
@@ -1195,23 +1195,7 @@
     </div>
    </div>
    <div class="kit-generation-progress" id="kitGenerationProgress" hidden><div class="kit-progress-track"><div id="kitGenerationProgressBar"></div></div><span id="kitGenerationProgressText">0 de 9 imagens</span></div>
-   <p class="kit-generation-note">A extensão existente deve confirmar o início para o kit. Cada imagem só libera a próxima após ser recebida e salva localmente. Se sua versão rejeitar kits, o sistema informa o erro e mantém os modos manual e pasta monitorada. Nenhuma imagem é enviada à Shopee sem revisão.</p>
-  </section>
-  <section class="kit-plus-gallery-transfer" aria-label="Importação de imagens do ChatGPT Plus">
-   <div class="kit-plus-gallery-title"><strong>Importação pela extensão, pasta ou arquivos</strong><span>Fotos da Ponte chegam automaticamente · você também pode arrastar e reordenar</span></div>
-   <div class="kit-plus-gallery-actions">
-    <div class="kit-plus-gallery-option">
-     <strong>Automática com pasta autorizada</strong>
-     <p>Escolha no Chrome uma pasta para os downloads. Ao salvar novas imagens do ChatGPT nessa pasta, elas serão importadas automaticamente nas posições vazias enquanto esta página estiver aberta. Acesso somente após sua permissão.</p>
-     <div class="kit-plus-gallery-buttons"><button id="kitWatchDownloads" type="button" class="kit-secondary">Ativar importação automática por pasta</button><button id="kitStopWatchDownloads" type="button" class="kit-secondary" hidden>Parar monitoramento</button></div>
-    </div>
-    <div class="kit-plus-gallery-option">
-     <strong>Manual · vários arquivos ou imagem copiada</strong>
-     <p>Importe 1 a 9 arquivos de uma vez, cole a imagem copiada pelo ChatGPT ou selecione um arquivo diretamente na posição. Aceita PNG, JPG e WebP.</p>
-     <div class="kit-plus-gallery-buttons"><button id="kitImportCopiedImage" type="button" class="kit-secondary">Colar imagem copiada</button><button id="kitImportImagesAlt" type="button" class="kit-secondary">Escolher arquivos</button></div>
-    </div>
-   </div>
-   <p id="kitAutoImportStatus" class="kit-auto-import-feedback" role="status" aria-live="polite">Nenhuma pasta monitorada. O Chrome não permite acessar automaticamente a aba do ChatGPT; a importação ocorre a partir das imagens que você salvar ou copiar.</p>
+   <p class="kit-generation-note">A extensão existente deve confirmar o início para o kit. Cada imagem só libera a próxima após ser recebida e salva localmente. Se sua versão rejeitar kits, o sistema informa o erro e mantém a importação manual disponível na galeria. Nenhuma imagem é enviada à Shopee sem revisão.</p>
   </section>
   <p id="kitImageDuoStatus" class="kit-image-duo-status" role="status" aria-live="polite">Aguardando a composição do kit.</p>
   <section class="kit-gallery-section" id="kitGallerySection" aria-label="Galeria de imagens do kit">
@@ -1229,7 +1213,7 @@
     <button id="kitSaveDraft" type="button" class="kit-secondary">Salvar rascunho ▾</button>
     <button id="kitDownloadPack" type="button" class="kit-secondary">Baixar ficha do kit e 9 prompts</button>
    </div>
-   <p id="kitImageStatus" class="kit-status" role="status" aria-live="polite">A Ponte ChatGPT existente pode gerar e entregar imagens do kit automaticamente. Se a versão instalada não reconhecer kits, use a importação manual ou por pasta até atualizar a extensão. As fotos exigem conferência antes de enviar à Shopee.</p>
+   <p id="kitImageStatus" class="kit-status" role="status" aria-live="polite">A Ponte ChatGPT existente pode gerar e entregar imagens do kit automaticamente. Se a versão instalada não reconhecer kits, utilize Importar 1–9 imagens ou Escolher arquivo em cada posição. As fotos exigem conferência antes de enviar à Shopee.</p>
   </section>
   <dialog id="kitGalleryPreview" class="kit-gallery-preview" aria-label="Visualizar imagens do kit">
    <div class="kit-gallery-preview-header"><strong>Visualizar fotos do kit</strong><button id="kitGalleryClosePreview" type="button" class="kit-secondary">Fechar ✕</button></div>
@@ -2240,7 +2224,7 @@
 <script src="/technical-memory.js?v=1.0.1-live-sku-preload"></script>
 <script src="/technical-status.js?v=1.0.0-optional-coherence"></script>
 <script src="/app.js?v=3.4.0-kit-extension-guard"></script>
-<script type="module" src="/kit-builder.js?v=3.7.4-persistent-catalog"></script>
+<script type="module" src="/kit-builder.js?v=3.7.5-gallery-direct"></script>
 <link rel="stylesheet" href="/optimizer-variations.css?v=1.2.1-single-flow">
 <script src="/optimizer-variations.js?v=1.2.3-single-flow"></script>
 
