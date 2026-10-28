@@ -32,7 +32,8 @@ import {saveWeDropCosts,getWeDropCoverage,compareIncomingCosts,pendingWeDropMode
 import {saveWeDropProducts,readWeDropProduct} from './wedropCosts.js';
 import {kitCatalog,suggestKits,suggestKitsForIdea,rankKitIdeaProducts,assessKitBuyerFit,composeKit,kitCreative,kitPrompts,kitPlusResearchBrief,kitPlusContentPrompt,kitContentBrief,categoryMatches,modifyKitSkus,clearKitCatalogCache,kitSku} from './shopeeKitBuilder.js';
 import {saveKitStockImport,clearKitStockCache,parseWeDropAvailabilityCsv,readKitStockSnapshot} from './shopeeKitAvailability.js';
-import {saveKitDraft,saveKitDraftLogistics,listKitDrafts,loadKitDraft,deleteKitDraft} from './shopeeKitDraftStore.js';
+import {saveKitDraft,saveKitDraftLogistics,listKitDrafts,loadKitDraft,deleteKitDraft,recordKitOptimization} from './shopeeKitDraftStore.js';
+import {validateKitOptimizationTarget,kitOptimizationLinkIsCurrent} from './shopeeKitOptimization.js';
 import {recoverKitDraftForEditing,matchesStoredKitPhotos,validateStoredKitDraft} from './shopeeKitDraftRecovery.js';
 import {kitUploadPhoto,kitPublicationReadiness,kitPublicationPreview,kitPublishApproved,checkKitPublication,kitVideoPrepare,kitVideoAdvance,kitVideoStatus,kitVideoDiscard} from './shopeeKitPublicationService.js';
 import {previewKitDiscount,executeKitDiscount} from './shopeeKitDiscountService.js';
@@ -367,7 +368,7 @@ app.post('/api/shopee/kits/drafts/load',mustLogin,requireWeDropAdmin,async(req,r
   });
   res.json({ok:true,kit:review.kit,logistics:stored.logistics||null,creative:{...stored.creative,
    prompts:kitPrompts(review.kit,{manualFacts:stored.creative?.manualFacts||{}})},
-   publication:stored.publication||{status:'local_draft',itemId:null},
+   publication:stored.publication||{status:'local_draft',itemId:null},optimization:stored.optimization||null,
    savedAt:stored.updatedAt,refreshedCosts:review.refreshedCosts,
    stockRevalidationRequired:review.stockRevalidationRequired,
    stockReason:review.stockReason,requiresReview:true});
@@ -1460,6 +1461,81 @@ app.get('/api/shopee/optimizer/audit',mustLogin,requireWeDropAdmin,async(req,res
     res.json({ok:true,readOnly:true,record});
   }catch(e){res.status(400).json({error:String(e.message||e).slice(0,320)});}
 });
+// Preparação do anúncio de KIT já existente na Shopee. Sem publicação/criação.
+app.post('/api/shopee/kits/optimization/prepare',mustLogin,requireWeDropAdmin,async(req,res)=>{
+ res.setHeader('Cache-Control','no-store');
+ if(!verifiedSameOrigin(req))return res.status(403).json({error:'Origem não autorizada.'});
+ try{
+  const {auth,cfg}=await getValidAuth(req),body=req.body||{};
+  const kitSku=String(body.kitSku||'').trim(),sku=validateSkuLookup(body.sku);
+  const itemId=validItemId(body.itemId),modelId=String(body.modelId??'0');
+  if(!/^\d{1,18}$/.test(modelId))throw Error('Modelo Shopee inválido.');
+  const saved=await loadKitDraft(auth.shopId,kitSku);
+  if(!saved?.kit)throw Error('Salve o rascunho do kit antes de vincular um anúncio.');
+  const kit=await composeKit(auth.shopId,saved.skus,{
+   marginPct:Number(saved.kit.quote?.targetMarginPct??15),
+   packing:Number(saved.kit.packing||0),shipping:Number(saved.kit.shipping||0)
+  });
+  const record=await auditShopeeItem(cfg,auth,callShopeeShopApi,itemId,{
+   expectedSku:sku,expectedModelId:modelId
+  });
+  const link=validateKitOptimizationTarget({saved,kit,record,targetSku:sku,itemId,
+   modelId,mainSku:body.mainSku,confirmedItemId:body.confirmedItemId});
+  const prior=await getWorkflowReview(auth.shopId,itemId,modelId);
+  if(prior?.sku&&prior.sku!==sku)throw Error('O Item ID pertence a outra SKU.');
+  if(prior?.review_state?.kitOptimization?.kitSku&&
+   prior.review_state.kitOptimization.kitSku!==kitSku)
+   throw Error('Este anúncio já pertence à otimização de outro kit.');
+  const job=await readShopeeExecution(auth.shopId,itemId,modelId);
+  if(['running','uncertain'].includes(job?.state))
+   throw Error('Execução já iniciada ou sem confirmação. Confira o progresso.');
+  if(saved.optimization?.itemId&&saved.optimization.itemId!==String(itemId))
+   throw Error('O kit está vinculado a outro Item ID; confira antes de trocar.');
+  await recordKitOptimization(auth.shopId,kitSku,link);
+  await saveWorkflowReview(auth.shopId,itemId,modelId,sku,{
+   stage:'seo',reviewed:false,title:link.title,titleOrigin:'kit-wedrop',
+   kitOptimization:link,resetKitStages:true
+  });
+  await saveWorkflowReview(auth.shopId,itemId,modelId,sku,{
+   stage:'description',reviewed:false,description:link.description,descriptionOrigin:'kit-wedrop'
+  });
+  const n=[...link.title].length;
+  res.json({ok:true,prepared:true,marketplaceUpdated:false,
+   target:{sku,itemId:String(itemId),modelId,mainSku:link.mainSku,title:record.title,status:record.status},
+   quote:{componentCost:link.componentCost,kitCost:link.kitCost,
+    grossPrice:link.grossPrice,promoPrice:link.promoPrice},
+   warnings:n<100||n>120?['Título com '+n+' caracteres: ajustar para 100–120 na revisão SEO.']:[],
+   message:'Anúncio existente vinculado; textos preparados sem modificar a Shopee.'});
+ }catch(e){res.status(409).json({error:String(e.message||e).slice(0,340)});}
+});
+app.post('/api/shopee/kits/optimization/image',mustLogin,requireWeDropAdmin,
+ express.raw({type:['image/png','image/jpeg'],limit:MAX_IMAGE_BYTES}),async(req,res)=>{
+ res.setHeader('Cache-Control','no-store');
+ if(!verifiedSameOrigin(req))return res.status(403).json({error:'Origem não autorizada.'});
+ try{
+  const {auth,cfg}=await getValidAuth(req),kitSku=String(req.query.kit_sku||'').trim();
+  const saved=await loadKitDraft(auth.shopId,kitSku),link=saved?.optimization;
+  if(!kitOptimizationLinkIsCurrent(saved,link))
+   throw Error('Vínculo ou conteúdo do kit alterado; prepare novamente.');
+  const slot=Number(req.query.slot);
+  if(!Number.isInteger(slot)||slot<1||slot>9)throw Error('Posição inválida, escolha 1 a 9.');
+  const job=await readShopeeExecution(auth.shopId,link.itemId,link.modelId);
+  if(['running','uncertain'].includes(job?.state))
+   throw Error('Execução pendente; importação bloqueada até confirmação.');
+  const record=await auditShopeeItem(cfg,auth,callShopeeShopApi,link.itemId,{
+   expectedSku:link.sku,expectedModelId:link.modelId
+  });
+  if(!['NORMAL','UNLIST'].includes(String(record.status).toUpperCase()))
+   throw Error('O anúncio não está editável na Shopee.');
+  const image=await importPreparedImage({shopId:auth.shopId,itemId:link.itemId,
+   modelId:link.modelId,sku:link.sku,slot,file:req.body,
+   mime:String(req.get('content-type')||'').split(';')[0],filename:'kit-'+kitSku+'-'+slot});
+  await saveWorkflowReview(auth.shopId,link.itemId,link.modelId,link.sku,{
+   stage:'images',reviewed:false
+  });
+  res.status(201).json({ok:true,image,slot,requiresReview:true,marketplaceUpdated:false});
+ }catch(e){res.status(409).json({error:String(e.message||e).slice(0,340)});}
+});
 // Stage reviews are internal Shopee records. No marketplace API writes.
 async function checkedWorkflowAudit(req){
   const itemId=validItemId(req.query?.item_id??req.body?.itemId);
@@ -1469,6 +1545,12 @@ async function checkedWorkflowAudit(req){
   const {auth,cfg}=await getValidAuth(req);
   const record=await auditShopeeItem(cfg,auth,callShopeeShopApi,itemId,
     {expectedSku:sku,expectedModelId:modelId});
+  const linked=(await getWorkflowReview(auth.shopId,itemId,modelId))?.review_state?.kitOptimization;
+  if(linked){
+   const kit=await loadKitDraft(auth.shopId,linked.kitSku);
+   if(!kitOptimizationLinkIsCurrent(kit,linked))
+    throw Error('Kit, custos ou vínculo mudaram. Volte aos Kits e prepare novamente.');
+  }
   return {itemId,modelId,sku,auth,cfg,record};
 }
 
@@ -1531,8 +1613,10 @@ app.get('/api/shopee/optimizer/workflow',mustLogin,requireWeDropAdmin,async(req,
         technicalPreview=attributeAuditForChanges(review.attributes,record,current);
       }catch(e){technicalWarning=String(e.message||e).slice(0,220);}
     }
+    const primarySku=review.kitOptimization?.mainSku||sku;
     const [supplier,settings]=await Promise.all([
-      readWeDropProduct(auth.shopId,{sku,itemId,modelId}),optimizerSettings(auth.shopId)]);
+      readWeDropProduct(auth.shopId,primarySku===sku?{sku,itemId,modelId}:{sku:primarySku}),
+      optimizerSettings(auth.shopId)]);
     // Somente a WeDrop desta SKU pode definir o CEST interno, nunca a API Shopee.
     // Corrigir também revisões fiscais antigas gravadas com CEST de outra origem.
     const sourceCest=wedropCestForSku(supplier);
@@ -1651,6 +1735,7 @@ app.get('/api/shopee/optimizer/workflow',mustLogin,requireWeDropAdmin,async(req,
       variationConfig:review.variationConfig||officialVariationConfig,
       hasShopeeModels:Boolean(record.hasModel),shopeeModels:record.models||[],
       shopeeVariationTiers:record.variationTiers||[],imageNotes:review.imageNotes||{},imagePrompts:review.imagePrompts||{},
+      kitOptimization:review.kitOptimization||null,
       draftTitle:review.draftTitle||safeTitle(record.title),
       draftDescription:finalDescription,
       descriptionAutoGenerated:!review.draftDescription||review.descriptionOrigin==='auto-refreshed',
@@ -1909,7 +1994,10 @@ app.post('/api/shopee/optimizer/workflow/review',mustLogin,requireWeDropAdmin,as
       compileAttributes(valid,record,live);
     }else if(change.attributes)compileAttributes(change.attributes,record,await shopeeLiveEditableItem(cfg,auth,itemId));
     // Nunca aceitar no salvamento um CEST copiado da Shopee ou digitado sem a WeDrop.
-    const taxSupplier=change.tax?await readWeDropProduct(auth.shopId,{sku,itemId,modelId}):null;
+    const linkedKit=(await getWorkflowReview(auth.shopId,itemId,modelId))?.review_state?.kitOptimization;
+    const fiscalSku=linkedKit?.mainSku||sku;
+    const taxSupplier=change.tax?await readWeDropProduct(auth.shopId,
+      fiscalSku===sku?{sku,itemId,modelId}:{sku:fiscalSku}):null;
     if(change.tax)change.tax={...change.tax,cest:wedropCestForSku(taxSupplier)};
     if(change.stage==='fiscal'&&change.reviewed){
       const supplier=taxSupplier;
