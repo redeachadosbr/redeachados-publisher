@@ -71,8 +71,8 @@ async function readNumericColumns(file,worker,recognized,progress){
   for(const field of fields){
    if(already[field.key]!==undefined)continue;
    const canvas=document.createElement('canvas');
-   canvas.width=Math.round(field.width*3);
-   canvas.height=Math.round(field.height*3);
+   canvas.width=Math.round(field.width*4);
+   canvas.height=Math.round(field.height*4);
    const ctx=canvas.getContext('2d',{willReadFrequently:true});
    if(!ctx)continue;
    ctx.imageSmoothingEnabled=true;
