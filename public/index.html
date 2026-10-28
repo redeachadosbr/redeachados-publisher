@@ -1219,7 +1219,43 @@
    <div class="kit-gallery-preview-header"><strong>Visualizar fotos do kit</strong><button id="kitGalleryClosePreview" type="button" class="kit-secondary">Fechar ✕</button></div>
    <div id="kitGalleryPreviewImages" class="kit-gallery-preview-images"></div>
   </dialog>
-  <section class="kit-publish-panel kit-formal-redesign" id="kitPublishPanel" aria-label="Criar Kit Formal na Shopee">
+  <section class="kit-publish-panel" id="kitOptimizeExistingPanel" aria-label="Otimizar anúncio existente do kit">
+   <div class="kit-formal-header">
+    <div class="kit-bar kit-section-heading"><span class="kit-heading-icon kit-icon-orange">✦</span>
+     <div class="kit-section-heading-text"><h3>Otimizar kit já cadastrado na Shopee</h3>
+      <p>O anúncio já está em Produtos. Reutilize os textos, imagens e componentes deste kit na Otimização, sem criar outro anúncio.</p>
+     </div>
+    </div>
+   </div>
+   <div class="kit-publish-steps">
+    <div><b>01</b><span>Salvar kit</span></div><div><b>02</b><span>Localizar anúncio</span></div>
+    <div><b>03</b><span>Preparar conteúdos</span></div><div><b>04</b><span>Revisar imagens</span></div>
+    <div><b>05</b><span>Prévia e execução</span></div>
+   </div>
+   <div class="kit-publish-fields">
+    <label>SKU do anúncio de KIT já existente em Produtos Shopee
+      <input id="kitOptimizeListingSku" maxlength="120" autocomplete="off" placeholder="Ex.: KIT-278CHOCALHO-310200">
+    </label>
+    <label>SKU principal WeDrop — referência técnica e fiscal
+      <select id="kitOptimizeMainSku"><option value="">Selecione</option></select>
+    </label>
+   </div>
+   <div class="kit-actions"><button type="button" id="kitOptimizeLookup" class="kit-secondary">1. Localizar anúncio existente</button></div>
+   <div id="kitOptimizeCandidates" class="kit-components" role="group" aria-label="Selecionar Item ID e modelo da Shopee"></div>
+   <p id="kitOptimizeSelected" class="kit-status">Nenhum anúncio selecionado. Confira qual Item ID contém o conjunto.</p>
+   <label class="kit-inline-checkbox"><input type="checkbox" id="kitOptimizeConfirm">
+     Confirmei que o Item ID selecionado é o anúncio do KIT com todos os componentes — não um anúncio individual.
+   </label>
+   <div class="kit-actions">
+    <button type="button" id="kitOptimizePrepare" class="kit-primary" disabled>2. Preparar otimização deste kit</button>
+    <button type="button" id="kitOptimizeImages" class="kit-secondary" disabled>3. Importar as 9 imagens para revisão</button>
+    <button type="button" id="kitOptimizeOpen" class="kit-primary" disabled>4. Abrir revisão, prévia e execução →</button>
+   </div>
+   <p id="kitOptimizeStatus" class="kit-status" role="status" aria-live="polite">
+    A preparação não altera a Shopee. A revisão, o desconto e a execução requerem as confirmações do otimizador.
+   </p>
+  </section>
+  <section class="kit-publish-panel kit-formal-redesign" id="kitPublishPanel" hidden aria-label="Criar Kit Formal na Shopee">
    <div class="kit-formal-header">
  <div class="kit-bar kit-section-heading"><span class="kit-heading-icon kit-icon-orange">🛒</span><div class="kit-section-heading-text"><h3>Criar Kit Formal na Shopee</h3><p>Siga o passo a passo para publicar seu kit na Shopee com segurança.</p></div></div>
  <p class="kit-info kit-formal-notice">Primeiro confirme os componentes da Shopee e a logística. Salve o rascunho; depois envie as fotos e o vídeo opcional, confira a prévia e autorize a publicação. A promoção só poderá ser preparada DEPOIS que a Shopee confirmar o novo Item ID.</p>
@@ -2223,8 +2259,8 @@
 <script src="/fiscal-modern-layout.js?v=1.0.1-fiscal-cards"></script>
 <script src="/technical-memory.js?v=1.0.1-live-sku-preload"></script>
 <script src="/technical-status.js?v=1.0.0-optional-coherence"></script>
-<script src="/app.js?v=3.4.0-kit-extension-guard"></script>
-<script type="module" src="/kit-builder.js?v=3.7.5-gallery-direct"></script>
+<script src="/app.js?v=3.4.1-kit-optimize-handoff"></script>
+<script type="module" src="/kit-builder.js?v=3.8.0-optimize-existing-kit"></script>
 <link rel="stylesheet" href="/optimizer-variations.css?v=1.2.1-single-flow">
 <script src="/optimizer-variations.js?v=1.2.3-single-flow"></script>
 

@@ -32,14 +32,15 @@ export async function saveWorkflowReview(shop,item,model,sku,change){
  const newKit=change.kitOptimization&&(
   !state.kitOptimization||state.kitOptimization.kitSku!==change.kitOptimization.kitSku||
   state.kitOptimization.itemId!==change.kitOptimization.itemId);
- const stages=newKit&&change.resetKitStages?{}:{...(state.stages||{})};
+ const stages=change.resetKitStages?{}:{...(state.stages||{})};
  if(change.stage)stages[change.stage]={reviewed:change.reviewed,
   reviewedAt:change.reviewed?new Date().toISOString():null};
  const next={...state,stages};
  if(change.kitOptimization!==undefined)next.kitOptimization=change.kitOptimization;
- if(newKit&&change.resetKitStages){
+ if(change.resetKitStages){
   next.attributes=[];next.tax=null;next.imagesSignature=null;
   next.technicalDraft=null;next.matrixFiscal=null;next.matrixTechnical=null;
+  next.modelDiscountCampaignId='';
  }
  if(change.assetSha256!==undefined)next.videoSha256=change.assetSha256;
  if(change.attributes!==undefined)next.attributes=change.attributes;
