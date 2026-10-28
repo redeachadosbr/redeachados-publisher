@@ -10,6 +10,7 @@ import {recognizeKitLogisticsPrint} from './kit-logistics-ocr.js?v=3-ocr-columns
 import {kitImagesLookDuplicated} from './kit-image-guard.js';
 import {createKitVideoStore,kitVideoFileCheck,kitVideoMetaCheck} from './kit-video-store.js';
 import {createKitLogisticsPersistence} from './kit-logistics-draft-ui.js';
+import {initExistingKitOptimization} from './kit-existing-optimization.js';
 // Kits Inteligentes WeDrop — Kit Formal enviado à Shopee somente após aprovação explícita.
 const $=s=>document.querySelector(s);
 const money=n=>Number(n).toLocaleString('pt-BR',{style:'currency',currency:'BRL'});
@@ -49,6 +50,10 @@ function setKitMode(next,{scroll=false}={}){
  if(scroll)$('#kitMode'+(next==='import'?'Import':'Builder')).scrollIntoView({behavior:'smooth',block:'start'});
 }
 let kitStockReady=false,kitStockLastCheck=null;
+const kitExistingOptimizer=initExistingKitOptimization({
+ getContext:()=>({prepared,kitSaved,images,kitPhotoStore}),
+ api,money
+});
 let kitUnifiedState=null;
 let kitPublishToken=null,kitDiscountToken=null,kitSaved=false,kitPublishBusy=false,kitReadiness=null,kitShopeePhotoSlots=new Map(),kitItemId=null;
 const kitLogisticsKeeper=createKitLogisticsPersistence({
@@ -474,6 +479,7 @@ function resetKitPublication({saved=false,publication=null}={}){
  kitSaved=saved;kitPublishBusy=false;kitReadiness=null;kitShopeePhotoSlots.clear();
  clearKitPublishApproval();
  kitItemId=publication?.itemId||null;
+ kitExistingOptimizer.restore(prepared?.optimization||null);
  const uncertain=['publishing','uncertain','published_pending','published']
   .includes(String(publication?.status||''));
  const commercialBlocked=uncertain||kitDraftNeedsRefresh;
