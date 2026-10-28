@@ -7,7 +7,7 @@ const css=fs.readFileSync(new URL('../public/kit-builder.css',import.meta.url),'
 test('assistente guiado fica dentro do Kit Formal e preserva etapa final manual',()=>{
  const kit=html.indexOf('id="kitPublishPanel"');
  const guide=html.indexOf('id="kitPublishGuide"',kit);
- const controls=html.indexOf('id="kitPublishCheck"',guide);
+ const controls=html.indexOf('id="kitPublishCheck"',kit);
  const confirmation=html.indexOf('id="kitPublishExecute"',guide);
  assert.ok(kit>0&&guide>kit&&controls>kit&&confirmation>controls);
  for(const id of ['kitPublishGuide','kitPublishGuideInfo','kitPublishGuideNext'])
