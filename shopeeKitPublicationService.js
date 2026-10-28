@@ -44,8 +44,19 @@ function summaryVideo(state){
   duration:state.duration,filename:state.filename};
 }
 export function kitVideoStatus(shopId,kitSku){return summaryVideo(activeKitVideo(shopId,kitSku));}
+// Preparar vídeo é operação de mídia, não publicação. Não exigir preço/estoque
+// renovados aqui: a validação estrita continua na prévia/publicação do kit.
+async function checkedKitVideoDraft(auth,kitSku){
+ const saved=await loadKitDraft(auth.shopId,kitSku);
+ if(!saved?.kit||saved.kit.kitSku!==kitSku)
+  throw Error('Salve primeiro o rascunho do kit para enviar o vídeo.');
+ const status=String(saved.publication?.status||'local_draft');
+ if(saved.publication?.itemId||status!=='local_draft')
+  throw Error('Kit já enviado ou com publicação pendente; confira Meus Kits.');
+ return saved;
+}
 export async function kitVideoPrepare({auth,kitSku,buffer,filename}){
- await checkedDraft(auth,kitSku);
+ await checkedKitVideoDraft(auth,kitSku);
  if(!Buffer.isBuffer(buffer)||buffer.length<1000||buffer.length>MAX_VIDEO_BYTES)
   throw Error('O vídeo deve ter até 30 MB.');
  const normalized=await normalizeManualVideo(buffer);
@@ -59,7 +70,7 @@ export async function kitVideoPrepare({auth,kitSku,buffer,filename}){
  return summaryVideo(kitVideos.get(k));
 }
 export async function kitVideoAdvance({cfg,auth,kitSku}){
- await checkedDraft(auth,kitSku);
+ await checkedKitVideoDraft(auth,kitSku);
  const record=activeKitVideo(auth.shopId,kitSku);
  if(!record)throw Error('Vídeo temporário não encontrado. Reenvie o arquivo salvo no navegador.');
  if(record.busy)throw Error('O envio de vídeo já está processando uma etapa. Aguarde.');
