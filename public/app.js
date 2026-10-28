@@ -2527,6 +2527,8 @@ async function optimizerFindSku({deep=false}={}){
 $('#optimizerFind').onclick=()=>void optimizerFindSku();
 $('#optimizerSku')?.addEventListener?.('input',event=>{
  const value=$('#optimizerSku').value.trim();
+ if(globalThis.__RA_KIT_OPTIMIZATION_HANDOFF?.sku!==value)
+  globalThis.__RA_KIT_OPTIMIZATION_HANDOFF=null;
  if(optimizerSkuInputTimer)clearTimeout(optimizerSkuInputTimer);
  ++optimizerSkuLookupSerial;
  optimizerCancelSkuLookup();
@@ -2599,6 +2601,23 @@ function adsFillOptimizerSku(value){
  return true;
 }
 globalThis.redeAdsOpenOptimizerSku=adsFillOptimizerSku;
+// Entrar na otimização do anúncio do Kit já existente, sem criar novo Item ID.
+globalThis.redeKitOpenOptimizerTarget=({sku,itemId,modelId='0',kitSku}={})=>{
+ const code=String(sku||'').trim(),id=String(itemId||'').trim();
+ if(!code||!/^[1-9]\d{0,17}$/.test(id))return false;
+ globalThis.__RA_KIT_OPTIMIZATION_HANDOFF={sku:code,itemId:id,
+  modelId:String(modelId||'0'),kitSku:String(kitSku||'')};
+ setTab('optimizer');
+ const field=$('#optimizerSku');
+ if(!field)return false;
+ field.value=code;
+ field.dispatchEvent(new CustomEvent('input',{bubbles:true,detail:{onlyPrefill:true}}));
+ $('#optimizerItemId').value=id;
+ optimizerNotice('Kit '+String(kitSku||'')+' aberto para revisar o Item ID '+id+
+  '. O preço precisa considerar todos os componentes WeDrop, não a SKU individual.','info');
+ void optimizerRunAudit(id,code,String(modelId||'0'));
+ return true;
+};
 globalThis.redeAdsPrepareReserve=(sku,percent)=>{
  const pct=Number(percent);
  if(!Number.isFinite(pct)||pct<=0||pct>40)return false;
@@ -5602,7 +5621,9 @@ async function optimizerRunAudit(itemId,sku,modelId=''){
     $('#priceResults').hidden=true;
     $('#optimizerQuickValues').hidden=true;
     $('#optimizerQuickStatus').textContent='Conferindo o custo WeDrop e calculando o preço bruto da SKU '+expectedSku+'...';
-    void shPriceLoadDefaults().then(()=>{
+    if(globalThis.__RA_KIT_OPTIMIZATION_HANDOFF?.sku===expectedSku){
+      $('#optimizerQuickStatus').textContent='Kit WeDrop: os preços e margens devem incluir TODOS os componentes; precificação isolada não será executada.';
+    }else     void shPriceLoadDefaults().then(()=>{
       const pending=adsReserveRequest;
       if(pending&&pending.sku===expectedSku){
         // Só depois que o usuário buscar e a Shopee confirmar a SKU.
