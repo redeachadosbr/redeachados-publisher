@@ -5,6 +5,7 @@ import {kitImageFilenameSlot,kitImageNextSlot,kitPlanImageImports,kitMoveImage} 
 import {buildKitPlusImageBrief,kitPlusPromptLink} from './kit-plus-image-brief.js';
 import {createKitPhotoStore} from './kit-extension-bridge.js';
 import {createKitExtensionController} from './kit-extension-runtime.js';
+import {kitImagesLookDuplicated} from './kit-image-guard.js';
 // Kits Inteligentes WeDrop — Kit Formal enviado à Shopee somente após aprovação explícita.
 const $=s=>document.querySelector(s);
 const money=n=>Number(n).toLocaleString('pt-BR',{style:'currency',currency:'BRL'});
@@ -1099,7 +1100,10 @@ function kitImagePromptAt(slot){
    '; medidas extraídas somente do texto desta SKU, ainda NÃO verificadas: '+
    (found.length?found.map(x=>x.value).join(' · '):'nenhuma com unidade explícita');
  }).join('\n');
- return original+'\n\nREGRA FINAL INEGOCIÁVEL PARA ESTA IMAGEM: mostrar TODOS os '+components.length+
+ return original+'\n\n'+(slot===2?
+   'ESTA É A IMAGEM 02 (USO REAL), NÃO A CAPA 01: gerar uma cena inédita, com NOVO enquadramento, outro ângulo e interação visível com os brinquedos. NÃO reproduzir a composição, pose, câmera ou imagem anterior.':
+   slot>=3?'GERAR UMA FOTO NOVA E DIFERENTE DAS POSIÇÕES ANTERIORES: nunca reaproveitar a mesma cena, criança, pose, perspectiva ou resultado já entregue; seguir exatamente a finalidade da posição '+String(slot).padStart(2,'0')+'.':'')+
+   '\n\nREGRA FINAL INEGOCIÁVEL PARA ESTA IMAGEM: mostrar TODOS os '+components.length+
   ' produtos juntos na MESMA foto, SEM colagem, SEM mosaico, SEM fotos individuais. '+ 
   (components.length===2?'Os dois produtos formam uma DUPLA e ambos aparecem inteiros, lado a lado ou num mesmo contexto realista. ':'')+
   'Dimensões e informações pertencem SOMENTE à SKU descrita. Medidas fornecidas pelo vendedor dependem de conferência antes de serem escritas em imagens:\n'+measurements;
@@ -1959,6 +1963,16 @@ function kitExtensionStatus(message,state='info'){
  if(element){element.textContent=message;element.dataset.state=state;}
  imageStatus(message,state);
 }
+async function kitPictureSample(dataUrl){
+ const bitmap=await createImageBitmap(await (await fetch(dataUrl)).blob());
+ try{
+  const c=document.createElement('canvas');c.width=20;c.height=20;
+  const ctx=c.getContext('2d',{willReadFrequently:true});
+  if(!ctx)throw Error('Sem contexto de comparação visual.');
+  ctx.drawImage(bitmap,0,0,20,20);
+  return ctx.getImageData(0,0,20,20).data;
+ }finally{bitmap.close();}
+}
 function getKitExtensionBridge(){
  if(kitBridgeController)return kitBridgeController;
  kitBridgeController=createKitExtensionController({
@@ -1966,6 +1980,19 @@ function getKitExtensionBridge(){
   getPrompts:()=>Array.from({length:9},(_,i)=>kitImagePromptAt(i+1)),
   getImages:()=>images,
   onPhoto:async({slot,dataUrl,kitSku})=>{
+   // Evitar usar a própria capa como imagem 02 ou reaproveitar uma foto já aceita.
+   if(prepared?.kit?.kitSku!==kitSku)throw Error('O kit mudou durante a recuperação.');
+   if(slot>1&&images.size){
+    const sample=await kitPictureSample(dataUrl);
+    for(const [other,old] of images){
+     if(other===slot)continue;
+     const previous=await kitPictureSample(old);
+     if(kitImagesLookDuplicated(sample,previous))
+      throw Error('FOTO REPETIDA OU QUASE IDÊNTICA À POSIÇÃO '+
+       String(other).padStart(2,'0')+'. A imagem '+String(slot).padStart(2,'0')+
+       ' não foi importada. Na Ponte, use Excluir da lista e gere uma cena diferente para esta posição.');
+    }
+   }
    const blob=await(await fetch(dataUrl)).blob();
    if(blob.size>12*1024*1024||!/^image\/(?:png|jpeg|webp)$/.test(blob.type))
     throw Error('Arquivo devolvido pela extensão não é imagem válida.');
