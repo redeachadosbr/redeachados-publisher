@@ -1251,6 +1251,18 @@
     <button type="button" id="kitOptimizeImages" class="kit-secondary" disabled>3. Importar as 9 imagens para revisão</button>
     <button type="button" id="kitOptimizeOpen" class="kit-primary" disabled>4. Abrir revisão, prévia e execução →</button>
    </div>
+   <section class="kit-publish-preview" aria-label="Minha Promoção do anúncio existente">
+    <h4>5. Desconto do kit no anúncio existente</h4>
+    <p class="kit-info">Depois de executar e confirmar a otimização, use a campanha Minha Promoção existente. O sistema considera o custo de todos os componentes do kit e exige prévia antes de alterar o desconto.</p>
+    <div class="kit-publish-fields"><label>ID da Minha Promoção Shopee
+     <input id="kitOptimizeDiscountId" type="text" inputmode="numeric" autocomplete="off" placeholder="ID da campanha"></label></div>
+    <div class="kit-actions"><button type="button" class="kit-secondary" id="kitOptimizeDiscountPreview" disabled>Preparar prévia do desconto</button></div>
+    <div id="kitOptimizeDiscountBox" class="kit-publish-preview" hidden>
+     <pre id="kitOptimizeDiscountSummary"></pre>
+     <button type="button" class="kit-primary" id="kitOptimizeDiscountApply">Confirmar e aplicar desconto ao kit</button>
+    </div>
+    <p class="kit-status" id="kitOptimizeDiscountStatus" role="status" aria-live="polite">Nenhum desconto aplicado. Execute e confirme a otimização antes de preparar esta etapa.</p>
+   </section>
    <p id="kitOptimizeStatus" class="kit-status" role="status" aria-live="polite">
     A preparação não altera a Shopee. A revisão, o desconto e a execução requerem as confirmações do otimizador.
    </p>
@@ -2260,7 +2272,7 @@
 <script src="/technical-memory.js?v=1.0.1-live-sku-preload"></script>
 <script src="/technical-status.js?v=1.0.0-optional-coherence"></script>
 <script src="/app.js?v=3.4.1-kit-optimize-handoff"></script>
-<script type="module" src="/kit-builder.js?v=3.8.0-optimize-existing-kit"></script>
+<script type="module" src="/kit-builder.js?v=3.8.1-kit-discount"></script>
 <link rel="stylesheet" href="/optimizer-variations.css?v=1.2.1-single-flow">
 <script src="/optimizer-variations.js?v=1.2.3-single-flow"></script>
 

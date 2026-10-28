@@ -1,7 +1,7 @@
 // Interface de otimização de um anúncio de kit já existente. Preparação nunca publica.
 const $=selector=>document.querySelector(selector);
 export function initExistingKitOptimization({getContext,api,money}){
- let target=null,busy=false;
+ let target=null,busy=false,discountToken=null;
  const ctx=()=>getContext(),kitSku=()=>ctx().prepared?.kit?.kitSku||'';
  function notice(message,state='info'){
   const el=$('#kitOptimizeStatus');if(el){el.textContent=message;el.dataset.state=state;}
@@ -12,9 +12,11 @@ export function initExistingKitOptimization({getContext,api,money}){
   $('#kitOptimizePrepare').disabled=busy||!kitSaved||!valid||!$('#kitOptimizeConfirm').checked;
   $('#kitOptimizeImages').disabled=busy||!kitSaved||!valid||!target.prepared;
   $('#kitOptimizeOpen').disabled=busy||!kitSaved||!valid||!target.prepared;
+  $('#kitOptimizeDiscountPreview').disabled=busy||!kitSaved||!valid||!target.prepared;
  }
  function restore(link=null){
   target=link?.itemId?{...link,prepared:true}:null;
+  discountToken=null;$('#kitOptimizeDiscountBox').hidden=true;
   const select=$('#kitOptimizeMainSku');
   select.replaceChildren(new Option('Selecione o SKU principal',''));
   for(const x of ctx().prepared?.kit?.components||[])
@@ -33,7 +35,8 @@ export function initExistingKitOptimization({getContext,api,money}){
   const {kitSaved}=ctx(),code=$('#kitOptimizeListingSku').value.trim(),current=kitSku();
   if(busy||!kitSaved||!current)return;
   if(!code)return notice('Informe a SKU exata do anúncio existente.','error');
-  busy=true;target=null;$('#kitOptimizeConfirm').checked=false;paint();
+  busy=true;target=null;discountToken=null;$('#kitOptimizeDiscountBox').hidden=true;
+  $('#kitOptimizeConfirm').checked=false;paint();
   const root=$('#kitOptimizeCandidates');root.replaceChildren();
   notice('Consultando a SKU '+code+' no catálogo Shopee...');
   try{
@@ -73,6 +76,7 @@ export function initExistingKitOptimization({getContext,api,money}){
    }});
    if(kitSku()!==current)return;
    target={kitSku:current,...result.target,prepared:true};
+   discountToken=null;$('#kitOptimizeDiscountBox').hidden=true;
    notice('✓ Item ID '+result.target.itemId+' vinculado. Custo total do kit: '+
     money(result.quote.kitCost)+'. Revise o título, as imagens e os campos fiscais. '+
     (result.warnings||[]).join(' '),'success');
@@ -128,6 +132,59 @@ export function initExistingKitOptimization({getContext,api,money}){
     !globalThis.redeKitOpenOptimizerTarget(target))
    notice('Não foi possível abrir a Otimização. Atualize a página e tente novamente.','error');
  }
+ function discountNotice(msg,state='info'){
+  const el=$('#kitOptimizeDiscountStatus');if(el){el.textContent=msg;el.dataset.state=state;}
+ }
+ async function previewDiscount(){
+  if(busy||!target?.prepared)return;
+  const current=kitSku(),discountId=$('#kitOptimizeDiscountId').value.trim();
+  if(!/^[1-9]\d{0,17}$/.test(discountId))
+   return discountNotice('Informe o ID válido da Minha Promoção Shopee.','error');
+  busy=true;discountToken=null;$('#kitOptimizeDiscountBox').hidden=true;paint();
+  discountNotice('Conferindo a execução do kit, valores e campanha na Shopee...');
+  try{
+   const result=await api('/api/shopee/kits/discount/preview',{body:{kitSku:current,discountId}});
+   if(kitSku()!==current)return;
+   discountToken=result.token;
+   $('#kitOptimizeDiscountSummary').textContent=[
+    'Kit: '+current,'Anúncio Item ID: '+result.itemId,
+    'Campanha: '+result.discountName+' (ID '+result.discountId+')',
+    'Preço bruto: '+money(result.gross),'Preço promocional: '+money(result.promo),
+    'Preço após cupom (estimado): '+money(result.afterCoupon),
+    'Margem líquida estimada: '+Number(result.margin).toFixed(2)+'%',
+    'Ofertas comparáveis verificadas: '+result.marketOffers,
+    'Ação: '+(result.action==='update'?'Atualizar desconto':'Incluir nesta promoção'),
+    'A Shopee ainda NÃO foi alterada.'
+   ].join('\n');
+   $('#kitOptimizeDiscountBox').hidden=false;
+   discountNotice('Prévia confirmada. Confira os valores e autorize no botão abaixo.','success');
+  }catch(e){discountNotice('Desconto bloqueado: '+e.message,'error');}
+  finally{busy=false;paint();}
+ }
+ async function applyDiscount(){
+  if(!target?.prepared||!discountToken||busy)return;
+  const current=kitSku(),discountId=$('#kitOptimizeDiscountId').value.trim();
+  if(!window.confirm('Aplicar desconto do kit '+current+' na campanha '+discountId+
+   '? Esta ação ALTERA o anúncio existente na Shopee. Confirme somente após revisar os valores.'))return;
+  const token=discountToken;discountToken=null;$('#kitOptimizeDiscountBox').hidden=true;
+  busy=true;paint();discountNotice('Enviando desconto à Shopee; não repita se a resposta for incerta...');
+  try{
+   const result=await api('/api/shopee/kits/discount/execute',{body:{
+    kitSku:current,discountId,token,confirm:true
+   }});
+   discountNotice(result.status==='discount_confirmed'?
+    '✓ Desconto confirmado no anúncio '+result.itemId+' · Preço '+money(result.promo):
+    (result.message||'Resposta pendente de conferência na Shopee.'),
+    result.status==='discount_confirmed'?'success':'info');
+  }catch(e){discountNotice('Status não confirmado: '+e.message+
+   '. Confira Minha Promoção na Shopee ANTES de reenviar.','error');}
+  finally{busy=false;paint();}
+ }
+ $('#kitOptimizeDiscountPreview')?.addEventListener('click',()=>void previewDiscount());
+ $('#kitOptimizeDiscountApply')?.addEventListener('click',()=>void applyDiscount());
+ $('#kitOptimizeDiscountId')?.addEventListener('input',()=>{
+  discountToken=null;$('#kitOptimizeDiscountBox').hidden=true;
+ });
  $('#kitOptimizeLookup')?.addEventListener('click',()=>void lookup());
  $('#kitOptimizePrepare')?.addEventListener('click',()=>void prepare());
  $('#kitOptimizeImages')?.addEventListener('click',()=>void transferImages());
@@ -135,7 +192,8 @@ export function initExistingKitOptimization({getContext,api,money}){
  $('#kitOptimizeConfirm')?.addEventListener('change',paint);
  $('#kitOptimizeMainSku')?.addEventListener('change',()=>{if(target)target.prepared=false;paint();});
  $('#kitOptimizeListingSku')?.addEventListener('input',()=>{
-  target=null;$('#kitOptimizeConfirm').checked=false;
+  target=null;discountToken=null;$('#kitOptimizeDiscountBox').hidden=true;
+  $('#kitOptimizeConfirm').checked=false;
   $('#kitOptimizeSelected').textContent='SKU alterada. Localize novamente o anúncio correto.';
   paint();
  });
