@@ -6,7 +6,7 @@ import {buildKitPlusImageBrief,kitPlusPromptLink} from './kit-plus-image-brief.j
 import {createKitPhotoStore} from './kit-extension-bridge.js';
 import {createKitExtensionController} from './kit-extension-runtime.js';
 import {parseKitLogisticsText} from './kit-logistics-parser.js?v=2-total-fields';
-import {recognizeKitLogisticsPrint} from './kit-logistics-ocr.js?v=2-dark-table';
+import {recognizeKitLogisticsPrint} from './kit-logistics-ocr.js?v=3-ocr-columns';
 import {kitImagesLookDuplicated} from './kit-image-guard.js';
 // Kits Inteligentes WeDrop — Kit Formal enviado à Shopee somente após aprovação explícita.
 const $=s=>document.querySelector(s);
