@@ -1088,6 +1088,19 @@ function renderKit({scroll=true,displayTitle=''}={}){
  void kitRestoreImageGallery(kit.kitSku);
  if(scroll)$('#kitDetail').scrollIntoView({behavior:'smooth',block:'start'});
 }
+// Ângulos e ambientes exclusivos de cada posição do KIT.
+// Não afetar nenhum prompt ou anúncio de SKU individual.
+const KIT_CAMERA_PLANS=[
+ '01 CAPA: câmera frontal em perspectiva 3/4, na altura dos brinquedos, berçário claro e clean; todos os produtos inteiros, sem criança e sem texto.',
+ '02 USO REAL: câmera BAIXA e LATERAL ESQUERDA a 45 graus, criança de perfil brincando no tapete de outra sala; brinquedos bem visíveis em primeiro plano. MUDAR totalmente o ângulo, a criança, a pose, a composição e o fundo em relação à imagem 01.',
+ '03 ESPECIFICAÇÕES: câmera superior inclinada 45 graus, dois produtos inteiros sobre tapete neutro, SEM CRIANÇA; amplo espaço visual para características confirmadas, nunca inventar medidas.',
+ '04 BENEFÍCIOS: câmera quase ZENITAL de cima, disposição diagonal de ambos os brinquedos em ambiente infantil diferente; destacar visualmente benefícios reais, sem reaproveitar enquadramento anterior.',
+ '05 DOR E SOLUÇÃO: plano ABERTO à altura de adulto, ângulo diagonal DIREITO; ambiente de sala de estar e momento cotidiano distinto, mostrar o problema atendido pelo uso dos dois produtos.',
+ '06 PERSUASÃO: perspectiva LATERAL DIREITA próxima ao chão, fundo sofisticado desfocado; atenção às texturas e diferenciais reais, ambos os produtos completos.',
+ '07 TRANSFORMAÇÃO: câmera por trás do ombro da criança, visão traseira 3/4 de uma atividade em quarto infantil diferente; dois brinquedos visíveis e inteiros.',
+ '08 OBJEÇÕES: câmera FRONTAL ELEVADA e mais distante, composição arejada sobre superfície neutra, ângulo oposto ao da capa, espaço para três respostas breves somente comprovadas.',
+ '09 CONFIANÇA: câmera baixa diagonal em sentido oposto à capa, cenário publicitário premium minimalista, produtos ~90% de destaque e três selos discretos previstos no padrão da loja.'
+];
 function kitImagePromptAt(slot){
  if(!prepared)return '';
  const components=prepared.kit.components;
@@ -1100,7 +1113,8 @@ function kitImagePromptAt(slot){
    '; medidas extraídas somente do texto desta SKU, ainda NÃO verificadas: '+
    (found.length?found.map(x=>x.value).join(' · '):'nenhuma com unidade explícita');
  }).join('\n');
- return original+'\n\n'+(slot===2?
+ return original+'\n\nDIREÇÃO DE ARTE ESPECÍFICA DESTA POSIÇÃO: '+KIT_CAMERA_PLANS[slot-1]+
+  '\nPROIBIDO reaproveitar a câmera, a pose, a criança, o ambiente, a composição ou a mesma imagem da posição anterior. Gerar fotografia NOVA 1200×1200; não apenas trocar textos. Manter EXATAMENTE os produtos reais do kit. \n\n'+(slot===2?
    'ESTA É A IMAGEM 02 (USO REAL), NÃO A CAPA 01: gerar uma cena inédita, com NOVO enquadramento, outro ângulo e interação visível com os brinquedos. NÃO reproduzir a composição, pose, câmera ou imagem anterior.':
    slot>=3?'GERAR UMA FOTO NOVA E DIFERENTE DAS POSIÇÕES ANTERIORES: nunca reaproveitar a mesma cena, criança, pose, perspectiva ou resultado já entregue; seguir exatamente a finalidade da posição '+String(slot).padStart(2,'0')+'.':'')+
    '\n\nREGRA FINAL INEGOCIÁVEL PARA ESTA IMAGEM: mostrar TODOS os '+components.length+
