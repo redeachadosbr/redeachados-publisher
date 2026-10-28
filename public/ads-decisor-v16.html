@@ -1,0 +1,869 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="color-scheme" content="dark">
+<title>Rede Achados BR — Decisor Shopee Ads V16</title>
+<style>
+:root{--bg:#0d1016;--panel:#161a21;--panel2:#1c212a;--line:#303641;--text:#f5f5f6;--muted:#a9b0ba;--gold:#e4b45a;--gold2:#f1d08a;--green:#53d0a0;--red:#f2767d;--blue:#8ebefa;--radius:16px}
+*{box-sizing:border-box}html{scroll-behavior:smooth}body{margin:0;background:radial-gradient(ellipse at 78% -15%,#292218 0,transparent 36%),var(--bg);font:14px/1.5 -apple-system,BlinkMacSystemFont,"Segoe UI",Arial,sans-serif;color:var(--text)}button,input,select{font:inherit}button{cursor:pointer}.wrap{max-width:1280px;margin:auto;padding:26px 25px 80px}a{color:var(--gold2)}.top{display:flex;align-items:center;justify-content:space-between;gap:16px;margin-bottom:27px}.brand{display:flex;gap:14px;align-items:center}.logo{width:50px;height:50px;border:1px solid #bd9046;background:linear-gradient(135deg,#2d271b,#15191d);border-radius:15px;display:grid;place-items:center;color:var(--gold2);font-size:25px;font-weight:800;box-shadow:inset 0 1px #f0ca8a33}.brand strong{font-size:19px;letter-spacing:.4px}.brand small{display:block;color:var(--muted);letter-spacing:1.9px;text-transform:uppercase;font-size:10px}.pill{background:#29241a;border:1px solid #6f5730;border-radius:99px;color:var(--gold2);padding:7px 12px;font-size:12px;white-space:nowrap}.hero{border:1px solid #483b28;border-radius:22px;background:linear-gradient(115deg,#24211c,#181c22 60%);padding:28px 30px;display:flex;gap:24px;justify-content:space-between;align-items:center}.eyebrow{text-transform:uppercase;letter-spacing:2px;font-weight:700;color:var(--gold);font-size:11px}.hero h1{font-size:clamp(24px,3.5vw,37px);line-height:1.17;margin:8px 0 12px;max-width:750px}.hero p{margin:0;color:#c3c6c9;max-width:740px}.hero-icon{height:95px;min-width:95px;border:1px solid #735c34;background:#2c271f;border-radius:24px;display:grid;place-items:center;color:var(--gold);font-size:46px}.tabs{display:flex;gap:8px;margin:22px 0;flex-wrap:wrap}.tab{color:#c3c7cd;background:#1b1f27;border:1px solid var(--line);border-radius:11px;padding:11px 17px;font-weight:650}.tab.active{background:#3b3020;border-color:#af8340;color:#ffe1a5}.tab:hover,.btn-secondary:hover{border-color:#a27e46}.view{display:none}.view.active{display:block}.columns{display:grid;grid-template-columns:minmax(340px,.94fr) minmax(390px,1.06fr);gap:19px;align-items:start}.panel{background:var(--panel);border:1px solid var(--line);border-radius:var(--radius);padding:22px;box-shadow:0 9px 28px #00000017}.panel+.panel{margin-top:16px}.section-head{display:flex;justify-content:space-between;gap:12px;align-items:center;margin-bottom:19px}.section-head h2,.panel h2{font-size:18px;margin:0}.overline{color:var(--gold);font-size:11px;font-weight:750;letter-spacing:1.4px;text-transform:uppercase;margin-bottom:6px}.subtle{color:var(--muted);font-size:12px}.sep{border:0;border-top:1px solid var(--line);margin:20px 0}.field-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:13px 15px}.field{display:flex;flex-direction:column;gap:6px}.field.full{grid-column:1/-1}.field label{font-weight:600;font-size:12px;color:#d3d6dc}.field input,.field select{background:#0f1319;color:#fbfbfc;border:1px solid #3a414b;outline:0;border-radius:10px;padding:11px 12px;min-width:0;width:100%}.field input:focus,.field select:focus{border-color:var(--gold);box-shadow:0 0 0 3px #e4b45a20}.field input:disabled{opacity:.4}.field input::placeholder{color:#767e8b}.tag{font-size:10px;color:#94beee;font-weight:650}.tip{font-size:11px;color:#9da5b1;line-height:1.35}.checkline{display:flex;align-items:flex-start;gap:10px;margin-top:13px;color:#d2d7dc;font-size:12px}.checkline input{accent-color:#ddb36b;margin-top:4px}.actions{display:flex;flex-wrap:wrap;gap:9px;margin-top:18px}.btn-primary{border:1px solid #e4b45a;background:linear-gradient(100deg,#d9a64c,#f0ca7d);color:#23190a;border-radius:11px;padding:12px 18px;font-weight:800}.btn-primary:hover{filter:brightness(1.08)}.btn-secondary{background:#242930;border:1px solid #414853;border-radius:11px;padding:11px 14px;color:#f0f2f3;font-weight:650}.btn-secondary:disabled{opacity:.4;cursor:not-allowed}.mini{padding:7px 10px;font-size:12px}.example-actions{display:flex;gap:7px;flex-wrap:wrap;margin-top:10px}.example-actions button{background:#252a31;border:1px solid #424852;color:#c5d0dc;padding:7px 9px;border-radius:8px;font-size:11px}.example-actions button:hover{border-color:var(--gold)}details{border:1px solid #3b414b;background:#1b2027;border-radius:12px;padding:15px;margin-top:18px}summary{cursor:pointer;color:#eacb93;font-weight:700;list-style:revert}details .field-grid{margin-top:16px}.summary-help{font-size:12px;color:var(--muted);margin-top:6px}.empty{min-height:510px;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;gap:13px;color:var(--muted)}.empty-symbol{font-size:60px;color:#8d743f}.empty h2{font-size:21px;color:var(--text);margin:0}.empty p{max-width:360px;margin:0}.notice{padding:12px 14px;border-radius:11px;border:1px solid #675235;background:#352c20;color:#fae0ae;margin:12px 0;font-size:12px}.notice.danger{background:#372024;border-color:#7c3b43;color:#ffb9be}.notice.ok{background:#1d332b;border-color:#3e8064;color:#a1efce}.notice.info{background:#1c2c40;border-color:#41638b;color:#b3d7ff}.result-title{display:flex;align-items:flex-start;justify-content:space-between;gap:12px}.status{border-radius:99px;font-weight:750;padding:6px 10px;font-size:11px;background:#453322;color:#ffdf9c;white-space:nowrap}.status.red{color:#ffbdc1;background:#50292b}.status.green{color:#a9f5ca;background:#244635}.metrics{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px;margin:18px 0}.metric{background:#11161c;border:1px solid #303742;border-radius:12px;padding:13px}.metric .lab{color:#a7b0bc;font-size:11px}.metric .value{font-size:22px;font-weight:780;letter-spacing:-.5px;margin-top:4px}.metric .value.red{color:var(--red)}.metric .value.green{color:var(--green)}.table-scroll{overflow-x:auto;margin:14px 0}table{border-collapse:collapse;width:100%;font-size:12px;min-width:390px}th,td{text-align:left;padding:11px 9px;border-bottom:1px solid #303742;vertical-align:top}th{color:#b6bec9;text-transform:uppercase;font-size:10px;letter-spacing:.8px;background:#1d232c}td strong{color:#f4d39a}td:last-child{color:#ddd}.recommend{border-left:3px solid var(--gold);background:#23231f;padding:12px 14px;border-radius:0 10px 10px 0;margin:14px 0}.recommend strong{color:#f2cf87}.recommend p{margin:5px 0 0;color:#dde0e3;font-size:13px}.list-check{padding-left:21px;color:#cad0d7;font-size:12px}.list-check li{padding:3px 0}.muted-line{font-size:11px;color:#a5aebb}.rule-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:15px}.rule-card{border:1px solid var(--line);background:var(--panel);border-radius:16px;padding:20px}.rule-card .index{display:inline-grid;place-items:center;width:33px;height:33px;border-radius:10px;background:#534027;color:#ffe0a2;font-weight:800}.rule-card h3{font-size:17px;margin:12px 0 8px}.rule-card p{color:#cbd0d6;margin:8px 0}.rule-card .formula{background:#10151b;border-radius:9px;padding:10px;color:#f9d898;font-weight:700;font-size:12px}.rule-card .small{font-size:11px;color:#aeb5bf}.history-table{width:100%;min-width:790px}.history-table button{font-size:11px}.foot{margin-top:23px;border-top:1px solid #363635;padding-top:17px;color:#9199a4;font-size:11px;display:flex;justify-content:space-between;gap:20px}.non-print{}.row-between{display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap}.mobile-only{display:none}
+@media(max-width:940px){.columns{grid-template-columns:1fr}.empty{min-height:250px}.hero-icon{display:none}.wrap{padding:16px 13px 45px}.panel{padding:17px}.rule-grid{grid-template-columns:1fr}}@media(max-width:520px){.top{align-items:flex-start}.pill{display:none}.brand strong{font-size:16px}.hero{padding:20px}.field-grid{gap:12px 9px}.metrics{grid-template-columns:repeat(2,1fr)}.metric .value{font-size:19px}.tabs .tab{flex:1;padding:10px 8px}.foot{display:block}}
+@media print{body{background:white;color:black}.wrap{max-width:none;padding:0}.hero{background:#fff;border:1px solid #aaa;color:#111}.hero p,.eyebrow{color:#333}.top,.tabs,.non-print,#editor,.foot{display:none!important}.columns{display:block}.panel{color:#111;background:#fff;box-shadow:none;border:1px solid #bbb}.metrics .metric{background:#f6f6f6;color:#111}.metric .lab,.subtle,.muted-line{color:#555}.recommend{background:#eee;color:#111}.recommend strong,.recommend p{color:#111}.notice{color:#111;background:#eee}.table-scroll{overflow:visible}th{background:#eee;color:#333}td{color:#111!important}td strong{color:#111!important}#resultEmpty{display:none!important}}
+
+/* v2: catálogo e backup; mantém o visual original */
+.catalog-layout{display:grid;grid-template-columns:minmax(320px,.9fr) minmax(380px,1.1fr);align-items:start;gap:19px}
+.catalog-list{margin-top:20px}.catalog-list table{min-width:1120px}.catalog-list td{vertical-align:middle}
+.calculated-cards{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;margin:14px 0}
+.calc-card{background:#10161c;border:1px solid #303742;border-radius:12px;padding:12px}
+.calc-card .k{font-size:11px;color:#aab5c0}.calc-card .v{font-size:20px;letter-spacing:-.3px;font-weight:760;margin-top:3px}
+.calc-card .v.pos{color:var(--green)}.calc-card .v.neg{color:var(--red)}
+.catalog-alert{margin:12px 0}.mini-indicator{display:inline-block;font-size:10px;font-weight:750;border-radius:7px;padding:4px 7px;background:#29313a;color:#c6d2df}
+.mini-indicator.ok{background:#22382e;color:#96edc2}.mini-indicator.warn{background:#413522;color:#f8d496}.mini-indicator.bad{background:#482a2e;color:#ffb3b8}
+.table-actions{display:flex;gap:4px;flex-wrap:wrap}.table-actions button{white-space:nowrap}
+.catalog-counts{display:flex;gap:16px;flex-wrap:wrap;color:#b5bdc7;font-size:12px}
+.input-note{font-size:11px;color:#a9b1bb}
+#importBackupInput{display:none}
+.backup-panel{border:1px dashed #695338;background:#241f1a;padding:15px;border-radius:13px;margin-top:16px}
+.backup-panel p{font-size:12px;color:#c0c3c7;margin:7px 0}
+#dataStatus{font-size:12px}
+@media(max-width:940px){.catalog-layout{grid-template-columns:1fr}}
+@media(max-width:560px){.calculated-cards{grid-template-columns:1fr}.catalog-list table{min-width:740px}}
+@media print{#produtos,#productDetail,.backup-panel{display:none!important}}
+
+
+/* V3 — três formas de precificação com resultado ao vivo */
+.price-mode-group{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;margin:4px 0 7px}
+.price-mode-btn{border:1px solid #444b56;background:#171d25;color:#d6dce4;padding:12px 7px;border-radius:12px;text-align:center;min-height:65px;line-height:1.25;font-weight:700;font-size:12px}
+.price-mode-btn:hover{border-color:#b18a4a}.price-mode-btn.active{background:#40321f;border:1px solid var(--gold);color:#ffdf9b;box-shadow:inset 0 0 0 1px #ae864833}
+.price-mode-btn small{display:block;color:#aeb5bf;font-weight:400;font-size:10px;margin-top:4px}.price-mode-btn.active small{color:#e9c995}
+.field[hidden]{display:none!important}.price-output{background:#171d22!important;border-color:#8f7042!important;color:#ffe1a7!important;font-weight:750}
+#priceModeDescription{padding:2px 0 7px}#priceFeedback{font-size:11px;min-height:16px;margin-top:4px;color:#e4c789}#priceFeedback.error{color:#ffb2b7}
+@media(max-width:520px){.price-mode-btn{font-size:11px;padding:10px 4px}.price-mode-btn small{font-size:9px}}
+/* V4 — classificação manual por curva, compacta e sem inferências de venda */
+.curve-help{border-radius:9px;padding:9px 11px;background:#191d23;border:1px solid #3e4650;color:#d5d8dc;font-size:12px;line-height:1.4}
+.curve-help.ok{border-color:#3f7359;color:#a6e4c1;background:#1b2b25}.curve-help.warn{border-color:#7d6540;color:#f3d5a7;background:#30291d}.curve-help.bad{border-color:#865155;color:#ffbfc1;background:#352227}
+.curve-badge{display:inline-flex;align-items:center;justify-content:center;min-width:31px;padding:4px 9px;border-radius:8px;font-size:12px;font-weight:800;background:#2b3139;color:#bfc7d0;border:1px solid #49515c}
+.curve-badge.A,.curve-badge.B{background:#203a2e;border-color:#39694b;color:#aff0c5}
+.curve-badge.C{background:#393122;border-color:#78613b;color:#f9dfa1}
+.curve-badge.D,.curve-badge.E{background:#41272a;border-color:#80505a;color:#ffc5c8}
+.filter-inline{background:#11161c;border:1px solid #414853;border-radius:10px;color:#fff;padding:10px}
+#curveAdsHint{margin-top:11px}
+@media print{#curveAdsHint{display:none!important}}
+
+/* V5 — competitividade gradual até 20% acima da média, sem prever vendas */
+.market-price-levels{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:7px;margin:-2px 0 14px}
+.market-level{border:1px solid #353e48;border-radius:9px;background:#151b22;padding:9px 6px;text-align:center;min-width:0}
+.market-level .level-pct{font-size:10px;color:#aeb8c5;font-weight:650}.market-level .level-val{font-size:12px;font-weight:800;color:#e2e6ed;white-space:nowrap}
+.market-level.active{background:#3a3022;border-color:#c59c57}.market-level.active .level-pct,.market-level.active .level-val{color:#ffdfaa}
+.market-rules{margin:0 0 14px;padding:11px 12px;background:#1a2027}
+.market-rules summary{font-size:12px}
+.market-rules-grid{display:grid;grid-template-columns:1fr 1.4fr;gap:6px 12px;font-size:11px;margin:11px 0}
+.market-rules-grid span{color:#b3bcc7}.market-rules-grid strong{color:#f3d9a6}
+@media(max-width:520px){.market-price-levels{grid-template-columns:repeat(3,minmax(0,1fr))}.market-level{padding:8px 5px}}
+/* V8: campo de kit com abertura sob demanda, sem poluir o formulário */
+.kit-toggle{margin:3px 0 0;border:1px solid #394859;border-radius:11px;padding:11px 13px;background:#1b2735;display:flex;gap:10px;align-items:center;cursor:pointer;color:#d9e7f9;font-weight:630;font-size:12px}
+.kit-toggle input{accent-color:#e4b45a;width:17px;height:17px;flex-shrink:0}
+.kit-config{border:1px solid #725729;border-radius:12px;padding:14px;background:#272319;display:grid;gap:10px}
+.kit-config[hidden]{display:none!important}
+.kit-cost-preview{font-size:12px;color:#f6d494;font-weight:700}
+.kit-small{font-size:11px;color:#b9c2cd;font-weight:400}
+/* V9 — situação Ads manual: filtro combinado, alteração rápida e registro da última mudança */
+.ads-status-select{min-width:135px;max-width:180px;padding:8px 9px;border:1px solid #49515b;border-radius:9px;background:#1e2631;color:#e4e8ee;font-weight:700;font-size:11px;cursor:pointer}
+.ads-status-select.active{background:#1c392c;border-color:#4d8461;color:#a7f0c3}
+.ads-status-select.removed{background:#3b2828;border-color:#87545c;color:#ffbcc1}
+.ads-status-select.never{background:#2d323b;border-color:#505d70;color:#c4d0de}
+.ads-status-select.unknown{background:#2e2a21;border-color:#736344;color:#f6d6a5}
+.ads-status-changed{font-size:10px;color:#a3adba;white-space:nowrap;margin-top:4px}
+@media(max-width:720px){.catalog-list .actions{gap:7px}.catalog-list .filter-inline{max-width:100%}}
+
+.stats-strip{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:9px;margin:12px 0}.stats-strip .stat{border:1px solid #3d424a;background:#111820;border-radius:10px;padding:10px}.stats-strip .stat .k{font-size:11px;color:#abb2bd}.stats-strip .stat .v{font-size:17px;font-weight:750;color:#fff;margin-top:2px}.ocr-result{border:1px solid #586943;background:#1c2921;border-radius:10px;padding:10px;font-size:12px;margin-top:12px;color:#bdf3cb}.ocr-error-flag{color:#ffbabc}@media(max-width:700px){.stats-strip{grid-template-columns:repeat(2,minmax(0,1fr))}.ocr-preview{max-width:125px}}
+.campaign-metrics-title{color:#e8c68c;letter-spacing:.3px;font-size:13px;margin:17px 0 9px;font-weight:750}
+.campaign-fields{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px 14px}
+.campaign-fields .field{border:1px solid #323a43;border-radius:11px;background:#11171e;padding:12px}
+.campaign-fields label{font-size:12px;color:#cdd5df}.campaign-fields input,.campaign-fields select{margin-top:4px}
+.budget-entry{display:grid;grid-template-columns:1fr 125px;gap:7px}
+.budget-entry select{padding:10px 5px}
+.ads-kpis{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:9px;margin:13px 0}
+.ads-kpis .stat{border:1px solid #3b414b;background:#111820;border-radius:10px;padding:12px;min-height:70px}
+.ads-kpis .stat .k{font-size:11px;color:#b4bdc9}.ads-kpis .stat .v{font-size:17px;font-weight:760;color:#f5f4f0;margin-top:3px}
+@media(max-width:620px){.campaign-fields,.ads-kpis{grid-template-columns:1fr 1fr}.budget-entry{grid-template-columns:1fr 103px}}
+@media(max-width:410px){.campaign-fields{grid-template-columns:1fr}}
+
+/* V12: histórico de mudanças e consulta somente leitura */
+.change-choice{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:9px;margin:10px 0}
+.change-choice label{padding:10px 11px;border-radius:10px;border:1px solid #414047;background:#151a20;display:flex;gap:7px;align-items:center;font-size:12px;cursor:pointer}
+.change-choice input{accent-color:#d0a954;width:auto;margin:0}
+.history-split{margin-top:18px}.tiny{font-size:12px;color:#abb6c4;line-height:1.5}
+.hist-toolbar{display:flex;gap:10px;align-items:end;flex-wrap:wrap}.hist-toolbar .field{min-width:200px;flex:1}
+.api-actions{border:1px solid #544a34;border-radius:12px;background:#1b1c20;padding:13px;margin:10px 0}
+.api-status{font-size:12px;line-height:1.5;margin-top:9px;color:#cdd4de;white-space:pre-wrap}
+.api-status.error{color:#ffac9a}.api-status.good{color:#98e0aa}
+.api-campaign-picker{border:1px solid #685438;background:#22211e;border-radius:11px;padding:12px;margin-top:12px}
+.api-campaign-picker[hidden]{display:none}.api-campaign-picker select{display:block;width:100%;background:#11171e;border:1px solid #85683d;color:#f4e1bd;border-radius:9px;padding:11px;margin-top:9px}
+.api-campaign-picker p{margin:9px 0 0}
+@media(max-width:620px){.change-choice{grid-template-columns:1fr 1fr}}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="top">
+    <div class="brand"><div class="logo">R</div><div><strong>REDE ACHADOS BR</strong><small>Inteligência de anúncios</small></div></div>
+    <span class="pill">V13 · API + histórico por SKU</span>
+  </div>
+  <header class="hero"><div><div class="eyebrow">Painel de decisão • 4 cenários</div><h1>Saiba o que fazer com cada campanha Shopee Ads.</h1><p>Consulte a Shopee Ads pela API, selecione a campanha do produto e acompanhe os quatro cenários e o histórico de modificações.</p></div><div class="hero-icon" aria-hidden="true">↗</div></header>
+  <nav class="tabs non-print" aria-label="Seções"><button class="tab" data-tab="produtos">▦ Produtos</button><button class="tab active" data-tab="simulador">◆ Campanhas Ads</button><button class="tab" data-tab="regras">▤ As 4 regras</button><button class="tab" data-tab="historico">◷ Histórico por produto</button></nav>
+  <section class="view" id="produtos">
+    <div class="catalog-layout">
+      <div class="panel" id="productDetail">
+        <div class="section-head"><div><div class="overline">01 · Cadastro</div><h2 id="productFormTitle">Cadastrar produto</h2></div><span class="subtle">Dados manuais</span></div>
+        <form id="productForm" novalidate>
+          <div class="field-grid">
+            <div class="field"><label for="pSku">SKU *</label><input id="pSku" placeholder="Ex.: TRC0593" required maxlength="70"></div>
+            <div class="field full"><label for="pName">Nome do produto *</label><input id="pName" placeholder="Ex.: Ralador Multiuso 3 em 1" required maxlength="240"></div>
+            <div class="field full"><label for="pCurve">Curva de vendas (definida por você)</label><select id="pCurve">
+              <option value="">Não classificado</option>
+              <option value="A">A — Alta saída</option>
+              <option value="B">B — Boa saída</option>
+              <option value="C">C — Saída moderada</option>
+              <option value="D">D — Baixa saída</option>
+              <option value="E">E — Muito baixa saída</option>
+            </select><div class="tip">Classifique manualmente com base nas suas pesquisas ou vendas. Não é previsão automática de demanda.</div></div>
+            <div class="field full"><label for="pAdsStatus">Situação do produto nos Ads (atualização manual)</label><select id="pAdsStatus">
+              <option value="unknown">Não informado</option>
+              <option value="active">Em Ads</option>
+              <option value="removed">Retirado dos Ads</option>
+              <option value="never">Nunca anunciado</option>
+            </select><div class="tip">Informe a situação real. Esta calculadora não se conecta à Shopee e não pausa ou ativa anúncios.</div></div>
+            <div class="field"><label for="pCost" id="pCostLabel">Custo do produto (R$) *</label><input id="pCost" inputmode="decimal" placeholder="34,99"></div>
+            <div class="field full">
+              <label class="kit-toggle"><input id="pIsKit" type="checkbox"><span>📦 Este anúncio é um kit com múltiplas unidades?</span></label>
+              <div id="pKitConfig" class="kit-config" hidden>
+                <div class="field"><label for="pKitQuantity">Quantidade de produtos no kit *</label><input id="pKitQuantity" type="number" min="2" max="999" step="1" placeholder="Ex.: 3 (para vender 3 unidades juntas)"></div>
+                <div class="kit-cost-preview" id="pKitTotalCost" aria-live="polite">Informe a quantidade para calcular o custo total.</div>
+                <div class="kit-small">O custo total será o custo unitário × quantidade. Comissão e tarifa fixa da Shopee incidem sobre o anúncio do kit, não separadamente por cada peça. Embalagem, frete e cupom são por kit.</div>
+                <div class="kit-small">Se o kit reunir SKUs diferentes com custos diferentes, some os custos dos componentes e não utilize a multiplicação por unidades iguais.</div>
+              </div>
+            </div>
+            <div class="field full">
+              <label>Como deseja calcular o preço?</label>
+              <div class="price-mode-group" role="group" aria-label="Forma de cálculo do preço">
+                <button type="button" class="price-mode-btn" data-price-mode="margin" aria-pressed="false">↗ Margem de Lucro<small>Definir percentual (%)</small></button>
+                <button type="button" class="price-mode-btn active" data-price-mode="price" aria-pressed="true">$ Preço de Venda<small>Informar valor (R$)</small></button>
+                <button type="button" class="price-mode-btn" data-price-mode="profit" aria-pressed="false">◎ Lucro Desejado<small>Definir lucro (R$)</small></button>
+              </div>
+              <div class="tip" id="priceModeDescription" aria-live="polite">Informe o preço de venda para calcular seu lucro e a margem.</div>
+            </div>
+            <div class="field full"><label for="pMargin">Margem mínima de lucro desejada (%) *</label><input id="pMargin" inputmode="decimal" value="5" placeholder="Ex.: 3 ou 5"><div class="tip" id="pMarginTip">Você escolhe a meta. Na opção Margem de Lucro, este valor calcula o preço. Nas demais opções, ele é a referência para decidir se o ROAS oferece a margem desejada.</div></div>
+            <div class="field full" id="pGoalProfitField" hidden><label for="pGoalProfit" id="pGoalProfitLabel">Lucro líquido desejado por unidade após Ads (R$) *</label><input id="pGoalProfit" inputmode="decimal" value="5" placeholder="Ex.: 5,00"><div class="tip" id="pGoalProfitTip">Calcula o preço para obter esse lucro em reais, após os custos informados.</div></div>
+            <div class="field full"><label for="pPrice" id="pPriceLabel">Preço de venda (R$) *</label><input id="pPrice" inputmode="decimal" placeholder="58,99"><div id="priceFeedback" aria-live="polite"></div></div>
+            <div class="field"><label for="pMarket">Média do mercado (R$)</label><input id="pMarket" inputmode="decimal" placeholder="Pesquisa manual"></div>
+            <div class="field"><label for="pTarget">ROAS para simulação de Ads</label><input id="pTarget" inputmode="decimal" value="25" placeholder="Ex.: 25"><div class="tip">Use 0 ou deixe vazio para calcular o preço SEM Ads; informe um ROAS maior que zero para incluir a publicidade.</div></div>
+          </div>
+          <details id="pExtraDetails"><summary>⚙️ Taxas e custos (personalizáveis)</summary>
+            <p class="summary-help">Base CNPJ: faixas Shopee de outubro/2026; confira seus descontos reais. A taxa de transação está incluída na comissão.</p>
+            <div class="field-grid">
+              <div class="field"><label for="pRegime">Cadastro</label><select id="pRegime"><option value="CNPJ" selected>CNPJ</option><option value="CPF">CPF</option></select></div>
+              <div class="field"><label for="pTax">Imposto sobre venda (%)</label><input id="pTax" inputmode="decimal" value="4"></div>
+              <div class="field"><label for="pFeeMode">Comissão Shopee</label><select id="pFeeMode"><option value="auto">Automática por faixa</option><option value="manual">Manual</option></select></div>
+              <div class="field"><label for="pFeePct">Taxa percentual Shopee (%)</label><input id="pFeePct" inputmode="decimal" placeholder="Automático" disabled></div>
+              <div class="field"><label for="pFeeFixed">Tarifa fixa Shopee (R$)</label><input id="pFeeFixed" inputmode="decimal" placeholder="Automático" disabled></div>
+              <div class="field"><label for="pExtraPct">Campanha / outras taxas (%)</label><input id="pExtraPct" inputmode="decimal" value="0"></div>
+              <div class="field"><label for="pPacking">Embalagem (R$)</label><input id="pPacking" inputmode="decimal" value="0"></div>
+              <div class="field"><label for="pShipping">Frete pago por você (R$)</label><input id="pShipping" inputmode="decimal" value="0"></div>
+              <div class="field"><label for="pCoupon">Cupom pago por você (R$)</label><input id="pCoupon" inputmode="decimal" value="0"></div>
+
+            </div>
+            <label class="checkline"><input id="pCpfExtra" type="checkbox"><span>CPF com mais de 450 pedidos/90 dias (+ R$ 3,00 por unidade, quando aplicável)</span></label>
+          </details>
+          <div id="productError" class="notice danger" hidden></div>
+          <div class="actions non-print"><button id="saveProductBtn" class="btn-primary" type="submit">Salvar produto</button><button id="clearProductBtn" class="btn-secondary" type="button">Limpar</button></div>
+        </form>
+      </div>
+      <div class="panel" id="liveProductPanel">
+        <div class="section-head"><div><div class="overline">02 · Resultado instantâneo</div><h2>Preço, lucro e concorrência</h2></div><span class="subtle">Simulação</span></div>
+        <div class="calculated-cards">
+          <div class="calc-card"><div class="k">Preço de venda calculado / informado <span id="previewKitPriceTag"></span></div><div class="v" id="previewPrice">—</div></div>
+          <div class="calc-card"><div class="k">Lucro líquido sem Ads <span class="kit-profit-label"></span></div><div class="v" id="previewProfit">—</div></div>
+          <div class="calc-card"><div class="k">Lucro líquido com Ads <span class="kit-profit-label"></span></div><div class="v" id="previewAdsProfit">—</div></div>
+          <div class="calc-card"><div class="k" id="previewMarginLabel">Margem com Ads</div><div class="v" id="previewMargin">—</div></div>
+          <div class="calc-card"><div class="k">ROAS de equilíbrio (lucro 0)</div><div class="v" id="previewBreakEven">—</div></div>
+          <div class="calc-card"><div class="k" id="previewGoalRoasLabel">ROAS para margem desejada (5%)</div><div class="v" id="previewMinRoas">—</div></div>
+        </div>
+        <div id="previewMarginGoalNotice" class="notice info" aria-live="polite">A margem desejada é definida por você no cadastro.</div>
+        <div id="previewCompetitive" class="notice info" aria-live="polite">Informe a média do mercado para avaliar o preço.</div>
+        <div id="marketPriceLevels" class="market-price-levels" hidden aria-label="Faixas de preço comparadas à média do mercado"></div>
+        <details class="market-rules"><summary>Ver faixas de competitividade (até +20%)</summary>
+          <div class="market-rules-grid"><span>Até 0% da média</span><strong>Preço vantajoso</strong><span>Até +5%</span><strong>Muito competitivo</strong><span>Até +10%</span><strong>Competitivo</strong><span>Até +15%</span><strong>Venda possível</strong><span>Até +20%</span><strong>Venda possível, mais difícil</strong><span>Acima de +20%</span><strong>Risco alto para Ads</strong></div>
+          <p class="summary-help">Faixas estratégicas, não estatísticas de conversão. Um produto até 15% acima da média ainda pode vender, especialmente com bom frete, avaliações e entrega. Acima de 20% também não é impossível vender, mas o risco aumenta. Margem, Curva A–E e rentabilidade dos Ads são analisadas separadamente.</p>
+        </details>
+        <div id="previewCurve" class="curve-help" aria-live="polite">Curva ainda não informada. Você pode escolher A, B, C, D ou E no cadastro.</div>
+        <div class="table-scroll" id="previewBreakdown"></div>
+        <p class="muted-line">Três formas de cálculo: margem percentual, preço informado ou lucro em reais. Para kits de unidades iguais, marque a opção Kit e informe a quantidade; o preço e o lucro são por kit. ROAS 0 ou vazio = cálculo SEM Ads; ROAS maior que zero = inclui gasto proporcional à receita atribuída aos Ads. O lucro não inclui custos que não foram informados. Comparação de mercado baseada somente na média digitada por você. Critério estratégico gradual: de 0% a +5% muito competitivo; +5% a +10% competitivo; +10% a +15% venda possível; +15% a +20% venda mais difícil, mas possível; acima de +20% maior risco. Preço abaixo da média também exige conferência da margem. Não confundir preço com a Curva A–E.</p>
+      </div>
+    </div>
+    <div class="panel catalog-list">
+      <div class="row-between"><div><div class="overline">03 · Sua lista</div><h2>Produtos cadastrados</h2><div id="catalogCounts" class="catalog-counts">Nenhum produto cadastrado.</div></div>
+      <div class="actions non-print"><input id="productSearch" aria-label="Buscar produto" placeholder="Buscar SKU ou nome" style="width:190px;background:#11161c;border:1px solid #414853;border-radius:10px;color:#fff;padding:10px"><select id="curveFilter" class="filter-inline" aria-label="Filtrar por curva"><option value="">Todas as curvas</option><option value="A">Curva A</option><option value="B">Curva B</option><option value="C">Curva C</option><option value="D">Curva D</option><option value="E">Curva E</option><option value="none">Sem curva</option></select><select id="adsStatusFilter" class="filter-inline" aria-label="Filtrar situação do produto nos Ads"><option value="">Todos</option><option value="active">Em andamento nos Ads</option><option value="removed">Retirados dos Ads</option></select><button type="button" class="btn-secondary mini" id="syncProductStatusesBtn">Atualizar status via API</button><button type="button" class="btn-secondary mini" id="exportProductsBtn">Exportar produtos CSV</button></div></div>
+      <div id="catalogApiStatus" class="subtle" role="status" aria-live="polite" style="margin:8px 0 0">Status pela API é atualizado ao sincronizar; produtos sem correspondência usam o status manual.</div>
+      <div class="table-scroll"><table><thead><tr><th>SKU / Produto</th><th>Curva</th><th>Status Ads (manual / API)</th><th>Preço</th><th>Média</th><th>Competitividade</th><th>Lucro sem Ads</th><th>Lucro com Ads</th><th>ROAS equilíbrio (0% lucro)</th><th>ROAS para sua margem</th><th>Ações</th></tr></thead><tbody id="productsBody"><tr><td colspan="11">Nenhum produto cadastrado.</td></tr></tbody></table></div>
+    </div>
+    <div class="backup-panel non-print"><div class="row-between"><div><strong>Backup dos produtos e das campanhas</strong><p>Os produtos, o status manual dos Ads e as campanhas são salvos neste navegador, não na nuvem. Exporte um backup JSON para guardar no Google Drive.</p></div><div class="actions"><button id="backupExportBtn" type="button" class="btn-secondary mini">Baixar backup JSON</button><button id="backupImportBtn" type="button" class="btn-secondary mini">Restaurar backup</button><input id="importBackupInput" type="file" accept=".json,application/json"></div></div><p id="dataStatus">Backup manual recomendado antes de trocar de computador ou publicar no Netlify.</p></div>
+  </section>
+  <section class="view active" id="simulador"><div class="columns">
+    <div class="panel" id="editor">
+      <div class="section-head"><div><div class="overline">01 · Insira os dados</div><h2>Dados da campanha</h2></div><span class="subtle">* campos necessários</span></div>
+      <form id="adsForm" novalidate>
+        <div class="field-grid">
+          <div class="field full"><label for="campaignAdsFilter">Mostrar produtos por situação no Ads</label><select id="campaignAdsFilter"><option value="">Todos</option><option value="active">Em andamento nos Ads</option><option value="removed">Retirados dos Ads</option></select><span class="tip">Usa status confirmado pela API nesta sessão quando disponível; caso contrário, o status informado manualmente.</span></div>
+          <div class="field full"><label for="productSelect">Produto cadastrado</label><select id="productSelect"><option value="">— Selecione um produto —</option></select></div>
+          <div class="field full"><label for="campaign">Nome da campanha / SKU</label><input id="campaign" placeholder="Nome do produto ou SKU"></div>
+          <div class="field full"><div id="curveAdsHint" class="curve-help">Selecione um produto cadastrado para consultar sua curva manual.</div><div id="marketAdsHint" class="curve-help" style="margin-top:8px">A comparação com o mercado virá do cadastro.</div><div id="statusAdsHint" class="curve-help" style="margin-top:8px">Status Ads será confirmado pela API quando a campanha for identificada; sem resposta, usa seu status manual.</div></div>
+          <div class="field"><label for="dateStart">Período: início *</label><input type="date" id="dateStart" required></div>
+          <div class="field"><label for="dateEnd">Período: fim *</label><input type="date" id="dateEnd" required></div>
+        </div>
+        <div class="api-actions non-print">
+          <div class="row-between"><strong>🔗 Consultar Ads pela API Shopee</strong><span class="subtle">Somente leitura</span></div>
+          <p class="tiny">Consulta disponível ao abrir esta página autenticado no mesmo domínio do serviço Render. A consulta exige login no Render. Se houver várias campanhas para o produto, selecione o ID antes de preencher os indicadores. Campos não fornecidos pela API ficam para conferência.</p>
+          <div class="actions"><button type="button" class="btn-secondary mini" id="apiReadBtn">Consultar período selecionado</button><button type="button" class="btn-secondary mini" id="apiHistoryBtn">Consultar até 6 meses em blocos</button></div>
+          <div id="apiStatus" class="api-status" role="status" aria-live="polite">Selecione um produto e consulte suas campanhas. Nenhuma campanha será modificada.</div>
+          <div id="apiCampaignPickBox" class="api-campaign-picker" hidden>
+            <label for="apiCampaignChoice"><strong>Campanhas encontradas para o produto</strong></label>
+            <select id="apiCampaignChoice" aria-label="Escolher campanha individual"></select>
+            <div class="actions"><button type="button" id="apiApplyCampaignBtn" class="btn-primary mini">Usar campanha selecionada</button></div>
+            <p class="tiny">Os indicadores não são somados entre campanhas. Cada ID tem seu próprio histórico.</p>
+          </div>
+        </div>
+        <div class="campaign-metrics-title">Configuração e desempenho — 11 indicadores</div>
+        <div class="campaign-fields">
+          <div class="field"><label for="budget" id="budgetLabel">1. Orçamento diário (R$) *</label><div class="budget-entry"><input id="budget" inputmode="decimal" placeholder="Ex.: 15,00"><select id="budgetMode" aria-label="Tipo de orçamento"><option value="daily">Diário</option><option value="unlimited">Ilimitado</option></select></div><p class="tip" id="budgetHint">Limite configurado na Shopee. Para orçamento ilimitado, você poderá simular um teto diário sem alterar o anúncio.</p></div>
+          <div class="field"><label for="target">2. Meta de ROAS *</label><input id="target" inputmode="decimal" placeholder="Ex.: 30"></div>
+          <div class="field"><label for="rapidBoost">3. Impulsão Rápida</label><select id="rapidBoost"><option value="unknown">Não informado</option><option value="on">Ativada</option><option value="off">Desativada</option></select></div>
+          <div class="field"><label for="impressions">4. Impressões</label><input id="impressions" inputmode="numeric" placeholder="Ex.: 1.674"></div>
+          <div class="field"><label for="clicks">5. Cliques</label><input id="clicks" inputmode="numeric" placeholder="Ex.: 32"></div>
+          <div class="field"><label for="ctrReported">6. CTR (%)</label><input id="ctrReported" inputmode="decimal" placeholder="Ex.: 1,91"></div>
+          <div class="field"><label for="spent">7. Investimento (R$) *</label><input id="spent" inputmode="decimal" placeholder="Ex.: 8,98"></div>
+          <div class="field"><label for="actual">8. ROAS real</label><input id="actual" inputmode="decimal" placeholder="Ex.: 7,35"></div>
+          <div class="field"><label for="addToCart">9. Adicionar ao carrinho</label><input id="addToCart" inputmode="numeric" placeholder="Ex.: 6"></div>
+          <div class="field"><label for="itemsSold">10. Itens vendidos</label><input id="itemsSold" inputmode="numeric" placeholder="Ex.: 1"></div>
+          <div class="field"><label for="revenue">11. Vendas (R$)</label><input id="revenue" inputmode="decimal" placeholder="Ex.: 65,99"></div>
+        </div>
+        <input type="hidden" id="orders" value="">
+        <p class="tip">ROAS e CTR podem ser recalculados a partir de investimento/vendas e cliques/impressões. Confirme o período. A API poderá não fornecer orçamento, meta e Impulsão Rápida; confira os valores antes de analisar.</p>
+        <label class="checkline"><input type="checkbox" id="periodClosed" checked><span><strong>Período completo</strong> — o relatório não inclui o dia de hoje ainda em andamento.</span></label>
+        <label class="checkline"><input type="checkbox" id="budgetStable" checked><span><strong>Orçamento constante</strong> — não alterei o limite diário durante as datas selecionadas.</span></label>
+        <p class="tip" id="adsFinancialHint">A margem será consultada automaticamente no cadastro do SKU selecionado em Produtos. Não é necessário repetir custos ou taxas aqui.</p>
+        <div class="actions non-print"><button type="submit" class="btn-primary">Analisar campanha →</button><button type="button" class="btn-secondary" id="resetBtn">Limpar</button></div>
+        <div class="example-actions non-print"><span class="subtle" style="width:100%">Preencher exemplo histórico:</span><button type="button" data-example="base">Base Sucção</button><button type="button" data-example="ralador">Ralador</button><button type="button" data-example="piso">Piso Estrado</button></div>
+        <p class="muted-line">Exemplos ilustrativos de capturas anteriores; não refletem o desempenho atual.</p>
+      </form>
+    </div>
+    <div class="panel" id="resultPanel">
+      <div class="section-head"><div><div class="overline">02 · Decisão sugerida</div><h2>Resultado da análise</h2></div><span class="subtle" id="resultTimestamp">Sem análise</span></div>
+      <div id="resultEmpty" class="empty"><div class="empty-symbol">◎</div><h2>Seu diagnóstico aparece aqui</h2><p>Preencha orçamento, período, gasto, meta e ROAS real ou receita. Depois clique em <strong>Analisar campanha</strong>.</p></div>
+      <div id="resultContent" hidden>
+        <div class="result-title"><div><div class="overline" id="resultName">Campanha</div><h2 id="resultScenario" style="font-size:23px;margin:1px 0">—</h2></div><span id="resultBadge" class="status">—</span></div>
+        <div id="performanceStats" class="ads-kpis"></div>
+        <div id="resultAlerts"></div>
+        <h3 style="font-size:14px;margin:18px 0 6px">Regra do seu caderno</h3>
+        <div id="ruleExplanation" class="muted-line"></div>
+        <div id="recommendTable" class="table-scroll"></div>
+        <div id="financeOutput"></div>
+        <div class="recommend"><strong>Decisão segura sugerida</strong><p id="safeAction"></p></div>
+        <h3 style="font-size:14px">Conferir antes de alterar</h3>
+        <ul class="list-check" id="checkList"></ul>
+        <p class="muted-line" id="reviewNote"></p>
+        <div class="actions non-print"><button type="button" class="btn-primary" id="saveBtn">Salvar no histórico</button><button type="button" class="btn-secondary" id="printBtn">Imprimir / PDF</button><button type="button" class="btn-secondary" id="copyBtn">Copiar decisão</button></div>
+      </div>
+    </div>
+  </div></section>
+  <section class="view" id="regras"><div class="panel" style="margin-bottom:16px"><div class="overline">Referência rápida</div><h2>As quatro regras originais da Rede Achados BR</h2><p class="subtle">Consumo total = pelo menos 95% do teto comparável para um período fechado. O limite de 95% é uma tolerância de análise, não uma regra original do caderno. ROAS atingido significa ROAS real maior ou igual à meta.</p></div><div class="rule-grid">
+    <article class="rule-card"><span class="index">01</span><h3>Consome parte + atinge o ROAS</h3><p><strong>Reduzir ROAS alvo 20% e orçamento diário 20%.</strong></p><div class="formula">Ex.: R$ 30 → R$ 24 | ROAS 30 → 24</div><p class="small">Validar a margem antes de baixar a meta, pois isso pode ampliar gasto.</p></article>
+    <article class="rule-card"><span class="index">02</span><h3>Consome parte + não atinge o ROAS</h3><p><strong>Revisar preço, concorrência e fotos; depois reduzir ambos 20%.</strong></p><div class="formula">Ex.: R$ 20 → R$ 16 | ROAS 30 → 24</div><p class="small">Sem vendas ou com margem apertada, a redução é somente uma hipótese de teste.</p></article>
+    <article class="rule-card"><span class="index">03</span><h3>Consome tudo + não atinge o ROAS</h3><p><strong>Revisar a oferta; subir ROAS alvo 20% e manter orçamento.</strong></p><div class="formula">Ex.: R$ 10 → R$ 10 | ROAS 20 → 24</div><p class="small">Uma meta maior tende a restringir entrega; não garante ROAS realizado.</p></article>
+    <article class="rule-card"><span class="index">04</span><h3>Consome tudo + atinge o ROAS</h3><p><strong>Três caminhos conforme verba disponível:</strong></p><div class="formula">A. Com verba: orçamento +20%, ROAS igual<br>B. Sem verba: orçamento igual, ROAS +20%<br>C. Com verba e maior ROAS: ambos +20%</div><p class="small">Ex.: R$ 15 / ROAS 30 → A: R$ 18 / 30; B: R$ 15 / 36; C: R$ 18 / 36.</p></article>
+  </div><div class="panel" style="margin-top:16px"><h2>Proteções para o dropshipping</h2><ul class="list-check"><li>Se o orçamento é <strong>ilimitado</strong>, não é possível determinar consumo parcial ou total: o cenário fica indeterminado.</li><li>Não compare o <strong>gasto de vários dias</strong> ao teto de apenas um dia. Calcule orçamento diário × dias do período.</li><li>Campanha com data parcial: resultado <strong>provisório</strong>; não tome decisões fortes apenas com o dia em andamento.</li><li>ROAS de equilíbrio ≈ preço / (preço − custos unitários anteriores aos Ads). Se a contribuição for zero ou negativa, anúncios não resolvem a margem.</li><li>O ROAS necessário para atingir sua margem desejada é <strong>maior</strong> do que o ROAS de equilíbrio. Alvo de ROAS não é garantia de lucro.</li><li>Revisão diária na primeira semana; depois, semanal, sempre observando atrasos de atribuição e amostra de cliques/pedidos.</li></ul></div></section>
+  <section class="view" id="historico"><div class="panel"><div class="row-between"><div><div class="overline">No seu navegador</div><h2>Campanhas analisadas</h2><p class="subtle">Salvas apenas neste navegador. Para levar ao Google Drive ou a outro aparelho, use o backup JSON na aba Produtos.</p></div><div class="actions non-print"><button id="exportBtn" class="btn-secondary mini" type="button">Exportar CSV</button><button id="clearHistoryBtn" class="btn-secondary mini" type="button">Apagar histórico</button></div></div><div class="table-scroll"><table class="history-table"><thead><tr><th>Data da análise</th><th>Campanha</th><th>Período</th><th>Gasto</th><th>ROAS alvo/real</th><th>Cenário</th><th>Ações</th></tr></thead><tbody id="historyRows"><tr><td colspan="7">Nenhuma análise salva ainda.</td></tr></tbody></table></div></div>
+    <div class="panel history-split" id="changeHistoryPanel">
+      <div class="section-head"><div><div class="overline">Modificações do anúncio</div><h2>Registrar alteração por produto</h2></div><span class="subtle">Data e hora automáticas</span></div>
+      <p class="subtle">Depois de alterar seu anúncio na Shopee, selecione o SKU, marque as mudanças realizadas e salve. A data e a hora serão registradas neste momento, sem edição manual.</p>
+      <div class="field-grid">
+        <div class="field"><label for="changeSku">Produto / SKU *</label><select id="changeSku"><option value="">Selecione um produto cadastrado</option></select></div>
+        <div class="field"><label for="changeNote">Observação (opcional)</label><input id="changeNote" maxlength="300" placeholder="Ex.: nova capa ambientada / concorrência"></div>
+      </div>
+      <div class="change-choice" id="changeChoices">
+        <label><input type="checkbox" value="Capa"> Capa</label><label><input type="checkbox" value="Título"> Título</label><label><input type="checkbox" value="Descrição"> Descrição</label>
+        <label><input type="checkbox" value="Imagens"> Imagens</label><label><input type="checkbox" value="Vídeo"> Vídeo</label><label><input type="checkbox" value="Preço"> Preço</label>
+        <label><input type="checkbox" value="ROAS alvo"> ROAS alvo</label><label><input type="checkbox" value="Orçamento"> Orçamento</label><label><input type="checkbox" value="Impulsão Rápida"> Impulsão Rápida</label>
+        <label><input type="checkbox" value="Promoção"> Promoção</label><label><input type="checkbox" value="Frete"> Frete</label><label><input type="checkbox" value="Outros"> Outros</label>
+      </div>
+      <div class="actions non-print"><button type="button" id="saveChangeBtn" class="btn-primary">✓ Salvar alteração com data e hora</button><button type="button" id="exportChangesBtn" class="btn-secondary">Exportar alterações CSV</button></div>
+      <div class="tiny" id="changeStatus" aria-live="polite">O registro é manual; a hora corresponde ao clique em Salvar, não necessariamente à aplicação da mudança na Shopee.</div>
+      <hr style="border:0;border-top:1px solid #34363d;margin:18px 0">
+      <div class="hist-toolbar"><div class="field"><label for="changeFilter">Filtrar histórico por produto</label><select id="changeFilter"><option value="">Todos os produtos</option></select></div><div class="field"><label for="apiHistoryFilter">Origem dos dados</label><select id="apiHistoryFilter"><option value="changes">Modificações manuais</option><option value="ads">Consultas da API (blocos)</option></select></div></div>
+      <div class="table-scroll" style="margin-top:10px"><table class="history-table"><thead id="changeTableHead"><tr><th>Data e hora</th><th>SKU / Produto</th><th>Alterações</th><th>Observação</th><th>Ações</th></tr></thead><tbody id="changeHistoryRows"></tbody></table></div>
+      <p class="tiny">Histórico local deste navegador, incluído no backup JSON. Para armazenamento permanente e compartilhado, será necessária a integração com banco de dados.</p>
+    </div>
+  </section>
+  <footer class="foot"><div>REDE ACHADOS BR · Decisor Shopee Ads + Catálogo · Versão 16.0</div><div>Ferramenta de apoio à decisão. Nenhuma campanha é alterada automaticamente.</div></footer>
+</div>
+<script>
+'use strict';
+const $=id=>document.getElementById(id);
+const BRL=new Intl.NumberFormat('pt-BR',{style:'currency',currency:'BRL'});
+const NUM=new Intl.NumberFormat('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2});
+const pct=n=>NUM.format(n)+'%';
+const money=n=>BRL.format(n);
+const roas=n=>NUM.format(n)+'x';
+const STORAGE_KEY='redeachados_ads_decisoes_v1';
+let lastReport=null,lastData=null;
+function parseBR(v){if(v===null||v===undefined||String(v).trim()==='')return null;let s=String(v).trim().replace(/\s/g,'').replace(/[R$%x]/gi,'');if(s.includes(','))s=s.replace(/\./g,'').replace(',','.');const n=Number(s);return Number.isFinite(n)?n:null}
+function val(id){return parseBR($(id).value)}
+function parseQuantity(raw){if(raw===null||raw===undefined||String(raw).trim()==='')return null;const s=String(raw).trim().replace(/\s/g,'').toLowerCase();let x=s.match(/^([0-9]+(?:[.,][0-9]+)?)k$/);if(x)return Math.round(Number(x[1].replace(',','.'))*1000);x=s.match(/^([0-9]+(?:[.,][0-9]+)?)m$/);if(x)return Math.round(Number(x[1].replace(',','.'))*1000000);const num=s.match(/^\d{1,3}(?:\.\d{3})+$/)?Number(s.replace(/\./g,'')):parseBR(raw);return num}
+function isNonNeg(n){return n!==null&&n>=0}
+function safe(s){return String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]))}
+function dateUTC(str){const d=new Date(str+'T12:00:00Z');return Number.isNaN(d.getTime())?null:d}
+function daysInclusive(a,b){const x=dateUTC(a),y=dateUTC(b);if(!x||!y)return null;return Math.round((y-x)/86400000)+1}
+function getData(){
+ const sku=$('productSelect').value;
+ const product=readProducts().find(p=>p.sku===sku);
+ const fees=product?feeFor(product):null;
+ const cost=product?totalProductCost(product):null;
+ const validFinancial=!!(product&&product.price>0&&cost!==null&&Number.isFinite(cost)&&Number.isFinite(fees?.percent)&&Number.isFinite(fees?.fixed));
+ return {
+ campaign:$('campaign').value.trim()||'Campanha sem nome',dateStart:$('dateStart').value,dateEnd:$('dateEnd').value,
+ budgetMode:$('budgetMode').value,budget:val('budget'),rapidBoost:$('rapidBoost').value,spent:val('spent'),
+ target:val('target'),revenue:val('revenue'),actual:val('actual'),impressions:parseQuantity($('impressions').value),
+ clicks:val('clicks'),ctrReported:val('ctrReported'),orders:val('orders'),itemsSold:val('itemsSold'),addToCart:val('addToCart'),
+ periodClosed:$('periodClosed').checked,budgetStable:$('budgetStable').checked,
+ price:validFinancial?product.price:null,cost:validFinancial?cost:null,
+ feePercent:validFinancial?fees.percent+(product.extraPct||0):null,
+ feeFixed:validFinancial?fees.fixed:null,taxPercent:validFinancial?product.tax:null,
+ packing:validFinancial?product.packing:null,shipping:validFinancial?product.shipping:null,
+ coupon:validFinancial?product.coupon:null,desiredMargin:validFinancial?product.margin:null,
+ sku,curve:product?.curve||'',financeSource:validFinancial?'cadastro_sku':null
+ };
+}
+function validate(d){const issues=[];let days=daysInclusive(d.dateStart,d.dateEnd);if(days===null||days<=0)issues.push('Informe as datas inicial e final em ordem correta.');if(days>366)issues.push('Selecione um período de até 366 dias para manter a comparação clara.');if(!isNonNeg(d.spent))issues.push('Informe o gasto da campanha (zero é aceito).');if(d.target===null||d.target<=0)issues.push('Informe um ROAS alvo maior que zero.');if(d.budgetMode==='daily'&&(d.budget===null||d.budget<=0))issues.push('Informe um orçamento diário maior que zero.');if(d.budgetMode==='unlimited'&&d.budget!==null&&d.budget<=0)issues.push('O teto diário simulado precisa ser maior que zero. Deixe em branco para não simular.');if(!isNonNeg(d.revenue)&&!isNonNeg(d.actual))issues.push('Informe receita atribuída ou ROAS real.');for(const id of ['revenue','actual','impressions','clicks','ctrReported','orders','itemsSold','addToCart','price','cost','feePercent','feeFixed','taxPercent','packing','shipping','coupon','desiredMargin']){if(d[id]!==null&&d[id]<0)issues.push('O campo '+id+' não pode ser negativo.')}if(d.feePercent!==null&&d.feePercent>100)issues.push('A taxa Shopee (%) deve ser de até 100%.');if(d.taxPercent!==null&&d.taxPercent>100)issues.push('O imposto (%) deve ser de até 100%.');if(d.desiredMargin!==null&&d.desiredMargin>=100)issues.push('A margem desejada deve ser menor que 100%.');return [...new Set(issues)]}
+function calcFinance(d,actual){const required=['price','cost','feePercent','feeFixed','taxPercent'];if(!required.every(k=>d[k]!==null)||d.price<=0)return null;const extras=(d.packing||0)+(d.shipping||0)+(d.coupon||0);const contrib=d.price-d.cost-d.price*(d.feePercent+d.taxPercent)/100-d.feeFixed-extras;const breakeven=contrib>0?d.price/contrib:Infinity;const desired=d.desiredMargin??5;const neededContribution=contrib-d.price*desired/100;const minRoas=neededContribution>0?d.price/neededContribution:Infinity;const margin=actual>0?(contrib-d.price/actual)/d.price*100:null;const unfilled=['packing','shipping','coupon'].filter(k=>d[k]===null);return {contrib,breakeven,minRoas,margin,desired,unfilled}}
+function analyze(d){const days=daysInclusive(d.dateStart,d.dateEnd);const simulated=d.budgetMode==='unlimited'&&d.budget!==null&&d.budget>0;const grossMax=(d.budgetMode==='daily'||simulated)?d.budget*days:null;const consumed=grossMax===null?null:d.spent/grossMax*100;const revenueSource=d.revenue!==null?'Receita Ads / gasto (calculado)':'ROAS real informado';const revenue=d.revenue!==null?d.revenue:(d.actual!==null?d.actual*d.spent:null);const actual=d.spent>0?(d.revenue!==null?d.revenue/d.spent:d.actual):null;const meets=actual===null?null:actual>=d.target;const reliableLimit=(d.budgetMode==='daily'&&d.budgetStable)||simulated;const total=consumed!==null&&consumed>=95;let scenario=null;
+if(reliableLimit&&meets!==null&&d.spent>0)scenario=total?(meets?4:3):(meets?1:2);
+const suggestedBudget=(d.budgetMode==='daily'||simulated)?(scenario===1||scenario===2?d.budget*.8:(scenario===3?d.budget:null)):null;
+const suggestedROAS=scenario===1||scenario===2?d.target*.8:scenario===3?d.target*1.2:null;
+const fin=calcFinance(d,actual);
+const alerts=[];
+if(simulated)alerts.push({level:'warn',text:'SIMULAÇÃO: sua campanha continua com orçamento ILIMITADO na Shopee. O valor '+money(d.budget)+'/dia é apenas uma referência hipotética. O cenário e a porcentagem de consumo NÃO representam esgotamento real do orçamento. Nenhuma configuração foi alterada.'});else if(d.budgetMode==='unlimited')alerts.push({level:'warn',text:'Orçamento ilimitado: informe uma referência diária (ex.: R$ 10 ou R$ 15) para simular os quatro cenários. Sem referência, a classificação permanece indeterminada.'});
+if(!d.budgetStable&&d.budgetMode==='daily')alerts.push({level:'danger',text:'O limite diário mudou durante o período. Sem histórico de cada limite, o consumo não é confiável; cenário indeterminado.'});
+if(!d.periodClosed)alerts.push({level:'warn',text:'O relatório inclui um dia ainda em andamento: o consumo e a classificação são provisórios. Evite ajuste expressivo apenas com o dia parcial.'});
+if(consumed!==null&&consumed>105)alerts.push({level:'warn',text:simulated?'O gasto supera em mais de 5% a referência hipotética de '+money(grossMax)+'. Isso NÃO significa que a campanha excedeu um orçamento real.':'Gasto acima do teto teórico de '+money(grossMax)+'. Revise datas, mudanças de orçamento e cobranças antes de confiar no cenário.'});
+if(consumed!==null&&consumed>=90&&consumed<95)alerts.push({level:'warn',text:(simulated?'Gasto equivalente a 90%–95% do teto SIMULADO. ':'Consumo entre 90% e 95%: ')+ 'Perto do teto, mas abaixo do critério analítico de 95%.'});
+if(d.curve==='D'||d.curve==='E')alerts.push({level:'warn',text:'Curva '+d.curve+' informada manualmente: produto de baixa prioridade para Ads. Confirme vendas, demanda, preço e margem antes de investir.'});
+if(d.spent===0)alerts.push({level:'warn',text:'Não houve gasto: não existe ROAS real comparável; cenário indeterminado.'});
+if(d.revenue!==null&&d.actual!==null&&actual!==null&&Math.abs(actual-d.actual)>.1)alerts.push({level:'warn',text:'O ROAS calculado pela receita difere do ROAS digitado. Foi priorizada receita ÷ gasto. Verifique a janela de atribuição.'});
+if(d.impressions>0&&d.clicks!==null&&d.ctrReported!==null&&Math.abs(100*d.clicks/d.impressions-d.ctrReported)>0.5)alerts.push({level:'warn',text:'O CTR informado difere do cálculo cliques ÷ impressões. Verifique a leitura do print e o período.'});
+if(d.orders===0&&d.clicks!==null&&d.clicks>=30)alerts.push({level:'danger',text:d.clicks+' cliques e nenhum pedido informado: investigue conversão e oferta antes de ampliar a entrega.'});
+if(actual!==null&&actual===0&&d.spent>0)alerts.push({level:'danger',text:'Investimento sem receita atribuída no período: não há lucro proveniente dessas vendas Ads para compensar o gasto.'});
+if(fin){if(fin.unfilled.length)alerts.push({level:'warn',text:'Embalagem, frete ou cupons ficaram em branco e foram tratados como R$ 0,00: a margem calculada pode estar superestimada.'});if(fin.margin!==null&&fin.margin<0)alerts.push({level:'danger',text:'Margem estimada negativa com o ROAS real. Priorize limitar a perda e corrigir a oferta antes de escalar.'});else if(fin.margin!==null&&fin.margin<fin.desired)alerts.push({level:'warn',text:'A margem líquida aproximada no ROAS real ficou abaixo da meta de '+pct(fin.desired)+'.'});if(suggestedROAS!==null&&suggestedROAS<fin.minRoas)alerts.push({level:'danger',text:'A mudança do caderno levaria o ROAS alvo para '+roas(suggestedROAS)+', abaixo do ROAS necessário para a margem desejada ('+(Number.isFinite(fin.minRoas)?roas(fin.minRoas):'meta não atingível')+'). Não aplicar essa redução sem corrigir a margem.'});}else{alerts.push({level:'warn',text:'Lucratividade não validada: selecione um SKU com preço, custo, taxas e margem cadastrados na aba Produtos. Não foram presumidos valores financeiros.'});}
+let safeAction='',rule='';const belowGoal=fin&&fin.margin!==null&&fin.margin<fin.desired;
+if(scenario===1){rule='Consumo parcial e ROAS real ≥ alvo: reduzir orçamento e ROAS alvo 20%.';safeAction=(fin&&suggestedROAS<fin.minRoas)?'Não aplicar a redução do ROAS: ela ficaria abaixo do mínimo de margem. Revisar custos e preço, manter o controle de verba e só testar alterações após corrigir a rentabilidade.':'A regra sugere -20% nos dois campos. Teste com cautela, valide o preço e margem e acompanhe a entrega; ROAS alvo menor não garante lucro.';}
+else if(scenario===2){rule='Consumo parcial e ROAS real < alvo: primeiro conferir concorrência, preço e fotos; depois reduzir ambos 20%.';safeAction='Primeiro revisar competitividade, capa, frete e conversão. '+(fin&&suggestedROAS<fin.minRoas?'Não reduzir o alvo para '+roas(suggestedROAS)+': ficaria abaixo do ROAS para a margem desejada.':'A redução de 20% é apenas um teste após validar margem; não autorize escala sem essa conferência.');}
+else if(scenario===3){rule='Consumo total (≥95%) e ROAS real < alvo: revisar oferta, aumentar alvo 20% e manter orçamento.';safeAction='Corrigir preço, fotos e conversão; subir o alvo 20% conforme o caderno pode conter entrega, mas não garante melhora. '+(belowGoal?'A margem estimada está abaixo da desejada: contenha risco antes de manter gastos altos.':'Não aumentar a verba até validar rentabilidade.');}
+else if(scenario===4){rule='Consumo total (≥95%) e ROAS real ≥ alvo: escolher A, B ou C segundo a verba mensal disponível.';safeAction='Sem confirmação de verba extra, não escalar automaticamente. Compare A, B e C e selecione conforme seu orçamento mensal, validando a margem por venda.';}
+else{rule='Não foi possível aplicar com segurança um dos quatro cenários: falta limite comparável ou ROAS válido.';safeAction='Não aplicar porcentagens de forma automática. '+(d.budgetMode==='unlimited'?'Defina um teto diário (exemplo de teste conservador: R$ 5,00, se permitido) e acompanhe o gasto.':'Corrija período, orçamento ou dados de ROAS antes de decidir.')+' Revise margem e conversão.';}
+if(simulated){rule='SIMULAÇÃO com referência de '+money(d.budget)+'/dia. '+rule;safeAction='Esta é apenas uma proposta para sair do modo ilimitado e configurar um teto diário real na Shopee, se você decidir. '+safeAction;}return {d,days,grossMax,consumed,revenue,revenueSource,actual,meets,scenario,suggestedBudget,suggestedROAS,fin,alerts,rule,safeAction,simulated};}
+function showError(msg){$('resultEmpty').style.display='flex';$('resultContent').hidden=true;$('resultEmpty').innerHTML='<div class="empty-symbol">!</div><h2>Confira os dados</h2><p>'+safe(msg)+'</p>';switchTab('simulador')}
+function statusLabel(r){if(!r.scenario)return 'Indeterminado';return 'Cenário '+String(r.scenario).padStart(2,'0')+(r.simulated?' · SIMULADO':'')+(r.d.periodClosed?'':' · provisório')}
+function tableRender(headers,rows){return '<table><thead><tr>'+headers.map(h=>'<th>'+safe(h)+'</th>').join('')+'</tr></thead><tbody>'+rows.map(row=>'<tr>'+row.map(cell=>'<td>'+cell+'</td>').join('')+'</tr>').join('')+'</tbody></table>'}
+function render(r){lastReport=r;lastData=r.d;$('resultEmpty').style.display='none';$('resultContent').hidden=false;$('resultTimestamp').textContent='Período: '+r.d.dateStart.split('-').reverse().join('/')+' – '+r.d.dateEnd.split('-').reverse().join('/');$('resultName').textContent=r.d.campaign;$('resultScenario').textContent=statusLabel(r);$('resultBadge').className='status '+(r.scenario===4?'green':r.meets===false?'red':'');$('resultBadge').textContent=r.scenario===4?'Oportunidade':r.actual===0?'Sem vendas Ads':r.scenario?'Requer avaliação':'Dados insuficientes';
+const ctrCalculated=r.d.impressions>0&&r.d.clicks!==null?100*r.d.clicks/r.d.impressions:null;
+const boostLabel={on:'Ativada',off:'Desativada',unknown:'Não informado'}[r.d.rapidBoost]||'Não informado';
+const performanceItems=[
+ ['Orçamento diário',r.d.budgetMode==='unlimited'?'Ilimitado'+(r.simulated?' · referência '+money(r.d.budget)+'/dia':''):money(r.d.budget)],
+ ['Meta de ROAS',roas(r.d.target)],
+ ['Impulsão Rápida',boostLabel],
+ ['Impressões',r.d.impressions===null?'—':Number(r.d.impressions).toLocaleString('pt-BR')],
+ ['Cliques',r.d.clicks===null?'—':Number(r.d.clicks).toLocaleString('pt-BR')],
+ ['CTR',ctrCalculated!==null?pct(ctrCalculated):r.d.ctrReported!==null?pct(r.d.ctrReported):'—'],
+ ['Investimento',money(r.d.spent)],
+ ['ROAS',r.actual===null?'—':roas(r.actual)],
+ ['Adicionar ao carrinho',r.d.addToCart===null?'—':String(r.d.addToCart)],
+ ['Itens vendidos',r.d.itemsSold===null?'—':String(r.d.itemsSold)],
+ ['Vendas',r.revenue===null?'—':money(r.revenue)]];
+$('performanceStats').innerHTML=performanceItems.map(([k,v])=>'<div class="stat"><div class="k">'+safe(k)+'</div><div class="v">'+safe(v)+'</div></div>').join('');
+$('resultAlerts').innerHTML=r.alerts.map(a=>'<div class="notice '+(a.level==='danger'?'danger':a.level==='ok'?'ok':'')+'">'+safe(a.text)+'</div>').join('');$('ruleExplanation').textContent=r.rule;
+let table='';if(r.scenario===4){const b=r.d.budget,t=r.d.target;table=tableRender(['Opção','Orçamento/dia','ROAS alvo','Quando usar'],[[r.simulated?'Referência hipotética':'Atual',money(b),roas(t),r.simulated?'Shopee segue ilimitada':'Referência'],['A · Verba extra', '<strong>'+money(b*1.2)+'</strong>',roas(t),'Escalar alcance'],['B · Sem verba',money(b),'<strong>'+roas(t*1.2)+'</strong>','Buscar eficiência'],['C · Verba + eficiência','<strong>'+money(b*1.2)+'</strong>','<strong>'+roas(t*1.2)+'</strong>','Testar ambos']]);}
+else{table=tableRender(['Configuração','Atual','Regra do caderno'],[...(r.simulated?[['Situação real','Ilimitado','Nenhuma alteração na Shopee']]:[]),[r.simulated?'Referência diária simulada':'Orçamento diário',r.simulated?money(r.d.budget):(r.d.budgetMode==='unlimited'?'Ilimitado':money(r.d.budget)),r.suggestedBudget===null?'—':'<strong>'+money(r.suggestedBudget)+'</strong>'],['ROAS alvo',roas(r.d.target),r.suggestedROAS===null?'—':'<strong>'+roas(r.suggestedROAS)+'</strong>'],[r.simulated?'Consumo da referência':'Consumo do limite',r.consumed===null?'Não calculável':pct(r.consumed),r.scenario?(r.simulated?'Cenário hipotético':'Classificado'):'Indeterminado']]);}
+$('recommendTable').innerHTML=table;
+if(r.fin){const f=r.fin;let finRows=[['Contribuição antes dos Ads por unidade',money(f.contrib)],['ROAS de equilíbrio (0% lucro)',Number.isFinite(f.breakeven)?roas(f.breakeven):'Sem equilíbrio com o preço atual'],['ROAS para margem desejada de '+pct(f.desired),Number.isFinite(f.minRoas)?roas(f.minRoas):'Meta não atingível com o preço atual'],['Margem estimada com ROAS real',f.margin===null?'Não calculável sem vendas atribuídas':pct(f.margin)]];$('financeOutput').innerHTML='<h3 style="font-size:14px;margin:20px 0 8px">Validação de margem · simulação</h3><div class="table-scroll">'+tableRender(['Indicador','Estimativa'],finRows)+'</div><p class="muted-line">Premissas: preço e custos uniformes por unidade, receita atribuída aos anúncios e custos proporcionais. O ROAS alvo não é o ROAS realizado.</p>';}
+else $('financeOutput').innerHTML='<p class="muted-line">Margem não validada. Selecione um SKU cadastrado com dados financeiros completos em Produtos para visualizar ROAS de equilíbrio e a margem desejada.</p>';
+$('safeAction').textContent=r.safeAction;
+const checklist=['Concorrência: preço final e ofertas similares.','Capa, título, fotos e benefícios reais do anúncio.','Frete, prazo de entrega, cupons e avaliação do produto.','Custo WeDrop, taxas CNPJ, impostos e margem líquida.','Estoque disponível e possíveis atrasos no relatório de atribuição.'];$('checkList').innerHTML=checklist.map(v=>'<li>'+safe(v)+'</li>').join('');$('reviewNote').textContent='Reavalie diariamente na primeira semana e, depois, semanalmente. Não execute dois ajustes simultâneos sem registrar o resultado anterior.';}
+function switchTab(tab){if(tab==='produtos'){renderProductList();refreshProductSelect()}for(const x of document.querySelectorAll('.tab'))x.classList.toggle('active',x.dataset.tab===tab);for(const x of document.querySelectorAll('.view'))x.classList.toggle('active',x.id===tab);if(tab==='historico')renderHistory()}
+for(const x of document.querySelectorAll('.tab'))x.addEventListener('click',()=>switchTab(x.dataset.tab));
+function updateBudgetMode(){const sim=$('budgetMode').value==='unlimited';$('budget').disabled=false;$('budgetLabel').textContent=sim?'1. Referência diária para simulação (R$)':'1. Orçamento diário real (R$) *';$('budget').placeholder=sim?'Ex.: 10,00 ou 15,00':'Ex.: 15,00';$('budgetHint').textContent=sim?'Orçamento real na Shopee: ILIMITADO. Informe um valor diário hipotético para simular os quatro cenários; a Shopee não será alterada. Sem referência, o cenário fica indeterminado.':'Limite diário realmente configurado na Shopee; será comparado ao gasto do período.';$('budgetStable').closest('label').hidden=sim;}$('budgetMode').addEventListener('change',()=>{$('budget').value='';updateBudgetMode()});updateBudgetMode();
+$('adsForm').addEventListener('submit',e=>{e.preventDefault();const d=getData(),errors=validate(d);if(errors.length){showError(errors.join(' '));return;}const r=analyze(d);render(r);if(window.innerWidth<940)$('resultPanel').scrollIntoView({behavior:'smooth',block:'start'});});
+$('resetBtn').addEventListener('click',()=>{$('adsForm').reset();$('productSelect').value='';showCurveInAds();updateBudgetMode();lastReport=null;lastData=null;$('resultContent').hidden=true;$('resultEmpty').style.display='flex';$('resultEmpty').innerHTML='<div class="empty-symbol">◎</div><h2>Seu diagnóstico aparece aqui</h2><p>Preencha os campos e clique em Analisar campanha.</p>';$('resultTimestamp').textContent='Sem análise';});
+const fieldIds=['campaign','dateStart','dateEnd','budgetMode','budget','rapidBoost','spent','target','revenue','actual','impressions','clicks','ctrReported','orders','itemsSold','addToCart'];const checks=['periodClosed','budgetStable'];
+function fillData(d){for(const id of fieldIds){if(d[id]!==undefined&&d[id]!==null)$(id).value=d[id];else if(id==='rapidBoost')$(id).value='unknown';else $(id).value='';}for(const id of checks)$(id).checked=!!d[id];$('productSelect').value=d.sku||'';showCurveInAds();updateBudgetMode()}
+const examples={base:{campaign:'Base Sucção Cor Sortida [3] (histórico)',dateStart:'2026-10-15',dateEnd:'2026-10-19',budgetMode:'daily',budget:'10',spent:'23,16',target:'5,6',revenue:'0',impressions:'1400',clicks:'33',ctrReported:'2,39',orders:'0',periodClosed:false,budgetStable:true},ralador:{campaign:'Ralador Multiuso 3 em 1 [4] (histórico)',dateStart:'2026-10-21',dateEnd:'2026-10-26',budgetMode:'unlimited',spent:'8,40',target:'25',revenue:'117,98',impressions:'851',clicks:'15',ctrReported:'1,76',orders:'2',itemsSold:'2',price:'58,99',cost:'34,99',periodClosed:true,budgetStable:true},piso:{campaign:'Piso Estrado Plástico Preto [2] (histórico)',dateStart:'2026-10-22',dateEnd:'2026-10-27',budgetMode:'unlimited',spent:'6,61',target:'30',revenue:'0',impressions:'2300',clicks:'77',ctrReported:'3,30',orders:'0',itemsSold:'0',addToCart:'4',periodClosed:true,budgetStable:true}};
+for(const btn of document.querySelectorAll('[data-example]'))btn.addEventListener('click',()=>{fillData(examples[btn.dataset.example]);$('adsForm').requestSubmit();});
+function getHistory(){try{const a=JSON.parse(localStorage.getItem(STORAGE_KEY)||'[]');return Array.isArray(a)?a:[]}catch{return []}}
+function setHistory(items){try{localStorage.setItem(STORAGE_KEY,JSON.stringify(items));return true}catch{return false}}
+$('saveBtn').addEventListener('click',()=>{if(!lastReport)return;const a=getHistory();a.unshift({id:Date.now()+'-'+Math.floor(Math.random()*9999),savedAt:new Date().toISOString(),data:lastData,scenario:lastReport.scenario,actual:lastReport.actual});if(setHistory(a))alert('Análise salva neste navegador. Abra “Histórico local” para consultar.');else alert('O navegador não permitiu salvar o histórico. Use “Copiar decisão” ou “Imprimir / PDF”.');});
+function renderHistory(){const items=getHistory();$('historyRows').innerHTML=items.length?items.map(it=>{const d=it.data||{};const dt=new Date(it.savedAt);return '<tr><td>'+safe(Number.isNaN(dt.getTime())?'—':dt.toLocaleDateString('pt-BR'))+'</td><td><strong>'+safe(d.campaign)+'</strong></td><td>'+safe(d.dateStart||'')+' a '+safe(d.dateEnd||'')+'</td><td>'+money(d.spent||0)+'</td><td>'+roas(d.target||0)+' / '+(it.actual===null?'—':roas(it.actual))+'</td><td>'+(it.scenario?('0'+it.scenario):'Indeterminado')+'</td><td><button type="button" class="btn-secondary mini" data-load="'+safe(it.id)+'">Abrir</button> <button type="button" class="btn-secondary mini" data-delete="'+safe(it.id)+'">Excluir</button></td></tr>'}).join(''):'<tr><td colspan="7">Nenhuma análise salva ainda.</td></tr>';
+for(const b of document.querySelectorAll('[data-load]'))b.addEventListener('click',()=>{const it=getHistory().find(x=>x.id===b.dataset.load);if(!it)return;fillData(it.data);const errors=validate(getData());if(errors.length){alert(errors.join(' '));return}render(analyze(getData()));switchTab('simulador')});for(const b of document.querySelectorAll('[data-delete]'))b.addEventListener('click',()=>{if(!confirm('Excluir apenas este registro?'))return;setHistory(getHistory().filter(x=>x.id!==b.dataset.delete));renderHistory()});}
+$('clearHistoryBtn').addEventListener('click',()=>{if(confirm('Apagar todas as análises salvas neste navegador?')){setHistory([]);renderHistory()}});
+$('exportBtn').addEventListener('click',()=>{const hist=getHistory();if(!hist.length){alert('Ainda não há análises salvas.');return}const columns=['data_analise','campanha','sku','curva','data_inicio','data_fim','orcamento_tipo','orcamento_diario','impulsao_rapida','gasto','receita_ads','roas_alvo','roas_real','impressoes','cliques','ctr_pct','conversoes_pedidos','itens_vendidos','adicoes_carrinho','cenario','observacao'];const rows=hist.map(it=>{let r=analyze(it.data),d=it.data;return [it.savedAt,d.campaign,d.sku||'',d.curve||'',d.dateStart,d.dateEnd,d.budgetMode,d.budget,d.rapidBoost||'unknown',r.d.spent,r.revenue,d.target,r.actual,d.impressions,d.clicks,d.impressions>0&&d.clicks!==null?d.clicks/d.impressions*100:d.ctrReported,d.orders,d.itemsSold,d.addToCart,r.scenario||'Indeterminado',r.safeAction]});const esc=v=>'"'+String(v??'').replace(/"/g,'""')+'"';const csv='\uFEFF'+[columns,...rows].map(row=>row.map(esc).join(';')).join('\r\n');const link=document.createElement('a');link.href=URL.createObjectURL(new Blob([csv],{type:'text/csv;charset=utf-8'}));link.download='Rede_Achados_BR_Shopee_Ads_Historico.csv';document.body.appendChild(link);link.click();setTimeout(()=>{URL.revokeObjectURL(link.href);link.remove()},1000)});
+$('printBtn').addEventListener('click',()=>window.print());
+$('copyBtn').addEventListener('click',async()=>{if(!lastReport)return;const r=lastReport;const s=[r.d.campaign,'Período: '+r.d.dateStart+' a '+r.d.dateEnd,'Cenário: '+statusLabel(r),'Curva manual: '+(r.d.curve||'Não informada'),'Orçamento atual: '+(r.d.budgetMode==='unlimited'?'Ilimitado':money(r.d.budget)),'Gasto: '+money(r.d.spent),'ROAS alvo: '+roas(r.d.target),'ROAS real: '+(r.actual===null?'Não calculável':roas(r.actual)),'Impulsão Rápida: '+({on:'Ativada',off:'Desativada',unknown:'Não informado'}[r.d.rapidBoost]||'Não informado'),'Orçamento proposto: '+(r.suggestedBudget===null?'Não definido':money(r.suggestedBudget)),'ROAS proposto: '+(r.suggestedROAS===null?'Não definido':roas(r.suggestedROAS)),'Regra: '+r.rule,'Ação segura: '+r.safeAction,'Alertas: '+r.alerts.map(x=>x.text).join(' | ')].join('\n');try{await navigator.clipboard.writeText(s);alert('Decisão copiada.')}catch{const ta=document.createElement('textarea');ta.value=s;document.body.append(ta);ta.select();document.execCommand('copy');ta.remove();alert('Decisão copiada (modo compatibilidade).')}});
+
+// V2 — catálogo local, precificação e backup; sem execução de anúncios
+const PRODUCTS_KEY='redeachados_ads_produtos_v2';
+// Status não verificado na Shopee. Produtos antigos permanecem "Não informado" até você classificar.
+const ADS_STATUS_LABELS={unknown:'Não informado',active:'Em Ads',removed:'Retirado dos Ads',never:'Nunca anunciado'};
+function adsStatusOf(p){return Object.hasOwn(ADS_STATUS_LABELS,p?.adsStatus)?p.adsStatus:'unknown'}
+// API only updates a temporary, session-scoped status. Never overwrite user's manual status.
+const apiObservedAdsStatus=new Map();
+function effectiveAdsStatus(p){return apiObservedAdsStatus.get(p?.sku)?.status||adsStatusOf(p)}
+function observeApiStatus(sku,campaigns){
+ const list=campaigns.filter(c=>/^[0-9]+$/.test(String(c.campaignId||'')));
+ if(!list.length)return;
+ const verified=list.filter(c=>c.statusGroup==='active'||c.statusGroup==='inactive');
+ if(!verified.length)return;
+ const status=verified.some(c=>c.statusGroup==='active')?'active':'removed';
+ apiObservedAdsStatus.set(sku,{status,observedAt:new Date().toISOString(),campaignIds:verified.map(c=>String(c.campaignId))});
+ renderProductList();refreshProductSelect();showCurveInAds();
+}
+function adsStatusDate(p){if(!p?.adsStatusChangedAt)return '';const dt=new Date(p.adsStatusChangedAt);return Number.isNaN(dt.getTime())?'':dt.toLocaleDateString('pt-BR')}
+function setProductAdsStatus(sku,status){if(!Object.hasOwn(ADS_STATUS_LABELS,status))return;const items=readProducts(),idx=items.findIndex(p=>p.sku===sku);if(idx<0)return;const existing=items[idx];if(existing.adsStatus===status)return;items[idx]={...existing,adsStatus:status,adsStatusChangedAt:new Date().toISOString(),updatedAt:new Date().toISOString()};const saved=persistProducts(items);if(!saved)alert('Seu navegador não conseguiu salvar o status. Faça um backup JSON para não perder os dados.');if(editingSku===sku)$('pAdsStatus').value=status;renderProductList();refreshProductSelect();}
+let editingSku=null;
+let memoryProducts=[];
+let storageAvailable=true;
+try{const key='rede_ads_storage_test';localStorage.setItem(key,'1');localStorage.removeItem(key)}catch(e){storageAvailable=false}
+function readProducts(){if(!storageAvailable)return memoryProducts.slice();try{const v=JSON.parse(localStorage.getItem(PRODUCTS_KEY)||'[]');return Array.isArray(v)?v.filter(x=>x&&typeof x==='object').map(normalizeProduct):[]}catch(e){return []}}
+function persistProducts(items){memoryProducts=items.slice();if(!storageAvailable)return false;try{localStorage.setItem(PRODUCTS_KEY,JSON.stringify(items));return true}catch(e){storageAvailable=false;return false}}
+function upMoney(n){return typeof n==='number'&&Number.isFinite(n)?money(n):'—'}
+function autoCommission(price,regime,extraCpf){
+  let percent=price<80?20:14;
+  let fixed=price<9?price/2:price<80?4.50:price<100?16:price<200?20:26;
+  if(regime==='CPF'&&extraCpf)fixed+=3;
+  return {percent,fixed};
+}
+// A escolha da precificação é apenas do formulário; o SKU salva o preço efetivamente calculado.
+let currentPriceMode='price';
+const MODE_DESCRIPTIONS={
+  margin:'Informe a margem líquida (%) desejada. O preço é calculado automaticamente com Ads (ROAS maior que 0) ou sem Ads (ROAS 0).',
+  price:'Informe o preço de venda para calcular automaticamente lucro e margem.',
+  profit:'Informe o lucro líquido desejado por unidade. Com ROAS 0, o preço é calculado sem Ads; com ROAS positivo, inclui os Ads.'
+};
+function showPriceMode(mode){
+  currentPriceMode=['margin','price','profit'].includes(mode)?mode:'price';
+  for(const b of document.querySelectorAll('[data-price-mode]')){const on=b.dataset.priceMode===currentPriceMode;b.classList.toggle('active',on);b.setAttribute('aria-pressed',String(on));}
+
+  $('pGoalProfitField').hidden=currentPriceMode!=='profit';
+  $('pPrice').readOnly=currentPriceMode!=='price';
+  $('pPrice').classList.toggle('price-output',currentPriceMode!=='price');
+  $('pPriceLabel').textContent=currentPriceMode==='price'?'Preço de venda (R$) *':'Preço de venda calculado (R$)';
+  $('priceModeDescription').textContent=MODE_DESCRIPTIONS[currentPriceMode];
+  updatePriceMode();
+}
+// Respeita as faixas da comissão configuradas nesta calculadora. Nos saltos de faixa,
+// testa cada intervalo para encontrar o menor preço que realmente atinge o objetivo.
+function calculateRequiredPrice(raw,mode,goal){
+  const cost=totalProductCost(raw), target=raw.target, tax=raw.tax??4, extraPct=raw.extraPct??0;
+  const extras=(raw.packing??0)+(raw.shipping??0)+(raw.coupon??0);
+  if(cost===null||cost<0)return {error:raw.isKit?'Informe um custo unitário e a quantidade do kit (mínimo 2).':'Informe o custo do produto para calcular o preço.'};
+  if(target!==null && target<0)return {error:'O ROAS não pode ser negativo. Use 0 para simular SEM Ads.'};
+  // ROAS 0 ou vazio = sem publicidade. ROAS > 0 = despesa publicitária por venda.
+  const useAds=target!==null && target>0;
+  if(goal===null||goal<0||(mode==='margin'&&goal>=100))return {error:'Informe uma meta válida: margem de 0 a menos de 100%, ou lucro em reais a partir de zero.'};
+  if(tax<0||tax>100||extraPct<0||extraPct>100||extras<0)return {error:'Confira os impostos, taxas e custos adicionais.'};
+  if(raw.feeMode==='manual'&&!(raw.feePct>=0&&raw.feePct<=100&&raw.feeFixed>=0))return {error:'Preencha as taxas manuais Shopee.'};
+  const bands=raw.feeMode==='manual' ? [[0.01,1000000]] : [[0.01,8.99],[9,79.99],[80,99.99],[100,199.99],[200,1000000]];
+  let best=null;
+  for(const [start,end] of bands){
+    const sample=(start+Math.min(end, start+1))/2;
+    const fees=raw.feeMode==='manual'?{percent:raw.feePct,fixed:raw.feeFixed}:autoCommission(sample,raw.regime,raw.cpfExtra);
+    const proportionalFixed=raw.feeMode==='auto'&&start<9?.5:0;
+    const fixed=fees.fixed-(proportionalFixed?sample/2:0);
+    const deduction=(fees.percent+tax+extraPct)/100+(useAds?1/target:0)+proportionalFixed+(mode==='margin'?goal/100:0);
+    const denom=1-deduction;
+    if(denom<=0)continue;
+    const numerator=cost+extras+fixed+(mode==='profit'?goal:0);
+    const theoretical=numerator/denom;
+    let cents=Math.max(Math.ceil(start*100),Math.ceil(theoretical*100-1e-8));
+    const maxCents=Math.floor(end*100+1e-8);
+    // Arredondamento monetário sempre para cima; confira novamente o resultado real.
+    for(let attempt=0;attempt<4&&cents<=maxCents;attempt++,cents++){
+      const price=cents/100, probe=computeProduct({...raw,price});
+      if(!probe)continue;
+      const netProfit=useAds?probe.profitWithAds:probe.contribution;
+      if(netProfit===null)continue;
+      const achieved=mode==='margin'?100*netProfit/price:netProfit;
+      if(achieved+1e-7>=goal){if(best===null||price<best)best=price;break;}
+    }
+  }
+  return best===null?{error:'Não foi possível alcançar a meta com as taxas e custos atuais. Revise o custo, a margem, o lucro desejado ou o ROAS.'}:{price:best,useAds};
+}
+function updatePriceMode(){
+  const feedback=$('priceFeedback');
+  const useAds=val('pTarget')>0;
+  const basis=useAds?'após Ads (ROAS '+NUM.format(val('pTarget'))+'x)':'SEM Ads (ROAS 0 ou vazio)';
+  $('pMarginTip').textContent=currentPriceMode==='margin'?'Este percentual calcula automaticamente o preço '+basis+'. Ele também define o ROAS necessário para atingir sua margem.':'Esta é a sua referência de rentabilidade para os Ads, mesmo quando você informa preço ou lucro em reais. ROAS 0 não inclui gasto com publicidade.';
+  $('pGoalProfitLabel').textContent='Lucro líquido desejado por unidade '+(useAds?'após Ads':'sem Ads')+' (R$) *';
+
+  $('pGoalProfitTip').textContent=useAds?'Inclui custos, impostos, taxas e publicidade no ROAS informado.':'O lucro desejado será sem Ads. Para simular o lucro com Ads, informe um ROAS maior que zero.';
+  feedback.classList.remove('error');
+  if(currentPriceMode==='price'){
+    feedback.textContent='Preço informado manualmente. Lucro e margem aparecem à direita.';
+    renderProductPreview();return;
+  }
+  const raw=readProductForm();
+  const goal=currentPriceMode==='margin'?val('pMargin'):val('pGoalProfit');
+  const calculation=calculateRequiredPrice(raw,currentPriceMode,goal);
+  if(calculation.error){$('pPrice').value='';feedback.textContent=calculation.error;feedback.classList.add('error');}
+  else{$('pPrice').value=calculation.price.toFixed(2).replace('.',',');
+    feedback.textContent=(currentPriceMode==='margin'?'Preço calculado para margem de '+NUM.format(goal)+'% ':'Preço calculado para lucro de '+money(goal)+' por unidade ')+basis+'. Valor arredondado para cima.';}
+  renderProductPreview();
+}
+// Categorias são informadas manualmente pelo vendedor; não provam demanda ou lucratividade.
+const CURVE_INFO={
+ A:{short:'Alta saída',tip:'Prioridade para avaliar Ads, desde que margem, preço e conversão sejam viáveis.',kind:'ok'},
+ B:{short:'Boa saída',tip:'Boa candidata a teste controlado de Ads, sujeito à margem e ao desempenho.',kind:'ok'},
+ C:{short:'Saída moderada',tip:'Teste com orçamento pequeno e valide demanda e lucratividade.',kind:'warn'},
+ D:{short:'Baixa saída',tip:'Baixa prioridade: revise a oferta antes de investir em Ads.',kind:'bad'},
+ E:{short:'Muito baixa saída',tip:'Não priorizar Ads até existir evidência de procura ou melhoria da oferta.',kind:'bad'}
+};
+function curveInfo(curve){return CURVE_INFO[curve]||null}
+function curveText(curve){const c=curveInfo(curve);return c?'Curva '+curve+' · '+c.short+' — '+c.tip:'Sem curva informada: avalie mercado, margem e histórico de vendas antes de decidir.';}
+function updateCurvePreview(){const curve=$('pCurve').value,c=curveInfo(curve),el=$('previewCurve');el.className='curve-help'+(c?' '+c.kind:'');el.textContent=curveText(curve)+' Classificação manual; não é garantia de vendas.';}
+function showCurveInAds(){const sku=$('productSelect').value,p=readProducts().find(x=>x.sku===sku),el=$('curveAdsHint');const c=curveInfo(p?.curve);el.className='curve-help'+(c?' '+c.kind:'');el.textContent=p?curveText(p.curve)+' A decisão de Ads depende também do lucro e do ROAS.':'Selecione um produto cadastrado para consultar sua curva manual.';const marketEl=$('marketAdsHint');const comp=p?computeProduct(p):null;marketEl.className='curve-help'+(comp?.difference!==null&&comp?.difference!==undefined?' '+comp.competitiveness.kind:'');marketEl.textContent=!p?'Ao selecionar um SKU, a comparação de preço com a média de mercado também será exibida.':!comp||comp.difference===null?'Preço de mercado não informado: preencha a média no cadastro para avaliar competitividade.':'Preço vs média: '+(comp.difference>=0?'+':'')+NUM.format(comp.difference)+'% · '+comp.competitiveness.label+'. '+comp.competitiveness.tip+' Verifique lucro, frete e ROAS antes de investir.';const financeHint=$('adsFinancialHint');if(financeHint)financeHint.textContent=p?'Margem calculada automaticamente pelo cadastro do SKU '+p.sku+' (inclusive custos de kit, taxas e impostos). Para ajustar, use a aba Produtos.':'Margem não validada: selecione um produto cadastrado para calcular ROAS mínimo e lucro sem repetir taxas nesta aba.';const statusEl=$('statusAdsHint');const observed=p?apiObservedAdsStatus.get(p.sku):null;const status=p?effectiveAdsStatus(p):'unknown';statusEl.className='curve-help'+(status==='active'?' ok':status==='removed'?' warn':'');statusEl.textContent=!p?'Selecione o produto para consultar seu status.':observed?'Status confirmado nesta consulta API: '+(status==='active'?'Em andamento':status==='removed'?'Retirado/pausado':'Não confirmado')+' · consultado em '+fmtStamp(observed.observedAt)+'. Não altera anúncios.':'Status manual: '+ADS_STATUS_LABELS[status]+(adsStatusDate(p)?' · atualizado em '+adsStatusDate(p):'')+'. Consulte a API para confirmar.';}
+function kitQuantityValid(p){return !p.isKit || (Number.isInteger(p.kitQuantity)&&p.kitQuantity>=2&&p.kitQuantity<=999)}
+function totalProductCost(p){
+  if(p.cost===null||p.cost===undefined||!Number.isFinite(Number(p.cost)))return null;
+  if(!kitQuantityValid(p))return null;
+  return Number(p.cost)*(p.isKit?Number(p.kitQuantity):1);
+}
+function updateKitUI(){
+  const isKit=$('pIsKit').checked,quantity=val('pKitQuantity'),unitCost=val('pCost');
+  $('pKitConfig').hidden=!isKit;
+  $('pCostLabel').textContent=isKit?'Custo por unidade do kit (R$) *':'Custo do produto (R$) *';
+  $('pKitQuantity').required=isKit;
+  $('pKitTotalCost').textContent=!isKit?'':!(Number.isInteger(quantity)&&quantity>=2&&quantity<=999)?'Informe uma quantidade inteira de 2 a 999.':unitCost===null||unitCost<0?'Informe o custo unitário.':'Custo total do kit: '+money(unitCost*quantity)+' ('+quantity+' × '+money(unitCost)+')';
+}
+function readProductForm(){const ids={sku:'pSku',name:'pName',cost:'pCost',price:'pPrice',market:'pMarket',target:'pTarget',tax:'pTax',feePct:'pFeePct',feeFixed:'pFeeFixed',extraPct:'pExtraPct',packing:'pPacking',shipping:'pShipping',coupon:'pCoupon',margin:'pMargin'};
+  const p={};for(const [k,id] of Object.entries(ids))p[k]=(k==='sku'||k==='name')?$(id).value.trim() : val(id);
+  p.isKit=$('pIsKit').checked;p.kitQuantity=p.isKit?val('pKitQuantity'):1;p.curve=$('pCurve').value;p.adsStatus=$('pAdsStatus').value;p.regime=$('pRegime').value;p.feeMode=$('pFeeMode').value;p.cpfExtra=$('pCpfExtra').checked;p.calcMode=currentPriceMode;p.marginUnified=true;p.goalProfit=val('pGoalProfit');return p;
+}
+function feeFor(p){if(p.feeMode==='manual')return {percent:Number(p.feePct)||0,fixed:Number(p.feeFixed)||0};return autoCommission(Number(p.price)||0,p.regime,p.cpfExtra)}
+function computeProduct(p){const totalCost=totalProductCost(p);if(!(p.price>0)||!(totalCost>=0))return null;
+  const f=feeFor(p),price=p.price,extras=(p.packing||0)+(p.shipping||0)+(p.coupon||0),tax=(p.tax||0)*price/100,
+    shoFee=price*f.percent/100+f.fixed,others=price*(p.extraPct||0)/100,
+    contribution=price-totalCost-shoFee-tax-others-extras,
+    ads=p.target>0?price/p.target:null,
+    profitWithAds=ads===null?null:contribution-ads,
+    marginWithAds=profitWithAds===null?null:100*profitWithAds/price,
+    breakEven=contribution>0?price/contribution:Infinity,
+    desired=p.margin??5,
+    minimum=contribution>price*desired/100 ? price/(contribution-price*desired/100):Infinity;
+  let difference=null,competitiveness={label:'Sem média de mercado',kind:'warn',band:'none',tip:'Informe a média do mercado para avaliar a competitividade.'};
+  if(p.market>0){difference=(price-p.market)/p.market*100;
+    if(difference<=-5)competitiveness={label:'Abaixo da média',kind:'ok',band:'below',tip:'Preço atrativo, mas confira se sobra margem após taxas e Ads.'};
+    else if(difference<=0)competitiveness={label:'Preço vantajoso',kind:'ok',band:'base',tip:'Compare o custo total para o comprador, incluindo frete.'};
+    else if(difference<=5)competitiveness={label:'Muito competitivo',kind:'ok',band:'5',tip:'Pequena diferença: frete, prazo, avaliações e fotos podem pesar.'};
+    else if(difference<=10)competitiveness={label:'Competitivo',kind:'ok',band:'10',tip:'Há potencial para competir com diferenciais reais na oferta.'};
+    else if(difference<=15)competitiveness={label:'Venda possível',kind:'warn',band:'15',tip:'Até 15% acima da média ainda pode vender. Revise preço final, frete, prazo, fotos e avaliações antes de investir.'};
+    else if(difference<=20)competitiveness={label:'Venda mais difícil, mas possível',kind:'warn',band:'20',tip:'Entre 15% e 20% acima da média, teste com muito cuidado e diferenciais reais. Não conclua que o produto é invendável.'};
+    else competitiveness={label:'Risco alto para Ads',kind:'bad',band:'over',tip:'Mais de 20% acima da média: revise competitividade antes de anunciar; ainda pode vender com diferenciais.'};}
+  return {f,price,totalCost,shoFee,tax,others,extras,contribution,ads,profitWithAds,marginWithAds,breakEven,minimum,difference,competitiveness};
+}
+function pNum(v){return v===null||v===undefined||v===''?null:Number(v)}
+function normalizeProduct(p){return {sku:String(p.sku||'').trim().toUpperCase(),name:String(p.name||'').trim(),curve:CURVE_INFO[p.curve]?p.curve:'',adsStatus:adsStatusOf(p),adsStatusChangedAt:typeof p.adsStatusChangedAt==='string'?p.adsStatusChangedAt:'',isKit:!!p.isKit,kitQuantity:p.isKit?pNum(p.kitQuantity):1,cost:pNum(p.cost),price:pNum(p.price),market:pNum(p.market),target:pNum(p.target),tax:pNum(p.tax)??4,feePct:pNum(p.feePct),feeFixed:pNum(p.feeFixed),extraPct:pNum(p.extraPct)??0,packing:pNum(p.packing)??0,shipping:pNum(p.shipping)??0,coupon:pNum(p.coupon)??0,margin:(p.marginUnified===true?pNum(p.margin):(p.calcMode==='margin'&&pNum(p.goalMargin)!==null?pNum(p.goalMargin):pNum(p.margin)))??5,marginUnified:true,regime:p.regime==='CPF'?'CPF':'CNPJ',feeMode:p.feeMode==='manual'?'manual':'auto',cpfExtra:!!p.cpfExtra,calcMode:['margin','price','profit'].includes(p.calcMode)?p.calcMode:'price',goalProfit:pNum(p.goalProfit)??5,updatedAt:p.updatedAt||new Date().toISOString()}}
+function validateProduct(p){const problems=[];if(!p.sku)problems.push('Informe a SKU.');if(!p.name)problems.push('Informe o nome.');if(!(p.price>0))problems.push('O preço de venda deve ser maior que zero.');if(!(p.cost>=0))problems.push('Informe o custo do produto (zero é válido).');if(!kitQuantityValid(p))problems.push('Informe a quantidade de produtos do kit: número inteiro de 2 a 999.');for(const key of ['market','target','tax','extraPct','packing','shipping','coupon','margin'])if(p[key]!==null&&!(p[key]>=0))problems.push('Verifique o campo '+key+'.');if(p.market!==null&&p.market<=0)problems.push('A média de mercado deve ser positiva ou ficar em branco.');if(p.target!==null&&p.target<0)problems.push('ROAS não pode ser negativo; use 0 para calcular SEM Ads.');if(p.margin===null||p.margin<0||p.margin>=100||p.goalProfit<0)problems.push('Confira a margem ou o lucro desejado.');if(p.tax>100||p.extraPct>100||p.margin>=100)problems.push('Confira percentuais acima do limite.');if(p.feeMode==='manual'&&(p.feePct===null||p.feeFixed===null||p.feePct<0||p.feePct>100||p.feeFixed<0))problems.push('Na taxa manual, informe a comissão (%) e a tarifa fixa (R$).');return [...new Set(problems)]}
+function fText(n){return Number.isFinite(n)?roas(n):'Meta não atingível'}
+function renderProductPreview(){updateKitUI();updateCurvePreview();const p=normalizeProduct(readProductForm()),c=computeProduct(p);$('previewKitPriceTag').textContent=p.isKit?'· valor do kit ('+(p.kitQuantity??'?')+' un.)':'';for(const el of document.querySelectorAll('.kit-profit-label'))el.textContent=p.isKit?'· por kit':'';
+  for(const id of ['previewProfit','previewAdsProfit','previewMargin','previewBreakEven','previewMinRoas'])$(id).className='v';$('previewGoalRoasLabel').textContent='ROAS para sua margem ('+pct(p.margin)+')';
+  if(!c){$('previewMarginLabel').textContent=val('pTarget')>0?'Margem com Ads':'Margem SEM Ads';for(const id of ['previewPrice','previewProfit','previewAdsProfit','previewMargin','previewBreakEven','previewMinRoas'])$(id).textContent='—';$('previewMarginGoalNotice').className='notice info';$('previewMarginGoalNotice').textContent='Informe custo e preço para saber se a margem que você escolheu pode ser atingida.';$('previewCompetitive').textContent=p.isKit&&!kitQuantityValid(p)?'Informe a quantidade do kit (de 2 a 999 unidades) para calcular o lucro.':'Informe custo e preço para calcular o lucro; a média do mercado é opcional.';$('marketPriceLevels').hidden=true;$('marketPriceLevels').innerHTML='';$('previewBreakdown').innerHTML='';return;}
+  $('previewPrice').textContent=money(p.price);const noAds=!(p.target>0);$('previewMarginLabel').textContent=noAds?'Margem SEM Ads':'Margem com Ads';const shownMargin=noAds?100*c.contribution/p.price:c.marginWithAds;const map=[['previewProfit',money(c.contribution),c.contribution],['previewAdsProfit',noAds?'Não simulado':money(c.profitWithAds),c.profitWithAds],['previewMargin',pct(shownMargin),shownMargin],['previewBreakEven',Number.isFinite(c.breakEven)?roas(c.breakEven):'Sem equilíbrio',null],['previewMinRoas',Number.isFinite(c.minimum)?roas(c.minimum):'Meta não atingível',null]];
+  for(const [id,t,v] of map){$(id).textContent=t;if(v!==null)$(id).classList.add(v<0?'neg':'pos')}
+  const marginNotice=$('previewMarginGoalNotice');
+  const withoutAds=100*c.contribution/p.price;
+  const goalReached=Number.isFinite(c.minimum);
+  marginNotice.className='notice '+(goalReached?'ok':c.contribution>0?'':'danger');
+  marginNotice.textContent=goalReached?'Sua meta é '+pct(p.margin)+' de lucro líquido. Para atingi-la no preço atual com Ads, seria necessário ROAS real de aproximadamente '+roas(c.minimum)+' ou maior. ROAS alvo não garante resultado.':c.contribution>0?'Sua meta de '+pct(p.margin)+' não é alcançável com Ads neste preço: a margem antes dos Ads é '+pct(withoutAds)+'. Ainda existe lucro sem Ads e o ROAS de equilíbrio é '+roas(c.breakEven)+'. Aumente o preço ou reduza custos para atingir a meta.':'Não existe ROAS que elimine o prejuízo com o preço e custos atuais: a contribuição antes dos Ads é '+money(c.contribution)+'. Reveja preço e custos.';
+  const comp=$('previewCompetitive');comp.className='notice '+(c.competitiveness.kind==='bad'?'danger':c.competitiveness.kind==='ok'?'ok':'');
+  comp.textContent=c.difference===null?'Sem média de mercado. Digite o preço médio que você pesquisar manualmente.':c.competitiveness.label+' · '+(c.difference>=0?'+':'')+NUM.format(c.difference)+'% em relação à média informada. '+c.competitiveness.tip;
+  const levels=$('marketPriceLevels');levels.hidden=!(p.market>0);
+  if(p.market>0){
+    const bands=[['base','Média',0],['5','+5%',5],['10','+10%',10],['15','+15%',15],['20','+20%',20]];
+    levels.innerHTML=bands.map(([band,label,extra])=>'<div class="market-level'+(c.competitiveness.band===band?' active':'')+'"><div class="level-pct">'+label+'</div><div class="level-val">'+money(p.market*(1+extra/100))+'</div></div>').join('');
+  }else levels.innerHTML='';
+  $('previewBreakdown').innerHTML=tableRender([p.isKit?'Detalhamento por kit':'Detalhamento por unidade','Valor'],[['Preço de venda'+(p.isKit?' do kit':''),money(p.price)],...(p.isKit?[['Custo unitário × '+p.kitQuantity,money(p.cost)+' × '+p.kitQuantity]]:[]),['Custo fornecedor'+(p.isKit?' (total do kit)':''),'− '+money(c.totalCost)],['Comissão Shopee ('+NUM.format(c.f.percent)+'%)','− '+money(p.price*c.f.percent/100)],['Tarifa fixa Shopee','− '+money(c.f.fixed)],['Imposto ('+NUM.format(p.tax||0)+'%)','− '+money(c.tax)],['Taxas adicionais ('+NUM.format(p.extraPct||0)+'%)','− '+money(c.others)],['Embalagem, frete e cupom','− '+money(c.extras)],['Lucro sem Ads','<strong>'+money(c.contribution)+'</strong>'],['Custo de Ads ('+(p.target>0?'ROAS '+roas(p.target):'não incluído')+')',c.ads===null?'Não simulado':'− '+money(c.ads)],['Lucro simulado com Ads',c.profitWithAds===null?'Não simulado':'<strong>'+money(c.profitWithAds)+'</strong>']]);
+}
+function setManualFeeFields(){const manual=$('pFeeMode').value==='manual';$('pFeePct').disabled=!manual;$('pFeeFixed').disabled=!manual;}
+function resetProductForm(){editingSku=null;$('productForm').reset();$('pIsKit').checked=false;$('pKitQuantity').value='';updateKitUI();$('pRegime').value='CNPJ';$('pTax').value='4';$('pMargin').value='5';$('pTarget').value='25';$('pGoalProfit').value='5';$('pFeeMode').value='auto';for(const id of ['pPacking','pShipping','pCoupon','pExtraPct'])$(id).value='0';$('pCurve').value='';$('pAdsStatus').value='unknown';$('productFormTitle').textContent='Cadastrar produto';$('saveProductBtn').textContent='Salvar produto';$('pSku').readOnly=false;$('productError').hidden=true;setManualFeeFields();showPriceMode('price')}
+function fillProductForm(p){editingSku=p.sku;const ids={sku:'pSku',name:'pName',cost:'pCost',price:'pPrice',market:'pMarket',target:'pTarget',tax:'pTax',feePct:'pFeePct',feeFixed:'pFeeFixed',extraPct:'pExtraPct',packing:'pPacking',shipping:'pShipping',coupon:'pCoupon',margin:'pMargin'};
+for(const [k,id] of Object.entries(ids))$(id).value=p[k]??'';$('pCurve').value=p.curve||'';$('pAdsStatus').value=adsStatusOf(p);$('pIsKit').checked=!!p.isKit;$('pKitQuantity').value=p.isKit?p.kitQuantity:'';updateKitUI();$('pRegime').value=p.regime||'CNPJ';$('pFeeMode').value=p.feeMode||'auto';$('pCpfExtra').checked=!!p.cpfExtra;$('pSku').readOnly=true;$('productFormTitle').textContent='Editar produto · '+p.sku;$('saveProductBtn').textContent='Salvar alterações';$('productError').hidden=true;setManualFeeFields();$('pGoalProfit').value=p.goalProfit??5;showPriceMode(p.calcMode||'price');switchTab('produtos');$('productDetail').scrollIntoView({behavior:'smooth',block:'start'})}
+function renderProductList(){
+ const items=readProducts();
+ const search=$('productSearch').value.trim().toLocaleLowerCase('pt-BR');
+ const chosenCurve=$('curveFilter').value,chosenStatus=$('adsStatusFilter').value;
+ const filtered=items.filter(p=>`${p.sku} ${p.name}`.toLocaleLowerCase('pt-BR').includes(search)&&(chosenCurve===''||p.curve===chosenCurve||(chosenCurve==='none'&&!p.curve))&&(!chosenStatus||effectiveAdsStatus(p)===chosenStatus));
+ let competitive=0;
+ for(const p of items){const c=computeProduct(p);if(c&&c.competitiveness.kind==='ok'&&c.difference!==null)competitive++}
+ const count=status=>items.filter(p=>effectiveAdsStatus(p)===status).length;
+ $('catalogCounts').textContent=items.length+' produto(s) · '+count('active')+' em Ads · '+count('removed')+' retirado(s) · '+count('never')+' nunca anunciado(s) · '+count('unknown')+' sem status · '+items.filter(p=>p.curve).length+' classificados por curva · '+competitive+' com preço até 10% acima da média';
+ $('productsBody').innerHTML=filtered.length?filtered.map(p=>{
+  const c=computeProduct(p);if(!c)return '';
+  const badge='<span class="mini-indicator '+c.competitiveness.kind+'">'+safe(c.competitiveness.label)+'</span>';
+  const status=adsStatusOf(p),when=adsStatusDate(p),apiSeen=apiObservedAdsStatus.get(p.sku);
+  const statusControl='<select class="ads-status-select '+status+'" aria-label="Status Ads do produto '+safe(p.sku)+'" data-ads-status-sku="'+safe(p.sku)+'">'+Object.entries(ADS_STATUS_LABELS).map(([key,label])=>'<option value="'+key+'"'+(status===key?' selected':'')+'>'+safe(label)+'</option>').join('')+'</select>'+(when?'<div class="ads-status-changed" title="Data da última alteração manual">Atualizado: '+safe(when)+'</div>':'');
+  return '<tr><td><strong>'+safe(p.sku)+'</strong><div style="min-width:170px">'+safe(p.name)+'</div>'+(p.isKit?'<div class="muted-line">📦 Kit '+p.kitQuantity+' un. · custo total '+money(c.totalCost)+'</div>':'')+'</td><td>'+(p.curve?'<span class="curve-badge '+p.curve+'" title="'+safe(curveText(p.curve))+'">'+p.curve+'</span>':'—')+'</td><td>'+statusControl+'</td><td>'+money(p.price)+'</td><td>'+(p.market>0?money(p.market):'—')+'</td><td>'+badge+(c.difference===null?'':'<div class="muted-line">'+(c.difference>=0?'+':'')+NUM.format(c.difference)+'%</div>')+'</td><td><strong>'+money(c.contribution)+'</strong></td><td>'+(c.profitWithAds===null?'—':'<strong style="color:'+(c.profitWithAds>=0?'#91edbd':'#ffabae')+'">'+money(c.profitWithAds)+'</strong>')+'</td><td>'+(Number.isFinite(c.breakEven)?roas(c.breakEven):'Sem equilíbrio')+'</td><td>'+(Number.isFinite(c.minimum)?roas(c.minimum):'<span class="mini-indicator bad">Meta não atingível</span>')+'</td><td><div class="table-actions"><button type="button" class="btn-secondary mini" data-use-sku="'+safe(p.sku)+'">Usar Ads</button><button type="button" class="btn-secondary mini" data-edit-sku="'+safe(p.sku)+'">Editar</button><button type="button" class="btn-secondary mini" data-delete-sku="'+safe(p.sku)+'">Excluir</button></div></td></tr>';
+ }).join(''):'<tr><td colspan="11">'+(items.length?'Nenhum produto corresponde aos filtros selecionados.':'Cadastre seu primeiro produto no formulário acima.')+'</td></tr>';
+ for(const sel of $('productsBody').querySelectorAll('[data-ads-status-sku]'))sel.addEventListener('change',()=>setProductAdsStatus(sel.dataset.adsStatusSku,sel.value));
+ for(const btn of $('productsBody').querySelectorAll('[data-edit-sku]'))btn.addEventListener('click',()=>{const p=readProducts().find(x=>x.sku===btn.dataset.editSku);if(p)fillProductForm(p)});
+ for(const btn of $('productsBody').querySelectorAll('[data-use-sku]'))btn.addEventListener('click',()=>selectProductForAds(btn.dataset.useSku,true));
+ for(const btn of $('productsBody').querySelectorAll('[data-delete-sku]'))btn.addEventListener('click',()=>{const sku=btn.dataset.deleteSku;if(!confirm('Excluir o produto '+sku+' do catálogo? O histórico de Ads não será apagado.'))return;persistProducts(readProducts().filter(x=>x.sku!==sku));if(editingSku===sku)resetProductForm();renderProductList();refreshProductSelect()});
+}
+function refreshProductSelect(){
+ const sel=$('productSelect'),selected=sel.value,filter=$('campaignAdsFilter').value;
+ const products=readProducts().filter(p=>!filter||effectiveAdsStatus(p)===filter);
+ sel.innerHTML='<option value="">— Selecione um produto —</option>'+products.map(p=>'<option value="'+safe(p.sku)+'">'+safe(p.sku+' · '+p.name)+'</option>').join('');
+ if(products.some(p=>p.sku===selected))sel.value=selected;
+ else if(selected){sel.value='';showCurveInAds()}
+}
+function selectProductForAds(sku,jump){const p=readProducts().find(x=>x.sku===sku);if(!p)return;if($('campaignAdsFilter').value&&effectiveAdsStatus(p)!==$('campaignAdsFilter').value)$('campaignAdsFilter').value='';refreshProductSelect();$('productSelect').value=sku;showCurveInAds();$('campaign').value=p.name+' — SKU '+p.sku;if(p.target>0)$('target').value=p.target;else $('target').value='';if(jump)switchTab('simulador');}
+$('productForm').addEventListener('submit',ev=>{ev.preventDefault();updatePriceMode();let p=normalizeProduct(readProductForm());const errors=validateProduct(p);if(errors.length){$('productError').hidden=false;$('productError').textContent=errors.join(' ');return;}
+const items=readProducts();let i=items.findIndex(v=>v.sku===p.sku);if(i>=0&&editingSku!==p.sku){$('productError').hidden=false;$('productError').textContent='Esta SKU já existe. Use Editar para atualizar.';return;}
+if(i>=0){const old=items[i];p.adsStatusChangedAt=adsStatusOf(old)===adsStatusOf(p)?old.adsStatusChangedAt:new Date().toISOString();items[i]=p}else{p.adsStatusChangedAt=p.adsStatus==='unknown'?'':new Date().toISOString();items.push(p)}const ok=persistProducts(items);renderProductList();refreshProductSelect();resetProductForm();$('dataStatus').textContent=ok?'Produto salvo neste navegador. Faça backup JSON periodicamente.':'Não foi possível gravar no navegador. Faça o download do backup JSON nesta sessão.';alert('Produto '+p.sku+' '+(i>=0?'atualizado.':'cadastrado.')+(ok?'':' ATENÇÃO: sem armazenamento persistente.'));
+});
+$('clearProductBtn').addEventListener('click',resetProductForm);
+for(const btn of document.querySelectorAll('[data-price-mode]'))btn.addEventListener('click',()=>showPriceMode(btn.dataset.priceMode));
+$('pFeeMode').addEventListener('change',()=>{setManualFeeFields();updatePriceMode()});
+for(const el of $('productForm').querySelectorAll('input,select')){el.addEventListener('input',updatePriceMode);el.addEventListener('change',updatePriceMode)}
+$('productSearch').addEventListener('input',renderProductList);$('curveFilter').addEventListener('change',renderProductList);$('adsStatusFilter').addEventListener('change',renderProductList);
+$('campaignAdsFilter').addEventListener('change',()=>{hideApiCampaignPicker();refreshProductSelect();showCurveInAds()});
+$('productSelect').addEventListener('change',()=>{hideApiCampaignPicker();if($('productSelect').value)selectProductForAds($('productSelect').value,false);else showCurveInAds();});
+$('exportProductsBtn').addEventListener('click',()=>{const items=readProducts();if(!items.length){alert('Cadastre produtos antes de exportar.');return}const columns=['SKU','Nome','Curva','Status_Ads','Alterado_Ads_em','Kit','Quantidade_kit','Custo_unitario','Custo_total','Preco_venda','Media_mercado','Dif_%','Competitividade','ROAS_simulado','Lucro_sem_ads','Lucro_com_ads','Margem_com_ads','Margem_desejada_pct','ROAS_equilibrio','ROAS_para_margem_desejada'];const rows=items.map(p=>{const c=computeProduct(p);return [p.sku,p.name,p.curve||'',ADS_STATUS_LABELS[adsStatusOf(p)],p.adsStatusChangedAt||'',p.isKit?'SIM':'NÃO',p.isKit?p.kitQuantity:1,p.cost,c.totalCost,p.price,p.market,c.difference,c.competitiveness.label,p.target,c.contribution,c.profitWithAds,c.marginWithAds,p.margin,Number.isFinite(c.breakEven)?c.breakEven:'Sem equilíbrio',Number.isFinite(c.minimum)?c.minimum:'Meta não atingível']});const esc=v=>'"'+String(v??'').replace(/"/g,'""')+'"';downloadFile('Rede_Achados_BR_Produtos.csv','\uFEFF'+[columns,...rows].map(row=>row.map(esc).join(';')).join('\r\n'),'text/csv;charset=utf-8')});
+function downloadFile(name,contents,mimetype){const link=document.createElement('a');const url=URL.createObjectURL(new Blob([contents],{type:mimetype}));link.href=url;link.download=name;document.body.appendChild(link);link.click();setTimeout(()=>{URL.revokeObjectURL(url);link.remove()},1200)}
+$('backupExportBtn').addEventListener('click',()=>{const payload={app:'Rede Achados BR - Decisor Shopee Ads',schemaVersion:4,exportedAt:new Date().toISOString(),products:readProducts(),history:getHistory(),changes:getChanges(),adsSnapshots:getAdsSnapshots()};downloadFile('Rede_Achados_BR_Backup_Produtos_Ads.json',JSON.stringify(payload,null,2),'application/json;charset=utf-8');$('dataStatus').textContent='Backup baixado: envie o arquivo JSON para o Google Drive manualmente.'});
+$('backupImportBtn').addEventListener('click',()=>$('importBackupInput').click());
+$('importBackupInput').addEventListener('change',async function(){const file=this.files?.[0];if(!file)return;try{if(file.size>5*1024*1024)throw Error('O arquivo excede 5 MB.');const obj=JSON.parse(await file.text());if(obj.app!=='Rede Achados BR - Decisor Shopee Ads'||!Array.isArray(obj.products)||!Array.isArray(obj.history))throw Error('Backup inválido ou incompatível.');if(obj.products.length>10000||obj.history.length>30000)throw Error('Backup muito grande.');const clean=[];const errors=[];for(const raw of obj.products){if(!raw||typeof raw!=='object')throw Error('Registro de produto inválido.');const p=normalizeProduct(raw),v=validateProduct(p);if(v.length)errors.push(p.sku||'SKU sem nome');else clean.push(p)}if(errors.length)throw Error('Produtos inválidos no backup: '+errors.slice(0,4).join(', '));const hist=obj.history.filter(x=>x&&typeof x==='object'&&x.data&&typeof x.data==='object'&&typeof x.id==='string').slice(0,30000);if(!confirm('Restaurar backup? Os dados serão MESCLADOS: SKUs iguais serão atualizados e registros de histórico com mesmo ID não serão duplicados.'))return;
+const bySku=new Map(readProducts().map(x=>[x.sku,x]));for(let idx=0;idx<clean.length;idx++){const p=clean[idx],raw=obj.products[idx],previous=bySku.get(p.sku);if(previous&&raw&&!Object.prototype.hasOwnProperty.call(raw,'adsStatus')){p.adsStatus=previous.adsStatus;p.adsStatusChangedAt=previous.adsStatusChangedAt}bySku.set(p.sku,p)}const byId=new Map(getHistory().map(x=>[x.id,x]));for(const h of hist)byId.set(h.id,h);const pOk=persistProducts([...bySku.values()]),hOk=setHistory([...byId.values()]);if(Array.isArray(obj.changes))mergeChanges(obj.changes);if(Array.isArray(obj.adsSnapshots))mergeAdsSnapshots(obj.adsSnapshots);renderProductList();refreshProductSelect();renderHistory();renderChangeHistory();$('dataStatus').textContent='Backup importado: '+clean.length+' produto(s), '+hist.length+' análise(s).'+(!pOk||!hOk?' ATENÇÃO: falha ao persistir alguns dados.':'');alert('Backup restaurado com sucesso.');}catch(err){alert('Não foi possível restaurar: '+err.message)}finally{this.value=''}});
+if(!storageAvailable){$('dataStatus').textContent='Atenção: navegador bloqueou o armazenamento local. Use outro perfil/navegador e exporte backup para não perder os dados.';}
+setManualFeeFields();updateKitUI();showPriceMode('price');renderProductList();refreshProductSelect();
+
+
+// V12 — Histórico por SKU com hora capturada automaticamente e leituras API sem alterações.
+const CHANGE_KEY='redeachados_ads_alteracoes_v12';
+const ADS_SNAPSHOTS_KEY='redeachados_ads_api_periodos_v12';
+function getChanges(){try{const x=JSON.parse(localStorage.getItem(CHANGE_KEY)||'[]');return Array.isArray(x)?x:[]}catch{return []}}
+function setChanges(a){try{localStorage.setItem(CHANGE_KEY,JSON.stringify(a));return true}catch{return false}}
+function mergeChanges(items){const a=new Map(getChanges().map(x=>[x.id,x]));for(const x of items){if(x&&typeof x.id==='string'&&typeof x.sku==='string'&&Array.isArray(x.changes)&&x.timestamp&&x.changes.length&&x.changes.every(v=>typeof v==='string'))a.set(x.id,{id:x.id,sku:x.sku,productName:String(x.productName||readProducts().find(p=>p.sku===x.sku)?.name||'').slice(0,200),timestamp:x.timestamp,changes:x.changes.slice(0,12),note:String(x.note||'').slice(0,300)})}return setChanges([...a.values()].slice(-20000))}
+function getAdsSnapshots(){try{const x=JSON.parse(localStorage.getItem(ADS_SNAPSHOTS_KEY)||'[]');return Array.isArray(x)?x:[]}catch{return []}}
+function setAdsSnapshots(a){try{localStorage.setItem(ADS_SNAPSHOTS_KEY,JSON.stringify(a));return true}catch{return false}}
+function mergeAdsSnapshots(items){const a=new Map(getAdsSnapshots().map(x=>[x.id,x]));for(const x of items){if(x&&typeof x.id==='string'&&typeof x.campaignId==='string'&&typeof x.start==='string'&&typeof x.end==='string')a.set(x.id,x)}return setAdsSnapshots([...a.values()].slice(-12000))}
+function fmtStamp(v){const d=new Date(v);return isNaN(d.getTime())?'—':d.toLocaleString('pt-BR',{timeZone:'America/Sao_Paulo',day:'2-digit',month:'2-digit',year:'numeric',hour:'2-digit',minute:'2-digit',second:'2-digit'})}
+// Na inclusão de alterações, qualquer SKU cadastrado pode ser selecionado.
+// No filtro de histórico, aparecem somente SKUs que efetivamente têm registros
+// na origem escolhida (modificações manuais ou consultas de API).
+function savedProductName(sku,storedName=''){
+ const name=String(storedName||'').trim();
+ if(name)return name;
+ return readProducts().find(p=>p.sku===sku)?.name||'Produto não encontrado no cadastro atual';
+}
+function refreshChangeSelects(){
+ const products=readProducts();
+ const names=new Map(products.map(p=>[p.sku,p.name]));
+ const registration=$('changeSku'),currentRegistration=registration.value;
+ registration.innerHTML='<option value="">Selecione um produto cadastrado</option>'+
+  products.map(p=>'<option value="'+safe(p.sku)+'">'+safe(p.sku+' · '+p.name)+'</option>').join('');
+ if([...registration.options].some(x=>x.value===currentRegistration))registration.value=currentRegistration;
+ const filter=$('changeFilter'),currentFilter=filter.value;
+ const source=$('apiHistoryFilter').value;
+ const rows=source==='ads'?getAdsSnapshots():getChanges();
+ const bySku=new Map();
+ for(const entry of rows){
+  const sku=String(entry.sku||'').trim();
+  if(!sku)continue;
+  if(!bySku.has(sku))bySku.set(sku,savedProductName(sku,entry.productName||''));
+ }
+ filter.innerHTML='<option value="">Todos com histórico ('+bySku.size+')</option>'+
+  [...bySku.entries()].sort((a,b)=>a[1].localeCompare(b[1],'pt-BR')).map(([sku,name])=>
+   '<option value="'+safe(sku)+'">'+safe(sku+' · '+name)+'</option>').join('');
+ if([...filter.options].some(x=>x.value===currentFilter))filter.value=currentFilter;
+}
+function renderChangeHistory(){
+ refreshChangeSelects();
+ const sku=$('changeFilter').value;
+ const type=$('apiHistoryFilter').value;
+ const head=$('changeTableHead'),body=$('changeHistoryRows');
+ if(type==='ads'){
+  head.innerHTML='<tr><th>Consultado em</th><th>Produto / Campanha</th><th>Período</th><th>Investimento</th><th>ROAS</th></tr>';
+  const a=getAdsSnapshots().filter(x=>!sku||x.sku===sku).sort((a,b)=>b.syncedAt.localeCompare(a.syncedAt));
+  body.innerHTML=a.length?a.map(x=>'<tr><td>'+safe(fmtStamp(x.syncedAt))+'</td><td><strong>'+safe(x.sku||'')+'</strong><div>'+safe(savedProductName(x.sku,x.productName))+'</div><small>Campanha '+safe(x.campaignId)+'</small></td><td>'+safe(x.start)+' a '+safe(x.end)+'</td><td>'+money(Number(x.expense||0))+'</td><td>'+safe(x.roas===null||x.roas===undefined?'—':roas(Number(x.roas)))+'</td></tr>').join(''):'<tr><td colspan="5">Nenhuma consulta API salva para este filtro.</td></tr>';
+  return;
+ }
+ head.innerHTML='<tr><th>Data e hora</th><th>SKU / Produto</th><th>Alterações</th><th>Observação</th><th>Ações</th></tr>';
+ const a=getChanges().filter(x=>!sku||x.sku===sku).sort((a,b)=>b.timestamp.localeCompare(a.timestamp));
+ body.innerHTML=a.length?a.map(x=>'<tr><td>'+safe(fmtStamp(x.timestamp))+'</td><td><strong>'+safe(x.sku)+'</strong><div>'+safe(savedProductName(x.sku,x.productName))+'</div></td><td>'+safe(x.changes.join(' + '))+'</td><td>'+safe(x.note||'—')+'</td><td><button class="btn-secondary mini" data-del-change="'+safe(x.id)+'" type="button">Excluir</button></td></tr>').join(''):'<tr><td colspan="5">Ainda não há alterações registradas para este filtro.</td></tr>';
+ for(const btn of body.querySelectorAll('[data-del-change]'))btn.addEventListener('click',()=>{
+  if(!confirm('Excluir este registro manual?'))return;
+  setChanges(getChanges().filter(x=>x.id!==btn.dataset.delChange));
+  renderChangeHistory();
+ });
+}
+$('saveChangeBtn').addEventListener('click',()=>{const sku=$('changeSku').value;const selected=[...$('changeChoices').querySelectorAll('input:checked')].map(x=>x.value);if(!sku||!readProducts().some(x=>x.sku===sku)){alert('Selecione um produto cadastrado.');return}if(!selected.length){alert('Marque pelo menos uma alteração.');return}const rec={id:typeof crypto!=='undefined'&&crypto.randomUUID?crypto.randomUUID():String(Date.now())+'-'+Math.random().toString(36).slice(2),sku,productName:readProducts().find(p=>p.sku===sku)?.name||'',changes:selected,note:$('changeNote').value.trim().slice(0,300),timestamp:new Date().toISOString()};if(!mergeChanges([rec])){alert('Não foi possível gravar no navegador. Faça backup.');return}const nowText=fmtStamp(rec.timestamp);$('changeStatus').textContent='✓ '+sku+': '+selected.join(' + ')+' · Salvo em '+nowText+' (horário de Brasília).';$('changeChoices').querySelectorAll('input').forEach(x=>x.checked=false);$('changeNote').value='';$('changeFilter').value=sku;$('apiHistoryFilter').value='changes';renderChangeHistory()});
+for(const id of ['changeFilter','apiHistoryFilter'])$(id).addEventListener('change',renderChangeHistory);
+$('exportChangesBtn').addEventListener('click',()=>{const a=getChanges();if(!a.length){alert('Não há alterações para exportar.');return}const enc=x=>'"'+String(x??'').replace(/"/g,'""')+'"';const csv='\uFEFF'+[['SKU','Nome_produto','Data_hora_UTC','Data_hora_Brasilia','Alteracoes','Observacao'],...a.map(x=>[x.sku,savedProductName(x.sku,x.productName),x.timestamp,fmtStamp(x.timestamp),x.changes.join(' + '),x.note])].map(r=>r.map(enc).join(';')).join('\r\n');downloadFile('Rede_Achados_BR_Alteracoes_Anuncios.csv',csv,'text/csv;charset=utf-8')});
+const oldSwitchTab=switchTab;
+switchTab=function(tab){oldSwitchTab(tab);if(tab==='historico')renderChangeHistory()};
+// Endpoints já existentes no Render, protegidos pela sessão do vendedor.
+// Nunca colocamos Partner Key ou token no HTML, nem tentamos contornar o login.
+function apiReadAccess(){return location.protocol==='https:'&&location.hostname==='redeachados-shopee.onrender.com'}
+function shortISO(d){return new Date(d).toISOString().slice(0,10)}
+function apiDate(d){return d.slice(8,10)+'-'+d.slice(5,7)+'-'+d.slice(0,4)}
+function apiReportMatches(campaigns,sku,name){
+ const s=String(sku||'').trim().toLocaleLowerCase('pt-BR'),n=String(name||'').trim().toLocaleLowerCase('pt-BR');
+ const exact=campaigns.filter(c=>s&&String(c.productSku||'').trim().toLocaleLowerCase('pt-BR')===s);
+ if(exact.length)return exact;
+ return campaigns.filter(c=>n&&((String(c.productTitle||'').toLocaleLowerCase('pt-BR').includes(n))||(String(c.name||'').toLocaleLowerCase('pt-BR').includes(n))));
+}
+async function apiOverview(start,end){
+ const u='/api/shopee/ads/overview?start_date='+encodeURIComponent(start)+'&end_date='+encodeURIComponent(end);
+ const r=await fetch(u,{credentials:'same-origin',headers:{Accept:'application/json'},cache:'no-store'});
+ if(r.status===401||r.status===403)throw Error('Sessão não autorizada ou permissão Ads não liberada. Faça login no Render e confira a autorização da loja.');
+ const text=await r.text();let data;
+ try{data=JSON.parse(text)}catch{throw Error('O servidor devolveu uma página em vez de JSON. Verifique o login.')}
+ if(!r.ok||data.ok===false||data.error)throw Error(String(data.error||'Falha de consulta Ads').slice(0,280));
+ if(!Array.isArray(data.campaigns))throw Error('A API não retornou uma lista válida de campanhas.');
+ return data;
+}
+function apiFillCampaign(c,start,end){
+ $('campaign').value=c.productTitle||c.name||$('campaign').value;
+ $('dateStart').value=start;$('dateEnd').value=end;
+ const data={spent:c.expense,revenue:c.broadGmv,actual:c.roas,impressions:c.impressions,clicks:c.clicks,ctrReported:c.ctr,orders:c.broadOrders};
+ for(const [key,v] of Object.entries(data))if(v!==null&&v!==undefined&&Number.isFinite(Number(v)))$(key).value=String(v).replace('.',',');
+ // The API overview endpoint does not expose these 5 fields. Do not invent them.
+ $('target').value='';$('budget').value='';$('budgetMode').value='daily';updateBudgetMode();
+ $('rapidBoost').value='unknown';$('addToCart').value='';$('itemsSold').value='';
+}
+function setApiStatus(txt,mode=''){$('apiStatus').textContent=txt;$('apiStatus').className='api-status '+mode}
+const API_CHOICE_KEY='redeachados_ads_campaign_choice_v13';
+function apiCampaignPreference(sku){try{return String(JSON.parse(localStorage.getItem(API_CHOICE_KEY)||'{}')[sku]||'')}catch{return ''}}
+function rememberApiCampaign(sku,id){try{const o=JSON.parse(localStorage.getItem(API_CHOICE_KEY)||'{}');o[sku]=String(id);localStorage.setItem(API_CHOICE_KEY,JSON.stringify(o))}catch{/* optional preference */}}
+let pendingApiCampaigns=null;
+function hideApiCampaignPicker(){pendingApiCampaigns=null;$('apiCampaignPickBox').hidden=true;$('apiCampaignChoice').innerHTML=''}
+function apiStoreOne(c,sku,start,end){
+ const id=String(c.campaignId||'');if(!/^\d+$/.test(id))return false;
+ const snap={id:id+'|'+start+'|'+end,campaignId:id,sku,productName:readProducts().find(p=>p.sku===sku)?.name||'',start,end,syncedAt:new Date().toISOString(),
+  status:c.status||'unknown',statusGroup:c.statusGroup||'other',expense:c.expense,roas:c.roas,
+  impressions:c.impressions,clicks:c.clicks,revenue:c.broadGmv,orders:c.broadOrders,source:'Shopee Ads API read_only'};
+ return mergeAdsSnapshots([snap]);
+}
+function apiDescribeCampaign(c){
+ const status=c.statusGroup==='active'?'Em andamento':c.statusGroup==='inactive'?'Retirada/pausada':'Status não confirmado';
+ const spend=Number(c.expense);const label=Number.isFinite(spend)?money(spend):'despesa não informada';
+ return 'ID '+String(c.campaignId)+' · '+status+' · '+label+' investidos no período · '+String(c.name||c.productTitle||'Campanha');
+}
+function showApiCampaignPicker(campaigns,sku,start,end){
+ pendingApiCampaigns={campaigns,sku,start,end};
+ const sel=$('apiCampaignChoice');
+ sel.innerHTML='<option value="">— Escolha o ID da campanha —</option>'+campaigns.map(c=>'<option value="'+safe(String(c.campaignId))+'">'+safe(apiDescribeCampaign(c))+'</option>').join('');
+ const preferred=apiCampaignPreference(sku);
+ if(campaigns.some(c=>String(c.campaignId)===preferred))sel.value=preferred;
+ $('apiCampaignPickBox').hidden=false;
+}
+$('apiApplyCampaignBtn').addEventListener('click',()=>{
+ const context=pendingApiCampaigns;
+ if(!context){setApiStatus('Consulte novamente os dados antes de selecionar a campanha.','error');return}
+ if($('productSelect').value!==context.sku){hideApiCampaignPicker();setApiStatus('O produto selecionado mudou. Consulte novamente.','error');return}
+ const id=$('apiCampaignChoice').value;
+ const c=context.campaigns.find(x=>String(x.campaignId)===id);
+ if(!c){setApiStatus('Escolha um ID de campanha na lista.','error');return}
+ apiFillCampaign(c,context.start,context.end);
+ rememberApiCampaign(context.sku,id);
+ const saved=apiStoreOne(c,context.sku,context.start,context.end);
+ setApiStatus('✓ Campanha '+id+' selecionada para SKU '+context.sku+'.\nIndicadores preenchidos individualmente, sem somar campanhas.'+(saved?' Histórico salvo neste navegador.':' Atenção: histórico não foi salvo; faça backup.' )+'\nOrçamento, meta ROAS, Impulsão Rápida, carrinhos e itens vendidos precisam de conferência quando ausentes na API.','good');
+});
+async function apiSyncProductStatuses(){
+ const btn=$('syncProductStatusesBtn'),out=$('catalogApiStatus');
+ if(!apiReadAccess()){out.textContent='Abra o painel publicado no Render e faça login para consultar a API.';return}
+ btn.disabled=true;out.textContent='Consultando a situação das campanhas Shopee Ads...';
+ try{
+  const today=shortISO(Date.now());const start=shortISO(Date.now()-7*86400000);
+  const data=await apiOverview(start,today);
+  let confirmed=0;
+  const normalized=x=>String(x||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/[^a-zA-Z0-9]/g,'').toLowerCase();
+  for(const product of readProducts()){
+   let matching=data.campaigns.filter(c=>c.productSku&&normalized(c.productSku)===normalized(product.sku));
+   if(!matching.length){const target=normalized(product.name);matching=data.campaigns.filter(c=>target&&normalized(c.productTitle)===target)}
+   const verified=matching.filter(c=>c.statusGroup==='active'||c.statusGroup==='inactive');
+   if(verified.length){const status=verified.some(c=>c.statusGroup==='active')?'active':'removed';apiObservedAdsStatus.set(product.sku,{status,observedAt:new Date().toISOString(),campaignIds:verified.map(c=>String(c.campaignId))});confirmed++}
+  }
+  renderProductList();refreshProductSelect();showCurveInAds();
+  out.textContent=confirmed+' produto(s) com situação confirmada pela API nesta sessão; '+(readProducts().length-confirmed)+' sem correspondência exata, mantendo status manual. Nenhum anúncio foi alterado.'+(data.statusWarning?' Atenção: alguns status não foram confirmados pela Shopee.':'');
+ }catch(err){out.textContent='Não foi possível consultar a situação dos produtos: '+String(err.message||err)}
+ finally{btn.disabled=false}
+}
+$('syncProductStatusesBtn').addEventListener('click',apiSyncProductStatuses);
+async function apiLoadRange(syncMany=false){
+ const btn=syncMany?$('apiHistoryBtn'):$('apiReadBtn');
+ if(!apiReadAccess()){setApiStatus('Abra esta página no serviço Render e faça login para consultar a API.','error');return}
+ const sku=$('productSelect').value,product=readProducts().find(p=>p.sku===sku);
+ if(!product){setApiStatus('Selecione um SKU cadastrado antes de consultar.','error');return}
+ hideApiCampaignPicker();
+ let start=$('dateStart').value,end=$('dateEnd').value;const today=shortISO(Date.now());
+ if(syncMany){end=today;start=shortISO(Date.now()-179*86400000)}
+ else if(!start||!end){setApiStatus('Escolha as datas inicial e final.','error');return}
+ if(start>end||end>today){setApiStatus('Intervalo de datas inválido.','error');return}
+ btn.disabled=true;let count=0,records=0;
+ try{
+  const chunks=[];let cursor=new Date(start+'T12:00:00Z'),limit=new Date(end+'T12:00:00Z');
+  while(cursor<=limit){let till=new Date(Math.min(+cursor+28*86400000,+limit));chunks.push([shortISO(cursor),shortISO(till)]);cursor=new Date(+till+86400000)}
+  if(chunks.length>8)throw Error('Período longo demais para consulta: máximo aproximado de 6 meses.');
+  const seen=new Map(),latestWindow=new Map();
+  for(const [a,b] of chunks){
+   setApiStatus('Consultando '+a+' a '+b+' · '+(count+1)+'/'+chunks.length+'...');
+   const result=await apiOverview(a,b);
+   const matching=apiReportMatches(result.campaigns,sku,product.name);
+   for(const c of matching)if(/^\d+$/.test(String(c.campaignId||''))){
+     seen.set(String(c.campaignId),c);latestWindow.set(String(c.campaignId),[a,b]);
+     if(syncMany){if(apiStoreOne(c,sku,a,b))records++}else if(matching.length===1){
+       apiFillCampaign(c,a,b);rememberApiCampaign(sku,String(c.campaignId));
+       if(apiStoreOne(c,sku,a,b))records++;
+     }
+   }
+   count++;
+  }
+  const matching=[...seen.values()];
+  if(matching.length)observeApiStatus(sku,matching);
+  if(!syncMany&&matching.length>1){
+    showApiCampaignPicker(matching,sku,start,end);
+    setApiStatus('✓ Foram encontradas '+matching.length+' campanhas para '+sku+'.\nEscolha o ID da campanha na lista abaixo e clique em “Usar campanha selecionada”. Não faremos soma de campanhas diferentes.','good');
+    return;
+  }
+  if(!syncMany&&matching.length===1){
+    setApiStatus('✓ Campanha '+matching[0].campaignId+' identificada para '+sku+'. Indicadores preenchidos; confira os campos que a API não fornece.\nNenhum anúncio foi alterado.','good');
+    return;
+  }
+  if(syncMany&&matching.length>1){
+    // Show the latest observed campaign selection, while historical records remain separate.
+    showApiCampaignPicker(matching,sku,latestWindow.get(String(matching[0].campaignId))?.[0]||start,latestWindow.get(String(matching[0].campaignId))?.[1]||end);
+    setApiStatus('✓ Histórico de '+matching.length+' campanhas consultado em '+count+' blocos. '+records+' registros separados por ID foram salvos.\nEscolha um ID abaixo para visualizar seus indicadores individualmente.','good');
+  }else if(syncMany&&matching.length===1){
+    const c=matching[0],r=latestWindow.get(String(c.campaignId));
+    apiFillCampaign(c,r[0],r[1]);
+    setApiStatus('✓ Histórico consultado para a campanha '+c.campaignId+' em '+count+' blocos, com '+records+' registros salvos.\nA tela mostra apenas o último bloco; o histórico preserva os demais.','good');
+  }else if(matching.length===0){setApiStatus('Nenhuma campanha compatível com esse SKU ou nome no intervalo. Confira o vínculo entre o cadastro e o item ID Shopee.','error')}
+  if(syncMany){$('changeFilter').value=sku;$('apiHistoryFilter').value='ads';renderChangeHistory()}
+ }catch(e){setApiStatus('Não foi possível concluir a leitura: '+String(e.message||e),'error')}
+ finally{btn.disabled=false}
+}
+$('apiReadBtn').addEventListener('click',()=>apiLoadRange(false));
+$('apiHistoryBtn').addEventListener('click',()=>apiLoadRange(true));
+refreshChangeSelects();renderChangeHistory();
+
+</script>
+</body>
+</html>
