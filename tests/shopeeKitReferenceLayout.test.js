@@ -200,8 +200,8 @@ test('galeria compacta premium é isolada no editor de kits e mantém nove posi�
  assert.match(css,/grid-template-columns:repeat\(5,minmax\(0,1fr\)\)/);
  assert.match(css,/#tab-kits #kitDetail #kitGallerySection/);
  assert.match(css,/@media\(max-width:660px\)/);
- assert.match(html,/kit-builder\.css\?v=3\.5\.0-kit-gallery-compact/);
- assert.match(html,/kit-builder\.js\?v=3\.5\.0-kit-gallery-compact/);
+ assert.match(html,/kit-builder\.css\?v=3\.6\.0-logistics-smart-import/);
+ assert.match(html,/kit-builder\.js\?v=3\.6\.0-logistics-smart-import/);
 });
 test('cada ação do cartão continua funcional e visualização e organização têm eventos reais',()=>{
  assert.match(js,/for\(let slot=1;slot<=9;slot\+\+\)/);
