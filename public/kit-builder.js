@@ -215,48 +215,42 @@ function kitDateTime(value){
 function displayKitStockGate(stock,catalogCount){
  kitStockReady=stock?.ready===true;
  kitStockLastCheck=stock||null;
- const catalogDate=Date.parse(stock?.catalogLastImportedAt||'');
- const catalogFresh=Number.isFinite(catalogDate)&&catalogDate<=Date.now()&&
-  Date.now()-catalogDate<=24*60*60*1000;
+ const catalogImported=stock?.catalogImported===true||Boolean(stock?.catalogLastImportedAt);
+ const stockImported=stock?.stockImported===true||Number(stock?.importedCount||0)>0;
+ const catalogFresh=stock?.catalogRecent===true;
  const gate=$('#kitStockGate');
  gate.dataset.ready=kitStockReady?'yes':'no';
  $('#tab-kits').classList.toggle('kit-stock-blocked',!kitStockReady);
  $('#kitStockBlocked').hidden=kitStockReady;
  $('#kitBuilderStockNotice').hidden=kitStockReady;
  $('#kitImportNextHint').textContent=kitStockReady?
-  '✓ Catálogo e estoque confirmados. Abra a montagem para pesquisar kits com SKUs DISPONÍVEIS.':
-  'Catálogo e rascunhos estão salvos. Para criar novos kits ou publicar, atualize catálogo e estoque; para continuar editando um kit, abra seu rascunho.';
- $('#kitCatalogCard').dataset.ready=catalogFresh?'yes':'no';
- $('#kitAvailabilityCard').dataset.ready=kitStockReady?'yes':'no';
- $('#kitCatalogHeadline').textContent=catalogFresh?'Catálogo WeDrop atualizado':'Catálogo salvo · atualização vencida';
- $('#kitCatalogDate').textContent='Última atualização: '+kitDateTime(stock?.catalogLastImportedAt);
- $('#kitCatalogBadge').textContent=catalogFresh?'Atualizado':'Desatualizado';
- const hasStock=Number(stock?.importedCount||0)>0;
- const stockFresh=stock?.stockRecent===true;
- $('#kitStockHeadline').textContent=stockFresh?
-  'Estoque WeDrop importado':hasStock?'Estoque WeDrop vencido':'Estoque WeDrop não importado';
+  '✓ Catálogo salvo. Kits liberados com os status de disponibilidade importados. Não precisa importar novamente todos os dias.':
+  'Para gerar e publicar, é preciso ter custos e status de disponibilidade importados ao menos uma vez. Rascunhos e imagens permanecem salvos.';
+ $('#kitCatalogCard').dataset.ready=catalogImported?'yes':'no';
+ $('#kitAvailabilityCard').dataset.ready=stockImported?'yes':'no';
+ $('#kitCatalogHeadline').textContent=catalogImported?'Catálogo WeDrop salvo e liberado':'Catálogo WeDrop não importado';
+ $('#kitCatalogDate').textContent='Última importação: '+kitDateTime(stock?.catalogLastImportedAt);
+ $('#kitCatalogBadge').textContent=catalogImported?'Salvo':'Não importado';
+ const hasStock=stockImported;
+ $('#kitStockHeadline').textContent=hasStock?'Disponibilidade WeDrop salva':'Disponibilidade não importada';
  $('#kitStockSubhead').textContent='Última importação: '+kitDateTime(stock?.lastSuccessAt)+
   ' · SKUs com status: '+Number(stock?.importedCount||0);
- $('#kitStockStamp').textContent=stockFresh?
-  (kitStockReady?'Disponibilidade validada':'Estoque importado · catálogo pendente'):
-  (hasStock?'Atualização vencida':'Importação pendente');
+ $('#kitStockStamp').textContent=hasStock?'Status salvo':'Importação inicial pendente';
  $('#kitStockExplanation').textContent=hasStock?
   'Disponíveis: '+Number(stock?.availableCount||0)+' · Indisponíveis: '+
-  Number(stock?.unavailableCount||0)+' · Sem informação no arquivo: '+
+  Number(stock?.unavailableCount||0)+' · Sem status: '+
   Math.max(0,Number(catalogCount||0)-Number(stock?.importedCount||0))+
-  '. '+(stockFresh?'Disponibilidade importada; '+(catalogFresh?'aguardando alinhamento com o catálogo.':
-  'falta atualizar o catálogo de custos.'):'Atualize o arquivo de estoque WeDrop.'):
-  'Importe os status DISPONÍVEL / INDISPONÍVEL de um CSV ou Excel WeDrop.';
- $('#kitBlockedTag').textContent=kitStockReady?'Geração liberada':
-  (!catalogFresh?'⊘ Catálogo pendente':'⊘ Atualização pendente');
+  '. O registro não expira automaticamente; dados antigos não comprovam estoque atual.':
+  'Para publicar, importe ao menos uma vez a planilha com SKU e DISPONÍVEL/INDISPONÍVEL. Produtos sem status não são liberados.';
+ $('#kitBlockedTag').textContent=kitStockReady?'Catálogo liberado':
+  (!catalogImported?'⊘ Falta catálogo':'⊘ Falta disponibilidade');
  $('#kitStockBlocked').querySelector('strong').textContent=kitStockReady?
-  'Catálogo e estoque válidos para montar kits.':
-  (!catalogFresh?'Atualização do catálogo pendente para novos kits e publicação.':
-   !stockFresh?'Atualização de estoque pendente para novos kits e publicação.':
-   'Confirme a disponibilidade após atualizar o catálogo para novos kits e publicação.');
+  'Catálogo e disponibilidade salvos; importação diária dispensada.':
+  (!catalogImported?'Importe o catálogo WeDrop ao menos uma vez.':
+   'Falta importar uma vez a disponibilidade das SKUs.');
  $('#kitStockBlocked').querySelector('p').textContent=kitStockReady?
-  'Somente SKUs DISPONÍVEIS poderão ser selecionadas.':
-  'O catálogo continua salvo e os rascunhos podem ser abertos e editados. Para novas combinações, alterar valores ou publicar, atualize os dados WeDrop e a disponibilidade. Não apague nem recrie seus kits.';
+  'Só SKUs marcados DISPONÍVEL são elegíveis. Confirme com o fornecedor antes de publicar.':
+  'O catálogo e os rascunhos existentes permanecem salvos; importar dados ausentes não apaga imagens ou vídeos.';
  for(const selector of ['#kitSuggest','#kitPlusResearch','#kitPlusAutoStart','#kitPlusClipboardImport','#kitPlusImport'])
   $(selector).disabled=!kitStockReady;
  $('#kitSource').textContent=kitStockReady?'Origem: WeDrop · estoque verificado':'ⓘ Indisponível no momento';
@@ -968,8 +962,8 @@ function kitRefreshDiagnosis(){
  if(stock?.ready){
   reason.textContent='✓ Catálogo e estoque estão atualizados. Falta recalcular e salvar a cotação deste rascunho. '+dates;
  }else{
-  reason.textContent=(stock?.reason||'Atualização da WeDrop ainda não confirmada.')+
-   ' '+dates+' Atualize primeiro o catálogo; depois a disponibilidade de estoque.';
+  reason.textContent=(stock?.reason||'Não há dados completos de catálogo e disponibilidade.')+
+   ' '+dates+' Os arquivos já importados permanecem salvos e não expiram por prazo.';
  }
 }
 async function kitRevalidateAfterImport(){
@@ -1061,14 +1055,19 @@ async function kitPublishGuideNext(){
   }
   if(prepared?.kit?.kitSku!==sku)return;
   if(kitDraftNeedsRefresh||!kitStockReady){
-   await categories(true); // Reconsultar a atualização real antes de bloquear.
+   await categories(true);
    kitRefreshDiagnosis();
-   kitPublishGuideNotice(kitStockReady?
-    'Catálogo e estoque agora estão disponíveis. Clique em “Conferir e recalcular este kit” para salvar os valores atuais antes de continuar.':
-    'Publicação pausada: '+(kitStockLastCheck?.reason||
-     'a WeDrop ainda não confirmou catálogo e estoque atuais.')+
-     ' Use “Atualizar catálogo e estoque” e depois “Conferir e recalcular”.','error');
-   kitPublishGuideFocus('#kitPublishFreshness');return;
+   if(kitStockReady&&kitDraftNeedsRefresh){
+    kitPublishGuideNotice('Dados já importados encontrados. Recalculando este kit sem exigir nova importação...');
+    await kitRevalidateAfterImport();
+    return;
+   }
+   if(!kitStockReady){
+    kitPublishGuideNotice('Ainda falta uma importação inicial: '+
+     (kitStockLastCheck?.reason||'Catálogo ou disponibilidade não encontrados.')+
+     ' O catálogo salvo não expira por prazo.','error');
+    kitPublishGuideFocus('#kitPublishFreshness');return;
+   }
   }
   if(!kitReadiness||kitReadiness.blockers?.length){
    kitPublishGuideNotice('Etapa 02/05: conferindo SKUs, anúncios vinculados e opções da Shopee...');
