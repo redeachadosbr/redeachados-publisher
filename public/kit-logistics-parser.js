@@ -15,9 +15,14 @@ function decimal(raw){
 }
 const asPositive=(num,max)=>Number.isFinite(num)&&num>0&&num<=max;
 const unitCm=(n,u)=>u==='mm'?n/10:u==='m'?n*100:n;
-const unitKg=(n,u)=>u==='g'||u==='grama'||u==='gramas'?n/1000:n;
+const unitKg=(n,u)=>{
+ const kg=u==='g'||u==='grama'||u==='gramas'?n/1000:n;
+ // O campo de envio aceita três casas decimais: arredondar para cima evita
+ // subestimar o peso do kit. 353,26 g -> 0,354 kg.
+ return Math.ceil((kg-1e-10)*1000)/1000;
+};
 function sourceLines(text){
- const base=normalize(text).split(/\r?\n/).map(s=>s.trim().replace(/\s+/g,' ')).filter(Boolean);
+ const base=normalize(text).replace(/\s+\|\s+/g,'\n').split(/\r?\n/).map(s=>s.trim().replace(/\s+/g,' ')).filter(Boolean);
  const rows=[];
  for(let i=0;i<base.length;i++){
   const next=base[i+1]||'';
@@ -40,10 +45,40 @@ function uniqueNumber(rows,re,converter,validator){
 }
 function dimension(rows,name){
  const regex=new RegExp('\\b'+name+
-  '(?:\\s+(?:(?:do|da)\\s+)?(?:pacote|embalagem))?'+
-  '\\s*(?:\\(\\s*(cm|mm|m)\\s*\\))?\\s*(?::|=|-)?\\s*'+
+  '(?:\\s+(?:total|(?:(?:do|da)\\s+)?(?:pacote|embalagem)|embalado))?'+
+  '\\s*(?:\\(\\s*(?:em\\s+)?(cm|mm|m)\\s*\\))?\\s*(?::|=|-)?\\s*'+
   '(\\d+(?:[.,]\\d+)*)\\s*(cm|mm|m)?\\b');
  return uniqueNumber(rows,regex,m=>unitCm(decimal(m[2]),m[3]||m[1]||'cm'),n=>asPositive(n,200));
+}
+// Layout comum do catálogo: cinco cabeçalhos na primeira linha e cinco valores
+// na segunda (Custo, Largura, Altura, Comprimento, Peso). Não usar o custo;
+// alinhar somente quando a tabela for inequívoca para evitar números trocados.
+function extractTotalTable(text){
+ const rows=normalize(text).split(/\r?\n/).map(s=>s.trim().replace(/\s+/g,' ')).filter(Boolean);
+ const headerRe=/\b(custo|largura|altura|comprimento|peso)\s+total\b(?:\s*\(\s*(?:em\s+)?(?:cm|mm|m|g|kg|gramas?)\s*\))?/g;
+ const mapped={largura:'widthCm',altura:'heightCm',comprimento:'lengthCm',peso:'weightKg'};
+ for(let i=0;i<rows.length;i++){
+  const headers=[...rows[i].matchAll(headerRe)].map(m=>m[1]);
+  if(headers.length<4||new Set(headers).size!==headers.length)continue;
+  const candidates=[];
+  for(let k=i+1;k<Math.min(rows.length,i+8)&&candidates.length<headers.length;k++){
+   const row=rows[k];
+   if(!/^(?:r\$\s*)?\d+(?:[.,]\d+)*(?:\s+(?:r\$\s*)?\d+(?:[.,]\d+)*)*$/.test(row))break;
+   candidates.push(...[...row.matchAll(/(?:r\$\s*)?\d+(?:[.,]\d+)*/g)].map(x=>x[0].replace(/^r\$\s*/,'')));
+  }
+  if(candidates.length!==headers.length)continue;
+  const values={},evidence={};
+  for(let j=0;j<headers.length;j++){
+   const field=mapped[headers[j]];
+   if(!field)continue;
+   const n=decimal(candidates[j]);
+   const value=field==='weightKg'?unitKg(n,'gramas'):n;
+   const valid=field==='weightKg'?asPositive(value,30):asPositive(value,200)&&Number.isInteger(value);
+   if(valid){values[field]=value;evidence[field]=headers[j]+' total: '+candidates[j];}
+  }
+  return {values,evidence};
+ }
+ return {values:{},evidence:{}};
 }
 const responseBool=s=>/^(sim|true|ativo|ativado|habilitado)$/.test(s)?true:
  /^(nao|false|inativo|desativado|desabilitado)$/.test(s)?false:null;
@@ -54,11 +89,15 @@ export function parseKitLogisticsText(text){
   if(result&&result.value!==undefined){values[key]=result.value;evidence[key]=result.source;}
  };
  const weight=uniqueNumber(rows,
-  /\b(?:peso\s+(?:total\s+embalado|total\s+do\s+pacote|total|embalado|do\s+pacote|da\s+embalagem)|peso\s*\(\s*kg\s*\))\s*(?:\(\s*(kg|g|gramas?)\s*\))?\s*(?::|=|-)?\s*(\d+(?:[.,]\d+)*)\s*(kg|g|gramas?)?\b/,
+  /\b(?:peso\s+(?:total\s+embalado|total\s+do\s+pacote|total|embalado|do\s+pacote|da\s+embalagem)|peso\s*\(\s*kg\s*\))\s*(?:\(\s*(?:em\s+)?(kg|g|gramas?)\s*\))?\s*(?::|=|-)?\s*(\d+(?:[.,]\d+)*)\s*(kg|g|gramas?)?\b/,
   m=>unitKg(decimal(m[2]),m[3]||m[1]||'kg'),n=>asPositive(n,30));
  put('weightKg',weight);
  for(const [label,key] of [['comprimento','lengthCm'],['largura','widthCm'],['altura','heightCm']]){
   put(key,dimension(rows,label));
+ }
+ const totalGrid=extractTotalTable(text);
+ for(const [key,value] of Object.entries(totalGrid.values)){
+  if(values[key]===undefined){values[key]=value;evidence[key]=totalGrid.evidence[key];}
  }
  for(const line of rows){
   if(!/(?:dimensoes|medidas).*(?:pacote|embalagem)|(?:c\s*x\s*l\s*x\s*a|comprimento\s*x\s*largura\s*x\s*altura)/.test(line))continue;
@@ -98,5 +137,8 @@ export function parseKitLogisticsText(text){
    delete values[key];delete evidence[key];
   }
  }
+ if(Object.keys(values).some(key=>['weightKg','lengthCm','widthCm','heightCm'].includes(key))&&
+    /\b(?:peso|comprimento|largura|altura)\s+total\b/.test(normalize(text)))
+  warnings.push('Medidas totais do fornecedor: confirme se representam o kit completo embalado. O custo do print não foi aplicado.');
  return {values,evidence,warnings,recognized:rows.join('\n')};
 }
