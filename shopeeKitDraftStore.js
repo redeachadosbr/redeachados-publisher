@@ -44,7 +44,12 @@ export async function saveKitDraft(shopId,{kit,creative,logistics}){
  const draft={kit,logistics:savedLogistics,creative:{title,description,seoTitles:uniqueTitles.length===3?uniqueTitles:[],
   manualFacts,source:String(creative.source||'rascunho revisado').slice(0,90)},
   reviewed:false,shopeePublished:false,
-  publication:previous?.publication||{status:'local_draft',itemId:null}};
+  publication:previous?.publication||{status:'local_draft',itemId:null},
+  optimization:previous?.optimization&&
+    previous.creative?.title===title&&previous.creative?.description===description&&
+    Number(previous.kit?.kitCost)===Number(kit.kitCost)&&
+    Number(previous.kit?.quote?.grossPrice)===Number(kit.quote?.grossPrice)&&
+    codes.join('|')===(previous.skus||[]).join('|')?previous.optimization:null};
  const rows=await request('?on_conflict=shop_id,kit_sku',{
   method:'POST',prefer:'resolution=merge-duplicates,return=representation',
   data:[{shop_id:id,kit_sku:kit.kitSku,component_skus:codes,draft,updated_at:new Date().toISOString()}]
@@ -81,7 +86,7 @@ export async function listKitDrafts(shopId){
   reviewRequired:x.draft?.kit?.reviewRequired===true,
   images:(x.draft?.kit?.components||[]).slice(0,3)
     .map(p=>String(p.imageUrl||'')).filter(url=>/^https:\/\/wedrop-products-images\.nyc3\.cdn\.digitaloceanspaces\.com\//.test(url)),
-  publication:x.draft?.publication?.status||'local_draft',
+  publication:x.draft?.publication?.status||'local_draft',optimization:x.draft?.optimization||null,
   deletable:mayDeleteKitDraft(x.draft?.publication),
   updatedAt:x.updated_at}));
 }
@@ -95,7 +100,7 @@ export async function loadKitDraft(shopId,kitSku){
  return {kitSku:row.kit_sku,skus:row.component_skus,
   creative:row.draft?.creative||{},kit:row.draft?.kit||null,
   logistics:row.draft?.logistics||null,
-  publication:row.draft?.publication||{status:'local_draft',itemId:null},updatedAt:row.updated_at};
+  publication:row.draft?.publication||{status:'local_draft',itemId:null},optimization:row.draft?.optimization||null,updatedAt:row.updated_at};
 }
 
 export async function saveKitDraftLogistics(shopId,kitSku,input){
@@ -108,7 +113,7 @@ export async function saveKitDraftLogistics(shopId,kitSku,input){
  const logistics=normalizeKitLogistics(input,current.kit);
  if(!logistics)throw Error('Dados de logística inválidos.');
  const draft={kit:current.kit,creative:current.creative,logistics,
-  reviewed:false,shopeePublished:false,publication:current.publication};
+  reviewed:false,shopeePublished:false,publication:current.publication,optimization:current.optimization||null};
  const rows=await request('?shop_id=eq.'+id+'&kit_sku=eq.'+encodeURIComponent(kitSku)+
    '&draft->publication->>status=eq.local_draft',{
    method:'PATCH',data:{draft,updated_at:new Date().toISOString()},prefer:'return=representation'
@@ -123,11 +128,30 @@ export async function recordKitPublication(shopId,kitSku,publication){
  if(current.publication?.itemId&&current.publication.status==='published')
   throw Error('Este kit já está publicado na Shopee. Não criar outro anúncio.');
  const draft={kit:current.kit,creative:current.creative,logistics:current.logistics||null,reviewed:true,
-  shopeePublished:publication.status==='published',
+  shopeePublished:publication.status==='published',optimization:current.optimization||null,
   publication:{status:publication.status,itemId:publication.itemId||null,
    updatedAt:new Date().toISOString(),message:String(publication.message||'').slice(0,400)}};
  await request('?shop_id=eq.'+shop(shopId)+'&kit_sku=eq.'+encodeURIComponent(kitSku),{
   method:'PATCH',data:{draft,updated_at:new Date().toISOString()},prefer:'return=representation'
  });
  return draft.publication;
+}
+
+export async function recordKitOptimization(shopId,kitSku,link){
+ const id=shop(shopId),current=await loadKitDraft(id,kitSku);
+ if(!current?.kit)throw Error('Kit não encontrado.');
+ if(link?.kitSku!==kitSku||current.creative?.title!==link.title||
+  current.creative?.description!==link.description||
+  Number(current.kit?.kitCost)!==Number(link.kitCost)||
+  Number(current.kit?.quote?.grossPrice)!==Number(link.grossPrice))
+  throw Error('O kit mudou durante a preparação. Reabra e salve novamente.');
+ const draft={kit:current.kit,creative:current.creative,
+  logistics:current.logistics||null,reviewed:false,shopeePublished:false,
+  publication:current.publication,optimization:link};
+ const result=await request('?shop_id=eq.'+id+'&kit_sku=eq.'+encodeURIComponent(kitSku)+
+  '&updated_at=eq.'+encodeURIComponent(current.updatedAt),{
+  method:'PATCH',data:{draft,updated_at:new Date().toISOString()},prefer:'return=representation'});
+ if(!Array.isArray(result)||result.length!==1)
+  throw Error('O kit foi alterado por outro editor. Recarregue antes de continuar.');
+ return {saved:true,optimization:link};
 }

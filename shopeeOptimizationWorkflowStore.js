@@ -28,10 +28,19 @@ export async function getWorkflowReview(shop,item,model=0){
 export async function saveWorkflowReview(shop,item,model,sku,change){
  const existing=await getWorkflowReview(shop,item,model);
  if(existing&&existing.sku!==sku)throw Error('SKU do anúncio alterada: refaça a auditoria.');
- const state=existing?.review_state||{},stages={...(state.stages||{})};
+ const state=existing?.review_state||{};
+ const newKit=change.kitOptimization&&(
+  !state.kitOptimization||state.kitOptimization.kitSku!==change.kitOptimization.kitSku||
+  state.kitOptimization.itemId!==change.kitOptimization.itemId);
+ const stages=newKit&&change.resetKitStages?{}:{...(state.stages||{})};
  if(change.stage)stages[change.stage]={reviewed:change.reviewed,
   reviewedAt:change.reviewed?new Date().toISOString():null};
  const next={...state,stages};
+ if(change.kitOptimization!==undefined)next.kitOptimization=change.kitOptimization;
+ if(newKit&&change.resetKitStages){
+  next.attributes=[];next.tax=null;next.imagesSignature=null;
+  next.technicalDraft=null;next.matrixFiscal=null;next.matrixTechnical=null;
+ }
  if(change.assetSha256!==undefined)next.videoSha256=change.assetSha256;
  if(change.attributes!==undefined)next.attributes=change.attributes;
  if(change.technicalDraft!==undefined)next.technicalDraft=change.technicalDraft;
