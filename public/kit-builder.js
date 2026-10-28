@@ -703,8 +703,7 @@ function kitVideoUI(){
  const valid=!!kitVideoData&&kitVideoSku===prepared?.kit?.kitSku;
  const sent=kitVideoRemote?.ready===true;
  $('#kitVideoDetails').hidden=!valid;
- $('#kitVideoSendShopee').disabled=!valid||kitVideoBusy||!kitSaved||kitDraftNeedsRefresh||
-  Boolean(kitItemId)||sent;
+ $('#kitVideoSendShopee').disabled=!valid||kitVideoBusy||Boolean(kitItemId)||sent;
  $('#kitVideoDownload').disabled=!valid;
  $('#kitVideoRemove').disabled=!valid||kitVideoBusy||Boolean(kitItemId);
  $('#kitVideoFile').disabled=kitVideoBusy||Boolean(kitItemId);
@@ -792,8 +791,18 @@ async function selectKitVideo(file){
 }
 const kitVideoSleep=ms=>new Promise(resolve=>setTimeout(resolve,ms));
 async function sendKitVideoToShopee(){
- if(!kitVideoData||!kitVideoSku||kitVideoBusy||!kitSaved)return;
- if(kitDraftNeedsRefresh)return kitVideoMessage('Atualize o catálogo e a disponibilidade WeDrop antes de enviar vídeo para um novo Kit Formal.','error');
+ if(!kitVideoData||!kitVideoSku||kitVideoBusy)return;
+ if(prepared?.kit?.kitSku!==kitVideoSku)
+  return kitVideoMessage('Selecione o rascunho correspondente a este vídeo.','error');
+ if(kitItemId)return kitVideoMessage('Kit já enviado. Não é permitido modificar mídia de uma publicação concluída.','error');
+ if(!kitSaved){
+  kitVideoMessage('Salvando rascunho antes de enviar o vídeo...');
+  const saved=await saveDraft();
+  if(!saved)return kitVideoMessage(
+   'Não foi possível salvar o rascunho. Revise título, descrição e dados do kit e tente enviar o vídeo novamente.','error');
+ }
+ // Upload ao MediaSpace pode ocorrer com estoque vencido; somente a
+ // publicação exige recálculo e confirmação de estoque atualizado.
  const sku=kitVideoSku,file=kitVideoData.blob;
  if(!window.confirm('Enviar este vídeo à mídia Shopee para o kit '+sku+'? Isso NÃO cria ou publica um anúncio.'))
   return;
