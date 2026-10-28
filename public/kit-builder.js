@@ -2939,6 +2939,23 @@ $('#kitCostConfirm')?.addEventListener('change',()=>{
  $('#kitCostMappingApply').disabled=!$('#kitCostConfirm').checked||!$('#kitCostColumn').value;
 });
 $('#kitCostMappingApply')?.addEventListener('click',()=>void confirmKitMappedCost());
+$('#kitCostUseSaved')?.addEventListener('click',async()=>{
+ const button=$('#kitCostUseSaved');
+ button.disabled=true;
+ try{
+  await categories(true);
+  if(!kitStockReady){
+   return kitUnifiedStatus('Catálogo salvo, mas ainda falta uma disponibilidade importada para as SKUs. '+
+    (kitStockLastCheck?.reason||'Confira o painel de estoque abaixo.')+
+    ' Não é necessário reenviar os mesmos custos.','warning');
+  }
+  $('#kitCostMappingPanel').hidden=true;
+  kitUnifiedStatus('✓ Catálogo e disponibilidade salvos reutilizados. Nenhuma coluna de custo foi alterada.','success');
+  setKitMode('builder',{scroll:true});
+ }catch(error){
+  kitUnifiedStatus('Não foi possível conferir o catálogo salvo: '+error.message,'error');
+ }finally{button.disabled=false;}
+});
 $('#kitCatalogImport')?.addEventListener('click',()=>void importKitCatalogFile());
 $('#kitStockImport')?.addEventListener('click',()=>void importKitStockCsv());
 $('#kitStockReload')?.addEventListener('click',()=>{categoriesLoaded=false;void categories(true);});
