@@ -188,3 +188,38 @@ test('contêiner externo da composição não reduz a largura dos dois cartões'
  assert.match(css,/#tab-kits #kitDetail #kitManualComposition\{[\s\S]*?display:block/);
  assert.match(css,/#tab-kits #kitDetail #kitManualComposition>\.kit-manual-composition\{[\s\S]*?grid-template-columns:repeat\(2,minmax\(0,1fr\)\)/);
 });
+
+test('galeria compacta premium é isolada no editor de kits e mantém nove posições',()=>{
+ for(const id of ['kitGallerySection','kitGalleryCount','kitImages','kitGalleryViewAll',
+  'kitGalleryOrganize','kitGalleryPreview','kitGalleryClosePreview','kitGalleryPreviewImages']){
+  assert.equal((page.match(new RegExp('id="'+id+'"','g'))||[]).length,1,id);
+ }
+ assert.match(page,/class="kit-gallery-section"/);
+ assert.match(page,/id="kitGallerySection"[^>]*aria-label=/);
+ assert.match(css,/#tab-kits #kitDetail #kitImages\.kit-images\{/);
+ assert.match(css,/grid-template-columns:repeat\(5,minmax\(0,1fr\)\)/);
+ assert.match(css,/#tab-kits #kitDetail #kitGallerySection/);
+ assert.match(css,/@media\(max-width:660px\)/);
+ assert.match(page,/kit-builder\.css\?v=3\.5\.0-kit-gallery-compact/);
+ assert.match(page,/kit-builder\.js\?v=3\.5\.0-kit-gallery-compact/);
+});
+test('cada ação do cartão continua funcional e visualização e organização têm eventos reais',()=>{
+ assert.match(js,/for\(let slot=1;slot<=9;slot\+\+\)/);
+ assert.match(js,/kitImageDragStart\(event,slot\)/);
+ assert.match(js,/kitImageDrop\(event,slot\)/);
+ assert.match(js,/kitRepositionImage\(slot,slot-1\)/);
+ assert.match(js,/kitRepositionImage\(slot,slot\+1\)/);
+ assert.match(js,/kitPhotoStore\.remove\(kitSku,slot\)/);
+ assert.match(js,/kitInvalidatePhotoPositions\(\[slot\]\)/);
+ assert.match(js,/kitGalleryViewAll'\)\?\.addEventListener\('click'/);
+ assert.match(js,/kitGalleryOrganize'\)\?\.addEventListener\('click'/);
+ assert.match(js,/openKitGalleryPreview\(slot\)/);
+ assert.match(js,/kitGalleryPreview'\)\?\.addEventListener\('click'/);
+ assert.match(js,/downloadData\(images\.get\(slot\)/);
+ assert.match(js,/copy\(kitImagePromptAt\(slot\)\)/);
+ assert.match(js,/kitGeneratePaidImages\(\{singleSlot:slot\}\)/);
+ assert.match(js,/uploadPhoto\(slot,chooser\.files\?\.\[0\]\)/);
+ for(const id of ['kitCopyAllPrompts','kitSaveDraft','kitDownloadPack'])
+  assert.equal((page.match(new RegExp('id="'+id+'"','g'))||[]).length,1);
+ assert.match(js,/kit-gallery-tips/);
+});
