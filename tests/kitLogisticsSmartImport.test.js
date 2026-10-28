@@ -137,3 +137,39 @@ test('OCR com unidade gramas dividida por quebra de linha e tabela repartida',()
  const fragmented=parseKitLogisticsText('Peso Total (em\ngramas)\n353,26');
  assert.equal(fragmented.values.weightKg,0.354);
 });
+
+test('OCR numérico por colunas reconhece geometria do print real sem trocar valores',async()=>{
+ const {isWideTotalsPrint,wideTotalsRegions,parseIsolatedTotalNumber,totalFieldsToLabeledText}=await import('../public/kit-logistics-layout.js');
+ const header='Nome do Kit\nCusto Total Largura Total (Em cm) Altura Total (Em cm) Comprimento Total (Em cm) Peso Total (em gramas)';
+ assert.equal(isWideTotalsPrint(1488,309,header),true);
+ assert.equal(isWideTotalsPrint(1920,1080,header),false);
+ assert.equal(isWideTotalsPrint(1488,309,'Nome do Kit e detalhes gerais'),false);
+ const regions=wideTotalsRegions(1488,309);
+ assert.deepEqual(regions.map(x=>x.key),['widthCm','heightCm','lengthCm','weightKg']);
+ assert.ok(regions.every(x=>x.x>=0&&x.width>0&&x.y>=190&&x.y+x.height<=309));
+ const samples=['28\n','36\n','16\n','353,26\n'];
+ const values=Object.fromEntries(regions.map((region,i)=>
+  [region.key,parseIsolatedTotalNumber(samples[i],region.key)]));
+ assert.deepEqual(values,{widthCm:28,heightCm:36,lengthCm:16,weightKg:0.354});
+ const text=totalFieldsToLabeledText(values);
+ const parsed=parseKitLogisticsText(text);
+ assert.deepEqual(
+  [parsed.values.widthCm,parsed.values.heightCm,parsed.values.lengthCm,parsed.values.weightKg],
+  [28,36,16,0.354]
+ );
+});
+test('colunas ignoram números fora do limite e OCR com mais de um número ambiguamente visível',async()=>{
+ const {parseIsolatedTotalNumber}=await import('../public/kit-logistics-layout.js');
+ assert.equal(parseIsolatedTotalNumber('2 8','widthCm'),null);
+ assert.equal(parseIsolatedTotalNumber('0','heightCm'),null);
+ assert.equal(parseIsolatedTotalNumber('35000','weightKg'),null);
+ assert.equal(parseIsolatedTotalNumber('200,5','lengthCm'),null);
+});
+test('OCR separa números em caixas escuras usando Tesseract com whitelist e não modifica Shopee',()=>{
+ const ocr=fs.readFileSync(new URL('../public/kit-logistics-ocr.js',import.meta.url),'utf8');
+ assert.match(ocr,/readNumericColumns\(file,worker,best,progress\)/);
+ assert.match(ocr,/tessedit_char_whitelist:'0123456789,\.'/);
+ assert.match(ocr,/logisticsScore\(/);
+ assert.match(ocr,/isWideTotalsPrint\(/);
+ assert.match(ocr,/totalFieldsToLabeledText\(/);
+});
