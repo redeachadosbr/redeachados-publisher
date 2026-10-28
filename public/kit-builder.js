@@ -2006,6 +2006,43 @@ async function kitRestoreImageGallery(kitSku){
    kitExtensionStatus(count+' imagens antigas recuperadas deste kit. Revise todas antes de publicar.','success');}
  }catch(error){kitRestoredSku='';kitExtensionStatus('Recuperação de fotos indisponível: '+error.message,'error');}
 }
+let kitManagerResumeBusy=false;
+async function kitResumeExtensionImages(){
+ if(!prepared?.kit){kitExtensionStatus('Abra um rascunho de kit para recuperar a Ponte.','error');return;}
+ if(kitManagerResumeBusy)return;
+ kitManagerResumeBusy=true;
+ const button=$('#kitResumeExtension');
+ if(button){button.disabled=true;button.textContent='Recuperando sessão da Ponte...';}
+ const sku=prepared.kit.kitSku;
+ try{
+  // Recuperar a fonte local antes de reconciliar com a extensão, impedindo que
+  // a posição 01 seja refeita após atualização/reinicialização do Chrome.
+  const saved=await kitPhotoStore.list(sku);
+  if(prepared?.kit?.kitSku!==sku)throw Error('O kit mudou durante a recuperação.');
+  let restored=0;
+  for(const row of saved){
+   if(Number.isInteger(row.slot)&&row.slot>=1&&row.slot<=9&&
+      /^data:image\/(?:png|jpeg|webp);base64,/i.test(row.dataUrl)&&!images.has(row.slot)){
+    images.set(row.slot,row.dataUrl);restored++;
+   }
+  }
+  if(restored){renderImageSlots();kitAutoImageUi();}
+  const result=await getKitExtensionBridge().resumeFromManager();
+  if(!result?.ok){
+   kitExtensionStatus(String(result?.error||'Não foi possível reconectar à extensão.').slice(0,450),'error');
+   return;
+  }
+  $('#kitStopExtension').hidden=false;
+  kitExtensionStatus('✓ Ponte reaberta na posição '+String(result.slot).padStart(2,'0')+
+   '/09, com '+images.size+' imagem(ns) já salva(s). A imagem pendente será recuperada sem repetir o prompt.','success');
+ }catch(error){
+  kitExtensionStatus('Recuperação indisponível: '+String(error.message||error)+
+   '. As imagens anteriores continuam salvas.','error');
+ }finally{
+  kitManagerResumeBusy=false;
+  if(button){button.disabled=false;button.textContent='↻ Recuperar geração / reabrir Ponte';}
+ }
+}
 async function kitStartExtensionImages(){
  const btn=$('#kitGenerateAll');
  if(btn.disabled)return;
@@ -2264,6 +2301,7 @@ $('#kitSaveSeoContent')?.addEventListener('click',async()=>{
 });
 
 $('#kitGenerateAll')?.addEventListener('click',()=>void kitStartExtensionImages());
+$('#kitResumeExtension')?.addEventListener('click',()=>void kitResumeExtensionImages());
 $('#kitStopExtension')?.addEventListener('click',()=>kitStopKitExtension('Geração pausada por solicitação. Fotos já salvas preservadas.'));
 $('#kitPlusManualFallback')?.addEventListener('click',openChatGPTImages);
 $('#kitPlusCopyGeneratedPrompt')?.addEventListener('click',()=>void copy($('#kitPlusImagePrompt').value));
