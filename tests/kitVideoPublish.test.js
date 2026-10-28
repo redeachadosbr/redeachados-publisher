@@ -42,8 +42,8 @@ test('o painel aparece somente nos kits, abaixo das imagens e antes da publicaç
  const js=fs.readFileSync(new URL('../public/kit-builder.js',import.meta.url),'utf8');
  const css=fs.readFileSync(new URL('../public/kit-builder.css',import.meta.url),'utf8');
  const start=html.indexOf('id="kitGallerySection"');
- const video=html.indexOf('id="kitVideoPanel"',start);
- const publication=html.indexOf('id="kitPublishPanel"',video);
+ const publication=html.indexOf('id="kitPublishPanel"',start);
+ const video=html.indexOf('id="kitVideoPanel"',publication);
  assert.ok(start>0&&publication>start&&video>publication,'vídeo fica no painel formal ao lado da logística');
  for(const id of ['kitVideoFile','kitVideoSendShopee','kitVideoPreview','kitVideoInclude',
   'kitVideoDownload','kitVideoRemove','kitVideoStatus','kitVideoState'])
