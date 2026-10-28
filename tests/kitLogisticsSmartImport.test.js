@@ -81,3 +81,46 @@ test('sob encomenda permanece desativado mesmo que texto ou print solicite SIM',
  assert.doesNotMatch(html,/Sob encomenda: sim \| Dias para enviar: 7/);
  assert.match(html,/id="kitAutoSyncDts"/);
 });
+
+test('corrige print WeDrop com Total e números embaixo de cada rótulo',()=>{
+ const r=parseKitLogisticsText(
+  'Nome do Kit\nKit Brinquedos para Bebê 12 Meses\nCusto Total: R$ 60,98\nLargura Total (Em cm)\n28\nAltura Total (Em cm)\n36\nComprimento Total (Em cm)\n16\nPeso Total (em gramas)\n353,26');
+ assert.deepEqual(
+  [r.values.lengthCm,r.values.widthCm,r.values.heightCm,r.values.weightKg],
+  [16,28,36,0.354]
+ );
+ assert.equal(Object.hasOwn(r.values,'cost'),false);
+ assert.match(r.warnings.join(' '),/kit completo embalado/);
+});
+test('corrige imagem em colunas: cabeçalhos agrupados e valores na linha seguinte',()=>{
+ const r=parseKitLogisticsText(
+  'Nome do Kit\nKit Brinquedos para Bebê 12 Meses Elefante Musical\nCusto Total Largura Total (Em cm) Altura Total (Em cm) Comprimento Total (Em cm) Peso Total (em gramas)\nR$ 60,98 28 36 16 353,26');
+ assert.deepEqual(
+  [r.values.lengthCm,r.values.widthCm,r.values.heightCm,r.values.weightKg],
+  [16,28,36,0.354]
+ );
+});
+test('captura Peso Total em gramas e centímetro sem palavras pacote ou embalagem',()=>{
+ const r=parseKitLogisticsText(
+  'Largura Total (Em cm): 28\nAltura Total (Em cm): 36\nComprimento Total (Em cm): 16\nPeso Total (em gramas): 353,26');
+ assert.equal(r.values.weightKg,0.354);
+ assert.equal(r.values.lengthCm,16);
+ assert.equal(r.values.widthCm,28);
+ assert.equal(r.values.heightCm,36);
+});
+test('não copia custo total do fornecedor como peso ou medida',()=>{
+ const r=parseKitLogisticsText(
+  'Custo Total R$ 60,98\nNome do Kit 12 meses\nSKU: 310200');
+ assert.equal(r.values.weightKg,undefined);
+ assert.equal(r.values.lengthCm,undefined);
+ assert.equal(r.values.widthCm,undefined);
+ assert.equal(r.values.heightCm,undefined);
+});
+test('OCR reforça prints escuros com ampliação e mantém leitura local',()=>{
+ const ocr=fs.readFileSync(new URL('../public/kit-logistics-ocr.js',import.meta.url),'utf8');
+ assert.match(ocr,/enhancePrintForOCR/);
+ assert.match(ocr,/createImageBitmap\(file\)/);
+ assert.match(ocr,/worker\.recognize\(improved\)/);
+ assert.match(ocr,/logisticsScore\(/);
+ assert.doesNotMatch(ocr,/fetch\s*\(/);
+});
