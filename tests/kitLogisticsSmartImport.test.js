@@ -168,7 +168,7 @@ test('colunas ignoram números fora do limite e OCR com mais de um número ambig
 test('OCR separa números em caixas escuras usando Tesseract com whitelist e não modifica Shopee',()=>{
  const ocr=fs.readFileSync(new URL('../public/kit-logistics-ocr.js',import.meta.url),'utf8');
  assert.match(ocr,/readNumericColumns\(file,worker,best,progress\)/);
- assert.match(ocr,/tessedit_char_whitelist:'0123456789,\.'/);
+ assert.ok(ocr.includes("tessedit_char_whitelist:'0123456789,.'"));
  assert.match(ocr,/logisticsScore\(/);
  assert.match(ocr,/isWideTotalsPrint\(/);
  assert.match(ocr,/totalFieldsToLabeledText\(/);
