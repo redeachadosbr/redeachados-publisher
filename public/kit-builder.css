@@ -1916,3 +1916,34 @@
 #tab-kits #kitDetail .kit-publish-fields .kit-preorder-hidden[hidden]{
  display:none!important;
 }
+
+/* 3.6.2 — Dados por SKU: evidências textuais e OCR local visíveis no editor de kit. */
+#tab-kits #kitDetail .kit-sku-evidence-panel{
+ display:block;margin:10px 0;padding:13px;border:1px solid #c9dbee;
+ border-radius:13px;background:linear-gradient(125deg,#f6faff,#fff);
+}
+#tab-kits #kitDetail .kit-sku-evidence-panel .kit-missing-title strong{color:#16416f;font-size:13px}
+#tab-kits #kitDetail .kit-sku-evidence-panel .kit-missing-title span{color:#4c6988}
+#tab-kits #kitDetail .kit-sku-evidence-card{
+ display:flex;flex-direction:column;gap:7px;min-width:0;
+ padding:11px;border:1px solid #d3e4f4;border-radius:10px;background:#fff;
+}
+#tab-kits #kitDetail .kit-sku-evidence-card textarea{
+ width:100%;box-sizing:border-box;min-height:112px;resize:vertical;
+ font:11px/1.5 inherit;color:#173b63;background:#fcfdff;
+ border:1px solid #cedff1;border-radius:8px;padding:9px;
+}
+#tab-kits #kitDetail .kit-sku-fact-print{
+ display:inline-flex;align-items:center;justify-content:center;align-self:flex-start;
+ min-height:32px;padding:7px 11px;border:1px solid #bed5ee;border-radius:8px;
+ background:#eaf5ff;color:#1c5790;font-size:10.5px;font-weight:850;cursor:pointer;
+}
+#tab-kits #kitDetail .kit-sku-fact-print:focus-within{outline:2px solid #4088d1;outline-offset:2px}
+#tab-kits #kitDetail .kit-sku-fact-result{font-size:10px;color:#536f90;line-height:1.4}
+#tab-kits #kitDetail .kit-sku-fact-result[data-state=success]{color:#15734a}
+#tab-kits #kitDetail .kit-sku-fact-result[data-state=error]{color:#ae3535}
+#tab-kits #kitDetail .kit-sku-evidence-panel .kit-missing-actions{margin-top:9px}
+@media(max-width:640px){
+ #tab-kits #kitDetail .kit-sku-evidence-panel{padding:9px}
+ #tab-kits #kitDetail .kit-sku-evidence-panel .kit-missing-actions button{width:100%}
+}

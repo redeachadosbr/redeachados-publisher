@@ -31,7 +31,7 @@
 <link rel="stylesheet" href="/ads-premium.css?v=2.4.0-seo-ads-location">
 <link rel="stylesheet" href="/sidebar-collapse.css?v=1.0.0">
 <link rel="stylesheet" href="/optimizer-image-studio.css?v=1.0.2">
-<link rel="stylesheet" href="/kit-builder.css?v=3.6.1-gallery-no-gap">
+<link rel="stylesheet" href="/kit-builder.css?v=3.6.1-gallery-no-gap-sku-evidence">
 <link rel="stylesheet" href="/optimizer-technical-studio.css?v=1.0.1-review-feedback">
 <style>
 /* Autorização >25%: campo compacto, sem o input global width:100%.
@@ -1112,10 +1112,14 @@
    <label><span class="kit-field-title"><span class="kit-heading-icon kit-icon-amber">▤</span><span><strong>Descrição do anúncio</strong><small>Produtos incluídos e quantidades exatas por SKU.</small></span></span><textarea id="kitDescription" rows="6" maxlength="2000"></textarea><div class="kit-field-footer"><button type="button" id="kitCopyDescription" class="kit-secondary">▤ Copiar descrição</button><small id="kitDescriptionCount">0/2000</small></div></label>
   </div>
   <section class="kit-chatgpt-strip"><span class="kit-openai-symbol" aria-hidden="true">◎</span><div><strong>Gerar 3 títulos SEO e descrição do kit no ChatGPT Plus</strong><p>Reúne informações dos produtos WeDrop, solicita dados ausentes e prepara um anúncio único.</p></div><button id="kitPlusText" type="button" class="kit-primary">Preparar com ChatGPT Plus →</button></section>
-  <section id="kitMissingFacts" class="kit-missing-facts" hidden aria-labelledby="kitMissingFactsTitle">
-   <div class="kit-missing-title"><strong id="kitMissingFactsTitle">Informações não encontradas na WeDrop</strong><span>Cole medidas e descrição separadas por SKU, se tiver esses dados. Não misture componentes.</span></div>
+  <section id="kitMissingFacts" class="kit-missing-facts kit-sku-evidence-panel" aria-labelledby="kitMissingFactsTitle">
+   <div class="kit-missing-title"><strong id="kitMissingFactsTitle">Informações por SKU · descrição, medidas e print</strong><span>Preencha cada produto separadamente antes de gerar títulos, descrição e as 9 imagens do kit.</span></div>
    <div id="kitMissingFactFields" class="kit-missing-grid"></div>
-   <div class="kit-missing-actions"><button id="kitContinueContent" type="button" class="kit-primary">Continuar e abrir ChatGPT Plus</button><small>É possível continuar sem preencher: nenhum dado faltante deve ser inventado.</small></div>
+   <div class="kit-missing-actions">
+    <button id="kitContinueContent" type="button" class="kit-primary">Usar informações dos SKUs no ChatGPT Plus →</button>
+    <button id="kitSaveSkuFacts" type="button" class="kit-secondary">Salvar informações dos SKUs</button>
+    <small>A leitura do print é feita no navegador. Confira o texto reconhecido antes de gerar. Dados extras não são confirmados pela WeDrop.</small>
+   </div>
   </section>
   <section class="kit-copy-assistant" aria-label="Importação simplificada do anúncio gerado">
    <div class="kit-import-steps">
@@ -2181,7 +2185,7 @@
 <script src="/technical-memory.js?v=1.0.1-live-sku-preload"></script>
 <script src="/technical-status.js?v=1.0.0-optional-coherence"></script>
 <script src="/app.js?v=3.4.0-kit-extension-guard"></script>
-<script type="module" src="/kit-builder.js?v=3.6.1-preorder-off"></script>
+<script type="module" src="/kit-builder.js?v=3.6.1-preorder-off-sku-evidence"></script>
 <link rel="stylesheet" href="/optimizer-variations.css?v=1.2.1-single-flow">
 <script src="/optimizer-variations.js?v=1.2.3-single-flow"></script>
 
