@@ -204,8 +204,9 @@
     </div>
     <div class="panel catalog-list">
       <div class="row-between"><div><div class="overline">03 · Sua lista</div><h2>Produtos cadastrados</h2><div id="catalogCounts" class="catalog-counts">Nenhum produto cadastrado.</div></div>
-      <div class="actions non-print"><input id="productSearch" aria-label="Buscar produto" placeholder="Buscar SKU ou nome" style="width:190px;background:#11161c;border:1px solid #414853;border-radius:10px;color:#fff;padding:10px"><select id="curveFilter" class="filter-inline" aria-label="Filtrar por curva"><option value="">Todas as curvas</option><option value="A">Curva A</option><option value="B">Curva B</option><option value="C">Curva C</option><option value="D">Curva D</option><option value="E">Curva E</option><option value="none">Sem curva</option></select><select id="adsStatusFilter" class="filter-inline" aria-label="Filtrar situação do produto nos Ads"><option value="">Todos</option><option value="active">Em andamento nos Ads</option><option value="removed">Retirados dos Ads</option></select><button type="button" class="btn-secondary mini" id="exportProductsBtn">Exportar produtos CSV</button></div></div>
-      <div class="table-scroll"><table><thead><tr><th>SKU / Produto</th><th>Curva</th><th>Status Ads (manual e API consultada)</th><th>Preço</th><th>Média</th><th>Competitividade</th><th>Lucro sem Ads</th><th>Lucro com Ads</th><th>ROAS equilíbrio (0% lucro)</th><th>ROAS para sua margem</th><th>Ações</th></tr></thead><tbody id="productsBody"><tr><td colspan="11">Nenhum produto cadastrado.</td></tr></tbody></table></div>
+      <div class="actions non-print"><input id="productSearch" aria-label="Buscar produto" placeholder="Buscar SKU ou nome" style="width:190px;background:#11161c;border:1px solid #414853;border-radius:10px;color:#fff;padding:10px"><select id="curveFilter" class="filter-inline" aria-label="Filtrar por curva"><option value="">Todas as curvas</option><option value="A">Curva A</option><option value="B">Curva B</option><option value="C">Curva C</option><option value="D">Curva D</option><option value="E">Curva E</option><option value="none">Sem curva</option></select><select id="adsStatusFilter" class="filter-inline" aria-label="Filtrar situação do produto nos Ads"><option value="">Todos</option><option value="active">Em andamento nos Ads</option><option value="removed">Retirados dos Ads</option></select><button type="button" class="btn-secondary mini" id="syncProductStatusesBtn">Atualizar status via API</button><button type="button" class="btn-secondary mini" id="exportProductsBtn">Exportar produtos CSV</button></div></div>
+      <div id="catalogApiStatus" class="subtle" role="status" aria-live="polite" style="margin:8px 0 0">Status pela API é atualizado ao sincronizar; produtos sem correspondência usam o status manual.</div>
+      <div class="table-scroll"><table><thead><tr><th>SKU / Produto</th><th>Curva</th><th>Status Ads (manual / API)</th><th>Preço</th><th>Média</th><th>Competitividade</th><th>Lucro sem Ads</th><th>Lucro com Ads</th><th>ROAS equilíbrio (0% lucro)</th><th>ROAS para sua margem</th><th>Ações</th></tr></thead><tbody id="productsBody"><tr><td colspan="11">Nenhum produto cadastrado.</td></tr></tbody></table></div>
     </div>
     <div class="backup-panel non-print"><div class="row-between"><div><strong>Backup dos produtos e das campanhas</strong><p>Os produtos, o status manual dos Ads e as campanhas são salvos neste navegador, não na nuvem. Exporte um backup JSON para guardar no Google Drive.</p></div><div class="actions"><button id="backupExportBtn" type="button" class="btn-secondary mini">Baixar backup JSON</button><button id="backupImportBtn" type="button" class="btn-secondary mini">Restaurar backup</button><input id="importBackupInput" type="file" accept=".json,application/json"></div></div><p id="dataStatus">Backup manual recomendado antes de trocar de computador ou publicar no Netlify.</p></div>
   </section>
@@ -426,8 +427,6 @@ function observeApiStatus(sku,campaigns){
  if(!verified.length)return;
  const status=verified.some(c=>c.statusGroup==='active')?'active':'removed';
  apiObservedAdsStatus.set(sku,{status,observedAt:new Date().toISOString(),campaignIds:verified.map(c=>String(c.campaignId))});
- // Keep the current product selected even when the official status differs from the manual filter.
- if($('productSelect').value===sku&&$('campaignAdsFilter').value&&$('campaignAdsFilter').value!==status)$('campaignAdsFilter').value='';
  renderProductList();refreshProductSelect();showCurveInAds();
 }
 function adsStatusDate(p){if(!p?.adsStatusChangedAt)return '';const dt=new Date(p.adsStatusChangedAt);return Number.isNaN(dt.getTime())?'':dt.toLocaleDateString('pt-BR')}
@@ -613,7 +612,7 @@ function renderProductList(){
   const c=computeProduct(p);if(!c)return '';
   const badge='<span class="mini-indicator '+c.competitiveness.kind+'">'+safe(c.competitiveness.label)+'</span>';
   const status=adsStatusOf(p),when=adsStatusDate(p),apiSeen=apiObservedAdsStatus.get(p.sku);
-  const statusControl='<select class="ads-status-select '+status+'" aria-label="Status Ads do produto '+safe(p.sku)+'" data-ads-status-sku="'+safe(p.sku)+'">'+Object.entries(ADS_STATUS_LABELS).map(([key,label])=>'<option value="'+key+'"'+(status===key?' selected':'')+'>'+safe(label)+'</option>').join('')+'</select>'+(when?'<div class="ads-status-changed" title="Data da última alteração manual">Atualizado: '+safe(when)+'</div>':'')+(apiSeen?'<div class="ads-status-changed" style="color:#89e7b4">API consultada: '+(apiSeen.status==='active'?'Em andamento':'Retirado/pausado')+'</div>':'');
+  const statusControl='<select class="ads-status-select '+status+'" aria-label="Status Ads do produto '+safe(p.sku)+'" data-ads-status-sku="'+safe(p.sku)+'">'+Object.entries(ADS_STATUS_LABELS).map(([key,label])=>'<option value="'+key+'"'+(status===key?' selected':'')+'>'+safe(label)+'</option>').join('')+'</select>'+(when?'<div class="ads-status-changed" title="Data da última alteração manual">Atualizado: '+safe(when)+'</div>':'');
   return '<tr><td><strong>'+safe(p.sku)+'</strong><div style="min-width:170px">'+safe(p.name)+'</div>'+(p.isKit?'<div class="muted-line">📦 Kit '+p.kitQuantity+' un. · custo total '+money(c.totalCost)+'</div>':'')+'</td><td>'+(p.curve?'<span class="curve-badge '+p.curve+'" title="'+safe(curveText(p.curve))+'">'+p.curve+'</span>':'—')+'</td><td>'+statusControl+'</td><td>'+money(p.price)+'</td><td>'+(p.market>0?money(p.market):'—')+'</td><td>'+badge+(c.difference===null?'':'<div class="muted-line">'+(c.difference>=0?'+':'')+NUM.format(c.difference)+'%</div>')+'</td><td><strong>'+money(c.contribution)+'</strong></td><td>'+(c.profitWithAds===null?'—':'<strong style="color:'+(c.profitWithAds>=0?'#91edbd':'#ffabae')+'">'+money(c.profitWithAds)+'</strong>')+'</td><td>'+(Number.isFinite(c.breakEven)?roas(c.breakEven):'Sem equilíbrio')+'</td><td>'+(Number.isFinite(c.minimum)?roas(c.minimum):'<span class="mini-indicator bad">Meta não atingível</span>')+'</td><td><div class="table-actions"><button type="button" class="btn-secondary mini" data-use-sku="'+safe(p.sku)+'">Usar Ads</button><button type="button" class="btn-secondary mini" data-edit-sku="'+safe(p.sku)+'">Editar</button><button type="button" class="btn-secondary mini" data-delete-sku="'+safe(p.sku)+'">Excluir</button></div></td></tr>';
  }).join(''):'<tr><td colspan="11">'+(items.length?'Nenhum produto corresponde aos filtros selecionados.':'Cadastre seu primeiro produto no formulário acima.')+'</td></tr>';
  for(const sel of $('productsBody').querySelectorAll('[data-ads-status-sku]'))sel.addEventListener('change',()=>setProductAdsStatus(sel.dataset.adsStatusSku,sel.value));
@@ -737,6 +736,27 @@ $('apiApplyCampaignBtn').addEventListener('click',()=>{
  const saved=apiStoreOne(c,context.sku,context.start,context.end);
  setApiStatus('✓ Campanha '+id+' selecionada para SKU '+context.sku+'.\nIndicadores preenchidos individualmente, sem somar campanhas.'+(saved?' Histórico salvo neste navegador.':' Atenção: histórico não foi salvo; faça backup.' )+'\nOrçamento, meta ROAS, Impulsão Rápida, carrinhos e itens vendidos precisam de conferência quando ausentes na API.','good');
 });
+async function apiSyncProductStatuses(){
+ const btn=$('syncProductStatusesBtn'),out=$('catalogApiStatus');
+ if(!apiReadAccess()){out.textContent='Abra o painel publicado no Render e faça login para consultar a API.';return}
+ btn.disabled=true;out.textContent='Consultando a situação das campanhas Shopee Ads...';
+ try{
+  const today=shortISO(Date.now());const start=shortISO(Date.now()-7*86400000);
+  const data=await apiOverview(start,today);
+  let confirmed=0;
+  const normalized=x=>String(x||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/[^a-zA-Z0-9]/g,'').toLowerCase();
+  for(const product of readProducts()){
+   let matching=data.campaigns.filter(c=>c.productSku&&normalized(c.productSku)===normalized(product.sku));
+   if(!matching.length){const target=normalized(product.name);matching=data.campaigns.filter(c=>target&&normalized(c.productTitle)===target)}
+   const verified=matching.filter(c=>c.statusGroup==='active'||c.statusGroup==='inactive');
+   if(verified.length){const status=verified.some(c=>c.statusGroup==='active')?'active':'removed';apiObservedAdsStatus.set(product.sku,{status,observedAt:new Date().toISOString(),campaignIds:verified.map(c=>String(c.campaignId))});confirmed++}
+  }
+  renderProductList();refreshProductSelect();showCurveInAds();
+  out.textContent=confirmed+' produto(s) com situação confirmada pela API nesta sessão; '+(readProducts().length-confirmed)+' sem correspondência exata, mantendo status manual. Nenhum anúncio foi alterado.'+(data.statusWarning?' Atenção: alguns status não foram confirmados pela Shopee.':'');
+ }catch(err){out.textContent='Não foi possível consultar a situação dos produtos: '+String(err.message||err)}
+ finally{btn.disabled=false}
+}
+$('syncProductStatusesBtn').addEventListener('click',apiSyncProductStatuses);
 async function apiLoadRange(syncMany=false){
  const btn=syncMany?$('apiHistoryBtn'):$('apiReadBtn');
  if(!apiReadAccess()){setApiStatus('Abra esta página no serviço Render e faça login para consultar a API.','error');return}
