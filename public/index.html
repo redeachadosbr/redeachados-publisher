@@ -31,7 +31,7 @@
 <link rel="stylesheet" href="/ads-premium.css?v=2.4.0-seo-ads-location">
 <link rel="stylesheet" href="/sidebar-collapse.css?v=1.0.0">
 <link rel="stylesheet" href="/optimizer-image-studio.css?v=1.0.2">
-<link rel="stylesheet" href="/kit-builder.css?v=3.5.0-kit-gallery-compact">
+<link rel="stylesheet" href="/kit-builder.css?v=3.6.0-logistics-smart-import">
 <link rel="stylesheet" href="/optimizer-technical-studio.css?v=1.0.1-review-feedback">
 <style>
 /* Autorização >25%: campo compacto, sem o input global width:100%.
@@ -1237,6 +1237,36 @@
    <div class="kit-publish-subheading"><div><strong>🚚 Logística e validação do kit</strong><small>Confirme as informações antes de publicar na Shopee.</small></div><button id="kitPublishCheck" class="kit-secondary" type="button">Verificar SKUs e opções da Shopee</button></div>
    <p id="kitPublishStatus" class="kit-status" role="status" aria-live="polite">Salve o kit para iniciar a conferência. Nenhum anúncio é criado nesta etapa.</p>
    <div id="kitPublishLinks" class="kit-components"></div>
+   <section class="kit-logistics-smart-import" id="kitLogisticsSmartImport" aria-label="Preencher logística a partir de texto ou print">
+    <div class="kit-logistics-smart-heading">
+     <div><strong>✦ Preenchimento inteligente da logística</strong><p>Cole informações ou um print da Shopee/fornecedor para identificar peso, medidas, componente principal e prazos.</p></div>
+     <span>Sem API paga</span>
+    </div>
+    <div class="kit-logistics-smart-inputs">
+     <label for="kitLogisticsSourceText">Texto das informações
+      <textarea id="kitLogisticsSourceText" rows="4" maxlength="16000" placeholder="Ex.: Peso total embalado: 1,55 kg | Comprimento: 30 cm | Largura: 25 cm | Altura: 20 cm | SKU principal: 310200 | Sob encomenda: sim | Dias para enviar: 7"></textarea>
+     </label>
+     <div class="kit-logistics-smart-image">
+      <strong>Print com os dados</strong>
+      <p>Envie PNG, JPG ou WebP, ou copie uma captura e clique em “Colar print”.</p>
+      <div class="kit-logistics-smart-file-actions">
+       <label class="kit-secondary kit-logistics-upload-button" for="kitLogisticsSourceImage">Escolher print<input id="kitLogisticsSourceImage" type="file" accept="image/png,image/jpeg,image/webp" hidden></label>
+       <button id="kitLogisticsPasteImage" type="button" class="kit-secondary">Colar print</button>
+      </div>
+      <div id="kitLogisticsImagePreviewWrap" class="kit-logistics-smart-preview" hidden>
+       <img id="kitLogisticsImagePreview" alt="Prévia do print para leitura das informações">
+       <button id="kitLogisticsRemoveImage" class="kit-secondary" type="button">Remover print</button>
+      </div>
+     </div>
+    </div>
+    <div class="kit-logistics-smart-footer">
+     <button id="kitLogisticsAutofill" type="button" class="kit-primary">✦ Identificar e preencher campos</button>
+     <button id="kitLogisticsUndo" type="button" class="kit-secondary" hidden>Desfazer preenchimento</button>
+     <button id="kitLogisticsClear" type="button" class="kit-secondary">Limpar entrada</button>
+    </div>
+    <p id="kitLogisticsSmartStatus" class="kit-logistics-smart-status" role="status" aria-live="polite">Os valores identificados serão aplicados aos campos abaixo e precisarão de conferência antes de publicar. As imagens são lidas no navegador.</p>
+    <div id="kitLogisticsSmartResults" class="kit-logistics-smart-results" hidden></div>
+   </section>
    <div class="kit-publish-fields">
     <label>Componente principal<select id="kitMainSku"><option value="">Selecione</option></select></label>
     <label>Canal de envio Shopee<select id="kitLogisticId"><option value="">Consultar opções</option></select></label>
@@ -2151,7 +2181,7 @@
 <script src="/technical-memory.js?v=1.0.1-live-sku-preload"></script>
 <script src="/technical-status.js?v=1.0.0-optional-coherence"></script>
 <script src="/app.js?v=3.4.0-kit-extension-guard"></script>
-<script type="module" src="/kit-builder.js?v=3.5.0-kit-gallery-compact"></script>
+<script type="module" src="/kit-builder.js?v=3.6.0-logistics-smart-import"></script>
 <link rel="stylesheet" href="/optimizer-variations.css?v=1.2.1-single-flow">
 <script src="/optimizer-variations.js?v=1.2.3-single-flow"></script>
 
