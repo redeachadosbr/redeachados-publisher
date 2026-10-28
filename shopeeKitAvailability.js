@@ -4,7 +4,8 @@
 import crypto from 'node:crypto';
 import {parseCsv} from './wedropCsv.js';
 import {readWeDropSyncState} from './wedropCosts.js';
-export const KIT_STOCK_MAX_AGE_MS=24*60*60*1000;
+import {storedKitSourceState,KIT_IMPORT_STALE_WARNING_MS} from './shopeeKitStoredSourcePolicy.js';
+export const KIT_STOCK_MAX_AGE_MS=KIT_IMPORT_STALE_WARNING_MS; // Aviso, nunca expiração de importação
 const stockCache=new Map();
 export function clearKitStockCache(shopId){stockCache.delete(Number(shopId));}
 const clean=x=>String(x??'').trim();
@@ -75,10 +76,7 @@ async function allRows(table,shopId,columns,extra=''){
 export async function readKitStockSnapshot(shopId){
  const id=Number(shopId);
  const saved=stockCache.get(id);
- if(saved&&Date.now()-saved.checkedAt<30000&&
-  (!saved.snapshot.lastSuccessAt||
-   Date.now()-new Date(saved.snapshot.lastSuccessAt).getTime()<=KIT_STOCK_MAX_AGE_MS))
-  return saved.snapshot;
+ if(saved&&Date.now()-saved.checkedAt<30000)return saved.snapshot;
  const [state,catalogSync,entries]=await Promise.all([
   db('shopee_wedrop_availability_imports','?shop_id=eq.'+id+
    '&select=last_success_at,source_name,batch_hash,available_count,unavailable_count,imported_count&limit=1'),
@@ -88,29 +86,22 @@ export async function readKitStockSnapshot(shopId){
  const importState=state[0]||null;
  const last=new Date(importState?.last_success_at||0).getTime();
  const catalogLast=new Date(catalogSync?.last_success_at||0).getTime();
- const now=Date.now();
- const recent=Number.isFinite(last)&&last>0&&now>=last&&now-last<=KIT_STOCK_MAX_AGE_MS;
- const catalogRecent=Number.isFinite(catalogLast)&&catalogLast>0&&now>=catalogLast&&
-  now-catalogLast<=KIT_STOCK_MAX_AGE_MS;
- const newerThanCatalog=recent&&catalogLast>0&&last>=catalogLast-60000;
- const ready=Boolean(recent&&catalogRecent&&newerThanCatalog);
  const map=new Map(entries.filter(x=>importState&&x.batch_hash===importState.batch_hash)
   .map(x=>[String(x.supplier_sku),String(x.availability)]));
- const reason=!catalogRecent?'Catálogo WeDrop desatualizado: importe novamente o catálogo oficial na página WeDrop.':
-  !recent?'Disponibilidade não importada nas últimas 24 horas. Atualize o arquivo da WeDrop com SKU e Disponibilidade.':
-  !newerThanCatalog?'O status de estoque é anterior à última importação do catálogo. Atualize a disponibilidade após importar os produtos.':
-  'Disponibilidade WeDrop importada; apenas SKUs DISPONÍVEIS podem compor kits.';
- const snapshot={ready,reason,map,lastSuccessAt:importState?.last_success_at||null,
-  catalogRecent,stockRecent:recent,stockAfterCatalog:newerThanCatalog,
+ const policy=storedKitSourceState({catalogTimestamp:catalogLast,stockTimestamp:last,
+  now:Date.now(),verifiedSkuCount:map.size});
+ // Apenas status de SKU explicitamente importados são usados. A idade do arquivo
+ // serve como alerta, nunca como bloqueio por relógio ou estoque presumido.
+ const snapshot={...policy,map,lastSuccessAt:importState?.last_success_at||null,
   catalogLastImportedAt:catalogSync?.last_success_at||null,
   importedCount:importState?.imported_count||0,
   availableCount:importState?.available_count||0,
   unavailableCount:importState?.unavailable_count||0,
-  expiresAt:ready?new Date(Math.min(last,catalogLast)+KIT_STOCK_MAX_AGE_MS).toISOString():null};
+  expiresAt:null};
  stockCache.set(id,{checkedAt:Date.now(),snapshot});return snapshot;
 }
 export function assertKitStockSnapshot(stock){
- if(!stock?.ready)throw Error('ATUALIZE A IMPORTAÇÃO WEDROP ANTES DE GERAR KITS. '+(stock?.reason||'Disponibilidade não verificada.'));
+ if(!stock?.ready)throw Error('CATÁLOGO OU DISPONIBILIDADE WEDROP AINDA NÃO IMPORTADOS. '+(stock?.reason||'Disponibilidade não verificada.'));
 }
 export function assertKitComponentsAvailable(components,stock){
  assertKitStockSnapshot(stock);
@@ -118,7 +109,7 @@ export function assertKitComponentsAvailable(components,stock){
   if(p.stockStatus!=='DISPONIVEL')
    throw Error('Kit bloqueado: SKU '+p.sku+' '+(p.stockStatus==='INDISPONIVEL'?
     'INDISPONÍVEL na WeDrop.':'sem disponibilidade confirmada na importação atual.')+
-    ' Atualize a importação de estoque e escolha outra SKU.');
+    ' Verifique a disponibilidade no fornecedor antes de publicar ou escolha outra SKU.');
  }
 }
 export async function saveKitStockImport(shopId,csv){
