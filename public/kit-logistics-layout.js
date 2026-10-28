@@ -18,13 +18,19 @@ export function wideTotalsRegions(width,height){
  // aparecem em caixas na faixa inferior. A última coluna pode ser cortada.
  // Cortar colunas isoladas evita que OCR de página inteira confunda a ordem.
  const columnWidth=width*.21;
- return WIDE_TOTAL_FIELDS.map(({key,label,index})=>({
-  key,label,index,x:Math.floor(columnWidth*index),
-  y:Math.floor(height*.63),
-  width:Math.max(1,Math.min(width-Math.floor(columnWidth*index),
-   Math.ceil(columnWidth))),
-  height:Math.floor(height*.97)-Math.floor(height*.63)
- }));
+ return WIDE_TOTAL_FIELDS.map(({key,label,index})=>{
+  // Nas duas colunas finais, o título ocupa duas linhas e o número fica
+  // abaixo do número das colunas de Largura/Altura. Não incluir o título.
+  const top=index<=2?.64:.775;
+  const bottom=index<=2?.785:.96;
+  return {
+   key,label,index,x:Math.floor(columnWidth*index),
+   y:Math.floor(height*top),
+   width:Math.max(1,Math.min(width-Math.floor(columnWidth*index),
+    Math.ceil(columnWidth))),
+   height:Math.max(1,Math.floor(height*bottom)-Math.floor(height*top))
+  };
+ });
 }
 export function parseIsolatedTotalNumber(text,key){
  const tokens=String(text||'').replace(/[^\d.,\s]/g,' ').match(/\d+(?:[,.]\d+)?/g)||[];
