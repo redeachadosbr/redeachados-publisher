@@ -9,6 +9,7 @@ import {parseKitLogisticsText} from './kit-logistics-parser.js?v=3-ocr-columns';
 import {recognizeKitLogisticsPrint} from './kit-logistics-ocr.js?v=3-ocr-columns';
 import {kitImagesLookDuplicated} from './kit-image-guard.js';
 import {createKitVideoStore,kitVideoFileCheck,kitVideoMetaCheck} from './kit-video-store.js';
+import {createKitLogisticsPersistence} from './kit-logistics-draft-ui.js';
 // Kits Inteligentes WeDrop — Kit Formal enviado à Shopee somente após aprovação explícita.
 const $=s=>document.querySelector(s);
 const money=n=>Number(n).toLocaleString('pt-BR',{style:'currency',currency:'BRL'});
@@ -51,6 +52,12 @@ function setKitMode(next,{scroll=false}={}){
 let kitStockReady=false,kitStockLastCheck=null;
 let kitUnifiedState=null;
 let kitPublishToken=null,kitDiscountToken=null,kitSaved=false,kitPublishBusy=false,kitReadiness=null,kitShopeePhotoSlots=new Map(),kitItemId=null;
+const kitLogisticsKeeper=createKitLogisticsPersistence({
+ context:()=>({sku:prepared?.kit?.kitSku||'',saved:kitSaved}),
+ post:api,notify:(msg,state='info')=>{
+  const el=$('#kitLogisticsSaveStatus');if(el){el.textContent=msg;el.dataset.state=state;}
+ },disablePreOrder:()=>kitDisablePreOrder()
+});
 let marginTimer=null,marginRevision=0,suggestionContext=null,marginUpdatePending=false;
 function updateKitOverview(){
  $('#kitOverviewCategory').textContent=$('#kitCategory')?.value||'Brinquedos';
@@ -64,7 +71,7 @@ function updateKitTextCounters(){
 }
 function onKitContentEdit(){
  if(!prepared)return;
- kitSaved=false;clearKitPublishApproval();updateKitTextCounters();
+ kitSaved=false;clearKitPublishApproval();updateKitTextCounters();kitVideoUI();
  kitPublishStatus('Título/descrição alterados: salve novamente o rascunho antes de publicar.','info');
 }
 const MARGIN_MIN=0,MARGIN_MAX=70;
@@ -484,6 +491,7 @@ function resetKitPublication({saved=false,publication=null}={}){
  root.append(new Option('Selecione o SKU principal',''));
  for(const p of prepared?.kit?.components||[])root.append(new Option(p.sku+' · '+p.name,p.sku));
  $('#kitLogisticId').replaceChildren(new Option('Consultar opções da Shopee',''));
+ kitLogisticsKeeper.reset();
  $('#kitPublishLinks').replaceChildren();
  $('#kitDiscountNext').hidden=!kitItemId&&!uncertain;
  $('#kitPublishPreview').disabled=!saved||commercialBlocked;
@@ -864,7 +872,8 @@ async function kitReadinessCheck(){
   const channelSelect=$('#kitLogisticId'),chosen=channelSelect.value;
   channelSelect.replaceChildren(new Option('Selecione um canal ativo',''));
   for(const x of result.channels)channelSelect.append(new Option(x.name+' (ID '+x.id+')',x.id));
-  if(result.channels.some(x=>x.id===chosen))channelSelect.value=chosen;
+  if(result.channels.some(x=>String(x.id)===String(chosen)))channelSelect.value=String(chosen);
+  kitLogisticsKeeper.channel(result.channels);
   kitApplyPendingLogisticName();
   kitPublishStatus(result.blockers?.length?
    'PUBLICAÇÃO BLOQUEADA: '+result.blockers.join(' | '):
@@ -1298,6 +1307,7 @@ async function openDraft(kitSku,{scroll=true,targetCard=null,title=''}={}){
   kitRestoredSku='';
   kitDraftNeedsRefresh=d.stockRevalidationRequired===true;
   prepared=d;images.clear();resetKitPublication({saved:true,publication:d.publication});
+  kitLogisticsKeeper.restore(d.logistics,kitSku);
   setKitMargin(d.kit.quote.targetMarginPct);
   $('#kitPacking').value=String(d.kit.packing);
   $('#kitShipping').value=String(d.kit.shipping);
@@ -1320,16 +1330,23 @@ async function saveDraft(){
  if(!prepared)return;
  if(marginUpdatePending){status('Finalize o recálculo da barra de margem antes de salvar o kit.','error');return;}
  const b=$('#kitSaveDraft');b.disabled=true;
+ const draftLogistics=kitLogisticsKeeper.read();
  try{
+  await kitLogisticsKeeper.flush();
   const res=await api('/api/shopee/kits/drafts/save',{body:{
    skus:prepared.kit.components.map(x=>x.sku),kitSku:prepared.kit.kitSku,
    ...currentSettings(),title:$('#kitTitle').value,description:$('#kitDescription').value,
    seoTitles:kitContentSeoTitles.map(x=>x.title),
-   manualFacts:Object.fromEntries(kitContentManualFacts.entries())
+   manualFacts:Object.fromEntries(kitContentManualFacts.entries()),
+   logistics:draftLogistics
   }});
   if(!res.saved)throw Error('O servidor não confirmou a gravação do rascunho.');
   kitDraftNeedsRefresh=res.stockRevalidationRequired===true;
-  resetKitPublication({saved:true});kitVideoUI();
+  resetKitPublication({saved:true});
+  kitLogisticsKeeper.apply(draftLogistics);
+  kitLogisticsKeeper.saveLocal(res.kitSku,draftLogistics);
+  $('#kitLogisticsSaveStatus').textContent='✓ Medidas e opções salvas no rascunho.';
+  kitVideoUI();
   if(kitActiveDraftSku)kitActiveDraftSku=res.kitSku;
   status(kitDraftNeedsRefresh?
    '✓ Textos do rascunho '+res.kitSku+' salvos. Os preços e o estoque antigos ainda precisam de atualização antes de publicar.':
@@ -2891,6 +2908,11 @@ $('#kitVideoDownload')?.addEventListener('click',()=>{
 });
 $('#kitVideoRemove')?.addEventListener('click',()=>void removeKitVideo());
 $('#kitVideoInclude')?.addEventListener('change',()=>clearKitPublishApproval());
+for(const selector of kitLogisticsKeeper.selectors){
+ $(selector)?.addEventListener('change',kitLogisticsKeeper.queue);
+ if(['#kitWeightKg','#kitLengthCm','#kitWidthCm','#kitHeightCm'].includes(selector))
+  $(selector)?.addEventListener('input',kitLogisticsKeeper.queue);
+}
 
 $('#kitPublishPreview')?.addEventListener('click',()=>void kitPreparePublishPreview());
 $('#kitPublishExecute')?.addEventListener('click',()=>void kitPublishExecute());
