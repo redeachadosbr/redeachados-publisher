@@ -55,7 +55,7 @@ test('os controles do assistente estão ligados à seção logística e não à 
  assert.match(js,/kitResolveLogisticOption\(/);
  assert.match(js,/kitApplyPendingLogisticName\(\)/);
  assert.match(css,/kit-logistics-smart-import/);
- assert.match(html,/kit-builder\.js\?v=3\.6\.1-preorder-off/);
+ assert.match(html,/kit-builder\.js\?v=3\.6\.2-ocr-totals/);
 });
 test('OCR de imagem é opcional, no navegador e não envia print ao servidor',()=>{
  const ocr=fs.readFileSync(new URL('../public/kit-logistics-ocr.js',import.meta.url),'utf8');
