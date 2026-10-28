@@ -1,4 +1,4 @@
-import {parseKitLogisticsText} from './kit-logistics-parser.js?v=2-total-fields';
+import {parseKitLogisticsText} from './kit-logistics-parser.js?v=3-ocr-columns';
 import {isWideTotalsPrint,wideTotalsRegions,parseIsolatedTotalNumber,totalFieldsToLabeledText} from './kit-logistics-layout.js';
 // OCR opcional no navegador para prints dos campos de logística do kit.
 // Não envia o print ao servidor do Shopee Manager nem chama API paga.
