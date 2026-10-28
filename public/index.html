@@ -31,7 +31,7 @@
 <link rel="stylesheet" href="/ads-premium.css?v=2.4.0-seo-ads-location">
 <link rel="stylesheet" href="/sidebar-collapse.css?v=1.0.0">
 <link rel="stylesheet" href="/optimizer-image-studio.css?v=1.0.2">
-<link rel="stylesheet" href="/kit-builder.css?v=3.7.3-kit-freshness-formal-premium-1">
+<link rel="stylesheet" href="/kit-builder.css?v=3.7.4-persistent-catalog">
 <link rel="stylesheet" href="/optimizer-technical-studio.css?v=1.0.1-review-feedback">
 <style>
 /* Autorização >25%: campo compacto, sem o input global width:100%.
@@ -919,8 +919,12 @@
    <div><strong>Confirmação de coluna de custo necessária</strong>
     <p id="kitCostMappingReason">O arquivo não identifica automaticamente o custo unitário WeDrop.</p></div>
    <label>Coluna de custo unitário<select id="kitCostColumn"><option value="">Selecione a coluna correta</option></select></label>
-   <label class="kit-cost-approve"><input id="kitCostConfirm" type="checkbox"/> Confirmo que a coluna selecionada é o custo de compra unitário cobrado pela WeDrop, não um preço de venda.</label>
-   <button id="kitCostMappingApply" type="button" class="kit-secondary" disabled>Validar custos e concluir atualização</button>
+   <label class="kit-cost-approve"><input id="kitCostConfirm" type="checkbox"/><span>Confirmo que a coluna selecionada é o custo de compra unitário cobrado pela WeDrop, não um preço de venda.</span></label>
+   <div class="kit-cost-buttons">
+    <button id="kitCostMappingApply" type="button" class="kit-secondary" disabled>Validar custos e concluir atualização</button>
+    <button id="kitCostUseSaved" type="button" class="kit-primary">Usar catálogo já salvo e continuar</button>
+   </div>
+   <p class="kit-cost-mapping-help">A confirmação da coluna é necessária somente se você quiser importar novos custos. Seu catálogo salvo continua disponível sem repetir essa importação.</p>
   </div>
  </section>
  <section id="kitStockGate" class="kit-stock-gate" aria-label="Atualização de catálogo e disponibilidade WeDrop">
@@ -2236,7 +2240,7 @@
 <script src="/technical-memory.js?v=1.0.1-live-sku-preload"></script>
 <script src="/technical-status.js?v=1.0.0-optional-coherence"></script>
 <script src="/app.js?v=3.4.0-kit-extension-guard"></script>
-<script type="module" src="/kit-builder.js?v=3.7.3-kit-freshness"></script>
+<script type="module" src="/kit-builder.js?v=3.7.4-persistent-catalog"></script>
 <link rel="stylesheet" href="/optimizer-variations.css?v=1.2.1-single-flow">
 <script src="/optimizer-variations.js?v=1.2.3-single-flow"></script>
 
