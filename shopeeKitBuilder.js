@@ -87,6 +87,8 @@ export async function kitCatalog(shop,{category='Todos',search='',limit=80}={}){
  const filtered=rows.filter(x=>categoryMatches(x.category,category)&&(!term||norm(x.name+' '+x.sku).includes(term)));
  const available=filtered.filter(x=>stock.map.get(x.sku)==='DISPONIVEL');
  const stockSummary={ready:stock.ready,reason:stock.reason,
+  catalogImported:stock.catalogImported,stockImported:stock.stockImported,
+  warningOutdated:stock.warningOutdated,
   catalogRecent:stock.catalogRecent,stockRecent:stock.stockRecent,
   stockAfterCatalog:stock.stockAfterCatalog,
   importedCount:stock.importedCount,availableCount:stock.availableCount,
