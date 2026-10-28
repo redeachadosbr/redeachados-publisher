@@ -55,7 +55,7 @@ test('os controles do assistente estão ligados à seção logística e não à 
  assert.match(js,/kitResolveLogisticOption\(/);
  assert.match(js,/kitApplyPendingLogisticName\(\)/);
  assert.match(css,/kit-logistics-smart-import/);
- assert.match(html,/kit-builder\.js\?v=3\.6\.0-logistics-smart-import/);
+ assert.match(html,/kit-builder\.js\?v=3\.6\.1-preorder-off/);
 });
 test('OCR de imagem é opcional, no navegador e não envia print ao servidor',()=>{
  const ocr=fs.readFileSync(new URL('../public/kit-logistics-ocr.js',import.meta.url),'utf8');
@@ -63,4 +63,21 @@ test('OCR de imagem é opcional, no navegador e não envia print ao servidor',()
  assert.match(ocr,/worker\.recognize\(file\)/);
  assert.match(ocr,/12\*1024\*1024/);
  assert.doesNotMatch(ocr,/fetch\s*\(/);
+});
+
+test('sob encomenda permanece desativado mesmo que texto ou print solicite SIM',()=>{
+ const html=fs.readFileSync(new URL('../public/index.html',import.meta.url),'utf8');
+ const js=fs.readFileSync(new URL('../public/kit-builder.js',import.meta.url),'utf8');
+ const css=fs.readFileSync(new URL('../public/kit-builder.css',import.meta.url),'utf8');
+ assert.match(html,/<label hidden class="kit-inline-checkbox kit-preorder-hidden"><input id="kitPreOrder" type="checkbox" disabled/);
+ assert.match(html,/<label hidden class="kit-preorder-hidden">Dias para enviar/);
+ assert.match(css,/\.kit-preorder-hidden\[hidden\][\s\S]*?display:none!important/);
+ assert.match(js,/function kitDisablePreOrder\(\)/);
+ assert.match(js,/input\.checked=false;input\.disabled=true/);
+ assert.match(js,/autoSyncDts:\$\('#kitAutoSyncDts'\)\.checked,preOrder:false/);
+ assert.match(js,/daysToShip:0/);
+ assert.match(js,/for\(const key of \['weightKg','lengthCm','widthCm','heightCm','autoSyncDts'\]\)/);
+ assert.match(js,/Prazo sob encomenda ignorado/);
+ assert.doesNotMatch(html,/Sob encomenda: sim \| Dias para enviar: 7/);
+ assert.match(html,/id="kitAutoSyncDts"/);
 });
