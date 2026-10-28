@@ -2085,6 +2085,38 @@ async function kitStartExtensionImages(){
 let kitResumeExtensionBusy=false;
 // Exclusivo da aba Kits: o Runner antigo chamava a função global de SKU individual,
 // que recusava todos os kits por terem Item ID/Modelo 0.
+// Recuperação v1.0.56: CONSULTA puramente local; não chama novamente a
+// extensão enquanto o runner aguarda a resposta, evitando deadlock de ACK.
+globalThis.__RA_KIT_RECOVER_CONTEXT=async identity=>{
+ const sku=String(identity?.sku||'');
+ if(!prepared?.kit||prepared.kit.kitSku!==sku||
+    String(identity?.itemId)!=='0'||String(identity?.modelId)!=='0')
+  return {ok:false,error:'Abra este mesmo rascunho no editor de kits e não troque de SKU.'};
+ try{
+  const saved=await kitPhotoStore.list(sku);
+  if(prepared?.kit?.kitSku!==sku)throw Error('Kit alterado durante a recuperação.');
+  let count=0;
+  for(const row of saved){
+   if(Number.isInteger(row.slot)&&row.slot>=1&&row.slot<=9&&
+      /^data:image\/(?:png|jpeg|webp);base64,/i.test(row.dataUrl)&&!images.has(row.slot)){
+    images.set(row.slot,row.dataUrl);count++;
+   }
+  }
+  if(count){renderImageSlots();kitAutoImageUi();}
+  const completed=[...images.keys()].filter(n=>Number.isInteger(n)&&n>=1&&n<=9).sort((a,b)=>a-b);
+  const prompts=Array.from({length:9},(_,i)=>kitImagePromptAt(i+1));
+  if(prompts.some(p=>typeof p!=='string'||p.length<40))
+   throw Error('Faltam prompts específicos deste kit.');
+  return {ok:true,sku,completed,prompts,kitMode:true};
+ }catch(e){return {ok:false,error:String(e.message||e).slice(0,300)};}
+};
+globalThis.__RA_KIT_BIND_RECOVERED=identity=>{
+ if(!prepared?.kit||prepared.kit.kitSku!==String(identity?.sku||''))
+  return {ok:false,error:'Outro kit foi selecionado durante a recuperação.'};
+ const result=getKitExtensionBridge().adoptRunnerSession(identity);
+ if(result.ok)$('#kitStopExtension').hidden=false;
+ return result;
+};
 globalThis.__RA_KIT_RESUME_BRIDGE=async identity=>{
  if(kitResumeExtensionBusy)return {ok:false,error:'A recuperação do kit já está em andamento.'};
  const kitSku=String(identity?.sku||'');
