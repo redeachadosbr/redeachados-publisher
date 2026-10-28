@@ -39,7 +39,7 @@ export function kitPublishFields(input,kit){
   syncDts:input?.autoSyncDts===true,contentsReviewed:true,photosReviewed:true,
   singleParcelConfirmed:true};
 }
-export function kitPublishPayload(kit,fields,linked,{maxTitleLength=120}={}){
+export function kitPublishPayload(kit,fields,linked,{maxTitleLength=120,videoUploadId=null}={}){
  if(fields.title.length>maxTitleLength)
   throw Error('O título excede o limite da categoria consultado na Shopee.');
  if(!Array.isArray(linked)||linked.length!==kit.components.length)
@@ -67,6 +67,7 @@ export function kitPublishPayload(kit,fields,linked,{maxTitleLength=120}={}){
    item_name:fields.title,item_sku:kit.kitSku,
    description_type:'normal',description:fields.description,
    images:{image_id_list:fields.photoIds},
+   ...(videoUploadId?{video_upload_id:[videoUploadId]}:{}),
    weight:fields.weight,
    dimension:{package_length:fields.dimensions[0],
     package_width:fields.dimensions[1],package_height:fields.dimensions[2]},
