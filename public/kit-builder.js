@@ -464,6 +464,7 @@ async function categories(force=false){
   select.value=data.categories.includes(keep)?keep:data.categories.includes('Brinquedos')?'Brinquedos':'Todos';
   updateKitOverview();
   displayKitStockGate(data.stock,data.catalogCount);
+  kitRefreshDiagnosis();
   if(data.stock?.ready)status(data.availableMatched+' SKUs DISPONÍVEIS nesta categoria para montar kits. Apenas esses produtos serão usados.','success');
  }catch(error){categoriesLoaded=false;displayKitStockGate(null,0);status('Não foi possível acessar as categorias: '+error.message,'error');}
 }
@@ -953,6 +954,84 @@ async function kitPreparePublishPreview(){
 // Fluxo guiado: automatiza conferência e envio de mídia, mas NUNCA o botão
 // de publicar. A autorização final continua explícita após a prévia assinada.
 let kitPublishGuideBusy=false;
+function kitRefreshDiagnosis(){
+ const card=$('#kitPublishFreshness'),reason=$('#kitPublishFreshnessReason');
+ if(!card||!reason)return;
+ if(!prepared?.kit){card.hidden=true;return;}
+ // O bloqueio é mantido até confirmar uma nova cotação do mesmo rascunho.
+ const stale=kitDraftNeedsRefresh||!kitStockReady;
+ card.hidden=!stale;
+ if(!stale)return;
+ const stock=kitStockLastCheck;
+ const dates='Catálogo: '+kitDateTime(stock?.catalogLastImportedAt)+
+  ' · Estoque: '+kitDateTime(stock?.lastSuccessAt)+'.';
+ if(stock?.ready){
+  reason.textContent='✓ Catálogo e estoque estão atualizados. Falta recalcular e salvar a cotação deste rascunho. '+dates;
+ }else{
+  reason.textContent=(stock?.reason||'Atualização da WeDrop ainda não confirmada.')+
+   ' '+dates+' Atualize primeiro o catálogo; depois a disponibilidade de estoque.';
+ }
+}
+async function kitRevalidateAfterImport(){
+ if(!prepared?.kit?.kitSku)return kitPublishGuideNotice('Abra um rascunho antes de recalcular.','error');
+ if(kitPublishGuideBusy)return;
+ const button=$('#kitPublishRevalidate'),sku=prepared.kit.kitSku;
+ const old=prepared.kit;
+ button.disabled=true;button.textContent='Conferindo datas e preços...';
+ try{
+  await categories(true); // Estado do fornecedor verificado no servidor, não por hora local.
+  if(prepared?.kit?.kitSku!==sku)return;
+  kitRefreshDiagnosis();
+  if(!kitStockReady){
+   kitPublishGuideNotice('Não foi possível revalidar: '+(kitStockLastCheck?.reason||
+    'catálogo e estoque WeDrop precisam ser importados novamente.'),'error');
+   return;
+  }
+  if(!kitSaved){
+   kitPublishGuideNotice('Salve primeiro as alterações de texto e logística deste kit para poder recalcular sem perdê-las.','info');
+   kitPublishGuideFocus('#kitSaveDraft');return;
+  }
+  kitPublishGuideNotice('Recalculando os dois SKUs com a disponibilidade e os custos atuais...');
+  const review=await api('/api/shopee/kits/drafts/load',{body:{kitSku:sku}});
+  if(prepared?.kit?.kitSku!==sku)return;
+  if(review.stockRevalidationRequired){
+   kitPublishGuideNotice('Ainda bloqueado: '+(review.stockReason||'Estoque não confirmado.'),'error');return;
+  }
+  if(!review.refreshedCosts||review.kit?.kitSku!==sku)
+   throw Error('O servidor não confirmou uma cotação atualizada deste mesmo kit.');
+  const oldCost=Number(old.kitCost),newCost=Number(review.kit.kitCost);
+  const oldPrice=Number(old.quote?.grossPrice),newPrice=Number(review.kit.quote?.grossPrice);
+  const changes='Custo anterior: '+money(oldCost)+' → atual: '+money(newCost)+
+   '\nPreço bruto anterior: '+money(oldPrice)+' → atual: '+money(newPrice);
+  if(!window.confirm('ATUALIZAR A COTAÇÃO DESTE KIT?\n\n'+
+    changes+'\n\nAs 9 fotos, vídeo, textos, SKUs e medidas serão preservados.'+
+    '\nNenhum anúncio será publicado. Conferir e salvar a nova cotação?')){
+   kitPublishGuideNotice('Recálculo não confirmado. Os valores anteriores permanecem apenas no rascunho.','info');
+   return;
+  }
+  const saved=await saveDraft(); // Rota recompõe com a WeDrop e valida o estoque.
+  if(!saved||kitDraftNeedsRefresh)throw Error('Não foi possível confirmar o salvamento com dados atuais.');
+  const latest=await api('/api/shopee/kits/drafts/load',{body:{kitSku:sku}});
+  if(prepared?.kit?.kitSku!==sku)return;
+  if(latest.stockRevalidationRequired||latest.kit?.kitSku!==sku)
+   throw Error('A atualização venceu durante o recálculo. Revise o catálogo novamente.');
+  prepared={...prepared,kit:latest.kit};
+  kitDraftNeedsRefresh=false;
+  kitSaved=true;
+  kitReadiness=null;
+  clearKitPublishApproval();
+  refreshKitPrices(latest.kit);
+  $('#kitEditorCost').textContent=money(latest.kit.kitCost);
+  $('#kitWarning').textContent=latest.kit.warning+
+   ' Custos e preços atualizados. Revise a margem antes de publicar.';
+  kitRefreshDiagnosis();
+  kitPublishGuideNotice('✓ Cotação atualizada e salva. Nove imagens, vídeo e dados logísticos preservados. Continue a validação dos anúncios e canal da Shopee.','success');
+  kitPublishStatus('✓ WeDrop revalidada. Refaça a validação de SKUs, mídia e prévia antes de publicar.','success');
+ }catch(error){
+  kitPublishGuideNotice('Recálculo não concluído: '+String(error?.message||error)+
+   ' Nenhum anúncio foi publicado.','error');
+ }finally{button.disabled=false;button.textContent='2. Conferir e recalcular este kit';}
+}
 function kitPublishGuideNotice(message,state='info'){
  const el=$('#kitPublishGuideInfo');if(el){el.textContent=message;el.dataset.state=state;}
 }
@@ -981,9 +1060,15 @@ async function kitPublishGuideNext(){
    }
   }
   if(prepared?.kit?.kitSku!==sku)return;
-  if(kitDraftNeedsRefresh){
-   kitPublishGuideNotice('Estoque ou catálogo WeDrop desatualizado. Atualize os dados e recalcule o kit antes da publicação; valores históricos não serão enviados à Shopee.','error');
-   kitPublishGuideFocus('#kitPublishStatus');return;
+  if(kitDraftNeedsRefresh||!kitStockReady){
+   await categories(true); // Reconsultar a atualização real antes de bloquear.
+   kitRefreshDiagnosis();
+   kitPublishGuideNotice(kitStockReady?
+    'Catálogo e estoque agora estão disponíveis. Clique em “Conferir e recalcular este kit” para salvar os valores atuais antes de continuar.':
+    'Publicação pausada: '+(kitStockLastCheck?.reason||
+     'a WeDrop ainda não confirmou catálogo e estoque atuais.')+
+     ' Use “Atualizar catálogo e estoque” e depois “Conferir e recalcular”.','error');
+   kitPublishGuideFocus('#kitPublishFreshness');return;
   }
   if(!kitReadiness||kitReadiness.blockers?.length){
    kitPublishGuideNotice('Etapa 02/05: conferindo SKUs, anúncios vinculados e opções da Shopee...');
@@ -1424,6 +1509,7 @@ async function openDraft(kitSku,{scroll=true,targetCard=null,title=''}={}){
   kitActiveDraftSku=kitSku;
   kitPlaceEditorUnderDraft(kitSku,{targetCard});
   renderKit({scroll,displayTitle:title||d.creative?.title});
+  kitRefreshDiagnosis();
   status(kitDraftNeedsRefresh?
    '✓ Kit '+kitSku+' recuperado. Você pode editar textos e imagens. Custos e estoque NÃO foram atualizados; a publicação continua bloqueada. '+(d.stockReason||''):
    'Rascunho selecionado: '+(title||d.creative?.title||kitSku)+'. Custos e estoque recalculados.',
@@ -1455,7 +1541,7 @@ async function saveDraft(){
   kitLogisticsKeeper.apply(draftLogistics);
   kitLogisticsKeeper.saveLocal(res.kitSku,draftLogistics);
   $('#kitLogisticsSaveStatus').textContent='✓ Medidas e opções salvas no rascunho.';
-  kitVideoUI();
+  kitVideoUI();kitRefreshDiagnosis();
   if(kitActiveDraftSku)kitActiveDraftSku=res.kitSku;
   status(kitDraftNeedsRefresh?
    '✓ Textos do rascunho '+res.kitSku+' salvos. Os preços e o estoque antigos ainda precisam de atualização antes de publicar.':
@@ -3024,6 +3110,11 @@ for(const selector of kitLogisticsKeeper.selectors){
 }
 
 $('#kitPublishGuideNext')?.addEventListener('click',()=>void kitPublishGuideNext());
+$('#kitPublishGoImport')?.addEventListener('click',()=>{
+ setKitMode('import',{scroll:true});
+ kitPublishGuideNotice('Na Importação WeDrop, atualize catálogo e disponibilidade (nessa ordem); depois retorne à Montagem e use “Conferir e recalcular este kit”.','info');
+});
+$('#kitPublishRevalidate')?.addEventListener('click',()=>void kitRevalidateAfterImport());
 $('#kitPublishPreview')?.addEventListener('click',()=>void kitPreparePublishPreview());
 $('#kitPublishExecute')?.addEventListener('click',()=>void kitPublishExecute());
 $('#kitVerifyPublished')?.addEventListener('click',()=>void kitVerifyPublished());
