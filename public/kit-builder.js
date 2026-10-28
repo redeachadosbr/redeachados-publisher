@@ -467,6 +467,7 @@ function clearKitPublishApproval(){
  $('#kitDiscountPreviewBox').hidden=true;
 }
 function resetKitPublication({saved=false,publication=null}={}){
+ kitDisablePreOrder();
  kitSaved=saved;kitPublishBusy=false;kitReadiness=null;kitShopeePhotoSlots.clear();
  clearKitPublishApproval();
  kitItemId=publication?.itemId||null;
@@ -500,13 +501,12 @@ function resetKitPublication({saved=false,publication=null}={}){
 const KIT_LOGISTICS_FORM_FIELDS={
  mainSku:'#kitMainSku',logisticId:'#kitLogisticId',weightKg:'#kitWeightKg',
  lengthCm:'#kitLengthCm',widthCm:'#kitWidthCm',heightCm:'#kitHeightCm',
- autoSyncDts:'#kitAutoSyncDts',preOrder:'#kitPreOrder',daysToShip:'#kitDaysToShip'
+ autoSyncDts:'#kitAutoSyncDts'
 };
 const KIT_LOGISTICS_NAMES={
  mainSku:'Componente principal',logisticId:'Canal de envio Shopee',
  weightKg:'Peso total embalado',lengthCm:'Comprimento',widthCm:'Largura',
- heightCm:'Altura',autoSyncDts:'Sincronizar prazo',
- preOrder:'Kit sob encomenda',daysToShip:'Dias para enviar'
+ heightCm:'Altura',autoSyncDts:'Sincronizar prazo'
 };
 let kitLogisticsPrint=null,kitLogisticsPreviewUrl=null;
 let kitLogisticsUndoSnapshot=null,kitPendingLogistic=null,kitLogisticsImportBusy=false;
@@ -556,6 +556,13 @@ function kitApplyPendingLogisticName(){
  kitLogisticsStatus('Canal de envio reconhecido e selecionado após consultar a Shopee. Confira os dados antes de publicar.','success');
  kitPendingLogistic=null;
 }
+// Kits desta loja não serão vendidos sob encomenda. A opção fica oculta,
+ //desativada e fixada como NÃO, inclusive quando um print indicar o contrário.
+function kitDisablePreOrder(){
+ const input=$('#kitPreOrder'),days=$('#kitDaysToShip');
+ if(input){input.checked=false;input.disabled=true;}
+ if(days){days.value='7';days.disabled=true;}
+}
 function kitLogisticsSnapshot(){
  return Object.fromEntries(Object.entries(KIT_LOGISTICS_FORM_FIELDS).map(([key,selector])=>{
   const element=$(selector);
@@ -572,7 +579,7 @@ function kitLogisticsSetValue(field,value){
 }
 function kitLogisticsRestore(snapshot){
  for(const [key,value] of Object.entries(snapshot))kitLogisticsSetValue(key,value);
- $('#kitDaysToShip').disabled=!$('#kitPreOrder').checked;
+ kitDisablePreOrder();
  clearKitPublishApproval();
 }
 function kitLogisticsDisplayResults(filled,skipped,warnings){
@@ -594,8 +601,10 @@ function kitLogisticsApplyParsed(data){
  const {values,warnings}=data;
  const filled=[],skipped=[];
  const snapshot=kitLogisticsSnapshot();
+ if(values.preOrder===true||values.daysToShip!==undefined)
+  skipped.push('Prazo sob encomenda ignorado: opção NÃO fixa para os kits desta loja.');
  let changes=0;
- for(const key of ['weightKg','lengthCm','widthCm','heightCm','autoSyncDts','preOrder','daysToShip']){
+ for(const key of ['weightKg','lengthCm','widthCm','heightCm','autoSyncDts']){
   if(!Object.prototype.hasOwnProperty.call(values,key))continue;
   const current=$(KIT_LOGISTICS_FORM_FIELDS[key]);
   if(!current)continue;
@@ -624,7 +633,7 @@ function kitLogisticsApplyParsed(data){
    skipped.push('Canal "'+values.logisticName+'" identificado, mas não confirmado nas opções da Shopee. Use Verificar SKUs e opções; o sistema tentará selecionar o canal depois.');
   }
  }
- $('#kitDaysToShip').disabled=!$('#kitPreOrder').checked;
+ kitDisablePreOrder();
  if(changes){kitLogisticsUndoSnapshot={kitSku:prepared.kit.kitSku,values:snapshot};
   $('#kitLogisticsUndo').hidden=false;clearKitPublishApproval();}
  kitLogisticsDisplayResults(filled,skipped,warnings);
@@ -671,13 +680,14 @@ async function kitLogisticsPasteFromClipboard(){
 }
 function kitPublishFields(){
  if(!prepared)throw Error('Selecione um kit.');
+ kitDisablePreOrder();
  return {
   title:$('#kitTitle').value.trim(),description:$('#kitDescription').value.trim(),
   mainSku:$('#kitMainSku').value,logisticId:$('#kitLogisticId').value,
   weightKg:Number($('#kitWeightKg').value),lengthCm:Number($('#kitLengthCm').value),
   widthCm:Number($('#kitWidthCm').value),heightCm:Number($('#kitHeightCm').value),
-  autoSyncDts:$('#kitAutoSyncDts').checked,preOrder:$('#kitPreOrder').checked,
-  daysToShip:Number($('#kitDaysToShip').value),
+  autoSyncDts:$('#kitAutoSyncDts').checked,preOrder:false,
+  daysToShip:0,
   contentsReviewed:$('#kitContentsReviewed').checked,
   photosReviewed:$('#kitPhotosReviewed').checked,
   imageIds:[...kitShopeePhotoSlots.entries()].sort((a,b)=>a[0]-b[0]).map(x=>x[1]),
@@ -2689,11 +2699,8 @@ $('#kitDiscountPreview')?.addEventListener('click',()=>void kitDiscountPrepare()
 $('#kitDiscountExecute')?.addEventListener('click',()=>void kitDiscountApply());
 $('#kitDiscountId')?.addEventListener('input',()=>{kitDiscountToken=null;$('#kitDiscountPreviewBox').hidden=true;});
 
-$('#kitPreOrder')?.addEventListener('change',()=>{
- $('#kitDaysToShip').disabled=!$('#kitPreOrder').checked;clearKitPublishApproval();
-});
 for(const selector of ['#kitMainSku','#kitLogisticId','#kitWeightKg','#kitLengthCm',
- '#kitWidthCm','#kitHeightCm','#kitAutoSyncDts','#kitPreOrder','#kitDaysToShip',
+ '#kitWidthCm','#kitHeightCm','#kitAutoSyncDts',
  '#kitContentsReviewed','#kitPhotosReviewed','#kitSingleParcelConfirmed','#kitTitle','#kitDescription']){
  $(selector)?.addEventListener('change',clearKitPublishApproval);
 }
@@ -2727,6 +2734,7 @@ $('#kitCopyAllPrompts')?.addEventListener('click',()=>prepared&&void copy(
  Array.from({length:9},(_,i)=>kitImagePromptAt(i+1)).join('\n\n--- PRÓXIMA IMAGEM ---\n\n')));
 $('#kitClose')?.addEventListener('click',()=>kitCloseInlineEditor());
 window.RAKitBuilderLoad=async()=>{
+ kitDisablePreOrder();
  setKitMode(kitCurrentMode);
  await categories();
  await loadDrafts();
