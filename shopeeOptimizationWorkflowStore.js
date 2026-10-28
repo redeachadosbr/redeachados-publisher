@@ -41,6 +41,8 @@ export async function saveWorkflowReview(shop,item,model,sku,change){
   next.attributes=[];next.tax=null;next.imagesSignature=null;
   next.technicalDraft=null;next.matrixFiscal=null;next.matrixTechnical=null;
   next.modelDiscountCampaignId='';
+  next.variationConfig={enabled:false,type:'',values:[]};
+  next.variationDetails=null;
  }
  if(change.assetSha256!==undefined)next.videoSha256=change.assetSha256;
  if(change.attributes!==undefined)next.attributes=change.attributes;
