@@ -195,6 +195,52 @@ export function createKitExtensionController({
   },16000);
  }
 
+ // Retomada diretamente pelo Manager quando atualizar a extensão fecha o runner.
+ // Consulta a tarefa que a extensão realmente preservou antes de qualquer nova geração.
+ async function resumeFromManager(){
+  const kit=getKit();
+  if(!kit)return {ok:false,error:'Abra o rascunho do kit antes de recuperar a Ponte.'};
+  if(!await waitReady())return {ok:false,error:'Ponte v1.0.54+ não detectada. Recarregue a extensão e o Manager.'};
+  const completed=[...getImages().keys()].filter(n=>Number.isInteger(n)&&n>=1&&n<=9)
+   .sort((a,b)=>a-b);
+  const prompts=getPrompts();
+  if(!Array.isArray(prompts)||prompts.length!==9||prompts.some(p=>typeof p!=='string'||p.length<40))
+   return {ok:false,error:'Os nove prompts deste kit não estão disponíveis.'};
+  if(completed.length===9)return {ok:false,error:'As nove imagens já estão salvas. Confira a galeria.'};
+  feedback('Consultando a sessão que a extensão preservou. Não será repetido nenhum prompt até confirmar a recuperação.','info');
+  const requestId=crypto.randomUUID();
+  const result=await new Promise(resolve=>{
+   const done=value=>{clearTimeout(timer);window.removeEventListener('message',listener);resolve(value);};
+   const timer=setTimeout(()=>done({ok:false,error:'A extensão não respondeu à recuperação. Atualize o Manager e confira a Ponte.'}),18000);
+   const listener=event=>{
+    if(event.source!==window||event.origin!==location.origin||
+       event.data?.kind!=='RA_EXTENSION_CONTINUE_RESULT'||
+       event.data.requestId!==requestId)return;
+    done(event.data);
+   };
+   window.addEventListener('message',listener);
+   post({kind:'RA_SITE_CONTINUE',requestId,payload:{
+    sku:kit.kitSku,itemId:'0',modelId:'0',completed,prompts
+   }});
+  });
+  if(!result?.ok){
+   const missing=String(result?.reason||'');
+   const message=missing==='NO_RECOVERABLE_JOB'?
+    'A extensão não encontrou a sessão anterior após a atualização. A imagem 01 está preservada. Importe manualmente a imagem 02 já pronta antes de iniciar uma nova geração para evitar duplicar.':
+    String(result?.error||missing||'A Ponte não confirmou a sessão.').slice(0,320);
+   feedback(message,'error');
+   return {ok:false,error:message};
+  }
+  const nonce=String(result.nonce||'');
+  if(!/^[a-z0-9_-]{12,90}$/i.test(nonce))
+   return {ok:false,error:'A extensão não devolveu identificador válido de sessão.'};
+  // A identidade vem da extensão: uma sessão antiga na aba não pode bloquear
+  // a sessão verdadeira do mesmo kit após o fechamento do runner.
+  if(job&&job.kitSku!==kit.kitSku)
+   return {ok:false,error:'Outra composição de kit ainda está selecionada. Confira a galeria.'};
+  if(!job||job.nonce!==nonce)saveJob({nonce,kitSku:kit.kitSku,itemId:'0',modelId:'0',createdAt:Date.now()});
+  return resumeFromExtension({nonce,sku:kit.kitSku,itemId:'0',modelId:'0'});
+ }
  // Exclusivo de kits: o botão verde da Ponte solicita ao Manager a posição
  // efetivamente salva antes de tentar recuperar a imagem já pronta.
  async function resumeFromExtension(identity){
@@ -248,6 +294,6 @@ export function createKitExtensionController({
    ', imagem '+pos(slot)+'/09. A Ponte buscará a foto já gerada SEM repetir o prompt.','success');
   return {ok:true,nonce,sku:current.kitSku,itemId:'0',modelId:'0',slot};
  }
- return {start,stop,resumeFromExtension,probe,ready:()=>ready,busy:()=>busy,version:()=>version,
+ return {start,stop,resumeFromExtension,resumeFromManager,probe,ready:()=>ready,busy:()=>busy,version:()=>version,
   activeJob:()=>job,dispose:()=>{stop('Encerrando sessão do kit.',{notice:false});window.removeEventListener('message',onMessage);}};
 }
