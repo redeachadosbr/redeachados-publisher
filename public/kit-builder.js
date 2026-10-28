@@ -8,6 +8,7 @@ import {createKitExtensionController} from './kit-extension-runtime.js';
 import {parseKitLogisticsText} from './kit-logistics-parser.js?v=3-ocr-columns';
 import {recognizeKitLogisticsPrint} from './kit-logistics-ocr.js?v=3-ocr-columns';
 import {kitImagesLookDuplicated} from './kit-image-guard.js';
+import {createKitVideoStore,kitVideoFileCheck,kitVideoMetaCheck} from './kit-video-store.js';
 // Kits Inteligentes WeDrop — Kit Formal enviado à Shopee somente após aprovação explícita.
 const $=s=>document.querySelector(s);
 const money=n=>Number(n).toLocaleString('pt-BR',{style:'currency',currency:'BRL'});
@@ -28,6 +29,7 @@ let kitAutoImageBusy=false,kitAutoImageStop=false,kitAutoImageApiConnected=false
 let kitWatchHandle=null,kitWatchSku=null,kitWatchTimer=null,kitWatchBusy=false;
 let kitWatchSeen=new Set(),kitGalleryImportBusy=false,kitDraggingSlot=null;
 const kitPhotoStore=createKitPhotoStore();
+const kitVideoStore=createKitVideoStore();
 let kitBridgeController=null,kitRestoredSku='';
 let kitActiveDraftSku=null,kitDraftOpenRevision=0,kitDraftNeedsRefresh=false;
 let kitContentSku='',kitContentManualFacts=new Map(),kitContentSeoTitles=[],
@@ -682,6 +684,151 @@ async function kitLogisticsPasteFromClipboard(){
   kitLogisticsStatus('Não há imagem copiada. Copie o print ou cole texto no campo ao lado.','error');
  }catch(error){kitLogisticsStatus('Permissão da área de transferência não concedida. Use Escolher print ou Ctrl+V no texto.','error');}
 }
+
+let kitVideoSku='',kitVideoData=null,kitVideoUrl=null,kitVideoRemote=null;
+let kitVideoBusy=false,kitVideoLoadRevision=0;
+function kitVideoMessage(message,type='info'){
+ const el=$('#kitVideoStatus');
+ if(el){el.textContent=message;el.dataset.state=type;}
+}
+function kitVideoUI(){
+ const valid=!!kitVideoData&&kitVideoSku===prepared?.kit?.kitSku;
+ const sent=kitVideoRemote?.ready===true;
+ $('#kitVideoDetails').hidden=!valid;
+ $('#kitVideoSendShopee').disabled=!valid||kitVideoBusy||!kitSaved||kitDraftNeedsRefresh||
+  Boolean(kitItemId)||sent;
+ $('#kitVideoDownload').disabled=!valid;
+ $('#kitVideoRemove').disabled=!valid||kitVideoBusy||Boolean(kitItemId);
+ $('#kitVideoFile').disabled=kitVideoBusy||Boolean(kitItemId);
+ $('#kitVideoInclude').disabled=!valid||!sent||Boolean(kitItemId);
+ if(!sent||!valid)$('#kitVideoInclude').checked=false;
+ $('#kitVideoState').textContent=sent&&valid?'✓ Enviado à Shopee':
+  valid?'✓ Salvo no navegador':'Sem vídeo';
+ $('#kitVideoState').dataset.state=sent&&valid?'sent':valid?'local':'empty';
+ if(valid){
+  $('#kitVideoFilename').textContent=kitVideoData.name;
+  $('#kitVideoMeta').textContent=(kitVideoData.size/1024/1024).toFixed(2)+' MB · '+
+   Number(kitVideoData.duration).toFixed(1)+' s · '+
+   kitVideoData.width+' × '+kitVideoData.height;
+ }
+}
+function kitVideoPreviewBlob(data){
+ if(kitVideoUrl)URL.revokeObjectURL(kitVideoUrl);
+ kitVideoUrl=data?URL.createObjectURL(data.blob):null;
+ const el=$('#kitVideoPreview');el.pause();
+ if(kitVideoUrl){el.src=kitVideoUrl;el.load();}
+ else{el.removeAttribute('src');el.load();}
+}
+function kitVideoMetadata(file){
+ return new Promise((resolve,reject)=>{
+  const url=URL.createObjectURL(file),vid=document.createElement('video');
+  let finished=false;
+  const done=(error,info)=>{
+   if(finished)return;finished=true;clearTimeout(timer);
+   vid.removeAttribute('src');vid.load();URL.revokeObjectURL(url);
+   error?reject(error):resolve(info);
+  };
+  const timer=setTimeout(()=>done(Error('Não foi possível confirmar os metadados do vídeo.')),20000);
+  vid.preload='metadata';
+  vid.onloadedmetadata=()=>{try{done(null,kitVideoMetaCheck({
+   duration:vid.duration,width:vid.videoWidth,height:vid.videoHeight
+  }));}catch(error){done(error);}};
+  vid.onerror=()=>done(Error('Vídeo inválido ou não suportado. Use um arquivo MP4, MOV ou WebM íntegro.'));
+  vid.src=url;vid.load();
+ });
+}
+async function restoreKitVideo(sku){
+ if(kitVideoSku===sku)return;
+ const revision=++kitVideoLoadRevision;
+ kitVideoSku=sku;kitVideoData=null;kitVideoRemote=null;
+ kitVideoPreviewBlob(null);$('#kitVideoInclude').checked=false;kitVideoUI();
+ if(!sku)return;
+ try{
+  const record=await kitVideoStore.get(sku);
+  if(revision!==kitVideoLoadRevision||prepared?.kit?.kitSku!==sku)return;
+  if(record?.blob){kitVideoData=record;kitVideoPreviewBlob(record);}
+  kitVideoUI();
+  if(record){
+   kitVideoMessage('✓ Vídeo restaurado para este kit. Envie à Shopee quando estiver pronto.','success');
+   if(kitSaved){
+    try{
+     const remote=await api('/api/shopee/kits/video/status',{body:{kitSku:sku}});
+     if(revision!==kitVideoLoadRevision||prepared?.kit?.kitSku!==sku)return;
+     kitVideoRemote=remote;
+     if(remote.ready)kitVideoMessage('Vídeo confirmado na mídia Shopee. Marque a inclusão antes da prévia.','success');
+     kitVideoUI();
+    }catch{}
+   }
+  }else kitVideoMessage('Adicione um vídeo de 10 a 60 segundos do kit. Nenhum arquivo foi enviado à Shopee.');
+ }catch(error){kitVideoMessage('Não foi possível restaurar vídeo local: '+error.message,'error');}
+}
+async function selectKitVideo(file){
+ if(!prepared?.kit)return kitVideoMessage('Abra um kit antes de escolher o vídeo.','error');
+ if(kitVideoBusy)return;
+ const sku=prepared.kit.kitSku;
+ kitVideoBusy=true;kitVideoUI();
+ try{
+  kitVideoFileCheck(file);
+  const meta=await kitVideoMetadata(file);
+  if(prepared?.kit?.kitSku!==sku)throw Error('O kit mudou durante a escolha do vídeo.');
+  await kitVideoStore.put(sku,file,meta);
+  if(prepared?.kit?.kitSku!==sku)throw Error('O kit mudou durante o salvamento.');
+  kitVideoSku=sku;
+  kitVideoData={blob:file,name:file.name,size:file.size,...meta};
+  kitVideoRemote=null;kitVideoPreviewBlob(kitVideoData);
+  $('#kitVideoInclude').checked=false;
+  clearKitPublishApproval();
+  kitVideoMessage('✓ Vídeo salvo no navegador. Revise a prévia e clique em Enviar vídeo à mídia Shopee. O anúncio NÃO foi publicado.','success');
+ }catch(error){kitVideoMessage('Não foi possível adicionar o vídeo: '+error.message,'error');}
+ finally{kitVideoBusy=false;$('#kitVideoFile').value='';kitVideoUI();}
+}
+const kitVideoSleep=ms=>new Promise(resolve=>setTimeout(resolve,ms));
+async function sendKitVideoToShopee(){
+ if(!kitVideoData||!kitVideoSku||kitVideoBusy||!kitSaved)return;
+ if(kitDraftNeedsRefresh)return kitVideoMessage('Atualize o catálogo e a disponibilidade WeDrop antes de enviar vídeo para um novo Kit Formal.','error');
+ const sku=kitVideoSku,file=kitVideoData.blob;
+ if(!window.confirm('Enviar este vídeo à mídia Shopee para o kit '+sku+'? Isso NÃO cria ou publica um anúncio.'))
+  return;
+ kitVideoBusy=true;kitVideoUI();clearKitPublishApproval();
+ try{
+  kitVideoMessage('Validando e preparando vídeo MP4. O arquivo permanecerá salvo no seu navegador...');
+  const response=await fetch('/api/shopee/kits/video/prepare',{
+   method:'POST',headers:{'Content-Type':'application/octet-stream',
+    'x-kit-sku':sku,'x-video-filename':encodeURIComponent(kitVideoData.name)},body:file
+  });
+  let progress=await response.json().catch(()=>({}));
+  if(!response.ok)throw Error(progress.error||'Falha ao preparar o vídeo na mídia Shopee.');
+  for(let i=0;i<40&&!progress.ready;i++){
+   if(prepared?.kit?.kitSku!==sku)throw Error('Kit alterado; a operação anterior deve ser conferida.');
+   kitVideoMessage('Enviando vídeo '+(progress.phase||'preparado')+' · parte '+
+    (progress.nextPart||0)+' de '+(progress.totalParts||'?')+'. Não publique antes da confirmação.');
+   if(progress.phase==='processing')await kitVideoSleep(2500);
+   progress=await api('/api/shopee/kits/video/advance',{body:{kitSku:sku}});
+  }
+  if(!progress.ready)
+   throw Error('A Shopee ainda está processando o vídeo. Clique em Enviar novamente para retomar e conferir o status.');
+  kitVideoRemote=progress;$('#kitVideoInclude').checked=true;
+  kitVideoMessage('✓ Vídeo confirmado na mídia Shopee. Será incluído quando você aprovar a publicação final do kit.','success');
+ }catch(error){
+  kitVideoMessage('Envio do vídeo não confirmado: '+error.message+
+   ' O arquivo local permanece salvo. Se necessário, tente novamente.','error');
+ }finally{kitVideoBusy=false;kitVideoUI();}
+}
+async function removeKitVideo(){
+ const sku=prepared?.kit?.kitSku;
+ if(!sku||!kitVideoData||kitVideoBusy||kitItemId)return;
+ if(!window.confirm('Excluir o vídeo salvo para este kit? As nove imagens continuam intactas. Isso não exclui vídeos que já estejam na Shopee.'))return;
+ kitVideoBusy=true;
+ try{
+  await kitVideoStore.remove(sku);
+  if(prepared?.kit?.kitSku!==sku)return;
+  kitVideoData=null;kitVideoRemote=null;kitVideoPreviewBlob(null);
+  $('#kitVideoInclude').checked=false;clearKitPublishApproval();
+  kitVideoMessage('Vídeo removido somente do kit local. As imagens e anúncios existentes não foram alterados.','success');
+  try{await api('/api/shopee/kits/video/discard',{body:{kitSku:sku}});}catch{}
+ }catch(error){kitVideoMessage('Falha ao remover o vídeo: '+error.message,'error');}
+ finally{kitVideoBusy=false;kitVideoUI();}
+}
 function kitPublishFields(){
  if(!prepared)throw Error('Selecione um kit.');
  kitDisablePreOrder();
@@ -695,7 +842,8 @@ function kitPublishFields(){
   contentsReviewed:$('#kitContentsReviewed').checked,
   photosReviewed:$('#kitPhotosReviewed').checked,
   imageIds:[...kitShopeePhotoSlots.entries()].sort((a,b)=>a[0]-b[0]).map(x=>x[1]),
-  singleParcelConfirmed:$('#kitSingleParcelConfirmed').checked
+  singleParcelConfirmed:$('#kitSingleParcelConfirmed').checked,
+  includeVideo:$('#kitVideoInclude').checked&&kitVideoRemote?.ready===true
  };
 }
 async function kitReadinessCheck(){
@@ -752,6 +900,8 @@ async function kitSendPhotos(){
 }
 async function kitPreparePublishPreview(){
  if(!prepared||!kitSaved)return kitPublishStatus('Salve o kit primeiro.','error');
+ if(kitVideoData&&!kitVideoRemote?.ready&&
+  !window.confirm('O vídeo deste kit está salvo localmente, mas NÃO foi confirmado pela Shopee. Gerar a prévia SEM o vídeo?'))return;
  if(kitPublishBusy)return;
  if(!kitReadiness||kitReadiness.blockers?.length)
   return kitPublishStatus('Resolva todos os vínculos de SKU e logística antes da prévia.','error');
@@ -771,6 +921,7 @@ async function kitPreparePublishPreview(){
    'Preço com cupom de loja (simulado): '+money(x.couponAfterPromo),
    'Lucro líquido estimado: '+pct(x.margin),
    'Fotografias: '+x.images,
+   'Vídeo: '+(x.videoIncluded?'Confirmado na Shopee e incluído':'não incluído'),
    'Peso total: '+x.weightKg+' kg',
    'Embalagem: '+x.dimensions.join(' × ')+' cm',
    'Canal logístico: '+x.logisticId,
@@ -1178,7 +1329,7 @@ async function saveDraft(){
   }});
   if(!res.saved)throw Error('O servidor não confirmou a gravação do rascunho.');
   kitDraftNeedsRefresh=res.stockRevalidationRequired===true;
-  resetKitPublication({saved:true});
+  resetKitPublication({saved:true});kitVideoUI();
   if(kitActiveDraftSku)kitActiveDraftSku=res.kitSku;
   status(kitDraftNeedsRefresh?
    '✓ Textos do rascunho '+res.kitSku+' salvos. Os preços e o estoque antigos ainda precisam de atualização antes de publicar.':
@@ -1215,6 +1366,7 @@ async function search(){
  finally{btn.disabled=false;}
 }
 function renderKit({scroll=true,displayTitle=''}={}){
+ if(prepared?.kit?.kitSku)void restoreKitVideo(prepared.kit.kitSku);
  if(!prepared)return;
  const {kit,creative}=prepared;
  if(kitContentSku!==kit.kitSku){
@@ -2730,6 +2882,16 @@ $('#kitLogisticsUndo')?.addEventListener('click',()=>{
 });
 $('#kitPublishCheck')?.addEventListener('click',()=>void kitReadinessCheck());
 $('#kitSendPhotos')?.addEventListener('click',()=>void kitSendPhotos());
+$('#kitVideoFile')?.addEventListener('change',event=>void selectKitVideo(event.target.files?.[0]));
+$('#kitVideoSendShopee')?.addEventListener('click',()=>void sendKitVideoToShopee());
+$('#kitVideoDownload')?.addEventListener('click',()=>{
+ if(!kitVideoUrl||!kitVideoData)return;
+ const a=document.createElement('a');a.href=kitVideoUrl;a.download=kitVideoData.name;
+ document.body.append(a);a.click();a.remove();
+});
+$('#kitVideoRemove')?.addEventListener('click',()=>void removeKitVideo());
+$('#kitVideoInclude')?.addEventListener('change',()=>clearKitPublishApproval());
+
 $('#kitPublishPreview')?.addEventListener('click',()=>void kitPreparePublishPreview());
 $('#kitPublishExecute')?.addEventListener('click',()=>void kitPublishExecute());
 $('#kitVerifyPublished')?.addEventListener('click',()=>void kitVerifyPublished());
