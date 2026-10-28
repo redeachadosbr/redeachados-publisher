@@ -22,7 +22,13 @@ const unitKg=(n,u)=>{
  return Math.ceil((kg-1e-10)*1000)/1000;
 };
 function sourceLines(text){
- const base=normalize(text).replace(/\s+\|\s+/g,'\n').split(/\r?\n/).map(s=>s.trim().replace(/\s+/g,' ')).filter(Boolean);
+ const raw=normalize(text).replace(/\s+\|\s+/g,'\n').split(/\r?\n/).map(s=>s.trim().replace(/\s+/g,' ')).filter(Boolean);
+ const base=[];
+ for(let i=0;i<raw.length;i++){
+  if(/\(\s*em\s*$/.test(raw[i])&&/^(?:cm|mm|m|kg|g|gramas?)\s*\)/.test(raw[i+1]||'')){
+   base.push(raw[i]+' '+raw[i+1]);i++;
+  }else base.push(raw[i]);
+ }
  const rows=[];
  for(let i=0;i<base.length;i++){
   const next=base[i+1]||'';
@@ -58,10 +64,15 @@ function extractTotalTable(text){
  const headerRe=/\b(custo|largura|altura|comprimento|peso)\s+total\b(?:\s*\(\s*(?:em\s+)?(?:cm|mm|m|g|kg|gramas?)\s*\))?/g;
  const mapped={largura:'widthCm',altura:'heightCm',comprimento:'lengthCm',peso:'weightKg'};
  for(let i=0;i<rows.length;i++){
-  const headers=[...rows[i].matchAll(headerRe)].map(m=>m[1]);
+  let headerText=rows[i],valuesBegin=i+1;
+  // OCR de formulário em colunas pode quebrar a linha dos cabeçalhos em duas.
+  if(/\b(?:custo|largura|altura|comprimento|peso)\s+total\b/.test(rows[i+1]||'')){
+   headerText+=' '+rows[i+1];valuesBegin=i+2;
+  }
+  const headers=[...headerText.matchAll(headerRe)].map(m=>m[1]);
   if(headers.length<4||new Set(headers).size!==headers.length)continue;
   const candidates=[];
-  for(let k=i+1;k<Math.min(rows.length,i+8)&&candidates.length<headers.length;k++){
+  for(let k=valuesBegin;k<Math.min(rows.length,valuesBegin+7)&&candidates.length<headers.length;k++){
    const row=rows[k];
    if(!/^(?:r\$\s*)?\d+(?:[.,]\d+)*(?:\s+(?:r\$\s*)?\d+(?:[.,]\d+)*)*$/.test(row))break;
    candidates.push(...[...row.matchAll(/(?:r\$\s*)?\d+(?:[.,]\d+)*/g)].map(x=>x[0].replace(/^r\$\s*/,'')));
