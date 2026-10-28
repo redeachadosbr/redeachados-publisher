@@ -31,7 +31,7 @@
 <link rel="stylesheet" href="/ads-premium.css?v=2.4.0-seo-ads-location">
 <link rel="stylesheet" href="/sidebar-collapse.css?v=1.0.0">
 <link rel="stylesheet" href="/optimizer-image-studio.css?v=1.0.2">
-<link rel="stylesheet" href="/kit-builder.css?v=3.7.2-kit-publication-guide">
+<link rel="stylesheet" href="/kit-builder.css?v=3.7.3-kit-freshness">
 <link rel="stylesheet" href="/optimizer-technical-studio.css?v=1.0.1-review-feedback">
 <style>
 /* Autorização >25%: campo compacto, sem o input global width:100%.
@@ -1271,6 +1271,16 @@
     </div>
     <button id="kitPublishGuideNext" type="button" class="kit-primary">Continuar publicação na Shopee →</button>
    </div>
+   <div id="kitPublishFreshness" class="kit-publish-freshness" hidden>
+    <div><strong>Atualização WeDrop necessária antes de publicar</strong>
+     <p id="kitPublishFreshnessReason" aria-live="polite">Verificando datas do catálogo e estoque...</p>
+    </div>
+    <div class="kit-publish-freshness-actions">
+     <button id="kitPublishGoImport" type="button" class="kit-secondary">1. Atualizar catálogo e estoque</button>
+     <button id="kitPublishRevalidate" type="button" class="kit-primary">2. Conferir e recalcular este kit</button>
+    </div>
+    <small>As nove fotos, o vídeo, os textos e as medidas permanecem vinculados ao kit. Não publicar sem disponibilidade e custos atuais.</small>
+   </div>
    <div class="kit-publish-subheading"><div><strong>🚚 Logística e validação do kit</strong><small>Confirme as informações antes de publicar na Shopee.</small></div><button id="kitPublishCheck" class="kit-secondary" type="button">Verificar SKUs e opções da Shopee</button></div>
    <p id="kitPublishStatus" class="kit-status" role="status" aria-live="polite">Salve o kit para iniciar a conferência. Nenhum anúncio é criado nesta etapa.</p>
    <div id="kitPublishLinks" class="kit-components"></div>
@@ -2219,7 +2229,7 @@
 <script src="/technical-memory.js?v=1.0.1-live-sku-preload"></script>
 <script src="/technical-status.js?v=1.0.0-optional-coherence"></script>
 <script src="/app.js?v=3.4.0-kit-extension-guard"></script>
-<script type="module" src="/kit-builder.js?v=3.7.2-kit-publication-guide"></script>
+<script type="module" src="/kit-builder.js?v=3.7.3-kit-freshness"></script>
 <link rel="stylesheet" href="/optimizer-variations.css?v=1.2.1-single-flow">
 <script src="/optimizer-variations.js?v=1.2.3-single-flow"></script>
 
