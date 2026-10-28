@@ -149,8 +149,9 @@ test('importação única CSV/Excel com dois cartões de status e mapeamento exp
  assert.match(js,/\/api\/shopee\/wedrop\/auto\/import/);
  assert.match(js,/\/api\/shopee\/kits\/availability\/import/);
  assert.match(js,/if\(!window\.confirm\('CONFIRMAR IMPORTAÇÃO DOS CUSTOS UNITÁRIOS WEDROP/);
- assert.match(js,/stockFresh\?\s*'Estoque WeDrop importado'/);
- assert.match(js,/!catalogFresh\?'Atualização do catálogo pendente para novos kits e publicação\.'/);
+ assert.ok(js.includes("const catalogImported=stock?.catalogImported===true||Boolean(stock?.catalogLastImportedAt);"));
+ assert.ok(js.includes("const stockImported=stock?.stockImported===true||Number(stock?.importedCount||0)>0;"));
+ assert.ok(js.includes("kitStockReady=stock?.ready===true;"));
 });
 
 test('layout compacto da imagem, isolado ao resumo e ao formulário de kits',()=>{
