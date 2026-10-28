@@ -25,13 +25,16 @@ test('arrastar troca duas fotos; mover para vazio libera origem',()=>{
  assert.equal(moved.get(3),'e');assert.equal(moved.has(5),false);
  assert.throws(()=>kitMoveImage(original,4,1),/não contém/);
 });
-test('interface tem upload múltiplo, pasta autorizada, clipboard e drag-drop com revalidação',()=>{
+test('galeria mantém upload múltiplo e individual, drag-drop e Ponte sem painel redundante',()=>{
  const html=fs.readFileSync(new URL('../public/index.html',import.meta.url),'utf8');
  const js=fs.readFileSync(new URL('../public/kit-builder.js',import.meta.url),'utf8');
- for(const id of ['kitImportCopiedImage','kitWatchDownloads','kitStopWatchDownloads','kitMultiPhotoFiles','kitGalleryCount'])
+ for(const id of ['kitImportImages','kitMultiPhotoFiles','kitGalleryCount','kitGenerateAll','kitGallerySection'])
   assert.ok(html.includes('id="'+id+'"'));
- for(const token of ['showDirectoryPicker','requestPermission','kitMoveImage(','kitInvalidatePhotoPositions','kitImportPhotoFiles(','kitImageDrop(','images.keys()'])
+ for(const id of ['kitWatchDownloads','kitStopWatchDownloads','kitImportCopiedImage','kitImportImagesAlt','kitAutoImportStatus'])
+  assert.ok(!html.includes('id="'+id+'"'),id);
+ assert.doesNotMatch(html,/Importação pela extensão, pasta ou arquivos/);
+ for(const token of ['kitMoveImage(','kitInvalidatePhotoPositions','kitImportPhotoFiles(','kitImageDrop(','images.keys()'])
   assert.ok(js.includes(token));
- assert.match(js,/kitWatchSeen=new Set\(entries\.map\(x=>x\.key\)\)/);
- assert.match(js,/kitWatchSku/);
+ assert.match(js,/chooser\.addEventListener\('change',\(\)=>void uploadPhoto\(slot,chooser\.files\?\.\[0\]\)\)/);
+ assert.doesNotMatch(js,/showDirectoryPicker|kitStartAutoFolder|kitScanWatchedFolder/);
 });
