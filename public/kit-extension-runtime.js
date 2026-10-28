@@ -195,6 +195,25 @@ export function createKitExtensionController({
   },16000);
  }
 
+ // A Ponte já conferiu a sessão real e recebeu confirmação do background.
+ // Vincular o nonce local é necessário para aceitar RA_EXTENSION_IMAGE após F5.
+ function adoptRunnerSession(identity){
+  const current=getKit(),nonce=String(identity?.nonce||'');
+  if(!current||current.kitSku!==String(identity?.sku||'')||
+     String(identity?.itemId)!=='0'||String(identity?.modelId)!=='0'||
+     !/^[a-z0-9_-]{12,90}$/i.test(nonce))
+   return {ok:false,error:'Identidade do kit inválida para recuperar imagem.'};
+  if(job&&job.kitSku!==current.kitSku)
+   return {ok:false,error:'Outra composição já está ativa. Abra o kit correto.'};
+  // Uma aba pode conter nonce expirado da extensão anterior; somente a
+  // confirmação da extensão autorizada pode substituí-lo neste mesmo kit.
+  saveJob({nonce,kitSku:current.kitSku,itemId:'0',modelId:'0',createdAt:Date.now()});
+  busy=true;started=true;
+  const slot=Array.from({length:9},(_,i)=>i+1).find(n=>!getImages().has(n));
+  if(slot)watchImage(slot);else clearImageStall();
+  feedback('Sessão da Ponte vinculada ao kit. Buscando a imagem '+pos(slot||9)+'/09 já gerada; nenhuma nova geração foi solicitada.','info');
+  return {ok:true,nonce,sku:current.kitSku,itemId:'0',modelId:'0',slot:slot||9};
+ }
  // Retomada diretamente pelo Manager quando atualizar a extensão fecha o runner.
  // Consulta a tarefa que a extensão realmente preservou antes de qualquer nova geração.
  async function resumeFromManager(){
@@ -294,6 +313,6 @@ export function createKitExtensionController({
    ', imagem '+pos(slot)+'/09. A Ponte buscará a foto já gerada SEM repetir o prompt.','success');
   return {ok:true,nonce,sku:current.kitSku,itemId:'0',modelId:'0',slot};
  }
- return {start,stop,resumeFromExtension,resumeFromManager,probe,ready:()=>ready,busy:()=>busy,version:()=>version,
+ return {start,stop,adoptRunnerSession,resumeFromExtension,resumeFromManager,probe,ready:()=>ready,busy:()=>busy,version:()=>version,
   activeJob:()=>job,dispose:()=>{stop('Encerrando sessão do kit.',{notice:false});window.removeEventListener('message',onMessage);}};
 }
