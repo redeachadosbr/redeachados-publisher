@@ -1947,3 +1947,73 @@
  #tab-kits #kitDetail .kit-sku-evidence-panel{padding:9px}
  #tab-kits #kitDetail .kit-sku-evidence-panel .kit-missing-actions button{width:100%}
 }
+
+/* Vídeo do Kit — abaixo das nove imagens; independente de anúncios comuns. */
+#tab-kits #kitDetail #kitVideoPanel{
+ margin:13px 0 16px;padding:15px;border:1px solid #d6e3f1;border-radius:14px;
+ background:linear-gradient(135deg,#f8fbff,#fff 72%);
+ box-shadow:0 6px 20px rgba(15,45,95,.045);
+}
+#tab-kits #kitDetail .kit-video-heading{
+ display:flex;justify-content:space-between;align-items:flex-start;gap:12px;margin-bottom:12px;
+}
+#tab-kits #kitDetail .kit-video-heading h3{font-size:16px;font-weight:900;margin:0;color:#133a6a}
+#tab-kits #kitDetail .kit-video-heading p{
+ font-size:11px;line-height:1.5;margin:5px 0 0;color:#59738f;max-width:650px;
+}
+#tab-kits #kitDetail .kit-video-state{
+ font-size:10px;font-weight:850;border-radius:100px;padding:6px 10px;white-space:nowrap;
+ background:#edf2f9;color:#617590;
+}
+#tab-kits #kitDetail .kit-video-state[data-state=local]{background:#e4f4ff;color:#176a9a}
+#tab-kits #kitDetail .kit-video-state[data-state=sent]{background:#e3f8ed;color:#16764c}
+#tab-kits #kitDetail .kit-video-body{
+ display:grid;grid-template-columns:minmax(0,1.18fr) minmax(250px,.82fr);gap:12px;
+}
+#tab-kits #kitDetail .kit-video-file-zone,
+#tab-kits #kitDetail .kit-video-tools{
+ padding:12px;border-radius:11px;border:1px solid #dbe7f4;background:#fff;
+ display:flex;flex-direction:column;align-items:stretch;gap:9px;min-width:0;
+}
+#tab-kits #kitDetail .kit-video-file-button{
+ display:grid;place-items:center;border:1px dashed #87abd5;background:#f0f7ff;
+ min-height:65px;border-radius:9px;color:#16588f;font-weight:850;
+ text-align:center;padding:10px;cursor:pointer;font-size:11px;
+}
+#tab-kits #kitDetail .kit-video-file-button:hover{background:#e7f2ff;border-color:#3885cc}
+#tab-kits #kitDetail .kit-video-file-zone>small{
+ font-size:10px;color:#5e7b99;line-height:1.55;
+}
+#tab-kits #kitDetail .kit-video-details{
+ display:grid;grid-template-columns:minmax(0,160px) minmax(0,1fr);align-items:center;gap:10px;
+ border:1px solid #dfebf7;border-radius:9px;padding:9px;background:#f8fbff;
+}
+#tab-kits #kitDetail .kit-video-details[hidden]{display:none!important}
+#tab-kits #kitDetail .kit-video-details video{
+ display:block;width:100%;max-height:120px;aspect-ratio:16/9;background:#10151e;border-radius:7px;
+}
+#tab-kits #kitDetail .kit-video-details strong{
+ font-size:11px;font-weight:850;color:#1b4777;display:block;overflow-wrap:anywhere;
+}
+#tab-kits #kitDetail .kit-video-details small{
+ font-size:10px;display:block;margin-top:5px;color:#597c9c;
+}
+#tab-kits #kitDetail .kit-video-tools>button{
+ min-height:36px;padding:8px 10px;font-size:10.5px;font-weight:850;border-radius:8px;
+}
+#tab-kits #kitDetail .kit-video-tools>button:disabled{opacity:.55;cursor:not-allowed}
+#tab-kits #kitDetail .kit-video-include{
+ display:flex;gap:8px;align-items:center;font-size:10.5px;font-weight:800;color:#214d7e;
+}
+#tab-kits #kitDetail .kit-video-include input{accent-color:#1767c6;min-width:16px;min-height:16px}
+#tab-kits #kitDetail .kit-video-info{
+ font-size:10px;line-height:1.5;color:#627d9c;margin:1px 0 0;
+}
+#tab-kits #kitDetail #kitVideoStatus{margin:10px 1px 0;font-size:11px}
+@media(max-width:850px){
+ #tab-kits #kitDetail .kit-video-body{grid-template-columns:1fr}
+}
+@media(max-width:460px){
+ #tab-kits #kitDetail .kit-video-heading{flex-wrap:wrap}
+ #tab-kits #kitDetail .kit-video-details{grid-template-columns:1fr}
+}
