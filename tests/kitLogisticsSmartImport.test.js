@@ -124,3 +124,16 @@ test('OCR reforça prints escuros com ampliação e mantém leitura local',()=>{
  assert.match(ocr,/logisticsScore\(/);
  assert.doesNotMatch(ocr,/fetch\s*\(/);
 });
+
+test('OCR com unidade gramas dividida por quebra de linha e tabela repartida',()=>{
+ const r=parseKitLogisticsText(
+  'Custo Total Largura Total (Em cm) Altura Total (Em cm)\n'+
+  'Comprimento Total (Em cm) Peso Total (em gramas)\n'+
+  'R$ 60,98 28 36 16 353,26');
+ assert.deepEqual(
+  [r.values.lengthCm,r.values.widthCm,r.values.heightCm,r.values.weightKg],
+  [16,28,36,0.354]
+ );
+ const fragmented=parseKitLogisticsText('Peso Total (em\ngramas)\n353,26');
+ assert.equal(fragmented.values.weightKg,0.354);
+});
