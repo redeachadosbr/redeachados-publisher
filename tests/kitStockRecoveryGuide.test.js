@@ -7,7 +7,7 @@ const css=fs.readFileSync(new URL('../public/kit-builder.css',import.meta.url),'
 test('exibe motivo de atualização vencida e ações ligadas à importação WeDrop',()=>{
  const guide=html.indexOf('id="kitPublishGuide"');
  const recovery=html.indexOf('id="kitPublishFreshness"');
- const logistics=html.indexOf('id="kitPublishFields"',guide);
+ const logistics=html.indexOf('class="kit-publish-fields"',guide);
  assert.ok(guide>0&&recovery>guide&&logistics>recovery);
  for(const id of ['kitPublishFreshness','kitPublishFreshnessReason','kitPublishGoImport','kitPublishRevalidate'])
   assert.equal((html.match(new RegExp('id="'+id+'"','g'))||[]).length,1,id);
