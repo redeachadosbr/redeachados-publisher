@@ -2245,3 +2245,24 @@
  #tab-kits #kitDetail .kit-formal-redesign>.kit-publish-steps{grid-template-columns:repeat(2,minmax(0,1fr))}
  #tab-kits #kitDetail .kit-formal-logistics-card>.kit-publish-fields{grid-template-columns:1fr}
 }
+
+/* Confirmação de custo: checkbox e texto não podem escapar do formulário. */
+#tab-kits .kit-cost-mapping{min-width:0;max-width:100%;box-sizing:border-box}
+#tab-kits .kit-cost-mapping .kit-cost-approve{
+ display:grid!important;grid-template-columns:18px minmax(0,1fr)!important;
+ gap:10px!important;align-items:start!important;min-width:0;max-width:100%;width:100%;
+ box-sizing:border-box;margin:0;
+}
+#tab-kits .kit-cost-mapping .kit-cost-approve input{
+ width:16px;height:16px;min-width:16px;flex-shrink:0;margin:2px 0 0;
+}
+#tab-kits .kit-cost-mapping .kit-cost-approve span{
+ display:block;max-width:100%;min-width:0;white-space:normal;
+ overflow-wrap:break-word;word-break:normal;line-height:1.6;
+}
+#tab-kits .kit-cost-buttons{display:flex;gap:9px;flex-wrap:wrap;align-items:center}
+#tab-kits .kit-cost-buttons>button{width:auto;max-width:100%;min-height:37px}
+#tab-kits .kit-cost-mapping-help{margin:0;font-size:10px;line-height:1.5}
+@media(max-width:700px){
+ #tab-kits .kit-cost-buttons>button{flex:1 1 100%;width:100%}
+}
