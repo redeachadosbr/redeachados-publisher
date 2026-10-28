@@ -58,3 +58,18 @@ test('troca de fotos é atômica e galeria não confirma antes de salvar',()=>{
  assert.match(ui,/await kitPhotoStore.move\(kitSku,from,to\);/);
  assert.match(ui,/if\(!images.has\(row.slot\)&&\/\^data:image/);
 });
+
+test('Manager permite recuperar geração de kit após atualização fechar o runner, sem repetir imagens',()=>{
+ const html=fs.readFileSync(new URL('../public/index.html',import.meta.url),'utf8');
+ const ui=fs.readFileSync(new URL('../public/kit-builder.js',import.meta.url),'utf8');
+ const runtime=fs.readFileSync(new URL('../public/kit-extension-runtime.js',import.meta.url),'utf8');
+ assert.match(html,/id="kitResumeExtension"/);
+ assert.match(ui,/async function kitResumeExtensionImages\(\)/);
+ assert.match(ui,/await kitPhotoStore.list\(sku\)/);
+ assert.match(ui,/getKitExtensionBridge\(\).resumeFromManager\(\)/);
+ assert.match(runtime,/async function resumeFromManager\(\)/);
+ assert.match(runtime,/RA_SITE_CONTINUE/);
+ assert.match(runtime,/NO_RECOVERABLE_JOB/);
+ assert.match(runtime,/resumeFromExtension\(\{nonce,sku:kit.kitSku,itemId:'0',modelId:'0'\}\)/);
+ assert.match(runtime,/await waitReady\(\)/);
+});
