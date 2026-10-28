@@ -1,4 +1,5 @@
 import {parseKitLogisticsText} from './kit-logistics-parser.js?v=2-total-fields';
+import {isWideTotalsPrint,wideTotalsRegions,parseIsolatedTotalNumber,totalFieldsToLabeledText} from './kit-logistics-layout.js';
 // OCR opcional no navegador para prints dos campos de logística do kit.
 // Não envia o print ao servidor do Shopee Manager nem chama API paga.
 let tesseractLoader=null;
@@ -56,6 +57,44 @@ async function enhancePrintForOCR(file){
    blob=>blob?resolve(blob):reject(Error('Não foi possível melhorar o print.')),'image/png'));
  }finally{bitmap.close();}
 }
+async function readNumericColumns(file,worker,recognized,progress){
+ const bitmap=await createImageBitmap(file);
+ try{
+  if(!isWideTotalsPrint(bitmap.width,bitmap.height,recognized))return {};
+  const fields=wideTotalsRegions(bitmap.width,bitmap.height);
+  const values={},already=parseKitLogisticsText(recognized).values;
+  progress('Tabela WeDrop detectada: lendo separadamente os números de cada coluna...');
+  await worker.setParameters({
+   tessedit_pageseg_mode:'7',
+   tessedit_char_whitelist:'0123456789,.'
+  });
+  for(const field of fields){
+   if(already[field.key]!==undefined)continue;
+   const canvas=document.createElement('canvas');
+   canvas.width=Math.round(field.width*3);
+   canvas.height=Math.round(field.height*3);
+   const ctx=canvas.getContext('2d',{willReadFrequently:true});
+   if(!ctx)continue;
+   ctx.imageSmoothingEnabled=true;
+   ctx.imageSmoothingQuality='high';
+   ctx.drawImage(bitmap,field.x,field.y,field.width,field.height,
+    0,0,canvas.width,canvas.height);
+   const image=ctx.getImageData(0,0,canvas.width,canvas.height);
+   const pixels=image.data;
+   for(let i=0;i<pixels.length;i+=4){
+    const gray=pixels[i]*.299+pixels[i+1]*.587+pixels[i+2]*.114;
+    const value=gray>=62?0:255;
+    pixels[i]=pixels[i+1]=pixels[i+2]=value;
+   }
+   ctx.putImageData(image,0,0);
+   const result=await worker.recognize(canvas);
+   const confidence=Number(result?.data?.confidence??0);
+   const value=parseIsolatedTotalNumber(result?.data?.text,field.key);
+   if(value!==null&&confidence>=25)values[field.key]=value;
+  }
+  return values;
+ }finally{bitmap.close();}
+}
 export async function recognizeKitLogisticsPrint(file,progress=()=>{}){
  if(!file||!['image/png','image/jpeg','image/webp'].includes(file.type))
   throw Error('Escolha um print PNG, JPG ou WebP.');
@@ -103,6 +142,19 @@ export async function recognizeKitLogisticsPrint(file,progress=()=>{}){
    }catch{
     // Manter o melhor texto já recuperado se a melhoria não funcionar.
    }
+  }
+  // Depois de ler a página, usar OCR numérico por coluna quando o print for
+  // uma tabela horizontal da WeDrop. Assim o texto de título não mascara
+  // números discretos em caixas escuras.
+  try{
+   const numbers=await readNumericColumns(file,worker,best,progress);
+   const labeled=totalFieldsToLabeledText(numbers);
+   if(labeled){
+    best=best+'\n'+labeled;
+    bestScore=logisticsScore(best);
+   }
+  }catch(error){
+   progress('Não foi possível isolar todas as colunas; mantendo melhor leitura textual.');
   }
   if(!best)throw Error('O print não apresentou texto legível. Envie o arquivo original em melhor resolução ou cole o texto.');
   progress('Print lido; '+bestScore+' de 4 campos de medidas/peso identificados. Confira os resultados.');
