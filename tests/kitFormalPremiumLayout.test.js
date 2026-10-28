@@ -28,5 +28,9 @@ test('Design do Kit Formal escopado ao editor: desktop 2x2 e responsivo',()=>{
  assert.match(css,/#tab-kits #kitDetail \.kit-formal-workspace\{/);
  assert.match(css,/grid-template-areas:"video logistics" "smart assistant"/);
  assert.match(css,/@media\(max-width:1320px\)/);
+ assert.match(css,/@media\(max-width:820px\)/);
+ assert.match(css,/@media\(max-width:1320px\)\{[\s\S]*?grid-template-areas:"video logistics" "smart assistant"/);
+ assert.match(css,/grid-template-columns:repeat\(12,minmax\(0,1fr\)\)/);
+ assert.doesNotMatch(css,/@media\(max-width:1320px\)\{\s*#tab-kits #kitDetail \.kit-formal-workspace\{\s*grid-template-columns:1fr/);
  assert.match(css,/#tab-kits #kitDetail \.kit-formal-assistant-card #kitPublishPreview/);
 });
