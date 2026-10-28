@@ -1239,12 +1239,12 @@
    <div id="kitPublishLinks" class="kit-components"></div>
    <section class="kit-logistics-smart-import" id="kitLogisticsSmartImport" aria-label="Preencher logística a partir de texto ou print">
     <div class="kit-logistics-smart-heading">
-     <div><strong>✦ Preenchimento inteligente da logística</strong><p>Cole informações ou um print da Shopee/fornecedor para identificar peso, medidas, componente principal e prazos.</p></div>
+     <div><strong>✦ Preenchimento inteligente da logística</strong><p>Cole informações ou um print da Shopee/fornecedor para identificar peso, medidas, componente principal e canal de envio.</p></div>
      <span>Sem API paga</span>
     </div>
     <div class="kit-logistics-smart-inputs">
      <label for="kitLogisticsSourceText">Texto das informações
-      <textarea id="kitLogisticsSourceText" rows="4" maxlength="16000" placeholder="Ex.: Peso total embalado: 1,55 kg | Comprimento: 30 cm | Largura: 25 cm | Altura: 20 cm | SKU principal: 310200 | Sob encomenda: sim | Dias para enviar: 7"></textarea>
+      <textarea id="kitLogisticsSourceText" rows="4" maxlength="16000" placeholder="Ex.: Peso total embalado: 1,55 kg | Comprimento: 30 cm | Largura: 25 cm | Altura: 20 cm | SKU principal: 310200"></textarea>
      </label>
      <div class="kit-logistics-smart-image">
       <strong>Print com os dados</strong>
@@ -1275,8 +1275,8 @@
     <label>Largura pacote (cm)<input id="kitWidthCm" type="number" step="1" min="1" max="200" placeholder="Ex.: 25" /></label>
     <label>Altura pacote (cm)<input id="kitHeightCm" type="number" step="1" min="1" max="200" placeholder="Ex.: 20" /></label>
     <label class="kit-inline-checkbox"><input id="kitAutoSyncDts" type="checkbox"/> Sincronizar dias de envio com componente principal (quando permitido)</label>
-    <label class="kit-inline-checkbox"><input id="kitPreOrder" type="checkbox"/> Kit sob encomenda</label>
-    <label>Dias para enviar (sob encomenda)<input id="kitDaysToShip" type="number" min="3" max="30" value="7" disabled /></label>
+    <label hidden class="kit-inline-checkbox kit-preorder-hidden"><input id="kitPreOrder" type="checkbox" disabled aria-hidden="true" tabindex="-1"/> Kit sob encomenda — Não</label>
+    <label hidden class="kit-preorder-hidden">Dias para enviar (sob encomenda)<input id="kitDaysToShip" type="number" min="3" max="30" value="7" disabled tabindex="-1" /></label>
    </div>
    <div class="kit-review-checkboxes">
     <label><input type="checkbox" id="kitContentsReviewed"/> Confirmei que as SKUs, quantidades e o componente principal são os corretos.</label>
@@ -2181,7 +2181,7 @@
 <script src="/technical-memory.js?v=1.0.1-live-sku-preload"></script>
 <script src="/technical-status.js?v=1.0.0-optional-coherence"></script>
 <script src="/app.js?v=3.4.0-kit-extension-guard"></script>
-<script type="module" src="/kit-builder.js?v=3.6.0-logistics-smart-import"></script>
+<script type="module" src="/kit-builder.js?v=3.6.1-preorder-off"></script>
 <link rel="stylesheet" href="/optimizer-variations.css?v=1.2.1-single-flow">
 <script src="/optimizer-variations.js?v=1.2.3-single-flow"></script>
 
