@@ -2665,6 +2665,8 @@ globalThis.RAKitDiscountPrepared=({kitSku,itemId,discountId,reviewSaved=false,
    afterCoupon:preview.afterCoupon,preparedAt:new Date().toISOString()};
  }
  optimizerDiscountWorkflowRefresh();
+ if(optimizerExecProgress&&optimizerExecJob)
+  optimizerExecutionTrackerRender(optimizerExecProgress,optimizerExecJob);
 };
 globalThis.RAKitDiscountConfirmed=({kitSku,itemId}={})=>{
  const w=optimizerWorkflowPlan;
@@ -2676,6 +2678,8 @@ globalThis.RAKitDiscountConfirmed=({kitSku,itemId}={})=>{
   modelId:String(w.modelId||'0'),status:'confirmed',
   confirmedAt:new Date().toISOString()};
  optimizerDiscountWorkflowRefresh();
+ if(optimizerExecProgress&&optimizerExecJob)
+  optimizerExecutionTrackerRender(optimizerExecProgress,optimizerExecJob);
 };
 function kitOptimizerMount(){
  const host=$('#kitOptimizerWorkspace'),panel=$('#optimizerWorkflowPanel');
@@ -4348,6 +4352,14 @@ function optimizerExecutionTrackerRender(progress,job){
  optimizerExecutionVisibleCommands(progress,job);
  if(!visible)return;
  const w=optimizerWorkflowPlan||{},sku=String(job?.sku||w.sku||'');
+ // Check 08 indica prévia revisada; o status técnico mede apenas este job.
+ const sameKitJob=Boolean(w.kitOptimization?.kitSku&&
+  String(job?.sku||'')===String(w.sku)&&
+  String(job?.item_id||'')===String(w.itemId)&&
+  String(job?.model_id??0)===String(w.modelId??0));
+ const kitDiscount=sameKitJob?optimizerKitDiscountReviewState(w):
+  {prepared:false,confirmed:false};
+ const discountPending=progress.verified&&kitDiscount.prepared&&!kitDiscount.confirmed;
  optimizerExecProgress={...progress,sku,itemId:String(job?.item_id||w.itemId||''),
   modelId:String(job?.model_id??job?.plan?.modelId??w.modelId??0)};
  $('#optimizerExecutionSku').textContent='SKU '+sku;
@@ -4364,7 +4376,9 @@ function optimizerExecutionTrackerRender(progress,job){
  }
  if(!src)image.removeAttribute?.('src');
  $('#optimizerExecutionPhaseTitle').textContent=progress.title;
- $('#optimizerExecutionPhaseSubtitle').textContent=progress.message;
+ $('#optimizerExecutionPhaseSubtitle').textContent=discountPending?
+  progress.message+' A prévia de Minha Promoção está conferida, mas a promoção precisa de autorização separada na etapa 08.':
+  progress.message;
  const started=$('#optimizerExecutionStartedAt'),startedLabel=$('#optimizerExecutionStartLabel');
  const at=progress.startedAt||progress.updatedAt;
  startedLabel.textContent=progress.startedAt?'Início da execução':'Última atualização';
@@ -4372,7 +4386,8 @@ function optimizerExecutionTrackerRender(progress,job){
    new Date(at).toLocaleString('pt-BR',{day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'}):
    'Horário indisponível';
  const badge=$('#optimizerExecutionLiveBadge');
- badge.textContent=progress.verified?'✓ Confirmado':progress.attention?'! Atenção':
+ badge.textContent=discountPending?'✓ Anúncio confirmado · desconto pendente':
+  progress.verified?'✓ Confirmado':progress.attention?'! Atenção':
   !progress.hasStarted?progress.resumable?'● Mídia pronta · autorizar retomada':'● Aguardando sua autorização':'● Atualização automática';
  badge.dataset.state=progress.fiscalPartial?'warning':progress.state;
  const pct=Math.max(0,Math.min(100,Number(progress.percent)||0));
@@ -4380,7 +4395,9 @@ function optimizerExecutionTrackerRender(progress,job){
  $('#optimizerExecutionPercent').title='Progresso técnico real. Apenas a confirmação pela Shopee significa publicação concluída.';
  $('#optimizerExecutionBar').setAttribute('aria-valuenow',String(pct));
  $('#optimizerExecutionBarFill').style.width=pct+'%';
- $('#optimizerExecutionProgressDetail').textContent=progress.message;
+ $('#optimizerExecutionProgressDetail').textContent=discountPending?
+  progress.message+' Prévia do desconto conferida; publicação pendente. O 100% representa as alterações já confirmadas do anúncio.':
+  progress.message;
  const savedScope=String(job?.plan?.selectedStage||'all');
  const scopeLabels={images:'SOMENTE IMAGENS',video:'SOMENTE VÍDEO',seo:'SOMENTE TÍTULO SEO',
   technical:'SOMENTE FICHA TÉCNICA',description:'SOMENTE DESCRIÇÃO',
@@ -4406,19 +4423,38 @@ function optimizerExecutionTrackerRender(progress,job){
  const statuses={done:'Confirmado no anúncio',staged:'✓ Na mídia Shopee',checking:'Enviado · conferindo',
   active:'Em andamento',waiting:'Aguardando',skipped:'Não incluído',
   attention:'Verificar na Shopee',review:'Não incluído nesta execução',
+  'kit-prepared':'✓ Prévia conferida · promoção pendente',
+  'kit-published':'✓ Promoção aplicada separadamente',
   authorization:'Aguardando confirmação para executar'};
  for(const [i,step] of (progress.steps||[]).entries()){
-  const li=optimizerMake('li','optimizer-exec-step is-'+step.status);
+  const actualStatus=step.id==='discount'&&sameKitJob&&
+    ['review','authorization','skipped'].includes(step.status)?
+    kitDiscount.confirmed?'kit-published':kitDiscount.prepared?'kit-prepared':step.status:
+    step.status;
+  const li=optimizerMake('li','optimizer-exec-step is-'+actualStatus);
   const marker=optimizerMake('span','optimizer-exec-step-number',
-   ['done','staged'].includes(step.status)?'✓':step.status==='review'?'!':String(i+1));
+   ['done','staged','kit-prepared','kit-published'].includes(actualStatus)?'✓':
+    actualStatus==='review'?'!':String(i+1));
   const name=optimizerMake('strong','',step.label);
-  const status=optimizerMake('small','',statuses[step.status]||'Aguardando');
-  if(step.status==='review')li.title='Esta execução já iniciada não contém o desconto aprovado; consulte a etapa 08 antes de uma nova execução.';
+  const status=optimizerMake('small','',statuses[actualStatus]||'Aguardando');
+  if(actualStatus==='kit-prepared')li.title='Check da etapa 08: prévia conferida. Desconto ainda não aplicado; a promoção exige autorização separada.';
+  if(actualStatus==='kit-published')li.title='Desconto confirmado pela Shopee em operação separada; não integrou este job do anúncio.';
+  if(actualStatus==='review')li.title='O desconto não foi aplicado neste job; confira a etapa 08.';
   if(step.status==='authorization')li.title='O desconto é confirmado somente no clique explícito Executar na Shopee. Nenhum desconto foi enviado nem recusado.';
   if(step.status==='staged')li.title='Arquivo confirmado na biblioteca de mídia da Shopee; a publicação neste anúncio ainda precisa ser verificada.';
   if(step.status==='checking')li.title='A API recebeu a atualização; ainda falta a confirmação de leitura do anúncio.';
   li.append(marker,name,status);stageList.append(li);
  }
+ let kitDiscountAction=$('#optimizerExecutionOpenKitDiscount');
+ if(!kitDiscountAction){
+  kitDiscountAction=optimizerMake('button','optimizer-exec-kit-discount-action',
+   'Abrir etapa 08 · aplicar Minha Promoção →');
+  kitDiscountAction.id='optimizerExecutionOpenKitDiscount';
+  kitDiscountAction.type='button';
+  kitDiscountAction.addEventListener('click',()=>optimizerDiscountOpenReview());
+  stageList.insertAdjacentElement('afterend',kitDiscountAction);
+ }
+ kitDiscountAction.hidden=!discountPending;
  const log=$('#optimizerExecutionEvents');log.replaceChildren();
  const logs=(progress.events||[]).slice(0,12);
  for(const event of logs){
