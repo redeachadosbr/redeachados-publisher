@@ -4884,7 +4884,7 @@ function optimizerDiscountFlowSave(v){
 }
 function optimizerDiscountAuthorizedIntent(plan){
  if(optimizerKitWorkflowActive())return null;
- if(plan?.selectedStage!=='all'||!optimizerDiscountApprovalReady())return null;
+ if(!['all','discount_adjust'].includes(plan?.selectedStage)||!optimizerDiscountApprovalReady())return null;
  const p=optimizerDiscountFinalPreviewData.preview;
  return {identity:optimizerDiscountFinalIdentityOf(optimizerWorkflowPlan),planId:plan.planId,
   expected:Object.fromEntries(APPROVED_DISCOUNT_KEYS.map(k=>[k,p[k]??null])),
@@ -5148,7 +5148,7 @@ function optimizerDiscountReviewedForExecution(plan){
  // da Shopee e autorizacao separada para a composicao completa.
  if(typeof optimizerKitWorkflowActive==='function'&&optimizerKitWorkflowActive())
   return !['all','discount','discount_adjust'].includes(plan?.selectedStage)||Boolean(plan?.kitDiscount);
- return !['all','remaining','discount'].includes(plan?.selectedStage)||
+ return !['all','remaining','discount','discount_adjust'].includes(plan?.selectedStage)||
   (plan?.modelVariations?
    Boolean(optimizerExecAutoModelToken)&&optimizerModelMarketConsent(plan):
    optimizerDiscountApprovalReady());
@@ -5175,7 +5175,7 @@ function optimizerExecUpdateRunButton(){
    launch.parentElement?.append(action);
   }
   action.hidden=!p?.canExecute||optimizerDiscountReviewedForExecution(p)||
-   !['all','remaining','discount'].includes(p?.selectedStage)||Boolean(p?.modelVariations);
+   !['all','remaining','discount','discount_adjust'].includes(p?.selectedStage)||Boolean(p?.modelVariations);
   if(!action.hidden)launch.title='Conclua a conferência do desconto na mesma SKU usando o botão ao lado.';
  }
  const justPending=p?.selectedStage==='remaining';
@@ -5185,7 +5185,7 @@ function optimizerExecUpdateRunButton(){
  const resume=Boolean(p?.reusedMedia?.imageIds?.length||p?.reusedMedia?.video?.phase==='ready');
  $('#optimizerExecutionLaunch').textContent=!canPublish?
   p?.canExecute?'🛠 Conferir desconto e liberar execução':'🛠 Corrigir pendências e revalidar':
-  p?.selectedStage==='discount_adjust'?'▶ Autorizar preço bruto + desconto do kit':
+  p?.selectedStage==='discount_adjust'?'▶ Autorizar preço calculado + desconto':
   p?.selectedStage==='discount'?'▶ Executar SOMENTE desconto':
   p?.selectedStage==='variants'?'▶ Executar SOMENTE variações':
   p?.selectedStage==='images'?'▶ EXECUTAR SOMENTE '+(p.images?.length||0)+' IMAGENS':
@@ -5216,11 +5216,13 @@ function optimizerExecUpdateRunButton(){
     'Marque a autorização excepcional imediatamente abaixo e depois clique em Executar. Nada foi enviado à Shopee.':
     'A prévia comercial está preparada. Use “Conferir desconto para liberar execução” e depois execute uma única vez.';
   }else if(p.selectedStage==='discount_adjust'){
-   const d=p.kitDiscount;
-   nextTitle.textContent='Autorizar preço bruto + desconto — SKU '+p.sku;
-   nextDescription.textContent='Preço bruto Shopee '+shPriceMoney(d.currentGross)+' → '+shPriceMoney(d.gross)+
-    ' · preço promocional '+shPriceMoney(d.promo)+
-    '. Só a etapa 08 será executada; nenhuma outra etapa será reenviada.';
+   const d=p.kitDiscount||optimizerDiscountFinalPreviewData?.preview||null;
+   nextTitle.textContent='Autorizar preço bruto calculado + desconto — SKU '+p.sku;
+   nextDescription.textContent=d?
+    'Preço bruto Shopee '+shPriceMoney(d.currentGross??d.originalPrice)+' → '+shPriceMoney(d.gross)+
+    ' · PREÇO PROMOCIONAL A PUBLICAR '+shPriceMoney(d.promo)+
+    '. Só a etapa 08 será executada; as demais serão preservadas.':
+    'Confira a prévia comercial desta SKU, incluindo preço bruto e preço promocional. Nenhuma outra etapa será alterada.';
   }else if(p.selectedStage==='discount'){
    nextTitle.textContent='Somente desconto — SKU '+p.sku;
    nextDescription.textContent='Apenas a Minha Promoção será alterada; preço bruto, imagens, título e demais etapas ficam preservados. Se o preço divergir, a prévia será bloqueada.';
@@ -5302,7 +5304,7 @@ async function optimizerExecutionPrepare({preserveStartError=false}={}){
        campaignId:String($('#optimizerExecDiscountCampaign')?.value||
         $('#optimizerFinalCampaignId')?.value||$('#discountPromotionId')?.value||
         optimizerDiscountFinalPreviewData?.preview?.discountId||'').trim(),
-       ...(['all','discount'].includes($('#optimizerExecutionScope').value)&&optimizerDiscountApprovalReady()&&!(typeof optimizerKitWorkflowActive==='function'&&optimizerKitWorkflowActive())?
+       ...(['all','discount','discount_adjust'].includes($('#optimizerExecutionScope').value)&&optimizerDiscountApprovalReady()&&!(typeof optimizerKitWorkflowActive==='function'&&optimizerKitWorkflowActive())?
         {discountApprovalToken:optimizerDiscountFinalPreviewData?.approvalToken,
         allowOver25:optimizerMarketExceptionConsent(optimizerDiscountFinalQuote)}:{})}),
      signal:AbortSignal.any([controller.signal,AbortSignal.timeout(75000)])
@@ -5518,7 +5520,7 @@ async function optimizerExecuteApproved(remainingOnly=false){
        planId:p.planId,updatedAt:p.updatedAt,stage:p.selectedStage||'all',
        confirmation:'EXECUTAR '+p.sku,acceptPartialExecution:true,
        ...(remainingOnly?{remainingOnly:true}:{}),
-       ...(['all','remaining','discount'].includes(p.selectedStage)&&!(typeof optimizerKitWorkflowActive==='function'&&optimizerKitWorkflowActive())?{discountApprovalToken:p.modelVariations?
+       ...(['all','remaining','discount','discount_adjust'].includes(p.selectedStage)&&!(typeof optimizerKitWorkflowActive==='function'&&optimizerKitWorkflowActive())?{discountApprovalToken:p.modelVariations?
         optimizerExecAutoModelToken:optimizerDiscountFinalPreviewData?.approvalToken,
         allowPriceChange:p.modelVariations?Boolean(
          optimizerExecAutoModelPreview?.needsBasePriceUpdate||
