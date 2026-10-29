@@ -2290,9 +2290,12 @@ app.post('/api/shopee/optimizer/execution/prepare',mustLogin,requireWeDropAdmin,
      if(selectedStage==='discount_adjust'){
       if(snapshot.liveStatus!=='NORMAL')
        throw Error('O anúncio precisa estar NORMAL na Shopee para atualizar preço e desconto.');
-      if(!Number.isFinite(Number(approved.currentGross))||
-         Math.round(Number(approved.currentGross)*100)!==Math.round(Number(snapshot.currentGross)*100))
-       throw Error('Preço Shopee mudou desde a conferência. Reabra a etapa 08 e prepare nova prévia antes de autorizar.');
+      // O preço observado na conferência é apenas informativo. Neste modo,
+      // o usuário autoriza explicitamente escrever o preço BRUTO CALCULADO
+      // e o desconto, mesmo que o preço antigo da Shopee tenha mudado.
+      // A identidade da SKU, o custo e os valores de destino continuam fixos.
+      if(!Number.isFinite(Number(snapshot.currentGross))||Number(snapshot.currentGross)<=0)
+       throw Error('Preço bruto atual da Shopee não foi confirmado para a SKU.');
      }
      kitDiscountPlan={kitSku:String(kitLink.kitSku),itemId:String(itemId),
       modelId:String(modelId),discountId:String(approved.discountId),
@@ -2813,7 +2816,7 @@ app.post('/api/shopee/optimizer/execution/execute',mustLogin,requireWeDropAdmin,
    if(!approved||approved.status!=='prepared'||
       !Number.isFinite(Date.parse(approved.preparedAt||''))||
       Date.now()-Date.parse(approved.preparedAt||'')>24*3600000||
-      ['kitSku','itemId','modelId','discountId','gross','promo','afterCoupon',...(previousPlan.selectedStage==='discount_adjust'?['currentGross']:[])].some(k=>
+      ['kitSku','itemId','modelId','discountId','gross','promo','afterCoupon'].some(k=>
        String(approved[k])!==String(expected[k])))
     throw Error('Etapa 08 mudou desde a prévia. Confira o desconto novamente.');
   }
