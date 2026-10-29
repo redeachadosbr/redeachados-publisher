@@ -40,6 +40,7 @@ RUN node --check public/kit-video-store.js && node --test tests/kitVideoPublish.
 RUN node --check shopeeKitPublish.js && node --check shopeeKitPlatform.js && node --check shopeeKitPublicationService.js && node --check shopeeKitDiscountService.js && node --check shopeeKitDraftStore.js && node --check public/kit-builder.js && node --check server.js && node --test tests/shopeeKitPublish.test.js
 RUN node --check shopeeKitDiscountDiscovery.js && node --check public/kit-existing-optimization.js && node --test tests/shopeeKitDiscountDiscovery.test.js
 RUN node --check public/kit-existing-optimization.js && node --check public/app.js && node --check server.js && node --test tests/kitUnifiedExecutionContract.test.js
+RUN node --check shopeeExecutionKitDiscount.js && node --test tests/shopee-kit-discount-single-run.test.js
 ENV NODE_ENV=production
 EXPOSE 10000
 CMD ["npm","start"]

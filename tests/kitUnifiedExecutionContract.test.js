@@ -455,13 +455,15 @@ test('rastreador distingue check do desconto da sua publicação na Shopee',()=>
 });
 test('rastreador não altera resultados verificados nem presume execução da promoção',()=>{
  const progressCode=source('shopeeExecutionProgress.js');
- assert.match(progressCode,/const discountIncluded=Boolean\(plan\.commercialDiscount\|\|plan\.modelVariations\?\.promotion\)/);
+ assert.match(progressCode,/const discountIncluded=Boolean\(plan\.commercialDiscount\|\|plan\.modelVariations\?\.promotion\|\|plan\.kitDiscount\)/);
  assert.match(progressCode,/const discountDone=discountIncluded&&result\.discount\?\.status==='verified'/);
  assert.match(progressCode,/if\(id==='discount'&&fullWorkflow&&!discountIncluded\)/);
  assert.match(app,/const actualStatus=step\.id==='discount'&&sameKitJob/);
  assert.match(app,/kitDiscount\.prepared\?'kit-prepared'/);
  assert.match(app,/if\(actualStatus==='kit-prepared'\)li\.title='Check da etapa 08: prévia conferida\. Desconto ainda não aplicado/);
- assert.match(app,/const pct=Math\.max\(0,Math\.min\(100,Number\(progress\.percent\)\|\|0\)\)/);
+ assert.match(app,/Boolean\(plan\?\.kitDiscount\)/);
+ assert.match(progressCode,/discount:discountIncluded/);
+ assert.match(app,/const pct=discountPending\?88:Math\.max\(0,Math\.min\(100,Number\(progress\.percent\)\|\|0\)\)/);
 });
 test('depois do anúncio confirmado exibe ação para concluir promoção separada',()=>{
  assert.match(app,/kitDiscountAction\.id='optimizerExecutionOpenKitDiscount'/);
