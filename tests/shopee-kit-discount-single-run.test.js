@@ -129,11 +129,9 @@ test('etapa 08 ajusta preço somente no modo selecionado e verifica Shopee antes
  };
  const active={state:'running',plan:{selectedStage:'discount_adjust',
   kitDiscount:{...approved,currentGross:89.90}},result:{phase:'kit_discount_ready'}};
- const market=await advanceShopeeKitDiscount(active,io);
- assert.deepEqual(calls,['market']);
- const price=await advanceShopeeKitDiscount({...active,result:market.result},io);
+ const price=await advanceShopeeKitDiscount(active,io);
  assert.equal(price.result.phase,'kit_discount_price_verifying');
- assert.deepEqual(calls,['market','identity','checkpoint','price']);
+ assert.deepEqual(calls,['identity','checkpoint','price']);
  const awaiting=await advanceShopeeKitDiscount({...active,result:price.result},io);
  assert.equal(awaiting.result.phase,'kit_discount_price_verifying');
  assert.equal(calls.filter(x=>x==='price').length,1);
@@ -148,7 +146,7 @@ test('etapa 08 ajusta preço somente no modo selecionado e verifica Shopee antes
  assert.equal(sent.result.phase,'kit_discount_verifying');
  assert.equal(calls.filter(x=>x==='discount').length,1);
 });
-test('preço Shopee modificado por terceiro bloqueia modo de ajuste antes de escrita',async()=>{
+test('etapa 08 exclusiva escreve o bruto calculado mesmo se preço antigo mudou',async()=>{
  const writes=[];
  const result=await advanceShopeeKitDiscount({state:'running',
   plan:{selectedStage:'discount_adjust',kitDiscount:{...approved,currentGross:89.90}},
@@ -157,9 +155,14 @@ test('preço Shopee modificado por terceiro bloqueia modo de ajuste antes de esc
   kitDiscountMarket:async()=>writes.push('market'),
   validateIdentity:async()=>writes.push('identity'),
   beforeWrite:async()=>writes.push('checkpoint'),
-  kitDiscountPrice:async()=>writes.push('price'),
+  kitDiscountPrice:async target=>{
+   assert.equal(target.gross,99.90);
+   assert.equal(target.promo,79.99);
+   writes.push('price');
+  },
   kitDiscountPublish:async()=>writes.push('discount')
  });
- assert.equal(result.state,'uncertain');
- assert.deepEqual(writes,[]);
+ assert.equal(result.state,'running');
+ assert.equal(result.result.phase,'kit_discount_price_verifying');
+ assert.deepEqual(writes,['identity','checkpoint','price']);
 });
