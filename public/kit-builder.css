@@ -2468,3 +2468,14 @@
 #tab-kits #kitDetail .kit-chatgpt-strip ~ .kit-content-details{margin:7px 0 11px;padding:7px 10px}
 #tab-kits #kitDetail .kit-content-details>summary{display:list-item;line-height:1.45}
 #tab-kits #kitDetail .kit-seo-options .kit-seo-heading{margin-bottom:8px}
+
+/* Geracao e importacao de titulos no mesmo bloco compacto */
+#tab-kits #kitDetail .kit-chatgpt-import-strip{display:flex;align-items:center;flex-wrap:wrap;gap:9px 12px;padding:12px 14px}
+#tab-kits #kitDetail .kit-chatgpt-import-copy{flex:1 1 255px;min-width:200px}
+#tab-kits #kitDetail .kit-chatgpt-import-actions{display:flex;align-items:center;gap:8px;flex-wrap:wrap;justify-content:flex-end}
+#tab-kits #kitDetail .kit-chatgpt-import-actions button{box-sizing:border-box;min-height:43px;max-width:100%;white-space:normal;text-align:center;padding:10px 13px;border-radius:10px;font-weight:900}
+#tab-kits #kitDetail .kit-chatgpt-import-actions .kit-import-main-button{background:linear-gradient(120deg,#1677ed,#1d5ecf);border:1px solid #1c67d5;color:#fff;box-shadow:0 5px 11px #1457ab24}
+#tab-kits #kitDetail .kit-chatgpt-import-feedback{flex:1 0 100%;display:flex;align-items:center;gap:7px 12px;flex-wrap:wrap;border-top:1px solid #cce7da;padding-top:7px}
+#tab-kits #kitDetail .kit-chatgpt-import-feedback .kit-content-feedback{flex:1 1 260px;margin:0;font-size:10px;line-height:1.4}
+#tab-kits #kitDetail .kit-chatgpt-import-feedback .kit-import-state{font-size:10px}
+@media(max-width:900px){#tab-kits #kitDetail .kit-chatgpt-import-actions{flex:1 1 100%;justify-content:stretch}#tab-kits #kitDetail .kit-chatgpt-import-actions button{flex:1 1 190px}}

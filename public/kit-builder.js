@@ -2388,7 +2388,7 @@ function kitContentHandoff(prompt,tab=null){
  kitContentAwaitingResponse=true;
  $('#kitContentDetails').open=false; // Prompt enviado é avançado; importação simples permanece visível.
  kitImportState('Aguardando resposta do ChatGPT · copie o bloco do anúncio','info');
- kitContentFeedback('No ChatGPT, gere a resposta e clique no ícone Copiar no bloco com os 3 títulos e a descrição. Volte aqui e clique em Importar anúncio copiado.','info');
+ kitContentFeedback('Copie o bloco com os 3 títulos e a descrição no ChatGPT e clique no botão azul Importar anúncio, ao lado de Gerar no ChatGPT Plus.','info');
 }
 function kitContentReadManual(){
  const data={};
@@ -2561,7 +2561,11 @@ function importPlusText({silent=false}={}){
 }
 async function kitImportCopiedContent(){
  if(!navigator.clipboard?.readText){
-  kitContentFeedback('O navegador não autorizou colar automaticamente. Use Ctrl+V no campo de resposta.','error');return;
+  kitImportState('Importação automática não autorizada · use Opções avançadas','error');
+  kitContentFeedback('O navegador não permite ler o texto copiado. Abra Opções avançadas, use Ctrl+V e clique em Importar texto colado.','error');
+  $('#kitContentDetails').open=true;
+  $('#kitPlusTextResult').focus();
+  return;
  }
  try{
   const content=await navigator.clipboard.readText();
@@ -2569,10 +2573,11 @@ async function kitImportCopiedContent(){
   $('#kitPlusTextResult').value=content;
   importPlusText();
  }catch(error){
-  kitImportState('Use Colar manualmente','error');
+  kitImportState('Abra Opções avançadas para colar manualmente','error');
   kitContentFeedback('Não foi possível acessar o texto copiado: '+error.message+
-    '. Clique em Colar manualmente, use Ctrl+V e depois Importar texto colado.','error');
+    '. Abra Opções avançadas, use Ctrl+V e clique em Importar texto colado.','error');
   $('#kitContentDetails').open=true;
+  $('#kitPlusTextResult').focus();
  }
 }
 async function kitTryAutoContentImport(){
@@ -3028,11 +3033,6 @@ $('#kitPlusText')?.addEventListener('click',()=>void plusText());
 $('#kitContinueContent')?.addEventListener('click',()=>void plusText({proceedWithoutDetails:true}));
 $('#kitSaveSkuFacts')?.addEventListener('click',()=>void saveDraft());
 $('#kitImportCopiedText')?.addEventListener('click',()=>void kitImportCopiedContent());
-$('#kitManualContentPaste')?.addEventListener('click',()=>{
- $('#kitContentDetails').open=true;
- $('#kitPlusTextResult').focus();
- kitImportState('Cole a resposta completa no campo abaixo e clique Importar texto colado','info');
-});
 $('#kitImportText')?.addEventListener('click',()=>importPlusText());
 $('#kitSaveSeoContent')?.addEventListener('click',async()=>{
  kitImportState('Salvando os textos selecionados...','info');

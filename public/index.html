@@ -31,7 +31,7 @@
 <link rel="stylesheet" href="/ads-premium.css?v=2.4.0-seo-ads-location">
 <link rel="stylesheet" href="/sidebar-collapse.css?v=1.0.0">
 <link rel="stylesheet" href="/optimizer-image-studio.css?v=1.0.2">
-<link rel="stylesheet" href="/kit-builder.css?v=3.8.3-seo-flow-compact">
+<link rel="stylesheet" href="/kit-builder.css?v=3.8.4-import-near-generator">
 <link rel="stylesheet" href="/optimizer-technical-studio.css?v=1.0.1-review-feedback">
 <style>
 /* Autorização >25%: campo compacto, sem o input global width:100%.
@@ -1126,7 +1126,18 @@
    <label><span class="kit-field-title"><span class="kit-heading-icon kit-icon-green">◆</span><span><strong>Título SEO</strong><small>Até 120 caracteres — confira antes de usar.</small></span></span><textarea id="kitTitle" rows="3" maxlength="120"></textarea><div class="kit-field-footer"><button type="button" id="kitCopyTitle" class="kit-secondary">▤ Copiar título</button><small id="kitTitleCount">0/120</small></div></label>
    <label><span class="kit-field-title"><span class="kit-heading-icon kit-icon-amber">▤</span><span><strong>Descrição do anúncio</strong><small>Produtos incluídos e quantidades exatas por SKU.</small></span></span><textarea id="kitDescription" rows="6" maxlength="2000"></textarea><div class="kit-field-footer"><button type="button" id="kitCopyDescription" class="kit-secondary">▤ Copiar descrição</button><small id="kitDescriptionCount">0/2000</small></div></label>
   </div>
-  <section class="kit-chatgpt-strip"><span class="kit-openai-symbol" aria-hidden="true">◎</span><div><strong>Gerar 3 títulos SEO e descrição do kit no ChatGPT Plus</strong><p>Reúne informações dos produtos WeDrop, solicita dados ausentes e prepara um anúncio único.</p></div><button id="kitPlusText" type="button" class="kit-primary">Preparar com ChatGPT Plus →</button></section>
+  <section class="kit-chatgpt-strip kit-chatgpt-import-strip" aria-label="Gerar e importar títulos SEO do ChatGPT Plus">
+   <span class="kit-openai-symbol" aria-hidden="true">◎</span>
+   <div class="kit-chatgpt-import-copy"><strong>Gerar 3 títulos SEO e descrição do kit no ChatGPT Plus</strong><p>Gere o anúncio e copie a resposta. Clique em Importar para preencher e salvar os textos automaticamente.</p></div>
+   <div class="kit-chatgpt-import-actions">
+    <button id="kitPlusText" type="button" class="kit-primary">Gerar no ChatGPT Plus →</button>
+    <button id="kitImportCopiedText" type="button" class="kit-primary kit-import-main-button">⇩ Importar anúncio copiado do ChatGPT</button>
+   </div>
+   <div class="kit-chatgpt-import-feedback">
+    <span id="kitImportState" class="kit-import-state" data-state="info" role="status" aria-live="polite">Aguardando resposta do ChatGPT</span>
+    <p id="kitContentFeedback" class="kit-content-feedback" role="status" aria-live="polite">Copie a resposta completa no ChatGPT. Se a importação for bloqueada, use Opções avançadas para colar manualmente.</p>
+   </div>
+  </section>
   <section id="kitSeoOptions" class="kit-seo-options" hidden aria-label="Três títulos SEO classificados">
    <div class="kit-seo-heading"><strong>3 títulos SEO importados</strong><small>Escolha o que será usado no anúncio. A nota é apenas uma estimativa textual.</small></div>
    <div id="kitSeoWarnings" class="kit-seo-warning" hidden></div>
@@ -1152,19 +1163,6 @@
     <button id="kitSaveSkuFacts" type="button" class="kit-secondary">Salvar informações dos SKUs</button>
     <small>A leitura do print é feita no navegador. Confira o texto reconhecido antes de gerar. Dados extras não são confirmados pela WeDrop.</small>
    </div>
-  </section>
-  <section class="kit-copy-assistant" aria-label="Importação simplificada do anúncio gerado">
-   <div class="kit-import-steps">
-    <div class="kit-import-step"><span class="kit-step-number">1</span><span><strong>No ChatGPT</strong><small>Clique no ícone <b>Copiar</b> dentro do bloco que contém os 3 títulos e a descrição. Não copie a orientação enviada.</small></span></div>
-    <div class="kit-import-step"><span class="kit-step-number">2</span><span><strong>Volte para esta tela</strong><small>Clique no botão azul para trazer o anúncio pronto de uma vez.</small></span></div>
-    <div class="kit-import-step"><span class="kit-step-number">3</span><span><strong>Conferir e salvar</strong><small>O sistema preenche título e descrição, classifica as opções e salva o rascunho.</small></span></div>
-   </div>
-   <div class="kit-import-actionbar">
-    <button id="kitImportCopiedText" type="button" class="kit-primary kit-import-main-button">⇩ Importar anúncio copiado do ChatGPT</button>
-    <button id="kitManualContentPaste" type="button" class="kit-secondary">Colar manualmente</button>
-    <span id="kitImportState" class="kit-import-state" data-state="info">Aguardando texto do ChatGPT</span>
-   </div>
-   <p id="kitContentFeedback" class="kit-content-feedback" role="status" aria-live="polite">Traga os 3 títulos e a descrição completos de uma única vez. Não precisa copiar os campos separadamente.</p>
   </section>
   <div class="kit-bar kit-section-heading kit-images-heading">
    <span class="kit-heading-icon kit-icon-blue" aria-hidden="true">▧</span>

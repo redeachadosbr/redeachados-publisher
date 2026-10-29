@@ -55,3 +55,21 @@ test('blocos SEO ficam imediatamente após o gerador de títulos e descrição d
  const between=html.slice(locations[0],locations[1]);
  assert.doesNotMatch(between,/id="kitMissingFacts"|class="kit-copy-assistant"/);
 });
+
+test('importacao azul fica ao lado do gerador; instrucoes duplicadas foram removidas',async()=>{
+ const {readFileSync}=await import('node:fs');
+ const html=readFileSync(new URL('../public/index.html',import.meta.url),'utf8');
+ const browser=readFileSync(new URL('../public/kit-builder.js',import.meta.url),'utf8');
+ const strip=html.slice(html.indexOf('class="kit-chatgpt-strip kit-chatgpt-import-strip"'),html.indexOf('id="kitSeoOptions"'));
+ for(const id of ['kitPlusText','kitImportCopiedText','kitImportState','kitContentFeedback'])
+  assert.match(strip,new RegExp('id="'+id+'"'));
+ assert.doesNotMatch(html,/class="kit-copy-assistant"/);
+ for(const id of ['kitImportCopiedText','kitPlusText','kitContentFeedback','kitImportState','kitContentDetails','kitPlusTextResult'])
+  assert.equal(html.split('id="'+id+'"').length-1,1);
+ assert.match(browser,/kitImportCopiedText'\)\?\.addEventListener\('click'/);
+ assert.match(browser,/const content=await navigator\.clipboard\.readText\(\)/);
+ assert.match(browser,/parseKitSeoResponse\(\$\('#kitPlusTextResult'\)\.value\)/);
+ assert.match(browser,/\$\('#kitDescription'\)\.value=result\.description/);
+ assert.match(browser,/void saveDraft\(\)\.then/);
+ assert.match(browser,/Abra Opções avançadas/);
+});
