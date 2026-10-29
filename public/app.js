@@ -2611,6 +2611,26 @@ globalThis.redeAdsOpenOptimizerSku=adsFillOptimizerSku;
 // A mesma instancia de etapas, validacoes e execucao, sem duplicar as rotas Shopee.
 let kitOptimizerHome=null,kitOptimizerNext=null,kitOptimizerEmbedded=false;
 let kitDiscountHome=null,kitDiscountNext=null,kitOptimizerDiscountConfirmedIdentity='',kitOptimizerDiscountPreparedIdentity='';
+function optimizerKitDiscountReviewState(w){
+ if(!w?.kitOptimization?.kitSku)return {prepared:false,confirmed:false};
+ const kit=String(w.kitOptimization.kitSku),id=String(w.itemId),
+  model=String(w.modelId||'0'),key=kit+'|'+id,
+  preview=w.kitDiscountPreview,publication=w.kitDiscountPublication;
+ const same=(entry)=>entry&&entry.kitSku===kit&&String(entry.itemId)===id&&
+  String(entry.modelId||'0')===model;
+ const currentCampaign=String($('#kitOptimizeDiscountId')?.value||'');
+ const campaignMatches=(entry)=>!currentCampaign||
+  String(entry.discountId)===currentCampaign;
+ // Validade da revisão em si: o desconto só poderá ser aplicado após nova
+ // leitura da Shopee e um token fresco de autorização.
+ const time=Date.parse(preview?.preparedAt||'');
+ const recent=Number.isFinite(time)&&Date.now()>=time&&Date.now()-time<24*3600000;
+ const prepared=Boolean(same(preview)&&preview.status==='prepared'&&
+  recent&&campaignMatches(preview))||kitOptimizerDiscountPreparedIdentity===key;
+ const confirmed=Boolean(same(publication)&&publication.status==='confirmed')||
+  kitOptimizerDiscountConfirmedIdentity===key;
+ return {prepared:prepared||confirmed,confirmed};
+}
 function kitOptimizerDiscountMount(){
  const review=$('#optimizerDiscountReviewInline'),specific=$('#kitOptimizeExistingPanel .kit-existing-discount');
  const generic=$('#optimizerExecDiscountFinal');
@@ -2629,12 +2649,21 @@ function kitOptimizerDiscountUnmount(){
  }
  if(generic)generic.hidden=false;
 }
-globalThis.RAKitDiscountPrepared=({kitSku,itemId,planning=true}={})=>{
+globalThis.RAKitDiscountPrepared=({kitSku,itemId,discountId,reviewSaved=false,
+ preview=null,clear=false}={})=>{
  const w=optimizerWorkflowPlan;
  if(!w||!optimizerKitWorkflowActive()||
    String(w.kitOptimization?.kitSku)!==String(kitSku))return;
- kitOptimizerDiscountPreparedIdentity=planning&&String(w.itemId)===String(itemId)?
-   String(kitSku)+'|'+String(itemId):'';
+ if(clear){
+  kitOptimizerDiscountPreparedIdentity='';
+  w.kitDiscountPreview=null;
+ }else if(reviewSaved===true&&String(w.itemId)===String(itemId)&&preview){
+  kitOptimizerDiscountPreparedIdentity=String(kitSku)+'|'+String(itemId);
+  w.kitDiscountPreview={kitSku:String(kitSku),itemId:String(itemId),
+   modelId:String(w.modelId||'0'),discountId:String(discountId),
+   status:'prepared',gross:preview.gross,promo:preview.promo,
+   afterCoupon:preview.afterCoupon,preparedAt:new Date().toISOString()};
+ }
  optimizerDiscountWorkflowRefresh();
 };
 globalThis.RAKitDiscountConfirmed=({kitSku,itemId}={})=>{
@@ -2643,6 +2672,9 @@ globalThis.RAKitDiscountConfirmed=({kitSku,itemId}={})=>{
   String(w.itemId)!==String(itemId))return;
  kitOptimizerDiscountConfirmedIdentity=kitSku+'|'+itemId;
  kitOptimizerDiscountPreparedIdentity='';
+ w.kitDiscountPublication={kitSku:String(kitSku),itemId:String(itemId),
+  modelId:String(w.modelId||'0'),status:'confirmed',
+  confirmedAt:new Date().toISOString()};
  optimizerDiscountWorkflowRefresh();
 };
 function kitOptimizerMount(){
@@ -2945,10 +2977,9 @@ function optimizerWorkflowRender(data){
  // Exibir as sete revisoes e a oitava etapa de desconto, sem refazer
  // automaticamente conteudos ja preparados na pagina de Kits.
  const resolved=visible.filter(x=>x.reviewed||x.skipped).length;
- const kitDiscountConfirmed=kitMode&&
-  kitOptimizerDiscountConfirmedIdentity===String(data.kitOptimization?.kitSku)+'|'+String(data.itemId);
+ const kitDiscountReviewed=kitMode&&optimizerKitDiscountReviewState(data).prepared;
  const total=visible.length+1;
- const completed=resolved+(kitMode?Number(kitDiscountConfirmed):Number(optimizerDiscountFinalSent));
+ const completed=resolved+(kitMode?Number(kitDiscountReviewed):Number(optimizerDiscountFinalSent));
  const progress=$('#optimizerWorkflowCounter');
  progress.textContent=completed+' / '+total+' etapas conferidas';
  progress.style.setProperty('--stage-progress',String(total?Math.round(completed/total*100):0)+'%');
@@ -3610,7 +3641,7 @@ function optimizerKitSourcePaint(){
  if(kit&&w){
   const stages=(w.stages||[]).filter(x=>x.key!=='final');
   const completed=stages.filter(x=>x.reviewed||x.skipped).length+
-   Number(kitOptimizerDiscountConfirmedIdentity===String(w.kitOptimization?.kitSku)+'|'+String(w.itemId));
+   Number(optimizerKitDiscountReviewState(w).prepared);
   const count=$('#optimizerWorkflowCounter');
   if(count){
    count.textContent=completed+' / '+(stages.length+1)+' etapas conferidas';
@@ -4554,25 +4585,24 @@ function optimizerDiscountWorkflowRefresh(){
  const w=optimizerWorkflowPlan,q=optimizerDiscountFinalQuote;
  const kit=optimizerKitWorkflowActive();
  const matching=Boolean(w&&q&&optimizerDiscountFinalIdentityOf(w)===optimizerDiscountFinalIdentity);
- const sent=kit?
-  kitOptimizerDiscountConfirmedIdentity===w.kitOptimization.kitSku+'|'+w.itemId:
-  matching&&optimizerDiscountFinalSent;
- const reviewed=kit?false:matching&&optimizerDiscountApprovalReady();
+ const kitReview=kit?optimizerKitDiscountReviewState(w):{prepared:false,confirmed:false};
+ const sent=kit?kitReview.confirmed:matching&&optimizerDiscountFinalSent;
+ const prepared=kit&&kitReview.prepared;
+ const reviewed=kit?prepared:matching&&optimizerDiscountApprovalReady();
  const state=card.querySelector('.optimizer-discount-workflow-state');
- const prepared=kit&&w&&kitOptimizerDiscountPreparedIdentity===
-  String(w.kitOptimization?.kitSku)+'|'+String(w.itemId);
- if(state&&kit)state.textContent=sent?'✓ Desconto do kit confirmado na Shopee':
-  prepared?'Prévia preparada · aplicação após execução':
-  'Minha Promoção do kit · preparar e aplicar após confirmar anúncio';
+ if(state&&kit)state.textContent=sent?'✓ Aplicado e confirmado na Shopee':
+  prepared?'✓ Conferência registrada · ainda não publicado':
+  'Minha Promoção do kit · preparar e conferir a prévia';
  else if(state)state.textContent=sent?'Envio realizado · conferir na Shopee':
   reviewed?'Desconto conferido · execução liberada':
   !matching?'Calculando preço e desconto':
   optimizerDiscountFinalEligible(q)?'Preço calculado · conferir antes de executar':'Pesquisa/margem · revisar';
  card.classList.toggle('optimizer-workflow-reviewed',Boolean(sent||reviewed));
+ card.classList.toggle('optimizer-workflow-pending',!sent&&!reviewed);
  card.classList.toggle('is-current',Boolean(!$('#optimizerDiscountReviewInline')?.hidden));
  card.querySelector('.optimizer-workflow-symbol').textContent=sent||reviewed?'✓':'→';
  const stages=(w?.stages||[]).filter(x=>x.key!=='final'&&!x.skipped);
- const done=stages.filter(x=>x.reviewed).length+(sent||reviewed?1:0);
+ const done=stages.filter(x=>x.reviewed||x.skipped).length+(sent||reviewed?1:0);
  const progress=$('#optimizerWorkflowCounter');
  if(progress){progress.textContent=done+' / '+(stages.length+1)+' etapas conferidas';progress.style.setProperty('--stage-progress',String(Math.round(done/(stages.length+1)*100))+'%');}
 }
