@@ -129,7 +129,10 @@ export function initExistingKitOptimization({getContext,api,money,onMainSkuChang
   if(!target?.prepared||target.kitSku!==kitSku())
    return notice('Prepare o vínculo do anúncio antes de abrir a revisão.','error');
   if(typeof globalThis.redeKitOpenOptimizerTarget!=='function'||
-    !globalThis.redeKitOpenOptimizerTarget(target))
+    !globalThis.redeKitOpenOptimizerTarget({...target,
+     targetMarginPct:Number(ctx().prepared?.kit?.quote?.targetMarginPct),
+     shipping:Number(ctx().prepared?.kit?.shipping||0),
+     packing:Number(ctx().prepared?.kit?.packing||0)}))
    notice('Não foi possível abrir a Otimização. Atualize a página e tente novamente.','error');
  }
  function discountNotice(msg,state='info'){

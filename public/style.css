@@ -4163,3 +4163,5 @@ body.view-wedrop .page-intro{display:none!important}
 .kit-price-cost[data-state="warning"]{color:#ac6b15}
 @media(max-width:1080px){.kit-price-kpis{grid-template-columns:repeat(2,minmax(0,1fr))}}
 @media(max-width:590px){.kit-price-heading label{width:100%;min-width:0}.kit-price-kpis{grid-template-columns:1fr 1fr}.kit-price-kpi{padding:12px 9px}.kit-price-kpi strong{font-size:18px}}
+
+.kit-price-kpis[hidden],.kit-price-summary[hidden]{display:none!important}

@@ -50,6 +50,7 @@ function setSidebarOpen(open){
 function setTab(name,{updateHistory=true,scroll=true}={}){
   if(!APP_PAGES[name])name='overview';
   const pendingAdsHandoff=name==='optimizer'&&Boolean(optimizerAdsHandoffSku);
+  const pendingKitHandoff=name==='optimizer'&&Boolean(globalThis.__RA_KIT_OPTIMIZATION_HANDOFF);
   if(pendingAdsHandoff)optimizerAdsHandoffSku=null;
   const page=APP_PAGES[name];
   const pane=$('#tab-'+name);
@@ -103,7 +104,7 @@ function setTab(name,{updateHistory=true,scroll=true}={}){
     if(name==='optimizer')void optimizerLoadSettings();
     void shPriceLoadDefaults().then(()=>{
       // Não restaurar SKU/preço da sessão anterior ao receber uma SKU da campanha Ads.
-      if(pendingAdsHandoff)return;
+      if(pendingAdsHandoff||pendingKitHandoff)return;
       if(!shPriceSelection){
         shPriceSelection=shPriceRestoredSelection();
         if(shPriceSelection)$('#optimizerSku').value=shPriceSelection.sku;
@@ -2602,11 +2603,12 @@ function adsFillOptimizerSku(value){
 }
 globalThis.redeAdsOpenOptimizerSku=adsFillOptimizerSku;
 // Entrar na otimização do anúncio do Kit já existente, sem criar novo Item ID.
-globalThis.redeKitOpenOptimizerTarget=({sku,itemId,modelId='0',kitSku}={})=>{
+globalThis.redeKitOpenOptimizerTarget=({sku,itemId,modelId='0',kitSku,targetMarginPct,shipping,packing}={})=>{
  const code=String(sku||'').trim(),id=String(itemId||'').trim();
  if(!code||!/^[1-9]\d{0,17}$/.test(id))return false;
  globalThis.__RA_KIT_OPTIMIZATION_HANDOFF={sku:code,itemId:id,
-  modelId:String(modelId||'0'),kitSku:String(kitSku||'')};
+  modelId:String(modelId||'0'),kitSku:String(kitSku||''),
+  targetMarginPct:Number(targetMarginPct),shipping:Number(shipping),packing:Number(packing)};
  setTab('optimizer');
  const field=$('#optimizerSku');
  if(!field)return false;
@@ -5623,7 +5625,20 @@ async function optimizerRunAudit(itemId,sku,modelId=''){
     $('#optimizerQuickStatus').textContent='Conferindo o custo WeDrop e calculando o preço bruto da SKU '+expectedSku+'...';
     if(globalThis.__RA_KIT_OPTIMIZATION_HANDOFF?.sku===expectedSku){
       $('#optimizerQuickStatus').textContent='Kit WeDrop: conferindo custo dos componentes e calculando o preço bruto...';
-      void shPriceLoadDefaults().then(()=>shPricePrepare());
+      void shPriceLoadDefaults().then(()=>{
+       const handoff=globalThis.__RA_KIT_OPTIMIZATION_HANDOFF;
+       if(handoff?.sku===expectedSku&&handoff.itemId===item&&
+          Number.isFinite(handoff.targetMarginPct)&&handoff.targetMarginPct>=0&&handoff.targetMarginPct<=70){
+        $('#priceMargin').value=String(handoff.targetMarginPct);
+        $('#optimizerQuickMargin').value=String(handoff.targetMarginPct);
+        $('#optimizerQuickMargin').dataset.manualMargin='true';
+        shManualMarginChoice=true;
+        shPriceRefreshMarginLabel();shQuickSyncSlider();
+        if(Number.isFinite(handoff.shipping)&&handoff.shipping>=0)$('#priceFreight').value=String(handoff.shipping);
+        if(Number.isFinite(handoff.packing)&&handoff.packing>=0)$('#pricePackaging').value=String(handoff.packing);
+       }
+       return shPricePrepare();
+      });
     }else     void shPriceLoadDefaults().then(()=>{
       const pending=adsReserveRequest;
       if(pending&&pending.sku===expectedSku){
