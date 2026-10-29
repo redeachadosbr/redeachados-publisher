@@ -99,7 +99,7 @@ test('titulo e descricao do kit possuem botoes de conferencia ao lado dos textos
   for(const id of [container,button,status])
    assert.equal(html.split('id="'+id+'"').length-1,1);
  }
- assert.match(html,/\/app\.js\?v=3\.5\.9-kit-seo-confirm/);
+ assert.match(html,/\/app\.js\?v=3\.5\.10-kit-tech-edit-target/);
  assert.match(html,/\/kit-builder\.js\?v=3\.9\.8-kit-seo-confirm/);
  assert.match(html,/\/kit-builder\.css\?v=3\.8\.7-kit-source-checklist/);
  assert.match(app,/globalThis\.RAKitSourceChanged=optimizerKitSourceChanged/);
@@ -185,4 +185,38 @@ test('ficha tecnica continua com inputs e aprovacao originais',()=>{
  assert.match(app,/globalThis\.RATechnicalStudio\?\.render\?\.\(data\)/);
  assert.match(html,/id="optimizerWorkflowReview"/);
  assert.match(html,/id="optimizerTechnicalFields"/);
+});
+
+
+test('ficha compacta exibe uma linha por atributo e edicao com um clique',()=>{
+ const studio=source('public/optimizer-technical-studio.js');
+ const css=source('public/optimizer-technical-studio.css');
+ assert.match(studio,/function compactField\(field\)/);
+ assert.match(studio,/element\('details','ra-tech-field-row'\)/);
+ assert.match(studio,/element\('span','ra-tech-field-action','Editar ›'\)/);
+ assert.match(studio,/row\.append\(summary,field\)/);
+ assert.match(studio,/body\.append\(compactField\(item\)\)/);
+ assert.match(studio,/for\(const \[label,open\] of \[\['Editar todos',true\],\['Recolher todos',false\]\]\)/);
+ assert.match(studio,/if\(regroup\)groups\(data\)/);
+ assert.match(css,/\.ra-tech-field-head\{/);
+ assert.match(css,/grid-template-columns:minmax\(150px,1fr\) minmax\(170px,2\.2fr\) auto/);
+ assert.match(css,/\.ra-tech-field-row\[open\]/);
+ assert.match(css,/\.ra-tech-field-row>\.optimizer-attribute/);
+ assert.match(css,/\.optimizer-attribute button,/);
+ assert.match(css,/\.ra-tech-preview \.optimizer-tech-summary-stats/);
+ assert.match(html,/optimizer-technical-studio\.css\?v=1\.2\.0-compact-fields/);
+ assert.match(html,/optimizer-technical-studio\.js\?v=1\.2\.0-compact-fields/);
+});
+test('editar pela previa expande o atributo correto sem substituir os campos salvos',()=>{
+ const studio=source('public/optimizer-technical-studio.js');
+ assert.match(studio,/fields\.addEventListener\(type,event=>/);
+ assert.match(studio,/updateFieldRow\(field\)/);
+ assert.match(studio,/row\.addEventListener\('toggle'/);
+ assert.match(studio,/field\.querySelector\('\[data-attribute-enabled\]'\)\?\.checked/);
+ assert.match(studio,/for\(const type of \['input','change'\]\)/);
+ assert.equal(app.split("const compact=field.closest('.ra-tech-field-row');if(compact)compact.open=true;").length-1,2);
+ assert.match(app,/globalThis\.RATechnicalStudio\?\.render\?\.\(data\)/);
+ assert.match(app,/body\.attributes=optimizerTechnicalValues\(\)/);
+ assert.match(html,/id="optimizerWorkflowReview"/);
+ assert.match(html,/\/app\.js\?v=3\.5\.10-kit-tech-edit-target/);
 });
