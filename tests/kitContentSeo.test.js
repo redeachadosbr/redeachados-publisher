@@ -120,3 +120,33 @@ test('prompt combinado cobre as três SKUs e dados separados por componente',asy
  for(const part of kit.components){assert.ok(result.prompt.includes('SKU '+part.sku));assert.ok(result.prompt.includes(facts[part.sku]));}
  assert.equal(result.imagePrompts.length,9);
 });
+
+test('pesquisa SEO usa três SKUs e apresenta cinco termos sem inventar volume',async()=>{
+ const {summarizeKitSeoEvidence}=await import('../shopeeKitSeoResearch.js');
+ const components=[
+  {sku:'103006',name:'Cafeteira Italiana Inox 3 Xícaras'},
+  {sku:'CO6968126',name:'Conjunto com Canecas 6 Peça Vidro Expresso 70ml'},
+  {sku:'TRC7085',name:'Açucareiro de aço inox com colher 220ml'}];
+ const data=summarizeKitSeoEvidence(components,[
+  {status:'verified',sample:[{title:'Cafeteira Italiana Inox 3 Xicaras',url:'https://shopee.com.br/product/123/456'}]},
+  {status:'verified',sample:[{title:'Canecas Vidro Expresso 70ml',url:'https://shopee.com.br/product/987/654'}]},
+  {status:'missing',sample:[]}]);
+ assert.equal(data.candidates.length,5);
+ assert.equal(data.products.length,3);
+ assert.equal(data.searchVolumeAvailable,false);
+ assert.equal(data.isOfficialSearchRanking,false);
+ assert.equal(data.observedOffers,2);
+ assert.deepEqual(data.candidates.slice(0,3).map(x=>x.sku),['103006','CO6968126','TRC7085']);
+ const {kitContentBrief}=await import('../shopeeKitBuilder.js');
+ const prompt=kitContentBrief({kitSku:'KIT-103006-CO6968126-TRC7085',components},{manualFacts:{
+  '103006':'altura 10 cm e largura 12 cm',
+  'CO6968126':'capacidade 70 ml',
+  'TRC7085':'açucareiro inox com colher e capacidade 220ml'},keywordResearch:data}).prompt;
+ assert.match(prompt,/PESQUISA OBRIGATÓRIA NA SHOPEE POR SKU/);
+ assert.match(prompt,/Ordene exatamente CINCO expressões-chave/);
+ assert.match(prompt,/pesquisaStatus: unverified/);
+ for(const p of components)assert.match(prompt,new RegExp('SKU '+p.sku));
+ assert.match(prompt,/https:\/\/shopee\.com\.br\/product\/123\/456/);
+ const html=(await import('node:fs')).readFileSync(new URL('../public/index.html',import.meta.url),'utf8');
+ assert.match(html,/id="kitSeoMarketDetails"/);
+});

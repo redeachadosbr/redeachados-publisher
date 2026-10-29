@@ -31,6 +31,7 @@ import {convertWeDropExcelBase64} from './wedropExcel.js';
 import {saveWeDropCosts,getWeDropCoverage,compareIncomingCosts,pendingWeDropModels,upsertWeDropSkuLink} from './wedropCosts.js';
 import {saveWeDropProducts,readWeDropProduct} from './wedropCosts.js';
 import {kitCatalog,suggestKits,suggestKitsForIdea,rankKitIdeaProducts,assessKitBuyerFit,composeKit,kitCreative,kitPrompts,kitPlusResearchBrief,kitPlusContentPrompt,kitContentBrief,categoryMatches,modifyKitSkus,clearKitCatalogCache,kitSku} from './shopeeKitBuilder.js';
+import {researchShopeeKitSeo} from './shopeeKitSeoResearch.js';
 import {saveKitStockImport,clearKitStockCache,parseWeDropAvailabilityCsv,readKitStockSnapshot} from './shopeeKitAvailability.js';
 import {saveKitDraft,saveKitDraftLogistics,listKitDrafts,loadKitDraft,deleteKitDraft,recordKitOptimization} from './shopeeKitDraftStore.js';
 import {validateKitOptimizationTarget,kitOptimizationLinkIsCurrent,linkedKitPricingCost} from './shopeeKitOptimization.js';
@@ -669,7 +670,11 @@ app.post('/api/shopee/kits/plus-content',mustLogin,requireWeDropAdmin,async(req,
    packing:Number(req.body?.packing||0),
    shipping:Number(req.body?.shipping||0)
   });
-  res.json({ok:true,kitSku:kit.kitSku,...kitContentBrief(kit,{manualFacts:req.body?.manualFacts||{}}),requiresReview:true,marketplaceUpdated:false});
+  // Consulta títulos comparáveis de cada SKU sem presumir ranking de buscas.
+  const keywordResearch=await researchShopeeKitSeo(kit.components);
+  res.json({ok:true,kitSku:kit.kitSku,
+   ...kitContentBrief(kit,{manualFacts:req.body?.manualFacts||{},keywordResearch}),
+   keywordResearch,requiresReview:true,marketplaceUpdated:false});
  }catch(error){res.status(400).json({error:String(error.message||error).slice(0,300)});}
 });
 // Foto real de referência da WeDrop para cada SKU confirmada do kit.

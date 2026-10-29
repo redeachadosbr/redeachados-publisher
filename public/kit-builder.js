@@ -1701,6 +1701,8 @@ function renderKit({scroll=true,displayTitle=''}={}){
   $('#kitMissingFactFields').replaceChildren();
   $('#kitSeoOptions').hidden=true;$('#kitSeoOptionList').replaceChildren();
   $('#kitContentPrompt').value='';$('#kitPlusTextResult').value='';
+  const market=$('#kitSeoMarketDetails');if(market){market.hidden=true;market.open=false;}
+  $('#kitSeoMarketEvidence')?.replaceChildren();
   kitImportState('Clique em Importar anúncio copiado do ChatGPT após copiar a resposta.','info');
  }
  $('#kitDetail').hidden=false;
@@ -2502,6 +2504,25 @@ function kitContentShowMissing(rows=[],{scroll=false}={}){
  $('#kitMissingFacts').hidden=false;
  if(scroll)$('#kitMissingFacts').scrollIntoView({behavior:'smooth',block:'center'});
 }
+function showKitSeoMarketEvidence(research){
+ const panel=$('#kitSeoMarketDetails'),root=$('#kitSeoMarketEvidence');
+ if(!panel||!root)return;
+ root.replaceChildren();
+ const picks=(research?.candidates||[]).slice(0,5);
+ const observed=research?.status==='offer_titles_observed';
+ const label=$('#kitSeoMarketSummary');
+ if(label)label.textContent='Pesquisa por SKU · '+picks.length+
+  ' expressões indicativas · '+(observed?'amostra Shopee':'catálogo WeDrop');
+ root.append(elt('p','',observed?
+  'Títulos de ofertas Shopee consultados por SKU. Frequência em anúncios NÃO comprova volume de buscas.':
+  'Sem amostra automática de anúncios. O ChatGPT deverá pesquisar fontes na web, sem inventar volume.'));
+ for(const kw of picks)root.append(elt('p','',kw.term+' · SKU '+kw.sku+' · '+kw.source));
+ for(const p of research?.products||[])for(const offer of (p.observedOffers||[]).slice(0,2)){
+  const link=elt('a','kit-reference-link','SKU '+p.sku+': '+offer.title);
+  link.href=offer.url;link.target='_blank';link.rel='noopener noreferrer';root.append(link);
+ }
+ panel.hidden=false;
+}
 async function plusText({proceedWithoutDetails=false}={}){
  if(!prepared||kitContentBusy)return;
  const currentSku=prepared.kit.kitSku;
@@ -2509,7 +2530,7 @@ async function plusText({proceedWithoutDetails=false}={}){
  const button=proceedWithoutDetails?$('#kitContinueContent'):$('#kitPlusText');
  const tab=kitContentOpenTab();
  kitContentBusy=true;button.disabled=true;
- kitContentFeedback('Consultando descrições e medidas de cada SKU no catálogo WeDrop...','info');
+ kitContentFeedback('Lendo as três fichas por SKU e pesquisando títulos comparáveis na Shopee...','info');
  try{
   const data=await api('/api/shopee/kits/plus-content',{body:{
    skus:prepared.kit.components.map(p=>p.sku),...currentSettings(),
@@ -2519,6 +2540,7 @@ async function plusText({proceedWithoutDetails=false}={}){
   if(prepared?.kit?.kitSku!==currentSku||data.kitSku!==currentSku)
    throw Error('A composição do kit mudou. Reabra a geração para evitar misturar SKUs.');
   $('#kitContentPrompt').value=data.prompt;
+  showKitSeoMarketEvidence(data.keywordResearch);
   if(Array.isArray(data.imagePrompts)&&data.imagePrompts.length===9){
    prepared.creative.prompts=data.imagePrompts;
    prepared.creative.manualFacts=Object.fromEntries(kitContentManualFacts.entries());
