@@ -1312,6 +1312,7 @@ async function kitVerifyPublished(){
    '✓ Kit NORMAL confirmado. Agora selecione uma Minha Promoção em Descontos preparados para preparar o desconto.':
    'Kit ainda pendente de confirmação; desconto não pode ser aplicado.',
    v.discountReady?'success':'info');
+  if(v.publication?.status==='published')await loadDrafts({restoreCurrent:false});
  }catch(error){kitPublishStatus('Status não confirmado: '+error.message,'error');}
  finally{kitPublishBusy=false;}
 }
@@ -1397,7 +1398,7 @@ function kitManualControls(kit,{editor=false}={}){
 }
 function renderSuggestions(data){
  suggestions=data.results||[];
- const root=$('#kitSuggestions');root.replaceChildren();
+ const root=$('#kitSuggestions');root.hidden=false;root.replaceChildren();
  $('#kitSource').textContent='Origem: '+String(data.source||'WeDrop + calculadora Shopee');
  if(!suggestions.length){
   root.append(elt('p','', 'Nenhum kit elegível. Apenas SKUs com estoque WeDrop confirmado podem ser sugeridas.'));return;
@@ -1471,6 +1472,33 @@ async function loadDrafts({restoreCurrent=true}={}){
   // Evita destruir o formulário se ele estiver dentro da lista ao atualizar.
   kitEditorReturnHome();
   root.replaceChildren();
+  const publishedRoot=$('#kitPublishedList');
+  if(publishedRoot){
+   publishedRoot.replaceChildren();
+   for(const published of result.published||[]){
+    const card=elt('article','kit-card kit-published-card'),pic=elt('div','kit-draft-images');
+    for(const url of (published.images||[]).slice(0,3)){
+     const img=elt('img');img.src=url;img.alt='Produto publicado '+published.kitSku;
+     img.loading='lazy';img.referrerPolicy='no-referrer';pic.append(img);
+    }
+    if(!pic.children.length)pic.append(elt('span','','▧'));
+    const info=elt('div','kit-draft-description');
+    info.append(elt('span','kit-draft-state','✓ PUBLICADO NA SHOPEE'),
+     elt('strong','',published.title||published.kitSku),
+     elt('small','',(published.skus||[]).join(' + ')),
+     elt('small','',published.itemId?'Item ID Shopee: '+published.itemId:'Publicação confirmada'));
+    const metrics=elt('div','kit-draft-metrics');
+    if(published.quote)for(const [label,value] of [
+     ['Custo',money(published.kitCost)],
+     ['Preço bruto',money(published.quote.grossPrice)],
+     ['Desconto',pct(published.quote.discountPct)],
+     ['Margem',pct(published.quote.netMarginPct)]
+    ]){const cell=elt('div');cell.append(elt('small','',label),elt('strong','',value));metrics.append(cell);}
+    card.append(pic,info,metrics);publishedRoot.append(card);
+   }
+   if(!(result.published||[]).length)
+    publishedRoot.append(elt('p','kit-empty-published','Nenhum kit com publicação confirmada nesta loja.'));
+  }
   if(!result.drafts.length){
    const empty=elt('div','kit-empty-drafts');
    empty.append(elt('span','kit-empty-drafts-illustration','▤'),
@@ -1532,9 +1560,11 @@ async function loadDrafts({restoreCurrent=true}={}){
     kitActiveDraftSku=null;
    }
   }else if(restoreCurrent&&!prepared&&result.drafts.length){
-   // Rascunho mais recente restaurado sob o cartão sem mover a página.
-   void openDraft(result.drafts[0].kitSku,{scroll:false,
-    targetCard:root.querySelector('[data-kit-draft-sku]'),title:result.drafts[0].title});
+   // Seleção automática somente dentro do lote ativo.
+   const first=result.drafts.find(d=>d.publication==='local_draft')||result.drafts[0];
+   void openDraft(first.kitSku,{scroll:false,
+    targetCard:[...root.querySelectorAll('[data-kit-draft-sku]')].find(x=>x.dataset.kitDraftSku===first.kitSku),
+    title:first.title});
   }
  }catch(error){
   kitEditorReturnHome();
@@ -2320,12 +2350,20 @@ async function importPlusSuggestions({readClipboard=false,silent=false,uploadedT
    throw Error('Nenhum dos '+rows.length+' kits passou na validação WeDrop. '+firstRejected);
   }
   $('#kitPlusOutput').value=rows.map(x=>x.join(' | ')).join('\n');
-  suggestionContext={category:context.category,size:context.size,idea:context.idea,source:r.source};
-  renderSuggestions(r);
+  suggestionContext=null;suggestions=[];
+  // Não duplicar os cartões do JSON importado; os 10 aparecem em Rascunhos.
+  $('#kitSuggestions').replaceChildren();$('#kitSuggestions').hidden=true;
+  kitCloseInlineEditor();prepared=null;images.clear();
+  resetKitPublication({saved:false});renderKitPricingSummary(null);
   kitChatPending=null;sessionStorage.removeItem(KIT_CHAT_SESSION_KEY);
   kitResearchCatalogContent='';
   $('#kitPlusDownloadCatalog').hidden=true;
-  await loadDrafts();
+  await loadDrafts({restoreCurrent:false});
+  // Atualiza o resumo superior com preço e componentes do primeiro kit importado.
+  const selected=r.results.find(x=>x.draftSaved)?.kitSku;
+  if(selected)await openDraft(selected,{scroll:false,
+   targetCard:[...$('#kitDraftList').querySelectorAll('[data-kit-draft-sku]')]
+    .find(card=>card.dataset.kitDraftSku===selected)});
   const skipped=(r.rejected||[]).length;
   const reasons=(r.rejected||[]).slice(0,2).map(x=>x.reason).join('; ');
   kitPlusNotice('✓ '+(r.received||rows.length)+' kits recebidos; '+
@@ -2334,7 +2372,7 @@ async function importPlusSuggestions({readClipboard=false,silent=false,uploadedT
    (skipped+parsed.rejected)+' rejeitados. '+
    (skipped?'Motivos: '+reasons+'. ':'')+
    'Nenhuma publicação na Shopee. Confira o relatório por kit abaixo.','success');
-  $('#kitSuggestions')?.scrollIntoView({behavior:'smooth',block:'start'});
+  $('#kitDraftList')?.scrollIntoView({behavior:'smooth',block:'start'});
   return true;
  }catch(error){
   if(!silent)kitPlusNotice('Não foi possível importar os kits: '+error.message,'error');

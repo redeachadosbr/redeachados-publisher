@@ -21,7 +21,12 @@ async function request(query,options={}){
  if(!r.ok)throw Error('Não foi possível salvar/consultar o rascunho (HTTP '+r.status+').');
  return r.status===204?[]:r.json();
 }
-export async function saveKitDraft(shopId,{kit,creative,logistics}){
+async function latestActiveBatch(shopId){
+ const rows=await request('?shop_id=eq.'+shop(shopId)+
+  '&select=draft&order=updated_at.desc&limit=250');
+ return rows.map(x=>String(x.draft?.importBatchId||'')).filter(Boolean).sort().at(-1)||'';
+}
+export async function saveKitDraft(shopId,{kit,creative,logistics,importBatchId}){
  const id=shop(shopId);
  if(!/^KIT-[A-Z0-9-]{4,115}$/.test(String(kit?.kitSku||'')))throw Error('Código de kit inválido.');
  const codes=kit.components?.map(x=>String(x.sku));
@@ -31,6 +36,7 @@ export async function saveKitDraft(shopId,{kit,creative,logistics}){
  const description=String(creative?.description||'').trim().slice(0,2000);
  if(title.length<10||description.length<80)throw Error('Preencha o título e a descrição antes de salvar.');
  const previous=await loadKitDraft(id,kit.kitSku);
+ const batchId=String(importBatchId||previous?.importBatchId||await latestActiveBatch(id)||'');
  if(previous?.publication?.itemId||['publishing','uncertain'].includes(previous?.publication?.status))
   throw Error('Kit enviado à Shopee ou com publicação incerta; não regrave. Consulte o status primeiro.');
  const seoTitles=Array.isArray(creative?.seoTitles)?creative.seoTitles
@@ -41,7 +47,7 @@ export async function saveKitDraft(shopId,{kit,creative,logistics}){
   ?Object.fromEntries(codes.filter(sku=>typeof creative.manualFacts[sku]==='string')
    .map(sku=>[sku,creative.manualFacts[sku].replace(/[\u0000-\u001f]/g,' ').trim().slice(0,1700)])):{};
  const savedLogistics=logistics===undefined?previous?.logistics||null:normalizeKitLogistics(logistics,kit);
- const draft={kit,logistics:savedLogistics,creative:{title,description,seoTitles:uniqueTitles.length===3?uniqueTitles:[],
+ const draft={kit,importBatchId:batchId||null,logistics:savedLogistics,creative:{title,description,seoTitles:uniqueTitles.length===3?uniqueTitles:[],
   manualFacts,source:String(creative.source||'rascunho revisado').slice(0,90)},
   reviewed:false,shopeePublished:false,
   publication:previous?.publication||{status:'local_draft',itemId:null},
@@ -79,16 +85,26 @@ export async function deleteKitDraft(shopId,kitSku){
 }
 export async function listKitDrafts(shopId){
  const rows=await request('?shop_id=eq.'+shop(shopId)+
-  '&select=kit_sku,component_skus,draft,updated_at&order=updated_at.desc&limit=30');
- return rows.map(x=>({kitSku:x.kit_sku,skus:x.component_skus,
-  title:String(x.draft?.creative?.title||''),quote:x.draft?.kit?.quote,
-  kitCost:Number(x.draft?.kit?.kitCost)||null,
-  reviewRequired:x.draft?.kit?.reviewRequired===true,
-  images:(x.draft?.kit?.components||[]).slice(0,3)
-    .map(p=>String(p.imageUrl||'')).filter(url=>/^https:\/\/wedrop-products-images\.nyc3\.cdn\.digitaloceanspaces\.com\//.test(url)),
-  publication:x.draft?.publication?.status||'local_draft',optimization:x.draft?.optimization||null,
-  deletable:mayDeleteKitDraft(x.draft?.publication),
-  updatedAt:x.updated_at}));
+  '&select=kit_sku,component_skus,draft,updated_at&order=updated_at.desc&limit=250');
+ const all=rows.map(x=>({kitSku:x.kit_sku,skus:x.component_skus,
+   title:String(x.draft?.creative?.title||''),quote:x.draft?.kit?.quote,
+   kitCost:Number(x.draft?.kit?.kitCost)||null,
+   reviewRequired:x.draft?.kit?.reviewRequired===true,
+   images:(x.draft?.kit?.components||[]).slice(0,3)
+     .map(p=>String(p.imageUrl||'')).filter(url=>/^https:\/\/wedrop-products-images\.nyc3\.cdn\.digitaloceanspaces\.com\//.test(url)),
+   publication:x.draft?.publication?.status||'local_draft',
+   itemId:x.draft?.publication?.itemId||null,
+   importBatchId:String(x.draft?.importBatchId||''),
+   optimization:x.draft?.optimization||null,
+   deletable:mayDeleteKitDraft(x.draft?.publication),
+   updatedAt:x.updated_at}));
+ // Lote mais recente por identificador cronológico, não por alteração de cartão antigo.
+ const activeBatchId=all.map(x=>x.importBatchId).filter(Boolean).sort().at(-1)||'';
+ const published=all.filter(x=>x.publication==='published');
+ const drafts=all.filter(x=>x.publication!=='published'&&(
+  !activeBatchId||x.importBatchId===activeBatchId||
+  ['publishing','uncertain','published_pending'].includes(x.publication)));
+ return {drafts,published,activeBatchId:activeBatchId||null};
 }
 export async function loadKitDraft(shopId,kitSku){
  const id=shop(shopId),code=String(kitSku||'').trim();
@@ -99,6 +115,7 @@ export async function loadKitDraft(shopId,kitSku){
  if(!row)return null;
  return {kitSku:row.kit_sku,skus:row.component_skus,
   creative:row.draft?.creative||{},kit:row.draft?.kit||null,
+  importBatchId:String(row.draft?.importBatchId||''),
   logistics:row.draft?.logistics||null,
   publication:row.draft?.publication||{status:'local_draft',itemId:null},optimization:row.draft?.optimization||null,updatedAt:row.updated_at};
 }
@@ -112,7 +129,7 @@ export async function saveKitDraftLogistics(shopId,kitSku,input){
   throw Error('Kit enviado ou com publicação pendente: os campos de logística não podem mais ser alterados.');
  const logistics=normalizeKitLogistics(input,current.kit);
  if(!logistics)throw Error('Dados de logística inválidos.');
- const draft={kit:current.kit,creative:current.creative,logistics,
+ const draft={kit:current.kit,importBatchId:current.importBatchId||null,creative:current.creative,logistics,
   reviewed:false,shopeePublished:false,publication:current.publication,optimization:current.optimization||null};
  const rows=await request('?shop_id=eq.'+id+'&kit_sku=eq.'+encodeURIComponent(kitSku)+
    '&draft->publication->>status=eq.local_draft',{
@@ -127,7 +144,7 @@ export async function recordKitPublication(shopId,kitSku,publication){
  if(!current)throw Error('Salve o rascunho do kit antes de enviar à Shopee.');
  if(current.publication?.itemId&&current.publication.status==='published')
   throw Error('Este kit já está publicado na Shopee. Não criar outro anúncio.');
- const draft={kit:current.kit,creative:current.creative,logistics:current.logistics||null,reviewed:true,
+ const draft={kit:current.kit,importBatchId:current.importBatchId||null,creative:current.creative,logistics:current.logistics||null,reviewed:true,
   shopeePublished:publication.status==='published',optimization:current.optimization||null,
   publication:{status:publication.status,itemId:publication.itemId||null,
    updatedAt:new Date().toISOString(),message:String(publication.message||'').slice(0,400)}};
@@ -145,7 +162,7 @@ export async function recordKitOptimization(shopId,kitSku,link){
   Number(current.kit?.kitCost)!==Number(link.kitCost)||
   Number(current.kit?.quote?.grossPrice)!==Number(link.grossPrice))
   throw Error('O kit mudou durante a preparação. Reabra e salve novamente.');
- const draft={kit:current.kit,creative:current.creative,
+ const draft={kit:current.kit,importBatchId:current.importBatchId||null,creative:current.creative,
   logistics:current.logistics||null,reviewed:false,shopeePublished:false,
   publication:current.publication,optimization:link};
  const result=await request('?shop_id=eq.'+id+'&kit_sku=eq.'+encodeURIComponent(kitSku)+

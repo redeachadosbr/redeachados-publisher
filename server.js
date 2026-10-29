@@ -296,7 +296,7 @@ app.post('/api/shopee/kits/prepare',mustLogin,requireWeDropAdmin,async(req,res)=
 });
 app.get('/api/shopee/kits/drafts',mustLogin,requireWeDropAdmin,async(req,res)=>{
  res.setHeader('Cache-Control','no-store');
- try{const {auth}=await getValidAuth(req);res.json({ok:true,drafts:await listKitDrafts(auth.shopId)});}
+ try{const {auth}=await getValidAuth(req);res.json({ok:true,...await listKitDrafts(auth.shopId)});}
  catch(error){res.status(400).json({error:String(error.message||error).slice(0,260)});}
 });
 app.post('/api/shopee/kits/drafts/save',mustLogin,requireWeDropAdmin,async(req,res)=>{
@@ -596,6 +596,8 @@ app.post('/api/shopee/kits/plus-import',mustLogin,requireWeDropAdmin,async(req,r
       !Array.isArray(raw)||raw.length<1||raw.length>10)
    throw Error('Informe até dez kits de dois ou três SKUs, com meta entre 5 e 10.');
   const seen=new Set(),kits=[],rejected=[];
+  // Importações novas são coleções independentes; preservar publicações e histórico.
+  const importBatchId=new Date().toISOString()+'-'+crypto.randomUUID();
   for(const [index,input] of raw.slice(0,desiredKits).entries()){
    try{
     if(!Array.isArray(input)||input.length<2||input.length>3||
@@ -622,11 +624,8 @@ app.post('/api/shopee/kits/plus-import',mustLogin,requireWeDropAdmin,async(req,r
     if(idea&&!rankKitIdeaProducts(idea,kit.components).products.length)
      throw Error('Produtos sem correspondência com a ideia informada.');
     const fit=assessKitBuyerFit(kit.components);
-    // Rejeitar erros objetivos; compatibilidade comercial incerta NÃO apaga
-    // um kit infantil cuja composição, custo e estoque foram verificados.
-    const allToys=kit.components.every(p=>/brinqued|boneca|casinha|carrinho|pista|jogos|educativ|bebe|passeio/.test(
-     String(p.category||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase()));
-    if(!fit.ok&&!allToys)throw Error('Falta coerência de uso: '+fit.reason);
+    // Coerência subjetiva é pendência de revisão, não motivo de rejeição.
+    // SKU real, estoque, custo e categoria permanecem verificações obrigatórias.
     const reviewRequired=fit.reviewRequired===true||!fit.ok;
     kit.reviewRequired=reviewRequired;
     kit.reviewNotes=reviewRequired?(fit.reviewNotes||[
@@ -637,7 +636,7 @@ app.post('/api/shopee/kits/plus-import',mustLogin,requireWeDropAdmin,async(req,r
     const previous=await loadKitDraft(auth.shopId,kit.kitSku);
     const creative=previous?.creative?.title&&previous?.creative?.description?
      previous.creative:await kitCreative(auth.shopId,kit,{ai:false});
-    const created=await saveKitDraft(auth.shopId,{kit,creative});
+    const created=await saveKitDraft(auth.shopId,{kit,creative,importBatchId});
     kits.push({...kit,buyerFitScore:fit.ok?fit.score:0,
      matchSignals:fit.signals||[],reviewRequired,reviewNotes:kit.reviewNotes,
      importIndex:index+1,status:reviewRequired?'pending_review':'draft',
@@ -656,7 +655,8 @@ app.post('/api/shopee/kits/plus-import',mustLogin,requireWeDropAdmin,async(req,r
    received:raw.slice(0,desiredKits).length,
    saved:kits.filter(x=>x.draftSaved).length,
    pendingReview:kits.filter(x=>x.reviewRequired).length,
-   targetCount:desiredKits,marketplaceUpdated:false,shopeePublished:false});
+   targetCount:desiredKits,activeBatchId:kits.length?importBatchId:null,
+   marketplaceUpdated:false,shopeePublished:false});
  }catch(error){res.status(400).json({error:String(error.message||error).slice(0,300)});}
 });
 app.post('/api/shopee/kits/plus-content',mustLogin,requireWeDropAdmin,async(req,res)=>{
