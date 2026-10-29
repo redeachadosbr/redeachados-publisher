@@ -2425,7 +2425,8 @@ function kitContentHandoff(prompt,tab=null){
  if(!prompt.trim())throw Error('Orientação vazia. Prepare o conteúdo novamente.');
  // Preenche o campo quando suportado pelo ChatGPT; ainda pode exigir clique em Enviar.
  const url='https://chatgpt.com/?prompt='+encodeURIComponent(prompt);
- if(navigator.clipboard?.writeText)void navigator.clipboard.writeText(prompt).catch(()=>{});
+ // Não sobrescrever silenciosamente a área de transferência com a ORIENTAÇÃO.
+ // O botão azul deve receber apenas a RESPOSTA copiada pelo usuário no ChatGPT.
  let opened=false;
  if(tab&&!tab.closed){try{tab.location.replace(url);opened=true;}catch{
   try{tab.location.href=url;opened=true;}catch{}
@@ -2636,7 +2637,8 @@ function kitShowPasteSeoReply(reason=''){
  $('#kitContentDetails').open=true;
  kitImportState('Aguardando a resposta completa do ChatGPT','info');
  kitContentFeedback((reason?reason+' ':'')+
-  'No ChatGPT clique em Copiar na RESPOSTA com TÍTULO 1, 2, 3 e DESCRIÇÃO; volte e pressione o botão azul. '+
+  'No bloco Escrita do ChatGPT, clique no ícone de dois quadrados (Copiar), no canto superior direito. '+
+  'Depois volte ao Manager e clique no botão azul. '+
   'Se o Chrome não liberar a cópia, cole aqui com Ctrl+V: os três títulos, notas SEO e descrição serão importados em conjunto.','info');
  const field=$('#kitPlusTextResult');
  field.focus();field.scrollIntoView({behavior:'smooth',block:'nearest'});
@@ -2653,7 +2655,7 @@ async function kitImportCopiedContent(){
  try{
   const content=await navigator.clipboard.readText();
   if(!content.trim()){
-   kitShowPasteSeoReply('Ainda não há uma resposta copiada.');
+   kitShowPasteSeoReply('A resposta está no ChatGPT, mas ainda não foi copiada. Clique no ícone Copiar do bloco Escrita.');
    return;
   }
   field.value=content;

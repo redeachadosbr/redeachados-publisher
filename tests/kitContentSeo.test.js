@@ -157,7 +157,7 @@ test('importação azul recupera colagem manual antes do clipboard e não acusa 
  const html=readFileSync(new URL('../public/index.html',import.meta.url),'utf8');
  assert.match(ui,/function kitShowPasteSeoReply\(/);
  assert.match(ui,/if\(field\.value\.trim\(\)\)\{importPlusText\(\);return;\}/);
- assert.match(ui,/Ainda não há uma resposta copiada/);
+ assert.match(ui,/ainda não foi copiada/);
  assert.match(ui,/if\(!content\.trim\(\)\)\{/);
  assert.match(ui,/function kitPasteSeoReply\(event\)/);
  assert.match(ui,/event\.preventDefault\(\);\s*\$\('#kitPlusTextResult'\)\.value=copied;\s*importPlusText\(\)/);
@@ -165,4 +165,16 @@ test('importação azul recupera colagem manual antes do clipboard e não acusa 
  assert.match(html,/3 títulos com notas SEO/);
  assert.match(ui,/kitShowSeoTitles\(scored\)/);
  assert.match(ui,/\$\('#kitDescription'\)\.value=result\.description/);
+});
+
+test('abrir ChatGPT não sobrescreve a resposta na área de transferência',async()=>{
+ const {readFileSync}=await import('node:fs');
+ const browser=readFileSync(new URL('../public/kit-builder.js',import.meta.url),'utf8');
+ const handoff=browser.slice(browser.indexOf('function kitContentHandoff('),
+  browser.indexOf('function kitContentReadManual(',browser.indexOf('function kitContentHandoff(')));
+ assert.doesNotMatch(handoff,/navigator\.clipboard\.writeText\(prompt\)/);
+ assert.match(browser,/kitShowSeoTitles\(scored\)/);
+ assert.match(browser,/scoreKitSeoTitle\(x\.title,prepared\.kit\.components\)/);
+ assert.match(browser,/\$\('#kitDescription'\)\.value=result\.description/);
+ assert.match(browser,/ícone de dois quadrados/);
 });
