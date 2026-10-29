@@ -2436,7 +2436,7 @@ function kitContentHandoff(prompt,tab=null){
  $('#kitContentDetails').open=!opened;
  kitImportState(opened?'Aguardando resposta · 3 títulos e descrição':'Abertura bloqueada · orientação pronta','info');
  kitContentFeedback(opened?
-  'ChatGPT aberto com o pedido do kit. Clique em Enviar se necessário. Depois volte ao Manager e clique no botão azul: a Ponte v1.0.60 recuperará os 3 títulos e a descrição sem copiar nem colar.':
+  'ChatGPT aberto com o pedido do kit. Clique em Enviar se necessário. Depois volte ao Manager e clique no botão azul: a Ponte v1.0.61 recuperará os 3 títulos e a descrição sem copiar nem colar.':
   'O Chrome bloqueou a abertura. Em Opções avançadas, use Copiar orientação completa e Abrir ChatGPT com orientação pronta.','info');
 }
 function kitContentReadManual(){
@@ -2634,9 +2634,9 @@ function importPlusText({silent=false}={}){
 function kitBridgeVersionSupportsText(version){
  const parts=String(version||'').split('.').map(Number);
  return parts.length===3&&parts.every(Number.isInteger)&&
-  (parts[0]>1||parts[0]===1&&(parts[1]>0||parts[1]===0&&parts[2]>=60));
+  (parts[0]>1||parts[0]===1&&(parts[1]>0||parts[1]===0&&parts[2]>=61));
 }
-function kitFetchGeneratedTextFromPonte(kitSku,skus){
+function kitFetchGeneratedTextFromPonte(kitSku,skus,products){
  return new Promise((resolve,reject)=>{
   const nonce=crypto.randomUUID();
   let done=false,asked=false;
@@ -2652,9 +2652,9 @@ function kitFetchGeneratedTextFromPonte(kitSku,skus){
    if(m.kind==='RA_EXTENSION_READY'&&!asked){
     asked=true;
     if(!kitBridgeVersionSupportsText(m.version))
-     return finish(Error('Sua Ponte ChatGPT precisa ser atualizada para v1.0.60 para recuperar automaticamente títulos e descrição. A versão atual não inclui a captura de texto dos kits.'));
+     return finish(Error('Sua Ponte ChatGPT precisa ser atualizada para v1.0.61 para recuperar automaticamente títulos e descrição. A versão atual não inclui a captura de texto dos kits.'));
     window.postMessage({kind:'RA_SITE_KIT_TEXT_FETCH',
-     payload:{nonce,kitSku,skus}},location.origin);
+     payload:{nonce,kitSku,skus,products}},location.origin);
    }else if(m.kind==='RA_EXTENSION_KIT_TEXT_RESULT'&&m.nonce===nonce){
     if(m.kitSku!==kitSku)return finish(Error('A resposta veio de outro kit. Nenhum campo foi alterado.'));
     if(m.ok!==true||!m.rawText)
@@ -2662,7 +2662,7 @@ function kitFetchGeneratedTextFromPonte(kitSku,skus){
     finish(null,m);
    }
   };
-  const timer=setTimeout(()=>finish(Error('A extensão Ponte ChatGPT não respondeu. Verifique se a v1.0.60 está ativa no Chrome.')),15000);
+  const timer=setTimeout(()=>finish(Error('A extensão Ponte ChatGPT não respondeu. Verifique se a v1.0.61 está ativa no Chrome.')),15000);
   window.addEventListener('message',handle);
   window.postMessage({kind:'RA_EXTENSION_PROBE'},location.origin);
  });
@@ -2670,11 +2670,12 @@ function kitFetchGeneratedTextFromPonte(kitSku,skus){
 async function kitImportCopiedContent(){
  if(!prepared)return kitContentFeedback('Abra o rascunho do kit antes de importar o anúncio.','error');
  const kitSku=prepared.kit.kitSku,skus=prepared.kit.components.map(p=>p.sku);
+ const products=prepared.kit.components.map(p=>({sku:String(p.sku),name:String(p.name||'').slice(0,180)}));
  const button=$('#kitImportCopiedText');button.disabled=true;
  kitImportState('Buscando automaticamente a resposta na conversa do ChatGPT...','info');
  kitContentFeedback('Ponte ChatGPT: localizando os 3 títulos e a descrição deste kit, sem copiar ou colar.','info');
  try{
-  const response=await kitFetchGeneratedTextFromPonte(kitSku,skus);
+  const response=await kitFetchGeneratedTextFromPonte(kitSku,skus,products);
   if(prepared?.kit?.kitSku!==kitSku)throw Error('O kit foi trocado durante a captura. Nenhuma resposta foi aplicada.');
   // Reutiliza EXATAMENTE a validação, as notas SEO e o salvamento que já funcionavam.
   parseKitSeoResponse(response.rawText);

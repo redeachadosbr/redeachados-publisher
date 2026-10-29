@@ -89,7 +89,7 @@ test('importacao azul fica ao lado do gerador; instrucoes duplicadas foram remov
   assert.equal(html.split('id="'+id+'"').length-1,1);
  assert.match(browser,/kitImportCopiedText'\)\?\.addEventListener\('click'/);
  assert.match(browser,/RA_SITE_KIT_TEXT_FETCH/);
- assert.match(browser,/kitFetchGeneratedTextFromPonte\(kitSku,skus\)/);
+ assert.match(browser,/kitFetchGeneratedTextFromPonte\(kitSku,skus,products\)/);
  assert.match(browser,/parseKitSeoResponse\(\$\('#kitPlusTextResult'\)\.value\)/);
  assert.match(browser,/\$\('#kitDescription'\)\.value=result\.description/);
  assert.match(browser,/void saveDraft\(\)\.then/);
@@ -159,7 +159,7 @@ test('botão azul recupera automaticamente a resposta por Ponte, sem abrir área
  const start=ui.indexOf('async function kitImportCopiedContent()');
  const end=ui.indexOf('function kitPasteSeoReply(',start);
  const body=ui.slice(start,end);
- assert.match(body,/kitFetchGeneratedTextFromPonte\(kitSku,skus\)/);
+ assert.match(body,/kitFetchGeneratedTextFromPonte\(kitSku,skus,products\)/);
  assert.match(body,/parseKitSeoResponse\(response\.rawText\)/);
  assert.match(body,/importPlusText\(\)/);
  assert.doesNotMatch(body,/kitContentDetails'\)\.open=true/);
@@ -180,4 +180,14 @@ test('abrir ChatGPT não sobrescreve a resposta na área de transferência',asyn
  assert.match(browser,/scoreKitSeoTitle\(x\.title,prepared\.kit\.components\)/);
  assert.match(browser,/\$\('#kitDescription'\)\.value=result\.description/);
  assert.match(browser,/RA_SITE_KIT_TEXT_FETCH/);
+});
+
+test('Ponte v1.0.61 recebe nomes separados das 3 SKUs e preserva validação SEO',async()=>{
+ const {readFileSync}=await import('node:fs');
+ const ui=readFileSync(new URL('../public/kit-builder.js',import.meta.url),'utf8');
+ assert.match(ui,/parts\[2\]>=61/);
+ assert.match(ui,/products=prepared\.kit\.components\.map/);
+ assert.match(ui,/payload:\{nonce,kitSku,skus,products\}/);
+ assert.match(ui,/parseKitSeoResponse\(response\.rawText\)/);
+ assert.match(ui,/kitShowSeoTitles\(scored\)/);
 });
