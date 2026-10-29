@@ -1,7 +1,7 @@
-function reply(payload,status=200,headers={}) {return new Response(JSON.stringify(payload),{status,headers:{"Content-Type":"application/json; charset=utf-8","Cache-Control":"no-store","X-Content-Type-Options":"nosniff",...headers}});}
+import {isAuthorized,reply} from "../lib/auth.mjs";
 export const config={path:"/api/shopee/ads/overview"};
 export default async function handler(req) {
-  // Consulta pública e somente leitura: nenhuma função de alterar Shopee é exposta.
+  if(!isAuthorized(req))return reply({ok:false,error:"LOGIN_REQUIRED"},401);
   if(req.method!=="GET")return reply({ok:false,error:"Método inválido"},405);
   const password=process.env.RENDER_APP_PASSWORD;
   const base=(process.env.RENDER_SHOPEE_URL||"https://redeachados-shopee.onrender.com").replace(/\/$/,"");
