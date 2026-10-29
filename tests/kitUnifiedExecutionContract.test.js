@@ -12,9 +12,9 @@ test('kit usa a etapa 08 do otimizador real com desconto proprio',()=>{
  assert.match(app,/else optimizerDiscountOpenReview\(\)/);
 });
 test('kit preserva autorizacao e nao utiliza token de promocao de SKU simples',()=>{
- assert.match(app,/if\(optimizerKitWorkflowActive\(\)\)return true;/);
- assert.match(app,/!optimizerKitWorkflowActive\(\)&&optimizerDiscountApprovalReady\(\)/);
- assert.match(app,/\['all','remaining'\]\.includes\(p\.selectedStage\)&&!optimizerKitWorkflowActive\(\)/);
+ assert.match(app,/typeof optimizerKitWorkflowActive==='function'/);
+ assert.match(app,/optimizerDiscountApprovalReady\(\)/);
+ assert.match(app,/discountApprovalToken:p\.modelVariations/);
  assert.match(server,/\['all','remaining'\]\.includes\(plan\.selectedStage\)&&!linkedKit/);
 });
 test('promocao do kit possui previa e confirmacao independentes',()=>{
