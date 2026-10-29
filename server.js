@@ -2360,7 +2360,9 @@ app.post('/api/shopee/optimizer/execution/prepare',mustLogin,requireWeDropAdmin,
       netProfit:Number(financial.quote.netProfit)};
     }
     if(selectedStage==='fiscal'&&reviewState.stages?.fiscal?.reviewed&&reviewState.tax){
-      const supplier=kitLink?null:await readWeDropProduct(auth.shopId,{sku,itemId,modelId});
+      // Kit e SKU simples usam o mesmo vínculo auditado. Nunca descartar
+      // a fonte WeDrop ao preparar a autorização da SKU principal.
+      const supplier=await readWeDropProduct(auth.shopId,{sku,itemId,modelId});
       fiscalMatrixSource({sku,supplier,tax:reviewState.tax,reviewSource:reviewState.matrixFiscal});
     }
     // Marca proveniente da WeDrop precisa coincidir com a categoria mesmo que a
@@ -2407,7 +2409,8 @@ app.post('/api/shopee/optimizer/execution/prepare',mustLogin,requireWeDropAdmin,
       (reviewState._technicalSkipped?.length||0)+' campo(s) opcional(is) incompatível(is) mantidos como pendência.');
     if(plan.finalFiscal&&['all','remaining'].includes(selectedStage)){
       // A última etapa usa o mesmo vínculo WeDrop/NCM que a execução fiscal isolada.
-      const supplier=kitLink?null:await readWeDropProduct(auth.shopId,{sku,itemId,modelId});
+      // A verificação precisa usar a fonte real, inclusive para kits.
+      const supplier=await readWeDropProduct(auth.shopId,{sku,itemId,modelId});
       fiscalMatrixSource({sku,supplier,tax:reviewState.tax,reviewSource:reviewState.matrixFiscal});
     }
     if(selectedStage==='fiscal'){
