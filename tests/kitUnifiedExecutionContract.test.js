@@ -100,9 +100,9 @@ test('titulo e descricao do kit possuem botoes de conferencia ao lado dos textos
   for(const id of [container,button,status])
    assert.equal(html.split('id="'+id+'"').length-1,1);
  }
- assert.match(html,/\/app\.js\?v=3\.5\.12-kit-discount-planning/);
- assert.match(html,/\/kit-builder\.js\?v=3\.9\.9-kit-discount-planning/);
- assert.match(html,/\/kit-builder\.css\?v=3\.8\.8-kit-discount-planning/);
+ assert.match(html,/\/app\.js\?v=3\.5\.13-kit-discount-check/);
+ assert.match(html,/\/kit-builder\.js\?v=3\.9\.10-kit-discount-check/);
+ assert.match(html,/\/kit-builder\.css\?v=3\.8\.9-kit-discount-check/);
  assert.match(app,/globalThis\.RAKitSourceChanged=optimizerKitSourceChanged/);
  assert.match(app,/function optimizerKitSourceConfirm\(stage\)/);
  assert.match(app,/await optimizerKitSourceFlush\(stage\)/);
@@ -219,7 +219,7 @@ test('editar pela previa expande o atributo correto sem substituir os campos sal
  assert.match(app,/globalThis\.RATechnicalStudio\?\.render\?\.\(data\)/);
  assert.match(app,/body\.attributes=optimizerTechnicalValues\(\)/);
  assert.match(html,/id="optimizerWorkflowReview"/);
- assert.match(html,/\/app\.js\?v=3\.5\.12-kit-discount-planning/);
+ assert.match(html,/\/app\.js\?v=3\.5\.13-kit-discount-check/);
 });
 
 
@@ -237,7 +237,7 @@ test('etapa 07 possui botao check distinto do salvamento fiscal',()=>{
  assert.match(css,/#raFiscalModernLayout \.optimizer-workflow-actions #raFiscalChecklistConfirm/);
  assert.match(html,/fiscal-modern-layout\.css\?v=1\.0\.3-compact-help/);
  assert.match(html,/fiscal-modern-layout\.js\?v=1\.0\.3-compact-help/);
- assert.match(html,/\/app\.js\?v=3\.5\.12-kit-discount-planning/);
+ assert.match(html,/\/app\.js\?v=3\.5\.13-kit-discount-check/);
 });
 test('salvar dados fiscais nao confirma checklist e confirmar exige resposta do servidor',()=>{
  assert.match(app,/async function optimizerWorkflowSaveReview\(\{fiscalConfirm=false\}=\{\}\)/);
@@ -334,14 +334,14 @@ test('etapa 08 do kit permite previa de planejamento antes de executar o anuncio
  assert.match(existing,/apply\.disabled=planned/);
  assert.match(existing,/goExecution\.hidden=!planned/);
  assert.match(existing,/globalThis\.RAKitDiscountPrepared\?\.\(/);
- assert.match(app,/globalThis\.RAKitDiscountPrepared=\(\{kitSku,itemId,planning=true\}=\{\}\)=>/);
- assert.match(app,/prepared\?'Prévia preparada · aplicação após execução'/);
+ assert.match(app,/globalThis\.RAKitDiscountPrepared=\(\{kitSku,itemId,discountId,reviewSaved=false,/);
+ assert.match(app,/prepared\?'✓ Conferência registrada · ainda não publicado'/);
  assert.match(html,/id="kitOptimizeDiscountToExecution"/);
  assert.match(html,/id="kitOptimizeDiscountApply" disabled/);
- assert.match(module,/kit-existing-optimization\.js\?v=8-discount-planning/);
- assert.match(html,/\/app\.js\?v=3\.5\.12-kit-discount-planning/);
- assert.match(html,/\/kit-builder\.js\?v=3\.9\.9-kit-discount-planning/);
- assert.match(html,/\/kit-builder\.css\?v=3\.8\.8-kit-discount-planning/);
+ assert.match(module,/kit-existing-optimization\.js\?v=9-discount-check/);
+ assert.match(html,/\/app\.js\?v=3\.5\.13-kit-discount-check/);
+ assert.match(html,/\/kit-builder\.js\?v=3\.9\.10-kit-discount-check/);
+ assert.match(html,/\/kit-builder\.css\?v=3\.8\.9-kit-discount-check/);
 });
 test('etapa 08 continua sem token de desconto se falta execucao confirmada',()=>{
  const service=source('shopeeKitDiscountService.js');
@@ -351,5 +351,53 @@ test('etapa 08 continua sem token de desconto se falta execucao confirmada',()=>
  assert.match(service,/if\(String\(x\.itemId\)!==String\(approved\.itemId\)/);
  assert.match(existing,/if\(!target\?\.prepared\|\|!discountToken\|\|busy\)return/);
  assert.match(existing,/if\(!window\.confirm\(/);
- assert.match(existing,/Nenhum dado foi alterado na Shopee/);
+ assert.match(existing,/Nenhum desconto foi publicado/);
+});
+
+
+test('etapa 08 mostra tabela clara em vez de bloco preto e preserva dados',()=>{
+ const css=source('public/kit-builder.css');
+ const module=source('public/kit-builder.js');
+ assert.match(html,/id="kitOptimizeDiscountSummary" class="kit-discount-summary"/);
+ assert.doesNotMatch(html,/<pre id="kitOptimizeDiscountSummary">/);
+ assert.match(existing,/function renderDiscountSummary\(result,planned,current\)/);
+ assert.match(existing,/const grid=document\.createElement\('dl'\)/);
+ assert.match(existing,/const label=document\.createElement\('dt'\)/);
+ assert.match(existing,/const content=document\.createElement\('dd'\)/);
+ assert.match(existing,/content\.textContent=value/);
+ assert.match(existing,/renderDiscountSummary\(result,planned,current\)/);
+ assert.match(css,/#tab-kits #kitDetail \.kit-existing-discount-review \.kit-discount-summary/);
+ assert.match(css,/background:#fff!important;color:#18365a!important/);
+ assert.match(css,/\.kit-discount-summary-row dd/);
+ assert.match(module,/kit-existing-optimization\.js\?v=9-discount-check/);
+});
+test('previa do kit confere etapa 08 sem sinalizar aplicacao na Shopee',()=>{
+ const store=source('shopeeOptimizationWorkflowStore.js');
+ assert.match(server,/kitDiscountPreview:\{kitSku:code,itemId:String\(link\.itemId\)/);
+ assert.match(server,/String\(link\.itemId\)===String\(preview\.itemId\)/);
+ assert.match(server,/reviewSaved,marketplaceUpdated:false/);
+ assert.match(store,/if\(change\.kitDiscountPreview!==undefined\)next\.kitDiscountPreview/);
+ assert.match(store,/if\(change\.kitDiscountPublication!==undefined\)next\.kitDiscountPublication/);
+ assert.match(store,/next\.kitDiscountPreview=null;/);
+ assert.match(server,/kitDiscountPreview:review\.kitDiscountPreview\|\|null/);
+ assert.match(server,/kitDiscountPublication:review\.kitDiscountPublication\|\|null/);
+ assert.match(app,/function optimizerKitDiscountReviewState\(w\)/);
+ assert.match(app,/const recent=Number\.isFinite\(time\)/);
+ assert.match(app,/const prepared=Boolean\(same\(preview\)&&preview\.status==='prepared'/);
+ assert.match(app,/kitDiscountReviewed=kitMode&&optimizerKitDiscountReviewState\(data\)\.prepared/);
+ assert.match(app,/optimizerKitDiscountReviewState\(w\)\.prepared/);
+ assert.match(app,/const reviewed=kit\?prepared:matching&&optimizerDiscountApprovalReady\(\)/);
+ assert.match(app,/card\.classList\.toggle\('optimizer-workflow-reviewed',Boolean\(sent\|\|reviewed\)\)/);
+ assert.match(app,/prepared\?'✓ Conferência registrada · ainda não publicado'/);
+ assert.match(existing,/reviewSaved:result\.reviewSaved===true,preview:result/);
+});
+test('publicacao do desconto so altera estado apos resposta confirmada',()=>{
+ assert.match(server,/if\(out\?\.status==='discount_confirmed'\)/);
+ assert.match(server,/kitDiscountPublication:\{kitSku:code,itemId:String\(out\.itemId\)/);
+ assert.match(app,/const confirmed=Boolean\(same\(publication\)&&publication\.status==='confirmed'\)/);
+ assert.match(existing,/if\(result\.status==='discount_confirmed'\)/);
+ assert.match(existing,/if\(!target\?\.prepared\|\|!discountToken\|\|busy\)return/);
+ assert.match(existing,/if\(!window\.confirm\(/);
+ assert.match(server,/previewKitDiscount\(\{cfg,auth,kitSku:code,/);
+ assert.doesNotMatch(server,/kitDiscountPublication:\{kitSku:code,itemId:String\(preview\.itemId\)/);
 });
