@@ -34,7 +34,9 @@ export function compileShopeeExecutionPlan({shopId,itemId,modelId,sku,record,rev
   if(!['NORMAL','UNLIST'].includes(String(record?.status)))blocked.push('Anúncio não está em estado editável confirmado.');
   if(selected('seo')&&stages.seo?.reviewed===true){
     try{
-      validateContentRules({title});
+      validateContentRules({title},{allowShortKitTitle:Boolean(
+       state.kitOptimization?.kitSku&&String(state.kitOptimization.mainSku)===String(sku)
+      )});
       if(title!==currentTitle)proposed.item_name=title;
     }catch(e){blocked.push(e.message);}
   }else if(selected('seo')&&title&&title!==currentTitle)blocked.push('Revisar e registrar a etapa Título SEO antes de executar.');
