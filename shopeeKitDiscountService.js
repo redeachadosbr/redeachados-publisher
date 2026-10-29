@@ -169,3 +169,36 @@ export async function executeKitDiscount({cfg,auth,kitSku,discountId,token,secre
    message:'Desconto confirmado na Minha Promoção. Não altera os preços de outros anúncios.'};
  }finally{locks.delete(k);}
 }
+
+
+// Leitura oficial do desconto da SKU principal do kit, sem alterar a Shopee.
+export async function inspectKitDiscountForExecution({cfg,auth,kitSku,discountId}){
+ const x=await context(cfg,auth,kitSku,discountId,{requireExecution:false});
+ const member=x.existing;
+ const actual=x.modelId?Number(member?.model_list?.find(m=>Number(m.model_id)===x.modelId)?.model_promotion_price):
+  Number(member?.item_promotion_price);
+ return {kitSku,itemId:String(x.itemId),modelId:String(x.modelId),discountId:String(discountId),
+  gross:x.gross,promo:x.promo,afterCoupon:x.afterCoupon,currentGross:x.currentGross,
+  priceAligned:x.priceAligned,liveStatus:x.liveStatus,
+  confirmed:x.priceAligned&&Number.isFinite(actual)&&Math.abs(actual-x.promo)<=.011,
+  action:member?'update':'add'};
+}
+// Os custos, as regras 0/9 e a pesquisa da Shopee são revalidados antes da escrita.
+export async function validateKitDiscountMarketForExecution({cfg,auth,kitSku,discountId}){
+ const before=await context(cfg,auth,kitSku,discountId,{requireExecution:false});
+ const market=await lookupShopeeCompetitors({
+  title:before.saved.creative.title,ownShopId:auth.shopId,ownItemId:before.itemId
+ });
+ const minimum=REDE_ACHADOS_MARKET_RULES.minimumOffers;
+ if(market.verified!==true||market.source!=='shopee_affiliate_product_offers'||
+   market.count<minimum||!Number.isFinite(Date.parse(market.researchedAt))||
+   Date.now()-Date.parse(market.researchedAt)>48*3600000)
+  throw Error('Etapa 08: pesquisa Shopee não confirmou '+minimum+
+   ' ofertas equivalentes. Nenhum desconto foi enviado.');
+ const after=await context(cfg,auth,kitSku,discountId,{requireExecution:false});
+ if(before.itemId!==after.itemId||before.modelId!==after.modelId||
+  Math.abs(before.gross-after.gross)>.011||Math.abs(before.promo-after.promo)>.011||
+  Math.abs(before.afterCoupon-after.afterCoupon)>.011)
+  throw Error('Valores do kit mudaram durante a pesquisa; desconto não enviado.');
+ return {researchedAt:market.researchedAt,offers:market.count};
+}

@@ -18,7 +18,7 @@ export function normalizeShopeeExecutionStage(stage='all'){
  if(!SHOPEE_EXECUTION_STAGES.includes(selected))throw Error('Etapa de publicação desconhecida.');
  return selected;
 }
-export function compileShopeeExecutionPlan({shopId,itemId,modelId,sku,record,review,live,manualVideo=null,verifiedVideoSha256=null,manualImages=[],deferUnconfirmedFiscal=false,omitFiscal=false,selectedStage='all',allowDiscountOnly=false,modelVariations=null}){
+export function compileShopeeExecutionPlan({shopId,itemId,modelId,sku,record,review,live,manualVideo=null,verifiedVideoSha256=null,manualImages=[],deferUnconfirmedFiscal=false,omitFiscal=false,selectedStage='all',allowDiscountOnly=false,modelVariations=null,kitDiscount=null}){
   selectedStage=normalizeShopeeExecutionStage(selectedStage);
   const selected=name=>selectedStage==='all'||selectedStage===name||selectedStage==='remaining'&&name==='fiscal';
   const wholeWorkflow=selectedStage==='all'||selectedStage==='remaining';
@@ -130,7 +130,7 @@ export function compileShopeeExecutionPlan({shopId,itemId,modelId,sku,record,rev
   }
   if(images.length){const i=warnings.findIndex(x=>x.startsWith('Imagens:'));if(i>=0)warnings.splice(i,1);}
   const noOtherChange=Object.keys(proposed).length===0&&!finalFiscal&&!video&&images.length===0&&!modelVariations;
-  const discountOnly=selectedStage==='all'&&Boolean(allowDiscountOnly)&&noOtherChange;
+  const discountOnly=selectedStage==='all'&&Boolean(allowDiscountOnly||kitDiscount)&&noOtherChange;
   const canExecute=blocked.length===0&&(!noOtherChange||discountOnly);
   // A prévia consulta a Shopee. Conteúdo que já coincide EXATAMENTE com
   // o rascunho aprovado não integra o payload de alteração e deve aparecer
@@ -146,7 +146,7 @@ export function compileShopeeExecutionPlan({shopId,itemId,modelId,sku,record,rev
   };
   const fingerprint=crypto.createHash('sha256').update(stableDataJson({
     shopId:String(shopId),itemId:String(itemId),modelId:String(modelId),sku,
-    selectedStage,discountOnly,modelVariations:modelVariations?{
+    selectedStage,discountOnly,kitDiscount:kitDiscount||null,modelVariations:modelVariations?{
      type:modelVariations.type,alreadyCreated:modelVariations.alreadyCreated===true,
      options:modelVariations.options.map(x=>({name:x.name,sku:x.sku,
       supplierSku:x.supplierSku,modelId:x.modelId||null,cost:x.cost,price:x.price,stock:x.stock,
@@ -168,12 +168,12 @@ export function compileShopeeExecutionPlan({shopId,itemId,modelId,sku,record,rev
       item_name:currentTitle,description:currentDescription,description_type:currentType,video_info:live?.video_info||[],
       item_sku:String(live?.item_sku||''),category_id:live?.category_id,
       attribute_list:live?.attribute_list||[],tax_info:live?.tax_info||{},image:live?.image||{}
-    },proposed,video,images,finalFiscal,modelVariations,confirmedStages,
-    actions:[...Object.keys(proposed),...(images.length?['images']:[]),...(video?['video']:[]),...(modelVariations?['model_variations']:[]),...(finalFiscal?['tax_info']:[]),...(discountOnly?['discount']:[])],
+    },proposed,video,images,finalFiscal,modelVariations,kitDiscount,confirmedStages,
+    actions:[...Object.keys(proposed),...(images.length?['images']:[]),...(video?['video']:[]),...(modelVariations?['model_variations']:[]),...(finalFiscal?['tax_info']:[]),...(discountOnly&&!kitDiscount?['discount']:[]),...(kitDiscount?['kit_discount']:[])],
     blocked,warnings,canExecute,
     fingerprint,fiscalDeferred,selectedStage,discountOnly,createdAt:new Date().toISOString(),marketplaceUpdated:false,
     requiresExplicitConfirmation:true,
-    scope:selectedStage==='all'?'Conteúdo e mídia → modelos → fiscal → desconto por variação':
+    scope:selectedStage==='all'?'Conteúdo e mídia → modelos → fiscal → desconto aprovado':
      selectedStage==='remaining'?'Apenas modelos → fiscal → desconto (sem edição de conteúdo ou mídia)':
      'Somente '+SHOPEE_EXECUTION_STAGE_LABELS[selectedStage]+'; outras etapas não serão enviadas'};
 }

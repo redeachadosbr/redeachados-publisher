@@ -65,7 +65,7 @@ export function shopeeExecutionProgress(job){
    !recoverPending.some(x=>/vídeo.*confirmado/i.test(x)));
  const fiscalPartial=state==='verified'&&phase==='verified_partial';
  const verified=state==='verified'&&!fiscalPartial;
- const discountIncluded=Boolean(plan.commercialDiscount||plan.modelVariations?.promotion);
+ const discountIncluded=Boolean(plan.commercialDiscount||plan.modelVariations?.promotion||plan.kitDiscount);
  const hasVariants=Boolean(plan.modelVariations);
  const variantsDone=hasVariants&&result.variation?.status==='verified';
  const fiscalIncluded=Boolean(plan.finalFiscal||proposed.tax_info);
@@ -77,7 +77,7 @@ export function shopeeExecutionProgress(job){
  const updateAccepted=Boolean(result.requestId||arr(result.events).some(e=>e?.key==='update-accepted'));
  const activeVariants=/^variation_/.test(phase);
  const activeFiscal=/^fiscal_/.test(phase);
- const activeDiscount=/^(?:discount_|model_discount_)/.test(phase);
+ const activeDiscount=/^(?:discount_|model_discount_|kit_discount_)/.test(phase);
  const attempt=['running','failed','uncertain','verified'].includes(state);
  const failure=['failed','uncertain'].includes(state)||fiscalPartial;
  const hasSavedProgress=uploaded>0||readyVideo||variantsDone||
@@ -152,7 +152,9 @@ export function shopeeExecutionProgress(job){
   variation_ready:'Preparando variações',variation_media:'Enviando fotos das variações',
   variation_updating:'Criando variações',variation_verifying:'Conferindo modelos',
   fiscal_ready:'Preparando dados fiscais',fiscal_updating:'Enviando dados fiscais',
-  fiscal_verifying:'Conferindo dados fiscais',discount_ready:'Preparando desconto',
+  fiscal_verifying:'Conferindo dados fiscais',kit_discount_ready:'Preparando desconto do kit',kit_discount_price_updating:'Atualizando preço do kit',
+  kit_discount_price_verifying:'Conferindo preço do kit',kit_discount_updating:'Enviando promoção do kit',
+  kit_discount_verifying:'Conferindo promoção do kit',discount_ready:'Preparando desconto',
   discount_price_updating:'Atualizando preço bruto',discount_price_verifying:'Conferindo preço bruto',
   discount_updating:'Aplicando desconto',discount_verifying:'Conferindo promoção',
   model_discount_ready:'Preparando desconto dos modelos',

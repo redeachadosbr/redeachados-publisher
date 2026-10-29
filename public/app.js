@@ -4359,7 +4359,8 @@ function optimizerExecutionTrackerRender(progress,job){
   String(job?.model_id??0)===String(w.modelId??0));
  const kitDiscount=sameKitJob?optimizerKitDiscountReviewState(w):
   {prepared:false,confirmed:false};
- const discountPending=progress.verified&&kitDiscount.prepared&&!kitDiscount.confirmed;
+ const discountPending=progress.verified&&kitDiscount.prepared&&!kitDiscount.confirmed&&
+  !job?.plan?.kitDiscount;
  optimizerExecProgress={...progress,sku,itemId:String(job?.item_id||w.itemId||''),
   modelId:String(job?.model_id??job?.plan?.modelId??w.modelId??0)};
  $('#optimizerExecutionSku').textContent='SKU '+sku;
@@ -4390,7 +4391,7 @@ function optimizerExecutionTrackerRender(progress,job){
   progress.verified?'✓ Confirmado':progress.attention?'! Atenção':
   !progress.hasStarted?progress.resumable?'● Mídia pronta · autorizar retomada':'● Aguardando sua autorização':'● Atualização automática';
  badge.dataset.state=progress.fiscalPartial?'warning':progress.state;
- const pct=Math.max(0,Math.min(100,Number(progress.percent)||0));
+ const pct=discountPending?88:Math.max(0,Math.min(100,Number(progress.percent)||0));
  $('#optimizerExecutionPercent').textContent=pct+'%';
  $('#optimizerExecutionPercent').title='Progresso técnico real. Apenas a confirmação pela Shopee significa publicação concluída.';
  $('#optimizerExecutionBar').setAttribute('aria-valuenow',String(pct));
@@ -5051,6 +5052,13 @@ function optimizerExecRender(data){
      (plan.modelVariations.alreadyCreated?' · fotos e estoque já cadastrados na Shopee':
       ' · foto conferida · estoque '+option.stock),'action');
    }
+   if(plan.kitDiscount){
+    const d=plan.kitDiscount;
+    optimizerExecRow(changes,'ETAPA 08/08 · AUTOMÁTICA · Minha Promoção '+d.discountId+
+     ' · preço bruto '+shPriceMoney(d.gross)+' · oferta '+shPriceMoney(d.promo)+
+     ' · após cupom '+shPriceMoney(d.afterCoupon)+
+     ' · após as demais etapas, com confirmação Shopee.','action');
+   }
    if(plan.finalFiscal){
     optimizerExecRow(changes,'ETAPA FINAL 07 · Informações fiscais após confirmação do anúncio comercial.','heading');
     optimizerExecDiff(changes,'tax_info',plan.original.tax_info,plan.finalFiscal);
@@ -5131,7 +5139,8 @@ function optimizerModelMarketApprovalPaint(plan=optimizerExecPlan){
 function optimizerDiscountReviewedForExecution(plan){
  // Kit: otimizar primeiro; desconto proprio da etapa 08 exige confirmacao
  // da Shopee e autorizacao separada para a composicao completa.
- if(typeof optimizerKitWorkflowActive==='function'&&optimizerKitWorkflowActive())return true;
+ if(typeof optimizerKitWorkflowActive==='function'&&optimizerKitWorkflowActive())
+  return plan?.selectedStage!=='all'||Boolean(plan?.kitDiscount);
  return !['all','remaining'].includes(plan?.selectedStage)||
   (plan?.modelVariations?
    Boolean(optimizerExecAutoModelToken)&&optimizerModelMarketConsent(plan):
@@ -5174,7 +5183,7 @@ function optimizerExecUpdateRunButton(){
   resume&&p?.modelVariations?'▶ Executar plano completo (inclui mídia)':
   resume?'▶ Retomar de onde parou':
   p?.modelVariations?'▶ Executar anúncio + variações + fiscal + desconto':
-  p?.selectedStage==='all'&&optimizerKitWorkflowActive()?'▶ Executar otimização do kit':
+  p?.selectedStage==='all'&&optimizerKitWorkflowActive()?'▶ Executar 8 etapas do kit + desconto':
   p?.selectedStage==='all'?'▶ Executar anúncio + desconto na Shopee':'▶ Executar etapa aprovada na Shopee';
  $('#optimizerExecutionLaunch').title=!optimizerDiscountReviewedForExecution(p)
    ?'Conferir a promoção no bloco de desconto antes de executar a SKU':'Executar etapas aprovadas na Shopee';
@@ -5206,7 +5215,7 @@ function optimizerExecUpdateRunButton(){
   }else{
    nextTitle.textContent='Prévia pronta — executar SKU '+p.sku;
    nextDescription.textContent=optimizerKitWorkflowActive()?
-    'Primeiro execute a otimização aprovada. A etapa 08 permite aplicar o desconto após a confirmação do anúncio na Shopee.':
+    'A etapa 08 conferida será executada automaticamente após as demais etapas, na mesma autorização.':
     '0% significa aguardando sua autorização. O botão abaixo iniciará a execução única da prévia revisada; os resultados serão conferidos na API Shopee.';
   }
  }

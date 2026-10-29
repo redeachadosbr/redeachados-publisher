@@ -4,13 +4,18 @@ import {advanceVideoUpload} from './shopeeMediaApi.js';
 import {withExecutionEvent} from './shopeeExecutionProgress.js';
 import {isDefinitiveShopeeRejection} from './shopeeExecutionIssues.js';
 import {advanceVerifiedDiscount} from './shopeeExecutionDiscount.js';
+import {advanceShopeeKitDiscount} from './shopeeExecutionKitDiscount.js';
 import {buildVariationPayload} from './shopeeVariationMedia.js';
+const hasDiscount=p=>Boolean(p.commercialDiscount||p.kitDiscount);
+const discountPhase=p=>p.kitDiscount?'kit_discount_ready':p.modelVariations?'model_discount_ready':'discount_ready';
 // One durable step per lease. No tokens or secret configuration are persisted.
 export async function advanceShopeeExecution(job,io){
  const plan=job.plan,result={...(job.result||{})};
  if(!plan?.requiresExplicitConfirmation||!plan.canExecute)throw Error('Plano sem aprovação válida.');
  if(/^variation_|^model_discount_/.test(String(result.phase||'')))
   return advanceShopeeModelStages(job,io);
+ if(/^kit_discount_/.test(String(result.phase||'')))
+  return advanceShopeeKitDiscount(job,io);
  if(['discount_ready','discount_price_updating','discount_price_verifying',
   'discount_updating','discount_verifying'].includes(String(result.phase||'')))
   return advanceVerifiedDiscount(job,io);
@@ -19,8 +24,8 @@ export async function advanceShopeeExecution(job,io){
  if(['fiscal_updating','fiscal_verifying'].includes(result.phase)){
   const live=await io.read();
   if(verifyShopeeFiscalExecution(plan,live,result))
-   return plan.commercialDiscount?
-    {state:'running',result:withExecutionEvent({...result,phase:plan.modelVariations?'model_discount_ready':'discount_ready',primaryVerified:true,fiscal:{status:'verified'}},
+   return hasDiscount(plan)?
+    {state:'running',result:withExecutionEvent({...result,phase:discountPhase(plan),primaryVerified:true,fiscal:{status:'verified'}},
      'fiscal-verified','Dados fiscais confirmados. Iniciando desconto como última etapa.','success'),delay:500}:
     {state:'verified',result:withExecutionEvent({...result,phase:'verified',verified:true,
      fiscal:{status:'verified'}},'fiscal-verified','Todas as etapas, inclusive os dados fiscais, foram confirmadas pela Shopee.','success'),lastError:null};
@@ -40,8 +45,8 @@ export async function advanceShopeeExecution(job,io){
     return {state:'running',result:withExecutionEvent({...result,phase:'fiscal_ready',
      primaryVerified:true},'commerce-verified',
      'Imagens, vídeo e conteúdo confirmados. Iniciando a última etapa fiscal.','success'),delay:500};
-   return plan.commercialDiscount?
-    {state:'running',result:withExecutionEvent({...result,phase:'discount_ready',primaryVerified:true},
+   return hasDiscount(plan)?
+    {state:'running',result:withExecutionEvent({...result,phase:discountPhase(plan),primaryVerified:true},
       'commerce-verified','Anúncio confirmado. Dados fiscais sem alterações; iniciando desconto.','success'),delay:500}:
     {state:'verified',result:withExecutionEvent({...result,phase:'verified',verified:true},
      'verified','A Shopee confirmou as alterações no anúncio.','success'),lastError:null};
@@ -59,8 +64,8 @@ export async function advanceShopeeExecution(job,io){
     lastError:'Conteúdo alterado entre as duas etapas. Verifique o anúncio antes de continuar.'};
   if(!sameData(live.tax_info||{},plan.original.tax_info||{})){
    if(verifyShopeeFiscalExecution(plan,live,result))
-    return plan.commercialDiscount?
-      {state:'running',result:withExecutionEvent({...result,phase:plan.modelVariations?'model_discount_ready':'discount_ready',primaryVerified:true,
+    return hasDiscount(plan)?
+      {state:'running',result:withExecutionEvent({...result,phase:discountPhase(plan),primaryVerified:true,
         fiscal:{status:'verified'}},'fiscal-confirmed','Fiscal já atualizado; seguindo para desconto.','success'),delay:500}:
       {state:'verified',result:withExecutionEvent({...result,phase:'verified',
        verified:true,fiscal:{status:'verified'}},'fiscal-confirmed',
@@ -101,7 +106,7 @@ export async function advanceShopeeExecution(job,io){
  if(verifyShopeeExecution(plan,currentItem,result)){
   const next=plan.modelVariations?'variation_ready':
    plan.finalFiscal?'fiscal_ready':
-   plan.commercialDiscount?'discount_ready':'verified';
+   hasDiscount(plan)?discountPhase(plan):'verified';
   const done=withExecutionEvent({...result,phase:next,primaryVerified:true,
     ...(next==='verified'?{verified:true}:{})},
     'commercial-already-confirmed',
@@ -159,8 +164,8 @@ export async function advanceShopeeExecution(job,io){
    delay:500};
  // Se não há novos campos comerciais nem dados fiscais, executar somente
  // o desconto já conferido, sem enviar update_item vazio ou repetir a mídia.
- if(plan.commercialDiscount&&!plan.modelVariations&&!Object.keys(plan.proposed||{}).length&&!plan.images?.length&&!plan.video&&!plan.finalFiscal)
-  return {state:'running',result:withExecutionEvent({...result,phase:'discount_ready',primaryVerified:true},
+ if(hasDiscount(plan)&&!plan.modelVariations&&!Object.keys(plan.proposed||{}).length&&!plan.images?.length&&!plan.video&&!plan.finalFiscal)
+  return {state:'running',result:withExecutionEvent({...result,phase:discountPhase(plan),primaryVerified:true},
     'commercial-already','Anúncio já atualizado; preparando somente o desconto autorizado.','success'),delay:500};
  // Persist intent before the external write. A crash resumes readback only.
  result.phase='updating';result.updateStartedAt=Date.now();
@@ -214,7 +219,7 @@ export const approvedShopeeModels=(plan,live)=>{
 export function nextShopeePhaseAfterReadback(plan,{fiscalVerified=false}={}){
  if(!fiscalVerified&&plan.modelVariations)return 'variation_ready';
  if(!fiscalVerified&&plan.finalFiscal)return 'fiscal_ready';
- return plan.commercialDiscount?(plan.modelVariations?'model_discount_ready':'discount_ready'):'verified';
+ return hasDiscount(plan)?(discountPhase(plan)):'verified';
 }
 export async function reconcileShopeeModelExecution(job,io){
  if(job.state!=='uncertain'||!/^variation_|^model_discount_/.test(String(job.result?.phase||'')))

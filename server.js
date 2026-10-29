@@ -36,7 +36,7 @@ import {saveKitDraft,saveKitDraftLogistics,listKitDrafts,loadKitDraft,deleteKitD
 import {validateKitOptimizationTarget,kitOptimizationLinkIsCurrent,linkedKitPricingCost} from './shopeeKitOptimization.js';
 import {recoverKitDraftForEditing,matchesStoredKitPhotos,validateStoredKitDraft} from './shopeeKitDraftRecovery.js';
 import {kitUploadPhoto,kitPublicationReadiness,kitPublicationPreview,kitPublishApproved,checkKitPublication,kitVideoPrepare,kitVideoAdvance,kitVideoStatus,kitVideoDiscard} from './shopeeKitPublicationService.js';
-import {previewKitDiscount,executeKitDiscount} from './shopeeKitDiscountService.js';
+import {previewKitDiscount,executeKitDiscount,inspectKitDiscountForExecution,validateKitDiscountMarketForExecution} from './shopeeKitDiscountService.js';
 import {discoverKitDiscountCampaigns} from './shopeeKitDiscountDiscovery.js';
 import {supplierWorkflowFacts,wedropCestForSku} from './shopeeSupplierFacts.js';
 import {supplierAttributeSuggestions} from './shopeeSupplierEvidenceFacts.js';
@@ -2263,6 +2263,25 @@ app.post('/api/shopee/optimizer/execution/prepare',mustLogin,requireWeDropAdmin,
       verifyShopeeExecution(previous.plan,live,previous.result)?previous.plan.video?.sha256:null;
     const manualImages=await readPreparedImages(auth.shopId,itemId,modelId,sku);
     const reviewState={...(review?.review_state||{})};
+    let kitDiscountPlan=null;
+    if(kitLink&&selectedStage==='all'&&reviewState.kitDiscountPreview?.status==='prepared'){
+     const approved=reviewState.kitDiscountPreview,checked=Date.parse(approved.preparedAt||'');
+     if(!Number.isFinite(checked)||checked>Date.now()+60000||Date.now()-checked>24*3600000)
+      throw Error('Etapa 08: conferência expirou; reabra a campanha e prepare a prévia.');
+     if(String(approved.kitSku)!==String(kitLink.kitSku)||
+        String(approved.itemId)!==String(itemId)||
+        String(approved.modelId||'0')!==String(modelId))
+      throw Error('Etapa 08: desconto pertence a outra SKU ou anúncio.');
+     const snapshot=await inspectKitDiscountForExecution({cfg,auth,kitSku:kitLink.kitSku,
+      discountId:String(approved.discountId)});
+     if(String(snapshot.itemId)!==String(itemId)||String(snapshot.modelId)!==String(modelId)||
+        ['gross','promo','afterCoupon'].some(k=>
+         Math.round(Number(snapshot[k])*100)!==Math.round(Number(approved[k])*100)))
+      throw Error('Etapa 08: campanha, preço ou custo mudou. Refaça a prévia.');
+     kitDiscountPlan={kitSku:String(kitLink.kitSku),itemId:String(itemId),
+      modelId:String(modelId),discountId:String(approved.discountId),
+      gross:snapshot.gross,promo:snapshot.promo,afterCoupon:snapshot.afterCoupon};
+    }
     // Evitar ficha técnica aprovada e invisível na publicação. O rascunho
     // precisa ser anterior à revisão e os campos devem continuar elegíveis
     // pela categoria Shopee atual. Não aprovar dados novos automaticamente.
@@ -2377,7 +2396,7 @@ app.post('/api/shopee/optimizer/execution/prepare',mustLogin,requireWeDropAdmin,
       await hydrateCategoryChoices(record,reviewState.attributes||[],cfg,auth,live);
     }
     const inputs={shopId:auth.shopId,itemId,modelId,sku,record,
-      review:reviewState,live,manualVideo,verifiedVideoSha256,manualImages,selectedStage,allowDiscountOnly,modelVariations};
+      review:reviewState,live,manualVideo,verifiedVideoSha256,manualImages,selectedStage,allowDiscountOnly,modelVariations,kitDiscount:kitDiscountPlan};
     let plan=compileShopeeExecutionPlan({...inputs,omitFiscal:false});
     if(['all','technical'].includes(selectedStage)&&reviewState.stages?.technical?.reviewed&&
        !reviewState.attributes?.length&&reviewState.technicalDraft?.fields?.length&&
@@ -2762,6 +2781,17 @@ app.post('/api/shopee/optimizer/execution/execute',mustLogin,requireWeDropAdmin,
     throw Error('A prévia é anterior à preparação do kit. Gere uma nova prévia antes de executar.');
   }
   const previousPlan=job.plan;
+  if(linkedKit&&previousPlan.kitDiscount){
+   if(previousPlan.selectedStage!=='all')throw Error('Etapa 08 exige prévia completa.');
+   const approved=(await getWorkflowReview(auth.shopId,itemId,modelId))?.review_state?.kitDiscountPreview;
+   const expected=previousPlan.kitDiscount;
+   if(!approved||approved.status!=='prepared'||
+      !Number.isFinite(Date.parse(approved.preparedAt||''))||
+      Date.now()-Date.parse(approved.preparedAt||'')>24*3600000||
+      ['kitSku','itemId','modelId','discountId','gross','promo','afterCoupon'].some(k=>
+       String(approved[k])!==String(expected[k])))
+    throw Error('Etapa 08 mudou desde a prévia. Confira o desconto novamente.');
+  }
   let plan=previousPlan;
   const remainingOnly=req.body.remainingOnly===true;
   if(remainingOnly){
@@ -2902,7 +2932,8 @@ app.post('/api/shopee/optimizer/execution/execute',mustLogin,requireWeDropAdmin,
    allowDiscountOnly:plan.discountOnly===true,
    modelVariations:plan.modelVariations?
     {...await prepareExecutionVariations({auth,cfg,sku,itemId,modelId},reviewState,live),
-     promotion:plan.modelVariations.promotion}:null});
+     promotion:plan.modelVariations.promotion}:null,
+   kitDiscount:plan.kitDiscount||null});
   if(fresh.fingerprint!==plan.fingerprint||!fresh.canExecute){
    // Conteúdo que a Shopee acabou de confirmar não deve invalidar a autorização
    // para os OUTROS campos idênticos da mesma prévia. Esta exceção só permite
@@ -2944,6 +2975,7 @@ app.post('/api/shopee/optimizer/execution/reconcile',mustLogin,requireWeDropAdmi
   const phase=String(job.result?.phase||'');
   const fiscalPhase=/^fiscal_|^verified_partial$/.test(phase);
   const discountPhase=/^discount_/.test(phase);
+  const kitDiscountPhase=/^kit_discount_/.test(phase);
   const modelPhase=/^variation_|^model_discount_/.test(phase);
   const verified=discountPhase||modelPhase?false:fiscalPhase?
     verifyShopeeFiscalExecution(job.plan,live,job.result||{}):
@@ -2963,6 +2995,20 @@ app.post('/api/shopee/optimizer/execution/reconcile',mustLogin,requireWeDropAdmi
    else{
     updated=await reconcileShopeeJob(job,outcome);
     if(outcome.state==='running')void runOptimizerJobs();
+   }
+  }
+  else if(kitDiscountPhase&&job.plan?.kitDiscount){
+   const d=job.plan.kitDiscount;
+   const x=await inspectKitDiscountForExecution({cfg,auth,kitSku:d.kitSku,discountId:d.discountId});
+   if(x.confirmed&&Math.round(Number(x.promo)*100)===Math.round(Number(d.promo)*100)){
+    updated=await reconcileShopeeJob(job,{state:'verified',
+     result:withExecutionEvent({...job.result,phase:'verified',verified:true,
+      discount:{status:'verified'}},'kit-discount-verified',
+      'Etapa 08 confirmada por leitura da Shopee.','success'),lastError:null});
+    try{await saveWorkflowReview(auth.shopId,itemId,modelId,sku,{
+     kitDiscountPublication:{kitSku:d.kitSku,itemId:d.itemId,modelId:d.modelId,
+      discountId:d.discountId,promo:d.promo,confirmedAt:new Date().toISOString(),status:'confirmed'}
+    });}catch(e){console.warn('[kit-discount] Histórico pendente:',String(e.message||e).slice(0,120));}
    }
   }
   else if(discountPhase&&job.plan?.commercialDiscount){
@@ -3105,6 +3151,33 @@ async function runOptimizerJobs(){
         return out;
        }finally{activeDiscountWrites.delete(key);}
       },
+      kitDiscountRead:approved=>inspectKitDiscountForExecution({cfg,auth,
+       kitSku:approved.kitSku,discountId:approved.discountId}),
+      kitDiscountMarket:approved=>validateKitDiscountMarketForExecution({cfg,auth,
+       kitSku:approved.kitSku,discountId:approved.discountId}),
+      kitDiscountPrice:approved=>callShopeeShopApi(cfg,{
+       ...common,path:'/api/v2/product/update_price',method:'POST',
+       body:{item_id:Number(approved.itemId),price_list:[{
+        ...(Number(approved.modelId)>0?{model_id:Number(approved.modelId)}:{}),
+        original_price:Number(approved.gross)}]}}),
+      kitDiscountPublish:async(approved,action)=>{
+       const key=[auth.shopId,approved.itemId,approved.discountId].join(':');
+       if(activeDiscountWrites.has(key))throw Error('Outra promoção já está em andamento.');
+       activeDiscountWrites.add(key);
+       try{
+        const item={item_id:Number(approved.itemId),...(action==='add'?{purchase_limit:0}:{})};
+        if(Number(approved.modelId)>0)
+         item.model_list=[{model_id:Number(approved.modelId),model_promotion_price:Number(approved.promo)}];
+        else item.item_promotion_price=Number(approved.promo);
+        const result=await callShopeeShopApi(cfg,{...common,method:'POST',
+         path:action==='add'?'/api/v2/discount/add_discount_item':'/api/v2/discount/update_discount_item',
+         body:{discount_id:Number(approved.discountId),item_list:[item]}});
+        if((result.response?.error_list||[]).length||
+           (action==='add'&&Number(result.response?.count)!==1))
+         throw Error('Shopee não confirmou a campanha; verificar antes de reenviar.');
+        return result;
+       }finally{activeDiscountWrites.delete(key);}
+      },
       discountRead:async approved=>(await discountExecutionInputs(null,
        approved.sku,approved.itemId,approved.modelId,approved.discountId,{allowOver25:approved.allowOver25===true})).snapshot,
       discountUpdatePrice:async approved=>{
@@ -3142,6 +3215,16 @@ async function runOptimizerJobs(){
        Math.max(500,Math.min(15000,Number(out.delay)||1000))).unref();
     }else {
       if(out.state==='verified'){
+        if(job.plan?.kitDiscount&&out.result?.discount?.status==='verified'){
+         try{
+          const d=job.plan.kitDiscount;
+          await saveWorkflowReview(auth.shopId,job.item_id,job.model_id,job.sku,{
+           kitDiscountPublication:{kitSku:d.kitSku,itemId:d.itemId,modelId:d.modelId,
+            discountId:d.discountId,promo:d.promo,confirmedAt:new Date().toISOString(),status:'confirmed'}
+          });
+         }catch(e){console.warn('[kit-discount] Confirmação Shopee salva; histórico pendente:',
+          String(e.message||e).slice(0,150));}
+        }
         await rememberPublishedVideo(job.plan,out.result);
         await rememberPublishedImages(job.plan,out.result);
       }
@@ -3156,7 +3239,8 @@ async function runOptimizerJobs(){
       'variation_updating','variation_verifying',
       'model_discount_price_updating','model_discount_price_verifying',
       'model_discount_updating','model_discount_verifying',
-      'discount_price_updating','discount_price_verifying','discount_updating','discount_verifying']
+      'discount_price_updating','discount_price_verifying','discount_updating','discount_verifying',
+      'kit_discount_price_updating','kit_discount_price_verifying','kit_discount_updating','kit_discount_verifying']
       .includes(current.result?.phase);
     const attempts=Number(current.result?.attempts||0)+1;
     if(!uncertain&&attempts<3&&/fetch|timeout|network|HTTP 5|error_rate_limit/i.test(String(e.message))){
