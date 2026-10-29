@@ -92,7 +92,7 @@ test('importacao azul fica ao lado do gerador; instrucoes duplicadas foram remov
  assert.match(browser,/parseKitSeoResponse\(\$\('#kitPlusTextResult'\)\.value\)/);
  assert.match(browser,/\$\('#kitDescription'\)\.value=result\.description/);
  assert.match(browser,/void saveDraft\(\)\.then/);
- assert.match(browser,/Abra Opções avançadas/);
+ assert.match(browser,/No ChatGPT clique em Copiar/);
 });
 
 test('botão SEO mantém o ChatGPT aberto ao detectar falta de medidas',async()=>{
