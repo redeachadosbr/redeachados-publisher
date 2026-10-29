@@ -2350,7 +2350,7 @@ async function importPlusSuggestions({readClipboard=false,silent=false,uploadedT
    throw Error('Nenhum dos '+rows.length+' kits passou na validação WeDrop. '+firstRejected);
   }
   $('#kitPlusOutput').value=rows.map(x=>x.join(' | ')).join('\n');
-  suggestionContext=null;suggestions=[];
+  suggestionContext={category:context.category,size:context.size,idea:context.idea,source:r.source};suggestions=[];
   // Não duplicar os cartões do JSON importado; os 10 aparecem em Rascunhos.
   $('#kitSuggestions').replaceChildren();$('#kitSuggestions').hidden=true;
   kitCloseInlineEditor();prepared=null;images.clear();
