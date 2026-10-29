@@ -1,7 +1,7 @@
 // Interface de otimização de um anúncio de kit já existente. Preparação nunca publica.
 const $=selector=>document.querySelector(selector);
 export function initExistingKitOptimization({getContext,api,money,onMainSkuChange}){
- let target=null,busy=false,discountToken=null,discountLookupSeq=0,discountSearching=false;
+ let target=null,busy=false,discountToken=null,discountLookupSeq=0,discountSearching=false,latestCampaigns=[];
  const ctx=()=>getContext(),kitSku=()=>ctx().prepared?.kit?.kitSku||'';
  function notice(message,state='info'){
   const el=$('#kitOptimizeStatus');if(el){el.textContent=message;el.dataset.state=state;}
@@ -16,8 +16,44 @@ export function initExistingKitOptimization({getContext,api,money,onMainSkuChang
   $('#kitOptimizeDiscountPreview').disabled=busy||discountSearching||!kitSaved||!valid||!target.prepared||!$('#kitOptimizeDiscountId').value;
   $('#kitOptimizeDiscountRefresh').disabled=discountSearching||!kitSaved||!$('#kitOptimizeMainSku').value;
  }
+ function syncWorkflowCampaigns(){
+  const section=$('#optimizerExecDiscountFinal'),workspace=$('#kitOptimizerWorkspace');
+  if(!section||workspace?.hidden)return;
+  let wrapper=section.querySelector('#kitWorkflowCampaignChooser');
+  if(!wrapper){
+   wrapper=document.createElement('div');wrapper.id='kitWorkflowCampaignChooser';
+   wrapper.className='kit-workflow-campaign-chooser';
+   const label=document.createElement('label');label.textContent='Minha Promoção do kit';
+   const picker=document.createElement('select');picker.id='kitWorkflowCampaignPicker';
+   picker.setAttribute('aria-label','Escolha a campanha Minha Promoção para a etapa 08');
+   picker.addEventListener('change',()=>{
+    const input=$('#optimizerExecDiscountCampaign');
+    if(input){input.value=picker.value;input.dispatchEvent(new Event('input',{bubbles:true}));}
+   });
+   label.append(picker);
+   const refresh=document.createElement('button');refresh.type='button';
+   refresh.className='secondary';refresh.textContent='↻ Atualizar campanhas';
+   refresh.addEventListener('click',()=>void resolveDiscountIds());
+   wrapper.append(label,refresh);
+   const controls=section.querySelector('.optimizer-exec-discount-controls');
+   if(controls)section.insertBefore(wrapper,controls);
+   else section.append(wrapper);
+  }
+  const select=wrapper.querySelector('select'),current=$('#optimizerExecDiscountCampaign')?.value||'';
+  select.replaceChildren(new Option('Selecione uma campanha da sua loja',''));
+  for(const c of latestCampaigns)
+   select.append(new Option(c.name+' · ID '+c.discountId+
+    ' · '+(c.status==='ongoing'?'Ativa':'Programada')+
+    (c.containsKit?' · KIT confirmado':''),c.discountId));
+  if([...select.options].some(o=>o.value===current))select.value=current;
+  wrapper.hidden=!latestCampaigns.length;
+  const original=$('#optimizerExecDiscountCampaign')?.closest('label');
+  if(original)original.classList.toggle('kit-workflow-original-campaign',Boolean(latestCampaigns.length));
+ }
  function resetDiscountDiscovery(){
-  ++discountLookupSeq;discountSearching=false;discountToken=null;
+  ++discountLookupSeq;discountSearching=false;discountToken=null;latestCampaigns=[];
+  $('#kitWorkflowCampaignChooser')?.remove();
+  $('#optimizerExecDiscountCampaign')?.closest('label')?.classList.remove('kit-workflow-original-campaign');
   $('#kitOptimizeDiscountBox').hidden=true;
   $('#kitOptimizeKitItemId').value='';$('#kitOptimizePrimaryItemId').value='';
   $('#kitOptimizeDiscountId').replaceChildren(new Option('Consultar campanhas da Shopee',''));
@@ -47,6 +83,7 @@ export function initExistingKitOptimization({getContext,api,money,onMainSkuChang
    $('#kitOptimizePrimaryItemId').value=primary.length===1?String(primary[0].itemId):
     primary.length>1?'Vários anúncios — conferir':'Não confirmado';
    const campaigns=Array.isArray(data.campaigns)?data.campaigns:[];
+   latestCampaigns=campaigns;
    select.replaceChildren(new Option(campaigns.length?'Selecione a campanha':'Nenhuma campanha confirmada',''));
    for(const c of campaigns){
     const member=c.containsKit?' · KIT incluído':c.containsPrimary?' · Principal incluída':' · Disponível';
@@ -67,8 +104,10 @@ export function initExistingKitOptimization({getContext,api,money,onMainSkuChang
     (data.complete===false?' Consulta parcial: confira na Shopee.':'')+
     (data.warnings?.length?' '+data.warnings.join(' | '):'');
    msg.dataset.state=data.complete===false||!data.kitItemId?'warning':campaigns.length?'success':'info';
+   syncWorkflowCampaigns();
   }catch(e){
    if(seq!==discountLookupSeq)return;
+   latestCampaigns=[];syncWorkflowCampaigns();
    select.replaceChildren(new Option('Consulta indisponível',''));
    msg.textContent='Não foi possível consultar os IDs: '+e.message+'. Nenhum ID foi presumido.';
    msg.dataset.state='error';
@@ -242,6 +281,7 @@ export function initExistingKitOptimization({getContext,api,money,onMainSkuChang
  }
  globalThis.RAKitOptimizerReady=data=>{
   if(data?.kitOptimization?.kitSku!==kitSku())return;
+  syncWorkflowCampaigns();
   notice('Fluxo do kit carregado: siga as etapas 01 a 08 e depois Prévia e execução.','success');
   $('#kitOptimizeStart').textContent='↻ Continuar otimização do kit';
   $('#kitOptimizerWorkspace')?.scrollIntoView({behavior:'smooth',block:'start'});

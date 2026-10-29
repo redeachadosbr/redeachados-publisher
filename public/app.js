@@ -2620,6 +2620,8 @@ function kitOptimizerMount(){
 }
 function kitOptimizerUnmount(){
  const panel=$('#optimizerWorkflowPanel');
+ $('#kitWorkflowCampaignChooser')?.remove();
+ $('#optimizerExecDiscountCampaign')?.closest('label')?.classList.remove('kit-workflow-original-campaign');
  if(kitOptimizerHome&&panel&&panel.parentNode!==kitOptimizerHome)
   kitOptimizerHome.insertBefore(panel,kitOptimizerNext?.parentNode===kitOptimizerHome?kitOptimizerNext:null);
  panel?.classList.remove('kit-embedded-real-workflow');
