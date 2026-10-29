@@ -48,7 +48,16 @@ function field(fieldElement,key){
  // Preserve the existing label text, help text, provenance and input.
  const title=make('span','',name?.textContent?.trim()||key);
  if(name?.nodeType===3){fieldElement.dataset.originalFiscalLabel=name.textContent;name.textContent='';}
- row.append(title,info('Ajuda: '+title.textContent,tips[key]||'Verifique o cadastro deste produto.'));
+ const help=info('Ajuda: '+title.textContent,tips[key]||'Verifique o cadastro deste produto.');
+ const popup=help.querySelector('.ra-fiscal-modern-popover');
+ // As explicações continuam no DOM original, mas só aparecem ao clicar em ?.
+ // Nunca remover ou reescrever o valor do input, a fonte fiscal ou os avisos.
+ for(const note of fieldElement.querySelectorAll(
+  ':scope > .optimizer-fiscal-filled, :scope > .optimizer-fiscal-cest-help, :scope > .ra-fiscal-modern-cest-alert'
+ )){
+   if(note.textContent?.trim())popup?.append(make('p','ra-fiscal-modern-help-detail',note.textContent.trim()));
+ }
+ row.append(title,help);
  fieldElement.insertBefore(row,fieldElement.firstChild);
  return fieldElement;
 }
@@ -57,8 +66,9 @@ function makePanel(style,title,subtitle,symbol){
  const heading=make('div','ra-fiscal-modern-card-head');
  const icon=make('span','ra-fiscal-modern-card-icon',symbol);
  const words=make('div','ra-fiscal-modern-card-words');
- words.append(make('strong','',title),make('small','',subtitle));
- heading.append(icon,words);card.append(heading);
+ words.append(make('strong','',title));
+ const help=info('Sobre '+title,subtitle);
+ heading.append(icon,words,help);card.append(heading);
  const fields=make('div','ra-fiscal-modern-card-body');
  card.append(fields);
  return {card,fields};
@@ -199,11 +209,10 @@ function open(data){
   if(k&&slots[k])slots[k].append(field(label,k));
   else provenance.fields.append(label);
  }
- const notes=make('div','ra-fiscal-modern-tax-note');
- notes.append(make('strong','','💡 Motor Matriz · orientações fiscais'),
-  make('p','',
-   'Os dados seguem as regras salvas por SKU. PIS/COFINS CST 99 pode ser revisto pela contabilidade. O cadastro Shopee não substitui a emissão correta da NF-e.'));
- provenance.fields.insertBefore(notes,provenance.fields.firstChild);
+ const notesHelp=info('Orientações do Motor Matriz',
+  'Os dados seguem as regras salvas por SKU. PIS/COFINS CST 99 pode ser revisto pela contabilidade. O cadastro Shopee não substitui a emissão correta da NF-e.');
+ notesHelp.classList.add('ra-fiscal-modern-matrix-help');
+ provenance.card.querySelector('.ra-fiscal-modern-card-head')?.append(notesHelp);
  for(const input of fields.querySelectorAll('input[data-tax-field]')){
   input.addEventListener('input',markUnsaved);
   unsubscribe.push(()=>input.removeEventListener('input',markUnsaved));
@@ -212,7 +221,10 @@ function open(data){
  if(cest){
   const caution=make('small','ra-fiscal-modern-cest-alert',
    '⚠ Confira o CEST de 7 dígitos quando aplicável. “00” não é um CEST válido para emissão.');
-  cest.closest('label')?.append(caution);
+  const cestLabel=cest.closest('label');
+  cestLabel?.append(caution);
+  const popup=cestLabel?.querySelector('.ra-fiscal-modern-field-label .ra-fiscal-modern-popover');
+  if(popup)popup.append(make('p','ra-fiscal-modern-help-detail ra-fiscal-modern-important',caution.textContent));
  }
  // Keep the cards inside #optimizerFiscalFields; optimizerFiscalValues() reads these inputs.
  fields.append(content);
