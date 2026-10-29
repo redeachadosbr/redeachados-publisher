@@ -336,6 +336,8 @@ export function initExistingKitOptimization({getContext,api,money,onMainSkuChang
    const result=await api('/api/shopee/kits/discount/execute',{body:{
     kitSku:current,discountId,token,confirm:true
    }});
+   if(result.status==='discount_confirmed')
+    globalThis.RAKitDiscountConfirmed?.({kitSku:current,itemId:String(result.itemId)});
    discountNotice(result.status==='discount_confirmed'?
     '✓ Desconto confirmado no anúncio '+result.itemId+' · Preço '+money(result.promo):
     (result.message||'Resposta pendente de conferência na Shopee.'),
@@ -358,6 +360,7 @@ export function initExistingKitOptimization({getContext,api,money,onMainSkuChang
  $('#kitOptimizeOpen')?.addEventListener('click',open);
  $('#kitOptimizeConfirm')?.addEventListener('change',paint);
  $('#kitOptimizeMainSku')?.addEventListener('change',()=>{
+  globalThis.redeKitCloseOptimizerWorkspace?.();
   if(target)target.prepared=false;
   onMainSkuChange?.($('#kitOptimizeMainSku').value);
   void resolveDiscountIds();paint();

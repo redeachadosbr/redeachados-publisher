@@ -2656,6 +2656,8 @@ app.post('/api/shopee/optimizer/execution/execute',mustLogin,requireWeDropAdmin,
   const linkedKit=(await getWorkflowReview(auth.shopId,itemId,modelId))?.review_state?.kitOptimization;
   if(linkedKit){
    await verifiedLinkedKitQuote(auth,linkedKit);
+   if(req.body?.discountApprovalToken)
+    throw Error('Kit composto: desconto exige a confirmação própria da etapa 08.');
    if(!(Date.parse(job.updated_at)>=Date.parse(linkedKit.preparedAt)))
     throw Error('A prévia é anterior à preparação do kit. Gere uma nova prévia antes de executar.');
   }
@@ -2698,8 +2700,11 @@ app.post('/api/shopee/optimizer/execution/execute',mustLogin,requireWeDropAdmin,
    plan.mediaArchive=archiveShopeeMedia(job,plan);
   }
   let commercialDiscount=null;
-  if(['all','remaining'].includes(plan.selectedStage)){
-   if(plan.fiscalDeferred)throw Error('Etapa fiscal pendente: revise os dados fiscais antes de aprovar o desconto final.');
+  if(['all','remaining'].includes(plan.selectedStage)&&plan.fiscalDeferred)
+   throw Error('Etapa fiscal pendente: revise os dados fiscais antes de aprovar o desconto final.');
+  // Kit composto: primeiro o anuncio, depois a promocao do kit pela rota
+  // especifica, apenas apos a execucao ser confirmada pela Shopee.
+  if(['all','remaining'].includes(plan.selectedStage)&&!linkedKit){
    // Em planos de variação, o clique autenticado + o plano imutável no banco
    // autorizam a promoção exibida. O token de 10 minutos não pode bloquear
    // anúncio e mídia depois de o usuário ter aprovado essa mesma prévia.
@@ -2765,7 +2770,8 @@ app.post('/api/shopee/optimizer/execution/execute',mustLogin,requireWeDropAdmin,
   if(review?.sku!==sku)throw Error('Revisão da SKU mudou. Prepare novamente.');
   const reviewState=review.review_state||{};
   if((plan.selectedStage==='fiscal'||plan.finalFiscal)&&reviewState.stages?.fiscal?.reviewed&&reviewState.tax){
-    const supplier=await readWeDropProduct(auth.shopId,{sku,itemId,modelId});
+    const supplier=await readWeDropProduct(auth.shopId,linkedKit?
+      {sku:linkedKit.mainSku}:{sku,itemId,modelId});
     fiscalMatrixSource({sku,supplier,tax:reviewState.tax,reviewSource:reviewState.matrixFiscal});
     // Protege tanto fluxo completo como exclusivamente fiscal: mesmo se
     // a revisão persistida diz 00, um plano antigo não pode carregar 2806100.
@@ -2777,7 +2783,8 @@ app.post('/api/shopee/optimizer/execution/execute',mustLogin,requireWeDropAdmin,
         '. Prepare uma nova prévia fiscal; nada foi enviado.');
   }
   const live=await shopeeLiveEditableItem(cfg,auth,itemId);
-  const supplierForBrand=await readWeDropProduct(auth.shopId,{sku,itemId,modelId});
+  const supplierForBrand=await readWeDropProduct(auth.shopId,linkedKit?
+    {sku:linkedKit.mainSku}:{sku,itemId,modelId});
   if(['all','technical'].includes(plan.selectedStage||'all'))
     assertShopeeSupplierBrand({record,attributes:reviewState.stages?.technical?.reviewed?
       reviewState.attributes||[]:[],supplier:supplierForBrand});
