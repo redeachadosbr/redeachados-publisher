@@ -2076,14 +2076,19 @@ app.post('/api/shopee/optimizer/workflow/review',mustLogin,requireWeDropAdmin,as
         throw Error('Motor Matriz: a ficha técnica ainda possui '+verifiedAttributes.missingMandatory+' atributo(s) obrigatório(s) sem preenchimento. Corrija antes de aprovar.');
       compileAttributes(valid,record,live);
     }else if(change.attributes)compileAttributes(change.attributes,record,await shopeeLiveEditableItem(cfg,auth,itemId));
-    // Nunca aceitar no salvamento um CEST copiado da Shopee ou digitado sem a WeDrop.
-    const fiscalSku=linkedKit?.mainSku||sku;
-    const taxSupplier=change.tax?await readWeDropProduct(auth.shopId,
-      fiscalSku===sku?{sku,itemId,modelId}:{sku:fiscalSku}):null;
+    // O anúncio de kit usa a SKU principal REAL como referência fiscal.
+    // Nunca descartar a fonte WeDrop vinculada só por ser um kit:
+    // fiscalMatrixSource ainda confere SKU, vínculo, NCM e evidência.
+    // Nenhum dado dos componentes adicionais é presumido como NCM do kit.
+    const fiscalSku=String(linkedKit?.mainSku||sku);
+    if(linkedKit&&fiscalSku!==String(sku))
+      throw Error('Motor Matriz: SKU principal do kit diverge da SKU auditada na Shopee. Refaça o vínculo do kit.');
+    const taxSupplier=change.tax?await readWeDropProduct(auth.shopId,{sku,itemId,modelId}):null;
     if(change.tax)change.tax={...change.tax,cest:wedropCestForSku(taxSupplier)};
     if(change.stage==='fiscal'&&change.reviewed){
-      const supplier=taxSupplier;
-      change.matrixFiscal=fiscalMatrixSource({sku,supplier:linkedKit?null:supplier,tax:change.tax});
+      // Mesmo caminho seguro das SKUs simples: permite apenas vínculo
+      // exato/revisado e bloqueia fonte WeDrop inexistente ou NCM diferente.
+      change.matrixFiscal=fiscalMatrixSource({sku,supplier:taxSupplier,tax:change.tax});
       // Register the accountant-supplied SKU fields in Motor Matriz even if
       // Shopee previously rejected the fiscal update due to missing CEST.
       // Validating a LOCAL draft must never require a Shopee tax_info read/write.
