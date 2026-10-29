@@ -17,7 +17,7 @@ test('kit preserva autorizacao e nao utiliza token de promocao de SKU simples',(
  assert.match(app,/typeof optimizerKitWorkflowActive==='function'/);
  assert.match(app,/optimizerDiscountApprovalReady\(\)/);
  assert.match(app,/discountApprovalToken:p\.modelVariations/);
- assert.match(server,/\['all','remaining'\]\.includes\(plan\.selectedStage\)&&!linkedKit/);
+ assert.match(server,/\['all','remaining','discount'\]\.includes\(plan\.selectedStage\)&&!linkedKit/);
 });
 test('promocao do kit possui previa e confirmacao independentes',()=>{
  assert.match(existing,/\/api\/shopee\/kits\/discount\/preview/);
