@@ -477,5 +477,5 @@ test('modo exclusivo do kit aparece na interface sem reenviar etapas já preserv
  assert.match(html,/<option value="discount">Somente desconto \(etapa 08/);
  assert.match(app,/p\?\.selectedStage==='discount'/);
  assert.match(app,/Preservado · sem reenvio/);
- assert.match(server,/if\(selectedStage==='discount'&&!kitDiscountPlan\)/);
+ assert.match(server,/if\(selectedStage==='discount'&&kitLink&&!kitDiscountPlan\)/);
 });
