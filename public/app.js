@@ -5622,7 +5622,8 @@ async function optimizerRunAudit(itemId,sku,modelId=''){
     $('#optimizerQuickValues').hidden=true;
     $('#optimizerQuickStatus').textContent='Conferindo o custo WeDrop e calculando o preço bruto da SKU '+expectedSku+'...';
     if(globalThis.__RA_KIT_OPTIMIZATION_HANDOFF?.sku===expectedSku){
-      $('#optimizerQuickStatus').textContent='Kit WeDrop: os preços e margens devem incluir TODOS os componentes; precificação isolada não será executada.';
+      $('#optimizerQuickStatus').textContent='Kit WeDrop: conferindo custo dos componentes e calculando o preço bruto...';
+      void shPriceLoadDefaults().then(()=>shPricePrepare());
     }else     void shPriceLoadDefaults().then(()=>{
       const pending=adsReserveRequest;
       if(pending&&pending.sku===expectedSku){
@@ -6796,6 +6797,10 @@ function shPriceRender(q){
   shPriceAdsRefreshUi();
   shQuickSyncSlider();
   $('#optimizerQuickValues').hidden=false;
+  if(q.source==='kit_wedrop_components'){
+   $('#priceFreight').value=String(q.pricingSettings?.shipping??0);
+   $('#pricePackaging').value=String(q.pricingSettings?.packing??0);
+  }
   $('#optimizerQuickGross').textContent=shPriceMoney(q.grossPrice);
   $('#optimizerQuickDiscount').textContent=shPricePercent(q.discountPct);
   const marketVerified=q.marketResearch?.verified===true;
@@ -6810,7 +6815,9 @@ function shPriceRender(q){
     Number(q.netMarginPct)>Number(q.targetMarginPct)+0.3?
     ' · Meta mínima '+shPricePercent(q.targetMarginPct)+'; margem real '+
     shPricePercent(q.netMarginPct)+' porque os dois preços (Shopee e cupom) devem terminar em 0/9.':'';
-  shQuickSetStatus('SKU '+q.sku+' · Custo WeDrop '+shPriceMoney(q.unitCost)+centsMarginNotice+
+  shQuickSetStatus((q.source==='kit_wedrop_components'?
+    'KIT '+q.kitSku+' · SKU Principal '+q.mainSku+' · '+q.componentSkus.length+' SKUs · custo total dos produtos ':
+    'SKU '+q.sku+' · Custo WeDrop ')+shPriceMoney(q.unitCost)+centsMarginNotice+
     (isSupplierPreview
       ?'. Simulação disponível. Aguarde a confirmação do anúncio Shopee para salvar na etapa Descontos.'
       :q.marketResearch?.verified===true
@@ -6828,7 +6835,9 @@ function shPriceRender(q){
   $('#pricingSummaryCost').textContent=shPriceMoney(q.unitCost);
   pricingShowSelection({sku:q.sku});
   shPriceRefreshMarginLabel();
-  $('#priceCostSource').textContent='SKU '+q.sku+' · WeDrop '+q.supplierSku+
+  $('#priceCostSource').textContent=(q.source==='kit_wedrop_components'?
+    'KIT '+q.kitSku+' · SKU Principal '+q.mainSku+' · '+q.componentSkus.join(' + '):
+    'SKU '+q.sku+' · WeDrop '+q.supplierSku)+
     ' · Custo de aquisição '+shPriceMoney(q.unitCost)+
     ' · Piso com margem mínima: '+shPriceMoney(q.priceFloor);
   $('#priceMarketState').textContent=q.notice;
