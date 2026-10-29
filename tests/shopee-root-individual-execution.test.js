@@ -77,7 +77,7 @@ test('UI e servidor não exigem desconto ao executar somente variações',()=>{
 test('etapa 08 do motor raiz respeita o preço promocional salvo por SKU, sem aplicar o valor de outra',()=>{
  const skuA=compileShopeeExecutionPlan({...ctx,sku:'310200',selectedStage:'discount_adjust',
   allowDiscountOnly:true});
- const skuB=compileShopeeExecutionPlan({...ctx,sku:'B456',selectedStage:'discount_adjust',
+ const skuB=compileShopeeExecutionPlan({...ctx,sku:'B456',record:{...ctx.record,sku:'B456'},selectedStage:'discount_adjust',
   allowDiscountOnly:true});
  assert.equal(skuA.selectedStage,'discount_adjust');
  assert.equal(skuB.selectedStage,'discount_adjust');
