@@ -31,7 +31,7 @@
 <link rel="stylesheet" href="/ads-premium.css?v=2.4.0-seo-ads-location">
 <link rel="stylesheet" href="/sidebar-collapse.css?v=1.0.0">
 <link rel="stylesheet" href="/optimizer-image-studio.css?v=1.0.2">
-<link rel="stylesheet" href="/kit-builder.css?v=3.7.6-compact-generation">
+<link rel="stylesheet" href="/kit-builder.css?v=3.7.7-kit-discount-compact">
 <link rel="stylesheet" href="/optimizer-technical-studio.css?v=1.0.1-review-feedback">
 <style>
 /* Autorização >25%: campo compacto, sem o input global width:100%.
@@ -1271,18 +1271,33 @@
     <button type="button" id="kitOptimizeImages" class="kit-secondary" disabled>3. Importar as 9 imagens para revisão</button>
     <button type="button" id="kitOptimizeOpen" class="kit-primary" disabled>4. Abrir revisão, prévia e execução →</button>
    </div>
-   <section class="kit-publish-preview" aria-label="Minha Promoção do anúncio existente">
-    <h4>5. Desconto do kit no anúncio existente</h4>
-    <p class="kit-info">O SKU principal serve de referência técnica. Confirme com a contabilidade o NCM/CEST e a emissão da NF-e do conjunto: não copie automaticamente a classificação de um componente para todo o kit.</p>
-    <p class="kit-info">Depois de executar e confirmar a otimização, use a campanha Minha Promoção existente. O sistema considera o custo de todos os componentes do kit e exige prévia antes de alterar o desconto.</p>
-    <div class="kit-publish-fields"><label>ID da Minha Promoção Shopee
-     <input id="kitOptimizeDiscountId" type="text" inputmode="numeric" autocomplete="off" placeholder="ID da campanha"></label></div>
-    <div class="kit-actions"><button type="button" class="kit-secondary" id="kitOptimizeDiscountPreview" disabled>Preparar prévia do desconto</button></div>
-    <div id="kitOptimizeDiscountBox" class="kit-publish-preview" hidden>
+   <section class="kit-publish-preview kit-existing-discount" aria-label="Minha Promoção do anúncio existente">
+    <div class="kit-existing-discount-head">
+     <h4>5. Desconto do kit</h4><span class="kit-existing-discount-tag">IDs Shopee · Automático</span>
+    </div>
+    <div class="kit-existing-discount-grid">
+     <label>Item ID do KIT
+      <input id="kitOptimizeKitItemId" type="text" placeholder="Vincule o anúncio" readonly title="Item ID do anúncio completo do kit"></label>
+     <label>Item ID da SKU Principal
+      <input id="kitOptimizePrimaryItemId" type="text" placeholder="Consultar Shopee" readonly title="Item ID do anúncio individual da SKU Principal, apenas referência"></label>
+     <label>Minha Promoção · ID da campanha
+      <select id="kitOptimizeDiscountId" aria-label="Campanha Minha Promoção Shopee"><option value="">Consultar campanhas da Shopee</option></select></label>
+    </div>
+    <div class="kit-existing-discount-actions">
+     <button type="button" class="kit-secondary" id="kitOptimizeDiscountRefresh">↻ Buscar IDs na Shopee</button>
+     <button type="button" class="kit-primary" id="kitOptimizeDiscountPreview" disabled>Preparar prévia do desconto</button>
+    </div>
+    <p class="kit-existing-discount-feedback" id="kitOptimizeDiscountAutoStatus" role="status" aria-live="polite">Selecione a SKU Principal para consultar anúncios e campanhas.</p>
+    <div id="kitOptimizeDiscountBox" class="kit-publish-preview kit-existing-discount-review" hidden>
      <pre id="kitOptimizeDiscountSummary"></pre>
      <button type="button" class="kit-primary" id="kitOptimizeDiscountApply">Confirmar e aplicar desconto ao kit</button>
     </div>
-    <p class="kit-status" id="kitOptimizeDiscountStatus" role="status" aria-live="polite">Nenhum desconto aplicado. Execute e confirme a otimização antes de preparar esta etapa.</p>
+    <p class="kit-status kit-existing-discount-result" id="kitOptimizeDiscountStatus" role="status" aria-live="polite">Nenhum desconto aplicado. A prévia exige otimização confirmada.</p>
+    <details class="kit-existing-discount-help">
+     <summary>Orientações fiscais e regras do desconto</summary>
+     <p>O SKU Principal serve de referência técnica. Confira NCM/CEST e NF-e com a contabilidade. O Item ID do produto individual não equivale ao ID da campanha nem substitui o Item ID do kit.</p>
+     <p>O desconto utiliza o anúncio do kit, após otimização confirmada, prévia dos preços e aprovação explícita.</p>
+    </details>
    </section>
    <p id="kitOptimizeStatus" class="kit-status" role="status" aria-live="polite">
     A preparação não altera a Shopee. A revisão, o desconto e a execução requerem as confirmações do otimizador.
@@ -2293,7 +2308,7 @@
 <script src="/technical-memory.js?v=1.0.1-live-sku-preload"></script>
 <script src="/technical-status.js?v=1.0.0-optional-coherence"></script>
 <script src="/app.js?v=3.4.2-kit-compound-pricing"></script>
-<script type="module" src="/kit-builder.js?v=3.8.4-compact-generation"></script>
+<script type="module" src="/kit-builder.js?v=3.8.5-kit-discount-autofind"></script>
 <link rel="stylesheet" href="/optimizer-variations.css?v=1.2.1-single-flow">
 <script src="/optimizer-variations.js?v=1.2.3-single-flow"></script>
 
