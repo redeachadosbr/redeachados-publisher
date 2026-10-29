@@ -218,17 +218,19 @@ export function initExistingKitOptimization({getContext,api,money,onMainSkuChang
   if(!target||target.kitSku!==kitSku()){
    if(!await lookup({automatic:true}))return;
   }
+  let newlyPrepared=false;
   if(!target.prepared){
    if(!target.autoVerified&&!$('#kitOptimizeConfirm').checked){
     $('#kitOptimizeAdvanced').open=true;
     return notice('Confirme que o Item ID escolhido é o anúncio do kit completo.','warning');
    }
    if(!await prepare())return;
+   newlyPrepared=true;
   }
   const btn=$('#kitOptimizeStart');
   btn.disabled=true;btn.textContent='Preparando etapas...';
   try{
-   const imported=await transferImages({automatic:true,optional:true});
+   const imported=newlyPrepared?await transferImages({automatic:true,optional:true}):false;
    if(imported)notice('9 imagens disponíveis para revisão. Abrindo as etapas do kit...','success');
    else notice('Abrindo as etapas. Confira as imagens no passo 01.','info');
    open();
@@ -306,6 +308,7 @@ export function initExistingKitOptimization({getContext,api,money,onMainSkuChang
  $('#kitOptimizeDiscountRefresh')?.addEventListener('click',()=>void resolveDiscountIds());
  $('#kitOptimizeLookup')?.addEventListener('click',()=>void lookup());
  $('#kitOptimizeStart')?.addEventListener('click',()=>void startKitOptimization());
+ $('#kitWorkflowImportImages')?.addEventListener('click',()=>void transferImages());
  $('#kitOptimizePrepare')?.addEventListener('click',()=>void prepare());
  $('#kitOptimizeImages')?.addEventListener('click',()=>void transferImages());
  $('#kitOptimizeOpen')?.addEventListener('click',open);
