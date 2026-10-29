@@ -13,8 +13,8 @@ export function validateKitOptimizationTarget({saved,kit,record,targetSku,itemId
  if(!/^[1-9]\d{0,17}$/.test(str(itemId))||str(confirmedItemId)!==str(itemId))
   throw Error('Confirme o Item ID do anúncio de kit existente.');
  if(!/^\d{1,18}$/.test(str(modelId)))throw Error('Model ID Shopee inválido.');
- if(!str(targetSku)||str(targetSku).length>120||parts.includes(str(targetSku)))
-  throw Error('SKU do anúncio do kit deve ser diferente da SKU de cada componente.');
+ if(!str(targetSku)||str(targetSku).length>120||str(targetSku)!==str(mainSku))
+  throw Error('A Shopee deve utilizar SOMENTE a SKU principal selecionada; SKUs complementares são vinculadas na WeDrop.');
  if(str(record?.itemId)!==str(itemId)||str(record?.sku)!==str(targetSku)||
   str(record?.selectedModelId??0)!==str(modelId))
   throw Error('O anúncio, a SKU ou o modelo diverge da auditoria oficial da Shopee.');
@@ -54,6 +54,9 @@ export function kitOptimizationLinkIsCurrent(saved,link){
   str(saved.optimization.modelId)===str(link.modelId)&&
   str(saved.optimization.sku)===str(link.sku)&&
   str(saved.optimization.mainSku)===str(link.mainSku)&&
+  str(link.sku)===str(link.mainSku)&&
+  Array.isArray(saved.skus)&&saved.skus.map(str).includes(str(link.mainSku))&&
+  Array.isArray(link.componentSkus)&&saved.skus.map(str).join('|')===link.componentSkus.map(str).join('|')&&
   str(saved.creative?.title)===str(link.title)&&
   str(saved.creative?.description)===str(link.description)&&
   Number(saved.kit?.kitCost)===Number(link.kitCost)&&
