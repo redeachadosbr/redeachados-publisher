@@ -9,6 +9,7 @@ export function initExistingKitOptimization({getContext,api,money,onMainSkuChang
  function paint(){
   const {kitSaved}=ctx(),valid=Boolean(target&&target.kitSku===kitSku());
   $('#kitOptimizeLookup').disabled=busy||!kitSaved;
+  $('#kitOptimizeStart').disabled=busy||!kitSaved;
   $('#kitOptimizePrepare').disabled=busy||!kitSaved||!valid||!$('#kitOptimizeConfirm').checked;
   $('#kitOptimizeImages').disabled=busy||!kitSaved||!valid||!target.prepared;
   $('#kitOptimizeOpen').disabled=busy||!kitSaved||!valid||!target.prepared;
@@ -77,8 +78,8 @@ export function initExistingKitOptimization({getContext,api,money,onMainSkuChang
   select.replaceChildren(new Option('Selecione o SKU principal',''));
   for(const x of ctx().prepared?.kit?.components||[])
    select.append(new Option(x.sku+' · '+x.name,x.sku));
-  if(link?.mainSku&&[...select.options].some(o=>o.value===link.mainSku))
-   select.value=link.mainSku;
+  const main=link?.mainSku||$('#kitPrincipalSku')?.value||ctx().prepared?.kit?.components?.[0]?.sku;
+  if(main&&[...select.options].some(o=>o.value===main))select.value=main;
   $('#kitOptimizeListingSku').value=link?.sku||kitSku();
   $('#kitOptimizeCandidates').replaceChildren();
   $('#kitOptimizeConfirm').checked=false;
@@ -88,7 +89,7 @@ export function initExistingKitOptimization({getContext,api,money,onMainSkuChang
   paint();
   if(link?.mainSku)void resolveDiscountIds();
  }
- async function lookup(){
+ async function lookup({automatic=false}={}){
   const {kitSaved}=ctx(),code=$('#kitOptimizeListingSku').value.trim(),current=kitSku();
   if(busy||!kitSaved||!current)return;
   if(!code)return notice('Informe a SKU exata do anúncio existente.','error');
@@ -101,6 +102,15 @@ export function initExistingKitOptimization({getContext,api,money,onMainSkuChang
    if(kitSku()!==current)return;
    const matches=(data.matches||[]).filter(x=>['NORMAL','UNLIST'].includes(String(x.status).toUpperCase()));
    if(!matches.length)throw Error('Anúncio não encontrado como ativo. Confira em Produtos Shopee.');
+   if(automatic&&matches.length===1){
+    const m=matches[0];
+    target={kitSku:current,sku:code,itemId:String(m.itemId),
+      modelId:String(m.modelId??'0'),prepared:false,autoVerified:true};
+    $('#kitOptimizeConfirm').checked=true;
+    $('#kitOptimizeSelected').textContent='Kit encontrado · Item ID '+m.itemId;
+    notice('Anúncio único do kit localizado pela SKU exata. Preparando a revisão...','success');
+    paint();return target;
+   }
    for(const m of matches){
     const button=document.createElement('button');button.type='button';button.className='kit-secondary';
     button.textContent='Item ID '+m.itemId+' · '+(m.title||code)+' · Modelo '+String(m.modelId??'0');
@@ -115,7 +125,11 @@ export function initExistingKitOptimization({getContext,api,money,onMainSkuChang
     });
     root.append(button);
    }
-   notice(matches.length+' anúncio(s) encontrado(s). Selecione o Item ID correto.','success');
+   if(automatic){
+    $('#kitOptimizeAdvanced').open=true;
+    notice('Foram encontrados '+matches.length+' anúncios. Selecione, confirme e clique em Iniciar novamente.','warning');
+   }else notice(matches.length+' anúncio(s) encontrado(s). Selecione o Item ID correto.','success');
+   return null;
   }catch(e){notice('Consulta não concluída: '+e.message,'error');}
   finally{busy=false;paint();}
  }
@@ -138,7 +152,8 @@ export function initExistingKitOptimization({getContext,api,money,onMainSkuChang
    notice('✓ Item ID '+result.target.itemId+' vinculado. Custo total do kit: '+
     money(result.quote.kitCost)+'. Revise o título, as imagens e os campos fiscais. '+
     (result.warnings||[]).join(' '),'success');
-  }catch(e){notice('Preparação bloqueada: '+e.message,'error');}
+   return target;
+  }catch(e){notice('Preparação bloqueada: '+e.message,'error');return null;}
   finally{busy=false;paint();}
  }
  async function convert(data){
@@ -152,7 +167,7 @@ export function initExistingKitOptimization({getContext,api,money,onMainSkuChang
   if(!png)throw Error('Não foi possível converter esta foto em PNG.');
   return png;
  }
- async function transferImages(){
+ async function transferImages({automatic=false,optional=false}={}){
   if(busy||!target?.prepared)return;
   const selected={...target},current=kitSku(),{images,kitPhotoStore}=ctx();
   busy=true;paint();
@@ -162,9 +177,11 @@ export function initExistingKitOptimization({getContext,api,money,onMainSkuChang
     if(Number.isInteger(row.slot)&&row.slot>=1&&row.slot<=9&&!images.has(row.slot))
      images.set(row.slot,row.dataUrl);
    }
-   if(Array.from({length:9},(_,i)=>i+1).some(n=>!images.has(n)))
+   if(Array.from({length:9},(_,i)=>i+1).some(n=>!images.has(n))){
+    if(optional)return false;
     throw Error('Complete as nove imagens do kit antes de importar para revisão.');
-   if(!window.confirm('Importar 9 imagens para a REVISÃO do Item ID '+selected.itemId+
+   }
+   if(!automatic&&!window.confirm('Importar 9 imagens para a REVISÃO do Item ID '+selected.itemId+
     '? A Shopee ainda não terá imagens publicadas.'))return;
    for(let slot=1;slot<=9;slot++){
     if(kitSku()!==current||target?.itemId!==selected.itemId)
@@ -178,9 +195,10 @@ export function initExistingKitOptimization({getContext,api,money,onMainSkuChang
     const result=await response.json().catch(()=>({}));
     if(!response.ok)throw Error('Imagem '+slot+': '+(result.error||'não confirmada'));
    }
-   notice('✓ Nove imagens preparadas no otimizador. Falta revisar e executar.','success');
+   notice('✓ Nove imagens preparadas na revisão. Nenhuma foto foi publicada.','success');
+   return true;
   }catch(e){notice('Importação interrompida: '+e.message+
-   '. As imagens já confirmadas permanecem armazenadas.','error');}
+   '. As imagens já confirmadas permanecem armazenadas.','error');return false;}
   finally{busy=false;paint();}
  }
  function open(){
