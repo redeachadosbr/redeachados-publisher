@@ -41,6 +41,8 @@ export async function saveWorkflowReview(shop,item,model,sku,change){
   next.attributes=[];next.tax=null;next.imagesSignature=null;
   next.technicalDraft=null;next.matrixFiscal=null;next.matrixTechnical=null;
   next.modelDiscountCampaignId='';
+  next.kitDiscountPreview=null;
+  next.kitDiscountPublication=null;
   next.variationConfig={enabled:false,type:'',values:[]};
   next.variationDetails=null;
  }
@@ -55,6 +57,10 @@ export async function saveWorkflowReview(shop,item,model,sku,change){
  if(change.imagesSignature!==undefined)next.imagesSignature=change.imagesSignature;
  if(change.variationConfig!==undefined)next.variationConfig=change.variationConfig;
  if(change.variationDetails!==undefined)next.variationDetails=change.variationDetails;
+ // Preparação da etapa 08 é independente da publicação.
+ // Só o servidor grava estas informações após verificar a origem Shopee.
+ if(change.kitDiscountPreview!==undefined)next.kitDiscountPreview=change.kitDiscountPreview;
+ if(change.kitDiscountPublication!==undefined)next.kitDiscountPublication=change.kitDiscountPublication;
  if(change.modelDiscountCampaignId!==undefined){
   const id=String(change.modelDiscountCampaignId||'').trim();
   if(id&&!/^\d{1,18}$/.test(id))throw Error('ID Minha Promoção inválido.');
