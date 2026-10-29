@@ -4140,3 +4140,26 @@ body.view-wedrop .page-intro{display:none!important}
    white-space:pre-line!important;overflow-wrap:normal;min-width:0!important;
  }
 }
+
+/* Calculadora de kits no padrão visual da Otimização Shopee */
+.kit-price-summary{margin:14px 0 18px;padding:16px 19px;border:1px solid #cbdcf0;border-radius:18px;background:#fff;box-shadow:0 5px 24px rgba(20,56,108,.05)}
+.kit-price-heading{display:flex;align-items:center;justify-content:space-between;gap:15px;flex-wrap:wrap;margin-bottom:13px}
+.kit-price-heading>div{display:flex;flex-direction:column;gap:4px}
+.kit-price-heading strong{font-size:17px;color:#102c53}
+.kit-price-heading small,.kit-price-disclaimer{font-size:12px;color:#607799;line-height:1.5}
+.kit-price-heading label{display:flex;flex-direction:column;gap:5px;min-width:250px;color:#244267;font-size:12px;font-weight:750}
+.kit-price-heading select{width:100%;border:1px solid #c8d8ea;background:#f6f9fd;border-radius:10px;padding:10px 12px;font:inherit;font-size:13px;color:#18355d}
+.kit-price-kpis{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:11px}
+.kit-price-kpi{min-width:0;min-height:95px;display:flex;flex-direction:column;gap:8px;padding:13px 14px;background:#f4f8fd;border:1px solid #d8e5f2;border-radius:13px}
+.kit-price-kpi span{font-size:12px;font-weight:600;color:#395577}
+.kit-price-kpi strong{font-size:22px;color:#132e58;font-weight:850;line-height:1.2}
+.kit-price-kpi small{font-size:12px;color:#405c7c}
+.kit-price-gross{background:#103c78;border-color:#103c78}
+.kit-price-gross span,.kit-price-gross strong{color:#fff}
+.kit-price-profit{background:#e5f8f0;border-color:#c5ebdb}
+.kit-price-profit strong,.kit-price-profit small{color:#098458}
+.kit-price-cost{padding:7px 0 0;margin:0 0 5px;font-size:13px;color:#456184}
+.kit-price-cost[data-state="error"]{color:#a52b29}
+.kit-price-cost[data-state="warning"]{color:#ac6b15}
+@media(max-width:1080px){.kit-price-kpis{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media(max-width:590px){.kit-price-heading label{width:100%;min-width:0}.kit-price-kpis{grid-template-columns:1fr 1fr}.kit-price-kpi{padding:12px 9px}.kit-price-kpi strong{font-size:18px}}
