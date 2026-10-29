@@ -103,7 +103,9 @@ function scheduleKitMarginReprice(){
  }
  marginUpdatePending=true;
  $('#kitSaveDraft').disabled=true;
- const priceState=$('#kitPriceCost');if(priceState){priceState.dataset.state='warning';priceState.textContent='Recalculando custo, preço bruto e margem. Não publique o valor anterior.';}
+ const priceState=$('#kitPriceCost');if(priceState){priceState.hidden=false;priceState.dataset.state='warning';priceState.textContent='Recalculando custos e preços...';}
+ $('#kitPriceKpis').hidden=true;
+ $('#kitPriceComponentCosts').hidden=true;
  status('Margem ajustada para '+$('#kitMargin').value+'%. Atualizando os preços e o lucro dos kits pela calculadora Shopee...','info');
  marginTimer=setTimeout(()=>void repriceKitMargin(marginRevision),420);
 }
@@ -145,17 +147,31 @@ function refreshKitPrices(kit){
  }
 }
 function renderKitPricingSummary(kit=prepared?.kit){
- const select=$('#kitPrincipalSku'),values=$('#kitPriceKpis'),state=$('#kitPriceCost');
- if(!select||!values||!state)return;
+ const select=$('#kitPrincipalSku'),values=$('#kitPriceKpis'),
+  costs=$('#kitPriceComponentCosts'),state=$('#kitPriceCost');
+ if(!select||!values||!costs||!state)return;
  const parts=Array.isArray(kit?.components)?kit.components:[];
  const former=select.value;
  select.replaceChildren(new Option(parts.length?'Escolha o SKU Principal':'Selecione um kit',''));
  for(const p of parts)select.append(new Option(p.sku+' · '+p.name,p.sku));
- const main=[former,prepared?.optimization?.mainSku,$('#kitOptimizeMainSku')?.value].find(x=>x&&parts.some(p=>p.sku===x));
+ const main=[former,prepared?.optimization?.mainSku,$('#kitOptimizeMainSku')?.value]
+  .find(x=>x&&parts.some(p=>p.sku===x));
  select.value=main||'';select.disabled=!parts.length;
- values.hidden=!kit?.quote||!parts.length;
+ const validCosts=parts.length>=2&&parts.length<=3&&
+  parts.every(p=>Number.isFinite(Number(p.unitCost))&&Number(p.unitCost)>0)&&
+  Number.isFinite(Number(kit?.componentCost))&&Number(kit?.componentCost)>0&&
+  Math.abs(parts.reduce((sum,p)=>sum+Number(p.unitCost),0)-Number(kit?.componentCost))<=0.02;
+ values.hidden=!kit?.quote||!validCosts;
+ costs.replaceChildren();costs.hidden=!kit?.quote||!validCosts;
  if(!kit?.quote||!parts.length){
-  state.textContent='Selecione ou abra um kit para calcular o preço bruto com todos os SKUs.';state.dataset.state='info';return;
+  state.hidden=false;state.dataset.state='info';
+  state.textContent='Selecione um kit para visualizar os preços.';
+  return;
+ }
+ if(!validCosts){
+  state.hidden=false;state.dataset.state='error';
+  state.textContent='Custos individuais divergentes ou ausentes. Atualize os SKUs na WeDrop antes de precificar.';
+  return;
  }
  $('#kitPriceGross').textContent=money(kit.quote.grossPrice);
  $('#kitPriceDiscount').textContent=pct(kit.quote.discountPct);
@@ -163,12 +179,25 @@ function renderKitPricingSummary(kit=prepared?.kit){
  $('#kitPriceCoupon').textContent='Com cupom de '+pct(kit.quote.couponPct)+': '+money(kit.quote.afterCoupon);
  $('#kitPriceProfit').textContent=money(kit.quote.netProfit);
  $('#kitPriceMargin').textContent=pct(kit.quote.netMarginPct)+' de margem líquida';
- state.textContent='Custo WeDrop ('+parts.length+' SKUs): '+money(kit.componentCost)+
-  ' · Embalagem '+money(kit.packing)+' · Frete '+money(kit.shipping)+' · Custo total '+money(kit.kitCost)+
-  (main?' · SKU Principal '+main:' · Escolha o SKU Principal.');
+ const heading=document.createElement('span');heading.className='kit-price-cost-heading';
+ heading.textContent='Custos WeDrop';costs.append(heading);
+ for(const p of parts){
+  const chip=document.createElement('span');chip.className='kit-price-cost-chip';
+  chip.title=p.name||('SKU '+p.sku);
+  const code=document.createElement('small');code.textContent='SKU '+p.sku;
+  const value=document.createElement('strong');value.textContent=money(p.unitCost);
+  chip.append(code,value);costs.append(chip);
+ }
+ const total=document.createElement('span');total.className='kit-price-cost-chip kit-price-cost-total';
+ total.title='Produtos '+money(kit.componentCost)+' + embalagem '+money(kit.packing)+
+  ' + frete '+money(kit.shipping);
+ const totalLabel=document.createElement('small');totalLabel.textContent='Total do kit';
+ const totalValue=document.createElement('strong');totalValue.textContent=money(kit.kitCost);
+ total.append(totalLabel,totalValue);costs.append(total);
  state.dataset.state=kitDraftNeedsRefresh||marginUpdatePending?'warning':'success';
- if(kitDraftNeedsRefresh)state.textContent+=' Cotação histórica: atualize a WeDrop antes de enviar.';
- else if(marginUpdatePending)state.textContent+=' Recalculando: não publique o valor anterior.';
+ state.textContent=kitDraftNeedsRefresh?'Custo histórico — atualize a WeDrop antes de publicar.':
+  marginUpdatePending?'Recalculando a margem. Não publique o valor anterior.':'';
+ state.hidden=!state.textContent;
 }
 async function repriceKitMargin(revision){
  let completed=false;
@@ -223,8 +252,9 @@ async function repriceKitMargin(revision){
  }catch(error){
   if(revision===marginRevision){
    status('Não foi possível recalcular a margem: '+error.message+'. Tente pesquisar novamente; valores antigos não devem ser publicados.','error');
-   const el=$('#kitPriceCost');if(el){el.dataset.state='error';el.textContent='Falha no recálculo: '+error.message+'. Não utilize o preço anterior.';}
+   const el=$('#kitPriceCost');if(el){el.hidden=false;el.dataset.state='error';el.textContent='Falha no recálculo: '+error.message+'. Não utilize o preço anterior.';}
    $('#kitPriceKpis').hidden=true;
+   $('#kitPriceComponentCosts').hidden=true;
   }
  }finally{
   if(revision===marginRevision){

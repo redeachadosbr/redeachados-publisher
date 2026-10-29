@@ -4165,3 +4165,27 @@ body.view-wedrop .page-intro{display:none!important}
 @media(max-width:590px){.kit-price-heading label{width:100%;min-width:0}.kit-price-kpis{grid-template-columns:1fr 1fr}.kit-price-kpi{padding:12px 9px}.kit-price-kpi strong{font-size:18px}}
 
 .kit-price-kpis[hidden],.kit-price-summary[hidden]{display:none!important}
+
+/* Kits: custos individuais em pequenos campos, sem descrições desnecessárias */
+.kit-price-summary{padding:14px 18px 13px}
+.kit-price-heading{margin-bottom:11px}
+.kit-price-heading>strong{font-size:17px;font-weight:800;letter-spacing:-.01em;color:#102c53}
+.kit-price-kpi{min-height:86px;padding:11px 13px;gap:6px}
+.kit-price-component-costs{display:flex;align-items:center;flex-wrap:wrap;gap:7px;margin-top:11px}
+.kit-price-cost-heading{font-size:12px;font-weight:750;color:#355273;margin-right:2px}
+.kit-price-cost-chip{display:inline-flex;align-items:center;gap:9px;white-space:nowrap;min-height:34px;padding:6px 11px;border:1px solid #d7e4f2;border-radius:9px;background:#f5f8fc}
+.kit-price-cost-chip small{font-size:11px;line-height:1.25;color:#537092}
+.kit-price-cost-chip strong{font-size:13px;line-height:1.25;color:#102f58;font-weight:800}
+.kit-price-cost-total{border-color:#f2c98b;background:#fff8ea}
+.kit-price-cost-total small{color:#866029}
+.kit-price-cost-total strong{color:#8c540d}
+.kit-price-cost{margin:8px 0 0;padding:0;font-size:12px}
+.kit-price-cost[hidden],.kit-price-component-costs[hidden]{display:none!important}
+@media(max-width:590px){
+ .kit-price-summary{padding:12px}
+ .kit-price-component-costs{gap:6px}
+ .kit-price-cost-heading{flex-basis:100%;margin-bottom:1px}
+ .kit-price-cost-chip{gap:5px;padding:7px 8px}
+ .kit-price-cost-chip small{font-size:10px}
+ .kit-price-cost-chip strong{font-size:12px}
+}

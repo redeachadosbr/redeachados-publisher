@@ -6,7 +6,7 @@
 <meta name="theme-color" content="#0A1C3A">
 <link rel="icon" type="image/svg+xml" href="/brand-logo.svg">
 <title>Rede Achados BR · Gestão Shopee</title>
-<link rel="stylesheet" href="/style.css?v=1.20.45-kit-price-kpis">
+<link rel="stylesheet" href="/style.css?v=1.20.46-kit-cost-chips">
 <link rel="stylesheet" href="/optimizer-compact.css?v=1.20.13-wedrop">
 <link rel="stylesheet" href="/optimizer-fiscal-premium.css?v=1.20.13">
 <link rel="stylesheet" href="/optimizer-ads-reserve.css?v=1.20.15">
@@ -1026,7 +1026,7 @@
   <button id="kitSuggest" type="button" class="kit-primary"><span class="kit-search-symbol" aria-hidden="true"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="10.5" cy="10.5" r="6"/><path d="m15 15 6 6"/></svg></span><span>Pesquisar kits inteligentes</span><span class="kit-search-arrow" aria-hidden="true"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 12h16m-6-6 6 6-6 6"/></svg></span></button>
  </div>
  <section id="kitPricingSummary" class="kit-price-summary" aria-label="Calculadora do kit">
-  <div class="kit-price-heading"><div><strong>Preço e desconto do Kit · Calculadora Shopee</strong><small>Mesmo motor da Otimização: custos de todos os SKUs.</small></div>
+  <div class="kit-price-heading"><strong>Preço e desconto do Kit</strong>
    <label for="kitPrincipalSku">SKU Principal (WeDrop)<select id="kitPrincipalSku" disabled><option value="">Selecione um kit</option></select></label></div>
   <div class="kit-price-kpis" id="kitPriceKpis" hidden>
    <div class="kit-price-kpi kit-price-gross"><span>Preço bruto para anúncio</span><strong id="kitPriceGross">—</strong></div>
@@ -1034,10 +1034,9 @@
    <div class="kit-price-kpi"><span>Preço exibido na Shopee</span><strong id="kitPriceVisible">—</strong><small id="kitPriceCoupon">Com cupom: —</small></div>
    <div class="kit-price-kpi kit-price-profit"><span>Lucro líquido / margem</span><strong id="kitPriceProfit">—</strong><small id="kitPriceMargin">—</small></div>
   </div>
-  <p id="kitPriceCost" class="kit-price-cost" role="status" aria-live="polite">Selecione um kit para calcular o preço bruto.</p>
-  <small class="kit-price-disclaimer">SKU Principal = referência técnica/fiscal, não custo isolado. O cálculo inclui todos os SKUs, taxas Shopee, imposto, desconto, cupom, embalagem e frete. Nada é publicado automaticamente.</small>
+  <div id="kitPriceComponentCosts" class="kit-price-component-costs" role="group" aria-label="Custos individuais por SKU e custo total do kit" hidden></div>
+  <p id="kitPriceCost" class="kit-price-cost" role="status" aria-live="polite">Selecione um kit para visualizar os preços.</p>
  </section>
- <p class="kit-info kit-stock-disclaimer">Somente SKUs disponíveis no catálogo importado da WeDrop. Margens e lucros são estimativas; envio conjunto e estoque devem ser confirmados antes da publicação.</p>
  <p id="kitStatus" role="status" aria-live="polite" class="kit-status">Carregando categorias cadastradas...</p>
  <span id="kitSource" hidden>Aguardando estoque disponível</span>
   <div id="kitSuggestions" class="kit-suggestions"><p>Escolha uma categoria para iniciar.</p></div>
@@ -2285,7 +2284,7 @@
 <script src="/technical-memory.js?v=1.0.1-live-sku-preload"></script>
 <script src="/technical-status.js?v=1.0.0-optional-coherence"></script>
 <script src="/app.js?v=3.4.2-kit-compound-pricing"></script>
-<script type="module" src="/kit-builder.js?v=3.8.2-kit-price-summary"></script>
+<script type="module" src="/kit-builder.js?v=3.8.3-kit-cost-chips"></script>
 <link rel="stylesheet" href="/optimizer-variations.css?v=1.2.1-single-flow">
 <script src="/optimizer-variations.js?v=1.2.3-single-flow"></script>
 
