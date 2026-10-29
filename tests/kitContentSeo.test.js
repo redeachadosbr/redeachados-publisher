@@ -150,3 +150,19 @@ test('pesquisa SEO usa três SKUs e apresenta cinco termos sem inventar volume',
  const html=(await import('node:fs')).readFileSync(new URL('../public/index.html',import.meta.url),'utf8');
  assert.match(html,/id="kitSeoMarketDetails"/);
 });
+
+test('importação azul recupera colagem manual antes do clipboard e não acusa vazio como falha do ChatGPT',async()=>{
+ const {readFileSync}=await import('node:fs');
+ const ui=readFileSync(new URL('../public/kit-builder.js',import.meta.url),'utf8');
+ const html=readFileSync(new URL('../public/index.html',import.meta.url),'utf8');
+ assert.match(ui,/function kitShowPasteSeoReply\(/);
+ assert.match(ui,/if\(field\.value\.trim\(\)\)\{importPlusText\(\);return;\}/);
+ assert.match(ui,/Ainda não há uma resposta copiada/);
+ assert.match(ui,/if\(!content\.trim\(\)\)\{/);
+ assert.match(ui,/function kitPasteSeoReply\(event\)/);
+ assert.match(ui,/event\.preventDefault\(\);\s*\$\('#kitPlusTextResult'\)\.value=copied;\s*importPlusText\(\)/);
+ assert.match(ui,/\$\('#kitPlusTextResult'\)\?\.addEventListener\('paste',kitPasteSeoReply\)/);
+ assert.match(html,/3 títulos com notas SEO/);
+ assert.match(ui,/kitShowSeoTitles\(scored\)/);
+ assert.match(ui,/\$\('#kitDescription'\)\.value=result\.description/);
+});

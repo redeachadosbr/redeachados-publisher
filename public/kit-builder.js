@@ -2630,26 +2630,48 @@ function importPlusText({silent=false}={}){
   return false;
  }
 }
+function kitShowPasteSeoReply(reason=''){
+ // O navegador não pode ler o conteúdo da aba chatgpt.com sem uma ponte autorizada.
+ // A resposta copiada pelo usuário ou colada manualmente é a única fonte legítima.
+ $('#kitContentDetails').open=true;
+ kitImportState('Aguardando a resposta completa do ChatGPT','info');
+ kitContentFeedback((reason?reason+' ':'')+
+  'No ChatGPT clique em Copiar na RESPOSTA com TÍTULO 1, 2, 3 e DESCRIÇÃO; volte e pressione o botão azul. '+
+  'Se o Chrome não liberar a cópia, cole aqui com Ctrl+V: os três títulos, notas SEO e descrição serão importados em conjunto.','info');
+ const field=$('#kitPlusTextResult');
+ field.focus();field.scrollIntoView({behavior:'smooth',block:'nearest'});
+}
 async function kitImportCopiedContent(){
+ if(!prepared)return kitContentFeedback('Abra o rascunho do kit antes de importar o anúncio.','error');
+ const field=$('#kitPlusTextResult');
+ // Texto colado tem prioridade: não ignorar a resposta que já está na tela.
+ if(field.value.trim()){importPlusText();return;}
  if(!navigator.clipboard?.readText){
-  kitImportState('Importação automática não autorizada · use Opções avançadas','error');
-  kitContentFeedback('O navegador não permite ler o texto copiado. Abra Opções avançadas, use Ctrl+V e clique em Importar texto colado.','error');
-  $('#kitContentDetails').open=true;
-  $('#kitPlusTextResult').focus();
+  kitShowPasteSeoReply('Leitura automática da área de transferência não autorizada.');
   return;
  }
  try{
   const content=await navigator.clipboard.readText();
-  if(!content.trim())throw Error('Área de transferência vazia.');
-  $('#kitPlusTextResult').value=content;
+  if(!content.trim()){
+   kitShowPasteSeoReply('Ainda não há uma resposta copiada.');
+   return;
+  }
+  field.value=content;
+  // O importador valida os 3 títulos, calcula a nota SEO e salva a descrição.
   importPlusText();
- }catch(error){
-  kitImportState('Abra Opções avançadas para colar manualmente','error');
-  kitContentFeedback('Não foi possível acessar o texto copiado: '+error.message+
-    '. Abra Opções avançadas, use Ctrl+V e clique em Importar texto colado.','error');
-  $('#kitContentDetails').open=true;
-  $('#kitPlusTextResult').focus();
+ }catch{
+  kitShowPasteSeoReply('O Chrome não autorizou a leitura da área de transferência.');
  }
+}
+function kitPasteSeoReply(event){
+ if(!prepared)return;
+ const copied=event.clipboardData?.getData('text/plain')||'';
+ if(!copied.trim())return;
+ // Ao colar uma resposta completa, importar sem exigir outro clique no botão.
+ try{parseKitSeoResponse(copied);}catch{return;}
+ event.preventDefault();
+ $('#kitPlusTextResult').value=copied;
+ importPlusText();
 }
 async function kitTryAutoContentImport(){
  if(!kitContentAwaitingResponse||!prepared||!document.hasFocus()||
@@ -3113,6 +3135,7 @@ $('#kitContinueContent')?.addEventListener('click',()=>void plusText({proceedWit
 $('#kitSaveSkuFacts')?.addEventListener('click',()=>void saveDraft());
 $('#kitImportCopiedText')?.addEventListener('click',()=>void kitImportCopiedContent());
 $('#kitImportText')?.addEventListener('click',()=>importPlusText());
+$('#kitPlusTextResult')?.addEventListener('paste',kitPasteSeoReply);
 $('#kitSaveSeoContent')?.addEventListener('click',async()=>{
  kitImportState('Salvando os textos selecionados...','info');
  const saved=await saveDraft();
