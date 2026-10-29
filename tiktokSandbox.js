@@ -172,7 +172,8 @@ export function registerTikTokSandbox(app,{mustLogin,upload,baseUrl}){
  app.post('/api/tiktok/sandbox/status',mustLogin,blockForeignOrigin,async(req,res)=>{
   try{
    const publishId=String(req.body.publishId||'');
-   if(!/^[A-Za-z0-9:_-]{5,160}$/.test(publishId))throw Error('Identificador inválido.');
+   // Identificadores oficiais da Content Posting API contêm ~ e pontos (ex.: v_pub_file~v2-1.123456789).
+   if(!/^[A-Za-z0-9_.:~-]{5,160}$/.test(publishId))throw Error('Identificador inválido.');
    const info=await call('/v2/post/publish/status/fetch/',{publish_id:publishId});
    res.setHeader('Cache-Control','no-store');
    res.json({status:info.status||'UNKNOWN',failReason:info.fail_reason||''});
