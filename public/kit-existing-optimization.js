@@ -77,6 +77,7 @@ export function initExistingKitOptimization({getContext,api,money,onMainSkuChang
   $('#kitOptimizeImages').disabled=busy||!kitSaved||!valid||!target.prepared;
   $('#kitOptimizeOpen').disabled=busy||!kitSaved||!valid||!target.prepared;
   $('#kitOptimizeDiscountPreview').disabled=busy||discountSearching||!kitSaved||!valid||!target.prepared||!$('#kitOptimizeDiscountId').value;
+  $('#kitOptimizeDiscountApply').disabled=busy||!discountToken;
   $('#kitOptimizeDiscountRefresh').disabled=discountSearching||!kitSaved||!$('#kitOptimizeMainSku').value;
  }
  function syncWorkflowCampaigns(){
@@ -417,24 +418,43 @@ export function initExistingKitOptimization({getContext,api,money,onMainSkuChang
   if(!/^[1-9]\d{0,17}$/.test(discountId))
    return discountNotice('Informe o ID válido da Minha Promoção Shopee.','error');
   busy=true;discountToken=null;$('#kitOptimizeDiscountBox').hidden=true;paint();
-  discountNotice('Conferindo a execução do kit, valores e campanha na Shopee...');
+  discountNotice('Consultando campanha, valores e situação do kit na Shopee, sem publicar...');
   try{
    const result=await api('/api/shopee/kits/discount/preview',{body:{kitSku:current,discountId}});
    if(kitSku()!==current)return;
-   discountToken=result.token;
+   const planned=result.status==='planning'||result.approvalReady===false;
+   discountToken=!planned&&result.token?result.token:null;
    $('#kitOptimizeDiscountSummary').textContent=[
+    planned?'PRÉVIA DE PLANEJAMENTO · SEM AUTORIZAÇÃO':'PRÉVIA VALIDADA · REVISAR ANTES DE APLICAR',
     'Kit: '+current,'Anúncio Item ID: '+result.itemId,
     'Campanha: '+result.discountName+' (ID '+result.discountId+')',
-    'Preço bruto: '+money(result.gross),'Preço promocional: '+money(result.promo),
+    'Preço bruto planejado: '+money(result.gross),
+    ...(result.currentGross!=null?['Preço bruto atual na Shopee: '+money(result.currentGross)]:[]),
+    'Preço promocional planejado: '+money(result.promo),
     'Preço após cupom (estimado): '+money(result.afterCoupon),
     'Margem líquida estimada: '+Number(result.margin).toFixed(2)+'%',
-    'Ofertas comparáveis verificadas: '+result.marketOffers,
-    'Ação: '+(result.action==='update'?'Atualizar desconto':'Incluir nesta promoção'),
-    'A Shopee ainda NÃO foi alterada.'
+    ...(Number.isFinite(Number(result.marketOffers))&&result.marketOffers!=null?
+      ['Ofertas comparáveis verificadas: '+result.marketOffers]:[]),
+    'Ação futura: '+(result.action==='update'?'Atualizar desconto':'Incluir nesta promoção'),
+    ...(planned?[
+      'Execução do kit confirmada: '+(result.executionVerified?'Sim':'Ainda não'),
+      'Preço alinhado à calculadora: '+(result.priceAligned?'Sim':'Ainda não'),
+      'PRÓXIMO PASSO: clique em Prévia e execução, confirme a otimização do anúncio e volte para gerar uma nova prévia do desconto.',
+      'A aplicação da promoção continua bloqueada até a nova validação.'
+    ]:['Pronto para autorização explícita.']),
+    'Nenhum dado foi alterado na Shopee.'
    ].join('\n');
    $('#kitOptimizeDiscountBox').hidden=false;
-   discountNotice('Prévia confirmada. Confira os valores e autorize no botão abaixo.','success');
-  }catch(e){discountNotice('Desconto bloqueado: '+e.message,'error');}
+   const apply=$('#kitOptimizeDiscountApply');
+   apply.hidden=planned;
+   apply.disabled=planned;
+   globalThis.RAKitDiscountPrepared?.({kitSku:current,itemId:String(result.itemId),
+    planning:planned});
+   discountNotice(planned?
+     '✓ Prévia do desconto preparada. Para aplicar, execute e confirme primeiro a otimização do kit em “Prévia e execução”. Depois gere nova prévia.':
+     'Prévia validada. Confira os valores e autorize no botão abaixo.',
+     planned?'info':'success');
+  }catch(e){discountNotice('Não foi possível preparar a prévia: '+e.message,'error');}
   finally{busy=false;paint();}
  }
  async function applyDiscount(){
@@ -463,7 +483,10 @@ export function initExistingKitOptimization({getContext,api,money,onMainSkuChang
  $('#kitOptimizeDiscountPreview')?.addEventListener('click',()=>void previewDiscount());
  $('#kitOptimizeDiscountApply')?.addEventListener('click',()=>void applyDiscount());
  $('#kitOptimizeDiscountId')?.addEventListener('change',()=>{
-  discountToken=null;$('#kitOptimizeDiscountBox').hidden=true;paint();
+  discountToken=null;$('#kitOptimizeDiscountBox').hidden=true;
+  $('#kitOptimizeDiscountApply').hidden=false;
+  globalThis.RAKitDiscountPrepared?.({kitSku:kitSku(),planning:false});
+  paint();
  });
  $('#kitOptimizeDiscountRefresh')?.addEventListener('click',()=>void resolveDiscountIds());
  $('#kitOptimizeLookup')?.addEventListener('click',()=>void lookup());
