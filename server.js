@@ -1400,6 +1400,29 @@ app.get('/api/shopee/products/extra-info',mustLogin,async(req,res)=>{
   }catch(e){res.status(400).json({error:String(e.message||e)});}
 });
 
+// Localizar anuncio existente do KIT pela SKU exata, sem percorrer 40 paginas.
+app.get('/api/shopee/kits/optimization/find',mustLogin,requireWeDropAdmin,async(req,res)=>{
+ res.setHeader('Cache-Control','no-store');
+ try{
+  const kitSku=String(req.query?.kitSku||'').trim(),sku=validateSkuLookup(req.query?.sku);
+  const {auth,cfg}=await getValidAuth(req);
+  const saved=await loadKitDraft(auth.shopId,kitSku);
+  if(!saved?.kit||!Array.isArray(saved.skus))
+   throw Error('Kit nao salvo. Salve o rascunho antes de localizar o anuncio na Shopee.');
+  if(saved.skus.includes(sku))
+   throw Error('Essa e uma SKU individual do kit. Informe a SKU do anuncio composto.');
+  const search=await findLiveShopeeSku(cfg,auth,callShopeeShopApi,sku,{fastOnly:true});
+  const matches=(search.matches||[]).filter(x=>String(x.sku)===sku&&
+   ['NORMAL','UNLIST'].includes(String(x.status).toUpperCase()))
+   .map(x=>({itemId:String(x.itemId),modelId:String(x.modelId??0),
+    sku,title:String(x.title||sku),status:String(x.status)}));
+  res.json({ok:true,kitSku,sku,searchMode:'direct_exact',
+   matches,notFound:!matches.length,canDeepSearch:true,
+   warnings:(search.warnings||[]).slice(0,2),marketplaceUpdated:false,
+   message:matches.length?'Anuncio encontrado na Shopee.':
+    'Nao ha anuncio com a SKU exata do kit confirmado na busca rapida. SKU de componente nao equivale ao kit.'});
+ }catch(e){res.status(409).json({error:String(e.message||e).slice(0,340),marketplaceUpdated:false});}
+});
 // Preparação assistida de anúncios. Somente leitura da Shopee nesta versão;
 // auditoria jamais dispara update_item, mídia, alteração de preço ou estoque.
 app.get('/api/shopee/optimizer/find',mustLogin,requireWeDropAdmin,async(req,res)=>{
