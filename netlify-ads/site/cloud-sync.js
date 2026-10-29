@@ -10,7 +10,7 @@ css.textContent=`
 #cloudBar button{padding:7px 12px;color:#101010;background:#edc56c;border:0;border-radius:7px;cursor:pointer}
 #cloudBar .cloudSub{font-size:11px;color:#eed19c}
 #cloudGate{position:fixed;inset:0;z-index:100000;display:flex;align-items:center;justify-content:center;background:#080b11f5;padding:22px}
-#cloudGate[hidden]{display:none}
+#cloudGate[hidden],#cloudLoginForm[hidden]{display:none}
 #cloudGate .panelGate{width:min(440px,96vw);padding:25px;border-radius:13px;border:1px solid #75592b;background:#171b24;color:#fff;font:15px Arial,sans-serif}
 #cloudGate input{display:block;box-sizing:border-box;width:100%;padding:12px;margin:13px 0;background:#0f141b;border:1px solid #666;color:#fff;border-radius:7px}
 #cloudGate button{background:#efc873;border:0;border-radius:7px;padding:11px 18px;font-weight:bold;cursor:pointer}
@@ -20,7 +20,7 @@ document.head.append(css);
 const bar=document.createElement("div");bar.id="cloudBar";
 bar.innerHTML='<div><strong>Rede Achados BR · Dados compartilhados</strong><div class="cloudSub" id="cloudState">Verificando acesso...</div></div><div><button id="cloudSyncNow" type="button">Sincronizar agora</button> <button id="cloudLogout" type="button">Sair</button></div>';
 const gate=document.createElement("div");gate.id="cloudGate";
-gate.innerHTML='<div class="panelGate"><h2>Rede Achados BR</h2><p>Entre com a senha de acesso para visualizar o histórico compartilhado.</p><form id="cloudLoginForm"><input type="password" id="cloudPassword" required autocomplete="current-password" placeholder="Senha do aplicativo"><button type="submit">Entrar</button></form><p class="error" id="cloudLoginError" role="alert"></p><small>O histórico é guardado no Google Drive da loja; não compartilhe a senha publicamente.</small></div>';
+gate.innerHTML='<div class="panelGate"><h2>Rede Achados BR</h2><p id="cloudAuthMessage">Verificando sua sessão de acesso...</p><form id="cloudLoginForm" hidden><input type="password" id="cloudPassword" required autocomplete="current-password" placeholder="Senha do aplicativo"><button type="submit">Entrar</button></form><p class="error" id="cloudLoginError" role="alert"></p><small>O histórico é guardado no Google Drive da loja; não compartilhe a senha publicamente.</small></div>';
 document.body.prepend(bar,gate);
 const status=msg=>document.getElementById("cloudState").textContent=msg;
 let logged=false,dirty=false,busy=false,repeat=false,deleted={products:new Set(),changes:new Set(),adsSnapshots:new Set(),history:new Set()};
@@ -102,19 +102,18 @@ async function pull(){
  finally{busy=false;}
 }
 async function startAuthenticated(){
- logged=true;status("Conectando ao histórico...");
+ logged=true;gate.hidden=true;status("Acesso autorizado · conectando ao histórico do Google Drive...");
  // Antes de iniciar os hooks, reúna sem efeitos colaterais os dados do navegador e do Drive.
  try{
   const data=await api("/history",{action:"read"});
   applyRemote(data);
-  status("Histórico carregado do Google Drive.");
+  status("Acesso autorizado · histórico carregado do Google Drive.");
   installHooks();
   dirty=true;queueSave(); // envia cadastros ou registros antigos que existiam somente no navegador
  }catch(e){
-  status("Google Drive indisponível: "+e.message+" · seus dados ficam somente locais");
+  status("Acesso autorizado · Google Drive indisponível: "+e.message+" · seus dados ficam somente locais");
   installHooks();
  }
- gate.hidden=true;
 }
 async function init(){
  document.getElementById("cloudSyncNow").addEventListener("click",async()=>{if(dirty)await save();else await pull();});
@@ -125,14 +124,17 @@ async function init(){
  document.getElementById("cloudLoginForm").addEventListener("submit",async e=>{
   e.preventDefault();const input=document.getElementById("cloudPassword"),error=document.getElementById("cloudLoginError");
   error.textContent="";
+  const submit=document.getElementById("cloudLoginForm").querySelector('button[type="submit"]');
+  submit.disabled=true;submit.textContent="Validando...";
   try{await api("/access",{password:input.value});input.value="";await startAuthenticated();}
   catch(ex){error.textContent=ex.message;}
+  finally{submit.disabled=false;submit.textContent="Entrar";}
  });
  try{
   const a=await api("/access");
   if(a.authenticated)await startAuthenticated();
-  else{status("Acesso protegido: entre para sincronizar.");gate.hidden=false;}
- }catch(e){status("Acesso não configurado: "+e.message);document.getElementById("cloudLoginError").textContent=e.message;gate.hidden=false;}
+  else{status("Acesso protegido: entre para sincronizar.");document.getElementById("cloudAuthMessage").textContent="Entre com a senha para abrir o histórico compartilhado.";document.getElementById("cloudLoginForm").hidden=false;gate.hidden=false;}
+ }catch(e){status("Acesso não configurado: "+e.message);document.getElementById("cloudAuthMessage").textContent="Não foi possível verificar a sessão.";document.getElementById("cloudLoginError").textContent=e.message;gate.hidden=false;}
  setInterval(()=>{if(logged&&!dirty&&!busy&&document.visibilityState==="visible")pull();},60000);
 }
 init();
