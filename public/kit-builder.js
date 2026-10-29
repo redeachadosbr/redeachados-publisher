@@ -1,5 +1,5 @@
 import {parseKitChatResult} from './kit-chat-result-parser.js?v=2.5.2-theme-review';
-import {scoreKitSeoTitle,parseKitSeoResponse,kitSeoRiskFlags} from './kit-seo-helper.js';
+import {scoreKitSeoTitle,parseKitSeoResponse,kitSeoRiskFlags,formatKitShopeeDescription} from './kit-seo-helper.js';
 import {detectSkuMeasurements,skuMeasurementSummary} from './kit-measurements.js';
 import {kitImageFilenameSlot,kitImageNextSlot,kitPlanImageImports,kitMoveImage} from './kit-gallery-order.js';
 import {buildKitPlusImageBrief,kitPlusPromptLink} from './kit-plus-image-brief.js';
@@ -1604,9 +1604,12 @@ async function saveDraft(){
  const draftLogistics=kitLogisticsKeeper.read();
  try{
   await kitLogisticsKeeper.flush();
+  const compactDescription=formatKitShopeeDescription($('#kitDescription').value);
+  $('#kitDescription').value=compactDescription;
+  updateKitTextCounters();
   const res=await api('/api/shopee/kits/drafts/save',{body:{
    skus:prepared.kit.components.map(x=>x.sku),kitSku:prepared.kit.kitSku,
-   ...currentSettings(),title:$('#kitTitle').value,description:$('#kitDescription').value,
+   ...currentSettings(),title:$('#kitTitle').value,description:compactDescription,
    seoTitles:kitContentSeoTitles.map(x=>x.title),
    manualFacts:Object.fromEntries(kitContentManualFacts.entries()),
    logistics:draftLogistics
@@ -1708,7 +1711,7 @@ function renderKit({scroll=true,displayTitle=''}={}){
   '⚠️ RASCUNHO RECUPERADO: custos, preços, margens e estoque são da última gravação, não são valores atuais. Atualize a WeDrop antes de novos preços ou publicação. ':'')+
   kit.warning+' Texto criado por '+creative.source+'. Verifique estoque e capacidade de envio de vários SKUs.';
  $('#kitTitle').value=creative.title;
- $('#kitDescription').value=creative.description;
+ $('#kitDescription').value=formatKitShopeeDescription(creative.description);
  updateKitTextCounters();
  kitContentShowMissing();
  if(kitContentSeoTitles.length===3)
@@ -3139,7 +3142,7 @@ $('#kitTitle')?.addEventListener('input',()=>{
   prepared.kit.components.map(p=>p.name).join(' + ');
 });
 $('#kitCopyTitle')?.addEventListener('click',()=>void copy($('#kitTitle').value));
-$('#kitCopyDescription')?.addEventListener('click',()=>void copy($('#kitDescription').value));
+$('#kitCopyDescription')?.addEventListener('click',()=>void copy(formatKitShopeeDescription($('#kitDescription').value)));
 $('#kitGalleryViewAll')?.addEventListener('click',()=>openKitGalleryPreview());
 $('#kitGalleryClosePreview')?.addEventListener('click',()=>$('#kitGalleryPreview')?.close());
 $('#kitGalleryPreview')?.addEventListener('click',event=>{
