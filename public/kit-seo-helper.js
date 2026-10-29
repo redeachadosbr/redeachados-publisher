@@ -16,11 +16,11 @@ export function scoreKitSeoTitle(title,components=[]){
 // Shopee trata quebras de linha vazias como espaço vertical em anúncios.
  // Mantém uma única separação entre seções e nenhuma linha vazia entre itens.
 export function formatKitShopeeDescription(raw){
- const sections=/^(?:[^\\p{L}\\p{N}]{0,8}\\s*)?(?:BENEF[ÍI]CIOS|POR QUE COMPRAR|D[ÚU]VIDAS FREQUENTES|PERGUNTAS FREQUENTES|CARACTER[ÍI]STICAS|ESPECIFICA[ÇC][ÕO]ES|O QUE VAI NA EMBALAGEM|ITENS INCLUSOS|CONTE[ÚU]DO DO KIT)\\s*:?[\\s]*$/iu;
- const lines=String(raw||'').normalize('NFC').replace(/\\r\\n?/g,'\\n')
-  .replace(/\\u00a0/g,' ').split('\\n')
-  .map(line=>line.replace(/[ \\t\\f\\v]+/g,' ').trim()).filter(Boolean);
- return lines.map((line,index)=>(index?(sections.test(line)||/^🛒/.test(line)?'\\n\\n':'\\n'):'')+line).join('').trim();
+ const sections=/^(?:[^\p{L}\p{N}]{0,8}\s*)?(?:BENEF[ÍI]CIOS|POR QUE COMPRAR|D[ÚU]VIDAS FREQUENTES|PERGUNTAS FREQUENTES|CARACTER[ÍI]STICAS|ESPECIFICA[ÇC][ÕO]ES|O QUE VAI NA EMBALAGEM|ITENS INCLUSOS|CONTE[ÚU]DO DO KIT)\s*:?\s*$/iu;
+ const lines=String(raw||'').normalize('NFC').replace(/\r\n?/g,'\n')
+  .replace(/\u00a0/g,' ').split('\n')
+  .map(line=>line.replace(/[ \t\f\v]+/g,' ').trim()).filter(Boolean);
+ return lines.map((line,index)=>(index?(sections.test(line)||/^🛒/.test(line)?'\n\n':'\n'):'')+line).join('').trim();
 }
 
 // Aceita copiar bloco "Escrita" do ChatGPT, Markdown (**TÍTULO 1:**),
