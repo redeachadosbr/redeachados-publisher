@@ -8371,6 +8371,7 @@ function optimizerTechnicalSummary(data){
     }
     const opt=field.closest('.optimizer-tech-optional');if(opt)opt.open=true;
     const group=field.closest('.ra-tech-attribute-group');if(group)group.open=true;
+    const compact=field.closest('.ra-tech-field-row');if(compact)compact.open=true;
     field.scrollIntoView({behavior:'smooth',block:'center'});
     const input=field.querySelector('input:not([type=hidden]),select,textarea');
     if(input)input.focus({preventScroll:true});
@@ -8424,6 +8425,7 @@ function optimizerTechnicalSummary(data){
       Number(x.dataset.attributeId)===change.attributeId);
    if(field){field.hidden=false;const optional=field.closest('.optimizer-tech-optional');if(optional)optional.open=true;
     const group=field.closest('.ra-tech-attribute-group');if(group)group.open=true;
+    const compact=field.closest('.ra-tech-field-row');if(compact)compact.open=true;
     field.scrollIntoView({behavior:'smooth',block:'center'});field.querySelector('input,select')?.focus({preventScroll:true});}
   };
   item.append(edit);list.append(item);
