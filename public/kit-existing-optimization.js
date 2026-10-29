@@ -131,6 +131,7 @@ export function initExistingKitOptimization({getContext,api,money,onMainSkuChang
   const {kitSaved}=ctx(),current=kitSku(),main=$('#kitOptimizeMainSku').value;
   const seq=++discountLookupSeq,select=$('#kitOptimizeDiscountId'),msg=$('#kitOptimizeDiscountAutoStatus');
   discountToken=null;$('#kitOptimizeDiscountBox').hidden=true;
+  // Atualização automática da lista não é alteração manual da campanha.
   select.replaceChildren(new Option('Consultando Shopee...',''));
   $('#kitOptimizeKitItemId').value=target?.itemId||ctx().prepared?.optimization?.itemId||'';
   $('#kitOptimizePrimaryItemId').value='';
@@ -414,6 +415,46 @@ export function initExistingKitOptimization({getContext,api,money,onMainSkuChang
  function discountNotice(msg,state='info'){
   const el=$('#kitOptimizeDiscountStatus');if(el){el.textContent=msg;el.dataset.state=state;}
  }
+ // Substitui o <pre> genérico e escuro por conteúdo estruturado e legível.
+ // Sem innerHTML: preços e nomes das campanhas vêm da API Shopee.
+ function renderDiscountSummary(result,planned,current){
+  const box=$('#kitOptimizeDiscountSummary');if(!box)return;
+  box.replaceChildren();
+  const head=document.createElement('div');head.className='kit-discount-summary-heading';
+  const title=document.createElement('strong');
+  title.textContent=planned?'Prévia preparada para conferência':'Prévia validada para autorização';
+  const badge=document.createElement('span');
+  badge.className='kit-discount-summary-badge';
+  badge.textContent=planned?'Não publicado':'Aplicação ainda pendente';
+  head.append(title,badge);box.append(head);
+  const grid=document.createElement('dl');grid.className='kit-discount-summary-grid';
+  const rows=[
+   ['Kit',current],['Item ID',String(result.itemId||'')],
+   ['Minha Promoção',String(result.discountName||'')+' · ID '+String(result.discountId||'')],
+   ['Preço bruto planejado',money(result.gross)],
+   ...(result.currentGross!=null?[['Preço atual na Shopee',money(result.currentGross)]]:[]),
+   ['Preço promocional planejado',money(result.promo)],
+   ['Preço após cupom (estimado)',money(result.afterCoupon)],
+   ['Margem líquida estimada',Number(result.margin).toFixed(2)+'%'],
+   ...(result.marketOffers!=null&&Number.isFinite(Number(result.marketOffers))?
+    [['Ofertas comparáveis verificadas',String(result.marketOffers)]]:[]),
+   ['Ação futura',result.action==='update'?'Atualizar promoção':'Incluir nesta promoção'],
+   ['Otimização executada',result.executionVerified?'Confirmada':'Aguardando confirmação'],
+   ['Preço alinhado',result.priceAligned?'Sim':'Ainda não']
+  ];
+  for(const [name,value] of rows){
+   const row=document.createElement('div');row.className='kit-discount-summary-row';
+   const label=document.createElement('dt');label.textContent=name;
+   const content=document.createElement('dd');content.textContent=value;
+   row.append(label,content);grid.append(row);
+  }
+  box.append(grid);
+  const note=document.createElement('p');note.className='kit-discount-summary-note';
+  note.textContent=planned?
+   'Próximo passo: execute e confirme a otimização em “Prévia e execução”. Depois volte para revalidar a promoção. Nenhum desconto foi publicado.':
+   'Confira os valores e autorize a aplicação separadamente. Nenhum desconto foi publicado.';
+  box.append(note);
+ }
  async function previewDiscount(){
   if(busy||!target?.prepared)return;
   const current=kitSku(),discountId=$('#kitOptimizeDiscountId').value.trim();
@@ -426,26 +467,7 @@ export function initExistingKitOptimization({getContext,api,money,onMainSkuChang
    if(kitSku()!==current)return;
    const planned=result.status==='planning'||result.approvalReady===false;
    discountToken=!planned&&result.token?result.token:null;
-   $('#kitOptimizeDiscountSummary').textContent=[
-    planned?'PRÉVIA DE PLANEJAMENTO · SEM AUTORIZAÇÃO':'PRÉVIA VALIDADA · REVISAR ANTES DE APLICAR',
-    'Kit: '+current,'Anúncio Item ID: '+result.itemId,
-    'Campanha: '+result.discountName+' (ID '+result.discountId+')',
-    'Preço bruto planejado: '+money(result.gross),
-    ...(result.currentGross!=null?['Preço bruto atual na Shopee: '+money(result.currentGross)]:[]),
-    'Preço promocional planejado: '+money(result.promo),
-    'Preço após cupom (estimado): '+money(result.afterCoupon),
-    'Margem líquida estimada: '+Number(result.margin).toFixed(2)+'%',
-    ...(Number.isFinite(Number(result.marketOffers))&&result.marketOffers!=null?
-      ['Ofertas comparáveis verificadas: '+result.marketOffers]:[]),
-    'Ação futura: '+(result.action==='update'?'Atualizar desconto':'Incluir nesta promoção'),
-    ...(planned?[
-      'Execução do kit confirmada: '+(result.executionVerified?'Sim':'Ainda não'),
-      'Preço alinhado à calculadora: '+(result.priceAligned?'Sim':'Ainda não'),
-      'PRÓXIMO PASSO: clique em Prévia e execução, confirme a otimização do anúncio e volte para gerar uma nova prévia do desconto.',
-      'A aplicação da promoção continua bloqueada até a nova validação.'
-    ]:['Pronto para autorização explícita.']),
-    'Nenhum dado foi alterado na Shopee.'
-   ].join('\n');
+   renderDiscountSummary(result,planned,current);
    $('#kitOptimizeDiscountBox').hidden=false;
    const apply=$('#kitOptimizeDiscountApply');
    apply.hidden=planned;
@@ -453,11 +475,14 @@ export function initExistingKitOptimization({getContext,api,money,onMainSkuChang
    const goExecution=$('#kitOptimizeDiscountToExecution');
    if(goExecution)goExecution.hidden=!planned;
    globalThis.RAKitDiscountPrepared?.({kitSku:current,itemId:String(result.itemId),
-    planning:planned});
+    discountId:String(result.discountId),reviewSaved:result.reviewSaved===true,preview:result});
    discountNotice(planned?
-     '✓ Prévia do desconto preparada. Para aplicar, execute e confirme primeiro a otimização do kit em “Prévia e execução”. Depois gere nova prévia.':
-     'Prévia validada. Confira os valores e autorize no botão abaixo.',
-     planned?'info':'success');
+     (result.reviewSaved?'✓ Conferência da etapa 08 registrada. A promoção ainda não foi aplicada.':
+       'Prévia exibida, mas a conferência não foi salva para esta SKU. Confira o vínculo do kit.')+
+       ' Execute e confirme primeiro a otimização do kit.':
+     (result.reviewSaved?'✓ Etapa 08 conferida. ':'Prévia verificada. ')+
+       'Confira os valores e autorize a aplicação separadamente.',
+     result.reviewSaved?'success':'warning');
   }catch(e){discountNotice('Não foi possível preparar a prévia: '+e.message,'error');}
   finally{busy=false;paint();}
  }
@@ -496,7 +521,7 @@ export function initExistingKitOptimization({getContext,api,money,onMainSkuChang
   discountToken=null;$('#kitOptimizeDiscountBox').hidden=true;
   $('#kitOptimizeDiscountApply').hidden=false;
   $('#kitOptimizeDiscountToExecution').hidden=true;
-  globalThis.RAKitDiscountPrepared?.({kitSku:kitSku(),planning:false});
+  globalThis.RAKitDiscountPrepared?.({kitSku:kitSku(),clear:true});
   paint();
  });
  $('#kitOptimizeDiscountRefresh')?.addEventListener('click',()=>void resolveDiscountIds());
