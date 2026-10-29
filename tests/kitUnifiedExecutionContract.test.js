@@ -2,6 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import {validateReview} from '../shopeeOptimizationWorkflow.js';
+import {fiscalMatrixSource} from '../shopeeMatrixRules.js';
 const source=path=>fs.readFileSync(new URL('../'+path,import.meta.url),'utf8');
 const app=source('public/app.js'),html=source('public/index.html');
 const server=source('server.js'),existing=source('public/kit-existing-optimization.js');
@@ -249,4 +250,37 @@ test('salvar dados fiscais nao confirma checklist e confirmar exige resposta do 
  assert.match(app,/optimizerFiscalReviewBusy=true/);
  assert.match(app,/optimizerFiscalReviewBusy=false/);
  assert.match(app,/globalThis\.ShopeeFiscalStudio\?\.update\?\.\(\{\.\.\.data,\.\.\.result,stages:result\.stages\}\)/);
+});
+
+
+test('kit fiscal usa fonte WeDrop REAL da SKU principal na revisão',()=>{
+ assert.match(server,/const fiscalSku=String\(linkedKit\?\.mainSku\|\|sku\)/);
+ assert.match(server,/if\(linkedKit&&fiscalSku!==String\(sku\)\)/);
+ assert.match(server,/const taxSupplier=change\.tax\?await readWeDropProduct\(auth\.shopId,\{sku,itemId,modelId\}\):null/);
+ assert.match(server,/change\.matrixFiscal=fiscalMatrixSource\(\{sku,supplier:taxSupplier,tax:change\.tax\}\)/);
+ assert.doesNotMatch(server,/supplier:linkedKit\?null:supplier/);
+});
+test('regressão: SKU 310200 do kit com NCM e fonte WeDrop comprovados aprova check',()=>{
+ const tax={ncm:'95030039',evidence:'WeDrop produtos-catalogo.csv · SKU 310200 · linha 192',cest:'00'};
+ const supplier={
+   supplier_sku:'310200',matchedBy:'exact-sku',
+   product_data:{ncm:'95030039'},source_file:'produtos-catalogo.csv'
+ };
+ const result=fiscalMatrixSource({sku:'310200',supplier,tax});
+ assert.equal(result.sku,'310200');
+ assert.equal(result.supplierSku,'310200');
+ assert.equal(result.ncm,'95030039');
+ assert.equal(result.source,'exact-sku');
+});
+test('proteções fiscais: kit não pode aprovar fonte WeDrop solta ou SKU incorreta',()=>{
+ const tax={ncm:'95030039',evidence:'WeDrop produtos-catalogo.csv · SKU 310200'};
+ const supplier={
+   supplier_sku:'310200',matchedBy:'exact-sku',
+   product_data:{ncm:'95030039'},source_file:'produtos-catalogo.csv'
+ };
+ assert.throws(()=>fiscalMatrixSource({sku:'310200',supplier:null,tax}),/não está vinculada/);
+ assert.throws(()=>fiscalMatrixSource({sku:'310200',supplier:{...supplier,supplier_sku:'9999'},tax}),/diverge da SKU Shopee/);
+ assert.throws(()=>fiscalMatrixSource({sku:'310200',supplier:{...supplier,matchedBy:'unverified'},tax}),/correspondência WeDrop não revisada/);
+ assert.throws(()=>fiscalMatrixSource({sku:'310200',supplier,tax:{...tax,ncm:'95030099'}}),/diverge da ficha WeDrop/);
+ assert.throws(()=>fiscalMatrixSource({sku:'310200',supplier,tax:{...tax,ncm:'1234'}}),/oito dígitos/);
 });
