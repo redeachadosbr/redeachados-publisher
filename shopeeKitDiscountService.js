@@ -12,18 +12,21 @@ import {signDiscountPreview,verifyDiscountPreview,
 const locks=new Set(),validId=n=>/^[1-9]\d{0,17}$/.test(String(n))&&Number.isSafeInteger(Number(n));
 const goodEnd=x=>[0,9].includes(Math.round(Number(x)*100)%10);
 const money=x=>Math.round(Number(x)*100)/100;
-async function context(cfg,auth,kitSku,discountId){
+async function context(cfg,auth,kitSku,discountId,{requireExecution=true}={}){
  if(!validId(discountId))throw Error('Informe o ID da Minha Promoção criada na Shopee.');
  const saved=await loadKitDraft(auth.shopId,kitSku);
  const existingListing=Boolean(saved?.optimization?.itemId);
+ let executionVerified=!existingListing;
  if(existingListing){
   const link=saved.optimization;
   if(!kitOptimizationLinkIsCurrent(saved,link)||!validId(link.itemId))
    throw Error('Vínculo do kit com anúncio existente desatualizado.');
   const job=await readShopeeExecution(auth.shopId,link.itemId,link.modelId);
-  if(job?.state!=='verified'||job?.sku!==link.sku||
-    !(Date.parse(job.updated_at)>=Date.parse(link.preparedAt)))
-   throw Error('Execute e confirme a otimização do anúncio de kit antes do desconto.');
+  executionVerified=Boolean(job?.state==='verified'&&job?.sku===link.sku&&
+    Number.isFinite(Date.parse(link.preparedAt))&&
+    Date.parse(job.updated_at)>=Date.parse(link.preparedAt));
+  if(requireExecution&&!executionVerified)
+   throw Error('A aplicação da Minha Promoção exige otimização do kit confirmada na Shopee. Prepare a prévia sem enviar e execute o anúncio primeiro.');
  }else if(!saved||saved.publication?.status!=='published'||!validId(saved.publication?.itemId))
   throw Error('O Kit Formal precisa estar publicado como NORMAL antes do desconto.');
  const itemId=Number(existingListing?saved.optimization.itemId:saved.publication.itemId);
@@ -48,8 +51,10 @@ async function context(cfg,auth,kitSku,discountId){
   readDiscountPages(callShopeeShopApi,{cfg,auth,discountId})
  ]);
  const live=(liveResult.response?.item_list||[]).find(x=>Number(x.item_id)===itemId);
- if(!live||String(live.item_status).toUpperCase()!=='NORMAL')
-  throw Error('Kit não está publicado como NORMAL na Shopee.');
+ const liveStatus=String(live?.item_status||'').toUpperCase();
+ if(!live||!['NORMAL',...(!requireExecution?['UNLIST']:[])].includes(liveStatus))
+  throw Error(requireExecution?'Kit não está publicado como NORMAL na Shopee.':
+   'O anúncio da SKU principal não está disponível para planejar a promoção na Shopee.');
  const record=discount.record;
  if(!['upcoming','ongoing'].includes(String(record?.status||'').toLowerCase())||
     Number(record?.end_time)<=Math.floor(Date.now()/1000))
@@ -73,12 +78,26 @@ async function context(cfg,auth,kitSku,discountId){
     throw Error('A variação vinculada não corresponde ao anúncio sem modelos.');
    original=Number(live.price_info?.[0]?.original_price??live.original_price);
   }
-  if(!Number.isFinite(original)||Math.abs(original-gross)>.011)
-  throw Error('Preço bruto da Shopee diverge da calculadora. Ajuste o anúncio antes de aplicar desconto.');
- return {kit,saved,itemId,modelId,gross,promo,afterCoupon,record,existing};
+  const priceAligned=Number.isFinite(original)&&Math.abs(original-gross)<=.011;
+  if(requireExecution&&!priceAligned)
+   throw Error('Preço bruto da Shopee diverge da calculadora. Ajuste o anúncio antes de aplicar desconto.');
+ return {kit,saved,itemId,modelId,gross,promo,afterCoupon,record,existing,
+  executionVerified,priceAligned,liveStatus,
+  currentGross:Number.isFinite(original)?money(original):null};
 }
 export async function previewKitDiscount({cfg,auth,kitSku,discountId,secret}){
- const x=await context(cfg,auth,kitSku,discountId);
+ const x=await context(cfg,auth,kitSku,discountId,{requireExecution:false});
+ // A etapa 08 pode ser planejada antes da atualização do anúncio: ainda não
+ // há token de autorização e nenhuma rota de escrita é chamada nesse modo.
+ const ready=x.executionVerified&&x.priceAligned&&x.liveStatus==='NORMAL';
+ if(!ready)return {status:'planning',approvalReady:false,token:null,
+  kitSku,itemId:String(x.itemId),modelId:String(x.modelId),
+  discountId:String(discountId),discountName:String(x.record.discount_name||''),
+  action:x.existing?'update':'add',
+  gross:x.gross,promo:x.promo,afterCoupon:x.afterCoupon,margin:x.kit.quote.netMarginPct,
+  currentGross:x.currentGross,priceAligned:x.priceAligned,executionVerified:x.executionVerified,
+  liveStatus:x.liveStatus,marketOffers:null,marketplaceUpdated:false,
+  message:'Prévia de planejamento pronta. Primeiro execute e confirme a otimização do anúncio do kit; depois gere uma nova prévia para autorizar e aplicar a promoção.'};
  const market=await lookupShopeeCompetitors({
   title:x.saved.creative.title,ownShopId:auth.shopId,ownItemId:x.itemId
  });
@@ -88,12 +107,20 @@ export async function previewKitDiscount({cfg,auth,kitSku,discountId,secret}){
     Date.now()-Date.parse(market.researchedAt)>48*3600000)
   throw Error('Pesquisa de concorrentes não validou '+min+
    ' ofertas equivalentes para este kit. Desconto bloqueado, sem alterar o Kit Formal.');
+ // A consulta externa é assíncrona: revalidar a execução e o preço
+ // novamente antes de emitir um token que permite escrever na Shopee.
+ const verified=await context(cfg,auth,kitSku,discountId);
+ if(String(verified.itemId)!==String(x.itemId)||
+    String(verified.modelId)!==String(x.modelId)||
+    Math.abs(verified.gross-x.gross)>.011||
+    Math.abs(verified.promo-x.promo)>.011)
+  throw Error('O kit ou o preço mudou durante a pesquisa. Refazer a prévia.');
  const action=x.existing?'update':'add';
  const token=signDiscountPreview({shopId:String(auth.shopId),kitSku,
   itemId:String(x.itemId),modelId:String(x.modelId),discountId:String(discountId),
   gross:x.gross,promo:x.promo,afterCoupon:x.afterCoupon,action,
   marketAt:market.researchedAt,marketCount:market.count},secret);
- return {token,kitSku,itemId:String(x.itemId),modelId:String(x.modelId),
+ return {status:'ready',approvalReady:true,token,kitSku,itemId:String(x.itemId),modelId:String(x.modelId),
   discountId:String(discountId),action,discountName:String(x.record.discount_name||''),
   gross:x.gross,promo:x.promo,afterCoupon:x.afterCoupon,
   margin:x.kit.quote.netMarginPct,marketOffers:market.count,
