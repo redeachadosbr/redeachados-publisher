@@ -1,8 +1,67 @@
 // Interface de otimização de um anúncio de kit já existente. Preparação nunca publica.
 const $=selector=>document.querySelector(selector);
+const KIT_STAGE_LABELS=[
+ ['images','Imagens'],['video','Video'],['seo','Titulo SEO'],['technical','Ficha tecnica'],
+ ['description','Descricao'],['variants','Variacoes'],['fiscal','Dados fiscais'],['discount','Desconto']
+];
 export function initExistingKitOptimization({getContext,api,money,onMainSkuChange}){
  let target=null,busy=false,discountToken=null,discountLookupSeq=0,discountSearching=false,latestCampaigns=[];
  let lookupSerial=0,lookupController=null;
+ let workflowStages=null,technicalProgress=null,discountConfirmed=false;
+ function renderJourney(){
+  const list=$('#kitOptimizeStageSteps'),track=$('#kitOptimizeProgressTrack');
+  if(!list||!track)return;
+  list.replaceChildren();
+  let reviewed=0;
+  for(const [index,[key,label]] of KIT_STAGE_LABELS.entries()){
+   const stage=workflowStages?.find(x=>x.key===key);
+   const done=key==='discount'?discountConfirmed:stage?.reviewed===true;
+   const skipped=key!=='discount'&&stage?.skipped===true;
+   if(done||skipped)reviewed++;
+   const item=document.createElement('li');
+   item.className='kit-flow-stage is-'+(done?'done':skipped?'skipped':stage?.blocking?'attention':'pending');
+   const number=document.createElement('span');number.className='kit-flow-stage-number';
+   number.textContent=done?'✓':skipped?'—':String(index+1).padStart(2,'0');
+   const title=document.createElement('strong');title.textContent=label;
+   const state=document.createElement('small');
+   state.textContent=done?'Conferida':skipped?'Nao aplicavel':stage?.blocking?'Revisar':
+    stage?'Pendente':'Aguardando';
+   item.append(number,title,state);list.append(item);
+  }
+  track.setAttribute('aria-valuenow',String(reviewed));
+  $('#kitOptimizeProgressFill').style.width=(reviewed/8*100)+'%';
+  $('#kitOptimizeProgressCount').textContent=reviewed+' / 8 revisadas';
+ }
+ function renderTechnical(){
+  const block=$('#kitOptimizeLiveProgress');
+  if(!block)return;
+  block.replaceChildren();
+  block.hidden=!technicalProgress;
+  if(!technicalProgress)return;
+  const p=technicalProgress,pct=Math.max(0,Math.min(100,Number(p.percent)||0));
+  const title=document.createElement('strong');
+  title.textContent='Progresso tecnico da Shopee: '+pct+'% · '+String(p.title||'Aguardando');
+  const track=document.createElement('div');track.className='kit-flow-live-track';
+  track.setAttribute('role','progressbar');track.setAttribute('aria-valuemin','0');
+  track.setAttribute('aria-valuemax','100');track.setAttribute('aria-valuenow',String(pct));
+  const fill=document.createElement('span');fill.style.width=pct+'%';track.append(fill);
+  const note=document.createElement('small');
+  note.textContent=String(p.message||'')+
+   ' O percentual indica progresso tecnico, nao confirma que todas as etapas foram publicadas.';
+  block.append(title,track,note);
+  for(const stage of (p.steps||[]).slice(0,8)){
+   const line=document.createElement('small');
+   const names={done:'Confirmado',staged:'Midia pronta',checking:'Verificando Shopee',
+    active:'Em andamento',waiting:'Aguardando',skipped:'Nao incluido',
+    review:'Nao incluido',attention:'Verificar',authorization:'Aguardando autorizacao'};
+   line.textContent=stage.label+' · '+(names[stage.status]||stage.status||'Pendente');
+   block.append(line);
+  }
+ }
+ function progressNote(text){
+  const p=$('#kitOptimizeProgressText');if(p)p.textContent=text;
+ }
+
  const ctx=()=>getContext(),kitSku=()=>ctx().prepared?.kit?.kitSku||'';
  function notice(message,state='info'){
   const el=$('#kitOptimizeStatus');if(el){el.textContent=message;el.dataset.state=state;}
@@ -118,6 +177,9 @@ export function initExistingKitOptimization({getContext,api,money,onMainSkuChang
  }
  function restore(link=null){
   lookupController?.abort();lookupSerial++;lookupController=null;busy=false;
+  workflowStages=null;technicalProgress=null;discountConfirmed=false;
+  renderJourney();renderTechnical();
+  progressNote('Aguardando anuncio de KIT para iniciar as etapas. Nenhuma publicacao iniciada.');
   globalThis.redeKitCloseOptimizerWorkspace?.();
   target=link?.itemId?{...link,prepared:true}:null;
   resetDiscountDiscovery();
@@ -363,8 +425,10 @@ export function initExistingKitOptimization({getContext,api,money,onMainSkuChang
    const result=await api('/api/shopee/kits/discount/execute',{body:{
     kitSku:current,discountId,token,confirm:true
    }});
-   if(result.status==='discount_confirmed')
+   if(result.status==='discount_confirmed'){
+    discountConfirmed=true;renderJourney();
     globalThis.RAKitDiscountConfirmed?.({kitSku:current,itemId:String(result.itemId)});
+   }
    discountNotice(result.status==='discount_confirmed'?
     '✓ Desconto confirmado no anúncio '+result.itemId+' · Preço '+money(result.promo):
     (result.message||'Resposta pendente de conferência na Shopee.'),
@@ -380,6 +444,23 @@ export function initExistingKitOptimization({getContext,api,money,onMainSkuChang
  });
  $('#kitOptimizeDiscountRefresh')?.addEventListener('click',()=>void resolveDiscountIds());
  $('#kitOptimizeLookup')?.addEventListener('click',()=>void lookup());
+ globalThis.RAKitLookupPhase=message=>{
+  if(typeof message==='string'&&message)progressNote(message);
+ };
+ globalThis.RAKitAuditPhase=message=>{
+  if(target?.kitSku===kitSku()&&typeof message==='string')progressNote(message);
+ };
+ globalThis.RAKitWorkflowProgress=({kitSku:code,itemId,stages}={})=>{
+  if(code!==kitSku()||!target||String(target.itemId)!==String(itemId))return;
+  workflowStages=Array.isArray(stages)?stages:null;
+  renderJourney();
+  progressNote('Revisao individual pronta. Confira cada etapa; a aprovacao nao publica o anuncio.');
+ };
+ globalThis.RAKitTechnicalProgress=({kitSku:code,itemId,progress}={})=>{
+  if(code!==kitSku()||!target||String(target.itemId)!==String(itemId))return;
+  technicalProgress=progress||null;renderTechnical();
+ };
+
  $('#kitOptimizeDeepLookup')?.addEventListener('click',()=>void lookup({deep:true}));
  $('#kitOptimizeCancelLookup')?.addEventListener('click',()=>{
   lookupSerial++;lookupController?.abort();lookupController=null;busy=false;
@@ -397,6 +478,7 @@ export function initExistingKitOptimization({getContext,api,money,onMainSkuChang
  $('#kitOptimizeOpen')?.addEventListener('click',open);
  $('#kitOptimizeConfirm')?.addEventListener('change',paint);
  $('#kitOptimizeMainSku')?.addEventListener('change',()=>{
+  workflowStages=null;technicalProgress=null;discountConfirmed=false;renderJourney();renderTechnical();
   lookupSerial++;lookupController?.abort();lookupController=null;busy=false;
   globalThis.redeKitCloseOptimizerWorkspace?.();
   if(target)target.prepared=false;
@@ -404,6 +486,7 @@ export function initExistingKitOptimization({getContext,api,money,onMainSkuChang
   void resolveDiscountIds();paint();
  });
  $('#kitOptimizeListingSku')?.addEventListener('input',()=>{
+  workflowStages=null;technicalProgress=null;discountConfirmed=false;renderJourney();renderTechnical();
   lookupSerial++;lookupController?.abort();lookupController=null;busy=false;
   globalThis.redeKitCloseOptimizerWorkspace?.();
   target=null;resetDiscountDiscovery();
@@ -411,5 +494,6 @@ export function initExistingKitOptimization({getContext,api,money,onMainSkuChang
   $('#kitOptimizeSelected').textContent='SKU alterada. Localize novamente o anúncio correto.';
   paint();
  });
+ renderJourney();
  return {restore};
 }
