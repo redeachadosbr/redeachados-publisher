@@ -121,6 +121,7 @@ export async function previewKitDiscount({cfg,auth,kitSku,discountId,secret}){
   gross:x.gross,promo:x.promo,afterCoupon:x.afterCoupon,action,
   marketAt:market.researchedAt,marketCount:market.count},secret);
  return {status:'ready',approvalReady:true,token,kitSku,itemId:String(x.itemId),modelId:String(x.modelId),
+  executionVerified:true,priceAligned:true,liveStatus:x.liveStatus,currentGross:x.currentGross,
   discountId:String(discountId),action,discountName:String(x.record.discount_name||''),
   gross:x.gross,promo:x.promo,afterCoupon:x.afterCoupon,
   margin:x.kit.quote.netMarginPct,marketOffers:market.count,
