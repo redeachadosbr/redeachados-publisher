@@ -1126,7 +1126,7 @@
    <div class="kit-flow-heading">
     <div><span class="kit-flow-kicker">OTIMIZAÇÃO SHOPEE · KIT WEDROP</span>
      <h3>Preparar e revisar o kit</h3>
-     <p>Complete apenas vídeo, ficha técnica e dados fiscais. Imagens, título, descrição e preços são reutilizados da parte superior do kit.</p></div>
+     <p>Oito etapas em sequência. Imagens, títulos, descrição e valores preparados no kit são reutilizados; revise apenas o que estiver pendente.</p></div>
     <span class="kit-flow-safe">✓ Só publica após sua autorização</span>
    </div>
    <div class="kit-flow-start-bar">
@@ -1137,13 +1137,11 @@
     <button type="button" id="kitOptimizeStart" class="kit-primary">▶ Iniciar otimização do kit</button>
    </div>
    <p id="kitOptimizeStatus" class="kit-flow-status" role="status" aria-live="polite">Abra um kit salvo para começar. A Shopee será consultada somente pela SKU principal selecionada. As SKUs complementares ficam na WeDrop.</p>
-    <section id="kitOptimizeJourney" class="kit-flow-journey" aria-label="Progresso das oito etapas do kit">
-     <div class="kit-flow-progress-head"><strong id="kitOptimizeProgressTitle">Etapas complementares</strong><span id="kitOptimizeProgressCount">0 / 3 conferidas</span></div>
-     <div id="kitOptimizeProgressTrack" class="kit-flow-progress-track" role="progressbar" aria-label="Etapas complementares revisadas, sem publicação" aria-valuemin="0" aria-valuemax="3" aria-valuenow="0"><span id="kitOptimizeProgressFill"></span></div>
-     <ol id="kitOptimizeStageSteps" class="kit-flow-stage-steps" aria-label="Status de cada etapa"></ol>
-     <div id="kitOptimizeLiveProgress" class="kit-flow-live-progress" role="status" aria-live="polite" hidden></div>
-     <p id="kitOptimizeProgressText" class="kit-flow-progress-note">Os dados preparados acima serão aproveitados. A revisão complementar não publica o anúncio sem sua autorização.</p>
-    </section>
+   <div id="kitOptimizerWorkspace" class="kit-optimizer-workspace optimizer-v15-page" hidden aria-live="off">
+    <div class="kit-optimizer-workspace-heading"><div><strong>Etapas de otimização do kit</strong><span id="kitOptimizerWorkspaceIdentity"></span></div><button id="kitWorkflowImportImages" type="button" class="kit-secondary">⇧ Sincronizar 9 imagens prontas</button></div>
+    <p id="kitOptimizerWorkspaceStatus" role="status" aria-live="polite">Preparando o fluxo completo de oito etapas com os dados já disponíveis.</p>
+
+   </div>
    <details class="kit-flow-advanced" id="kitOptimizeAdvanced">
     <summary>Conferir Item ID da SKU principal (avançado)</summary>
     <div class="kit-publish-fields">
@@ -1164,15 +1162,6 @@
      <button type="button" id="kitOptimizeOpen" class="kit-primary" disabled>Abrir fluxo do kit</button>
     </div>
    </details>
-   <div id="kitOptimizerWorkspace" class="kit-optimizer-workspace optimizer-v15-page" hidden aria-live="off">
-    <div class="kit-optimizer-workspace-heading"><div><strong>Etapas de otimização do kit</strong><span id="kitOptimizerWorkspaceIdentity"></span></div><button id="kitWorkflowImportImages" type="button" class="kit-secondary">⇧ Sincronizar 9 imagens prontas</button></div>
-    <p id="kitOptimizerWorkspaceStatus" role="status" aria-live="polite">Reutilizando o conteúdo pronto e abrindo somente as revisões complementares.</p>
-    <details class="kit-discount-later">
-     <summary>Desconto do kit · conferir Minha Promoção após a execução</summary>
-     <p>O preço e o desconto já foram calculados acima. A aplicação de Minha Promoção depende de execução confirmada e autorização separada.</p>
-     <button id="kitWorkflowDiscountLater" type="button" class="kit-secondary">Conferir Minha Promoção do kit</button>
-    </details>
-   </div>
    <section class="kit-publish-preview kit-existing-discount" aria-label="Minha Promoção do anúncio existente" hidden>
     <div class="kit-existing-discount-head">
      <h4>Etapa 08 · Desconto do kit</h4><span class="kit-existing-discount-tag">IDs Shopee · Automático</span>

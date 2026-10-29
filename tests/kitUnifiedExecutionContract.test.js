@@ -33,16 +33,33 @@ test('painel do kit vem logo apos composicao e antes de titulo e galeria',()=>{
  assert.equal(html.split('id="kitOptimizeExistingPanel"').length-1,1);
  assert.equal(html.split('id="kitOptimizerWorkspace"').length-1,1);
 });
-test('painel simplificado mostra apenas complementos e nunca refaz conteudos',()=>{
- const css=source('public/kit-builder.css');
- assert.match(app,/const actionable=kitMode\?visible\.filter/);
- assert.match(app,/\['video','technical','fiscal'\]/);
- assert.match(app,/if\(!kitMode\)\{/);
- assert.match(app,/RAKitWorkflowSyncReview/);
+test('oito etapas visiveis sem duplicar geracao de conteudos prontos',()=>{
+ assert.match(app,/for\(const \[i,stage\] of visible\.entries\(\)\)/);
+ assert.match(app,/const total=visible\.length\+1/);
+ assert.match(app,/discountCard\.onclick=\(\)=>optimizerDiscountOpenReview\(\)/);
+ assert.match(app,/selector=\{images:'#kitGallerySection',seo:'#kitTitle',description:'#kitDescription'\}/);
  assert.match(existing,/imageSyncAttempts/);
  assert.match(existing,/stage:'images',reviewed:true/);
  assert.match(server,/validateReview\(\{stage:'seo',reviewed:true,title:link\.title\}\)/);
  assert.match(server,/validateReview\(\{stage:'description',reviewed:true,description:link\.description\}\)/);
- assert.match(html,/id="kitWorkflowDiscountLater"/);
- assert.match(css,/\.kit-reuse-summary/);
+});
+test('oito etapas ocupam lugar da barra de acompanhamento substituta',()=>{
+ const a=html.indexOf('id="kitOptimizeStart"');
+ const b=html.indexOf('id="kitOptimizerWorkspace"');
+ const c=html.indexOf('id="kitOptimizeAdvanced"');
+ assert(a>=0&&a<b&&b<c);
+ assert.doesNotMatch(html,/id="kitOptimizeJourney"|id="kitOptimizeLiveProgress"|id="kitOptimizeStageSteps"/);
+ assert.equal(html.split('id="kitOptimizerWorkspace"').length-1,1);
+});
+test('acompanhamento tecnico original permanece abaixo das oito etapas',()=>{
+ const cards=html.indexOf('id="optimizerWorkflowCards"');
+ const exec=html.indexOf('id="optimizerExecutionPanel"');
+ const tracker=html.indexOf('id="optimizerExecutionTracker"');
+ const editor=html.indexOf('id="optimizerWorkflowEditor"');
+ assert(cards>=0&&cards<exec&&exec<tracker&&tracker<editor);
+ assert.match(html,/Acompanhamento da execução/);
+ assert.match(html,/id="optimizerExecutionPercent"/);
+ assert.match(html,/id="optimizerExecutionNextActionTitle"/);
+ assert.match(html,/id="optimizerExecutionEvents"/);
+ assert.match(app,/function optimizerExecutionTrackerRender\(progress,job\)/);
 });

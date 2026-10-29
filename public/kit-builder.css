@@ -2492,3 +2492,12 @@
 #tab-kits #kitDetail .kit-discount-later button{font-size:11px}
 #tab-kits #kitDetail .kit-flow-stage-steps{grid-template-columns:repeat(3,minmax(0,1fr))}
 @media(max-width:850px){#tab-kits #kitDetail .kit-optimizer-workspace .optimizer-workflow-cards{grid-template-columns:1fr}#tab-kits #kitDetail .kit-flow-stage-steps{grid-template-columns:repeat(3,minmax(0,1fr))}}
+
+/* Oito etapas como no otimizador original. O tracker real da execucao nao e alterado. */
+#tab-kits #kitDetail .kit-optimizer-workspace .optimizer-workflow-cards{
+ display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:9px
+}
+#tab-kits #kitDetail .kit-optimizer-workspace .optimizer-workflow-card{min-width:0;min-height:82px}
+#tab-kits #kitDetail .kit-optimizer-workspace{margin:10px 0 12px}
+@media(max-width:1050px){#tab-kits #kitDetail .kit-optimizer-workspace .optimizer-workflow-cards{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media(max-width:650px){#tab-kits #kitDetail .kit-optimizer-workspace .optimizer-workflow-cards{grid-template-columns:1fr}}

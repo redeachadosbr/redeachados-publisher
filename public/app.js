@@ -2926,31 +2926,18 @@ function optimizerWorkflowRender(data){
  const stages=data.stages||[];
  const visible=stages.filter(x=>x.key!=='final');
  const kitMode=optimizerKitWorkflowActive();
- const actionable=kitMode?visible.filter(x=>['video','technical','fiscal'].includes(x.key)||
-  x.key==='variants'&&!x.skipped):visible;
- const resolved=actionable.filter(x=>x.reviewed||x.skipped).length;
- const total=kitMode?actionable.length:visible.length+1;
- const completed=kitMode?resolved:resolved+(optimizerDiscountFinalSent?1:0);
+ // Exibir as sete revisoes e a oitava etapa de desconto, sem refazer
+ // automaticamente conteudos ja preparados na pagina de Kits.
+ const resolved=visible.filter(x=>x.reviewed||x.skipped).length;
+ const kitDiscountConfirmed=kitMode&&
+  kitOptimizerDiscountConfirmedIdentity===String(data.kitOptimization?.kitSku)+'|'+String(data.itemId);
+ const total=visible.length+1;
+ const completed=resolved+(kitMode?Number(kitDiscountConfirmed):Number(optimizerDiscountFinalSent));
  const progress=$('#optimizerWorkflowCounter');
- progress.textContent=kitMode?completed+' / '+total+' etapas complementares conferidas':
-  completed+' / '+total+' etapas concluídas';
+ progress.textContent=completed+' / '+total+' etapas conferidas';
  progress.style.setProperty('--stage-progress',String(total?Math.round(completed/total*100):0)+'%');
  $('#optimizerHasVariants').checked=Boolean(data.variationConfig?.enabled);
- if(kitMode){
-  const notes=optimizerMake('div','kit-reuse-summary');
-  notes.setAttribute('role','status');
-  const checked=key=>visible.find(x=>x.key===key)?.reviewed===true;
-  notes.append(optimizerMake('strong','','Conteúdo preparado nas seções do kit'),
-   optimizerMake('span','',checked('images')?'✓ 9 imagens anexadas ao rascunho':
-    '◷ Imagens prontas na galeria: sincronização pendente'),
-   optimizerMake('span','',checked('seo')?'✓ Título SEO validado e anexado':
-    '⚠ Título SEO: confira e ajuste na seção de textos do kit'),
-   optimizerMake('span','',checked('description')?'✓ Descrição validada e anexada':
-    '⚠ Descrição: confira na seção de textos do kit'),
-   optimizerMake('span','','Preço e desconto vêm do cálculo da composição. Minha Promoção requer autorização separada após a execução.'));
-  cards.append(notes);
- }
- for(const [i,stage] of actionable.entries()){
+ for(const [i,stage] of visible.entries()){
   const btn=optimizerMake('button','optimizer-workflow-card optimizer-workflow-'+stage.status+(optimizerWorkflowStage===stage.key?' is-current':''));
    btn.type='button';btn.dataset.stage=stage.key;
    btn.setAttribute('aria-label','Abrir etapa '+(i+1)+': '+stage.name);
@@ -2975,11 +2962,23 @@ function optimizerWorkflowRender(data){
        stage.reviewed?'Conferência registrada':stage.blocking?'Precisa de atenção':'Preparar e revisar'));
    const mark=optimizerMake('span','optimizer-workflow-symbol',stage.skipped?'—':stage.reviewed?'✓':'→');
    btn.append(number,glyph,body,mark);
-   btn.onclick=()=>optimizerWorkflowOpen(stage.key);
+   btn.onclick=()=>{
+    // As fotos e os textos do kit estao na propria pagina; ao seleciona-los
+    // mostrar a fonte para conferencia, sem iniciar um gerador duplicado.
+    if(kitMode){
+     const selector={images:'#kitGallerySection',seo:'#kitTitle',description:'#kitDescription'}[stage.key];
+     const source=selector&&document.querySelector(selector);
+     if(source){
+      source.scrollIntoView({behavior:'smooth',block:'start'});
+      optimizerWorkflowNotice('Confira o conteúdo já preparado na seção do kit. O vínculo da SKU principal será preservado.','info');
+      return;
+     }
+    }
+    optimizerWorkflowOpen(stage.key);
+   };
    cards.appendChild(btn);
  }
- // Desconto do kit não é um novo cadastro de conteúdo.
- if(!kitMode){
+ // Desconto permanece como etapa 08 dentro do mesmo fluxo.
  const discountCard=optimizerMake('button','optimizer-workflow-card optimizer-workflow-pending');
  discountCard.type='button';discountCard.dataset.stage='discount';
  discountCard.setAttribute('aria-label',data.kitOptimization?'Abrir etapa 08: desconto do kit na Shopee':'Abrir etapa 08: desconto do produto na Shopee');
@@ -2993,12 +2992,11 @@ function optimizerWorkflowRender(data){
  discountCard.append(discountNumber,discountIcon,discountLabel,discountMark);
  discountCard.onclick=()=>optimizerDiscountOpenReview();
  cards.append(discountCard);
- }
  if(data.kitOptimization?.kitSku)
   globalThis.RAKitWorkflowProgress?.({
    kitSku:data.kitOptimization.kitSku,itemId:String(data.itemId),stages:visible});
  optimizerDiscountWorkflowRefresh();
- if(optimizerWorkflowStage&&actionable.some(x=>x.key===optimizerWorkflowStage))
+ if(optimizerWorkflowStage&&visible.some(x=>x.key===optimizerWorkflowStage))
    optimizerWorkflowOpen(optimizerWorkflowStage);
  // Se uma etapa foi eliminada em uma atualização, fechar o editor antigo.
  else{
