@@ -84,7 +84,12 @@ function plan(size){
  return {chunkSize,totalChunks:Math.ceil(size/chunkSize)};
 }
 export function registerTikTokSandbox(app,{mustLogin,upload,baseUrl}){
- app.get('/auth/tiktok/sandbox',mustLogin,(req,res)=>{
+ app.get('/auth/tiktok/sandbox',(req,res,next)=>{
+  // Requisição aberta pelo navegador: encaminha para login em vez de exibir JSON cru.
+  // A proteção permanece ativa; não iniciamos o OAuth sem sessão autenticada.
+  if(process.env.APP_PASSWORD && !req.session?.appAuth) return res.redirect(302,'/?loginFor=tiktok-sandbox');
+  next();
+ },(req,res)=>{
   try{
    const c=credentials(),nonce=crypto.randomBytes(24).toString('hex'),exp=String(Date.now()+600000);
    const body='sandbox.'+nonce+'.'+exp,state=body+'.'+signature(c.stateSecret,body);
