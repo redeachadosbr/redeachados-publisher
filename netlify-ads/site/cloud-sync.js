@@ -24,7 +24,7 @@ gate.innerHTML='<div class="panelGate"><h2>Rede Achados BR</h2><p>Entre com a se
 document.body.prepend(bar,gate);
 const status=msg=>document.getElementById("cloudState").textContent=msg;
 let logged=false,dirty=false,busy=false,repeat=false,deleted={products:new Set(),changes:new Set(),adsSnapshots:new Set(),history:new Set()};
-let original={},syncTimer=null;
+const original={persistProducts,setChanges,setAdsSnapshots,setHistory};let syncTimer=null;let hooksInstalled=false;
 async function api(path,data){
  const r=await fetch(ROOT+path,{method:data?"POST":"GET",credentials:"same-origin",
   headers:data?{"Content-Type":"application/json"}:{},
@@ -60,8 +60,8 @@ function applyRemote(payload){
  return merged;
 }
 function installHooks(){
+ if(hooksInstalled)return;hooksInstalled=true;
  const mapping={persistProducts:"products",setChanges:"changes",setAdsSnapshots:"adsSnapshots",setHistory:"history"};
- original={persistProducts,setChanges,setAdsSnapshots,setHistory};
  for(const [name,type] of Object.entries(mapping)){
   const base=original[name];
   const wrapper=(rows)=>{
@@ -118,7 +118,6 @@ async function startAuthenticated(){
 async function init(){
  document.getElementById("cloudSyncNow").addEventListener("click",async()=>{if(dirty)await save();else await pull();});
  document.getElementById("cloudLogout").addEventListener("click",async()=>{
-  try{await api("/access",{logout:true})}catch{}
   try{await fetch("/api/access",{method:"DELETE",credentials:"same-origin"})}catch{}
   location.reload();
  });
