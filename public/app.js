@@ -2699,7 +2699,7 @@ $('#optimizerSku').onkeydown=event=>{
 };
 // Etapas persistentes para o mesmo Item ID/modelo/SKU. Nenhum write na Shopee.
 let optimizerWorkflowPlan=null,optimizerWorkflowStage=null,optimizerWorkflowSerial=0;
-let optimizerWorkflowActiveView=null;
+let optimizerWorkflowActiveView=null,optimizerWorkflowSourceStage=null;
 function optimizerKitWorkflowActive(){
  const w=optimizerWorkflowPlan,h=globalThis.__RA_KIT_OPTIMIZATION_HANDOFF;
  return Boolean(kitOptimizerEmbedded&&h?.embed&&w?.kitOptimization?.kitSku===h.kitSku&&
@@ -2917,6 +2917,8 @@ $('#optimizerSourceImage')?.addEventListener?.('change',async()=>{
 function optimizerWorkflowRender(data){
  optimizerSourceRender(data);
  optimizerWorkflowPlan=data;
+ // Sincronize os textos já montados no kit antes de calcular os cartões.
+ optimizerKitSourceChanged();
  // A pesquisa e a precificação começam ao selecionar a SKU e continuam em paralelo.
  if(!optimizerKitWorkflowActive())void optimizerDiscountFinalLoad();
  globalThis.OptimizerSkuDashboard?.workflow?.(data);
@@ -2945,6 +2947,8 @@ function optimizerWorkflowRender(data){
  for(const [i,stage] of visible.entries()){
   const btn=optimizerMake('button','optimizer-workflow-card optimizer-workflow-'+stage.status+(optimizerWorkflowStage===stage.key?' is-current':''));
    btn.type='button';btn.dataset.stage=stage.key;
+   if(optimizerWorkflowActiveView==='source'&&optimizerWorkflowSourceStage===stage.key)
+     btn.classList.add('is-current');
    btn.setAttribute('aria-label','Abrir etapa '+(i+1)+': '+stage.name);
    const number=optimizerMake('span','optimizer-workflow-number',String(i+1).padStart(2,'0'));
    const paths={
@@ -3006,6 +3010,7 @@ function optimizerWorkflowRender(data){
   globalThis.RAKitWorkflowProgress?.({
    kitSku:data.kitOptimization.kitSku,itemId:String(data.itemId),stages:visible});
  optimizerDiscountWorkflowRefresh();
+ optimizerKitSourcePaint();
  if(optimizerWorkflowStage&&visible.some(x=>x.key===optimizerWorkflowStage))
    optimizerWorkflowOpen(optimizerWorkflowStage);
  // Se uma etapa foi eliminada em uma atualização, fechar o editor antigo.
@@ -3531,6 +3536,7 @@ $('#optimizerImageCorrectionCopy')?.addEventListener?.('click',async()=>{
 // permanecem persistidos mesmo com seus paineis temporariamente ocultos.
 function optimizerWorkflowActivateOnly(view,sourceStage=null){
  optimizerWorkflowActiveView=view;
+ optimizerWorkflowSourceStage=view==='source'?sourceStage:null;
  const editor=$('#optimizerWorkflowEditor');
  const discount=$('#optimizerDiscountReviewInline');
  const execution=$('#optimizerExecutionPanel');
@@ -3546,6 +3552,148 @@ function optimizerWorkflowActivateOnly(view,sourceStage=null){
   card.setAttribute('aria-expanded',String(selected&&view!=='source'));
  }
 }
+
+// Kit existente: Título e Descrição reutilizam os textos já preparados acima.
+// A conferência grava apenas o checklist da SKU principal; nunca publica na Shopee.
+const optimizerKitSourceTimers={seo:0,description:0};
+const optimizerKitSourcePending={seo:null,description:null};
+const optimizerKitSourceBusy={seo:false,description:false};
+function optimizerKitSourceValue(stage){
+ const value=String($(stage==='seo'?'#kitTitle':'#kitDescription')?.value||'');
+ return stage==='seo'?value.normalize('NFC').replace(/\s+/g,' ').trim():
+  value.replace(/\r\n?/g,'\n').normalize('NFC').trim();
+}
+function optimizerKitSourcePaint(){
+ const kit=optimizerKitWorkflowActive(),w=optimizerWorkflowPlan;
+ for(const [stage,name] of [['seo','Seo'],['description','Description']]){
+  const panel=$('#kitReview'+name),button=$('#kitReview'+name+'Button');
+  const status=$('#kitReview'+name+'Status');
+  if(!panel||!button||!status)continue;
+  panel.hidden=!kit;
+  if(!kit)continue;
+  const row=w.stages?.find(x=>x.key===stage),field=stage==='seo'?'draftTitle':'draftDescription';
+  const value=optimizerKitSourceValue(stage);
+  const matched=value===String(w[field]||'');
+  const reviewed=row?.reviewed===true&&matched&&!optimizerKitSourcePending[stage];
+  const busy=optimizerKitSourceBusy[stage];
+  button.disabled=busy;
+  button.textContent=busy?'Salvando conferência…':reviewed?'✓ Etapa conferida · Reabrir':'✓ Registrar etapa concluída';
+  status.textContent=busy?'Validando e salvando no checklist da SKU principal…':
+   reviewed?'✓ Conferência salva. Conteúdo preparado para a prévia e execução.':
+   !value?'Preencha o texto do kit antes de registrar a etapa.':
+   'Pendente de conferência. O rascunho não foi publicado na Shopee.';
+  status.dataset.state=reviewed?'success':busy?'info':'pending';
+  const card=$('#optimizerWorkflowCards')?.querySelector('[data-stage="'+stage+'"]');
+  if(card){
+   card.classList.toggle('optimizer-workflow-reviewed',reviewed);
+   card.classList.toggle('optimizer-workflow-pending',!reviewed);
+   const summary=card.querySelector('.optimizer-workflow-label small');
+   if(summary)summary.textContent=reviewed?'Conferência registrada':'Preparar e revisar';
+   const mark=card.querySelector('.optimizer-workflow-symbol');
+   if(mark)mark.textContent=reviewed?'✓':'→';
+  }
+ }
+ if(kit&&w){
+  const stages=(w.stages||[]).filter(x=>x.key!=='final');
+  const completed=stages.filter(x=>x.reviewed||x.skipped).length+
+   Number(kitOptimizerDiscountConfirmedIdentity===String(w.kitOptimization?.kitSku)+'|'+String(w.itemId));
+  const count=$('#optimizerWorkflowCounter');
+  if(count){
+   count.textContent=completed+' / '+(stages.length+1)+' etapas conferidas';
+   count.style.setProperty('--stage-progress',String(Math.round(completed/(stages.length+1)*100))+'%');
+  }
+ }
+}
+function optimizerKitSourceFlush(stage){
+ if(optimizerKitSourceTimers[stage])clearTimeout(optimizerKitSourceTimers[stage]);
+ optimizerKitSourceTimers[stage]=0;
+ const pending=optimizerKitSourcePending[stage];
+ if(!pending)return optimizerContentQueue;
+ optimizerKitSourcePending[stage]=null;
+ const body={sku:pending.sku,itemId:pending.itemId,modelId:pending.modelId,
+  stage,reviewed:false,...(pending.value?{
+   [stage==='seo'?'title':'description']:pending.value
+  }:{})};
+ // A fila é a mesma dos outros rascunhos: nunca aprovar antes de gravar.
+ optimizerContentQueue=optimizerContentQueue.catch(()=>{}).then(()=>
+  optimizerSaveChecklistReview(body));
+ return optimizerContentQueue.catch(error=>{
+  const w=optimizerWorkflowPlan;
+  if(w&&String(w.sku)===String(pending.sku)&&
+    String(w.itemId)===String(pending.itemId)&&
+    optimizerKitSourceValue(stage)===pending.value){
+   if(!optimizerKitSourcePending[stage])optimizerKitSourcePending[stage]=pending;
+   optimizerWorkflowNotice('Rascunho do kit não confirmado no servidor: '+error.message,'warning');
+  }
+  throw error;
+ });
+}
+function optimizerKitSourceChanged(){
+ if(!optimizerKitWorkflowActive()){optimizerKitSourcePaint();return;}
+ const w=optimizerWorkflowPlan;
+ for(const stage of ['seo','description']){
+  const field=stage==='seo'?'draftTitle':'draftDescription';
+  const value=optimizerKitSourceValue(stage);
+  if(String(w[field]||'')===value)continue;
+  w[field]=value;
+  const row=w.stages?.find(x=>x.key===stage);
+  if(row){row.reviewed=false;row.reviewedAt=null;row.status='pending';}
+  optimizerKitSourcePending[stage]={sku:w.sku,itemId:w.itemId,modelId:w.modelId,
+   stage,value};
+  if(optimizerKitSourceTimers[stage])clearTimeout(optimizerKitSourceTimers[stage]);
+  optimizerKitSourceTimers[stage]=setTimeout(()=>{
+   void optimizerKitSourceFlush(stage).catch(()=>{});
+  },850);
+ }
+ optimizerKitSourcePaint();
+}
+globalThis.RAKitSourceChanged=optimizerKitSourceChanged;
+async function optimizerKitSourceConfirm(stage){
+ const w=optimizerWorkflowPlan;
+ if(!optimizerKitWorkflowActive()||!['seo','description'].includes(stage)||!w)return;
+ optimizerKitSourceChanged();
+ const field=stage==='seo'?'draftTitle':'draftDescription';
+ const value=optimizerKitSourceValue(stage);
+ const row=w.stages?.find(x=>x.key===stage);
+ const reviewed=row?.reviewed===true&&!optimizerKitSourcePending[stage];
+ const name=stage==='seo'?'Seo':'Description';
+ optimizerKitSourceBusy[stage]=true;optimizerKitSourcePaint();
+ try{
+  if(!reviewed){
+   if(stage==='seo'){
+    const length=[...value].length;
+    if(length<100||length>120)
+     throw Error('O título deve ter de 100 a 120 caracteres. Atual: '+length+'.');
+   }else if(!value)throw Error('A descrição do kit está vazia.');
+  }
+  await optimizerKitSourceFlush(stage);
+  if(optimizerWorkflowPlan!==w||optimizerKitSourceValue(stage)!==value)
+   throw Error('O anúncio ou texto mudou durante a conferência. Confira novamente.');
+  const body={sku:w.sku,itemId:w.itemId,modelId:w.modelId,stage,reviewed:!reviewed,
+   [stage==='seo'?'title':'description']:value};
+  const result=await optimizerSaveChecklistReview(body);
+  if(optimizerWorkflowPlan!==w||optimizerKitSourceValue(stage)!==value)
+   throw Error('O texto foi alterado. Refaça a conferência antes de executar.');
+  if(result.saved!==true||result.stages?.find(x=>x.key===stage)?.reviewed!==!reviewed)
+   throw Error('O servidor não confirmou o status da etapa.');
+  optimizerWorkflowRender({...w,...result,stages:result.stages});
+  optimizerWorkflowActivateOnly('source',stage);
+  void optimizerExecutionPrepare();
+  optimizerWorkflowNotice(reviewed?'Etapa reaberta para revisão.':
+   '✓ '+(stage==='seo'?'Título SEO':'Descrição')+
+   ' conferido e salvo para execução na SKU principal. Nenhuma publicação realizada.','success');
+ }catch(error){
+  optimizerWorkflowNotice('Não foi possível registrar a etapa: '+error.message,'error');
+  const status=$('#kitReview'+name+'Status');
+  if(status){status.textContent='⚠ '+error.message;status.dataset.state='error';}
+ }finally{
+  optimizerKitSourceBusy[stage]=false;
+  optimizerKitSourcePaint();
+ }
+}
+$('#kitReviewSeoButton')?.addEventListener?.('click',()=>void optimizerKitSourceConfirm('seo'));
+$('#kitReviewDescriptionButton')?.addEventListener?.('click',()=>void optimizerKitSourceConfirm('description'));
+
 function optimizerWorkflowOpen(key){
  optimizerContentRemember();
  globalThis.ShopeeFiscalStudio?.close?.();
