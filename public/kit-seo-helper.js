@@ -13,6 +13,16 @@ export function scoreKitSeoTitle(title,components=[]){
  return {score,label:score>=80?'Forte':score>=60?'Boa':'Revisar',
   note:'Estimativa por tamanho e termos dos produtos; não é ranking oficial da Shopee.'};
 }
+// Shopee trata quebras de linha vazias como espaço vertical em anúncios.
+ // Mantém uma única separação entre seções e nenhuma linha vazia entre itens.
+export function formatKitShopeeDescription(raw){
+ const sections=/^(?:[^\p{L}\p{N}]{0,8}\s*)?(?:BENEF[ÍI]CIOS|POR QUE COMPRAR|D[ÚU]VIDAS FREQUENTES|PERGUNTAS FREQUENTES|CARACTER[ÍI]STICAS|ESPECIFICA[ÇC][ÕO]ES|O QUE VAI NA EMBALAGEM|ITENS INCLUSOS|CONTE[ÚU]DO DO KIT)\s*:?\s*$/iu;
+ const lines=String(raw||'').normalize('NFC').replace(/\r\n?/g,'\n')
+  .replace(/\u00a0/g,' ').split('\n')
+  .map(line=>line.replace(/[ \t\f\v]+/g,' ').trim()).filter(Boolean);
+ return lines.map((line,index)=>(index?(sections.test(line)||/^🛒/.test(line)?'\n\n':'\n'):'')+line).join('').trim();
+}
+
 // Aceita copiar bloco "Escrita" do ChatGPT, Markdown (**TÍTULO 1:**),
 // títulos em negrito, linhas em branco e separadores: sem confundir o prompt com a resposta.
 export function parseKitSeoResponse(raw){
@@ -31,7 +41,7 @@ export function parseKitSeoResponse(raw){
  }
  const descriptionTag=/(?:^|\n)\s*(?:#{1,4}\s*)?(?:[-*]\s*)?(?:\*\*)?DESCRI[ÇC][ÃA]O(?:\*\*)?\s*[:：—–-]\s*(?:\*\*)?\s*/i.exec(text);
  let description=descriptionTag?text.slice(descriptionTag.index+descriptionTag[0].length).trim():'';
- description=description.replace(/^\*\*\s*/,'').trim();
+ description=formatKitShopeeDescription(description.replace(/^\*\*\s*/,''));
  const numbered=[...new Set(titles.map(x=>x.number))];
  if(numbered.length!==3||![1,2,3].every(n=>numbered.includes(n)))
   throw Error('Não localizei TÍTULO 1, TÍTULO 2 e TÍTULO 3. Copie o anúncio completo usando o ícone Copiar no ChatGPT.');

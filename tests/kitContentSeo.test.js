@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {scoreKitSeoTitle,parseKitSeoResponse} from '../public/kit-seo-helper.js';
+import {scoreKitSeoTitle,parseKitSeoResponse,formatKitShopeeDescription} from '../public/kit-seo-helper.js';
 test('kit importa três títulos SEO distintos e uma descrição única',()=>{
  const titles=['Kit Elefante Musical e Chocalho Para Bebê 🎶','Kit Chocalho e Elefante Musical Brinquedos Para Bebê 🐘','🐘 Kit Brinquedo Musical Elefante com Chocalho para Diversão 🎶'];
  const content=titles.map((x,i)=>'TÍTULO '+(i+1)+': '+x).join('\n')+
@@ -12,6 +12,27 @@ test('kit importa três títulos SEO distintos e uma descrição única',()=>{
  assert(Number.isInteger(rank.score)&&rank.score>=0&&rank.score<=100);
  assert.match(rank.note,/não é ranking oficial/);
  assert.throws(()=>parseKitSeoResponse('TÍTULO: Único\nDESCRIÇÃO: curta'),/TÍTULO 1/);
+});
+
+test('descrição de kit Shopee mantém apenas uma separação entre seções',()=>{
+ const raw=' ✨ Kit com elefante musical e bola chocalho.\r\n\r\n\r\n✅ BENEFÍCIOS\r\n\r\n🌈 Luzes e sons.\r\n\r\n🙌 Coordenação e diversão.\r\n\r\n💡 POR QUE COMPRAR\r\n\r\n🎁 Dois produtos em um kit.\r\n\r\n❓ DÚVIDAS FREQUENTES\r\n\r\n👶 Qual a idade indicada?\r\n\r\nConsulte a indicação dos produtos.\r\n\r\n🛒 Confira os componentes.';
+ const expected=[
+  '✨ Kit com elefante musical e bola chocalho.','','✅ BENEFÍCIOS',
+  '🌈 Luzes e sons.','🙌 Coordenação e diversão.','','💡 POR QUE COMPRAR',
+  '🎁 Dois produtos em um kit.','','❓ DÚVIDAS FREQUENTES',
+  '👶 Qual a idade indicada?','Consulte a indicação dos produtos.',
+  '','🛒 Confira os componentes.'
+ ].join('\n');
+ assert.equal(formatKitShopeeDescription(raw),expected);
+ assert.equal(formatKitShopeeDescription(expected),expected,'a formatação deve ser idempotente');
+ assert.doesNotMatch(expected,/\n{3,}/);
+ const titleLines=[
+  'TÍTULO 1: Kit Elefante Musical com Torre e Bola Chocalho Infantil',
+  'TÍTULO 2: Brinquedos para Bebê Kit Chocalho e Elefante Musical',
+  'TÍTULO 3: Kit Infantil Elefante com Música e Bola Chocalho'
+ ];
+ const imported=parseKitSeoResponse(titleLines.join('\n')+'\nDESCRIÇÃO:\n'+raw);
+ assert.equal(imported.description,expected,'o importador compacta antes de salvar');
 });
 
 test('cópia de bloco Escrita do ChatGPT com 3 títulos e descrição é importada',async()=>{
