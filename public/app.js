@@ -2976,6 +2976,9 @@ function optimizerWorkflowRender(data){
  discountCard.append(discountNumber,discountIcon,discountLabel,discountMark);
  discountCard.onclick=()=>optimizerDiscountOpenReview();
  cards.append(discountCard);
+ if(data.kitOptimization?.kitSku)
+  globalThis.RAKitWorkflowProgress?.({
+   kitSku:data.kitOptimization.kitSku,itemId:String(data.itemId),stages:visible});
  optimizerDiscountWorkflowRefresh();
  if(optimizerWorkflowStage&&visible.some(x=>x.key===optimizerWorkflowStage))
    optimizerWorkflowOpen(optimizerWorkflowStage);
@@ -3616,6 +3619,8 @@ async function optimizerWorkflowLoad(record){
  globalThis.ShopeeDescriptionStudio?.close?.();
  optimizerWorkflowStage=null;$('#optimizerWorkflowEditor').hidden=true;
  optimizerWorkflowNotice('Preparando etapas de revisão da SKU '+sku+' com a auditoria oficial...');
+ if(globalThis.__RA_KIT_OPTIMIZATION_HANDOFF?.sku===sku)
+  globalThis.RAKitAuditPhase?.('Auditoria concluida. Carregando as oito etapas reais do kit.');
  try{
    const qs=new URLSearchParams({sku,item_id:id,model_id:modelId});
    const data=await json('/api/shopee/optimizer/workflow?'+qs.toString(),
@@ -4045,6 +4050,9 @@ function optimizerExecutionTrackerRender(progress,job){
  }
  globalThis.OptimizerSkuDashboard?.execution?.(progress,job);
  if(!progress)return;
+ const kitLink=optimizerWorkflowPlan?.kitOptimization;
+ if(kitLink?.kitSku)globalThis.RAKitTechnicalProgress?.({
+  kitSku:kitLink.kitSku,itemId:String(optimizerWorkflowPlan.itemId),progress});
  const tracker=$('#optimizerExecutionTracker'),activity=$('#optimizerExecutionActivity');
  if(!tracker||!activity)return;
  const visible=Boolean(progress.hasStarted||progress.hasSavedProgress||progress.state==='prepared'||progress.state==='blocked');
@@ -4271,6 +4279,7 @@ function optimizerDiscountOpenReview(){
  if(!optimizerWorkflowPlan)return;
  const section=$('#optimizerDiscountReviewInline');
  if(optimizerKitWorkflowActive()){
+  globalThis.RAKitDiscountStageOpened?.();
   if(!kitOptimizerDiscountMount()){
    optimizerWorkflowNotice('Não foi possível abrir a etapa 08 do kit. Atualize a página.','error');return;
   }
@@ -5701,6 +5710,8 @@ async function optimizerRunAudit(itemId,sku,modelId=''){
   optimizerBusy=true;
   $('#optimizerAuditPanel').hidden=true;
   optimizerNotice('Consultando atributos oficiais da categoria deste SKU na Shopee...');
+  if(globalThis.__RA_KIT_OPTIMIZATION_HANDOFF?.sku===sku)
+   globalThis.RAKitAuditPhase?.('Conferindo ficha tecnica do Item ID '+itemId+' pela API Shopee.');
   try{
     const item=String(itemId||'').trim(),expectedSku=String(sku||'').trim();
     if(!/^[1-9]\d{0,17}$/.test(item)||!expectedSku)

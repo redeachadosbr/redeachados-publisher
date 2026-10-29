@@ -2431,3 +2431,29 @@
 #tab-kits #kitDetail .kit-workflow-campaign-chooser select{width:100%;min-width:0;min-height:38px;border:1px solid #bed5ed;border-radius:8px;padding:8px 11px;font-size:12px;color:#1a436e;background:#fff}
 #tab-kits #kitDetail .kit-workflow-campaign-chooser button{min-height:38px;padding:8px 12px;border-radius:8px;font-size:11px;box-shadow:0 3px 0 #b3cbe1}
 #tab-kits #kitDetail .kit-workflow-original-campaign{display:none!important}
+
+/* Acompanhamento compacto de revisoes individuais e execucao real Shopee */
+#tab-kits #kitDetail .kit-flow-journey{margin:10px 0 5px;padding:13px;background:linear-gradient(155deg,#f7faff,#edf4fc);border:1px solid #d9e6f4;border-radius:14px;min-width:0}
+#tab-kits #kitDetail .kit-flow-progress-head{display:flex;justify-content:space-between;align-items:center;gap:10px;margin:0 0 10px;color:#183c65}
+#tab-kits #kitDetail .kit-flow-progress-head strong{font-size:12px;font-weight:900}
+#tab-kits #kitDetail .kit-flow-progress-head span{font-size:11px;font-weight:800;color:#277958}
+#tab-kits #kitDetail .kit-flow-progress-track,#tab-kits #kitDetail .kit-flow-live-track{height:9px;overflow:hidden;border-radius:999px;background:#dce8f4}
+#tab-kits #kitDetail .kit-flow-progress-track>span,#tab-kits #kitDetail .kit-flow-live-track>span{display:block;height:100%;width:0;background:linear-gradient(90deg,#35bda8,#0a9660);border-radius:inherit;transition:width .25s}
+#tab-kits #kitDetail .kit-flow-stage-steps{display:grid;grid-template-columns:repeat(8,minmax(0,1fr));gap:7px;margin:12px 0 5px;padding:0;list-style:none}
+#tab-kits #kitDetail .kit-flow-stage{display:flex;flex-direction:column;align-items:center;min-width:0;text-align:center;gap:4px}
+#tab-kits #kitDetail .kit-flow-stage-number{display:grid;place-items:center;width:27px;height:27px;border-radius:50%;background:#c8d6e7;color:white;font-size:11px;font-weight:900}
+#tab-kits #kitDetail .kit-flow-stage.is-done .kit-flow-stage-number{background:#0da36b}
+#tab-kits #kitDetail .kit-flow-stage.is-attention .kit-flow-stage-number{background:#f0a22a}
+#tab-kits #kitDetail .kit-flow-stage.is-skipped .kit-flow-stage-number{background:#a7b6c5}
+#tab-kits #kitDetail .kit-flow-stage strong{font-size:10px;color:#33597b;line-height:1.2}
+#tab-kits #kitDetail .kit-flow-stage small{font-size:9px;color:#7187a1;line-height:1.25}
+#tab-kits #kitDetail .kit-flow-progress-note{font-size:10px;line-height:1.4;color:#506a88;margin:9px 0 0}
+#tab-kits #kitDetail .kit-flow-search-hint{font-size:10px;line-height:1.4;color:#6d819b;margin:5px 0}
+#tab-kits #kitDetail .kit-flow-live-progress{display:flex;flex-wrap:wrap;gap:6px 13px;padding:10px;margin:10px 0;background:#fff;border:1px solid #caddeb;border-radius:9px}
+#tab-kits #kitDetail .kit-flow-live-progress[hidden]{display:none!important}
+#tab-kits #kitDetail .kit-flow-live-progress>strong,#tab-kits #kitDetail .kit-flow-live-progress>.kit-flow-live-track{width:100%}
+#tab-kits #kitDetail .kit-flow-live-progress>strong{font-size:11px;color:#1a5175}
+#tab-kits #kitDetail .kit-flow-live-progress>small{font-size:9px;color:#526f8b}
+#tab-kits #kitDetail #kitOptimizeCancelLookup{border:1px solid #eeaaa5;background:#fff1ef;color:#933d34}
+@media(max-width:900px){#tab-kits #kitDetail .kit-flow-stage-steps{grid-template-columns:repeat(4,minmax(0,1fr));row-gap:13px}}
+@media(max-width:510px){#tab-kits #kitDetail .kit-flow-stage-steps{grid-template-columns:repeat(2,minmax(0,1fr))}}
