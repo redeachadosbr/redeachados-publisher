@@ -235,8 +235,8 @@ test('etapa 07 possui botao check distinto do salvamento fiscal',()=>{
  assert.match(fiscal,/save\.textContent='Salvar dados fiscais \(rascunho\)'/);
  assert.match(fiscal,/get\('raFiscalChecklistConfirm'\)/);
  assert.match(css,/#raFiscalModernLayout \.optimizer-workflow-actions #raFiscalChecklistConfirm/);
- assert.match(html,/fiscal-modern-layout\.css\?v=1\.0\.2-fiscal-check/);
- assert.match(html,/fiscal-modern-layout\.js\?v=1\.0\.2-fiscal-check/);
+ assert.match(html,/fiscal-modern-layout\.css\?v=1\.0\.3-compact-help/);
+ assert.match(html,/fiscal-modern-layout\.js\?v=1\.0\.3-compact-help/);
  assert.match(html,/\/app\.js\?v=3\.5\.11-fiscal-check/);
 });
 test('salvar dados fiscais nao confirma checklist e confirmar exige resposta do servidor',()=>{
@@ -283,4 +283,36 @@ test('proteções fiscais: kit não pode aprovar fonte WeDrop solta ou SKU incor
  assert.throws(()=>fiscalMatrixSource({sku:'310200',supplier:{...supplier,matchedBy:'unverified'},tax}),/correspondência WeDrop não revisada/);
  assert.throws(()=>fiscalMatrixSource({sku:'310200',supplier,tax:{...tax,ncm:'95030099'}}),/diverge da ficha WeDrop/);
  assert.throws(()=>fiscalMatrixSource({sku:'310200',supplier,tax:{...tax,ncm:'1234'}}),/oito dígitos/);
+});
+
+
+test('descricoes fiscais e fontes sao ocultas mas acessiveis no botao ?',()=>{
+ const studio=source('public/fiscal-modern-layout.js');
+ const css=source('public/fiscal-modern-layout.css');
+ assert.match(studio,/const help=info\('Ajuda: '\+title\.textContent/);
+ assert.match(studio,/querySelectorAll\(\s*':scope > \.optimizer-fiscal-filled, :scope > \.optimizer-fiscal-cest-help, :scope > \.ra-fiscal-modern-cest-alert'/);
+ assert.match(studio,/popup\?\.append\(make\('p','ra-fiscal-modern-help-detail',note\.textContent\.trim\(\)\)\)/);
+ assert.match(studio,/row\.append\(title,help\)/);
+ assert.match(studio,/words\.append\(make\('strong','',title\)\)/);
+ assert.match(studio,/const help=info\('Sobre '\+title,subtitle\)/);
+ assert.match(studio,/const notesHelp=info\('Orientações do Motor Matriz'/);
+ assert.match(studio,/const popup=cestLabel\?\.querySelector\('\.ra-fiscal-modern-field-label \.ra-fiscal-modern-popover'\)/);
+ assert.match(css,/\.ra-fiscal-modern-field > :is\(/);
+ assert.match(css,/\.optimizer-fiscal-filled,\.optimizer-fiscal-cest-help,\.ra-fiscal-modern-cest-alert/);
+ assert.match(css,/\.ra-fiscal-modern-help>summary:focus-visible/);
+ assert.match(css,/\.ra-fiscal-modern-help \.ra-fiscal-modern-popover/);
+ assert.match(css,/max-height:260px!important/);
+ assert.match(html,/fiscal-modern-layout\.css\?v=1\.0\.3-compact-help/);
+ assert.match(html,/fiscal-modern-layout\.js\?v=1\.0\.3-compact-help/);
+});
+test('campo fiscal, avisos criticos e check continuam intactos',()=>{
+ const studio=source('public/fiscal-modern-layout.js');
+ assert.match(studio,/fieldElement\.insertBefore\(row,fieldElement\.firstChild\)/);
+ assert.match(studio,/input\.addEventListener\('input',markUnsaved\)/);
+ assert.match(studio,/const warning=make\('div','ra-fiscal-modern-warning'/);
+ assert.match(studio,/cestLabel\?\.append\(caution\)/);
+ assert.match(studio,/fields\.append\(content\)/);
+ assert.match(studio,/checklist\.id='raFiscalChecklistConfirm'/);
+ assert.match(studio,/get\('raFiscalChecklistConfirm'\)\?\.remove\(\)/);
+ assert.match(app,/globalThis\.RAFiscalChecklistConfirm=\(\)=>optimizerWorkflowSaveReview\(\{fiscalConfirm:true\}\)/);
 });
