@@ -2913,7 +2913,7 @@ function optimizerWorkflowRender(data){
  optimizerSourceRender(data);
  optimizerWorkflowPlan=data;
  // A pesquisa e a precificação começam ao selecionar a SKU e continuam em paralelo.
- void optimizerDiscountFinalLoad();
+ if(!optimizerKitWorkflowActive())void optimizerDiscountFinalLoad();
  globalThis.OptimizerSkuDashboard?.workflow?.(data);
  const cards=$('#optimizerWorkflowCards');cards.replaceChildren();
  if(data.anatel?.requiresAction){
@@ -2925,17 +2925,33 @@ function optimizerWorkflowRender(data){
  }
  const stages=data.stages||[];
  const visible=stages.filter(x=>x.key!=='final');
- // Always show all eight workflow cards in the counter. A skipped optional
- // variation is resolved (not applicable), rather than disappearing from totals.
- const resolved=visible.filter(x=>x.reviewed||x.skipped).length;
- const total=visible.length+1; // final discount card
- const completed=resolved+(optimizerDiscountFinalSent?1:0);
+ const kitMode=optimizerKitWorkflowActive();
+ const actionable=kitMode?visible.filter(x=>['video','technical','fiscal'].includes(x.key)||
+  x.key==='variants'&&!x.skipped):visible;
+ const resolved=actionable.filter(x=>x.reviewed||x.skipped).length;
+ const total=kitMode?actionable.length:visible.length+1;
+ const completed=kitMode?resolved:resolved+(optimizerDiscountFinalSent?1:0);
  const progress=$('#optimizerWorkflowCounter');
- progress.textContent=completed+' / '+total+' etapas concluídas';
+ progress.textContent=kitMode?completed+' / '+total+' etapas complementares conferidas':
+  completed+' / '+total+' etapas concluídas';
  progress.style.setProperty('--stage-progress',String(total?Math.round(completed/total*100):0)+'%');
  $('#optimizerHasVariants').checked=Boolean(data.variationConfig?.enabled);
- for(const [i,stage] of visible.entries()){
-   const btn=optimizerMake('button','optimizer-workflow-card optimizer-workflow-'+stage.status+(optimizerWorkflowStage===stage.key?' is-current':''));
+ if(kitMode){
+  const notes=optimizerMake('div','kit-reuse-summary');
+  notes.setAttribute('role','status');
+  const checked=key=>visible.find(x=>x.key===key)?.reviewed===true;
+  notes.append(optimizerMake('strong','','Conteúdo aproveitado do kit acima'),
+   optimizerMake('span','',checked('images')?'✓ 9 imagens anexadas ao rascunho':
+    '◷ Imagens prontas na galeria: sincronização pendente'),
+   optimizerMake('span','',checked('seo')?'✓ Título SEO validado e anexado':
+    '⚠ Título SEO: confira e ajuste no editor superior'),
+   optimizerMake('span','',checked('description')?'✓ Descrição validada e anexada':
+    '⚠ Descrição: confira no editor superior'),
+   optimizerMake('span','','Preço e desconto vêm da cotação anterior. A Minha Promoção requer autorização separada após a execução.'));
+  cards.append(notes);
+ }
+ for(const [i,stage] of actionable.entries()){
+  const btn=optimizerMake('button','optimizer-workflow-card optimizer-workflow-'+stage.status+(optimizerWorkflowStage===stage.key?' is-current':''));
    btn.type='button';btn.dataset.stage=stage.key;
    btn.setAttribute('aria-label','Abrir etapa '+(i+1)+': '+stage.name);
    const number=optimizerMake('span','optimizer-workflow-number',String(i+1).padStart(2,'0'));
@@ -2962,7 +2978,8 @@ function optimizerWorkflowRender(data){
    btn.onclick=()=>optimizerWorkflowOpen(stage.key);
    cards.appendChild(btn);
  }
- // Etapa 08: acesso ao desconto já calculado pelo Motor Matriz e publicado apenas com confirmação da Shopee.
+ // Desconto do kit não é um novo cadastro de conteúdo.
+ if(!kitMode){
  const discountCard=optimizerMake('button','optimizer-workflow-card optimizer-workflow-pending');
  discountCard.type='button';discountCard.dataset.stage='discount';
  discountCard.setAttribute('aria-label',data.kitOptimization?'Abrir etapa 08: desconto do kit na Shopee':'Abrir etapa 08: desconto do produto na Shopee');
@@ -2976,11 +2993,12 @@ function optimizerWorkflowRender(data){
  discountCard.append(discountNumber,discountIcon,discountLabel,discountMark);
  discountCard.onclick=()=>optimizerDiscountOpenReview();
  cards.append(discountCard);
+ }
  if(data.kitOptimization?.kitSku)
   globalThis.RAKitWorkflowProgress?.({
    kitSku:data.kitOptimization.kitSku,itemId:String(data.itemId),stages:visible});
  optimizerDiscountWorkflowRefresh();
- if(optimizerWorkflowStage&&visible.some(x=>x.key===optimizerWorkflowStage))
+ if(optimizerWorkflowStage&&actionable.some(x=>x.key===optimizerWorkflowStage))
    optimizerWorkflowOpen(optimizerWorkflowStage);
  // Se uma etapa foi eliminada em uma atualização, fechar o editor antigo.
  else{
@@ -2989,6 +3007,15 @@ function optimizerWorkflowRender(data){
    $('#optimizerWorkflowEditor').hidden=true;
  }
 }
+globalThis.RAKitWorkflowSyncReview=({kitSku,itemId,modelId,review}={})=>{
+ const w=optimizerWorkflowPlan;
+ if(!w||!optimizerKitWorkflowActive()||w.kitOptimization?.kitSku!==kitSku||
+  String(w.itemId)!==String(itemId)||String(w.modelId||'0')!==String(modelId||'0')||
+  !Array.isArray(review?.stages))return false;
+ optimizerWorkflowRender({...w,stages:review.stages});
+ void optimizerExecutionPrepare();
+ return true;
+};
 // Importação manual (SKU isolada) em armazenamento privado. Nunca publica na Shopee.
 const optimizerVideoMaxBytes=30*1024*1024;
 let optimizerVideoObjectURL=null,optimizerVideoDurationReady=false,optimizerVideoUploading=false;
@@ -3633,9 +3660,10 @@ async function optimizerWorkflowLoad(record){
       String(data.itemId)===kitHandoff.itemId&&String(data.sku)===kitHandoff.sku){
     kitOptimizerMount();
     const status=$('#kitOptimizerWorkspaceStatus');if(status)status.hidden=true;
-    const firstPending=(data.stages||[]).find(s=>s.key!=='final'&&!s.skipped&&!s.reviewed)?.key;
+    const active=(data.stages||[]).filter(s=>['video','technical','fiscal'].includes(s.key)||s.key==='variants'&&!s.skipped);
+    const firstPending=active.find(s=>!s.reviewed&&!s.skipped)?.key;
     if(firstPending)optimizerWorkflowOpen(firstPending);
-    else optimizerDiscountOpenReview();
+    else if(active[0])optimizerWorkflowOpen(active[0].key);
     globalThis.RAKitOptimizerReady?.(data);
    }
    // A retomada automática pertence SOMENTE à SKU que foi carregada.
@@ -3658,7 +3686,7 @@ $('#optimizerShowExecution')?.addEventListener?.('click',()=>{
  const saved=optimizerExecJob&&String(optimizerExecJob.sku)===String(optimizerWorkflowPlan?.sku)&&
   String(optimizerExecJob.item_id)===String(optimizerWorkflowPlan?.itemId)&&
   String(optimizerExecJob.model_id||0)===String(optimizerWorkflowPlan?.modelId||0);
- if(!saved&&optimizerWorkflowPlan?.variationConfig?.enabled!==true&&
+ if(!saved&&!optimizerKitWorkflowActive()&&optimizerWorkflowPlan?.variationConfig?.enabled!==true&&
   $('#optimizerExecutionScope')?.value==='all'&&!optimizerDiscountApprovalReady()){
   optimizerDiscountOpenReview();
   optimizerWorkflowNotice('Conclua a conferência do desconto na etapa 08 acima para liberar a execução completa.','warning');
@@ -3674,7 +3702,8 @@ $('#optimizerShowExecution')?.addEventListener?.('click',()=>{
  void optimizerExecutionPrepare();
 });
 $('#optimizerWorkflowNext')?.addEventListener?.('click',()=>{
- const stages=(optimizerWorkflowPlan?.stages||[]).filter(x=>x.key!=='final'&&!x.skipped);
+ const stages=(optimizerWorkflowPlan?.stages||[]).filter(x=>x.key!=='final'&&!x.skipped&&
+  (!optimizerKitWorkflowActive()||['video','technical','fiscal','variants'].includes(x.key)));
  const index=stages.findIndex(x=>x.key===optimizerWorkflowStage);
  if(index>=0&&index<stages.length-1)optimizerWorkflowOpen(stages[index+1].key);
  else $('#optimizerShowExecution').click();
