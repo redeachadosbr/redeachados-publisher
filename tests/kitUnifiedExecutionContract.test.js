@@ -401,3 +401,12 @@ test('publicacao do desconto so altera estado apos resposta confirmada',()=>{
  assert.match(server,/previewKitDiscount\(\{cfg,auth,kitSku:code,/);
  assert.doesNotMatch(server,/kitDiscountPublication:\{kitSku:code,itemId:String\(preview\.itemId\)/);
 });
+
+
+test('falha ao salvar historico apos publicacao nao solicita reenviar promocao',()=>{
+ assert.match(server,/if\(out\?\.status==='discount_confirmed'\)\{\s*try\{/);
+ assert.match(server,/catch\(error\)\{\s*console\.warn\('\[kit-discount\] Shopee confirmed, local history unavailable:/);
+ assert.match(server,/res\.json\(\{\.\.\.out,historySaved,/);
+ assert.match(server,/historyWarning:'Desconto confirmado na Shopee, mas histórico local pendente\. Não reenviar/);
+ assert.doesNotMatch(server,/if\(out\?\.status==='discount_confirmed'\)\{\s*const saved/);
+});
