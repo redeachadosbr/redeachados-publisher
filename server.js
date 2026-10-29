@@ -1557,20 +1557,32 @@ app.post('/api/shopee/kits/optimization/prepare',mustLogin,requireWeDropAdmin,as
     throw Error('Execução do vínculo antigo pendente. Confirme antes de migrar.');
   }
   await recordKitOptimization(auth.shopId,kitSku,link);
+  // O vendedor já selecionou e salvou título/descrição na área superior do KIT.
+  // Validar a fonte existente (sem gerar outra vez) e registrar sua revisão
+  // SOMENTE se passar as mesmas regras do otimizador. Nada publica na Shopee.
+  let seoReviewed=false,seoError='';
+  try{validateReview({stage:'seo',reviewed:true,title:link.title});seoReviewed=true;}
+  catch(e){seoError=String(e.message||e).slice(0,220);}
+  let descriptionReviewed=false,descriptionError='';
+  try{validateReview({stage:'description',reviewed:true,description:link.description});descriptionReviewed=true;}
+  catch(e){descriptionError=String(e.message||e).slice(0,220);}
   await saveWorkflowReview(auth.shopId,itemId,modelId,sku,{
-   stage:'seo',reviewed:false,title:link.title,titleOrigin:'kit-wedrop',
+   stage:'seo',reviewed:seoReviewed,title:link.title,titleOrigin:'kit-wedrop',
    kitOptimization:link,resetKitStages:true
   });
   await saveWorkflowReview(auth.shopId,itemId,modelId,sku,{
-   stage:'description',reviewed:false,description:link.description,descriptionOrigin:'kit-wedrop'
+   stage:'description',reviewed:descriptionReviewed,description:link.description,
+   descriptionOrigin:'kit-wedrop'
   });
-  const n=[...link.title].length;
+  const warnings=[...(seoError?['Título salvo no kit exige correção acima: '+seoError]:[]),
+   ...(descriptionError?['Descrição salva no kit exige correção acima: '+descriptionError]:[])];
   res.json({ok:true,prepared:true,marketplaceUpdated:false,
    target:{sku,itemId:String(itemId),modelId,mainSku:link.mainSku,title:record.title,status:record.status},
    quote:{componentCost:link.componentCost,kitCost:link.kitCost,
     grossPrice:link.grossPrice,promoPrice:link.promoPrice},
-   warnings:n<100||n>120?['Título com '+n+' caracteres: ajustar para 100–120 na revisão SEO.']:[],
-   message:'SKU principal '+sku+' vinculada ao kit interno '+kitSku+'. As demais SKUs ficam somente na WeDrop; nada foi publicado.'});
+   reusedContent:{seoReviewed,descriptionReviewed,imagesRequiresConfirmedImport:true},
+   warnings,
+   message:'Título e descrição do kit reutilizados; apenas os textos validados são marcados como revisados. Não houve publicação na Shopee.'});
  }catch(e){res.status(409).json({error:String(e.message||e).slice(0,340)});}
 });
 app.post('/api/shopee/kits/optimization/image',mustLogin,requireWeDropAdmin,
