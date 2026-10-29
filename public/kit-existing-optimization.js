@@ -433,14 +433,14 @@ export function initExistingKitOptimization({getContext,api,money,onMainSkuChang
    ['Minha Promoção',String(result.discountName||'')+' · ID '+String(result.discountId||'')],
    ['Preço bruto planejado',money(result.gross)],
    ...(result.currentGross!=null?[['Preço atual na Shopee',money(result.currentGross)]]:[]),
-   ['Preço promocional planejado',money(result.promo)],
+   ['PREÇO PROMOCIONAL A EXECUTAR',money(result.promo)],
    ['Preço após cupom (estimado)',money(result.afterCoupon)],
    ['Margem líquida estimada',Number(result.margin).toFixed(2)+'%'],
    ...(result.marketOffers!=null&&Number.isFinite(Number(result.marketOffers))?
     [['Ofertas comparáveis verificadas',String(result.marketOffers)]]:[]),
    ['Ação futura',result.action==='update'?'Atualizar promoção':'Incluir nesta promoção'],
    ['Otimização executada',result.executionVerified?'Confirmada':'Aguardando confirmação'],
-   ['Preço alinhado',result.priceAligned?'Sim':'Ainda não']
+   ['Situação do preço bruto',result.priceAligned?'Já corresponde ao calculado':'Ajuste necessário antes da promoção']
   ];
   for(const [name,value] of rows){
    const row=document.createElement('div');row.className='kit-discount-summary-row';

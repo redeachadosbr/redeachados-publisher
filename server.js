@@ -2238,7 +2238,7 @@ app.post('/api/shopee/optimizer/execution/prepare',mustLogin,requireWeDropAdmin,
     const {itemId,modelId,sku,auth,cfg,record}=await checkedWorkflowAudit(req);
     const selectedStage=normalizeShopeeExecutionStage(req.body.stage||'all');
     let allowDiscountOnly=false,approvedCampaignId='';
-    if(['all','discount'].includes(selectedStage)&&req.body?.discountApprovalToken){
+    if(['all','discount','discount_adjust'].includes(selectedStage)&&req.body?.discountApprovalToken){
      const approved=verifyDiscountPreview(req.body.discountApprovalToken,envText('SESSION_SECRET'),auth.shopId);
      if(approved.sku!==sku||String(approved.itemId)!==String(itemId)||
        String(approved.modelId)!==String(modelId))
@@ -2859,7 +2859,7 @@ app.post('/api/shopee/optimizer/execution/execute',mustLogin,requireWeDropAdmin,
    throw Error('Etapa fiscal pendente: revise os dados fiscais antes de aprovar o desconto final.');
   // Kit composto: primeiro o anuncio, depois a promocao do kit pela rota
   // especifica, apenas apos a execucao ser confirmada pela Shopee.
-  if(['all','remaining','discount'].includes(plan.selectedStage)&&!linkedKit){
+  if(['all','remaining','discount','discount_adjust'].includes(plan.selectedStage)&&!linkedKit){
    // Em planos de variação, o clique autenticado + o plano imutável no banco
    // autorizam a promoção exibida. O token de 10 minutos não pode bloquear
    // anúncio e mídia depois de o usuário ter aprovado essa mesma prévia.

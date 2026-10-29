@@ -10,7 +10,7 @@ import {isShopeeCestConfirmed} from './shopeeMatrixRules.js';
 const normal=s=>String(s??'').replace(/\r\n?/g,'\n').trim();
 export const SHOPEE_EXECUTION_STAGES=Object.freeze(['all','discount','discount_adjust','variants','images','video','seo','technical','description','fiscal','remaining']);
 export const SHOPEE_EXECUTION_STAGE_LABELS=Object.freeze({
- all:'Todas as etapas',remaining:'Somente variações, fiscal e desconto',discount:'Somente desconto aprovado',discount_adjust:'Preço bruto + desconto do kit',variants:'Somente variações',images:'Imagens comerciais',video:'Vídeo do anúncio',
+ all:'Todas as etapas',remaining:'Somente variações, fiscal e desconto',discount:'Somente desconto aprovado',discount_adjust:'Preço bruto calculado + desconto aprovado',variants:'Somente variações',images:'Imagens comerciais',video:'Vídeo do anúncio',
  seo:'Título SEO',technical:'Ficha técnica',description:'Descrição',fiscal:'Informações fiscais'
 });
 export function normalizeShopeeExecutionStage(stage='all'){

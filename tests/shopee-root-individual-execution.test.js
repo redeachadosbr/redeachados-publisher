@@ -68,8 +68,51 @@ test('UI e servidor não exigem desconto ao executar somente variações',()=>{
  const app=source('public/app.js'),server=source('server.js');
  assert.match(server,/\['all','remaining','variants'\]\.includes\(selectedStage\)/);
  assert.match(server,/if\(modelVariations&&selectedStage!=='variants'\)/);
- assert.match(server,/\['all','remaining','discount'\]\.includes\(plan\.selectedStage\)&&!linkedKit/);
- assert.match(app,/\['all','remaining','discount'\]\.includes\(p\.selectedStage\)/);
+ assert.match(server,/\['all','remaining','discount','discount_adjust'\]\.includes\(plan\.selectedStage\)&&!linkedKit/);
+ assert.match(app,/\['all','remaining','discount','discount_adjust'\]\.includes\(p\.selectedStage\)/);
  assert.match(app,/p\?\.selectedStage==='variants'/);
  assert.match(app,/p\?\.selectedStage==='discount'/);
+});
+
+test('etapa 08 do motor raiz respeita o preço promocional salvo por SKU, sem aplicar o valor de outra',()=>{
+ const skuA=compileShopeeExecutionPlan({...ctx,sku:'310200',selectedStage:'discount_adjust',
+  allowDiscountOnly:true});
+ const skuB=compileShopeeExecutionPlan({...ctx,sku:'B456',selectedStage:'discount_adjust',
+  allowDiscountOnly:true});
+ assert.equal(skuA.selectedStage,'discount_adjust');
+ assert.equal(skuB.selectedStage,'discount_adjust');
+ assert.notEqual(skuA.sku,skuB.sku);
+ assert.deepEqual(skuA.actions,['discount']);
+ assert.deepEqual(skuB.actions,['discount']);
+ const app=source('public/app.js'),server=source('server.js');
+ assert.match(server,/\['all','discount','discount_adjust'\]\.includes\(selectedStage\)/);
+ assert.match(server,/\['all','remaining','discount','discount_adjust'\]\.includes\(plan\.selectedStage\)&&!linkedKit/);
+ assert.match(app,/\['all','discount','discount_adjust'\]\.includes\(\$\('#optimizerExecutionScope'\)\.value\)/);
+ assert.match(app,/\['all','remaining','discount','discount_adjust'\]\.includes\(p\.selectedStage\)/);
+ assert.match(app,/price bruto atual difere|preço bruto atual difere/i);
+});
+
+test('o worker aplica por SKU exatamente o preço promocional aprovado, nunca o preço antigo',async()=>{
+ const {advanceVerifiedDiscount}=await import('../shopeeExecutionDiscount.js');
+ const first={shopId:1,sku:'310200',itemId:'101',modelId:'0',discountId:'202',
+  gross:160.74,promo:128.59,buyerAfterCoupon:127.30,couponPct:1,discountPct:20,
+  quoteAt:'2026-10-29T12:00:00Z',originalPrice:189.37};
+ const second={...first,sku:'ABC456',itemId:'303',gross:88.90,promo:71.19,
+  buyerAfterCoupon:70.49,originalPrice:99.90};
+ const published=[];
+ for(const item of [first,second]){
+  const live={...item,originalPrice:item.gross,action:'add'};
+  const out=await advanceVerifiedDiscount({plan:{commercialDiscount:{
+   snapshot:item,allowPriceChange:true}},result:{phase:'discount_ready'}},{
+   discountRead:async()=>live,
+   beforeWrite:async()=>{},
+   discountPublish:async approved=>published.push({
+    sku:approved.sku,itemId:approved.itemId,promo:approved.promo,gross:approved.gross
+   })
+  });
+  assert.equal(out.result.phase,'discount_verifying');
+ }
+ assert.deepEqual(published,[{sku:'310200',itemId:'101',promo:128.59,gross:160.74},
+  {sku:'ABC456',itemId:'303',promo:71.19,gross:88.90}]);
+ assert.equal(published.some(p=>p.promo===189.37),false);
 });

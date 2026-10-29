@@ -5345,6 +5345,11 @@ $('#optimizerExecutionSwitchFull')?.addEventListener?.('click',()=>{
 });
 $('#optimizerExecutionScope')?.addEventListener?.('change',()=>{
  const stage=$('#optimizerExecutionScope').value;
+ const promo=optimizerDiscountFinalPreviewData?.preview;
+ if(stage==='discount'&&promo?.needsBasePriceUpdate&&!optimizerKitWorkflowActive()){
+  optimizerExecNotice('O preço bruto atual difere do calculado. Para executar o preço promocional planejado, selecione "Somente preço bruto calculado + desconto" e autorize os dois valores da prévia. Nenhuma alteração foi enviada.','warning');
+  return;
+ }
  optimizerExecPlan=null;
  $('#optimizerExecutionLaunch').hidden=true;
  $('#optimizerExecutionSummary').hidden=true;
