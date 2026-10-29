@@ -2625,6 +2625,12 @@ function kitOptimizerUnmount(){
  panel?.classList.remove('kit-embedded-real-workflow');
  kitOptimizerEmbedded=false;
 }
+globalThis.redeKitCloseOptimizerWorkspace=()=>{
+ kitOptimizerUnmount();
+ const host=$('#kitOptimizerWorkspace');if(host)host.hidden=true;
+ if(globalThis.__RA_KIT_OPTIMIZATION_HANDOFF?.embed)
+  globalThis.__RA_KIT_OPTIMIZATION_HANDOFF=null;
+};
 globalThis.redeKitOpenOptimizerTarget=({sku,itemId,modelId='0',kitSku,targetMarginPct,shipping,packing,embed=true}={})=>{
  const code=String(sku||'').trim(),id=String(itemId||'').trim();
  if(!code||!/^[1-9]\d{0,17}$/.test(id))return false;
@@ -3599,8 +3605,11 @@ async function optimizerWorkflowLoad(record){
    void optimizerExecutionPrepare();
    optimizerWorkflowNotice('Plano da SKU '+sku+' carregado. As etapas são revisões, não alterações publicadas.','success');
  }catch(e){
-   if(serial===optimizerWorkflowSerial&&$('#optimizerSku').value.trim()===sku)
+   if(serial===optimizerWorkflowSerial&&$('#optimizerSku').value.trim()===sku){
      optimizerWorkflowNotice('Não foi possível carregar as etapas: '+e.message+'. Refaça a análise desta SKU.','error');
+     const status=$('#kitOptimizerWorkspaceStatus');
+     if(status&&kitOptimizerEmbedded){status.hidden=false;status.textContent='Falha ao carregar etapas: '+e.message;}
+   }
  }
 }
 $('#optimizerWorkflowClose')?.addEventListener?.('click',()=>{globalThis.ShopeeFiscalStudio?.close?.();globalThis.ShopeeDescriptionStudio?.close?.();globalThis.ShopeeTitleStudio?.close?.();$('#optimizerWorkflowEditor').hidden=true;optimizerWorkflowStage=null;});

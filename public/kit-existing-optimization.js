@@ -54,8 +54,11 @@ export function initExistingKitOptimization({getContext,api,money,onMainSkuChang
      (c.status==='ongoing'?'Ativa':'Programada')+member,c.discountId));
    }
    const suggested=String(data.suggested?.discountId||'');
-   if(data.complete===true&&suggested&&[...select.options].some(o=>o.value===suggested))
+   if(data.complete===true&&suggested&&[...select.options].some(o=>o.value===suggested)){
     select.value=suggested;
+    const input=$('#optimizerExecDiscountCampaign');
+    if(input&&!input.value){input.value=suggested;input.dispatchEvent(new Event('input',{bubbles:true}));}
+   }
    msg.textContent=(!data.kitItemId?'Vincule o anúncio do KIT antes de aplicar desconto. ':'')+
     (!primary.length?' SKU Principal sem Item ID confirmado na busca rápida. ':'')+
     (campaigns.length?'Shopee confirmou '+campaigns.length+' campanha(s). '+
@@ -72,6 +75,7 @@ export function initExistingKitOptimization({getContext,api,money,onMainSkuChang
   }finally{if(seq===discountLookupSeq){discountSearching=false;paint();}}
  }
  function restore(link=null){
+  globalThis.redeKitCloseOptimizerWorkspace?.();
   target=link?.itemId?{...link,prepared:true}:null;
   resetDiscountDiscovery();
   const select=$('#kitOptimizeMainSku');
@@ -319,6 +323,7 @@ export function initExistingKitOptimization({getContext,api,money,onMainSkuChang
   void resolveDiscountIds();paint();
  });
  $('#kitOptimizeListingSku')?.addEventListener('input',()=>{
+  globalThis.redeKitCloseOptimizerWorkspace?.();
   target=null;resetDiscountDiscovery();
   $('#kitOptimizeConfirm').checked=false;
   $('#kitOptimizeSelected').textContent='SKU alterada. Localize novamente o anúncio correto.';
