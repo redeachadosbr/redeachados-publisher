@@ -4050,7 +4050,7 @@ function optimizerExecutionTrackerRender(progress,job){
  }
  globalThis.OptimizerSkuDashboard?.execution?.(progress,job);
  if(!progress)return;
- const kitLink=optimizerWorkflowPlan?.kitOptimization;
+ const kitLink=typeof optimizerWorkflowPlan==='undefined'?null:optimizerWorkflowPlan?.kitOptimization;
  if(kitLink?.kitSku)globalThis.RAKitTechnicalProgress?.({
   kitSku:kitLink.kitSku,itemId:String(optimizerWorkflowPlan.itemId),progress});
  const tracker=$('#optimizerExecutionTracker'),activity=$('#optimizerExecutionActivity');
