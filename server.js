@@ -37,6 +37,7 @@ import {validateKitOptimizationTarget,kitOptimizationLinkIsCurrent,linkedKitPric
 import {recoverKitDraftForEditing,matchesStoredKitPhotos,validateStoredKitDraft} from './shopeeKitDraftRecovery.js';
 import {kitUploadPhoto,kitPublicationReadiness,kitPublicationPreview,kitPublishApproved,checkKitPublication,kitVideoPrepare,kitVideoAdvance,kitVideoStatus,kitVideoDiscard} from './shopeeKitPublicationService.js';
 import {previewKitDiscount,executeKitDiscount} from './shopeeKitDiscountService.js';
+import {discoverKitDiscountCampaigns} from './shopeeKitDiscountDiscovery.js';
 import {supplierWorkflowFacts,wedropCestForSku} from './shopeeSupplierFacts.js';
 import {supplierAttributeSuggestions} from './shopeeSupplierEvidenceFacts.js';
 import {narrativeTechnicalSuggestions,mergeNarrativeTechnicalFacts,technicalOptionSearchTerms} from './shopeeTechnicalNarrative.js';
@@ -472,7 +473,38 @@ app.post('/api/shopee/kits/publish/status',mustLogin,requireWeDropAdmin,async(re
    kitSku:String(req.body?.kitSku||'')})});
  }catch(e){res.status(409).json({error:String(e.message||e).slice(0,400)});}
 });
-// A promoção é SEMPRE uma segunda operação, após Shopee confirmar NORMAL.
+// Localiza Item ID da SKU principal e campanhas Minha Promoção da mesma loja.
+ // Nenhuma chamada de escrita; nunca iguala Item ID ao discount_id.
+ app.get('/api/shopee/kits/discount/candidates',mustLogin,requireWeDropAdmin,async(req,res)=>{
+  res.setHeader('Cache-Control','no-store');
+  try{
+   const code=String(req.query?.kitSku||'').trim();
+   const mainSku=validateSkuLookup(req.query?.mainSku);
+   const {auth,cfg}=await getValidAuth(req);
+   const saved=await loadKitDraft(auth.shopId,code);
+   if(!saved?.kit||!Array.isArray(saved.skus)||!saved.skus.includes(mainSku))
+    throw Error('O SKU Principal não pertence ao kit salvo. Escolha uma SKU real do kit.');
+   const linked=saved.optimization;
+   if(linked&&!kitOptimizationLinkIsCurrent(saved,linked))
+    throw Error('O vínculo do anúncio do kit mudou. Reabra e prepare a otimização.');
+   const kitItemId=linked?.itemId||saved.publication?.itemId||null;
+   const live=await findLiveShopeeSku(cfg,auth,callShopeeShopApi,mainSku,{fastOnly:true});
+   const primaryCandidates=(live.matches||[]).filter(x=>
+    String(x.sku||'')===mainSku&&
+    ['NORMAL','UNLIST'].includes(String(x.status||'').toUpperCase())&&
+    /^[1-9]\\d{0,17}$/.test(String(x.itemId||'')));
+   const primaryItemIds=[...new Set(primaryCandidates.map(x=>String(x.itemId)))];
+   const scan=await discoverKitDiscountCampaigns({cfg,auth,call:callShopeeShopApi,
+    readPages:readDiscountPages,kitItemId,primaryItemIds});
+   res.json({ok:true,kitSku:code,mainSku,kitItemId:kitItemId?String(kitItemId):null,
+    primaryItems:primaryCandidates.map(x=>({sku:mainSku,itemId:String(x.itemId),
+      modelId:String(x.modelId??'0'),status:String(x.status)})).slice(0,10),
+    primaryLookupComplete:live.complete===true||live.verified===true,
+    ...scan});
+  }catch(e){res.status(409).json({ok:false,error:String(e.message||e).slice(0,360),
+   marketplaceUpdated:false});}
+ });
+ // A promoção é SEMPRE uma segunda operação, após Shopee confirmar NORMAL.
 // Reutiliza Minha Promoção e a mesma política de pesquisa e finais 0/9.
 app.post('/api/shopee/kits/discount/preview',mustLogin,requireWeDropAdmin,async(req,res)=>{
  res.setHeader('Cache-Control','no-store');
