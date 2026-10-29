@@ -94,3 +94,29 @@ test('importacao azul fica ao lado do gerador; instrucoes duplicadas foram remov
  assert.match(browser,/void saveDraft\(\)\.then/);
  assert.match(browser,/Abra Opções avançadas/);
 });
+
+test('botão SEO mantém o ChatGPT aberto ao detectar falta de medidas',async()=>{
+ const {readFileSync}=await import('node:fs');
+ const browser=readFileSync(new URL('../public/kit-builder.js',import.meta.url),'utf8');
+ const begin=browser.indexOf('async function plusText('),end=browser.indexOf('function kitShowSeoTitles(',begin);
+ const fn=browser.slice(begin,end);
+ assert.match(fn,/kitContentHandoff\(data\.prompt,tab\)/);
+ assert.match(fn,/kitContentReadManual\(\)/);
+ assert.doesNotMatch(fn,/tab\?\.close\(\)/);
+ assert.match(browser,/window\.open\('https:\/\/chatgpt\.com\/',\s*'_blank'\)/);
+});
+test('prompt combinado cobre as três SKUs e dados separados por componente',async()=>{
+ const {kitContentBrief}=await import('../shopeeKitBuilder.js');
+ const kit={kitSku:'KIT-CAFE-CANECA-ACUCAR',components:[
+  {sku:'CAF1',name:'Cafeteira',description:'Preparo de café',category:'Cozinha'},
+  {sku:'CAN2',name:'Canecas de vidro',description:'Servir',category:'Cozinha'},
+  {sku:'ACU3',name:'Açucareiro',description:'Açúcar',category:'Cozinha'}
+ ]};
+ const facts={CAF1:'Capacidade 300 ml',CAN2:'Altura 8 cm',ACU3:'Largura 10 cm'};
+ const result=kitContentBrief(kit,{manualFacts:facts});
+ assert.equal(result.components.length,3);
+ assert.match(result.prompt,/TODOS os 3 componentes devem estar representados em CADA título/);
+ assert.match(result.prompt,/1 unidade de CADA SKU/);
+ for(const part of kit.components){assert.ok(result.prompt.includes('SKU '+part.sku));assert.ok(result.prompt.includes(facts[part.sku]));}
+ assert.equal(result.imagePrompts.length,9);
+});

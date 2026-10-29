@@ -2415,23 +2415,26 @@ function kitContentFeedback(message,state='info'){
 }
 function kitContentOpenTab(){
  // Abrir no clique do usuário, ANTES do await, para evitar bloqueio de popup.
- const tab=window.open('about:blank','_blank');
- if(tab)tab.opener=null;
+ const tab=window.open('https://chatgpt.com/','_blank');
+ if(tab)try{tab.opener=null;}catch{}
  return tab;
 }
 function kitContentHandoff(prompt,tab=null){
  if(!prompt.trim())throw Error('Orientação vazia. Prepare o conteúdo novamente.');
- // O link preenche a caixa de texto do ChatGPT quando suportado pelo navegador.
- // O envio depende do ChatGPT e poderá requerer clique em Enviar.
+ // Preenche o campo quando suportado pelo ChatGPT; ainda pode exigir clique em Enviar.
  const url='https://chatgpt.com/?prompt='+encodeURIComponent(prompt);
- if(tab){try{tab.location.replace(url);}catch{tab.location.href=url;}}
- else window.open(url,'_blank','noopener,noreferrer');
- if(navigator.clipboard?.writeText)
-  void navigator.clipboard.writeText(prompt).catch(()=>{});
+ if(navigator.clipboard?.writeText)void navigator.clipboard.writeText(prompt).catch(()=>{});
+ let opened=false;
+ if(tab&&!tab.closed){try{tab.location.replace(url);opened=true;}catch{
+  try{tab.location.href=url;opened=true;}catch{}
+ }}
+ if(!opened)opened=Boolean(window.open(url,'_blank','noopener,noreferrer'));
  kitContentAwaitingResponse=true;
- $('#kitContentDetails').open=false; // Prompt enviado é avançado; importação simples permanece visível.
- kitImportState('Aguardando resposta do ChatGPT · copie o bloco do anúncio','info');
- kitContentFeedback('Copie o bloco com os 3 títulos e a descrição no ChatGPT e clique no botão azul Importar anúncio, ao lado de Gerar no ChatGPT Plus.','info');
+ $('#kitContentDetails').open=!opened;
+ kitImportState(opened?'Aguardando resposta · 3 títulos e descrição':'Abertura bloqueada · orientação pronta','info');
+ kitContentFeedback(opened?
+  'ChatGPT aberto com o pedido do kit. Clique em Enviar se o texto estiver preenchido. Depois copie a resposta e importe pelo botão azul.':
+  'O Chrome bloqueou a abertura. Em Opções avançadas, use Copiar orientação completa e Abrir ChatGPT com orientação pronta.','info');
 }
 function kitContentReadManual(){
  const data={};
@@ -2521,17 +2524,20 @@ async function plusText({proceedWithoutDetails=false}={}){
    prepared.creative.manualFacts=Object.fromEntries(kitContentManualFacts.entries());
    renderImageSlots();
   }
-  $('#kitContentDetails').open=true;
-  if(data.missingDetails?.length&&!proceedWithoutDetails){
-   tab?.close();
-   kitContentShowMissing(data.missingDetails,{scroll:true});
-   kitContentFeedback('A WeDrop não trouxe todos os dados. Cole informações dos produtos se tiver, ou continue sem inventar medidas.','info');
-  }else{
-   kitContentHandoff(data.prompt,tab);
+  // Dados WeDrop incompletos são avisos, não uma razão para fechar a aba.
+  if(data.missingDetails?.length)kitContentShowMissing(data.missingDetails,{scroll:false});
+  kitContentHandoff(data.prompt,tab);
+  if(data.missingDetails?.length){
+   const missing=data.missingDetails.map(x=>'SKU '+x.sku+' ('+x.fields.join(', ')+')').join(' · ');
+   kitContentFeedback('ChatGPT aberto com '+prepared.kit.components.length+
+    ' SKUs e todas as informações fornecidas. Dados WeDrop incompletos: '+missing+
+    '. Confira os dados, sem inventar medidas.','warning');
   }
  }catch(error){
-  tab?.close();
-  kitContentFeedback('Não foi possível preparar o kit: '+error.message,'error');
+  // A aba iniciada pelo usuário não deve ser fechada automaticamente.
+  $('#kitContentDetails').open=true;
+  kitContentFeedback('Falha ao preparar o anúncio: '+error.message+
+   '. O ChatGPT permanece aberto; confira o erro e tente novamente.','error');
  }finally{kitContentBusy=false;button.disabled=false;}
 }
 function kitShowSeoTitles(options){
@@ -3071,6 +3077,14 @@ $('#kitOpenContentPrompt')?.addEventListener('click',()=>{
  const prompt=$('#kitContentPrompt').value;
  if(prompt)kitContentHandoff(prompt);
  else kitContentFeedback('Prepare primeiro o texto com as SKUs verificadas.','error');
+});
+$('#kitCopyContentPrompt')?.addEventListener('click',async()=>{
+ const prompt=$('#kitContentPrompt').value;
+ if(!prompt.trim())return kitContentFeedback('Gere primeiro a orientação das SKUs.','error');
+ try{await navigator.clipboard.writeText(prompt);
+  kitContentFeedback('Orientação das SKUs copiada. Cole com Ctrl+V e clique em Enviar.','success');
+ }catch{const field=$('#kitContentPrompt');field.focus();field.select();
+  kitContentFeedback('Texto selecionado. Pressione Ctrl+C para copiar.','warning');}
 });
 $('#kitPlusText')?.addEventListener('click',()=>void plusText());
 $('#kitContinueContent')?.addEventListener('click',()=>void plusText({proceedWithoutDetails:true}));
