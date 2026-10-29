@@ -63,3 +63,28 @@ test('acompanhamento tecnico original permanece abaixo das oito etapas',()=>{
  assert.match(html,/id="optimizerExecutionEvents"/);
  assert.match(app,/function optimizerExecutionTrackerRender\(progress,job\)/);
 });
+
+test('cada clique mostra somente a etapa escolhida e oculta as anteriores',()=>{
+ assert.match(app,/function optimizerWorkflowActivateOnly\(view,sourceStage=null\)/);
+ for(const token of [
+  "editor.hidden=view!=='editor'",
+  "discount.hidden=view!=='discount'",
+  "execution.hidden=view!=='execution'",
+  "card.classList.toggle('is-current',selected)",
+  "optimizerWorkflowActivateOnly('editor')",
+  "optimizerWorkflowActivateOnly('discount')",
+  "optimizerWorkflowActivateOnly('execution')",
+  "optimizerWorkflowActivateOnly('source',stage.key)",
+  "optimizerWorkflowActivateOnly('closed')"
+ ])assert(app.includes(token),'Faltou exclusividade: '+token);
+ // A revisao anterior pode ser ocultada mas o rascunho nao e descartado.
+ assert.match(app,/optimizerContentRemember\(\);[\s\S]*?optimizerWorkflowActivateOnly\('discount'\)/);
+});
+test('atualizacoes da Shopee nao reabrem a previa sobre uma revisao escolhida',()=>{
+ assert.match(app,/optimizerWorkflowActiveView===null\|\|optimizerWorkflowActiveView==='execution'/);
+ assert.match(app,/if\(data\.progress\?\.hasSavedProgress&&/);
+ assert.match(app,/if\(job&&\(\['running','uncertain'\]\.includes\(job\.state\)\|\|progress\?\.hasSavedProgress\)&&/);
+ for(const id of ['optimizerExecutionPanel','optimizerExecutionTracker',
+  'optimizerExecutionPercent','optimizerExecutionEvents','optimizerExecutionNextActionTitle'])
+  assert.equal(html.split('id="'+id+'"').length-1,1);
+});
