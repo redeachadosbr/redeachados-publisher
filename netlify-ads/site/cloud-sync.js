@@ -102,7 +102,7 @@ async function pull(){
  finally{busy=false;}
 }
 async function startAuthenticated(){
- gate.hidden=true;logged=true;status("Conectando ao histórico...");
+ logged=true;status("Conectando ao histórico...");
  // Antes de iniciar os hooks, reúna sem efeitos colaterais os dados do navegador e do Drive.
  try{
   const data=await api("/history",{action:"read"});
@@ -114,6 +114,7 @@ async function startAuthenticated(){
   status("Google Drive indisponível: "+e.message+" · seus dados ficam somente locais");
   installHooks();
  }
+ gate.hidden=true;
 }
 async function init(){
  document.getElementById("cloudSyncNow").addEventListener("click",async()=>{if(dirty)await save();else await pull();});
