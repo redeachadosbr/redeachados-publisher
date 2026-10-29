@@ -131,6 +131,47 @@
    metricMap[id].value.textContent=String(value);
    metricMap[id].small.textContent=String(hint);
  }
+ // Os fieldsets originais permanecem vivos para autosave e para a Shopee.
+ // Só a apresentação vira uma linha compacta com "Editar" explícito.
+ function updateFieldRow(field){
+   const wrapper=field?.closest('.ra-tech-field-row');
+   if(!wrapper)return;
+   const title=wrapper.querySelector('.ra-tech-field-name');
+   const display=wrapper.querySelector('.ra-tech-field-value');
+   const action=wrapper.querySelector('.ra-tech-field-action');
+   if(title)title.textContent=field.querySelector('legend')?.textContent?.trim()||'Atributo';
+   const enabled=field.querySelector('[data-attribute-enabled]')?.checked;
+   const proposed=enabled?[...field.querySelectorAll('[data-attribute-value]')].map(row=>{
+     const select=row.querySelector('select[data-value-id]');
+     const input=row.querySelector('input[data-value-name]');
+     const selected=select&&!select.hidden&&select.value&&select.value!=='0'
+       ?select.selectedOptions?.[0]?.textContent?.trim():'';
+     return selected||(input&&!input.hidden?input.value.trim():'');
+   }).filter(Boolean):[];
+   const current=[...field.children].find(x=>x.tagName==='SMALL')?.textContent?.trim()||'';
+   if(display)display.textContent=proposed.length?
+     'Selecionado para revisão: '+proposed.join(', '):
+     current||'Sem valor informado';
+   if(action)action.textContent=wrapper.open?'Recolher −':'Editar ›';
+ }
+ function compactField(field){
+   const row=element('details','ra-tech-field-row');
+   row.dataset.attributeId=field.dataset.attributeId||'';
+   const summary=element('summary','ra-tech-field-head');
+   summary.append(element('span','ra-tech-field-name','Atributo'),
+     element('span','ra-tech-field-value',''),
+     element('span','ra-tech-field-action','Editar ›'));
+   row.append(summary,field);
+   row.addEventListener('toggle',()=>updateFieldRow(field));
+   updateFieldRow(field);
+   return row;
+ }
+ for(const type of ['input','change']){
+   fields.addEventListener(type,event=>{
+     const field=event.target?.closest?.('fieldset[data-attribute-id]');
+     if(field)updateFieldRow(field);
+   });
+ }
  function disclosure(label,count,note,cls,items,defaultOpen=false){
    const d=element('details','ra-tech-attribute-group '+cls);
    if(defaultOpen)d.open=true;
@@ -143,7 +184,7 @@
      element('span','ra-tech-chevron','⌄')
    );
    const body=element('div','ra-tech-group-body');
-   if(items.length)for(const item of items){item.hidden=false;body.append(item);}
+   if(items.length)for(const item of items){item.hidden=false;body.append(compactField(item));}
    else body.append(element('p','ra-tech-empty','Nenhum campo para apresentar.'));
    d.append(sum,body);return d;
  }
@@ -172,6 +213,20 @@
      notices.append(notice);
    }
    if(notices.childElementCount)fields.append(notices);
+   const toolbar=element('div','ra-tech-field-toolbar');
+   toolbar.append(element('strong','','Atributos da categoria'));
+   for(const [label,open] of [['Editar todos',true],['Recolher todos',false]]){
+     const button=element('button','secondary ra-tech-field-toolbar-button',label);
+     button.type='button';
+     button.addEventListener('click',()=>{
+       for(const row of fields.querySelectorAll('.ra-tech-field-row')){
+         row.open=open;
+         updateFieldRow(row.querySelector('fieldset[data-attribute-id]'));
+       }
+     });
+     toolbar.append(button);
+   }
+   fields.append(toolbar);
    // Inactive children of official parent options must never appear as
    // unresolved fields. They are checked only once the parent activates them.
    const sections=[
@@ -193,6 +248,7 @@
    // Called directly after the existing renderer; don't rebuild the form on
    // every keystroke. Each field stays attached with the original listeners.
    if(regroup)groups(data);
+   else for(const field of fields.querySelectorAll('fieldset[data-attribute-id]'))updateFieldRow(field);
    const savedIds=new Set(attrs.filter(x=>Array.isArray(x.values)&&x.values.length).map(x=>Number(x.id)));
    const suggestedIds=new Set();
    // Only count enabled, populated inputs or already-filled Shopee fields.
