@@ -49,6 +49,7 @@ function setSidebarOpen(open){
 }
 function setTab(name,{updateHistory=true,scroll=true}={}){
   if(!APP_PAGES[name])name='overview';
+  if(name==='optimizer')kitOptimizerUnmount();
   const pendingAdsHandoff=name==='optimizer'&&Boolean(optimizerAdsHandoffSku);
   const pendingKitHandoff=name==='optimizer'&&Boolean(globalThis.__RA_KIT_OPTIMIZATION_HANDOFF);
   if(pendingAdsHandoff)optimizerAdsHandoffSku=null;
@@ -2603,20 +2604,44 @@ function adsFillOptimizerSku(value){
 }
 globalThis.redeAdsOpenOptimizerSku=adsFillOptimizerSku;
 // Entrar na otimização do anúncio do Kit já existente, sem criar novo Item ID.
-globalThis.redeKitOpenOptimizerTarget=({sku,itemId,modelId='0',kitSku,targetMarginPct,shipping,packing}={})=>{
+// A mesma instancia de etapas, validacoes e execucao, sem duplicar as rotas Shopee.
+let kitOptimizerHome=null,kitOptimizerNext=null,kitOptimizerEmbedded=false;
+function kitOptimizerMount(){
+ const host=$('#kitOptimizerWorkspace'),panel=$('#optimizerWorkflowPanel');
+ if(!host||!panel)return false;
+ if(!kitOptimizerHome){kitOptimizerHome=panel.parentNode;kitOptimizerNext=panel.nextSibling;}
+ if(panel.parentNode!==host)host.append(panel);
+ host.hidden=false;kitOptimizerEmbedded=true;
+ panel.classList.add('kit-embedded-real-workflow');
+ const handoff=globalThis.__RA_KIT_OPTIMIZATION_HANDOFF;
+ const identity=$('#kitOptimizerWorkspaceIdentity');
+ if(identity&&handoff)identity.textContent=handoff.kitSku+' · Item ID '+handoff.itemId;
+ return true;
+}
+function kitOptimizerUnmount(){
+ const panel=$('#optimizerWorkflowPanel');
+ if(kitOptimizerHome&&panel&&panel.parentNode!==kitOptimizerHome)
+  kitOptimizerHome.insertBefore(panel,kitOptimizerNext?.parentNode===kitOptimizerHome?kitOptimizerNext:null);
+ panel?.classList.remove('kit-embedded-real-workflow');
+ kitOptimizerEmbedded=false;
+}
+globalThis.redeKitOpenOptimizerTarget=({sku,itemId,modelId='0',kitSku,targetMarginPct,shipping,packing,embed=true}={})=>{
  const code=String(sku||'').trim(),id=String(itemId||'').trim();
  if(!code||!/^[1-9]\d{0,17}$/.test(id))return false;
  globalThis.__RA_KIT_OPTIMIZATION_HANDOFF={sku:code,itemId:id,
   modelId:String(modelId||'0'),kitSku:String(kitSku||''),
-  targetMarginPct:Number(targetMarginPct),shipping:Number(shipping),packing:Number(packing)};
- setTab('optimizer');
- const field=$('#optimizerSku');
- if(!field)return false;
+  targetMarginPct:Number(targetMarginPct),shipping:Number(shipping),packing:Number(packing),embed:Boolean(embed)};
+ if(embed&&$('#kitOptimizerWorkspace')){
+  if(!kitOptimizerMount())return false;
+  const status=$('#kitOptimizerWorkspaceStatus');if(status){
+   status.hidden=false;status.textContent='Carregando as oito etapas reais de revisão e execução...';
+  }
+ }else setTab('optimizer');
+ const field=$('#optimizerSku');if(!field)return false;
  field.value=code;
  field.dispatchEvent(new CustomEvent('input',{bubbles:true,detail:{onlyPrefill:true}}));
  $('#optimizerItemId').value=id;
- optimizerNotice('Kit '+String(kitSku||'')+' aberto para revisar o Item ID '+id+
-  '. O preço precisa considerar todos os componentes WeDrop, não a SKU individual.','info');
+ optimizerNotice('Kit '+String(kitSku||'')+' · Item ID '+id+' · Preço por todos os componentes WeDrop.','info');
  void optimizerRunAudit(id,code,String(modelId||'0'));
  return true;
 };
@@ -3558,6 +3583,14 @@ async function optimizerWorkflowLoad(record){
    if(serial!==optimizerWorkflowSerial||$('#optimizerSku').value.trim()!==sku)return;
    optimizerContentRestore(data);
    optimizerWorkflowRender(data);
+   const kitHandoff=globalThis.__RA_KIT_OPTIMIZATION_HANDOFF;
+   if(kitHandoff?.embed&&data.kitOptimization?.kitSku===kitHandoff.kitSku&&
+      String(data.itemId)===kitHandoff.itemId&&String(data.sku)===kitHandoff.sku){
+    kitOptimizerMount();
+    const status=$('#kitOptimizerWorkspaceStatus');if(status)status.hidden=true;
+    optimizerWorkflowOpen('images');
+    globalThis.RAKitOptimizerReady?.(data);
+   }
    // A retomada automática pertence SOMENTE à SKU que foi carregada.
    if(optimizerChatBridgeJob&&!optimizerChatBridgeIdentity(optimizerChatBridgeJob,data))
     void optimizerChatBridgeSwitchSku(sku);
