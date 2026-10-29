@@ -77,6 +77,8 @@ function updateKitTextCounters(){
 function onKitContentEdit(){
  if(!prepared)return;
  kitSaved=false;clearKitPublishApproval();updateKitTextCounters();kitVideoUI();
+ // Ao trocar/importar o título ou descrição, reabrir a conferência da SKU.
+ globalThis.RAKitSourceChanged?.();
  kitPublishStatus('Título/descrição alterados: salve novamente o rascunho antes de publicar.','info');
 }
 const MARGIN_MIN=0,MARGIN_MAX=70;
