@@ -154,3 +154,35 @@ test('check do titulo curto do kit funciona sem enfraquecer titulo SEO comum',()
  const builder=source('public/kit-builder.js');
  assert.match(builder,/\[\.\.\.\$\('#kitTitle'\)\.value\.normalize\('NFC'\)\.replace/);
 });
+
+
+test('ficha tecnica do kit usa estilos completos sem blocos colados',()=>{
+ const css=source('public/optimizer-technical-studio.css');
+ const studio=source('public/optimizer-technical-studio.js');
+ assert.match(css,/:is\(#tab-optimizer,#tab-kits\) #optimizerTechnicalPanel\.ra-tech-studio/);
+ assert.match(css,/:is\(#tab-optimizer,#tab-kits\) \.ra-tech-studio \.ra-tech-main/);
+ assert.match(css,/position:static!important;bottom:auto!important/);
+ assert.doesNotMatch(css,/position:sticky;bottom:0;z-index:8/);
+ assert.match(css,/#optimizerWorkflowEditor:has\(#optimizerTechnicalPanel/);
+ assert.match(studio,/panel\.replaceChildren\(heading,metrics,review,main,shortcutRow\)/);
+ assert.match(studio,/if\(regroup\)review\.open=true/);
+ assert.match(studio,/filled',saved,true/);
+ assert.match(studio,/required',required,true/);
+ assert.match(studio,/optional',optional,true/);
+ assert.match(studio,/conditional',conditional,true/);
+ assert.match(studio,/textLabel\.classList\.add\('ra-tech-source-text'\)/);
+ assert.match(studio,/review\.scrollIntoView\(\{behavior:'smooth',block:'start'\}\)/);
+ assert.match(html,/optimizer-technical-studio\.css\?v=1\.1\.0-readable-kits/);
+ assert.match(html,/optimizer-technical-studio\.js\?v=1\.1\.0-readable-kits/);
+});
+test('ficha tecnica continua com inputs e aprovacao originais',()=>{
+ const studio=source('public/optimizer-technical-studio.js');
+ assert.match(studio,/const fields=\$\('#optimizerTechnicalFields'\)/);
+ assert.match(studio,/fields\.replaceChildren\(\)/);
+ assert.match(studio,/const fieldsets=current/);
+ assert.match(app,/body\.attributes=optimizerTechnicalValues\(\)/);
+ assert.match(app,/if\(key==='technical'\)await techFlush\(\)/);
+ assert.match(app,/globalThis\.RATechnicalStudio\?\.render\?\.\(data\)/);
+ assert.match(html,/id="optimizerWorkflowReview"/);
+ assert.match(html,/id="optimizerTechnicalFields"/);
+});
