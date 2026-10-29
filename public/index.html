@@ -31,7 +31,7 @@
 <link rel="stylesheet" href="/ads-premium.css?v=2.4.0-seo-ads-location">
 <link rel="stylesheet" href="/sidebar-collapse.css?v=1.0.0">
 <link rel="stylesheet" href="/optimizer-image-studio.css?v=1.0.2">
-<link rel="stylesheet" href="/kit-builder.css?v=3.8.0-kit-unified-flow">
+<link rel="stylesheet" href="/kit-builder.css?v=3.8.1-stage-progress">
 <link rel="stylesheet" href="/optimizer-technical-studio.css?v=1.0.1-review-feedback">
 <style>
 /* Autorização >25%: campo compacto, sem o input global width:100%.
@@ -1253,14 +1253,26 @@
     <div class="kit-flow-target"><small>Anúncio do KIT na Shopee</small><strong id="kitOptimizeSelected">Localização automática ao iniciar</strong></div>
     <button type="button" id="kitOptimizeStart" class="kit-primary">▶ Iniciar otimização do kit</button>
    </div>
-   <p id="kitOptimizeStatus" class="kit-flow-status" role="status" aria-live="polite">Abra um kit salvo para começar. O anúncio será identificado pela SKU exata do KIT.</p>
+   <p id="kitOptimizeStatus" class="kit-flow-status" role="status" aria-live="polite">Abra um kit salvo para começar. A Shopee será consultada pela SKU exata do KIT.</p>
+    <section id="kitOptimizeJourney" class="kit-flow-journey" aria-label="Progresso das oito etapas do kit">
+     <div class="kit-flow-progress-head"><strong id="kitOptimizeProgressTitle">Revisão das oito etapas</strong><span id="kitOptimizeProgressCount">0 / 8 revisadas</span></div>
+     <div id="kitOptimizeProgressTrack" class="kit-flow-progress-track" role="progressbar" aria-label="Etapas revisadas do kit, não publicadas" aria-valuemin="0" aria-valuemax="8" aria-valuenow="0"><span id="kitOptimizeProgressFill"></span></div>
+     <ol id="kitOptimizeStageSteps" class="kit-flow-stage-steps" aria-label="Status de cada etapa"></ol>
+     <div id="kitOptimizeLiveProgress" class="kit-flow-live-progress" role="status" aria-live="polite" hidden></div>
+     <p id="kitOptimizeProgressText" class="kit-flow-progress-note">Aguardando a identificação do anúncio completo do kit. Nenhuma alteração foi enviada.</p>
+    </section>
    <details class="kit-flow-advanced" id="kitOptimizeAdvanced">
     <summary>Trocar anúncio ou corrigir vínculo (avançado)</summary>
     <div class="kit-publish-fields">
      <label>SKU do anúncio de KIT na Shopee
       <input id="kitOptimizeListingSku" maxlength="120" autocomplete="off" placeholder="SKU exata do kit"></label>
     </div>
-    <div class="kit-actions"><button type="button" id="kitOptimizeLookup" class="kit-secondary">Buscar anúncio por SKU</button></div>
+    <div class="kit-actions">
+     <button type="button" id="kitOptimizeLookup" class="kit-secondary">Busca rápida por SKU</button>
+     <button type="button" id="kitOptimizeDeepLookup" class="kit-secondary">Pesquisa completa (opcional)</button>
+     <button type="button" id="kitOptimizeCancelLookup" class="kit-secondary" hidden>Cancelar consulta</button>
+    </div>
+    <p class="kit-flow-search-hint">A SKU do anúncio do KIT deve ser diferente das SKUs dos componentes. Se ainda não existir na Shopee, use Criar Kit Formal na Shopee.</p>
     <div id="kitOptimizeCandidates" class="kit-components" role="group" aria-label="Item IDs encontrados para a SKU do kit"></div>
     <label class="kit-inline-checkbox"><input type="checkbox" id="kitOptimizeConfirm"> Conferi que este Item ID corresponde ao anúncio do kit completo.</label>
     <div class="kit-actions">
@@ -2307,8 +2319,8 @@
 <script src="/fiscal-modern-layout.js?v=1.0.1-fiscal-cards"></script>
 <script src="/technical-memory.js?v=1.0.1-live-sku-preload"></script>
 <script src="/technical-status.js?v=1.0.0-optional-coherence"></script>
-<script src="/app.js?v=3.5.2-kit-step08-complete"></script>
-<script type="module" src="/kit-builder.js?v=3.9.2-kit-step08"></script>
+<script src="/app.js?v=3.5.3-stage-progress"></script>
+<script type="module" src="/kit-builder.js?v=3.9.3-fast-lookup"></script>
 <link rel="stylesheet" href="/optimizer-variations.css?v=1.2.1-single-flow">
 <script src="/optimizer-variations.js?v=1.2.3-single-flow"></script>
 
