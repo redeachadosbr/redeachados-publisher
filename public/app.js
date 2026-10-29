@@ -2610,7 +2610,7 @@ globalThis.redeAdsOpenOptimizerSku=adsFillOptimizerSku;
 // Entrar na otimização do anúncio do Kit já existente, sem criar novo Item ID.
 // A mesma instancia de etapas, validacoes e execucao, sem duplicar as rotas Shopee.
 let kitOptimizerHome=null,kitOptimizerNext=null,kitOptimizerEmbedded=false;
-let kitDiscountHome=null,kitDiscountNext=null,kitOptimizerDiscountConfirmedIdentity='';
+let kitDiscountHome=null,kitDiscountNext=null,kitOptimizerDiscountConfirmedIdentity='',kitOptimizerDiscountPreparedIdentity='';
 function kitOptimizerDiscountMount(){
  const review=$('#optimizerDiscountReviewInline'),specific=$('#kitOptimizeExistingPanel .kit-existing-discount');
  const generic=$('#optimizerExecDiscountFinal');
@@ -2629,11 +2629,20 @@ function kitOptimizerDiscountUnmount(){
  }
  if(generic)generic.hidden=false;
 }
+globalThis.RAKitDiscountPrepared=({kitSku,itemId,planning=true}={})=>{
+ const w=optimizerWorkflowPlan;
+ if(!w||!optimizerKitWorkflowActive()||
+   String(w.kitOptimization?.kitSku)!==String(kitSku))return;
+ kitOptimizerDiscountPreparedIdentity=planning&&String(w.itemId)===String(itemId)?
+   String(kitSku)+'|'+String(itemId):'';
+ optimizerDiscountWorkflowRefresh();
+};
 globalThis.RAKitDiscountConfirmed=({kitSku,itemId}={})=>{
  const w=optimizerWorkflowPlan;
  if(!w||String(w.kitOptimization?.kitSku)!==String(kitSku)||
   String(w.itemId)!==String(itemId))return;
  kitOptimizerDiscountConfirmedIdentity=kitSku+'|'+itemId;
+ kitOptimizerDiscountPreparedIdentity='';
  optimizerDiscountWorkflowRefresh();
 };
 function kitOptimizerMount(){
@@ -4550,8 +4559,11 @@ function optimizerDiscountWorkflowRefresh(){
   matching&&optimizerDiscountFinalSent;
  const reviewed=kit?false:matching&&optimizerDiscountApprovalReady();
  const state=card.querySelector('.optimizer-discount-workflow-state');
+ const prepared=kit&&w&&kitOptimizerDiscountPreparedIdentity===
+  String(w.kitOptimization?.kitSku)+'|'+String(w.itemId);
  if(state&&kit)state.textContent=sent?'✓ Desconto do kit confirmado na Shopee':
-  'Minha Promoção do kit · aplicar após confirmar anúncio';
+  prepared?'Prévia preparada · aplicação após execução':
+  'Minha Promoção do kit · preparar e aplicar após confirmar anúncio';
  else if(state)state.textContent=sent?'Envio realizado · conferir na Shopee':
   reviewed?'Desconto conferido · execução liberada':
   !matching?'Calculando preço e desconto':
