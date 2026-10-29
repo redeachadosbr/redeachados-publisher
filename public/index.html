@@ -31,7 +31,7 @@
 <link rel="stylesheet" href="/ads-premium.css?v=2.4.0-seo-ads-location">
 <link rel="stylesheet" href="/sidebar-collapse.css?v=1.0.0">
 <link rel="stylesheet" href="/optimizer-image-studio.css?v=1.0.2">
-<link rel="stylesheet" href="/kit-builder.css?v=3.8.4-import-near-generator">
+<link rel="stylesheet" href="/kit-builder.css?v=3.8.5-optimization-at-top">
 <link rel="stylesheet" href="/optimizer-technical-studio.css?v=1.0.1-review-feedback">
 <style>
 /* Autorização >25%: campo compacto, sem o input global width:100%.
@@ -1122,6 +1122,86 @@
    <div id="kitNumbers" class="kit-numbers"></div>
    <p id="kitWarning" class="kit-info"></p>
   </details>
+  <section class="kit-publish-panel" id="kitOptimizeExistingPanel" aria-label="Otimizar anúncio existente do kit">
+   <div class="kit-flow-heading">
+    <div><span class="kit-flow-kicker">OTIMIZAÇÃO SHOPEE · KIT WEDROP</span>
+     <h3>Preparar e revisar o kit</h3>
+     <p>Complete apenas vídeo, ficha técnica e dados fiscais. Imagens, título, descrição e preços são reutilizados da parte superior do kit.</p></div>
+    <span class="kit-flow-safe">✓ Só publica após sua autorização</span>
+   </div>
+   <div class="kit-flow-start-bar">
+    <label class="kit-flow-primary">SKU Única Shopee (Principal WeDrop)
+     <select id="kitOptimizeMainSku"><option value="">Selecione a SKU principal</option></select>
+    </label>
+    <div class="kit-flow-target"><small>Anúncio da SKU principal na Shopee</small><strong id="kitOptimizeSelected">Localização automática ao iniciar</strong></div>
+    <button type="button" id="kitOptimizeStart" class="kit-primary">▶ Iniciar otimização do kit</button>
+   </div>
+   <p id="kitOptimizeStatus" class="kit-flow-status" role="status" aria-live="polite">Abra um kit salvo para começar. A Shopee será consultada somente pela SKU principal selecionada. As SKUs complementares ficam na WeDrop.</p>
+    <section id="kitOptimizeJourney" class="kit-flow-journey" aria-label="Progresso das oito etapas do kit">
+     <div class="kit-flow-progress-head"><strong id="kitOptimizeProgressTitle">Etapas complementares</strong><span id="kitOptimizeProgressCount">0 / 3 conferidas</span></div>
+     <div id="kitOptimizeProgressTrack" class="kit-flow-progress-track" role="progressbar" aria-label="Etapas complementares revisadas, sem publicação" aria-valuemin="0" aria-valuemax="3" aria-valuenow="0"><span id="kitOptimizeProgressFill"></span></div>
+     <ol id="kitOptimizeStageSteps" class="kit-flow-stage-steps" aria-label="Status de cada etapa"></ol>
+     <div id="kitOptimizeLiveProgress" class="kit-flow-live-progress" role="status" aria-live="polite" hidden></div>
+     <p id="kitOptimizeProgressText" class="kit-flow-progress-note">Os dados preparados acima serão aproveitados. A revisão complementar não publica o anúncio sem sua autorização.</p>
+    </section>
+   <details class="kit-flow-advanced" id="kitOptimizeAdvanced">
+    <summary>Conferir Item ID da SKU principal (avançado)</summary>
+    <div class="kit-publish-fields">
+     <label>SKU única do anúncio na Shopee
+      <input id="kitOptimizeListingSku" maxlength="120" autocomplete="off" placeholder="Escolha a SKU principal acima" readonly title="Preenchida automaticamente a partir da SKU principal"></label>
+    </div>
+    <div class="kit-actions">
+     <button type="button" id="kitOptimizeLookup" class="kit-secondary">Busca rápida por SKU</button>
+     <button type="button" id="kitOptimizeDeepLookup" class="kit-secondary">Pesquisa completa (opcional)</button>
+     <button type="button" id="kitOptimizeCancelLookup" class="kit-secondary" hidden>Cancelar consulta</button>
+    </div>
+    <p class="kit-flow-search-hint">A Shopee utiliza exclusivamente a SKU principal. Os componentes adicionais ficam vinculados ao kit na WeDrop, sem novos cadastros de SKU Shopee. KIT-* é o identificador interno do rascunho.</p>
+    <div id="kitOptimizeCandidates" class="kit-components" role="group" aria-label="Item IDs encontrados para a SKU principal"></div>
+    <label class="kit-inline-checkbox"><input type="checkbox" id="kitOptimizeConfirm"> Conferi que este Item ID pertence à SKU principal selecionada na Shopee.</label>
+    <div class="kit-actions">
+     <button type="button" id="kitOptimizePrepare" class="kit-primary" disabled>Preparar vínculo e conteúdos</button>
+     <button type="button" id="kitOptimizeImages" class="kit-secondary" disabled>Sincronizar 9 imagens prontas</button>
+     <button type="button" id="kitOptimizeOpen" class="kit-primary" disabled>Abrir fluxo do kit</button>
+    </div>
+   </details>
+   <div id="kitOptimizerWorkspace" class="kit-optimizer-workspace optimizer-v15-page" hidden aria-live="off">
+    <div class="kit-optimizer-workspace-heading"><div><strong>Etapas de otimização do kit</strong><span id="kitOptimizerWorkspaceIdentity"></span></div><button id="kitWorkflowImportImages" type="button" class="kit-secondary">⇧ Sincronizar 9 imagens prontas</button></div>
+    <p id="kitOptimizerWorkspaceStatus" role="status" aria-live="polite">Reutilizando o conteúdo pronto e abrindo somente as revisões complementares.</p>
+    <details class="kit-discount-later">
+     <summary>Desconto do kit · conferir Minha Promoção após a execução</summary>
+     <p>O preço e o desconto já foram calculados acima. A aplicação de Minha Promoção depende de execução confirmada e autorização separada.</p>
+     <button id="kitWorkflowDiscountLater" type="button" class="kit-secondary">Conferir Minha Promoção do kit</button>
+    </details>
+   </div>
+   <section class="kit-publish-preview kit-existing-discount" aria-label="Minha Promoção do anúncio existente" hidden>
+    <div class="kit-existing-discount-head">
+     <h4>Etapa 08 · Desconto do kit</h4><span class="kit-existing-discount-tag">IDs Shopee · Automático</span>
+    </div>
+    <div class="kit-existing-discount-grid">
+     <label>Item ID do anúncio da SKU principal
+      <input id="kitOptimizeKitItemId" type="text" placeholder="Localize o anúncio" readonly title="Item ID do anúncio na SKU principal da Shopee"></label>
+     <input id="kitOptimizePrimaryItemId" type="hidden" value="">
+     <label>Minha Promoção · ID da campanha
+      <select id="kitOptimizeDiscountId" aria-label="Campanha Minha Promoção Shopee"><option value="">Consultar campanhas da Shopee</option></select></label>
+    </div>
+    <div class="kit-existing-discount-actions">
+     <button type="button" class="kit-secondary" id="kitOptimizeDiscountRefresh">↻ Buscar IDs na Shopee</button>
+     <button type="button" class="kit-primary" id="kitOptimizeDiscountPreview" disabled>Preparar prévia do desconto</button>
+    </div>
+    <p class="kit-existing-discount-feedback" id="kitOptimizeDiscountAutoStatus" role="status" aria-live="polite">Selecione a SKU Principal para consultar anúncios e campanhas.</p>
+    <div id="kitOptimizeDiscountBox" class="kit-publish-preview kit-existing-discount-review" hidden>
+     <pre id="kitOptimizeDiscountSummary"></pre>
+     <button type="button" class="kit-primary" id="kitOptimizeDiscountApply">Confirmar e aplicar desconto ao kit</button>
+    </div>
+    <p class="kit-status kit-existing-discount-result" id="kitOptimizeDiscountStatus" role="status" aria-live="polite">Nenhum desconto aplicado. A prévia exige otimização confirmada.</p>
+    <details class="kit-existing-discount-help">
+     <summary>Orientações fiscais e regras do desconto</summary>
+     <p>A SKU principal é a única cadastrada na Shopee. As SKUs adicionais são associadas na WeDrop. Confira NCM/CEST, itens físicos e NF-e com a contabilidade. Item ID não é ID de campanha.</p>
+     <p>Depois de confirmar a execução do anúncio na Shopee, confira os preços e autorize Minha Promoção diretamente nesta etapa 08, sem sair de Kits.</p>
+    </details>
+   </section>
+
+  </section>
   <div class="kit-copy-grid">
    <label><span class="kit-field-title"><span class="kit-heading-icon kit-icon-green">◆</span><span><strong>Título SEO</strong><small>Até 120 caracteres — confira antes de usar.</small></span></span><textarea id="kitTitle" rows="3" maxlength="120"></textarea><div class="kit-field-footer"><button type="button" id="kitCopyTitle" class="kit-secondary">▤ Copiar título</button><small id="kitTitleCount">0/120</small></div></label>
    <label><span class="kit-field-title"><span class="kit-heading-icon kit-icon-amber">▤</span><span><strong>Descrição do anúncio</strong><small>Produtos incluídos e quantidades exatas por SKU.</small></span></span><textarea id="kitDescription" rows="6" maxlength="2000"></textarea><div class="kit-field-footer"><button type="button" id="kitCopyDescription" class="kit-secondary">▤ Copiar descrição</button><small id="kitDescriptionCount">0/2000</small></div></label>
@@ -1237,81 +1317,6 @@
    <div class="kit-gallery-preview-header"><strong>Visualizar fotos do kit</strong><button id="kitGalleryClosePreview" type="button" class="kit-secondary">Fechar ✕</button></div>
    <div id="kitGalleryPreviewImages" class="kit-gallery-preview-images"></div>
   </dialog>
-  <section class="kit-publish-panel" id="kitOptimizeExistingPanel" aria-label="Otimizar anúncio existente do kit">
-   <div class="kit-flow-heading">
-    <div><span class="kit-flow-kicker">OTIMIZAÇÃO SHOPEE · KIT WEDROP</span>
-     <h3>Preparar e revisar o kit</h3>
-     <p>As mesmas oito etapas da Otimização de anúncios, aplicadas ao anúncio único do kit.</p></div>
-    <span class="kit-flow-safe">✓ Só publica após sua autorização</span>
-   </div>
-   <div class="kit-flow-start-bar">
-    <label class="kit-flow-primary">SKU Única Shopee (Principal WeDrop)
-     <select id="kitOptimizeMainSku"><option value="">Selecione a SKU principal</option></select>
-    </label>
-    <div class="kit-flow-target"><small>Anúncio da SKU principal na Shopee</small><strong id="kitOptimizeSelected">Localização automática ao iniciar</strong></div>
-    <button type="button" id="kitOptimizeStart" class="kit-primary">▶ Iniciar otimização do kit</button>
-   </div>
-   <p id="kitOptimizeStatus" class="kit-flow-status" role="status" aria-live="polite">Abra um kit salvo para começar. A Shopee será consultada somente pela SKU principal selecionada. As SKUs complementares ficam na WeDrop.</p>
-    <section id="kitOptimizeJourney" class="kit-flow-journey" aria-label="Progresso das oito etapas do kit">
-     <div class="kit-flow-progress-head"><strong id="kitOptimizeProgressTitle">Revisão das oito etapas</strong><span id="kitOptimizeProgressCount">0 / 8 revisadas</span></div>
-     <div id="kitOptimizeProgressTrack" class="kit-flow-progress-track" role="progressbar" aria-label="Etapas revisadas do kit, não publicadas" aria-valuemin="0" aria-valuemax="8" aria-valuenow="0"><span id="kitOptimizeProgressFill"></span></div>
-     <ol id="kitOptimizeStageSteps" class="kit-flow-stage-steps" aria-label="Status de cada etapa"></ol>
-     <div id="kitOptimizeLiveProgress" class="kit-flow-live-progress" role="status" aria-live="polite" hidden></div>
-     <p id="kitOptimizeProgressText" class="kit-flow-progress-note">Aguardando a identificação do anúncio completo do kit. Nenhuma alteração foi enviada.</p>
-    </section>
-   <details class="kit-flow-advanced" id="kitOptimizeAdvanced">
-    <summary>Conferir Item ID da SKU principal (avançado)</summary>
-    <div class="kit-publish-fields">
-     <label>SKU única do anúncio na Shopee
-      <input id="kitOptimizeListingSku" maxlength="120" autocomplete="off" placeholder="Escolha a SKU principal acima" readonly title="Preenchida automaticamente a partir da SKU principal"></label>
-    </div>
-    <div class="kit-actions">
-     <button type="button" id="kitOptimizeLookup" class="kit-secondary">Busca rápida por SKU</button>
-     <button type="button" id="kitOptimizeDeepLookup" class="kit-secondary">Pesquisa completa (opcional)</button>
-     <button type="button" id="kitOptimizeCancelLookup" class="kit-secondary" hidden>Cancelar consulta</button>
-    </div>
-    <p class="kit-flow-search-hint">A Shopee utiliza exclusivamente a SKU principal. Os componentes adicionais ficam vinculados ao kit na WeDrop, sem novos cadastros de SKU Shopee. KIT-* é o identificador interno do rascunho.</p>
-    <div id="kitOptimizeCandidates" class="kit-components" role="group" aria-label="Item IDs encontrados para a SKU principal"></div>
-    <label class="kit-inline-checkbox"><input type="checkbox" id="kitOptimizeConfirm"> Conferi que este Item ID pertence à SKU principal selecionada na Shopee.</label>
-    <div class="kit-actions">
-     <button type="button" id="kitOptimizePrepare" class="kit-primary" disabled>Preparar vínculo e conteúdos</button>
-     <button type="button" id="kitOptimizeImages" class="kit-secondary" disabled>Importar 9 imagens para revisão</button>
-     <button type="button" id="kitOptimizeOpen" class="kit-primary" disabled>Abrir fluxo do kit</button>
-    </div>
-   </details>
-   <div id="kitOptimizerWorkspace" class="kit-optimizer-workspace optimizer-v15-page" hidden aria-live="off">
-    <div class="kit-optimizer-workspace-heading"><div><strong>Etapas de otimização do kit</strong><span id="kitOptimizerWorkspaceIdentity"></span></div><button id="kitWorkflowImportImages" type="button" class="kit-secondary">⇧ Importar 9 imagens do kit</button></div>
-    <p id="kitOptimizerWorkspaceStatus" role="status" aria-live="polite">Preparando as etapas reais de revisão...</p>
-   </div>
-   <section class="kit-publish-preview kit-existing-discount" aria-label="Minha Promoção do anúncio existente" hidden>
-    <div class="kit-existing-discount-head">
-     <h4>Etapa 08 · Desconto do kit</h4><span class="kit-existing-discount-tag">IDs Shopee · Automático</span>
-    </div>
-    <div class="kit-existing-discount-grid">
-     <label>Item ID do anúncio da SKU principal
-      <input id="kitOptimizeKitItemId" type="text" placeholder="Localize o anúncio" readonly title="Item ID do anúncio na SKU principal da Shopee"></label>
-     <input id="kitOptimizePrimaryItemId" type="hidden" value="">
-     <label>Minha Promoção · ID da campanha
-      <select id="kitOptimizeDiscountId" aria-label="Campanha Minha Promoção Shopee"><option value="">Consultar campanhas da Shopee</option></select></label>
-    </div>
-    <div class="kit-existing-discount-actions">
-     <button type="button" class="kit-secondary" id="kitOptimizeDiscountRefresh">↻ Buscar IDs na Shopee</button>
-     <button type="button" class="kit-primary" id="kitOptimizeDiscountPreview" disabled>Preparar prévia do desconto</button>
-    </div>
-    <p class="kit-existing-discount-feedback" id="kitOptimizeDiscountAutoStatus" role="status" aria-live="polite">Selecione a SKU Principal para consultar anúncios e campanhas.</p>
-    <div id="kitOptimizeDiscountBox" class="kit-publish-preview kit-existing-discount-review" hidden>
-     <pre id="kitOptimizeDiscountSummary"></pre>
-     <button type="button" class="kit-primary" id="kitOptimizeDiscountApply">Confirmar e aplicar desconto ao kit</button>
-    </div>
-    <p class="kit-status kit-existing-discount-result" id="kitOptimizeDiscountStatus" role="status" aria-live="polite">Nenhum desconto aplicado. A prévia exige otimização confirmada.</p>
-    <details class="kit-existing-discount-help">
-     <summary>Orientações fiscais e regras do desconto</summary>
-     <p>A SKU principal é a única cadastrada na Shopee. As SKUs adicionais são associadas na WeDrop. Confira NCM/CEST, itens físicos e NF-e com a contabilidade. Item ID não é ID de campanha.</p>
-     <p>Depois de confirmar a execução do anúncio na Shopee, confira os preços e autorize Minha Promoção diretamente nesta etapa 08, sem sair de Kits.</p>
-    </details>
-   </section>
-
-  </section>
   <section class="kit-publish-panel kit-formal-redesign" id="kitPublishPanel" hidden aria-label="Criar Kit Formal na Shopee">
    <div class="kit-formal-header">
  <div class="kit-bar kit-section-heading"><span class="kit-heading-icon kit-icon-orange">🛒</span><div class="kit-section-heading-text"><h3>Criar Kit Formal na Shopee</h3><p>Siga o passo a passo para publicar seu kit na Shopee com segurança.</p></div></div>
@@ -2317,7 +2322,7 @@
 <script src="/technical-memory.js?v=1.0.1-live-sku-preload"></script>
 <script src="/technical-status.js?v=1.0.0-optional-coherence"></script>
 <script src="/app.js?v=3.5.4-main-sku-only"></script>
-<script type="module" src="/kit-builder.js?v=3.9.4-main-sku-only"></script>
+<script type="module" src="/kit-builder.js?v=3.9.5-kit-position"></script>
 <link rel="stylesheet" href="/optimizer-variations.css?v=1.2.1-single-flow">
 <script src="/optimizer-variations.js?v=1.2.3-single-flow"></script>
 
