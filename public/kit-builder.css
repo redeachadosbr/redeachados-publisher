@@ -1376,6 +1376,13 @@
 #tab-kits #kitDetail #kitDescription{height:103px;min-height:103px;max-height:none}
 #tab-kits #kitDetail .kit-field-footer{margin-top:auto;align-items:center}
 #tab-kits #kitDetail .kit-field-footer button{min-height:31px;padding:7px 10px;background:#f8fbff}
+#tab-kits #kitDetail .kit-stage-review{display:flex;flex-wrap:wrap;align-items:center;gap:8px;margin-top:5px;padding-top:9px;border-top:1px solid #e1ebf5}
+#tab-kits #kitDetail .kit-stage-review[hidden]{display:none!important}
+#tab-kits #kitDetail .kit-stage-review button{border:1px solid #1666b3;border-radius:9px;min-height:34px;padding:8px 11px;background:linear-gradient(180deg,#2185de,#1055ad);color:#fff;font-size:11px;font-weight:850;box-shadow:0 3px 0 #0a4286,0 5px 12px rgba(16,77,156,.15);cursor:pointer;white-space:normal}
+#tab-kits #kitDetail .kit-stage-review button:disabled{opacity:.6;cursor:wait}
+#tab-kits #kitDetail .kit-stage-review small{flex:1 1 180px;font-size:10px;line-height:1.5;font-weight:650;color:#56738e}
+#tab-kits #kitDetail .kit-stage-review small[data-state="success"]{color:#15804f}
+#tab-kits #kitDetail .kit-stage-review small[data-state="error"]{color:#b23e35}
 #tab-kits #kitDetail .kit-chatgpt-strip{border-radius:11px;margin:10px 0;padding:10px 12px}
 #tab-kits #kitDetail .kit-images-heading{
   display:flex;align-items:center;gap:10px;flex-wrap:wrap;
