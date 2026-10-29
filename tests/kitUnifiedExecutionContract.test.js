@@ -88,3 +88,44 @@ test('atualizacoes da Shopee nao reabrem a previa sobre uma revisao escolhida',(
   'optimizerExecutionPercent','optimizerExecutionEvents','optimizerExecutionNextActionTitle'])
   assert.equal(html.split('id="'+id+'"').length-1,1);
 });
+
+
+test('titulo e descricao do kit possuem botoes de conferencia ao lado dos textos preparados',()=>{
+ for(const [container,button,status] of [
+  ['kitReviewSeo','kitReviewSeoButton','kitReviewSeoStatus'],
+  ['kitReviewDescription','kitReviewDescriptionButton','kitReviewDescriptionStatus']
+ ]){
+  for(const id of [container,button,status])
+   assert.equal(html.split('id="'+id+'"').length-1,1);
+ }
+ assert.match(html,/\/app\.js\?v=3\.5\.8-kit-source-checklist/);
+ assert.match(html,/\/kit-builder\.js\?v=3\.9\.7-kit-source-checklist/);
+ assert.match(html,/\/kit-builder\.css\?v=3\.8\.7-kit-source-checklist/);
+ assert.match(app,/globalThis\.RAKitSourceChanged=optimizerKitSourceChanged/);
+ assert.match(app,/function optimizerKitSourceConfirm\(stage\)/);
+ assert.match(app,/await optimizerKitSourceFlush\(stage\)/);
+ assert.match(app,/stage,reviewed:!reviewed/);
+ assert.match(app,/if\(result\.saved!==true\|\|result\.stages\?\.find\(x=>x\.key===stage\)\?\.reviewed!==!reviewed\)/);
+ assert.match(app,/optimizerWorkflowActivateOnly\('source',stage\)/);
+});
+test('alteracao de texto ou titulo importado reabre a etapa e nao publica sem autorizacao',()=>{
+ const builder=source('public/kit-builder.js');
+ assert.match(builder,/function onKitContentEdit\(\)[\s\S]*?globalThis\.RAKitSourceChanged\?\.\(\)/);
+ assert.match(app,/if\(row\)\{row\.reviewed=false;row\.reviewedAt=null;row\.status='pending';\}/);
+ assert.match(app,/const optimizerKitSourcePending=\{seo:null,description:null\}/);
+ assert.match(app,/optimizerContentQueue=optimizerContentQueue\.catch\(\(\)=>\{\}\)\.then\(\(\)=>\s*optimizerSaveChecklistReview\(body\)\)/);
+ assert.match(app,/optimizerKitSourceChanged\(\);\n \/\/ A pesquisa/);
+ assert.match(app,/if\(length<100\|\|length>120\)/);
+});
+test('as outras seis etapas continuam com sua aprovacao propria antes da execucao',()=>{
+ assert.match(html,/id="kitWorkflowImportImages"/);
+ assert.match(existing,/stage:'images',reviewed:true/);
+ assert.match(app,/if\(key==='technical'\)body\.attributes=optimizerTechnicalValues\(\)/);
+ assert.match(app,/if\(key==='fiscal'\)body\.tax=optimizerFiscalValues\(\)/);
+ assert.match(app,/if\(key==='variants'\)/);
+ assert.match(app,/if\(key==='seo'\|\|key==='description'\)/);
+ assert.match(server,/if\(change\.stage==='video'&&change\.reviewed\)/);
+ assert.match(server,/if\(change\.stage==='images'&&change\.reviewed\)/);
+ assert.match(html,/id="optimizerExecDiscountPreview"/);
+ assert.match(app,/optimizerDiscountOpenReview\(\)/);
+});
