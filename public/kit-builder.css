@@ -2533,3 +2533,69 @@
  white-space:pre-wrap!important;overflow-wrap:anywhere!important;
  font-family:inherit!important;line-height:1.5!important;
 }
+
+
+/* V3.8.9 — etapa 08: resumo de preços limpo, sem herança do <pre> escuro. */
+#tab-kits #kitDetail .kit-existing-discount-review .kit-discount-summary{
+ display:block!important;background:#fff!important;color:#18365a!important;
+ border:1px solid #cddff1!important;border-radius:12px!important;
+ box-shadow:none!important;padding:13px 14px!important;margin:0 0 10px!important;
+ font:inherit!important;min-width:0;overflow:hidden;
+}
+#tab-kits #kitDetail .kit-discount-summary-heading{
+ display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;
+ gap:8px;padding:0 0 10px;border-bottom:1px solid #e2ebf4;
+}
+#tab-kits #kitDetail .kit-discount-summary-heading strong{
+ font-size:13px!important;line-height:1.4!important;color:#123a6a!important;
+}
+#tab-kits #kitDetail .kit-discount-summary-badge{
+ font-size:10px!important;font-weight:800!important;line-height:1.35!important;
+ color:#9a5a16!important;background:#fff3df!important;border:1px solid #efd2a6!important;
+ border-radius:99px;padding:4px 9px;
+}
+#tab-kits #kitDetail .kit-discount-summary-grid{
+ display:grid!important;grid-template-columns:repeat(2,minmax(0,1fr))!important;
+ gap:0 18px!important;margin:4px 0 0!important;padding:0!important;
+ min-width:0!important;
+}
+#tab-kits #kitDetail .kit-discount-summary-row{
+ display:flex!important;align-items:baseline;justify-content:space-between;
+ gap:9px;min-width:0;padding:9px 0!important;margin:0!important;
+ border-bottom:1px solid #eaf0f7;
+}
+#tab-kits #kitDetail .kit-discount-summary-row dt{
+ flex:1 1 auto;min-width:0;font-size:11px!important;color:#55708b!important;
+ font-weight:650!important;line-height:1.4!important;
+ overflow-wrap:anywhere;
+}
+#tab-kits #kitDetail .kit-discount-summary-row dd{
+ flex:0 1 auto;max-width:58%;min-width:0;margin:0!important;
+ font-size:12px!important;color:#183b65!important;font-weight:850!important;
+ text-align:right;line-height:1.4!important;overflow-wrap:anywhere;
+}
+#tab-kits #kitDetail .kit-discount-summary-note{
+ font-size:11px!important;font-weight:650!important;line-height:1.55!important;
+ color:#744c15!important;background:#fff8eb!important;
+ padding:10px 12px!important;margin:12px 0 0!important;
+ border:1px solid #f0ddb6;border-radius:9px;
+}
+#tab-kits #kitDetail .kit-existing-discount-review-actions{
+ display:flex;flex-wrap:wrap;gap:8px;
+}
+#tab-kits #kitDetail .kit-existing-discount-review-actions button{
+ min-height:36px!important;font-size:11px!important;
+}
+@media(max-width:840px){
+ #tab-kits #kitDetail .kit-discount-summary-grid{
+  grid-template-columns:1fr!important;
+ }
+}
+@media(max-width:420px){
+ #tab-kits #kitDetail .kit-discount-summary-row{
+  flex-wrap:wrap;gap:3px!important;
+ }
+ #tab-kits #kitDetail .kit-discount-summary-row dd{
+  max-width:100%!important;text-align:left!important;
+ }
+}
