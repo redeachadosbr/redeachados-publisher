@@ -545,18 +545,29 @@ app.post('/api/shopee/kits/discount/execute',mustLogin,requireWeDropAdmin,async(
    discountId:String(req.body?.discountId||''),
    token:String(req.body?.token||''),secret:stateSecret()});
   // Só a confirmação read-back da Shopee marca como APLICADO.
+  // Falha no histórico local não pode converter sucesso real na Shopee
+  // em erro 409, pois isso induziria um segundo envio perigoso.
+  let historySaved=false;
   if(out?.status==='discount_confirmed'){
-   const saved=await loadKitDraft(auth.shopId,code),link=saved?.optimization;
-   if(link&&link.sku===link.mainSku&&kitOptimizationLinkIsCurrent(saved,link)&&
-     String(link.itemId)===String(out.itemId)){
-    await saveWorkflowReview(auth.shopId,link.itemId,link.modelId,link.sku,{
-     kitDiscountPublication:{kitSku:code,itemId:String(out.itemId),
-      modelId:String(link.modelId||'0'),discountId:String(out.discountId),
-      promo:out.promo,confirmedAt:new Date().toISOString(),status:'confirmed'}
-    });
+   try{
+    const saved=await loadKitDraft(auth.shopId,code),link=saved?.optimization;
+    if(link&&link.sku===link.mainSku&&kitOptimizationLinkIsCurrent(saved,link)&&
+      String(link.itemId)===String(out.itemId)){
+     await saveWorkflowReview(auth.shopId,link.itemId,link.modelId,link.sku,{
+      kitDiscountPublication:{kitSku:code,itemId:String(out.itemId),
+       modelId:String(link.modelId||'0'),discountId:String(out.discountId),
+       promo:out.promo,confirmedAt:new Date().toISOString(),status:'confirmed'}
+     });
+     historySaved=true;
+    }
+   }catch(error){
+    console.warn('[kit-discount] Shopee confirmed, local history unavailable:',
+      String(error.message||error).slice(0,180));
    }
   }
-  res.json(out);
+  res.json({...out,historySaved,
+   ...(!historySaved&&out?.status==='discount_confirmed'?
+     {historyWarning:'Desconto confirmado na Shopee, mas histórico local pendente. Não reenviar; consulte a campanha.'}:{})});
  }catch(e){res.status(409).json({error:String(e.message||e).slice(0,500)});}
 });
 app.post('/api/shopee/kits/plus-brief',mustLogin,requireWeDropAdmin,async(req,res)=>{
