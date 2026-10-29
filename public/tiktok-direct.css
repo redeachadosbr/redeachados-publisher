@@ -1,0 +1,54 @@
+/* TikTok Direct Post — visual isolado para não alterar o fluxo de rascunhos. */
+.direct-post-entry{margin:12px 0 8px}
+.direct-post-entry-btn{
+  width:100%;display:flex;align-items:center;gap:13px;text-align:left;
+  border:1px solid #d9c38b;border-radius:15px;padding:14px 17px;cursor:pointer;
+  background:linear-gradient(145deg,#fffdf6,#f8f3e4);color:#302b1e;
+  box-shadow:0 6px 19px rgba(66,51,19,.09),inset 0 1px #fff;
+  transition:box-shadow .15s,transform .15s
+}
+.direct-post-entry-btn:hover{transform:translateY(-1px);box-shadow:0 9px 24px rgba(66,51,19,.15)}
+.direct-post-entry-btn .icon{width:22px;height:22px;flex-shrink:0}
+.direct-post-entry-btn span{display:grid;gap:3px}
+.direct-post-entry-btn b{font-size:14px}
+.direct-post-entry-btn small{font-size:12px;opacity:.77;line-height:1.45}
+dialog.tiktok-direct-dialog{
+  border:1px solid #dfe3d8;border-radius:19px;
+  background:#fff;color:#232822;width:min(930px,calc(100vw - 28px));
+  max-width:930px;max-height:calc(100dvh - 40px);padding:0;overflow:auto;
+  box-shadow:0 30px 90px rgba(16,27,16,.3)
+}
+dialog.tiktok-direct-dialog::backdrop{background:rgba(9,16,10,.60);backdrop-filter:blur(3px)}
+.direct-dialog-head{background:#f8f9f4;border-bottom:1px solid #e1e6d8;padding:18px 22px;display:flex;justify-content:space-between;gap:20px;align-items:start}
+.direct-dialog-head h2{margin:3px 0 4px;font-size:21px;line-height:1.25}
+.direct-dialog-head p{margin:0;font-size:12px;color:#667065;line-height:1.6}
+.direct-dialog-head .x{border:1px solid #dce1d5;background:#fff;border-radius:12px;min-width:36px;min-height:36px;cursor:pointer;font-size:24px}
+.direct-dialog-body{padding:21px;display:grid;grid-template-columns:minmax(230px,0.7fr) minmax(300px,1fr);gap:22px;align-items:start}
+.direct-preview{position:sticky;top:0;display:grid;gap:9px;background:#f6f8f3;border:1px solid #e6e9e0;border-radius:15px;padding:12px}
+.direct-preview video{display:block;width:100%;background:#1d211c;border-radius:10px;max-height:420px;aspect-ratio:9/16;object-fit:contain;margin:auto}
+.direct-preview p{margin:0;overflow-wrap:anywhere;text-align:center}
+.direct-form{display:grid;gap:9px}
+.direct-form label:not(.check){font-weight:750;font-size:13px}
+.direct-form textarea,.direct-form select{font:inherit;width:100%;border:1px solid #d7ddce;border-radius:10px;padding:11px 12px;background:#fff;color:#263025;min-width:0}
+.direct-form textarea{min-height:82px;resize:vertical;line-height:1.5}
+.direct-form .direct-creator{background:#f4f7ed;border:1px solid #dae4cc;padding:11px 12px;border-radius:9px;font-size:13px;font-weight:700;margin:0 0 4px}
+.direct-hint{font-size:11px;color:#70776c;line-height:1.55;margin:0}
+.direct-fieldset{padding:11px 13px;border:1px solid #e2e6dc;border-radius:11px;margin:2px 0;display:grid;gap:10px;min-width:0}
+.direct-fieldset legend{font-size:12px;font-weight:750;padding:0 5px;color:#425139}
+.direct-fieldset .check,.direct-consent{font-size:12px;font-weight:550;line-height:1.5;display:flex;align-items:flex-start;gap:8px;cursor:pointer}
+.direct-fieldset input,.direct-consent input{flex-shrink:0;accent-color:#4d6142;margin-top:2px}
+.direct-consent{border:1px solid #d9cb98;border-radius:10px;padding:13px 12px;background:#fffaf0}
+.direct-status{margin:2px 0;color:#405c39;background:#f4f7f0;border:1px solid #e1eadd;border-radius:9px;padding:11px 12px;font-size:12px;line-height:1.6}
+.direct-status[data-error=true]{color:#982e28;background:#fff3f0;border-color:#f2d3cd}
+.direct-actions{display:flex;flex-wrap:wrap;align-items:center;gap:9px}
+.direct-actions button{min-height:41px;border-radius:10px}
+.direct-actions button[disabled]{opacity:.5;cursor:not-allowed}
+.direct-actions button[hidden]{display:none}
+@media(max-width:700px){
+  dialog.tiktok-direct-dialog{width:calc(100vw - 14px);max-height:calc(100dvh - 14px)}
+  .direct-dialog-head{padding:13px 15px}
+  .direct-dialog-body{grid-template-columns:1fr;padding:13px;gap:14px}
+  .direct-preview{position:static}
+  .direct-preview video{max-height:240px;aspect-ratio:16/9}
+  .direct-actions button{flex:1}
+}
