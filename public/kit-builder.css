@@ -2599,3 +2599,42 @@
   max-width:100%!important;text-align:left!important;
  }
 }
+
+
+/* Etapa 08 conferida vs promoção publicada no acompanhamento técnico.
+   O 100% do job não equivale à aplicação de Minha Promoção. */
+#tab-kits #optimizerExecutionSteps .optimizer-exec-step.is-kit-prepared{
+ border-color:#67b98b!important;opacity:1!important;
+}
+#tab-kits #optimizerExecutionSteps .optimizer-exec-step.is-kit-prepared .optimizer-exec-step-number{
+ background:#059969!important;color:#fff!important;box-shadow:0 0 0 3px #ddf7e8;
+}
+#tab-kits #optimizerExecutionSteps .optimizer-exec-step.is-kit-prepared strong{
+ color:#17634b!important;
+}
+#tab-kits #optimizerExecutionSteps .optimizer-exec-step.is-kit-prepared small{
+ background:#fff2d8!important;color:#805012!important;white-space:normal!important;
+ max-width:185px!important;line-height:1.35!important;
+}
+#tab-kits #optimizerExecutionSteps .optimizer-exec-step.is-kit-published{
+ border-color:#4fb783!important;
+}
+#tab-kits #optimizerExecutionSteps .optimizer-exec-step.is-kit-published .optimizer-exec-step-number{
+ background:#09a35e!important;
+}
+#tab-kits #optimizerExecutionSteps .optimizer-exec-step.is-kit-published strong{
+ color:#175e42!important;
+}
+#tab-kits #optimizerExecutionSteps .optimizer-exec-step.is-kit-published small{
+ background:#d9f7e4!important;color:#0f8244!important;white-space:normal!important;
+}
+#tab-kits #optimizerExecutionOpenKitDiscount.optimizer-exec-kit-discount-action{
+ display:inline-flex!important;align-items:center;justify-content:center;
+ width:auto!important;max-width:100%;min-height:36px;
+ margin:14px 0 2px!important;padding:8px 14px!important;
+ border:1px solid #a8cae9!important;border-radius:10px!important;
+ background:#e9f4ff!important;color:#164b82!important;
+ box-shadow:0 3px 0 #c6dbed;font-size:12px!important;
+ font-weight:850!important;line-height:1.4!important;cursor:pointer;
+}
+#tab-kits #optimizerExecutionOpenKitDiscount[hidden]{display:none!important}
