@@ -15,6 +15,7 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="/styles.css?v=5523-confirm-inbox" />
+  <link rel="stylesheet" href="/tiktok-direct.css?v=1.0.0" />
   <link rel="stylesheet" href="/studio-depth.css?v=1.0.0-layered-premium" />
   <link rel="stylesheet" href="/login-sidebar-premium.css?v=2.2.0-compact-gold" />
 </head>
@@ -158,6 +159,7 @@
                     <button id="publishBtn" type="button" class="social-publish-btn tiktok-publish" aria-label="Enviar rascunho ao TikTok"><svg class="icon social-button-icon"><use href="#i-tiktok"/></svg><span class="social-button-copy"><b>Enviar rascunho ao TikTok</b><small>Finalize a publicação no aplicativo</small></span></button>
                     <button id="instagramPublishBtn" type="button" class="social-publish-btn instagram-publish" aria-label="Publicar Reel no Instagram"><svg class="icon social-button-icon"><use href="#i-instagram"/></svg><span class="social-button-copy"><b>Publicar Reel no Instagram</b><small>Publicação automática do Reel</small></span></button>
                   </div>
+                  <div class="direct-post-entry"><button id="directPostBtn" type="button" class="direct-post-entry-btn"><svg class="icon"><use href="#i-tiktok"/></svg><span><b>Publicar diretamente no TikTok</b><small>Teste privado sem finalizar no celular · depende da autorização do TikTok</small></span></button></div>
                   <section id="tiktokDeliveryPanel" class="tiktok-delivery-panel" data-state="processing"
                     aria-label="Acompanhamento da entrega do TikTok" aria-live="polite" hidden>
                     <span class="tiktok-delivery-symbol" aria-hidden="true"><svg class="icon"><use href="#i-tiktok"/></svg></span>
@@ -209,6 +211,46 @@
       </main>
     </div>
   </div>
+
+  <dialog id="tiktokDirectDialog" class="tiktok-direct-dialog" aria-labelledby="tiktokDirectTitle">
+    <div class="direct-dialog-head">
+      <div><span class="eyebrow">TIKTOK · POSTAGEM DIRETA</span><h2 id="tiktokDirectTitle">Revisar e publicar vídeo</h2><p>Revise o vídeo e confirme o envio. Antes da auditoria, o TikTok restringe a postagem direta a testes privados.</p></div>
+      <button id="directClose" class="x" type="button" aria-label="Fechar">×</button>
+    </div>
+    <div class="direct-dialog-body">
+      <div class="direct-preview">
+        <video id="directVideoPreview" controls playsinline preload="metadata" aria-label="Prévia do vídeo selecionado"></video>
+        <p id="directVideoLabel" class="small">Vídeo escolhido no Publisher</p>
+      </div>
+      <div class="direct-form">
+        <p id="directCreator" class="direct-creator" role="status">Carregando dados da conta TikTok...</p>
+        <label for="directCaption">Legenda do vídeo <span class="field-hint">Revise antes de publicar</span></label>
+        <textarea id="directCaption" rows="4" maxlength="2200" placeholder="Escreva a legenda que aparecerá no TikTok"></textarea>
+        <label for="directPrivacy">Quem pode assistir ao vídeo? <span class="field-hint">Obrigatório</span></label>
+        <select id="directPrivacy" required><option value="">Carregando opções...</option></select>
+        <p class="direct-hint">A privacidade segue as opções que o TikTok permite para sua conta. Sem auditoria, a publicação pública não fica liberada.</p>
+        <fieldset class="direct-fieldset">
+          <legend>Divulgação de conteúdo comercial</legend>
+          <label class="check"><input id="directBrandOrganic" type="checkbox" checked> Promovo meu próprio negócio ou loja</label>
+          <label class="check"><input id="directBrandContent" type="checkbox"> Parceria paga com outra empresa</label>
+        </fieldset>
+        <fieldset class="direct-fieldset">
+          <legend>Interações e identificação</legend>
+          <label class="check"><input id="directDisableComment" type="checkbox"> Desativar comentários</label>
+          <label class="check"><input id="directDisableDuet" type="checkbox"> Desativar Dueto</label>
+          <label class="check"><input id="directDisableStitch" type="checkbox"> Desativar Costurar</label>
+          <label class="check"><input id="directIsAigc" type="checkbox"> O próprio vídeo foi gerado por IA</label>
+        </fieldset>
+        <label class="check direct-consent"><input id="directConsent" type="checkbox"> Revisei o vídeo, a legenda e a privacidade e autorizo expressamente o envio à minha conta TikTok.</label>
+        <p id="directStatus" role="status" aria-live="polite" class="direct-status">Escolha a privacidade e confirme antes de enviar.</p>
+        <div class="direct-actions">
+          <button id="directSubmit" class="primary" type="button" disabled>Confirmar e enviar ao TikTok</button>
+          <button id="directCheckStatus" class="ghost" type="button" hidden>Consultar resultado no TikTok</button>
+        </div>
+      </div>
+    </div>
+  </dialog>
+
   <dialog id="settingsDialog" aria-labelledby="settingsTitle">
     <form method="dialog" class="settings-form">
       <div class="dialog-head"><div><span class="eyebrow">DO SEU JEITO</span><h2 id="settingsTitle">Configurações</h2><p>Sua loja, catálogo e conexões em um só lugar.</p></div><button value="cancel" class="x" aria-label="Fechar configurações">×</button></div>
@@ -228,7 +270,7 @@
   </dialog>
 
 
-  <script src="/tiktok-delivery.js?v=5523-confirm-inbox"></script><script src="/app.js?v=5523-confirm-inbox"></script><script src="/ui.js?v=5522-reference-layout"></script>
+  <script src="/tiktok-delivery.js?v=5523-confirm-inbox"></script><script src="/app.js?v=5523-confirm-inbox"></script><script src="/tiktok-direct.js?v=1.0.0"></script><script src="/ui.js?v=5522-reference-layout"></script>
   <script>if('serviceWorker' in navigator){navigator.serviceWorker.register('/sw.js').catch(()=>{})}</script>
 </body>
 </html>
