@@ -220,3 +220,42 @@
  #raFiscalModernLayout .ra-fiscal-modern-header-actions>*{flex:1;min-width:0}
  #raFiscalModernLayout .optimizer-workflow-actions{position:static;grid-template-columns:1fr}
 }
+
+
+/* Etapa 07 — guardar rascunho e conferir são ações independentes. */
+#raFiscalModernLayout .optimizer-workflow-actions{
+ grid-template-columns:minmax(120px,.9fr) minmax(185px,1.45fr)
+ minmax(180px,1.45fr) minmax(135px,1fr) minmax(155px,1.2fr);
+ gap:8px;
+}
+#raFiscalModernLayout .optimizer-workflow-actions #optimizerWorkflowReview{
+ background:#edf4fb!important;color:#184b7e!important;
+ border:1px solid #c7d9ed!important;box-shadow:none!important;
+}
+#raFiscalModernLayout .optimizer-workflow-actions #raFiscalChecklistConfirm{
+ background:linear-gradient(135deg,#0d79d8,#0a4fa4)!important;
+ color:#fff!important;border:1px solid #1359aa!important;
+ font-size:11px!important;font-weight:850!important;
+ box-shadow:0 3px 8px #1a5fb528!important;
+}
+#raFiscalModernLayout .optimizer-workflow-actions #raFiscalChecklistConfirm[data-reviewed="true"]:not([data-dirty="true"]){
+ background:#e7f7ee!important;color:#11734a!important;
+ border-color:#bce4cb!important;box-shadow:none!important;
+}
+#raFiscalModernLayout .optimizer-workflow-actions #raFiscalChecklistConfirm:disabled,
+#raFiscalModernLayout .optimizer-workflow-actions #optimizerWorkflowReview:disabled{
+ opacity:.6!important;cursor:wait!important;
+}
+@media(max-width:1200px){
+ #raFiscalModernLayout .optimizer-workflow-actions{
+  grid-template-columns:repeat(3,minmax(0,1fr));
+ }
+}
+@media(max-width:850px){
+ #raFiscalModernLayout .optimizer-workflow-actions{
+  grid-template-columns:repeat(2,minmax(0,1fr));
+ }
+}
+@media(max-width:530px){
+ #raFiscalModernLayout .optimizer-workflow-actions{grid-template-columns:1fr}
+}
