@@ -3888,7 +3888,8 @@ app.post('/api/shopee/optimizer/pricing/prepare',mustLogin,requireWeDropAdmin,as
     // O desconto base nunca deve receber etiqueta de recomendação de mercado.
     quote.discountRecommendationSource=market.verified?'researched':'base_not_researched';
     // Parâmetros globais de tarifa são salvos sem Ads; Ads é EXCLUSIVO da SKU.
-    if(req.body?.settings!==undefined)
+    // Frete/embalagem do kit não podem contaminar a configuração global das SKUs individuais.
+    if(req.body?.settings!==undefined&&!linkedKit)
       await saveShopeePricingPreferences(auth.shopId,{...sourceSettings,adsPct:0});
     await saveShopeePricePlan(auth.shopId,{itemId,modelId,sku,supplierSku:cost.supplierSku,quote});
     res.json({ok:true,readOnly:true,saved:true,quote});
