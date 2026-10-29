@@ -171,6 +171,7 @@ function renderKitPricingSummary(kit=prepared?.kit){
  else if(marginUpdatePending)state.textContent+=' Recalculando: não publique o valor anterior.';
 }
 async function repriceKitMargin(revision){
+ let completed=false;
  try{
   const settings=currentSettings();
   const calls=[];
@@ -205,7 +206,8 @@ async function repriceKitMargin(revision){
    if(outcome.kind==='prepared'){
     if(outcome.data.kit.kitSku!==prepared.kit.kitSku)throw Error('A cotação retornou um kit diferente.');
     kitDraftNeedsRefresh=false;
-    prepared={...prepared,kit:outcome.data.kit};
+    prepared={...prepared,kit:outcome.data.kit,optimization:null};
+    kitExistingOptimizer.restore(null);
     kitSaved=false;clearKitPublishApproval();
     kitPublishStatus('Custo ou margem alterados. Salve novamente o rascunho e refaça a prévia antes de publicar.','info');
     refreshKitPrices(prepared.kit); // Preserva textos já editados e imagens importadas.
@@ -213,6 +215,7 @@ async function repriceKitMargin(revision){
      ' Os preços foram recalculados para a margem escolhida e NÃO foram enviados à Shopee.';
    }
   }
+  completed=true;
   status('✓ Margem manual '+$('#kitMargin').value+'% aplicada aos kits. Preços, descontos e lucro líquido recalculados com centavos 0/9.','success');
  }catch(error){
   if(revision===marginRevision){
@@ -224,6 +227,7 @@ async function repriceKitMargin(revision){
   if(revision===marginRevision){
    marginUpdatePending=false;
    $('#kitSaveDraft').disabled=false;
+   if(completed)renderKitPricingSummary(prepared?.kit);
   }
  }
 }
@@ -524,6 +528,9 @@ function resetKitPublication({saved=false,publication=null}={}){
  root.append(new Option('Selecione o SKU principal',''));
  for(const p of prepared?.kit?.components||[])root.append(new Option(p.sku+' · '+p.name,p.sku));
  renderKitPricingSummary(prepared?.kit);
+ const mainSelected=$('#kitPrincipalSku')?.value;
+ if(mainSelected&&[...$('#kitOptimizeMainSku').options].some(x=>x.value===mainSelected))
+  $('#kitOptimizeMainSku').value=mainSelected;
  $('#kitLogisticId').replaceChildren(new Option('Consultar opções da Shopee',''));
  kitLogisticsKeeper.reset();
  $('#kitPublishLinks').replaceChildren();
