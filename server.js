@@ -1409,8 +1409,8 @@ app.get('/api/shopee/kits/optimization/find',mustLogin,requireWeDropAdmin,async(
   const saved=await loadKitDraft(auth.shopId,kitSku);
   if(!saved?.kit||!Array.isArray(saved.skus))
    throw Error('Kit nao salvo. Salve o rascunho antes de localizar o anuncio na Shopee.');
-  if(saved.skus.includes(sku))
-   throw Error('Essa e uma SKU individual do kit. Informe a SKU do anuncio composto.');
+  if(!saved.skus.includes(sku)||String(req.query?.mainSku||sku).trim()!==sku)
+   throw Error('Selecione a SKU principal do kit. A Shopee utiliza somente essa SKU única.');
   const search=await findLiveShopeeSku(cfg,auth,callShopeeShopApi,sku,{fastOnly:true});
   const matches=(search.matches||[]).filter(x=>String(x.sku)===sku&&
    ['NORMAL','UNLIST'].includes(String(x.status).toUpperCase()))
@@ -1524,6 +1524,8 @@ app.post('/api/shopee/kits/optimization/prepare',mustLogin,requireWeDropAdmin,as
  try{
   const {auth,cfg}=await getValidAuth(req),body=req.body||{};
   const kitSku=String(body.kitSku||'').trim(),sku=validateSkuLookup(body.sku);
+  if(sku!==String(body.mainSku||'').trim())
+   throw Error('O anúncio da Shopee deve usar a mesma SKU principal escolhida em Kits.');
   const itemId=validItemId(body.itemId),modelId=String(body.modelId??'0');
   if(!/^\d{1,18}$/.test(modelId))throw Error('Modelo Shopee inválido.');
   const saved=await loadKitDraft(auth.shopId,kitSku);
@@ -1545,8 +1547,15 @@ app.post('/api/shopee/kits/optimization/prepare',mustLogin,requireWeDropAdmin,as
   const job=await readShopeeExecution(auth.shopId,itemId,modelId);
   if(['running','uncertain'].includes(job?.state))
    throw Error('Execução já iniciada ou sem confirmação. Confira o progresso.');
-  if(saved.optimization?.itemId&&saved.optimization.itemId!==String(itemId))
-   throw Error('O kit está vinculado a outro Item ID; confira antes de trocar.');
+  if(saved.optimization?.itemId&&String(saved.optimization.itemId)!==String(itemId)){
+   const old=saved.optimization;
+   if(old.sku===old.mainSku)
+    throw Error('Kit já vinculado a outro Item ID da SKU principal. Confira o vínculo antes de trocar.');
+   // Migração da regra antiga: não transferir prévias entre os Item IDs.
+   const former=await readShopeeExecution(auth.shopId,old.itemId,old.modelId);
+   if(['running','uncertain'].includes(former?.state))
+    throw Error('Execução do vínculo antigo pendente. Confirme antes de migrar.');
+  }
   await recordKitOptimization(auth.shopId,kitSku,link);
   await saveWorkflowReview(auth.shopId,itemId,modelId,sku,{
    stage:'seo',reviewed:false,title:link.title,titleOrigin:'kit-wedrop',
@@ -1561,7 +1570,7 @@ app.post('/api/shopee/kits/optimization/prepare',mustLogin,requireWeDropAdmin,as
    quote:{componentCost:link.componentCost,kitCost:link.kitCost,
     grossPrice:link.grossPrice,promoPrice:link.promoPrice},
    warnings:n<100||n>120?['Título com '+n+' caracteres: ajustar para 100–120 na revisão SEO.']:[],
-   message:'Anúncio existente vinculado; textos preparados sem modificar a Shopee.'});
+   message:'SKU principal '+sku+' vinculada ao kit interno '+kitSku+'. As demais SKUs ficam somente na WeDrop; nada foi publicado.'});
  }catch(e){res.status(409).json({error:String(e.message||e).slice(0,340)});}
 });
 app.post('/api/shopee/kits/optimization/image',mustLogin,requireWeDropAdmin,
