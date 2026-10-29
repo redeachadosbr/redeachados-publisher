@@ -17,10 +17,9 @@ export async function advanceShopeeKitDiscount(job,io){
    'Campanha, custo ou valores do kit mudaram. Desconto não será reenviado.');
  if(fresh.liveStatus!=='NORMAL')return uncertain(r,'kit-not-normal',
   'Anúncio ainda não NORMAL na Shopee. Desconto não enviado.');
- if(plan.selectedStage==='discount_adjust'&&phase==='kit_discount_ready'&&!fresh.priceAligned&&
-   cents(fresh.currentGross)!==cents(approved.currentGross))
-  return uncertain(r,'kit-gross-changed-since-preview',
-   'Preço bruto da Shopee alterado desde a prévia. Refaça a conferência para evitar alteração indevida.');
+ // Em preço bruto + desconto, o preço ANTERIOR não é o alvo autorizado.
+ // Se ele mudar, aplicar somente approved.gross e approved.promo,
+ // sem atualizar imagens, conteúdo, fiscal ou outros modelos.
  if(plan.selectedStage==='discount'&&!fresh.priceAligned)
   return failed(r,'kit-discount-gross-mismatch',
    'Somente desconto: preço bruto da Shopee mudou. Nenhum preço foi alterado; prepare novamente.');
@@ -39,7 +38,10 @@ export async function advanceShopeeKitDiscount(job,io){
   return {state:'running',result:{...r,phase:'kit_discount_price_verifying'},delay:5000};
  }
  if(phase!=='kit_discount_ready')throw Error('Fase do desconto do kit desconhecida.');
- if(!Number(r.kitMarketCheckedAt)||Date.now()-Number(r.kitMarketCheckedAt)>15*60000){
+ // A etapa 08 exclusiva usa o cálculo já aprovado da SKU:
+ // não repetir pesquisa de concorrentes, que não altera o valor autorizado.
+ if(plan.selectedStage!=='discount_adjust'&&
+    (!Number(r.kitMarketCheckedAt)||Date.now()-Number(r.kitMarketCheckedAt)>15*60000)){
   try{await io.kitDiscountMarket(approved);}
   catch(e){return failed(r,'kit-discount-market',String(e.message||e).slice(0,250));}
   return {state:'running',result:event({...r,kitMarketCheckedAt:Date.now()},
