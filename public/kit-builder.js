@@ -2436,7 +2436,7 @@ function kitContentHandoff(prompt,tab=null){
  $('#kitContentDetails').open=!opened;
  kitImportState(opened?'Aguardando resposta · 3 títulos e descrição':'Abertura bloqueada · orientação pronta','info');
  kitContentFeedback(opened?
-  'ChatGPT aberto com o pedido do kit. Clique em Enviar se o texto estiver preenchido. Depois copie a resposta e importe pelo botão azul.':
+  'ChatGPT aberto com o pedido do kit. Clique em Enviar se necessário. Depois volte ao Manager e clique no botão azul: a Ponte v1.0.60 recuperará os 3 títulos e a descrição sem copiar nem colar.':
   'O Chrome bloqueou a abertura. Em Opções avançadas, use Copiar orientação completa e Abrir ChatGPT com orientação pronta.','info');
 }
 function kitContentReadManual(){
@@ -2631,39 +2631,73 @@ function importPlusText({silent=false}={}){
   return false;
  }
 }
-function kitShowPasteSeoReply(reason=''){
- // O navegador não pode ler o conteúdo da aba chatgpt.com sem uma ponte autorizada.
- // A resposta copiada pelo usuário ou colada manualmente é a única fonte legítima.
- $('#kitContentDetails').open=true;
- kitImportState('Aguardando a resposta completa do ChatGPT','info');
- kitContentFeedback((reason?reason+' ':'')+
-  'No bloco Escrita do ChatGPT, clique no ícone de dois quadrados (Copiar), no canto superior direito. '+
-  'Depois volte ao Manager e clique no botão azul. '+
-  'Se o Chrome não liberar a cópia, cole aqui com Ctrl+V: os três títulos, notas SEO e descrição serão importados em conjunto.','info');
- const field=$('#kitPlusTextResult');
- field.focus();field.scrollIntoView({behavior:'smooth',block:'nearest'});
+function kitBridgeVersionSupportsText(version){
+ const parts=String(version||'').split('.').map(Number);
+ return parts.length===3&&parts.every(Number.isInteger)&&
+  (parts[0]>1||parts[0]===1&&(parts[1]>0||parts[1]===0&&parts[2]>=60));
+}
+function kitFetchGeneratedTextFromPonte(kitSku,skus){
+ return new Promise((resolve,reject)=>{
+  const nonce=crypto.randomUUID();
+  let done=false,asked=false;
+  const finish=(error,data)=>{
+   if(done)return;done=true;clearTimeout(timer);
+   window.removeEventListener('message',handle);
+   if(error)reject(error instanceof Error?error:Error(String(error)));
+   else resolve(data);
+  };
+  const handle=event=>{
+   if(event.source!==window||event.origin!==location.origin)return;
+   const m=event.data||{};
+   if(m.kind==='RA_EXTENSION_READY'&&!asked){
+    asked=true;
+    if(!kitBridgeVersionSupportsText(m.version))
+     return finish(Error('Sua Ponte ChatGPT precisa ser atualizada para v1.0.60 para recuperar automaticamente títulos e descrição. A versão atual não inclui a captura de texto dos kits.'));
+    window.postMessage({kind:'RA_SITE_KIT_TEXT_FETCH',
+     payload:{nonce,kitSku,skus}},location.origin);
+   }else if(m.kind==='RA_EXTENSION_KIT_TEXT_RESULT'&&m.nonce===nonce){
+    if(m.kitSku!==kitSku)return finish(Error('A resposta veio de outro kit. Nenhum campo foi alterado.'));
+    if(m.ok!==true||!m.rawText)
+     return finish(Error(String(m.error||'A Ponte não encontrou uma resposta completa para este kit.')));
+    finish(null,m);
+   }
+  };
+  const timer=setTimeout(()=>finish(Error('A extensão Ponte ChatGPT não respondeu. Verifique se a v1.0.60 está ativa no Chrome.')),15000);
+  window.addEventListener('message',handle);
+  window.postMessage({kind:'RA_EXTENSION_PROBE'},location.origin);
+ });
 }
 async function kitImportCopiedContent(){
  if(!prepared)return kitContentFeedback('Abra o rascunho do kit antes de importar o anúncio.','error');
- const field=$('#kitPlusTextResult');
- // Texto colado tem prioridade: não ignorar a resposta que já está na tela.
- if(field.value.trim()){importPlusText();return;}
- if(!navigator.clipboard?.readText){
-  kitShowPasteSeoReply('Leitura automática da área de transferência não autorizada.');
-  return;
- }
+ const kitSku=prepared.kit.kitSku,skus=prepared.kit.components.map(p=>p.sku);
+ const button=$('#kitImportCopiedText');button.disabled=true;
+ kitImportState('Buscando automaticamente a resposta na conversa do ChatGPT...','info');
+ kitContentFeedback('Ponte ChatGPT: localizando os 3 títulos e a descrição deste kit, sem copiar ou colar.','info');
  try{
-  const content=await navigator.clipboard.readText();
-  if(!content.trim()){
-   kitShowPasteSeoReply('A resposta está no ChatGPT, mas ainda não foi copiada. Clique no ícone Copiar do bloco Escrita.');
-   return;
+  const response=await kitFetchGeneratedTextFromPonte(kitSku,skus);
+  if(prepared?.kit?.kitSku!==kitSku)throw Error('O kit foi trocado durante a captura. Nenhuma resposta foi aplicada.');
+  // Reutiliza EXATAMENTE a validação, as notas SEO e o salvamento que já funcionavam.
+  parseKitSeoResponse(response.rawText);
+  $('#kitPlusTextResult').value=response.rawText;
+  if(!importPlusText())throw Error('O sistema não conseguiu aplicar o anúncio recuperado.');
+ }catch(error){
+  // Compatibilidade com a cópia do ChatGPT já disponível, sem abrir formulário manual.
+  let recovered=false;
+  try{
+   const raw=await navigator.clipboard?.readText?.();
+   if(raw&&prepared?.kit?.kitSku===kitSku){
+    parseKitSeoResponse(raw);
+    $('#kitPlusTextResult').value=raw;
+    recovered=importPlusText();
+   }
+  }catch{}
+  if(!recovered){
+   kitImportState('Recuperação automática não concluída · rascunho preservado','error');
+   kitContentFeedback('Não consegui receber automaticamente os três títulos e a descrição: '+
+    String(error.message||error)+'. O conteúdo existente não foi modificado.','error');
+   // NÃO abrir opções avançadas nem focar área de colagem: fluxo é via Ponte.
   }
-  field.value=content;
-  // O importador valida os 3 títulos, calcula a nota SEO e salva a descrição.
-  importPlusText();
- }catch{
-  kitShowPasteSeoReply('O Chrome não autorizou a leitura da área de transferência.');
- }
+ }finally{button.disabled=false;}
 }
 function kitPasteSeoReply(event){
  if(!prepared)return;

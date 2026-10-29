@@ -88,11 +88,12 @@ test('importacao azul fica ao lado do gerador; instrucoes duplicadas foram remov
  for(const id of ['kitImportCopiedText','kitPlusText','kitContentFeedback','kitImportState','kitContentDetails','kitPlusTextResult'])
   assert.equal(html.split('id="'+id+'"').length-1,1);
  assert.match(browser,/kitImportCopiedText'\)\?\.addEventListener\('click'/);
- assert.match(browser,/const content=await navigator\.clipboard\.readText\(\)/);
+ assert.match(browser,/RA_SITE_KIT_TEXT_FETCH/);
+ assert.match(browser,/kitFetchGeneratedTextFromPonte\(kitSku,skus\)/);
  assert.match(browser,/parseKitSeoResponse\(\$\('#kitPlusTextResult'\)\.value\)/);
  assert.match(browser,/\$\('#kitDescription'\)\.value=result\.description/);
  assert.match(browser,/void saveDraft\(\)\.then/);
- assert.match(browser,/No bloco Escrita do ChatGPT/);
+ assert.match(browser,/Ponte ChatGPT: localizando os 3 títulos/);
 });
 
 test('botão SEO mantém o ChatGPT aberto ao detectar falta de medidas',async()=>{
@@ -151,22 +152,24 @@ test('pesquisa SEO usa três SKUs e apresenta cinco termos sem inventar volume',
  assert.match(html,/id="kitSeoMarketDetails"/);
 });
 
-test('importação azul recupera colagem manual antes do clipboard e não acusa vazio como falha do ChatGPT',async()=>{
+test('botão azul recupera automaticamente a resposta por Ponte, sem abrir área manual',async()=>{
  const {readFileSync}=await import('node:fs');
  const ui=readFileSync(new URL('../public/kit-builder.js',import.meta.url),'utf8');
  const html=readFileSync(new URL('../public/index.html',import.meta.url),'utf8');
- assert.match(ui,/function kitShowPasteSeoReply\(/);
- assert.match(ui,/if\(field\.value\.trim\(\)\)\{importPlusText\(\);return;\}/);
- assert.match(ui,/ainda não foi copiada/);
- assert.match(ui,/if\(!content\.trim\(\)\)\{/);
- assert.match(ui,/function kitPasteSeoReply\(event\)/);
- assert.match(ui,/event\.preventDefault\(\);\s*\$\('#kitPlusTextResult'\)\.value=copied;\s*importPlusText\(\)/);
- assert.match(ui,/\$\('#kitPlusTextResult'\)\?\.addEventListener\('paste',kitPasteSeoReply\)/);
- assert.match(html,/3 títulos com notas SEO/);
+ const start=ui.indexOf('async function kitImportCopiedContent()');
+ const end=ui.indexOf('function kitPasteSeoReply(',start);
+ const body=ui.slice(start,end);
+ assert.match(body,/kitFetchGeneratedTextFromPonte\(kitSku,skus\)/);
+ assert.match(body,/parseKitSeoResponse\(response\.rawText\)/);
+ assert.match(body,/importPlusText\(\)/);
+ assert.doesNotMatch(body,/kitContentDetails'\)\.open=true/);
+ assert.doesNotMatch(body,/kitShowPasteSeoReply/);
+ assert.match(ui,/RA_EXTENSION_KIT_TEXT_RESULT/);
+ assert.match(ui,/RA_SITE_KIT_TEXT_FETCH/);
  assert.match(ui,/kitShowSeoTitles\(scored\)/);
  assert.match(ui,/\$\('#kitDescription'\)\.value=result\.description/);
+ assert.match(html,/3 títulos com notas SEO/);
 });
-
 test('abrir ChatGPT não sobrescreve a resposta na área de transferência',async()=>{
  const {readFileSync}=await import('node:fs');
  const browser=readFileSync(new URL('../public/kit-builder.js',import.meta.url),'utf8');
@@ -176,5 +179,5 @@ test('abrir ChatGPT não sobrescreve a resposta na área de transferência',asyn
  assert.match(browser,/kitShowSeoTitles\(scored\)/);
  assert.match(browser,/scoreKitSeoTitle\(x\.title,prepared\.kit\.components\)/);
  assert.match(browser,/\$\('#kitDescription'\)\.value=result\.description/);
- assert.match(browser,/ícone de dois quadrados/);
+ assert.match(browser,/RA_SITE_KIT_TEXT_FETCH/);
 });
