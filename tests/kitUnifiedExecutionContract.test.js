@@ -172,8 +172,8 @@ test('ficha tecnica do kit usa estilos completos sem blocos colados',()=>{
  assert.match(studio,/conditional',conditional,true/);
  assert.match(studio,/textLabel\.classList\.add\('ra-tech-source-text'\)/);
  assert.match(studio,/review\.scrollIntoView\(\{behavior:'smooth',block:'start'\}\)/);
- assert.match(html,/optimizer-technical-studio\.css\?v=1\.1\.0-readable-kits/);
- assert.match(html,/optimizer-technical-studio\.js\?v=1\.1\.0-readable-kits/);
+ assert.match(html,/optimizer-technical-studio\.css\?v=1\.2\.0-compact-fields/);
+ assert.match(html,/optimizer-technical-studio\.js\?v=1\.2\.0-compact-fields/);
 });
 test('ficha tecnica continua com inputs e aprovacao originais',()=>{
  const studio=source('public/optimizer-technical-studio.js');
