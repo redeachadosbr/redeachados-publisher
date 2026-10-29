@@ -8,7 +8,7 @@ const done=r=>({state:'verified',result:event({...r,phase:'verified',verified:tr
  'Etapa 08/08: preço e Minha Promoção confirmados pela Shopee.','success'),lastError:null});
 export async function advanceShopeeKitDiscount(job,io){
  const plan=job.plan||{},approved=plan.kitDiscount,r={...(job.result||{})};
- if(!approved||!['all','discount'].includes(plan.selectedStage))throw Error('Etapa 08 sem plano completo ou exclusivo aprovado.');
+ if(!approved||!['all','discount','discount_adjust'].includes(plan.selectedStage))throw Error('Etapa 08 sem plano completo ou exclusivo aprovado.');
  const phase=String(r.phase||'');
  const fresh=await io.kitDiscountRead(approved);
  if(['kitSku','itemId','modelId','discountId'].some(k=>String(fresh[k])!==String(approved[k]))||
@@ -17,6 +17,10 @@ export async function advanceShopeeKitDiscount(job,io){
    'Campanha, custo ou valores do kit mudaram. Desconto não será reenviado.');
  if(fresh.liveStatus!=='NORMAL')return uncertain(r,'kit-not-normal',
   'Anúncio ainda não NORMAL na Shopee. Desconto não enviado.');
+ if(plan.selectedStage==='discount_adjust'&&phase==='kit_discount_ready'&&!fresh.priceAligned&&
+   cents(fresh.currentGross)!==cents(approved.currentGross))
+  return uncertain(r,'kit-gross-changed-since-preview',
+   'Preço bruto da Shopee alterado desde a prévia. Refaça a conferência para evitar alteração indevida.');
  if(plan.selectedStage==='discount'&&!fresh.priceAligned)
   return failed(r,'kit-discount-gross-mismatch',
    'Somente desconto: preço bruto da Shopee mudou. Nenhum preço foi alterado; prepare novamente.');

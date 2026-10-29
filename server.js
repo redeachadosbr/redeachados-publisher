@@ -527,6 +527,7 @@ app.post('/api/shopee/kits/discount/preview',mustLogin,requireWeDropAdmin,async(
     kitDiscountPreview:{kitSku:code,itemId:String(link.itemId),
       modelId:String(link.modelId||'0'),discountId:String(preview.discountId),
       gross:preview.gross,promo:preview.promo,afterCoupon:preview.afterCoupon,
+      currentGross:preview.currentGross,priceAligned:preview.priceAligned,
       preparedAt:new Date().toISOString(),status:'prepared'}
    });
    reviewSaved=true;
@@ -2266,7 +2267,7 @@ app.post('/api/shopee/optimizer/execution/prepare',mustLogin,requireWeDropAdmin,
     const manualImages=await readPreparedImages(auth.shopId,itemId,modelId,sku);
     const reviewState={...(review?.review_state||{})};
     let kitDiscountPlan=null;
-    if(kitLink&&['all','discount'].includes(selectedStage)&&reviewState.kitDiscountPreview?.status==='prepared'){
+    if(kitLink&&['all','discount','discount_adjust'].includes(selectedStage)&&reviewState.kitDiscountPreview?.status==='prepared'){
      const approved=reviewState.kitDiscountPreview,checked=Date.parse(approved.preparedAt||'');
      if(!Number.isFinite(checked)||checked>Date.now()+60000||Date.now()-checked>24*3600000)
       throw Error('Etapa 08: conferência expirou; reabra a campanha e prepare a prévia.');
@@ -2283,10 +2284,20 @@ app.post('/api/shopee/optimizer/execution/prepare',mustLogin,requireWeDropAdmin,
      if(selectedStage==='discount'&&snapshot.liveStatus!=='NORMAL')
       throw Error('Somente desconto: o anúncio ainda não está NORMAL na Shopee. Aguarde a liberação antes de preparar.');
      if(selectedStage==='discount'&&snapshot.priceAligned!==true)
-      throw Error('Somente desconto não altera preço bruto. O valor da Shopee difere do kit; confira o preço antes de preparar a promoção.');
+      throw Error('Somente desconto mantém o preço bruto: Shopee R$ '+Number(snapshot.currentGross).toFixed(2)+
+       ' ≠ kit R$ '+Number(snapshot.gross).toFixed(2)+
+       '. Escolha "Somente preço bruto + desconto" para conferir e autorizar a correção.');
+     if(selectedStage==='discount_adjust'){
+      if(snapshot.liveStatus!=='NORMAL')
+       throw Error('O anúncio precisa estar NORMAL na Shopee para atualizar preço e desconto.');
+      if(!Number.isFinite(Number(approved.currentGross))||
+         Math.round(Number(approved.currentGross)*100)!==Math.round(Number(snapshot.currentGross)*100))
+       throw Error('Preço Shopee mudou desde a conferência. Reabra a etapa 08 e prepare nova prévia antes de autorizar.');
+     }
      kitDiscountPlan={kitSku:String(kitLink.kitSku),itemId:String(itemId),
       modelId:String(modelId),discountId:String(approved.discountId),
-      gross:snapshot.gross,promo:snapshot.promo,afterCoupon:snapshot.afterCoupon};
+      gross:snapshot.gross,promo:snapshot.promo,afterCoupon:snapshot.afterCoupon,
+      currentGross:snapshot.currentGross,priceAligned:snapshot.priceAligned};
     }
     // Evitar ficha técnica aprovada e invisível na publicação. O rascunho
     // precisa ser anterior à revisão e os campos devem continuar elegíveis
@@ -2384,13 +2395,13 @@ app.post('/api/shopee/optimizer/execution/prepare',mustLogin,requireWeDropAdmin,
       marketReference:Number(financial.quote.marketResearch?.reference),
       netProfit:Number(financial.quote.netProfit)};
     }
-    if(selectedStage==='discount'&&!kitLink&&!allowDiscountOnly)
+    if(['discount','discount_adjust'].includes(selectedStage)&&!kitLink&&!allowDiscountOnly)
      throw Error('Etapa 08: confira a Minha Promoção e prepare a prévia autorizada desta SKU antes de executar.');
     if(selectedStage==='variants'&&kitLink)
      throw Error('Variações individuais de kit devem ser administradas pelo fluxo de Kits Inteligentes WeDrop.');
     if(selectedStage==='variants'&&!modelVariations)
      throw Error('Etapa 06: não existem variações aprovadas e elegíveis para esta SKU.');
-    if(selectedStage==='discount'&&kitLink&&!kitDiscountPlan)
+    if(['discount','discount_adjust'].includes(selectedStage)&&kitLink&&!kitDiscountPlan)
      throw Error('Etapa 08 ainda não preparada: abra Desconto do kit e registre a prévia da campanha.');
     if(selectedStage==='fiscal'&&reviewState.stages?.fiscal?.reviewed&&reviewState.tax){
       // Kit e SKU simples usam o mesmo vínculo auditado. Nunca descartar
@@ -2796,13 +2807,13 @@ app.post('/api/shopee/optimizer/execution/execute',mustLogin,requireWeDropAdmin,
   }
   const previousPlan=job.plan;
   if(linkedKit&&previousPlan.kitDiscount){
-   if(!['all','discount'].includes(previousPlan.selectedStage))throw Error('Etapa 08 exige prévia completa ou Somente desconto do kit.');
+   if(!['all','discount','discount_adjust'].includes(previousPlan.selectedStage))throw Error('Etapa 08 exige prévia completa, somente desconto ou preço bruto + desconto.');
    const approved=(await getWorkflowReview(auth.shopId,itemId,modelId))?.review_state?.kitDiscountPreview;
    const expected=previousPlan.kitDiscount;
    if(!approved||approved.status!=='prepared'||
       !Number.isFinite(Date.parse(approved.preparedAt||''))||
       Date.now()-Date.parse(approved.preparedAt||'')>24*3600000||
-      ['kitSku','itemId','modelId','discountId','gross','promo','afterCoupon'].some(k=>
+      ['kitSku','itemId','modelId','discountId','gross','promo','afterCoupon',...(previousPlan.selectedStage==='discount_adjust'?['currentGross']:[])].some(k=>
        String(approved[k])!==String(expected[k])))
     throw Error('Etapa 08 mudou desde a prévia. Confira o desconto novamente.');
   }

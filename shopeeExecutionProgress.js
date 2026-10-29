@@ -165,7 +165,7 @@ export function shopeeExecutionProgress(job){
  };
  const modeLabels={images:'SOMENTE IMAGENS',video:'SOMENTE VÍDEO',seo:'SOMENTE TÍTULO',
   description:'SOMENTE DESCRIÇÃO',technical:'SOMENTE FICHA TÉCNICA',
-  fiscal:'SOMENTE FISCAL',remaining:'SOMENTE VARIAÇÕES, FISCAL E DESCONTO',discount:'SOMENTE DESCONTO',variants:'SOMENTE VARIAÇÕES'};
+  fiscal:'SOMENTE FISCAL',remaining:'SOMENTE VARIAÇÕES, FISCAL E DESCONTO',discount:'SOMENTE DESCONTO',discount_adjust:'PREÇO BRUTO + DESCONTO',variants:'SOMENTE VARIAÇÕES'};
  const partial=plan.selectedStage&&plan.selectedStage!=='all';
  const partialName=modeLabels[plan.selectedStage]||'ETAPA ISOLADA';
  const title=fiscalPartial?'Dados fiscais pendentes de correção':
@@ -190,6 +190,8 @@ export function shopeeExecutionProgress(job){
    'Execução interrompida: '+String(job.last_error||'confira a ocorrência'):
   state==='prepared'&&plan.selectedStage==='variants'?
    'Somente variações preparado. Nenhum desconto ou outra etapa será enviado nesta execução.':
+  state==='prepared'&&plan.selectedStage==='discount_adjust'?
+   'Preço bruto do kit e Minha Promoção preparados para autorização. As outras sete etapas não serão reenviadas. Confira os valores antes de executar.':
   state==='prepared'&&plan.selectedStage==='discount'?
    'Somente desconto preparado, sem publicação. Imagens, vídeo, título, descrição, ficha técnica, variações e fiscal serão preservados. Confira o ID da Minha Promoção antes de autorizar.':
   state==='prepared'&&partial?

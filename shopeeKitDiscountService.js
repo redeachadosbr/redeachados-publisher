@@ -97,7 +97,9 @@ export async function previewKitDiscount({cfg,auth,kitSku,discountId,secret}){
   gross:x.gross,promo:x.promo,afterCoupon:x.afterCoupon,margin:x.kit.quote.netMarginPct,
   currentGross:x.currentGross,priceAligned:x.priceAligned,executionVerified:x.executionVerified,
   liveStatus:x.liveStatus,marketOffers:null,marketplaceUpdated:false,
-  message:'Prévia de planejamento pronta. Primeiro execute e confirme a otimização do anúncio do kit; depois gere uma nova prévia para autorizar e aplicar a promoção.'};
+  message:!x.priceAligned?
+   'O preço bruto Shopee difere do calculado. Escolha Somente preço bruto + desconto para autorizar apenas a correção comercial. Nenhum envio realizado.':
+   'Prévia conferida. Autorize a execução da etapa 08 após revisar os valores. Nenhum envio realizado.'};
  const market=await lookupShopeeCompetitors({
   title:x.saved.creative.title,ownShopId:auth.shopId,ownItemId:x.itemId
  });

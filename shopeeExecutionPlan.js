@@ -8,9 +8,9 @@ import {isShopeeCestConfirmed} from './shopeeMatrixRules.js';
 // Preparation is deterministic for one verified item/model/SKU. This module
 // never calls Shopee, and never considers a reviewed checkbox a published item.
 const normal=s=>String(s??'').replace(/\r\n?/g,'\n').trim();
-export const SHOPEE_EXECUTION_STAGES=Object.freeze(['all','discount','variants','images','video','seo','technical','description','fiscal','remaining']);
+export const SHOPEE_EXECUTION_STAGES=Object.freeze(['all','discount','discount_adjust','variants','images','video','seo','technical','description','fiscal','remaining']);
 export const SHOPEE_EXECUTION_STAGE_LABELS=Object.freeze({
- all:'Todas as etapas',remaining:'Somente variações, fiscal e desconto',discount:'Somente desconto aprovado',variants:'Somente variações',images:'Imagens comerciais',video:'Vídeo do anúncio',
+ all:'Todas as etapas',remaining:'Somente variações, fiscal e desconto',discount:'Somente desconto aprovado',discount_adjust:'Preço bruto + desconto do kit',variants:'Somente variações',images:'Imagens comerciais',video:'Vídeo do anúncio',
  seo:'Título SEO',technical:'Ficha técnica',description:'Descrição',fiscal:'Informações fiscais'
 });
 export function normalizeShopeeExecutionStage(stage='all'){
@@ -49,13 +49,14 @@ export function compileShopeeExecutionPlan({shopId,itemId,modelId,sku,record,rev
   }else if(selected('description')&&description&&description!==currentDescription)blocked.push('Revisar e registrar Descrição e variações antes de executar.');
   if(record?.hasModel||String(modelId)!=='0')
     warnings.push('As alterações são campos do anúncio-pai; a alteração afeta TODAS as variações deste Item ID.');
-  if(!['remaining','discount','variants'].includes(selectedStage)){
+  if(!['remaining','discount','discount_adjust','variants'].includes(selectedStage)){
    if(Number(record?.imageCount)<9)warnings.push('Imagens: '+record.imageCount+'/9; faltam arquivos aprovados, geração e upload.');
    warnings.push('Vídeo: '+String(record?.videoStatus||'não verificado')+'. É necessário confirmar/upload autorizado.');
   }else if(selectedStage==='remaining')warnings.push('Título, descrição, ficha técnica, imagens e vídeo não serão alterados nesta execução.');
   else if(selectedStage==='variants')warnings.push('Somente variações: conteúdo, mídia do anúncio-pai, dados fiscais e desconto serão preservados. As fotos próprias das variações poderão ser enviadas.');
+  else if(selectedStage==='discount_adjust')warnings.push('Apenas etapa 08: preço bruto e Minha Promoção poderão ser ajustados conforme a prévia. As outras sete etapas serão preservadas.');
   else warnings.push('Somente desconto: imagens, vídeo, conteúdo, atributos, variações e dados fiscais não serão enviados.');
-  if(!['discount','variants'].includes(selectedStage)&&(record.attributeAudit?.missingMandatory||0)>0)warnings.push('Ficha técnica: atributos obrigatórios pendentes.');
+  if(!['discount','discount_adjust','variants'].includes(selectedStage)&&(record.attributeAudit?.missingMandatory||0)>0)warnings.push('Ficha técnica: atributos obrigatórios pendentes.');
   const changing=new Set(stages.technical?.reviewed?(state.attributes||[]).map(x=>Number(x.attributeId)):[]);
   const pendingAttributes=(record.attributeAudit?.attributes||[]).filter(x=>!x.conditional&&x.state==='missing'&&!changing.has(x.id));
   if(pendingAttributes.length)warnings.push('Ficha técnica · campos opcionais não preenchidos: '+
@@ -64,8 +65,9 @@ export function compileShopeeExecutionPlan({shopId,itemId,modelId,sku,record,rev
   if(state.variationConfig?.enabled&&(wholeWorkflow||selectedStage==='variants'))warnings.push(modelVariations?
    'Variações reais incluídas no processamento automático antes dos dados fiscais e do desconto.':
    'Variações já publicadas ou sem rascunho confirmado: o sistema verifica os modelos reais antes de concluir.');
-  if(!['discount','variants'].includes(selectedStage)&&(!stages.fiscal?.reviewed||!state.tax))warnings.push('Fiscal: informe os dados e a fonte por SKU para preparar a alteração.');
+  if(!['discount','discount_adjust','variants'].includes(selectedStage)&&(!stages.fiscal?.reviewed||!state.tax))warnings.push('Fiscal: informe os dados e a fonte por SKU para preparar a alteração.');
   warnings.push(selectedStage==='variants'?'Etapa 06 exclusiva: variações aprovadas serão verificadas na Shopee sem aplicar descontos.':
+   selectedStage==='discount_adjust'?'Etapa 08: corrigir o preço bruto planejado e aplicar Minha Promoção, com autorização expressa e leitura da Shopee.':
    selectedStage==='discount'?'Etapa 08 exclusiva: Minha Promoção conferida, com autorização expressa e leitura oficial da Shopee.':wholeWorkflow?'Desconto conferido será enviado como última etapa, somente após a confirmação comercial e fiscal.':'Preço e desconto não serão alterados nesta execução de etapa individual.');
   if(selected('technical')&&stages.technical?.reviewed&&state.attributes?.length){
     try{const attributes=compileAttributes(state.attributes,record,live);
@@ -78,7 +80,7 @@ export function compileShopeeExecutionPlan({shopId,itemId,modelId,sku,record,rev
   // Não bloquear uma alteração EXCLUSIVAMENTE fiscal por atributos técnicos
   // que NÃO serão modificados: Anatel continua obrigatório para conteúdo,
   // imagem, vídeo ou ficha técnica quando a árvore de atributos o exigir.
-  if(!['fiscal','remaining','discount','variants'].includes(selectedStage)){
+  if(!['fiscal','remaining','discount','discount_adjust','variants'].includes(selectedStage)){
     try{
       const technicalDraft=selected('technical')&&stages.technical?.reviewed&&state.attributes?.length
         ?attributeAuditForChanges(state.attributes,record,live):record.attributeAudit;
@@ -134,7 +136,7 @@ export function compileShopeeExecutionPlan({shopId,itemId,modelId,sku,record,rev
   if(images.length){const i=warnings.findIndex(x=>x.startsWith('Imagens:'));if(i>=0)warnings.splice(i,1);}
   const noOtherChange=Object.keys(proposed).length===0&&!finalFiscal&&!video&&images.length===0&&!modelVariations;
   const discountOnly=((selectedStage==='all'&&Boolean(allowDiscountOnly||kitDiscount))||
-    (selectedStage==='discount'&&Boolean(kitDiscount||allowDiscountOnly)))&&noOtherChange;
+    (['discount','discount_adjust'].includes(selectedStage)&&Boolean(kitDiscount||allowDiscountOnly)))&&noOtherChange;
   const canExecute=blocked.length===0&&(!noOtherChange||discountOnly);
   // A prévia consulta a Shopee. Conteúdo que já coincide EXATAMENTE com
   // o rascunho aprovado não integra o payload de alteração e deve aparecer
@@ -173,13 +175,14 @@ export function compileShopeeExecutionPlan({shopId,itemId,modelId,sku,record,rev
       item_sku:String(live?.item_sku||''),category_id:live?.category_id,
       attribute_list:live?.attribute_list||[],tax_info:live?.tax_info||{},image:live?.image||{}
     },proposed,video,images,finalFiscal,modelVariations,kitDiscount,confirmedStages,
-    actions:[...Object.keys(proposed),...(images.length?['images']:[]),...(video?['video']:[]),...(modelVariations?['model_variations']:[]),...(finalFiscal?['tax_info']:[]),...(discountOnly&&!kitDiscount?['discount']:[]),...(kitDiscount?['kit_discount']:[])],
+    actions:[...Object.keys(proposed),...(images.length?['images']:[]),...(video?['video']:[]),...(modelVariations?['model_variations']:[]),...(finalFiscal?['tax_info']:[]),...(discountOnly&&!kitDiscount?['discount']:[]),...(kitDiscount?['kit_discount']:[]),...(selectedStage==='discount_adjust'&&kitDiscount&&!kitDiscount.priceAligned?['kit_gross_price']:[])],
     blocked,warnings,canExecute,
     fingerprint,fiscalDeferred,selectedStage,discountOnly,createdAt:new Date().toISOString(),marketplaceUpdated:false,
     requiresExplicitConfirmation:true,
     scope:selectedStage==='all'?'Conteúdo e mídia → modelos → fiscal → desconto aprovado':
      selectedStage==='remaining'?'Apenas modelos → fiscal → desconto (sem edição de conteúdo ou mídia)':
      selectedStage==='discount'?'Somente desconto autorizado, sem alteração das outras sete etapas':
+     selectedStage==='discount_adjust'?'Somente preço bruto e Minha Promoção do kit; outras sete etapas preservadas':
      selectedStage==='variants'?'Somente variações aprovadas, com as demais etapas preservadas':
      'Somente '+SHOPEE_EXECUTION_STAGE_LABELS[selectedStage]+'; outras etapas não serão enviadas'};
 }

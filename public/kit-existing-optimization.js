@@ -451,7 +451,8 @@ export function initExistingKitOptimization({getContext,api,money,onMainSkuChang
   box.append(grid);
   const note=document.createElement('p');note.className='kit-discount-summary-note';
   note.textContent=planned?
-   'Próximo passo: execute e confirme a otimização em “Prévia e execução”. Depois volte para revalidar a promoção. Nenhum desconto foi publicado.':
+   (!result.priceAligned?'Preço atual da Shopee diferente do bruto do kit: escolha “Somente preço bruto + desconto do kit” em Prévia e execução, revise os valores e autorize. Nenhuma alteração foi enviada.':
+    'Prévia de planejamento pronta. Confira a execução específica da etapa 08. Nenhum desconto foi publicado.'):
    'Confira os valores e autorize a aplicação separadamente. Nenhum desconto foi publicado.';
   box.append(note);
  }
@@ -479,7 +480,7 @@ export function initExistingKitOptimization({getContext,api,money,onMainSkuChang
    discountNotice(planned?
      (result.reviewSaved?'✓ Conferência da etapa 08 registrada. A promoção ainda não foi aplicada.':
        'Prévia exibida, mas a conferência não foi salva para esta SKU. Confira o vínculo do kit.')+
-       ' Execute e confirme primeiro a otimização do kit.':
+       (result.priceAligned?' Abra Prévia e execução para autorizar a etapa 08.':' Selecione “Somente preço bruto + desconto do kit” em Prévia e execução.'):
      (result.reviewSaved?'✓ Etapa 08 conferida. ':'Prévia verificada. ')+
        'Confira os valores e autorize a aplicação separadamente.',
      result.reviewSaved?'success':'warning');

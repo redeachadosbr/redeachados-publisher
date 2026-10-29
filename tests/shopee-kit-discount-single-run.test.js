@@ -102,3 +102,64 @@ test('somente desconto nunca altera preço bruto divergente',async()=>{
  assert.equal(out.state,'failed');
  assert.deepEqual(commands,[]);
 });
+
+test('etapa 08 ajusta preço somente no modo selecionado e verifica Shopee antes da promoção',async()=>{
+ const {compileShopeeExecutionPlan}=await import('../shopeeExecutionPlan.js');
+ const plan=compileShopeeExecutionPlan({shopId:1,itemId:'101',modelId:'0',sku:'310200',
+  record:{sku:'310200',itemId:'101',selectedModelId:'0',status:'NORMAL',imageCount:9,
+   attributeAudit:{missingMandatory:0,attributes:[]}},
+  review:{stages:{}},live:{item_id:101,item_name:'Anúncio existente',description:'Produto',
+   description_type:'normal',item_status:'NORMAL'},
+  selectedStage:'discount_adjust',kitDiscount:{...approved,currentGross:89.90,priceAligned:false}});
+ assert.equal(plan.canExecute,true);
+ assert.deepEqual(plan.actions,['kit_discount','kit_gross_price']);
+ assert.deepEqual(plan.proposed,{});
+ assert.equal(plan.images.length,0);
+ assert.equal(plan.video,null);
+ assert.equal(plan.finalFiscal,null);
+ const calls=[];
+ const inputs={...base,currentGross:89.90,priceAligned:false};
+ const io={
+  kitDiscountRead:async()=>inputs,
+  kitDiscountMarket:async()=>calls.push('market'),
+  validateIdentity:async()=>calls.push('identity'),
+  beforeWrite:async()=>calls.push('checkpoint'),
+  kitDiscountPrice:async()=>calls.push('price'),
+  kitDiscountPublish:async()=>calls.push('discount')
+ };
+ const active={state:'running',plan:{selectedStage:'discount_adjust',
+  kitDiscount:{...approved,currentGross:89.90}},result:{phase:'kit_discount_ready'}};
+ const market=await advanceShopeeKitDiscount(active,io);
+ assert.deepEqual(calls,['market']);
+ const price=await advanceShopeeKitDiscount({...active,result:market.result},io);
+ assert.equal(price.result.phase,'kit_discount_price_verifying');
+ assert.deepEqual(calls,['market','identity','checkpoint','price']);
+ const awaiting=await advanceShopeeKitDiscount({...active,result:price.result},io);
+ assert.equal(awaiting.result.phase,'kit_discount_price_verifying');
+ assert.equal(calls.filter(x=>x==='price').length,1);
+ const aligned={...inputs,currentGross:99.90,priceAligned:true};
+ const confirmedPrice=await advanceShopeeKitDiscount({...active,result:price.result},{
+  ...io,kitDiscountRead:async()=>aligned
+ });
+ assert.equal(confirmedPrice.result.phase,'kit_discount_ready');
+ const sent=await advanceShopeeKitDiscount({...active,result:confirmedPrice.result},{
+  ...io,kitDiscountRead:async()=>aligned
+ });
+ assert.equal(sent.result.phase,'kit_discount_verifying');
+ assert.equal(calls.filter(x=>x==='discount').length,1);
+});
+test('preço Shopee modificado por terceiro bloqueia modo de ajuste antes de escrita',async()=>{
+ const writes=[];
+ const result=await advanceShopeeKitDiscount({state:'running',
+  plan:{selectedStage:'discount_adjust',kitDiscount:{...approved,currentGross:89.90}},
+  result:{phase:'kit_discount_ready'}},{
+  kitDiscountRead:async()=>({...base,currentGross:87.90,priceAligned:false}),
+  kitDiscountMarket:async()=>writes.push('market'),
+  validateIdentity:async()=>writes.push('identity'),
+  beforeWrite:async()=>writes.push('checkpoint'),
+  kitDiscountPrice:async()=>writes.push('price'),
+  kitDiscountPublish:async()=>writes.push('discount')
+ });
+ assert.equal(result.state,'uncertain');
+ assert.deepEqual(writes,[]);
+});

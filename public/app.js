@@ -4401,12 +4401,13 @@ function optimizerExecutionTrackerRender(progress,job){
   progress.message;
  const savedScope=String(job?.plan?.selectedStage||'all');
  const scopeLabels={images:'SOMENTE IMAGENS',video:'SOMENTE VÍDEO',seo:'SOMENTE TÍTULO SEO',
-  technical:'SOMENTE FICHA TÉCNICA',description:'SOMENTE DESCRIÇÃO',discount:'SOMENTE DESCONTO',variants:'SOMENTE VARIAÇÕES',
+  technical:'SOMENTE FICHA TÉCNICA',description:'SOMENTE DESCRIÇÃO',discount:'SOMENTE DESCONTO',discount_adjust:'PREÇO BRUTO + DESCONTO DO KIT',variants:'SOMENTE VARIAÇÕES',
   fiscal:'SOMENTE DADOS FISCAIS',remaining:'SOMENTE VARIAÇÕES + FISCAL + DESCONTO'};
  if(progress.state==='prepared'&&savedScope!=='all'){
   const scopeLabel=scopeLabels[savedScope]||'PARCIAL';
   $('#optimizerExecutionPhaseTitle').textContent='Prévia PARCIAL: '+scopeLabel;
   const explanation=savedScope==='discount'?'Somente desconto preparado. As sete etapas anteriores serão PRESERVADAS, sem novo envio.':
+   savedScope==='discount_adjust'?'Somente preço bruto e Minha Promoção: as outras sete etapas serão preservadas; alterações somente após sua autorização.':
    'O plano salvo inclui '+scopeLabel+'. As demais etapas NÃO serão enviadas.'+
    ' Para executar tudo, clique em “Preparar TODAS as etapas aprovadas”.';
   $('#optimizerExecutionPhaseSubtitle').textContent=explanation;
@@ -4438,7 +4439,7 @@ function optimizerExecutionTrackerRender(progress,job){
    ['done','staged','kit-prepared','kit-published'].includes(actualStatus)?'✓':
     actualStatus==='review'?'!':String(i+1));
   const name=optimizerMake('strong','',step.label);
-  const status=optimizerMake('small','',((savedScope==='discount'&&step.id!=='discount')||(savedScope==='variants'&&step.id!=='variants'))&&step.status==='skipped'? 'Preservado · sem reenvio':statuses[actualStatus]||'Aguardando');
+  const status=optimizerMake('small','',((['discount','discount_adjust'].includes(savedScope)&&step.id!=='discount')||(savedScope==='variants'&&step.id!=='variants'))&&step.status==='skipped'? 'Preservado · sem reenvio':statuses[actualStatus]||'Aguardando');
   if(actualStatus==='kit-prepared')li.title='Check da etapa 08: prévia conferida. Desconto ainda não aplicado; a promoção exige autorização separada.';
   if(actualStatus==='kit-published')li.title='Desconto confirmado pela Shopee em operação separada; não integrou este job do anúncio.';
   if(actualStatus==='review')li.title='O desconto não foi aplicado neste job; confira a etapa 08.';
@@ -5054,11 +5055,16 @@ function optimizerExecRender(data){
       ' · foto conferida · estoque '+option.stock),'action');
    }
    if(plan.kitDiscount){
-    const d=plan.kitDiscount;
-    optimizerExecRow(changes,'ETAPA 08/08 · AUTOMÁTICA · Minha Promoção '+d.discountId+
-     ' · preço bruto '+shPriceMoney(d.gross)+' · oferta '+shPriceMoney(d.promo)+
+    const d=plan.kitDiscount,adjust=plan.selectedStage==='discount_adjust';
+    optimizerExecRow(changes,'ETAPA 08/08 · '+(adjust?'PREÇO BRUTO + DESCONTO':'Minha Promoção')+
+     ' · campanha '+d.discountId+
+     (d.currentGross!=null?' · preço ATUAL Shopee '+shPriceMoney(d.currentGross):'')+
+     ' · preço bruto planejado '+shPriceMoney(d.gross)+
+     ' · oferta '+shPriceMoney(d.promo)+
      ' · após cupom '+shPriceMoney(d.afterCoupon)+
-     ' · após as demais etapas, com confirmação Shopee.','action');
+     (adjust?' · SOMENTE preço bruto e promoção serão alterados; demais etapas preservadas.':
+      ' · sem ajuste de preço bruto; demais etapas preservadas.')+
+     ' Confirmar alterações reais pela Shopee.','action');
    }
    if(plan.finalFiscal){
     optimizerExecRow(changes,'ETAPA FINAL 07 · Informações fiscais após confirmação do anúncio comercial.','heading');
@@ -5141,7 +5147,7 @@ function optimizerDiscountReviewedForExecution(plan){
  // Kit: otimizar primeiro; desconto proprio da etapa 08 exige confirmacao
  // da Shopee e autorizacao separada para a composicao completa.
  if(typeof optimizerKitWorkflowActive==='function'&&optimizerKitWorkflowActive())
-  return !['all','discount'].includes(plan?.selectedStage)||Boolean(plan?.kitDiscount);
+  return !['all','discount','discount_adjust'].includes(plan?.selectedStage)||Boolean(plan?.kitDiscount);
  return !['all','remaining','discount'].includes(plan?.selectedStage)||
   (plan?.modelVariations?
    Boolean(optimizerExecAutoModelToken)&&optimizerModelMarketConsent(plan):
@@ -5179,6 +5185,7 @@ function optimizerExecUpdateRunButton(){
  const resume=Boolean(p?.reusedMedia?.imageIds?.length||p?.reusedMedia?.video?.phase==='ready');
  $('#optimizerExecutionLaunch').textContent=!canPublish?
   p?.canExecute?'🛠 Conferir desconto e liberar execução':'🛠 Corrigir pendências e revalidar':
+  p?.selectedStage==='discount_adjust'?'▶ Autorizar preço bruto + desconto do kit':
   p?.selectedStage==='discount'?'▶ Executar SOMENTE desconto':
   p?.selectedStage==='variants'?'▶ Executar SOMENTE variações':
   p?.selectedStage==='images'?'▶ EXECUTAR SOMENTE '+(p.images?.length||0)+' IMAGENS':
@@ -5208,6 +5215,12 @@ function optimizerExecUpdateRunButton(){
    nextDescription.textContent=p.modelVariations?.promotion?.marketOverrideRequired?
     'Marque a autorização excepcional imediatamente abaixo e depois clique em Executar. Nada foi enviado à Shopee.':
     'A prévia comercial está preparada. Use “Conferir desconto para liberar execução” e depois execute uma única vez.';
+  }else if(p.selectedStage==='discount_adjust'){
+   const d=p.kitDiscount;
+   nextTitle.textContent='Autorizar preço bruto + desconto — SKU '+p.sku;
+   nextDescription.textContent='Preço bruto Shopee '+shPriceMoney(d.currentGross)+' → '+shPriceMoney(d.gross)+
+    ' · preço promocional '+shPriceMoney(d.promo)+
+    '. Só a etapa 08 será executada; nenhuma outra etapa será reenviada.';
   }else if(p.selectedStage==='discount'){
    nextTitle.textContent='Somente desconto — SKU '+p.sku;
    nextDescription.textContent='Apenas a Minha Promoção será alterada; preço bruto, imagens, título e demais etapas ficam preservados. Se o preço divergir, a prévia será bloqueada.';
