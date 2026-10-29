@@ -51,7 +51,11 @@ app.use((req,res,next)=>{
     res.set('Cache-Control','no-store, no-cache, max-age=0, must-revalidate');
     res.set('Pragma','no-cache');
     res.set('Expires','0');
-    res.on('finish',()=>console.info('[TikTok URL Verify]',req.method,req.path,res.statusCode));
+    res.on('finish',()=>{
+      // Apenas diagnóstico da assinatura pública: nunca registrar cookies, tokens ou IPs.
+      const agent=String(req.get('user-agent')||'not-provided').slice(0,180);
+      console.info('[TikTok URL Verify]',req.method,req.path,res.statusCode,'UA:',agent);
+    });
   }
   next();
 });
