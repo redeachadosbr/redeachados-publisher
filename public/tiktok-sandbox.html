@@ -35,7 +35,7 @@ video{background:#171917;display:block;width:100%;max-height:430px;object-fit:co
 <p class="subtle">Este espaço usa exclusivamente as credenciais do Sandbox. A publicação ficará privada (“Somente eu”). Não utiliza nem substitui o acesso do TikTok da loja.</p>
 <section class="card"><span class="label">ETAPA 01</span><h2>Conectar a conta privada de teste</h2>
 <div id="account" class="status">Verificando a conexão do Sandbox...</div>
-<div class="row"><a class="button secondary" href="/auth/tiktok/sandbox">Conectar conta privada</a><button class="secondary" id="refresh" type="button">Verificar conexão</button></div>
+<div class="row"><a id="connectSandbox" class="button secondary" href="/auth/tiktok/sandbox">Conectar conta privada</a><button class="secondary" id="refresh" type="button">Verificar conexão</button></div>
 <p class="panel-footer">Na autorização do TikTok, confira qual conta está selecionada. Use somente a conta privada cadastrada como usuária-alvo no Sandbox.</p>
 </section>
 <section class="card"><span class="label">ETAPA 02</span><h2>Revisar vídeo e privacidade</h2>
@@ -72,6 +72,21 @@ function readiness(){
 async function loadAccount(){
  $('account').textContent='Consultando conexão de teste...';
  try{
+  // A sessão do Publisher pode expirar durante uma atualização no Render.
+  // Mostre um caminho claro para autenticar sem mudar nenhuma credencial.
+  const session=await request('/api/auth-state');
+  if(!session.loggedIn){
+   account={connected:false};
+   $('connectSandbox').href='/?loginFor=tiktok-sandbox';
+   $('connectSandbox').textContent='Entrar no Publisher primeiro';
+   $('account').textContent='Seu acesso ao Publisher não está ativo nesta aba. Entre com sua senha habitual na página principal. Depois volte para este teste e conecte a conta privada.';
+   $('account').dataset.error='true';
+   status('Faça login no Publisher para iniciar o teste do TikTok.',true);
+   readiness();
+   return;
+  }
+  $('connectSandbox').href='/auth/tiktok/sandbox';
+  $('connectSandbox').textContent='Conectar conta privada';
   account=await request('/api/tiktok/sandbox/account');
   if(account.connected){
    $('account').textContent='Conta conectada no Sandbox: '+account.username+
