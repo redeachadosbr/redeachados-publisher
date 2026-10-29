@@ -487,3 +487,14 @@ test('kit mostra diferença do preço atual e permite autorização separada de 
  assert.match(server,/selectedStage==='discount_adjust'/);
  assert.match(existing,/result\.priceAligned/);
 });
+
+test('atalho da etapa 08 evita reexecutar as sete etapas conferidas',()=>{
+ assert.ok(html.includes('id="optimizerExecutionKitDiscountOnly"'));
+ assert.ok(app.includes('function optimizerKitDiscountShortcutPaint('));
+ assert.ok(app.includes('optimizerKitDiscountShortcutPaint(data)'));
+ assert.ok(app.includes('optimizerKitDiscountShortcutPaint(w)'));
+ assert.ok(app.includes("'#optimizerExecutionKitDiscountOnly'"));
+ assert.ok(app.includes("$('#optimizerExecutionScope').value='discount_adjust'"));
+ assert.ok(app.includes('Somente etapa 08: aplicar preço bruto calculado e preço promocional planejado'));
+ assert.match(server,/selectedStage==='discount_adjust'/);
+});

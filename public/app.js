@@ -2665,6 +2665,7 @@ globalThis.RAKitDiscountPrepared=({kitSku,itemId,discountId,reviewSaved=false,
    afterCoupon:preview.afterCoupon,preparedAt:new Date().toISOString()};
  }
  optimizerDiscountWorkflowRefresh();
+ optimizerKitDiscountShortcutPaint(w);
  if(optimizerExecProgress&&optimizerExecJob)
   optimizerExecutionTrackerRender(optimizerExecProgress,optimizerExecJob);
 };
@@ -2681,6 +2682,25 @@ globalThis.RAKitDiscountConfirmed=({kitSku,itemId}={})=>{
  if(optimizerExecProgress&&optimizerExecJob)
   optimizerExecutionTrackerRender(optimizerExecProgress,optimizerExecJob);
 };
+function optimizerKitDiscountShortcutPaint(w=optimizerWorkflowPlan){
+ const button=$('#optimizerExecutionKitDiscountOnly');
+ if(!button)return;
+ const link=w?.kitOptimization,preview=w?.kitDiscountPreview;
+ const matching=Boolean(link?.kitSku&&preview?.status==='prepared'&&
+  String(preview.kitSku)===String(link.kitSku)&&
+  String(preview.itemId)===String(w.itemId)&&
+  String(preview.modelId||'0')===String(w.modelId||'0')&&
+  Number(preview.gross)>Number(preview.promo)&&Number(preview.promo)>0);
+ const confirmed=Boolean(w?.kitDiscountPublication?.status==='confirmed'&&
+  String(w.kitDiscountPublication.itemId)===String(w.itemId));
+ button.hidden=!matching||confirmed;
+ if(!button.hidden){
+  button.textContent='▶ Preparar somente preço + desconto · '+shPriceMoney(preview.promo);
+  button.title='Etapa 08 da SKU '+w.sku+': preço bruto calculado '+
+   shPriceMoney(preview.gross)+' e preço promocional planejado '+
+   shPriceMoney(preview.promo)+'. As outras sete etapas serão preservadas.';
+ }
+}
 function kitOptimizerMount(){
  const host=$('#kitOptimizerWorkspace'),panel=$('#optimizerWorkflowPanel');
  if(!host||!panel)return false;
@@ -2962,6 +2982,7 @@ $('#optimizerSourceImage')?.addEventListener?.('change',async()=>{
 function optimizerWorkflowRender(data){
  optimizerSourceRender(data);
  optimizerWorkflowPlan=data;
+ optimizerKitDiscountShortcutPaint(data);
  // Sincronize os textos já montados no kit antes de calcular os cartões.
  optimizerKitSourceChanged();
  // A pesquisa e a precificação começam ao selecionar a SKU e continuam em paralelo.
@@ -5335,6 +5356,22 @@ async function optimizerExecutionPrepare({preserveStartError=false}={}){
   }
  }
 }
+$('#optimizerExecutionKitDiscountOnly')?.addEventListener?.('click',()=>{
+ const w=optimizerWorkflowPlan,p=w?.kitDiscountPreview,link=w?.kitOptimization;
+ if(optimizerExecBusy||!p||p.status!=='prepared'||!link||
+    String(p.kitSku)!==String(link.kitSku)||
+    String(p.itemId)!==String(w.itemId)||
+    String(p.modelId||'0')!==String(w.modelId||'0')){
+  optimizerExecNotice('A etapa 08 desta SKU precisa ter desconto calculado e conferido antes do envio.','warning');
+  return;
+ }
+ $('#optimizerExecutionScope').value='discount_adjust';
+ optimizerExecPrepareError='';
+ optimizerExecStartError='';
+ optimizerExecPlan=null;
+ optimizerExecNotice('Somente etapa 08: aplicar preço bruto calculado e preço promocional planejado. As outras sete etapas permanecerão intactas.','info');
+ void optimizerExecutionPrepare();
+});
 $('#optimizerExecutionPrepare')?.addEventListener?.('click',()=>void optimizerExecutionPrepare());
 $('#optimizerExecutionRecoverStart')?.addEventListener?.('click',()=>{
  if(optimizerWorkflowPlan&&!optimizerExecBusy)void optimizerExecutionPrepare();
