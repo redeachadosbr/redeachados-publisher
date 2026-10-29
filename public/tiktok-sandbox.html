@@ -1,0 +1,129 @@
+<!doctype html>
+<html lang="pt-BR"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Sandbox TikTok | REDE ACHADOS BR</title>
+<style>
+:root{font-family:Inter,system-ui,-apple-system,"Segoe UI",sans-serif;color:#17231f;background:#f3f6f2}
+*{box-sizing:border-box}body{margin:0}
+header{background:#14211d;color:white;padding:19px max(20px,calc((100vw - 1000px)/2));display:flex;justify-content:space-between;gap:15px;align-items:center}
+header strong{font-size:17px}header a{color:#eaca76;font-size:13px;text-decoration:none}
+main{max-width:1000px;margin:24px auto;padding:0 15px}
+h1{font-size:25px;margin:0 0 8px}p{line-height:1.6;margin:6px 0 16px}
+.subtle{font-size:13px;color:#64736b}
+.card{background:white;border:1px solid #dce5dc;border-radius:17px;padding:23px;margin:16px 0;box-shadow:0 8px 26px #17201a0d}
+.label{font-size:11px;letter-spacing:.11em;color:#748875;font-weight:800}
+h2{font-size:17px;margin:8px 0 14px}label{font-size:13px;font-weight:700;display:block;margin:16px 0 7px}
+input[type=file],textarea{width:100%;border:1px solid #cbd7cc;border-radius:9px;padding:12px;background:#fbfcfb;font:inherit;color:inherit}
+textarea{min-height:100px;resize:vertical}
+button,.button{display:inline-flex;align-items:center;justify-content:center;gap:10px;cursor:pointer;text-decoration:none;
+ background:#142d23;color:#fff;border:0;border-radius:10px;padding:12px 17px;font-weight:800;font-size:13px}
+button:disabled{opacity:.4;cursor:not-allowed}button.secondary,.button.secondary{background:#f2f6f0;color:#1e4328;border:1px solid #d8e3d6}
+button:hover:not(:disabled),.button:hover{filter:brightness(1.08)}
+.check{display:flex;gap:10px;align-items:start;line-height:1.6;font-weight:500;margin:13px 0}
+.check input{margin:5px 0 0;accent-color:#326c43}
+.badge{background:#fff4da;color:#71501c;padding:7px 10px;border-radius:9px;display:inline-flex;font-size:12px;font-weight:700}
+.status{padding:13px 15px;border-radius:10px;background:#f0f7f2;color:#315d36;border:1px solid #d3e8d5;font-size:13px;line-height:1.55}
+.status[data-error="true"]{background:#fff3f1;color:#a13129;border-color:#f2d1cb}
+.grid{display:grid;grid-template-columns:330px minmax(0,1fr);gap:19px;align-items:start}
+video{background:#171917;display:block;width:100%;max-height:430px;object-fit:contain;border-radius:11px;aspect-ratio:9/16}
+.row{display:flex;gap:12px;flex-wrap:wrap;align-items:center;margin-top:13px}
+#publishId{overflow-wrap:anywhere}.panel-footer{font-size:12px;color:#67726b;margin-top:8px}
+@media(max-width:700px){header{padding:16px}main{margin:16px auto}.grid{grid-template-columns:1fr}video{max-height:260px;aspect-ratio:16/9}}
+</style></head>
+<body><header><strong>RA · REDE ACHADOS BR Publisher</strong><a href="/">← Voltar ao Publisher principal</a></header>
+<main><span class="badge">AMBIENTE DE TESTE · NÃO ALTERA A CONTA PRINCIPAL</span>
+<h1>Teste de postagem direta no TikTok</h1>
+<p class="subtle">Este espaço usa exclusivamente as credenciais do Sandbox. A publicação ficará privada (“Somente eu”). Não utiliza nem substitui o acesso do TikTok da loja.</p>
+<section class="card"><span class="label">ETAPA 01</span><h2>Conectar a conta privada de teste</h2>
+<div id="account" class="status">Verificando a conexão do Sandbox...</div>
+<div class="row"><a class="button secondary" href="/auth/tiktok/sandbox">Conectar conta privada</a><button class="secondary" id="refresh" type="button">Verificar conexão</button></div>
+<p class="panel-footer">Na autorização do TikTok, confira qual conta está selecionada. Use somente a conta privada cadastrada como usuária-alvo no Sandbox.</p>
+</section>
+<section class="card"><span class="label">ETAPA 02</span><h2>Revisar vídeo e privacidade</h2>
+<div class="grid"><div><video id="preview" controls playsinline></video><p id="filename" class="subtle">Nenhum arquivo selecionado</p></div>
+<div>
+<label for="file">Selecione o vídeo de produto (MP4, até 300 MB)</label><input id="file" type="file" accept="video/mp4,.mp4">
+<label for="caption">Legenda da publicação</label><textarea id="caption" maxlength="2200" placeholder="Escreva a legenda do vídeo e revise antes de enviar."></textarea>
+<label for="privacy">Privacidade</label><input id="privacy" type="text" value="Somente eu (privado)" readonly>
+<label class="check"><input id="ai" type="checkbox"> O vídeo foi gerado por IA</label>
+<label class="check"><input id="confirm" type="checkbox"> Revisei o vídeo e a legenda, confirmo que uso a conta privada de teste e autorizo o envio ao TikTok.</label>
+<button id="send" type="button" disabled>Publicar vídeo privado de teste</button>
+<p class="panel-footer">O TikTok processará a publicação. A conclusão não é garantida até a consulta do resultado.</p>
+</div></div></section>
+<section class="card"><span class="label">ETAPA 03</span><h2>Conferir o resultado</h2>
+<div id="status" class="status">Conecte a conta privada, selecione o vídeo e confirme o teste.</div>
+<p id="publishId" class="subtle"></p><div class="row"><button id="check" class="secondary" type="button" disabled>Consultar resultado no TikTok</button></div>
+</section></main>
+<script>
+(()=>{
+const $=id=>document.getElementById(id);
+let account=null,publishId='',previewUrl='';
+async function request(url,options={}){
+ const r=await fetch(url,{credentials:'same-origin',...options});
+ const body=await r.json().catch(()=>({}));
+ if(!r.ok)throw Error(body.error||'Erro HTTP '+r.status);
+ return body;
+}
+function status(text,error=false){$('status').textContent=text;$('status').dataset.error=String(error)}
+function readiness(){
+ const f=$('file').files[0];
+ $('send').disabled=!(account?.connected&&account.privacyOptions?.includes('SELF_ONLY')&&f&&
+  $('caption').value.trim()&&$('confirm').checked);
+}
+async function loadAccount(){
+ $('account').textContent='Consultando conexão de teste...';
+ try{
+  account=await request('/api/tiktok/sandbox/account');
+  if(account.connected){
+   $('account').textContent='Conta conectada no Sandbox: '+account.username+
+    '. Privacidade permitida: '+(account.privacyOptions?.includes('SELF_ONLY')?'Somente eu':'privacidade privada indisponível');
+   $('account').dataset.error=String(!account.privacyOptions?.includes('SELF_ONLY'));
+  }else{
+   $('account').textContent='Nenhuma conta privada conectada ao Sandbox. Clique em “Conectar conta privada”.';
+  }
+ }catch(e){account={connected:false};$('account').textContent=e.message;$('account').dataset.error='true';}
+ readiness();
+}
+$('refresh').addEventListener('click',loadAccount);
+$('file').addEventListener('change',()=>{
+ const f=$('file').files[0];
+ if(previewUrl){URL.revokeObjectURL(previewUrl);previewUrl=''}
+ if(f){previewUrl=URL.createObjectURL(f);$('preview').src=previewUrl}
+ else $('preview').removeAttribute('src');
+ $('filename').textContent=f?f.name+' · '+(f.size/1024/1024).toFixed(1)+' MB':'Nenhum arquivo selecionado';
+ readiness();
+});
+$('caption').addEventListener('input',readiness);
+$('confirm').addEventListener('change',readiness);
+$('send').addEventListener('click',async()=>{
+ readiness();if($('send').disabled)return;
+ if(!confirm('Confirma a publicação PRIVADA na conta TikTok conectada como '+account.username+'?'))return;
+ $('send').disabled=true;status('Enviando vídeo ao TikTok. Não feche a página.');
+ const file=$('file').files[0],form=new FormData();
+ form.append('video',file);form.append('caption',$('caption').value.trim());
+ form.append('privacy','SELF_ONLY');form.append('confirm','yes');
+ form.append('ai',$('ai').checked?'yes':'no');
+ try{
+  const result=await request('/api/tiktok/sandbox/publish',{method:'POST',body:form});
+  publishId=result.publishId;
+  $('publishId').textContent='ID do envio: '+publishId;
+  $('check').disabled=false;
+  status('Vídeo transferido. Consulte o resultado para saber se o TikTok concluiu a postagem.');
+ }catch(e){status('Falha no envio: '+e.message,true)}
+ finally{readiness()}
+});
+$('check').addEventListener('click',async()=>{
+ if(!publishId)return;
+ $('check').disabled=true;
+ try{
+  const d=await request('/api/tiktok/sandbox/status',{method:'POST',
+   headers:{'Content-Type':'application/json'},body:JSON.stringify({publishId})});
+  const state=String(d.status||'UNKNOWN').toUpperCase();
+  if(state==='PUBLISH_COMPLETE')status('✓ TikTok confirmou a postagem privada de teste.');
+  else if(state==='FAILED')status('TikTok recusou a publicação: '+String(d.failReason||'Consulte as permissões.'),true);
+  else status('TikTok informa: '+state+'. O processamento ainda não foi concluído.');
+ }catch(e){status('Erro ao consultar resultado: '+e.message,true)}
+ finally{$('check').disabled=false}
+});
+loadAccount();
+})();
+</script></body></html>
