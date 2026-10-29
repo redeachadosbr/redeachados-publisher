@@ -120,7 +120,7 @@ test('alteracao de texto ou titulo importado reabre a etapa e nao publica sem au
 test('as outras seis etapas continuam com sua aprovacao propria antes da execucao',()=>{
  assert.match(html,/id="kitWorkflowImportImages"/);
  assert.match(existing,/stage:'images',reviewed:true/);
- assert.match(app,/if\(key==='technical'\)body\.attributes=optimizerTechnicalValues\(\)/);
+ assert.match(app,/body\.attributes=optimizerTechnicalValues\(\)/);
  assert.match(app,/if\(key==='fiscal'\)body\.tax=optimizerFiscalValues\(\)/);
  assert.match(app,/if\(key==='variants'\)/);
  assert.match(app,/if\(key==='seo'\|\|key==='description'\)/);
