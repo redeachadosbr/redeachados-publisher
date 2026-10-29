@@ -3558,6 +3558,7 @@ function optimizerWorkflowActivateOnly(view,sourceStage=null){
 const optimizerKitSourceTimers={seo:0,description:0};
 const optimizerKitSourcePending={seo:null,description:null};
 const optimizerKitSourceBusy={seo:false,description:false};
+const optimizerKitSourceErrors={seo:'',description:''};
 function optimizerKitSourceValue(stage){
  const value=String($(stage==='seo'?'#kitTitle':'#kitDescription')?.value||'');
  return stage==='seo'?value.normalize('NFC').replace(/\s+/g,' ').trim():
@@ -3578,11 +3579,15 @@ function optimizerKitSourcePaint(){
   const busy=optimizerKitSourceBusy[stage];
   button.disabled=busy;
   button.textContent=busy?'Salvando conferência…':reviewed?'✓ Etapa conferida · Reabrir':'✓ Registrar etapa concluída';
+  const error=optimizerKitSourceErrors[stage];
   status.textContent=busy?'Validando e salvando no checklist da SKU principal…':
+   error?'⚠ '+error:
    reviewed?'✓ Conferência salva. Conteúdo preparado para a prévia e execução.':
    !value?'Preencha o texto do kit antes de registrar a etapa.':
+   stage==='seo'&&[...value].length<100?
+    'Título com '+[...value].length+' caracteres. Pode conferir; 100–120 é recomendação SEO.':
    'Pendente de conferência. O rascunho não foi publicado na Shopee.';
-  status.dataset.state=reviewed?'success':busy?'info':'pending';
+  status.dataset.state=busy?'info':error?'error':reviewed?'success':'pending';
   const card=$('#optimizerWorkflowCards')?.querySelector('[data-stage="'+stage+'"]');
   if(card){
    card.classList.toggle('optimizer-workflow-reviewed',reviewed);
@@ -3636,6 +3641,7 @@ function optimizerKitSourceChanged(){
   const value=optimizerKitSourceValue(stage);
   if(String(w[field]||'')===value)continue;
   w[field]=value;
+  optimizerKitSourceErrors[stage]='';
   const row=w.stages?.find(x=>x.key===stage);
   if(row){row.reviewed=false;row.reviewedAt=null;row.status='pending';}
   optimizerKitSourcePending[stage]={sku:w.sku,itemId:w.itemId,modelId:w.modelId,
@@ -3656,20 +3662,21 @@ async function optimizerKitSourceConfirm(stage){
  const value=optimizerKitSourceValue(stage);
  const row=w.stages?.find(x=>x.key===stage);
  const reviewed=row?.reviewed===true&&!optimizerKitSourcePending[stage];
- const name=stage==='seo'?'Seo':'Description';
+ optimizerKitSourceErrors[stage]='';
  optimizerKitSourceBusy[stage]=true;optimizerKitSourcePaint();
  try{
   if(!reviewed){
    if(stage==='seo'){
     const length=[...value].length;
-    if(length<100||length>120)
-     throw Error('O título deve ter de 100 a 120 caracteres. Atual: '+length+'.');
+    if(length<10||length>120)
+     throw Error('O título do kit deve ter entre 10 e 120 caracteres. Atual: '+length+'.');
    }else if(!value)throw Error('A descrição do kit está vazia.');
   }
   await optimizerKitSourceFlush(stage);
   if(optimizerWorkflowPlan!==w||optimizerKitSourceValue(stage)!==value)
    throw Error('O anúncio ou texto mudou durante a conferência. Confira novamente.');
   const body={sku:w.sku,itemId:w.itemId,modelId:w.modelId,stage,reviewed:!reviewed,
+   ...(stage==='seo'?{kitPreparedTitle:true}:{}),
    [stage==='seo'?'title':'description']:value};
   const result=await optimizerSaveChecklistReview(body);
   if(optimizerWorkflowPlan!==w||optimizerKitSourceValue(stage)!==value)
@@ -3683,9 +3690,8 @@ async function optimizerKitSourceConfirm(stage){
    '✓ '+(stage==='seo'?'Título SEO':'Descrição')+
    ' conferido e salvo para execução na SKU principal. Nenhuma publicação realizada.','success');
  }catch(error){
+  optimizerKitSourceErrors[stage]=String(error.message||error);
   optimizerWorkflowNotice('Não foi possível registrar a etapa: '+error.message,'error');
-  const status=$('#kitReview'+name+'Status');
-  if(status){status.textContent='⚠ '+error.message;status.dataset.state='error';}
  }finally{
   optimizerKitSourceBusy[stage]=false;
   optimizerKitSourcePaint();
