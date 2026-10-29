@@ -201,6 +201,45 @@ export function initExistingKitOptimization({getContext,api,money,onMainSkuChang
    '. As imagens já confirmadas permanecem armazenadas.','error');return false;}
   finally{busy=false;paint();}
  }
+ async function startKitOptimization(){
+  const state=ctx(),kit=state.prepared?.kit;
+  if(!kit)return notice('Primeiro selecione um kit inteligente.','error');
+  if(!state.kitSaved){
+   notice('Salve o rascunho do kit antes da otimização.','error');
+   $('#kitSaveDraft')?.scrollIntoView({behavior:'smooth',block:'center'});return;
+  }
+  let main=$('#kitOptimizeMainSku').value;
+  if(!main){
+   main=$('#kitPrincipalSku')?.value||kit.components?.[0]?.sku||'';
+   if(main&&[...$('#kitOptimizeMainSku').options].some(o=>o.value===main))
+    $('#kitOptimizeMainSku').value=main;
+  }
+  if(!main)return notice('Selecione o SKU Principal do kit.','error');
+  if(!target||target.kitSku!==kitSku()){
+   if(!await lookup({automatic:true}))return;
+  }
+  if(!target.prepared){
+   if(!target.autoVerified&&!$('#kitOptimizeConfirm').checked){
+    $('#kitOptimizeAdvanced').open=true;
+    return notice('Confirme que o Item ID escolhido é o anúncio do kit completo.','warning');
+   }
+   if(!await prepare())return;
+  }
+  const btn=$('#kitOptimizeStart');
+  btn.disabled=true;btn.textContent='Preparando etapas...';
+  try{
+   const imported=await transferImages({automatic:true,optional:true});
+   if(imported)notice('9 imagens disponíveis para revisão. Abrindo as etapas do kit...','success');
+   else notice('Abrindo as etapas. Confira as imagens no passo 01.','info');
+   open();
+  }finally{btn.disabled=false;btn.textContent='↻ Continuar otimização do kit';}
+ }
+ globalThis.RAKitOptimizerReady=data=>{
+  if(data?.kitOptimization?.kitSku!==kitSku())return;
+  notice('Fluxo do kit carregado: siga as etapas 01 a 08 e depois Prévia e execução.','success');
+  $('#kitOptimizeStart').textContent='↻ Continuar otimização do kit';
+  $('#kitOptimizerWorkspace')?.scrollIntoView({behavior:'smooth',block:'start'});
+ };
  function open(){
   if(!target?.prepared||target.kitSku!==kitSku())
    return notice('Prepare o vínculo do anúncio antes de abrir a revisão.','error');
@@ -266,6 +305,7 @@ export function initExistingKitOptimization({getContext,api,money,onMainSkuChang
  });
  $('#kitOptimizeDiscountRefresh')?.addEventListener('click',()=>void resolveDiscountIds());
  $('#kitOptimizeLookup')?.addEventListener('click',()=>void lookup());
+ $('#kitOptimizeStart')?.addEventListener('click',()=>void startKitOptimization());
  $('#kitOptimizePrepare')?.addEventListener('click',()=>void prepare());
  $('#kitOptimizeImages')?.addEventListener('click',()=>void transferImages());
  $('#kitOptimizeOpen')?.addEventListener('click',open);
