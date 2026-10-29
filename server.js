@@ -1756,6 +1756,10 @@ async function uploadDraftFile(file){
 }
 
 async function publishFile(file, caption, options={}){
+  // Consentimento explícito do criador é obrigatório para postagem direta.
+  if(options.explicitConsent!==true)throw Error('Confirme que revisou o vídeo e autoriza a postagem direta.');
+  if(!options.privacy)throw Error('Selecione quem pode assistir ao vídeo no TikTok.');
+  if(!options.brandOrganic&&!options.brandContent)throw Error('Para vídeos de produtos, marque a divulgação comercial correspondente.');
   const creator=await creatorInfo();
   const privacy=options.privacy||'SELF_ONLY';
   const allowed=creator.privacy_level_options||[];
@@ -1766,7 +1770,7 @@ async function publishFile(file, caption, options={}){
     post_info:{
       title:String(caption||'').slice(0,2200),privacy_level:privacy,
       disable_duet:Boolean(options.disableDuet),disable_comment:Boolean(options.disableComment),disable_stitch:Boolean(options.disableStitch),
-      video_cover_timestamp_ms:1000,brand_organic_toggle:true,is_aigc:Boolean(options.isAigc)
+      video_cover_timestamp_ms:1000,brand_organic_toggle:Boolean(options.brandOrganic),brand_content_toggle:Boolean(options.brandContent),is_aigc:Boolean(options.isAigc)
     },
     source_info:{source:'FILE_UPLOAD',video_size:size,chunk_size:chunkSize,total_chunk_count:totalChunks}
   };
@@ -1819,6 +1823,30 @@ app.post('/api/upload-draft', mustLogin, upload.single('video'), async(req,res)=
   }catch(e){ if(req.file) removeFile(req.file.path); res.status(400).json({error:e.message}); }
 });
 
+app.post('/api/publish-remote',mustLogin,async(req,res)=>{
+  let remoteFile=null;
+  try{
+    const id=String(req.body.remoteVideoId||'').trim();
+    if(!id||!/^[A-Za-z0-9_-]{8,200}$/.test(id))return res.status(400).json({error:'Vídeo WeDrop inválido.'});
+    if(req.body.explicitConsent!==true)return res.status(400).json({error:'Confirme a autorização de postagem antes de enviar.'});
+    const privacy=String(req.body.privacy||'').trim();
+    if(!privacy)return res.status(400).json({error:'Escolha a privacidade da publicação.'});
+    const meta=req.body.meta||{},s=loadStore(),settings=effectiveSettings(s.settings||{});
+    const caption=String(req.body.caption||buildCaption(meta,settings)).slice(0,2200);
+    remoteFile=await downloadDriveToTemp(id,String(req.body.filename||meta.product||'video-wedrop.mp4'));
+    const publishId=await publishFile(remoteFile,caption,{
+      privacy,duration:Number(req.body.duration||0),
+      disableComment:Boolean(req.body.disableComment),disableDuet:Boolean(req.body.disableDuet),
+      disableStitch:Boolean(req.body.disableStitch),isAigc:Boolean(req.body.isAigc),
+      brandOrganic:Boolean(req.body.brandOrganic),brandContent:Boolean(req.body.brandContent),
+      explicitConsent:true
+    });
+    s.history.unshift({id:crypto.randomUUID(),publishId,filename:remoteFile.originalname,product:meta.product||'',shopeeUrl:meta.shopeeUrl||'',caption,status:'PROCESSING_UPLOAD',mode:'direct-remote',createdAt:now()});
+    s.history=s.history.slice(0,200);saveStore(s);
+    res.json({ok:true,publishId,status:'PROCESSING_UPLOAD',message:'Vídeo entregue para processamento do TikTok; confirme o status da publicação.'});
+  }catch(e){res.status(400).json({error:e.message});}
+  finally{if(remoteFile?.path)removeFile(remoteFile.path);}
+});
 app.post('/api/publish', mustLogin, upload.single('video'), async(req,res)=>{
   try{
     if(!req.file) return res.status(400).json({error:'Selecione um vídeo.'});
@@ -1826,10 +1854,13 @@ app.post('/api/publish', mustLogin, upload.single('video'), async(req,res)=>{
     const manualCaption=String(req.body.caption||'').trim();
     const caption=(manualCaption||buildCaption(meta,settings)).slice(0,2200);
     const publishId=await publishFile(req.file,caption,{
-      privacy:req.body.privacy||settings.defaultPrivacy||'SELF_ONLY',duration:Number(req.body.duration||0),
-      disableComment:req.body.disableComment==='true',disableDuet:req.body.disableDuet==='true',disableStitch:req.body.disableStitch==='true',isAigc:req.body.isAigc==='true'
+      privacy:String(req.body.privacy||''),duration:Number(req.body.duration||0),
+      disableComment:req.body.disableComment==='true',disableDuet:req.body.disableDuet==='true',
+      disableStitch:req.body.disableStitch==='true',isAigc:req.body.isAigc==='true',
+      brandOrganic:req.body.brandOrganic==='true',brandContent:req.body.brandContent==='true',
+      explicitConsent:req.body.explicitConsent==='true'
     });
-    s.history.unshift({id:crypto.randomUUID(),publishId,filename:req.file.originalname,product:meta.product||'',shopeeUrl:meta.shopeeUrl||'',caption,status:'PROCESSING_UPLOAD',createdAt:now()});
+    s.history.unshift({id:crypto.randomUUID(),publishId,filename:req.file.originalname,product:meta.product||'',shopeeUrl:meta.shopeeUrl||'',caption,status:'PROCESSING_UPLOAD',mode:'direct',createdAt:now()});
     s.history=s.history.slice(0,200); saveStore(s); removeFile(req.file.path);
     res.json({ok:true,publishId,caption});
   }catch(e){ if(req.file) removeFile(req.file.path); res.status(400).json({error:e.message}); }
