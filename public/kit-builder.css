@@ -2461,3 +2461,10 @@
 /* Somente SKU principal/Item ID unico no anuncio Shopee */
 #tab-kits #kitDetail .kit-existing-discount-grid{grid-template-columns:minmax(0,1fr) minmax(0,1.45fr)}
 #tab-kits #kitDetail #kitOptimizeListingSku[readonly]{background:#eef4fb;color:#395d7d;cursor:default}
+
+/* Sequencia SEO: gerador -> resultados importados -> opcoes avancadas.
+   O editor, os dados por SKU e o importador conservam seus IDs e eventos. */
+#tab-kits #kitDetail .kit-chatgpt-strip + .kit-seo-options{margin:7px 0 8px;padding:11px 12px}
+#tab-kits #kitDetail .kit-chatgpt-strip ~ .kit-content-details{margin:7px 0 11px;padding:7px 10px}
+#tab-kits #kitDetail .kit-content-details>summary{display:list-item;line-height:1.45}
+#tab-kits #kitDetail .kit-seo-options .kit-seo-heading{margin-bottom:8px}

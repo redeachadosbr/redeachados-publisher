@@ -34,3 +34,24 @@ test('colagem de prompt no campo de resposta mostra erro orientado ao usuário',
   'TÍTULO 1: Kit exemplo um\nTÍTULO 2: Kit exemplo dois\nTÍTULO 3: Kit exemplo três\nDESCRIÇÃO: ✨ o prompt não é anúncio, e não deve importar.';
  assert.throws(()=>parseKitSeoResponse(input),/ORIENTAÇÃO enviada/);
 });
+
+test('blocos SEO ficam imediatamente após o gerador de títulos e descrição do kit',async()=>{
+ const {readFileSync}=await import('node:fs');
+ const html=readFileSync(new URL('../public/index.html',import.meta.url),'utf8');
+ const names=[
+  'Gerar 3 títulos SEO e descrição do kit no ChatGPT Plus',
+  'id="kitSeoOptions"',
+  'id="kitContentDetails"',
+  'id="kitMissingFacts"',
+  'class="kit-copy-assistant"'
+ ];
+ const locations=names.map(name=>html.indexOf(name));
+ assert(locations.every(x=>x>=0));
+ assert(locations.every((x,i)=>i===0||locations[i-1]<x),
+  'gerador, resultados, opções avançadas e próximos blocos devem estar na ordem correta');
+ for(const id of ['kitSeoOptions','kitSeoOptionList','kitSaveSeoContent',
+  'kitContentDetails','kitPlusTextResult','kitImportText','kitContentPrompt'])
+  assert.equal(html.split('id="'+id+'"').length-1,1,'ID único: '+id);
+ const between=html.slice(locations[0],locations[1]);
+ assert.doesNotMatch(between,/id="kitMissingFacts"|class="kit-copy-assistant"/);
+});

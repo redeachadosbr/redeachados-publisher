@@ -31,7 +31,7 @@
 <link rel="stylesheet" href="/ads-premium.css?v=2.4.0-seo-ads-location">
 <link rel="stylesheet" href="/sidebar-collapse.css?v=1.0.0">
 <link rel="stylesheet" href="/optimizer-image-studio.css?v=1.0.2">
-<link rel="stylesheet" href="/kit-builder.css?v=3.8.2-main-sku-only">
+<link rel="stylesheet" href="/kit-builder.css?v=3.8.3-seo-flow-compact">
 <link rel="stylesheet" href="/optimizer-technical-studio.css?v=1.0.1-review-feedback">
 <style>
 /* Autorização >25%: campo compacto, sem o input global width:100%.
@@ -1127,6 +1127,23 @@
    <label><span class="kit-field-title"><span class="kit-heading-icon kit-icon-amber">▤</span><span><strong>Descrição do anúncio</strong><small>Produtos incluídos e quantidades exatas por SKU.</small></span></span><textarea id="kitDescription" rows="6" maxlength="2000"></textarea><div class="kit-field-footer"><button type="button" id="kitCopyDescription" class="kit-secondary">▤ Copiar descrição</button><small id="kitDescriptionCount">0/2000</small></div></label>
   </div>
   <section class="kit-chatgpt-strip"><span class="kit-openai-symbol" aria-hidden="true">◎</span><div><strong>Gerar 3 títulos SEO e descrição do kit no ChatGPT Plus</strong><p>Reúne informações dos produtos WeDrop, solicita dados ausentes e prepara um anúncio único.</p></div><button id="kitPlusText" type="button" class="kit-primary">Preparar com ChatGPT Plus →</button></section>
+  <section id="kitSeoOptions" class="kit-seo-options" hidden aria-label="Três títulos SEO classificados">
+   <div class="kit-seo-heading"><strong>3 títulos SEO importados</strong><small>Escolha o que será usado no anúncio. A nota é apenas uma estimativa textual.</small></div>
+   <div id="kitSeoWarnings" class="kit-seo-warning" hidden></div>
+   <div id="kitSeoOptionList" class="kit-seo-list"></div>
+   <div class="kit-seo-review-actions"><span id="kitSeoSaveStatus">Título selecionado e descrição preenchida no editor.</span>
+    <button id="kitSaveSeoContent" class="kit-primary" type="button">Salvar textos no rascunho</button>
+   </div>
+  </section>
+  <details class="kit-plus-workflow kit-content-details" id="kitContentDetails"><summary>Opções avançadas — colar texto ou conferir orientação</summary><div class="kit-content-details-body">
+   <label for="kitPlusTextResult">Somente a RESPOSTA do ChatGPT (3 títulos + descrição)</label>
+   <textarea id="kitPlusTextResult" rows="5" placeholder="TÍTULO 1: ...&#10;TÍTULO 2: ...&#10;TÍTULO 3: ...&#10;DESCRIÇÃO: ✨ ..."></textarea>
+   <button id="kitImportText" type="button" class="kit-secondary">Importar texto colado manualmente</button>
+   <details class="kit-content-prompt-details"><summary>Ver orientação enviada ao ChatGPT (não é a resposta)</summary>
+    <textarea id="kitContentPrompt" rows="3" readonly placeholder="A orientação com as SKUs corretas aparece aqui. Não cole este texto no campo de resposta."></textarea>
+    <button id="kitOpenContentPrompt" type="button" class="kit-secondary">Abrir ChatGPT com orientação pronta</button>
+   </details>
+  </div></details>
   <section id="kitMissingFacts" class="kit-missing-facts kit-sku-evidence-panel" aria-labelledby="kitMissingFactsTitle">
    <div class="kit-missing-title"><strong id="kitMissingFactsTitle">Informações por SKU · descrição, medidas e print</strong><span>Preencha cada produto separadamente antes de gerar títulos, descrição e as 9 imagens do kit.</span></div>
    <div id="kitMissingFactFields" class="kit-missing-grid"></div>
@@ -1148,23 +1165,6 @@
     <span id="kitImportState" class="kit-import-state" data-state="info">Aguardando texto do ChatGPT</span>
    </div>
    <p id="kitContentFeedback" class="kit-content-feedback" role="status" aria-live="polite">Traga os 3 títulos e a descrição completos de uma única vez. Não precisa copiar os campos separadamente.</p>
-  </section>
-  <details class="kit-plus-workflow kit-content-details" id="kitContentDetails"><summary>Opções avançadas — colar texto ou conferir orientação</summary><div class="kit-content-details-body">
-   <label for="kitPlusTextResult">Somente a RESPOSTA do ChatGPT (3 títulos + descrição)</label>
-   <textarea id="kitPlusTextResult" rows="5" placeholder="TÍTULO 1: ...&#10;TÍTULO 2: ...&#10;TÍTULO 3: ...&#10;DESCRIÇÃO: ✨ ..."></textarea>
-   <button id="kitImportText" type="button" class="kit-secondary">Importar texto colado manualmente</button>
-   <details class="kit-content-prompt-details"><summary>Ver orientação enviada ao ChatGPT (não é a resposta)</summary>
-    <textarea id="kitContentPrompt" rows="3" readonly placeholder="A orientação com as SKUs corretas aparece aqui. Não cole este texto no campo de resposta."></textarea>
-    <button id="kitOpenContentPrompt" type="button" class="kit-secondary">Abrir ChatGPT com orientação pronta</button>
-   </details>
-  </div></details>
-  <section id="kitSeoOptions" class="kit-seo-options" hidden aria-label="Três títulos SEO classificados">
-   <div class="kit-seo-heading"><strong>3 títulos SEO importados</strong><small>Escolha o que será usado no anúncio. A nota é apenas uma estimativa textual.</small></div>
-   <div id="kitSeoWarnings" class="kit-seo-warning" hidden></div>
-   <div id="kitSeoOptionList" class="kit-seo-list"></div>
-   <div class="kit-seo-review-actions"><span id="kitSeoSaveStatus">Título selecionado e descrição preenchida no editor.</span>
-    <button id="kitSaveSeoContent" class="kit-primary" type="button">Salvar textos no rascunho</button>
-   </div>
   </section>
   <div class="kit-bar kit-section-heading kit-images-heading">
    <span class="kit-heading-icon kit-icon-blue" aria-hidden="true">▧</span>
