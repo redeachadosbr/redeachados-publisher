@@ -1,6 +1,6 @@
 // Interface de otimização de um anúncio de kit já existente. Preparação nunca publica.
 const $=selector=>document.querySelector(selector);
-export function initExistingKitOptimization({getContext,api,money}){
+export function initExistingKitOptimization({getContext,api,money,onMainSkuChange}){
  let target=null,busy=false,discountToken=null;
  const ctx=()=>getContext(),kitSku=()=>ctx().prepared?.kit?.kitSku||'';
  function notice(message,state='info'){
@@ -190,7 +190,7 @@ export function initExistingKitOptimization({getContext,api,money}){
  $('#kitOptimizeImages')?.addEventListener('click',()=>void transferImages());
  $('#kitOptimizeOpen')?.addEventListener('click',open);
  $('#kitOptimizeConfirm')?.addEventListener('change',paint);
- $('#kitOptimizeMainSku')?.addEventListener('change',()=>{if(target)target.prepared=false;paint();});
+ $('#kitOptimizeMainSku')?.addEventListener('change',()=>{if(target)target.prepared=false;onMainSkuChange?.($('#kitOptimizeMainSku').value);paint();});
  $('#kitOptimizeListingSku')?.addEventListener('input',()=>{
   target=null;discountToken=null;$('#kitOptimizeDiscountBox').hidden=true;
   $('#kitOptimizeConfirm').checked=false;

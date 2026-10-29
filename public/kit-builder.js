@@ -52,7 +52,8 @@ function setKitMode(next,{scroll=false}={}){
 let kitStockReady=false,kitStockLastCheck=null;
 const kitExistingOptimizer=initExistingKitOptimization({
  getContext:()=>({prepared,kitSaved,images,kitPhotoStore}),
- api,money
+ api,money,
+ onMainSkuChange:sku=>{const top=$('#kitPrincipalSku');if(top&&[...top.options].some(x=>x.value===sku))top.value=sku;}
 });
 let kitUnifiedState=null;
 let kitPublishToken=null,kitDiscountToken=null,kitSaved=false,kitPublishBusy=false,kitReadiness=null,kitShopeePhotoSlots=new Map(),kitItemId=null;
@@ -102,6 +103,7 @@ function scheduleKitMarginReprice(){
  }
  marginUpdatePending=true;
  $('#kitSaveDraft').disabled=true;
+ const priceState=$('#kitPriceCost');if(priceState){priceState.dataset.state='warning';priceState.textContent='Recalculando custo, preço bruto e margem. Não publique o valor anterior.';}
  status('Margem ajustada para '+$('#kitMargin').value+'%. Atualizando os preços e o lucro dos kits pela calculadora Shopee...','info');
  marginTimer=setTimeout(()=>void repriceKitMargin(marginRevision),420);
 }
@@ -127,6 +129,7 @@ function refreshKitEditorOverview(kit){
 }
 function refreshKitPrices(kit){
  refreshKitEditorOverview(kit);
+ renderKitPricingSummary(kit);
  const root=$('#kitNumbers');root.replaceChildren();
  for(const [label,value] of [
   ['Custos dos produtos',money(kit.componentCost)],
@@ -140,6 +143,32 @@ function refreshKitPrices(kit){
  ]){
   const card=elt('div');card.append(elt('span','',label),elt('b','',value));root.append(card);
  }
+}
+function renderKitPricingSummary(kit=prepared?.kit){
+ const select=$('#kitPrincipalSku'),values=$('#kitPriceKpis'),state=$('#kitPriceCost');
+ if(!select||!values||!state)return;
+ const parts=Array.isArray(kit?.components)?kit.components:[];
+ const former=select.value;
+ select.replaceChildren(new Option(parts.length?'Escolha o SKU Principal':'Selecione um kit',''));
+ for(const p of parts)select.append(new Option(p.sku+' · '+p.name,p.sku));
+ const main=[former,prepared?.optimization?.mainSku,$('#kitOptimizeMainSku')?.value].find(x=>x&&parts.some(p=>p.sku===x));
+ select.value=main||'';select.disabled=!parts.length;
+ values.hidden=!kit?.quote||!parts.length;
+ if(!kit?.quote||!parts.length){
+  state.textContent='Selecione ou abra um kit para calcular o preço bruto com todos os SKUs.';state.dataset.state='info';return;
+ }
+ $('#kitPriceGross').textContent=money(kit.quote.grossPrice);
+ $('#kitPriceDiscount').textContent=pct(kit.quote.discountPct);
+ $('#kitPriceVisible').textContent=money(kit.quote.marketplacePrice);
+ $('#kitPriceCoupon').textContent='Com cupom de '+pct(kit.quote.couponPct)+': '+money(kit.quote.afterCoupon);
+ $('#kitPriceProfit').textContent=money(kit.quote.netProfit);
+ $('#kitPriceMargin').textContent=pct(kit.quote.netMarginPct)+' de margem líquida';
+ state.textContent='Custo WeDrop ('+parts.length+' SKUs): '+money(kit.componentCost)+
+  ' · Embalagem '+money(kit.packing)+' · Frete '+money(kit.shipping)+' · Custo total '+money(kit.kitCost)+
+  (main?' · SKU Principal '+main:' · Escolha o SKU Principal.');
+ state.dataset.state=kitDraftNeedsRefresh||marginUpdatePending?'warning':'success';
+ if(kitDraftNeedsRefresh)state.textContent+=' Cotação histórica: atualize a WeDrop antes de enviar.';
+ else if(marginUpdatePending)state.textContent+=' Recalculando: não publique o valor anterior.';
 }
 async function repriceKitMargin(revision){
  try{
@@ -186,7 +215,11 @@ async function repriceKitMargin(revision){
   }
   status('✓ Margem manual '+$('#kitMargin').value+'% aplicada aos kits. Preços, descontos e lucro líquido recalculados com centavos 0/9.','success');
  }catch(error){
-  if(revision===marginRevision)status('Não foi possível recalcular a margem: '+error.message+'. Tente pesquisar novamente; valores antigos não devem ser publicados.','error');
+  if(revision===marginRevision){
+   status('Não foi possível recalcular a margem: '+error.message+'. Tente pesquisar novamente; valores antigos não devem ser publicados.','error');
+   const el=$('#kitPriceCost');if(el){el.dataset.state='error';el.textContent='Falha no recálculo: '+error.message+'. Não utilize o preço anterior.';}
+   $('#kitPriceKpis').hidden=true;
+  }
  }finally{
   if(revision===marginRevision){
    marginUpdatePending=false;
@@ -490,6 +523,7 @@ function resetKitPublication({saved=false,publication=null}={}){
  const root=$('#kitMainSku');
  root.append(new Option('Selecione o SKU principal',''));
  for(const p of prepared?.kit?.components||[])root.append(new Option(p.sku+' · '+p.name,p.sku));
+ renderKitPricingSummary(prepared?.kit);
  $('#kitLogisticId').replaceChildren(new Option('Consultar opções da Shopee',''));
  kitLogisticsKeeper.reset();
  $('#kitPublishLinks').replaceChildren();
@@ -1562,6 +1596,7 @@ async function search(){
  if(marginTimer)clearTimeout(marginTimer);
  marginRevision++;marginUpdatePending=false;$('#kitSaveDraft').disabled=false;
  const btn=$('#kitSuggest');btn.disabled=true;prepared=null;kitDraftNeedsRefresh=false;
+ renderKitPricingSummary(null);
  kitCloseInlineEditor();
  try{
   const idea=String($('#kitIdea')?.value||'').trim(),size=Number($('#kitSize').value);
@@ -1599,6 +1634,7 @@ function renderKit({scroll=true,displayTitle=''}={}){
  $('#kitEditingSkuCode').textContent='Código do kit: '+kit.kitSku+
   ' · '+kit.components.length+' produtos';
  refreshKitEditorOverview(kit);
+ renderKitPricingSummary(kit);
  $('#kitManualComposition').replaceChildren(kitManualControls(kit,{editor:true}));
  const items=$('#kitComponents');items.replaceChildren();
  for(const p of kit.components){
@@ -2780,6 +2816,16 @@ function exportPack(){
  downloadData(url,kit.kitSku+'-ficha-prompts.txt');
  setTimeout(()=>URL.revokeObjectURL(url),60000);
 }
+$('#kitPrincipalSku')?.addEventListener('change',()=>{
+ const main=$('#kitPrincipalSku').value;
+ if(!prepared?.kit?.components?.some(p=>p.sku===main))return;
+ const lower=$('#kitOptimizeMainSku');
+ if(lower&&lower.value!==main){lower.value=main;lower.dispatchEvent(new Event('change',{bubbles:true}));}
+ const legacy=$('#kitMainSku');if(legacy&&[...legacy.options].some(x=>x.value===main))legacy.value=main;
+ renderKitPricingSummary(prepared.kit);
+ scheduleKitMarginReprice();
+});
+renderKitPricingSummary(null);
 // Mesmo mecanismo da barra de Otimização: arraste, toque ou use as setas.
 $('#kitMargin')?.addEventListener('input',()=>setKitMargin($('#kitMargin').value,{recalculate:true}));
 for(const [selector,step] of [['#kitMarginPlus',1],['#kitMarginMinus',-1]]){
