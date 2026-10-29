@@ -44,7 +44,7 @@ export function initExistingKitOptimization({getContext,api,money,onMainSkuChang
    $('#kitOptimizeKitItemId').value=data.kitItemId||target?.itemId||'';
    const primary=Array.isArray(data.primaryItems)?data.primaryItems:[];
    $('#kitOptimizePrimaryItemId').value=primary.length===1?String(primary[0].itemId):
-    primary.length>1?'Vários anúncios — conferir':'Não encontrado';
+    primary.length>1?'Vários anúncios — conferir':'Não confirmado';
    const campaigns=Array.isArray(data.campaigns)?data.campaigns:[];
    select.replaceChildren(new Option(campaigns.length?'Selecione a campanha':'Nenhuma campanha confirmada',''));
    for(const c of campaigns){
@@ -56,6 +56,7 @@ export function initExistingKitOptimization({getContext,api,money,onMainSkuChang
    if(data.complete===true&&suggested&&[...select.options].some(o=>o.value===suggested))
     select.value=suggested;
    msg.textContent=(!data.kitItemId?'Vincule o anúncio do KIT antes de aplicar desconto. ':'')+
+    (!primary.length?' SKU Principal sem Item ID confirmado na busca rápida. ':'')+
     (campaigns.length?'Shopee confirmou '+campaigns.length+' campanha(s). '+
      (select.value?'ID '+select.value+' sugerido — confirme na prévia.':'Selecione a campanha correta.'):
      'Nenhuma campanha ativa ou programada confirmada.')+

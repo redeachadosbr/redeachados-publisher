@@ -499,7 +499,8 @@ app.post('/api/shopee/kits/publish/status',mustLogin,requireWeDropAdmin,async(re
    res.json({ok:true,kitSku:code,mainSku,kitItemId:kitItemId?String(kitItemId):null,
     primaryItems:primaryCandidates.map(x=>({sku:mainSku,itemId:String(x.itemId),
       modelId:String(x.modelId??'0'),status:String(x.status)})).slice(0,10),
-    primaryLookupComplete:live.complete===true||live.verified===true,
+    primaryLookupComplete:primaryCandidates.length>0,
+    primaryLookupWarnings:(live.warnings||[]).slice(0,2),
     ...scan});
   }catch(e){res.status(409).json({ok:false,error:String(e.message||e).slice(0,360),
    marketplaceUpdated:false});}
