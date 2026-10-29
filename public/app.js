@@ -4797,7 +4797,7 @@ function optimizerModelMarketApprovalPaint(plan=optimizerExecPlan){
 function optimizerDiscountReviewedForExecution(plan){
  // Kit: otimizar primeiro; desconto proprio da etapa 08 exige confirmacao
  // da Shopee e autorizacao separada para a composicao completa.
- if(optimizerKitWorkflowActive())return true;
+ if(typeof optimizerKitWorkflowActive==='function'&&optimizerKitWorkflowActive())return true;
  return !['all','remaining'].includes(plan?.selectedStage)||
   (plan?.modelVariations?
    Boolean(optimizerExecAutoModelToken)&&optimizerModelMarketConsent(plan):
@@ -4937,7 +4937,7 @@ async function optimizerExecutionPrepare({preserveStartError=false}={}){
        campaignId:String($('#optimizerExecDiscountCampaign')?.value||
         $('#optimizerFinalCampaignId')?.value||$('#discountPromotionId')?.value||
         optimizerDiscountFinalPreviewData?.preview?.discountId||'').trim(),
-       ...($('#optimizerExecutionScope').value==='all'&&!optimizerKitWorkflowActive()&&optimizerDiscountApprovalReady()?
+       ...($('#optimizerExecutionScope').value==='all'&&optimizerDiscountApprovalReady()&&!(typeof optimizerKitWorkflowActive==='function'&&optimizerKitWorkflowActive())?
         {discountApprovalToken:optimizerDiscountFinalPreviewData?.approvalToken,
         allowOver25:optimizerMarketExceptionConsent(optimizerDiscountFinalQuote)}:{})}),
      signal:AbortSignal.any([controller.signal,AbortSignal.timeout(75000)])
@@ -5148,7 +5148,7 @@ async function optimizerExecuteApproved(remainingOnly=false){
        planId:p.planId,updatedAt:p.updatedAt,stage:p.selectedStage||'all',
        confirmation:'EXECUTAR '+p.sku,acceptPartialExecution:true,
        ...(remainingOnly?{remainingOnly:true}:{}),
-       ...(['all','remaining'].includes(p.selectedStage)&&!optimizerKitWorkflowActive()?{discountApprovalToken:p.modelVariations?
+       ...(['all','remaining'].includes(p.selectedStage)&&!(typeof optimizerKitWorkflowActive==='function'&&optimizerKitWorkflowActive())?{discountApprovalToken:p.modelVariations?
         optimizerExecAutoModelToken:optimizerDiscountFinalPreviewData?.approvalToken,
         allowPriceChange:p.modelVariations?Boolean(
          optimizerExecAutoModelPreview?.needsBasePriceUpdate||
