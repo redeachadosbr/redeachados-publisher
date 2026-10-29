@@ -492,7 +492,7 @@ app.post('/api/shopee/kits/publish/status',mustLogin,requireWeDropAdmin,async(re
    const primaryCandidates=(live.matches||[]).filter(x=>
     String(x.sku||'')===mainSku&&
     ['NORMAL','UNLIST'].includes(String(x.status||'').toUpperCase())&&
-    /^[1-9]\\d{0,17}$/.test(String(x.itemId||'')));
+    /^[1-9]\d{0,17}$/.test(String(x.itemId||'')));
    const primaryItemIds=[...new Set(primaryCandidates.map(x=>String(x.itemId)))];
    const scan=await discoverKitDiscountCampaigns({cfg,auth,call:callShopeeShopApi,
     readPages:readDiscountPages,kitItemId,primaryItemIds});
