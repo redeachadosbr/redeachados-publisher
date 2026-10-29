@@ -144,6 +144,12 @@ test('check do titulo curto do kit funciona sem enfraquecer titulo SEO comum',()
  assert.match(server,/String\(linkedKit\.mainSku\)===String\(sku\)/);
  assert.match(server,/validateReview\(req\.body,\{allowShortKitTitle\}\)/);
  assert.match(app,/stage==='seo'\?\{kitPreparedTitle:true\}/);
+ const execution=source('shopeeExecutionPlan.js');
+ assert.match(execution,/allowShortKitTitle:Boolean\(/);
+ assert.match(execution,/state\.kitOptimization\?\.kitSku/);
+ assert.match(execution,/validateContentRules\(\{title\},\{allowShortKitTitle:/);
+ assert.doesNotMatch(execution,/validateContentRules\(\{title\}\);/);
+
  assert.match(app,/optimizerKitSourceErrors\[stage\]=String\(error\.message\|\|error\)/);
  const builder=source('public/kit-builder.js');
  assert.match(builder,/\[\.\.\.\$\('#kitTitle'\)\.value\.normalize\('NFC'\)\.replace/);
