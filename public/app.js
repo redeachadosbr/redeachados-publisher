@@ -2940,14 +2940,14 @@ function optimizerWorkflowRender(data){
   const notes=optimizerMake('div','kit-reuse-summary');
   notes.setAttribute('role','status');
   const checked=key=>visible.find(x=>x.key===key)?.reviewed===true;
-  notes.append(optimizerMake('strong','','Conteúdo aproveitado do kit acima'),
+  notes.append(optimizerMake('strong','','Conteúdo preparado nas seções do kit'),
    optimizerMake('span','',checked('images')?'✓ 9 imagens anexadas ao rascunho':
     '◷ Imagens prontas na galeria: sincronização pendente'),
    optimizerMake('span','',checked('seo')?'✓ Título SEO validado e anexado':
-    '⚠ Título SEO: confira e ajuste no editor superior'),
+    '⚠ Título SEO: confira e ajuste na seção de textos do kit'),
    optimizerMake('span','',checked('description')?'✓ Descrição validada e anexada':
-    '⚠ Descrição: confira no editor superior'),
-   optimizerMake('span','','Preço e desconto vêm da cotação anterior. A Minha Promoção requer autorização separada após a execução.'));
+    '⚠ Descrição: confira na seção de textos do kit'),
+   optimizerMake('span','','Preço e desconto vêm do cálculo da composição. Minha Promoção requer autorização separada após a execução.'));
   cards.append(notes);
  }
  for(const [i,stage] of actionable.entries()){

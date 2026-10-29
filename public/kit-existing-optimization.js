@@ -394,7 +394,7 @@ export function initExistingKitOptimization({getContext,api,money,onMainSkuChang
    imageSyncAttempts.add(identity);
    void transferImages({automatic:true,optional:true}).then(done=>{
     if(!done&&kitSku()===data.kitOptimization.kitSku)
-     progressNote('Galeria ainda não confirmada na SKU principal. Confira 9/9 imagens acima e use Sincronizar imagens.');
+     progressNote('Galeria ainda não confirmada na SKU principal. Confira 9/9 imagens na seção Galeria de imagens e use Sincronizar imagens.');
    });
   }
  };
