@@ -8,6 +8,7 @@ export function initExistingKitOptimization({getContext,api,money,onMainSkuChang
  let target=null,busy=false,discountToken=null,discountLookupSeq=0,discountSearching=false,latestCampaigns=[];
  let lookupSerial=0,lookupController=null;
  let workflowStages=null,technicalProgress=null,discountConfirmed=false;
+ const imageSyncAttempts=new Set();
  function renderJourney(){
   const list=$('#kitOptimizeStageSteps'),track=$('#kitOptimizeProgressTrack');
   if(!list||!track)return;
@@ -182,6 +183,7 @@ export function initExistingKitOptimization({getContext,api,money,onMainSkuChang
   progressNote('Aguardando anuncio de KIT para iniciar as etapas. Nenhuma publicacao iniciada.');
   globalThis.redeKitCloseOptimizerWorkspace?.();
   target=link?.itemId&&link.sku===link.mainSku?{...link,prepared:true}:null;
+  imageSyncAttempts.clear();
   resetDiscountDiscovery();
   const select=$('#kitOptimizeMainSku');
   select.replaceChildren(new Option('Selecione o SKU principal',''));
@@ -331,7 +333,15 @@ export function initExistingKitOptimization({getContext,api,money,onMainSkuChang
     const result=await response.json().catch(()=>({}));
     if(!response.ok)throw Error('Imagem '+slot+': '+(result.error||'não confirmada'));
    }
-   notice('✓ Nove imagens preparadas na revisão. Nenhuma foto foi publicada.','success');
+   const review=await api('/api/shopee/optimizer/workflow/review',{body:{
+    sku:selected.sku,itemId:selected.itemId,modelId:selected.modelId,stage:'images',reviewed:true
+   }});
+   if(!review?.saved||review.stages?.find(x=>x.key==='images')?.reviewed!==true)
+    throw Error('Os nove arquivos foram copiados, mas a revisão não foi confirmada pelo servidor.');
+   if(kitSku()===current&&target?.itemId===selected.itemId)
+    globalThis.RAKitWorkflowSyncReview?.({kitSku:current,itemId:selected.itemId,modelId:selected.modelId,review});
+   notice('✓ Nove imagens da galeria vinculadas e confirmadas no rascunho Shopee, sem publicar.','success');
+   progressNote('✓ 9/9 imagens já prontas sincronizadas com a SKU principal.');
    return true;
   }catch(e){notice('Importação interrompida: '+e.message+
    '. As imagens já confirmadas permanecem armazenadas.','error');return false;}
@@ -368,17 +378,25 @@ export function initExistingKitOptimization({getContext,api,money,onMainSkuChang
   const btn=$('#kitOptimizeStart');
   btn.disabled=true;btn.textContent='Preparando etapas...';
   try{
-   notice('Abrindo as oito etapas do kit. As imagens estao sendo preparadas sem bloquear a tela.','info');
-   globalThis.RAKitLookupPhase?.('Carregando o fluxo de oito etapas no Kit.');
+   notice('Carregando somente vídeo, ficha técnica e dados fiscais.','info');
+   globalThis.RAKitLookupPhase?.('Reaproveitando imagens, título, descrição e preço já preparados no kit.');
    open();
-   if(newlyPrepared)void transferImages({automatic:true,optional:true});
   }finally{btn.disabled=false;btn.textContent='↻ Continuar otimização do kit';}
  }
  globalThis.RAKitOptimizerReady=data=>{
-  if(data?.kitOptimization?.kitSku!==kitSku())return;
-  notice('Fluxo do kit carregado: siga as etapas 01 a 08 e depois Prévia e execução.','success');
+  if(data?.kitOptimization?.kitSku!==kitSku()||String(target?.itemId)!==String(data.itemId))return;
+  notice('Etapas complementares abertas. Imagens e textos serão reaproveitados.','success');
   $('#kitOptimizeStart').textContent='↻ Continuar otimização do kit';
   $('#kitOptimizerWorkspace')?.scrollIntoView({behavior:'smooth',block:'start'});
+  const imageStage=data.stages?.find(x=>x.key==='images');
+  const identity=kitSku()+'|'+data.itemId+'|'+String(data.modelId||'0');
+  if(!imageStage?.reviewed&&!imageSyncAttempts.has(identity)){
+   imageSyncAttempts.add(identity);
+   void transferImages({automatic:true,optional:true}).then(done=>{
+    if(!done&&kitSku()===data.kitOptimization.kitSku)
+     progressNote('Galeria ainda não confirmada na SKU principal. Confira 9/9 imagens acima e use Sincronizar imagens.');
+   });
+  }
  };
  function open(){
   if(!target?.prepared||target.kitSku!==kitSku())
