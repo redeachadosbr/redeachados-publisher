@@ -58,3 +58,32 @@ test('sem pesquisa validada, não altera preço nem promoção',async()=>{
  assert.equal(out.state,'failed');
  assert.deepEqual(calls,[]);
 });
+
+test('modo desconto exclusivo prepara somente a etapa 08, preservando mídia e fiscal',async()=>{
+ const {compileShopeeExecutionPlan,normalizeShopeeExecutionStage}=await import('../shopeeExecutionPlan.js');
+ assert.equal(normalizeShopeeExecutionStage('discount'),'discount');
+ const plan=compileShopeeExecutionPlan({shopId:1,itemId:'101',modelId:'0',sku:'310200',
+ record:{sku:'310200',itemId:'101',selectedModelId:'0',status:'NORMAL',
+ imageCount:9,attributeAudit:{missingMandatory:0,attributes:[]}},
+ review:{stages:{seo:{reviewed:true},description:{reviewed:true},fiscal:{reviewed:true}}},
+ live:{item_id:101,item_name:'Título Shopee',description:'Descrição Shopee',
+ description_type:'normal',item_status:'NORMAL',tax_info:{}},
+ selectedStage:'discount',kitDiscount:approved});
+ assert.equal(plan.canExecute,true);
+ assert.deepEqual(plan.actions,['kit_discount']);
+ assert.deepEqual(plan.proposed,{});
+ assert.equal(plan.images.length,0);
+ assert.equal(plan.video,null);
+ assert.equal(plan.finalFiscal,null);
+ const progress=shopeeExecutionProgress({state:'prepared',plan});
+ assert.equal(progress.steps.length,8);
+ assert.equal(progress.steps[7].status,'waiting');
+ assert.equal(progress.steps[0].status,'skipped');
+ assert.ok(progress.percent<100);
+});
+test('executor aceita desconto isolado quando Shopee já confirmou a promoção',async()=>{
+ const out=await advanceShopeeKitDiscount({state:'running',plan:{selectedStage:'discount',kitDiscount:approved},
+ result:{phase:'kit_discount_ready'}},{kitDiscountRead:async()=>({...base,confirmed:true})});
+ assert.equal(out.state,'verified');
+ assert.equal(out.result.discount.status,'verified');
+});

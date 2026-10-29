@@ -8,7 +8,7 @@ const done=r=>({state:'verified',result:event({...r,phase:'verified',verified:tr
  'Etapa 08/08: preço e Minha Promoção confirmados pela Shopee.','success'),lastError:null});
 export async function advanceShopeeKitDiscount(job,io){
  const plan=job.plan||{},approved=plan.kitDiscount,r={...(job.result||{})};
- if(!approved||plan.selectedStage!=='all')throw Error('Desconto do kit sem plano completo aprovado.');
+ if(!approved||!['all','discount'].includes(plan.selectedStage))throw Error('Etapa 08 sem plano completo ou exclusivo aprovado.');
  const phase=String(r.phase||'');
  const fresh=await io.kitDiscountRead(approved);
  if(['kitSku','itemId','modelId','discountId'].some(k=>String(fresh[k])!==String(approved[k]))||

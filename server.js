@@ -2264,7 +2264,7 @@ app.post('/api/shopee/optimizer/execution/prepare',mustLogin,requireWeDropAdmin,
     const manualImages=await readPreparedImages(auth.shopId,itemId,modelId,sku);
     const reviewState={...(review?.review_state||{})};
     let kitDiscountPlan=null;
-    if(kitLink&&selectedStage==='all'&&reviewState.kitDiscountPreview?.status==='prepared'){
+    if(kitLink&&['all','discount'].includes(selectedStage)&&reviewState.kitDiscountPreview?.status==='prepared'){
      const approved=reviewState.kitDiscountPreview,checked=Date.parse(approved.preparedAt||'');
      if(!Number.isFinite(checked)||checked>Date.now()+60000||Date.now()-checked>24*3600000)
       throw Error('Etapa 08: conferência expirou; reabra a campanha e prepare a prévia.');
@@ -2378,6 +2378,8 @@ app.post('/api/shopee/optimizer/execution/prepare',mustLogin,requireWeDropAdmin,
       marketReference:Number(financial.quote.marketResearch?.reference),
       netProfit:Number(financial.quote.netProfit)};
     }
+    if(selectedStage==='discount'&&!kitLink)throw Error('Somente desconto do kit exige anúncio de kit existente e vinculado à SKU principal.');
+    if(selectedStage==='discount'&&!kitDiscountPlan)throw Error('Etapa 08 ainda não preparada: abra Desconto do kit e registre a prévia da campanha.');
     if(selectedStage==='fiscal'&&reviewState.stages?.fiscal?.reviewed&&reviewState.tax){
       // Kit e SKU simples usam o mesmo vínculo auditado. Nunca descartar
       // a fonte WeDrop ao preparar a autorização da SKU principal.
@@ -2782,7 +2784,7 @@ app.post('/api/shopee/optimizer/execution/execute',mustLogin,requireWeDropAdmin,
   }
   const previousPlan=job.plan;
   if(linkedKit&&previousPlan.kitDiscount){
-   if(previousPlan.selectedStage!=='all')throw Error('Etapa 08 exige prévia completa.');
+   if(!['all','discount'].includes(previousPlan.selectedStage))throw Error('Etapa 08 exige prévia completa ou Somente desconto do kit.');
    const approved=(await getWorkflowReview(auth.shopId,itemId,modelId))?.review_state?.kitDiscountPreview;
    const expected=previousPlan.kitDiscount;
    if(!approved||approved.status!=='prepared'||

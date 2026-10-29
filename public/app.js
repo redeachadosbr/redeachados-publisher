@@ -4401,12 +4401,13 @@ function optimizerExecutionTrackerRender(progress,job){
   progress.message;
  const savedScope=String(job?.plan?.selectedStage||'all');
  const scopeLabels={images:'SOMENTE IMAGENS',video:'SOMENTE VÍDEO',seo:'SOMENTE TÍTULO SEO',
-  technical:'SOMENTE FICHA TÉCNICA',description:'SOMENTE DESCRIÇÃO',
+  technical:'SOMENTE FICHA TÉCNICA',description:'SOMENTE DESCRIÇÃO',discount:'SOMENTE DESCONTO DO KIT',
   fiscal:'SOMENTE DADOS FISCAIS',remaining:'SOMENTE VARIAÇÕES + FISCAL + DESCONTO'};
  if(progress.state==='prepared'&&savedScope!=='all'){
   const scopeLabel=scopeLabels[savedScope]||'PARCIAL';
   $('#optimizerExecutionPhaseTitle').textContent='Prévia PARCIAL: '+scopeLabel;
-  const explanation='O plano salvo inclui '+scopeLabel+'. As demais etapas NÃO serão enviadas.'+
+  const explanation=savedScope==='discount'?'Somente desconto do kit preparado. As sete etapas anteriores serão PRESERVADAS, sem novo envio.':
+   'O plano salvo inclui '+scopeLabel+'. As demais etapas NÃO serão enviadas.'+
    ' Para executar tudo, clique em “Preparar TODAS as etapas aprovadas”.';
   $('#optimizerExecutionPhaseSubtitle').textContent=explanation;
   $('#optimizerExecutionProgressDetail').textContent=explanation+
@@ -4437,7 +4438,7 @@ function optimizerExecutionTrackerRender(progress,job){
    ['done','staged','kit-prepared','kit-published'].includes(actualStatus)?'✓':
     actualStatus==='review'?'!':String(i+1));
   const name=optimizerMake('strong','',step.label);
-  const status=optimizerMake('small','',statuses[actualStatus]||'Aguardando');
+  const status=optimizerMake('small','',savedScope==='discount'&&step.id!=='discount'&&step.status==='skipped'? 'Preservado · sem reenvio':statuses[actualStatus]||'Aguardando');
   if(actualStatus==='kit-prepared')li.title='Check da etapa 08: prévia conferida. Desconto ainda não aplicado; a promoção exige autorização separada.';
   if(actualStatus==='kit-published')li.title='Desconto confirmado pela Shopee em operação separada; não integrou este job do anúncio.';
   if(actualStatus==='review')li.title='O desconto não foi aplicado neste job; confira a etapa 08.';
@@ -5140,7 +5141,7 @@ function optimizerDiscountReviewedForExecution(plan){
  // Kit: otimizar primeiro; desconto proprio da etapa 08 exige confirmacao
  // da Shopee e autorizacao separada para a composicao completa.
  if(typeof optimizerKitWorkflowActive==='function'&&optimizerKitWorkflowActive())
-  return plan?.selectedStage!=='all'||Boolean(plan?.kitDiscount);
+  return !['all','discount'].includes(plan?.selectedStage)||Boolean(plan?.kitDiscount);
  return !['all','remaining'].includes(plan?.selectedStage)||
   (plan?.modelVariations?
    Boolean(optimizerExecAutoModelToken)&&optimizerModelMarketConsent(plan):
@@ -5178,6 +5179,7 @@ function optimizerExecUpdateRunButton(){
  const resume=Boolean(p?.reusedMedia?.imageIds?.length||p?.reusedMedia?.video?.phase==='ready');
  $('#optimizerExecutionLaunch').textContent=!canPublish?
   p?.canExecute?'🛠 Conferir desconto e liberar execução':'🛠 Corrigir pendências e revalidar':
+  p?.selectedStage==='discount'?'▶ Executar SOMENTE desconto do kit':
   p?.selectedStage==='images'?'▶ EXECUTAR SOMENTE '+(p.images?.length||0)+' IMAGENS':
   justPending?'▶ Publicar variações + fiscal + desconto':
   resume&&p?.modelVariations?'▶ Executar plano completo (inclui mídia)':
@@ -5205,6 +5207,9 @@ function optimizerExecUpdateRunButton(){
    nextDescription.textContent=p.modelVariations?.promotion?.marketOverrideRequired?
     'Marque a autorização excepcional imediatamente abaixo e depois clique em Executar. Nada foi enviado à Shopee.':
     'A prévia comercial está preparada. Use “Conferir desconto para liberar execução” e depois execute uma única vez.';
+  }else if(p.selectedStage==='discount'){
+   nextTitle.textContent='Somente desconto do kit — SKU '+p.sku;
+   nextDescription.textContent='Apenas a Minha Promoção será alterada após autorização. As outras sete etapas permanecem intactas.';
   }else if(p.selectedStage!=='all'){
    const mode=$('#optimizerExecutionScope')?.selectedOptions?.[0]?.textContent||p.selectedStage;
    nextTitle.textContent='Prévia PARCIAL: '+mode;
@@ -5323,6 +5328,10 @@ $('#optimizerExecutionSwitchFull')?.addEventListener?.('click',()=>{
 });
 $('#optimizerExecutionScope')?.addEventListener?.('change',()=>{
  const stage=$('#optimizerExecutionScope').value;
+ if(stage==='discount'&&!optimizerKitWorkflowActive()){
+  $('#optimizerExecutionScope').value='all';
+  optimizerExecNotice('Somente desconto do kit está disponível em Kits Inteligentes WeDrop.','warning');return;
+ }
  optimizerExecPlan=null;
  $('#optimizerExecutionLaunch').hidden=true;
  $('#optimizerExecutionSummary').hidden=true;
