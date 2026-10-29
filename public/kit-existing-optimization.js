@@ -119,6 +119,8 @@ export function initExistingKitOptimization({getContext,api,money,onMainSkuChang
   $('#kitWorkflowCampaignChooser')?.remove();
   $('#optimizerExecDiscountCampaign')?.closest('label')?.classList.remove('kit-workflow-original-campaign');
   $('#kitOptimizeDiscountBox').hidden=true;
+  $('#kitOptimizeDiscountToExecution').hidden=true;
+  $('#kitOptimizeDiscountApply').hidden=false;
   $('#kitOptimizeKitItemId').value='';$('#kitOptimizePrimaryItemId').value='';
   $('#kitOptimizeDiscountId').replaceChildren(new Option('Consultar campanhas da Shopee',''));
   const msg=$('#kitOptimizeDiscountAutoStatus');
@@ -448,6 +450,8 @@ export function initExistingKitOptimization({getContext,api,money,onMainSkuChang
    const apply=$('#kitOptimizeDiscountApply');
    apply.hidden=planned;
    apply.disabled=planned;
+   const goExecution=$('#kitOptimizeDiscountToExecution');
+   if(goExecution)goExecution.hidden=!planned;
    globalThis.RAKitDiscountPrepared?.({kitSku:current,itemId:String(result.itemId),
     planning:planned});
    discountNotice(planned?
@@ -481,10 +485,17 @@ export function initExistingKitOptimization({getContext,api,money,onMainSkuChang
   finally{busy=false;paint();}
  }
  $('#kitOptimizeDiscountPreview')?.addEventListener('click',()=>void previewDiscount());
+ $('#kitOptimizeDiscountToExecution')?.addEventListener('click',()=>{
+  const button=$('#optimizerShowExecution');
+  if(!button)return notice('Abra o fluxo do kit para conferir a execução do anúncio.','warning');
+  button.click();
+  $('#optimizerExecutionPanel')?.scrollIntoView?.({behavior:'smooth',block:'start'});
+ });
  $('#kitOptimizeDiscountApply')?.addEventListener('click',()=>void applyDiscount());
  $('#kitOptimizeDiscountId')?.addEventListener('change',()=>{
   discountToken=null;$('#kitOptimizeDiscountBox').hidden=true;
   $('#kitOptimizeDiscountApply').hidden=false;
+  $('#kitOptimizeDiscountToExecution').hidden=true;
   globalThis.RAKitDiscountPrepared?.({kitSku:kitSku(),planning:false});
   paint();
  });
