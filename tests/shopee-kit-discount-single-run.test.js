@@ -87,3 +87,18 @@ test('executor aceita desconto isolado quando Shopee já confirmou a promoção'
  assert.equal(out.state,'verified');
  assert.equal(out.result.discount.status,'verified');
 });
+
+test('somente desconto nunca altera preço bruto divergente',async()=>{
+ const commands=[];
+ const out=await advanceShopeeKitDiscount({state:'running',
+ plan:{selectedStage:'discount',kitDiscount:approved},result:{phase:'kit_discount_ready'}},{
+ kitDiscountRead:async()=>({...base,priceAligned:false}),
+ kitDiscountMarket:async()=>commands.push('market'),
+ validateIdentity:async()=>commands.push('identity'),
+ beforeWrite:async()=>commands.push('checkpoint'),
+ kitDiscountPrice:async()=>commands.push('price'),
+ kitDiscountPublish:async()=>commands.push('discount')
+ });
+ assert.equal(out.state,'failed');
+ assert.deepEqual(commands,[]);
+});

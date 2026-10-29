@@ -17,6 +17,9 @@ export async function advanceShopeeKitDiscount(job,io){
    'Campanha, custo ou valores do kit mudaram. Desconto não será reenviado.');
  if(fresh.liveStatus!=='NORMAL')return uncertain(r,'kit-not-normal',
   'Anúncio ainda não NORMAL na Shopee. Desconto não enviado.');
+ if(plan.selectedStage==='discount'&&!fresh.priceAligned)
+  return failed(r,'kit-discount-gross-mismatch',
+   'Somente desconto: preço bruto da Shopee mudou. Nenhum preço foi alterado; prepare novamente.');
  if(fresh.confirmed)return done(r);
  if(['kit_discount_updating','kit_discount_verifying'].includes(phase)){
   if(Date.now()-Number(r.kitDiscountStartedAt||0)>90000)

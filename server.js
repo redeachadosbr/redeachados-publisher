@@ -2278,6 +2278,10 @@ app.post('/api/shopee/optimizer/execution/prepare',mustLogin,requireWeDropAdmin,
         ['gross','promo','afterCoupon'].some(k=>
          Math.round(Number(snapshot[k])*100)!==Math.round(Number(approved[k])*100)))
       throw Error('Etapa 08: campanha, preço ou custo mudou. Refaça a prévia.');
+     if(selectedStage==='discount'&&snapshot.liveStatus!=='NORMAL')
+      throw Error('Somente desconto: o anúncio ainda não está NORMAL na Shopee. Aguarde a liberação antes de preparar.');
+     if(selectedStage==='discount'&&snapshot.priceAligned!==true)
+      throw Error('Somente desconto não altera preço bruto. O valor da Shopee difere do kit; confira o preço antes de preparar a promoção.');
      kitDiscountPlan={kitSku:String(kitLink.kitSku),itemId:String(itemId),
       modelId:String(modelId),discountId:String(approved.discountId),
       gross:snapshot.gross,promo:snapshot.promo,afterCoupon:snapshot.afterCoupon};
