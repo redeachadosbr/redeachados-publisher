@@ -31,7 +31,7 @@
 <link rel="stylesheet" href="/ads-premium.css?v=2.4.0-seo-ads-location">
 <link rel="stylesheet" href="/sidebar-collapse.css?v=1.0.0">
 <link rel="stylesheet" href="/optimizer-image-studio.css?v=1.0.2">
-<link rel="stylesheet" href="/kit-builder.css?v=3.7.5-gallery-direct">
+<link rel="stylesheet" href="/kit-builder.css?v=3.7.6-compact-generation">
 <link rel="stylesheet" href="/optimizer-technical-studio.css?v=1.0.1-review-feedback">
 <style>
 /* Autorização >25%: campo compacto, sem o input global width:100%.
@@ -1166,33 +1166,44 @@
     <button id="kitSaveSeoContent" class="kit-primary" type="button">Salvar textos no rascunho</button>
    </div>
   </section>
-  <div class="kit-bar kit-section-heading kit-images-heading"><span class="kit-heading-icon kit-icon-blue" aria-hidden="true">▧</span><div class="kit-section-heading-text"><h3>09 imagens profissionais do kit · SKUs juntas</h3><p>1200 × 1200 · 9 imagens individuais · todos os produtos juntos em cada cena · sem mosaicos.</p></div>
-   <button id="kitImportImages" type="button" class="kit-secondary">⇧ Importar 1–9 imagens</button>
+  <div class="kit-bar kit-section-heading kit-images-heading">
+   <span class="kit-heading-icon kit-icon-blue" aria-hidden="true">▧</span>
+   <div class="kit-section-heading-text"><h3>Imagens do kit</h3><p>09 fotos · 1200 × 1200 · SKUs juntas</p></div>
+   <button id="kitImportImages" type="button" class="kit-secondary">⇧ Importar imagens</button>
    <input id="kitMultiPhotoFiles" type="file" accept="image/png,image/jpeg,image/webp" multiple hidden>
   </div>
-  <section class="kit-generation-panel" aria-label="Gerar nove imagens de kits">
-   <div class="kit-generation-head"><strong>Gerador inteligente · Prompt Mestre Rede Achados BR</strong><span>Fotos WeDrop de todas as SKUs como referência · 9 cenas diferentes</span></div>
+  <section class="kit-generation-panel kit-generation-compact" aria-label="Gerar nove imagens de kits">
+   <div class="kit-generation-head"><strong>Gerador de imagens · Rede Achados BR</strong><span class="kit-generation-chip">Ponte ChatGPT Plus · Sem API paga</span></div>
    <div class="kit-generation-options">
     <div class="kit-generation-mode kit-plus-primary-mode">
-     <strong>Ponte ChatGPT Rede Achados BR — extensão existente</strong>
-     <p>Usa a mesma extensão da geração de anúncios individuais, mas com o Prompt Mestre do KIT. Anexa uma folha com as fotos reais de todas as SKUs e gera as 9 imagens, uma por vez, recebendo cada arquivo diretamente nas posições 01–09.</p>
-     <div class="kit-plus-instruction-buttons">
-      <button id="kitGenerateAll" type="button" class="kit-primary">Gerar 9 imagens automaticamente pela extensão</button>
+     <div class="kit-generation-method"><strong>9 imagens automáticas do kit</strong><span>Todos os produtos na mesma foto</span></div>
+     <div class="kit-plus-instruction-buttons kit-generation-actions">
+      <button id="kitGenerateAll" type="button" class="kit-primary">✦ Gerar 9 imagens</button>
+      <button id="kitResumeExtension" type="button" class="kit-secondary">↻ Recuperar geração</button>
       <button id="kitStopExtension" type="button" class="kit-secondary" hidden>Parar geração</button>
-      <button id="kitResumeExtension" type="button" class="kit-secondary">↻ Recuperar geração / reabrir Ponte</button>
      </div>
-     <p id="kitExtensionStatus" class="kit-extension-status" role="status" aria-live="polite">Verificando Ponte ChatGPT. Para gerar e recuperar imagens de kits, use a Ponte v1.0.56+ no Chrome. Não utiliza API paga.</p>
-     <button id="kitPlusManualFallback" type="button" class="kit-secondary">Modo alternativo: abrir ChatGPT e copiar prompt</button>
+     <p id="kitExtensionStatus" class="kit-extension-status" role="status" aria-live="polite">Verificando conexão da Ponte ChatGPT...</p>
+     <div class="kit-generation-more-actions">
+      <button id="kitPlusManualFallback" type="button" class="kit-secondary">Abrir ChatGPT manualmente</button>
+      <details class="kit-generation-help">
+       <summary>Ver instruções</summary>
+       <div class="kit-generation-help-body">
+        <p>Use a extensão existente com o Prompt Mestre do kit. As fotos WeDrop de cada SKU servem de referência, e a Ponte recebe os arquivos nas posições 01–09.</p>
+        <p>Cada imagem avança após ser salva. Se a Ponte não funcionar, use o modo manual ou importe as fotos. A publicação na Shopee depende da revisão.</p>
+        <p id="kitImageDuoStatus" class="kit-image-duo-status" role="status" aria-live="polite">Aguardando a composição do kit.</p>
+       </div>
+      </details>
+     </div>
      <div id="kitPlusInstructions" class="kit-plus-instructions" hidden>
-      <strong>Pedido de geração preparado</strong>
-      <p>Se o chat abrir vazio, use Ctrl+V. Anexe as fotos de todas as SKUs e clique em Enviar. Para gerar a próxima imagem, use o botão abaixo na mesma conversa.</p>
+      <strong>Prompt preparado para geração manual</strong>
+      <p>Abra o ChatGPT, anexe as fotos de todas as SKUs e envie o prompt. Se a aba estiver vazia, use Ctrl+V.</p>
       <textarea id="kitPlusImagePrompt" rows="4" readonly aria-label="Prompt para gerar as imagens do kit no ChatGPT Plus"></textarea>
       <div class="kit-plus-instruction-buttons">
-       <button id="kitPlusCopyGeneratedPrompt" type="button" class="kit-secondary">Copiar pedido completo</button>
-       <button id="kitPlusNextImagePrompt" type="button" class="kit-secondary">Copiar pedido da próxima imagem</button>
+       <button id="kitPlusCopyGeneratedPrompt" type="button" class="kit-secondary">Copiar prompt</button>
+       <button id="kitPlusNextImagePrompt" type="button" class="kit-secondary">Próxima imagem</button>
       </div>
      </div>
-     <p id="kitPlusGenerationStatus" class="kit-plus-generation-status" aria-live="polite">A Ponte ChatGPT importa automaticamente cada imagem na posição correta. Para ajustes manuais, use a galeria abaixo.</p>
+     <p id="kitPlusGenerationStatus" class="kit-plus-generation-status" role="status" aria-live="polite" hidden></p>
     </div>
     <div class="kit-generation-mode kit-generation-auto" hidden>
      <strong>Gerar as 9 automaticamente — API de imagens</strong>
@@ -1206,9 +1217,7 @@
     </div>
    </div>
    <div class="kit-generation-progress" id="kitGenerationProgress" hidden><div class="kit-progress-track"><div id="kitGenerationProgressBar"></div></div><span id="kitGenerationProgressText">0 de 9 imagens</span></div>
-   <p class="kit-generation-note">A extensão existente deve confirmar o início para o kit. Cada imagem só libera a próxima após ser recebida e salva localmente. Se sua versão rejeitar kits, o sistema informa o erro e mantém a importação manual disponível na galeria. Nenhuma imagem é enviada à Shopee sem revisão.</p>
   </section>
-  <p id="kitImageDuoStatus" class="kit-image-duo-status" role="status" aria-live="polite">Aguardando a composição do kit.</p>
   <section class="kit-gallery-section" id="kitGallerySection" aria-label="Galeria de imagens do kit">
    <div class="kit-gallery-toolbar">
     <div class="kit-gallery-heading"><strong>Galeria de imagens</strong><small>9 posições · Arraste para reordenar, use as setas ou solte uma foto na posição desejada.</small></div>
@@ -2284,7 +2293,7 @@
 <script src="/technical-memory.js?v=1.0.1-live-sku-preload"></script>
 <script src="/technical-status.js?v=1.0.0-optional-coherence"></script>
 <script src="/app.js?v=3.4.2-kit-compound-pricing"></script>
-<script type="module" src="/kit-builder.js?v=3.8.3-kit-cost-chips"></script>
+<script type="module" src="/kit-builder.js?v=3.8.4-compact-generation"></script>
 <link rel="stylesheet" href="/optimizer-variations.css?v=1.2.1-single-flow">
 <script src="/optimizer-variations.js?v=1.2.3-single-flow"></script>
 
