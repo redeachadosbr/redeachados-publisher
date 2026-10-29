@@ -2965,13 +2965,13 @@ function optimizerWorkflowRender(data){
  // Etapa 08: acesso ao desconto já calculado pelo Motor Matriz e publicado apenas com confirmação da Shopee.
  const discountCard=optimizerMake('button','optimizer-workflow-card optimizer-workflow-pending');
  discountCard.type='button';discountCard.dataset.stage='discount';
- discountCard.setAttribute('aria-label','Abrir etapa 08: desconto do produto na Shopee');
+ discountCard.setAttribute('aria-label',data.kitOptimization?'Abrir etapa 08: desconto do kit na Shopee':'Abrir etapa 08: desconto do produto na Shopee');
  const discountNumber=optimizerMake('span','optimizer-workflow-number','08');
  const discountIcon=optimizerMake('span','optimizer-workflow-icon');
  discountIcon.setAttribute('aria-hidden','true');
  discountIcon.innerHTML='<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M20 12 12 20 3 11V4h7z"/><circle cx="7.5" cy="8" r="1.25"/></svg>';
  const discountLabel=optimizerMake('span','optimizer-workflow-label');
- discountLabel.append(optimizerMake('strong','','Desconto do produto'),optimizerMake('small','optimizer-discount-workflow-state','Preço e promoção · revisar'));
+ discountLabel.append(optimizerMake('strong','',data.kitOptimization?'Desconto do kit':'Desconto do produto'),optimizerMake('small','optimizer-discount-workflow-state','Preço e promoção · revisar'));
  const discountMark=optimizerMake('span','optimizer-workflow-symbol','→');
  discountCard.append(discountNumber,discountIcon,discountLabel,discountMark);
  discountCard.onclick=()=>optimizerDiscountOpenReview();
