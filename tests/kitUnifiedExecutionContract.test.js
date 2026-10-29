@@ -99,8 +99,8 @@ test('titulo e descricao do kit possuem botoes de conferencia ao lado dos textos
   for(const id of [container,button,status])
    assert.equal(html.split('id="'+id+'"').length-1,1);
  }
- assert.match(html,/\/app\.js\?v=3\.5\.8-kit-source-checklist/);
- assert.match(html,/\/kit-builder\.js\?v=3\.9\.7-kit-source-checklist/);
+ assert.match(html,/\/app\.js\?v=3\.5\.9-kit-seo-confirm/);
+ assert.match(html,/\/kit-builder\.js\?v=3\.9\.8-kit-seo-confirm/);
  assert.match(html,/\/kit-builder\.css\?v=3\.8\.7-kit-source-checklist/);
  assert.match(app,/globalThis\.RAKitSourceChanged=optimizerKitSourceChanged/);
  assert.match(app,/function optimizerKitSourceConfirm\(stage\)/);
