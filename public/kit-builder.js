@@ -71,7 +71,7 @@ function updateKitOverview(){
  $('#kitOverviewFreight').textContent=money(Number($('#kitShipping')?.value||0));
 }
 function updateKitTextCounters(){
- $('#kitTitleCount').textContent=$('#kitTitle').value.length+'/120';
+ $('#kitTitleCount').textContent=[...$('#kitTitle').value.normalize('NFC').replace(/\s+/g,' ').trim()].length+'/120';
  $('#kitDescriptionCount').textContent=$('#kitDescription').value.length+'/2000';
 }
 function onKitContentEdit(){
