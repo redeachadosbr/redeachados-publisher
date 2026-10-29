@@ -1,9 +1,6 @@
 // Interface de otimização de um anúncio de kit já existente. Preparação nunca publica.
 const $=selector=>document.querySelector(selector);
-const KIT_STAGE_LABELS=[
- ['images','Imagens'],['video','Video'],['seo','Titulo SEO'],['technical','Ficha tecnica'],
- ['description','Descricao'],['variants','Variacoes'],['fiscal','Dados fiscais'],['discount','Desconto']
-];
+const KIT_STAGE_LABELS=[['video','Vídeo'],['technical','Ficha técnica'],['fiscal','Dados fiscais'],['variants','Variações']];
 export function initExistingKitOptimization({getContext,api,money,onMainSkuChange}){
  let target=null,busy=false,discountToken=null,discountLookupSeq=0,discountSearching=false,latestCampaigns=[];
  let lookupSerial=0,lookupController=null;
@@ -14,10 +11,12 @@ export function initExistingKitOptimization({getContext,api,money,onMainSkuChang
   if(!list||!track)return;
   list.replaceChildren();
   let reviewed=0;
-  for(const [index,[key,label]] of KIT_STAGE_LABELS.entries()){
+  const steps=KIT_STAGE_LABELS.filter(([key])=>key!=='variants'||
+   workflowStages?.some(x=>x.key==='variants'&&!x.skipped));
+  for(const [index,[key,label]] of steps.entries()){
    const stage=workflowStages?.find(x=>x.key===key);
-   const done=key==='discount'?discountConfirmed:stage?.reviewed===true;
-   const skipped=key!=='discount'&&stage?.skipped===true;
+   const done=stage?.reviewed===true;
+   const skipped=stage?.skipped===true;
    if(done||skipped)reviewed++;
    const item=document.createElement('li');
    item.className='kit-flow-stage is-'+(done?'done':skipped?'skipped':stage?.blocking?'attention':'pending');
@@ -29,9 +28,10 @@ export function initExistingKitOptimization({getContext,api,money,onMainSkuChang
     stage?'Pendente':'Aguardando';
    item.append(number,title,state);list.append(item);
   }
+  track.setAttribute('aria-valuemax',String(steps.length));
   track.setAttribute('aria-valuenow',String(reviewed));
-  $('#kitOptimizeProgressFill').style.width=(reviewed/8*100)+'%';
-  $('#kitOptimizeProgressCount').textContent=reviewed+' / 8 revisadas';
+  $('#kitOptimizeProgressFill').style.width=(steps.length?reviewed/steps.length*100:0)+'%';
+  $('#kitOptimizeProgressCount').textContent=reviewed+' / '+steps.length+' complementares conferidas';
  }
  function renderTechnical(){
   const block=$('#kitOptimizeLiveProgress');
@@ -477,7 +477,7 @@ export function initExistingKitOptimization({getContext,api,money,onMainSkuChang
   if(code!==kitSku()||!target||String(target.itemId)!==String(itemId))return;
   workflowStages=Array.isArray(stages)?stages:null;
   renderJourney();
-  progressNote('Revisao individual pronta. Confira cada etapa; a aprovacao nao publica o anuncio.');
+  progressNote('Vídeo, ficha técnica e dados fiscais usam a revisão original. Imagens e textos são reutilizados dos blocos abaixo.');
  };
  globalThis.RAKitTechnicalProgress=({kitSku:code,itemId,progress}={})=>{
   if(code!==kitSku()||!target||String(target.itemId)!==String(itemId))return;
@@ -496,6 +496,14 @@ export function initExistingKitOptimization({getContext,api,money,onMainSkuChang
  };
  $('#kitOptimizeStart')?.addEventListener('click',()=>void startKitOptimization());
  $('#kitWorkflowImportImages')?.addEventListener('click',()=>void transferImages());
+ $('#kitWorkflowDiscountLater')?.addEventListener('click',()=>{
+  if(!target?.prepared){
+   notice('Vincule primeiro a SKU principal e carregue a otimização.','warning');
+   return;
+  }
+  if(typeof globalThis.RAKitOpenDiscountReview==='function')globalThis.RAKitOpenDiscountReview();
+  else notice('Abra a otimização do kit antes de conferir Minha Promoção.','warning');
+ });
  $('#kitOptimizePrepare')?.addEventListener('click',()=>void prepare());
  $('#kitOptimizeImages')?.addEventListener('click',()=>void transferImages());
  $('#kitOptimizeOpen')?.addEventListener('click',open);
