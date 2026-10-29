@@ -65,7 +65,7 @@ export function shopeeExecutionProgress(job){
    !recoverPending.some(x=>/vídeo.*confirmado/i.test(x)));
  const fiscalPartial=state==='verified'&&phase==='verified_partial';
  const verified=state==='verified'&&!fiscalPartial;
- const discountIncluded=Boolean(plan.commercialDiscount||plan.modelVariations?.promotion||plan.kitDiscount);
+ const discountIncluded=Boolean(plan.commercialDiscount||plan.modelVariations?.promotion||plan.kitDiscount||plan.discountOnly);
  const hasVariants=Boolean(plan.modelVariations);
  const variantsDone=hasVariants&&result.variation?.status==='verified';
  const fiscalIncluded=Boolean(plan.finalFiscal||proposed.tax_info);
@@ -165,7 +165,7 @@ export function shopeeExecutionProgress(job){
  };
  const modeLabels={images:'SOMENTE IMAGENS',video:'SOMENTE VÍDEO',seo:'SOMENTE TÍTULO',
   description:'SOMENTE DESCRIÇÃO',technical:'SOMENTE FICHA TÉCNICA',
-  fiscal:'SOMENTE FISCAL',remaining:'SOMENTE VARIAÇÕES, FISCAL E DESCONTO',discount:'SOMENTE DESCONTO DO KIT'};
+  fiscal:'SOMENTE FISCAL',remaining:'SOMENTE VARIAÇÕES, FISCAL E DESCONTO',discount:'SOMENTE DESCONTO',variants:'SOMENTE VARIAÇÕES'};
  const partial=plan.selectedStage&&plan.selectedStage!=='all';
  const partialName=modeLabels[plan.selectedStage]||'ETAPA ISOLADA';
  const title=fiscalPartial?'Dados fiscais pendentes de correção':
@@ -188,8 +188,10 @@ export function shopeeExecutionProgress(job){
   state==='failed'?
    (confirmedReadback?'Conferência parcial: mídia confirmada na Shopee; as demais etapas requerem nova prévia. ':'')+
    'Execução interrompida: '+String(job.last_error||'confira a ocorrência'):
+  state==='prepared'&&plan.selectedStage==='variants'?
+   'Somente variações preparado. Nenhum desconto ou outra etapa será enviado nesta execução.':
   state==='prepared'&&plan.selectedStage==='discount'?
-   'Somente desconto do kit preparado, sem publicação. Imagens, vídeo, título, descrição, ficha técnica, variações e fiscal serão preservados. Confira o ID da Minha Promoção antes de autorizar.':
+   'Somente desconto preparado, sem publicação. Imagens, vídeo, título, descrição, ficha técnica, variações e fiscal serão preservados. Confira o ID da Minha Promoção antes de autorizar.':
   state==='prepared'&&partial?
    'Atenção: prévia PARCIAL — '+partialName+'. Outras etapas NÃO estão incluídas. '+
    'Nenhuma publicação foi iniciada. Para executar o anúncio inteiro, selecione “Todas as etapas aprovadas” e prepare novamente. '+

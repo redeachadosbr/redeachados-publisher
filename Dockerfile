@@ -41,6 +41,7 @@ RUN node --check shopeeKitPublish.js && node --check shopeeKitPlatform.js && nod
 RUN node --check shopeeKitDiscountDiscovery.js && node --check public/kit-existing-optimization.js && node --test tests/shopeeKitDiscountDiscovery.test.js
 RUN node --check public/kit-existing-optimization.js && node --check public/app.js && node --check server.js && node --test tests/kitUnifiedExecutionContract.test.js
 RUN node --check shopeeExecutionKitDiscount.js && node --test tests/shopee-kit-discount-single-run.test.js
+RUN node --check shopeeExecutionPlan.js && node --check shopeeExecutionWorker.js && node --test tests/shopee-root-individual-execution.test.js
 ENV NODE_ENV=production
 EXPOSE 10000
 CMD ["npm","start"]

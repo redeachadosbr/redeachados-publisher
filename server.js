@@ -2237,11 +2237,13 @@ app.post('/api/shopee/optimizer/execution/prepare',mustLogin,requireWeDropAdmin,
     const {itemId,modelId,sku,auth,cfg,record}=await checkedWorkflowAudit(req);
     const selectedStage=normalizeShopeeExecutionStage(req.body.stage||'all');
     let allowDiscountOnly=false,approvedCampaignId='';
-    if(selectedStage==='all'&&req.body?.discountApprovalToken){
+    if(['all','discount'].includes(selectedStage)&&req.body?.discountApprovalToken){
      const approved=verifyDiscountPreview(req.body.discountApprovalToken,envText('SESSION_SECRET'),auth.shopId);
      if(approved.sku!==sku||String(approved.itemId)!==String(itemId)||
        String(approved.modelId)!==String(modelId))
       throw Error('A prévia de desconto não corresponde à SKU preparada.');
+     if(selectedStage==='discount'&&approved.needsBasePriceUpdate===true)
+      throw Error('Somente desconto preserva o preço bruto. A Shopee exige ajuste de preço: revise o anúncio antes de preparar a promoção.');
      allowDiscountOnly=true;
      approvedCampaignId=String(approved.discountId||'').trim();
     }
@@ -2314,10 +2316,10 @@ app.post('/api/shopee/optimizer/execution/prepare',mustLogin,requireWeDropAdmin,
     // Variações conferidas são parte da execução completa, nunca um envio
     // manual em outra tela. Dados e custos vêm do rascunho salvo da SKU.
     let modelVariations=null;
-    if(['all','remaining'].includes(selectedStage)&&reviewState.variationConfig?.enabled===true)
+    if(['all','remaining','variants'].includes(selectedStage)&&reviewState.variationConfig?.enabled===true)
      modelVariations=await prepareExecutionVariations({auth,cfg,sku,itemId,modelId},reviewState,live);
     let autoModelDiscountToken=null,autoModelDiscountPreview=null;
-    if(modelVariations){
+    if(modelVariations&&selectedStage!=='variants'){
      const campaignId=String(req.body?.campaignId||approvedCampaignId||
       reviewState.modelDiscountCampaignId||'').trim();
      if(approvedCampaignId&&campaignId!==approvedCampaignId)
@@ -2382,8 +2384,14 @@ app.post('/api/shopee/optimizer/execution/prepare',mustLogin,requireWeDropAdmin,
       marketReference:Number(financial.quote.marketResearch?.reference),
       netProfit:Number(financial.quote.netProfit)};
     }
-    if(selectedStage==='discount'&&!kitLink)throw Error('Somente desconto do kit exige anúncio de kit existente e vinculado à SKU principal.');
-    if(selectedStage==='discount'&&!kitDiscountPlan)throw Error('Etapa 08 ainda não preparada: abra Desconto do kit e registre a prévia da campanha.');
+    if(selectedStage==='discount'&&!kitLink&&!allowDiscountOnly)
+     throw Error('Etapa 08: confira a Minha Promoção e prepare a prévia autorizada desta SKU antes de executar.');
+    if(selectedStage==='variants'&&kitLink)
+     throw Error('Variações individuais de kit devem ser administradas pelo fluxo de Kits Inteligentes WeDrop.');
+    if(selectedStage==='variants'&&!modelVariations)
+     throw Error('Etapa 06: não existem variações aprovadas e elegíveis para esta SKU.');
+    if(selectedStage==='discount'&&kitLink&&!kitDiscountPlan)
+     throw Error('Etapa 08 ainda não preparada: abra Desconto do kit e registre a prévia da campanha.');
     if(selectedStage==='fiscal'&&reviewState.stages?.fiscal?.reviewed&&reviewState.tax){
       // Kit e SKU simples usam o mesmo vínculo auditado. Nunca descartar
       // a fonte WeDrop ao preparar a autorização da SKU principal.
@@ -2840,7 +2848,7 @@ app.post('/api/shopee/optimizer/execution/execute',mustLogin,requireWeDropAdmin,
    throw Error('Etapa fiscal pendente: revise os dados fiscais antes de aprovar o desconto final.');
   // Kit composto: primeiro o anuncio, depois a promocao do kit pela rota
   // especifica, apenas apos a execucao ser confirmada pela Shopee.
-  if(['all','remaining'].includes(plan.selectedStage)&&!linkedKit){
+  if(['all','remaining','discount'].includes(plan.selectedStage)&&!linkedKit){
    // Em planos de variação, o clique autenticado + o plano imutável no banco
    // autorizam a promoção exibida. O token de 10 minutos não pode bloquear
    // anúncio e mídia depois de o usuário ter aprovado essa mesma prévia.
@@ -2869,6 +2877,8 @@ app.post('/api/shopee/optimizer/execution/execute',mustLogin,requireWeDropAdmin,
    for(const k of fields)
     if(String(fresh[k]??'')!==String(approved[k]??''))
      throw Error('A prévia da promoção mudou ('+k+'). Refaça a conferência antes de executar.');
+   if(plan.selectedStage==='discount'&&fresh.needsBasePriceUpdate)
+    throw Error('Somente desconto não autoriza ajuste no preço bruto. Refaça a prévia sem alteração de preço.');
    if(fresh.needsBasePriceUpdate&&req.body?.allowPriceChange!==true)
     throw Error('Autorize também o ajuste do preço bruto na etapa 08.');
    if(plan.modelVariations){
