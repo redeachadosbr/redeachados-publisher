@@ -2144,7 +2144,7 @@ try{
 }catch{}
 function kitPlusNotice(message,state='info'){
  const node=$('#kitPlusAutoStatus');
- if(node){node.textContent=message;node.dataset.state=state;}
+ if(node){node.hidden=false;node.textContent=message;node.dataset.state=state;node.title=message;}
  const fileStatus=$('#kitPlusFileStatus');
  if(fileStatus){
   fileStatus.textContent=message;
@@ -2620,7 +2620,7 @@ function kitPlusGenerationStatus(message,state='info'){
 
 function kitExtensionStatus(message,state='info'){
  const element=$('#kitExtensionStatus');
- if(element){element.textContent=message;element.dataset.state=state;}
+ if(element){element.textContent=message;element.dataset.state=state;element.title=message;}
  imageStatus(message,state);
 }
 async function kitPictureSample(dataUrl){
@@ -2668,7 +2668,7 @@ function getKitExtensionBridge(){
    const stop=$('#kitStopExtension');if(stop)stop.hidden=!active;
    const button=$('#kitGenerateAll');
    if(button)button.textContent=active?'Geração em andamento pela extensão...':
-    'Gerar 9 imagens automaticamente pela extensão';
+    '✦ Gerar 9 imagens';
   }
  });
  return kitBridgeController;

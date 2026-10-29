@@ -2272,3 +2272,58 @@
 @media(max-width:700px){
  #tab-kits .kit-cost-buttons>button{flex:1 1 100%;width:100%}
 }
+
+/* 3.7.6 — geração do kit compacta; somente descrições secundárias ficam recolhidas */
+#tab-kits #kitDetail .kit-images-heading{gap:10px;align-items:center;margin:7px 0 9px;padding:8px 12px}
+#tab-kits #kitDetail .kit-images-heading .kit-section-heading-text h3{font-size:14px;line-height:1.3;margin:0}
+#tab-kits #kitDetail .kit-images-heading .kit-section-heading-text p{font-size:10px;margin:2px 0 0;color:#68809a}
+#tab-kits #kitDetail .kit-generation-compact{padding:11px 12px;margin:7px 0 10px;border-radius:13px;background:linear-gradient(125deg,#f8fbff,#edf5ff);box-shadow:0 5px 18px rgba(18,51,93,.06)}
+#tab-kits #kitDetail .kit-generation-compact .kit-generation-head{display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:7px;margin:0 0 9px}
+#tab-kits #kitDetail .kit-generation-compact .kit-generation-head strong{font-size:13px;line-height:1.3}
+#tab-kits #kitDetail .kit-generation-compact .kit-generation-chip{display:inline-flex;align-items:center;border-radius:999px;border:1px solid #cae5d8;background:#e9f8ee;color:#157348;font-size:10px;font-weight:800;line-height:1.3;padding:4px 10px}
+#tab-kits #kitDetail .kit-generation-compact .kit-generation-options{display:block}
+#tab-kits #kitDetail .kit-generation-compact .kit-plus-primary-mode{padding:11px 12px;gap:9px;border:1px solid #c9dcf1;border-radius:11px;background:linear-gradient(155deg,#fff,#f8fbff);box-shadow:inset 0 1px 0 rgba(255,255,255,.95)}
+#tab-kits #kitDetail .kit-generation-compact .kit-generation-method{display:flex;align-items:center;gap:8px 14px;flex-wrap:wrap;min-height:20px}
+#tab-kits #kitDetail .kit-generation-compact .kit-generation-method strong{font-size:12px;font-weight:850;color:#183b6c}
+#tab-kits #kitDetail .kit-generation-compact .kit-generation-method span{font-size:10px;color:#577393}
+#tab-kits #kitDetail .kit-generation-compact .kit-generation-actions{display:grid;grid-template-columns:minmax(0,1.45fr) minmax(0,1fr);gap:10px;align-items:stretch}
+#tab-kits #kitDetail .kit-generation-compact .kit-generation-actions button{width:100%;min-width:0;min-height:41px;padding:9px 13px;font-size:11.5px;font-weight:900;letter-spacing:.005em;white-space:normal;border-radius:10px;flex:none;transition:transform .16s ease,box-shadow .16s ease,filter .16s ease;cursor:pointer}
+#tab-kits #kitDetail .kit-generation-compact .kit-generation-actions #kitGenerateAll{border:1px solid #ee6639;background:linear-gradient(180deg,#ff8957 0%,#ff6235 53%,#ed4c27 100%);color:#fff;text-shadow:0 1px 1px #a43b2d44;box-shadow:0 4px 0 #c43b23,0 9px 15px rgba(216,75,35,.18),inset 0 1px 0 #ffffff80}
+#tab-kits #kitDetail .kit-generation-compact .kit-generation-actions #kitResumeExtension{border:1px solid #c5d8ee;background:linear-gradient(180deg,#fff 0%,#f5f9ff 50%,#e6f0fc 100%);color:#18477d;box-shadow:0 4px 0 #a9c4e1,0 9px 15px rgba(39,84,137,.12),inset 0 1px 0 #fff}
+#tab-kits #kitDetail .kit-generation-compact .kit-generation-actions #kitStopExtension{border:1px solid #edc7b4;background:linear-gradient(180deg,#fffaf5,#ffede5);color:#a14b24;box-shadow:0 4px 0 #dcab96,0 8px 14px #b56b3320}
+#tab-kits #kitDetail .kit-generation-compact .kit-generation-actions button:hover:not(:disabled){transform:translateY(-2px);filter:saturate(1.07);box-shadow:0 6px 0 #c43b23,0 12px 18px #c34e2938}
+#tab-kits #kitDetail .kit-generation-compact .kit-generation-actions #kitResumeExtension:hover:not(:disabled){box-shadow:0 6px 0 #a9c4e1,0 12px 18px #27548924}
+#tab-kits #kitDetail .kit-generation-compact .kit-generation-actions button:active:not(:disabled){transform:translateY(3px);box-shadow:0 1px 0 #bd6b4c,0 2px 4px #15396218}
+#tab-kits #kitDetail .kit-generation-compact .kit-generation-actions button:disabled{cursor:not-allowed;opacity:.62}
+#tab-kits #kitDetail .kit-generation-compact .kit-extension-status{display:block;box-sizing:border-box;width:100%;margin:2px 0 0;padding:7px 10px;border-radius:8px;font-size:10.5px;line-height:1.4;min-height:29px;overflow-wrap:anywhere}
+#tab-kits #kitDetail .kit-generation-compact .kit-extension-status:not([data-state=error]){overflow:hidden;white-space:nowrap;text-overflow:ellipsis}
+#tab-kits #kitDetail .kit-generation-compact .kit-generation-more-actions{display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px}
+#tab-kits #kitDetail .kit-generation-compact #kitPlusManualFallback{align-self:auto;margin:0;min-height:29px;padding:5px 11px;border-radius:8px;background:linear-gradient(#fff,#f1f6fd);border:1px solid #cbdcf0;color:#2b557f;font-size:10px;font-weight:800;box-shadow:0 3px 0 #bdcfe3,0 6px 10px #244b7712;transition:transform .16s,box-shadow .16s}
+#tab-kits #kitDetail .kit-generation-compact #kitPlusManualFallback:hover{transform:translateY(-1px);box-shadow:0 4px 0 #bdcfe3,0 8px 12px #244b771c}
+#tab-kits #kitDetail .kit-generation-compact #kitPlusManualFallback:active{transform:translateY(2px);box-shadow:0 1px 0 #bdcfe3}
+#tab-kits #kitDetail .kit-generation-help{margin:0;min-width:150px}
+#tab-kits #kitDetail .kit-generation-help summary{cursor:pointer;display:list-item;list-style:disclosure-closed inside;font-size:10.5px;font-weight:800;color:#426b97;padding:5px 8px;border-radius:7px;user-select:none}
+#tab-kits #kitDetail .kit-generation-help[open] summary{list-style:disclosure-open inside}
+#tab-kits #kitDetail .kit-generation-help summary:hover{background:#ecf3fd}
+#tab-kits #kitDetail .kit-generation-help[open]{flex-basis:100%}
+#tab-kits #kitDetail .kit-generation-help-body{margin-top:6px;padding:10px 12px;border:1px solid #dce7f4;background:#f6faff;border-radius:9px;display:grid;gap:7px}
+#tab-kits #kitDetail .kit-generation-help-body p{margin:0;line-height:1.55;font-size:10.5px;color:#456586}
+#tab-kits #kitDetail .kit-generation-help-body .kit-image-duo-status{margin:0;padding:6px 9px;font-size:10.5px;border-radius:7px}
+#tab-kits #kitDetail .kit-generation-compact .kit-plus-generation-status[hidden]{display:none!important}
+#tab-kits #kitDetail .kit-generation-compact .kit-plus-generation-status{margin:0;padding:7px 10px;font-size:10.5px;line-height:1.4;flex:none}
+#tab-kits #kitDetail .kit-generation-compact .kit-generation-progress{margin:9px 3px 0}
+#tab-kits #kitDetail .kit-generation-compact .kit-generation-progress[hidden]{display:none!important}
+#tab-kits #kitDetail .kit-images-heading #kitImportImages{min-height:34px;padding:7px 13px;border-radius:9px;font-size:10.5px;font-weight:850;border:1px solid #c3d8f0;background:linear-gradient(180deg,#fff,#edf5ff);color:#225185;box-shadow:0 3px 0 #acc6e4,0 7px 12px #21518415;transition:transform .16s,box-shadow .16s}
+#tab-kits #kitDetail .kit-images-heading #kitImportImages:hover{transform:translateY(-1px);box-shadow:0 4px 0 #acc6e4,0 9px 14px #21518424}
+#tab-kits #kitDetail .kit-images-heading #kitImportImages:active{transform:translateY(2px);box-shadow:0 1px 0 #acc6e4}
+@media(max-width:700px){
+ #tab-kits #kitDetail .kit-generation-compact .kit-generation-actions{grid-template-columns:minmax(0,1fr)}
+ #tab-kits #kitDetail .kit-generation-compact .kit-generation-head{align-items:flex-start}
+ #tab-kits #kitDetail .kit-generation-compact .kit-generation-actions button{min-height:39px}
+ #tab-kits #kitDetail .kit-generation-compact .kit-generation-more-actions{align-items:stretch}
+}
+@media(prefers-reduced-motion:reduce){
+ #tab-kits #kitDetail .kit-generation-compact .kit-generation-actions button,
+ #tab-kits #kitDetail .kit-generation-compact #kitPlusManualFallback,
+ #tab-kits #kitDetail .kit-images-heading #kitImportImages{transition:none}
+}
