@@ -43,7 +43,7 @@ test('blocos SEO ficam imediatamente após o gerador de títulos e descrição d
   'id="kitSeoOptions"',
   'id="kitContentDetails"',
   'id="kitMissingFacts"',
-  'class="kit-copy-assistant"'
+  'class="kit-bar kit-section-heading kit-images-heading"'
  ];
  const locations=names.map(name=>html.indexOf(name));
  assert(locations.every(x=>x>=0));
