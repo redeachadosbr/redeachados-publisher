@@ -3,25 +3,17 @@
  */
 (()=>{
 "use strict";
-const ROOT="/api",ID="rede-ads-cloud";
+const ROOT="/api";
 const css=document.createElement("style");
 css.textContent=`
 #cloudBar{position:sticky;top:0;z-index:9000;display:flex;flex-wrap:wrap;justify-content:space-between;gap:9px;align-items:center;background:#241b0f;border-bottom:1px solid #bd8e35;color:#f6e8c4;padding:9px 17px;font:13px Arial,sans-serif}
 #cloudBar button{padding:7px 12px;color:#101010;background:#edc56c;border:0;border-radius:7px;cursor:pointer}
 #cloudBar .cloudSub{font-size:11px;color:#eed19c}
-#cloudGate{position:fixed;inset:0;z-index:100000;display:flex;align-items:center;justify-content:center;background:#080b11f5;padding:22px}
-#cloudGate[hidden]{display:none}
-#cloudGate .panelGate{width:min(440px,96vw);padding:25px;border-radius:13px;border:1px solid #75592b;background:#171b24;color:#fff;font:15px Arial,sans-serif}
-#cloudGate input{display:block;box-sizing:border-box;width:100%;padding:12px;margin:13px 0;background:#0f141b;border:1px solid #666;color:#fff;border-radius:7px}
-#cloudGate button{background:#efc873;border:0;border-radius:7px;padding:11px 18px;font-weight:bold;cursor:pointer}
-#cloudGate .error{color:#ffb8b8;font-size:13px}
 `;
 document.head.append(css);
 const bar=document.createElement("div");bar.id="cloudBar";
-bar.innerHTML='<div><strong>Rede Achados BR · Dados compartilhados</strong><div class="cloudSub" id="cloudState">Verificando acesso...</div></div><div><button id="cloudSyncNow" type="button">Sincronizar agora</button> <button id="cloudLogout" type="button">Sair</button></div>';
-const gate=document.createElement("div");gate.id="cloudGate";
-gate.innerHTML='<div class="panelGate"><h2>Rede Achados BR</h2><p>Entre com a senha de acesso para visualizar o histórico compartilhado.</p><form id="cloudLoginForm"><input type="password" id="cloudPassword" required autocomplete="current-password" placeholder="Senha do aplicativo"><button type="submit">Entrar</button></form><p class="error" id="cloudLoginError" role="alert"></p><small>O histórico é guardado no Google Drive da loja; não compartilhe a senha publicamente.</small></div>';
-document.body.prepend(bar,gate);
+bar.innerHTML='<div><strong>Rede Achados BR · Acesso livre</strong><div class="cloudSub" id="cloudState">Preparando sincronização com Google Drive...</div><div class="cloudSub">Qualquer pessoa com o link pode visualizar, cadastrar, editar e excluir registros do Decisor Ads.</div></div><div><button id="cloudSyncNow" type="button">Sincronizar agora</button></div>';
+document.body.prepend(bar);
 const status=msg=>document.getElementById("cloudState").textContent=msg;
 let logged=false,dirty=false,busy=false,repeat=false,deleted={products:new Set(),changes:new Set(),adsSnapshots:new Set(),history:new Set()};
 const original={persistProducts,setChanges,setAdsSnapshots,setHistory};let syncTimer=null;let hooksInstalled=false;
@@ -101,7 +93,7 @@ async function pull(){
  }catch(e){status("Histórico compartilhado indisponível: "+e.message);}
  finally{busy=false;}
 }
-async function startAuthenticated(){
+async function startPublic(){
  logged=true;status("Conectando ao histórico...");
  // Antes de iniciar os hooks, reúna sem efeitos colaterais os dados do navegador e do Drive.
  try{
@@ -114,26 +106,12 @@ async function startAuthenticated(){
   status("Google Drive indisponível: "+e.message+" · seus dados ficam somente locais");
   installHooks();
  }
- gate.hidden=true;
 }
 async function init(){
  document.getElementById("cloudSyncNow").addEventListener("click",async()=>{if(dirty)await save();else await pull();});
- document.getElementById("cloudLogout").addEventListener("click",async()=>{
-  try{await fetch("/api/access",{method:"DELETE",credentials:"same-origin"})}catch{}
-  location.reload();
- });
- document.getElementById("cloudLoginForm").addEventListener("submit",async e=>{
-  e.preventDefault();const input=document.getElementById("cloudPassword"),error=document.getElementById("cloudLoginError");
-  error.textContent="";
-  try{await api("/access",{password:input.value});input.value="";await startAuthenticated();}
-  catch(ex){error.textContent=ex.message;}
- });
- try{
-  const a=await api("/access");
-  if(a.authenticated)await startAuthenticated();
-  else{status("Acesso protegido: entre para sincronizar.");gate.hidden=false;}
- }catch(e){status("Acesso não configurado: "+e.message);document.getElementById("cloudLoginError").textContent=e.message;gate.hidden=false;}
+ await startPublic();
  setInterval(()=>{if(logged&&!dirty&&!busy&&document.visibilityState==="visible")pull();},60000);
 }
+
 init();
 })();
