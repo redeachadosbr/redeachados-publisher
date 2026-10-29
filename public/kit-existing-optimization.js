@@ -2,6 +2,7 @@
 const $=selector=>document.querySelector(selector);
 export function initExistingKitOptimization({getContext,api,money,onMainSkuChange}){
  let target=null,busy=false,discountToken=null,discountLookupSeq=0,discountSearching=false,latestCampaigns=[];
+ let lookupSerial=0,lookupController=null;
  const ctx=()=>getContext(),kitSku=()=>ctx().prepared?.kit?.kitSku||'';
  function notice(message,state='info'){
   const el=$('#kitOptimizeStatus');if(el){el.textContent=message;el.dataset.state=state;}
@@ -9,6 +10,8 @@ export function initExistingKitOptimization({getContext,api,money,onMainSkuChang
  function paint(){
   const {kitSaved}=ctx(),valid=Boolean(target&&target.kitSku===kitSku());
   $('#kitOptimizeLookup').disabled=busy||!kitSaved;
+  $('#kitOptimizeDeepLookup').disabled=busy||!kitSaved;
+  $('#kitOptimizeCancelLookup').hidden=!lookupController;
   $('#kitOptimizeStart').disabled=busy||!kitSaved;
   $('#kitOptimizePrepare').disabled=busy||!kitSaved||!valid||!$('#kitOptimizeConfirm').checked;
   $('#kitOptimizeImages').disabled=busy||!kitSaved||!valid||!target.prepared;
@@ -114,6 +117,7 @@ export function initExistingKitOptimization({getContext,api,money,onMainSkuChang
   }finally{if(seq===discountLookupSeq){discountSearching=false;paint();}}
  }
  function restore(link=null){
+  lookupController?.abort();lookupSerial++;lookupController=null;busy=false;
   globalThis.redeKitCloseOptimizerWorkspace?.();
   target=link?.itemId?{...link,prepared:true}:null;
   resetDiscountDiscovery();
@@ -130,51 +134,73 @@ export function initExistingKitOptimization({getContext,api,money,onMainSkuChang
    'Anúncio vinculado: Item ID '+link.itemId+' · SKU '+link.sku+' · Modelo '+link.modelId:
    'Escolha o Item ID do anúncio de kit que já está em Produtos Shopee.';
   paint();
-  if(link?.mainSku)void resolveDiscountIds();
+  // Evitar consulta demorada de dezenas de campanhas antes da etapa 08.
  }
- async function lookup({automatic=false}={}){
+ async function lookup({automatic=false,deep=false}={}){
   const {kitSaved}=ctx(),code=$('#kitOptimizeListingSku').value.trim(),current=kitSku();
-  if(busy||!kitSaved||!current)return;
-  if(!code)return notice('Informe a SKU exata do anúncio existente.','error');
-  busy=true;target=null;resetDiscountDiscovery();
+  if(busy||!kitSaved||!current)return null;
+  if(!code)return notice('Informe a SKU do anuncio completo do kit.','error');
+  if((ctx().prepared?.kit?.components||[]).some(x=>String(x.sku)===code)){
+   $('#kitOptimizeAdvanced').open=true;
+   return notice('A SKU '+code+' e de um componente. Informe a SKU do anuncio de KIT.','warning');
+  }
+  const seq=++lookupSerial,controller=new AbortController();
+  lookupController=controller;busy=true;target=null;resetDiscountDiscovery();
   $('#kitOptimizeConfirm').checked=false;paint();
   const root=$('#kitOptimizeCandidates');root.replaceChildren();
-  notice('Consultando a SKU '+code+' no catálogo Shopee...');
+  $('#kitOptimizeSelected').textContent='Verificando SKU do KIT na Shopee...';
+  notice(deep?'Pesquisando catalogo completo para '+code+' (consulta opcional)...':
+   'Buscando SKU exata '+code+' diretamente na Shopee...');
+  globalThis.RAKitLookupPhase?.('Localizando SKU do KIT · somente leitura na Shopee.');
+  const reminder=setTimeout(()=>{
+   if(seq===lookupSerial)notice('A Shopee ainda esta respondendo. Voce pode cancelar esta consulta.','warning');
+  },6500);
   try{
-   const data=await api('/api/shopee/optimizer/find?'+new URLSearchParams({sku:code,deep:'1'}));
-   if(kitSku()!==current)return;
+   const endpoint=deep?'/api/shopee/optimizer/find?'+new URLSearchParams({sku:code,deep:'1'}):
+    '/api/shopee/kits/optimization/find?'+new URLSearchParams({kitSku:current,sku:code});
+   const data=await api(endpoint,{signal:AbortSignal.any([controller.signal,AbortSignal.timeout(deep?45000:18000)])});
+   if(seq!==lookupSerial||kitSku()!==current)return null;
    const matches=(data.matches||[]).filter(x=>['NORMAL','UNLIST'].includes(String(x.status).toUpperCase()));
-   if(!matches.length)throw Error('Anúncio não encontrado como ativo. Confira em Produtos Shopee.');
-   if(automatic&&matches.length===1){
-    const m=matches[0];
-    target={kitSku:current,sku:code,itemId:String(m.itemId),
-      modelId:String(m.modelId??'0'),prepared:false,autoVerified:true};
-    $('#kitOptimizeConfirm').checked=true;
-    $('#kitOptimizeSelected').textContent='Kit encontrado · Item ID '+m.itemId;
-    notice('Anúncio único do kit localizado pela SKU exata. Preparando a revisão...','success');
-    paint();return target;
+   if(!matches.length){
+    $('#kitOptimizeAdvanced').open=true;
+    $('#kitOptimizeSelected').textContent='Anuncio do KIT nao localizado';
+    notice('A Shopee nao confirmou o anuncio de KIT com SKU '+code+'. O rascunho WeDrop nao cria esse anuncio. Confira a SKU ou utilize Criar Kit Formal na Shopee.','warning');
+    globalThis.RAKitLookupPhase?.('Busca concluida sem Item ID do KIT. Nenhum anuncio foi modificado.');
+    return null;
    }
+   const choose=m=>{
+    target={kitSku:current,sku:code,itemId:String(m.itemId),
+     modelId:String(m.modelId??'0'),prepared:false,autoVerified:automatic&&matches.length===1};
+    $('#kitOptimizeConfirm').checked=Boolean(target.autoVerified);
+    $('#kitOptimizeSelected').textContent='Item ID '+m.itemId+' · SKU '+code;
+    notice(target.autoVerified?'SKU exata e Item ID confirmados. Validando o kit...':
+     'Anuncio encontrado. Confirme que representa o kit completo.','success');
+    globalThis.RAKitLookupPhase?.('Item ID '+m.itemId+' confirmado na consulta da Shopee.');
+    paint();
+   };
+   if(automatic&&matches.length===1){choose(matches[0]);return target;}
+   $('#kitOptimizeAdvanced').open=true;
    for(const m of matches){
     const button=document.createElement('button');button.type='button';button.className='kit-secondary';
     button.textContent='Item ID '+m.itemId+' · '+(m.title||code)+' · Modelo '+String(m.modelId??'0');
-    button.addEventListener('click',()=>{
-     if(kitSku()!==current)return;
-     target={kitSku:current,sku:code,itemId:String(m.itemId),modelId:String(m.modelId??'0'),prepared:false};
-     $('#kitOptimizeConfirm').checked=false;
-     $('#kitOptimizeSelected').textContent='SELECIONADO: '+(m.title||code)+' | Item ID '+m.itemId+
-      ' · Modelo '+String(m.modelId??'0');
-     notice('Confira se este anúncio representa o kit completo, depois confirme.','info');
-     void resolveDiscountIds();paint();
-    });
+    button.addEventListener('click',()=>{if(kitSku()===current)choose(m);});
     root.append(button);
    }
-   if(automatic){
-    $('#kitOptimizeAdvanced').open=true;
-    notice('Foram encontrados '+matches.length+' anúncios. Selecione, confirme e clique em Iniciar novamente.','warning');
-   }else notice(matches.length+' anúncio(s) encontrado(s). Selecione o Item ID correto.','success');
+   notice('Encontrados '+matches.length+' anuncios. Selecione o Item ID do KIT e confirme antes de prosseguir.','warning');
    return null;
-  }catch(e){notice('Consulta não concluída: '+e.message,'error');}
-  finally{busy=false;paint();}
+  }catch(e){
+   if(seq!==lookupSerial)return null;
+   $('#kitOptimizeAdvanced').open=true;
+   $('#kitOptimizeSelected').textContent='Consulta sem confirmacao';
+   const timeout=e.name==='TimeoutError'||e.name==='AbortError';
+   notice(timeout?'Busca interrompida por demora. Tente novamente ou use a pesquisa completa nas opcoes avancadas.':
+    'Consulta nao concluida: '+e.message,'error');
+   globalThis.RAKitLookupPhase?.('Consulta encerrada sem validacao da SKU; nao houve publicacao.');
+   return null;
+  }finally{
+   clearTimeout(reminder);
+   if(seq===lookupSerial){busy=false;lookupController=null;paint();}
+  }
  }
  async function prepare(){
   if(busy||!target||!ctx().kitSaved)return;
@@ -183,15 +209,16 @@ export function initExistingKitOptimization({getContext,api,money,onMainSkuChang
   if(!primary)return notice('Selecione o SKU principal WeDrop.','error');
   const selected={...target},current=kitSku();
   busy=true;paint();notice('Revalidando custo completo do kit e anúncio Shopee...');
+  globalThis.RAKitLookupPhase?.('Validando custos de todos os componentes e Item ID antes da revisao.');
   try{
-   const result=await api('/api/shopee/kits/optimization/prepare',{body:{
+   const result=await api('/api/shopee/kits/optimization/prepare',{signal:AbortSignal.timeout(35000),body:{
     kitSku:current,sku:selected.sku,itemId:selected.itemId,modelId:selected.modelId,
     mainSku:primary,confirmedItemId:selected.itemId
    }});
    if(kitSku()!==current)return;
    target={kitSku:current,...result.target,prepared:true};
    discountToken=null;$('#kitOptimizeDiscountBox').hidden=true;
-   void resolveDiscountIds();
+   // Consulta de campanhas somente quando abrir a etapa 08.
    notice('✓ Item ID '+result.target.itemId+' vinculado. Custo total do kit: '+
     money(result.quote.kitCost)+'. Revise o título, as imagens e os campos fiscais. '+
     (result.warnings||[]).join(' '),'success');
@@ -230,6 +257,7 @@ export function initExistingKitOptimization({getContext,api,money,onMainSkuChang
     if(kitSku()!==current||target?.itemId!==selected.itemId)
      throw Error('O kit ou Item ID mudou durante a importação.');
     notice('Importando imagem '+slot+'/9 para a revisão do Item ID '+selected.itemId+'...');
+    globalThis.RAKitLookupPhase?.('Importacao de imagens: '+slot+'/9 para revisao, sem publicar.');
     const blob=await convert(images.get(slot));
     const params=new URLSearchParams({kit_sku:current,slot:String(slot)});
     const response=await fetch('/api/shopee/kits/optimization/image?'+params,{
@@ -273,15 +301,14 @@ export function initExistingKitOptimization({getContext,api,money,onMainSkuChang
   const btn=$('#kitOptimizeStart');
   btn.disabled=true;btn.textContent='Preparando etapas...';
   try{
-   const imported=newlyPrepared?await transferImages({automatic:true,optional:true}):false;
-   if(imported)notice('9 imagens disponíveis para revisão. Abrindo as etapas do kit...','success');
-   else notice('Abrindo as etapas. Confira as imagens no passo 01.','info');
+   notice('Abrindo as oito etapas do kit. As imagens estao sendo preparadas sem bloquear a tela.','info');
+   globalThis.RAKitLookupPhase?.('Carregando o fluxo de oito etapas no Kit.');
    open();
+   if(newlyPrepared)void transferImages({automatic:true,optional:true});
   }finally{btn.disabled=false;btn.textContent='↻ Continuar otimização do kit';}
  }
  globalThis.RAKitOptimizerReady=data=>{
   if(data?.kitOptimization?.kitSku!==kitSku())return;
-  syncWorkflowCampaigns();
   notice('Fluxo do kit carregado: siga as etapas 01 a 08 e depois Prévia e execução.','success');
   $('#kitOptimizeStart').textContent='↻ Continuar otimização do kit';
   $('#kitOptimizerWorkspace')?.scrollIntoView({behavior:'smooth',block:'start'});
@@ -353,6 +380,16 @@ export function initExistingKitOptimization({getContext,api,money,onMainSkuChang
  });
  $('#kitOptimizeDiscountRefresh')?.addEventListener('click',()=>void resolveDiscountIds());
  $('#kitOptimizeLookup')?.addEventListener('click',()=>void lookup());
+ $('#kitOptimizeDeepLookup')?.addEventListener('click',()=>void lookup({deep:true}));
+ $('#kitOptimizeCancelLookup')?.addEventListener('click',()=>{
+  lookupSerial++;lookupController?.abort();lookupController=null;busy=false;
+  notice('Consulta cancelada. Nenhuma alteracao foi enviada a Shopee.','warning');
+  globalThis.RAKitLookupPhase?.('Consulta cancelada antes de vincular o anuncio.');
+  paint();
+ });
+ globalThis.RAKitDiscountStageOpened=()=>{
+  if(target?.prepared&&!discountSearching)void resolveDiscountIds();
+ };
  $('#kitOptimizeStart')?.addEventListener('click',()=>void startKitOptimization());
  $('#kitWorkflowImportImages')?.addEventListener('click',()=>void transferImages());
  $('#kitOptimizePrepare')?.addEventListener('click',()=>void prepare());
@@ -360,12 +397,14 @@ export function initExistingKitOptimization({getContext,api,money,onMainSkuChang
  $('#kitOptimizeOpen')?.addEventListener('click',open);
  $('#kitOptimizeConfirm')?.addEventListener('change',paint);
  $('#kitOptimizeMainSku')?.addEventListener('change',()=>{
+  lookupSerial++;lookupController?.abort();lookupController=null;busy=false;
   globalThis.redeKitCloseOptimizerWorkspace?.();
   if(target)target.prepared=false;
   onMainSkuChange?.($('#kitOptimizeMainSku').value);
   void resolveDiscountIds();paint();
  });
  $('#kitOptimizeListingSku')?.addEventListener('input',()=>{
+  lookupSerial++;lookupController?.abort();lookupController=null;busy=false;
   globalThis.redeKitCloseOptimizerWorkspace?.();
   target=null;resetDiscountDiscovery();
   $('#kitOptimizeConfirm').checked=false;
