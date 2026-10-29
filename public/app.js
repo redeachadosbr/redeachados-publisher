@@ -3007,6 +3007,12 @@ function optimizerWorkflowRender(data){
    $('#optimizerWorkflowEditor').hidden=true;
  }
 }
+globalThis.RAKitOpenDiscountReview=()=>{
+ if(!optimizerKitWorkflowActive())return false;
+ optimizerDiscountOpenReview();
+ $('#optimizerDiscountReviewInline')?.scrollIntoView({behavior:'smooth',block:'nearest'});
+ return true;
+};
 globalThis.RAKitWorkflowSyncReview=({kitSku,itemId,modelId,review}={})=>{
  const w=optimizerWorkflowPlan;
  if(!w||!optimizerKitWorkflowActive()||w.kitOptimization?.kitSku!==kitSku||
