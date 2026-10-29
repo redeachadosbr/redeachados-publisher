@@ -2024,8 +2024,14 @@ app.post('/api/shopee/optimizer/workflow/review',mustLogin,requireWeDropAdmin,as
   res.setHeader('Cache-Control','no-store');
   if(!verifiedSameOrigin(req))return res.status(403).json({error:'Origem da solicitação não permitida.'});
   try{
-    const change=validateReview(req.body);
     const {itemId,modelId,sku,auth,cfg,record}=await checkedWorkflowAudit(req);
+    // Apenas o kit já vinculado e auditado pode confirmar seu título salvo,
+    // mesmo abaixo da meta SEO de 100 caracteres (mínimo 10, máximo 120).
+    const linkedKit=(await getWorkflowReview(auth.shopId,itemId,modelId))?.review_state?.kitOptimization;
+    const allowShortKitTitle=Boolean(req.body?.stage==='seo'&&
+      req.body?.kitPreparedTitle===true&&linkedKit?.kitSku&&
+      String(linkedKit.mainSku)===String(sku));
+    const change=validateReview(req.body,{allowShortKitTitle});
     if(change.stage==='video'&&change.reviewed){
       const asset=await getShopeeManualVideo(auth.shopId,itemId,modelId,sku);
       if(!asset)throw Error('Importe e visualize o vídeo antes de aprovar esta etapa.');
@@ -2071,7 +2077,6 @@ app.post('/api/shopee/optimizer/workflow/review',mustLogin,requireWeDropAdmin,as
       compileAttributes(valid,record,live);
     }else if(change.attributes)compileAttributes(change.attributes,record,await shopeeLiveEditableItem(cfg,auth,itemId));
     // Nunca aceitar no salvamento um CEST copiado da Shopee ou digitado sem a WeDrop.
-    const linkedKit=(await getWorkflowReview(auth.shopId,itemId,modelId))?.review_state?.kitOptimization;
     const fiscalSku=linkedKit?.mainSku||sku;
     const taxSupplier=change.tax?await readWeDropProduct(auth.shopId,
       fiscalSku===sku?{sku,itemId,modelId}:{sku:fiscalSku}):null;
