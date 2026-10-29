@@ -2,6 +2,7 @@ import express from 'express';
 import session from 'express-session';
 import multer from 'multer';
 import crypto from 'node:crypto';
+import {registerTikTokSandbox} from './tiktokSandbox.js';
 import {readPersistentTikTokToken,writePersistentTikTokToken,deletePersistentTikTokToken,tiktokStorageConfigured} from './publisherTikTokAuthStore.js';
 import fs from 'node:fs';
 import path from 'node:path';
@@ -276,6 +277,8 @@ function mustLogin(req,res,next){
   if(!required || req.session?.appAuth) return next();
   res.status(401).json({error:'LOGIN_REQUIRED'});
 }
+// Sandbox isolado: credenciais, token e publicações separados da produção.
+const tiktokSandbox=registerTikTokSandbox(app,{mustLogin,upload,baseUrl});
 
 
 function normalizeText(v){
@@ -1536,6 +1539,8 @@ function tiktokAuthResultPage(status,message=''){
   return `<!doctype html><html lang="pt-BR"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>${title}</title><style>body{margin:0;font-family:Inter,system-ui,sans-serif;background:#f6f8f3;color:#273027;display:grid;place-items:center;min-height:100vh}.box{width:min(520px,calc(100% - 32px));background:#fff;border:1px solid #dfe6db;border-radius:18px;padding:28px;box-shadow:0 18px 55px rgba(33,44,31,.10);text-align:center}h1{font-size:24px;margin:0 0 10px}p{color:#667161;line-height:1.6}a{display:inline-block;margin-top:10px;padding:11px 16px;border-radius:10px;background:#263126;color:#fff;text-decoration:none;font-weight:700}</style></head><body><main class="box"><h1>${title}</h1><p>${detail}</p><a href="/">Voltar ao Publisher</a></main><script>(()=>{const payload=${payload};try{localStorage.setItem('redeachados_tiktok_auth_event_v1',JSON.stringify(payload))}catch{}try{const c=new BroadcastChannel('redeachados_tiktok_auth_v1');c.postMessage(payload);setTimeout(()=>c.close(),500)}catch{}try{if(window.opener)window.opener.postMessage(payload,location.origin)}catch{}${ok?"setTimeout(()=>{try{window.close()}catch{}},900);":""}})();</script></body></html>`;
 }
 app.get('/auth/tiktok/callback',async(req,res)=>{
+ // Roteamento exclusivo do Sandbox: não grava o token da conta principal.
+ if(String(req.query.state||'').startsWith('sandbox.'))return tiktokSandbox.handleCallback(req,res);
  try{
   if(req.query.error)throw Error(req.query.error_description||req.query.error);
   if(!req.query.code||!validTikTokState(req))
