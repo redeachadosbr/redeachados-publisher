@@ -99,7 +99,7 @@ test('titulo e descricao do kit possuem botoes de conferencia ao lado dos textos
   for(const id of [container,button,status])
    assert.equal(html.split('id="'+id+'"').length-1,1);
  }
- assert.match(html,/\/app\.js\?v=3\.5\.10-kit-tech-edit-target/);
+ assert.match(html,/\/app\.js\?v=3\.5\.11-fiscal-check/);
  assert.match(html,/\/kit-builder\.js\?v=3\.9\.8-kit-seo-confirm/);
  assert.match(html,/\/kit-builder\.css\?v=3\.8\.7-kit-source-checklist/);
  assert.match(app,/globalThis\.RAKitSourceChanged=optimizerKitSourceChanged/);
@@ -218,5 +218,35 @@ test('editar pela previa expande o atributo correto sem substituir os campos sal
  assert.match(app,/globalThis\.RATechnicalStudio\?\.render\?\.\(data\)/);
  assert.match(app,/body\.attributes=optimizerTechnicalValues\(\)/);
  assert.match(html,/id="optimizerWorkflowReview"/);
- assert.match(html,/\/app\.js\?v=3\.5\.10-kit-tech-edit-target/);
+ assert.match(html,/\/app\.js\?v=3\.5\.11-fiscal-check/);
+});
+
+
+test('etapa 07 possui botao check distinto do salvamento fiscal',()=>{
+ const fiscal=source('public/fiscal-modern-layout.js');
+ const css=source('public/fiscal-modern-layout.css');
+ assert.match(fiscal,/checklist=action\('✓ Registrar etapa concluída'/);
+ assert.match(fiscal,/checklist\.id='raFiscalChecklistConfirm'/);
+ assert.match(fiscal,/globalThis\.RAFiscalChecklistConfirm\?\.\(\)/);
+ assert.match(fiscal,/actions\.insertBefore\(checklist,next\)/);
+ assert.match(fiscal,/get\('raFiscalChecklistConfirm'\)\?\.remove\(\)/);
+ assert.match(fiscal,/get\('optimizerWorkflowReview'\)/);
+ assert.match(fiscal,/save\.textContent='Salvar dados fiscais \(rascunho\)'/);
+ assert.match(fiscal,/get\('raFiscalChecklistConfirm'\)/);
+ assert.match(css,/#raFiscalModernLayout \.optimizer-workflow-actions #raFiscalChecklistConfirm/);
+ assert.match(html,/fiscal-modern-layout\.css\?v=1\.0\.2-fiscal-check/);
+ assert.match(html,/fiscal-modern-layout\.js\?v=1\.0\.2-fiscal-check/);
+ assert.match(html,/\/app\.js\?v=3\.5\.11-fiscal-check/);
+});
+test('salvar dados fiscais nao confirma checklist e confirmar exige resposta do servidor',()=>{
+ assert.match(app,/async function optimizerWorkflowSaveReview\(\{fiscalConfirm=false\}=\{\}\)/);
+ assert.match(app,/reviewed:key==='fiscal'\?fiscalReviewed/);
+ assert.match(app,/const fiscalReviewed=fiscalConfirm\?\(!stage\.reviewed\|\|fiscalChanged\):false/);
+ assert.match(app,/if\(key==='fiscal'&&\(result\.saved!==true\|\|/);
+ assert.match(app,/result\.stages\?\.find\(x=>x\.key==='fiscal'\)\?\.reviewed!==body\.reviewed/);
+ assert.match(app,/globalThis\.RAFiscalChecklistConfirm=\(\)=>optimizerWorkflowSaveReview\(\{fiscalConfirm:true\}\)/);
+ assert.match(app,/if\(key==='fiscal'\)body\.tax=optimizerFiscalValues\(\)/);
+ assert.match(app,/optimizerFiscalReviewBusy=true/);
+ assert.match(app,/optimizerFiscalReviewBusy=false/);
+ assert.match(app,/globalThis\.ShopeeFiscalStudio\?\.update\?\.\(\{\.\.\.data,\.\.\.result,stages:result\.stages\}\)/);
 });
