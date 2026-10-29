@@ -43,6 +43,18 @@ app.use(session({
   saveUninitialized: false,
   cookie: { httpOnly: true, sameSite: 'lax', secure: process.env.NODE_ENV === 'production', maxAge: 30*24*60*60*1000 }
 }));
+// Arquivos de assinatura do TikTok precisam refletir a tentativa de verificação atual.
+// Não faça cache desses arquivos; registre somente caminho e status HTTP para diagnosticar
+// se o robô do TikTok chegou ao Publisher. Não afeta autenticação nem rotas de produção.
+app.use((req,res,next)=>{
+  if(/^\/tiktok[A-Za-z0-9]+\.txt$/.test(req.path)){
+    res.set('Cache-Control','no-store, no-cache, max-age=0, must-revalidate');
+    res.set('Pragma','no-cache');
+    res.set('Expires','0');
+    res.on('finish',()=>console.info('[TikTok URL Verify]',req.method,req.path,res.statusCode));
+  }
+  next();
+});
 app.use(express.static(path.join(__dirname, 'public')));
 
 function defaults(){
