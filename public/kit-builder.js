@@ -2863,7 +2863,7 @@ $('#kitPrincipalSku')?.addEventListener('change',()=>{
  if(lower&&lower.value!==main){lower.value=main;lower.dispatchEvent(new Event('change',{bubbles:true}));}
  const legacy=$('#kitMainSku');if(legacy&&[...legacy.options].some(x=>x.value===main))legacy.value=main;
  renderKitPricingSummary(prepared.kit);
- scheduleKitMarginReprice();
+ // A troca da referência principal não altera custos/margem nem invalida o rascunho salvo.
 });
 renderKitPricingSummary(null);
 // Mesmo mecanismo da barra de Otimização: arraste, toque ou use as setas.
