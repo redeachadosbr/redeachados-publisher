@@ -1,6 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
+import {validateReview} from '../shopeeOptimizationWorkflow.js';
 const source=path=>fs.readFileSync(new URL('../'+path,import.meta.url),'utf8');
 const app=source('public/app.js'),html=source('public/index.html');
 const server=source('server.js'),existing=source('public/kit-existing-optimization.js');
@@ -115,7 +116,7 @@ test('alteracao de texto ou titulo importado reabre a etapa e nao publica sem au
  assert.match(app,/const optimizerKitSourcePending=\{seo:null,description:null\}/);
  assert.match(app,/optimizerContentQueue=optimizerContentQueue\.catch\(\(\)=>\{\}\)\.then\(\(\)=>\s*optimizerSaveChecklistReview\(body\)\)/);
  assert.match(app,/optimizerKitSourceChanged\(\);\n \/\/ A pesquisa/);
- assert.match(app,/if\(length<100\|\|length>120\)/);
+ assert.match(app,/if\(length<10\|\|length>120\)/);
 });
 test('as outras seis etapas continuam com sua aprovacao propria antes da execucao',()=>{
  assert.match(html,/id="kitWorkflowImportImages"/);
@@ -128,4 +129,22 @@ test('as outras seis etapas continuam com sua aprovacao propria antes da execuca
  assert.match(server,/if\(change\.stage==='images'&&change\.reviewed\)/);
  assert.match(html,/id="optimizerExecDiscountPreview"/);
  assert.match(app,/optimizerDiscountOpenReview\(\)/);
+});
+
+test('check do titulo curto do kit funciona sem enfraquecer titulo SEO comum',()=>{
+ const short='Kit Brinquedos para Bebê 12 Meses Elefante Musical com Luzes + Torre e Bola Chocalho 🐘🎶';
+ assert([...short.normalize('NFC').replace(/\s+/g,' ').trim()].length<100);
+ const reviewed={stage:'seo',reviewed:true,title:short};
+ assert.throws(()=>validateReview(reviewed),/100 e 120/);
+ assert.equal(validateReview(reviewed,{allowShortKitTitle:true}).title,
+  short.normalize('NFC').replace(/\s+/g,' ').trim());
+ assert.throws(()=>validateReview({...reviewed,title:'curto'},{allowShortKitTitle:true}),/10 a 120/);
+ assert.throws(()=>validateReview({...reviewed,title:'A'.repeat(121)},{allowShortKitTitle:true}),/10 a 120/);
+ assert.match(server,/req\.body\?\.kitPreparedTitle===true/);
+ assert.match(server,/String\(linkedKit\.mainSku\)===String\(sku\)/);
+ assert.match(server,/validateReview\(req\.body,\{allowShortKitTitle\}\)/);
+ assert.match(app,/stage==='seo'\?\{kitPreparedTitle:true\}/);
+ assert.match(app,/optimizerKitSourceErrors\[stage\]=String\(error\.message\|\|error\)/);
+ const builder=source('public/kit-builder.js');
+ assert.match(builder,/\[\.\.\.\$\('#kitTitle'\)\.value\.normalize\('NFC'\)\.replace/);
 });
