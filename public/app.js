@@ -3947,17 +3947,26 @@ async function optimizerSaveChecklistReview(body){
   }
  }
 }
-$('#optimizerWorkflowReview')?.addEventListener?.('click',async()=>{
+let optimizerFiscalReviewBusy=false;
+async function optimizerWorkflowSaveReview({fiscalConfirm=false}={}){
  const data=optimizerWorkflowPlan,key=optimizerWorkflowStage;
+ if(key==='fiscal'&&optimizerFiscalReviewBusy)return;
  const stage=data?.stages?.find(x=>x.key===key);
  if(!stage||key==='final')return;
- const btn=$('#optimizerWorkflowReview');btn.disabled=true;
+ if(fiscalConfirm&&key!=='fiscal')return;
+ const btn=$('#optimizerWorkflowReview'),check=$('#raFiscalChecklistConfirm');
+ if(key==='fiscal')optimizerFiscalReviewBusy=true;
+ btn.disabled=true;
+ if(check)check.disabled=true;
  const originalButtonText=btn.textContent;
+ if(key==='fiscal')btn.textContent=fiscalConfirm?'Confirmando etapa fiscal…':'Salvando rascunho fiscal…';
  if(key==='technical'){
    btn.textContent='Salvando conferência…';
    optimizerTechReviewFeedback('Verificando os campos e salvando a revisão da SKU '+data.sku+'…','info');
  }
- optimizerWorkflowNotice('Salvando a conferência da etapa '+stage.name+' na Shopee Manager...');
+ optimizerWorkflowNotice(key==='fiscal'?
+  (fiscalConfirm?'Registrando a conferência da etapa 07…':'Salvando o rascunho fiscal no Motor Matriz…'):
+  'Salvando a conferência da etapa '+stage.name+' na Shopee Manager...');
  try{
    if(key==='seo'&&!stage.reviewed){
      const title=$('#optimizerWorkflowDraft').value.normalize('NFC').replace(/\s+/g,' ').trim();
@@ -3966,8 +3975,11 @@ $('#optimizerWorkflowReview')?.addEventListener?.('click',async()=>{
    }
    if(key==='seo'||key==='description'){optimizerContentRemember();await optimizerContentFlush();}
    if(key==='technical')await techFlush();
+   const fiscalChanged=check?.dataset.dirty==='true';
+   const fiscalReviewed=fiscalConfirm?(!stage.reviewed||fiscalChanged):false;
    const body={itemId:data.itemId,modelId:data.modelId,sku:data.sku,
-     stage:key,reviewed:key==='fiscal'?true:key==='variants'?$('#optimizerHasVariants').checked:!stage.reviewed};
+     stage:key,reviewed:key==='fiscal'?fiscalReviewed:
+       key==='variants'?$('#optimizerHasVariants').checked:!stage.reviewed};
    if(key==='technical'){
      // A fonte é opcional para registrar a conferência local. Não exigir que
      // o vendedor declare WeDrop, fabricante ou nota quando não há tal prova.
@@ -3989,6 +4001,9 @@ $('#optimizerWorkflowReview')?.addEventListener?.('click',async()=>{
    if(key==='technical'&&body.reviewed&&
       result.stages?.find(x=>x.key==='technical')?.reviewed!==true)
        throw Error('O servidor não confirmou a ficha técnica. Consulte os campos pendentes e tente novamente.');
+   if(key==='fiscal'&&(result.saved!==true||
+     result.stages?.find(x=>x.key==='fiscal')?.reviewed!==body.reviewed))
+       throw Error('O servidor não confirmou o salvamento e o status da etapa fiscal.');
    if(key==='technical'){
     // O rascunho permanece salvo por SKU: atributos opcionais incompatíveis
     // ficam disponíveis para correção, mas não serão enviados à Shopee.
@@ -4001,7 +4016,11 @@ $('#optimizerWorkflowReview')?.addEventListener?.('click',async()=>{
    // Salvar fiscal atualiza a prévia, mas não faz qualquer chamada de publicação.
    void optimizerExecutionPrepare();
    optimizerWorkflowNotice(key==='fiscal'?
-     'Dados fiscais da SKU '+data.sku+' salvos no Motor Matriz. CEST 00 será considerado no envio se aparecer na próxima prévia; nenhum dado foi enviado só por salvar.':
+     (body.reviewed?
+       '✓ Etapa 07 da SKU '+data.sku+' conferida e salva no Motor Matriz. Nenhuma informação publicada na Shopee.':
+       fiscalConfirm?
+         'Conferência fiscal reaberta para revisão nesta SKU. Rascunho preservado; nenhuma publicação realizada.':
+         'Rascunho fiscal da SKU '+data.sku+' salvo no Motor Matriz. Use “✓ Registrar etapa concluída” para confirmar. Nenhuma publicação realizada.'):
      'Revisão da etapa '+stage.name+' salva. Nenhum dado do anúncio foi alterado na Shopee.','success');
    if(key==='technical'){
      const ignored=Array.isArray(result.technicalSkipped)?result.technicalSkipped:[];
@@ -4020,9 +4039,16 @@ $('#optimizerWorkflowReview')?.addEventListener?.('click',async()=>{
  }
  finally{
    btn.disabled=false;
-   if(btn.textContent==='Salvando conferência…')btn.textContent=originalButtonText;
+   if(check)check.disabled=false;
+   if(key==='fiscal'){
+     optimizerFiscalReviewBusy=false;
+     // O botão é sincronizado com o estado confirmado pelo servidor.
+     btn.textContent='Salvar dados fiscais (rascunho)';
+   }else if(btn.textContent==='Salvando conferência…')btn.textContent=originalButtonText;
  }
-});
+}
+$('#optimizerWorkflowReview')?.addEventListener?.('click',()=>void optimizerWorkflowSaveReview());
+globalThis.RAFiscalChecklistConfirm=()=>optimizerWorkflowSaveReview({fiscalConfirm:true});
 // Pré-execução parcial Shopee. Only explicit interaction authorizes update_item.
 let optimizerExecPlan=null,optimizerExecContext=null,optimizerExecBusy=false,optimizerExecSerial=0;
 let optimizerExecAutoModelToken=null,optimizerExecAutoModelPreview=null;
