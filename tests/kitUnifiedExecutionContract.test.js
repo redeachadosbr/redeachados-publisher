@@ -100,9 +100,9 @@ test('titulo e descricao do kit possuem botoes de conferencia ao lado dos textos
   for(const id of [container,button,status])
    assert.equal(html.split('id="'+id+'"').length-1,1);
  }
- assert.match(html,/\/app\.js\?v=3\.5\.11-fiscal-check/);
- assert.match(html,/\/kit-builder\.js\?v=3\.9\.8-kit-seo-confirm/);
- assert.match(html,/\/kit-builder\.css\?v=3\.8\.7-kit-source-checklist/);
+ assert.match(html,/\/app\.js\?v=3\.5\.12-kit-discount-planning/);
+ assert.match(html,/\/kit-builder\.js\?v=3\.9\.9-kit-discount-planning/);
+ assert.match(html,/\/kit-builder\.css\?v=3\.8\.8-kit-discount-planning/);
  assert.match(app,/globalThis\.RAKitSourceChanged=optimizerKitSourceChanged/);
  assert.match(app,/function optimizerKitSourceConfirm\(stage\)/);
  assert.match(app,/await optimizerKitSourceFlush\(stage\)/);
@@ -219,7 +219,7 @@ test('editar pela previa expande o atributo correto sem substituir os campos sal
  assert.match(app,/globalThis\.RATechnicalStudio\?\.render\?\.\(data\)/);
  assert.match(app,/body\.attributes=optimizerTechnicalValues\(\)/);
  assert.match(html,/id="optimizerWorkflowReview"/);
- assert.match(html,/\/app\.js\?v=3\.5\.11-fiscal-check/);
+ assert.match(html,/\/app\.js\?v=3\.5\.12-kit-discount-planning/);
 });
 
 
@@ -237,7 +237,7 @@ test('etapa 07 possui botao check distinto do salvamento fiscal',()=>{
  assert.match(css,/#raFiscalModernLayout \.optimizer-workflow-actions #raFiscalChecklistConfirm/);
  assert.match(html,/fiscal-modern-layout\.css\?v=1\.0\.3-compact-help/);
  assert.match(html,/fiscal-modern-layout\.js\?v=1\.0\.3-compact-help/);
- assert.match(html,/\/app\.js\?v=3\.5\.11-fiscal-check/);
+ assert.match(html,/\/app\.js\?v=3\.5\.12-kit-discount-planning/);
 });
 test('salvar dados fiscais nao confirma checklist e confirmar exige resposta do servidor',()=>{
  assert.match(app,/async function optimizerWorkflowSaveReview\(\{fiscalConfirm=false\}=\{\}\)/);
@@ -315,4 +315,41 @@ test('campo fiscal, avisos criticos e check continuam intactos',()=>{
  assert.match(studio,/checklist\.id='raFiscalChecklistConfirm'/);
  assert.match(studio,/get\('raFiscalChecklistConfirm'\)\?\.remove\(\)/);
  assert.match(app,/globalThis\.RAFiscalChecklistConfirm=\(\)=>optimizerWorkflowSaveReview\(\{fiscalConfirm:true\}\)/);
+});
+
+
+test('etapa 08 do kit permite previa de planejamento antes de executar o anuncio',()=>{
+ const service=source('shopeeKitDiscountService.js');
+ const module=source('public/kit-builder.js');
+ assert.match(service,/async function context\(cfg,auth,kitSku,discountId,\{requireExecution=true\}=\{\}\)/);
+ assert.match(service,/const x=await context\(cfg,auth,kitSku,discountId,\{requireExecution:false\}\)/);
+ assert.match(service,/if\(!ready\)return \{status:'planning',approvalReady:false,token:null/);
+ assert.match(service,/const ready=x\.executionVerified&&x\.priceAligned&&x\.liveStatus==='NORMAL'/);
+ assert.match(service,/const verified=await context\(cfg,auth,kitSku,discountId\)/);
+ assert.match(service,/const x=await context\(cfg,auth,kitSku,discountId\);\s*if\(String\(x\.itemId\)/);
+ assert.match(service,/if\(requireExecution&&!executionVerified\)/);
+ assert.match(service,/if\(requireExecution&&!priceAligned\)/);
+ assert.match(existing,/discountToken=!planned&&result\.token\?result\.token:null/);
+ assert.match(existing,/apply\.hidden=planned/);
+ assert.match(existing,/apply\.disabled=planned/);
+ assert.match(existing,/goExecution\.hidden=!planned/);
+ assert.match(existing,/globalThis\.RAKitDiscountPrepared\?\.\(/);
+ assert.match(app,/globalThis\.RAKitDiscountPrepared=\(\{kitSku,itemId,planning=true\}=\{\}\)=>/);
+ assert.match(app,/prepared\?'Prévia preparada · aplicação após execução'/);
+ assert.match(html,/id="kitOptimizeDiscountToExecution"/);
+ assert.match(html,/id="kitOptimizeDiscountApply" disabled/);
+ assert.match(module,/kit-existing-optimization\.js\?v=8-discount-planning/);
+ assert.match(html,/\/app\.js\?v=3\.5\.12-kit-discount-planning/);
+ assert.match(html,/\/kit-builder\.js\?v=3\.9\.9-kit-discount-planning/);
+ assert.match(html,/\/kit-builder\.css\?v=3\.8\.8-kit-discount-planning/);
+});
+test('etapa 08 continua sem token de desconto se falta execucao confirmada',()=>{
+ const service=source('shopeeKitDiscountService.js');
+ assert.match(service,/message:'Prévia de planejamento pronta/);
+ assert.match(service,/approvalReady:false,token:null/);
+ assert.match(service,/export async function executeKitDiscount[\s\S]*?verifyDiscountPreview\(token,secret,auth\.shopId\)/);
+ assert.match(service,/if\(String\(x\.itemId\)!==String\(approved\.itemId\)/);
+ assert.match(existing,/if\(!target\?\.prepared\|\|!discountToken\|\|busy\)return/);
+ assert.match(existing,/if\(!window\.confirm\(/);
+ assert.match(existing,/Nenhum dado foi alterado na Shopee/);
 });
