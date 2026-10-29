@@ -345,7 +345,7 @@ test('etapa 08 do kit permite previa de planejamento antes de executar o anuncio
 });
 test('etapa 08 continua sem token de desconto se falta execucao confirmada',()=>{
  const service=source('shopeeKitDiscountService.js');
- assert.match(service,/message:'Prévia de planejamento pronta/);
+ assert.match(service,/message:!x\.priceAligned\?/);
  assert.match(service,/approvalReady:false,token:null/);
  assert.match(service,/export async function executeKitDiscount[\s\S]*?verifyDiscountPreview\(token,secret,auth\.shopId\)/);
  assert.match(service,/if\(String\(x\.itemId\)!==String\(approved\.itemId\)/);
@@ -477,7 +477,7 @@ test('modo exclusivo do kit aparece na interface sem reenviar etapas já preserv
  assert.match(html,/<option value="discount">Somente desconto \(etapa 08/);
  assert.match(app,/p\?\.selectedStage==='discount'/);
  assert.match(app,/Preservado · sem reenvio/);
- assert.match(server,/if\(selectedStage==='discount'&&kitLink&&!kitDiscountPlan\)/);
+ assert.match(server,/if\(\['discount','discount_adjust'\]\.includes\(selectedStage\)&&kitLink&&!kitDiscountPlan\)/);
 });
 
 test('kit mostra diferença do preço atual e permite autorização separada de preço bruto + desconto',()=>{
