@@ -410,3 +410,29 @@ test('falha ao salvar historico apos publicacao nao solicita reenviar promocao',
  assert.match(server,/historyWarning:'Desconto confirmado na Shopee, mas histórico local pendente\. Não reenviar/);
  assert.doesNotMatch(server,/if\(out\?\.status==='discount_confirmed'\)\{\s*const saved/);
 });
+
+
+test('execucao completa do kit usa fonte WeDrop auditada na preparação',()=>{
+ const fiscalAll=/if\(plan\.finalFiscal&&\['all','remaining'\]\.includes\(selectedStage\)\)\{[\s\S]*?const supplier=await readWeDropProduct\(auth\.shopId,\{sku,itemId,modelId\}\);[\s\S]*?fiscalMatrixSource\(\{sku,supplier,tax:reviewState\.tax,reviewSource:reviewState\.matrixFiscal\}\)/;
+ assert.match(server,fiscalAll);
+ assert.doesNotMatch(server,/const supplier=kitLink\?null:await readWeDropProduct/);
+ assert.match(server,/if\(kitLink\)\{[\s\S]*?await verifiedLinkedKitQuote\(auth,kitLink\)/);
+});
+test('execucao fiscal isolada do kit também usa a fonte ligada ao Item ID',()=>{
+ assert.match(server,/if\(selectedStage==='fiscal'&&reviewState\.stages\?\.fiscal\?\.reviewed&&reviewState\.tax\)\{\s*\/\/ Kit e SKU simples usam o mesmo vínculo auditado\.[\s\S]*?const supplier=await readWeDropProduct\(auth\.shopId,\{sku,itemId,modelId\}\);/);
+ assert.match(server,/const taxSupplier=change\.tax\?await readWeDropProduct\(auth\.shopId,\{sku,itemId,modelId\}\):null/);
+ assert.match(server,/if\(\(plan\.selectedStage==='fiscal'\|\|plan\.finalFiscal\)&&reviewState\.stages\?\.fiscal\?\.reviewed&&reviewState\.tax\)\{/);
+});
+test('dados fiscais da SKU 310200 vinculados ainda são validados na execução',()=>{
+ const tax={ncm:'95030039',evidence:'WeDrop produtos-catalogo.csv · SKU 310200 · linha 192'};
+ const supplier={supplier_sku:'310200',matchedBy:'exact-sku',
+   product_data:{ncm:'95030039'},source_file:'produtos-catalogo.csv',source_line:192};
+ const reviewed=fiscalMatrixSource({sku:'310200',supplier,tax});
+ assert.equal(reviewed.sku,'310200');
+ assert.equal(reviewed.supplierSku,'310200');
+ assert.equal(reviewed.ncm,'95030039');
+ assert.equal(fiscalMatrixSource({sku:'310200',supplier,tax,reviewSource:reviewed}).ncm,'95030039');
+ assert.throws(()=>fiscalMatrixSource({sku:'310200',supplier:null,tax,reviewSource:reviewed}),/não está vinculada/);
+ assert.throws(()=>fiscalMatrixSource({sku:'310200',supplier:{...supplier,supplier_sku:'999999'},tax,reviewSource:reviewed}),/diverge da SKU Shopee/);
+ assert.throws(()=>fiscalMatrixSource({sku:'310200',supplier,tax:{...tax,ncm:'95030099'},reviewSource:reviewed}),/diverge da ficha WeDrop/);
+});
