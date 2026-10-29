@@ -33,7 +33,7 @@ import {saveWeDropProducts,readWeDropProduct} from './wedropCosts.js';
 import {kitCatalog,suggestKits,suggestKitsForIdea,rankKitIdeaProducts,assessKitBuyerFit,composeKit,kitCreative,kitPrompts,kitPlusResearchBrief,kitPlusContentPrompt,kitContentBrief,categoryMatches,modifyKitSkus,clearKitCatalogCache,kitSku} from './shopeeKitBuilder.js';
 import {saveKitStockImport,clearKitStockCache,parseWeDropAvailabilityCsv,readKitStockSnapshot} from './shopeeKitAvailability.js';
 import {saveKitDraft,saveKitDraftLogistics,listKitDrafts,loadKitDraft,deleteKitDraft,recordKitOptimization} from './shopeeKitDraftStore.js';
-import {validateKitOptimizationTarget,kitOptimizationLinkIsCurrent} from './shopeeKitOptimization.js';
+import {validateKitOptimizationTarget,kitOptimizationLinkIsCurrent,linkedKitPricingCost} from './shopeeKitOptimization.js';
 import {recoverKitDraftForEditing,matchesStoredKitPhotos,validateStoredKitDraft} from './shopeeKitDraftRecovery.js';
 import {kitUploadPhoto,kitPublicationReadiness,kitPublicationPreview,kitPublishApproved,checkKitPublication,kitVideoPrepare,kitVideoAdvance,kitVideoStatus,kitVideoDiscard} from './shopeeKitPublicationService.js';
 import {previewKitDiscount,executeKitDiscount} from './shopeeKitDiscountService.js';
@@ -3829,7 +3829,12 @@ app.post('/api/shopee/optimizer/pricing/prepare',mustLogin,requireWeDropAdmin,as
     const sourceSettings=req.body?.settings===undefined
       ?await shopeePricingPreferences(auth.shopId)
       :normalizeShopeePricingSettings(req.body.settings);
-    const cost=await shopeePricingSupplierCost(auth.shopId,{sku,itemId,modelId});
+    const review=await getWorkflowReview(auth.shopId,itemId,modelId);
+    const kitLink=review?.review_state?.kitOptimization;
+    const linkedKit=kitLink?await verifiedLinkedKitQuote(auth,kitLink):null;
+    const cost=linkedKit?
+      linkedKitPricingCost({saved:linkedKit.draft,link:kitLink,live:linkedKit.live,sku,itemId,modelId}):
+      await shopeePricingSupplierCost(auth.shopId,{sku,itemId,modelId});
     const previous=await savedShopeePricePlan(auth.shopId,itemId,modelId);
     // O percentual de Ads só entra se o checkbox da SKU estiver marcado;
     // jamais herdar reserva de outro anúncio nem usar o valor global.
@@ -3837,7 +3842,9 @@ app.post('/api/shopee/optimizer/pricing/prepare',mustLogin,requireWeDropAdmin,as
     const adsBudgetPct=adsBudgetEnabled?Number(req.body?.adsBudgetPct):0;
     if(adsBudgetEnabled&&(!Number.isFinite(adsBudgetPct)||adsBudgetPct<=0||adsBudgetPct>60))
       throw Error('Marque Ads e informe uma reserva entre 0,1% e 60% para esta SKU.');
-    const settings={...sourceSettings,adsPct:adsBudgetPct};
+    const settings={...sourceSettings,adsPct:adsBudgetPct,
+      ...(linkedKit?{shipping:Math.max(sourceSettings.shipping,cost.shipping),
+        packing:Math.max(sourceSettings.packing,cost.packing)}:{})};
     // Referências de concorrentes: consulta automática separada da API de seller.
     // Não herdar um valor manual antigo como se fosse pesquisa verificada.
     const live=await shopeeLiveEditableItem(cfg,auth,itemId);
@@ -3862,7 +3869,16 @@ app.post('/api/shopee/optimizer/pricing/prepare',mustLogin,requireWeDropAdmin,as
     quote.itemId=itemId;
     quote.modelId=modelId;
     quote.supplierSku=cost.supplierSku;
-    quote.costUpdatedAt=cost.costUpdatedAt;
+    quote.costUpdatedAt=cost.costUpdatedAt||null;
+    if(linkedKit){
+      quote.source='kit_wedrop_components';
+      quote.kitSku=cost.kitSku;
+      quote.mainSku=cost.supplierSku;
+      quote.componentSkus=cost.componentSkus;
+      quote.componentCost=cost.unitCost;
+      quote.kitCost=Number((cost.unitCost+settings.shipping+settings.packing).toFixed(2));
+      quote.kitExtrasProtected=true;
+    }
     quote.pricingSettings=settings;
     quote.adsBudgetEnabled=adsBudgetEnabled;
     quote.adsBudgetPct=adsBudgetPct;

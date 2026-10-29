@@ -33,6 +33,20 @@ export function validateKitOptimizationTarget({saved,kit,record,targetSku,itemId
   grossPrice:money(kit.quote.grossPrice),promoPrice:money(kit.quote.marketplacePrice),
   title,description,preparedAt:new Date().toISOString()};
 }
+// O SKU principal identifica a referencia; nunca substitui o custo somado.
+export function linkedKitPricingCost({saved,link,live,sku,itemId,modelId}={}){
+ if(!kitOptimizationLinkIsCurrent(saved,link))throw Error('Vínculo do kit alterado. Prepare novamente.');
+ if(str(link.sku)!==str(sku)||str(link.itemId)!==str(itemId)||str(link.modelId)!==str(modelId))
+  throw Error('Anúncio Shopee diferente do kit vinculado.');
+ const actual=Array.isArray(live?.components)?live.components.map(p=>str(p.sku)):[];
+ if(str(live?.kitSku)!==str(link.kitSku)||actual.join('|')!==link.componentSkus.map(str).join('|')||
+    !actual.includes(str(link.mainSku))||!(money(live?.componentCost)>0)||
+    Math.abs(money(live.componentCost)-money(link.componentCost))>.011)
+  throw Error('Custo ou composição WeDrop mudaram; atualize o kit antes de precificar.');
+ return {unitCost:money(live.componentCost),supplierSku:str(link.mainSku),componentSkus:actual,
+  kitSku:str(link.kitSku),shipping:money(live.shipping||0),packing:money(live.packing||0),
+  kitCost:money(live.kitCost)};
+}
 export function kitOptimizationLinkIsCurrent(saved,link){
  return Boolean(saved?.optimization&&link&&
   str(saved.kitSku)===str(link.kitSku)&&

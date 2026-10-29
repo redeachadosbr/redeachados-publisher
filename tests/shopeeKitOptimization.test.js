@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {validateKitOptimizationTarget,kitOptimizationLinkIsCurrent} from '../shopeeKitOptimization.js';
+import {validateKitOptimizationTarget,kitOptimizationLinkIsCurrent,linkedKitPricingCost} from '../shopeeKitOptimization.js';
 const kit={kitSku:'KIT-AAA-BBB',components:[{sku:'AAA'},{sku:'BBB'}],
  componentCost:40,kitCost:44,quote:{grossPrice:130,marketplacePrice:110}};
 const saved={kitSku:kit.kitSku,kit,skus:['AAA','BBB'],
@@ -25,4 +25,23 @@ test('invalida vínculo se título ou custo do kit mudar',()=>{
  const link=validateKitOptimizationTarget(source);
  assert.equal(kitOptimizationLinkIsCurrent({...saved,optimization:link,creative:{...saved.creative,title:'Novo'}},link),false);
  assert.equal(kitOptimizationLinkIsCurrent({...saved,optimization:link,kit:{...kit,kitCost:45}},link),false);
+});
+
+test('SKU principal e referencia; calculo usa soma dos componentes',()=>{
+ const original={kitSku:'KIT-AAA-BBB',skus:['AAA','BBB'],
+  creative:{title:'Kit de teste',description:'Descricao do kit'},
+  kit:{kitCost:63,quote:{grossPrice:110}}};
+ const link={kitSku:'KIT-AAA-BBB',itemId:'123',modelId:'0',sku:'KIT-AAA-BBB',
+  mainSku:'AAA',componentSkus:['AAA','BBB'],componentCost:60,kitCost:63,
+  grossPrice:110,title:'Kit de teste',description:'Descricao do kit'};
+ original.optimization=link;
+ const live={kitSku:'KIT-AAA-BBB',components:[{sku:'AAA'},{sku:'BBB'}],
+  componentCost:60,kitCost:63,shipping:2,packing:1};
+ const q=linkedKitPricingCost({saved:original,link,live,sku:'KIT-AAA-BBB',itemId:'123',modelId:'0'});
+ assert.equal(q.unitCost,60);
+ assert.equal(q.supplierSku,'AAA');
+ assert.equal(q.kitCost,63);
+ assert.equal(q.componentSkus.length,2);
+ assert.throws(()=>linkedKitPricingCost({saved:original,link,live:{...live,componentCost:25},
+  sku:'KIT-AAA-BBB',itemId:'123',modelId:'0'}),/Custo ou composição/);
 });
