@@ -69,18 +69,34 @@ function markUnsaved(){
  status.classList.remove('is-saved');
  const heading=status.querySelector('strong'),caption=status.querySelector('small');
  if(heading)heading.textContent='◷ Alterações não salvas';
- if(caption)caption.textContent='Salve novamente antes de executar';
+ if(caption)caption.textContent='Salve o rascunho ou confirme novamente a etapa 07';
+ const button=get('raFiscalChecklistConfirm');
+ if(button){
+  button.dataset.dirty='true';
+  button.textContent='✓ Confirmar alterações fiscais';
+ }
 }
 function update(data){
  const editor=get('optimizerWorkflowEditor');if(!editor?.classList.contains('ra-fiscal-modern-active'))return;
  const stage=data?.stages?.find(s=>s.key==='fiscal')||active?.stages?.find(s=>s.key==='fiscal');
  const reviewed=stage?.reviewed===true;
+ active=data||active;
+ const checklist=get('raFiscalChecklistConfirm');
+ if(checklist){
+  checklist.dataset.reviewed=String(reviewed);
+  checklist.dataset.dirty='false';
+  checklist.textContent=reviewed?'✓ Etapa conferida · Reabrir':'✓ Registrar etapa concluída';
+  checklist.setAttribute('aria-pressed',String(reviewed));
+ }
+ const save=get('optimizerWorkflowReview');
+ if(save)save.textContent='Salvar dados fiscais (rascunho)';
  const pill=get('raFiscalModernStatus');
  if(pill){
   pill.classList.toggle('is-saved',reviewed);
   const title=pill.querySelector('strong'),subtitle=pill.querySelector('small');
-  if(title)title.textContent=reviewed?'✓ Dados fiscais salvos':'◷ Dados fiscais em revisão';
-  if(subtitle)subtitle.textContent=reviewed?'Revisão gravada nesta SKU':'Confira e salve antes da execução';
+  if(title)title.textContent=reviewed?'✓ Etapa 07 conferida':'◷ Conferência fiscal pendente';
+  if(subtitle)subtitle.textContent=reviewed?
+   'Salva no Motor Matriz · não publicada':'Salve o rascunho e registre a conferência';
  }
 }
 function close(){
@@ -109,6 +125,7 @@ function close(){
  fiscal?.querySelector(':scope > strong')?.removeAttribute('hidden');
  fiscal?.querySelector(':scope > p.optimizer-video-help')?.removeAttribute('hidden');
  const disclaimer=editor.querySelector('.optimizer-workflow-disclaimer');
+ get('raFiscalChecklistConfirm')?.remove();
  if(actions&&layout?.contains(actions))editor.append(actions);
  if(disclaimer&&layout?.contains(disclaimer))editor.append(disclaimer);
  layout?.remove();
@@ -199,6 +216,14 @@ function open(data){
  }
  // Keep the cards inside #optimizerFiscalFields; optimizerFiscalValues() reads these inputs.
  fields.append(content);
+ const checklist=action('✓ Registrar etapa concluída',()=>{
+  globalThis.RAFiscalChecklistConfirm?.();
+ },'ra-fiscal-modern-confirm');
+ checklist.id='raFiscalChecklistConfirm';
+ checklist.setAttribute('aria-label','Registrar ou reabrir a conferência da etapa 07 na SKU principal');
+ const next=get('optimizerWorkflowNext');
+ if(next&&next.parentElement===actions)actions.insertBefore(checklist,next);
+ else actions.append(checklist);
  const disclaimer=editor.querySelector('.optimizer-workflow-disclaimer');
  root.append(actions);
  if(disclaimer)root.append(disclaimer);
