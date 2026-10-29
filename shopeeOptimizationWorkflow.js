@@ -32,10 +32,16 @@ export const codePointCount=value=>[...String(value||'')].length;
 // Dimensões compostas são detalhadas na ficha técnica, não usadas como preenchimento SEO.
 // Capacidade (ex.: 210 litros) e tamanhos pesquisados individualmente seguem permitidos.
 export const titleHasUnhelpfulDimensions=value=>/\b\d+(?:[.,]\d+)?\s*[x×]\s*\d+(?:[.,]\d+)?(?:\s*[x×]\s*\d+(?:[.,]\d+)?)?\s*(?:mm|cm|m)\b/i.test(normalizedTitle(value));
-export function validateContentRules({title,description}){
+export function validateContentRules({title,description},{allowShortKitTitle=false}={}){
  if(title!==undefined){
   const titleLength=codePointCount(normalizedTitle(title));
-  if(titleLength<100||titleLength>120)throw Error('O título SEO precisa ter entre 100 e 120 caracteres, incluindo espaços e emojis. Atual: '+titleLength+'. Complete somente com características confirmadas e palavras-chave relevantes.');
+  // Título já escolhido no KIT pode ser conferido mesmo com menos de 100 caracteres.
+  // A meta 100–120 continua obrigatória para o SEO comum; nunca exceder 120.
+  const minimum=allowShortKitTitle?10:100;
+  if(titleLength<minimum||titleLength>120)
+   throw Error(allowShortKitTitle?
+    'O título do kit deve ter de 10 a 120 caracteres. Atual: '+titleLength+'.':
+    'O título SEO precisa ter entre 100 e 120 caracteres, incluindo espaços e emojis. Atual: '+titleLength+'. Complete somente com características confirmadas e palavras-chave relevantes.');
   if(titleHasUnhelpfulDimensions(title))throw Error('Não utilize sequência de medidas lineares no título SEO. Priorize palavras-chave pesquisáveis e deixe as dimensões na ficha técnica.');
  }
  if(description!==undefined){
@@ -74,7 +80,7 @@ export function buildStages(record,review={}){
     return {...s,reviewed:skipped?false:reviewed,skipped,reviewedAt:reviewed?entry.reviewedAt||null:null,status:skipped?'skipped':reviewed?'reviewed':s.blocking?'attention':'pending'};
   });
 }
-export function validateReview(input){
+export function validateReview(input,{allowShortKitTitle=false}={}){
   if(!input||typeof input!=='object'||Array.isArray(input))throw Error('Revisão inválida.');
   const stage=String(input.stage||'');
   if(!STAGE_IDS.includes(stage))throw Error('Etapa de otimização inválida.');
@@ -84,7 +90,7 @@ export function validateReview(input){
   const description=input.description===undefined?undefined:String(input.description||'').replace(/\r\n?/g,'\n').normalize('NFC').trim();
   if(title!==undefined&&!title)throw Error('Título vazio.');
   // Texto longo pode ser salvo por SKU; limites reais são de responsabilidade da API Shopee.
-  if(input.reviewed&&stage==='seo')validateContentRules({title:title??''});
+  if(input.reviewed&&stage==='seo')validateContentRules({title:title??''},{allowShortKitTitle});
   if(input.reviewed&&stage==='description')validateContentRules({description:description??''});
   const variationConfig=stage==='variants'?validateVariationConfig(input.variationConfig,input.reviewed):undefined;
   const imageNotes=stage==='images'&&input.imageNotes!==undefined?validateImageNotes(input.imageNotes):undefined;
