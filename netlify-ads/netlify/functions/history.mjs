@@ -1,7 +1,9 @@
-import {isAuthorized,reply} from "../lib/auth.mjs";
+function reply(payload,status=200,headers={}) {return new Response(JSON.stringify(payload),{status,headers:{"Content-Type":"application/json; charset=utf-8","Cache-Control":"no-store","X-Content-Type-Options":"nosniff",...headers}});}
 export const config={path:"/api/history"};
 export default async function handler(req) {
-  if(!isAuthorized(req))return reply({ok:false,error:"LOGIN_REQUIRED"},401);
+  // Histórico público de edição compartilhada; credenciais do Google ficam APENAS no servidor.
+  const origin=req.headers.get("origin");
+  if(origin && origin!==new URL(req.url).origin)return reply({ok:false,error:"Origem não autorizada."},403);
   if(req.method!=="POST")return reply({ok:false,error:"Método inválido"},405);
   const url=process.env.GOOGLE_SCRIPT_URL,secret=process.env.GOOGLE_HISTORY_SECRET;
   if(!url||!secret||!/^https:\/\/script\.google\.com\/macros\/s\//.test(url))
@@ -12,6 +14,9 @@ export default async function handler(req) {
     body=JSON.parse(raw);
   } catch {return reply({ok:false,error:"Dados inválidos."},400)}
   if(!["read","merge"].includes(body.action))return reply({ok:false,error:"Ação não permitida."},400);
+  if(body.action==="merge" && (!body.state||typeof body.state!=="object"||Array.isArray(body.state)))return reply({ok:false,error:"Histórico inválido."},400);
+  // Evita cargas em massa ou propriedades desconhecidas, mesmo sem exigir login.
+  if(body.action==="merge" && ["products","changes","adsSnapshots","history"].some(k=>body.state[k]!==undefined && !Array.isArray(body.state[k])))return reply({ok:false,error:"Listas de histórico inválidas."},400);
   const payload={action:body.action,secret};
   if(body.action==="merge"){payload.state=body.state||{};payload.deleted=body.deleted||{}}
   try {
