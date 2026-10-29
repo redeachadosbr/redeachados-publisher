@@ -306,3 +306,270 @@
  :is(#tab-optimizer,#tab-kits) .ra-tech-studio .ra-tech-metrics{grid-template-columns:1fr}
  #optimizerWorkflowEditor:has(#optimizerTechnicalPanel.ra-tech-studio:not([hidden]))>.optimizer-workflow-actions{grid-template-columns:1fr}
 }
+
+
+/* V1.2 — Ficha técnica compacta. Atributos fechados em linhas clicáveis;
+   fonte e prévia com largura equilibrada; formulários originais preservados. */
+:is(#tab-optimizer,#tab-kits) #optimizerTechnicalPanel.ra-tech-studio{
+  gap:10px!important;line-height:1.42!important;font-size:12px!important;
+  max-width:100%;min-width:0;
+}
+:is(#tab-optimizer,#tab-kits) #optimizerTechnicalPanel.ra-tech-studio .ra-tech-heading{
+  padding:0 0 8px!important;margin:0!important;gap:8px;
+}
+:is(#tab-optimizer,#tab-kits) #optimizerTechnicalPanel.ra-tech-studio .ra-tech-heading h2{
+  font-size:20px!important;line-height:1.15!important;margin:2px 0!important;
+}
+:is(#tab-optimizer,#tab-kits) #optimizerTechnicalPanel.ra-tech-studio .ra-tech-heading p{
+  font-size:11px!important;line-height:1.35!important;margin:0!important;
+}
+:is(#tab-optimizer,#tab-kits) #optimizerTechnicalPanel.ra-tech-studio .ra-tech-metrics{
+  grid-template-columns:repeat(4,minmax(0,1fr))!important;gap:7px!important;
+}
+:is(#tab-optimizer,#tab-kits) #optimizerTechnicalPanel.ra-tech-studio .ra-tech-metric{
+  min-width:0;min-height:0!important;padding:8px!important;gap:7px!important;
+  border-radius:9px!important;align-items:center!important;
+}
+:is(#tab-optimizer,#tab-kits) #optimizerTechnicalPanel.ra-tech-studio .ra-tech-metric-icon{
+  width:28px!important;height:28px!important;font-size:14px!important;border-radius:8px!important;
+}
+:is(#tab-optimizer,#tab-kits) #optimizerTechnicalPanel.ra-tech-studio .ra-tech-metric-copy strong{
+  font-size:17px!important;line-height:1!important;
+}
+:is(#tab-optimizer,#tab-kits) #optimizerTechnicalPanel.ra-tech-studio .ra-tech-metric-copy span{
+  font-size:10px!important;line-height:1.2!important;
+}
+:is(#tab-optimizer,#tab-kits) #optimizerTechnicalPanel.ra-tech-studio .ra-tech-metric-copy small{
+  font-size:9px!important;line-height:1.2!important;
+}
+:is(#tab-optimizer,#tab-kits) #optimizerTechnicalPanel.ra-tech-studio .ra-tech-review{
+  margin:0!important;padding:0!important;overflow:visible!important;
+  border-radius:11px!important;
+}
+:is(#tab-optimizer,#tab-kits) #optimizerTechnicalPanel.ra-tech-studio .ra-tech-review>summary{
+  padding:9px 12px!important;min-height:0!important;gap:7px!important;
+}
+:is(#tab-optimizer,#tab-kits) #optimizerTechnicalPanel.ra-tech-studio .ra-tech-review>summary>span:first-child{
+  font-size:13px!important;flex:1 1 210px;
+}
+:is(#tab-optimizer,#tab-kits) #optimizerTechnicalPanel.ra-tech-studio .ra-tech-review>summary small{
+  font-size:10px!important;line-height:1.25!important;
+}
+:is(#tab-optimizer,#tab-kits) #optimizerTechnicalPanel.ra-tech-studio .ra-tech-review .optimizer-technical-advanced-body{
+  padding:9px 11px 11px!important;
+}
+:is(#tab-optimizer,#tab-kits) #optimizerTechnicalPanel.ra-tech-studio .ra-tech-review .optimizer-video-help{
+  font-size:10px!important;margin:0 0 6px!important;line-height:1.4!important;
+}
+:is(#tab-optimizer,#tab-kits) #optimizerTechnicalPanel.ra-tech-studio .ra-tech-notices>*{
+  font-size:10px!important;line-height:1.3!important;padding:7px 9px!important;
+}
+:is(#tab-optimizer,#tab-kits) #optimizerTechnicalPanel.ra-tech-studio #optimizerTechnicalFields{
+  gap:6px!important;grid-template-columns:1fr!important;
+}
+:is(#tab-optimizer,#tab-kits) #optimizerTechnicalPanel.ra-tech-studio .ra-tech-field-toolbar{
+  display:flex;gap:6px;flex-wrap:wrap;align-items:center;padding:2px 1px 5px;
+}
+:is(#tab-optimizer,#tab-kits) #optimizerTechnicalPanel.ra-tech-studio .ra-tech-field-toolbar strong{
+  font-size:11px;color:#28557c;margin-right:auto;
+}
+:is(#tab-optimizer,#tab-kits) #optimizerTechnicalPanel.ra-tech-studio .ra-tech-field-toolbar-button{
+  width:auto!important;min-height:28px!important;padding:5px 9px!important;
+  font-size:10px!important;background:#eef5fd!important;color:#1a5185!important;
+  border:1px solid #cbdff2!important;border-radius:7px!important;
+  box-shadow:none!important;
+}
+:is(#tab-optimizer,#tab-kits) #optimizerTechnicalPanel.ra-tech-studio .ra-tech-attribute-group{
+  border-radius:9px!important;overflow:hidden!important;
+}
+:is(#tab-optimizer,#tab-kits) #optimizerTechnicalPanel.ra-tech-studio .ra-tech-attribute-group>summary{
+  min-height:0!important;padding:8px 10px!important;gap:6px!important;
+}
+:is(#tab-optimizer,#tab-kits) #optimizerTechnicalPanel.ra-tech-studio .ra-tech-attribute-group>summary strong{
+  font-size:11px!important;flex:0 1 auto!important;
+}
+:is(#tab-optimizer,#tab-kits) #optimizerTechnicalPanel.ra-tech-studio .ra-tech-group-note{
+  font-size:10px!important;min-width:0;flex:1 1 165px!important;
+}
+:is(#tab-optimizer,#tab-kits) #optimizerTechnicalPanel.ra-tech-studio .ra-tech-group-count{
+  font-size:9px!important;padding:2px 6px!important;
+}
+:is(#tab-optimizer,#tab-kits) #optimizerTechnicalPanel.ra-tech-studio .ra-tech-group-body{
+  display:grid!important;grid-template-columns:1fr!important;
+  gap:5px!important;padding:7px!important;min-width:0;
+}
+:is(#tab-optimizer,#tab-kits) #optimizerTechnicalPanel.ra-tech-studio .ra-tech-field-row{
+  display:block;border:1px solid #e1eaf5;border-radius:8px;
+  background:#fff;min-width:0;overflow:hidden;
+}
+:is(#tab-optimizer,#tab-kits) #optimizerTechnicalPanel.ra-tech-studio .ra-tech-field-row[open]{
+  border-color:#bcd3ec;background:#fdfefe;
+}
+:is(#tab-optimizer,#tab-kits) #optimizerTechnicalPanel.ra-tech-studio .ra-tech-field-head{
+  display:grid;grid-template-columns:minmax(150px,1fr) minmax(170px,2.2fr) auto;
+  gap:10px;align-items:center;padding:9px 12px;min-width:0;
+  cursor:pointer;list-style:none;line-height:1.3;
+}
+:is(#tab-optimizer,#tab-kits) #optimizerTechnicalPanel.ra-tech-studio .ra-tech-field-head::-webkit-details-marker{display:none}
+:is(#tab-optimizer,#tab-kits) #optimizerTechnicalPanel.ra-tech-studio .ra-tech-field-row[open]>.ra-tech-field-head{
+  background:#eef6ff;border-bottom:1px solid #dbe8f7;
+}
+:is(#tab-optimizer,#tab-kits) #optimizerTechnicalPanel.ra-tech-studio .ra-tech-field-name{
+  font-size:11px!important;font-weight:800;color:#123b65;overflow-wrap:anywhere;
+}
+:is(#tab-optimizer,#tab-kits) #optimizerTechnicalPanel.ra-tech-studio .ra-tech-field-value{
+  font-size:10px!important;line-height:1.35;color:#516f8d;
+  min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
+}
+:is(#tab-optimizer,#tab-kits) #optimizerTechnicalPanel.ra-tech-studio .ra-tech-field-action{
+  display:inline-flex;align-items:center;justify-content:center;
+  font-size:10px!important;font-weight:800;color:#145898;
+  padding:5px 9px;border:1px solid #c8ddef;border-radius:7px;
+  white-space:nowrap;background:#f3f9ff;
+}
+:is(#tab-optimizer,#tab-kits) #optimizerTechnicalPanel.ra-tech-studio .ra-tech-field-row>.optimizer-attribute{
+  width:100%!important;margin:0!important;padding:10px 12px!important;
+  min-width:0!important;box-sizing:border-box;display:block!important;
+  border:0!important;border-radius:0!important;background:transparent!important;
+  box-shadow:none!important;
+}
+:is(#tab-optimizer,#tab-kits) #optimizerTechnicalPanel.ra-tech-studio .ra-tech-field-row>.optimizer-attribute legend{
+  font-size:11px!important;line-height:1.3!important;
+}
+:is(#tab-optimizer,#tab-kits) #optimizerTechnicalPanel.ra-tech-studio .ra-tech-field-row>.optimizer-attribute small{
+  display:block;font-size:10px!important;line-height:1.3!important;margin:2px 0!important;
+  overflow-wrap:break-word;
+}
+:is(#tab-optimizer,#tab-kits) #optimizerTechnicalPanel.ra-tech-studio .optimizer-attribute-controls{
+  display:grid!important;gap:6px!important;min-width:0!important;
+}
+:is(#tab-optimizer,#tab-kits) #optimizerTechnicalPanel.ra-tech-studio .optimizer-attribute-value{
+  display:flex!important;gap:6px!important;flex-wrap:wrap!important;
+  align-items:center!important;margin:0!important;min-width:0!important;
+}
+:is(#tab-optimizer,#tab-kits) #optimizerTechnicalPanel.ra-tech-studio .optimizer-attribute-value>*{
+  min-width:0;flex:1 1 160px;
+}
+:is(#tab-optimizer,#tab-kits) #optimizerTechnicalPanel.ra-tech-studio .optimizer-attribute input:not([type=checkbox]),
+:is(#tab-optimizer,#tab-kits) #optimizerTechnicalPanel.ra-tech-studio .optimizer-attribute select{
+  min-height:32px!important;height:auto!important;max-width:100%!important;
+  padding:5px 8px!important;font-size:11px!important;box-sizing:border-box!important;
+  border-radius:7px!important;
+}
+:is(#tab-optimizer,#tab-kits) #optimizerTechnicalPanel.ra-tech-studio .optimizer-attribute button,
+:is(#tab-optimizer,#tab-kits) #optimizerTechnicalPanel.ra-tech-studio #optimizerTechnicalRefresh{
+  display:inline-flex!important;justify-content:center;align-items:center;
+  width:auto!important;min-width:0!important;max-width:100%!important;
+  flex:0 0 auto!important;min-height:29px!important;margin:2px 5px 2px 0!important;
+  padding:5px 10px!important;border-radius:7px!important;
+  font-size:10px!important;line-height:1.2!important;box-shadow:none!important;
+  background:#eff6fd!important;color:#155784!important;border:1px solid #c7dbef!important;
+}
+:is(#tab-optimizer,#tab-kits) #optimizerTechnicalPanel.ra-tech-studio .optimizer-attribute button[hidden]{
+  display:none!important;
+}
+:is(#tab-optimizer,#tab-kits) #optimizerTechnicalPanel.ra-tech-studio .optimizer-attribute-toggle{
+  display:flex!important;align-items:center;gap:6px;line-height:1.3;
+  font-size:11px!important;margin:4px 0!important;
+}
+:is(#tab-optimizer,#tab-kits) #optimizerTechnicalPanel.ra-tech-studio .optimizer-attribute-search{
+  display:flex!important;gap:7px!important;align-items:center;flex-wrap:wrap;
+}
+:is(#tab-optimizer,#tab-kits) #optimizerTechnicalPanel.ra-tech-studio .ra-tech-main{
+  display:grid!important;grid-template-columns:repeat(2,minmax(0,1fr))!important;
+  gap:10px!important;align-items:start!important;min-width:0;
+}
+:is(#tab-optimizer,#tab-kits) #optimizerTechnicalPanel.ra-tech-studio .optimizer-technical-import,
+:is(#tab-optimizer,#tab-kits) #optimizerTechnicalPanel.ra-tech-studio .ra-tech-preview{
+  padding:11px!important;border-radius:10px!important;min-width:0!important;
+}
+:is(#tab-optimizer,#tab-kits) #optimizerTechnicalPanel.ra-tech-studio .ra-tech-preview .optimizer-tech-summary-stats{
+  display:grid!important;grid-template-columns:repeat(2,minmax(0,1fr))!important;
+  gap:6px!important;
+}
+:is(#tab-optimizer,#tab-kits) #optimizerTechnicalPanel.ra-tech-studio .ra-tech-preview .optimizer-tech-summary-stat{
+  min-height:0!important;padding:8px!important;
+}
+:is(#tab-optimizer,#tab-kits) #optimizerTechnicalPanel.ra-tech-studio .ra-tech-preview .optimizer-tech-summary-stat strong{
+  font-size:18px!important;
+}
+:is(#tab-optimizer,#tab-kits) #optimizerTechnicalPanel.ra-tech-studio .ra-tech-preview .optimizer-tech-summary-stat span{
+  font-size:10px!important;line-height:1.25!important;
+}
+:is(#tab-optimizer,#tab-kits) #optimizerTechnicalPanel.ra-tech-studio .optimizer-tech-summary-list{
+  display:grid!important;grid-template-columns:1fr!important;gap:6px!important;
+}
+:is(#tab-optimizer,#tab-kits) #optimizerTechnicalPanel.ra-tech-studio .optimizer-tech-summary-item{
+  display:flex!important;align-items:center!important;gap:8px!important;
+  min-width:0;padding:7px!important;
+}
+:is(#tab-optimizer,#tab-kits) #optimizerTechnicalPanel.ra-tech-studio .optimizer-tech-summary-desc{
+  display:grid!important;gap:3px!important;flex:1 1 auto!important;min-width:0!important;
+}
+:is(#tab-optimizer,#tab-kits) #optimizerTechnicalPanel.ra-tech-studio .optimizer-tech-summary-desc strong,
+:is(#tab-optimizer,#tab-kits) #optimizerTechnicalPanel.ra-tech-studio .optimizer-tech-summary-desc span{
+  display:block!important;white-space:normal!important;overflow-wrap:break-word!important;
+  word-break:normal!important;min-width:0;font-size:10px!important;line-height:1.35!important;
+}
+:is(#tab-optimizer,#tab-kits) #optimizerTechnicalPanel.ra-tech-studio .optimizer-tech-summary-item button{
+  width:auto!important;min-width:0!important;flex:0 0 auto!important;
+  padding:5px 8px!important;min-height:29px!important;font-size:10px!important;
+}
+:is(#tab-optimizer,#tab-kits) #optimizerTechnicalPanel.ra-tech-studio .ra-tech-category-row{
+  font-size:10px!important;gap:8px;
+}
+:is(#tab-optimizer,#tab-kits) #optimizerTechnicalPanel.ra-tech-studio .ra-tech-category-row strong{
+  min-width:0!important;overflow-wrap:break-word!important;
+}
+:is(#tab-optimizer,#tab-kits) #optimizerTechnicalPanel.ra-tech-studio .ra-tech-product{
+  padding:7px!important;gap:8px!important;
+}
+:is(#tab-optimizer,#tab-kits) #optimizerTechnicalPanel.ra-tech-studio .ra-tech-source-text textarea{
+  min-height:65px!important;max-height:110px!important;padding:7px 9px!important;font-size:11px!important;
+}
+:is(#tab-optimizer,#tab-kits) #optimizerTechnicalPanel.ra-tech-studio .optimizer-tech-import-actions{
+  display:grid!important;grid-template-columns:1fr 1fr!important;gap:6px!important;
+}
+:is(#tab-optimizer,#tab-kits) #optimizerTechnicalPanel.ra-tech-studio #optimizerTechFill{
+  min-height:36px!important;padding:6px 8px!important;font-size:11px!important;
+}
+:is(#tab-optimizer,#tab-kits) #optimizerTechnicalPanel.ra-tech-studio .ra-tech-shortcuts{
+  gap:7px!important;
+}
+:is(#tab-optimizer,#tab-kits) #optimizerTechnicalPanel.ra-tech-studio .ra-tech-shortcut{
+  min-height:46px!important;padding:8px!important;
+}
+#optimizerWorkflowEditor:has(#optimizerTechnicalPanel.ra-tech-studio:not([hidden]))>.optimizer-workflow-actions{
+  position:static!important;margin-top:10px!important;padding:8px!important;gap:7px!important;
+}
+#optimizerWorkflowEditor:has(#optimizerTechnicalPanel.ra-tech-studio:not([hidden]))>.optimizer-workflow-actions>*{
+  width:auto!important;min-height:33px!important;padding:6px 10px!important;
+  font-size:11px!important;max-width:100%!important;
+}
+@media(max-width:1000px){
+ :is(#tab-optimizer,#tab-kits) #optimizerTechnicalPanel.ra-tech-studio .ra-tech-main{
+   grid-template-columns:1fr!important;
+ }
+}
+@media(max-width:700px){
+ :is(#tab-optimizer,#tab-kits) #optimizerTechnicalPanel.ra-tech-studio .ra-tech-metrics{
+   grid-template-columns:repeat(2,minmax(0,1fr))!important;
+ }
+ :is(#tab-optimizer,#tab-kits) #optimizerTechnicalPanel.ra-tech-studio .ra-tech-field-head{
+   grid-template-columns:minmax(0,1fr) auto!important;gap:5px!important;
+ }
+ :is(#tab-optimizer,#tab-kits) #optimizerTechnicalPanel.ra-tech-studio .ra-tech-field-value{
+   grid-column:1/-1!important;grid-row:2!important;white-space:normal!important;
+ }
+ :is(#tab-optimizer,#tab-kits) #optimizerTechnicalPanel.ra-tech-studio .ra-tech-field-action{
+   grid-column:2!important;grid-row:1!important;
+ }
+}
+@media(max-width:420px){
+ :is(#tab-optimizer,#tab-kits) #optimizerTechnicalPanel.ra-tech-studio .ra-tech-metrics{
+   grid-template-columns:1fr 1fr!important;
+ }
+ :is(#tab-optimizer,#tab-kits) #optimizerTechnicalPanel.ra-tech-studio .optimizer-tech-import-actions{
+   grid-template-columns:1fr!important;
+ }
+}
