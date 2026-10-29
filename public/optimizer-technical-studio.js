@@ -25,13 +25,19 @@
    element('h2','','Ficha técnica'),
    element('p','','Confira o que já está na Shopee e as alterações comprovadas pela WeDrop. Opcionais sem dados podem ficar vazios.')
  );
+ const jump=element('button','secondary ra-tech-review-jump','↓ Ver campos da ficha');
+ jump.type='button';
+ jump.addEventListener('click',()=>{
+  review.open=true;
+  review.scrollIntoView({behavior:'smooth',block:'start'});
+ });
  const close=element('button','secondary ra-tech-close','×  Fechar etapa');
  close.type='button';
  close.addEventListener('click',()=>$('#optimizerWorkflowClose')?.click());
  const originalSku=originalHeader.querySelector('#optimizerTechSku');
  heading.append(titleWrap);
  if(originalSku)heading.append(originalSku);
- heading.append(close);
+ heading.append(jump,close);
 
  const metrics=element('div','ra-tech-metrics');
  const metaCards=[
@@ -53,7 +59,7 @@
  const main=element('div','ra-tech-main');
  const sourceTitle=source.querySelector('.optimizer-tech-import-title');
  sourceTitle?.querySelector('strong')?.replaceChildren(document.createTextNode('Fonte de dados da SKU'));
- const intro=element('p','ra-tech-intro','A ficha já traz os dados identificados. Campos opcionais sem comprovação são dispensáveis.');
+ const intro=element('p','ra-tech-intro','As informações existentes são reutilizadas. Use o texto ou os prints apenas para complementar dados ainda não confirmados.');
  sourceTitle?.insertAdjacentElement('afterend',intro);
  const product=element('div','ra-tech-product');
  const photo=element('img','ra-tech-product-photo');photo.alt='Imagem do produto na Shopee';
@@ -68,13 +74,11 @@
  const measureWarning=element('p','ra-tech-measure-warning');
  product.insertAdjacentElement('afterend',supplierNumbers);
  supplierNumbers.insertAdjacentElement('afterend',measureWarning);
- // A caixa de texto é um complemento, não precisa ocupar a tela inteira.
+ // Texto complementar visível, sem exigir abrir um acordeão escondido.
  const textLabel=source.querySelector('label[for=optimizerTechText]');
  if(textLabel){
-   const more=element('details','ra-tech-source-more');
-   const summary=element('summary','','＋ Informações adicionais da WeDrop (opcional)');
-   more.append(summary,textLabel);
-   measureWarning.insertAdjacentElement('afterend',more);
+   textLabel.classList.add('ra-tech-source-text');
+   measureWarning.insertAdjacentElement('afterend',textLabel);
  }
  preview.classList.add('ra-tech-preview');
  const previewExtra=element('div','ra-tech-category');
@@ -83,8 +87,8 @@
  review.classList.add('ra-tech-review');
  const reviewSummary=review.querySelector(':scope > summary');
  if(reviewSummary){
-   reviewSummary.querySelector('span:first-child')?.replaceChildren(document.createTextNode('③ Conferir ou editar campos'));
-   reviewSummary.querySelector('small')?.replaceChildren(document.createTextNode('Abrir ou recolher opções'));
+   reviewSummary.querySelector('span:first-child')?.replaceChildren(document.createTextNode('② Confira os campos do anúncio'));
+   reviewSummary.querySelector('small')?.replaceChildren(document.createTextNode('Campos visíveis abaixo · edite apenas o que precisar'));
  }
  const categoryGroups=element('div','ra-tech-field-groups');
  fields.parentNode.insertBefore(categoryGroups,fields);
@@ -103,8 +107,7 @@
  }
  shortcutRow.append(
    shortcut('▤','Informações da WeDrop','Dados extras, observações e prints',()=>{
-     const inputDetails=source.querySelector('.ra-tech-source-more');if(inputDetails)inputDetails.open=true;
-     source.scrollIntoView({behavior:'smooth',block:'center'});
+     source.scrollIntoView({behavior:'smooth',block:'start'});
      $('#optimizerTechText')?.focus({preventScroll:true});
    }),
    shortcut('⚙','Regras salvas da loja','Padrões cadastrados da loja',()=>{
@@ -121,7 +124,9 @@
      if(target?.tagName==='BUTTON')target.click();
    })
  );
- panel.replaceChildren(heading,metrics,main,review,shortcutRow);
+ // Fluxo claro: estado → atributos → fontes de dados → recursos auxiliares.
+ // Os mesmos IDs e listeners continuam ativos para a gravação original.
+ panel.replaceChildren(heading,metrics,review,main,shortcutRow);
  function number(id,value,hint){
    metricMap[id].value.textContent=String(value);
    metricMap[id].small.textContent=String(hint);
@@ -171,14 +176,14 @@
    // unresolved fields. They are checked only once the parent activates them.
    const sections=[
      disclosure('Dados já preenchidos ou propostos',saved.length,
-       'Valores da Shopee e dados comprovados da SKU','filled',saved)
+       'Valores da Shopee e dados comprovados da SKU','filled',saved,true)
    ];
    if(required.length)sections.push(disclosure('Obrigatórios pendentes',required.length,
-     'Exigem conferência antes de avançar','required',required));
+     'Exigem conferência antes de avançar','required',required,true));
    if(optional.length)sections.push(disclosure('Opcionais dispensáveis',optional.length,
-     'Não precisam de preenchimento para concluir','optional',optional));
+     'Não precisam de preenchimento para concluir','optional',optional,true));
    if(conditional.length)sections.push(disclosure('Dependências ativas',conditional.length,
-     'Verifique a opção do atributo pai','conditional',conditional));
+     'Verifique a opção do atributo pai','conditional',conditional,true));
    fields.append(...sections);
  }
  function render(data,{regroup=true}={}){
@@ -254,7 +259,8 @@
      row.append(element('span','',label),element('strong','',value));
      previewExtra.append(row);
    }
-   if(regroup)review.open=requiredMissing>0||divergences>0;
+   // Mostrar os campos mesmo quando a revisão já foi registrada.
+   if(regroup)review.open=true;
    reviewSummary?.querySelector('small')?.replaceChildren(document.createTextNode(
      requiredMissing+' obrigatório(s) pendente(s) · '+divergences+
      ' divergência(s) · opcionais sem valor não bloqueiam'));
