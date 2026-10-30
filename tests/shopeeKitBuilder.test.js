@@ -83,7 +83,7 @@ test('kits por categoria: custo exato, somatório, dois finais 0/9, prompts e pr
   assert.match(ideaBrief.prompt,/Ideia opcional de kit:/);
   assert.match(brief.prompt,/GA500/);
   assert.match(brief.prompt,/ES01/);
-  assert.match(brief.prompt,/somente linhas no formato/i);
+  assert.match(brief.prompt,/JSON válido/i);
   assert.ok(brief.candidatesCount>=2);
   const contentPrompt=kitPlusContentPrompt(kit);
   assert.match(contentPrompt,/GA500/);
@@ -276,7 +276,7 @@ test('pesquisa avançada entrega todas 125 SKUs, sem truncar, em arquivo para o 
   assert.match(brief.prompt,/ARQUIVO TXT anexo/);
   assert.ok(!brief.prompt.includes('TEST0125'));
   assert.equal(brief.desiredKits,10);
-  await assert.rejects(()=>kitPlusResearchBrief(935128,{category:'Cozinha',desiredKits:11}),/entre 5 e 10/);
+  await assert.rejects(()=>kitPlusResearchBrief(935128,{category:'Cozinha',desiredKits:16}),/entre 5 e 15/);
  }finally{
   clearKitStockCache(935128);globalThis.fetch=oldFetch;
   if(base===undefined)delete process.env.SUPABASE_URL;else process.env.SUPABASE_URL=base;
