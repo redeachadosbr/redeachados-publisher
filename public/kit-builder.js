@@ -1665,6 +1665,8 @@ async function saveDraft(){
  try{
   await kitLogisticsKeeper.flush();
   const compactDescription=formatKitShopeeDescription($('#kitDescription').value);
+  const leaks=kitCommercialSkuLeaks($('#kitTitle').value,compactDescription);
+  if(leaks.length)throw Error('Retire os códigos SKU do título e da descrição antes de salvar: '+leaks.join(', '));
   $('#kitDescription').value=compactDescription;
   updateKitTextCounters();
   const res=await api('/api/shopee/kits/drafts/save',{body:{
@@ -2666,10 +2668,17 @@ function kitShowSeoTitles(options){
  }
  $('#kitSeoOptions').hidden=false;
 }
+function kitCommercialSkuLeaks(title,description){
+ const values=(prepared?.kit?.components||[]).map(x=>String(x.sku||'').trim()).filter(Boolean);
+ const text=String(title||'')+'\n'+String(description||'');
+ return values.filter(sku=>text.toUpperCase().includes(sku.toUpperCase()));
+}
 function importPlusText({silent=false}={}){
  if(!prepared)return false;
  try{
   const result=parseKitSeoResponse($('#kitPlusTextResult').value);
+  const leaked=result.titles.flatMap(x=>kitCommercialSkuLeaks(x.title,result.description));
+  if(leaked.length)throw Error('O ChatGPT incluiu códigos SKU no anúncio. Gere novamente sem códigos internos: '+[...new Set(leaked)].join(', ')+'.');
   // Exibir a classificação por critérios objetivos, não inventar ranking da Shopee.
   const scored=result.titles.map(x=>({...x,...scoreKitSeoTitle(x.title,prepared.kit.components)}))
    .sort((a,b)=>b.score-a.score||a.number-b.number);
