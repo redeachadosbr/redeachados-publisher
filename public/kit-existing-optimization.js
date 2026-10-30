@@ -228,8 +228,23 @@ export function initExistingKitOptimization({getContext,api,money,onMainSkuChang
    if(seq===lookupSerial)notice('A Shopee ainda esta respondendo. Voce pode cancelar esta consulta.','warning');
   },6500);
   try{
-   const endpoint='/api/shopee/optimizer/find?'+new URLSearchParams({sku:code,deep:'1'});
-   const data=await api(endpoint,{signal:AbortSignal.any([controller.signal,AbortSignal.timeout(deep?45000:18000)])});
+   // Kit com ID informado: consultar a ficha oficial DIRETAMENTE por item_id.
+   // Evita percorrer todas as páginas do catálogo em toda abertura do kit.
+   const pinned=USER_CONFIRMED_KIT_TARGETS[current];
+   const endpoint=pinned
+    ?'/api/shopee/optimizer/audit?'+new URLSearchParams({item_id:pinned,sku:code})
+    :'/api/shopee/optimizer/find?'+new URLSearchParams({sku:code,deep:deep?'1':'0'});
+   const data=await api(endpoint,{signal:AbortSignal.any([controller.signal,AbortSignal.timeout(pinned?25000:deep?60000:30000)])});
+   if(pinned&&data.record){
+    const r=data.record;
+    const actualSku=String(r.sku||r.item_sku||'').trim();
+    const state=String(r.status||r.item_status||'').toUpperCase();
+    if(actualSku!==code||!['NORMAL','UNLIST'].includes(state))
+     throw Error('Item ID '+pinned+' não confirmou SKU '+code+' e situação editável na ficha oficial.');
+    data.matches=[{itemId:pinned,modelId:String(r.selectedModelId??r.modelId??'0'),
+     sku:code,status:state,title:r.title||r.item_name||code}];
+    data.preferredItemId=pinned;
+   }
    if(seq!==lookupSerial||kitSku()!==current)return null;
    const matches=(data.matches||[]).filter(x=>['NORMAL','UNLIST'].includes(String(x.status).toUpperCase()));
    if(!matches.length){
@@ -266,8 +281,8 @@ export function initExistingKitOptimization({getContext,api,money,onMainSkuChang
     button.addEventListener('click',()=>{if(kitSku()===current)choose(m);});
     root.append(button);
    }
-   if(!preferred)notice(correctedId?'O ID informado '+correctedId+' ainda não foi comprovado na listagem da Shopee. Não retomar o anúncio antigo.':'Encontrados '+matches.length+' anúncios. Confirme manualmente o ID do kit.','warning');
-   return null;
+   if(!preferred)notice(correctedId?'O ID informado '+correctedId+' ainda não foi comprovado na Shopee. Não retomar o anúncio antigo.':'Encontrados '+matches.length+' anúncios. Confirme manualmente o ID do kit.','warning');
+   return preferred?target:null;
   }catch(e){
    if(seq!==lookupSerial)return null;
    $('#kitOptimizeAdvanced').open=true;
@@ -378,7 +393,7 @@ export function initExistingKitOptimization({getContext,api,money,onMainSkuChang
   $('#kitOptimizeListingSku').value=main;
   if(target?.sku!==main||USER_CONFIRMED_KIT_TARGETS[kitSku()]&&String(target?.itemId)!==USER_CONFIRMED_KIT_TARGETS[kitSku()])target=null;
   if(!target||target.kitSku!==kitSku()){
-   await lookup({automatic:true,deep:true});
+   await lookup({automatic:true});
    if(!target)return notice('O ID correto precisa ser confirmado pela API Shopee. O anúncio antigo não será usado.','warning');
   }
   let newlyPrepared=false;
