@@ -40,7 +40,14 @@ export function parseKitSeoResponse(raw){
   if(!titles.some(x=>x.number===n))titles.push({number:n,title});
  }
  const descriptionTag=/(?:^|\n)\s*(?:#{1,4}\s*)?(?:[-*]\s*)?(?:\*\*)?DESCRI[ÇC][ÃA]O(?:\*\*)?\s*[:：—–-]\s*(?:\*\*)?\s*/i.exec(text);
- let description=descriptionTag?text.slice(descriptionTag.index+descriptionTag[0].length).trim():'';
+ // Algumas respostas do ChatGPT trazem a descrição diretamente depois
+ // de TÍTULO 3, sem o cabeçalho literal DESCRIÇÃO. Aceitar somente quando
+ // existirem três títulos e conteúdo descritivo independente após o último.
+ const lastTitleMatch=[...text.matchAll(/(?:^|\n)\s*(?:#{1,4}\s*)?(?:[-*]\s*)?(?:\*\*)?T[ÍI]TULO\s*3\s*(?:\*\*)?\s*[:：—–-]\s*(?:\*\*)?([^\n]+)/gi)].at(-1);
+ const remainder=lastTitleMatch?text.slice(lastTitleMatch.index+lastTitleMatch[0].length)
+  .replace(/^\s*(?:---+\s*)?/,'').trim():'';
+ let description=descriptionTag?text.slice(descriptionTag.index+descriptionTag[0].length).trim():
+   (titles.length===3&&remainder.length>=80?remainder:'');
  description=formatKitShopeeDescription(description.replace(/^\*\*\s*/,''));
  const numbered=[...new Set(titles.map(x=>x.number))];
  if(numbered.length!==3||![1,2,3].every(n=>numbered.includes(n)))
@@ -49,7 +56,7 @@ export function parseKitSeoResponse(raw){
   throw Error('Um título ficou fora do limite de 100 a 120 caracteres (ideal: 120). Ajuste apenas esse título no ChatGPT e copie a resposta completa.');
  if(new Set(titles.map(x=>norm(x.title))).size!==3)
   throw Error('Os três títulos precisam ser diferentes.');
- if(!descriptionTag)throw Error('Faltou DESCRIÇÃO: no texto copiado. Use Copiar no bloco completo do ChatGPT.');
+ if(!description)throw Error('Não encontrei a descrição completa após os 3 títulos. Cole os 3 títulos e a descrição juntos, ou identifique o início com DESCRIÇÃO:.');
  if(description.length<80||description.length>2000)
   throw Error('A descrição deve ter entre 80 e 2.000 caracteres. Verifique se copiou todo o anúncio.');
  return {titles:titles.sort((a,b)=>a.number-b.number),description};
