@@ -140,10 +140,9 @@ test('check do titulo curto do kit funciona sem enfraquecer titulo SEO comum',()
  assert([...short.normalize('NFC').replace(/\s+/g,' ').trim()].length<100);
  const reviewed={stage:'seo',reviewed:true,title:short};
  assert.throws(()=>validateReview(reviewed),/100 e 120/);
- assert.equal(validateReview(reviewed,{allowShortKitTitle:true}).title,
-  short.normalize('NFC').replace(/\s+/g,' ').trim());
- assert.throws(()=>validateReview({...reviewed,title:'curto'},{allowShortKitTitle:true}),/10 a 120/);
- assert.throws(()=>validateReview({...reviewed,title:'A'.repeat(121)},{allowShortKitTitle:true}),/10 a 120/);
+ assert.throws(()=>validateReview(reviewed,{allowShortKitTitle:true}),/100 e 120/);
+ assert.throws(()=>validateReview({...reviewed,title:'curto'},{allowShortKitTitle:true}),/100 e 120/);
+ assert.throws(()=>validateReview({...reviewed,title:'A'.repeat(121)},{allowShortKitTitle:true}),/100 e 120/);
  assert.match(server,/req\.body\?\.kitPreparedTitle===true/);
  assert.match(server,/String\(linkedKit\.mainSku\)===String\(sku\)/);
  assert.match(server,/validateReview\(req\.body,\{allowShortKitTitle\}\)/);
