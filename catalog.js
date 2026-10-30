@@ -55,6 +55,7 @@ export function normalizeCatalogItem(listItem,baseItem){
     price:priceValue(baseItem),
     stock:stockValue(baseItem),
     promotion:typeof baseItem?.has_promotion==='boolean'?baseItem.has_promotion:null,
+    createTime:safeNonnegative(baseItem?.create_time)||safeNonnegative(listItem?.create_time)||null,
     updateTime:safeNonnegative(baseItem?.update_time)||safeNonnegative(listItem?.update_time)||null,
     baseLoaded:Boolean(baseItem)
   };
