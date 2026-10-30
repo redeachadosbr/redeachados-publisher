@@ -141,6 +141,29 @@ export async function saveKitDraftManualFacts(shopId,kitSku,input){
  if(!Array.isArray(rows)||rows.length!==1)throw Error('Não foi possível confirmar a gravação das fichas por SKU.');
  return {saved:true,kitSku,manualFacts};
 }
+export async function saveKitDraftCopy(shopId,kitSku,input){
+ const id=shop(shopId),current=await loadKitDraft(id,kitSku);
+ if(!current?.kit)throw Error('Rascunho ainda não salvo no servidor.');
+ if(current.publication?.itemId||String(current.publication?.status||'local_draft')!=='local_draft')
+  throw Error('Kit publicado ou pendente: edição comercial bloqueada.');
+ const title=String(input?.title||'').trim().slice(0,120);
+ const description=String(input?.description||'').trim().slice(0,2000);
+ if(title.length<10||description.length<80)throw Error('Título e descrição precisam estar completos para sincronizar.');
+ const codes=current.skus.map(String);
+ if(codes.some(code=>(title+'\n'+description).toUpperCase().includes(code.toUpperCase())))
+  throw Error('Remova os códigos SKU dos textos comerciais antes de sincronizar.');
+ const seoTitles=Array.isArray(input?.seoTitles)?input.seoTitles
+  .filter(x=>typeof x==='string'&&x.length>=10&&Array.from(x).length<=120).slice(0,3):[];
+ const draft={kit:current.kit,importBatchId:current.importBatchId||null,
+  creative:{...current.creative,title,description,seoTitles},
+  logistics:current.logistics,reviewed:false,shopeePublished:false,
+  publication:current.publication,optimization:null};
+ const rows=await request('?shop_id=eq.'+id+'&kit_sku=eq.'+encodeURIComponent(kitSku)+
+  '&draft->publication->>status=eq.local_draft',{
+  method:'PATCH',data:{draft,updated_at:new Date().toISOString()},prefer:'return=representation'});
+ if(!Array.isArray(rows)||rows.length!==1)throw Error('Não foi possível confirmar gravação dos textos.');
+ return {saved:true,kitSku};
+}
 export async function saveKitDraftLogistics(shopId,kitSku,input){
  const id=shop(shopId);
  const current=await loadKitDraft(id,kitSku);
