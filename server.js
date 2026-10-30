@@ -1598,9 +1598,9 @@ app.post('/api/shopee/kits/optimization/prepare',mustLogin,requireWeDropAdmin,as
    throw Error('Execução já iniciada ou sem confirmação. Confira o progresso.');
   if(saved.optimization?.itemId&&String(saved.optimization.itemId)!==String(itemId)){
    const old=saved.optimization;
-   if(old.sku===old.mainSku)
-    throw Error('Kit já vinculado a outro Item ID da SKU principal. Confira o vínculo antes de trocar.');
-   // Migração da regra antiga: não transferir prévias entre os Item IDs.
+   // Permitir migrar o vínculo obsoleto somente após auditoria Shopee e
+   // comprovação dos componentes (assertKitListingComposition acima).
+   // Nunca migrar as prévias/revisões do ID antigo para o novo.
    const former=await readShopeeExecution(auth.shopId,old.itemId,old.modelId);
    if(['running','uncertain'].includes(former?.state))
     throw Error('Execução do vínculo antigo pendente. Confirme antes de migrar.');
