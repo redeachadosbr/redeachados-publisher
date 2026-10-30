@@ -2490,6 +2490,16 @@ async function optimizerFindSku({deep=false}={}){
    await optimizerRunAudit(matches[0].itemId,sku,matches[0].modelId);
    return;
   }
+  // SKU repetida: só escolher automaticamente se TODAS as datas oficiais foram
+  // confirmadas e uma delas for estritamente a mais recente.
+  const preferred=d.preferredItemId&&matches.find(x=>String(x.itemId)===String(d.preferredItemId));
+  if(preferred&&matches.every(x=>Number(x.createTime)>0)){
+   const created=new Date(Number(preferred.createTime)*1000).toLocaleString('pt-BR');
+   optimizerNotice('Anúncios repetidos: selecionado automaticamente o mais recente pela data de criação da Shopee ('+created+'), Item ID '+preferred.itemId+'. Conferindo a ficha oficial antes de qualquer execução.','success');
+   $('#optimizerItemId').value=preferred.itemId;
+   await optimizerRunAudit(preferred.itemId,sku,preferred.modelId);
+   return;
+  }
   optimizerNotice('A Shopee confirmou '+matches.length+' anúncios/variações para a SKU '+sku+
    '. Selecione o Item ID do produto que deseja atualizar. Anúncios excluídos foram filtrados.','warning');
   for(const match of matches){
@@ -2502,7 +2512,7 @@ async function optimizerFindSku({deep=false}={}){
    wrapper.appendChild(optimizerMake('span','',match.title||'Produto Shopee'));
    wrapper.appendChild(optimizerMake('small','',
     'SKU '+match.sku+(match.modelId!=='0'?' · Variação '+match.modelId:'')+
-    ' · Anúncio '+match.itemId));
+    ' · Anúncio '+match.itemId+(Number(match.createTime)>0?' · Criado em '+new Date(Number(match.createTime)*1000).toLocaleDateString('pt-BR'):' · Data de criação indisponível')));
    el.appendChild(wrapper);
    el.onclick=()=>{ $('#optimizerItemId').value=match.itemId;
     void optimizerRunAudit(match.itemId,sku,match.modelId); };
