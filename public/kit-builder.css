@@ -2668,3 +2668,42 @@
  #tab-kits #kitDetail #kitMissingFacts .kit-facts-toggle-pill{margin-left:0}
  #tab-kits #kitDetail #kitMissingFacts .kit-facts-summary>strong{flex-basis:100%}
 }
+
+/* Kit: ocultar título, descrição, geração ChatGPT e três cartões SEO por uma única ação. */
+#tab-kits #kitDetail .kit-copy-collapse-toolbar{
+ display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px;
+ margin:14px 0 10px;padding:12px 14px;border:1px solid #c9daed;border-radius:13px;
+ background:linear-gradient(110deg,#f4f8ff,#fff);
+ box-shadow:0 3px 12px rgba(20,65,113,.06);
+}
+#tab-kits #kitDetail .kit-copy-collapse-heading{
+ display:flex;flex-direction:column;gap:3px;min-width:0;flex:1 1 230px;
+}
+#tab-kits #kitDetail .kit-copy-collapse-heading strong{color:#163c68;font-size:13px;font-weight:900}
+#tab-kits #kitDetail .kit-copy-collapse-heading small{color:#587392;font-size:10px;line-height:1.4}
+#tab-kits #kitDetail #kitToggleCopyContent.kit-copy-collapse-button{
+ display:inline-flex;align-items:center;justify-content:center;min-height:42px;
+ border:1px solid #ef552d;border-radius:10px;padding:10px 19px;
+ background:linear-gradient(120deg,#ff5936,#ff822d);color:#fff;
+ font-size:12px;font-weight:900;letter-spacing:.1px;cursor:pointer;
+ box-shadow:0 4px 0 #bd471d,0 7px 15px rgba(192,77,35,.20);
+ transition:transform .15s,box-shadow .15s,background .15s;
+}
+#tab-kits #kitDetail #kitToggleCopyContent.kit-copy-collapse-button:hover{
+ background:linear-gradient(120deg,#ef4a2d,#f56c20);transform:translateY(-1px);
+ box-shadow:0 5px 0 #bd471d,0 9px 18px rgba(192,77,35,.23);
+}
+#tab-kits #kitDetail #kitToggleCopyContent.kit-copy-collapse-button:active{
+ transform:translateY(3px);box-shadow:0 1px 0 #bd471d;
+}
+#tab-kits #kitDetail #kitToggleCopyContent.kit-copy-collapse-button:focus-visible{
+ outline:3px solid #2b83df;outline-offset:3px;
+}
+#tab-kits #kitDetail #kitToggleCopyContent.kit-copy-collapse-button.is-collapsed{
+ background:linear-gradient(120deg,#1d73d9,#1553b0);border-color:#1d62b9;
+ box-shadow:0 4px 0 #123c7f,0 7px 15px rgba(25,85,155,.20);
+}
+#tab-kits #kitDetail #kitCopyContentPanel[hidden]{display:none!important}
+@media(max-width:650px){
+ #tab-kits #kitDetail #kitToggleCopyContent.kit-copy-collapse-button{width:100%}
+}

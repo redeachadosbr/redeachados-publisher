@@ -1202,6 +1202,11 @@
    </section>
 
   </section>
+  <div class="kit-copy-collapse-toolbar">
+   <div class="kit-copy-collapse-heading"><strong>Títulos e descrição do kit</strong><small>Título SEO · descrição · ChatGPT Plus · 3 opções com notas</small></div>
+   <button id="kitToggleCopyContent" type="button" class="kit-copy-collapse-button" aria-controls="kitCopyContentPanel" aria-expanded="true">▴ Ocultar todo o bloco</button>
+  </div>
+  <section id="kitCopyContentPanel" class="kit-copy-content-panel" aria-label="Editor de títulos e descrição do kit">
   <div class="kit-copy-grid">
    <label><span class="kit-field-title"><span class="kit-heading-icon kit-icon-green">◆</span><span><strong>Título SEO</strong><small>Até 120 caracteres — confira antes de usar.</small></span></span><textarea id="kitTitle" rows="3" maxlength="120"></textarea><div class="kit-field-footer"><button type="button" id="kitCopyTitle" class="kit-secondary">▤ Copiar título</button><small id="kitTitleCount">0/120</small></div><div id="kitReviewSeo" class="kit-stage-review" hidden><button id="kitReviewSeoButton" type="button" class="kit-primary">✓ Registrar etapa concluída</button><small id="kitReviewSeoStatus" role="status" aria-live="polite">Pendente de conferência.</small></div></label>
    <label><span class="kit-field-title"><span class="kit-heading-icon kit-icon-amber">▤</span><span><strong>Descrição do anúncio</strong><small>Produtos incluídos e quantidades exatas por SKU.</small></span></span><textarea id="kitDescription" rows="6" maxlength="2000"></textarea><div class="kit-field-footer"><button type="button" id="kitCopyDescription" class="kit-secondary">▤ Copiar descrição</button><small id="kitDescriptionCount">0/2000</small></div><div id="kitReviewDescription" class="kit-stage-review" hidden><button id="kitReviewDescriptionButton" type="button" class="kit-primary">✓ Registrar etapa concluída</button><small id="kitReviewDescriptionStatus" role="status" aria-live="polite">Pendente de conferência.</small></div></label>
@@ -1240,6 +1245,7 @@
      <button id="kitOpenContentPrompt" type="button" class="kit-secondary">Abrir ChatGPT com orientação pronta</button>
    </details>
   </div></details>
+  </section>
   <details id="kitMissingFacts" class="kit-missing-facts kit-sku-evidence-panel kit-facts-collapsible" aria-labelledby="kitMissingFactsTitle">
    <summary class="kit-missing-title kit-facts-summary">
     <strong id="kitMissingFactsTitle">Informações por SKU · descrição, medidas e print</strong>

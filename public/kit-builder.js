@@ -1687,6 +1687,14 @@ async function search(){
  }catch(error){status(error.message,'error');}
  finally{btn.disabled=false;}
 }
+function kitSetCopyContentCollapsed(collapsed){
+ const panel=$('#kitCopyContentPanel'),button=$('#kitToggleCopyContent');
+ if(!panel||!button)return;
+ panel.hidden=Boolean(collapsed);
+ button.setAttribute('aria-expanded',String(!collapsed));
+ button.textContent=collapsed?'▾ Mostrar títulos e descrição':'▴ Ocultar todo o bloco';
+ button.classList.toggle('is-collapsed',Boolean(collapsed));
+}
 function renderKit({scroll=true,displayTitle=''}={}){
  if(prepared?.kit?.kitSku)void restoreKitVideo(prepared.kit.kitSku);
  if(!prepared)return;
@@ -3280,6 +3288,9 @@ $('#kitTitle')?.addEventListener('input',()=>{
  const heading=$('#kitSkuTitle');
  if(heading&&prepared)heading.textContent=$('#kitTitle').value.trim()||
   prepared.kit.components.map(p=>p.name).join(' + ');
+});
+$('#kitToggleCopyContent')?.addEventListener('click',()=>{
+ kitSetCopyContentCollapsed(!$('#kitCopyContentPanel').hidden);
 });
 $('#kitCopyTitle')?.addEventListener('click',()=>void copy($('#kitTitle').value));
 $('#kitCopyDescription')?.addEventListener('click',()=>void copy(formatKitShopeeDescription($('#kitDescription').value)));

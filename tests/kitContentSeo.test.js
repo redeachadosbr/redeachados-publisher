@@ -217,3 +217,28 @@ test('fichas dos SKUs recolhidas por padrão e íntegros os dados e prints',asyn
  assert.match(js,/recognizeKitLogisticsPrint\(photo/);
  assert.match(js,/kitContentManualFacts\.set\(sku,box\.value\)/);
 });
+
+test('botão de recolher todo o bloco de títulos e descrição mantém editores e opções SEO intactos',async()=>{
+ const {readFileSync}=await import('node:fs');
+ const html=readFileSync(new URL('../public/index.html',import.meta.url),'utf8');
+ const js=readFileSync(new URL('../public/kit-builder.js',import.meta.url),'utf8');
+ const css=readFileSync(new URL('../public/kit-builder.css',import.meta.url),'utf8');
+ const start=html.indexOf('id="kitCopyContentPanel"');
+ const end=html.indexOf('</section>\n  <details id="kitMissingFacts"',start);
+ assert.ok(start>0&&end>start,'editor agrupado antes das fichas por SKU');
+ const section=html.slice(start,end);
+ for(const id of ['kitTitle','kitDescription','kitPlusText','kitImportCopiedText',
+  'kitSeoOptions','kitSeoOptionList','kitSaveSeoContent','kitContentDetails']){
+  assert.ok(section.includes('id="'+id+'"'),'campo preservado: '+id);
+  assert.equal(html.split('id="'+id+'"').length-1,1,'ID único: '+id);
+ }
+ assert.ok(!section.includes('id="kitMissingFacts"'),'fichas SKU fora do recolhimento');
+ assert.match(html,/id="kitToggleCopyContent"[^>]*aria-controls="kitCopyContentPanel"[^>]*aria-expanded="true"/);
+ assert.match(html,/Ocultar todo o bloco/);
+ assert.match(js,/panel\.hidden=Boolean\(collapsed\)/);
+ assert.match(js,/button\.setAttribute\('aria-expanded',String\(!collapsed\)\)/);
+ assert.match(js,/kitSetCopyContentCollapsed\(!\$\('#kitCopyContentPanel'\)\.hidden\)/);
+ assert.match(js,/kitShowSeoTitles\(scored\)/);
+ assert.match(js,/\$\('#kitDescription'\)\.value=result\.description/);
+ assert.match(css,/#tab-kits #kitDetail #kitCopyContentPanel\[hidden\]\{display:none!important\}/);
+});
