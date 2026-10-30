@@ -1538,6 +1538,7 @@ app.get('/api/shopee/optimizer/find',mustLogin,requireWeDropAdmin,async(req,res)
    :'';
   res.json({
    ok:true,sku,matches,lookup,verifiedLive:true,
+   preferredItemId:authoritative.preferredItemId,
    retiredItemIds:retired,canDeepSearch:!deep&&!matches.length,
    warnings:warnings.slice(0,3),
    message:matches.length
