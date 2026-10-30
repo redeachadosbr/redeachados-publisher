@@ -33,7 +33,7 @@ import {saveWeDropProducts,readWeDropProduct} from './wedropCosts.js';
 import {kitCatalog,suggestKits,suggestKitsForIdea,rankKitIdeaProducts,assessKitBuyerFit,composeKit,kitCreative,kitPrompts,kitPlusResearchBrief,kitPlusContentPrompt,kitContentBrief,categoryMatches,modifyKitSkus,clearKitCatalogCache,kitSku} from './shopeeKitBuilder.js';
 import {researchShopeeKitSeo} from './shopeeKitSeoResearch.js';
 import {saveKitStockImport,clearKitStockCache,parseWeDropAvailabilityCsv,readKitStockSnapshot} from './shopeeKitAvailability.js';
-import {saveKitDraft,saveKitDraftLogistics,saveKitDraftManualFacts,listKitDrafts,loadKitDraft,deleteKitDraft,recordKitOptimization} from './shopeeKitDraftStore.js';
+import {saveKitDraft,saveKitDraftLogistics,saveKitDraftManualFacts,saveKitDraftCopy,listKitDrafts,loadKitDraft,deleteKitDraft,recordKitOptimization} from './shopeeKitDraftStore.js';
 import {validateKitOptimizationTarget,kitOptimizationLinkIsCurrent,linkedKitPricingCost,assertKitListingComposition} from './shopeeKitOptimization.js';
 import {recoverKitDraftForEditing,matchesStoredKitPhotos,validateStoredKitDraft} from './shopeeKitDraftRecovery.js';
 import {kitUploadPhoto,kitPublicationReadiness,kitPublicationPreview,kitPublishApproved,checkKitPublication,kitVideoPrepare,kitVideoAdvance,kitVideoStatus,kitVideoDiscard} from './shopeeKitPublicationService.js';
@@ -376,6 +376,15 @@ app.post('/api/shopee/kits/drafts/save',mustLogin,requireWeDropAdmin,async(req,r
   const saved=await saveKitDraft(auth.shopId,{kit,creative,logistics:req.body?.logistics});
   res.json({ok:true,...saved,shopeePublished:false,stockRevalidationRequired,
    refreshedCosts:!stockRevalidationRequired});
+ }catch(error){res.status(400).json({error:String(error.message||error).slice(0,260)});}
+});
+app.post('/api/shopee/kits/drafts/copy',mustLogin,requireWeDropAdmin,async(req,res)=>{
+ res.setHeader('Cache-Control','no-store');
+ if(!verifiedSameOrigin(req))return res.status(403).json({error:'Origem não autorizada.'});
+ try{
+  const {auth}=await getValidAuth(req);
+  const result=await saveKitDraftCopy(auth.shopId,String(req.body?.kitSku||''),req.body);
+  res.json({ok:true,...result});
  }catch(error){res.status(400).json({error:String(error.message||error).slice(0,260)});}
 });
 app.post('/api/shopee/kits/drafts/manual-facts',mustLogin,requireWeDropAdmin,async(req,res)=>{
