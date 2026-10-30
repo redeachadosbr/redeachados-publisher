@@ -36,8 +36,34 @@ const GROUPS=Object.freeze({
  Organização:['Organizadores e Cestos','Prateleiras e Suportes','Lixeiras','Acessórios de Banheiro','Lavanderia'],
  Papelaria:['Cadernos','Mochilas, Estojos e Lancheiras']
 });
+// Categorias principais exibidas no catálogo WeDrop (ordem oficial da navegação).
+const WEDROP_MAIN_CATEGORIES=Object.freeze([
+ 'Cozinha','Organização','Limpeza e Lavanderia','Banheiro',
+ 'Decoração e Têxteis','Eletroportáteis','Brinquedos',
+ 'Papelaria e Escritório','Ferramentas e Automotivo',
+ 'Esporte e Lazer','Pets','Beleza e Cuidados',
+ 'Moda, Malas e Acessórios','Natal e Festas'
+]);
+const WEDROP_CATEGORY_TERMS=Object.freeze({
+ 'Cozinha':['cozinha','utensil','panela','frigideira','copo','jarra','servir','garrafa','termic','marmita','mantimento','pote'],
+ 'Organização':['organiz','cesto','prateleira','suporte','lixeira','guarda-roupa','cabide'],
+ 'Limpeza e Lavanderia':['limpeza','lavanderia','vassoura','esfreg','mop'],
+ 'Banheiro':['banheiro','banho','sanitari'],
+ 'Decoração e Têxteis':['decor','text','tapete','almofada','cortina','cama','mesa e banho'],
+ 'Eletroportáteis':['eletroport','eletrodomest','ventilador','liquidificador','cafeteira eletrica'],
+ 'Brinquedos':['brinqued','boneca','carrinho','pista','jogo','educativ','bebe','fantasia','passeio'],
+ 'Papelaria e Escritório':['papelaria','escritorio','caderno','mochila','estojo','lancheira'],
+ 'Ferramentas e Automotivo':['ferrament','automot','oficina'],
+ 'Esporte e Lazer':['esporte','lazer','fitness','academia','camping'],
+ 'Pets':['pet','animal','cachorro','gato'],
+ 'Beleza e Cuidados':['beleza','cuidado pessoal','perfum','cosmetic','maquiagem'],
+ 'Moda, Malas e Acessórios':['moda','mala','acessorio de moda','bolsa','vestuario'],
+ 'Natal e Festas':['natal','festa','balao','festiv']
+});
 export function categoryMatches(actual,filter){
- return filter==='Todos'||actual===filter||(GROUPS[filter]||[]).includes(actual);
+ if(filter==='Todos'||actual===filter||(GROUPS[filter]||[]).includes(actual))return true;
+ const value=norm(actual),terms=WEDROP_CATEGORY_TERMS[filter];
+ return Boolean(terms&&terms.some(term=>value.includes(norm(term))));
 }
 async function readCatalog(shop){
  const id=validShop(shop);
@@ -94,7 +120,7 @@ export async function kitCatalog(shop,{category='Todos',search='',limit=80}={}){
   importedCount:stock.importedCount,availableCount:stock.availableCount,
   unavailableCount:stock.unavailableCount,lastSuccessAt:stock.lastSuccessAt,
   catalogLastImportedAt:stock.catalogLastImportedAt,expiresAt:stock.expiresAt};
- return {categories:['Todos',...groups,...categories],catalogCount:rows.length,matched:filtered.length,
+ return {categories:['Todos',...WEDROP_MAIN_CATEGORIES],catalogCount:rows.length,matched:filtered.length,
   availableMatched:stock.ready?available.length:0,
   products:stock.ready?available.slice(0,Math.max(1,Math.min(160,Number(limit)||80)))
    .map(x=>({...x,stockStatus:'DISPONIVEL'})):[],
