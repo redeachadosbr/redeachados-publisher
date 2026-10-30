@@ -1527,7 +1527,9 @@ async function loadDrafts({restoreCurrent=true}={}){
     draft.optimizedListingStatus==='in_progress'?
     '◷ OTIMIZAÇÃO EM ANDAMENTO · CONFERIR':
     null;
-   info.append(elt('span','kit-draft-state',optimizationLabel||
+   const confirmedPublished=draft.optimizedListingStatus==='verified'||draft.publication==='published';
+   if(confirmedPublished)card.classList.add('kit-draft-confirmed');
+   info.append(elt('span','kit-draft-state'+(confirmedPublished?' kit-draft-state-confirmed':''),optimizationLabel||
     (draft.publication==='published'?'PUBLICADO NA SHOPEE':
      draft.publication==='uncertain'?'PUBLICAÇÃO A CONFERIR':
      draft.reviewRequired?'RASCUNHO — REVISAR COERÊNCIA':'RASCUNHO NÃO PUBLICADO')));
@@ -1550,12 +1552,16 @@ async function loadDrafts({restoreCurrent=true}={}){
     card.append(prices);
    }
    const actions=elt('div','kit-draft-actions');
-   const open=elt('button','kit-secondary','Editar e continuar →');
+   const confirmedForReview=draft.optimizedListingStatus==='verified'||draft.publication==='published';
+   const open=elt('button','kit-secondary',confirmedForReview?'✓ Publicação confirmada':'Editar e continuar →');
    open.type='button';
    open.dataset.draftEditButton='';
    open.setAttribute('aria-controls','kitDetail');
    open.setAttribute('aria-expanded','false');
-   open.addEventListener('click',()=>void openDraft(draft.kitSku,{targetCard:card,title:draft.title}));
+   if(confirmedForReview){
+    open.disabled=true;
+    open.title='Publicação confirmada no sistema; edição encerrada para evitar alterações acidentais.';
+   }else open.addEventListener('click',()=>void openDraft(draft.kitSku,{targetCard:card,title:draft.title}));
    actions.append(open);
    if(draft.deletable===true){
     const remove=elt('button','kit-draft-remove','Excluir');
@@ -1567,6 +1573,14 @@ async function loadDrafts({restoreCurrent=true}={}){
    }
    card.append(actions);root.append(card);
   }
+  const activeConfirmed=(result.drafts||[]).some(d=>d.kitSku===kitActiveDraftSku&&
+   (d.optimizedListingStatus==='verified'||d.publication==='published'));
+  if(activeConfirmed){
+   kitCloseInlineEditor();
+   prepared=null;
+   images.clear();
+   resetKitPublication({saved:false});
+  }
   if(kitActiveDraftSku&&prepared&&!$('#kitDetail').hidden){
    if(!kitPlaceEditorUnderDraft(kitActiveDraftSku)){
     // Uma composição nova não salva pode não ter cartão ainda.
@@ -1575,7 +1589,9 @@ async function loadDrafts({restoreCurrent=true}={}){
    }
   }else if(restoreCurrent&&!prepared&&result.drafts.length){
    // Seleção automática somente dentro do lote ativo.
-   const first=result.drafts.find(d=>d.publication==='local_draft')||result.drafts[0];
+   const first=result.drafts.find(d=>d.publication==='local_draft'&&d.optimizedListingStatus!=='verified')||
+    result.drafts.find(d=>d.publication!=='published'&&d.optimizedListingStatus!=='verified');
+   if(!first)return;
    void openDraft(first.kitSku,{scroll:false,
     targetCard:[...root.querySelectorAll('[data-kit-draft-sku]')].find(x=>x.dataset.kitDraftSku===first.kitSku),
     title:first.title});
