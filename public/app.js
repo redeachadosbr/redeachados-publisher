@@ -4105,7 +4105,7 @@ async function optimizerWorkflowSaveReview({fiscalConfirm=false}={}){
      'Revisão da etapa '+stage.name+' salva. Nenhum dado do anúncio foi alterado na Shopee.','success');
    if(key==='technical'){
      const ignored=Array.isArray(result.technicalSkipped)?result.technicalSkipped:[];
-     const ignoredNames=ignored.map(item=>item.name).join(', ');
+     const ignoredNames=ignored.map(item=>optimizerTechLabel(item.name,item.attributeId)).join(', ');
      optimizerTechReviewFeedback(body.reviewed
        ?'✓ Ficha técnica da SKU '+data.sku+' registrada como conferida. '+
           (ignored.length?ignored.length+' atributo(s) opcionais incompatíveis ('+ignoredNames+
@@ -6110,15 +6110,15 @@ function optimizerRender(record){
   const ranks={review:0,missing:1,filled:2};
   const attrs=[...(a.attributes||[])].sort((x,y)=>
     Number(y.mandatory)-Number(x.mandatory)||
-    (ranks[x.state]??3)-(ranks[y.state]??3)||x.name.localeCompare(y.name,'pt-BR'));
+    (ranks[x.state]??3)-(ranks[y.state]??3)||optimizerTechLabel(x.name,x.id).localeCompare(optimizerTechLabel(y.name,y.id),'pt-BR'));
   for(const x of attrs){
     const tr=optimizerMake('tr','optimizer-attribute-'+x.state);
     const name=optimizerCell(tr,'','optimizer-attribute-name');
-    name.append(optimizerMake('strong','',x.name),optimizerMake('small','',
+    name.append(optimizerMake('strong','',optimizerTechLabel(x.name,x.id)),optimizerMake('small','',
       'ID '+x.id+(x.mandatory?' · Obrigatório':' · Opcional')+
       ' · Tipo '+(x.inputType??'?')));
     const current=(x.values||[]).map(v=>
-      (v.name||('Opção '+v.valueId))+(v.unit?' '+v.unit:'')).filter(Boolean).join('; ');
+      optimizerTechValueLabel(v.name||('Opção '+v.valueId),v.valueId)+(v.unit?' '+v.unit:'')).filter(Boolean).join('; ');
     optimizerCell(tr,current||'Não preenchido','optimizer-attribute-value');
     const status=optimizerCell(tr,'','optimizer-attribute-status');
     const label=x.state==='conditional'?'Condicional à variação/atributo pai':
@@ -6128,7 +6128,7 @@ function optimizerRender(record){
     status.appendChild(optimizerMake('span','optimizer-state '+x.state,label));
     for(const problem of x.issues||[])status.appendChild(optimizerMake('small','',problem));
     const examples=(x.options||[]).filter(o=>o.name).slice(0,4).map(o=>
-      o.name+(o.id?' (ID '+o.id+')':'')).join(' · ');
+      optimizerTechValueLabel(o.name,o.id)+(o.id?' (ID '+o.id+')':'')).join(' · ');
     optimizerCell(tr,examples||((x.allowedUnits||[]).join(', ')||
       (x.supportSearch?'Consultar opções paginadas pela API':'Valor sujeito a tipo do atributo')),
       'optimizer-attribute-options');
@@ -8355,7 +8355,9 @@ const optimizerTechPtNames={
  'product model':'Modelo do produto','type':'Tipo',
  'has certification':'Possui certificação','certification':'Certificação',
  'certification':'Certificação','weight':'Peso'};
-function optimizerTechLabel(value){
+function optimizerTechLabel(value,id){
+ const localized=globalThis.RATechnicalPT?.attribute?.(value,id);
+ if(localized)return localized;
  const raw=String(value||'').trim();
  const normalized=raw.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'');
  return optimizerTechPtNames[normalized]||
@@ -8367,7 +8369,9 @@ function optimizerTechLabel(value){
     /\bhas bsmi\b/i.test(raw)?'Possui certificação BSMI':
     /\b(?:built.in|build.in) battery\b/i.test(raw)?'Bateria integrada':raw);
 }
-function optimizerTechValueLabel(value){
+function optimizerTechValueLabel(value,id){
+ const localized=globalThis.RATechnicalPT?.value?.(value,id);
+ if(localized)return localized;
  const raw=String(value||'').trim();
  const threshold=raw.match(/^(\d{1,2})\s*(?:years?|yrs?)\s*(?:old\s*)?and\s+(?:above|up|over)$/i)||
   raw.match(/^(\d{1,2})\+\s*(?:years?|yrs?)$/i);
@@ -8623,7 +8627,7 @@ function optimizerTechnicalSummary(data){
   if(!attr)continue;
   const item=optimizerMake('div','optimizer-tech-summary-item');
   const desc=optimizerMake('div','optimizer-tech-summary-desc');
-  desc.append(optimizerMake('strong','',optimizerTechLabel(String(attr.name||'Atributo '+change.attributeId))),
+  desc.append(optimizerMake('strong','',optimizerTechLabel(String(attr.name||'Atributo '+change.attributeId),change.attributeId)),
    optimizerMake('span','',change.values.map(x=>optimizerTechValueLabel(x.valueName)+(x.unit?' '+x.unit:'')).join(', ')));
   const proof=suggested.some(x=>Number(x.attributeId)===change.attributeId);
   item.append(desc,optimizerMake('small',proof?'Dado WeDrop · conferir':'Preenchimento registrado ou manual'));
@@ -8645,7 +8649,7 @@ function optimizerTechnicalSummary(data){
   details.append(list);target.append(details);
  }
  if(mandatory.length)target.append(optimizerMake('p','optimizer-tech-warning',
-  'Pendente: '+mandatory.map(x=>optimizerTechLabel(x.name)).slice(0,4).join(', ')+
+  'Pendente: '+mandatory.map(x=>optimizerTechLabel(x.name,x.id)).slice(0,4).join(', ')+
   (mandatory.length>4?' e outros.':'.')+' Abra os campos apenas quando precisar corrigir.'));
  const info=$('#optimizerTechnicalAdvancedCount');
  if(info)info.textContent=mandatory.length+
@@ -8823,9 +8827,9 @@ function optimizerTechnicalRender(data){
   if(attr.conditional)continue;
   const name=attr.name||'Atributo '+attr.id,type=Number(attr.inputType),custom=[2,3,5].includes(type),multi=[4,5].includes(type);
   const field=optimizerMake('fieldset','optimizer-attribute');field.dataset.attributeId=String(attr.id);
-  field.append(optimizerMake('legend','',optimizerTechLabel(name)+(attr.mandatory?' *':'')));
-  field.append(optimizerMake('small','','Atual: '+((attr.values||[]).map(x=>optimizerTechValueLabel(x.name)+(x.unit?' '+x.unit:'')).join(', ')||'Não preenchido')));
-  if(attr.introduction){const tip=optimizerMake('small','','Orientação oficial da categoria');tip.title=attr.introduction;field.append(tip);}
+  field.append(optimizerMake('legend','',optimizerTechLabel(name,attr.id)+(attr.mandatory?' *':'')));
+  field.append(optimizerMake('small','','Atual: '+((attr.values||[]).map(x=>optimizerTechValueLabel(x.name,x.valueId)+(x.unit?' '+x.unit:'')).join(', ')||'Não preenchido')));
+  if(attr.introduction){const tip=optimizerMake('small','','Orientação oficial da categoria');tip.title='Consulte a orientação original na Central do Vendedor Shopee para confirmar este atributo.';field.append(tip);}
   field.append(optimizerMake('small','',attr.conditional?'Condicional • depende do atributo pai':
     attr.mandatory?'Obrigatório na categoria '+data.categoryId:'Opcional na categoria '+data.categoryId));
   wrap.append(field);
@@ -8882,7 +8886,7 @@ function optimizerTechnicalRender(data){
   }else requiredMissing++;
   if(auto)field.append(optimizerMake('p','optimizer-source-autofilled',
     '✓ '+(auto.learned?'Padrão aprendido':'Dado da ficha')+': '+
-    auto.values.map(x=>optimizerTechValueLabel(x.valueName)).join(', ')+
+    auto.values.map(x=>optimizerTechValueLabel(x.valueName,x.valueId)).join(', ')+
     ' · Origem: '+auto.evidence+'. Confirme na revisão antes de publicar.'));
   const enableLabel=optimizerMake('label','optimizer-attribute-toggle'),enabled=optimizerMake('input');
   enabled.type='checkbox';enabled.dataset.attributeEnabled='true';enabled.checked=manualChoice?Boolean(manual.enabled):Boolean(existing);
@@ -8919,7 +8923,7 @@ function optimizerTechnicalRender(data){
       const selected=select.value;
       for(const option of response.options||[]){
        if([...select.options].some(o=>o.value===String(option.id)))continue;
-       const element=optimizerMake('option','',optimizerTechValueLabel(option.name)+(option.unit?' '+option.unit:''));
+       const element=optimizerMake('option','',optimizerTechValueLabel(option.name,option.id)+(option.unit?' '+option.unit:''));
        element.value=String(option.id);
        select.append(element);
       }
@@ -8942,7 +8946,7 @@ function optimizerTechnicalRender(data){
    const select=optimizerMake('select');select.dataset.valueId='true';select.setAttribute('aria-label',optimizerTechLabel(name)+' — opção');
    const blank=optimizerMake('option','','Selecione uma opção');blank.value='';select.append(blank);
    for(const option of (attr.options||[]).filter(x=>x.id>0)){
-    const item=optimizerMake('option','',optimizerTechValueLabel(option.name)+(option.unit?' '+option.unit:''));item.value=String(option.id);select.append(item);
+    const item=optimizerMake('option','',optimizerTechValueLabel(option.name,option.id)+(option.unit?' '+option.unit:''));item.value=String(option.id);select.append(item);
    }
    if(custom){const other=optimizerMake('option','','Informar valor');other.value='0';select.append(other);}
    select.value=value.valueId!==undefined?String(value.valueId):type===3||!attr.options?.length?'0':'';
@@ -8966,14 +8970,14 @@ function optimizerTechnicalRender(data){
   }
   for(const value of existing?(existing.values||[existing]):[{}])addRow(value);
   if(suggested&&!auto){
-   const apply=optimizerMake('button','secondary','Aplicar dado WeDrop: '+suggested.values[0].valueName);
+   const apply=optimizerMake('button','secondary','Aplicar dado WeDrop: '+optimizerTechValueLabel(suggested.values[0].valueName,suggested.values[0].valueId));
    apply.type='button';
    apply.onclick=()=>{
     enabled.checked=true;controls.hidden=false;rows.replaceChildren();
     for(const v of suggested.values)addRow(v);
     evidence.value=suggested.evidence;
     optimizerExecReset();
-    optimizerWorkflowNotice('Sugestão aplicada em '+name+'. Confira e registre a revisão técnica antes de executar.','info');
+    optimizerWorkflowNotice('Sugestão aplicada em '+optimizerTechLabel(name,attr.id)+'. Confira e registre a revisão técnica antes de executar.','info');
    };
    field.append(apply);
   }
