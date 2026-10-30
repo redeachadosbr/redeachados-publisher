@@ -96,20 +96,12 @@ export function shopeeExecutionProgress(job){
   fiscal:fiscalIncluded,
   discount:discountIncluded
  };
- // Readback individual: uma etapa comercial confirmada não depende
- // de outras etapas (ex.: imagem ou fiscal) ainda pendentes.
- // O snapshot vem de DUAS consultas oficiais da Shopee após a execução.
- const readbackStages=confirmedReadback?{
-  seo:!recoverPending.some(x=>/título SEO/i.test(x)),
-  description:!recoverPending.some(x=>/descrição ainda diferente/i.test(x)),
-  technical:!recoverPending.some(x=>/ficha técnica:/i.test(x))
- }:{};
  const done={
   images:needs.images&&imagesConfirmed,
   video:needs.video&&videoConfirmed,
-  seo:needs.seo&&(confirmedStages.seo===true||commercialConfirmed||readbackStages.seo===true),
-  description:needs.description&&(confirmedStages.description===true||commercialConfirmed||readbackStages.description===true),
-  technical:needs.technical&&(confirmedStages.technical===true||commercialConfirmed||readbackStages.technical===true),
+  seo:needs.seo&&(confirmedStages.seo===true||commercialConfirmed),
+  description:needs.description&&(confirmedStages.description===true||commercialConfirmed),
+  technical:needs.technical&&(confirmedStages.technical===true||commercialConfirmed),
   variants:variantsDone,
   fiscal:fiscalDone,
   discount:discountDone
