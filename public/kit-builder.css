@@ -2707,3 +2707,42 @@
 @media(max-width:650px){
  #tab-kits #kitDetail #kitToggleCopyContent.kit-copy-collapse-button{width:100%}
 }
+
+/* Composição de kit: recolher somente o conteúdo, preservando SKUs, preços e controles. */
+#tab-kits #kitDetail .kit-composition-heading{
+ display:flex;align-items:center;justify-content:space-between;
+ gap:12px;flex-wrap:wrap;margin-bottom:10px;
+}
+#tab-kits #kitDetail .kit-composition-heading .kit-complement-head{
+ flex:1 1 300px;margin:0;min-width:0;
+}
+#tab-kits #kitDetail #kitToggleComposition.kit-composition-toggle{
+ display:inline-flex;align-items:center;justify-content:center;
+ min-height:43px;padding:10px 17px;max-width:100%;border-radius:10px;
+ border:1px solid #ec5737;background:linear-gradient(120deg,#ff5c38,#fa822d);
+ color:#fff;font-size:12px;font-weight:900;line-height:1.3;
+ box-shadow:0 4px 0 #bc4b28,0 7px 16px rgba(185,80,34,.22);
+ cursor:pointer;transition:transform .14s,box-shadow .14s,background .14s;
+}
+#tab-kits #kitDetail #kitToggleComposition.kit-composition-toggle:hover{
+ background:linear-gradient(120deg,#ef4f2f,#f57021);
+ transform:translateY(-1px);box-shadow:0 5px 0 #bc4b28,0 9px 19px rgba(185,80,34,.25);
+}
+#tab-kits #kitDetail #kitToggleComposition.kit-composition-toggle:active{
+ transform:translateY(3px);box-shadow:0 1px 0 #bc4b28;
+}
+#tab-kits #kitDetail #kitToggleComposition.kit-composition-toggle:focus-visible{
+ outline:3px solid #3086e9;outline-offset:3px;
+}
+#tab-kits #kitDetail #kitToggleComposition.kit-composition-toggle.is-collapsed{
+ background:linear-gradient(120deg,#2679df,#1659ba);
+ border-color:#1d65ba;box-shadow:0 4px 0 #15417f,0 7px 16px rgba(33,94,156,.22);
+}
+#tab-kits #kitDetail #kitCompositionContent[hidden]{display:none!important}
+#tab-kits #kitDetail .kit-composition-collapsible:has(#kitCompositionContent[hidden]){
+ padding-top:10px;padding-bottom:10px;
+}
+#tab-kits #kitDetail .kit-composition-collapsible:has(#kitCompositionContent[hidden]) .kit-composition-heading{margin-bottom:0}
+@media(max-width:680px){
+ #tab-kits #kitDetail #kitToggleComposition.kit-composition-toggle{width:100%}
+}

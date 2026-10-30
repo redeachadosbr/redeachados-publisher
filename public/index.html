@@ -1120,10 +1120,15 @@
     <div class="kit-editor-stat kit-editor-margin"><span class="kit-editor-stat-icon" aria-hidden="true">▥</span><span class="kit-editor-stat-copy"><small>Margem</small><strong id="kitEditorMargin">—</strong></span></div>
   </div>
   </div>
-  <section class="kit-editor-composition-panel" aria-label="Personalizar a composição do kit">
-  <div class="kit-complement-head"><strong>Personalizar a composição do kit</strong><span>Adicione um complemento ou substitua uma SKU. Os valores são recalculados na WeDrop.</span></div>
-  <div id="kitManualComposition" class="kit-manual-composition"></div>
-  <p id="kitManualStatus" class="kit-manual-status" role="status" aria-live="polite">Selecione uma SKU para adicionar ou substituir. Até 3 produtos por kit.</p>
+  <section class="kit-editor-composition-panel kit-composition-collapsible" aria-label="Personalizar a composição do kit">
+   <div class="kit-composition-heading">
+    <div class="kit-complement-head"><strong>Personalizar a composição do kit</strong><span>Adicione um complemento ou substitua uma SKU. Os valores são recalculados na WeDrop.</span></div>
+    <button id="kitToggleComposition" class="kit-composition-toggle" type="button" aria-controls="kitCompositionContent" aria-expanded="true">▴ Ocultar composição do kit</button>
+   </div>
+   <div id="kitCompositionContent" class="kit-composition-content">
+    <div id="kitManualComposition" class="kit-manual-composition"></div>
+    <p id="kitManualStatus" class="kit-manual-status" role="status" aria-live="polite">Selecione uma SKU para adicionar ou substituir. Até 3 produtos por kit.</p>
+   </div>
   </section>
   <details class="kit-detail-facts"><summary>Ver composição das SKUs e cálculo detalhado do kit</summary>
    <div id="kitComponents" class="kit-components"></div>

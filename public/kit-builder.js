@@ -1687,6 +1687,14 @@ async function search(){
  }catch(error){status(error.message,'error');}
  finally{btn.disabled=false;}
 }
+function kitSetCompositionCollapsed(collapsed){
+ const panel=$('#kitCompositionContent'),button=$('#kitToggleComposition');
+ if(!panel||!button)return;
+ panel.hidden=Boolean(collapsed);
+ button.setAttribute('aria-expanded',String(!collapsed));
+ button.textContent=collapsed?'▾ Mostrar composição do kit':'▴ Ocultar composição do kit';
+ button.classList.toggle('is-collapsed',Boolean(collapsed));
+}
 function kitSetCopyContentCollapsed(collapsed){
  const panel=$('#kitCopyContentPanel'),button=$('#kitToggleCopyContent');
  if(!panel||!button)return;
@@ -3288,6 +3296,9 @@ $('#kitTitle')?.addEventListener('input',()=>{
  const heading=$('#kitSkuTitle');
  if(heading&&prepared)heading.textContent=$('#kitTitle').value.trim()||
   prepared.kit.components.map(p=>p.name).join(' + ');
+});
+$('#kitToggleComposition')?.addEventListener('click',()=>{
+ kitSetCompositionCollapsed(!$('#kitCompositionContent').hidden);
 });
 $('#kitToggleCopyContent')?.addEventListener('click',()=>{
  kitSetCopyContentCollapsed(!$('#kitCopyContentPanel').hidden);

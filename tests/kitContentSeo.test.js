@@ -242,3 +242,24 @@ test('botão de recolher todo o bloco de títulos e descrição mantém editores
  assert.match(js,/\$\('#kitDescription'\)\.value=result\.description/);
  assert.match(css,/#tab-kits #kitDetail #kitCopyContentPanel\[hidden\]\{display:none!important\}/);
 });
+
+test('personalizar composição tem botão destacado para ocultar sem alterar SKUs e cálculos',async()=>{
+ const {readFileSync}=await import('node:fs');
+ const html=readFileSync(new URL('../public/index.html',import.meta.url),'utf8');
+ const css=readFileSync(new URL('../public/kit-builder.css',import.meta.url),'utf8');
+ const js=readFileSync(new URL('../public/kit-builder.js',import.meta.url),'utf8');
+ const start=html.indexOf('id="kitCompositionContent"');
+ const end=html.indexOf('</section>',start);
+ assert.ok(start>=0&&end>start);
+ const section=html.slice(start,end);
+ for(const id of ['kitManualComposition','kitManualStatus']){
+  assert.equal(html.split('id="'+id+'"').length-1,1);
+  assert.ok(section.includes('id="'+id+'"'));
+ }
+ assert.match(html,/id="kitToggleComposition"[^>]*aria-controls="kitCompositionContent"[^>]*aria-expanded="true"/);
+ assert.match(js,/function kitSetCompositionCollapsed\(collapsed\)/);
+ assert.match(js,/panel\.hidden=Boolean\(collapsed\)/);
+ assert.match(js,/kitSetCompositionCollapsed\(!\$\('#kitCompositionContent'\)\.hidden\)/);
+ assert.match(js,/kitManualControls\(kit,\{editor:true\}\)/);
+ assert.match(css,/#tab-kits #kitDetail #kitCompositionContent\[hidden\]\{display:none!important\}/);
+});
