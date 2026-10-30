@@ -2630,7 +2630,8 @@ async function plusText({proceedWithoutDetails=false}={}){
  const currentSku=prepared.kit.kitSku;
  kitContentReadManual();
  const button=proceedWithoutDetails?$('#kitContinueContent'):$('#kitPlusText');
- const tab=kitContentOpenTab();
+ // A Ponte controla a aba ChatGPT. Não abrir aba vazia antes da confirmação.
+ const tab=null;
  kitContentBusy=true;button.disabled=true;
  kitContentFeedback('Lendo as três fichas por SKU e pesquisando títulos comparáveis na Shopee...','info');
  try{
