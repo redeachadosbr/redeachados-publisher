@@ -297,7 +297,36 @@ app.post('/api/shopee/kits/prepare',mustLogin,requireWeDropAdmin,async(req,res)=
 });
 app.get('/api/shopee/kits/drafts',mustLogin,requireWeDropAdmin,async(req,res)=>{
  res.setHeader('Cache-Control','no-store');
- try{const {auth}=await getValidAuth(req);res.json({ok:true,...await listKitDrafts(auth.shopId)});}
+ try{
+  const {auth}=await getValidAuth(req);
+  const data=await listKitDrafts(auth.shopId);
+  // Kit otimizado parte de um anúncio simples, portanto não tem publicação
+  // de Kit Formal. Consultar o job vinculado, sem alterar banco nem Shopee.
+  const candidates=[...data.drafts,...data.published].filter(d=>
+   d.optimization?.itemId&&d.optimization?.sku&&d.optimization?.modelId!=null);
+  await Promise.all(candidates.map(async draft=>{
+   try{
+    const link=draft.optimization;
+    const job=await readShopeeExecution(auth.shopId,link.itemId,link.modelId);
+    if(!job||String(job.sku)!==String(link.sku))return;
+    const progress=shopeeExecutionProgress(job);
+    const steps=progress?.steps||[];
+    const confirmed=steps.filter(x=>['images','video','seo','description','technical'].includes(x.id)&&x.status==='done').map(x=>x.id);
+    const commercialConfirmed=job.result?.primaryVerified===true||
+     (confirmed.includes('seo')&&confirmed.includes('description'));
+    draft.executionState=job.state;
+    draft.confirmedStages=confirmed;
+    draft.optimizedListingStatus=job.state==='verified'?'verified':
+     commercialConfirmed?'published_partial':
+     ['running','uncertain','prepared','failed'].includes(job.state)?'in_progress':null;
+    draft.itemId=String(link.itemId);
+    if(draft.optimizedListingStatus)draft.deletable=false;
+   }catch(error){
+    console.warn('[kit-drafts] Falha ao consultar progresso da SKU',String(draft.kitSku).slice(0,120),String(error.message||error).slice(0,100));
+   }
+  }));
+  res.json({ok:true,...data});
+ }
  catch(error){res.status(400).json({error:String(error.message||error).slice(0,260)});}
 });
 app.post('/api/shopee/kits/drafts/save',mustLogin,requireWeDropAdmin,async(req,res)=>{
