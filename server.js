@@ -1943,9 +1943,7 @@ app.get('/api/shopee/optimizer/workflow',mustLogin,requireWeDropAdmin,async(req,
     const finalDescription=review.draftDescription||composed.description;
 
     res.json({ok:true,readOnlyMarketplace:true,sku,itemId,modelId,manualVideo,...supplierFacts,
-      sourceEvidence,sourceEvidenceWarning,sourceFacts:{...evidenceFacts,
-        kitPrimaryFactsLinked:technicalSourceText!==sourceEvidence.sourceText},
-      technicalDraft:persistedTechnicalDraft,shopId:auth.shopId,
+      sourceEvidence,sourceEvidenceWarning,sourceFacts:evidenceFacts,technicalDraft:persistedTechnicalDraft,shopId:auth.shopId,
       contentVariants:review.contentVariants||null,contentResearch:review.contentResearch||null,
       attributes:technicalPreview.attributes,anatel:inspectAnatelCompliance(technicalPreview),technicalWarning,attributeChanges:review.attributes||[],taxDraft:review.tax||{},taxCurrent:current.tax_info||{},
       recordedAt:stored?.updated_at||null,stages,
