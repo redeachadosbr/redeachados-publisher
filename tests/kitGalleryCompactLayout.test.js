@@ -17,3 +17,17 @@ test('kit gallery keeps all photo slots and actions in the same section',()=>{
   assert.equal((html.match(new RegExp('id="'+id+'"','g'))||[]).length,1,id);
  }
 });
+
+test('excluir foto já salva não depende de parar a Ponte ChatGPT em geração',()=>{
+ const source=readFileSync(new URL('../public/kit-builder.js',import.meta.url),'utf8');
+ const start=source.indexOf('async function kitDeleteGalleryPhoto(slot){');
+ const end=source.indexOf('function renderImageSlots(){',start);
+ assert.ok(start>=0&&end>start);
+ const body=source.slice(start,end);
+ assert.doesNotMatch(body,/kitAutoImageBusy\|\|kitGalleryImportBusy\|\|kitBridgeController\?\.activeJob\(\)/);
+ assert.match(body,/await kitPhotoStore\.remove\(kitSku,slot\)/);
+ assert.match(body,/await kitPhotoStore\.list\(kitSku\)/);
+ assert.match(body,/images\.delete\(slot\)/);
+ assert.match(body,/renderImageSlots\(\);kitAutoImageUi\(\)/);
+ assert.match(body,/kitBridgeController\?\.activeJob\(\)\?'A Ponte continua gerando/);
+});

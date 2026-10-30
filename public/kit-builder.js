@@ -1906,8 +1906,11 @@ function openKitGalleryPreview(focusSlot=null){
 }
 async function kitDeleteGalleryPhoto(slot){
  if(!prepared||!images.has(slot))return;
- if(kitAutoImageBusy||kitGalleryImportBusy||kitBridgeController?.activeJob()){
-  imageStatus('Pause a geração/importação antes de excluir uma foto do kit.','error');return;
+ // A Ponte gera a próxima imagem enquanto o usuário revisa as anteriores.
+ // NÃO bloquear exclusão de fotos já salvas só porque existe uma geração em andamento.
+ // Bloquear apenas operações concorrentes no armazenamento ou a API paga em execução.
+ if(kitAutoImageBusy||kitGalleryImportBusy){
+  imageStatus('Há uma gravação de imagem em andamento. Conclua essa operação e tente excluir novamente.','error');return;
  }
  if(!confirm('Excluir somente a foto '+String(slot).padStart(2,'0')+
   ' deste kit? Ela deixará de aparecer na galeria, mas nenhuma foto será excluída da conversa ChatGPT nem da Shopee.'))return;
@@ -1915,11 +1918,17 @@ async function kitDeleteGalleryPhoto(slot){
  kitGalleryImportBusy=true;
  try{
   await kitPhotoStore.remove(kitSku,slot);
+  // Confirmar no IndexedDB para não anunciar uma exclusão que falhou.
+  const saved=await kitPhotoStore.list(kitSku);
+  if(saved.some(row=>row.slot===slot))
+   throw Error('A exclusão não foi confirmada no armazenamento. Tente novamente.');
   if(prepared?.kit?.kitSku!==kitSku)return;
   images.delete(slot);
   kitInvalidatePhotoPositions([slot]);
   renderImageSlots();kitAutoImageUi();
-  imageStatus('✓ Imagem '+String(slot).padStart(2,'0')+' excluída da galeria local. As outras fotos foram preservadas.','success');
+  imageStatus('✓ Foto '+String(slot).padStart(2,'0')+
+   ' excluída do kit e do armazenamento. Posição pendente; demais fotos preservadas. '+
+   (kitBridgeController?.activeJob()?'A Ponte continua gerando a próxima imagem.':''),'success');
  }catch(error){imageStatus('Falha ao excluir foto: '+error.message,'error');}
  finally{kitGalleryImportBusy=false;}
 }
