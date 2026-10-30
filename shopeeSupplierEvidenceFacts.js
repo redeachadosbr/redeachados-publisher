@@ -103,7 +103,7 @@ export function supplierConfirmedTextFacts(sourceText=''){
  const age=oneLine(/(?:idade recomendada\s*:\s*|(?:indicado|indicada|indicados|indicadas)\s+para\s+criancas\s+|a partir de\s+)(?:acima\s+de\s+|maiores?\s+de\s+)?(\d{1,2})\s*anos?\b/)||
   oneLine(/(?:indicado|indicada|indicados|indicadas)\s+para\s+criancas\s+(?:acima\s+de|maiores?\s+de)\s+(\d{1,2})\s*anos?\b/);
  const material=oneLine(/(?:^|\n)\s*(?:composicao|material)\s*:\s*([^\n.;]{3,90})/);
- const weight=oneLine(/(?:^|\n)\s*peso\s+(?:aprox(?:imado)?\.?|do\s+produto)\s*:\s*(\d{1,4}(?:[.,]\d{1,2})?\s*(?:kg|g))\b/);
+ const weight=oneLine(/(?:^|\n)\s*peso(?:\s+(?:aprox(?:imado)?\.?|do\s+produto))?\s*:\s*(\d{1,4}(?:[.,]\d{1,2})?\s*(?:kg|g))\b/);
  const supportedWeight=oneLine(/(?:^|\n)\s*(?:peso\s+(?:maximo\s+)?suportado|suporta\s+ate)\s*:\s*(?:ate\s*)?(\d{1,4}(?:[.,]\d{1,2})?\s*(?:kg|g))\b/);
  const rim=oneLine(/\baro\s*(\d{1,2})\b/);
  const color=oneLine(/(?:^|\n)\s*cor\s*:\s*([a-z ]{3,36})(?:\n|$)/);
@@ -120,8 +120,28 @@ export function supplierAttributeSuggestions({attributes=[],proposed=[],supplier
   {text:fallbackDescription,label:'Descrição existente do anúncio (conferir com fabricante)'}].filter(x=>x.text);
  const supplierName=supplier?'WeDrop '+supplier.source_file+' · SKU '+supplier.supplier_sku:'';
  const confirmed=supplierConfirmedTextFacts(notes);
+ // Capacidade da SKU em analise. Nao ler da descricao comercial do KIT,
+ // pois ela inclui os volumes de copos e acessorios complementares.
+ function skuDeclaredCapacity(){
+  const sourcesForCapacity=[
+   {text:notes,label:'Informacoes por SKU salvas pelo vendedor'},
+   {text:clean(facts.capacity||facts.volume),label:'Capacidade declarada na WeDrop'},
+   {text:officialDescription,label:'Descricao da SKU na WeDrop'},
+   {text:clean(facts.name||facts.title),label:'Nome da SKU na WeDrop'}
+  ].filter(x=>x.text);
+  for(const source of sourcesForCapacity){
+   const value=plain(source.text);
+   const found=value.match(/(?:^|[^a-z0-9])(?:capacidade|volume)(?:\s+total)?\s*(?:[:=\-]|de)?\s*(\d{2,4}(?:[.,]\d{1,2})?)\s*(ml|mililitros?|l|litros?)\b/)||
+    value.match(/\b(\d{2,4}(?:[.,]\d{1,2})?)\s*(ml|mililitros?|l|litros?)\b/);
+   if(!found)continue;
+   const amount=found[1].replace(',','.'),unit=/^(?:l|litro)/.test(found[2])?'L':'ml';
+   if(Number(amount)>0)return {amount,unit,source:source.label};
+  }
+  return null;
+ }
+ const declaredCapacity=skuDeclaredCapacity();
  const suggestions=[],conflicts=[],unresolved=[];
- function suggest(attr,value,evidence,{onlyIfMissing=false}={}){
+ function suggest(attr,value,evidence,{onlyIfMissing=false,unit=''}={}){
   if(!value||attr.legacy||attr.conditional)return;
   const active=selectedValue(attr,proposed);
   if(equal(value,active))return;
@@ -161,16 +181,17 @@ export function supplierAttributeSuggestions({attributes=[],proposed=[],supplier
      unresolved.push({attributeId:attr.id,name:attr.name,value,
        reason:'A Shopee exige unidade da categoria ainda não confirmada.'});return;
     }
-    const unit=units.find(u=>plain(u)==='cm');
-    if(!unit){unresolved.push({attributeId:attr.id,name:attr.name,value,
-      reason:'Não há unidade cm na categoria; conferir formato antes de preencher.'});return;}
+    const officialUnit=units.find(u=>plain(u)===plain(unit||'cm'));
+    if(!officialUnit){unresolved.push({attributeId:attr.id,name:attr.name,value,
+      reason:'A unidade '+(unit||'cm')+' nao esta disponivel na categoria Shopee.'});return;}
     // Shopee's structured numeric measurement should not receive an arbitrary
     // composite string even when the category supports a unit.
     if(!/^\d+(?:[.,]\d+)?$/.test(value)){
      unresolved.push({attributeId:attr.id,name:attr.name,value,
       reason:'O atributo exige valor numérico com unidade, não medida composta.'});return;}
   }
-  const entry={attributeId:attr.id,values:[{valueId:official?.id||0,valueName:official?.name||value}],
+  const entry={attributeId:attr.id,values:[{valueId:official?.id||0,valueName:official?.name||value,
+    ...(unit&&Number(attr.formatType)===2&&!official?{unit}:{})}],
    evidence,autoFilled:true};
   suggestions.push(entry);
 
@@ -194,8 +215,25 @@ export function supplierAttributeSuggestions({attributes=[],proposed=[],supplier
   }else if(n==='material'||n.startsWith('material ')||n.includes('composicao')){
    const catalogMaterial=clean(facts.material||facts.composition);
    const explicit=(catalogMaterial?{value:catalogMaterial,source:supplierName+' · material informado no catálogo'}:null)||specifiedText(/(?:^|\n)\s*(?:material|composicao)\s*[:\-]\s*([^\n.;]{2,75})/)||
-    specifiedText(/(?:produto|brinquedo|conjunto)\s+(?:fabricado|feito|produzido)\s+em\s+([a-z]{2,32})\b/);
+    specifiedText(/(?:produto|brinquedo|conjunto)\s+(?:fabricado|feito|produzido)\s+em\s+([a-z]{2,32})\b/)||
+    specifiedText(/\b(?:coqueteleira|shaker|produto|recipiente|utensilio)\s+(?:e\s+)?(?:fabricad[ao]|feit[ao]|produzid[ao])\s+em\s+(aco inoxidavel|aco inox|vidro borossilicato|plastico|aluminio)\b/);
    if(explicit)suggest(attr,plain(explicit.value)==='pp'?'PP':clean(explicit.value),explicit.source+' — material expresso no texto desta SKU.',{onlyIfMissing:true});
+  }else if(/^(?:volume capacity|volume|capacidade de volume|capacidade|capacity|capacity volume|capacidade do produto)$/.test(n)||
+     (/^(?:cup capacity|capacidade do copo)$/.test(n)&&/\b(?:copo|caneca|taca)\b/.test(plain(facts.name||'')))){
+    if(declaredCapacity){
+     const evidence=declaredCapacity.source+' — capacidade informada para esta SKU.';
+     const shown=declaredCapacity.amount+' '+declaredCapacity.unit;
+     if(Number(attr.formatType)===2){
+      const units=list(attr.allowedUnits).map(u=>typeof u==='string'?u:u?.unit||u?.name||'').filter(Boolean);
+      const officialUnit=units.find(u=>plain(u)===plain(declaredCapacity.unit));
+      if(officialUnit)suggest(attr,declaredCapacity.amount,evidence,{onlyIfMissing:true,unit:officialUnit});
+      else unresolved.push({attributeId:attr.id,name:attr.name,value:shown,
+       reason:'A unidade '+declaredCapacity.unit+' nao esta entre as unidades oficiais da categoria.'});
+     }else{
+      const value=[1,3].includes(Number(attr.validationType))?declaredCapacity.amount:shown;
+      suggest(attr,value,evidence,{onlyIfMissing:true});
+     }
+    }
   }else if(/^(?:quantidade|quantity)$/.test(n)){
    if(confirmed.quantity)suggest(attr,confirmed.quantity,
     'Informações WeDrop da SKU · '+confirmed.packageEvidence,{onlyIfMissing:true});
@@ -396,8 +434,9 @@ export function supplierAttributeSuggestions({attributes=[],proposed=[],supplier
   note:'Não é certificação conferida. Validar identificação e situação no registro oficial antes de publicar.'});
  if(dims)metrics.push({name:'Dimensões do produto (A × L × C)',value:dims.value,
   note:dimSource+'; confirmar medidas montadas. Não utilizar dimensões logísticas.'});
- const capacity=specifiedText(/(?:capacidade|volume)\s*[:\-]?\s*(\d{2,5})\s*(?:litros|l\b)/);
- if(capacity)metrics.push({name:'Capacidade',value:capacity.value+' litros',note:capacity.source});
+ const capacity=declaredCapacity;
+ if(capacity)metrics.push({name:'Capacidade',value:capacity.amount+' '+capacity.unit,
+   note:capacity.source+' · somente da SKU selecionada.'});
  if(facts.catalogMeasurements){
   const c=facts.catalogMeasurements;
   metrics.push({name:'Medidas do catálogo logístico',value:[c.heightCm,c.widthCm,c.lengthCm].join(' × ')+' cm',
