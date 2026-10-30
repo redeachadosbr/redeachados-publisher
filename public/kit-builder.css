@@ -2786,3 +2786,15 @@
 @media(max-width:680px){
  #tab-kits #kitDetail #kitToggleImagesContent.kit-images-collapse-button{width:100%}
 }
+
+
+/* Kits concluídos: somente confirmação oficial verificada deve ficar verde. */
+#tab-kits .kit-card.kit-draft-confirmed{border-color:#b9e7cc!important;background:linear-gradient(115deg,#fbfffc,#f2fbf6)!important}
+#tab-kits .kit-draft-state.kit-draft-state-confirmed{
+ color:#087447!important;background:#dff7e9!important;border:1px solid #a9dec0!important;
+ border-radius:7px!important;padding:5px 9px!important;font-weight:850!important;
+}
+#tab-kits .kit-card.kit-draft-confirmed .kit-draft-actions button:disabled{
+ color:#14734b!important;background:#e3f6e9!important;border:1px solid #b9e1c6!important;
+ opacity:1!important;cursor:default!important;
+}
