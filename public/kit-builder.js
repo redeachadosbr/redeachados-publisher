@@ -2478,22 +2478,63 @@ function kitContentOpenTab(){
  if(tab)try{tab.opener=null;}catch{}
  return tab;
 }
-function kitContentHandoff(prompt,tab=null){
+async function kitContentHandoff(prompt,tab=null){
  if(!prompt.trim())throw Error('Orientação vazia. Prepare o conteúdo novamente.');
- // Fluxo anterior: abre o ChatGPT com a orientação pelo link.
- // O botão azul da Ponte continua responsável por importar a resposta.
- const url='https://chatgpt.com/?prompt='+encodeURIComponent(prompt);
- let opened=false;
- if(tab&&!tab.closed){try{tab.location.replace(url);opened=true;}catch{
-  try{tab.location.href=url;opened=true;}catch{}
- }}
- if(!opened)opened=Boolean(window.open(url,'_blank','noopener,noreferrer'));
+ const kitSku=prepared?.kit?.kitSku,sku=String(prepared?.kit?.components?.[0]?.sku||'');
+ const itemId=String(prepared?.optimization?.itemId||prepared?.publication?.itemId||'0');
+ const modelId='0',nonce=crypto.randomUUID();
+ // A Ponte já oferece RA_SITE_DESC_START para iniciar uma mensagem completa,
+ // e RA_EXTENSION_DESC_RESULT para devolver o texto gerado. Não usar ?prompt=.
  kitContentAwaitingResponse=true;
- $('#kitContentDetails').open=!opened;
- kitImportState(opened?'Aguardando resposta · 3 títulos e descrição':'Abertura bloqueada · orientação pronta','info');
- kitContentFeedback(opened?
-  'ChatGPT aberto com a orientação do kit. Envie o pedido caso a interface não envie automaticamente. Depois use o botão azul Importar anúncio copiado do ChatGPT.':
-  'O navegador bloqueou a abertura. Use Copiar orientação completa nas opções avançadas.','info');
+ kitImportState('Enviando orientação do kit pela Ponte ChatGPT…','info');
+ return new Promise((resolve,reject)=>{
+  let done=false,started=false,ack=false;
+  const finish=(error,value)=>{
+   if(done)return;done=true;clearTimeout(timer);
+   window.removeEventListener('message',handle);
+   if(error){$('#kitContentDetails').open=true;reject(error);}
+   else resolve(value);
+  };
+  const handle=event=>{
+   if(event.source!==window||event.origin!==location.origin)return;
+   const m=event.data||{};
+   if(m.kind==='RA_EXTENSION_READY'&&!started){
+    started=true;
+    window.postMessage({kind:'RA_SITE_DESC_START',payload:{
+     nonce,sku,itemId,modelId,prompt
+    }},location.origin);
+    kitContentFeedback('Pedido do kit enviado pela Ponte existente. Aguardando a geração de títulos e descrição.','info');
+    return;
+   }
+   if(m.nonce!==nonce)return;
+   if(m.kind==='RA_EXTENSION_DESC_START_RESULT'){
+    if(m.ok===false)return finish(Error('A Ponte recusou o envio: '+(m.error||'sem detalhes')));
+    ack=true;
+    kitImportState('Ponte recebeu o comando · gerando conteúdo do kit','info');
+   }
+   if(m.kind==='RA_EXTENSION_DESC_PROGRESS'){
+    ack=true;
+    kitImportState('ChatGPT: '+String(m.status||'Gerando conteúdo').slice(0,150),'info');
+   }
+   if(m.kind==='RA_EXTENSION_DESC_RESULT'){
+    if(m.sku!==sku||String(m.itemId)!==itemId)return;
+    if(!m.ok||!m.rawText)return finish(Error(m.error||'A Ponte não devolveu o anúncio.'));
+    if(prepared?.kit?.kitSku!==kitSku)
+     return finish(Error('Outro kit foi aberto durante a geração. Rascunho preservado.'));
+    try{
+     parseKitSeoResponse(m.rawText);
+     $('#kitPlusTextResult').value=m.rawText;
+     if(!importPlusText())throw Error('A importação do anúncio não foi concluída.');
+     finish(null,m);
+    }catch(error){finish(error);}
+   }
+  };
+  const timer=setTimeout(()=>finish(Error(started?
+   'A Ponte não devolveu o anúncio do kit. O rascunho foi preservado; confira o status da extensão.':
+   'A Ponte não respondeu no Chrome. O rascunho foi preservado.')),ack?120000:45000);
+  window.addEventListener('message',handle);
+  window.postMessage({kind:'RA_EXTENSION_PROBE'},location.origin);
+ });
 }
 function kitContentReadManual(){
  const data={};
@@ -2589,7 +2630,7 @@ async function plusText({proceedWithoutDetails=false}={}){
  const currentSku=prepared.kit.kitSku;
  kitContentReadManual();
  const button=proceedWithoutDetails?$('#kitContinueContent'):$('#kitPlusText');
- const tab=kitContentOpenTab();
+ const tab=null; // A Ponte existente abre/gerencia a conversa quando recebe o comando.
  kitContentBusy=true;button.disabled=true;
  kitContentFeedback('Lendo as três fichas por SKU e pesquisando títulos comparáveis na Shopee...','info');
  try{
@@ -2609,7 +2650,7 @@ async function plusText({proceedWithoutDetails=false}={}){
   }
   // Dados WeDrop incompletos são avisos, não uma razão para fechar a aba.
   if(data.missingDetails?.length)kitContentShowMissing(data.missingDetails,{scroll:false});
-  kitContentHandoff(data.prompt,tab);
+  await kitContentHandoff(data.prompt,tab);
   if(data.missingDetails?.length){
    const missing=data.missingDetails.map(x=>'SKU '+x.sku+' ('+x.fields.join(', ')+')').join(' · ');
    kitContentFeedback('Orientação preparada com '+prepared.kit.components.length+
