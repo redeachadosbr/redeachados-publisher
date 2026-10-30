@@ -32,7 +32,7 @@ test('descrição de kit Shopee mantém apenas uma separação entre seções',(
   'TÍTULO 2: Brinquedos para Bebê Kit Chocalho e Elefante Musical',
   'TÍTULO 3: Kit Infantil Elefante com Música e Bola Chocalho'
  ];
- const imported=parseKitSeoResponse(titleLines.map(x=>x.replace(/^(TÍTULO \\d: )/,(_,p)=>p)+validSeoTitle(x.replace(/^TÍTULO \\d: /,''))).join('\n')+'\nDESCRIÇÃO:\n'+raw);
+ const imported=parseKitSeoResponse(titleLines.map(x=>x.replace(/^(TÍTULO \d: )(.+)$/,(_,prefix,title)=>prefix+validSeoTitle(title))).join('\n')+'\nDESCRIÇÃO:\n'+raw);
  assert.equal(imported.description,expected,'o importador compacta antes de salvar');
 });
 
