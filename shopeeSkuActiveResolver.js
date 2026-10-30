@@ -21,15 +21,25 @@ export function reconcileActiveSkuCandidates({sku,cached=[],pages=[]}={}){
     itemId:id,modelId:'0',sku:query,title:String(item.title||'Produto Shopee'),
     imageUrl:String(item.imageUrl||''),status:'NORMAL',
     hasModel:Boolean(item.hasModel),price:item.price??null,stock:item.stock??null,
-    updateTime:item.updateTime??null,
+    createTime:item.createTime??null,updateTime:item.updateTime??null,
     source:'shopee_normal_listing_exact_sku'
    });
   }
  }
  const old=previous.filter(x=>forbiddenStatus(x.status));
- const allVerified=[...active.values()].sort((a,b)=>Number(b.itemId)-Number(a.itemId));
+ // A data de CRIAÇÃO oficial decide a prioridade, nunca o maior número do ID.
+ // Sem data válida de TODOS os candidatos não há seleção automática segura.
+ const allVerified=[...active.values()].sort((a,b)=>{
+  const at=Number(a.createTime),bt=Number(b.createTime);
+  if(Number.isFinite(at)&&at>0&&Number.isFinite(bt)&&bt>0&&at!==bt)return bt-at;
+  return String(a.itemId).localeCompare(String(b.itemId));
+ });
+ const datesKnown=allVerified.every(x=>Number.isFinite(Number(x.createTime))&&Number(x.createTime)>0);
+ const newestUnique=allVerified.length===1||
+  (datesKnown&&allVerified.length>1&&Number(allVerified[0].createTime)>Number(allVerified[1].createTime));
+ const preferred=allVerified.length&&newestUnique&&datesKnown?allVerified[0]:null;
  const displaced=previous.filter(x=>!allVerified.some(y=>same(x.itemId,y.itemId)&&same(x.modelId||'0',y.modelId)));
- return {matches:allVerified,oldIds:[...new Set(old.map(x=>String(x.itemId)))],
+ return {matches:allVerified,preferredItemId:preferred?.itemId||null,selectionReason:preferred?'newest_verified_creation_time':'creation_time_missing_or_tied',oldIds:[...new Set(old.map(x=>String(x.itemId)))],
   replacedIds:[...new Set(displaced.map(x=>String(x.itemId)))],
   fromCache:previous.length,activeCount:allVerified.length};
 }
