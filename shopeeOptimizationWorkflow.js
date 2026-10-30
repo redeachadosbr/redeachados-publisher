@@ -35,13 +35,10 @@ export const titleHasUnhelpfulDimensions=value=>/\b\d+(?:[.,]\d+)?\s*[x×]\s*\d+
 export function validateContentRules({title,description},{allowShortKitTitle=false}={}){
  if(title!==undefined){
   const titleLength=codePointCount(normalizedTitle(title));
-  // Título já escolhido no KIT pode ser conferido mesmo com menos de 100 caracteres.
-  // A meta 100–120 continua obrigatória para o SEO comum; nunca exceder 120.
-  const minimum=allowShortKitTitle?10:100;
+  // Regra uniforme para título SEO comum e kits novos: 100–120 caracteres.
+  const minimum=100;
   if(titleLength<minimum||titleLength>120)
-   throw Error(allowShortKitTitle?
-    'O título do kit deve ter de 10 a 120 caracteres. Atual: '+titleLength+'.':
-    'O título SEO precisa ter entre 100 e 120 caracteres, incluindo espaços e emojis. Atual: '+titleLength+'. Complete somente com características confirmadas e palavras-chave relevantes.');
+   throw Error('O título SEO precisa ter entre 100 e 120 caracteres (ideal: 120), incluindo espaços e emojis. Atual: '+titleLength+'. Use somente características confirmadas e termos relevantes.');
   if(titleHasUnhelpfulDimensions(title))throw Error('Não utilize sequência de medidas lineares no título SEO. Priorize palavras-chave pesquisáveis e deixe as dimensões na ficha técnica.');
  }
  if(description!==undefined){
