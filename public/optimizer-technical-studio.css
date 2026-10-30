@@ -573,3 +573,62 @@
    grid-template-columns:1fr!important;
  }
 }
+
+
+/* V1.3 — ficha técnica: densidade de revisão, sem alterar valores ou callbacks. */
+:is(#tab-optimizer,#tab-kits) #optimizerTechnicalPanel.ra-tech-studio .ra-tech-group-body{
+ grid-template-columns:minmax(0,1fr)!important;gap:5px!important;padding:7px!important;
+}
+:is(#tab-optimizer,#tab-kits) #optimizerTechnicalPanel.ra-tech-studio .ra-tech-field-row{
+ border:1px solid #dde7f2!important;border-radius:9px!important;background:#fff!important;
+ overflow:hidden!important;margin:0!important;box-shadow:none!important;
+}
+:is(#tab-optimizer,#tab-kits) #optimizerTechnicalPanel.ra-tech-studio .ra-tech-field-head{
+ grid-template-columns:minmax(130px,1fr) minmax(120px,2fr) auto!important;
+ min-height:38px!important;padding:7px 11px!important;gap:8px!important;
+ background:#fafcff!important;
+}
+:is(#tab-optimizer,#tab-kits) #optimizerTechnicalPanel.ra-tech-studio .ra-tech-field-row[open]>.ra-tech-field-head{
+ background:#eff6ff!important;
+}
+:is(#tab-optimizer,#tab-kits) #optimizerTechnicalPanel.ra-tech-studio .ra-tech-field-row>.optimizer-attribute{
+ padding:8px 11px!important;
+}
+:is(#tab-optimizer,#tab-kits) #optimizerTechnicalPanel.ra-tech-studio .ra-tech-field-row>.optimizer-attribute legend{
+ display:none!important;
+}
+:is(#tab-optimizer,#tab-kits) #optimizerTechnicalPanel.ra-tech-studio .ra-tech-field-row>.optimizer-attribute small{
+ margin:1px 0!important;font-size:10px!important;
+}
+:is(#tab-optimizer,#tab-kits) #optimizerTechnicalPanel.ra-tech-studio .optimizer-attribute-controls{
+ display:grid!important;gap:5px!important;
+}
+:is(#tab-optimizer,#tab-kits) #optimizerTechnicalPanel.ra-tech-studio .optimizer-attribute-value{
+ display:flex!important;align-items:center!important;gap:6px!important;
+}
+:is(#tab-optimizer,#tab-kits) #optimizerTechnicalPanel.ra-tech-studio .optimizer-attribute-value>select,
+:is(#tab-optimizer,#tab-kits) #optimizerTechnicalPanel.ra-tech-studio .optimizer-attribute-value>input{
+ flex:1 1 180px!important;width:auto!important;min-width:0!important;
+}
+:is(#tab-optimizer,#tab-kits) #optimizerTechnicalPanel.ra-tech-studio .optimizer-attribute select,
+:is(#tab-optimizer,#tab-kits) #optimizerTechnicalPanel.ra-tech-studio .optimizer-attribute input:not([type=checkbox]){
+ display:block!important;box-sizing:border-box!important;
+ height:36px!important;min-height:36px!important;max-height:36px!important;
+ padding:5px 10px!important;line-height:20px!important;
+ margin:0!important;overflow:hidden!important;font-size:12px!important;
+}
+:is(#tab-optimizer,#tab-kits) #optimizerTechnicalPanel.ra-tech-studio .optimizer-attribute select[hidden],
+:is(#tab-optimizer,#tab-kits) #optimizerTechnicalPanel.ra-tech-studio .optimizer-attribute input[hidden]{
+ display:none!important;
+}
+:is(#tab-optimizer,#tab-kits) #optimizerTechnicalPanel.ra-tech-studio .optimizer-attribute-toggle{
+ margin:2px 0 6px!important;
+}
+:is(#tab-optimizer,#tab-kits) #optimizerTechnicalPanel.ra-tech-studio .optimizer-attribute button{
+ min-height:30px!important;margin:3px 4px 0 0!important;
+}
+@media(max-width:700px){
+ :is(#tab-optimizer,#tab-kits) #optimizerTechnicalPanel.ra-tech-studio .ra-tech-field-head{
+  grid-template-columns:minmax(0,1fr) auto!important;
+ }
+}
