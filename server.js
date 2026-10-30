@@ -1512,17 +1512,22 @@ app.get('/api/shopee/optimizer/find',mustLogin,requireWeDropAdmin,async(req,res)
   // fazer 15 páginas de varredura. Não presumir ausência definitiva:
   // a busca aprofundada continua disponível se o endpoint dirigido não achar.
   // Se encontrar candidato, a verificação NORMAL atual permanece obrigatória.
-  if(!deep&&!cached.length){
+  if(!deep){
+    // Busca rápida: search_item + get_item_base_info validam a SKU exata ao vivo.
+    // NÃO iniciar scanLiveNormalSku (até 15 páginas) depois da busca dirigida.
+    // A varredura integral só é executada quando o usuário pede pesquisa completa.
     const quick=await findLiveShopeeSku(cfg,auth,callShopeeShopApi,sku,{fastOnly:true});
     const candidates=(quick.matches||[]).filter(x=>
-      ['NORMAL','UNLIST','REVIEWING'].includes(String(x.status||'').toUpperCase()));
-    if(!candidates.length){
-      return res.json({ok:true,sku,matches:[],lookup:'direct_not_found',
-        verifiedLive:false,canDeepSearch:true,retiredItemIds:[],
-        warnings:(quick.warnings||[]).slice(0,3),
-        message:'SKU não localizada no catálogo salvo nem na busca direta. '+
-          'A busca aprofundada verifica as páginas restantes; a precificação WeDrop é independente.'});
-    }
+      ['NORMAL','UNLIST'].includes(String(x.status||'').toUpperCase())&&
+      String(x.sku||'').trim()===sku);
+    return res.json({
+      ok:true,sku,matches:candidates,lookup:candidates.length?'direct_live_verified':'direct_not_found',
+      verifiedLive:candidates.length>0,canDeepSearch:true,
+      preferredItemId:candidates.length===1?candidates[0].itemId:null,
+      retiredItemIds:[],warnings:(quick.warnings||[]).slice(0,3),
+      message:candidates.length?'SKU exata confirmada diretamente na ficha oficial Shopee. Confirme o Item ID antes de continuar.':
+       'SKU não localizada pela pesquisa direta. Use Pesquisa completa somente se necessário.'
+    });
   }
   // Antigos IDs SELLER_DELETE permanecem no cache; não são candidatos ativos.
   // SEMPRE consultar a listagem NORMAL em tempo real antes de escolher o item.
