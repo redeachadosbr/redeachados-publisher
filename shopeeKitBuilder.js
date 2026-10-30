@@ -2,7 +2,7 @@
 // seleção assistida por OpenAI quando conectada. Não publica nem altera Shopee.
 import {readWeDropCosts} from './wedropCosts.js';
 import {shopeePricingPreferences} from './shopeePricingStore.js';
-import {quoteShopeePrice} from './shopeePricing.js';
+import {quoteShopeePrice,quoteShopeeKitPrice} from './shopeePricing.js';
 import {readKitStockSnapshot,assertKitStockSnapshot,assertKitComponentsAvailable} from './shopeeKitAvailability.js';
 import {detectSkuMeasurements,dimensionsFromSkuText} from './public/kit-measurements.js';
 
@@ -490,7 +490,7 @@ export async function composeKit(shop,skus,{marginPct=15,packing=0,shipping=0}={
    !Number.isFinite(freight)||freight<0||freight>500)
   throw Error('Margem ou custo adicional do kit inválido.');
  const settings=await shopeePricingPreferences(shop);
- const quote=quoteShopeePrice({unitCost:costs,marginOverride:true,
+ const quote=quoteShopeeKitPrice({unitCost:costs,
   settings:{...settings,marginPct:n,minMarginPct:Math.min(n,settings.minMarginPct),
    packing:extra,shipping:freight,adsPct:0}});
  return {kitSku:kitSku(skus),components:products,componentCost:costs,
