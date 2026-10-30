@@ -41,6 +41,7 @@ import {previewKitDiscount,executeKitDiscount,inspectKitDiscountForExecution,val
 import {discoverKitDiscountCampaigns} from './shopeeKitDiscountDiscovery.js';
 import {supplierWorkflowFacts,wedropCestForSku} from './shopeeSupplierFacts.js';
 import {supplierAttributeSuggestions} from './shopeeSupplierEvidenceFacts.js';
+import {kitPrincipalTechnicalEvidence} from './shopeeKitTechnicalEvidence.js';
 import {narrativeTechnicalSuggestions,mergeNarrativeTechnicalFacts,technicalOptionSearchTerms} from './shopeeTechnicalNarrative.js';
 import {readShopeeSourceEvidence,saveShopeeSourceText,importShopeeEvidenceImage,removeShopeeEvidenceImage,downloadShopeeEvidenceImages} from './shopeeSourceEvidence.js';
 import {extractSupplierScreenshotText,mergeExtractedPrints,withoutExtractedPrints} from './shopeeEvidenceVision.js';
@@ -1835,13 +1836,29 @@ app.get('/api/shopee/optimizer/workflow',mustLogin,requireWeDropAdmin,async(req,
         'A otimização principal continua funcionando. Atualize ou tente salvar os dados novamente.';
       console.warn('[shopee-source-evidence] supplementary read unavailable:',String(error.message||error).slice(0,150));
     }
+    // Fatos do kit e evidencias do otimizador ficam em armazenamentos diferentes.
+    // Unificar somente na memoria, para sugestoes da SKU principal vinculada.
+    // Nao alterar as fontes originais nem publicar automaticamente.
+    let technicalSourceText=sourceEvidence.sourceText;
+    const kitLink=review.kitOptimization;
+    if(kitLink?.kitSku&&String(kitLink.mainSku||'')===sku){
+      try{
+        const kitDraft=await loadKitDraft(auth.shopId,String(kitLink.kitSku));
+        technicalSourceText=kitPrincipalTechnicalEvidence({
+          kitDraft,kitLink,sku,itemId,sourceText:sourceEvidence.sourceText
+        });
+      }catch(error){
+        technicalWarning=(technicalWarning?technicalWarning+' ':'')+
+          'Dados complementares do kit indisponiveis: '+String(error.message||error).slice(0,110);
+      }
+    }
     const supplierFacts=supplierWorkflowFacts(supplier,record,settings);
     const collectEvidenceFacts=()=>{
       const basic=supplierAttributeSuggestions({attributes:technicalPreview.attributes,
-        proposed:review.attributes||[],supplier,sourceText:sourceEvidence.sourceText,
+        proposed:review.attributes||[],supplier,sourceText:technicalSourceText,
         productDescription:record.description});
       const inferred=narrativeTechnicalSuggestions({attributes:technicalPreview.attributes,
-        supplier,sourceText:sourceEvidence.sourceText,productDescription:record.description,
+        supplier,sourceText:technicalSourceText,productDescription:record.description,
         productTitle:record.title,existing:basic.suggestions});
       return mergeNarrativeTechnicalFacts(basic,inferred);
     };
@@ -1926,7 +1943,9 @@ app.get('/api/shopee/optimizer/workflow',mustLogin,requireWeDropAdmin,async(req,
     const finalDescription=review.draftDescription||composed.description;
 
     res.json({ok:true,readOnlyMarketplace:true,sku,itemId,modelId,manualVideo,...supplierFacts,
-      sourceEvidence,sourceEvidenceWarning,sourceFacts:evidenceFacts,technicalDraft:persistedTechnicalDraft,shopId:auth.shopId,
+      sourceEvidence,sourceEvidenceWarning,sourceFacts:{...evidenceFacts,
+        kitPrimaryFactsLinked:technicalSourceText!==sourceEvidence.sourceText},
+      technicalDraft:persistedTechnicalDraft,shopId:auth.shopId,
       contentVariants:review.contentVariants||null,contentResearch:review.contentResearch||null,
       attributes:technicalPreview.attributes,anatel:inspectAnatelCompliance(technicalPreview),technicalWarning,attributeChanges:review.attributes||[],taxDraft:review.tax||{},taxCurrent:current.tax_info||{},
       recordedAt:stored?.updated_at||null,stages,
