@@ -2285,7 +2285,10 @@ function kitChatValidateContext(){
 function kitChatExtractLines(raw,size,allowedCodes,targetCount=10){
  // A resposta pode ser JSON, tabela Markdown, texto integral, 2 ou 3 SKUs.
  // Cada código deve pertencer ao catálogo WeDrop selecionado.
- return parseKitChatResult(raw,{allowedCodes,limit:targetCount});
+ const parsed=parseKitChatResult(raw,{allowedCodes,limit:targetCount});
+ parsed.rejected+=parsed.kits.filter(row=>row.length!==size).length;
+ parsed.kits=parsed.kits.filter(row=>row.length===size);
+ return parsed;
 }
 async function kitChatEnsureFreshResearch(){
  const context=kitResearchContext();
