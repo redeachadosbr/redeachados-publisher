@@ -1602,8 +1602,8 @@ app.post('/api/shopee/kits/optimization/prepare',mustLogin,requireWeDropAdmin,as
    throw Error('Execução já iniciada ou sem confirmação. Confira o progresso.');
   if(saved.optimization?.itemId&&String(saved.optimization.itemId)!==String(itemId)){
    const old=saved.optimization;
-   // Permitir migrar o vínculo obsoleto somente após auditoria Shopee e
-   // comprovação dos componentes (assertKitListingComposition acima).
+   // Permitir migrar o vínculo obsoleto somente após auditoria de identidade
+   // da SKU principal e estado editável do anúncio de origem.
    // Nunca migrar as prévias/revisões do ID antigo para o novo.
    const former=await readShopeeExecution(auth.shopId,old.itemId,old.modelId);
    if(['running','uncertain'].includes(former?.state))
@@ -1680,8 +1680,9 @@ async function checkedWorkflowAudit(req){
    const kit=await loadKitDraft(auth.shopId,linked.kitSku);
    if(!kitOptimizationLinkIsCurrent(kit,linked))
     throw Error('Kit, custos ou vínculo mudaram. Volte aos Kits e prepare novamente.');
-   // Mesmo um vínculo antigo precisa comprovar composição antes de executar.
-   assertKitListingComposition({kit:kit.kit,record});
+   // O anúncio simples de origem será convertido em kit. A descrição atual
+   // NÃO pode ser usada para exigir componentes que ainda serão publicados.
+   // A auditoria do Item ID, SKU e estado editável permanece obrigatória.
   }
   return {itemId,modelId,sku,auth,cfg,record};
 }
