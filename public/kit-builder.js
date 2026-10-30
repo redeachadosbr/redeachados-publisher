@@ -106,9 +106,39 @@ function updateKitTextCounters(){
  $('#kitTitleCount').textContent=[...$('#kitTitle').value.normalize('NFC').replace(/\s+/g,' ').trim()].length+'/120';
  $('#kitDescriptionCount').textContent=$('#kitDescription').value.length+'/2000';
 }
+const KIT_COPY_LOCAL_PREFIX='ra-kit-copy-v1:';
+let kitCopySaveTimer=null,kitCopySaveRevision=0;
+function kitCopyLocalKey(id){return KIT_COPY_LOCAL_PREFIX+String(id||'');}
+function kitReadLocalCopy(id){
+ try{
+  const v=JSON.parse(localStorage.getItem(kitCopyLocalKey(id))||'null');
+  return v?.kitSku===id&&typeof v.title==='string'&&typeof v.description==='string'?v:null;
+ }catch{return null;}
+}
+function kitAutosaveCopy(){
+ if(!prepared?.kit?.kitSku)return;
+ const kitSku=prepared.kit.kitSku;
+ const title=$('#kitTitle').value,description=$('#kitDescription').value;
+ const seoTitles=kitContentSeoTitles.map(t=>t.title);
+ try{
+  localStorage.setItem(kitCopyLocalKey(kitSku),JSON.stringify({kitSku,title,description,seoTitles,at:Date.now()}));
+ }catch{kitContentFeedback('Falha ao preservar título e descrição no navegador.','error');}
+ clearTimeout(kitCopySaveTimer);
+ const rev=++kitCopySaveRevision;
+ kitCopySaveTimer=setTimeout(async()=>{
+  if(rev!==kitCopySaveRevision||prepared?.kit?.kitSku!==kitSku)return;
+  if(title.trim().length<10||description.trim().length<80)return;
+  try{
+   await api('/api/shopee/kits/drafts/copy',{body:{kitSku,title,description,seoTitles}});
+  }catch(error){
+   if(!/Rascunho ainda não salvo/i.test(String(error.message||'')))
+    kitContentFeedback('Textos guardados neste navegador, mas não sincronizados com servidor: '+error.message,'warning');
+  }
+ },1000);
+}
 function onKitContentEdit(){
  if(!prepared)return;
- kitSaved=false;clearKitPublishApproval();updateKitTextCounters();kitVideoUI();
+ kitSaved=false;clearKitPublishApproval();updateKitTextCounters();kitVideoUI();kitAutosaveCopy();
  // Ao trocar/importar o título ou descrição, reabrir a conferência da SKU.
  globalThis.RAKitSourceChanged?.();
  kitPublishStatus('Título/descrição alterados: salve novamente o rascunho antes de publicar.','info');
@@ -1842,8 +1872,12 @@ function renderKit({scroll=true,displayTitle=''}={}){
  $('#kitWarning').textContent=(kitDraftNeedsRefresh?
   '⚠️ RASCUNHO RECUPERADO: custos, preços, margens e estoque são da última gravação, não são valores atuais. Atualize a WeDrop antes de novos preços ou publicação. ':'')+
   kit.warning+' Texto criado por '+creative.source+'. Verifique estoque e capacidade de envio de vários SKUs.';
- $('#kitTitle').value=creative.title;
- $('#kitDescription').value=formatKitShopeeDescription(creative.description);
+ const localCopy=kitReadLocalCopy(kit.kitSku);
+ const safeCopy=localCopy&&!['published','publishing','uncertain'].includes(String(prepared?.publication?.status||''))?localCopy:null;
+ $('#kitTitle').value=safeCopy?.title??creative.title;
+ $('#kitDescription').value=safeCopy?.description??formatKitShopeeDescription(creative.description);
+ if(safeCopy?.seoTitles?.length===3)
+  kitContentSeoTitles=safeCopy.seoTitles.map((title,i)=>({number:i+1,title}));
  updateKitTextCounters();
  kitContentShowMissing();
  if(kitContentSeoTitles.length===3)
