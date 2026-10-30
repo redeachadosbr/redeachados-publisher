@@ -31,3 +31,35 @@ test('excluir foto já salva não depende de parar a Ponte ChatGPT em geração'
  assert.match(body,/renderImageSlots\(\);kitAutoImageUi\(\)/);
  assert.match(body,/kitBridgeController\?\.activeJob\(\)\?'A Ponte continua gerando/);
 });
+
+test('image collapse groups generator plus all nine positions without deleting data',()=>{
+ const ui=readFileSync(new URL('../public/kit-builder.js',import.meta.url),'utf8');
+ const app=readFileSync(new URL('../public/app.js',import.meta.url),'utf8');
+ const begin=html.indexOf('id="kitImagesContent"');
+ const end=html.indexOf('</div>\n  <dialog id="kitGalleryPreview"',begin);
+ assert.ok(begin>0&&end>begin);
+ const group=html.slice(begin,end);
+ for(const id of ['kitGenerateAll','kitStopExtension','kitResumeExtension','kitGallerySection',
+  'kitImages','kitImageStatus','kitSaveDraft','kitImportImages']){
+  assert.match(group,new RegExp('id="'+id+'"'));
+  assert.equal(html.split('id="'+id+'"').length-1,1);
+ }
+ assert.match(html,/id="kitToggleImagesContent"[^>]*aria-controls="kitImagesContent"[^>]*aria-expanded="true"/);
+ assert.match(ui,/function kitSetImagesCollapsed\(collapsed\)/);
+ assert.match(ui,/kitSetImagesCollapsed\(!\$\('#kitImagesContent'\)\.hidden\)/);
+ assert.match(css,/#tab-kits #kitDetail #kitImagesContent\[hidden\]\{display:none!important\}/);
+ assert.match(app,/images:'#kitImagesCollapseToolbar'/);
+});
+test('stage buttons open their relevant panel and close the previously visible source',()=>{
+ const ui=readFileSync(new URL('../public/kit-builder.js',import.meta.url),'utf8');
+ const app=readFileSync(new URL('../public/app.js',import.meta.url),'utf8');
+ assert.match(ui,/globalThis\.RAKitOpenStagePanel=stage=>/);
+ assert.match(ui,/kitSetImagesCollapsed\(stage!=='images'\)/);
+ assert.match(ui,/kitSetCopyContentCollapsed\(stage!=='seo'&&stage!=='description'\)/);
+ assert.match(ui,/kitSetCompositionCollapsed\(true\)/);
+ assert.match(ui,/facts\.open=false/);
+ assert.match(app,/globalThis\.RAKitOpenStagePanel\?\.\(stage\.key\)/);
+ assert.match(app,/globalThis\.RAKitOpenStagePanel\?\.\('discount'\)/);
+ assert.match(app,/optimizerWorkflowOpen\(stage\.key\)/);
+ assert.match(app,/optimizerWorkflowEditor'\)\?\.scrollIntoView/);
+});

@@ -1695,6 +1695,24 @@ function kitSetCompositionCollapsed(collapsed){
  button.textContent=collapsed?'▾ Mostrar composição do kit':'▴ Ocultar composição do kit';
  button.classList.toggle('is-collapsed',Boolean(collapsed));
 }
+function kitSetImagesCollapsed(collapsed){
+ const panel=$('#kitImagesContent'),button=$('#kitToggleImagesContent');
+ if(!panel||!button)return;
+ panel.hidden=Boolean(collapsed);
+ button.setAttribute('aria-expanded',String(!collapsed));
+ button.textContent=collapsed?'▾ Mostrar imagens do kit':'▴ Ocultar todo o bloco de imagens';
+ button.classList.toggle('is-collapsed',Boolean(collapsed));
+}
+// Somente um painel de origem visível quando uma etapa 01–08 é selecionada.
+// Recolher não desmonta fotos, títulos ou os dados salvos no navegador.
+globalThis.RAKitOpenStagePanel=stage=>{
+ if(!prepared||$('#kitDetail')?.hidden)return false;
+ kitSetImagesCollapsed(stage!=='images');
+ kitSetCopyContentCollapsed(stage!=='seo'&&stage!=='description');
+ kitSetCompositionCollapsed(true);
+ const facts=$('#kitMissingFacts');if(facts)facts.open=false;
+ return true;
+};
 function kitSetCopyContentCollapsed(collapsed){
  const panel=$('#kitCopyContentPanel'),button=$('#kitToggleCopyContent');
  if(!panel||!button)return;
@@ -3308,6 +3326,9 @@ $('#kitTitle')?.addEventListener('input',()=>{
 });
 $('#kitToggleComposition')?.addEventListener('click',()=>{
  kitSetCompositionCollapsed(!$('#kitCompositionContent').hidden);
+});
+$('#kitToggleImagesContent')?.addEventListener('click',()=>{
+ kitSetImagesCollapsed(!$('#kitImagesContent').hidden);
 });
 $('#kitToggleCopyContent')?.addEventListener('click',()=>{
  kitSetCopyContentCollapsed(!$('#kitCopyContentPanel').hidden);

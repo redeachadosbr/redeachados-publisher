@@ -3040,7 +3040,8 @@ function optimizerWorkflowRender(data){
     // As fotos e os textos do kit estao na propria pagina; ao seleciona-los
     // mostrar a fonte para conferencia, sem iniciar um gerador duplicado.
     if(kitMode){
-     const selector={images:'#kitGallerySection',seo:'#kitTitle',description:'#kitDescription'}[stage.key];
+     globalThis.RAKitOpenStagePanel?.(stage.key);
+     const selector={images:'#kitImagesCollapseToolbar',seo:'#kitTitle',description:'#kitDescription'}[stage.key];
      const source=selector&&document.querySelector(selector);
      if(source){
       optimizerContentRemember();
@@ -3053,7 +3054,9 @@ function optimizerWorkflowRender(data){
       return;
      }
     }
+    if(kitMode)globalThis.RAKitOpenStagePanel?.(stage.key);
     optimizerWorkflowOpen(stage.key);
+    if(kitMode)$('#optimizerWorkflowEditor')?.scrollIntoView?.({behavior:'smooth',block:'start'});
    };
    cards.appendChild(btn);
  }
@@ -3069,7 +3072,10 @@ function optimizerWorkflowRender(data){
  discountLabel.append(optimizerMake('strong','',data.kitOptimization?'Desconto do kit':'Desconto do produto'),optimizerMake('small','optimizer-discount-workflow-state','Preço e promoção · revisar'));
  const discountMark=optimizerMake('span','optimizer-workflow-symbol','→');
  discountCard.append(discountNumber,discountIcon,discountLabel,discountMark);
- discountCard.onclick=()=>optimizerDiscountOpenReview();
+ discountCard.onclick=()=>{
+  if(kitMode)globalThis.RAKitOpenStagePanel?.('discount');
+  optimizerDiscountOpenReview();
+ };
  cards.append(discountCard);
  if(data.kitOptimization?.kitSku)
   globalThis.RAKitWorkflowProgress?.({
