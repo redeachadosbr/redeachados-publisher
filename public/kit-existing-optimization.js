@@ -1,5 +1,6 @@
 // Interface de otimização de um anúncio de kit já existente. Preparação nunca publica.
 const $=selector=>document.querySelector(selector);
+const USER_CONFIRMED_KIT_TARGETS=Object.freeze({'KIT-103006-CO6968126-TRC7085':'58271858695'});
 const KIT_STAGE_LABELS=[['video','Vídeo'],['technical','Ficha técnica'],['fiscal','Dados fiscais'],['variants','Variações']];
 export function initExistingKitOptimization({getContext,api,money,onMainSkuChange}){
  let target=null,busy=false,discountToken=null,discountLookupSeq=0,discountSearching=false,latestCampaigns=[];
@@ -186,7 +187,9 @@ export function initExistingKitOptimization({getContext,api,money,onMainSkuChang
   renderJourney();renderTechnical();
   progressNote('Aguardando anuncio de KIT para iniciar as etapas. Nenhuma publicacao iniciada.');
   globalThis.redeKitCloseOptimizerWorkspace?.();
-  target=link?.itemId&&link.sku===link.mainSku?{...link,prepared:true}:null;
+  const correctedId=USER_CONFIRMED_KIT_TARGETS[kitSku()];
+  // Vínculo obsoleto nunca pode reabrir etapas ou continuar uma execução.
+  target=link?.itemId&&link.sku===link.mainSku&&(!correctedId||String(link.itemId)===correctedId)?{...link,prepared:true}:null;
   imageSyncAttempts.clear();
   resetDiscountDiscovery();
   const select=$('#kitOptimizeMainSku');
@@ -202,8 +205,7 @@ export function initExistingKitOptimization({getContext,api,money,onMainSkuChang
    'SKU principal '+main+' · Item ID '+target.itemId+' · Modelo '+target.modelId:
    'Localização automática do anúncio na SKU principal escolhida.';
   if(link?.itemId&&!target)
-   notice('Vínculo antigo em SKU de kit separada: será necessário preparar com a SKU principal '+main+
-    '. Nenhuma prévia antiga será transferida.','warning');
+   notice('Vínculo antigo '+link.itemId+' ignorado. Novo Item ID informado: '+(correctedId||'consultar Shopee')+'. Será validado antes de preparar.','warning');
   paint();
   // Evitar consulta demorada de dezenas de campanhas antes da etapa 08.
  }
@@ -237,6 +239,7 @@ export function initExistingKitOptimization({getContext,api,money,onMainSkuChang
     globalThis.RAKitLookupPhase?.('Busca sem Item ID da SKU principal. Nenhum anúncio foi alterado.');
     return null;
    }
+   const correctedId=USER_CONFIRMED_KIT_TARGETS[current];
    const choose=m=>{
     target={kitSku:current,sku:code,itemId:String(m.itemId),
      modelId:String(m.modelId??'0'),prepared:false,autoVerified:false};
@@ -249,7 +252,7 @@ export function initExistingKitOptimization({getContext,api,money,onMainSkuChang
    };
    // Prioridade: data real de criação da Shopee, nunca o Item ID salvo anteriormente.
    // Conferência humana e auditoria de composição continuam obrigatórias.
-   const preferred=matches.find(m=>String(m.itemId)===String(data.preferredItemId||''));
+   const preferred=matches.find(m=>String(m.itemId)===String(correctedId||data.preferredItemId||''));
    if(preferred){
     choose(preferred);
     notice('Anúncio mais recente confirmado pela Shopee: Item ID '+preferred.itemId+
@@ -263,7 +266,7 @@ export function initExistingKitOptimization({getContext,api,money,onMainSkuChang
     button.addEventListener('click',()=>{if(kitSku()===current)choose(m);});
     root.append(button);
    }
-   if(!preferred)notice('Encontrados '+matches.length+' anúncios. Não foi possível comprovar qual foi criado por último: escolha o ID e confira a composição do kit.','warning');
+   if(!preferred)notice(correctedId?'O ID informado '+correctedId+' ainda não foi comprovado na listagem da Shopee. Não retomar o anúncio antigo.':'Encontrados '+matches.length+' anúncios. Confirme manualmente o ID do kit.','warning');
    return null;
   }catch(e){
    if(seq!==lookupSerial)return null;
@@ -373,9 +376,10 @@ export function initExistingKitOptimization({getContext,api,money,onMainSkuChang
   }
   if(!main)return notice('Selecione a SKU principal usada no anúncio Shopee.','error');
   $('#kitOptimizeListingSku').value=main;
-  if(target?.sku!==main)target=null;
+  if(target?.sku!==main||USER_CONFIRMED_KIT_TARGETS[kitSku()]&&String(target?.itemId)!==USER_CONFIRMED_KIT_TARGETS[kitSku()])target=null;
   if(!target||target.kitSku!==kitSku()){
-   if(!await lookup({automatic:true}))return;
+   await lookup({automatic:true,deep:true});
+   if(!target)return notice('O ID correto precisa ser confirmado pela API Shopee. O anúncio antigo não será usado.','warning');
   }
   let newlyPrepared=false;
   if(!target.prepared){
