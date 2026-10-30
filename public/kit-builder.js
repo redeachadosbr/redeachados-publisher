@@ -1699,6 +1699,8 @@ function renderKit({scroll=true,displayTitle=''}={}){
    creative.seoTitles.map((title,i)=>({number:i+1,title})):[];
   kitContentAwaitingResponse=false;
   $('#kitMissingFactFields').replaceChildren();
+  // Cada novo kit inicia recolhido; os fatos continuam disponíveis por SKU.
+  $('#kitMissingFacts').open=false;
   $('#kitSeoOptions').hidden=true;$('#kitSeoOptionList').replaceChildren();
   $('#kitContentPrompt').value='';$('#kitPlusTextResult').value='';
   const market=$('#kitSeoMarketDetails');if(market){market.hidden=true;market.open=false;}
@@ -2502,8 +2504,12 @@ function kitContentShowMissing(rows=[],{scroll=false}={}){
   });
   refresh();card.append(box,measurements,upload,feedback);root.append(card);
  }
- $('#kitMissingFacts').hidden=false;
- if(scroll)$('#kitMissingFacts').scrollIntoView({behavior:'smooth',block:'center'});
+ const factsPanel=$('#kitMissingFacts');
+ factsPanel.hidden=false;
+ if(scroll){
+  factsPanel.open=true;
+  factsPanel.scrollIntoView({behavior:'smooth',block:'center'});
+ }
 }
 function showKitSeoMarketEvidence(research){
  const panel=$('#kitSeoMarketDetails'),root=$('#kitSeoMarketEvidence');

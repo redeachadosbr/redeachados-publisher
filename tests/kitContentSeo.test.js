@@ -191,3 +191,29 @@ test('Ponte v1.0.61 recebe nomes separados das 3 SKUs e preserva validação SEO
  assert.match(ui,/parseKitSeoResponse\(response\.rawText\)/);
  assert.match(ui,/kitShowSeoTitles\(scored\)/);
 });
+
+test('fichas dos SKUs recolhidas por padrão e íntegros os dados e prints',async()=>{
+ const {readFileSync}=await import('node:fs');
+ const html=readFileSync(new URL('../public/index.html',import.meta.url),'utf8');
+ const css=readFileSync(new URL('../public/kit-builder.css',import.meta.url),'utf8');
+ const js=readFileSync(new URL('../public/kit-builder.js',import.meta.url),'utf8');
+ const start=html.indexOf('<details id="kitMissingFacts"');
+ const end=html.indexOf('</details>',start);
+ assert.ok(start>0&&end>start);
+ const block=html.slice(start,end);
+ assert.match(block,/<summary class="kit-missing-title kit-facts-summary">/);
+ assert.match(block,/Mostrar informações/);
+ assert.match(block,/Ocultar informações/);
+ assert.doesNotMatch(block.slice(0,160),/\sopen(?:\s|=|>)/);
+ for(const id of ['kitMissingFactFields','kitContinueContent','kitSaveSkuFacts']){
+  assert.equal(html.split('id="'+id+'"').length-1,1);
+  assert.match(block,new RegExp('id="'+id+'"'));
+ }
+ assert.match(css,/kit-facts-summary:focus-visible/);
+ assert.match(css,/kitMissingFacts:not\(\[open\]\)/);
+ assert.match(js,/\$\('#kitMissingFacts'\)\.open=false/);
+ assert.match(js,/factsPanel\.open=true/);
+ assert.match(js,/function kitContentReadManual\(\)/);
+ assert.match(js,/recognizeKitLogisticsPrint\(photo/);
+ assert.match(js,/kitContentManualFacts\.set\(sku,box\.value\)/);
+});

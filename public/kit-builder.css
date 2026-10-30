@@ -2638,3 +2638,33 @@
  font-weight:850!important;line-height:1.4!important;cursor:pointer;
 }
 #tab-kits #optimizerExecutionOpenKitDiscount[hidden]{display:none!important}
+
+/* Kits: fichas por SKU em acordeão compacto, sem desmontar campos, medidas e prints. */
+#tab-kits #kitDetail #kitMissingFacts.kit-facts-collapsible{padding:9px 12px;margin:9px 0}
+#tab-kits #kitDetail #kitMissingFacts .kit-facts-summary{
+ display:flex;align-items:center;flex-wrap:wrap;gap:8px 14px;
+ margin:0;min-height:35px;cursor:pointer;list-style:none;
+}
+#tab-kits #kitDetail #kitMissingFacts .kit-facts-summary::-webkit-details-marker{display:none}
+#tab-kits #kitDetail #kitMissingFacts .kit-facts-summary::marker{content:""}
+#tab-kits #kitDetail #kitMissingFacts .kit-facts-summary>strong{flex:1 1 230px;font-size:12px}
+#tab-kits #kitDetail #kitMissingFacts .kit-facts-summary-help{flex:1 1 260px;font-size:10px;line-height:1.4}
+#tab-kits #kitDetail #kitMissingFacts:not([open]) .kit-facts-summary-help{display:none}
+#tab-kits #kitDetail #kitMissingFacts .kit-facts-toggle-pill{
+ margin-left:auto;display:inline-flex;align-items:center;justify-content:center;
+ flex-shrink:0;min-height:32px;padding:8px 13px;border-radius:9px;
+ border:1px solid #bad3ec;background:linear-gradient(#fff,#edf5ff);
+ color:#1d548c;font-size:11px;font-weight:850;
+ box-shadow:0 3px 0 #dae6f2,0 4px 8px #1c53831a;
+}
+#tab-kits #kitDetail #kitMissingFacts .kit-facts-summary:hover .kit-facts-toggle-pill{border-color:#8bb7e7;background:linear-gradient(#fff,#e3efff)}
+#tab-kits #kitDetail #kitMissingFacts .kit-facts-summary:focus-visible{outline:2px solid #2674d3;outline-offset:3px;border-radius:8px}
+#tab-kits #kitDetail #kitMissingFacts .kit-facts-hide{display:none}
+#tab-kits #kitDetail #kitMissingFacts[open] .kit-facts-hide{display:inline}
+#tab-kits #kitDetail #kitMissingFacts[open] .kit-facts-show{display:none}
+#tab-kits #kitDetail #kitMissingFacts[open] .kit-facts-summary{margin-bottom:12px}
+#tab-kits #kitDetail #kitMissingFacts .kit-facts-body{min-width:0}
+@media(max-width:650px){
+ #tab-kits #kitDetail #kitMissingFacts .kit-facts-toggle-pill{margin-left:0}
+ #tab-kits #kitDetail #kitMissingFacts .kit-facts-summary>strong{flex-basis:100%}
+}
