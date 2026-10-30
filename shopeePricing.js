@@ -246,3 +246,55 @@ export function quoteShopeePrice({unitCost,settings={},marketAverage=null,margin
     },status:state,notice:note,readyForManualReview:true,appliedInShopee:false,
     assumptions:'Taxas editáveis, Shopee outubro/2026 (referência). Preço exibido pela Shopee é o da promoção sem cupom; cupom de loja é condicional e apenas a margem conservadora o considera como aplicado. Não é confirmação de campanha real.'};
 }
+
+/**
+ * Exclusivo para Kits WeDrop. O bruto começa em quatro vezes custo total,
+ * e pode diminuir para respeitar o limite de desconto de 50%.
+ * Busca valores reais de promoção e checkout terminados em 0/9.
+ * Falha de modo seguro se margem, limite e finais forem incompatíveis.
+ */
+export function quoteShopeeKitPrice({unitCost,settings={}}={}){
+ const c=normalizeShopeePricingSettings(settings);
+ const cost=Number(unitCost);
+ if(!Number.isFinite(cost)||cost<=0)throw Error('Custo do kit inválido.');
+ const desired=Math.max(c.marginPct,c.minMarginPct);
+ const effectiveCost=cost+c.packing+c.shipping;
+ const reference=quoteShopeePrice({unitCost:cost,settings:c,marginOverride:true});
+ const referenceVisible=money(reference.marketplaceDisplayPrice);
+ const initialGross=money(effectiveCost*4);
+ // Se o desconto teórico excederia 50%, reduza a base do bruto.
+ const grossCeiling=Math.min(initialGross,Math.max(referenceVisible,2*referenceVisible));
+ const attractive=n=>attractiveCents.has(((n%100)+100)%100);
+ let best=null;
+ // Testar preços brutos comerciais perto da referência e descontos
+ // incrementais (0,01 ponto percentual) com taxas recalculadas.
+ for(let delta=0;delta<=150;delta++){
+  const gross=grossCeiling-delta;
+  if(gross<=0||!attractive(gross))continue;
+  for(let basis=5000;basis>=0;basis--){
+   const discount=basis/100;
+   const financial=calculateShopeeSale(gross,{...c,discountPct:discount},money(cost));
+   const visible=money(financial.marketplaceDisplayPrice);
+   if(!attractive(visible)||!attractive(financial.saleCents))continue;
+   if(financial.marginPct+1e-8<desired)continue;
+   // Priorizar preço de vitrine mais próximo do mínimo viável;
+   // desconto alto só serve como desempate, não para cobrar além do necessário.
+   const difference=Math.abs(visible-referenceVisible);
+   if(!best||difference<best.difference||
+     (difference===best.difference&&discount>best.discount))
+    best={gross,discount,financial,difference};
+   // Descontos menores elevam o preço, então não melhoram o alvo nesta base.
+   if(visible>referenceVisible+200)break;
+  }
+ }
+ if(!best)throw Error('Sem combinação segura de margem, desconto máximo de 50% e finais 0/9. Revise taxas ou margem; nenhum preço será publicado.');
+ const f=best.financial;
+ return {grossPrice:brl(best.gross),discountPct:best.discount,
+  marketplaceDisplayPrice:f.marketplaceDisplayPrice,customerPrice:f.finalPrice,
+  couponPct:c.couponPct,netProfit:f.profit,
+  netMarginPct:Number(f.marginPct.toFixed(3)),targetMarginPct:desired,
+  priceEndingRuleVersion:5,
+  breakdown:{commission:f.commission,fixedFee:f.fixedFee,tax:f.tax,flash:f.flash,
+   campaignDiscount:f.campaignDiscount,ads:f.ads},
+  grossMultiplier:4,maxDiscountPct:50};
+}
