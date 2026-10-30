@@ -2478,23 +2478,22 @@ function kitContentOpenTab(){
  if(tab)try{tab.opener=null;}catch{}
  return tab;
 }
-function kitContentHandoff(prompt,tab=null){
+async function kitContentHandoff(prompt,tab=null){
  if(!prompt.trim())throw Error('Orientação vazia. Prepare o conteúdo novamente.');
- // Preenche o campo quando suportado pelo ChatGPT; ainda pode exigir clique em Enviar.
- const url='https://chatgpt.com/?prompt='+encodeURIComponent(prompt);
- // Não sobrescrever silenciosamente a área de transferência com a ORIENTAÇÃO.
- // O botão azul deve receber apenas a RESPOSTA copiada pelo usuário no ChatGPT.
+ // A URL ?prompt= não é um contrato de preenchimento do ChatGPT.
+ // Evitar prometer geração quando o navegador abre uma conversa vazia.
  let opened=false;
- if(tab&&!tab.closed){try{tab.location.replace(url);opened=true;}catch{
-  try{tab.location.href=url;opened=true;}catch{}
- }}
- if(!opened)opened=Boolean(window.open(url,'_blank','noopener,noreferrer'));
+ if(tab&&!tab.closed){opened=true;}
+ if(!opened)opened=Boolean(window.open('https://chatgpt.com/','_blank'));
+ let copied=false;
+ try{await navigator.clipboard.writeText(prompt);copied=true;}catch{}
  kitContentAwaitingResponse=true;
- $('#kitContentDetails').open=!opened;
- kitImportState(opened?'Aguardando resposta · 3 títulos e descrição':'Abertura bloqueada · orientação pronta','info');
- kitContentFeedback(opened?
-  'ChatGPT aberto com o pedido do kit. Clique em Enviar se necessário. Depois volte ao Manager e clique no botão azul: a Ponte v1.0.61 recuperará os 3 títulos e a descrição sem copiar nem colar.':
-  'O Chrome bloqueou a abertura. Em Opções avançadas, use Copiar orientação completa e Abrir ChatGPT com orientação pronta.','info');
+ $('#kitContentDetails').open=true;
+ kitImportState(copied?'Orientação pronta e copiada · falta enviar no ChatGPT':
+  'Orientação pronta · copie nas opções avançadas','warning');
+ kitContentFeedback(copied?
+  'O ChatGPT não aceita envio automático por link. Cole a orientação copiada no ChatGPT (Ctrl+V) e envie; depois importe a resposta. A geração NÃO foi iniciada automaticamente.':
+  'O navegador impediu copiar automaticamente. Clique em Copiar orientação completa nas opções avançadas, cole no ChatGPT e envie. Nenhuma geração foi iniciada.','warning');
 }
 function kitContentReadManual(){
  const data={};
@@ -2610,12 +2609,12 @@ async function plusText({proceedWithoutDetails=false}={}){
   }
   // Dados WeDrop incompletos são avisos, não uma razão para fechar a aba.
   if(data.missingDetails?.length)kitContentShowMissing(data.missingDetails,{scroll:false});
-  kitContentHandoff(data.prompt,tab);
+  await kitContentHandoff(data.prompt,tab);
   if(data.missingDetails?.length){
    const missing=data.missingDetails.map(x=>'SKU '+x.sku+' ('+x.fields.join(', ')+')').join(' · ');
-   kitContentFeedback('ChatGPT aberto com '+prepared.kit.components.length+
-    ' SKUs e todas as informações fornecidas. Dados WeDrop incompletos: '+missing+
-    '. Confira os dados, sem inventar medidas.','warning');
+   kitContentFeedback('Orientação preparada com '+prepared.kit.components.length+
+    ' SKUs. Cole e envie no ChatGPT. Dados WeDrop incompletos: '+missing+
+    '. Confira os dados sem inventar medidas.','warning');
   }
  }catch(error){
   // A aba iniciada pelo usuário não deve ser fechada automaticamente.
