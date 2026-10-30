@@ -82,3 +82,21 @@ test('GET /optimizer/find ignora vínculos persistidos e busca os anúncios NORM
  assert.match(app,/anúncio NORMAL ID/);
  assert.match(app,/NÃO serão transferidos/);
 });
+
+test('anúncio mais recente é escolhido pela data da Shopee, não pelo maior ID',()=>{
+ const out=reconcileActiveSkuCandidates({sku:'SKU-REPETIDA',pages:[{status:'NORMAL',items:[
+  {itemId:'99999999999',sku:'SKU-REPETIDA',createTime:1700000000},
+  {itemId:'58271858695',sku:'SKU-REPETIDA',createTime:1800000000}
+ ]}]});
+ assert.equal(out.preferredItemId,'58271858695');
+ assert.equal(out.matches[0].itemId,'58271858695');
+});
+test('data ausente ou empatada impede seleção automática em SKU repetida',()=>{
+ for(const second of [undefined,1800000000]){
+  const out=reconcileActiveSkuCandidates({sku:'DUP',pages:[{status:'NORMAL',items:[
+   {itemId:'58271858695',sku:'DUP',createTime:1800000000},
+   {itemId:'58271858696',sku:'DUP',createTime:second}
+  ]}]});
+  assert.equal(out.preferredItemId,null);
+ }
+});
