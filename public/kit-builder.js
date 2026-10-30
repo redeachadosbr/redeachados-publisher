@@ -1403,9 +1403,9 @@ function kitManualControls(kit,{editor=false}={}){
       skus:kit.components.map(x=>x.sku),mode,sku,
       replaceSku:select?.value||'',...currentSettings()
     }});
-    if(!result?.kit?.components?.length)throw Error('Resposta sem composição confirmada.');
+    if(!result?.kit?.components?.length||result.draftSaved!==true)throw Error('Servidor não confirmou o salvamento da nova composição.');
     // Rascunhos/imagens de outra composição não podem contaminar o kit alterado.
-    images.clear();kitDraftNeedsRefresh=false;prepared=result;resetKitPublication({saved:false});
+    images.clear();kitDraftNeedsRefresh=false;prepared=result;resetKitPublication({saved:true});
     renderKit();
     const from=kit.components.map(x=>x.sku).join(' + ');
     const to=result.kit.components.map(x=>x.sku).join(' + ');
@@ -1413,7 +1413,7 @@ function kitManualControls(kit,{editor=false}={}){
       suggestions=suggestions.map(s=>s===kit?result.kit:s);
       renderSuggestions({results:suggestions,source:suggestionContext?.source||'WeDrop + cálculo'});
     }
-    const msg='✓ '+from+' → '+to+'. Custos, impostos, descontos, preço e lucro recalculados. '+(result.kit.reviewRequired?'Revisar coerência e logística antes da publicação.':'Confira embalagem e envio conjunto.');
+    const msg='✓ '+from+' → '+to+'. Composição gravada no servidor. Custos, impostos, descontos, preço e lucro recalculados. '+(result.kit.reviewRequired?'Revisar coerência e logística antes da publicação.':'Confira embalagem e envio conjunto.');
     $('#kitManualStatus').textContent=msg;$('#kitManualStatus').dataset.state='success';
     status(msg,'success');
    }catch(error){
