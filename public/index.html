@@ -1051,11 +1051,11 @@
   <span class="kit-research-summary-action">Expandir pesquisa de combinações</span>
  </summary>
  <div class="kit-research-content">
-  <div class="kit-research-intro">
+  <div class="kit-research-intro" style="display:none">
    <div><strong>Configurar pesquisa de kits</strong><p>Pesquise as SKUs disponíveis da categoria e importe combinações coerentes. Somente kits validados serão salvos como rascunhos, nunca publicados automaticamente.</p></div>
    <span class="kit-research-chip">WeDrop · estoque verificado</span>
   </div>
-  <div class="kit-research-toolbar">
+  <div class="kit-research-toolbar" style="display:none">
    <label for="kitTargetCount" class="kit-target-count-field">Quantos kits pesquisar?
     <select id="kitTargetCount">
      <option value="5">5 kits</option><option value="6">6 kits</option>
@@ -1068,8 +1068,8 @@
     <button type="button" class="kit-secondary" id="kitPlusResearch">Somente preparar pesquisa</button>
    </div>
   </div>
-  <p id="kitPlusAutoStatus" role="status" aria-live="polite" class="kit-info kit-research-feedback">Clique em Abrir ChatGPT. Se o catálogo for grande, anexe o TXT baixado. Depois copie a resposta: o Manager tentará importar automaticamente, ou use as opções de importação abaixo.</p>
-  <div class="kit-research-prompt-panel">
+  <p style="display:none" id="kitPlusAutoStatus" role="status" aria-live="polite" class="kit-info kit-research-feedback">Clique em Abrir ChatGPT. Se o catálogo for grande, anexe o TXT baixado. Depois copie a resposta: o Manager tentará importar automaticamente, ou use as opções de importação abaixo.</p>
+  <div class="kit-research-prompt-panel" style="display:none">
    <details class="kit-research-prompt-details">
     <summary>Visualizar prompt preparado <span>Mostrar instruções completas</span></summary>
     <label for="kitResearchPrompt">Prompt de pesquisa (somente produtos verificados)</label>
@@ -1086,7 +1086,7 @@
     <label for="kitPlusFile" class="kit-chat-file-label">Selecionar arquivo dos kits
      <input id="kitPlusFile" type="file" accept=".json,.txt,.md,application/json,text/plain" aria-describedby="kitPlusFileHelp">
     </label>
-    <p id="kitPlusFileHelp">Envie um arquivo com as 5–10 combinações. O sistema extrai as SKUs, recalcula os preços WeDrop e salva os kits válidos como rascunhos. Não precisa copiar códigos.</p>
+    <p id="kitPlusFileHelp">Envie um arquivo com até 15 combinações. O sistema extrai as SKUs, recalcula os preços WeDrop e salva os kits válidos como rascunhos. Não precisa copiar códigos.</p>
     <p id="kitPlusFileStatus" class="kit-chat-file-status" data-state="info" role="status" aria-live="polite">Selecione o JSON ou TXT. O resultado da importação ou qualquer erro aparecerá aqui.</p>
     <div id="kitImportReport" class="kit-chat-file-status" role="status" aria-live="polite" hidden></div>
    </section>
