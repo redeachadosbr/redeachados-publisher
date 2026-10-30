@@ -42,7 +42,7 @@ test('cópia de bloco Escrita do ChatGPT com 3 títulos e descrição é importa
   '**TÍTULO 2:** Kit Infantil Sensorial Elefante e Torre com Bola Chocalho 🐘 ✨\n\n'+
   '**TÍTULO 3:** Kit Brinquedos para Bebê Elefante Musical e Torre com Chocalho 🎁 🐘\n\n'+
   '**DESCRIÇÃO:**\n\n✨ Kit com dois brinquedos para brincar.\n\n✅ BENEFÍCIOS\n• Elefante musical\n• Torre e bola chocalho\n\n💡 POR QUE COMPRAR\nDois componentes em um kit.\n\n📦 O QUE VAI NA EMBALAGEM\n1 de cada produto.';
- const prepared=source.replace(/(\\*\\*TÍTULO [123]:\\*\\* )([^\\n]+)/g,(_,prefix,title)=>prefix+validSeoTitle(title));
+ const prepared=source.replace(/(\*\*TÍTULO [123]:\*\* )([^\n]+)/g,(_,prefix,title)=>prefix+validSeoTitle(title));
  const parsed=parseKitSeoResponse(prepared);
  assert.equal(parsed.titles.length,3);
  assert.match(parsed.description,/DOIS/i);
