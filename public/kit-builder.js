@@ -9,6 +9,7 @@ import {createKitExtensionController} from './kit-extension-runtime.js';
 import {parseKitLogisticsText} from './kit-logistics-parser.js?v=3-ocr-columns';
 import {recognizeKitLogisticsPrint} from './kit-logistics-ocr.js?v=3-ocr-columns';
 import {kitImagesLookDuplicated} from './kit-image-guard.js';
+import {validateKitCoverImage} from './kit-cover-validation.js?v=1';
 import {createKitVideoStore,kitVideoFileCheck,kitVideoMetaCheck} from './kit-video-store.js';
 import {createKitLogisticsPersistence} from './kit-logistics-draft-ui.js';
 import {initExistingKitOptimization} from './kit-existing-optimization.js?v=10-planned-promo';
@@ -1920,7 +1921,7 @@ function kitImagePromptAt(slot){
    '; medidas extraídas somente do texto desta SKU, ainda NÃO verificadas: '+
    (found.length?found.map(x=>x.value).join(' · '):'nenhuma com unidade explícita');
  }).join('\n');
- return original+'\n\nDIREÇÃO DE ARTE ESPECÍFICA DESTA POSIÇÃO: '+KIT_CAMERA_PLANS[slot-1]+
+ return original+'\n\n'+(slot===1?'ATENÇÃO IMAGEM 01: as fotografias WeDrop anexadas são SOMENTE REFERÊNCIAS. NÃO devolver ou copiar nenhuma dessas fotografias nem a folha de referências. É OBRIGATÓRIO gerar uma NOVA imagem publicitária quadrada, em uma cena ÚNICA com TODOS os componentes juntos, sem colagem, sem painéis separados, sem grade e sem texto. A imagem original NÃO conta como imagem 01.\n\n':'')+'DIREÇÃO DE ARTE ESPECÍFICA DESTA POSIÇÃO: '+KIT_CAMERA_PLANS[slot-1]+
   '\nPROIBIDO reaproveitar a câmera, a pose, a criança, o ambiente, a composição ou a mesma imagem da posição anterior. Gerar fotografia NOVA 1200×1200; não apenas trocar textos. Manter EXATAMENTE os produtos reais do kit. \n\n'+(slot===2?
    'ESTA É A IMAGEM 02 (USO REAL), NÃO A CAPA 01: gerar uma cena inédita, com NOVO enquadramento, outro ângulo e interação visível com os brinquedos. NÃO reproduzir a composição, pose, câmera ou imagem anterior.':
    slot>=3?'GERAR UMA FOTO NOVA E DIFERENTE DAS POSIÇÕES ANTERIORES: nunca reaproveitar a mesma cena, criança, pose, perspectiva ou resultado já entregue; seguir exatamente a finalidade da posição '+String(slot).padStart(2,'0')+'.':'')+
@@ -2244,12 +2245,16 @@ function chatgptHandoff(prompt){
  // Por segurança a nova aba não recebe acesso à janela da loja.
  // Com noopener o navegador pode retornar null mesmo tendo aberto a aba.
 }
-async function uploadPhoto(slot,file,{quiet=false,kitSku=prepared?.kit?.kitSku}={}){
+async function uploadPhoto(slot,file,{quiet=false,kitSku=prepared?.kit?.kitSku,referenceDataUrl=null}={}){
  if(!file)return false;
  if(!['image/png','image/jpeg','image/webp'].includes(file.type)||file.size>12*1024*1024||file.size===0){
   imageStatus('Imagem '+slot+': envie PNG, JPG ou WebP até 12 MB.','error');return false;
  }
  try{
+  if(slot===1){
+   const validation=await validateKitCoverImage(file,{referenceDataUrl});
+   if(!validation.ok)throw Error(validation.reason+' A posição 01 permanece pendente. Peça uma nova capa ao ChatGPT conforme o prompt 01.');
+  }
   const bitmap=await createImageBitmap(file);
   try{
    const canvas=document.createElement('canvas');
@@ -2939,7 +2944,7 @@ function getKitExtensionBridge(){
   getKit:()=>prepared?.kit||null,
   getPrompts:()=>Array.from({length:9},(_,i)=>kitImagePromptAt(i+1)),
   getImages:()=>images,
-  onPhoto:async({slot,dataUrl,kitSku})=>{
+  onPhoto:async({slot,dataUrl,kitSku,referenceDataUrl})=>{
    // Evitar usar a própria capa como imagem 02 ou reaproveitar uma foto já aceita.
    if(prepared?.kit?.kitSku!==kitSku)throw Error('O kit mudou durante a recuperação.');
    if(slot>1&&images.size){
@@ -2958,7 +2963,7 @@ function getKitExtensionBridge(){
     throw Error('Arquivo devolvido pela extensão não é imagem válida.');
    const ext=blob.type==='image/jpeg'?'jpg':blob.type==='image/webp'?'webp':'png';
    return uploadPhoto(slot,new File([blob],'kit-ext-'+slot+'.'+ext,{type:blob.type}),
-    {quiet:true,kitSku});
+    {quiet:true,kitSku,referenceDataUrl});
   },
   onProgress:slot=>kitSetImageProgress(images.size,9,
    'Ponte ChatGPT · imagem '+slot+'/09 · '+images.size+' salvas'),
@@ -2979,6 +2984,22 @@ function kitStopKitExtension(reason='Geração de imagens do kit interrompida.')
  const btn=$('#kitGenerateAll');
  if(btn)btn.textContent='Gerar 9 imagens automaticamente pela extensão';
 }
+let kitReferenceCoverWarningShown=false;
+async function kitStoredPhotoApproved(row){
+ if(Number(row?.slot)!==1)return true;
+ try{
+  const result=await validateKitCoverImage(row.dataUrl);
+  if(result.ok)return true;
+  if(!kitReferenceCoverWarningShown){
+   kitReferenceCoverWarningShown=true;
+   kitExtensionStatus('A imagem 01 salva é uma montagem de fotos WeDrop, não a capa gerada. Ela continua guardada como referência, mas NÃO contará como imagem pronta. Gere a posição 01 novamente; as imagens 02–09 permanecem intactas.','error');
+  }
+  return false;
+ }catch(error){
+  kitExtensionStatus('Não foi possível validar a antiga imagem 01: '+String(error.message||error)+'. Confira-a antes de retomar.','error');
+  return false;
+ }
+}
 async function kitRestoreImageGallery(kitSku){
  if(!kitSku||kitRestoredSku===kitSku)return;
  kitRestoredSku=kitSku;
@@ -2986,7 +3007,7 @@ async function kitRestoreImageGallery(kitSku){
   const rows=await kitPhotoStore.list(kitSku);
   if(prepared?.kit?.kitSku!==kitSku)return;
   let count=0;
-  for(const row of rows)if(!images.has(row.slot)&&/^data:image\/(?:png|jpeg|webp);base64,/i.test(row.dataUrl)){
+  for(const row of rows)if(!images.has(row.slot)&&/^data:image\/(?:png|jpeg|webp);base64,/i.test(row.dataUrl)&&await kitStoredPhotoApproved(row)){
    images.set(row.slot,row.dataUrl);count++;
   }
   if(count){renderImageSlots();kitAutoImageUi();
@@ -3009,7 +3030,7 @@ async function kitResumeExtensionImages(){
   let restored=0;
   for(const row of saved){
    if(Number.isInteger(row.slot)&&row.slot>=1&&row.slot<=9&&
-      /^data:image\/(?:png|jpeg|webp);base64,/i.test(row.dataUrl)&&!images.has(row.slot)){
+      /^data:image\/(?:png|jpeg|webp);base64,/i.test(row.dataUrl)&&!images.has(row.slot)&&await kitStoredPhotoApproved(row)){
     images.set(row.slot,row.dataUrl);restored++;
    }
   }
@@ -3058,7 +3079,7 @@ globalThis.__RA_KIT_RECOVER_CONTEXT=async identity=>{
   let count=0;
   for(const row of saved){
    if(Number.isInteger(row.slot)&&row.slot>=1&&row.slot<=9&&
-      /^data:image\/(?:png|jpeg|webp);base64,/i.test(row.dataUrl)&&!images.has(row.slot)){
+      /^data:image\/(?:png|jpeg|webp);base64,/i.test(row.dataUrl)&&!images.has(row.slot)&&await kitStoredPhotoApproved(row)){
     images.set(row.slot,row.dataUrl);count++;
    }
   }
@@ -3092,7 +3113,7 @@ globalThis.__RA_KIT_RESUME_BRIDGE=async identity=>{
   let restored=0;
   for(const row of saved){
    if(Number.isInteger(row.slot)&&row.slot>=1&&row.slot<=9&&
-      /^data:image\/(?:png|jpeg|webp);base64,/i.test(row.dataUrl)&&!images.has(row.slot)){
+      /^data:image\/(?:png|jpeg|webp);base64,/i.test(row.dataUrl)&&!images.has(row.slot)&&await kitStoredPhotoApproved(row)){
     images.set(row.slot,row.dataUrl);restored++;
    }
   }
