@@ -7,7 +7,7 @@ export function scoreKitSeoTitle(title,components=[]){
  const portions=components.map(p=>{const w=[...new Set(tokens(p.name))].slice(0,6);
   return w.length?w.filter(k=>n.includes(k)).length/w.length:0;});
  const coverage=portions.length?portions.reduce((s,v)=>s+v,0)/portions.length:0;
- const lengthScore=len>=90&&len<=120?32:len>=70&&len<=120?26:len>=45&&len<=120?16:0;
+ const lengthScore=len>=115&&len<=120?32:len>=100&&len<=120?26:len>=90&&len<100?8:0;
  const score=Math.min(100,lengthScore+Math.round(coverage*48)+
   (portions.length&&portions.every(x=>x>=.2)?12:0)+(/\bkit\b/i.test(t)?8:0));
  return {score,label:score>=80?'Forte':score>=60?'Boa':'Revisar',
@@ -45,8 +45,8 @@ export function parseKitSeoResponse(raw){
  const numbered=[...new Set(titles.map(x=>x.number))];
  if(numbered.length!==3||![1,2,3].every(n=>numbered.includes(n)))
   throw Error('Não localizei TÍTULO 1, TÍTULO 2 e TÍTULO 3. Copie o anúncio completo usando o ícone Copiar no ChatGPT.');
- if(titles.some(x=>Array.from(x.title).length<10||Array.from(x.title).length>120))
-  throw Error('Um título ficou fora do limite de 10 a 120 caracteres. Ajuste apenas esse título no ChatGPT e copie a resposta completa.');
+ if(titles.some(x=>Array.from(x.title).length<100||Array.from(x.title).length>120))
+  throw Error('Um título ficou fora do limite de 100 a 120 caracteres (ideal: 120). Ajuste apenas esse título no ChatGPT e copie a resposta completa.');
  if(new Set(titles.map(x=>norm(x.title))).size!==3)
   throw Error('Os três títulos precisam ser diferentes.');
  if(!descriptionTag)throw Error('Faltou DESCRIÇÃO: no texto copiado. Use Copiar no bloco completo do ChatGPT.');
