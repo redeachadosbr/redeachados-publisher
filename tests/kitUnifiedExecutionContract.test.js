@@ -38,8 +38,11 @@ test('painel do kit vem logo apos composicao e antes de titulo e galeria',()=>{
 test('oito etapas visiveis sem duplicar geracao de conteudos prontos',()=>{
  assert.match(app,/for\(const \[i,stage\] of visible\.entries\(\)\)/);
  assert.match(app,/const total=visible\.length\+1/);
- assert.match(app,/discountCard\.onclick=\(\)=>optimizerDiscountOpenReview\(\)/);
- assert.match(app,/selector=\{images:'#kitGallerySection',seo:'#kitTitle',description:'#kitDescription'\}/);
+ assert.match(app,/discountCard\.onclick=\(\)=>\{/);
+ assert.match(app,/globalThis\.RAKitOpenStagePanel\?\.\('discount'\)/);
+ assert.match(app,/optimizerDiscountOpenReview\(\)/);
+ assert.match(app,/selector=\{images:'#kitImagesCollapseToolbar',seo:'#kitTitle',description:'#kitDescription'\}/);
+ assert.match(app,/globalThis\.RAKitOpenStagePanel\?\.\(stage\.key\)/);
  assert.match(existing,/imageSyncAttempts/);
  assert.match(existing,/stage:'images',reviewed:true/);
  assert.match(server,/validateReview\(\{stage:'seo',reviewed:true,title:link\.title\}\)/);
