@@ -49,7 +49,7 @@ test('mensagem completa delimitada em bloco JSON',()=>{
    '{"kits":[{"skus":["MD5284","3539"]}]}\n'+String.fromCharCode(96).repeat(3);
  assert.deepEqual(parseKitChatResult(full,{allowedCodes:whitelist}).kits,[['MD5284','3539']]);
 });
-test('limite de 10 e ausência de whitelist protegem o catálogo',()=>{
+test('limite de 15 e ausência de whitelist protegem o catálogo',()=>{
  const txt='DTY1126 + DTY1127\nBAS25021 + FUT25020 + GOL25022';
  assert.equal(parseKitChatResult(txt,{allowedCodes:whitelist,limit:1}).kits.length,1);
  assert.throws(()=>parseKitChatResult(txt,{allowedCodes:[]}),/WeDrop/);
