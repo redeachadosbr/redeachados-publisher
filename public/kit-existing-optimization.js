@@ -224,8 +224,22 @@ export function initExistingKitOptimization({getContext,api,money,onMainSkuChang
   notice(deep?'Pesquisando catalogo completo para '+code+' (consulta opcional)...':
    'Buscando SKU exata '+code+' diretamente na Shopee...');
   globalThis.RAKitLookupPhase?.('Localizando Item ID da SKU principal '+code+' na Shopee.');
+  // Watchdog independente da requisição: a UI nunca deve ficar bloqueada.
+  const watchdogMs=deep?60000:30000;
+  const watchdog=setTimeout(()=>{
+   if(seq!==lookupSerial)return;
+   lookupSerial++;
+   controller.abort();
+   lookupController=null;
+   busy=false;
+   $('#kitOptimizeAdvanced').open=true;
+   $('#kitOptimizeSelected').textContent='Consulta encerrada por tempo limite';
+   notice('A consulta da Shopee excedeu '+(watchdogMs/1000)+' segundos. O painel foi liberado sem alterar o anúncio. Confira o Item ID ou tente novamente.','error');
+   globalThis.RAKitLookupPhase?.('Tempo limite da Shopee. Painel liberado sem vincular anúncio.');
+   paint();
+  },watchdogMs);
   const reminder=setTimeout(()=>{
-   if(seq===lookupSerial)notice('A Shopee ainda esta respondendo. Voce pode cancelar esta consulta.','warning');
+   if(seq===lookupSerial)notice('A Shopee ainda está respondendo. A consulta será encerrada automaticamente se exceder o tempo limite.','warning');
   },6500);
   try{
    // Kit com ID informado: consultar a ficha oficial DIRETAMENTE por item_id.
@@ -294,6 +308,7 @@ export function initExistingKitOptimization({getContext,api,money,onMainSkuChang
    return null;
   }finally{
    clearTimeout(reminder);
+   clearTimeout(watchdog);
    if(seq===lookupSerial){busy=false;lookupController=null;paint();}
   }
  }
