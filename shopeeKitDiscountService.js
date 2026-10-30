@@ -2,7 +2,7 @@
 // Usa Minha Promoção, pesquisa comparável e regra de centavos existentes.
 import {callShopeeShopApi} from './shopee.js';
 import {loadKitDraft} from './shopeeKitDraftStore.js';
-import {kitOptimizationLinkIsCurrent,assertKitListingComposition} from './shopeeKitOptimization.js';
+import {kitOptimizationLinkIsCurrent} from './shopeeKitOptimization.js';
 import {readShopeeExecution} from './shopeeExecutionStore.js';
 import {composeKit} from './shopeeKitBuilder.js';
 import {lookupShopeeCompetitors} from './shopeeMarketResearch.js';
@@ -51,8 +51,10 @@ async function context(cfg,auth,kitSku,discountId,{requireExecution=true}={}){
   readDiscountPages(callShopeeShopApi,{cfg,auth,discountId})
  ]);
  const live=(liveResult.response?.item_list||[]).find(x=>Number(x.item_id)===itemId);
- if(existingListing&&live)
-  assertKitListingComposition({kit:saved.kit,record:{itemId:String(itemId),title:live.item_name,description:live.description}});
+ // O anúncio original é simples e será convertido em kit; não exigir que a
+ // descrição anterior já contenha as SKUs complementares. Conferir identidade.
+ if(existingListing&&live&&String(live.item_sku||'').trim()!==String(saved.optimization.sku||'').trim())
+  throw Error('SKU principal do anúncio diverge do vínculo do kit. Desconto não autorizado.');
  const liveStatus=String(live?.item_status||'').toUpperCase();
  if(!live||!['NORMAL',...(!requireExecution?['UNLIST']:[])].includes(liveStatus))
   throw Error(requireExecution?'Kit não está publicado como NORMAL na Shopee.':
