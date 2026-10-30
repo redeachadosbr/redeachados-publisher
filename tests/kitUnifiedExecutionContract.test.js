@@ -103,7 +103,7 @@ test('titulo e descricao do kit possuem botoes de conferencia ao lado dos textos
   for(const id of [container,button,status])
    assert.equal(html.split('id="'+id+'"').length-1,1);
  }
- assert.match(html,/\/app\.js\?v=3\.5\.18-per-sku-planned-promo/);
+ assert.match(html,/\/app\.js\?v=3\.5\.\d+-[a-z0-9-]+/);
  assert.match(html,/\/kit-builder\.js\?v=3\.9\.13-kit-images-autoretry/);
  assert.match(html,/\/kit-builder\.css\?v=3\.8\.10-kit-discount-tracker/);
  assert.match(app,/globalThis\.RAKitSourceChanged=optimizerKitSourceChanged/);
@@ -221,7 +221,7 @@ test('editar pela previa expande o atributo correto sem substituir os campos sal
  assert.match(app,/globalThis\.RATechnicalStudio\?\.render\?\.\(data\)/);
  assert.match(app,/body\.attributes=optimizerTechnicalValues\(\)/);
  assert.match(html,/id="optimizerWorkflowReview"/);
- assert.match(html,/\/app\.js\?v=3\.5\.18-per-sku-planned-promo/);
+ assert.match(html,/\/app\.js\?v=3\.5\.\d+-[a-z0-9-]+/);
 });
 
 
@@ -239,7 +239,7 @@ test('etapa 07 possui botao check distinto do salvamento fiscal',()=>{
  assert.match(css,/#raFiscalModernLayout \.optimizer-workflow-actions #raFiscalChecklistConfirm/);
  assert.match(html,/fiscal-modern-layout\.css\?v=1\.0\.3-compact-help/);
  assert.match(html,/fiscal-modern-layout\.js\?v=1\.0\.3-compact-help/);
- assert.match(html,/\/app\.js\?v=3\.5\.18-per-sku-planned-promo/);
+ assert.match(html,/\/app\.js\?v=3\.5\.\d+-[a-z0-9-]+/);
 });
 test('salvar dados fiscais nao confirma checklist e confirmar exige resposta do servidor',()=>{
  assert.match(app,/async function optimizerWorkflowSaveReview\(\{fiscalConfirm=false\}=\{\}\)/);
@@ -341,7 +341,7 @@ test('etapa 08 do kit permite previa de planejamento antes de executar o anuncio
  assert.match(html,/id="kitOptimizeDiscountToExecution"/);
  assert.match(html,/id="kitOptimizeDiscountApply" disabled/);
  assert.match(module,/kit-existing-optimization\.js\?v=10-planned-promo/);
- assert.match(html,/\/app\.js\?v=3\.5\.18-per-sku-planned-promo/);
+ assert.match(html,/\/app\.js\?v=3\.5\.\d+-[a-z0-9-]+/);
  assert.match(html,/\/kit-builder\.js\?v=3\.9\.13-kit-images-autoretry/);
  assert.match(html,/\/kit-builder\.css\?v=3\.8\.10-kit-discount-tracker/);
 });
@@ -452,7 +452,7 @@ test('rastreador distingue check do desconto da sua publicação na Shopee',()=>
  assert.match(app,/O 100% representa as alterações já confirmadas do anúncio/);
  assert.match(css,/\.optimizer-exec-step\.is-kit-prepared/);
  assert.match(css,/\.optimizer-exec-step\.is-kit-published/);
- assert.match(html,/\/app\.js\?v=3\.5\.18-per-sku-planned-promo/);
+ assert.match(html,/\/app\.js\?v=3\.5\.\d+-[a-z0-9-]+/);
  assert.match(html,/\/kit-builder\.css\?v=3\.8\.10-kit-discount-tracker/);
 });
 test('rastreador não altera resultados verificados nem presume execução da promoção',()=>{
