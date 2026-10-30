@@ -226,8 +226,7 @@ export function initExistingKitOptimization({getContext,api,money,onMainSkuChang
    if(seq===lookupSerial)notice('A Shopee ainda esta respondendo. Voce pode cancelar esta consulta.','warning');
   },6500);
   try{
-   const endpoint=deep?'/api/shopee/optimizer/find?'+new URLSearchParams({sku:code,deep:'1'}):
-    '/api/shopee/kits/optimization/find?'+new URLSearchParams({kitSku:current,sku:code,mainSku:code});
+   const endpoint='/api/shopee/optimizer/find?'+new URLSearchParams({sku:code,deep:'1'});
    const data=await api(endpoint,{signal:AbortSignal.any([controller.signal,AbortSignal.timeout(deep?45000:18000)])});
    if(seq!==lookupSerial||kitSku()!==current)return null;
    const matches=(data.matches||[]).filter(x=>['NORMAL','UNLIST'].includes(String(x.status).toUpperCase()));
@@ -248,7 +247,15 @@ export function initExistingKitOptimization({getContext,api,money,onMainSkuChang
     globalThis.RAKitLookupPhase?.('Item ID '+m.itemId+' confirmado na consulta da Shopee.');
     paint();
    };
-   // Busca rápida não garante unicidade. Exigir escolha explícita pelo Item ID.
+   // Prioridade: data real de criação da Shopee, nunca o Item ID salvo anteriormente.
+   // Conferência humana e auditoria de composição continuam obrigatórias.
+   const preferred=matches.find(m=>String(m.itemId)===String(data.preferredItemId||''));
+   if(preferred){
+    choose(preferred);
+    notice('Anúncio mais recente confirmado pela Shopee: Item ID '+preferred.itemId+
+     '. Confirme este vínculo e valide a composição do kit antes de preparar.','success');
+   }
+   // Manter alternativas visíveis para auditoria, sem escolher IDs antigos automaticamente.
    $('#kitOptimizeAdvanced').open=true;
    for(const m of matches){
     const button=document.createElement('button');button.type='button';button.className='kit-secondary';
@@ -256,7 +263,7 @@ export function initExistingKitOptimization({getContext,api,money,onMainSkuChang
     button.addEventListener('click',()=>{if(kitSku()===current)choose(m);});
     root.append(button);
    }
-   notice('Encontrados '+matches.length+' possíveis anúncios desta SKU. Confira Item ID, título e os componentes completos. Não selecione anúncio individual ou kit com produtos diferentes.','warning');
+   if(!preferred)notice('Encontrados '+matches.length+' anúncios. Não foi possível comprovar qual foi criado por último: escolha o ID e confira a composição do kit.','warning');
    return null;
   }catch(e){
    if(seq!==lookupSerial)return null;
