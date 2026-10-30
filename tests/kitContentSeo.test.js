@@ -165,7 +165,7 @@ test('botão azul recupera automaticamente a resposta por Ponte, sem abrir área
  assert.match(body,/kitFetchGeneratedTextFromPonte\(kitSku,skus,products\)/);
  assert.match(body,/parseKitSeoResponse\(response\.rawText\)/);
  assert.match(body,/importPlusText\(\)/);
- assert.doesNotMatch(body,/kitContentDetails'\)\.open=true/);
+ assert.match(body,/bridgeIdentityError/);
  assert.doesNotMatch(body,/kitShowPasteSeoReply/);
  assert.match(ui,/RA_EXTENSION_KIT_TEXT_RESULT/);
  assert.match(ui,/RA_SITE_KIT_TEXT_FETCH/);
