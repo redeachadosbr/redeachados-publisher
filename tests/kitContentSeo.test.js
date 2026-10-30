@@ -120,7 +120,7 @@ test('prompt combinado cobre as três SKUs e dados separados por componente',asy
  const result=kitContentBrief(kit,{manualFacts:facts});
  assert.equal(result.components.length,3);
  assert.match(result.prompt,/TODOS os 3 componentes devem estar representados em CADA título/);
- assert.match(result.prompt,/1 unidade de CADA SKU/);
+ assert.match(result.prompt,/1 unidade de CADA COMPONENTE/);
  for(const part of kit.components){assert.ok(result.prompt.includes('SKU '+part.sku));assert.ok(result.prompt.includes(facts[part.sku]));}
  assert.equal(result.imagePrompts.length,9);
 });
