@@ -56,7 +56,7 @@ export function createKitExtensionController({
  getKit,getPrompts,getImages,onPhoto,onStatus=()=>{},onProgress=()=>{}
 }){
  let ready=false,version='',busy=false,started=false;
- let job=null,timeout=null,imageStallTimer=null;
+ let job=null,timeout=null,imageStallTimer=null,activeReferenceSheet=null;
  try{const v=JSON.parse(sessionStorage.getItem(KIT_BRIDGE_SESSION_KEY)||'null');
   if(v?.nonce&&v?.kitSku)job=v;}catch{}
  const post=message=>window.postMessage(message,location.origin);
@@ -85,7 +85,7 @@ export function createKitExtensionController({
   clearImageStall();
   const last=job;
   if(last?.nonce)post({kind:'RA_SITE_ABORT',nonce:last.nonce,sku:last.kitSku,reason});
-  busy=false;started=false;saveJob(null);
+  busy=false;started=false;activeReferenceSheet=null;saveJob(null);
   if(notice)feedback(reason,'info');
  }
  const onMessage=async event=>{
@@ -144,7 +144,8 @@ export function createKitExtensionController({
     return;
    }
    // onPhoto normaliza 1200x1200 e confirma IndexedDB antes de sinalizar sucesso.
-   const accepted=await onPhoto({slot,dataUrl:m.dataUrl,kitSku:snapshot.kitSku});
+   const accepted=await onPhoto({slot,dataUrl:m.dataUrl,kitSku:snapshot.kitSku,
+    referenceDataUrl:slot===1?activeReferenceSheet:null});
    if(accepted!==true)throw Error('A imagem não foi armazenada; não é seguro avançar.');
    ack(snapshot.nonce,slot,true);
    if(job?.nonce===snapshot.nonce){
@@ -181,6 +182,7 @@ export function createKitExtensionController({
   catch(error){if(error.message?.includes('SKU individual'))throw error;}
   const prompts=getPrompts();
   const referenceDataUrl=await kitReferenceSheet(kit);
+  activeReferenceSheet=referenceDataUrl;
   if(getKit()?.kitSku!==kit.kitSku)throw Error('O kit mudou enquanto carregava as fotos.');
   const nonce=crypto.randomUUID();
   const payload=kitBridgePayload({kit,nonce,referenceDataUrl,prompts,completed:[...getImages().keys()]});
