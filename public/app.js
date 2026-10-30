@@ -4384,6 +4384,20 @@ function optimizerExecutionTrackerRender(progress,job){
  tracker.hidden=!visible;activity.hidden=!visible;
  // A autorização fica JUNTO do indicador 0%, nunca acima da parte visível
  // da execução. Em running/verified o botão desaparece para evitar repetição.
+ // Sempre oferecer recuperação VISÍVEL ao lado do progresso se a API
+ // aceitou a escrita mas a confirmação do anúncio permanece incerta.
+ let recoverAction=tracker.querySelector('.optimizer-exec-recover-stuck');
+ if(!recoverAction){
+  recoverAction=document.createElement('button');
+  recoverAction.type='button';
+  recoverAction.className='secondary optimizer-exec-recover-stuck';
+  recoverAction.style.cssText='display:block;width:100%;margin:12px 0;padding:14px;font-weight:800;border:2px solid #f59e0b;border-radius:12px';
+  recoverAction.textContent='↻ Conferir Shopee e retomar somente etapas pendentes';
+  recoverAction.addEventListener('click',()=>$('#optimizerExecutionReconcile')?.click());
+  tracker.appendChild(recoverAction);
+ }
+ recoverAction.hidden=job?.state!=='uncertain';
+ recoverAction.disabled=job?.state!=='uncertain';
  const resumeBar=tracker.querySelector('.optimizer-exec-resume-bar');
  if(resumeBar)resumeBar.hidden=!['prepared','blocked'].includes(progress.state);
  optimizerExecutionVisibleCommands(progress,job);
