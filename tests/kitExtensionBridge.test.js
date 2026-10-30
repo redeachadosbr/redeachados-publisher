@@ -47,8 +47,11 @@ test('ponte não declara imagem gerada somente porque abriu o chat',()=>{
  const runtime=fs.readFileSync(new URL('../public/kit-extension-runtime.js',import.meta.url),'utf8');
  assert.match(runtime,/Aguardando a primeira imagem gerada e importada/);
  assert.match(runtime,/watchImage\(first\)/);
- assert.match(runtime,/150000/);
- assert.match(runtime,/abrir o ChatGPT NÃO inicia a geração/);
+ assert.match(runtime,/240000/);
+ assert.match(runtime,/retryAutomaticImagePickup/);
+ assert.match(runtime,/RA_SITE_CONTINUE/);
+ assert.match(runtime,/RA_SITE_WAKE/);
+ assert.match(runtime,/sem reenviar o prompt/);
  assert.match(runtime,/if\(accepted!==true\)throw Error/);
 });
 test('troca de fotos é atômica e galeria não confirma antes de salvar',()=>{
