@@ -622,9 +622,9 @@ app.post('/api/shopee/kits/plus-import',mustLogin,requireWeDropAdmin,async(req,r
   const idea=String(req.body?.idea||'').trim().slice(0,160);
   const size=Number(req.body?.size||2),raw=req.body?.kits;
   const desiredKits=Number(req.body?.desiredKits||10);
-  if(![2,3].includes(size)||!Number.isInteger(desiredKits)||desiredKits<5||desiredKits>10||
-      !Array.isArray(raw)||raw.length<1||raw.length>10)
-   throw Error('Informe até dez kits de dois ou três SKUs, com meta entre 5 e 10.');
+  if(![2,3].includes(size)||!Number.isInteger(desiredKits)||desiredKits<5||desiredKits>15||
+      !Array.isArray(raw)||raw.length<1||raw.length>15)
+   throw Error('Informe até quinze kits de dois ou três SKUs, com meta entre 5 e 15.');
   const seen=new Set(),kits=[],rejected=[];
   // Importações novas são coleções independentes; preservar publicações e histórico.
   const importBatchId=new Date().toISOString()+'-'+crypto.randomUUID();
