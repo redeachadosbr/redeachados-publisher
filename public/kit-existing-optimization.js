@@ -295,7 +295,14 @@ export function initExistingKitOptimization({getContext,api,money,onMainSkuChang
     button.addEventListener('click',()=>{if(kitSku()===current)choose(m);});
     root.append(button);
    }
-   if(!preferred)notice(correctedId?'O ID informado '+correctedId+' ainda não foi comprovado na Shopee. Não retomar o anúncio antigo.':'Encontrados '+matches.length+' anúncios. Confirme manualmente o ID do kit.','warning');
+   if(!preferred){
+    // Dois ou mais anúncios com a mesma SKU não são erro de consulta.
+    // Encerrar explicitamente o estado visual e solicitar Item ID sem escolher por preço ou por número.
+    $('#kitOptimizeSelected').textContent='Busca concluída: '+matches.length+' anúncio(s) da SKU '+code+'. Selecione o Item ID correto abaixo.';
+    notice(correctedId?'O Item ID anteriormente indicado não foi confirmado. Selecione o anúncio correto na lista.':
+     'Busca concluída. Existem '+matches.length+' anúncios com esta SKU. Clique no Item ID do anúncio que será transformado em kit e confirme o vínculo.','warning');
+    globalThis.RAKitLookupPhase?.('Busca concluída. Aguardando seleção do Item ID correto; nenhuma alteração enviada à Shopee.');
+   }
    return preferred?target:null;
   }catch(e){
    if(seq!==lookupSerial)return null;
