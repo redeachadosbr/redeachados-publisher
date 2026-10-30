@@ -228,10 +228,12 @@
           <div class="actions"><button type="button" class="btn-secondary mini" id="apiReadBtn">Consultar período selecionado</button><button type="button" class="btn-secondary mini" id="apiHistoryBtn">Consultar até 6 meses em blocos</button></div>
           <div id="apiStatus" class="api-status" role="status" aria-live="polite">Selecione um produto e consulte suas campanhas. Nenhuma campanha será modificada.</div>
           <div id="apiCampaignPickBox" class="api-campaign-picker" hidden>
-            <label for="apiCampaignChoice"><strong>Campanhas encontradas para o produto</strong></label>
+            <label for="apiCampaignChoice"><strong id="apiCampaignPickTitle">Campanhas encontradas para o produto</strong></label>
+            <p class="tiny" id="apiCandidateHelp">Confira o ID e o nome na Shopee antes de vincular uma campanha.</p>
+            <input id="apiCampaignSearch" type="search" placeholder="Buscar campanha por nome, ID ou item ID Shopee" aria-label="Pesquisar nas campanhas retornadas">
             <select id="apiCampaignChoice" aria-label="Escolher campanha individual"></select>
             <div class="actions"><button type="button" id="apiApplyCampaignBtn" class="btn-primary mini">Usar campanha selecionada</button></div>
-            <p class="tiny">Os indicadores não são somados entre campanhas. Cada ID tem seu próprio histórico.</p>
+            <p class="tiny">O vínculo é salvo no cadastro do SKU e sincronizado pelo Google Drive. Os indicadores permanecem separados por campanha; nenhuma alteração é executada na Shopee.</p>
           </div>
         </div>
         <div class="campaign-metrics-title">Configuração e desempenho — 11 indicadores</div>
@@ -578,7 +580,7 @@ function computeProduct(p){const totalCost=totalProductCost(p);if(!(p.price>0)||
   return {f,price,totalCost,shoFee,tax,others,extras,contribution,ads,profitWithAds,marginWithAds,breakEven,minimum,difference,competitiveness};
 }
 function pNum(v){return v===null||v===undefined||v===''?null:Number(v)}
-function normalizeProduct(p){return {sku:String(p.sku||'').trim().toUpperCase(),name:String(p.name||'').trim(),curve:CURVE_INFO[p.curve]?p.curve:'',adsStatus:adsStatusOf(p),adsStatusChangedAt:typeof p.adsStatusChangedAt==='string'?p.adsStatusChangedAt:'',isKit:!!p.isKit,kitQuantity:p.isKit?pNum(p.kitQuantity):1,cost:pNum(p.cost),price:pNum(p.price),market:pNum(p.market),target:pNum(p.target),tax:pNum(p.tax)??4,feePct:pNum(p.feePct),feeFixed:pNum(p.feeFixed),extraPct:pNum(p.extraPct)??0,packing:pNum(p.packing)??0,shipping:pNum(p.shipping)??0,coupon:pNum(p.coupon)??0,margin:(p.marginUnified===true?pNum(p.margin):(p.calcMode==='margin'&&pNum(p.goalMargin)!==null?pNum(p.goalMargin):pNum(p.margin)))??5,marginUnified:true,regime:p.regime==='CPF'?'CPF':'CNPJ',feeMode:p.feeMode==='manual'?'manual':'auto',cpfExtra:!!p.cpfExtra,calcMode:['margin','price','profit'].includes(p.calcMode)?p.calcMode:'price',goalProfit:pNum(p.goalProfit)??5,updatedAt:p.updatedAt||new Date().toISOString()}}
+function normalizeProduct(p){return {sku:String(p.sku||'').trim().toUpperCase(),name:String(p.name||'').trim(),linkedCampaignIds:Array.isArray(p.linkedCampaignIds)?[...new Set(p.linkedCampaignIds.map(String).filter(id=>/^\d+$/.test(id)))].slice(0,30):[],curve:CURVE_INFO[p.curve]?p.curve:'',adsStatus:adsStatusOf(p),adsStatusChangedAt:typeof p.adsStatusChangedAt==='string'?p.adsStatusChangedAt:'',isKit:!!p.isKit,kitQuantity:p.isKit?pNum(p.kitQuantity):1,cost:pNum(p.cost),price:pNum(p.price),market:pNum(p.market),target:pNum(p.target),tax:pNum(p.tax)??4,feePct:pNum(p.feePct),feeFixed:pNum(p.feeFixed),extraPct:pNum(p.extraPct)??0,packing:pNum(p.packing)??0,shipping:pNum(p.shipping)??0,coupon:pNum(p.coupon)??0,margin:(p.marginUnified===true?pNum(p.margin):(p.calcMode==='margin'&&pNum(p.goalMargin)!==null?pNum(p.goalMargin):pNum(p.margin)))??5,marginUnified:true,regime:p.regime==='CPF'?'CPF':'CNPJ',feeMode:p.feeMode==='manual'?'manual':'auto',cpfExtra:!!p.cpfExtra,calcMode:['margin','price','profit'].includes(p.calcMode)?p.calcMode:'price',goalProfit:pNum(p.goalProfit)??5,updatedAt:p.updatedAt||new Date().toISOString()}}
 function validateProduct(p){const problems=[];if(!p.sku)problems.push('Informe a SKU.');if(!p.name)problems.push('Informe o nome.');if(!(p.price>0))problems.push('O preço de venda deve ser maior que zero.');if(!(p.cost>=0))problems.push('Informe o custo do produto (zero é válido).');if(!kitQuantityValid(p))problems.push('Informe a quantidade de produtos do kit: número inteiro de 2 a 999.');for(const key of ['market','target','tax','extraPct','packing','shipping','coupon','margin'])if(p[key]!==null&&!(p[key]>=0))problems.push('Verifique o campo '+key+'.');if(p.market!==null&&p.market<=0)problems.push('A média de mercado deve ser positiva ou ficar em branco.');if(p.target!==null&&p.target<0)problems.push('ROAS não pode ser negativo; use 0 para calcular SEM Ads.');if(p.margin===null||p.margin<0||p.margin>=100||p.goalProfit<0)problems.push('Confira a margem ou o lucro desejado.');if(p.tax>100||p.extraPct>100||p.margin>=100)problems.push('Confira percentuais acima do limite.');if(p.feeMode==='manual'&&(p.feePct===null||p.feeFixed===null||p.feePct<0||p.feePct>100||p.feeFixed<0))problems.push('Na taxa manual, informe a comissão (%) e a tarifa fixa (R$).');return [...new Set(problems)]}
 function fText(n){return Number.isFinite(n)?roas(n):'Meta não atingível'}
 function renderProductPreview(){updateKitUI();updateCurvePreview();const p=normalizeProduct(readProductForm()),c=computeProduct(p);$('previewKitPriceTag').textContent=p.isKit?'· valor do kit ('+(p.kitQuantity??'?')+' un.)':'';for(const el of document.querySelectorAll('.kit-profit-label'))el.textContent=p.isKit?'· por kit':'';
@@ -635,7 +637,7 @@ function refreshProductSelect(){
 function selectProductForAds(sku,jump){const p=readProducts().find(x=>x.sku===sku);if(!p)return;if($('campaignAdsFilter').value&&effectiveAdsStatus(p)!==$('campaignAdsFilter').value)$('campaignAdsFilter').value='';refreshProductSelect();$('productSelect').value=sku;showCurveInAds();$('campaign').value=p.name+' — SKU '+p.sku;if(p.target>0)$('target').value=p.target;else $('target').value='';if(jump)switchTab('simulador');}
 $('productForm').addEventListener('submit',ev=>{ev.preventDefault();updatePriceMode();let p=normalizeProduct(readProductForm());const errors=validateProduct(p);if(errors.length){$('productError').hidden=false;$('productError').textContent=errors.join(' ');return;}
 const items=readProducts();let i=items.findIndex(v=>v.sku===p.sku);if(i>=0&&editingSku!==p.sku){$('productError').hidden=false;$('productError').textContent='Esta SKU já existe. Use Editar para atualizar.';return;}
-if(i>=0){const old=items[i];p.adsStatusChangedAt=adsStatusOf(old)===adsStatusOf(p)?old.adsStatusChangedAt:new Date().toISOString();items[i]=p}else{p.adsStatusChangedAt=p.adsStatus==='unknown'?'':new Date().toISOString();items.push(p)}const ok=persistProducts(items);renderProductList();refreshProductSelect();resetProductForm();$('dataStatus').textContent=ok?'Produto salvo neste navegador. Faça backup JSON periodicamente.':'Não foi possível gravar no navegador. Faça o download do backup JSON nesta sessão.';alert('Produto '+p.sku+' '+(i>=0?'atualizado.':'cadastrado.')+(ok?'':' ATENÇÃO: sem armazenamento persistente.'));
+if(i>=0){const old=items[i];p.adsStatusChangedAt=adsStatusOf(old)===adsStatusOf(p)?old.adsStatusChangedAt:new Date().toISOString();p.linkedCampaignIds=old.linkedCampaignIds||[];items[i]=p}else{p.adsStatusChangedAt=p.adsStatus==='unknown'?'':new Date().toISOString();items.push(p)}const ok=persistProducts(items);renderProductList();refreshProductSelect();resetProductForm();$('dataStatus').textContent=ok?'Produto salvo neste navegador. Faça backup JSON periodicamente.':'Não foi possível gravar no navegador. Faça o download do backup JSON nesta sessão.';alert('Produto '+p.sku+' '+(i>=0?'atualizado.':'cadastrado.')+(ok?'':' ATENÇÃO: sem armazenamento persistente.'));
 });
 $('clearProductBtn').addEventListener('click',resetProductForm);
 for(const btn of document.querySelectorAll('[data-price-mode]'))btn.addEventListener('click',()=>showPriceMode(btn.dataset.priceMode));
@@ -723,7 +725,9 @@ switchTab=function(tab){oldSwitchTab(tab);if(tab==='historico')renderChangeHisto
 function apiReadAccess(){return location.protocol==='https:'}
 function shortISO(d){return new Date(d).toISOString().slice(0,10)}
 function apiDate(d){return d.slice(8,10)+'-'+d.slice(5,7)+'-'+d.slice(0,4)}
-function apiReportMatches(campaigns,sku,name){
+function apiReportMatches(campaigns,sku,name,linkedIds=[]){
+ const links=new Set((Array.isArray(linkedIds)?linkedIds:[]).map(String));
+ if(links.size){const linked=campaigns.filter(c=>links.has(String(c.campaignId)));if(linked.length)return linked;}
  const s=String(sku||'').trim().toLocaleLowerCase('pt-BR'),n=String(name||'').trim().toLocaleLowerCase('pt-BR');
  const exact=campaigns.filter(c=>s&&String(c.productSku||'').trim().toLocaleLowerCase('pt-BR')===s);
  if(exact.length)return exact;
@@ -753,7 +757,7 @@ const API_CHOICE_KEY='redeachados_ads_campaign_choice_v13';
 function apiCampaignPreference(sku){try{return String(JSON.parse(localStorage.getItem(API_CHOICE_KEY)||'{}')[sku]||'')}catch{return ''}}
 function rememberApiCampaign(sku,id){try{const o=JSON.parse(localStorage.getItem(API_CHOICE_KEY)||'{}');o[sku]=String(id);localStorage.setItem(API_CHOICE_KEY,JSON.stringify(o))}catch{/* optional preference */}}
 let pendingApiCampaigns=null;
-function hideApiCampaignPicker(){pendingApiCampaigns=null;$('apiCampaignPickBox').hidden=true;$('apiCampaignChoice').innerHTML=''}
+function hideApiCampaignPicker(){pendingApiCampaigns=null;$('apiCampaignPickBox').hidden=true;$('apiCampaignChoice').innerHTML='';$('apiCampaignSearch').value=''}
 function apiStoreOne(c,sku,start,end){
  const id=String(c.campaignId||'');if(!/^\d+$/.test(id))return false;
  const snap={id:id+'|'+start+'|'+end,campaignId:id,sku,productName:readProducts().find(p=>p.sku===sku)?.name||'',start,end,syncedAt:new Date().toISOString(),
@@ -763,16 +767,49 @@ function apiStoreOne(c,sku,start,end){
 }
 function apiDescribeCampaign(c){
  const status=c.statusGroup==='active'?'Em andamento':c.statusGroup==='inactive'?'Retirada/pausada':'Status não confirmado';
- const spend=Number(c.expense);const label=Number.isFinite(spend)?money(spend):'despesa não informada';
- return 'ID '+String(c.campaignId)+' · '+status+' · '+label+' investidos no período · '+String(c.name||c.productTitle||'Campanha');
+ const raw=Number(c.expense),label=c.expense!==null&&c.expense!==undefined&&Number.isFinite(raw)?money(raw):'investimento não informado';
+ const itemIds=Array.isArray(c.itemIdList)?c.itemIdList.filter(x=>/^\d+$/.test(String(x))):[];
+ const itemText=itemIds.length?' · Item '+itemIds.slice(0,3).join(', ')+(itemIds.length>3?'…':''):'';
+ const title=String(c.productTitle||c.name||'Sem nome disponível');
+ return 'ID '+String(c.campaignId)+' · '+status+' · '+label+itemText+' · '+title;
 }
-function showApiCampaignPicker(campaigns,sku,start,end){
- pendingApiCampaigns={campaigns,sku,start,end};
- const sel=$('apiCampaignChoice');
- sel.innerHTML='<option value="">— Escolha o ID da campanha —</option>'+campaigns.map(c=>'<option value="'+safe(String(c.campaignId))+'">'+safe(apiDescribeCampaign(c))+'</option>').join('');
- const preferred=apiCampaignPreference(sku);
- if(campaigns.some(c=>String(c.campaignId)===preferred))sel.value=preferred;
+function refreshApiCampaignChoices(){
+ const context=pendingApiCampaigns;if(!context)return;
+ const q=$('apiCampaignSearch').value.trim().toLocaleLowerCase('pt-BR');
+ const options=context.campaigns.filter(c=>!q||apiDescribeCampaign(c).toLocaleLowerCase('pt-BR').includes(q));
+ const displayed=options.slice(0,200);
+ const sel=$('apiCampaignChoice'),current=sel.value,preferred=apiCampaignPreference(context.sku);
+ sel.innerHTML='<option value="">— Escolha o ID correto —</option>'+
+   displayed.map(c=>'<option value="'+safe(String(c.campaignId))+'">'+safe(apiDescribeCampaign(c))+'</option>').join('');
+ if(displayed.some(c=>String(c.campaignId)===current))sel.value=current;
+ else if(!q&&displayed.some(c=>String(c.campaignId)===preferred))sel.value=preferred;
+ $('apiCandidateHelp').textContent=(context.unmatched
+   ?'Sem correspondência automática com o SKU '+context.sku+'. Estas são campanhas da sua conta, NÃO necessariamente deste produto. Confirme o ID ou item na Shopee antes de vincular.'
+   :'Confira os IDs das campanhas do produto antes de importar.')+
+   ' Exibindo '+displayed.length+' de '+options.length+' correspondência(s)'+(options.length>200?' (refine a busca).':'.');
+}
+function showApiCampaignPicker(campaigns,sku,start,end,options={}){
+ const unique=new Map();
+ for(const c of campaigns)if(/^\d+$/.test(String(c.campaignId||'')))unique.set(String(c.campaignId),c);
+ const ordered=[...unique.values()].sort((a,b)=>(a.statusGroup==='active'?0:1)-(b.statusGroup==='active'?0:1)||Number(b.expense||0)-Number(a.expense||0));
+ pendingApiCampaigns={campaigns:ordered,sku,start,end,unmatched:options.unmatched===true,latestWindow:options.latestWindow||null};
+ $('apiCampaignSearch').value='';
+ $('apiCampaignPickTitle').textContent=options.unmatched?'Selecionar campanha da Shopee e vincular ao SKU':'Campanhas identificadas para o produto';
+ $('apiApplyCampaignBtn').textContent=options.unmatched?'Vincular ID ao SKU e importar':'Usar campanha selecionada';
  $('apiCampaignPickBox').hidden=false;
+ refreshApiCampaignChoices();
+}
+$('apiCampaignSearch').addEventListener('input',refreshApiCampaignChoices);
+function saveApiCampaignLink(sku,id){
+ const products=readProducts(),index=products.findIndex(p=>p.sku===sku);
+ if(index<0)return false;
+ const previous=products[index],linked=new Set(previous.linkedCampaignIds||[]);
+ if(linked.has(id))return true;
+ linked.add(id);
+ products[index]={...previous,linkedCampaignIds:[...linked].slice(0,30),updatedAt:new Date().toISOString()};
+ const ok=persistProducts(products);
+ if(ok){renderProductList();refreshProductSelect();}
+ return ok;
 }
 $('apiApplyCampaignBtn').addEventListener('click',()=>{
  const context=pendingApiCampaigns;
@@ -781,10 +818,15 @@ $('apiApplyCampaignBtn').addEventListener('click',()=>{
  const id=$('apiCampaignChoice').value;
  const c=context.campaigns.find(x=>String(x.campaignId)===id);
  if(!c){setApiStatus('Escolha um ID de campanha na lista.','error');return}
- apiFillCampaign(c,context.start,context.end);
+ if(context.unmatched&&!confirm('Vincular a campanha '+id+' ao produto '+context.sku+'?\n\nConfirme na Shopee se é o anúncio correto. O vínculo será salvo para consultas futuras, mas NENHUMA configuração de Ads será modificada.'))return;
+ const range=context.latestWindow?.get(id)||[context.start,context.end];
+ apiFillCampaign(c,range[0],range[1]);
  rememberApiCampaign(context.sku,id);
- const saved=apiStoreOne(c,context.sku,context.start,context.end);
- setApiStatus('✓ Campanha '+id+' selecionada para SKU '+context.sku+'.\nIndicadores preenchidos individualmente, sem somar campanhas.'+(saved?' Histórico salvo neste navegador.':' Atenção: histórico não foi salvo; faça backup.' )+'\nOrçamento, meta ROAS, Impulsão Rápida, carrinhos e itens vendidos precisam de conferência quando ausentes na API.','good');
+ const linked=saveApiCampaignLink(context.sku,id);
+ const saved=apiStoreOne(c,context.sku,range[0],range[1]);
+ setApiStatus('✓ Campanha '+id+' selecionada para SKU '+context.sku+'.'+(linked?' Vínculo salvo no cadastro e enviado à sincronização do Drive.':' ATENÇÃO: não foi possível salvar o vínculo; faça backup.')+
+ '\nIndicadores preenchidos individualmente, sem somar campanhas.'+(saved?' Histórico registrado.':' Histórico não foi salvo; faça backup.')+
+ '\nOrçamento, meta ROAS, Impulsão Rápida, carrinhos e itens vendidos precisam de conferência quando ausentes na API.','good');
 });
 async function apiSyncProductStatuses(){
  const btn=$('syncProductStatusesBtn'),out=$('catalogApiStatus');
@@ -822,11 +864,15 @@ async function apiLoadRange(syncMany=false){
   const chunks=[];let cursor=new Date(start+'T12:00:00Z'),limit=new Date(end+'T12:00:00Z');
   while(cursor<=limit){let till=new Date(Math.min(+cursor+28*86400000,+limit));chunks.push([shortISO(cursor),shortISO(till)]);cursor=new Date(+till+86400000)}
   if(chunks.length>8)throw Error('Período longo demais para consulta: máximo aproximado de 6 meses.');
-  const seen=new Map(),latestWindow=new Map();
+  const seen=new Map(),latestWindow=new Map(),candidates=new Map();
   for(const [a,b] of chunks){
    setApiStatus('Consultando '+a+' a '+b+' · '+(count+1)+'/'+chunks.length+'...');
    const result=await apiOverview(a,b);
-   const matching=apiReportMatches(result.campaigns,sku,product.name);
+   const matching=apiReportMatches(result.campaigns,sku,product.name,product.linkedCampaignIds);
+   for(const c of result.campaigns)if(/^\d+$/.test(String(c.campaignId||''))){
+     candidates.set(String(c.campaignId),c);
+     if(!latestWindow.has(String(c.campaignId))||a>=latestWindow.get(String(c.campaignId))[0])latestWindow.set(String(c.campaignId),[a,b]);
+   }
    for(const c of matching)if(/^\d+$/.test(String(c.campaignId||''))){
      seen.set(String(c.campaignId),c);latestWindow.set(String(c.campaignId),[a,b]);
      if(syncMany){if(apiStoreOne(c,sku,a,b))records++}else if(matching.length===1){
@@ -839,7 +885,7 @@ async function apiLoadRange(syncMany=false){
   const matching=[...seen.values()];
   if(matching.length)observeApiStatus(sku,matching);
   if(!syncMany&&matching.length>1){
-    showApiCampaignPicker(matching,sku,start,end);
+    showApiCampaignPicker(matching,sku,start,end,{latestWindow});
     setApiStatus('✓ Foram encontradas '+matching.length+' campanhas para '+sku+'.\nEscolha o ID da campanha na lista abaixo e clique em “Usar campanha selecionada”. Não faremos soma de campanhas diferentes.','good');
     return;
   }
@@ -849,13 +895,18 @@ async function apiLoadRange(syncMany=false){
   }
   if(syncMany&&matching.length>1){
     // Show the latest observed campaign selection, while historical records remain separate.
-    showApiCampaignPicker(matching,sku,latestWindow.get(String(matching[0].campaignId))?.[0]||start,latestWindow.get(String(matching[0].campaignId))?.[1]||end);
+    showApiCampaignPicker(matching,sku,start,end,{latestWindow});
     setApiStatus('✓ Histórico de '+matching.length+' campanhas consultado em '+count+' blocos. '+records+' registros separados por ID foram salvos.\nEscolha um ID abaixo para visualizar seus indicadores individualmente.','good');
   }else if(syncMany&&matching.length===1){
     const c=matching[0],r=latestWindow.get(String(c.campaignId));
     apiFillCampaign(c,r[0],r[1]);
     setApiStatus('✓ Histórico consultado para a campanha '+c.campaignId+' em '+count+' blocos, com '+records+' registros salvos.\nA tela mostra apenas o último bloco; o histórico preserva os demais.','good');
-  }else if(matching.length===0){setApiStatus('Nenhuma campanha compatível com esse SKU ou nome no intervalo. Confira o vínculo entre o cadastro e o item ID Shopee.','error')}
+  }else if(matching.length===0&&candidates.size){
+    showApiCampaignPicker([...candidates.values()],sku,start,end,{unmatched:true,latestWindow});
+    setApiStatus('A API consultou '+candidates.size+' campanha(s) da loja, mas não encontrou vínculo automático com '+sku+'.\nPesquise pelo nome, ID ou item ID na lista abaixo. Confirme a campanha certa antes de vincular ao SKU; nenhuma campanha será alterada na Shopee.','error');
+  }else if(matching.length===0){
+    setApiStatus('A Shopee não retornou campanhas para esta conta neste período. Verifique a loja conectada e tente um intervalo maior. Nenhum vínculo foi criado.','error');
+  }
   if(syncMany){$('changeFilter').value=sku;$('apiHistoryFilter').value='ads';renderChangeHistory()}
  }catch(e){setApiStatus('Não foi possível concluir a leitura: '+String(e.message||e),'error')}
  finally{btn.disabled=false}
