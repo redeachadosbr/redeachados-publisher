@@ -1,6 +1,6 @@
 // Interface de otimização de um anúncio de kit já existente. Preparação nunca publica.
 const $=selector=>document.querySelector(selector);
-const USER_CONFIRMED_KIT_TARGETS=Object.freeze({'KIT-103006-CO6968126-TRC7085':'58271858695'});
+const USER_CONFIRMED_KIT_TARGETS=Object.freeze({'KIT-103006-CO6968126-TRC7085':'58271858695','KIT-CO9118905-TRC0031-TRC8361':'58221851707'});
 const KIT_STAGE_LABELS=[['video','Vídeo'],['technical','Ficha técnica'],['fiscal','Dados fiscais'],['variants','Variações']];
 export function initExistingKitOptimization({getContext,api,money,onMainSkuChange}){
  let target=null,busy=false,discountToken=null,discountLookupSeq=0,discountSearching=false,latestCampaigns=[];
