@@ -67,18 +67,70 @@ export function createKitExtensionController({
    else sessionStorage.removeItem(KIT_BRIDGE_SESSION_KEY);}catch{}
  };
  const ack=(nonce,slot,ok,error='')=>post({kind:'RA_SITE_UPLOAD_RESULT',nonce,slot,ok,error});
- const clearImageStall=()=>{if(imageStallTimer!==null){clearTimeout(imageStallTimer);imageStallTimer=null;}};
- // Confirmação de início da extensão não prova que o ChatGPT gerou uma imagem.
- // Avisa sem abortar automaticamente: imagens podem levar mais tempo para renderizar.
+ let imageWatchRevision=0,pickupBusy=false;
+ const clearImageStall=()=>{
+  imageWatchRevision++;
+  if(imageStallTimer!==null){clearTimeout(imageStallTimer);imageStallTimer=null;}
+ };
+ // Recuperação automática consulta a tarefa original na Ponte, sem RA_SITE_START
+ // e sem repetir qualquer prompt. A seleção manual fica como último recurso.
+ async function retryAutomaticImagePickup(nonce,slot){
+  if(pickupBusy||job?.nonce!==nonce||getImages().has(slot))return false;
+  pickupBusy=true;
+  const requestId=crypto.randomUUID(),kitSku=job.kitSku;
+  try{
+   const response=await new Promise(resolve=>{
+    const finish=value=>{clearTimeout(timer);window.removeEventListener('message',onReply);resolve(value);};
+    const timer=setTimeout(()=>finish({ok:false,error:'Consulta à Ponte expirou.'}),16000);
+    const onReply=event=>{
+     if(event.source!==window||event.origin!==location.origin||
+        event.data?.kind!=='RA_EXTENSION_CONTINUE_RESULT'||
+        event.data.requestId!==requestId)return;
+     finish(event.data);
+    };
+    window.addEventListener('message',onReply);
+    post({kind:'RA_SITE_CONTINUE',requestId,payload:{
+     sku:kitSku,itemId:'0',modelId:'0',
+     completed:[...getImages().keys()].filter(n=>Number.isInteger(n)&&n>=1&&n<=9),
+     prompts:getPrompts()
+    }});
+   });
+   if(job?.nonce!==nonce||getImages().has(slot))return false;
+   if(!response?.ok)return false;
+   if(String(response.nonce)!==nonce||Number(response.slot)!==slot){
+    feedback('A Ponte encontrou outra posição ou sessão. A recuperação automática não substituirá imagens de outro kit.','info');
+    return false;
+   }
+   post({kind:'RA_SITE_WAKE',nonce});
+   feedback('Ponte localizada na imagem '+pos(slot)+'/09. Solicitada nova busca do arquivo já gerado, sem repetir o prompt.','info');
+   return true;
+  }catch{return false;}
+  finally{pickupBusy=false;}
+ }
+ // Não encerrar após apenas 150 segundos: em horários de pico o ChatGPT
+ // pode demorar vários minutos. Checagens aos 4, 7 e 10 minutos, e só então
+ // oferecer a recuperação manual aos 13 minutos.
  const watchImage=slot=>{
   clearImageStall();
-  const nonce=job?.nonce;
-  if(!nonce)return;
-  imageStallTimer=setTimeout(()=>{
-   if(job?.nonce!==nonce)return;
-   feedback('A Ponte recebeu o pedido, mas nenhuma imagem nova foi importada para a posição '+
-    pos(slot)+'. Apenas abrir o ChatGPT NÃO inicia a geração. Confira se a extensão envia o prompt, anexa as referências, aciona a geração de imagem e devolve o arquivo. Use o modo manual se necessário.','error');
-  },150000);
+  const revision=imageWatchRevision,nonce=job?.nonce;
+  if(!nonce||getImages().has(slot))return;
+  let attempt=0;
+  const schedule=delay=>{
+   imageStallTimer=setTimeout(async()=>{
+    if(imageWatchRevision!==revision||job?.nonce!==nonce||getImages().has(slot))return;
+    if(attempt<3){
+     attempt++;
+     feedback('Aguardando o ChatGPT finalizar a imagem '+pos(slot)+
+      '/09. Conferindo automaticamente a Ponte (tentativa '+attempt+'/3), sem reenviar o prompt.','info');
+     await retryAutomaticImagePickup(nonce,slot);
+     if(imageWatchRevision!==revision||job?.nonce!==nonce||getImages().has(slot))return;
+     schedule(180000);
+     return;
+    }
+    feedback('A imagem '+pos(slot)+'/09 ainda não foi recebida após aguardar e tentar a recuperação automática. Se a Ponte mostrar várias imagens, selecione somente a fotografia GERADA (não a referência WeDrop). A recuperação manual continua disponível e as demais imagens estão preservadas.','error');
+   },delay);
+  };
+  schedule(240000);
  };
  function stop(reason='Geração interrompida.',{notice=true}={}){
   if(timeout){clearTimeout(timeout);timeout=null;}
