@@ -3158,15 +3158,15 @@ $('#kitStockImport')?.addEventListener('click',()=>void importKitStockCsv());
 $('#kitStockReload')?.addEventListener('click',()=>{categoriesLoaded=false;void categories(true);});
 $('#kitIdea')?.addEventListener('input',()=>{
  const idea=String($('#kitIdea').value||'').trim();
- $('#kitSuggest').lastChild.textContent=idea?' Encontrar SKUs e montar kit':' Pesquisar kits inteligentes';
+ $('#kitSuggest').lastChild.textContent=' Pesquisar kits inteligentes';
  if(suggestionContext?.idea!==idea)status(idea?
   'Ideia pronta. Clique em Encontrar SKUs e montar kit para consultar a WeDrop importada.':
   'Pesquisa por categoria pronta. Clique em Pesquisar kits inteligentes.','info');
 });
 $('#kitIdea')?.addEventListener('keydown',event=>{
- if(event.key==='Enter'){event.preventDefault();void search();}
+ if(event.key==='Enter'){event.preventDefault();void plusResearch({openChat:true});}
 });
-$('#kitSuggest')?.addEventListener('click',()=>void search());
+$('#kitSuggest')?.addEventListener('click',()=>void plusResearch({openChat:true}));
 $('#kitPlusDownloadCatalog')?.addEventListener('click',()=>{
  try{kitDownloadFullCatalog();}catch(error){kitPlusNotice(error.message,'error');}
 });
