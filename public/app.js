@@ -4391,7 +4391,7 @@ function optimizerExecutionTrackerRender(progress,job){
   recoverAction=document.createElement('button');
   recoverAction.type='button';
   recoverAction.className='secondary optimizer-exec-recover-stuck';
-  recoverAction.style.cssText='display:block;width:100%;margin:12px 0;padding:14px;font-weight:800;border:2px solid #f59e0b;border-radius:12px';
+  recoverAction.style.cssText='width:100%;margin:12px 0;padding:14px;font-weight:800;border:2px solid #f59e0b;border-radius:12px';
   recoverAction.textContent='↻ Conferir Shopee e retomar somente etapas pendentes';
   recoverAction.addEventListener('click',()=>$('#optimizerExecutionReconcile')?.click());
   tracker.appendChild(recoverAction);
