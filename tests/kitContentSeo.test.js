@@ -1,9 +1,10 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {scoreKitSeoTitle,parseKitSeoResponse,formatKitShopeeDescription} from '../public/kit-seo-helper.js';
+const validSeoTitle=text=>{const suffix=' para momento de brincadeira com opções de estímulo e interação';let out=text;while([...out].length<100)out+=suffix;return [...out].slice(0,120).join('').trim();};
 test('kit importa três títulos SEO distintos e uma descrição única',()=>{
  const titles=['Kit Elefante Musical e Chocalho Para Bebê 🎶','Kit Chocalho e Elefante Musical Brinquedos Para Bebê 🐘','🐘 Kit Brinquedo Musical Elefante com Chocalho para Diversão 🎶'];
- const content=titles.map((x,i)=>'TÍTULO '+(i+1)+': '+x).join('\n')+
+ const content=titles.map((x,i)=>'TÍTULO '+(i+1)+': '+validSeoTitle(x)).join('\n')+
   '\nDESCRIÇÃO:\n✨ Um conjunto infantil com elefante musical e chocalho.\n✅ BENEFÍCIOS\n• Diversão de brinquedos.\n💡 POR QUE COMPRAR\nDuas opções para brincar.\n📦 O QUE VAI NA EMBALAGEM\n• 1 elefante musical\n• 1 chocalho.';
  const parsed=parseKitSeoResponse(content);
  assert.equal(parsed.titles.length,3);
@@ -31,7 +32,7 @@ test('descrição de kit Shopee mantém apenas uma separação entre seções',(
   'TÍTULO 2: Brinquedos para Bebê Kit Chocalho e Elefante Musical',
   'TÍTULO 3: Kit Infantil Elefante com Música e Bola Chocalho'
  ];
- const imported=parseKitSeoResponse(titleLines.join('\n')+'\nDESCRIÇÃO:\n'+raw);
+ const imported=parseKitSeoResponse(titleLines.map(x=>x.replace(/^(TÍTULO \\d: )/,(_,p)=>p)+validSeoTitle(x.replace(/^TÍTULO \\d: /,''))).join('\n')+'\nDESCRIÇÃO:\n'+raw);
  assert.equal(imported.description,expected,'o importador compacta antes de salvar');
 });
 
@@ -41,7 +42,8 @@ test('cópia de bloco Escrita do ChatGPT com 3 títulos e descrição é importa
   '**TÍTULO 2:** Kit Infantil Sensorial Elefante e Torre com Bola Chocalho 🐘 ✨\n\n'+
   '**TÍTULO 3:** Kit Brinquedos para Bebê Elefante Musical e Torre com Chocalho 🎁 🐘\n\n'+
   '**DESCRIÇÃO:**\n\n✨ Kit com dois brinquedos para brincar.\n\n✅ BENEFÍCIOS\n• Elefante musical\n• Torre e bola chocalho\n\n💡 POR QUE COMPRAR\nDois componentes em um kit.\n\n📦 O QUE VAI NA EMBALAGEM\n1 de cada produto.';
- const parsed=parseKitSeoResponse(source);
+ const prepared=source.replace(/(\\*\\*TÍTULO [123]:\\*\\* )([^\\n]+)/g,(_,prefix,title)=>prefix+validSeoTitle(title));
+ const parsed=parseKitSeoResponse(prepared);
  assert.equal(parsed.titles.length,3);
  assert.match(parsed.description,/DOIS/i);
  assert.deepEqual(kitSeoRiskFlags('Kit para Bebê 12 Meses',[
