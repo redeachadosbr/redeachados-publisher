@@ -2,6 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import {KIT_BRIDGE_SESSION_KEY,kitBridgePayload,isKitBridgeEvent} from '../public/kit-extension-bridge.js';
+import {looksLikeKitReferenceMontage} from '../public/kit-cover-validation.js';
 test('kit gera os 9 prompts com referências visuais e protocolo da Ponte',()=>{
  const kit={kitSku:'KIT-278CHOCALHO-310200',components:[
   {sku:'310200',imageUrl:'https://wedrop.test/elefante.jpg'},
@@ -72,4 +73,25 @@ test('Manager permite recuperar geração de kit após atualização fechar o ru
  assert.match(runtime,/NO_RECOVERABLE_JOB/);
  assert.match(runtime,/resumeFromExtension\(\{nonce,sku:kit.kitSku,itemId:'0',modelId:'0'\}\)/);
  assert.match(runtime,/await waitReady\(\)/);
+});
+
+test('capa 01 não confunde montagem de referências WeDrop com foto gerada',()=>{
+ const w=96,h=96;
+ const pixels=new Uint8ClampedArray(w*h*4).fill(255);
+ // Três fotos originais em quadros separados por faixas brancas.
+ for(const [a,b] of [[5,27],[37,59],[69,91]]){
+  for(let y=24;y<75;y++)for(let x=a;x<=b;x++){
+   const p=(y*w+x)*4;pixels[p]=40;pixels[p+1]=75;pixels[p+2]=100;
+  }
+ }
+ assert.equal(looksLikeKitReferenceMontage(pixels,w,h,3),true);
+ // Fundo/cena contínua sem divisórias deve ser aceito.
+ for(let y=24;y<75;y++)for(let x=1;x<95;x++){
+  const p=(y*w+x)*4;pixels[p]=40;pixels[p+1]=75;pixels[p+2]=100;
+ }
+ assert.equal(looksLikeKitReferenceMontage(pixels,w,h,3),false);
+ const ui=fs.readFileSync(new URL('../public/kit-builder.js',import.meta.url),'utf8');
+ assert.match(ui,/validateKitCoverImage\(file,\{referenceDataUrl\}\)/);
+ assert.match(ui,/await kitStoredPhotoApproved\(row\)/);
+ assert.match(ui,/ATENÇÃO IMAGEM 01: as fotografias WeDrop anexadas são SOMENTE REFERÊNCIAS/);
 });
