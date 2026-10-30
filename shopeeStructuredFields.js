@@ -187,9 +187,18 @@ export function fieldsVerified(proposed,item){
  return Object.entries(proposed).every(([key,value])=>{
   if(key==='attribute_list')return value.every(x=>{
    const actual=list(item.attribute_list).find(y=>Number(y.attribute_id)===Number(x.attribute_id));
-   if(actual)return x.attribute_value_list?.every(v=>actual?.attribute_value_list?.some(w=>
-    Number(w.value_id)===Number(v.value_id)&&(Number(v.value_id)>0||String(w.original_value_name)===String(v.original_value_name))&&
-    String(w.value_unit||'')===String(v.value_unit||'')));
+   if(actual)return Array.isArray(x.attribute_value_list)&&x.attribute_value_list.every(v=>
+    list(actual.attribute_value_list).some(w=>{
+     // Shopee pode normalizar caixa, espaços, acentos ou omitir unidade no
+     // retorno. IDs de catálogo são a identidade; valores livres exigem texto.
+     const id=Number(v.value_id),liveId=Number(w.value_id);
+     if(!Number.isFinite(id)||id!==liveId)return false;
+     const canonical=text=>String(text??'').normalize('NFD')
+      .replace(/[\\u0300-\\u036f]/g,'').trim().replace(/\\s+/g,' ').toLowerCase();
+     const sameValue=id>0||canonical(w.original_value_name)===canonical(v.original_value_name);
+     const expectedUnit=canonical(v.value_unit),actualUnit=canonical(w.value_unit);
+     return sameValue&&(!expectedUnit||!actualUnit||expectedUnit===actualUnit);
+    }));
    return conditionAttributeVerified(x,item);
   });
   if(key==='tax_info')return Object.entries(value).every(([k,v])=>String(item.tax_info?.[k]??'')===String(v??''));
