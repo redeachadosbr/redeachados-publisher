@@ -3092,8 +3092,28 @@ function clearKitSearchSelection(){
  $('#kitSuggestions').replaceChildren(elt('p','', 'Configuração alterada. Pesquise novamente para recalcular sugestões desta categoria.'));
  $('#kitSource').textContent='Aguardando pesquisa com filtros atuais';
 }
-$('#kitCategory')?.addEventListener('change',clearKitSearchSelection);
-$('#kitSize')?.addEventListener('change',clearKitSearchSelection);
+let kitBriefPrefetchRevision=0;
+async function kitPrefetchCategoryBrief(){
+ const revision=++kitBriefPrefetchRevision,context=kitResearchContext();
+ if(!kitStockReady)return;
+ const node=$('#kitSource');
+ if(node)node.textContent='Separando SKUs disponíveis de '+context.category+'...';
+ try{
+  const r=await api('/api/shopee/kits/plus-brief',{body:context});
+  if(revision!==kitBriefPrefetchRevision)return;
+  kitChatPending={...context,nonce:crypto.randomUUID(),at:Date.now(),
+   candidateSkus:r.candidateSkus||[],requiresAttachment:Boolean(r.requiresAttachment)};
+  kitResearchCatalogContent=r.catalogFileContent||'';
+  sessionStorage.setItem(KIT_CHAT_SESSION_KEY,JSON.stringify(kitChatPending));
+  $('#kitResearchPrompt').value=r.prompt;
+  $('#kitPlusDownloadCatalog').hidden=!r.requiresAttachment;
+  if(node)node.textContent=r.candidatesCount+' SKUs WeDrop disponíveis · '+context.category+' · '+context.size+' por kit';
+ }catch(error){
+  if(revision===kitBriefPrefetchRevision&&node)node.textContent='Não foi possível preparar a categoria: '+error.message;
+ }
+}
+$('#kitCategory')?.addEventListener('change',()=>{clearKitSearchSelection();void kitPrefetchCategoryBrief();});
+$('#kitSize')?.addEventListener('change',()=>{clearKitSearchSelection();void kitPrefetchCategoryBrief();});
 $('#kitShipping')?.addEventListener('input',()=>{
  updateKitOverview();scheduleKitMarginReprice();
 });
