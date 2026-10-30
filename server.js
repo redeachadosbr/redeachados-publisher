@@ -1585,7 +1585,11 @@ app.post('/api/shopee/kits/optimization/prepare',mustLogin,requireWeDropAdmin,as
   const record=await auditShopeeItem(cfg,auth,callShopeeShopApi,itemId,{
    expectedSku:sku,expectedModelId:modelId
   });
-  assertKitListingComposition({kit,record});
+  // O anúncio de origem é um produto simples: sua descrição não contém ainda
+  // os componentes do kit que serão aplicados na otimização.
+  // auditShopeeItem já confirma Item ID, SKU exata e modelo ao vivo.
+  if(!['NORMAL','UNLIST'].includes(String(record.status||'').toUpperCase()))
+   throw Error('O anúncio de origem não está em situação editável confirmada na Shopee.');
   const link=validateKitOptimizationTarget({saved,kit,record,targetSku:sku,itemId,
    modelId,mainSku:body.mainSku,confirmedItemId:body.confirmedItemId});
   const prior=await getWorkflowReview(auth.shopId,itemId,modelId);
