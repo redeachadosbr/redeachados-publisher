@@ -98,15 +98,16 @@ test('importacao azul fica ao lado do gerador; instrucoes duplicadas foram remov
  assert.match(browser,/Ponte ChatGPT: localizando os 3 títulos/);
 });
 
-test('botão SEO mantém o ChatGPT aberto ao detectar falta de medidas',async()=>{
+test('botão SEO encaminha o prompt completo pela Ponte mesmo com dados ausentes',async()=>{
  const {readFileSync}=await import('node:fs');
  const browser=readFileSync(new URL('../public/kit-builder.js',import.meta.url),'utf8');
  const begin=browser.indexOf('async function plusText('),end=browser.indexOf('function kitShowSeoTitles(',begin);
  const fn=browser.slice(begin,end);
- assert.match(fn,/kitContentHandoff\(data\.prompt,tab\)/);
+ assert.match(fn,/kitContentHandoff\(data\.prompt\)/);
  assert.match(fn,/kitContentReadManual\(\)/);
  assert.doesNotMatch(fn,/tab\?\.close\(\)/);
- assert.match(browser,/window\.open\('https:\/\/chatgpt\.com\/',\s*'_blank'\)/);
+ assert.doesNotMatch(fn,/window\.open\(/);
+ assert.match(browser,/requestKitContent\(\{kitSku,prompt\}/);
 });
 test('prompt combinado cobre as três SKUs e dados separados por componente',async()=>{
  const {kitContentBrief}=await import('../shopeeKitBuilder.js');

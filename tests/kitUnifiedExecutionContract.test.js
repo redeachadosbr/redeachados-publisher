@@ -104,7 +104,7 @@ test('titulo e descricao do kit possuem botoes de conferencia ao lado dos textos
    assert.equal(html.split('id="'+id+'"').length-1,1);
  }
  assert.match(html,/\/app\.js\?v=3\.5\.18-per-sku-planned-promo/);
- assert.match(html,/\/kit-builder\.js\?v=3\.9\.11-planned-promo/);
+ assert.match(html,/\/kit-builder\.js\?v=3\.9\.12-kit-content-handoff/);
  assert.match(html,/\/kit-builder\.css\?v=3\.8\.10-kit-discount-tracker/);
  assert.match(app,/globalThis\.RAKitSourceChanged=optimizerKitSourceChanged/);
  assert.match(app,/function optimizerKitSourceConfirm\(stage\)/);
@@ -342,7 +342,7 @@ test('etapa 08 do kit permite previa de planejamento antes de executar o anuncio
  assert.match(html,/id="kitOptimizeDiscountApply" disabled/);
  assert.match(module,/kit-existing-optimization\.js\?v=10-planned-promo/);
  assert.match(html,/\/app\.js\?v=3\.5\.18-per-sku-planned-promo/);
- assert.match(html,/\/kit-builder\.js\?v=3\.9\.11-planned-promo/);
+ assert.match(html,/\/kit-builder\.js\?v=3\.9\.12-kit-content-handoff/);
  assert.match(html,/\/kit-builder\.css\?v=3\.8\.10-kit-discount-tracker/);
 });
 test('etapa 08 continua sem token de desconto se falta execucao confirmada',()=>{
