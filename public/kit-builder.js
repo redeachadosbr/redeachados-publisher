@@ -34,6 +34,36 @@ const kitPhotoStore=createKitPhotoStore();
 const kitVideoStore=createKitVideoStore();
 let kitBridgeController=null,kitRestoredSku='';
 let kitActiveDraftSku=null,kitDraftOpenRevision=0,kitDraftNeedsRefresh=false;
+const KIT_FACTS_STORAGE_PREFIX='ra-kits-facts-v2:';
+let kitFactsSaveTimer=null,kitFactsSaveSerial=0;
+function kitFactsStorageKey(kitSku){return KIT_FACTS_STORAGE_PREFIX+String(kitSku||'');}
+function kitReadLocalFacts(kitSku){
+ try{
+  const value=JSON.parse(localStorage.getItem(kitFactsStorageKey(kitSku))||'null');
+  return value&&value.kitSku===kitSku&&value.facts&&typeof value.facts==='object'&&!Array.isArray(value.facts)?value.facts:{};
+ }catch{return {};}
+}
+function kitPersistSkuFacts(){
+ if(!prepared?.kit?.kitSku)return;
+ const kitSku=prepared.kit.kitSku,allowed=new Set(prepared.kit.components.map(p=>String(p.sku)));
+ const facts=Object.fromEntries([...kitContentManualFacts].filter(([sku])=>allowed.has(String(sku)))
+  .map(([sku,value])=>[sku,String(value).slice(0,1700)]));
+ try{localStorage.setItem(kitFactsStorageKey(kitSku),JSON.stringify({kitSku,facts,at:Date.now()}));}
+ catch{kitContentFeedback('Não foi possível salvar localmente as informações por SKU. Verifique o armazenamento do navegador.','error');}
+ clearTimeout(kitFactsSaveTimer);
+ const serial=++kitFactsSaveSerial;
+ kitFactsSaveTimer=setTimeout(async()=>{
+  if(serial!==kitFactsSaveSerial||prepared?.kit?.kitSku!==kitSku)return;
+  try{
+   await api('/api/shopee/kits/drafts/manual-facts',{body:{kitSku,manualFacts:facts}});
+  }catch(error){
+   // Um kit novo, ainda sem rascunho salvo, mantém as fichas localmente até
+   // o primeiro salvamento completo. Não apagar informação digitada.
+   if(!/Rascunho ainda não salvo/i.test(String(error.message||'')))
+    kitContentFeedback('Informações preservadas neste navegador, mas a sincronização com o servidor falhou: '+error.message,'warning');
+  }
+ },850);
+}
 let kitContentSku='',kitContentManualFacts=new Map(),kitContentSeoTitles=[],
  kitContentAwaitingResponse=false,kitContentBusy=false;
 let kitContentReadyResult=null,kitContentRequest=null;
@@ -1761,7 +1791,7 @@ function renderKit({scroll=true,displayTitle=''}={}){
   kitContentRequest?.abort();
   kitContentReadyResult=null;
   kitContentSku=kit.kitSku;
-  kitContentManualFacts=new Map(Object.entries(creative?.manualFacts||{})
+  kitContentManualFacts=new Map(Object.entries({...creative?.manualFacts,...kitReadLocalFacts(kit.kitSku)})
    .filter(([sku,value])=>kit.components.some(p=>p.sku===sku)&&typeof value==='string'));
   kitContentSeoTitles=Array.isArray(creative?.seoTitles)&&creative.seoTitles.length===3?
    creative.seoTitles.map((title,i)=>({number:i+1,title})):[];
@@ -2554,7 +2584,7 @@ function kitContentShowMissing(rows=[],{scroll=false}={}){
    measurements.dataset.state=found.length?'found':'missing';
    kitContentManualFacts.set(sku,box.value);
    kitUpdateImageGuidance();
-   if(edited){kitSaved=false;clearKitPublishApproval();}
+   if(edited){kitSaved=false;clearKitPublishApproval();kitPersistSkuFacts();}
   };
   box.addEventListener('input',()=>refresh(true));
   const upload=elt('label','kit-sku-fact-print');
