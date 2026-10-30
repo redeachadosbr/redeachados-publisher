@@ -12,6 +12,28 @@ import {signDiscountPreview,verifyDiscountPreview,
 const locks=new Set(),validId=n=>/^[1-9]\d{0,17}$/.test(String(n))&&Number.isSafeInteger(Number(n));
 const goodEnd=x=>[0,9].includes(Math.round(Number(x)*100)%10);
 const money=x=>Math.round(Number(x)*100)/100;
+
+// A cotação dos Kits usa a política v5, distinta da cotação individual (v4).
+// Validar valores reais, não apenas a versão: nenhuma escrita é autorizada
+// quando a margem ou qualquer um dos dois finais 0/9 é inválido.
+export function validateKitDiscountQuote(quote){
+ if(!quote||quote.priceEndingRuleVersion!==5)
+  throw Error('Cotação do kit em versão incompatível com o motor de preços. Recalcule e salve o kit antes de preparar o desconto.');
+ const gross=money(quote.grossPrice),promo=money(quote.marketplacePrice),
+  afterCoupon=money(quote.afterCoupon);
+ if(!Number.isFinite(gross)||!Number.isFinite(promo)||!Number.isFinite(afterCoupon)||
+    !(gross>promo&&promo>0&&afterCoupon>0))
+  throw Error('Preço bruto ou desconto inválido. Recalcule os valores do kit e salve antes de preparar a prévia.');
+ if(!goodEnd(promo))
+  throw Error('O preço visível na Shopee não termina em 0 ou 9 centavos. Recalcule o preço do kit.');
+ if(!goodEnd(afterCoupon))
+  throw Error('O preço após cupom não termina em 0 ou 9 centavos. Recalcule o preço do kit.');
+ if(!Number.isFinite(Number(quote.netMarginPct))||
+    !Number.isFinite(Number(quote.targetMarginPct))||
+    Number(quote.netMarginPct)+0.001<Number(quote.targetMarginPct))
+  throw Error('A margem líquida do kit está abaixo da margem escolhida. Revise custos, taxas ou margem antes do desconto.');
+ return {gross,promo,afterCoupon};
+}
 async function context(cfg,auth,kitSku,discountId,{requireExecution=true}={}){
  if(!validId(discountId))throw Error('Informe o ID da Minha Promoção criada na Shopee.');
  const saved=await loadKitDraft(auth.shopId,kitSku);
@@ -39,12 +61,7 @@ async function context(cfg,auth,kitSku,discountId,{requireExecution=true}={}){
     Math.abs(kit.quote.grossPrice-Number(saved.kit?.quote?.grossPrice))>.011)
   throw Error('Custo ou preço mudou após publicação. Revise o Kit Formal antes de oferecer desconto.');
  const quote=kit.quote;
- const gross=money(quote.grossPrice),promo=money(quote.marketplacePrice),
-  afterCoupon=money(quote.afterCoupon);
- if(!(gross>promo&&promo>0&&afterCoupon>0&&goodEnd(promo)&&goodEnd(afterCoupon))||
-   quote.netMarginPct+0.001<quote.targetMarginPct||
-   quote.priceEndingRuleVersion!==4)
-  throw Error('Preço do kit não respeita margem e regra 0/9 na Shopee e após cupom.');
+ const {gross,promo,afterCoupon}=validateKitDiscountQuote(quote);
  const [liveResult,discount]=await Promise.all([
   callShopeeShopApi(cfg,{path:'/api/v2/product/get_item_base_info',
    accessToken:auth.accessToken,shopId:auth.shopId,query:{item_id_list:[itemId]}}),
