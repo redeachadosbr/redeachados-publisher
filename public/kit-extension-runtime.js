@@ -167,7 +167,7 @@ export function createKitExtensionController({
    return;
   }
   if(m.kind==='RA_EXTENSION_WAKE_RESULT'){
-   if(!m.ok)feedback('A Ponte não conseguiu retomar a geração: '+(m.error||'erro desconhecido'),'error');
+   if(!m.ok)feedback('Tentativa automática de retomada não confirmada pela Ponte: '+(m.error||'sem confirmação')+'. O sistema continuará aguardando antes de oferecer recuperação manual.','info');
    return;
   }
   if(m.kind==='RA_EXTENSION_PROGRESS'){
