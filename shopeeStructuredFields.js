@@ -194,7 +194,7 @@ export function fieldsVerified(proposed,item){
      const id=Number(v.value_id),liveId=Number(w.value_id);
      if(!Number.isFinite(id)||id!==liveId)return false;
      const canonical=text=>String(text??'').normalize('NFD')
-      .replace(/[\\u0300-\\u036f]/g,'').trim().replace(/\\s+/g,' ').toLowerCase();
+      .replace(/[\u0300-\u036f]/g,'').trim().replace(/\s+/g,' ').toLowerCase();
      const sameValue=id>0||canonical(w.original_value_name)===canonical(v.original_value_name);
      const expectedUnit=canonical(v.value_unit),actualUnit=canonical(w.value_unit);
      return sameValue&&(!expectedUnit||!actualUnit||expectedUnit===actualUnit);
