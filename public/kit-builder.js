@@ -2480,20 +2480,61 @@ function kitContentOpenTab(){
 }
 async function kitContentHandoff(prompt,tab=null){
  if(!prompt.trim())throw Error('Orientação vazia. Prepare o conteúdo novamente.');
- // A URL ?prompt= não é um contrato de preenchimento do ChatGPT.
- // Evitar prometer geração quando o navegador abre uma conversa vazia.
- let opened=false;
- if(tab&&!tab.closed){opened=true;}
- if(!opened)opened=Boolean(window.open('https://chatgpt.com/','_blank'));
- let copied=false;
- try{await navigator.clipboard.writeText(prompt);copied=true;}catch{}
+ const kitSku=prepared?.kit?.kitSku;
+ const components=prepared?.kit?.components||[];
+ const nonce=crypto.randomUUID();
+ const skus=components.map(p=>String(p.sku));
+ const products=components.map(p=>({sku:String(p.sku),name:String(p.name||'')}));
+ // Reutilizar a Ponte já instalada. Abertura de aba não prova envio.
  kitContentAwaitingResponse=true;
- $('#kitContentDetails').open=true;
- kitImportState(copied?'Orientação pronta e copiada · falta enviar no ChatGPT':
-  'Orientação pronta · copie nas opções avançadas','warning');
- kitContentFeedback(copied?
-  'O ChatGPT não aceita envio automático por link. Cole a orientação copiada no ChatGPT (Ctrl+V) e envie; depois importe a resposta. A geração NÃO foi iniciada automaticamente.':
-  'O navegador impediu copiar automaticamente. Clique em Copiar orientação completa nas opções avançadas, cole no ChatGPT e envie. Nenhuma geração foi iniciada.','warning');
+ kitImportState('Ponte ChatGPT: solicitando geração do anúncio…','info');
+ return new Promise((resolve,reject)=>{
+  let started=false,finished=false;
+  const finish=(error,response)=>{
+   if(finished)return;finished=true;
+   clearTimeout(timer);window.removeEventListener('message',handle);
+   if(error){$('#kitContentDetails').open=true;reject(error);}
+   else resolve(response);
+  };
+  const handle=event=>{
+   if(event.source!==window||event.origin!==location.origin)return;
+   const m=event.data||{};
+   if(m.kind==='RA_EXTENSION_READY'&&!started){
+    if(!kitBridgeVersionSupportsText(m.version))
+     return finish(Error('Ponte detectada, mas a versão não suporta anúncios de kits. Atualize a extensão.'));
+    started=true;
+    window.postMessage({kind:'RA_SITE_KIT_TEXT_START',payload:{
+     nonce,kitSku,skus,products,prompt
+    }},location.origin);
+    kitContentFeedback('Ponte conectada. Solicitação enviada à extensão; aguardando confirmação do ChatGPT.','info');
+    return;
+   }
+   if(m.nonce!==nonce)return;
+   if(m.kind==='RA_EXTENSION_KIT_TEXT_PROGRESS'){
+    kitImportState('Ponte ChatGPT: '+String(m.status||'Gerando anúncio').slice(0,180),'info');
+   }
+   if(m.kind==='RA_EXTENSION_KIT_TEXT_START_RESULT'){
+    if(m.ok!==true)return finish(Error('A Ponte não aceitou o início da geração: '+(m.error||'comando não reconhecido')+'.'));
+    kitImportState('Ponte confirmou início · aguardando os títulos e descrição','info');
+   }
+   if(m.kind==='RA_EXTENSION_KIT_TEXT_RESULT'){
+    if(m.kitSku!==kitSku||prepared?.kit?.kitSku!==kitSku)
+     return finish(Error('A resposta pertence a outro kit. Conteúdo preservado.'));
+    if(m.ok!==true||!m.rawText)return finish(Error(m.error||'Ponte não retornou títulos e descrição.'));
+    try{
+     parseKitSeoResponse(m.rawText);
+     $('#kitPlusTextResult').value=m.rawText;
+     if(!importPlusText())throw Error('A importação não foi concluída.');
+     finish(null,m);
+    }catch(e){finish(e);}
+   }
+  };
+  const timer=setTimeout(()=>finish(Error(started?
+   'A Ponte não confirmou a geração do kit. Verifique se a extensão instalada reconhece RA_SITE_KIT_TEXT_START. Nenhum conteúdo foi perdido.':
+   'A Ponte não respondeu à consulta de conexão. Verifique se está ativa no Chrome.')),30000);
+  window.addEventListener('message',handle);
+  window.postMessage({kind:'RA_EXTENSION_PROBE'},location.origin);
+ });
 }
 function kitContentReadManual(){
  const data={};
