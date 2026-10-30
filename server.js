@@ -34,7 +34,7 @@ import {kitCatalog,suggestKits,suggestKitsForIdea,rankKitIdeaProducts,assessKitB
 import {researchShopeeKitSeo} from './shopeeKitSeoResearch.js';
 import {saveKitStockImport,clearKitStockCache,parseWeDropAvailabilityCsv,readKitStockSnapshot} from './shopeeKitAvailability.js';
 import {saveKitDraft,saveKitDraftLogistics,listKitDrafts,loadKitDraft,deleteKitDraft,recordKitOptimization} from './shopeeKitDraftStore.js';
-import {validateKitOptimizationTarget,kitOptimizationLinkIsCurrent,linkedKitPricingCost} from './shopeeKitOptimization.js';
+import {validateKitOptimizationTarget,kitOptimizationLinkIsCurrent,linkedKitPricingCost,assertKitListingComposition} from './shopeeKitOptimization.js';
 import {recoverKitDraftForEditing,matchesStoredKitPhotos,validateStoredKitDraft} from './shopeeKitDraftRecovery.js';
 import {kitUploadPhoto,kitPublicationReadiness,kitPublicationPreview,kitPublishApproved,checkKitPublication,kitVideoPrepare,kitVideoAdvance,kitVideoStatus,kitVideoDiscard} from './shopeeKitPublicationService.js';
 import {previewKitDiscount,executeKitDiscount,inspectKitDiscountForExecution,validateKitDiscountMarketForExecution} from './shopeeKitDiscountService.js';
@@ -1584,6 +1584,7 @@ app.post('/api/shopee/kits/optimization/prepare',mustLogin,requireWeDropAdmin,as
   const record=await auditShopeeItem(cfg,auth,callShopeeShopApi,itemId,{
    expectedSku:sku,expectedModelId:modelId
   });
+  assertKitListingComposition({kit,record});
   const link=validateKitOptimizationTarget({saved,kit,record,targetSku:sku,itemId,
    modelId,mainSku:body.mainSku,confirmedItemId:body.confirmedItemId});
   const prior=await getWorkflowReview(auth.shopId,itemId,modelId);
@@ -1674,6 +1675,8 @@ async function checkedWorkflowAudit(req){
    const kit=await loadKitDraft(auth.shopId,linked.kitSku);
    if(!kitOptimizationLinkIsCurrent(kit,linked))
     throw Error('Kit, custos ou vínculo mudaram. Volte aos Kits e prepare novamente.');
+   // Mesmo um vínculo antigo precisa comprovar composição antes de executar.
+   assertKitListingComposition({kit:kit.kit,record});
   }
   return {itemId,modelId,sku,auth,cfg,record};
 }

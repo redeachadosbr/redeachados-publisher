@@ -2,6 +2,42 @@
 // Não cria anúncio, não envia mídia e não aprova etapas automaticamente.
 const str=x=>String(x??'').trim();
 const money=x=>Number(x);
+// Falhar com segurança: SKU principal pode ser reutilizada em vários anúncios.
+// Antes de preparar/executar, a ficha oficial do Item ID deve comprovar todos os
+// produtos do kit. Não usar somente o código SKU nem a confirmação do navegador.
+const normalizeKitTitle=x=>String(x??'').normalize('NFD').replace(/[\u0300-\u036f]/g,'')
+ .toLowerCase().replace(/[^a-z0-9]+/g,' ').replace(/\s+/g,' ').trim();
+const genericTerms=new Set(['kit','combo','conjunto','com','sem','de','da','do','das','dos',
+ 'para','em','e','a','o','um','uma','peca','pecas','unidade','unidades','produto',
+ 'produtos','br','inox','aco','vidro','infantil','bebe','original','premium']);
+const singularTerm=t=>t.length>=5&&t.endsWith('s')?t.slice(0,-1):t;
+const kitProductAnchor=name=>singularTerm(normalizeKitTitle(name).split(' ').find(t=>
+ t.length>=4&&!genericTerms.has(t)&&!/^[0-9]+$/.test(t))||'');
+function kitProductSizes(name){
+ const found=new Set();
+ for(const x of normalizeKitTitle(name).matchAll(/\b(\d{1,4})\s*(ml|cm|litros?)\b/g))
+  found.add(x[1]+(x[2].startsWith('litro')?'litro':x[2]));
+ return [...found];
+}
+export function assertKitListingComposition({kit,record}={}){
+ const parts=kit?.components||[],itemId=String(record?.itemId||record?.item_id||'');
+ const official=normalizeKitTitle((record?.title||record?.item_name||'')+' '+(record?.description||''));
+ if(!itemId||!Array.isArray(parts)||parts.length<2||parts.length>3||official.length<12)
+  throw Error('Item ID sem ficha oficial suficiente para comprovar o kit. Execução bloqueada.');
+ const terms=official.split(' '),compact=official.replace(/\s/g,''),missing=[];
+ for(const p of parts){
+  const anchor=kitProductAnchor(p.name);
+  if(!anchor||!terms.some(t=>singularTerm(t)===anchor)){
+   missing.push('SKU '+p.sku+' ('+(anchor||'nome não confirmado')+')');continue;
+  }
+  for(const size of kitProductSizes(p.name))
+   if(!compact.includes(size))missing.push('SKU '+p.sku+' (medida '+size+')');
+ }
+ if(missing.length)throw Error('BLOQUEIO DE SEGURANÇA: Item ID '+itemId+
+  ' não comprova a composição do kit '+String(kit?.kitSku||'')+': '+missing.join('; ')+
+  '. Não alterar título, imagens, descrição, preço ou desconto. Confirme na Shopee o Item ID do kit correto ou crie um Kit Formal com ID próprio.');
+ return {itemId,kitSku:String(kit.kitSku),componentSkus:parts.map(p=>String(p.sku))};
+}
 export function validateKitOptimizationTarget({saved,kit,record,targetSku,itemId,modelId,mainSku,confirmedItemId}){
  const parts=Array.isArray(saved?.skus)?saved.skus.map(str):[];
  if(!saved?.kit||!kit||parts.length<2||parts.length>3||

@@ -240,15 +240,15 @@ export function initExistingKitOptimization({getContext,api,money,onMainSkuChang
    }
    const choose=m=>{
     target={kitSku:current,sku:code,itemId:String(m.itemId),
-     modelId:String(m.modelId??'0'),prepared:false,autoVerified:automatic&&matches.length===1};
-    $('#kitOptimizeConfirm').checked=Boolean(target.autoVerified);
+     modelId:String(m.modelId??'0'),prepared:false,autoVerified:false};
+    $('#kitOptimizeConfirm').checked=false;
     $('#kitOptimizeSelected').textContent='Item ID '+m.itemId+' · SKU '+code;
     notice(target.autoVerified?'SKU principal e Item ID confirmados. Validando composição WeDrop...':
      'Anúncio da SKU principal localizado. Confirme o Item ID antes de otimizar.','success');
     globalThis.RAKitLookupPhase?.('Item ID '+m.itemId+' confirmado na consulta da Shopee.');
     paint();
    };
-   if(automatic&&matches.length===1){choose(matches[0]);return target;}
+   // Busca rápida não garante unicidade. Exigir escolha explícita pelo Item ID.
    $('#kitOptimizeAdvanced').open=true;
    for(const m of matches){
     const button=document.createElement('button');button.type='button';button.className='kit-secondary';
@@ -256,7 +256,7 @@ export function initExistingKitOptimization({getContext,api,money,onMainSkuChang
     button.addEventListener('click',()=>{if(kitSku()===current)choose(m);});
     root.append(button);
    }
-   notice('Encontrados '+matches.length+' anúncios da SKU principal. Selecione o Item ID correto.','warning');
+   notice('Encontrados '+matches.length+' possíveis anúncios desta SKU. Confira Item ID, título e os componentes completos. Não selecione anúncio individual ou kit com produtos diferentes.','warning');
    return null;
   }catch(e){
    if(seq!==lookupSerial)return null;
