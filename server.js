@@ -278,7 +278,20 @@ app.post('/api/shopee/kits/modify',mustLogin,requireWeDropAdmin,async(req,res)=>
   kit.businessReason=fit.ok?fit.reason:'REVISAR COMPOSIÇÃO: '+fit.reason;
   if(kit.reviewRequired)kit.warning+=' Atenção: '+kit.reviewNotes.join('; ')+'.';
   const creative=await kitCreative(auth.shopId,kit,{ai:false});
-  res.json({ok:true,kit,creative,requiresReview:true,marketplaceUpdated:false,
+  // Persistir antes de responder: caso a página recarregue, a composição
+  // substituída estará no banco. O rascunho anterior permanece como histórico.
+  const sourceSku=Array.isArray(req.body?.skus)?kitSku(req.body.skus.map(String)):null;
+  const sourceDraft=sourceSku?await loadKitDraft(auth.shopId,sourceSku):null;
+  const sourceStatus=String(sourceDraft?.publication?.status||'local_draft');
+  if(sourceDraft&&(sourceDraft.publication?.itemId||sourceStatus!=='local_draft'))
+   throw Error('Este kit possui publicação ou envio pendente. A composição não pode ser substituída.');
+  const previousFacts=sourceDraft?.creative?.manualFacts||{};
+  creative.manualFacts=Object.fromEntries(kit.components.map(p=>String(p.sku))
+   .filter(sku=>typeof previousFacts[sku]==='string').map(sku=>[sku,previousFacts[sku]]));
+  const saved=await saveKitDraft(auth.shopId,{kit,creative,
+   importBatchId:sourceDraft?.importBatchId||undefined});
+  if(!saved.saved)throw Error('O servidor não confirmou o salvamento da composição substituída.');
+  res.json({ok:true,kit,creative,draftSaved:true,requiresReview:true,marketplaceUpdated:false,
    shopeePublished:false,compositionChanged:true});
  }catch(error){res.status(400).json({error:String(error.message||error).slice(0,360)});}
 });
