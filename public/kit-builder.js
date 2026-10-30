@@ -1517,9 +1517,21 @@ async function loadDrafts({restoreCurrent=true}={}){
    if(!pic.children.length)pic.append(elt('span','','▧'));
    card.append(pic);
    const info=elt('div','kit-draft-description');
-   info.append(elt('span','kit-draft-state',draft.publication==='published'?'PUBLICADO NA SHOPEE':
-    draft.publication==='uncertain'?'PUBLICAÇÃO A CONFERIR':
-    draft.reviewRequired?'RASCUNHO — REVISAR COERÊNCIA':'RASCUNHO NÃO PUBLICADO'));
+   // Estado de kit otimizado é independente da criação de Kit Formal.
+   const optimizationLabel=draft.optimizedListingStatus==='verified'?
+    '✓ ANÚNCIO OTIMIZADO NA SHOPEE':
+    draft.optimizedListingStatus==='published_partial'?
+    '✓ ANÚNCIO PUBLICADO · FINALIZAÇÃO PENDENTE':
+    draft.optimizedListingStatus==='in_progress'?
+    '◷ OTIMIZAÇÃO EM ANDAMENTO · CONFERIR':
+    null;
+   info.append(elt('span','kit-draft-state',optimizationLabel||
+    (draft.publication==='published'?'PUBLICADO NA SHOPEE':
+     draft.publication==='uncertain'?'PUBLICAÇÃO A CONFERIR':
+     draft.reviewRequired?'RASCUNHO — REVISAR COERÊNCIA':'RASCUNHO NÃO PUBLICADO')));
+   if(optimizationLabel&&draft.itemId)
+    info.append(elt('small','','Item ID Shopee '+draft.itemId+
+     (draft.optimizedListingStatus==='published_partial'?' · Continuar dados fiscais e desconto':'')));
    info.append(elt('strong','',draft.title||draft.kitSku));
    info.append(elt('small','',draft.skus.join(' + ')+' · '+draft.skus.length+' unidades'));
    info.append(elt('small','',draft.updatedAt?'Atualizado '+new Date(draft.updatedAt).toLocaleString('pt-BR'):'Em revisão'));
