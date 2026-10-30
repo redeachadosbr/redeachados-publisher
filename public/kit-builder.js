@@ -2770,6 +2770,13 @@ async function kitImportCopiedContent(){
   $('#kitPlusTextResult').value=response.rawText;
   if(!importPlusText())throw Error('O sistema não conseguiu aplicar o anúncio recuperado.');
  }catch(error){
+  // Se a extensão rejeitar nomes/identificadores, permitir recuperar a resposta
+  // completa pela área de colagem sem substituir o conteúdo de outro kit.
+  const bridgeIdentityError=/Kit, nomes ou SKUs inválidos|nomes ou SKUs inv[aá]lidos/i.test(String(error.message||error));
+  if(bridgeIdentityError){
+   kitContentReadyResult=null;
+   kitContentAwaitingResponse=false;
+  }
   // Compatibilidade com a cópia do ChatGPT já disponível, sem abrir formulário manual.
   let recovered=false;
   try{
@@ -2784,7 +2791,13 @@ async function kitImportCopiedContent(){
    kitImportState('Recuperação automática não concluída · rascunho preservado','error');
    kitContentFeedback('Não consegui receber automaticamente os três títulos e a descrição: '+
     String(error.message||error)+'. O conteúdo existente não foi modificado.','error');
-   // NÃO abrir opções avançadas nem focar área de colagem: fluxo é via Ponte.
+   // Plano seguro de recuperação: o usuário pode colar a resposta completa
+   // do kit atual. O parser e a validação de SKU continuam obrigatórios.
+   if(bridgeIdentityError){
+    $('#kitContentDetails').open=true;
+    $('#kitPlusTextResult').focus();
+    kitContentFeedback('A Ponte recusou a identidade do kit. Cole aqui a resposta completa do ChatGPT (3 títulos + descrição) e importe. Nenhum texto antigo foi sobrescrito.','error');
+   }
   }
  }finally{button.disabled=false;}
 }
