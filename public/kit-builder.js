@@ -1940,6 +1940,7 @@ function renderKit({scroll=true,displayTitle=''}={}){
   kitImportState('Clique em Importar anúncio copiado do ChatGPT após copiar a resposta.','info');
  }
  $('#kitDetail').hidden=false;
+ if($('#kitWizardEmpty'))$('#kitWizardEmpty').hidden=true;
  $('#kitSkuTitle').textContent=String(displayTitle||creative?.title||
   kit.components.map(p=>p.name).join(' + ')).trim();
  $('#kitEditingSkuCode').textContent='Código do kit: '+kit.kitSku+
