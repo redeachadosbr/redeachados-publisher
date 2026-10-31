@@ -106,7 +106,7 @@ test('arquivo escolhido tem prioridade sobre importação automática da área d
  assert.match(app,/permission\.state!=='granted'\|\|kitChatFilePickerOpen\|\|kitChatManualImportActive/);
  assert.match(app,/const source=uploadedText!==null\?'arquivo':readClipboard\?'área de transferência':'campo de texto'/);
  const html=readFileSync(new URL('../public/index.html',import.meta.url),'utf8');
- assert.match(html,/kit-builder\.js\?v=3\.9\.19-kit-import-file-priority/);
+ assert.match(html,/<script type="module" src="\/kit-builder\.js\?v=[a-zA-Z0-9._-]+"><\/script>/);
 });
 
 test('importação TXT de três SKUs nunca reduz kit quando um código não existe na whitelist',()=>{
@@ -119,4 +119,31 @@ test('importação TXT preserva três SKUs quando os três constam no catálogo'
  const txt='TRC0359 + TRC0413 + TRC0895';
  const result=parseKitChatResult(txt,{allowedCodes:['TRC0359','TRC0413','TRC0895'],size:3,limit:20});
  assert.deepEqual(result.kits,[['TRC0359','TRC0413','TRC0895']]);
+});
+
+test('JSON de 10 kits com três SKUs é lido sem whitelist de categoria',async()=>{
+ const {readFileSync}=await import('node:fs');
+ const app=readFileSync(new URL('../public/kit-builder.js',import.meta.url),'utf8');
+ const start=app.indexOf('function kitParseUploadedJson(');
+ const end=app.indexOf('async function kitChatEnsureFreshResearch()',start);
+ assert.ok(start>0&&end>start);
+ const readJson=new Function(app.slice(start,end)+';return kitParseUploadedJson;')();
+ const codes=[
+  ['TRC6926','TRC6828','TRC1284'],
+  ['1.26088.80.0001','TRC6827','TRC1284'],
+  ['TRC6926','KTE022BCF','TRC6828'],
+  ['TRC6926','TRC0726','TRC6827'],
+  ['TRC6808','TRC0663','KTE022BCF'],
+  ['TRC6808','TRC0663','TRC0726'],
+  ['TRC1284','1549BL','TRC6828'],
+  ['TRC6926','1551CR','CT0142'],
+  ['TRC1284','621BL','TRC6827'],
+  ['TRC6926','TRC0663','TRC6828']
+ ];
+ const result=readJson(JSON.stringify({kits:codes.map(skus=>({skus}))}),20);
+ assert.equal(result.kits.length,10);
+ assert.equal(result.rejected,0);
+ assert.equal(result.size,3);
+ assert.deepEqual(result.kits,codes);
+ assert.match(app,/if\(!fileParsed\)kitCaptureResearchJson\(response,context,\{autoDownload:true\}\)/);
 });
