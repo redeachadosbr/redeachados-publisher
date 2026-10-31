@@ -399,7 +399,10 @@ test('etapa 05 usa o editor tecnico real da SKU principal',()=>{
    assert.equal(html.split('id="'+id+'"').length-1,1);
  }
  assert.ok(js.includes('technical.append(node)'));
- assert.ok(js.includes('normal.insertBefore(node,advanced||null)'));
+ assert.ok(js.includes('status.after(node)'));
+ assert.ok(js.includes('technical.append(advanced)'));
+ assert.ok(legacy.includes('openTechnicalTarget()'));
+ assert.ok(legacy.includes('technicalOnly:true'));
  assert.ok(js.includes('kitWizardRequestTechnical()'));
  assert.ok(js.includes('RAKitOpenTechnicalEditor'));
  assert.ok(app.includes("optimizerWorkflowOpen('technical')"));
