@@ -3,9 +3,9 @@ import {buildKitResearchJson} from './kit-json-export.js?v=1-json-before-import'
 import {scoreKitSeoTitle,parseKitSeoResponse,kitSeoRiskFlags,formatKitShopeeDescription} from './kit-seo-helper.js';
 import {requestKitContent} from './kit-content-handoff.js?v=1';
 import {requestKitResearch} from './kit-research-handoff.js?v=1';
-import {detectSkuMeasurements,skuMeasurementSummary,kitImageMeasurementsBySku} from './kit-measurements.js';
+import {detectSkuMeasurements,skuMeasurementSummary,kitImageMeasurementsBySku} from './kit-measurements.js?v=1.1.1-sku-dimension-images';
 import {kitImageFilenameSlot,kitImageNextSlot,kitPlanImageImports,kitMoveImage} from './kit-gallery-order.js';
-import {buildKitPlusImageBrief,kitPlusPromptLink} from './kit-plus-image-brief.js';
+import {buildKitPlusImageBrief,kitPlusPromptLink} from './kit-plus-image-brief.js?v=1.1.1-sku-dimension-images';
 import {createKitPhotoStore} from './kit-extension-bridge.js';
 import {createKitExtensionController} from './kit-extension-runtime.js?v=2-auto-retry-13min';
 import {parseKitLogisticsText} from './kit-logistics-parser.js?v=3-ocr-columns';
@@ -3461,9 +3461,20 @@ $('#kitGenerateAll')?.addEventListener('click',()=>void kitStartExtensionImages(
 $('#kitResumeExtension')?.addEventListener('click',()=>void kitResumeExtensionImages());
 $('#kitStopExtension')?.addEventListener('click',()=>kitStopKitExtension('Geração pausada por solicitação. Fotos já salvas preservadas.'));
 $('#kitPlusManualFallback')?.addEventListener('click',openChatGPTImages);
-$('#kitPlusCopyGeneratedPrompt')?.addEventListener('click',()=>void copy($('#kitPlusImagePrompt').value));
+$('#kitPlusCopyGeneratedPrompt')?.addEventListener('click',()=>{
+ if(!prepared)return;
+ kitContentReadManual();
+ try{
+  const latest=buildKitPlusImageBrief(prepared.kit,{
+   manualFacts:Object.fromEntries(kitContentManualFacts.entries())
+  });
+  $('#kitPlusImagePrompt').value=latest;
+  void copy(latest);
+ }catch(error){kitPlusGenerationStatus('Não foi possível atualizar medidas: '+error.message,'error');}
+});
 $('#kitPlusNextImagePrompt')?.addEventListener('click',()=>{
  if(!prepared)return;
+ kitContentReadManual();
  const next=kitImageNextSlot(images.keys());
  if(next===null)return kitPlusGenerationStatus('As nove imagens estão ocupadas. Revise a galeria.','success');
  const prompt=kitImagePromptAt(next)+'\n\nGERE AGORA A IMAGEM '+String(next).padStart(2,'0')+
