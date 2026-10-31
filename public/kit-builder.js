@@ -2559,7 +2559,22 @@ async function importPlusSuggestions({readClipboard=false,silent=false,uploadedT
    response=await navigator.clipboard.readText();
    if(kitChatFilePickerOpen||kitChatManualImportActive||kitChatQueuedManualImport)return false;
   }
-  const parsed=kitChatExtractLines(response,context.size,kitChatPending.candidateSkus,context.desiredKits);
+  // JSON de arquivo pode combinar categorias: a whitelist da pesquisa não
+  // é o catálogo completo. A API confere cada SKU, estoque e custo de fato.
+  let importCodes=kitChatPending.candidateSkus;
+  if(uploadedText!==null){
+   try{
+    const payload=JSON.parse(String(response).replace(/^\\uFEFF/,'').trim());
+    const candidates=Array.isArray(payload)?payload:payload?.kits;
+    if(Array.isArray(candidates)){
+     const codes=candidates.slice(0,20).flatMap(entry=>
+      Array.isArray(entry)?entry:Array.isArray(entry?.skus)?entry.skus:[]);
+     importCodes=[...new Set([...importCodes,...codes.filter(x=>
+      typeof x==='string'&&x.length>0&&x.length<=120)])];
+    }
+   }catch{}
+  }
+  const parsed=kitChatExtractLines(response,context.size,importCodes,context.desiredKits);
   const rows=parsed.kits;
   if(!rows.length){
    if(!silent)throw Error('Arquivo lido, mas nenhum kit de 2 ou 3 SKUs corresponde ao catálogo disponível da categoria selecionada. Verifique se a categoria está correta ou se o JSON contém códigos válidos.');
