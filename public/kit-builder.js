@@ -2562,11 +2562,17 @@ async function importPlusSuggestions({readClipboard=false,silent=false,uploadedT
   // JSON de arquivo pode combinar categorias: a whitelist da pesquisa não
   // é o catálogo completo. A API confere cada SKU, estoque e custo de fato.
   let importCodes=kitChatPending.candidateSkus;
+  let fileKitSize=context.size;
+  let fileKitCount=0;
   if(uploadedText!==null){
    try{
     const payload=JSON.parse(String(response).replace(/^\\uFEFF/,'').trim());
     const candidates=Array.isArray(payload)?payload:payload?.kits;
     if(Array.isArray(candidates)){
+     const sizes=candidates.map(entry=>Array.isArray(entry)?entry.length:Array.isArray(entry?.skus)?entry.skus.length:0);
+     const validSizes=[...new Set(sizes.filter(n=>n===2||n===3))];
+     if(validSizes.length===1&&sizes.every(n=>n===validSizes[0]))fileKitSize=validSizes[0];
+     fileKitCount=candidates.length;
      const codes=candidates.slice(0,20).flatMap(entry=>
       Array.isArray(entry)?entry:Array.isArray(entry?.skus)?entry.skus:[]);
      importCodes=[...new Set([...importCodes,...codes.filter(x=>
@@ -2574,10 +2580,10 @@ async function importPlusSuggestions({readClipboard=false,silent=false,uploadedT
     }
    }catch{}
   }
-  const parsed=kitChatExtractLines(response,context.size,importCodes,context.desiredKits);
+  const parsed=kitChatExtractLines(response,fileKitSize,importCodes,context.desiredKits);
   const rows=parsed.kits;
   if(!rows.length){
-   if(!silent)throw Error('Arquivo lido, mas nenhum kit de 2 ou 3 SKUs corresponde ao catálogo disponível da categoria selecionada. Verifique se a categoria está correta ou se o JSON contém códigos válidos.');
+   if(!silent)throw Error('Nenhum kit foi reconhecido. JSON: '+fileKitCount+' combinações encontradas; configuração: '+fileKitSize+' SKUs por kit; '+parsed.rejected+' combinações inválidas. Confira os códigos e se cada kit contém exatamente 2 ou 3 SKUs distintos.');
    return false;
   }
   // Ao colar ou importar a resposta, também preparar o arquivo para
@@ -2586,7 +2592,7 @@ async function importPlusSuggestions({readClipboard=false,silent=false,uploadedT
   kitPlusNotice('Importando '+rows.length+' kits do '+(parsed.format==='json'?'JSON':'texto')+
    '; validando custos, estoque e coerência na WeDrop...','info');
   const r=await api('/api/shopee/kits/plus-import',{body:{
-   ...context,kits:rows,...currentSettings()
+   ...context,size:fileKitSize,kits:rows,...currentSettings()
   }});
   renderKitImportReport(r,parsed.rejected);
   if(!Array.isArray(r.results)||!r.results.length){
