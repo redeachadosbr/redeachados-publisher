@@ -2524,6 +2524,13 @@ function renderKitImportReport(result,parserRejected=0){
  root.hidden=false;
 }
 async function importPlusSuggestions({readClipboard=false,silent=false,uploadedText=null}={}){
+ // Se houver arquivo selecionado, o botão de importar texto também deve
+ // priorizar esse arquivo: não interpretar uma resposta antiga e gigante
+ // que permaneceu no textarea depois de outra pesquisa.
+ if(!readClipboard&&uploadedText===null){
+  const selectedFile=$('#kitPlusFile')?.files?.[0];
+  if(selectedFile)return kitChatImportFile(selectedFile);
+ }
  // Importação explícita nunca depende apenas do indicador visual de estoque:
  // a API atualiza a disponibilidade e valida cada SKU novamente no servidor.
  // Nunca iniciar leitura do clipboard durante a seleção/importação de arquivo.
