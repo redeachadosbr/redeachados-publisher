@@ -342,7 +342,7 @@ test('wizard: dez etapas na ordem com informações por SKU antes das imagens',(
  assert.match(browser,/function kitWizardInit\(/);
  assert.match(browser,/function kitWizardSetStage\(/);
  assert.match(browser,/localStorage\.setItem\(kitWizardStorageKey/);
- assert.match(browser,/workspace\.querySelector\('\[data-stage="variants"\]'\)/);
+ assert.match(browser,/querySelector\('\[data-stage="variants"\]'\)/);
  for(let stage=1;stage<=10;stage++)
   assert.ok(css.includes('data-kit-wizard-step="'+stage+'"'),'Etapa '+stage+' sem regra de painel');
  assert.match(css,/#tab-kits #kitDetail\[data-kit-wizard-step="7"\]/);
@@ -370,23 +370,29 @@ test('layout: resumo do kit aberto acima das dez etapas e título exclusivo da e
  assert.match(css,/#tab-kits #kitDetail\[data-kit-wizard-step="6"\] #kitCopyContentPanel \.kit-copy-grid label:has\(#kitTitle\)/);
 });
 
-test('layout da ficha WeDrop isolada na etapa 01 e painel de otimização independente',()=>{
+test('layout da ficha WeDrop isolada na etapa 01 e motor legado oculto no wizard de 10 etapas',()=>{
  const html=fs.readFileSync(new URL('../public/index.html',import.meta.url),'utf8');
  const script=fs.readFileSync(new URL('../public/kit-builder.js',import.meta.url),'utf8');
  const css=fs.readFileSync(new URL('../public/kit-builder.css',import.meta.url),'utf8');
  assert.equal((html.match(/id="kitMissingFacts"/g)||[]).length,1);
  assert.equal((html.match(/id="kitOptimizeExistingPanel"/g)||[]).length,1);
- assert.equal((html.match(/id="kitWizardOptimizerToggle"/g)||[]).length,1);
- assert.ok(html.indexOf('id="kitWizardSteps"')<html.indexOf('id="kitWizardOptimizerToggle"'));
- assert.ok(html.indexOf('id="kitWizardOptimizerToggle"')<html.indexOf('id="kitWizardWork"'));
+ assert.equal((html.match(/id="kitWizardOptimizerToggle"/g)||[]).length,0,
+  'Navegação antiga não pode ser exibida nos kits');
+ assert.equal((html.match(/id="kitWizardOptimizerDock"/g)||[]).length,1,
+  'Motor original permanece montado e reutilizável');
+ assert.ok(html.indexOf('id="kitWizardSteps"')<html.indexOf('id="kitWizardOptimizerDock"'));
+ assert.ok(html.indexOf('id="kitWizardOptimizerDock"')<html.indexOf('id="kitWizardWork"'));
  assert.match(script,/function kitWizardSyncOptimizer\(/);
  assert.match(script,/dock\.append\(panel\)/);
  assert.match(script,/kitWizardStage===1\)\$\('#kitMissingFacts'\)\.open=true/);
- assert.match(script,/kitWizardToggleOptimizer\(\$\('#kitWizardOptimizerDock'\)\?\.hidden/);
+ assert.match(script,/function kitWizardMountTechnical\(/);
+ assert.match(script,/9:'#kitWizardDiscountMount'/);
+ assert.match(script,/function kitWizardMountPricing\(/);
  assert.match(css,/#tab-kits #kitDetail\[data-kit-wizard-step="1"\] > #kitMissingFacts/);
  assert.match(css,/#tab-kits #kitDetail\[data-kit-wizard-step="5"\] > #kitMissingFacts/);
  assert.match(css,/#tab-kits #kitWizardOptimizerDock\[hidden\]/);
- assert.match(css,/#tab-kits #kitWizardOptimizerToggle\[aria-expanded="true"\]/);
+ assert.match(css,/#tab-kits #kitWizardOptimizerDock,/);
+ assert.match(css,/#tab-kits #kitWizardDiscountMount/);
 });
 
 test('etapa 05 usa o editor tecnico real da SKU principal',()=>{
@@ -398,9 +404,9 @@ test('etapa 05 usa o editor tecnico real da SKU principal',()=>{
  for(const id of ['kitWizardTechnicalMount','optimizerTechnicalPanel','optimizerWorkflowEditor','kitOptimizerWorkspace']){
    assert.equal(html.split('id="'+id+'"').length-1,1);
  }
- assert.ok(js.includes('technical.append(node)'));
- assert.ok(js.includes('status.after(node)'));
- assert.ok(js.includes('technical.append(advanced)'));
+ assert.ok(js.includes('if(node.parentElement!==mount)mount.append(node)'));
+ assert.ok(js.includes('if(progress.parentElement!==mount)'));
+ assert.ok(js.includes('if(advanced.parentElement!==mount)mount.append(advanced)'));
  assert.ok(legacy.includes('openTechnicalTarget()'));
  assert.ok(legacy.includes('technicalOnly:true'));
  assert.ok(js.includes('kitWizardRequestTechnical()'));
