@@ -447,3 +447,28 @@ test('dados fiscais do kit: etapa 08 reutiliza presets locais sem Shopee',()=>{
  assert.doesNotMatch(helper,/api\/v2\/product|get_item_info|callShopeeShopApi/);
  assert.ok(css.includes('#kitWizardFiscalMount > #optimizerFiscalPanel'));
 });
+
+
+test('desconto do kit aparece apenas na etapa 09 das dez etapas, sem oito cartoes paralelos',()=>{
+ const html=fs.readFileSync(new URL('../public/index.html',import.meta.url),'utf8');
+ const wizard=fs.readFileSync(new URL('../public/kit-builder.js',import.meta.url),'utf8');
+ const app=fs.readFileSync(new URL('../public/app.js',import.meta.url),'utf8');
+ const existing=fs.readFileSync(new URL('../public/kit-existing-optimization.js',import.meta.url),'utf8');
+ const css=fs.readFileSync(new URL('../public/kit-builder.css',import.meta.url),'utf8');
+ for(const id of ['kitWizardDiscountAccess','kitWizardDiscountPricing','kitWizardDiscountMount',
+  'kitWizardRefreshDiscount','kitWizardExecutionMount','kitPricingSummary','kitOptimizeDiscountPreview'])
+  assert.equal(html.split('id="'+id+'"').length-1,1,'Controle deve existir uma unica vez: '+id);
+ assert.match(html,/data-kit-wizard-step="9"[\\s\\S]*?<strong>Desconto<\\/strong>/);
+ assert.match(html,/Etapa 09 · Conferir preço e desconto/);
+ assert.ok(!html.includes('id="kitWizardOptimizerToggle"'),'Nao exibir navegação antiga de oito etapas');
+ assert.match(wizard,/9:'#kitWizardDiscountMount'/);
+ assert.match(wizard,/function kitWizardMountPricing\\(/);
+ assert.match(wizard,/if\\(kitWizardStage===9\\)void kitWizardRequestDiscount\\(\\)/);
+ assert.match(wizard,/kitExistingOptimizer\\.openDiscount\\?\\.\\(\\)/);
+ assert.match(wizard,/function kitWizardRequestDiscount\\(/);
+ assert.match(existing,/return \\{restore,openTechnical,openDiscount\\}/);
+ assert.match(app,/function kitOptimizerDiscountMount\\(/);
+ assert.match(css,/#tab-kits #kitWizardDiscountMount #optimizerDiscountReviewInline/);
+ assert.match(css,/#tab-kits #kitWizardOptimizerDock,/);
+ assert.match(css,/#tab-kits #kitWizardExecutionMount #optimizerExecutionPanel/);
+});
