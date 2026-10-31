@@ -72,21 +72,21 @@ let kitContentSku='',kitContentManualFacts=new Map(),kitContentSeoTitles=[],
 let kitContentReadyResult=null,kitContentRequest=null;
 let kitCurrentMode='builder';
 
-const KIT_WIZARD_TITLES=['Imagens','Vídeo','Título','Ficha técnica','Descrição','Variações','Dados fiscais','Desconto','Execução na Shopee'];
+const KIT_WIZARD_TITLES=['Informações por SKU','Imagens','Vídeo','Título','Ficha técnica','Descrição','Variações','Dados fiscais','Desconto','Execução na Shopee'];
 let kitWizardStage=0;
 // v2: nova ordem exige separar checks da sequência anterior.
-const kitWizardStorageKey=sku=>'redeachados-kit-etapas-v2:'+String(sku||'');
+const kitWizardStorageKey=sku=>'redeachados-kit-etapas-v3:'+String(sku||'');
 function kitWizardChecked(){
  const sku=prepared?.kit?.kitSku;
  if(!sku)return [];
  try{
   const saved=JSON.parse(localStorage.getItem(kitWizardStorageKey(sku))||'[]');
-  return Array.isArray(saved)?[...new Set(saved.filter(n=>Number.isInteger(n)&&n>=1&&n<=9))]:[];
+  return Array.isArray(saved)?[...new Set(saved.filter(n=>Number.isInteger(n)&&n>=1&&n<=10))]:[];
  }catch{return [];}
 }
 function kitWizardUpdateProgress(){
  const checks=kitWizardChecked();
- const p=$('#kitWizardProgress');if(p)p.textContent=checks.length+'/9 conferidas';
+ const p=$('#kitWizardProgress');if(p)p.textContent=checks.length+'/10 conferidas';
  for(const btn of document.querySelectorAll('#kitWizardSteps [data-kit-wizard-step]')){
   const n=Number(btn.dataset.kitWizardStep),done=checks.includes(n);
   btn.classList.toggle('is-current',n===kitWizardStage);
@@ -106,13 +106,31 @@ function kitWizardSyncHeader(){
  if(original)wrapper.append(original);
  wrapper.hidden=editor.hidden||!prepared?.kit;
 }
+// Preservar o painel real de otimização Shopee fora das dez etapas.
+function kitWizardSyncOptimizer(){
+ const dock=$('#kitWizardOptimizerDock'),panel=$('#kitOptimizeExistingPanel');
+ if(dock&&panel&&panel.parentElement!==dock)dock.append(panel);
+ const toggle=$('#kitWizardOptimizerToggle');
+ if(toggle)toggle.disabled=!prepared?.kit;
+ if(!prepared?.kit&&dock&&!dock.hidden)kitWizardToggleOptimizer(false);
+}
+function kitWizardToggleOptimizer(expanded,{scroll=false}={}){
+ const dock=$('#kitWizardOptimizerDock'),button=$('#kitWizardOptimizerToggle');
+ if(!dock||!button)return;
+ const show=Boolean(expanded)&&Boolean(prepared?.kit);
+ dock.hidden=!show;
+ button.setAttribute('aria-expanded',String(show));
+ button.textContent=show?'▴ Ocultar “Preparar e revisar o kit”':'▾ Mostrar “Preparar e revisar o kit”';
+ if(show&&scroll)dock.scrollIntoView({behavior:'smooth',block:'start'});
+}
 function kitWizardSetStage(stage,{scroll=false}={}){
  const work=$('#kitWizardWork');
  if(!work)return;
  const n=Number(stage);
- kitWizardStage=Number.isInteger(n)&&n>=1&&n<=9?n:0;
+ kitWizardStage=Number.isInteger(n)&&n>=1&&n<=10?n:0;
  work.hidden=kitWizardStage===0;
  kitWizardSyncHeader();
+ kitWizardSyncOptimizer();
  const setup=$('#kitWizardSetup'),empty=$('#kitWizardEmpty'),editor=$('#kitDetail');
  // Configuração permanece acima do preço e desconto.
  if(setup)setup.hidden=true;
@@ -120,15 +138,16 @@ function kitWizardSetStage(stage,{scroll=false}={}){
  if(empty)empty.hidden=Boolean(prepared&&editor&&!editor.hidden);
  const title=$('#kitWizardStepTitle'),num=$('#kitWizardStepNumber');
  if(title)title.textContent=KIT_WIZARD_TITLES[kitWizardStage-1]||'Escolha uma etapa';
- if(num)num.textContent='ETAPA '+String(kitWizardStage).padStart(2,'0')+' DE 09';
+ if(num)num.textContent='ETAPA '+String(kitWizardStage).padStart(2,'0')+' DE 10';
  const context=$('#kitWizardContext');
  if(context)context.textContent=prepared?.kit?
   'Kit selecionado: '+(prepared.creative?.title||prepared.kit.components.map(p=>p.name).join(' + ')).slice(0,155):
-  'Escolha um kit nos rascunhos abaixo ou prepare uma combinação na etapa 01.';
- const variation=$('#kitWizardVariantsAccess');if(variation)variation.hidden=kitWizardStage!==6;
+  'Escolha um kit nos rascunhos abaixo para completar as informações dos produtos.';
+ const variation=$('#kitWizardVariantsAccess');if(variation)variation.hidden=kitWizardStage!==7;
+ const technical=$('#kitWizardTechnicalAccess');if(technical)technical.hidden=kitWizardStage!==5;
  // Ao abrir Variações, Ficha ou Fiscal, reutilizar a etapa REAL já carregada
  // no otimizador Shopee da SKU principal, sem cadastrar outra tela.
- const reusing={4:'technical',6:'variants',7:'fiscal'}[kitWizardStage];
+ const reusing={5:'technical',7:'variants',8:'fiscal'}[kitWizardStage];
  const workspace=$('#kitOptimizerWorkspace');
  if(reusing&&prepared&&workspace&&!workspace.hidden){
   const originalStage=workspace.querySelector('[data-stage="'+reusing+'"]');
@@ -136,20 +155,20 @@ function kitWizardSetStage(stage,{scroll=false}={}){
  }
  const previous=$('#kitWizardPrevious'),next=$('#kitWizardNext');
  if(previous)previous.disabled=kitWizardStage<=1;
- if(next){next.disabled=kitWizardStage===0||kitWizardStage===9;next.textContent=kitWizardStage===9?'Fim das 9 etapas':'Próxima etapa →';}
+ if(next){next.disabled=kitWizardStage===0||kitWizardStage===10;next.textContent=kitWizardStage===10?'Fim das 10 etapas':'Próxima etapa →';}
  if(prepared&&kitWizardStage>0){
-  if(kitWizardStage===3||kitWizardStage===5){
+  if(kitWizardStage===4||kitWizardStage===6){
    // A própria página da etapa abre automaticamente o formulário existente.
    kitSetCopyContentCollapsed(false);
    const heading=$('#kitDetail .kit-copy-collapse-heading');
    const label=heading?.querySelector('strong'),description=heading?.querySelector('small');
-   if(label)label.textContent=kitWizardStage===3?'Título SEO do kit':'Descrição do kit';
-   if(description)description.textContent=kitWizardStage===3?
+   if(label)label.textContent=kitWizardStage===4?'Título SEO do kit':'Descrição do kit';
+   if(description)description.textContent=kitWizardStage===4?
     'Edite o título, gere três opções SEO e importe o resultado do ChatGPT Plus.':
     'Edite a descrição comercial, confira e importe o texto do ChatGPT Plus.';
   }
-  if(kitWizardStage===1)kitSetImagesCollapsed(false);
-  if(kitWizardStage===4)$('#kitMissingFacts').open=true;
+  if(kitWizardStage===2)kitSetImagesCollapsed(false);
+  if(kitWizardStage===1)$('#kitMissingFacts').open=true;
  }
  kitWizardUpdateProgress();
  if(scroll&&kitWizardStage)work.scrollIntoView({behavior:'smooth',block:'start'});
@@ -158,10 +177,21 @@ function kitWizardInit(){
  const root=$('#kitWizard');if(!root||root.dataset.ready==='true')return;
  root.dataset.ready='true';
  kitWizardSyncHeader();
+ kitWizardSyncOptimizer();
+ $('#kitWizardOptimizerToggle')?.addEventListener('click',()=>{
+  kitWizardToggleOptimizer($('#kitWizardOptimizerDock')?.hidden,{scroll:true});
+ });
+ $('#kitWizardOpenTechnical')?.addEventListener('click',()=>{
+  kitWizardToggleOptimizer(true,{scroll:true});
+  const workspace=$('#kitOptimizerWorkspace');
+  const technical=workspace&&!workspace.hidden?workspace.querySelector('[data-stage="technical"]'):null;
+  if(technical)technical.click();
+ });
  // Configuração e resumo continuam em sua posição original antes de #kitPricingSummary.
  for(const button of root.querySelectorAll('[data-kit-wizard-step]'))
   button.addEventListener('click',()=>kitWizardSetStage(Number(button.dataset.kitWizardStep),{scroll:true}));
  $('#kitWizardOpenVariations')?.addEventListener('click',()=>{
+  kitWizardToggleOptimizer(true);
   if(!prepared?.kit){status('Selecione um kit salvo para conferir as variações.','error');return;}
   const workspace=$('#kitOptimizerWorkspace');
   const btn=workspace&&!workspace.hidden?workspace.querySelector('[data-stage="variants"]'):null;
@@ -178,18 +208,18 @@ function kitWizardInit(){
    status('Para avançar, use "Marcar etapa conferida" depois de revisar esta página.','info');
    return;
   }
-  kitWizardSetStage(Math.min(9,kitWizardStage+1),{scroll:true});
+  kitWizardSetStage(Math.min(10,kitWizardStage+1),{scroll:true});
  });
  $('#kitWizardConfirm')?.addEventListener('click',()=>{
   if(!prepared?.kit?.kitSku){status('Selecione um kit salvo para registrar a conferência.','error');return;}
-  if(kitWizardStage===3&&!String($('#kitTitle')?.value||'').trim()){
-   status('Informe e revise o título SEO antes de confirmar a etapa 01.','error');return;
+  if(kitWizardStage===4&&!String($('#kitTitle')?.value||'').trim()){
+   status('Informe e revise o título SEO antes de confirmar a etapa 02.','error');return;
   }
-  if(kitWizardStage===5&&!String($('#kitDescription')?.value||'').trim()){
-   status('Informe e revise a descrição antes de confirmar a etapa 05.','error');return;
+  if(kitWizardStage===6&&!String($('#kitDescription')?.value||'').trim()){
+   status('Informe e revise a descrição antes de confirmar a etapa 06.','error');return;
   }
-  if(kitWizardStage===1&&images.size!==9){
-   status('Confira e importe as 9 imagens do kit antes de confirmar a etapa 03.','error');return;
+  if(kitWizardStage===2&&images.size!==9){
+   status('Confira e importe as 9 imagens do kit antes de confirmar a etapa 04.','error');return;
   }
   const checks=new Set(kitWizardChecked());
   if(checks.has(kitWizardStage))checks.delete(kitWizardStage);else checks.add(kitWizardStage);
@@ -1978,6 +2008,7 @@ function renderKit({scroll=true,displayTitle=''}={}){
  }
  $('#kitDetail').hidden=false;
  kitWizardSyncHeader();
+ kitWizardSyncOptimizer();
  if($('#kitWizardEmpty'))$('#kitWizardEmpty').hidden=true;
  $('#kitSkuTitle').textContent=String(displayTitle||creative?.title||
   kit.components.map(p=>p.name).join(' + ')).trim();
@@ -3372,7 +3403,7 @@ globalThis.__RA_KIT_RECOVER_CONTEXT=async identity=>{
    }
   }
   if(count){renderImageSlots();kitAutoImageUi();}
-  const completed=[...images.keys()].filter(n=>Number.isInteger(n)&&n>=1&&n<=9).sort((a,b)=>a-b);
+  const completed=[...images.keys()].filter(n=>Number.isInteger(n)&&n>=1&&n<=10).sort((a,b)=>a-b);
   const prompts=Array.from({length:9},(_,i)=>kitImagePromptAt(i+1));
   if(prompts.some(p=>typeof p!=='string'||p.length<40))
    throw Error('Faltam prompts específicos deste kit.');
