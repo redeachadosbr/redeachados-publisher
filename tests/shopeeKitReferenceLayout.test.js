@@ -176,7 +176,8 @@ test('editor do rascunho exibe fotos e indicadores do próprio kit e controles e
   assert.equal((section.match(new RegExp('id="'+id+'"','g'))||[]).length,1,id+' deve existir no editor');
  }
  assert.match(css,/#tab-kits #kitDetail\.kit-editor-reference/);
- assert.match(css,/#tab-kits #kitDetail \.kit-editor-summary/);
+ // O cabeçalho usa o mesmo elemento real, movido para acima das nove etapas.
+ assert.match(css,/#tab-kits :is\(#kitDetail,#kitWizardCurrentKit\) \.kit-editor-summary/);
  assert.match(css,/#tab-kits #kitDetail \.kit-manual-composition/);
  assert.match(js,/function refreshKitEditorOverview\(kit\)/);
  assert.match(js,/refreshKitEditorOverview\(kit\);/);
