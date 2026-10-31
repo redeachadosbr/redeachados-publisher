@@ -1,4 +1,4 @@
-import {kitImageMeasurementsBySku} from './kit-measurements.js';
+import {kitImageMeasurementsBySku} from './kit-measurements.js?v=1.1.1-sku-dimension-images';
 // Prompt curto do ChatGPT Plus para kit: uso em ?prompt= e na área de transferência.
 // NÃO utiliza API, não controla o chat externo, nem insere imagens no navegador.
 const clean=(s,max=500)=>String(s||'').replace(/<[^>]*>/g,' ').replace(/\s+/g,' ').trim().slice(0,max);
