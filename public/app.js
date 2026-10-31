@@ -3781,6 +3781,18 @@ async function optimizerKitSourceConfirm(stage){
 $('#kitReviewSeoButton')?.addEventListener?.('click',()=>void optimizerKitSourceConfirm('seo'));
 $('#kitReviewDescriptionButton')?.addEventListener?.('click',()=>void optimizerKitSourceConfirm('description'));
 
+// Expor a ficha técnica ORIGINAL ao assistente de dez etapas dos kits.
+// A função só abre o formulário depois da auditoria do Item ID escolhido.
+// Nunca aplica alterações nem cria outro editor/segunda cópia dos atributos.
+globalThis.RAKitOpenTechnicalEditor=({kitSku,sku}={})=>{
+ const w=optimizerWorkflowPlan;
+ if(!optimizerKitWorkflowActive()||!w||String(w.kitOptimization?.kitSku)!==String(kitSku||'')||
+    String(w.sku)!==String(sku||''))return false;
+ if(!w.stages?.some(stage=>stage.key==='technical'))return false;
+ optimizerWorkflowOpen('technical');
+ return Boolean($('#optimizerWorkflowEditor')&&!$('#optimizerWorkflowEditor').hidden&&
+  $('#optimizerTechnicalPanel')&&!$('#optimizerTechnicalPanel').hidden);
+};
 function optimizerWorkflowOpen(key){
  optimizerContentRemember();
  globalThis.ShopeeFiscalStudio?.close?.();
