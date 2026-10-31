@@ -321,3 +321,24 @@ test('texto do kit reúne descrições e medidas sem inventar dados para SKU fal
  assert.match(brief.prompt,/NÃO verificad/);
  assert.throws(()=>kitContentBrief({kitSku:'KIT-1-2',components:[{sku:'1'},{sku:'2'}]},{manualFacts:{'3':'invasão'}}),/não pertence/);
 });
+
+test('wizard: oito páginas exclusivas abaixo da pesquisa e rascunhos no final',()=>{
+ const html=fs.readFileSync(new URL('../public/index.html',import.meta.url),'utf8');
+ const browser=fs.readFileSync(new URL('../public/kit-builder.js',import.meta.url),'utf8');
+ const css=fs.readFileSync(new URL('../public/kit-builder.css',import.meta.url),'utf8');
+ assert.equal((html.match(/data-kit-wizard-step="[1-8]"/g)||[]).length,8);
+ assert.ok(html.indexOf('id="kitResearchDetails"')<html.indexOf('id="kitWizard"'));
+ assert.ok(html.indexOf('id="kitWizard"')<html.indexOf('id="kitDraftList"'));
+ for(const id of ['kitWizardWork','kitWizardEditorMount','kitWizardSetup','kitWizardConfirm','kitWizardNext','kitWizardPrevious','kitWizardProgress'])
+  assert.match(html,new RegExp('id="'+id+'"'));
+ assert.match(browser,/function kitWizardInit\(/);
+ assert.match(browser,/function kitWizardSetStage\(/);
+ assert.match(browser,/function kitWizardUpdateProgress\(/);
+ assert.match(browser,/kitWizardInit\(\);/);
+ assert.match(browser,/kitWizardEditorMount/);
+ assert.match(browser,/localStorage\.setItem\(kitWizardStorageKey/);
+ assert.match(browser,/Não houve publicação automática/);
+ for(let stage=1;stage<=8;stage++)
+  assert.ok(css.includes('data-kit-wizard-step="'+stage+'"'),'Etapa '+stage+' escondida separadamente');
+ assert.match(css,/#tab-kits #kitWizardSteps/);
+});
