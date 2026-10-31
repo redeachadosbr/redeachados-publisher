@@ -675,22 +675,19 @@ app.post('/api/shopee/kits/plus-import',mustLogin,requireWeDropAdmin,async(req,r
      packing:Number(req.body?.packing||0),
      shipping:Number(req.body?.shipping||0)
     });
-    if(!kit.components.every(p=>categoryMatches(p.category,category))){
-     // A pesquisa de brinquedos também inclui acessórios úteis à rotina do bebê.
-     const hasToy=kit.components.some(p=>categoryMatches(p.category,category));
-     const complementary=assessKitBuyerFit(kit.components);
-     if(!hasToy||!complementary.ok||!complementary.reason.includes('cuidados de higiene'))
-      throw Error('Uma ou mais SKUs estão fora da categoria e não complementam o kit.');
-    }
+    // Combinações entre categorias são válidas para kits de venda cruzada.
+    // composeKit já verifica existência, custo e disponibilidade no catálogo.
+    // Sinalizar a mistura para revisão, sem descartar SKUs reais.
+    const mixedCategories=!kit.components.every(p=>categoryMatches(p.category,category));
     // A ideia direciona a pesquisa, mas não autoriza resultados irrelevantes.
     if(idea&&!rankKitIdeaProducts(idea,kit.components).products.length)
      throw Error('Produtos sem correspondência com a ideia informada.');
     const fit=assessKitBuyerFit(kit.components);
     // Coerência subjetiva é pendência de revisão, não motivo de rejeição.
     // SKU real, estoque, custo e categoria permanecem verificações obrigatórias.
-    const reviewRequired=fit.reviewRequired===true||!fit.ok;
+    const reviewRequired=mixedCategories||fit.reviewRequired===true||!fit.ok;
     kit.reviewRequired=reviewRequired;
-    kit.reviewNotes=reviewRequired?(fit.reviewNotes||[
+    kit.reviewNotes=reviewRequired?(mixedCategories?['Kit com produtos de categorias diferentes: revisar combinação comercial.',...(fit.reviewNotes||[])]:fit.reviewNotes||[
      'Coerência comercial ainda não comprovada: '+fit.reason,
      'Compatibilidade física não confirmada; verificar antes de publicar'
     ]):[];
