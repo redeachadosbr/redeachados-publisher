@@ -1069,7 +1069,11 @@
    </div>
   </div>
   <p id="kitPlusAutoStatus" role="status" aria-live="polite" class="kit-info kit-research-feedback">Clique em Abrir ChatGPT. Se o catálogo for grande, anexe o TXT baixado. Depois copie a resposta: o Manager tentará importar automaticamente, ou use as opções de importação abaixo.</p>
-  <div class="kit-research-prompt-panel">
+  <div class="kit-research-json-export" aria-live="polite">
+  <button type="button" class="kit-secondary" id="kitPlusDownloadJson" hidden>⬇ Baixar arquivo JSON gerado</button>
+  <p id="kitPlusJsonHint" class="kit-chat-file-status" role="status" hidden></p>
+ </div>
+ <div class="kit-research-prompt-panel">
    <details class="kit-research-prompt-details">
     <summary>Visualizar prompt preparado <span>Mostrar instruções completas</span></summary>
     <label for="kitResearchPrompt">Prompt de pesquisa (somente produtos verificados)</label>
@@ -2351,7 +2355,7 @@
 <script src="/technical-memory.js?v=1.0.1-live-sku-preload"></script>
 <script src="/technical-status.js?v=1.0.0-optional-coherence"></script>
 <script src="/app.js?v=3.5.19-technical-ptbr"></script>
-<script type="module" src="/kit-builder.js?v=3.9.14-kits-research-20-ponte"></script>
+<script type="module" src="/kit-builder.js?v=3.9.15-kits-json-download"></script>
 <link rel="stylesheet" href="/optimizer-variations.css?v=1.2.1-single-flow">
 <script src="/optimizer-variations.js?v=1.2.3-single-flow"></script>
 
