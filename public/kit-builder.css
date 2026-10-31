@@ -2904,6 +2904,9 @@
 #tab-kits #kitDetail[data-kit-wizard-step="4"] > #kitCopyContentPanel:not([hidden]){display:block!important}
 #tab-kits #kitDetail[data-kit-wizard-step="4"] #kitCopyContentPanel .kit-copy-grid label:has(#kitDescription){display:none!important}
 /* 05 — ficha técnica: acesso ao editor oficial, nunca o formulário bruto das SKUs. */
+#tab-kits #kitDetail[data-kit-wizard-step="5"] > #kitMissingFacts,
+#tab-kits #kitDetail[data-kit-wizard-step="7"] > #kitMissingFacts,
+#tab-kits #kitDetail[data-kit-wizard-step="9"] > #kitMissingFacts{display:none!important}
 /* 06 — descrição do anúncio, sem título SEO. */
 #tab-kits #kitDetail[data-kit-wizard-step="6"] > .kit-copy-collapse-toolbar{display:flex!important}
 #tab-kits #kitDetail[data-kit-wizard-step="6"] > #kitCopyContentPanel:not([hidden]){display:block!important}
