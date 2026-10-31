@@ -2359,8 +2359,6 @@ function kitChatExtractLines(raw,size,allowedCodes,targetCount=10){
  // A resposta pode ser JSON, tabela Markdown, texto integral, 2 ou 3 SKUs.
  // Cada código deve pertencer ao catálogo WeDrop selecionado.
  const parsed=parseKitChatResult(raw,{allowedCodes,limit:targetCount,size});
- parsed.rejected+=parsed.kits.filter(row=>row.length!==size).length;
- parsed.kits=parsed.kits.filter(row=>row.length===size);
  return parsed;
 }
 async function kitChatEnsureFreshResearch(){
@@ -2376,6 +2374,8 @@ async function kitChatEnsureFreshResearch(){
   kitChatPending={...context,at:Date.now(),nonce:crypto.randomUUID(),
    candidateSkus:response.candidateSkus||[],
    requiresAttachment:Boolean(response.requiresAttachment)};
+  kitResearchAutoPrompt=response.autoPrompt||null;
+  kitResearchCatalogContent=response.catalogFileContent||'';
   sessionStorage.setItem(KIT_CHAT_SESSION_KEY,JSON.stringify(kitChatPending));
   return context;
  }
@@ -2399,7 +2399,7 @@ async function kitChatImportFile(file){
 async function plusResearch({openChat=false}={}){
  if(!kitStockReady)return kitPlusNotice('Estoque WeDrop não conferido; atualize antes da pesquisa.','error');
  if(kitResearchRunning)return kitPlusNotice('Pesquisa já enviada pela Ponte; acompanhe esta execução antes de iniciar outra.','info');
- const btn=openChat?($('#kitPlusAutoStart')||$('#kitSuggest')):$('#kitPlusResearch');
+ const btn=openChat?$('#kitSuggest'):$('#kitPlusResearch';
  if(btn)btn.disabled=true;
  try{
   const context=kitResearchContext();
@@ -2517,7 +2517,7 @@ async function importPlusSuggestions({readClipboard=false,silent=false,uploadedT
   kitCloseInlineEditor();prepared=null;images.clear();
   resetKitPublication({saved:false});renderKitPricingSummary(null);
   kitChatPending=null;sessionStorage.removeItem(KIT_CHAT_SESSION_KEY);
-  kitResearchCatalogContent='';
+  kitResearchCatalogContent='';kitResearchAutoPrompt=null;
   $('#kitPlusDownloadCatalog').hidden=true;
   await loadDrafts({restoreCurrent:false});
   // Atualiza o resumo superior com preço e componentes do primeiro kit importado.
@@ -3219,6 +3219,7 @@ async function kitPrefetchCategoryBrief(){
   kitChatPending={...context,nonce:crypto.randomUUID(),at:Date.now(),
    candidateSkus:r.candidateSkus||[],requiresAttachment:Boolean(r.requiresAttachment)};
   kitResearchCatalogContent=r.catalogFileContent||'';
+  kitResearchAutoPrompt=r.autoPrompt||null;
   sessionStorage.setItem(KIT_CHAT_SESSION_KEY,JSON.stringify(kitChatPending));
   $('#kitResearchPrompt').value=r.prompt;
   $('#kitPlusDownloadCatalog').hidden=!r.requiresAttachment;
