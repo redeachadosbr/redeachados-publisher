@@ -68,7 +68,7 @@ test('Manager permite recuperar geração de kit após atualização fechar o ru
  const ui=fs.readFileSync(new URL('../public/kit-builder.js',import.meta.url),'utf8');
  const runtime=fs.readFileSync(new URL('../public/kit-extension-runtime.js',import.meta.url),'utf8');
  assert.match(html,/id="kitResumeExtension"/);
- assert.match(ui,/async function kitResumeExtensionImages\(\)/);
+ assert.match(ui,/async function kitResumeExtensionImages\(\{automatic=false\}=\{\}\)/);
  assert.match(ui,/await kitPhotoStore.list\(sku\)/);
  assert.match(ui,/getKitExtensionBridge\(\).resumeFromManager\(\)/);
  assert.match(runtime,/async function resumeFromManager\(\)/);
