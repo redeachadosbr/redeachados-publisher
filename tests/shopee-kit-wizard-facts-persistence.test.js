@@ -24,10 +24,23 @@ test('a referencia em memoria so avanca apos confirmacao do salvamento por SKU',
  assert.match(save,/prepared\.creative=\{\.\.\.prepared\.creative,manualFacts:\{\.\.\.facts\}\}/);
 });
 
-test('etapa 05 ainda usa ficha oficial da SKU principal e sincronizacao local',()=>{
+test('etapa 05 usa editor original sem depender da preparacao comercial do kit',()=>{
+ const existing=readFileSync(new URL('../public/kit-existing-optimization.js',import.meta.url),'utf8');
+ const app=readFileSync(new URL('../public/app.js',import.meta.url),'utf8');
+ const server=readFileSync(new URL('../server.js',import.meta.url),'utf8');
  assert.match(builder,/globalThis\.RAKitOpenTechnicalEditor\?\.\(\{kitSku:prepared\.kit\.kitSku,sku\}\)/);
  assert.match(builder,/const factsChanged=\[\.\.\.allowed\]\.some/);
  assert.match(builder,/if\(factsChanged\)\{/);
- assert.match(builder,/button\.click\(\)/);
- assert.match(html,/kit-builder\.js\?v=20261031-ficha-tecnica-facts-sync-v7/);
+ assert.match(builder,/const open=kitExistingOptimizer\.openTechnical/);
+ assert.doesNotMatch(builder.slice(builder.indexOf('async function kitWizardRequestTechnical'),builder.indexOf('globalThis.RAKitTechnicalRequested=')),/button\.click\(\)/);
+ assert.match(builder,/technical\.append\(advanced\)/);
+ assert.match(existing,/async function openTechnical\(\)/);
+ assert.match(existing,/technicalOnly:true/);
+ assert.match(existing,/return \{restore,openTechnical\}/);
+ assert.match(app,/technicalOnly=matchedTarget&&kitHandoff\?\.technicalOnly===true/);
+ assert.match(app,/optimizerWorkflowOpen\('technical'\)/);
+ assert.match(app,/RAKitTechnicalLoadReady\?\.\(/);
+ assert.match(server,/const requestedKitSku=String\(req\.query\.kit_sku\|\|''\)\.trim\(\)/);
+ assert.match(server,/requestedDraft\.creative\?\.manualFacts\?\.\[sku\]/);
+ assert.match(html,/kit-builder\.js\?v=20261031-ficha-tecnica-facts-sync-v8/);
 });
