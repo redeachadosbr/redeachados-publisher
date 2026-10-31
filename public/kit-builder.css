@@ -2882,3 +2882,55 @@
  #tab-kits #kitWizardSteps .kit-wizard-step-label small{font-size:9px}
  #tab-kits #kitWizardSteps .kit-wizard-step-check{width:17px;height:17px;line-height:16px}
 }
+
+
+/* KIT WIZARD V2 — nove etapas na ordem do anúncio; um formulário por vez.
+   Respeita os controles originais de mídia, logística, revisão e publicação. */
+#tab-kits #kitWizardSteps{grid-template-columns:repeat(3,minmax(0,1fr))}
+#tab-kits #kitWizardVariantsAccess[hidden]{display:none!important}
+#tab-kits #kitWizardVariantsAccess{background:#f5f9ff;border:1px solid #c8dbef;
+ border-radius:12px;margin-bottom:13px;padding:14px;color:#174069}
+#tab-kits #kitWizardVariantsAccess strong{display:block;font-weight:850;font-size:13px}
+#tab-kits #kitWizardVariantsAccess p{font-size:11px;line-height:1.5;margin:7px 0 12px}
+#tab-kits #kitWizardWork:not([hidden]) #kitDetail:not([hidden])[data-kit-wizard-step] > *{
+ display:none!important
+}
+/* 01 — Fotos originais, geração e galeria do kit */
+#tab-kits #kitDetail[data-kit-wizard-step="1"] > #kitImagesCollapseToolbar,
+#tab-kits #kitDetail[data-kit-wizard-step="1"] > #kitImagesContent{
+ display:block!important
+}
+/* 02 — Vídeo do kit: reutiliza o painel de vídeo da publicação. */
+#tab-kits #kitDetail[data-kit-wizard-step="2"] > #kitPublishPanel{display:block!important}
+#tab-kits #kitDetail[data-kit-wizard-step="2"] #kitPublishPanel > :not(.kit-formal-workspace),
+#tab-kits #kitDetail[data-kit-wizard-step="2"] #kitPublishPanel .kit-formal-workspace > :not(#kitVideoPanel){display:none!important}
+/* 03 — Título SEO, sem descrição misturada. */
+#tab-kits #kitDetail[data-kit-wizard-step="3"] > #kitCopyContentPanel{display:block!important}
+#tab-kits #kitDetail[data-kit-wizard-step="3"] #kitCopyContentPanel .kit-copy-grid label:has(#kitDescription){display:none!important}
+/* 04 — Ficha técnica e conferência original do otimizador. */
+#tab-kits #kitDetail[data-kit-wizard-step="4"] > #kitMissingFacts,
+#tab-kits #kitDetail[data-kit-wizard-step="4"] > #kitOptimizeExistingPanel{display:block!important}
+#tab-kits #kitDetail[data-kit-wizard-step="4"] #kitOptimizeExistingPanel > .kit-existing-discount{display:none!important}
+/* 05 — Descrição, sem título misturado. */
+#tab-kits #kitDetail[data-kit-wizard-step="5"] > #kitCopyContentPanel{display:block!important}
+#tab-kits #kitDetail[data-kit-wizard-step="5"] #kitCopyContentPanel .kit-copy-grid label:has(#kitTitle){display:none!important}
+/* 06 — Variações: mesmas funções da otimização existente da Shopee. */
+#tab-kits #kitDetail[data-kit-wizard-step="6"] > #kitOptimizeExistingPanel{display:block!important}
+#tab-kits #kitDetail[data-kit-wizard-step="6"] #kitOptimizeExistingPanel > :not(.kit-flow-start-bar):not(.kit-flow-status):not(#kitOptimizerWorkspace){display:none!important}
+/* 07 — Dados fiscais e logística. */
+#tab-kits #kitDetail[data-kit-wizard-step="7"] > #kitOptimizeExistingPanel,
+#tab-kits #kitDetail[data-kit-wizard-step="7"] > #kitPublishPanel{display:block!important}
+#tab-kits #kitDetail[data-kit-wizard-step="7"] #kitOptimizeExistingPanel > .kit-existing-discount{display:none!important}
+#tab-kits #kitDetail[data-kit-wizard-step="7"] #kitPublishPanel > :not(.kit-formal-workspace){display:none!important}
+#tab-kits #kitDetail[data-kit-wizard-step="7"] #kitPublishPanel .kit-formal-workspace > :not(.kit-formal-logistics-card):not(#kitLogisticsSmartImport){display:none!important}
+/* 08 — Preço bruto e desconto, somente preparação/autorização real. */
+#tab-kits #kitDetail[data-kit-wizard-step="8"] > #kitOptimizeExistingPanel{display:block!important}
+#tab-kits #kitDetail[data-kit-wizard-step="8"] #kitOptimizeExistingPanel > :not(.kit-existing-discount):not(.kit-flow-start-bar):not(.kit-flow-status){display:none!important}
+#tab-kits #kitDetail[data-kit-wizard-step="8"] #kitOptimizeExistingPanel > .kit-existing-discount{display:block!important}
+/* 09 — Execução / prévia final, nunca publicar ao marcar conferido. */
+#tab-kits #kitDetail[data-kit-wizard-step="9"] > #kitOptimizeExistingPanel,
+#tab-kits #kitDetail[data-kit-wizard-step="9"] > #kitPublishPanel{display:block!important}
+#tab-kits #kitDetail[data-kit-wizard-step="9"] #kitOptimizeExistingPanel > .kit-existing-discount{display:none!important}
+#tab-kits #kitDetail[data-kit-wizard-step="9"] #kitPublishPanel .kit-formal-workspace > #kitVideoPanel{display:none!important}
+@media(max-width:1100px){#tab-kits #kitWizardSteps{grid-template-columns:repeat(3,minmax(0,1fr))}}
+@media(max-width:680px){#tab-kits #kitWizardSteps{grid-template-columns:repeat(2,minmax(0,1fr))}}
