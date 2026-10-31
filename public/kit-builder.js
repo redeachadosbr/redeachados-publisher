@@ -131,13 +131,10 @@ function kitWizardTechnicalStatus(message,state='info'){
 }
 function kitWizardMountTechnical(){
  const node=$('#kitOptimizerWorkspace'),technical=$('#kitWizardTechnicalMount');
- const fiscal=$('#kitWizardFiscalMount');
  const normal=$('#kitOptimizeExistingPanel'),advanced=$('#kitOptimizeAdvanced');
- if(!node||!technical||!fiscal||!normal)return;
+ if(!node||!technical||!normal)return;
  if(kitWizardStage===5&&prepared?.kit&&!$('#kitDetail')?.hidden){
   if(node.parentElement!==technical)technical.append(node);
- }else if(kitWizardStage===8&&prepared?.kit&&!$('#kitDetail')?.hidden){
-  if(node.parentElement!==fiscal)fiscal.append(node);
  }else if(node.parentElement!==normal)normal.insertBefore(node,advanced||null);
 }
 function kitWizardTechnicalReady(){
@@ -188,55 +185,56 @@ globalThis.RAKitTechnicalLoadReady=({kitOptimization,sku}={})=>{
 };
 // Etapa 08 reutiliza a ficha FISCAL oficial do Motor Matriz para o Item ID
 // da SKU principal. Nunca duplica os campos, nem envia dados para a Shopee.
-let kitWizardFiscalLoadingFor='';
+// Restaurar os parâmetros fiscais já cadastrados no Motor Matriz/WeDrop.
+// Etapa 08 NÃO pesquisa SKU ou anúncio na Shopee.
+let kitWizardFiscalLoadingFor='',kitWizardFiscalPending=null;
 function kitWizardFiscalStatus(message,state='info'){
  const el=$('#kitWizardFiscalStatus');if(el){el.textContent=message;el.dataset.state=state;}
 }
-function kitWizardFiscalReady(){
- if(kitWizardStage!==8||!prepared?.kit)return false;
- const sku=$('#kitOptimizeMainSku')?.value||'';
- const opened=globalThis.RAKitOpenFiscalEditor?.({kitSku:prepared.kit.kitSku,sku})===true;
- if(opened){
-  kitWizardFiscalLoadingFor='';
-  kitWizardFiscalStatus('Dados fiscais da SKU principal '+sku+
-   ' carregados. Confira NCM, CEST quando aplicável, CST e demais campos; use os botões originais para salvar e revisar.','success');
+function kitWizardMountFiscalPreset(){
+ const panel=$('#optimizerFiscalPanel'),mount=$('#kitWizardFiscalMount');
+ const parent=$('#optimizerWorkflowEditor'),before=$('#optimizerVideoManualPanel');
+ if(!panel||!mount||!parent)return;
+ if(kitWizardStage===8&&prepared?.kit&&!$('#kitDetail')?.hidden){
+  if(panel.parentElement!==mount)mount.append(panel);
+  panel.hidden=false;
+ }else if(panel.parentElement!==parent){
+  parent.insertBefore(panel,before||null);
+  panel.hidden=true;
  }
- return opened;
 }
-function kitWizardRequestFiscal({force=false}={}){
+async function kitWizardRequestFiscal({force=false}={}){
  if(kitWizardStage!==8||!prepared?.kit)return;
- kitWizardMountTechnical();
- if(kitWizardFiscalReady())return;
+ kitWizardMountFiscalPreset();
  if(!kitSaved){
-  kitWizardFiscalStatus('Salve o rascunho do kit para consultar os dados fiscais da SKU principal.','warning');
+  kitWizardFiscalStatus('Este kit precisa estar salvo como rascunho para carregar os padrões fiscais locais.','warning');
   return;
  }
- const code=$('#kitOptimizeMainSku')?.value||'';
- if(!code||!prepared.kit.components.some(p=>p.sku===code)){
-  kitWizardFiscalStatus('Selecione uma SKU principal válida no painel “Preparar e revisar o kit”.','warning');
-  return;
- }
- const identity=prepared.kit.kitSku+'|'+code;
+ const kitSku=prepared.kit.kitSku;
+ const chosen=$('#kitOptimizeMainSku')?.value||prepared.kit.components?.[0]?.sku||'';
+ const sku=prepared.kit.components?.some(x=>x.sku===chosen)?chosen:prepared.kit.components?.[0]?.sku;
+ if(!sku){kitWizardFiscalStatus('Selecione uma SKU principal deste kit.','warning');return;}
+ const identity=kitSku+'|'+sku;
  if(!force&&kitWizardFiscalLoadingFor===identity)return;
- const button=$('#kitOptimizeStart');
- if(!button||button.disabled){
-  kitWizardFiscalStatus($('#kitOptimizeStatus')?.textContent||
-   'A consulta do anúncio fiscal não está disponível. Confira o vínculo da SKU principal e tente novamente.','warning');
-  return;
+ if(kitWizardFiscalPending===identity)return;
+ kitWizardFiscalPending=identity;
+ kitWizardFiscalStatus('Carregando os dados fiscais já salvos e o NCM do catálogo WeDrop. Sem consulta à Shopee.','info');
+ try{
+  const data=await api('/api/shopee/kits/fiscal-preset?kitSku='+encodeURIComponent(kitSku)+
+   '&sku='+encodeURIComponent(sku));
+  if(kitWizardStage!==8||prepared?.kit?.kitSku!==kitSku)return;
+  const success=globalThis.RAKitRenderStoredFiscal?.(data)===true;
+  if(!success)throw Error('O formulário fiscal original não está disponível na página.');
+  kitWizardFiscalLoadingFor=identity;
+  kitWizardFiscalStatus('Padrões fiscais recuperados do Motor Matriz e da WeDrop para '+sku+
+   '. Confira os campos e marque a etapa como conferida. Nenhum anúncio foi consultado ou alterado.','success');
+ }catch(error){
+  kitWizardFiscalLoadingFor='';
+  kitWizardFiscalStatus('Não foi possível recuperar os dados fiscais locais: '+String(error.message||error),'warning');
+ }finally{
+  if(kitWizardFiscalPending===identity)kitWizardFiscalPending=null;
  }
- kitWizardFiscalLoadingFor=identity;
- kitWizardFiscalStatus('Consultando a Shopee para carregar os campos fiscais da SKU principal '+code+
-  '. Nenhuma publicação será executada automaticamente.','info');
- button.click();
 }
-globalThis.RAKitFiscalRequested=kitSku=>
- kitWizardStage===8&&prepared?.kit?.kitSku===String(kitSku||'');
-globalThis.RAKitFiscalLoadReady=({kitOptimization,sku}={})=>{
- if(!globalThis.RAKitFiscalRequested?.(kitOptimization?.kitSku))return;
- if(String($('#kitOptimizeMainSku')?.value||'')!==String(sku||''))return;
- kitWizardMountTechnical();
- kitWizardFiscalReady();
-};
 function kitWizardSetStage(stage,{scroll=false}={}){
  const work=$('#kitWizardWork');
  if(!work)return;
@@ -289,9 +287,10 @@ function kitWizardSetStage(stage,{scroll=false}={}){
  }
  kitWizardUpdateProgress();
  kitWizardMountTechnical();
+ kitWizardMountFiscalPreset();
  if(kitWizardStage===5)kitWizardRequestTechnical();
  else kitWizardTechnicalLoadingFor='';
- if(kitWizardStage===8)kitWizardRequestFiscal();
+ if(kitWizardStage===8)void kitWizardRequestFiscal();
  else kitWizardFiscalLoadingFor='';
  if(scroll&&kitWizardStage)work.scrollIntoView({behavior:'smooth',block:'start'});
 }
@@ -311,7 +310,7 @@ function kitWizardInit(){
  });
  $('#kitWizardOpenFiscal')?.addEventListener('click',()=>{
   kitWizardFiscalLoadingFor='';
-  kitWizardRequestFiscal({force:true});
+  void kitWizardRequestFiscal({force:true});
  });
  // Configuração e resumo continuam em sua posição original antes de #kitPricingSummary.
  for(const button of root.querySelectorAll('[data-kit-wizard-step]'))
@@ -2136,6 +2135,7 @@ function renderKit({scroll=true,displayTitle=''}={}){
  kitWizardSyncHeader();
  kitWizardSyncOptimizer();
  kitWizardMountTechnical();
+ kitWizardMountFiscalPreset();
  if($('#kitWizardEmpty'))$('#kitWizardEmpty').hidden=true;
  $('#kitSkuTitle').textContent=String(displayTitle||creative?.title||
   kit.components.map(p=>p.name).join(' + ')).trim();
