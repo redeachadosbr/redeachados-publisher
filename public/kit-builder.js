@@ -3069,10 +3069,30 @@ async function kitRestoreImageGallery(kitSku){
   }
   if(count){renderImageSlots();kitAutoImageUi();
    kitExtensionStatus(count+' imagens antigas recuperadas deste kit. Revise todas antes de publicar.','success');}
+  kitScheduleAutomaticBridgeRecovery();
  }catch(error){kitRestoredSku='';kitExtensionStatus('Recuperação de fotos indisponível: '+error.message,'error');}
 }
-let kitManagerResumeBusy=false;
-async function kitResumeExtensionImages(){
+let kitManagerResumeBusy=false,kitAutoResumeLastAt=0,kitAutoResumeTimer=null;
+function kitScheduleAutomaticBridgeRecovery(){
+ if(!prepared?.kit||images.size>=9||document.visibilityState!=='visible')return;
+ const identity=getKitExtensionBridge().activeJob();
+ if(!identity||identity.kitSku!==prepared.kit.kitSku||kitManagerResumeBusy)return;
+ // Retomar ao voltar do ChatGPT; no máximo uma tentativa por 25 segundos.
+ // Nunca executar START ou reenviar prompt para não duplicar a imagem.
+ if(Date.now()-kitAutoResumeLastAt<25000)return;
+ kitAutoResumeLastAt=Date.now();
+ if(kitAutoResumeTimer)clearTimeout(kitAutoResumeTimer);
+ kitAutoResumeTimer=setTimeout(()=>{
+  kitAutoResumeTimer=null;
+  if(prepared?.kit?.kitSku===identity.kitSku&&images.size<9&&document.visibilityState==='visible')
+   void kitResumeExtensionImages({automatic:true});
+ },1100);
+}
+window.addEventListener('focus',kitScheduleAutomaticBridgeRecovery);
+document.addEventListener('visibilitychange',()=>{
+ if(document.visibilityState==='visible')kitScheduleAutomaticBridgeRecovery();
+});
+async function kitResumeExtensionImages({automatic=false}={}){
  if(!prepared?.kit){kitExtensionStatus('Abra um rascunho de kit para recuperar a Ponte.','error');return;}
  if(kitManagerResumeBusy)return;
  kitManagerResumeBusy=true;
@@ -3080,6 +3100,8 @@ async function kitResumeExtensionImages(){
  if(button){button.disabled=true;button.textContent='Recuperando sessão da Ponte...';}
  const sku=prepared.kit.kitSku;
  try{
+  kitContentReadManual();
+  if(automatic)kitExtensionStatus('Retomando a Ponte ao retornar ao Manager. Conferindo imagens já salvas antes de buscar a pendente…','info');
   // Recuperar a fonte local antes de reconciliar com a extensão, impedindo que
   // a posição 01 seja refeita após atualização/reinicialização do Chrome.
   const saved=await kitPhotoStore.list(sku);
