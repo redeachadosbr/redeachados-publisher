@@ -2642,7 +2642,7 @@ function optimizerKitDiscountReviewState(w){
  return {prepared:prepared||confirmed,confirmed};
 }
 function kitOptimizerDiscountMount(){
- const review=$('#optimizerDiscountReviewInline'),specific=$('#kitOptimizeExistingPanel .kit-existing-discount');
+ const review=$('#optimizerDiscountReviewInline'),specific=$('.kit-existing-discount');
  const generic=$('#optimizerExecDiscountFinal');
  if(!review||!specific||!generic)return false;
  if(!kitDiscountHome){kitDiscountHome=specific.parentNode;kitDiscountNext=specific.nextSibling;}
@@ -2651,7 +2651,7 @@ function kitOptimizerDiscountMount(){
  return true;
 }
 function kitOptimizerDiscountUnmount(){
- const specific=$('#kitOptimizeExistingPanel .kit-existing-discount'),generic=$('#optimizerExecDiscountFinal');
+ const specific=$('.kit-existing-discount'),generic=$('#optimizerExecDiscountFinal');
  if(specific){
   specific.hidden=true;
   if(kitDiscountHome&&specific.parentNode!==kitDiscountHome)
