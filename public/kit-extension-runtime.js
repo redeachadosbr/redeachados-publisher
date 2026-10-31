@@ -228,6 +228,14 @@ export function createKitExtensionController({
   const kit=getKit();
   if(!kit)throw Error('Abra o rascunho de kit antes de iniciar as nove imagens.');
   if(!await waitReady())throw Error('A extensão Rede Achados BR — Ponte ChatGPT v1.0.56+ não foi detectada. Ative a extensão e atualize esta página.');
+  // Após F5, busy recomeça false mas o nonce anterior continua salvo.
+  // Novo START faria a Ponte abandonar a imagem 08/09 já gerada.
+  if(job?.kitSku===kit.kitSku&&getImages().size<9){
+   feedback('Sessão anterior localizada. Recuperando apenas posições pendentes sem iniciar outro lote.','info');
+   return resumeFromManager();
+  }
+  if(job&&job.kitSku!==kit.kitSku)
+   throw Error('Existe outra sessão preservada. Abra o kit original e recupere-a antes de iniciar nova geração.');
   const other=localStorage.getItem('redeAchadosBridgeActiveV3');
   try{if(JSON.parse(other||'null')?.nonce)
    throw Error('Há geração de uma SKU individual na Ponte. Finalize ou pause esse trabalho primeiro.');}
