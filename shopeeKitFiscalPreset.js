@@ -23,12 +23,12 @@ async function storedKitTaxReview(shopId,sku){
    typeof x.review_state.tax==='object'&&fields.some(f=>raw(x.review_state.tax[f])));
  return {exact:exact?.review_state?.tax||null,template:template?.review_state?.tax||null};
 }
-export async function readKitFiscalPreset(shopId,kitSku){
+export async function readKitFiscalPreset(shopId,kitSku,requestedSku=''){
  const draft=await loadKitDraft(shopId,kitSku);
  if(!draft?.kit)throw Error('Abra um rascunho salvo antes de conferir os dados fiscais.');
  if(draft.publication?.status!=='local_draft'||draft.publication?.itemId)
   throw Error('Este kit já foi enviado. A conferência fiscal local não pode alterar a publicação.');
- const mainSku=raw(draft.optimization?.mainSku||
+ const mainSku=raw(requestedSku||draft.optimization?.mainSku||
   draft.optimization?.sku||draft.kit.components?.[0]?.sku||draft.skus?.[0]);
  if(!draft.skus.includes(mainSku))throw Error('A SKU principal não pertence a este kit.');
  const [supplier,reviews]=await Promise.all([
