@@ -49,3 +49,31 @@ export function skuMeasurementSummary(input){
  const parts=detectSkuMeasurements(input);
  return parts.length?parts.map(x=>x.value).join(' · '):'Nenhuma medida com unidade identificada';
 }
+
+/**
+ * Medidas para as imagens do KIT, sempre vinculadas à SKU de origem.
+ * A ficha do vendedor em "Informações por SKU" tem precedência para
+ * mostrar dimensões cadastradas, mas não recebe selo de verificação WeDrop.
+ * Não transferir medidas da embalagem ou de outro componente.
+ */
+export function kitImageMeasurementsBySku(components,manualFacts={}){
+ const parts=Array.isArray(components)?components:[];
+ const extra=manualFacts&&typeof manualFacts==='object'&&!Array.isArray(manualFacts)?manualFacts:{};
+ return parts.map((part,index)=>{
+  const sku=String(part.sku||'');
+  const manual=String(extra[sku]||'');
+  const catalog=String(part.dimensions||'').trim().slice(0,300);
+  const recorded=detectSkuMeasurements(manual);
+  const fromCatalog=detectSkuMeasurements(catalog).filter(x=>x.kind==='dimensions').map(x=>x.value);
+  // O campo formal do fornecedor também pode conter uma dimensão única ("20 cm").
+  if(!fromCatalog.length&&/^\d{1,4}(?:[.,]\d{1,2})?\s*(?:cm|mm|m)$/i.test(catalog))
+   fromCatalog.push(catalog);
+  const sellerDimensions=recorded.filter(x=>x.kind==='dimensions').map(x=>x.value);
+  const sellerOther=recorded.filter(x=>x.kind!=='dimensions').map(x=>x.value);
+  const dimensions=sellerDimensions.length?sellerDimensions:fromCatalog;
+  const source=sellerDimensions.length?'Informações por SKU (vendedor)':fromCatalog.length?'catálogo WeDrop':'não informado';
+  return {sku,name:String(part.name||'Produto').slice(0,120),index:index+1,
+   dimensions,source,sellerDimensions,catalogDimensions:fromCatalog,
+   other:sellerOther,hasDimensions:dimensions.length>0};
+ });
+}
