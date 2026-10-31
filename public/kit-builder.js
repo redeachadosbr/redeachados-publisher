@@ -2510,6 +2510,33 @@ async function importPlusSuggestions({readClipboard=false,silent=false,uploadedT
    const firstRejected=(r.rejected||[]).slice(0,2).map(x=>x.reason).join(' / ');
    throw Error('Nenhum dos '+rows.length+' kits passou na validação WeDrop. '+firstRejected);
   }
+  // Disponibilizar o JSON validado na próxima geração, sem alterar o contrato
+  // da API de importação nem a preparação existente dos rascunhos.
+  try{
+   let original={};
+   const source=String(response||'').trim();
+   const fenced=source.match(/```(?:json)?\s*([\s\S]*?)```/i);
+   const payload=JSON.parse(fenced?fenced[1]:source);
+   if(payload&&typeof payload==='object')original=payload;
+   const sourceKits=Array.isArray(original.kits)?original.kits:[];
+   const normalized=rows.map(skus=>{
+    const sourceKit=sourceKits.find(k=>Array.isArray(k?.skus)&&
+     k.skus.length===skus.length&&
+     k.skus.map(v=>String(v).trim().toUpperCase()).sort().join('|')===skus.slice().sort().join('|'));
+    return {skus, motivo:typeof sourceKit?.motivo==='string'?sourceKit.motivo:'',
+     fontes:Array.isArray(sourceKit?.fontes)?sourceKit.fontes.filter(x=>typeof x==='string'&&/^https?:\/\//i.test(x)):[]};
+   });
+   const safeCategory=String(context.category||'categoria').normalize('NFD')
+    .replace(/[\u0300-\u036f]/g,'').toLowerCase().replace(/[^a-z0-9]+/g,'-').replace(/^-|-$/g,'')||'categoria';
+   const filename='kits-'+safeCategory+'-'+context.size+'-skus.json';
+   const blob=new Blob([JSON.stringify({kits:normalized},null,2)],{type:'application/json;charset=utf-8'});
+   const url=URL.createObjectURL(blob);
+   downloadData(url,filename);
+   setTimeout(()=>URL.revokeObjectURL(url),30000);
+  }catch(error){
+   // A gravação de rascunhos concluída não pode ser desfeita por falha de download.
+   kitPlusNotice('Kits importados, mas o download JSON falhou: '+error.message,'warning');
+  }
   $('#kitPlusOutput').value=rows.map(x=>x.join(' | ')).join('\n');
   suggestionContext={category:context.category,size:context.size,idea:context.idea,source:r.source};suggestions=[];
   // Não duplicar os cartões do JSON importado; o lote aparece em Rascunhos.
