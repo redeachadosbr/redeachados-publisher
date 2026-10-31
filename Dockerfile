@@ -32,6 +32,7 @@ RUN node --test tests/kitImageMasterPrompt.test.js && node --test tests/kitGalle
 RUN node --check public/kit-logistics-parser.js && node --check public/kit-logistics-ocr.js && node --test tests/kitLogisticsSmartImport.test.js tests/kitFormalPremiumLayout.test.js
 RUN node --check public/kit-extension-runtime.js && node --check public/kit-extension-bridge.js && node --test tests/kitExtensionBridge.test.js
 RUN node --check shopeeKitStoredSourcePolicy.js && node --test tests/kitStoredSourcePolicy.test.js
+RUN node --check public/kit-research-handoff.js && node --test tests/kitResearchHandoff.test.js
 RUN node --check shopeeKitAvailability.js && node --check shopeeKitBuilder.js && node --check shopeeKitImages.js && node --check public/kit-chat-result-parser.js && node --check public/kit-builder.js && node --test tests/kitChatResultParser.test.js tests/kitThemeValidation.test.js tests/shopeeKitAvailability.test.js tests/shopeeKitBuilder.test.js tests/shopeeKitReferenceLayout.test.js
 RUN node --check shopeeKitLogisticsDraft.js && node --check public/kit-logistics-draft-ui.js && node --test tests/kitLogisticsPersistence.test.js
 RUN node --check public/kit-builder.js && node --test tests/kitPublicationGuide.test.js
