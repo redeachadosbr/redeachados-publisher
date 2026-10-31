@@ -27,7 +27,7 @@ RUN node --test tests/shopee-seo-reattach-sku.test.js && node --test tests/seoAu
 RUN node --check public/chatgptUploadQueue.js && node --test tests/shopee-chatgpt-delivery.test.js && node --test tests/shopee-chatgpt-auto-import-repair.test.js
 RUN node --check shopeeExecutionProgress.js && node --check public/app.js && node --test tests/shopee-real-progress-media-recovery.test.js && node --check shopeePricing.js && node --check shopeeDiscountPublish.js && node --test tests/shopee-303448-visible-coupon-ending.test.js && node --test tests/shopee-303448-live-readback-stage-progress.test.js && node --test tests/shopee-303448-readback-convergence.test.js && node --test tests/shopee-303448-condition-api-readback.test.js
 RUN node --check public/kit-seo-helper.js && node --check public/kit-content-handoff.js && node --test tests/kitContentSeo.test.js tests/kitContentHandoff.test.js
-RUN node --check public/kit-measurements.js && node --test tests/kitSkuMeasurements.test.js
+RUN node --check public/kit-measurements.js && node --check public/kit-plus-image-brief.js && node --test tests/kitSkuMeasurements.test.js tests/kitImageMeasurementsFromFacts.test.js
 RUN node --test tests/kitImageMasterPrompt.test.js && node --test tests/kitGalleryOrder.test.js && node --test tests/kitPlusImageBrief.test.js
 RUN node --check public/kit-logistics-parser.js && node --check public/kit-logistics-ocr.js && node --test tests/kitLogisticsSmartImport.test.js tests/kitFormalPremiumLayout.test.js
 RUN node --check public/kit-extension-runtime.js && node --check public/kit-extension-bridge.js && node --test tests/kitExtensionBridge.test.js
