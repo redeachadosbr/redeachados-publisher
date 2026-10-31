@@ -2946,6 +2946,26 @@
 #tab-kits #kitWizardTechnicalMount #optimizerTechnicalPanel:not([hidden]){display:block!important;
  width:100%;max-width:100%;min-width:0}
 
+/* Se a SKU ainda nao estiver vinculada, expor os controles originais
+   de busca e confirmacao do Item ID diretamente na etapa 05. */
+#tab-kits #kitWizardTechnicalMount > #kitOptimizeAdvanced{
+ display:block;max-width:100%;min-width:0;padding:10px 12px;margin:12px 0 0;
+ border:1px solid #d3e2f2;border-radius:10px;background:#fff;box-sizing:border-box;
+ color:#345878;font-size:12px}
+#tab-kits #kitWizardTechnicalMount > #kitOptimizeAdvanced summary{
+ cursor:pointer;font-weight:800;color:#164879}
+#tab-kits #kitWizardTechnicalMount > #kitOptimizeAdvanced .kit-actions{
+ display:flex;flex-wrap:wrap;gap:8px;margin:10px 0}
+#tab-kits #kitWizardTechnicalMount > #kitOptimizeAdvanced #kitOptimizeCandidates{
+ display:grid;gap:8px;margin:10px 0}
+#tab-kits #kitWizardTechnicalMount > #kitOptimizeAdvanced #kitOptimizeCandidates button{
+ width:100%;text-align:left;white-space:normal}
+#tab-kits #kitWizardTechnicalMount > #kitOptimizeAdvanced .kit-publish-fields{
+ display:grid;gap:8px;margin-top:10px}
+#tab-kits #kitWizardTechnicalMount > #kitOptimizeAdvanced input{
+ max-width:100%;box-sizing:border-box}
+
+
 
 /* Etapa 08 fiscal: exibir diretamente o MESMO formulário fiscal e as sugestões
    da Shopee/WeDrop, sem duplicar campos ou exibir o bloco de Kit Formal. */
