@@ -407,23 +407,28 @@ test('etapa 05 usa o editor tecnico real da SKU principal',()=>{
  assert.ok(css.includes('#kitWizardTechnicalMount #optimizerWorkflowEditor'));
 });
 
-test('dados fiscais do kit: etapa 08 monta formulário oficial da SKU principal',()=>{
+test('dados fiscais do kit: etapa 08 reutiliza presets locais sem Shopee',()=>{
  const html=fs.readFileSync(new URL('../public/index.html',import.meta.url),'utf8');
  const wizard=fs.readFileSync(new URL('../public/kit-builder.js',import.meta.url),'utf8');
  const app=fs.readFileSync(new URL('../public/app.js',import.meta.url),'utf8');
- const optimizer=fs.readFileSync(new URL('../public/kit-existing-optimization.js',import.meta.url),'utf8');
+ const server=fs.readFileSync(new URL('../server.js',import.meta.url),'utf8');
+ const helper=fs.readFileSync(new URL('../shopeeKitFiscalPreset.js',import.meta.url),'utf8');
  const css=fs.readFileSync(new URL('../public/kit-builder.css',import.meta.url),'utf8');
  for(const id of ['kitWizardFiscalAccess','kitWizardFiscalMount','kitWizardFiscalStatus',
-  'optimizerFiscalPanel','optimizerWorkflowEditor','kitOptimizerWorkspace']){
-  assert.equal(html.split('id="'+id+'"').length-1,1,'Sem duplicacao: '+id);
+  'optimizerFiscalPanel','optimizerFiscalFields']){
+  assert.equal(html.split('id="'+id+'"').length-1,1,'Formulário original único: '+id);
  }
- assert.ok(wizard.includes('kitWizardStage===8)kitWizardRequestFiscal()'));
- assert.ok(wizard.includes('globalThis.RAKitFiscalLoadReady='));
- assert.ok(wizard.includes("globalThis.RAKitOpenFiscalEditor?.("));
- assert.ok(wizard.includes('fiscal.append(node)'));
- assert.ok(app.includes('globalThis.RAKitOpenFiscalEditor='));
- assert.ok(app.includes("optimizerWorkflowOpen('fiscal')"));
- assert.ok(optimizer.includes('globalThis.RAKitFiscalLoadReady?.(data)'));
- assert.ok(css.includes('#kitWizardFiscalMount #optimizerFiscalPanel'));
- assert.ok(css.includes('#kitWizardWork #kitDetail[data-kit-wizard-step="8"] > #kitPublishPanel'));
+ assert.ok(wizard.includes('void kitWizardRequestFiscal()'));
+ assert.ok(wizard.includes('/api/shopee/kits/fiscal-preset?kitSku='));
+ assert.ok(wizard.includes('globalThis.RAKitRenderStoredFiscal?.(data)'));
+ assert.ok(wizard.includes('mount.append(panel)'));
+ const request=wizard.slice(wizard.indexOf('async function kitWizardRequestFiscal'),wizard.indexOf('function kitWizardSetStage'));
+ assert.doesNotMatch(request,/kitOptimizeStart|button\.click\(\)|RAKitOpenFiscalEditor/);
+ assert.ok(app.includes('globalThis.RAKitRenderStoredFiscal='));
+ assert.ok(app.includes('optimizerFiscalRender({...data,taxCurrent:{},readOnlyMarketplace:true})'));
+ assert.ok(server.includes("app.get('/api/shopee/kits/fiscal-preset'"));
+ assert.ok(helper.includes('readWeDropProduct(shopId,{sku:mainSku})'));
+ assert.ok(helper.includes('shopee_optimizer_workflow_reviews'));
+ assert.doesNotMatch(helper,/api\/v2\/product|get_item_info|callShopeeShopApi/);
+ assert.ok(css.includes('#kitWizardFiscalMount > #optimizerFiscalPanel'));
 });
