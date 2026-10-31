@@ -248,7 +248,7 @@ export function quoteShopeePrice({unitCost,settings={},marketAverage=null,margin
 }
 
 /**
- * Exclusivo para Kits WeDrop. O bruto começa em quatro vezes custo total,
+ * Exclusivo para Kits WeDrop. O bruto começa em três vezes o custo total,
  * e pode diminuir para respeitar o limite de desconto de 50%.
  * Busca valores reais de promoção e checkout terminados em 0/9.
  * Falha de modo seguro se margem, limite e finais forem incompatíveis.
@@ -261,7 +261,7 @@ export function quoteShopeeKitPrice({unitCost,settings={}}={}){
  const effectiveCost=cost+c.packing+c.shipping;
  const reference=quoteShopeePrice({unitCost:cost,settings:c,marginOverride:true});
  const referenceVisible=money(reference.marketplaceDisplayPrice);
- const initialGross=money(effectiveCost*4);
+ const initialGross=money(effectiveCost*3);
  // Se o desconto teórico excederia 50%, reduza a base do bruto.
  const grossCeiling=Math.min(initialGross,Math.max(referenceVisible,2*referenceVisible));
  const attractive=n=>attractiveCents.has(((n%100)+100)%100);
@@ -296,5 +296,5 @@ export function quoteShopeeKitPrice({unitCost,settings={}}={}){
   priceEndingRuleVersion:5,
   breakdown:{commission:f.commission,fixedFee:f.fixedFee,tax:f.tax,flash:f.flash,
    campaignDiscount:f.campaignDiscount,ads:f.ads},
-  grossMultiplier:4,maxDiscountPct:50};
+  grossMultiplier:3,maxDiscountPct:50};
 }
