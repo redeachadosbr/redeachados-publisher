@@ -1,5 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
+import * as fs from 'node:fs';
 import {categoryMatches,kitCatalog,kitSku,composeKit,suggestKits,rankKitIdeaProducts,suggestKitsForIdea,assessKitBuyerFit,kitCreative,kitPrompts,kitPlusResearchBrief,kitPlusContentPrompt} from '../shopeeKitBuilder.js';
 import {clearKitStockCache} from '../shopeeKitAvailability.js';
 
