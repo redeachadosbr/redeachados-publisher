@@ -968,6 +968,7 @@ app.post('/api/shopee/kits/refresh-catalog',mustLogin,requireWeDropAdmin,async(r
   const result=await wedropScheduler.check();
   if(result.running)return res.status(409).json({error:'Sincronização WeDrop já em andamento. Tente novamente após a conclusão.'});
   if(result.error)return res.status(502).json({error:'Falha ao atualizar feed WeDrop: '+result.error});
+  clearKitCatalogCache(auth.shopId);
   res.json({ok:true,refreshed:true,sourceRows:result.sourceRows||0,
    uniqueCosts:result.uniqueCosts||0,stockImported:Boolean(result.stockImported)});
  }catch(error){res.status(400).json({error:String(error.message||error).slice(0,300)});}
