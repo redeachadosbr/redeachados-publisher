@@ -3793,6 +3793,18 @@ globalThis.RAKitOpenTechnicalEditor=({kitSku,sku}={})=>{
  return Boolean($('#optimizerWorkflowEditor')&&!$('#optimizerWorkflowEditor').hidden&&
   $('#optimizerTechnicalPanel')&&!$('#optimizerTechnicalPanel').hidden);
 };
+// Etapa 08 dos kits utiliza o MESMO editor fiscal do Motor Matriz.
+// Apenas abre a revisão da SKU principal validada; nunca executa/publica.
+globalThis.RAKitOpenFiscalEditor=({kitSku,sku}={})=>{
+ const w=optimizerWorkflowPlan;
+ if(!optimizerKitWorkflowActive()||!w||
+    String(w.kitOptimization?.kitSku)!==String(kitSku||'')||
+    String(w.sku)!==String(sku||''))return false;
+ if(!w.stages?.some(stage=>stage.key==='fiscal'))return false;
+ optimizerWorkflowOpen('fiscal');
+ return Boolean($('#optimizerWorkflowEditor')&&!$('#optimizerWorkflowEditor').hidden&&
+   $('#optimizerFiscalPanel')&&!$('#optimizerFiscalPanel').hidden);
+};
 function optimizerWorkflowOpen(key){
  optimizerContentRemember();
  globalThis.ShopeeFiscalStudio?.close?.();
