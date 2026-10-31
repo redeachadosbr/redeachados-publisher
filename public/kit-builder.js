@@ -2399,7 +2399,7 @@ async function kitChatImportFile(file){
 async function plusResearch({openChat=false}={}){
  if(!kitStockReady)return kitPlusNotice('Estoque WeDrop não conferido; atualize antes da pesquisa.','error');
  if(kitResearchRunning)return kitPlusNotice('Pesquisa já enviada pela Ponte; acompanhe esta execução antes de iniciar outra.','info');
- const btn=openChat?$('#kitSuggest'):$('#kitPlusResearch';
+ const btn=openChat?$('#kitSuggest'):$('#kitPlusResearch');
  if(btn)btn.disabled=true;
  try{
   const context=kitResearchContext();
