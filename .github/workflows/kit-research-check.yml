@@ -10,6 +10,7 @@ on:
       - 'server.js'
       - 'tests/kitResearchHandoff.test.js'
       - 'tests/kitChatResultParser.test.js'
+      - 'tests/kitJsonExport.test.js'
       - 'tests/shopeeKitBuilder.test.js'
       - 'tests/kitUnifiedExecutionContract.test.js'
       - '.github/workflows/kit-research-check.yml'
@@ -33,7 +34,8 @@ jobs:
           node --check public/kit-research-handoff.js
           node --check public/kit-builder.js
           node --check public/kit-chat-result-parser.js
+          node --check public/kit-json-export.js
           node --check shopeeKitBuilder.js
           node --check server.js
       - name: Testes da Ponte e importação de kits
-        run: node --test tests/kitResearchHandoff.test.js tests/kitChatResultParser.test.js tests/kitThemeValidation.test.js tests/shopeeKitBuilder.test.js tests/shopeeKitReferenceLayout.test.js tests/kitUnifiedExecutionContract.test.js
+        run: node --test tests/kitResearchHandoff.test.js tests/kitChatResultParser.test.js tests/kitJsonExport.test.js tests/kitThemeValidation.test.js tests/shopeeKitBuilder.test.js tests/shopeeKitReferenceLayout.test.js tests/kitUnifiedExecutionContract.test.js
