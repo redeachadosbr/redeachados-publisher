@@ -46,6 +46,7 @@ import {narrativeTechnicalSuggestions,mergeNarrativeTechnicalFacts,technicalOpti
 import {readShopeeSourceEvidence,saveShopeeSourceText,importShopeeEvidenceImage,removeShopeeEvidenceImage,downloadShopeeEvidenceImages} from './shopeeSourceEvidence.js';
 import {extractSupplierScreenshotText,mergeExtractedPrints,withoutExtractedPrints} from './shopeeEvidenceVision.js';
 import {fiscalMatrixSource,technicalMatrixSource,assertShopeeSupplierBrand,isShopeeCestConfirmed,REDE_ACHADOS_MARKET_RULES} from './shopeeMatrixRules.js';
+import {readKitFiscalPreset} from './shopeeKitFiscalPreset.js';
 import {readWeDropSyncState,getStoredWeDropCostCount} from './wedropCosts.js';
 import {getSkuReview,searchSupplierSku,confirmSkuLink,undoSkuLink} from './wedropSkuReview.js';
 import {auditShopeeItem,validateSkuLookup} from './productOptimizer.js';
@@ -342,6 +343,19 @@ app.get('/api/shopee/kits/drafts',mustLogin,requireWeDropAdmin,async(req,res)=>{
   res.json({ok:true,...data});
  }
  catch(error){res.status(400).json({error:String(error.message||error).slice(0,260)});}
+});
+// Etapa 08 dos Kits — padrão fiscal LOCAL já salvo no Motor Matriz / WeDrop.
+// Não consulta a API Shopee; somente preenche o formulário para conferência.
+app.get('/api/shopee/kits/fiscal-preset',mustLogin,requireWeDropAdmin,async(req,res)=>{
+ res.setHeader('Cache-Control','no-store');
+ try{
+  const auth=await authStore.load();
+  if(!Number.isSafeInteger(Number(auth?.shopId))||Number(auth.shopId)<=0)
+   throw Error('Loja não vinculada.');
+  const code=String(req.query?.kitSku||'');
+  if(!/^KIT-[A-Z0-9-]{4,115}$/.test(code))throw Error('Kit inválido.');
+  res.json({ok:true,...await readKitFiscalPreset(auth.shopId,code)});
+ }catch(e){res.status(400).json({error:String(e.message||e).slice(0,260)});}
 });
 app.post('/api/shopee/kits/drafts/save',mustLogin,requireWeDropAdmin,async(req,res)=>{
  res.setHeader('Cache-Control','no-store');
