@@ -366,8 +366,10 @@ export function createKitExtensionController({
    return {ok:false,error:'Abra o mesmo kit no editor de rascunhos para recuperar a foto.'};
   if(!/^[a-z0-9_-]{12,90}$/i.test(nonce))
    return {ok:false,error:'Sessão da Ponte inválida; nenhum prompt foi reenviado.'};
-  if(job&&(job.nonce!==nonce||job.kitSku!==current.kitSku))
-   return {ok:false,error:'Existe outra sessão ativa. Confira o kit e a Ponte antes de retomar.'};
+  if(job&&job.kitSku!==current.kitSku)
+   return {ok:false,error:'Existe outro kit ativo. Abra a composição original antes de retomar.'};
+  // Nonce da aba pode estar antigo após F5. A Ponte precisa confirmar o
+  // identificador REAL via CONTINUE antes que o Manager substitua a sessão.
   const completed=[...getImages().keys()].filter(n=>Number.isInteger(n)&&n>=1&&n<=9)
    .sort((a,b)=>a-b);
   const prompts=getPrompts();
@@ -390,7 +392,8 @@ export function createKitExtensionController({
   });
   if(!continued?.ok||continued.nonce!==nonce)
    return {ok:false,error:String(continued?.error||'Sessão de kit não confirmada pela Ponte.').slice(0,320)};
-  if(!job)saveJob({nonce,kitSku:current.kitSku,itemId:'0',modelId:'0',createdAt:Date.now()});
+  if(!job||job.nonce!==nonce)
+   saveJob({nonce,kitSku:current.kitSku,itemId:'0',modelId:'0',createdAt:Date.now()});
   return wakeConfirmedSession({kitSku:current.kitSku,nonce,slot:Number(continued.slot)});
  }
  return {start,stop,adoptRunnerSession,resumeFromExtension,resumeFromManager,probe,ready:()=>ready,busy:()=>busy,version:()=>version,
