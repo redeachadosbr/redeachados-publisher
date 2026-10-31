@@ -98,12 +98,21 @@ function kitWizardUpdateProgress(){
  const action=$('#kitWizardConfirm');
  if(action){action.disabled=!prepared;action.textContent=checks.includes(kitWizardStage)?'✓ Etapa conferida · desfazer':'✓ Marcar etapa conferida';}
 }
+// Um único resumo real: o cabeçalho do editor é movido, nunca clonado.
+function kitWizardSyncHeader(){
+ const wrapper=$('#kitWizardCurrentKit'),editor=$('#kitDetail');
+ if(!wrapper||!editor)return;
+ const original=editor.querySelector(':scope > .kit-editor-top-panel');
+ if(original)wrapper.append(original);
+ wrapper.hidden=editor.hidden||!prepared?.kit;
+}
 function kitWizardSetStage(stage,{scroll=false}={}){
  const work=$('#kitWizardWork');
  if(!work)return;
  const n=Number(stage);
  kitWizardStage=Number.isInteger(n)&&n>=1&&n<=9?n:0;
  work.hidden=kitWizardStage===0;
+ kitWizardSyncHeader();
  const setup=$('#kitWizardSetup'),empty=$('#kitWizardEmpty'),editor=$('#kitDetail');
  // Configuração permanece acima do preço e desconto.
  if(setup)setup.hidden=true;
@@ -129,7 +138,16 @@ function kitWizardSetStage(stage,{scroll=false}={}){
  if(previous)previous.disabled=kitWizardStage<=1;
  if(next){next.disabled=kitWizardStage===0||kitWizardStage===9;next.textContent=kitWizardStage===9?'Fim das 9 etapas':'Próxima etapa →';}
  if(prepared&&kitWizardStage>0){
-  if(kitWizardStage===3||kitWizardStage===5)kitSetCopyContentCollapsed(false);
+  if(kitWizardStage===3||kitWizardStage===5){
+   // A própria página da etapa abre automaticamente o formulário existente.
+   kitSetCopyContentCollapsed(false);
+   const heading=$('#kitDetail .kit-copy-collapse-heading');
+   const label=heading?.querySelector('strong'),description=heading?.querySelector('small');
+   if(label)label.textContent=kitWizardStage===3?'Título SEO do kit':'Descrição do kit';
+   if(description)description.textContent=kitWizardStage===3?
+    'Edite o título, gere três opções SEO e importe o resultado do ChatGPT Plus.':
+    'Edite a descrição comercial, confira e importe o texto do ChatGPT Plus.';
+  }
   if(kitWizardStage===1)kitSetImagesCollapsed(false);
   if(kitWizardStage===4)$('#kitMissingFacts').open=true;
  }
@@ -139,6 +157,7 @@ function kitWizardSetStage(stage,{scroll=false}={}){
 function kitWizardInit(){
  const root=$('#kitWizard');if(!root||root.dataset.ready==='true')return;
  root.dataset.ready='true';
+ kitWizardSyncHeader();
  // Configuração e resumo continuam em sua posição original antes de #kitPricingSummary.
  for(const button of root.querySelectorAll('[data-kit-wizard-step]'))
   button.addEventListener('click',()=>kitWizardSetStage(Number(button.dataset.kitWizardStep),{scroll:true}));
@@ -1958,6 +1977,7 @@ function renderKit({scroll=true,displayTitle=''}={}){
   kitImportState('Clique em Importar anúncio copiado do ChatGPT após copiar a resposta.','info');
  }
  $('#kitDetail').hidden=false;
+ kitWizardSyncHeader();
  if($('#kitWizardEmpty'))$('#kitWizardEmpty').hidden=true;
  $('#kitSkuTitle').textContent=String(displayTitle||creative?.title||
   kit.components.map(p=>p.name).join(' + ')).trim();
