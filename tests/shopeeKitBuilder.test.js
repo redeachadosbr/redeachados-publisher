@@ -406,3 +406,24 @@ test('etapa 05 usa o editor tecnico real da SKU principal',()=>{
  assert.ok(legacy.includes('RAKitTechnicalLoadReady'));
  assert.ok(css.includes('#kitWizardTechnicalMount #optimizerWorkflowEditor'));
 });
+
+test('dados fiscais do kit: etapa 08 monta formulário oficial da SKU principal',()=>{
+ const html=fs.readFileSync(new URL('../public/index.html',import.meta.url),'utf8');
+ const wizard=fs.readFileSync(new URL('../public/kit-builder.js',import.meta.url),'utf8');
+ const app=fs.readFileSync(new URL('../public/app.js',import.meta.url),'utf8');
+ const optimizer=fs.readFileSync(new URL('../public/kit-existing-optimization.js',import.meta.url),'utf8');
+ const css=fs.readFileSync(new URL('../public/kit-builder.css',import.meta.url),'utf8');
+ for(const id of ['kitWizardFiscalAccess','kitWizardFiscalMount','kitWizardFiscalStatus',
+  'optimizerFiscalPanel','optimizerWorkflowEditor','kitOptimizerWorkspace']){
+  assert.equal(html.split('id="'+id+'"').length-1,1,'Sem duplicacao: '+id);
+ }
+ assert.ok(wizard.includes('kitWizardStage===8)kitWizardRequestFiscal()'));
+ assert.ok(wizard.includes('globalThis.RAKitFiscalLoadReady='));
+ assert.ok(wizard.includes("globalThis.RAKitOpenFiscalEditor?.("));
+ assert.ok(wizard.includes('fiscal.append(node)'));
+ assert.ok(app.includes('globalThis.RAKitOpenFiscalEditor='));
+ assert.ok(app.includes("optimizerWorkflowOpen('fiscal')"));
+ assert.ok(optimizer.includes('globalThis.RAKitFiscalLoadReady?.(data)'));
+ assert.ok(css.includes('#kitWizardFiscalMount #optimizerFiscalPanel'));
+ assert.ok(css.includes('#kitWizardWork #kitDetail[data-kit-wizard-step="8"] > #kitPublishPanel'));
+});
