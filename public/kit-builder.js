@@ -2425,7 +2425,7 @@ async function plusResearch({openChat=false}={}){
   }
   if(!openChat){
    kitPlusNotice('Pesquisa pronta com '+kitChatPending.candidateSkus.length+
-    ' SKUs disponíveis. '+(kitResearchAutoPrompt?
+    ' SKUs elegíveis do catálogo importado (não necessariamente todos os itens do site WeDrop). '+(kitResearchAutoPrompt?
      'Clique em Pesquisar kits inteligentes para enviar pela Ponte.':
      'A categoria é grande: baixe o TXT e use o botão de abertura manual.'),'success');
    return;
@@ -2438,7 +2438,7 @@ async function plusResearch({openChat=false}={}){
    return;
   }
   kitResearchRunning=true;
-  kitPlusNotice('Enviando '+kitChatPending.candidateSkus.length+' SKUs da categoria para a Ponte ChatGPT. Aguardando confirmação...','info');
+  kitPlusNotice('Enviando '+kitChatPending.candidateSkus.length+' SKUs elegíveis do catálogo importado para a Ponte ChatGPT. Se a WeDrop exibe mais produtos, sincronize catálogo e estoque para incluí-los.','warning');
   const response=await requestKitResearch({prompt:kitResearchAutoPrompt},{
    onProgress:msg=>kitPlusNotice(msg,'info')
   });
