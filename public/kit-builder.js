@@ -154,7 +154,18 @@ function kitWizardMountTechnical(){
  if(!node||!technical||!normal)return;
  if(kitWizardStage===5&&prepared?.kit&&!$('#kitDetail')?.hidden){
   if(node.parentElement!==technical)technical.append(node);
- }else if(node.parentElement!==normal)normal.insertBefore(node,advanced||null);
+  // A confirmação do Item ID continua usando o controle ORIGINAL.
+  // Se a busca trouxer alternativas, elas precisam aparecer na Etapa 05,
+  // não atrás do painel "Preparar e revisar o kit" recolhido.
+  if(advanced&&advanced.parentElement!==technical)technical.append(advanced);
+ }else{
+  const status=$('#kitOptimizeStatus');
+  if(node.parentElement!==normal){
+   if(status?.parentElement===normal)status.after(node);
+   else normal.append(node);
+  }
+  if(advanced&&advanced.parentElement!==normal)node.after(advanced);
+ }
 }
 function kitWizardTechnicalReady(){
  if(kitWizardStage!==5||!prepared?.kit)return false;
@@ -225,16 +236,22 @@ async function kitWizardRequestTechnical({force=false}={}){
    if(syncFailed)kitWizardTechnicalStatus('Ficha anterior carregada, mas as novas informações por SKU ainda não foram sincronizadas.','warning');
    return;
   }
-  const button=$('#kitOptimizeStart');
-  if(!button||button.disabled){
+  const open=kitExistingOptimizer.openTechnical;
+  if(typeof open!=='function'){
    kitWizardTechnicalLoadingFor='';
-   kitWizardTechnicalStatus($('#kitOptimizeStatus')?.textContent||
-    'A consulta da ficha técnica não está disponível. Clique novamente para tentar.','warning');
+   kitWizardTechnicalStatus('O comando do editor técnico original está indisponível. Atualize a página.','error');
    return;
   }
-  kitWizardTechnicalStatus('Consultando os atributos oficiais da SKU principal '+code+
-   '. O formulário será preenchido para conferência; nada será publicado automaticamente.','info');
-  button.click();
+  kitWizardTechnicalStatus('Consultando a ficha técnica original da SKU principal '+code+
+   '. Se houver mais de um anúncio, escolha o Item ID confirmado abaixo. Nenhuma alteração será publicada.','info');
+  const started=await open();
+  if(started!==true&&kitWizardTechnicalLoadingFor===identity){
+   kitWizardTechnicalLoadingFor='';
+   // A busca original apresenta seus erros e seus candidatos na própria etapa.
+   if($('#kitOptimizeAdvanced')?.open)
+    kitWizardTechnicalStatus($('#kitOptimizeStatus')?.textContent||
+     'Escolha o Item ID correto na lista abaixo para abrir o editor original.','warning');
+  }
  }catch(error){
   if(kitWizardTechnicalLoadingFor===identity)kitWizardTechnicalLoadingFor='';
   kitWizardTechnicalStatus('Falha ao recuperar a ficha técnica: '+String(error.message||error)+
@@ -380,8 +397,7 @@ function kitWizardInit(){
  $('#kitWizardOpenDiscount')?.addEventListener('click',()=>kitWizardToggleOptimizer(true,{scroll:true}));
  $('#kitWizardOpenExecution')?.addEventListener('click',()=>kitWizardToggleOptimizer(true,{scroll:true}));
  $('#kitWizardOpenTechnical')?.addEventListener('click',()=>{
-  kitWizardTechnicalLoadingFor='';
-  kitWizardRequestTechnical({force:true});
+  void kitWizardRequestTechnical({force:true});
  });
  $('#kitWizardOpenFiscal')?.addEventListener('click',()=>{
   kitWizardFiscalLoadingFor='';
