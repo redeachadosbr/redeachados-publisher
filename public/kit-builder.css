@@ -2845,33 +2845,7 @@
 #tab-kits #kitWizard .kit-wizard-actions button{min-height:36px}
 #tab-kits #kitWizard .kit-wizard-safety{font-size:10px;color:#66798f;line-height:1.5;
  border-top:1px solid #e2eaf3;margin:12px 0 0;padding-top:9px}
-/* As outras sete páginas do editor são sempre invisíveis, sem deslocar scroll. */
-#tab-kits #kitDetail[data-kit-wizard-step="1"] > :not(.kit-editor-top-panel):not(.kit-editor-composition-panel):not(.kit-detail-facts):not(.kit-copy-collapse-toolbar):not(#kitCopyContentPanel){display:none!important}
-#tab-kits #kitDetail[data-kit-wizard-step="2"] > :not(.kit-copy-collapse-toolbar):not(#kitCopyContentPanel){display:none!important}
-#tab-kits #kitDetail[data-kit-wizard-step="3"] > :not(#kitImagesCollapseToolbar):not(#kitImagesContent):not(#kitGalleryPreview){display:none!important}
-#tab-kits #kitDetail[data-kit-wizard-step="4"] > :not(#kitPublishPanel){display:none!important}
-#tab-kits #kitDetail[data-kit-wizard-step="5"] > :not(#kitMissingFacts):not(#kitOptimizeExistingPanel){display:none!important}
-#tab-kits #kitDetail[data-kit-wizard-step="6"] > :not(#kitOptimizeExistingPanel):not(#kitPublishPanel){display:none!important}
-#tab-kits #kitDetail[data-kit-wizard-step="7"] > :not(#kitOptimizeExistingPanel):not(#kitPublishPanel){display:none!important}
-#tab-kits #kitDetail[data-kit-wizard-step="8"] > :not(#kitOptimizeExistingPanel):not(#kitPublishPanel){display:none!important}
-#tab-kits #kitDetail[data-kit-wizard-step="1"] #kitCopyContentPanel .kit-copy-grid label:has(#kitDescription),
-#tab-kits #kitDetail[data-kit-wizard-step="2"] #kitCopyContentPanel .kit-copy-grid label:has(#kitTitle){display:none!important}
-/* Etapa 04: somente vídeo, demais formulários da publicação recolhidos. */
-#tab-kits #kitDetail[data-kit-wizard-step="4"] #kitPublishPanel > :not(.kit-formal-workspace){display:none!important}
-#tab-kits #kitDetail[data-kit-wizard-step="4"] #kitPublishPanel .kit-formal-workspace > :not(#kitVideoPanel){display:none!important}
-/* Etapa 05: dados individuais, ficha e revisão técnica existente. */
-#tab-kits #kitDetail[data-kit-wizard-step="5"] #kitOptimizeExistingPanel > .kit-existing-discount{display:none!important}
-/* Etapa 06: logística/fiscal, sem bloco de mídia ou desconto. */
-#tab-kits #kitDetail[data-kit-wizard-step="6"] #kitPublishPanel > :not(.kit-formal-workspace){display:none!important}
-#tab-kits #kitDetail[data-kit-wizard-step="6"] #kitPublishPanel .kit-formal-workspace > :not(.kit-formal-logistics-card):not(#kitLogisticsSmartImport){display:none!important}
-#tab-kits #kitDetail[data-kit-wizard-step="6"] #kitOptimizeExistingPanel > .kit-existing-discount{display:none!important}
-/* Etapa 07: ações reais de desconto e prévia, nunca aplicadas pelo ✓. */
-#tab-kits #kitDetail[data-kit-wizard-step="7"] #kitOptimizeExistingPanel > :not(.kit-existing-discount){display:none!important}
-#tab-kits #kitDetail[data-kit-wizard-step="7"] #kitPublishPanel > :not(#kitDiscountNext){display:none!important}
-/* Etapa 08: somente fluxo de execução/autorização/publicação. */
-#tab-kits #kitDetail[data-kit-wizard-step="8"] #kitOptimizeExistingPanel > .kit-existing-discount{display:none!important}
-#tab-kits #kitDetail[data-kit-wizard-step="8"] #kitPublishPanel .kit-formal-workspace > #kitVideoPanel{display:none!important}
-#tab-kits #kitDetail[data-kit-wizard-step="8"] #kitPublishPanel > #kitDiscountNext{display:none!important}
+/* As regras do antigo fluxo de oito etapas foram substituídas pelo mapeamento v2 de nove etapas abaixo. */
 @media(max-width:1000px){#tab-kits #kitWizardSteps{grid-template-columns:repeat(2,minmax(0,1fr))}}
 @media(max-width:520px){
  #tab-kits #kitWizard{padding:10px}
