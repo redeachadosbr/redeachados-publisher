@@ -2798,3 +2798,87 @@
  color:#14734b!important;background:#e3f6e9!important;border:1px solid #b9e1c6!important;
  opacity:1!important;cursor:default!important;
 }
+
+
+/* Kit Wizard v1: painel permanente após pesquisa; somente uma etapa aberta.
+   Os formulários originais são preservados (sem duplicação de IDs/eventos). */
+#tab-kits #kitWizard{margin:12px 0 14px;border:1px solid #cadbef;background:#fff;
+ border-radius:16px;padding:14px;box-shadow:0 7px 26px rgba(21,58,95,.07);min-width:0}
+#tab-kits #kitWizard .kit-wizard-header{display:flex;justify-content:space-between;gap:12px;
+ align-items:center;margin:0 0 12px;flex-wrap:wrap}
+#tab-kits #kitWizard .kit-wizard-header strong{display:block;font-size:16px;font-weight:900;color:#163b6a}
+#tab-kits #kitWizard .kit-wizard-header p{font-size:11px;color:#59728e;margin:3px 0 0;line-height:1.5}
+#tab-kits #kitWizard .kit-wizard-progress{font-size:11px;font-weight:800;border-radius:18px;
+ padding:7px 12px;background:#eff6ff;border:1px solid #d7e7fa;color:#15538d;white-space:nowrap}
+#tab-kits #kitWizardSteps{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:9px}
+#tab-kits #kitWizardSteps .kit-wizard-step{display:flex;align-items:center;gap:9px;min-width:0;
+ text-align:left;border:1px solid #d6e3ef;background:#f8fbff;border-radius:12px;
+ padding:10px 10px;cursor:pointer;box-shadow:none;min-height:66px;color:#163e68}
+#tab-kits #kitWizardSteps .kit-wizard-step:hover{border-color:#85b8e8;background:#eff7ff}
+#tab-kits #kitWizardSteps .kit-wizard-step:focus-visible{outline:3px solid #79b8fa;outline-offset:2px}
+#tab-kits #kitWizardSteps .kit-wizard-step.is-current{background:#eef6ff;border-color:#297bd0;box-shadow:inset 0 0 0 1px #297bd0}
+#tab-kits #kitWizardSteps .kit-wizard-step.is-done{background:#f0fbf5;border-color:#9fd8b6}
+#tab-kits #kitWizardSteps .kit-wizard-number{flex:0 0 29px;height:29px;border-radius:9px;
+ display:grid;place-items:center;background:#e6f0ff;font-size:11px;font-weight:900;color:#1d5f9e}
+#tab-kits #kitWizardSteps .kit-wizard-step.is-current .kit-wizard-number{background:#247ad1;color:#fff}
+#tab-kits #kitWizardSteps .kit-wizard-step-label{min-width:0;flex:1;display:flex;flex-direction:column;gap:3px}
+#tab-kits #kitWizardSteps .kit-wizard-step-label strong{font-size:12px;font-weight:850;line-height:1.25;white-space:normal}
+#tab-kits #kitWizardSteps .kit-wizard-step-label small{font-size:10px;line-height:1.2;color:#5b7492}
+#tab-kits #kitWizardSteps .kit-wizard-step-check{flex:0 0 auto;border:1px solid #b9cadb;
+ width:20px;height:20px;line-height:19px;text-align:center;border-radius:50%;font-weight:900;font-size:13px;color:#7590aa}
+#tab-kits #kitWizardSteps .is-done .kit-wizard-step-check{border-color:#168e54;background:#168e54;color:#fff}
+#tab-kits #kitWizardWork{border:1px solid #d6e5f3;border-radius:14px;background:#f8fbff;
+ margin:13px 0 0;padding:13px;min-width:0;scroll-margin-top:90px}
+#tab-kits #kitWizardWork[hidden],#tab-kits #kitWizardSetup[hidden],#tab-kits #kitWizardEmpty[hidden]{display:none!important}
+#tab-kits #kitWizard .kit-wizard-page-heading{display:flex;align-items:start;justify-content:space-between;
+ gap:10px;margin:0 0 12px}
+#tab-kits #kitWizard .kit-wizard-page-heading small{font-size:10px;font-weight:900;color:#3475a9;letter-spacing:.06em}
+#tab-kits #kitWizard .kit-wizard-page-heading h3{font-size:17px;margin:3px 0;color:#1c3e67}
+#tab-kits #kitWizard .kit-wizard-page-heading p{font-size:11px;color:#637894;line-height:1.4;margin:0}
+#tab-kits #kitWizardSetup>*{margin-bottom:12px}
+#tab-kits #kitWizardEmpty{padding:16px;border:1px dashed #c4d6ea;border-radius:10px;
+ font-size:12px;color:#58738d;background:#fff}
+#tab-kits #kitWizardEditorMount{min-width:0}
+#tab-kits #kitWizardEditorMount #kitDetail{margin:0;max-width:100%;min-width:0}
+#tab-kits #kitWizard .kit-wizard-actions{display:flex;align-items:center;justify-content:flex-end;
+ gap:8px;flex-wrap:wrap;margin-top:12px}
+#tab-kits #kitWizard .kit-wizard-actions button{min-height:36px}
+#tab-kits #kitWizard .kit-wizard-safety{font-size:10px;color:#66798f;line-height:1.5;
+ border-top:1px solid #e2eaf3;margin:12px 0 0;padding-top:9px}
+/* As outras sete páginas do editor são sempre invisíveis, sem deslocar scroll. */
+#tab-kits #kitDetail[data-kit-wizard-step="1"] > :not(.kit-editor-top-panel):not(.kit-editor-composition-panel):not(.kit-detail-facts):not(.kit-copy-collapse-toolbar):not(#kitCopyContentPanel){display:none!important}
+#tab-kits #kitDetail[data-kit-wizard-step="2"] > :not(.kit-copy-collapse-toolbar):not(#kitCopyContentPanel){display:none!important}
+#tab-kits #kitDetail[data-kit-wizard-step="3"] > :not(#kitImagesCollapseToolbar):not(#kitImagesContent):not(#kitGalleryPreview){display:none!important}
+#tab-kits #kitDetail[data-kit-wizard-step="4"] > :not(#kitPublishPanel){display:none!important}
+#tab-kits #kitDetail[data-kit-wizard-step="5"] > :not(#kitMissingFacts):not(#kitOptimizeExistingPanel){display:none!important}
+#tab-kits #kitDetail[data-kit-wizard-step="6"] > :not(#kitOptimizeExistingPanel):not(#kitPublishPanel){display:none!important}
+#tab-kits #kitDetail[data-kit-wizard-step="7"] > :not(#kitOptimizeExistingPanel):not(#kitPublishPanel){display:none!important}
+#tab-kits #kitDetail[data-kit-wizard-step="8"] > :not(#kitOptimizeExistingPanel):not(#kitPublishPanel){display:none!important}
+#tab-kits #kitDetail[data-kit-wizard-step="1"] #kitCopyContentPanel .kit-copy-grid label:has(#kitDescription),
+#tab-kits #kitDetail[data-kit-wizard-step="2"] #kitCopyContentPanel .kit-copy-grid label:has(#kitTitle){display:none!important}
+/* Etapa 04: somente vídeo, demais formulários da publicação recolhidos. */
+#tab-kits #kitDetail[data-kit-wizard-step="4"] #kitPublishPanel > :not(.kit-formal-workspace){display:none!important}
+#tab-kits #kitDetail[data-kit-wizard-step="4"] #kitPublishPanel .kit-formal-workspace > :not(#kitVideoPanel){display:none!important}
+/* Etapa 05: dados individuais, ficha e revisão técnica existente. */
+#tab-kits #kitDetail[data-kit-wizard-step="5"] #kitOptimizeExistingPanel > .kit-existing-discount{display:none!important}
+/* Etapa 06: logística/fiscal, sem bloco de mídia ou desconto. */
+#tab-kits #kitDetail[data-kit-wizard-step="6"] #kitPublishPanel > :not(.kit-formal-workspace){display:none!important}
+#tab-kits #kitDetail[data-kit-wizard-step="6"] #kitPublishPanel .kit-formal-workspace > :not(.kit-formal-logistics-card):not(#kitLogisticsSmartImport){display:none!important}
+#tab-kits #kitDetail[data-kit-wizard-step="6"] #kitOptimizeExistingPanel > .kit-existing-discount{display:none!important}
+/* Etapa 07: ações reais de desconto e prévia, nunca aplicadas pelo ✓. */
+#tab-kits #kitDetail[data-kit-wizard-step="7"] #kitOptimizeExistingPanel > :not(.kit-existing-discount){display:none!important}
+#tab-kits #kitDetail[data-kit-wizard-step="7"] #kitPublishPanel > :not(#kitDiscountNext){display:none!important}
+/* Etapa 08: somente fluxo de execução/autorização/publicação. */
+#tab-kits #kitDetail[data-kit-wizard-step="8"] #kitOptimizeExistingPanel > .kit-existing-discount{display:none!important}
+#tab-kits #kitDetail[data-kit-wizard-step="8"] #kitPublishPanel .kit-formal-workspace > #kitVideoPanel{display:none!important}
+#tab-kits #kitDetail[data-kit-wizard-step="8"] #kitPublishPanel > #kitDiscountNext{display:none!important}
+@media(max-width:1000px){#tab-kits #kitWizardSteps{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media(max-width:520px){
+ #tab-kits #kitWizard{padding:10px}
+ #tab-kits #kitWizardSteps{grid-template-columns:1fr 1fr;gap:6px}
+ #tab-kits #kitWizardSteps .kit-wizard-step{padding:8px 6px;gap:5px;min-height:60px}
+ #tab-kits #kitWizardSteps .kit-wizard-number{width:23px;height:23px;flex-basis:23px}
+ #tab-kits #kitWizardSteps .kit-wizard-step-label strong{font-size:10px}
+ #tab-kits #kitWizardSteps .kit-wizard-step-label small{font-size:9px}
+ #tab-kits #kitWizardSteps .kit-wizard-step-check{width:17px;height:17px;line-height:16px}
+}
