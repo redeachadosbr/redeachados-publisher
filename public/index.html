@@ -1055,12 +1055,12 @@
    <div><strong>Configurar pesquisa de kits</strong><p>Pesquise as SKUs disponíveis da categoria e importe combinações coerentes. Somente kits validados serão salvos como rascunhos, nunca publicados automaticamente.</p></div>
    <span class="kit-research-chip">WeDrop · estoque verificado</span>
   </div>
-  <div class="kit-research-toolbar" style="display:none">
+  <div class="kit-research-toolbar">
    <label for="kitTargetCount" class="kit-target-count-field">Quantos kits pesquisar?
     <select id="kitTargetCount">
      <option value="5">5 kits</option><option value="6">6 kits</option>
      <option value="7">7 kits</option><option value="8">8 kits</option>
-     <option value="9">9 kits</option><option value="10">10 kits</option><option value="11">11 kits</option><option value="12">12 kits</option><option value="13">13 kits</option><option value="14">14 kits</option><option value="15" selected>15 kits</option>
+     <option value="9">9 kits</option><option value="10">10 kits</option><option value="11">11 kits</option><option value="12">12 kits</option><option value="13">13 kits</option><option value="14">14 kits</option><option value="15">15 kits</option><option value="16">16 kits</option><option value="17">17 kits</option><option value="18">18 kits</option><option value="19">19 kits</option><option value="20" selected>20 kits</option>
     </select>
    </label>
    <div class="kit-research-toolbar-actions">
@@ -1068,7 +1068,7 @@
     <button type="button" class="kit-secondary" id="kitPlusResearch">Somente preparar pesquisa</button>
    </div>
   </div>
-  <p style="display:none" id="kitPlusAutoStatus" role="status" aria-live="polite" class="kit-info kit-research-feedback">Clique em Abrir ChatGPT. Se o catálogo for grande, anexe o TXT baixado. Depois copie a resposta: o Manager tentará importar automaticamente, ou use as opções de importação abaixo.</p>
+  <p id="kitPlusAutoStatus" role="status" aria-live="polite" class="kit-info kit-research-feedback">Clique em Abrir ChatGPT. Se o catálogo for grande, anexe o TXT baixado. Depois copie a resposta: o Manager tentará importar automaticamente, ou use as opções de importação abaixo.</p>
   <div class="kit-research-prompt-panel" style="display:none">
    <details class="kit-research-prompt-details">
     <summary>Visualizar prompt preparado <span>Mostrar instruções completas</span></summary>
@@ -1086,7 +1086,7 @@
     <label for="kitPlusFile" class="kit-chat-file-label">Selecionar arquivo dos kits
      <input id="kitPlusFile" type="file" accept=".json,.txt,.md,application/json,text/plain" aria-describedby="kitPlusFileHelp">
     </label>
-    <p id="kitPlusFileHelp">Envie um arquivo com até 15 combinações. O sistema extrai as SKUs, recalcula os preços WeDrop e salva os kits válidos como rascunhos. Não precisa copiar códigos.</p>
+    <p id="kitPlusFileHelp">Envie um arquivo com até 20 combinações. O sistema extrai as SKUs, recalcula os preços WeDrop e salva os kits válidos como rascunhos. Não precisa copiar códigos.</p>
     <p id="kitPlusFileStatus" class="kit-chat-file-status" data-state="info" role="status" aria-live="polite">Selecione o JSON ou TXT. O resultado da importação ou qualquer erro aparecerá aqui.</p>
     <div id="kitImportReport" class="kit-chat-file-status" role="status" aria-live="polite" hidden></div>
    </section>
