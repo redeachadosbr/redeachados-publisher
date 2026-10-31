@@ -3949,6 +3949,10 @@ async function optimizerWorkflowLoad(record){
     if(firstPending)optimizerWorkflowOpen(firstPending);
     else if(active[0])optimizerWorkflowOpen(active[0].key);
     globalThis.RAKitOptimizerReady?.(data);
+   }else if(kitHandoff?.embed&&String(kitHandoff.sku)===sku&&
+      globalThis.RAKitTechnicalRequested?.(kitHandoff.kitSku)){
+     globalThis.RAKitTechnicalLoadError?.({kitSku:kitHandoff.kitSku,sku,
+      message:'A revisão carregada não corresponde ao vínculo salvo do kit e da SKU principal. Confira o Item ID.'});
    }
    // A retomada automática pertence SOMENTE à SKU que foi carregada.
    if(optimizerChatBridgeJob&&!optimizerChatBridgeIdentity(optimizerChatBridgeJob,data))
@@ -3962,6 +3966,11 @@ async function optimizerWorkflowLoad(record){
      optimizerWorkflowNotice('Não foi possível carregar as etapas: '+e.message+'. Refaça a análise desta SKU.','error');
      const status=$('#kitOptimizerWorkspaceStatus');
      if(status&&kitOptimizerEmbedded){status.hidden=false;status.textContent='Falha ao carregar etapas: '+e.message;}
+     const handoff=globalThis.__RA_KIT_OPTIMIZATION_HANDOFF;
+     if(handoff?.embed&&String(handoff.sku)===sku&&
+        globalThis.RAKitTechnicalRequested?.(handoff.kitSku))
+       globalThis.RAKitTechnicalLoadError?.({kitSku:handoff.kitSku,sku,
+        message:String(e.message||e)});
    }
  }
 }
@@ -6233,9 +6242,15 @@ async function optimizerRunAudit(itemId,sku,modelId=''){
     optimizerNotice('SKU '+expectedSku+' analisado. Ficha técnica consultada pela API. '+
       'Nenhuma imagem, informação, título, preço ou estoque foi alterado.','success');
   }catch(e){
-    if($('#optimizerSku').value.trim()===String(sku||'').trim())
+    if($('#optimizerSku').value.trim()===String(sku||'').trim()){
       optimizerNotice('Não foi possível validar a ficha técnica do SKU: '+e.message+
         '. O produto permanece intacto.','error');
+      const handoff=globalThis.__RA_KIT_OPTIMIZATION_HANDOFF;
+      if(handoff?.embed&&String(handoff.sku)===String(sku||'')&&
+         globalThis.RAKitTechnicalRequested?.(handoff.kitSku))
+        globalThis.RAKitTechnicalLoadError?.({kitSku:handoff.kitSku,sku,
+         message:String(e.message||e)});
+    }
   }finally{
     optimizerBusy=false;
     if(optimizerNextAudit){
