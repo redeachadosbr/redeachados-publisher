@@ -354,7 +354,7 @@ app.get('/api/shopee/kits/fiscal-preset',mustLogin,requireWeDropAdmin,async(req,
    throw Error('Loja não vinculada.');
   const code=String(req.query?.kitSku||'');
   if(!/^KIT-[A-Z0-9-]{4,115}$/.test(code))throw Error('Kit inválido.');
-  res.json({ok:true,...await readKitFiscalPreset(auth.shopId,code)});
+  res.json({ok:true,...await readKitFiscalPreset(auth.shopId,code,String(req.query?.sku||''))});
  }catch(e){res.status(400).json({error:String(e.message||e).slice(0,260)});}
 });
 app.post('/api/shopee/kits/drafts/save',mustLogin,requireWeDropAdmin,async(req,res)=>{
