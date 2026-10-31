@@ -2336,100 +2336,100 @@
 }
 
 /* Kit existente: bloco de descontos compactado e botão 3D premium */
-#tab-kits #kitDetail #kitOptimizeExistingPanel .kit-existing-discount{
+#tab-kits :is(#kitDetail,#kitWizardOptimizerDock) #kitOptimizeExistingPanel .kit-existing-discount{
  margin:11px 0 7px;padding:13px 14px 11px;border:1px solid #ccdff2;border-radius:15px;
  background:linear-gradient(140deg,#fff 0%,#fafdff 100%);
  box-shadow:0 7px 24px rgba(23,57,101,.065);
 }
-#tab-kits #kitDetail .kit-existing-discount-head{display:flex;justify-content:space-between;align-items:center;gap:10px;margin:0 0 10px}
-#tab-kits #kitDetail .kit-existing-discount-head h4{margin:0;font-size:15px;font-weight:900;color:#16365e;line-height:1.3}
-#tab-kits #kitDetail .kit-existing-discount-tag{display:inline-flex;align-items:center;flex-shrink:0;padding:5px 9px;background:#e8f4ff;border:1px solid #cde2f9;border-radius:999px;color:#21629a;font-size:10px;font-weight:850}
-#tab-kits #kitDetail .kit-existing-discount-grid{display:grid;grid-template-columns:minmax(0,.85fr) minmax(0,.85fr) minmax(0,1.6fr);gap:9px;margin:0}
-#tab-kits #kitDetail .kit-existing-discount-grid label{display:flex;flex-direction:column;gap:5px;min-width:0;font-size:10.5px;font-weight:850;color:#315779}
-#tab-kits #kitDetail .kit-existing-discount-grid :is(input,select){
+#tab-kits :is(#kitDetail,#kitWizardOptimizerDock) .kit-existing-discount-head{display:flex;justify-content:space-between;align-items:center;gap:10px;margin:0 0 10px}
+#tab-kits :is(#kitDetail,#kitWizardOptimizerDock) .kit-existing-discount-head h4{margin:0;font-size:15px;font-weight:900;color:#16365e;line-height:1.3}
+#tab-kits :is(#kitDetail,#kitWizardOptimizerDock) .kit-existing-discount-tag{display:inline-flex;align-items:center;flex-shrink:0;padding:5px 9px;background:#e8f4ff;border:1px solid #cde2f9;border-radius:999px;color:#21629a;font-size:10px;font-weight:850}
+#tab-kits :is(#kitDetail,#kitWizardOptimizerDock) .kit-existing-discount-grid{display:grid;grid-template-columns:minmax(0,.85fr) minmax(0,.85fr) minmax(0,1.6fr);gap:9px;margin:0}
+#tab-kits :is(#kitDetail,#kitWizardOptimizerDock) .kit-existing-discount-grid label{display:flex;flex-direction:column;gap:5px;min-width:0;font-size:10.5px;font-weight:850;color:#315779}
+#tab-kits :is(#kitDetail,#kitWizardOptimizerDock) .kit-existing-discount-grid :is(input,select){
  width:100%;min-width:0;box-sizing:border-box;min-height:37px;padding:8px 11px;border-radius:9px;
  border:1px solid #cbdcf0;background:linear-gradient(180deg,#fff,#f5f9ff);
  color:#173b6a;font-size:12px;font-weight:800;box-shadow:inset 0 1px 3px #0d3b7410;
 }
-#tab-kits #kitDetail .kit-existing-discount-grid input[readonly]{background:#f4f7fc;color:#406385}
-#tab-kits #kitDetail .kit-existing-discount-grid select{cursor:pointer}
-#tab-kits #kitDetail .kit-existing-discount-grid select:focus-visible{outline:2px solid #4a9fec;outline-offset:2px}
-#tab-kits #kitDetail .kit-existing-discount-actions{display:flex;gap:10px;justify-content:flex-start;align-items:center;flex-wrap:wrap;margin:13px 0 8px;padding:0}
-#tab-kits #kitDetail .kit-existing-discount-actions button,
-#tab-kits #kitDetail #kitOptimizeDiscountApply{
+#tab-kits :is(#kitDetail,#kitWizardOptimizerDock) .kit-existing-discount-grid input[readonly]{background:#f4f7fc;color:#406385}
+#tab-kits :is(#kitDetail,#kitWizardOptimizerDock) .kit-existing-discount-grid select{cursor:pointer}
+#tab-kits :is(#kitDetail,#kitWizardOptimizerDock) .kit-existing-discount-grid select:focus-visible{outline:2px solid #4a9fec;outline-offset:2px}
+#tab-kits :is(#kitDetail,#kitWizardOptimizerDock) .kit-existing-discount-actions{display:flex;gap:10px;justify-content:flex-start;align-items:center;flex-wrap:wrap;margin:13px 0 8px;padding:0}
+#tab-kits :is(#kitDetail,#kitWizardOptimizerDock) .kit-existing-discount-actions button,
+#tab-kits :is(#kitDetail,#kitWizardOptimizerDock) #kitOptimizeDiscountApply{
  min-height:39px;max-width:100%;padding:9px 17px;border-radius:10px;font-size:11.5px;
  font-weight:900;letter-spacing:.005em;transition:transform .16s ease,box-shadow .16s ease,filter .16s ease;
 }
-#tab-kits #kitDetail .kit-existing-discount-actions #kitOptimizeDiscountRefresh{
+#tab-kits :is(#kitDetail,#kitWizardOptimizerDock) .kit-existing-discount-actions #kitOptimizeDiscountRefresh{
  background:linear-gradient(180deg,#fff,#f0f6ff 60%,#e4eefb);border:1px solid #c6d9ed;
  color:#245482;box-shadow:0 4px 0 #aac6e3,0 9px 16px #174d8420,inset 0 1px #fff;
 }
-#tab-kits #kitDetail .kit-existing-discount-actions #kitOptimizeDiscountPreview,
-#tab-kits #kitDetail #kitOptimizeDiscountApply{
+#tab-kits :is(#kitDetail,#kitWizardOptimizerDock) .kit-existing-discount-actions #kitOptimizeDiscountPreview,
+#tab-kits :is(#kitDetail,#kitWizardOptimizerDock) #kitOptimizeDiscountApply{
  border:1px solid #ee6c40;background:linear-gradient(180deg,#ff986a,#ff693b 55%,#f1532c);
  color:#fff;text-shadow:0 1px 1px #73301c24;
  box-shadow:0 4px 0 #c34125,0 10px 18px #c6573230,inset 0 1px #fff6;
 }
-#tab-kits #kitDetail .kit-existing-discount-actions button:hover:not(:disabled),
-#tab-kits #kitDetail #kitOptimizeDiscountApply:hover:not(:disabled){transform:translateY(-2px);filter:saturate(1.07)}
-#tab-kits #kitDetail .kit-existing-discount-actions #kitOptimizeDiscountRefresh:hover:not(:disabled){box-shadow:0 6px 0 #aac6e3,0 13px 19px #174d8428}
-#tab-kits #kitDetail .kit-existing-discount-actions #kitOptimizeDiscountPreview:hover:not(:disabled),
-#tab-kits #kitDetail #kitOptimizeDiscountApply:hover:not(:disabled){box-shadow:0 6px 0 #c34125,0 13px 19px #c6573240}
-#tab-kits #kitDetail .kit-existing-discount-actions button:active:not(:disabled),
-#tab-kits #kitDetail #kitOptimizeDiscountApply:active:not(:disabled){transform:translateY(3px);box-shadow:0 1px 0 #ad6b51,0 2px 4px #15396220}
-#tab-kits #kitDetail .kit-existing-discount-actions button:disabled{opacity:.53;cursor:not-allowed;box-shadow:none}
-#tab-kits #kitDetail .kit-existing-discount-feedback{margin:6px 0 0;padding:7px 10px;background:#eef5fc;color:#3a5c80;border-radius:8px;font-size:10.5px;line-height:1.45}
-#tab-kits #kitDetail .kit-existing-discount-feedback[data-state=success]{background:#e9f8ef;color:#137549}
-#tab-kits #kitDetail .kit-existing-discount-feedback[data-state=warning]{background:#fff7e9;color:#8e641e}
-#tab-kits #kitDetail .kit-existing-discount-feedback[data-state=error]{background:#fff0ed;color:#a1342c}
-#tab-kits #kitDetail .kit-existing-discount-result{margin:6px 0 0;padding:0;font-size:10.5px;line-height:1.5}
-#tab-kits #kitDetail .kit-existing-discount-review{margin:10px 0;padding:10px;border-radius:10px;background:#f5faff}
-#tab-kits #kitDetail .kit-existing-discount-review[hidden]{display:none!important}
-#tab-kits #kitDetail .kit-existing-discount-review pre{margin:4px 0 12px;font-size:10.5px;line-height:1.55}
-#tab-kits #kitDetail .kit-existing-discount-help{margin-top:8px;border-top:1px solid #e3edf8;padding-top:7px}
-#tab-kits #kitDetail .kit-existing-discount-help summary{color:#5480ab;font-size:10.5px;font-weight:800;cursor:pointer;list-style:disclosure-closed inside;padding:4px 0}
-#tab-kits #kitDetail .kit-existing-discount-help[open] summary{list-style:disclosure-open inside}
-#tab-kits #kitDetail .kit-existing-discount-help p{margin:7px 0;font-size:10.5px;color:#44688c;line-height:1.5}
-@media(max-width:990px){#tab-kits #kitDetail .kit-existing-discount-grid{grid-template-columns:repeat(2,minmax(0,1fr))}#tab-kits #kitDetail .kit-existing-discount-grid label:last-child{grid-column:1/-1}}
-@media(max-width:600px){#tab-kits #kitDetail .kit-existing-discount-grid{grid-template-columns:minmax(0,1fr)}#tab-kits #kitDetail .kit-existing-discount-grid label:last-child{grid-column:auto}#tab-kits #kitDetail .kit-existing-discount-actions button{flex:1 1 100%}}
-@media(prefers-reduced-motion:reduce){#tab-kits #kitDetail .kit-existing-discount-actions button,#tab-kits #kitDetail #kitOptimizeDiscountApply{transition:none}}
+#tab-kits :is(#kitDetail,#kitWizardOptimizerDock) .kit-existing-discount-actions button:hover:not(:disabled),
+#tab-kits :is(#kitDetail,#kitWizardOptimizerDock) #kitOptimizeDiscountApply:hover:not(:disabled){transform:translateY(-2px);filter:saturate(1.07)}
+#tab-kits :is(#kitDetail,#kitWizardOptimizerDock) .kit-existing-discount-actions #kitOptimizeDiscountRefresh:hover:not(:disabled){box-shadow:0 6px 0 #aac6e3,0 13px 19px #174d8428}
+#tab-kits :is(#kitDetail,#kitWizardOptimizerDock) .kit-existing-discount-actions #kitOptimizeDiscountPreview:hover:not(:disabled),
+#tab-kits :is(#kitDetail,#kitWizardOptimizerDock) #kitOptimizeDiscountApply:hover:not(:disabled){box-shadow:0 6px 0 #c34125,0 13px 19px #c6573240}
+#tab-kits :is(#kitDetail,#kitWizardOptimizerDock) .kit-existing-discount-actions button:active:not(:disabled),
+#tab-kits :is(#kitDetail,#kitWizardOptimizerDock) #kitOptimizeDiscountApply:active:not(:disabled){transform:translateY(3px);box-shadow:0 1px 0 #ad6b51,0 2px 4px #15396220}
+#tab-kits :is(#kitDetail,#kitWizardOptimizerDock) .kit-existing-discount-actions button:disabled{opacity:.53;cursor:not-allowed;box-shadow:none}
+#tab-kits :is(#kitDetail,#kitWizardOptimizerDock) .kit-existing-discount-feedback{margin:6px 0 0;padding:7px 10px;background:#eef5fc;color:#3a5c80;border-radius:8px;font-size:10.5px;line-height:1.45}
+#tab-kits :is(#kitDetail,#kitWizardOptimizerDock) .kit-existing-discount-feedback[data-state=success]{background:#e9f8ef;color:#137549}
+#tab-kits :is(#kitDetail,#kitWizardOptimizerDock) .kit-existing-discount-feedback[data-state=warning]{background:#fff7e9;color:#8e641e}
+#tab-kits :is(#kitDetail,#kitWizardOptimizerDock) .kit-existing-discount-feedback[data-state=error]{background:#fff0ed;color:#a1342c}
+#tab-kits :is(#kitDetail,#kitWizardOptimizerDock) .kit-existing-discount-result{margin:6px 0 0;padding:0;font-size:10.5px;line-height:1.5}
+#tab-kits :is(#kitDetail,#kitWizardOptimizerDock) .kit-existing-discount-review{margin:10px 0;padding:10px;border-radius:10px;background:#f5faff}
+#tab-kits :is(#kitDetail,#kitWizardOptimizerDock) .kit-existing-discount-review[hidden]{display:none!important}
+#tab-kits :is(#kitDetail,#kitWizardOptimizerDock) .kit-existing-discount-review pre{margin:4px 0 12px;font-size:10.5px;line-height:1.55}
+#tab-kits :is(#kitDetail,#kitWizardOptimizerDock) .kit-existing-discount-help{margin-top:8px;border-top:1px solid #e3edf8;padding-top:7px}
+#tab-kits :is(#kitDetail,#kitWizardOptimizerDock) .kit-existing-discount-help summary{color:#5480ab;font-size:10.5px;font-weight:800;cursor:pointer;list-style:disclosure-closed inside;padding:4px 0}
+#tab-kits :is(#kitDetail,#kitWizardOptimizerDock) .kit-existing-discount-help[open] summary{list-style:disclosure-open inside}
+#tab-kits :is(#kitDetail,#kitWizardOptimizerDock) .kit-existing-discount-help p{margin:7px 0;font-size:10.5px;color:#44688c;line-height:1.5}
+@media(max-width:990px){#tab-kits :is(#kitDetail,#kitWizardOptimizerDock) .kit-existing-discount-grid{grid-template-columns:repeat(2,minmax(0,1fr))}#tab-kits :is(#kitDetail,#kitWizardOptimizerDock) .kit-existing-discount-grid label:last-child{grid-column:1/-1}}
+@media(max-width:600px){#tab-kits :is(#kitDetail,#kitWizardOptimizerDock) .kit-existing-discount-grid{grid-template-columns:minmax(0,1fr)}#tab-kits :is(#kitDetail,#kitWizardOptimizerDock) .kit-existing-discount-grid label:last-child{grid-column:auto}#tab-kits :is(#kitDetail,#kitWizardOptimizerDock) .kit-existing-discount-actions button{flex:1 1 100%}}
+@media(prefers-reduced-motion:reduce){#tab-kits :is(#kitDetail,#kitWizardOptimizerDock) .kit-existing-discount-actions button,#tab-kits :is(#kitDetail,#kitWizardOptimizerDock) #kitOptimizeDiscountApply{transition:none}}
 
 /* Mesmo fluxo de 8 etapas da aba Otimização, exibido dentro dos Kits. */
-#tab-kits #kitDetail #kitOptimizeExistingPanel{padding:14px;background:#fff;border:1px solid #d2e2f2;border-radius:16px;box-shadow:0 8px 22px #133d7010}
-#tab-kits #kitDetail .kit-flow-heading{display:flex;justify-content:space-between;align-items:center;gap:12px;margin-bottom:12px}
-#tab-kits #kitDetail .kit-flow-heading h3{font-size:19px;color:#103461;margin:2px 0}
-#tab-kits #kitDetail .kit-flow-heading p{margin:0;font-size:11px;color:#5d7e9f}
-#tab-kits #kitDetail .kit-flow-kicker{font-size:10px;letter-spacing:.05em;font-weight:900;color:#ef7637}
-#tab-kits #kitDetail .kit-flow-safe{font-size:10px;color:#117449;background:#e8f8ee;border-radius:99px;padding:7px 10px;white-space:nowrap;font-weight:800}
-#tab-kits #kitDetail .kit-flow-start-bar{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1.15fr) auto;gap:9px;align-items:end;padding:11px;background:#f4f9ff;border:1px solid #d8e7f6;border-radius:11px}
-#tab-kits #kitDetail .kit-flow-primary,#tab-kits #kitDetail .kit-flow-target{display:flex;flex-direction:column;gap:5px;min-width:0;font-size:11px;font-weight:850;color:#315680}
-#tab-kits #kitDetail .kit-flow-primary select,#tab-kits #kitDetail .kit-flow-target strong{min-height:39px;min-width:0;padding:9px 10px;box-sizing:border-box;border:1px solid #c9daed;background:#fff;border-radius:9px;color:#173d6a;font-size:11px;font-weight:800}
-#tab-kits #kitDetail .kit-flow-target small{font-size:10px}
-#tab-kits #kitDetail #kitOptimizeStart{min-height:39px;min-width:175px;padding:9px 12px;background:linear-gradient(#ff9864,#ff6532 62%,#ef542a);border:1px solid #ee6b3e;border-radius:10px;color:#fff;font-size:11px;font-weight:900;box-shadow:0 4px 0 #ba4425,0 8px 17px #d3653850;transition:transform .16s,box-shadow .16s}
-#tab-kits #kitDetail #kitOptimizeStart:hover:not(:disabled){transform:translateY(-2px);box-shadow:0 6px 0 #ba4425,0 11px 20px #d3653850}
-#tab-kits #kitDetail #kitOptimizeStart:active:not(:disabled){transform:translateY(3px);box-shadow:0 1px 0 #ba4425}
-#tab-kits #kitDetail #kitOptimizeStart:disabled{opacity:.5;box-shadow:none;cursor:not-allowed}
-#tab-kits #kitDetail .kit-flow-status{margin:9px 0;padding:8px 10px;background:#eff5fb;border-radius:8px;color:#41658a;font-size:11px}
-#tab-kits #kitDetail .kit-flow-status[data-state=success]{background:#e5f7ee;color:#157449}
-#tab-kits #kitDetail .kit-flow-status[data-state=warning]{background:#fff8e8;color:#945e19}
-#tab-kits #kitDetail .kit-flow-status[data-state=error]{background:#fff0ed;color:#a63830}
-#tab-kits #kitDetail .kit-flow-advanced{padding:7px 9px;margin:8px 0;border-top:1px solid #e6eef7;font-size:11px;color:#577494}
-#tab-kits #kitDetail .kit-flow-advanced summary{cursor:pointer;font-weight:800}
-#tab-kits #kitDetail .kit-flow-advanced .kit-actions{margin:7px 0;gap:7px}
-#tab-kits #kitDetail .kit-flow-advanced .kit-inline-checkbox{font-size:11px}
-#tab-kits #kitDetail .kit-existing-discount[hidden],#tab-kits #kitDetail .kit-optimizer-workspace[hidden]{display:none!important}
-#tab-kits #kitDetail .kit-optimizer-workspace{margin:12px 0 0;min-width:0;padding:12px;border:1px solid #cadfee;border-radius:13px;background:#fff}
-#tab-kits #kitDetail .kit-optimizer-workspace-heading{display:flex;align-items:center;justify-content:space-between;gap:9px;margin-bottom:10px}
-#tab-kits #kitDetail .kit-optimizer-workspace-heading>div{display:flex;flex-direction:column;gap:3px}
-#tab-kits #kitDetail .kit-optimizer-workspace-heading strong{font-size:14px;color:#173d6a}
-#tab-kits #kitDetail .kit-optimizer-workspace-heading span{font-size:10px;color:#6784a4}
+#tab-kits :is(#kitDetail,#kitWizardOptimizerDock) #kitOptimizeExistingPanel{padding:14px;background:#fff;border:1px solid #d2e2f2;border-radius:16px;box-shadow:0 8px 22px #133d7010}
+#tab-kits :is(#kitDetail,#kitWizardOptimizerDock) .kit-flow-heading{display:flex;justify-content:space-between;align-items:center;gap:12px;margin-bottom:12px}
+#tab-kits :is(#kitDetail,#kitWizardOptimizerDock) .kit-flow-heading h3{font-size:19px;color:#103461;margin:2px 0}
+#tab-kits :is(#kitDetail,#kitWizardOptimizerDock) .kit-flow-heading p{margin:0;font-size:11px;color:#5d7e9f}
+#tab-kits :is(#kitDetail,#kitWizardOptimizerDock) .kit-flow-kicker{font-size:10px;letter-spacing:.05em;font-weight:900;color:#ef7637}
+#tab-kits :is(#kitDetail,#kitWizardOptimizerDock) .kit-flow-safe{font-size:10px;color:#117449;background:#e8f8ee;border-radius:99px;padding:7px 10px;white-space:nowrap;font-weight:800}
+#tab-kits :is(#kitDetail,#kitWizardOptimizerDock) .kit-flow-start-bar{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1.15fr) auto;gap:9px;align-items:end;padding:11px;background:#f4f9ff;border:1px solid #d8e7f6;border-radius:11px}
+#tab-kits :is(#kitDetail,#kitWizardOptimizerDock) .kit-flow-primary,#tab-kits :is(#kitDetail,#kitWizardOptimizerDock) .kit-flow-target{display:flex;flex-direction:column;gap:5px;min-width:0;font-size:11px;font-weight:850;color:#315680}
+#tab-kits :is(#kitDetail,#kitWizardOptimizerDock) .kit-flow-primary select,#tab-kits :is(#kitDetail,#kitWizardOptimizerDock) .kit-flow-target strong{min-height:39px;min-width:0;padding:9px 10px;box-sizing:border-box;border:1px solid #c9daed;background:#fff;border-radius:9px;color:#173d6a;font-size:11px;font-weight:800}
+#tab-kits :is(#kitDetail,#kitWizardOptimizerDock) .kit-flow-target small{font-size:10px}
+#tab-kits :is(#kitDetail,#kitWizardOptimizerDock) #kitOptimizeStart{min-height:39px;min-width:175px;padding:9px 12px;background:linear-gradient(#ff9864,#ff6532 62%,#ef542a);border:1px solid #ee6b3e;border-radius:10px;color:#fff;font-size:11px;font-weight:900;box-shadow:0 4px 0 #ba4425,0 8px 17px #d3653850;transition:transform .16s,box-shadow .16s}
+#tab-kits :is(#kitDetail,#kitWizardOptimizerDock) #kitOptimizeStart:hover:not(:disabled){transform:translateY(-2px);box-shadow:0 6px 0 #ba4425,0 11px 20px #d3653850}
+#tab-kits :is(#kitDetail,#kitWizardOptimizerDock) #kitOptimizeStart:active:not(:disabled){transform:translateY(3px);box-shadow:0 1px 0 #ba4425}
+#tab-kits :is(#kitDetail,#kitWizardOptimizerDock) #kitOptimizeStart:disabled{opacity:.5;box-shadow:none;cursor:not-allowed}
+#tab-kits :is(#kitDetail,#kitWizardOptimizerDock) .kit-flow-status{margin:9px 0;padding:8px 10px;background:#eff5fb;border-radius:8px;color:#41658a;font-size:11px}
+#tab-kits :is(#kitDetail,#kitWizardOptimizerDock) .kit-flow-status[data-state=success]{background:#e5f7ee;color:#157449}
+#tab-kits :is(#kitDetail,#kitWizardOptimizerDock) .kit-flow-status[data-state=warning]{background:#fff8e8;color:#945e19}
+#tab-kits :is(#kitDetail,#kitWizardOptimizerDock) .kit-flow-status[data-state=error]{background:#fff0ed;color:#a63830}
+#tab-kits :is(#kitDetail,#kitWizardOptimizerDock) .kit-flow-advanced{padding:7px 9px;margin:8px 0;border-top:1px solid #e6eef7;font-size:11px;color:#577494}
+#tab-kits :is(#kitDetail,#kitWizardOptimizerDock) .kit-flow-advanced summary{cursor:pointer;font-weight:800}
+#tab-kits :is(#kitDetail,#kitWizardOptimizerDock) .kit-flow-advanced .kit-actions{margin:7px 0;gap:7px}
+#tab-kits :is(#kitDetail,#kitWizardOptimizerDock) .kit-flow-advanced .kit-inline-checkbox{font-size:11px}
+#tab-kits :is(#kitDetail,#kitWizardOptimizerDock) .kit-existing-discount[hidden],#tab-kits :is(#kitDetail,#kitWizardOptimizerDock) .kit-optimizer-workspace[hidden]{display:none!important}
+#tab-kits :is(#kitDetail,#kitWizardOptimizerDock) .kit-optimizer-workspace{margin:12px 0 0;min-width:0;padding:12px;border:1px solid #cadfee;border-radius:13px;background:#fff}
+#tab-kits :is(#kitDetail,#kitWizardOptimizerDock) .kit-optimizer-workspace-heading{display:flex;align-items:center;justify-content:space-between;gap:9px;margin-bottom:10px}
+#tab-kits :is(#kitDetail,#kitWizardOptimizerDock) .kit-optimizer-workspace-heading>div{display:flex;flex-direction:column;gap:3px}
+#tab-kits :is(#kitDetail,#kitWizardOptimizerDock) .kit-optimizer-workspace-heading strong{font-size:14px;color:#173d6a}
+#tab-kits :is(#kitDetail,#kitWizardOptimizerDock) .kit-optimizer-workspace-heading span{font-size:10px;color:#6784a4}
 #tab-kits #kitDetail #kitWorkflowImportImages{padding:7px 12px;border-radius:9px;border:1px solid #c2d8ed;background:linear-gradient(#fff,#eef5ff);box-shadow:0 3px 0 #b0cbe3;color:#235685;font-size:11px;font-weight:850}
-#tab-kits #kitDetail .kit-optimizer-workspace #optimizerWorkflowPanel{width:100%;max-width:100%;min-width:0;box-sizing:border-box;margin:0}
-#tab-kits #kitDetail .kit-optimizer-workspace #optimizerWorkflowPanel[hidden],#tab-kits #kitDetail .kit-optimizer-workspace #optimizerWorkflowEditor[hidden],#tab-kits #kitDetail .kit-optimizer-workspace #optimizerExecutionPanel[hidden]{display:none!important}
-#tab-kits #kitDetail .kit-optimizer-workspace .optimizer-workflow-cards{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:9px}
-#tab-kits #kitDetail .kit-optimizer-workspace .optimizer-workflow-card{min-width:0;min-height:75px}
-@media(max-width:1050px){#tab-kits #kitDetail .kit-flow-start-bar{grid-template-columns:repeat(2,minmax(0,1fr))}#tab-kits #kitDetail #kitOptimizeStart{grid-column:1/-1}#tab-kits #kitDetail .kit-optimizer-workspace .optimizer-workflow-cards{grid-template-columns:repeat(2,minmax(0,1fr))}}
-@media(max-width:610px){#tab-kits #kitDetail .kit-flow-start-bar{grid-template-columns:1fr}#tab-kits #kitDetail #kitOptimizeStart{grid-column:auto}#tab-kits #kitDetail .kit-flow-heading{flex-direction:column;align-items:start}}
+#tab-kits :is(#kitDetail,#kitWizardOptimizerDock) .kit-optimizer-workspace #optimizerWorkflowPanel{width:100%;max-width:100%;min-width:0;box-sizing:border-box;margin:0}
+#tab-kits :is(#kitDetail,#kitWizardOptimizerDock) .kit-optimizer-workspace #optimizerWorkflowPanel[hidden],#tab-kits :is(#kitDetail,#kitWizardOptimizerDock) .kit-optimizer-workspace #optimizerWorkflowEditor[hidden],#tab-kits :is(#kitDetail,#kitWizardOptimizerDock) .kit-optimizer-workspace #optimizerExecutionPanel[hidden]{display:none!important}
+#tab-kits :is(#kitDetail,#kitWizardOptimizerDock) .kit-optimizer-workspace .optimizer-workflow-cards{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:9px}
+#tab-kits :is(#kitDetail,#kitWizardOptimizerDock) .kit-optimizer-workspace .optimizer-workflow-card{min-width:0;min-height:75px}
+@media(max-width:1050px){#tab-kits :is(#kitDetail,#kitWizardOptimizerDock) .kit-flow-start-bar{grid-template-columns:repeat(2,minmax(0,1fr))}#tab-kits :is(#kitDetail,#kitWizardOptimizerDock) #kitOptimizeStart{grid-column:1/-1}#tab-kits :is(#kitDetail,#kitWizardOptimizerDock) .kit-optimizer-workspace .optimizer-workflow-cards{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media(max-width:610px){#tab-kits :is(#kitDetail,#kitWizardOptimizerDock) .kit-flow-start-bar{grid-template-columns:1fr}#tab-kits :is(#kitDetail,#kitWizardOptimizerDock) #kitOptimizeStart{grid-column:auto}#tab-kits :is(#kitDetail,#kitWizardOptimizerDock) .kit-flow-heading{flex-direction:column;align-items:start}}
 
 /* A campanha da etapa 08 é selecionável dentro do fluxo real do kit. */
 #tab-kits #kitDetail .kit-workflow-campaign-chooser{display:flex;align-items:end;gap:10px;flex-wrap:wrap;padding:10px;margin:9px 0;background:#eff7ff;border:1px solid #cddff1;border-radius:10px}
@@ -2440,33 +2440,33 @@
 #tab-kits #kitDetail .kit-workflow-original-campaign{display:none!important}
 
 /* Acompanhamento compacto de revisoes individuais e execucao real Shopee */
-#tab-kits #kitDetail .kit-flow-journey{margin:10px 0 5px;padding:13px;background:linear-gradient(155deg,#f7faff,#edf4fc);border:1px solid #d9e6f4;border-radius:14px;min-width:0}
-#tab-kits #kitDetail .kit-flow-progress-head{display:flex;justify-content:space-between;align-items:center;gap:10px;margin:0 0 10px;color:#183c65}
-#tab-kits #kitDetail .kit-flow-progress-head strong{font-size:12px;font-weight:900}
-#tab-kits #kitDetail .kit-flow-progress-head span{font-size:11px;font-weight:800;color:#277958}
-#tab-kits #kitDetail .kit-flow-progress-track,#tab-kits #kitDetail .kit-flow-live-track{height:9px;overflow:hidden;border-radius:999px;background:#dce8f4}
-#tab-kits #kitDetail .kit-flow-progress-track>span,#tab-kits #kitDetail .kit-flow-live-track>span{display:block;height:100%;width:0;background:linear-gradient(90deg,#35bda8,#0a9660);border-radius:inherit;transition:width .25s}
-#tab-kits #kitDetail .kit-flow-stage-steps{display:grid;grid-template-columns:repeat(8,minmax(0,1fr));gap:7px;margin:12px 0 5px;padding:0;list-style:none}
-#tab-kits #kitDetail .kit-flow-stage{display:flex;flex-direction:column;align-items:center;min-width:0;text-align:center;gap:4px}
-#tab-kits #kitDetail .kit-flow-stage-number{display:grid;place-items:center;width:27px;height:27px;border-radius:50%;background:#c8d6e7;color:white;font-size:11px;font-weight:900}
-#tab-kits #kitDetail .kit-flow-stage.is-done .kit-flow-stage-number{background:#0da36b}
-#tab-kits #kitDetail .kit-flow-stage.is-attention .kit-flow-stage-number{background:#f0a22a}
-#tab-kits #kitDetail .kit-flow-stage.is-skipped .kit-flow-stage-number{background:#a7b6c5}
-#tab-kits #kitDetail .kit-flow-stage strong{font-size:10px;color:#33597b;line-height:1.2}
-#tab-kits #kitDetail .kit-flow-stage small{font-size:9px;color:#7187a1;line-height:1.25}
-#tab-kits #kitDetail .kit-flow-progress-note{font-size:10px;line-height:1.4;color:#506a88;margin:9px 0 0}
-#tab-kits #kitDetail .kit-flow-search-hint{font-size:10px;line-height:1.4;color:#6d819b;margin:5px 0}
-#tab-kits #kitDetail .kit-flow-live-progress{display:flex;flex-wrap:wrap;gap:6px 13px;padding:10px;margin:10px 0;background:#fff;border:1px solid #caddeb;border-radius:9px}
-#tab-kits #kitDetail .kit-flow-live-progress[hidden]{display:none!important}
-#tab-kits #kitDetail .kit-flow-live-progress>strong,#tab-kits #kitDetail .kit-flow-live-progress>.kit-flow-live-track{width:100%}
-#tab-kits #kitDetail .kit-flow-live-progress>strong{font-size:11px;color:#1a5175}
-#tab-kits #kitDetail .kit-flow-live-progress>small{font-size:9px;color:#526f8b}
+#tab-kits :is(#kitDetail,#kitWizardOptimizerDock) .kit-flow-journey{margin:10px 0 5px;padding:13px;background:linear-gradient(155deg,#f7faff,#edf4fc);border:1px solid #d9e6f4;border-radius:14px;min-width:0}
+#tab-kits :is(#kitDetail,#kitWizardOptimizerDock) .kit-flow-progress-head{display:flex;justify-content:space-between;align-items:center;gap:10px;margin:0 0 10px;color:#183c65}
+#tab-kits :is(#kitDetail,#kitWizardOptimizerDock) .kit-flow-progress-head strong{font-size:12px;font-weight:900}
+#tab-kits :is(#kitDetail,#kitWizardOptimizerDock) .kit-flow-progress-head span{font-size:11px;font-weight:800;color:#277958}
+#tab-kits :is(#kitDetail,#kitWizardOptimizerDock) .kit-flow-progress-track,#tab-kits :is(#kitDetail,#kitWizardOptimizerDock) .kit-flow-live-track{height:9px;overflow:hidden;border-radius:999px;background:#dce8f4}
+#tab-kits :is(#kitDetail,#kitWizardOptimizerDock) .kit-flow-progress-track>span,#tab-kits :is(#kitDetail,#kitWizardOptimizerDock) .kit-flow-live-track>span{display:block;height:100%;width:0;background:linear-gradient(90deg,#35bda8,#0a9660);border-radius:inherit;transition:width .25s}
+#tab-kits :is(#kitDetail,#kitWizardOptimizerDock) .kit-flow-stage-steps{display:grid;grid-template-columns:repeat(8,minmax(0,1fr));gap:7px;margin:12px 0 5px;padding:0;list-style:none}
+#tab-kits :is(#kitDetail,#kitWizardOptimizerDock) .kit-flow-stage{display:flex;flex-direction:column;align-items:center;min-width:0;text-align:center;gap:4px}
+#tab-kits :is(#kitDetail,#kitWizardOptimizerDock) .kit-flow-stage-number{display:grid;place-items:center;width:27px;height:27px;border-radius:50%;background:#c8d6e7;color:white;font-size:11px;font-weight:900}
+#tab-kits :is(#kitDetail,#kitWizardOptimizerDock) .kit-flow-stage.is-done .kit-flow-stage-number{background:#0da36b}
+#tab-kits :is(#kitDetail,#kitWizardOptimizerDock) .kit-flow-stage.is-attention .kit-flow-stage-number{background:#f0a22a}
+#tab-kits :is(#kitDetail,#kitWizardOptimizerDock) .kit-flow-stage.is-skipped .kit-flow-stage-number{background:#a7b6c5}
+#tab-kits :is(#kitDetail,#kitWizardOptimizerDock) .kit-flow-stage strong{font-size:10px;color:#33597b;line-height:1.2}
+#tab-kits :is(#kitDetail,#kitWizardOptimizerDock) .kit-flow-stage small{font-size:9px;color:#7187a1;line-height:1.25}
+#tab-kits :is(#kitDetail,#kitWizardOptimizerDock) .kit-flow-progress-note{font-size:10px;line-height:1.4;color:#506a88;margin:9px 0 0}
+#tab-kits :is(#kitDetail,#kitWizardOptimizerDock) .kit-flow-search-hint{font-size:10px;line-height:1.4;color:#6d819b;margin:5px 0}
+#tab-kits :is(#kitDetail,#kitWizardOptimizerDock) .kit-flow-live-progress{display:flex;flex-wrap:wrap;gap:6px 13px;padding:10px;margin:10px 0;background:#fff;border:1px solid #caddeb;border-radius:9px}
+#tab-kits :is(#kitDetail,#kitWizardOptimizerDock) .kit-flow-live-progress[hidden]{display:none!important}
+#tab-kits :is(#kitDetail,#kitWizardOptimizerDock) .kit-flow-live-progress>strong,#tab-kits :is(#kitDetail,#kitWizardOptimizerDock) .kit-flow-live-progress>.kit-flow-live-track{width:100%}
+#tab-kits :is(#kitDetail,#kitWizardOptimizerDock) .kit-flow-live-progress>strong{font-size:11px;color:#1a5175}
+#tab-kits :is(#kitDetail,#kitWizardOptimizerDock) .kit-flow-live-progress>small{font-size:9px;color:#526f8b}
 #tab-kits #kitDetail #kitOptimizeCancelLookup{border:1px solid #eeaaa5;background:#fff1ef;color:#933d34}
-@media(max-width:900px){#tab-kits #kitDetail .kit-flow-stage-steps{grid-template-columns:repeat(4,minmax(0,1fr));row-gap:13px}}
-@media(max-width:510px){#tab-kits #kitDetail .kit-flow-stage-steps{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media(max-width:900px){#tab-kits :is(#kitDetail,#kitWizardOptimizerDock) .kit-flow-stage-steps{grid-template-columns:repeat(4,minmax(0,1fr));row-gap:13px}}
+@media(max-width:510px){#tab-kits :is(#kitDetail,#kitWizardOptimizerDock) .kit-flow-stage-steps{grid-template-columns:repeat(2,minmax(0,1fr))}}
 
 /* Somente SKU principal/Item ID unico no anuncio Shopee */
-#tab-kits #kitDetail .kit-existing-discount-grid{grid-template-columns:minmax(0,1fr) minmax(0,1.45fr)}
+#tab-kits :is(#kitDetail,#kitWizardOptimizerDock) .kit-existing-discount-grid{grid-template-columns:minmax(0,1fr) minmax(0,1.45fr)}
 #tab-kits #kitDetail #kitOptimizeListingSku[readonly]{background:#eef4fb;color:#395d7d;cursor:default}
 
 /* Sequencia SEO: gerador -> resultados importados -> opcoes avancadas.
@@ -2488,55 +2488,55 @@
 @media(max-width:900px){#tab-kits #kitDetail .kit-chatgpt-import-actions{flex:1 1 100%;justify-content:stretch}#tab-kits #kitDetail .kit-chatgpt-import-actions button{flex:1 1 190px}}
 
 /* O fluxo do kit vem logo após a composição. Apenas 3 complementos por padrão. */
-#tab-kits #kitDetail #kitOptimizeExistingPanel{margin:10px 0 16px}
-#tab-kits #kitDetail .kit-optimizer-workspace .optimizer-workflow-cards{grid-template-columns:repeat(3,minmax(0,1fr));gap:9px}
-#tab-kits #kitDetail .kit-optimizer-workspace .kit-reuse-summary{grid-column:1/-1;display:flex;align-items:center;gap:6px 14px;flex-wrap:wrap;padding:11px 13px;border:1px solid #d5e6d9;background:#f5faf7;border-radius:11px}
+#tab-kits :is(#kitDetail,#kitWizardOptimizerDock) #kitOptimizeExistingPanel{margin:10px 0 16px}
+#tab-kits :is(#kitDetail,#kitWizardOptimizerDock) .kit-optimizer-workspace .optimizer-workflow-cards{grid-template-columns:repeat(3,minmax(0,1fr));gap:9px}
+#tab-kits :is(#kitDetail,#kitWizardOptimizerDock) .kit-optimizer-workspace .kit-reuse-summary{grid-column:1/-1;display:flex;align-items:center;gap:6px 14px;flex-wrap:wrap;padding:11px 13px;border:1px solid #d5e6d9;background:#f5faf7;border-radius:11px}
 #tab-kits #kitDetail .kit-reuse-summary>strong{width:100%;font-size:12px;color:#205748}
 #tab-kits #kitDetail .kit-reuse-summary>span{font-size:10px;font-weight:650;color:#466581;flex:1 1 205px;line-height:1.45}
 #tab-kits #kitDetail .kit-discount-later{margin:8px 0;padding:7px 9px;border:1px dashed #d9e4f1;border-radius:9px;background:#fafcff}
 #tab-kits #kitDetail .kit-discount-later summary{cursor:pointer;font-size:10px;color:#486b8e;font-weight:750}
 #tab-kits #kitDetail .kit-discount-later p{font-size:10px;color:#6c7f96;line-height:1.4}
 #tab-kits #kitDetail .kit-discount-later button{font-size:11px}
-#tab-kits #kitDetail .kit-flow-stage-steps{grid-template-columns:repeat(3,minmax(0,1fr))}
-@media(max-width:850px){#tab-kits #kitDetail .kit-optimizer-workspace .optimizer-workflow-cards{grid-template-columns:1fr}#tab-kits #kitDetail .kit-flow-stage-steps{grid-template-columns:repeat(3,minmax(0,1fr))}}
+#tab-kits :is(#kitDetail,#kitWizardOptimizerDock) .kit-flow-stage-steps{grid-template-columns:repeat(3,minmax(0,1fr))}
+@media(max-width:850px){#tab-kits :is(#kitDetail,#kitWizardOptimizerDock) .kit-optimizer-workspace .optimizer-workflow-cards{grid-template-columns:1fr}#tab-kits :is(#kitDetail,#kitWizardOptimizerDock) .kit-flow-stage-steps{grid-template-columns:repeat(3,minmax(0,1fr))}}
 
 /* Oito etapas como no otimizador original. O tracker real da execucao nao e alterado. */
-#tab-kits #kitDetail .kit-optimizer-workspace .optimizer-workflow-cards{
+#tab-kits :is(#kitDetail,#kitWizardOptimizerDock) .kit-optimizer-workspace .optimizer-workflow-cards{
  display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:9px
 }
-#tab-kits #kitDetail .kit-optimizer-workspace .optimizer-workflow-card{min-width:0;min-height:82px}
-#tab-kits #kitDetail .kit-optimizer-workspace{margin:10px 0 12px}
-@media(max-width:1050px){#tab-kits #kitDetail .kit-optimizer-workspace .optimizer-workflow-cards{grid-template-columns:repeat(2,minmax(0,1fr))}}
-@media(max-width:650px){#tab-kits #kitDetail .kit-optimizer-workspace .optimizer-workflow-cards{grid-template-columns:1fr}}
+#tab-kits :is(#kitDetail,#kitWizardOptimizerDock) .kit-optimizer-workspace .optimizer-workflow-card{min-width:0;min-height:82px}
+#tab-kits :is(#kitDetail,#kitWizardOptimizerDock) .kit-optimizer-workspace{margin:10px 0 12px}
+@media(max-width:1050px){#tab-kits :is(#kitDetail,#kitWizardOptimizerDock) .kit-optimizer-workspace .optimizer-workflow-cards{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media(max-width:650px){#tab-kits :is(#kitDetail,#kitWizardOptimizerDock) .kit-optimizer-workspace .optimizer-workflow-cards{grid-template-columns:1fr}}
 
 
 /* Etapa 08: planejamento da Minha Promoção sem liberação de envio. */
-#tab-kits #kitDetail .kit-existing-discount-review-actions{
+#tab-kits :is(#kitDetail,#kitWizardOptimizerDock) .kit-existing-discount-review-actions{
  display:flex;align-items:center;justify-content:flex-start;
  flex-wrap:wrap;gap:8px;margin:10px 0 4px;
 }
-#tab-kits #kitDetail .kit-existing-discount-review-actions button{
+#tab-kits :is(#kitDetail,#kitWizardOptimizerDock) .kit-existing-discount-review-actions button{
  min-height:36px;max-width:100%;width:auto;padding:9px 12px;
  border-radius:10px;font-size:11px;font-weight:800;
 }
-#tab-kits #kitDetail #kitOptimizeDiscountToExecution{
+#tab-kits :is(#kitDetail,#kitWizardOptimizerDock) #kitOptimizeDiscountToExecution{
  background:#eaf3ff;border:1px solid #bbd5f4;color:#14529a;
  box-shadow:0 3px 0 #b1cbe7;
 }
-#tab-kits #kitDetail #kitOptimizeDiscountApply:disabled{
+#tab-kits :is(#kitDetail,#kitWizardOptimizerDock) #kitOptimizeDiscountApply:disabled{
  opacity:.48;cursor:not-allowed;box-shadow:none;
 }
-#tab-kits #kitDetail .kit-existing-discount-review-actions button[hidden]{
+#tab-kits :is(#kitDetail,#kitWizardOptimizerDock) .kit-existing-discount-review-actions button[hidden]{
  display:none!important;
 }
-#tab-kits #kitDetail #kitOptimizeDiscountSummary{
+#tab-kits :is(#kitDetail,#kitWizardOptimizerDock) #kitOptimizeDiscountSummary{
  white-space:pre-wrap!important;overflow-wrap:anywhere!important;
  font-family:inherit!important;line-height:1.5!important;
 }
 
 
 /* V3.8.9 — etapa 08: resumo de preços limpo, sem herança do <pre> escuro. */
-#tab-kits #kitDetail .kit-existing-discount-review .kit-discount-summary{
+#tab-kits :is(#kitDetail,#kitWizardOptimizerDock) .kit-existing-discount-review .kit-discount-summary{
  display:block!important;background:#fff!important;color:#18365a!important;
  border:1px solid #cddff1!important;border-radius:12px!important;
  box-shadow:none!important;padding:13px 14px!important;margin:0 0 10px!important;
@@ -2580,10 +2580,10 @@
  padding:10px 12px!important;margin:12px 0 0!important;
  border:1px solid #f0ddb6;border-radius:9px;
 }
-#tab-kits #kitDetail .kit-existing-discount-review-actions{
+#tab-kits :is(#kitDetail,#kitWizardOptimizerDock) .kit-existing-discount-review-actions{
  display:flex;flex-wrap:wrap;gap:8px;
 }
-#tab-kits #kitDetail .kit-existing-discount-review-actions button{
+#tab-kits :is(#kitDetail,#kitWizardOptimizerDock) .kit-existing-discount-review-actions button{
  min-height:36px!important;font-size:11px!important;
 }
 @media(max-width:840px){
@@ -2858,65 +2858,69 @@
 }
 
 
-/* KIT WIZARD V2 — nove etapas na ordem do anúncio; um formulário por vez.
-   Respeita os controles originais de mídia, logística, revisão e publicação. */
-#tab-kits #kitWizardSteps{grid-template-columns:repeat(3,minmax(0,1fr))}
-#tab-kits #kitWizardVariantsAccess[hidden]{display:none!important}
-#tab-kits #kitWizardVariantsAccess{background:#f5f9ff;border:1px solid #c8dbef;
- border-radius:12px;margin-bottom:13px;padding:14px;color:#174069}
-#tab-kits #kitWizardVariantsAccess strong{display:block;font-weight:850;font-size:13px}
-#tab-kits #kitWizardVariantsAccess p{font-size:11px;line-height:1.5;margin:7px 0 12px}
-#tab-kits #kitWizardWork:not([hidden]) :where(#kitDetail:not([hidden])[data-kit-wizard-step] > *){
- display:none!important
-}
-/* 01 — Fotos originais, geração e galeria do kit */
-#tab-kits #kitDetail[data-kit-wizard-step="1"] > #kitImagesCollapseToolbar,
-#tab-kits #kitDetail[data-kit-wizard-step="1"] > #kitImagesContent{
- display:block!important
-}
-/* 02 — Vídeo do kit: reutiliza o painel de vídeo da publicação. */
-#tab-kits #kitDetail[data-kit-wizard-step="2"] > #kitPublishPanel{display:block!important}
-#tab-kits #kitDetail[data-kit-wizard-step="2"] #kitPublishPanel > :not(.kit-formal-workspace),
-#tab-kits #kitDetail[data-kit-wizard-step="2"] #kitPublishPanel .kit-formal-workspace > :not(#kitVideoPanel){display:none!important}
-/* 03 — Título SEO: mostrar o bloco inteiro, já expandido pelo JS da etapa. */
-#tab-kits #kitDetail[data-kit-wizard-step="3"] > .kit-copy-collapse-toolbar,
-#tab-kits #kitDetail[data-kit-wizard-step="5"] > .kit-copy-collapse-toolbar{display:flex!important}
-#tab-kits #kitDetail[data-kit-wizard-step="3"] > #kitCopyContentPanel:not([hidden]){display:block!important}
-#tab-kits #kitDetail[data-kit-wizard-step="3"] #kitCopyContentPanel .kit-copy-grid label:has(#kitDescription){display:none!important}
-/* 04 — Ficha técnica e conferência original do otimizador. */
-#tab-kits #kitDetail[data-kit-wizard-step="4"] > #kitMissingFacts,
-#tab-kits #kitDetail[data-kit-wizard-step="4"] > #kitOptimizeExistingPanel{display:block!important}
-#tab-kits #kitDetail[data-kit-wizard-step="4"] #kitOptimizeExistingPanel > .kit-existing-discount{display:none!important}
-/* 05 — Descrição, sem título misturado. */
-#tab-kits #kitDetail[data-kit-wizard-step="5"] > #kitCopyContentPanel:not([hidden]){display:block!important}
-#tab-kits #kitDetail[data-kit-wizard-step="5"] #kitCopyContentPanel .kit-copy-grid label:has(#kitTitle){display:none!important}
-/* 06 — Variações: mesmas funções da otimização existente da Shopee. */
-#tab-kits #kitDetail[data-kit-wizard-step="6"] > #kitOptimizeExistingPanel{display:block!important}
-#tab-kits #kitDetail[data-kit-wizard-step="6"] #kitOptimizeExistingPanel > :not(.kit-flow-start-bar):not(.kit-flow-status):not(#kitOptimizerWorkspace){display:none!important}
-/* 07 — Dados fiscais e logística. */
-#tab-kits #kitDetail[data-kit-wizard-step="7"] > #kitOptimizeExistingPanel,
-#tab-kits #kitDetail[data-kit-wizard-step="7"] > #kitPublishPanel{display:block!important}
-#tab-kits #kitDetail[data-kit-wizard-step="7"] #kitOptimizeExistingPanel > .kit-existing-discount{display:none!important}
-#tab-kits #kitDetail[data-kit-wizard-step="7"] #kitPublishPanel > :not(.kit-formal-workspace){display:none!important}
-#tab-kits #kitDetail[data-kit-wizard-step="7"] #kitPublishPanel .kit-formal-workspace > :not(.kit-formal-logistics-card):not(#kitLogisticsSmartImport){display:none!important}
-/* 08 — Preço bruto e desconto, somente preparação/autorização real. */
-#tab-kits #kitDetail[data-kit-wizard-step="8"] > #kitOptimizeExistingPanel{display:block!important}
-#tab-kits #kitDetail[data-kit-wizard-step="8"] #kitOptimizeExistingPanel > :not(.kit-existing-discount):not(.kit-flow-start-bar):not(.kit-flow-status){display:none!important}
-#tab-kits #kitDetail[data-kit-wizard-step="8"] #kitOptimizeExistingPanel > .kit-existing-discount{display:block!important}
-/* 09 — Execução / prévia final, nunca publicar ao marcar conferido. */
-#tab-kits #kitDetail[data-kit-wizard-step="9"] > #kitOptimizeExistingPanel,
-#tab-kits #kitDetail[data-kit-wizard-step="9"] > #kitPublishPanel{display:block!important}
-#tab-kits #kitDetail[data-kit-wizard-step="9"] #kitOptimizeExistingPanel > .kit-existing-discount{display:none!important}
-#tab-kits #kitDetail[data-kit-wizard-step="9"] #kitPublishPanel .kit-formal-workspace > #kitVideoPanel{display:none!important}
-@media(max-width:1100px){#tab-kits #kitWizardSteps{grid-template-columns:repeat(3,minmax(0,1fr))}}
+
+/* KIT WIZARD V4 — dez etapas; dados WeDrop isolados na primeira página.
+   O painel de otimização real fica em dock independente, sob botão próprio. */
+#tab-kits #kitWizardSteps{grid-template-columns:repeat(5,minmax(0,1fr))}
+#tab-kits #kitWizardVariantsAccess[hidden],
+#tab-kits #kitWizardTechnicalAccess[hidden],
+#tab-kits #kitWizardDiscountAccess[hidden],
+#tab-kits #kitWizardExecutionAccess[hidden],
+#tab-kits #kitWizardOptimizerDock[hidden]{display:none!important}
+#tab-kits #kitWizard .kit-wizard-optimizer-toggle-row{display:flex;justify-content:flex-end;align-items:center;margin:13px 0 0}
+#tab-kits #kitWizardOptimizerToggle{appearance:none;cursor:pointer;border:1px solid #e75420;
+ background:linear-gradient(115deg,#ff6536,#ee451d);color:#fff;border-radius:12px;
+ padding:12px 19px;min-height:45px;font-size:12px;font-weight:900;
+ box-shadow:0 5px 0 #ba3716,0 10px 18px rgba(151,55,20,.17)}
+#tab-kits #kitWizardOptimizerToggle:hover:not(:disabled){filter:brightness(1.035)}
+#tab-kits #kitWizardOptimizerToggle:disabled{opacity:.5;cursor:not-allowed}
+#tab-kits #kitWizardOptimizerToggle[aria-expanded="true"]{background:linear-gradient(115deg,#1e72d0,#1159ae);border-color:#1858aa;box-shadow:0 4px 0 #17467e,0 9px 19px #104c9225}
+#tab-kits #kitWizardOptimizerDock{margin:17px 0 0;padding:0;min-width:0;width:100%;scroll-margin-top:100px}
+#tab-kits #kitWizardOptimizerDock > #kitOptimizeExistingPanel{width:100%;max-width:100%;box-sizing:border-box;margin:0}
+#tab-kits #kitWizardVariantsAccess,
+#tab-kits #kitWizardTechnicalAccess,
+#tab-kits #kitWizardDiscountAccess,
+#tab-kits #kitWizardExecutionAccess{background:#f4f9ff;border:1px solid #c5dcf2;padding:14px;border-radius:12px;margin:0 0 14px}
+#tab-kits #kitWizardVariantsAccess strong,
+#tab-kits #kitWizardTechnicalAccess strong,
+#tab-kits #kitWizardDiscountAccess strong,
+#tab-kits #kitWizardExecutionAccess strong{display:block;color:#173a63;font-size:13px;font-weight:900}
+#tab-kits #kitWizardVariantsAccess p,
+#tab-kits #kitWizardTechnicalAccess p,
+#tab-kits #kitWizardDiscountAccess p,
+#tab-kits #kitWizardExecutionAccess p{font-size:11px;line-height:1.5;color:#496889;margin:6px 0 12px}
+#tab-kits #kitWizardWork:not([hidden]) :where(#kitDetail:not([hidden])[data-kit-wizard-step] > *){display:none!important}
+/* 01 — informação por SKU: o componente original com textos, medidas e prints. */
+#tab-kits #kitDetail[data-kit-wizard-step="1"] > #kitMissingFacts{display:block!important}
+/* 02 — imagens. */
+#tab-kits #kitDetail[data-kit-wizard-step="2"] > #kitImagesCollapseToolbar,
+#tab-kits #kitDetail[data-kit-wizard-step="2"] > #kitImagesContent{display:block!important}
+/* 03 — vídeo do kit. */
+#tab-kits #kitDetail[data-kit-wizard-step="3"] > #kitPublishPanel:not([hidden]){display:block!important}
+#tab-kits #kitDetail[data-kit-wizard-step="3"] #kitPublishPanel > :not(.kit-formal-workspace),
+#tab-kits #kitDetail[data-kit-wizard-step="3"] #kitPublishPanel .kit-formal-workspace > :not(#kitVideoPanel){display:none!important}
+/* 04 — título do anúncio, independentemente da descrição. */
+#tab-kits #kitDetail[data-kit-wizard-step="4"] > .kit-copy-collapse-toolbar{display:flex!important}
+#tab-kits #kitDetail[data-kit-wizard-step="4"] > #kitCopyContentPanel:not([hidden]){display:block!important}
+#tab-kits #kitDetail[data-kit-wizard-step="4"] #kitCopyContentPanel .kit-copy-grid label:has(#kitDescription){display:none!important}
+/* 05 — ficha técnica: acesso ao editor oficial, nunca o formulário bruto das SKUs. */
+/* 06 — descrição do anúncio, sem título SEO. */
+#tab-kits #kitDetail[data-kit-wizard-step="6"] > .kit-copy-collapse-toolbar{display:flex!important}
+#tab-kits #kitDetail[data-kit-wizard-step="6"] > #kitCopyContentPanel:not([hidden]){display:block!important}
+#tab-kits #kitDetail[data-kit-wizard-step="6"] #kitCopyContentPanel .kit-copy-grid label:has(#kitTitle){display:none!important}
+/* 07 — variações existentes; 08 — dados fiscais; 09 — desconto; 10 — execução.
+   O painel oficial é mostrado somente pelo botão independente. */
+#tab-kits #kitDetail[data-kit-wizard-step="8"] > #kitPublishPanel:not([hidden]),
+#tab-kits #kitDetail[data-kit-wizard-step="10"] > #kitPublishPanel:not([hidden]){display:block!important}
+#tab-kits #kitDetail[data-kit-wizard-step="8"] #kitPublishPanel > :not(.kit-formal-workspace){display:none!important}
+#tab-kits #kitDetail[data-kit-wizard-step="8"] #kitPublishPanel .kit-formal-workspace > :not(.kit-formal-logistics-card):not(#kitLogisticsSmartImport){display:none!important}
+#tab-kits #kitDetail[data-kit-wizard-step="10"] #kitPublishPanel .kit-formal-workspace > #kitVideoPanel{display:none!important}
+@media(max-width:1200px){#tab-kits #kitWizardSteps{grid-template-columns:repeat(3,minmax(0,1fr))}}
 @media(max-width:680px){#tab-kits #kitWizardSteps{grid-template-columns:repeat(2,minmax(0,1fr))}}
 
-/* Layout v3: cabeçalho único do rascunho aberto acima do menu de nove etapas. */
+/* Layout v4: cabeçalho real do kit fica acima das dez etapas. */
 #tab-kits #kitWizardCurrentKit[hidden]{display:none!important}
 #tab-kits #kitWizardCurrentKit{min-width:0;width:100%;box-sizing:border-box;margin:12px 0 14px}
 #tab-kits #kitWizardCurrentKit > .kit-editor-top-panel{width:100%;box-sizing:border-box;min-width:0}
-/* Títulos/descrição são internos às etapas 03/05; não ocupam espaço nas demais. */
-#tab-kits #kitDetail[data-kit-wizard-step="3"] > .kit-copy-collapse-toolbar,
-#tab-kits #kitDetail[data-kit-wizard-step="5"] > .kit-copy-collapse-toolbar{display:flex!important}
-#tab-kits #kitDetail[data-kit-wizard-step="3"] > #kitCopyContentPanel[hidden],
-#tab-kits #kitDetail[data-kit-wizard-step="5"] > #kitCopyContentPanel[hidden]{display:none!important}
+#tab-kits #kitDetail[data-kit-wizard-step="4"] > #kitCopyContentPanel[hidden],
+#tab-kits #kitDetail[data-kit-wizard-step="6"] > #kitCopyContentPanel[hidden]{display:none!important}
