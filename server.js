@@ -1883,6 +1883,29 @@ app.get('/api/shopee/optimizer/workflow',mustLogin,requireWeDropAdmin,async(req,
           'Dados complementares do kit indisponiveis: '+String(error.message||error).slice(0,110);
       }
     }
+    // A Etapa 05 pode consultar uma SKU principal antes de preparar o
+    // vinculo comercial do kit. Unir apenas os fatos ja salvos desse rascunho
+    // na PREVIA tecnica, sem alterar a fonte do otimizador ou a Shopee.
+    const requestedKitSku=String(req.query.kit_sku||'').trim();
+    if(requestedKitSku&&(!kitLink?.kitSku||String(kitLink.kitSku)===requestedKitSku)){
+      try{
+        const requestedDraft=await loadKitDraft(auth.shopId,requestedKitSku);
+        const mainIsInKit=Array.isArray(requestedDraft?.skus)&&
+          requestedDraft.skus.some(code=>String(code)===sku)&&
+          requestedDraft.kit?.components?.some(p=>String(p.sku)===sku);
+        if(mainIsInKit){
+          const facts=String(requestedDraft.creative?.manualFacts?.[sku]||'').trim().slice(0,1700);
+          if(facts&&!technicalSourceText.includes(facts))
+            technicalSourceText=[facts,technicalSourceText.trim()].filter(Boolean).join('\n\n');
+        }else{
+          technicalWarning=(technicalWarning?technicalWarning+' ':'')+
+            'A SKU principal não pertence ao rascunho informado.';
+        }
+      }catch(error){
+        technicalWarning=(technicalWarning?technicalWarning+' ':'')+
+          'Informações por SKU não recuperadas: '+String(error.message||error).slice(0,100);
+      }
+    }
     const supplierFacts=supplierWorkflowFacts(supplier,record,settings);
     const collectEvidenceFacts=()=>{
       const basic=supplierAttributeSuggestions({attributes:technicalPreview.attributes,
