@@ -148,32 +148,72 @@ function kitWizardTechnicalReady(){
  }
  return opened;
 }
-function kitWizardRequestTechnical({force=false}={}){
+// A etapa 05 restaura o formulário oficial já existente, depois de garantir
+// que os fatos de TODAS as SKUs (inclusive da principal) foram salvos no rascunho.
+async function kitWizardRequestTechnical({force=false}={}){
  if(kitWizardStage!==5||!prepared?.kit)return;
  kitWizardMountTechnical();
  if(kitWizardTechnicalReady())return;
  if(!kitSaved){
-  kitWizardTechnicalStatus('Salve o rascunho do kit para consultar a ficha técnica da SKU principal.','warning');
+  kitWizardTechnicalStatus('Salve o rascunho do kit para recuperar a ficha técnica da SKU principal.','warning');
   return;
  }
- const chosen=$('#kitOptimizeMainSku'),code=chosen?.value||'';
+ const kitSku=prepared.kit.kitSku;
+ const chosen=$('#kitOptimizeMainSku');
+ const code=chosen?.value||$('#kitPrincipalSku')?.value||prepared.kit.components?.[0]?.sku||'';
  if(!code||!prepared.kit.components.some(p=>p.sku===code)){
-  kitWizardTechnicalStatus('Selecione a SKU principal no painel “Preparar e revisar o kit”.','warning');
+  kitWizardTechnicalStatus('Selecione uma SKU principal válida neste kit.','warning');
   return;
  }
- const identity=prepared.kit.kitSku+'|'+code;
+ if(chosen&&chosen.value!==code)chosen.value=code;
+ const identity=kitSku+'|'+code;
  if(!force&&kitWizardTechnicalLoadingFor===identity)return;
- const button=$('#kitOptimizeStart');
- if(!button||button.disabled){
-  kitWizardTechnicalStatus($('#kitOptimizeStatus')?.textContent||
-   'A consulta da SKU principal está indisponível. Verifique a seleção no painel de otimização.','warning');
-  return;
- }
  kitWizardTechnicalLoadingFor=identity;
- kitWizardTechnicalStatus('Consultando o anúncio e os atributos oficiais da SKU principal '+code+
-  ' na Shopee. Nenhuma edição será publicada automaticamente.','info');
- // Reutiliza o comando existente, que identifica o Item ID e consulta a ficha.
- button.click();
+ kitWizardTechnicalStatus('Recuperando a ficha original da SKU principal '+code+' e seus dados salvos...','info');
+ try{
+  // Esvaziar o debounce antes de consultar a ficha evita que a API leia
+  // uma versão antiga das informações por SKU digitadas no editor.
+  const fields=$('#kitMissingFactFields');
+  if(fields?.querySelector('textarea[data-kit-fact-sku]'))kitContentReadManual();
+  const allowed=new Set(prepared.kit.components.map(p=>String(p.sku)));
+  const manualFacts=Object.fromEntries([...kitContentManualFacts]
+   .filter(([sku,value])=>allowed.has(String(sku))&&typeof value==='string')
+   .map(([sku,value])=>[sku,String(value).slice(0,1700)]));
+  if(Object.values(manualFacts).some(value=>value.trim())){
+   clearTimeout(kitFactsSaveTimer);
+   ++kitFactsSaveSerial;
+   try{
+    await api('/api/shopee/kits/drafts/manual-facts',{
+     body:{kitSku,manualFacts}
+    });
+   }catch(error){
+    // O formulário oficial continua disponível mesmo se o complemento falhar.
+    // Não perder os dados locais nem informar falsamente que sincronizou.
+    kitWizardTechnicalStatus('A ficha original será carregada, mas os dados complementares por SKU não foram sincronizados: '+
+     error.message,'warning');
+   }
+  }
+  if(kitWizardStage!==5||prepared?.kit?.kitSku!==kitSku||
+     String($('#kitOptimizeMainSku')?.value||'')!==String(code)){
+   if(kitWizardTechnicalLoadingFor===identity)kitWizardTechnicalLoadingFor='';
+   return;
+  }
+  if(kitWizardTechnicalReady())return;
+  const button=$('#kitOptimizeStart');
+  if(!button||button.disabled){
+   kitWizardTechnicalLoadingFor='';
+   kitWizardTechnicalStatus($('#kitOptimizeStatus')?.textContent||
+    'A consulta da ficha técnica não está disponível. Clique novamente para tentar.','warning');
+   return;
+  }
+  kitWizardTechnicalStatus('Consultando os atributos oficiais da SKU principal '+code+
+   '. O formulário será preenchido para conferência; nada será publicado automaticamente.','info');
+  button.click();
+ }catch(error){
+  if(kitWizardTechnicalLoadingFor===identity)kitWizardTechnicalLoadingFor='';
+  kitWizardTechnicalStatus('Falha ao recuperar a ficha técnica: '+String(error.message||error)+
+   '. Use “Carregar ou atualizar ficha técnica” para tentar novamente.','error');
+ }
 }
 globalThis.RAKitTechnicalRequested=kitSku=>
  kitWizardStage===5&&prepared?.kit?.kitSku===String(kitSku||'');
@@ -182,6 +222,14 @@ globalThis.RAKitTechnicalLoadReady=({kitOptimization,sku}={})=>{
  if(String($('#kitOptimizeMainSku')?.value||'')!==String(sku||''))return;
  kitWizardMountTechnical();
  kitWizardTechnicalReady();
+};
+globalThis.RAKitTechnicalLoadError=({kitSku,sku,message}={})=>{
+ if(!globalThis.RAKitTechnicalRequested?.(kitSku))return;
+ if(String($('#kitOptimizeMainSku')?.value||'')!==String(sku||''))return;
+ kitWizardTechnicalLoadingFor='';
+ kitWizardTechnicalStatus('Não foi possível carregar a ficha técnica da SKU principal '+sku+
+  ': '+String(message||'Falha na consulta original')+
+  '. Os dados salvos foram preservados. Clique em “Carregar ou atualizar ficha técnica” para tentar novamente.','error');
 };
 // Etapa 08 reutiliza a ficha FISCAL oficial do Motor Matriz para o Item ID
 // da SKU principal. Nunca duplica os campos, nem envia dados para a Shopee.
