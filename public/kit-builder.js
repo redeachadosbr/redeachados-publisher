@@ -158,7 +158,8 @@ function kitWizardMountTechnical(){
  if(!node||!normal)return;
  const mounts={5:'#kitWizardTechnicalMount',7:'#kitWizardVariantsMount',
   9:'#kitWizardDiscountMount',10:'#kitWizardExecutionMount'};
- const mount=prepared?.kit&&!$('#kitDetail')?.hidden?$(mounts[kitWizardStage]):null;
+ const destination=mounts[kitWizardStage];
+ const mount=destination&&prepared?.kit&&!$('#kitDetail')?.hidden?$(destination):null;
  if(mount){
   if(node.parentElement!==mount)mount.append(node);
  }else if(node.parentElement!==normal){
