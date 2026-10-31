@@ -70,7 +70,7 @@ test('campo de arquivo mantém nome e mostra feedback visível mesmo com importa
  assert.match(html,/id="kitPlusFileStatus"[\s\S]{0,150}role="status"/);
  assert.match(app,/kitChatQueuedManualImport=\{uploadedText,silent:false\}/);
  assert.match(app,/if\(queued\)void importPlusSuggestions\(queued\)/);
- assert.match(app,/kitChatFilePickerOpen\|\|kitChatQueuedManualImport/);
+ assert.match(app,/kitChatFilePickerOpen\|\|kitChatManualImportActive\|\|kitChatQueuedManualImport/);
  assert.match(app,/event\.currentTarget\.value=''/);
  assert.doesNotMatch(app,/event\.target\.value='';[\s\S]{0,12}\}\);\nconst drop=/);
 });
@@ -97,7 +97,8 @@ test('até 20 kits com quantidade exata e zeros iniciais; não consome limite co
  assert.throws(()=>parseKitChatResult({kits:entries},{allowedCodes:allowed,limit:21}),/Limite inválido/);
 });
 
-test('arquivo escolhido tem prioridade sobre importação automática da área de transferência',()=>{
+test('arquivo escolhido tem prioridade sobre importação automática da área de transferência',async()=>{
+ const {readFileSync}=await import('node:fs');
  const app=readFileSync(new URL('../public/kit-builder.js',import.meta.url),'utf8');
  assert.match(app,/kitChatManualImportActive=true;[\s\S]*?const data=await file\.text\(\);/);
  assert.match(app,/finally\{\s*kitChatManualImportActive=false;/);
