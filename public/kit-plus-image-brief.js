@@ -1,3 +1,4 @@
+import {kitImageMeasurementsBySku} from './kit-measurements.js';
 // Prompt curto do ChatGPT Plus para kit: uso em ?prompt= e na área de transferência.
 // NÃO utiliza API, não controla o chat externo, nem insere imagens no navegador.
 const clean=(s,max=500)=>String(s||'').replace(/<[^>]*>/g,' ').replace(/\s+/g,' ').trim().slice(0,max);
@@ -5,21 +6,26 @@ export function buildKitPlusImageBrief(kit,{manualFacts={}}={}){
  const items=Array.isArray(kit?.components)?kit.components:[];
  if(items.length<2||items.length>3)throw Error('Selecione um kit com 2 ou 3 SKUs.');
  const allowed=new Set(items.map(x=>String(x.sku)));
+ const measureRows=kitImageMeasurementsBySku(items,manualFacts);
  const details=items.map((part,index)=>{
   const sku=String(part.sku);
-  const facts=allowed.has(sku)?clean(manualFacts?.[sku],300):'';
+  const facts=allowed.has(sku)?clean(manualFacts?.[sku],500):'';
+  const evidence=measureRows[index];
   return [
    'PRODUTO '+(index+1)+': SKU '+sku+' — '+clean(part.name,115)+'; 1 unidade.',
    'Foto WeDrop: '+(String(part.imageUrl||'').startsWith('https://')?part.imageUrl:'FOTO DE REFERÊNCIA DEVE SER ANEXADA'),
    'Descrição WeDrop: '+(clean(part.description,340)||'não informada'),
-   'Medidas WeDrop: '+(clean(part.dimensions,90)||'não informadas'),
-   'Texto adicional do vendedor (NÃO verificado): '+(facts||'nenhum')
+   'Medidas do catálogo WeDrop: '+(clean(part.dimensions,180)||'não informadas'),
+   'DIMENSÕES PARA A FOTO DESTE PRODUTO ('+evidence.source+'): '+
+    (evidence.dimensions.join(' · ')||'não informadas'),
+   'Outras grandezas cadastradas nesta SKU: '+(evidence.other.join(' · ')||'nenhuma'),
+   'Informações por SKU cadastradas pelo vendedor: '+(facts||'nenhuma')
   ].join('\n');
  }).join('\n\n');
  const stages=[
   '01 CAPA: todos os produtos juntos, 85–90% da área, fundo moderno, SEM texto.',
   '02 USO REAL: itens juntos em situação cotidiana coerente, frase curta se comprovada.',
-  '03 ESPECIFICAÇÕES: todos juntos; dimensões por SKU somente se verificadas, nunca misturadas.',
+  '03 ESPECIFICAÇÕES: todos juntos; escrever junto a CADA produto as suas dimensões cadastradas com unidade, identificando pelo NOME COMERCIAL, sem escrever SKU ou misturar medidas. Se não houver dimensão com unidade naquela ficha, não criar número.',
   '04 BENEFÍCIOS: 2–3 frases discretas, apenas fatos verdadeiros.',
   '05 DOR E SOLUÇÃO: produtos juntos como solução coerente, uma frase curta.',
   '06 PERSUASÃO: destaque a combinação, uma frase breve.',
@@ -35,6 +41,7 @@ export function buildKitPlusImageBrief(kit,{manualFacts={}}={}){
   details,
   'REGRA ABSOLUTA: em cada uma das 9 imagens, TODOS OS '+items.length+' SKUs devem aparecer JUNTOS na MESMA cena, fielmente às fotos originais. Jamais somente o produto principal. Nunca dividir os produtos em quadros separados; não inventar acessórios, funções, cores, quantidades ou medidas.',
   'FOTOS: utilize as imagens reais anexadas nesta conversa, correspondentes aos SKUs. URLs acima são apenas referências; se você não conseguir ver fielmente uma foto, solicite que eu a anexe antes de gerar. Não crie componentes aproximados sem referência.',
+  'FICHA TÉCNICA POR PRODUTO: as dimensões acima foram extraídas da seção "Informações por SKU · descrição, medidas e print" ou do catálogo WeDrop. Para a IMAGEM 03, mostrar visualmente as medidas que constam EXPRESSAMENTE em cada ficha, com unidade e junto ao produto correto. Os números fornecidos pelo vendedor são dados cadastrados pelo vendedor, não medições verificadas pela WeDrop. Nunca transferir medidas entre SKUs, inventar medidas ausentes ou confundir dimensões do produto com medidas da embalagem.',
   'VISUAL: fotografia publicitária realista, fundo ambientado moderno HD, iluminação premium, diversidade de cenas e ângulos, pouco texto em português brasileiro. Sem preços, logotipos ou marca-d’água.',
   'AS NOVE IMAGENS DEVEM SEGUIR ESTA SEQUÊNCIA:',
   stages,
