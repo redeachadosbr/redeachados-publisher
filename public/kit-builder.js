@@ -2065,6 +2065,8 @@ function renderKit({scroll=true,displayTitle=''}={}){
  void kitCheckAutoImageAvailability();
  getKitExtensionBridge().probe();
  void kitRestoreImageGallery(kit.kitSku);
+ // renderKit recolhe fatos ao mudar de rascunho; a etapa 01 deve abri-los.
+ if(kitWizardStage===1&&$('#kitMissingFacts'))$('#kitMissingFacts').open=true;
  if(scroll){
   const overview=$('#kitWizardCurrentKit');
   (overview&&!overview.hidden?overview:$('#kitDetail'))?.scrollIntoView({behavior:'smooth',block:'start'});
