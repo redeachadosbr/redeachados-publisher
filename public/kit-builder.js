@@ -2606,7 +2606,9 @@ async function importPlusSuggestions({readClipboard=false,silent=false,uploadedT
   }
   // Ao colar ou importar a resposta, também preparar o arquivo para
   // download independente de qualquer erro na API de rascunhos.
-  kitCaptureResearchJson(response,context,{autoDownload:true});
+  // Um JSON selecionado já é o artefato final. Não o reexportar com a
+  // whitelist da categoria, pois isso rejeitaria kits entre categorias.
+  if(!fileParsed)kitCaptureResearchJson(response,context,{autoDownload:true});
   kitPlusNotice('Importando '+rows.length+' kits do '+(parsed.format==='json'?'JSON':'texto')+
    '; validando custos, estoque e coerência na WeDrop...','info');
   const r=await api('/api/shopee/kits/plus-import',{body:{
