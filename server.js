@@ -169,7 +169,7 @@ app.use(express.static(path.join(__dirname,'public'),{
   setHeaders(res,filename){
     // Never reuse old bundles after a Shopee UI deploy, even if Chrome
     // has cached the path used by earlier releases.
-    if(/(?:^|[/\\])(?:app\.js|style\.css|kit-builder\.js|kit-chat-result-parser\.js|kit-json-export\.js|kit-content-handoff\.js)$/.test(filename))
+    if(/(?:^|[/\\])(?:app\.js|style\.css|kit-builder\.js|kit-builder\.css|kit-chat-result-parser\.js|kit-json-export\.js|kit-content-handoff\.js)$/.test(filename))
       res.setHeader('Cache-Control','no-store');
   }
 }));
