@@ -4393,7 +4393,7 @@ function optimizerExecutionTrackerRender(progress,job){
   recoverAction.className='secondary optimizer-exec-recover-stuck';
   recoverAction.style.cssText='width:100%;margin:12px 0;padding:14px;font-weight:800;border:2px solid #f59e0b;border-radius:12px';
   recoverAction.textContent='↻ Conferir Shopee e retomar somente etapas pendentes';
-  recoverAction.addEventListener('click',()=>$('#optimizerExecutionReconcile')?.click());
+  recoverAction.addEventListener('click',()=>void optimizerReconcileUncertainExecution());
   tracker.appendChild(recoverAction);
  }
  recoverAction.hidden=job?.state!=='uncertain';
@@ -6026,7 +6026,7 @@ $('#optimizerExecutionTechnicalOnly')?.addEventListener?.('click',()=>{
  void optimizerExecutionPrepare();
 });
 $('#optimizerExecutionRefresh')?.addEventListener?.('click',()=>void optimizerExecutionRefresh(true));
-$('#optimizerExecutionReconcile')?.addEventListener?.('click',async()=>{
+async function optimizerReconcileUncertainExecution(){
  const w=optimizerWorkflowPlan;if(!w)return;
  const btn=$('#optimizerExecutionReconcile');btn.disabled=true;
  try{
@@ -6044,7 +6044,8 @@ $('#optimizerExecutionReconcile')?.addEventListener?.('click',async()=>{
    else if(d.message)optimizerExecNotice(d.message,d.job?.state==='verified'?'success':'info');
   }
  }catch(e){optimizerExecNotice(e.message,'warning');}finally{btn.disabled=false;}
-});
+}
+$('#optimizerExecutionReconcile')?.addEventListener?.('click',()=>void optimizerReconcileUncertainExecution());
 $('#optimizerExecutionRetry')?.addEventListener?.('click',async()=>{
  const w=optimizerWorkflowPlan;if(!w)return;
  if(optimizerExecJob?.state==='uncertain'){
