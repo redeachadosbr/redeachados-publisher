@@ -2552,7 +2552,7 @@ async function importPlusSuggestions({readClipboard=false,silent=false,uploadedT
 // já concedida, o Manager tenta reconhecer as SKUs copiadas quando voltar.
 // Caso contrário, o botão explícito solicita a permissão no clique.
 async function kitChatTryAutoClipboard(){
- if(!kitChatPending||!kitStockReady||!document.hasFocus()||kitChatClipboardBusy||
+ if(!kitChatPending||!kitStockReady||kitResearchRunning||!document.hasFocus()||kitChatClipboardBusy||
      kitChatFilePickerOpen||kitChatQueuedManualImport)return;
  try{
   if(!navigator.permissions?.query)return;
