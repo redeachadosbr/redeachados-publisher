@@ -2969,3 +2969,20 @@
 #tab-kits #kitWizardFiscalMount #optimizerFiscalPanel:not([hidden]){display:block!important;
  width:100%;max-width:100%;min-width:0}
 #tab-kits #kitWizardWork #kitDetail[data-kit-wizard-step="8"] > #kitPublishPanel{display:none!important}
+
+
+/* Etapa 08: painel fiscal original realocado, com parâmetros locais já salvos.
+   Independente do fluxo de busca e da prévia remota de otimização. */
+#tab-kits #kitWizardFiscalMount > #optimizerFiscalPanel:not([hidden]){display:block!important;
+ width:100%;max-width:100%;min-width:0;border:1px solid #d5e5f4;
+ border-radius:12px;background:#fff;padding:14px;margin:12px 0 0;box-sizing:border-box}
+#tab-kits #kitWizardFiscalMount #optimizerFiscalFields{
+ display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px 14px;min-width:0}
+#tab-kits #kitWizardFiscalMount #optimizerFiscalFields > .optimizer-category-summary,
+#tab-kits #kitWizardFiscalMount #optimizerFiscalFields > .optimizer-warning{grid-column:1/-1}
+#tab-kits #kitWizardFiscalMount #optimizerFiscalFields .optimizer-field{min-width:0}
+#tab-kits #kitWizardFiscalMount #optimizerFiscalFields .optimizer-field input{
+ width:100%;max-width:100%;box-sizing:border-box}
+@media(max-width:650px){
+ #tab-kits #kitWizardFiscalMount #optimizerFiscalFields{grid-template-columns:1fr}
+}
