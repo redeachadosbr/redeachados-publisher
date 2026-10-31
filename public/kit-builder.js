@@ -145,6 +145,8 @@ function kitWizardSetStage(stage,{scroll=false}={}){
   'Escolha um kit nos rascunhos abaixo para completar as informações dos produtos.';
  const variation=$('#kitWizardVariantsAccess');if(variation)variation.hidden=kitWizardStage!==7;
  const technical=$('#kitWizardTechnicalAccess');if(technical)technical.hidden=kitWizardStage!==5;
+ const discount=$('#kitWizardDiscountAccess');if(discount)discount.hidden=kitWizardStage!==9;
+ const execution=$('#kitWizardExecutionAccess');if(execution)execution.hidden=kitWizardStage!==10;
  // Ao abrir Variações, Ficha ou Fiscal, reutilizar a etapa REAL já carregada
  // no otimizador Shopee da SKU principal, sem cadastrar outra tela.
  const reusing={5:'technical',7:'variants',8:'fiscal'}[kitWizardStage];
@@ -181,6 +183,8 @@ function kitWizardInit(){
  $('#kitWizardOptimizerToggle')?.addEventListener('click',()=>{
   kitWizardToggleOptimizer($('#kitWizardOptimizerDock')?.hidden,{scroll:true});
  });
+ $('#kitWizardOpenDiscount')?.addEventListener('click',()=>kitWizardToggleOptimizer(true,{scroll:true}));
+ $('#kitWizardOpenExecution')?.addEventListener('click',()=>kitWizardToggleOptimizer(true,{scroll:true}));
  $('#kitWizardOpenTechnical')?.addEventListener('click',()=>{
   kitWizardToggleOptimizer(true,{scroll:true});
   const workspace=$('#kitOptimizerWorkspace');
