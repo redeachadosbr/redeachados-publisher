@@ -297,7 +297,13 @@ export function initExistingKitOptimization({getContext,api,money,onMainSkuChang
    for(const m of matches){
     const button=document.createElement('button');button.type='button';button.className='kit-secondary';
     button.textContent='Item ID '+m.itemId+' · '+(m.title||code)+' · Modelo '+String(m.modelId??'0');
-    button.addEventListener('click',()=>{if(kitSku()===current)choose(m);});
+    button.addEventListener('click',()=>{
+     if(kitSku()!==current)return;
+     choose(m);
+     // Na ficha técnica, a escolha de um Item ID já verificado abre
+     // diretamente o editor original; não exige preparar/publicar o kit.
+     if(globalThis.RAKitTechnicalRequested?.(current))openTechnicalTarget();
+    });
     root.append(button);
    }
    if(!preferred){
@@ -439,6 +445,51 @@ export function initExistingKitOptimization({getContext,api,money,onMainSkuChang
    globalThis.RAKitLookupPhase?.('Reaproveitando imagens, título, descrição e preço já preparados no kit.');
    open();
   }finally{btn.disabled=false;btn.textContent='↻ Continuar otimização do kit';}
+ }
+ // Consulta somente de leitura para a Etapa 05. Reutiliza o identificador
+ // confirmado pela Shopee e o editor técnico do otimizador existente.
+ // Não chama /kits/optimization/prepare nem associa ou publica o kit.
+ function openTechnicalTarget(){
+  const current=kitSku(),code=$('#kitOptimizeMainSku')?.value||'';
+  if(!target||target.kitSku!==current||target.sku!==code||
+     !/^[1-9]\\d{0,17}$/.test(String(target.itemId||''))){
+   notice('Selecione um Item ID confirmado para a SKU principal antes de carregar a ficha.','warning');
+   return false;
+  }
+  const open=globalThis.redeKitOpenOptimizerTarget;
+  if(typeof open!=='function'||!open({
+    sku:code,itemId:String(target.itemId),modelId:String(target.modelId||'0'),
+    kitSku:current,embed:true,technicalOnly:true
+   })){
+   notice('O editor técnico original não está disponível. Atualize a página e tente novamente.','error');
+   return false;
+  }
+  notice('Consultando a ficha técnica original da SKU '+code+
+   ' no anúncio confirmado '+target.itemId+'. Nenhuma publicação será realizada.','info');
+  return true;
+ }
+ async function openTechnical(){
+  const state=ctx(),kit=state.prepared?.kit;
+  if(!kit||!state.kitSaved){
+   notice('Selecione e salve o rascunho para carregar a ficha da SKU principal.','warning');return false;
+  }
+  const selected=$('#kitOptimizeMainSku')?.value||$('#kitPrincipalSku')?.value||
+   kit.components?.[0]?.sku||'';
+  if(!kit.components?.some(p=>String(p.sku)===String(selected))){
+   notice('Selecione uma SKU principal válida do kit.','warning');return false;
+  }
+  if(!$('#kitOptimizeMainSku').value)$('#kitOptimizeMainSku').value=selected;
+  if(!target||target.kitSku!==kitSku()||target.sku!==selected){
+   await lookup({automatic:true});
+  }
+  if(!target||target.kitSku!==kitSku()||target.sku!==selected){
+   const advanced=$('#kitOptimizeAdvanced');
+   if(advanced)advanced.open=true;
+   // A busca apresenta os Item IDs verificados no mesmo painel da Etapa 05.
+   // Se houver mais de um anúncio, a escolha de um deles abre a ficha.
+   return false;
+  }
+  return openTechnicalTarget();
  }
  globalThis.RAKitOptimizerReady=data=>{
   if(data?.kitOptimization?.kitSku!==kitSku()||String(target?.itemId)!==String(data.itemId))return;
@@ -603,7 +654,9 @@ export function initExistingKitOptimization({getContext,api,money,onMainSkuChang
   technicalProgress=progress||null;renderTechnical();
  };
 
- $('#kitOptimizeDeepLookup')?.addEventListener('click',()=>void lookup({deep:true}));
+ $('#kitOptimizeDeepLookup')?.addEventListener('click',()=>void lookup({deep:true}).then(found=>{
+  if(found&&globalThis.RAKitTechnicalRequested?.(kitSku()))openTechnicalTarget();
+ }));
  $('#kitOptimizeCancelLookup')?.addEventListener('click',()=>{
   lookupSerial++;lookupController?.abort();lookupController=null;busy=false;
   notice('Consulta cancelada. Nenhuma alteracao foi enviada a Shopee.','warning');
@@ -643,5 +696,5 @@ export function initExistingKitOptimization({getContext,api,money,onMainSkuChang
  });
  // SKU do anúncio é informativa e deriva exclusivamente da escolha principal.
  renderJourney();
- return {restore};
+ return {restore,openTechnical};
 }
