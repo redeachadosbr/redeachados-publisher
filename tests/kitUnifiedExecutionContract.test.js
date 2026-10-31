@@ -368,7 +368,7 @@ test('etapa 08 mostra tabela clara em vez de bloco preto e preserva dados',()=>{
  assert.match(existing,/const content=document\.createElement\('dd'\)/);
  assert.match(existing,/content\.textContent=value/);
  assert.match(existing,/renderDiscountSummary\(result,planned,current\)/);
- assert.match(css,/#tab-kits #kitDetail \.kit-existing-discount-review \.kit-discount-summary/);
+ assert.match(css,/#tab-kits :is\(#kitDetail,#kitWizardOptimizerDock\) \.kit-existing-discount-review \.kit-discount-summary/);
  assert.match(css,/background:#fff!important;color:#18365a!important/);
  assert.match(css,/\.kit-discount-summary-row dd/);
  assert.match(module,/kit-existing-optimization\.js\?v=10-planned-promo/);
