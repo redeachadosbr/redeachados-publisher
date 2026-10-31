@@ -127,6 +127,21 @@ function kitWizardToggleOptimizer(expanded,{scroll=false}={}){
  button.textContent=show?'▴ Ocultar “Preparar e revisar o kit”':'▾ Mostrar “Preparar e revisar o kit”';
  if(show&&scroll)dock.scrollIntoView({behavior:'smooth',block:'start'});
 }
+// Etapa 03: reutilizar o painel original fora do Kit Formal, que permanece
+// oculto no fluxo de otimização. Mover o mesmo DOM preserva eventos e mídia.
+function kitWizardMountVideo(){
+ const panel=$('#kitVideoPanel'),editor=$('#kitDetail');
+ const home=$('#kitPublishPanel .kit-formal-workspace');
+ if(!panel||!editor||!home)return;
+ if(kitWizardStage===3&&prepared?.kit&&!editor.hidden){
+  if(panel.parentElement!==editor)editor.append(panel);
+  void restoreKitVideo(prepared.kit.kitSku);
+  kitVideoUI();
+ }else if(panel.parentElement!==home){
+  $('#kitVideoPreview')?.pause();
+  home.insertBefore(panel,home.firstChild);
+ }
+}
 // Editor de ficha técnica Shopee: DOM ORIGINAL, sem clone nem campos paralelos.
 // Mantém a referência para restaurar o workspace ao sair da etapa 05.
 let kitWizardTechnicalLoadingFor='';
@@ -345,6 +360,7 @@ function kitWizardSetStage(stage,{scroll=false}={}){
   if(kitWizardStage===1)$('#kitMissingFacts').open=true;
  }
  kitWizardUpdateProgress();
+ kitWizardMountVideo();
  kitWizardMountTechnical();
  kitWizardMountFiscalPreset();
  if(kitWizardStage===5)kitWizardRequestTechnical();

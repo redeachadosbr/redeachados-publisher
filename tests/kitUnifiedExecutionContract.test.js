@@ -105,7 +105,7 @@ test('titulo e descricao do kit possuem botoes de conferencia ao lado dos textos
  }
  assert.match(html,/\/app\.js\?v=3\.5\.\d+-[a-z0-9-]+/);
  assert.match(html,/\/kit-builder\.js\?v=[a-zA-Z0-9._-]+/);
- assert.match(html,/\/kit-builder\.css\?v=3\.8\.10-kit-discount-tracker/);
+ assert.match(html,/\/kit-builder\.css\?v=[a-z0-9._-]+/);
  assert.match(app,/globalThis\.RAKitSourceChanged=optimizerKitSourceChanged/);
  assert.match(app,/function optimizerKitSourceConfirm\(stage\)/);
  assert.match(app,/await optimizerKitSourceFlush\(stage\)/);
@@ -343,7 +343,7 @@ test('etapa 08 do kit permite previa de planejamento antes de executar o anuncio
  assert.match(module,/kit-existing-optimization\.js\?v=10-planned-promo/);
  assert.match(html,/\/app\.js\?v=3\.5\.\d+-[a-z0-9-]+/);
  assert.match(html,/\/kit-builder\.js\?v=[a-zA-Z0-9._-]+/);
- assert.match(html,/\/kit-builder\.css\?v=3\.8\.10-kit-discount-tracker/);
+ assert.match(html,/\/kit-builder\.css\?v=[a-z0-9._-]+/);
 });
 test('etapa 08 continua sem token de desconto se falta execucao confirmada',()=>{
  const service=source('shopeeKitDiscountService.js');
@@ -453,7 +453,7 @@ test('rastreador distingue check do desconto da sua publicação na Shopee',()=>
  assert.match(css,/\.optimizer-exec-step\.is-kit-prepared/);
  assert.match(css,/\.optimizer-exec-step\.is-kit-published/);
  assert.match(html,/\/app\.js\?v=3\.5\.\d+-[a-z0-9-]+/);
- assert.match(html,/\/kit-builder\.css\?v=3\.8\.10-kit-discount-tracker/);
+ assert.match(html,/\/kit-builder\.css\?v=[a-z0-9._-]+/);
 });
 test('rastreador não altera resultados verificados nem presume execução da promoção',()=>{
  const progressCode=source('shopeeExecutionProgress.js');

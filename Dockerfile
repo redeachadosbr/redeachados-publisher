@@ -37,7 +37,7 @@ RUN node --check shopeeKitAvailability.js && node --check shopeeKitBuilder.js &&
 RUN node --check shopeeKitLogisticsDraft.js && node --check public/kit-logistics-draft-ui.js && node --test tests/kitLogisticsPersistence.test.js
 RUN node --check public/kit-builder.js && node --test tests/kitPublicationGuide.test.js
 RUN node --test tests/kitStockRecoveryGuide.test.js
-RUN node --check public/kit-video-store.js && node --test tests/kitVideoPublish.test.js
+RUN node --check public/kit-video-store.js && node --test tests/kitVideoPublish.test.js tests/kitWizardVideo.test.js
 RUN node --check shopeeKitPublish.js && node --check shopeeKitPlatform.js && node --check shopeeKitPublicationService.js && node --check shopeeKitDiscountService.js && node --check shopeeKitDraftStore.js && node --check public/kit-builder.js && node --check server.js && node --test tests/shopeeKitPublish.test.js
 RUN node --check shopeeKitDiscountDiscovery.js && node --check public/kit-existing-optimization.js && node --test tests/shopeeKitDiscountDiscovery.test.js
 RUN node --check public/kit-existing-optimization.js && node --check public/app.js && node --check server.js && node --test tests/kitUnifiedExecutionContract.test.js
