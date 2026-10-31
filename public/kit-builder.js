@@ -1,6 +1,7 @@
 import {parseKitChatResult} from './kit-chat-result-parser.js?v=2.5.2-theme-review';
 import {scoreKitSeoTitle,parseKitSeoResponse,kitSeoRiskFlags,formatKitShopeeDescription} from './kit-seo-helper.js';
 import {requestKitContent} from './kit-content-handoff.js?v=1';
+import {requestKitResearch} from './kit-research-handoff.js?v=1';
 import {detectSkuMeasurements,skuMeasurementSummary} from './kit-measurements.js';
 import {kitImageFilenameSlot,kitImageNextSlot,kitPlanImageImports,kitMoveImage} from './kit-gallery-order.js';
 import {buildKitPlusImageBrief,kitPlusPromptLink} from './kit-plus-image-brief.js';
@@ -2314,6 +2315,7 @@ async function kitImportPhotoFiles(files,{targetSlot=null,automatic=false}={}){
 }
 const KIT_CHAT_SESSION_KEY='raKitPlusResearchV1';
 let kitChatPending=null,kitChatClipboardBusy=false,kitResearchCatalogContent='';
+let kitResearchAutoPrompt=null,kitResearchRunning=false;
 let kitChatFilePickerOpen=false,kitChatQueuedManualImport=null;
 function kitDownloadFullCatalog(){
  if(!kitResearchCatalogContent)throw Error('Prepare novamente a pesquisa para baixar o catálogo completo.');
@@ -2356,9 +2358,7 @@ function kitChatValidateContext(){
 function kitChatExtractLines(raw,size,allowedCodes,targetCount=10){
  // A resposta pode ser JSON, tabela Markdown, texto integral, 2 ou 3 SKUs.
  // Cada código deve pertencer ao catálogo WeDrop selecionado.
- const parsed=parseKitChatResult(raw,{allowedCodes,limit:targetCount});
- parsed.rejected+=parsed.kits.filter(row=>row.length!==size).length;
- parsed.kits=parsed.kits.filter(row=>row.length===size);
+ const parsed=parseKitChatResult(raw,{allowedCodes,limit:targetCount,size});
  return parsed;
 }
 async function kitChatEnsureFreshResearch(){
@@ -2374,6 +2374,8 @@ async function kitChatEnsureFreshResearch(){
   kitChatPending={...context,at:Date.now(),nonce:crypto.randomUUID(),
    candidateSkus:response.candidateSkus||[],
    requiresAttachment:Boolean(response.requiresAttachment)};
+  kitResearchAutoPrompt=response.autoPrompt||null;
+  kitResearchCatalogContent=response.catalogFileContent||'';
   sessionStorage.setItem(KIT_CHAT_SESSION_KEY,JSON.stringify(kitChatPending));
   return context;
  }
@@ -2396,50 +2398,56 @@ async function kitChatImportFile(file){
 }
 async function plusResearch({openChat=false}={}){
  if(!kitStockReady)return kitPlusNotice('Estoque WeDrop não conferido; atualize antes da pesquisa.','error');
- // Pesquisa previamente preparada: COPIAR durante o clique (gesto do vendedor),
- // antes de abrir a aba. Isso evita perder a permissão ao trocar o foco.
- if(openChat&&kitChatPending&&$('#kitResearchPrompt').value){
-  try{
-   kitChatValidateContext();
-   if(kitChatPending.requiresAttachment)kitDownloadFullCatalog();
-   const copy=navigator.clipboard.writeText($('#kitResearchPrompt').value);
-   window.open('https://chatgpt.com/','_blank','noopener,noreferrer');
-   try{
-    await copy;
-    kitPlusNotice('Pesquisa de '+kitChatPending.candidateSkus.length+' SKUs preparada. ChatGPT aberto: '+
-     (kitChatPending.requiresAttachment?'ANEXE o TXT baixado, depois cole (Ctrl+V) e envie. ':'Cole (Ctrl+V) e envie. ')+
-     'Copie a resposta com até '+kitChatPending.desiredKits+' kits e volte para importar e salvar os rascunhos.','success');
-   }catch{kitPlusNotice('ChatGPT aberto. Cópia bloqueada pelo Chrome; copie o prompt manualmente do campo da pesquisa.','warning');}
-   return;
-  }catch{ /* Parâmetros da pesquisa mudaram: preparar nova lista WeDrop. */ }
- }
- if(openChat)window.open('https://chatgpt.com/','_blank','noopener,noreferrer');
- const btn=openChat?$('#kitPlusAutoStart'):$('#kitPlusResearch');btn.disabled=true;
+ if(kitResearchRunning)return kitPlusNotice('Pesquisa já enviada pela Ponte; acompanhe esta execução antes de iniciar outra.','info');
+ const btn=openChat?$('#kitSuggest'):$('#kitPlusResearch');
+ if(btn)btn.disabled=true;
  try{
   const context=kitResearchContext();
-  const r=await api('/api/shopee/kits/plus-brief',{body:context});
-  kitChatPending={...context,nonce:crypto.randomUUID(),at:Date.now(),
-   candidateSkus:r.candidateSkus||[],requiresAttachment:Boolean(r.requiresAttachment)};
-  kitResearchCatalogContent=r.catalogFileContent||'';
-  $('#kitPlusDownloadCatalog').hidden=!r.requiresAttachment;
-  sessionStorage.setItem(KIT_CHAT_SESSION_KEY,JSON.stringify(kitChatPending));
-  if(openChat&&r.requiresAttachment)kitDownloadFullCatalog();
-  $('#kitResearchPrompt').value=r.prompt;
-  $('#kitPlusOutput').value='';
-  if(openChat){
-   try{
-    await navigator.clipboard.writeText(r.prompt);
-    kitPlusNotice('ChatGPT aberto com '+r.candidatesCount+' SKUs da categoria. '+
-     (r.requiresAttachment?'ANEXE o TXT baixado, ':'')+
-     'cole o comando com Ctrl+V e envie. Copie as sugestões e retorne: tentarei importar automaticamente.','success');
-   }catch{
-    kitPlusNotice('ChatGPT aberto, mas o Chrome bloqueou a cópia automática. Volte ao Manager, copie o prompt no campo, cole no ChatGPT e copie a resposta.','warning');
-   }
-  }else kitPlusNotice('Pesquisa completa preparada com '+r.candidatesCount+
-   ' SKUs disponíveis'+(r.requiresAttachment?' e arquivo TXT para anexar':'')+
-   '. Selecione Abrir ChatGPT e pesquisar kits.','success');
- }catch(error){kitPlusNotice('Pesquisa não preparada: '+error.message,'error');}
- finally{btn.disabled=false;}
+  let valid=false;
+  try{kitChatValidateContext();valid=Boolean($('#kitResearchPrompt').value);}catch{}
+  if(!valid||!kitResearchAutoPrompt&&!kitResearchCatalogContent){
+   const r=await api('/api/shopee/kits/plus-brief',{body:context});
+   kitChatPending={...context,nonce:crypto.randomUUID(),at:Date.now(),
+    candidateSkus:r.candidateSkus||[],requiresAttachment:Boolean(r.requiresAttachment)};
+   kitResearchCatalogContent=r.catalogFileContent||'';
+   kitResearchAutoPrompt=r.autoPrompt||null;
+   $('#kitPlusDownloadCatalog').hidden=!r.requiresAttachment;
+   sessionStorage.setItem(KIT_CHAT_SESSION_KEY,JSON.stringify(kitChatPending));
+   $('#kitResearchPrompt').value=r.prompt;
+   $('#kitPlusOutput').value='';
+  }
+  if(!openChat){
+   kitPlusNotice('Pesquisa pronta com '+kitChatPending.candidateSkus.length+
+    ' SKUs disponíveis. '+(kitResearchAutoPrompt?
+     'Clique em Pesquisar kits inteligentes para enviar pela Ponte.':
+     'A categoria é grande: baixe o TXT e use o botão de abertura manual.'),'success');
+   return;
+  }
+  if(!kitResearchAutoPrompt){
+   $('#kitResearchDetails').open=true;
+   if(kitChatPending.requiresAttachment&&kitResearchCatalogContent)kitDownloadFullCatalog();
+   kitPlusNotice('Todos os '+kitChatPending.candidateSkus.length+
+    ' SKUs foram separados, mas o catálogo completo excede o limite de envio da Ponte atual. O TXT foi preparado. Clique em Copiar prompt + abrir ChatGPT, anexe o TXT e envie. Depois importe o JSON. Nenhuma SKU foi descartada.','warning');
+   return;
+  }
+  kitResearchRunning=true;
+  kitPlusNotice('Enviando '+kitChatPending.candidateSkus.length+' SKUs da categoria para a Ponte ChatGPT. Aguardando confirmação...','info');
+  const response=await requestKitResearch({prompt:kitResearchAutoPrompt},{
+   onProgress:msg=>kitPlusNotice(msg,'info')
+  });
+  // Não importar kits de uma configuração que o vendedor alterou durante a geração.
+  kitChatValidateContext();
+  $('#kitPlusOutput').value=response.rawText;
+  kitPlusNotice('✓ Ponte devolveu a pesquisa. Conferindo as SKUs e preparando os rascunhos...','info');
+  const imported=await importPlusSuggestions({uploadedText:response.rawText});
+  if(!imported)kitPlusNotice('A Ponte respondeu, mas nenhum kit foi importado. Confira o JSON no campo de resposta, sem reenviar a geração.','warning');
+ }catch(error){
+  kitPlusNotice('Pesquisa automática não concluída: '+error.message+
+   ' O prompt e o importador manual continuam disponíveis no painel de pesquisa avançada.','error');
+ }finally{
+  kitResearchRunning=false;
+  if(btn)btn.disabled=!kitStockReady;
+ }
 }
 function renderKitImportReport(result,parserRejected=0){
  const root=$('#kitImportReport');if(!root)return;
@@ -2504,12 +2512,12 @@ async function importPlusSuggestions({readClipboard=false,silent=false,uploadedT
   }
   $('#kitPlusOutput').value=rows.map(x=>x.join(' | ')).join('\n');
   suggestionContext={category:context.category,size:context.size,idea:context.idea,source:r.source};suggestions=[];
-  // Não duplicar os cartões do JSON importado; os 10 aparecem em Rascunhos.
+  // Não duplicar os cartões do JSON importado; o lote aparece em Rascunhos.
   $('#kitSuggestions').replaceChildren();$('#kitSuggestions').hidden=true;
   kitCloseInlineEditor();prepared=null;images.clear();
   resetKitPublication({saved:false});renderKitPricingSummary(null);
   kitChatPending=null;sessionStorage.removeItem(KIT_CHAT_SESSION_KEY);
-  kitResearchCatalogContent='';
+  kitResearchCatalogContent='';kitResearchAutoPrompt=null;
   $('#kitPlusDownloadCatalog').hidden=true;
   await loadDrafts({restoreCurrent:false});
   // Atualiza o resumo superior com preço e componentes do primeiro kit importado.
@@ -2544,7 +2552,7 @@ async function importPlusSuggestions({readClipboard=false,silent=false,uploadedT
 // já concedida, o Manager tenta reconhecer as SKUs copiadas quando voltar.
 // Caso contrário, o botão explícito solicita a permissão no clique.
 async function kitChatTryAutoClipboard(){
- if(!kitChatPending||!kitStockReady||!document.hasFocus()||kitChatClipboardBusy||
+ if(!kitChatPending||!kitStockReady||kitResearchRunning||!document.hasFocus()||kitChatClipboardBusy||
      kitChatFilePickerOpen||kitChatQueuedManualImport)return;
  try{
   if(!navigator.permissions?.query)return;
@@ -3211,6 +3219,7 @@ async function kitPrefetchCategoryBrief(){
   kitChatPending={...context,nonce:crypto.randomUUID(),at:Date.now(),
    candidateSkus:r.candidateSkus||[],requiresAttachment:Boolean(r.requiresAttachment)};
   kitResearchCatalogContent=r.catalogFileContent||'';
+  kitResearchAutoPrompt=r.autoPrompt||null;
   sessionStorage.setItem(KIT_CHAT_SESSION_KEY,JSON.stringify(kitChatPending));
   $('#kitResearchPrompt').value=r.prompt;
   $('#kitPlusDownloadCatalog').hidden=!r.requiresAttachment;
@@ -3221,6 +3230,7 @@ async function kitPrefetchCategoryBrief(){
 }
 $('#kitCategory')?.addEventListener('change',()=>{clearKitSearchSelection();void kitPrefetchCategoryBrief();});
 $('#kitSize')?.addEventListener('change',()=>{clearKitSearchSelection();void kitPrefetchCategoryBrief();});
+$('#kitTargetCount')?.addEventListener('change',()=>{clearKitSearchSelection();void kitPrefetchCategoryBrief();});
 $('#kitShipping')?.addEventListener('input',()=>{
  updateKitOverview();scheduleKitMarginReprice();
 });

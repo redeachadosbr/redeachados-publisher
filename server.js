@@ -654,17 +654,17 @@ app.post('/api/shopee/kits/plus-import',mustLogin,requireWeDropAdmin,async(req,r
   const idea=String(req.body?.idea||'').trim().slice(0,160);
   const size=Number(req.body?.size||2),raw=req.body?.kits;
   const desiredKits=Number(req.body?.desiredKits||10);
-  if(![2,3].includes(size)||!Number.isInteger(desiredKits)||desiredKits<5||desiredKits>15||
-      !Array.isArray(raw)||raw.length<1||raw.length>15)
-   throw Error('Informe até quinze kits de dois ou três SKUs, com meta entre 5 e 15.');
+  if(![2,3].includes(size)||!Number.isInteger(desiredKits)||desiredKits<5||desiredKits>20||
+      !Array.isArray(raw)||raw.length<1||raw.length>desiredKits)
+   throw Error('Informe até 20 kits de 2 ou 3 SKUs e no máximo a quantidade escolhida (5 a 20).');
   const seen=new Set(),kits=[],rejected=[];
   // Importações novas são coleções independentes; preservar publicações e histórico.
   const importBatchId=new Date().toISOString()+'-'+crypto.randomUUID();
-  for(const [index,input] of raw.slice(0,desiredKits).entries()){
+  for(const [index,input] of raw.entries()){
    try{
-    if(!Array.isArray(input)||input.length<2||input.length>3||
+    if(!Array.isArray(input)||input.length!==size||
        input.some(x=>typeof x!=='string'||x.length>120)||new Set(input).size!==input.length)
-     throw Error('Cada kit precisa de 2 ou 3 SKUs diferentes e válidas.');
+     throw Error('Cada kit precisa ter exatamente '+size+' SKUs diferentes e válidas.');
     const key=input.slice().sort().join('|');
     if(seen.has(key))continue;
     seen.add(key);
@@ -714,7 +714,7 @@ app.post('/api/shopee/kits/plus-import',mustLogin,requireWeDropAdmin,async(req,r
   res.json({ok:true,source:'ChatGPT Plus + catálogo completo WeDrop verificado',
    disclaimer:'Kits salvos como rascunhos para revisão, sem publicação. Potencial comercial estimado, sem vendas comprovadas.',
    results:kits,accepted:kits.length,rejected,
-   received:raw.slice(0,desiredKits).length,
+   received:raw.length,
    saved:kits.filter(x=>x.draftSaved).length,
    pendingReview:kits.filter(x=>x.reviewRequired).length,
    targetCount:desiredKits,activeBatchId:kits.length?importBatchId:null,

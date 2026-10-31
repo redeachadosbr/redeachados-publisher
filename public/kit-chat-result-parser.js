@@ -15,17 +15,18 @@ function tryJson(v){
  for(const part of options)if(/^[\[{]/.test(part)){try{return JSON.parse(part);}catch{}}
  return null;
 }
-export function parseKitChatResult(input,{allowedCodes=[],limit=10}={}){
+export function parseKitChatResult(input,{allowedCodes=[],limit=10,size=null}={}){
  const allowed=new Set([...allowedCodes].map(asSku).filter(Boolean));
  if(!allowed.size)throw Error('SKUs WeDrop ainda não carregadas. Atualize a pesquisa antes da importação.');
- if(!Number.isInteger(limit)||limit<1||limit>15)throw Error('Limite inválido para kits.');
+ if(!Number.isInteger(limit)||limit<1||limit>20)throw Error('Limite inválido para kits.');
+ if(size!==null&&![2,3].includes(size))throw Error('Quantidade de SKUs por kit inválida.');
  const raw=typeof input==='string'?input:JSON.stringify(input);
  if(!raw||raw.length>1000000)throw Error('Arquivo muito grande. Importe somente o JSON ou tabela de kits (até 1 MB).');
  const kits=[],seen=new Set();let rejected=0;
  const add=codes=>{
   const values=codes.map(asSku).filter(Boolean);
   if(values.length<2||values.length>3||new Set(values).size!==values.length||
-   values.some(x=>!allowed.has(x))){rejected++;return;}
+   values.some(x=>!allowed.has(x))||(size!==null&&values.length!==size)){rejected++;return;}
   const key=values.slice().sort().join('|');
   if(!seen.has(key)){seen.add(key);if(kits.length<limit)kits.push(values);}
  };
