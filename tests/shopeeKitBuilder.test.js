@@ -276,7 +276,11 @@ test('pesquisa avançada entrega todas 125 SKUs, sem truncar, em arquivo para o 
   assert.match(brief.prompt,/ARQUIVO TXT anexo/);
   assert.ok(!brief.prompt.includes('TEST0125'));
   assert.equal(brief.desiredKits,10);
-  await assert.rejects(()=>kitPlusResearchBrief(935128,{category:'Cozinha',desiredKits:16}),/entre 5 e 15/);
+  const twenty=await kitPlusResearchBrief(935128,{category:'Cozinha',size:3,desiredKits:20});
+  assert.equal(twenty.desiredKits,20);
+  assert.equal(twenty.candidateSkus.length,125);
+  assert.match(twenty.autoPrompt||twenty.catalogFileContent,/TEST0125/);
+  await assert.rejects(()=>kitPlusResearchBrief(935128,{category:'Cozinha',desiredKits:21}),/entre 5 e 20/);
  }finally{
   clearKitStockCache(935128);globalThis.fetch=oldFetch;
   if(base===undefined)delete process.env.SUPABASE_URL;else process.env.SUPABASE_URL=base;
