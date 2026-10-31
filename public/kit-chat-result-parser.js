@@ -19,6 +19,7 @@ export function parseKitChatResult(input,{allowedCodes=[],limit=10,size=null}={}
  const allowed=new Set([...allowedCodes].map(asSku).filter(Boolean));
  if(!allowed.size)throw Error('SKUs WeDrop ainda não carregadas. Atualize a pesquisa antes da importação.');
  if(!Number.isInteger(limit)||limit<1||limit>20)throw Error('Limite inválido para kits.');
+ if(size!==null&&![2,3].includes(size))throw Error('Quantidade de SKUs por kit inválida.');
  const raw=typeof input==='string'?input:JSON.stringify(input);
  if(!raw||raw.length>1000000)throw Error('Arquivo muito grande. Importe somente o JSON ou tabela de kits (até 1 MB).');
  const kits=[],seen=new Set();let rejected=0;
