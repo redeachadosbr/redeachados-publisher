@@ -153,7 +153,6 @@ function kitWizardTechnicalReady(){
 async function kitWizardRequestTechnical({force=false}={}){
  if(kitWizardStage!==5||!prepared?.kit)return;
  kitWizardMountTechnical();
- if(kitWizardTechnicalReady())return;
  if(!kitSaved){
   kitWizardTechnicalStatus('Salve o rascunho do kit para recuperar a ficha técnica da SKU principal.','warning');
   return;
@@ -179,14 +178,19 @@ async function kitWizardRequestTechnical({force=false}={}){
   const manualFacts=Object.fromEntries([...kitContentManualFacts]
    .filter(([sku,value])=>allowed.has(String(sku))&&typeof value==='string')
    .map(([sku,value])=>[sku,String(value).slice(0,1700)]));
-  if(Object.values(manualFacts).some(value=>value.trim())){
+  const storedFacts=prepared.creative?.manualFacts||{};
+  const factsChanged=[...allowed].some(sku=>String(manualFacts[sku]||'')!==String(storedFacts[sku]||''));
+  let syncFailed=false;
+  if(factsChanged){
    clearTimeout(kitFactsSaveTimer);
    ++kitFactsSaveSerial;
    try{
     await api('/api/shopee/kits/drafts/manual-facts',{
      body:{kitSku,manualFacts}
     });
+    if(prepared?.kit?.kitSku===kitSku)prepared.creative={...prepared.creative,manualFacts:{...manualFacts}};
    }catch(error){
+    syncFailed=true;
     // O formulário oficial continua disponível mesmo se o complemento falhar.
     // Não perder os dados locais nem informar falsamente que sincronizou.
     kitWizardTechnicalStatus('A ficha original será carregada, mas os dados complementares por SKU não foram sincronizados: '+
@@ -198,7 +202,10 @@ async function kitWizardRequestTechnical({force=false}={}){
    if(kitWizardTechnicalLoadingFor===identity)kitWizardTechnicalLoadingFor='';
    return;
   }
-  if(kitWizardTechnicalReady())return;
+  if(((!force&&!factsChanged)||syncFailed)&&kitWizardTechnicalReady()){
+   if(syncFailed)kitWizardTechnicalStatus('Ficha anterior carregada, mas as novas informações por SKU ainda não foram sincronizadas.','warning');
+   return;
+  }
   const button=$('#kitOptimizeStart');
   if(!button||button.disabled){
    kitWizardTechnicalLoadingFor='';
