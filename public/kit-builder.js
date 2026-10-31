@@ -148,23 +148,64 @@ let kitWizardTechnicalLoadingFor='';
 function kitWizardTechnicalStatus(message,state='info'){
  const node=$('#kitWizardTechnicalStatus');if(node){node.textContent=message;node.dataset.state=state;}
 }
+// Um único editor original é compartilhado entre as etapas 05, 07, 09 e 10.
+// O painel antigo fica como motor oculto, nunca como segunda navegação.
 function kitWizardMountTechnical(){
- const node=$('#kitOptimizerWorkspace'),technical=$('#kitWizardTechnicalMount');
- const normal=$('#kitOptimizeExistingPanel'),advanced=$('#kitOptimizeAdvanced');
- if(!node||!technical||!normal)return;
- if(kitWizardStage===5&&prepared?.kit&&!$('#kitDetail')?.hidden){
-  if(node.parentElement!==technical)technical.append(node);
-  // A confirmação do Item ID continua usando o controle ORIGINAL.
-  // Se a busca trouxer alternativas, elas precisam aparecer na Etapa 05,
-  // não atrás do painel "Preparar e revisar o kit" recolhido.
-  if(advanced&&advanced.parentElement!==technical)technical.append(advanced);
- }else{
-  const status=$('#kitOptimizeStatus');
-  if(node.parentElement!==normal){
-   if(status?.parentElement===normal)status.after(node);
-   else normal.append(node);
+ const node=$('#kitOptimizerWorkspace'),normal=$('#kitOptimizeExistingPanel');
+ const advanced=$('#kitOptimizeAdvanced'),bar=$('#kitOptimizeExistingPanel .kit-flow-start-bar')||
+  $('#kitWizardTechnicalMount .kit-flow-start-bar');
+ const progress=$('#kitOptimizeStatus');
+ if(!node||!normal)return;
+ const mounts={5:'#kitWizardTechnicalMount',7:'#kitWizardVariantsMount',
+  9:'#kitWizardDiscountMount',10:'#kitWizardExecutionMount'};
+ const mount=prepared?.kit&&!$('#kitDetail')?.hidden?$(mounts[kitWizardStage]):null;
+ if(mount){
+  if(node.parentElement!==mount)mount.append(node);
+ }else if(node.parentElement!==normal){
+  if(progress?.parentElement===normal)progress.after(node);
+  else normal.append(node);
+ }
+ // O vínculo e a seleção da SKU principal ficam acessíveis na Ficha técnica.
+ const technical=kitWizardStage===5&&Boolean(mount);
+ if(bar){
+  if(technical){
+   if(bar.parentElement!==mount)mount.insertBefore(bar,node);
+  }else if(bar.parentElement!==normal){
+   const heading=normal.querySelector(':scope > .kit-flow-heading');
+   if(heading)heading.after(bar);else normal.prepend(bar);
   }
-  if(advanced&&advanced.parentElement!==normal)node.after(advanced);
+ }
+ if(progress){
+  if(technical){
+   if(progress.parentElement!==mount)bar?bar.after(progress):mount.prepend(progress);
+  }else if(progress.parentElement!==normal){
+   if(bar?.parentElement===normal)bar.after(progress);
+   else normal.prepend(progress);
+  }
+ }
+ if(advanced){
+  if(technical){
+   if(advanced.parentElement!==mount)mount.append(advanced);
+  }else if(advanced.parentElement!==normal){
+   if(node.parentElement===normal)node.after(advanced);
+   else normal.append(advanced);
+  }
+ }
+}
+let kitWizardPricingHome=null,kitWizardPricingNext=null;
+function kitWizardMountPricing(){
+ const summary=$('#kitPricingSummary'),mount=$('#kitWizardDiscountPricing');
+ if(!summary||!mount)return;
+ if(!kitWizardPricingHome){
+  kitWizardPricingHome=summary.parentElement;
+  kitWizardPricingNext=summary.nextSibling;
+ }
+ const active=kitWizardStage===9&&Boolean(prepared?.kit)&&!$('#kitDetail')?.hidden;
+ if(active){
+  if(summary.parentElement!==mount)mount.append(summary);
+ }else if(kitWizardPricingHome&&summary.parentElement!==kitWizardPricingHome){
+  kitWizardPricingHome.insertBefore(summary,
+   kitWizardPricingNext?.parentElement===kitWizardPricingHome?kitWizardPricingNext:null);
  }
 }
 function kitWizardTechnicalReady(){
@@ -330,6 +371,63 @@ async function kitWizardRequestFiscal({force=false}={}){
   if(kitWizardFiscalPending===identity)kitWizardFiscalPending=null;
  }
 }
+let kitWizardDiscountPending=false;
+function kitWizardDiscountStatus(message,state='info'){
+ const node=$('#kitWizardDiscountStatus');
+ if(node){node.textContent=message;node.dataset.state=state;}
+}
+async function kitWizardRequestDiscount({force=false}={}){
+ if(kitWizardStage!==9||!prepared?.kit)return;
+ kitWizardMountTechnical();
+ kitWizardMountPricing();
+ if(!kitSaved){
+  kitWizardDiscountStatus('Salve o rascunho do kit antes de conferir o desconto. Os cálculos exibidos não serão publicados.','warning');
+  return;
+ }
+ if(kitWizardDiscountPending&&!force)return;
+ const identity=prepared.kit.kitSku;
+ kitWizardDiscountPending=true;
+ kitWizardDiscountStatus('Recuperando a conferência original de preço e Minha Promoção da SKU principal...','info');
+ try{
+  const started=await kitExistingOptimizer.openDiscount?.();
+  if(kitWizardStage!==9||prepared?.kit?.kitSku!==identity)return;
+  if(started!==true){
+   kitWizardDiscountStatus('Não foi possível vincular o anúncio. Confira o Item ID da SKU principal na Etapa 05 e volte para Desconto. Os dados e preços foram preservados.','warning');
+   return;
+  }
+  const opened=globalThis.RAKitOpenDiscountReview?.()===true;
+  kitWizardDiscountStatus(opened?
+   'Formulário original aberto. Confira custo, preço, margem e Minha Promoção antes de autorizar.':
+   'Anúncio vinculado. Carregando a conferência original de desconto; use Atualizar se necessário.',
+   opened?'success':'info');
+ }catch(error){
+  if(kitWizardStage===9)kitWizardDiscountStatus(
+   'Falha ao carregar a conferência: '+String(error.message||error)+'. Os dados salvos foram preservados.','error');
+ }finally{kitWizardDiscountPending=false;}
+}
+globalThis.RAKitWizardWorkflowReady=data=>{
+ if(data?.kitOptimization?.kitSku!==prepared?.kit?.kitSku)return false;
+ if(kitWizardStage===9){
+  kitWizardMountTechnical();
+  const opened=globalThis.RAKitOpenDiscountReview?.()===true;
+  kitWizardDiscountStatus(opened?
+   'Confira o preço do kit e a prévia da Minha Promoção. Nada foi publicado.':
+   'Dados do anúncio carregados. Atualize a conferência do desconto se o painel não abrir.',
+   opened?'success':'warning');
+  return true;
+ }
+ if(kitWizardStage===7){
+  kitWizardMountTechnical();
+  $('#kitOptimizerWorkspace')?.querySelector('[data-stage="variants"]')?.click();
+  return true;
+ }
+ if(kitWizardStage===10){
+  kitWizardMountTechnical();
+  $('#optimizerShowExecution')?.click();
+  return true;
+ }
+ return false;
+};
 function kitWizardSetStage(stage,{scroll=false}={}){
  const work=$('#kitWizardWork');
  if(!work)return;
@@ -383,7 +481,9 @@ function kitWizardSetStage(stage,{scroll=false}={}){
  kitWizardUpdateProgress();
  kitWizardMountVideo();
  kitWizardMountTechnical();
+ kitWizardMountPricing();
  kitWizardMountFiscalPreset();
+ if(kitWizardStage===9)void kitWizardRequestDiscount();
  if(kitWizardStage===5)kitWizardRequestTechnical();
  else kitWizardTechnicalLoadingFor='';
  if(kitWizardStage===8)void kitWizardRequestFiscal();
@@ -395,11 +495,13 @@ function kitWizardInit(){
  root.dataset.ready='true';
  kitWizardSyncHeader();
  kitWizardSyncOptimizer();
- $('#kitWizardOptimizerToggle')?.addEventListener('click',()=>{
-  kitWizardToggleOptimizer($('#kitWizardOptimizerDock')?.hidden,{scroll:true});
+ $('#kitWizardRefreshDiscount')?.addEventListener('click',()=>void kitWizardRequestDiscount({force:true}));
+ $('#kitWizardGoTechnical')?.addEventListener('click',()=>kitWizardSetStage(5,{scroll:true}));
+ $('#kitWizardOpenExecution')?.addEventListener('click',()=>{
+  const btn=$('#optimizerShowExecution');
+  if(btn&&!$('#kitOptimizerWorkspace')?.hidden){btn.click();return;}
+  status('Carregue primeiro a ficha do anúncio na Etapa 05 e retorne à execução.','info');
  });
- $('#kitWizardOpenDiscount')?.addEventListener('click',()=>kitWizardToggleOptimizer(true,{scroll:true}));
- $('#kitWizardOpenExecution')?.addEventListener('click',()=>kitWizardToggleOptimizer(true,{scroll:true}));
  $('#kitWizardOpenTechnical')?.addEventListener('click',()=>{
   void kitWizardRequestTechnical({force:true});
  });
@@ -411,15 +513,15 @@ function kitWizardInit(){
  for(const button of root.querySelectorAll('[data-kit-wizard-step]'))
   button.addEventListener('click',()=>kitWizardSetStage(Number(button.dataset.kitWizardStep),{scroll:true}));
  $('#kitWizardOpenVariations')?.addEventListener('click',()=>{
-  kitWizardToggleOptimizer(true);
   if(!prepared?.kit){status('Selecione um kit salvo para conferir as variações.','error');return;}
-  const workspace=$('#kitOptimizerWorkspace');
-  const btn=workspace&&!workspace.hidden?workspace.querySelector('[data-stage="variants"]'):null;
-  if(btn){btn.click();status('Etapa Variações existente aberta no fluxo real de otimização.','success');return;}
-  const open=$('#kitOptimizeOpen'),start=$('#kitOptimizeStart');
-  if(open&&!open.disabled){open.click();status('Fluxo de otimização aberto. Selecione Variações para continuar.','info');return;}
-  if(start&&!start.disabled){start.click();status('Preparando otimização. Depois selecione Variações no painel existente.','info');return;}
-  status('Salve o kit e escolha a SKU principal para habilitar Variações.','info');
+  const btn=$('#kitOptimizerWorkspace')?.querySelector('[data-stage="variants"]');
+  if(btn&&!$('#kitOptimizerWorkspace')?.hidden){
+   btn.click();
+   status('Formulário original de variações aberto nesta etapa.','success');
+   return;
+  }
+  status('Recuperando o anúncio para abrir Variações nesta etapa.','info');
+  void kitExistingOptimizer.openTechnical?.();
  });
  $('#kitWizardCollapse')?.addEventListener('click',()=>kitWizardSetStage(0));
  $('#kitWizardPrevious')?.addEventListener('click',()=>kitWizardSetStage(Math.max(1,kitWizardStage-1),{scroll:true}));
