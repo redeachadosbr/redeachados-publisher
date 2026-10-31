@@ -405,6 +405,12 @@ test('etapa 05 usa o editor tecnico real da SKU principal',()=>{
  assert.ok(legacy.includes('technicalOnly:true'));
  assert.ok(js.includes('kitWizardRequestTechnical()'));
  assert.ok(js.includes('RAKitOpenTechnicalEditor'));
+ assert.ok(js.includes('if(!kitWizardTechnicalReady())'));
+ const technicalGate=app.slice(app.indexOf('globalThis.RAKitOpenTechnicalEditor='),
+  app.indexOf('// Etapa 08:',app.indexOf('globalThis.RAKitOpenTechnicalEditor=')));
+ assert.ok(technicalGate.includes("String(h.itemId)===String(w?.itemId||'')"));
+ assert.ok(!technicalGate.includes("String(h.modelId||'0')===String(w?.modelId||'0')"),
+  'modelId normalizado não pode bloquear leitura do Item ID confirmado');
  assert.ok(app.includes("optimizerWorkflowOpen('technical')"));
  assert.ok(legacy.includes('RAKitTechnicalLoadReady'));
  assert.ok(css.includes('#kitWizardTechnicalMount #optimizerWorkflowEditor'));
