@@ -4398,6 +4398,17 @@ function optimizerExecutionTrackerRender(progress,job){
  }
  recoverAction.hidden=job?.state!=='uncertain';
  recoverAction.disabled=job?.state!=='uncertain';
+ let resultLabel=tracker.querySelector('.optimizer-recovery-result');
+ if(!resultLabel){
+  resultLabel=document.createElement('p');
+  resultLabel.className='optimizer-recovery-result';
+  resultLabel.setAttribute('role','status');
+  resultLabel.setAttribute('aria-live','polite');
+  resultLabel.style.cssText='margin:8px 0 12px;padding:10px 12px;border-radius:8px;background:#fff7ed;color:#7c2d12;font-size:13px;line-height:1.5';
+  recoverAction.insertAdjacentElement('afterend',resultLabel);
+ }
+ if(!resultLabel.textContent)resultLabel.textContent='Aguardando leitura da Shopee. Os envios anteriores serão preservados.';
+ resultLabel.hidden=job?.state!=='uncertain';
  const resumeBar=tracker.querySelector('.optimizer-exec-resume-bar');
  if(resumeBar)resumeBar.hidden=!['prepared','blocked'].includes(progress.state);
  optimizerExecutionVisibleCommands(progress,job);
