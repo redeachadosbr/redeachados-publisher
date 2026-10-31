@@ -2403,8 +2403,13 @@ async function plusResearch({openChat=false}={}){
  if(btn)btn.disabled=true;
  try{
   const context=kitResearchContext();
+  // A pesquisa sempre busca uma fotografia atual do catálogo importado.
+  // Quando existe feed WeDrop autorizado, sincroniza antes de enumerar SKUs.
+  // Sem feed, não simula acesso ao site nem supõe 346 SKUs elegíveis.
+  const refresh=await api('/api/shopee/kits/refresh-catalog',{body:{}});
+  if(!refresh.refreshed)
+   kitPlusNotice(refresh.reason||'Feed WeDrop não configurado; confira a importação completa do catálogo e estoque.','warning');
   let valid=false;
-  try{kitChatValidateContext();valid=Boolean($('#kitResearchPrompt').value);}catch{}
   if(!valid||!kitResearchAutoPrompt&&!kitResearchCatalogContent){
    const r=await api('/api/shopee/kits/plus-brief',{body:context});
    kitChatPending={...context,nonce:crypto.randomUUID(),at:Date.now(),
