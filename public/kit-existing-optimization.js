@@ -501,6 +501,8 @@ export function initExistingKitOptimization({getContext,api,money,onMainSkuChang
    globalThis.RAKitTechnicalLoadReady?.(data);
    return;
   }
+  // No wizard de 10 etapas, reutilizar o mesmo editor sem abrir os 8 cartões.
+  if(globalThis.RAKitWizardWorkflowReady?.(data)===true)return;
   $('#kitOptimizerWorkspace')?.scrollIntoView({behavior:'smooth',block:'start'});
   const imageStage=data.stages?.find(x=>x.key==='images');
   const identity=kitSku()+'|'+data.itemId+'|'+String(data.modelId||'0');
@@ -521,6 +523,15 @@ export function initExistingKitOptimization({getContext,api,money,onMainSkuChang
      shipping:Number(ctx().prepared?.kit?.shipping||0),
      packing:Number(ctx().prepared?.kit?.packing||0)}))
    notice('Não foi possível abrir a Otimização. Atualize a página e tente novamente.','error');
+ }
+ async function openDiscount(){
+  if(!ctx().prepared?.kit||!ctx().kitSaved){
+   notice('Selecione e salve um kit antes de conferir o desconto.','warning');
+   return false;
+  }
+  if(!target?.prepared||target.kitSku!==kitSku())await startKitOptimization();
+  else open();
+  return Boolean(target?.prepared&&target.kitSku===kitSku());
  }
  function discountNotice(msg,state='info'){
   const el=$('#kitOptimizeDiscountStatus');if(el){el.textContent=msg;el.dataset.state=state;}
@@ -696,5 +707,5 @@ export function initExistingKitOptimization({getContext,api,money,onMainSkuChang
  });
  // SKU do anúncio é informativa e deriva exclusivamente da escolha principal.
  renderJourney();
- return {restore,openTechnical};
+ return {restore,openTechnical,openDiscount};
 }
