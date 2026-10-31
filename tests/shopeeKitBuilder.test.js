@@ -398,7 +398,7 @@ test('etapa 05 usa o editor tecnico real da SKU principal',()=>{
  for(const id of ['kitWizardTechnicalMount','optimizerTechnicalPanel','optimizerWorkflowEditor','kitOptimizerWorkspace']){
    assert.equal(html.split('id="'+id+'"').length-1,1);
  }
- assert.ok(js.includes('mount.append(node)'));
+ assert.ok(js.includes('technical.append(node)'));
  assert.ok(js.includes('normal.insertBefore(node,advanced||null)'));
  assert.ok(js.includes('kitWizardRequestTechnical()'));
  assert.ok(js.includes('RAKitOpenTechnicalEditor'));
