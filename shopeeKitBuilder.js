@@ -611,8 +611,8 @@ export async function kitCreative(shop,kit,{ai=true}={}){
 // nenhum dado privado/tokens é enviado e não há limite artificial de 110 SKUs.
 export async function kitPlusResearchBrief(shop,{category='Brinquedos',size=2,idea='',desiredKits=10}={}){
  if(![2,3].includes(Number(size)))throw Error('Escolha dois ou três SKUs por kit.');
- if(!Number.isInteger(Number(desiredKits))||Number(desiredKits)<5||Number(desiredKits)>15)
-  throw Error('Escolha entre 5 e 15 kits sugeridos.');
+ if(!Number.isInteger(Number(desiredKits))||Number(desiredKits)<5||Number(desiredKits)>20)
+  throw Error('Escolha entre 5 e 20 kits sugeridos.');
  const fileCategory=String(category).normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase().replace(/[^a-z0-9]+/g,'-').replace(/^-|-$/g,'').slice(0,60)||'categoria';
  const jsonFileName='kits-'+fileCategory+'-'+Number(size)+'-skus.json';
  const phrase=String(idea||'').trim();
