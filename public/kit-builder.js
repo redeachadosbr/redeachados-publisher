@@ -2393,6 +2393,39 @@ function kitChatExtractLines(raw,size,allowedCodes,targetCount=10){
  const parsed=parseKitChatResult(raw,{allowedCodes,limit:targetCount,size});
  return parsed;
 }
+// JSON de arquivo: validar estrutura, nao filtrar por categoria no navegador.
+// A composicao no servidor confirma SKU real, disponibilidade e custo.
+function kitParseUploadedJson(raw,limit=20){
+ const source=String(raw||'').replace(/^\uFEFF/,'').trim();
+ if(!source.startsWith('{')&&!source.startsWith('['))return null;
+ let document;
+ try{document=JSON.parse(source);}
+ catch(e){throw Error('JSON inválido: '+String(e.message||e).slice(0,140));}
+ const entries=Array.isArray(document)?document:document?.kits;
+ if(!Array.isArray(entries))throw Error('JSON inválido: envie {"kits":[{"skus":["COD1","COD2","COD3"]}]}');
+ const kits=[],seen=new Set(),errors=[];let size=null;
+ for(let i=0;i<entries.length;i++){
+  const item=entries[i];
+  const sourceSkus=Array.isArray(item)?item:item?.skus;
+  if(!Array.isArray(sourceSkus)||![2,3].includes(sourceSkus.length)){
+   errors.push('Kit '+(i+1)+': precisa conter 2 ou 3 SKUs.');continue;
+  }
+  const skus=sourceSkus.map(v=>typeof v==='string'?v.trim().toUpperCase():'');
+  if(skus.some(v=>!v||v.length>120||!/^[A-Z0-9][A-Z0-9._-]*$/.test(v))||
+      new Set(skus).size!==skus.length){
+   errors.push('Kit '+(i+1)+': SKU ausente, repetida ou com formato inválido.');continue;
+  }
+  if(size!==null&&skus.length!==size){
+   errors.push('Kit '+(i+1)+': mistura kits de '+size+' e '+skus.length+' SKUs; importe lotes separados.');continue;
+  }
+  const key=skus.slice().sort().join('|');
+  if(seen.has(key)){errors.push('Kit '+(i+1)+': combinação duplicada.');continue;}
+  seen.add(key);size=skus.length;
+  if(kits.length<limit)kits.push(skus);
+  else errors.push('Kit '+(i+1)+': acima do limite de '+limit+' kits.');
+ }
+ return {kits,format:'json',rejected:errors.length,errors,size:size||null,sourceCount:entries.length};
+}
 async function kitChatEnsureFreshResearch(){
  const context=kitResearchContext();
  try{
@@ -2559,31 +2592,16 @@ async function importPlusSuggestions({readClipboard=false,silent=false,uploadedT
    response=await navigator.clipboard.readText();
    if(kitChatFilePickerOpen||kitChatManualImportActive||kitChatQueuedManualImport)return false;
   }
-  // JSON de arquivo pode combinar categorias: a whitelist da pesquisa não
-  // é o catálogo completo. A API confere cada SKU, estoque e custo de fato.
-  let importCodes=kitChatPending.candidateSkus;
-  let fileKitSize=context.size;
-  let fileKitCount=0;
-  if(uploadedText!==null){
-   try{
-    const payload=JSON.parse(String(response).replace(/^\\uFEFF/,'').trim());
-    const candidates=Array.isArray(payload)?payload:payload?.kits;
-    if(Array.isArray(candidates)){
-     const sizes=candidates.map(entry=>Array.isArray(entry)?entry.length:Array.isArray(entry?.skus)?entry.skus.length:0);
-     const validSizes=[...new Set(sizes.filter(n=>n===2||n===3))];
-     if(validSizes.length===1&&sizes.every(n=>n===validSizes[0]))fileKitSize=validSizes[0];
-     fileKitCount=candidates.length;
-     const codes=candidates.slice(0,20).flatMap(entry=>
-      Array.isArray(entry)?entry:Array.isArray(entry?.skus)?entry.skus:[]);
-     importCodes=[...new Set([...importCodes,...codes.filter(x=>
-      typeof x==='string'&&x.length>0&&x.length<=120)])];
-    }
-   }catch{}
-  }
-  const parsed=kitChatExtractLines(response,fileKitSize,importCodes,context.desiredKits);
+  // JSON escolhido é importado diretamente; whitelist de pesquisa aplica-se
+  // apenas ao texto/TXT. O servidor é a autoridade para SKU, estoque e custo.
+  const fileParsed=uploadedText!==null?kitParseUploadedJson(response,context.desiredKits):null;
+  const parsed=fileParsed||kitChatExtractLines(
+   response,context.size,kitChatPending.candidateSkus,context.desiredKits);
+  const fileKitSize=fileParsed?.size||context.size;
+  const fileKitCount=fileParsed?.sourceCount||0;
   const rows=parsed.kits;
   if(!rows.length){
-   if(!silent)throw Error('Nenhum kit foi reconhecido. JSON: '+fileKitCount+' combinações encontradas; configuração: '+fileKitSize+' SKUs por kit; '+parsed.rejected+' combinações inválidas. Confira os códigos e se cada kit contém exatamente 2 ou 3 SKUs distintos.');
+   if(!silent)throw Error('Nenhum kit importável. JSON: '+fileKitCount+' combinações; '+parsed.rejected+' inválidas. '+((parsed.errors||[]).slice(0,3).join(' ')||'Confira os códigos e as quantidades de SKUs.'));
    return false;
   }
   // Ao colar ou importar a resposta, também preparar o arquivo para
