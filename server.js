@@ -953,6 +953,25 @@ app.get('/api/shopee/wedrop/auto/status',mustLogin,requireWeDropAdmin,async(req,
 });
 // XLS/XLSX percorre o MESMO validador CSV. Só converte arquivo para texto
 // estruturado; nenhuma operação de importação ou publicação ocorre aqui.
+// Conferência de catálogo imediatamente antes da pesquisa de kits.
+// Só consulta o feed autorizado (quando configurado); nunca navega por
+// páginas privadas da WeDrop nem presume estoque para itens sem status.
+app.post('/api/shopee/kits/refresh-catalog',mustLogin,requireWeDropAdmin,async(req,res)=>{
+ res.setHeader('Cache-Control','no-store');
+ if(!verifiedSameOrigin(req))return res.status(403).json({error:'Origem não autorizada.'});
+ try{
+  const {auth}=await getValidAuth(req);
+  const feed=supplierFeedConfig();
+  if(!feed.configured||feed.shopId!==Number(auth.shopId))
+   return res.json({ok:true,refreshed:false,reason:
+    'Não existe feed autorizado para esta loja. Importe o catálogo WeDrop completo e sua disponibilidade no Manager antes de pesquisar.'});
+  const result=await wedropScheduler.check();
+  if(result.running)return res.status(409).json({error:'Sincronização WeDrop já em andamento. Tente novamente após a conclusão.'});
+  if(result.error)return res.status(502).json({error:'Falha ao atualizar feed WeDrop: '+result.error});
+  res.json({ok:true,refreshed:true,sourceRows:result.sourceRows||0,
+   uniqueCosts:result.uniqueCosts||0,stockImported:Boolean(result.stockImported)});
+ }catch(error){res.status(400).json({error:String(error.message||error).slice(0,300)});}
+});
 app.post('/api/shopee/wedrop/convert-excel',mustLogin,requireWeDropAdmin,(req,res)=>{
   res.setHeader('Cache-Control','no-store');
   if(!verifiedSameOrigin(req))return res.status(403).json({error:'Origem não autorizada.'});
