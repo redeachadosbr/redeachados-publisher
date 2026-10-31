@@ -348,3 +348,24 @@ test('wizard: nove etapas na ordem pedida, configuração antes do preço e rasc
  assert.match(css,/#tab-kits #kitDetail\[data-kit-wizard-step="6"\]/);
  assert.match(css,/#tab-kits #kitWizardSteps/);
 });
+
+test('layout: resumo do kit aberto acima das nove etapas e título exclusivo da etapa 03',()=>{
+ const html=fs.readFileSync(new URL('../public/index.html',import.meta.url),'utf8');
+ const script=fs.readFileSync(new URL('../public/kit-builder.js',import.meta.url),'utf8');
+ const css=fs.readFileSync(new URL('../public/kit-builder.css',import.meta.url),'utf8');
+ const top=html.indexOf('id="kitWizardCurrentKit"');
+ const wizard=html.indexOf('id="kitWizard"');
+ assert.ok(top>0&&top<wizard,'Resumo do kit antes do cabeçalho do wizard');
+ assert.equal((html.match(/class="kit-editor-top-panel"/g)||[]).length,1,'Não duplicar o resumo real');
+ assert.equal((html.match(/id="kitCopyContentPanel"/g)||[]).length,1,'Não duplicar o formulário de títulos');
+ assert.match(script,/function kitWizardSyncHeader\(/);
+ assert.match(script,/wrapper\.append\(original\)/);
+ assert.match(script,/wrapper\.hidden=editor\.hidden\|\|!prepared\?\.kit/);
+ assert.match(script,/if\(kitWizardStage===3\|\|kitWizardStage===5\)\{/);
+ assert.match(script,/kitSetCopyContentCollapsed\(false\)/);
+ assert.match(script,/kitWizardStage===3\?'Título SEO do kit':'Descrição do kit'/);
+ assert.match(css,/#tab-kits #kitWizardCurrentKit\[hidden\]/);
+ assert.match(css,/#tab-kits #kitDetail\[data-kit-wizard-step="3"\] > \.kit-copy-collapse-toolbar/);
+ assert.match(css,/#tab-kits #kitDetail\[data-kit-wizard-step="3"\] > #kitCopyContentPanel:not\(\[hidden\]\)/);
+ assert.match(css,/#tab-kits #kitDetail\[data-kit-wizard-step="5"\] #kitCopyContentPanel \.kit-copy-grid label:has\(#kitTitle\)/);
+});
