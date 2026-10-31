@@ -2415,6 +2415,13 @@ async function plusResearch({openChat=false}={}){
    sessionStorage.setItem(KIT_CHAT_SESSION_KEY,JSON.stringify(kitChatPending));
    $('#kitResearchPrompt').value=r.prompt;
    $('#kitPlusOutput').value='';
+   const imported=Number(r.categoryImportedCount||0);
+   const available=Number(r.stockFilteredCount||0);
+   const missing=Number(r.categoryUnavailableCount||0);
+   kitPlusNotice('WeDrop no Manager: '+imported+' SKUs cadastradas na categoria; '+
+    available+' disponíveis com custo válido; '+missing+
+    ' excluídas por disponibilidade. O total do site WeDrop pode ser maior: '+
+    'atualize o catálogo completo e o estoque no Manager antes de gerar kits.','warning');
   }
   if(!openChat){
    kitPlusNotice('Pesquisa pronta com '+kitChatPending.candidateSkus.length+
@@ -2426,8 +2433,8 @@ async function plusResearch({openChat=false}={}){
   if(!kitResearchAutoPrompt){
    $('#kitResearchDetails').open=true;
    if(kitChatPending.requiresAttachment&&kitResearchCatalogContent)kitDownloadFullCatalog();
-   kitPlusNotice('Todos os '+kitChatPending.candidateSkus.length+
-    ' SKUs foram separados, mas o catálogo completo excede o limite de envio da Ponte atual. O TXT foi preparado. Clique em Copiar prompt + abrir ChatGPT, anexe o TXT e envie. Depois importe o JSON. Nenhuma SKU foi descartada.','warning');
+   kitPlusNotice('Todas as '+kitChatPending.candidateSkus.length+
+    ' SKUs elegíveis DO CATÁLOGO IMPORTADO foram separadas, mas o conteúdo excede o limite de envio da Ponte atual. O TXT foi preparado. Clique em Copiar prompt + abrir ChatGPT, anexe o TXT e envie. Depois importe o JSON. Nenhuma SKU foi descartada.','warning');
    return;
   }
   kitResearchRunning=true;
