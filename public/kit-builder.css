@@ -2947,3 +2947,25 @@
  width:100%;max-width:100%;margin:0;min-width:0}
 #tab-kits #kitWizardTechnicalMount #optimizerTechnicalPanel:not([hidden]){display:block!important;
  width:100%;max-width:100%;min-width:0}
+
+
+/* Etapa 08 fiscal: exibir diretamente o MESMO formulário fiscal e as sugestões
+   da Shopee/WeDrop, sem duplicar campos ou exibir o bloco de Kit Formal. */
+#tab-kits #kitWizardFiscalAccess[hidden]{display:none!important}
+#tab-kits #kitWizardFiscalMount{width:100%;max-width:100%;min-width:0;margin-top:12px}
+#tab-kits #kitWizardFiscalMount:empty{display:none}
+#tab-kits #kitWizardFiscalStatus{background:#eaf3ff;color:#214f7f;border:1px solid #cce2f9;
+ border-radius:10px;padding:10px 12px;margin:8px 0 12px;line-height:1.5;font-size:12px}
+#tab-kits #kitWizardFiscalStatus[data-state=warning]{background:#fff7e9;color:#8d5f1c;border-color:#f5d59c}
+#tab-kits #kitWizardFiscalStatus[data-state=success]{background:#e9f8f0;color:#167249;border-color:#b4dfc7}
+#tab-kits #kitWizardFiscalMount #kitOptimizerWorkspace{width:100%;max-width:100%;min-width:0;box-sizing:border-box}
+#tab-kits #kitWizardFiscalMount #kitOptimizerWorkspace > .kit-optimizer-workspace-heading,
+#tab-kits #kitWizardFiscalMount #kitOptimizerWorkspace > #kitOptimizerWorkspaceStatus{display:none!important}
+#tab-kits #kitWizardFiscalMount #optimizerWorkflowPanel:not([hidden]){display:block!important;
+ width:100%;max-width:100%;min-width:0;margin:0;padding:0;border:0;box-shadow:none}
+#tab-kits #kitWizardFiscalMount #optimizerWorkflowPanel > :not(#optimizerWorkflowEditor){display:none!important}
+#tab-kits #kitWizardFiscalMount #optimizerWorkflowEditor:not([hidden]){display:block!important;
+ width:100%;max-width:100%;margin:0;min-width:0}
+#tab-kits #kitWizardFiscalMount #optimizerFiscalPanel:not([hidden]){display:block!important;
+ width:100%;max-width:100%;min-width:0}
+#tab-kits #kitWizardWork #kitDetail[data-kit-wizard-step="8"] > #kitPublishPanel{display:none!important}
