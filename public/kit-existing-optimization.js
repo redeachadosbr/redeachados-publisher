@@ -67,6 +67,11 @@ export function initExistingKitOptimization({getContext,api,money,onMainSkuChang
  const ctx=()=>getContext(),kitSku=()=>ctx().prepared?.kit?.kitSku||'';
  function notice(message,state='info'){
   const el=$('#kitOptimizeStatus');if(el){el.textContent=message;el.dataset.state=state;}
+  if((state==='error'||state==='warning')&&
+     globalThis.RAKitTechnicalRequested?.(kitSku())){
+   globalThis.RAKitTechnicalLoadError?.({kitSku:kitSku(),
+    sku:String($('#kitOptimizeMainSku')?.value||''),message});
+  }
  }
  function paint(){
   const {kitSaved}=ctx(),valid=Boolean(target&&target.kitSku===kitSku());
