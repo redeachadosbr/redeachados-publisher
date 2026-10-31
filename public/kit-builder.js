@@ -59,6 +59,10 @@ function kitPersistSkuFacts(){
   if(serial!==kitFactsSaveSerial||prepared?.kit?.kitSku!==kitSku)return;
   try{
    await api('/api/shopee/kits/drafts/manual-facts',{body:{kitSku,manualFacts:facts}});
+    // Atualizar a referencia somente apos confirmacao do servidor.
+    // Edicoes posteriores ou a sincronizacao imediata da etapa 05 prevalecem.
+    if(prepared?.kit?.kitSku===kitSku&&serial===kitFactsSaveSerial)
+     prepared.creative={...prepared.creative,manualFacts:{...facts}};
   }catch(error){
    // Um kit novo, ainda sem rascunho salvo, mantém as fichas localmente até
    // o primeiro salvamento completo. Não apagar informação digitada.
@@ -3098,7 +3102,12 @@ function kitContentShowMissing(rows=[],{scroll=false}={}){
    measurements.dataset.state=found.length?'found':'missing';
    kitContentManualFacts.set(sku,box.value);
    kitUpdateImageGuidance();
-   if(edited){kitSaved=false;clearKitPublishApproval();kitPersistSkuFacts();}
+   if(edited){
+    // Alterar apenas a ficha da SKU nao desfaz o rascunho do kit ja salvo.
+    // A API de manual-facts sincroniza os detalhes em separado.
+    clearKitPublishApproval();
+    kitPersistSkuFacts();
+   }
   };
   box.addEventListener('input',()=>refresh(true));
   const upload=elt('label','kit-sku-fact-print');
