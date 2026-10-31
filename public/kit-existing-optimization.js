@@ -445,12 +445,6 @@ export function initExistingKitOptimization({getContext,api,money,onMainSkuChang
    globalThis.RAKitTechnicalLoadReady?.(data);
    return;
   }
-  // Etapa 08 deve reaproveitar apenas a ficha fiscal da SKU vinculada:
-  // não rolar para outro painel, sincronizar imagens ou executar anúncios.
-  if(globalThis.RAKitFiscalRequested?.(data.kitOptimization.kitSku)){
-   globalThis.RAKitFiscalLoadReady?.(data);
-   return;
-  }
   $('#kitOptimizerWorkspace')?.scrollIntoView({behavior:'smooth',block:'start'});
   const imageStage=data.stages?.find(x=>x.key==='images');
   const identity=kitSku()+'|'+data.itemId+'|'+String(data.modelId||'0');
