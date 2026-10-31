@@ -3004,3 +3004,59 @@
 @media(max-width:650px){
  #tab-kits #kitWizardFiscalMount #optimizerFiscalFields{grid-template-columns:1fr}
 }
+
+
+/* KIT WIZARD V5 — uma única navegação: 10 etapas.
+   O motor antigo segue no DOM para preservar valores, listeners e execução,
+   mas sua navegação de oito cartões nunca aparece nos kits. */
+#tab-kits #kitWizardOptimizerDock,
+#tab-kits #kitWizard .kit-wizard-optimizer-toggle-row{display:none!important}
+#tab-kits #kitWizardDiscountAccess[hidden],
+#tab-kits #kitWizardVariantsAccess[hidden],
+#tab-kits #kitWizardExecutionAccess[hidden]{display:none!important}
+#tab-kits :is(#kitWizardDiscountMount,#kitWizardVariantsMount,#kitWizardExecutionMount){
+ width:100%;max-width:100%;min-width:0;box-sizing:border-box;margin:12px 0 0}
+#tab-kits :is(#kitWizardDiscountMount,#kitWizardVariantsMount,#kitWizardExecutionMount) #kitOptimizerWorkspace:not([hidden]){
+ display:block!important;width:100%;max-width:100%;min-width:0}
+#tab-kits :is(#kitWizardDiscountMount,#kitWizardVariantsMount,#kitWizardExecutionMount) #optimizerWorkflowPanel:not([hidden]){
+ display:block!important;width:100%;max-width:100%;box-sizing:border-box;
+ margin:0;padding:0;border:0;box-shadow:none;background:transparent}
+#tab-kits :is(#kitWizardDiscountMount,#kitWizardVariantsMount,#kitWizardExecutionMount) #kitOptimizerWorkspace > .kit-optimizer-workspace-heading,
+#tab-kits :is(#kitWizardDiscountMount,#kitWizardVariantsMount,#kitWizardExecutionMount) #kitOptimizerWorkspace > #kitOptimizerWorkspaceStatus{
+ display:none!important}
+/* 07: só o formulário original de variações. */
+#tab-kits #kitWizardVariantsMount #optimizerWorkflowPanel > :not(#optimizerWorkflowEditor){display:none!important}
+#tab-kits #kitWizardVariantsMount #optimizerWorkflowEditor:not([hidden]){
+ display:block!important;width:100%;max-width:100%}
+#tab-kits #kitWizardVariantsMount #optimizerWorkflowEditor > :not(#optimizerVariationPanel){display:none!important}
+#tab-kits #kitWizardVariantsMount #optimizerVariationPanel:not([hidden]){display:block!important}
+/* 09: mesmo cálculo e a mesma prévia Minha Promoção, movidos sem clonagem. */
+#tab-kits #kitWizardDiscountMount #optimizerWorkflowPanel > :not(#optimizerDiscountReviewInline){display:none!important}
+#tab-kits #kitWizardDiscountMount #optimizerDiscountReviewInline:not([hidden]){
+ display:block!important;width:100%;max-width:100%;box-sizing:border-box;
+ margin:0;padding:0;border:0;background:transparent}
+#tab-kits #kitWizardDiscountMount #optimizerDiscountReviewInline .kit-existing-discount:not([hidden]){
+ display:block!important;width:100%;max-width:100%;box-sizing:border-box;
+ border:1px solid #cddff1;border-radius:12px;background:#fff;padding:14px;margin:0}
+#tab-kits #kitWizardDiscountPricing #kitPricingSummary{
+ display:block!important;width:100%;max-width:100%;box-sizing:border-box;
+ margin:4px 0 15px}
+#tab-kits #kitWizardDiscountStatus[data-state=warning]{background:#fff7e9;color:#875d1b;border-color:#f5d59c}
+#tab-kits #kitWizardDiscountStatus[data-state=error]{background:#fff0ef;color:#af3027;border-color:#e9b8b3}
+#tab-kits #kitWizardDiscountStatus[data-state=success]{background:#e9f8f0;color:#167249;border-color:#b4dfc7}
+#tab-kits #kitWizardDiscountAccess .kit-wizard-inline-actions{
+ display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin:12px 0 0}
+/* 10: a execução original, sem reexibir os oito cartões antigos. */
+#tab-kits #kitWizardExecutionMount #optimizerWorkflowPanel > :not(#optimizerExecutionPanel){display:none!important}
+#tab-kits #kitWizardExecutionMount #optimizerExecutionPanel:not([hidden]){
+ display:block!important;width:100%;max-width:100%;box-sizing:border-box}
+/* A seleção da SKU e confirmação do Item ID acompanham a ficha da etapa 05. */
+#tab-kits #kitWizardTechnicalMount > .kit-flow-start-bar{
+ display:grid;grid-template-columns:minmax(170px,1fr) minmax(180px,1fr) auto;
+ gap:10px;align-items:end;background:#fff;padding:12px;border-radius:12px;
+ border:1px solid #d4e3f2;margin:12px 0}
+#tab-kits #kitWizardTechnicalMount > #kitOptimizeStatus{
+ display:block!important;max-width:100%;box-sizing:border-box;margin:10px 0}
+@media(max-width:950px){
+ #tab-kits #kitWizardTechnicalMount > .kit-flow-start-bar{grid-template-columns:1fr}
+}
