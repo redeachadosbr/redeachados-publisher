@@ -48,8 +48,8 @@ export function requestKitResearch({prompt},{target=window,onProgress=()=>{},sig
     onProgress(String(m.status||'Gerando kits no ChatGPT').slice(0,240));
     return;
    }
-   // Confirmar recebimento; nunca solicitar nova geração caso a importação falhe.
-   target.postMessage({kind:'RA_SITE_DESC_ACK',...identity,ok:true},origin);
+   // Preservar a conversa para recuperação manual; não reenviar nem descartar o retorno.
+   target.postMessage({kind:'RA_SITE_DESC_ACK',...identity,ok:false},origin);
    if(m.ok!==true)return finish(Error('ChatGPT não devolveu os kits: '+(m.error||'sem detalhes')));
    const rawText=kitContentResponseText(m.rawText);
    if(!rawText.trim())return finish(Error('ChatGPT retornou uma resposta vazia. Confira a conversa.'));
