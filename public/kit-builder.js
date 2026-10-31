@@ -123,6 +123,66 @@ function kitWizardToggleOptimizer(expanded,{scroll=false}={}){
  button.textContent=show?'▴ Ocultar “Preparar e revisar o kit”':'▾ Mostrar “Preparar e revisar o kit”';
  if(show&&scroll)dock.scrollIntoView({behavior:'smooth',block:'start'});
 }
+// Editor de ficha técnica Shopee: DOM ORIGINAL, sem clone nem campos paralelos.
+// Mantém a referência para restaurar o workspace ao sair da etapa 05.
+let kitWizardTechnicalLoadingFor='';
+function kitWizardTechnicalStatus(message,state='info'){
+ const node=$('#kitWizardTechnicalStatus');if(node){node.textContent=message;node.dataset.state=state;}
+}
+function kitWizardMountTechnical(){
+ const node=$('#kitOptimizerWorkspace'),mount=$('#kitWizardTechnicalMount');
+ const normal=$('#kitOptimizeExistingPanel'),advanced=$('#kitOptimizeAdvanced');
+ if(!node||!mount||!normal)return;
+ if(kitWizardStage===5&&prepared?.kit&&!$('#kitDetail')?.hidden){
+  if(node.parentElement!==mount)mount.append(node);
+ }else if(node.parentElement!==normal)normal.insertBefore(node,advanced||null);
+}
+function kitWizardTechnicalReady(){
+ if(kitWizardStage!==5||!prepared?.kit)return false;
+ const sku=$('#kitOptimizeMainSku')?.value||'';
+ const opened=globalThis.RAKitOpenTechnicalEditor?.({kitSku:prepared.kit.kitSku,sku})===true;
+ if(opened){
+  kitWizardTechnicalLoadingFor='';
+  kitWizardTechnicalStatus('Ficha oficial da SKU principal '+sku+
+   ' carregada. Revise os atributos e use os botões existentes para salvar e conferir.','success');
+ }
+ return opened;
+}
+function kitWizardRequestTechnical({force=false}={}){
+ if(kitWizardStage!==5||!prepared?.kit)return;
+ kitWizardMountTechnical();
+ if(kitWizardTechnicalReady())return;
+ if(!kitSaved){
+  kitWizardTechnicalStatus('Salve o rascunho do kit para consultar a ficha técnica da SKU principal.','warning');
+  return;
+ }
+ const chosen=$('#kitOptimizeMainSku'),code=chosen?.value||'';
+ if(!code||!prepared.kit.components.some(p=>p.sku===code)){
+  kitWizardTechnicalStatus('Selecione a SKU principal no painel “Preparar e revisar o kit”.','warning');
+  return;
+ }
+ const identity=prepared.kit.kitSku+'|'+code;
+ if(!force&&kitWizardTechnicalLoadingFor===identity)return;
+ const button=$('#kitOptimizeStart');
+ if(!button||button.disabled){
+  kitWizardTechnicalStatus($('#kitOptimizeStatus')?.textContent||
+   'A consulta da SKU principal está indisponível. Verifique a seleção no painel de otimização.','warning');
+  return;
+ }
+ kitWizardTechnicalLoadingFor=identity;
+ kitWizardTechnicalStatus('Consultando o anúncio e os atributos oficiais da SKU principal '+code+
+  ' na Shopee. Nenhuma edição será publicada automaticamente.','info');
+ // Reutiliza o comando existente, que identifica o Item ID e consulta a ficha.
+ button.click();
+}
+globalThis.RAKitTechnicalRequested=kitSku=>
+ kitWizardStage===5&&prepared?.kit?.kitSku===String(kitSku||'');
+globalThis.RAKitTechnicalLoadReady=({kitOptimization,sku}={})=>{
+ if(!globalThis.RAKitTechnicalRequested?.(kitOptimization?.kitSku))return;
+ if(String($('#kitOptimizeMainSku')?.value||'')!==String(sku||''))return;
+ kitWizardMountTechnical();
+ kitWizardTechnicalReady();
+};
 function kitWizardSetStage(stage,{scroll=false}={}){
  const work=$('#kitWizardWork');
  if(!work)return;
@@ -149,7 +209,7 @@ function kitWizardSetStage(stage,{scroll=false}={}){
  const execution=$('#kitWizardExecutionAccess');if(execution)execution.hidden=kitWizardStage!==10;
  // Ao abrir Variações, Ficha ou Fiscal, reutilizar a etapa REAL já carregada
  // no otimizador Shopee da SKU principal, sem cadastrar outra tela.
- const reusing={5:'technical',7:'variants',8:'fiscal'}[kitWizardStage];
+ const reusing={7:'variants',8:'fiscal'}[kitWizardStage];
  const workspace=$('#kitOptimizerWorkspace');
  if(reusing&&prepared&&workspace&&!workspace.hidden){
   const originalStage=workspace.querySelector('[data-stage="'+reusing+'"]');
@@ -173,6 +233,9 @@ function kitWizardSetStage(stage,{scroll=false}={}){
   if(kitWizardStage===1)$('#kitMissingFacts').open=true;
  }
  kitWizardUpdateProgress();
+ kitWizardMountTechnical();
+ if(kitWizardStage===5)kitWizardRequestTechnical();
+ else kitWizardTechnicalLoadingFor='';
  if(scroll&&kitWizardStage)work.scrollIntoView({behavior:'smooth',block:'start'});
 }
 function kitWizardInit(){
@@ -186,10 +249,8 @@ function kitWizardInit(){
  $('#kitWizardOpenDiscount')?.addEventListener('click',()=>kitWizardToggleOptimizer(true,{scroll:true}));
  $('#kitWizardOpenExecution')?.addEventListener('click',()=>kitWizardToggleOptimizer(true,{scroll:true}));
  $('#kitWizardOpenTechnical')?.addEventListener('click',()=>{
-  kitWizardToggleOptimizer(true,{scroll:true});
-  const workspace=$('#kitOptimizerWorkspace');
-  const technical=workspace&&!workspace.hidden?workspace.querySelector('[data-stage="technical"]'):null;
-  if(technical)technical.click();
+  kitWizardTechnicalLoadingFor='';
+  kitWizardRequestTechnical({force:true});
  });
  // Configuração e resumo continuam em sua posição original antes de #kitPricingSummary.
  for(const button of root.querySelectorAll('[data-kit-wizard-step]'))
@@ -2013,6 +2074,7 @@ function renderKit({scroll=true,displayTitle=''}={}){
  $('#kitDetail').hidden=false;
  kitWizardSyncHeader();
  kitWizardSyncOptimizer();
+ kitWizardMountTechnical();
  if($('#kitWizardEmpty'))$('#kitWizardEmpty').hidden=true;
  $('#kitSkuTitle').textContent=String(displayTitle||creative?.title||
   kit.components.map(p=>p.name).join(' + ')).trim();
