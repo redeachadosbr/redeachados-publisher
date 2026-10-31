@@ -264,7 +264,11 @@ globalThis.RAKitTechnicalLoadReady=({kitOptimization,sku}={})=>{
  if(!globalThis.RAKitTechnicalRequested?.(kitOptimization?.kitSku))return;
  if(String($('#kitOptimizeMainSku')?.value||'')!==String(sku||''))return;
  kitWizardMountTechnical();
- kitWizardTechnicalReady();
+ if(!kitWizardTechnicalReady()){
+  kitWizardTechnicalLoadingFor='';
+  kitWizardTechnicalStatus('O anúncio da SKU '+sku+
+   ' foi consultado, mas o formulário técnico original não abriu. Clique em “Carregar ou atualizar ficha técnica” para tentar novamente.','error');
+ }
 };
 globalThis.RAKitTechnicalLoadError=({kitSku,sku,message}={})=>{
  if(!globalThis.RAKitTechnicalRequested?.(kitSku))return;
