@@ -74,7 +74,7 @@ test('Manager permite recuperar geração de kit após atualização fechar o ru
  assert.match(runtime,/async function resumeFromManager\(\)/);
  assert.match(runtime,/RA_SITE_CONTINUE/);
  assert.match(runtime,/NO_RECOVERABLE_JOB/);
- assert.match(runtime,/resumeFromExtension\(\{nonce,sku:kit.kitSku,itemId:'0',modelId:'0'\}\)/);
+ assert.match(runtime,/wakeConfirmedSession\(\{kitSku:kit.kitSku,nonce,slot:Number\(result.slot\)\}\)/);
  assert.match(runtime,/await waitReady\(\)/);
 });
 
@@ -97,4 +97,21 @@ test('capa 01 não confunde montagem de referências WeDrop com foto gerada',()=
  assert.match(ui,/validateKitCoverImage\(file,\{referenceDataUrl\}\)/);
  assert.match(ui,/await kitStoredPhotoApproved\(row\)/);
  assert.match(ui,/ATENÇÃO IMAGEM 01: as fotografias WeDrop anexadas são SOMENTE REFERÊNCIAS/);
+});
+
+
+test('retomada da Ponte usa um CONTINUE e depois WAKE, sem iniciar outro lote',()=>{
+ const runtime=fs.readFileSync(new URL('../public/kit-extension-runtime.js',import.meta.url),'utf8');
+ const ui=fs.readFileSync(new URL('../public/kit-builder.js',import.meta.url),'utf8');
+ const start=runtime.slice(runtime.indexOf('async function resumeFromManager()'),runtime.indexOf('// Exclusivo de kits: o botão verde'));
+ assert.equal((start.match(/kind:'RA_SITE_CONTINUE'/g)||[]).length,1);
+ assert.match(start,/return wakeConfirmedSession/);
+ assert.doesNotMatch(start,/resumeFromExtension\(/);
+ assert.match(runtime,/post\(\{kind:'RA_SITE_WAKE',nonce\}\)/);
+ assert.match(runtime,/if\(job\?\.kitSku===kit\.kitSku&&getImages\(\)\.size<9\)/);
+ assert.match(runtime,/return resumeFromManager\(\)/);
+ assert.match(ui,/kitScheduleAutomaticBridgeRecovery\(/);
+ assert.match(ui,/window.addEventListener\('focus',kitScheduleAutomaticBridgeRecovery\)/);
+ assert.match(ui,/kitPhotoStore\.list\(sku\)/);
+ assert.match(ui,/kitManagerResumeBusy/);
 });
