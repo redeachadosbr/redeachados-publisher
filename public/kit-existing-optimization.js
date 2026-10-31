@@ -452,7 +452,7 @@ export function initExistingKitOptimization({getContext,api,money,onMainSkuChang
  function openTechnicalTarget(){
   const current=kitSku(),code=$('#kitOptimizeMainSku')?.value||'';
   if(!target||target.kitSku!==current||target.sku!==code||
-     !/^[1-9]\\d{0,17}$/.test(String(target.itemId||''))){
+     !/^[1-9]\d{0,17}$/.test(String(target.itemId||''))){
    notice('Selecione um Item ID confirmado para a SKU principal antes de carregar a ficha.','warning');
    return false;
   }
