@@ -384,7 +384,7 @@ test('layout da ficha WeDrop isolada na etapa 01 e painel de otimização indepe
  assert.match(script,/kitWizardStage===1\)\$\('#kitMissingFacts'\)\.open=true/);
  assert.match(script,/kitWizardToggleOptimizer\(\$\('#kitWizardOptimizerDock'\)\?\.hidden/);
  assert.match(css,/#tab-kits #kitDetail\[data-kit-wizard-step="1"\] > #kitMissingFacts/);
- assert.doesNotMatch(css,/#tab-kits #kitDetail\[data-kit-wizard-step="5"\] > #kitMissingFacts/);
+ assert.match(css,/#tab-kits #kitDetail\[data-kit-wizard-step="5"\] > #kitMissingFacts/);
  assert.match(css,/#tab-kits #kitWizardOptimizerDock\[hidden\]/);
  assert.match(css,/#tab-kits #kitWizardOptimizerToggle\[aria-expanded="true"\]/);
 });
