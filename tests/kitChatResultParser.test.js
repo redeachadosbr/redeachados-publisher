@@ -83,3 +83,16 @@ test('JSON com nomes de produtos e preços é aceito somente com SKU WeDrop da w
  assert.deepEqual(result.kits,[['DTY1126','DTY1127']]);
  assert.equal(result.rejected,1);
 });
+
+test('até 20 kits com quantidade exata e zeros iniciais; não consome limite com kit de tamanho errado',()=>{
+ const allowed=['050',...Array.from({length:41},(_,i)=>'W'+String(i).padStart(3,'0'))];
+ const entries=[['W000','W001','W002'],
+  ...Array.from({length:20},(_,i)=>[i===0?'050':'W'+String(i+2).padStart(3,'0'),
+    'W'+String(i+22).padStart(3,'0')])];
+ const parsed=parseKitChatResult({kits:entries},{allowedCodes:allowed,limit:20,size:2});
+ assert.equal(parsed.kits.length,20);
+ assert.equal(parsed.kits[0][0],'050');
+ assert.equal(parsed.rejected,1);
+ assert.ok(parsed.kits.every(k=>k.length===2));
+ assert.throws(()=>parseKitChatResult({kits:entries},{allowedCodes:allowed,limit:21}),/Limite inválido/);
+});
