@@ -49,7 +49,7 @@ test('prompt curto do ChatGPT mantém medidas mesmo depois de 300 caracteres de 
  assert.match(prompt,/diâmetro: 8,5 cm/);
  assert.match(prompt,/largura: 9,5 cm/);
  assert.match(prompt,/IMAGEM 03/);
- assert.match(prompt,/SEM escrever SKU/);
+ assert.match(prompt,/sem escrever SKU/i);
 });
 
 test('ficha sem medida explícita não recebe números de outra SKU',()=>{
@@ -63,7 +63,7 @@ test('ficha sem medida explícita não recebe números de outra SKU',()=>{
  assert.equal(rows[1].hasDimensions,false);
  const prompt=buildKitPlusImageBrief(two,{manualFacts:{A:'Medidas: 12 x 13 x 14 cm',B:'12 meses; kit 6 peças'}});
  assert.match(prompt,/não informadas/);
- assert.match(prompt,/Não transferir/iu);
+ assert.match(prompt,/Nunca transferir/i);
 });
 
 test('dimensão única etiquetada é reconhecida sem confundir idade e quantidade',()=>{
