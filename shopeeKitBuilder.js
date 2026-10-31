@@ -4,7 +4,7 @@ import {readWeDropCosts} from './wedropCosts.js';
 import {shopeePricingPreferences} from './shopeePricingStore.js';
 import {quoteShopeePrice,quoteShopeeKitPrice} from './shopeePricing.js';
 import {readKitStockSnapshot,assertKitStockSnapshot,assertKitComponentsAvailable} from './shopeeKitAvailability.js';
-import {detectSkuMeasurements,dimensionsFromSkuText} from './public/kit-measurements.js';
+import {detectSkuMeasurements,dimensionsFromSkuText,kitImageMeasurementsBySku} from './public/kit-measurements.js';
 
 
 const CACHE_MS=5*60*1000;
@@ -513,14 +513,16 @@ export function kitPrompts(kit,{manualFacts={}}={}){
  const safeFacts=manualFacts&&typeof manualFacts==='object'&&!Array.isArray(manualFacts)?manualFacts:{};
  if(Object.keys(safeFacts).some(sku=>!allowed.has(sku)))throw Error('Dados atribuídos a uma SKU fora deste kit.');
  const exact=components.map((p,i)=>(i+1)+'. SKU '+p.sku+' — '+p.name+' — 1 unidade').join('; ');
+ const records=kitImageMeasurementsBySku(components,safeFacts);
  const descriptions=components.map((p,i)=>{
-  const seller=fact(safeFacts[p.sku],1700),found=detectSkuMeasurements(seller);
-  const fromSeller=found.map(x=>x.value).join(' · ');
+  const seller=fact(safeFacts[p.sku],1700),evidence=records[i];
   return 'REFERÊNCIA '+(i+1)+': SKU '+p.sku+' = '+p.name+'. Marca da ficha: '+(p.brand||'não informada')+
    '. Descrição WeDrop: '+(fact(p.description,900)||'NÃO INFORMADA')+
    '. Medidas WeDrop: '+(fact(p.dimensions,200)||'NÃO INFORMADAS')+
-   '. Medidas extraídas apenas da descrição fornecida pelo vendedor (NÃO verificadas): '+(fromSeller||'nenhuma')+
-   '. Texto extra do vendedor, NÃO verificado: '+(seller.slice(0,450)||'nenhum')+'.';
+   '. DIMENSÕES CADASTRADAS DESTA SKU PARA A ARTE ('+evidence.source+'): '+
+    (evidence.dimensions.join(' · ')||'nenhuma com unidade; não inventar')+
+   '. Outras grandezas desta SKU: '+(evidence.other.join(' · ')||'nenhuma')+
+   '. Informações por SKU preenchidas pelo vendedor, não verificadas pela WeDrop: '+(seller.slice(0,750)||'nenhuma')+'.';
  }).join('\n');
  const master=[
   'PROMPT MESTRE — REDE ACHADOS BR: 09 IMAGENS INDIVIDUAIS DE UM KIT SHOPEE.',
@@ -533,12 +535,12 @@ export function kitPrompts(kit,{manualFacts={}}={}){
   'IMAGEM COMERCIAL QUADRADA 1:1 DE 1200 × 1200 PIXELS. Luz premium, nitidez HD, fundo ambientado realista e moderno, aparência fotográfica. Variar cenário, perspectiva, enquadramento e disposição entre as posições, mantendo fidelidade integral aos componentes.',
   'Não inventar marca, função, idade, material, dimensão, certificação, peça, brinde, acessório nem produto extra. Não deformar, fundir, duplicar, trocar ou omitir SKUs. Não incluir terceiros itens que pareçam produtos inclusos.',
   'Textos apenas quando a posição solicitar, em português brasileiro, curtos, discretos, legíveis e comprovados, com emojis discretos e pertinentes. NÃO imprimir códigos SKU, identificadores KIT, nomes de arquivos ou IDs internos nas imagens, selos ou textos. Nunca usar preços, links, marcas d’água ou títulos desnecessários.',
-  'MEDIDAS POR SKU: não somar dimensões. Vincular cada dimensão SOMENTE ao componente correspondente. Medidas coladas pelo vendedor NÃO estão verificadas pela WeDrop e só devem aparecer escritas na arte após validação explícita; na dúvida, omita.'
+  'MEDIDAS POR SKU: as dimensões com unidade registradas no campo Informações por SKU devem ser utilizadas na IMAGEM 03 junto ao produto comercial correto. Identificar os números fornecidos pelo vendedor como informações cadastradas, sem afirmar validação pela WeDrop. Não usar medidas sem unidade, inventar números, somar dimensões nem transferir dados de uma SKU a outra.'
  ].join('\n');
   const directions=[
   'IMAGEM 01 — CAPA PRINCIPAL. Os componentes juntos ocupam aproximadamente 85% a 90% da área. Proporções relativas plausíveis, fundo moderno sofisticado suavemente desfocado, luz premium, sem título, selos, preço, frase ou QUALQUER texto.',
   'IMAGEM 02 — USO REAL. Todos os componentes juntos num cenário de utilização cotidiana. Para brinquedos, ambiente de quarto infantil ou espaço de brincadeiras. Mostrar usos complementares sem simular funções inexistentes. Cenário e perspectiva diferentes da capa. Apenas uma frase curta fundamentada nos produtos.',
-  'IMAGEM 03 — ESPECIFICAÇÕES. Todos os produtos juntos lado a lado em cenário real. Identifique discretamente CADA SKU. Medidas do catálogo WeDrop podem ser mostradas junto ao produto EXATO usando linhas discretas; medidas coladas pelo vendedor somente após validação humana explícita, caso contrário OMITE os números. NÃO somar ou transferir dimensões entre produtos; se não houver prova, mostrar sem medidas.',
+  'IMAGEM 03 — ESPECIFICAÇÕES. Todos os produtos juntos lado a lado numa imagem limpa. Ao lado de cada produto, imprimir o NOME COMERCIAL e as dimensões numéricas EXATAS com unidade declaradas na ficha daquela SKU (WeDrop ou Informações por SKU do vendedor). Use linhas de cota discretas e sem zoom ampliado. NÃO imprimir código SKU; NÃO misturar, arredondar, transferir ou inventar medidas. Se alguma SKU não tem dimensão explícita com unidade, mostrar esse produto sem números. Distinguir capacidade/peso de comprimento, largura e altura.',
   'IMAGEM 04 — BENEFÍCIOS. Composição elegante com todos os produtos lado a lado, mostrar benefícios reais específicos da ficha de cada SKU. Usar 2 a 3 frases curtas e discretas somente quando comprovadas, sem letras enormes.',
   'IMAGEM 05 — DOR E SOLUÇÃO. Cena única, acolhedora, com todos os componentes juntos oferecendo variedade ou utilidades complementares reais. Somente UMA frase curta e persuasiva sem exageros.',
   'IMAGEM 06 — PERSUASÃO. Destacar valor de adquirir os componentes como um único kit. Todos juntos em ângulo e cenário diferentes. Uma frase curta de conversão, como “Um kit, duas experiências!”, quando fizer sentido. Sem alegar desconto ou economia não verificados.',
