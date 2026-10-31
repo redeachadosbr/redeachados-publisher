@@ -1,4 +1,5 @@
 import {parseKitChatResult} from './kit-chat-result-parser.js?v=2.5.2-theme-review';
+import {buildKitResearchJson} from './kit-json-export.js?v=1-json-before-import';
 import {scoreKitSeoTitle,parseKitSeoResponse,kitSeoRiskFlags,formatKitShopeeDescription} from './kit-seo-helper.js';
 import {requestKitContent} from './kit-content-handoff.js?v=1';
 import {requestKitResearch} from './kit-research-handoff.js?v=1';
@@ -2329,6 +2330,39 @@ try{
  const stored=JSON.parse(sessionStorage.getItem(KIT_CHAT_SESSION_KEY)||'null');
  if(stored&&Date.now()-stored.at<60*60*1000&&Array.isArray(stored.candidateSkus))kitChatPending=stored;
 }catch{}
+// Arquivo pronto mesmo quando a API de rascunhos falhar ou o navegador
+// bloquear downloads automáticos em uma aba de pesquisa.
+let kitLastJsonExport=null;
+function kitDownloadSavedJson(){
+ if(!kitLastJsonExport)throw Error('Nenhum JSON gerado ainda. Execute a pesquisa ou cole o retorno do ChatGPT.');
+ const blob=new Blob([kitLastJsonExport.content],{type:'application/json;charset=utf-8'});
+ const url=URL.createObjectURL(blob);
+ try{downloadData(url,kitLastJsonExport.filename);}
+ finally{setTimeout(()=>URL.revokeObjectURL(url),30000);}
+}
+function kitCaptureResearchJson(raw,context,{autoDownload=false}={}){
+ const artifact=buildKitResearchJson(raw,{
+  category:context.category,size:context.size,desiredKits:context.desiredKits,
+  allowedCodes:kitChatPending?.candidateSkus||[]
+ });
+ const same=kitLastJsonExport?.filename===artifact.filename &&
+  kitLastJsonExport?.content===artifact.content;
+ kitLastJsonExport=artifact;
+ const button=$('#kitPlusDownloadJson');
+ if(button){
+  button.hidden=false;
+  button.textContent='⬇ Baixar JSON: '+artifact.filename;
+ }
+ const hint=$('#kitPlusJsonHint');
+ if(hint){
+  hint.hidden=false;
+  hint.textContent='✓ '+artifact.count+' kits no arquivo JSON. '+
+   (artifact.rejected?artifact.rejected+' combinações inválidas ignoradas. ':'')+
+   'Caso o Chrome não tenha iniciado o download, clique no botão acima.';
+ }
+ if(autoDownload&&!same)kitDownloadSavedJson();
+ return artifact;
+}
 function kitPlusNotice(message,state='info'){
  const node=$('#kitPlusAutoStatus');
  if(node){node.hidden=false;node.textContent=message;node.dataset.state=state;node.title=message;}
@@ -2450,7 +2484,10 @@ async function plusResearch({openChat=false}={}){
   // Não importar kits de uma configuração que o vendedor alterou durante a geração.
   kitChatValidateContext();
   $('#kitPlusOutput').value=response.rawText;
-  kitPlusNotice('✓ Ponte devolveu a pesquisa. Conferindo as SKUs e preparando os rascunhos...','info');
+  // Entregar arquivo no recebimento da resposta, ANTES da API de importação.
+  const json=kitCaptureResearchJson(response.rawText,context,{autoDownload:true});
+  kitPlusNotice('✓ Arquivo '+json.filename+' gerado com '+json.count+
+   ' kits. Agora validando e preparando os rascunhos. O botão de download permanece disponível.','success');
   const imported=await importPlusSuggestions({uploadedText:response.rawText});
   if(!imported)kitPlusNotice('A Ponte respondeu, mas nenhum kit foi importado. Confira o JSON no campo de resposta, sem reenviar a geração.','warning');
  }catch(error){
@@ -2512,6 +2549,9 @@ async function importPlusSuggestions({readClipboard=false,silent=false,uploadedT
    if(!silent)throw Error('Arquivo lido, mas nenhum kit de 2 ou 3 SKUs corresponde ao catálogo disponível da categoria selecionada. Verifique se a categoria está correta ou se o JSON contém códigos válidos.');
    return false;
   }
+  // Ao colar ou importar a resposta, também preparar o arquivo para
+  // download independente de qualquer erro na API de rascunhos.
+  kitCaptureResearchJson(response,context,{autoDownload:true});
   kitPlusNotice('Importando '+rows.length+' kits do '+(parsed.format==='json'?'JSON':'texto')+
    '; validando custos, estoque e coerência na WeDrop...','info');
   const r=await api('/api/shopee/kits/plus-import',{body:{
@@ -2521,33 +2561,6 @@ async function importPlusSuggestions({readClipboard=false,silent=false,uploadedT
   if(!Array.isArray(r.results)||!r.results.length){
    const firstRejected=(r.rejected||[]).slice(0,2).map(x=>x.reason).join(' / ');
    throw Error('Nenhum dos '+rows.length+' kits passou na validação WeDrop. '+firstRejected);
-  }
-  // Disponibilizar o JSON validado na próxima geração, sem alterar o contrato
-  // da API de importação nem a preparação existente dos rascunhos.
-  try{
-   let original={};
-   const source=String(response||'').trim();
-   const fenced=source.match(/```(?:json)?\s*([\s\S]*?)```/i);
-   const payload=JSON.parse(fenced?fenced[1]:source);
-   if(payload&&typeof payload==='object')original=payload;
-   const sourceKits=Array.isArray(original.kits)?original.kits:[];
-   const normalized=rows.map(skus=>{
-    const sourceKit=sourceKits.find(k=>Array.isArray(k?.skus)&&
-     k.skus.length===skus.length&&
-     k.skus.map(v=>String(v).trim().toUpperCase()).sort().join('|')===skus.slice().sort().join('|'));
-    return {skus, motivo:typeof sourceKit?.motivo==='string'?sourceKit.motivo:'',
-     fontes:Array.isArray(sourceKit?.fontes)?sourceKit.fontes.filter(x=>typeof x==='string'&&/^https?:\/\//i.test(x)):[]};
-   });
-   const safeCategory=String(context.category||'categoria').normalize('NFD')
-    .replace(/[\u0300-\u036f]/g,'').toLowerCase().replace(/[^a-z0-9]+/g,'-').replace(/^-|-$/g,'')||'categoria';
-   const filename='kits-'+safeCategory+'-'+context.size+'-skus.json';
-   const blob=new Blob([JSON.stringify({kits:normalized},null,2)],{type:'application/json;charset=utf-8'});
-   const url=URL.createObjectURL(blob);
-   downloadData(url,filename);
-   setTimeout(()=>URL.revokeObjectURL(url),30000);
-  }catch(error){
-   // A gravação de rascunhos concluída não pode ser desfeita por falha de download.
-   kitPlusNotice('Kits importados, mas o download JSON falhou: '+error.message,'warning');
   }
   $('#kitPlusOutput').value=rows.map(x=>x.join(' | ')).join('\n');
   suggestionContext={category:context.category,size:context.size,idea:context.idea,source:r.source};suggestions=[];
@@ -3348,6 +3361,10 @@ $('#kitIdea')?.addEventListener('keydown',event=>{
 $('#kitSuggest')?.addEventListener('click',()=>void plusResearch({openChat:true}));
 $('#kitPlusDownloadCatalog')?.addEventListener('click',()=>{
  try{kitDownloadFullCatalog();}catch(error){kitPlusNotice(error.message,'error');}
+});
+$('#kitPlusDownloadJson')?.addEventListener('click',()=>{
+ try{kitDownloadSavedJson();}
+ catch(error){kitPlusNotice(error.message,'error');}
 });
 const fileInput=$('#kitPlusFile');
 fileInput?.addEventListener('pointerdown',()=>{kitChatFilePickerOpen=true;});
