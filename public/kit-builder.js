@@ -14,7 +14,7 @@ import {kitImagesLookDuplicated} from './kit-image-guard.js';
 import {validateKitCoverImage} from './kit-cover-validation.js?v=1';
 import {createKitVideoStore,kitVideoFileCheck,kitVideoMetaCheck} from './kit-video-store.js';
 import {createKitLogisticsPersistence} from './kit-logistics-draft-ui.js';
-import {initExistingKitOptimization} from './kit-existing-optimization.js?v=11-technical-item-id-fix';
+import {initExistingKitOptimization} from './kit-existing-optimization.js?v=11-technical-item-id-fix-wizard10-discount09';
 // Kits Inteligentes WeDrop — Kit Formal enviado à Shopee somente após aprovação explícita.
 const $=s=>document.querySelector(s);
 const money=n=>Number(n).toLocaleString('pt-BR',{style:'currency',currency:'BRL'});
@@ -206,7 +206,7 @@ function kitWizardMountPricing(){
   if(summary.parentElement!==mount)mount.append(summary);
  }else if(kitWizardPricingHome&&summary.parentElement!==kitWizardPricingHome){
   kitWizardPricingHome.insertBefore(summary,
-   kitWizardPricingNext?.parentElement===kitWizardPricingHome?kitWizardPricingNext:null);
+   kitWizardPricingNext?.parentNode===kitWizardPricingHome?kitWizardPricingNext:null);
  }
 }
 function kitWizardTechnicalReady(){
