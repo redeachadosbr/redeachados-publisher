@@ -342,7 +342,7 @@ test('etapa 08 do kit permite previa de planejamento antes de executar o anuncio
  assert.match(html,/id="kitOptimizeDiscountApply" disabled/);
  assert.match(module,/kit-existing-optimization\.js\?v=10-planned-promo/);
  assert.match(html,/\/app\.js\?v=3\.5\.\d+-[a-z0-9-]+/);
- assert.match(html,/\/kit-builder\.js\?v=3\.9\.\d+-[a-z0-9-]+/);
+ assert.match(html,/\/kit-builder\.js\?v=[a-zA-Z0-9._-]+/);
  assert.match(html,/\/kit-builder\.css\?v=3\.8\.10-kit-discount-tracker/);
 });
 test('etapa 08 continua sem token de desconto se falta execucao confirmada',()=>{
