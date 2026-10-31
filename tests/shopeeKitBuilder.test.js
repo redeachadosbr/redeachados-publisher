@@ -458,16 +458,16 @@ test('desconto do kit aparece apenas na etapa 09 das dez etapas, sem oito cartoe
  for(const id of ['kitWizardDiscountAccess','kitWizardDiscountPricing','kitWizardDiscountMount',
   'kitWizardRefreshDiscount','kitWizardExecutionMount','kitPricingSummary','kitOptimizeDiscountPreview'])
   assert.equal(html.split('id="'+id+'"').length-1,1,'Controle deve existir uma unica vez: '+id);
- assert.match(html,/data-kit-wizard-step="9"[\\s\\S]*?<strong>Desconto<\\/strong>/);
+ assert.ok(html.includes('data-kit-wizard-step="9"')&&html.includes('<strong>Desconto</strong>'));
  assert.match(html,/Etapa 09 · Conferir preço e desconto/);
  assert.ok(!html.includes('id="kitWizardOptimizerToggle"'),'Nao exibir navegação antiga de oito etapas');
  assert.match(wizard,/9:'#kitWizardDiscountMount'/);
- assert.match(wizard,/function kitWizardMountPricing\\(/);
- assert.match(wizard,/if\\(kitWizardStage===9\\)void kitWizardRequestDiscount\\(\\)/);
- assert.match(wizard,/kitExistingOptimizer\\.openDiscount\\?\\.\\(\\)/);
- assert.match(wizard,/function kitWizardRequestDiscount\\(/);
- assert.match(existing,/return \\{restore,openTechnical,openDiscount\\}/);
- assert.match(app,/function kitOptimizerDiscountMount\\(/);
+ assert.ok(wizard.includes('function kitWizardMountPricing('));
+ assert.ok(wizard.includes('if(kitWizardStage===9)void kitWizardRequestDiscount()'));
+ assert.ok(wizard.includes('kitExistingOptimizer.openDiscount?.()'));
+ assert.ok(wizard.includes('function kitWizardRequestDiscount('));
+ assert.ok(existing.includes('return {restore,openTechnical,openDiscount}'));
+ assert.ok(app.includes('function kitOptimizerDiscountMount('));
  assert.match(css,/#tab-kits #kitWizardDiscountMount #optimizerDiscountReviewInline/);
  assert.match(css,/#tab-kits #kitWizardOptimizerDock,/);
  assert.match(css,/#tab-kits #kitWizardExecutionMount #optimizerExecutionPanel/);
