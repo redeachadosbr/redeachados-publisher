@@ -110,7 +110,7 @@ test('arquivo escolhido tem prioridade sobre importação automática da área d
 });
 
 test('importação TXT de três SKUs nunca reduz kit quando um código não existe na whitelist',()=>{
- const txt='TRC0359 + TRC0413 + TRC0895\\nTRC6938 + TRC0413 + TRC0895';
+ const txt='TRC0359 + TRC0413 + TRC0895\nTRC6938 + TRC0413 + TRC0895';
  const result=parseKitChatResult(txt,{allowedCodes:['TRC0359','TRC6938','TRC0895'],size:3,limit:20});
  assert.deepEqual(result.kits,[]);
  assert.equal(result.rejected,2);
