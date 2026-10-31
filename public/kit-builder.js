@@ -2030,7 +2030,10 @@ function renderKit({scroll=true,displayTitle=''}={}){
  void kitCheckAutoImageAvailability();
  getKitExtensionBridge().probe();
  void kitRestoreImageGallery(kit.kitSku);
- if(scroll)$('#kitDetail').scrollIntoView({behavior:'smooth',block:'start'});
+ if(scroll){
+  const overview=$('#kitWizardCurrentKit');
+  (overview&&!overview.hidden?overview:$('#kitDetail'))?.scrollIntoView({behavior:'smooth',block:'start'});
+ }
 }
 // Ângulos e ambientes exclusivos de cada posição do KIT.
 // Não afetar nenhum prompt ou anúncio de SKU individual.
