@@ -439,6 +439,12 @@ export function initExistingKitOptimization({getContext,api,money,onMainSkuChang
   if(data?.kitOptimization?.kitSku!==kitSku()||String(target?.itemId)!==String(data.itemId))return;
   notice('Etapas complementares abertas. Imagens e textos serão reaproveitados.','success');
   $('#kitOptimizeStart').textContent='↻ Continuar otimização do kit';
+  // A etapa 05 solicita somente a LEITURA da ficha técnica. Não deslocar
+  // a página, nem sincronizar fotos automaticamente nessa navegação.
+  if(globalThis.RAKitTechnicalRequested?.(data.kitOptimization.kitSku)){
+   globalThis.RAKitTechnicalLoadReady?.(data);
+   return;
+  }
   $('#kitOptimizerWorkspace')?.scrollIntoView({behavior:'smooth',block:'start'});
   const imageStage=data.stages?.find(x=>x.key==='images');
   const identity=kitSku()+'|'+data.itemId+'|'+String(data.modelId||'0');
