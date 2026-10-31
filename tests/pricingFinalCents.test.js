@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {SHOPEE_ATTRACTIVE_CENTS,adjustShopeeCustomerPriceEnding,
- quoteShopeePrice,normalizeShopeePricingSettings,calculateShopeeSale} from '../shopeePricing.js';
+ quoteShopeePrice,quoteShopeeKitPrice,normalizeShopeePricingSettings,calculateShopeeSale} from '../shopeePricing.js';
 
 const lastCents=price=>Math.round(price*100)%100;
 
@@ -85,4 +85,35 @@ test('SKU 2392: custo R$569,99 e margem 5% geram preco com dois finais 0/9 sem t
  assert.ok(q.customerPrice>=810.40,'Primeiro preco duplamente valido deve proteger a margem');
  const simulated=calculateShopeeSale(Math.round(q.grossPrice*100),settings,56999);
  assert.equal(simulated.finalPrice,q.customerPrice);
+});
+
+test('kit WeDrop usa base bruta de 3x custo total, depois aplica desconto seguro',()=>{
+ const settings=normalizeShopeePricingSettings({
+  marginPct:15,minMarginPct:5,couponPct:1,taxPct:4,flashPct:3,
+  packing:0,shipping:0,adsPct:0
+ });
+ for(const cost of [23,50.47,71.47,100,250]){
+  const q=quoteShopeeKitPrice({unitCost:cost,settings});
+  assert.equal(q.grossMultiplier,3,'Regra bruta deve ser 3x, nunca 4x');
+  assert.ok(q.grossPrice<=Math.round(cost*300)/100+0.001,
+   'Bruto não pode superar 3x o custo: '+cost);
+  assert.ok(q.discountPct>=0&&q.discountPct<=50);
+  assert.ok(q.netMarginPct+0.002>=15);
+  for(const price of [q.grossPrice,q.marketplaceDisplayPrice,q.customerPrice])
+   assert.ok([0,9].includes(Math.round(price*100)%10),'Centavos 0/9: '+price);
+  const simulation=calculateShopeeSale(
+   Math.round(q.grossPrice*100),{...settings,discountPct:q.discountPct},
+   Math.round(cost*100)
+  );
+  assert.equal(simulation.marketplaceDisplayPrice,q.marketplaceDisplayPrice);
+  assert.equal(simulation.finalPrice,q.customerPrice);
+  assert.equal(simulation.profit,q.netProfit);
+ }
+ const bathroom=quoteShopeeKitPrice({unitCost:71.47,settings});
+ assert.equal(bathroom.grossPrice,214.39);
+ assert.equal(bathroom.discountPct,30.69);
+ assert.equal(bathroom.marketplaceDisplayPrice,148.59);
+ const extra=quoteShopeeKitPrice({unitCost:50.47,
+  settings:{...settings,packing:2,shipping:1}});
+ assert.ok(extra.grossPrice<=Math.round((50.47+2+1)*300)/100+0.001);
 });
