@@ -2739,12 +2739,13 @@ globalThis.redeKitCloseOptimizerWorkspace=()=>{
  if(globalThis.__RA_KIT_OPTIMIZATION_HANDOFF?.embed)
   globalThis.__RA_KIT_OPTIMIZATION_HANDOFF=null;
 };
-globalThis.redeKitOpenOptimizerTarget=({sku,itemId,modelId='0',kitSku,targetMarginPct,shipping,packing,embed=true}={})=>{
+globalThis.redeKitOpenOptimizerTarget=({sku,itemId,modelId='0',kitSku,targetMarginPct,shipping,packing,embed=true,technicalOnly=false}={})=>{
  const code=String(sku||'').trim(),id=String(itemId||'').trim();
  if(!code||!/^[1-9]\d{0,17}$/.test(id))return false;
  globalThis.__RA_KIT_OPTIMIZATION_HANDOFF={sku:code,itemId:id,
   modelId:String(modelId||'0'),kitSku:String(kitSku||''),
-  targetMarginPct:Number(targetMarginPct),shipping:Number(shipping),packing:Number(packing),embed:Boolean(embed)};
+  targetMarginPct:Number(targetMarginPct),shipping:Number(shipping),packing:Number(packing),
+  embed:Boolean(embed),technicalOnly:Boolean(technicalOnly)};
  if(embed&&$('#kitOptimizerWorkspace')){
   if(!kitOptimizerMount())return false;
   const status=$('#kitOptimizerWorkspaceStatus');if(status){
@@ -3785,9 +3786,13 @@ $('#kitReviewDescriptionButton')?.addEventListener?.('click',()=>void optimizerK
 // A função só abre o formulário depois da auditoria do Item ID escolhido.
 // Nunca aplica alterações nem cria outro editor/segunda cópia dos atributos.
 globalThis.RAKitOpenTechnicalEditor=({kitSku,sku}={})=>{
- const w=optimizerWorkflowPlan;
- if(!optimizerKitWorkflowActive()||!w||String(w.kitOptimization?.kitSku)!==String(kitSku||'')||
-    String(w.sku)!==String(sku||''))return false;
+ const w=optimizerWorkflowPlan,h=globalThis.__RA_KIT_OPTIMIZATION_HANDOFF;
+ const linked=optimizerKitWorkflowActive()&&
+  String(w?.kitOptimization?.kitSku)===String(kitSku||'');
+ const technicalOnly=Boolean(h?.technicalOnly&&h?.embed&&kitOptimizerEmbedded&&
+  String(h.kitSku)===String(kitSku||'')&&String(h.sku)===String(sku||'')&&
+  String(h.itemId)===String(w?.itemId||'')&&String(h.modelId||'0')===String(w?.modelId||'0'));
+ if(!w||!(linked||technicalOnly)||String(w.sku)!==String(sku||''))return false;
  if(!w.stages?.some(stage=>stage.key==='technical'))return false;
  optimizerWorkflowOpen('technical');
  return Boolean($('#optimizerWorkflowEditor')&&!$('#optimizerWorkflowEditor').hidden&&
@@ -3934,21 +3939,36 @@ async function optimizerWorkflowLoad(record){
   globalThis.RAKitAuditPhase?.('Auditoria concluida. Carregando as oito etapas reais do kit.');
  try{
    const qs=new URLSearchParams({sku,item_id:id,model_id:modelId});
+   const currentHandoff=globalThis.__RA_KIT_OPTIMIZATION_HANDOFF;
+   if(currentHandoff?.technicalOnly&&currentHandoff?.sku===sku&&currentHandoff?.itemId===id)
+    qs.set('kit_sku',String(currentHandoff.kitSku||''));
    const data=await json('/api/shopee/optimizer/workflow?'+qs.toString(),
      {signal:AbortSignal.timeout(60000)});
    if(serial!==optimizerWorkflowSerial||$('#optimizerSku').value.trim()!==sku)return;
    optimizerContentRestore(data);
    optimizerWorkflowRender(data);
    const kitHandoff=globalThis.__RA_KIT_OPTIMIZATION_HANDOFF;
-   if(kitHandoff?.embed&&data.kitOptimization?.kitSku===kitHandoff.kitSku&&
-      String(data.itemId)===kitHandoff.itemId&&String(data.sku)===kitHandoff.sku){
+   const matchedTarget=Boolean(kitHandoff?.embed&&
+     String(data.itemId)===String(kitHandoff.itemId)&&String(data.sku)===String(kitHandoff.sku));
+   const technicalOnly=matchedTarget&&kitHandoff?.technicalOnly===true;
+   const linkedKit=matchedTarget&&data.kitOptimization?.kitSku===kitHandoff.kitSku;
+   if(linkedKit||technicalOnly){
     kitOptimizerMount();
     const status=$('#kitOptimizerWorkspaceStatus');if(status)status.hidden=true;
-    const active=(data.stages||[]).filter(s=>['video','technical','fiscal'].includes(s.key)||s.key==='variants'&&!s.skipped);
-    const firstPending=active.find(s=>!s.reviewed&&!s.skipped)?.key;
-    if(firstPending)optimizerWorkflowOpen(firstPending);
-    else if(active[0])optimizerWorkflowOpen(active[0].key);
-    globalThis.RAKitOptimizerReady?.(data);
+    if(technicalOnly){
+     // Etapa 05: abrir exclusivamente o formulário original já preenchido.
+     // A leitura da SKU não prepara vínculo nem executa publicação do kit.
+     optimizerWorkflowOpen('technical');
+     globalThis.RAKitTechnicalLoadReady?.({
+       kitOptimization:{kitSku:kitHandoff.kitSku},sku:data.sku,itemId:data.itemId
+     });
+    }else{
+     const active=(data.stages||[]).filter(s=>['video','technical','fiscal'].includes(s.key)||s.key==='variants'&&!s.skipped);
+     const firstPending=active.find(s=>!s.reviewed&&!s.skipped)?.key;
+     if(firstPending)optimizerWorkflowOpen(firstPending);
+     else if(active[0])optimizerWorkflowOpen(active[0].key);
+     globalThis.RAKitOptimizerReady?.(data);
+    }
    }else if(kitHandoff?.embed&&String(kitHandoff.sku)===sku&&
       globalThis.RAKitTechnicalRequested?.(kitHandoff.kitSku)){
      globalThis.RAKitTechnicalLoadError?.({kitSku:kitHandoff.kitSku,sku,
@@ -3959,7 +3979,7 @@ async function optimizerWorkflowLoad(record){
     void optimizerChatBridgeSwitchSku(sku);
    else if(optimizerChatBridgeIdentity(optimizerChatBridgeJob,data))
     void optimizerChatBridgeRecover();
-   void optimizerExecutionPrepare();
+   if(!technicalOnly)void optimizerExecutionPrepare();
    optimizerWorkflowNotice('Plano da SKU '+sku+' carregado. As etapas são revisões, não alterações publicadas.','success');
  }catch(e){
    if(serial===optimizerWorkflowSerial&&$('#optimizerSku').value.trim()===sku){
