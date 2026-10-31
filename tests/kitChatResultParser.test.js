@@ -108,3 +108,15 @@ test('arquivo escolhido tem prioridade sobre importação automática da área d
  const html=readFileSync(new URL('../public/index.html',import.meta.url),'utf8');
  assert.match(html,/kit-builder\.js\?v=3\.9\.19-kit-import-file-priority/);
 });
+
+test('importação TXT de três SKUs nunca reduz kit quando um código não existe na whitelist',()=>{
+ const txt='TRC0359 + TRC0413 + TRC0895\\nTRC6938 + TRC0413 + TRC0895';
+ const result=parseKitChatResult(txt,{allowedCodes:['TRC0359','TRC6938','TRC0895'],size:3,limit:20});
+ assert.deepEqual(result.kits,[]);
+ assert.equal(result.rejected,2);
+});
+test('importação TXT preserva três SKUs quando os três constam no catálogo',()=>{
+ const txt='TRC0359 + TRC0413 + TRC0895';
+ const result=parseKitChatResult(txt,{allowedCodes:['TRC0359','TRC0413','TRC0895'],size:3,limit:20});
+ assert.deepEqual(result.kits,[['TRC0359','TRC0413','TRC0895']]);
+});
