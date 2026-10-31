@@ -323,19 +323,19 @@ test('texto do kit reúne descrições e medidas sem inventar dados para SKU fal
  assert.throws(()=>kitContentBrief({kitSku:'KIT-1-2',components:[{sku:'1'},{sku:'2'}]},{manualFacts:{'3':'invasão'}}),/não pertence/);
 });
 
-test('wizard: nove etapas na ordem pedida, configuração antes do preço e rascunhos embaixo',()=>{
+test('wizard: dez etapas na ordem com informações por SKU antes das imagens',()=>{
  const html=fs.readFileSync(new URL('../public/index.html',import.meta.url),'utf8');
  const browser=fs.readFileSync(new URL('../public/kit-builder.js',import.meta.url),'utf8');
  const css=fs.readFileSync(new URL('../public/kit-builder.css',import.meta.url),'utf8');
- const expected=['Imagens','Vídeo','Título','Ficha técnica','Descrição','Variações','Dados fiscais','Desconto','Execução na Shopee'];
- const buttons=[...html.matchAll(/<button[^>]+data-kit-wizard-step="([1-9])"[^>]*>[\s\S]*?<strong>([^<]+)<\/strong>/g)];
- assert.equal(buttons.length,9);
+ const expected=['Informações por SKU','Imagens','Vídeo','Título','Ficha técnica','Descrição','Variações','Dados fiscais','Desconto','Execução na Shopee'];
+ const buttons=[...html.matchAll(/<button[^>]+data-kit-wizard-step="([1-9]|10)"[^>]*>[\s\S]*?<strong>([^<]+)<\/strong>/g)];
+ assert.equal(buttons.length,10);
  assert.deepEqual(buttons.map(m=>m[2]),expected);
- assert.deepEqual(buttons.map(m=>Number(m[1])),[1,2,3,4,5,6,7,8,9]);
+ assert.deepEqual(buttons.map(m=>Number(m[1])),[1,2,3,4,5,6,7,8,9,10]);
  assert.ok(html.indexOf('id="kitResearchDetails"')<html.indexOf('id="kitWizard"'));
  assert.ok(html.indexOf('id="kitWizard"')<html.indexOf('id="kitDraftList"'));
  assert.ok(html.indexOf('id="kitForm"')<html.indexOf('id="kitPricingSummary"'));
- assert.match(browser,/redeachados-kit-etapas-v2/);
+ assert.match(browser,/redeachados-kit-etapas-v3/);
  assert.doesNotMatch(browser,/for\(const selector of \['#kitViewBuilder > \.kit-overview'/);
  for(const id of ['kitWizardWork','kitWizardEditorMount','kitWizardConfirm','kitWizardNext','kitWizardPrevious','kitWizardProgress','kitWizardOpenVariations'])
   assert.match(html,new RegExp('id="'+id+'"'));
@@ -343,13 +343,13 @@ test('wizard: nove etapas na ordem pedida, configuração antes do preço e rasc
  assert.match(browser,/function kitWizardSetStage\(/);
  assert.match(browser,/localStorage\.setItem\(kitWizardStorageKey/);
  assert.match(browser,/workspace\.querySelector\('\[data-stage="variants"\]'\)/);
- for(let stage=1;stage<=9;stage++)
+ for(let stage=1;stage<=10;stage++)
   assert.ok(css.includes('data-kit-wizard-step="'+stage+'"'),'Etapa '+stage+' sem regra de painel');
- assert.match(css,/#tab-kits #kitDetail\[data-kit-wizard-step="6"\]/);
+ assert.match(css,/#tab-kits #kitDetail\[data-kit-wizard-step="7"\]/);
  assert.match(css,/#tab-kits #kitWizardSteps/);
 });
 
-test('layout: resumo do kit aberto acima das nove etapas e título exclusivo da etapa 03',()=>{
+test('layout: resumo do kit aberto acima das dez etapas e título exclusivo da etapa 04',()=>{
  const html=fs.readFileSync(new URL('../public/index.html',import.meta.url),'utf8');
  const script=fs.readFileSync(new URL('../public/kit-builder.js',import.meta.url),'utf8');
  const css=fs.readFileSync(new URL('../public/kit-builder.css',import.meta.url),'utf8');
@@ -361,11 +361,30 @@ test('layout: resumo do kit aberto acima das nove etapas e título exclusivo da 
  assert.match(script,/function kitWizardSyncHeader\(/);
  assert.match(script,/wrapper\.append\(original\)/);
  assert.match(script,/wrapper\.hidden=editor\.hidden\|\|!prepared\?\.kit/);
- assert.match(script,/if\(kitWizardStage===3\|\|kitWizardStage===5\)\{/);
+ assert.match(script,/if\(kitWizardStage===4\|\|kitWizardStage===6\)\{/);
  assert.match(script,/kitSetCopyContentCollapsed\(false\)/);
- assert.match(script,/kitWizardStage===3\?'Título SEO do kit':'Descrição do kit'/);
+ assert.match(script,/kitWizardStage===4\?'Título SEO do kit':'Descrição do kit'/);
  assert.match(css,/#tab-kits #kitWizardCurrentKit\[hidden\]/);
- assert.match(css,/#tab-kits #kitDetail\[data-kit-wizard-step="3"\] > \.kit-copy-collapse-toolbar/);
- assert.match(css,/#tab-kits #kitDetail\[data-kit-wizard-step="3"\] > #kitCopyContentPanel:not\(\[hidden\]\)/);
- assert.match(css,/#tab-kits #kitDetail\[data-kit-wizard-step="5"\] #kitCopyContentPanel \.kit-copy-grid label:has\(#kitTitle\)/);
+ assert.match(css,/#tab-kits #kitDetail\[data-kit-wizard-step="4"\] > \.kit-copy-collapse-toolbar/);
+ assert.match(css,/#tab-kits #kitDetail\[data-kit-wizard-step="4"\] > #kitCopyContentPanel:not\(\[hidden\]\)/);
+ assert.match(css,/#tab-kits #kitDetail\[data-kit-wizard-step="6"\] #kitCopyContentPanel \.kit-copy-grid label:has\(#kitTitle\)/);
+});
+
+test('layout da ficha WeDrop isolada na etapa 01 e painel de otimização independente',()=>{
+ const html=fs.readFileSync(new URL('../public/index.html',import.meta.url),'utf8');
+ const script=fs.readFileSync(new URL('../public/kit-builder.js',import.meta.url),'utf8');
+ const css=fs.readFileSync(new URL('../public/kit-builder.css',import.meta.url),'utf8');
+ assert.equal((html.match(/id="kitMissingFacts"/g)||[]).length,1);
+ assert.equal((html.match(/id="kitOptimizeExistingPanel"/g)||[]).length,1);
+ assert.equal((html.match(/id="kitWizardOptimizerToggle"/g)||[]).length,1);
+ assert.ok(html.indexOf('id="kitWizardSteps"')<html.indexOf('id="kitWizardOptimizerToggle"'));
+ assert.ok(html.indexOf('id="kitWizardOptimizerToggle"')<html.indexOf('id="kitWizardWork"'));
+ assert.match(script,/function kitWizardSyncOptimizer\(/);
+ assert.match(script,/dock\.append\(panel\)/);
+ assert.match(script,/kitWizardStage===1\)\$\('#kitMissingFacts'\)\.open=true/);
+ assert.match(script,/kitWizardToggleOptimizer\(\$\('#kitWizardOptimizerDock'\)\?\.hidden/);
+ assert.match(css,/#tab-kits #kitDetail\[data-kit-wizard-step="1"\] > #kitMissingFacts/);
+ assert.doesNotMatch(css,/#tab-kits #kitDetail\[data-kit-wizard-step="5"\] > #kitMissingFacts/);
+ assert.match(css,/#tab-kits #kitWizardOptimizerDock\[hidden\]/);
+ assert.match(css,/#tab-kits #kitWizardOptimizerToggle\[aria-expanded="true"\]/);
 });
