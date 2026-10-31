@@ -96,3 +96,14 @@ test('até 20 kits com quantidade exata e zeros iniciais; não consome limite co
  assert.ok(parsed.kits.every(k=>k.length===2));
  assert.throws(()=>parseKitChatResult({kits:entries},{allowedCodes:allowed,limit:21}),/Limite inválido/);
 });
+
+test('arquivo escolhido tem prioridade sobre importação automática da área de transferência',()=>{
+ const app=readFileSync(new URL('../public/kit-builder.js',import.meta.url),'utf8');
+ assert.match(app,/kitChatManualImportActive=true;[\s\S]*?const data=await file\.text\(\);/);
+ assert.match(app,/finally\{\s*kitChatManualImportActive=false;/);
+ assert.match(app,/if\(readClipboard&&\(kitChatFilePickerOpen\|\|kitChatManualImportActive\|\|kitChatQueuedManualImport\)\)/);
+ assert.match(app,/permission\.state!=='granted'\|\|kitChatFilePickerOpen\|\|kitChatManualImportActive/);
+ assert.match(app,/const source=uploadedText!==null\?'arquivo':readClipboard\?'área de transferência':'campo de texto'/);
+ const html=readFileSync(new URL('../public/index.html',import.meta.url),'utf8');
+ assert.match(html,/kit-builder\.js\?v=3\.9\.19-kit-import-file-priority/);
+});

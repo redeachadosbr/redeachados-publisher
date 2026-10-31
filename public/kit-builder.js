@@ -2315,6 +2315,7 @@ const KIT_CHAT_SESSION_KEY='raKitPlusResearchV1';
 let kitChatPending=null,kitChatClipboardBusy=false,kitResearchCatalogContent='';
 let kitResearchAutoPrompt=null,kitResearchRunning=false;
 let kitChatFilePickerOpen=false,kitChatQueuedManualImport=null;
+let kitChatManualImportActive=false;
 function kitDownloadFullCatalog(){
  if(!kitResearchCatalogContent)throw Error('Prepare novamente a pesquisa para baixar o catálogo completo.');
  const content=new Blob([kitResearchCatalogContent],{type:'text/plain;charset=utf-8'});
@@ -2413,18 +2414,22 @@ async function kitChatEnsureFreshResearch(){
 }
 async function kitChatImportFile(file){
  if(!file)return;
- kitPlusNotice('Arquivo selecionado: '+file.name+' ('+Math.ceil(file.size/1024)+' KB). Iniciando leitura...','info');
- if(!/\.(?:json|txt|md)$/i.test(file.name||'')||file.size>1000000){
-  kitPlusNotice('Envie um arquivo .json, .txt ou .md de até 1 MB com os kits gerados pelo ChatGPT.','error');
-  return;
- }
+ // Um arquivo escolhido tem prioridade sobre a leitura automática do clipboard.
+ kitChatManualImportActive=true;
  try{
+  kitPlusNotice('Arquivo selecionado: '+file.name+' ('+file.size+' bytes). Iniciando leitura...','info');
+  if(!/\.(?:json|txt|md)$/i.test(file.name||'')||!file.size||file.size>1000000){
+   kitPlusNotice('Envie um arquivo .json, .txt ou .md de até 1 MB com os kits gerados pelo ChatGPT.','error');
+   return;
+  }
   const data=await file.text();
   if(!data.trim())throw Error('Arquivo vazio. Verifique o download no ChatGPT.');
-  kitPlusNotice('Arquivo '+file.name+' lido. Identificando kits e validando SKUs WeDrop...','info');
+  kitPlusNotice('Arquivo '+file.name+' lido ('+file.size+' bytes). Validando SKUs WeDrop...','info');
   await importPlusSuggestions({uploadedText:data});
  }catch(error){
-  kitPlusNotice('Não foi possível importar o arquivo completo: '+error.message,'error');
+  kitPlusNotice('Não foi possível importar o arquivo '+file.name+': '+error.message,'error');
+ }finally{
+  kitChatManualImportActive=false;
  }
 }
 async function plusResearch({openChat=false}={}){
@@ -2521,6 +2526,11 @@ function renderKitImportReport(result,parserRejected=0){
 async function importPlusSuggestions({readClipboard=false,silent=false,uploadedText=null}={}){
  // Importação explícita nunca depende apenas do indicador visual de estoque:
  // a API atualiza a disponibilidade e valida cada SKU novamente no servidor.
+ // Nunca iniciar leitura do clipboard durante a seleção/importação de arquivo.
+ if(readClipboard&&(kitChatFilePickerOpen||kitChatManualImportActive||kitChatQueuedManualImport)){
+  if(!silent)kitPlusNotice('Um arquivo está sendo selecionado ou importado. Conclua esse lote antes de ler a área de transferência.','info');
+  return false;
+ }
  if(kitChatClipboardBusy){
   if(!silent&&uploadedText!==null){
    kitChatQueuedManualImport={uploadedText,silent:false};
@@ -2535,10 +2545,12 @@ async function importPlusSuggestions({readClipboard=false,silent=false,uploadedT
  btn.disabled=true;if(clipBtn)clipBtn.disabled=true;
  try{
   const context=await kitChatEnsureFreshResearch();
+  if(readClipboard&&(kitChatFilePickerOpen||kitChatManualImportActive||kitChatQueuedManualImport))return false;
   let response=uploadedText!==null?uploadedText:$('#kitPlusOutput').value;
   if(readClipboard){
    if(!navigator.clipboard?.readText)throw Error('O navegador não permite ler a área de transferência.');
    response=await navigator.clipboard.readText();
+   if(kitChatFilePickerOpen||kitChatManualImportActive||kitChatQueuedManualImport)return false;
   }
   const parsed=kitChatExtractLines(response,context.size,kitChatPending.candidateSkus,context.desiredKits);
   const rows=parsed.kits;
@@ -2585,7 +2597,8 @@ async function importPlusSuggestions({readClipboard=false,silent=false,uploadedT
   $('#kitDraftList')?.scrollIntoView({behavior:'smooth',block:'start'});
   return true;
  }catch(error){
-  if(!silent)kitPlusNotice('Não foi possível importar os kits: '+error.message,'error');
+  const source=uploadedText!==null?'arquivo':readClipboard?'área de transferência':'campo de texto';
+  if(!silent)kitPlusNotice('Não foi possível importar os kits ('+source+'): '+error.message,'error');
   return false;
  }finally{
   kitChatClipboardBusy=false;btn.disabled=!kitStockReady;
@@ -2602,11 +2615,11 @@ async function importPlusSuggestions({readClipboard=false,silent=false,uploadedT
 // Caso contrário, o botão explícito solicita a permissão no clique.
 async function kitChatTryAutoClipboard(){
  if(!kitChatPending||!kitStockReady||kitResearchRunning||!document.hasFocus()||kitChatClipboardBusy||
-     kitChatFilePickerOpen||kitChatQueuedManualImport)return;
+     kitChatFilePickerOpen||kitChatManualImportActive||kitChatQueuedManualImport)return;
  try{
   if(!navigator.permissions?.query)return;
   const permission=await navigator.permissions.query({name:'clipboard-read'});
-  if(permission.state!=='granted')return;
+  if(permission.state!=='granted'||kitChatFilePickerOpen||kitChatManualImportActive||kitChatQueuedManualImport)return;
   await importPlusSuggestions({readClipboard:true,silent:true});
  }catch{}
 }
