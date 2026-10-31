@@ -621,6 +621,8 @@ export async function kitPlusResearchBrief(shop,{category='Brinquedos',size=2,id
  assertKitStockSnapshot(stock);
  const relevant=catalog.filter(x=>categoryMatches(x.category,category));
  const extra=/brinqued|bebe/i.test(category)?catalog.filter(babyCare):[];
+ const eligibleCount=relevant.length;
+ const unavailableCount=relevant.filter(x=>stock.map.get(x.sku)!=='DISPONIVEL').length;
  const rows=[...new Map([...relevant,...extra]
   .filter(x=>stock.map.get(x.sku)==='DISPONIVEL')
   .map(x=>[x.sku,x])).values()]
@@ -667,6 +669,9 @@ export async function kitPlusResearchBrief(shop,{category='Brinquedos',size=2,id
  ].join('\n');
  const autoPrompt=autoResearchPrompt.length<=16000?autoResearchPrompt:null;
  return {autoPrompt,prompt,jsonFileName,candidatesCount:rows.length,totalCandidates:rows.length,
+  catalogImportedCount:catalog.length,categoryImportedCount:eligibleCount,
+  categoryUnavailableCount:unavailableCount,
+  stockFilteredCount:eligibleCount-unavailableCount,
   candidateSkus:rows.map(x=>x.sku),
   category,size:Number(size),idea:phrase,desiredKits:Number(desiredKits),
   requiresAttachment:useFile,
