@@ -35,6 +35,9 @@ export function detectSkuMeasurements(input){
  while((m=named.exec(s))!==null)add('dimensions',m[1].toLowerCase()+': '+m[2]+' '+canonicalUnit(m[3]));
  const reverse=new RegExp(wordBoundaryBefore+'('+NUMBER+')\\s*('+LENGTH+')\\s*de?\\s+(comprimento|largura|altura|profundidade|di[aâ]metro)'+trailingBoundary,'giu');
  while((m=reverse.exec(s))!==null)add('dimensions',m[3].toLowerCase()+': '+m[1]+' '+canonicalUnit(m[2]));
+ // "Medida: 19 cm" e "Tamanho de 25 cm" em fichas individuais.
+ const single=new RegExp(wordBoundaryBefore+'(?:medida|dimens[aã]o|tamanho)\\s*(?::|=|de)?\\s*('+NUMBER+')\\s*('+LENGTH+')'+trailingBoundary,'giu');
+ while((m=single.exec(s))!==null)add('dimensions','medida: '+m[1]+' '+canonicalUnit(m[2]));
  const mass=new RegExp(wordBoundaryBefore+'(?:peso|massa)\\s*(?::|=|de)?\\s*('+NUMBER+')\\s*('+WEIGHT+')'+trailingBoundary,'giu');
  while((m=mass.exec(s))!==null)add('weight','peso: '+m[1]+' '+canonicalUnit(m[2]));
  const cap=new RegExp(wordBoundaryBefore+'(?:capacidade|volume)\\s*(?::|=|de)?\\s*('+NUMBER+')\\s*(ml|l|litros?|mililitros?)'+trailingBoundary,'giu');
