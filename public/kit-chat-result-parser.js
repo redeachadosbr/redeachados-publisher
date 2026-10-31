@@ -68,14 +68,14 @@ export function parseKitChatResult(input,{allowedCodes=[],limit=10,size=null}={}
   for(const line of input.split(/\r?\n/).slice(0,500)){
    // Uma linha de SKUs explícitos deve ser validada INTEIRA.
    // Nunca remover um SKU fora da whitelist e salvar um kit truncado.
-   const direct=line.trim().replace(/^\\s*\\|\\s*/, '').replace(/\\s*\\|\\s*$/, '');
-   if(/^[A-Za-z0-9][A-Za-z0-9._-]*(?:\\s*[+|;,]\\s*[A-Za-z0-9][A-Za-z0-9._-]*){1,2}$/.test(direct)){
-    add(direct.split(/\\s*[+|;,]\\s*/));continue;
+   const direct=line.trim().replace(/^\s*\|\s*/, '').replace(/\s*\|\s*$/, '');
+   if(/^[A-Za-z0-9][A-Za-z0-9._-]*(?:\s*[+|;,]\s*[A-Za-z0-9][A-Za-z0-9._-]*){1,2}$/.test(direct)){
+    add(direct.split(/\s*[+|;,]\s*/));continue;
    }
    const groups=line.split('|').map(c=>{
     const cell=c.trim();
-    const explicit=/^[A-Za-z0-9][A-Za-z0-9._-]*(?:\\s*[+,;]\\s*[A-Za-z0-9][A-Za-z0-9._-]*){1,2}$/.test(cell);
-    return explicit?cell.split(/\\s*[+,;]\\s*/).map(asSku):fromText(cell,allowed);
+    const explicit=/^[A-Za-z0-9][A-Za-z0-9._-]*(?:\s*[+,;]\s*[A-Za-z0-9][A-Za-z0-9._-]*){1,2}$/.test(cell);
+    return explicit?cell.split(/\s*[+,;]\s*/).map(asSku):fromText(cell,allowed);
    }).filter(x=>x.length>=2&&x.length<=3);
    if(groups.length){add(groups[0]);continue;}
    const all=fromText(line,allowed);
