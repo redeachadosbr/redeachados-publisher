@@ -2356,7 +2356,7 @@ function kitChatValidateContext(){
 function kitChatExtractLines(raw,size,allowedCodes,targetCount=10){
  // A resposta pode ser JSON, tabela Markdown, texto integral, 2 ou 3 SKUs.
  // Cada código deve pertencer ao catálogo WeDrop selecionado.
- const parsed=parseKitChatResult(raw,{allowedCodes,limit:targetCount});
+ const parsed=parseKitChatResult(raw,{allowedCodes,limit:targetCount,size});
  parsed.rejected+=parsed.kits.filter(row=>row.length!==size).length;
  parsed.kits=parsed.kits.filter(row=>row.length===size);
  return parsed;
@@ -2504,7 +2504,7 @@ async function importPlusSuggestions({readClipboard=false,silent=false,uploadedT
   }
   $('#kitPlusOutput').value=rows.map(x=>x.join(' | ')).join('\n');
   suggestionContext={category:context.category,size:context.size,idea:context.idea,source:r.source};suggestions=[];
-  // Não duplicar os cartões do JSON importado; os 10 aparecem em Rascunhos.
+  // Não duplicar os cartões do JSON importado; o lote aparece em Rascunhos.
   $('#kitSuggestions').replaceChildren();$('#kitSuggestions').hidden=true;
   kitCloseInlineEditor();prepared=null;images.clear();
   resetKitPublication({saved:false});renderKitPricingSummary(null);
