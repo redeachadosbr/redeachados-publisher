@@ -6,9 +6,9 @@ import {fiscalMatrixSource} from '../shopeeMatrixRules.js';
 const source=path=>fs.readFileSync(new URL('../'+path,import.meta.url),'utf8');
 const app=source('public/app.js'),html=source('public/index.html');
 const server=source('server.js'),existing=source('public/kit-existing-optimization.js');
-test('kit usa a etapa 08 do otimizador real com desconto proprio',()=>{
+test('kit usa a etapa 09 do wizard com desconto proprio e motor original',()=>{
  assert.match(html,/id="kitOptimizerWorkspace"/);
- assert.match(html,/Etapa 08 · Desconto do kit/);
+ assert.match(html,/Etapa 09 · Conferir preço e desconto do kit/);
  assert.match(app,/function kitOptimizerDiscountMount\(/);
  assert.match(app,/review\.append\(specific\)/);
  assert.match(app,/RAKitOpenDiscountReview/);
@@ -35,7 +35,7 @@ test('painel do kit vem logo apos composicao e antes de titulo e galeria',()=>{
  assert.equal(html.split('id="kitOptimizeExistingPanel"').length-1,1);
  assert.equal(html.split('id="kitOptimizerWorkspace"').length-1,1);
 });
-test('oito etapas visiveis sem duplicar geracao de conteudos prontos',()=>{
+test('motor antigo preserva a funcao sem duplicar conteudos nas dez etapas',()=>{
  assert.match(app,/for\(const \[i,stage\] of visible\.entries\(\)\)/);
  assert.match(app,/const total=visible\.length\+1/);
  assert.match(app,/discountCard\.onclick=\(\)=>\{/);
@@ -48,7 +48,7 @@ test('oito etapas visiveis sem duplicar geracao de conteudos prontos',()=>{
  assert.match(server,/validateReview\(\{stage:'seo',reviewed:true,title:link\.title\}\)/);
  assert.match(server,/validateReview\(\{stage:'description',reviewed:true,description:link\.description\}\)/);
 });
-test('oito etapas ocupam lugar da barra de acompanhamento substituta',()=>{
+test('motor antigo tem montagem original preservada e fica oculto no wizard',()=>{
  const a=html.indexOf('id="kitOptimizeStart"');
  const b=html.indexOf('id="kitOptimizerWorkspace"');
  const c=html.indexOf('id="kitOptimizeAdvanced"');
@@ -56,7 +56,7 @@ test('oito etapas ocupam lugar da barra de acompanhamento substituta',()=>{
  assert.doesNotMatch(html,/id="kitOptimizeJourney"|id="kitOptimizeLiveProgress"|id="kitOptimizeStageSteps"/);
  assert.equal(html.split('id="kitOptimizerWorkspace"').length-1,1);
 });
-test('acompanhamento tecnico original permanece abaixo das oito etapas',()=>{
+test('acompanhamento tecnico original permanece disponivel na etapa 10',()=>{
  const cards=html.indexOf('id="optimizerWorkflowCards"');
  const exec=html.indexOf('id="optimizerExecutionPanel"');
  const tracker=html.indexOf('id="optimizerExecutionTracker"');
