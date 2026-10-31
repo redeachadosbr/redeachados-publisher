@@ -117,6 +117,14 @@ function kitWizardSetStage(stage,{scroll=false}={}){
   'Kit selecionado: '+(prepared.creative?.title||prepared.kit.components.map(p=>p.name).join(' + ')).slice(0,155):
   'Escolha um kit nos rascunhos abaixo ou prepare uma combinação na etapa 01.';
  const variation=$('#kitWizardVariantsAccess');if(variation)variation.hidden=kitWizardStage!==6;
+ // Ao abrir Variações, Ficha ou Fiscal, reutilizar a etapa REAL já carregada
+ // no otimizador Shopee da SKU principal, sem cadastrar outra tela.
+ const reusing={4:'technical',6:'variants',7:'fiscal'}[kitWizardStage];
+ const workspace=$('#kitOptimizerWorkspace');
+ if(reusing&&prepared&&workspace&&!workspace.hidden){
+  const originalStage=workspace.querySelector('[data-stage="'+reusing+'"]');
+  if(originalStage&&!originalStage.classList.contains('is-current'))originalStage.click();
+ }
  const previous=$('#kitWizardPrevious'),next=$('#kitWizardNext');
  if(previous)previous.disabled=kitWizardStage<=1;
  if(next){next.disabled=kitWizardStage===0||kitWizardStage===9;next.textContent=kitWizardStage===9?'Fim das 9 etapas':'Próxima etapa →';}
