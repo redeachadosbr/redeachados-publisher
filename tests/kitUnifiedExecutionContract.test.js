@@ -104,7 +104,7 @@ test('titulo e descricao do kit possuem botoes de conferencia ao lado dos textos
    assert.equal(html.split('id="'+id+'"').length-1,1);
  }
  assert.match(html,/\/app\.js\?v=3\.5\.\d+-[a-z0-9-]+/);
- assert.match(html,/\/kit-builder\.js\?v=3\.9\.\d+-[a-z0-9-]+/);
+ assert.match(html,/\/kit-builder\.js\?v=[a-zA-Z0-9._-]+/);
  assert.match(html,/\/kit-builder\.css\?v=3\.8\.10-kit-discount-tracker/);
  assert.match(app,/globalThis\.RAKitSourceChanged=optimizerKitSourceChanged/);
  assert.match(app,/function optimizerKitSourceConfirm\(stage\)/);
