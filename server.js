@@ -169,7 +169,7 @@ app.use(express.static(path.join(__dirname,'public'),{
   setHeaders(res,filename){
     // Never reuse old bundles after a Shopee UI deploy, even if Chrome
     // has cached the path used by earlier releases.
-    if(/(?:^|[/\\])(?:app\.js|style\.css|kit-builder\.js|kit-content-handoff\.js)$/.test(filename))
+    if(/(?:^|[/\\])(?:app\.js|style\.css|kit-builder\.js|kit-chat-result-parser\.js|kit-json-export\.js|kit-content-handoff\.js)$/.test(filename))
       res.setHeader('Cache-Control','no-store');
   }
 }));
@@ -181,7 +181,7 @@ const appPagePaths=new Set([
 ]);
 app.get('/app/:section',(req,res)=>{
   if(!appPagePaths.has(String(req.params.section||'')))return res.status(404).send('Página não encontrada.');
-  res.setHeader('Cache-Control','no-cache');
+  res.setHeader('Cache-Control','no-store, max-age=0');
   res.sendFile(path.join(__dirname,'public','index.html'));
 });
 app.get('/app',(_req,res)=>res.redirect(302,'/app/inicio'));
