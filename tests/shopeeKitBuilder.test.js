@@ -388,3 +388,21 @@ test('layout da ficha WeDrop isolada na etapa 01 e painel de otimização indepe
  assert.match(css,/#tab-kits #kitWizardOptimizerDock\[hidden\]/);
  assert.match(css,/#tab-kits #kitWizardOptimizerToggle\[aria-expanded="true"\]/);
 });
+
+test('etapa 05 usa o editor tecnico real da SKU principal',()=>{
+ const html=fs.readFileSync(new URL('../public/index.html',import.meta.url),'utf8');
+ const js=fs.readFileSync(new URL('../public/kit-builder.js',import.meta.url),'utf8');
+ const app=fs.readFileSync(new URL('../public/app.js',import.meta.url),'utf8');
+ const legacy=fs.readFileSync(new URL('../public/kit-existing-optimization.js',import.meta.url),'utf8');
+ const css=fs.readFileSync(new URL('../public/kit-builder.css',import.meta.url),'utf8');
+ for(const id of ['kitWizardTechnicalMount','optimizerTechnicalPanel','optimizerWorkflowEditor','kitOptimizerWorkspace']){
+   assert.equal(html.split('id="'+id+'"').length-1,1);
+ }
+ assert.ok(js.includes('mount.append(node)'));
+ assert.ok(js.includes('normal.insertBefore(node,advanced||null)'));
+ assert.ok(js.includes('kitWizardRequestTechnical()'));
+ assert.ok(js.includes('RAKitOpenTechnicalEditor'));
+ assert.ok(app.includes("optimizerWorkflowOpen('technical')"));
+ assert.ok(legacy.includes('RAKitTechnicalLoadReady'));
+ assert.ok(css.includes('#kitWizardTechnicalMount #optimizerWorkflowEditor'));
+});
