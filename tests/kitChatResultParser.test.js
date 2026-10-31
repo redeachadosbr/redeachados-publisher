@@ -85,7 +85,7 @@ test('JSON com nomes de produtos e preços é aceito somente com SKU WeDrop da w
 });
 
 test('até 20 kits com quantidade exata e zeros iniciais; não consome limite com kit de tamanho errado',()=>{
- const allowed=['050',...Array.from({length:41},(_,i)=>'W'+String(i).padStart(3,'0'))];
+ const allowed=['050',...Array.from({length:42},(_,i)=>'W'+String(i).padStart(3,'0'))];
  const entries=[['W000','W001','W002'],
   ...Array.from({length:20},(_,i)=>[i===0?'050':'W'+String(i+2).padStart(3,'0'),
     'W'+String(i+22).padStart(3,'0')])];
