@@ -3791,7 +3791,9 @@ globalThis.RAKitOpenTechnicalEditor=({kitSku,sku}={})=>{
   String(w?.kitOptimization?.kitSku)===String(kitSku||'');
  const technicalOnly=Boolean(h?.technicalOnly&&h?.embed&&kitOptimizerEmbedded&&
   String(h.kitSku)===String(kitSku||'')&&String(h.sku)===String(sku||'')&&
-  String(h.itemId)===String(w?.itemId||'')&&String(h.modelId||'0')===String(w?.modelId||'0'));
+  // A auditoria pode normalizar Model ID 0 para o modelo principal do anúncio.
+  // Na leitura técnica, Item ID + SKU identificam o anúncio correto.
+  String(h.itemId)===String(w?.itemId||''));
  if(!w||!(linked||technicalOnly)||String(w.sku)!==String(sku||''))return false;
  if(!w.stages?.some(stage=>stage.key==='technical'))return false;
  optimizerWorkflowOpen('technical');
