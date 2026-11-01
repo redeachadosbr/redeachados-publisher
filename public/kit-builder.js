@@ -217,7 +217,7 @@ async function kitWizardEnsureExecutionLink({kitSku,sku,itemId,modelId}){
    lastError='O rascunho ou a revisão do anúncio ainda não confirmou o vínculo.';
   }catch(error){
    lastError=String(error.message||error);
-   if(!/HTTP\\s*(?:502|503|504)|timeout|network|fetch failed/i.test(lastError))break;
+   if(!/HTTP\s*(?:502|503|504)|timeout|network|fetch failed/i.test(lastError))break;
    // A first response can fail after saving; next iteration reads both records.
   }
  }
@@ -309,8 +309,16 @@ async function kitWizardOpenExecutionFlow(){
       // leaving the saved tax untouched, then retry once.
       const reason=String(fiscal?.error||'Conferência fiscal indisponível');
       if(/SKU\/Item ID do fluxo fiscal não conferem|nao conferem|anuncio da SKU principal ainda nao foi carregado/i.test(reason)){
-       notes.push('Dados fiscais: o editor ficou desatualizado após recuperar o vínculo. Atualizando o plano para retomar; origem fiscal preservada.');
-       globalThis.RAKitRefreshOptimizerWorkflow?.({kitSku,sku,itemId:id,modelId});
+       if(notice){notice.hidden=false;notice.textContent='Recarregando a ficha fiscal já salva do Item ID '+id+'...';}
+       const updated=await kitWizardAwaitBounded(globalThis.RAKitRefreshOptimizerWorkflow?.({
+        kitSku,sku,itemId:id,modelId}),65000,'Atualização da revisão fiscal');
+       if(updated?.ok){
+        const retried=await kitWizardAwaitBounded(globalThis.RAKitSyncApprovedFiscal?.({
+         sku,itemId:id,modelId}),45000,'Nova conferência fiscal');
+        if(!retried?.ok)notes.push('Dados fiscais pendentes: '+String(retried?.error||'A Shopee exige dados fiscais adicionais')+
+         '. As imagens e o vídeo já recuperados permanecem preparados.');
+       }else notes.push('Dados fiscais pendentes: '+String(updated?.error||'Revisão indisponível')+
+        '. O sistema não apagou a origem fiscal salva.');
       }else notes.push('Dados fiscais pendentes: '+reason+'. Verifique somente os campos ainda não confirmados.');
      }
     }catch(error){notes.push('Dados fiscais: '+String(error.message||error)+'. A revisão foi preservada.');}
@@ -319,8 +327,10 @@ async function kitWizardOpenExecutionFlow(){
   if(prepared?.kit?.kitSku!==kitSku||kitWizardStage!==10)return;
   kitWizardMountTechnical();
   if(notes.length){
-   if(notice){notice.hidden=false;notice.textContent=notes.join(' ');}
-   status('Nao foi possivel iniciar: '+notes.join(' '),'warning');
+   const message='Preparação parcial preservada. '+notes.join(' ')+
+    ' O botão Executar retoma somente as pendências, sem apagar etapas confirmadas.';
+   if(notice){notice.hidden=false;notice.textContent=message;}
+   status(message,'warning');
    return;
   }
   if(!valid){
