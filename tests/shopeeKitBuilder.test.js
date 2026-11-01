@@ -466,7 +466,7 @@ test('desconto do kit aparece apenas na etapa 09 das dez etapas, sem oito cartoe
  assert.ok(wizard.includes('if(kitWizardStage===9)void kitWizardRequestDiscount()'));
  assert.ok(wizard.includes('kitExistingOptimizer.openDiscount?.()'));
  assert.ok(wizard.includes('function kitWizardRequestDiscount('));
- assert.ok(existing.includes('return {restore,openTechnical,openDiscount,prepareDiscountLink}'));
+ assert.ok(existing.includes('return {restore,openTechnical,openDiscount,prepareDiscountLink,resumeLiveVerifiedTarget}'));
  assert.ok(app.includes('function kitOptimizerDiscountMount('));
  assert.match(css,/#tab-kits #kitWizardDiscountMount #optimizerDiscountReviewInline/);
  assert.match(css,/#tab-kits #kitWizardOptimizerDock,/);
