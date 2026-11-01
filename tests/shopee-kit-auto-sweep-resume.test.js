@@ -20,7 +20,9 @@ test('um clique autoriza varredura e retomada das nove etapas sem exigir segundo
  assert.match(sweep,/optimizerKitAutoFinalizeFromAudit/);
 });
 test('retomada evita reenvio duplicado, recupera sessao e nao modifica job incerto cegamente',()=>{
- assert.match(app,/const attempted=new Set\(firstFingerprint/);
+ assert.match(app,/const attempted=new Set/);
+ assert.match(app,/target\.attemptedFingerprints/);
+ assert.match(app,/const persist=\(\)=>kitAutoSweepStore/);
  assert.match(app,/attempted\.has\(plan\.fingerprint\)/);
  assert.match(app,/kitAutoSweepKey\(saved\)===kitAutoSweepKey\(target\)/);
  assert.match(app,/kitAutoSweepRestore\(\)/);
