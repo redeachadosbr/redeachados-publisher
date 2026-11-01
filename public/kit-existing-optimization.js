@@ -414,6 +414,21 @@ export function initExistingKitOptimization({getContext,api,money,onMainSkuChang
    }
    if(!automatic&&!window.confirm('Importar 9 imagens para a REVISÃO do Item ID '+selected.itemId+
     '? A Shopee ainda não terá imagens publicadas.'))return false;
+   // A leitura da galeria permite retomar exatamente do slot faltante. Cada
+   // imagem já confirmada pelo servidor com o mesmo SHA-256 é mantida.
+   let confirmed=new Map();
+   try{
+    const params=new URLSearchParams({sku:selected.sku,item_id:selected.itemId,
+     model_id:String(selected.modelId||'0')});
+    const state=await api('/api/shopee/optimizer/images/manual?'+params,{
+     signal:AbortSignal.timeout(25000)});
+    confirmed=new Map((state.images||[]).filter(x=>Number(x.slot)>=1&&Number(x.slot)<=9)
+     .map(x=>[Number(x.slot),String(x.sha256||'')]));
+    if(confirmed.size)tell('Retomando galeria: '+confirmed.size+' posição(ões) existentes serão conferidas antes de copiar.','info');
+   }catch(error){
+    tell('A conferência das posições anteriores está indisponível. O servidor verificará cada arquivo antes de duplicar: '+
+     String(error.message||error),'warning');
+   }
    for(let slot=1;slot<=9;slot++){
     if(kitSku()!==current||target?.itemId!==selected.itemId)
      throw Error('O kit ou Item ID mudou durante a importação.');
@@ -421,6 +436,15 @@ export function initExistingKitOptimization({getContext,api,money,onMainSkuChang
     globalThis.RAKitLookupPhase?.('Importacao de imagens: '+slot+'/9 para revisao, sem publicar.');
     const blob=await kitImageBridgeBounded(convert(images.get(slot)),25000,
      'Conversão da imagem '+slot);
+    if(confirmed.has(slot)&&globalThis.crypto?.subtle){
+     const digest=Array.from(new Uint8Array(await kitImageBridgeBounded(
+      globalThis.crypto.subtle.digest('SHA-256',await blob.arrayBuffer()),
+      25000,'Conferência digital da imagem '+slot))).map(n=>n.toString(16).padStart(2,'0')).join('');
+     if(digest===confirmed.get(slot)){
+      tell('Imagem '+slot+'/9 já confirmada no servidor; mantendo o arquivo sem novo envio.','info');
+      continue;
+     }
+    }
     const params=new URLSearchParams({kit_sku:current,slot:String(slot)});
     let response;
     try{
