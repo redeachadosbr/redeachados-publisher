@@ -77,3 +77,32 @@ test('editor recarrega fichas e lê alterações antes de imagens na Ponte e no 
  assert.match(code,/async function kitStartExtensionImages\(\)\{[\s\S]{0,100}kitContentReadManual\(\)/);
  assert.match(code,/kitImageMeasurementsBySku\(components,Object\.fromEntries\(kitContentManualFacts\.entries\(\)\)\)/);
 });
+
+
+test('botão de salvar dados por SKU usa gravação específica e mensagem confirmada',()=>{
+ const script=fs.readFileSync(new URL('../public/kit-builder.js',import.meta.url),'utf8');
+ const html=fs.readFileSync(new URL('../public/index.html',import.meta.url),'utf8');
+ const css=fs.readFileSync(new URL('../public/kit-builder.css',import.meta.url),'utf8');
+ assert.equal(html.split('id="kitSaveSkuFacts"').length-1,1);
+ assert.equal(html.split('id="kitSkuFactsSaveStatus"').length-1,1);
+ assert.match(html,/id="kitSkuFactsSaveStatus"[^>]*role="status"[^>]*aria-live="polite"/);
+ assert.match(script,/\$\('#kitSaveSkuFacts'\)\?\.addEventListener\('click',\(\)=>void kitSaveSkuFactsNow\(\)\)/);
+ assert.doesNotMatch(script,/\$\('#kitSaveSkuFacts'\)\?\.addEventListener\('click',\(\)=>void saveDraft\(\)\)/);
+ const start=script.indexOf('async function kitSaveSkuFactsNow()');
+ assert(start>=0);
+ const fn=script.slice(start,script.indexOf('function kitContentShowMissing(',start));
+ for(const expected of [
+  'kitContentReadManual()',
+  "'/api/shopee/kits/drafts/manual-facts'",
+  'saved.saved!==true',
+  'kitFactsSaveFeedback(',
+  "'success'",
+  "'error'",
+  'await kitFactsAutoWrite.catch',
+  '++kitFactsSaveSerial'
+ ])assert(fn.includes(expected),'Faltando na gravação específica: '+expected);
+ assert(!fn.includes('saveDraft()'),'O clique não pode depender da gravação integral do anúncio');
+ assert.match(css,/#tab-kits #kitDetail #kitMissingFactFields>\.kit-sku-evidence-card/);
+ assert.match(css,/#tab-kits #kitDetail #kitSkuFactsSaveStatus\[data-state="success"\]/);
+ assert.match(css,/#tab-kits #kitDetail #kitSkuFactsSaveStatus\[data-state="error"\]/);
+});
