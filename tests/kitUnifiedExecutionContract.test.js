@@ -468,7 +468,7 @@ test('rastreador não altera resultados verificados nem presume execução da pr
  assert.match(app,/if\(actualStatus==='kit-prepared'\)li\.title='Check da etapa 08: prévia conferida\. Desconto ainda não aplicado/);
  assert.match(app,/Boolean\(plan\?\.kitDiscount\)/);
  assert.match(progressCode,/discount:discountIncluded/);
- assert.match(app,/const pct=discountPending\?88:Math\.max\(0,Math\.min\(100,Number\(progress\.percent\)\|\|0\)\)/);
+ assert.ok(app.includes('const pct=!progress.hasStarted&&!progress.hasSavedProgress?0:'));
 });
 test('depois do anúncio confirmado exibe ação para concluir promoção separada',()=>{
  assert.match(app,/kitDiscountAction\.id='optimizerExecutionOpenKitDiscount'/);
