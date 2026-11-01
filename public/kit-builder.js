@@ -3632,6 +3632,22 @@ function kitBridgeVersionSupportsText(version){
  return parts.length===3&&parts.every(Number.isInteger)&&
   (parts[0]>1||parts[0]===1&&(parts[1]>0||parts[1]===0&&parts[2]>=61));
 }
+// A extensão identifica o kit pelo kitSku, cuja ordem interna é canônica.
+// A troca visual da SKU principal não pode alterar essa identificação no
+// pedido de RECUPERAÇÃO de títulos e descrição.
+function kitCanonicalTextProducts(kitSku,components=[]){
+ const parts=Array.isArray(components)?components:[];
+ const normalized=s=>String(s||'').toUpperCase().replace(/[^A-Z0-9]/g,'');
+ const ids=String(kitSku||'').toUpperCase().replace(/^KIT[-_]/,'')
+  .split('-').map(normalized).filter(Boolean);
+ if(parts.length<2||parts.length>3||new Set(parts.map(p=>normalized(p.sku))).size!==parts.length)
+  throw Error('A composição do kit está incompleta. Reabra o rascunho antes de importar.');
+ const positions=new Map(ids.map((id,index)=>[id,index]));
+ if(ids.length!==parts.length||parts.some(p=>!positions.has(normalized(p.sku))))
+  throw Error('O identificador não corresponde às SKUs deste kit. Nenhum campo foi alterado.');
+ return [...parts].sort((a,b)=>positions.get(normalized(a.sku))-positions.get(normalized(b.sku)))
+  .map(p=>({sku:String(p.sku),name:String(p.name||'').trim().slice(0,180)}));
+}
 function kitFetchGeneratedTextFromPonte(kitSku,skus,products){
  return new Promise((resolve,reject)=>{
   const nonce=crypto.randomUUID();
@@ -3652,10 +3668,16 @@ function kitFetchGeneratedTextFromPonte(kitSku,skus,products){
     window.postMessage({kind:'RA_SITE_KIT_TEXT_FETCH',
      payload:{nonce,kitSku,skus,products}},location.origin);
    }else if(m.kind==='RA_EXTENSION_KIT_TEXT_RESULT'&&m.nonce===nonce){
-    if(m.kitSku!==kitSku)return finish(Error('A resposta veio de outro kit. Nenhum campo foi alterado.'));
+    // Não confundir a ordem exibida na tela com a identidade imutável do kit.
+    if(String(m.kitSku||m.sku||'')!==kitSku)
+     return finish(Error('A Ponte retornou outro kit. Nenhum campo foi alterado.'));
     if(m.ok!==true||!m.rawText)
      return finish(Error(String(m.error||'A Ponte não encontrou uma resposta completa para este kit.')));
-    finish(null,m);
+    try{
+     const rawText=kitContentResponseText(m.rawText);
+     parseKitSeoResponse(rawText);
+     finish(null,{kitSku,rawText});
+    }catch(error){finish(error);}
    }
   };
   const timer=setTimeout(()=>finish(Error('A extensão Ponte ChatGPT não respondeu. Verifique se a v1.0.61 está ativa no Chrome.')),15000);
@@ -3665,8 +3687,14 @@ function kitFetchGeneratedTextFromPonte(kitSku,skus,products){
 }
 async function kitImportCopiedContent(){
  if(!prepared)return kitContentFeedback('Abra o rascunho do kit antes de importar o anúncio.','error');
- const kitSku=prepared.kit.kitSku,skus=prepared.kit.components.map(p=>p.sku);
- const products=prepared.kit.components.map(p=>({sku:String(p.sku),name:String(p.name||'').slice(0,180)}));
+ const kitSku=prepared.kit.kitSku;
+ let products;
+ try{products=kitCanonicalTextProducts(kitSku,prepared.kit.components);}
+ catch(error){
+  kitImportState('Identificação do kit inconsistente · rascunho preservado','error');
+  return kitContentFeedback(String(error.message||error),'error');
+ }
+ const skus=products.map(p=>p.sku);
  const button=$('#kitImportCopiedText');button.disabled=true;
  kitImportState('Buscando automaticamente a resposta na conversa do ChatGPT...','info');
  kitContentFeedback('Ponte ChatGPT: localizando os 3 títulos e a descrição deste kit, sem copiar ou colar.','info');
@@ -3675,8 +3703,9 @@ async function kitImportCopiedContent(){
    await kitFetchGeneratedTextFromPonte(kitSku,skus,products);
   if(prepared?.kit?.kitSku!==kitSku)throw Error('O kit foi trocado durante a captura. Nenhuma resposta foi aplicada.');
   // Reutiliza EXATAMENTE a validação, as notas SEO e o salvamento que já funcionavam.
-  parseKitSeoResponse(response.rawText);
-  $('#kitPlusTextResult').value=response.rawText;
+  const content=kitContentResponseText(response.rawText);
+  parseKitSeoResponse(content);
+  $('#kitPlusTextResult').value=content;
   if(!importPlusText())throw Error('O sistema não conseguiu aplicar o anúncio recuperado.');
  }catch(error){
   // Se a extensão rejeitar nomes/identificadores, permitir recuperar a resposta
