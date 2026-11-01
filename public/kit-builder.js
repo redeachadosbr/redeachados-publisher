@@ -196,9 +196,17 @@ async function kitWizardOpenExecutionFlow(){
    const identity=kitSku+'|'+sku+'|'+id+'|'+modelId;
    if(reviewed?.stages?.includes('images')&&kitWizardImagesSyncedFor!==identity){
     if(notice){notice.hidden=false;notice.textContent='Vinculando as 9 imagens conferidas à SKU principal, sem publicar...';}
-    const copied=await globalThis.RAKitTransferImagesToWorkflow?.();
+    let imageLastMessage='';
+    const copied=await globalThis.RAKitTransferImagesToWorkflow?.({
+     onProgress:message=>{
+      if(kitWizardStage!==10||prepared?.kit?.kitSku!==kitSku)return;
+      imageLastMessage=String(message||'');
+      if(notice){notice.hidden=false;notice.textContent=imageLastMessage;}
+     }
+    });
     if(copied===true)kitWizardImagesSyncedFor=identity;
-    else notes.push('As 9 imagens não foram sincronizadas ao anúncio. Abra Imagens e confira a galeria.');
+    else notes.push('Imagens pendentes: '+
+     (imageLastMessage||'Não foi possível completar a importação. Confira a galeria.'));
    }
    if(reviewed?.stages?.includes('video')&&kitWizardVideoSyncedFor!==identity){
     if(notice){notice.hidden=false;notice.textContent='Conferindo o vídeo aprovado para a SKU principal...';}
@@ -266,7 +274,15 @@ async function kitWizardOpenExecutionFlow(){
    return;
   }
   $('#optimizerExecutionTracker')?.scrollIntoView?.({behavior:'smooth',block:'center'});
- }finally{kitWizardExecutionOpening=false;kitWizardExecutionIntent=false;if(button)button.disabled=false;}
+ }catch(error){
+  const message='Execução interrompida: '+String(error.message||error)+
+   '. Nada será marcado como concluído; os arquivos salvos foram preservados.';
+  if(notice){notice.hidden=false;notice.textContent=message;}
+  status(message,'error');
+ }finally{
+  kitWizardExecutionOpening=false;kitWizardExecutionIntent=false;
+  if(button)button.disabled=false;
+ }
 }
 function kitWizardUpdateProgress(){
  const checks=kitWizardChecked();
