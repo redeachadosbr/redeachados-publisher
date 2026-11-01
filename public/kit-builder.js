@@ -109,6 +109,82 @@ globalThis.RAKitWizardExecutionReviews=()=>{
   .map(n=>({2:'images',3:'video',4:'seo',5:'technical',6:'description',
    7:'variants',8:'fiscal',9:'discount'}[n])).filter(Boolean)}:null;
 };
+let kitWizardExecutionOpening=false;
+let kitWizardImagesSyncedFor='';
+let kitWizardVideoSyncedFor='';
+async function kitWizardOpenExecutionFlow(){
+ if(kitWizardExecutionOpening||kitWizardStage!==10||!prepared?.kit)return;
+ kitWizardExecutionOpening=true;
+ const button=$('#kitWizardOpenExecution'),notice=$('#kitWizardExecutionDirectStatus');
+ const kitSku=String(prepared.kit.kitSku);
+ const reviewed=globalThis.RAKitWizardExecutionReviews?.();
+ const handoff=globalThis.__RA_KIT_OPTIMIZATION_HANDOFF;
+ const valid=handoff?.kitSku===kitSku&&
+  /^[1-9]\\d{0,17}$/.test(String(handoff.itemId||''))&&
+  String(handoff.sku||'')===String($('#kitOptimizeMainSku')?.value||'');
+ const notes=[];
+ if(button)button.disabled=true;
+ try{
+  if(!valid){
+   notes.push('Item ID não vinculado à SKU principal. Confirme o anúncio na etapa 09.');
+  }else{
+   const id=String(handoff.itemId),sku=String(handoff.sku),modelId=String(handoff.modelId||'0');
+   const identity=kitSku+'|'+sku+'|'+id+'|'+modelId;
+   if(reviewed?.stages?.includes('images')&&kitWizardImagesSyncedFor!==identity){
+    if(notice){notice.hidden=false;notice.textContent='Vinculando as 9 imagens conferidas à SKU principal, sem publicar...';}
+    const copied=await globalThis.RAKitTransferImagesToWorkflow?.();
+    if(copied===true)kitWizardImagesSyncedFor=identity;
+    else notes.push('As 9 imagens não foram sincronizadas ao anúncio. Abra Imagens e confira a galeria.');
+   }
+   if(reviewed?.stages?.includes('video')&&kitWizardVideoSyncedFor!==identity){
+    if(notice){notice.hidden=false;notice.textContent='Conferindo o vídeo aprovado para a SKU principal...';}
+    try{
+     const params=new URLSearchParams({sku,item_id:id,model_id:modelId});
+     const existingResponse=await fetch('/api/shopee/optimizer/video/manual?'+params,{
+      signal:AbortSignal.timeout(20000)});
+     const existing=await existingResponse.json().catch(()=>({}));
+     if(!existingResponse.ok)throw Error(existing.error||'Vídeo não consultado');
+     let asset=existing.asset;
+     if(!asset){
+      const local=await kitVideoStore.get(kitSku);
+      if(!local?.blob)throw Error('O vídeo não está salvo neste navegador');
+      if(notice){notice.hidden=false;notice.textContent='Importando vídeo ao editor original da SKU (sem publicar)...';}
+      const ext=String(local.name||'video.mp4').toLowerCase().split('.').pop();
+      const mime=ext==='mov'?'video/quicktime':ext==='webm'?'video/webm':'video/mp4';
+      const uploaded=await fetch('/api/shopee/optimizer/video/manual?'+params,{
+       method:'POST',headers:{'Content-Type':mime,
+        'X-Video-Filename':encodeURIComponent(local.name||'video.mp4')},
+       body:local.blob,signal:AbortSignal.timeout(240000)});
+      const result=await uploaded.json().catch(()=>({}));
+      if(!uploaded.ok)throw Error(result.error||'Não foi possível importar vídeo');
+      asset=result.asset;
+     }
+     if(!asset)throw Error('Não há vídeo disponível para aprovação');
+     const saved=await api('/api/shopee/optimizer/workflow/review',{body:{
+      sku,itemId:id,modelId,stage:'video',reviewed:true
+     }});
+     if(saved?.stages?.find(x=>x.key==='video')?.reviewed!==true)
+      throw Error('O servidor ainda não confirmou a conferência do vídeo');
+     kitWizardVideoSyncedFor=identity;
+    }catch(error){
+     notes.push('Vídeo pendente: '+String(error.message||error)+'. Abra Vídeo para revisar.');
+    }
+   }
+  }
+  if(prepared?.kit?.kitSku!==kitSku||kitWizardStage!==10)return;
+  kitWizardMountTechnical();
+  const scope=$('#optimizerExecutionScope');if(scope)scope.value='all';
+  const start=$('#optimizerShowExecution');
+  if(start&&!$('#kitOptimizerWorkspace')?.hidden){
+   start.click();
+   $('#optimizerExecutionPanel')?.scrollIntoView?.({behavior:'smooth',block:'start'});
+   if(notice){notice.hidden=notes.length===0;notice.textContent=notes.join(' ');}
+  }else{
+   status('Motor original da SKU não carregou. Volte à etapa 09 e confirme o vínculo.','warning');
+   if(notice){notice.hidden=false;notice.textContent=notes.concat('O motor de execução ainda não abriu.').join(' ');}
+  }
+ }finally{kitWizardExecutionOpening=false;if(button)button.disabled=false;}
+}
 function kitWizardUpdateProgress(){
  const checks=kitWizardChecked();
  const p=$('#kitWizardProgress');if(p)p.textContent=checks.length+'/10 conferidas';
@@ -520,10 +596,7 @@ globalThis.RAKitWizardWorkflowReady=data=>{
  }
  if(kitWizardStage===10){
   kitWizardMountTechnical();
-  const scope=$('#optimizerExecutionScope');
-  if(scope)scope.value='all';
-  $('#optimizerShowExecution')?.click();
-  $('#optimizerExecutionPanel')?.scrollIntoView?.({behavior:'smooth',block:'start'});
+  void kitWizardOpenExecutionFlow();
   return true;
  }
  return false;
@@ -631,19 +704,13 @@ function kitWizardInit(){
    status('Confira pelo menos uma etapa do kit antes de preparar a execução.','warning');
    return;
   }
-  const directStatus=$('#kitWizardExecutionDirectStatus');
-  if(directStatus){directStatus.hidden=false;directStatus.textContent='Carregando diretamente o motor de execução. As etapas selecionadas serão verificadas na prévia; nenhuma publicação começou.';}
   kitWizardMountTechnical();
-  const scope=$('#optimizerExecutionScope');
-  if(scope)scope.value='all';
   const workspace=$('#kitOptimizerWorkspace');
-  const btn=$('#optimizerShowExecution');
-  if(btn&&workspace&&!workspace.hidden){
-   btn.click();
-   $('#optimizerExecutionPanel')?.scrollIntoView?.({behavior:'smooth',block:'start'});
+  if(workspace&&!workspace.hidden){
+   await kitWizardOpenExecutionFlow();
    return;
   }
-  status('Recuperando o vínculo original da SKU principal para abrir a execução.','info');
+  status('Carregando a SKU principal no motor original, sem abrir telas intermediárias.','info');
   try{
    await kitExistingOptimizer.openTechnical?.();
   }catch(error){
