@@ -493,8 +493,7 @@ test('painel original de troca de SKU aparece acima da otimização de 10 etapas
  assert.ok(css.includes('#tab-kits #kitWizardCurrentKit #kitToggleComposition.kit-composition-toggle'));
 });
 
-test('troca de SKU principal mantém preço e reordena fichas, custo e referências sem mover fotos',()=>{
- const fs=await import('node:fs');
+test('troca de SKU principal mantém preço e reordena fichas, custo e referências sem mover fotos',async()=>{
  const vm=await import('node:vm');
  const js=fs.readFileSync(new URL('../public/kit-builder.js',import.meta.url),'utf8');
  const from=js.indexOf('function kitOrderedComponents(');
