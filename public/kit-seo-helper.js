@@ -2,6 +2,62 @@
 const norm=s=>String(s||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase();
 const stop=new Set(['para','com','mais','sortido','sortida','infantil','produto','pecas']);
 const tokens=s=>norm(s).split(/[^a-z0-9]+/).filter(x=>x.length>=4&&!stop.has(x));
+// Título compacto sem cortar o último componente. A ordem corresponde ao kit.
+const titleWords=s=>String(s||'').normalize('NFC').replace(/\s*\(SKU[^)]*\)/gi,'')
+ .replace(/[^0-9A-Za-zÀ-ÿ×x./ -]+/g,' ').replace(/\s+/g,' ').trim().split(' ').filter(Boolean);
+const titleFiller=new Set(['de','do','da','dos','das','e','com','para','em','por','uma','um','linha','modelo','produto','produtos']);
+const normTitleWords=s=>norm(s).replace(/[^a-z0-9]+/g,' ').trim().split(/\s+/).filter(Boolean);
+const charLength=s=>Array.from(s).length;
+export function buildKitSeoTitle(components){
+ if(!Array.isArray(components)||components.length<2||components.length>4)
+  throw Error('O título precisa de 2 a 4 produtos válidos.');
+ const groups=components.map(p=>{
+  const words=titleWords(p?.name).filter(x=>!titleFiller.has(norm(x)));
+  if(!words.length)throw Error('Nome comercial ausente para um dos componentes.');
+  return words;
+ });
+ const render=()=> '✨ Kit '+groups.map(g=>g.join(' ')).join(' + ')+' 📦';
+ // Retirar palavras secundárias individualmente, jamais remover um produto,
+ // jamais recortar um título no caractere 120 ou dividir palavras no meio.
+ while(charLength(render())>120){
+  let chosen=null;
+  for(let i=0;i<groups.length;i++){
+   const g=groups[i];if(g.length<=2)continue;
+   for(let j=1;j<g.length;j++){
+    const word=g[j],v=norm(word);
+    const repeated=groups.some((other,k)=>k!==i&&other.some(w=>norm(w)===v));
+    const isDimension=/\d/.test(word);
+    const weight=(repeated?0:1)+(isDimension?4:0)+(j===g.length-1?1:0);
+    const candidate={i,j,weight,chars:charLength(word)};
+    if(!chosen||weight<chosen.weight||(weight===chosen.weight&&candidate.chars>chosen.chars))
+     chosen=candidate;
+   }
+  }
+  if(!chosen)throw Error('Não cabe mencionar os '+groups.length+' produtos em 120 caracteres. Revise os nomes comerciais abreviados.');
+  groups[chosen.i].splice(chosen.j,1);
+ }
+ return render();
+}
+// Checagem dos títulos gerados pelo ChatGPT para kits de quatro itens:
+// exige uma referência distinguível a cada componente, sem exigir nome completo.
+export function missingKitSeoProducts(title,components=[]){
+ if(!Array.isArray(components)||components.length<4)return [];
+ const titleTokens=new Set(normTitleWords(title));
+ const groups=components.map(p=>normTitleWords(p?.name).filter(w=>!titleFiller.has(w)));
+ return components.filter((p,i)=>{
+  const tokens=groups[i];
+  const unique=tokens.filter(w=>(w.length>=3||/\d/.test(w))&&
+    !groups.some((other,k)=>k!==i&&other.includes(w)));
+  if(unique.some(w=>titleTokens.has(w)))return false;
+  // Modelos G/M também são referências válidas quando acompanhados
+  // das palavras identificadoras do produto.
+  const variant=tokens.filter(w=>/^[a-z]$/.test(w));
+  if(variant.some(w=>titleTokens.has(w))&&tokens.filter(w=>w.length>=3&&titleTokens.has(w)).length>=2)
+   return false;
+  return true;
+ }).map(p=>String(p?.name||'Produto sem nome'));
+}
+
 export function scoreKitSeoTitle(title,components=[]){
  const t=String(title||'').trim(),n=norm(t),len=Array.from(t).length;
  const portions=components.map(p=>{const w=[...new Set(tokens(p.name))].slice(0,6);
