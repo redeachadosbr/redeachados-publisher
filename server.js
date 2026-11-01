@@ -1723,9 +1723,18 @@ app.post('/api/shopee/kits/optimization/prepare',mustLogin,requireWeDropAdmin,as
   let descriptionReviewed=false,descriptionError='';
   try{validateReview({stage:'description',reviewed:true,description:link.description});descriptionReviewed=true;}
   catch(e){descriptionError=String(e.message||e).slice(0,220);}
+  // A ficha técnica da SKU principal pode ter sido revisada pela Etapa 05
+  // antes de o anúncio ser vinculado ao Kit. Não apagar os atributos, o draft
+  // nem os checks já confirmados para o MESMO Item ID/modelo/SKU.
+  // Troca real de kit/identidade continua exigindo revisão separada.
+  const previousLink=prior?.review_state?.kitOptimization;
+  const resetKitStages=Boolean(previousLink&&(
+    String(previousLink.kitSku)!==kitSku||
+    String(previousLink.itemId)!==String(itemId)||
+    String(previousLink.modelId||'0')!==modelId));
   await saveWorkflowReview(auth.shopId,itemId,modelId,sku,{
    stage:'seo',reviewed:seoReviewed,title:link.title,titleOrigin:'kit-wedrop',
-   kitOptimization:link,resetKitStages:true
+   kitOptimization:link,resetKitStages
   });
   await saveWorkflowReview(auth.shopId,itemId,modelId,sku,{
    stage:'description',reviewed:descriptionReviewed,description:link.description,
