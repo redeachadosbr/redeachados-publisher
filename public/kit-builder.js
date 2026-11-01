@@ -238,7 +238,7 @@ function kitWizardTechnicalReviewSync({kitSku,sku,itemId,reviewed}={}){
  if(!kit||String(kit.kitSku)!==String(kitSku||'')||
     !selected||selected!==String(sku||'')||
     !kit.components.some(p=>String(p.sku)===selected)||
-    !/^[1-9]\\d{0,17}$/.test(String(itemId||''))||
+    !/^[1-9]\d{0,17}$/.test(String(itemId||''))||
     !handoff||String(handoff.kitSku)!==String(kitSku)||
     String(handoff.sku)!==selected||
     String(handoff.itemId)!==String(itemId))return false;
