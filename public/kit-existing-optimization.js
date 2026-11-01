@@ -571,7 +571,7 @@ export function initExistingKitOptimization({getContext,api,money,onMainSkuChang
      Date.now()-inspected.checkedAt>300000)
    return {ok:false,error:'Atualize a conferência para identificar o anúncio antes de vincular.'};
   const items=(inspected.primaryItems||[]).filter(x=>
-   String(x.sku)===sku&&/^[1-9]\\d{0,17}$/.test(String(x.itemId||'')));
+   String(x.sku)===sku&&/^[1-9]\d{0,17}$/.test(String(x.itemId||'')));
   const handoff=globalThis.__RA_KIT_OPTIMIZATION_HANDOFF;
   const chosen=handoff?.kitSku===kit.kitSku&&String(handoff.sku)===sku?
    items.find(x=>String(x.itemId)===String(handoff.itemId)):
@@ -780,7 +780,7 @@ export function initExistingKitOptimization({getContext,api,money,onMainSkuChang
   const id=String(itemId||''),code=String(sku||'');
   if(!ctx().kitSaved||!kit||String(kit.kitSku)!==String(expectedKit)||
      !kit.components?.some(p=>String(p.sku)===code)||
-     !/^[1-9]\\d{0,17}$/.test(id)||!/^(0|[1-9]\\d{0,17})$/.test(String(modelId)))
+     !/^[1-9]\d{0,17}$/.test(id)||!/^(0|[1-9]\d{0,17})$/.test(String(modelId)))
    return {ok:false,error:'Anúncio da SKU principal não está vinculado a este kit salvo.'};
   const selector=$('#kitOptimizeMainSku');
   if(!selector||![...selector.options].some(o=>o.value===code))
