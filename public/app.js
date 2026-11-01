@@ -4671,7 +4671,7 @@ function optimizerExecutionTrackerRender(progress,job){
    (Number(progress.percent)===0?' Ainda não houve envio à Shopee.':'');
  }
  if(optimizerExecPrepareError){
-  $('#optimizerExecutionPhaseTitle').textContent='Prévia completa não preparada';
+  $('#optimizerExecutionPhaseTitle').textContent='Preparação da pendência não concluída';
   $('#optimizerExecutionPhaseSubtitle').textContent=optimizerExecPrepareError;
   $('#optimizerExecutionProgressDetail').textContent='Falha na preparação: '+optimizerExecPrepareError;
  }
@@ -4720,17 +4720,24 @@ function optimizerExecutionTrackerRender(progress,job){
   stageList.insertAdjacentElement('afterend',pendingActions);
  }
  pendingActions.replaceChildren();
- const skipped=mediaFiscalOnly?[]:(progress.steps||[]).filter(x=>
-  ['skipped','review','authorization'].includes(x.status)||
-  (x.id==='discount'&&discountPending&&!['done','active','checking'].includes(x.status)));
- if(discountPending&&!skipped.some(x=>x.id==='discount'))
+ // A auditoria raiz prevalece sobre a prévia parcial deste job.
+ // "Não incluído" não significa pendente quando o anúncio já foi confirmado.
+ const rootAudit=optimizerRootAuditCache.get(rootKey)?.audit;
+ const pendingRootStages=Array.isArray(rootAudit?.stages)?rootAudit.stages.filter(x=>
+  x.id!=='final'&&!['confirmed','not_applicable'].includes(x.status)):null;
+ const skipped=mediaFiscalOnly?[]:pendingRootStages?
+  pendingRootStages.map(x=>({id:x.id,label:x.label,status:x.status})):
+  (progress.steps||[]).filter(x=>
+   ['skipped','review','authorization'].includes(x.status)||
+   (x.id==='discount'&&discountPending&&!['done','active','checking'].includes(x.status)));
+ if(!pendingRootStages&&discountPending&&!skipped.some(x=>x.id==='discount'))
   skipped.push({id:'discount',label:'08 · Desconto',status:'review'});
  if(skipped.length){
   const heading=document.createElement('strong');
   heading.textContent='Etapas ainda não executadas neste anúncio';
   heading.style.cssText='display:block;margin-bottom:6px;color:#193d70;font-size:15px';
   const detail=document.createElement('p');
-  detail.textContent='A barra acima mostra somente o andamento deste plano, não a execução completa do kit. As etapas abaixo não estão confirmadas na Shopee, inclusive o desconto. Prepare as pendências:';
+  detail.textContent=pendingRootStages?'A auditoria da Shopee confirmou as demais etapas. Prepare exclusivamente o que ainda está pendente:':'Sem auditoria raiz disponível: conferindo o anúncio antes de classificar pendências.';
   detail.style.cssText='font-size:13px;line-height:1.5;margin:0 0 12px';
   pendingActions.append(heading,detail);
   const actions=document.createElement('div');
