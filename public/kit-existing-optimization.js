@@ -623,22 +623,57 @@ export function initExistingKitOptimization({getContext,api,money,onMainSkuChang
    return {ok:false,cancelled:true,error:'Vinculação cancelada; preços preservados.'};
   const current=kit.kitSku;
   try{
-   const data=await api('/api/shopee/kits/optimization/prepare',{
-    signal:AbortSignal.timeout(45000),body:{
-     kitSku:current,sku,itemId:String(chosen.itemId),
-     modelId:String(chosen.modelId??'0'),mainSku:sku,confirmedItemId:String(chosen.itemId)
-    }});
+   const identity={kitSku:current,sku,itemId:String(chosen.itemId),
+    modelId:String(chosen.modelId??'0')};
+   const parameters=new URLSearchParams(identity);
+   const readLink=async()=>{
+    const response=await api('/api/shopee/kits/optimization/link-status?'+parameters,
+     {signal:AbortSignal.timeout(15000)});
+    if(response?.ready!==true)return false;
+    return response;
+   };
+   const retryable=e=>/\\b(?:HTTP\\s*(?:502|503|504)|failed to fetch|networkerror|timeout)\\b/i.test(
+    String(e?.message||e));
+   // Um 502 pode ocorrer depois de o servidor salvar o vínculo. Fazer readback
+   // antes de chamar a preparação (que audita a Shopee) novamente.
+   let verified=null;
+   try{verified=await readLink();}catch{}
+   let data=null;
+   if(!verified){
+    for(let attempt=0;attempt<2;attempt++){
+     try{
+      data=await api('/api/shopee/kits/optimization/prepare',{
+       signal:AbortSignal.timeout(85000),body:{...identity,mainSku:sku,
+        confirmedItemId:String(chosen.itemId)}
+      });
+      if(data?.prepared!==true||String(data.target?.itemId)!==identity.itemId)
+       throw Error('O servidor não confirmou o vínculo solicitado.');
+      break;
+     }catch(error){
+      if(!retryable(error))throw error;
+      notice('Falha temporária ao recuperar vínculo. Conferindo gravação já realizada antes de repetir...','warning');
+      await new Promise(resolve=>setTimeout(resolve,1800));
+      try{verified=await readLink();}catch{}
+      if(verified)break;
+      if(attempt===1)throw error;
+     }
+    }
+   }
    if(kitSku()!==current||String($('#kitOptimizeMainSku')?.value)!==sku)
-    return {ok:false,error:'A SKU principal mudou durante a confirmação. Reabra o kit.'};
-   if(data?.prepared!==true||String(data.target?.itemId)!==String(chosen.itemId))
-    return {ok:false,error:'O servidor não confirmou o vínculo solicitado.'};
-   target={kitSku:current,...data.target,prepared:true};
-   notice('✓ Item ID '+chosen.itemId+' vinculado ao rascunho do kit. Nenhuma publicação realizada.','success');
+    return {ok:false,error:'O kit ou a SKU principal mudaram durante a conferência. Dados preservados.'};
+   // Respostas de preparação NÃO provam que as duas gravações terminaram
+   // em caso de queda. Validar o estado conjunto antes de anunciar sucesso.
+   if(!verified)verified=await readLink();
+   if(!verified)
+    return {ok:false,error:'O vínculo está parcialmente gravado. A publicação permanece bloqueada. Tente atualizar a conferência.'};
+   target={kitSku:current,sku,itemId:identity.itemId,modelId:identity.modelId,
+    prepared:true,autoVerified:true};
+   notice('✓ Vínculo local do Item ID '+identity.itemId+' confirmado no banco e na revisão do anúncio. Nenhuma publicação realizada.','success');
    open();
-   return {ok:true,itemId:String(chosen.itemId)};
+   return {ok:true,itemId:identity.itemId};
   }catch(error){
-   return {ok:false,error:'Falha ao preparar vínculo: '+String(error.message||error)+
-    '. Nenhuma publicação foi realizada.'};
+   return {ok:false,error:'Não foi possível confirmar o vínculo local: '+String(error.message||error)+
+    '. Nenhuma publicação foi realizada; revise a conferência do Item ID.'};
   }
  }
  function discountNotice(msg,state='info'){
