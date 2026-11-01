@@ -77,12 +77,43 @@ export function auditRootShopeeExecution({
  add('discount',discountReadback===true,
   discountReadback===null?'Campanha ainda não conferida por leitura oficial da Shopee':
    'Promoção atual não corresponde à campanha aprovada');
- const missing=out.filter(x=>x.status==='pending');
- const complete=missing.length===0&&out.length===8;
+ // Associar a última falha ao estágio preciso, sem apagar confirmações
+ // já obtidas pela leitura oficial e sem tentar uma segunda escrita incerta.
+ const phases={
+  images_upload:'images',video_upload:'video',video_processing:'video',
+  updating:null,verifying:null,
+  variation_ready:'variants',variation_updating:'variants',variation_verifying:'variants',
+  fiscal_ready:'fiscal',fiscal_updating:'fiscal',fiscal_verifying:'fiscal',
+  discount_ready:'discount',discount_updating:'discount',discount_verifying:'discount',
+  kit_discount_ready:'discount',kit_discount_updating:'discount',kit_discount_verifying:'discount'
+ };
+ if(['failed','uncertain'].includes(job?.state)){
+  const phase=String(job?.result?.phase||'');
+  let affected=phases[phase]||null;
+  if(!affected&&/^model_discount_|^discount_|^kit_discount_/.test(phase))affected='discount';
+  if(!affected&&/^variation_/.test(phase))affected='variants';
+  if(!affected&&/^fiscal_/.test(phase))affected='fiscal';
+  if(!affected&&/^video_/.test(phase))affected='video';
+  if(!affected&&/^images_/.test(phase))affected='images';
+  const selected=affected?out.filter(x=>x.id===affected):out.filter(x=>
+   x.status==='pending'&&((job.plan?.actions||[]).some(a=>
+    ({images:'images',video:'video',item_name:'seo',description:'description',
+      attribute_list:'technical',model_variations:'variants',tax_info:'fiscal',
+      kit_discount:'discount',discount:'discount'}[a]||a)===x.id)));
+  for(const row of selected){
+   if(row.status==='confirmed'||row.status==='not_applicable')continue;
+   row.status=job.state==='uncertain'?'uncertain':'failed';
+   row.reason=(job.state==='uncertain'?'Resultado incerto: ':'Falha na execução: ')+
+    String(job.last_error||'etapa sem confirmação oficial').slice(0,150);
+  }
+ }
+ const missing=out.filter(x=>!['confirmed','not_applicable'].includes(x.status));
+ const complete=missing.length===0&&out.length===8&&
+  !['running','uncertain'].includes(job?.state);
  add('final',complete,complete?'Todas as etapas aplicáveis conferidas no anúncio e na promoção':
   'Conferência final bloqueada: '+missing.map(x=>x.label).join(', ').slice(0,165));
  return {sku,itemId,checkedAt,complete,stages:out,
-  pending:out.filter(x=>x.status==='pending').map(x=>x.id),
+  pending:out.filter(x=>!['confirmed','not_applicable'].includes(x.status)).map(x=>x.id),
   jobState:job?.state||null,latestJobPartial:Boolean(job?.plan?.selectedStage&&job.plan.selectedStage!=='all'),
   lastJobError:job?.last_error?String(job.last_error).slice(0,250):null};
 }
