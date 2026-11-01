@@ -251,7 +251,7 @@ export function supplierAttributeSuggestions({attributes=[],proposed=[],supplier
    // "Indicação: Higienização de vasos sanitários Composição: PP...".
    // Nunca usar medida ou material como finalidade do produto.
    for(const src of sources.filter(x=>x.label!=='Descrição existente do anúncio (conferir com fabricante)')){
-    const candidate=plain(src.text).match(/\b(?:indicacao(?: de uso)?|finalidade|uso indicado)\s*[:\-]\s*([^\n.;!?]{5,130}?)(?=\s+(?:composicao|material|cor|peso|modelo|dimensoes|contem|itens inclusos)\s*:|[.;!?]|$)/i);
+    const candidate=String(src.text).match(/\b(?:indica(?:ç|c)(?:ã|a)o(?: de uso)?|finalidade|uso indicado)\s*[:\-]\s*([^\n.;!?]{5,130}?)(?=\s+(?:composi(?:ç|c)(?:ã|a)o|material|cor|peso|modelo|dimens(?:õ|o)es|cont(?:é|e)m|itens inclusos)\s*:|[.;!?]|$)/i);
     if(candidate){
      const usage=candidate[1].trim();
      if(!/^(?:\d|dimens|altura|largura|comprimento|diametro)/.test(usage))
