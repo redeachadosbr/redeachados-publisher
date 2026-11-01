@@ -2564,8 +2564,9 @@ app.post('/api/shopee/optimizer/execution/prepare',mustLogin,requireWeDropAdmin,
       verifyShopeeExecution(previous.plan,live,previous.result)?previous.plan.video?.sha256:null;
     const manualImages=await readPreparedImages(auth.shopId,itemId,modelId,sku);
     const reviewState={...(review?.review_state||{})};
-    let kitDiscountPlan=null;
+    let kitDiscountPlan=null,discountPreparationWarning='';
     if(kitLink&&['all','discount','discount_adjust'].includes(selectedStage)&&reviewState.kitDiscountPreview?.status==='prepared'){
+     try{
      const approved=reviewState.kitDiscountPreview,checked=Date.parse(approved.preparedAt||'');
      if(!Number.isFinite(checked)||checked>Date.now()+60000||Date.now()-checked>24*3600000)
       throw Error('Etapa 08: conferência expirou; reabra a campanha e prepare a prévia.');
@@ -2599,6 +2600,15 @@ app.post('/api/shopee/optimizer/execution/prepare',mustLogin,requireWeDropAdmin,
       modelId:String(modelId),discountId:String(approved.discountId),
       gross:snapshot.gross,promo:snapshot.promo,afterCoupon:snapshot.afterCoupon,
       currentGross:snapshot.currentGross,priceAligned:snapshot.priceAligned};
+     }catch(error){
+      if(selectedStage!=='all')throw error;
+      // A campanha inválida/expirada fica PENDENTE: jamais enviá-la,
+      // mas não cancelar as outras alterações já aprovadas da SKU.
+      kitDiscountPlan=null;
+      discountPreparationWarning='Desconto não incluído na execução completa: '+
+       String(error.message||error).slice(0,230)+
+       '. As demais etapas aprovadas podem ser executadas e o desconto será reavaliado em separado.';
+     }
     }
     // Evitar ficha técnica aprovada e invisível na publicação. O rascunho
     // precisa ser anterior à revisão e os campos devem continuar elegíveis
@@ -2724,6 +2734,7 @@ app.post('/api/shopee/optimizer/execution/prepare',mustLogin,requireWeDropAdmin,
     const inputs={shopId:auth.shopId,itemId,modelId,sku,record,
       review:reviewState,live,manualVideo,verifiedVideoSha256,manualImages,selectedStage,allowDiscountOnly,modelVariations,kitDiscount:kitDiscountPlan};
     let plan=compileShopeeExecutionPlan({...inputs,omitFiscal:false});
+    if(discountPreparationWarning)plan.warnings.push(discountPreparationWarning);
     if(['all','technical'].includes(selectedStage)&&reviewState.stages?.technical?.reviewed&&
        !reviewState.attributes?.length&&reviewState.technicalDraft?.fields?.length&&
        !plan.confirmedStages?.technical){
