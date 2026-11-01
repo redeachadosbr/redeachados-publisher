@@ -50,6 +50,7 @@ RUN node --test tests/shopee-kit-step10-resume.test.js
 RUN node --test tests/shopee-kit-link-502-recovery.test.js
 RUN node --test tests/shopee-kit-optimization-finalization.test.js
 RUN node --check shopeeKitFiscalPreset.js && node --test tests/shopee-kit-fiscal-existing-draft.test.js
+RUN node --check shopeeKitDraftStore.js && node --check public/kit-existing-optimization.js && node --test tests/shopee-kit-fiscal-origin-persist.test.js
 RUN node --check shopeeExecutionKitDiscount.js && node --test tests/shopee-kit-discount-single-run.test.js
 RUN node --check shopeeExecutionPlan.js && node --check shopeeExecutionWorker.js && node --test tests/shopee-root-individual-execution.test.js
 ENV NODE_ENV=production
