@@ -125,11 +125,11 @@ test('troca de kit cancela captura e resposta incompleta não vira sucesso',asyn
 test('anúncio recebido só altera os campos depois do clique no botão azul',async()=>{
  const source=readFileSync(new URL('../public/kit-builder.js',import.meta.url),'utf8');
  const handoff=source.slice(source.indexOf('async function kitContentHandoff('),source.indexOf('function kitContentReadManual('));
- const importer=source.slice(source.indexOf('async function kitImportCopiedContent('),source.indexOf('function kitPasteSeoReply('));
+ const importer=source.slice(source.indexOf('function kitCanonicalTextProducts('),source.indexOf('function kitPasteSeoReply('));
  const fields=new Map([['#kitTitle',{value:'Título salvo'}],['#kitDescription',{value:'Descrição salva'}]]);
  const get=s=>{if(!fields.has(s))fields.set(s,{value:'',disabled:false});return fields.get(s);};
  let imports=0,fetches=0;
- const context=vm.createContext({AbortController,prepared:{kit},$:get,
+ const context=vm.createContext({AbortController,prepared:{kit},$:get,kitContentResponseText:s=>s,
   kitContentRequest:null,kitContentReadyResult:null,kitContentAwaitingResponse:false,
   requestKitContent:async()=>({kitSku:kit.kitSku,rawText:answer}),
   kitImportState:()=>{},kitContentFeedback:()=>{},parseKitSeoResponse:()=>{},
@@ -144,4 +144,48 @@ test('anúncio recebido só altera os campos depois do clique no botão azul',as
  assert.equal(imports,1);assert.equal(fetches,0);
  assert.equal(get('#kitPlusTextResult').value,answer);
  assert.equal(get('#kitImportCopiedText').disabled,false);
+});
+
+test('identidade canônica do kit é estável mesmo com SKU principal trocada',()=>{
+ const source=readFileSync(new URL('../public/kit-builder.js',import.meta.url),'utf8');
+ const start=source.indexOf('function kitCanonicalTextProducts('),end=source.indexOf('function kitFetchGeneratedTextFromPonte(',start);
+ assert(start>0&&end>start,'helper de identidade deve existir');
+ const fn=vm.runInNewContext(source.slice(start,end)+';kitCanonicalTextProducts;');
+ const id='KIT-126051011000-KTE022BCF-TRC6808';
+ const parts=[
+  {sku:'TRC6808',name:'Dispenser Para Hastes de Algodão com Tampa'},
+  {sku:'1.26051.01.1000',name:'Lixeira Inox Redonda Multiuso - 3 Litros'},
+  {sku:'KTE022BCF',name:'Kit Porta Escova Dental e Saboneteira - Branca'}
+ ];
+ assert.deepEqual(Array.from(fn(id,parts),p=>p.sku),[
+  '1.26051.01.1000','KTE022BCF','TRC6808']);
+ assert.equal(parts[0].sku,'TRC6808','ordem salva e SKU principal permanecem intactas');
+ assert.throws(()=>fn('KIT-OUTRO-PRODUTO',parts),/não corresponde às SKUs/);
+});
+
+test('resposta textual da Ponte é desempacotada sem misturar anúncios de outro kit',async()=>{
+ const source=readFileSync(new URL('../public/kit-builder.js',import.meta.url),'utf8');
+ const start=source.indexOf('function kitFetchGeneratedTextFromPonte(');
+ const end=source.indexOf('async function kitImportCopiedContent(',start);
+ assert(start>0&&end>start);
+ const messages=[],listeners=new Set();
+ const target={location:{origin:'https://redeachados-shopee.onrender.com'},
+  addEventListener:(type,fn)=>{if(type==='message')listeners.add(fn);},
+  removeEventListener:(type,fn)=>listeners.delete(fn),
+  postMessage:(payload,origin)=>messages.push({payload,origin})};
+ const emit=(data)=>{for(const fn of [...listeners])fn({source:target,origin:target.location.origin,data});};
+ const context=vm.createContext({window:target,location:target.location,crypto:{randomUUID:()=> 'nonce-seo-1'},
+  setTimeout,clearTimeout,parseKitSeoResponse:()=>({}),
+  kitContentResponseText:input=>{const obj=JSON.parse(input);return obj.description;}});
+ vm.runInContext(source.slice(start,end),context);
+ const id='KIT-126051011000-KTE022BCF-TRC6808';
+ const pending=context.kitFetchGeneratedTextFromPonte(id,['1.26051.01.1000','KTE022BCF','TRC6808'],
+  [{sku:'1.26051.01.1000',name:'Lixeira'},{sku:'KTE022BCF',name:'Kit Porta Escova'},{sku:'TRC6808',name:'Dispenser'}]);
+ emit({kind:'RA_EXTENSION_READY',version:'1.0.61'});
+ const sent=messages.find(m=>m.payload.kind==='RA_SITE_KIT_TEXT_FETCH');
+ assert.deepEqual(Array.from(sent.payload.payload.skus),['1.26051.01.1000','KTE022BCF','TRC6808']);
+ emit({kind:'RA_EXTENSION_KIT_TEXT_RESULT',nonce:'nonce-seo-1',
+  kitSku:'KIT-OUTRO',ok:true,rawText:JSON.stringify({description:'Anúncio de outro kit'})});
+ await assert.rejects(pending,/outro kit/);
+ assert.equal(listeners.size,0,'listener não pode ficar pendurado');
 });
