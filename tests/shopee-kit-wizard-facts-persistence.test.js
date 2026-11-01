@@ -36,7 +36,7 @@ test('etapa 05 usa editor original sem depender da preparacao comercial do kit',
  assert.match(builder,/if\(advanced\.parentElement!==discountIdentity\)discountIdentity\.append\(advanced\)/);
  assert.match(existing,/async function openTechnical\(\)/);
  assert.match(existing,/technicalOnly:true/);
- assert.match(existing,/return \{restore,openTechnical,openDiscount,prepareDiscountLink\}/);
+ assert.match(existing,/return \{restore,openTechnical,openDiscount,prepareDiscountLink,resumeLiveVerifiedTarget\}/);
  assert.match(app,/technicalOnly=matchedTarget&&kitHandoff\?\.technicalOnly===true/);
  assert.match(app,/optimizerWorkflowOpen\('technical'\)/);
  assert.match(app,/RAKitTechnicalLoadReady\?\.\(/);
