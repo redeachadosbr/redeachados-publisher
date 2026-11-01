@@ -32,7 +32,7 @@ test('excluir foto já salva não depende de parar a Ponte ChatGPT em geração'
  assert.match(body,/kitBridgeController\?\.activeJob\(\)\?'A Ponte continua gerando/);
 });
 
-test('image collapse groups generator plus all nine positions without deleting data',()=>{
+test('image stage always shows generator and all nine positions without a redundant hide button',()=>{
  const ui=readFileSync(new URL('../public/kit-builder.js',import.meta.url),'utf8');
  const app=readFileSync(new URL('../public/app.js',import.meta.url),'utf8');
  const begin=html.indexOf('id="kitImagesContent"');
@@ -44,9 +44,9 @@ test('image collapse groups generator plus all nine positions without deleting d
   assert.match(group,new RegExp('id="'+id+'"'));
   assert.equal(html.split('id="'+id+'"').length-1,1);
  }
- assert.match(html,/id="kitToggleImagesContent"[^>]*aria-controls="kitImagesContent"[^>]*aria-expanded="true"/);
+ assert.doesNotMatch(html,/id="kitToggleImagesContent"/);
  assert.match(ui,/function kitSetImagesCollapsed\(collapsed\)/);
- assert.match(ui,/kitSetImagesCollapsed\(!\$\('#kitImagesContent'\)\.hidden\)/);
+ assert.doesNotMatch(ui,/\$\('#kitToggleImagesContent'\)\?\.addEventListener/);
  assert.match(css,/#tab-kits #kitDetail #kitImagesContent\[hidden\]\{display:none!important\}/);
  assert.match(app,/images:'#kitImagesCollapseToolbar'/);
 });
