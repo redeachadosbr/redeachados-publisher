@@ -19,13 +19,13 @@ export function parseKitChatResult(input,{allowedCodes=[],limit=10,size=null}={}
  const allowed=new Set([...allowedCodes].map(asSku).filter(Boolean));
  if(!allowed.size)throw Error('SKUs WeDrop ainda não carregadas. Atualize a pesquisa antes da importação.');
  if(!Number.isInteger(limit)||limit<1||limit>20)throw Error('Limite inválido para kits.');
- if(size!==null&&![2,3].includes(size))throw Error('Quantidade de SKUs por kit inválida.');
+ if(size!==null&&![2,3,4].includes(size))throw Error('Quantidade de SKUs por kit inválida.');
  const raw=typeof input==='string'?input:JSON.stringify(input);
  if(!raw||raw.length>1000000)throw Error('Arquivo muito grande. Importe somente o JSON ou tabela de kits (até 1 MB).');
  const kits=[],seen=new Set();let rejected=0;
  const add=codes=>{
   const values=codes.map(asSku).filter(Boolean);
-  if(values.length<2||values.length>3||new Set(values).size!==values.length||
+  if(values.length<2||values.length>4||new Set(values).size!==values.length||
    values.some(x=>!allowed.has(x))||(size!==null&&values.length!==size)){rejected++;return;}
   const key=values.slice().sort().join('|');
   if(!seen.has(key)){seen.add(key);if(kits.length<limit)kits.push(values);}
@@ -44,7 +44,7 @@ export function parseKitChatResult(input,{allowedCodes=[],limit=10,size=null}={}
  function walk(v,depth=0){
   if(depth>8||v==null)return;
   if(Array.isArray(v)){
-   if(v.length>=2&&v.length<=3&&v.every(x=>typeof x==='string'||typeof x==='number')){
+   if(v.length>=2&&v.length<=4&&v.every(x=>typeof x==='string'||typeof x==='number')){
     add(parts(v));return;
    }
    for(const row of v.slice(0,100))walk(row,depth+1);
@@ -72,14 +72,14 @@ export function parseKitChatResult(input,{allowedCodes=[],limit=10,size=null}={}
     const cell=c.trim();
     const explicit=/^[A-Za-z0-9][A-Za-z0-9._-]*(?:\s*[+,;]\s*[A-Za-z0-9][A-Za-z0-9._-]*){1,2}$/.test(cell);
     return explicit?cell.split(/\s*[+,;]\s*/).map(asSku):fromText(cell,allowed);
-   }).filter(x=>x.length>=2&&x.length<=3);
+   }).filter(x=>x.length>=2&&x.length<=4);
    if(groups.length){add(groups[0]);continue;}
    const direct=line.trim().replace(/^\s*\|\s*/, '').replace(/\s*\|\s*$/, '');
    if(/^[A-Za-z0-9][A-Za-z0-9._-]*(?:\s*[+|;,]\s*[A-Za-z0-9][A-Za-z0-9._-]*){1,2}$/.test(direct)){
     add(direct.split(/\s*[+|;,]\s*/));continue;
    }
    const all=fromText(line,allowed);
-   if(all.length>=2&&all.length<=3)add(all);
+   if(all.length>=2&&all.length<=4)add(all);
   }
  }
  return {kits,rejected,format:json!==null?'json':'text'};
