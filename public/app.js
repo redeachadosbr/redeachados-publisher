@@ -6189,7 +6189,7 @@ function optimizerExecutionJobView(job,progress=null,issue=null){
  if(job.last_error)message+=' · '+(issue?.code==='CEST_REQUIRED'
    ?'CEST correspondente ao NCM precisa ser corrigido na ficha fiscal.':job.last_error);
  if(fiscalPartial)message='Conteúdo e mídia confirmados na Shopee, mas a etapa FISCAL foi recusada e continua pendente. Corrija o CEST/NCM no Motor Matriz antes de preparar nova execução fiscal.';
- else if(job.state==='verified')message+=' · Todas as alterações incluídas nesta execução foram verificadas.';
+ else if(job.state==='verified')message+=' · Somente o escopo deste job foi confirmado; o estado geral aparece na auditoria de 9 etapas.';
  optimizerExecNotice(message,fiscalPartial?'warning':job.state==='verified'?'success':
   job.state==='failed'||job.state==='uncertain'?'warning':'info');
  // A etapa de desconto agora é exclusivamente do worker persistido no servidor.
@@ -6223,6 +6223,120 @@ async function optimizerExecutionSafeRecoverCest(job,w){
    optimizerExecNotice('Não foi possível confirmar com segurança a rejeição fiscal: '+error.message+'. Nenhum envio será repetido.','warning');
  }finally{optimizerExecSafeRecovering=false;}
 }
+// Auditoria independente do último job: 8 etapas reais + 09 Conferência final.
+// Checks locais e a barra 100% de um job parcial NÃO encerram a SKU.
+const optimizerRootAuditCache=new Map();
+let optimizerRootAuditPending=null;
+function optimizerRootAuditRender(audit){
+ let panel=$('#optimizerRootAuditPanel');
+ if(!panel){
+  panel=document.createElement('section');
+  panel.id='optimizerRootAuditPanel';
+  panel.style.cssText='margin:16px 0;padding:18px;border:1px solid #cdddf0;border-radius:16px;background:linear-gradient(145deg,#fff,#f5f9ff);box-shadow:0 9px 24px rgba(21,60,110,.09)';
+  const tracker=$('#optimizerExecutionTracker')||$('#optimizerExecutionPanel');
+  tracker?.parentElement?.insertBefore(panel,tracker.nextSibling);
+ }
+ if(!panel)return;
+ panel.replaceChildren();
+ if(!audit){panel.hidden=true;return;}
+ panel.hidden=false;
+ const title=document.createElement('strong');
+ title.textContent='Motor raiz · 9 etapas · conferência real na Shopee';
+ title.style.cssText='font-size:15px;display:block;color:#153c6c';
+ const note=document.createElement('p');
+ note.style.cssText='font-size:12px;line-height:1.55;margin:7px 0 13px;color:#537093';
+ const good=audit.stages?.filter(x=>x.status==='confirmed').length||0;
+ note.textContent=audit.complete?
+  'Todas as etapas aplicáveis confirmadas por leitura da Shopee.':
+  good+' etapa(s) confirmada(s) · execução geral pendente. A barra de uma execução parcial não conclui o anúncio.';
+ panel.append(title,note);
+ if(audit.lastJobError){
+  const error=document.createElement('p');error.style.cssText='font-size:12px;color:#a33c2b';
+  error.textContent='Última execução: '+audit.lastJobError;panel.append(error);
+ }
+ const grid=document.createElement('div');
+ grid.style.cssText='display:grid;grid-template-columns:repeat(auto-fit,minmax(195px,1fr));gap:8px';
+ for(const stage of audit.stages||[]){
+  const row=document.createElement('div');
+  row.style.cssText='padding:10px 12px;border:1px solid #dce7f4;border-radius:12px;background:#fff;box-shadow:0 3px 7px rgba(40,71,101,.035)';
+  const label=document.createElement('strong');
+  label.style.cssText='font-size:12px;display:block';
+  label.textContent=(stage.status==='confirmed'?'✓ ':stage.status==='not_applicable'?'– ':'○ ')+stage.label;
+  row.append(label);
+  const state=document.createElement('small');
+  state.style.cssText='display:block;margin-top:5px;color:#61748b;line-height:1.4';
+  state.textContent=stage.status==='confirmed'?'Confirmado na Shopee':
+   stage.status==='not_applicable'?'Não aplicável':stage.reason;
+  row.append(state);
+  if(stage.status==='pending'&&stage.id!=='final'){
+   const retry=document.createElement('button');
+   retry.type='button';retry.className='kit-secondary';
+   retry.textContent='Preparar pendência';
+   retry.style.cssText='font-size:12px;padding:7px 10px;margin-top:9px;border-radius:9px';
+   retry.addEventListener('click',()=>{
+    if(optimizerExecBusy||optimizerExecPreparation){
+     optimizerExecNotice('Existe execução/preparação em andamento. Consulte o resultado antes de tentar novamente.','warning');return;
+    }
+    if(optimizerExecJob?.state==='uncertain'||optimizerExecJob?.state==='running'){
+     optimizerExecNotice('Concilie a execução anterior antes de repetir a etapa, para evitar publicação duplicada.','warning');return;
+    }
+    const selector=$('#optimizerExecutionScope');
+    if(!selector||![...selector.options].some(x=>x.value===stage.id)){
+     optimizerExecNotice('Abra a etapa '+stage.label+' no Motor Matriz original.','warning');return;
+    }
+    selector.value=stage.id;
+    optimizerExecNotice('Preparando somente '+stage.label+' ainda pendente. Os dados já confirmados não serão reenviados.','info');
+    void optimizerExecutionPrepare();
+    $('#optimizerExecutionPanel')?.scrollIntoView({behavior:'smooth',block:'start'});
+   });
+   row.append(retry);
+  }
+  grid.append(row);
+ }
+ panel.append(grid);
+ const actions=document.createElement('div');
+ actions.style.cssText='display:flex;gap:8px;flex-wrap:wrap;margin-top:14px';
+ const refresh=document.createElement('button');refresh.type='button';refresh.className='kit-secondary';
+ refresh.textContent='↻ Conferir novamente na Shopee';
+ refresh.addEventListener('click',()=>void optimizerRootAuditRefresh(true));
+ actions.append(refresh);
+ if(!audit.complete&&audit.pending?.some(x=>x!=='final')){
+  const full=document.createElement('button');full.type='button';full.className='kit-primary';
+  full.textContent='Preparar somente alterações pendentes';
+  full.addEventListener('click',()=>{
+   if(optimizerExecBusy||optimizerExecPreparation||['running','uncertain'].includes(optimizerExecJob?.state)){
+    optimizerExecNotice('Conclua ou reconcilie o job anterior antes de preparar outro.','warning');return;
+   }
+   $('#optimizerExecutionScope').value='all';
+   optimizerExecNotice('Preparando a execução completa: o motor comparará cada campo com a Shopee e só incluirá alterações ainda pendentes. Revise e autorize antes do envio.','info');
+   void optimizerExecutionPrepare();
+  });
+  actions.append(full);
+ }
+ panel.append(actions);
+}
+async function optimizerRootAuditRefresh(force=false){
+ const w=optimizerWorkflowPlan;if(!w)return;
+ const key=[w.sku,w.itemId,w.modelId].join('|');
+ const cached=optimizerRootAuditCache.get(key);
+ if(!force&&cached&&Date.now()-cached.at<45000){
+  optimizerRootAuditRender(cached.audit);return;
+ }
+ if(optimizerRootAuditPending===key)return;
+ optimizerRootAuditPending=key;
+ try{
+  const params=new URLSearchParams({sku:w.sku,item_id:w.itemId,model_id:w.modelId});
+  const result=await json('/api/shopee/optimizer/execution/root-audit?'+params,{
+   signal:AbortSignal.timeout(45000)});
+  const current=optimizerWorkflowPlan;
+  if(!current||[current.sku,current.itemId,current.modelId].join('|')!==key)return;
+  optimizerRootAuditCache.set(key,{audit:result.audit,at:Date.now()});
+  optimizerRootAuditRender(result.audit);
+ }catch(error){
+  const panel=$('#optimizerRootAuditPanel');
+  if(panel){panel.hidden=false;panel.textContent='Conferência geral indisponível: '+String(error.message||error)+'. Nenhuma etapa foi considerada concluída.';}
+ }finally{if(optimizerRootAuditPending===key)optimizerRootAuditPending=null;}
+}
 async function optimizerExecutionRefresh(poll=false){
  const w=optimizerWorkflowPlan;if(!w)return null;
  const identity=w.sku+':'+w.itemId+':'+w.modelId;
@@ -6235,6 +6349,7 @@ async function optimizerExecutionRefresh(poll=false){
   const current=optimizerWorkflowPlan;
   if(!current||current.sku+':'+current.itemId+':'+current.modelId!==identity)return null;
   optimizerExecutionJobView(data.job,data.progress,data.issue);
+  if(!poll||['verified','failed','blocked'].includes(data.job?.state))void optimizerRootAuditRefresh(!poll);
   if(data.job?.state==='uncertain'&&data.issue?.code==='CEST_REQUIRED')
    void optimizerExecutionSafeRecoverCest(data.job,w);
   const awaitingReadback=data.job?.state==='uncertain'&&
