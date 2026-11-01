@@ -3964,6 +3964,13 @@ async function optimizerWorkflowLoad(record){
      globalThis.RAKitTechnicalLoadReady?.({
        kitOptimization:{kitSku:kitHandoff.kitSku},sku:data.sku,itemId:data.itemId
      });
+     // Check do wizard somente se a ficha original já constar como revisada
+     // no plano retornado pela Shopee Manager, não pelo simples carregamento.
+     const technical=data.stages?.find(stage=>stage.key==='technical');
+     globalThis.RAKitTechnicalReviewChanged?.({
+       kitSku:kitHandoff.kitSku,sku:data.sku,itemId:data.itemId,
+       reviewed:technical?.reviewed===true
+     });
     }else{
      const active=(data.stages||[]).filter(s=>['video','technical','fiscal'].includes(s.key)||s.key==='variants'&&!s.skipped);
      const firstPending=active.find(s=>!s.reviewed&&!s.skipped)?.key;
@@ -4141,6 +4148,18 @@ async function optimizerWorkflowSaveReview({fiscalConfirm=false}={}){
     // Não excluir o draft após apenas registrar a conferência.
    }
    optimizerWorkflowRender({...data,...result,stages:result.stages});
+   if(key==='technical'){
+     const handoff=globalThis.__RA_KIT_OPTIMIZATION_HANDOFF;
+     const confirmed=result.stages?.find(x=>x.key==='technical')?.reviewed===true;
+     // A confirmação do check é o resultado PERSISTIDO do servidor.
+     if(handoff?.embed&&handoff?.technicalOnly&&
+        String(handoff.sku)===String(data.sku)&&
+        String(handoff.itemId)===String(data.itemId)){
+       globalThis.RAKitTechnicalReviewChanged?.({
+        kitSku:handoff.kitSku,sku:data.sku,itemId:data.itemId,reviewed:confirmed
+       });
+     }
+   }
    if(key==='fiscal')globalThis.ShopeeFiscalStudio?.update?.({...data,...result,stages:result.stages});
    // A saved fiscal draft must never automatically re-attempt a rejected CEST
    // update in the background. Execution has its own explicit separate button.
