@@ -5952,14 +5952,23 @@ function kitAutoSweepResume(target,firstFingerprint=''){
     if(optimizerExecBusy){await sleep(1500);continue;}
     const scope=$('#optimizerExecutionScope');
     if(!scope)throw Error('Executor de 9 etapas não disponível.');
-    scope.value='all';
+    // A auditoria raiz é a fonte de verdade, não a lista de ações do último job.
+    // Se apenas o desconto estiver pendente, não preparar nem reenviar as demais etapas.
+    const onlyDiscount=audit?.stages?.filter(s=>s.id!=='final'&&
+     !['confirmed','not_applicable'].includes(s.status)).every(s=>s.id==='discount')&&
+     audit?.stages?.some(s=>s.id==='discount'&&s.status==='pending');
+    const executionScope=onlyDiscount?'discount':'all';
+    scope.value=executionScope;
     optimizerExecNotice('Varredura encontrou '+pending.join(', ')+
-     '. Preparando somente os campos ainda diferentes e já aprovados.','info');
+     (onlyDiscount?'. Preparando exclusivamente Minha Promoção.':
+      '. Preparando somente os campos ainda diferentes e já aprovados.'),'info');
     const plan=await kitAutoSweepPreparePlan(target);
     if(!kitAutoSweepMatches(target))return;
-    if(!plan||plan.selectedStage!=='all'||plan.sku!==target.sku||
+    if(!plan||plan.selectedStage!==executionScope||plan.sku!==target.sku||
        String(plan.itemId)!==String(target.itemId))
      throw Error(optimizerExecPrepareError||'Não foi possível preparar a próxima execução.');
+    if(onlyDiscount&&!(plan.actions||[]).some(a=>a==='kit_discount'||a==='discount'))
+     throw Error('Desconto pendente, mas ainda não existe autorização de Minha Promoção válida para execução exclusiva.');
     if(!plan.canExecute||!(plan.actions||[]).length)
      throw Error('Etapas ainda pendentes, mas sem nova ação publicável: '+pending.join(', ')+
       '. '+(plan.blocked||[]).join(' · '));
@@ -6000,11 +6009,17 @@ globalThis.RAKitExecutePendingAllStages=async({kitSku,sku,itemId,modelId}={})=>{
   const scope=$('#optimizerExecutionScope');
   if(!scope||![...scope.options].some(x=>x.value==='all'))
    return {ok:false,error:'Modo de execução completa indisponível; atualize a página.'};
-  scope.value='all';
   optimizerWorkflowActivateOnly('execution');
   optimizerExecNotice('Conferindo todas as 9 etapas reais da Shopee: imagens, vídeo, título, descrição, ficha técnica, variações, fiscal, desconto e confirmação final.','info');
   await optimizerRootAuditRefresh(true);
   const audit=optimizerRootAuditCache.get([sku,String(itemId),String(modelId||'0')].join('|'))?.audit;
+  if(!audit?.stages?.length)return {ok:false,error:'A Shopee não retornou a auditoria completa. Nenhuma alteração foi enviada.'};
+  const rootMissing=audit.stages.filter(s=>s.id!=='final'&&
+   !['confirmed','not_applicable'].includes(s.status));
+  const onlyDiscount=rootMissing.length===1&&rootMissing[0].id==='discount'&&
+   rootMissing[0].status==='pending';
+  const executionScope=onlyDiscount?'discount':'all';
+  scope.value=executionScope;
   if(audit?.complete===true){
    return {ok:true,alreadyCurrent:true,message:'Auditoria da Shopee confirmou todas as 9 etapas. Nada precisa ser reenviado.'};
   }
@@ -6014,7 +6029,7 @@ globalThis.RAKitExecutePendingAllStages=async({kitSku,sku,itemId,modelId}={})=>{
    return {ok:true,submitted:true,alreadyRunning:true,message:'Execução em andamento: varredura 9/9 automática ativada sem reenvio.'};
   }
   const p=await kitAutoSweepPreparePlan({kitSku,sku,itemId,modelId});
-  if(!p||p.selectedStage!=='all'||p.sku!==sku||String(p.itemId)!==String(itemId))
+  if(!p||p.selectedStage!==executionScope||p.sku!==sku||String(p.itemId)!==String(itemId))
    return {ok:false,error:optimizerExecPrepareError||'A prévia completa ainda não foi carregada. Nenhuma publicação foi iniciada.'};
   const pending=(audit?.stages||[]).filter(x=>!['confirmed','not_applicable'].includes(x.status))
    .map(x=>x.label);
