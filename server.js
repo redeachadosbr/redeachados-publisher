@@ -2558,11 +2558,13 @@ app.post('/api/shopee/optimizer/execution/prepare',mustLogin,requireWeDropAdmin,
       throw Error('Kit: criação de variações com custo individual bloqueada. Mantenha apenas as variações existentes.');
     }
     const live=await shopeeLiveEditableItem(cfg,auth,itemId);
-    const manualVideo=await getShopeeManualVideo(auth.shopId,itemId,modelId,sku);
+    const manualVideo=['discount','discount_adjust'].includes(selectedStage)?null:
+     await getShopeeManualVideo(auth.shopId,itemId,modelId,sku);
     const previous=await readShopeeExecution(auth.shopId,itemId,modelId);
     const verifiedVideoSha256=previous?.state==='verified'&&
       verifyShopeeExecution(previous.plan,live,previous.result)?previous.plan.video?.sha256:null;
-    const manualImages=await readPreparedImages(auth.shopId,itemId,modelId,sku);
+    const manualImages=['discount','discount_adjust'].includes(selectedStage)?[]:
+     await readPreparedImages(auth.shopId,itemId,modelId,sku);
     const reviewState={...(review?.review_state||{})};
     // Recuperação da Etapa 08: a autorização única da Etapa 10 não deve
     // exigir uma segunda visita à prévia quando a campanha é inequívoca.
@@ -2764,8 +2766,9 @@ app.post('/api/shopee/optimizer/execution/prepare',mustLogin,requireWeDropAdmin,
     }
     // Marca proveniente da WeDrop precisa coincidir com a categoria mesmo que a
     // ficha técnica não esteja aprovada; nunca publicar com Marca: Novo por engano.
-    const supplierForBrand=await readWeDropProduct(auth.shopId,kitLink?
-     {sku:kitLink.mainSku}:{sku,itemId,modelId});
+    const supplierForBrand=['all','technical'].includes(selectedStage)?
+     await readWeDropProduct(auth.shopId,kitLink?
+      {sku:kitLink.mainSku}:{sku,itemId,modelId}):null;
     if(['all','technical'].includes(selectedStage))
       assertShopeeSupplierBrand({record,attributes:reviewState.stages?.technical?.reviewed?
         reviewState.attributes||[]:[],supplier:supplierForBrand});
