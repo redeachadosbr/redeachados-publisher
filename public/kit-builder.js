@@ -175,6 +175,13 @@ async function kitWizardResumeTargetForExecution(){
 let kitWizardExecutionOpening=false,kitWizardExecutionIntent=false;
 let kitWizardImagesSyncedFor='';
 let kitWizardVideoSyncedFor='';
+async function kitWizardAwaitBounded(promise,ms,name){
+ let timer;
+ try{return await Promise.race([Promise.resolve(promise),
+  new Promise((_,reject)=>{timer=setTimeout(()=>
+   reject(Error(name+' não respondeu; os dados salvos continuam preservados.')),ms);})]);
+ }finally{clearTimeout(timer);}
+}
 async function kitWizardOpenExecutionFlow(){
  if(kitWizardExecutionOpening||kitWizardStage!==10||!prepared?.kit)return;
  kitWizardExecutionOpening=true;
@@ -218,7 +225,7 @@ async function kitWizardOpenExecutionFlow(){
      if(!existingResponse.ok)throw Error(existing.error||'Vídeo não consultado');
      let asset=existing.asset;
      if(!asset){
-      const local=await kitVideoStore.get(kitSku);
+      const local=await kitWizardAwaitBounded(kitVideoStore.get(kitSku),20000,'Carregamento do vídeo salvo');
       if(!local?.blob)throw Error('O vídeo não está salvo neste navegador');
       if(notice){notice.hidden=false;notice.textContent='Importando vídeo ao editor original da SKU (sem publicar)...';}
       const ext=String(local.name||'video.mp4').toLowerCase().split('.').pop();
@@ -232,9 +239,9 @@ async function kitWizardOpenExecutionFlow(){
       asset=result.asset;
      }
      if(!asset)throw Error('Não há vídeo disponível para aprovação');
-     const saved=await api('/api/shopee/optimizer/workflow/review',{body:{
+     const saved=await kitWizardAwaitBounded(api('/api/shopee/optimizer/workflow/review',{body:{
       sku,itemId:id,modelId,stage:'video',reviewed:true
-     }});
+     }}),30000,'Confirmação do vídeo no servidor');
      if(saved?.stages?.find(x=>x.key==='video')?.reviewed!==true)
       throw Error('O servidor ainda não confirmou a conferência do vídeo');
      kitWizardVideoSyncedFor=identity;
@@ -244,7 +251,8 @@ async function kitWizardOpenExecutionFlow(){
    }
    if(reviewed?.stages?.includes('fiscal')){
     if(notice){notice.hidden=false;notice.textContent='Conferindo os dados fiscais no Motor Matriz original, sem publicar...';}
-    const fiscal=await globalThis.RAKitSyncApprovedFiscal?.({sku,itemId:id,modelId});
+    const fiscal=await kitWizardAwaitBounded(
+     globalThis.RAKitSyncApprovedFiscal?.({sku,itemId:id,modelId}),45000,'Conferência dos dados fiscais');
     if(!fiscal?.ok)notes.push('Dados fiscais pendentes: '+
      String(fiscal?.error||'Confirmação fiscal indisponível')+
      '. Abra Dados fiscais e confira os campos originais.');
