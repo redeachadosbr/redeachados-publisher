@@ -1327,7 +1327,7 @@ function renderKitPricingSummary(kit=prepared?.kit){
  const main=[kitRememberedMain(kit),prepared?.optimization?.mainSku,former,$('#kitOptimizeMainSku')?.value]
   .find(x=>x&&parts.some(p=>p.sku===x));
  select.value=main||'';select.disabled=!parts.length;
- const validCosts=parts.length>=2&&parts.length<=3&&
+ const validCosts=parts.length>=2&&parts.length<=4&&
   parts.every(p=>Number.isFinite(Number(p.unitCost))&&Number(p.unitCost)>0)&&
   Number.isFinite(Number(kit?.componentCost))&&Number(kit?.componentCost)>0&&
   Math.abs(parts.reduce((sum,p)=>sum+Number(p.unitCost),0)-Number(kit?.componentCost))<=0.02;
@@ -2523,8 +2523,8 @@ function kitManualControls(kit,{editor=false}={}){
   label.append(inputWrap);fields.append(label);
   line.append(fields);
   const button=elt('button','kit-manual-apply',mode==='add'?'⊕  Adicionar SKU + recalcular':'⇄  Substituir SKU + recalcular');
-  button.type='button';button.disabled=mode==='add'&&kit.components.length>=3;
-  button.title=button.disabled?'Máximo de 3 produtos por kit':name;
+  button.type='button';button.disabled=mode==='add'&&kit.components.length>=4;
+  button.title=button.disabled?'Máximo de 4 produtos por kit':name;
   line.append(button);
   button.addEventListener('click',async()=>{
    if(kitCompositionBusy||marginUpdatePending)return;
@@ -2559,7 +2559,7 @@ function kitManualControls(kit,{editor=false}={}){
   });
   return line;
  };
- if(kit.components.length<3)root.append(row('Adicionar SKU complementar','add'));
+ if(kit.components.length<4)root.append(row('Adicionar SKU complementar','add'));
  root.append(row('Substituir SKU existente','replace'));
  if(!editor)root.append(feedback);
  return root;
@@ -3600,8 +3600,8 @@ function kitParseUploadedJson(raw,limit=20){
  for(let i=0;i<entries.length;i++){
   const item=entries[i];
   const sourceSkus=Array.isArray(item)?item:item?.skus;
-  if(!Array.isArray(sourceSkus)||![2,3].includes(sourceSkus.length)){
-   errors.push('Kit '+(i+1)+': precisa conter 2 ou 3 SKUs.');continue;
+  if(!Array.isArray(sourceSkus)||![2,3,4].includes(sourceSkus.length)){
+   errors.push('Kit '+(i+1)+': precisa conter 2 a 4 SKUs.');continue;
   }
   const skus=sourceSkus.map(v=>typeof v==='string'?v.trim().toUpperCase():'');
   if(skus.some(v=>!v||v.length>120||!/^[A-Z0-9][A-Z0-9._-]*$/.test(v))||
@@ -3791,7 +3791,7 @@ async function importPlusSuggestions({readClipboard=false,silent=false,uploadedT
   // Colar cada SKU em uma linha e uma importação MANUAL direta (não pesquisa).
   // A whitelist do filtro de categoria pode omitir SKUs de kits complementares.
   // Neste formato explícito, só o servidor valida SKUs, custos e estoque reais.
-  const manualBlock=!fileParsed?parseManualKitSkuBlock(response,{size:selectedContext.size,limit:20}):null;
+  const manualBlock=!fileParsed?parseManualKitSkuBlock(response,{limit:20}):null;
   const context=manualBlock||fileParsed?selectedContext:await kitChatEnsureFreshResearch();
   const parsed=fileParsed||manualBlock||kitChatExtractLines(
    response,context.size,kitChatPending.candidateSkus,context.desiredKits);
@@ -4174,7 +4174,7 @@ function kitCanonicalTextProducts(kitSku,components=[]){
  const normalized=s=>String(s||'').toUpperCase().replace(/[^A-Z0-9]/g,'');
  const ids=String(kitSku||'').toUpperCase().replace(/^KIT[-_]/,'')
   .split('-').map(normalized).filter(Boolean);
- if(parts.length<2||parts.length>3||new Set(parts.map(p=>normalized(p.sku))).size!==parts.length)
+ if(parts.length<2||parts.length>4||new Set(parts.map(p=>normalized(p.sku))).size!==parts.length)
   throw Error('A composição do kit está incompleta. Reabra o rascunho antes de importar.');
  const positions=new Map(ids.map((id,index)=>[id,index]));
  if(ids.length!==parts.length||parts.some(p=>!positions.has(normalized(p.sku))))
