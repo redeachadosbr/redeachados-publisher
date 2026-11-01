@@ -65,6 +65,18 @@ export function supplierProductDimensions(text){
  if(match&&match.slice(1,4).every(x=>Number(sizeNumber(x))>0))
   return {height:sizeNumber(match[1]),width:sizeNumber(match[2]),length:sizeNumber(match[3]),
    value:match.slice(1,4).map(sizeNumber).join(' x ')+' cm',provenance:match[0]};
+ // Suportes e recipientes redondos: altura e diâmetro DO PRODUTO,
+ // não as dimensões logísticas de embalagem. Para a ficha C × L × A,
+ // a projeção circular tem largura e comprimento iguais ao diâmetro.
+ // Devolver sempre a origem, para o vendedor validar antes da publicação.
+ const circular=/\\b(?:dimens(?:oes|ao)|medidas?)\\s*(?:do\\s+produto)?\\s*[:\\-]\\s*(\\d{1,4}(?:[.,]\\d{1,2})?)\\s*cm\\s*(?:de\\s+)?altura\\s*[x×;,]+\\s*(\\d{1,4}(?:[.,]\\d{1,2})?)\\s*cm\\s*(?:de\\s+)?diametro\\b/i;
+ const cylinder=plain(source).match(circular);
+ if(cylinder&&!/(?:dimens(?:oes|ao)|medidas?)\\s+(?:da|de)\\s+(?:embalagem|caixa|pacote)/i.test(cylinder[0])){
+  const height=sizeNumber(cylinder[1]),diameter=sizeNumber(cylinder[2]);
+  if(Number(height)>0&&Number(diameter)>0&&Number(height)<10000&&Number(diameter)<10000)
+   return {height,width:diameter,length:diameter,value:[height,diameter,diameter].join(' x ')+' cm',
+    provenance:cylinder[0],derivedFromDiameter:true};
+ }
  // Catálogo WeDrop copiado da ficha técnica: rótulos em linhas separadas.
  // Ex.: ALTURA [quebra] 28cm [quebra] LARGURA [quebra] 40cm.
  // Não usar dimensões logísticas nem escolher entre variantes diferentes.
@@ -234,6 +246,19 @@ export function supplierAttributeSuggestions({attributes=[],proposed=[],supplier
       suggest(attr,value,evidence,{onlyIfMissing:true});
      }
     }
+  }else if(/^(?:indicacao|indicacao de uso|indication|indication of use|uso indicado|finalidade)$/.test(n)){
+   // Os fatos de kit frequentemente sao salvos em paragrafo unico:
+   // "Indicação: Higienização de vasos sanitários Composição: PP...".
+   // Nunca usar medida ou material como finalidade do produto.
+   for(const src of sources.filter(x=>x.label!=='Descrição existente do anúncio (conferir com fabricante)')){
+    const candidate=plain(src.text).match(/\\b(?:indicacao(?: de uso)?|finalidade|uso indicado)\\s*[:\\-]\\s*([^\\n.;!?]{5,130}?)(?=\\s+(?:composicao|material|cor|peso|modelo|dimensoes|contem|itens inclusos)\\s*:|[.;!?]|$)/i);
+    if(candidate){
+     const usage=candidate[1].trim();
+     if(!/^(?:\\d|dimens|altura|largura|comprimento|diametro)/.test(usage))
+      suggest(attr,usage,src.label+' — indicação de uso expressa na ficha desta SKU.',{onlyIfMissing:true});
+     break;
+    }
+   }
   }else if(/^(?:quantidade|quantity)$/.test(n)){
    if(confirmed.quantity)suggest(attr,confirmed.quantity,
     'Informações WeDrop da SKU · '+confirmed.packageEvidence,{onlyIfMissing:true});
@@ -280,9 +305,11 @@ export function supplierAttributeSuggestions({attributes=[],proposed=[],supplier
    // Não transpor a ordem: na categoria, Dimension (L x W x H)
    // significa comprimento x largura x altura.
    if(dims)suggest(attr,[dims.length,dims.width,dims.height].join(' x ')+' cm',
-    dimSource+' — dimensões montadas do produto (C x L x A), não embalagem.',{onlyIfMissing:true});
+    dimSource+' — dimensões do produto (C x L x A), não embalagem.'+
+    (dims.derivedFromDiameter?' Comprimento/largura equivalem ao diâmetro de seção circular; conferir base.':''),{onlyIfMissing:true});
   }else if(isDimensions(n)){
-   if(dims)suggest(attr,dims.value,dimSource+' — medidas do produto (A x L x C); NÃO são dimensões da embalagem.',{onlyIfMissing:true});
+   if(dims)suggest(attr,dims.value,dimSource+' — medidas do produto (A x L x C); NÃO são dimensões da embalagem.'+
+    (dims.derivedFromDiameter?' Comprimento/largura derivados do diâmetro circular; conferir base.':''),{onlyIfMissing:true});
   }else if(isPackageDimensions(n)){
    // Never conflate with product dimensions. Catalogue CSV sizes have uncertain
    // shipping meaning and therefore remain review-only.
@@ -433,7 +460,9 @@ export function supplierAttributeSuggestions({attributes=[],proposed=[],supplier
  if(confirmed.inmetroReference)metrics.push({name:'Referência INMETRO informada pelo fornecedor',value:confirmed.inmetroReference,
   note:'Não é certificação conferida. Validar identificação e situação no registro oficial antes de publicar.'});
  if(dims)metrics.push({name:'Dimensões do produto (A × L × C)',value:dims.value,
-  note:dimSource+'; confirmar medidas montadas. Não utilizar dimensões logísticas.'});
+  note:dimSource+'; '+(dims.derivedFromDiameter?
+   'Comprimento/largura derivados do diâmetro; confirme se a base tem a mesma medida.':
+   'confirmar medidas montadas.')+' Não utilizar dimensões logísticas.'});
  const capacity=declaredCapacity;
  if(capacity)metrics.push({name:'Capacidade',value:capacity.amount+' '+capacity.unit,
    note:capacity.source+' · somente da SKU selecionada.'});
