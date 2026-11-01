@@ -4326,12 +4326,21 @@ for(const selector of ['#kitMainSku','#kitLogisticId','#kitWeightKg','#kitLength
  '#kitContentsReviewed','#kitPhotosReviewed','#kitSingleParcelConfirmed','#kitTitle','#kitDescription']){
  $(selector)?.addEventListener('change',clearKitPublishApproval);
 }
+$('#kitMainSku')?.addEventListener('change',()=>{
+ const main=$('#kitMainSku').value;
+ if(!prepared?.kit?.components?.some(p=>String(p.sku)===main))return;
+ const lower=$('#kitOptimizeMainSku');
+ if(lower&&lower.value!==main){
+  lower.value=main;lower.dispatchEvent(new Event('change',{bubbles:true}));
+ }
+ kitApplyMainSkuOrder(main);
+});
 
 $('#kitRefreshDrafts')?.addEventListener('click',()=>void loadDrafts());
 $('#kitTitle')?.addEventListener('input',()=>{
  const heading=$('#kitSkuTitle');
  if(heading&&prepared)heading.textContent=$('#kitTitle').value.trim()||
-  prepared.kit.components.map(p=>p.name).join(' + ');
+  kitOrderedComponents().map(p=>p.name).join(' + ');
 });
 $('#kitToggleComposition')?.addEventListener('click',()=>{
  kitSetCompositionCollapsed(!$('#kitCompositionContent').hidden);
