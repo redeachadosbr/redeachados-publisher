@@ -89,15 +89,32 @@ export function parseKitChatResult(input,{allowedCodes=[],limit=10,size=null}={}
 // Esta entrada explicita nao depende do filtro de pesquisa/categoria:
 // o servidor valida catalogo real, estoque, custos e calcula o preco.
 // Nunca reduzir a lista removendo uma SKU desconhecida.
-export function parseManualKitSkuBlock(input){
+// Entrada livre: SKUs separadas por espaços, quebras, vírgulas, ponto e
+// vírgula, + ou |. Com 4+ SKUs, criar combinações de 2 OU 3 conforme
+// a opção escolhida pelo vendedor, nunca um kit com quatro componentes.
+export function parseManualKitSkuBlock(input,{size=null,limit=20}={}){
  if(typeof input!=='string')return null;
  const raw=input.replace(/^\uFEFF/,'').trim();
- if(!raw||raw.length>10000||!/[\r\n]/.test(raw))return null;
- const codes=raw.split(/\r?\n/).map(line=>line.trim()).filter(Boolean);
- if(codes.length<2||codes.length>3)return null;
- if(codes.some(x=>!(/^[A-Za-z0-9][A-Za-z0-9._-]{0,119}$/.test(x))))return null;
- const skus=codes.map(asSku);
- if(new Set(skus).size!==skus.length)
-  throw Error('A importação manual possui SKUs repetidas. Informe 2 ou 3 SKUs diferentes.');
- return {kits:[skus],size:skus.length,sourceCount:1,rejected:0,format:'manual'};
+ if(!raw||raw.length>10000||/^[\\[{]/.test(raw))return null;
+ if(!Number.isInteger(limit)||limit<1||limit>20)return null;
+ const lines=raw.split(/\\r?\\n/).map(x=>x.trim()).filter(Boolean);
+ // Não confundir tabela/descritivo/JSON com entrada direta de SKUs.
+ if(lines.some(line=>/\\s\\|\\s/.test(line)&&/\\bkit\\b|\\bpre[cç]o\\b/i.test(line)))return null;
+ if(/(?:^|\\n)\\s*(?:kit|produto|componentes|skus?)\\s*:/i.test(raw))return null;
+ const tokens=raw.split(/[\\s,;|+]+/).map(x=>x.trim()).filter(Boolean);
+ if(tokens.length<2||tokens.length>100||
+    tokens.some(x=>!/^[A-Za-z0-9][A-Za-z0-9._-]{0,119}$/.test(x)))return null;
+ const codes=tokens.map(asSku);
+ if(new Set(codes).size!==codes.length)
+  throw Error('A importação manual possui SKUs repetidas. Informe SKUs diferentes.');
+ const target=[2,3].includes(size)?size:Math.min(3,codes.length);
+ const kits=[];
+ for(let i=0;i<codes.length&&kits.length<limit;i++)
+  for(let j=i+1;j<codes.length&&kits.length<limit;j++){
+   if(target===2){kits.push([codes[i],codes[j]]);continue;}
+   for(let k=j+1;k<codes.length&&kits.length<limit;k++)
+    kits.push([codes[i],codes[j],codes[k]]);
+  }
+ if(!kits.length)return null;
+ return {kits,size:target,sourceCount:kits.length,rejected:0,format:'manual'};
 }
