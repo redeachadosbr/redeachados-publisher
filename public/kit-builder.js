@@ -659,6 +659,35 @@ async function kitWizardRequestFiscal({force=false}={}){
   const success=globalThis.RAKitRenderStoredFiscal?.(data)===true;
   if(!success)throw Error('O formulário fiscal original não está disponível na página.');
   kitWizardRenderFiscalSkuPresets(data);
+  const originField=$('#kitWizardFiscalMount [data-tax-field="origin"]');
+  if(originField){
+   originField.onchange=async()=>{
+    if(kitWizardStage!==8||prepared?.kit?.kitSku!==data.kitSku)return;
+    const value=String(originField.value||'').trim();
+    if(!/^[0-8]$/.test(value)){
+     kitWizardFiscalStatus('Informe um código de origem fiscal válido (0 a 8) antes de gravar.','warning');
+     return;
+    }
+    const sku=String(data.sku);
+    originField.disabled=true;
+    kitWizardFiscalStatus('Gravando origem '+value+' para a SKU '+sku+' no rascunho local...','info');
+    try{
+     const reply=await api('/api/shopee/kits/fiscal-preset/origin',{body:{
+      kitSku:data.kitSku,origins:{[sku]:value}
+     }});
+     if(reply?.saved!==true)throw Error('O servidor não confirmou a gravação.');
+     if(kitWizardStage===8&&prepared?.kit?.kitSku===data.kitSku){
+      kitWizardFiscalStatus('✓ Origem '+value+' gravada no rascunho para '+sku+'. Nada publicado na Shopee.','success');
+      const item=data.skuPresets?.find(x=>x.sku===sku);
+      if(item){item.taxDraft={...(item.taxDraft||{}),origin:value};
+       kitWizardRenderFiscalSkuPresets(data);}
+     }
+    }catch(error){
+     kitWizardFiscalStatus('Não foi possível salvar a origem: '+String(error.message||error)+
+      '. Atualize os dados fiscais e tente novamente.','error');
+    }finally{originField.disabled=false;}
+   };
+  }
   kitWizardFiscalLoadingFor=identity;
   kitWizardFiscalStatus('✓ Dados fiscais recuperados para '+(data.skuPresets?.length||1)+
    ' SKU(s). NCM individual da WeDrop e padrões da loja separados. Confira antes de marcar esta etapa. Nenhum anúncio foi consultado ou alterado.','success');
@@ -932,7 +961,7 @@ function kitWizardInit(){
   }
   kitWizardSetStage(Math.min(10,kitWizardStage+1),{scroll:true});
  });
- $('#kitWizardConfirm')?.addEventListener('click',()=>{
+ $('#kitWizardConfirm')?.addEventListener('click',async()=>{
   if(!prepared?.kit?.kitSku){status('Selecione um kit salvo para registrar a conferência.','error');return;}
   if(kitWizardStage===5){
    const editor=$('#optimizerWorkflowEditor'),technical=$('#optimizerTechnicalPanel');
@@ -944,6 +973,29 @@ function kitWizardInit(){
    kitWizardTechnicalStatus('Registrando a conferência no formulário técnico original. A Etapa 05 só será marcada após a confirmação do servidor.','info');
    review.click();
    return;
+  }
+  if(kitWizardStage===8&&!kitWizardChecked().includes(8)){
+   // Não marcar conferida a etapa fiscal quando a origem digitada não foi
+   // salva no mesmo rascunho. Cada SKU preserva seu código individual.
+   const originField=$('#kitWizardFiscalMount [data-tax-field="origin"]');
+   const chosen=String(originField?.value||'').trim();
+   const sku=String($('#kitOptimizeMainSku')?.value||$('#kitPrincipalSku')?.value||'');
+   if(!sku||!/^[0-8]$/.test(chosen)){
+    kitWizardFiscalStatus('Confira a origem fiscal (0 a 8) da SKU principal antes de marcar conferida.','warning');return;
+   }
+   const button=$('#kitWizardConfirm');
+   if(button)button.disabled=true;
+   try{
+    const result=await api('/api/shopee/kits/fiscal-preset/origin',{body:{
+     kitSku:prepared.kit.kitSku,origins:{[sku]:chosen}
+    }});
+    if(result?.saved!==true)throw Error('O servidor não confirmou a gravação.');
+    kitWizardFiscalStatus('✓ Origem fiscal '+chosen+' gravada na SKU '+sku+
+     '. Outras SKUs preservadas separadamente; nada enviado à Shopee.','success');
+   }catch(error){
+    kitWizardFiscalStatus('Conferência não registrada: '+String(error.message||error),'error');
+    return;
+   }finally{if(button)button.disabled=false;}
   }
   if(kitWizardStage===4&&!String($('#kitTitle')?.value||'').trim()){
    status('Informe e revise o título SEO antes de confirmar a etapa 02.','error');return;
