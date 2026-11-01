@@ -261,8 +261,8 @@ function themedBuyerFit(items){
   evidence:'Hipótese comercial por temática; compatibilidade, vendas e buscas não verificadas'};
 }
 export function assessKitBuyerFit(items){
- if(!Array.isArray(items)||items.length<2||items.length>3)
-  return {ok:false,score:0,reason:'Kit precisa de dois ou três produtos.'};
+ if(!Array.isArray(items)||items.length<2||items.length>4)
+  return {ok:false,score:0,reason:'Kit precisa de dois a quatro produtos.'};
  if(new Set(items.map(p=>p.sku)).size!==items.length)
   return {ok:false,score:0,reason:'SKU duplicada.'};
  const themed=themedBuyerFit(items);
@@ -450,9 +450,9 @@ export async function suggestKitsForIdea(shop,{idea,size=2,marginPct=10,packing=
 
 // Validação da alteração manual antes da cotação no servidor (não confiar no cliente).
 export function modifyKitSkus(current,{mode,sku,replaceSku}={}){
- if(!Array.isArray(current)||current.length<2||current.length>3||
+ if(!Array.isArray(current)||current.length<2||current.length>4||
    current.some(x=>typeof x!=='string'||!x.trim()))
-  throw Error('O kit original precisa ter 2 ou 3 SKUs válidas.');
+  throw Error('O kit original precisa ter 2 a 4 SKUs válidas.');
  const input=String(sku||'').trim();
  if(!input||input.length>120)throw Error('Informe uma SKU da WeDrop válida.');
  if(!['add','replace'].includes(mode))throw Error('Escolha adicionar ou substituir SKU.');
@@ -460,7 +460,7 @@ export function modifyKitSkus(current,{mode,sku,replaceSku}={}){
  if(normalized.some(x=>x.toLowerCase()===input.toLowerCase()))
   throw Error('Essa SKU já faz parte do kit.');
  if(mode==='add'){
-  if(normalized.length>=3)throw Error('Máximo de 3 SKUs por kit. Use Substituir SKU.');
+  if(normalized.length>=4)throw Error('Máximo de 4 SKUs por kit. Use Substituir SKU.');
   return [...normalized,input];
  }
  const old=String(replaceSku||'').trim();
@@ -475,8 +475,8 @@ export function kitSku(skus){
 export async function composeKit(shop,skus,{marginPct=15,packing=0,shipping=0}={}){
  const [items,stock]=await Promise.all([readCatalog(shop),readKitStockSnapshot(shop)]);
  assertKitStockSnapshot(stock);
- if(!Array.isArray(skus)||skus.length<2||skus.length>3||new Set(skus).size!==skus.length)
-  throw Error('Selecione dois ou três SKUs distintos da WeDrop.');
+ if(!Array.isArray(skus)||skus.length<2||skus.length>4||new Set(skus).size!==skus.length)
+  throw Error('Selecione dois a quatro SKUs distintos da WeDrop.');
  const lookup=new Map(items.map(x=>[x.sku,x]));
  const products=skus.map(x=>{
   const p=lookup.get(String(x));
@@ -508,7 +508,7 @@ export async function composeKit(shop,skus,{marginPct=15,packing=0,shipping=0}={
 }
 export function kitPrompts(kit,{manualFacts={}}={}){
  const components=Array.isArray(kit?.components)?kit.components:[];
- if(components.length<2||components.length>3)throw Error('Imagens exigem 2 ou 3 SKUs reais do kit.');
+ if(components.length<2||components.length>4)throw Error('Imagens exigem 2 a 4 SKUs reais do kit.');
  const allowed=new Set(components.map(p=>String(p.sku)));
  const safeFacts=manualFacts&&typeof manualFacts==='object'&&!Array.isArray(manualFacts)?manualFacts:{};
  if(Object.keys(safeFacts).some(sku=>!allowed.has(sku)))throw Error('Dados atribuídos a uma SKU fora deste kit.');
@@ -530,7 +530,7 @@ export function kitPrompts(kit,{manualFacts={}}={}){
   'Identificador do kit: '+String(kit.kitSku||'kit').slice(0,120)+'. Componentes exatos: '+exact+'.',
   'FOTOGRAFIAS ORIGINAIS: receber as fotos individuais da WeDrop; imagem de referência 1 = SKU 1, imagem 2 = SKU 2, e imagem 3 = SKU 3 (se houver). Preservar cores, formas, acabamento, proporções, texturas, peças e acessórios originalmente mostrados.',
   descriptions,
-  'REGRA CRÍTICA: nesta imagem TODOS OS '+components.length+' SKUS devem aparecer simultaneamente JUNTOS na MESMA CENA, completos, sem um esconder outro. Kit de 2 = UMA DUPLA visível; kit de 3 = TODOS os três visíveis. Nunca mostrar apenas a SKU principal. Nunca separar em duas fotos, quadros ou mosaico.',
+  'REGRA CRÍTICA: nesta imagem TODOS OS '+components.length+' SKUS devem aparecer simultaneamente JUNTOS na MESMA CENA, completos, sem um esconder outro. Todos os 2 a 4 produtos devem estar visíveis. Nunca mostrar apenas a SKU principal. Nunca separar em duas fotos, quadros ou mosaico.',
   'CRIE SOMENTE UMA IMAGEM FINAL para a posição solicitada. Há 9 posições independentes; não gerar colagem, grade, sequência ou os nove quadros juntos.',
   'IMAGEM COMERCIAL QUADRADA 1:1 DE 1200 × 1200 PIXELS. Luz premium, nitidez HD, fundo ambientado realista e moderno, aparência fotográfica. Variar cenário, perspectiva, enquadramento e disposição entre as posições, mantendo fidelidade integral aos componentes.',
   'Não inventar marca, função, idade, material, dimensão, certificação, peça, brinde, acessório nem produto extra. Não deformar, fundir, duplicar, trocar ou omitir SKUs. Não incluir terceiros itens que pareçam produtos inclusos.',
@@ -612,7 +612,7 @@ export async function kitCreative(shop,kit,{ai=true}={}){
 // Para pesquisas extensas, entrega um TXT que o vendedor anexa ao ChatGPT;
 // nenhum dado privado/tokens é enviado e não há limite artificial de 110 SKUs.
 export async function kitPlusResearchBrief(shop,{category='Brinquedos',size=2,idea='',desiredKits=10}={}){
- if(![2,3].includes(Number(size)))throw Error('Escolha dois ou três SKUs por kit.');
+ if(![2,3].includes(Number(size)))throw Error('Escolha dois a quatro SKUs por kit.');
  if(!Number.isInteger(Number(desiredKits))||Number(desiredKits)<5||Number(desiredKits)>20)
   throw Error('Escolha entre 5 e 20 kits sugeridos.');
  const fileCategory=String(category).normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase().replace(/[^a-z0-9]+/g,'-').replace(/^-|-$/g,'').slice(0,60)||'categoria';
@@ -688,7 +688,7 @@ export async function kitPlusResearchBrief(shop,{category='Brinquedos',size=2,id
 }
 export function kitContentBrief(kit,{manualFacts={},keywordResearch=null}={}){
  const parts=kit?.components||[];
- if(parts.length<2||parts.length>3)throw Error('O kit precisa ter 2 ou 3 SKUs.');
+ if(parts.length<2||parts.length>4)throw Error('O kit precisa ter 2 a 4 SKUs.');
  if(!manualFacts||typeof manualFacts!=='object'||Array.isArray(manualFacts))throw Error('Dados adicionais inválidos.');
  const keys=new Set(parts.map(x=>String(x.sku)));
  if(Object.keys(manualFacts).some(x=>!keys.has(x)))throw Error('SKU adicional não pertence ao kit.');
