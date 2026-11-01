@@ -2626,7 +2626,7 @@ app.post('/api/shopee/optimizer/execution/prepare',mustLogin,requireWeDropAdmin,
      plan.warnings.push('Ficha técnica: recuperação validada do rascunho aprovado desta SKU. '+
       (reviewState.attributes?.length||0)+' campo(s) elegível(is) conferidos para a prévia; '+
       (reviewState._technicalSkipped?.length||0)+' campo(s) opcional(is) incompatível(is) mantidos como pendência.');
-    if(plan.finalFiscal&&['all','remaining'].includes(selectedStage)){
+    if(plan.finalFiscal&&['all','remaining','media_fiscal'].includes(selectedStage)){
       // A última etapa usa o mesmo vínculo WeDrop/NCM que a execução fiscal isolada.
       // A verificação precisa usar a fonte real, inclusive para kits.
       const supplier=await readWeDropProduct(auth.shopId,{sku,itemId,modelId});
@@ -3030,7 +3030,7 @@ app.post('/api/shopee/optimizer/execution/execute',mustLogin,requireWeDropAdmin,
    plan.mediaArchive=archiveShopeeMedia(job,plan);
   }
   let commercialDiscount=null;
-  if(['all','remaining'].includes(plan.selectedStage)&&plan.fiscalDeferred)
+  if(['all','remaining','media_fiscal'].includes(plan.selectedStage)&&plan.fiscalDeferred)
    throw Error('Etapa fiscal pendente: revise os dados fiscais antes de aprovar o desconto final.');
   // Kit composto: primeiro o anuncio, depois a promocao do kit pela rota
   // especifica, apenas apos a execucao ser confirmada pela Shopee.
