@@ -27,7 +27,7 @@ export function shopeeExecutionProgress(job){
  const plan=job.plan||{},result=job.result||{};
  const state=String(job.state||''),phase=String(result.phase||'');
  const pendingOnly=plan.selectedStage==='remaining';
- const fullWorkflow=plan.selectedStage==='all'||pendingOnly;
+ const fullWorkflow=plan.selectedStage==='all'||pendingOnly||plan.selectedStage==='media_fiscal';
  const media=plan.reusedMedia||{};
  const imageIds=arr(result.imageIds).length?arr(result.imageIds):arr(media.imageIds);
  const readyVideo=(result.video||media.video)?.phase==='ready';
@@ -118,7 +118,7 @@ export function shopeeExecutionProgress(job){
  };
  const steps=SHOPEE_MATRIX_8_STAGES.map(({id,label})=>{
   let status;
-  if(id==='discount'&&fullWorkflow&&!discountIncluded)
+  if(id==='discount'&&fullWorkflow&&plan.selectedStage!=='media_fiscal'&&!discountIncluded)
     status=state==='prepared'?'authorization':'review';
   else if(!needs[id])status='skipped';
   else if(done[id])status='done';
@@ -167,7 +167,7 @@ export function shopeeExecutionProgress(job){
   description:'SOMENTE DESCRIÇÃO',technical:'SOMENTE FICHA TÉCNICA',
   fiscal:'SOMENTE FISCAL',remaining:'SOMENTE VARIAÇÕES, FISCAL E DESCONTO',discount:'SOMENTE DESCONTO',discount_adjust:'PREÇO BRUTO + DESCONTO',variants:'SOMENTE VARIAÇÕES'};
  const partial=plan.selectedStage&&plan.selectedStage!=='all';
- const partialName=modeLabels[plan.selectedStage]||'ETAPA ISOLADA';
+ const partialName=(plan.selectedStage==='media_fiscal'?'SOMENTE IMAGENS + VÍDEO + FISCAL':modeLabels[plan.selectedStage])||'ETAPA ISOLADA';
  const title=fiscalPartial?'Dados fiscais pendentes de correção':
   verified?'Etapas aprovadas confirmadas':state==='uncertain'?'Confirmação pendente':
   state==='failed'?'Execução interrompida':state==='blocked'?'Pendências para executar':
