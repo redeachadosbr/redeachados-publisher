@@ -2871,10 +2871,13 @@ function chatgptHandoff(prompt){
  // Por segurança a nova aba não recebe acesso à janela da loja.
  // Com noopener o navegador pode retornar null mesmo tendo aberto a aba.
 }
-async function uploadPhoto(slot,file,{quiet=false,kitSku=prepared?.kit?.kitSku,referenceDataUrl=null}={}){
+async function uploadPhoto(slot,file,{quiet=false,kitSku=prepared?.kit?.kitSku,referenceDataUrl=null,throwOnError=false}={}){
  if(!file)return false;
  if(!['image/png','image/jpeg','image/webp'].includes(file.type)||file.size>12*1024*1024||file.size===0){
-  imageStatus('Imagem '+slot+': envie PNG, JPG ou WebP até 12 MB.','error');return false;
+  const error=Error('Imagem '+slot+': envie PNG, JPG ou WebP até 12 MB.');
+  imageStatus(error.message,'error');
+  if(throwOnError)throw error;
+  return false;
  }
  try{
   if(slot===1){
@@ -2894,6 +2897,10 @@ async function uploadPhoto(slot,file,{quiet=false,kitSku=prepared?.kit?.kitSku,r
    const dataUrl=canvas.toDataURL('image/png');
    // Persistência antes da confirmação enviada à extensão.
    await kitPhotoStore.put(kitSku,slot,dataUrl);
+   // A gravação deve existir no IndexedDB antes de confirmar à extensão.
+   const confirmed=(await kitPhotoStore.list(kitSku))
+    .find(row=>row.slot===slot&&row.dataUrl===dataUrl);
+   if(!confirmed)throw Error('IndexedDB não confirmou a imagem na posição '+slot+'.');
    if(prepared?.kit?.kitSku!==kitSku)throw Error('A composição mudou enquanto salvava a imagem.');
    images.set(slot,dataUrl);
    kitInvalidatePhotoPositions([slot]);
@@ -2902,7 +2909,37 @@ async function uploadPhoto(slot,file,{quiet=false,kitSku=prepared?.kit?.kitSku,r
   kitAutoImageUi();
   if(!quiet)imageStatus('Imagem '+slot+' importada em PNG 1200 × 1200 para conferência. Imagens permanecem nesta aba e não são publicadas.','success');
   return true;
- }catch(error){imageStatus('Falha ao importar imagem: '+error.message,'error');return false;}
+ }catch(error){
+  imageStatus('Falha ao importar imagem '+slot+': '+String(error.message||error),'error');
+  if(throwOnError)throw error;
+  return false;
+ }
+}
+// Um único caminho de validação para recebimento da Ponte e reimportação
+// da cópia pendente: não marcar como salva até IndexedDB confirmar.
+async function kitAcceptBridgePhoto({slot,dataUrl,kitSku,referenceDataUrl=null}){
+ if(!prepared?.kit||prepared.kit.kitSku!==kitSku)
+  throw Error('O kit em edição mudou; reabra o kit original.');
+ if(!Number.isInteger(Number(slot))||Number(slot)<1||Number(slot)>9)
+  throw Error('Posição de foto inválida para este kit.');
+ if(typeof dataUrl!=='string'||dataUrl.length>28*1024*1024||
+   !/^data:image\\/(?:png|jpeg|webp);base64,/i.test(dataUrl))
+  throw Error('A Ponte não enviou uma imagem PNG, JPG ou WebP válida.');
+ if(Number(slot)>1&&images.size){
+  const sample=await kitPictureSample(dataUrl);
+  for(const [other,old] of images){
+   if(other===Number(slot))continue;
+   const previous=await kitPictureSample(old);
+   if(kitImagesLookDuplicated(sample,previous))
+    throw Error('Imagem repetida da posição '+other+'; selecione outra imagem gerada no ChatGPT.');
+  }
+ }
+ const blob=await(await fetch(dataUrl)).blob();
+ if(blob.size>12*1024*1024||!/^image\\/(?:png|jpeg|webp)$/.test(blob.type))
+  throw Error('Arquivo devolvido pela Ponte excede 12 MB ou possui formato inválido.');
+ const ext=blob.type==='image/jpeg'?'jpg':blob.type==='image/webp'?'webp':'png';
+ return uploadPhoto(Number(slot),new File([blob],'kit-ext-'+slot+'.'+ext,{type:blob.type}),
+  {quiet:true,kitSku,referenceDataUrl,throwOnError:true});
 }
 function kitImageFileAllowed(file){
  return /\.(png|jpe?g|webp)$/i.test(file?.name||'')&&
@@ -3748,27 +3785,19 @@ function getKitExtensionBridge(){
   getKit:()=>kitForImageReferences(),
   getPrompts:()=>Array.from({length:9},(_,i)=>kitImagePromptAt(i+1)),
   getImages:()=>images,
-  onPhoto:async({slot,dataUrl,kitSku,referenceDataUrl})=>{
-   // Evitar usar a própria capa como imagem 02 ou reaproveitar uma foto já aceita.
-   if(prepared?.kit?.kitSku!==kitSku)throw Error('O kit mudou durante a recuperação.');
-   if(slot>1&&images.size){
-    const sample=await kitPictureSample(dataUrl);
-    for(const [other,old] of images){
-     if(other===slot)continue;
-     const previous=await kitPictureSample(old);
-     if(kitImagesLookDuplicated(sample,previous))
-      throw Error('FOTO REPETIDA OU QUASE IDÊNTICA À POSIÇÃO '+
-       String(other).padStart(2,'0')+'. A imagem '+String(slot).padStart(2,'0')+
-       ' não foi importada. Na Ponte, use Excluir da lista e gere uma cena diferente para esta posição.');
-    }
-   }
-   const blob=await(await fetch(dataUrl)).blob();
-   if(blob.size>12*1024*1024||!/^image\/(?:png|jpeg|webp)$/.test(blob.type))
-    throw Error('Arquivo devolvido pela extensão não é imagem válida.');
-   const ext=blob.type==='image/jpeg'?'jpg':blob.type==='image/webp'?'webp':'png';
-   return uploadPhoto(slot,new File([blob],'kit-ext-'+slot+'.'+ext,{type:blob.type}),
-    {quiet:true,kitSku,referenceDataUrl});
+  onCapture:async({slot,dataUrl,kitSku,nonce})=>{
+   await kitPhotoStore.putPending(kitSku,slot,dataUrl,{nonce});
+   void kitShowCapturedRecovery(kitSku);
   },
+  onUploadFailed:async({slot,kitSku,error})=>{
+   await kitPhotoStore.markPendingFailure(kitSku,slot,error);
+   void kitShowCapturedRecovery(kitSku);
+  },
+  onConfirmed:async({slot,kitSku})=>{
+   await kitPhotoStore.removePending(kitSku,slot);
+   void kitShowCapturedRecovery(kitSku);
+  },
+  onPhoto:kitAcceptBridgePhoto,
   onProgress:slot=>kitSetImageProgress(images.size,9,
    'Ponte ChatGPT · imagem '+slot+'/09 · '+images.size+' salvas'),
   onStatus:(msg,state)=>{
