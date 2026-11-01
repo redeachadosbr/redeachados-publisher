@@ -372,48 +372,88 @@ export function initExistingKitOptimization({getContext,api,money,onMainSkuChang
   if(!png)throw Error('Não foi possível converter esta foto em PNG.');
   return png;
  }
- async function transferImages({automatic=false,optional=false}={}){
-  if(busy||!target?.prepared)return;
+ // Nunca deixar a Etapa 10 presa sem resposta de upload/IndexedDB.
+ async function kitImageBridgeBounded(promise,ms,description){
+  let timer;
+  try{
+   return await Promise.race([
+    Promise.resolve(promise),
+    new Promise((_,reject)=>{timer=setTimeout(()=>
+     reject(Error(description+' excedeu o limite de espera. Os arquivos já salvos foram preservados.')),ms);})
+   ]);
+  }finally{clearTimeout(timer);}
+ }
+ async function transferImages({automatic=false,optional=false,onProgress=null}={}){
+  const tell=(message,phase='info')=>{
+   notice(message,phase);
+   try{onProgress?.(message);}catch{}
+  };
+  if(busy){
+   tell('A importação de imagens já está ocupada. Aguarde ou retome após a operação anterior.','warning');
+   return false;
+  }
+  if(!target?.prepared){
+   tell('O vínculo do anúncio ainda não carregou para importar as imagens.','error');
+   return false;
+  }
   const selected={...target},current=kitSku(),{images,kitPhotoStore}=ctx();
   busy=true;paint();
   try{
-   const saved=await kitPhotoStore.list(current);
+   tell('Localizando as nove fotos salvas do kit...','info');
+   const saved=await kitImageBridgeBounded(kitPhotoStore.list(current),20000,'Leitura das fotos salvas');
    for(const row of saved){
     if(Number.isInteger(row.slot)&&row.slot>=1&&row.slot<=9&&!images.has(row.slot))
      images.set(row.slot,row.dataUrl);
    }
-   if(Array.from({length:9},(_,i)=>i+1).some(n=>!images.has(n))){
+   const missing=Array.from({length:9},(_,i)=>i+1).filter(n=>!images.has(n));
+   if(missing.length){
+    const message='Faltam imagens salvas nas posições '+missing.map(n=>String(n).padStart(2,'0')).join(', ')+'.';
+    tell(message,'warning');
     if(optional)return false;
-    throw Error('Complete as nove imagens do kit antes de importar para revisão.');
+    throw Error(message);
    }
    if(!automatic&&!window.confirm('Importar 9 imagens para a REVISÃO do Item ID '+selected.itemId+
-    '? A Shopee ainda não terá imagens publicadas.'))return;
+    '? A Shopee ainda não terá imagens publicadas.'))return false;
    for(let slot=1;slot<=9;slot++){
     if(kitSku()!==current||target?.itemId!==selected.itemId)
      throw Error('O kit ou Item ID mudou durante a importação.');
-    notice('Importando imagem '+slot+'/9 para a revisão do Item ID '+selected.itemId+'...');
+    tell('Importando imagem '+slot+' de 9 para a SKU '+selected.sku+' (sem publicar)...','info');
     globalThis.RAKitLookupPhase?.('Importacao de imagens: '+slot+'/9 para revisao, sem publicar.');
-    const blob=await convert(images.get(slot));
+    const blob=await kitImageBridgeBounded(convert(images.get(slot)),25000,
+     'Conversão da imagem '+slot);
     const params=new URLSearchParams({kit_sku:current,slot:String(slot)});
-    const response=await fetch('/api/shopee/kits/optimization/image?'+params,{
-     method:'POST',headers:{'Content-Type':blob.type},body:blob
-    });
-    const result=await response.json().catch(()=>({}));
-    if(!response.ok)throw Error('Imagem '+slot+': '+(result.error||'não confirmada'));
+    let response;
+    try{
+     response=await fetch('/api/shopee/kits/optimization/image?'+params,{
+      method:'POST',headers:{'Content-Type':blob.type},body:blob,
+      signal:AbortSignal.timeout(65000)
+     });
+    }catch(error){
+     throw Error('Imagem '+slot+'/9: conexão ou servidor sem resposta ('+
+      String(error.name==='TimeoutError'?'tempo limite de 65 segundos':error.message||error)+
+      '). Confira a galeria antes de tentar novamente.');
+    }
+    const result=await kitImageBridgeBounded(response.json().catch(()=>({})),10000,
+     'Resposta da imagem '+slot);
+    if(!response.ok)throw Error('Imagem '+slot+'/9: '+(result.error||'falha HTTP '+response.status));
+    tell('Imagem '+slot+'/9 confirmada no armazenamento privado.','info');
    }
-   const review=await api('/api/shopee/optimizer/workflow/review',{body:{
+   tell('Nove imagens vinculadas. Registrando revisão da galeria...','info');
+   const review=await kitImageBridgeBounded(api('/api/shopee/optimizer/workflow/review',{body:{
     sku:selected.sku,itemId:selected.itemId,modelId:selected.modelId,stage:'images',reviewed:true
-   }});
+   }}),30000,'Confirmação da galeria');
    if(!review?.saved||review.stages?.find(x=>x.key==='images')?.reviewed!==true)
     throw Error('Os nove arquivos foram copiados, mas a revisão não foi confirmada pelo servidor.');
    if(kitSku()===current&&target?.itemId===selected.itemId)
     globalThis.RAKitWorkflowSyncReview?.({kitSku:current,itemId:selected.itemId,modelId:selected.modelId,review});
-   notice('✓ Nove imagens da galeria vinculadas e confirmadas no rascunho Shopee, sem publicar.','success');
+   tell('✓ Nove imagens salvas e conferidas para o anúncio; nenhuma foi publicada ainda.','success');
    progressNote('✓ 9/9 imagens já prontas sincronizadas com a SKU principal.');
    return true;
-  }catch(e){notice('Importação interrompida: '+e.message+
-   '. As imagens já confirmadas permanecem armazenadas.','error');return false;}
-  finally{busy=false;paint();}
+  }catch(e){
+   tell('Importação interrompida: '+String(e.message||e)+
+    ' As posições já confirmadas continuam salvas; é possível retomar sem apagá-las.','error');
+   return false;
+  }finally{busy=false;paint();}
  }
  async function startKitOptimization(){
   const state=ctx(),kit=state.prepared?.kit;
@@ -798,7 +838,7 @@ export function initExistingKitOptimization({getContext,api,money,onMainSkuChang
  }
  // Ponte de mídia usa o carregador original, mantendo SKU, Item ID e 9 fotos
  // vinculados ao mesmo anúncio. Nenhum upload ao anúncio ocorre nesta fase.
- globalThis.RAKitTransferImagesToWorkflow=()=>transferImages({automatic:true,optional:false});
+ globalThis.RAKitTransferImagesToWorkflow=options=>transferImages({automatic:true,optional:false,...options});
  // SKU do anúncio é informativa e deriva exclusivamente da escolha principal.
  renderJourney();
  return {restore,openTechnical,openDiscount,prepareDiscountLink,resumeLiveVerifiedTarget};
