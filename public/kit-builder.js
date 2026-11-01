@@ -4201,7 +4201,21 @@ function kitCanonicalTextProducts(kitSku,components=[]){
  return [...parts].sort((a,b)=>positions.get(normalized(a.sku))-positions.get(normalized(b.sku)))
   .map(p=>({sku:String(p.sku),name:String(p.name||'').trim().slice(0,180)}));
 }
+// A Ponte 1.0.62 aceita IDs de transporte alfanuméricos, mas o catálogo
+// WeDrop usa espaços e pontos (CE420 B, UD04.0004.012). Os códigos salvos
+// continuam INTACTOS: normalizar somente o pedido de recuperação textual.
+function kitTextBridgeAliases(skus,products){
+ const key=value=>String(value||'').normalize('NFKC').toUpperCase().replace(/[^A-Z0-9-]/g,'');
+ const aliases=skus.map(key);
+ if(aliases.length<2||aliases.length>4||new Set(aliases).size!==aliases.length||
+    aliases.some(x=>!/^[-A-Z0-9]{2,80}$/.test(x))||
+    !Array.isArray(products)||products.length!==aliases.length||
+    products.some((p,i)=>key(p.sku)!==aliases[i]||!String(p.name||'').trim()))
+  throw Error('Não foi possível validar as quatro SKUs para recuperar o anúncio. O rascunho foi preservado.');
+ return {skus:aliases,products:products.map((p,i)=>({...p,sku:aliases[i]}))};
+}
 function kitFetchGeneratedTextFromPonte(kitSku,skus,products){
+ const aliases=kitTextBridgeAliases(skus,products);
  return new Promise((resolve,reject)=>{
   const nonce=crypto.randomUUID();
   let done=false,asked=false;
@@ -4219,7 +4233,7 @@ function kitFetchGeneratedTextFromPonte(kitSku,skus,products){
     if(!kitBridgeVersionSupportsText(m.version))
      return finish(Error('Sua Ponte ChatGPT precisa ser atualizada para v1.0.61 para recuperar automaticamente títulos e descrição. A versão atual não inclui a captura de texto dos kits.'));
     window.postMessage({kind:'RA_SITE_KIT_TEXT_FETCH',
-     payload:{nonce,kitSku,skus,products}},location.origin);
+     payload:{nonce,kitSku,skus:aliases.skus,products:aliases.products}},location.origin);
    }else if(m.kind==='RA_EXTENSION_KIT_TEXT_RESULT'&&m.nonce===nonce){
     // Não confundir a ordem exibida na tela com a identidade imutável do kit.
     if(String(m.kitSku||m.sku||'')!==kitSku)
