@@ -572,7 +572,14 @@ app.post('/api/shopee/kits/publish/status',mustLogin,requireWeDropAdmin,async(re
    const primaryItemIds=[...new Set(primaryCandidates.map(x=>String(x.itemId)))];
    const scan=await discoverKitDiscountCampaigns({cfg,auth,call:callShopeeShopApi,
     readPages:readDiscountPages,kitItemId,primaryItemIds});
+   // Informar separadamente: Item ID da SKU principal localizado na Shopee
+   // não é o mesmo que vínculo PREPARADO do kit para Minha Promoção.
+   const currentLink=linked&&kitOptimizationLinkIsCurrent(saved,linked)&&
+    String(linked.mainSku)===mainSku&&String(linked.sku)===mainSku&&
+    primaryCandidates.some(x=>String(x.itemId)===String(linked.itemId))?linked:null;
    res.json({ok:true,kitSku:code,mainSku,kitItemId:kitItemId?String(kitItemId):null,
+    linkedOptimization:currentLink?{sku:mainSku,
+     itemId:String(currentLink.itemId),modelId:String(currentLink.modelId||'0')}:null,
     primaryItems:primaryCandidates.map(x=>({sku:mainSku,itemId:String(x.itemId),
       modelId:String(x.modelId??'0'),status:String(x.status)})).slice(0,10),
     primaryLookupComplete:primaryCandidates.length>0,
