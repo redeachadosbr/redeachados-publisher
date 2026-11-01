@@ -425,6 +425,10 @@ async function kitWizardRequestFiscal({force=false}={}){
  }
 }
 let kitWizardDiscountPending=false;
+function kitWizardDiscountLinkButton(show=false){
+ const button=$('#kitWizardLinkDiscountItem');
+ if(button){button.hidden=!show;button.disabled=kitWizardDiscountPending;}
+}
 function kitWizardDiscountStatus(message,state='info'){
  const node=$('#kitWizardDiscountStatus');
  if(node){node.textContent=message;node.dataset.state=state;}
@@ -433,30 +437,59 @@ async function kitWizardRequestDiscount({force=false}={}){
  if(kitWizardStage!==9||!prepared?.kit)return;
  kitWizardMountTechnical();
  kitWizardMountPricing();
+ kitWizardDiscountLinkButton(false);
  if(!kitSaved){
-  kitWizardDiscountStatus('Salve o rascunho do kit antes de conferir o desconto. Os cálculos exibidos não serão publicados.','warning');
+  kitWizardDiscountStatus('Salve o rascunho antes de conferir o desconto. Os preços calculados permanecem disponíveis.','warning');
   return;
  }
- if(kitWizardDiscountPending&&!force)return;
+ if(kitWizardDiscountPending)return;
  const identity=prepared.kit.kitSku;
+ const sku=String($('#kitOptimizeMainSku')?.value||$('#kitPrincipalSku')?.value||'');
  kitWizardDiscountPending=true;
- kitWizardDiscountStatus('Recuperando a conferência original de preço e Minha Promoção da SKU principal...','info');
+ const refresh=$('#kitWizardRefreshDiscount');
+ if(refresh){refresh.disabled=true;refresh.textContent='Consultando Item ID e campanhas...';}
+ kitWizardDiscountStatus('Consultando anúncio da SKU principal '+sku+
+  ' e Minha Promoção na Shopee, sem alterar o anúncio...','info');
  try{
-  const started=await kitExistingOptimizer.openDiscount?.();
-  if(kitWizardStage!==9||prepared?.kit?.kitSku!==identity)return;
-  if(started!==true){
-   kitWizardDiscountStatus('Não foi possível vincular o anúncio. Confira o Item ID da SKU principal na Etapa 05 e volte para Desconto. Os dados e preços foram preservados.','warning');
+  const result=await kitExistingOptimizer.openDiscount?.();
+  if(kitWizardStage!==9||prepared?.kit?.kitSku!==identity||
+     String($('#kitOptimizeMainSku')?.value||'')!==sku)return;
+  if(!result?.ok){
+   kitWizardDiscountStatus('A conferência não foi atualizada: '+
+    String(result?.error||'Consulta indisponível')+
+    '. Os preços e o rascunho foram preservados.','error');
    return;
   }
+  if(!result.linked){
+   kitWizardDiscountLinkButton(Boolean(result.itemId));
+   kitWizardDiscountStatus(result.itemId?
+    '✓ Item ID '+result.itemId+' localizado para '+sku+
+    ', mas ainda não vinculado à otimização deste kit. Para revisar Minha Promoção, clique em “Vincular Item ID confirmado ao kit”. Isso prepara apenas o rascunho e NÃO publica. '+
+    (result.warning||''):
+    result.candidates>1?
+    'A Shopee encontrou '+result.candidates+' anúncios desta SKU. Selecione o Item ID correto na Etapa 05, volte e atualize a conferência.':
+    'A Shopee não confirmou Item ID editável para '+sku+
+    '. Use a consulta da Etapa 05. Nenhum preço foi modificado.',
+    'warning');
+   return;
+  }
+  kitWizardDiscountLinkButton(false);
   const opened=globalThis.RAKitOpenDiscountReview?.()===true;
-  kitWizardDiscountStatus(opened?
-   'Formulário original aberto. Confira custo, preço, margem e Minha Promoção antes de autorizar.':
-   'Anúncio vinculado. Carregando a conferência original de desconto; use Atualizar se necessário.',
-   opened?'success':'info');
+  kitWizardDiscountStatus('✓ Item ID '+result.itemId+' vinculado ao kit. '+
+   (opened?'Conferência de Minha Promoção aberta.':
+    'Carregando o formulário original de Minha Promoção; a consulta foi concluída.')+
+   ' Preços preservados; nada publicado.',
+   'success');
  }catch(error){
-  if(kitWizardStage===9)kitWizardDiscountStatus(
-   'Falha ao carregar a conferência: '+String(error.message||error)+'. Os dados salvos foram preservados.','error');
- }finally{kitWizardDiscountPending=false;}
+  if(kitWizardStage===9&&prepared?.kit?.kitSku===identity)
+   kitWizardDiscountStatus('Falha na consulta: '+String(error.message||error)+
+    '. Nenhum dado do anúncio foi alterado.','error');
+ }finally{
+  kitWizardDiscountPending=false;
+  if(refresh){refresh.disabled=false;refresh.textContent='↻ Atualizar conferência do desconto';}
+  const btn=$('#kitWizardLinkDiscountItem');
+  if(btn&&!btn.hidden)btn.disabled=false;
+ }
 }
 globalThis.RAKitWizardWorkflowReady=data=>{
  if(data?.kitOptimization?.kitSku!==prepared?.kit?.kitSku)return false;
@@ -549,6 +582,24 @@ function kitWizardInit(){
  kitWizardSyncHeader();
  kitWizardSyncOptimizer();
  $('#kitWizardRefreshDiscount')?.addEventListener('click',()=>void kitWizardRequestDiscount({force:true}));
+ $('#kitWizardLinkDiscountItem')?.addEventListener('click',async()=>{
+  if(kitWizardStage!==9||kitWizardDiscountPending)return;
+  const button=$('#kitWizardLinkDiscountItem');
+  button.disabled=true;kitWizardDiscountStatus('Validando o Item ID confirmado e preparando apenas o vínculo local...','info');
+  try{
+   const result=await kitExistingOptimizer.prepareDiscountLink?.();
+   if(!result?.ok){
+    kitWizardDiscountStatus(result?.error||'Não foi possível concluir o vínculo.',result?.cancelled?'info':'warning');
+    return;
+   }
+   kitWizardDiscountLinkButton(false);
+   kitWizardDiscountStatus('✓ Item ID '+result.itemId+
+    ' vinculado e salvo no rascunho. Recarregando Minha Promoção. Nenhuma publicação na Shopee.','success');
+   await kitWizardRequestDiscount({force:true});
+  }catch(error){
+   kitWizardDiscountStatus('Não foi possível concluir o vínculo: '+String(error.message||error),'error');
+  }finally{button.disabled=false;}
+ });
  $('#kitWizardGoTechnical')?.addEventListener('click',()=>kitWizardSetStage(5,{scroll:true}));
  $('#kitWizardOpenExecution')?.addEventListener('click',()=>{
   const btn=$('#optimizerShowExecution');
