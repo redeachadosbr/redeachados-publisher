@@ -114,6 +114,60 @@ globalThis.RAKitWizardExecutionReviews=()=>{
   .map(n=>({2:'images',3:'video',4:'seo',5:'technical',6:'description',
    7:'variants',8:'fiscal',9:'discount'}[n])).filter(Boolean)}:null;
 };
+// O handoff da aba é efêmero: ao reabrir um kit, identificar novamente o
+// anúncio exato pela Shopee, preservando o Item ID vinculado no banco.
+let kitWizardResumingTarget=false;
+async function kitWizardResumeTargetForExecution(){
+ if(kitWizardResumingTarget||!prepared?.kit||!kitSaved)return false;
+ kitWizardResumingTarget=true;
+ const current=String(prepared.kit.kitSku);
+ const principal=String($('#kitOptimizeMainSku')?.value||
+  $('#kitPrincipalSku')?.value||prepared.optimization?.mainSku||
+  prepared.kit.components?.[0]?.sku||'');
+ const notice=$('#kitWizardExecutionDirectStatus');
+ const report=text=>{
+  if(notice){notice.hidden=false;notice.textContent=text;}
+  status(text,'info');
+ };
+ try{
+  if(!prepared.kit.components.some(p=>String(p.sku)===principal))
+   throw Error('A SKU principal selecionada não pertence ao kit salvo.');
+  report('Recuperando automaticamente o Item ID da SKU principal '+principal+' na Shopee...');
+  const search=await api('/api/shopee/kits/optimization/find?'+new URLSearchParams({
+   kitSku:current,sku:principal,mainSku:principal
+  }),{signal:AbortSignal.timeout(30000)});
+  if(String(prepared?.kit?.kitSku)!==current||kitWizardStage!==10||!kitWizardExecutionIntent)
+   return false;
+  const matches=(search.matches||[]).filter(x=>String(x.sku)===principal&&
+   ['NORMAL','UNLIST'].includes(String(x.status).toUpperCase())&&
+   /^[1-9]\\d{0,17}$/.test(String(x.itemId||'')));
+  const prior=prepared.optimization||null;
+  const savedId=prior?.sku===principal&&prior?.mainSku===principal?
+   String(prior.itemId||''):'';
+  const selected=savedId?
+   matches.find(x=>String(x.itemId)===savedId):matches.length===1?matches[0]:null;
+  if(!selected){
+   if(savedId)throw Error('O Item ID salvo '+savedId+
+    ' não foi confirmado na Shopee para a SKU '+principal+'. Nenhum envio foi iniciado.');
+   throw Error(matches.length>1?
+    'Existem vários anúncios para esta SKU. Selecione o Item ID correto na Etapa 09.':
+    'A Shopee não encontrou anúncio editável para a SKU principal '+principal+'.');
+  }
+  const linked=kitExistingOptimizer.resumeLiveVerifiedTarget?.({
+   kitSku:current,sku:principal,itemId:String(selected.itemId),
+   modelId:String(selected.modelId||'0')
+  });
+  if(!linked?.ok)throw Error(linked?.error||'Motor da SKU principal não iniciou.');
+  report('Item ID '+selected.itemId+' recuperado e confirmado na Shopee. Carregando o motor para enviar apenas as pendências...');
+  return true;
+ }catch(error){
+  kitWizardExecutionIntent=false;
+  const message='Não foi possível recuperar o vínculo: '+String(error.message||error);
+  if(notice){notice.hidden=false;notice.textContent=message;}
+  status(message,'error');
+  return false;
+ }finally{kitWizardResumingTarget=false;}
+}
 let kitWizardExecutionOpening=false,kitWizardExecutionIntent=false;
 let kitWizardImagesSyncedFor='';
 let kitWizardVideoSyncedFor='';
@@ -735,18 +789,20 @@ function kitWizardInit(){
    status('O kit atual nao corresponde ao rascunho carregado.','error');return;
   }
   kitWizardMountTechnical();
+  const handoff=globalThis.__RA_KIT_OPTIMIZATION_HANDOFF;
+  const principal=String($('#kitOptimizeMainSku')?.value||
+   $('#kitPrincipalSku')?.value||prepared.kit.components?.[0]?.sku||'');
+  const valid=String(handoff?.kitSku||'')===String(prepared.kit.kitSku)&&
+   String(handoff?.sku||'')===principal&&
+   /^[1-9]\\d{0,17}$/.test(String(handoff?.itemId||''));
   const workspace=$('#kitOptimizerWorkspace');
-  if(workspace&&!workspace.hidden){
+  if(valid&&workspace&&!workspace.hidden){
    await kitWizardOpenExecutionFlow();
    return;
   }
-  status('Carregando a SKU principal no motor original, sem abrir telas intermediárias.','info');
-  try{
-   await kitExistingOptimizer.openTechnical?.();
-  }catch(error){
-   kitWizardExecutionIntent=false;
-   status('Não foi possível abrir o motor original: '+String(error.message||error)+'. Dados preservados.','error');
-  }
+  // Não pedir novo check quando o vínculo existia: recuperar e reauditar
+  // do servidor/Shopee em vez de depender do handoff da sessão.
+  await kitWizardResumeTargetForExecution();
  });
  $('#kitWizardOpenTechnical')?.addEventListener('click',()=>{
   void kitWizardRequestTechnical({force:true});
