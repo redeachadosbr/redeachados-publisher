@@ -166,7 +166,7 @@ test('identidade canônica do kit é estável mesmo com SKU principal trocada',(
 
 test('resposta textual da Ponte é desempacotada sem misturar anúncios de outro kit',async()=>{
  const source=readFileSync(new URL('../public/kit-builder.js',import.meta.url),'utf8');
- const start=source.indexOf('function kitFetchGeneratedTextFromPonte(');
+ const start=source.indexOf('function kitTextBridgeAliases(');
  const end=source.indexOf('async function kitImportCopiedContent(',start);
  assert(start>0&&end>start);
  const messages=[],listeners=new Set();
@@ -190,4 +190,42 @@ test('resposta textual da Ponte é desempacotada sem misturar anúncios de outro
   kitSku:'KIT-OUTRO',ok:true,rawText:JSON.stringify({description:'Anúncio de outro kit'})});
  await assert.rejects(pending,/outro kit/);
  assert.equal(listeners.size,0,'listener não pode ficar pendurado');
+});
+
+
+test('Ponte atual recebe 4 aliases válidos de SKUs com espaço e pontos, sem mudar identidade do kit',async()=>{
+ const source=readFileSync(new URL('../public/kit-builder.js',import.meta.url),'utf8');
+ const start=source.indexOf('function kitTextBridgeAliases(');
+ const end=source.indexOf('async function kitImportCopiedContent(',start);
+ assert.ok(start>0&&end>start);
+ const sent=[],listeners=new Set();
+ const origin='https://redeachados-shopee.onrender.com';
+ const win={location:{origin},addEventListener:(type,fn)=>{if(type==='message')listeners.add(fn);},
+  removeEventListener:(type,fn)=>listeners.delete(fn),
+  postMessage:(data)=>sent.push(data)};
+ const context=vm.createContext({window:win,location:win.location,
+  crypto:{randomUUID:()=> '9d258a67-b738-4b1f-8888-dca1e03f64aa'},setTimeout,clearTimeout,
+  kitBridgeVersionSupportsText:()=>true,parseKitSeoResponse:()=>{},
+  kitContentResponseText:x=>x});
+ vm.runInContext(source.slice(start,end),context);
+ const kitSku='KIT-CE420B-CT0202-CT0205-UD040004012';
+ const products=[
+  {sku:'CE420 B',name:'Cesto Retangular Tampa Vai e Vem 20L'},
+  {sku:'UD04.0004.012',name:'Saco Vácuo Bag G 55x90cm'},
+  {sku:'CT0202',name:'Bomba a Vácuo Azul'},
+  {sku:'CT0205',name:'Saco Organizador a Vácuo M'}
+ ];
+ const pending=context.kitFetchGeneratedTextFromPonte(kitSku,products.map(x=>x.sku),products);
+ const emit=data=>{for(const fn of [...listeners])fn({source:win,origin,data});};
+ emit({kind:'RA_EXTENSION_READY',version:'1.0.62',healthy:true});
+ const payload=sent.find(x=>x.kind==='RA_SITE_KIT_TEXT_FETCH')?.payload;
+ assert.ok(payload);
+ assert.equal(payload.kitSku,kitSku);
+ assert.deepEqual(Array.from(payload.skus),['CE420B','UD040004012','CT0202','CT0205']);
+ assert.deepEqual(Array.from(payload.products,p=>p.sku),Array.from(payload.skus));
+ assert.deepEqual(products.map(x=>x.sku),['CE420 B','UD04.0004.012','CT0202','CT0205'],
+  'as SKUs originais permanecem inalteradas');
+ emit({kind:'RA_EXTENSION_KIT_TEXT_RESULT',nonce:payload.nonce,kitSku,ok:true,rawText:'Resposta do kit'});
+ assert.equal((await pending).kitSku,kitSku);
+ assert.equal(listeners.size,0);
 });
