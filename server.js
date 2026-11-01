@@ -2582,8 +2582,9 @@ app.post('/api/shopee/optimizer/execution/prepare',mustLogin,requireWeDropAdmin,
        discountDiscoveryDetail='Campanhas consultadas: '+Number(found.checked||0)+
         '; busca '+(found.complete?'completa':'incompleta')+
         '; seleção: '+String(found.suggested?.reason||'indefinida')+'.';
-       if(found.complete===true&&
-          ['kit_membership','primary_sku_membership','only_campaign'].includes(found.suggested?.reason))
+       if((found.complete===true&&
+          ['kit_membership','primary_sku_membership','only_campaign'].includes(found.suggested?.reason))||
+          ['kit_membership','primary_sku_membership'].includes(found.suggested?.reason))
         candidateId=String(found.suggested.discountId||'');
       }
       if(!/^[1-9]\d{0,17}$/.test(candidateId))
