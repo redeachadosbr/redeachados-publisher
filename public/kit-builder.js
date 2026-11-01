@@ -2935,7 +2935,7 @@ async function kitAcceptBridgePhoto({slot,dataUrl,kitSku,referenceDataUrl=null})
   }
  }
  const blob=await(await fetch(dataUrl)).blob();
- if(blob.size>12*1024*1024||!/^image\\/(?:png|jpeg|webp)$/.test(blob.type))
+ if(blob.size>12*1024*1024||!/^image\/(?:png|jpeg|webp)$/.test(blob.type))
   throw Error('Arquivo devolvido pela Ponte excede 12 MB ou possui formato inválido.');
  const ext=blob.type==='image/jpeg'?'jpg':blob.type==='image/webp'?'webp':'png';
  return uploadPhoto(Number(slot),new File([blob],'kit-ext-'+slot+'.'+ext,{type:blob.type}),
