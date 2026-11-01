@@ -415,7 +415,7 @@ test('falha ao salvar historico apos publicacao nao solicita reenviar promocao',
 
 
 test('execucao completa do kit usa fonte WeDrop auditada na preparação',()=>{
- const fiscalAll=/if\(plan\.finalFiscal&&\['all','remaining'\]\.includes\(selectedStage\)\)\{[\s\S]*?const supplier=await readWeDropProduct\(auth\.shopId,\{sku,itemId,modelId\}\);[\s\S]*?fiscalMatrixSource\(\{sku,supplier,tax:reviewState\.tax,reviewSource:reviewState\.matrixFiscal\}\)/;
+ const fiscalAll=/if\(plan\.finalFiscal&&\['all','remaining','media_fiscal'\]\.includes\(selectedStage\)\)\{[\s\S]*?const supplier=await readWeDropProduct\(auth\.shopId,\{sku,itemId,modelId\}\);[\s\S]*?fiscalMatrixSource\(\{sku,supplier,tax:reviewState\.tax,reviewSource:reviewState\.matrixFiscal\}\)/;
  assert.match(server,fiscalAll);
  assert.doesNotMatch(server,/const supplier=kitLink\?null:await readWeDropProduct/);
  assert.match(server,/if\(kitLink\)\{[\s\S]*?await verifiedLinkedKitQuote\(auth,kitLink\)/);
