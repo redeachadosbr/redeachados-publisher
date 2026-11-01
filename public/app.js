@@ -4062,7 +4062,10 @@ async function optimizerWorkflowLoad(record){
     void optimizerChatBridgeSwitchSku(sku);
    else if(optimizerChatBridgeIdentity(optimizerChatBridgeJob,data))
     void optimizerChatBridgeRecover();
-   if(!technicalOnly)void optimizerExecutionPrepare();
+   if(!technicalOnly){
+    void optimizerExecutionPrepare();
+    setTimeout(()=>kitAutoSweepRestore(),2000);
+   }
    optimizerWorkflowNotice('Plano da SKU '+sku+' carregado. As etapas são revisões, não alterações publicadas.','success');
  }catch(e){
    if(serial===optimizerWorkflowSerial&&$('#optimizerSku').value.trim()===sku){
@@ -5840,6 +5843,128 @@ async function optimizerResolveExecutionBlockers(){
 // Um clique explícito autoriza as alterações aprovadas dos nove estágios reais;
 // itens já aplicados são excluídos pelo readback da Shopee. Etapas ainda não
 // preparadas continuam pendentes e NUNCA são marcadas como publicadas.
+// Um clique executa o plano aprovado e acompanha as conferencias reais
+// ate 9/9; um check local jamais autoriza declaracao de sucesso.
+const kitAutoSweepActive=new Set(),kitAutoSweepSessionKey='ra-kit-auto-sweep-v1';
+const kitAutoSweepKey=t=>[t.kitSku,t.sku,String(t.itemId),String(t.modelId||'0')].join('|');
+const kitAutoSweepMatches=t=>{
+ const w=optimizerWorkflowPlan;
+ return Boolean(w&&optimizerKitWorkflowActive()&&
+  String(w.kitOptimization?.kitSku)===String(t.kitSku)&&
+  String(w.sku)===String(t.sku)&&String(w.itemId)===String(t.itemId)&&
+  String(w.modelId||'0')===String(t.modelId||'0'));
+};
+function kitAutoSweepStore(target,keep){
+ try{
+  if(keep)sessionStorage.setItem(kitAutoSweepSessionKey,JSON.stringify({
+   ...target,expiresAt:Date.now()+30*60000
+  }));
+  else{
+   const saved=JSON.parse(sessionStorage.getItem(kitAutoSweepSessionKey)||'null');
+   if(saved&&kitAutoSweepKey(saved)===kitAutoSweepKey(target))
+    sessionStorage.removeItem(kitAutoSweepSessionKey);
+  }
+ }catch{}
+}
+function kitAutoSweepRestore(){
+ try{
+  const saved=JSON.parse(sessionStorage.getItem(kitAutoSweepSessionKey)||'null');
+  if(saved?.expiresAt>Date.now()&&kitAutoSweepMatches(saved))kitAutoSweepResume(saved);
+ }catch{}
+}
+function kitAutoSweepResume(target,firstFingerprint=''){
+ const key=kitAutoSweepKey(target);
+ if(kitAutoSweepActive.has(key)||!kitAutoSweepMatches(target))return;
+ kitAutoSweepActive.add(key);
+ kitAutoSweepStore(target,true);
+ void (async()=>{
+  const sleep=ms=>new Promise(resolve=>setTimeout(resolve,ms));
+  const attempted=new Set(firstFingerprint?[firstFingerprint]:[]);
+  let launches=0,unknown=0,noResponse=0;
+  try{
+   for(let n=0;n<350&&kitAutoSweepMatches(target);n++){
+    const job=await optimizerExecutionRefresh(true);
+    if(!kitAutoSweepMatches(target))return;
+    if(!job){
+     if(++noResponse>6)throw Error('A API não respondeu às consultas de acompanhamento.');
+     await sleep(5000);continue;
+    }
+    noResponse=0;
+    if(job.state==='running'){unknown=0;await sleep(5000);continue;}
+    if(job.state==='uncertain'){
+     // Reconciliar apenas por leitura oficial; nunca repetir um POST incerto.
+     const reading=await json('/api/shopee/optimizer/execution/reconcile',{
+      method:'POST',headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({sku:target.sku,itemId:target.itemId,
+       modelId:target.modelId,recover:true}),signal:AbortSignal.timeout(65000)});
+     if(['running','verified'].includes(reading.job?.state)||reading.recoveryReady===true){
+      await sleep(3500);continue;
+     }
+     if(++unknown<=4){await sleep(15000);continue;}
+     throw Error('A Shopee não confirmou o resultado anterior. Envio duplicado impedido.');
+    }
+    if(job.state==='failed'&&job.result?.phase!=='retry_allowed')
+     throw Error('Falha da Shopee: '+String(job.last_error||'etapa não confirmada').slice(0,210));
+    const query=new URLSearchParams({sku:target.sku,
+     item_id:target.itemId,model_id:target.modelId});
+    const fresh=await json('/api/shopee/optimizer/execution/root-audit?'+query,{
+     signal:AbortSignal.timeout(50000)});
+    if(!kitAutoSweepMatches(target))return;
+    const audit=fresh.audit;
+    optimizerRootAuditCache.set([target.sku,String(target.itemId),
+     String(target.modelId||'0')].join('|'),{audit,at:Date.now()});
+    optimizerRootAuditRender(audit);
+    if(audit?.complete===true){
+     optimizerExecNotice('✓ Auditoria 9/9 confirmada pela Shopee. Nenhuma etapa será reenviada.','success');
+     await optimizerKitAutoFinalizeFromAudit(optimizerWorkflowPlan,audit);
+     return;
+    }
+    const pending=(audit?.stages||[]).filter(s=>s.id!=='final'&&
+     !['confirmed','not_applicable'].includes(s.status)).map(s=>s.label);
+    if(!pending.length)throw Error('A conferência final ainda não foi confirmada pela Shopee.');
+    if(launches>=9)throw Error('Limite de proteção atingido. Restam '+pending.join(', '));
+    if(job.state==='verified')await sleep(3500); // propagacao da API
+    if(optimizerExecBusy){await sleep(1500);continue;}
+    const scope=$('#optimizerExecutionScope');
+    if(!scope)throw Error('Executor de 9 etapas não disponível.');
+    scope.value='all';
+    optimizerExecNotice('Varredura encontrou '+pending.join(', ')+
+     '. Preparando somente os campos ainda diferentes e já aprovados.','info');
+    await optimizerExecutionPrepare();
+    let plan=optimizerExecPlan;
+    for(let i=0;i<16&&(!plan||optimizerExecPreparation);i++){
+     await sleep(450);plan=optimizerExecPlan;
+    }
+    if(!kitAutoSweepMatches(target))return;
+    if(!plan||plan.selectedStage!=='all'||plan.sku!==target.sku||
+       String(plan.itemId)!==String(target.itemId))
+     throw Error(optimizerExecPrepareError||'Não foi possível preparar a próxima execução.');
+    if(!plan.canExecute||!(plan.actions||[]).length)
+     throw Error('Etapas ainda pendentes, mas sem nova ação publicável: '+pending.join(', ')+
+      '. '+(plan.blocked||[]).join(' · '));
+    if(attempted.has(plan.fingerprint))
+     throw Error('O mesmo plano ainda não foi confirmado pela Shopee. Reenvio duplicado impedido. Pendências: '+pending.join(', '));
+    attempted.add(plan.fingerprint);
+    optimizerExecNotice('Retomada automática '+(launches+1)+': '+plan.actions.join(', ')+'.','info');
+    const started=await optimizerExecuteApproved(false);
+    if(!started?.started)throw Error(started?.error||'A Shopee não aceitou a retomada.');
+    launches++;
+    await sleep(4500);
+   }
+   if(kitAutoSweepMatches(target))
+    throw Error('Limite de acompanhamento atingido. Consulte a auditoria antes de novo envio.');
+  }catch(error){
+   if(kitAutoSweepMatches(target)){
+    optimizerExecNotice('Varredura interrompida com segurança: '+String(error.message||error)+
+     '. Dados salvos e etapas já confirmadas preservados.','warning');
+    void optimizerRootAuditRefresh(true);
+   }
+  }finally{
+   kitAutoSweepActive.delete(key);
+   kitAutoSweepStore(target,false);
+  }
+ })();
+}
 let kitAllStagesStarting=false;
 globalThis.RAKitExecutePendingAllStages=async({kitSku,sku,itemId,modelId}={})=>{
  if(kitAllStagesStarting)return {ok:false,error:'A preparação das 9 etapas já está em andamento.'};
@@ -5863,8 +5988,10 @@ globalThis.RAKitExecutePendingAllStages=async({kitSku,sku,itemId,modelId}={})=>{
    return {ok:true,alreadyCurrent:true,message:'Auditoria da Shopee confirmou todas as 9 etapas. Nada precisa ser reenviado.'};
   }
   const state=await optimizerExecutionRefresh(false);
-  if(['running','uncertain'].includes(state?.state))
-   return {ok:true,submitted:true,alreadyRunning:true,message:'Execução já registrada. Acompanhando o resultado sem duplicar envio.'};
+  if(['running','uncertain'].includes(state?.state)){
+   kitAutoSweepResume({kitSku,sku,itemId,modelId});
+   return {ok:true,submitted:true,alreadyRunning:true,message:'Execução em andamento: varredura 9/9 automática ativada sem reenvio.'};
+  }
   await optimizerExecutionPrepare();
   const p=optimizerExecPlan;
   if(!p||p.selectedStage!=='all'||p.sku!==sku||String(p.itemId)!==String(itemId))
@@ -5886,7 +6013,8 @@ globalThis.RAKitExecutePendingAllStages=async({kitSku,sku,itemId,modelId}={})=>{
    '. Etapas ausentes da prévia NÃO serão declaradas concluídas; o motor raiz as verificará novamente.','info');
   const started=await optimizerExecuteApproved(false);
   if(!started?.started)return {ok:false,error:started?.error||'A Shopee não confirmou o início do plano completo.',pending};
-  return {ok:true,submitted:true,pending,message:'Motor completo iniciado. Auditoria individual das 9 etapas em andamento.'};
+  kitAutoSweepResume({kitSku,sku,itemId,modelId},p.fingerprint);
+  return {ok:true,submitted:true,pending,message:'Execução iniciada: varredura e retomada automática das 9 etapas aprovadas.'};
  }catch(error){
   return {ok:false,error:String(error.message||error)};
  }finally{kitAllStagesStarting=false;}
