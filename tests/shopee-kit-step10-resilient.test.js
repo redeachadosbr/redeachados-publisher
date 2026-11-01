@@ -44,7 +44,7 @@ test('preparacao resiste a autosave concorrente sem ignorar identidade',()=>{
  const end=draft.indexOf('/**\n * Arquiva um anúncio otimizado EXISTENTE',start);
  const func=draft.slice(start,end);
  assert.ok(func.includes('attempt<3'));
- assert.ok(func.includes('current.creative?.title!==link.title'));
+ assert.ok(func.includes("String(current.creative?.title||'').trim()!==String(link.title||'').trim()"));
  assert.ok(func.includes('current.skus.map(String).join'));
  assert.ok(func.includes("String(current.optimization.itemId)!==String(link.itemId)"));
  assert.ok(func.includes('&updated_at=eq.'));
