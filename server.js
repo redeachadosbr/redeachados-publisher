@@ -789,7 +789,7 @@ app.get('/api/shopee/kits/reference-photo',mustLogin,requireWeDropAdmin,async(re
   const index=Number(req.query?.index);
   if(skus.length<2||skus.length>4||skus.some(x=>!x||x.length>90)||
     !Number.isInteger(index)||index<0||index>=skus.length)
-   return res.status(400).json({error:'Selecione 2 ou 3 SKUs e a fotografia correspondente.'});
+   return res.status(400).json({error:'Selecione 2 a 4 SKUs e a fotografia correspondente.'});
   // Fotos de um kit já salvo continuam acessíveis mesmo com estoque vencido.
   // Referências fora do kit persistido precisam da composição WeDrop atual.
   const saved=await loadKitDraft(auth.shopId,kitSku(skus));
