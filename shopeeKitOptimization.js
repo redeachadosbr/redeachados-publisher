@@ -22,7 +22,7 @@ function kitProductSizes(name){
 export function assertKitListingComposition({kit,record}={}){
  const parts=kit?.components||[],itemId=String(record?.itemId||record?.item_id||'');
  const official=normalizeKitTitle((record?.title||record?.item_name||'')+' '+(record?.description||''));
- if(!itemId||!Array.isArray(parts)||parts.length<2||parts.length>3||official.length<12)
+ if(!itemId||!Array.isArray(parts)||parts.length<2||parts.length>4||official.length<12)
   throw Error('Item ID sem ficha oficial suficiente para comprovar o kit. Execução bloqueada.');
  const terms=official.split(' '),compact=official.replace(/\s/g,''),missing=[];
  for(const p of parts){
@@ -40,8 +40,8 @@ export function assertKitListingComposition({kit,record}={}){
 }
 export function validateKitOptimizationTarget({saved,kit,record,targetSku,itemId,modelId,mainSku,confirmedItemId}){
  const parts=Array.isArray(saved?.skus)?saved.skus.map(str):[];
- if(!saved?.kit||!kit||parts.length<2||parts.length>3||
-   new Set(parts).size!==parts.length)throw Error('Salve o kit de 2 ou 3 SKUs WeDrop.');
+ if(!saved?.kit||!kit||parts.length<2||parts.length>4||
+   new Set(parts).size!==parts.length)throw Error('Salve o kit de 2 a 4 SKUs WeDrop.');
  if(str(saved.kitSku)!==str(kit.kitSku)||
     parts.join('|')!==kit.components.map(x=>str(x.sku)).join('|'))
   throw Error('A composição do kit foi alterada. Reabra e salve novamente.');
