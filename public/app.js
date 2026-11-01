@@ -5445,8 +5445,13 @@ function optimizerModelMarketApprovalPaint(plan=optimizerExecPlan){
 function optimizerDiscountReviewedForExecution(plan){
  // Kit: otimizar primeiro; desconto proprio da etapa 08 exige confirmacao
  // da Shopee e autorizacao separada para a composicao completa.
- if(typeof optimizerKitWorkflowActive==='function'&&optimizerKitWorkflowActive())
-  return !['all','discount','discount_adjust'].includes(plan?.selectedStage)||Boolean(plan?.kitDiscount);
+ if(typeof optimizerKitWorkflowActive==='function'&&optimizerKitWorkflowActive()){
+  // A etapa 08 mantém sua autorização comercial própria. A ausência
+  // de promoção aprovada não paralisa imagens, conteúdo e fiscal já autorizados.
+  // O desconto ausente permanece pendente na auditoria 9/9.
+  if(plan?.selectedStage==='all')return true;
+  return !['discount','discount_adjust'].includes(plan?.selectedStage)||Boolean(plan?.kitDiscount);
+ }
  return !['all','remaining','discount','discount_adjust'].includes(plan?.selectedStage)||
   (plan?.modelVariations?
    Boolean(optimizerExecAutoModelToken)&&optimizerModelMarketConsent(plan):
@@ -5510,7 +5515,7 @@ function optimizerExecUpdateRunButton(){
   resume&&p?.modelVariations?'▶ Executar plano completo (inclui mídia)':
   resume?'▶ Retomar de onde parou':
   p?.modelVariations?'▶ Executar anúncio + variações + fiscal + desconto':
-  p?.selectedStage==='all'&&optimizerKitWorkflowActive()?'▶ Executar 8 etapas do kit + desconto':
+  p?.selectedStage==='all'&&optimizerKitWorkflowActive()?'▶ Executar pendências aprovadas das 9 etapas':
   p?.selectedStage==='all'?'▶ Executar anúncio + desconto na Shopee':'▶ Executar etapa aprovada na Shopee';
  $('#optimizerExecutionLaunch').title=!optimizerDiscountReviewedForExecution(p)
    ?'Conferir a promoção no bloco de desconto antes de executar a SKU':'Executar etapas aprovadas na Shopee';
@@ -5804,66 +5809,65 @@ async function optimizerResolveExecutionBlockers(){
    '. Os campos já salvos permaneceram na SKU. Nenhuma publicação foi iniciada.','error');
  }
 }
-// Uma unica autorizacao explicita no kit prepara e executa SOMENTE as tres
-// pendencias: imagens, video e fiscal. Nenhum desconto ou texto e tocado.
-let kitMediaFiscalStarting=false;
-globalThis.RAKitExecutePendingMediaFiscal=async({kitSku,sku,itemId,modelId}={})=>{
- if(kitMediaFiscalStarting)return {ok:false,error:'Envio destas etapas ja iniciado.'};
+// Etapa 10 do Kit = o MOTOR RAIZ completo (8 operações + conferência final).
+// Um clique explícito autoriza as alterações aprovadas dos nove estágios reais;
+// itens já aplicados são excluídos pelo readback da Shopee. Etapas ainda não
+// preparadas continuam pendentes e NUNCA são marcadas como publicadas.
+let kitAllStagesStarting=false;
+globalThis.RAKitExecutePendingAllStages=async({kitSku,sku,itemId,modelId}={})=>{
+ if(kitAllStagesStarting)return {ok:false,error:'A preparação das 9 etapas já está em andamento.'};
  const w=optimizerWorkflowPlan;
  if(!w||!optimizerKitWorkflowActive()||String(w.kitOptimization?.kitSku)!==String(kitSku)||
     String(w.sku)!==String(sku)||String(w.itemId)!==String(itemId)||
     String(w.modelId||'0')!==String(modelId||'0'))
-  return {ok:false,error:'O anuncio da SKU principal ainda nao foi carregado com este Item ID.'};
- if(optimizerExecBusy)return {ok:false,error:'Uma execucao ja esta em andamento. Nao reenviar.'};
- kitMediaFiscalStarting=true;
+  return {ok:false,error:'O motor completo ainda não carregou o kit e Item ID desta SKU.'};
+ if(optimizerExecBusy)return {ok:false,error:'Uma execução está em andamento; verifique o progresso antes de repetir.'};
+ kitAllStagesStarting=true;
  try{
   const scope=$('#optimizerExecutionScope');
-  if(!scope||![...scope.options].some(x=>x.value==='media_fiscal'))
-   return {ok:false,error:'Escopo de imagens, video e fiscal nao disponivel. Recarregue o site.'};
-  scope.value='media_fiscal';
+  if(!scope||![...scope.options].some(x=>x.value==='all'))
+   return {ok:false,error:'Modo de execução completa indisponível; atualize a página.'};
+  scope.value='all';
   optimizerWorkflowActivateOnly('execution');
-  optimizerExecNotice('Preparando somente imagens, video e dados fiscais; desconto e texto preservados.','info');
+  optimizerExecNotice('Conferindo todas as 9 etapas reais da Shopee: imagens, vídeo, título, descrição, ficha técnica, variações, fiscal, desconto e confirmação final.','info');
+  await optimizerRootAuditRefresh(true);
+  const audit=optimizerRootAuditCache.get([sku,String(itemId),String(modelId||'0')].join('|'))?.audit;
+  if(audit?.complete===true){
+   return {ok:true,alreadyCurrent:true,message:'Auditoria da Shopee confirmou todas as 9 etapas. Nada precisa ser reenviado.'};
+  }
+  const state=await optimizerExecutionRefresh(false);
+  if(['running','uncertain'].includes(state?.state))
+   return {ok:true,submitted:true,alreadyRunning:true,message:'Execução já registrada. Acompanhando o resultado sem duplicar envio.'};
   await optimizerExecutionPrepare();
   const p=optimizerExecPlan;
-  if(!p||p.selectedStage!=='media_fiscal'||p.sku!==sku||String(p.itemId)!==String(itemId))
-   return {ok:false,error:optimizerExecPrepareError||'Nao foi possivel preparar as tres etapas; nenhum envio foi iniciado.'};
-  const recognized=p.confirmedStages||{};
-  const missing=[
-   ...(!(p.images?.length===9||recognized.images===true)?['9 imagens']:[]),
-   ...(!((p.video&&p.video.sha256)||recognized.video===true)?['video']:[]),
-   ...(!(p.finalFiscal||recognized.fiscal===true)?['dados fiscais']:[])
-  ];
-  if(missing.length){
-   const message='Arquivos aprovados ainda ausentes do plano: '+missing.join(', ')+
-    '. O servidor nao recebeu o conteudo necessario. Nenhuma etapa sera pulada.';
+  if(!p||p.selectedStage!=='all'||p.sku!==sku||String(p.itemId)!==String(itemId))
+   return {ok:false,error:optimizerExecPrepareError||'A prévia completa ainda não foi carregada. Nenhuma publicação foi iniciada.'};
+  const pending=(audit?.stages||[]).filter(x=>!['confirmed','not_applicable'].includes(x.status))
+   .map(x=>x.label);
+  const actions=(p.actions||[]);
+  const missing=optimizerKitMissingApprovedStages(p);
+  if(missing.length)optimizerExecNotice('Etapas ainda sem arquivo ou aprovação para enviar: '+missing.join(', ')+
+   '. As demais alterações aprovadas podem avançar; essas pendências permanecem no motor raiz.','warning');
+  if(!p.canExecute||!actions.length){
+   const message='Auditoria das 9 etapas: '+(pending.length?pending.join(' · '):'sem pendências')+
+    '. Nenhuma alteração apta a publicar neste momento.'+
+    ((p.blocked||[]).length?' Corrigir: '+p.blocked.join(' · '):' Confira os dados que faltam nas etapas indicadas.');
    optimizerExecNotice(message,'warning');
-   return {ok:false,error:message};
+   return {ok:false,error:message,pending};
   }
-  if(Object.keys(p.proposed||{}).length||p.modelVariations||p.kitDiscount){
-   return {ok:false,error:'A previa incluiu campos fora das tres etapas; execucao cancelada sem publicar.'};
-  }
-  if(!p.canExecute){
-   const message='As tres etapas ja correspondem ao anuncio ou nao ha alteracoes elegiveis para enviar.';
-   optimizerExecNotice(message,'info');
-   return {ok:true,alreadyCurrent:true,message};
-  }
-  optimizerExecNotice('Autorizacao recebida: iniciando somente 9 imagens, video e dados fiscais na Shopee.','info');
-  const start=await optimizerExecuteApproved(false);
-  if(!start?.started)return {ok:false,error:start?.error||'A Shopee nao confirmou o inicio da execucao.'};
-  return {ok:true,submitted:true};
+  optimizerExecNotice('Autorização única recebida. Executando '+actions.join(', ')+
+   '. Etapas ausentes da prévia NÃO serão declaradas concluídas; o motor raiz as verificará novamente.','info');
+  const started=await optimizerExecuteApproved(false);
+  if(!started?.started)return {ok:false,error:started?.error||'A Shopee não confirmou o início do plano completo.',pending};
+  return {ok:true,submitted:true,pending,message:'Motor completo iniciado. Auditoria individual das 9 etapas em andamento.'};
  }catch(error){
   return {ok:false,error:String(error.message||error)};
- }finally{kitMediaFiscalStarting=false;}
+ }finally{kitAllStagesStarting=false;}
 };
 $('#optimizerExecutionLaunch')?.addEventListener?.('click',()=>{
  const missing=optimizerKitMissingApprovedStages();
- if(missing.length){
-  const names={images:'Imagens',video:'Vídeo',fiscal:'Dados fiscais',variants:'Variações'};
-  optimizerExecNotice('Execução completa bloqueada: '+missing.map(x=>names[x]).join(', ')+
-   ' foram conferidas no kit, mas NÃO estão incluídas na prévia Shopee. Abra a etapa indicada e conclua o vínculo real antes de publicar.','warning');
-  globalThis.RAKitWizardNavigateToStage?.(missing[0]);
-  return;
- }
+ if(missing.length)optimizerExecNotice('Ainda faltam '+missing.join(', ')+
+  '. O motor executará apenas as ações autorizadas e manterá essas etapas pendentes até a confirmação da Shopee.','warning');
  if(optimizerExecPlan?.canExecute&&optimizerDiscountReviewedForExecution(optimizerExecPlan))
   return void optimizerExecuteApproved(false);
  void optimizerResolveExecutionBlockers();
@@ -5879,12 +5883,8 @@ function optimizerExecutionNeedsFreshPreview(message){
 async function optimizerExecuteApproved(remainingOnly=false){
  const p=optimizerExecPlan,ctx=optimizerExecContext;
  const missing=optimizerKitMissingApprovedStages(p);
- if(missing.length){
-  optimizerExecNotice('O kit tem etapas marcadas que ficaram fora da execução: '+
-   missing.join(', ')+'. Revise antes de autorizar qualquer publicação.','warning');
-  globalThis.RAKitWizardNavigateToStage?.(missing[0]);
-  return;
- }
+ if(missing.length)optimizerExecNotice('A publicação será parcial nesta tentativa: '+
+  missing.join(', ')+' ainda não estão incluídas. As demais ações já aprovadas serão executadas sem marcar a conclusão global.','warning');
  if(remainingOnly&&(p?.selectedStage!=='all'||!p?.modelVariations?.promotion))return;
  if(!p?.canExecute||!ctx||optimizerExecBusy||p.sku!==ctx.sku||
     p.itemId!==ctx.itemId||p.modelId!==ctx.modelId)return;
