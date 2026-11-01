@@ -34,7 +34,7 @@ export function auditRootShopeeExecution({
  add('images',imageReady&&sameData(expectedImages,actualImages),
   !imageReady?'Nove imagens aprovadas não estão prontas ou vinculadas à SKU':
   'Conferir IDs e ordem das imagens publicadas no anúncio');
- const publishedVideo=video?.publication?.sha256===video?.sha256?
+ const publishedVideo=video?.publication?.sha256&&video.publication.sha256===video.sha256?
   video.publication.video:null;
  const videoEvidence=publishedVideo?{...publishedVideo,phase:'ready'}:(
   job?.state==='verified'&&job.plan?.video?.sha256===video?.sha256?job.result?.video:null);
