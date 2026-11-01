@@ -33,7 +33,7 @@ import {saveWeDropProducts,readWeDropProduct} from './wedropCosts.js';
 import {kitCatalog,suggestKits,suggestKitsForIdea,rankKitIdeaProducts,assessKitBuyerFit,composeKit,kitCreative,kitPrompts,kitPlusResearchBrief,kitPlusContentPrompt,kitContentBrief,categoryMatches,modifyKitSkus,clearKitCatalogCache,kitSku} from './shopeeKitBuilder.js';
 import {researchShopeeKitSeo} from './shopeeKitSeoResearch.js';
 import {saveKitStockImport,clearKitStockCache,parseWeDropAvailabilityCsv,readKitStockSnapshot} from './shopeeKitAvailability.js';
-import {saveKitDraft,saveKitDraftLogistics,saveKitDraftManualFacts,saveKitDraftCopy,listKitDrafts,loadKitDraft,deleteKitDraft,recordKitOptimization,recordKitOptimizationFinalization} from './shopeeKitDraftStore.js';
+import {saveKitDraft,saveKitDraftLogistics,saveKitDraftManualFacts,saveKitDraftCopy,listKitDrafts,loadKitDraft,deleteKitDraft,recordKitOptimization,recordKitOptimizationFinalization,saveKitFiscalOrigin} from './shopeeKitDraftStore.js';
 import {validateKitOptimizationTarget,kitOptimizationLinkIsCurrent,linkedKitPricingCost,assertKitListingComposition} from './shopeeKitOptimization.js';
 import {recoverKitDraftForEditing,matchesStoredKitPhotos,validateStoredKitDraft} from './shopeeKitDraftRecovery.js';
 import {kitUploadPhoto,kitPublicationReadiness,kitPublicationPreview,kitPublishApproved,checkKitPublication,kitVideoPrepare,kitVideoAdvance,kitVideoStatus,kitVideoDiscard} from './shopeeKitPublicationService.js';
@@ -363,6 +363,22 @@ app.get('/api/shopee/kits/fiscal-preset',mustLogin,requireWeDropAdmin,async(req,
   if(!/^KIT-[A-Z0-9-]{4,115}$/.test(code))throw Error('Kit inválido.');
   res.json({ok:true,...await readKitFiscalPreset(auth.shopId,code,String(req.query?.sku||''))});
  }catch(e){res.status(400).json({error:String(e.message||e).slice(0,260)});}
+});
+// Etapa 08: gravar origem fiscal explicitamente informada para cada SKU.
+app.post('/api/shopee/kits/fiscal-preset/origin',mustLogin,requireWeDropAdmin,async(req,res)=>{
+ res.setHeader('Cache-Control','no-store');
+ if(!verifiedSameOrigin(req))return res.status(403).json({ok:false,error:'Origem não autorizada.'});
+ try{
+  const auth=await authStore.load();
+  if(!Number.isSafeInteger(Number(auth?.shopId))||Number(auth.shopId)<=0)
+   throw Error('Loja não vinculada.');
+  const kitSku=String(req.body?.kitSku||'').trim();
+  if(!/^KIT-[A-Z0-9-]{4,115}$/.test(kitSku))throw Error('Kit inválido.');
+  const saved=await saveKitFiscalOrigin(auth.shopId,kitSku,req.body?.origins);
+  res.json({ok:true,...saved});
+ }catch(error){
+  res.status(409).json({ok:false,error:String(error.message||error).slice(0,290)});
+ }
 });
 app.post('/api/shopee/kits/drafts/save',mustLogin,requireWeDropAdmin,async(req,res)=>{
  res.setHeader('Cache-Control','no-store');
