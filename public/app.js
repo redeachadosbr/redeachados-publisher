@@ -5872,6 +5872,25 @@ function kitAutoSweepRestore(){
   if(saved?.expiresAt>Date.now()&&kitAutoSweepMatches(saved))kitAutoSweepResume(saved);
  }catch{}
 }
+// Aguarda a prévia realmente terminar, inclusive quando já havia outra
+// preparação da mesma SKU em curso. A Shopee pode levar até 75s por leitura.
+// Não confundir "ainda preparando" com "sem ação publicável".
+async function kitAutoSweepPreparePlan(target){
+ await optimizerExecutionPrepare();
+ const sleep=ms=>new Promise(resolve=>setTimeout(resolve,ms));
+ for(let i=0;i<320;i++){
+  if(!kitAutoSweepMatches(target))return null;
+  if(!optimizerExecPreparation){
+   // A rotina de preparação pode ter agendado uma segunda conferência
+   // 100ms depois; não usar o plano antigo nessa janela.
+   await sleep(200);
+   if(!kitAutoSweepMatches(target))return null;
+   if(!optimizerExecPreparation)return optimizerExecPlan;
+  }
+  await sleep(300);
+ }
+ throw Error('A preparação da próxima etapa não terminou após a conferência. Nenhum reenvio foi iniciado.');
+}
 function kitAutoSweepResume(target,firstFingerprint=''){
  const key=kitAutoSweepKey(target);
  if(kitAutoSweepActive.has(key)||!kitAutoSweepMatches(target))return;
@@ -5936,11 +5955,7 @@ function kitAutoSweepResume(target,firstFingerprint=''){
     scope.value='all';
     optimizerExecNotice('Varredura encontrou '+pending.join(', ')+
      '. Preparando somente os campos ainda diferentes e já aprovados.','info');
-    await optimizerExecutionPrepare();
-    let plan=optimizerExecPlan;
-    for(let i=0;i<16&&(!plan||optimizerExecPreparation);i++){
-     await sleep(450);plan=optimizerExecPlan;
-    }
+    const plan=await kitAutoSweepPreparePlan(target);
     if(!kitAutoSweepMatches(target))return;
     if(!plan||plan.selectedStage!=='all'||plan.sku!==target.sku||
        String(plan.itemId)!==String(target.itemId))
@@ -5998,8 +6013,7 @@ globalThis.RAKitExecutePendingAllStages=async({kitSku,sku,itemId,modelId}={})=>{
    kitAutoSweepResume({kitSku,sku,itemId,modelId});
    return {ok:true,submitted:true,alreadyRunning:true,message:'Execução em andamento: varredura 9/9 automática ativada sem reenvio.'};
   }
-  await optimizerExecutionPrepare();
-  const p=optimizerExecPlan;
+  const p=await kitAutoSweepPreparePlan({kitSku,sku,itemId,modelId});
   if(!p||p.selectedStage!=='all'||p.sku!==sku||String(p.itemId)!==String(itemId))
    return {ok:false,error:optimizerExecPrepareError||'A prévia completa ainda não foi carregada. Nenhuma publicação foi iniciada.'};
   const pending=(audit?.stages||[]).filter(x=>!['confirmed','not_applicable'].includes(x.status))
