@@ -54,7 +54,8 @@ test('sem preço bruto alinhado, não altera preço nem promoção',async()=>{
   kitDiscountPrice:async()=>calls.push('price'),
   kitDiscountPublish:async()=>calls.push('publish')
  };
- const out=await advanceShopeeKitDiscount(job('kit_discount_ready'),io);
+ const out=await advanceShopeeKitDiscount({...job('kit_discount_ready'),
+  plan:{selectedStage:'discount',kitDiscount:approved}},io);
  assert.equal(out.state,'failed');
  assert.deepEqual(calls,[]);
 });
