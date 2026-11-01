@@ -2567,8 +2567,10 @@ app.post('/api/shopee/optimizer/execution/prepare',mustLogin,requireWeDropAdmin,
     // Recuperação da Etapa 08: a autorização única da Etapa 10 não deve
     // exigir uma segunda visita à prévia quando a campanha é inequívoca.
     // Apenas consultas oficiais e persistência local; nenhuma escrita Shopee.
-    if(kitLink&&selectedStage==='discount'&&
-       reviewState.kitDiscountPreview?.status!=='prepared'){
+    if(kitLink&&selectedStage==='discount'&&(
+       reviewState.kitDiscountPreview?.status!=='prepared'||
+       !Number.isFinite(Date.parse(reviewState.kitDiscountPreview?.preparedAt||''))||
+       Date.now()-Date.parse(reviewState.kitDiscountPreview.preparedAt)>24*3600000)){
       let candidateId=String(reviewState.kitDiscountPreview?.discountId||
        reviewState.kitDiscountPublication?.discountId||'').trim();
       if(!/^[1-9]\\d{0,17}$/.test(candidateId)){
