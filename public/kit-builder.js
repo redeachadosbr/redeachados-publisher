@@ -103,6 +103,11 @@ function kitWizardChecked(){
   return Array.isArray(saved)?[...new Set(saved.filter(n=>Number.isInteger(n)&&n>=1&&n<=10))]:[];
  }catch{return [];}
 }
+globalThis.RAKitWizardNavigateToStage=key=>{
+ const n={images:2,video:3,seo:4,technical:5,description:6,variants:7,fiscal:8,discount:9}[key];
+ if(n&&prepared?.kit){kitWizardSetStage(n,{scroll:true});return true;}
+ return false;
+};
 globalThis.RAKitWizardExecutionReviews=()=>{
  const kit=prepared?.kit;
  return kit?{kitSku:kit.kitSku,stages:kitWizardChecked()
@@ -121,7 +126,8 @@ async function kitWizardOpenExecutionFlow(){
  const handoff=globalThis.__RA_KIT_OPTIMIZATION_HANDOFF;
  const valid=handoff?.kitSku===kitSku&&
   /^[1-9]\\d{0,17}$/.test(String(handoff.itemId||''))&&
-  String(handoff.sku||'')===String($('#kitOptimizeMainSku')?.value||'');
+  String(handoff.sku||'')===String($('#kitOptimizeMainSku')?.value||
+   $('#kitPrincipalSku')?.value||prepared.kit.components?.[0]?.sku||'');
  const notes=[];
  if(button)button.disabled=true;
  try{
@@ -169,6 +175,13 @@ async function kitWizardOpenExecutionFlow(){
     }catch(error){
      notes.push('Vídeo pendente: '+String(error.message||error)+'. Abra Vídeo para revisar.');
     }
+   }
+   if(reviewed?.stages?.includes('fiscal')){
+    if(notice){notice.hidden=false;notice.textContent='Conferindo os dados fiscais no Motor Matriz original, sem publicar...';}
+    const fiscal=await globalThis.RAKitSyncApprovedFiscal?.({sku,itemId:id,modelId});
+    if(!fiscal?.ok)notes.push('Dados fiscais pendentes: '+
+     String(fiscal?.error||'Confirmação fiscal indisponível')+
+     '. Abra Dados fiscais e confira os campos originais.');
    }
   }
   if(prepared?.kit?.kitSku!==kitSku||kitWizardStage!==10)return;
