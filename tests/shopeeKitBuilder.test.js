@@ -442,7 +442,10 @@ test('dados fiscais do kit: etapa 08 reutiliza presets locais sem Shopee',()=>{
  assert.ok(app.includes('globalThis.RAKitRenderStoredFiscal='));
  assert.ok(app.includes('optimizerFiscalRender({...data,taxCurrent:{},readOnlyMarketplace:true})'));
  assert.ok(server.includes("app.get('/api/shopee/kits/fiscal-preset'"));
- assert.ok(helper.includes('readWeDropProduct(shopId,{sku:mainSku})'));
+ assert.ok(helper.includes('skus.map(sku=>readWeDropProduct(shopId,{sku}))'));
+ assert.ok(helper.includes('skuPresets=skus.map'));
+ assert.ok(wizard.includes('kitWizardRenderFiscalSkuPresets(data)'));
+ assert.ok(!wizard.slice(wizard.indexOf('async function kitWizardRequestFiscal'),wizard.indexOf('let kitWizardDiscountPending')).includes('if(!kitSaved)'));
  assert.ok(helper.includes('shopee_optimizer_workflow_reviews'));
  assert.doesNotMatch(helper,/api\/v2\/product|get_item_info|callShopeeShopApi/);
  assert.ok(css.includes('#kitWizardFiscalMount > #optimizerFiscalPanel'));
