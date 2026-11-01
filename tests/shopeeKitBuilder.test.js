@@ -406,7 +406,7 @@ test('etapa 05 usa o editor tecnico real da SKU principal',()=>{
  }
  assert.ok(js.includes('if(node.parentElement!==mount)mount.append(node)'));
  assert.ok(js.includes('if(progress.parentElement!==mount)'));
- assert.ok(js.includes('if(advanced.parentElement!==mount)mount.append(advanced)'));
+ assert.ok(js.includes('if(advanced.parentElement!==discountIdentity)discountIdentity.append(advanced)'));
  assert.ok(legacy.includes('openTechnicalTarget()'));
  assert.ok(legacy.includes('technicalOnly:true'));
  assert.ok(js.includes('kitWizardRequestTechnical()'));
