@@ -5503,7 +5503,7 @@ function optimizerExecUpdateRunButton(){
  const resume=Boolean(p?.reusedMedia?.imageIds?.length||p?.reusedMedia?.video?.phase==='ready');
  const missingKit=optimizerKitMissingApprovedStages(p);
  $('#optimizerExecutionLaunch').textContent=missingKit.length?
-  '⚠ Completar etapas conferidas antes de executar':
+  '▶ Executar etapas prontas e manter '+missingKit.length+' pendência(s)':
   !canPublish?
   p?.canExecute?'🛠 Conferir desconto e liberar execução':'🛠 Corrigir pendências e revalidar':
   p?.selectedStage==='media_fiscal'?'▶ Executar somente Imagens + Vídeo + Fiscal':
@@ -5561,7 +5561,7 @@ function optimizerExecUpdateRunButton(){
   }else{
    nextTitle.textContent='Prévia pronta — executar SKU '+p.sku;
    nextDescription.textContent=optimizerKitWorkflowActive()?
-    'A etapa 08 conferida será executada automaticamente após as demais etapas, na mesma autorização.':
+    'Execução completa das 9 etapas: imagens, vídeo, título, descrição, ficha, variações quando aplicáveis, fiscal e desconto autorizado; a nona é a conferência final. Etapas sem prévia segura permanecem pendentes, não bloqueiam as outras e nunca serão marcadas como publicadas.':
     '0% significa aguardando sua autorização. O botão abaixo iniciará a execução única da prévia revisada; os resultados serão conferidos na API Shopee.';
   }
  }
