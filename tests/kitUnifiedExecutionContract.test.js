@@ -45,7 +45,7 @@ test('motor antigo preserva a funcao sem duplicar conteudos nas dez etapas',()=>
  assert.match(app,/globalThis\.RAKitOpenStagePanel\?\.\(stage\.key\)/);
  assert.match(existing,/imageSyncAttempts/);
  assert.match(existing,/stage:'images',reviewed:true/);
- assert.match(server,/validateReview\(\{stage:'seo',reviewed:true,title:link\.title\}\)/);
+ assert.match(server,/validateReview\(\{stage:'seo',reviewed:true,title:link\.title\},\{kitProductNames:kit\.components\.map\(p=>p\.name\)\}\)/);
  assert.match(server,/validateReview\(\{stage:'description',reviewed:true,description:link\.description\}\)/);
 });
 test('motor antigo tem montagem original preservada e fica oculto no wizard',()=>{
@@ -150,7 +150,8 @@ test('check do titulo curto do kit funciona sem enfraquecer titulo SEO comum',()
  const execution=source('shopeeExecutionPlan.js');
  assert.match(execution,/allowShortKitTitle:Boolean\(/);
  assert.match(execution,/state\.kitOptimization\?\.kitSku/);
- assert.match(execution,/validateContentRules\(\{title\},\{allowShortKitTitle:/);
+ assert.match(execution,/validateContentRules\(\{title\},\{/);
+ assert.match(execution,/kitProductNames:state\.kitOptimization\?\.componentNames/);
  assert.doesNotMatch(execution,/validateContentRules\(\{title\}\);/);
 
  assert.match(app,/optimizerKitSourceErrors\[stage\]=String\(error\.message\|\|error\)/);
