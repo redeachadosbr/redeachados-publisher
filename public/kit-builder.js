@@ -2331,6 +2331,8 @@ function renderKit({scroll=true,displayTitle=''}={}){
  if(!prepared)return;
  const {kit,creative}=prepared;
  if(kitContentSku!==kit.kitSku){
+  // Não carregar a confirmação de salvamento de outro kit.
+  kitFactsSaveFeedback('Revise as informações deste kit e salve para confirmar no servidor.','info');
   kitContentRequest?.abort();
   kitContentReadyResult=null;
   kitContentSku=kit.kitSku;
