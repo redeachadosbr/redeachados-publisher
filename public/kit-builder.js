@@ -102,12 +102,16 @@ function kitWizardUpdateProgress(){
  const action=$('#kitWizardConfirm');
  if(action){action.disabled=!prepared;action.textContent=checks.includes(kitWizardStage)?'✓ Etapa conferida · desfazer':'✓ Marcar etapa conferida';}
 }
-// Um único resumo real: o cabeçalho do editor é movido, nunca clonado.
+// O resumo e a personalização ORIGINAIS ficam acima das dez etapas.
+// Mover os mesmos nós preserva o estado, a API de troca de SKU e os listeners.
 function kitWizardSyncHeader(){
  const wrapper=$('#kitWizardCurrentKit'),editor=$('#kitDetail');
  if(!wrapper||!editor)return;
  const original=editor.querySelector(':scope > .kit-editor-top-panel');
- if(original)wrapper.append(original);
+ if(original&&original.parentElement!==wrapper)wrapper.append(original);
+ const composition=editor.querySelector(':scope > .kit-editor-composition-panel')||
+  wrapper.querySelector(':scope > .kit-editor-composition-panel');
+ if(composition&&composition.parentElement!==wrapper)wrapper.append(composition);
  wrapper.hidden=editor.hidden||!prepared?.kit;
 }
 // Preservar o painel real de otimização Shopee fora das dez etapas.
@@ -2293,7 +2297,9 @@ globalThis.RAKitOpenStagePanel=stage=>{
  if(!prepared||$('#kitDetail')?.hidden)return false;
  kitSetImagesCollapsed(stage!=='images');
  kitSetCopyContentCollapsed(stage!=='seo'&&stage!=='description');
- kitSetCompositionCollapsed(true);
+ // A composição agora é independente e permanece acessível acima das etapas.
+ if(!$('#kitWizardCurrentKit')?.contains($('#kitCompositionContent')))
+  kitSetCompositionCollapsed(true);
  const facts=$('#kitMissingFacts');if(facts)facts.open=false;
  return true;
 };
