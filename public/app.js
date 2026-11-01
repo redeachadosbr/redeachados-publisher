@@ -2775,6 +2775,9 @@ $('#optimizerSku').onkeydown=event=>{
 };
 // Etapas persistentes para o mesmo Item ID/modelo/SKU. Nenhum write na Shopee.
 let optimizerWorkflowPlan=null,optimizerWorkflowStage=null,optimizerWorkflowSerial=0;
+// Uma unica reconexao por Item ID quando o rascunho do kit ja esta salvo,
+// mas o workflow antigo ainda nao tem a referencia do mesmo kit.
+const optimizerKitResumeLinkRecovering=new Set();
 let optimizerWorkflowActiveView=null,optimizerWorkflowSourceStage=null;
 function optimizerKitWorkflowActive(){
  const w=optimizerWorkflowPlan,h=globalThis.__RA_KIT_OPTIMIZATION_HANDOFF;
@@ -3954,6 +3957,34 @@ async function optimizerWorkflowLoad(record){
      String(data.itemId)===String(kitHandoff.itemId)&&String(data.sku)===String(kitHandoff.sku));
    const technicalOnly=matchedTarget&&kitHandoff?.technicalOnly===true;
    const linkedKit=matchedTarget&&data.kitOptimization?.kitSku===kitHandoff.kitSku;
+   const recoveryKey=[kitHandoff?.kitSku,sku,id,modelId].join('|');
+   if(matchedTarget&&!technicalOnly&&!linkedKit&&!optimizerKitResumeLinkRecovering.has(recoveryKey)){
+     // A pesquisa oficial confirmou o Item ID antes deste carregamento.
+     // Reassociar SOMENTE os rascunhos do mesmo kit, sem publicar na Shopee.
+     // O endpoint rejeita identidade divergente e execucao em andamento.
+     optimizerKitResumeLinkRecovering.add(recoveryKey);
+     optimizerWorkflowNotice('Recuperando o vinculo salvo do kit com o Item ID '+id+' (sem publicar)...','info');
+     try{
+       const restored=await json('/api/shopee/kits/optimization/prepare',{
+        method:'POST',headers:{'Content-Type':'application/json'},
+        body:JSON.stringify({kitSku:kitHandoff.kitSku,sku,mainSku:sku,
+         itemId:id,modelId,confirmedItemId:id}),
+        signal:AbortSignal.timeout(90000)
+       });
+       if(restored?.prepared!==true)throw Error('Servidor nao confirmou o vinculo do kit.');
+       if(serial===optimizerWorkflowSerial&&$('#optimizerSku').value.trim()===sku&&
+          globalThis.__RA_KIT_OPTIMIZATION_HANDOFF?.kitSku===kitHandoff.kitSku){
+        void optimizerWorkflowLoad(record);
+       }
+     }catch(error){
+       globalThis.RAKitWizardWorkflowLoadError?.({
+        kitSku:kitHandoff.kitSku,sku,itemId:id,
+        message:'Falha ao recuperar o vinculo salvo: '+String(error.message||error)
+       });
+     }
+     return;
+   }
+   if(linkedKit)optimizerKitResumeLinkRecovering.delete(recoveryKey);
    if(linkedKit||technicalOnly){
     kitOptimizerMount();
     const status=$('#kitOptimizerWorkspaceStatus');if(status)status.hidden=true;
