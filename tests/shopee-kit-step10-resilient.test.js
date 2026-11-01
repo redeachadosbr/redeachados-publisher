@@ -19,7 +19,7 @@ test('etapa 10 sempre confere vinculo duplo antes de importar imagens, video ou 
  assert.ok(builder.includes('/api/shopee/kits/optimization/link-status?'));
  assert.ok(builder.includes('/api/shopee/kits/optimization/prepare'));
  assert.ok(builder.includes('confirmedItemId:itemId'));
- assert.ok(builder.includes('O botão Executar retoma somente as pendências'));
+ assert.ok(builder.includes('O motor completo avaliará as outras etapas aprovadas'));
 });
 test('falha de fiscal por editor stale recarrega identidade e tenta sincronizar sem apagar',()=>{
  assert.ok(app.includes('globalThis.RAKitRefreshOptimizerWorkflow=async'));
