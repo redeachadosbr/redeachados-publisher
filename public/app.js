@@ -5621,6 +5621,36 @@ async function optimizerConnectionCheck(){
 }
 $('#optimizerConnectionCheck')?.addEventListener?.('click',()=>void optimizerConnectionCheck());
 
+// A resposta HTTP pode cair durante um deploy no Render DEPOIS de salvar a
+// prévia no banco. Recuperar a transação persistida antes de alegar falha.
+const optimizerIsTransientPrepareError=e=>/HTTP\s+(502|503|504)\b|failed to fetch|networkerror|network request failed/i.test(String(e?.message||e));
+async function optimizerRestorePreparedAfterTransportError({w,requestedStage,startedAt,serial}){
+ const data=await json('/api/shopee/optimizer/execution/status?'+new URLSearchParams({
+  sku:w.sku,item_id:w.itemId,model_id:w.modelId
+ }),{signal:AbortSignal.timeout(18000)});
+ if(serial!==optimizerExecSerial||optimizerWorkflowPlan?.sku!==w.sku||
+    optimizerWorkflowPlan?.itemId!==w.itemId||
+    optimizerWorkflowPlan?.modelId!==w.modelId)return false;
+ const job=data?.job;
+ const sameIdentity=job?.sku===w.sku&&String(job?.item_id)===String(w.itemId)&&
+  String(job?.model_id||'0')===String(w.modelId||'0');
+ if(!sameIdentity)return false;
+ if(['running','uncertain','verified'].includes(job.state)){
+  optimizerExecPrepareError='';
+  optimizerExecutionJobView(job,data.progress,data.issue);
+  optimizerExecNotice('A resposta da preparação caiu, mas há uma execução já registrada. Consultando o andamento sem repetir o envio.','info');
+  return true;
+ }
+ const recent=Date.parse(job.updated_at||'')>=startedAt-3000;
+ if(job.state==='prepared'&&recent&&job.plan?.selectedStage===requestedStage){
+  optimizerExecPrepareError='';
+  optimizerExecRender({plan:job.plan,progress:data.progress,issue:data.issue,
+   ready:job.plan.canExecute,updatedAt:job.updated_at,executionStatus:job.state});
+  optimizerExecNotice('Prévia recuperada do servidor depois de falha HTTP: preparação já estava salva. Nenhuma publicação foi repetida.','success');
+  return true;
+ }
+ return false;
+}
 async function optimizerExecutionPrepare({preserveStartError=false}={}){
  const w=optimizerWorkflowPlan;
  if(!w||optimizerExecBusy)return;
@@ -5659,18 +5689,43 @@ async function optimizerExecutionPrepare({preserveStartError=false}={}){
    if(['running','uncertain'].includes(active?.state))return;
    // A leitura do job anterior nao altera o escopo autorizado neste clique.
    $('#optimizerExecutionScope').value=requestedStage;
-   const result=await json('/api/shopee/optimizer/execution/prepare',{
-     method:'POST',headers:{'Content-Type':'application/json'},
-     body:JSON.stringify({sku:w.sku,itemId:w.itemId,modelId:w.modelId,
-       stage:requestedStage,
-       campaignId:String($('#optimizerExecDiscountCampaign')?.value||
-        $('#optimizerFinalCampaignId')?.value||$('#discountPromotionId')?.value||
-        optimizerDiscountFinalPreviewData?.preview?.discountId||'').trim(),
-       ...(['all','discount','discount_adjust'].includes($('#optimizerExecutionScope').value)&&optimizerDiscountApprovalReady()&&!(typeof optimizerKitWorkflowActive==='function'&&optimizerKitWorkflowActive())?
-        {discountApprovalToken:optimizerDiscountFinalPreviewData?.approvalToken,
-        allowOver25:optimizerMarketExceptionConsent(optimizerDiscountFinalQuote)}:{})}),
+   const requestBody=JSON.stringify({sku:w.sku,itemId:w.itemId,modelId:w.modelId,
+     stage:requestedStage,
+     campaignId:String($('#optimizerExecDiscountCampaign')?.value||
+      $('#optimizerFinalCampaignId')?.value||$('#discountPromotionId')?.value||
+      optimizerDiscountFinalPreviewData?.preview?.discountId||'').trim(),
+     ...(['all','discount','discount_adjust'].includes(requestedStage)&&optimizerDiscountApprovalReady()&&
+       !(typeof optimizerKitWorkflowActive==='function'&&optimizerKitWorkflowActive())?
+       {discountApprovalToken:optimizerDiscountFinalPreviewData?.approvalToken,
+        allowOver25:optimizerMarketExceptionConsent(optimizerDiscountFinalQuote)}:{})});
+   const requestPrepare=()=>json('/api/shopee/optimizer/execution/prepare',{
+     method:'POST',headers:{'Content-Type':'application/json'},body:requestBody,
      signal:AbortSignal.any([controller.signal,AbortSignal.timeout(75000)])
    });
+   const startedAt=Date.now();
+   let result;
+   try{result=await requestPrepare();}
+   catch(error){
+    if(!optimizerIsTransientPrepareError(error)||controller.signal.aborted)throw error;
+    // O POST pode ter sido gravado e apenas sua resposta ter sido perdida.
+    // Este GET jamais publica ou altera o anúncio.
+    try{
+     if(await optimizerRestorePreparedAfterTransportError({w,requestedStage,startedAt,serial}))return;
+    }catch{}
+    if(serial!==optimizerExecSerial||controller.signal.aborted)throw error;
+    optimizerExecNotice('Falha temporária de comunicação. Recuperação não encontrou prévia nova; tentando preparar apenas mais uma vez, sem publicar.','warning');
+    await new Promise(resolve=>setTimeout(resolve,1200));
+    if(serial!==optimizerExecSerial||controller.signal.aborted)throw error;
+    try{result=await requestPrepare();}
+    catch(lastError){
+     if(optimizerIsTransientPrepareError(lastError)){
+      try{
+       if(await optimizerRestorePreparedAfterTransportError({w,requestedStage,startedAt,serial}))return;
+      }catch{}
+     }
+     throw lastError;
+    }
+   }
    if(serial!==optimizerExecSerial||optimizerWorkflowPlan?.sku!==w.sku||
       optimizerWorkflowPlan?.itemId!==w.itemId||optimizerWorkflowPlan?.modelId!==w.modelId)return;
    optimizerExecRender(result);
