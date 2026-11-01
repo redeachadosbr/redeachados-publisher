@@ -2923,7 +2923,7 @@ async function kitAcceptBridgePhoto({slot,dataUrl,kitSku,referenceDataUrl=null})
  if(!Number.isInteger(Number(slot))||Number(slot)<1||Number(slot)>9)
   throw Error('Posição de foto inválida para este kit.');
  if(typeof dataUrl!=='string'||dataUrl.length>28*1024*1024||
-   !/^data:image\\/(?:png|jpeg|webp);base64,/i.test(dataUrl))
+   !/^data:image\/(?:png|jpeg|webp);base64,/i.test(dataUrl))
   throw Error('A Ponte não enviou uma imagem PNG, JPG ou WebP válida.');
  if(Number(slot)>1&&images.size){
   const sample=await kitPictureSample(dataUrl);
