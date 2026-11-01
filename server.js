@@ -1804,13 +1804,17 @@ app.post('/api/shopee/kits/optimization/prepare',mustLogin,requireWeDropAdmin,as
   // nem os checks já confirmados para o MESMO Item ID/modelo/SKU.
   // Troca real de kit/identidade continua exigindo revisão separada.
   const previousLink=prior?.review_state?.kitOptimization;
+  const approvedOrigin=String(saved.creative?.fiscalBySku?.[sku]?.origin||'').trim();
+  const fiscalDraft=/^[0-8]$/.test(approvedOrigin)?
+   {...(prior?.review_state?.tax||{}),origin:approvedOrigin}:null;
   const resetKitStages=Boolean(previousLink&&(
     String(previousLink.kitSku)!==kitSku||
     String(previousLink.itemId)!==String(itemId)||
     String(previousLink.modelId||'0')!==modelId));
   await saveWorkflowReview(auth.shopId,itemId,modelId,sku,{
    stage:'seo',reviewed:seoReviewed,title:link.title,titleOrigin:'kit-wedrop',
-   kitOptimization:link,resetKitStages
+   kitOptimization:link,resetKitStages,
+   ...(fiscalDraft?{tax:fiscalDraft}:{})
   });
   await saveWorkflowReview(auth.shopId,itemId,modelId,sku,{
    stage:'description',reviewed:descriptionReviewed,description:link.description,
