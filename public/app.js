@@ -4579,6 +4579,47 @@ function optimizerExecutionTrackerRender(progress,job){
   if(step.status==='checking')li.title='A API recebeu a atualização; ainda falta a confirmação de leitura do anúncio.';
   li.append(marker,name,status);stageList.append(li);
  }
+ // A execução 100% significa apenas que o escopo selecionado terminou.
+ // Expor ações reais para cada etapa não incluída, mesmo após job verificado.
+ let pendingActions=$('#optimizerExecutionPendingActions');
+ if(!pendingActions){
+  pendingActions=document.createElement('section');
+  pendingActions.id='optimizerExecutionPendingActions';
+  pendingActions.style.cssText='margin:14px 0;padding:16px;border:1px solid #cbdcf4;border-radius:15px;background:#f7faff;box-shadow:0 6px 18px rgba(26,65,118,.08)';
+  stageList.insertAdjacentElement('afterend',pendingActions);
+ }
+ pendingActions.replaceChildren();
+ const skipped=(progress.steps||[]).filter(x=>['skipped','review'].includes(x.status)&&x.id!=='discount');
+ if(skipped.length){
+  const heading=document.createElement('strong');
+  heading.textContent='Etapas ainda não executadas neste anúncio';
+  heading.style.cssText='display:block;margin-bottom:6px;color:#193d70;font-size:15px';
+  const detail=document.createElement('p');
+  detail.textContent='O 100% acima corresponde apenas à execução já selecionada. Estas etapas não foram enviadas. Prepare e autorize cada pendência separadamente:';
+  detail.style.cssText='font-size:13px;line-height:1.5;margin:0 0 12px';
+  pendingActions.append(heading,detail);
+  const actions=document.createElement('div');
+  actions.style.cssText='display:flex;flex-wrap:wrap;gap:9px';
+  for(const step of skipped){
+   if(!['images','video','variants','fiscal','technical','seo','description'].includes(step.id))continue;
+   const button=document.createElement('button');
+   button.type='button';button.className='kit-secondary';
+   button.textContent='Preparar '+step.label.replace(/^\\d+\\s*[·.-]\\s*/,'');
+   button.style.cssText='padding:10px 13px;border-radius:11px;font-weight:700';
+   button.addEventListener('click',()=>{
+    if(optimizerExecBusy||optimizerExecPreparation)return;
+    const scope=$('#optimizerExecutionScope');
+    if(!scope)return;
+    scope.value=step.id;
+    optimizerExecNotice('Preparando somente '+step.label+'. Revise arquivos, checklist e prévia antes de autorizar. Nada será enviado automaticamente.','info');
+    void optimizerExecutionPrepare();
+    document.querySelector('#optimizerExecutionPanel')?.scrollIntoView({behavior:'smooth',block:'start'});
+   });
+   actions.append(button);
+  }
+  pendingActions.append(actions);
+ }else pendingActions.hidden=true;
+ pendingActions.hidden=!skipped.length;
  let kitDiscountAction=$('#optimizerExecutionOpenKitDiscount');
  if(!kitDiscountAction){
   kitDiscountAction=optimizerMake('button','optimizer-exec-kit-discount-action',
