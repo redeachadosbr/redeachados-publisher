@@ -48,7 +48,7 @@ test('a Etapa 10 não força mídia/fiscal e o executor completo inclui tudo rev
  assert.ok(start>0&&end>start);
  assert.ok(executor.includes("scope.value='all'"));
  assert.ok(executor.includes('optimizerRootAuditRefresh(true)'));
- assert.ok(executor.includes('optimizerExecutionPrepare()'));
+ assert.ok(executor.includes('kitAutoSweepPreparePlan({kitSku,sku,itemId,modelId})'));
  assert.ok(executor.includes('optimizerExecuteApproved(false)'));
  assert.equal(executor.includes("scope.value='media_fiscal'"),false);
  assert.ok(wizard.includes('globalThis.RAKitExecutePendingAllStages?.('));
