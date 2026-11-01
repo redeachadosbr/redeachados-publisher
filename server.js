@@ -1561,25 +1561,72 @@ app.get('/api/shopee/kits/optimization/find',mustLogin,requireWeDropAdmin,async(
   const {auth,cfg}=await getValidAuth(req);
   const saved=await loadKitDraft(auth.shopId,kitSku);
   if(!saved?.kit||!Array.isArray(saved.skus))
-   throw Error('Kit nao salvo. Salve o rascunho antes de localizar o anuncio na Shopee.');
+   throw Error('Kit não salvo. Salve o rascunho antes de localizar o anúncio na Shopee.');
   if(!saved.skus.includes(sku)||String(req.query?.mainSku||sku).trim()!==sku)
    throw Error('Selecione a SKU principal do kit. A Shopee utiliza somente essa SKU única.');
+  const prior=saved.optimization;
+  // Preferir a leitura oficial por Item ID. A pesquisa por SKU é uma busca
+  // de descoberta, portanto não pode invalidar um anúncio já persistido.
+  const storedItemId=prior?.sku===sku&&prior?.mainSku===sku&&
+   /^[1-9]\\d{0,17}$/.test(String(prior.itemId||''))?String(prior.itemId):
+   !prior?.itemId&&/^[1-9]\\d{0,17}$/.test(String(saved.publication?.itemId||''))?
+    String(saved.publication.itemId):'';
+  const storedModelId=String(prior?.modelId||'0');
+  let directFailure='',directMismatch=false;
+  if(storedItemId){
+   try{
+    const live=await shopeeLiveEditableItem(cfg,auth,storedItemId);
+    const state=String(live.item_status||live.status||'').toUpperCase();
+    if(!['NORMAL','UNLIST'].includes(state))
+     throw Error('O anúncio está com status '+(state||'não informado')+' na Shopee.');
+    let verifiedModelId='0';
+    if(String(live.item_sku||'').trim()!==sku){
+     if(live.has_model!==true)
+      throw Error('A SKU principal do Item ID salvo difere da SKU atual do anúncio.');
+     const currentModels=(await shopeeLiveVariationState(cfg,auth,storedItemId,live)).models;
+     const matching=currentModels.filter(x=>String(x.model_sku||'').trim()===sku);
+     const exact=storedModelId!=='0'?
+      matching.find(x=>String(x.model_id)===storedModelId):
+      matching.length===1?matching[0]:null;
+     if(!exact)throw Error('O Item ID salvo não corresponde a uma variação única da SKU principal.');
+     verifiedModelId=String(exact.model_id);
+    }else if(storedModelId!=='0'){
+     const currentModels=(await shopeeLiveVariationState(cfg,auth,storedItemId,live)).models;
+     const exact=currentModels.find(x=>String(x.model_id)===storedModelId&&
+      String(x.model_sku||'').trim()===sku);
+     if(!exact)throw Error('O modelo salvo não corresponde mais à SKU principal na Shopee.');
+     verifiedModelId=storedModelId;
+    }
+    const verified={sku,itemId:storedItemId,modelId:verifiedModelId,
+     status:state,title:String(live.item_name||sku)};
+    return res.json({ok:true,kitSku,sku,searchMode:'saved_item_id_official_readback',
+     matches:[verified],verifiedSavedTarget:verified,notFound:false,canDeepSearch:true,
+     warnings:[],marketplaceUpdated:false,
+     message:'Item ID salvo recuperado e SKU principal conferida diretamente na ficha da Shopee.'});
+   }catch(error){
+    directFailure=String(error.message||error).slice(0,220);
+    directMismatch=/sku principal|não corresponde|modelo salvo|variação única|status /i.test(directFailure);
+   }
+  }
+  // Só usar pesquisa por SKU como alternativa de descoberta. Ela pode omitir
+  // anúncios existentes; não substituir automaticamente um ID persistido.
   const search=await findLiveShopeeSku(cfg,auth,callShopeeShopApi,sku,{fastOnly:true});
   const matches=(search.matches||[]).filter(x=>String(x.sku)===sku&&
    ['NORMAL','UNLIST'].includes(String(x.status).toUpperCase()))
    .map(x=>({itemId:String(x.itemId),modelId:String(x.modelId??0),
     sku,title:String(x.title||sku),status:String(x.status)}));
-  const existing=saved.optimization;
-  const linked=existing?.mainSku===sku&&existing?.sku===sku?
-   matches.find(x=>String(x.itemId)===String(existing.itemId)&&
-    String(x.modelId||'0')===String(existing.modelId||'0')):null;
-  res.json({ok:true,kitSku,sku,searchMode:'direct_exact',
+  const linked=storedItemId&&!directMismatch?
+   matches.find(x=>String(x.itemId)===storedItemId&&
+    String(x.modelId||'0')===storedModelId):null;
+  res.json({ok:true,kitSku,sku,searchMode:'direct_exact_fallback',
    matches,verifiedSavedTarget:linked?
     {sku,itemId:linked.itemId,modelId:linked.modelId}:null,
-   notFound:!matches.length,canDeepSearch:true,
-   warnings:(search.warnings||[]).slice(0,2),marketplaceUpdated:false,
-   message:matches.length?'Anuncio encontrado na Shopee.':
-    'Nao ha anuncio com a SKU exata do kit confirmado na busca rapida. SKU de componente nao equivale ao kit.'});
+   savedItemId:storedItemId||null,notFound:!matches.length,canDeepSearch:true,
+   warnings:[...(directFailure?['A leitura direta do Item ID salvo falhou: '+directFailure]:[]),
+    ...(search.warnings||[])].slice(0,3),marketplaceUpdated:false,
+   message:directMismatch?'O Item ID salvo divergiu da ficha da Shopee. Nenhum outro anúncio será vinculado automaticamente.':
+    matches.length?'Anúncio localizado pela SKU exata na Shopee.':
+    'Busca rápida não encontrou anúncio; o Item ID salvo também não foi confirmado por leitura direta.'});
  }catch(e){res.status(409).json({error:String(e.message||e).slice(0,340),marketplaceUpdated:false});}
 });
 // Preparação assistida de anúncios. Somente leitura da Shopee nesta versão;
