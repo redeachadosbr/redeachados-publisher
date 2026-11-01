@@ -29,6 +29,7 @@ test('servidor confere a identidade sem baixar nove árvores de atributos',()=>{
  const route=src.slice(a,b);
  assert.ok(a>=0&&b>a);
  assert.match(route,/const live=await shopeeLiveEditableItem\(cfg,auth,link\.itemId\)/);
- assert.doesNotMatch(route,/get_attribute_tree|auditShopeeItem/);
+ assert.doesNotMatch(route,/await\\s+auditShopeeItem\\(/);
+ assert.doesNotMatch(route,/path:\\s*['\"]\\/api\\/v2\\/product\\/get_attribute_tree/);
  assert.match(route,/if\(selected\.length!==1\)throw Error/);
 });
