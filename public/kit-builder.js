@@ -14,7 +14,7 @@ import {kitImagesLookDuplicated} from './kit-image-guard.js';
 import {validateKitCoverImage} from './kit-cover-validation.js?v=1';
 import {createKitVideoStore,kitVideoFileCheck,kitVideoMetaCheck} from './kit-video-store.js';
 import {createKitLogisticsPersistence} from './kit-logistics-draft-ui.js';
-import {initExistingKitOptimization} from './kit-existing-optimization.js?v=17-discount-link-recovery';
+import {initExistingKitOptimization} from './kit-existing-optimization.js?v=18-media-resume';
 // Kits Inteligentes WeDrop — Kit Formal enviado à Shopee somente após aprovação explícita.
 const $=s=>document.querySelector(s);
 const money=n=>Number(n).toLocaleString('pt-BR',{style:'currency',currency:'BRL'});
