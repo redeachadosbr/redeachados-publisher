@@ -4,8 +4,8 @@ const stop=new Set(['para','com','mais','sortido','sortida','infantil','produto'
 const tokens=s=>norm(s).split(/[^a-z0-9]+/).filter(x=>x.length>=4&&!stop.has(x));
 // Título compacto sem cortar o último componente. A ordem corresponde ao kit.
 const titleWords=s=>String(s||'').normalize('NFC').replace(/\s*\(SKU[^)]*\)/gi,'')
- .replace(/[^0-9A-Za-zÀ-ÿ×x./ -]+/g,' ').replace(/\s+/g,' ').trim().split(' ').filter(Boolean);
-const titleFiller=new Set(['de','do','da','dos','das','e','com','para','em','por','uma','um','linha','modelo','produto','produtos']);
+ .replace(/[^0-9A-Za-zÀ-ÿ×x./]+/g,' ').replace(/\s+/g,' ').trim().split(' ').filter(Boolean);
+const titleFiller=new Set(['de','do','da','dos','das','e','com','para','em','por','uma','um','a','o','os','as','linha','modelo','produto','produtos']);
 const normTitleWords=s=>norm(s).replace(/[^a-z0-9]+/g,' ').trim().split(/\s+/).filter(Boolean);
 const charLength=s=>Array.from(s).length;
 export function buildKitSeoTitle(components){
@@ -19,15 +19,20 @@ export function buildKitSeoTitle(components){
  const render=()=> '✨ Kit '+groups.map(g=>g.join(' ')).join(' + ')+' 📦';
  // Retirar palavras secundárias individualmente, jamais remover um produto,
  // jamais recortar um título no caractere 120 ou dividir palavras no meio.
+ const originals=groups.map(x=>[...x]);
+ const unique=(w,i)=>!originals.some((g,k)=>k!==i&&g.some(x=>norm(x)===norm(w)));
  while(charLength(render())>120){
   let chosen=null;
   for(let i=0;i<groups.length;i++){
    const g=groups[i];if(g.length<=2)continue;
+   const uniqueDetails=g.slice(1).filter(w=>unique(w,i)&&charLength(w)>=3);
    for(let j=1;j<g.length;j++){
-    const word=g[j],v=norm(word);
-    const repeated=groups.some((other,k)=>k!==i&&other.some(w=>norm(w)===v));
-    const isDimension=/\d/.test(word);
-    const weight=(repeated?0:1)+(isDimension?4:0)+(j===g.length-1?1:0);
+    const word=g[j],distinct=unique(word,i);
+    // Pelo menos um termo próprio de cada produto além da palavra inicial.
+    if(distinct&&uniqueDetails.length===1&&uniqueDetails[0]===word)continue;
+    const weight=(/\d/.test(word)?9:0)+(charLength(word)===1?5:0)+
+     (!distinct&&charLength(word)>=4?4:0)+(distinct&&charLength(word)>=3?2:0)-
+     (j>=4?1:0);
     const candidate={i,j,weight,chars:charLength(word)};
     if(!chosen||weight<chosen.weight||(weight===chosen.weight&&candidate.chars>chosen.chars))
      chosen=candidate;
