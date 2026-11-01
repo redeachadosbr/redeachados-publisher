@@ -632,7 +632,7 @@ export function initExistingKitOptimization({getContext,api,money,onMainSkuChang
     if(response?.ready!==true)return false;
     return response;
    };
-   const retryable=e=>/\\b(?:HTTP\\s*(?:502|503|504)|failed to fetch|networkerror|timeout)\\b/i.test(
+   const retryable=e=>/HTTP\\s*(?:502|503|504)|failed to fetch|networkerror|timeout/i.test(
     String(e?.message||e));
    // Um 502 pode ocorrer depois de o servidor salvar o vínculo. Fazer readback
    // antes de chamar a preparação (que audita a Shopee) novamente.
