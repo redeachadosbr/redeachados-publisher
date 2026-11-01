@@ -445,11 +445,14 @@ test('rastreador distingue check do desconto da sua publicação na Shopee',()=>
  assert.match(app,/const sameKitJob=Boolean\(w\.kitOptimization\?\.kitSku/);
  assert.match(app,/String\(job\?\.item_id\|\|''\)===String\(w\.itemId\)/);
  assert.match(app,/const kitDiscount=sameKitJob\?optimizerKitDiscountReviewState\(w\)/);
- assert.match(app,/const discountPending=progress\.verified&&kitDiscount\.prepared&&!kitDiscount\.confirmed/);
- assert.match(app,/'kit-prepared':'✓ Prévia conferida · promoção pendente'/);
- assert.match(app,/'kit-published':'✓ Promoção aplicada separadamente'/);
- assert.match(app,/kitDiscount\.confirmed\?'kit-published':kitDiscount\.prepared\?'kit-prepared':step\.status/);
- assert.match(app,/O 100% representa as alterações já confirmadas do anúncio/);
+ assert.ok(app.includes("rootDiscount?rootDiscount.status!=='confirmed':!kitDiscount.confirmed"));
+ assert.ok(app.includes("'kit-unprepared':'NÃO EXECUTADO · preparar Minha Promoção'"));
+ assert.ok(app.includes("'kit-prepared':'Prévia registrada · desconto NÃO executado'"));
+ assert.ok(app.includes("'kit-published':'✓ Promoção confirmada por leitura oficial'"));
+ assert.ok(app.includes("!discountPending&&kitDiscount.confirmed?'kit-published'"));
+ assert.ok(app.includes("Desconto não executado: preparar Minha Promoção")||
+  app.includes("Desconto não executado: preparar Minha Promoção".toLowerCase())||
+  app.includes("08 · Desconto não executado: preparar Minha Promoção"));
  assert.match(css,/\.optimizer-exec-step\.is-kit-prepared/);
  assert.match(css,/\.optimizer-exec-step\.is-kit-published/);
  assert.match(html,/\/app\.js\?v=3\.5\.\d+-[a-z0-9-]+/);
