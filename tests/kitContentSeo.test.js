@@ -163,7 +163,7 @@ test('botão azul recupera automaticamente a resposta por Ponte, sem abrir área
  const end=ui.indexOf('function kitPasteSeoReply(',start);
  const body=ui.slice(start,end);
  assert.match(body,/kitFetchGeneratedTextFromPonte\(kitSku,skus,products\)/);
- assert.match(body,/parseKitSeoResponse\(response\.rawText\)/);
+ assert.match(body,/parseKitSeoResponse\(content\)/);
  assert.match(body,/importPlusText\(\)/);
  assert.match(body,/bridgeIdentityError/);
  assert.doesNotMatch(body,/kitShowPasteSeoReply/);
@@ -189,9 +189,9 @@ test('Ponte v1.0.61 recebe nomes separados das 3 SKUs e preserva validação SEO
  const {readFileSync}=await import('node:fs');
  const ui=readFileSync(new URL('../public/kit-builder.js',import.meta.url),'utf8');
  assert.match(ui,/parts\[2\]>=61/);
- assert.match(ui,/products=prepared\.kit\.components\.map/);
+ assert.match(ui,/products=kitCanonicalTextProducts\(kitSku,prepared\.kit\.components\)/);
  assert.match(ui,/payload:\{nonce,kitSku,skus,products\}/);
- assert.match(ui,/parseKitSeoResponse\(response\.rawText\)/);
+ assert.match(ui,/parseKitSeoResponse\(content\)/);
  assert.match(ui,/kitShowSeoTitles\(scored\)/);
 });
 
