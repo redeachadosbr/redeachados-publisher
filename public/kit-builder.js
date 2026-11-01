@@ -685,6 +685,17 @@ function kitApplyMainSkuOrder(main,{persist=true}={}){
   return false;
  }
  if(persist){
+  // A conferência técnica pertence à SKU/Item ID que estava selecionada.
+  // Trocar a principal invalida só o check 05, sem mexer nas demais etapas.
+  const previous=kitRememberedMain(kit)||String(prepared?.optimization?.mainSku||kit.components[0]?.sku||'');
+  if(previous&&previous!==String(main)){
+   const checks=new Set(kitWizardChecked());
+   if(checks.delete(5)){
+    try{localStorage.setItem(kitWizardStorageKey(kit.kitSku),JSON.stringify([...checks].sort((a,b)=>a-b)));}
+    catch{status('Confira novamente o check técnico após trocar a SKU principal.','warning');}
+    kitWizardUpdateProgress();
+   }
+  }
   try{localStorage.setItem(KIT_MAIN_ORDER_PREFIX+kit.kitSku,String(main));}
   catch{status('Ordem alterada nesta sessão, mas não pôde ser armazenada neste navegador.','warning');}
   clearKitPublishApproval();
