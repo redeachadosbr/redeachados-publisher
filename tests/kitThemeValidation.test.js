@@ -60,7 +60,8 @@ test('alteração manual exige SKU distinta e respeita limite de três produtos'
   ['310200','278CHOCALHO','118004']);
  assert.deepEqual(modifyKitSkus(['310200','278CHOCALHO'],{
   mode:'replace',replaceSku:'278CHOCALHO',sku:'118004'}),['310200','118004']);
- assert.throws(()=>modifyKitSkus(['A','B','C'],{mode:'add',sku:'D'}),/Máximo de 3/);
+ assert.deepEqual(modifyKitSkus(['A','B','C'],{mode:'add',sku:'D'}),['A','B','C','D']);
+ assert.throws(()=>modifyKitSkus(['A','B','C','D'],{mode:'add',sku:'E'}),/Máximo de 4/);
  assert.throws(()=>modifyKitSkus(['A','B'],{mode:'replace',replaceSku:'Z',sku:'C'}),/Selecione uma SKU/);
  assert.throws(()=>modifyKitSkus(['A','B'],{mode:'add',sku:'b'}),/já faz parte/);
 });
