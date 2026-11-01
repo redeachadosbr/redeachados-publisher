@@ -340,7 +340,7 @@ test('etapa 08 do kit permite previa de planejamento antes de executar o anuncio
  assert.match(app,/prepared\?'✓ Conferência registrada · ainda não publicado'/);
  assert.match(html,/id="kitOptimizeDiscountToExecution"/);
  assert.match(html,/id="kitOptimizeDiscountApply" disabled/);
- assert.match(module,/kit-existing-optimization\.js\?v=12-discount-readonly-link/);
+ assert.match(module,/kit-existing-optimization\.js\?v=13-direct-execution-bridge/);
  assert.match(html,/\/app\.js\?v=3\.5\.\d+-[a-z0-9-]+/);
  assert.match(html,/\/kit-builder\.js\?v=[a-zA-Z0-9._-]+/);
  assert.match(html,/\/kit-builder\.css\?v=[a-z0-9._-]+/);
@@ -371,7 +371,7 @@ test('etapa 08 mostra tabela clara em vez de bloco preto e preserva dados',()=>{
  assert.match(css,/#tab-kits :is\(#kitDetail,#kitWizardOptimizerDock\) \.kit-existing-discount-review \.kit-discount-summary/);
  assert.match(css,/background:#fff!important;color:#18365a!important/);
  assert.match(css,/\.kit-discount-summary-row dd/);
- assert.match(module,/kit-existing-optimization\.js\?v=12-discount-readonly-link/);
+ assert.match(module,/kit-existing-optimization\.js\?v=13-direct-execution-bridge/);
 });
 test('previa do kit confere etapa 08 sem sinalizar aplicacao na Shopee',()=>{
  const store=source('shopeeOptimizationWorkflowStore.js');
