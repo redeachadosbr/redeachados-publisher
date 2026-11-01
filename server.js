@@ -2572,15 +2572,22 @@ app.post('/api/shopee/optimizer/execution/prepare',mustLogin,requireWeDropAdmin,
        !Number.isFinite(Date.parse(reviewState.kitDiscountPreview?.preparedAt||''))||
        Date.now()-Date.parse(reviewState.kitDiscountPreview.preparedAt)>24*3600000)){
       let candidateId=String(reviewState.kitDiscountPreview?.discountId||
-       reviewState.kitDiscountPublication?.discountId||'').trim();
+       reviewState.kitDiscountPublication?.discountId||
+       (previous?.sku===sku&&String(previous?.plan?.itemId)===String(itemId)?previous?.plan?.kitDiscount?.discountId:null)||'').trim();
+      let discountDiscoveryDetail='';
       if(!/^[1-9]\d{0,17}$/.test(candidateId)){
        const found=await discoverKitDiscountCampaigns({cfg,auth,
         call:callShopeeShopApi,readPages:readDiscountPages,
         kitItemId:itemId,primaryItemIds:[itemId]});
+       discountDiscoveryDetail='Campanhas consultadas: '+Number(found.checked||0)+
+        '; busca '+(found.complete?'completa':'incompleta')+
+        '; seleção: '+String(found.suggested?.reason||'indefinida')+'.';
        if(found.complete===true&&
           ['kit_membership','primary_sku_membership','only_campaign'].includes(found.suggested?.reason))
         candidateId=String(found.suggested.discountId||'');
       }
+      if(!/^[1-9]\d{0,17}$/.test(candidateId))
+       throw Error('Etapa 08: não foi possível identificar uma única campanha Minha Promoção válida para este Item ID. '+discountDiscoveryDetail+' Nenhuma alteração foi enviada.');
       if(/^[1-9]\d{0,17}$/.test(candidateId)){
        const prepared=await previewKitDiscount({cfg,auth,
         kitSku:String(kitLink.kitSku),discountId:candidateId,secret:stateSecret()});
