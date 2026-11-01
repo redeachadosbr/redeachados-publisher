@@ -186,16 +186,28 @@ async function kitWizardOpenExecutionFlow(){
   }
   if(prepared?.kit?.kitSku!==kitSku||kitWizardStage!==10)return;
   kitWizardMountTechnical();
-  const scope=$('#optimizerExecutionScope');if(scope)scope.value='all';
-  const start=$('#optimizerShowExecution');
-  if(start&&!$('#kitOptimizerWorkspace')?.hidden){
-   start.click();
-   $('#optimizerExecutionPanel')?.scrollIntoView?.({behavior:'smooth',block:'start'});
-   if(notice){notice.hidden=notes.length===0;notice.textContent=notes.join(' ');}
-  }else{
-   status('Motor original da SKU não carregou. Volte à etapa 09 e confirme o vínculo.','warning');
-   if(notice){notice.hidden=false;notice.textContent=notes.concat('O motor de execução ainda não abriu.').join(' ');}
+  if(notes.length){
+   if(notice){notice.hidden=false;notice.textContent=notes.join(' ');}
+   status('Nao foi possivel iniciar: '+notes.join(' '),'warning');
+   return;
   }
+  if(!valid){
+   status('O anuncio da SKU principal nao tem vinculo valido. A publicacao nao sera iniciada.','error');
+   return;
+  }
+  const output=await globalThis.RAKitExecutePendingMediaFiscal?.({
+   kitSku,sku:String(handoff.sku),itemId:String(handoff.itemId),modelId:String(handoff.modelId||'0')
+  });
+  if(notice){
+   notice.hidden=Boolean(output?.ok&&output?.submitted);
+   notice.textContent=output?.error||output?.message||'Publicacao solicitada. Acompanhando resposta da Shopee.';
+  }
+  if(!output?.ok){
+   status('Nao foi possivel enviar imagens, video e fiscal: '+
+    String(output?.error||'O motor ainda nao esta pronto.'),'error');
+   return;
+  }
+  $('#optimizerExecutionTracker')?.scrollIntoView?.({behavior:'smooth',block:'center'});
  }finally{kitWizardExecutionOpening=false;kitWizardExecutionIntent=false;if(button)button.disabled=false;}
 }
 function kitWizardUpdateProgress(){
@@ -717,9 +729,10 @@ function kitWizardInit(){
    return;
   }
   const selected=globalThis.RAKitWizardExecutionReviews?.();
-  if(!selected?.stages?.length){
-   status('Confira pelo menos uma etapa do kit antes de preparar a execução.','warning');
-   return;
+  // O kit pode ter todas as etapas conferidas; publicar neste comando
+  // somente as tres pendencias, sem reabrir titulo, descricao ou desconto.
+  if(!selected?.kitSku||selected.kitSku!==prepared.kit.kitSku){
+   status('O kit atual nao corresponde ao rascunho carregado.','error');return;
   }
   kitWizardMountTechnical();
   const workspace=$('#kitOptimizerWorkspace');
