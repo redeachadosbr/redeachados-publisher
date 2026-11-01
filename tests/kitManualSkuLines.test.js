@@ -25,7 +25,7 @@ test('duas SKUs por linha e quebra Windows; nao filtra uma SKU sem catalogo',()=
 
 test('listas malformadas nao sao tratadas como kit; repetidas sao bloqueadas',()=>{
  assert.equal(parseManualKitSkuBlock('TRC6808'),null);
- assert.equal(parseManualKitSkuBlock('TRC6808\nKTE022BCF\nTRC0663\nTRC6809'),null);
+ assert.equal(parseManualKitSkuBlock('TRC6808\nKTE022BCF\nTRC0663\nTRC6809').kits.length,4);
  assert.equal(parseManualKitSkuBlock('1. Kit Banheiro\nTRC6808\nKTE022BCF'),null);
  assert.throws(()=>parseManualKitSkuBlock('trc6808\nTRC6808'),/repetidas/);
 });
@@ -41,4 +41,14 @@ test('botao manual ignora filtro de categoria e deixa o servidor validar disponi
  assert.match(body,/if\(!fileParsed&&!manualBlock\)kitCaptureResearchJson/);
  assert.match(body,/\.\.\.\(manualBlock\?\{idea:''\}:\{\}\),kits:rows/);
  assert.match(body,/await api\('\/api\/shopee\/kits\/plus-import'/);
+});
+
+test('quatro SKUs coladas com espaços criam combinações conforme tamanho selecionado',()=>{
+ const input='CE420 B   UD04.0004.012   CT0202   CT0205';
+ const three=parseManualKitSkuBlock(input,{size:3});
+ assert.equal(three.kits.length,4);
+ assert.deepEqual(three.kits[0],['CE420','B','UD04.0004.012']);
+ const two=parseManualKitSkuBlock('CE420B, UD04.0004.012; CT0202 | CT0205',{size:2});
+ assert.equal(two.kits.length,6);
+ assert.ok(two.kits.every(x=>x.length===2));
 });
