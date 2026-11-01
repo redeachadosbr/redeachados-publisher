@@ -4277,6 +4277,26 @@ async function optimizerWorkflowSaveReview({fiscalConfirm=false}={}){
 }
 $('#optimizerWorkflowReview')?.addEventListener?.('click',()=>void optimizerWorkflowSaveReview());
 globalThis.RAFiscalChecklistConfirm=()=>optimizerWorkflowSaveReview({fiscalConfirm:true});
+// An Etapa 10 relink makes the previously loaded workflow stale.
+// Reload the exact item/SKU review from the authenticated backend, without
+// touching Shopee, before retrying the previously approved fiscal check.
+globalThis.RAKitRefreshOptimizerWorkflow=async({kitSku,sku,itemId,modelId}={})=>{
+ const current=globalThis.__RA_KIT_OPTIMIZATION_HANDOFF;
+ if(String(current?.kitSku)!==String(kitSku)||String(current?.sku)!==String(sku)||
+    String(current?.itemId)!==String(itemId)||
+    String(current?.modelId||'0')!==String(modelId||'0'))
+  return {ok:false,error:'Identidade do anúncio mudou durante a recuperação.'};
+ try{
+  const params=new URLSearchParams({sku,item_id:itemId,model_id:String(modelId||'0')});
+  const data=await json('/api/shopee/optimizer/workflow?'+params,{
+   signal:AbortSignal.timeout(60000)});
+  if(String(data?.sku)!==String(sku)||String(data?.itemId)!==String(itemId)||
+     String(data?.kitOptimization?.kitSku)!==String(kitSku))
+   return {ok:false,error:'O servidor ainda não retornou a revisão vinculada ao kit.'};
+  optimizerWorkflowRender(data);
+  return {ok:true};
+ }catch(error){return {ok:false,error:String(error.message||error)};}
+};
 globalThis.RAKitSyncApprovedFiscal=async({sku,itemId,modelId}={})=>{
  const w=optimizerWorkflowPlan;
  if(!optimizerKitWorkflowActive()||!w||w.sku!==sku||
