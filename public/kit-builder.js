@@ -1,6 +1,6 @@
 import {parseKitChatResult,parseManualKitSkuBlock} from './kit-chat-result-parser.js?v=2.5.5-exact-four';
 import {buildKitResearchJson} from './kit-json-export.js?v=1-json-before-import';
-import {scoreKitSeoTitle,parseKitSeoResponse,kitSeoRiskFlags,formatKitShopeeDescription} from './kit-seo-helper.js';
+import {scoreKitSeoTitle,parseKitSeoResponse,kitSeoRiskFlags,formatKitShopeeDescription,buildKitSeoTitle,missingKitSeoProducts} from './kit-seo-helper.js';
 import {requestKitContent} from './kit-content-handoff.js?v=1';
 import {requestKitResearch} from './kit-research-handoff.js?v=1';
 import {detectSkuMeasurements,skuMeasurementSummary,kitImageMeasurementsBySku} from './kit-measurements.js?v=1.1.2-wedrop-axes-labels';
@@ -2852,7 +2852,11 @@ async function saveDraft(){
  try{
   await kitLogisticsKeeper.flush();
   const compactDescription=formatKitShopeeDescription($('#kitDescription').value);
-  const leaks=kitCommercialSkuLeaks($('#kitTitle').value,compactDescription);
+  const titleText=$('#kitTitle').value.trim();
+  if([...titleText].length>120)throw Error('Título acima de 120 caracteres. Encurte sem retirar nenhum produto do kit.');
+  const missingProducts=missingKitSeoProducts(titleText,prepared.kit.components);
+  if(missingProducts.length)throw Error('Título incompleto: faltam '+missingProducts.join(' e ')+'. Mencione os quatro produtos em até 120 caracteres.');
+  const leaks=kitCommercialSkuLeaks(titleText,compactDescription);
   if(leaks.length)throw Error('Retire os códigos SKU do título e da descrição antes de salvar: '+leaks.join(', '));
   $('#kitDescription').value=compactDescription;
   updateKitTextCounters();
@@ -3009,6 +3013,17 @@ function renderKit({scroll=true,displayTitle=''}={}){
  const localCopy=kitReadLocalCopy(kit.kitSku);
  const safeCopy=localCopy&&!['published','publishing','uncertain'].includes(String(prepared?.publication?.status||''))?localCopy:null;
  $('#kitTitle').value=safeCopy?.title??creative.title;
+ // Rascunhos antigos de 4 SKUs podiam ter o último produto cortado.
+ // Reparar apenas o texto incompleto, sem trocar componentes ou sobrescrever descrição.
+ if(kit.components.length===4&&
+    (missingKitSeoProducts($('#kitTitle').value,kit.components).length||
+     [...$('#kitTitle').value].length>120)){
+  try{
+   $('#kitTitle').value=buildKitSeoTitle(kit.components);
+   kitContentSeoTitles=kitContentSeoTitles.filter(x=>!missingKitSeoProducts(x.title,kit.components).length);
+   status('Título antigo adaptado para incluir os 4 produtos em até 120 caracteres. Revise e salve o rascunho.','info');
+  }catch(error){status('Revise o título do kit de 4 produtos: '+error.message,'warning');}
+ }
  $('#kitDescription').value=safeCopy?.description??formatKitShopeeDescription(creative.description);
  if(safeCopy?.seoTitles?.length===3)
   kitContentSeoTitles=safeCopy.seoTitles.map((title,i)=>({number:i+1,title}));
@@ -4122,6 +4137,10 @@ function importPlusText({silent=false}={}){
   const result=parseKitSeoResponse($('#kitPlusTextResult').value);
   const leaked=result.titles.flatMap(x=>kitCommercialSkuLeaks(x.title,result.description));
   if(leaked.length)throw Error('O ChatGPT incluiu códigos SKU no anúncio. Gere novamente sem códigos internos: '+[...new Set(leaked)].join(', ')+'.');
+  const missing=result.titles.map(x=>({number:x.number,missing:missingKitSeoProducts(x.title,prepared.kit.components)}))
+   .filter(x=>x.missing.length);
+  if(missing.length)throw Error('Títulos sem os quatro produtos: '+missing.map(x=>
+   'opção '+x.number+' (faltou '+x.missing.join(', ')+')').join(' · ')+'. Resuma os nomes, sem omitir componentes e sem ultrapassar 120 caracteres.');
   // Exibir a classificação por critérios objetivos, não inventar ranking da Shopee.
   const scored=result.titles.map(x=>({...x,...scoreKitSeoTitle(x.title,prepared.kit.components)}))
    .sort((a,b)=>b.score-a.score||a.number-b.number);
