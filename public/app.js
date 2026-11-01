@@ -6357,6 +6357,31 @@ function optimizerRootAuditRender(audit){
  }
  panel.append(actions);
 }
+// O operador ja autorizou a execucao. A finalizacao do rascunho somente
+// ocorre quando a auditoria raiz (leitura REAL da Shopee) retorna 9/9.
+const optimizerKitFinalizeRunning=new Set(),optimizerKitFinalizeDone=new Set();
+async function optimizerKitAutoFinalizeFromAudit(w,audit){
+ if(audit?.complete!==true||!optimizerKitWorkflowActive())return;
+ const link=w?.kitOptimization;
+ if(!link?.kitSku||String(link.itemId)!==String(w.itemId)||
+    String(link.sku)!==String(w.sku))return;
+ const identity=[link.kitSku,w.sku,w.itemId,w.modelId].join('|');
+ if(optimizerKitFinalizeRunning.has(identity)||optimizerKitFinalizeDone.has(identity))return;
+ optimizerKitFinalizeRunning.add(identity);
+ try{
+  const response=await json('/api/shopee/kits/drafts/finalize-optimization',{
+   method:'POST',headers:{'Content-Type':'application/json'},
+   body:JSON.stringify({kitSku:link.kitSku,sku:w.sku,itemId:w.itemId,modelId:w.modelId}),
+   signal:AbortSignal.timeout(90000)});
+  if(response?.finalized!==true)throw Error(response?.error||response?.message||'Arquivamento não confirmado.');
+  optimizerKitFinalizeDone.add(identity);
+  optimizerExecNotice('✓ ANÚNCIO OTIMIZADO NA SHOPEE · O rascunho foi arquivado automaticamente em Publicados.','success');
+  globalThis.RAKitOptimizationFinalized?.({kitSku:link.kitSku,itemId:w.itemId});
+ }catch(error){
+  optimizerExecNotice('A execução permanece preservada. A finalização do rascunho não foi confirmada: '+
+   String(error.message||error)+'. Confira novamente a auditoria raiz.','warning');
+ }finally{optimizerKitFinalizeRunning.delete(identity);}
+}
 async function optimizerRootAuditRefresh(force=false){
  const w=optimizerWorkflowPlan;if(!w)return;
  const key=[w.sku,w.itemId,w.modelId].join('|');
@@ -6374,6 +6399,7 @@ async function optimizerRootAuditRefresh(force=false){
   if(!current||[current.sku,current.itemId,current.modelId].join('|')!==key)return;
   optimizerRootAuditCache.set(key,{audit:result.audit,at:Date.now()});
   optimizerRootAuditRender(result.audit);
+  if(result.audit?.complete===true)void optimizerKitAutoFinalizeFromAudit(current,result.audit);
  }catch(error){
   const panel=$('#optimizerRootAuditPanel');
   if(panel){panel.hidden=false;panel.textContent='Conferência geral indisponível: '+String(error.message||error)+'. Nenhuma etapa foi considerada concluída.';}
