@@ -2564,6 +2564,38 @@ app.post('/api/shopee/optimizer/execution/prepare',mustLogin,requireWeDropAdmin,
       verifyShopeeExecution(previous.plan,live,previous.result)?previous.plan.video?.sha256:null;
     const manualImages=await readPreparedImages(auth.shopId,itemId,modelId,sku);
     const reviewState={...(review?.review_state||{})};
+    // Recuperação da Etapa 08: a autorização única da Etapa 10 não deve
+    // exigir uma segunda visita à prévia quando a campanha é inequívoca.
+    // Apenas consultas oficiais e persistência local; nenhuma escrita Shopee.
+    if(kitLink&&selectedStage==='discount'&&
+       reviewState.kitDiscountPreview?.status!=='prepared'){
+      let candidateId=String(reviewState.kitDiscountPreview?.discountId||
+       reviewState.kitDiscountPublication?.discountId||'').trim();
+      if(!/^[1-9]\\d{0,17}$/.test(candidateId)){
+       const found=await discoverKitDiscountCampaigns({cfg,auth,
+        call:callShopeeShopApi,readPages:readDiscountPages,
+        kitItemId:itemId,primaryItemIds:[itemId]});
+       if(found.complete===true&&
+          ['kit_membership','primary_sku_membership','only_campaign'].includes(found.suggested?.reason))
+        candidateId=String(found.suggested.discountId||'');
+      }
+      if(/^[1-9]\\d{0,17}$/.test(candidateId)){
+       const prepared=await previewKitDiscount({cfg,auth,
+        kitSku:String(kitLink.kitSku),discountId:candidateId,secret:stateSecret()});
+       if(String(prepared.itemId)!==String(itemId)||
+          String(prepared.modelId||'0')!==String(modelId)||
+          prepared.priceAligned!==true||
+          !['ready','planning'].includes(prepared.status))
+        throw Error('Etapa 08: campanha encontrada, mas o preço ou anúncio diverge. Não foi enviado nenhum desconto.');
+       const restored={kitSku:String(kitLink.kitSku),itemId:String(itemId),
+        modelId:String(modelId),discountId:candidateId,
+        gross:prepared.gross,promo:prepared.promo,afterCoupon:prepared.afterCoupon,
+        currentGross:prepared.currentGross,priceAligned:prepared.priceAligned,
+        preparedAt:new Date().toISOString(),status:'prepared'};
+       await saveWorkflowReview(auth.shopId,itemId,modelId,sku,{kitDiscountPreview:restored});
+       reviewState.kitDiscountPreview=restored;
+      }
+    }
     let kitDiscountPlan=null,discountPreparationWarning='';
     if(kitLink&&['all','discount','discount_adjust'].includes(selectedStage)&&reviewState.kitDiscountPreview?.status==='prepared'){
      try{
