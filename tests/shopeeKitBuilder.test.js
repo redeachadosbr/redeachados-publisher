@@ -472,3 +472,23 @@ test('desconto do kit aparece apenas na etapa 09 das dez etapas, sem oito cartoe
  assert.match(css,/#tab-kits #kitWizardOptimizerDock,/);
  assert.match(css,/#tab-kits #kitWizardExecutionMount #optimizerExecutionPanel/);
 });
+
+
+test('painel original de troca de SKU aparece acima da otimização de 10 etapas',()=>{
+ const html=fs.readFileSync(new URL('../public/index.html',import.meta.url),'utf8');
+ const script=fs.readFileSync(new URL('../public/kit-builder.js',import.meta.url),'utf8');
+ const css=fs.readFileSync(new URL('../public/kit-builder.css',import.meta.url),'utf8');
+ assert.ok(html.indexOf('id="kitWizardCurrentKit"')<html.indexOf('id="kitWizard"'),
+  'O resumo e a personalização precisam ficar acima das dez etapas');
+ assert.equal(html.split('id="kitManualComposition"').length-1,1,
+  'A função existente de troca não deve ser clonada');
+ assert.ok(script.includes("editor.querySelector(':scope > .kit-editor-composition-panel')"));
+ assert.ok(script.includes('wrapper.append(composition)'),
+  'O painel original é movido, preservando os controles e listeners');
+ assert.ok(script.includes("api('/api/shopee/kits/modify'"),
+  'Adição e substituição continuam usando o cálculo original');
+ assert.ok(script.includes("if(!$('#kitWizardCurrentKit')?.contains($('#kitCompositionContent')))"),
+  'A seleção de outras etapas não deve ocultar a troca de SKU');
+ assert.ok(css.includes('#tab-kits #kitWizardCurrentKit #kitManualComposition>.kit-manual-composition'));
+ assert.ok(css.includes('#tab-kits #kitWizardCurrentKit #kitToggleComposition.kit-composition-toggle'));
+});
