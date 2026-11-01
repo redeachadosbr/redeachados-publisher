@@ -86,6 +86,25 @@ export async function saveWorkflowReview(shop,item,model,sku,change){
  * Persist verified-source autofill as a technical DRAFT without marking the
  * SKU reviewed or overwriting existing Shopee/manual values. Idempotent.
  */
+// Corrige somente uma medida *equivalente* salva na sintaxe antiga (A + Ø),
+// quando a opção oficial da categoria pede C x L x A. Nenhuma outra edição manual
+// é substituída. A correção continua apenas no rascunho, com fonte explícita.
+export function legacyCircularDimensionCorrection(attr,previous,suggestion){
+ const name=String(attr?.name||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase();
+ if(!/^(?:dimension\s*\(\s*l\s*x\s*w\s*x\s*h\s*\)|dimensions?\s*\(\s*l\s*x\s*w\s*x\s*h\s*\)|dimensoes?\s*\(\s*c\s*x\s*l\s*x\s*a\s*\))$/.test(name))return false;
+ if(!previous?.enabled||previous.userDisabled||previous.values?.length!==1||
+    Number(previous.values[0]?.valueId)!==0||suggestion?.values?.length!==1)return false;
+ const old=String(previous.values[0]?.valueName||'').normalize('NFD')
+  .replace(/[\u0300-\u036f]/g,'').trim().toLowerCase();
+ const match=old.match(/^(\d{1,4}(?:[.,]\d{1,2})?)\s*cm\s*(?:de\s*)?altura\s*[x×]\s*(\d{1,4}(?:[.,]\d{1,2})?)\s*cm\s*(?:de\s*)?diametro\s*$/);
+ if(!match)return false;
+ const h=Number(match[1].replace(',','.')),d=Number(match[2].replace(',','.'));
+ const suggested=String(suggestion.values[0]?.valueName||'')
+  .trim().replace(/,/g,'.').replace(/\s+/g,' ').toLowerCase();
+ return h>0&&d>0&&suggested===d+' x '+d+' x '+h+' cm'&&
+   /diametro/i.test(String(suggestion.evidence||'').normalize('NFD').replace(/[\u0300-\u036f]/g,''));
+}
+
 export async function mergeWorkflowTechnicalAutofill(shop,item,model,sku,attributes,suggestions){
  if(!Array.isArray(suggestions)||!suggestions.length)return null;
  const existing=await getWorkflowReview(shop,item,model);
@@ -102,8 +121,9 @@ export async function mergeWorkflowTechnicalAutofill(shop,item,model,sku,attribu
   const previous=manualMap.get(id);
   // Explicit manual choices, even drafts, take precedence.
   // Evidence-only notes do not mean that an actual option was filled.
-  if(previous?.values?.some(x=>String(x.valueName||'').trim()||Number(x.valueId)>0))
-   continue;
+  const legacyCorrection=legacyCircularDimensionCorrection(attr,previous,suggestion);
+  if(previous?.values?.some(x=>String(x.valueName||'').trim()||Number(x.valueId)>0)&&
+     !legacyCorrection)continue;
   if(previous&&!previous.enabled&&previous.userDisabled)continue;
   const values=(suggestion.values||[]).filter(v=>
    (Number(v.valueId)>0||String(v.valueName||'').trim())&&
@@ -114,6 +134,7 @@ export async function mergeWorkflowTechnicalAutofill(shop,item,model,sku,attribu
   if(!values.length)continue;
   const originalNote=previous?.source==='wedrop-auto'?'':String(previous?.evidence||'').trim();
   const evidence=String(suggestion.evidence||'')+
+    (legacyCorrection?' · Dimensões convertidas de altura × diâmetro em C × L × A, revisar a base.':'')+
     (originalNote?' · Observação manual anterior: '+originalNote:'');
   const field={attributeId:id,enabled:true,evidence:evidence.slice(0,500),
    source:'wedrop-auto',values};
