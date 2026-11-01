@@ -3060,3 +3060,17 @@
 @media(max-width:950px){
  #tab-kits #kitWizardTechnicalMount > .kit-flow-start-bar{grid-template-columns:1fr}
 }
+
+
+/* Acessibilidade visual — valor do preço bruto do kit na Etapa 09 */
+#tab-kits #kitWizardDiscountPricing #kitPricingSummary .kit-price-kpi.kit-price-gross{
+ background:#176c43!important;
+ border-color:#115936!important;
+ color:#fff!important;
+}
+#tab-kits #kitWizardDiscountPricing #kitPricingSummary .kit-price-kpi.kit-price-gross span,
+#tab-kits #kitWizardDiscountPricing #kitPricingSummary .kit-price-kpi.kit-price-gross #kitPriceGross{
+ color:#fff!important;
+ opacity:1!important;
+ text-shadow:none!important;
+}
