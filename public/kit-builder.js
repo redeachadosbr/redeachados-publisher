@@ -3817,6 +3817,74 @@ function kitStopKitExtension(reason='Geração de imagens do kit interrompida.')
  const btn=$('#kitGenerateAll');
  if(btn)btn.textContent='Gerar 9 imagens automaticamente pela extensão';
 }
+// Recuperação local durável das imagens recebidas mas recusadas pelo Manager.
+// Não abrir outra conversa nem refazer prompt: primeiro recuperar o arquivo
+// capturado na mesma origem, depois reconciliar o que ainda falta com a Ponte.
+let kitPendingRecoveryBusy=false;
+async function kitShowCapturedRecovery(kitSku=prepared?.kit?.kitSku){
+ const panel=$('#kitCapturedRecovery'),preview=$('#kitCapturedPreview'),
+  message=$('#kitCapturedRecoveryStatus');
+ if(!panel)return [];
+ if(!kitSku||prepared?.kit?.kitSku!==kitSku){
+  panel.hidden=true;preview?.removeAttribute('src');return [];
+ }
+ try{
+  const rows=await kitPhotoStore.listPending(kitSku);
+  if(prepared?.kit?.kitSku!==kitSku)return [];
+  const available=rows.filter(x=>!images.has(x.slot));
+  const first=available[0];
+  panel.hidden=!first;
+  if(first){
+   if(preview)preview.src=first.dataUrl;
+   if(message)message.textContent='Imagem '+String(first.slot).padStart(2,'0')+
+    '/09 preservada nesta máquina ('+available.length+' pendente(s)). '+
+    (first.lastError?'Último erro: '+first.lastError:
+    'Arquivo capturado; clique em Reimportar para gravar na galeria.');
+  }else preview?.removeAttribute('src');
+  return available;
+ }catch(error){
+  panel.hidden=true;preview?.removeAttribute('src');
+  kitExtensionStatus('Não foi possível consultar cópias capturadas: '+
+   String(error.message||error),'warning');
+  return [];
+ }
+}
+async function kitRecoverCapturedImages(){
+ if(kitPendingRecoveryBusy||!prepared?.kit)return {recovered:0,failed:0};
+ const sku=prepared.kit.kitSku;
+ kitPendingRecoveryBusy=true;
+ let recovered=0,failed=0;
+ try{
+  for(const row of await kitPhotoStore.listPending(sku)){
+   if(prepared?.kit?.kitSku!==sku)break;
+   if(images.has(row.slot)){
+    await kitPhotoStore.removePending(sku,row.slot);
+    continue;
+   }
+   try{
+    const ok=await kitAcceptBridgePhoto({slot:row.slot,dataUrl:row.dataUrl,kitSku:sku});
+    if(ok!==true)throw Error('Gravação não confirmada.');
+    await kitPhotoStore.removePending(sku,row.slot);
+    recovered++;
+   }catch(error){
+    failed++;
+    await kitPhotoStore.markPendingFailure(sku,row.slot,String(error.message||error));
+    kitExtensionStatus('Imagem '+String(row.slot).padStart(2,'0')+
+     '/09 ainda preservada, mas importação falhou: '+String(error.message||error)+
+     '. Use Selecionar foto já gerada caso a captura esteja incorreta.','error');
+   }
+  }
+  if(recovered){
+   renderImageSlots();kitAutoImageUi();
+   kitExtensionStatus('✓ '+recovered+' imagem(ns) recuperada(s) e confirmada(s) no armazenamento deste kit. '+
+    'As posições existentes foram preservadas.','success');
+  }
+  return {recovered,failed};
+ }finally{
+  kitPendingRecoveryBusy=false;
+  void kitShowCapturedRecovery(sku);
+ }
+}
 let kitReferenceCoverWarningShown=false;
 async function kitStoredPhotoApproved(row){
  if(Number(row?.slot)!==1)return true;
@@ -3845,6 +3913,7 @@ async function kitRestoreImageGallery(kitSku){
   }
   if(count){renderImageSlots();kitAutoImageUi();
    kitExtensionStatus(count+' imagens antigas recuperadas deste kit. Revise todas antes de publicar.','success');}
+  void kitShowCapturedRecovery(kitSku);
   kitScheduleAutomaticBridgeRecovery();
  }catch(error){kitRestoredSku='';kitExtensionStatus('Recuperação de fotos indisponível: '+error.message,'error');}
 }
@@ -3890,9 +3959,18 @@ async function kitResumeExtensionImages({automatic=false}={}){
    }
   }
   if(restored){renderImageSlots();kitAutoImageUi();}
+  const local=await kitRecoverCapturedImages();
+  if(prepared?.kit?.kitSku!==sku)throw Error('Outro kit foi aberto durante a recuperação.');
+  if(images.size===9){
+   kitExtensionStatus('✓ As nove imagens estão salvas neste kit. Confira a galeria antes de publicar.','success');
+   return;
+  }
   const result=await getKitExtensionBridge().resumeFromManager();
   if(!result?.ok){
-   kitExtensionStatus(String(result?.error||'Não foi possível reconectar à extensão.').slice(0,450),'error');
+   kitExtensionStatus((local.recovered?
+    '✓ Imagem(ns) pendente(s) recuperada(s) no kit. ': '')+
+    String(result?.error||'A sessão da Ponte não foi localizada. Se a foto existir no ChatGPT, use Selecionar foto já gerada.').slice(0,420),
+    local.recovered?'warning':'error');
    return;
   }
   $('#kitStopExtension').hidden=false;
@@ -3944,7 +4022,8 @@ globalThis.__RA_KIT_RECOVER_CONTEXT=async identity=>{
    }
   }
   if(count){renderImageSlots();kitAutoImageUi();}
-  const completed=[...images.keys()].filter(n=>Number.isInteger(n)&&n>=1&&n<=10).sort((a,b)=>a-b);
+  await kitRecoverCapturedImages();
+  const completed=[...images.keys()].filter(n=>Number.isInteger(n)&&n>=1&&n<=9).sort((a,b)=>a-b);
   const prompts=Array.from({length:9},(_,i)=>kitImagePromptAt(i+1));
   if(prompts.some(p=>typeof p!=='string'||p.length<40))
    throw Error('Faltam prompts específicos deste kit.');
