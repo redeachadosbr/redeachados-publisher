@@ -228,6 +228,39 @@ function kitWizardMountPricing(){
    kitWizardPricingNext?.parentNode===kitWizardPricingHome?kitWizardPricingNext:null);
  }
 }
+// A etapa 05 pertence ao mesmo registro técnico da SKU principal no Motor
+// Matriz. Só o estado REVIEWED confirmado pelo servidor habilita o check:
+// abrir o formulário ou carregar seus atributos não equivale à conferência.
+function kitWizardTechnicalReviewSync({kitSku,sku,itemId,reviewed}={}){
+ const kit=prepared?.kit;
+ const selected=String($('#kitOptimizeMainSku')?.value||$('#kitPrincipalSku')?.value||'');
+ const handoff=globalThis.__RA_KIT_OPTIMIZATION_HANDOFF;
+ if(!kit||String(kit.kitSku)!==String(kitSku||'')||
+    !selected||selected!==String(sku||'')||
+    !kit.components.some(p=>String(p.sku)===selected)||
+    !/^[1-9]\\d{0,17}$/.test(String(itemId||''))||
+    !handoff||String(handoff.kitSku)!==String(kitSku)||
+    String(handoff.sku)!==selected||
+    String(handoff.itemId)!==String(itemId))return false;
+ const checks=new Set(kitWizardChecked());
+ if(reviewed===true)checks.add(5);
+ else if(reviewed===false)checks.delete(5);
+ else return false;
+ try{localStorage.setItem(kitWizardStorageKey(kit.kitSku),JSON.stringify([...checks].sort((a,b)=>a-b)));}
+ catch{
+  kitWizardTechnicalStatus('A conferência está salva na ficha original, mas não foi possível guardar o check das 10 etapas neste navegador.','warning');
+  return false;
+ }
+ kitWizardUpdateProgress();
+ if(kitWizardStage===5){
+  kitWizardTechnicalStatus(reviewed
+   ?'✓ Ficha técnica da SKU principal '+selected+' conferida e salva no Motor Matriz. Etapa 05 marcada. Nenhuma publicação na Shopee.'
+   :'A ficha técnica da SKU principal '+selected+' está aberta para revisão. Confirme no formulário original para marcar a Etapa 05.',
+   reviewed?'success':'info');
+ }
+ return true;
+}
+globalThis.RAKitTechnicalReviewChanged=kitWizardTechnicalReviewSync;
 function kitWizardTechnicalReady(){
  if(kitWizardStage!==5||!prepared?.kit)return false;
  const sku=$('#kitOptimizeMainSku')?.value||'';
@@ -554,6 +587,17 @@ function kitWizardInit(){
  });
  $('#kitWizardConfirm')?.addEventListener('click',()=>{
   if(!prepared?.kit?.kitSku){status('Selecione um kit salvo para registrar a conferência.','error');return;}
+  if(kitWizardStage===5){
+   const editor=$('#optimizerWorkflowEditor'),technical=$('#optimizerTechnicalPanel');
+   const review=$('#optimizerWorkflowReview');
+   if(!editor||editor.hidden||!technical||technical.hidden||!review||review.hidden||review.disabled){
+    kitWizardTechnicalStatus('A ficha da SKU principal precisa estar aberta. Use “Carregar ou atualizar ficha técnica”, revise os atributos e tente registrar novamente.','warning');
+    return;
+   }
+   kitWizardTechnicalStatus('Registrando a conferência no formulário técnico original. A Etapa 05 só será marcada após a confirmação do servidor.','info');
+   review.click();
+   return;
+  }
   if(kitWizardStage===4&&!String($('#kitTitle')?.value||'').trim()){
    status('Informe e revise o título SEO antes de confirmar a etapa 02.','error');return;
   }
