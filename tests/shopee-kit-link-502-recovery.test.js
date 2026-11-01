@@ -25,12 +25,12 @@ test('502 consulta vinculo antes de repetir somente a preparacao local',()=>{
  assert.ok(start>=0&&end>start);
  const route=app.slice(start,end);
  assert.match(route,/link-status\?/);
- assert.match(route,/\\/api\\/shopee\\/kits\\/optimization\\/prepare/);
+ assert.ok(route.includes('/api/shopee/kits/optimization/prepare'));
  assert.ok(route.includes('502|503|504'),'retries somente para indisponibilidade temporária');
- assert.match(route,/if\\(!retryable\\(error\\)\\)throw error/);
- assert.match(route,/optimizerKitResumeLinkRecovering\\.delete\\(recoveryKey\\)/);
+ assert.ok(route.includes('if(!retryable(error))throw error'));
+ assert.ok(route.includes('optimizerKitResumeLinkRecovering.delete(recoveryKey)'));
  assert.match(route,/linked=await readBack/);
- assert.doesNotMatch(route,/\\/api\\/shopee\\/optimizer\\/execution\\/execute/);
+ assert.ok(!route.includes('/api/shopee/optimizer/execution/execute'));
 });
 test('vinculo parcial ou identidade/custos alterados nunca ficam autorizados',()=>{
  const link={kitSku:'KIT-126051011000-126088800001-TRC0663',sku:'1.26088.80.0001',
