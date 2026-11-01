@@ -27,7 +27,7 @@ async function api(path,{body,signal}={}){
   ...(signal?{signal}:{})
  });
  const data=await response.json().catch(()=>({}));
- if(!response.ok)throw Error(data.error||'Consulta não concluída.');
+ if(!response.ok)throw Error(data.error||('HTTP '+response.status+' · Consulta não concluída.'));
  return data;
 }
 let categoriesLoaded=false,suggestions=[],prepared=null,images=new Map(),generationBusy=false;
