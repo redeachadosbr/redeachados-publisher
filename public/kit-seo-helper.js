@@ -69,10 +69,13 @@ export function scoreKitSeoTitle(title,components=[]){
   return w.length?w.filter(k=>n.includes(k)).length/w.length:0;});
  const coverage=portions.length?portions.reduce((s,v)=>s+v,0)/portions.length:0;
  const lengthScore=len>=115&&len<=120?32:len>=100&&len<=120?26:len>=90&&len<100?8:0;
- const score=Math.min(100,lengthScore+Math.round(coverage*48)+
+ const base=Math.min(100,lengthScore+Math.round(coverage*48)+
   (portions.length&&portions.every(x=>x>=.2)?12:0)+(/\bkit\b/i.test(t)?8:0));
+ const missing=missingKitSeoProducts(t,components);
+ const score=missing.length?Math.min(base,49):base;
  return {score,label:score>=80?'Forte':score>=60?'Boa':'Revisar',
-  note:'Estimativa por tamanho e termos dos produtos; não é ranking oficial da Shopee.'};
+  note:missing.length?'Título incompleto: falta mencionar '+missing.join(', ')+'.':
+   'Estimativa por tamanho e termos dos produtos; não é ranking oficial da Shopee.'};
 }
 // Shopee trata quebras de linha vazias como espaço vertical em anúncios.
  // Mantém uma única separação entre seções e nenhuma linha vazia entre itens.
