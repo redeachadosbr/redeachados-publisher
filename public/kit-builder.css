@@ -3383,3 +3383,19 @@
  #tab-kits .kit-captured-recovery{flex-direction:column}
  #tab-kits .kit-captured-recovery>img{width:120px;height:120px}
 }
+
+/* Etapa 08: resumo fiscal por SKU real, sem reutilizar o NCM de outra SKU */
+#tab-kits .kit-fiscal-sku-summary{margin:14px 0 16px}
+#tab-kits .kit-fiscal-sku-title{display:block;color:#14345e;font-size:16px;margin-bottom:5px}
+#tab-kits .kit-fiscal-sku-description{color:#5d7188;font-size:12px;line-height:1.55;margin:3px 0 12px}
+#tab-kits .kit-fiscal-sku-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(225px,1fr));gap:11px}
+#tab-kits .kit-fiscal-sku-card{background:#fff;border:1px solid #cbdcf0;border-radius:14px;padding:13px;min-width:0}
+#tab-kits .kit-fiscal-sku-heading{display:flex;flex-direction:column;gap:5px;padding-bottom:10px;margin-bottom:8px;border-bottom:1px solid #e1ebf5}
+#tab-kits .kit-fiscal-sku-heading strong{font-size:13px;color:#14345e;line-height:1.35}
+#tab-kits .kit-fiscal-sku-heading small{font-size:11px;color:#5b7590;overflow-wrap:anywhere}
+#tab-kits .kit-fiscal-sku-line{display:flex;gap:9px;align-items:baseline;justify-content:space-between;padding:6px 0;border-bottom:1px solid #f0f4f9;font-size:12px}
+#tab-kits .kit-fiscal-sku-line span{color:#60728c}
+#tab-kits .kit-fiscal-sku-line strong{color:#1c416c;text-align:right}
+#tab-kits .kit-fiscal-sku-line.kit-fiscal-sku-missing strong{font-weight:500;color:#9a661b}
+#tab-kits .kit-fiscal-sku-alert{font-size:12px;border:1px solid #efca85;background:#fff7e8;color:#81510c;padding:9px;border-radius:9px;margin-top:10px}
+#tab-kits .kit-wizard-fiscal-mount #optimizerFiscalPanel{border:1px solid #b8d3ed;border-radius:13px;padding:15px;background:#fff}
