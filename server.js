@@ -3269,8 +3269,9 @@ app.post('/api/shopee/optimizer/execution/execute',mustLogin,requireWeDropAdmin,
   let job=await readShopeeExecution(auth.shopId,itemId,modelId);
   if(job?.sku!==sku||job.state!=='prepared')throw Error('Plano não preparado ou já iniciado. Confira o andamento.');
   const linkedKit=(await getWorkflowReview(auth.shopId,itemId,modelId))?.review_state?.kitOptimization;
+  let verifiedExecutionKit=null;
   if(linkedKit){
-   await verifiedLinkedKitQuote(auth,linkedKit);
+   verifiedExecutionKit=await verifiedLinkedKitQuote(auth,linkedKit);
    if(req.body?.discountApprovalToken)
     throw Error('Kit composto: desconto exige a confirmação própria da etapa 08.');
    if(!(Date.parse(job.updated_at)>=Date.parse(linkedKit.preparedAt)))
@@ -3396,7 +3397,12 @@ app.post('/api/shopee/optimizer/execution/execute',mustLogin,requireWeDropAdmin,
   confirmShopeeExecution(plan,{sku,confirmation:req.body.confirmation});
   const review=await getWorkflowReview(auth.shopId,itemId,modelId);
   if(review?.sku!==sku)throw Error('Revisão da SKU mudou. Prepare novamente.');
-  const reviewState=review.review_state||{};
+  const reviewState={...(review.review_state||{})};
+  // Revalidar exatamente os mesmos nomes WeDrop usados na prévia.
+  // Assim 55x90cm não se torna inválido somente durante a execução.
+  if(linkedKit&&verifiedExecutionKit)
+   reviewState.kitOptimization={...linkedKit,
+    componentNames:verifiedExecutionKit.live.components.map(p=>String(p.name||''))};
   if((plan.selectedStage==='fiscal'||plan.finalFiscal)&&reviewState.stages?.fiscal?.reviewed&&reviewState.tax){
     const supplier=await readWeDropProduct(auth.shopId,linkedKit?
       {sku:linkedKit.mainSku}:{sku,itemId,modelId});
@@ -3424,7 +3430,7 @@ app.post('/api/shopee/optimizer/execution/execute',mustLogin,requireWeDropAdmin,
   const manualVideo=plan.video?await getShopeeManualVideo(auth.shopId,itemId,modelId,sku):null;
   const manualImages=plan.images?.length?await readPreparedImages(auth.shopId,itemId,modelId,sku):[];
   const fresh=compileShopeeExecutionPlan({shopId:auth.shopId,itemId,modelId,sku,record,
-   review:review.review_state,live,manualVideo,manualImages,
+   review:reviewState,live,manualVideo,manualImages,
    deferUnconfirmedFiscal:plan.fiscalDeferred===true,
    omitFiscal:false,selectedStage:plan.selectedStage||'all',
    allowDiscountOnly:plan.discountOnly===true,
