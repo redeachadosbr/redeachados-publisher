@@ -494,7 +494,7 @@ export async function composeKit(shop,skus,{marginPct=15,packing=0,shipping=0}={
   if(statuses.length>1)throw Error('Disponibilidade ambígua para '+p.sku+'.');
   return {...p,stockStatus:statuses[0]?.[1]||'DESCONHECIDO'};
  });
- if(products.some(x=>!x))throw Error('SKU sem cadastro e custo válido no catálogo importado desta loja: '+skus.filter(x=>!lookup.has(skuKey(x))).join(', ')+'. Confirme a importação de custos WeDrop.');
+ if(products.some(x=>!x))throw Error('SKU não encontrada com custo WeDrop válido no catálogo importado desta loja: '+skus.filter(x=>!lookup.has(skuKey(x))).join(', ')+'. Confirme a importação de custos WeDrop.');
  assertKitComponentsAvailable(products,stock);
  const costs=brl(products.reduce((a,p)=>a+p.unitCost,0));
  const n=Number(marginPct),extra=Number(packing),freight=Number(shipping);
