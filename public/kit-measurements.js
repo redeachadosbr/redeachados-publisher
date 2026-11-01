@@ -33,8 +33,27 @@ export function detectSkuMeasurements(input){
  // comprimento: 20 cm, altura de 12 cm, largura 8 cm, diâmetro 9 cm.
  const named=new RegExp(wordBoundaryBefore+'(comprimento|largura|altura|profundidade|di[aâ]metro|espessura)\\s*(?::|=|de|do|da)?\\s*('+NUMBER+')\\s*('+LENGTH+')'+trailingBoundary,'giu');
  while((m=named.exec(s))!==null)add('dimensions',m[1].toLowerCase()+': '+m[2]+' '+canonicalUnit(m[3]));
- const reverse=new RegExp(wordBoundaryBefore+'('+NUMBER+')\\s*('+LENGTH+')\\s*de?\\s+(comprimento|largura|altura|profundidade|di[aâ]metro)'+trailingBoundary,'giu');
- while((m=reverse.exec(s))!==null)add('dimensions',m[3].toLowerCase()+': '+m[1]+' '+canonicalUnit(m[2]));
+ // "21,5cm altura x 6,7cm largura": a unidade vem antes do eixo,
+ // com "de" opcional. Esse formato é comum nas fichas WeDrop.
+ // Quando há vários itens DENTRO da mesma SKU, preserva o nome de
+ // cada componente ("Porta Escova", "Saboneteira") nas dimensões.
+ const scopeNameAt=offset=>{
+  const before=s.slice(0,offset);
+  const delimiters=[' / ',' | ',' ; '];
+  const last=Math.max(-1,...delimiters.map(v=>before.lastIndexOf(v)));
+  const start=last<0?0:last+3;
+  const remaining=s.slice(start);
+  const segmentEnd=remaining.search(/\s+[\/|;]\s+/u);
+  const segment=segmentEnd<0?remaining:remaining.slice(0,segmentEnd);
+  const labels=[...segment.matchAll(/([\p{L}][\p{L}\s-]{2,45})\s*:\s*(?=\d)/gu)];
+  const label=labels.at(-1)?.[1]?.trim()||'';
+  return /^(?:medidas?|dimens[oõ]es?|tamanho|altura|largura|comprimento|profundidade|di[aâ]metro|espessura|peso|massa|capacidade|volume)$/iu.test(label)?'':label;
+ };
+ const reverse=new RegExp(wordBoundaryBefore+'('+NUMBER+')\\s*('+LENGTH+')\\s*(?:de\\s+)?(comprimento|largura|altura|profundidade|di[aâ]metro|espessura)'+trailingBoundary,'giu');
+ while((m=reverse.exec(s))!==null){
+  const scope=scopeNameAt(m.index);
+  add('dimensions',(scope?scope+' — ':'')+m[3].toLowerCase()+': '+m[1]+' '+canonicalUnit(m[2]));
+ }
  // "Medida: 19 cm" e "Tamanho de 25 cm" em fichas individuais.
  const single=new RegExp(wordBoundaryBefore+'(?:medida|dimens[aã]o|tamanho)\\s*(?::|=|de)?\\s*('+NUMBER+')\\s*('+LENGTH+')'+trailingBoundary,'giu');
  while((m=single.exec(s))!==null)add('dimensions','medida: '+m[1]+' '+canonicalUnit(m[2]));
