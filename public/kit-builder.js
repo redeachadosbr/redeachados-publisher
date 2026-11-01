@@ -630,9 +630,23 @@ function kitReorderSelect(select,main){
 function kitApplyMainSkuOrder(main,{persist=true}={}){
  const kit=prepared?.kit;
  if(!kit?.components?.some(p=>String(p.sku)===String(main)))return false;
+ if(persist&&(kitAutoImageBusy||kitBridgeController?.activeJob())){
+  const previous=kitRememberedMain(kit)||String(prepared?.optimization?.mainSku||'')||
+   String(kit.components[0]?.sku||'');
+  for(const selector of ['#kitPrincipalSku','#kitOptimizeMainSku','#kitMainSku']){
+   const node=$(selector);
+   if(node&&[...node.options].some(o=>o.value===previous))node.value=previous;
+  }
+  status('Interrompa ou conclua a geração de imagens antes de mudar a SKU principal. As fotos em andamento não foram alteradas.','warning');
+  return false;
+ }
  if(persist){
   try{localStorage.setItem(KIT_MAIN_ORDER_PREFIX+kit.kitSku,String(main));}
   catch{status('Ordem alterada nesta sessão, mas não pôde ser armazenada neste navegador.','warning');}
+  clearKitPublishApproval();
+  const photosReviewed=$('#kitPhotosReviewed');if(photosReviewed)photosReviewed.checked=false;
+  if(images.size)imageStatus('Ordem das SKUs alterada. As '+images.size+
+   ' imagens já salvas foram preservadas; confira se a SKU principal aparece corretamente nas artes antes de autorizar publicação.','warning');
  }
  for(const selector of ['#kitPrincipalSku','#kitOptimizeMainSku','#kitMainSku'])
   kitReorderSelect($(selector),String(main));
