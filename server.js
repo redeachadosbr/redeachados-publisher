@@ -1996,6 +1996,9 @@ app.get('/api/shopee/optimizer/workflow',mustLogin,requireWeDropAdmin,async(req,
           'Informações por SKU não recuperadas: '+String(error.message||error).slice(0,100);
       }
     }
+    const technicalSkuFactsApplied=Boolean(
+      String(technicalSourceText||'').trim()&&
+      String(technicalSourceText||'').trim()!==String(sourceEvidence.sourceText||'').trim());
     const supplierFacts=supplierWorkflowFacts(supplier,record,settings);
     const collectEvidenceFacts=()=>{
       const basic=supplierAttributeSuggestions({attributes:technicalPreview.attributes,
@@ -2087,7 +2090,8 @@ app.get('/api/shopee/optimizer/workflow',mustLogin,requireWeDropAdmin,async(req,
     const finalDescription=review.draftDescription||composed.description;
 
     res.json({ok:true,readOnlyMarketplace:true,sku,itemId,modelId,manualVideo,...supplierFacts,
-      sourceEvidence,sourceEvidenceWarning,sourceFacts:evidenceFacts,technicalDraft:persistedTechnicalDraft,shopId:auth.shopId,
+      sourceEvidence,sourceEvidenceWarning,sourceFacts:evidenceFacts,technicalSkuFactsApplied,
+      technicalDraft:persistedTechnicalDraft,shopId:auth.shopId,
       contentVariants:review.contentVariants||null,contentResearch:review.contentResearch||null,
       attributes:technicalPreview.attributes,anatel:inspectAnatelCompliance(technicalPreview),technicalWarning,attributeChanges:review.attributes||[],taxDraft:review.tax||{},taxCurrent:current.tax_info||{},
       recordedAt:stored?.updated_at||null,stages,
