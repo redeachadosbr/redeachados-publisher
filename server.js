@@ -63,6 +63,7 @@ import {readShopeeExecution,saveShopeePreparedExecution,
 import {advanceShopeeExecution,approvedShopeeModels,reconcileShopeeModelExecution,
  nextShopeePhaseAfterReadback} from './shopeeExecutionWorker.js';
 import {shopeeExecutionProgress,withExecutionEvent} from './shopeeExecutionProgress.js';
+import {auditRootShopeeExecution} from './shopeeExecutionHealth.js';
 import {recyclableShopeeMedia,archiveShopeeMedia} from './shopeeExecutionMediaReuse.js';
 import {normalizedShopeeFiscalBatchSkus,checkedShopeeFiscalBatchEntries} from './shopeeExecutionBatch.js';
 import {fiscalPreviewDisposition} from './shopeeFiscalReadiness.js';
@@ -2950,6 +2951,59 @@ app.get('/api/shopee/optimizer/batch/fiscal/status',mustLogin,requireWeDropAdmin
   }
   res.json({ok:true,results});
  }catch(e){res.status(400).json({ok:false,error:String(e.message||e).slice(0,220)});}
+});
+// Auditoria do MOTOR RAIZ. Reconsulta o anúncio real por SKU/Item ID,
+// mesmo que o último job tenha sido parcial ou já esteja marcado verified.
+// Somente leitura; não cria job, não repete escrita e não declara sucesso por check.
+app.get('/api/shopee/optimizer/execution/root-audit',mustLogin,requireWeDropAdmin,async(req,res)=>{
+ res.setHeader('Cache-Control','no-store');
+ try{
+  const {itemId,modelId,sku,auth,cfg,record}=await checkedWorkflowAudit(req);
+  const [stored,live,manualImages,manualVideo,job]=await Promise.all([
+   getWorkflowReview(auth.shopId,itemId,modelId),
+   shopeeLiveEditableItem(cfg,auth,itemId),
+   readPreparedImages(auth.shopId,itemId,modelId,sku),
+   getShopeeManualVideo(auth.shopId,itemId,modelId,sku),
+   readShopeeExecution(auth.shopId,itemId,modelId)
+  ]);
+  const review=stored?.sku===sku?stored.review_state||{}:{};
+  let models=null,discountReadback=null,discountDiagnostic='';
+  if(live.has_model===true){
+   try{models=(await shopeeLiveVariationState(cfg,auth,itemId,live)).models;}
+   catch(error){discountDiagnostic='Não foi possível conferir os modelos pela Shopee: '+
+    String(error.message||error).slice(0,120);}
+  }
+  const published=review.kitDiscountPublication;
+  if(published?.status==='confirmed'&&review.kitOptimization?.kitSku&&
+     String(published.itemId)===String(itemId)&&String(published.modelId||'0')===String(modelId)){
+   try{
+    const liveDiscount=await inspectKitDiscountForExecution({
+     cfg,auth,kitSku:String(review.kitOptimization.kitSku),
+     discountId:String(published.discountId)});
+    discountReadback=liveDiscount.confirmed===true&&
+     String(liveDiscount.itemId)===String(itemId)&&
+     Math.round(Number(liveDiscount.promo)*100)===Math.round(Number(published.promo)*100);
+   }catch(error){discountDiagnostic='Promoção não conferida pela Shopee: '+
+    String(error.message||error).slice(0,130);}
+  }else if(job?.state==='verified'&&job?.plan?.commercialDiscount?.snapshot?.discountId){
+   // O histórico de desconto sozinho não prova a promoção atual.
+   try{
+    const expected=job.plan.commercialDiscount.snapshot;
+    const checked=await discountExecutionInputs(req,sku,itemId,modelId,
+     String(expected.discountId),{allowOver25:true});
+    const actual=checked.snapshot;
+    discountReadback=actual.action==='already'&&
+     Math.round(Number(actual.promo)*100)===Math.round(Number(expected.promo)*100)&&
+     Math.round(Number(actual.originalPrice)*100)===Math.round(Number(expected.gross)*100);
+   }catch(error){discountDiagnostic='Promoção pendente de leitura oficial: '+
+    String(error.message||error).slice(0,130);}
+  }
+  const audit=auditRootShopeeExecution({sku,itemId,record,review,live,
+   images:manualImages,video:manualVideo,models,discountReadback,job});
+  res.json({ok:true,audit,...(discountDiagnostic?{discountDiagnostic}:{})});
+ }catch(error){
+  res.status(409).json({ok:false,error:String(error.message||error).slice(0,270)});
+ }
 });
 app.get('/api/shopee/optimizer/execution/status',mustLogin,requireWeDropAdmin,async(req,res)=>{
   res.setHeader('Cache-Control','no-store');
