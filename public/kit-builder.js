@@ -1,4 +1,4 @@
-import {parseKitChatResult,parseManualKitSkuBlock} from './kit-chat-result-parser.js?v=2.5.3-manual-lines';
+import {parseKitChatResult,parseManualKitSkuBlock} from './kit-chat-result-parser.js?v=2.5.4-flexible-skus';
 import {buildKitResearchJson} from './kit-json-export.js?v=1-json-before-import';
 import {scoreKitSeoTitle,parseKitSeoResponse,kitSeoRiskFlags,formatKitShopeeDescription} from './kit-seo-helper.js';
 import {requestKitContent} from './kit-content-handoff.js?v=1';
