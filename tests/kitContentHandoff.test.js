@@ -125,7 +125,8 @@ test('troca de kit cancela captura e resposta incompleta não vira sucesso',asyn
 test('anúncio recebido só altera os campos depois do clique no botão azul',async()=>{
  const source=readFileSync(new URL('../public/kit-builder.js',import.meta.url),'utf8');
  const handoff=source.slice(source.indexOf('async function kitContentHandoff('),source.indexOf('function kitContentReadManual('));
- const importer=source.slice(source.indexOf('function kitCanonicalTextProducts('),source.indexOf('function kitPasteSeoReply('));
+ const helper=source.slice(source.indexOf('function kitCanonicalTextProducts('),source.indexOf('function kitFetchGeneratedTextFromPonte('));
+ const importer=source.slice(source.indexOf('async function kitImportCopiedContent('),source.indexOf('function kitPasteSeoReply('));
  const fields=new Map([['#kitTitle',{value:'Título salvo'}],['#kitDescription',{value:'Descrição salva'}]]);
  const get=s=>{if(!fields.has(s))fields.set(s,{value:'',disabled:false});return fields.get(s);};
  let imports=0,fetches=0;
@@ -136,7 +137,7 @@ test('anúncio recebido só altera os campos depois do clique no botão azul',as
   kitFetchGeneratedTextFromPonte:async()=>{fetches++;throw Error('Não deveria precisar reler a aba.');},
   importPlusText:()=>{imports++;get('#kitTitle').value='Título importado';return true;}
  });
- vm.runInContext(handoff+'\n'+importer,context);
+ vm.runInContext(handoff+'\n'+helper+'\n'+importer,context);
  await context.kitContentHandoff(prompt);
  assert.equal(imports,0);assert.equal(get('#kitTitle').value,'Título salvo');
  assert.equal(get('#kitDescription').value,'Descrição salva');
