@@ -35,7 +35,7 @@ test('botao manual ignora filtro de categoria e deixa o servidor validar disponi
  const from=builder.indexOf('async function importPlusSuggestions(');
  const until=builder.indexOf('async function kitChatTryAutoClipboard()',from);
  const body=builder.slice(from,until);
- assert.match(body,/parseManualKitSkuBlock\(response\)/);
+ assert.match(body,/parseManualKitSkuBlock\(response,\{size:selectedContext.size,limit:20\}\)/);
  assert.match(body,/manualBlock\|\|fileParsed\?selectedContext:await kitChatEnsureFreshResearch\(\)/);
  assert.match(body,/manualBlock\?\.size\|\|fileParsed\?\.size\|\|context\.size/);
  assert.match(body,/if\(!fileParsed&&!manualBlock\)kitCaptureResearchJson/);
