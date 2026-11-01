@@ -608,8 +608,22 @@ function kitWizardInit(){
  $('#kitWizardGoTechnical')?.addEventListener('click',()=>kitWizardSetStage(5,{scroll:true}));
  $('#kitWizardOpenExecution')?.addEventListener('click',()=>{
   const btn=$('#optimizerShowExecution');
-  if(btn&&!$('#kitOptimizerWorkspace')?.hidden){btn.click();return;}
-  status('Carregue primeiro a ficha do anúncio na Etapa 05 e retorne à execução.','info');
+  if(btn&&!$('#kitOptimizerWorkspace')?.hidden){
+   // O check local indica revisão do kit, não inclusão na execução da Shopee.
+   // Preparar uma prévia completa de todas as etapas aprovadas, sem publicar.
+   btn.click();
+   const scope=$('#optimizerExecutionScope');
+   const full=$('#optimizerExecutionSwitchFull');
+   const running=Boolean(document.querySelector('#optimizerExecutionPanel [data-state="running"], #optimizerExecutionPanel [data-state="verifying"]'));
+   if(!running&&scope&&scope.value!=='all'&&full&&!full.disabled){
+    full.click();
+    status('Prévia completa solicitada. Os checks do kit não equivalem a envio: confira quais etapas estão realmente incluídas antes de autorizar a execução.','info');
+   }else{
+    status('Confira o escopo da execução: uma etapa marcada no kit só será enviada se estiver incluída na prévia e aprovada no Motor Matriz.','info');
+   }
+   return;
+  }
+  status('Carregue primeiro o anúncio da SKU principal no editor técnico, depois retorne à execução.','info');
  });
  $('#kitWizardOpenTechnical')?.addEventListener('click',()=>{
   void kitWizardRequestTechnical({force:true});
