@@ -48,8 +48,11 @@ export async function saveKitDraft(shopId,{kit,creative,logistics,importBatchId}
    .map(sku=>[sku,creative.manualFacts[sku].replace(/[\u0000-\u001f]/g,' ').trim().slice(0,1700)])):{};
  const savedLogistics=logistics===undefined?previous?.logistics||null:normalizeKitLogistics(logistics,kit);
  const fiscalBySku=Object.fromEntries(codes.map(sku=>{
-  const origin=String(previous?.creative?.fiscalBySku?.[sku]?.origin||'').trim();
-  return [sku,origin==='2'?{origin:'2',source:'revisao-fiscal-da-loja'}:null];
+  const stored=previous?.creative?.fiscalBySku?.[sku];
+  const origin=String(stored?.origin||'').trim();
+  return [sku,/^[0-8]$/.test(origin)?{origin,
+   source:String(stored?.source||'informado-pelo-vendedor').slice(0,90),
+   savedAt:String(stored?.savedAt||'').slice(0,40)}:null];
  }).filter(([,entry])=>entry));
  const draft={kit,importBatchId:batchId||null,logistics:savedLogistics,creative:{title,description,seoTitles:uniqueTitles.length===3?uniqueTitles:[],
   manualFacts,fiscalBySku,source:String(creative.source||'rascunho revisado').slice(0,90)},
