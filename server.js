@@ -3108,15 +3108,28 @@ async function readLiveRootExecution(req){
     String(error.message||error).slice(0,120);}
   }
   const published=review.kitDiscountPublication;
-  if(published?.status==='confirmed'&&review.kitOptimization?.kitSku&&
-     String(published.itemId)===String(itemId)&&String(published.modelId||'0')===String(modelId)){
+  // A promocao pode ter sido confirmada pelo worker, mesmo que o historico
+  // separado falhe ao persistir. Conferir SEMPRE a campanha real da Shopee
+  // usando a ultima aprovacao desta mesma SKU, nunca um check local.
+  const approvedKitDiscount=review.kitOptimization?.kitSku&&(
+   (published?.status==='confirmed'&&published)||
+   (review.kitDiscountPreview?.status==='prepared'&&review.kitDiscountPreview)||
+   (job?.state==='verified'&&job?.plan?.kitDiscount)||null);
+  if(approvedKitDiscount&&
+     String(approvedKitDiscount.kitSku||review.kitOptimization.kitSku)===
+       String(review.kitOptimization.kitSku)&&
+     String(approvedKitDiscount.itemId)===String(itemId)&&
+     String(approvedKitDiscount.modelId||'0')===String(modelId)){
    try{
     const liveDiscount=await inspectKitDiscountForExecution({
      cfg,auth,kitSku:String(review.kitOptimization.kitSku),
-     discountId:String(published.discountId)});
+     discountId:String(approvedKitDiscount.discountId)});
     discountReadback=liveDiscount.confirmed===true&&
      String(liveDiscount.itemId)===String(itemId)&&
-     Math.round(Number(liveDiscount.promo)*100)===Math.round(Number(published.promo)*100);
+     String(liveDiscount.modelId||'0')===String(modelId)&&
+     Math.round(Number(liveDiscount.promo)*100)===Math.round(Number(approvedKitDiscount.promo)*100)&&
+     (!Number.isFinite(Number(approvedKitDiscount.gross))||
+      Math.round(Number(liveDiscount.gross)*100)===Math.round(Number(approvedKitDiscount.gross)*100));
    }catch(error){discountDiagnostic='Promoção não conferida pela Shopee: '+
     String(error.message||error).slice(0,130);}
   }else if(job?.state==='verified'&&job?.plan?.commercialDiscount?.snapshot?.discountId){
