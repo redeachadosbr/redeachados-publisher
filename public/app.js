@@ -5479,7 +5479,8 @@ $('#optimizerConnectionCheck')?.addEventListener?.('click',()=>void optimizerCon
 async function optimizerExecutionPrepare({preserveStartError=false}={}){
  const w=optimizerWorkflowPlan;
  if(!w||optimizerExecBusy)return;
- const key=[w.sku,w.itemId,w.modelId,$('#optimizerExecutionScope').value].join('|');
+ const requestedStage=$('#optimizerExecutionScope').value;
+ const key=[w.sku,w.itemId,w.modelId,requestedStage].join('|');
  if(optimizerExecPreparation){
   if(optimizerExecPreparation.key===key&&optimizerExecPreparation.serial===optimizerExecSerial){
    optimizerExecPreparation.again=true;
@@ -5511,10 +5512,12 @@ async function optimizerExecutionPrepare({preserveStartError=false}={}){
  try{
    const active=await optimizerExecutionRefresh(false);
    if(['running','uncertain'].includes(active?.state))return;
+   // A leitura do job anterior nao altera o escopo autorizado neste clique.
+   $('#optimizerExecutionScope').value=requestedStage;
    const result=await json('/api/shopee/optimizer/execution/prepare',{
      method:'POST',headers:{'Content-Type':'application/json'},
      body:JSON.stringify({sku:w.sku,itemId:w.itemId,modelId:w.modelId,
-       stage:$('#optimizerExecutionScope').value,
+       stage:requestedStage,
        campaignId:String($('#optimizerExecDiscountCampaign')?.value||
         $('#optimizerFinalCampaignId')?.value||$('#discountPromotionId')?.value||
         optimizerDiscountFinalPreviewData?.preview?.discountId||'').trim(),
@@ -5698,6 +5701,56 @@ async function optimizerResolveExecutionBlockers(){
    '. Os campos já salvos permaneceram na SKU. Nenhuma publicação foi iniciada.','error');
  }
 }
+// Uma unica autorizacao explicita no kit prepara e executa SOMENTE as tres
+// pendencias: imagens, video e fiscal. Nenhum desconto ou texto e tocado.
+let kitMediaFiscalStarting=false;
+globalThis.RAKitExecutePendingMediaFiscal=async({kitSku,sku,itemId,modelId}={})=>{
+ if(kitMediaFiscalStarting)return {ok:false,error:'Envio destas etapas ja iniciado.'};
+ const w=optimizerWorkflowPlan;
+ if(!w||!optimizerKitWorkflowActive()||String(w.kitOptimization?.kitSku)!==String(kitSku)||
+    String(w.sku)!==String(sku)||String(w.itemId)!==String(itemId)||
+    String(w.modelId||'0')!==String(modelId||'0'))
+  return {ok:false,error:'O anuncio da SKU principal ainda nao foi carregado com este Item ID.'};
+ if(optimizerExecBusy)return {ok:false,error:'Uma execucao ja esta em andamento. Nao reenviar.'};
+ kitMediaFiscalStarting=true;
+ try{
+  const scope=$('#optimizerExecutionScope');
+  if(!scope||![...scope.options].some(x=>x.value==='media_fiscal'))
+   return {ok:false,error:'Escopo de imagens, video e fiscal nao disponivel. Recarregue o site.'};
+  scope.value='media_fiscal';
+  optimizerWorkflowActivateOnly('execution');
+  optimizerExecNotice('Preparando somente imagens, video e dados fiscais; desconto e texto preservados.','info');
+  await optimizerExecutionPrepare();
+  const p=optimizerExecPlan;
+  if(!p||p.selectedStage!=='media_fiscal'||p.sku!==sku||String(p.itemId)!==String(itemId))
+   return {ok:false,error:optimizerExecPrepareError||'Nao foi possivel preparar as tres etapas; nenhum envio foi iniciado.'};
+  const recognized=p.confirmedStages||{};
+  const missing=[
+   ...(!(p.images?.length===9||recognized.images===true)?['9 imagens']:[]),
+   ...(!((p.video&&p.video.sha256)||recognized.video===true)?['video']:[]),
+   ...(!(p.finalFiscal||recognized.fiscal===true)?['dados fiscais']:[])
+  ];
+  if(missing.length){
+   const message='Arquivos aprovados ainda ausentes do plano: '+missing.join(', ')+
+    '. O servidor nao recebeu o conteudo necessario. Nenhuma etapa sera pulada.';
+   optimizerExecNotice(message,'warning');
+   return {ok:false,error:message};
+  }
+  if(Object.keys(p.proposed||{}).length||p.modelVariations||p.kitDiscount){
+   return {ok:false,error:'A previa incluiu campos fora das tres etapas; execucao cancelada sem publicar.'};
+  }
+  if(!p.canExecute){
+   const message='As tres etapas ja correspondem ao anuncio ou nao ha alteracoes elegiveis para enviar.';
+   optimizerExecNotice(message,'info');
+   return {ok:true,alreadyCurrent:true,message};
+  }
+  optimizerExecNotice('Autorizacao recebida: iniciando somente 9 imagens, video e dados fiscais na Shopee.','info');
+  await optimizerExecuteApproved(false);
+  return {ok:true,submitted:true};
+ }catch(error){
+  return {ok:false,error:String(error.message||error)};
+ }finally{kitMediaFiscalStarting=false;}
+};
 $('#optimizerExecutionLaunch')?.addEventListener?.('click',()=>{
  const missing=optimizerKitMissingApprovedStages();
  if(missing.length){
