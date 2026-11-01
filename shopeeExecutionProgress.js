@@ -169,7 +169,7 @@ export function shopeeExecutionProgress(job){
  const partial=plan.selectedStage&&plan.selectedStage!=='all';
  const partialName=(plan.selectedStage==='media_fiscal'?'SOMENTE IMAGENS + VÍDEO + FISCAL':modeLabels[plan.selectedStage])||'ETAPA ISOLADA';
  const title=fiscalPartial?'Dados fiscais pendentes de correção':
-  verified?'Etapas aprovadas confirmadas':state==='uncertain'?'Confirmação pendente':
+  verified?(partial?'Execução parcial confirmada · outras etapas não incluídas':'Execução atual confirmada · conferir as 9 etapas'):state==='uncertain'?'Confirmação pendente':
   state==='failed'?'Execução interrompida':state==='blocked'?'Pendências para executar':
   state==='prepared'?(partial?'Prévia PARCIAL · '+partialName+' · aguardando autorização':
    resumable?'Mídia já enviada · confirmar retomada':'Prévia completa · aguardando autorização'):
@@ -179,7 +179,7 @@ export function shopeeExecutionProgress(job){
  if(!events.length&&attempt)
   events.push({label:title,at:job.updated_at||null,kind:failure?'warning':verified?'success':'info'});
  const message=fiscalPartial?'O anúncio e as variações foram processados, mas a Shopee recusou os dados fiscais. Confira o motivo antes de aplicar o desconto.':
-  verified?'Todas as alterações incluídas nesta execução foram verificadas na Shopee. Etapas dispensadas não foram reenviadas.':
+  verified?'Somente as alterações incluídas neste job foram confirmadas na Shopee. A conclusão geral depende da auditoria raiz das nove etapas; itens não incluídos continuam pendentes.':
   state==='uncertain'?
    [uploaded?uploaded+' de '+images+' imagens guardadas na mídia Shopee':null,
     readyVideo?'vídeo processado na mídia':null,
