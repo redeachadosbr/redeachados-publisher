@@ -140,7 +140,7 @@ async function kitWizardResumeTargetForExecution(){
    return false;
   const matches=(search.matches||[]).filter(x=>String(x.sku)===principal&&
    ['NORMAL','UNLIST'].includes(String(x.status).toUpperCase())&&
-   /^[1-9]\\d{0,17}$/.test(String(x.itemId||'')));
+   /^[1-9]\d{0,17}$/.test(String(x.itemId||'')));
   const prior=prepared.optimization||null;
   const backend=search.verifiedSavedTarget||null;
   const savedId=backend?.sku===principal?String(backend.itemId||''):
@@ -183,7 +183,7 @@ async function kitWizardOpenExecutionFlow(){
  const reviewed=globalThis.RAKitWizardExecutionReviews?.();
  const handoff=globalThis.__RA_KIT_OPTIMIZATION_HANDOFF;
  const valid=handoff?.kitSku===kitSku&&
-  /^[1-9]\\d{0,17}$/.test(String(handoff.itemId||''))&&
+  /^[1-9]\d{0,17}$/.test(String(handoff.itemId||''))&&
   String(handoff.sku||'')===String($('#kitOptimizeMainSku')?.value||
    $('#kitPrincipalSku')?.value||prepared.kit.components?.[0]?.sku||'');
  const notes=[];
@@ -798,7 +798,7 @@ function kitWizardInit(){
    $('#kitPrincipalSku')?.value||prepared.kit.components?.[0]?.sku||'');
   const valid=String(handoff?.kitSku||'')===String(prepared.kit.kitSku)&&
    String(handoff?.sku||'')===principal&&
-   /^[1-9]\\d{0,17}$/.test(String(handoff?.itemId||''));
+   /^[1-9]\d{0,17}$/.test(String(handoff?.itemId||''));
   const workspace=$('#kitOptimizerWorkspace');
   if(valid&&workspace&&!workspace.hidden){
    await kitWizardOpenExecutionFlow();
