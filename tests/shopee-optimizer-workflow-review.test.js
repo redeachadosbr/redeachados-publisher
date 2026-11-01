@@ -179,3 +179,17 @@ test('a etapa Categoria/GTIN é automática e a busca SKU é compacta e alinhada
  assert.doesNotMatch(plan,/Confira o cadastro do produto/);
  assert.match(html,/0 \/ 6 etapas conferidas/);
 });
+
+test('SEO de kit admite 55x90cm somente quando pertence ao nome WeDrop verificado',()=>{
+ const title='🏠 Kit Lixeira Retangular Tampa Vai e Vem 20L + Saco a Vácuo G 55x90cm + Bomba Manual Azul + Saco Organizador Vácuo M ✨';
+ const names=['Cesto Retangular com Tampa Vai e Vem 20L Preto',
+  'Saco Vácuo Bag G 55x90cm com Válvula para Armazenamento',
+  'Bomba de Saco a Vácuo Azul','Saco Organizador a Vácuo M'];
+ assert.equal(validateReview({stage:'seo',reviewed:true,title},{kitProductNames:names}).reviewed,true);
+ assert.throws(()=>validateReview({stage:'seo',reviewed:true,title}),/Dimensões compostas/);
+ assert.throws(()=>validateReview({stage:'seo',reviewed:true,
+  title:title.replace('55x90cm','65x90cm')},{kitProductNames:names}),/Dimensões compostas/);
+ const server=readFileSync(new URL('../server.js',import.meta.url),'utf8');
+ assert.match(server,/verifiedKit\.live\.components\.map\(p=>String\(p\.name\|\|''\)\)/);
+ assert.match(server,/stage:'seo',reviewed:true,title:storedTitle/);
+});
