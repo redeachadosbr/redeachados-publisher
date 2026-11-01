@@ -340,7 +340,7 @@ test('etapa 08 do kit permite previa de planejamento antes de executar o anuncio
  assert.match(app,/prepared\?'✓ Conferência registrada · ainda não publicado'/);
  assert.match(html,/id="kitOptimizeDiscountToExecution"/);
  assert.match(html,/id="kitOptimizeDiscountApply" disabled/);
- assert.match(module,/kit-existing-optimization\.js\?v=15-image-progress-timeouts/);
+ assert.match(module,/kit-existing-optimization\.js\?v=[a-zA-Z0-9._-]+/);
  assert.match(html,/\/app\.js\?v=3\.5\.\d+-[a-z0-9-]+/);
  assert.match(html,/\/kit-builder\.js\?v=[a-zA-Z0-9._-]+/);
  assert.match(html,/\/kit-builder\.css\?v=[a-z0-9._-]+/);
