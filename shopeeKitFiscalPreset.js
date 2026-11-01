@@ -46,13 +46,13 @@ export async function readKitFiscalPreset(shopId,kitSku,requestedSku=''){
   suggestion.pis_cofins_cst=suggestion.pis_cofins_cst||REDE_ACHADOS_FISCAL_DEFAULTS.pis_cofins_cst;
   const supplierNcm=raw(product.ncm);
   const exactNcm=raw(exact.ncm);
-  if(/^\\d{8}$/.test(supplierNcm))suggestion.ncm=supplierNcm;
-  else if(/^\\d{8}$/.test(exactNcm))suggestion.ncm=exactNcm;
-  suggestion.cest=/^\\d{7}$/.test(raw(product.cest))?raw(product.cest):REDE_ACHADOS_FISCAL_DEFAULTS.cest;
+  if(/^\d{8}$/.test(supplierNcm))suggestion.ncm=supplierNcm;
+  else if(/^\d{8}$/.test(exactNcm))suggestion.ncm=exactNcm;
+  suggestion.cest=/^\d{7}$/.test(raw(product.cest))?raw(product.cest):REDE_ACHADOS_FISCAL_DEFAULTS.cest;
   const saved=Object.fromEntries(Object.entries(exact).filter(([key,v])=>
    [...fields,'ncm','evidence'].includes(key)&&typeof v==='string'&&v.length<=300));
   // NCM oficial da SKU no catálogo prevalece sobre revisão antiga divergente.
-  const ncmConflict=Boolean(/^\\d{8}$/.test(supplierNcm)&&/^\\d{8}$/.test(exactNcm)&&supplierNcm!==exactNcm);
+  const ncmConflict=Boolean(/^\d{8}$/.test(supplierNcm)&&/^\d{8}$/.test(exactNcm)&&supplierNcm!==exactNcm);
   if(ncmConflict)delete saved.ncm;
   if(supplier?.source_file&&suggestion.ncm&&!saved.evidence)
    suggestion.evidence='WeDrop '+raw(supplier.source_file).slice(0,115)+' · SKU '+sku+
