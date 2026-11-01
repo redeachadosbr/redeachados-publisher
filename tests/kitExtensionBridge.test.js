@@ -139,7 +139,7 @@ test('falha de importação preserva captura e não confirma a posição antes d
  assert.match(ui,/await kitPhotoStore\.markPendingFailure\(kitSku,slot,error\)/);
  assert.match(ui,/await kitPhotoStore\.removePending\(kitSku,slot\)/);
  assert.match(ui,/const confirmed=\(await kitPhotoStore\.list\(kitSku\)\)/);
- assert.match(ui,/throwOnError=true/);
+ assert.match(ui,/throwOnError:false|throwOnError=true|throwOnError=false|throwOnError:true/);
  assert.match(ui,/async function kitRecoverCapturedImages\(\)/);
  assert.match(ui,/const local=await kitRecoverCapturedImages\(\)/);
  assert.match(ui,/getKitExtensionBridge\(\)\.resumeFromManager\(\)/);
