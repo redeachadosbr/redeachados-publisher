@@ -53,7 +53,7 @@ export async function kitReferenceSheet(kit,{fetcher=fetch}={}){
 }
 
 export function createKitExtensionController({
- getKit,getPrompts,getImages,onPhoto,onStatus=()=>{},onProgress=()=>{}
+ getKit,getPrompts,getImages,onPhoto,onCapture=async()=>{},onUploadFailed=async()=>{},onConfirmed=async()=>{},onStatus=()=>{},onProgress=()=>{}
 }){
  let ready=false,version='',busy=false,started=false;
  let job=null,timeout=null,imageStallTimer=null,activeReferenceSheet=null;
@@ -195,10 +195,22 @@ export function createKitExtensionController({
     feedback('Posição '+pos(slot)+' já estava salva. Confirmada sem duplicar.','info');
     return;
    }
-   // onPhoto normaliza 1200x1200 e confirma IndexedDB antes de sinalizar sucesso.
+   // Persistir a captura ANTES da conversão/validação: erro de upload não
+   // pode apagar a única cópia gerada no ChatGPT.
+   try{
+    await onCapture({slot,dataUrl:m.dataUrl,kitSku:snapshot.kitSku,nonce:snapshot.nonce});
+   }catch(captureError){
+    feedback('Não foi possível guardar a cópia de recuperação da imagem '+pos(slot)+
+     ': '+String(captureError.message||captureError)+'. Tentando importação direta.','error');
+   }
+   // onPhoto normaliza 1200x1200 e confirma IndexedDB antes do ACK.
+   // Erros devem preservar a causa real (imagem inválida, quota, etc.).
    const accepted=await onPhoto({slot,dataUrl:m.dataUrl,kitSku:snapshot.kitSku,
     referenceDataUrl:slot===1?activeReferenceSheet:null});
-   if(accepted!==true)throw Error('A imagem não foi armazenada; não é seguro avançar.');
+   if(accepted!==true)throw Error('Manager não confirmou gravação da imagem no kit.');
+   try{await onConfirmed({slot,kitSku:snapshot.kitSku});}
+   catch(cleanupError){feedback('Imagem salva; limpeza da captura pendente falhou: '+
+    String(cleanupError.message||cleanupError),'info');}
    ack(snapshot.nonce,slot,true);
    if(job?.nonce===snapshot.nonce){
     const next=Array.from({length:9},(_,i)=>i+1).find(n=>!getImages().has(n));
@@ -211,8 +223,11 @@ export function createKitExtensionController({
     'success');
    if(count>=9){busy=false;started=false;clearImageStall();saveJob(null);}
   }catch(error){
-   ack(snapshot.nonce,Number(m.slot)||0,false,String(error.message||error).slice(0,240));
-   feedback('Falha na imagem '+pos(Number(m.slot)||0)+': '+String(error.message||error),'error');
+   const detail=String(error.message||error).slice(0,400);
+   try{await onUploadFailed({slot:Number(m.slot)||0,kitSku:snapshot.kitSku,error:detail});}catch{}
+   ack(snapshot.nonce,Number(m.slot)||0,false,detail.slice(0,240));
+   feedback('Falha na imagem '+pos(Number(m.slot)||0)+': '+detail+
+    '. Se foi capturada, use Recuperar imagem no Manager; nenhuma nova geração é necessária.','error');
   }
  };
  window.addEventListener('message',onMessage);
