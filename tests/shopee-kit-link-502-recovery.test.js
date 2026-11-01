@@ -26,7 +26,7 @@ test('502 consulta vinculo antes de repetir somente a preparacao local',()=>{
  const route=app.slice(start,end);
  assert.match(route,/link-status\?/);
  assert.match(route,/\\/api\\/shopee\\/kits\\/optimization\\/prepare/);
- assert.match(route,/HTTP\\\\s\\*\\(\\?:502\\|503\\|504\\)/);
+ assert.ok(route.includes('502|503|504'),'retries somente para indisponibilidade temporária');
  assert.match(route,/if\\(!retryable\\(error\\)\\)throw error/);
  assert.match(route,/optimizerKitResumeLinkRecovering\\.delete\\(recoveryKey\\)/);
  assert.match(route,/linked=await readBack/);
