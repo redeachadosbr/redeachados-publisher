@@ -7,7 +7,7 @@ export function isKitBridgeEvent(m,job){
   (m.modelId===undefined||String(m.modelId)===String(job.modelId)));
 }
 export function kitBridgePayload({kit,nonce,referenceDataUrl,prompts,completed=[]}){
- if(![2,3].includes(kit?.components?.length))throw Error('Kit com 2 ou 3 SKUs necessário.');
+ if(![2,3,4].includes(kit?.components?.length))throw Error('Kit com 2 a 4 SKUs necessário.');
  if(!/^data:image\/jpeg;base64,[A-Za-z0-9+/=]+$/.test(referenceDataUrl||''))
   throw Error('Folha de referências dos produtos indisponível.');
  if(!Array.isArray(prompts)||prompts.length!==9||prompts.some(p=>!String(p).includes('SKU ')))
