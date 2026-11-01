@@ -38,15 +38,11 @@ export async function advanceShopeeKitDiscount(job,io){
   return {state:'running',result:{...r,phase:'kit_discount_price_verifying'},delay:5000};
  }
  if(phase!=='kit_discount_ready')throw Error('Fase do desconto do kit desconhecida.');
- // A etapa 08 exclusiva usa o cálculo já aprovado da SKU:
- // não repetir pesquisa de concorrentes, que não altera o valor autorizado.
- if(plan.selectedStage!=='discount_adjust'&&
-    (!Number(r.kitMarketCheckedAt)||Date.now()-Number(r.kitMarketCheckedAt)>15*60000)){
-  try{await io.kitDiscountMarket(approved);}
-  catch(e){return failed(r,'kit-discount-market',String(e.message||e).slice(0,250));}
-  return {state:'running',result:event({...r,kitMarketCheckedAt:Date.now()},
-   'kit-market-reviewed','Pesquisa de mercado confirmada para desconto do kit.','success'),delay:500};
- }
+ // Pesquisa de concorrentes é insumo da cotação/preparação, não condição
+ // para publicar um preço que já foi aprovado. Nesta fase, as validações
+ // obrigatórias são: identidade, campanha, estado NORMAL, preço e margem
+ // previamente conferidos, além do readback oficial após a escrita.
+ // Não executar uma segunda pesquisa que pode falhar por falta de ofertas.
  await io.validateIdentity();
  if(!fresh.priceAligned){
   const checkpoint=event({...r,phase:'kit_discount_price_updating',kitPriceStartedAt:Date.now()},
