@@ -371,7 +371,7 @@ test('etapa 08 mostra tabela clara em vez de bloco preto e preserva dados',()=>{
  assert.match(css,/#tab-kits :is\(#kitDetail,#kitWizardOptimizerDock\) \.kit-existing-discount-review \.kit-discount-summary/);
  assert.match(css,/background:#fff!important;color:#18365a!important/);
  assert.match(css,/\.kit-discount-summary-row dd/);
- assert.match(module,/kit-existing-optimization\.js\?v=13-direct-execution-bridge/);
+ assert.match(module,/kit-existing-optimization\.js\?v=14-resume-verified-target/);
 });
 test('previa do kit confere etapa 08 sem sinalizar aplicacao na Shopee',()=>{
  const store=source('shopeeOptimizationWorkflowStore.js');
