@@ -176,6 +176,7 @@ test('resposta textual da Ponte é desempacotada sem misturar anúncios de outro
   postMessage:(payload,origin)=>messages.push({payload,origin})};
  const emit=(data)=>{for(const fn of [...listeners])fn({source:target,origin:target.location.origin,data});};
  const context=vm.createContext({window:target,location:target.location,crypto:{randomUUID:()=> 'nonce-seo-1'},
+  kitBridgeVersionSupportsText:()=>true,
   setTimeout,clearTimeout,parseKitSeoResponse:()=>({}),
   kitContentResponseText:input=>{const obj=JSON.parse(input);return obj.description;}});
  vm.runInContext(source.slice(start,end),context);
