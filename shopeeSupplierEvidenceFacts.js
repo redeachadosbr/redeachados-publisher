@@ -69,9 +69,9 @@ export function supplierProductDimensions(text){
  // não as dimensões logísticas de embalagem. Para a ficha C × L × A,
  // a projeção circular tem largura e comprimento iguais ao diâmetro.
  // Devolver sempre a origem, para o vendedor validar antes da publicação.
- const circular=/\\b(?:dimens(?:oes|ao)|medidas?)\\s*(?:do\\s+produto)?\\s*[:\\-]\\s*(\\d{1,4}(?:[.,]\\d{1,2})?)\\s*cm\\s*(?:de\\s+)?altura\\s*[x×;,]+\\s*(\\d{1,4}(?:[.,]\\d{1,2})?)\\s*cm\\s*(?:de\\s+)?diametro\\b/i;
+ const circular=/\b(?:dimens(?:oes|ao)|medidas?)\s*(?:do\s+produto)?\s*[:\-]\s*(\d{1,4}(?:[.,]\d{1,2})?)\s*cm\s*(?:de\s+)?altura\s*[x×;,]+\s*(\d{1,4}(?:[.,]\d{1,2})?)\s*cm\s*(?:de\s+)?diametro\b/i;
  const cylinder=plain(source).match(circular);
- if(cylinder&&!/(?:dimens(?:oes|ao)|medidas?)\\s+(?:da|de)\\s+(?:embalagem|caixa|pacote)/i.test(cylinder[0])){
+ if(cylinder&&!/(?:dimens(?:oes|ao)|medidas?)\s+(?:da|de)\s+(?:embalagem|caixa|pacote)/i.test(cylinder[0])){
   const height=sizeNumber(cylinder[1]),diameter=sizeNumber(cylinder[2]);
   if(Number(height)>0&&Number(diameter)>0&&Number(height)<10000&&Number(diameter)<10000)
    return {height,width:diameter,length:diameter,value:[height,diameter,diameter].join(' x ')+' cm',
@@ -251,10 +251,10 @@ export function supplierAttributeSuggestions({attributes=[],proposed=[],supplier
    // "Indicação: Higienização de vasos sanitários Composição: PP...".
    // Nunca usar medida ou material como finalidade do produto.
    for(const src of sources.filter(x=>x.label!=='Descrição existente do anúncio (conferir com fabricante)')){
-    const candidate=plain(src.text).match(/\\b(?:indicacao(?: de uso)?|finalidade|uso indicado)\\s*[:\\-]\\s*([^\\n.;!?]{5,130}?)(?=\\s+(?:composicao|material|cor|peso|modelo|dimensoes|contem|itens inclusos)\\s*:|[.;!?]|$)/i);
+    const candidate=plain(src.text).match(/\b(?:indicacao(?: de uso)?|finalidade|uso indicado)\s*[:\-]\s*([^\n.;!?]{5,130}?)(?=\s+(?:composicao|material|cor|peso|modelo|dimensoes|contem|itens inclusos)\s*:|[.;!?]|$)/i);
     if(candidate){
      const usage=candidate[1].trim();
-     if(!/^(?:\\d|dimens|altura|largura|comprimento|diametro)/.test(usage))
+     if(!/^(?:\d|dimens|altura|largura|comprimento|diametro)/.test(usage))
       suggest(attr,usage,src.label+' — indicação de uso expressa na ficha desta SKU.',{onlyIfMissing:true});
      break;
     }
