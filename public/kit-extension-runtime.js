@@ -8,7 +8,7 @@ function extensionVersionOk(version){
 }
 export async function kitReferenceSheet(kit,{fetcher=fetch}={}){
  const components=kit?.components||[];
- if(![2,3].includes(components.length)||components.some(x=>!x.imageUrl))
+ if(![2,3,4].includes(components.length)||components.some(x=>!x.imageUrl))
   throw Error('O kit precisa de foto WeDrop original de cada SKU para usar a Ponte.');
  const search=new URLSearchParams({skus:components.map(p=>p.sku).join(',')});
  const photos=[];
