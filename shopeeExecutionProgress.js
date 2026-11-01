@@ -143,7 +143,11 @@ export function shopeeExecutionProgress(job){
   if(['seo','description','technical'].includes(id)&&updateAccepted)return .65;
   return 0;
  };
- const percent=verified&&(!discountIncluded||discountDone)?100:
+ // Prévia PREPARED/BLOCKED sem envio não é 99% de execução.
+ // Campos já iguais aos publicados aparecem na auditoria raiz, não no
+ // percentual deste job ainda não iniciado.
+ const percent=!attempt&&!hasSavedProgress?0:
+  verified&&(!discountIncluded||discountDone)?100:
   Math.min(99,required.length?Math.round(100*required.reduce((sum,s)=>sum+contribution(s),0)/required.length):0);
  const titles={
   queued:'Preparando execução',images_upload:'Enviando imagens à mídia',
