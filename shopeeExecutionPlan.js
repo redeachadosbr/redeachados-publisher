@@ -8,9 +8,9 @@ import {isShopeeCestConfirmed} from './shopeeMatrixRules.js';
 // Preparation is deterministic for one verified item/model/SKU. This module
 // never calls Shopee, and never considers a reviewed checkbox a published item.
 const normal=s=>String(s??'').replace(/\r\n?/g,'\n').trim();
-export const SHOPEE_EXECUTION_STAGES=Object.freeze(['all','discount','discount_adjust','variants','images','video','seo','technical','description','fiscal','remaining']);
+export const SHOPEE_EXECUTION_STAGES=Object.freeze(['all','discount','discount_adjust','variants','images','video','seo','technical','description','fiscal','remaining','media_fiscal']);
 export const SHOPEE_EXECUTION_STAGE_LABELS=Object.freeze({
- all:'Todas as etapas',remaining:'Somente variações, fiscal e desconto',discount:'Somente desconto aprovado',discount_adjust:'Preço bruto calculado + desconto aprovado',variants:'Somente variações',images:'Imagens comerciais',video:'Vídeo do anúncio',
+ all:'Todas as etapas',remaining:'Somente variações, fiscal e desconto',media_fiscal:'Somente imagens, vídeo e dados fiscais',discount:'Somente desconto aprovado',discount_adjust:'Preço bruto calculado + desconto aprovado',variants:'Somente variações',images:'Imagens comerciais',video:'Vídeo do anúncio',
  seo:'Título SEO',technical:'Ficha técnica',description:'Descrição',fiscal:'Informações fiscais'
 });
 export function normalizeShopeeExecutionStage(stage='all'){
@@ -20,8 +20,8 @@ export function normalizeShopeeExecutionStage(stage='all'){
 }
 export function compileShopeeExecutionPlan({shopId,itemId,modelId,sku,record,review,live,manualVideo=null,verifiedVideoSha256=null,manualImages=[],deferUnconfirmedFiscal=false,omitFiscal=false,selectedStage='all',allowDiscountOnly=false,modelVariations=null,kitDiscount=null}){
   selectedStage=normalizeShopeeExecutionStage(selectedStage);
-  const selected=name=>selectedStage==='all'||selectedStage===name||selectedStage==='remaining'&&name==='fiscal';
-  const wholeWorkflow=selectedStage==='all'||selectedStage==='remaining';
+  const selected=name=>selectedStage==='all'||selectedStage===name||selectedStage==='remaining'&&name==='fiscal'||selectedStage==='media_fiscal'&&['images','video','fiscal'].includes(name);
+  const wholeWorkflow=['all','remaining','media_fiscal'].includes(selectedStage);
   const state=review||{},stages=state.stages||{};
   const title=normalizedTitle(state.draftTitle||'');
   const description=normal(state.draftDescription);
@@ -68,7 +68,7 @@ export function compileShopeeExecutionPlan({shopId,itemId,modelId,sku,record,rev
   if(!['discount','discount_adjust','variants'].includes(selectedStage)&&(!stages.fiscal?.reviewed||!state.tax))warnings.push('Fiscal: informe os dados e a fonte por SKU para preparar a alteração.');
   warnings.push(selectedStage==='variants'?'Etapa 06 exclusiva: variações aprovadas serão verificadas na Shopee sem aplicar descontos.':
    selectedStage==='discount_adjust'?'Etapa 08: corrigir o preço bruto planejado e aplicar Minha Promoção, com autorização expressa e leitura da Shopee.':
-   selectedStage==='discount'?'Etapa 08 exclusiva: Minha Promoção conferida, com autorização expressa e leitura oficial da Shopee.':wholeWorkflow?'Desconto conferido será enviado como última etapa, somente após a confirmação comercial e fiscal.':'Preço e desconto não serão alterados nesta execução de etapa individual.');
+   selectedStage==='discount'?'Etapa 08 exclusiva: Minha Promoção conferida, com autorização expressa e leitura oficial da Shopee.':selectedStage==='media_fiscal'?'Somente imagens, vídeo e dados fiscais; preço, desconto, título, descrição e ficha técnica ficam intactos.':wholeWorkflow?'Desconto conferido será enviado como última etapa, somente após a confirmação comercial e fiscal.':'Preço e desconto não serão alterados nesta execução de etapa individual.');
   if(selected('technical')&&stages.technical?.reviewed&&state.attributes?.length){
     try{const attributes=compileAttributes(state.attributes,record,live);
       // A API pode devolver o atributo "Condição: NOVO" em condition="NEW".
@@ -181,6 +181,7 @@ export function compileShopeeExecutionPlan({shopId,itemId,modelId,sku,record,rev
     requiresExplicitConfirmation:true,
     scope:selectedStage==='all'?'Conteúdo e mídia → modelos → fiscal → desconto aprovado':
      selectedStage==='remaining'?'Apenas modelos → fiscal → desconto (sem edição de conteúdo ou mídia)':
+     selectedStage==='media_fiscal'?'Somente nove imagens, vídeo e dados fiscais; preservar título, descrição, ficha técnica, preço e desconto':
      selectedStage==='discount'?'Somente desconto autorizado, sem alteração das outras sete etapas':
      selectedStage==='discount_adjust'?'Somente preço bruto e Minha Promoção do kit; outras sete etapas preservadas':
      selectedStage==='variants'?'Somente variações aprovadas, com as demais etapas preservadas':
