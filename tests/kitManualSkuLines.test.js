@@ -27,7 +27,7 @@ test('listas malformadas nao sao tratadas como kit; repetidas sao bloqueadas',()
  assert.equal(parseManualKitSkuBlock('TRC6808'),null);
  assert.deepEqual(parseManualKitSkuBlock('TRC6808\nKTE022BCF\nTRC0663\nTRC6809').kits,[['TRC6808','KTE022BCF','TRC0663','TRC6809']]);
  assert.equal(parseManualKitSkuBlock('1. Kit Banheiro\nTRC6808\nKTE022BCF'),null);
- assert.throws(()=>parseManualKitSkuBlock('trc6808\nTRC6808'),/repetidas/);
+ assert.throws(()=>parseManualKitSkuBlock('trc6808\nTRC6808'),/duplicadas/);
 });
 
 test('botao manual ignora filtro de categoria e deixa o servidor validar disponibilidade',()=>{
@@ -35,7 +35,7 @@ test('botao manual ignora filtro de categoria e deixa o servidor validar disponi
  const from=builder.indexOf('async function importPlusSuggestions(');
  const until=builder.indexOf('async function kitChatTryAutoClipboard()',from);
  const body=builder.slice(from,until);
- assert.match(body,/parseManualKitSkuBlock\(response,\{size:selectedContext.size,limit:20\}\)/);
+ assert.match(body,/parseManualKitSkuBlock\(response,\{limit:20\}\)/);
  assert.match(body,/manualBlock\|\|fileParsed\?selectedContext:await kitChatEnsureFreshResearch\(\)/);
  assert.match(body,/manualBlock\?\.size\|\|fileParsed\?\.size\|\|context\.size/);
  assert.match(body,/if\(!fileParsed&&!manualBlock\)kitCaptureResearchJson/);
