@@ -596,13 +596,53 @@ function kitWizardMountFiscalPreset(){
   panel.hidden=true;
  }
 }
+// Resumo visual dos componentes: uma SKU nunca herda NCM ou origem fiscal de outra.
+// O formulário oficial de edição da SKU principal permanece no mesmo painel.
+// As demais linhas são conferência local, sem qualquer publicação na Shopee.
+function kitWizardRenderFiscalSkuPresets(data){
+ const root=$('#kitWizardFiscalSkuSummary');
+ if(!root)return;
+ root.replaceChildren();
+ const items=Array.isArray(data?.skuPresets)?data.skuPresets:[];
+ if(!items.length)return;
+ root.append(elt('strong','kit-fiscal-sku-title','Dados WeDrop por componente · '+items.length+' SKUs'));
+ const details=elt('p','kit-fiscal-sku-description',
+  'NCM e CEST são específicos de cada produto. CFOP, CSOSN e CST de PIS/COFINS são parâmetros da loja para conferência. A edição abaixo é da SKU principal; não substitui a fiscalização de cada item da nota.');
+ root.append(details);
+ const list=elt('div','kit-fiscal-sku-grid');
+ for(const [index,item] of items.entries()){
+  const card=elt('article','kit-fiscal-sku-card');
+  const heading=elt('div','kit-fiscal-sku-heading');
+  heading.append(elt('strong','',String(item.name||item.sku)),
+   elt('small','',String(item.sku)+(index===0?' · SKU principal':'')));
+  card.append(heading);
+  const saved=item.taxDraft||{},proposed=item.taxSuggestion||{};
+  for(const [key,label] of [
+   ['ncm','NCM do produto'],['cest','CEST'],['origin','Origem fiscal'],
+   ['same_state_cfop','CFOP no estado'],['diff_state_cfop','CFOP fora do estado'],
+   ['csosn','CSOSN'],['pis_cofins_cst','CST PIS/COFINS']
+  ]){
+   // NCM da WeDrop prevalece quando revisão anterior diverge.
+   const value=String(saved[key]||proposed[key]||'').trim();
+   const line=elt('div','kit-fiscal-sku-line');
+   line.append(elt('span','',label),elt('strong','',value||'Não informado · conferir'));
+   if(!value)line.classList.add('kit-fiscal-sku-missing');
+   card.append(line);
+  }
+  if(item.ncmConflict)card.append(elt('p','kit-fiscal-sku-alert',
+   '⚠ NCM salvo anteriormente diverge do catálogo WeDrop desta SKU. Utilize a ficha atual e confirme com o fornecedor antes de publicar.'));
+  if(index>0)card.append(elt('small','kit-fiscal-sku-description',
+   'Conferência local desta SKU. O formulário do anúncio principal abaixo não altera os demais componentes.'));
+  list.append(card);
+ }
+ root.append(list);
+}
 async function kitWizardRequestFiscal({force=false}={}){
  if(kitWizardStage!==8||!prepared?.kit)return;
  kitWizardMountFiscalPreset();
- if(!kitSaved){
-  kitWizardFiscalStatus('Este kit precisa estar salvo como rascunho para carregar os padrões fiscais locais.','warning');
-  return;
- }
+ // O flag kitSaved representa alterações locais ainda não sincronizadas,
+ // NÃO a existência do rascunho. A Etapa 08 é somente leitura e pode consultar
+ // o registro persistido mesmo após editar título, descrição ou margem.
  const kitSku=prepared.kit.kitSku;
  const chosen=$('#kitOptimizeMainSku')?.value||prepared.kit.components?.[0]?.sku||'';
  const sku=prepared.kit.components?.some(x=>x.sku===chosen)?chosen:prepared.kit.components?.[0]?.sku;
@@ -618,9 +658,10 @@ async function kitWizardRequestFiscal({force=false}={}){
   if(kitWizardStage!==8||prepared?.kit?.kitSku!==kitSku)return;
   const success=globalThis.RAKitRenderStoredFiscal?.(data)===true;
   if(!success)throw Error('O formulário fiscal original não está disponível na página.');
+  kitWizardRenderFiscalSkuPresets(data);
   kitWizardFiscalLoadingFor=identity;
-  kitWizardFiscalStatus('Padrões fiscais recuperados do Motor Matriz e da WeDrop para '+sku+
-   '. Confira os campos e marque a etapa como conferida. Nenhum anúncio foi consultado ou alterado.','success');
+  kitWizardFiscalStatus('✓ Dados fiscais recuperados para '+(data.skuPresets?.length||1)+
+   ' SKU(s). NCM individual da WeDrop e padrões da loja separados. Confira antes de marcar esta etapa. Nenhum anúncio foi consultado ou alterado.','success');
  }catch(error){
   kitWizardFiscalLoadingFor='';
   kitWizardFiscalStatus('Não foi possível recuperar os dados fiscais locais: '+String(error.message||error),'warning');
