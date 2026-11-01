@@ -561,6 +561,46 @@ export function initExistingKitOptimization({getContext,api,money,onMainSkuChang
    candidates:verified.length,campaigns:result.campaigns||[],
    warning:result.complete===false?'A busca de campanhas retornou dados parciais.':''};
  }
+ // Vinculação LOCAL explícita; apenas prepara o rascunho no servidor.
+ // Não publica preço, promoção, imagens nem anúncio na Shopee.
+ async function prepareDiscountLink(){
+  const kit=ctx().prepared?.kit,sku=String($('#kitOptimizeMainSku')?.value||'');
+  const inspected=discountInspection;
+  if(!kit||!ctx().kitSaved||!inspected||
+     inspected.kitSku!==kit.kitSku||inspected.mainSku!==sku||
+     Date.now()-inspected.checkedAt>300000)
+   return {ok:false,error:'Atualize a conferência para identificar o anúncio antes de vincular.'};
+  const items=(inspected.primaryItems||[]).filter(x=>
+   String(x.sku)===sku&&/^[1-9]\\d{0,17}$/.test(String(x.itemId||'')));
+  const handoff=globalThis.__RA_KIT_OPTIMIZATION_HANDOFF;
+  const chosen=handoff?.kitSku===kit.kitSku&&String(handoff.sku)===sku?
+   items.find(x=>String(x.itemId)===String(handoff.itemId)):
+   items.length===1?items[0]:null;
+  if(!chosen)
+   return {ok:false,error:'Há anúncios diferentes ou nenhum Item ID confirmado. Escolha o Item ID correto na Etapa 05 e atualize novamente.'};
+  if(!confirm('Vincular somente no rascunho o Item ID '+chosen.itemId+
+   ' à SKU principal '+sku+' deste kit? A Shopee NÃO será alterada.'))
+   return {ok:false,cancelled:true,error:'Vinculação cancelada; preços preservados.'};
+  const current=kit.kitSku;
+  try{
+   const data=await api('/api/shopee/kits/optimization/prepare',{
+    signal:AbortSignal.timeout(45000),body:{
+     kitSku:current,sku,itemId:String(chosen.itemId),
+     modelId:String(chosen.modelId??'0'),mainSku:sku,confirmedItemId:String(chosen.itemId)
+    }});
+   if(kitSku()!==current||String($('#kitOptimizeMainSku')?.value)!==sku)
+    return {ok:false,error:'A SKU principal mudou durante a confirmação. Reabra o kit.'};
+   if(data?.prepared!==true||String(data.target?.itemId)!==String(chosen.itemId))
+    return {ok:false,error:'O servidor não confirmou o vínculo solicitado.'};
+   target={kitSku:current,...data.target,prepared:true};
+   notice('✓ Item ID '+chosen.itemId+' vinculado ao rascunho do kit. Nenhuma publicação realizada.','success');
+   open();
+   return {ok:true,itemId:String(chosen.itemId)};
+  }catch(error){
+   return {ok:false,error:'Falha ao preparar vínculo: '+String(error.message||error)+
+    '. Nenhuma publicação foi realizada.'};
+  }
+ }
  function discountNotice(msg,state='info'){
   const el=$('#kitOptimizeDiscountStatus');if(el){el.textContent=msg;el.dataset.state=state;}
  }
@@ -735,5 +775,5 @@ export function initExistingKitOptimization({getContext,api,money,onMainSkuChang
  });
  // SKU do anúncio é informativa e deriva exclusivamente da escolha principal.
  renderJourney();
- return {restore,openTechnical,openDiscount};
+ return {restore,openTechnical,openDiscount,prepareDiscountLink};
 }
