@@ -106,3 +106,46 @@ test('aprovado comercial do kit pode executar sem aguardar desconto e fiscal inc
  assert.ok(plan.warnings.some(x=>/Fiscal: informe/.test(x)));
  assert.equal(Object.hasOwn(plan.proposed,'tax_info'),false);
 });
+
+test('etapa SEO ainda não aprovada não bloqueia descrição comercial aprovada no plano completo',()=>{
+ const title='✨ Kit Cesto Retangular com Tampa 20L + Saco de Vácuo Bag 55x90cm + Bomba Manual Azul + Saco Organizador M 📦';
+ const input={
+  shopId:1,itemId:'58272076732',modelId:'0',sku:'CE420 B',
+  record:{itemId:'58272076732',selectedModelId:'0',sku:'CE420 B',status:'NORMAL',
+   imageCount:0,videoStatus:'Pendente',attributeAudit:{missingMandatory:0,attributes:[]}},
+  live:{item_id:58272076732,item_name:'Cesto 20L atual',description:'Texto antigo',description_type:'normal',
+   attribute_list:[],tax_info:{},image:{image_id_list:[]},video_info:[]},
+  review:{draftTitle:title,draftDescription:'✨ Descrição nova do kit com as quatro unidades revisadas.',
+   stages:{seo:{reviewed:false},description:{reviewed:true},fiscal:{reviewed:false}},
+   kitOptimization:{kitSku:'KIT-CE420B-CT0202-CT0205-UD040004012',mainSku:'CE420 B'}},
+  selectedStage:'all'
+ };
+ const plan=compileShopeeExecutionPlan(input);
+ assert.equal(plan.canExecute,true);
+ assert.equal(plan.blocked.length,0);
+ assert.equal(plan.proposed.description,input.review.draftDescription);
+ assert.equal(Object.hasOwn(plan.proposed,'item_name'),false);
+ assert.deepEqual(plan.deferredStages.map(x=>x.stage),['seo']);
+ assert.match(plan.warnings.join(' '),/Título SEO/);
+ const isolated=compileShopeeExecutionPlan({...input,selectedStage:'seo'});
+ assert.equal(isolated.canExecute,false);
+ assert.match(isolated.blocked.join(' '),/Título SEO/);
+});
+test('título inválido no modo completo não interrompe ficha técnica e descrição aprovadas',()=>{
+ const input={
+  shopId:1,itemId:'58272076732',modelId:'0',sku:'CE420 B',
+  record:{itemId:'58272076732',selectedModelId:'0',sku:'CE420 B',status:'NORMAL',
+   imageCount:0,attributeAudit:{missingMandatory:0,attributes:[]}},
+  live:{item_id:58272076732,item_name:'Cesto 20L',description:'Antigo',
+   description_type:'normal',attribute_list:[],tax_info:{},image:{image_id_list:[]},video_info:[]},
+  review:{draftTitle:'Título curto',draftDescription:'✅ Kit revisado, descrição diferente da versão publicada.',
+   stages:{seo:{reviewed:true},description:{reviewed:true}}},
+  selectedStage:'all'
+ };
+ const plan=compileShopeeExecutionPlan(input);
+ assert.equal(plan.canExecute,true);
+ assert.ok(plan.actions.includes('description'));
+ assert.ok(!plan.actions.includes('item_name'));
+ assert.deepEqual(plan.deferredStages.map(x=>x.stage),['seo']);
+ assert.equal(plan.blocked.length,0);
+});
