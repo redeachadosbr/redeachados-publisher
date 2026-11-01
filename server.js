@@ -1811,6 +1811,40 @@ app.post('/api/shopee/kits/optimization/prepare',mustLogin,requireWeDropAdmin,as
    message:'Título e descrição do kit reutilizados; apenas os textos validados são marcados como revisados. Não houve publicação na Shopee.'});
  }catch(e){res.status(409).json({error:String(e.message||e).slice(0,340)});}
 });
+// Retomada barata e somente-leitura apos erro 502/503 na preparacao.
+// Pode comprovar se o primeiro POST terminou antes da queda do proxy.
+// Nunca considera apenas um dos dois vinculos suficiente para executar.
+app.get('/api/shopee/kits/optimization/link-status',mustLogin,requireWeDropAdmin,async(req,res)=>{
+ res.setHeader('Cache-Control','no-store');
+ try{
+  const auth=await authStore.load();
+  if(!Number.isSafeInteger(Number(auth?.shopId))||Number(auth.shopId)<=0)
+   throw Error('Loja não vinculada.');
+  const kitSku=String(req.query?.kitSku||'').trim();
+  if(!/^KIT-[A-Z0-9-]{4,115}$/.test(kitSku))throw Error('Kit inválido.');
+  const sku=validateSkuLookup(req.query?.sku);
+  const itemId=validItemId(req.query?.itemId),modelId=String(req.query?.modelId??'0');
+  if(!/^\d{1,18}$/.test(modelId))throw Error('Modelo inválido.');
+  const [saved,review]=await Promise.all([
+   loadKitDraft(auth.shopId,kitSku),
+   getWorkflowReview(auth.shopId,itemId,modelId)
+  ]);
+  const link=saved?.optimization;
+  const match=x=>String(x?.kitSku||'')===kitSku&&
+   String(x?.sku||'')===sku&&String(x?.mainSku||'')===sku&&
+   String(x?.itemId||'')===String(itemId)&&String(x?.modelId||'0')===modelId;
+  const draftLinked=match(link)&&kitOptimizationLinkIsCurrent(saved,link);
+  const workflowLinked=String(review?.sku||'')===sku&&
+   match(review?.review_state?.kitOptimization)&&
+   kitOptimizationLinkIsCurrent(saved,review?.review_state?.kitOptimization);
+  res.json({ok:true,ready:Boolean(draftLinked&&workflowLinked),
+   draftLinked:Boolean(draftLinked),workflowLinked:Boolean(workflowLinked),
+   kitSku,sku,itemId:String(itemId),modelId,
+   marketplaceUpdated:false});
+ }catch(error){
+  res.status(409).json({ok:false,error:String(error.message||error).slice(0,270)});
+ }
+});
 app.post('/api/shopee/kits/optimization/image',mustLogin,requireWeDropAdmin,
  express.raw({type:['image/png','image/jpeg'],limit:MAX_IMAGE_BYTES}),async(req,res)=>{
  res.setHeader('Cache-Control','no-store');
