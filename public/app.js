@@ -5750,7 +5750,8 @@ globalThis.RAKitExecutePendingMediaFiscal=async({kitSku,sku,itemId,modelId}={})=
    return {ok:true,alreadyCurrent:true,message};
   }
   optimizerExecNotice('Autorizacao recebida: iniciando somente 9 imagens, video e dados fiscais na Shopee.','info');
-  await optimizerExecuteApproved(false);
+  const start=await optimizerExecuteApproved(false);
+  if(!start?.started)return {ok:false,error:start?.error||'A Shopee nao confirmou o inicio da execucao.'};
   return {ok:true,submitted:true};
  }catch(error){
   return {ok:false,error:String(error.message||error)};
@@ -5807,7 +5808,7 @@ async function optimizerExecuteApproved(remainingOnly=false){
  $('#optimizerExecutionPrepare').disabled=true;
  $('#optimizerExecutionLaunch').hidden=true;
  $('#optimizerExecutionRemaining').hidden=true;
- let previewMustRefresh=false,recoverPrepared=false,failedStartReason='';
+ let previewMustRefresh=false,recoverPrepared=false,failedStartReason='',startAccepted=false;
  optimizerExecNotice('Validando a prévia aprovada. O início só será confirmado após resposta do servidor...');
  $('#optimizerExecutionPanel').hidden=false;
  if(optimizerExecProgress){
@@ -5839,6 +5840,7 @@ async function optimizerExecuteApproved(remainingOnly=false){
    $('#optimizerExecutionConfirmation').hidden=true;
    $('#optimizerExecutionLaunch').hidden=true;
    $('#optimizerExecutionRemaining').hidden=true;
+   startAccepted=true;
    optimizerExecNotice(out.marketplaceUpdated===true
      ?'A Shopee confirmou as alterações aprovadas.'
      :'Execução iniciada. O progresso será consultado automaticamente.',
@@ -5886,6 +5888,7 @@ async function optimizerExecuteApproved(remainingOnly=false){
      }
    }
  }
+ return {started:startAccepted,error:startAccepted?'':failedStartReason};
 }
 
 // A fiscal batch never posts whole ads: every row has its own verified
