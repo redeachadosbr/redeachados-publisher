@@ -1568,8 +1568,8 @@ app.get('/api/shopee/kits/optimization/find',mustLogin,requireWeDropAdmin,async(
   // Preferir a leitura oficial por Item ID. A pesquisa por SKU é uma busca
   // de descoberta, portanto não pode invalidar um anúncio já persistido.
   const storedItemId=prior?.sku===sku&&prior?.mainSku===sku&&
-   /^[1-9]\\d{0,17}$/.test(String(prior.itemId||''))?String(prior.itemId):
-   !prior?.itemId&&/^[1-9]\\d{0,17}$/.test(String(saved.publication?.itemId||''))?
+   /^[1-9]\d{0,17}$/.test(String(prior.itemId||''))?String(prior.itemId):
+   !prior?.itemId&&/^[1-9]\d{0,17}$/.test(String(saved.publication?.itemId||''))?
     String(saved.publication.itemId):'';
   const storedModelId=String(prior?.modelId||'0');
   let directFailure='',directMismatch=false;
