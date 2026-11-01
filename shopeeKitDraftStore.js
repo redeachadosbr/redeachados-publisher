@@ -47,8 +47,12 @@ export async function saveKitDraft(shopId,{kit,creative,logistics,importBatchId}
   ?Object.fromEntries(codes.filter(sku=>typeof creative.manualFacts[sku]==='string')
    .map(sku=>[sku,creative.manualFacts[sku].replace(/[\u0000-\u001f]/g,' ').trim().slice(0,1700)])):{};
  const savedLogistics=logistics===undefined?previous?.logistics||null:normalizeKitLogistics(logistics,kit);
+ const fiscalBySku=Object.fromEntries(codes.map(sku=>{
+  const origin=String(previous?.creative?.fiscalBySku?.[sku]?.origin||'').trim();
+  return [sku,origin==='2'?{origin:'2',source:'revisao-fiscal-da-loja'}:null];
+ }).filter(([,entry])=>entry));
  const draft={kit,importBatchId:batchId||null,logistics:savedLogistics,creative:{title,description,seoTitles:uniqueTitles.length===3?uniqueTitles:[],
-  manualFacts,source:String(creative.source||'rascunho revisado').slice(0,90)},
+  manualFacts,fiscalBySku,source:String(creative.source||'rascunho revisado').slice(0,90)},
   reviewed:false,shopeePublished:false,
   optimizationFinalization:previous?.optimizationFinalization||null,
   publication:previous?.publication||{status:'local_draft',itemId:null},
@@ -202,6 +206,35 @@ export async function recordKitPublication(shopId,kitSku,publication){
  return draft.publication;
 }
 
+// Persistência fiscal LOCAL do kit, isolada por SKU e revisão explícita.
+// Não modifica o anúncio nem preenche NCM/CEST/CFOP a partir de outra SKU.
+export async function saveKitFiscalOrigin(shopId,kitSku,origins){
+ const id=shop(shopId),current=await loadKitDraft(id,kitSku);
+ if(!current?.kit)throw Error('Rascunho do kit não encontrado.');
+ if(current.optimizationFinalization?.status==='verified'||current.publication?.itemId||
+    current.publication?.status!=='local_draft')throw Error('Kit já enviado ou finalizado.');
+ if(!origins||typeof origins!=='object'||Array.isArray(origins))
+  throw Error('Origem fiscal por SKU inválida.');
+ const codes=current.skus.map(String);
+ const invalid=Object.keys(origins).filter(x=>!codes.includes(x)||!/^([0-8])$/.test(String(origins[x])));
+ if(invalid.length)throw Error('Código de origem deve corresponder à SKU e à opção fiscal da Shopee.');
+ const prior=current.creative?.fiscalBySku||{};
+ const fiscalBySku={...prior,...Object.fromEntries(Object.entries(origins).map(([sku,origin])=>
+  [sku,{origin:String(origin),source:'informado-pelo-vendedor',savedAt:new Date().toISOString()}]))};
+ // Um PATCH com controle de versão impede sobrescrever título, imagens e
+ // modificações simultâneas no mesmo rascunho.
+ const draft={kit:current.kit,importBatchId:current.importBatchId||null,
+  creative:{...current.creative,fiscalBySku},logistics:current.logistics||null,
+  reviewed:false,shopeePublished:false,publication:current.publication,
+  optimization:current.optimization||null,
+  optimizationFinalization:current.optimizationFinalization||null};
+ const rows=await request('?shop_id=eq.'+id+'&kit_sku=eq.'+encodeURIComponent(kitSku)+
+  '&updated_at=eq.'+encodeURIComponent(current.updatedAt)+
+  '&draft->publication->>status=eq.local_draft',{
+  method:'PATCH',data:{draft,updated_at:new Date().toISOString()},prefer:'return=representation'});
+ if(rows.length!==1)throw Error('O kit mudou durante a edição. Atualize antes de gravar a origem.');
+ return {saved:true,kitSku,fiscalBySku,marketplaceUpdated:false};
+}
 export async function recordKitOptimization(shopId,kitSku,link){
  const id=shop(shopId),current=await loadKitDraft(id,kitSku);
  if(!current?.kit)throw Error('Kit não encontrado.');
