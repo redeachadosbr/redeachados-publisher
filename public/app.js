@@ -9228,7 +9228,9 @@ function optimizerTechnicalRender(data){
    void techTextSend(data,textBox.value);},80);
  }
  const countTag=$('#optimizerTechImagesCount'),imageCount=(data.sourceEvidence?.screenshots||[]).length;
- if(data.supplierProduct&&data.sourceEvidence?.sourceText){
+ if(data.technicalSkuFactsApplied){
+  optimizerTechNotice('✓ Informações por SKU recuperadas do kit e cruzadas com a WeDrop. Indicação, dimensões e demais dados comprovados foram aplicados ao rascunho para conferência; nada foi publicado.','success');
+ }else if(data.supplierProduct&&data.sourceEvidence?.sourceText){
   optimizerTechNotice('Dados da WeDrop e texto vinculados a esta SKU. Sugestões compatíveis já aparecem na prévia; use “Ler dados” para interpretar prints.','info');
  }else if(data.supplierProduct){
   optimizerTechNotice('Catálogo WeDrop localizado. Atributos comprovados foram sugeridos automaticamente. Adicione texto ou prints para complementar.','info');
@@ -9275,6 +9277,14 @@ function optimizerTechnicalRender(data){
   if(!suggested&&['marca','estampa','numero de registro inmetro'].some(n=>String(name).toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').includes(n))&&
      !attr.values?.length)field.append(optimizerMake('small','',
        'Sem comprovação automática: cole a ficha do fabricante acima ou selecione uma opção oficial.'));
+  // Campo opcional sem valor comprovado não deve parecer erro do preenchimento.
+  const keyName=String(name).normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase().trim();
+  if(!suggested&&!attr.values?.length&&!attr.mandatory){
+   if(/^modelo(?: do produto)?$/.test(keyName))
+    field.append(optimizerMake('small','', 'Modelo não informado na ficha desta SKU. Deixe vazio ou informe o modelo confirmado pelo fornecedor.'));
+   else if(/^atributo da categoria/.test(keyName))
+    field.append(optimizerMake('small','', 'A Shopee não retornou o nome deste atributo. Não preencher valores por suposição.'));
+  }
   const reviewed=(data.attributeChanges||[]).find(x=>Number(x.attributeId)===attr.id);
   // Prefill confirmed supplier facts at OPEN, not behind a second "Usar sugestão"
   // click. A previously saved, deliberate manual edit takes precedence except
