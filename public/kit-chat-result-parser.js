@@ -101,7 +101,10 @@ export function parseManualKitSkuBlock(input,{size=null,limit=20}={}){
  // Não confundir tabela/descritivo/JSON com entrada direta de SKUs.
  if(lines.some(line=>/\bkit\b|\bpre[cç]o\b/i.test(line)))return null;
  if(/(?:^|\n)\s*(?:kit|produto|componentes|skus?)\s*:/i.test(raw))return null;
- const tokens=raw.split(/[\s,;|+]+/).map(x=>x.trim()).filter(Boolean);
+ // Corrigir espaços acidentais antes de sufixo de uma letra (CE420 B → CE420B).
+ // O servidor ainda valida cada código no catálogo e não aceita SKUs inventadas.
+ const normalized=raw.replace(/\b([A-Za-z]{1,8}\d{2,})[ \t]+([A-Za-z])(?=\s|[,;|+]|$)/g,'$1$2');
+ const tokens=normalized.split(/[\s,;|+]+/).map(x=>x.trim()).filter(Boolean);
  if(tokens.length<2||tokens.length>100||
     tokens.some(x=>!/^[A-Za-z0-9][A-Za-z0-9._-]{0,119}$/.test(x)))return null;
  const codes=tokens.map(asSku);
