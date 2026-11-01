@@ -60,7 +60,8 @@ export async function saveKitDraft(shopId,{kit,creative,logistics,importBatchId}
   optimizationFinalization:previous?.optimizationFinalization||null,
   publication:previous?.publication||{status:'local_draft',itemId:null},
   optimization:previous?.optimization&&
-    previous.creative?.title===title&&previous.creative?.description===description&&
+    String(previous.creative?.title||'').trim()===title&&
+    String(previous.creative?.description||'').trim()===description&&
     Number(previous.kit?.kitCost)===Number(kit.kitCost)&&
     Number(previous.kit?.quote?.grossPrice)===Number(kit.quote?.grossPrice)&&
     codes.join('|')===(previous.skus||[]).join('|')?previous.optimization:null};
@@ -248,8 +249,9 @@ export async function recordKitOptimization(shopId,kitSku,link){
   if(current.optimizationFinalization?.status==='verified'||
     current.publication?.status!=='local_draft'||current.publication?.itemId)
    throw Error('Kit publicado ou com execução incerta; não modificar o vínculo.');
-  if(link?.kitSku!==kitSku||current.creative?.title!==link.title||
-   current.creative?.description!==link.description||
+  if(link?.kitSku!==kitSku||
+   String(current.creative?.title||'').trim()!==String(link.title||'').trim()||
+   String(current.creative?.description||'').trim()!==String(link.description||'').trim()||
    Number(current.kit?.kitCost)!==Number(link.kitCost)||
    Number(current.kit?.quote?.grossPrice)!==Number(link.grossPrice)||
    current.skus.map(String).join('|')!==link.componentSkus?.map(String).join('|'))
