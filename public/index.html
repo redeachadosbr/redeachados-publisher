@@ -1356,6 +1356,19 @@
       <button id="kitStopExtension" type="button" class="kit-secondary" hidden>Parar geração</button>
      </div>
      <p id="kitExtensionStatus" class="kit-extension-status" role="status" aria-live="polite">Verificando conexão da Ponte ChatGPT...</p>
+     <div id="kitCapturedRecovery" class="kit-captured-recovery" hidden>
+      <img id="kitCapturedPreview" alt="Prévia da imagem recebida pela Ponte e ainda não importada" width="120" height="120">
+      <div class="kit-captured-recovery-content">
+       <strong>Imagem capturada — aguardando gravação</strong>
+       <p id="kitCapturedRecoveryStatus" role="status" aria-live="polite"></p>
+       <div class="kit-captured-recovery-actions">
+        <button id="kitRetryCaptured" type="button" class="kit-primary">↻ Reimportar imagem capturada</button>
+        <button id="kitDiscardCaptured" type="button" class="kit-secondary">Descartar somente captura pendente</button>
+       </div>
+      </div>
+     </div>
+     <button id="kitImportChatPhoto" type="button" class="kit-secondary kit-import-chat-photo">⇧ Selecionar foto já gerada no ChatGPT</button>
+     <input id="kitChatPhotoFile" type="file" accept="image/png,image/jpeg,image/webp" hidden>
      <div class="kit-generation-more-actions">
       <button id="kitPlusManualFallback" type="button" class="kit-secondary">Abrir ChatGPT manualmente</button>
       <details class="kit-generation-help">
@@ -2419,7 +2432,7 @@
 <script src="/technical-memory.js?v=1.0.1-live-sku-preload"></script>
 <script src="/technical-status.js?v=1.0.0-optional-coherence"></script>
 <script src="/app.js?v=3.5.20-technical-id-fix-wizard10-discount09"></script>
-<script type="module" src="/kit-builder.js?v=20261101-sku-facts-save-feedback-v3-main-sku-order"></script>
+<script type="module" src="/kit-builder.js?v=20261101-bridge-capture-recovery-v1"></script>
 <link rel="stylesheet" href="/optimizer-variations.css?v=1.2.1-single-flow">
 <script src="/optimizer-variations.js?v=1.2.3-single-flow"></script>
 
