@@ -36,11 +36,11 @@ test('etapa 05 usa editor original sem depender da preparacao comercial do kit',
  assert.match(builder,/if\(advanced\.parentElement!==mount\)mount\.append\(advanced\)/);
  assert.match(existing,/async function openTechnical\(\)/);
  assert.match(existing,/technicalOnly:true/);
- assert.match(existing,/return \{restore,openTechnical,openDiscount\}/);
+ assert.match(existing,/return \{restore,openTechnical,openDiscount,prepareDiscountLink\}/);
  assert.match(app,/technicalOnly=matchedTarget&&kitHandoff\?\.technicalOnly===true/);
  assert.match(app,/optimizerWorkflowOpen\('technical'\)/);
  assert.match(app,/RAKitTechnicalLoadReady\?\.\(/);
  assert.match(server,/const requestedKitSku=String\(req\.query\.kit_sku\|\|''\)\.trim\(\)/);
  assert.match(server,/requestedDraft\.creative\?\.manualFacts\?\.\[sku\]/);
- assert.match(html,/kit-builder\.js\?v=20261101-(?:sku-facts-save-feedback-v\d+|bridge-capture-recovery-v\d+|seo-canonical-recovery-v\d+|technical-check-sync-v\d+)/);
+ assert.match(html,/kit-builder\.js\?v=20261101-(?:sku-facts-save-feedback-v\d+|bridge-capture-recovery-v\d+|seo-canonical-recovery-v\d+|technical-check-sync-v\d+|discount-readonly-link-v\d+)/);
 });
