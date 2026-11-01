@@ -148,7 +148,17 @@ export function compileShopeeExecutionPlan({shopId,itemId,modelId,sku,record,rev
     technical:selected('technical')&&stages.technical?.reviewed===true&&
       !Object.hasOwn(proposed,'attribute_list')&&
       Boolean(state.attributes?.length)&&
-      !blocked.some(x=>/atributo|ficha técnica|anatel/i.test(x))
+      !blocked.some(x=>/atributo|ficha técnica|anatel/i.test(x)),
+    images:selected('images')&&stages.images?.reviewed===true&&
+      manualImages.length===9&&state.imagesSignature===imagesSignature(manualImages)&&
+      sameData(manualImages.map(x=>x.shopee_image_id),live.image?.image_id_list||[]),
+    video:selected('video')&&stages.video?.reviewed===true&&
+      Boolean(manualVideo)&&savedVideoVerified,
+    fiscal:(()=>{
+      if(!selected('fiscal')||fiscalDeferred||stages.fiscal?.reviewed!==true||!state.tax)return false;
+      try{return sameData(compileTax(state.tax,live),live.tax_info||{});}
+      catch{return false;}
+    })()
   };
   const fingerprint=crypto.createHash('sha256').update(stableDataJson({
     shopId:String(shopId),itemId:String(itemId),modelId:String(modelId),sku,
