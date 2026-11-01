@@ -28,12 +28,14 @@ test('erro e timeout da retomada nao encerram nem declaram publicada a SKU',()=>
  assert.match(app,/optimizerKitResumeLinkRecovering=new Set\(\)/);
 });
 
-test('execucao pela etapa 10 limita alteracoes a imagens video fiscal',()=>{
- const start=app.indexOf('globalThis.RAKitExecutePendingMediaFiscal=async');
+test('etapa 10 executa TODAS as nove etapas da auditoria raiz, e nao apenas mídia/fiscal',()=>{
+ const start=app.indexOf('globalThis.RAKitExecutePendingAllStages=async');
  const end=app.indexOf("$('#optimizerExecutionLaunch')",start);
  assert.ok(start>0&&end>start);
  const run=app.slice(start,end);
- assert.match(run,/scope\.value='media_fiscal'/);
- assert.match(run,/Object\.keys\(p\.proposed\|\|\{\}\)\.length\|\|p\.modelVariations\|\|p\.kitDiscount/);
+ assert.match(run,/scope\.value='all'/);
+ assert.match(run,/optimizerRootAuditRefresh\(true\)/);
+ assert.match(run,/selectedStage!=='all'/);
  assert.match(run,/optimizerExecuteApproved\(false\)/);
+ assert.doesNotMatch(run,/scope\.value='media_fiscal'/);
 });
