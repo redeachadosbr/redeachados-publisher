@@ -43,3 +43,20 @@ test('dimensões com unidade após cada eixo também são lidas sem inventar',()
  assert.deepEqual(measures.map(x=>x.value),['20 × 30 × 40 cm','peso: 1,5 kg']);
  assert.equal(dimensionsFromSkuText('Idade 12 meses, 5 peças.'),'');
 });
+
+
+test('KTE022BCF: medidas dos dois componentes com eixo depois do número',()=>{
+ const facts='Dimensões: Porta Escova: 21,5cm altura x 6,7cm largura x 5cm comprimento / Saboneteira: 4cm altura x 10cm largura x 7,5cm comprimento';
+ const values=detectSkuMeasurements(facts).map(x=>x.value);
+ assert.deepEqual(values,[
+  'Porta Escova — altura: 21,5 cm',
+  'Porta Escova — largura: 6,7 cm',
+  'Porta Escova — comprimento: 5 cm',
+  'Saboneteira — altura: 4 cm',
+  'Saboneteira — largura: 10 cm',
+  'Saboneteira — comprimento: 7,5 cm'
+ ]);
+ assert.equal(dimensionsFromSkuText('Kit 6 peças para idade 12 meses'), '');
+ assert.deepEqual(detectSkuMeasurements('22 cm de altura × 8,5 cm de diâmetro').map(x=>x.value),
+  ['altura: 22 cm','diâmetro: 8,5 cm']);
+});
