@@ -94,7 +94,7 @@ export async function listKitDrafts(shopId){
    images:(x.draft?.kit?.components||[]).slice(0,3)
      .map(p=>String(p.imageUrl||'')).filter(url=>/^https:\/\/wedrop-products-images\.nyc3\.cdn\.digitaloceanspaces\.com\//.test(url)),
    publication:x.draft?.publication?.status||'local_draft',
-   itemId:x.draft?.publication?.itemId||null,
+   itemId:x.draft?.optimizationFinalization?.itemId||x.draft?.publication?.itemId||null,
    importBatchId:String(x.draft?.importBatchId||''),
    optimization:x.draft?.optimization||null,
    optimizationFinalization:x.draft?.optimizationFinalization||null,
