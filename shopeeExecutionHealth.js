@@ -1,4 +1,5 @@
-// Auditoria do motor raiz: NUNCA converte check local ou job parcial em publicação.
+// Auditoria do motor raiz: confirmação exige comparação de dados aprovados com leitura oficial.
+// A falta de um check local não desfaz uma correspondência comprovada na Shopee.
 import {compileAttributes,compileTax,fieldsVerified,sameData} from './shopeeStructuredFields.js';
 import {videoMatches} from './shopeeExecutionPlan.js';
 
@@ -30,7 +31,7 @@ export function auditRootShopeeExecution({
  const imgs=Array.isArray(images)?images:[];
  const expectedImages=imgs.map(x=>String(x.shopee_image_id||''));
  const actualImages=Array.isArray(live.image?.image_id_list)?live.image.image_id_list.map(String):[];
- const imageReady=reviewed('images')&&imgs.length===9&&expectedImages.every(x=>x.length>5);
+ const imageReady=imgs.length===9&&expectedImages.every(x=>x.length>5);
  add('images',imageReady&&sameData(expectedImages,actualImages),
   !imageReady?'Nove imagens aprovadas não estão prontas ou vinculadas à SKU':
   'Conferir IDs e ordem das imagens publicadas no anúncio');
@@ -38,18 +39,18 @@ export function auditRootShopeeExecution({
   video.publication.video:null;
  const videoEvidence=publishedVideo?{...publishedVideo,phase:'ready'}:(
   job?.state==='verified'&&job.plan?.video?.sha256===video?.sha256?job.result?.video:null);
- const officialVideo=Boolean(reviewed('video')&&video&&videoMatches(live,videoEvidence));
+ const officialVideo=Boolean(video&&videoEvidence&&videoMatches(live,videoEvidence));
  add('video',officialVideo,reviewed('video')?'Vídeo aprovado ainda não corresponde ao vídeo publicado':'Vídeo ainda não aprovado para publicação');
  const title=String(review.draftTitle||'').normalize('NFC').replace(/\s+/g,' ').trim();
- add('seo',reviewed('seo')&&Boolean(title)&&
+ add('seo',Boolean(title)&&
   title===String(live.item_name||'').normalize('NFC').replace(/\s+/g,' ').trim(),
   reviewed('seo')?'Título publicado não corresponde ao título aprovado':'Título SEO ainda não aprovado');
  const description=String(review.draftDescription||'').replace(/\r\n?/g,'\n').trim();
- add('description',reviewed('description')&&Boolean(description)&&
+ add('description',Boolean(description)&&
   description===String(live.description||'').replace(/\r\n?/g,'\n').trim(),
   reviewed('description')?'Descrição publicada difere da versão aprovada':'Descrição ainda não aprovada');
  let technicalOK=false,technicalReason='Ficha técnica não aprovada ou divergente';
- if(reviewed('technical')&&Array.isArray(review.attributes)&&review.attributes.length){
+ if(Array.isArray(review.attributes)&&review.attributes.length){
   try{
    const compiled=compileAttributes(review.attributes,record,live);
    technicalOK=fieldsVerified({attribute_list:compiled},live);
@@ -65,13 +66,13 @@ export function auditRootShopeeExecution({
   // Uma quantidade semelhante de modelos não comprova variações corretas.
   const expectedSkus=opts.map(x=>String(x.sku||'').trim()).filter(Boolean).sort();
   const actualSkus=actual.map(x=>String(x.model_sku||x.sku||'').trim()).filter(Boolean).sort();
-  const same=reviewed('variants')&&opts.length>=2&&
+  const same=opts.length>=2&&
    expectedSkus.length===opts.length&&actualSkus.length===opts.length&&
    sameData(expectedSkus,actualSkus);
   add('variants',same,'Modelos/SKUs das variações ainda não foram confirmados na Shopee');
  }
  let fiscalOK=false,fiscalReason='Dados fiscais não aprovados ou divergentes';
- if(reviewed('fiscal')&&review.tax){
+ if(review.tax){
   try{fiscalOK=fieldsVerified({tax_info:compileTax(review.tax,live)},live);}
   catch(error){fiscalReason='Dados fiscais: '+String(error.message||error).slice(0,155);}
  }
