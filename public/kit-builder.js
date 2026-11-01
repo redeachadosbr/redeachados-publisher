@@ -4339,6 +4339,51 @@ $('#kitSaveSeoContent')?.addEventListener('click',async()=>{
 
 $('#kitGenerateAll')?.addEventListener('click',()=>void kitStartExtensionImages());
 $('#kitResumeExtension')?.addEventListener('click',()=>void kitResumeExtensionImages());
+$('#kitRetryCaptured')?.addEventListener('click',async()=>{
+ const button=$('#kitRetryCaptured');
+ if(button)button.disabled=true;
+ try{
+  const result=await kitRecoverCapturedImages();
+  if(!result.recovered&&!result.failed)
+   kitExtensionStatus('Não há uma captura pendente nesta máquina. Use Selecionar foto já gerada para importar da conversa ou Recuperar geração para consultar a Ponte.','info');
+ }catch(error){
+  kitExtensionStatus('Não foi possível recuperar a captura: '+String(error.message||error),'error');
+ }finally{if(button)button.disabled=false;}
+});
+$('#kitDiscardCaptured')?.addEventListener('click',async()=>{
+ const sku=prepared?.kit?.kitSku;
+ if(!sku)return;
+ const pending=(await kitPhotoStore.listPending(sku)).filter(x=>!images.has(x.slot));
+ const first=pending[0];if(!first)return;
+ if(!confirm('Descartar apenas a captura não importada da imagem '+String(first.slot).padStart(2,'0')+
+  '? As fotos já salvas na galeria não serão apagadas.'))return;
+ await kitPhotoStore.removePending(sku,first.slot);
+ await kitShowCapturedRecovery(sku);
+ kitExtensionStatus('Captura pendente descartada. Imagens já salvas preservadas.','info');
+});
+$('#kitImportChatPhoto')?.addEventListener('click',()=>{
+ if(!prepared?.kit)return kitExtensionStatus('Abra primeiro o rascunho correto do kit.','warning');
+ if(images.size>=9)return kitExtensionStatus('As nove posições já possuem imagens.','info');
+ $('#kitChatPhotoFile')?.click();
+});
+$('#kitChatPhotoFile')?.addEventListener('change',async event=>{
+ const file=event.target.files?.[0];
+ event.target.value='';
+ if(!file||!prepared?.kit)return;
+ const sku=prepared.kit.kitSku;
+ const slot=Array.from({length:9},(_,i)=>i+1).find(n=>!images.has(n));
+ if(!slot)return;
+ const button=$('#kitImportChatPhoto');if(button)button.disabled=true;
+ try{
+  const ok=await uploadPhoto(slot,file,{quiet:true,kitSku:sku,throwOnError:true});
+  if(ok!==true)throw Error('A foto não foi confirmada no armazenamento.');
+  await kitPhotoStore.removePending(sku,slot);
+  await kitShowCapturedRecovery(sku);
+  kitExtensionStatus('✓ Imagem '+String(slot).padStart(2,'0')+
+   ' recuperada do arquivo já gerado no ChatGPT e salva na galeria. Use Recuperar geração para continuar sem repetir as imagens aprovadas.','success');
+ }catch(error){kitExtensionStatus('Não foi possível importar a imagem selecionada: '+String(error.message||error),'error');}
+ finally{if(button)button.disabled=false;}
+});
 $('#kitStopExtension')?.addEventListener('click',()=>kitStopKitExtension('Geração pausada por solicitação. Fotos já salvas preservadas.'));
 $('#kitPlusManualFallback')?.addEventListener('click',openChatGPTImages);
 $('#kitPlusCopyGeneratedPrompt')?.addEventListener('click',()=>{
