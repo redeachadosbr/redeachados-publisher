@@ -1,4 +1,4 @@
-import {parseKitChatResult} from './kit-chat-result-parser.js?v=2.5.2-theme-review';
+import {parseKitChatResult,parseManualKitSkuBlock} from './kit-chat-result-parser.js?v=2.5.3-manual-lines';
 import {buildKitResearchJson} from './kit-json-export.js?v=1-json-before-import';
 import {scoreKitSeoTitle,parseKitSeoResponse,kitSeoRiskFlags,formatKitShopeeDescription} from './kit-seo-helper.js';
 import {requestKitContent} from './kit-content-handoff.js?v=1';
@@ -3624,7 +3624,7 @@ async function importPlusSuggestions({readClipboard=false,silent=false,uploadedT
  const btn=$('#kitPlusImport'),clipBtn=$('#kitPlusClipboardImport');
  btn.disabled=true;if(clipBtn)clipBtn.disabled=true;
  try{
-  const context=await kitChatEnsureFreshResearch();
+  const selectedContext=kitResearchContext();
   if(readClipboard&&(kitChatFilePickerOpen||kitChatManualImportActive||kitChatQueuedManualImport))return false;
   let response=uploadedText!==null?uploadedText:$('#kitPlusOutput').value;
   if(readClipboard){
@@ -3634,11 +3634,16 @@ async function importPlusSuggestions({readClipboard=false,silent=false,uploadedT
   }
   // JSON escolhido é importado diretamente; whitelist de pesquisa aplica-se
   // apenas ao texto/TXT. O servidor é a autoridade para SKU, estoque e custo.
-  const fileParsed=uploadedText!==null?kitParseUploadedJson(response,context.desiredKits):null;
-  const parsed=fileParsed||kitChatExtractLines(
+  const fileParsed=uploadedText!==null?kitParseUploadedJson(response,selectedContext.desiredKits):null;
+  // Colar cada SKU em uma linha e uma importação MANUAL direta (não pesquisa).
+  // A whitelist do filtro de categoria pode omitir SKUs de kits complementares.
+  // Neste formato explícito, só o servidor valida SKUs, custos e estoque reais.
+  const manualBlock=!fileParsed?parseManualKitSkuBlock(response):null;
+  const context=manualBlock||fileParsed?selectedContext:await kitChatEnsureFreshResearch();
+  const parsed=fileParsed||manualBlock||kitChatExtractLines(
    response,context.size,kitChatPending.candidateSkus,context.desiredKits);
-  const fileKitSize=fileParsed?.size||context.size;
-  const fileKitCount=fileParsed?.sourceCount||0;
+  const fileKitSize=manualBlock?.size||fileParsed?.size||context.size;
+  const fileKitCount=fileParsed?.sourceCount||manualBlock?.sourceCount||0;
   const rows=parsed.kits;
   if(!rows.length){
    if(!silent)throw Error('Nenhum kit importável. JSON: '+fileKitCount+' combinações; '+parsed.rejected+' inválidas. '+((parsed.errors||[]).slice(0,3).join(' ')||'Confira os códigos e as quantidades de SKUs.'));
@@ -3648,11 +3653,11 @@ async function importPlusSuggestions({readClipboard=false,silent=false,uploadedT
   // download independente de qualquer erro na API de rascunhos.
   // Um JSON selecionado já é o artefato final. Não o reexportar com a
   // whitelist da categoria, pois isso rejeitaria kits entre categorias.
-  if(!fileParsed)kitCaptureResearchJson(response,context,{autoDownload:true});
-  kitPlusNotice('Importando '+rows.length+' kits do '+(parsed.format==='json'?'JSON':'texto')+
+  if(!fileParsed&&!manualBlock)kitCaptureResearchJson(response,context,{autoDownload:true});
+  kitPlusNotice('Importando '+rows.length+' kits do '+(parsed.format==='json'?'JSON':parsed.format==='manual'?'campo manual':'texto')+
    '; validando custos, estoque e coerência na WeDrop...','info');
   const r=await api('/api/shopee/kits/plus-import',{body:{
-   ...context,size:fileKitSize,kits:rows,...currentSettings()
+   ...context,size:fileKitSize,...(manualBlock?{idea:''}:{}),kits:rows,...currentSettings()
   }});
   renderKitImportReport(r,parsed.rejected);
   if(!Array.isArray(r.results)||!r.results.length){
@@ -3660,7 +3665,7 @@ async function importPlusSuggestions({readClipboard=false,silent=false,uploadedT
    throw Error('Nenhum dos '+rows.length+' kits passou na validação WeDrop. '+firstRejected);
   }
   $('#kitPlusOutput').value=rows.map(x=>x.join(' | ')).join('\n');
-  suggestionContext={category:context.category,size:context.size,idea:context.idea,source:r.source};suggestions=[];
+  suggestionContext={category:context.category,size:fileKitSize,idea:manualBlock?'':context.idea,source:r.source};suggestions=[];
   // Não duplicar os cartões do JSON importado; o lote aparece em Rascunhos.
   $('#kitSuggestions').replaceChildren();$('#kitSuggestions').hidden=true;
   kitCloseInlineEditor();prepared=null;images.clear();
