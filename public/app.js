@@ -4627,7 +4627,9 @@ function optimizerExecutionTrackerRender(progress,job){
  if(!src)image.removeAttribute?.('src');
  $('#optimizerExecutionPhaseTitle').textContent=progress.title;
  $('#optimizerExecutionPhaseSubtitle').textContent=discountPending?
-  progress.message+' A prévia de Minha Promoção está conferida, mas a promoção precisa de autorização separada na etapa 08.':
+  progress.message+(kitDiscount.prepared?
+   ' A prévia de Minha Promoção foi preparada, mas o desconto ainda NÃO foi confirmado na Shopee.':
+   ' DESCONTO NÃO EXECUTADO: falta preparar Minha Promoção da SKU e obter confirmação na Shopee.'):
   progress.message;
  const started=$('#optimizerExecutionStartedAt'),startedLabel=$('#optimizerExecutionStartLabel');
  const at=progress.startedAt||progress.updatedAt;
@@ -4677,15 +4679,17 @@ function optimizerExecutionTrackerRender(progress,job){
  const statuses={done:'Confirmado no anúncio',staged:'✓ Na mídia Shopee',checking:'Enviado · conferindo',
   active:'Em andamento',waiting:'Aguardando',skipped:'Não incluído',
   attention:'Verificar na Shopee',review:'Não incluído nesta execução',
-  'kit-prepared':'✓ Prévia conferida · promoção pendente',
-  'kit-published':'✓ Promoção aplicada separadamente',
+  'kit-unprepared':'NÃO EXECUTADO · preparar Minha Promoção',
+  'kit-prepared':'Prévia registrada · desconto NÃO executado',
+  'kit-published':'✓ Promoção confirmada por leitura oficial',
   authorization:'Aguardando confirmação para executar'};
  const mediaFiscalOnly=job?.plan?.selectedStage==='media_fiscal';
  const visibleSteps=mediaFiscalOnly?(progress.steps||[]).filter(x=>['images','video','fiscal'].includes(x.id)):(progress.steps||[]);
  for(const [i,step] of visibleSteps.entries()){
   const actualStatus=step.id==='discount'&&sameKitJob&&
     ['review','authorization','skipped'].includes(step.status)?
-    kitDiscount.confirmed?'kit-published':kitDiscount.prepared?'kit-prepared':step.status:
+    !discountPending&&kitDiscount.confirmed?'kit-published':
+    discountPending?(kitDiscount.prepared?'kit-prepared':'kit-unprepared'):step.status:
     step.status;
   const li=optimizerMake('li','optimizer-exec-step is-'+actualStatus);
   const marker=optimizerMake('span','optimizer-exec-step-number',
