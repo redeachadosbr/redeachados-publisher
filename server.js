@@ -33,7 +33,7 @@ import {saveWeDropProducts,readWeDropProduct} from './wedropCosts.js';
 import {kitCatalog,suggestKits,suggestKitsForIdea,rankKitIdeaProducts,assessKitBuyerFit,composeKit,kitCreative,kitPrompts,kitPlusResearchBrief,kitPlusContentPrompt,kitContentBrief,categoryMatches,modifyKitSkus,clearKitCatalogCache,kitSku} from './shopeeKitBuilder.js';
 import {researchShopeeKitSeo} from './shopeeKitSeoResearch.js';
 import {saveKitStockImport,clearKitStockCache,parseWeDropAvailabilityCsv,readKitStockSnapshot} from './shopeeKitAvailability.js';
-import {saveKitDraft,saveKitDraftLogistics,saveKitDraftManualFacts,saveKitDraftCopy,listKitDrafts,loadKitDraft,deleteKitDraft,recordKitOptimization} from './shopeeKitDraftStore.js';
+import {saveKitDraft,saveKitDraftLogistics,saveKitDraftManualFacts,saveKitDraftCopy,listKitDrafts,loadKitDraft,deleteKitDraft,recordKitOptimization,recordKitOptimizationFinalization} from './shopeeKitDraftStore.js';
 import {validateKitOptimizationTarget,kitOptimizationLinkIsCurrent,linkedKitPricingCost,assertKitListingComposition} from './shopeeKitOptimization.js';
 import {recoverKitDraftForEditing,matchesStoredKitPhotos,validateStoredKitDraft} from './shopeeKitDraftRecovery.js';
 import {kitUploadPhoto,kitPublicationReadiness,kitPublicationPreview,kitPublishApproved,checkKitPublication,kitVideoPrepare,kitVideoAdvance,kitVideoStatus,kitVideoDiscard} from './shopeeKitPublicationService.js';
@@ -3022,9 +3022,7 @@ app.get('/api/shopee/optimizer/batch/fiscal/status',mustLogin,requireWeDropAdmin
 // Auditoria do MOTOR RAIZ. Reconsulta o anúncio real por SKU/Item ID,
 // mesmo que o último job tenha sido parcial ou já esteja marcado verified.
 // Somente leitura; não cria job, não repete escrita e não declara sucesso por check.
-app.get('/api/shopee/optimizer/execution/root-audit',mustLogin,requireWeDropAdmin,async(req,res)=>{
- res.setHeader('Cache-Control','no-store');
- try{
+async function readLiveRootExecution(req){
   const {itemId,modelId,sku,auth,cfg,record}=await checkedWorkflowAudit(req);
   const [stored,live,manualImages,manualVideo,job]=await Promise.all([
    getWorkflowReview(auth.shopId,itemId,modelId),
@@ -3067,9 +3065,38 @@ app.get('/api/shopee/optimizer/execution/root-audit',mustLogin,requireWeDropAdmi
   }
   const audit=auditRootShopeeExecution({sku,itemId,record,review,live,
    images:manualImages,video:manualVideo,models,discountReadback,job});
+  return {audit,discountDiagnostic,job,auth,itemId,modelId,sku};
+}
+app.get('/api/shopee/optimizer/execution/root-audit',mustLogin,requireWeDropAdmin,async(req,res)=>{
+ res.setHeader('Cache-Control','no-store');
+ try{
+  const {audit,discountDiagnostic}=await readLiveRootExecution(req);
   res.json({ok:true,audit,...(discountDiagnostic?{discountDiagnostic}:{})});
  }catch(error){
   res.status(409).json({ok:false,error:String(error.message||error).slice(0,270)});
+ }
+});
+// Finalização da otimização de anúncio existente. Executar apenas após
+// releitura oficial das nove etapas do motor raiz; checks locais não bastam.
+// Requisição idempotente: não faz nenhuma escrita na Shopee.
+app.post('/api/shopee/kits/drafts/finalize-optimization',mustLogin,requireWeDropAdmin,async(req,res)=>{
+ res.setHeader('Cache-Control','no-store');
+ if(!verifiedSameOrigin(req))return res.status(403).json({ok:false,error:'Origem não autorizada.'});
+ try{
+  const kitSku=String(req.body?.kitSku||'').trim();
+  if(!/^KIT-[A-Z0-9-]{4,115}$/.test(kitSku))throw Error('Kit inválido.');
+  const {audit,discountDiagnostic,job,auth,itemId,modelId,sku}=await readLiveRootExecution(req);
+  if(audit.complete!==true){
+   return res.status(409).json({ok:false,finalized:false,pending:audit.pending,
+    message:'A Shopee ainda não confirmou todas as etapas. O rascunho foi preservado.',
+    ...(discountDiagnostic?{discountDiagnostic}:{})});
+  }
+  const result=await recordKitOptimizationFinalization(auth.shopId,kitSku,
+   {sku,itemId,modelId,audit,job});
+  res.json({ok:true,...result,itemId:String(itemId),kitSku,marketplaceUpdated:false,
+   message:'✓ ANÚNCIO OTIMIZADO NA SHOPEE · Rascunho arquivado em Publicados.'});
+ }catch(error){
+  res.status(409).json({ok:false,finalized:false,error:String(error.message||error).slice(0,300)});
  }
 });
 app.get('/api/shopee/optimizer/execution/status',mustLogin,requireWeDropAdmin,async(req,res)=>{
