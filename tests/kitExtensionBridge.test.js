@@ -115,3 +115,36 @@ test('retomada da Ponte usa um CONTINUE e depois WAKE, sem iniciar outro lote',(
  assert.match(ui,/kitPhotoStore\.list\(sku\)/);
  assert.match(ui,/kitManagerResumeBusy/);
 });
+
+
+test('falha de importação preserva captura e não confirma a posição antes de gravar',()=>{
+ const store=fs.readFileSync(new URL('../public/kit-extension-bridge.js',import.meta.url),'utf8');
+ const runtime=fs.readFileSync(new URL('../public/kit-extension-runtime.js',import.meta.url),'utf8');
+ const ui=fs.readFileSync(new URL('../public/kit-builder.js',import.meta.url),'utf8');
+ const html=fs.readFileSync(new URL('../public/index.html',import.meta.url),'utf8');
+ assert.match(store,/putPending:\(kit,slot,dataUrl,metadata=\{\}\)/);
+ assert.match(store,/getPending:\(kit,slot\)/);
+ assert.match(store,/listPending:async kit/);
+ assert.match(store,/removePending:\(kit,slot\)/);
+ assert.match(store,/markPendingFailure:async\(kit,slot,error\)/);
+ assert.match(store,/\|pending\|/);
+ const incoming=runtime.slice(runtime.indexOf("if(m.kind!=='RA_EXTENSION_IMAGE')return"),
+  runtime.indexOf("window.addEventListener('message',onMessage)"));
+ assert.ok(incoming.indexOf('await onCapture(')<incoming.indexOf('await onPhoto('),
+  'Gravar captura antes de converter e validar');
+ assert.match(incoming,/if\(accepted!==true\)throw Error/);
+ assert.match(incoming,/await onUploadFailed/);
+ assert.match(incoming,/ack\(snapshot.nonce,slot,true\)/);
+ assert.match(ui,/await kitPhotoStore\.putPending\(kitSku,slot,dataUrl,\{nonce\}\)/);
+ assert.match(ui,/await kitPhotoStore\.markPendingFailure\(kitSku,slot,error\)/);
+ assert.match(ui,/await kitPhotoStore\.removePending\(kitSku,slot\)/);
+ assert.match(ui,/const confirmed=\(await kitPhotoStore\.list\(kitSku\)\)/);
+ assert.match(ui,/throwOnError=true/);
+ assert.match(ui,/async function kitRecoverCapturedImages\(\)/);
+ assert.match(ui,/const local=await kitRecoverCapturedImages\(\)/);
+ assert.match(ui,/getKitExtensionBridge\(\)\.resumeFromManager\(\)/);
+ assert.match(html,/id="kitCapturedRecovery"/);
+ assert.match(html,/id="kitRetryCaptured"/);
+ assert.match(html,/id="kitImportChatPhoto"/);
+ assert.match(html,/id="kitChatPhotoFile"/);
+});
