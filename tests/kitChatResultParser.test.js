@@ -145,5 +145,5 @@ test('JSON de 10 kits com três SKUs é lido sem whitelist de categoria',async()
  assert.equal(result.rejected,0);
  assert.equal(result.size,3);
  assert.deepEqual(result.kits,codes);
- assert.match(app,/if\(!fileParsed\)kitCaptureResearchJson\(response,context,\{autoDownload:true\}\)/);
+ assert.match(app,/if\(!fileParsed&&!manualBlock\)kitCaptureResearchJson\(response,context,\{autoDownload:true\}\)/);
 });
