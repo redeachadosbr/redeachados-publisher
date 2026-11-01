@@ -84,3 +84,20 @@ export function parseKitChatResult(input,{allowedCodes=[],limit=10,size=null}={}
  }
  return {kits,rejected,format:json!==null?'json':'text'};
 }
+
+// Importação MANUAL: 2 ou 3 SKUs completas, uma por linha, formam UM kit.
+// Esta entrada explicita nao depende do filtro de pesquisa/categoria:
+// o servidor valida catalogo real, estoque, custos e calcula o preco.
+// Nunca reduzir a lista removendo uma SKU desconhecida.
+export function parseManualKitSkuBlock(input){
+ if(typeof input!=='string')return null;
+ const raw=input.replace(/^\uFEFF/,'').trim();
+ if(!raw||raw.length>10000||!/[\r\n]/.test(raw))return null;
+ const codes=raw.split(/\r?\n/).map(line=>line.trim()).filter(Boolean);
+ if(codes.length<2||codes.length>3)return null;
+ if(codes.some(x=>!(/^[A-Za-z0-9][A-Za-z0-9._-]{0,119}$/.test(x))))return null;
+ const skus=codes.map(asSku);
+ if(new Set(skus).size!==skus.length)
+  throw Error('A importação manual possui SKUs repetidas. Informe 2 ou 3 SKUs diferentes.');
+ return {kits:[skus],size:skus.length,sourceCount:1,rejected:0,format:'manual'};
+}
