@@ -95,13 +95,13 @@ export function parseKitChatResult(input,{allowedCodes=[],limit=10,size=null}={}
 export function parseManualKitSkuBlock(input,{size=null,limit=20}={}){
  if(typeof input!=='string')return null;
  const raw=input.replace(/^\uFEFF/,'').trim();
- if(!raw||raw.length>10000||/^[\\[{]/.test(raw))return null;
+ if(!raw||raw.length>10000||/^[\[{]/.test(raw))return null;
  if(!Number.isInteger(limit)||limit<1||limit>20)return null;
- const lines=raw.split(/\\r?\\n/).map(x=>x.trim()).filter(Boolean);
+ const lines=raw.split(/\r?\n/).map(x=>x.trim()).filter(Boolean);
  // Não confundir tabela/descritivo/JSON com entrada direta de SKUs.
- if(lines.some(line=>/\\s\\|\\s/.test(line)&&/\\bkit\\b|\\bpre[cç]o\\b/i.test(line)))return null;
- if(/(?:^|\\n)\\s*(?:kit|produto|componentes|skus?)\\s*:/i.test(raw))return null;
- const tokens=raw.split(/[\\s,;|+]+/).map(x=>x.trim()).filter(Boolean);
+ if(lines.some(line=>/\s\|\s/.test(line)&&/\bkit\b|\bpre[cç]o\b/i.test(line)))return null;
+ if(/(?:^|\n)\s*(?:kit|produto|componentes|skus?)\s*:/i.test(raw))return null;
+ const tokens=raw.split(/[\s,;|+]+/).map(x=>x.trim()).filter(Boolean);
  if(tokens.length<2||tokens.length>100||
     tokens.some(x=>!/^[A-Za-z0-9][A-Za-z0-9._-]{0,119}$/.test(x)))return null;
  const codes=tokens.map(asSku);
