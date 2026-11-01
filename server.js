@@ -1825,11 +1825,25 @@ app.post('/api/shopee/kits/optimization/image',mustLogin,requireWeDropAdmin,
   const job=await readShopeeExecution(auth.shopId,link.itemId,link.modelId);
   if(['running','uncertain'].includes(job?.state))
    throw Error('Execução pendente; importação bloqueada até confirmação.');
-  const record=await auditShopeeItem(cfg,auth,callShopeeShopApi,link.itemId,{
-   expectedSku:link.sku,expectedModelId:link.modelId
-  });
-  if(!['NORMAL','UNLIST'].includes(String(record.status).toUpperCase()))
-   throw Error('O anúncio não está editável na Shopee.');
+  // Importar uma imagem não exige get_attribute_tree. A validação técnica
+  // completa já pertence à preparação/execução do anúncio; aqui validamos
+  // SOMENTE identidade e status atual, evitando nove árvores de atributos.
+  const live=await shopeeLiveEditableItem(cfg,auth,link.itemId);
+  const liveStatus=String(live.item_status||live.status||'').toUpperCase();
+  if(!['NORMAL','UNLIST'].includes(liveStatus))
+   throw Error('O anúncio não está editável na Shopee ('+(liveStatus||'status ausente')+').');
+  if(String(live.item_sku||'').trim()!==String(link.sku)){
+   if(live.has_model!==true)
+    throw Error('A SKU principal do Item ID não confere com a Shopee.');
+   const available=(await shopeeLiveVariationState(cfg,auth,link.itemId,live)).models;
+   const selected=available.filter(m=>String(m.model_sku||'').trim()===String(link.sku)&&
+    (String(link.modelId||'0')==='0'||String(m.model_id)===String(link.modelId)));
+   if(selected.length!==1)throw Error('A SKU principal não corresponde a um modelo único do Item ID na Shopee.');
+  }else if(String(link.modelId||'0')!=='0'){
+   const available=(await shopeeLiveVariationState(cfg,auth,link.itemId,live)).models;
+   if(!available.some(m=>String(m.model_id)===String(link.modelId)&&String(m.model_sku||'').trim()===String(link.sku)))
+    throw Error('O modelo salvo não corresponde à SKU principal na Shopee.');
+  }
   const image=await importPreparedImage({shopId:auth.shopId,itemId:link.itemId,
    modelId:link.modelId,sku:link.sku,slot,file:req.body,
    mime:String(req.get('content-type')||'').split(';')[0],filename:'kit-'+kitSku+'-'+slot});
