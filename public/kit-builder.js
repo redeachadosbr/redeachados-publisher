@@ -3,9 +3,9 @@ import {buildKitResearchJson} from './kit-json-export.js?v=1-json-before-import'
 import {scoreKitSeoTitle,parseKitSeoResponse,kitSeoRiskFlags,formatKitShopeeDescription} from './kit-seo-helper.js';
 import {requestKitContent} from './kit-content-handoff.js?v=1';
 import {requestKitResearch} from './kit-research-handoff.js?v=1';
-import {detectSkuMeasurements,skuMeasurementSummary,kitImageMeasurementsBySku} from './kit-measurements.js?v=1.1.1-sku-dimension-images';
+import {detectSkuMeasurements,skuMeasurementSummary,kitImageMeasurementsBySku} from './kit-measurements.js?v=1.1.2-wedrop-axes-labels';
 import {kitImageFilenameSlot,kitImageNextSlot,kitPlanImageImports,kitMoveImage} from './kit-gallery-order.js';
-import {buildKitPlusImageBrief,kitPlusPromptLink} from './kit-plus-image-brief.js?v=1.1.1-sku-dimension-images';
+import {buildKitPlusImageBrief,kitPlusPromptLink} from './kit-plus-image-brief.js?v=1.1.2-wedrop-axes-labels';
 import {createKitPhotoStore} from './kit-extension-bridge.js';
 import {createKitExtensionController} from './kit-extension-runtime.js?v=4-kit-reconcile-valid-nonce';
 import {parseKitLogisticsText} from './kit-logistics-parser.js?v=3-ocr-columns';
