@@ -606,6 +606,22 @@ function kitWizardInit(){
   }finally{button.disabled=false;}
  });
  $('#kitWizardGoTechnical')?.addEventListener('click',()=>kitWizardSetStage(5,{scroll:true}));
+ // O usuário pode retomar revisões pendentes sem autorizar a publicação.
+ const executionAccess=$('#kitWizardExecutionAccess');
+ if(executionAccess&&!$('#kitWizardReviewPending')){
+  const resume=document.createElement('button');
+  resume.type='button';resume.id='kitWizardReviewPending';resume.className='kit-secondary';
+  resume.textContent='↩ Revisar etapas pendentes do kit';
+  resume.addEventListener('click',()=>{
+   const checks=new Set(kitWizardChecked());
+   const pending=[1,2,3,4,5,6,7,8,9].filter(n=>!checks.has(n));
+   if(pending.length){kitWizardSetStage(pending[0],{scroll:true});return;}
+   kitWizardSetStage(7,{scroll:true});
+   status('Todas as etapas locais estão conferidas. Verifique Variações e Dados fiscais no anúncio da Shopee: checks locais não provam inclusão ou publicação.','info');
+  });
+  const action=$('#kitWizardOpenExecution');
+  if(action)action.after(resume);else executionAccess.append(resume);
+ }
  $('#kitWizardOpenExecution')?.addEventListener('click',()=>{
   const btn=$('#optimizerShowExecution');
   if(btn&&!$('#kitOptimizerWorkspace')?.hidden){
