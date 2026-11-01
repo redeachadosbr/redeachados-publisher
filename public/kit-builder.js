@@ -2476,6 +2476,9 @@ function renderKit({scroll=true,displayTitle=''}={}){
  renderImageSlots();
  kitAutoImageUi();
  void kitCheckAutoImageAvailability();
+ // Restabelecer a escolha por kit ao reabrir, sem refazer as 9 fotos.
+ const primary=kitRememberedMain(kit)||String(prepared?.optimization?.mainSku||'');
+ if(primary)kitApplyMainSkuOrder(primary,{persist:false});
  getKitExtensionBridge().probe();
  void kitRestoreImageGallery(kit.kitSku);
  // renderKit recolhe fatos ao mudar de rascunho; a etapa 01 deve abri-los.
@@ -3711,7 +3714,7 @@ async function kitPictureSample(dataUrl){
 function getKitExtensionBridge(){
  if(kitBridgeController)return kitBridgeController;
  kitBridgeController=createKitExtensionController({
-  getKit:()=>prepared?.kit||null,
+  getKit:()=>kitForImageReferences(),
   getPrompts:()=>Array.from({length:9},(_,i)=>kitImagePromptAt(i+1)),
   getImages:()=>images,
   onPhoto:async({slot,dataUrl,kitSku,referenceDataUrl})=>{
@@ -3932,7 +3935,7 @@ function openChatGPTImages(){
  if(!prepared)return imageStatus('Abra o kit antes de iniciar as imagens.','error');
  kitContentReadManual(); // Atualizar as medidas cadastradas antes de copiar o comando.
  let prompt;
- try{prompt=buildKitPlusImageBrief(prepared.kit,{manualFacts:Object.fromEntries(kitContentManualFacts.entries())});}
+ try{prompt=buildKitPlusImageBrief(kitForImageReferences(),{manualFacts:Object.fromEntries(kitContentManualFacts.entries())});}
  catch(error){return imageStatus(error.message,'error');}
  // Gesto direto do usuário: cópia começa antes da abertura da aba.
  const clipboardPromise=navigator.clipboard?.writeText?
@@ -3957,7 +3960,7 @@ function exportPack(){
  const txt=[
   'REDE ACHADOS BR – FICHA DE KIT',kit.kitSku,
   'ORIGEM: WE DROP – somente SKUs reais',
-  'ITENS:',...kit.components.map(p=>'1x '+p.sku+' — '+p.name+' — '+money(p.unitCost)),
+  'ITENS:',...kitOrderedComponents(kit).map(p=>'1x '+p.sku+' — '+p.name+' — '+money(p.unitCost)),
   'Custo produtos: '+money(kit.componentCost),
   'Custo extra: '+money(kit.packing+kit.shipping),
   'Preço bruto: '+money(kit.quote.grossPrice),
@@ -3980,9 +3983,8 @@ $('#kitPrincipalSku')?.addEventListener('change',()=>{
  if(!prepared?.kit?.components?.some(p=>p.sku===main))return;
  const lower=$('#kitOptimizeMainSku');
  if(lower&&lower.value!==main){lower.value=main;lower.dispatchEvent(new Event('change',{bubbles:true}));}
- const legacy=$('#kitMainSku');if(legacy&&[...legacy.options].some(x=>x.value===main))legacy.value=main;
- renderKitPricingSummary(prepared.kit);
- // A troca da referência principal não altera custos/margem nem invalida o rascunho salvo.
+ kitApplyMainSkuOrder(main);
+ // Somente a apresentação/referências mudam; fotos 01–09 já gravadas permanecem intactas.
 });
 renderKitPricingSummary(null);
 // Mesmo mecanismo da barra de Otimização: arraste, toque ou use as setas.
@@ -4204,7 +4206,7 @@ $('#kitPlusCopyGeneratedPrompt')?.addEventListener('click',()=>{
  if(!prepared)return;
  kitContentReadManual();
  try{
-  const latest=buildKitPlusImageBrief(prepared.kit,{
+  const latest=buildKitPlusImageBrief(kitForImageReferences(),{
    manualFacts:Object.fromEntries(kitContentManualFacts.entries())
   });
   $('#kitPlusImagePrompt').value=latest;
