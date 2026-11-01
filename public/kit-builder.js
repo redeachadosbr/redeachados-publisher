@@ -114,7 +114,7 @@ globalThis.RAKitWizardExecutionReviews=()=>{
   .map(n=>({2:'images',3:'video',4:'seo',5:'technical',6:'description',
    7:'variants',8:'fiscal',9:'discount'}[n])).filter(Boolean)}:null;
 };
-let kitWizardExecutionOpening=false;
+let kitWizardExecutionOpening=false,kitWizardExecutionIntent=false;
 let kitWizardImagesSyncedFor='';
 let kitWizardVideoSyncedFor='';
 async function kitWizardOpenExecutionFlow(){
@@ -196,7 +196,7 @@ async function kitWizardOpenExecutionFlow(){
    status('Motor original da SKU não carregou. Volte à etapa 09 e confirme o vínculo.','warning');
    if(notice){notice.hidden=false;notice.textContent=notes.concat('O motor de execução ainda não abriu.').join(' ');}
   }
- }finally{kitWizardExecutionOpening=false;if(button)button.disabled=false;}
+ }finally{kitWizardExecutionOpening=false;kitWizardExecutionIntent=false;if(button)button.disabled=false;}
 }
 function kitWizardUpdateProgress(){
  const checks=kitWizardChecked();
@@ -609,7 +609,9 @@ globalThis.RAKitWizardWorkflowReady=data=>{
  }
  if(kitWizardStage===10){
   kitWizardMountTechnical();
-  void kitWizardOpenExecutionFlow();
+  // Carregar a SKU nunca dispara a execução por conta própria.
+  // O comando só avança após o clique explícito no botão azul.
+  if(kitWizardExecutionIntent)void kitWizardOpenExecutionFlow();
   return true;
  }
  return false;
@@ -619,6 +621,7 @@ function kitWizardSetStage(stage,{scroll=false}={}){
  if(!work)return;
  const n=Number(stage);
  kitWizardStage=Number.isInteger(n)&&n>=1&&n<=10?n:0;
+ if(kitWizardStage!==10)kitWizardExecutionIntent=false;
  work.hidden=kitWizardStage===0;
  kitWizardSyncHeader();
  kitWizardSyncOptimizer();
@@ -708,6 +711,7 @@ function kitWizardInit(){
  // A Etapa 10 possui um único botão; as demais etapas continuam clicáveis
  // no painel de 10 passos, sem um segundo cartão de navegação.
  $('#kitWizardOpenExecution')?.addEventListener('click',async()=>{
+  kitWizardExecutionIntent=true;
   if(!prepared?.kit||!kitSaved){
    status('Salve o rascunho antes de executar na Shopee. Nenhum envio realizado.','warning');
    return;
@@ -727,6 +731,7 @@ function kitWizardInit(){
   try{
    await kitExistingOptimizer.openTechnical?.();
   }catch(error){
+   kitWizardExecutionIntent=false;
    status('Não foi possível abrir o motor original: '+String(error.message||error)+'. Dados preservados.','error');
   }
  });
