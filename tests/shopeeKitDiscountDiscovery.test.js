@@ -9,8 +9,8 @@ test('somente a campanha do KIT e sugerida quando sua inclusao e unica',()=>{
  ];
  assert.deepEqual(pickKitDiscountCandidate(list,{kitItemId:'999',
   primaryItemIds:['501'],complete:true}),{discountId:'200',reason:'kit_membership'});
- assert.equal(pickKitDiscountCandidate(list,{kitItemId:'999',
-  primaryItemIds:['501'],complete:false}).discountId,null);
+ assert.deepEqual(pickKitDiscountCandidate(list,{kitItemId:'999',
+  primaryItemIds:['501'],complete:false}),{discountId:'200',reason:'kit_membership'});
 });
 
 test('campanha do SKU principal e sugerida somente sem vinculo do kit e com prova unica',()=>{
