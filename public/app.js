@@ -6261,14 +6261,17 @@ function optimizerRootAuditRender(audit){
   row.style.cssText='padding:10px 12px;border:1px solid #dce7f4;border-radius:12px;background:#fff;box-shadow:0 3px 7px rgba(40,71,101,.035)';
   const label=document.createElement('strong');
   label.style.cssText='font-size:12px;display:block';
-  label.textContent=(stage.status==='confirmed'?'✓ ':stage.status==='not_applicable'?'– ':'○ ')+stage.label;
+  label.textContent=(stage.status==='confirmed'?'✓ ':stage.status==='not_applicable'?'– ':stage.status==='failed'?'⚠ ':stage.status==='uncertain'?'? ':'○ ')+stage.label;
   row.append(label);
   const state=document.createElement('small');
   state.style.cssText='display:block;margin-top:5px;color:#61748b;line-height:1.4';
   state.textContent=stage.status==='confirmed'?'Confirmado na Shopee':
-   stage.status==='not_applicable'?'Não aplicável':stage.reason;
+   stage.status==='not_applicable'?'Não aplicável':
+   stage.status==='uncertain'?'Conferir antes de reenviar: '+stage.reason:stage.reason;
+  if(['failed','uncertain'].includes(stage.status))
+   state.style.color='#a53d2b';
   row.append(state);
-  if(stage.status==='pending'&&stage.id!=='final'){
+  if(['pending','failed','uncertain'].includes(stage.status)&&stage.id!=='final'){
    const retry=document.createElement('button');
    retry.type='button';retry.className='kit-secondary';
    retry.textContent='Preparar pendência';
