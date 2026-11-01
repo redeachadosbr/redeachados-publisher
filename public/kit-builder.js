@@ -2496,6 +2496,7 @@ async function loadDrafts({restoreCurrent=true}={}){
   if(publishedRoot){
    publishedRoot.replaceChildren();
    for(const published of result.published||[]){
+    const optimized=published.optimizationFinalization?.status==='verified';
     const card=elt('article','kit-card kit-published-card'),pic=elt('div','kit-draft-images');
     for(const url of (published.images||[]).slice(0,3)){
      const img=elt('img');img.src=url;img.alt='Produto publicado '+published.kitSku;
@@ -2503,7 +2504,8 @@ async function loadDrafts({restoreCurrent=true}={}){
     }
     if(!pic.children.length)pic.append(elt('span','','▧'));
     const info=elt('div','kit-draft-description');
-    info.append(elt('span','kit-draft-state','✓ PUBLICADO NA SHOPEE'),
+    info.append(elt('span','kit-draft-state kit-draft-state-confirmed',
+      optimized?'✓ ANÚNCIO OTIMIZADO NA SHOPEE':'✓ PUBLICADO NA SHOPEE'),
      elt('strong','',published.title||published.kitSku),
      elt('small','',(published.skus||[]).join(' + ')),
      elt('small','',published.itemId?'Item ID Shopee: '+published.itemId:'Publicação confirmada'));
@@ -2649,6 +2651,13 @@ async function deleteDraft(draft,button){
   button.disabled=false;button.textContent='Excluir';
  }
 }
+// Notificação do Motor Matriz após confirmação oficial e arquivamento no banco.
+globalThis.RAKitOptimizationFinalized=({kitSku,itemId}={})=>{
+ if(!kitSku)return;
+ status('✓ ANÚNCIO OTIMIZADO NA SHOPEE · Item ID '+String(itemId||'')+
+  ' confirmado. Kit movido de Rascunhos para Publicados.','success');
+ void loadDrafts({restoreCurrent:false});
+};
 async function openDraft(kitSku,{scroll=true,targetCard=null,title=''}={}){
  const revision=++kitDraftOpenRevision;
  const button=targetCard?.querySelector('[data-draft-edit-button]');
