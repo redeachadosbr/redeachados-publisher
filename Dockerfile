@@ -47,6 +47,7 @@ RUN node --check shopeeKitPublish.js && node --check shopeeKitPlatform.js && nod
 RUN node --check shopeeKitDiscountDiscovery.js && node --check public/kit-existing-optimization.js && node --test tests/shopeeKitDiscountDiscovery.test.js
 RUN node --check public/kit-existing-optimization.js && node --check public/app.js && node --check server.js && node --test tests/kitUnifiedExecutionContract.test.js
 RUN node --test tests/shopee-kit-step10-resume.test.js
+RUN node --test tests/shopee-kit-link-502-recovery.test.js
 RUN node --test tests/shopee-kit-optimization-finalization.test.js
 RUN node --check shopeeKitFiscalPreset.js && node --test tests/shopee-kit-fiscal-existing-draft.test.js
 RUN node --check shopeeExecutionKitDiscount.js && node --test tests/shopee-kit-discount-single-run.test.js
