@@ -3967,7 +3967,7 @@ async function optimizerWorkflowLoad(record){
      try{
        const identity={kitSku:kitHandoff.kitSku,sku,itemId:id,modelId};
        const prepareBody={...identity,mainSku:sku,confirmedItemId:id};
-       const retryable=error=>/\\b(?:HTTP\\s*(?:502|503|504)|failed to fetch|networkerror|network error|timeout)\\b/i.test(
+       const retryable=error=>/HTTP\\s*(?:502|503|504)|failed to fetch|networkerror|network error|timeout/i.test(
         String(error?.message||error||''));
        const readBack=async()=>{
         const params=new URLSearchParams(identity);
