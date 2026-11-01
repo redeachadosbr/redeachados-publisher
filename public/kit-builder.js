@@ -142,10 +142,14 @@ async function kitWizardResumeTargetForExecution(){
    ['NORMAL','UNLIST'].includes(String(x.status).toUpperCase())&&
    /^[1-9]\\d{0,17}$/.test(String(x.itemId||'')));
   const prior=prepared.optimization||null;
-  const savedId=prior?.sku===principal&&prior?.mainSku===principal?
+  const backend=search.verifiedSavedTarget||null;
+  const savedId=backend?.sku===principal?String(backend.itemId||''):
+   prior?.sku===principal&&prior?.mainSku===principal?
    String(prior.itemId||''):'';
   const selected=savedId?
-   matches.find(x=>String(x.itemId)===savedId):matches.length===1?matches[0]:null;
+   matches.find(x=>String(x.itemId)===savedId&&
+    (!backend||String(x.modelId||'0')===String(backend.modelId||'0'))):
+   matches.length===1?matches[0]:null;
   if(!selected){
    if(savedId)throw Error('O Item ID salvo '+savedId+
     ' não foi confirmado na Shopee para a SKU '+principal+'. Nenhum envio foi iniciado.');
