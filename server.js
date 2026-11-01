@@ -1794,7 +1794,7 @@ app.post('/api/shopee/kits/optimization/prepare',mustLogin,requireWeDropAdmin,as
   // Validar a fonte existente (sem gerar outra vez) e registrar sua revisão
   // SOMENTE se passar as mesmas regras do otimizador. Nada publica na Shopee.
   let seoReviewed=false,seoError='';
-  try{validateReview({stage:'seo',reviewed:true,title:link.title});seoReviewed=true;}
+  try{validateReview({stage:'seo',reviewed:true,title:link.title},{kitProductNames:kit.components.map(p=>p.name)});seoReviewed=true;}
   catch(e){seoError=String(e.message||e).slice(0,220);}
   let descriptionReviewed=false,descriptionError='';
   try{validateReview({stage:'description',reviewed:true,description:link.description});descriptionReviewed=true;}
@@ -2550,8 +2550,9 @@ app.post('/api/shopee/optimizer/execution/prepare',mustLogin,requireWeDropAdmin,
     const review=await getWorkflowReview(auth.shopId,itemId,modelId);
     if(review&&review.sku!==sku)throw Error('SKU do plano revisado é diferente. Refaça a auditoria.');
     const kitLink=review?.review_state?.kitOptimization;
+    let verifiedKit=null;
     if(kitLink){
-     await verifiedLinkedKitQuote(auth,kitLink);
+     verifiedKit=await verifiedLinkedKitQuote(auth,kitLink);
      if(req.body?.discountApprovalToken)
       throw Error('Kit composto: prepare o desconto específico após otimização confirmada.');
      if(review.review_state?.variationConfig?.enabled===true)
@@ -2566,6 +2567,26 @@ app.post('/api/shopee/optimizer/execution/prepare',mustLogin,requireWeDropAdmin,
     const manualImages=['discount','discount_adjust'].includes(selectedStage)?[]:
      await readPreparedImages(auth.shopId,itemId,modelId,sku);
     const reviewState={...(review?.review_state||{})};
+    // Recuperar revisão SEO somente do MESMO kit, preço e Item ID auditados.
+    // Um check local sozinho não autoriza publicação: exigir o conteúdo
+    // persistido no rascunho, o vínculo atual e todas as regras do otimizador.
+    if(kitLink&&verifiedKit){
+     const productNames=verifiedKit.live.components.map(p=>String(p.name||''));
+     reviewState.kitOptimization={...kitLink,componentNames:productNames};
+     const storedTitle=String(verifiedKit.draft.creative?.title||'');
+     const matchesKit=storedTitle===String(kitLink.title||'')&&
+      String(reviewState.draftTitle||'')===storedTitle&&
+      String(reviewState.titleOrigin||'')==='kit-wedrop';
+     if(['all','seo'].includes(selectedStage)&&matchesKit&&
+        reviewState.stages?.seo?.reviewed!==true){
+      validateReview({stage:'seo',reviewed:true,title:storedTitle},{kitProductNames:productNames});
+      await saveWorkflowReview(auth.shopId,itemId,modelId,sku,{
+       stage:'seo',reviewed:true,title:storedTitle,titleOrigin:'kit-wedrop'
+      });
+      reviewState.stages={...reviewState.stages,
+       seo:{reviewed:true,reviewedAt:new Date().toISOString()}};
+     }
+    }
     // Recuperação da Etapa 08: a autorização única da Etapa 10 não deve
     // exigir uma segunda visita à prévia quando a campanha é inequívoca.
     // Apenas consultas oficiais e persistência local; nenhuma escrita Shopee.
