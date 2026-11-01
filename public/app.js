@@ -4606,8 +4606,10 @@ function optimizerExecutionTrackerRender(progress,job){
   String(job?.model_id??0)===String(w.modelId??0));
  const kitDiscount=sameKitJob?optimizerKitDiscountReviewState(w):
   {prepared:false,confirmed:false};
- const discountPending=progress.verified&&kitDiscount.prepared&&!kitDiscount.confirmed&&
-  !job?.plan?.kitDiscount;
+ const rootKey=[String(w.sku||''),String(w.itemId||''),String(w.modelId||'0')].join('|');
+ const rootDiscount=optimizerRootAuditCache.get(rootKey)?.audit?.stages?.find(x=>x.id==='discount');
+ const discountPending=Boolean(sameKitJob&&
+  (rootDiscount?rootDiscount.status!=='confirmed':!kitDiscount.confirmed));
  optimizerExecProgress={...progress,sku,itemId:String(job?.item_id||w.itemId||''),
   modelId:String(job?.model_id??job?.plan?.modelId??w.modelId??0)};
  $('#optimizerExecutionSku').textContent='SKU '+sku;
@@ -4634,11 +4636,13 @@ function optimizerExecutionTrackerRender(progress,job){
    new Date(at).toLocaleString('pt-BR',{day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'}):
    'Horário indisponível';
  const badge=$('#optimizerExecutionLiveBadge');
- badge.textContent=discountPending?'✓ Anúncio confirmado · desconto pendente':
+ badge.textContent=discountPending?'⚠ Desconto não confirmado · verificar outras pendências':
   progress.verified?'✓ Confirmado':progress.attention?'! Atenção':
   !progress.hasStarted?progress.resumable?'● Mídia pronta · autorizar retomada':'● Aguardando sua autorização':'● Atualização automática';
  badge.dataset.state=progress.fiscalPartial?'warning':progress.state;
- const pct=discountPending?88:Math.max(0,Math.min(100,Number(progress.percent)||0));
+ const pct=!progress.hasStarted&&!progress.hasSavedProgress?0:
+  discountPending?Math.min(88,Math.max(0,Number(progress.percent)||0)):
+  Math.max(0,Math.min(100,Number(progress.percent)||0));
  $('#optimizerExecutionPercent').textContent=pct+'%';
  $('#optimizerExecutionPercent').title='Progresso técnico real. Apenas a confirmação pela Shopee significa publicação concluída.';
  $('#optimizerExecutionBar').setAttribute('aria-valuenow',String(pct));
@@ -4709,25 +4713,31 @@ function optimizerExecutionTrackerRender(progress,job){
   stageList.insertAdjacentElement('afterend',pendingActions);
  }
  pendingActions.replaceChildren();
- const skipped=mediaFiscalOnly?[]:(progress.steps||[]).filter(x=>['skipped','review'].includes(x.status)&&x.id!=='discount');
+ const skipped=mediaFiscalOnly?[]:(progress.steps||[]).filter(x=>
+  ['skipped','review','authorization'].includes(x.status)||
+  (x.id==='discount'&&discountPending&&!['done','active','checking'].includes(x.status)));
+ if(discountPending&&!skipped.some(x=>x.id==='discount'))
+  skipped.push({id:'discount',label:'08 · Desconto',status:'review'});
  if(skipped.length){
   const heading=document.createElement('strong');
   heading.textContent='Etapas ainda não executadas neste anúncio';
   heading.style.cssText='display:block;margin-bottom:6px;color:#193d70;font-size:15px';
   const detail=document.createElement('p');
-  detail.textContent='O 100% acima corresponde apenas à execução já selecionada. Estas etapas não foram enviadas. Prepare e autorize cada pendência separadamente:';
+  detail.textContent='A barra acima mostra somente o andamento deste plano, não a execução completa do kit. As etapas abaixo não estão confirmadas na Shopee, inclusive o desconto. Prepare as pendências:';
   detail.style.cssText='font-size:13px;line-height:1.5;margin:0 0 12px';
   pendingActions.append(heading,detail);
   const actions=document.createElement('div');
   actions.style.cssText='display:flex;flex-wrap:wrap;gap:9px';
   for(const step of skipped){
-   if(!['images','video','variants','fiscal','technical','seo','description'].includes(step.id))continue;
+   if(!['images','video','variants','fiscal','technical','seo','description','discount'].includes(step.id))continue;
    const button=document.createElement('button');
    button.type='button';button.className='kit-secondary';
-   button.textContent='Preparar '+step.label.replace(/^\\d+\\s*[·.-]\\s*/,'');
+   button.textContent=step.id==='discount'?'Preparar 08 · Minha Promoção':
+    'Preparar '+step.label.replace(/^\\d+\\s*[·.-]\\s*/,'');
    button.style.cssText='padding:10px 13px;border-radius:11px;font-weight:700';
    button.addEventListener('click',()=>{
     if(optimizerExecBusy||optimizerExecPreparation)return;
+    if(step.id==='discount'){optimizerDiscountOpenReview();return;}
     const scope=$('#optimizerExecutionScope');
     if(!scope)return;
     scope.value=step.id;
@@ -4750,6 +4760,11 @@ function optimizerExecutionTrackerRender(progress,job){
   stageList.insertAdjacentElement('afterend',kitDiscountAction);
  }
  kitDiscountAction.hidden=!discountPending;
+ kitDiscountAction.disabled=Boolean(optimizerExecBusy||optimizerExecPreparation||
+  ['running','uncertain'].includes(job?.state));
+ kitDiscountAction.textContent=kitDiscount.prepared?
+  '08 · Desconto pendente: conferir e autorizar Minha Promoção':
+  '08 · Desconto não executado: preparar Minha Promoção';
  const log=$('#optimizerExecutionEvents');log.replaceChildren();
  const logs=(progress.events||[]).slice(0,12);
  for(const event of logs){
