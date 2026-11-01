@@ -9,6 +9,11 @@ export function pickKitDiscountCandidate(campaigns,{kitItemId,primaryItemIds,com
  // O SKU principal também pode participar da mesma Minha Promoção; NÃO confundir item e promoção.
  const primary=candidates.filter(c=>primaryIds.some(id=>c.itemIds.includes(id)));
  if(primary.length===1)return {discountId:primary[0].discountId,reason:'primary_sku_membership'};
+ // Uma única campanha ativa, integralmente lida e elegível permite preparar
+ // a inclusão (ADD) do item ausente. A incompletude de outro status não
+ // invalida esta campanha; a escrita ainda revalida seu ID e seus preços.
+ if(candidates.length===1&&candidates[0].detailComplete===true)
+  return {discountId:candidates[0].discountId,reason:'single_verified_campaign'};
  if(complete&&candidates.length===1)return {discountId:candidates[0].discountId,reason:'only_campaign'};
  return {discountId:null,reason:!complete?'incomplete_no_membership':'choose'};
 }
@@ -46,7 +51,7 @@ export async function discoverKitDiscountCampaigns({
       Number(rec?.end_time)<=Math.floor(Date.now()/1000))continue;
    const itemIds=[...new Set(d.pages.flatMap(p=>Array.isArray(p.item_list)?p.item_list:[])
     .map(p=>String(p.item_id||'')).filter(valid))];
-   campaigns.push({...c,name:String(rec.discount_name||c.name).slice(0,110),
+   campaigns.push({...c,detailComplete:true,name:String(rec.discount_name||c.name).slice(0,110),
     status,itemIds,containsKit:valid(kitItemId)&&itemIds.includes(String(kitItemId)),
     containsPrimary:(primaryItemIds||[]).some(id=>itemIds.includes(String(id)))});
   }catch(e){complete=false;warnings.push('Campanha '+c.discountId+': '+String(e.message||e).slice(0,95));}
