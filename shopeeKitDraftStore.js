@@ -30,7 +30,7 @@ export async function saveKitDraft(shopId,{kit,creative,logistics,importBatchId}
  const id=shop(shopId);
  if(!/^KIT-[A-Z0-9-]{4,115}$/.test(String(kit?.kitSku||'')))throw Error('Código de kit inválido.');
  const codes=kit.components?.map(x=>String(x.sku));
- if(!Array.isArray(codes)||codes.length<2||codes.length>3||new Set(codes).size!==codes.length)
+ if(!Array.isArray(codes)||codes.length<2||codes.length>4||new Set(codes).size!==codes.length)
   throw Error('Componentes inválidos.');
  const title=String(creative?.title||'').trim().slice(0,120);
  const description=String(creative?.description||'').trim().slice(0,2000);
