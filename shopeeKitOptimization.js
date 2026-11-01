@@ -65,6 +65,7 @@ export function validateKitOptimizationTarget({saved,kit,record,targetSku,itemId
  if(!title||!description)throw Error('Salve título e descrição antes de otimizar.');
  return {kitSku:str(kit.kitSku),itemId:str(itemId),modelId:str(modelId),
   sku:str(targetSku),mainSku:str(mainSku),componentSkus:parts,
+  componentNames:kit.components.map(p=>str(p.name)),
   componentCost:money(kit.componentCost),kitCost:money(kit.kitCost),
   grossPrice:money(kit.quote.grossPrice),promoPrice:money(kit.quote.marketplacePrice),
   title,description,preparedAt:new Date().toISOString()};
