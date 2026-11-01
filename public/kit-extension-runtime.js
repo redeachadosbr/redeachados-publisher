@@ -1,4 +1,4 @@
-import {KIT_BRIDGE_SESSION_KEY,kitBridgePayload,isKitBridgeEvent} from './kit-extension-bridge.js';
+import {KIT_BRIDGE_SESSION_KEY,kitBridgePayload,isKitBridgeEvent} from './kit-extension-bridge.js?v=2-captured-pending';
 
 const pos=n=>String(n).padStart(2,'0');
 function extensionVersionOk(version){
