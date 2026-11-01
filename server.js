@@ -1569,8 +1569,14 @@ app.get('/api/shopee/kits/optimization/find',mustLogin,requireWeDropAdmin,async(
    ['NORMAL','UNLIST'].includes(String(x.status).toUpperCase()))
    .map(x=>({itemId:String(x.itemId),modelId:String(x.modelId??0),
     sku,title:String(x.title||sku),status:String(x.status)}));
+  const existing=saved.optimization;
+  const linked=existing?.mainSku===sku&&existing?.sku===sku?
+   matches.find(x=>String(x.itemId)===String(existing.itemId)&&
+    String(x.modelId||'0')===String(existing.modelId||'0')):null;
   res.json({ok:true,kitSku,sku,searchMode:'direct_exact',
-   matches,notFound:!matches.length,canDeepSearch:true,
+   matches,verifiedSavedTarget:linked?
+    {sku,itemId:linked.itemId,modelId:linked.modelId}:null,
+   notFound:!matches.length,canDeepSearch:true,
    warnings:(search.warnings||[]).slice(0,2),marketplaceUpdated:false,
    message:matches.length?'Anuncio encontrado na Shopee.':
     'Nao ha anuncio com a SKU exata do kit confirmado na busca rapida. SKU de componente nao equivale ao kit.'});
