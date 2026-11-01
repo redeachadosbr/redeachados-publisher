@@ -104,6 +104,12 @@
 #kitWizardDiscountIdentity .kit-flow-search-hint{font-size:12px;line-height:1.45}
 @media(max-width:760px){#kitWizardDiscountIdentity{padding:12px;border-radius:14px}#kitWizardDiscountIdentity .kit-flow-start-bar{display:flex;flex-direction:column;align-items:stretch}}
 </style>
+<style id="kit-wizard-direct-execution-style">
+#tab-kits #kitWizardExecutionAccess{background:transparent!important;border:0!important;padding:0!important;box-shadow:none!important}
+#tab-kits #kitWizardExecutionMount{padding:0!important}
+#tab-kits .kit-wizard-execute-direct{background:linear-gradient(135deg,#1177db,#0752bb)!important;color:white!important;border:0!important;box-shadow:0 8px 18px rgba(0,72,167,.23)!important;border-radius:12px!important;padding:12px 22px!important;font-weight:800!important}
+#tab-kits #kitWizardExecutionDirectStatus:not([hidden]){padding:10px 13px;border-radius:10px;background:#eef5ff;color:#173e72;font-size:13px}
+</style>
 </head>
 <body>
 <div class="shell app-layout">
@@ -1161,10 +1167,8 @@
      <button type="button" class="kit-secondary" id="kitWizardGoTechnical">Conferir anúncio da SKU principal na Etapa 05</button>
     </div>
    </div>
-   <div id="kitWizardExecutionAccess" class="kit-wizard-technical-access" hidden>
-    <strong>Execução na Shopee</strong>
-    <p>Use o painel original para revisar o anúncio da SKU principal e autorizar a execução somente quando estiver tudo conferido.</p>
-    <button type="button" class="kit-primary" id="kitWizardOpenExecution">Abrir prévia e execução →</button>
+   <div id="kitWizardExecutionAccess" class="kit-wizard-execution-direct" hidden>
+    <p id="kitWizardExecutionDirectStatus" role="status" aria-live="polite" hidden></p>
     <div id="kitWizardExecutionMount" class="kit-wizard-shared-mount"></div>
    </div>
    <div id="kitWizardFiscalAccess" class="kit-wizard-technical-access" hidden>
@@ -1184,7 +1188,7 @@
    <div id="kitWizardSetup" class="kit-wizard-setup" hidden></div>
    <p id="kitWizardEmpty" class="kit-wizard-empty">Para esta etapa, escolha um rascunho em “Kits salvos para revisão” logo abaixo.</p>
    <div id="kitWizardEditorMount" class="kit-wizard-editor-mount"></div>
-   <div class="kit-wizard-actions"><button type="button" id="kitWizardPrevious" class="kit-secondary">← Etapa anterior</button><button type="button" id="kitWizardConfirm" class="kit-primary">✓ Marcar conferido</button><button type="button" id="kitWizardNext" class="kit-primary">Próxima etapa →</button></div>
+   <div class="kit-wizard-actions"><button type="button" id="kitWizardPrevious" class="kit-secondary">← Etapa anterior</button><button type="button" id="kitWizardConfirm" class="kit-primary">✓ Marcar conferido</button><button type="button" id="kitWizardNext" class="kit-primary">Próxima etapa →</button><button type="button" id="kitWizardOpenExecution" class="kit-primary kit-wizard-execute-direct" hidden>▶ Executar na Shopee</button></div>
    <p class="kit-wizard-safety">O ✓ registra sua conferência nesta tela. Não substitui as validações fiscais, de estoque e as confirmações exigidas antes de publicar na Shopee.</p>
   </section>
  </section>
