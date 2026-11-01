@@ -292,7 +292,7 @@ test('título de quatro produtos não omite nenhum componente nem ultrapassa 120
  assert.ok([...creative.title].length<=120);
  const prompt=kitContentBrief(kit).prompt;
  assert.match(prompt,/TODOS os 4 componentes devem estar representados em CADA título/);
- assert.match(prompt,/não ultrapassar 120 caracteres/i);
+ assert.match(prompt,/não ultrapasse 120 caracteres/i);
  for(const name of ['Cesto','Bomba','Organizador'])
   assert.ok(prompt.includes(name),'prompt com '+name);
 });
