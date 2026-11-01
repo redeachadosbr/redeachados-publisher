@@ -5694,7 +5694,7 @@ async function optimizerExecutionPrepare({preserveStartError=false}={}){
      campaignId:String($('#optimizerExecDiscountCampaign')?.value||
       $('#optimizerFinalCampaignId')?.value||$('#discountPromotionId')?.value||
       optimizerDiscountFinalPreviewData?.preview?.discountId||'').trim(),
-     ...(['all','discount','discount_adjust'].includes(requestedStage)&&optimizerDiscountApprovalReady()&&
+     ...(['all','discount','discount_adjust'].includes($('#optimizerExecutionScope').value)&&optimizerDiscountApprovalReady()&&
        !(typeof optimizerKitWorkflowActive==='function'&&optimizerKitWorkflowActive())?
        {discountApprovalToken:optimizerDiscountFinalPreviewData?.approvalToken,
         allowOver25:optimizerMarketExceptionConsent(optimizerDiscountFinalQuote)}:{})});
