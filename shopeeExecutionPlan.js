@@ -119,10 +119,16 @@ export function compileShopeeExecutionPlan({shopId,itemId,modelId,sku,record,rev
   if(wholeWorkflow&&finalFiscal)
     warnings.push('Fiscal será a ÚLTIMA etapa: primeiro confirmar conteúdo e mídia na Shopee; depois enviar e verificar os campos fiscais. Se recusado, mostrar pendência explícita.');
   let images=[];
-  if(selected('images')&&stages.images?.reviewed&&manualImages.length){
-    if(manualImages.length!==9||state.imagesSignature!==imagesSignature(manualImages))
-      blocked.push('Importe e revise as nove imagens atuais antes de publicar.');
-    else if(!sameData(manualImages.map(x=>x.shopee_image_id),live.image?.image_id_list||[]))images=manualImages;
+  if(selected('images')&&stages.images?.reviewed){
+    if(manualImages.length!==9||state.imagesSignature!==imagesSignature(manualImages)){
+      const message='Imagens pendentes: '+manualImages.length+'/9 imagens aprovadas nesta SKU. '+
+       'A publicação de imagens aguarda a galeria completa; nenhum slot ausente será inventado.';
+      // No modo COMPLETO, a falta de imagens não pode impedir título,
+      // descrição, ficha técnica ou fiscal já revisados. A auditoria
+      // 9/9 mantém imagens pendentes até leitura oficial da Shopee.
+      if(selectedStage==='all')warnings.push(message);
+      else blocked.push(message);
+    }else if(!sameData(manualImages.map(x=>x.shopee_image_id),live.image?.image_id_list||[]))images=manualImages;
   }
   let video=null;
   const savedVideoVerified=manualVideo?.publication?.sha256===manualVideo?.sha256&&videoMatches(live,manualVideo?.publication?.video);
