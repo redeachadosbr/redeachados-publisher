@@ -88,6 +88,22 @@
 .optimizer-exec-resume-bar #optimizerExecutionLaunch[hidden]{display:none!important}
 @media(max-width:700px){.optimizer-exec-resume-bar{padding:13px;gap:12px}.optimizer-exec-resume-bar #optimizerExecutionLaunch{width:100%;flex:1 1 100%}}
 </style>
+<style id="kit-discount-identity-premium-style">
+#kitWizardDiscountIdentity{margin:14px 0 18px;padding:18px;border:1px solid #dbe5f2;border-radius:19px;background:linear-gradient(145deg,#fff 0%,#f4f8ff 100%);box-shadow:0 15px 32px rgba(18,46,87,.12),0 3px 8px rgba(18,46,87,.06),inset 0 1px rgba(255,255,255,.95)}
+#kitWizardDiscountIdentity .kit-discount-identity-heading{display:flex;align-items:center;gap:11px;margin-bottom:12px;color:#14345e}
+#kitWizardDiscountIdentity .kit-discount-identity-icon{display:grid;place-items:center;flex:none;width:38px;height:38px;border-radius:12px;background:linear-gradient(145deg,#ff865b,#fa4b29);color:white;font-weight:800;box-shadow:0 6px 12px rgba(250,75,41,.2)}
+#kitWizardDiscountIdentity .kit-discount-identity-heading strong{display:block;font-size:15px}
+#kitWizardDiscountIdentity .kit-discount-identity-heading small{display:block;margin-top:3px;color:#657a98;font-size:12px}
+#kitWizardDiscountIdentity .kit-flow-start-bar{padding:12px!important;margin:0 0 10px!important;gap:10px!important;border:1px solid #e4eaf3!important;border-radius:13px!important;background:#fff!important;box-shadow:0 4px 12px rgba(30,60,100,.05)}
+#kitWizardDiscountIdentity .kit-flow-start-bar label{font-size:12px}
+#kitWizardDiscountIdentity .kit-flow-start-bar select{max-width:100%;min-height:38px}
+#kitWizardDiscountIdentity .kit-flow-advanced{padding:10px 12px!important;margin:0!important;background:rgba(255,255,255,.8)!important;border:1px solid #e2eaf5!important;border-radius:12px!important;box-shadow:0 3px 9px rgba(32,58,92,.04)}
+#kitWizardDiscountIdentity .kit-flow-advanced summary{font-size:13px;font-weight:700;cursor:pointer}
+#kitWizardDiscountIdentity .kit-publish-fields,#kitWizardDiscountIdentity .kit-actions{margin:10px 0!important;gap:8px!important}
+#kitWizardDiscountIdentity button{border-radius:10px!important;box-shadow:0 3px 9px rgba(25,48,80,.09)}
+#kitWizardDiscountIdentity .kit-flow-search-hint{font-size:12px;line-height:1.45}
+@media(max-width:760px){#kitWizardDiscountIdentity{padding:12px;border-radius:14px}#kitWizardDiscountIdentity .kit-flow-start-bar{display:flex;flex-direction:column;align-items:stretch}}
+</style>
 </head>
 <body>
 <div class="shell app-layout">
@@ -1133,6 +1149,9 @@
    <div id="kitWizardDiscountAccess" class="kit-wizard-technical-access" hidden>
     <strong>Etapa 09 · Conferir preço e desconto</strong>
     <p>Confira os cálculos reais do kit e a Minha Promoção no formulário original, sem precisar abrir outro fluxo. Nenhum desconto será publicado sem sua autorização.</p>
+    <section id="kitWizardDiscountIdentity" class="kit-discount-identity-premium" aria-label="Conferência do anúncio principal">
+     <div class="kit-discount-identity-heading"><span class="kit-discount-identity-icon">✓</span><div><strong>Vínculo e identificação do anúncio</strong><small>Confirme a SKU principal e o Item ID antes de revisar o desconto</small></div></div>
+    </section>
     <div id="kitWizardDiscountPricing" class="kit-wizard-discount-pricing"></div>
     <p id="kitWizardDiscountStatus" class="kit-wizard-technical-status" role="status" aria-live="polite">Selecione um kit salvo para recuperar a conferência do desconto.</p>
     <div id="kitWizardDiscountMount" class="kit-wizard-discount-mount"></div>
