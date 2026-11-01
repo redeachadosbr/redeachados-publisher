@@ -773,10 +773,33 @@ export function initExistingKitOptimization({getContext,api,money,onMainSkuChang
   progressNote('SKU única Shopee: '+(main||'não selecionada')+'. Os demais componentes são vinculados na WeDrop.');
   paint();
  });
+ // Recuperar vínculo a partir de uma busca oficial exata, já validada pelo
+ // controlador do kit. Não cria anúncio, preço, desconto ou nova revisão.
+ function resumeLiveVerifiedTarget({kitSku:expectedKit,sku,itemId,modelId='0'}={}){
+  const kit=ctx().prepared?.kit;
+  const id=String(itemId||''),code=String(sku||'');
+  if(!ctx().kitSaved||!kit||String(kit.kitSku)!==String(expectedKit)||
+     !kit.components?.some(p=>String(p.sku)===code)||
+     !/^[1-9]\\d{0,17}$/.test(id)||!/^(0|[1-9]\\d{0,17})$/.test(String(modelId)))
+   return {ok:false,error:'Anúncio da SKU principal não está vinculado a este kit salvo.'};
+  const selector=$('#kitOptimizeMainSku');
+  if(!selector||![...selector.options].some(o=>o.value===code))
+   return {ok:false,error:'SKU principal não encontrada na seleção original.'};
+  selector.value=code;
+  $('#kitOptimizeListingSku').value=code;
+  target={kitSku:kit.kitSku,sku:code,itemId:id,modelId:String(modelId),
+   prepared:true,autoVerified:true};
+  $('#kitOptimizeSelected').textContent='Item ID '+id+' · SKU '+code+' · confirmado na Shopee';
+  if($('#kitOptimizeConfirm'))$('#kitOptimizeConfirm').checked=true;
+  paint();
+  return openTechnicalTarget()?
+   {ok:true,kitSku:kit.kitSku,sku:code,itemId:id,modelId:String(modelId)}:
+   {ok:false,error:'Motor original não abriu para o Item ID confirmado.'};
+ }
  // Ponte de mídia usa o carregador original, mantendo SKU, Item ID e 9 fotos
  // vinculados ao mesmo anúncio. Nenhum upload ao anúncio ocorre nesta fase.
  globalThis.RAKitTransferImagesToWorkflow=()=>transferImages({automatic:true,optional:false});
  // SKU do anúncio é informativa e deriva exclusivamente da escolha principal.
  renderJourney();
- return {restore,openTechnical,openDiscount,prepareDiscountLink};
+ return {restore,openTechnical,openDiscount,prepareDiscountLink,resumeLiveVerifiedTarget};
 }
