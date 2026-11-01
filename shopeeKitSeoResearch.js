@@ -70,8 +70,8 @@ export function summarizeKitSeoEvidence(components,observations=[]){
 }
 
 export async function researchShopeeKitSeo(components){
- if(!Array.isArray(components)||components.length<2||components.length>3)
-  throw Error('Pesquisa exige 2 ou 3 SKUs do kit.');
+ if(!Array.isArray(components)||components.length<2||components.length>4)
+  throw Error('Pesquisa exige de 2 a 4 SKUs do kit.');
  if(!marketResearchConfigured())return summarizeKitSeoEvidence(components);
  const observations=await Promise.all(components.map(async p=>{
   try{return await lookupShopeeCompetitors({title:String(p.name||'').slice(0,180)});}
