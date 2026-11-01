@@ -1201,7 +1201,7 @@ function resetKitPublication({saved=false,publication=null}={}){
  $('#kitMainSku').replaceChildren();
  const root=$('#kitMainSku');
  root.append(new Option('Selecione o SKU principal',''));
- for(const p of prepared?.kit?.components||[])root.append(new Option(p.sku+' · '+p.name,p.sku));
+ for(const p of kitOrderedComponents())root.append(new Option(p.sku+' · '+p.name,p.sku));
  renderKitPricingSummary(prepared?.kit);
  const mainSelected=$('#kitPrincipalSku')?.value;
  if(mainSelected&&[...$('#kitOptimizeMainSku').options].some(x=>x.value===mainSelected))
@@ -1981,7 +1981,7 @@ function kitManualControls(kit,{editor=false}={}){
   if(mode==='replace'){
    const choice=elt('label','','Produto a substituir');
    select=elt('select');
-   for(const p of kit.components)select.append(new Option(p.sku+' · '+p.name.slice(0,38),p.sku));
+   for(const p of kitOrderedComponents(kit))select.append(new Option(p.sku+' · '+p.name.slice(0,38),p.sku));
    choice.append(select);fields.append(choice);
   }
   const label=elt('label','',mode==='add'?'SKU complementar':'Novo SKU');
@@ -2428,15 +2428,15 @@ function renderKit({scroll=true,displayTitle=''}={}){
  kitWizardMountFiscalPreset();
  if($('#kitWizardEmpty'))$('#kitWizardEmpty').hidden=true;
  $('#kitSkuTitle').textContent=String(displayTitle||creative?.title||
-  kit.components.map(p=>p.name).join(' + ')).trim();
+  kitOrderedComponents(kit).map(p=>p.name).join(' + ')).trim();
  $('#kitEditingSkuCode').textContent='Código do kit: '+kit.kitSku+
   ' · '+kit.components.length+' produtos';
  refreshKitEditorOverview(kit);
  renderKitPricingSummary(kit);
  $('#kitManualComposition').replaceChildren(kitManualControls(kit,{editor:true}));
  const items=$('#kitComponents');items.replaceChildren();
- for(const p of kit.components){
-  const card=elt('div','kit-component');addImage(card,p);
+ for(const p of kitOrderedComponents(kit)){
+  const card=elt('div','kit-component');card.dataset.kitComponentSku=String(p.sku);addImage(card,p);
   const text=elt('div');text.append(elt('strong','',p.name),
     elt('small','','')); // Corrigido imediatamente abaixo sem HTML dinâmico.
   text.lastChild.textContent='SKU '+p.sku+' · 1 unidade · Custo '+money(p.unitCost);
@@ -2500,8 +2500,9 @@ const KIT_CAMERA_PLANS=[
 ];
 function kitImagePromptAt(slot){
  if(!prepared)return '';
- const components=prepared.kit.components;
+ const components=kitOrderedComponents();
  const original=prepared.creative?.prompts?.[slot-1]||'';
+ const orderRule='ORDEM ATUAL OBRIGATÓRIA DAS REFERÊNCIAS: '+components.map((p,i)=>(i+1)+'. SKU '+p.sku+' — '+p.name).join(' | ')+'. A primeira referência é SEMPRE a SKU principal. Se os textos antigos abaixo citarem outra ordem, IGNORE aquela ordem antiga. Não trocar dimensões nem fotos entre produtos.\n';
  const facts=components.map(p=>{
   const manual=String(kitContentManualFacts.get(p.sku)||'').trim();
   return 'SKU '+p.sku+' — '+p.name+': '+(manual?
@@ -2514,7 +2515,7 @@ function kitImagePromptAt(slot){
    (record.dimensions.join(' · ')||'NÃO CADASTRADAS; NÃO INVENTAR')+
    '; outras grandezas: '+(record.other.join(' · ')||'nenhuma')+
    '; nunca usar dimensão de outra SKU').join('\n');
- return original+'\n\n'+(slot===1?'ATENÇÃO IMAGEM 01: as fotografias WeDrop anexadas são SOMENTE REFERÊNCIAS. NÃO devolver ou copiar nenhuma dessas fotografias nem a folha de referências. É OBRIGATÓRIO gerar uma NOVA imagem publicitária quadrada, em uma cena ÚNICA com TODOS os componentes juntos, sem colagem, sem painéis separados, sem grade e sem texto. A imagem original NÃO conta como imagem 01.\n\n':'')+'DIREÇÃO DE ARTE ESPECÍFICA DESTA POSIÇÃO: '+KIT_CAMERA_PLANS[slot-1]+
+ return orderRule+'\n'+original+'\n\n'+(slot===1?'ATENÇÃO IMAGEM 01: as fotografias WeDrop anexadas são SOMENTE REFERÊNCIAS. NÃO devolver ou copiar nenhuma dessas fotografias nem a folha de referências. É OBRIGATÓRIO gerar uma NOVA imagem publicitária quadrada, em uma cena ÚNICA com TODOS os componentes juntos, sem colagem, sem painéis separados, sem grade e sem texto. A imagem original NÃO conta como imagem 01.\n\n':'')+'DIREÇÃO DE ARTE ESPECÍFICA DESTA POSIÇÃO: '+KIT_CAMERA_PLANS[slot-1]+
   '\nPROIBIDO reaproveitar a câmera, a pose, a criança, o ambiente, a composição ou a mesma imagem da posição anterior. Gerar fotografia NOVA 1200×1200; não apenas trocar textos. Manter EXATAMENTE os produtos reais do kit. \n\n'+(slot===2?
    'ESTA É A IMAGEM 02 (USO REAL), NÃO A CAPA 01: gerar uma cena inédita, com NOVO enquadramento, outro ângulo e interação visível com os brinquedos. NÃO reproduzir a composição, pose, câmera ou imagem anterior.':
    slot>=3?'GERAR UMA FOTO NOVA E DIFERENTE DAS POSIÇÕES ANTERIORES: nunca reaproveitar a mesma cena, criança, pose, perspectiva ou resultado já entregue; seguir exatamente a finalidade da posição '+String(slot).padStart(2,'0')+'.':'')+
@@ -2526,7 +2527,7 @@ function kitImagePromptAt(slot){
 }
 function kitImageMeasurementsSummary(){
  if(!prepared)return '';
- return kitImageMeasurementsBySku(prepared.kit.components,Object.fromEntries(kitContentManualFacts.entries()))
+ return kitImageMeasurementsBySku(kitOrderedComponents(),Object.fromEntries(kitContentManualFacts.entries()))
   .map(p=>'SKU '+p.sku+' ('+p.source+'): '+
    (p.dimensions.join(' · ')||'dimensão não cadastrada')).join(' | ');
 }
@@ -2669,7 +2670,7 @@ function renderImageSlots(){
   }
   menu.append(menuToggle,menuContent);
   head.append(menu);card.append(head);
-  card.append(elt('small','kit-duo-label',prepared.kit.components.length+' SKUs juntas · uma cena'));
+  card.append(elt('small','kit-duo-label',kitOrderedComponents().map((p,i)=>(i===0?'Principal: ':'')+p.sku).join(' → ')+' · todas juntas em uma cena'));
   const media=elt('div','kit-gallery-media');
   if(image){
    const pic=elt('img');pic.src=image;pic.alt='Imagem '+slot+' do kit importada para revisão';
@@ -2805,7 +2806,7 @@ async function kitGeneratePaidImages({singleSlot=null}={}){
    imageStatus('Gerando '+String(slot).padStart(2,'0')+'/09 com as fotos originais das '+kit.components.length+' SKUs...','info');
    kitSetImageProgress(images.size,9,'Gerando imagem '+slot+'/09 · '+images.size+' prontas');
    const data=await api('/api/shopee/kits/image',{body:{
-    slot,skus:kit.components.map(p=>p.sku),...currentSettings(),
+    slot,skus:kitOrderedComponents(kit).map(p=>p.sku),...currentSettings(),
     manualFacts:Object.fromEntries(kitContentManualFacts.entries()),confirmPaidApi:true
    }});
    if(prepared?.kit?.kitSku!==sku||data.kitSku!==sku)
@@ -3362,9 +3363,10 @@ function kitContentShowMissing(rows=[],{scroll=false}={}){
  if(!prepared)return;
  const root=$('#kitMissingFactFields');root.replaceChildren();
  const missingBySku=new Map((Array.isArray(rows)?rows:[]).map(item=>[String(item.sku),item.fields||[]]));
- for(const component of prepared.kit.components){
+ for(const component of kitOrderedComponents()){
   const sku=String(component.sku),fields=missingBySku.get(sku)||[];
   const card=elt('div','kit-missing-card kit-sku-evidence-card');
+  card.dataset.kitFactSku=sku;
   card.append(elt('strong','',component.name+' · SKU '+sku));
   card.append(elt('small','',fields.length?
    'Dados faltantes na WeDrop: '+fields.join(' e ')+'. Informe só o que pertence a esta SKU.':
@@ -3453,7 +3455,7 @@ async function plusText({proceedWithoutDetails=false}={}){
  kitContentFeedback('Lendo as fichas por SKU e pesquisando títulos comparáveis na Shopee...','info');
  try{
   const data=await api('/api/shopee/kits/plus-content',{body:{
-   skus:prepared.kit.components.map(p=>p.sku),...currentSettings(),
+   skus:kitOrderedComponents().map(p=>p.sku),...currentSettings(),
    manualFacts:proceedWithoutDetails?kitContentReadManual():
     Object.fromEntries(kitContentManualFacts.entries())
   }});
