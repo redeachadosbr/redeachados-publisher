@@ -3791,7 +3791,7 @@ async function importPlusSuggestions({readClipboard=false,silent=false,uploadedT
   // Colar cada SKU em uma linha e uma importação MANUAL direta (não pesquisa).
   // A whitelist do filtro de categoria pode omitir SKUs de kits complementares.
   // Neste formato explícito, só o servidor valida SKUs, custos e estoque reais.
-  const manualBlock=!fileParsed?parseManualKitSkuBlock(response):null;
+  const manualBlock=!fileParsed?parseManualKitSkuBlock(response,{size:selectedContext.size,limit:20}):null;
   const context=manualBlock||fileParsed?selectedContext:await kitChatEnsureFreshResearch();
   const parsed=fileParsed||manualBlock||kitChatExtractLines(
    response,context.size,kitChatPending.candidateSkus,context.desiredKits);
