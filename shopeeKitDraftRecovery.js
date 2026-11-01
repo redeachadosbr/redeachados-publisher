@@ -2,7 +2,7 @@
 // Valores antigos servem somente à edição; publicação revalida tudo.
 export function validateStoredKitDraft(stored){
  const kit=stored?.kit,skus=stored?.skus;
- if(!kit||!Array.isArray(skus)||skus.length<2||skus.length>3||
+ if(!kit||!Array.isArray(skus)||skus.length<2||skus.length>4||
     !Array.isArray(kit.components)||kit.components.length!==skus.length||
     String(kit.kitSku)!==String(stored.kitSku)||
     skus.some((sku,index)=>String(kit.components[index]?.sku)!==String(sku))||
