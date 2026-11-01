@@ -27,7 +27,18 @@ export function compileShopeeExecutionPlan({shopId,itemId,modelId,sku,record,rev
   const description=normal(state.draftDescription);
   const currentTitle=normal(live?.item_name),currentDescription=normal(live?.description);
   const currentType=String(live?.description_type||'normal').toLowerCase();
-  const proposed={},blocked=[],warnings=[];
+  const proposed={},blocked=[],warnings=[],deferredStages=[];
+  // No plano geral, uma revisão comercial individual incompleta não paralisa
+  // outras alterações já aprovadas. Ela fica pendente para auditoria posterior.
+  // Identidade Shopee, Anatel, autorização comercial e escopos individuais
+  // continuam sujeitos às validações obrigatórias.
+  const contentPending=(stage,message)=>{
+    if(selectedStage==='all'){
+      deferredStages.push({stage,reason:String(message)});
+      warnings.push('Etapa pendente ('+SHOPEE_EXECUTION_STAGE_LABELS[stage]+'): '+message+
+        ' As outras etapas aprovadas podem executar sem reenviar esta.');
+    }else blocked.push(message);
+  };
   if(record?.sku!==sku||String(record?.itemId)!==String(itemId)||
      String(record?.selectedModelId||'0')!==String(modelId))
     throw Error('Anúncio, modelo ou SKU diferente da auditoria atual.');
@@ -40,15 +51,15 @@ export function compileShopeeExecutionPlan({shopId,itemId,modelId,sku,record,rev
        kitProductNames:state.kitOptimization?.componentNames||[]
       });
       if(title!==currentTitle)proposed.item_name=title;
-    }catch(e){blocked.push(e.message);}
-  }else if(selected('seo')&&title&&title!==currentTitle)blocked.push('Revisar e registrar a etapa Título SEO antes de executar.');
+    }catch(e){contentPending('seo',e.message);}
+  }else if(selected('seo')&&title&&title!==currentTitle)contentPending('seo','Revisar e registrar a etapa Título SEO antes de executar.');
   if(selected('description')&&stages.description?.reviewed===true){
-    if(currentType!=='normal')blocked.push('Descrição estendida da Shopee exige fluxo próprio; atualização bloqueada.');
+    if(currentType!=='normal')contentPending('description','Descrição estendida da Shopee exige fluxo próprio; não será alterada neste plano.');
     else try{
       validateContentRules({description});
       if(description!==currentDescription)proposed.description=description;
-    }catch(e){blocked.push(e.message);}
-  }else if(selected('description')&&description&&description!==currentDescription)blocked.push('Revisar e registrar Descrição e variações antes de executar.');
+    }catch(e){contentPending('description',e.message);}
+  }else if(selected('description')&&description&&description!==currentDescription)contentPending('description','Revisar e registrar Descrição e variações antes de executar.');
   if(record?.hasModel||String(modelId)!=='0')
     warnings.push('As alterações são campos do anúncio-pai; a alteração afeta TODAS as variações deste Item ID.');
   if(!['remaining','discount','discount_adjust','variants'].includes(selectedStage)){
@@ -77,7 +88,7 @@ export function compileShopeeExecutionPlan({shopId,itemId,modelId,sku,record,rev
       // Se TODOS os atributos revisados já corresponderem ao anúncio,
       // nunca reenviar a ficha técnica.
       if(!fieldsVerified({attribute_list:attributes},live))proposed.attribute_list=attributes;
-    }catch(e){blocked.push(e.message);}
+    }catch(e){contentPending('technical',e.message);}
   }
   // Não bloquear uma alteração EXCLUSIVAMENTE fiscal por atributos técnicos
   // que NÃO serão modificados: Anatel continua obrigatório para conteúdo,
@@ -194,7 +205,7 @@ export function compileShopeeExecutionPlan({shopId,itemId,modelId,sku,record,rev
       attribute_list:live?.attribute_list||[],tax_info:live?.tax_info||{},image:live?.image||{}
     },proposed,video,images,finalFiscal,modelVariations,kitDiscount,confirmedStages,
     actions:[...Object.keys(proposed),...(images.length?['images']:[]),...(video?['video']:[]),...(modelVariations?['model_variations']:[]),...(finalFiscal?['tax_info']:[]),...(discountOnly&&!kitDiscount?['discount']:[]),...(kitDiscount?['kit_discount']:[]),...(selectedStage==='discount_adjust'&&kitDiscount&&!kitDiscount.priceAligned?['kit_gross_price']:[])],
-    blocked,warnings,canExecute,
+    blocked,warnings,deferredStages,canExecute,
     fingerprint,fiscalDeferred,selectedStage,discountOnly,createdAt:new Date().toISOString(),marketplaceUpdated:false,
     requiresExplicitConfirmation:true,
     scope:selectedStage==='all'?'Conteúdo e mídia → modelos → fiscal → desconto aprovado':
