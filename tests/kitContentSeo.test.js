@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {scoreKitSeoTitle,parseKitSeoResponse,formatKitShopeeDescription} from '../public/kit-seo-helper.js';
+import {scoreKitSeoTitle,parseKitSeoResponse,formatKitShopeeDescription,buildKitSeoTitle,missingKitSeoProducts} from '../public/kit-seo-helper.js';
 const validSeoTitle=text=>{const suffix=' para momento de brincadeira com opções de estímulo e interação';let out=text;while([...out].length<100)out+=suffix;return [...out].slice(0,120).join('').trim();};
 test('kit importa três títulos SEO distintos e uma descrição única',()=>{
  const titles=['Kit Elefante Musical e Chocalho Para Bebê 🎶','Kit Chocalho e Elefante Musical Brinquedos Para Bebê 🐘','🐘 Kit Brinquedo Musical Elefante com Chocalho para Diversão 🎶'];
@@ -265,4 +265,34 @@ test('personalizar composição tem botão destacado para ocultar sem alterar SK
  assert.match(js,/kitSetCompositionCollapsed\(!\$\('#kitCompositionContent'\)\.hidden\)/);
  assert.match(js,/kitManualControls\(kit,\{editor:true\}\)/);
  assert.match(css,/#tab-kits #kitDetail #kitCompositionContent\[hidden\]\{display:none!important\}/);
+});
+
+test('título de quatro produtos não omite nenhum componente nem ultrapassa 120 caracteres',async()=>{
+ const components=[
+  {sku:'CE420 B',name:'Cesto Retangular com Tampa Vai e Vem 20L Preto'},
+  {sku:'UD04.0004.012',name:'Saco Vácuo Bag G 55x90cm com Válvula para Armazenamento'},
+  {sku:'CT0202',name:'Bomba de Saco a Vácuo - Azul'},
+  {sku:'CT0205',name:'Saco Organizador a Vácuo M'}
+ ];
+ const title=buildKitSeoTitle(components);
+ assert.ok([...title].length<=120,String([...title].length)+': '+title);
+ assert.deepEqual(missingKitSeoProducts(title,components),[],title);
+ assert.match(title,/Cesto/i);
+ assert.match(title,/Saco/i);
+ assert.match(title,/Bomba/i);
+ assert.match(title,/Organizador/i);
+ assert.doesNotMatch(title,/CE420|UD04|CT0202|CT0205|KIT-/);
+ const missing=missingKitSeoProducts('✨ Kit Cesto Tampa 20L + Saco Vácuo G + Bomba a Vácuo 📦',components);
+ assert.ok(missing.some(x=>/Organizador/i.test(x)));
+ assert.equal(scoreKitSeoTitle('✨ Kit Cesto Tampa 20L + Saco Vácuo G + Bomba a Vácuo 📦',components).label,'Revisar');
+ const {kitContentBrief,kitCreative}=await import('../shopeeKitBuilder.js');
+ const kit={kitSku:'KIT-CE420B-CT0202-CT0205-UD040004012',components};
+ const creative=await kitCreative(1,kit,{ai:false});
+ assert.deepEqual(missingKitSeoProducts(creative.title,components),[]);
+ assert.ok([...creative.title].length<=120);
+ const prompt=kitContentBrief(kit).prompt;
+ assert.match(prompt,/TODOS os 4 componentes devem estar representados em CADA título/);
+ assert.match(prompt,/não ultrapassar 120 caracteres/i);
+ for(const name of ['Cesto','Bomba','Organizador'])
+  assert.ok(prompt.includes(name),'prompt com '+name);
 });
