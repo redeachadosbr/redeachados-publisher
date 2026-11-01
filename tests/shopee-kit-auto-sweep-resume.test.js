@@ -45,8 +45,8 @@ test('auditoria da promocao do kit verifica Shopee mesmo se historico falhou',()
 });
 
 test('preparação lenta aguarda a prévia completa antes da primeira execução e de uma retomada',async()=>{
- assert.match(app,/const plan=await kitAutoSweepPreparePlan\\(target\\)/);
- assert.match(app,/const p=await kitAutoSweepPreparePlan\\(\\{kitSku,sku,itemId,modelId\\}\\)/);
+ assert.match(app,/const plan=await kitAutoSweepPreparePlan\(target\)/);
+ assert.match(app,/const p=await kitAutoSweepPreparePlan\(\{kitSku,sku,itemId,modelId\}\)/);
  const start=app.indexOf('async function kitAutoSweepPreparePlan(target)');
  const end=app.indexOf('function kitAutoSweepResume(',start);
  assert.ok(start>0&&end>start);
