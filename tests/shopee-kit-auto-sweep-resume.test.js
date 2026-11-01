@@ -15,7 +15,7 @@ test('um clique autoriza varredura e retomada das nove etapas sem exigir segundo
  assert.match(sweep,/optimizerExecutionRefresh\(true\)/);
  assert.match(sweep,/execution\/root-audit/);
  assert.match(sweep,/scope\.value='all'/);
- assert.match(sweep,/await optimizerExecutionPrepare\(\)/);
+ assert.match(sweep,/await kitAutoSweepPreparePlan\(target\)/);
  assert.match(sweep,/await optimizerExecuteApproved\(false\)/);
  assert.match(sweep,/audit\?\.complete===true/);
  assert.match(sweep,/optimizerKitAutoFinalizeFromAudit/);
