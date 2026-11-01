@@ -3978,10 +3978,14 @@ async function optimizerWorkflowLoad(record){
      else if(active[0])optimizerWorkflowOpen(active[0].key);
      globalThis.RAKitOptimizerReady?.(data);
     }
-   }else if(kitHandoff?.embed&&String(kitHandoff.sku)===sku&&
-      globalThis.RAKitTechnicalRequested?.(kitHandoff.kitSku)){
-     globalThis.RAKitTechnicalLoadError?.({kitSku:kitHandoff.kitSku,sku,
-      message:'A revisão carregada não corresponde ao vínculo salvo do kit e da SKU principal. Confira o Item ID.'});
+   }else if(kitHandoff?.embed&&String(kitHandoff.sku)===sku){
+     globalThis.RAKitWizardWorkflowLoadError?.({
+      kitSku:kitHandoff.kitSku,sku,itemId:id,
+      message:'A revisão do Item ID não contém vínculo de execução com este kit. O anúncio não foi alterado.'
+     });
+     if(globalThis.RAKitTechnicalRequested?.(kitHandoff.kitSku))
+      globalThis.RAKitTechnicalLoadError?.({kitSku:kitHandoff.kitSku,sku,
+       message:'A revisão carregada não corresponde ao vínculo salvo do kit e da SKU principal. Confira o Item ID.'});
    }
    // A retomada automática pertence SOMENTE à SKU que foi carregada.
    if(optimizerChatBridgeJob&&!optimizerChatBridgeIdentity(optimizerChatBridgeJob,data))
@@ -3996,10 +4000,14 @@ async function optimizerWorkflowLoad(record){
      const status=$('#kitOptimizerWorkspaceStatus');
      if(status&&kitOptimizerEmbedded){status.hidden=false;status.textContent='Falha ao carregar etapas: '+e.message;}
      const handoff=globalThis.__RA_KIT_OPTIMIZATION_HANDOFF;
-     if(handoff?.embed&&String(handoff.sku)===sku&&
-        globalThis.RAKitTechnicalRequested?.(handoff.kitSku))
-       globalThis.RAKitTechnicalLoadError?.({kitSku:handoff.kitSku,sku,
-        message:String(e.message||e)});
+     if(handoff?.embed&&String(handoff.sku)===sku){
+       globalThis.RAKitWizardWorkflowLoadError?.({
+        kitSku:handoff.kitSku,sku,itemId:id,message:String(e.message||e)
+       });
+       if(globalThis.RAKitTechnicalRequested?.(handoff.kitSku))
+        globalThis.RAKitTechnicalLoadError?.({kitSku:handoff.kitSku,sku,
+         message:String(e.message||e)});
+     }
    }
  }
 }
@@ -6564,10 +6572,15 @@ async function optimizerRunAudit(itemId,sku,modelId=''){
       optimizerNotice('Não foi possível validar a ficha técnica do SKU: '+e.message+
         '. O produto permanece intacto.','error');
       const handoff=globalThis.__RA_KIT_OPTIMIZATION_HANDOFF;
-      if(handoff?.embed&&String(handoff.sku)===String(sku||'')&&
-         globalThis.RAKitTechnicalRequested?.(handoff.kitSku))
-        globalThis.RAKitTechnicalLoadError?.({kitSku:handoff.kitSku,sku,
-         message:String(e.message||e)});
+      if(handoff?.embed&&String(handoff.sku)===String(sku||'')){
+        globalThis.RAKitWizardWorkflowLoadError?.({
+         kitSku:handoff.kitSku,sku,itemId:String(itemId||''),
+         message:String(e.message||e)
+        });
+        if(globalThis.RAKitTechnicalRequested?.(handoff.kitSku))
+         globalThis.RAKitTechnicalLoadError?.({kitSku:handoff.kitSku,sku,
+          message:String(e.message||e)});
+      }
     }
   }finally{
     optimizerBusy=false;
