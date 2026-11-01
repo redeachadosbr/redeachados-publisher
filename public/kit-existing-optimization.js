@@ -5,6 +5,7 @@ const KIT_STAGE_LABELS=[['video','Vídeo'],['technical','Ficha técnica'],['fisc
 export function initExistingKitOptimization({getContext,api,money,onMainSkuChange}){
  let target=null,busy=false,discountToken=null,discountLookupSeq=0,discountSearching=false,latestCampaigns=[];
  let lookupSerial=0,lookupController=null;
+ let discountInspection=null;
  let workflowStages=null,technicalProgress=null,discountConfirmed=false;
  const imageSyncAttempts=new Set();
  function renderJourney(){
@@ -121,6 +122,7 @@ export function initExistingKitOptimization({getContext,api,money,onMainSkuChang
   if(original)original.classList.toggle('kit-workflow-original-campaign',Boolean(latestCampaigns.length));
  }
  function resetDiscountDiscovery(){
+  discountInspection=null;
   ++discountLookupSeq;discountSearching=false;discountToken=null;latestCampaigns=[];
   $('#kitWorkflowCampaignChooser')?.remove();
   $('#optimizerExecDiscountCampaign')?.closest('label')?.classList.remove('kit-workflow-original-campaign');
@@ -177,13 +179,17 @@ export function initExistingKitOptimization({getContext,api,money,onMainSkuChang
     (data.complete===false?' Consulta parcial: confira na Shopee.':'')+
     (data.warnings?.length?' '+data.warnings.join(' | '):'');
    msg.dataset.state=data.complete===false||!data.kitItemId?'warning':campaigns.length?'success':'info';
+   discountInspection={...data,mainSku:main,kitSku:current,checkedAt:Date.now()};
    syncWorkflowCampaigns();
+   return {ok:true,...discountInspection};
   }catch(e){
    if(seq!==discountLookupSeq)return;
    latestCampaigns=[];syncWorkflowCampaigns();
    select.replaceChildren(new Option('Consulta indisponível',''));
    msg.textContent='Não foi possível consultar os IDs: '+e.message+'. Nenhum ID foi presumido.';
    msg.dataset.state='error';
+   discountInspection=null;
+   return {ok:false,error:String(e.message||e)};
   }finally{if(seq===discountLookupSeq){discountSearching=false;paint();}}
  }
  function restore(link=null){
@@ -524,14 +530,36 @@ export function initExistingKitOptimization({getContext,api,money,onMainSkuChang
      packing:Number(ctx().prepared?.kit?.packing||0)}))
    notice('Não foi possível abrir a Otimização. Atualize a página e tente novamente.','error');
  }
+ // Conferência do desconto é apenas leitura até o vendedor autorizar execução.
+ // Item ID consultado na Ficha Técnica ≠ vínculo do KIT para Minha Promoção.
  async function openDiscount(){
-  if(!ctx().prepared?.kit||!ctx().kitSaved){
-   notice('Selecione e salve um kit antes de conferir o desconto.','warning');
-   return false;
+  const state=ctx(),kit=state.prepared?.kit;
+  if(!kit||!state.kitSaved)
+   return {ok:false,error:'Selecione e salve o rascunho antes de conferir a campanha.'};
+  const sku=String($('#kitOptimizeMainSku')?.value||$('#kitPrincipalSku')?.value||'');
+  if(!kit.components.some(p=>String(p.sku)===sku))
+   return {ok:false,error:'A SKU principal selecionada não pertence ao kit.'};
+  const result=await resolveDiscountIds();
+  if(!result?.ok)return result||{ok:false,error:'A consulta da Shopee não retornou dados.'};
+  if(kitSku()!==kit.kitSku||String($('#kitOptimizeMainSku')?.value)!==sku)
+   return {ok:false,error:'O kit ou a SKU principal mudou durante a consulta.'};
+  const linked=result.linkedOptimization;
+  const verified=(result.primaryItems||[]).filter(x=>
+   String(x.sku)===sku&&/^[1-9]\d{0,17}$/.test(String(x.itemId||'')));
+  if(linked&&verified.some(x=>String(x.itemId)===String(linked.itemId))){
+   target={kitSku:kit.kitSku,sku,itemId:String(linked.itemId),
+    modelId:String(linked.modelId||'0'),prepared:true,autoVerified:true};
+   open();
+   return {ok:true,linked:true,itemId:String(linked.itemId),
+    campaigns:result.campaigns||[]};
   }
-  if(!target?.prepared||target.kitSku!==kitSku())await startKitOptimization();
-  else open();
-  return Boolean(target?.prepared&&target.kitSku===kitSku());
+  const handoff=globalThis.__RA_KIT_OPTIMIZATION_HANDOFF;
+  const known=handoff?.kitSku===kit.kitSku&&String(handoff.sku)===sku?
+   verified.find(x=>String(x.itemId)===String(handoff.itemId)):null;
+  return {ok:true,linked:false,itemId:known?.itemId||
+   (verified.length===1?String(verified[0].itemId):''),
+   candidates:verified.length,campaigns:result.campaigns||[],
+   warning:result.complete===false?'A busca de campanhas retornou dados parciais.':''};
  }
  function discountNotice(msg,state='info'){
   const el=$('#kitOptimizeDiscountStatus');if(el){el.textContent=msg;el.dataset.state=state;}
