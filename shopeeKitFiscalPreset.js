@@ -51,6 +51,12 @@ export async function readKitFiscalPreset(shopId,kitSku,requestedSku=''){
   suggestion.cest=/^\d{7}$/.test(raw(product.cest))?raw(product.cest):REDE_ACHADOS_FISCAL_DEFAULTS.cest;
   const saved=Object.fromEntries(Object.entries(exact).filter(([key,v])=>
    [...fields,'ncm','evidence'].includes(key)&&typeof v==='string'&&v.length<=300));
+  const confirmedOrigin=raw(draft.creative?.fiscalBySku?.[sku]?.origin);
+  if(/^[0-8]$/.test(confirmedOrigin)){
+   // Revisão explícita por SKU neste kit prevalece sobre a ficha de outro
+   // produto ou revisão anterior. Nunca inferir a origem pelo NCM.
+   saved.origin=confirmedOrigin;
+  }
   // NCM oficial da SKU no catálogo prevalece sobre revisão antiga divergente.
   const ncmConflict=Boolean(/^\d{8}$/.test(supplierNcm)&&/^\d{8}$/.test(exactNcm)&&supplierNcm!==exactNcm);
   if(ncmConflict)delete saved.ncm;
@@ -61,6 +67,7 @@ export async function readKitFiscalPreset(shopId,kitSku,requestedSku=''){
   const taxSuggestionSources=Object.fromEntries(Object.keys(suggestion).map(key=>
    [key,key==='ncm'?'NCM da SKU no catálogo WeDrop':key==='cest'?
     'CEST da SKU WeDrop ou 00 sem informação':'Padrão fiscal já salvo na loja, conferir']));
+  if(confirmedOrigin)taxSuggestionSources.origin='Origem confirmada e gravada para esta SKU no kit';
   const name=raw(draft.kit.components.find(p=>p.sku===sku)?.name||product.name||sku);
   return {sku,name,taxSuggestion:suggestion,taxDraft:saved,taxSuggestionSources,
    ncmConflict,ncmSource:supplier?.source_file||null,
