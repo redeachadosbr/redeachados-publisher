@@ -2573,7 +2573,7 @@ app.post('/api/shopee/optimizer/execution/prepare',mustLogin,requireWeDropAdmin,
        Date.now()-Date.parse(reviewState.kitDiscountPreview.preparedAt)>24*3600000)){
       let candidateId=String(reviewState.kitDiscountPreview?.discountId||
        reviewState.kitDiscountPublication?.discountId||'').trim();
-      if(!/^[1-9]\\d{0,17}$/.test(candidateId)){
+      if(!/^[1-9]\d{0,17}$/.test(candidateId)){
        const found=await discoverKitDiscountCampaigns({cfg,auth,
         call:callShopeeShopApi,readPages:readDiscountPages,
         kitItemId:itemId,primaryItemIds:[itemId]});
@@ -2581,7 +2581,7 @@ app.post('/api/shopee/optimizer/execution/prepare',mustLogin,requireWeDropAdmin,
           ['kit_membership','primary_sku_membership','only_campaign'].includes(found.suggested?.reason))
         candidateId=String(found.suggested.discountId||'');
       }
-      if(/^[1-9]\\d{0,17}$/.test(candidateId)){
+      if(/^[1-9]\d{0,17}$/.test(candidateId)){
        const prepared=await previewKitDiscount({cfg,auth,
         kitSku:String(kitLink.kitSku),discountId:candidateId,secret:stateSecret()});
        if(String(prepared.itemId)!==String(itemId)||
