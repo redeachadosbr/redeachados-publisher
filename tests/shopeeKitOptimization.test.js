@@ -149,3 +149,28 @@ test('título inválido no modo completo não interrompe ficha técnica e descri
  assert.deepEqual(plan.deferredStages.map(x=>x.stage),['seo']);
  assert.equal(plan.blocked.length,0);
 });
+
+test('clicar Executar recompila o mesmo titulo de quatro SKUs e mantém o fingerprint aprovado',async()=>{
+ const names=['Cesto Retangular com Tampa Vai e Vem 20L Preto',
+  'Saco Vácuo Bag G 55x90cm com Válvula para Armazenamento',
+  'Bomba de Saco a Vácuo Azul','Saco Organizador a Vácuo M'];
+ const title='🏠 Kit Lixeira Retangular Tampa Vai e Vem 20L + Saco a Vácuo G 55x90cm + Bomba Manual Azul + Saco Organizador Vácuo M ✨';
+ const input={shopId:1,itemId:'58272076732',modelId:'0',sku:'CE420 B',selectedStage:'all',
+  record:{sku:'CE420 B',itemId:'58272076732',selectedModelId:'0',status:'NORMAL',
+   imageCount:0,attributeAudit:{missingMandatory:0,attributes:[]}},
+  live:{item_id:58272076732,item_name:'Cesto antigo',description:'Texto antigo',description_type:'normal',attribute_list:[]},
+  review:{draftTitle:title,stages:{seo:{reviewed:true}},kitOptimization:{
+   kitSku:'KIT-CE420B-CT0202-CT0205-UD040004012',mainSku:'CE420 B',componentNames:names}}};
+ const preview=compileShopeeExecutionPlan(input);
+ const execute=compileShopeeExecutionPlan({...input,review:structuredClone(input.review)});
+ assert.equal(preview.proposed.item_name,title);
+ assert.equal(preview.fingerprint,execute.fingerprint);
+ assert.equal(execute.canExecute,true);
+ const broken=compileShopeeExecutionPlan({...input,review:{...input.review,
+  kitOptimization:{...input.review.kitOptimization,componentNames:[]}}});
+ assert.notEqual(broken.fingerprint,preview.fingerprint);
+ const {readFileSync}=await import('node:fs');
+ const server=readFileSync(new URL('../server.js',import.meta.url),'utf8');
+ assert.match(server,/verifiedExecutionKit\.live\.components\.map\(p=>String\(p\.name\|\|''\)\)/);
+ assert.match(server,/review:reviewState,live,manualVideo,manualImages/);
+});
