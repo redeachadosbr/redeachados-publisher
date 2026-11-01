@@ -5879,7 +5879,10 @@ function kitAutoSweepResume(target,firstFingerprint=''){
  kitAutoSweepStore(target,true);
  void (async()=>{
   const sleep=ms=>new Promise(resolve=>setTimeout(resolve,ms));
-  const attempted=new Set(firstFingerprint?[firstFingerprint]:[]);
+  const attempted=new Set([...(Array.isArray(target.attemptedFingerprints)?target.attemptedFingerprints:[]),
+   ...(firstFingerprint?[firstFingerprint]:[])]);
+  const persist=()=>kitAutoSweepStore({...target,attemptedFingerprints:[...attempted]},true);
+  persist();
   let launches=0,unknown=0,noResponse=0;
   try{
    for(let n=0;n<350&&kitAutoSweepMatches(target);n++){
@@ -5890,6 +5893,9 @@ function kitAutoSweepResume(target,firstFingerprint=''){
      await sleep(5000);continue;
     }
     noResponse=0;
+    if(job.plan?.selectedStage==='all'&&job.plan?.fingerprint&&!attempted.has(job.plan.fingerprint)){
+     attempted.add(job.plan.fingerprint);persist();
+    }
     if(job.state==='running'){unknown=0;await sleep(5000);continue;}
     if(job.state==='uncertain'){
      // Reconciliar apenas por leitura oficial; nunca repetir um POST incerto.
@@ -5944,7 +5950,7 @@ function kitAutoSweepResume(target,firstFingerprint=''){
       '. '+(plan.blocked||[]).join(' · '));
     if(attempted.has(plan.fingerprint))
      throw Error('O mesmo plano ainda não foi confirmado pela Shopee. Reenvio duplicado impedido. Pendências: '+pending.join(', '));
-    attempted.add(plan.fingerprint);
+    attempted.add(plan.fingerprint);persist();
     optimizerExecNotice('Retomada automática '+(launches+1)+': '+plan.actions.join(', ')+'.','info');
     const started=await optimizerExecuteApproved(false);
     if(!started?.started)throw Error(started?.error||'A Shopee não aceitou a retomada.');
