@@ -1,6 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {validateKitOptimizationTarget,kitOptimizationLinkIsCurrent,linkedKitPricingCost,assertKitListingComposition} from '../shopeeKitOptimization.js';
+import {compileShopeeExecutionPlan} from '../shopeeExecutionPlan.js';
 const kit={kitSku:'KIT-AAA-BBB',components:[{sku:'AAA'},{sku:'BBB'}],
  componentCost:40,kitCost:44,quote:{grossPrice:130,marketplacePrice:110}};
 const saved={kitSku:kit.kitSku,kit,skus:['AAA','BBB'],
@@ -78,4 +79,30 @@ test('o servidor bloqueia vínculos antigos e o cliente não seleciona Item ID s
  assert.match(discount,/assertKitListingComposition\(\{kit:saved\.kit/);
  assert.match(client,/autoVerified:false/);
  assert.doesNotMatch(client,/if\(automatic&&matches\.length===1\)\{choose/);
+});
+
+test('aprovado comercial do kit pode executar sem aguardar desconto e fiscal incompletos',()=>{
+ const names=['Cesto Retangular com Tampa Vai e Vem 20L Preto',
+  'Saco Vácuo Bag G 55x90cm com Válvula para Armazenamento',
+  'Bomba de Saco a Vácuo Azul','Saco Organizador a Vácuo M'];
+ const title='🏠 Kit Lixeira Retangular Tampa Vai e Vem 20L + Saco a Vácuo G 55x90cm + Bomba Manual Azul + Saco Organizador Vácuo M ✨';
+ const description='✨ Organização prática em quatro peças. ✅ Contém cesto, sacos a vácuo de tamanhos diferentes e bomba manual.';
+ const input={
+  shopId:1,itemId:'58272076732',modelId:'0',sku:'CE420 B',
+  record:{itemId:'58272076732',selectedModelId:'0',sku:'CE420 B',status:'NORMAL',imageCount:0,videoStatus:'Pendente',
+   attributeAudit:{missingMandatory:0,attributes:[]}},
+  live:{item_id:58272076732,item_name:'Cesto Retangular 20L',description:'Descrição antiga',
+   description_type:'normal',image:{image_id_list:[]},attribute_list:[],tax_info:{},video_info:[]},
+  review:{kitOptimization:{kitSku:'KIT-CE420B-CT0202-CT0205-UD040004012',mainSku:'CE420 B',componentNames:names},
+   stages:{seo:{reviewed:true},description:{reviewed:true},fiscal:{reviewed:false}},
+   draftTitle:title,draftDescription:description,tax:{origin:'2',cest:'00'}},
+  selectedStage:'all'
+ };
+ const plan=compileShopeeExecutionPlan(input);
+ assert.deepEqual(plan.blocked,[]);
+ assert.equal(plan.canExecute,true,'fiscal incompleto não bloqueia título e descrição aprovados');
+ assert.equal(plan.proposed.item_name,title);
+ assert.equal(plan.proposed.description,description);
+ assert.ok(plan.warnings.some(x=>/Fiscal: informe/.test(x)));
+ assert.equal(Object.hasOwn(plan.proposed,'tax_info'),false);
 });
