@@ -47,7 +47,7 @@ export function createKitPhotoStore(indexedDB=globalThis.indexedDB){
  const pendingRecord=(kit,slot,dataUrl,{nonce='',lastError=''}={})=>{
   if(!kit||!validSlot(slot)||typeof dataUrl!=='string'||
      dataUrl.length>28*1024*1024||
-     !/^data:image\\/(?:png|jpeg|webp);base64,/i.test(dataUrl))
+     !/^data:image\/(?:png|jpeg|webp);base64,/i.test(dataUrl))
    throw Error('Imagem capturada inválida para recuperação.');
   return {key:captureKey(kit,slot),kitSku:String(kit),slot:Number(slot),
    dataUrl,kind:'pending',status:lastError?'import_failed':'captured_not_imported',
