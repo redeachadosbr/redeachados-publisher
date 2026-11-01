@@ -466,7 +466,7 @@ test('desconto do kit aparece apenas na etapa 09 das dez etapas, sem oito cartoe
  assert.ok(wizard.includes('if(kitWizardStage===9)void kitWizardRequestDiscount()'));
  assert.ok(wizard.includes('kitExistingOptimizer.openDiscount?.()'));
  assert.ok(wizard.includes('function kitWizardRequestDiscount('));
- assert.ok(existing.includes('return {restore,openTechnical,openDiscount}'));
+ assert.ok(existing.includes('return {restore,openTechnical,openDiscount,prepareDiscountLink}'));
  assert.ok(app.includes('function kitOptimizerDiscountMount('));
  assert.match(css,/#tab-kits #kitWizardDiscountMount #optimizerDiscountReviewInline/);
  assert.match(css,/#tab-kits #kitWizardOptimizerDock,/);
@@ -572,4 +572,28 @@ test('etapa 05: check segue a conferência técnica confirmada do Item ID',async
  assert.match(js,/if\(kitWizardStage===5\)\{\s*const editor=/);
  assert.ok(js.includes("review.click()"));
  assert.ok(js.includes('checks.delete(5)'),'Troca da principal invalida check anterior');
+});
+
+
+test('desconto 09 consulta Item ID de forma independente, oferece vínculo explícito e preserva a revisão técnica',()=>{
+ const html=fs.readFileSync(new URL('../public/index.html',import.meta.url),'utf8');
+ const wizard=fs.readFileSync(new URL('../public/kit-builder.js',import.meta.url),'utf8');
+ const existing=fs.readFileSync(new URL('../public/kit-existing-optimization.js',import.meta.url),'utf8');
+ const server=fs.readFileSync(new URL('../server.js',import.meta.url),'utf8');
+ assert.equal(html.split('id="kitWizardLinkDiscountItem"').length-1,1);
+ assert.match(wizard,/if\(!result\.linked\)\{/);
+ assert.match(wizard,/kitWizardDiscountLinkButton\(Boolean\(result\.itemId\)\)/);
+ assert.ok(wizard.includes("kitExistingOptimizer.prepareDiscountLink?.()"));
+ assert.ok(wizard.includes("refresh.textContent='Consultando Item ID e campanhas...'"));
+ assert.ok(wizard.includes('kitWizardDiscountPending)return;'));
+ const inspect=existing.slice(existing.indexOf('async function openDiscount()'),existing.indexOf('function discountNotice('));
+ assert.ok(inspect.includes('await resolveDiscountIds()'));
+ assert.ok(!inspect.includes('startKitOptimization()'),
+  'Atualizar não pode chamar preparação completa nem publicar');
+ assert.ok(!inspect.includes('await prepare()'));
+ assert.ok(existing.includes("if(!confirm('Vincular somente no rascunho"));
+ assert.ok(existing.includes("'/api/shopee/kits/optimization/prepare'"));
+ assert.ok(server.includes("linkedOptimization:currentLink?"));
+ assert.ok(server.includes('const resetKitStages=Boolean(previousLink&&('));
+ assert.ok(server.includes('kitOptimization:link,resetKitStages'));
 });
