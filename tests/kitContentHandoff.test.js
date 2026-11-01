@@ -185,7 +185,7 @@ test('resposta textual da Ponte é desempacotada sem misturar anúncios de outro
   [{sku:'1.26051.01.1000',name:'Lixeira'},{sku:'KTE022BCF',name:'Kit Porta Escova'},{sku:'TRC6808',name:'Dispenser'}]);
  emit({kind:'RA_EXTENSION_READY',version:'1.0.61'});
  const sent=messages.find(m=>m.payload.kind==='RA_SITE_KIT_TEXT_FETCH');
- assert.deepEqual(Array.from(sent.payload.payload.skus),['1.26051.01.1000','KTE022BCF','TRC6808']);
+ assert.deepEqual(Array.from(sent.payload.payload.skus),['126051011000','KTE022BCF','TRC6808']);
  emit({kind:'RA_EXTENSION_KIT_TEXT_RESULT',nonce:'nonce-seo-1',
   kitSku:'KIT-OUTRO',ok:true,rawText:JSON.stringify({description:'Anúncio de outro kit'})});
  await assert.rejects(pending,/outro kit/);
