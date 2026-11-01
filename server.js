@@ -698,9 +698,9 @@ app.post('/api/shopee/kits/plus-import',mustLogin,requireWeDropAdmin,async(req,r
   const idea=String(req.body?.idea||'').trim().slice(0,160);
   const size=Number(req.body?.size||2),raw=req.body?.kits;
   const desiredKits=Number(req.body?.desiredKits||10);
-  if(![2,3].includes(size)||!Number.isInteger(desiredKits)||desiredKits<5||desiredKits>20||
+  if(![2,3,4].includes(size)||!Number.isInteger(desiredKits)||desiredKits<5||desiredKits>20||
       !Array.isArray(raw)||raw.length<1||raw.length>desiredKits)
-   throw Error('Informe até 20 kits de 2 ou 3 SKUs e no máximo a quantidade escolhida (5 a 20).');
+   throw Error('Informe até 20 kits de 2 a 4 SKUs e no máximo a quantidade escolhida (5 a 20).');
   const seen=new Set(),kits=[],rejected=[];
   // Importações novas são coleções independentes; preservar publicações e histórico.
   const importBatchId=new Date().toISOString()+'-'+crypto.randomUUID();
@@ -787,7 +787,7 @@ app.get('/api/shopee/kits/reference-photo',mustLogin,requireWeDropAdmin,async(re
   const {auth}=await getValidAuth(req);
   const skus=String(req.query?.skus||'').split(',').map(x=>x.trim());
   const index=Number(req.query?.index);
-  if(skus.length<2||skus.length>3||skus.some(x=>!x||x.length>90)||
+  if(skus.length<2||skus.length>4||skus.some(x=>!x||x.length>90)||
     !Number.isInteger(index)||index<0||index>=skus.length)
    return res.status(400).json({error:'Selecione 2 ou 3 SKUs e a fotografia correspondente.'});
   // Fotos de um kit já salvo continuam acessíveis mesmo com estoque vencido.
