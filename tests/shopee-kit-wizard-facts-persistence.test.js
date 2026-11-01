@@ -21,7 +21,7 @@ test('a referencia em memoria so avanca apos confirmacao do salvamento por SKU',
  const save=builder.slice(start,end);
  assert.match(save,/await api\('\/api\/shopee\/kits\/drafts\/manual-facts'/);
  assert.match(save,/if\(prepared\?\.kit\?\.kitSku===kitSku&&serial===kitFactsSaveSerial\)/);
- assert.match(save,/prepared\.creative=\{\.\.\.prepared\.creative,manualFacts:\{\.\.\.facts\}\}/);
+ assert.match(save,/prepared\.creative=\{\.\.\.prepared\.creative,manualFacts:\{\.\.\.reply\.manualFacts\}\}/);
 });
 
 test('etapa 05 usa editor original sem depender da preparacao comercial do kit',()=>{
@@ -42,5 +42,5 @@ test('etapa 05 usa editor original sem depender da preparacao comercial do kit',
  assert.match(app,/RAKitTechnicalLoadReady\?\.\(/);
  assert.match(server,/const requestedKitSku=String\(req\.query\.kit_sku\|\|''\)\.trim\(\)/);
  assert.match(server,/requestedDraft\.creative\?\.manualFacts\?\.\[sku\]/);
- assert.match(html,/kit-builder\.js\?v=20261031-ficha-tecnica-facts-sync-v8/);
+ assert.match(html,/kit-builder\.js\?v=20261101-sku-facts-save-feedback-v1/);
 });
