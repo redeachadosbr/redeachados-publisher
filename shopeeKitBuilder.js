@@ -28,6 +28,8 @@ export function kitWeDropFacts(data={}){
  return {description,dimensions};
 }
 const brl=n=>Math.round(Number(n)*100)/100;
+// Espaços de apresentação do Excel não fazem parte da identidade da SKU.
+const skuKey=x=>String(x||'').normalize('NFKC').toUpperCase().replace(/\s+/g,'').trim();
 const validShop=shop=>{const n=Number(shop);if(!Number.isSafeInteger(n)||n<=0)throw Error('Loja inválida.');return n;};
 const asset=u=>{try{const x=new URL(u);return x.protocol==='https:'&&x.hostname==='wedrop-products-images.nyc3.cdn.digitaloceanspaces.com'?x.href:'';}catch{return '';}};
 const GROUPS=Object.freeze({
@@ -96,9 +98,13 @@ async function readCatalog(shop){
    if(page.length<1000)break;
   }
  }
- const byCost=new Map(costs.map(x=>[String(x.supplier_sku),Number(x.unit_cost)]));
+ const costGroups=new Map();
+ for(const c of costs){const key=skuKey(c.supplier_sku);if(!costGroups.has(key))costGroups.set(key,[]);costGroups.get(key).push(c);}
+ const costFor=sku=>{const matches=costGroups.get(skuKey(sku))||[];
+  if(matches.length!==1)return NaN;
+  return Number(matches[0].unit_cost);};
  const rows=catalog.map(x=>{
-  const v=x.product_data||{},sku=String(x.supplier_sku||'').trim(),cost=byCost.get(sku);
+  const v=x.product_data||{},sku=String(x.supplier_sku||'').trim(),cost=costFor(sku);
   return {sku,name:clean(v.name),category:clean(v.category)||'Sem categoria',
    unitCost:brl(cost),imageUrl:asset(v.imageUrl),brand:clean(v.brand),
    ...kitWeDropFacts(v),stockStatus:'não verificado'};
@@ -477,12 +483,18 @@ export async function composeKit(shop,skus,{marginPct=15,packing=0,shipping=0}={
  assertKitStockSnapshot(stock);
  if(!Array.isArray(skus)||skus.length<2||skus.length>4||new Set(skus).size!==skus.length)
   throw Error('Selecione dois a quatro SKUs distintos da WeDrop.');
- const lookup=new Map(items.map(x=>[x.sku,x]));
+ const lookup=new Map();
+ for(const p of items){const k=skuKey(p.sku);if(!lookup.has(k))lookup.set(k,[]);lookup.get(k).push(p);}
  const products=skus.map(x=>{
-  const p=lookup.get(String(x));
-  return p?{...p,stockStatus:stock.map.get(p.sku)||'DESCONHECIDO'}:null;
+  const matches=lookup.get(skuKey(x))||[];
+  if(matches.length>1)throw Error('SKU ambígua no catálogo WeDrop: '+x+'. Verifique os códigos duplicados.');
+  const p=matches[0];
+  if(!p)return null;
+  const statuses=[...stock.map.entries()].filter(([k])=>skuKey(k)===skuKey(p.sku));
+  if(statuses.length>1)throw Error('Disponibilidade ambígua para '+p.sku+'.');
+  return {...p,stockStatus:statuses[0]?.[1]||'DESCONHECIDO'};
  });
- if(products.some(x=>!x))throw Error('SKU não encontrada com custo WeDrop válido na mesma loja.');
+ if(products.some(x=>!x))throw Error('SKU sem cadastro e custo válido no catálogo importado desta loja: '+skus.filter(x=>!lookup.has(skuKey(x))).join(', ')+'. Confirme a importação de custos WeDrop.');
  assertKitComponentsAvailable(products,stock);
  const costs=brl(products.reduce((a,p)=>a+p.unitCost,0));
  const n=Number(marginPct),extra=Number(packing),freight=Number(shipping);
