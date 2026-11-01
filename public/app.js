@@ -3965,22 +3965,61 @@ async function optimizerWorkflowLoad(record){
      optimizerKitResumeLinkRecovering.add(recoveryKey);
      optimizerWorkflowNotice('Recuperando o vinculo salvo do kit com o Item ID '+id+' (sem publicar)...','info');
      try{
-       const restored=await json('/api/shopee/kits/optimization/prepare',{
-        method:'POST',headers:{'Content-Type':'application/json'},
-        body:JSON.stringify({kitSku:kitHandoff.kitSku,sku,mainSku:sku,
-         itemId:id,modelId,confirmedItemId:id}),
-        signal:AbortSignal.timeout(90000)
-       });
-       if(restored?.prepared!==true)throw Error('Servidor nao confirmou o vinculo do kit.');
-       if(serial===optimizerWorkflowSerial&&$('#optimizerSku').value.trim()===sku&&
+       const identity={kitSku:kitHandoff.kitSku,sku,itemId:id,modelId};
+       const prepareBody={...identity,mainSku:sku,confirmedItemId:id};
+       const retryable=error=>/\\b(?:HTTP\\s*(?:502|503|504)|failed to fetch|networkerror|network error|timeout)\\b/i.test(
+        String(error?.message||error||''));
+       const readBack=async()=>{
+        const params=new URLSearchParams(identity);
+        const status=await json('/api/shopee/kits/optimization/link-status?'+params,{
+         signal:AbortSignal.timeout(15000)
+        });
+        return status?.ready===true;
+       };
+       let linked=false;
+       // A troca de versao no Render pode derrubar uma resposta 502 DEPOIS
+       // da gravação. Ler primeiro o banco evita uma nova preparacao desnecessaria.
+       try{linked=await readBack();}catch{}
+       if(!linked){
+        try{
+         const result=await json('/api/shopee/kits/optimization/prepare',{
+          method:'POST',headers:{'Content-Type':'application/json'},
+          body:JSON.stringify(prepareBody),signal:AbortSignal.timeout(80000)
+         });
+         if(result?.prepared!==true)throw Error('O servidor não confirmou o vínculo do kit.');
+         linked=true;
+        }catch(error){
+         if(!retryable(error))throw error;
+         optimizerWorkflowNotice('O Render interrompeu a recuperação do vínculo ('+
+          String(error.message||error)+'). Conferindo o registro antes de tentar novamente...','warning');
+         // Apenas a preparação local pode ser repetida; esta rota não publica
+         // imagens, vídeo, preço, texto nem dados fiscais na Shopee.
+         await new Promise(resolve=>setTimeout(resolve,1800));
+         try{linked=await readBack();}catch{}
+         if(!linked){
+          const retried=await json('/api/shopee/kits/optimization/prepare',{
+           method:'POST',headers:{'Content-Type':'application/json'},
+           body:JSON.stringify(prepareBody),signal:AbortSignal.timeout(80000)
+          });
+          if(retried?.prepared!==true)throw Error('O servidor não confirmou o vínculo após reconectar.');
+          linked=true;
+         }
+        }
+       }
+       if(linked&&serial===optimizerWorkflowSerial&&$('#optimizerSku').value.trim()===sku&&
           globalThis.__RA_KIT_OPTIMIZATION_HANDOFF?.kitSku===kitHandoff.kitSku){
         void optimizerWorkflowLoad(record);
        }
      }catch(error){
        globalThis.RAKitWizardWorkflowLoadError?.({
         kitSku:kitHandoff.kitSku,sku,itemId:id,
-        message:'Falha ao recuperar o vinculo salvo: '+String(error.message||error)
+        message:'Falha ao recuperar o vínculo salvo: '+String(error.message||error)+
+         '. A preparação não publicou nada. O Item ID e o kit permanecem preservados.'
        });
+     }finally{
+       // A tentativa anterior deixava o ID bloqueado em memoria depois de um
+       // 502: clicar novamente não iniciava outra recuperação.
+       optimizerKitResumeLinkRecovering.delete(recoveryKey);
      }
      return;
    }
