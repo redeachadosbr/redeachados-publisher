@@ -328,16 +328,17 @@ async function kitWizardOpenExecutionFlow(){
   kitWizardMountTechnical();
   if(notes.length){
    const message='Preparação parcial preservada. '+notes.join(' ')+
-    ' O botão Executar retoma somente as pendências, sem apagar etapas confirmadas.';
+    ' O motor completo avaliará as outras etapas aprovadas e manterá as faltantes como pendências reais.';
    if(notice){notice.hidden=false;notice.textContent=message;}
    status(message,'warning');
-   return;
+   // Uma mídia ou revisão fiscal pendente NÃO interrompe a preparação
+   // das demais etapas. Nenhuma pendência será marcada como publicada.
   }
   if(!valid){
    status('O anuncio da SKU principal nao tem vinculo valido. A publicacao nao sera iniciada.','error');
    return;
   }
-  const output=await globalThis.RAKitExecutePendingMediaFiscal?.({
+  const output=await globalThis.RAKitExecutePendingAllStages?.({
    kitSku,sku:String(handoff.sku),itemId:String(handoff.itemId),modelId:String(handoff.modelId||'0')
   });
   if(notice){
@@ -345,8 +346,9 @@ async function kitWizardOpenExecutionFlow(){
    notice.textContent=output?.error||output?.message||'Publicacao solicitada. Acompanhando resposta da Shopee.';
   }
   if(!output?.ok){
-   status('Nao foi possivel enviar imagens, video e fiscal: '+
-    String(output?.error||'O motor ainda nao esta pronto.'),'error');
+   status('A execução das 9 etapas não foi iniciada: '+
+    String(output?.error||'O motor raiz ainda não está pronto.')+
+    '. Nenhum check local foi tratado como publicação.','warning');
    return;
   }
   $('#optimizerExecutionTracker')?.scrollIntoView?.({behavior:'smooth',block:'center'});
