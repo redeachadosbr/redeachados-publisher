@@ -530,7 +530,7 @@ export function kitPrompts(kit,{manualFacts={}}={}){
   'Identificador do kit: '+String(kit.kitSku||'kit').slice(0,120)+'. Componentes exatos: '+exact+'.',
   'FOTOGRAFIAS ORIGINAIS: receber as fotos individuais da WeDrop; imagem de referência 1 = SKU 1, imagem 2 = SKU 2, e imagem 3 = SKU 3 (se houver). Preservar cores, formas, acabamento, proporções, texturas, peças e acessórios originalmente mostrados.',
   descriptions,
-  'REGRA CRÍTICA: nesta imagem TODOS OS '+components.length+' SKUS devem aparecer simultaneamente JUNTOS na MESMA CENA, completos, sem um esconder outro. Todos os 2 a 4 produtos devem estar visíveis. Nunca mostrar apenas a SKU principal. Nunca separar em duas fotos, quadros ou mosaico.',
+  'REGRA CRÍTICA: nesta imagem TODOS OS '+components.length+' SKUS devem aparecer simultaneamente JUNTOS na MESMA CENA, completos, sem um esconder outro. Kit de 2 = UMA DUPLA visível; kit de 3 = TODOS os três visíveis; kit de 4 = TODOS os quatro visíveis. Nunca mostrar apenas a SKU principal. Nunca separar em duas fotos, quadros ou mosaico.',
   'CRIE SOMENTE UMA IMAGEM FINAL para a posição solicitada. Há 9 posições independentes; não gerar colagem, grade, sequência ou os nove quadros juntos.',
   'IMAGEM COMERCIAL QUADRADA 1:1 DE 1200 × 1200 PIXELS. Luz premium, nitidez HD, fundo ambientado realista e moderno, aparência fotográfica. Variar cenário, perspectiva, enquadramento e disposição entre as posições, mantendo fidelidade integral aos componentes.',
   'Não inventar marca, função, idade, material, dimensão, certificação, peça, brinde, acessório nem produto extra. Não deformar, fundir, duplicar, trocar ou omitir SKUs. Não incluir terceiros itens que pareçam produtos inclusos.',
