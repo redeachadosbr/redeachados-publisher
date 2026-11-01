@@ -44,10 +44,10 @@ test('botao manual ignora filtro de categoria e deixa o servidor validar disponi
 });
 
 test('quatro SKUs coladas com espaços criam combinações conforme tamanho selecionado',()=>{
- const input='CE420 B   UD04.0004.012   CT0202   CT0205';
+ const input='CE420B   UD04.0004.012   CT0202   CT0205';
  const three=parseManualKitSkuBlock(input,{size:3});
  assert.equal(three.kits.length,4);
- assert.deepEqual(three.kits[0],['CE420','B','UD04.0004.012']);
+ assert.deepEqual(three.kits[0],['CE420B','UD04.0004.012','CT0202']);
  const two=parseManualKitSkuBlock('CE420B, UD04.0004.012; CT0202 | CT0205',{size:2});
  assert.equal(two.kits.length,6);
  assert.ok(two.kits.every(x=>x.length===2));
