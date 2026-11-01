@@ -39,6 +39,14 @@ let kitBridgeController=null,kitRestoredSku='';
 let kitActiveDraftSku=null,kitDraftOpenRevision=0,kitDraftNeedsRefresh=false;
 const KIT_FACTS_STORAGE_PREFIX='ra-kits-facts-v2:';
 let kitFactsSaveTimer=null,kitFactsSaveSerial=0;
+let kitFactsAutoWrite=Promise.resolve();
+function kitFactsSaveFeedback(message,state='info'){
+ const node=$('#kitSkuFactsSaveStatus');
+ if(!node)return;
+ node.textContent=message;
+ node.dataset.state=state;
+}
+
 function kitFactsStorageKey(kitSku){return KIT_FACTS_STORAGE_PREFIX+String(kitSku||'');}
 function kitReadLocalFacts(kitSku){
  try{
@@ -55,20 +63,27 @@ function kitPersistSkuFacts(){
  catch{kitContentFeedback('Não foi possível salvar localmente as informações por SKU. Verifique o armazenamento do navegador.','error');}
  clearTimeout(kitFactsSaveTimer);
  const serial=++kitFactsSaveSerial;
- kitFactsSaveTimer=setTimeout(async()=>{
+ kitFactsSaveTimer=setTimeout(()=>{
   if(serial!==kitFactsSaveSerial||prepared?.kit?.kitSku!==kitSku)return;
-  try{
-   await api('/api/shopee/kits/drafts/manual-facts',{body:{kitSku,manualFacts:facts}});
-    // Atualizar a referencia somente apos confirmacao do servidor.
-    // Edicoes posteriores ou a sincronizacao imediata da etapa 05 prevalecem.
-    if(prepared?.kit?.kitSku===kitSku&&serial===kitFactsSaveSerial)
-     prepared.creative={...prepared.creative,manualFacts:{...facts}};
-  }catch(error){
-   // Um kit novo, ainda sem rascunho salvo, mantém as fichas localmente até
-   // o primeiro salvamento completo. Não apagar informação digitada.
-   if(!/Rascunho ainda não salvo/i.test(String(error.message||'')))
-    kitContentFeedback('Informações preservadas neste navegador, mas a sincronização com o servidor falhou: '+error.message,'warning');
-  }
+  // Serializar o autosave com o clique manual impede que uma gravação
+  // anterior sobrescreva outra mais recente no rascunho do servidor.
+  kitFactsAutoWrite=kitFactsAutoWrite.catch(()=>{}).then(async()=>{
+   if(serial!==kitFactsSaveSerial||prepared?.kit?.kitSku!==kitSku)return;
+   try{
+    const reply=await api('/api/shopee/kits/drafts/manual-facts',{body:{kitSku,manualFacts:facts}});
+    if(reply.saved!==true||reply.kitSku!==kitSku)throw Error('Servidor não confirmou o salvamento.');
+    if(prepared?.kit?.kitSku===kitSku&&serial===kitFactsSaveSerial){
+     prepared.creative={...prepared.creative,manualFacts:{...reply.manualFacts}};
+     kitFactsSaveFeedback('✓ Informações dos SKUs salvas automaticamente no rascunho.','success');
+    }
+   }catch(error){
+    if(serial!==kitFactsSaveSerial||prepared?.kit?.kitSku!==kitSku)return;
+    const message='Salvamento automático não confirmado: '+error.message+'. Clique em Salvar informações dos SKUs.';
+    kitFactsSaveFeedback(message,'warning');
+    if(!/Rascunho ainda não salvo/i.test(String(error.message||'')))
+     kitContentFeedback('Informações preservadas neste navegador, mas a sincronização com o servidor falhou: '+error.message,'warning');
+   }
+  });
  },850);
 }
 let kitContentSku='',kitContentManualFacts=new Map(),kitContentSeoTitles=[],
@@ -3219,6 +3234,57 @@ function kitContentReadManual(){
  }
  return data;
 }
+// Salvar somente as fichas informadas na Etapa 01: sem executar validações
+// de título, preço, imagens ou publicação de um rascunho completo.
+let kitSkuFactsManualSaving=false;
+async function kitSaveSkuFactsNow(){
+ if(kitSkuFactsManualSaving)return false;
+ const button=$('#kitSaveSkuFacts');
+ const kitSku=prepared?.kit?.kitSku;
+ if(!kitSku){
+  kitFactsSaveFeedback('Abra um kit antes de salvar as informações por SKU.','error');
+  return false;
+ }
+ const allowed=prepared.kit.components.map(p=>String(p.sku));
+ kitContentReadManual();
+ const facts=Object.fromEntries(allowed.map(sku=>
+  [sku,String(kitContentManualFacts.get(sku)||'').slice(0,1700)]));
+ // Cancela qualquer autosave pendente e aguarda o que já foi enviado.
+ clearTimeout(kitFactsSaveTimer);
+ const revision=++kitFactsSaveSerial;
+ kitSkuFactsManualSaving=true;
+ if(button){button.disabled=true;button.textContent='Salvando informações...';}
+ kitFactsSaveFeedback('Salvando '+allowed.length+' SKUs no rascunho da loja...','info');
+ try{
+  await kitFactsAutoWrite.catch(()=>{});
+  if(prepared?.kit?.kitSku!==kitSku)throw Error('O kit foi alterado durante o salvamento.');
+  const saved=await api('/api/shopee/kits/drafts/manual-facts',{body:{kitSku,manualFacts:facts}});
+  if(saved.saved!==true||saved.kitSku!==kitSku)
+   throw Error('O servidor não confirmou a gravação das informações por SKU.');
+  if(prepared?.kit?.kitSku!==kitSku)throw Error('Outro kit foi aberto durante a gravação.');
+  if(revision!==kitFactsSaveSerial){
+   kitFactsSaveFeedback('O servidor confirmou a versão anterior. Há alterações mais recentes sendo salvas automaticamente.','warning');
+   return false;
+  }
+  prepared.creative={...prepared.creative,manualFacts:{...saved.manualFacts}};
+  // Persistência local complementar; êxito exibido somente após resposta do servidor.
+  try{localStorage.setItem(kitFactsStorageKey(kitSku),JSON.stringify({
+   kitSku,facts:{...facts},at:Date.now()
+  }));}catch{}
+  kitFactsSaveFeedback('✓ Informações de '+allowed.length+' SKUs salvas com sucesso no rascunho da loja.','success');
+  return true;
+ }catch(error){
+  if(prepared?.kit?.kitSku===kitSku){
+   const message='Não foi possível confirmar o salvamento: '+String(error.message||error)+
+    '. As informações continuam no formulário; tente novamente.';
+   kitFactsSaveFeedback(message,'error');
+  }
+  return false;
+ }finally{
+  kitSkuFactsManualSaving=false;
+  if(button){button.disabled=false;button.textContent='Salvar informações dos SKUs';}
+ }
+}
 function kitContentShowMissing(rows=[],{scroll=false}={}){
  if(!prepared)return;
  const root=$('#kitMissingFactFields');root.replaceChildren();
@@ -3246,6 +3312,7 @@ function kitContentShowMissing(rows=[],{scroll=false}={}){
    kitContentManualFacts.set(sku,box.value);
    kitUpdateImageGuidance();
    if(edited){
+    kitFactsSaveFeedback('Alterações registradas. Salvando automaticamente no rascunho...','info');
     // Alterar apenas a ficha da SKU nao desfaz o rascunho do kit ja salvo.
     // A API de manual-facts sincroniza os detalhes em separado.
     clearKitPublishApproval();
@@ -4041,7 +4108,7 @@ $('#kitCopyContentPrompt')?.addEventListener('click',async()=>{
 });
 $('#kitPlusText')?.addEventListener('click',()=>void plusText());
 $('#kitContinueContent')?.addEventListener('click',()=>void plusText({proceedWithoutDetails:true}));
-$('#kitSaveSkuFacts')?.addEventListener('click',()=>void saveDraft());
+$('#kitSaveSkuFacts')?.addEventListener('click',()=>void kitSaveSkuFactsNow());
 $('#kitImportCopiedText')?.addEventListener('click',()=>void kitImportCopiedContent());
 $('#kitImportText')?.addEventListener('click',()=>importPlusText());
 $('#kitPlusTextResult')?.addEventListener('paste',kitPasteSeoReply);
