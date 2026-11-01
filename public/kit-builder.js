@@ -2282,12 +2282,10 @@ function kitSetCompositionCollapsed(collapsed){
  button.classList.toggle('is-collapsed',Boolean(collapsed));
 }
 function kitSetImagesCollapsed(collapsed){
- const panel=$('#kitImagesContent'),button=$('#kitToggleImagesContent');
- if(!panel||!button)return;
- panel.hidden=Boolean(collapsed);
- button.setAttribute('aria-expanded',String(!collapsed));
- button.textContent=collapsed?'▾ Mostrar imagens do kit':'▴ Ocultar todo o bloco de imagens';
- button.classList.toggle('is-collapsed',Boolean(collapsed));
+ // A exibição é controlada exclusivamente pelo fluxo de 10 etapas.
+ // Sem botão de recolher: nenhum gerador, imagem ou rascunho é desmontado.
+ const panel=$('#kitImagesContent');
+ if(panel)panel.hidden=Boolean(collapsed);
 }
 // Somente um painel de origem visível quando uma etapa 01–08 é selecionada.
 // Recolher não desmonta fotos, títulos ou os dados salvos no navegador.
@@ -4156,9 +4154,6 @@ $('#kitTitle')?.addEventListener('input',()=>{
 });
 $('#kitToggleComposition')?.addEventListener('click',()=>{
  kitSetCompositionCollapsed(!$('#kitCompositionContent').hidden);
-});
-$('#kitToggleImagesContent')?.addEventListener('click',()=>{
- kitSetImagesCollapsed(!$('#kitImagesContent').hidden);
 });
 $('#kitToggleCopyContent')?.addEventListener('click',()=>{
  kitSetCopyContentCollapsed(!$('#kitCopyContentPanel').hidden);
