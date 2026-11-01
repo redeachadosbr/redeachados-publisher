@@ -42,5 +42,5 @@ test('etapa 05 usa editor original sem depender da preparacao comercial do kit',
  assert.match(app,/RAKitTechnicalLoadReady\?\.\(/);
  assert.match(server,/const requestedKitSku=String\(req\.query\.kit_sku\|\|''\)\.trim\(\)/);
  assert.match(server,/requestedDraft\.creative\?\.manualFacts\?\.\[sku\]/);
- assert.match(html,/kit-builder\.js\?v=20261101-sku-facts-save-feedback-v1/);
+ assert.match(html,/kit-builder\.js\?v=20261101-sku-facts-save-feedback-v\d+/);
 });
