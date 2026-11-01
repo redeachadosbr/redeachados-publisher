@@ -4578,7 +4578,9 @@ function optimizerExecutionTrackerRender(progress,job){
   'kit-prepared':'✓ Prévia conferida · promoção pendente',
   'kit-published':'✓ Promoção aplicada separadamente',
   authorization:'Aguardando confirmação para executar'};
- for(const [i,step] of (progress.steps||[]).entries()){
+ const mediaFiscalOnly=job?.plan?.selectedStage==='media_fiscal';
+ const visibleSteps=mediaFiscalOnly?(progress.steps||[]).filter(x=>['images','video','fiscal'].includes(x.id)):(progress.steps||[]);
+ for(const [i,step] of visibleSteps.entries()){
   const actualStatus=step.id==='discount'&&sameKitJob&&
     ['review','authorization','skipped'].includes(step.status)?
     kitDiscount.confirmed?'kit-published':kitDiscount.prepared?'kit-prepared':step.status:
@@ -4587,7 +4589,9 @@ function optimizerExecutionTrackerRender(progress,job){
   const marker=optimizerMake('span','optimizer-exec-step-number',
    ['done','staged','kit-prepared','kit-published'].includes(actualStatus)?'✓':
     actualStatus==='review'?'!':String(i+1));
-  const name=optimizerMake('strong','',step.label);
+  const name=optimizerMake('strong','',mediaFiscalOnly?
+   ({images:'01 · Imagens',video:'02 · Vídeo',fiscal:'03 · Dados fiscais'}[step.id]||step.label):
+   step.label);
   const status=optimizerMake('small','',((['discount','discount_adjust'].includes(savedScope)&&step.id!=='discount')||(savedScope==='variants'&&step.id!=='variants'))&&step.status==='skipped'? 'Preservado · sem reenvio':statuses[actualStatus]||'Aguardando');
   if(actualStatus==='kit-prepared')li.title='Check da etapa 08: prévia conferida. Desconto ainda não aplicado; a promoção exige autorização separada.';
   if(actualStatus==='kit-published')li.title='Desconto confirmado pela Shopee em operação separada; não integrou este job do anúncio.';
@@ -4607,7 +4611,7 @@ function optimizerExecutionTrackerRender(progress,job){
   stageList.insertAdjacentElement('afterend',pendingActions);
  }
  pendingActions.replaceChildren();
- const skipped=(progress.steps||[]).filter(x=>['skipped','review'].includes(x.status)&&x.id!=='discount');
+ const skipped=mediaFiscalOnly?[]:(progress.steps||[]).filter(x=>['skipped','review'].includes(x.status)&&x.id!=='discount');
  if(skipped.length){
   const heading=document.createElement('strong');
   heading.textContent='Etapas ainda não executadas neste anúncio';
@@ -5399,6 +5403,7 @@ function optimizerExecUpdateRunButton(){
   '⚠ Completar etapas conferidas antes de executar':
   !canPublish?
   p?.canExecute?'🛠 Conferir desconto e liberar execução':'🛠 Corrigir pendências e revalidar':
+  p?.selectedStage==='media_fiscal'?'▶ Executar somente Imagens + Vídeo + Fiscal':
   p?.selectedStage==='discount_adjust'?'▶ Autorizar preço calculado + desconto':
   p?.selectedStage==='discount'?'▶ Executar SOMENTE desconto':
   p?.selectedStage==='variants'?'▶ Executar SOMENTE variações':
