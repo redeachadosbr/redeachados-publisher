@@ -2518,8 +2518,25 @@ const KIT_CAMERA_PLANS=[
 function kitImagePromptAt(slot){
  if(!prepared)return '';
  const components=kitOrderedComponents();
- const original=prepared.creative?.prompts?.[slot-1]||'';
- const orderRule='ORDEM ATUAL OBRIGATÓRIA DAS REFERÊNCIAS: '+components.map((p,i)=>(i+1)+'. SKU '+p.sku+' — '+p.name).join(' | ')+'. A primeira referência é SEMPRE a SKU principal. Se os textos antigos abaixo citarem outra ordem, IGNORE aquela ordem antiga. Não trocar dimensões nem fotos entre produtos.\n';
+ let original=prepared.creative?.prompts?.[slot-1]||'';
+ // Reconstruir a ordem dos itens no prompt mestre antigo sem alterar o kit salvo.
+ // Isso evita que a folha de referências tenha um índice diferente do texto.
+ const canonical=prepared.kit.components;
+ const oldExact=canonical.map((p,i)=>(i+1)+'. SKU '+p.sku+' — '+p.name+' — 1 unidade').join('; ');
+ const newExact=components.map((p,i)=>(i+1)+'. SKU '+p.sku+' — '+p.name+' — 1 unidade').join('; ');
+ if(original.includes(oldExact))original=original.replace(oldExact,newExact);
+ const start=original.indexOf('REFERÊNCIA 1: SKU ');
+ const end=original.indexOf('\\nREGRA CRÍTICA:',start);
+ if(start>=0&&end>start){
+  const blocks=original.slice(start,end).trimEnd().split('\\n');
+  const ordered=components.map((p,i)=>{
+   const line=blocks.find(x=>x.includes(': SKU '+p.sku+' = '));
+   return line?line.replace(/^REFERÊNCIA \\d+:/,'REFERÊNCIA '+(i+1)+':'):null;
+  });
+  if(ordered.every(Boolean))
+   original=original.slice(0,start)+ordered.join('\\n')+'\\n'+original.slice(end+1);
+ }
+ const orderRule='ORDEM ATUAL OBRIGATÓRIA DAS REFERÊNCIAS: '+components.map((p,i)=>(i+1)+'. SKU '+p.sku+' — '+p.name).join(' | ')+'. A primeira referência é SEMPRE a SKU principal. Não trocar dimensões nem fotos entre produtos.\\n';
  const facts=components.map(p=>{
   const manual=String(kitContentManualFacts.get(p.sku)||'').trim();
   return 'SKU '+p.sku+' — '+p.name+': '+(manual?
