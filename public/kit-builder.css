@@ -3074,3 +3074,150 @@
  opacity:1!important;
  text-shadow:none!important;
 }
+
+/* KIT WIZARD — Personalização original de SKUs acima das 10 etapas */
+/* Um único painel DOM: o mesmo formulário usado para adicionar/substituir SKU,
+   sem reconstruir listeners, custo, histórico nem regras de publicação. */
+#tab-kits #kitWizardCurrentKit > .kit-editor-composition-panel{
+ display:block;width:100%;min-width:0;box-sizing:border-box;
+ margin:0 0 14px;padding:14px 17px 15px;
+}
+#tab-kits #kitWizardCurrentKit > .kit-editor-composition-panel[hidden]{display:none!important}
+#tab-kits #kitWizardCurrentKit .kit-complement-head{
+  display:flex;align-items:center;gap:8px;flex-wrap:wrap;
+  margin:0 0 10px;padding:0 0 0 37px;position:relative;
+}
+#tab-kits #kitWizardCurrentKit .kit-complement-head::before{
+  content:"▣";position:absolute;left:0;top:50%;transform:translateY(-50%);
+  width:30px;height:30px;display:grid;place-items:center;
+  border-radius:10px;background:#e3f0ff;color:#2878ec;font-size:18px;
+}
+#tab-kits #kitWizardCurrentKit .kit-complement-head strong{font-size:14px;font-weight:900;color:#092e65}
+#tab-kits #kitWizardCurrentKit .kit-complement-head span{font-size:11px;color:#537195;line-height:1.4}
+#tab-kits #kitWizardCurrentKit .kit-manual-composition{
+  display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:11px;
+  margin:0;padding:0;background:none;border:0;border-radius:0;
+}
+#tab-kits #kitWizardCurrentKit .kit-manual-composition .kit-manual-explain{
+  grid-column:1/-1;margin:0;display:none;
+}
+#tab-kits #kitWizardCurrentKit .kit-manual-row{
+  display:flex;flex-direction:column;align-items:stretch;gap:11px;
+  min-width:0;padding:12px;border:1px solid #cbdff9;border-radius:13px;
+  background:linear-gradient(115deg,#f6faff,#f8fbff);
+  box-shadow:inset 0 1px #fff;
+}
+#tab-kits #kitWizardCurrentKit .kit-manual-row[data-mode="replace"]{
+  border-color:#e2d5ff;background:linear-gradient(112deg,#f9f7ff,#fcfaff);
+}
+#tab-kits #kitWizardCurrentKit .kit-manual-row-heading{display:flex;align-items:center;gap:11px}
+#tab-kits #kitWizardCurrentKit .kit-manual-row-icon{
+  flex:0 0 41px;height:41px;width:41px;display:grid;place-items:center;
+  border-radius:50%;background:#deebff;color:#217bf3;
+  font-size:29px;font-weight:450;
+}
+#tab-kits #kitWizardCurrentKit .kit-manual-row[data-mode="replace"] .kit-manual-row-icon{
+  background:#ede2ff;color:#854bed;font-size:24px;
+}
+#tab-kits #kitWizardCurrentKit .kit-manual-row-intro{min-width:0;display:grid;gap:4px}
+#tab-kits #kitWizardCurrentKit .kit-manual-row-intro strong{font-size:12px;font-weight:900;color:#123462}
+#tab-kits #kitWizardCurrentKit .kit-manual-row-intro small{font-size:10px;line-height:1.35;color:#5c7898}
+#tab-kits #kitWizardCurrentKit .kit-manual-row-fields{
+  display:grid;grid-template-columns:minmax(0,1fr);gap:8px;min-width:0;
+}
+#tab-kits #kitWizardCurrentKit .kit-manual-row[data-mode="replace"] .kit-manual-row-fields{
+  grid-template-columns:minmax(0,1.25fr) minmax(0,.75fr);
+}
+#tab-kits #kitWizardCurrentKit .kit-manual-row-fields label{
+  grid-column:auto;display:flex;flex-direction:column;gap:5px;
+  font-size:10px;line-height:1.2;color:#102e58;font-weight:800;min-width:0;
+}
+#tab-kits #kitWizardCurrentKit .kit-manual-input-wrap{position:relative;display:block;min-width:0;width:100%}
+#tab-kits #kitWizardCurrentKit .kit-manual-row :is(input,select){
+  height:40px;min-height:40px;box-sizing:border-box;width:100%;min-width:0;
+  padding:8px 10px;border-radius:9px;border:1px solid #c2d8f3;
+  font-size:11px!important;font-family:inherit;background:#fff;color:#193963;
+}
+#tab-kits #kitWizardCurrentKit .kit-manual-input-wrap input{padding-right:37px}
+#tab-kits #kitWizardCurrentKit .kit-manual-input-lens{
+  position:absolute;top:50%;right:9px;transform:translateY(-50%);
+  width:25px;height:25px;display:grid;place-items:center;
+  border:1px solid #d4e5f8;border-radius:7px;
+  color:#2669bb;background:#f5faff;font-size:22px;line-height:1;pointer-events:none;
+}
+#tab-kits #kitWizardCurrentKit .kit-manual-row button.kit-manual-apply{
+  grid-column:auto;align-self:start;margin:0;min-height:37px;
+  padding:9px 14px;font-size:11px;font-weight:900;color:#fff;
+  border:0;border-radius:9px;background:linear-gradient(120deg,#2585fb,#176def);
+  box-shadow:0 5px 11px rgba(31,117,235,.17);white-space:normal;
+}
+#tab-kits #kitWizardCurrentKit .kit-manual-row[data-mode="replace"] button.kit-manual-apply{
+  background:linear-gradient(120deg,#8854fc,#7948ec);box-shadow:0 5px 11px rgba(120,75,223,.18);
+}
+#tab-kits #kitWizardCurrentKit .kit-manual-row button.kit-manual-apply:disabled{opacity:.5}
+#tab-kits #kitWizardCurrentKit #kitManualStatus{margin:7px 0 0;font-size:10px;line-height:1.4}
+
+/* v3.2.1 — evitar grade aninhada: o elemento externo é apenas suporte do editor. */
+#tab-kits #kitWizardCurrentKit #kitManualComposition{
+  display:block;min-width:0;margin:0;padding:0;border:0;
+  background:transparent;border-radius:0;box-shadow:none;
+}
+#tab-kits #kitWizardCurrentKit #kitManualComposition>.kit-manual-composition{
+  display:grid;grid-template-columns:repeat(2,minmax(0,1fr));
+  gap:11px;width:100%;margin:0;padding:0;
+  border:0;background:transparent;
+}
+
+/* Composição de kit: recolher somente o conteúdo, preservando SKUs, preços e controles. */
+#tab-kits #kitWizardCurrentKit .kit-composition-heading{
+ display:flex;align-items:center;justify-content:space-between;
+ gap:12px;flex-wrap:wrap;margin-bottom:10px;
+}
+#tab-kits #kitWizardCurrentKit .kit-composition-heading .kit-complement-head{
+ flex:1 1 300px;margin:0;min-width:0;
+}
+#tab-kits #kitWizardCurrentKit #kitToggleComposition.kit-composition-toggle{
+ display:inline-flex;align-items:center;justify-content:center;
+ min-height:43px;padding:10px 17px;max-width:100%;border-radius:10px;
+ border:1px solid #ec5737;background:linear-gradient(120deg,#ff5c38,#fa822d);
+ color:#fff;font-size:12px;font-weight:900;line-height:1.3;
+ box-shadow:0 4px 0 #bc4b28,0 7px 16px rgba(185,80,34,.22);
+ cursor:pointer;transition:transform .14s,box-shadow .14s,background .14s;
+}
+#tab-kits #kitWizardCurrentKit #kitToggleComposition.kit-composition-toggle:hover{
+ background:linear-gradient(120deg,#ef4f2f,#f57021);
+ transform:translateY(-1px);box-shadow:0 5px 0 #bc4b28,0 9px 19px rgba(185,80,34,.25);
+}
+#tab-kits #kitWizardCurrentKit #kitToggleComposition.kit-composition-toggle:active{
+ transform:translateY(3px);box-shadow:0 1px 0 #bc4b28;
+}
+#tab-kits #kitWizardCurrentKit #kitToggleComposition.kit-composition-toggle:focus-visible{
+ outline:3px solid #3086e9;outline-offset:3px;
+}
+#tab-kits #kitWizardCurrentKit #kitToggleComposition.kit-composition-toggle.is-collapsed{
+ background:linear-gradient(120deg,#2679df,#1659ba);
+ border-color:#1d65ba;box-shadow:0 4px 0 #15417f,0 7px 16px rgba(33,94,156,.22);
+}
+#tab-kits #kitWizardCurrentKit #kitCompositionContent[hidden]{display:none!important}
+#tab-kits #kitWizardCurrentKit .kit-composition-collapsible:has(#kitCompositionContent[hidden]){
+ padding-top:10px;padding-bottom:10px;
+}
+#tab-kits #kitWizardCurrentKit .kit-composition-collapsible:has(#kitCompositionContent[hidden]) .kit-composition-heading{margin-bottom:0}
+@media(max-width:680px){
+ #tab-kits #kitWizardCurrentKit #kitToggleComposition.kit-composition-toggle{width:100%}
+}
+
+
+#tab-kits #kitWizardCurrentKit #kitManualStatus[data-state="success"]{color:#087847}
+#tab-kits #kitWizardCurrentKit #kitManualStatus[data-state="error"]{color:#a42435}
+@media(max-width:1320px){
+ #tab-kits #kitWizardCurrentKit #kitManualComposition>.kit-manual-composition{grid-template-columns:repeat(2,minmax(0,1fr))}
+ #tab-kits #kitWizardCurrentKit .kit-manual-row[data-mode="replace"] .kit-manual-row-fields{grid-template-columns:1fr}
+}
+@media(max-width:800px){
+ #tab-kits #kitWizardCurrentKit #kitManualComposition>.kit-manual-composition{grid-template-columns:1fr}
+}
+@media(max-width:480px){
+ #tab-kits #kitWizardCurrentKit > .kit-editor-composition-panel{padding:12px}
+ #tab-kits #kitWizardCurrentKit .kit-manual-row[data-mode="replace"] .kit-manual-row-fields{grid-template-columns:1fr}
+}
