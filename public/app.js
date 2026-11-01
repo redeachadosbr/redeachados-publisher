@@ -4199,6 +4199,24 @@ async function optimizerWorkflowSaveReview({fiscalConfirm=false}={}){
 }
 $('#optimizerWorkflowReview')?.addEventListener?.('click',()=>void optimizerWorkflowSaveReview());
 globalThis.RAFiscalChecklistConfirm=()=>optimizerWorkflowSaveReview({fiscalConfirm:true});
+globalThis.RAKitSyncApprovedFiscal=async({sku,itemId,modelId}={})=>{
+ const w=optimizerWorkflowPlan;
+ if(!optimizerKitWorkflowActive()||!w||w.sku!==sku||
+   String(w.itemId)!==String(itemId)||String(w.modelId||'0')!==String(modelId||'0'))
+  return {ok:false,error:'SKU/Item ID do fluxo fiscal não conferem.'};
+ if(w.stages?.find(x=>x.key==='fiscal')?.reviewed===true)return {ok:true,already:true};
+ try{
+  // Reutiliza os campos fiscais originais, sem duplicar formulário nem
+  // transformar o check local em aprovação fictícia.
+  const result=await optimizerSaveChecklistReview({
+   sku,itemId,modelId,stage:'fiscal',reviewed:true,tax:optimizerFiscalValues()
+  });
+  if(result?.saved!==true||result.stages?.find(x=>x.key==='fiscal')?.reviewed!==true)
+   throw Error('O servidor não confirmou os dados fiscais aprovados.');
+  optimizerWorkflowPlan={...w,...result,stages:result.stages};
+  return {ok:true};
+ }catch(error){return {ok:false,error:String(error.message||error)};}
+};
 // Pré-execução parcial Shopee. Only explicit interaction authorizes update_item.
 let optimizerExecPlan=null,optimizerExecContext=null,optimizerExecBusy=false,optimizerExecSerial=0;
 let optimizerExecAutoModelToken=null,optimizerExecAutoModelPreview=null;
@@ -5258,7 +5276,14 @@ function optimizerExecRender(data){
    optimizerExecRow(blocked,'Pendências que impedem a execução:','heading');
    for(const issue of plan.blocked)optimizerExecRow(blocked,'• '+issue,'blocker');
  }
- optimizerExecRow(warn,'Verificações e cuidados incluídos no fluxo:','heading');
+ const wizardMissing=optimizerKitMissingApprovedStages(plan,data.progress);
+ if(wizardMissing.length){
+  const names={images:'Imagens',video:'Vídeo',fiscal:'Dados fiscais',variants:'Variações'};
+  optimizerExecRow(blocked,'ETAPAS CONFERIDAS NO KIT MAS AUSENTES DESTA PRÉVIA: '+
+   wizardMissing.map(x=>names[x]).join(', ')+'. Ainda não há execução completa.','blocker');
+  optimizerExecRow(blocked,'Revise e vincule os arquivos/campos destas etapas antes de usar Executar na Shopee.','blocker');
+ }
+  optimizerExecRow(warn,'Verificações e cuidados incluídos no fluxo:','heading');
  for(const warning of plan.warnings)optimizerExecRow(warn,'• '+warning,'warning');
  $('#optimizerExecutionSummary').hidden=false;
  // As etapas já foram revisadas. Uma ação explícita no botão azul inicia o fluxo,
@@ -5325,6 +5350,20 @@ function optimizerDiscountReviewedForExecution(plan){
    Boolean(optimizerExecAutoModelToken)&&optimizerModelMarketConsent(plan):
    optimizerDiscountApprovalReady());
 }
+function optimizerKitMissingApprovedStages(plan=optimizerExecPlan,progress=optimizerExecProgress){
+ if(!plan||plan.selectedStage!=='all'||!optimizerKitWorkflowActive())return [];
+ const link=optimizerWorkflowPlan?.kitOptimization;
+ const wanted=globalThis.RAKitWizardExecutionReviews?.();
+ if(!link||String(wanted?.kitSku||'')!==String(link.kitSku||''))return [];
+ const approved=new Set(wanted.stages||[]);
+ const done=new Set((progress?.steps||[]).filter(x=>x.status==='done').map(x=>x.id));
+ const missing=[];
+ if(approved.has('images')&&!plan.images?.length&&!done.has('images'))missing.push('images');
+ if(approved.has('video')&&!plan.video&&!done.has('video'))missing.push('video');
+ if(approved.has('fiscal')&&!plan.finalFiscal&&!plan.proposed?.tax_info&&!done.has('fiscal'))missing.push('fiscal');
+ if(approved.has('variants')&&!plan.modelVariations&&!done.has('variants'))missing.push('variants');
+ return missing;
+}
 function optimizerExecUpdateRunButton(){
  const p=optimizerExecPlan;
  const wrongIdentity=optimizerExecBusy||!p||!optimizerExecContext||
@@ -5355,7 +5394,10 @@ function optimizerExecUpdateRunButton(){
  $('#optimizerExecutionRemaining').hidden=!offerPending;
  $('#optimizerExecutionRemaining').disabled=unavailable;
  const resume=Boolean(p?.reusedMedia?.imageIds?.length||p?.reusedMedia?.video?.phase==='ready');
- $('#optimizerExecutionLaunch').textContent=!canPublish?
+ const missingKit=optimizerKitMissingApprovedStages(p);
+ $('#optimizerExecutionLaunch').textContent=missingKit.length?
+  '⚠ Completar etapas conferidas antes de executar':
+  !canPublish?
   p?.canExecute?'🛠 Conferir desconto e liberar execução':'🛠 Corrigir pendências e revalidar':
   p?.selectedStage==='discount_adjust'?'▶ Autorizar preço calculado + desconto':
   p?.selectedStage==='discount'?'▶ Executar SOMENTE desconto':
@@ -5657,6 +5699,14 @@ async function optimizerResolveExecutionBlockers(){
  }
 }
 $('#optimizerExecutionLaunch')?.addEventListener?.('click',()=>{
+ const missing=optimizerKitMissingApprovedStages();
+ if(missing.length){
+  const names={images:'Imagens',video:'Vídeo',fiscal:'Dados fiscais',variants:'Variações'};
+  optimizerExecNotice('Execução completa bloqueada: '+missing.map(x=>names[x]).join(', ')+
+   ' foram conferidas no kit, mas NÃO estão incluídas na prévia Shopee. Abra a etapa indicada e conclua o vínculo real antes de publicar.','warning');
+  globalThis.RAKitWizardNavigateToStage?.(missing[0]);
+  return;
+ }
  if(optimizerExecPlan?.canExecute&&optimizerDiscountReviewedForExecution(optimizerExecPlan))
   return void optimizerExecuteApproved(false);
  void optimizerResolveExecutionBlockers();
@@ -5671,6 +5721,13 @@ function optimizerExecutionNeedsFreshPreview(message){
 }
 async function optimizerExecuteApproved(remainingOnly=false){
  const p=optimizerExecPlan,ctx=optimizerExecContext;
+ const missing=optimizerKitMissingApprovedStages(p);
+ if(missing.length){
+  optimizerExecNotice('O kit tem etapas marcadas que ficaram fora da execução: '+
+   missing.join(', ')+'. Revise antes de autorizar qualquer publicação.','warning');
+  globalThis.RAKitWizardNavigateToStage?.(missing[0]);
+  return;
+ }
  if(remainingOnly&&(p?.selectedStage!=='all'||!p?.modelVariations?.promotion))return;
  if(!p?.canExecute||!ctx||optimizerExecBusy||p.sku!==ctx.sku||
     p.itemId!==ctx.itemId||p.modelId!==ctx.modelId)return;
