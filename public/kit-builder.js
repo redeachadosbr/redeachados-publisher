@@ -116,7 +116,7 @@ globalThis.RAKitWizardExecutionReviews=()=>{
 };
 // O handoff da aba é efêmero: ao reabrir um kit, identificar novamente o
 // anúncio exato pela Shopee, preservando o Item ID vinculado no banco.
-let kitWizardResumingTarget=false;
+let kitWizardResumingTarget=false,kitWizardResumeTimeout=null;
 async function kitWizardResumeTargetForExecution(){
  if(kitWizardResumingTarget||!prepared?.kit||!kitSaved)return false;
  kitWizardResumingTarget=true;
@@ -163,6 +163,16 @@ async function kitWizardResumeTargetForExecution(){
   });
   if(!linked?.ok)throw Error(linked?.error||'Motor da SKU principal não iniciou.');
   report('Item ID '+selected.itemId+' recuperado e confirmado na Shopee. Carregando o motor para enviar apenas as pendências...');
+  clearTimeout(kitWizardResumeTimeout);
+  kitWizardResumeTimeout=setTimeout(()=>{
+   if(kitWizardStage!==10||!kitWizardExecutionIntent||
+      String(prepared?.kit?.kitSku)!==current)return;
+   kitWizardExecutionIntent=false;
+   const message='O motor da Shopee não terminou de carregar o Item ID '+selected.itemId+
+    '. A execução não começou. Clique novamente em Executar na Shopee para retomar; nada foi descartado.';
+   if(notice){notice.hidden=false;notice.textContent=message;}
+   status(message,'error');
+  },135000);
   return true;
  }catch(error){
   kitWizardExecutionIntent=false;
@@ -685,6 +695,22 @@ async function kitWizardRequestDiscount({force=false}={}){
   if(btn&&!btn.hidden)btn.disabled=false;
  }
 }
+globalThis.RAKitWizardWorkflowLoadError=({kitSku,sku,itemId,message}={})=>{
+ if(kitWizardStage!==10||!kitWizardExecutionIntent||
+    String(kitSku||'')!==String(prepared?.kit?.kitSku||''))return false;
+ const handoff=globalThis.__RA_KIT_OPTIMIZATION_HANDOFF;
+ if(sku&&String(handoff?.sku||'')!==String(sku))return false;
+ if(itemId&&String(handoff?.itemId||'')!==String(itemId))return false;
+ clearTimeout(kitWizardResumeTimeout);kitWizardResumeTimeout=null;
+ kitWizardExecutionIntent=false;
+ const text='Não foi possível carregar o executor do Item ID '+String(itemId||handoff?.itemId||'')+
+  ': '+String(message||'Falha na consulta do plano')+
+  '. Nenhuma publicação foi iniciada. Os dados preparados continuam salvos.';
+ const notice=$('#kitWizardExecutionDirectStatus');
+ if(notice){notice.hidden=false;notice.textContent=text;}
+ status(text,'error');
+ return true;
+};
 globalThis.RAKitWizardWorkflowReady=data=>{
  if(data?.kitOptimization?.kitSku!==prepared?.kit?.kitSku)return false;
  if(kitWizardStage===9){
@@ -702,6 +728,7 @@ globalThis.RAKitWizardWorkflowReady=data=>{
   return true;
  }
  if(kitWizardStage===10){
+  clearTimeout(kitWizardResumeTimeout);kitWizardResumeTimeout=null;
   kitWizardMountTechnical();
   // Carregar a SKU nunca dispara a execução por conta própria.
   // O comando só avança após o clique explícito no botão azul.
@@ -805,6 +832,8 @@ function kitWizardInit(){
  // A Etapa 10 possui um único botão; as demais etapas continuam clicáveis
  // no painel de 10 passos, sem um segundo cartão de navegação.
  $('#kitWizardOpenExecution')?.addEventListener('click',async()=>{
+  if(kitWizardResumingTarget||kitWizardExecutionOpening)return;
+  clearTimeout(kitWizardResumeTimeout);kitWizardResumeTimeout=null;
   kitWizardExecutionIntent=true;
   if(!prepared?.kit||!kitSaved){
    status('Salve o rascunho antes de executar na Shopee. Nenhum envio realizado.','warning');
