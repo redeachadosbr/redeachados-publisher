@@ -832,9 +832,19 @@ export function initExistingKitOptimization({getContext,api,money,onMainSkuChang
   $('#kitOptimizeSelected').textContent='Item ID '+id+' · SKU '+code+' · confirmado na Shopee';
   if($('#kitOptimizeConfirm'))$('#kitOptimizeConfirm').checked=true;
   paint();
-  return openTechnicalTarget()?
+  // A retomada na Etapa 10 nao e uma consulta da Etapa 05.
+  // technicalOnly bloquearia o callback RAKitOptimizerReady e deixaria
+  // "Carregando o motor..." sem prosseguir para executar as pendencias.
+  const open=globalThis.redeKitOpenOptimizerTarget;
+  const loaded=typeof open==='function'&&open({
+   kitSku:String(kit.kitSku),sku:code,itemId:id,modelId:String(modelId),
+   embed:true,technicalOnly:false,
+   targetMarginPct:Number(kit.quote?.targetMarginPct),
+   shipping:Number(kit.shipping||0),packing:Number(kit.packing||0)
+  });
+  return loaded?
    {ok:true,kitSku:kit.kitSku,sku:code,itemId:id,modelId:String(modelId)}:
-   {ok:false,error:'Motor original não abriu para o Item ID confirmado.'};
+   {ok:false,error:'Motor de execucao nao abriu para o Item ID confirmado.'};
  }
  // Ponte de mídia usa o carregador original, mantendo SKU, Item ID e 9 fotos
  // vinculados ao mesmo anúncio. Nenhum upload ao anúncio ocorre nesta fase.
