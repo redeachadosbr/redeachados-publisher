@@ -529,3 +529,47 @@ test('troca de SKU principal mantém preço e reordena fichas, custo e referênc
  assert.ok(js.includes('kitBridgeController?.activeJob()'));
  assert.ok(!js.includes('kit.components.sort('),'Não alterar composição original');
 });
+
+
+test('etapa 05: check segue a conferência técnica confirmada do Item ID',async()=>{
+ const vm=await import('node:vm');
+ const js=fs.readFileSync(new URL('../public/kit-builder.js',import.meta.url),'utf8');
+ const app=fs.readFileSync(new URL('../public/app.js',import.meta.url),'utf8');
+ const from=js.indexOf('function kitWizardTechnicalReviewSync(');
+ const to=js.indexOf('function kitWizardTechnicalReady(',from);
+ assert.ok(from>0&&to>from);
+ const written=new Map(),statuses=[];
+ const kit={kitSku:'KIT-126051011000-KTE022BCF-TRC6808',
+  components:[{sku:'1.26051.01.1000'},{sku:'KTE022BCF'},{sku:'TRC6808'}]};
+ const selected='1.26051.01.1000';
+ const handoff={kitSku:kit.kitSku,sku:selected,itemId:'22395191993'};
+ let progress=0;
+ const ctx=vm.createContext({
+  prepared:{kit},kitWizardStage:5,
+  globalThis:{__RA_KIT_OPTIMIZATION_HANDOFF:handoff},
+  $:selector=>selector==='#kitOptimizeMainSku'?{value:selected}:null,
+  kitWizardChecked:()=>JSON.parse(written.get('wizard')||'[1,2,3,4]'),
+  kitWizardStorageKey:()=> 'wizard',
+  kitWizardUpdateProgress:()=>{progress++;},
+  kitWizardTechnicalStatus:(message,state)=>statuses.push({message,state}),
+  localStorage:{setItem:(k,v)=>written.set(k,v)}
+ });
+ vm.runInContext(js.slice(from,to),ctx);
+ const fn=ctx.globalThis.RAKitTechnicalReviewChanged;
+ assert.equal(fn({...handoff,reviewed:true}),true);
+ assert.deepEqual(JSON.parse(written.get('wizard')),[1,2,3,4,5]);
+ assert.equal(progress,1);
+ assert.equal(statuses.at(-1).state,'success');
+ assert.equal(fn({...handoff,itemId:'999999',reviewed:true}),false,
+  'Outro anúncio não pode marcar etapa 05');
+ assert.equal(fn({...handoff,sku:'TRC6808',reviewed:true}),false,
+  'Outra SKU não pode marcar etapa 05');
+ assert.equal(fn({...handoff,reviewed:false}),true);
+ assert.deepEqual(JSON.parse(written.get('wizard')),[1,2,3,4]);
+ assert.ok(app.includes("globalThis.RAKitTechnicalReviewChanged?.({"));
+ assert.ok(app.includes("reviewed:technical?.reviewed===true"));
+ assert.ok(app.includes("const confirmed=result.stages?.find(x=>x.key==='technical')?.reviewed===true"));
+ assert.match(js,/if\(kitWizardStage===5\)\{\s*const editor=/);
+ assert.ok(js.includes("review.click()"));
+ assert.ok(js.includes('checks.delete(5)'),'Troca da principal invalida check anterior');
+});
