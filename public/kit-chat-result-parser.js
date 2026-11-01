@@ -99,7 +99,7 @@ export function parseManualKitSkuBlock(input,{size=null,limit=20}={}){
  if(!Number.isInteger(limit)||limit<1||limit>20)return null;
  const lines=raw.split(/\r?\n/).map(x=>x.trim()).filter(Boolean);
  // Não confundir tabela/descritivo/JSON com entrada direta de SKUs.
- if(lines.some(line=>/\s\|\s/.test(line)&&/\bkit\b|\bpre[cç]o\b/i.test(line)))return null;
+ if(lines.some(line=>/\bkit\b|\bpre[cç]o\b/i.test(line)))return null;
  if(/(?:^|\n)\s*(?:kit|produto|componentes|skus?)\s*:/i.test(raw))return null;
  const tokens=raw.split(/[\s,;|+]+/).map(x=>x.trim()).filter(Boolean);
  if(tokens.length<2||tokens.length>100||
