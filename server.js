@@ -3112,8 +3112,8 @@ async function readLiveRootExecution(req){
   // separado falhe ao persistir. Conferir SEMPRE a campanha real da Shopee
   // usando a ultima aprovacao desta mesma SKU, nunca um check local.
   const approvedKitDiscount=review.kitOptimization?.kitSku&&(
-   (published?.status==='confirmed'&&published)||
    (review.kitDiscountPreview?.status==='prepared'&&review.kitDiscountPreview)||
+   (published?.status==='confirmed'&&published)||
    (job?.state==='verified'&&job?.plan?.kitDiscount)||null);
   if(approvedKitDiscount&&
      String(approvedKitDiscount.kitSku||review.kitOptimization.kitSku)===
