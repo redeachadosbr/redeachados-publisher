@@ -459,7 +459,7 @@ test('rastreador não altera resultados verificados nem presume execução da pr
  const progressCode=source('shopeeExecutionProgress.js');
  assert.match(progressCode,/const discountIncluded=Boolean\(plan\.commercialDiscount\|\|plan\.modelVariations\?\.promotion\|\|plan\.kitDiscount\|\|plan\.discountOnly\)/);
  assert.match(progressCode,/const discountDone=discountIncluded&&result\.discount\?\.status==='verified'/);
- assert.match(progressCode,/if\(id==='discount'&&fullWorkflow&&!discountIncluded\)/);
+ assert.match(progressCode,/if\(id==='discount'&&fullWorkflow&&plan\.selectedStage!=='media_fiscal'&&!discountIncluded\)/);
  assert.match(app,/const actualStatus=step\.id==='discount'&&sameKitJob/);
  assert.match(app,/kitDiscount\.prepared\?'kit-prepared'/);
  assert.match(app,/if\(actualStatus==='kit-prepared'\)li\.title='Check da etapa 08: prévia conferida\. Desconto ainda não aplicado/);
