@@ -592,8 +592,78 @@ let kitStockReady=false,kitStockLastCheck=null;
 const kitExistingOptimizer=initExistingKitOptimization({
  getContext:()=>({prepared,kitSaved,images,kitPhotoStore}),
  api,money,
- onMainSkuChange:sku=>{const top=$('#kitPrincipalSku');if(top&&[...top.options].some(x=>x.value===sku))top.value=sku;}
+ onMainSkuChange:sku=>{kitApplyMainSkuOrder(sku);}
 });
+// A escolha principal altera a ordem de apresentação, não o kitSku nem a
+// composição canônica usada pelas APIs de preço, publicação e persistência.
+const KIT_MAIN_ORDER_PREFIX='redeachados-kit-main-order-v1:';
+function kitRememberedMain(kit=prepared?.kit){
+ if(!kit?.kitSku)return '';
+ try{
+  const sku=String(localStorage.getItem(KIT_MAIN_ORDER_PREFIX+kit.kitSku)||'');
+  return kit.components?.some(p=>String(p.sku)===sku)?sku:'';
+ }catch{return '';}
+}
+function kitCurrentMain(kit=prepared?.kit){
+ const parts=kit?.components||[];
+ const candidates=[kitRememberedMain(kit),prepared?.optimization?.mainSku,
+  $('#kitPrincipalSku')?.value,$('#kitOptimizeMainSku')?.value,parts[0]?.sku];
+ return String(candidates.find(x=>x&&parts.some(p=>String(p.sku)===String(x)))||'');
+}
+function kitOrderedComponents(kit=prepared?.kit,main=kitCurrentMain(kit)){
+ const parts=Array.isArray(kit?.components)?kit.components:[];
+ const primary=parts.find(p=>String(p.sku)===String(main));
+ return primary?[primary,...parts.filter(p=>String(p.sku)!==String(main))]:[...parts];
+}
+function kitForImageReferences(kit=prepared?.kit){
+ return kit?{...kit,components:kitOrderedComponents(kit)}:null;
+}
+function kitReorderSelect(select,main){
+ if(!select)return;
+ const previous=select.value,options=[...select.options];
+ const order=kitOrderedComponents().map(p=>options.find(o=>o.value===String(p.sku))).filter(Boolean);
+ const keep=options.filter(o=>!order.includes(o));
+ select.replaceChildren(...keep.filter(o=>!o.value),...order,...keep.filter(o=>o.value));
+ if(options.some(o=>o.value===main))select.value=main;
+ else if(options.some(o=>o.value===previous))select.value=previous;
+}
+function kitApplyMainSkuOrder(main,{persist=true}={}){
+ const kit=prepared?.kit;
+ if(!kit?.components?.some(p=>String(p.sku)===String(main)))return false;
+ if(persist){
+  try{localStorage.setItem(KIT_MAIN_ORDER_PREFIX+kit.kitSku,String(main));}
+  catch{status('Ordem alterada nesta sessão, mas não pôde ser armazenada neste navegador.','warning');}
+ }
+ for(const selector of ['#kitPrincipalSku','#kitOptimizeMainSku','#kitMainSku'])
+  kitReorderSelect($(selector),String(main));
+ // Move os cartões reais, preservando textarea, prints, validações e listeners.
+ const facts=$('#kitMissingFactFields');
+ if(facts){
+  const cards=new Map([...facts.children].map(card=>[card.dataset.kitFactSku,card]));
+  for(const p of kitOrderedComponents(kit,main)){
+   const card=cards.get(String(p.sku));if(card)facts.append(card);
+  }
+ }
+ const components=$('#kitComponents');
+ if(components){
+  const cards=new Map([...components.children].map(card=>[card.dataset.kitComponentSku,card]));
+  for(const p of kitOrderedComponents(kit,main)){
+   const card=cards.get(String(p.sku));if(card)components.append(card);
+  }
+ }
+ const replacement=$('#kitManualComposition');
+ for(const select of replacement?.querySelectorAll('select')||[]){
+  if(!kit.components.some(p=>String(p.sku)===select.value))continue;
+  const previous=select.value,options=[...select.options];
+  const ordered=kitOrderedComponents(kit,main).map(p=>options.find(o=>o.value===String(p.sku))).filter(Boolean);
+  if(ordered.length===kit.components.length){select.replaceChildren(...ordered);select.value=previous;}
+ }
+ refreshKitEditorOverview(kit);
+ renderKitPricingSummary(kit);
+ kitUpdateImageGuidance();
+ if($('#kitImages'))renderImageSlots();
+ return true;
+}
 let kitUnifiedState=null;
 let kitPublishToken=null,kitDiscountToken=null,kitSaved=false,kitPublishBusy=false,kitReadiness=null,kitShopeePhotoSlots=new Map(),kitItemId=null;
 const kitLogisticsKeeper=createKitLogisticsPersistence({
@@ -684,7 +754,7 @@ function refreshKitEditorOverview(kit){
  const photos=$('#kitEditorProductPhotos');
  if(!photos)return;
  photos.replaceChildren();
- kit.components.forEach((p,index)=>{
+ kitOrderedComponents(kit).forEach((p,index)=>{
    if(index){
      const plus=elt('span','kit-editor-photo-plus','+');
      plus.setAttribute('aria-hidden','true');
@@ -722,10 +792,11 @@ function renderKitPricingSummary(kit=prepared?.kit){
   costs=$('#kitPriceComponentCosts'),state=$('#kitPriceCost');
  if(!select||!values||!costs||!state)return;
  const parts=Array.isArray(kit?.components)?kit.components:[];
+ const displayParts=kitOrderedComponents(kit);
  const former=select.value;
  select.replaceChildren(new Option(parts.length?'Escolha o SKU Principal':'Selecione um kit',''));
- for(const p of parts)select.append(new Option(p.sku+' · '+p.name,p.sku));
- const main=[former,prepared?.optimization?.mainSku,$('#kitOptimizeMainSku')?.value]
+ for(const p of displayParts)select.append(new Option(p.sku+' · '+p.name,p.sku));
+ const main=[kitRememberedMain(kit),prepared?.optimization?.mainSku,former,$('#kitOptimizeMainSku')?.value]
   .find(x=>x&&parts.some(p=>p.sku===x));
  select.value=main||'';select.disabled=!parts.length;
  const validCosts=parts.length>=2&&parts.length<=3&&
@@ -752,7 +823,7 @@ function renderKitPricingSummary(kit=prepared?.kit){
  $('#kitPriceMargin').textContent=pct(kit.quote.netMarginPct)+' de margem líquida';
  const heading=document.createElement('span');heading.className='kit-price-cost-heading';
  heading.textContent='Custos WeDrop';costs.append(heading);
- for(const p of parts){
+ for(const p of displayParts){
   const chip=document.createElement('span');chip.className='kit-price-cost-chip';
   chip.title=p.name||('SKU '+p.sku);
   const code=document.createElement('small');code.textContent='SKU '+p.sku;
