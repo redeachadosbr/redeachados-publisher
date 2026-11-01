@@ -30,13 +30,13 @@ test('promoção tem checkpoint antes da escrita e aguarda leitura oficial',asyn
  };
  const first=await advanceShopeeKitDiscount(job('kit_discount_ready'),io);
  assert.equal(first.state,'running');
- assert.deepEqual(calls,['market']);
- const next=await advanceShopeeKitDiscount(job('kit_discount_ready',first.result),io);
+ assert.deepEqual(calls,['identity','checkpoint','publish']);
+ const next=first;
  assert.equal(next.result.phase,'kit_discount_verifying');
- assert.deepEqual(calls,['market','identity','checkpoint','publish']);
+ assert.deepEqual(calls,['identity','checkpoint','publish']);
  const polling=await advanceShopeeKitDiscount(job('kit_discount_verifying',next.result),io);
  assert.equal(polling.state,'running');
- assert.deepEqual(calls,['market','identity','checkpoint','publish'],'nunca repetir promoção');
+ assert.deepEqual(calls,['identity','checkpoint','publish'],'nunca repetir promoção');
  const verified=await advanceShopeeKitDiscount(job('kit_discount_verifying',next.result),{
   ...io,kitDiscountRead:async()=>({...base,confirmed:true})
  });
@@ -44,7 +44,7 @@ test('promoção tem checkpoint antes da escrita e aguarda leitura oficial',asyn
  assert.equal(verified.result.discount.status,'verified');
  assert.equal(calls.filter(c=>c==='publish').length,1);
 });
-test('sem pesquisa validada, não altera preço nem promoção',async()=>{
+test('sem preço bruto alinhado, não altera preço nem promoção',async()=>{
  const calls=[];
  const io={
   kitDiscountRead:async()=>({...base,priceAligned:false}),
