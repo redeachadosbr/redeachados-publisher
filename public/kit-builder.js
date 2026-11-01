@@ -192,6 +192,38 @@ async function kitWizardAwaitBounded(promise,ms,name){
    reject(Error(name+' não respondeu; os dados salvos continuam preservados.')),ms);})]);
  }finally{clearTimeout(timer);}
 }
+// Before importing media, reconcile the stored linkage. The old flow trusted
+// a browser handoff even when draft/workflow saves were interrupted or copy was
+// edited afterwards. Repair LOCALLY with audited identity; never publish here.
+async function kitWizardEnsureExecutionLink({kitSku,sku,itemId,modelId}){
+ const identity={kitSku,sku,itemId,modelId};
+ const endpoint='/api/shopee/kits/optimization/link-status?'+new URLSearchParams(identity);
+ const check=async()=>api(endpoint,{signal:AbortSignal.timeout(20000)});
+ let lastError='';
+ for(let attempt=0;attempt<2;attempt++){
+  try{
+   const state=await check();
+   if(state?.ready===true)return {ok:true,recovered:attempt>0};
+  }catch(error){lastError=String(error.message||error);}
+  try{
+   const response=await api('/api/shopee/kits/optimization/prepare',{
+    body:{...identity,mainSku:sku,confirmedItemId:itemId},
+    signal:AbortSignal.timeout(100000)
+   });
+   if(response?.prepared!==true||String(response.target?.itemId)!==itemId)
+    throw Error('O servidor não confirmou a preparação desse Item ID.');
+   const verify=await check();
+   if(verify?.ready===true)return {ok:true,recovered:true};
+   lastError='O rascunho ou a revisão do anúncio ainda não confirmou o vínculo.';
+  }catch(error){
+   lastError=String(error.message||error);
+   if(!/HTTP\\s*(?:502|503|504)|timeout|network|fetch failed/i.test(lastError))break;
+   // A first response can fail after saving; next iteration reads both records.
+  }
+ }
+ return {ok:false,error:'Não foi possível reconciliar o vínculo confirmado do Item ID '+
+  itemId+': '+lastError+'. Os arquivos continuam salvos; nenhum envio foi iniciado.'};
+}
 async function kitWizardOpenExecutionFlow(){
  if(kitWizardExecutionOpening||kitWizardStage!==10||!prepared?.kit)return;
  kitWizardExecutionOpening=true;
@@ -211,6 +243,13 @@ async function kitWizardOpenExecutionFlow(){
   }else{
    const id=String(handoff.itemId),sku=String(handoff.sku),modelId=String(handoff.modelId||'0');
    const identity=kitSku+'|'+sku+'|'+id+'|'+modelId;
+   if(notice){notice.hidden=false;notice.textContent='Conferindo vínculo salvo do kit e do Item ID '+id+' antes de sincronizar as pendências...';}
+   const checkedLink=await kitWizardEnsureExecutionLink({kitSku,sku,itemId:id,modelId});
+   if(!checkedLink.ok){
+    if(notice){notice.hidden=false;notice.textContent=checkedLink.error;}
+    status(checkedLink.error,'warning');
+    return;
+   }
    if(reviewed?.stages?.includes('images')&&kitWizardImagesSyncedFor!==identity){
     if(notice){notice.hidden=false;notice.textContent='Vinculando as 9 imagens conferidas à SKU principal, sem publicar...';}
     let imageLastMessage='';
@@ -260,12 +299,21 @@ async function kitWizardOpenExecutionFlow(){
     }
    }
    if(reviewed?.stages?.includes('fiscal')){
-    if(notice){notice.hidden=false;notice.textContent='Conferindo os dados fiscais no Motor Matriz original, sem publicar...';}
-    const fiscal=await kitWizardAwaitBounded(
-     globalThis.RAKitSyncApprovedFiscal?.({sku,itemId:id,modelId}),45000,'Conferência dos dados fiscais');
-    if(!fiscal?.ok)notes.push('Dados fiscais pendentes: '+
-     String(fiscal?.error||'Confirmação fiscal indisponível')+
-     '. Abra Dados fiscais e confira os campos originais.');
+    if(notice){notice.hidden=false;notice.textContent='Sincronizando os dados fiscais salvos com o Motor Matriz da SKU, sem publicar...';}
+    try{
+     const fiscal=await kitWizardAwaitBounded(
+      globalThis.RAKitSyncApprovedFiscal?.({sku,itemId:id,modelId}),45000,'Conferência dos dados fiscais');
+     if(!fiscal?.ok){
+      // A Etapa 08 already saved the SKU-specific origin. The in-browser
+      // workflow can be stale after automatic relink. Reopen only the plan,
+      // leaving the saved tax untouched, then retry once.
+      const reason=String(fiscal?.error||'Conferência fiscal indisponível');
+      if(/SKU\/Item ID do fluxo fiscal não conferem|nao conferem|anuncio da SKU principal ainda nao foi carregado/i.test(reason)){
+       notes.push('Dados fiscais: o editor ficou desatualizado após recuperar o vínculo. Atualizando o plano para retomar; origem fiscal preservada.');
+       globalThis.RAKitRefreshOptimizerWorkflow?.({kitSku,sku,itemId:id,modelId});
+      }else notes.push('Dados fiscais pendentes: '+reason+'. Verifique somente os campos ainda não confirmados.');
+     }
+    }catch(error){notes.push('Dados fiscais: '+String(error.message||error)+'. A revisão foi preservada.');}
    }
   }
   if(prepared?.kit?.kitSku!==kitSku||kitWizardStage!==10)return;
