@@ -239,23 +239,36 @@ export async function saveKitFiscalOrigin(shopId,kitSku,origins){
  return {saved:true,kitSku,fiscalBySku,marketplaceUpdated:false};
 }
 export async function recordKitOptimization(shopId,kitSku,link){
- const id=shop(shopId),current=await loadKitDraft(id,kitSku);
- if(!current?.kit)throw Error('Kit não encontrado.');
- if(current.optimizationFinalization?.status==='verified')throw Error('Kit já finalizado e arquivado como anúncio otimizado.');
- if(link?.kitSku!==kitSku||current.creative?.title!==link.title||
-  current.creative?.description!==link.description||
-  Number(current.kit?.kitCost)!==Number(link.kitCost)||
-  Number(current.kit?.quote?.grossPrice)!==Number(link.grossPrice))
-  throw Error('O kit mudou durante a preparação. Reabra e salve novamente.');
- const draft={kit:current.kit,importBatchId:current.importBatchId||null,creative:current.creative,
-  logistics:current.logistics||null,reviewed:false,shopeePublished:false,
-  publication:current.publication,optimization:link};
- const result=await request('?shop_id=eq.'+id+'&kit_sku=eq.'+encodeURIComponent(kitSku)+
-  '&updated_at=eq.'+encodeURIComponent(current.updatedAt),{
-  method:'PATCH',data:{draft,updated_at:new Date().toISOString()},prefer:'return=representation'});
- if(!Array.isArray(result)||result.length!==1)
-  throw Error('O kit foi alterado por outro editor. Recarregue antes de continuar.');
- return {saved:true,optimization:link};
+ const id=shop(shopId);
+ // Autosave de Informações por SKU e fiscal podem atualizar apenas updated_at
+ // durante a preparação. Retomar com o estado mais recente, sem perder campos.
+ for(let attempt=0;attempt<3;attempt++){
+  const current=await loadKitDraft(id,kitSku);
+  if(!current?.kit)throw Error('Kit não encontrado.');
+  if(current.optimizationFinalization?.status==='verified'||
+    current.publication?.status!=='local_draft'||current.publication?.itemId)
+   throw Error('Kit publicado ou com execução incerta; não modificar o vínculo.');
+  if(link?.kitSku!==kitSku||current.creative?.title!==link.title||
+   current.creative?.description!==link.description||
+   Number(current.kit?.kitCost)!==Number(link.kitCost)||
+   Number(current.kit?.quote?.grossPrice)!==Number(link.grossPrice)||
+   current.skus.map(String).join('|')!==link.componentSkus?.map(String).join('|'))
+   throw Error('A composição, preço ou texto comercial mudou. Recalcule a preparação deste kit.');
+  if(current.optimization?.itemId&&
+     String(current.optimization.itemId)!==String(link.itemId))
+   throw Error('O kit já foi vinculado a outro anúncio; reconfirme o Item ID.');
+  const draft={kit:current.kit,importBatchId:current.importBatchId||null,
+   creative:current.creative,logistics:current.logistics||null,
+   reviewed:false,shopeePublished:false,publication:current.publication,
+   optimizationFinalization:current.optimizationFinalization||null,
+   optimization:link};
+  const result=await request('?shop_id=eq.'+id+'&kit_sku=eq.'+encodeURIComponent(kitSku)+
+   '&updated_at=eq.'+encodeURIComponent(current.updatedAt),{
+    method:'PATCH',data:{draft,updated_at:new Date().toISOString()},prefer:'return=representation'});
+  if(Array.isArray(result)&&result.length===1)
+   return {saved:true,optimization:link,concurrentRetries:attempt};
+ }
+ throw Error('O rascunho está sendo salvo por outra etapa. Tente novamente sem apagar imagens.');
 }
 
 /**
