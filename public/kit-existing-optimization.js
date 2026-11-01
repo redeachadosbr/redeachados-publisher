@@ -773,6 +773,9 @@ export function initExistingKitOptimization({getContext,api,money,onMainSkuChang
   progressNote('SKU única Shopee: '+(main||'não selecionada')+'. Os demais componentes são vinculados na WeDrop.');
   paint();
  });
+ // Ponte de mídia usa o carregador original, mantendo SKU, Item ID e 9 fotos
+ // vinculados ao mesmo anúncio. Nenhum upload ao anúncio ocorre nesta fase.
+ globalThis.RAKitTransferImagesToWorkflow=()=>transferImages({automatic:true,optional:false});
  // SKU do anúncio é informativa e deriva exclusivamente da escolha principal.
  renderJourney();
  return {restore,openTechnical,openDiscount,prepareDiscountLink};
