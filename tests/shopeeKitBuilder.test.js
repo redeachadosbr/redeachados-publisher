@@ -492,3 +492,41 @@ test('painel original de troca de SKU aparece acima da otimização de 10 etapas
  assert.ok(css.includes('#tab-kits #kitWizardCurrentKit #kitManualComposition>.kit-manual-composition'));
  assert.ok(css.includes('#tab-kits #kitWizardCurrentKit #kitToggleComposition.kit-composition-toggle'));
 });
+
+test('troca de SKU principal mantém preço e reordena fichas, custo e referências sem mover fotos',()=>{
+ const fs=await import('node:fs');
+ const vm=await import('node:vm');
+ const js=fs.readFileSync(new URL('../public/kit-builder.js',import.meta.url),'utf8');
+ const from=js.indexOf('function kitOrderedComponents(');
+ const to=js.indexOf('function kitForImageReferences(',from);
+ assert.ok(from>0&&to>from);
+ const fn=vm.runInNewContext(js.slice(from,to)+';kitOrderedComponents;');
+ const original=[
+  {sku:'TRC6808',name:'Dispenser'},
+  {sku:'1.26051.01.1000',name:'Lixeira'},
+  {sku:'KTE022BCF',name:'Porta escova'}
+ ];
+ const kit={kitSku:'KIT-KTE022BCF-TRC6808-126051011000',components:original,
+  componentCost:51.47,quote:{grossPrice:154.40,discountPct:23.19}};
+ const ordered=fn(kit,'1.26051.01.1000');
+ assert.deepEqual(Array.from(ordered,p=>p.sku),[
+  '1.26051.01.1000','TRC6808','KTE022BCF'
+ ]);
+ assert.deepEqual(Array.from(kit.components,p=>p.sku),[
+  'TRC6808','1.26051.01.1000','KTE022BCF'
+ ]);
+ assert.equal(kit.componentCost,51.47);
+ assert.equal(kit.quote.grossPrice,154.40);
+ assert.ok(js.includes('card.dataset.kitFactSku=sku'));
+ assert.ok(js.includes('card.dataset.kitComponentSku=String(p.sku)'));
+ assert.ok(js.includes('for(const component of kitOrderedComponents())'));
+ assert.ok(js.includes('const components=kitOrderedComponents();'));
+ assert.ok(js.includes('getKit:()=>kitForImageReferences()'));
+ assert.ok(js.includes('slot,skus:kitOrderedComponents(kit).map(p=>p.sku)'));
+ assert.ok(js.includes('kitRememberedMain(kit)'));
+ assert.ok(js.includes('kitApplyMainSkuOrder(sku)'));
+ assert.ok(js.includes('for(const p of displayParts)'));
+ assert.ok(js.includes("if(images.size)imageStatus("));
+ assert.ok(js.includes('kitBridgeController?.activeJob()'));
+ assert.ok(!js.includes('kit.components.sort('),'Não alterar composição original');
+});
