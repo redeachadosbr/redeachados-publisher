@@ -37,7 +37,7 @@ export async function saveKitDraft(shopId,{kit,creative,logistics,importBatchId}
  if(title.length<10||description.length<80)throw Error('Preencha o título e a descrição antes de salvar.');
  const previous=await loadKitDraft(id,kit.kitSku);
  const batchId=String(importBatchId||previous?.importBatchId||await latestActiveBatch(id)||'');
- if(previous?.publication?.itemId||['publishing','uncertain'].includes(previous?.publication?.status))
+ if(previous?.optimizationFinalization?.status==='verified'||previous?.publication?.itemId||['publishing','uncertain'].includes(previous?.publication?.status))
   throw Error('Kit enviado à Shopee ou com publicação incerta; não regrave. Consulte o status primeiro.');
  const seoTitles=Array.isArray(creative?.seoTitles)?creative.seoTitles
   .filter(x=>typeof x==='string'&&x.trim().length>=10&&Array.from(x.trim()).length<=120)
@@ -50,6 +50,7 @@ export async function saveKitDraft(shopId,{kit,creative,logistics,importBatchId}
  const draft={kit,importBatchId:batchId||null,logistics:savedLogistics,creative:{title,description,seoTitles:uniqueTitles.length===3?uniqueTitles:[],
   manualFacts,source:String(creative.source||'rascunho revisado').slice(0,90)},
   reviewed:false,shopeePublished:false,
+  optimizationFinalization:previous?.optimizationFinalization||null,
   publication:previous?.publication||{status:'local_draft',itemId:null},
   optimization:previous?.optimization&&
     previous.creative?.title===title&&previous.creative?.description===description&&
@@ -70,7 +71,7 @@ export async function deleteKitDraft(shopId,kitSku){
  if(!/^KIT-[A-Z0-9-]{4,115}$/.test(code))throw Error('Código de kit inválido.');
  const existing=await loadKitDraft(id,code);
  if(!existing)return {deleted:false,notFound:true,kitSku:code};
- if(!mayDeleteKitDraft(existing.publication))
+ if(existing.optimizationFinalization?.status==='verified'||!mayDeleteKitDraft(existing.publication))
   throw Error('Este kit já foi enviado à Shopee ou tem publicação em andamento/incerta. Não é possível excluir.');
  // A condição no DELETE também impede apagar uma publicação que mude de status após a leitura.
  const rows=await request('?shop_id=eq.'+id+
@@ -96,12 +97,14 @@ export async function listKitDrafts(shopId){
    itemId:x.draft?.publication?.itemId||null,
    importBatchId:String(x.draft?.importBatchId||''),
    optimization:x.draft?.optimization||null,
-   deletable:mayDeleteKitDraft(x.draft?.publication),
+   optimizationFinalization:x.draft?.optimizationFinalization||null,
+   deletable:mayDeleteKitDraft(x.draft?.publication)&&x.draft?.optimizationFinalization?.status!=='verified',
    updatedAt:x.updated_at}));
  // Lote mais recente por identificador cronológico, não por alteração de cartão antigo.
  const activeBatchId=all.map(x=>x.importBatchId).filter(Boolean).sort().at(-1)||'';
- const published=all.filter(x=>x.publication==='published');
- const drafts=all.filter(x=>x.publication!=='published'&&(
+ const isFinished=x=>x.publication==='published'||x.optimizationFinalization?.status==='verified';
+ const published=all.filter(isFinished);
+ const drafts=all.filter(x=>!isFinished(x)&&(
   !activeBatchId||x.importBatchId===activeBatchId||
   ['publishing','uncertain','published_pending'].includes(x.publication)));
  return {drafts,published,activeBatchId:activeBatchId||null};
@@ -117,13 +120,14 @@ export async function loadKitDraft(shopId,kitSku){
   creative:row.draft?.creative||{},kit:row.draft?.kit||null,
   importBatchId:String(row.draft?.importBatchId||''),
   logistics:row.draft?.logistics||null,
-  publication:row.draft?.publication||{status:'local_draft',itemId:null},optimization:row.draft?.optimization||null,updatedAt:row.updated_at};
+  publication:row.draft?.publication||{status:'local_draft',itemId:null},optimization:row.draft?.optimization||null,
+  optimizationFinalization:row.draft?.optimizationFinalization||null,updatedAt:row.updated_at};
 }
 
 export async function saveKitDraftManualFacts(shopId,kitSku,input){
  const id=shop(shopId),current=await loadKitDraft(id,kitSku);
  if(!current?.kit)throw Error('Rascunho ainda não salvo no servidor.');
- if(current.publication?.itemId||current.publication?.status!=='local_draft')
+ if(current.optimizationFinalization?.status==='verified'||current.publication?.itemId||current.publication?.status!=='local_draft')
   throw Error('Anúncio publicado ou pendente: fichas bloqueadas para alterações.');
  if(!input||typeof input!=='object'||Array.isArray(input))throw Error('Dados por SKU inválidos.');
  const allowed=new Set(current.skus.map(String));
@@ -144,7 +148,7 @@ export async function saveKitDraftManualFacts(shopId,kitSku,input){
 export async function saveKitDraftCopy(shopId,kitSku,input){
  const id=shop(shopId),current=await loadKitDraft(id,kitSku);
  if(!current?.kit)throw Error('Rascunho ainda não salvo no servidor.');
- if(current.publication?.itemId||String(current.publication?.status||'local_draft')!=='local_draft')
+ if(current.optimizationFinalization?.status==='verified'||current.publication?.itemId||String(current.publication?.status||'local_draft')!=='local_draft')
   throw Error('Kit publicado ou pendente: edição comercial bloqueada.');
  const title=String(input?.title||'').trim().slice(0,120);
  const description=String(input?.description||'').trim().slice(0,2000);
@@ -169,7 +173,7 @@ export async function saveKitDraftLogistics(shopId,kitSku,input){
  const current=await loadKitDraft(id,kitSku);
  if(!current?.kit)throw Error('Salve primeiro o rascunho do kit para sincronizar a logística.');
  const status=String(current.publication?.status||'local_draft');
- if(current.publication?.itemId||status!=='local_draft')
+ if(current.optimizationFinalization?.status==='verified'||current.publication?.itemId||status!=='local_draft')
   throw Error('Kit enviado ou com publicação pendente: os campos de logística não podem mais ser alterados.');
  const logistics=normalizeKitLogistics(input,current.kit);
  if(!logistics)throw Error('Dados de logística inválidos.');
@@ -201,6 +205,7 @@ export async function recordKitPublication(shopId,kitSku,publication){
 export async function recordKitOptimization(shopId,kitSku,link){
  const id=shop(shopId),current=await loadKitDraft(id,kitSku);
  if(!current?.kit)throw Error('Kit não encontrado.');
+ if(current.optimizationFinalization?.status==='verified')throw Error('Kit já finalizado e arquivado como anúncio otimizado.');
  if(link?.kitSku!==kitSku||current.creative?.title!==link.title||
   current.creative?.description!==link.description||
   Number(current.kit?.kitCost)!==Number(link.kitCost)||
@@ -215,4 +220,47 @@ export async function recordKitOptimization(shopId,kitSku,link){
  if(!Array.isArray(result)||result.length!==1)
   throw Error('O kit foi alterado por outro editor. Recarregue antes de continuar.');
  return {saved:true,optimization:link};
+}
+
+/**
+ * Arquiva um anúncio otimizado EXISTENTE sem forjar criação de Kit Formal.
+ * Chamado somente depois da auditoria raiz 9/9 feita pelo servidor.
+ * Não publica nada na Shopee e mantém arquivos/histórico do rascunho.
+ */
+export async function recordKitOptimizationFinalization(shopId,kitSku,{sku,itemId,modelId='0',audit,job}={}){
+ const id=shop(shopId),code=String(kitSku||'').trim();
+ const current=await loadKitDraft(id,code);
+ if(!current?.kit||!current.optimization)throw Error('O kit não possui anúncio otimizado vinculado.');
+ const link=current.optimization;
+ if(String(link.kitSku)!==code||String(link.sku)!==String(sku)||
+    String(link.itemId)!==String(itemId)||String(link.modelId||'0')!==String(modelId||'0'))
+  throw Error('Vínculo Shopee divergente. A finalização foi bloqueada.');
+ if(current.optimizationFinalization?.status==='verified'){
+  if(String(current.optimizationFinalization.itemId)===String(itemId))
+   return {finalized:true,alreadyFinalized:true,finalization:current.optimizationFinalization};
+  throw Error('O kit já foi finalizado com outro Item ID.');
+ }
+ if(audit?.complete!==true||audit?.sku!==sku||String(audit.itemId)!==String(itemId)||
+    (audit.pending||[]).length||!Array.isArray(audit.stages)||audit.stages.length!==9||
+    audit.stages.some(x=>!['confirmed','not_applicable'].includes(x.status)))
+  throw Error('Auditoria raiz da Shopee não confirmou todas as etapas. Rascunho preservado.');
+ if(job?.state!=='verified'||String(job.item_id)!==String(itemId)||
+    String(job.model_id||'0')!==String(modelId||'0')||String(job.sku)!==String(sku))
+  throw Error('A execução do anúncio ainda não tem confirmação registrada pela Shopee.');
+ const finalization={status:'verified',kind:'existing_listing_optimization',
+  kitSku:code,sku:String(sku),itemId:String(itemId),modelId:String(modelId||'0'),
+  verifiedAt:new Date().toISOString(),source:'shopee_root_audit',
+  confirmedStages:audit.stages.map(x=>({id:x.id,status:x.status})),
+  executionRunId:String(job.run_id||'')};
+ const draft={kit:current.kit,importBatchId:current.importBatchId||null,
+  creative:current.creative,logistics:current.logistics||null,
+  reviewed:true,shopeePublished:false,
+  publication:current.publication,optimization:current.optimization,
+  optimizationFinalization:finalization};
+ const rows=await request('?shop_id=eq.'+id+'&kit_sku=eq.'+encodeURIComponent(code)+
+  '&updated_at=eq.'+encodeURIComponent(current.updatedAt)+
+  '&draft->optimization->>itemId=eq.'+encodeURIComponent(String(itemId)),{
+    method:'PATCH',data:{draft,updated_at:new Date().toISOString()},prefer:'return=representation'});
+ if(rows.length!==1)throw Error('O rascunho mudou durante a finalização. Atualize e confira o status.');
+ return {finalized:true,alreadyFinalized:false,finalization};
 }
