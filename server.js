@@ -326,13 +326,19 @@ app.get('/api/shopee/kits/drafts',mustLogin,requireWeDropAdmin,async(req,res)=>{
     if(!job||String(job.sku)!==String(link.sku))return;
     const progress=shopeeExecutionProgress(job);
     const steps=progress?.steps||[];
-    const confirmed=steps.filter(x=>['images','video','seo','description','technical'].includes(x.id)&&x.status==='done').map(x=>x.id);
+    const confirmed=steps.filter(x=>x.status==='done').map(x=>x.id);
+    // Verificar TODO o kit, não somente o último job (ex.: desconto isolado).
+    // "verified" do motor confirma somente as etapas incluídas naquele job.
+    const mandatory=['images','video','seo','description','technical','fiscal','discount'];
+    const pending=mandatory.filter(id=>!confirmed.includes(id));
+    const fullVerified=job.state==='verified'&&job.plan?.selectedStage==='all'&&pending.length===0;
     const commercialConfirmed=job.result?.primaryVerified===true||
      (confirmed.includes('seo')&&confirmed.includes('description'));
     draft.executionState=job.state;
     draft.confirmedStages=confirmed;
-    draft.optimizedListingStatus=job.state==='verified'?'verified':
-     commercialConfirmed?'published_partial':
+    draft.pendingStages=pending;
+    draft.optimizedListingStatus=fullVerified?'verified':
+     job.state==='verified'||commercialConfirmed?'published_partial':
      ['running','uncertain','prepared','failed'].includes(job.state)?'in_progress':null;
     draft.itemId=String(link.itemId);
     if(draft.optimizedListingStatus)draft.deletable=false;
