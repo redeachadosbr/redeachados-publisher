@@ -171,8 +171,8 @@ function kitWizardTechnicalStatus(message,state='info'){
 // O painel antigo fica como motor oculto, nunca como segunda navegação.
 function kitWizardMountTechnical(){
  const node=$('#kitOptimizerWorkspace'),normal=$('#kitOptimizeExistingPanel');
- const advanced=$('#kitOptimizeAdvanced'),bar=$('#kitOptimizeExistingPanel .kit-flow-start-bar')||
-  $('#kitWizardTechnicalMount .kit-flow-start-bar');
+ const advanced=$('#kitOptimizeAdvanced');
+ const bar=document.querySelector('.kit-flow-start-bar');
  const progress=$('#kitOptimizeStatus');
  if(!node||!normal)return;
  const mounts={5:'#kitWizardTechnicalMount',7:'#kitWizardVariantsMount',
@@ -185,33 +185,38 @@ function kitWizardMountTechnical(){
   if(progress?.parentElement===normal)progress.after(node);
   else normal.append(node);
  }
- // O vínculo e a seleção da SKU principal ficam acessíveis na Ficha técnica.
- const technical=kitWizardStage===5&&Boolean(mount);
+ // Item ID e SKU principal pertencem exclusivamente à conferência de desconto (09).
+ // O editor técnico original continua compartilhado, sem reconstrução dos campos.
+ const discount=kitWizardStage===9&&Boolean(mount);
+ const discountIdentity=$('#kitWizardDiscountIdentity');
  if(bar){
-  if(technical){
-   if(bar.parentElement!==mount)mount.insertBefore(bar,node);
+  if(discount&&discountIdentity){
+   if(bar.parentElement!==discountIdentity)discountIdentity.append(bar);
   }else if(bar.parentElement!==normal){
    const heading=normal.querySelector(':scope > .kit-flow-heading');
    if(heading)heading.after(bar);else normal.prepend(bar);
   }
+  bar.hidden=Boolean(kitWizardStage)&&!discount;
  }
  if(progress){
+  const technical=kitWizardStage===5&&Boolean(mount);
   if(technical){
-   if(progress.parentElement!==mount)bar?bar.after(progress):mount.prepend(progress);
+   if(progress.parentElement!==mount)mount.prepend(progress);
   }else if(progress.parentElement!==normal){
    if(bar?.parentElement===normal)bar.after(progress);
    else normal.prepend(progress);
   }
  }
  if(advanced){
-  if(technical){
-   if(advanced.parentElement!==mount)mount.append(advanced);
+  if(discount&&discountIdentity){
+   if(advanced.parentElement!==discountIdentity)discountIdentity.append(advanced);
   }else if(advanced.parentElement!==normal){
-   if(node.parentElement===normal)node.after(advanced);
-   else normal.append(advanced);
+   normal.append(advanced);
   }
+  advanced.hidden=Boolean(kitWizardStage)&&!discount;
  }
 }
+
 let kitWizardPricingHome=null,kitWizardPricingNext=null;
 function kitWizardMountPricing(){
  const summary=$('#kitPricingSummary'),mount=$('#kitWizardDiscountPricing');
@@ -467,7 +472,7 @@ async function kitWizardRequestDiscount({force=false}={}){
     ', mas ainda não vinculado à otimização deste kit. Para revisar Minha Promoção, clique em “Vincular Item ID confirmado ao kit”. Isso prepara apenas o rascunho e NÃO publica. '+
     (result.warning||''):
     result.candidates>1?
-    'A Shopee encontrou '+result.candidates+' anúncios desta SKU. Selecione o Item ID correto na Etapa 05, volte e atualize a conferência.':
+    'A Shopee encontrou '+result.candidates+' anúncios desta SKU. Selecione o Item ID correto na conferência da Etapa 09 e atualize novamente.':
     'A Shopee não confirmou Item ID editável para '+sku+
     '. Use a consulta da Etapa 05. Nenhum preço foi modificado.',
     'warning');
