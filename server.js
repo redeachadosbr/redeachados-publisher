@@ -2585,7 +2585,7 @@ app.post('/api/shopee/optimizer/execution/prepare',mustLogin,requireWeDropAdmin,
         '; busca '+(found.complete?'completa':'incompleta')+
         '; seleção: '+String(found.suggested?.reason||'indefinida')+'.';
        if((found.complete===true&&
-          ['kit_membership','primary_sku_membership','only_campaign'].includes(found.suggested?.reason))||
+          ['kit_membership','primary_sku_membership','only_campaign','single_verified_campaign'].includes(found.suggested?.reason))||
           ['kit_membership','primary_sku_membership'].includes(found.suggested?.reason))
         candidateId=String(found.suggested.discountId||'');
       }
