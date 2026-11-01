@@ -21,6 +21,7 @@ RUN node --check shopeeStructuredFields.js && node --test tests/shopee-2392-cest
 RUN node --check shopeeMarketFloorApproval.js && node --test tests/shopee-2392-market-floor-discount.test.js
 RUN node --check shopeeExecutionProgress.js && node --test tests/shopee-2392-prepared-not-stuck.test.js
 RUN node --check shopeeExecutionHealth.js && node --test tests/shopeeExecutionRootHealth.test.js
+RUN node --test tests/shopeeKitItemIdRegexRecovery.test.js
 RUN node --test tests/shopee-resume-manager-handshake.test.js
 RUN node --test tests/shopee-independent-sku-preparation.test.js
 RUN node --test tests/shopee-fast-image-gallery.test.js
