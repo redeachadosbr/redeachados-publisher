@@ -5,12 +5,12 @@ export function pickKitDiscountCandidate(campaigns,{kitItemId,primaryItemIds,com
  const candidates=campaigns.filter(c=>valid(c.discountId));
  const primaryIds=(primaryItemIds||[]).map(String);
  const matches=candidates.filter(c=>c.itemIds.includes(String(kitItemId))&&valid(kitItemId));
- if(complete&&matches.length===1)return {discountId:matches[0].discountId,reason:'kit_membership'};
+ if(matches.length===1)return {discountId:matches[0].discountId,reason:'kit_membership'};
  // O SKU principal também pode participar da mesma Minha Promoção; NÃO confundir item e promoção.
  const primary=candidates.filter(c=>primaryIds.some(id=>c.itemIds.includes(id)));
- if(complete&&primary.length===1)return {discountId:primary[0].discountId,reason:'primary_sku_membership'};
+ if(primary.length===1)return {discountId:primary[0].discountId,reason:'primary_sku_membership'};
  if(complete&&candidates.length===1)return {discountId:candidates[0].discountId,reason:'only_campaign'};
- return {discountId:null,reason:!complete?'incomplete':'choose'};
+ return {discountId:null,reason:!complete?'incomplete_no_membership':'choose'};
 }
 export async function discoverKitDiscountCampaigns({
  cfg,auth,call,readPages,kitItemId,primaryItemIds=[],maxDetailCampaigns=35
