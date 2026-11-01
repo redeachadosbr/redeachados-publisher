@@ -103,6 +103,12 @@ function kitWizardChecked(){
   return Array.isArray(saved)?[...new Set(saved.filter(n=>Number.isInteger(n)&&n>=1&&n<=10))]:[];
  }catch{return [];}
 }
+globalThis.RAKitWizardExecutionReviews=()=>{
+ const kit=prepared?.kit;
+ return kit?{kitSku:kit.kitSku,stages:kitWizardChecked()
+  .map(n=>({2:'images',3:'video',4:'seo',5:'technical',6:'description',
+   7:'variants',8:'fiscal',9:'discount'}[n])).filter(Boolean)}:null;
+};
 function kitWizardUpdateProgress(){
  const checks=kitWizardChecked();
  const p=$('#kitWizardProgress');if(p)p.textContent=checks.length+'/10 conferidas';
@@ -514,7 +520,10 @@ globalThis.RAKitWizardWorkflowReady=data=>{
  }
  if(kitWizardStage===10){
   kitWizardMountTechnical();
+  const scope=$('#optimizerExecutionScope');
+  if(scope)scope.value='all';
   $('#optimizerShowExecution')?.click();
+  $('#optimizerExecutionPanel')?.scrollIntoView?.({behavior:'smooth',block:'start'});
   return true;
  }
  return false;
@@ -544,6 +553,10 @@ function kitWizardSetStage(stage,{scroll=false}={}){
  const fiscal=$('#kitWizardFiscalAccess');if(fiscal)fiscal.hidden=kitWizardStage!==8;
  const discount=$('#kitWizardDiscountAccess');if(discount)discount.hidden=kitWizardStage!==9;
  const execution=$('#kitWizardExecutionAccess');if(execution)execution.hidden=kitWizardStage!==10;
+ const direct=$('#kitWizardOpenExecution');
+ if(direct){direct.hidden=kitWizardStage!==10;direct.disabled=!prepared?.kit;}
+ const mark=$('#kitWizardConfirm');if(mark)mark.hidden=kitWizardStage===10;
+ const forward=$('#kitWizardNext');if(forward)forward.hidden=kitWizardStage===10;
  // Ao abrir Variações, Ficha ou Fiscal, reutilizar a etapa REAL já carregada
  // no otimizador Shopee da SKU principal, sem cadastrar outra tela.
  const reusing={7:'variants'}[kitWizardStage];
@@ -606,40 +619,36 @@ function kitWizardInit(){
   }finally{button.disabled=false;}
  });
  $('#kitWizardGoTechnical')?.addEventListener('click',()=>kitWizardSetStage(5,{scroll:true}));
- // O usuário pode retomar revisões pendentes sem autorizar a publicação.
- const executionAccess=$('#kitWizardExecutionAccess');
- if(executionAccess&&!$('#kitWizardReviewPending')){
-  const resume=document.createElement('button');
-  resume.type='button';resume.id='kitWizardReviewPending';resume.className='kit-secondary';
-  resume.textContent='↩ Revisar etapas pendentes do kit';
-  resume.addEventListener('click',()=>{
-   const checks=new Set(kitWizardChecked());
-   const pending=[1,2,3,4,5,6,7,8,9].filter(n=>!checks.has(n));
-   if(pending.length){kitWizardSetStage(pending[0],{scroll:true});return;}
-   kitWizardSetStage(7,{scroll:true});
-   status('Todas as etapas locais estão conferidas. Verifique Variações e Dados fiscais no anúncio da Shopee: checks locais não provam inclusão ou publicação.','info');
-  });
-  const action=$('#kitWizardOpenExecution');
-  if(action)action.after(resume);else executionAccess.append(resume);
- }
- $('#kitWizardOpenExecution')?.addEventListener('click',()=>{
-  const btn=$('#optimizerShowExecution');
-  if(btn&&!$('#kitOptimizerWorkspace')?.hidden){
-   // O check local indica revisão do kit, não inclusão na execução da Shopee.
-   // Preparar uma prévia completa de todas as etapas aprovadas, sem publicar.
-   btn.click();
-   const scope=$('#optimizerExecutionScope');
-   const full=$('#optimizerExecutionSwitchFull');
-   const running=Boolean(document.querySelector('#optimizerExecutionPanel [data-state="running"], #optimizerExecutionPanel [data-state="verifying"]'));
-   if(!running&&scope&&scope.value!=='all'&&full&&!full.disabled){
-    full.click();
-    status('Prévia completa solicitada. Os checks do kit não equivalem a envio: confira quais etapas estão realmente incluídas antes de autorizar a execução.','info');
-   }else{
-    status('Confira o escopo da execução: uma etapa marcada no kit só será enviada se estiver incluída na prévia e aprovada no Motor Matriz.','info');
-   }
+ // A Etapa 10 possui um único botão; as demais etapas continuam clicáveis
+ // no painel de 10 passos, sem um segundo cartão de navegação.
+ $('#kitWizardOpenExecution')?.addEventListener('click',async()=>{
+  if(!prepared?.kit||!kitSaved){
+   status('Salve o rascunho antes de executar na Shopee. Nenhum envio realizado.','warning');
    return;
   }
-  status('Carregue primeiro o anúncio da SKU principal no editor técnico, depois retorne à execução.','info');
+  const selected=globalThis.RAKitWizardExecutionReviews?.();
+  if(!selected?.stages?.length){
+   status('Confira pelo menos uma etapa do kit antes de preparar a execução.','warning');
+   return;
+  }
+  const directStatus=$('#kitWizardExecutionDirectStatus');
+  if(directStatus){directStatus.hidden=false;directStatus.textContent='Carregando diretamente o motor de execução. As etapas selecionadas serão verificadas na prévia; nenhuma publicação começou.';}
+  kitWizardMountTechnical();
+  const scope=$('#optimizerExecutionScope');
+  if(scope)scope.value='all';
+  const workspace=$('#kitOptimizerWorkspace');
+  const btn=$('#optimizerShowExecution');
+  if(btn&&workspace&&!workspace.hidden){
+   btn.click();
+   $('#optimizerExecutionPanel')?.scrollIntoView?.({behavior:'smooth',block:'start'});
+   return;
+  }
+  status('Recuperando o vínculo original da SKU principal para abrir a execução.','info');
+  try{
+   await kitExistingOptimizer.openTechnical?.();
+  }catch(error){
+   status('Não foi possível abrir o motor original: '+String(error.message||error)+'. Dados preservados.','error');
+  }
  });
  $('#kitWizardOpenTechnical')?.addEventListener('click',()=>{
   void kitWizardRequestTechnical({force:true});
@@ -2321,7 +2330,7 @@ async function loadDrafts({restoreCurrent=true}={}){
    const optimizationLabel=draft.optimizedListingStatus==='verified'?
     '✓ ANÚNCIO OTIMIZADO NA SHOPEE':
     draft.optimizedListingStatus==='published_partial'?
-    '✓ ANÚNCIO PUBLICADO · FINALIZAÇÃO PENDENTE':
+    '◷ ANÚNCIO COM ETAPAS PENDENTES':
     draft.optimizedListingStatus==='in_progress'?
     '◷ OTIMIZAÇÃO EM ANDAMENTO · CONFERIR':
     null;
@@ -2333,7 +2342,13 @@ async function loadDrafts({restoreCurrent=true}={}){
      draft.reviewRequired?'RASCUNHO — REVISAR COERÊNCIA':'RASCUNHO NÃO PUBLICADO')));
    if(optimizationLabel&&draft.itemId)
     info.append(elt('small','','Item ID Shopee '+draft.itemId+
-     (draft.optimizedListingStatus==='published_partial'?' · Continuar dados fiscais e desconto':'')));
+     (draft.optimizedListingStatus==='published_partial'?' · Pendências de execução a concluir':'')));
+   if(draft.optimizedListingStatus==='published_partial'&&draft.pendingStages?.length){
+    const names={images:'Imagens',video:'Vídeo',seo:'Título',description:'Descrição',
+     technical:'Ficha técnica',variants:'Variações',fiscal:'Dados fiscais',discount:'Desconto'};
+    info.append(elt('small','','Ainda sem confirmação: '+
+     draft.pendingStages.map(k=>names[k]||k).join(', ')));
+   }
    info.append(elt('strong','',draft.title||draft.kitSku));
    info.append(elt('small','',draft.skus.join(' + ')+' · '+draft.skus.length+' unidades'));
    info.append(elt('small','',draft.updatedAt?'Atualizado '+new Date(draft.updatedAt).toLocaleString('pt-BR'):'Em revisão'));
