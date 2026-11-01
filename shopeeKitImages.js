@@ -1,4 +1,4 @@
-// Imagens do kit com referências reais de 2 ou 3 SKUs WeDrop.
+// Imagens do kit com referências reais de 2 a 4 SKUs WeDrop.
 // Não salva nem publica na Shopee; devolve PNG ao navegador para conferência.
 import {imageGenerationStatus} from './shopeeOpenAiImages.js';
 const HOST='wedrop-products-images.nyc3.cdn.digitaloceanspaces.com';
@@ -22,7 +22,7 @@ export async function reference(url){
 }
 export async function generateKitImage({kit,slot,key,prompt}){
  if(!Number.isInteger(slot)||slot<1||slot>9)throw Error('Posição de imagem inválida.');
- if(!Array.isArray(kit.components)||kit.components.length<2||kit.components.length>3)
+ if(!Array.isArray(kit.components)||kit.components.length<2||kit.components.length>4)
   throw Error('É necessário confirmar componentes reais do kit.');
  if(!key)throw Error('Conecte a API OpenAI em Configurações para gerar imagens.');
  if(!kit.components.every(p=>p.imageUrl))throw Error('Algum produto não possui foto de referência cadastrada na WeDrop.');
