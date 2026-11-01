@@ -5484,6 +5484,14 @@ function optimizerKitMissingApprovedStages(plan=optimizerExecPlan,progress=optim
  if(approved.has('video')&&!plan.video&&!done.has('video'))missing.push('video');
  if(approved.has('fiscal')&&!plan.finalFiscal&&!plan.proposed?.tax_info&&!done.has('fiscal'))missing.push('fiscal');
  if(approved.has('variants')&&!plan.modelVariations&&!done.has('variants'))missing.push('variants');
+ // Etapa 08 não depende do check verde local: só pode sair das pendências
+ // depois da confirmação da campanha pela Shopee. Se já existe no plano
+ // autorizado, não a contar como "ausente da prévia".
+ const root=optimizerRootAuditCache.get([String(optimizerWorkflowPlan.sku),
+  String(optimizerWorkflowPlan.itemId),String(optimizerWorkflowPlan.modelId||'0')].join('|'))?.audit;
+ const liveDiscount=root?.stages?.find(x=>x.id==='discount');
+ if(!plan.kitDiscount&&liveDiscount?.status!=='confirmed'&&
+    !done.has('discount'))missing.push('discount');
  return missing;
 }
 function optimizerExecUpdateRunButton(){
@@ -6390,6 +6398,9 @@ function optimizerRootAuditRender(audit){
    retry.textContent='Preparar pendência';
    retry.style.cssText='font-size:12px;padding:7px 10px;margin-top:9px;border-radius:9px';
    retry.addEventListener('click',()=>{
+    if(stage.id==='discount'){
+     optimizerDiscountOpenReview();return;
+    }
     if(optimizerExecBusy||optimizerExecPreparation){
      optimizerExecNotice('Existe execução/preparação em andamento. Consulte o resultado antes de tentar novamente.','warning');return;
     }
@@ -6473,6 +6484,10 @@ async function optimizerRootAuditRefresh(force=false){
   if(!current||[current.sku,current.itemId,current.modelId].join('|')!==key)return;
   optimizerRootAuditCache.set(key,{audit:result.audit,at:Date.now()});
   optimizerRootAuditRender(result.audit);
+  // Atualizar o contador de pendências e a indicação de desconto
+  // após a leitura oficial, em vez de depender do último job parcial.
+  if(optimizerExecProgress&&optimizerExecJob)
+   optimizerExecutionTrackerRender(optimizerExecProgress,optimizerExecJob);
   if(result.audit?.complete===true)void optimizerKitAutoFinalizeFromAudit(current,result.audit);
  }catch(error){
   const panel=$('#optimizerRootAuditPanel');
