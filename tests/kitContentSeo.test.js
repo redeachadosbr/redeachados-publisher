@@ -190,7 +190,7 @@ test('Ponte v1.0.61 recebe nomes separados das 3 SKUs e preserva validação SEO
  const ui=readFileSync(new URL('../public/kit-builder.js',import.meta.url),'utf8');
  assert.match(ui,/parts\[2\]>=61/);
  assert.match(ui,/products=kitCanonicalTextProducts\(kitSku,prepared\.kit\.components\)/);
- assert.match(ui,/payload:\{nonce,kitSku,skus,products\}/);
+ assert.match(ui,/payload:\{nonce,kitSku,skus:aliases.skus,products:aliases.products\}/);
  assert.match(ui,/parseKitSeoResponse\(content\)/);
  assert.match(ui,/kitShowSeoTitles\(scored\)/);
 });
