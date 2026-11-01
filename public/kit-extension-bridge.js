@@ -39,11 +39,41 @@ export function createKitPhotoStore(indexedDB=globalThis.indexedDB){
    tx.onabort=()=>reject(Error('Gravação interrompida.'));
   });
  };
+ const validSlot=slot=>Number.isInteger(Number(slot))&&Number(slot)>=1&&Number(slot)<=9;
  const key=(kit,slot)=>String(kit)+'|'+Number(slot);
+ // Capturas da Ponte são registros separados, para nunca sobrescrever a
+ // foto aprovada do mesmo slot se a conversão/importação falhar.
+ const captureKey=(kit,slot)=>String(kit)+'|pending|'+Number(slot);
+ const pendingRecord=(kit,slot,dataUrl,{nonce='',lastError=''}={})=>{
+  if(!kit||!validSlot(slot)||typeof dataUrl!=='string'||
+     dataUrl.length>28*1024*1024||
+     !/^data:image\\/(?:png|jpeg|webp);base64,/i.test(dataUrl))
+   throw Error('Imagem capturada inválida para recuperação.');
+  return {key:captureKey(kit,slot),kitSku:String(kit),slot:Number(slot),
+   dataUrl,kind:'pending',status:lastError?'import_failed':'captured_not_imported',
+   nonce:String(nonce||''),lastError:String(lastError||'').slice(0,400),
+   updatedAt:Date.now()};
+ };
  return {
   put:(kit,slot,dataUrl)=>run('readwrite',s=>s.put({key:key(kit,slot),kitSku:kit,slot,
    dataUrl,updatedAt:Date.now()})),
   remove:(kit,slot)=>run('readwrite',s=>s.delete(key(kit,slot))),
+  // Etapa 1: gravar a imagem recebida ANTES de qualquer validação, conversão
+  // ou tentativa de publicação. Somente excluir após gravação confirmada.
+  putPending:(kit,slot,dataUrl,metadata={})=>
+   run('readwrite',s=>s.put(pendingRecord(kit,slot,dataUrl,metadata))),
+  getPending:(kit,slot)=>run('readonly',s=>s.get(captureKey(kit,slot))),
+  listPending:async kit=>(await run('readonly',s=>s.getAll()))
+   .filter(r=>r.kitSku===kit&&r.kind==='pending'&&validSlot(r.slot))
+   .sort((a,b)=>a.slot-b.slot),
+  removePending:(kit,slot)=>run('readwrite',s=>s.delete(captureKey(kit,slot))),
+  markPendingFailure:async(kit,slot,error)=>{
+   const row=await run('readonly',s=>s.get(captureKey(kit,slot)));
+   if(!row||row.kind!=='pending')return false;
+   await run('readwrite',s=>s.put({...row,status:'import_failed',
+    lastError:String(error||'Falha na importação').slice(0,400),updatedAt:Date.now()}));
+   return true;
+  },
   // Uma única transação garante que arrastar ou trocar não perca uma das fotos.
   move:async(kit,from,to)=>{
    if(!Number.isInteger(from)||!Number.isInteger(to)||from<1||from>9||to<1||to>9)
