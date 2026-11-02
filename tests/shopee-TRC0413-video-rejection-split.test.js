@@ -82,3 +82,20 @@ test('a etapa de confirmação incerta não repete uma escrita do vídeo',async(
  assert.equal(out.state,'running');
  assert.equal(out.result.phase,'video_attach_verifying');
 });
+
+test('etapa SOMENTE VÍDEO sem mídia pronta inicia upload, não vínculo com ID inexistente',async()=>{
+ const videoPlan={...plan,selectedStage:'video',images:[],proposed:{}};
+ const videoJob={state:'running',plan:videoPlan,result:{phase:'queued',startedAt:new Date().toISOString()}};
+ let uploadStarts=0,attachWrites=0;
+ const out=await advanceShopeeExecution(videoJob,{
+  read:async()=>live(),validateIdentity:async()=>{},
+  download:async()=>Buffer.from('arquivo.mp4'),
+  media:{init:async()=>{uploadStarts++;return {video_upload_id:'new-video-task'};}},
+  update:async()=>{attachWrites++;throw Error('Vídeo não pronto');}
+ });
+ assert.equal(uploadStarts,1);
+ assert.equal(attachWrites,0);
+ assert.equal(out.state,'running');
+ assert.equal(out.result.video.id,'new-video-task');
+ assert.equal(out.result.phase,'video_upload');
+});
