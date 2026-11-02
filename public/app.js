@@ -6286,7 +6286,7 @@ async function optimizerOneClickExecute(){
     optimizerExecNotice('O preço ou margem não permite executar. Nenhum envio realizado.','warning');return;
    }
    const campaign=String($('#optimizerExecDiscountCampaign')?.value||'').trim();
-   if(!/^\\d{1,18}$/.test(campaign)){
+   if(!/^\d{1,18}$/.test(campaign)){
     optimizerExecNotice('Informe o ID da campanha Minha Promoção para continuar.','warning');return;
    }
    await optimizerDiscountFinalPrepare();
@@ -7138,6 +7138,84 @@ async function optimizerReconcileUncertainExecution(){
  }catch(e){optimizerExecNotice(e.message,'warning');}finally{btn.disabled=false;}
 }
 $('#optimizerExecutionReconcile')?.addEventListener?.('click',()=>void optimizerReconcileUncertainExecution());
+// Um único comando para todas as condições de execução da SKU.
+let optimizerPrimaryActionBusy=false;
+globalThis.RAExecutionCurrentStatus=()=>({
+ state:optimizerExecJob?.state||'prepared',
+ busy:optimizerPrimaryActionBusy||optimizerExecBusy||optimizerOneClickBusy||kitAllStagesStarting
+});
+globalThis.RAExecutionPrimaryAction=async()=>{
+ const w=optimizerWorkflowPlan;
+ if(!w||optimizerPrimaryActionBusy||optimizerExecBusy||optimizerOneClickBusy||kitAllStagesStarting)return;
+ const identity=[w.sku,String(w.itemId),String(w.modelId||0)].join('|');
+ const same=()=>optimizerWorkflowPlan&&
+  [optimizerWorkflowPlan.sku,String(optimizerWorkflowPlan.itemId),String(optimizerWorkflowPlan.modelId||0)].join('|')===identity;
+ optimizerPrimaryActionBusy=true;
+ globalThis.RAExecutionDialog?.refresh?.();
+ try{
+  if(optimizerExecJob?.state==='running'){
+   optimizerExecNotice('Acompanhando execução já iniciada na Shopee. Nenhum reenvio.','info');
+   await optimizerExecutionRefresh(true);return;
+  }
+  if(optimizerExecJob?.state==='uncertain'){
+   optimizerExecutionLiveStep('Conferindo a tentativa anterior',
+    'Duas leituras da Shopee, sem repetir preço, mídia ou promoção.','info');
+   const data=await json('/api/shopee/optimizer/execution/reconcile',{
+    method:'POST',headers:{'Content-Type':'application/json'},
+    body:JSON.stringify({sku:w.sku,itemId:w.itemId,modelId:w.modelId,recover:true}),
+    signal:AbortSignal.timeout(65000)
+   });
+   if(!same())return;
+   if(data.progress)optimizerExecutionJobView(data.job,data.progress,data.issue);
+   if(data.job?.state==='verified')return;
+   if(data.job?.state==='running')return;
+   if(data.job?.state==='uncertain'){
+    const pending=data.pendingChecks?.join('; ')||data.message||'Escrita anterior sem confirmação.';
+    optimizerExecNotice('Aguardando confirmação oficial: '+pending+' Nenhuma operação foi repetida.','warning');
+    return;
+   }
+   if(data.job?.state!=='failed'){
+    optimizerExecNotice('Não foi possível identificar estado seguro para continuar.','warning');return;
+   }
+  }
+  // Auditoria do Item ID evita repetir imagens e conteúdo já publicados.
+  optimizerExecutionLiveStep('Identificando etapas pendentes',
+   'Conferindo a Shopee para executar somente o que ainda não foi confirmado.','info');
+  await optimizerRootAuditRefresh(true);
+  if(!same())return;
+  const audit=optimizerRootAuditCache.get(identity)?.audit;
+  if(!Array.isArray(audit?.stages)||!audit.stages.length){
+   optimizerExecNotice('Auditoria da Shopee indisponível; nenhuma etapa será reenviada sem saber o que falta.','warning');
+   return;
+  }
+  if(audit.complete===true){
+   optimizerExecNotice('✓ Nenhuma alteração pendente. Auditoria Shopee confirmada.','success');
+   await optimizerExecutionRefresh(true);return;
+  }
+  if(optimizerKitWorkflowActive()&&w.kitOptimization?.kitSku){
+   const run=await globalThis.RAKitExecutePendingAllStages({
+    kitSku:w.kitOptimization.kitSku,sku:w.sku,itemId:w.itemId,modelId:w.modelId
+   });
+   if(!run?.ok)optimizerExecNotice(run?.error||'A retomada do kit não foi liberada.','warning');
+   return;
+  }
+  const pending=audit.stages.filter(s=>s.id!=='final'&&
+   !['confirmed','not_applicable'].includes(s.status));
+  const onlyDiscount=pending.length===1&&pending[0].id==='discount';
+  const scope=$('#optimizerExecutionScope');
+  if(scope)scope.value=onlyDiscount?'discount_adjust':'all';
+  optimizerExecNotice(onlyDiscount?
+   'Somente preço bruto e desconto pendentes: preservando imagens, vídeo e conteúdo publicados.':
+   'Conferindo as etapas pendentes; somente mudanças aprovadas serão enviadas.','info');
+  await optimizerOneClickExecute();
+ }catch(error){
+  if(same())optimizerExecNotice('Conferência não concluída: '+String(error.message||error)+
+   '. Nenhum reenvio automático.','warning');
+ }finally{
+  optimizerPrimaryActionBusy=false;
+  globalThis.RAExecutionDialog?.refresh?.();
+ }
+};
 $('#optimizerExecutionRetry')?.addEventListener?.('click',async()=>{
  const w=optimizerWorkflowPlan;if(!w)return;
  if(optimizerExecBusy||optimizerOneClickBusy||kitAllStagesStarting)return;
