@@ -111,9 +111,12 @@ export async function reconcileShopeeJob(job,{state,result,lastError}){
  // Recuperação excepcional de uma tarefa de vídeo recusada no passado.
  // A rota só pode mudar o registro antigo após uma leitura oficial do Item ID.
  const previous=String(job.state||'');
- const recoverableFailedVideo=previous==='failed'&&Boolean(job.plan?.video)&&
+ const videoTaskFailure=Boolean(job.plan?.video)&&
   /video task not found|video_upload_id.*(?:not found|invalid|illegal)/i.test(String(job.last_error||''));
- if(previous!=='uncertain'&&!recoverableFailedVideo)
+ const recoverableFailedVideo=previous==='failed'&&videoTaskFailure;
+ const recoverablePartialVideo=previous==='verified'&&job.result?.phase==='verified_partial'&&
+  job.result?.videoRejected===true&&videoTaskFailure;
+ if(previous!=='uncertain'&&!recoverableFailedVideo&&!recoverablePartialVideo)
   throw Error('Somente execução incerta ou falha antiga de vídeo pode ser reconciliada.');
  const r=await rows(where(job.shop_id,job.item_id,job.model_id)+
   '&state=eq.'+encodeURIComponent(previous)+'&updated_at=eq.'+encodeURIComponent(job.updated_at),{method:'PATCH',
