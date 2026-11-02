@@ -7115,6 +7115,41 @@ async function optimizerRootAuditRefresh(force=false){
   if(panel){panel.hidden=false;panel.textContent='Conferência geral indisponível: '+String(error.message||error)+'. Nenhuma etapa foi considerada concluída.';}
  }finally{if(optimizerRootAuditPending===key)optimizerRootAuditPending=null;}
 }
+let optimizerVideoAutoReadbackKey='';
+function optimizerExecutionAutoRecoverPublishedVideo(job,w){
+ if(optimizerPrimaryActionBusy||optimizerExecBusy)return;
+ const legacy=Boolean(job?.plan?.video)&&
+  ['failed','verified'].includes(job?.state)&&
+  (job.state!=='verified'||(job.result?.phase==='verified_partial'&&job.result?.videoRejected===true))&&
+  job.result?.videoReadbackConfirmed!==true&&
+  /video task not found|video_upload_id.*(?:not found|invalid|illegal)/i.test(String(job.last_error||''));
+ if(!legacy)return;
+ const key=[w.sku,w.itemId,w.modelId,job.updated_at].join('|');
+ if(optimizerVideoAutoReadbackKey===key)return;
+ optimizerVideoAutoReadbackKey=key;
+ void (async()=>{
+  try{
+   const data=await json('/api/shopee/optimizer/execution/reconcile',{
+    method:'POST',headers:{'Content-Type':'application/json'},
+    body:JSON.stringify({sku:w.sku,itemId:w.itemId,modelId:w.modelId,recover:true}),
+    signal:AbortSignal.timeout(65000)
+   });
+   const current=optimizerWorkflowPlan;
+   if(!current||[current.sku,current.itemId,current.modelId].join('|')!==
+    [w.sku,w.itemId,w.modelId].join('|'))return;
+   optimizerExecutionJobView(data.job,data.progress,data.issue);
+   if(data.progress?.videoPublished){
+    optimizerExecNotice('✓ Vídeo identificado no anúncio Shopee. As demais etapas serão conferidas sem reenviar o vídeo.','success');
+    void optimizerRootAuditRefresh(true);
+   }
+   if(data.job?.state==='running')void optimizerExecutionRefresh(true);
+  }catch(error){
+   if(optimizerWorkflowPlan?.sku===w.sku)
+    optimizerExecNotice('Não foi possível conferir o vídeo publicado automaticamente: '+
+     String(error.message||error)+'. Nenhum conteúdo foi reenviado.','warning');
+  }
+ })();
+}
 async function optimizerExecutionRefresh(poll=false){
  const w=optimizerWorkflowPlan;if(!w)return null;
  const identity=w.sku+':'+w.itemId+':'+w.modelId;
@@ -7127,6 +7162,7 @@ async function optimizerExecutionRefresh(poll=false){
   const current=optimizerWorkflowPlan;
   if(!current||current.sku+':'+current.itemId+':'+current.modelId!==identity)return null;
   optimizerExecutionJobView(data.job,data.progress,data.issue);
+  optimizerExecutionAutoRecoverPublishedVideo(data.job,w);
   if(!poll||['verified','failed','blocked'].includes(data.job?.state))void optimizerRootAuditRefresh(!poll);
   if(data.job?.state==='uncertain'&&data.issue?.code==='CEST_REQUIRED')
    void optimizerExecutionSafeRecoverCest(data.job,w);
