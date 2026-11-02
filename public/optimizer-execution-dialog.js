@@ -30,11 +30,22 @@
    phase==='uncertain'?'↻ Conferir resultado e continuar':
    phase==='failed'?'▶ Retomar apenas as pendências':
    '▶ EXECUTAR NA SHOPEE';
-  if(label)label.textContent=phase==='uncertain'?
-   'Primeiro verifica o envio anterior. Se houve escrita incerta, não repete.':
-   phase==='failed'?'Confere o anúncio e preserva as etapas confirmadas.':
-   phase==='verified'?'Somente o escopo deste envio foi confirmado.':
-   'Execução e leitura de confirmação no mesmo painel.';
+  if(label){
+   const notice=byId('optimizerExecutionStatus');
+   const warning=notice&&['error','warning'].includes(notice.dataset.state)?
+    String(notice.textContent||'').slice(0,250):'';
+   const q=data.quote||null;
+   const money=n=>Number.isFinite(n)?n.toLocaleString('pt-BR',{style:'currency',currency:'BRL'}):'—';
+   const price=q&&Number.isFinite(q.gross)&&Number.isFinite(q.promo)?
+    'Preço bruto '+money(q.gross)+' · Promocional '+money(q.promo)+
+    (Number.isFinite(q.margin)?' · Margem '+q.margin.toFixed(1)+'%':''):'';
+   const hint=phase==='uncertain'?
+    'Consulta primeiro a tentativa anterior, sem repetir envios.':
+    phase==='failed'?'Preserva as etapas já publicadas.':
+    phase==='verified'?'Somente as etapas deste envio foram confirmadas.':
+    'Acompanhe as confirmações reais da Shopee.';
+   label.textContent=(warning||hint)+(price?'  |  '+price:'');
+  }
  };
  const init=()=>{
   const panel=byId('optimizerExecutionPanel');
