@@ -42,7 +42,9 @@ test('recusa anterior não esconde executar nem oferece preparar autorização',
    app.indexOf('function optimizerExecutionTrackerRender(progress,job)'));
  assert.match(cmd,/const single=Boolean\(current&&!optimizerKitWorkflowActive\(\)\)/);
  assert.match(cmd,/recover\.hidden=true;full\.hidden=true/);
- assert.match(cmd,/launch\.hidden=!ready/);
+ assert.match(cmd,/launch\.hidden=!active/);
+ assert.match(cmd,/optimizerExecPlan\?\.canExecute===true/);
+ assert.match(cmd,/launch\.disabled=!active\|\|running/);
  assert.match(cmd,/launch\.textContent='▶ EXECUTAR NA SHOPEE'/);
  const css=readFileSync(new URL('../public/optimizer-execution-progress.css',import.meta.url),'utf8');
  assert.match(css,/optimizer-one-button-mode #optimizerRootAuditPanel/);
@@ -51,4 +53,15 @@ test('recusa anterior não esconde executar nem oferece preparar autorização',
  assert.match(css,/optimizer-one-button-mode #optimizerExecutionActivity/);
  assert.match(css,/optimizer-one-button-mode #optimizerExecutionRecoverStart/);
  assert.match(app,/document\.body\.classList\.toggle\('optimizer-one-button-mode',!optimizerKitWorkflowActive\(\)\)/);
+});
+
+test('um clique aceita ID numérico da campanha e não a regex de duas barras',()=>{
+ const start=app.indexOf('async function optimizerOneClickExecute()');
+ const end=app.indexOf("$('#optimizerExecutionLaunch')?.addEventListener?.('click',",start);
+ const flow=app.slice(start,end);
+ const digits='\\\\d'; // representação com dois caracteres de barra no texto-fonte
+ const pattern='if(!/^'+String.fromCharCode(92)+'d{1,18}$/.test(campaign))';
+ assert.ok(flow.includes(pattern),'Deve validar campanha numérica de 1 a 18 dígitos');
+ assert.ok(!flow.includes('if(!/^'+String.fromCharCode(92).repeat(2)+'d{1,18}$/.test(campaign))'),
+   'Barra dupla em literal RegExp rejeita todos os IDs válidos');
 });
