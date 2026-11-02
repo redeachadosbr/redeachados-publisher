@@ -111,9 +111,9 @@ export function shopeeExecutionProgress(job){
  const active={
   images:needs.images&&['images_upload','updating','verifying'].includes(phase),
   video:needs.video&&['video_upload','video_processing','updating','verifying','video_attach_ready','video_attach_updating','video_attach_verifying'].includes(phase),
-  seo:needs.seo&&activeCommercial,
-  description:needs.description&&activeCommercial,
-  technical:needs.technical&&activeCommercial,
+  seo:needs.seo&&activeCommercial&&!videoTaskError,
+  description:needs.description&&activeCommercial&&!videoTaskError,
+  technical:needs.technical&&activeCommercial&&!videoTaskError,
   variants:needs.variants&&activeVariants,
   fiscal:needs.fiscal&&activeFiscal,
   discount:needs.discount&&activeDiscount
