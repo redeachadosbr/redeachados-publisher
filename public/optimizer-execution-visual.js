@@ -107,6 +107,7 @@
    job?.state==='uncertain'?'Aguardando confirmação da Shopee':
    job?.state==='failed'?'Execução interrompida':
    job?.state==='prepared'&&!hasAttempt?'Prévia pronta para executar':
+   job?.state==='running'&&currentServer>=0?DEFINITIONS[currentServer].short:
    eventTitle&&currentEvent>=0?eventTitle:
    active>=0?DEFINITIONS[active].short:'Aguardando status';
   const confirm=states.filter(s=>s==='done').length;
@@ -173,7 +174,7 @@
     const symbol=document.createElement('span');symbol.className='ra-history-indicator is-'+phase;
     symbol.textContent=phase==='done'?'✓':phase==='error'?'!':phase==='active'?'●':'·';
     const caption=document.createElement('span');caption.className='ra-history-text';
-    caption.textContent=String(entry.title||entry).replace(/^\\d+[.]\\s*/,'');
+    caption.textContent=String(entry.title||entry).replace(new RegExp('^[0-9]+[.] +'),'');
     const tag=document.createElement('small');
     tag.textContent=phase==='done'?'Verificado':phase==='error'?'Atenção':phase==='active'?'Atual':'Registro';
     li.append(symbol,caption,tag);history.append(li);
