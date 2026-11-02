@@ -60,7 +60,7 @@ test('duas leituras da Shopee confirmam mídias sem falsamente aprovar texto ou 
 test('somente confirmação completa permite 100%',()=>{
  const progress=shopeeExecutionProgress({
   state:'verified',sku:'303448',plan,
-  result:{...result,phase:'verified',verified:true,fiscal:{status:'verified'}}
+  result:{...result,phase:'verified',verified:true,videoReadbackConfirmed:true,fiscal:{status:'verified'}}
  });
  assert.equal(progress.percent,100);
  assert.equal(progress.verified,true);
