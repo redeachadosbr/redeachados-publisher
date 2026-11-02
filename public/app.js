@@ -6711,14 +6711,17 @@ function optimizerRootAuditRender(audit){
    }
    // A auditoria mostra o que falta. Não gerar repetidamente prévia vazia
    // quando o dado fiscal ou a autorização comercial ainda não estão prontos.
-   if(fiscalStillPending&&!fiscalReviewed){
+   const now=optimizerWorkflowPlan;
+   const fiscalReady=now?.stages?.some(s=>s.key==='fiscal'&&s.reviewed===true);
+   const promotionReady=optimizerKitDiscountReviewState(now).prepared;
+   if(fiscalStillPending&&!fiscalReady){
     void optimizerRootOpenFiscalPreset();return;
    }
-   if(discountStillPending&&!discountPrepared){
+   if(discountStillPending&&!promotionReady){
     optimizerDiscountOpenReview();return;
    }
    $('#optimizerExecutionScope').value='all';
-   optimizerExecNotice('Preparando somente divergências ainda aprovadas. As cinco etapas já confirmadas não serão reenviadas.','info');
+   optimizerExecNotice('Preparando somente divergências ainda aprovadas. Etapas já confirmadas não serão reenviadas.','info');
    void optimizerExecutionPrepare();
   });
   actions.append(full);
