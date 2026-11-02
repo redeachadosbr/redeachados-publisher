@@ -7173,6 +7173,7 @@ $('#optimizerExecutionReconcile')?.addEventListener?.('click',()=>void optimizer
 let optimizerPrimaryActionBusy=false;
 globalThis.RAExecutionCurrentStatus=()=>({
  state:optimizerExecJob?.state||'prepared',
+ videoTaskRejected:/video task not found|video_upload_id.*(?:not found|invalid|illegal)/i.test(String(optimizerExecJob?.last_error||'')),
  priceMismatchBeforeWrite:optimizerExecJob?.state==='uncertain'&&
   String(optimizerExecJob?.result?.phase||'')==='discount_ready'&&
   !Number(optimizerExecJob?.result?.discountPriceStartedAt||0)&&
