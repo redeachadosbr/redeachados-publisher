@@ -1,7 +1,7 @@
 // Auditoria do motor raiz: confirmação exige comparação de dados aprovados com leitura oficial.
 // A falta de um check local não desfaz uma correspondência comprovada na Shopee.
 import {compileAttributes,compileTax,fieldsVerified,sameData} from './shopeeStructuredFields.js';
-import {videoMatches} from './shopeeExecutionPlan.js';
+import {videoMatches,videoPublishedAfterPlan} from './shopeeExecutionPlan.js';
 
 export const ROOT_EXECUTION_STAGES=Object.freeze([
  ['images','01 · Imagens comerciais'],['video','02 · Vídeo'],
@@ -39,7 +39,10 @@ export function auditRootShopeeExecution({
   video.publication.video:null;
  const videoEvidence=publishedVideo?{...publishedVideo,phase:'ready'}:(
   job?.state==='verified'&&job.plan?.video?.sha256===video?.sha256?job.result?.video:null);
- const officialVideo=Boolean(video&&videoEvidence&&videoMatches(live,videoEvidence));
+ const officialVideo=Boolean(video&&(
+  (videoEvidence&&videoMatches(live,videoEvidence))||
+  (job?.plan?.video?.sha256===video?.sha256&&
+   videoPublishedAfterPlan(job.plan,live,job.result?.video))));
  add('video',officialVideo,reviewed('video')?'Vídeo aprovado ainda não corresponde ao vídeo publicado':'Vídeo ainda não aprovado para publicação');
  const title=String(review.draftTitle||'').normalize('NFC').replace(/\s+/g,' ').trim();
  add('seo',Boolean(title)&&
