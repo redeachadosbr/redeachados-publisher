@@ -74,12 +74,13 @@ export async function advanceShopeeExecution(job,io){
       'video-readback-confirmed','Vídeo já aparece no anúncio Shopee; tarefa antiga ignorada.','success'));
     const next=plan.modelVariations?'variation_ready':
      plan.finalFiscal?'fiscal_ready':hasDiscount(plan)?discountPhase(plan):'verified_partial';
-    const partial=withExecutionEvent({...checkpoint,phase:next,videoRejected:true,
-     videoError:reason,primaryVerified:true,verified:next==='verified_partial'},
+    const partial=withExecutionEvent({...checkpoint,
+     phase:next==='verified_partial'?'video_attach_rejected':next,
+     videoRejected:true,videoError:reason,primaryVerified:true,verified:false},
      'video-attach-rejected',
      'A Shopee recusou o vídeo. Fotos e conteúdo foram preservados; as demais etapas independentes podem continuar.','warning');
     return next==='verified_partial'?
-     {state:'verified',result:partial,lastError:'Vídeo pendente: '+reason}:
+     {state:'failed',result:partial,lastError:'Vídeo pendente: '+reason}:
      {state:'running',result:partial,delay:500};
    }
    return {state:'uncertain',result:withExecutionEvent(checkpoint,'video-attach-uncertain',
