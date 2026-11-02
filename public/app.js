@@ -5826,7 +5826,8 @@ async function optimizerExecutionPrepare({preserveStartError=false}={}){
    btn.disabled=false;
    // Não reiniciar esta mesma preparação: o plano permanece salvo e pode
    // ser recuperado na próxima ação do usuário por GET (sem escrita).
-   if(optimizerWorkflowPlan===w&&!optimizerExecBusy)
+   if(optimizerWorkflowPlan===w&&!optimizerExecBusy&&
+      typeof optimizerExecutionVisibleCommands==='function')
     optimizerExecutionVisibleCommands(optimizerExecProgress,optimizerExecJob);
   }
  }
