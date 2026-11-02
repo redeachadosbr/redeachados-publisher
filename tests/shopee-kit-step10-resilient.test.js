@@ -50,3 +50,22 @@ test('preparacao resiste a autosave concorrente sem ignorar identidade',()=>{
  assert.ok(func.includes('&updated_at=eq.'));
  assert.ok(func.includes('creative:current.creative'));
 });
+
+test('motor raiz mostra progresso historico e abre pendencias reais sem preparar plano vazio',()=>{
+ const helper=app.slice(app.indexOf('async function optimizerRootOpenFiscalPreset()'),
+  app.indexOf('// Auditoria independente do último job:'));
+ assert.match(helper,/optimizerWorkflowOpen\('fiscal'\)/);
+ assert.match(helper,/\/api\/shopee\/kits\/fiscal-preset\?/);
+ assert.match(helper,/String\(preset\?\.kitSku\)!==kitSku/);
+ assert.match(helper,/optimizerFiscalRender\(\{\.\.\.preset,taxCurrent:/);
+ assert.doesNotMatch(helper,/\/api\/shopee\/optimizer\/execution\/execute/);
+ const audit=app.slice(app.indexOf('function optimizerRootAuditRender(audit)'),
+  app.indexOf('async function optimizerKitAutoFinalizeFromAudit'));
+ assert.match(audit,/x\.id!=='final'&&x\.status==='confirmed'/);
+ assert.match(audit,/A barra de 0% acima é da última tentativa/);
+ assert.match(audit,/if\(stage\.id==='fiscal'\)/);
+ assert.match(audit,/void optimizerRootOpenFiscalPreset\(\)/);
+ assert.match(audit,/if\(discountStillPending&&!promotionReady\)/);
+ assert.match(audit,/optimizerDiscountOpenReview\(\)/);
+ assert.match(audit,/Etapas já confirmadas não serão reenviadas/);
+});
