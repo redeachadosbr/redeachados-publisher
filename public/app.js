@@ -6794,6 +6794,8 @@ try{
 }catch{}
 let optimizerAutoReadbackRecoveryKey='';
 function optimizerExecutionAutoRecoverStale(job){
+ // Não concorrer com a conferência/reconciliação iniciada pelo botão principal.
+ if(optimizerPrimaryActionBusy)return;
  const w=optimizerWorkflowPlan;
  const phase=String(job?.result?.phase||'');
  const modelPhase=/^variation_|^model_discount_/.test(phase);
