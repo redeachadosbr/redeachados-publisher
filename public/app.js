@@ -4553,13 +4553,15 @@ function optimizerExecutionVisibleCommands(progress,job){
   // A ação em si revalida SKU, prévia, campanha e desconto no servidor.
   const active=Boolean(current&&(optimizerExecPlan?.canExecute===true||
     (allowed&&matching)||(job?.state==='prepared'&&matching)));
+  // Preparação de prévia é SOMENTE leitura e não é execução.
+  // Não manter o botão cinza por uma preparação antiga ou repetida.
   const running=Boolean(optimizerExecBusy||optimizerOneClickBusy||
-    optimizerExecPreparation||['running','uncertain'].includes(job?.state));
+    ['running','uncertain'].includes(job?.state));
   recover.hidden=true;full.hidden=true;
   launch.hidden=!active;
   launch.disabled=!active||running;
   if(active){
-   launch.textContent=running?'Conferindo execução na Shopee…':'▶ EXECUTAR NA SHOPEE';
+   launch.textContent=running?'Execução em andamento · conferindo Shopee':'▶ EXECUTAR NA SHOPEE';
    launch.title='Executar a prévia salva após confirmar a campanha e os valores na Shopee.';
   }
  }else{
@@ -5733,7 +5735,7 @@ async function optimizerExecutionPrepare({preserveStartError=false}={}){
  const key=[w.sku,w.itemId,w.modelId,requestedStage].join('|');
  if(optimizerExecPreparation){
   if(optimizerExecPreparation.key===key&&optimizerExecPreparation.serial===optimizerExecSerial){
-   optimizerExecPreparation.again=true;
+   // Coalescer consulta idêntica SEM agendar nova preparação ao final.
    return;
   }
   // Uma consulta antiga não pode bloquear a próxima SKU durante timeout de API.
@@ -5822,8 +5824,10 @@ async function optimizerExecutionPrepare({preserveStartError=false}={}){
    optimizerExecPreparation=null;
    if(optimizerExecPrepareController===controller)optimizerExecPrepareController=null;
    btn.disabled=false;
-   if(preparation.again&&optimizerWorkflowPlan&&!optimizerExecBusy)
-    setTimeout(()=>void optimizerExecutionPrepare({preserveStartError}),100);
+   // Não reiniciar esta mesma preparação: o plano permanece salvo e pode
+   // ser recuperado na próxima ação do usuário por GET (sem escrita).
+   if(optimizerWorkflowPlan===w&&!optimizerExecBusy)
+    optimizerExecutionVisibleCommands(optimizerExecProgress,optimizerExecJob);
   }
  }
 }
@@ -6246,6 +6250,49 @@ async function optimizerOneClickExecute(){
  if(main)main.disabled=true;
  try{
   let p=optimizerExecPlan;
+  if(!p||p.sku!==original.sku||String(p.itemId)!==String(original.itemId)||
+     String(p.modelId)!==String(original.modelId)||p.selectedStage!=='all'||!p.canExecute){
+   // PRIMEIRO recuperar a prévia já preparada: GET nunca publica.
+   // Evita repetir o preparo sempre que houve uma resposta atrasada.
+   optimizerExecutionLiveStep('Recuperando prévia já salva',
+    'Consultando o plano desta SKU no servidor, sem enviar nada à Shopee.','info');
+   try{
+    const status=await json('/api/shopee/optimizer/execution/status?'+new URLSearchParams({
+     sku:original.sku,item_id:original.itemId,model_id:original.modelId
+    }),{signal:AbortSignal.timeout(18000)});
+    if(!same())return;
+    const job=status?.job;
+    const equal=job&&String(job.sku)===String(original.sku)&&
+     String(job.item_id)===String(original.itemId)&&
+     String(job.model_id??0)===String(original.modelId??0);
+    if(equal&&['running','uncertain'].includes(job.state)){
+     optimizerExecutionLiveStep('Envio anterior ainda não confirmado',
+      'Acompanhando o status real antes de qualquer nova tentativa.','warning');
+     optimizerExecutionJobView(job,status.progress,status.issue);
+     return;
+    }
+    if(equal&&job.state==='prepared'&&job.plan?.canExecute===true&&
+       job.plan.selectedStage==='all'){
+     // Cancelar somente o PREPARO anterior que não publicou nada.
+     if(optimizerExecPreparation){
+      optimizerExecPrepareController?.abort();
+      optimizerExecPreparation=null;optimizerExecPrepareController=null;
+      ++optimizerExecSerial;
+     }
+     optimizerExecContext={sku:original.sku,itemId:original.itemId,modelId:original.modelId};
+     optimizerExecRender({plan:job.plan,progress:status.progress,issue:status.issue,
+      ready:true,updatedAt:job.updated_at,executionStatus:job.state});
+     p=optimizerExecPlan;
+     optimizerExecutionLiveStep('Prévia recuperada',
+      'Plano salvo e pronto. Conferindo a autorização do desconto antes do envio.','info');
+    }
+   }catch(error){
+    if(!same())return;
+    optimizerExecutionLiveStep('Consultando prévia atual',
+     'A consulta ao plano salvo não respondeu: '+String(error.message||error)+
+      '. Tentando reconstruir a prévia sem publicar.','warning');
+   }
+  }
   if(!p||p.sku!==original.sku||String(p.itemId)!==String(original.itemId)||
      String(p.modelId)!==String(original.modelId)||p.selectedStage!=='all'||!p.canExecute){
    $('#optimizerExecutionScope').value='all';
