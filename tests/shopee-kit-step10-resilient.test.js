@@ -63,9 +63,10 @@ test('motor raiz mostra progresso historico e abre pendencias reais sem preparar
   app.indexOf('async function optimizerKitAutoFinalizeFromAudit'));
  assert.match(audit,/x\.id!=='final'&&x\.status==='confirmed'/);
  assert.match(audit,/A barra de 0% acima é da última tentativa/);
- assert.match(audit,/if\(stage\.id==='fiscal'\)/);
- assert.match(audit,/void optimizerRootOpenFiscalPreset\(\)/);
- assert.match(audit,/if\(discountStillPending&&!promotionReady\)/);
- assert.match(audit,/optimizerDiscountOpenReview\(\)/);
- assert.match(audit,/Etapas já confirmadas não serão reenviadas/);
+ assert.doesNotMatch(audit,/retry\.textContent='Preparar pendência'/);
+ assert.match(audit,/panel\.append\(guidance\)/);
+ assert.match(audit,/Conferência somente leitura/);
+ assert.match(app,/async function optimizerOneClickExecute\(\)/);
+ assert.match(app,/await optimizerDiscountFinalPrepare\(\)/);
+ assert.match(app,/await optimizerExecuteApproved\(false\)/);
 });
