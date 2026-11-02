@@ -38,3 +38,9 @@
  #raExecutionDialogRoot .ra-exec-dialog-footer{flex-direction:column;align-items:stretch;padding:10px 12px;gap:8px}
  #raExecutionDialogRun{flex:initial;width:100%;min-height:46px}
 }
+
+#raExecutionDialogRoot .ra-exec-dialog-campaign{flex:0 0 175px;display:flex;flex-direction:column;gap:3px;font-size:11px;font-weight:750;color:#294c80}
+#raExecutionDialogRoot .ra-exec-dialog-campaign[hidden]{display:none!important}
+#raExecutionDialogRoot .ra-exec-dialog-campaign input{width:100%;min-height:38px;border:1px solid #aac5e7;border-radius:9px;background:white;padding:6px 10px;font-size:13px}
+#raExecutionDialogRoot .ra-exec-dialog-footer p{flex:1;min-width:0}
+@media(max-width:800px){#raExecutionDialogRoot .ra-exec-dialog-campaign{flex:initial;width:100%}}
