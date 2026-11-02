@@ -29,43 +29,35 @@
  }
  function normalizeDescription(value){
   let text=clean(value).replace(/\r\n?/g,'\n');
-  // O ChatGPT pode entregar a descrição dentro do cartão "Escrita"
-  // com títulos Markdown. Normalizar só a apresentação, não os fatos.
+  // Preservar a descrição aprovada pelo vendedor, inclusive quantidades e
+  // marcadores ✅ dentro de 📦 O QUE VAI NA EMBALAGEM.
+  // NÃO reorganizar parágrafos por emojis: ✅ também identifica itens da embalagem.
   text=text.replace(/^\s*(?:Escrita|Writing)\s*$/gim,'')
-   .replace(/^\s*#{1,4}\s*/gm,'').replace(/\*\*/g,'').trim();
+   .replace(/^\s*#{1,4}\s*/gm,'')
+   .replace(/\*\*/g,'')
+   .replace(/^\s*>\s?/gm,'')
+   .replace(/^\s*[-*]\s+(?=[^\n])/gm,'• ');
   for(let i=0;i<2;i++)text=text.replace(/\\n/g,'\n').replace(/\\t/g,' ');
-  text=text.replace(/[ \t]*\n[ \t]*/g,'\n').replace(/\n{3,}/g,'\n\n');
-  const sections={intro:[],benefits:[],why:[],doubts:[],specs:[],package:[],cta:[]};
-  let active='intro';
-  const headings=[
-   ['benefits',/^(?:✅\s*)?benef[ií]cios(?:\s+(?:reais|do produto|que fazem a diferen[çc]a))?\s*(?::|[-–])?\s*(.*)$/iu],
-   ['why',/^(?:💡\s*)?por que comprar\s*(?::|[-–])?\s*(.*)$/iu],
-   ['doubts',/^(?:❓\s*)?(?:d[uú]vidas(?:\s+frequentes)?|perguntas\s+frequentes)\s*(?::|[-–])?\s*(.*)$/iu],
-   ['specs',/^(?:⚙️?\s*)?(?:caracter[ií]sticas(?:\s+(?:reais|e informa[çc][õo]es do produto))?|especifica[çc][õo]es(?:\s+do produto)?)\s*(?::|[-–])?\s*(.*)$/iu],
-   ['package',/^(?:📦\s*)?(?:o que (?:vai|vem|acompanha)(?:\s+na embalagem)?|conte[uú]do da embalagem|itens inclusos)\s*(?::|[-–])?\s*(.*)$/iu]
-  ];
-  for(const rawLine of text.split(/\n+/)){
-   const line=rawLine.trim();if(!line)continue;
-   let matched=false;
-   for(const [key,pattern] of headings){
-    const hit=line.match(pattern);
-    if(hit){active=key;const tail=(hit[1]||'').trim();if(tail)sections[key].push(tail);matched=true;break;}
-   }
-   if(matched)continue;
-   if(/^🛒/u.test(line))active='cta';
-   else if(/^✅/u.test(line))active='benefits';
-   else if(/^💡/u.test(line))active='why';
-   else if(/^❓/u.test(line))active='doubts';
-   else if(/^⚙️?/u.test(line))active='specs';
-   else if(/^📦/u.test(line))active='package';
-   else if(/^✨/u.test(line))active='intro';
-   sections[active].push(line);
-  }
-  const block=(key,label)=>sections[key].length?label+'\n'+sections[key].join('\n'):'';
-  return [sections.intro.join('\n'),block('benefits','✅ BENEFÍCIOS'),
-   block('why','💡 POR QUE COMPRAR'),block('doubts','❓ DÚVIDAS FREQUENTES'),
-   block('specs','⚙️ CARACTERÍSTICAS'),block('package','📦 O QUE VAI NA EMBALAGEM'),
-   sections.cta.join('\n')].filter(Boolean).join('\n\n').trim();
+  return text.replace(/[ \t]*\n[ \t]*/g,'\n')
+   .replace(/\n{3,}/g,'\n\n').trim();
+ }
+ function commercialTextCandidate(raw){
+  const s=normalizeDescription(raw);
+  const length=count(s);
+  if(length<250||length>5000)return false;
+  // Não confundir o comando enviado ao ChatGPT com a resposta.
+  if(/(?:^|\n)\s*(?:DADOS DA SKU:|FORMATO FINAL:|ESTRUTURA OBRIGATÓRIA:|VOCÊ É UM REDATOR BRASILEIRO|IDENTIFIQUE O PRODUTO EXATO)\b/iu.test(s))
+   return false;
+  // Conteúdo comercial identificável, mesmo quando o ChatGPT varia
+  // cabeçalhos, usa texto corrido ou não há dados para uma FAQ.
+  const signals=[
+   /(?:✅|benef[ií]cios|vantagens)/iu,
+   /(?:💡|por que comprar|praticidade|facilita)/iu,
+   /(?:⚙️|caracter[ií]sticas|especifica[çc][õo]es)/iu,
+   /(?:📦|embalagem|acompanha|itens inclusos|conte[uú]do)/iu,
+   /(?:🛒|garanta|adquira|aproveite)/iu
+  ].filter(pattern=>pattern.test(s)).length;
+  return signals>=2;
  }
  function extract(raw){
   const s=clean(raw).slice(-120000);let found=null;
@@ -106,10 +98,7 @@
    .replace(/\s*\x60{3}\s*$/u,'')
    .replace(/^\s*(?:Escrita|Writing)\s*$/gim,'')
    .replace(/^\s*#{1,4}\s*/gm,'').replace(/\*\*/g,'').trim();
-  if(!/["“]description["”]\s*:/iu.test(plain)&&plain.length>=250&&plain.length<=5000&&
-     /benef[ií]cios/iu.test(plain)&&/por que comprar/iu.test(plain)&&
-     /(?:caracter[ií]sticas|especifica[çc][õo]es)/iu.test(plain)&&
-     /(?:embalagem|itens inclusos)/iu.test(plain))
+  if(!/["“]description["”]\s*:/iu.test(plain)&&commercialTextCandidate(plain))
    return {description:plain,factsUsed:[],unverified:[]};
   return null;
  }
@@ -118,12 +107,10 @@
   if(!found)throw Error('O ChatGPT ainda não entregou a descrição completa. Use Recuperar ou copie a resposta integral.');
   const description=normalizeDescription(found.description);
   const length=count(description);
-  // Não bloquear descrições comerciais completas por falta de emoji no CTA.
-  if(length<250||length>5000||!/benef[ií]cios/iu.test(description)||
-     !/por que comprar/iu.test(description)||
-     !/(?:caracter[ií]sticas|especifica[çc][õo]es)/iu.test(description)||
-     !/(?:embalagem|itens inclusos)/iu.test(description))
-   throw Error('A descrição está incompleta: confira benefícios, por que comprar, características e embalagem.');
+  // Importar primeiro; checagens comerciais são orientação na revisão,
+  // não razão para descartar o texto real da SKU.
+  if(!commercialTextCandidate(description))
+   throw Error('Não identifiquei uma descrição comercial completa. Cole somente a resposta referente a este produto.');
   return {description,length,factsUsed:Array.isArray(found.factsUsed)?found.factsUsed:[],
    unverified:Array.isArray(found.unverified)?found.unverified:[]};
  }
