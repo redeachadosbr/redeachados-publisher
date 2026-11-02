@@ -44,3 +44,19 @@ test('etapa 05 usa editor original sem depender da preparacao comercial do kit',
  assert.match(server,/requestedDraft\.creative\?\.manualFacts\?\.\[sku\]/);
  assert.match(html,/kit-builder\.js\?v=20\d{6}-[\w-]+/);
 });
+
+test('etapa 05 recupera rascunho salvo mesmo apos edicao comercial, sem liberar publicacao',()=>{
+ const existing=readFileSync(new URL('../public/kit-existing-optimization.js',import.meta.url),'utf8');
+ const start=builder.indexOf('async function kitWizardRequestTechnical');
+ const end=builder.indexOf('globalThis.RAKitTechnicalRequested=',start);
+ const stage=builder.slice(start,end);
+ assert.ok(start>=0&&end>start);
+ assert.match(stage,/Verificando automaticamente o rascunho salvo no servidor/);
+ assert.doesNotMatch(stage,/Salve o rascunho do kit para recuperar a ficha técnica/);
+ assert.match(existing,/async function lookup\(\{automatic=false,deep=false,allowSavedDraft=false\}=\{\}\)/);
+ assert.match(existing,/if\(busy\|\|\(!kitSaved&&!allowSavedDraft\)\|\|!current\)return null/);
+ assert.match(existing,/const loaded=await api\('\/api\/shopee\/kits\/drafts\/load',\{body:\{kitSku:draftSku\}\}\)/);
+ assert.match(existing,/if\(String\(ctx\(\)\.prepared\?\.kit\?\.kitSku\|\|''\)!==draftSku\)return false/);
+ assert.match(existing,/await lookup\(\{automatic:true,allowSavedDraft:!state\.kitSaved\}\)/);
+ assert.match(existing,/if\(!state\.kitSaved\)\{[\s\S]*?notice\('Salve o rascunho do kit antes da otimização\./);
+});
