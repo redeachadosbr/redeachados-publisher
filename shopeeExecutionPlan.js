@@ -295,7 +295,7 @@ export function verifyShopeeFiscalExecution(plan,item,result={}){
 }
 export function verifyShopeeExecution(plan,item,result={}){
   return String(item?.item_id)===String(plan.itemId)&&
-    (!plan.video||videoMatches(item,result.video))&&
+    (!plan.video||videoPublishedAfterPlan(plan,item,result.video))&&
     (!plan.images?.length||sameData(item.image?.image_id_list||[],result.imageIds||[]))&&
     fieldsVerified(plan.proposed||{},item);
 }
@@ -309,6 +309,41 @@ export function videoMatches(item,video){
     (paths.size>0&&paths.has(videoPath(x.video_url))));
 }
 function videoPath(value){try{return new URL(value).pathname.replace(/\/+$/,'');}catch{return '';}}
+function videoListingEntries(item){
+ const raw=item?.video_info;
+ return Array.isArray(raw)?raw:raw&&typeof raw==='object'?[raw]:[];
+}
+function videoListingKeys(entry){
+ const keys=[];
+ for(const field of ['video_upload_id','video_id']){
+  const value=String(entry?.[field]||'').trim();
+  if(value&&value!=='0')keys.push('id:'+value);
+ }
+ for(const field of ['video_url','video_url_list']){
+  const value=entry?.[field];
+  for(const url of (Array.isArray(value)?value:[value])){
+   const path=videoPath(typeof url==='string'?url:url?.video_url);
+   if(path)keys.push('url:'+path);
+  }
+ }
+ return keys;
+}
+/**
+ * Readback of the listing itself, not the upload task. Shopee can return
+ * "video task not found" after the video was independently attached.
+ * Only recognize new, identifiable video_info on the exact item ID. A
+ * pre-existing video must NOT be mistaken for the new approved upload.
+ */
+export function videoPublishedAfterPlan(plan,item,uploadedVideo){
+ if(!plan?.video||!item||String(item.item_id)!==String(plan.itemId))return false;
+ if(videoMatches(item,uploadedVideo))return true;
+ const before=new Set(videoListingEntries({video_info:plan.original?.video_info})
+  .flatMap(videoListingKeys));
+ return videoListingEntries(item).some(entry=>{
+  const keys=videoListingKeys(entry);
+  return keys.length>0&&!keys.some(key=>before.has(key));
+ });
+}
 
 export function shopeeExecutionUnconfirmedFields(plan,item,result={}){
  if(!plan||!item)return ['Anúncio não pôde ser consultado na Shopee'];
@@ -316,7 +351,7 @@ export function shopeeExecutionUnconfirmedFields(plan,item,result={}){
  if(String(item.item_id)!==String(plan.itemId))out.push('Identificação do anúncio diverge');
  if(plan.images?.length&&!sameData(item.image?.image_id_list||[],result.imageIds||[]))
   out.push('Imagens enviadas à mídia ainda não vinculadas ao anúncio');
- if(plan.video&&!videoMatches(item,result.video))
+ if(plan.video&&!videoPublishedAfterPlan(plan,item,result.video))
   out.push('Vídeo ainda não confirmado no anúncio');
  // Diagnóstico por campo: a ausência de UM atributo nunca deve fazer
  // título/descrição já confirmados parecerem não publicados.
