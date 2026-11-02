@@ -3562,6 +3562,20 @@ app.post('/api/shopee/optimizer/execution/reconcile',mustLogin,requireWeDropAdmi
      lastError:null});
     if(next!=='verified')void runOptimizerJobs();
   }
+  else if(oldVideoFailure&&job.plan?.video&&
+    videoPublishedAfterPlan(job.plan,live,job.result?.video)){
+    // O vídeo existe no Item ID correto, embora título/fotos/atributos
+    // ainda não estejam todos iguais ao plano. Nunca marcar as outras
+    // etapas como concluídas sem readback.
+    const otherPending=shopeeExecutionUnconfirmedFields(job.plan,live,job.result||{});
+    updated=await reconcileShopeeJob(job,{state:'failed',
+     result:withExecutionEvent({...job.result,phase:'retry_allowed',
+       videoReadbackConfirmed:true,videoRejected:false},
+      'video-readback-confirmed',
+      'Vídeo confirmado na Shopee. Outras pendências requerem nova prévia sem reenvio do vídeo.','success'),
+     lastError:'Outras pendências no anúncio: '+otherPending.join('; ').slice(0,170)});
+    recoveryReady=true;
+  }
   else if(!fiscalPhase&&req.body.safeRecover===true&&detectShopeeExecutionIssue(job.last_error,job.plan)?.code==='CEST_REQUIRED'){
     // Reconcile a known field-level rejection without retrying any marketplace write.
     // Only release the old uncertain job after readback confirms that the listing
