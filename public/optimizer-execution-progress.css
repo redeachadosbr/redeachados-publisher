@@ -284,3 +284,16 @@ body.view-optimizer.optimizer-visual-mode:not(.optimizer-one-button-mode) #optim
 body.view-optimizer.optimizer-visual-mode:not(.optimizer-one-button-mode) #optimizerExecutionVisual:not([hidden]){
  display:block!important;margin-bottom:16px;
 }
+
+/* Upload de mídia NÃO é publicação. Eliminar check verde até readback oficial. */
+body.view-optimizer.optimizer-visual-mode .ra-phase.is-staged .ra-phase-check,
+#raExecutionDialogRoot .ra-phase.is-staged .ra-phase-check{display:none!important}
+body.view-optimizer.optimizer-visual-mode .ra-phase.is-staged::after,
+#raExecutionDialogRoot .ra-phase.is-staged::after{background:#cdd8e6!important}
+body.view-optimizer.optimizer-visual-mode .ra-phase.is-staged .ra-phase-icon,
+#raExecutionDialogRoot .ra-phase.is-staged .ra-phase-icon{
+ background:#fff8e9!important;color:#926319!important;
+ border-color:#f4d399!important;
+}
+body.view-optimizer.optimizer-visual-mode .ra-phase.is-staged .ra-phase-label,
+#raExecutionDialogRoot .ra-phase.is-staged .ra-phase-label{color:#815b28!important}
