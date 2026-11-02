@@ -2,7 +2,7 @@
 (function(root){
  'use strict';
  const doc=document,byId=id=>doc.getElementById(id);
- let visible=false,dismissed=false,popup=null,overlay=null,action=null,label=null;
+ let visible=false,dismissed=false,popup=null,overlay=null,action=null,label=null,campaignWrap=null,campaignInput=null;
  const open=()=>{
   if(!popup)return;
   dismissed=false;visible=true;
@@ -30,6 +30,13 @@
    phase==='uncertain'?'↻ Conferir resultado e continuar':
    phase==='failed'?'▶ Retomar apenas as pendências':
    '▶ EXECUTAR NA SHOPEE';
+  if(campaignWrap){
+   const original=byId('optimizerExecDiscountCampaign');
+   const needed=!original?.value?.trim()&&!!root.RAExecutionCurrentStatus;
+   campaignWrap.hidden=!needed;
+   if(!needed&&doc.activeElement!==campaignInput&&campaignInput)
+    campaignInput.value=String(original?.value||'');
+  }
   if(label){
    const notice=byId('optimizerExecutionStatus');
    const warning=notice&&['error','warning'].includes(notice.dataset.state)?
@@ -68,7 +75,22 @@
    Promise.resolve(run()).catch(err=>{label.textContent='Falha: '+String(err?.message||err);})
     .finally(()=>refresh());
   });
-  footer.append(label,action);popup.append(header,panel,footer);
+  campaignWrap=doc.createElement('label');
+  campaignWrap.className='ra-exec-dialog-campaign';
+  campaignWrap.textContent='Campanha Minha Promoção';
+  campaignInput=doc.createElement('input');
+  campaignInput.type='text';campaignInput.inputMode='numeric';
+  campaignInput.placeholder='ID da promoção';campaignInput.maxLength=18;
+  campaignInput.addEventListener('input',()=>{
+   const original=byId('optimizerExecDiscountCampaign');
+   if(!original)return;
+   const digits=campaignInput.value.replace(/[^0-9]/g,'').slice(0,18);
+   if(campaignInput.value!==digits)campaignInput.value=digits;
+   original.value=digits;
+   original.dispatchEvent(new Event('input',{bubbles:true}));
+  });
+  campaignWrap.append(campaignInput);
+  footer.append(label,campaignWrap,action);popup.append(header,panel,footer);
   doc.body.append(overlay,popup);
   overlay.addEventListener('click',close);
   byId('optimizerShowExecution')?.addEventListener('click',()=>{
