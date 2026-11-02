@@ -54,7 +54,7 @@ test('painel inclui desconto na lista de pendências, abrindo Minha Promoção',
  assert.ok(tracker.includes('kitDiscountAction.hidden=!discountPending'));
  assert.ok(app.includes('async function optimizerOneClickExecute()'));
  assert.ok(tracker.includes("step.id==='discount'"));
- assert.ok(tracker.includes('optimizerDiscountOpenReview();return;'));
+ assert.ok(tracker.includes("kitDiscountAction.addEventListener('click',()=>optimizerDiscountOpenReview())"));
  assert.ok(tracker.includes('DESCONTO NÃO EXECUTADO'));
  assert.ok(tracker.includes('!progress.hasStarted&&!progress.hasSavedProgress?0'));
  assert.ok(app.includes("liveDiscount?.status!=='confirmed'"));
