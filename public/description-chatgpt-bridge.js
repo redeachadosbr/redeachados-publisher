@@ -29,18 +29,45 @@
  }
  function normalizeDescription(value){
   let text=clean(value).replace(/\r\n?/g,'\n');
-  // Preservar a descrição aprovada pelo vendedor, inclusive quantidades e
-  // marcadores ✅ dentro de 📦 O QUE VAI NA EMBALAGEM.
-  // NÃO reorganizar parágrafos por emojis: ✅ também identifica itens da embalagem.
+  // Markdown da caixa "Escrita" não deve ir ao anúncio.
   text=text.replace(/^\s*(?:Escrita|Writing)\s*$/gim,'')
-   .replace(/^\s*#{1,4}\s*/gm,'')
-   .replace(/\*\*/g,'')
-   .replace(/^\s*>\s?/gm,'')
-   .replace(/^\s*[-*]\s+(?=[^\n])/gm,'• ');
+   .replace(/^\s*#{1,4}\s*/gm,'').replace(/\*\*/g,'').trim();
   for(let i=0;i<2;i++)text=text.replace(/\\n/g,'\n').replace(/\\t/g,' ');
-  return text.replace(/[ \t]*\n[ \t]*/g,'\n')
-   .replace(/\n{3,}/g,'\n\n').trim();
+  text=text.replace(/[ \t]*\n[ \t]*/g,'\n').replace(/\n{3,}/g,'\n\n');
+  const sections={intro:[],benefits:[],why:[],doubts:[],specs:[],package:[],cta:[]};
+  let active='intro';
+  const headings=[
+   ['benefits',/^(?:✅\s*)?benef[ií]cios(?:\s+(?:reais|do produto|que fazem a diferen[çc]a))?\s*(?::|[-–])?\s*(.*)$/iu],
+   ['why',/^(?:💡\s*)?por que comprar\s*(?::|[-–])?\s*(.*)$/iu],
+   ['doubts',/^(?:❓\s*)?(?:d[uú]vidas(?:\s+frequentes)?|perguntas\s+frequentes)\s*(?::|[-–])?\s*(.*)$/iu],
+   ['specs',/^(?:⚙️?\s*)?(?:caracter[ií]sticas(?:\s+(?:reais|e informa[çc][õo]es do produto))?|especifica[çc][õo]es(?:\s+do produto)?)\s*(?::|[-–])?\s*(.*)$/iu],
+   ['package',/^(?:📦\s*)?(?:o que (?:vai|vem|acompanha)(?:\s+na embalagem)?|conte[uú]do da embalagem|itens inclusos)\s*(?::|[-–])?\s*(.*)$/iu]
+  ];
+  for(const rawLine of text.split(/\n+/)){
+   const line=rawLine.trim();if(!line)continue;
+   let matched=false;
+   for(const [key,pattern] of headings){
+    const hit=line.match(pattern);
+    if(hit){active=key;const tail=(hit[1]||'').trim();if(tail)sections[key].push(tail);matched=true;break;}
+   }
+   if(matched)continue;
+   if(/^🛒/u.test(line))active='cta';
+   // ✅ também é marcador de ITEM, não só de BENEFÍCIO: ao ler
+   // 📦 O QUE VAI NA EMBALAGEM jamais mover os itens para outra seção.
+   else if(/^✅/u.test(line)&&active==='intro')active='benefits';
+   else if(/^💡/u.test(line)&&active!=='package')active='why';
+   else if(/^❓/u.test(line)&&active!=='package')active='doubts';
+   else if(/^⚙️?/u.test(line)&&active!=='package')active='specs';
+   else if(/^📦/u.test(line))active='package';
+   sections[active].push(line);
+  }
+  const block=(key,label)=>sections[key].length?label+'\n'+sections[key].join('\n'):'';
+  return [sections.intro.join('\n'),block('benefits','✅ BENEFÍCIOS'),
+   block('why','💡 POR QUE COMPRAR'),block('doubts','❓ DÚVIDAS FREQUENTES'),
+   block('specs','⚙️ CARACTERÍSTICAS'),block('package','📦 O QUE VAI NA EMBALAGEM'),
+   sections.cta.join('\n')].filter(Boolean).join('\n\n').trim();
  }
+
  function commercialTextCandidate(raw){
   const s=normalizeDescription(raw);
   const length=count(s);
@@ -110,7 +137,7 @@
   // Importar primeiro; checagens comerciais são orientação na revisão,
   // não razão para descartar o texto real da SKU.
   if(!commercialTextCandidate(description))
-   throw Error('Não identifiquei uma descrição comercial completa. Cole somente a resposta referente a este produto.');
+   throw Error('A descrição está incompleta: cole somente a resposta comercial referente a este produto.');
   return {description,length,factsUsed:Array.isArray(found.factsUsed)?found.factsUsed:[],
    unverified:Array.isArray(found.unverified)?found.unverified:[]};
  }
