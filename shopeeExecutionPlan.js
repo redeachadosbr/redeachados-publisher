@@ -346,11 +346,19 @@ export function shopeeExecutionUnconfirmedFields(plan,item,result={}){
  */
 export function assessShopeeStableCommercialRecovery(job,first,second,at=Date.now()){
  if(job?.state!=='uncertain')throw Error('Somente execuções sem confirmação podem ser recuperadas.');
- if(!['updating','verifying'].includes(String(job.result?.phase||'')))
+ const phase=String(job.result?.phase||'');
+ // A fase discount_ready não fez nenhuma escrita de preço/desconto quando não
+ // existe checkpoint de escrita. Assim, após duas leituras, pode abrir nova
+ // prévia sem repetir ações comerciais já confirmadas.
+ const safeDiscountPreview=phase==='discount_ready'&&
+  Boolean(job.plan?.commercialDiscount?.snapshot)&&
+  !Number(job.result?.discountPriceStartedAt||0)&&
+  !Number(job.result?.discountStartedAt||0);
+ if(!['updating','verifying'].includes(phase)&&!safeDiscountPreview)
   throw Error('Esta execução exige reconciliação específica de dados fiscais ou desconto.');
  const lastSeen=Math.max(Date.parse(job.updated_at||'')||0,
   Number(job.result?.updateStartedAt||0));
- if(!lastSeen||at-lastSeen<180000)
+ if(!lastSeen||!safeDiscountPreview&&at-lastSeen<180000)
   throw Error('Aguardando a janela de consolidação Shopee de 3 minutos, sem repetir envios.');
  const snapshot=item=>({
   item_id:String(item?.item_id||''),item_status:String(item?.item_status||''),
