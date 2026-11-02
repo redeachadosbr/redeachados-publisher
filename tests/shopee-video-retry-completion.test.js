@@ -160,9 +160,9 @@ test('prévia com somente vídeo direciona clique único para o escopo vídeo se
  const app=readFileSync(new URL('../public/app.js',import.meta.url),'utf8');
  assert.match(app,/function optimizerIsVideoOnlyPreparedPlan\(plan\)/);
  assert.match(app,/plan\.actions\.length===1&&plan\.actions\[0\]==='video'/);
- assert.match(app,/optimizerExecJob\?\.state==='prepared'&&optimizerIsVideoOnlyPreparedPlan/);
- assert.match(app,/if\(videoOnly\)\{\s*\$\('#optimizerExecutionScope'\)\.value='all'/);
- assert.match(app,/p\?\.selectedStage==='video'\|\|optimizerIsVideoOnlyPreparedPlan\(p\)/);
+ assert.match(app,/optimizerExecJob\?\.state==='prepared'&&optimizerMatrixIndependentPendingPlan/);
+ assert.match(app,/if\(matrixIndependent\)\{\s*\$\('#optimizerExecutionScope'\)\.value='all'/);
+ assert.match(app,/optimizerMatrixIndependentPendingPlan\(p\)\?'▶ Executar somente '/);
 });
 
 test('vínculo recusado permite uma reconexão do mesmo vídeo processado sem criar novo upload',async()=>{
