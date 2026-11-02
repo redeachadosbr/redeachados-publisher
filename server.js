@@ -56,7 +56,7 @@ import {getWorkflowReview,saveWorkflowReview,mergeWorkflowTechnicalAutofill} fro
 import {compileShopeeExecutionPlan,confirmShopeeExecution,
   assertLiveShopeeUnchanged,verifyShopeeExecution,verifyShopeeFiscalExecution,normalizeShopeeExecutionStage,
   shopeeExecutionUnconfirmedFields,assessShopeeStableCommercialRecovery,
-  approvedShopeeReadbackConvergence} from './shopeeExecutionPlan.js';
+  approvedShopeeReadbackConvergence,videoMatches,videoPublishedAfterPlan} from './shopeeExecutionPlan.js';
 import {readShopeeExecution,saveShopeePreparedExecution,
   claimShopeePreparedExecution,finishShopeeExecution,pendingShopeeExecutions,leaseShopeeExecution,
   checkpointShopeeExecution,reconcileShopeeJob} from './shopeeExecutionStore.js';
@@ -3476,7 +3476,9 @@ app.post('/api/shopee/optimizer/execution/reconcile',mustLogin,requireWeDropAdmi
   const {itemId,modelId,sku,auth,cfg}=await checkedWorkflowAudit(req);
   const job=await readShopeeExecution(auth.shopId,itemId,modelId);
   if(job?.sku!==sku)throw Error('Nenhuma execução encontrada para esta SKU.');
-  if(job.state!=='uncertain')return res.json({ok:true,job,
+  const oldVideoFailure=job.state==='failed'&&Boolean(job.plan?.video)&&
+   /video task not found|video_upload_id.*(?:not found|invalid|illegal)/i.test(String(job.last_error||''));
+  if(job.state!=='uncertain'&&!oldVideoFailure)return res.json({ok:true,job,
    verified:job.state==='verified',progress:shopeeExecutionProgress(job),
    issue:detectShopeeExecutionIssue(job.last_error,job.plan),
    message:job.state==='verified'?'Alterações deste plano confirmadas.':
@@ -3542,11 +3544,17 @@ app.post('/api/shopee/optimizer/execution/reconcile',mustLogin,requireWeDropAdmi
    }
   }
   else if(verified){
-    await rememberPublishedVideo(job.plan,job.result||{});
+    // Apenas o ID/URL exato prova qual arquivo foi publicado. A existência
+    // de um novo vídeo prova a vinculação, mas não autoriza registrar SHA
+    // do arquivo como se a Shopee o tivesse validado byte a byte.
+    if(videoMatches(live,job.result?.video))
+     await rememberPublishedVideo(job.plan,job.result||{});
     await rememberPublishedImages(job.plan,job.result||{});
     const next=nextShopeePhaseAfterReadback(job.plan,{fiscalVerified:fiscalPhase});
     updated=await reconcileShopeeJob(job,{state:next==='verified'?'verified':'running',
      result:withExecutionEvent({...job.result,phase:next,primaryVerified:true,
+       ...(job.plan?.video&&videoPublishedAfterPlan(job.plan,live,job.result?.video)?
+        {videoReadbackConfirmed:true,videoRejected:false}:{}),
        ...(fiscalPhase?{fiscal:{status:'verified'}}:{})},
        next==='verified'?'verified':'resume-readback',
        next==='verified'?'Alterações confirmadas.':
@@ -3564,7 +3572,7 @@ app.post('/api/shopee/optimizer/execution/reconcile',mustLogin,requireWeDropAdmi
         'cest-confirmed-rejection','CEST pendente: a Shopee rejeitou a edição; o anúncio foi conferido sem reenvio.','warning'),
       lastError:job.last_error});
   }
-  else if(!fiscalPhase&&(!discountPhase||discountBeforeWrite)&&(req.body.recover===true||req.body.reprepare===true)){
+  else if(job.state==='uncertain'&&!fiscalPhase&&(!discountPhase||discountBeforeWrite)&&(req.body.recover===true||req.body.reprepare===true)){
     // Conferência e liberação são SOMENTE leituras. O write antigo nunca é repetido.
     // Duas observações Shopee após a janela de propagação permitem preparar
     // uma nova prévia baseada no anúncio atual, mesmo parcialmente atualizado.
@@ -3593,15 +3601,17 @@ app.post('/api/shopee/optimizer/execution/reconcile',mustLogin,requireWeDropAdmi
     updated=await reconcileShopeeJob(job,{state:'failed',result:{...job.result,phase:'retry_allowed'},
       lastError:'Leitura confirmou os valores anteriores. Uma nova prévia e aprovação são necessárias.'});
   }
-  const pending=updated.state==='uncertain'?(modelPhase?[modelPending||'Variações aguardando confirmação individual.']:
-   shopeeExecutionUnconfirmedFields(job.plan,live,job.result||{})):[];
+  const pending=['uncertain','failed'].includes(updated.state)?
+   (modelPhase?[modelPending||'Variações aguardando confirmação individual.']:
+    shopeeExecutionUnconfirmedFields(job.plan,live,job.result||{})):[];
   res.json({ok:true,job:updated,recoveryReady,recoveryDetails,progress:shopeeExecutionProgress(updated),
     issue:detectShopeeExecutionIssue(updated.last_error,updated.plan),
     pendingChecks:pending,verified:updated.state==='verified',
     message:updated.state==='verified'?'Todas as alterações confirmadas.':
       updated.state==='running'?'Leitura confirmada; prosseguindo com as próximas etapas.':
       recoveryReady?'Execução antiga liberada com duas leituras estáveis. Gere nova prévia apenas das alterações pendentes. Nenhum envio foi repetido.':
-      'Ainda não confirmado: '+pending.join('; ')+'. Nenhuma alteração foi reenviada.'});
+      'Ainda não confirmado: '+(pending.join('; ')||'a leitura da Shopee não comprovou todas as etapas')+
+       '. Nenhuma alteração foi reenviada.'});
  }catch(e){res.status(409).json({ok:false,error:String(e.message||e).slice(0,280)});}
 });
 let optimizerWorkerBusy=false;
