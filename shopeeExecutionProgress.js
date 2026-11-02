@@ -61,11 +61,14 @@ export function shopeeExecutionProgress(job){
  const imagesConfirmed=imageReadback||contentConfirmed||
   (confirmedReadback&&images>0&&Number(recovery.imagesInShop)===images&&
    !recoverPending.some(x=>/imagens enviadas|imagens.*vinculadas/i.test(x)));
- const videoConfirmed=videoReadback||commercialConfirmed||
+ const videoConfirmed=Boolean(result.videoReadbackConfirmed)||videoReadback||
+  (!result.videoRejected&&commercialConfirmed)||
   (confirmedReadback&&readyVideo&&
    !recoverPending.some(x=>/vídeo.*confirmado/i.test(x)));
- const fiscalPartial=state==='verified'&&phase==='verified_partial';
- const verified=state==='verified'&&!fiscalPartial;
+ const fiscalPartial=state==='verified'&&phase==='verified_partial'&&
+  result.fiscal?.status==='rejected';
+ const videoPartial=state==='verified'&&result.videoRejected===true&&!videoConfirmed;
+ const verified=state==='verified'&&!fiscalPartial&&!videoPartial;
  const discountIncluded=Boolean(plan.commercialDiscount||plan.modelVariations?.promotion||plan.kitDiscount||plan.discountOnly);
  const hasVariants=Boolean(plan.modelVariations);
  const variantsDone=hasVariants&&result.variation?.status==='verified';
@@ -81,7 +84,9 @@ export function shopeeExecutionProgress(job){
  const activeDiscount=/^(?:discount_|model_discount_|kit_discount_)/.test(phase);
  const attempt=['running','failed','uncertain','verified'].includes(state);
  const failure=['failed','uncertain'].includes(state)||fiscalPartial;
- const videoTaskError=/video task not found|video_upload_id.*(?:not found|invalid|illegal)/i.test(String(job.last_error||''));
+ const videoTaskError=!videoConfirmed&&
+  (/video task not found|video_upload_id.*(?:not found|invalid|illegal)/i.test(String(job.last_error||''))||
+    result.videoRejected===true);
  const hasSavedProgress=uploaded>0||readyVideo||variantsDone||
   commercialConfirmed||imagesConfirmed||videoConfirmed;
  // Um plano preparado com zero upload e sem run_id não é uma execução
@@ -226,7 +231,7 @@ export function shopeeExecutionProgress(job){
   imagesPublished:imagesConfirmed?images:0,
   videoPublished:video&&videoConfirmed,
   hasStarted:attempt,hasSavedProgress,resumable,awaitingAuthorization,verified:verified&&(!discountIncluded||discountDone),
-  fiscalPartial,
+  fiscalPartial,videoPartial,
   fiscalStatus:fiscalPartial?'rejected':fiscalDone?'verified':activeFiscal?'in_progress':fiscalIncluded?'pending':'not_included',
   variationsStatus:variantsDone?'verified':activeVariants?'in_progress':hasVariants?'pending':'not_included',
   discountStatus:discountDone?'verified':activeDiscount?'in_progress':
