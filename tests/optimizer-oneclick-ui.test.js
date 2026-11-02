@@ -45,7 +45,8 @@ test('recusa anterior não esconde executar nem oferece preparar autorização',
  assert.match(cmd,/launch\.hidden=!active/);
  assert.match(cmd,/optimizerExecPlan\?\.canExecute===true/);
  assert.match(cmd,/launch\.disabled=!active\|\|running/);
- assert.match(cmd,/launch\.textContent='▶ EXECUTAR NA SHOPEE'/);
+ assert.match(cmd,/launch\.textContent=running\?/);
+ assert.ok(cmd.includes("'▶ EXECUTAR NA SHOPEE'"));
  const css=readFileSync(new URL('../public/optimizer-execution-progress.css',import.meta.url),'utf8');
  assert.match(css,/optimizer-one-button-mode #optimizerRootAuditPanel/);
  assert.match(css,/optimizer-one-button-mode #optimizerExecutionPendingActions/);
