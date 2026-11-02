@@ -3575,6 +3575,9 @@ app.post('/api/shopee/optimizer/execution/reconcile',mustLogin,requireWeDropAdmi
     recoveryDetails=assessShopeeStableCommercialRecovery(job,live,confirmedAgain);
     const notes=recoveryDetails.pending;
     const nextResult=withExecutionEvent({...job.result,phase:'retry_allowed',
+      // Não reaproveitar uma tarefa de vídeo que a API do produto recusou.
+      ...(/video task not found|video_upload_id.*(?:not found|invalid|illegal)/i.test(
+       String(job.last_error||''))?{videoRejected:true}:{}),
       recovery:{...recoveryDetails,kind:'stable_readback_no_write'}},
       'stable-recovery','Shopee consultada duas vezes. Nova prévia liberada sem reenviar a atualização anterior.','success');
     updated=await reconcileShopeeJob(job,{state:'failed',result:nextResult,
