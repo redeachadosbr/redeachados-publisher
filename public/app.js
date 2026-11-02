@@ -6279,7 +6279,9 @@ async function optimizerOneClickExecute(){
    $('#optimizerExecutionScope').value:'all';
   // Para a execução só da promoção, preparar primeiro o snapshot assinado.
   // Imagens, vídeo, título e descrição já confirmados não entram nesse plano.
-  if(desiredStage==='discount_adjust'&&!optimizerDiscountApprovalReady()){
+  if(desiredStage==='discount_adjust'){
+   // Na retomada parcial, NUNCA reutilizar um token anterior à correção de centavos.
+   // O clique faz nova leitura da Shopee antes de autorizar preço e promoção.
    optimizerExecutionLiveStep('Conferindo preço e desconto',
     'Validando custo, margem e campanha da SKU antes de publicar.','info');
    if(!optimizerDiscountFinalQuote)await optimizerDiscountFinalLoad();
