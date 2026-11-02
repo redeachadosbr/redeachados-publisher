@@ -36,3 +36,19 @@ test('autorização manual é limitada ao mesmo preço e à cotação visível',
  assert.match(app,/Ao clicar, autorizo esta prévia: preço bruto/);
  assert.ok(app.includes("$('#optimizerExecutionLaunch').textContent='▶ EXECUTAR NA SHOPEE"));
 });
+
+test('recusa anterior não esconde executar nem oferece preparar autorização',()=>{
+ const cmd=app.slice(app.indexOf('function optimizerExecutionVisibleCommands(progress,job)'),
+   app.indexOf('function optimizerExecutionTrackerRender(progress,job)'));
+ assert.match(cmd,/const single=Boolean\(current&&!optimizerKitWorkflowActive\(\)\)/);
+ assert.match(cmd,/recover\.hidden=true;full\.hidden=true/);
+ assert.match(cmd,/launch\.hidden=!ready/);
+ assert.match(cmd,/launch\.textContent='▶ EXECUTAR NA SHOPEE'/);
+ const css=readFileSync(new URL('../public/optimizer-execution-progress.css',import.meta.url),'utf8');
+ assert.match(css,/optimizer-one-button-mode #optimizerRootAuditPanel/);
+ assert.match(css,/optimizer-one-button-mode #optimizerExecutionPendingActions/);
+ assert.match(css,/optimizer-one-button-mode #optimizerExecutionSteps/);
+ assert.match(css,/optimizer-one-button-mode #optimizerExecutionActivity/);
+ assert.match(css,/optimizer-one-button-mode #optimizerExecutionRecoverStart/);
+ assert.match(app,/document\.body\.classList\.toggle\('optimizer-one-button-mode',!optimizerKitWorkflowActive\(\)\)/);
+});
