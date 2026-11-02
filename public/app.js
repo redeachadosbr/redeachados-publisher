@@ -6279,7 +6279,7 @@ async function optimizerOneClickExecute(){
       optimizerExecPreparation=null;optimizerExecPrepareController=null;
       ++optimizerExecSerial;
      }
-     optimizerExecContext={sku:original.sku,itemId:original.itemId,modelId:original.modelId};
+     optimizerExecContext={sku:job.plan.sku,itemId:job.plan.itemId,modelId:job.plan.modelId};
      optimizerExecRender({plan:job.plan,progress:status.progress,issue:status.issue,
       ready:true,updatedAt:job.updated_at,executionStatus:job.state});
      p=optimizerExecPlan;
