@@ -1,6 +1,16 @@
 // Rascunhos de kits WeDrop isolados por shop_id. Somente chave privada no servidor.
 import {normalizeKitLogistics} from './shopeeKitLogisticsDraft.js';
 const TABLE='shopee_wedrop_kit_drafts';
+// Shopee usa caracteres Unicode e emojis: String.slice pode separar um par
+// substituto UTF-16 ao cortar o texto, gerando JSON rejeitado pelo PostgREST.
+export const kitDraftUnicodeSlice=(value,max)=>Array.from(String(value||'').trim()).slice(0,max).join('');
+const repairInvalidSurrogates=value=>String(value).replace(
+  /[\uD800-\uDBFF](?![\uDC00-\uDFFF])|(?<![\uD800-\uDBFF])[\uDC00-\uDFFF]/g,'\uFFFD'
+);
+export const serializeKitDraftJson=value=>JSON.stringify(value,(_key,item)=>
+ typeof item==='string'?repairInvalidSurrogates(item):item
+);
+
 const shop=id=>{const n=Number(id);if(!Number.isSafeInteger(n)||n<=0)throw Error('Loja inválida.');return n;};
 function cfg(){
  const base=String(process.env.SUPABASE_URL||'').replace(/\/$/,'');
@@ -11,14 +21,25 @@ function cfg(){
  return {base,headers};
 }
 async function request(query,options={}){
- const c=cfg();
+ const c=cfg(),method=options.method||'GET';
+ const body=options.data===undefined?undefined:serializeKitDraftJson(options.data);
  const r=await fetch(c.base+'/rest/v1/'+TABLE+query,{
-  method:options.method||'GET',
-  headers:{...c.headers,...(options.prefer?{Prefer:options.prefer}:{})},
-  ...(options.data?{body:JSON.stringify(options.data)}:{}),
+  method,headers:{...c.headers,...(options.prefer?{Prefer:options.prefer}:{})},
+  ...(body===undefined?{}:{body}),
   signal:AbortSignal.timeout(17000)
  });
- if(!r.ok)throw Error('Não foi possível salvar/consultar o rascunho (HTTP '+r.status+').');
+ if(!r.ok){
+  const detail=await r.json().catch(()=>({}));
+  const code=String(detail?.code||'').slice(0,24);
+  const safeDetail=String(detail?.message||'').replace(/[\u0000-\u001f]/g,' ').slice(0,160);
+  // Não registrar corpo do rascunho, preços, nomes pessoais ou chaves da API.
+  console.warn('[kit-draft-storage-failed]',JSON.stringify({method,status:r.status,code,
+   operation:query.includes('on_conflict')?'upsert':query.includes('select=')?'select':'update'}));
+  throw Error('Não foi possível salvar/consultar o rascunho (HTTP '+r.status+
+   (code?', código '+code:'')+'). '+(code==='PGRST102'?
+    'O banco rejeitou o JSON do rascunho. O texto Unicode foi verificado; confira o diagnóstico do servidor.':
+    safeDetail||'Verifique a comunicação com o armazenamento.'));
+ }
  return r.status===204?[]:r.json();
 }
 async function latestActiveBatch(shopId){
@@ -32,8 +53,8 @@ export async function saveKitDraft(shopId,{kit,creative,logistics,importBatchId}
  const codes=kit.components?.map(x=>String(x.sku));
  if(!Array.isArray(codes)||codes.length<2||codes.length>4||new Set(codes).size!==codes.length)
   throw Error('Componentes inválidos.');
- const title=String(creative?.title||'').trim().slice(0,120);
- const description=String(creative?.description||'').trim().slice(0,2000);
+ const title=kitDraftUnicodeSlice(creative?.title,120);
+ const description=kitDraftUnicodeSlice(creative?.description,2000);
  if(title.length<10||description.length<80)throw Error('Preencha o título e a descrição antes de salvar.');
  const previous=await loadKitDraft(id,kit.kitSku);
  const batchId=String(importBatchId||previous?.importBatchId||await latestActiveBatch(id)||'');
