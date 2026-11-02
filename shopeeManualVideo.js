@@ -126,7 +126,8 @@ export async function downloadShopeeManualVideo(asset){
  return file;
 }
 export async function rememberPublishedVideo(plan,result){
- if(!plan.video||!result.video)return;
+ if(!plan.video||!result.video||result.videoRejected===true||
+  result.videoExactReadbackConfirmed!==true)return;
  const filter='?shop_id=eq.'+n(plan.shopId)+'&item_id=eq.'+n(plan.itemId)+'&model_id=eq.'+n(plan.modelId,true)+
   '&sha256=eq.'+encodeURIComponent(plan.video.sha256);
  await readRows(filter,{method:'PATCH',body:{publication:{sha256:plan.video.sha256,video:result.video,verifiedAt:new Date().toISOString()}}});

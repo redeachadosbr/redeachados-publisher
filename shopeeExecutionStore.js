@@ -1,5 +1,6 @@
 // Shopee-specific execution state with conditional CAS locking.
 // This store does not call marketplace APIs.
+import {guardRejectedVideoCompletion,hasRejectedShopeeVideo} from './shopeeExecutionVideoRecovery.js';
 const num=v=>{const n=Number(v);if(!Number.isSafeInteger(n)||n<=0)throw Error('Identificador da loja/anúncio inválido.');return n;};
 const model=v=>{const n=Number(v);if(!Number.isSafeInteger(n)||n<0)throw Error('Modelo inválido.');return n;};
 function config(){
@@ -107,15 +108,14 @@ export async function checkpointShopeeExecution(job,result,delay=1000){
  return r[0];
 }
 export async function reconcileShopeeJob(job,{state,result,lastError}){
+ ({state,result,lastError}=guardRejectedVideoCompletion({state,result,lastError},job.plan));
  if(!['running','verified','failed'].includes(state))throw Error('Estado inválido na reconciliação.');
  // Recuperação excepcional de uma tarefa de vídeo recusada no passado.
  // A rota só pode mudar o registro antigo após uma leitura oficial do Item ID.
  const previous=String(job.state||'');
- const videoTaskFailure=Boolean(job.plan?.video)&&
-  /video task not found|video_upload_id.*(?:not found|invalid|illegal)/i.test(String(job.last_error||''));
+ const videoTaskFailure=hasRejectedShopeeVideo(job);
  const recoverableFailedVideo=previous==='failed'&&videoTaskFailure;
- const recoverablePartialVideo=previous==='verified'&&job.result?.phase==='verified_partial'&&
-  job.result?.videoRejected===true&&videoTaskFailure;
+ const recoverablePartialVideo=previous==='verified'&&videoTaskFailure;
  if(previous!=='uncertain'&&!recoverableFailedVideo&&!recoverablePartialVideo)
   throw Error('Somente execução incerta ou falha antiga de vídeo pode ser reconciliada.');
  const r=await rows(where(job.shop_id,job.item_id,job.model_id)+

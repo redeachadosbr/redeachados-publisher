@@ -58,6 +58,7 @@ RUN node --check shopeeExecutionHealth.js && node --check shopeeExecutionProgres
 RUN node --test tests/shopee-kit-trailing-space-link.test.js
 RUN node --check shopeeExecutionKitDiscount.js && node --test tests/shopee-kit-discount-single-run.test.js
 RUN node --check shopeeExecutionPlan.js && node --check shopeeExecutionWorker.js && node --test tests/shopee-root-individual-execution.test.js tests/shopee-TRC0413-video-rejection-split.test.js
+RUN node --check shopeeExecutionVideoRecovery.js && node --check shopeeExecutionStore.js && node --test tests/shopee-video-retry-completion.test.js tests/shopeeVideoListingReadback.test.js
 ENV NODE_ENV=production
 EXPOSE 10000
 CMD ["npm","start"]

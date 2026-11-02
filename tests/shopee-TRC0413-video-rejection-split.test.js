@@ -55,7 +55,7 @@ test('readback oficial confirma fotos e texto ANTES de anexar vídeo, sem reenvi
 });
 test('tarefa de vídeo rejeitada afeta só vídeo e não tenta atualizar fotos/textos outra vez',async()=>{
  const writes=[],checkpoints=[];
- const result={...baseResult('video_attach_ready'),contentVerified:true};
+ const result={...baseResult('video_attach_ready'),contentVerified:true,videoRetryCount:1};
  const io={read:async()=>live(true),validateIdentity:async()=>{},
   beforeWrite:async x=>checkpoints.push(x.phase),
   update:async body=>{writes.push(body);throw Error('product.error_busi: external system business error : video task not found');}};

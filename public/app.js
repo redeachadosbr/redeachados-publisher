@@ -6227,7 +6227,8 @@ function optimizerExecutionVisualPaint(progress=null,job=null){
   job:job||optimizerExecJob||null,
   eventTitle:shownTitle,
   eventState:liveMatches?String(phase?.dataset?.state||''):'',
-  history
+  history:(progress||optimizerExecProgress)?.events?.length?
+   [...(progress||optimizerExecProgress).events].reverse().map(e=>({title:e.label})):history
  });
 }
 function optimizerExecutionLiveStep(title,detail='',state='info',{reset=false}={}){
@@ -6854,11 +6855,21 @@ function optimizerExecutionAutoRecoverStale(job){
   }
  })();
 }
+function optimizerExecutionVideoRejected(job){
+ return Boolean(job?.plan?.video)&&job.result?.videoReadbackConfirmed!==true&&
+  (job.result?.videoRejected===true||/video task not found|video_upload_id.*(?:not found|invalid|illegal)/i.test(
+   String(job.last_error||job.result?.videoError||'')));
+}
 function optimizerExecutionJobView(job,progress=null,issue=null){
+ if(job?.state==='verified'&&optimizerExecutionVideoRejected(job))
+  job={...job,state:'failed',last_error:job.last_error||job.result?.videoError||'Vídeo pendente na Shopee.'};
  // Ao retornar o status oficial, substituir o andamento de solicitacao pelo
  // estado efetivo do worker. Nunca exibir sucesso só pelo progresso local.
  if(job&&!optimizerKitWorkflowActive()){
   const phaseLabels={images_upload:'Enviando imagens',video_upload:'Enviando vídeo',
+   video_retry_upload:'Reenviando somente vídeo',video_retry_processing:'Processando novo vídeo',
+   video_attach_ready:'Preparando vínculo do vídeo',video_attach_updating:'Vinculando vídeo ao anúncio',
+   video_attach_verifying:'Confirmando vídeo no anúncio',
    video_processing:'Processamento de vídeo na Shopee',updating:'Aplicando alterações',
    verifying:'Conferindo confirmação na Shopee',verified:'Confirmado na Shopee'};
   const phase=String(job.result?.phase||'');
@@ -7118,11 +7129,7 @@ async function optimizerRootAuditRefresh(force=false){
 let optimizerVideoAutoReadbackKey='';
 function optimizerExecutionAutoRecoverPublishedVideo(job,w){
  if(optimizerPrimaryActionBusy||optimizerExecBusy)return;
- const legacy=Boolean(job?.plan?.video)&&
-  ['failed','verified'].includes(job?.state)&&
-  (job.state!=='verified'||(job.result?.phase==='verified_partial'&&job.result?.videoRejected===true))&&
-  job.result?.videoReadbackConfirmed!==true&&
-  /video task not found|video_upload_id.*(?:not found|invalid|illegal)/i.test(String(job.last_error||''));
+ const legacy=['failed','verified'].includes(job?.state)&&optimizerExecutionVideoRejected(job);
  if(!legacy)return;
  const key=[w.sku,w.itemId,w.modelId,job.updated_at].join('|');
  if(optimizerVideoAutoReadbackKey===key)return;
@@ -7218,8 +7225,7 @@ $('#optimizerExecutionReconcile')?.addEventListener?.('click',()=>void optimizer
 let optimizerPrimaryActionBusy=false;
 globalThis.RAExecutionCurrentStatus=()=>({
  state:optimizerExecJob?.state||'prepared',
- videoTaskRejected:optimizerExecJob?.result?.videoReadbackConfirmed!==true&&
-  /video task not found|video_upload_id.*(?:not found|invalid|illegal)/i.test(String(optimizerExecJob?.last_error||'')),
+ videoTaskRejected:optimizerExecutionVideoRejected(optimizerExecJob),
  priceMismatchBeforeWrite:optimizerExecJob?.state==='uncertain'&&
   String(optimizerExecJob?.result?.phase||'')==='discount_ready'&&
   !Number(optimizerExecJob?.result?.discountPriceStartedAt||0)&&
@@ -7271,30 +7277,24 @@ globalThis.RAExecutionPrimaryAction=async()=>{
   // Execução antiga: uma tarefa de upload recusada NÃO prova que o
   // vídeo está ausente do anúncio. Consultar o Item ID antes de preparar
   // qualquer novo envio e manter as demais etapas independentes.
-  if(['failed','verified'].includes(optimizerExecJob?.state)&&optimizerExecJob?.plan?.video&&
-    (optimizerExecJob.state!=='verified'||optimizerExecJob.result?.videoRejected===true)&&
-    optimizerExecJob.result?.videoReadbackConfirmed!==true&&
-    /video task not found|video_upload_id.*(?:not found|invalid|illegal)/i.test(
-     String(optimizerExecJob.last_error||''))){
-   optimizerExecutionLiveStep('Conferindo vídeo publicado',
-    'Consultando o vídeo no anúncio Shopee pelo Item ID, sem reenviar mídia.','info');
+  if(['failed','verified'].includes(optimizerExecJob?.state)&&optimizerExecutionVideoRejected(optimizerExecJob)){
+   optimizerExecutionLiveStep('Retomando somente o vídeo',
+    'Conferindo o Item ID e recuperando o arquivo aprovado para um novo upload.','info');
    const d=await json('/api/shopee/optimizer/execution/reconcile',{
     method:'POST',headers:{'Content-Type':'application/json'},
-    body:JSON.stringify({sku:w.sku,itemId:w.itemId,modelId:w.modelId,recover:true}),
+    body:JSON.stringify({sku:w.sku,itemId:w.itemId,modelId:w.modelId,recover:true,retryVideo:true}),
     signal:AbortSignal.timeout(65000)
    });
    if(!same())return;
    optimizerExecutionJobView(d.job,d.progress,d.issue);
-   if(d.progress?.videoPublished&&['verified','running'].includes(d.job?.state)){
-    optimizerExecNotice('Vídeo reconhecido na Shopee. Etapas confirmadas preservadas; acompanhando as pendentes.','success');
-    if(d.job.state==='running')void optimizerExecutionRefresh(true);
-    return;
-   }
-   if(!d.progress?.videoPublished){
-    optimizerExecNotice('A Shopee ainda não retornou um vídeo novo identificável para este anúncio. Não foi feito reenvio. '+
-     (d.pendingChecks||[]).join('; '),'warning');
-    return;
-   }
+   if(d.job?.state==='running'){
+    optimizerExecNotice('Retomada do vídeo iniciada. Acompanhando upload, processamento e confirmação no anúncio.','info');
+    void optimizerExecutionRefresh(true);
+   }else if(d.progress?.videoPublished){
+    optimizerExecNotice('Vídeo confirmado na Shopee. Nenhum reenvio necessário.','success');
+    void optimizerRootAuditRefresh(true);
+   }else optimizerExecNotice(d.message||'Vídeo continua pendente. Confira a resposta da Shopee.','warning');
+   return;
   }
   // Auditoria do Item ID evita repetir imagens e conteúdo já publicados.
   optimizerExecutionLiveStep('Identificando etapas pendentes',
@@ -7338,9 +7338,7 @@ $('#optimizerExecutionRetry')?.addEventListener?.('click',async()=>{
  const w=optimizerWorkflowPlan;if(!w)return;
  if(optimizerExecBusy||optimizerOneClickBusy||kitAllStagesStarting)return;
  // Um clique na falha finalizada retoma somente etapas aprovadas após readback.
- if(optimizerExecJob?.state==='failed'&&optimizerExecJob?.plan?.video&&
-   /video task not found|video_upload_id.*(?:not found|invalid|illegal)/i.test(
-    String(optimizerExecJob.last_error||''))){
+ if(optimizerExecJob?.state==='failed'&&optimizerExecutionVideoRejected(optimizerExecJob)){
   await globalThis.RAExecutionPrimaryAction?.();
   return;
  }

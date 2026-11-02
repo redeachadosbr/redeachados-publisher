@@ -66,12 +66,16 @@
     !Number(job?.result?.discountPriceStartedAt||0)&&
     !Number(job?.result?.discountStartedAt||0)&&
     /preço bruto diferente|preço bruto divergen/i.test(String(job?.last_error||''));
-  const videoTaskError=/video task not found|video_upload_id.*(?:not found|invalid|illegal)/i.test(
-   String(job?.last_error||progress?.lastError||''));
+  const videoRecovering=job?.state==='running'&&Number(job?.result?.videoRetryCount||0)>0&&
+   /^video_(?:retry_|attach_)/.test(String(job?.result?.phase||''));
+  const videoTaskError=!videoRecovering&&progress?.videoPublished!==true&&job?.result?.videoReadbackConfirmed!==true&&
+   (job?.result?.videoRejected===true||/video task not found|video_upload_id.*(?:not found|invalid|illegal)/i.test(
+    String(job?.last_error||job?.result?.videoError||progress?.lastError||'')));
+  const verified=job?.state==='verified'&&!videoTaskError&&progress?.verified!==false;
   const steps=Array.isArray(progress?.steps)?progress.steps:[];
   const byId=id=>steps.find(x=>x.id===id);
   const states=DEFINITIONS.map(d=>{
-    if(d.id==='final')return job?.state==='verified'?'done':
+    if(d.id==='final')return verified?'done':
       job?.state==='uncertain'&&!priceMismatch?'checking':'waiting';
     const step=byId(d.id);
     if(!step)return 'waiting';
@@ -95,10 +99,11 @@
   if(failed&&active>=0&&states[active]!=='done')states[active]='error';
   if(job?.state==='uncertain'&&active>=0&&states[active]!=='done')states[active]=priceMismatch?'error':'checking';
   if(videoTaskError){active=1;states[1]='error';}
-  if(job?.state==='verified')active=8;
+  if(verified)active=8;
   const completed=states.filter(x=>x==='done').length;
   const title=videoTaskError?'Vídeo recusado pela Shopee — anúncio incompleto':
-    job?.state==='verified'?'Execução deste plano confirmada':
+    videoRecovering?'Recuperando publicação do vídeo':
+    verified?'Execução deste plano confirmada':
     job?.state==='failed'?'Execução interrompida — pendências preservadas':
     priceMismatch?'Preço bruto divergente — desconto NÃO enviado':
     job?.state==='uncertain'?'Aguardando confirmação da Shopee':
@@ -108,8 +113,8 @@
   const serverMessage=String(progress?.message||'').trim();
   const lastError=String(job?.last_error||'').trim();
   return {active,title,detail:videoTaskError?
-    'Erro oficial: '+String(job?.last_error||progress?.lastError||'video task not found')+
-    '. As nove fotos estão apenas na mídia até confirmação no anúncio.':
+    'Erro oficial: '+String(job?.last_error||job?.result?.videoError||progress?.lastError||'video task not found')+
+    '. Vídeo pendente; etapas confirmadas permanecem preservadas.':
     priceMismatch?
     lastError+' Nenhum envio de preço ou desconto foi iniciado nesta etapa.':
     failed?(lastError||serverMessage||'Consulte a pendência e continue sem repetir envios.'):

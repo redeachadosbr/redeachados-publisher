@@ -64,6 +64,7 @@ import {advanceShopeeExecution,approvedShopeeModels,reconcileShopeeModelExecutio
  nextShopeePhaseAfterReadback} from './shopeeExecutionWorker.js';
 import {shopeeExecutionProgress,withExecutionEvent} from './shopeeExecutionProgress.js';
 import {auditRootShopeeExecution} from './shopeeExecutionHealth.js';
+import {hasRejectedShopeeVideo,prepareRejectedVideoRetry,guardRejectedVideoCompletion} from './shopeeExecutionVideoRecovery.js';
 import {recyclableShopeeMedia,archiveShopeeMedia} from './shopeeExecutionMediaReuse.js';
 import {normalizedShopeeFiscalBatchSkus,checkedShopeeFiscalBatchEntries} from './shopeeExecutionBatch.js';
 import {fiscalPreviewDisposition} from './shopeeFiscalReadiness.js';
@@ -3198,7 +3199,7 @@ async function readLiveRootExecution(req){
       Math.round(Number(liveDiscount.gross)*100)===Math.round(Number(approvedKitDiscount.gross)*100));
    }catch(error){discountDiagnostic='Promoção não conferida pela Shopee: '+
     String(error.message||error).slice(0,130);}
-  }else if(job?.state==='verified'&&job?.plan?.commercialDiscount?.snapshot?.discountId){
+  }else if((job?.state==='verified'||job?.result?.discount?.status==='verified')&&job?.plan?.commercialDiscount?.snapshot?.discountId){
    // O histórico de desconto sozinho não prova a promoção atual.
    try{
     const expected=job.plan.commercialDiscount.snapshot;
@@ -3255,7 +3256,11 @@ app.get('/api/shopee/optimizer/execution/status',mustLogin,requireWeDropAdmin,as
     if(!/^\d{1,18}$/.test(modelId))throw Error('Model ID inválido.');
     const {auth}=await getValidAuth(req);
     const job=await readShopeeExecution(auth.shopId,itemId,modelId);
-    const owned=job?.sku===sku?job:null;
+    let owned=job?.sku===sku?job:null;
+    if(owned){
+     const safe=guardRejectedVideoCompletion({state:owned.state,result:owned.result,lastError:owned.last_error},owned.plan);
+     owned={...owned,state:safe.state,result:safe.result,last_error:safe.lastError};
+    }
     res.json({ok:true,job:owned,progress:shopeeExecutionProgress(owned),
       issue:owned?detectShopeeExecutionIssue(owned.last_error,owned.plan):null});
   }catch(e){res.status(400).json({error:String(e.message||e).slice(0,300)});}
@@ -3476,15 +3481,34 @@ app.post('/api/shopee/optimizer/execution/reconcile',mustLogin,requireWeDropAdmi
   const {itemId,modelId,sku,auth,cfg}=await checkedWorkflowAudit(req);
   const job=await readShopeeExecution(auth.shopId,itemId,modelId);
   if(job?.sku!==sku)throw Error('Nenhuma execução encontrada para esta SKU.');
-  const oldVideoFailure=['failed','verified'].includes(job.state)&&Boolean(job.plan?.video)&&
-   (job.state!=='verified'||(job.result?.phase==='verified_partial'&&job.result?.videoRejected===true))&&
-   /video task not found|video_upload_id.*(?:not found|invalid|illegal)/i.test(String(job.last_error||''));
+  const oldVideoFailure=['failed','verified'].includes(job.state)&&hasRejectedShopeeVideo(job);
   if(job.state!=='uncertain'&&!oldVideoFailure)return res.json({ok:true,job,
    verified:job.state==='verified',progress:shopeeExecutionProgress(job),
    issue:detectShopeeExecutionIssue(job.last_error,job.plan),
    message:job.state==='verified'?'Alterações deste plano confirmadas.':
     'O job já não está incerto; conferindo somente as pendências.'});
   const live=await shopeeLiveEditableItem(cfg,auth,itemId);
+  if(oldVideoFailure&&!videoPublishedAfterPlan(job.plan,live,job.result?.video)){
+   if(req.body.retryVideo===true){
+    // Explicit retry only; status refresh/reconcile never starts an upload.
+    // Keep the original approval and all completed stages in the same job.
+    const saved=await getShopeeManualVideo(auth.shopId,itemId,modelId,sku);
+    if(!saved||saved.sha256!==job.plan.video.sha256)
+     throw Error('O vídeo salvo mudou. Prepare a nova versão antes de publicar.');
+    const second=await shopeeLiveEditableItem(cfg,auth,itemId);
+    const result=prepareRejectedVideoRetry(job,second,{explicit:true});
+    const updated=await reconcileShopeeJob(job,{state:'running',result,lastError:null});
+    void runOptimizerJobs();
+    return res.status(202).json({ok:true,job:updated,verified:false,
+     progress:shopeeExecutionProgress(updated),message:'Retomando somente o vídeo com uma nova tarefa de upload.'});
+   }
+   const safe=guardRejectedVideoCompletion({state:'verified',result:{...job.result,
+    videoRejected:true,videoError:job.result?.videoError||job.last_error},lastError:job.last_error},job.plan);
+   const updated=job.state==='verified'?await reconcileShopeeJob(job,safe):job;
+   return res.json({ok:true,job:updated,verified:false,progress:shopeeExecutionProgress(updated),
+    pendingChecks:['Vídeo ainda não publicado no anúncio'],
+    message:'Vídeo ausente na leitura oficial. Use Retomar somente vídeo para enviar uma nova tarefa.'});
+  }
   const phase=String(job.result?.phase||'');
   const fiscalPhase=/^fiscal_|^verified_partial$/.test(phase);
   const discountPhase=/^discount_/.test(phase);
@@ -3549,7 +3573,7 @@ app.post('/api/shopee/optimizer/execution/reconcile',mustLogin,requireWeDropAdmi
     // de um novo vídeo prova a vinculação, mas não autoriza registrar SHA
     // do arquivo como se a Shopee o tivesse validado byte a byte.
     if(videoMatches(live,job.result?.video))
-     await rememberPublishedVideo(job.plan,job.result||{});
+     await rememberPublishedVideo(job.plan,{...job.result,videoExactReadbackConfirmed:true,videoRejected:false});
     await rememberPublishedImages(job.plan,job.result||{});
     const next=nextShopeePhaseAfterReadback(job.plan,{fiscalVerified:fiscalPhase});
     updated=await reconcileShopeeJob(job,{state:next==='verified'?'verified':'running',
@@ -3790,7 +3814,7 @@ async function runOptimizerJobs(){
     // Uma falha após a escrita fiscal pode ter sido aceita pela Shopee.
     // NUNCA reenviar automaticamente; consultar o resultado antes de qualquer retry.
     const uncertain=['updating','verifying','fiscal_updating','fiscal_verifying',
-      'variation_updating','variation_verifying',
+      'video_attach_updating','video_attach_verifying','variation_updating','variation_verifying',
       'model_discount_price_updating','model_discount_price_verifying',
       'model_discount_updating','model_discount_verifying',
       'discount_price_updating','discount_price_verifying','discount_updating','discount_verifying',

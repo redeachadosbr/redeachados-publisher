@@ -87,6 +87,8 @@ export function shopeeExecutionProgress(job){
  const videoTaskError=!videoConfirmed&&
   (/video task not found|video_upload_id.*(?:not found|invalid|illegal)/i.test(String(job.last_error||''))||
     result.videoRejected===true);
+ const videoRecovering=state==='running'&&Number(result.videoRetryCount||0)>0&&
+  /^video_(?:retry_|attach_)/.test(phase);
  const hasSavedProgress=uploaded>0||readyVideo||variantsDone||
   commercialConfirmed||imagesConfirmed||videoConfirmed;
  // Um plano preparado com zero upload e sem run_id não é uma execução
@@ -115,7 +117,7 @@ export function shopeeExecutionProgress(job){
  };
  const active={
   images:needs.images&&['images_upload','updating','verifying'].includes(phase),
-  video:needs.video&&['video_upload','video_processing','updating','verifying','video_attach_ready','video_attach_updating','video_attach_verifying'].includes(phase),
+  video:needs.video&&(videoRecovering||['video_upload','video_processing','updating','verifying','video_attach_ready','video_attach_updating','video_attach_verifying'].includes(phase)),
   seo:needs.seo&&activeCommercial&&!videoTaskError,
   description:needs.description&&activeCommercial&&!videoTaskError,
   technical:needs.technical&&activeCommercial&&!videoTaskError,
@@ -130,6 +132,7 @@ export function shopeeExecutionProgress(job){
   else if(!needs[id])status='skipped';
   else if(done[id])status='done';
   else if(id==='images'&&uploaded>0&&uploaded===images)status='staged';
+  else if(id==='video'&&videoRecovering)status='active';
   else if(id==='video'&&videoTaskError)status='attention';
   else if(id==='video'&&readyVideo)status='staged';
   else if(active[id])status=failure?'attention':'active';
@@ -180,7 +183,8 @@ export function shopeeExecutionProgress(job){
   fiscal:'SOMENTE FISCAL',remaining:'SOMENTE VARIAÇÕES, FISCAL E DESCONTO',discount:'SOMENTE DESCONTO',discount_adjust:'PREÇO BRUTO + DESCONTO',variants:'SOMENTE VARIAÇÕES'};
  const partial=plan.selectedStage&&plan.selectedStage!=='all';
  const partialName=(plan.selectedStage==='media_fiscal'?'SOMENTE IMAGENS + VÍDEO + FISCAL':modeLabels[plan.selectedStage])||'ETAPA ISOLADA';
- const title=videoTaskError?'Vídeo recusado pela Shopee — publicação incompleta':
+ const title=videoRecovering?'Recuperando publicação do vídeo':
+  videoTaskError?'Vídeo recusado pela Shopee — publicação incompleta':
   fiscalPartial?'Dados fiscais pendentes de correção':
   verified?(partial?'Execução parcial confirmada · outras etapas não incluídas':'Execução atual confirmada · conferir as 9 etapas'):state==='uncertain'?'Confirmação pendente':
   state==='failed'?'Execução interrompida':state==='blocked'?'Pendências para executar':
@@ -191,7 +195,9 @@ export function shopeeExecutionProgress(job){
   .slice(-15).reverse().map(x=>({label:x.label,at:x.at,kind:x.kind||'info'}));
  if(!events.length&&attempt)
   events.push({label:title,at:job.updated_at||null,kind:failure?'warning':verified?'success':'info'});
- const message=fiscalPartial?'O anúncio e as variações foram processados, mas a Shopee recusou os dados fiscais. Confira o motivo antes de aplicar o desconto.':
+ const message=videoRecovering?'O sistema está enviando somente o vídeo aprovado com uma nova tarefa. A conclusão exige confirmar o vídeo no anúncio.':
+  videoTaskError?'Vídeo rejeitado: '+String(job.last_error||result.videoError||'Tarefa não encontrada')+'. Conteúdo e imagens confirmados permanecem preservados.':
+  fiscalPartial?'O anúncio e as variações foram processados, mas a Shopee recusou os dados fiscais. Confira o motivo antes de aplicar o desconto.':
   verified?'Somente as alterações incluídas neste job foram confirmadas na Shopee. A conclusão geral depende da auditoria raiz das nove etapas; itens não incluídos continuam pendentes.':
   state==='uncertain'&&videoTaskError?
    'Falha real: vídeo recusado pela Shopee. Confira e prepare nova tentativa do vídeo após leitura do anúncio, sem repetir conteúdo aprovado.':

@@ -6,11 +6,16 @@ import {isDefinitiveShopeeRejection} from './shopeeExecutionIssues.js';
 import {advanceVerifiedDiscount} from './shopeeExecutionDiscount.js';
 import {advanceShopeeKitDiscount} from './shopeeExecutionKitDiscount.js';
 import {buildVariationPayload} from './shopeeVariationMedia.js';
+import {guardRejectedVideoCompletion,prepareRejectedVideoRetry} from './shopeeExecutionVideoRecovery.js';
 const hasDiscount=p=>Boolean(p.commercialDiscount||p.kitDiscount);
 const discountPhase=p=>p.kitDiscount?'kit_discount_ready':p.modelVariations?'model_discount_ready':'discount_ready';
 // One durable step per lease. No tokens or secret configuration are persisted.
 export async function advanceShopeeExecution(job,io){
+ return guardRejectedVideoCompletion(await advanceShopeeExecutionStep(job,io),job.plan);
+}
+async function advanceShopeeExecutionStep(job,io){
  const plan=job.plan,result={...(job.result||{})};
+ if(!plan?.requiresExplicitConfirmation||!plan.canExecute)throw Error('Plano sem aprovação válida.');
  // O vídeo é vinculado em operação separada e verificável; sua rejeição
  // não deve anular fotos, título ou descrição aprovados.
  const nonVideoPlan={...plan,video:null};
@@ -19,18 +24,42 @@ export async function advanceShopeeExecution(job,io){
  const noteVideoReadback=live=>{
   if(plan.video&&videoPublishedAfterPlan(plan,live,result.video)){
    result.videoReadbackConfirmed=true;
+   result.videoExactReadbackConfirmed=videoMatches(live,result.video);
    result.videoRejected=false;
   }
  };
  const afterVideo=(confirmed=result)=>{
-  const next=plan.modelVariations?'variation_ready':
-   plan.finalFiscal?'fiscal_ready':hasDiscount(plan)?discountPhase(plan):'verified';
+  const next=plan.modelVariations&&confirmed.variation?.status!=='verified'?'variation_ready':
+   plan.finalFiscal&&confirmed.fiscal?.status!=='verified'?'fiscal_ready':
+   hasDiscount(plan)&&confirmed.discount?.status!=='verified'?discountPhase(plan):'verified';
   const done=withExecutionEvent({...confirmed,phase:next,primaryVerified:true,
    ...(next==='verified'?{verified:true}:{})},'commercial-verified',
    'Imagens, vídeo e conteúdo confirmados no anúncio da Shopee.','success');
   return next==='verified'?{state:'verified',result:done,lastError:null}:
    {state:'running',result:done,delay:500};
  };
+ if(['video_retry_upload','video_retry_processing'].includes(result.phase)){
+  await io.validateIdentity();
+  const live=await io.read();
+  if(videoPublishedAfterPlan(plan,live,result.video))
+   return afterVideo({...result,videoReadbackConfirmed:true,videoRejected:false,
+    videoExactReadbackConfirmed:videoMatches(live,result.video)});
+  if(!nonVideoVerified(live)||!sameData(live.video_info||[],plan.original?.video_info||[]))
+   return {state:'uncertain',result,lastError:'Anúncio mudou durante a recuperação do vídeo. Nenhum vínculo reenviado.'};
+  const file=await io.download(plan.video);
+  const video=await advanceVideoUpload({state:result.video||{},file,api:io.media});
+  if((result.rejectedVideoIds||[]).includes(video.id))
+   return {state:'failed',result:withExecutionEvent({...result,phase:'video_attach_rejected'},
+    'video-retry-same-task','Shopee devolveu a mesma tarefa de vídeo recusada. Publicação continua pendente.','warning'),
+    lastError:'Vídeo pendente: Shopee devolveu a mesma tarefa recusada (video task not found).'};
+  const phase=video.phase==='ready'?'video_attach_ready':
+   video.phase==='processing'?'video_retry_processing':'video_retry_upload';
+  return {state:'running',result:withExecutionEvent({...result,video,phase},
+   'video-retry-'+result.videoRetryCount+'-'+video.phase+'-'+(video.nextPart||0),
+   video.phase==='ready'?'Novo vídeo processado. Preparando vínculo ao anúncio.':
+    video.phase==='processing'?'Novo upload recebido; Shopee está processando o vídeo.':'Enviando novamente somente o arquivo de vídeo aprovado.'),
+   delay:video.phase==='processing'?10000:500};
+ }
  if(['video_attach_ready','video_attach_updating','video_attach_verifying'].includes(result.phase)){
   const live=await io.read();
   if(!nonVideoVerified(live))
@@ -38,7 +67,8 @@ export async function advanceShopeeExecution(job,io){
     'A leitura da Shopee diverge do conteúdo; nenhuma alteração reenviada.','warning'),
     lastError:'Campos comerciais não coincidem com o plano aprovado antes do vídeo.'};
   if(videoPublishedAfterPlan(plan,live,result.video))
-   return afterVideo(withExecutionEvent({...result,videoReadbackConfirmed:true,videoRejected:false},
+   return afterVideo(withExecutionEvent({...result,videoReadbackConfirmed:true,videoRejected:false,
+    videoExactReadbackConfirmed:videoMatches(live,result.video)},
     'video-readback-confirmed','Vídeo localizado no anúncio pelo Item ID da Shopee; sem reenvio.','success'));
   if(result.phase!=='video_attach_ready'){
    if(Date.now()-Number(result.videoAttachStartedAt||0)>90000)
@@ -66,14 +96,23 @@ export async function advanceShopeeExecution(job,io){
    const reason=String(error.message||error).slice(0,240);
    if(/video task not found|video_upload_id.*(?:not found|invalid|illegal)/i.test(reason)){
     // Uma tarefa recusada pode coexistir com vídeo já anexado ao Item ID.
-    let confirmed=false;
-    try{confirmed=videoPublishedAfterPlan(plan,await io.read(),result.video);}
+    let confirmed=false,readback=null;
+    try{readback=await io.read();confirmed=videoPublishedAfterPlan(plan,readback,result.video);}
     catch{/* Rejeição preservada até ser possível uma nova leitura. */}
     if(confirmed)
-     return afterVideo(withExecutionEvent({...result,videoReadbackConfirmed:true,videoRejected:false},
+     return afterVideo(withExecutionEvent({...result,videoReadbackConfirmed:true,videoRejected:false,
+      videoExactReadbackConfirmed:videoMatches(readback,result.video)},
       'video-readback-confirmed','Vídeo já aparece no anúncio Shopee; tarefa antiga ignorada.','success'));
-    const next=plan.modelVariations?'variation_ready':
-     plan.finalFiscal?'fiscal_ready':hasDiscount(plan)?discountPhase(plan):'verified_partial';
+    if(readback&&Number(result.videoRetryCount||0)<1){
+     try{
+      const retry=prepareRejectedVideoRetry({...job,result:{...checkpoint,
+       videoRejected:true,videoError:reason},last_error:reason},readback);
+      return {state:'running',result:retry,delay:500};
+     }catch{/* Divergent/unknown readback never permits a fresh upload. */}
+    }
+    const next=plan.modelVariations&&result.variation?.status!=='verified'?'variation_ready':
+     plan.finalFiscal&&result.fiscal?.status!=='verified'?'fiscal_ready':
+     hasDiscount(plan)&&result.discount?.status!=='verified'?discountPhase(plan):'verified_partial';
     const partial=withExecutionEvent({...checkpoint,
      phase:next==='verified_partial'?'video_attach_rejected':next,
      videoRejected:true,videoError:reason,primaryVerified:true,verified:false},

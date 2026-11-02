@@ -23,12 +23,12 @@
   const data=state||root.RAExecutionCurrentStatus?.()||{};
   const phase=data.state||'prepared';
   const busy=Boolean(data.busy);
-  action.disabled=busy||phase==='running'||phase==='verified';
+  action.disabled=busy||phase==='running'||(phase==='verified'&&!data.videoTaskRejected);
   action.textContent=busy?'◷ Conferindo Shopee e preparando pendências…':
    phase==='running'?'◷ Execução em andamento — acompanhando Shopee':
+   data.videoTaskRejected?'↻ Retomar somente vídeo':
    phase==='verified'?'✓ Etapas deste envio confirmadas':
    phase==='uncertain'&&data.priceMismatchBeforeWrite?'▶ Corrigir preço e concluir desconto':
-   data.videoTaskRejected?'↻ Conferir falha do vídeo e retomar':
    phase==='uncertain'?'↻ Conferir resultado e continuar':
    phase==='failed'?'▶ Retomar apenas as pendências':
    '▶ EXECUTAR NA SHOPEE';

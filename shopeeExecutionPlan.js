@@ -305,8 +305,10 @@ export function videoMatches(item,video){
   if(!video?.id||video.phase!=='ready')return false;
   const infos=Array.isArray(item?.video_info)?item.video_info:[item?.video_info].filter(Boolean);
   const paths=new Set((video.videoInfo?.video_url_list||[]).map(x=>videoPath(x.video_url)).filter(Boolean));
-  return infos.some(x=>x.video_upload_id===video.id||x.video_id===video.id||
-    (paths.size>0&&paths.has(videoPath(x.video_url))));
+  return infos.some(x=>x&&!/FAILED|REJECTED|CANCELLED|DELETED|TRANSCODING|PROCESSING/.test(
+    String(x.video_status||x.status||'').toUpperCase())&&
+    (String(x.video_upload_id||'')===String(video.id)||String(x.video_id||'')===String(video.id)||
+    (paths.size>0&&paths.has(videoPath(x.video_url)))));
 }
 function videoPath(value){try{return new URL(value).pathname.replace(/\/+$/,'');}catch{return '';}}
 function videoListingEntries(item){

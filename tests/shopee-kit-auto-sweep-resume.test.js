@@ -34,7 +34,7 @@ test('retomada evita reenvio duplicado, recupera sessao e nao modifica job incer
 });
 test('auditoria da promocao do kit verifica Shopee mesmo se historico falhou',()=>{
  const start=server.indexOf('const published=review.kitDiscountPublication;');
- const end=server.indexOf('}else if(job?.state===\'verified\'&&job?.plan?.commercialDiscount',start);
+ const end=server.indexOf('const expected=job.plan.commercialDiscount.snapshot;',start);
  assert.ok(start>0&&end>start);
  const discount=server.slice(start,end);
  assert.match(discount,/review\.kitDiscountPreview\?\.status==='prepared'/);
