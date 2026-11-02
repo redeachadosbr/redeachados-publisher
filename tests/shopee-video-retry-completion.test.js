@@ -164,3 +164,36 @@ test('prévia com somente vídeo direciona clique único para o escopo vídeo se
  assert.match(app,/if\(videoOnly\)\{\s*\$\('#optimizerExecutionScope'\)\.value='video'/);
  assert.match(app,/p\?\.selectedStage==='video'\|\|optimizerIsVideoOnlyPreparedPlan\(p\)/);
 });
+
+test('vínculo recusado permite uma reconexão do mesmo vídeo processado sem criar novo upload',async()=>{
+ const {prepareRejectedVideoRelink}=await import('../shopeeExecutionVideoRecovery.js');
+ const previous={...job(),state:'failed',last_error:'video task not found',result:{
+  ...result(),videoRetryCount:1,videoRejected:true,videoError:'video task not found',phase:'video_attach_rejected'}};
+ const relink=prepareRejectedVideoRelink(previous,live());
+ assert.equal(relink.phase,'video_attach_wait_propagation');
+ assert.equal(relink.video.id,'old-task');
+ assert.equal(relink.videoRelinkCount,1);
+ let writes=0,uploads=0,reads=0;
+ const io={read:async()=>live(),validateIdentity:async()=>{},
+  download:async()=>{uploads++;throw Error('Não baixar novamente');},
+  media:{result:async()=>{reads++;return {status:'SUCCEEDED'};}},
+  beforeWrite:async()=>{},
+  update:async body=>{writes++;assert.deepEqual(body.video_upload_id,['old-task']);return {request_id:'accepted'};}};
+ let out=await advanceShopeeExecution({...previous,state:'running',result:relink},io);
+ assert.equal(out.result.phase,'video_attach_wait_propagation');
+ assert.equal(writes,0);assert.equal(reads,0);assert.equal(uploads,0);
+ out=await advanceShopeeExecution({...previous,state:'running',result:{...relink,videoRelinkAt:Date.now()-91000}},io);
+ assert.equal(out.result.phase,'video_attach_ready');assert.equal(reads,1);
+ out=await advanceShopeeExecution({...previous,state:'running',result:out.result},io);
+ assert.equal(out.result.phase,'video_attach_verifying');assert.equal(writes,1);assert.equal(uploads,0);
+ assert.throws(()=>prepareRejectedVideoRelink({...previous,result:{...previous.result,videoRelinkCount:1}},live()),/recusou também/);
+});
+
+test('percentual não chega perto de 100 com vídeo não publicado',()=>{
+ const j={...job(),state:'failed',last_error:'video task not found',
+ result:{...result(),videoRejected:true,videoError:'video task not found',primaryVerified:true,discount:{status:'verified'}}};
+ const p=shopeeExecutionProgress(j);
+ assert.equal(p.videoPublished,false);
+ assert.ok(p.percent<=80,'no false 97% when upload is staged');
+ assert.equal(p.verified,false);
+});

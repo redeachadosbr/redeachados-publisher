@@ -33,6 +33,34 @@ export function prepareRejectedVideoRetry(job,live,{explicit=false}={}){
   'video-retry-'+(attempts+1),'Recuperando o arquivo aprovado e iniciando uma nova tarefa de vídeo.','info');
 }
 
+
+/** Reconnect an already transcoded upload after product.update_item rejection.
+ * Exactly one explicit relink per upload ID, without re-uploading its bytes.
+ * A stored SUCCEEDED state is rechecked with Shopee before the next write.
+ */
+export function prepareRejectedVideoRelink(job,live){
+ const plan=job?.plan,result=job?.result||{};
+ if(!plan?.requiresExplicitConfirmation||!plan.canExecute||!hasRejectedShopeeVideo(job)||
+    !isMissingVideoTask(result.videoError||job.last_error))
+  throw Error('A falha do vídeo não autoriza reconexão automática.');
+ if(!result.video?.id||result.video.phase!=='ready')
+  throw Error('Não existe vídeo processado salvo para reconectar.');
+ if(Number(result.videoRelinkCount||0)>=1)
+  throw Error('A Shopee recusou também a reconexão do vídeo processado. Não faça outro upload. Abra chamado com o request_id apresentado no histórico.');
+ if(!verifyShopeeExecution({...plan,video:null},live,result))
+  throw Error('Conteúdo mudou na Shopee; nenhuma atualização de vídeo foi enviada.');
+ if(videoPublishedAfterPlan(plan,live,result.video))
+  throw Error('O vídeo já consta no anúncio; nenhuma atualização necessária.');
+ if(!sameData(live.video_info||[],plan.original?.video_info||[])||
+   (live.item_status&&!['NORMAL','UNLIST'].includes(live.item_status)))
+  throw Error('O anúncio foi alterado. Confira antes de vincular qualquer mídia.');
+ return withExecutionEvent({...result,phase:'video_attach_wait_propagation',
+  videoRelinkCount:Number(result.videoRelinkCount||0)+1,videoRelinkAt:Date.now(),
+  videoAttachStartedAt:null,videoAttachRequestId:null,verified:false},
+  'video-relink-'+(Number(result.videoRelinkCount||0)+1),
+  'Reconectando o vídeo já processado. Aguardando sincronização Shopee sem fazer outro upload.','info');
+}
+
 // A later fiscal/discount success cannot erase an unresolved video rejection.
 export function guardRejectedVideoCompletion(out,plan){
  if(out?.state!=='verified'||!hasRejectedShopeeVideo({plan,result:out.result,last_error:out.lastError}))return out;

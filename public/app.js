@@ -6888,7 +6888,7 @@ function optimizerExecutionJobView(job,progress=null,issue=null){
  if(job&&!optimizerKitWorkflowActive()){
   const phaseLabels={images_upload:'Enviando imagens',video_upload:'Enviando vídeo',
    video_retry_upload:'Reenviando somente vídeo',video_retry_processing:'Processando novo vídeo',
-   video_attach_ready:'Preparando vínculo do vídeo',video_attach_updating:'Vinculando vídeo ao anúncio',
+   video_attach_ready:'Preparando vínculo do vídeo',video_attach_wait_propagation:'Aguardando sincronização da Shopee',video_attach_updating:'Vinculando vídeo ao anúncio',
    video_attach_verifying:'Confirmando vídeo no anúncio',
    video_processing:'Processamento de vídeo na Shopee',updating:'Aplicando alterações',
    verifying:'Conferindo confirmação na Shopee',verified:'Confirmado na Shopee'};
@@ -7246,6 +7246,8 @@ let optimizerPrimaryActionBusy=false;
 globalThis.RAExecutionCurrentStatus=()=>({
  state:optimizerExecJob?.state||'prepared',
  videoTaskRejected:optimizerExecutionVideoRejected(optimizerExecJob),
+ videoRelinkExhausted:optimizerExecutionVideoRejected(optimizerExecJob)&&
+  Number(optimizerExecJob?.result?.videoRelinkCount||0)>=1,
  priceMismatchBeforeWrite:optimizerExecJob?.state==='uncertain'&&
   String(optimizerExecJob?.result?.phase||'')==='discount_ready'&&
   !Number(optimizerExecJob?.result?.discountPriceStartedAt||0)&&
@@ -7299,7 +7301,7 @@ globalThis.RAExecutionPrimaryAction=async()=>{
   // qualquer novo envio e manter as demais etapas independentes.
   if(['failed','verified'].includes(optimizerExecJob?.state)&&optimizerExecutionVideoRejected(optimizerExecJob)){
    optimizerExecutionLiveStep('Retomando somente o vídeo',
-    'Conferindo o Item ID e recuperando o arquivo aprovado para um novo upload.','info');
+    'Conferindo o Item ID; se o vídeo está processado, reconectando sem novo upload.','info');
    const d=await json('/api/shopee/optimizer/execution/reconcile',{
     method:'POST',headers:{'Content-Type':'application/json'},
     body:JSON.stringify({sku:w.sku,itemId:w.itemId,modelId:w.modelId,recover:true,retryVideo:true}),

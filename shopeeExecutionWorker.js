@@ -38,6 +38,32 @@ async function advanceShopeeExecutionStep(job,io){
   return next==='verified'?{state:'verified',result:done,lastError:null}:
    {state:'running',result:done,delay:500};
  };
+
+ if(result.phase==='video_attach_wait_propagation'){
+  // The media API succeeded, but product.update_item could not yet resolve
+  // the same upload ID. Give the product backend time to see that ID.
+  // Never download/upload again, and never write before official status readback.
+  const live=await io.read();
+  if(videoPublishedAfterPlan(plan,live,result.video))
+   return afterVideo({...result,videoReadbackConfirmed:true,videoRejected:false,
+    videoExactReadbackConfirmed:videoMatches(live,result.video)});
+  if(!nonVideoVerified(live)||!sameData(live.video_info||[],plan.original?.video_info||[]))
+   return {state:'uncertain',result,lastError:'Anúncio alterado durante a espera de sincronização. Nenhum vínculo reenviado.'};
+  if(!result.video?.id||result.video.phase!=='ready')
+   return {state:'failed',result,lastError:'Nenhuma tarefa de vídeo processado válida para reconectar.'};
+  const elapsed=Date.now()-Number(result.videoRelinkAt||0);
+  if(!Number.isFinite(elapsed)||elapsed<0)
+   return {state:'uncertain',result,lastError:'Checkpoint de sincronização inválido. Nenhuma nova escrita.'};
+  if(elapsed<90000)
+   return {state:'running',result,delay:Math.min(15000,Math.max(1000,90000-elapsed))};
+  const mediaStatus=await io.media.result(result.video.id);
+  if(mediaStatus?.status!=='SUCCEEDED')
+   return {state:'failed',result,lastError:'O vídeo não está mais SUCCEEDED na Shopee ('+
+    String(mediaStatus?.status||'indisponível')+'). Nenhuma atualização foi feita.'};
+  return {state:'running',result:withExecutionEvent({...result,phase:'video_attach_ready'},
+   'video-relink-ready','Tarefa ainda SUCCEEDED após espera. Tentando vincular somente o mesmo ID ao anúncio.','info'),delay:500};
+ }
+
  if(['video_retry_upload','video_retry_processing'].includes(result.phase)){
   await io.validateIdentity();
   const live=await io.read();

@@ -23,10 +23,11 @@
   const data=state||root.RAExecutionCurrentStatus?.()||{};
   const phase=data.state||'prepared';
   const busy=Boolean(data.busy);
-  action.disabled=busy||phase==='running'||(phase==='verified'&&!data.videoTaskRejected);
+  action.disabled=busy||phase==='running'||Boolean(data.videoRelinkExhausted)||(phase==='verified'&&!data.videoTaskRejected);
   action.textContent=busy?'◷ Conferindo Shopee e preparando pendências…':
    phase==='running'?'◷ Execução em andamento — acompanhando Shopee':
-   data.videoTaskRejected?'↻ Retomar somente vídeo':
+   data.videoRelinkExhausted?'⚠ Vínculo recusado — verificar com Shopee':
+   data.videoTaskRejected?'↻ Reconectar vídeo sem novo upload':
    phase==='verified'?'✓ Etapas deste envio confirmadas':
    phase==='uncertain'&&data.priceMismatchBeforeWrite?'▶ Corrigir preço e concluir desconto':
    phase==='uncertain'?'↻ Conferir resultado e continuar':
@@ -48,7 +49,8 @@
    const price=q&&Number.isFinite(q.gross)&&Number.isFinite(q.promo)?
     'Preço bruto '+money(q.gross)+' · Promocional '+money(q.promo)+
     (Number.isFinite(q.margin)?' · Margem '+q.margin.toFixed(1)+'%':''):'';
-   const hint=data.videoTaskRejected?'Vídeo recusado pela Shopee; não repetir fotos e textos sem conferir a publicação.':
+   const hint=data.videoRelinkExhausted?'A Shopee recusou o mesmo ID após processamento e espera. Utilize o request_id no suporte Shopee; não faça mais uploads.':
+    data.videoTaskRejected?'Vídeo processado: conferir o vínculo com a Shopee antes de novo upload.':
     data.priceMismatchBeforeWrite?'Preço divergente antes do desconto. O sistema verifica e atualiza somente o preço autorizado.':
     phase==='uncertain'?
     'Consulta primeiro a tentativa anterior, sem repetir envios.':

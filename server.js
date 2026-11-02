@@ -64,7 +64,7 @@ import {advanceShopeeExecution,approvedShopeeModels,reconcileShopeeModelExecutio
  nextShopeePhaseAfterReadback} from './shopeeExecutionWorker.js';
 import {shopeeExecutionProgress,withExecutionEvent} from './shopeeExecutionProgress.js';
 import {auditRootShopeeExecution} from './shopeeExecutionHealth.js';
-import {hasRejectedShopeeVideo,prepareRejectedVideoRetry,guardRejectedVideoCompletion} from './shopeeExecutionVideoRecovery.js';
+import {hasRejectedShopeeVideo,prepareRejectedVideoRetry,prepareRejectedVideoRelink,guardRejectedVideoCompletion} from './shopeeExecutionVideoRecovery.js';
 import {recyclableShopeeMedia,archiveShopeeMedia} from './shopeeExecutionMediaReuse.js';
 import {normalizedShopeeFiscalBatchSkus,checkedShopeeFiscalBatchEntries} from './shopeeExecutionBatch.js';
 import {fiscalPreviewDisposition} from './shopeeFiscalReadiness.js';
@@ -3496,18 +3496,24 @@ app.post('/api/shopee/optimizer/execution/reconcile',mustLogin,requireWeDropAdmi
     if(!saved||saved.sha256!==job.plan.video.sha256)
      throw Error('O vídeo salvo mudou. Prepare a nova versão antes de publicar.');
     const second=await shopeeLiveEditableItem(cfg,auth,itemId);
-    const result=prepareRejectedVideoRetry(job,second,{explicit:true});
+    // Preserve the SUCCEEDED upload: one delayed, readback-guarded relink
+    // before considering another upload. No third upload after two failures.
+    const result=job.result?.video?.phase==='ready'?
+     prepareRejectedVideoRelink(job,second):
+     prepareRejectedVideoRetry(job,second,{explicit:true});
     const updated=await reconcileShopeeJob(job,{state:'running',result,lastError:null});
     void runOptimizerJobs();
     return res.status(202).json({ok:true,job:updated,verified:false,
-     progress:shopeeExecutionProgress(updated),message:'Retomando somente o vídeo com uma nova tarefa de upload.'});
+     progress:shopeeExecutionProgress(updated),message:result.phase==='video_attach_wait_propagation'?
+      'Aguardando sincronização da tarefa SUCCEEDED para reconectar sem novo upload.':
+      'Recuperando somente o vídeo com uma nova tarefa de upload.'});
    }
    const safe=guardRejectedVideoCompletion({state:'verified',result:{...job.result,
     videoRejected:true,videoError:job.result?.videoError||job.last_error},lastError:job.last_error},job.plan);
    const updated=job.state==='verified'?await reconcileShopeeJob(job,safe):job;
    return res.json({ok:true,job:updated,verified:false,progress:shopeeExecutionProgress(updated),
     pendingChecks:['Vídeo ainda não publicado no anúncio'],
-    message:'Vídeo ausente na leitura oficial. Use Retomar somente vídeo para enviar uma nova tarefa.'});
+    message:'Vídeo ausente na leitura oficial. Se já processado, use Reconectar vídeo sem novo upload.'});
   }
   const phase=String(job.result?.phase||'');
   const fiscalPhase=/^fiscal_|^verified_partial$/.test(phase);
