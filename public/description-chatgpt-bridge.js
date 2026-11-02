@@ -46,7 +46,7 @@
   const length=count(s);
   if(length<250||length>5000)return false;
   // Não confundir o comando enviado ao ChatGPT com a resposta.
-  if(/(?:^|\n)\s*(?:DADOS DA SKU:|FORMATO FINAL:|ESTRUTURA OBRIGATÓRIA:|VOCÊ É UM REDATOR BRASILEIRO|IDENTIFIQUE O PRODUTO EXATO)\b/iu.test(s))
+  if(/(?:^|\n)\s*(?:DADOS DA SKU:|FORMATO FINAL:|ESTRUTURA OBRIGATÓRIA:|VOCÊ É UM REDATOR BRASILEIRO|IDENTIFIQUE O PRODUTO EXATO)/iu.test(s))
    return false;
   // Conteúdo comercial identificável, mesmo quando o ChatGPT varia
   // cabeçalhos, usa texto corrido ou não há dados para uma FAQ.
