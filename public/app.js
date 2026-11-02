@@ -8244,7 +8244,8 @@ function shPriceRender(q){
       ?'. Simulação disponível. Aguarde a confirmação do anúncio Shopee para salvar na etapa Descontos.'
       :q.marketResearch?.verified===true
        ?'. Pesquisa de mercado validada e desconto preparado para o final da otimização; nada foi publicado.'
-       :'. Preço provisório salvo, mas desconto NÃO liberado sem 2 anúncios comparáveis.' ),
+       :q.variableDiscount?'. Desconto variável com margem protegida. Sem pesquisa, há opção de aprovação manual na etapa de desconto; nenhuma promoção foi publicada.':
+       '. Prévia sem pesquisa válida; confira os dados antes de aprovar.' ),
     isSupplierPreview||q.marketResearch?.verified===true?'success':'warning');
   $('#priceResults').hidden=false;
   $('#priceGross').textContent=shPriceMoney(q.grossPrice);
