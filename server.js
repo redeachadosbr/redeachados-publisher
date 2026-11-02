@@ -3476,7 +3476,11 @@ app.post('/api/shopee/optimizer/execution/reconcile',mustLogin,requireWeDropAdmi
   const {itemId,modelId,sku,auth,cfg}=await checkedWorkflowAudit(req);
   const job=await readShopeeExecution(auth.shopId,itemId,modelId);
   if(job?.sku!==sku)throw Error('Nenhuma execução encontrada para esta SKU.');
-  if(job.state!=='uncertain')return res.json({ok:true,job});
+  if(job.state!=='uncertain')return res.json({ok:true,job,
+   verified:job.state==='verified',progress:shopeeExecutionProgress(job),
+   issue:detectShopeeExecutionIssue(job.last_error,job.plan),
+   message:job.state==='verified'?'Alterações deste plano confirmadas.':
+    'O job já não está incerto; conferindo somente as pendências.'});
   const live=await shopeeLiveEditableItem(cfg,auth,itemId);
   const phase=String(job.result?.phase||'');
   const fiscalPhase=/^fiscal_|^verified_partial$/.test(phase);
