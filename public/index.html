@@ -536,6 +536,39 @@
             <div class="optimizer-exec-started"><span id="optimizerExecutionStartLabel">Início da execução</span><strong id="optimizerExecutionStartedAt">Ainda não registrado</strong></div>
           </div>
           <div class="optimizer-exec-progress-card">
+            <section id="optimizerExecutionVisual" class="ra-execution-visual" hidden aria-label="Painel visual de execução Shopee">
+              <header class="ra-visual-hero">
+                <div class="ra-visual-hero-icon" aria-hidden="true">⚙</div>
+                <div class="ra-visual-hero-copy">
+                  <h3>Progresso técnico da execução</h3>
+                  <p>Acompanhe cada fase real da otimização no anúncio Shopee.</p>
+                </div>
+                <div class="ra-visual-hero-stats">
+                  <span id="optimizerVisualCount">0 de 9 fases verificadas</span>
+                  <strong id="optimizerVisualPercent">0%</strong>
+                </div>
+                <div id="optimizerVisualBar" class="ra-visual-progress" role="progressbar" aria-label="Percentual técnico informado pelo servidor Shopee" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0">
+                  <span id="optimizerVisualBarFill"></span>
+                </div>
+              </header>
+              <div class="ra-visual-stage-track" data-visual-steps role="list" aria-label="Nove fases técnicas da execução"></div>
+              <div class="ra-visual-body">
+                <article class="ra-visual-current" aria-live="polite">
+                  <span id="optimizerVisualCurrentIcon" class="ra-visual-current-icon" aria-hidden="true"></span>
+                  <div class="ra-visual-current-copy">
+                    <span class="ra-visual-kicker"><span aria-hidden="true">◉</span> ETAPA EM ACOMPANHAMENTO</span>
+                    <h4 id="optimizerVisualCurrentTitle">Aguardando execução</h4>
+                    <p id="optimizerVisualCurrentDetail">Nenhuma atualização enviada.</p>
+                    <small id="optimizerVisualSummary">Aguardando status do servidor Shopee</small>
+                  </div>
+                </article>
+                <aside class="ra-visual-history" aria-label="Últimos eventos reais da execução">
+                  <h4><span aria-hidden="true">✓</span> Histórico da execução</h4>
+                  <ol id="optimizerExecutionVisualHistory"></ol>
+                </aside>
+              </div>
+              <p class="ra-visual-disclaimer">O percentual acompanha o processamento técnico. Imagens na mídia não significam publicação no anúncio; a confirmação final depende da leitura oficial da Shopee.</p>
+            </section>
             <div class="optimizer-exec-progress-head">
               <div><strong>Progresso técnico da execução</strong><p id="optimizerExecutionProgressDetail">Upload, envio e conferência; o percentual não representa anúncios publicados.</p></div>
               <div class="optimizer-exec-percent"><span id="optimizerExecutionMediaCount"></span><strong id="optimizerExecutionPercent">0%</strong></div>
@@ -2453,7 +2486,7 @@
 <script src="/sidebar-collapse.js?v=1.0.0"></script>
 <script src="/optimizer-compact.js?v=1.20.12"></script>
 <script src="/optimizer-dashboard.js?v=1.21.36-resume-progress"></script>
-<link rel="stylesheet" href="/optimizer-execution-progress.css?v=1.0.3-live-progress">
+<link rel="stylesheet" href="/optimizer-execution-progress.css?v=1.0.4-nine-icons">
 <script src="/dashboard-new-listings.js?v=1.20.21-shopee"></script>
 <script src="/seo-chatgpt-bridge.js?v=1.0.10-durable-auto-import"></script>
 <script src="/seo-title-scoring.js?v=1.0.2-valid-title-ranking"></script>
@@ -2465,7 +2498,8 @@
 <script src="/technical-ptbr.js?v=1.0.0-ficha-ptbr"></script>
 <script src="/technical-memory.js?v=1.0.1-live-sku-preload"></script>
 <script src="/technical-status.js?v=1.0.0-optional-coherence"></script>
-<script src="/app.js?v=3.5.38-no-prepare-loop"></script>
+<script src="/optimizer-execution-visual.js?v=1.0.0-nine-phases"></script>
+<script src="/app.js?v=3.5.39-visual-execution-icons"></script>
 <script type="module" src="/kit-builder.js?v=20261102-content-helper-import-v6"></script>
 <link rel="stylesheet" href="/optimizer-variations.css?v=1.2.1-single-flow">
 <script src="/optimizer-variations.js?v=1.2.3-single-flow"></script>
