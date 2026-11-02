@@ -4737,7 +4737,7 @@ function optimizerExecutionTrackerRender(progress,job){
   heading.textContent='Etapas ainda não executadas neste anúncio';
   heading.style.cssText='display:block;margin-bottom:6px;color:#193d70;font-size:15px';
   const detail=document.createElement('p');
-  detail.textContent=pendingRootStages?'A auditoria da Shopee confirmou as demais etapas. Prepare exclusivamente o que ainda está pendente:':'Sem auditoria raiz disponível: conferindo o anúncio antes de classificar pendências.';
+  detail.textContent=pendingRootStages?'A auditoria encontrou '+pendingRootStages.length+' etapa(s) ainda não confirmada(s) neste Item ID. Uma prévia pronta NÃO significa que elas foram publicadas.':'Sem auditoria raiz disponível: conferindo o anúncio antes de classificar pendências.';
   detail.style.cssText='font-size:13px;line-height:1.5;margin:0 0 12px';
   pendingActions.append(heading,detail);
   const instructions=document.createElement('p');
