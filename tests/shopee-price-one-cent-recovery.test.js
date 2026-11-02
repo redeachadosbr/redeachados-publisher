@@ -2,6 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {quoteShopeePrice,normalizeShopeePricingSettings} from '../shopeePricing.js';
 import {discountPlanSnapshot} from '../shopeeDiscountPublish.js';
+import {advanceVerifiedDiscount} from '../shopeeExecutionDiscount.js';
 
 const settings={adsPct:0,taxPct:4,flashPct:3,packing:0,shipping:0,
  couponPct:1,marginPct:5,minMarginPct:5,discountPct:20,sellerType:'cnpj',
@@ -30,4 +31,40 @@ test('campanha já existente só é considerada publicada quando preço bruto co
  const member={item_promotion_price:q.marketplaceDisplayPrice};
  assert.equal(snapshot(q.grossPrice+0.01,member).action,'update');
  assert.equal(snapshot(q.grossPrice,member).action,'already');
+});
+
+test('worker só ajusta um centavo quando o plano assinado inclui a autorização explícita',async()=>{
+ const approved=snapshot(q.grossPrice+0.01);
+ assert.equal(approved.needsBasePriceUpdate,true);
+ let checked=false,priceWritten=false,promotionWritten=false;
+ const res=await advanceVerifiedDiscount({
+  plan:{commercialDiscount:{snapshot:approved,allowPriceChange:true}},
+  result:{phase:'discount_ready'}
+ },{
+  discountRead:async()=>({...approved,action:'add'}),
+  beforeWrite:async checkpoint=>{checked=checkpoint.phase==='discount_price_updating';},
+  discountUpdatePrice:async()=>{priceWritten=true;},
+  discountPublish:async()=>{promotionWritten=true;}
+ });
+ assert.equal(res.state,'running');
+ assert.equal(res.result.phase,'discount_price_verifying');
+ assert.equal(checked,true);
+ assert.equal(priceWritten,true);
+ assert.equal(promotionWritten,false);
+});
+test('worker jamais atualiza centavo sem consentimento de preço',async()=>{
+ const approved=snapshot(q.grossPrice+0.01);
+ let priceWritten=false;
+ const res=await advanceVerifiedDiscount({
+  plan:{commercialDiscount:{snapshot:approved,allowPriceChange:false}},
+  result:{phase:'discount_ready'}
+ },{
+  discountRead:async()=>({...approved,action:'add'}),
+  beforeWrite:async()=>{},
+  discountUpdatePrice:async()=>{priceWritten=true;},
+  discountPublish:async()=>{}
+ });
+ assert.equal(res.state,'uncertain');
+ assert.equal(priceWritten,false);
+ assert.match(res.lastError,/Preço bruto diferente da prévia/);
 });
