@@ -6194,8 +6194,41 @@ globalThis.RAKitExecutePendingAllStages=async({kitSku,sku,itemId,modelId}={})=>{
 // O botão principal e a autorização do orçamento são a MESMA intenção.
  // Consultar a prévia não publica. Execução somente após validar o snapshot
  // assinado e, quando necessário, a permissão separada para preço bruto.
+// Andamento da operacao real, no mesmo painel do botao principal.
+// Nao usa porcentagens arbitrarias: só exibe passos ja iniciados e
+// resultados devolvidos pelo plano local ou pela API da Shopee.
 let optimizerOneClickBusy=false;
 let optimizerOneClickConsentKey='';
+let optimizerExecutionLiveIdentity='';
+function optimizerExecutionLiveStep(title,detail='',state='info',{reset=false}={}){
+ if(optimizerKitWorkflowActive())return;
+ const w=optimizerWorkflowPlan;
+ const key=w?[w.sku,w.itemId,w.modelId].map(String).join('|'):'';
+ if(!key)return;
+ const panel=$('#optimizerExecutionLivePhase');
+ const history=$('#optimizerExecutionLiveHistory');
+ if(!panel||!history)return;
+ if(reset||key!==optimizerExecutionLiveIdentity){
+  optimizerExecutionLiveIdentity=key;
+  history.replaceChildren();
+ }
+ const titleText=String(title||'Aguardando resposta');
+ const message=String(detail||'').trim();
+ panel.hidden=false;
+ panel.dataset.state=state;
+ $('#optimizerExecutionLiveIcon').textContent=state==='success'?'✓':
+  state==='error'?'!':state==='warning'?'!':'◷';
+ $('#optimizerExecutionLiveTitle').textContent=titleText;
+ $('#optimizerExecutionLiveDetail').textContent=message;
+ const last=history.lastElementChild;
+ const combined=titleText+(message?' — '+message:'');
+ if(last?.textContent!==combined){
+  const li=document.createElement('li');li.textContent=combined;
+  history.append(li);
+  while(history.children.length>6)history.firstElementChild.remove();
+ }
+}
+
 async function optimizerOneClickExecute(){
  const original=optimizerWorkflowPlan;
  if(!original||optimizerOneClickBusy||optimizerExecBusy)return;
@@ -6207,6 +6240,8 @@ async function optimizerOneClickExecute(){
   void optimizerExecutionRefresh(true);return;
  }
  optimizerOneClickBusy=true;
+ optimizerExecutionLiveStep('1. Conferindo a prévia salva',
+  'Validando a SKU e as alterações preparadas; nenhuma alteração foi enviada.', 'info',{reset:true});
  const main=$('#optimizerExecutionLaunch');
  if(main)main.disabled=true;
  try{
@@ -6220,6 +6255,8 @@ async function optimizerOneClickExecute(){
    p=optimizerExecPlan;
   }
   if(!p?.canExecute){
+   optimizerExecutionLiveStep('Prévia não aprovada',
+    (p?.blocked||[]).slice(0,3).join(' · ')||'A prévia precisa ser validada antes de enviar.', 'warning');
    optimizerExecNotice('Publicação não iniciada. '+(p?.blocked||[]).slice(0,3).join(' · ')+
     ' Revise somente os dados não preparados. As etapas salvas foram preservadas.','warning');
    return;
@@ -6227,6 +6264,8 @@ async function optimizerOneClickExecute(){
   if(!optimizerKitWorkflowActive()&&!p.modelVariations&&
      ['all','remaining','discount','discount_adjust'].includes(p.selectedStage)){
    if(!optimizerDiscountApprovalReady()){
+    optimizerExecutionLiveStep('2. Verificando preço e desconto',
+     'Conferindo custo WeDrop, margem e cotação desta SKU. Ainda sem envio.', 'info');
     if(!optimizerDiscountFinalQuote)await optimizerDiscountFinalLoad();
     if(!same())return;
     const q=optimizerDiscountFinalQuote;
@@ -6254,6 +6293,8 @@ async function optimizerOneClickExecute(){
      optimizerExecNotice('A execução foi preservada. Falta o ID válido de Minha Promoção para a SKU '+original.sku+'.','warning');
      return;
     }
+    optimizerExecutionLiveStep('3. Consultando Minha Promoção',
+     'Consultando campanha, Item ID, preço bruto e desconto na API Shopee; sem publicação.', 'info');
     await optimizerDiscountFinalPrepare();
     if(!same())return;
     const preview=optimizerDiscountFinalPreviewData?.preview;
@@ -6285,9 +6326,21 @@ async function optimizerOneClickExecute(){
    optimizerExecNotice('Não foi possível validar o desconto dentro do plano atual. Nenhuma publicação iniciada.','warning');
    return;
   }
-  // A função existente faz a escrita única e verifica status do job.
-  await optimizerExecuteApproved(false);
+  // POST da execucao única: somente agora pode haver escrita no anúncio.
+  optimizerExecutionLiveStep('4. Solicitando execução à Shopee',
+   'Autorização da prévia enviada ao servidor. Aguardando aceite e confirmação da API.', 'info');
+  const start=await optimizerExecuteApproved(false);
+  if(!same())return;
+  if(start?.started){
+   optimizerExecutionLiveStep('5. Execução aceita pelo servidor',
+    'Acompanhando as atualizações e a leitura de confirmação na Shopee.', 'info');
+  }else{
+   optimizerExecutionLiveStep('Execução não iniciada',
+    String(start?.error||'O servidor não confirmou o início. Nenhuma conclusão será presumida.'),'warning');
+  }
  }catch(error){
+  if(same())optimizerExecutionLiveStep('Erro na conferência',
+   String(error.message||error)+'. Consulte a mensagem completa; nenhum sucesso foi presumido.','error');
   if(same())optimizerExecNotice('A Shopee não recebeu uma nova autorização de envio: '+
    String(error.message||error)+'. Confira o estado da execução antes de repetir.','warning');
  }finally{
@@ -6661,6 +6714,31 @@ function optimizerExecutionAutoRecoverStale(job){
  })();
 }
 function optimizerExecutionJobView(job,progress=null,issue=null){
+ // Ao retornar o status oficial, substituir o andamento de solicitacao pelo
+ // estado efetivo do worker. Nunca exibir sucesso só pelo progresso local.
+ if(job&&!optimizerKitWorkflowActive()){
+  const phaseLabels={images_upload:'Enviando imagens',video_upload:'Enviando vídeo',
+   video_processing:'Processamento de vídeo na Shopee',updating:'Aplicando alterações',
+   verifying:'Conferindo confirmação na Shopee',verified:'Confirmado na Shopee'};
+  const phase=String(job.result?.phase||'');
+  if(job.state==='running')optimizerExecutionLiveStep(
+   phaseLabels[phase]||'Execução em andamento',
+   String(progress?.message||'O servidor iniciou o processamento; aguardando a próxima resposta real.'),'info');
+  else if(job.state==='uncertain')optimizerExecutionLiveStep(
+   'Aguardando confirmação oficial',
+   String(progress?.message||job.last_error||'Estado incerto; o sistema não repetirá o envio automaticamente.'),'warning');
+  else if(job.state==='verified')optimizerExecutionLiveStep(
+   'Execução confirmada pela Shopee',
+   String(progress?.message||'As alterações incluídas neste plano foram conferidas.'),
+   'success');
+  else if(job.state==='failed')optimizerExecutionLiveStep(
+   'Execução interrompida',
+   String(job.last_error||progress?.message||'A Shopee não confirmou a publicação.'),
+   'error');
+  else if(job.state==='prepared'&&optimizerExecStartError)optimizerExecutionLiveStep(
+   'Início recusado',
+   String(optimizerExecStartError),'warning');
+ }
  optimizerExecutionTrackerRender(progress,job);
  optimizerExecutionIssueRender(issue);
  optimizerExecJob=job;
