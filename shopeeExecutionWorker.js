@@ -16,6 +16,12 @@ export async function advanceShopeeExecution(job,io){
  const nonVideoPlan={...plan,video:null};
  const effectivePlan=result.videoRejected?nonVideoPlan:plan;
  const nonVideoVerified=live=>verifyShopeeExecution(nonVideoPlan,live,result);
+ const noteVideoReadback=live=>{
+  if(plan.video&&videoPublishedAfterPlan(plan,live,result.video)){
+   result.videoReadbackConfirmed=true;
+   result.videoRejected=false;
+  }
+ };
  const afterVideo=(confirmed=result)=>{
   const next=plan.modelVariations?'variation_ready':
    plan.finalFiscal?'fiscal_ready':hasDiscount(plan)?discountPhase(plan):'verified';
@@ -93,6 +99,7 @@ export async function advanceShopeeExecution(job,io){
  // retomamos SOMENTE a leitura, evitando duplicidade de update_item.
  if(['fiscal_updating','fiscal_verifying'].includes(result.phase)){
   const live=await io.read();
+  noteVideoReadback(live);
   if(verifyShopeeFiscalExecution(effectivePlan,live,result))
    return hasDiscount(plan)?
     {state:'running',result:withExecutionEvent({...result,phase:discountPhase(plan),primaryVerified:true,fiscal:{status:'verified'}},
@@ -107,6 +114,7 @@ export async function advanceShopeeExecution(job,io){
  }
  if(['updating','verifying'].includes(result.phase)){
   const live=await io.read();
+  noteVideoReadback(live);
   if(nonVideoVerified(live)){
    if(plan.video&&!videoPublishedAfterPlan(plan,live,result.video))
     return {state:'running',result:withExecutionEvent({...result,phase:'video_attach_ready',contentVerified:true},
@@ -171,6 +179,7 @@ export async function advanceShopeeExecution(job,io){
  }
  await io.validateIdentity();
  const currentItem=await io.read();
+ noteVideoReadback(currentItem);
  // Regra GLOBAL para qualquer SKU: conferir o anúncio na Shopee antes
  // de escrever. Se todo o conteúdo/mídia aprovado já estiver publicado,
  // continuar diretamente nos modelos/fiscal/desconto, sem reenviar nada.
