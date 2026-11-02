@@ -90,7 +90,7 @@ import {lookupShopeeCompetitors,marketResearchConfigured} from './shopeeMarketRe
 import {promotionFromQuote,promotionBasePrice,promotionMember,shopDiscountMembershipSignal,discountPlanSnapshot,signDiscountPreview,verifyDiscountPreview,readDiscountPages} from './shopeeDiscountPublish.js';
 import {auditCatalogDiscounts} from './shopeeCatalogDiscountAudit.js';
 import {discountPreviewStatus} from './shopeeDiscountDeferred.js';
-import {marketFloorDiscountEligibility} from './shopeeMarketFloorApproval.js';
+import {marketFloorDiscountEligibility,unresearchedMarginApprovalEligible} from './shopeeMarketFloorApproval.js';
 import {verifyShopeeListingStatus} from './shopeeListingStatus.js';
 import {scanLiveNormalSku,catalogCandidatesIfNoActive} from './shopeeSkuActiveResolver.js';
 import {shopeePricingPreferences,saveShopeePricingPreferences,
@@ -4629,7 +4629,7 @@ app.post('/api/shopee/optimizer/pricing/prepare',mustLogin,requireWeDropAdmin,as
 
 // O ID vem do usuário e é confirmado pela API da loja. A prévia somente lê.
 const activeDiscountWrites=new Set();
-async function discountExecutionInputs(req,sku,itemId,modelId,discountId,{allowModels=false,expectedModels=null,allowDeferredPreview=false,allowOver25=false}={}){
+async function discountExecutionInputs(req,sku,itemId,modelId,discountId,{allowModels=false,expectedModels=null,allowDeferredPreview=false,allowOver25=false,allowUnresearched=false}={}){
  const {auth,cfg}=await getValidAuth(req);
  const matches=await findExactCatalogSku(auth.shopId,sku);
  if(!matches.some(x=>String(x.itemId)===String(itemId)&&String(x.modelId)===String(modelId)))
@@ -4640,20 +4640,23 @@ async function discountExecutionInputs(req,sku,itemId,modelId,discountId,{allowM
    String(saved.quote?.itemId)!==String(itemId)||String(saved.quote?.modelId)!==String(modelId))
   throw Error('Plano não encontrado ou pertence a outra SKU. Recalcule em Precificação.');
  const quote=saved.quote;
- // Motor Matriz: comparação de 2 a 5 lojas verificadas, com URLs e dados
- // atuais. Uma simulação sem duas ofertas permanece não publicável.
+ // Politicas independentes: pesquisa real permanece validada quando utilizada;
+ // sem pesquisa, somente o vendedor pode optar por aprovar custo e margem,
+ // nunca declarar concorrentes inexistentes nem executar sem previa assinada.
  const research=quote.marketResearch;
- if(research?.verified!==true||
-    research.source!=='shopee_affiliate_product_offers'||
-    !Number.isFinite(Date.parse(research.researchedAt))||
-    Date.now()-Date.parse(research.researchedAt)>48*3600000||
-    research.count<REDE_ACHADOS_MARKET_RULES.minimumOffers||
-    quote.discountRecommendationSource!=='researched')
-  throw Error('Desconto ainda sem pesquisa de concorrentes validada. Conecte a API de ofertas Shopee e recalcule a SKU em Precificação antes de executar.');
- // A pesquisa é VÁLIDA. Quando o PREÇO escolhIDO pelo vendedor preserva
- // margem mínima acima do piso, não confundir preço do concorrente abaixo
- // do piso com desconto do vendedor abaixo do piso.
- const marketFloor=marketFloorDiscountEligibility(quote,{allowOver25});
+ const researched=Boolean(research?.verified===true&&
+    research.source==='shopee_affiliate_product_offers'&&
+    Number.isFinite(Date.parse(research.researchedAt))&&
+    Date.now()-Date.parse(research.researchedAt)<48*3600000&&
+    research.count>=REDE_ACHADOS_MARKET_RULES.minimumOffers&&
+    quote.discountRecommendationSource==='researched');
+ const manualApproved=!researched&&unresearchedMarginApprovalEligible(quote,{
+   sellerApproved:allowUnresearched===true
+ });
+ if(!researched&&!manualApproved)
+  throw Error('Sem concorrentes verificados: marque a autorização manual de custo e margem na etapa de desconto. Não é pesquisa de mercado. Revise a prévia antes de executar.');
+ const marketFloor=researched?marketFloorDiscountEligibility(quote,{allowOver25}):
+  {allowed:true,aboveMarket:false,message:'Aprovação manual baseada no custo WeDrop e margem, SEM pesquisa de concorrentes.'};
  if(!marketFloor.allowed)throw Error(marketFloor.message);
  const beforePublish=promotionFromQuote(quote);
  const attractiveVisiblePrice=value=>{
@@ -4731,7 +4734,8 @@ async function discountExecutionInputs(req,sku,itemId,modelId,discountId,{allowM
    quote,record,existing,originalPrice}),
    promotionSignal:promoMembership.kind,
    promotionNotice:promoMembership.warning,
-   marketFloorNotice:marketFloor.message,allowOver25:allowOver25===true};
+   marketFloorNotice:marketFloor.message,allowOver25:allowOver25===true,
+   allowUnresearched:manualApproved};
  return {auth,cfg,quote,snapshot,originalPrice,deferred:publicationState.deferred,
   liveItemStatus:publicationState.status,
   liveStatusSource:listingStatus.source,baseItemStatus:listingStatus.baseStatus,
@@ -4892,7 +4896,8 @@ app.post('/api/shopee/optimizer/discounts/preview',mustLogin,requireWeDropAdmin,
   // recebe autorização de ESCRITA. A execução pedirá prévia NORMAL atualizada.
   const data=await discountExecutionInputs(req,sku,itemId,modelId,discountId,{
    allowDeferredPreview:req.body?.allowDeferredPreview===true,
-   allowOver25:req.body?.allowOver25===true
+   allowOver25:req.body?.allowOver25===true,
+   allowUnresearched:req.body?.allowUnresearched===true
   });
   const signature=data.deferred?null:
    signDiscountPreview(data.snapshot,envText('SESSION_SECRET'));
@@ -4920,11 +4925,12 @@ app.post('/api/shopee/optimizer/discounts/execute',mustLogin,requireWeDropAdmin,
   activeDiscountWrites.add(lock);
   // Reconsultar preço, custo, SKU, campanha inteira e estado antes de QUALQUER escrita.
   const data=await discountExecutionInputs(req,approved.sku,approved.itemId,
-    approved.modelId,approved.discountId,{allowOver25:approved.allowOver25===true&&req.body?.allowOver25===true});
+    approved.modelId,approved.discountId,{allowOver25:approved.allowOver25===true&&req.body?.allowOver25===true,
+    allowUnresearched:approved.allowUnresearched===true&&req.body?.allowUnresearched===true});
   const current=data.snapshot;
   for(const key of ['shopId','sku','itemId','modelId','discountId','gross','promo',
     'buyerAfterCoupon','discountPct','couponPct','originalPrice','action','existingPrice','quoteAt',
-    'promotionSignal']){
+    'promotionSignal','allowUnresearched']){
     if(current[key]!==approved[key])
       throw Error('A prévia ficou desatualizada ('+key+'). Gere outra prévia antes de executar.');
   }
