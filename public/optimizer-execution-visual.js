@@ -2,14 +2,14 @@
 (function(root){
  'use strict';
  const DEFINITIONS=[
-  {id:'images',label:'Imagens',icon:'image',short:'Conferindo imagens'},
-  {id:'video',label:'Vídeo',icon:'video',short:'Conferindo vídeo'},
-  {id:'seo',label:'Título SEO',icon:'tag',short:'Conferindo título'},
-  {id:'description',label:'Descrição',icon:'text',short:'Conferindo descrição'},
-  {id:'technical',label:'Ficha técnica',icon:'settings',short:'Conferindo ficha técnica'},
-  {id:'variants',label:'Variações',icon:'shop',short:'Conferindo variações'},
-  {id:'fiscal',label:'Dados fiscais',icon:'file',short:'Conferindo dados fiscais'},
-  {id:'discount',label:'Desconto',icon:'tag',short:'Conferindo promoção'},
+  {id:'images',label:'Imagens',icon:'image',short:'Enviando imagens'},
+  {id:'video',label:'Vídeo',icon:'video',short:'Enviando vídeo'},
+  {id:'seo',label:'Título SEO',icon:'tag',short:'Atualizando título'},
+  {id:'description',label:'Descrição',icon:'text',short:'Atualizando descrição'},
+  {id:'technical',label:'Ficha técnica',icon:'settings',short:'Atualizando ficha técnica'},
+  {id:'variants',label:'Variações',icon:'shop',short:'Atualizando variações'},
+  {id:'fiscal',label:'Dados fiscais',icon:'file',short:'Atualizando dados fiscais'},
+  {id:'discount',label:'Desconto',icon:'tag',short:'Conferindo desconto'},
   {id:'final',label:'Confirmação Shopee',icon:'shield',short:'Conferindo resultado'}
  ];
  const PATHS={
@@ -91,7 +91,7 @@
   const completed=states.filter(x=>x==='done').length;
   const title=job?.state==='verified'?'Execução deste plano confirmada':
     job?.state==='failed'?'Execução interrompida — pendências preservadas':
-    job?.state==='uncertain'?'Conferindo resultado na Shopee':
+    job?.state==='uncertain'?'Aguardando confirmação da Shopee':
     active>=0?DEFINITIONS[active].short:
     job?.state==='prepared'?'Prévia pronta para executar':
     eventTitle||'Aguardando status da Shopee';
