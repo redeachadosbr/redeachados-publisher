@@ -85,7 +85,7 @@ import {MAX_VIDEO_BYTES,getShopeeManualVideo,importShopeeManualVideo,
  signedShopeeManualVideoPreview,manualVideoPublicInfo,downloadShopeeManualVideo,rememberPublishedVideo} from './shopeeManualVideo.js';
 import {findLiveShopeeSku} from './shopeeSkuFinder.js';
 import {optimizerSettings,saveOptimizerSettings} from './optimizerStore.js';
-import {quoteShopeePrice,normalizeShopeePricingSettings} from './shopeePricing.js';
+import {quoteShopeePrice,quoteShopeeOptimizationPrice,normalizeShopeePricingSettings} from './shopeePricing.js';
 import {lookupShopeeCompetitors,marketResearchConfigured} from './shopeeMarketResearch.js';
 import {promotionFromQuote,promotionBasePrice,promotionMember,shopDiscountMembershipSignal,discountPlanSnapshot,signDiscountPreview,verifyDiscountPreview,readDiscountPages} from './shopeeDiscountPublish.js';
 import {auditCatalogDiscounts} from './shopeeCatalogDiscountAudit.js';
@@ -4449,7 +4449,7 @@ app.post('/api/shopee/optimizer/pricing/supplier-preview',mustLogin,requireWeDro
     const marketAverage=req.body?.marketAverage===undefined?null:req.body.marketAverage;
     let quote=null,pricingError=null;
     try{
-      quote=quoteShopeePrice({unitCost:cost.unitCost,settings,marketAverage,
+      quote=quoteShopeeOptimizationPrice({unitCost:cost.unitCost,settings,marketAverage,
         marginOverride:req.body?.marginOverride===true});
     }catch(error){pricingError=String(error.message||error).slice(0,240);}
     res.json({ok:true,found:true,sku,supplierSku:cost.supplierSku,
@@ -4586,7 +4586,7 @@ app.post('/api/shopee/optimizer/pricing/prepare',mustLogin,requireWeDropAdmin,as
     const reference=market.verified?market.reference:manual;
     const source=market.verified?'researched_affiliate_offers':
       manual!==null?'manual_unverified':'no_verified_competitors';
-    const quote=quoteShopeePrice({
+    const quote=(linkedKit?quoteShopeePrice:quoteShopeeOptimizationPrice)({
       unitCost:cost.unitCost,settings,marketAverage:reference,
       marginOverride:req.body?.marginOverride===true
     });
@@ -4613,7 +4613,7 @@ app.post('/api/shopee/optimizer/pricing/prepare',mustLogin,requireWeDropAdmin,as
     quote.adsBudgetSource='reserved_in_saved_price_plan';
     quote.adsActualSpent=false;
     quote.calculatedAt=new Date().toISOString();
-    // O desconto base nunca deve receber etiqueta de recomendação de mercado.
+    // Sem ofertas comparaveis, o desconto variavel continua somente como simulacao.
     quote.discountRecommendationSource=market.verified?'researched':'base_not_researched';
     // Parâmetros globais de tarifa são salvos sem Ads; Ads é EXCLUSIVO da SKU.
     // Frete/embalagem do kit não podem contaminar a configuração global das SKUs individuais.
