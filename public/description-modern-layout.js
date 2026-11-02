@@ -160,7 +160,7 @@
   const manual=el('details','desc-modern-manual-import');
   const manualSummary=el('summary','','Se necessário, cole a resposta completa do ChatGPT ▾');
   const manualArea=el('textarea','desc-modern-manual-text');
-  manualArea.rows=5;manualArea.placeholder='Cole aqui a resposta completa do ChatGPT com o campo description.';
+  manualArea.rows=5;manualArea.placeholder='Cole aqui a descrição pronta em texto normal, com seus emojis e parágrafos.';
   const manualButton=button('Importar texto colado',()=>{void runManual();},'desc-modern-manual-confirm');
   manual.append(manualSummary,manualArea,manualButton);controls.append(manual,status);
   section.append(controls);
@@ -234,14 +234,23 @@
    }finally{recovering=false;recover.disabled=false;}
   }
   async function runManual({automatic=false}={}){
-   if(saving)return;
+   if(saving){
+    if(!automatic)status.textContent='Descrição já sendo salva nesta SKU; confira o resultado antes de repetir.';
+    return;
+   }
    try{
-    const result=globalThis.RADescriptionChatGPT?.parse(manualArea.value);
-    if(!result)throw Error('Cole a descrição completa do ChatGPT antes de importar.');
+    if(!globalThis.RADescriptionChatGPT?.parse)
+     throw Error('Importador indisponível. Atualize o Manager com Ctrl+Shift+R.');
+    const result=globalThis.RADescriptionChatGPT.parse(manualArea.value);
+    status.textContent='Conferindo e salvando a descrição desta SKU…';
     await applyDescription(result,{fallback:true});
     manual.open=false;manualArea.value='';
    }catch(error){
-    if(!automatic){manual.open=true;status.textContent='Não foi possível importar: '+error.message;}
+    manual.open=true;
+    // Colar não apaga o conteúdo em caso de falha; a mensagem é visível
+    // mesmo quando a importação foi disparada automaticamente pelo Ctrl+V.
+    if(current())status.textContent='Descrição preservada. '+String(error.message||error)+
+     ' Confira o texto e tente importar novamente.';
    }
   }
   // A própria colagem é a confirmação de importação: assim que o texto
@@ -262,14 +271,24 @@
    if(importingCopied||saving)return;
    importingCopied=true;importCopied.disabled=true;
    try{
-    const raw=await navigator.clipboard.readText();
-    const result=globalThis.RADescriptionChatGPT?.parse(raw);
-    if(!result)throw Error('Copie toda a descrição pronta do ChatGPT.');
+    // Se o usuário já colou o texto no campo, NÃO tentar acessar a área de
+    // transferência: Chrome pode negá-la mesmo quando a colagem funcionou.
+    const fromField=manualArea.value.trim();
+    const raw=fromField||await navigator.clipboard.readText();
+    if(!raw.trim())throw Error('Cole a descrição desta SKU no campo manual ou copie-a do ChatGPT.');
+    if(!globalThis.RADescriptionChatGPT?.parse)
+     throw Error('Importador não carregado. Atualize com Ctrl+Shift+R.');
+    const result=globalThis.RADescriptionChatGPT.parse(raw);
+    status.textContent='Importando e salvando a descrição desta SKU…';
     await applyDescription(result,{fallback:true});
+    manualArea.value='';manual.open=false;
    }catch(error){
-    manual.open=true;manualArea.focus();
-    if(current())status.textContent='Não foi possível ler a área de transferência: '+error.message+
-     ' Cole toda a resposta com Ctrl+V no campo aberto; o salvamento é automático.';
+    manual.open=true;
+    if(current()){
+     status.textContent='Não foi possível importar: '+String(error.message||error)+
+      '. O texto colado continua disponível no campo abaixo.';
+     manualArea.focus({preventScroll:true});
+    }
    }finally{importingCopied=false;importCopied.disabled=false;}
   }
 
