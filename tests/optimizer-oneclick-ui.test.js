@@ -66,3 +66,27 @@ test('um clique aceita ID numérico da campanha e não a regex de duas barras',(
  assert.ok(!flow.includes('if(!/^'+String.fromCharCode(92).repeat(2)+'d{1,18}$/.test(campaign))'),
    'Barra dupla em literal RegExp rejeita todos os IDs válidos');
 });
+
+test('execução avulsa exibe etapas reais, erros e readback no mesmo painel',()=>{
+ const html=readFileSync(new URL('../public/index.html',import.meta.url),'utf8');
+ assert.match(html,/id="optimizerExecutionLivePhase"/);
+ assert.match(html,/id="optimizerExecutionLiveTitle"/);
+ assert.match(html,/id="optimizerExecutionLiveDetail"/);
+ assert.match(html,/id="optimizerExecutionLiveHistory"/);
+ const css=readFileSync(new URL('../public/optimizer-execution-progress.css',import.meta.url),'utf8');
+ assert.match(css,/optimizer-execution-live-phase:not\(\[hidden\]\)/);
+ const job=app.slice(app.indexOf('function optimizerExecutionJobView(job,progress=null,issue=null)'),
+  app.indexOf('// One readback-only reconciliation',app.indexOf('function optimizerExecutionJobView(job,progress=null,issue=null)')));
+ assert.match(job,/job\.state==='running'/);
+ assert.match(job,/job\.state==='uncertain'/);
+ assert.match(job,/job\.state==='verified'/);
+ assert.match(job,/job\.state==='failed'/);
+ assert.match(job,/optimizerExecutionLiveStep\(/);
+ const execution=app.slice(app.indexOf('async function optimizerOneClickExecute()'),
+  app.indexOf("$('#optimizerExecutionLaunch')?.addEventListener?.('click',",app.indexOf('async function optimizerOneClickExecute()')));
+ for(const label of ['1. Conferindo a prévia salva','2. Verificando preço e desconto','3. Consultando Minha Promoção',
+   '4. Solicitando execução à Shopee','5. Execução aceita pelo servidor','Execução não iniciada'])
+  assert.ok(execution.includes(label),label);
+ assert.match(execution,/const start=await optimizerExecuteApproved\(false\)/);
+ assert.match(execution,/if\(start\?\.started\)/);
+});
