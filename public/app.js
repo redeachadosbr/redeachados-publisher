@@ -6310,7 +6310,16 @@ async function optimizerOneClickExecute(){
     optimizerExecNotice('A prévia da promoção precisa ser validada. Nada foi reenviado.','warning');return;
    }
   }
+  // A prévia antiga pode guardar o vídeo cujo ID foi recusado pela Shopee.
+  // Recalcular só o plano; as nove imagens já na mídia podem ser reaproveitadas.
+  const legacyVideo=plan=>Boolean(plan?.video&&plan?.reusedMedia?.video&&
+   Number(plan.videoAttachmentVersion||0)<2);
   let p=optimizerExecPlan;
+  if(legacyVideo(p)){
+   optimizerExecutionLiveStep('Atualizando prévia de vídeo',
+    'A tarefa antiga foi recusada; preservando as imagens preparadas.','warning');
+   optimizerExecPlan=null;p=null;
+  }
   if(!p||p.sku!==original.sku||String(p.itemId)!==String(original.itemId)||
      String(p.modelId)!==String(original.modelId)||p.selectedStage!==desiredStage||!p.canExecute){
    // PRIMEIRO recuperar a prévia já preparada: GET nunca publica.
@@ -6333,7 +6342,7 @@ async function optimizerOneClickExecute(){
      return;
     }
     if(equal&&job.state==='prepared'&&job.plan?.canExecute===true&&
-       job.plan.selectedStage===desiredStage){
+       job.plan.selectedStage===desiredStage&&!legacyVideo(job.plan)){
      // Cancelar somente o PREPARO anterior que não publicou nada.
      if(optimizerExecPreparation){
       optimizerExecPrepareController?.abort();
