@@ -198,7 +198,7 @@ export function compileShopeeExecutionPlan({shopId,itemId,modelId,sku,record,rev
     deferredTaxDraft:fiscalDeferred&&!omitFiscal?state.tax||{}:null,
     video:video?.sha256||null,images:imagesSignature(images)
   })).digest('hex');
-  return {planId:crypto.randomUUID(),shopId:Number(shopId),itemId:String(itemId),
+  return {planId:crypto.randomUUID(),videoAttachmentVersion:2,shopId:Number(shopId),itemId:String(itemId),
     modelId:String(modelId),sku,original:{
       item_name:currentTitle,description:currentDescription,description_type:currentType,video_info:live?.video_info||[],
       item_sku:String(live?.item_sku||''),category_id:live?.category_id,
