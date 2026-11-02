@@ -5581,7 +5581,7 @@ function optimizerExecUpdateRunButton(){
  $('#optimizerExecutionLaunch').textContent=missingKit.length?
   '▶ Executar etapas prontas e manter '+missingKit.length+' pendência(s)':
   !canPublish?
-  p?.canExecute?'▶ EXECUTAR NA SHOPEE · conferir desconto e enviar':'🛠 Validar pendências para executar':
+  p?.canExecute?'▶ EXECUTAR NA SHOPEE · anúncio e desconto':'🛠 Validar pendências para executar':
   p?.selectedStage==='media_fiscal'?'▶ Executar somente Imagens + Vídeo + Fiscal':
   p?.selectedStage==='discount_adjust'?'▶ Autorizar preço calculado + desconto':
   p?.selectedStage==='discount'?'▶ Executar SOMENTE desconto':
@@ -5593,8 +5593,23 @@ function optimizerExecUpdateRunButton(){
   p?.modelVariations?'▶ Executar anúncio + variações + fiscal + desconto':
   p?.selectedStage==='all'&&optimizerKitWorkflowActive()?'▶ Executar pendências aprovadas das 9 etapas':
   p?.selectedStage==='all'?'▶ EXECUTAR NA SHOPEE · anúncio e desconto':'▶ Executar etapa aprovada na Shopee';
- $('#optimizerExecutionLaunch').title=!optimizerDiscountReviewedForExecution(p)
-   ?'Conferir a promoção no bloco de desconto antes de executar a SKU':'Executar etapas aprovadas na Shopee';
+ const quote=optimizerDiscountFinalQuote;
+ const quoteMatching=Boolean(quote&&optimizerWorkflowPlan&&
+  String(quote.sku)===String(optimizerWorkflowPlan.sku)&&
+  String(quote.itemId)===String(optimizerWorkflowPlan.itemId)&&
+  String(quote.modelId)===String(optimizerWorkflowPlan.modelId));
+ // O clique principal é autorização expressa para estes valores EXATOS;
+ // não há outro botão de publicação por etapa.
+ if(p?.canExecute&&p.selectedStage==='all'&&quoteMatching){
+  $('#optimizerExecutionLaunch').textContent='▶ EXECUTAR NA SHOPEE · '+shPriceMoney(quote.grossPrice)+
+   ' → '+shPriceMoney(quote.marketplaceDisplayPrice);
+ }
+ $('#optimizerExecutionLaunch').title=quoteMatching?
+  'Ao clicar, autorizo esta prévia: preço bruto '+shPriceMoney(quote.grossPrice)+
+   ', desconto '+shPricePercent(quote.discountPct)+', preço final de promoção '+
+   shPriceMoney(quote.marketplaceDisplayPrice)+(quote.marketResearch?.verified?' com concorrentes confirmados.':' com base no custo e na margem, SEM pesquisa comparável.')+
+   ' A API validará o anúncio antes de alterar valores.':
+  'Executar apenas as alterações aprovadas e vinculadas a esta SKU.';
  // Mantido somente para compatibilidade com o fluxo legado oculto.
  $('#optimizerExecutionRun').disabled=unavailable;
  const nextTitle=$('#optimizerExecutionNextActionTitle');
@@ -6220,12 +6235,23 @@ async function optimizerOneClickExecute(){
     }
     await optimizerDiscountFinalPrepare();
     if(!same())return;
+    const preview=optimizerDiscountFinalPreviewData?.preview;
+    // O único botão identifica ANTES do clique os dois preços e o percentual.
+    // A autorização expressa deste botão inclui atualizar o preço bruto
+    // exatamente para o valor calculado, se a leitura Shopee exigir. A
+    // assinatura da prévia e o readback impedem qualquer valor divergente.
+    if(preview?.needsBasePriceUpdate&&
+       String(preview.sku)===String(q.sku)&&
+       Number(preview.gross)===Number(q.grossPrice)&&
+       Number(preview.promo)===Number(q.marketplaceDisplayPrice)&&
+       !optimizerDiscountFinalPreviewData?.deferred){
+     $('#optimizerExecDiscountPriceConsent').checked=true;
+     optimizerDiscountFinalPaint();
+    }
     if(!optimizerDiscountApprovalReady()){
      optimizerDiscountOpenReview();
-     const preview=optimizerDiscountFinalPreviewData?.preview;
      if(preview?.needsBasePriceUpdate){
-      optimizerExecNotice('A Shopee tem preço bruto diferente de '+shPriceMoney(q.grossPrice)+
-       '. Confira esse valor e autorize explicitamente sua alteração na seção de desconto; nenhuma escrita foi iniciada.','warning');
+      optimizerExecNotice('Preço bruto diferente do previsto e sem autorização válida para esta prévia. Não será alterado.','warning');
      }else if(optimizerDiscountFinalPreviewData?.deferred){
       optimizerExecNotice('A Shopee ainda não confirmou anúncio ativo. A prévia foi conferida, mas a publicação aguarda status NORMAL.','warning');
      }else optimizerExecNotice('A campanha não confirmou a prévia do desconto. Veja o motivo específico no bloco de desconto. Nenhum envio iniciado.','warning');
