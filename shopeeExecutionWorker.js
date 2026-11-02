@@ -159,7 +159,7 @@ export async function advanceShopeeExecution(job,io){
  // continuar diretamente nos modelos/fiscal/desconto, sem reenviar nada.
  // A verificação exige correspondência de TODOS os campos incluídos
  // nesta execução (inclusive os IDs da mídia quando houver).
- if(nonVideoVerified(currentItem)){
+ if(nonVideoVerified(currentItem)&&(!plan.video||result.video?.phase==='ready')){
   if(plan.video&&!videoMatches(currentItem,result.video))
    return {state:'running',result:withExecutionEvent({...result,phase:'video_attach_ready',contentVerified:true},
     'nonvideo-already','Conteúdo já publicado; falta somente o vídeo.','success'),delay:500};
