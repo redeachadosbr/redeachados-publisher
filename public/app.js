@@ -7182,7 +7182,8 @@ $('#optimizerExecutionReconcile')?.addEventListener?.('click',()=>void optimizer
 let optimizerPrimaryActionBusy=false;
 globalThis.RAExecutionCurrentStatus=()=>({
  state:optimizerExecJob?.state||'prepared',
- videoTaskRejected:/video task not found|video_upload_id.*(?:not found|invalid|illegal)/i.test(String(optimizerExecJob?.last_error||'')),
+ videoTaskRejected:optimizerExecJob?.result?.videoReadbackConfirmed!==true&&
+  /video task not found|video_upload_id.*(?:not found|invalid|illegal)/i.test(String(optimizerExecJob?.last_error||'')),
  priceMismatchBeforeWrite:optimizerExecJob?.state==='uncertain'&&
   String(optimizerExecJob?.result?.phase||'')==='discount_ready'&&
   !Number(optimizerExecJob?.result?.discountPriceStartedAt||0)&&
@@ -7234,7 +7235,9 @@ globalThis.RAExecutionPrimaryAction=async()=>{
   // Execução antiga: uma tarefa de upload recusada NÃO prova que o
   // vídeo está ausente do anúncio. Consultar o Item ID antes de preparar
   // qualquer novo envio e manter as demais etapas independentes.
-  if(optimizerExecJob?.state==='failed'&&optimizerExecJob?.plan?.video&&
+  if(['failed','verified'].includes(optimizerExecJob?.state)&&optimizerExecJob?.plan?.video&&
+    (optimizerExecJob.state!=='verified'||optimizerExecJob.result?.videoRejected===true)&&
+    optimizerExecJob.result?.videoReadbackConfirmed!==true&&
     /video task not found|video_upload_id.*(?:not found|invalid|illegal)/i.test(
      String(optimizerExecJob.last_error||''))){
    optimizerExecutionLiveStep('Conferindo vídeo publicado',
@@ -7246,7 +7249,7 @@ globalThis.RAExecutionPrimaryAction=async()=>{
    });
    if(!same())return;
    optimizerExecutionJobView(d.job,d.progress,d.issue);
-   if(['verified','running'].includes(d.job?.state)){
+   if(d.progress?.videoPublished&&['verified','running'].includes(d.job?.state)){
     optimizerExecNotice('Vídeo reconhecido na Shopee. Etapas confirmadas preservadas; acompanhando as pendentes.','success');
     if(d.job.state==='running')void optimizerExecutionRefresh(true);
     return;
