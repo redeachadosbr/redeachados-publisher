@@ -60,6 +60,9 @@ export async function claimShopeePreparedExecution(shopId,itemId,modelId,{planId
   '&plan->>planId=eq.'+encodeURIComponent(planId)+
   '&select=state,plan,run_id,updated_at';
  const saved=await readShopeeExecution(shopId,itemId,modelId);
+ if(saved?.plan?.video&&saved?.plan?.reusedMedia?.video&&
+  Number(saved.plan.videoAttachmentVersion||0)<2)
+  throw Error('Prévia antiga reutiliza uma tarefa de vídeo não validada. Atualize a prévia antes de executar.');
  const reused=saved?.plan?.planId===planId?saved.plan.reusedMedia:null;
  const result=await rows(query,{method:'PATCH',
   data:{state:'running',run_id:runId,plan:commercialDiscount?{...saved.plan,commercialDiscount}:saved.plan,result:{phase:'queued',startedAt:new Date().toISOString(),
