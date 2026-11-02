@@ -220,9 +220,10 @@ export function initExistingKitOptimization({getContext,api,money,onMainSkuChang
   paint();
   // Evitar consulta demorada de dezenas de campanhas antes da etapa 08.
  }
- async function lookup({automatic=false,deep=false}={}){
+ async function lookup({automatic=false,deep=false,allowSavedDraft=false}={}){
   const {kitSaved}=ctx(),code=$('#kitOptimizeMainSku').value.trim(),current=kitSku();
-  if(busy||!kitSaved||!current)return null;
+  // Excecao exclusiva da ficha tecnica, apos confirmar o rascunho no servidor.
+  if(busy||(!kitSaved&&!allowSavedDraft)||!current)return null;
   if(!code)return notice('Selecione a SKU principal para usar como SKU única na Shopee.','error');
   if(!(ctx().prepared?.kit?.components||[]).some(x=>String(x.sku)===code))
    return notice('A SKU principal não pertence a este kit salvo.','error');
@@ -540,8 +541,23 @@ export function initExistingKitOptimization({getContext,api,money,onMainSkuChang
  }
  async function openTechnical(){
   const state=ctx(),kit=state.prepared?.kit;
-  if(!kit||!state.kitSaved){
-   notice('Selecione e salve o rascunho para carregar a ficha da SKU principal.','warning');return false;
+  if(!kit){
+   notice('Selecione um kit para carregar a ficha da SKU principal.','warning');return false;
+  }
+  const draftSku=String(kit.kitSku||'');
+  if(!state.kitSaved){
+   // Texto editado invalida a aprovacao comercial, nao o rascunho confirmado.
+   // Esta verificacao e somente de leitura; nao libera a publicacao.
+   notice('Confirmando o rascunho no servidor para abrir a ficha técnica...','info');
+   try{
+    const loaded=await api('/api/shopee/kits/drafts/load',{body:{kitSku:draftSku}});
+    if(String(loaded?.kit?.kitSku||'')!==draftSku)throw Error('O servidor não confirmou este kit.');
+    if(String(ctx().prepared?.kit?.kitSku||'')!==draftSku)return false;
+   }catch(error){
+    notice('Não foi possível confirmar o rascunho salvo: '+String(error.message||error)+
+     '. Os dados do formulário continuam preservados.','warning');
+    return false;
+   }
   }
   const selected=$('#kitOptimizeMainSku')?.value||$('#kitPrincipalSku')?.value||
    kit.components?.[0]?.sku||'';
@@ -550,7 +566,7 @@ export function initExistingKitOptimization({getContext,api,money,onMainSkuChang
   }
   if(!$('#kitOptimizeMainSku').value)$('#kitOptimizeMainSku').value=selected;
   if(!target||target.kitSku!==kitSku()||target.sku!==selected){
-   await lookup({automatic:true});
+   await lookup({automatic:true,allowSavedDraft:!state.kitSaved});
   }
   if(!target||target.kitSku!==kitSku()||target.sku!==selected){
    const advanced=$('#kitOptimizeAdvanced');
