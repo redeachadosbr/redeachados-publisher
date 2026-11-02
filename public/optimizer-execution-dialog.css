@@ -56,3 +56,156 @@
 }
 #raExecutionDialogRoot .optimizer-exec-product-description{flex:1;min-width:0}
 #raExecutionDialogRoot .optimizer-exec-product-visual{flex:0 0 70px}
+
+
+/* Compact desktop: janela central discreta, sem ocupar a tela inteira.
+   Restringir tudo à janela para não alterar a otimização fora do modal. */
+@media (min-width: 761px) {
+ #raExecutionDialogRoot {
+  inset:auto!important;
+  top:50%!important;left:50%!important;right:auto!important;bottom:auto!important;
+  transform:translate(-50%,-50%);
+  width:min(920px,calc(100vw - 48px));
+  height:auto!important;max-height:78vh!important;
+  border-radius:16px;
+ }
+ #raExecutionDialogRoot #optimizerExecutionPanel {
+  flex:0 1 auto!important;max-height:calc(78vh - 112px)!important;
+  padding:10px 13px!important;
+ }
+ #raExecutionDialogRoot .ra-exec-dialog-header {padding:10px 16px;min-height:48px;gap:10px}
+ #raExecutionDialogRoot .ra-exec-dialog-header h2 {font-size:16px;line-height:1.1}
+ #raExecutionDialogRoot .ra-exec-dialog-header p {font-size:11px;margin-top:2px}
+ #raExecutionDialogRoot #raExecutionDialogClose{padding:6px 10px;font-size:12px}
+ #raExecutionDialogRoot .ra-exec-dialog-footer{gap:10px;padding:9px 14px;min-height:60px}
+ #raExecutionDialogRoot .ra-exec-dialog-footer p{font-size:11px}
+ #raExecutionDialogRun{
+  flex:0 1 320px!important;min-height:42px!important;
+  padding:8px 12px!important;border-radius:10px!important;font-size:13px!important;
+ }
+ #raExecutionDialogRoot .ra-exec-dialog-campaign{flex-basis:152px}
+ #raExecutionDialogRoot .ra-exec-dialog-campaign input{min-height:34px}
+}
+/* Compactação dos componentes em todas as larguras. */
+#raExecutionDialogRoot #optimizerExecutionTracker{
+ margin:0!important;padding:0!important;box-shadow:none!important;
+ border:0!important;background:transparent!important;
+}
+#raExecutionDialogRoot .optimizer-exec-tracker-head{display:none!important}
+#raExecutionDialogRoot .optimizer-exec-product{
+ min-height:60px!important;margin:0 0 7px!important;padding:7px 11px!important;
+ gap:10px!important;border-radius:11px!important;
+}
+#raExecutionDialogRoot .optimizer-exec-product-visual,
+#raExecutionDialogRoot .optimizer-exec-product-visual img{
+ width:48px!important;height:48px!important;min-width:48px!important;max-width:48px!important;
+ border-radius:8px!important;object-fit:cover;
+}
+#raExecutionDialogRoot .optimizer-exec-product-description strong{font-size:13px!important;line-height:1.2}
+#raExecutionDialogRoot .optimizer-exec-product-description span{
+ font-size:11px!important;line-height:1.25!important;display:block;
+ white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:100%;
+}
+#raExecutionDialogRoot .optimizer-exec-product-description small{font-size:10px!important}
+#raExecutionDialogRoot .optimizer-exec-progress-card{padding:0!important;margin:0!important}
+#raExecutionDialogRoot #optimizerExecutionVisual:not([hidden]){margin:0!important}
+#raExecutionDialogRoot .ra-visual-hero{
+ padding:10px 14px!important;border-radius:11px!important;
+ column-gap:9px!important;row-gap:5px!important;
+ grid-template-columns:36px minmax(0,1fr) auto!important;
+}
+#raExecutionDialogRoot .ra-visual-hero-icon{
+ width:34px!important;height:34px!important;border-radius:9px!important;
+ font-size:20px!important;
+}
+#raExecutionDialogRoot .ra-visual-hero h3{font-size:15px!important}
+#raExecutionDialogRoot .ra-visual-hero-copy p{font-size:10.5px!important;margin-top:2px!important}
+#raExecutionDialogRoot .ra-visual-hero-stats{gap:9px!important}
+#raExecutionDialogRoot .ra-visual-hero-stats span{font-size:10px!important}
+#raExecutionDialogRoot .ra-visual-hero-stats strong{
+ font-size:14px!important;padding:4px 9px!important;min-width:49px!important;
+}
+#raExecutionDialogRoot .ra-visual-progress{
+ grid-column:2/4!important;height:7px!important;
+}
+#raExecutionDialogRoot .ra-visual-stage-track{
+ display:grid!important;grid-template-columns:repeat(9,minmax(0,1fr))!important;
+ gap:2px!important;overflow:visible!important;padding:12px 3px 10px!important;
+}
+#raExecutionDialogRoot .ra-phase{gap:4px!important}
+#raExecutionDialogRoot .ra-phase-icon{
+ width:36px!important;height:36px!important;border-radius:10px!important;
+}
+#raExecutionDialogRoot .ra-phase-icon svg{width:20px!important;height:20px!important}
+#raExecutionDialogRoot .ra-phase-label{
+ font-size:9.5px!important;line-height:1.18!important;max-width:84px!important;
+}
+#raExecutionDialogRoot .ra-phase-check{
+ width:15px!important;height:15px!important;top:-6px!important;
+ left:calc(50% + 10px)!important;font-size:9px!important;
+}
+#raExecutionDialogRoot .ra-phase:not(:last-child)::after{
+ top:17px!important;left:calc(50% + 21px)!important;
+ width:calc(100% - 38px)!important;height:3px!important;
+}
+#raExecutionDialogRoot .ra-visual-body{
+ grid-template-columns:minmax(0,1.45fr) minmax(220px,1fr)!important;
+ gap:8px!important;margin:0!important;
+}
+#raExecutionDialogRoot .ra-visual-current,
+#raExecutionDialogRoot .ra-visual-history{
+ min-height:114px!important;border-radius:10px!important;
+}
+#raExecutionDialogRoot .ra-visual-current{padding:11px 12px!important;gap:10px!important}
+#raExecutionDialogRoot .ra-visual-current-icon{
+ flex:0 0 46px!important;width:46px!important;height:46px!important;border-radius:12px!important;
+}
+#raExecutionDialogRoot .ra-visual-current-icon svg{width:30px!important;height:30px!important}
+#raExecutionDialogRoot .ra-visual-kicker{font-size:9px!important;padding:3px 7px!important}
+#raExecutionDialogRoot .ra-visual-current h4{
+ font-size:16px!important;margin:5px 0 3px!important;line-height:1.18!important;
+}
+#raExecutionDialogRoot .ra-visual-current p{
+ font-size:11px!important;line-height:1.32!important;
+ display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;
+ overflow:hidden;
+}
+#raExecutionDialogRoot .ra-visual-current small{
+ font-size:10px!important;line-height:1.25!important;margin-top:5px!important;
+}
+#raExecutionDialogRoot .ra-visual-history{padding:10px 12px!important}
+#raExecutionDialogRoot .ra-visual-history h4{font-size:12px!important;margin:0 0 6px!important}
+#raExecutionDialogRoot .ra-visual-history h4>span{font-size:15px!important}
+#raExecutionDialogRoot .ra-history-entry{
+ font-size:10px!important;padding:4px 0!important;gap:6px!important;
+}
+#raExecutionDialogRoot .ra-history-entry small{font-size:9px!important}
+#raExecutionDialogRoot .ra-visual-disclaimer{
+ font-size:9.5px!important;margin:7px 2px 2px!important;line-height:1.3!important;
+}
+#raExecutionDialogRoot #optimizerExecutionIssue:not([hidden]){margin:7px 0!important}
+@media (max-width:760px) {
+ #raExecutionDialogRoot{
+  inset:auto!important;top:50%!important;left:50%!important;
+  right:auto!important;bottom:auto!important;
+  transform:translate(-50%,-50%);
+  width:calc(100vw - 16px)!important;max-height:91dvh!important;height:auto!important;
+ }
+ #raExecutionDialogRoot #optimizerExecutionPanel{
+  flex:0 1 auto!important;max-height:calc(91dvh - 143px)!important;padding:8px!important;
+ }
+ #raExecutionDialogRoot .ra-visual-hero{
+  grid-template-columns:34px minmax(0,1fr)!important;
+ }
+ #raExecutionDialogRoot .ra-visual-hero-stats{grid-column:1 / 3!important}
+ #raExecutionDialogRoot .ra-visual-progress{grid-column:1 / 3!important}
+ #raExecutionDialogRoot .ra-visual-stage-track{
+  display:flex!important;overflow-x:auto!important;gap:8px!important;
+  padding:12px 5px!important;scroll-snap-type:x proximity;
+ }
+ #raExecutionDialogRoot .ra-phase{flex:0 0 62px!important}
+ #raExecutionDialogRoot .ra-phase:not(:last-child)::after{width:20px!important;left:calc(50% + 20px)!important}
+ #raExecutionDialogRoot .ra-visual-body{grid-template-columns:1fr!important}
+ #raExecutionDialogRoot .ra-visual-current{min-height:100px!important}
+ #raExecutionDialogRoot .ra-visual-history{min-height:70px!important}
+}
