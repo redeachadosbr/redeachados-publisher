@@ -358,7 +358,11 @@ export function assessShopeeStableCommercialRecovery(job,first,second,at=Date.no
   throw Error('Esta execução exige reconciliação específica de dados fiscais ou desconto.');
  const lastSeen=Math.max(Date.parse(job.updated_at||'')||0,
   Number(job.result?.updateStartedAt||0));
- if(!lastSeen||!safeDiscountPreview&&at-lastSeen<180000)
+ const rejectedVideoTask=/video task not found|video_upload_id.*(?:not found|invalid|illegal)/i
+  .test(String(job.last_error||''));
+ // A recusa explícita da tarefa de vídeo requer readback, mas não nova
+ // espera de consolidação de uma escrita que a Shopee já rejeitou.
+ if(!lastSeen||(!safeDiscountPreview&&!rejectedVideoTask&&at-lastSeen<180000))
   throw Error('Aguardando a janela de consolidação Shopee de 3 minutos, sem repetir envios.');
  const snapshot=item=>({
   item_id:String(item?.item_id||''),item_status:String(item?.item_status||''),
