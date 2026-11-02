@@ -3533,8 +3533,9 @@ app.post('/api/shopee/optimizer/execution/reconcile',mustLogin,requireWeDropAdmi
      // Leituras posteriores não devem descartá-la nem pedir novo checkbox.
      allowUnresearched:approved.allowUnresearched===true
     })).snapshot;
-   if(snap.action==='already'&&Math.abs(Number(snap.originalPrice)-Number(approved.gross))<0.011&&
-      Math.abs(Number(snap.promo)-Number(approved.promo))<0.011){
+   if(snap.action==='already'&&
+      Math.round(Number(snap.originalPrice)*100)===Math.round(Number(approved.gross)*100)&&
+      Math.round(Number(snap.promo)*100)===Math.round(Number(approved.promo)*100)){
     updated=await reconcileShopeeJob(job,{state:'verified',
      result:withExecutionEvent({...job.result,phase:'verified',verified:true,
        discount:{status:'verified'}},'discount-verified','Promoção confirmada pela Shopee.','success'),lastError:null});
@@ -4966,7 +4967,7 @@ app.post('/api/shopee/optimizer/discounts/execute',mustLogin,requireWeDropAdmin,
     body:{item_id:Number(approved.itemId),price_list:[{original_price:current.gross}]}});
    originalPriceChanged=true;
    const checked=await shopeeLiveEditableItem(data.cfg,data.auth,approved.itemId);
-   if(Math.abs(promotionBasePrice(checked)-current.gross)>0.011)
+   if(Math.round(promotionBasePrice(checked)*100)!==Math.round(current.gross*100))
     return res.status(409).json({ok:false,status:'price_confirmation_pending',
      priceUpdated:true,promotionUpdated:false,
      error:'A Shopee recebeu a atualização do preço bruto, mas a nova leitura ainda não confirmou o valor. Nenhum desconto foi enviado. Consulte o anúncio antes de tentar novamente.'});
