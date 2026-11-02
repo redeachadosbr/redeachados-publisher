@@ -6573,6 +6573,38 @@ async function optimizerExecutionSafeRecoverCest(job,w){
    optimizerExecNotice('Não foi possível confirmar com segurança a rejeição fiscal: '+error.message+'. Nenhum envio será repetido.','warning');
  }finally{optimizerExecSafeRecovering=false;}
 }
+// Recuperar os valores fiscais JA salvos da propria SKU, sem inventar origem,
+// NCM ou autorizacao e sem reenviar etapas que a Shopee confirmou.
+async function optimizerRootOpenFiscalPreset(){
+ const w=optimizerWorkflowPlan,link=w?.kitOptimization;
+ if(!w?.stages?.some(stage=>stage.key==='fiscal')){
+  optimizerExecNotice('Etapa fiscal original indisponível para este anúncio. Nenhum envio iniciado.','warning');
+  return false;
+ }
+ optimizerWorkflowOpen('fiscal');
+ if(!link?.kitSku){
+  optimizerWorkflowNotice('Confira os dados fiscais na ficha original da SKU antes de aprovar.','warning');
+  return true;
+ }
+ const sku=String(w.sku),kitSku=String(link.kitSku);
+ try{
+  const preset=await json('/api/shopee/kits/fiscal-preset?'+new URLSearchParams({kitSku,sku}),
+   {signal:AbortSignal.timeout(25000)});
+  if(optimizerWorkflowPlan!==w||String(preset?.kitSku)!==kitSku||String(preset?.sku)!==sku||
+     optimizerWorkflowStage!=='fiscal')return false;
+  optimizerFiscalRender({...preset,taxCurrent:w.taxCurrent||{},
+    taxDraft:{...(preset.taxDraft||{}),...(w.taxDraft||{})}});
+  optimizerWorkflowNotice('Dados recuperados da própria SKU '+sku+
+   ': NCM do catálogo WeDrop, origem gravada e fonte identificada quando disponível. '+
+   'Confira os valores e registre a revisão fiscal antes de executar. Nenhuma publicação realizada.','info');
+  return true;
+ }catch(error){
+  if(optimizerWorkflowPlan===w)optimizerWorkflowNotice(
+   'Não foi possível recuperar o padrão fiscal completo: '+String(error.message||error)+
+   '. O formulário original continua disponível.','warning');
+  return false;
+ }
+}
 // Auditoria independente do último job: 8 etapas reais + 09 Conferência final.
 // Checks locais e a barra 100% de um job parcial NÃO encerram a SKU.
 const optimizerRootAuditCache=new Map();
@@ -6595,10 +6627,13 @@ function optimizerRootAuditRender(audit){
  title.style.cssText='font-size:15px;display:block;color:#153c6c';
  const note=document.createElement('p');
  note.style.cssText='font-size:12px;line-height:1.55;margin:7px 0 13px;color:#537093';
- const good=audit.stages?.filter(x=>x.status==='confirmed').length||0;
+ const good=audit.stages?.filter(x=>x.id!=='final'&&x.status==='confirmed').length||0;
+ const applicable=audit.stages?.filter(x=>x.id!=='final'&&x.status!=='not_applicable').length||0;
+ const pendingCount=Math.max(0,applicable-good);
  note.textContent=audit.complete?
-  'Todas as etapas aplicáveis confirmadas por leitura da Shopee.':
-  good+' etapa(s) confirmada(s) · execução geral pendente. A barra de uma execução parcial não conclui o anúncio.';
+  'Todas as '+applicable+' etapas aplicáveis confirmadas por leitura da Shopee.':
+  good+' de '+applicable+' etapas aplicáveis confirmadas na Shopee · '+pendingCount+
+  ' pendência(s). A barra de 0% acima é da última tentativa, NÃO apaga o que já foi publicado.';
  panel.append(title,note);
  if(audit.lastJobError){
   const error=document.createElement('p');error.style.cssText='font-size:12px;color:#a33c2b';
@@ -6630,6 +6665,9 @@ function optimizerRootAuditRender(audit){
     if(stage.id==='discount'){
      optimizerDiscountOpenReview();return;
     }
+    if(stage.id==='fiscal'){
+     void optimizerRootOpenFiscalPreset();return;
+    }
     if(optimizerExecBusy||optimizerExecPreparation){
      optimizerExecNotice('Existe execução/preparação em andamento. Consulte o resultado antes de tentar novamente.','warning');return;
     }
@@ -6658,13 +6696,29 @@ function optimizerRootAuditRender(audit){
  actions.append(refresh);
  if(!audit.complete&&audit.pending?.some(x=>x!=='final')){
   const full=document.createElement('button');full.type='button';full.className='kit-primary';
-  full.textContent='Preparar somente alterações pendentes';
+  const fiscalStillPending=audit.stages?.some(s=>s.id==='fiscal'&&
+   !['confirmed','not_applicable'].includes(s.status));
+  const fiscalReviewed=optimizerWorkflowPlan?.stages?.some(s=>s.key==='fiscal'&&s.reviewed===true);
+  const discountStillPending=audit.stages?.some(s=>s.id==='discount'&&
+   !['confirmed','not_applicable'].includes(s.status));
+  const discountPrepared=optimizerKitDiscountReviewState(optimizerWorkflowPlan).prepared;
+  full.textContent=fiscalStillPending&&!fiscalReviewed?'Recuperar e revisar dados fiscais':
+   discountStillPending&&!discountPrepared?'Preparar prévia de Minha Promoção':
+   'Preparar somente alterações pendentes';
   full.addEventListener('click',()=>{
    if(optimizerExecBusy||optimizerExecPreparation||['running','uncertain'].includes(optimizerExecJob?.state)){
     optimizerExecNotice('Conclua ou reconcilie o job anterior antes de preparar outro.','warning');return;
    }
+   // A auditoria mostra o que falta. Não gerar repetidamente prévia vazia
+   // quando o dado fiscal ou a autorização comercial ainda não estão prontos.
+   if(fiscalStillPending&&!fiscalReviewed){
+    void optimizerRootOpenFiscalPreset();return;
+   }
+   if(discountStillPending&&!discountPrepared){
+    optimizerDiscountOpenReview();return;
+   }
    $('#optimizerExecutionScope').value='all';
-   optimizerExecNotice('Preparando a execução completa: o motor comparará cada campo com a Shopee e só incluirá alterações ainda pendentes. Revise e autorize antes do envio.','info');
+   optimizerExecNotice('Preparando somente divergências ainda aprovadas. As cinco etapas já confirmadas não serão reenviadas.','info');
    void optimizerExecutionPrepare();
   });
   actions.append(full);
