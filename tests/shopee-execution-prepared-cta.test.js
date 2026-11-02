@@ -21,7 +21,9 @@ test('sem autorização a barra diz o motivo e não chama API automaticamente',(
  assert.match(js,/optimizerExecutionLaunch'\)\?\.addEventListener\?\.\('click'/);
  assert.match(js,/optimizerResolveExecutionBlockers/);
  assert.match(js,/optimizerSaveChecklistReview/);
- assert.match(js,/if\(optimizerExecPlan\?\.canExecute&&optimizerDiscountReviewedForExecution\(optimizerExecPlan\)\)/);
+ assert.match(js,/async function optimizerOneClickExecute\(\)/);
+ assert.match(js,/await optimizerDiscountFinalPrepare\(\)/);
+ assert.match(js,/await optimizerExecuteApproved\(false\)/);
  assert.match(js,/void optimizerExecuteApproved\(false\)/);
  assert.match(js,/confirmati[oó]n:'EXECUTAR '\+p\.sku/);
 });
