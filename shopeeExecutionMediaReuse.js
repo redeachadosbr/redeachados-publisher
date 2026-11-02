@@ -13,7 +13,11 @@ export function archiveShopeeMedia(oldJob,newPlan){
  const images=ids(previous.images).map(x=>({slot:x.slot,sha256:x.sha256}));
  const imageIds=ids(result.imageIds).length===images.length&&images.length?
   result.imageIds:ids(previous.reusedMedia?.imageIds);
- const video=previous.video?.sha256&&result.video?.phase==='ready'?
+ // Um upload SUCCEEDED pode ser recusado pelo produto ("video task not found").
+ // Nunca reutilizar a mesma tarefa inválida em uma nova prévia.
+ const unusableVideo=Boolean(result.videoRejected)||
+  /video task not found|video_upload_id.*(?:not found|invalid|illegal)/i.test(String(oldJob.last_error||''));
+ const video=!unusableVideo&&previous.video?.sha256&&result.video?.phase==='ready'?
   {sha256:previous.video.sha256,ready:result.video}:
   previous.video?.sha256&&previous.reusedMedia?.video?.phase==='ready'?
   {sha256:previous.video.sha256,ready:previous.reusedMedia.video}:null;
@@ -43,7 +47,9 @@ export function recyclableShopeeMedia(oldJob,newPlan){
    typeof existing[i]==='string'&&existing[i].length>=5)){
    media.imageIds=existing.slice();
  }
- if(newPlan.video&&(old.video?.sha256||archived?.video?.sha256)===newPlan.video.sha256&&result.video?.phase==='ready'&&
+ const unusableVideo=Boolean(oldJob.result?.videoRejected)||
+  /video task not found|video_upload_id.*(?:not found|invalid|illegal)/i.test(String(oldJob.last_error||''));
+ if(!unusableVideo&&newPlan.video&&(old.video?.sha256||archived?.video?.sha256)===newPlan.video.sha256&&result.video?.phase==='ready'&&
   typeof result.video.id==='string'&&result.video.id.length>5){
   media.video=result.video;
  }
