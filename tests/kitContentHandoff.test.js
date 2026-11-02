@@ -229,3 +229,16 @@ test('Ponte atual recebe 4 aliases válidos de SKUs com espaço e pontos, sem mu
  assert.equal((await pending).kitSku,kitSku);
  assert.equal(listeners.size,0);
 });
+
+test('importação automática tem o helper de desempacotamento ligado ao módulo de produção',()=>{
+ const source=readFileSync(new URL('../public/kit-builder.js',import.meta.url),'utf8');
+ assert.match(source,/import\s*\{[^}]*\bkitContentResponseText\b[^}]*\}\s*from\s*['"]\.\/kit-content-handoff\.js\?v=/);
+ assert.match(source,/const rawText=kitContentResponseText\(m\.rawText\)/);
+ assert.match(source,/const content=kitContentResponseText\(response\.rawText\)/);
+ const titles='TÍTULO 1: '+title('🏀 Kit Mini Basquete Mesa + Pista Looping 360 + Pula Pirata Jump 16 Peças 🎁')+
+  '\nTÍTULO 2: '+title('🚗 Kit Basquete Mesa + Carrinho Pista Looping 360 + Pula Pirata 16 Peças 🎁')+
+  '\nTÍTULO 3: '+title('🎯 Kit Jogo Basquete + Pista Looping e Carrinho + Pula Pirata Jump 16 Peças 🎁')+
+  '\nDESCRIÇÃO:\n✨ Kit completo com três brinquedos.';
+ const packed=JSON.stringify({description:titles,factsUsed:[]});
+ assert.equal(kitContentResponseText(packed),titles);
+});
