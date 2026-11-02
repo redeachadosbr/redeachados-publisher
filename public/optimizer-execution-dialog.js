@@ -27,6 +27,7 @@
   action.textContent=busy?'◷ Conferindo Shopee e preparando pendências…':
    phase==='running'?'◷ Execução em andamento — acompanhando Shopee':
    phase==='verified'?'✓ Etapas deste envio confirmadas':
+   phase==='uncertain'&&data.priceMismatchBeforeWrite?'▶ Corrigir preço e concluir desconto':
    phase==='uncertain'?'↻ Conferir resultado e continuar':
    phase==='failed'?'▶ Retomar apenas as pendências':
    '▶ EXECUTAR NA SHOPEE';
@@ -46,7 +47,8 @@
    const price=q&&Number.isFinite(q.gross)&&Number.isFinite(q.promo)?
     'Preço bruto '+money(q.gross)+' · Promocional '+money(q.promo)+
     (Number.isFinite(q.margin)?' · Margem '+q.margin.toFixed(1)+'%':''):'';
-   const hint=phase==='uncertain'?
+   const hint=data.priceMismatchBeforeWrite?'Preço divergente antes do desconto. O sistema verifica e atualiza somente o preço autorizado.':
+    phase==='uncertain'?
     'Consulta primeiro a tentativa anterior, sem repetir envios.':
     phase==='failed'?'Preserva as etapas já publicadas.':
     phase==='verified'?'Somente as etapas deste envio foram confirmadas.':
