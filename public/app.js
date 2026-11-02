@@ -7142,7 +7142,13 @@ $('#optimizerExecutionReconcile')?.addEventListener?.('click',()=>void optimizer
 let optimizerPrimaryActionBusy=false;
 globalThis.RAExecutionCurrentStatus=()=>({
  state:optimizerExecJob?.state||'prepared',
- busy:optimizerPrimaryActionBusy||optimizerExecBusy||optimizerOneClickBusy||kitAllStagesStarting
+ busy:optimizerPrimaryActionBusy||optimizerExecBusy||optimizerOneClickBusy||kitAllStagesStarting,
+ quote:optimizerDiscountFinalQuote?{
+  gross:Number(optimizerDiscountFinalQuote.grossPrice),
+  promo:Number(optimizerDiscountFinalQuote.marketplaceDisplayPrice),
+  margin:Number(optimizerDiscountFinalQuote.netMarginPct),
+  discount:Number(optimizerDiscountFinalQuote.discountPct)
+ }:null
 });
 globalThis.RAExecutionPrimaryAction=async()=>{
  const w=optimizerWorkflowPlan;
