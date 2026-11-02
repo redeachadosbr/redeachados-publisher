@@ -1,0 +1,40 @@
+/* Rede Achados BR — execução em janela única, com um comando principal. */
+#raExecutionDialogRoot[hidden],#raExecutionDialogBackdrop[hidden]{display:none!important}
+#raExecutionDialogBackdrop{position:fixed;inset:0;z-index:11998;background:rgba(10,27,53,.66);backdrop-filter:blur(5px)}
+#raExecutionDialogRoot{position:fixed;inset:3vh max(16px,calc((100vw - 1230px)/2));z-index:11999;display:flex;flex-direction:column;min-height:0;overflow:hidden;border-radius:22px;background:#f6f9ff;box-shadow:0 35px 100px rgba(6,20,50,.38);border:1px solid #dce8fa}
+#raExecutionDialogRoot .ra-exec-dialog-header{flex:0 0 auto;display:flex;align-items:center;justify-content:space-between;gap:18px;background:#102c64;color:#fff;padding:14px 22px}
+.ra-exec-dialog-header h2{font-size:19px;line-height:1.3;margin:0;color:#fff}.ra-exec-dialog-header p{color:#d7e8ff;font-size:12px;margin:3px 0 0}
+#raExecutionDialogClose{display:flex;align-items:center;gap:8px;padding:9px 13px;border:1px solid #ffffff67;border-radius:11px;background:#ffffff18;color:#fff;cursor:pointer;font-weight:750}
+#raExecutionDialogClose:hover{background:#ffffff30}
+#raExecutionDialogRoot #optimizerExecutionPanel{display:block!important;position:static!important;min-height:0!important;max-height:none!important;flex:1 1 auto;overflow-x:hidden;overflow-y:auto;margin:0!important;border:0!important;border-radius:0!important;box-shadow:none!important;padding:16px 18px!important;background:#f6f9ff}
+#raExecutionDialogRoot #optimizerExecutionPanel[hidden]{display:none!important}
+#raExecutionDialogRoot .ra-exec-dialog-footer{flex:0 0 auto;display:flex;align-items:center;gap:18px;justify-content:space-between;padding:13px 22px;background:white;border-top:1px solid #dbe7f4}
+#raExecutionDialogRoot .ra-exec-dialog-footer p{margin:0;color:#4f6687;font-size:12px;line-height:1.45}
+#raExecutionDialogRun{border:0!important;border-radius:12px!important;flex:0 1 430px;min-height:52px;padding:12px 18px;color:white!important;background:linear-gradient(110deg,#1566de,#143b92)!important;font-size:15px!important;font-weight:850!important;cursor:pointer;box-shadow:0 5px 13px #2058ac35}
+#raExecutionDialogRun:disabled{opacity:.67;cursor:not-allowed;background:#657b99!important;box-shadow:none}
+#raExecutionDialogRoot .optimizer-stage-execute-switch,#raExecutionDialogRoot .optimizer-exec-head,
+#raExecutionDialogRoot .optimizer-exec-resume-bar,#raExecutionDialogRoot .optimizer-workflow-actions,
+#raExecutionDialogRoot .optimizer-exec-recover-stuck,#raExecutionDialogRoot .optimizer-recovery-result,
+#raExecutionDialogRoot #optimizerExecutionStatus,#raExecutionDialogRoot .optimizer-exec-bottom,
+#raExecutionDialogRoot .optimizer-exec-progress-head,#raExecutionDialogRoot #optimizerExecutionBar,
+#raExecutionDialogRoot #optimizerExecutionLivePhase,#raExecutionDialogRoot .optimizer-exec-steps,
+#raExecutionDialogRoot #optimizerExecutionActivity,#raExecutionDialogRoot #optimizerExecutionSummary,
+#raExecutionDialogRoot #optimizerFinalPending,#raExecutionDialogRoot #optimizerRootAuditPanel,
+#raExecutionDialogRoot #optimizerExecutionPendingActions{display:none!important}
+#raExecutionDialogRoot #optimizerExecutionVisual:not([hidden]){display:block!important;margin:0 0 14px}
+#raExecutionDialogRoot .optimizer-exec-tracker-head{margin-bottom:10px}
+#raExecutionDialogRoot .optimizer-exec-product{margin:0 0 10px}
+#raExecutionDialogRoot .optimizer-exec-progress-card{background:transparent!important;padding:10px!important;border:0!important}
+#raExecutionDialogRoot .ra-visual-current,#raExecutionDialogRoot .ra-visual-history{min-height:172px}
+#raExecutionDialogRoot .ra-visual-hero{padding:16px 20px}
+#raExecutionDialogRoot .ra-visual-stage-track{padding:20px 8px}
+#raExecutionDialogRoot .ra-visual-disclaimer{margin-top:10px}
+#raExecutionDialogRoot #optimizerExecutionIssue:not([hidden]){display:block!important;margin:10px}
+@media(max-width:800px){
+ #raExecutionDialogRoot{inset:6px;border-radius:14px}
+ #raExecutionDialogRoot .ra-exec-dialog-header{padding:11px 14px}
+ .ra-exec-dialog-header h2{font-size:16px}
+ #raExecutionDialogRoot #optimizerExecutionPanel{padding:8px!important}
+ #raExecutionDialogRoot .ra-exec-dialog-footer{flex-direction:column;align-items:stretch;padding:10px 12px;gap:8px}
+ #raExecutionDialogRun{flex:initial;width:100%;min-height:46px}
+}
