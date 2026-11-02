@@ -41,12 +41,12 @@ test('vídeo real em upload destaca somente vídeo e distingue mídia de publica
     {id:'seo',status:'waiting'},{id:'description',status:'waiting'}]},
   eventTitle:'5. Execução aceita pelo servidor'
  });
- assert.equal(state.active,5);
+ assert.equal(state.active,1);
  assert.equal(state.title,'Enviando vídeo');
  assert.equal(state.percent,12);
- assert.equal(state.states[4],'staged');
- assert.equal(state.states[5],'active');
- assert.equal(state.states[6],'waiting');
+ assert.equal(state.states[0],'staged');
+ assert.equal(state.states[1],'active');
+ assert.equal(state.states[2],'waiting');
  assert.ok(state.mediaInfo.includes('0 publicadas no anúncio'));
  assert.ok(state.completed<9);
 });
@@ -54,8 +54,8 @@ test('falha e estado incerto nunca aparecem como confirmação da Shopee',()=>{
  const base={progress:{percent:35,hasStarted:true,steps:[{id:'video',status:'active'}]}};
  const failed=derive({...base,job:{state:'failed',result:{phase:'video_upload'}}});
  const uncertain=derive({...base,job:{state:'uncertain',result:{phase:'video_upload'}}});
- assert.equal(failed.states[5],'error');
- assert.notEqual(uncertain.states[5],'done');
+ assert.equal(failed.states[1],'error');
+ assert.notEqual(uncertain.states[1],'done');
  assert.match(failed.title,/interrompida/);
  assert.match(uncertain.title,/Aguardando confirmação/);
 });
@@ -64,17 +64,34 @@ test('verificação final de job parcial não finge que título, descrição ou 
   percent:100,hasStarted:true,steps:[{id:'images',status:'done'},
    {id:'seo',status:'skipped'},{id:'description',status:'skipped'}]}});
  assert.equal(out.percent,100);
- assert.equal(out.states[6],'waiting');
+ assert.equal(out.states[2],'waiting');
+ assert.equal(out.states[3],'waiting');
  assert.equal(out.states[7],'waiting');
  assert.equal(out.states[8],'done');
  assert.ok(out.completed<9);
 });
 test('etapas reais Shopee são reconhecidas sem criar nova requisição',()=>{
- assert.equal(phaseFromServer({state:'running',result:{phase:'video_upload'}},{}),5);
- assert.equal(phaseFromServer({state:'running',result:{phase:'images_upload'}},{}),4);
+ assert.equal(phaseFromServer({state:'running',result:{phase:'video_upload'}},{}),1);
+ assert.equal(phaseFromServer({state:'running',result:{phase:'images_upload'}},{}),0);
  assert.equal(phaseFromServer({state:'running',result:{phase:'verifying'}},{}),8);
- assert.equal(phaseFromEvent('1. Conferindo a prévia salva'),0);
- assert.equal(phaseFromEvent('5. Execução aceita pelo servidor'),2);
+ assert.equal(phaseFromEvent('1. Conferindo a prévia salva'),-1);
+ assert.equal(phaseFromEvent('5. Execução aceita pelo servidor'),-1);
+ assert.equal(phaseFromEvent('Sem concorrentes verificados: validar margem e desconto'),7);
+ assert.equal(phaseFromServer({state:'running',result:{phase:'model_discount_updating'}},{}),7);
  assert.ok(!visual.includes('fetch('),'visualização não deve acessar a rede');
  assert.ok(!visual.includes('XMLHttpRequest'),'visualização não deve enviar alterações');
+});
+
+test('falha de desconto não reverte imagens já confirmadas nem finge publicação do desconto',()=>{
+ const state=derive({
+  job:{state:'failed',result:{phase:'discount_verifying'},last_error:'Sem concorrentes verificados: margem e desconto'},
+  progress:{state:'failed',percent:83,hasStarted:true,imagesTotal:9,imagesUploaded:9,
+   imagesPublished:9,steps:[{id:'images',status:'done'},{id:'discount',status:'active'}]}
+ });
+ assert.equal(state.percent,83);
+ assert.equal(state.states[0],'done');
+ assert.equal(state.states[7],'error');
+ assert.equal(state.states[8],'waiting');
+ assert.ok(state.completed<9);
+ assert.match(state.detail,/Sem concorrentes/);
 });
