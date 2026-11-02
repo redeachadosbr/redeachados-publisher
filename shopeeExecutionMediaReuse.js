@@ -17,7 +17,7 @@ export function archiveShopeeMedia(oldJob,newPlan){
  // Nunca reutilizar a mesma tarefa inválida em uma nova prévia.
  const unusableVideo=Boolean(result.videoRejected)||
   /video task not found|video_upload_id.*(?:not found|invalid|illegal)/i.test(String(oldJob.last_error||''));
- const video=!unusableVideo&&previous.video?.sha256&&result.video?.phase==='ready'?
+ const video=unusableVideo?null:previous.video?.sha256&&result.video?.phase==='ready'?
   {sha256:previous.video.sha256,ready:result.video}:
   previous.video?.sha256&&previous.reusedMedia?.video?.phase==='ready'?
   {sha256:previous.video.sha256,ready:previous.reusedMedia.video}:null;
@@ -48,6 +48,9 @@ export function recyclableShopeeMedia(oldJob,newPlan){
    media.imageIds=existing.slice();
  }
  const unusableVideo=Boolean(oldJob.result?.videoRejected)||
+  // Planos preparados antes da separação do vídeo podem conter o mesmo
+  // video_upload_id que a Shopee rejeitou; reusar somente planos v2.
+  Number(old.videoAttachmentVersion||0)<2||
   /video task not found|video_upload_id.*(?:not found|invalid|illegal)/i.test(String(oldJob.last_error||''));
  if(!unusableVideo&&newPlan.video&&(old.video?.sha256||archived?.video?.sha256)===newPlan.video.sha256&&result.video?.phase==='ready'&&
   typeof result.video.id==='string'&&result.video.id.length>5){
