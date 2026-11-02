@@ -4740,28 +4740,10 @@ function optimizerExecutionTrackerRender(progress,job){
   detail.textContent=pendingRootStages?'A auditoria da Shopee confirmou as demais etapas. Prepare exclusivamente o que ainda está pendente:':'Sem auditoria raiz disponível: conferindo o anúncio antes de classificar pendências.';
   detail.style.cssText='font-size:13px;line-height:1.5;margin:0 0 12px';
   pendingActions.append(heading,detail);
-  const actions=document.createElement('div');
-  actions.style.cssText='display:flex;flex-wrap:wrap;gap:9px';
-  for(const step of skipped){
-   if(!['images','video','variants','fiscal','technical','seo','description','discount'].includes(step.id))continue;
-   const button=document.createElement('button');
-   button.type='button';button.className='kit-secondary';
-   button.textContent=step.id==='discount'?'Preparar 08 · Minha Promoção':
-    'Preparar '+step.label.replace(/^\\d+\\s*[·.-]\\s*/,'');
-   button.style.cssText='padding:10px 13px;border-radius:11px;font-weight:700';
-   button.addEventListener('click',()=>{
-    if(optimizerExecBusy||optimizerExecPreparation)return;
-    if(step.id==='discount'){optimizerDiscountOpenReview();return;}
-    const scope=$('#optimizerExecutionScope');
-    if(!scope)return;
-    scope.value=step.id;
-    optimizerExecNotice('Preparando somente '+step.label+'. Revise arquivos, checklist e prévia antes de autorizar. Nada será enviado automaticamente.','info');
-    void optimizerExecutionPrepare();
-    document.querySelector('#optimizerExecutionPanel')?.scrollIntoView({behavior:'smooth',block:'start'});
-   });
-   actions.append(button);
-  }
-  pendingActions.append(actions);
+  const instructions=document.createElement('p');
+  instructions.style.cssText='font-size:13px;color:#51657b;line-height:1.5;margin:0';
+  instructions.textContent='A lista acima registra o que ainda não foi confirmado na Shopee. Utilize somente o botão azul EXECUTAR na parte superior; o Motor Matriz executará as alterações aprovadas e mostrará qualquer bloqueio real.';
+  pendingActions.append(instructions);
  }else pendingActions.hidden=true;
  pendingActions.hidden=!skipped.length;
  let kitDiscountAction=$('#optimizerExecutionOpenKitDiscount');
@@ -4915,8 +4897,9 @@ function optimizerManualDiscountIdentity(q){
 }
 function optimizerManualDiscountConsent(q){
  const check=document.getElementById('optimizerManualDiscountApproval');
- return Boolean(optimizerManualDiscountQualified(q)&&check?.checked===true&&
-  check.dataset.quoteKey===optimizerManualDiscountIdentity(q));
+ return Boolean(optimizerManualDiscountQualified(q)&&
+  ((check?.checked===true&&check.dataset.quoteKey===optimizerManualDiscountIdentity(q))||
+   optimizerOneClickConsentKey===optimizerManualDiscountIdentity(q)));
 }
 function optimizerManualDiscountWidget(q){
  const parent=$('#optimizerExecDiscountCampaign')?.parentElement;
@@ -5608,7 +5591,7 @@ function optimizerExecUpdateRunButton(){
   resume?'▶ Retomar de onde parou':
   p?.modelVariations?'▶ Executar anúncio + variações + fiscal + desconto':
   p?.selectedStage==='all'&&optimizerKitWorkflowActive()?'▶ Executar pendências aprovadas das 9 etapas':
-  p?.selectedStage==='all'?'▶ Executar anúncio + desconto na Shopee':'▶ Executar etapa aprovada na Shopee';
+  p?.selectedStage==='all'?'▶ EXECUTAR NA SHOPEE · anúncio e desconto':'▶ Executar etapa aprovada na Shopee';
  $('#optimizerExecutionLaunch').title=!optimizerDiscountReviewedForExecution(p)
    ?'Conferir a promoção no bloco de desconto antes de executar a SKU':'Executar etapas aprovadas na Shopee';
  // Mantido somente para compatibilidade com o fluxo legado oculto.
@@ -6171,14 +6154,101 @@ globalThis.RAKitExecutePendingAllStages=async({kitSku,sku,itemId,modelId}={})=>{
   return {ok:false,error:String(error.message||error)};
  }finally{kitAllStagesStarting=false;}
 };
-$('#optimizerExecutionLaunch')?.addEventListener?.('click',()=>{
- const missing=optimizerKitMissingApprovedStages();
- if(missing.length)optimizerExecNotice('Ainda faltam '+missing.join(', ')+
-  '. O motor executará apenas as ações autorizadas e manterá essas etapas pendentes até a confirmação da Shopee.','warning');
- if(optimizerExecPlan?.canExecute&&optimizerDiscountReviewedForExecution(optimizerExecPlan))
-  return void optimizerExecuteApproved(false);
- void optimizerResolveExecutionBlockers();
-});
+// O botão principal e a autorização do orçamento são a MESMA intenção.
+ // Consultar a prévia não publica. Execução somente após validar o snapshot
+ // assinado e, quando necessário, a permissão separada para preço bruto.
+let optimizerOneClickBusy=false;
+let optimizerOneClickConsentKey='';
+async function optimizerOneClickExecute(){
+ const original=optimizerWorkflowPlan;
+ if(!original||optimizerOneClickBusy||optimizerExecBusy)return;
+ const identity=[String(original.sku),String(original.itemId),String(original.modelId)].join('|');
+ const same=()=>optimizerWorkflowPlan===original&&
+  [String(original.sku),String(original.itemId),String(original.modelId)].join('|')===identity;
+ if(['running','uncertain'].includes(optimizerExecJob?.state)){
+  optimizerExecNotice('A execução anterior está em andamento ou sem confirmação. Conferindo a Shopee; nenhum envio duplicado será feito.','warning');
+  void optimizerExecutionRefresh(true);return;
+ }
+ optimizerOneClickBusy=true;
+ const main=$('#optimizerExecutionLaunch');
+ if(main)main.disabled=true;
+ try{
+  let p=optimizerExecPlan;
+  if(!p||p.sku!==original.sku||String(p.itemId)!==String(original.itemId)||
+     String(p.modelId)!==String(original.modelId)||p.selectedStage!=='all'||!p.canExecute){
+   $('#optimizerExecutionScope').value='all';
+   optimizerExecNotice('Um clique: revalidando a prévia comercial da SKU '+original.sku+' antes de qualquer envio...','info');
+   await optimizerExecutionPrepare();
+   if(!same())return;
+   p=optimizerExecPlan;
+  }
+  if(!p?.canExecute){
+   optimizerExecNotice('Publicação não iniciada. '+(p?.blocked||[]).slice(0,3).join(' · ')+
+    ' Revise somente os dados não preparados. As etapas salvas foram preservadas.','warning');
+   return;
+  }
+  if(!optimizerKitWorkflowActive()&&!p.modelVariations&&
+     ['all','remaining','discount','discount_adjust'].includes(p.selectedStage)){
+   if(!optimizerDiscountApprovalReady()){
+    if(!optimizerDiscountFinalQuote)await optimizerDiscountFinalLoad();
+    if(!same())return;
+    const q=optimizerDiscountFinalQuote;
+    if(!q||optimizerDiscountFinalIdentityOf(original)!==optimizerDiscountFinalIdentity){
+     optimizerExecNotice('O plano comercial está pronto, mas não foi possível recuperar a cotação desta SKU. Nenhum envio realizado.','warning');
+     return;
+    }
+    // O ato explícito de clicar EXECUTAR anúncio + desconto autoriza a
+    // análise do preço por custo/margem SEM inventar pesquisa de mercado.
+    // Válido somente nesta chamada e na cotação mostrada ao operador.
+    if(optimizerManualDiscountQualified(q)){
+     optimizerOneClickConsentKey=optimizerManualDiscountIdentity(q);
+     optimizerExecNotice('Autorização de execução recebida: conferindo desconto '+shPricePercent(q.discountPct)+
+      ', preço '+shPriceMoney(q.marketplaceDisplayPrice)+' e margem '+shPricePercent(q.netMarginPct)+
+      ' sem pesquisa de concorrentes. Primeiro será consultada a campanha sem escrita.','info');
+    }
+    if(!optimizerDiscountFinalEligible(q)){
+     optimizerDiscountOpenReview();
+     optimizerExecNotice('A cotação não atende aos critérios de margem ou pesquisa. A Shopee não recebeu alterações.','warning');
+     return;
+    }
+    const campaign=String($('#optimizerExecDiscountCampaign')?.value||'').trim();
+    if(!/^\\d{1,18}$/.test(campaign)){
+     optimizerDiscountOpenReview();
+     optimizerExecNotice('A execução foi preservada. Falta o ID válido de Minha Promoção para a SKU '+original.sku+'.','warning');
+     return;
+    }
+    await optimizerDiscountFinalPrepare();
+    if(!same())return;
+    if(!optimizerDiscountApprovalReady()){
+     optimizerDiscountOpenReview();
+     const preview=optimizerDiscountFinalPreviewData?.preview;
+     if(preview?.needsBasePriceUpdate){
+      optimizerExecNotice('A Shopee tem preço bruto diferente de '+shPriceMoney(q.grossPrice)+
+       '. Confira esse valor e autorize explicitamente sua alteração na seção de desconto; nenhuma escrita foi iniciada.','warning');
+     }else if(optimizerDiscountFinalPreviewData?.deferred){
+      optimizerExecNotice('A Shopee ainda não confirmou anúncio ativo. A prévia foi conferida, mas a publicação aguarda status NORMAL.','warning');
+     }else optimizerExecNotice('A campanha não confirmou a prévia do desconto. Veja o motivo específico no bloco de desconto. Nenhum envio iniciado.','warning');
+     return;
+    }
+   }
+  }
+  if(!same())return;
+  if(!optimizerDiscountReviewedForExecution(p)){
+   optimizerExecNotice('Não foi possível validar o desconto dentro do plano atual. Nenhuma publicação iniciada.','warning');
+   return;
+  }
+  // A função existente faz a escrita única e verifica status do job.
+  await optimizerExecuteApproved(false);
+ }catch(error){
+  if(same())optimizerExecNotice('A Shopee não recebeu uma nova autorização de envio: '+
+   String(error.message||error)+'. Confira o estado da execução antes de repetir.','warning');
+ }finally{
+  optimizerOneClickConsentKey='';
+  optimizerOneClickBusy=false;
+  if(same())optimizerExecUpdateRunButton();
+ }
+}
+$('#optimizerExecutionLaunch')?.addEventListener?.('click',()=>void optimizerOneClickExecute());
 $('#optimizerExecutionOver25Consent')?.addEventListener?.('change',()=>{
  optimizerExecUpdateRunButton();
 });
@@ -6711,76 +6781,17 @@ function optimizerRootAuditRender(audit){
   if(['failed','uncertain'].includes(stage.status))
    state.style.color='#a53d2b';
   row.append(state);
-  if(['pending','failed','uncertain'].includes(stage.status)&&stage.id!=='final'){
-   const retry=document.createElement('button');
-   retry.type='button';retry.className='kit-secondary';
-   retry.textContent='Preparar pendência';
-   retry.style.cssText='font-size:12px;padding:7px 10px;margin-top:9px;border-radius:9px';
-   retry.addEventListener('click',()=>{
-    if(stage.id==='discount'){
-     optimizerDiscountOpenReview();return;
-    }
-    if(stage.id==='fiscal'){
-     void optimizerRootOpenFiscalPreset();return;
-    }
-    if(optimizerExecBusy||optimizerExecPreparation){
-     optimizerExecNotice('Existe execução/preparação em andamento. Consulte o resultado antes de tentar novamente.','warning');return;
-    }
-    if(optimizerExecJob?.state==='uncertain'||optimizerExecJob?.state==='running'){
-     optimizerExecNotice('Concilie a execução anterior antes de repetir a etapa, para evitar publicação duplicada.','warning');return;
-    }
-    const selector=$('#optimizerExecutionScope');
-    if(!selector||![...selector.options].some(x=>x.value===stage.id)){
-     optimizerExecNotice('Abra a etapa '+stage.label+' no Motor Matriz original.','warning');return;
-    }
-    selector.value=stage.id;
-    optimizerExecNotice('Preparando somente '+stage.label+' ainda pendente. Os dados já confirmados não serão reenviados.','info');
-    void optimizerExecutionPrepare();
-    $('#optimizerExecutionPanel')?.scrollIntoView({behavior:'smooth',block:'start'});
-   });
-   row.append(retry);
-  }
+  // Diagnóstico somente leitura: as ações individuais confundiam uma prévia
+  // de 6 atualizações aprovadas com sete botões de publicação separados.
   grid.append(row);
  }
  panel.append(grid);
- const actions=document.createElement('div');
- actions.style.cssText='display:flex;gap:8px;flex-wrap:wrap;margin-top:14px';
- const refresh=document.createElement('button');refresh.type='button';refresh.className='kit-secondary';
- refresh.textContent='↻ Conferir novamente na Shopee';
- refresh.addEventListener('click',()=>void optimizerRootAuditRefresh(true));
- actions.append(refresh);
- if(!audit.complete&&audit.pending?.some(x=>x!=='final')){
-  const full=document.createElement('button');full.type='button';full.className='kit-primary';
-  const fiscalStillPending=audit.stages?.some(s=>s.id==='fiscal'&&
-   !['confirmed','not_applicable'].includes(s.status));
-  const fiscalReviewed=optimizerWorkflowPlan?.stages?.some(s=>s.key==='fiscal'&&s.reviewed===true);
-  const discountStillPending=audit.stages?.some(s=>s.id==='discount'&&
-   !['confirmed','not_applicable'].includes(s.status));
-  const discountPrepared=optimizerKitDiscountReviewState(optimizerWorkflowPlan).prepared;
-  full.textContent=fiscalStillPending&&!fiscalReviewed?'Recuperar e revisar dados fiscais':
-   discountStillPending&&!discountPrepared?'Preparar prévia de Minha Promoção':
-   'Preparar somente alterações pendentes';
-  full.addEventListener('click',()=>{
-   if(optimizerExecBusy||optimizerExecPreparation||['running','uncertain'].includes(optimizerExecJob?.state)){
-    optimizerExecNotice('Conclua ou reconcilie o job anterior antes de preparar outro.','warning');return;
-   }
-   // A auditoria mostra o que falta. Não gerar repetidamente prévia vazia
-   // quando o dado fiscal ou a autorização comercial ainda não estão prontos.
-   const now=optimizerWorkflowPlan;
-   const fiscalReady=now?.stages?.some(s=>s.key==='fiscal'&&s.reviewed===true);
-   const promotionReady=optimizerKitDiscountReviewState(now).prepared;
-   if(fiscalStillPending&&!fiscalReady){
-    void optimizerRootOpenFiscalPreset();return;
-   }
-   if(discountStillPending&&!promotionReady){
-    optimizerDiscountOpenReview();return;
-   }
-   $('#optimizerExecutionScope').value='all';
-   optimizerExecNotice('Preparando somente divergências ainda aprovadas. Etapas já confirmadas não serão reenviadas.','info');
-   void optimizerExecutionPrepare();
-  });
-  actions.append(full);
- }
+ const guidance=document.createElement('p');
+ guidance.style.cssText='font-size:12px;color:#516b86;margin-top:12px';
+ guidance.textContent=audit.complete?
+  'Todas as etapas aplicáveis confirmadas na Shopee. Não repetir envios.':
+  'Conferência somente leitura. Para executar as pendências aprovadas, utilize o botão azul principal no painel de execução. As alterações sem aprovação continuarão identificadas aqui.';
+ panel.append(guidance);
  panel.append(actions);
 }
 // O operador ja autorizou a execucao. A finalizacao do rascunho somente
