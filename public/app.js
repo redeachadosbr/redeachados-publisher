@@ -8167,8 +8167,12 @@ function shPriceRender(q){
   $('#optimizerQuickGross').textContent=shPriceMoney(q.grossPrice);
   $('#optimizerQuickDiscount').textContent=shPricePercent(q.discountPct);
   const marketVerified=q.marketResearch?.verified===true;
-  $('#optimizerQuickDiscountLabel').textContent=q.marginOverride?'Desconto base · margem personalizada':marketVerified?'Desconto baseado no mercado':'Desconto base · sem pesquisa';
-  $('#pricePromoLabel').textContent=q.marginOverride?'Desconto mantido · margem manual':marketVerified?'Desconto competitivo calculado':'Desconto base · não pesquisado';
+  $('#optimizerQuickDiscountLabel').textContent=q.variableDiscount?
+    (marketVerified?'Desconto variável · pesquisa confirmada':'Desconto variável · custo e margem'):
+    q.marginOverride?'Desconto base · margem personalizada':marketVerified?'Desconto baseado no mercado':'Desconto base · sem pesquisa';
+  $('#pricePromoLabel').textContent=q.variableDiscount?
+    (marketVerified?'Desconto variável · mercado':'Desconto variável · margem'):
+    q.marginOverride?'Desconto mantido · margem manual':marketVerified?'Desconto competitivo calculado':'Desconto base · não pesquisado';
   $('#optimizerQuickFinal').textContent=shPriceMoney(shPriceVisiblePromotion(q));
   $('#optimizerQuickAfterCoupon').textContent='Com cupom de '+shPricePercent(q.couponPct)+
     ', se utilizado: '+shPriceMoney(q.customerPrice);
@@ -8210,7 +8214,8 @@ function shPriceRender(q){
     ?'Prévia WeDrop sem vínculo e sem pesquisa de concorrentes.'
     :q.marketResearch?.verified===true
       ?'Preço calculado com ofertas semelhantes; confira a pesquisa na memória de cálculo.'
-      :'Preço simulado com desconto padrão, sem pesquisa de concorrentes validada.',
+      :q.variableDiscount?'Preço calculado com desconto variável, margem protegida e sem pesquisa de concorrentes validada.':
+       'Preço simulado com desconto padrão, sem pesquisa de concorrentes validada.',
     q.marketResearch?.verified===true?'success':'warning');
   $('#priceSaveInfo').textContent=isSupplierPreview
     ?'Prévia da WeDrop, sem anúncio vinculado. Margem mínima '+shPricePercent(q.minMarginPct)+'.'
@@ -8739,8 +8744,9 @@ function shDiscountRender(q){
   $('#discountPlanDate').textContent='Calculado '+fmtDate(q.calculatedAt);
   $('#discountGross').textContent=shPriceMoney(q.grossPrice);
   $('#discountPct').textContent=shPricePercent(q.discountPct);
-  $('#discountPromoLabel').textContent=q.marketResearch?.verified===true
-    ?'Desconto baseado no mercado':'Desconto base · sem pesquisa';
+  $('#discountPromoLabel').textContent=q.variableDiscount?
+    (q.marketResearch?.verified===true?'Desconto variável · pesquisa':'Desconto variável · margem'):
+    q.marketResearch?.verified===true?'Desconto baseado no mercado':'Desconto base · sem pesquisa';
   $('#discountFinal').textContent=shPriceMoney(shPriceVisiblePromotion(q));
   $('#discountAfterCoupon').textContent='Com cupom de '+shPricePercent(q.couponPct)+
     ', se utilizado: '+shPriceMoney(q.customerPrice);
