@@ -83,7 +83,7 @@ export function shopeeExecutionProgress(job){
  const activeFiscal=/^fiscal_/.test(phase);
  const activeDiscount=/^(?:discount_|model_discount_|kit_discount_)/.test(phase);
  const attempt=['running','failed','uncertain','verified'].includes(state);
- const failure=['failed','uncertain'].includes(state)||fiscalPartial;
+ const failure=['failed','uncertain'].includes(state)||fiscalPartial||videoPartial;
  const videoTaskError=!videoConfirmed&&
   (/video task not found|video_upload_id.*(?:not found|invalid|illegal)/i.test(String(job.last_error||''))||
     result.videoRejected===true);
