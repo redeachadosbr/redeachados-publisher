@@ -209,11 +209,11 @@ test('plano completo somente com vídeo não exige nova prévia nem desconto',as
  assert.equal(isShopeeVideoOnlyPlan({...only,proposed:{item_name:'new title'}}),false);
  assert.equal(isShopeeVideoOnlyPlan({...only,commercialDiscount:{snapshot:{}}}),false);
  const source=readFileSync(new URL('../server.js',import.meta.url),'utf8');
- assert.match(source,/!linkedKit&&!isShopeeVideoOnlyPlan\(plan\)/);
+ assert.match(source,/!linkedKit&&!isShopeeMatrixIndependentPlan\(plan\)/);
  const ui=readFileSync(new URL('../public/app.js',import.meta.url),'utf8');
- assert.match(ui,/if\(videoOnly\)\{\s*\$\('#optimizerExecutionScope'\)\.value='all'/);
- assert.match(ui,/if\(optimizerIsVideoOnlyPreparedPlan\(plan\)\)return true;/);
- assert.match(ui,/!optimizerIsVideoOnlyPreparedPlan\(p\)&&!optimizerKitWorkflowActive/);
+ assert.match(ui,/if\(matrixIndependent\)\{\s*\$\('#optimizerExecutionScope'\)\.value='all'/);
+ assert.match(ui,/if\(optimizerMatrixIndependentPendingPlan\(plan\)\)return true;/);
+ assert.match(ui,/!optimizerMatrixIndependentPendingPlan\(p\)&&!optimizerKitWorkflowActive/);
  assert.match(ui,/optimizerExecutionPrepare\(\{fromExecutionClick:true\}\)/);
 });
 
