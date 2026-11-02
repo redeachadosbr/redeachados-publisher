@@ -4755,7 +4755,7 @@ function optimizerExecutionTrackerRender(progress,job){
   kitDiscountAction.addEventListener('click',()=>optimizerDiscountOpenReview());
   stageList.insertAdjacentElement('afterend',kitDiscountAction);
  }
- kitDiscountAction.hidden=!discountPending;
+ kitDiscountAction.hidden=true; // Somente botão principal; a etapa 08 segue na conferência automática.
  kitDiscountAction.disabled=Boolean(optimizerExecBusy||optimizerExecPreparation||
   ['running','uncertain'].includes(job?.state));
  kitDiscountAction.textContent=kitDiscount.prepared?
@@ -5564,12 +5564,13 @@ function optimizerExecUpdateRunButton(){
   if(!action){
    action=optimizerMake('button','secondary','Conferir desconto para liberar execução');
    action.id='optimizerExecutionFixDiscount';action.type='button';action.hidden=true;
-   action.onclick=()=>optimizerDiscountOpenReview();
    launch.parentElement?.append(action);
   }
-  action.hidden=!p?.canExecute||optimizerDiscountReviewedForExecution(p)||
+  action.hidden=true;
+  /* Legacy shortcut removed: primary button now handles quote and signed preview. */
+  const unusedLegacyAction=!p?.canExecute||optimizerDiscountReviewedForExecution(p)||
    !['all','remaining','discount','discount_adjust'].includes(p?.selectedStage)||Boolean(p?.modelVariations);
-  if(!action.hidden)launch.title='Conclua a conferência do desconto na mesma SKU usando o botão ao lado.';
+  if(!unusedLegacyAction)launch.title='Conferência de Minha Promoção será feita automaticamente no clique principal.';
  }
  const justPending=p?.selectedStage==='remaining';
  const offerPending=p?.selectedStage==='all'&&Boolean(p?.modelVariations?.promotion);
@@ -5580,7 +5581,7 @@ function optimizerExecUpdateRunButton(){
  $('#optimizerExecutionLaunch').textContent=missingKit.length?
   '▶ Executar etapas prontas e manter '+missingKit.length+' pendência(s)':
   !canPublish?
-  p?.canExecute?'🛠 Conferir desconto e liberar execução':'🛠 Corrigir pendências e revalidar':
+  p?.canExecute?'▶ EXECUTAR NA SHOPEE · conferir desconto e enviar':'🛠 Validar pendências para executar':
   p?.selectedStage==='media_fiscal'?'▶ Executar somente Imagens + Vídeo + Fiscal':
   p?.selectedStage==='discount_adjust'?'▶ Autorizar preço calculado + desconto':
   p?.selectedStage==='discount'?'▶ Executar SOMENTE desconto':
@@ -6792,7 +6793,6 @@ function optimizerRootAuditRender(audit){
   'Todas as etapas aplicáveis confirmadas na Shopee. Não repetir envios.':
   'Conferência somente leitura. Para executar as pendências aprovadas, utilize o botão azul principal no painel de execução. As alterações sem aprovação continuarão identificadas aqui.';
  panel.append(guidance);
- panel.append(actions);
 }
 // O operador ja autorizou a execucao. A finalizacao do rascunho somente
 // ocorre quando a auditoria raiz (leitura REAL da Shopee) retorna 9/9.
