@@ -5733,7 +5733,8 @@ async function optimizerExecutionPrepare({preserveStartError=false}={}){
  const key=[w.sku,w.itemId,w.modelId,requestedStage].join('|');
  if(optimizerExecPreparation){
   if(optimizerExecPreparation.key===key&&optimizerExecPreparation.serial===optimizerExecSerial){
-   // Coalescer consulta idêntica SEM agendar nova preparação ao final.
+   // Aguardar a preparação idêntica concluir ANTES de iniciar a escrita.
+   await optimizerExecPreparation.finished;
    return;
   }
   // Uma consulta antiga não pode bloquear a próxima SKU durante timeout de API.
@@ -5745,7 +5746,9 @@ async function optimizerExecutionPrepare({preserveStartError=false}={}){
  optimizerExecPrepareError='';
  const serial=++optimizerExecSerial;
  const controller=new AbortController();
- const preparation={key,serial,again:false,controller};
+ let finishPreparation;
+ const finished=new Promise(resolve=>{finishPreparation=resolve;});
+ const preparation={key,serial,again:false,controller,finished};
  optimizerExecPreparation=preparation;
  optimizerExecPrepareController=controller;
  optimizerExecContext={sku:w.sku,itemId:w.itemId,modelId:w.modelId};
@@ -5817,6 +5820,8 @@ async function optimizerExecutionPrepare({preserveStartError=false}={}){
        void optimizerConnectionCheck();
    }
  }finally{
+  // Aguardar a mesma preparação no fluxo de um clique, inclusive após erro.
+  finishPreparation();
   // Resposta tardia de outra SKU não pode limpar o pedido novo nem seu botão.
   if(optimizerExecPreparation===preparation){
    optimizerExecPreparation=null;
