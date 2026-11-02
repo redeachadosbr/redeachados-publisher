@@ -2,15 +2,15 @@
 (function(root){
  'use strict';
  const DEFINITIONS=[
-  {label:'Prévia salva',icon:'file',short:'Conferindo prévia'},
-  {label:'Solicitação',icon:'shop',short:'Solicitando à Shopee'},
-  {label:'Aceite',icon:'server',short:'Aceite do servidor'},
-  {label:'Preparação',icon:'settings',short:'Preparando execução'},
-  {label:'Imagens',icon:'image',short:'Enviando imagens'},
-  {label:'Vídeo',icon:'video',short:'Enviando vídeo'},
-  {label:'Título SEO',icon:'tag',short:'Atualizando título'},
-  {label:'Descrição',icon:'text',short:'Atualizando descrição'},
-  {label:'Conferência final',icon:'shield',short:'Ficha, fiscal e conferência'}
+  {id:'images',label:'Imagens',icon:'image',short:'Conferindo imagens'},
+  {id:'video',label:'Vídeo',icon:'video',short:'Conferindo vídeo'},
+  {id:'seo',label:'Título SEO',icon:'tag',short:'Conferindo título'},
+  {id:'description',label:'Descrição',icon:'text',short:'Conferindo descrição'},
+  {id:'technical',label:'Ficha técnica',icon:'settings',short:'Conferindo ficha técnica'},
+  {id:'variants',label:'Variações',icon:'shop',short:'Conferindo variações'},
+  {id:'fiscal',label:'Dados fiscais',icon:'file',short:'Conferindo dados fiscais'},
+  {id:'discount',label:'Desconto',icon:'tag',short:'Conferindo promoção'},
+  {id:'final',label:'Confirmação Shopee',icon:'shield',short:'Conferindo resultado'}
  ];
  const PATHS={
   file:'<rect x="5" y="3" width="14" height="18" rx="2"/><path d="M9 8h6M9 12h6M9 16h4"/>',
@@ -29,31 +29,29 @@
  const select=(id)=>document.getElementById(id);
  function phaseFromServer(job,progress){
   const phase=String(job?.result?.phase||'').toLowerCase();
-  if(phase.includes('image'))return 4;
-  if(phase.includes('video'))return 5;
-  if(phase==='verifying'||phase==='verified'||phase.includes('confirm'))return 8;
-  if(phase==='updating'){
-   const names=(progress?.steps||[]).filter(s=>s.status==='active'||s.status==='checking').map(s=>s.id);
-   if(names.includes('seo'))return 6;
-   if(names.includes('description'))return 7;
-   if(names.includes('technical')||names.includes('fiscal')||names.includes('discount'))return 8;
-   return 3;
-  }
-  if(job?.state==='running')return 3;
+  const byId={images:0,video:1,seo:2,description:3,technical:4,variants:5,fiscal:6,discount:7};
+  if(phase.includes('discount')||phase.includes('promotion'))return 7;
+  if(phase.includes('variation')||phase.includes('model_'))return 5;
+  if(phase.includes('image'))return 0;
+  if(phase.includes('video'))return 1;
+  if(phase.includes('fiscal'))return 6;
+  if(phase==='verified'||phase==='verifying'||phase.includes('confirm'))return 8;
+  const active=(progress?.steps||[]).find(x=>['active','checking'].includes(x.status));
+  if(active&&Object.hasOwn(byId,active.id))return byId[active.id];
   if(job?.state==='verified')return 8;
   return -1;
  }
  function phaseFromEvent(title){
   const s=String(title||'').toLowerCase();
-  if(/conferindo a prévia salva|recuperando prévia|prévia recuperada/.test(s))return 0;
-  if(/solicitando execução|solicitando execução à shopee/.test(s))return 1;
-  if(/execução aceita pelo servidor/.test(s))return 2;
-  if(/preparando execução|execução em andamento/.test(s))return 3;
-  if(/enviando imagens/.test(s))return 4;
-  if(/enviando vídeo|processamento de vídeo/.test(s))return 5;
-  if(/título seo|atualizando título/.test(s))return 6;
-  if(/atualizando descrição/.test(s))return 7;
-  if(/conferindo confirmação|confirmad[ao] na shopee|execução confirmada/.test(s))return 8;
+  if(/imagem|foto/.test(s))return 0;
+  if(/vídeo|video/.test(s))return 1;
+  if(/título|titulo|seo/.test(s))return 2;
+  if(/descrição|descricao/.test(s))return 3;
+  if(/ficha técnica|atributo/.test(s))return 4;
+  if(/variaç|variac|modelo/.test(s))return 5;
+  if(/fiscal|ncm|cest/.test(s))return 6;
+  if(/desconto|promoç|promoc|margem|concorrentes/.test(s))return 7;
+  if(/confirmação|confirmad|resultado final|execução interrompida/.test(s))return 8;
   return -1;
  }
  function normalizedPercent(progress,job){
@@ -63,60 +61,50 @@
   return Math.min(100,Math.max(0,Math.round(n)));
  }
  function derive({progress={},job=null,eventTitle='',eventState='',history=[]}={}){
-  const currentEvent=phaseFromEvent(eventTitle);
-  const currentServer=phaseFromServer(job,progress);
-  let active=currentServer>=0?currentServer:currentEvent;
-  if(job?.state==='prepared'&&!progress?.hasStarted)active=currentEvent===0?0:-1;
   const steps=Array.isArray(progress?.steps)?progress.steps:[];
   const byId=id=>steps.find(x=>x.id===id);
-  const states=DEFINITIONS.map(()=> 'waiting');
-  const accepted=['running','verified','uncertain','failed'].includes(job?.state);
-  const hasAttempt=accepted||progress?.hasStarted;
-  if(hasAttempt){
-   states[0]='done';
-   states[1]='done';
-   states[2]='done';
-  }else if(currentEvent>=0){
-   if(currentEvent===0)states[0]='active';
-   else if(currentEvent===1){states[0]='done';states[1]='active';}
+  const states=DEFINITIONS.map(d=>{
+    if(d.id==='final')return job?.state==='verified'?'done':
+      job?.state==='uncertain'?'checking':'waiting';
+    const step=byId(d.id);
+    if(!step)return 'waiting';
+    if(step.status==='done')return 'done';
+    if(step.status==='staged')return 'staged';
+    if(step.status==='checking')return 'checking';
+    if(step.status==='active')return 'active';
+    if(step.status==='attention')return 'error';
+    return 'waiting';
+  });
+  let active=phaseFromServer(job,progress);
+  if(active<0&&job?.state==='running')active=phaseFromEvent(eventTitle);
+  const failed=job?.state==='failed';
+  if(failed){
+    const error=String(job?.last_error||progress?.lastError||'');
+    const errorPhase=phaseFromEvent(error);
+    if(errorPhase>=0)active=errorPhase;
   }
-  if(hasAttempt){
-   const running=job?.state==='running';
-   states[3]=running&&currentServer===3?'active':'done';
-   for(const [idx,id] of [[4,'images'],[5,'video'],[6,'seo'],[7,'description']]){
-    const step=byId(id);
-    if(step?.status==='done')states[idx]='done';
-    else if(step?.status==='staged')states[idx]='staged';
-    else if(step?.status==='checking')states[idx]='checking';
-    else if(step?.status==='active')states[idx]='active';
-   }
-   const images=byId('images');
-   if(images&&['staged','done'].includes(images.status)&&states[4]==='waiting')states[4]='staged';
-   if(progress?.imagesTotal>0&&progress.imagesUploaded>=progress.imagesTotal&&states[4]==='waiting')states[4]='staged';
-   if(job?.state==='verified')states[8]='done';
-   else if(currentServer===8)states[8]='active';
-  }
-  if(job?.state==='blocked'||job?.state==='failed'||job?.state==='uncertain'||eventState==='error'||eventState==='warning'){
-   const n=active>=0?active:(hasAttempt?3:0);
-   if(states[n]!=='done')states[n]=job?.state==='uncertain'?'checking':'error';
-  }else if(active>=0&&states[active]==='waiting')states[active]='active';
+  if(job?.state==='running'&&active>=0&&states[active]==='waiting')
+    states[active]='active';
+  if(failed&&active>=0&&states[active]!=='done')states[active]='error';
+  if(job?.state==='uncertain'&&active>=0&&states[active]!=='done')states[active]='checking';
   if(job?.state==='verified')active=8;
-  if(job?.state==='prepared'&&!hasAttempt&&active===-1)active=0;
-  const msg=String(progress?.message||'').trim(),detail=String(select('optimizerExecutionLiveDetail')?.textContent||'').trim();
-  const title=job?.state==='verified'?'Execução confirmada pela Shopee':
-   job?.state==='uncertain'?'Aguardando confirmação da Shopee':
-   job?.state==='failed'?'Execução interrompida':
-   job?.state==='prepared'&&!hasAttempt?'Prévia pronta para executar':
-   job?.state==='running'&&currentServer>=0?DEFINITIONS[currentServer].short:
-   eventTitle&&currentEvent>=0?eventTitle:
-   active>=0?DEFINITIONS[active].short:'Aguardando status';
-  const confirm=states.filter(s=>s==='done').length;
-  return {active,title,detail:msg||detail||'Aguardando atualização oficial da execução.',
-   states,completed:confirm,percent:normalizedPercent(progress,job),history,
+  const completed=states.filter(x=>x==='done').length;
+  const title=job?.state==='verified'?'Execução deste plano confirmada':
+    job?.state==='failed'?'Execução interrompida — pendências preservadas':
+    job?.state==='uncertain'?'Conferindo resultado na Shopee':
+    active>=0?DEFINITIONS[active].short:
+    job?.state==='prepared'?'Prévia pronta para executar':
+    eventTitle||'Aguardando status da Shopee';
+  const serverMessage=String(progress?.message||'').trim();
+  const lastError=String(job?.last_error||'').trim();
+  return {active,title,detail:failed?(lastError||serverMessage||'Consulte a pendência e continue sem repetir envios.'):
+    serverMessage||String(select('optimizerExecutionLiveDetail')?.textContent||'').trim()||'Aguardando confirmação oficial.',
+   states,completed,percent:normalizedPercent(progress,job),history,
    state:job?.state||'prepared',
    mediaInfo:progress?.imagesTotal>0?
     String(progress.imagesUploaded||0)+'/'+progress.imagesTotal+' imagens na mídia · '+
-    String(progress.imagesPublished||0)+' publicadas no anúncio':'Confirmar cada atualização pela API Shopee'};
+    String(progress.imagesPublished||0)+' publicadas no anúncio':
+    'Confirmação de cada etapa baseada na resposta da Shopee'};
  }
  let nodesMade=false,identity='';
  function createNodes(){
@@ -145,7 +133,7 @@
   panel.hidden=false;
   const val=(id,value)=>{const el=select(id);if(el)el.textContent=value;};
   val('optimizerVisualPercent',state.percent+'%');
-  val('optimizerVisualCount',state.completed+' de 9 fases verificadas');
+  val('optimizerVisualCount',state.completed+' de 9 etapas confirmadas');
   val('optimizerVisualSummary',state.mediaInfo);
   val('optimizerVisualCurrentTitle',state.title);
   val('optimizerVisualCurrentDetail',state.detail);
@@ -157,7 +145,7 @@
   nodes.forEach((node,i)=>{
    const st=state.states[i];
    node.className='ra-phase is-'+st+(i===state.active?' is-current':'');
-   const text=st==='done'?'Fase verificada':st==='staged'?'Enviado à mídia, ainda não publicado':
+   const text=st==='done'?'Etapa verificada':st==='staged'?'Enviado à mídia, ainda não publicado':
     st==='checking'?'Aguardando confirmação':st==='error'?'Verificar erro':st==='active'?'Em andamento':'Ainda não iniciado';
    node.setAttribute('aria-label',(i+1)+'. '+DEFINITIONS[i].label+' — '+text);
    node.title=text;
