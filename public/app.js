@@ -4755,7 +4755,10 @@ function optimizerExecutionTrackerRender(progress,job){
   kitDiscountAction.addEventListener('click',()=>optimizerDiscountOpenReview());
   stageList.insertAdjacentElement('afterend',kitDiscountAction);
  }
- kitDiscountAction.hidden=true; // Somente botão principal; a etapa 08 segue na conferência automática.
+ kitDiscountAction.hidden=!discountPending;
+ // O fluxo independente usa um só comando. Kits mantêm a etapa comercial
+ // isolada, pois ela pode ser autorizada após a publicação do kit.
+ if(!optimizerKitWorkflowActive())kitDiscountAction.hidden=true;
  kitDiscountAction.disabled=Boolean(optimizerExecBusy||optimizerExecPreparation||
   ['running','uncertain'].includes(job?.state));
  kitDiscountAction.textContent=kitDiscount.prepared?
