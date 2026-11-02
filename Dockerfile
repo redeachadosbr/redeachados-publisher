@@ -9,7 +9,7 @@ RUN node --check shopeeSkuActiveResolver.js && node --test tests/shopeeActiveSku
 RUN node --check public/technical-status.js && node --check public/optimizer-technical-studio.js && node --test tests/shopee-technical-status-consistency.test.js
 RUN node --check public/optimizer-variations.js && node --test tests/shopeeVariationMedia.test.js
 RUN node --test tests/shopee-execution-prepared-cta.test.js
-RUN node --check public/optimizer-execution-visual.js && node --test tests/optimizer-execution-visual.test.js
+RUN node --check public/optimizer-execution-visual.js && node --check public/optimizer-execution-dialog.js && node --test tests/optimizer-execution-visual.test.js tests/shopee-discount-prewrite-reconcile.test.js
 RUN node --test tests/shopee-execution-attribute-order.test.js tests/shopee-execution-rejected-start-recovery.test.js
 RUN node --check public/imageSceneDiversity.js && node --check public/chatgptPrompts.js && node --test tests/imageSceneDiversity.test.js tests/shopeeChatgptPrompts.test.js
 RUN node --check shopeeSupplierEvidenceFacts.js && node --test tests/shopee-technical-wedrop-complete-autofill.test.js
