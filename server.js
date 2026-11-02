@@ -3483,6 +3483,10 @@ app.post('/api/shopee/optimizer/execution/reconcile',mustLogin,requireWeDropAdmi
   const discountPhase=/^discount_/.test(phase);
   const kitDiscountPhase=/^kit_discount_/.test(phase);
   const modelPhase=/^variation_|^model_discount_/.test(phase);
+  const discountBeforeWrite=phase==='discount_ready'&&
+    Boolean(job.plan?.commercialDiscount?.snapshot)&&
+    !Number(job.result?.discountPriceStartedAt||0)&&
+    !Number(job.result?.discountStartedAt||0);
   const verified=discountPhase||modelPhase?false:fiscalPhase?
     verifyShopeeFiscalExecution(job.plan,live,job.result||{}):
     verifyShopeeExecution(job.plan,live,job.result||{});
@@ -3555,7 +3559,7 @@ app.post('/api/shopee/optimizer/execution/reconcile',mustLogin,requireWeDropAdmi
         'cest-confirmed-rejection','CEST pendente: a Shopee rejeitou a edição; o anúncio foi conferido sem reenvio.','warning'),
       lastError:job.last_error});
   }
-  else if(!fiscalPhase&&!discountPhase&&(req.body.recover===true||req.body.reprepare===true)){
+  else if(!fiscalPhase&&(!discountPhase||discountBeforeWrite)&&(req.body.recover===true||req.body.reprepare===true)){
     // Conferência e liberação são SOMENTE leituras. O write antigo nunca é repetido.
     // Duas observações Shopee após a janela de propagação permitem preparar
     // uma nova prévia baseada no anúncio atual, mesmo parcialmente atualizado.
