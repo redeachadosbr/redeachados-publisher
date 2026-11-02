@@ -45,4 +45,14 @@ test('Motor Matriz exige consentimento tanto na consulta quanto na execução da
  assert.match(app,/check\.checked=false;check\.dataset\.quoteKey=key/);
  assert.match(app,/allowUnresearched:optimizerManualDiscountConsent\(q\)/);
  assert.match(app,/allowUnresearched:intent\.expected\.allowUnresearched===true/);
+ // O POST do MOTOR RAIZ (anúncio + desconto) precisa repassar o mesmo
+ // consentimento ao segundo readback do servidor, não só à prévia da campanha.
+ const full=server.slice(server.indexOf("'/api/shopee/optimizer/execution/execute'"),
+  server.indexOf("'/api/shopee/optimizer/execution/status'"));
+ assert.match(full,/allowUnresearched:!plan\.modelVariations&&approved\.allowUnresearched===true&&/);
+ assert.match(full,/req\.body\?\.allowUnresearched===true/);
+ assert.match(full,/,'allowUnresearched'\]/);
+ assert.match(app,/allowUnresearched:!p\.modelVariations&&/);
+ assert.match(app,/optimizerManualDiscountConsent\(optimizerDiscountFinalQuote\)/);
+
 });
