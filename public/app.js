@@ -4542,15 +4542,29 @@ function optimizerExecutionVisibleCommands(progress,job){
  if(!recover||!full||!launch)return;
  const allowed=Boolean(progress&&['prepared','blocked'].includes(progress.state)&&!progress.hasStarted);
  const current=optimizerWorkflowPlan;
+ const single=Boolean(current&&!optimizerKitWorkflowActive());
  const matching=Boolean(current&&job?.plan&&String(job.sku)===String(current.sku)&&
   String(job.item_id)===String(current.itemId)&&
   String(job.model_id||0)===String(current.modelId||0));
  const stage=matching?String(job.plan.selectedStage||'all'):
   String(optimizerExecPlan?.selectedStage||'all');
- recover.hidden=!(allowed&&matching&&launch.hidden&&!optimizerExecBusy);
- recover.disabled=Boolean(optimizerExecBusy||optimizerExecPreparation);
- full.hidden=!(allowed&&matching&&stage!=='all'&&!optimizerExecBusy);
- full.disabled=Boolean(optimizerExecBusy||optimizerExecPreparation);
+ if(single){
+  // Sempre mostrar o único botão de execução: a prévia está salva no banco
+  // mesmo quando o objeto JS não está reidratado após recusa anterior.
+  const ready=allowed&&matching&&!optimizerExecBusy&&!optimizerExecPreparation;
+  recover.hidden=true;full.hidden=true;
+  launch.hidden=!ready;
+  launch.disabled=!ready;
+  if(ready){
+   launch.textContent='▶ EXECUTAR NA SHOPEE';
+   launch.title='Autorizar somente os preços mostrados nesta SKU e executar após validação oficial.';
+  }
+ }else{
+  recover.hidden=!(allowed&&matching&&launch.hidden&&!optimizerExecBusy);
+  recover.disabled=Boolean(optimizerExecBusy||optimizerExecPreparation);
+  full.hidden=!(allowed&&matching&&stage!=='all'&&!optimizerExecBusy);
+  full.disabled=Boolean(optimizerExecBusy||optimizerExecPreparation);
+ }
 }
 function optimizerExecutionTrackerRender(progress,job){
  // O GET de status e a preparação automática não podem encobrir uma
@@ -4569,6 +4583,7 @@ function optimizerExecutionTrackerRender(progress,job){
  const tracker=$('#optimizerExecutionTracker'),activity=$('#optimizerExecutionActivity');
  if(!tracker||!activity)return;
  const visible=Boolean(progress.hasStarted||progress.hasSavedProgress||progress.state==='prepared'||progress.state==='blocked');
+ document.body.classList.toggle('optimizer-one-button-mode',!optimizerKitWorkflowActive());
  tracker.hidden=!visible;activity.hidden=!visible;
  // A autorização fica JUNTO do indicador 0%, nunca acima da parte visível
  // da execução. Em running/verified o botão desaparece para evitar repetição.
@@ -6337,7 +6352,9 @@ async function optimizerExecuteApproved(remainingOnly=false){
          discountIntent?.consent===true,
          allowOver25:p.modelVariations?
           (p.modelVariations.promotion?.marketOverrideRequired===true&&optimizerModelMarketConsent(p)):
-          optimizerMarketExceptionConsent(optimizerDiscountFinalQuote)}:{})}),
+          optimizerMarketExceptionConsent(optimizerDiscountFinalQuote),
+        allowUnresearched:!p.modelVariations&&
+          optimizerManualDiscountConsent(optimizerDiscountFinalQuote)}:{})}),
      signal:AbortSignal.timeout(85000)
    });
    if(optimizerWorkflowPlan?.sku!==ctx.sku||optimizerWorkflowPlan?.itemId!==ctx.itemId||optimizerWorkflowPlan?.modelId!==ctx.modelId)return;
