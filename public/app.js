@@ -3628,6 +3628,7 @@ function optimizerWorkflowActivateOnly(view,sourceStage=null){
  if(editor)editor.hidden=view!=='editor';
  if(discount)discount.hidden=view!=='discount';
  if(execution)execution.hidden=view!=='execution';
+ globalThis.RAExecutionDialog?.setActive?.(view==='execution');
  if(view!=='editor')optimizerWorkflowStage=null;
  for(const card of $('#optimizerWorkflowCards')?.querySelectorAll('.optimizer-workflow-card')||[]){
   const selected=view==='editor'&&card.dataset.stage===optimizerWorkflowStage||
@@ -4092,15 +4093,7 @@ $('#optimizerWorkflowClose')?.addEventListener?.('click',()=>{
  optimizerWorkflowActivateOnly('closed');
 });
 $('#optimizerShowExecution')?.addEventListener?.('click',()=>{
- const saved=optimizerExecJob&&String(optimizerExecJob.sku)===String(optimizerWorkflowPlan?.sku)&&
-  String(optimizerExecJob.item_id)===String(optimizerWorkflowPlan?.itemId)&&
-  String(optimizerExecJob.model_id||0)===String(optimizerWorkflowPlan?.modelId||0);
- if(!saved&&!optimizerKitWorkflowActive()&&optimizerWorkflowPlan?.variationConfig?.enabled!==true&&
-  $('#optimizerExecutionScope')?.value==='all'&&!optimizerDiscountApprovalReady()){
-  optimizerDiscountOpenReview();
-  optimizerWorkflowNotice('Conclua a conferência do desconto na etapa 08 acima para liberar a execução completa.','warning');
-  return;
- }
+ // Abrir não exige outros botões; autorização e validação no comando principal.
  globalThis.ShopeeFiscalStudio?.close?.();
  globalThis.ShopeeDescriptionStudio?.close?.();
  globalThis.ShopeeTitleStudio?.close?.();
@@ -6277,9 +6270,42 @@ async function optimizerOneClickExecute(){
  const main=$('#optimizerExecutionLaunch');
  if(main)main.disabled=true;
  try{
+  const desiredStage=['all','discount_adjust'].includes($('#optimizerExecutionScope')?.value)?
+   $('#optimizerExecutionScope').value:'all';
+  // Para a execução só da promoção, preparar primeiro o snapshot assinado.
+  // Imagens, vídeo, título e descrição já confirmados não entram nesse plano.
+  if(desiredStage==='discount_adjust'&&!optimizerDiscountApprovalReady()){
+   optimizerExecutionLiveStep('Conferindo preço e desconto',
+    'Validando custo, margem e campanha da SKU antes de publicar.','info');
+   if(!optimizerDiscountFinalQuote)await optimizerDiscountFinalLoad();
+   if(!same())return;
+   const q=optimizerDiscountFinalQuote;
+   if(q&&optimizerManualDiscountQualified(q))
+    optimizerOneClickConsentKey=optimizerManualDiscountIdentity(q);
+   if(!q||!optimizerDiscountFinalEligible(q)){
+    optimizerExecNotice('O preço ou margem não permite executar. Nenhum envio realizado.','warning');return;
+   }
+   const campaign=String($('#optimizerExecDiscountCampaign')?.value||'').trim();
+   if(!/^\\d{1,18}$/.test(campaign)){
+    optimizerExecNotice('Informe o ID da campanha Minha Promoção para continuar.','warning');return;
+   }
+   await optimizerDiscountFinalPrepare();
+   if(!same())return;
+   const preview=optimizerDiscountFinalPreviewData?.preview;
+   if(preview?.needsBasePriceUpdate&&!optimizerDiscountFinalPreviewData?.deferred&&
+     String(preview.sku)===String(q.sku)&&
+     Number(preview.gross)===Number(q.grossPrice)&&
+     Number(preview.promo)===Number(q.marketplaceDisplayPrice)){
+    $('#optimizerExecDiscountPriceConsent').checked=true;
+    optimizerDiscountFinalPaint();
+   }
+   if(!optimizerDiscountApprovalReady()){
+    optimizerExecNotice('A prévia da promoção precisa ser validada. Nada foi reenviado.','warning');return;
+   }
+  }
   let p=optimizerExecPlan;
   if(!p||p.sku!==original.sku||String(p.itemId)!==String(original.itemId)||
-     String(p.modelId)!==String(original.modelId)||p.selectedStage!=='all'||!p.canExecute){
+     String(p.modelId)!==String(original.modelId)||p.selectedStage!==desiredStage||!p.canExecute){
    // PRIMEIRO recuperar a prévia já preparada: GET nunca publica.
    // Evita repetir o preparo sempre que houve uma resposta atrasada.
    optimizerExecutionLiveStep('Recuperando prévia já salva',
@@ -6300,7 +6326,7 @@ async function optimizerOneClickExecute(){
      return;
     }
     if(equal&&job.state==='prepared'&&job.plan?.canExecute===true&&
-       job.plan.selectedStage==='all'){
+       job.plan.selectedStage===desiredStage){
      // Cancelar somente o PREPARO anterior que não publicou nada.
      if(optimizerExecPreparation){
       optimizerExecPrepareController?.abort();
@@ -6322,8 +6348,8 @@ async function optimizerOneClickExecute(){
    }
   }
   if(!p||p.sku!==original.sku||String(p.itemId)!==String(original.itemId)||
-     String(p.modelId)!==String(original.modelId)||p.selectedStage!=='all'||!p.canExecute){
-   $('#optimizerExecutionScope').value='all';
+     String(p.modelId)!==String(original.modelId)||p.selectedStage!==desiredStage||!p.canExecute){
+   $('#optimizerExecutionScope').value=desiredStage;
    optimizerExecNotice('Um clique: revalidando a prévia comercial da SKU '+original.sku+' antes de qualquer envio...','info');
    await optimizerExecutionPrepare();
    if(!same())return;
@@ -6817,6 +6843,7 @@ function optimizerExecutionJobView(job,progress=null,issue=null){
  optimizerExecutionTrackerRender(progress,job);
  optimizerExecutionIssueRender(issue);
  optimizerExecJob=job;
+ globalThis.RAExecutionDialog?.refresh?.();
  optimizerDiscountFinalPaint();
  if(job)void optimizerFinalPendingRefresh();
  if(job?.state==='uncertain')optimizerExecutionAutoRecoverStale(job);
