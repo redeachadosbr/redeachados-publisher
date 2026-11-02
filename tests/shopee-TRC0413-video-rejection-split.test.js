@@ -2,6 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {advanceShopeeExecution} from '../shopeeExecutionWorker.js';
 import {shopeeExecutionProgress} from '../shopeeExecutionProgress.js';
+import {recyclableShopeeMedia} from '../shopeeExecutionMediaReuse.js';
 
 const itemId='58272083884';
 const oldImageIds=Array.from({length:6},(_,i)=>'antiga-'+i);
@@ -98,4 +99,29 @@ test('etapa SOMENTE VÍDEO sem mídia pronta inicia upload, não vínculo com ID
  assert.equal(out.state,'running');
  assert.equal(out.result.video.id,'new-video-task');
  assert.equal(out.result.phase,'video_upload');
+});
+
+test('prévia legada de TRC0413 não reutiliza vídeo rejeitado, mas preserva nove IDs de imagens',()=>{
+ const original={
+  state:'prepared',sku:'TRC0413',shop_id:1,item_id:Number(itemId),model_id:0,
+  last_error:null,
+  plan:{videoAttachmentVersion:undefined,images:plan.images,video:plan.video,
+   reusedMedia:{imageIds:newImageIds,video}},
+  result:null
+ };
+ const newPlan={...plan,shopId:1,videoAttachmentVersion:2};
+ const reused=recyclableShopeeMedia(original,newPlan);
+ assert.deepEqual(reused.imageIds,newImageIds);
+ assert.equal(reused.video,null);
+});
+test('vídeo com marcador de rejeição não é reutilizado mesmo em plano novo',()=>{
+ const original={
+  state:'failed',sku:'TRC0413',shop_id:1,item_id:Number(itemId),model_id:0,
+  plan:{...plan,videoAttachmentVersion:2},
+  result:{imageIds:newImageIds,video,videoRejected:true},
+  last_error:'Vídeo recusado: video task not found'
+ };
+ const reused=recyclableShopeeMedia(original,{...plan,shopId:1,videoAttachmentVersion:2});
+ assert.deepEqual(reused.imageIds,newImageIds);
+ assert.equal(reused.video,null);
 });
