@@ -32,7 +32,7 @@
    '▶ EXECUTAR NA SHOPEE';
   if(campaignWrap){
    const original=byId('optimizerExecDiscountCampaign');
-   const needed=!original?.value?.trim()&&!!root.RAExecutionCurrentStatus;
+   const needed=!data.kit&&!original?.value?.trim();
    campaignWrap.hidden=!needed;
    if(!needed&&doc.activeElement!==campaignInput&&campaignInput)
     campaignInput.value=String(original?.value||'');
