@@ -298,3 +298,97 @@ export function quoteShopeeKitPrice({unitCost,settings={}}={}){
    campaignDiscount:f.campaignDiscount,ads:f.ads},
   grossMultiplier:3,maxDiscountPct:50};
 }
+
+// Otimizacao de anuncios individuais: compartilhar o motor de desconto
+// variavel dos Kits Inteligentes. A porcentagem salva em settings.discountPct
+// nao e um desconto fixo: o motor a recalcula conforme a margem e o custo.
+// Nenhuma escrita na Shopee e feita ao calcular esta pre-visualizacao.
+export function quoteShopeeOptimizationPrice({unitCost,settings={},marketAverage=null,marginOverride=false}={}){
+ const c=normalizeShopeePricingSettings(settings),cost=Number(unitCost);
+ if(!Number.isFinite(cost)||cost<=0||cost>100000)throw Error('Custo WeDrop inválido para calcular o desconto.');
+ const market=(marketAverage===null||marketAverage===undefined||marketAverage==='')?
+  null:Number(marketAverage);
+ if(market!==null&&(!Number.isFinite(market)||market<=0||market>100000))
+  throw Error('Média de mercado inválida.');
+ const desired=Math.max(c.marginPct,c.minMarginPct);
+ // Mesma regra efetiva dos kits: bruto de ate 3x custos, desconto 0..50%,
+ // lucro protegido e terminacoes 0/9 no bruto, vitrine e apos cupom.
+ const base=quoteShopeeKitPrice({unitCost:cost,settings:c});
+ let chosen={grossCents:money(base.grossPrice),discountPct:base.discountPct,
+  financial:calculateShopeeSale(money(base.grossPrice),
+   {...c,discountPct:base.discountPct},money(cost))};
+ let status=marginOverride?'MARGEM_MANUAL':'PROTEGIDO';
+ let notice='Desconto variável calculado pela margem e pelo custo WeDrop, com a mesma regra dos kits: preço bruto até 3× o custo total, desconto máximo de 50% e finais de centavos 0/9.';
+ const validEnding=n=>attractiveCents.has(((n%100)+100)%100);
+ if(market!==null&&!marginOverride){
+  const target=money(market);
+  if(chosen.financial.saleCents<=Math.round(target*1.02)){
+   status='COMPETITIVO';
+   notice+=' Preço já está próximo da média comparável sem sacrificar margem.';
+  }else{
+   // Manter a politica de concorrencia: se houver mercado comparavel,
+   // buscar preco mais proximo da media, sem reduzir lucro abaixo do piso.
+   // A busca diminui o bruto quando 50% de desconto nao bastam.
+   const maxGross=Math.min(chosen.grossCents,
+    Math.floor(target/(0.5*(1-c.couponPct/100))));
+   let best=null;
+   for(let delta=0;delta<=150;delta++){
+    const grossCents=maxGross-delta;
+    if(grossCents<=0||!validEnding(grossCents))continue;
+    for(let basis=0;basis<=5000;basis++){
+     const discountPct=basis/100;
+     if(discountPct<=0)continue;
+     const financial=calculateShopeeSale(grossCents,{...c,discountPct},money(cost));
+     if(financial.saleCents>target||
+       financial.marginPct+1e-8<c.minMarginPct||
+       !validEnding(money(financial.marketplaceDisplayPrice))||
+       !validEnding(financial.saleCents))continue;
+     if(!best||financial.saleCents>best.financial.saleCents||
+        (financial.saleCents===best.financial.saleCents&&
+         discountPct>best.discountPct))
+      best={grossCents,discountPct,financial};
+    }
+   }
+   if(best){
+    chosen=best;status='COMPETITIVO';
+    notice+=' Pesquisa de mercado utilizada para ajustar o desconto sem violar o piso de margem.';
+    if(chosen.financial.marginPct+1e-8<desired)
+     notice+=' A margem desejada não foi atingida; a margem mínima foi preservada. Revise antes de publicar.';
+   }else{
+    status='MERCADO_ABAIXO_DO_PISO';
+    notice+=' Preço de mercado não é viável com a margem mínima e o desconto máximo de 50%. Nenhuma redução automática foi autorizada.';
+   }
+  }
+ }else if(marginOverride){
+  notice+=' A margem definida na barra tem prioridade sobre a referência de mercado.';
+ }else notice+=' Sem pesquisa comparável, o desconto é calculado pelo custo e pela margem, nunca fixado em 20%.';
+ const f=chosen.financial;
+ if(chosen.discountPct<=0||chosen.discountPct>50||
+    f.marginPct+1e-8<c.minMarginPct||
+    ![chosen.grossCents,money(f.marketplaceDisplayPrice),f.saleCents].every(validEnding))
+  throw Error('Desconto variável inviável com a margem e terminações exigidas. Nenhum preço foi alterado.');
+ const minGross=minimumGrossForNetMargin(cost,{...c,discountPct:chosen.discountPct},c.minMarginPct);
+ const floor=minGross===null?null:
+  calculateShopeeSale(minGross,{...c,discountPct:chosen.discountPct},money(cost));
+ return {unitCost:cost,grossPrice:brl(chosen.grossCents),
+  discountPct:chosen.discountPct,couponPct:c.couponPct,
+  marketplaceDisplayPrice:f.marketplaceDisplayPrice,
+  buyerAfterCoupon:f.finalPrice,customerPrice:f.finalPrice,
+  customerPriceBeforeRounding:f.finalPrice,
+  attractiveEndingApplied:true,attractiveEndingOptions:SHOPEE_ATTRACTIVE_CENTS,
+  priceEndingRuleVersion:4,priceEndingPolicy:'both_checkout_and_visible',
+  netProfit:f.profit,netMarginPct:Number(f.marginPct.toFixed(3)),
+  minMarginPct:c.minMarginPct,targetMarginPct:c.marginPct,
+  marketAverage:market,marketGapPct:market===null?null:
+   Number(((f.finalPrice/market-1)*100).toFixed(2)),
+  targetMarginPreserved:f.marginPct+1e-8>=desired,
+  marginOverride:Boolean(marginOverride),
+  priceFloor:floor?.finalPrice??f.finalPrice,feeTier:f.tier,
+  breakdown:{campaignDiscount:f.campaignDiscount,couponDiscount:f.couponDiscount,
+   unitCost:f.unitCost,shipping:f.shipping,packing:f.packing,
+   commission:f.commission,fixedFee:f.fixedFee,cpfExtra:f.cpfExtra,
+   tax:f.tax,flash:f.flash,ads:f.ads},
+  grossMultiplier:3,maxDiscountPct:50,variableDiscount:true,
+  status,notice,readyForManualReview:true,appliedInShopee:false,
+  assumptions:'Simulação de preço variável baseada na regra dos kits WeDrop. Margem líquida e taxas configuradas. Cupom é condicional e a pesquisa competitiva deve ser confirmada antes de publicar.'};
+}
