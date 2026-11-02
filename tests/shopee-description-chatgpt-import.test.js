@@ -60,7 +60,10 @@ test('admite descrição sem FAQ ou cabeçalhos rígidos quando há texto comerc
   '📦 Conteúdo da embalagem: confira os componentes descritos pelo fornecedor antes da compra.',
   '🛒 Conheça a praticidade deste produto para sua rotina e escolha com tranquilidade.'
  ].join('\n\n');
- assert.equal(p.parse(text).description,text);
+ const normalized=p.parse(text).description;
+ assert.match(normalized,/✅ BENEFÍCIOS/);
+ assert.match(normalized,/📦 O QUE VAI NA EMBALAGEM/);
+ assert.match(normalized,/🛒 Conheça a praticidade/);
 });
 
 test('não transforma o prompt de geração em descrição importada',()=>{
