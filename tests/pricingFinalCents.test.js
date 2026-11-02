@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {SHOPEE_ATTRACTIVE_CENTS,adjustShopeeCustomerPriceEnding,
- quoteShopeePrice,quoteShopeeKitPrice,normalizeShopeePricingSettings,calculateShopeeSale} from '../shopeePricing.js';
+ quoteShopeePrice,quoteShopeeKitPrice,quoteShopeeOptimizationPrice,normalizeShopeePricingSettings,calculateShopeeSale} from '../shopeePricing.js';
 
 const lastCents=price=>Math.round(price*100)%100;
 
@@ -116,4 +116,47 @@ test('kit WeDrop usa base bruta de 3x custo total, depois aplica desconto seguro
  const extra=quoteShopeeKitPrice({unitCost:50.47,
   settings:{...settings,packing:2,shipping:1}});
  assert.ok(extra.grossPrice<=Math.round((50.47+2+1)*300)/100+0.001);
+});
+
+test('Otimização de anúncios: desconto variável dos kits na SKU 305350, sem fixar 20%',()=>{
+ const settings=normalizeShopeePricingSettings({
+  marginPct:15,minMarginPct:5,discountPct:20,couponPct:1,
+  sellerType:'cnpj',commissionRates:[20,14,14,14],fixedFees:[4.5,16,20,26]
+ });
+ const q=quoteShopeeOptimizationPrice({unitCost:91.99,settings,marginOverride:true});
+ assert.equal(q.variableDiscount,true);
+ assert.equal(q.maxDiscountPct,50);
+ assert.equal(q.grossMultiplier,3);
+ assert.ok(q.grossPrice<=Math.round(91.99*300)/100+0.01);
+ assert.ok(q.discountPct>0&&q.discountPct<=50);
+ assert.notEqual(q.discountPct,20,'A taxa antiga não pode ser fixa na SKU 305350');
+ assert.ok(q.netMarginPct>=15);
+ assert.equal(q.priceEndingRuleVersion,4);
+ assert.equal(q.priceEndingPolicy,'both_checkout_and_visible');
+ for(const value of [q.grossPrice,q.marketplaceDisplayPrice,q.customerPrice])
+  assert.ok([0,9].includes(Math.round(value*100)%10),'Final 0/9: '+value);
+ const same=calculateShopeeSale(Math.round(q.grossPrice*100),
+  {...settings,discountPct:q.discountPct},9199);
+ assert.equal(same.finalPrice,q.customerPrice);
+ assert.equal(same.marketplaceDisplayPrice,q.marketplaceDisplayPrice);
+ assert.equal(same.profit,q.netProfit);
+});
+test('Otimização: margem da barra muda cálculo e não ultrapassa desconto máximo',()=>{
+ const settings=normalizeShopeePricingSettings({marginPct:15,minMarginPct:5,couponPct:1,
+  sellerType:'cnpj',taxPct:4,flashPct:3});
+ const a=quoteShopeeOptimizationPrice({unitCost:50.47,settings,marginOverride:true});
+ const b=quoteShopeeOptimizationPrice({unitCost:50.47,settings:{...settings,marginPct:30},marginOverride:true});
+ assert.ok(a.netMarginPct>=15&&b.netMarginPct>=30);
+ assert.notEqual(a.customerPrice,b.customerPrice,'Margem deve alterar preço final');
+ assert.ok(a.discountPct<=50&&b.discountPct<=50);
+});
+test('Otimização: com média do mercado, protege piso ou sinaliza inviabilidade sem inventar desconto',()=>{
+ const settings=normalizeShopeePricingSettings({marginPct:15,minMarginPct:5,couponPct:1,
+  sellerType:'cnpj',taxPct:4,flashPct:3});
+ const q=quoteShopeeOptimizationPrice({unitCost:91.99,settings,marketAverage:180});
+ assert.ok(['COMPETITIVO','MERCADO_ABAIXO_DO_PISO'].includes(q.status));
+ assert.ok(q.netMarginPct>=5);
+ assert.ok(q.discountPct>0&&q.discountPct<=50);
+ for(const value of [q.grossPrice,q.marketplaceDisplayPrice,q.customerPrice])
+  assert.ok([0,9].includes(Math.round(value*100)%10));
 });
