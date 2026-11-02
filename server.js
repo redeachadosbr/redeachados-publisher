@@ -3349,11 +3349,13 @@ app.post('/api/shopee/optimizer/execution/execute',mustLogin,requireWeDropAdmin,
     throw Error('Preço mais de 25% acima da média. Marque a autorização excepcional na prévia da SKU antes de executar. Nenhum envio foi iniciado.');
    const fresh=(await discountExecutionInputs(req,sku,itemId,modelId,approved.discountId,{
     allowModels:Boolean(plan.modelVariations),expectedModels:plan.modelVariations,
-    allowOver25:approved.allowOver25===true&&over25Consent})).snapshot;
+    allowOver25:approved.allowOver25===true&&over25Consent,
+    allowUnresearched:!plan.modelVariations&&approved.allowUnresearched===true&&
+      req.body?.allowUnresearched===true})).snapshot;
    const fields=plan.modelVariations?
     ['discountId','gross','promo','buyerAfterCoupon','couponPct','discountPct','quoteAt']:
     ['shopId','sku','itemId','modelId','discountId','gross','promo','buyerAfterCoupon',
-      'couponPct','discountPct','quoteAt','originalPrice','action','existingPrice','promotionSignal','needsBasePriceUpdate'];
+      'couponPct','discountPct','quoteAt','originalPrice','action','existingPrice','promotionSignal','needsBasePriceUpdate','allowUnresearched'];
    if(plan.modelVariations)
     for(const k of ['originalPrice','existingPrice','action','promotionSignal','needsBasePriceUpdate'])
      if(Object.hasOwn(modelPromo,k))fields.push(k);
