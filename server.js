@@ -3519,7 +3519,12 @@ app.post('/api/shopee/optimizer/execution/reconcile',mustLogin,requireWeDropAdmi
   }
   else if(discountPhase&&job.plan?.commercialDiscount){
    const approved=job.plan.commercialDiscount.snapshot;
-   const snap=(await discountExecutionInputs(req,sku,itemId,modelId,approved.discountId,{allowOver25:approved.allowOver25===true})).snapshot;
+   const snap=(await discountExecutionInputs(req,sku,itemId,modelId,approved.discountId,{
+     allowOver25:approved.allowOver25===true,
+     // A autorização de custo/margem foi assinada no snapshot da execução.
+     // Leituras posteriores não devem descartá-la nem pedir novo checkbox.
+     allowUnresearched:approved.allowUnresearched===true
+    })).snapshot;
    if(snap.action==='already'&&Math.abs(Number(snap.originalPrice)-Number(approved.gross))<0.011&&
       Math.abs(Number(snap.promo)-Number(approved.promo))<0.011){
     updated=await reconcileShopeeJob(job,{state:'verified',
@@ -3685,7 +3690,11 @@ async function runOptimizerJobs(){
        }finally{activeDiscountWrites.delete(key);}
       },
       discountRead:async approved=>(await discountExecutionInputs(null,
-       approved.sku,approved.itemId,approved.modelId,approved.discountId,{allowOver25:approved.allowOver25===true})).snapshot,
+       approved.sku,approved.itemId,approved.modelId,approved.discountId,{
+        allowOver25:approved.allowOver25===true,
+        // Revalidar o mesmo consentimento do snapshot aprovado; nunca presumir consentimento.
+        allowUnresearched:approved.allowUnresearched===true
+       })).snapshot,
       discountUpdatePrice:async approved=>{
        const {auth:a,cfg:c}=await getValidAuth();
        return callShopeeShopApi(c,{path:'/api/v2/product/update_price',method:'POST',
