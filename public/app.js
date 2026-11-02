@@ -4589,6 +4589,8 @@ function optimizerExecutionTrackerRender(progress,job){
  if(!tracker||!activity)return;
  const visible=Boolean(progress.hasStarted||progress.hasSavedProgress||progress.state==='prepared'||progress.state==='blocked');
  document.body.classList.toggle('optimizer-one-button-mode',!optimizerKitWorkflowActive());
+ // Painel de etapas com ícones também para kits, sem remover seus controles.
+ document.body.classList.toggle('optimizer-visual-mode',visible);
  tracker.hidden=!visible;activity.hidden=!visible;
  // A autorização fica JUNTO do indicador 0%, nunca acima da parte visível
  // da execução. Em running/verified o botão desaparece para evitar repetição.
@@ -4801,7 +4803,7 @@ function optimizerExecutionTrackerRender(progress,job){
  if(!log.children.length)log.append(optimizerMake('li','optimizer-exec-event-empty','Aguardando registros da execução.'));
  // Atualizar painel visual com o MESMO objeto de progresso e resposta de job.
  // Nunca transformar uploads na biblioteca em anuncio publicado.
- if(!optimizerKitWorkflowActive())optimizerExecutionVisualPaint(progress,job);
+ optimizerExecutionVisualPaint(progress,job);
 }
 function optimizerExecutionIssueRender(issue){
  const el=$('#optimizerExecutionIssue');
@@ -6209,7 +6211,6 @@ let optimizerOneClickBusy=false;
 let optimizerOneClickConsentKey='';
 let optimizerExecutionLiveIdentity='';
 function optimizerExecutionVisualPaint(progress=null,job=null){
- if(optimizerKitWorkflowActive())return;
  const w=optimizerWorkflowPlan;
  if(!w)return;
  const key=[w.sku,w.itemId,w.modelId].map(String).join('|');
@@ -6232,7 +6233,6 @@ function optimizerExecutionVisualPaint(progress=null,job=null){
  });
 }
 function optimizerExecutionLiveStep(title,detail='',state='info',{reset=false}={}){
- if(optimizerKitWorkflowActive())return;
  const w=optimizerWorkflowPlan;
  const key=w?[w.sku,w.itemId,w.modelId].map(String).join('|'):'';
  if(!key)return;
@@ -6847,7 +6847,7 @@ function optimizerExecutionJobView(job,progress=null,issue=null){
    resultLink.href='https://seller.shopee.com.br/portal/product/'+encodeURIComponent(optimizerWorkflowPlan.itemId)+'?pageEntry=product_list';
  $('#optimizerExecutionReconcile').hidden=job?.state!=='uncertain';
  $('#optimizerExecutionReconcile').textContent=job?.state==='uncertain'?'Conferir e destravar execução':'Conferir resultado na Shopee';
- $('#optimizerExecutionRetry').textContent=job?.state==='uncertain'?'Recuperar e preparar pendências':'Repreparar execução';
+ $('#optimizerExecutionRetry').textContent=job?.state==='uncertain'?'↻ Conferir resultado anterior':'▶ Conferir e continuar pendências';
  $('#optimizerExecutionRetry').hidden=!['failed','uncertain'].includes(job?.state);
  if(!job)return;
  // A rejected start leaves the job prepared. Do not erase its actionable
@@ -7113,6 +7113,17 @@ async function optimizerReconcileUncertainExecution(){
 $('#optimizerExecutionReconcile')?.addEventListener?.('click',()=>void optimizerReconcileUncertainExecution());
 $('#optimizerExecutionRetry')?.addEventListener?.('click',async()=>{
  const w=optimizerWorkflowPlan;if(!w)return;
+ if(optimizerExecBusy||optimizerOneClickBusy||kitAllStagesStarting)return;
+ // Um clique na falha finalizada retoma somente etapas aprovadas após readback.
+ if(optimizerExecJob?.state==='failed'){
+  if(optimizerKitWorkflowActive()&&w.kitOptimization?.kitSku){
+   const result=await globalThis.RAKitExecutePendingAllStages({
+    kitSku:w.kitOptimization.kitSku,sku:w.sku,itemId:w.itemId,modelId:w.modelId
+   });
+   if(!result?.ok)optimizerExecNotice(result?.error||'A Shopee não liberou a retomada.','warning');
+  }else await optimizerOneClickExecute();
+  return;
+ }
  if(optimizerExecJob?.state==='uncertain'){
   if(!confirm('Conferir duas vezes o anúncio na Shopee e liberar uma nova prévia apenas para o que falta? Nenhuma publicação será repetida por esta consulta.'))return;
   try{
