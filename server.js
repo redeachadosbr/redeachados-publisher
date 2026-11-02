@@ -3521,7 +3521,7 @@ app.post('/api/shopee/optimizer/execution/reconcile',mustLogin,requireWeDropAdmi
     });}catch(e){console.warn('[kit-discount] Histórico pendente:',String(e.message||e).slice(0,120));}
    }
   }
-  else if(discountPhase&&job.plan?.commercialDiscount){
+  else if(discountPhase&&job.plan?.commercialDiscount&&!discountBeforeWrite){
    const approved=job.plan.commercialDiscount.snapshot;
    const snap=(await discountExecutionInputs(req,sku,itemId,modelId,approved.discountId,{
      allowOver25:approved.allowOver25===true,
