@@ -37,3 +37,44 @@
 .optimizer-exec-progress-card .optimizer-exec-resume-copy strong{display:block;font-size:14px;color:#123360}
 .optimizer-exec-progress-card .optimizer-exec-resume-copy small{display:block;margin-top:5px;font-size:12px;line-height:1.5;color:#526987}
 .optimizer-exec-progress-card .optimizer-exec-resume-bar button:not([hidden]){max-width:100%;white-space:normal}
+
+
+/* Anuncio avulso: uma unica acao operacional, sem dashboard de etapas de
+   preparacao. Os diagnosticos continuam no backend e podem ser consultados
+   no historico, mas nao competem com o clique EXECUTAR. Nao aplicar a kits. */
+body.view-optimizer.optimizer-one-button-mode #optimizerRootAuditPanel,
+body.view-optimizer.optimizer-one-button-mode #optimizerExecutionPendingActions,
+body.view-optimizer.optimizer-one-button-mode #optimizerExecutionSteps,
+body.view-optimizer.optimizer-one-button-mode #optimizerExecutionActivity,
+body.view-optimizer.optimizer-one-button-mode #optimizerExecutionSummary,
+body.view-optimizer.optimizer-one-button-mode #optimizerExecutionTechnicalPending,
+body.view-optimizer.optimizer-one-button-mode #optimizerFinalPending,
+body.view-optimizer.optimizer-one-button-mode #optimizerExecutionOpenKitDiscount,
+body.view-optimizer.optimizer-one-button-mode #optimizerExecutionRemaining,
+body.view-optimizer.optimizer-one-button-mode #optimizerExecutionSwitchFull,
+body.view-optimizer.optimizer-one-button-mode #optimizerExecutionRecoverStart,
+body.view-optimizer.optimizer-one-button-mode .optimizer-exec-head,
+body.view-optimizer.optimizer-one-button-mode .optimizer-exec-bottom,
+body.view-optimizer.optimizer-one-button-mode .optimizer-exec-marketplace,
+body.view-optimizer.optimizer-one-button-mode .optimizer-exec-started,
+body.view-optimizer.optimizer-one-button-mode .optimizer-workflow-disclaimer{
+ display:none!important;
+}
+body.view-optimizer.optimizer-one-button-mode #optimizerExecutionTracker{
+ padding:0!important;
+ box-shadow:none!important;
+}
+body.view-optimizer.optimizer-one-button-mode #optimizerExecutionLaunch:not([hidden]){
+ display:flex!important;
+ align-items:center;
+ justify-content:center;
+ min-height:52px;
+ font-weight:800;
+ padding:12px 20px;
+ font-size:15px;
+}
+body.view-optimizer.optimizer-one-button-mode .optimizer-exec-progress-card .optimizer-exec-resume-bar{
+ border-color:#b9d2ef;
+ padding:18px;
+ margin:10px 0;
+}
