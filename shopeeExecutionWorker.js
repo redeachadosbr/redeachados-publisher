@@ -92,7 +92,7 @@ export async function advanceShopeeExecution(job,io){
   const live=await io.read();
   if(nonVideoVerified(live)){
    if(plan.video&&!videoMatches(live,result.video))
-    return {state:'running',result:withExecutionEvent({...result,phase:'video_attach_ready'},
+    return {state:'running',result:withExecutionEvent({...result,phase:'video_attach_ready',contentVerified:true},
      'nonvideo-confirmed','Fotos e conteúdo confirmados. Preparando envio separado do vídeo.','success'),delay:500};
    if(plan.modelVariations)
     return {state:'running',result:withExecutionEvent({...result,phase:'variation_ready',
@@ -161,7 +161,7 @@ export async function advanceShopeeExecution(job,io){
  // nesta execução (inclusive os IDs da mídia quando houver).
  if(nonVideoVerified(currentItem)){
   if(plan.video&&!videoMatches(currentItem,result.video))
-   return {state:'running',result:withExecutionEvent({...result,phase:'video_attach_ready'},
+   return {state:'running',result:withExecutionEvent({...result,phase:'video_attach_ready',contentVerified:true},
     'nonvideo-already','Conteúdo já publicado; falta somente o vídeo.','success'),delay:500};
   const next=plan.modelVariations?'variation_ready':
    plan.finalFiscal?'fiscal_ready':
@@ -232,7 +232,7 @@ export async function advanceShopeeExecution(job,io){
  const imagesMissingHere=Boolean(plan.images?.length)&&
   !sameData(currentItem.image?.image_id_list||[],result.imageIds||[]);
  if(plan.video&&!pendingNonVideo&&!imagesMissingHere)
-  return {state:'running',result:withExecutionEvent({...result,phase:'video_attach_ready'},
+  return {state:'running',result:withExecutionEvent({...result,phase:'video_attach_ready',contentVerified:true},
    'video-only','Nenhuma foto ou campo precisa ser reenviado.','success'),delay:500};
  // Persist intent before the external write. A crash resumes readback only.
  result.phase='updating';result.updateStartedAt=Date.now();
