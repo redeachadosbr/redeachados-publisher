@@ -108,8 +108,15 @@ export async function checkpointShopeeExecution(job,result,delay=1000){
 }
 export async function reconcileShopeeJob(job,{state,result,lastError}){
  if(!['running','verified','failed'].includes(state))throw Error('Estado inválido na reconciliação.');
+ // Recuperação excepcional de uma tarefa de vídeo recusada no passado.
+ // A rota só pode mudar o registro antigo após uma leitura oficial do Item ID.
+ const previous=String(job.state||'');
+ const recoverableFailedVideo=previous==='failed'&&Boolean(job.plan?.video)&&
+  /video task not found|video_upload_id.*(?:not found|invalid|illegal)/i.test(String(job.last_error||''));
+ if(previous!=='uncertain'&&!recoverableFailedVideo)
+  throw Error('Somente execução incerta ou falha antiga de vídeo pode ser reconciliada.');
  const r=await rows(where(job.shop_id,job.item_id,job.model_id)+
-  '&state=eq.uncertain&updated_at=eq.'+encodeURIComponent(job.updated_at),{method:'PATCH',
+  '&state=eq.'+encodeURIComponent(previous)+'&updated_at=eq.'+encodeURIComponent(job.updated_at),{method:'PATCH',
   data:{state,result,last_error:lastError,updated_at:new Date().toISOString(),
    ...(state==='running'?{lease_until:new Date().toISOString()}: {})},prefer:'return=representation'});
  if(r.length!==1)throw Error('Execução mudou durante a conferência. Atualize o status.');
