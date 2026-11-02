@@ -14,6 +14,7 @@ export async function advanceShopeeExecution(job,io){
  // O vídeo é vinculado em operação separada e verificável; sua rejeição
  // não deve anular fotos, título ou descrição aprovados.
  const nonVideoPlan={...plan,video:null};
+ const effectivePlan=result.videoRejected?nonVideoPlan:plan;
  const nonVideoVerified=live=>verifyShopeeExecution(nonVideoPlan,live,result);
  const afterVideo=()=>{
   const next=plan.modelVariations?'variation_ready':
@@ -55,10 +56,17 @@ export async function advanceShopeeExecution(job,io){
     'Vídeo recebido pela API; aguardando leitura de confirmação.'),delay:1500};
   }catch(error){
    const reason=String(error.message||error).slice(0,240);
-   if(/video task not found|video_upload_id.*(?:not found|invalid|illegal)/i.test(reason))
-    return {state:'failed',result:withExecutionEvent({...checkpoint,videoRejected:true},
-     'video-attach-rejected','Tarefa de vídeo rejeitada; conteúdo anterior preservado.','warning'),
-     lastError:'A Shopee recusou o vídeo: '+reason};
+   if(/video task not found|video_upload_id.*(?:not found|invalid|illegal)/i.test(reason)){
+    const next=plan.modelVariations?'variation_ready':
+     plan.finalFiscal?'fiscal_ready':hasDiscount(plan)?discountPhase(plan):'verified_partial';
+    const partial=withExecutionEvent({...checkpoint,phase:next,videoRejected:true,
+     videoError:reason,primaryVerified:true,verified:next==='verified_partial'},
+     'video-attach-rejected',
+     'A Shopee recusou o vídeo. Fotos e conteúdo foram preservados; as demais etapas independentes podem continuar.','warning');
+    return next==='verified_partial'?
+     {state:'verified',result:partial,lastError:'Vídeo pendente: '+reason}:
+     {state:'running',result:partial,delay:500};
+   }
    return {state:'uncertain',result:withExecutionEvent(checkpoint,'video-attach-uncertain',
     'Vínculo de vídeo incerto; não repetir sem leitura oficial.','warning'),
     lastError:'Vínculo de vídeo não confirmado: '+reason};
@@ -76,7 +84,7 @@ export async function advanceShopeeExecution(job,io){
  // retomamos SOMENTE a leitura, evitando duplicidade de update_item.
  if(['fiscal_updating','fiscal_verifying'].includes(result.phase)){
   const live=await io.read();
-  if(verifyShopeeFiscalExecution(plan,live,result))
+  if(verifyShopeeFiscalExecution(effectivePlan,live,result))
    return hasDiscount(plan)?
     {state:'running',result:withExecutionEvent({...result,phase:discountPhase(plan),primaryVerified:true,fiscal:{status:'verified'}},
      'fiscal-verified','Dados fiscais confirmados. Iniciando desconto como última etapa.','success'),delay:500}:
@@ -114,7 +122,7 @@ export async function advanceShopeeExecution(job,io){
  if(result.phase==='fiscal_ready'){
   if(!plan.modelVariations)await io.validateIdentity();
   const live=await io.read();
-  if(!verifyShopeeExecution(plan,live,result))
+  if(!verifyShopeeExecution(effectivePlan,live,result))
    return {state:'uncertain',result:withExecutionEvent(result,'commerce-changed',
     'A parte comercial mudou antes do envio fiscal. Não foi enviado outro dado.','warning'),
     lastError:'Conteúdo alterado entre as duas etapas. Verifique o anúncio antes de continuar.'};
@@ -160,7 +168,7 @@ export async function advanceShopeeExecution(job,io){
  // A verificação exige correspondência de TODOS os campos incluídos
  // nesta execução (inclusive os IDs da mídia quando houver).
  if(nonVideoVerified(currentItem)&&(!plan.video||result.video?.phase==='ready')){
-  if(plan.video&&!videoMatches(currentItem,result.video))
+  if(plan.video&&!result.videoRejected&&!videoMatches(currentItem,result.video))
    return {state:'running',result:withExecutionEvent({...result,phase:'video_attach_ready',contentVerified:true},
     'nonvideo-already','Conteúdo já publicado; falta somente o vídeo.','success'),delay:500};
   const next=plan.modelVariations?'variation_ready':
