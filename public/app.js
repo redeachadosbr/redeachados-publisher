@@ -4549,15 +4549,18 @@ function optimizerExecutionVisibleCommands(progress,job){
  const stage=matching?String(job.plan.selectedStage||'all'):
   String(optimizerExecPlan?.selectedStage||'all');
  if(single){
-  // Sempre mostrar o único botão de execução: a prévia está salva no banco
-  // mesmo quando o objeto JS não está reidratado após recusa anterior.
-  const ready=allowed&&matching&&!optimizerExecBusy&&!optimizerExecPreparation;
+  // Não depender do status do GET para mostrar o botão de execução.
+  // A ação em si revalida SKU, prévia, campanha e desconto no servidor.
+  const active=Boolean(current&&(optimizerExecPlan?.canExecute===true||
+    (allowed&&matching)||(job?.state==='prepared'&&matching)));
+  const running=Boolean(optimizerExecBusy||optimizerOneClickBusy||
+    optimizerExecPreparation||['running','uncertain'].includes(job?.state));
   recover.hidden=true;full.hidden=true;
-  launch.hidden=!ready;
-  launch.disabled=!ready;
-  if(ready){
-   launch.textContent='▶ EXECUTAR NA SHOPEE';
-   launch.title='Autorizar somente os preços mostrados nesta SKU e executar após validação oficial.';
+  launch.hidden=!active;
+  launch.disabled=!active||running;
+  if(active){
+   launch.textContent=running?'Conferindo execução na Shopee…':'▶ EXECUTAR NA SHOPEE';
+   launch.title='Executar a prévia salva após confirmar a campanha e os valores na Shopee.';
   }
  }else{
   recover.hidden=!(allowed&&matching&&launch.hidden&&!optimizerExecBusy);
@@ -6246,7 +6249,7 @@ async function optimizerOneClickExecute(){
      return;
     }
     const campaign=String($('#optimizerExecDiscountCampaign')?.value||'').trim();
-    if(!/^\\d{1,18}$/.test(campaign)){
+    if(!/^\d{1,18}$/.test(campaign)){
      optimizerDiscountOpenReview();
      optimizerExecNotice('A execução foi preservada. Falta o ID válido de Minha Promoção para a SKU '+original.sku+'.','warning');
      return;
