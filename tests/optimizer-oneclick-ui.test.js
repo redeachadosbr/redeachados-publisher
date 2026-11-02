@@ -34,5 +34,5 @@ test('autorização manual é limitada ao mesmo preço e à cotação visível',
  assert.match(app,/optimizerOneClickConsentKey===optimizerManualDiscountIdentity\(q\)/);
  assert.match(app,/optimizerOneClickConsentKey=optimizerManualDiscountIdentity\(q\)/);
  assert.match(app,/Ao clicar, autorizo esta prévia: preço bruto/);
- assert.match(app,/$('#optimizerExecutionLaunch')\.textContent='▶ EXECUTAR NA SHOPEE/);
+ assert.ok(app.includes("$('#optimizerExecutionLaunch').textContent='▶ EXECUTAR NA SHOPEE"));
 });
