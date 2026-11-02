@@ -56,7 +56,7 @@ import {getWorkflowReview,saveWorkflowReview,mergeWorkflowTechnicalAutofill} fro
 import {compileShopeeExecutionPlan,confirmShopeeExecution,
   assertLiveShopeeUnchanged,verifyShopeeExecution,verifyShopeeFiscalExecution,normalizeShopeeExecutionStage,
   shopeeExecutionUnconfirmedFields,assessShopeeStableCommercialRecovery,
-  approvedShopeeReadbackConvergence,videoMatches,videoPublishedAfterPlan,isShopeeVideoOnlyPlan} from './shopeeExecutionPlan.js';
+  approvedShopeeReadbackConvergence,videoMatches,videoPublishedAfterPlan,isShopeeVideoOnlyPlan,isShopeeMatrixIndependentPlan,shopeeMatrixPendingSnapshot} from './shopeeExecutionPlan.js';
 import {readShopeeExecution,saveShopeePreparedExecution,
   claimShopeePreparedExecution,finishShopeeExecution,pendingShopeeExecutions,leaseShopeeExecution,
   checkpointShopeeExecution,reconcileShopeeJob} from './shopeeExecutionStore.js';
@@ -2563,8 +2563,10 @@ app.post('/api/shopee/optimizer/execution/prepare',mustLogin,requireWeDropAdmin,
     const manualVideo=['discount','discount_adjust'].includes(selectedStage)?null:
      await getShopeeManualVideo(auth.shopId,itemId,modelId,sku);
     const previous=await readShopeeExecution(auth.shopId,itemId,modelId);
-    const verifiedVideoSha256=previous?.state==='verified'&&
-      verifyShopeeExecution(previous.plan,live,previous.result)?previous.plan.video?.sha256:null;
+    // Exact approved video already linked: no duplicate upload, regardless
+    // of the last job's state. Require matching media evidence, not a checkbox.
+    const verifiedVideoSha256=previous?.plan?.video?.sha256===manualVideo?.sha256&&
+      videoMatches(live,previous?.result?.video)?manualVideo.sha256:null;
     const manualImages=['discount','discount_adjust'].includes(selectedStage)?[]:
      await readPreparedImages(auth.shopId,itemId,modelId,sku);
     const reviewState={...(review?.review_state||{})};
@@ -3283,6 +3285,9 @@ app.post('/api/shopee/optimizer/execution/execute',mustLogin,requireWeDropAdmin,
     throw Error('A prévia é anterior à preparação do kit. Gere uma nova prévia antes de executar.');
   }
   const previousPlan=job.plan;
+  const matrixApproved=shopeeMatrixPendingSnapshot(previousPlan);
+  if(matrixApproved.unknown.length)
+   throw Error('Motor Matriz: a prévia contém ação desconhecida. Nenhuma escrita permitida.');
   if(linkedKit&&previousPlan.kitDiscount){
    if(!['all','discount','discount_adjust'].includes(previousPlan.selectedStage))throw Error('Etapa 08 exige prévia completa, somente desconto ou preço bruto + desconto.');
    const approved=(await getWorkflowReview(auth.shopId,itemId,modelId))?.review_state?.kitDiscountPreview;
@@ -3336,10 +3341,10 @@ app.post('/api/shopee/optimizer/execution/execute',mustLogin,requireWeDropAdmin,
    throw Error('Etapa fiscal pendente: revise os dados fiscais antes de aprovar o desconto final.');
   // Kit composto: primeiro o anuncio, depois a promocao do kit pela rota
   // especifica, apenas apos a execucao ser confirmada pela Shopee.
-  // An approved one-video plan has no commercial change. It must NOT be
-  // forced through campaign discounts or an artificial scope transition.
+  // Motor Matriz rule across ALL SKUs: never require promotion approval
+  // when every executable action is an independent, already-approved stage.
   if(['all','remaining','discount','discount_adjust'].includes(plan.selectedStage)&&
-     !linkedKit&&!isShopeeVideoOnlyPlan(plan)){
+     !linkedKit&&!isShopeeMatrixIndependentPlan(plan)){
    // Em planos de variação, o clique autenticado + o plano imutável no banco
    // autorizam a promoção exibida. O token de 10 minutos não pode bloquear
    // anúncio e mídia depois de o usuário ter aprovado essa mesma prévia.

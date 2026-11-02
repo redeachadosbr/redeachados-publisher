@@ -216,3 +216,29 @@ test('plano completo somente com vídeo não exige nova prévia nem desconto',as
  assert.match(ui,/!optimizerIsVideoOnlyPreparedPlan\(p\)&&!optimizerKitWorkflowActive/);
  assert.match(ui,/optimizerExecutionPrepare\(\{fromExecutionClick:true\}\)/);
 });
+
+test('Motor Matriz: nenhuma etapa confirmada é reenviada e nenhuma promoção é inferida',async()=>{
+ const {shopeeMatrixPendingSnapshot,isShopeeMatrixIndependentPlan}=await import('../shopeeExecutionPlan.js');
+ const make=(actions,extra={})=>({selectedStage:'all',canExecute:true,actions,
+  confirmedStages:{images:true,seo:true,description:true,technical:true},...extra});
+ const mapping={item_name:'seo',attribute_list:'technical',tax_info:'fiscal'};
+ for(const actions of [['video'],['item_name'],['description','attribute_list'],
+  ['images','video'],['tax_info'],['video','tax_info']]){
+  const plan=make(actions);
+  assert.equal(isShopeeMatrixIndependentPlan(plan),true);
+  assert.equal(shopeeMatrixPendingSnapshot(plan).pending.length,
+   new Set(actions.map(a=>mapping[a]||a)).size);
+ }
+ const snapshot=shopeeMatrixPendingSnapshot(make(['video']));
+ assert.deepEqual(snapshot.confirmed.sort(),['description','images','seo','technical']);
+ assert.deepEqual(snapshot.pending,['video']);
+ for(const change of [{actions:['video','discount']},{actions:['model_variations']},
+  {discountOnly:true},{kitDiscount:{discountId:123}},
+  {commercialDiscount:{snapshot:{}}},{actions:['video','unknown-field']}])
+  assert.equal(isShopeeMatrixIndependentPlan(make(['video'],change)),false);
+ const ui=readFileSync(new URL('../public/app.js',import.meta.url),'utf8');
+ const server=readFileSync(new URL('../server.js',import.meta.url),'utf8');
+ assert.match(ui,/function optimizerMatrixIndependentPendingPlan\(plan\)/);
+ assert.match(ui,/!optimizerMatrixIndependentPendingPlan\(p\)&&!optimizerKitWorkflowActive/);
+ assert.match(server,/!linkedKit&&!isShopeeMatrixIndependentPlan\(plan\)/);
+});

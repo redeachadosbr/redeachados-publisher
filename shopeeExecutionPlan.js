@@ -29,6 +29,34 @@ export function isShopeeVideoOnlyPlan(plan){
   !plan.kitDiscount&&!plan.commercialDiscount&&!plan.discountOnly;
 }
 
+// GLOBAL Motor Matriz: approved differences alone drive listing writes.
+export const SHOPEE_MATRIX_ACTION_STAGE=Object.freeze({
+ item_name:'seo',description:'description',attribute_list:'technical',
+ images:'images',video:'video',model_variations:'variants',tax_info:'fiscal',
+ discount:'discount',kit_discount:'discount',kit_gross_price:'discount'
+});
+const MATRIX_INDEPENDENT_ACTIONS=new Set([
+ 'item_name','description','attribute_list','images','video','tax_info'
+]);
+export function shopeeMatrixPendingSnapshot(plan){
+ const actions=Array.isArray(plan?.actions)?plan.actions:[];
+ const unknown=actions.filter(a=>!Object.hasOwn(SHOPEE_MATRIX_ACTION_STAGE,a));
+ const pending=[...new Set(actions.filter(a=>Object.hasOwn(SHOPEE_MATRIX_ACTION_STAGE,a))
+  .map(a=>SHOPEE_MATRIX_ACTION_STAGE[a]))];
+ const confirmed=Object.entries(plan?.confirmedStages||{})
+  .filter(([,v])=>v===true).map(([stage])=>stage).filter(id=>!pending.includes(id));
+ const commercial=Boolean(plan?.discountOnly||plan?.kitDiscount||
+  plan?.modelVariations?.promotion||plan?.commercialDiscount||
+  actions.some(a=>['discount','kit_discount','kit_gross_price'].includes(a)));
+ return {pending,confirmed,unknown,independentOnly:
+  plan?.selectedStage==='all'&&plan?.canExecute===true&&
+  actions.length>0&&!unknown.length&&!commercial&&!plan?.modelVariations&&
+  actions.every(a=>MATRIX_INDEPENDENT_ACTIONS.has(a))};
+}
+export function isShopeeMatrixIndependentPlan(plan){
+ return shopeeMatrixPendingSnapshot(plan).independentOnly;
+}
+
 export function compileShopeeExecutionPlan({shopId,itemId,modelId,sku,record,review,live,manualVideo=null,verifiedVideoSha256=null,manualImages=[],deferUnconfirmedFiscal=false,omitFiscal=false,selectedStage='all',allowDiscountOnly=false,modelVariations=null,kitDiscount=null}){
   selectedStage=normalizeShopeeExecutionStage(selectedStage);
   const selected=name=>selectedStage==='all'||selectedStage===name||selectedStage==='remaining'&&name==='fiscal'||selectedStage==='media_fiscal'&&['images','video','fiscal'].includes(name);
@@ -190,6 +218,17 @@ export function compileShopeeExecutionPlan({shopId,itemId,modelId,sku,record,rev
       catch{return false;}
     })()
   };
+  // Executable actions are built exclusively from discrepancies read from Shopee.
+  const pendingActions=[...Object.keys(proposed),...(images.length?['images']:[]),
+   ...(video?['video']:[]),...(modelVariations?['model_variations']:[]),
+   ...(finalFiscal?['tax_info']:[]),...(discountOnly&&!kitDiscount?['discount']:[]),
+   ...(kitDiscount?['kit_discount']:[]),
+   ...(selectedStage==='discount_adjust'&&kitDiscount&&!kitDiscount.priceAligned?['kit_gross_price']:[])];
+  const matrix=shopeeMatrixPendingSnapshot({
+   selectedStage,canExecute,actions:pendingActions,confirmedStages,
+   modelVariations,kitDiscount,discountOnly
+  });
+  if(matrix.unknown.length)throw Error('Motor Matriz: ação não reconhecida na prévia.');
   const fingerprint=crypto.createHash('sha256').update(stableDataJson({
     shopId:String(shopId),itemId:String(itemId),modelId:String(modelId),sku,
     selectedStage,discountOnly,kitDiscount:kitDiscount||null,modelVariations:modelVariations?{
@@ -215,7 +254,7 @@ export function compileShopeeExecutionPlan({shopId,itemId,modelId,sku,record,rev
       item_sku:String(live?.item_sku||''),category_id:live?.category_id,
       attribute_list:live?.attribute_list||[],tax_info:live?.tax_info||{},image:live?.image||{}
     },proposed,video,images,finalFiscal,modelVariations,kitDiscount,confirmedStages,
-    actions:[...Object.keys(proposed),...(images.length?['images']:[]),...(video?['video']:[]),...(modelVariations?['model_variations']:[]),...(finalFiscal?['tax_info']:[]),...(discountOnly&&!kitDiscount?['discount']:[]),...(kitDiscount?['kit_discount']:[]),...(selectedStage==='discount_adjust'&&kitDiscount&&!kitDiscount.priceAligned?['kit_gross_price']:[])],
+    actions:pendingActions,matrix,
     blocked,warnings,deferredStages,canExecute,
     fingerprint,fiscalDeferred,selectedStage,discountOnly,createdAt:new Date().toISOString(),marketplaceUpdated:false,
     requiresExplicitConfirmation:true,

@@ -4555,7 +4555,8 @@ function optimizerExecutionVisibleCommands(progress,job){
   launch.disabled=!active||running;
   if(active){
    launch.textContent=running?'Execução em andamento · conferindo Shopee':
-    optimizerIsVideoOnlyPreparedPlan(optimizerExecPlan||job?.plan)?'▶ PUBLICAR SOMENTE VÍDEO':'▶ EXECUTAR NA SHOPEE';
+    optimizerMatrixIndependentPendingPlan(optimizerExecPlan||job?.plan)?
+     '▶ EXECUTAR SOMENTE PENDÊNCIAS':'▶ EXECUTAR NA SHOPEE';
    launch.title='Executar a prévia salva após confirmar a campanha e os valores na Shopee.';
   }
  }else{
@@ -5531,6 +5532,19 @@ function optimizerModelMarketApprovalPaint(plan=optimizerExecPlan){
   ', lucro estimado '+shPriceMoney(profit)+
   '. A autorização vale apenas para esta prévia; a Shopee só recebe alterações após clicar em EXECUTAR.';
 }
+function optimizerMatrixIndependentPendingPlan(plan){
+ const safe=new Set(['item_name','description','attribute_list','images','video','tax_info']);
+ return plan?.selectedStage==='all'&&plan?.canExecute===true&&
+  Array.isArray(plan.actions)&&plan.actions.length>0&&
+  plan.actions.every(action=>safe.has(action))&&
+  !plan.modelVariations&&!plan.kitDiscount&&!plan.discountOnly&&!plan.commercialDiscount;
+}
+const optimizerMatrixStageNames=Object.freeze({
+ item_name:'Título SEO',description:'Descrição',attribute_list:'Ficha técnica',
+ images:'Imagens',video:'Vídeo',tax_info:'Dados fiscais',
+ model_variations:'Variações',discount:'Desconto',kit_discount:'Desconto',
+ kit_gross_price:'Preço bruto do kit'
+});
 function optimizerIsVideoOnlyPreparedPlan(plan){
  // Full-scope previews with only one approved video action must not require
  // discount authorization or replay already confirmed independent stages.
@@ -5541,7 +5555,7 @@ function optimizerIsVideoOnlyPreparedPlan(plan){
   !plan.kitDiscount&&!plan.discountOnly;
 }
 function optimizerDiscountReviewedForExecution(plan){
- if(optimizerIsVideoOnlyPreparedPlan(plan))return true;
+ if(optimizerMatrixIndependentPendingPlan(plan))return true;
  // Kit: otimizar primeiro; desconto proprio da etapa 08 exige confirmacao
  // da Shopee e autorizacao separada para a composicao completa.
  if(typeof optimizerKitWorkflowActive==='function'&&optimizerKitWorkflowActive()){
@@ -5612,7 +5626,8 @@ function optimizerExecUpdateRunButton(){
  const missingKit=optimizerKitMissingApprovedStages(p);
  $('#optimizerExecutionLaunch').textContent=missingKit.length?
   '▶ Executar etapas prontas e manter '+missingKit.length+' pendência(s)':
-  p?.selectedStage==='video'||optimizerIsVideoOnlyPreparedPlan(p)?'▶ PUBLICAR SOMENTE VÍDEO':
+  optimizerMatrixIndependentPendingPlan(p)?'▶ Executar somente '+p.actions.map(a=>optimizerMatrixStageNames[a]||a).join(' + '):
+  p?.selectedStage==='video'?'▶ PUBLICAR SOMENTE VÍDEO':
   !canPublish?
   p?.canExecute?'▶ EXECUTAR NA SHOPEE · anúncio e desconto':'🛠 Validar pendências para executar':
   p?.selectedStage==='media_fiscal'?'▶ Executar somente Imagens + Vídeo + Fiscal':
@@ -5633,7 +5648,7 @@ function optimizerExecUpdateRunButton(){
   String(quote.modelId)===String(optimizerWorkflowPlan.modelId));
  // O clique principal é autorização expressa para estes valores EXATOS;
  // não há outro botão de publicação por etapa.
- if(p?.canExecute&&p.selectedStage==='all'&&quoteMatching&&!optimizerIsVideoOnlyPreparedPlan(p)){
+ if(p?.canExecute&&p.selectedStage==='all'&&quoteMatching&&!optimizerMatrixIndependentPendingPlan(p)){
   $('#optimizerExecutionLaunch').textContent='▶ EXECUTAR NA SHOPEE · '+shPriceMoney(quote.grossPrice)+
    ' → '+shPriceMoney(quote.marketplaceDisplayPrice);
  }
@@ -6297,12 +6312,14 @@ async function optimizerOneClickExecute(){
    await optimizerExecPreparation.finished;
    if(!same())return;
   }
-  const videoOnly=optimizerIsVideoOnlyPreparedPlan(optimizerExecPlan)||
-   (optimizerExecJob?.state==='prepared'&&optimizerIsVideoOnlyPreparedPlan(optimizerExecJob.plan));
-  if(videoOnly){
+  const matrixIndependent=optimizerMatrixIndependentPendingPlan(optimizerExecPlan)||
+   (optimizerExecJob?.state==='prepared'&&optimizerMatrixIndependentPendingPlan(optimizerExecJob.plan));
+  if(matrixIndependent){
    $('#optimizerExecutionScope').value='all';
-   optimizerExecutionLiveStep('Retomando somente vídeo',
-    'Usando a prévia já aprovada. Sem gerar outra prévia e sem tocar em desconto, imagens ou descrição.','info');
+   const approved=(optimizerExecPlan||optimizerExecJob?.plan)?.actions||[];
+   optimizerExecutionLiveStep('Motor Matriz · somente pendências',
+    'Ações aprovadas: '+approved.map(a=>optimizerMatrixStageNames[a]||a).join(', ')+
+    '. Demais etapas preservadas.','info');
   }
   const desiredStage=['all','discount_adjust'].includes($('#optimizerExecutionScope')?.value)?
    $('#optimizerExecutionScope').value:'all';
@@ -6407,7 +6424,7 @@ async function optimizerOneClickExecute(){
     ' Revise somente os dados não preparados. As etapas salvas foram preservadas.','warning');
    return;
   }
-  if(!optimizerIsVideoOnlyPreparedPlan(p)&&!optimizerKitWorkflowActive()&&!p.modelVariations&&
+  if(!optimizerMatrixIndependentPendingPlan(p)&&!optimizerKitWorkflowActive()&&!p.modelVariations&&
      ['all','remaining','discount','discount_adjust'].includes(p.selectedStage)){
    if(!optimizerDiscountApprovalReady()){
     optimizerExecutionLiveStep('2. Verificando preço e desconto',
@@ -6569,7 +6586,7 @@ async function optimizerExecuteApproved(remainingOnly=false){
        confirmation:'EXECUTAR '+p.sku,acceptPartialExecution:true,
        ...(remainingOnly?{remainingOnly:true}:{}),
        ...(['all','remaining','discount','discount_adjust'].includes(p.selectedStage)&&
-        !optimizerIsVideoOnlyPreparedPlan(p)&&
+        !optimizerMatrixIndependentPendingPlan(p)&&
         !(typeof optimizerKitWorkflowActive==='function'&&optimizerKitWorkflowActive())?{discountApprovalToken:p.modelVariations?
         optimizerExecAutoModelToken:optimizerDiscountFinalPreviewData?.approvalToken,
         allowPriceChange:p.modelVariations?Boolean(
@@ -7258,6 +7275,7 @@ globalThis.RAExecutionCurrentStatus=()=>({
  videoTaskRejected:optimizerExecutionVideoRejected(optimizerExecJob),
  videoRelinkExhausted:optimizerExecutionVideoRejected(optimizerExecJob)&&
   Number(optimizerExecJob?.result?.videoRelinkCount||0)>=1,
+ matrixIndependent:optimizerMatrixIndependentPendingPlan(optimizerExecPlan||optimizerExecJob?.plan),
  priceMismatchBeforeWrite:optimizerExecJob?.state==='uncertain'&&
   String(optimizerExecJob?.result?.phase||'')==='discount_ready'&&
   !Number(optimizerExecJob?.result?.discountPriceStartedAt||0)&&
@@ -7330,8 +7348,8 @@ globalThis.RAExecutionPrimaryAction=async()=>{
   }
   // This already-prepared single-video plan is revalidated by the EXECUTE
   // endpoint itself. An audit/auto-prepare here would overwrite its CAS ID.
-  if((optimizerExecJob?.state==='prepared'&&optimizerIsVideoOnlyPreparedPlan(optimizerExecJob.plan))||
-     optimizerIsVideoOnlyPreparedPlan(optimizerExecPlan)){
+  if((optimizerExecJob?.state==='prepared'&&optimizerMatrixIndependentPendingPlan(optimizerExecJob.plan))||
+     optimizerMatrixIndependentPendingPlan(optimizerExecPlan)){
    await optimizerOneClickExecute();
    return;
   }
