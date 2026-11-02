@@ -6500,10 +6500,32 @@ async function optimizerExecuteApproved(remainingOnly=false){
  }
  // A aprovação é registrada no job do servidor no mesmo clique único.
  try{
+   // Ler a versão persistida imediatamente antes do POST: evita aprovar
+   // timestamp desatualizado quando duas abas prepararam a mesma SKU.
+   const status=await json('/api/shopee/optimizer/execution/status?'+new URLSearchParams({
+    sku:ctx.sku,item_id:ctx.itemId,model_id:ctx.modelId
+   }),{signal:AbortSignal.timeout(25000)});
+   const saved=status?.job;
+   if(!saved||saved.state!=='prepared'){
+    if(saved)optimizerExecutionJobView(saved,status.progress,status.issue);
+    throw Error(saved?.state==='uncertain'?
+     'O envio anterior ainda precisa ser conferido; nenhuma operação foi repetida.':
+     'O servidor não possui mais esta prévia preparada. Conferir as pendências.');
+   }
+   const canonical=saved.plan||{};
+   const equivalent=canonical.fingerprint===p.fingerprint&&
+    canonical.selectedStage===p.selectedStage&&
+    canonical.canExecute===p.canExecute&&
+    JSON.stringify(canonical.actions||[])===JSON.stringify(p.actions||[])&&
+    JSON.stringify(canonical.reusedMedia||{})===JSON.stringify(p.reusedMedia||{})&&
+    JSON.stringify(canonical.confirmedStages||{})===JSON.stringify(p.confirmedStages||{});
+   if(!equivalent)
+    throw Error('A prévia foi alterada em outra sessão. Revalidando antes de qualquer publicação.');
+   const startPlanId=canonical.planId,startUpdatedAt=saved.updated_at;
    const out=await json('/api/shopee/optimizer/execution/execute',{
      method:'POST',headers:{'Content-Type':'application/json'},
      body:JSON.stringify({sku:ctx.sku,itemId:ctx.itemId,modelId:ctx.modelId,
-       planId:p.planId,updatedAt:p.updatedAt,stage:p.selectedStage||'all',
+       planId:startPlanId,updatedAt:startUpdatedAt,stage:p.selectedStage||'all',
        confirmation:'EXECUTAR '+p.sku,acceptPartialExecution:true,
        ...(remainingOnly?{remainingOnly:true}:{}),
        ...(['all','remaining','discount','discount_adjust'].includes(p.selectedStage)&&!(typeof optimizerKitWorkflowActive==='function'&&optimizerKitWorkflowActive())?{discountApprovalToken:p.modelVariations?
