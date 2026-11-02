@@ -3476,7 +3476,8 @@ app.post('/api/shopee/optimizer/execution/reconcile',mustLogin,requireWeDropAdmi
   const {itemId,modelId,sku,auth,cfg}=await checkedWorkflowAudit(req);
   const job=await readShopeeExecution(auth.shopId,itemId,modelId);
   if(job?.sku!==sku)throw Error('Nenhuma execução encontrada para esta SKU.');
-  const oldVideoFailure=job.state==='failed'&&Boolean(job.plan?.video)&&
+  const oldVideoFailure=['failed','verified'].includes(job.state)&&Boolean(job.plan?.video)&&
+   (job.state!=='verified'||(job.result?.phase==='verified_partial'&&job.result?.videoRejected===true))&&
    /video task not found|video_upload_id.*(?:not found|invalid|illegal)/i.test(String(job.last_error||''));
   if(job.state!=='uncertain'&&!oldVideoFailure)return res.json({ok:true,job,
    verified:job.state==='verified',progress:shopeeExecutionProgress(job),
@@ -3624,7 +3625,9 @@ app.post('/api/shopee/optimizer/execution/reconcile',mustLogin,requireWeDropAdmi
     message:updated.state==='verified'?'Todas as alterações confirmadas.':
       updated.state==='running'?'Leitura confirmada; prosseguindo com as próximas etapas.':
       recoveryReady?'Execução antiga liberada com duas leituras estáveis. Gere nova prévia apenas das alterações pendentes. Nenhum envio foi repetido.':
-      'Ainda não confirmado: '+(pending.join('; ')||'a leitura da Shopee não comprovou todas as etapas')+
+      'Ainda não confirmado: '+(pending.join('; ')||
+       (updated.result?.videoRejected?'vídeo pendente de identificação na Shopee':
+        'a leitura da Shopee não comprovou todas as etapas'))+
        '. Nenhuma alteração foi reenviada.'});
  }catch(e){res.status(409).json({ok:false,error:String(e.message||e).slice(0,280)});}
 });
