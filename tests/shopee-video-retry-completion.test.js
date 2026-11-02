@@ -155,3 +155,12 @@ test('painel e botão não confirmam legado verified com vídeo recusado e erro 
  const dialog=readFileSync(new URL('../public/optimizer-execution-dialog.js',import.meta.url),'utf8');
  assert.match(dialog,/phase==='verified'&&!data.videoTaskRejected/);
 });
+
+test('prévia com somente vídeo direciona clique único para o escopo vídeo sem exigir desconto',()=>{
+ const app=readFileSync(new URL('../public/app.js',import.meta.url),'utf8');
+ assert.match(app,/function optimizerIsVideoOnlyPreparedPlan\(plan\)/);
+ assert.match(app,/plan\.actions\.length===1&&plan\.actions\[0\]==='video'/);
+ assert.match(app,/optimizerExecJob\?\.state==='prepared'&&optimizerIsVideoOnlyPreparedPlan/);
+ assert.match(app,/if\(videoOnly\)\{\s*\$\('#optimizerExecutionScope'\)\.value='video'/);
+ assert.match(app,/p\?\.selectedStage==='video'\|\|optimizerIsVideoOnlyPreparedPlan\(p\)/);
+});

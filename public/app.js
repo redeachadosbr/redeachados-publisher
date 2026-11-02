@@ -4554,7 +4554,8 @@ function optimizerExecutionVisibleCommands(progress,job){
   launch.hidden=!active;
   launch.disabled=!active||running;
   if(active){
-   launch.textContent=running?'Execução em andamento · conferindo Shopee':'▶ EXECUTAR NA SHOPEE';
+   launch.textContent=running?'Execução em andamento · conferindo Shopee':
+    optimizerIsVideoOnlyPreparedPlan(optimizerExecPlan||job?.plan)?'▶ PUBLICAR SOMENTE VÍDEO':'▶ EXECUTAR NA SHOPEE';
    launch.title='Executar a prévia salva após confirmar a campanha e os valores na Shopee.';
   }
  }else{
@@ -5530,6 +5531,15 @@ function optimizerModelMarketApprovalPaint(plan=optimizerExecPlan){
   ', lucro estimado '+shPriceMoney(profit)+
   '. A autorização vale apenas para esta prévia; a Shopee só recebe alterações após clicar em EXECUTAR.';
 }
+function optimizerIsVideoOnlyPreparedPlan(plan){
+ // Full-scope previews with only one approved video action must not require
+ // discount authorization or replay already confirmed independent stages.
+ return plan?.selectedStage==='all'&&plan?.canExecute===true&&
+  Array.isArray(plan.actions)&&plan.actions.length===1&&plan.actions[0]==='video'&&
+  Boolean(plan.video?.sha256)&&!(plan.images||[]).length&&
+  !Object.keys(plan.proposed||{}).length&&!plan.finalFiscal&&!plan.modelVariations&&
+  !plan.kitDiscount&&!plan.discountOnly;
+}
 function optimizerDiscountReviewedForExecution(plan){
  // Kit: otimizar primeiro; desconto proprio da etapa 08 exige confirmacao
  // da Shopee e autorizacao separada para a composicao completa.
@@ -5601,6 +5611,7 @@ function optimizerExecUpdateRunButton(){
  const missingKit=optimizerKitMissingApprovedStages(p);
  $('#optimizerExecutionLaunch').textContent=missingKit.length?
   '▶ Executar etapas prontas e manter '+missingKit.length+' pendência(s)':
+  p?.selectedStage==='video'||optimizerIsVideoOnlyPreparedPlan(p)?'▶ PUBLICAR SOMENTE VÍDEO':
   !canPublish?
   p?.canExecute?'▶ EXECUTAR NA SHOPEE · anúncio e desconto':'🛠 Validar pendências para executar':
   p?.selectedStage==='media_fiscal'?'▶ Executar somente Imagens + Vídeo + Fiscal':
@@ -6276,6 +6287,15 @@ async function optimizerOneClickExecute(){
  const main=$('#optimizerExecutionLaunch');
  if(main)main.disabled=true;
  try{
+  // A saved full-scope preview with ONLY video approved is executed using the
+  // dedicated video stage, so a discount token is neither required nor sent.
+  const videoOnly=optimizerIsVideoOnlyPreparedPlan(optimizerExecPlan)||
+   (optimizerExecJob?.state==='prepared'&&optimizerIsVideoOnlyPreparedPlan(optimizerExecJob.plan));
+  if(videoOnly){
+   $('#optimizerExecutionScope').value='video';
+   optimizerExecutionLiveStep('Retomando somente vídeo',
+    'O plano contém apenas vídeo: imagens, conteúdo, fiscal e desconto serão preservados.','info');
+  }
   const desiredStage=['all','discount_adjust'].includes($('#optimizerExecutionScope')?.value)?
    $('#optimizerExecutionScope').value:'all';
   // Para a execução só da promoção, preparar primeiro o snapshot assinado.
