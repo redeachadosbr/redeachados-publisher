@@ -315,6 +315,12 @@ async function run(){
       sku:item.sku,itemId:item.itemId,modelId:item.modelId
      },0); // Sem retry de POST que pode publicar tax_info.
     }catch(error){
+     if(error.retryable===false){
+      // Explicit server rejection before publication is a review blocker.
+      mark(state,item,'blocked',String(error.message||error));
+      report(state,'Ficha fiscal não elegível para envio; nenhum dado publicado.',item.sku);
+      continue;
+     }
      report(state,'Resposta do servidor indisponível; verificando envio sem repetir chamada.',item.sku);
      // Uma falha HTTP não comprova que a operação chegou à Shopee.
      // jobStatus realiza somente leitura e não pode reexecutar o update.

@@ -1409,7 +1409,10 @@ app.get('/api/shopee/optimizer/fiscal-migration/active-skus',mustLogin,requireWe
         if(!candidate.sku||candidate.status&&!['NORMAL','UNLIST','MODEL_NORMAL','MODEL_UNAVAILABLE'].includes(candidate.status))continue;
         // Inventário para execução não precisa fazer 742 consultas separadas
         // ao Supabase. A revisão será consultada durante a execução da SKU.
-        const review=fast?null:await getWorkflowReview(auth.shopId,itemId,candidate.modelId);
+        // Only incomplete Item IDs require source review lookup in fast mode.
+        const gapRequiresReview=inspect&&fiscalById.get(itemId)?.status!=='complete';
+        const review=fast&&!gapRequiresReview?null:
+         await getWorkflowReview(auth.shopId,itemId,candidate.modelId);
         const checked=Boolean(review?.sku===candidate.sku&&
           review?.review_state?.stages?.fiscal?.reviewed&&review?.review_state?.tax?.ncm);
         output.push({sku:candidate.sku,itemId,modelId:candidate.modelId,

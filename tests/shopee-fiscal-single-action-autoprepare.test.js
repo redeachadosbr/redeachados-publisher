@@ -112,3 +112,11 @@ test('varredura fiscal oficial lista Item IDs, evita duplicar anúncio-pai e só
  for(const id of ['raFiscalEmptyCount','raFiscalPartialCount','raFiscalMissingCount',
  'raFiscalCompleteCount','raFiscalGapInventory'])assert.ok(html.includes('id="'+id+'"'));
 });
+
+test('identifica qual SKU com variação tem revisão fiscal aprovada sem repetir escrita',()=>{
+ const server=read('server.js'),ui=read('public/fiscal-migration-run.js');
+ assert.match(server,/gapRequiresReview=inspect&&fiscalById\.get\(itemId\)\?\.status/);
+ assert.match(server,/fast&&!gapRequiresReview\?null:/);
+ assert.match(ui,/candidates\.find\(x=>x\.reviewed===true\)/);
+ assert.match(ui,/error\.retryable===false/);
+});
