@@ -7142,6 +7142,7 @@ $('#optimizerExecutionReconcile')?.addEventListener?.('click',()=>void optimizer
 let optimizerPrimaryActionBusy=false;
 globalThis.RAExecutionCurrentStatus=()=>({
  state:optimizerExecJob?.state||'prepared',
+ kit:optimizerKitWorkflowActive(),
  busy:optimizerPrimaryActionBusy||optimizerExecBusy||optimizerOneClickBusy||kitAllStagesStarting,
  quote:optimizerDiscountFinalQuote?{
   gross:Number(optimizerDiscountFinalQuote.grossPrice),
