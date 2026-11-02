@@ -78,3 +78,22 @@ body.view-optimizer.optimizer-one-button-mode .optimizer-exec-progress-card .opt
  padding:18px;
  margin:10px 0;
 }
+
+/* Progresso textual em tempo real: nao inferir porcentagem nem status da Shopee. */
+body.view-optimizer.optimizer-one-button-mode .optimizer-execution-live-phase:not([hidden]){
+ display:block;
+ margin:12px 0 16px;
+ padding:14px 16px;
+ border:1px solid #c3d7ec;
+ border-radius:12px;
+ background:#fff;
+}
+.optimizer-execution-live-phase[hidden]{display:none!important}
+.optimizer-execution-live-phase-head{display:flex;align-items:center;gap:10px}
+.optimizer-execution-live-phase-head strong{font-size:15px;color:#174273}
+.optimizer-execution-live-phase p{font-size:13px;color:#40556d;margin:6px 0 8px;line-height:1.5;white-space:pre-wrap;overflow-wrap:anywhere}
+.optimizer-execution-live-phase ol{margin:10px 0 0 18px;padding:0;color:#46617e;font-size:12px;line-height:1.65}
+.optimizer-execution-live-phase li{padding-left:3px;overflow-wrap:anywhere}
+.optimizer-execution-live-phase[data-state="success"]{border-color:#93d8b9}
+.optimizer-execution-live-phase[data-state="error"]{border-color:#f6b2a5}
+.optimizer-execution-live-phase[data-state="warning"]{border-color:#e8c180}
