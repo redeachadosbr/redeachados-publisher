@@ -4,6 +4,8 @@
 import crypto from 'node:crypto';
 
 const brl=x=>Math.round(Number(x)*100)/100;
+// A Shopee trabalha com centavos: 1 centavo de divergência exige prévia e autorização.
+const cents=x=>Math.round(Number(x)*100);
 const validMoney=n=>Number.isFinite(Number(n))&&Number(n)>0&&Number(n)<=100000;
 const integer=x=>/^\d{1,18}$/.test(String(x))&&Number.isSafeInteger(Number(x));
 export function promotionFromQuote(q){
@@ -72,12 +74,13 @@ export function discountPlanSnapshot({shopId,sku,itemId,modelId,discountId,quote
  if(Number(record.end_time)<=now)throw Error('A promoção terminou.');
  // Somente incluir ou atualizar UMA SKU, nunca alterar as demais da campanha.
  const existingPrice=existing?Number(existing.item_promotion_price):null;
- const act=!existing?'add':validMoney(existingPrice)&&Math.abs(brl(existingPrice)-values.promo)<0.011&&Math.abs(originalPrice-values.gross)<0.011?'already':'update';
+ const act=!existing?'add':validMoney(existingPrice)&&cents(existingPrice)===cents(values.promo)&&
+   cents(originalPrice)===cents(values.gross)?'already':'update';
  return {...values,shopId:String(shopId),sku:String(sku),itemId:String(itemId),
    modelId:String(modelId),discountId:String(discountId),promotionName:String(record.discount_name||''),
    status:String(record.status),promotionEnd:Number(record.end_time),originalPrice,
    action:act,existingPrice:validMoney(existingPrice)?brl(existingPrice):null,
-   needsBasePriceUpdate:Math.abs(originalPrice-values.gross)>.011,
+   needsBasePriceUpdate:cents(originalPrice)!==cents(values.gross),
    quoteAt:String(quote.calculatedAt||'')};
 }
 const seal=(raw,secret)=>crypto.createHmac('sha256',secret).update(raw).digest('base64url');
