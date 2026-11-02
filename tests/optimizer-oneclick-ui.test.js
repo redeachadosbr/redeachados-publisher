@@ -90,3 +90,34 @@ test('execução avulsa exibe etapas reais, erros e readback no mesmo painel',()
  assert.match(execution,/const start=await optimizerExecuteApproved\(false\)/);
  assert.match(execution,/if\(start\?\.started\)/);
 });
+
+test('não girar em loop quando preparação da mesma SKU já está pendente',()=>{
+ const begin=app.indexOf('async function optimizerExecutionPrepare({preserveStartError=false}={})');
+ const end=app.indexOf("$('#optimizerExecutionKitDiscountOnly')?.addEventListener?.('click'",begin);
+ const prep=app.slice(begin,end);
+ assert.ok(begin>=0&&end>begin);
+ assert.match(prep,/if\(optimizerExecPreparation\.key===key&&optimizerExecPreparation\.serial===optimizerExecSerial\)/);
+ assert.doesNotMatch(prep,/optimizerExecPreparation\.again=true/);
+ assert.doesNotMatch(prep,/if\(preparation\.again/);
+ assert.match(prep,/optimizerExecutionVisibleCommands\(optimizerExecProgress,optimizerExecJob\)/);
+});
+test('botão não confunde preparação de prévia com execução na Shopee',()=>{
+ const begin=app.indexOf('function optimizerExecutionVisibleCommands(progress,job)');
+ const end=app.indexOf('function optimizerExecutionTrackerRender(progress,job)',begin);
+ const code=app.slice(begin,end);
+ assert.doesNotMatch(code,/optimizerExecPreparation\|\|\['running','uncertain'/);
+ assert.match(code,/const running=Boolean\(optimizerExecBusy\|\|optimizerOneClickBusy\|\|/);
+ assert.match(code,/launch\.disabled=!active\|\|running/);
+});
+test('clicar EXECUTAR recupera primeiro o job preparado por consulta somente-leitura',()=>{
+ const begin=app.indexOf('async function optimizerOneClickExecute()');
+ const end=app.indexOf("$('#optimizerExecutionLaunch')?.addEventListener?.('click',",begin);
+ const code=app.slice(begin,end);
+ assert.match(code,/Recuperando prévia já salva/);
+ assert.match(code,/\/api\/shopee\/optimizer\/execution\/status\?/);
+ assert.match(code,/job\.state==='prepared'&&job\.plan\?\.canExecute===true/);
+ assert.match(code,/optimizerExecRender\(\{plan:job\.plan/);
+ assert.match(code,/if\(equal&&\['running','uncertain'\]\.includes\(job\.state\)\)/);
+ assert.ok(code.indexOf("'/api/shopee/optimizer/execution/status?'")<
+  code.indexOf('await optimizerExecutionPrepare()'),'recuperar antes de preparar novamente');
+});
