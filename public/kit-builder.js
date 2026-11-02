@@ -542,8 +542,9 @@ async function kitWizardRequestTechnical({force=false}={}){
  if(kitWizardStage!==5||!prepared?.kit)return;
  kitWizardMountTechnical();
  if(!kitSaved){
-  kitWizardTechnicalStatus('Salve o rascunho do kit para recuperar a ficha técnica da SKU principal.','warning');
-  return;
+  // A edicao comercial desmarca a aprovacao de publicar, mas o rascunho continua salvo.
+  // Na Etapa 05 verificar diretamente a existencia do rascunho no servidor.
+  kitWizardTechnicalStatus('Verificando automaticamente o rascunho salvo no servidor para abrir a ficha técnica...','info');
  }
  const kitSku=prepared.kit.kitSku;
  const chosen=$('#kitOptimizeMainSku');
