@@ -7231,6 +7231,32 @@ globalThis.RAExecutionPrimaryAction=async()=>{
     optimizerExecNotice('Não foi possível identificar estado seguro para continuar.','warning');return;
    }
   }
+  // Execução antiga: uma tarefa de upload recusada NÃO prova que o
+  // vídeo está ausente do anúncio. Consultar o Item ID antes de preparar
+  // qualquer novo envio e manter as demais etapas independentes.
+  if(optimizerExecJob?.state==='failed'&&optimizerExecJob?.plan?.video&&
+    /video task not found|video_upload_id.*(?:not found|invalid|illegal)/i.test(
+     String(optimizerExecJob.last_error||''))){
+   optimizerExecutionLiveStep('Conferindo vídeo publicado',
+    'Consultando o vídeo no anúncio Shopee pelo Item ID, sem reenviar mídia.','info');
+   const d=await json('/api/shopee/optimizer/execution/reconcile',{
+    method:'POST',headers:{'Content-Type':'application/json'},
+    body:JSON.stringify({sku:w.sku,itemId:w.itemId,modelId:w.modelId,recover:true}),
+    signal:AbortSignal.timeout(65000)
+   });
+   if(!same())return;
+   optimizerExecutionJobView(d.job,d.progress,d.issue);
+   if(['verified','running'].includes(d.job?.state)){
+    optimizerExecNotice('Vídeo reconhecido na Shopee. Etapas confirmadas preservadas; acompanhando as pendentes.','success');
+    if(d.job.state==='running')void optimizerExecutionRefresh(true);
+    return;
+   }
+   if(!d.progress?.videoPublished){
+    optimizerExecNotice('A Shopee ainda não retornou um vídeo novo identificável para este anúncio. Não foi feito reenvio. '+
+     (d.pendingChecks||[]).join('; '),'warning');
+    return;
+   }
+  }
   // Auditoria do Item ID evita repetir imagens e conteúdo já publicados.
   optimizerExecutionLiveStep('Identificando etapas pendentes',
    'Conferindo a Shopee para executar somente o que ainda não foi confirmado.','info');
@@ -7273,6 +7299,12 @@ $('#optimizerExecutionRetry')?.addEventListener?.('click',async()=>{
  const w=optimizerWorkflowPlan;if(!w)return;
  if(optimizerExecBusy||optimizerOneClickBusy||kitAllStagesStarting)return;
  // Um clique na falha finalizada retoma somente etapas aprovadas após readback.
+ if(optimizerExecJob?.state==='failed'&&optimizerExecJob?.plan?.video&&
+   /video task not found|video_upload_id.*(?:not found|invalid|illegal)/i.test(
+    String(optimizerExecJob.last_error||''))){
+  await globalThis.RAExecutionPrimaryAction?.();
+  return;
+ }
  if(optimizerExecJob?.state==='failed'){
   if(optimizerKitWorkflowActive()&&w.kitOptimization?.kitSku){
    const result=await globalThis.RAKitExecutePendingAllStages({
