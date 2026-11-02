@@ -5740,7 +5740,9 @@ async function optimizerRestorePreparedAfterTransportError({w,requestedStage,sta
 }
 async function optimizerExecutionPrepare({preserveStartError=false,fromExecutionClick=false}={}){
  const w=optimizerWorkflowPlan;
- if(!w||optimizerExecBusy||!fromExecutionClick&&(optimizerOneClickBusy||optimizerPrimaryActionBusy))return;
+ if(!w||optimizerExecBusy||!fromExecutionClick&&(
+  (typeof optimizerOneClickBusy!=='undefined'&&optimizerOneClickBusy)||
+  (typeof optimizerPrimaryActionBusy!=='undefined'&&optimizerPrimaryActionBusy)))return;
  const requestedStage=$('#optimizerExecutionScope').value;
  const key=[w.sku,w.itemId,w.modelId,requestedStage].join('|');
  if(optimizerExecPreparation){
