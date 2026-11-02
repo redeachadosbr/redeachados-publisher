@@ -61,11 +61,16 @@
   return Math.min(100,Math.max(0,Math.round(n)));
  }
  function derive({progress={},job=null,eventTitle='',eventState='',history=[]}={}){
+  const priceMismatch=job?.state==='uncertain'&&
+    String(job?.result?.phase||'')==='discount_ready'&&
+    !Number(job?.result?.discountPriceStartedAt||0)&&
+    !Number(job?.result?.discountStartedAt||0)&&
+    /preço bruto diferente|preço bruto divergen/i.test(String(job?.last_error||''));
   const steps=Array.isArray(progress?.steps)?progress.steps:[];
   const byId=id=>steps.find(x=>x.id===id);
   const states=DEFINITIONS.map(d=>{
     if(d.id==='final')return job?.state==='verified'?'done':
-      job?.state==='uncertain'?'checking':'waiting';
+      job?.state==='uncertain'&&!priceMismatch?'checking':'waiting';
     const step=byId(d.id);
     if(!step)return 'waiting';
     if(step.status==='done')return 'done';
@@ -86,18 +91,21 @@
   if(job?.state==='running'&&active>=0&&states[active]==='waiting')
     states[active]='active';
   if(failed&&active>=0&&states[active]!=='done')states[active]='error';
-  if(job?.state==='uncertain'&&active>=0&&states[active]!=='done')states[active]='checking';
+  if(job?.state==='uncertain'&&active>=0&&states[active]!=='done')states[active]=priceMismatch?'error':'checking';
   if(job?.state==='verified')active=8;
   const completed=states.filter(x=>x==='done').length;
   const title=job?.state==='verified'?'Execução deste plano confirmada':
     job?.state==='failed'?'Execução interrompida — pendências preservadas':
+    priceMismatch?'Preço bruto divergente — desconto NÃO enviado':
     job?.state==='uncertain'?'Aguardando confirmação da Shopee':
     active>=0?DEFINITIONS[active].short:
     job?.state==='prepared'?'Prévia pronta para executar':
     eventTitle||'Aguardando status da Shopee';
   const serverMessage=String(progress?.message||'').trim();
   const lastError=String(job?.last_error||'').trim();
-  return {active,title,detail:failed?(lastError||serverMessage||'Consulte a pendência e continue sem repetir envios.'):
+  return {active,title,detail:priceMismatch?
+    lastError+' Nenhum envio de preço ou desconto foi iniciado nesta etapa.':
+    failed?(lastError||serverMessage||'Consulte a pendência e continue sem repetir envios.'):
     serverMessage||String(select('optimizerExecutionLiveDetail')?.textContent||'').trim()||'Aguardando confirmação oficial.',
    states,completed,percent:normalizedPercent(progress,job),history,
    state:job?.state||'prepared',
