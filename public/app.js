@@ -7171,6 +7171,11 @@ $('#optimizerExecutionReconcile')?.addEventListener?.('click',()=>void optimizer
 let optimizerPrimaryActionBusy=false;
 globalThis.RAExecutionCurrentStatus=()=>({
  state:optimizerExecJob?.state||'prepared',
+ priceMismatchBeforeWrite:optimizerExecJob?.state==='uncertain'&&
+  String(optimizerExecJob?.result?.phase||'')==='discount_ready'&&
+  !Number(optimizerExecJob?.result?.discountPriceStartedAt||0)&&
+  !Number(optimizerExecJob?.result?.discountStartedAt||0)&&
+  /preço bruto diferente|preço bruto divergen/i.test(String(optimizerExecJob?.last_error||'')),
  kit:optimizerKitWorkflowActive(),
  busy:optimizerPrimaryActionBusy||optimizerExecBusy||optimizerOneClickBusy||kitAllStagesStarting,
  quote:optimizerDiscountFinalQuote?{
