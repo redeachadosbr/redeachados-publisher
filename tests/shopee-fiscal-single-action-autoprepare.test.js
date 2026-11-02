@@ -56,14 +56,14 @@ test('inventário completo: consulta sem modelos extras e paralelo limitado, nã
 test('tela exibe somente um controle principal e CSS oculta prévias legadas',()=>{
  const html=read('public/index.html');
  const css=read('public/fiscal-single-action.css');
- assert.match(html,/id="optimizerFiscalMigrationRun"[^>]*>▶ Executar informações fiscais na Shopee/);
+ assert.match(html,/id="optimizerFiscalMigrationRun"[^>]*>▶ Identificar e preencher somente pendências fiscais/);
  assert.match(html,/Contagem não verificada/);
  assert.match(html,/Anúncios na loja/);
  assert.doesNotMatch(html,/Catálogo completo/);
  assert.match(css,/\.ra-fiscal-advanced,/);
  assert.match(css,/#optimizerFiscalBatchList,/);
  assert.match(css,/#optimizerFiscalBatchStatus,/);
- assert.match(html,/\/fiscal-migration-run\.js\?v=10-fast-resume/);
+ assert.match(html,/\/fiscal-migration-run\.js\?v=11-official-missing-tax-only/);
 });
 
 test('não tratar inventário antigo como total nem enviar antes do censo e paginação oficial',()=>{
@@ -94,4 +94,21 @@ test('censo oficial inclui status Shopee e deixa explícito anúncio versus SKU'
  assert.match(route,/total_count/);
  assert.match(route,/anuncios-pai-sem-contar-variacoes/);
  assert.doesNotMatch(route,/update_item|update_price|runOptimizerJobs/);
+});
+
+test('varredura fiscal oficial lista Item IDs, evita duplicar anúncio-pai e só executa pendências',()=>{
+ const src=read('public/fiscal-migration-run.js');
+ const server=read('server.js');
+ assert.match(src,/inspect=1&status=/);
+ assert.match(src,/const pendingParents=\[\.\.\.fiscalParentMap\(all\)\.values\(\)\]\.filter/);
+ assert.match(src,/missingOnly:true/);
+ assert.match(src,/raFiscalGapInventory/);
+ assert.match(server,/need_tax_info:true/);
+ assert.match(server,/inspectShopeeFiscalGap/);
+ assert.match(server,/if\(missingOnly&&gap\.status==='complete'\)/);
+ assert.match(server,/if\(missingOnly&&existing\?\.review_state\?\.stages\?\.fiscal\?\.reviewed!==true\)/);
+ assert.match(server,/fiscalFillMissingOnly/);
+ const html=read('public/index.html');
+ for(const id of ['raFiscalEmptyCount','raFiscalPartialCount','raFiscalMissingCount',
+ 'raFiscalCompleteCount','raFiscalGapInventory'])assert.ok(html.includes('id="'+id+'"'));
 });

@@ -31,6 +31,55 @@ async function ensureCensus(force=false){
 }
 const nap=ms=>new Promise(resolve=>setTimeout(resolve,ms));
 const idOf=x=>String(x.itemId)+':'+String(x.modelId)+':'+String(x.sku);
+const parentOf=x=>String(x.itemId);
+const fiscalIssue=x=>x?.fiscal?.status==='empty'||x?.fiscal?.status==='partial';
+const fiscalParentMap=items=>{
+ const map=new Map();
+ for(const item of items||[]){
+  const id=parentOf(item);
+  if(!map.has(id))map.set(id,[]);
+  map.get(id).push(item);
+ }
+ return map;
+};
+function renderFiscalGapInventory(state){
+ const root=$('raFiscalGapInventory');if(!root)return;
+ root.replaceChildren();
+ const grouped=fiscalParentMap(state?.inventory||[]);
+ const parents=[...grouped.values()].map(rows=>({item:rows[0],skus:rows,status:rows[0]?.fiscal?.status||'unknown',
+  fiscal:rows[0]?.fiscal}));
+ const missing=parents.filter(r=>['empty','partial'].includes(r.status));
+ const empty=missing.filter(r=>r.status==='empty').length;
+ const partial=missing.filter(r=>r.status==='partial').length;
+ const complete=parents.filter(r=>r.status==='complete').length;
+ const totals={raFiscalMissingCount:missing.length,raFiscalEmptyCount:empty,
+  raFiscalPartialCount:partial,raFiscalCompleteCount:complete};
+ for(const [id,num] of Object.entries(totals))if($(id))$(id).textContent=
+  inventoryVerifiedThisSession&&state?.catalogValidatedAt?String(num):'—';
+ const title=document.createElement('strong');
+ title.textContent=inventoryVerifiedThisSession?
+  'Pendências fiscais oficiais: '+missing.length+' anúncios / '+
+   missing.reduce((n,r)=>n+r.skus.length,0)+' SKUs vinculadas':
+  'Identificação fiscal pendente · sem contagem oficial';
+ root.append(title);
+ if(!inventoryVerifiedThisSession)return;
+ const details=document.createElement('details');details.className='ra-fiscal-gap-details';
+ const summary=document.createElement('summary');
+ summary.textContent='Ver todas as SKUs e Item IDs sem dados fiscais completos ('+
+   missing.length+' anúncios)';
+ details.append(summary);
+ const list=document.createElement('div');list.className='ra-fiscal-gap-list';
+ for(const row of missing){
+  const p=document.createElement('p');
+  p.textContent='Item ID '+row.item.itemId+' · '+row.skus.map(x=>x.sku).join(', ')+
+    ' · '+(row.status==='empty'?'Sem dados':'Incompleto')+
+    ' · Faltam: '+(row.fiscal?.missing||[]).join(', ');
+  list.append(p);
+ }
+ if(!missing.length){const p=document.createElement('p');p.textContent='Nenhuma pendência fiscal identificada.';list.append(p);}
+ details.append(list);root.append(details);
+}
+
 const read=()=>{try{return JSON.parse(localStorage.getItem(KEY)||'null');}catch{return null;}};
 function save(s){s.updatedAt=new Date().toISOString();localStorage.setItem(KEY,JSON.stringify(s));}
 async function request(url,options={},retries=2){
@@ -74,14 +123,16 @@ function panel(){
 function progress(state,phase='Pronto para executar',sku=''){
  const box=panel();if(!box)return;
  const items=state?.inventory||[],ids=new Set(items.map(idOf));
- const values=Object.entries(state?.done||{}).filter(([key])=>ids.has(key)).map(([,v])=>v);
+ const pendingIds=new Set(items.filter(fiscalIssue).map(idOf));
+ const values=Object.entries(state?.done||{}).filter(([key])=>ids.has(key)&&pendingIds.has(key)).map(([,v])=>v);
  const verified=values.filter(v=>v==='verified').length;
  const alreadyCurrent=values.filter(v=>v==='already_current').length;
  const failed=values.filter(v=>v==='failed').length;
  const blocked=values.filter(v=>v==='blocked'||v==='uncertain').length;
  const trustworthy=Boolean(inventoryVerifiedThisSession&&state?.catalogValidatedAt);
- const total=trustworthy?items.length:0,processed=trustworthy?verified+alreadyCurrent+failed+blocked:0;
- const pct=total?Math.min(100,Math.round(100*processed/total)):0;
+ const total=trustworthy?fiscalParentMap(items).size:0,processed=trustworthy?verified+alreadyCurrent+failed+blocked:0;
+ const pendingTotal=trustworthy?[...fiscalParentMap(items).values()].filter(rows=>fiscalIssue(rows[0])).length:0;
+ const pct=pendingTotal?Math.min(100,Math.round(100*processed/pendingTotal)):(trustworthy?100:0);
  $('raFiscalRunPhase').textContent=phase+(sku?' · SKU '+sku:'');
  $('raFiscalRunPercent').textContent=trustworthy?pct+'%':'—';
  $('raFiscalRunFill').style.width=trustworthy?pct+'%':'0%';
@@ -91,7 +142,7 @@ function progress(state,phase='Pronto para executar',sku=''){
   ' editáveis (ativos e inativos) · '+(liveCensus.totalListings-editableCount())+' em análise/bloqueados. ':
   'Contagem oficial da Shopee ainda não consultada. ';
  $('raFiscalRunCounts').textContent=official+(trustworthy?
-  'SKUs editáveis identificadas '+total+' · Verificadas '+processed+'/'+total+
+  'Anúncios examinados '+total+' · Pendências processadas '+processed+'/'+pendingTotal+
   ' · Enviadas e confirmadas '+verified+' · Já preenchidas '+alreadyCurrent+' · Pendentes '+blocked+' · Falhas '+failed:
   'Histórico antigo: '+items.length+' SKUs. Não representa o catálogo completo nem confirmação atual de envio.');
  const numbers={
@@ -101,6 +152,7 @@ function progress(state,phase='Pronto para executar',sku=''){
   optimizerFiscalBatchVerified:trustworthy?verified+alreadyCurrent:'—'
  };
  for(const [key,value] of Object.entries(numbers))if($(key))$(key).textContent=String(value);
+ renderFiscalGapInventory(state);
  const issues=$('raFiscalRunIssues');issues.replaceChildren();
  if(!trustworthy)return;
  const problem=Object.entries(state?.errors||{}).filter(([key])=>ids.has(key)&&
@@ -182,10 +234,12 @@ async function run(){
    let offset=0,finished=false;let checkedStatus=0;
    for(let page=0;page<200;page++){
    report(state,'Consultando anúncios '+status+' na Shopee · '+all.length+' SKUs encontradas');
-   const data=await request('/api/shopee/optimizer/fiscal-migration/active-skus?fast=1&status='+status+'&offset='+offset);
+   const data=await request('/api/shopee/optimizer/fiscal-migration/active-skus?fast=1&inspect=1&status='+status+'&offset='+offset);
    if(!Array.isArray(data.items)||!Array.isArray(data.pageItemIds)||
       !Number.isSafeInteger(data.pageItemCount)||data.pageItemCount!==data.pageItemIds.length)
      throw Error('Shopee retornou uma página de anúncios incompleta.');
+   if(!data.items.every(x=>x.fiscal&&['empty','partial','complete'].includes(x.fiscal.status)))
+    throw Error('Página sem leitura fiscal oficial de todos os Item IDs.');
    if(data.status!==status||!Number.isSafeInteger(data.totalCount)||data.totalCount!==census.statuses[status])
      throw Error('A quantidade de anúncios ativos mudou durante a conferência; nenhuma escrita foi autorizada.');
    for(const itemId of data.pageItemIds){
@@ -214,6 +268,9 @@ async function run(){
     // Sem job de envio persistido, reconfirmar a informação na API em cada nova execução.
     delete state.done[key];
    }
+   if(state.done[key]==='verified'&&fiscalIssue(item)){
+    delete state.done[key];delete state.errors[key];
+   }
    if(state.done[key]==='verified'){
     const last=await jobStatus(item);
     if(last?.status!=='verified'){delete state.done[key];delete state.errors[key];}
@@ -226,7 +283,7 @@ async function run(){
   state.census=census.statuses;
   save(state);
   inventoryVerifiedThisSession=true;
-  report(state,'Conferidos anúncios ativos e inativos editáveis. Em análise/bloqueados foram contabilizados e não serão alterados.');
+  report(state,'Auditoria fiscal concluída. Anúncios sem dados e parciais identificados por Item ID; somente essas pendências serão processadas.');
 
   if(state.pending){
    const item=all.find(x=>idOf(x)===state.pending);
@@ -234,10 +291,17 @@ async function run(){
    report(state,'Recuperando envio anterior sem duplicar',item.sku);
    await awaitConfirmation(state,item);
   }
-  for(let i=0;i<all.length;i++){
-   const item=all[i],key=idOf(item);
+  // Fiscal is stored on parent Item ID, not on each variation. Never
+  // execute the same parent twice; inspect the entire store before writing.
+  const pendingParents=[...fiscalParentMap(all).values()].filter(rows=>fiscalIssue(rows[0]));
+  for(let i=0;i<pendingParents.length;i++){
+   const candidates=pendingParents[i];
+   // Prefer a stored reviewed SKU if indicated. If none is confirmed,
+   // execute-one will block without an upload; do not assume a tax code.
+   const item=candidates.find(x=>x.reviewed===true)||candidates[0],
+     key=idOf(item);
    if(state.done[key]==='verified'||state.done[key]==='uncertain')continue;
-   report(state,'SKU '+(i+1)+'/'+all.length+' · Preparando dados fiscais',item.sku);
+   report(state,'Pendência '+(i+1)+'/'+pendingParents.length+' · Preparando dados fiscais',item.sku);
    try{
     // Uma única chamada: o backend aproveita os dados já salvos, preenche
     // somente os campos fiscais ausentes, valida a fonte e agenda o envio.
@@ -246,6 +310,7 @@ async function run(){
     let response=null;
     try{
      response=await post('/api/shopee/optimizer/fiscal-migration/execute-one',{
+      missingOnly:true,
       confirmation:'EXECUTAR FISCAL SKU',
       sku:item.sku,itemId:item.itemId,modelId:item.modelId
      },0); // Sem retry de POST que pode publicar tax_info.

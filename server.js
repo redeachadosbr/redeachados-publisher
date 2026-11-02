@@ -68,6 +68,7 @@ import {hasRejectedShopeeVideo,prepareRejectedVideoRetry,prepareRejectedVideoRel
 import {recyclableShopeeMedia,archiveShopeeMedia} from './shopeeExecutionMediaReuse.js';
 import {normalizedShopeeFiscalBatchSkus,checkedShopeeFiscalBatchEntries} from './shopeeExecutionBatch.js';
 import {fiscalPreviewDisposition} from './shopeeFiscalReadiness.js';
+import {inspectShopeeFiscalGap,fiscalFillMissingOnly} from './shopeeFiscalGap.js';
 import {detectShopeeExecutionIssue,needsCestRevalidation} from './shopeeExecutionIssues.js';
 import {createShopeeMediaApi} from './shopeeMediaApi.js';
 import {normalizeManualVideo} from './shopeeVideoValidation.js';
@@ -1357,6 +1358,33 @@ app.get('/api/shopee/optimizer/fiscal-migration/active-skus',mustLogin,requireWe
   // Consultas em pequenos grupos evitam timeouts HTTP 502 ao examinar mais de 400 SKUs.
   // Não consultar get_model_list em produtos sem variações: uma chamada desnecessária
   // por anúncio fazia cada página levar dezenas de segundos.
+  const inspect=String(req.query.inspect||'')==='1';
+  // Extra official readback of fiscal fields, not catalog-cache guesses.
+  // Abort the page if a single Item ID cannot be verified.
+  const fiscalById=new Map();
+  if(inspect){
+   const pageIds=(page.items||[]).map(x=>String(x.itemId));
+   for(let at=0;at<pageIds.length;at+=25){
+    const ids=pageIds.slice(at,at+25);
+    const response=await callShopeeShopApi(cfg,{
+     path:'/api/v2/product/get_item_base_info',
+     accessToken:auth.accessToken,shopId:auth.shopId,
+     query:{item_id_list:ids.join(','),need_tax_info:true}
+    });
+    const rows=response?.response?.item_list;
+    if(!Array.isArray(rows))throw Error('A Shopee não retornou tax_info para a página.');
+    const returned=new Set();
+    for(const row of rows){
+     const key=String(row?.item_id||'');
+     if(!ids.includes(key)||returned.has(key))continue;
+     returned.add(key);
+     fiscalById.set(key,inspectShopeeFiscalGap(row.tax_info));
+    }
+    if(returned.size!==ids.length)
+     throw Error('Leitura fiscal incompleta: '+returned.size+' de '+ids.length+
+      ' Item IDs. A página não será considerada auditada.');
+   }
+  }
   const items=page.items||[],results=[];
   if(items.some(item=>!item.baseLoaded))
     throw Error('Shopee não retornou todos os detalhes desta página. Nenhuma lista parcial foi aceita; tente novamente.');
@@ -1385,6 +1413,7 @@ app.get('/api/shopee/optimizer/fiscal-migration/active-skus',mustLogin,requireWe
         const checked=Boolean(review?.sku===candidate.sku&&
           review?.review_state?.stages?.fiscal?.reviewed&&review?.review_state?.tax?.ncm);
         output.push({sku:candidate.sku,itemId,modelId:candidate.modelId,
+          fiscal:inspect?fiscalById.get(itemId):undefined,
           title:item.title||'',listingStatus:status,unitSuggestion:suggestFiscalMeasureUnit(item.title).unit,reviewed:checked,
           status:checked?'revisado':'requer revisão fiscal'});
       }
@@ -2860,6 +2889,7 @@ app.post('/api/shopee/optimizer/execution/prepare',mustLogin,requireWeDropAdmin,
 // esquema de atributos, mídia ou preço, pois só envia tax_info.
 async function auditFiscalSkuLight(cfg,auth,itemId,modelId,sku){
  const live=await shopeeLiveEditableItem(cfg,auth,itemId);
+ let fiscalModels=[];
  const status=String(live.item_status||'');
  if(!['NORMAL','UNLIST'].includes(status))
   throw Error('Anúncio não está em estado editável na Shopee.');
@@ -2870,7 +2900,8 @@ async function auditFiscalSkuLight(cfg,auth,itemId,modelId,sku){
    path:'/api/v2/product/get_model_list',accessToken:auth.accessToken,
    shopId:auth.shopId,query:{item_id:Number(itemId)}
   });
-  const model=normalizeShopeeModels(raw).find(x=>x.modelId===String(modelId));
+  fiscalModels=normalizeShopeeModels(raw);
+  const model=fiscalModels.find(x=>x.modelId===String(modelId));
   if(!model||model.sku!==sku)
    throw Error('SKU ou modelo diverge da listagem oficial Shopee.');
   if(!['MODEL_NORMAL','MODEL_UNAVAILABLE','NORMAL','UNLIST'].includes(model.status))
@@ -2882,7 +2913,7 @@ async function auditFiscalSkuLight(cfg,auth,itemId,modelId,sku){
   title:String(live.item_name||''),status,hasModel:Boolean(live.has_model),
   categoryId:Number(live.category_id)||0,imageCount:0,videoStatus:'Não consultado',
   attributeAudit:{attributes:[],missingMandatory:0}};
- return {record,live};
+ return {record,live,fiscalModels};
 }
 // Execução fiscal direta: um único roundtrip de preparação + validação +
 // agendamento durável. A autorização veio do único botão autenticado da loja.
@@ -2904,10 +2935,22 @@ app.post('/api/shopee/optimizer/fiscal-migration/execute-one',mustLogin,requireW
       'Envio anterior ainda sem confirmação; a operação não será repetida.'});
   // Revalidar identidade e dados atuais sem consultar ficha técnica, vídeo,
   // imagens ou preço: esses campos não participam da atualização fiscal.
-  const {record,live}=await auditFiscalSkuLight(cfg,auth,itemId,modelId,sku);
+  const {record,live,fiscalModels}=await auditFiscalSkuLight(cfg,auth,itemId,modelId,sku);
   const existing=await getWorkflowReview(auth.shopId,itemId,modelId);
   if(existing&&existing.sku!==sku)throw Error('A revisão salva pertence a outra SKU.');
   const previousTax=existing?.review_state?.tax||{};
+  const missingOnly=req.body?.missingOnly===true;
+  const gap=inspectShopeeFiscalGap(live.tax_info);
+  if(missingOnly&&gap.status==='complete')
+   return res.json({ok:true,sku,itemId,modelId,status:'already_current',
+    message:'Todos os campos fiscais principais já constam na Shopee. Sem alterações.'});
+  if(missingOnly&&gap.invalid.length)
+   return res.json({ok:true,sku,itemId,modelId,status:'blocked',needsReview:true,
+    message:'Código fiscal inválido na Shopee ('+gap.invalid.join(', ')+
+     '). Corrija na ficha antes de qualquer alteração automática.'});
+  if(missingOnly&&existing?.review_state?.stages?.fiscal?.reviewed!==true)
+   return res.json({ok:true,sku,itemId,modelId,status:'blocked',
+    needsReview:true,message:'Ficha fiscal ainda não revisada no Motor Matriz. Nenhum dado presumido foi enviado.'});
   const supplier=await readWeDropProduct(auth.shopId,{sku,itemId,modelId});
   const supplierLinked=supplier&&['exact-sku','reviewed-link'].includes(supplier.matchedBy);
   const sourceNcm=String(supplierLinked?supplier.product_data?.ncm||'':'').replace(/\D/g,'');
@@ -2949,6 +2992,22 @@ app.post('/api/shopee/optimizer/fiscal-migration/execute-one',mustLogin,requireW
    throw Error('Os dados fiscais não foram persistidos; operação cancelada.');
   fiscalMatrixSource({sku,supplier:supplierLinked?supplier:null,tax:reviewedTax,
    reviewSource:review.review_state.matrixFiscal});
+  if(missingOnly&&record.hasModel){
+   // Tax info is parent-scoped. A single SKU's NCM is not sufficient when
+   // other model SKUs are different products; fail closed on missing evidence.
+   const expectedNcm=String(reviewedTax.ncm||'');
+   const modelSkus=[...new Set(fiscalModels.map(x=>String(x.sku||'').trim()).filter(Boolean))];
+   if(modelSkus.length!==fiscalModels.length)
+    throw Error('Uma variação está sem SKU ou possui SKU duplicada. Fiscal do anúncio-pai exige revisão.');
+   for(const modelSku of modelSkus){
+    const linked=await readWeDropProduct(auth.shopId,{sku:modelSku,itemId,modelId:'0'});
+    const theirNcm=String(linked?.product_data?.ncm||'').replace(/\D/g,'');
+    if(!['exact-sku','reviewed-link'].includes(linked?.matchedBy)||!/^\d{8}$/.test(theirNcm)||
+       theirNcm!==expectedNcm)
+     return res.json({ok:true,sku,itemId,modelId,status:'blocked',needsReview:true,
+      message:'Variação '+modelSku+' não tem NCM confirmado igual ao das demais. O fiscal pertence ao Item ID; nenhuma alteração foi enviada.'});
+   }
+  }
   // tax_info pertence ao anúncio-pai na API Shopee. Não sobrescrever
   // o NCM de outra variação sem verificar o enquadramento do anúncio inteiro.
   const liveNcm=String(live.tax_info?.ncm||'').replace(/\D/g,'');
@@ -2958,8 +3017,18 @@ app.post('/api/shopee/optimizer/fiscal-migration/execute-one',mustLogin,requireW
       liveNcm+' / ficha '+reviewedTax.ncm+
       '. A API fiscal altera o anúncio-pai. Corrija o vínculo fiscal antes de substituir dados de outras variações.'});
   }
+  const reviewedData=review.review_state;
+  let executionReview=reviewedData;
+  if(missingOnly){
+   const reconciled=fiscalFillMissingOnly(live.tax_info,reviewedTax);
+   if(!reconciled.changed.length)
+    return res.json({ok:true,sku,itemId,modelId,status:'already_current',
+     message:'Campos fiscais já conferidos na Shopee. Nada para enviar.'});
+   // Original reviewed source is still audited; only blank fields are added.
+   executionReview={...reviewedData,tax:{...reconciled.tax,evidence:reviewedTax.evidence}};
+  }
   const plan=compileShopeeExecutionPlan({shopId:auth.shopId,itemId,modelId,sku,
-   record,review:review.review_state,live,selectedStage:'fiscal'});
+   record,review:executionReview,live,selectedStage:'fiscal'});
   if(!plan.canExecute&&!plan.blocked.length&&!plan.proposed.tax_info)
    return res.json({ok:true,sku,itemId,modelId,status:'already_current',
     message:'Os campos fiscais da ficha já constam na Shopee; leitura oficial confirmada.'});
@@ -2972,6 +3041,10 @@ app.post('/api/shopee/optimizer/fiscal-migration/execute-one',mustLogin,requireW
     !plan.proposed.tax_info||plan.images?.length||plan.video)
    return res.json({ok:true,sku,itemId,modelId,status:'blocked',
     message:plan.blocked.join(' · ')||'Informação fiscal não elegível para envio.'});
+  if(missingOnly&&Object.entries(plan.proposed?.tax_info||{}).some(([k,v])=>
+     String(live.tax_info?.[k]??'').trim()&&
+     String(live.tax_info[k])!==String(v)))
+   throw Error('Motor Matriz: campo fiscal já preenchido não pode ser sobrescrito em execução de pendências.');
   confirmShopeeExecution(plan,{sku,confirmation:'EXECUTAR '+sku});
   const saved=await saveShopeePreparedExecution(auth.shopId,itemId,modelId,sku,plan);
   await claimShopeePreparedExecution(auth.shopId,itemId,modelId,{

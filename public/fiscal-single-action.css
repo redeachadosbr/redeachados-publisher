@@ -1,3 +1,13 @@
+#tab-optimizer .ra-fiscal-gap-kpis{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px;margin:4px 0 10px}
+#tab-optimizer .ra-fiscal-gap-kpis>div{padding:10px;border-radius:9px;background:#f5f9ff;border:1px solid #dce7f2;min-width:0}
+#tab-optimizer .ra-fiscal-gap-kpis span{display:block;font-size:11px;color:#52708e}
+#tab-optimizer .ra-fiscal-gap-kpis strong{display:block;font-size:22px;color:#13365b}
+#tab-optimizer #raFiscalGapInventory{margin:8px 0;color:#304d65;font-size:12px}
+#tab-optimizer .ra-fiscal-gap-details{margin-top:9px;border:1px solid #d7e8f2;border-radius:10px;padding:9px;background:#f9fcff}
+#tab-optimizer .ra-fiscal-gap-details summary{cursor:pointer;font-weight:700}
+#tab-optimizer .ra-fiscal-gap-list{max-height:260px;overflow:auto;margin-top:8px}
+#tab-optimizer .ra-fiscal-gap-list p{padding:5px 2px;border-bottom:1px solid #e7eef5;margin:0}
+@media(max-width:700px){#tab-optimizer .ra-fiscal-gap-kpis{grid-template-columns:repeat(2,minmax(0,1fr));}}
 #tab-optimizer .optimizer-fiscal-batch-actions{display:flex;flex-direction:column;gap:10px;align-items:stretch}
 #tab-optimizer #optimizerFiscalMigrationRun.ra-fiscal-main-action{width:100%;min-height:58px;background:linear-gradient(145deg,#109454,#08713e);border:1px solid #087e47;color:#fff;font-size:16px;font-weight:850;border-radius:14px;box-shadow:0 7px 15px rgba(6,95,57,.18);cursor:pointer}
 #tab-optimizer #optimizerFiscalMigrationRun.ra-fiscal-main-action:hover:not(:disabled){filter:brightness(1.07);transform:translateY(-1px)}
