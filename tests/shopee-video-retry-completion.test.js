@@ -161,7 +161,7 @@ test('prévia com somente vídeo direciona clique único para o escopo vídeo se
  assert.match(app,/function optimizerIsVideoOnlyPreparedPlan\(plan\)/);
  assert.match(app,/plan\.actions\.length===1&&plan\.actions\[0\]==='video'/);
  assert.match(app,/optimizerExecJob\?\.state==='prepared'&&optimizerIsVideoOnlyPreparedPlan/);
- assert.match(app,/if\(videoOnly\)\{\s*\$\('#optimizerExecutionScope'\)\.value='video'/);
+ assert.match(app,/if\(videoOnly\)\{\s*\$\('#optimizerExecutionScope'\)\.value='all'/);
  assert.match(app,/p\?\.selectedStage==='video'\|\|optimizerIsVideoOnlyPreparedPlan\(p\)/);
 });
 
@@ -196,4 +196,23 @@ test('percentual não chega perto de 100 com vídeo não publicado',()=>{
  assert.equal(p.videoPublished,false);
  assert.ok(p.percent<=80,'no false 97% when upload is staged');
  assert.equal(p.verified,false);
+});
+
+test('plano completo somente com vídeo não exige nova prévia nem desconto',async()=>{
+ const {isShopeeVideoOnlyPlan}=await import('../shopeeExecutionPlan.js');
+ const only={selectedStage:'all',canExecute:true,
+  actions:['video'],video:{sha256:'a'.repeat(64)},images:[],proposed:{},
+  finalFiscal:null,modelVariations:null,kitDiscount:null,discountOnly:false};
+ assert.equal(isShopeeVideoOnlyPlan(only),true);
+ assert.equal(isShopeeVideoOnlyPlan({...only,actions:['video','tax_info']}),false);
+ assert.equal(isShopeeVideoOnlyPlan({...only,selectedStage:'discount'}),false);
+ assert.equal(isShopeeVideoOnlyPlan({...only,proposed:{item_name:'new title'}}),false);
+ assert.equal(isShopeeVideoOnlyPlan({...only,commercialDiscount:{snapshot:{}}}),false);
+ const source=readFileSync(new URL('../server.js',import.meta.url),'utf8');
+ assert.match(source,/!linkedKit&&!isShopeeVideoOnlyPlan\(plan\)/);
+ const ui=readFileSync(new URL('../public/app.js',import.meta.url),'utf8');
+ assert.match(ui,/if\(videoOnly\)\{\s*\$\('#optimizerExecutionScope'\)\.value='all'/);
+ assert.match(ui,/if\(optimizerIsVideoOnlyPreparedPlan\(plan\)\)return true;/);
+ assert.match(ui,/!optimizerIsVideoOnlyPreparedPlan\(p\)&&!optimizerKitWorkflowActive/);
+ assert.match(ui,/optimizerExecutionPrepare\(\{fromExecutionClick:true\}\)/);
 });

@@ -56,7 +56,7 @@ import {getWorkflowReview,saveWorkflowReview,mergeWorkflowTechnicalAutofill} fro
 import {compileShopeeExecutionPlan,confirmShopeeExecution,
   assertLiveShopeeUnchanged,verifyShopeeExecution,verifyShopeeFiscalExecution,normalizeShopeeExecutionStage,
   shopeeExecutionUnconfirmedFields,assessShopeeStableCommercialRecovery,
-  approvedShopeeReadbackConvergence,videoMatches,videoPublishedAfterPlan} from './shopeeExecutionPlan.js';
+  approvedShopeeReadbackConvergence,videoMatches,videoPublishedAfterPlan,isShopeeVideoOnlyPlan} from './shopeeExecutionPlan.js';
 import {readShopeeExecution,saveShopeePreparedExecution,
   claimShopeePreparedExecution,finishShopeeExecution,pendingShopeeExecutions,leaseShopeeExecution,
   checkpointShopeeExecution,reconcileShopeeJob} from './shopeeExecutionStore.js';
@@ -3336,7 +3336,10 @@ app.post('/api/shopee/optimizer/execution/execute',mustLogin,requireWeDropAdmin,
    throw Error('Etapa fiscal pendente: revise os dados fiscais antes de aprovar o desconto final.');
   // Kit composto: primeiro o anuncio, depois a promocao do kit pela rota
   // especifica, apenas apos a execucao ser confirmada pela Shopee.
-  if(['all','remaining','discount','discount_adjust'].includes(plan.selectedStage)&&!linkedKit){
+  // An approved one-video plan has no commercial change. It must NOT be
+  // forced through campaign discounts or an artificial scope transition.
+  if(['all','remaining','discount','discount_adjust'].includes(plan.selectedStage)&&
+     !linkedKit&&!isShopeeVideoOnlyPlan(plan)){
    // Em planos de variação, o clique autenticado + o plano imutável no banco
    // autorizam a promoção exibida. O token de 10 minutos não pode bloquear
    // anúncio e mídia depois de o usuário ter aprovado essa mesma prévia.

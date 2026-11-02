@@ -18,6 +18,17 @@ export function normalizeShopeeExecutionStage(stage='all'){
  if(!SHOPEE_EXECUTION_STAGES.includes(selected))throw Error('Etapa de publicação desconhecida.');
  return selected;
 }
+/** A full-scope preview containing exactly one authorized video action.
+ * Other reviewed stages may be already published, but nothing else is written.
+ * Do not require any discount token or manipulate the execution stage. */
+export function isShopeeVideoOnlyPlan(plan){
+ return plan?.selectedStage==='all'&&plan?.canExecute===true&&
+  Array.isArray(plan.actions)&&plan.actions.length===1&&plan.actions[0]==='video'&&
+  Boolean(plan.video?.sha256)&&Array.isArray(plan.images)&&plan.images.length===0&&
+  Object.keys(plan.proposed||{}).length===0&&!plan.finalFiscal&&!plan.modelVariations&&
+  !plan.kitDiscount&&!plan.commercialDiscount&&!plan.discountOnly;
+}
+
 export function compileShopeeExecutionPlan({shopId,itemId,modelId,sku,record,review,live,manualVideo=null,verifiedVideoSha256=null,manualImages=[],deferUnconfirmedFiscal=false,omitFiscal=false,selectedStage='all',allowDiscountOnly=false,modelVariations=null,kitDiscount=null}){
   selectedStage=normalizeShopeeExecutionStage(selectedStage);
   const selected=name=>selectedStage==='all'||selectedStage===name||selectedStage==='remaining'&&name==='fiscal'||selectedStage==='media_fiscal'&&['images','video','fiscal'].includes(name);
