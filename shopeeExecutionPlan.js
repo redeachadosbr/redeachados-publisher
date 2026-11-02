@@ -340,6 +340,8 @@ export function videoPublishedAfterPlan(plan,item,uploadedVideo){
  const before=new Set(videoListingEntries({video_info:plan.original?.video_info})
   .flatMap(videoListingKeys));
  return videoListingEntries(item).some(entry=>{
+  const status=String(entry?.video_status||entry?.status||'').toUpperCase();
+  if(/FAILED|REJECTED|CANCELLED|DELETED|TRANSCODING|PROCESSING/.test(status))return false;
   const keys=videoListingKeys(entry);
   return keys.length>0&&!keys.some(key=>before.has(key));
  });
