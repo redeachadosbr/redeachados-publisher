@@ -84,6 +84,7 @@ export function auditRootShopeeExecution({
  // já obtidas pela leitura oficial e sem tentar uma segunda escrita incerta.
  const phases={
   images_upload:'images',video_upload:'video',video_processing:'video',
+  video_attach_ready:'video',video_attach_updating:'video',video_attach_verifying:'video',
   updating:null,verifying:null,
   variation_ready:'variants',variation_updating:'variants',variation_verifying:'variants',
   fiscal_ready:'fiscal',fiscal_updating:'fiscal',fiscal_verifying:'fiscal',
@@ -93,6 +94,7 @@ export function auditRootShopeeExecution({
  if(['failed','uncertain'].includes(job?.state)){
   const phase=String(job?.result?.phase||'');
   let affected=phases[phase]||null;
+  if(/video task not found|video_upload_id.*(?:not found|invalid|illegal)/i.test(String(job.last_error||'')))affected='video';
   if(!affected&&/^model_discount_|^discount_|^kit_discount_/.test(phase))affected='discount';
   if(!affected&&/^variation_/.test(phase))affected='variants';
   if(!affected&&/^fiscal_/.test(phase))affected='fiscal';
