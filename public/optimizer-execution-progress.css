@@ -100,34 +100,34 @@ body.view-optimizer.optimizer-one-button-mode .optimizer-execution-live-phase:no
 
 
 /* REDE ACHADOS BR • Execução visual 9 fases, fiel à referência aprovada. */
-/* Escopo SOMENTE anúncio individual: o assistente de Kits mantém o fluxo atual. */
-body.view-optimizer.optimizer-one-button-mode #optimizerExecutionTracker{
+/* O painel visual vale para anúncio individual e kit; os comandos de kit continuam intactos. */
+body.view-optimizer.optimizer-visual-mode #optimizerExecutionTracker{
  border-radius:19px!important;background:#fff!important;border:1px solid #dce7f5!important;
  box-shadow:0 12px 32px rgba(23,64,120,.07)!important;overflow:hidden;
 }
-body.view-optimizer.optimizer-one-button-mode .optimizer-exec-progress-card{
+body.view-optimizer.optimizer-visual-mode .optimizer-exec-progress-card{
  background:transparent!important;border:0!important;box-shadow:none!important;
  display:flex!important;flex-direction:column!important;padding:12px 12px 6px!important;
 }
-body.view-optimizer.optimizer-one-button-mode .optimizer-exec-progress-head,
-body.view-optimizer.optimizer-one-button-mode #optimizerExecutionBar,
-body.view-optimizer.optimizer-one-button-mode #optimizerExecutionLivePhase,
-body.view-optimizer.optimizer-one-button-mode .optimizer-exec-progress-card > .optimizer-exec-steps{
+body.view-optimizer.optimizer-visual-mode .optimizer-exec-progress-head,
+body.view-optimizer.optimizer-visual-mode #optimizerExecutionBar,
+body.view-optimizer.optimizer-visual-mode #optimizerExecutionLivePhase,
+body.view-optimizer.optimizer-visual-mode .optimizer-exec-progress-card > .optimizer-exec-steps{
  display:none!important;
 }
-body.view-optimizer.optimizer-one-button-mode #optimizerExecutionVisual:not([hidden]){
+body.view-optimizer.optimizer-visual-mode #optimizerExecutionVisual:not([hidden]){
  display:block!important;order:0;margin:0 0 12px;
  color:#102d59;font-family:inherit;
 }
-body.view-optimizer.optimizer-one-button-mode .optimizer-exec-resume-bar{order:2}
-body.view-optimizer.optimizer-one-button-mode .ra-visual-hero{
+body.view-optimizer.optimizer-visual-mode .optimizer-exec-resume-bar{order:2}
+body.view-optimizer.optimizer-visual-mode .ra-visual-hero{
  display:grid;grid-template-columns:54px minmax(0,1fr) auto;
  align-items:center;column-gap:16px;row-gap:12px;
  background:linear-gradient(110deg,#113382 0%,#155ca7 62%,#258fd4 100%);
  color:#fff;border-radius:15px;padding:19px 22px 16px;
  box-shadow:0 10px 20px rgba(13,72,152,.14);
 }
-body.view-optimizer.optimizer-one-button-mode .ra-visual-hero-icon{
+body.view-optimizer.optimizer-visual-mode .ra-visual-hero-icon{
  display:flex;align-items:center;justify-content:center;width:52px;height:52px;
  border-radius:15px;background:linear-gradient(135deg,#518dff,#1e63d8);
  font-size:30px;box-shadow:inset 0 1px 0 #ffffff66;
@@ -252,7 +252,7 @@ body.view-optimizer.optimizer-one-button-mode .ra-visual-hero-icon{
  .ra-visual-current h4{font-size:21px}
 }
 @media(max-width:760px){
- body.view-optimizer.optimizer-one-button-mode .ra-visual-hero{
+ body.view-optimizer.optimizer-visual-mode .ra-visual-hero{
   grid-template-columns:44px minmax(0,1fr);padding:16px;gap:10px
  }
  .ra-visual-hero-icon{width:43px!important;height:43px!important}
@@ -272,4 +272,15 @@ body.view-optimizer.optimizer-one-button-mode .ra-visual-hero-icon{
 }
 @media(prefers-reduced-motion:reduce){
  .ra-visual-progress span,.ra-phase-icon{transition:none!important}
+}
+
+/* Kit: ocultar apenas os indicadores antigos duplicados, não as ações comerciais. */
+body.view-optimizer.optimizer-visual-mode:not(.optimizer-one-button-mode) .optimizer-exec-progress-head,
+body.view-optimizer.optimizer-visual-mode:not(.optimizer-one-button-mode) #optimizerExecutionBar,
+body.view-optimizer.optimizer-visual-mode:not(.optimizer-one-button-mode) #optimizerExecutionSteps,
+body.view-optimizer.optimizer-visual-mode:not(.optimizer-one-button-mode) #optimizerExecutionLivePhase {
+ display:none!important;
+}
+body.view-optimizer.optimizer-visual-mode:not(.optimizer-one-button-mode) #optimizerExecutionVisual:not([hidden]){
+ display:block!important;margin-bottom:16px;
 }
