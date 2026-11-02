@@ -4799,6 +4799,9 @@ function optimizerExecutionTrackerRender(progress,job){
   log.prepend(li);
  }
  if(!log.children.length)log.append(optimizerMake('li','optimizer-exec-event-empty','Aguardando registros da execução.'));
+ // Atualizar painel visual com o MESMO objeto de progresso e resposta de job.
+ // Nunca transformar uploads na biblioteca em anuncio publicado.
+ if(!optimizerKitWorkflowActive())optimizerExecutionVisualPaint(progress,job);
 }
 function optimizerExecutionIssueRender(issue){
  const el=$('#optimizerExecutionIssue');
@@ -6205,6 +6208,29 @@ globalThis.RAKitExecutePendingAllStages=async({kitSku,sku,itemId,modelId}={})=>{
 let optimizerOneClickBusy=false;
 let optimizerOneClickConsentKey='';
 let optimizerExecutionLiveIdentity='';
+function optimizerExecutionVisualPaint(progress=null,job=null){
+ if(optimizerKitWorkflowActive())return;
+ const w=optimizerWorkflowPlan;
+ if(!w)return;
+ const key=[w.sku,w.itemId,w.modelId].map(String).join('|');
+ const phase=$('#optimizerExecutionLivePhase');
+ const liveMatches=optimizerExecutionLiveIdentity===key;
+ const history=liveMatches?Array.from($('#optimizerExecutionLiveHistory')?.children||[])
+  .map(li=>{
+   const content=String(li.textContent||'');
+   const separator=content.indexOf(' — ');
+   return {title:separator>=0?content.slice(0,separator):content,
+    detail:separator>=0?content.slice(separator+3):''};
+  }):[];
+ const shownTitle=liveMatches?String($('#optimizerExecutionLiveTitle')?.textContent||''):'';
+ globalThis.RAExecutionVisual?.render?.({
+  identity:key,progress:progress||optimizerExecProgress||{},
+  job:job||optimizerExecJob||null,
+  eventTitle:shownTitle,
+  eventState:liveMatches?String(phase?.dataset?.state||''):'',
+  history
+ });
+}
 function optimizerExecutionLiveStep(title,detail='',state='info',{reset=false}={}){
  if(optimizerKitWorkflowActive())return;
  const w=optimizerWorkflowPlan;
@@ -6232,6 +6258,7 @@ function optimizerExecutionLiveStep(title,detail='',state='info',{reset=false}={
   history.append(li);
   while(history.children.length>6)history.firstElementChild.remove();
  }
+ optimizerExecutionVisualPaint(optimizerExecProgress,optimizerExecJob);
 }
 
 async function optimizerOneClickExecute(){
