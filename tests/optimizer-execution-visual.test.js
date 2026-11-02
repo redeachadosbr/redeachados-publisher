@@ -95,3 +95,21 @@ test('falha de desconto não reverte imagens já confirmadas nem finge publicaç
  assert.ok(state.completed<9);
  assert.match(state.detail,/Sem concorrentes/);
 });
+
+
+test('SKU 305350: um centavo pendente ANTES da escrita não é espera falsa da Shopee',()=>{
+ const state=derive({
+  job:{state:'uncertain',result:{phase:'discount_ready',primaryVerified:true},
+   last_error:'Preço bruto diferente da prévia; nenhuma alteração foi enviada.'},
+  progress:{hasStarted:true,hasSavedProgress:true,percent:83,
+   steps:[{id:'images',status:'done'},{id:'video',status:'done'},
+    {id:'seo',status:'done'},{id:'description',status:'done'},
+    {id:'technical',status:'done'},{id:'discount',status:'attention'}]}
+ });
+ assert.match(state.title,/Preço bruto divergente/);
+ assert.match(state.detail,/Nenhum envio de preço ou desconto/);
+ assert.equal(state.states[7],'error');
+ assert.equal(state.states[8],'waiting');
+ assert.equal(state.states[0],'done');
+ assert.equal(state.percent,83);
+});
