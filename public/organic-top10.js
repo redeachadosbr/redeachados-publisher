@@ -68,6 +68,19 @@
     add(number(row.visits),'Visitas');
     add(number(row.clicks),'Cliques');
     add(percent(row.ctr),'CTR','organic-top10-ctr');
+    // "Adicionado ao carrinho" não significa que o comprador desistiu.
+    // Sem coluna explícita de abandono, mostrar adições com rótulo distinto.
+    const hasAbandonment=row.cartPending!==null&&row.cartPending!==undefined;
+    const hasAdditions=row.cartAdded!==null&&row.cartAdded!==undefined;
+    const countLabel=hasAbandonment?
+     row.cartCountKind==='carts'?'Carrinhos abandonados':'Parados no carrinho':
+     hasAdditions?'Adicionados (não abandonos)':'Carrinho sem dados';
+    add(number(hasAbandonment?row.cartPending:row.cartAdded),countLabel,
+     hasAbandonment?'organic-top10-pending':'organic-top10-added');
+    add(percent(row.cartAbandonmentRate),
+     row.cartRateSource==='calculated'?'Abandono calculado (mesma base)':
+     row.cartRateSource==='reported'?'Abandono informado':'Abandono não verificado',
+     'organic-top10-abandonment');
     const action=el(card,'button','Ver SKU','organic-top10-open-item');
     action.type='button';
     action.disabled=!row.sku||typeof globalThis.RAOpenPendingImageSku!=='function';
@@ -96,7 +109,7 @@
      $('organicTop10Period').textContent='Período: sem relatório salvo';
      $('organicTop10Count').textContent='Dados orgânicos indisponíveis';
      $('organicTop10Footnote').textContent=
-      'Nenhuma métrica orgânica foi importada. O sistema não usa indicadores de Shopee Ads como substituto.';
+      'Nenhuma métrica orgânica foi importada. O sistema não usa indicadores de Shopee Ads ou adicionados ao carrinho como abandono.';
      notice('Nenhum relatório orgânico foi salvo nesta loja. Para mostrar produtos reais, importe o relatório de Informações Gerenciais, filtrado para tráfego sem Ads.');
      importBox.hidden=false;
      sorts.forEach(b=>b.disabled=b.dataset.sort!=='combined');
@@ -110,10 +123,10 @@
      items.length+' de '+number(data.rowCount)+' SKUs · atualizado em '+date(data.importedAt);
     $('organicTop10Footnote').textContent=
      'Fonte: relatório orgânico importado em '+date(data.importedAt)+
-     '. Sem vinculação aos relatórios Shopee Ads. Campos ausentes são mostrados como “—”.'+
+     '. Sem Shopee Ads. Adições ao carrinho não comprovam abandono; a porcentagem só aparece se a fonte informar ou permitir um cálculo com bases compatíveis. Campos ausentes = “—”.'+
      (data.catalogWarning?' '+data.catalogWarning:'');
     sorts.forEach(button=>{
-     button.disabled=button.dataset.sort!=='combined'&&available[button.dataset.sort]===false;
+     button.disabled=button.dataset.sort!=='combined'&&available[button.dataset.sort]!==true;
      button.setAttribute('aria-pressed',String(button.dataset.sort===sort));
     });
     status.hidden=true;
