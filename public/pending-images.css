@@ -1,6 +1,6 @@
 /* Auditoria de imagens: somente leitura, alinhada à linguagem visual Shopee Manager. */
 .pending-images{max-width:1450px;margin:0 auto;display:grid;gap:18px}
-.pending-images-header{padding:27px 29px;background:linear-gradient(125deg,#fff 50%,#f1f7ff);border:1px solid #dbe5f3;border-radius:22px;box-shadow:0 8px 24px #223a5010}
+.pending-images-header{display:block;align-items:initial;gap:0;margin-bottom:0;padding:27px 29px;background:linear-gradient(125deg,#fff 50%,#f1f7ff);border:1px solid #dbe5f3;border-radius:22px;box-shadow:0 8px 24px #223a5010}
 .pending-images-heading{display:flex;justify-content:space-between;align-items:flex-start;gap:18px;flex-wrap:wrap}
 .pending-images-label{display:inline-block;font-size:12px;font-weight:800;letter-spacing:.1em;color:#2860ad;margin-bottom:7px}
 .pending-images-header h2{font-size:clamp(24px,2.4vw,34px);color:#112e58;margin:4px 0 8px}
