@@ -1,3 +1,4 @@
+# Diagnóstico temporário: executar suíte da versão anterior, sem alterar código.
 name: Validar serviço Shopee
 
 on:
