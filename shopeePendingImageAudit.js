@@ -135,3 +135,25 @@ export async function scanShopeePendingImagesPage({cfg,auth,callApi,status='NORM
   nextOffset,rows:rows.sort((a,b)=>Number(a.itemId)-Number(b.itemId)||
    String(a.modelId).localeCompare(String(b.modelId)))};
 }
+
+
+// Confirmação pontual, sem cache, do MESMO Item ID após otimizar imagens.
+// Só a galeria real retornada pela Shopee autoriza retirar o anúncio da fila.
+export async function verifyShopeePendingImageItem({cfg,auth,callApi,itemId}){
+ const id=validItemId(itemId);
+ const response=await callApi(cfg,{
+  path:'/api/v2/product/get_item_base_info',
+  accessToken:auth.accessToken,shopId:auth.shopId,
+  query:{item_id_list:id}
+ });
+ const items=response?.response?.item_list;
+ if(!Array.isArray(items)||items.length!==1||String(items[0]?.item_id)!==id)
+  throw Error('A Shopee não confirmou a galeria exata do Item ID '+id+'.');
+ const imageCount=pendingImageCount(items[0]);
+ return {source:'shopee-api-live',itemId:id,shopId:String(auth.shopId),
+  verifiedAt:new Date().toISOString(),
+  imageCount,requiredImages:IMAGE_GOAL,
+  missingImages:imageCount===null?null:Math.max(0,IMAGE_GOAL-imageCount),
+  status:imageCount===null?'unverified':imageCount>=IMAGE_GOAL?'confirmed':'pending',
+  complete:imageCount!==null&&imageCount>=IMAGE_GOAL};
+}
