@@ -47,12 +47,18 @@
   setMetric('pendingImagesNoStock','active_no_stock');
   setMetric('pendingImagesInactive','inactive');
   setMetric('pendingImagesUnknown','unverified');
+  // Uma galeria é única por anúncio-pai: cinco SKUs de variação não
+  // significam cinco fotografias faltantes no mesmo anúncio.
+  const priority=groupRows('active_with_stock');
+  const parents=new Map(priority.map(x=>[x.itemId,x.missingImages||0]));
+  const missingPhotos=[...parents.values()].reduce((total,n)=>total+n,0);
   find('pendingImagesActiveDetail').textContent=
-   num(byCategory.active_with_stock)+' anúncios/variações · 0 a 8 imagens';
+   num(byCategory.active_with_stock)+' registros de SKUs em '+
+   num(parents.size)+' anúncios-pai';
   find('pendingImagesScanned').textContent=(completed?'Auditoria completa: ':'Leitura parcial: ')+
    num(scannedListings)+' anúncios consultados'+(totalListings?' de '+num(totalListings):'')+
-   '. '+num(groupRows('active_with_stock').reduce((n,x)=>n+Number(x.missingImages||0),0))+
-   ' imagens faltantes nos registros ativos com estoque.';
+   '. Prioridade: '+num(parents.size)+' anúncios-pai e '+
+   num(missingPhotos)+' imagens faltantes (sem duplicar variações).';
   find('pendingImagesAsOf').textContent=
    (completed?'Última leitura integral: ':'Resultado parcial: ')+
    (checkedAt?safeDate(checkedAt):'não concluída')+
