@@ -106,7 +106,7 @@ test('salvar duas medições preserva o primeiro valor e registra último do dia
   if(opts.method==='POST'){
    const rows=JSON.parse(opts.body);
    for(const r of rows)data.set(r.shop_id+':'+r.item_id+':'+r.observed_day,r);
-   return new Response('',{status:204});
+   return new Response(null,{status:204});
   }
   const snapshot=[...data.values()].filter(x=>String(x.shop_id)==='1');
   return new Response(JSON.stringify(snapshot),{status:200});
