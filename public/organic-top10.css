@@ -275,3 +275,54 @@ body.organic-top10-open{overflow:hidden}
     text-align:center;
   }
 }
+
+/* Performance do Produto — campos exatos da Central do Vendedor. */
+.organic-top10-modal[data-source="performance"] .organic-top10-grid-header,
+.organic-top10-modal[data-source="performance"] .organic-top10-item{
+ display:grid;
+ align-items:center;
+ grid-template-columns:minmax(210px,2.4fr) repeat(8,minmax(82px,.83fr)) minmax(80px,.7fr);
+ column-gap:9px;
+}
+.organic-top10-modal[data-source="performance"] .organic-top10-product{
+ min-width:0;
+}
+.organic-top10-modal[data-source="performance"] .organic-top10-value > span{
+ font-size:clamp(16px,1.45vw,22px);
+}
+.organic-top10-modal[data-source="performance"] .organic-top10-value > small{
+ font-size:10px;
+}
+.organic-top10-modal[data-source="performance"] .organic-top10-grid-header{
+ overflow-x:visible;
+}
+@media(min-width:901px){
+ .organic-top10-modal[data-source="performance"]{
+  width:min(1530px,100%);
+ }
+ .organic-top10-modal[data-source="performance"] .organic-top10-item{
+  padding:12px 10px;
+ }
+}
+@media(max-width:1200px){
+ .organic-top10-modal[data-source="performance"] .organic-top10-grid-header{
+  display:none;
+ }
+ .organic-top10-modal[data-source="performance"] .organic-top10-item{
+  grid-template-columns:repeat(4,minmax(0,1fr));
+  row-gap:14px;
+ }
+ .organic-top10-modal[data-source="performance"] .organic-top10-product{
+  grid-column:1/-1;
+  border-bottom:1px solid #e6eff8;
+  padding-bottom:8px;
+ }
+ .organic-top10-modal[data-source="performance"] .organic-top10-open-item{
+  grid-column:1/-1;
+ }
+}
+@media(max-width:600px){
+ .organic-top10-modal[data-source="performance"] .organic-top10-item{
+  grid-template-columns:repeat(2,minmax(0,1fr));
+ }
+}
