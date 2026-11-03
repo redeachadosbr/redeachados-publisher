@@ -94,3 +94,26 @@ test('campos vazios fora da tabela aprovada não tornam o anúncio pendente',()=
  assert.equal(incorrect.status,'partial');
  assert.deepEqual(incorrect.mismatched,['origin']);
 });
+
+test('executor não exige campos fora da tabela de referência',()=>{
+ const reference={ncm:'95030099',origin:'2',csosn:'102'};
+ const live={ncm:'95030099',origin:'2',csosn:'102',
+  cest:'',operation_type:'',measure_unit:''};
+ const unchanged=fiscalFillMissingOnly(live,reference,{referenceOnly:true});
+ assert.deepEqual(unchanged.changed,[]);
+ assert.equal(unchanged.tax.cest,'');
+ const missing=fiscalFillMissingOnly({...live,origin:''},reference,{referenceOnly:true});
+ assert.deepEqual(missing.changed,['origin']);
+ assert.equal(missing.tax.origin,'2');
+ assert.equal(missing.tax.operation_type,'');
+});
+test('executor não sobrescreve campo já preenchido fora do padrão da referência',()=>{
+ const reference={ncm:'95030099',origin:'2',csosn:'102'};
+ assert.throws(()=>fiscalFillMissingOnly(
+  {ncm:'95030099',origin:'1',csosn:'102'},reference,{referenceOnly:true}),
+  /Dados fiscais diferentes da tabela aprovada.*origin/);
+ assert.throws(()=>fiscalFillMissingOnly(
+  {ncm:'95030099',origin:'',csosn:'102'},
+  {origin:'2',csosn:'102'},{referenceOnly:true}),
+  /Ficha fiscal sem referência confirmada.*ncm/);
+});
