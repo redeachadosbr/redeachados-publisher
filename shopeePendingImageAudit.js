@@ -25,7 +25,8 @@ export function pendingImageCategory({listingStatus,modelStatus='',stock,sku,ima
  if(stock===null||!Number.isFinite(stock)||stock<0)return 'unverified';
  return stock>0?'active_with_stock':'active_no_stock';
 }
-const safeInt=value=>Number.isSafeInteger(Number(value))&&Number(value)>=0?Number(value):null;
+const safeInt=value=>value!==null&&value!==undefined&&value!==''&&
+ Number.isSafeInteger(Number(value))&&Number(value)>=0?Number(value):null;
 const idOf=row=>validItemId(row?.item_id);
 const locationOf=base=>{
  const image=base?.image||{};
@@ -38,6 +39,14 @@ export function pendingImageRows({status,item,models=null}){
  const title=String(item.item_name||'').trim();
  const realStatus=String(item.item_status||status).trim().toUpperCase();
  const parent=normalizeCatalogItem({item_id:itemId,item_status:realStatus},item);
+ // Não consultar modelos de anúncios já completos nem quando a Shopee
+ // omite a lista de imagens: nestes casos o resultado fica não verificado.
+ if(count!==null&&count>=IMAGE_GOAL)return [];
+ if(count===null)return [{
+  key:itemId+':unverified',sku:parent.sku,itemId,modelId:'0',
+  title,listingStatus:realStatus,modelStatus:'',
+  stock:null,imageCount:null,missingImages:null,imageUrl:locationOf(item),
+  category:'unverified',reason:'A Shopee não retornou image_id_list nem image_url_list.'}];
  const options=parent.hasModel?
   (Array.isArray(models)?models:null):
   [{sku:parent.sku,modelId:'0',stock:parent.stock,status:''}];
@@ -45,13 +54,6 @@ export function pendingImageRows({status,item,models=null}){
   throw Error('Variações não confirmadas para Item ID '+itemId+'.');
  if(parent.hasModel&&!options.length)
   throw Error('Anúncio '+itemId+' possui variações mas a Shopee retornou zero modelos.');
- // Não listar SKUs de anúncio que já tem 9 fotos.
- if(count!==null&&count>=IMAGE_GOAL)return [];
- if(count===null)return [{
-  key:itemId+':unverified',sku:parent.sku,itemId,modelId:'0',
-  title,listingStatus:realStatus,modelStatus:'',
-  stock:null,imageCount:null,missingImages:null,imageUrl:locationOf(item),
-  category:'unverified',reason:'A Shopee não retornou image_id_list nem image_url_list.'}];
  return options.map(model=>{
   const sku=String(model.sku||'').trim();
   const stock=model.stock===null||model.stock===undefined?null:Number(model.stock);
