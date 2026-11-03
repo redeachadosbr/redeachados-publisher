@@ -6312,8 +6312,9 @@ async function optimizerOneClickExecute(){
    await optimizerExecPreparation.finished;
    if(!same())return;
   }
-  const matrixIndependent=optimizerMatrixIndependentPendingPlan(optimizerExecPlan)||
-   (optimizerExecJob?.state==='prepared'&&optimizerMatrixIndependentPendingPlan(optimizerExecJob.plan));
+  const matrixIndependent=$('#optimizerExecutionScope')?.value==='all'&&
+   (optimizerMatrixIndependentPendingPlan(optimizerExecPlan)||
+    (optimizerExecJob?.state==='prepared'&&optimizerMatrixIndependentPendingPlan(optimizerExecJob.plan)));
   if(matrixIndependent){
    $('#optimizerExecutionScope').value='all';
    const approved=(optimizerExecPlan||optimizerExecJob?.plan)?.actions||[];
@@ -6321,7 +6322,9 @@ async function optimizerOneClickExecute(){
     'Ações aprovadas: '+approved.map(a=>optimizerMatrixStageNames[a]||a).join(', ')+
     '. Demais etapas preservadas.','info');
   }
-  const desiredStage=['all','discount_adjust'].includes($('#optimizerExecutionScope')?.value)?
+  const allowedStages=['all','discount_adjust','images','video','seo','description',
+   'technical','fiscal','variants'];
+  const desiredStage=allowedStages.includes($('#optimizerExecutionScope')?.value)?
    $('#optimizerExecutionScope').value:'all';
   // Para a execução só da promoção, preparar primeiro o snapshot assinado.
   // Imagens, vídeo, título e descrição já confirmados não entram nesse plano.
@@ -6512,7 +6515,8 @@ async function optimizerOneClickExecute(){
   if(same())optimizerExecUpdateRunButton();
  }
 }
-$('#optimizerExecutionLaunch')?.addEventListener?.('click',()=>void optimizerOneClickExecute());
+$('#optimizerExecutionLaunch')?.addEventListener?.('click',()=>
+ void globalThis.RAExecutionPrimaryAction?.());
 $('#optimizerExecutionOver25Consent')?.addEventListener?.('change',()=>{
  optimizerExecUpdateRunButton();
 });
@@ -7317,6 +7321,12 @@ $('#optimizerExecutionReconcile')?.addEventListener?.('click',()=>void optimizer
 let optimizerPrimaryActionBusy=false;
 globalThis.RAExecutionCurrentStatus=()=>({
  state:optimizerExecJob?.state||'prepared',
+ rootAuditKnown:Boolean(optimizerWorkflowPlan&&optimizerRootAuditCache.get(
+  [optimizerWorkflowPlan.sku,String(optimizerWorkflowPlan.itemId),
+   String(optimizerWorkflowPlan.modelId)].join('|'))?.audit),
+ rootAuditPending:Boolean(optimizerWorkflowPlan&&optimizerRootAuditCache.get(
+  [optimizerWorkflowPlan.sku,String(optimizerWorkflowPlan.itemId),
+   String(optimizerWorkflowPlan.modelId)].join('|'))?.audit?.pending?.some(id=>id!=='final')),
  videoTaskRejected:optimizerExecutionVideoRejected(optimizerExecJob),
  videoRelinkExhausted:optimizerExecutionVideoRejected(optimizerExecJob)&&
   Number(optimizerExecJob?.result?.videoRelinkCount||0)>=1,
@@ -7335,7 +7345,7 @@ globalThis.RAExecutionCurrentStatus=()=>({
   discount:Number(optimizerDiscountFinalQuote.discountPct)
  }:null
 });
-globalThis.RAExecutionPrimaryAction=async()=>{
+globalThis.RAExecutionPrimaryAction=async(onlyStage=null)=>{
  const w=optimizerWorkflowPlan;
  if(!w||optimizerPrimaryActionBusy||optimizerExecBusy||optimizerOneClickBusy||kitAllStagesStarting)return;
  const identity=[w.sku,String(w.itemId),String(w.modelId||0)].join('|');
@@ -7372,7 +7382,8 @@ globalThis.RAExecutionPrimaryAction=async()=>{
   // Execução antiga: uma tarefa de upload recusada NÃO prova que o
   // vídeo está ausente do anúncio. Consultar o Item ID antes de preparar
   // qualquer novo envio e manter as demais etapas independentes.
-  if(['failed','verified'].includes(optimizerExecJob?.state)&&optimizerExecutionVideoRejected(optimizerExecJob)){
+  if((!onlyStage||onlyStage==='video')&&
+   ['failed','verified'].includes(optimizerExecJob?.state)&&optimizerExecutionVideoRejected(optimizerExecJob)){
    optimizerExecutionLiveStep('Retomando somente o vídeo',
     'Conferindo o Item ID; se o vídeo está processado, reconectando sem novo upload.','info');
    const d=await json('/api/shopee/optimizer/execution/reconcile',{
@@ -7393,8 +7404,11 @@ globalThis.RAExecutionPrimaryAction=async()=>{
   }
   // This already-prepared single-video plan is revalidated by the EXECUTE
   // endpoint itself. An audit/auto-prepare here would overwrite its CAS ID.
-  if((optimizerExecJob?.state==='prepared'&&optimizerMatrixIndependentPendingPlan(optimizerExecJob.plan))||
-     optimizerMatrixIndependentPendingPlan(optimizerExecPlan)){
+  const savedVideoOnly=optimizerExecJob?.state==='prepared'&&
+   optimizerExecJob?.plan?.actions?.length===1&&
+   optimizerExecJob.plan.actions[0]==='video'&&
+   optimizerExecJob.plan.selectedStage==='all';
+  if(!onlyStage&&savedVideoOnly){
    await optimizerOneClickExecute();
    return;
   }
@@ -7421,12 +7435,23 @@ globalThis.RAExecutionPrimaryAction=async()=>{
   }
   const pending=audit.stages.filter(s=>s.id!=='final'&&
    !['confirmed','not_applicable'].includes(s.status));
-  const onlyDiscount=pending.length===1&&pending[0].id==='discount';
+  const picked=onlyStage?pending.find(s=>s.id===onlyStage):null;
+  if(onlyStage&&!picked){
+   optimizerExecNotice('Etapa '+onlyStage+' já confirmada ou não aplicável na Shopee. Nada será reenviado.','success');
+   return;
+  }
+  if(picked?.status==='uncertain'){
+   optimizerExecNotice('A etapa '+picked.label+' tem resultado incerto. Conferir o envio anterior antes de tentar novamente: '+picked.reason,'warning');
+   return;
+  }
+  const one=picked||pending.length===1?picked||pending[0]:null;
   const scope=$('#optimizerExecutionScope');
-  if(scope)scope.value=onlyDiscount?'discount_adjust':'all';
-  optimizerExecNotice(onlyDiscount?
-   'Somente preço bruto e desconto pendentes: preservando imagens, vídeo e conteúdo publicados.':
-   'Conferindo as etapas pendentes; somente mudanças aprovadas serão enviadas.','info');
+  const chosen=one?(one.id==='discount'?'discount_adjust':one.id):'all';
+  if(scope)scope.value=chosen;
+  optimizerExecNotice(one?
+   'Somente '+one.label+' pendente: '+one.reason+
+    '. Todas as outras etapas serão preservadas.':
+   'Executando exclusivamente diferenças aprovadas e ainda pendentes; etapas já confirmadas serão preservadas.','info');
   await optimizerOneClickExecute();
  }catch(error){
   if(same())optimizerExecNotice('Conferência não concluída: '+String(error.message||error)+
