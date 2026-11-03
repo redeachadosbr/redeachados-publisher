@@ -5454,6 +5454,7 @@ app.get('/api/shopee/product-views/top10',mustLogin,requireWeDropAdmin,async(req
 });
 app.post('/api/shopee/product-views/collect',mustLogin,requireWeDropAdmin,async(req,res)=>{
  res.setHeader('Cache-Control','no-store');
+ if(!verifiedSameOrigin(req))return res.status(403).json({ok:false,error:'Origem não autorizada.'});
  try{
   const {auth,cfg}=await getValidAuth(req);
   const id=String(auth.shopId);
