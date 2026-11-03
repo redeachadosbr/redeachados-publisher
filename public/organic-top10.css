@@ -91,3 +91,33 @@ body.organic-top10-open{overflow:hidden}
 @media(max-width:540px){
  .organic-top10-item{grid-template-columns:repeat(2,minmax(0,1fr))}
 }
+
+/* Fonte oficial da API e filtros temporais — separam views gerais de orgânico. */
+.organic-top10-source-bar{display:flex;flex-wrap:wrap;gap:8px;padding:5px;border-radius:15px;background:#eaf1fa;margin-bottom:14px}
+.organic-top10-source-bar button.organic-top10-mode{
+ width:auto!important;min-width:190px!important;flex:1 1 225px;min-height:41px!important;margin:0!important;
+ padding:9px 15px!important;border-radius:11px!important;border:1px solid transparent!important;
+ background:transparent!important;color:#446687!important;box-shadow:none!important;
+ font-size:12px!important;font-weight:800!important;
+}
+.organic-top10-source-bar button.organic-top10-mode[aria-pressed="true"]{
+ background:#fff!important;color:#1457a4!important;border-color:#c6def8!important;
+ box-shadow:0 6px 17px rgba(24,62,112,.15)!important;
+}
+.organic-top10-api-periods{display:flex;flex-direction:column;gap:10px;background:#fff;
+ border:1px solid #d8e4f3;border-radius:15px;padding:12px 15px;margin-bottom:15px}
+.organic-top10-api-periods[hidden],.organic-top10-tools[hidden],.organic-top10-custom-range[hidden]{display:none!important}
+.organic-top10-period-pills{display:flex;flex-wrap:wrap;gap:8px}
+.organic-top10-period-pills button{min-width:82px!important;width:auto!important;
+ padding:8px 13px!important;min-height:35px!important;background:#eaf2ff!important;
+ color:#31577e!important;border:1px solid #d6e5fa!important;border-radius:10px!important;
+ font-weight:800!important;font-size:12px!important}
+.organic-top10-period-pills button[aria-pressed="true"]{color:#fff!important;background:#165ab5!important;box-shadow:0 5px 13px rgba(33,96,174,.2)!important}
+.organic-top10-api-periods p{margin:0!important;color:#607c98;font-size:11px;line-height:1.55}
+.organic-top10-custom-range{display:flex;flex-wrap:wrap;align-items:end;gap:8px}
+.organic-top10-custom-range label{display:grid;gap:4px;font-weight:750;color:#3e5e82;font-size:12px}
+.organic-top10-custom-range input{width:auto;min-height:35px;border:1px solid #bfd4eb;border-radius:9px;padding:6px 8px}
+.organic-top10-custom-range button{width:auto!important;min-height:35px!important;padding:7px 11px!important;border-radius:9px!important;background:#185aa5!important}
+.organic-top10-banner[data-status="success"]{background:#eaf7f1;color:#1d684d;border-color:#c5e6d4}
+.organic-top10-banner[data-status="error"]{background:#fff5f2;color:#9c3e29;border-color:#ebcaba}
+.organic-top10-sample-warning{color:#a86721;font-weight:750}
