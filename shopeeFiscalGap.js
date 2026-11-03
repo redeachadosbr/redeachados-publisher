@@ -9,7 +9,7 @@ export const SHOPEE_FISCAL_OPTIONAL_FIELDS=Object.freeze([
  'pis_cofins_cst','operation_type','cest'
 ]);
 const present=x=>String(x??'').trim().length>0;
-export function inspectShopeeFiscalGap(raw){
+export function inspectShopeeFiscalGap(raw, reference=null){
  const tax=raw&&typeof raw==='object'&&!Array.isArray(raw)?raw:{};
  const missingCore=SHOPEE_FISCAL_REQUIRED_FIELDS.filter(k=>!present(tax[k]));
  // Rede Achados BR requested these three otherwise-optional fields be filled,
@@ -27,11 +27,16 @@ export function inspectShopeeFiscalGap(raw){
   ...(present(tax.pis_cofins_cst)&&!/^\d{2}$/.test(String(tax.pis_cofins_cst).trim())?['pis_cofins_cst']:[]),
   ...(present(tax.operation_type)&&!/^[12]$/.test(String(tax.operation_type).trim())?['operation_type']:[])
  ];
- const hasAny=[...SHOPEE_FISCAL_REQUIRED_FIELDS,...SHOPEE_FISCAL_OPTIONAL_FIELDS]
-  .some(k=>present(tax[k]));
+ // A ficha fiscal aprovada é a referência: preenchido não significa correto.
+ const fields=[...SHOPEE_FISCAL_REQUIRED_FIELDS,...SHOPEE_FISCAL_OPTIONAL_FIELDS];
+ const hasReference=Boolean(reference&&typeof reference==='object'&&!Array.isArray(reference));
+ const unverified=hasReference?fields.filter(k=>!present(reference[k])):[];
+ const mismatched=hasReference?fields.filter(k=>present(tax[k])&&present(reference[k])&&
+  String(tax[k]).trim()!==String(reference[k]).trim()):[];
+ const hasAny=fields.some(k=>present(tax[k]));
  return {
-  status:!hasAny?'empty':missing.length||invalid.length?'partial':'complete',
-  missing,missingCore,missingConfigured,invalid,filled,
+  status:!hasAny?'empty':missing.length||invalid.length||mismatched.length||unverified.length?'partial':'complete',
+  missing,missingCore,missingConfigured,invalid,mismatched,unverified,filled,
   required:SHOPEE_FISCAL_REQUIRED_FIELDS.length,
   configured:SHOPEE_FISCAL_OPTIONAL_FIELDS.length
  };
