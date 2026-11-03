@@ -2968,11 +2968,6 @@ app.post('/api/shopee/optimizer/fiscal-migration/execute-one',mustLogin,requireW
   if(existing&&existing.sku!==sku)throw Error('A revisão salva pertence a outra SKU.');
   const previousTax=existing?.review_state?.tax||{};
   const missingOnly=req.body?.missingOnly===true;
-  const gap=inspectShopeeFiscalGap(live.tax_info);
-  if(missingOnly&&gap.invalid.length)
-   return res.json({ok:true,sku,itemId,modelId,status:'blocked',needsReview:true,
-    message:'Código fiscal inválido na Shopee ('+gap.invalid.join(', ')+
-     '). Corrija na ficha antes de qualquer alteração automática.'});
   const supplier=await readWeDropProduct(auth.shopId,{sku,itemId,modelId});
   const supplierLinked=supplier&&['exact-sku','reviewed-link'].includes(supplier.matchedBy);
   const sourceNcm=String(supplierLinked?supplier.product_data?.ncm||'':'').replace(/\D/g,'');
@@ -3000,7 +2995,7 @@ app.post('/api/shopee/optimizer/fiscal-migration/execute-one',mustLogin,requireW
    diff_state_cfop:previousTax.diff_state_cfop||'6106',
    csosn:previousTax.csosn||'102',
    pis_cofins_cst:previousTax.pis_cofins_cst||'99',
-   operation_type:previousTax.operation_type||'1',
+   ...(previousTax.operation_type?{operation_type:previousTax.operation_type}:{}),
    cest:wedropCestForSku(supplierLinked?supplier:null),measure_unit:measureUnit,evidence};
   // Validar antes da revisão: demais dados permanecem; CEST é exclusivo da WeDrop
   // ou 00 no cadastro interno. Nunca inferir CEST real a partir do NCM/Shopee.
@@ -3011,6 +3006,13 @@ app.post('/api/shopee/optimizer/fiscal-migration/execute-one',mustLogin,requireW
   if(!String(previousTax.operation_type||'').trim())
    delete referenceTax.operation_type;
   const comparison=inspectShopeeFiscalGap(live.tax_info,referenceTax);
+  if(missingOnly&&comparison.invalid.length)
+   return res.json({ok:true,sku,itemId,modelId,status:'blocked',needsReview:true,
+    message:'Campo exigido pela tabela tem formato inválido na Shopee: '+
+     comparison.invalid.join(', ')+'. Revisar sem sobrescrever.'});
+  if(missingOnly&&comparison.unverified.length)
+   return res.json({ok:true,sku,itemId,modelId,status:'blocked',needsReview:true,
+    message:'A tabela de referência não tem NCM confirmado para esta SKU.'});
   if(missingOnly&&comparison.status==='complete')
    return res.json({ok:true,sku,itemId,modelId,status:'already_current',
     message:'Campos fiscais comparados à tabela aprovada e confirmados na Shopee.'});
@@ -3062,7 +3064,7 @@ app.post('/api/shopee/optimizer/fiscal-migration/execute-one',mustLogin,requireW
   const reviewedData=review.review_state;
   let executionReview=reviewedData;
   if(missingOnly){
-   const reconciled=fiscalFillMissingOnly(live.tax_info,reviewedTax);
+   const reconciled=fiscalFillMissingOnly(live.tax_info,referenceTax,{referenceOnly:true});
    if(!reconciled.changed.length)
     return res.json({ok:true,sku,itemId,modelId,status:'already_current',
      message:'Campos fiscais já conferidos na Shopee. Nada para enviar.'});
