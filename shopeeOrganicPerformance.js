@@ -2,6 +2,7 @@
 // identificadas como tráfego NÃO PAGO. Nunca consultar endpoints Shopee Ads.
 import * as XLSX from '@stackline/xlsx';
 const TABLE='shopee_organic_performance_snapshots';
+const PERFORMANCE_TABLE='shopee_product_performance_snapshots';
 const LIMIT=4_000_000;
 const MAX_ROWS=20000;
 const names={
@@ -12,6 +13,16 @@ const names={
  visits:['visitantes do produto','visitantes','visitas','visitas do produto','visitas organicas','visitas ao produto','product visitors','unique product visitors','product visits','product page views','visualizacoes de pagina do produto'],
  clicks:['cliques','cliques do produto','cliques no produto','cliques organicos','product clicks','organic clicks'],
  ctr:['ctr','ctr %','ctr organico','taxa de cliques','taxa de cliques %','click through rate'],
+ uniqueImpressions:['impressoes unicas de produto','impressoes unicas do produto','unique product impressions'],
+ uniqueClicks:['cliques unicos no produto','cliques unicos de produto','unique product clicks'],
+ pageViews:['visualizacoes da pagina do produto','visualizacoes da pagina','product page views'],
+ searchClicks:['cliques em buscas','cliques nas buscas','search clicks'],
+ cartVisitors:['visitantes (adicionar ao carrinho)','visitantes adicionar ao carrinho','visitantes que adicionaram ao carrinho','unique add to cart visitors'],
+ cartUnits:['unidades (adicionar ao carrinho)','unidades adicionar ao carrinho','unidades adicionadas ao carrinho','add to cart units'],
+ cartConversionRate:['taxa de conversao (adicionar ao carrinho)','taxa de conversao adicionar ao carrinho','taxa de conversao do carrinho','add to cart conversion rate'],
+ orderConversionRate:['taxa de conversao de pedidos','taxa conversao de pedidos','order conversion rate'],
+ orders:['pedidos','quantidade de pedidos','orders','total orders'],
+ soldUnits:['unidades','unidades vendidas','itens vendidos','units sold','products sold'],
  cartAdded:['itens adicionados ao carrinho','produtos adicionados ao carrinho','unidades adicionadas ao carrinho','adicoes ao carrinho','adicionados ao carrinho','adicoes no carrinho','add to cart','add to cart units','items added to cart'],
  cartPending:['itens abandonados no carrinho','produtos abandonados no carrinho','unidades abandonadas no carrinho','itens deixados no carrinho','produtos deixados no carrinho','carrinhos abandonados','carrinhos parados','abandonos de carrinho','itens nao comprados no carrinho','cart abandonment units','abandoned cart units','abandoned carts'],
  cartAbandonmentRate:['taxa de abandono do carrinho','taxa de abandono de carrinho','taxa de abandono carrinho','abandono de carrinho %','porcentagem de abandono do carrinho','cart abandonment rate','abandoned cart rate','taxa de carrinho abandonado','taxa de carrinhos abandonados','taxa de abandono %'],
@@ -21,11 +32,14 @@ const fold=x=>String(x??'').normalize('NFD').replace(/[\u0300-\u036f]/g,'')
  .toLowerCase().replace(/\s*\(.*?\)\s*/g,' ').replace(/[%:_\-\/]+/g,' ')
  .replace(/\s+/g,' ').trim();
 const label=x=>String(x??'').trim();
+// Preserve parentheses contents so visitors to product != visitors who added to cart.
+const headerKey=x=>String(x??'').normalize('NFD').replace(/[\u0300-\u036f]/g,'')
+ .toLowerCase().replace(/[()%:_\-/]+/g,' ').replace(/\s+/g,' ').trim();
 function fields(header){
- const normalized=header.map(fold);
+ const normalized=header.map(headerKey);
  const found={};
  for(const [key,alternatives] of Object.entries(names)){
-  const opts=new Set(alternatives.map(fold));
+  const opts=new Set(alternatives.map(headerKey));
   const idx=normalized.findIndex(value=>opts.has(value));
   if(idx!==-1)found[key]=idx;
  }
@@ -79,7 +93,7 @@ function workbookRows(buffer,fileName){
    header:1,raw:false,defval:'',blankrows:false});
   if(rows.length>MAX_ROWS+12)throw Error('Relatório acima do limite de SKUs.');
   if(rows.some((r,i)=>i<8&&(fields(r).sku!==undefined||fields(r).itemId!==undefined)&&
-    ['impressions','visits','clicks','ctr','cartAdded','cartPending','cartAbandonmentRate'].some(k=>fields(r)[k]!==undefined)))
+    ['impressions','visits','clicks','ctr','cartAdded','cartPending','cartAbandonmentRate','cartVisitors','cartUnits','cartConversionRate','orders','orderConversionRate'].some(k=>fields(r)[k]!==undefined)))
    matched.push({rows,sheetName});
  }
  if(matched.length!==1)throw Error(matched.length?
@@ -88,10 +102,10 @@ function workbookRows(buffer,fileName){
  return matched[0];
 }
 function indexHeader(rows){
- for(let i=0;i<Math.min(8,rows.length);i++){
+ for(let i=0;i<Math.min(25,rows.length);i++){
   const columns=fields(rows[i]||[]);
   if((columns.sku!==undefined||columns.itemId!==undefined)&&
-     ['impressions','visits','clicks','ctr','cartAdded','cartPending','cartAbandonmentRate'].some(k=>columns[k]!==undefined))
+     ['impressions','visits','clicks','ctr','cartAdded','cartPending','cartAbandonmentRate','cartVisitors','cartUnits','cartConversionRate','orders','orderConversionRate'].some(k=>columns[k]!==undefined))
    return {start:i+1,columns};
  }
  throw Error('Cabeçalho inválido. É necessário SKU ou Item ID e alguma métrica orgânica de alcance, cliques ou carrinho.');
@@ -118,10 +132,16 @@ const isPaid=x=>{
  return /\b(ads|pago|patrocinad|paid|sponsored|promovid|anunci)/.test(source);
 };
 const isOrganic=x=>/\b(organic|organico|nao pago|sem ads|sem anuncios|gratuit|busca|diret|direct|recomendac)/.test(fold(x));
-export function parseOrganicReport(buffer,{
- fileName,periodStart,periodEnd,organicConfirmed=false
+export function parseOrganicReport(buffer,options={}){
+ return parseProductReport(buffer,{...options,mode:'organic'});
+}
+export function parseProductPerformanceReport(buffer,options={}){
+ return parseProductReport(buffer,{...options,mode:'performance'});
+}
+function parseProductReport(buffer,{
+ fileName,periodStart,periodEnd,organicConfirmed=false,mode='organic'
 }={}){
- if(organicConfirmed!==true)
+ if(mode==='organic'&&organicConfirmed!==true)
   throw Error('Confirme que o arquivo representa exclusivamente tráfego orgânico, sem Ads.');
  const validDate=x=>/^\d{4}-\d{2}-\d{2}$/.test(String(x||''))&&
    !Number.isNaN(Date.parse(x+'T00:00:00Z'));
@@ -137,15 +157,19 @@ export function parseOrganicReport(buffer,{
   if(!sku&&!/^[1-9]\d{0,18}$/.test(itemId)){skipped.empty++;continue;}
   if(columns.traffic!==undefined){
    const source=label(row[columns.traffic]);
-   if(isPaid(source)){skipped.paid++;continue;}
-   if(!isOrganic(source))
-    throw Error('Origem de tráfego sem confirmação orgânica na SKU '+(sku||itemId)+
-     '. Filtre o relatório para orgânico, sem Ads.');
+   if(mode==='organic'){
+    if(isPaid(source)){skipped.paid++;continue;}
+    if(!isOrganic(source))
+     throw Error('Origem de tráfego sem confirmação orgânica na SKU '+(sku||itemId)+
+      '. Filtre o relatório para orgânico, sem Ads.');
+   }
   }
   const metric={};
-  for(const k of ['impressions','visits','clicks','cartAdded','cartPending'])
+  for(const k of ['impressions','visits','clicks','cartAdded','cartPending','uniqueImpressions','uniqueClicks','pageViews','searchClicks','cartVisitors','cartUnits','orders','soldUnits'])
    metric[k]=columns[k]===undefined?null:count(row[columns[k]]);
   const ctr=columns.ctr===undefined?null:percent(row[columns.ctr]);
+  const cartConversionRate=columns.cartConversionRate===undefined?null:percent(row[columns.cartConversionRate]);
+  const orderConversionRate=columns.orderConversionRate===undefined?null:percent(row[columns.orderConversionRate]);
   const explicitAbandonment=columns.cartAbandonmentRate===undefined?
    null:percent(row[columns.cartAbandonmentRate]);
   // Só calcular abandono quando numerador e denominador medem a MESMA
@@ -166,7 +190,7 @@ export function parseOrganicReport(buffer,{
     metric.clicks>metric.impressions)
    throw Error('Cliques maiores que impressões na SKU '+(sku||itemId)+
     '. Verifique se as colunas estão corretas.');
-  if(Object.values(metric).every(v=>v===null)&&ctr===null&&explicitAbandonment===null)continue;
+  if(Object.values(metric).every(v=>v===null)&&ctr===null&&explicitAbandonment===null&&cartConversionRate===null&&orderConversionRate===null)continue;
   const id=sku||'#'+itemId;
   if(used.has(id))throw Error('SKU repetida: '+id+
    '. Use um relatório consolidado por SKU e período.');
@@ -181,7 +205,11 @@ export function parseOrganicReport(buffer,{
   list.push({sku,itemId:/^[1-9]\d{0,18}$/.test(itemId)?itemId:'',
    title:label(row[columns.title]).slice(0,220),
    impressions:metric.impressions,visits:metric.visits,clicks:metric.clicks,
-   ctr:computed===null?ctr:computed,
+   ctr:ctr===null?computed:ctr,
+   uniqueImpressions:metric.uniqueImpressions,uniqueClicks:metric.uniqueClicks,
+   pageViews:metric.pageViews,searchClicks:metric.searchClicks,
+   cartVisitors:metric.cartVisitors,cartUnits:metric.cartUnits,
+   cartConversionRate,orders:metric.orders,soldUnits:metric.soldUnits,orderConversionRate,
    cartAdded:metric.cartAdded,cartPending:metric.cartPending,
    cartAbandonmentRate:cartRate,cartRateSource:explicitAbandonment!==null?
     'reported':cartRate!==null?'calculated':'unavailable',
@@ -189,22 +217,21 @@ export function parseOrganicReport(buffer,{
   if(list.length>MAX_ROWS)throw Error('Relatório excede 20 mil linhas.');
  }
  if(!list.length)throw Error('Não encontrei SKUs com métricas orgânicas válidas.');
- const metricAvailability=Object.fromEntries(['impressions','visits','clicks','ctr',
-   'cartAdded','cartPending','cartAbandonmentRate'].map(k=>
+ const metricAvailability=Object.fromEntries(['impressions','visits','clicks','ctr','cartAdded','cartPending','cartAbandonmentRate','cartVisitors','cartUnits','cartConversionRate','orders','orderConversionRate','uniqueImpressions','uniqueClicks','pageViews','searchClicks','soldUnits'].map(k=>
   [k,list.some(r=>r[k]!==null)]));
  return {records:list,periodStart,periodEnd,fileName:String(fileName).slice(0,180),
-  sheetName,metricAvailability,skipped,source:'seller_center_organic_export'};
+  sheetName,metricAvailability,skipped,source:mode==='organic'?'seller_center_organic_export':'seller_center_product_performance_export'};
 }
 export function rankOrganicTop(records,{sort='combined',limit=10}={}){
- const keys=['impressions','visits','clicks','ctr','cartAdded','cartPending','cartAbandonmentRate'];
+ const keys=['impressions','visits','clicks','ctr','cartAdded','cartPending','cartAbandonmentRate','cartVisitors','cartUnits','cartConversionRate','orders','orderConversionRate'];
  if(!['combined',...keys].includes(sort))sort='combined';
- const recordsSafe=(Array.isArray(records)?records:[]).filter(x=>x&&x.sku);
+ const recordsSafe=(Array.isArray(records)?records:[]).filter(x=>x&&(x.sku||x.itemId));
  const max=Object.fromEntries(keys.map(k=>[k,Math.max(0,...recordsSafe.map(x=>
   Number.isFinite(Number(x[k]))&&x[k]!==null?Number(x[k]):0))]));
  // O ranking principal permanece baseado em alcance orgânico; sinais de
  // carrinho só podem ser escolhidos como ordenação explícita.
  const weights={impressions:.3,visits:.3,clicks:.3,ctr:.1,
-  cartAdded:0,cartPending:0,cartAbandonmentRate:0};
+  cartAdded:0,cartPending:0,cartAbandonmentRate:0,cartVisitors:0,cartUnits:0,cartConversionRate:0,orders:0,orderConversionRate:0};
  const scored=recordsSafe.map(row=>{
   let score=0,weight=0;
   for(const key of keys){
@@ -221,10 +248,10 @@ export function rankOrganicTop(records,{sort='combined',limit=10}={}){
   if(sort!=='combined'){
    const av=a[sort],bv=b[sort];
    return (bv===null?-Infinity:Number(bv))-(av===null?-Infinity:Number(av))||
-    b.score-a.score||a.sku.localeCompare(b.sku);
+    b.score-a.score||String(a.sku||a.itemId).localeCompare(String(b.sku||b.itemId));
   }
   return b.score-a.score||Number(b.impressions||0)-Number(a.impressions||0)||
-   a.sku.localeCompare(b.sku);
+   String(a.sku||a.itemId).localeCompare(String(b.sku||b.itemId));
  });
  return scored.slice(0,Math.max(1,Math.min(limit,10)));
 }
@@ -240,11 +267,11 @@ const shop=id=>{
  const n=Number(id);if(!Number.isSafeInteger(n)||n<=0)throw Error('Shop ID inválido.');
  return n;
 };
-async function db(shopId,{method='GET',data}={}){
+async function db(shopId,{method='GET',data,table=TABLE}={}){
  const {url,headers}=config();
  const query=method==='POST'?'?on_conflict=shop_id&select=*':
   '?shop_id=eq.'+shop(shopId)+'&select=*&limit=1';
- const response=await fetch(url+'/rest/v1/'+TABLE+query,{
+ const response=await fetch(url+'/rest/v1/'+table+query,{
   method,headers:{...headers,...(method==='POST'?{
    Prefer:'resolution=merge-duplicates,return=representation'}:{})},
   ...(data?{body:JSON.stringify(data)}:{}),signal:AbortSignal.timeout(20000)
@@ -266,5 +293,23 @@ export async function saveOrganicSnapshot(shopId,report){
   imported_at:new Date().toISOString(),updated_at:new Date().toISOString()};
  const saved=await db(shopId,{method:'POST',data:[data]});
  if(saved?.length!==1)throw Error('Relatório não confirmado pelo banco.');
+ return saved[0];
+}
+
+export async function readPerformanceSnapshot(shopId){
+ const result=await db(shopId,{table:PERFORMANCE_TABLE});
+ return result?.[0]||null;
+}
+export async function savePerformanceSnapshot(shopId,report){
+ if(report?.source!=='seller_center_product_performance_export'||!report?.records?.length)
+  throw Error('Relatório de Performance do Produto inválido.');
+ const data={shop_id:shop(shopId),period_start:report.periodStart,
+  period_end:report.periodEnd,file_name:report.fileName,source:report.source,
+  row_count:report.records.length,records:report.records,
+  metadata:{metrics:report.metricAvailability,sheetName:report.sheetName,
+   rowsWithoutIdentity:report.skipped.empty,trafficScope:'not_separated_from_ads'},
+  imported_at:new Date().toISOString(),updated_at:new Date().toISOString()};
+ const saved=await db(shopId,{method:'POST',data:[data],table:PERFORMANCE_TABLE});
+ if(saved?.length!==1)throw Error('Relatório de Performance do Produto não confirmado.');
  return saved[0];
 }
