@@ -270,10 +270,10 @@
     <div>
      <span class="pending-images-label">AUDITORIA DE IMAGENS • SHOPEE</span>
      <h2>Otimização Pendente</h2>
-     <p>Localiza as SKUs com menos de 9 imagens reais no anúncio. A prioridade é para anúncios ativos (NORMAL) com estoque disponível. Inativos e anúncios sem estoque aparecem separadamente.</p>
+     <p>Fila de SKUs <strong>ativas, com estoque disponível e menos de 9 imagens na Shopee</strong>. O sistema salva a primeira varredura, acompanha quantas ainda faltam e quantas alcançaram 9/9. Uma nova varredura só acontece pelo botão.</p>
     </div>
     <div class="pending-images-actions">
-     <button id="pendingImagesRefresh" type="button">↻ Atualizar auditoria</button>
+     <button id="pendingImagesRefresh" type="button">↻ Solicitar nova varredura</button>
      <button id="pendingImagesCancel" type="button" class="secondary" hidden>Interromper leitura</button>
      <button id="pendingImagesExport" type="button" class="secondary" disabled>Exportar CSV</button>
     </div>
@@ -284,26 +284,18 @@
    </div>
    <p id="pendingImagesAsOf" class="pending-images-fineprint">Nenhuma conferência concluída.</p>
   </header>
-  <div class="pending-images-metrics" aria-label="Resumo das SKUs com menos de 9 imagens">
-   <article class="pending-images-metric is-primary"><span>SKUs ativas com estoque</span><strong id="pendingImagesActive">0</strong><small id="pendingImagesActiveDetail">Aguardando conferência</small></article>
-   <article class="pending-images-metric"><span>SKUs ativas sem estoque</span><strong id="pendingImagesNoStock">0</strong><small>Com 0 a 8 imagens · não priorizar</small></article>
-   <article class="pending-images-metric"><span>SKUs inativas</span><strong id="pendingImagesInactive">0</strong><small>Desativadas, em revisão ou bloqueadas</small></article>
-   <article class="pending-images-metric"><span>Dados não confirmados</span><strong id="pendingImagesUnknown">0</strong><small>Imagens, estoque ou SKU sem confirmação</small></article>
-   <article class="pending-images-metric is-confirmed"><span>✓ OK — 9/9 confirmadas</span><strong id="pendingImagesConfirmed">0</strong><small id="pendingImagesConfirmedDetail">Somente após leitura de 9 imagens na Shopee.</small></article>
+  <div class="pending-images-metrics" aria-label="Progresso das SKUs de otimização">
+   <article class="pending-images-metric is-primary"><span>Faltam otimizar · ativas com estoque</span><strong id="pendingImagesActive">—</strong><small id="pendingImagesActiveDetail">Aguardando lista salva</small></article>
+   <article class="pending-images-metric is-confirmed"><span>✓ Otimizadas · 9/9 Shopee</span><strong id="pendingImagesConfirmed">—</strong><small id="pendingImagesConfirmedDetail">Confirmadas oficialmente</small></article>
+   <article class="pending-images-metric"><span>Total acompanhado</span><strong id="pendingImagesTotal">—</strong><small>Faltam + confirmadas, sem duplicar SKUs</small></article>
+   <article class="pending-images-metric"><span>Ativas sem estoque</span><strong id="pendingImagesNoStock">—</strong><small>Separadas da prioridade</small></article>
+   <article class="pending-images-metric"><span>Inativas</span><strong id="pendingImagesInactive">—</strong><small>Não entram na fila principal</small></article>
+   <article class="pending-images-metric"><span>Dados não confirmados</span><strong id="pendingImagesUnknown">—</strong><small>Imagens, SKU ou estoque inconclusivos</small></article>
   </div>
   <section class="pending-images-list" aria-label="Lista das SKUs pendentes">
-   <h3>SKUs para corrigir</h3>
+   <h3>SKUs que faltam otimizar</h3>
    <p id="pendingImagesScanned">Aguardando leitura dos anúncios na Shopee.</p>
    <div class="pending-images-filters">
-    <label for="pendingImagesFilter">Situação
-     <select id="pendingImagesFilter" aria-label="Filtrar situação das SKUs">
-      <option value="active_with_stock" selected>Ativos com estoque — prioridade</option>
-      <option value="active_no_stock">Ativos sem estoque</option>
-      <option value="inactive">Inativos</option>
-      <option value="unverified">Dados não confirmados</option>
-      <option value="all">Todos com menos de 9 imagens</option>
-     </select>
-    </label>
     <label for="pendingImagesSearch">Buscar SKU ou Item ID
      <input id="pendingImagesSearch" type="search" placeholder="SKU, Item ID ou produto" autocomplete="off">
     </label>
@@ -314,13 +306,17 @@
      <thead><tr><th>Produto</th><th>SKU / Item ID</th><th>Situação</th><th>Estoque</th><th>Imagens</th><th>Ação</th></tr></thead>
      <tbody id="pendingImagesRows"></tbody>
     </table>
-    <p id="pendingImagesEmpty" class="pending-images-empty">Aguardando auditoria da Shopee.</p>
+    <p id="pendingImagesEmpty" class="pending-images-empty">Aguardando lista de SKUs salva no banco.</p>
    </div>
    <div class="pending-images-actions" style="margin-top:14px">
     <button id="pendingImagesMore" type="button" class="secondary" hidden>Mostrar mais</button>
    </div>
   </section>
-  <p class="pending-images-fineprint">Fonte: API oficial da Shopee. Imagens são contadas no anúncio-pai; estoque é conferido por modelo quando há variações. A auditoria é somente leitura e não publica fotos. Quantidades só são definitivas após concluir todos os status.</p>
+  <details class="pending-images-done">
+   <summary id="pendingImagesDoneTitle">Ver otimizadas — 0 SKUs</summary>
+   <div id="pendingImagesDoneRows" aria-label="SKUs retiradas da fila após confirmação Shopee 9/9"></div>
+  </details>
+  <p class="pending-images-fineprint">A lista de trabalho é persistida no Supabase da loja, por Item ID e SKU. Só são retirados da fila os anúncios com 9 imagens distintas confirmadas na API Shopee. Não é necessário iniciar nova varredura ao abrir o menu.</p>
  </div>
 </section>
 
@@ -2551,7 +2547,7 @@
     </main>
   </div>
 </div>
-<link rel="stylesheet" href="/pending-images.css?v=1.0.0">
+<link rel="stylesheet" href="/pending-images.css?v=1.1.0-persistent-progress">
 <script src="/sidebar-collapse.js?v=1.0.0"></script>
 <script src="/optimizer-compact.js?v=1.20.12"></script>
 <script src="/optimizer-dashboard.js?v=1.21.36-resume-progress"></script>
@@ -2571,7 +2567,7 @@
 <script src="/optimizer-execution-visual.js?v=1.0.4-video-retry-confirmation"></script>
 <script src="/optimizer-execution-dialog.js?v=1.0.5-video-relink-sync"></script>
 <script src="/app.js?v=3.5.49-global-matrix-pending"></script>
-<script src="/pending-images.js?v=1.0.1-verified-nine"></script>
+<script src="/pending-images.js?v=1.1.0-persistent-progress"></script>
 <script type="module" src="/kit-builder.js?v=20261102-content-helper-import-v6"></script>
 <link rel="stylesheet" href="/optimizer-variations.css?v=1.2.1-single-flow">
 <script src="/optimizer-variations.js?v=1.2.3-single-flow"></script>
