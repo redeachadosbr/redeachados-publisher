@@ -1,5 +1,7 @@
 // Official Shopee tax_info readback: never infer completion from a saved draft.
 // A parent Item ID owns one fiscal record even when it has several model SKUs.
+// Separate required Shopee fields from the additional seller-approved template.
+// The template is a store preference, NOT a universal tax classification.
 export const SHOPEE_FISCAL_REQUIRED_FIELDS=Object.freeze([
  'ncm','origin','measure_unit','same_state_cfop','diff_state_cfop','csosn'
 ]);
@@ -9,19 +11,33 @@ export const SHOPEE_FISCAL_OPTIONAL_FIELDS=Object.freeze([
 const present=x=>String(x??'').trim().length>0;
 export function inspectShopeeFiscalGap(raw){
  const tax=raw&&typeof raw==='object'&&!Array.isArray(raw)?raw:{};
- const missing=SHOPEE_FISCAL_REQUIRED_FIELDS.filter(k=>!present(tax[k]));
- const filled=SHOPEE_FISCAL_REQUIRED_FIELDS.length-missing.length;
+ const missingCore=SHOPEE_FISCAL_REQUIRED_FIELDS.filter(k=>!present(tax[k]));
+ // Rede Achados BR requested these three otherwise-optional fields be filled,
+ // too. Missing configured values are a seller-template gap, not an API error.
+ const missingConfigured=SHOPEE_FISCAL_OPTIONAL_FIELDS.filter(k=>!present(tax[k]));
+ const missing=[...missingCore,...missingConfigured];
+ const filled=SHOPEE_FISCAL_REQUIRED_FIELDS.length-missingCore.length;
  const invalid=[
-  ...(present(tax.ncm)&&!/^\d{8}$/.test(String(tax.ncm))?['ncm']:[]),
-  ...(present(tax.cest)&&String(tax.cest)==='00'?['cest']:[])
+  ...(present(tax.ncm)&&!/^\d{8}$/.test(String(tax.ncm).trim())?['ncm']:[]),
+  ...(present(tax.cest)&&!/^(?:00|\d{7})$/.test(String(tax.cest).trim())?['cest']:[]),
+  ...(present(tax.origin)&&!/^[0-8]$/.test(String(tax.origin).trim())?['origin']:[]),
+  ...(present(tax.same_state_cfop)&&!/^5\d{3}$/.test(String(tax.same_state_cfop).trim())?['same_state_cfop']:[]),
+  ...(present(tax.diff_state_cfop)&&!/^6\d{3}$/.test(String(tax.diff_state_cfop).trim())?['diff_state_cfop']:[]),
+  ...(present(tax.csosn)&&!/^\d{3}$/.test(String(tax.csosn).trim())?['csosn']:[]),
+  ...(present(tax.pis_cofins_cst)&&!/^\d{2}$/.test(String(tax.pis_cofins_cst).trim())?['pis_cofins_cst']:[]),
+  ...(present(tax.operation_type)&&!/^[12]$/.test(String(tax.operation_type).trim())?['operation_type']:[])
  ];
+ const hasAny=[...SHOPEE_FISCAL_REQUIRED_FIELDS,...SHOPEE_FISCAL_OPTIONAL_FIELDS]
+  .some(k=>present(tax[k]));
  return {
-  status:!filled?'empty':missing.length||invalid.length?'partial':'complete',
-  missing,invalid,filled,required:SHOPEE_FISCAL_REQUIRED_FIELDS.length
+  status:!hasAny?'empty':missing.length||invalid.length?'partial':'complete',
+  missing,missingCore,missingConfigured,invalid,filled,
+  required:SHOPEE_FISCAL_REQUIRED_FIELDS.length,
+  configured:SHOPEE_FISCAL_OPTIONAL_FIELDS.length
  };
 }
-// Prepared fiscal evidence may fill ONLY blank Shopee fields.
-// Existing values are authoritative for this fill-only workflow.
+// The seller's approved fiscal template may fill ONLY blank Shopee fields.
+// Existing tax_info values are authoritative; mismatches need manual review.
 export function fiscalFillMissingOnly(liveTax,approvedTax){
  if(!approvedTax||typeof approvedTax!=='object')throw Error('Ficha fiscal aprovada ausente.');
  const old=liveTax&&typeof liveTax==='object'&&!Array.isArray(liveTax)?liveTax:{};
@@ -33,13 +49,7 @@ export function fiscalFillMissingOnly(liveTax,approvedTax){
   if(!value)missingSource.push(key);
   else merged[key]=value;
  }
- // Optional fields are not grounds to overwrite already-published values.
- for(const key of SHOPEE_FISCAL_OPTIONAL_FIELDS){
-  if(present(old[key]))continue;
-  const value=String(approvedTax[key]??'').trim();
-  if(!value||key==='cest'&&!/^\d{7}$/.test(value))continue;
-  merged[key]=value;
- }
  if(missingSource.length)throw Error('Ficha fiscal incompleta: '+missingSource.join(', '));
- return {tax:merged,gap,changed:Object.keys(merged).filter(k=>String(merged[k]??'')!==String(old[k]??''))};
+ return {tax:merged,gap,changed:Object.keys(merged)
+  .filter(k=>String(merged[k]??'')!==String(old[k]??''))};
 }

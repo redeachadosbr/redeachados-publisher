@@ -2951,21 +2951,25 @@ app.post('/api/shopee/optimizer/fiscal-migration/execute-one',mustLogin,requireW
    return res.json({ok:true,sku,itemId,modelId,status:'blocked',needsReview:true,
     message:'Código fiscal inválido na Shopee ('+gap.invalid.join(', ')+
      '). Corrija na ficha antes de qualquer alteração automática.'});
-  if(missingOnly&&existing?.review_state?.stages?.fiscal?.reviewed!==true)
-   return res.json({ok:true,sku,itemId,modelId,status:'blocked',
-    needsReview:true,message:'Ficha fiscal ainda não revisada no Motor Matriz. Nenhum dado presumido foi enviado.'});
   const supplier=await readWeDropProduct(auth.shopId,{sku,itemId,modelId});
   const supplierLinked=supplier&&['exact-sku','reviewed-link'].includes(supplier.matchedBy);
   const sourceNcm=String(supplierLinked?supplier.product_data?.ncm||'':'').replace(/\D/g,'');
+  // The seller approved a fixed store template. For SKUs not yet reviewed,
+  // only allow the one-click fill when the EXACT supplier link and its own
+  // valid NCM are verified. Never authorize from a guessed category/NCM.
+  if(missingOnly&&existing?.review_state?.stages?.fiscal?.reviewed!==true&&
+     (!supplierLinked||!/^\d{8}$/.test(sourceNcm)))
+   return res.json({ok:true,sku,itemId,modelId,status:'blocked',
+    needsReview:true,message:'SKU sem vínculo WeDrop e NCM confirmado: revisar a ficha fiscal antes do envio.'});
   const manuallySaved=String(previousTax.ncm||'').replace(/\D/g,'');
   const ncm=manuallySaved||sourceNcm;
   if(!/^\d{8}$/.test(ncm))
    throw Error('NCM da SKU ausente: confira cadastro fiscal manual ou importação WeDrop.');
   if(/^\d{8}$/.test(sourceNcm)&&manuallySaved&&manuallySaved!==sourceNcm)
    throw Error('NCM manual diferente da WeDrop. Preservado no cadastro para revisão, sem envio.');
-  const unit=suggestFiscalMeasureUnit(record.title||'',supplierLinked?supplier.product_data?.title||'':'');
-  const measureUnit=String(previousTax.measure_unit||'').trim()||unit.unit;
-  if(!measureUnit)throw Error('Unidade fiscal sem informação suficiente: '+unit.reason);
+  // The seller confirmed UN as the store's default. Keep any existing
+  // per-SKU reviewed unit (e.g. KIT/JOGO) without overwriting it.
+  const measureUnit=String(previousTax.measure_unit||'').trim()||'UN';
   const evidence=String(previousTax.evidence||'').trim()||
    (supplierLinked?'NCM WeDrop '+supplier.supplier_sku+' · '+(supplier.source_file||'catálogo validado'):'');
   if(!evidence)throw Error('NCM manual sem fonte fiscal registrada; dados preservados para revisão.');
@@ -2974,6 +2978,7 @@ app.post('/api/shopee/optimizer/fiscal-migration/execute-one',mustLogin,requireW
    diff_state_cfop:previousTax.diff_state_cfop||'6106',
    csosn:previousTax.csosn||'102',
    pis_cofins_cst:previousTax.pis_cofins_cst||'99',
+   operation_type:previousTax.operation_type||'1',
    cest:wedropCestForSku(supplierLinked?supplier:null),measure_unit:measureUnit,evidence};
   // Validar antes da revisão: demais dados permanecem; CEST é exclusivo da WeDrop
   // ou 00 no cadastro interno. Nunca inferir CEST real a partir do NCM/Shopee.
