@@ -94,3 +94,78 @@ test('popup abre após login autenticado e não usa API Ads como fonte',()=>{
  assert.doesNotMatch(ui,/\/api\/shopee\/ads\//);
  assert.match(server,/source:snapshot\.source/);
 });
+
+
+test('carrinhos parados e percentual calculado somente com unidades equivalentes',()=>{
+ const input='SKU;Impressões;Cliques;Itens adicionados ao carrinho;Itens abandonados no carrinho;Origem do Tráfego\n'+
+  'A-1;1.000;100;80;24;Não Pago\n'+
+  'A-2;800;90;10;0;Orgânico\n';
+ const data=parseOrganicReport(csv(input),{...date,fileName:'organic.csv'});
+ assert.equal(data.records.length,2);
+ assert.equal(data.records[0].cartAdded,80);
+ assert.equal(data.records[0].cartPending,24);
+ assert.equal(data.records[0].cartAbandonmentRate,30);
+ assert.equal(data.records[0].cartRateSource,'calculated');
+ assert.equal(data.records[0].cartCountKind,'items');
+ assert.equal(data.records[1].cartAbandonmentRate,0);
+ assert.equal(data.metricAvailability.cartPending,true);
+ assert.equal(data.metricAvailability.cartAbandonmentRate,true);
+});
+test('carrinho abandonado informado diretamente sem exigir visitas nem pedidos',()=>{
+ const input='SKU;Carrinhos abandonados;Taxa de abandono do carrinho (%)\n'+
+  'W-2;33;42,50%\n';
+ const data=parseOrganicReport(csv(input),{...date,fileName:'organic.csv'});
+ assert.equal(data.records[0].cartPending,33);
+ assert.equal(data.records[0].cartCountKind,'carts');
+ assert.equal(data.records[0].cartAbandonmentRate,42.5);
+ assert.equal(data.records[0].cartRateSource,'reported');
+ assert.equal(data.records[0].cartAdded,null);
+});
+test('adicionar ao carrinho NÃO significa abandono nem produz percentual sem confirmação',()=>{
+ const input='SKU;Visitas;Itens adicionados ao carrinho\n'+
+  'AAA;400;35\n';
+ const data=parseOrganicReport(csv(input),{...date,fileName:'organic.csv'});
+ assert.equal(data.records[0].cartAdded,35);
+ assert.equal(data.records[0].cartPending,null);
+ assert.equal(data.records[0].cartAbandonmentRate,null);
+ assert.equal(data.metricAvailability.cartAdded,true);
+ assert.equal(data.metricAvailability.cartPending,false);
+ assert.equal(data.metricAvailability.cartAbandonmentRate,false);
+});
+test('não calcular porcentagem misturando carrinhos com unidades de produtos',()=>{
+ const input='SKU;Visitas;Itens adicionados ao carrinho;Carrinhos abandonados\n'+
+  'AAA;400;50;12\n';
+ const data=parseOrganicReport(csv(input),{...date,fileName:'organic.csv'});
+ assert.equal(data.records[0].cartPending,12);
+ assert.equal(data.records[0].cartAbandonmentRate,null);
+ assert.equal(data.records[0].cartRateSource,'unavailable');
+});
+test('impede abandono maior que total de adições quando mesmas unidades',()=>{
+ const input='SKU;Visitas;Itens adicionados ao carrinho;Itens abandonados no carrinho\n'+
+  'AAA;400;15;30\n';
+ assert.throws(()=>parseOrganicReport(csv(input),{...date,fileName:'organic.csv'}),
+  /Carrinhos parados maiores/);
+});
+test('ordenar por produtos parados e por taxa de abandono',()=>{
+ const rows=[
+  {sku:'X1',impressions:200,visits:80,clicks:40,ctr:20,cartAdded:40,cartPending:15,cartAbandonmentRate:37.5},
+  {sku:'X2',impressions:300,visits:90,clicks:50,ctr:16.7,cartAdded:70,cartPending:10,cartAbandonmentRate:14.3},
+  {sku:'X3',impressions:400,visits:95,clicks:60,ctr:15,cartAdded:20,cartPending:8,cartAbandonmentRate:40}
+ ];
+ assert.equal(rankOrganicTop(rows,{sort:'cartPending'})[0].sku,'X1');
+ assert.equal(rankOrganicTop(rows,{sort:'cartAbandonmentRate'})[0].sku,'X3');
+});
+test('popup exibe ambas as colunas e distingue adições de abandono confirmado',()=>{
+ const html=readFileSync(new URL('../public/index.html',import.meta.url),'utf8');
+ const ui=readFileSync(new URL('../public/organic-top10.js',import.meta.url),'utf8');
+ const backend=readFileSync(new URL('../server.js',import.meta.url),'utf8');
+ assert.match(html,/data-sort="cartPending"/);
+ assert.match(html,/data-sort="cartAbandonmentRate"/);
+ assert.match(html,/<span>No carrinho<\/span><span>Abandono<\/span>/);
+ assert.match(ui,/add\(number\(hasAbandonment\?row\.cartPending:row\.cartAdded\)/);
+ assert.match(ui,/Adicionados \(não abandonos\)/);
+ assert.match(ui,/percent\(row\.cartAbandonmentRate\)/);
+ assert.match(ui,/Abandono não verificado/);
+ assert.match(backend,/cartAbandonmentRate/);
+ assert.doesNotMatch(ui,/\/api\/shopee\/ads\//);
+});
