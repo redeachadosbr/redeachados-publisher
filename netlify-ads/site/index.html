@@ -264,7 +264,7 @@
       </form>
     </div>
     <div class="panel" id="resultPanel">
-      <div class="section-head"><div><div class="overline">02 · Decisão sugerida</div><h2>Resultado da análise</h2></div><span class="subtle" id="resultTimestamp">Sem análise</span></div>
+      <div class="section-head"><div><div class="overline">02 · Decisão sugerida / prévia provisória</div><h2>Resultado da análise</h2></div><span class="subtle" id="resultTimestamp">Sem análise</span></div>
       <div id="resultEmpty" class="empty"><div class="empty-symbol">◎</div><h2>Seu diagnóstico aparece aqui</h2><p>Preencha orçamento, período, gasto, meta e ROAS real ou receita. Depois clique em <strong>Analisar campanha</strong>.</p></div>
       <div id="resultContent" hidden>
         <div class="result-title"><div><div class="overline" id="resultName">Campanha</div><h2 id="resultScenario" style="font-size:23px;margin:1px 0">—</h2></div><span id="resultBadge" class="status">—</span></div>
@@ -433,8 +433,12 @@ const grossMax=dailyReference!==null?dailyReference*days:null;
 // explicitamente a média diária para facilitar a decisão do vendedor.
 const consumed=dailySpend!==null&&dailyReference!==null?dailySpend/dailyReference*100:null;
 const dailyReferenceReached=consumed!==null&&consumed>=95;
-const actualDailyLimit=d.budgetMode==='daily';const revenueSource=d.revenue!==null?'Receita Ads / gasto (calculado)':'ROAS real informado';const revenue=d.revenue!==null?d.revenue:(d.actual!==null?d.actual*d.spent:null);const actual=d.spent>0?(d.revenue!==null?d.revenue/d.spent:d.actual):null;const meets=actual===null?null:actual>=d.target;const reliableLimit=actualDailyLimit&&d.budgetStable;const total=dailyReferenceReached;let scenario=null;
-if(reliableLimit&&d.periodClosed&&meets!==null&&d.spent>0)scenario=total?(meets?4:3):(meets?1:2);
+const actualDailyLimit=d.budgetMode==='daily';const revenueSource=d.revenue!==null?'Receita Ads / gasto (calculado)':'ROAS real informado';const revenue=d.revenue!==null?d.revenue:(d.actual!==null?d.actual*d.spent:null);const actual=d.spent>0?(d.revenue!==null?d.revenue/d.spent:d.actual):null;const meets=actual===null?null:actual>=d.target;const reliableLimit=actualDailyLimit&&d.budgetStable;
+const total=dailyReferenceReached;
+const scenarioCandidate=reliableLimit&&meets!==null&&d.spent>0?(total?(meets?4:3):(meets?1:2)):null;
+// Período aberto: mostrar uma PRÉVIA, nunca emitir mudanças percentuais como recomendação final.
+const previewScenario=!d.periodClosed?scenarioCandidate:null;
+const scenario=d.periodClosed?scenarioCandidate:null;
 const suggestedBudget=(d.budgetMode==='daily'||simulated)?(scenario===1||scenario===2?d.budget*.8:(scenario===3?d.budget:null)):null;
 const suggestedROAS=scenario===1||scenario===2?d.target*.8:scenario===3?d.target*1.2:null;
 const fin=calcFinance(d,actual);
@@ -457,6 +461,19 @@ else if(scenario===2){rule='Consumo parcial e ROAS real < alvo: primeiro conferi
 else if(scenario===3){rule='Consumo total (≥95%) e ROAS real < alvo: revisar oferta, aumentar alvo 20% e manter orçamento.';safeAction='Corrigir preço, fotos e conversão; subir o alvo 20% conforme o caderno pode conter entrega, mas não garante melhora. '+(belowGoal?'A margem estimada está abaixo da desejada: contenha risco antes de manter gastos altos.':'Não aumentar a verba até validar rentabilidade.');}
 else if(scenario===4){rule='Consumo total (≥95%) e ROAS real ≥ alvo: escolher A, B ou C segundo a verba mensal disponível.';safeAction='Sem confirmação de verba extra, não escalar automaticamente. Compare A, B e C e selecione conforme seu orçamento mensal, validando a margem por venda.';}
 else{rule='Não foi possível aplicar com segurança um dos quatro cenários: falta limite comparável ou ROAS válido.';safeAction='Não aplicar porcentagens de forma automática. '+(d.budgetMode==='unlimited'?'Defina um teto diário (exemplo de teste conservador: R$ 5,00, se permitido) e acompanhe o gasto.':'Corrija período, orçamento ou dados de ROAS antes de decidir.')+' Revise margem e conversão.';}
+// Mesmo quando há dados suficientes para uma prévia, nenhuma alteração fica liberada
+// enquanto o período não estiver fechado.
+if(previewScenario!==null){
+ const summary=previewScenario===1?'gasto abaixo do teto e ROAS alcançado':
+  previewScenario===2?'gasto abaixo do teto e ROAS abaixo do alvo':
+  previewScenario===3?'uso médio do teto e ROAS abaixo do alvo':
+  'uso médio do teto e ROAS alcançado';
+ rule='PRÉVIA do Cenário '+String(previewScenario).padStart(2,'0')+' — '+summary+'. O período ainda não foi encerrado; não aplicar agora os ajustes percentuais do caderno.';
+ safeAction='Mantenha o ROAS atual de '+roas(d.target)+' e acompanhe a campanha até encerrar o período. O gasto médio é '+money(dailySpend)+'/dia frente ao limite informado de '+money(dailyReference)+'/dia. Após o fechamento, confirme se o limite era realmente diário e estável; reavalie o ROAS e a margem do SKU antes de qualquer ajuste.';
+ if(fin&&actual!==null&&actual<fin.breakeven)
+  safeAction+=' Atenção: o ROAS real está abaixo do equilíbrio financeiro; priorize conter prejuízo.';
+ alerts.push({level:'warn',text:'PRÉVIA, não decisão final: o dia atual ainda está em andamento. A classificação '+String(previewScenario).padStart(2,'0')+' pode mudar após fechar o período. Nenhuma recomendação de −20% ou +20% será aplicada com base apenas nesta prévia.'});
+}
 let unlimitedRule=null;
 if(d.budgetMode==='unlimited'){
  unlimitedRule=unlimitedTargetRule(d,{days,actual,fin,grossMax,dailySpend});
@@ -464,12 +481,12 @@ if(d.budgetMode==='unlimited'){
  safeAction=unlimitedRule.action;
  alerts.push(...unlimitedRule.alerts);
 }
-return {d,days,dailySpend,dailyReference,dailyReferenceReached,grossMax,consumed,revenue,revenueSource,actual,meets,scenario,suggestedBudget,suggestedROAS,fin,alerts,rule,safeAction,simulated,unlimitedRule};}
+return {d,days,dailySpend,dailyReference,dailyReferenceReached,grossMax,consumed,revenue,revenueSource,actual,meets,scenario,previewScenario,suggestedBudget,suggestedROAS,fin,alerts,rule,safeAction,simulated,unlimitedRule};}
 function showError(msg){$('resultEmpty').style.display='flex';$('resultContent').hidden=true;$('resultEmpty').innerHTML='<div class="empty-symbol">!</div><h2>Confira os dados</h2><p>'+safe(msg)+'</p>';switchTab('simulador')}
-function statusLabel(r){if(r.unlimitedRule)return 'Regra 05 · '+r.unlimitedRule.name+' · '+r.unlimitedRule.stage;if(!r.scenario)return 'Indeterminado';return 'Cenário '+String(r.scenario).padStart(2,'0')+(r.simulated?' · SIMULADO':'')+(r.d.periodClosed?'':' · provisório')}
+function statusLabel(r){if(r.unlimitedRule)return 'Regra 05 · '+r.unlimitedRule.name+' · '+r.unlimitedRule.stage;if(r.previewScenario)return 'Prévia Cenário '+String(r.previewScenario).padStart(2,'0')+' · período em andamento';if(!r.scenario)return 'Indeterminado · confira os dados do período';return 'Cenário '+String(r.scenario).padStart(2,'0')}
 function tableRender(headers,rows){return '<table><thead><tr>'+headers.map(h=>'<th>'+safe(h)+'</th>').join('')+'</tr></thead><tbody>'+rows.map(row=>'<tr>'+row.map(cell=>'<td>'+cell+'</td>').join('')+'</tr>').join('')+'</tbody></table>'}
 function render(r){lastReport=r;lastData=r.d;$('resultEmpty').style.display='none';$('resultContent').hidden=false;$('resultTimestamp').textContent='Período: '+r.d.dateStart.split('-').reverse().join('/')+' – '+r.d.dateEnd.split('-').reverse().join('/');$('resultName').textContent=r.d.campaign;$('resultScenario').textContent=statusLabel(r);$('resultBadge').className='status '+(r.unlimitedRule?(r.unlimitedRule.stage==='meta atingida'?'green':r.unlimitedRule.stage.includes('prejuízo')?'red':''):(r.scenario===4?'green':r.meets===false?'red':''));
-$('resultBadge').textContent=r.unlimitedRule?'Orçamento ilimitado':r.scenario===4?'Oportunidade':r.actual===0?'Sem vendas Ads':r.scenario?'Requer avaliação':'Dados insuficientes';
+$('resultBadge').textContent=r.unlimitedRule?'Orçamento ilimitado':r.previewScenario?'Prévia · sem ajustes':r.scenario===4?'Oportunidade':r.actual===0?'Sem vendas Ads':r.scenario?'Requer avaliação':'Dados insuficientes';
 const ctrCalculated=r.d.impressions>0&&r.d.clicks!==null?100*r.d.clicks/r.d.impressions:null;
 const boostLabel={on:'Ativada',off:'Desativada',unknown:'Não informado'}[r.d.rapidBoost]||'Não informado';
 const performanceItems=[
@@ -500,7 +517,7 @@ if(dailySummary){
  dailySummary.textContent='📊 Orçamento diário: '+money(r.d.spent)+' investidos ÷ '+r.days+' dia(s) = '+money(r.dailySpend)+'/dia'+comp+
   ' • '+roasStatus+' ('+(r.actual===null?'—':roas(r.actual))+' / '+roas(r.d.target)+'). '+
   (r.d.budgetMode==='unlimited'?'Shopee permanece ILIMITADA. ':'')+
-  (!r.d.periodClosed?'Período com dia em andamento: média provisória. ':'')+
+  (!r.d.periodClosed?'Período não encerrado: média e cenário provisórios; não alterar a campanha com base nesta prévia. ':'')+
   'A média do período não comprova que o limite foi atingido em cada dia individual.';
 }
 $('resultAlerts').innerHTML=r.alerts.map(a=>'<div class="notice '+(a.level==='danger'?'danger':a.level==='ok'?'ok':'')+'">'+safe(a.text)+'</div>').join('');$('ruleExplanation').textContent=r.rule;
@@ -514,6 +531,15 @@ let table='';if(r.unlimitedRule){
  ['ROAS real',r.actual===null?'—':roas(r.actual),'Comparar com o alvo e a margem'],
  ['ROAS para margem desejada',u.financialFloor===null?'Não validado':roas(u.financialFloor),'Não reduzir o alvo abaixo deste valor'],
  ['Ajuste de ROAS',u.candidate===null?'Manter por enquanto':'Testar '+roas(u.candidate),'Somente após conferência e aprovação manual']
+ ]);
+}else if(r.previewScenario){
+ table=tableRender(['Conferência da prévia','Resultado','Próxima ação'],[
+ ['Campanha','Orçamento diário REAL informado','Confirme que a Shopee não está com orçamento ilimitado'],
+ ['Cenário provisório','Cenário '+String(r.previewScenario).padStart(2,'0'),'Não executar alterações de orçamento ou ROAS antes do fechamento'],
+ ['Investimento médio',money(r.dailySpend)+'/dia','Comparar com limite diário de '+money(r.dailyReference)],
+ ['Utilização média',pct(r.consumed),'Critério de ≥95% é apenas comparativo'],
+ ['ROAS real / alvo',(r.actual===null?'—':roas(r.actual))+' / '+roas(r.d.target),'Confirmar margem e período de atribuição'],
+ ['ROAS alvo recomendado agora','Manter '+roas(r.d.target),'Sem redução automática de 20% com período parcial']
  ]);
 }else if(r.scenario===4){const b=r.d.budget,t=r.d.target;table=tableRender(['Opção','Orçamento/dia','ROAS alvo','Quando usar'],[[r.simulated?'Referência hipotética':'Atual',money(b),roas(t),r.simulated?'Shopee segue ilimitada':'Referência'],['A · Verba extra', '<strong>'+money(b*1.2)+'</strong>',roas(t),'Escalar alcance'],['B · Sem verba',money(b),'<strong>'+roas(t*1.2)+'</strong>','Buscar eficiência'],['C · Verba + eficiência','<strong>'+money(b*1.2)+'</strong>','<strong>'+roas(t*1.2)+'</strong>','Testar ambos']]);}
 else{table=tableRender(['Configuração','Atual','Regra do caderno'],[...(r.simulated?[['Situação real','Ilimitado','Nenhuma alteração na Shopee']]:[]),[r.simulated?'Referência diária simulada':'Orçamento diário',r.simulated?money(r.d.budget):(r.d.budgetMode==='unlimited'?'Ilimitado':money(r.d.budget)),r.suggestedBudget===null?'—':'<strong>'+money(r.suggestedBudget)+'</strong>'],['ROAS alvo',roas(r.d.target),r.suggestedROAS===null?'—':'<strong>'+roas(r.suggestedROAS)+'</strong>'],[r.simulated?'Consumo da referência':'Consumo do limite',r.consumed===null?'Não calculável':pct(r.consumed),r.scenario?(r.simulated?'Cenário hipotético':'Classificado'):'Indeterminado']]);}
