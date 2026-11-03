@@ -46,8 +46,15 @@ function renderFiscalGapInventory(state){
  const root=$('raFiscalGapInventory');if(!root)return;
  root.replaceChildren();
  const grouped=fiscalParentMap(state?.inventory||[]);
- const parents=[...grouped.values()].map(rows=>({item:rows[0],skus:rows,status:rows[0]?.fiscal?.status||'unknown',
-  fiscal:rows[0]?.fiscal}));
+ const parents=[...grouped.values()].map(rows=>{
+  const statuses=rows.map(x=>x.fiscal?.status||'unknown');
+  const status=statuses.every(v=>v==='complete')?'complete':
+   statuses.every(v=>v==='empty')?'empty':'partial';
+  const fiscal={};
+  for(const field of ['missing','invalid','mismatched','unverified'])
+   fiscal[field]=[...new Set(rows.flatMap(x=>x.fiscal?.[field]||[]))];
+  return {item:rows[0],skus:rows,status,fiscal};
+ });
  const missing=parents.filter(r=>['empty','partial'].includes(r.status));
  const empty=missing.filter(r=>r.status==='empty').length;
  const partial=missing.filter(r=>r.status==='partial').length;
@@ -134,7 +141,7 @@ function progress(state,phase='Pronto para executar',sku=''){
  const box=panel();if(!box)return;
  const items=state?.inventory||[],ids=new Set(items.map(idOf));
  const parentGroups=[...fiscalParentMap(items).values()];
- const pendingParents=parentGroups.filter(rows=>fiscalIssue(rows[0]));
+ const pendingParents=parentGroups.filter(rows=>rows.some(fiscalIssue));
  // One parent Item ID equals ONE fiscal update, even with multiple model SKUs.
  // The historical per-SKU status store must not inflate the parent progress.
  const values=pendingParents.map(rows=>{
@@ -362,7 +369,7 @@ async function run(){
   }
   // Fiscal is stored on parent Item ID, not on each variation. Never
   // execute the same parent twice; inspect the entire store before writing.
-  const pendingParents=[...fiscalParentMap(all).values()].filter(rows=>fiscalIssue(rows[0]));
+  const pendingParents=[...fiscalParentMap(all).values()].filter(rows=>rows.some(fiscalIssue));
   for(let i=0;i<pendingParents.length;i++){
    const candidates=pendingParents[i];
    // Prefer a stored reviewed SKU. An unreviewed SKU is only eligible if
