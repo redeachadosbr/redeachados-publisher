@@ -65,7 +65,8 @@ test('motor raiz mostra progresso historico e abre pendencias reais sem preparar
  assert.match(audit,/A barra de 0% acima é da última tentativa/);
  assert.doesNotMatch(audit,/retry\.textContent='Preparar pendência'/);
  assert.match(audit,/panel\.append\(guidance\)/);
- assert.match(audit,/Conferência somente leitura/);
+ assert.match(audit,/Somente as etapas pendentes têm ações de correção e execução/);
+ assert.match(audit,/if\(!\['confirmed','not_applicable'\]\.includes\(stage\.status\)/);
  assert.match(app,/async function optimizerOneClickExecute\(\)/);
  assert.match(app,/await optimizerDiscountFinalPrepare\(\)/);
  assert.match(app,/await optimizerExecuteApproved\(false\)/);
