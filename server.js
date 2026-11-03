@@ -26,6 +26,7 @@ import {fetchCatalogPage,fetchCatalogPrices,normalizeShopeeModels,validItemId} f
 import {scanShopeePendingImagesPage,verifyShopeePendingImageItem,PENDING_IMAGE_STATUSES} from './shopeePendingImageAudit.js';
 import {getPendingImageSnapshot,savePendingImageSnapshot,reconcilePendingImageVerification} from './shopeePendingImageStore.js';
 import {parseOrganicReport,rankOrganicTop,readOrganicSnapshot,saveOrganicSnapshot} from './shopeeOrganicPerformance.js';
+import {scanLiveShopViews,saveViewsScan,parseViewsWindow,listViewSamples,rankObservedViews,saoPauloDay} from './shopeeProductViewTrends.js';
 import {suggestFiscalMeasureUnit} from './shopeeFiscalMeasure.js';
 import {getShopeeNewListingsSummary,clearShopeeNewListingsCache} from './shopeeNewListings.js';
 import {storeCatalogItems,storeCatalogModels,readCatalogCache,catalogStoreReady,findExactCatalogSku,findCatalogSkuIgnoringCase} from './catalogStore.js';
@@ -5428,6 +5429,58 @@ app.get('/api/shopee/finance/orders',mustLogin,requireWeDropAdmin,async(req,res)
   }
 });
 
+// Visualizações de anúncios (GERAIS, não orgânicas) via API oficial.
+// Acumular amostras sem inventar datas de histórico ou porcentagem de cliques.
+const productViewsScanning=new Map();
+app.get('/api/shopee/product-views/top10',mustLogin,requireWeDropAdmin,async(req,res)=>{
+ res.setHeader('Cache-Control','no-store');
+ try{
+  const {auth}=await getValidAuth(req);
+  const window=parseViewsWindow({
+   period:String(req.query.period||'7'),
+   start:String(req.query.start||''),end:String(req.query.end||'')
+  });
+  const snapshots=await listViewSamples(auth.shopId,window);
+  const ranked=rankObservedViews(snapshots,window);
+  const lastSample=snapshots.reduce((x,y)=>y.last_seen_at>x?y.last_seen_at:x,'');
+  res.json({ok:true,available:Boolean(ranked.totalProducts),
+   ...ranked,lastSample,source:'product.get_item_extra_info',
+   needsCollection:!lastSample||Date.now()-Date.parse(lastSample)>4*3600000,
+   canShowOrganicOnly:false,adsExcluded:false});
+ }catch(error){
+  res.status(503).json({ok:false,error:'Não foi possível consultar o histórico de visualizações: '+
+   String(error.message||error).slice(0,250)});
+ }
+});
+app.post('/api/shopee/product-views/collect',mustLogin,requireWeDropAdmin,async(req,res)=>{
+ res.setHeader('Cache-Control','no-store');
+ try{
+  const {auth,cfg}=await getValidAuth(req);
+  const id=String(auth.shopId);
+  if(productViewsScanning.has(id))
+   return res.status(409).json({ok:false,error:'Varredura de visualizações já em andamento para esta loja.'});
+  const today=saoPauloDay();
+  const todaysRows=await listViewSamples(auth.shopId,{start:today,end:today});
+  const latest=todaysRows.reduce((x,y)=>y.last_seen_at>x?y.last_seen_at:x,'');
+  if(req.body?.force!==true&&latest&&Date.now()-Date.parse(latest)<4*3600000)
+   return res.json({ok:true,skipped:true,alreadyObserved:true,
+    capturedAt:latest,message:'Amostra Shopee recente reutilizada para evitar chamadas duplicadas.'});
+  const scanJob=(async()=>{
+   const scan=await scanLiveShopViews({cfg,auth,callApi:callShopeeShopApi});
+   return saveViewsScan(auth.shopId,scan);
+  })();
+  productViewsScanning.set(id,scanJob);
+  try{
+   const result=await scanJob;
+   res.json({ok:true,source:'product.get_item_extra_info',readOnly:true,...result,
+    warning:'Somente visualizações gerais cumulativas, por anúncio-pai. Períodos dependem de ao menos duas amostras; não separam Ads e não revelam cliques ou carrinhos.'});
+  }finally{productViewsScanning.delete(id);}
+ }catch(error){
+  res.status(503).json({ok:false,error:'Shopee não confirmou a coleta das visualizações: '+
+   String(error.message||error).slice(0,250)+
+   '. Nenhum valor artificial foi registrado.'});
+ }
+});
 // TOP 10 desempenho ORGÂNICO: dados somente de relatório da Central do
 // Vendedor, nunca métricas de campanhas Ads. Nenhuma escrita na Shopee.
 app.get('/api/shopee/organic/top10',mustLogin,requireWeDropAdmin,async(req,res)=>{
