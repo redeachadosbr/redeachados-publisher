@@ -58,14 +58,14 @@ function renderFiscalGapInventory(state){
   inventoryVerifiedThisSession&&state?.catalogValidatedAt?String(num):'—';
  const title=document.createElement('strong');
  title.textContent=inventoryVerifiedThisSession?
-  'Pendências fiscais oficiais: '+missing.length+' anúncios / '+
+  'Pendências em relação à tabela aprovada: '+missing.length+' anúncios / '+
    missing.reduce((n,r)=>n+r.skus.length,0)+' SKUs vinculadas':
   'Identificação fiscal pendente · sem contagem oficial';
  root.append(title);
  if(!inventoryVerifiedThisSession)return;
  const details=document.createElement('details');details.className='ra-fiscal-gap-details';
  const summary=document.createElement('summary');
- summary.textContent='Ver todas as SKUs e Item IDs sem dados fiscais completos ('+
+ summary.textContent='Ver anúncios com divergências em relação à tabela fiscal ('+
    missing.length+' anúncios)';
  details.append(summary);
  const list=document.createElement('div');list.className='ra-fiscal-gap-list';
@@ -73,9 +73,13 @@ function renderFiscalGapInventory(state){
   const p=document.createElement('p');
   const missingFields=row.fiscal?.missing||[];
   const invalidFields=row.fiscal?.invalid||[];
+  const mismatchedFields=row.fiscal?.mismatched||[];
+  const unverifiedFields=row.fiscal?.unverified||[];
   const details=[
    ...(missingFields.length?['Faltam: '+missingFields.join(', ')]:[]),
-   ...(invalidFields.length?['Inválidos: '+invalidFields.join(', ')]:[])
+   ...(invalidFields.length?['Inválidos: '+invalidFields.join(', ')]:[]),
+   ...(mismatchedFields.length?['Diferentes da tabela: '+mismatchedFields.join(', ')]:[]),
+   ...(unverifiedFields.length?['Referência não confirmada: '+unverifiedFields.join(', ')]:[])
   ];
   p.textContent='Item ID '+row.item.itemId+' · '+row.skus.map(x=>x.sku).join(', ')+
     ' · '+(row.status==='empty'?'Sem dados':'Incompleto')+
