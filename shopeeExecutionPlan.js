@@ -56,6 +56,15 @@ export function shopeeMatrixPendingSnapshot(plan){
 export function isShopeeMatrixIndependentPlan(plan){
  return shopeeMatrixPendingSnapshot(plan).independentOnly;
 }
+// Ações de texto, mídia e ficha técnica são independentes, mas NÃO devem
+// excluir a Minha Promoção expressamente aprovada no mesmo clique.
+// Uma prévia sem autorização comercial assinada continua executando apenas
+// os campos independentes; kits usam a confirmação comercial específica.
+export function shouldAttachCommercialDiscount(plan,{hasSignedApproval=false,linkedKit=false}={}){
+ if(linkedKit||!['all','remaining','discount','discount_adjust'].includes(String(plan?.selectedStage||'')))
+  return false;
+ return !isShopeeMatrixIndependentPlan(plan)||hasSignedApproval===true;
+}
 
 export function compileShopeeExecutionPlan({shopId,itemId,modelId,sku,record,review,live,manualVideo=null,verifiedVideoSha256=null,manualImages=[],deferUnconfirmedFiscal=false,omitFiscal=false,selectedStage='all',allowDiscountOnly=false,modelVariations=null,kitDiscount=null}){
   selectedStage=normalizeShopeeExecutionStage(selectedStage);
