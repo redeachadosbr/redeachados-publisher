@@ -9,6 +9,8 @@ test('períodos hoje, 7, 30 e personalizado mantêm datas locais e limites',()=>
  assert.deepEqual(parseViewsWindow({period:'today'},date),
   {start:date,end:date,period:'today',days:1});
  assert.equal(parseViewsWindow({period:'7'},date).start,'2026-10-28');
+ assert.deepEqual(parseViewsWindow({period:'day',start:'2026-10-29'},date),
+  {start:'2026-10-29',end:'2026-10-29',period:'day',days:1});
  assert.equal(parseViewsWindow({period:'30'},date).start,'2026-10-05');
  assert.deepEqual(parseViewsWindow({period:'custom',start:'2026-10-01',
   end:'2026-10-31'},date).days,31);
@@ -136,6 +138,7 @@ test('popup escolhe as quatro datas e separa API geral dos dados orgânicos',()=
  const ui=readFileSync(new URL('../public/organic-top10.js',import.meta.url),'utf8');
  const server=readFileSync(new URL('../server.js',import.meta.url),'utf8');
  assert.match(html,/data-period="today"/);
+ assert.match(html,/data-period="day"/);
  assert.match(html,/data-period="7"/);
  assert.match(html,/data-period="30"/);
  assert.match(html,/data-period="custom"/);
