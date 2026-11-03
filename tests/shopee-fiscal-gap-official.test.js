@@ -79,3 +79,18 @@ test('diferencia valores preenchidos divergentes da tabela fiscal aprovada',()=>
  assert.equal(semNcm.status,'partial');
  assert.deepEqual(semNcm.unverified,['ncm']);
 });
+
+test('campos vazios fora da tabela aprovada não tornam o anúncio pendente',()=>{
+ const ref={ncm:'95030099',origin:'2',csosn:'102'};
+ const live={ncm:'95030099',origin:'2',csosn:'102',
+  cest:'',operation_type:'',measure_unit:'',same_state_cfop:'',diff_state_cfop:''};
+ const result=inspectShopeeFiscalGap(live,ref);
+ assert.equal(result.status,'complete');
+ assert.deepEqual(result.missing,[]);
+ assert.deepEqual(result.invalid,[]);
+ assert.deepEqual(result.mismatched,[]);
+ assert.deepEqual(result.unverified,[]);
+ const incorrect=inspectShopeeFiscalGap({...live,origin:'1'},ref);
+ assert.equal(incorrect.status,'partial');
+ assert.deepEqual(incorrect.mismatched,['origin']);
+});
