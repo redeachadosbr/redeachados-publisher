@@ -9,7 +9,7 @@ const itemId='58222014306';
 const record={sku:'1.26088.80.0001',itemId,selectedModelId:'0',status:'NORMAL',attributeAudit:{missingMandatory:0,attributes:[]}};
 const live={item_id:Number(itemId),has_model:false,item_name:'Anúncio existente',description:'Descrição antiga',
  image:{image_id_list:[]},video_info:[],tax_info:{}};
-test('etapa 08 sem prévia nem publicação é detectada como não executada',()=>{
+test('etapa 08 sem leitura oficial é detectada como não verificada',()=>{
  const result=auditRootShopeeExecution({
   sku:record.sku,itemId,record,live,
   review:{stages:{seo:{reviewed:true}},draftTitle:'Anúncio existente'},
@@ -17,7 +17,7 @@ test('etapa 08 sem prévia nem publicação é detectada como não executada',()
  });
  const discount=result.stages.find(x=>x.id==='discount');
  assert.equal(discount.status,'pending');
- assert.match(discount.reason,/DESCONTO NÃO EXECUTADO/);
+ assert.match(discount.reason,/Desconto ainda não verificado/);
  assert.ok(result.pending.includes('discount'));
  assert.equal(result.complete,false);
  assert.equal(result.stages.find(x=>x.id==='final').status,'pending');
@@ -28,7 +28,7 @@ test('prévia conferida sem publicação continua pendente',()=>{
   review:{stages:{},kitDiscountPreview:{status:'prepared',discountId:'123'}},
   discountReadback:null
  });
- assert.match(audit.stages.find(x=>x.id==='discount').reason,/prévia.*NÃO EXECUTADO|NÃO EXECUTADO.*prévia/i);
+ assert.match(audit.stages.find(x=>x.id==='discount').reason,/prévia preparada.*não foi conferida/i);
 });
 test('job bloqueado sem submissão não pode exibir 99% nem 100%',()=>{
  const result=shopeeExecutionProgress({
@@ -55,7 +55,7 @@ test('painel inclui desconto na lista de pendências, abrindo Minha Promoção',
  assert.ok(app.includes('async function optimizerOneClickExecute()'));
  assert.ok(tracker.includes("step.id==='discount'"));
  assert.ok(tracker.includes("kitDiscountAction.addEventListener('click',()=>optimizerDiscountOpenReview())"));
- assert.ok(tracker.includes('DESCONTO NÃO EXECUTADO'));
+ assert.ok(tracker.includes('Desconto pendente de verificação ou publicação'));
  assert.ok(tracker.includes('!progress.hasStarted&&!progress.hasSavedProgress?0'));
  assert.ok(app.includes("liveDiscount?.status!=='confirmed'"));
 });
