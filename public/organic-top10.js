@@ -36,6 +36,9 @@
    return node;
   }
   function render(rows){
+   // Três colunas úteis na API; oito somente no relatório orgânico.
+   // O modo define a grade ANTES de inserir os cartões.
+   $('organicTop10Modal').dataset.source=source;
    list.replaceChildren();
    const input=Array.isArray(rows)?rows:[];
    input.forEach((row,index)=>{
@@ -54,9 +57,14 @@
       replacement.textContent='▧';photo.replaceWith(replacement);
      };
     }else el(product,'span','▧','organic-top10-thumb organic-top10-thumb-placeholder');
-    const title=el(product,'div');
-    const name=el(title,'strong',row.title||'Produto Shopee','organic-top10-product-name');
-    name.title=row.title||'Produto Shopee';
+    const title=el(product,'div','','organic-top10-product-copy');
+    const fullTitle=String(row.title||'Produto Shopee').trim();
+    const titleLimit=source==='api'?62:46;
+    const previewTitle=fullTitle.length>titleLimit?
+     fullTitle.slice(0,titleLimit-1).trimEnd()+'…':fullTitle;
+    const name=el(title,'strong',previewTitle,'organic-top10-product-name');
+    // O nome completo não empurra as métricas: aparece apenas no tooltip.
+    name.title=fullTitle;
     el(title,'small','SKU '+(row.sku||'anúncio de variações')+
      (row.itemId?' · Item '+row.itemId:'')+
      (source==='api'&&row.latestTotalViews!==null&&row.latestTotalViews!==undefined?
@@ -66,27 +74,30 @@
      el(col,'span',value);
      el(col,'small',label);
     };
-    if(source==='api')add(number(row.viewsObserved!==null&&row.viewsObserved!==undefined?
-     row.viewsObserved:row.latestTotalViews),
-     row.viewsObserved!==null&&row.viewsObserved!==undefined?
-      'Variação observada (parcial)':'Contador Shopee (sem período)');
-    else add(number(row.impressions),'Impressões');
-    add(number(row.visits),'Visitas');
-    add(number(row.clicks),'Cliques');
-    add(percent(row.ctr),'CTR','organic-top10-ctr');
-    // "Adicionado ao carrinho" não significa que o comprador desistiu.
-    // Sem coluna explícita de abandono, mostrar adições com rótulo distinto.
-    const hasAbandonment=row.cartPending!==null&&row.cartPending!==undefined;
-    const hasAdditions=row.cartAdded!==null&&row.cartAdded!==undefined;
-    const countLabel=hasAbandonment?
-     row.cartCountKind==='carts'?'Carrinhos abandonados':'Parados no carrinho':
-     hasAdditions?'Adicionados (não abandonos)':'Carrinho sem dados';
-    add(number(hasAbandonment?row.cartPending:row.cartAdded),countLabel,
-     hasAbandonment?'organic-top10-pending':'organic-top10-added');
-    add(percent(row.cartAbandonmentRate),
-     row.cartRateSource==='calculated'?'Abandono calculado (mesma base)':
-     row.cartRateSource==='reported'?'Abandono informado':'Abandono não verificado',
-     'organic-top10-abandonment');
+    if(source==='api'){
+     add(number(row.viewsObserved!==null&&row.viewsObserved!==undefined?
+      row.viewsObserved:row.latestTotalViews),
+      row.viewsObserved!==null&&row.viewsObserved!==undefined?
+       'Variação observada (parcial)':'Contador Shopee (sem período)',
+      'organic-top10-views');
+    }else{
+     // Só o relatório orgânico confirmado permite exibir CTR/carrinho/abandono.
+     add(number(row.impressions),'Impressões');
+     add(number(row.visits),'Visitas');
+     add(number(row.clicks),'Cliques');
+     add(percent(row.ctr),'CTR','organic-top10-ctr');
+     const hasAbandonment=row.cartPending!==null&&row.cartPending!==undefined;
+     const hasAdditions=row.cartAdded!==null&&row.cartAdded!==undefined;
+     const countLabel=hasAbandonment?
+      row.cartCountKind==='carts'?'Carrinhos abandonados':'Parados no carrinho':
+      hasAdditions?'Adicionados (não abandonos)':'Carrinho sem dados';
+     add(number(hasAbandonment?row.cartPending:row.cartAdded),countLabel,
+      hasAbandonment?'organic-top10-pending':'organic-top10-added');
+     add(percent(row.cartAbandonmentRate),
+      row.cartRateSource==='calculated'?'Abandono calculado (mesma base)':
+      row.cartRateSource==='reported'?'Abandono informado':'Abandono não verificado',
+      'organic-top10-abandonment');
+    }
     const action=el(card,'button','Ver SKU','organic-top10-open-item');
     action.type='button';
     action.disabled=!row.sku||typeof globalThis.RAOpenPendingImageSku!=='function';
@@ -176,6 +187,7 @@
   }
   function setSource(next){
    source=next==='organic'?'organic':'api';
+   $('organicTop10Modal').dataset.source=source;
    $('organicTop10ModeApi').setAttribute('aria-pressed',String(source==='api'));
    $('organicTop10ModeOrganic').setAttribute('aria-pressed',String(source==='organic'));
    $('organicTop10ApiPeriods').hidden=source!=='api';
