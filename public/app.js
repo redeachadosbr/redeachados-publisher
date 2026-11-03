@@ -176,6 +176,7 @@ async function boot(){
   const a=await json('/api/auth-state');
   if(a.locked&&!a.loggedIn){$('#login').classList.remove('hidden');return;}
   $('#app').classList.remove('hidden');await loadStatus();loadCatalogCache();setTab(currentPageFromUrl(),{updateHistory:false,scroll:false});
+  window.dispatchEvent(new Event('ra:app-authorized'));
 }
 async function loadStatus(){
   try{
@@ -223,7 +224,7 @@ $('#dashboardRefreshStatus')?.addEventListener?.('click',async()=>{
   try{await loadStatus();if(activeAppPage==='overview')await window.dashboardNewListingsLoad?.(true);}
   finally{button.disabled=false}
 });
-$('#loginBtn').onclick=async()=>{try{await json('/api/login',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({password:$('#password').value})});$('#login').classList.add('hidden');$('#app').classList.remove('hidden');await loadStatus();loadCatalogCache();setTab(currentPageFromUrl(),{updateHistory:false,scroll:false});}catch(e){$('#loginMsg').textContent=e.message;}};
+$('#loginBtn').onclick=async()=>{try{await json('/api/login',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({password:$('#password').value})});$('#login').classList.add('hidden');$('#app').classList.remove('hidden');await loadStatus();loadCatalogCache();setTab(currentPageFromUrl(),{updateHistory:false,scroll:false});window.dispatchEvent(new Event('ra:app-authorized'));}catch(e){$('#loginMsg').textContent=e.message;}};
 $('#connectBtn').onclick=()=>location.href='/auth/shopee/start';
 $('#signatureBtn').onclick=async()=>{
   const btn=$('#signatureBtn'),notice=$('#signatureNotice');
