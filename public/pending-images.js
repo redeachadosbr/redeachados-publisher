@@ -31,10 +31,10 @@
   const d=new Date(v);return Number.isNaN(d.getTime())?'sem horário':
    d.toLocaleString('pt-BR',{day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'});
  }
- function build(row,parent,tag,cls='',text=''){
+ function build(text,parent,tag,cls=''){
   const el=document.createElement(tag);
   if(cls)el.className=cls;
-  if(text!==undefined)el.textContent=String(text);
+  el.textContent=String(text??'');
   parent.append(el);return el;
  }
  function renderMetrics(){
@@ -72,7 +72,7 @@
    Number(b.stock||0)-Number(a.stock||0)||String(a.sku).localeCompare(String(b.sku)));
   const body=find('pendingImagesRows');body.replaceChildren();
   for(const row of matches.slice(0,shown)){
-   const tr=build(row,body,'tr');
+   const tr=build('',body,'tr');
    const product=build('',tr,'td');
    const wrapper=build('',product,'div','pending-images-product');
    if(row.imageUrl){
@@ -195,7 +195,6 @@
        payload.hasNext&&next===offset)
       throw Error('Paginação não avançou na Shopee.');
      offset=next;
-     totalListings=totalListings-0; // O total final considera os quatro status.
      const pct=100*(i+(expected?Math.min(1,offset/expected):1))/statuses.length;
      progress(Math.min(99,pct));
      state('Verificando '+status+': '+num(offset)+' de '+num(expected)+
