@@ -81,7 +81,9 @@ export function auditRootShopeeExecution({
  }
  add('fiscal',fiscalOK,fiscalReason);
  add('discount',discountReadback===true,
-  discountReadback===null?(review.kitDiscountPreview?.status==='prepared'?'DESCONTO NÃO EXECUTADO: prévia preparada, mas promoção ainda não aplicada ou confirmada na Shopee.':'DESCONTO NÃO EXECUTADO: não há prévia de Minha Promoção nesta SKU; prepare a etapa 08.'):
+  discountReadback===null?(review.kitDiscountPreview?.status==='prepared'?
+   'Desconto sem confirmação: prévia preparada, mas a campanha ainda não foi conferida pela Shopee.':
+   'Desconto ainda não verificado: informe a campanha Minha Promoção e confira o preço promocional na Shopee; não presumir que não foi executado.'):
    'Promoção atual não corresponde à campanha aprovada');
  // Associar a última falha ao estágio preciso, sem apagar confirmações
  // já obtidas pela leitura oficial e sem tentar uma segunda escrita incerta.
