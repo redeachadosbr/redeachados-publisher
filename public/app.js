@@ -4544,8 +4544,11 @@ function optimizerExecutionVisibleCommands(progress,job){
  if(single){
   // Não depender do status do GET para mostrar o botão de execução.
   // A ação em si revalida SKU, prévia, campanha e desconto no servidor.
+  const auditKey=current?[current.sku,String(current.itemId),String(current.modelId)].join('|'):'';
+  const liveAudit=auditKey?optimizerRootAuditCache.get(auditKey)?.audit:null;
+  const hasOutstanding=Boolean(liveAudit?.pending?.some(id=>id!=='final'));
   const active=Boolean(current&&(optimizerExecPlan?.canExecute===true||
-    (allowed&&matching)||(job?.state==='prepared'&&matching)));
+    (allowed&&matching)||(job?.state==='prepared'&&matching)||hasOutstanding));
   // Preparação de prévia é SOMENTE leitura e não é execução.
   // Não manter o botão cinza por uma preparação antiga ou repetida.
   const running=Boolean(optimizerExecBusy||optimizerOneClickBusy||
@@ -4555,6 +4558,7 @@ function optimizerExecutionVisibleCommands(progress,job){
   launch.disabled=!active||running;
   if(active){
    launch.textContent=running?'Execução em andamento · conferindo Shopee':
+    hasOutstanding?'▶ RETOMAR SOMENTE ETAPAS PENDENTES':
     optimizerMatrixIndependentPendingPlan(optimizerExecPlan||job?.plan)?
      '▶ EXECUTAR SOMENTE PENDÊNCIAS':'▶ EXECUTAR NA SHOPEE';
    launch.title='Executar a prévia salva após confirmar a campanha e os valores na Shopee.';
