@@ -104,6 +104,7 @@ test('menu e API estão ligados ao roteador e não executam update_item',()=>{
  assert.match(app,/slug:'otimizacao-pendente'/);
  assert.match(app,/globalThis\.RAOpenPendingImageSku=sku/);
  assert.match(server,/\/api\/shopee\/optimizer\/pending-images\/page/);
+ assert.match(server,/'otimizacao-pendente'/);
  assert.match(server,/mustLogin,requireWeDropAdmin/);
  assert.match(client,/status.*offset/);
  assert.doesNotMatch(client,/\/execution\/execute|update_item/);
