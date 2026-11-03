@@ -24,6 +24,7 @@ import {financeAdsDates,matchFinanceAds} from './financeAdsSweep.js';
 import {financeRange} from './shopeeFinance.js';
 import {fetchCatalogPage,fetchCatalogPrices,normalizeShopeeModels,validItemId} from './catalog.js';
 import {scanShopeePendingImagesPage,verifyShopeePendingImageItem,PENDING_IMAGE_STATUSES} from './shopeePendingImageAudit.js';
+import {getPendingImageSnapshot,savePendingImageSnapshot,reconcilePendingImageVerification} from './shopeePendingImageStore.js';
 import {suggestFiscalMeasureUnit} from './shopeeFiscalMeasure.js';
 import {getShopeeNewListingsSummary,clearShopeeNewListingsCache} from './shopeeNewListings.js';
 import {storeCatalogItems,storeCatalogModels,readCatalogCache,catalogStoreReady,findExactCatalogSku,findCatalogSkuIgnoringCase} from './catalogStore.js';
@@ -1314,6 +1315,48 @@ app.get('/api/shopee/catalog/page',mustLogin,async(req,res)=>{
   }catch(error){
     res.status(400).json({error:String(error.message||error).slice(0,320)});
   }
+});
+// Fila persistida por loja. Entrar no menu NÃO inicia nova varredura.
+app.get('/api/shopee/optimizer/pending-images/snapshot',mustLogin,requireWeDropAdmin,async(req,res)=>{
+ res.setHeader('Cache-Control','no-store');
+ try{
+  const {auth}=await getValidAuth(req);
+  const snapshot=await getPendingImageSnapshot(auth.shopId);
+  res.json({ok:true,exists:Boolean(snapshot),shopId:String(auth.shopId),snapshot});
+ }catch(error){
+  res.status(503).json({ok:false,error:'Não foi possível recuperar as SKUs salvas: '+
+   String(error.message||error).slice(0,240)});
+ }
+});
+// Gravar somente depois que todas as páginas e status forem conferidos.
+// Não permite gravar contagens parciais nem marca imagens como otimizadas.
+app.post('/api/shopee/optimizer/pending-images/snapshot',mustLogin,requireWeDropAdmin,async(req,res)=>{
+ res.setHeader('Cache-Control','no-store');
+ try{
+  const {auth}=await getValidAuth(req);
+  const snapshot=await savePendingImageSnapshot(auth.shopId,req.body||{});
+  res.json({ok:true,shopId:String(auth.shopId),snapshot});
+ }catch(error){
+  res.status(409).json({ok:false,error:'Não foi possível salvar a varredura: '+
+   String(error.message||error).slice(0,240)});
+ }
+});
+// OK persistente: a confirmação é SEMPRE obtida agora pela API da Shopee.
+// Não recebe imageCount nem status informados pelo navegador.
+app.post('/api/shopee/optimizer/pending-images/confirm',mustLogin,requireWeDropAdmin,async(req,res)=>{
+ res.setHeader('Cache-Control','no-store');
+ try{
+  const {auth,cfg}=await getValidAuth(req);
+  const readback=await verifyShopeePendingImageItem({
+   cfg,auth,callApi:callShopeeShopApi,itemId:req.body?.itemId
+  });
+  const saved=await reconcilePendingImageVerification(auth.shopId,readback);
+  res.json({ok:true,...readback,persisted:saved.persisted,optimized:saved.optimized,
+   snapshot:saved.snapshot||null});
+ }catch(error){
+  res.status(503).json({ok:false,error:'Não foi possível confirmar a galeria na Shopee: '+
+   String(error.message||error).slice(0,240)});
+ }
 });
 // Menu Otimização Pendente. Cada página realiza somente leitura OFICIAL na Shopee.
  // A interface varre todas as páginas/status; não fabricar totais usando cache.
