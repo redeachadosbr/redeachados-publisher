@@ -181,6 +181,8 @@
    $('organicTop10ApiPeriods').hidden=source!=='api';
    $('organicTop10Tools').hidden=source!=='organic';
    $('organicTop10ShowImport').hidden=source!=='organic';
+   $('organicTop10Update').textContent=source==='api'?
+    '↻ Atualizar Shopee':'↻ Recarregar relatório';
    $('organicTop10SourceBadge').textContent=source==='api'?
     '● VISUALIZAÇÕES GERAIS · PODEM INCLUIR ADS':
     '● ORGÂNICO · RELATÓRIO EXCLUSIVO SEM ADS';
@@ -366,6 +368,7 @@
      document.getElementById('login')?.classList.contains('hidden'))
    open({auto:true});
   globalThis.RAOrganicTop10={open,refresh,close};
+  $('organicTop10Update').textContent='↻ Atualizar Shopee';
  }
  if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',start,{once:true});
  else start();
