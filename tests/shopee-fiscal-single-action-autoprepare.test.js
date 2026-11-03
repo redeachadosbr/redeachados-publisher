@@ -106,7 +106,7 @@ test('varredura fiscal oficial lista Item IDs, evita duplicar anúncio-pai e só
  assert.match(server,/need_tax_info:true/);
  assert.match(server,/inspectShopeeFiscalGap/);
  assert.match(server,/if\(missingOnly&&gap\.status==='complete'\)/);
- assert.match(server,/if\(missingOnly&&existing\?\.review_state\?\.stages\?\.fiscal\?\.reviewed!==true\)/);
+ assert.match(server,/if\(missingOnly&&existing\?\.review_state\?\.stages\?\.fiscal\?\.reviewed!==true&&/);
  assert.match(server,/fiscalFillMissingOnly/);
  const html=read('public/index.html');
  for(const id of ['raFiscalEmptyCount','raFiscalPartialCount','raFiscalMissingCount',
