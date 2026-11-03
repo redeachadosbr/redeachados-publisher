@@ -153,7 +153,7 @@ test('menu revalida cada clique, mostra OK e remove anúncio-pai de todas as var
  const app=readFileSync(new URL('../public/app.js',import.meta.url),'utf8');
  const server=readFileSync(new URL('../server.js',import.meta.url),'utf8');
  assert.match(client,/verifyItem\(row\.itemId,\{force:true\}\)/);
- assert.match(client,/result\.imageCount>=9/);
+ assert.match(client,/result\.status==='confirmed'&&result\.optimized/);
  assert.match(client,/if\(result\.snapshot\)applySnapshot\(result\.snapshot\)/);
  assert.match(client,/confirmed\.set\(String\(id\),value\)/);
  assert.match(client,/if\(!exists\)await run\(\)/);
