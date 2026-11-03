@@ -6,6 +6,7 @@ const html=readFileSync(new URL('../public/index.html',import.meta.url),'utf8');
 const css=readFileSync(new URL('../public/optimizer-execution-progress.css',import.meta.url),'utf8');
 const app=readFileSync(new URL('../public/app.js',import.meta.url),'utf8');
 const visual=readFileSync(new URL('../public/optimizer-execution-visual.js',import.meta.url),'utf8');
+const dialog=readFileSync(new URL('../public/optimizer-execution-dialog.js',import.meta.url),'utf8');
 const sandbox={document:{getElementById:()=>null}};
 sandbox.globalThis=sandbox;
 vm.runInNewContext(visual,sandbox,{filename:'optimizer-execution-visual.js'});
@@ -112,4 +113,16 @@ test('SKU 305350: um centavo pendente ANTES da escrita não é espera falsa da S
  assert.equal(state.states[8],'waiting');
  assert.equal(state.states[0],'done');
  assert.equal(state.percent,83);
+});
+
+test('etapa pendente oferece diagnóstico, correção e execução isolada sem reload',()=>{
+ assert.match(app,/RAExecutionPrimaryAction=async\(onlyStage=null\)/);
+ assert.match(app,/RAExecutionPrimaryAction\?\.\(stage\.id\)/);
+ assert.match(app,/optimizerWorkflowOpen\(stage\.id\)/);
+ assert.match(app,/discountOutstanding/);
+ assert.match(app,/commercialApprovedWithMatrix/);
+ assert.match(app,/rootAuditPending/);
+ assert.match(app,/params\.set\('campaign_id',campaignId\)/);
+ assert.match(dialog,/rootAuditPending/);
+ assert.match(dialog,/Executar somente pendências/);
 });
