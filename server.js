@@ -56,7 +56,7 @@ import {getWorkflowReview,saveWorkflowReview,mergeWorkflowTechnicalAutofill} fro
 import {compileShopeeExecutionPlan,confirmShopeeExecution,
   assertLiveShopeeUnchanged,verifyShopeeExecution,verifyShopeeFiscalExecution,normalizeShopeeExecutionStage,
   shopeeExecutionUnconfirmedFields,assessShopeeStableCommercialRecovery,
-  approvedShopeeReadbackConvergence,videoMatches,videoPublishedAfterPlan,isShopeeVideoOnlyPlan,isShopeeMatrixIndependentPlan,shopeeMatrixPendingSnapshot} from './shopeeExecutionPlan.js';
+  approvedShopeeReadbackConvergence,videoMatches,videoPublishedAfterPlan,isShopeeVideoOnlyPlan,isShopeeMatrixIndependentPlan,shopeeMatrixPendingSnapshot,shouldAttachCommercialDiscount} from './shopeeExecutionPlan.js';
 import {readShopeeExecution,saveShopeePreparedExecution,
   claimShopeePreparedExecution,finishShopeeExecution,pendingShopeeExecutions,leaseShopeeExecution,
   checkpointShopeeExecution,reconcileShopeeJob} from './shopeeExecutionStore.js';
@@ -3487,9 +3487,10 @@ app.post('/api/shopee/optimizer/execution/execute',mustLogin,requireWeDropAdmin,
   // especifica, apenas apos a execucao ser confirmada pela Shopee.
   // Motor Matriz rule across ALL SKUs: never require promotion approval
   // when every executable action is an independent, already-approved stage.
-  if(['all','remaining','discount','discount_adjust'].includes(plan.selectedStage)&&
-     !linkedKit&&(!isShopeeMatrixIndependentPlan(plan)||
-       Boolean(req.body?.discountApprovalToken))){
+  if(shouldAttachCommercialDiscount(plan,{
+    hasSignedApproval:Boolean(req.body?.discountApprovalToken),
+    linkedKit:Boolean(linkedKit)
+   })){
    // Mesmo quando título/mídia são independentes, um token assinado
    // aprovado neste mesmo clique inclui a promoção como etapa final.
    // Sem token, o executor mantém apenas as ações independentes.
