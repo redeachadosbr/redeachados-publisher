@@ -25,7 +25,7 @@ import {financeRange} from './shopeeFinance.js';
 import {fetchCatalogPage,fetchCatalogPrices,normalizeShopeeModels,validItemId} from './catalog.js';
 import {scanShopeePendingImagesPage,verifyShopeePendingImageItem,PENDING_IMAGE_STATUSES} from './shopeePendingImageAudit.js';
 import {getPendingImageSnapshot,savePendingImageSnapshot,reconcilePendingImageVerification} from './shopeePendingImageStore.js';
-import {parseOrganicReport,rankOrganicTop,readOrganicSnapshot,saveOrganicSnapshot} from './shopeeOrganicPerformance.js';
+import {parseOrganicReport,rankOrganicTop,readOrganicSnapshot,saveOrganicSnapshot,parseProductPerformanceReport,readPerformanceSnapshot,savePerformanceSnapshot} from './shopeeOrganicPerformance.js';
 import {scanLiveShopViews,saveViewsScan,parseViewsWindow,listViewSamples,rankObservedViews,saoPauloDay} from './shopeeProductViewTrends.js';
 import {suggestFiscalMeasureUnit} from './shopeeFiscalMeasure.js';
 import {getShopeeNewListingsSummary,clearShopeeNewListingsCache} from './shopeeNewListings.js';
@@ -5480,6 +5480,84 @@ app.post('/api/shopee/product-views/collect',mustLogin,requireWeDropAdmin,async(
   res.status(503).json({ok:false,error:'Shopee não confirmou a coleta das visualizações: '+
    String(error.message||error).slice(0,250)+
    '. Nenhum valor artificial foi registrado.'});
+ }
+});
+// PERFORMANCE DO PRODUTO (Central do Vendedor). A tela seller.shopee.com.br
+// não usa o mesmo conjunto de métricas que /product/get_item_extra_info.
+// Só apresentar valores que vieram do export oficial; nenhuma chamada Ads.
+app.get('/api/shopee/performance/top10',mustLogin,requireWeDropAdmin,async(req,res)=>{
+ res.setHeader('Cache-Control','no-store');
+ try{
+  const {auth,cfg}=await getValidAuth(req);
+  const snapshot=await readPerformanceSnapshot(auth.shopId);
+  if(!snapshot)
+   return res.json({ok:true,available:false,source:'seller_center_product_performance_export',
+    message:'Ainda não há relatório de Performance do Produto salvo. A API de visualizações NÃO fornece impressões, cliques, CTR ou adição ao carrinho.'});
+  const allowed=['combined','impressions','visits','clicks','ctr','cartVisitors','cartUnits',
+   'cartConversionRate','orders','orderConversionRate'];
+  const sort=allowed.includes(req.query.sort)?req.query.sort:'combined';
+  const top=rankOrganicTop(snapshot.records,{sort,limit:10});
+  let cached=[],catalogWarning='';
+  try{cached=(await readCatalogCache(auth.shopId)).items||[];}
+  catch(error){catalogWarning='Imagens do catálogo não carregadas: '+
+   String(error.message||error).slice(0,100);}
+  const byId=new Map(cached.filter(x=>x.itemId).map(x=>[String(x.itemId),x]));
+  const bySku=new Map(cached.filter(x=>x.sku).map(x=>[String(x.sku),x]));
+  const decorated=top.map(row=>{
+   const catalog=byId.get(String(row.itemId||''))||bySku.get(String(row.sku||''))||null;
+   return {...row,itemId:String(row.itemId||catalog?.itemId||''),
+    sku:String(row.sku||catalog?.sku||''),
+    title:String(row.title||catalog?.title||'').slice(0,220),
+    imageUrl:String(catalog?.imageUrl||''),photoSource:catalog?.imageUrl?'catalog_snapshot':'not_available'};
+  });
+  const missing=decorated.filter(x=>!x.imageUrl&&/^[1-9]\d{0,17}$/.test(x.itemId));
+  if(missing.length){
+   try{
+    const ids=[...new Set(missing.map(x=>x.itemId))];
+    const result=await callShopeeShopApi(cfg,{path:'/api/v2/product/get_item_base_info',
+     accessToken:auth.accessToken,shopId:auth.shopId,query:{item_id_list:ids.join(',')}});
+    const found=new Map((result?.response?.item_list||[]).map(x=>[String(x.item_id),x]));
+    for(const row of missing){
+     const item=found.get(row.itemId);
+     if(!item)continue;
+     const url=item.image?.image_url_list?.[0]||item.image?.image_url||'';
+     if(/^https:\/\//i.test(String(url))){row.imageUrl=url;row.photoSource='shopee_product_api';}
+     if(!row.title)row.title=String(item.item_name||'').slice(0,220);
+     if(!row.sku&&item.item_sku)row.sku=String(item.item_sku).slice(0,120);
+    }
+   }catch(error){catalogWarning='Não foi possível complementar miniaturas: '+
+    String(error.message||error).slice(0,100);}
+  }
+  res.json({ok:true,available:true,source:snapshot.source,sort,
+   period:{start:snapshot.period_start,end:snapshot.period_end},
+   importedAt:snapshot.imported_at,fileName:snapshot.file_name,
+   metadata:snapshot.metadata||{},rowCount:snapshot.row_count,
+   list:decorated,catalogWarning,readOnly:true,
+   caveat:'Desempenho do Produto conforme exportação da Central do Vendedor. O filtro Produto Pago NÃO prova ausência de Ads. Adição ao carrinho não é abandono. A API de visualizações gerais não fornece as métricas de conversão.'});
+ }catch(error){
+  res.status(503).json({ok:false,available:false,error:'Não foi possível carregar Performance do Produto: '+
+   String(error.message||error).slice(0,250)});
+ }
+});
+app.post('/api/shopee/performance/top10/import',mustLogin,requireWeDropAdmin,async(req,res)=>{
+ res.setHeader('Cache-Control','no-store');
+ if(!verifiedSameOrigin(req))return res.status(403).json({ok:false,error:'Origem não autorizada.'});
+ try{
+  const {auth}=await getValidAuth(req);
+  const {fileName,base64,periodStart,periodEnd}=req.body||{};
+  if(typeof base64!=='string'||base64.length>5_400_000||
+     !/^[A-Za-z0-9+/]+={0,2}$/.test(base64))
+   throw Error('Arquivo inválido ou maior que 4 MB.');
+  const file=Buffer.from(base64,'base64');
+  if(file.length>4_000_000)throw Error('Arquivo excede 4 MB.');
+  const report=parseProductPerformanceReport(file,{fileName,periodStart,periodEnd});
+  const saved=await savePerformanceSnapshot(auth.shopId,report);
+  res.json({ok:true,imported:true,source:saved.source,period:{
+   start:saved.period_start,end:saved.period_end},
+   importedAt:saved.imported_at,rowCount:saved.row_count,metadata:saved.metadata});
+ }catch(error){
+  res.status(422).json({ok:false,error:'Relatório de Performance não importado: '+
+   String(error.message||error).slice(0,250)});
  }
 });
 // TOP 10 desempenho ORGÂNICO: dados somente de relatório da Central do
