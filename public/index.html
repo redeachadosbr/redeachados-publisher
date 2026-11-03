@@ -14,6 +14,7 @@
 <link rel="stylesheet" href="/shopee-discount-one-click.css?v=1.20.17">
 <link rel="stylesheet" href="/shopee-market-research.css?v=1.20.18">
 <link rel="stylesheet" href="/dashboard-new-listings.css?v=1.20.21-shopee">
+<link rel="stylesheet" href="/organic-top10.css?v=1.0.0-organic-performance">
 <link rel="stylesheet" href="/finance-thumbnails.css?v=1.20.22">
 <link rel="stylesheet" href="/title-studio.css?v=1.21.16-ranked-best">
 <link rel="stylesheet" href="/seo-modern-layout.css?v=1.0.5-compact-cards">
@@ -157,7 +158,7 @@
         <button id="sidebarToggle" class="topbar-icon-button" type="button" aria-label="Abrir menu" aria-controls="appSidebar" aria-expanded="false"><svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M4 7h16M4 12h16M4 17h16"/></svg></button>
         <button class="topbar-settings-button" type="button" data-go="settings" aria-label="Abrir configurações"><svg class="nav-icon" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M12 2v2m0 16v2M4 12H2m20 0h-2m-2.3-5.7 1.4-1.4m-14 14 1.4-1.4m0-11.4L5 4.7m14 14-1.4-1.4"/></svg></button><span class="topbar-location">Central de gestão <span class="topbar-separator">/</span> <strong id="topbarSectionName">Painel inicial</strong></span>
       </div>
-      <div class="topbar-trailing"><span class="shopee-integration-mark" title="Integração Shopee" aria-label="Integração Shopee"><svg viewBox="0 0 48 48" aria-hidden="true"><path d="M12 16h24l-2.5 25h-19z" fill="#EE4D2D"/><path d="M19 17V11a5 5 0 1 1 10 0v6" stroke="#EE4D2D" stroke-width="3" fill="none" stroke-linecap="round"/><text x="24" y="34" fill="white" font-size="17" font-weight="800" text-anchor="middle">S</text></svg><span>Shopee</span></span><div id="statusPill" class="pill">Verificando…</div><button class="topbar-alert-button" type="button" data-go="alerts" aria-label="Abrir avisos de envio"><svg class="nav-icon" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8a6 6 0 0 0-12 0c0 7-3 7-3 9h18c0-2-3-2-3-9M10 21h4"/></svg></button><span class="topbar-account"><span class="topbar-avatar"><img src="/brand-logo.svg" alt="" width="30" height="30"></span><span>Administrador <span aria-hidden="true">⌄</span></span></span><button id="logoutBtn" class="topbar-logout" type="button" title="Sair do aplicativo">Sair</button></div>
+      <div class="topbar-trailing"><span class="shopee-integration-mark" title="Integração Shopee" aria-label="Integração Shopee"><svg viewBox="0 0 48 48" aria-hidden="true"><path d="M12 16h24l-2.5 25h-19z" fill="#EE4D2D"/><path d="M19 17V11a5 5 0 1 1 10 0v6" stroke="#EE4D2D" stroke-width="3" fill="none" stroke-linecap="round"/><text x="24" y="34" fill="white" font-size="17" font-weight="800" text-anchor="middle">S</text></svg><span>Shopee</span></span><div id="statusPill" class="pill">Verificando…</div><button id="organicTop10Open" class="organic-top10-toolbar-button" type="button" aria-haspopup="dialog" aria-controls="organicTop10Overlay" title="Abrir TOP 10 de desempenho orgânico">✦ TOP 10 Orgânico</button><button class="topbar-alert-button" type="button" data-go="alerts" aria-label="Abrir avisos de envio"><svg class="nav-icon" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8a6 6 0 0 0-12 0c0 7-3 7-3 9h18c0-2-3-2-3-9M10 21h4"/></svg></button><span class="topbar-account"><span class="topbar-avatar"><img src="/brand-logo.svg" alt="" width="30" height="30"></span><span>Administrador <span aria-hidden="true">⌄</span></span></span><button id="logoutBtn" class="topbar-logout" type="button" title="Sair do aplicativo">Sair</button></div>
     </header>
     <main class="workspace-content">
       <section id="login" class="card login-card hidden">
@@ -2582,5 +2583,74 @@
 <script src="/ads-seo.js?v=6-ads-eligible-counter"></script>
 <script src="/optimizer-image-studio.js?v=1.0.5-move-enabled"></script>
 <script src="/optimizer-technical-studio.js?v=1.2.0-compact-fields"></script>
+<script src="/organic-top10.js?v=1.0.0-organic-performance"></script>
+
+<!-- Modal independente do roteador: abre em cada login / carregamento autenticado -->
+<div id="organicTop10Overlay" class="organic-top10-overlay" hidden>
+ <section id="organicTop10Modal" class="organic-top10-modal" role="dialog" aria-modal="true" aria-labelledby="organicTop10Title" aria-describedby="organicTop10Subtitle" tabindex="-1">
+  <header class="organic-top10-header">
+   <div class="organic-top10-header-body">
+    <div>
+     <div class="organic-top10-eyebrow"><span class="organic-top10-dot"></span> REDE ACHADOS BR · INTELIGÊNCIA DE PRODUTO</div>
+     <h2 id="organicTop10Title" class="organic-top10-heading">TOP 10 · Desempenho Orgânico</h2>
+     <p id="organicTop10Subtitle" class="organic-top10-subtitle">Os produtos que atraem mais compradores sem Shopee Ads. Métricas do relatório oficial da Central do Vendedor, nunca das campanhas pagas.</p>
+    </div>
+    <button id="organicTop10Close" class="organic-top10-close" type="button" aria-label="Fechar ranking orgânico">×</button>
+   </div>
+   <div class="organic-top10-meta">
+    <span class="organic-top10-pill featured">● SOMENTE ORGÂNICO · SEM ADS</span>
+    <span id="organicTop10Period" class="organic-top10-pill">Período: aguardando dados</span>
+    <span id="organicTop10Count" class="organic-top10-pill">Ranking não carregado</span>
+   </div>
+  </header>
+  <div class="organic-top10-content">
+   <div class="organic-top10-tools">
+    <span class="organic-top10-tools-label">Classificar os 10 melhores por</span>
+    <div id="organicTop10Sorts" class="organic-top10-sorts" role="group" aria-label="Ordenar ranking orgânico">
+     <button type="button" data-sort="combined" aria-pressed="true">Geral</button>
+     <button type="button" data-sort="impressions" aria-pressed="false">Impressões</button>
+     <button type="button" data-sort="visits" aria-pressed="false">Visitas</button>
+     <button type="button" data-sort="clicks" aria-pressed="false">Cliques</button>
+     <button type="button" data-sort="ctr" aria-pressed="false">CTR</button>
+    </div>
+   </div>
+   <p id="organicTop10Status" class="organic-top10-banner" role="status" aria-live="polite">Buscando o último relatório orgânico salvo da loja…</p>
+   <div class="organic-top10-grid-header" aria-hidden="true">
+    <span>Produto / SKU</span><span>Impressões</span><span>Visitas</span><span>Cliques</span><span>CTR</span><span>Ação</span>
+   </div>
+   <div id="organicTop10List" class="organic-top10-list" aria-label="Dez melhores produtos do tráfego orgânico"></div>
+   <form id="organicTop10Import" class="organic-top10-import" hidden>
+    <h3>Vincular relatório orgânico da Shopee</h3>
+    <p>Na Central do Vendedor, abra <strong>Informações Gerenciais → Produto → Performance do Produto</strong>. Selecione um relatório exclusivamente de tráfego orgânico (sem Ads) e exporte CSV/Excel. Importe-o uma vez para que o TOP 10 reapareça automaticamente em cada abertura. Colunas ausentes serão mostradas como “—”.</p>
+    <div class="organic-top10-import-grid">
+     <label>Relatório do produto (.csv, .xls, .xlsx)
+      <input id="organicTop10File" type="file" accept=".csv,.xlsx,.xls" required>
+     </label>
+     <label>Período inicial
+      <input id="organicTop10Start" type="date" required>
+     </label>
+     <label>Período final
+      <input id="organicTop10End" type="date" required>
+     </label>
+    </div>
+    <label class="organic-top10-consent"><input id="organicTop10OrganicConfirmed" type="checkbox" required>
+     Confirmo que este relatório foi filtrado exclusivamente para tráfego orgânico, sem campanhas Shopee Ads e sem somar métricas pagas.
+    </label>
+    <div class="organic-top10-import-footer">
+     <button id="organicTop10Upload" type="submit" class="organic-top10-action">Importar e atualizar TOP 10</button>
+     <button id="organicTop10CancelImport" type="button" class="organic-top10-action organic-top10-secondary">Voltar ao ranking</button>
+     <span id="organicTop10ImportNotice" class="organic-top10-notice" role="status" aria-live="polite"></span>
+    </div>
+   </form>
+  </div>
+  <footer class="organic-top10-footer">
+   <p id="organicTop10Footnote" class="organic-top10-footnote">Relatório orgânico salvo por período. Sem relatório, o sistema não inventa impressões, visitas, cliques ou CTR.</p>
+   <div class="organic-top10-import-footer">
+    <button id="organicTop10Update" type="button" class="organic-top10-action organic-top10-secondary">↻ Recarregar ranking</button>
+    <button id="organicTop10ShowImport" type="button" class="organic-top10-action">Importar relatório orgânico</button>
+   </div>
+  </footer>
+ </section>
+</div>
 </body>
 </html>
