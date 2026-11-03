@@ -1419,15 +1419,25 @@ app.get('/api/shopee/optimizer/fiscal-migration/active-skus',mustLogin,requireWe
             sku:candidate.sku,itemId,modelId:candidate.modelId});
           const linked=supplier&&['exact-sku','reviewed-link'].includes(supplier.matchedBy);
           const sourceNcm=String(linked?supplier.product_data?.ncm||'':'').replace(/\D/g,'');
-          const reviewedTax=checked?review.review_state.tax:{};
-          const reviewedNcm=String(reviewedTax.ncm||'').replace(/\D/g,'');
+          const savedTax=review?.sku===candidate.sku?
+            review.review_state?.tax||{}:{};
+          const reviewedNcm=String(savedTax.ncm||'').replace(/\D/g,'');
           const ncm=/^\d{8}$/.test(sourceNcm)?sourceNcm:
             (/^\d{8}$/.test(reviewedNcm)?reviewedNcm:'');
-          const reference={ncm,origin:'2',
-            measure_unit:String(reviewedTax.measure_unit||'UN'),
-            same_state_cfop:'5106',diff_state_cfop:'6106',csosn:'102',
-            pis_cofins_cst:'99',operation_type:'1',
-            cest:linked?wedropCestForSku(supplier):String(reviewedTax.cest||'00')};
+          // Valores da ficha salva são a referência por SKU.
+          // Regras fixas aprovadas servem apenas como fallback se não há
+          // ficha salva; não exigir opcionais ausentes da própria tabela.
+          const reference={
+            origin:String(savedTax.origin||'2'),
+            measure_unit:String(savedTax.measure_unit||'UN'),
+            same_state_cfop:String(savedTax.same_state_cfop||'5106'),
+            diff_state_cfop:String(savedTax.diff_state_cfop||'6106'),
+            csosn:String(savedTax.csosn||'102'),
+            pis_cofins_cst:String(savedTax.pis_cofins_cst||'99'),
+            ...(savedTax.operation_type?{operation_type:savedTax.operation_type}:{}),
+            cest:linked?wedropCestForSku(supplier):String(savedTax.cest||''),
+            ncm
+          };
           fiscal=inspectShopeeFiscalGap(fiscalById.get(itemId),reference);
         }
         output.push({sku:candidate.sku,itemId,modelId:candidate.modelId,
@@ -2997,7 +3007,10 @@ app.post('/api/shopee/optimizer/fiscal-migration/execute-one',mustLogin,requireW
   compileTax(tax,{tax_info:{}});
   const source=fiscalMatrixSource({sku,supplier:supplierLinked?supplier:null,tax});
   // Campos preenchidos também precisam coincidir com a tabela fiscal aprovada.
-  const comparison=inspectShopeeFiscalGap(live.tax_info,tax);
+  const referenceTax={...tax};
+  if(!String(previousTax.operation_type||'').trim())
+   delete referenceTax.operation_type;
+  const comparison=inspectShopeeFiscalGap(live.tax_info,referenceTax);
   if(missingOnly&&comparison.status==='complete')
    return res.json({ok:true,sku,itemId,modelId,status:'already_current',
     message:'Campos fiscais comparados à tabela aprovada e confirmados na Shopee.'});
