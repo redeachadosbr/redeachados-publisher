@@ -227,11 +227,23 @@ function mark(state,item,value,message=''){
  if(state.pending===id)state.pending=null;
  save(state);
 }
+async function jobStatuses(items){
+ const out=[];
+ for(let at=0;at<items.length;at+=12){
+  const batch=items.slice(at,at+12);
+  const params=new URLSearchParams({items:JSON.stringify(batch.map(item=>({
+   sku:item.sku,itemId:item.itemId,modelId:item.modelId
+  })))});
+  const data=await request('/api/shopee/optimizer/batch/fiscal/status?'+params);
+  if(!Array.isArray(data.results)||data.results.length!==batch.length)
+   throw Error('Histórico de execução incompleto. Nenhum envio duplicado será permitido.');
+  out.push(...data.results);
+ }
+ return out;
+}
 async function jobStatus(item){
- const params=new URLSearchParams({items:JSON.stringify([{
-  sku:item.sku,itemId:item.itemId,modelId:item.modelId}])});
- const data=await request('/api/shopee/optimizer/batch/fiscal/status?'+params);
- return (data.results||[]).find(x=>x.sku===item.sku);
+ const results=await jobStatuses([item]);
+ return results.find(x=>x.sku===item.sku);
 }
 async function awaitConfirmation(state,item){
  // O servidor executa de forma durável e a consulta é somente leitura.
@@ -327,35 +339,50 @@ async function run(){
     if(keys.includes(state.pending))state.pending=null;
     continue;
    }
-   const previous=keys.map(k=>state.done[k]).filter(Boolean);
-   const unresolved=keys.includes(state.pending)||
-    previous.some(s=>['uncertain','blocked','failed','verified','running'].includes(s));
-   if(!unresolved)continue;
-   // Um envio anterior pode ter sido concluído após o timeout do navegador.
-   // Consultar seu registro sem repetir a escrita nem presumir êxito.
-   let result=null;
-   try{result=await jobStatus(representative);}
-   catch(error){
-    for(const key of keys){
-     state.done[key]='uncertain';
-     state.errors[key]='Não foi possível confirmar o histórico do Item ID: '+String(error.message||error);
-    }
+   // Antes de preencher: comparar a leitura fiscal real à tabela aprovada.
+   // Divergências de valor, códigos inválidos ou referência ausente exigem
+   // revisão individual e NUNCA são sobrescritos pelo preenchimento automático.
+   const conflicts=rows.flatMap(x=>[
+    ...(x.fiscal?.invalid||[]),...(x.fiscal?.mismatched||[]),
+    ...(x.fiscal?.unverified||[])
+   ]);
+   if(conflicts.length){
+    const message='Campos que exigem revisão da tabela fiscal: '+
+      [...new Set(conflicts)].join(', ')+'. Não serão sobrescritos.';
+    for(const key of keys){state.done[key]='blocked';state.errors[key]=message;}
     if(keys.includes(state.pending))state.pending=null;
     continue;
    }
-   let status='blocked',message='';
-   if(['running','prepared','uncertain','not_found'].includes(result?.status)||!result){
-    status='uncertain';
-    message='Envio anterior não conclusivo ('+(result?.status||'sem resposta')+
-     '). Dados fiscais continuam incompletos; consultar a Shopee antes de reenviar.';
-   }else if(result.status==='verified'){
-    message='O job anterior consta como confirmado, mas a leitura fiscal atual segue incompleta. Revisão necessária.';
-   }else{
-    message='Dados fiscais ainda incompletos; envio anterior '+result.status+
-     '. Revisar a causa antes de autorizar outra tentativa.';
+   const prior=keys.map(k=>state.done[k]).filter(Boolean);
+   const hadPostUnconfirmed=keys.includes(state.pending);
+   const mustReconcile=hadPostUnconfirmed||
+    prior.some(v=>['verified','already_current','blocked','failed','uncertain','running'].includes(v));
+   if(mustReconcile){
+    // Jobs antigos marcados como verified/blocked/failed ou não localizados
+    // NÃO provam que a Shopee esteja atualizada. A leitura fiscal atual prevalece.
+    let jobs=[];
+    try{jobs=await jobStatuses(rows);}
+    catch(error){
+     const message='Não foi possível confirmar o histórico da Shopee: '+String(error.message||error);
+     for(const key of keys){state.done[key]='uncertain';state.errors[key]=message;}
+     if(hadPostUnconfirmed)state.pending=null;
+     continue;
+    }
+    const unfinished=jobs.find(job=>['running','uncertain'].includes(job.status));
+    if(unfinished||hadPostUnconfirmed&&jobs.some(job=>
+      ['prepared','not_found'].includes(job.status))){
+     const status=unfinished?.status||'envio anterior sem comprovação';
+     const message='Há envio anterior ainda sem confirmação ('+status+
+       '). Nenhuma escrita será repetida até a conciliação oficial.';
+     for(const key of keys){state.done[key]='uncertain';state.errors[key]=message;}
+     if(hadPostUnconfirmed)state.pending=null;
+     continue;
+    }
    }
-   for(const key of keys){state.done[key]=status;state.errors[key]=message;}
-   if(keys.includes(state.pending))state.pending=null;
+   // Se ainda há apenas campos faltantes, o histórico local não bloqueia uma
+   // nova execução autorizada. O backend revalida o Item ID e faz fill-only.
+   for(const key of keys){state.done[key]='pending';delete state.errors[key];}
+   if(hadPostUnconfirmed)state.pending=null;
   }
   state.inventory=all;
   state.inventoryComplete=true;
