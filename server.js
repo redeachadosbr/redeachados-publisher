@@ -25,6 +25,7 @@ import {financeRange} from './shopeeFinance.js';
 import {fetchCatalogPage,fetchCatalogPrices,normalizeShopeeModels,validItemId} from './catalog.js';
 import {scanShopeePendingImagesPage,verifyShopeePendingImageItem,PENDING_IMAGE_STATUSES} from './shopeePendingImageAudit.js';
 import {getPendingImageSnapshot,savePendingImageSnapshot,reconcilePendingImageVerification} from './shopeePendingImageStore.js';
+import {parseOrganicReport,rankOrganicTop,readOrganicSnapshot,saveOrganicSnapshot} from './shopeeOrganicPerformance.js';
 import {suggestFiscalMeasureUnit} from './shopeeFiscalMeasure.js';
 import {getShopeeNewListingsSummary,clearShopeeNewListingsCache} from './shopeeNewListings.js';
 import {storeCatalogItems,storeCatalogModels,readCatalogCache,catalogStoreReady,findExactCatalogSku,findCatalogSkuIgnoringCase} from './catalogStore.js';
@@ -5427,6 +5428,93 @@ app.get('/api/shopee/finance/orders',mustLogin,requireWeDropAdmin,async(req,res)
   }
 });
 
+// TOP 10 desempenho ORGÂNICO: dados somente de relatório da Central do
+// Vendedor, nunca métricas de campanhas Ads. Nenhuma escrita na Shopee.
+app.get('/api/shopee/organic/top10',mustLogin,requireWeDropAdmin,async(req,res)=>{
+ res.setHeader('Cache-Control','no-store');
+ try{
+  const {auth,cfg}=await getValidAuth(req);
+  const snapshot=await readOrganicSnapshot(auth.shopId);
+  if(!snapshot){
+   return res.json({ok:true,available:false,source:'seller_center_organic_export',
+    message:'Ainda não há relatório orgânico da Central do Vendedor salvo. Dados de Ads nunca serão usados como substituto.'});
+  }
+  const sort=['combined','impressions','visits','clicks','ctr'].includes(req.query.sort)?
+   req.query.sort:'combined';
+  const ranked=rankOrganicTop(snapshot.records,{sort,limit:10});
+  let cached=[],catalogWarning='';
+  try{cached=(await readCatalogCache(auth.shopId)).items||[];}
+  catch(error){catalogWarning='Miniaturas do catálogo indisponíveis: '+
+   String(error.message||error).slice(0,100);}
+  const byItem=new Map(cached.map(x=>[String(x.itemId),x]));
+  const bySku=new Map(cached.filter(x=>x.sku).map(x=>[String(x.sku),x]));
+  const top=await Promise.all(ranked.map(async row=>{
+   let image=byItem.get(String(row.itemId||''))||bySku.get(String(row.sku))||null;
+   let itemId=String(row.itemId||image?.itemId||'');
+   if(!image?.imageUrl&&!itemId&&row.sku){
+    try{
+     const matches=await findExactCatalogSku(auth.shopId,row.sku);
+     if(matches.length===1){
+      itemId=matches[0].itemId;
+      image=byItem.get(itemId)||matches[0];
+     }
+    }catch{/* manter métricas reais mesmo sem miniatura */}
+   }
+   return {...row,itemId,imageUrl:String(image?.imageUrl||''),
+    title:String(row.title||image?.title||'').slice(0,220),
+    photoSource:image?.imageUrl?'catalog_snapshot':'not_available'};
+  }));
+  const unresolved=top.filter(x=>!x.imageUrl&&/^[1-9]\d{0,17}$/.test(x.itemId));
+  if(unresolved.length){
+   try{
+    const ids=[...new Set(unresolved.map(x=>x.itemId))];
+    const live=await callShopeeShopApi(cfg,{path:'/api/v2/product/get_item_base_info',
+     accessToken:auth.accessToken,shopId:auth.shopId,
+     query:{item_id_list:ids.join(',')}});
+    const details=new Map((live?.response?.item_list||[]).map(x=>[String(x.item_id),x]));
+    for(const row of unresolved){
+     const base=details.get(row.itemId);
+     if(!base)continue;
+     const images=base.image?.image_url_list||[];
+     const url=images[0]||base.image?.image_url||'';
+     if(/^https:\/\//.test(url)){row.imageUrl=url;row.photoSource='shopee_product_api';}
+     if(!row.title)row.title=String(base.item_name||'').slice(0,220);
+    }
+   }catch(error){catalogWarning='Imagens não disponíveis na consulta da Shopee: '+
+    String(error.message||error).slice(0,100);}
+  }
+  res.json({ok:true,available:true,source:snapshot.source,sort,
+   period:{start:snapshot.period_start,end:snapshot.period_end},
+   importedAt:snapshot.imported_at,fileName:snapshot.file_name,
+   metadata:snapshot.metadata||{},rowCount:snapshot.row_count,
+   list:top,catalogWarning,readOnly:true,
+   caveat:'Origem orgânica declarada no relatório importado. Não é uma consulta automática de métricas de tráfego por API; nunca inclui métricas de Shopee Ads.'});
+ }catch(error){
+  res.status(503).json({ok:false,available:false,error:'Não foi possível carregar os dados orgânicos: '+
+   String(error.message||error).slice(0,240)});
+ }
+});
+app.post('/api/shopee/organic/top10/import',mustLogin,requireWeDropAdmin,async(req,res)=>{
+ res.setHeader('Cache-Control','no-store');
+ try{
+  const {auth}=await getValidAuth(req);
+  const {fileName,base64,periodStart,periodEnd,organicConfirmed}=req.body||{};
+  if(typeof base64!=='string'||base64.length>5_400_000||
+    !/^[A-Za-z0-9+/]+={0,2}$/.test(base64))
+   throw Error('Arquivo inválido ou maior que 4 MB.');
+  const file=Buffer.from(base64,'base64');
+  if(file.length>4_000_000)throw Error('Arquivo excede 4 MB.');
+  const report=parseOrganicReport(file,{fileName,periodStart,periodEnd,organicConfirmed});
+  const saved=await saveOrganicSnapshot(auth.shopId,report);
+  res.json({ok:true,imported:true,source:saved.source,period:{
+   start:saved.period_start,end:saved.period_end},
+   importedAt:saved.imported_at,rowCount:saved.row_count,
+   metadata:saved.metadata});
+ }catch(error){
+  res.status(422).json({ok:false,error:'Importação orgânica não concluída: '+
+   String(error.message||error).slice(0,250)});
+ }
+});
 // Integração Ads exigida no Task Center: diagnóstico e prévia seguros.
 app.get('/api/shopee/ads/seo/candidates',mustLogin,async(req,res)=>{
  res.setHeader('Cache-Control','no-store');
