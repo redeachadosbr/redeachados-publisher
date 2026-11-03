@@ -71,9 +71,15 @@ function renderFiscalGapInventory(state){
  const list=document.createElement('div');list.className='ra-fiscal-gap-list';
  for(const row of missing){
   const p=document.createElement('p');
+  const missingFields=row.fiscal?.missing||[];
+  const invalidFields=row.fiscal?.invalid||[];
+  const details=[
+   ...(missingFields.length?['Faltam: '+missingFields.join(', ')]:[]),
+   ...(invalidFields.length?['Inválidos: '+invalidFields.join(', ')]:[])
+  ];
   p.textContent='Item ID '+row.item.itemId+' · '+row.skus.map(x=>x.sku).join(', ')+
     ' · '+(row.status==='empty'?'Sem dados':'Incompleto')+
-    ' · Faltam: '+(row.fiscal?.missing||[]).join(', ');
+    ' · '+(details.join(' · ')||'Rever leitura fiscal oficial');
   list.append(p);
  }
  if(!missing.length){const p=document.createElement('p');p.textContent='Nenhuma pendência fiscal identificada.';list.append(p);}
@@ -123,16 +129,29 @@ function panel(){
 function progress(state,phase='Pronto para executar',sku=''){
  const box=panel();if(!box)return;
  const items=state?.inventory||[],ids=new Set(items.map(idOf));
- const pendingIds=new Set(items.filter(fiscalIssue).map(idOf));
- const values=Object.entries(state?.done||{}).filter(([key])=>ids.has(key)&&pendingIds.has(key)).map(([,v])=>v);
+ const parentGroups=[...fiscalParentMap(items).values()];
+ const pendingParents=parentGroups.filter(rows=>fiscalIssue(rows[0]));
+ // One parent Item ID equals ONE fiscal update, even with multiple model SKUs.
+ // The historical per-SKU status store must not inflate the parent progress.
+ const values=pendingParents.map(rows=>{
+  const statuses=rows.map(x=>state?.done?.[idOf(x)]).filter(Boolean);
+  if(statuses.includes('verified'))return 'verified';
+  if(statuses.includes('already_current'))return 'already_current';
+  if(statuses.includes('uncertain'))return 'uncertain';
+  if(statuses.includes('blocked'))return 'blocked';
+  if(statuses.includes('failed'))return 'failed';
+  return 'pending';
+ });
  const verified=values.filter(v=>v==='verified').length;
  const alreadyCurrent=values.filter(v=>v==='already_current').length;
  const failed=values.filter(v=>v==='failed').length;
  const blocked=values.filter(v=>v==='blocked'||v==='uncertain').length;
  const trustworthy=Boolean(inventoryVerifiedThisSession&&state?.catalogValidatedAt);
- const total=trustworthy?fiscalParentMap(items).size:0,processed=trustworthy?verified+alreadyCurrent+failed+blocked:0;
- const pendingTotal=trustworthy?[...fiscalParentMap(items).values()].filter(rows=>fiscalIssue(rows[0])).length:0;
- const pct=pendingTotal?Math.min(100,Math.round(100*processed/pendingTotal)):(trustworthy?100:0);
+ const total=trustworthy?parentGroups.length:0;
+ const processed=trustworthy?verified+alreadyCurrent+failed+blocked:0;
+ const pendingTotal=trustworthy?pendingParents.length:0;
+ // Only readback-confirmed updates can increase success percentage.
+ const pct=pendingTotal?Math.min(100,Math.round(100*(verified+alreadyCurrent)/pendingTotal)):(trustworthy?100:0);
  $('raFiscalRunPhase').textContent=phase+(sku?' · SKU '+sku:'');
  $('raFiscalRunPercent').textContent=trustworthy?pct+'%':'—';
  $('raFiscalRunFill').style.width=trustworthy?pct+'%':'0%';
@@ -296,8 +315,8 @@ async function run(){
   const pendingParents=[...fiscalParentMap(all).values()].filter(rows=>fiscalIssue(rows[0]));
   for(let i=0;i<pendingParents.length;i++){
    const candidates=pendingParents[i];
-   // Prefer a stored reviewed SKU if indicated. If none is confirmed,
-   // execute-one will block without an upload; do not assume a tax code.
+   // Prefer a stored reviewed SKU. An unreviewed SKU is only eligible if
+   // the backend verifies the exact WeDrop SKU and its own NCM.
    const item=candidates.find(x=>x.reviewed===true)||candidates[0],
      key=idOf(item);
    if(state.done[key]==='verified'||state.done[key]==='uncertain')continue;
