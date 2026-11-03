@@ -212,7 +212,7 @@ body.organic-top10-open{overflow:hidden}
   text-align:center;
   min-width:0!important;
 }
-.organic-top10-modal[data-source="api"] .organic-top10-grid-header > span:nth-child(n+3):nth-child(-n+7){
+.organic-top10-modal[data-source="api"] .organic-top10-grid-header > span:nth-child(n+4):nth-child(-n+7){
   display:none!important;
 }
 @media(min-width:901px){
