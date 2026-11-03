@@ -88,3 +88,37 @@ test('interface e endpoints separam Performance Shopee, orgânico e visualizaç�
  assert.match(server,/parseProductPerformanceReport/);
  assert.doesNotMatch(js,/\/api\/shopee\/ads\//);
 });
+
+
+test('tabela TSV copiada da Central é importada com métricas por produto',()=>{
+ const tsv=[
+  'ID do Produto\tNome do Produto\tImpressões de Produto\tCliques Por Produto\tVisitantes do Produto\tCTR\tVisitantes (Adicionar ao Carrinho)\tUnidades (Adicionar ao Carrinho)\tPedidos',
+  '58221909468\tCortina de Box\t2.684\t97\t475\t3,61%\t46\t63\t7'
+ ].join('\n');
+ const report=parseProductPerformanceReport(Buffer.from(tsv,'utf8'),{
+  ...info,fileName:'Performance_Produto_Colado.csv'
+ });
+ assert.equal(report.records.length,1);
+ const row=report.records[0];
+ assert.equal(row.itemId,'58221909468');
+ assert.equal(row.impressions,2684);
+ assert.equal(row.clicks,97);
+ assert.equal(row.visits,475);
+ assert.equal(row.ctr,3.61);
+ assert.equal(row.cartVisitors,46);
+ assert.equal(row.cartUnits,63);
+ assert.equal(row.orders,7);
+ assert.equal(row.cartPending,null);
+ assert.equal(row.cartAbandonmentRate,null);
+});
+test('colagem depende de ação do vendedor e nunca chama API privada da Central',()=>{
+ const html=readFileSync(new URL('../public/index.html',import.meta.url),'utf8');
+ const js=readFileSync(new URL('../public/organic-top10.js',import.meta.url),'utf8');
+ assert.match(html,/id="organicTop10PasteText"/);
+ assert.match(html,/id="organicTop10ReadClipboard"/);
+ assert.match(js,/organicTop10ReadClipboard'\)\.addEventListener\('click'/);
+ assert.match(js,/navigator\.clipboard\?\.readText\(\)/);
+ assert.match(js,/Performance_Produto_Colado\.csv/);
+ assert.match(js,/source==='organic'&&\$\('organicTop10OrganicConfirmed'\)\.checked/);
+ assert.doesNotMatch(js,/fetch\(['"]https:\/\/seller\.shopee/);
+});
