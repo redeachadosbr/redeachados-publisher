@@ -99,8 +99,9 @@
    });
   }
   const apiQuery=()=>new URLSearchParams({
-   period:apiPeriod,...(apiPeriod==='custom'?{
-    start:$('organicTop10ApiStart').value,end:$('organicTop10ApiEnd').value
+   period:apiPeriod,...(['custom','day'].includes(apiPeriod)?{
+    start:$('organicTop10ApiStart').value,end:apiPeriod==='day'?
+     $('organicTop10ApiStart').value:$('organicTop10ApiEnd').value
    }:{})
   });
   async function getApiSummary(){
@@ -286,7 +287,8 @@
    apiPeriod=choice.dataset.period;
    for(const b of $('organicTop10ApiPeriods').querySelectorAll('button[data-period]'))
     b.setAttribute('aria-pressed',String(b===choice));
-   $('organicTop10CustomRange').hidden=apiPeriod!=='custom';
+   $('organicTop10CustomRange').hidden=!['custom','day'].includes(apiPeriod);
+   $('organicTop10ApiEnd').closest('label').hidden=apiPeriod==='day';
    if(apiPeriod!=='custom')void refreshApi();
   });
   $('organicTop10ApplyCustom').addEventListener('click',()=>void refreshApi());
