@@ -112,10 +112,10 @@
 <div class="wrap">
   <div class="top">
     <div class="brand"><div class="logo">R</div><div><strong>REDE ACHADOS BR</strong><small>Inteligência de anúncios</small></div></div>
-    <span class="pill">V16 · API + histórico no Drive</span>
+    <span class="pill">V16.1 · Regra 05 + Drive</span>
   </div>
-  <header class="hero"><div><div class="eyebrow">Painel de decisão • 4 cenários</div><h1>Saiba o que fazer com cada campanha Shopee Ads.</h1><p>Consulte a Shopee Ads pela API, selecione a campanha do produto e acompanhe os quatro cenários e o histórico de modificações.</p></div><div class="hero-icon" aria-hidden="true">↗</div></header>
-  <nav class="tabs non-print" aria-label="Seções"><button class="tab" data-tab="produtos">▦ Produtos</button><button class="tab active" data-tab="simulador">◆ Campanhas Ads</button><button class="tab" data-tab="regras">▤ As 4 regras</button><button class="tab" data-tab="historico">◷ Histórico por produto</button></nav>
+  <header class="hero"><div><div class="eyebrow">Painel de decisão • 4 cenários + regra ilimitada</div><h1>Saiba o que fazer com cada campanha Shopee Ads.</h1><p>Consulte a Shopee Ads pela API, selecione a campanha do produto e acompanhe os quatro cenários e o histórico de modificações.</p></div><div class="hero-icon" aria-hidden="true">↗</div></header>
+  <nav class="tabs non-print" aria-label="Seções"><button class="tab" data-tab="produtos">▦ Produtos</button><button class="tab active" data-tab="simulador">◆ Campanhas Ads</button><button class="tab" data-tab="regras">▤ 4 regras + ilimitado</button><button class="tab" data-tab="historico">◷ Histórico por produto</button></nav>
   <section class="view" id="produtos">
     <div class="catalog-layout">
       <div class="panel" id="productDetail">
@@ -255,7 +255,7 @@
         </div>
         <input type="hidden" id="orders" value="">
         <p class="tip">ROAS e CTR podem ser recalculados a partir de investimento/vendas e cliques/impressões. Confirme o período. A API poderá não fornecer orçamento, meta e Impulsão Rápida; confira os valores antes de analisar.</p>
-        <label class="checkline"><input type="checkbox" id="periodClosed" checked><span><strong>Período completo</strong> — o relatório não inclui o dia de hoje ainda em andamento.</span></label>
+        <label class="checkline"><input type="checkbox" id="periodClosed" checked><span><strong>Período completo</strong> — desmarcado automaticamente quando o relatório inclui o dia de hoje em andamento.</span></label>
         <label class="checkline"><input type="checkbox" id="budgetStable" checked><span><strong>Orçamento constante</strong> — não alterei o limite diário durante as datas selecionadas.</span></label>
         <p class="tip" id="adsFinancialHint">A margem será consultada automaticamente no cadastro do SKU selecionado em Produtos. Não é necessário repetir custos ou taxas aqui.</p>
         <div class="actions non-print"><button type="submit" class="btn-primary">Analisar campanha →</button><button type="button" class="btn-secondary" id="resetBtn">Limpar</button></div>
@@ -334,6 +334,18 @@ function isNonNeg(n){return n!==null&&n>=0}
 function safe(s){return String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]))}
 function dateUTC(str){const d=new Date(str+'T12:00:00Z');return Number.isNaN(d.getTime())?null:d}
 function daysInclusive(a,b){const x=dateUTC(a),y=dateUTC(b);if(!x||!y)return null;return Math.round((y-x)/86400000)+1}
+// A loja opera no horário brasileiro. Dia atual não é período fechado.
+function brazilTodayISO(now=Date.now()){
+ const parts=new Intl.DateTimeFormat('en-US',{timeZone:'America/Sao_Paulo',year:'numeric',month:'2-digit',day:'2-digit'}).formatToParts(new Date(now));
+ const o=Object.fromEntries(parts.filter(x=>x.type!=='literal').map(x=>[x.type,x.value]));
+ return o.year+'-'+o.month+'-'+o.day;
+}
+function syncPeriodClosed(){
+ const end=$('dateEnd').value,checkbox=$('periodClosed'),open=!!end&&end>=brazilTodayISO();
+ if(open)checkbox.checked=false;
+ checkbox.disabled=open;
+ checkbox.title=open?'Período parcial: o dia atual ainda está em andamento. Selecione uma data final anterior a hoje para análise fechada.':'Marque somente quando o relatório estiver completo.';
+}
 function getData(){
  const sku=$('productSelect').value;
  const product=readProducts().find(p=>p.sku===sku);
@@ -345,7 +357,7 @@ function getData(){
  budgetMode:$('budgetMode').value,budget:val('budget'),rapidBoost:$('rapidBoost').value,spent:val('spent'),
  target:val('target'),revenue:val('revenue'),actual:val('actual'),impressions:parseQuantity($('impressions').value),
  clicks:val('clicks'),ctrReported:val('ctrReported'),orders:val('orders'),itemsSold:val('itemsSold'),addToCart:val('addToCart'),
- periodClosed:$('periodClosed').checked,budgetStable:$('budgetStable').checked,
+ periodClosed:$('periodClosed').checked&&$('dateEnd').value<brazilTodayISO(),budgetStable:$('budgetStable').checked,
  price:validFinancial?product.price:null,cost:validFinancial?cost:null,
  feePercent:validFinancial?fees.percent+(product.extraPct||0):null,
  feeFixed:validFinancial?fees.fixed:null,taxPercent:validFinancial?product.tax:null,
@@ -422,7 +434,7 @@ const grossMax=dailyReference!==null?dailyReference*days:null;
 const consumed=dailySpend!==null&&dailyReference!==null?dailySpend/dailyReference*100:null;
 const dailyReferenceReached=consumed!==null&&consumed>=95;
 const actualDailyLimit=d.budgetMode==='daily';const revenueSource=d.revenue!==null?'Receita Ads / gasto (calculado)':'ROAS real informado';const revenue=d.revenue!==null?d.revenue:(d.actual!==null?d.actual*d.spent:null);const actual=d.spent>0?(d.revenue!==null?d.revenue/d.spent:d.actual):null;const meets=actual===null?null:actual>=d.target;const reliableLimit=actualDailyLimit&&d.budgetStable;const total=dailyReferenceReached;let scenario=null;
-if(reliableLimit&&meets!==null&&d.spent>0)scenario=total?(meets?4:3):(meets?1:2);
+if(reliableLimit&&d.periodClosed&&meets!==null&&d.spent>0)scenario=total?(meets?4:3):(meets?1:2);
 const suggestedBudget=(d.budgetMode==='daily'||simulated)?(scenario===1||scenario===2?d.budget*.8:(scenario===3?d.budget:null)):null;
 const suggestedROAS=scenario===1||scenario===2?d.target*.8:scenario===3?d.target*1.2:null;
 const fin=calcFinance(d,actual);
@@ -512,11 +524,11 @@ $('safeAction').textContent=r.safeAction;
 const checklist=['Concorrência: preço final e ofertas similares.','Capa, título, fotos e benefícios reais do anúncio.','Frete, prazo de entrega, cupons e avaliação do produto.','Custo WeDrop, taxas CNPJ, impostos e margem líquida.','Estoque disponível e possíveis atrasos no relatório de atribuição.'];$('checkList').innerHTML=checklist.map(v=>'<li>'+safe(v)+'</li>').join('');$('reviewNote').textContent='Reavalie diariamente na primeira semana e, depois, semanalmente. Não execute dois ajustes simultâneos sem registrar o resultado anterior.';}
 function switchTab(tab){if(tab==='produtos'){renderProductList();refreshProductSelect()}for(const x of document.querySelectorAll('.tab'))x.classList.toggle('active',x.dataset.tab===tab);for(const x of document.querySelectorAll('.view'))x.classList.toggle('active',x.id===tab);if(tab==='historico')renderHistory()}
 for(const x of document.querySelectorAll('.tab'))x.addEventListener('click',()=>switchTab(x.dataset.tab));
-function updateBudgetMode(){const sim=$('budgetMode').value==='unlimited';$('budget').disabled=false;$('budgetLabel').textContent=sim?'1. Gasto diário desejado (R$)':'1. Orçamento diário real (R$) *';$('budget').placeholder=sim?'Ex.: 10,00 ou 15,00':'Ex.: 15,00';$('budgetHint').textContent=sim?'Orçamento real na Shopee: ILIMITADO. Informe quanto gostaria de gastar por dia (ex.: R$ 10 ou R$ 15). É um valor de CONTROLE, não um limite aplicado à Shopee. A Regra 05 analisará o ROAS alvo e o desempenho sem fingir que a verba acabou.':'Limite diário realmente configurado na Shopee; será comparado ao gasto do período.';$('budgetStable').closest('label').hidden=sim;}$('budgetMode').addEventListener('change',()=>{$('budget').value='';updateBudgetMode()});updateBudgetMode();
-$('adsForm').addEventListener('submit',e=>{e.preventDefault();const d=getData(),errors=validate(d);if(errors.length){showError(errors.join(' '));return;}const r=analyze(d);render(r);if(window.innerWidth<940)$('resultPanel').scrollIntoView({behavior:'smooth',block:'start'});});
-$('resetBtn').addEventListener('click',()=>{$('adsForm').reset();$('productSelect').value='';showCurveInAds();updateBudgetMode();lastReport=null;lastData=null;$('resultContent').hidden=true;$('resultEmpty').style.display='flex';$('resultEmpty').innerHTML='<div class="empty-symbol">◎</div><h2>Seu diagnóstico aparece aqui</h2><p>Preencha os campos e clique em Analisar campanha.</p>';$('resultTimestamp').textContent='Sem análise';});
+function updateBudgetMode(){const sim=$('budgetMode').value==='unlimited';$('budget').disabled=false;$('budgetLabel').textContent=sim?'1. Gasto diário desejado (R$)':'1. Orçamento diário real (R$) *';$('budget').placeholder=sim?'Ex.: 10,00 ou 15,00':'Ex.: 15,00';$('budgetHint').textContent=sim?'Orçamento real na Shopee: ILIMITADO. Informe quanto gostaria de gastar por dia (ex.: R$ 10 ou R$ 15). É um valor de CONTROLE, não um limite aplicado à Shopee. A Regra 05 analisará o ROAS alvo e o desempenho sem fingir que a verba acabou.':'Limite diário realmente configurado na Shopee; será comparado ao gasto do período.';$('budgetStable').closest('label').hidden=sim;}$('budgetMode').addEventListener('change',()=>{$('budget').value='';updateBudgetMode()});updateBudgetMode();$('dateEnd').addEventListener('change',syncPeriodClosed);$('dateEnd').addEventListener('input',syncPeriodClosed);syncPeriodClosed();
+$('adsForm').addEventListener('submit',e=>{e.preventDefault();syncPeriodClosed();const d=getData(),errors=validate(d);if(errors.length){showError(errors.join(' '));return;}const r=analyze(d);render(r);if(window.innerWidth<940)$('resultPanel').scrollIntoView({behavior:'smooth',block:'start'});});
+$('resetBtn').addEventListener('click',()=>{$('adsForm').reset();$('productSelect').value='';showCurveInAds();updateBudgetMode();syncPeriodClosed();lastReport=null;lastData=null;$('resultContent').hidden=true;$('resultEmpty').style.display='flex';$('resultEmpty').innerHTML='<div class="empty-symbol">◎</div><h2>Seu diagnóstico aparece aqui</h2><p>Preencha os campos e clique em Analisar campanha.</p>';$('resultTimestamp').textContent='Sem análise';});
 const fieldIds=['campaign','dateStart','dateEnd','budgetMode','budget','rapidBoost','spent','target','revenue','actual','impressions','clicks','ctrReported','orders','itemsSold','addToCart'];const checks=['periodClosed','budgetStable'];
-function fillData(d){for(const id of fieldIds){if(d[id]!==undefined&&d[id]!==null)$(id).value=d[id];else if(id==='rapidBoost')$(id).value='unknown';else $(id).value='';}for(const id of checks)$(id).checked=!!d[id];$('productSelect').value=d.sku||'';showCurveInAds();updateBudgetMode()}
+function fillData(d){for(const id of fieldIds){if(d[id]!==undefined&&d[id]!==null)$(id).value=d[id];else if(id==='rapidBoost')$(id).value='unknown';else $(id).value='';}for(const id of checks)$(id).checked=!!d[id];$('productSelect').value=d.sku||'';showCurveInAds();updateBudgetMode();syncPeriodClosed()}
 const examples={base:{campaign:'Base Sucção Cor Sortida [3] (histórico)',dateStart:'2026-10-15',dateEnd:'2026-10-19',budgetMode:'daily',budget:'10',spent:'23,16',target:'5,6',revenue:'0',impressions:'1400',clicks:'33',ctrReported:'2,39',orders:'0',periodClosed:false,budgetStable:true},ralador:{campaign:'Ralador Multiuso 3 em 1 [4] (histórico)',dateStart:'2026-10-21',dateEnd:'2026-10-26',budgetMode:'unlimited',spent:'8,40',target:'25',revenue:'117,98',impressions:'851',clicks:'15',ctrReported:'1,76',orders:'2',itemsSold:'2',price:'58,99',cost:'34,99',periodClosed:true,budgetStable:true},piso:{campaign:'Piso Estrado Plástico Preto [2] (histórico)',dateStart:'2026-10-22',dateEnd:'2026-10-27',budgetMode:'unlimited',spent:'6,61',target:'30',revenue:'0',impressions:'2300',clicks:'77',ctrReported:'3,30',orders:'0',itemsSold:'0',addToCart:'4',periodClosed:true,budgetStable:true}};
 for(const btn of document.querySelectorAll('[data-example]'))btn.addEventListener('click',()=>{fillData(examples[btn.dataset.example]);$('adsForm').requestSubmit();});
 function getHistory(){try{const a=JSON.parse(localStorage.getItem(STORAGE_KEY)||'[]');return Array.isArray(a)?a:[]}catch{return []}}
@@ -855,7 +867,7 @@ async function apiOverview(start,end){
 }
 function apiFillCampaign(c,start,end){
  $('campaign').value=c.productTitle||c.name||$('campaign').value;
- $('dateStart').value=start;$('dateEnd').value=end;
+ $('dateStart').value=start;$('dateEnd').value=end;syncPeriodClosed();
  const data={spent:c.expense,revenue:c.broadGmv,actual:c.roas,impressions:c.impressions,clicks:c.clicks,ctrReported:c.ctr,orders:c.broadOrders};
  for(const [key,v] of Object.entries(data))if(v!==null&&v!==undefined&&Number.isFinite(Number(v)))$(key).value=String(v).replace('.',',');
  // The API overview endpoint does not expose these 5 fields. Do not invent them.
