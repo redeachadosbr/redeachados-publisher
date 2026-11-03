@@ -4,6 +4,7 @@ WORKDIR /app
 COPY package*.json ./
 RUN npm install --omit=dev
 COPY . .
+RUN node --check shopeeProductViewTrends.js && node --check public/organic-top10.js && node --test tests/shopeeProductViewTrends.test.js
 RUN node --check shopeeOrganicPerformance.js && node --check public/organic-top10.js && node --test tests/shopeeOrganicTop10.test.js
 RUN node --check shopeePendingImageAudit.js && node --check shopeePendingImageStore.js && node --check public/pending-images.js && node --test tests/shopeePendingImageAudit.test.js tests/shopeePendingImageStore.test.js
 # Bloquear deploys com sintaxe inválida no editor de imagens e nas rotas Shopee.
