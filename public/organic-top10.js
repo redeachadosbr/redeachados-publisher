@@ -417,10 +417,10 @@
    if(file&&pasted){note.textContent='Escolha uma opção: arquivo OU tabela colada.';note.dataset.kind='error';return;}
    if(!file&&!pasted){note.textContent='Selecione um relatório ou cole uma tabela da Central do Vendedor.';note.dataset.kind='error';return;}
    if(!file){
-    const firstLines=pasted.split(/\\r?\\n/).slice(0,8).join(' ').normalize('NFD')
-     .replace(/[\\u0300-\\u036f]/g,'').toLowerCase();
-    if(!/(\\bsku\\b|item id|id do produto|id do item)/.test(firstLines)||
-       !/(impress|cliqu|visit|carrinh|pedid|\\bctr\\b)/.test(firstLines)){
+    const firstLines=pasted.split(/\r?\n/).slice(0,8).join(' ').normalize('NFD')
+     .replace(/[\u0300-\u036f]/g,'').toLowerCase();
+    if(!/(\bsku\b|item id|id do produto|id do item)/.test(firstLines)||
+       !/(impress|cliqu|visit|carrinh|pedid|\bctr\b)/.test(firstLines)){
      note.textContent='Texto sem cabeçalho reconhecível. Copie também os nomes das colunas da tabela.';
      note.dataset.kind='error';return;
     }
