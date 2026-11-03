@@ -14,7 +14,7 @@ const names={
  ctr:['ctr','ctr %','ctr organico','taxa de cliques','taxa de cliques %','click through rate'],
  cartAdded:['itens adicionados ao carrinho','produtos adicionados ao carrinho','unidades adicionadas ao carrinho','adicoes ao carrinho','adicionados ao carrinho','adicoes no carrinho','add to cart','add to cart units','items added to cart'],
  cartPending:['itens abandonados no carrinho','produtos abandonados no carrinho','unidades abandonadas no carrinho','itens deixados no carrinho','produtos deixados no carrinho','carrinhos abandonados','carrinhos parados','abandonos de carrinho','itens nao comprados no carrinho','cart abandonment units','abandoned cart units','abandoned carts'],
- cartAbandonmentRate:['taxa de abandono do carrinho','taxa de abandono de carrinho','taxa de abandono carrinho','abandono de carrinho %','porcentagem de abandono do carrinho','cart abandonment rate','abandoned cart rate'],
+ cartAbandonmentRate:['taxa de abandono do carrinho','taxa de abandono de carrinho','taxa de abandono carrinho','abandono de carrinho %','porcentagem de abandono do carrinho','cart abandonment rate','abandoned cart rate','taxa de carrinho abandonado','taxa de carrinhos abandonados','taxa de abandono %'],
  traffic:['origem do trafego','fonte de trafego','origem trafego','tipo de trafego','traffic source','traffic type','canal de trafego']
 };
 const fold=x=>String(x??'').normalize('NFD').replace(/[\u0300-\u036f]/g,'')
@@ -112,7 +112,11 @@ const percent=x=>{
  const n=Number(v.replace('%','').replace(/\s/g,'').replace(',','.'));
  return Number.isFinite(n)&&n>=0&&n<=100?n:null;
 };
-const isPaid=x=>/\b(ads|pago|patrocinad|paid|sponsored|promovid|anunci)/.test(fold(x));
+const isPaid=x=>{
+ const source=fold(x);
+ if(/\b(nao pago|sem ads|sem anuncios|organico|organic|gratuito)\b/.test(source))return false;
+ return /\b(ads|pago|patrocinad|paid|sponsored|promovid|anunci)/.test(source);
+};
 const isOrganic=x=>/\b(organic|organico|nao pago|sem ads|sem anuncios|gratuit|busca|diret|direct|recomendac)/.test(fold(x));
 export function parseOrganicReport(buffer,{
  fileName,periodStart,periodEnd,organicConfirmed=false
