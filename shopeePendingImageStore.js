@@ -82,7 +82,7 @@ function carryForward(previous,rows){
  const optimized={...(previous?.optimized||{})};
  for(const row of rows){
   const old=optimized[row.itemId];
-  if(old&&Number(row.imageCount)<9&&
+  if(old&&row.imageCount!==null&&row.imageCount<9&&
     Date.parse(row.checkedAt)>Date.parse(old.verifiedAt||''))delete optimized[row.itemId];
  }
  return optimized;
