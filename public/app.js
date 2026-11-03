@@ -4632,8 +4632,8 @@ function optimizerExecutionTrackerRender(progress,job){
   {prepared:false,confirmed:false};
  const rootKey=[String(w.sku||''),String(w.itemId||''),String(w.modelId||'0')].join('|');
  const rootDiscount=optimizerRootAuditCache.get(rootKey)?.audit?.stages?.find(x=>x.id==='discount');
- const discountPending=Boolean(sameKitJob&&
-  (rootDiscount?rootDiscount.status!=='confirmed':!kitDiscount.confirmed));
+ const discountPending=Boolean(rootDiscount?
+  rootDiscount.status!=='confirmed':sameKitJob&&!kitDiscount.confirmed);
  optimizerExecProgress={...progress,sku,itemId:String(job?.item_id||w.itemId||''),
   modelId:String(job?.model_id??job?.plan?.modelId??w.modelId??0)};
  $('#optimizerExecutionSku').textContent='SKU '+sku;
@@ -4651,9 +4651,11 @@ function optimizerExecutionTrackerRender(progress,job){
  if(!src)image.removeAttribute?.('src');
  $('#optimizerExecutionPhaseTitle').textContent=progress.title;
  $('#optimizerExecutionPhaseSubtitle').textContent=discountPending?
-  progress.message+(kitDiscount.prepared?
-   ' A prévia de Minha Promoção foi preparada, mas o desconto ainda NÃO foi confirmado na Shopee.':
-   ' DESCONTO NÃO EXECUTADO: falta preparar Minha Promoção da SKU e obter confirmação na Shopee.'):
+  progress.message+(sameKitJob?
+   (kitDiscount.prepared?' Prévia preparada, mas o desconto ainda não foi confirmado na Shopee.':
+    ' Desconto pendente de verificação ou publicação na Shopee.'):
+   ' A auditoria geral ainda não confirmou o desconto: '+
+     String(rootDiscount?.reason||'Verifique Minha Promoção desta SKU.')):
   progress.message;
  const started=$('#optimizerExecutionStartedAt'),startedLabel=$('#optimizerExecutionStartLabel');
  const at=progress.startedAt||progress.updatedAt;
@@ -7238,7 +7240,7 @@ async function optimizerRootAuditRefresh(force=false){
   if(panel){panel.hidden=false;panel.textContent='Conferência geral indisponível: '+String(error.message||error)+'. Nenhuma etapa foi considerada concluída.';}
  }finally{if(optimizerRootAuditPending===key)optimizerRootAuditPending=null;}
 }
-let optimizerVideoAutoReadbackKey='';
+let optimizerVideoAutoReadbackKey='',optimizerRootLastVerifiedKey='';
 function optimizerExecutionAutoRecoverPublishedVideo(job,w){
  if(optimizerPrimaryActionBusy||optimizerExecBusy)return;
  const legacy=['failed','verified'].includes(job?.state)&&optimizerExecutionVideoRejected(job);
@@ -7282,7 +7284,15 @@ async function optimizerExecutionRefresh(poll=false){
   if(!current||current.sku+':'+current.itemId+':'+current.modelId!==identity)return null;
   optimizerExecutionJobView(data.job,data.progress,data.issue);
   optimizerExecutionAutoRecoverPublishedVideo(data.job,w);
-  if(!poll||['verified','failed','blocked'].includes(data.job?.state))void optimizerRootAuditRefresh(!poll);
+  // Uma transição de job para verified deve INVALIDAR a auditoria antiga.
+  // O readback final da campanha precisa aparecer sem atualizar o navegador.
+  const finished=['verified','failed','blocked'].includes(data.job?.state);
+  const finalizedKey=identity+'|'+String(data.job?.state||'')+'|'+
+   String(data.job?.updated_at||'');
+  if(finished&&optimizerRootLastVerifiedKey!==finalizedKey){
+   optimizerRootLastVerifiedKey=finalizedKey;
+   void optimizerRootAuditRefresh(true);
+  }else if(!poll)void optimizerRootAuditRefresh(true);
   if(data.job?.state==='uncertain'&&data.issue?.code==='CEST_REQUIRED')
    void optimizerExecutionSafeRecoverCest(data.job,w);
   const awaitingReadback=data.job?.state==='uncertain'&&
