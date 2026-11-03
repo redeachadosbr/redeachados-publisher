@@ -44,3 +44,25 @@ test('o anúncio exemplo 1175 completo não deve aparecer como pendente por CEST
  assert.equal(inspectShopeeFiscalGap(example).status,'complete');
  assert.deepEqual(inspectShopeeFiscalGap(example).missing,[]);
 });
+
+test('não executa escrita para dados já existentes mas inválidos',()=>{
+ assert.throws(()=>fiscalFillMissingOnly({...approved,ncm:'12'},approved),
+  /Dados fiscais existentes inválidos.*ncm/);
+ assert.throws(()=>fiscalFillMissingOnly({...approved,cest:'0'},approved),
+  /Dados fiscais existentes inválidos.*cest/);
+});
+test('rejeita a ficha aprovada se a origem contém valores fiscais inválidos',()=>{
+ assert.throws(()=>fiscalFillMissingOnly({}, {...approved,ncm:'9503'}),
+  /Ficha fiscal com valores ausentes ou inválidos.*ncm/);
+ assert.throws(()=>fiscalFillMissingOnly({}, {...approved,origin:'9'}),
+  /Ficha fiscal com valores ausentes ou inválidos.*origin/);
+ assert.throws(()=>fiscalFillMissingOnly({}, {...approved,cest:'0'}),
+  /Ficha fiscal com valores ausentes ou inválidos.*cest/);
+});
+test('mantém aprovação de CEST 00 e NCM válido sem alterar campos preenchidos',()=>{
+ const existing={...approved,ncm:'95066200',cest:'00'};
+ const result=fiscalFillMissingOnly(existing,{...approved,ncm:'95030099'});
+ assert.deepEqual(result.changed,[]);
+ assert.equal(result.tax.ncm,'95066200');
+ assert.equal(result.tax.cest,'00');
+});
