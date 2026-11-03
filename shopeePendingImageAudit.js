@@ -9,11 +9,13 @@ export const PENDING_IMAGE_STATUSES=Object.freeze(STATUSES);
 export function pendingImageCount(base){
  const image=base?.image||{};
  const ids=image.image_id_list;
- if(Array.isArray(ids))return ids.filter(x=>typeof x==='string'&&x.trim()||Number.isFinite(x)).length;
+ if(Array.isArray(ids))return new Set(ids.filter(x=>
+  typeof x==='string'&&x.trim()||Number.isFinite(x)).map(String)).size;
  // A API pode responder somente com URLs. Contar a lista oficial de URLs,
  // mas jamais inferir nove imagens a partir de uma capa ou de um checkbox.
  const urls=image.image_url_list;
- if(Array.isArray(urls))return urls.filter(x=>typeof x==='string'&&x.trim()).length;
+ if(Array.isArray(urls))return new Set(urls.filter(x=>
+  typeof x==='string'&&x.trim())).size;
  return null;
 }
 export function pendingImageCategory({listingStatus,modelStatus='',hasModel=false,stock,sku,imageCount}){
