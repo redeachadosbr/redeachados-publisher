@@ -60,7 +60,7 @@
     el(title,'small','SKU '+(row.sku||'anúncio de variações')+
      (row.itemId?' · Item '+row.itemId:'')+
      (source==='api'&&row.latestTotalViews!==null&&row.latestTotalViews!==undefined?
-      ' · Total acumulado '+number(row.latestTotalViews):''),'organic-top10-product-code');
+      ' · Contador atual '+number(row.latestTotalViews):''),'organic-top10-product-code');
     const add=(value,label,cls='')=>{
      const col=el(card,'div','','organic-top10-value '+cls);
      el(col,'span',value);
@@ -69,7 +69,7 @@
     if(source==='api')add(number(row.viewsObserved!==null&&row.viewsObserved!==undefined?
      row.viewsObserved:row.latestTotalViews),
      row.viewsObserved!==null&&row.viewsObserved!==undefined?
-      'Variação observada (parcial)':'Total histórico (não é do período)');
+      'Variação observada (parcial)':'Contador Shopee (sem período)');
     else add(number(row.impressions),'Impressões');
     add(number(row.visits),'Visitas');
     add(number(row.clicks),'Cliques');
@@ -162,7 +162,7 @@
      notice('Não há medições suficientes no período solicitado. A API não permite buscar dias anteriores à primeira coleta. '+
       'Clique em “Atualizar Shopee” para registrar uma nova amostra.');
     else if(data.withPeriodDelta===0)
-     notice('A primeira coleta registrou visualizações acumuladas, não números do período. '+
+     notice('A primeira coleta registrou o contador de visualizações da Shopee, não números do período. '+
       'Após novas medições, o painel poderá comparar apenas o intervalo realmente observado.');
     else
      notice('Exibindo diferenças OBSERVADAS nas datas escolhidas, não todo o período oficial. '+
