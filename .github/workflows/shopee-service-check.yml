@@ -10,6 +10,19 @@ on:
       - shopee-service
 
 jobs:
+  test-fiscal:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Verificar sintaxe fiscal
+        run: node --check shopeeFiscalGap.js && node --check public/fiscal-migration-run.js
+      - name: Executar regressões fiscais isoladas
+        run: node --test tests/shopee-fiscal-gap-official.test.js tests/shopee-fiscal-single-action-autoprepare.test.js
   test-shopee:
     runs-on: ubuntu-latest
     permissions:
