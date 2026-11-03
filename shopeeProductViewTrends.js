@@ -46,11 +46,11 @@ export function parseViewsWindow({period='7',start='',end=''}={},today=saoPauloD
  if(period==='today')a=b;
  else if(period==='7')a=advance(b,-6);
  else if(period==='30')a=advance(b,-29);
- else if(period==='custom'){
-  a=String(start);b=String(end);
+ else if(period==='day'||period==='custom'){
+  a=String(start);b=period==='day'?a:String(end);
   if(!isoDay(a)||!isoDay(b)||a>b||b>today||a<advance(today,-89))
    throw Error('Selecione datas válidas dentro dos últimos 90 dias.');
- }else throw Error('Período inválido: use hoje, 7 dias, 30 dias ou personalizado.');
+ }else throw Error('Período inválido: use hoje, dia específico, 7 dias, 30 dias ou personalizado.');
  return {start:a,end:b,period,days:Math.round((Date.parse(b)-Date.parse(a))/86400000)+1};
 }
 export function normalizeExtraItem(row){
