@@ -242,7 +242,7 @@
     'Central do Vendedor → Informações Gerenciais → Produto → Performance do Produto. '+
     'Em Selecionar Métricas, escolha Impressões, Cliques, CTR, Visitantes do Produto, '+
     'Visitantes/Unidades (Adicionar ao Carrinho), Taxa de Conversão (Adicionar ao Carrinho) '+
-    'e Pedidos. Exporte CSV ou Excel do período escolhido. A opção Produto Pago não comprova '+
+    'e Pedidos. Exporte CSV/Excel ou copie a tabela com os cabeçalhos do período escolhido. A opção Produto Pago não comprova '+
     'tráfego sem Ads. Itens adicionados não são carrinhos abandonados.':
     'Importe apenas relatório filtrado exclusivamente para tráfego orgânico, sem Shopee Ads.';
    $('organicTop10ConsentLabel').hidden=performance;
@@ -395,12 +395,37 @@
   startDay.setDate(startDay.getDate()-29);
   $('organicTop10Start').value=localDate(startDay);
   $('organicTop10End').value=localDate(end);
+  // A cópia depende de gesto explícito: nunca lê o clipboard automaticamente.
+  $('organicTop10ReadClipboard').addEventListener('click',async()=>{
+   const note=$('organicTop10ImportNotice');
+   try{
+    if(!navigator.clipboard?.readText)throw Error('Seu navegador não permite leitura direta. Cole usando Ctrl+V no campo de texto.');
+    const copied=await navigator.clipboard.readText();
+    if(!copied.trim())throw Error('Área de transferência vazia. Copie a tabela da Shopee primeiro.');
+    if(new Blob([copied]).size>4_000_000)throw Error('Tabela muito grande. Copie um período menor.');
+    $('organicTop10PasteText').value=copied;
+    note.textContent='Texto copiado. Confira o período e clique em Importar e atualizar TOP 10.';
+    note.dataset.kind='info';
+   }catch(error){note.textContent=String(error.message||error);note.dataset.kind='error';}
+  });
   $('organicTop10Import').addEventListener('submit',async event=>{
    event.preventDefault();
    const button=$('organicTop10Upload');
    const note=$('organicTop10ImportNotice');
-   const file=$('organicTop10File').files?.[0];
-   if(!file){note.textContent='Selecione um relatório CSV/Excel.';return;}
+   let file=$('organicTop10File').files?.[0];
+   const pasted=$('organicTop10PasteText').value.trim();
+   if(file&&pasted){note.textContent='Escolha uma opção: arquivo OU tabela colada.';note.dataset.kind='error';return;}
+   if(!file&&!pasted){note.textContent='Selecione um relatório ou cole uma tabela da Central do Vendedor.';note.dataset.kind='error';return;}
+   if(!file){
+    const firstLines=pasted.split(/\r?\n/).slice(0,8).join(' ').normalize('NFD')
+     .replace(/[\u0300-\u036f]/g,'').toLowerCase();
+    if(!/(\bsku\b|item id|id do produto|id do item)/.test(firstLines)||
+       !/(impress|cliqu|visit|carrinh|pedid|\bctr\b)/.test(firstLines)){
+     note.textContent='Texto sem cabeçalho reconhecível. Copie também os nomes das colunas da tabela.';
+     note.dataset.kind='error';return;
+    }
+    file=new File([pasted],'Performance_Produto_Colado.csv',{type:'text/csv;charset=utf-8'});
+   }
    if(file.size>4_000_000){
     note.textContent='Arquivo maior que 4 MB. Exporte um período menor.';return;
    }
@@ -425,7 +450,7 @@
      body:JSON.stringify({fileName:file.name,base64,
       periodStart:$('organicTop10Start').value,
       periodEnd:$('organicTop10End').value,
-      organicConfirmed:true})
+      organicConfirmed:source==='organic'&&$('organicTop10OrganicConfirmed').checked})
     });
     const data=await res.json().catch(()=>({}));
     if(!res.ok||data.ok!==true)throw Error(data.error||'Importação não confirmada.');

@@ -14,7 +14,7 @@
 <link rel="stylesheet" href="/shopee-discount-one-click.css?v=1.20.17">
 <link rel="stylesheet" href="/shopee-market-research.css?v=1.20.18">
 <link rel="stylesheet" href="/dashboard-new-listings.css?v=1.20.21-shopee">
-<link rel="stylesheet" href="/organic-top10.css?v=1.2.0-performance-carrinho">
+<link rel="stylesheet" href="/organic-top10.css?v=1.2.1-colar-tabela">
 <link rel="stylesheet" href="/finance-thumbnails.css?v=1.20.22">
 <link rel="stylesheet" href="/title-studio.css?v=1.21.16-ranked-best">
 <link rel="stylesheet" href="/seo-modern-layout.css?v=1.0.5-compact-cards">
@@ -2583,7 +2583,7 @@
 <script src="/ads-seo.js?v=6-ads-eligible-counter"></script>
 <script src="/optimizer-image-studio.js?v=1.0.5-move-enabled"></script>
 <script src="/optimizer-technical-studio.js?v=1.2.0-compact-fields"></script>
-<script src="/organic-top10.js?v=1.2.0-performance-carrinho"></script>
+<script src="/organic-top10.js?v=1.2.1-colar-tabela"></script>
 
 <!-- Modal independente do roteador: abre em cada login / carregamento autenticado -->
 <div id="organicTop10Overlay" class="organic-top10-overlay" hidden>
@@ -2650,7 +2650,7 @@
     <p id="organicTop10ImportDescription">Na Central do Vendedor, abra Informações Gerenciais → Produto → Performance do Produto. Para resultados exclusivamente orgânicos, selecione uma fonte de tráfego comprovadamente sem Ads antes de exportar. Campos ausentes aparecem como “—”.</p>
     <div class="organic-top10-import-grid">
      <label>Relatório do produto (.csv, .xls, .xlsx)
-      <input id="organicTop10File" type="file" accept=".csv,.xlsx,.xls" required>
+      <input id="organicTop10File" type="file" accept=".csv,.xlsx,.xls">
      </label>
      <label>Período inicial
       <input id="organicTop10Start" type="date" required>
@@ -2658,6 +2658,14 @@
      <label>Período final
       <input id="organicTop10End" type="date" required>
      </label>
+    </div>
+    <div class="organic-top10-clipboard">
+     <label for="organicTop10PasteText">Ou cole uma tabela copiada da Central do Vendedor (com cabeçalhos)</label>
+     <textarea id="organicTop10PasteText" rows="3" spellcheck="false" placeholder="Copie a tabela com as colunas ID do Produto, Impressões, Cliques, CTR… e cole aqui."></textarea>
+     <div class="organic-top10-clipboard-actions">
+      <button id="organicTop10ReadClipboard" type="button" class="organic-top10-action organic-top10-secondary">Colar texto copiado</button>
+      <small>Alternativa ao arquivo quando a Shopee permitir copiar a tabela. Revise o período antes de importar. Nada é enviado até clicar em Importar.</small>
+     </div>
     </div>
     <label id="organicTop10ConsentLabel" class="organic-top10-consent"><input id="organicTop10OrganicConfirmed" type="checkbox" required>
      Confirmo que este relatório foi filtrado exclusivamente para tráfego orgânico, sem campanhas Shopee Ads e sem somar métricas pagas.

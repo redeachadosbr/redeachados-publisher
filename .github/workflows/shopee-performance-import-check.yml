@@ -1,0 +1,26 @@
+name: Validar importação assistida de Performance Shopee
+
+on:
+  push:
+    branches:
+      - feat/shopee-performance-colar-tabela-20261103
+  pull_request:
+    branches:
+      - shopee-service
+
+jobs:
+  importar-tabela:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Instalar dependências
+        run: npm install --ignore-scripts
+      - name: Verificar sintaxe da interface
+        run: node --check public/organic-top10.js
+      - name: Testar importação e separação das fontes
+        run: node --test tests/shopeeOrganicTop10.test.js tests/shopeeProductPerformanceMetrics.test.js

@@ -49,6 +49,10 @@
 .organic-top10-import-grid{display:grid;grid-template-columns:minmax(185px,2fr) 1fr 1fr;gap:10px}
 .organic-top10-import label{display:grid;gap:5px;font-size:12px;color:#395676;font-weight:750}
 .organic-top10-import input[type="file"],.organic-top10-import input[type="date"]{width:100%;margin:0;min-width:0;min-height:41px;background:#fff;border:1px solid #cedbef;border-radius:10px;padding:9px;color:#213e63;font-size:12px}
+.organic-top10-clipboard{margin:12px 0;padding:12px;border:1px dashed #adc8e9;background:#f9fcff;border-radius:12px}
+.organic-top10-clipboard textarea{display:block;width:100%;min-height:78px;resize:vertical;margin-top:6px;background:#fff;border:1px solid #cedbef;border-radius:10px;padding:10px;color:#213e63;font:12px/1.5 ui-monospace,monospace}
+.organic-top10-clipboard-actions{display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin-top:8px}
+.organic-top10-clipboard-actions small{font-size:11px;color:#607b9a;line-height:1.5;flex:1;min-width:200px}
 .organic-top10-consent{display:flex!important;flex-direction:row!important;align-items:flex-start;gap:10px!important;margin:14px 0 12px!important;font-size:12px!important;font-weight:550!important;color:#456480!important;line-height:1.55}
 .organic-top10-consent input{appearance:checkbox!important;position:static!important;flex:0 0 auto;width:17px!important;height:17px!important;min-height:0!important;margin:1px 0 0!important}
 .organic-top10-import-footer{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
