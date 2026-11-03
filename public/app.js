@@ -7068,8 +7068,10 @@ function optimizerRootAuditRender(audit){
   panel=document.createElement('section');
   panel.id='optimizerRootAuditPanel';
   panel.style.cssText='margin:16px 0;padding:18px;border:1px solid #cdddf0;border-radius:16px;background:linear-gradient(145deg,#fff,#f5f9ff);box-shadow:0 9px 24px rgba(21,60,110,.09)';
-  const tracker=$('#optimizerExecutionTracker')||$('#optimizerExecutionPanel');
-  tracker?.parentElement?.insertBefore(panel,tracker.nextSibling);
+  // A auditoria deve aparecer DENTRO da janela de execução, mesmo quando
+  // o painel principal foi movido para o diálogo (sem exigir recarregar).
+  const host=$('#optimizerExecutionPanel');
+  host?.append(panel);
  }
  if(!panel)return;
  panel.replaceChildren();
@@ -7109,8 +7111,47 @@ function optimizerRootAuditRender(audit){
   if(['failed','uncertain'].includes(stage.status))
    state.style.color='#a53d2b';
   row.append(state);
-  // Diagnóstico somente leitura: as ações individuais confundiam uma prévia
-  // de 6 atualizações aprovadas com sete botões de publicação separados.
+  // Somente etapas NÃO confirmadas oferecem ação. A correção abre o editor
+  // original; executar reconsulta o Item ID e envia exclusivamente a etapa.
+  if(!['confirmed','not_applicable'].includes(stage.status)&&stage.id!=='final'){
+   const controls=document.createElement('div');
+   controls.style.cssText='display:flex;flex-wrap:wrap;gap:6px;margin-top:9px';
+   const fix=document.createElement('button');
+   fix.type='button';fix.className='secondary';
+   fix.style.cssText='font-size:11px;padding:7px 9px';
+   fix.textContent=stage.id==='discount'?'Revisar campanha e preço':'Corrigir esta etapa';
+   fix.addEventListener('click',()=>{
+    if(stage.id==='discount'){
+     globalThis.RAExecutionDialog?.close?.();
+     optimizerDiscountOpenReview();
+     $('#optimizerExecDiscountCampaign')?.focus?.({preventScroll:false});
+    }else if(stage.id==='fiscal'){
+     globalThis.RAExecutionDialog?.close?.();
+     void optimizerRootOpenFiscalPreset();
+    }else{
+     globalThis.RAExecutionDialog?.close?.();
+     optimizerWorkflowOpen(stage.id);
+    }
+   });
+   controls.append(fix);
+   const retry=document.createElement('button');
+   retry.type='button';
+   retry.style.cssText='font-size:11px;padding:7px 9px';
+   retry.textContent=stage.status==='uncertain'?
+    'Conferir envio anterior':stage.id==='discount'?
+    '▶ Executar somente desconto':'▶ Executar somente esta etapa';
+   retry.disabled=Boolean(optimizerExecBusy||optimizerPrimaryActionBusy||
+    optimizerExecJob?.state==='running');
+   retry.addEventListener('click',()=>{
+    if(retry.disabled)return;
+    if(stage.status==='uncertain'){
+     void optimizerReconcileUncertainExecution();
+     return;
+    }
+    void globalThis.RAExecutionPrimaryAction?.(stage.id);
+   });
+   controls.append(retry);row.append(controls);
+  }
   grid.append(row);
  }
  panel.append(grid);
@@ -7118,7 +7159,7 @@ function optimizerRootAuditRender(audit){
  guidance.style.cssText='font-size:12px;color:#516b86;margin-top:12px';
  guidance.textContent=audit.complete?
   'Todas as etapas aplicáveis confirmadas na Shopee. Não repetir envios.':
-  'Conferência somente leitura. Para executar as pendências aprovadas, utilize o botão azul principal no painel de execução. As alterações sem aprovação continuarão identificadas aqui.';
+  'Somente as etapas pendentes têm ações de correção e execução. Cada envio revalida a SKU na Shopee; etapas já confirmadas não serão reenviadas.';
  panel.append(guidance);
 }
 // O operador ja autorizou a execucao. A finalizacao do rascunho somente
@@ -7157,12 +7198,16 @@ async function optimizerRootAuditRefresh(force=false){
  optimizerRootAuditPending=key;
  try{
   const params=new URLSearchParams({sku:w.sku,item_id:w.itemId,model_id:w.modelId});
+  const campaignId=String($('#optimizerExecDiscountCampaign')?.value||
+    $('#optimizerFinalCampaignId')?.value||$('#discountPromotionId')?.value||'').trim();
+  if(/^\\d{1,18}$/.test(campaignId))params.set('campaign_id',campaignId);
   const result=await json('/api/shopee/optimizer/execution/root-audit?'+params,{
    signal:AbortSignal.timeout(45000)});
   const current=optimizerWorkflowPlan;
   if(!current||[current.sku,current.itemId,current.modelId].join('|')!==key)return;
   optimizerRootAuditCache.set(key,{audit:result.audit,at:Date.now()});
   optimizerRootAuditRender(result.audit);
+  globalThis.RAExecutionDialog?.refresh?.();
   // Atualizar o contador de pendências e a indicação de desconto
   // após a leitura oficial, em vez de depender do último job parcial.
   if(optimizerExecProgress&&optimizerExecJob)
