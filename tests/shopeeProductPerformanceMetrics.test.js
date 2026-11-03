@@ -117,7 +117,8 @@ test('colagem depende de ação do vendedor e nunca chama API privada da Central
  assert.match(html,/id="organicTop10PasteText"/);
  assert.match(html,/id="organicTop10ReadClipboard"/);
  assert.match(js,/organicTop10ReadClipboard'\)\.addEventListener\('click'/);
- assert.match(js,/navigator\.clipboard\?\.readText\(\)/);
+ assert.match(js,/navigator\.clipboard\?\.readText/);
+ assert.match(js,/navigator\.clipboard\.readText\(\)/);
  assert.match(js,/Performance_Produto_Colado\.csv/);
  assert.match(js,/source==='organic'&&\$\('organicTop10OrganicConfirmed'\)\.checked/);
  assert.doesNotMatch(js,/fetch\(['"]https:\/\/seller\.shopee/);
