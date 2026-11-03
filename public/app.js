@@ -6330,6 +6330,12 @@ async function optimizerOneClickExecute(){
    'technical','fiscal','variants'];
   const desiredStage=allowedStages.includes($('#optimizerExecutionScope')?.value)?
    $('#optimizerExecutionScope').value:'all';
+  // Etapa 08 ainda pendente na leitura oficial: não terminar "tudo"
+  // executando apenas as ações independentes de mídia/texto.
+  const rootDiscount=optimizerRootAuditCache.get(identity)?.audit?.stages?.
+   find(stage=>stage.id==='discount');
+  const discountOutstanding=desiredStage==='all'&&!optimizerKitWorkflowActive()&&
+   rootDiscount&&rootDiscount.status!=='confirmed';
   // Para a execução só da promoção, preparar primeiro o snapshot assinado.
   // Imagens, vídeo, título e descrição já confirmados não entram nesse plano.
   if(desiredStage==='discount_adjust'){
@@ -6431,7 +6437,8 @@ async function optimizerOneClickExecute(){
     ' Revise somente os dados não preparados. As etapas salvas foram preservadas.','warning');
    return;
   }
-  if(!optimizerMatrixIndependentPendingPlan(p)&&!optimizerKitWorkflowActive()&&!p.modelVariations&&
+  if((!optimizerMatrixIndependentPendingPlan(p)||discountOutstanding)&&
+     !optimizerKitWorkflowActive()&&!p.modelVariations&&
      ['all','remaining','discount','discount_adjust'].includes(p.selectedStage)){
    if(!optimizerDiscountApprovalReady()){
     optimizerExecutionLiveStep('2. Verificando preço e desconto',
@@ -6549,6 +6556,11 @@ async function optimizerExecuteApproved(remainingOnly=false){
  // Apenas a ação de clicar neste comando autoriza as modificações da prévia.
  const btn=$('#optimizerExecutionLaunch');
  const discountIntent=optimizerDiscountAuthorizedIntent(p);
+ // Um plano "all" com texto/mídia independente só inclui desconto quando
+ // existir prévia ASSINADA autorizada, válida para esta SKU. Sem token, não
+ // transformar um plano de vídeo isolado em publicação comercial.
+ const commercialApprovedWithMatrix=Boolean(p.selectedStage==='all'&&
+  !optimizerIsVideoOnlyPreparedPlan(p)&&optimizerDiscountApprovalReady());
  const executionSerial=optimizerExecSerial;
  optimizerExecStartError='';optimizerExecBusy=true;btn.disabled=true;$('#optimizerExecutionRun').disabled=true;
  $('#optimizerExecutionRemaining').disabled=true;
@@ -6594,7 +6606,7 @@ async function optimizerExecuteApproved(remainingOnly=false){
        confirmation:'EXECUTAR '+p.sku,acceptPartialExecution:true,
        ...(remainingOnly?{remainingOnly:true}:{}),
        ...(['all','remaining','discount','discount_adjust'].includes(p.selectedStage)&&
-        !optimizerMatrixIndependentPendingPlan(p)&&
+        (!optimizerMatrixIndependentPendingPlan(p)||commercialApprovedWithMatrix)&&
         !(typeof optimizerKitWorkflowActive==='function'&&optimizerKitWorkflowActive())?{discountApprovalToken:p.modelVariations?
         optimizerExecAutoModelToken:optimizerDiscountFinalPreviewData?.approvalToken,
         allowPriceChange:p.modelVariations?Boolean(
