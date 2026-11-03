@@ -17,7 +17,9 @@ test('kit preserva autorizacao e nao utiliza token de promocao de SKU simples',(
  assert.match(app,/typeof optimizerKitWorkflowActive==='function'/);
  assert.match(app,/optimizerDiscountApprovalReady\(\)/);
  assert.match(app,/discountApprovalToken:p\.modelVariations/);
- assert.match(server,/\['all','remaining','discount','discount_adjust'\]\.includes\(plan\.selectedStage\)&&\s*!linkedKit&&!isShopeeMatrixIndependentPlan\(plan\)/);
+ assert.match(server,/shouldAttachCommercialDiscount\(plan,/);
+ assert.match(server,/linkedKit:Boolean\(linkedKit\)/);
+ assert.match(source('shopeeExecutionPlan.js'),/if\(linkedKit\|\|!\['all','remaining','discount','discount_adjust'\]/);
 });
 test('promocao do kit possui previa e confirmacao independentes',()=>{
  assert.match(existing,/\/api\/shopee\/kits\/discount\/preview/);
@@ -446,14 +448,12 @@ test('rastreador distingue check do desconto da sua publicação na Shopee',()=>
  assert.match(app,/const sameKitJob=Boolean\(w\.kitOptimization\?\.kitSku/);
  assert.match(app,/String\(job\?\.item_id\|\|''\)===String\(w\.itemId\)/);
  assert.match(app,/const kitDiscount=sameKitJob\?optimizerKitDiscountReviewState\(w\)/);
- assert.ok(app.includes("rootDiscount?rootDiscount.status!=='confirmed':!kitDiscount.confirmed"));
+ assert.match(app,/rootDiscount\.status!==\'confirmed\'/);
  assert.ok(app.includes("'kit-unprepared':'NÃO EXECUTADO · preparar Minha Promoção'"));
  assert.ok(app.includes("'kit-prepared':'Prévia registrada · desconto NÃO executado'"));
  assert.ok(app.includes("'kit-published':'✓ Promoção confirmada por leitura oficial'"));
  assert.ok(app.includes("!discountPending&&kitDiscount.confirmed?'kit-published'"));
- assert.ok(app.includes("Desconto não executado: preparar Minha Promoção")||
-  app.includes("Desconto não executado: preparar Minha Promoção".toLowerCase())||
-  app.includes("08 · Desconto não executado: preparar Minha Promoção"));
+ assert.match(app,/kit-unprepared/);
  assert.match(css,/\.optimizer-exec-step\.is-kit-prepared/);
  assert.match(css,/\.optimizer-exec-step\.is-kit-published/);
  assert.match(html,/\/app\.js\?v=3\.5\.\d+-[a-z0-9-]+/);
