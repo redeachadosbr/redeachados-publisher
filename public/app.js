@@ -13,6 +13,8 @@ const APP_PAGES={
     description:'Pesquisa de oportunidades de kits por categoria, SKUs e custo WeDrop, lucro líquido e criação comercial com ChatGPT.'},
   optimizer:{slug:'otimizacao',title:'Otimização de anúncios',group:'Operação',
     description:'Localize o SKU, calcule preços, prepare descontos e faça a revisão completa do anúncio.'},
+  'pending-images':{slug:'otimizacao-pendente',title:'Otimização Pendente',group:'Operação',
+    description:'Relatório das SKUs com menos de nove imagens: ativos com estoque, sem estoque e inativos.'},
   pricing:{slug:'precificacao',title:'Precificação',group:'Otimização',
     description:'Margens, valores de anúncio e configurações de taxas editáveis da Shopee.'},
   discounts:{slug:'descontos',title:'Descontos preparados',group:'Operação',
@@ -93,6 +95,7 @@ function setTab(name,{updateHistory=true,scroll=true}={}){
     history.pushState({page:name},'',nextUrl);
   setSidebarOpen(false);
   if(name==='overview')void window.dashboardNewListingsLoad?.();
+  if(name==='pending-images')globalThis.PendingImagesUI?.onOpen?.();
   if(name==='kits')void window.RAKitBuilderLoad?.();
   if(name==='wedrop'){refreshWeDropCoverage();loadWeDropSourceState();void loadWeDropSkuReview();}
   else if(name==='finance'){refreshWeDropCoverage();}
@@ -2537,6 +2540,17 @@ async function optimizerFindSku({deep=false}={}){
  }
 }
 $('#optimizerFind').onclick=()=>void optimizerFindSku();
+// A lista de Otimização Pendente abre a SKU correta na etapa de imagens,
+// sem publicar nada nem recuperar o preço de outra SKU no handoff.
+globalThis.RAOpenPendingImageSku=sku=>{
+ const value=String(sku||'').trim();
+ if(!value)return;
+ optimizerAdsHandoffSku=value;
+ setTab('optimizer');
+ const field=$('#optimizerSku');
+ if(field)field.value=value;
+ void optimizerFindSku();
+};
 $('#optimizerSku')?.addEventListener?.('input',event=>{
  const value=$('#optimizerSku').value.trim();
  if(globalThis.__RA_KIT_OPTIMIZATION_HANDOFF?.sku!==value)
