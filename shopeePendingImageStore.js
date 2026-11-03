@@ -38,7 +38,7 @@ export async function getPendingImageSnapshot(shopId){
   '&select=shop_id,scanned_at,scanned_listings,total_listings,rows,optimized,updated_at&limit=1');
  return rows[0]||null;
 }
-function validateSnapshot(input){
+export function validatePendingImageSnapshot(input){
  const scannedListings=Number(input?.scannedListings);
  const totalListings=Number(input?.totalListings);
  const rows=input?.rows;
@@ -78,7 +78,7 @@ function validateSnapshot(input){
  });
  return {rows:clean,scannedListings,totalListings};
 }
-function carryForward(previous,rows){
+export function carryForwardPendingImageConfirmations(previous,rows){
  const optimized={...(previous?.optimized||{})};
  for(const row of rows){
   const old=optimized[row.itemId];
@@ -88,14 +88,14 @@ function carryForward(previous,rows){
  return optimized;
 }
 export async function savePendingImageSnapshot(shopId,input){
- const validated=validateSnapshot(input);
+ const validated=validatePendingImageSnapshot(input);
  const scannedAt=new Date().toISOString();
  const id=numeric(shopId);
  for(let attempt=0;attempt<3;attempt++){
   const previous=await getPendingImageSnapshot(id);
   const data={shop_id:id,scanned_at:scannedAt,
    scanned_listings:validated.scannedListings,total_listings:validated.totalListings,
-   rows:validated.rows,optimized:carryForward(previous,validated.rows),
+   rows:validated.rows,optimized:carryForwardPendingImageConfirmations(previous,validated.rows),
    updated_at:new Date().toISOString()};
   const result=previous?
    await request(query(id)+'&updated_at=eq.'+
