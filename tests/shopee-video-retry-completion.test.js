@@ -209,11 +209,14 @@ test('plano completo somente com vídeo não exige nova prévia nem desconto',as
  assert.equal(isShopeeVideoOnlyPlan({...only,proposed:{item_name:'new title'}}),false);
  assert.equal(isShopeeVideoOnlyPlan({...only,commercialDiscount:{snapshot:{}}}),false);
  const source=readFileSync(new URL('../server.js',import.meta.url),'utf8');
- assert.match(source,/!linkedKit&&!isShopeeMatrixIndependentPlan\(plan\)/);
+ assert.match(source,/shouldAttachCommercialDiscount\(plan,/);
+ const {shouldAttachCommercialDiscount}=await import('../shopeeExecutionPlan.js');
+ assert.equal(shouldAttachCommercialDiscount(only),false);
  const ui=readFileSync(new URL('../public/app.js',import.meta.url),'utf8');
  assert.match(ui,/if\(matrixIndependent\)\{\s*\$\('#optimizerExecutionScope'\)\.value='all'/);
  assert.match(ui,/if\(optimizerMatrixIndependentPendingPlan\(plan\)\)return true;/);
- assert.match(ui,/!optimizerMatrixIndependentPendingPlan\(p\)&&!optimizerKitWorkflowActive/);
+ assert.match(ui,/discountOutstanding/);
+ assert.match(ui,/commercialApprovedWithMatrix/);
  assert.match(ui,/optimizerExecutionPrepare\(\{fromExecutionClick:true\}\)/);
 });
 
@@ -239,6 +242,7 @@ test('Motor Matriz: nenhuma etapa confirmada é reenviada e nenhuma promoção �
  const ui=readFileSync(new URL('../public/app.js',import.meta.url),'utf8');
  const server=readFileSync(new URL('../server.js',import.meta.url),'utf8');
  assert.match(ui,/function optimizerMatrixIndependentPendingPlan\(plan\)/);
- assert.match(ui,/!optimizerMatrixIndependentPendingPlan\(p\)&&!optimizerKitWorkflowActive/);
- assert.match(server,/!linkedKit&&!isShopeeMatrixIndependentPlan\(plan\)/);
+ assert.match(ui,/discountOutstanding/);
+ assert.match(ui,/commercialApprovedWithMatrix/);
+ assert.match(server,/shouldAttachCommercialDiscount\(plan,/);
 });
