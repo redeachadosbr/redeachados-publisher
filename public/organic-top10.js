@@ -36,9 +36,21 @@
    return node;
   }
   function render(rows){
-   // Três colunas úteis na API; oito somente no relatório orgânico.
-   // O modo define a grade ANTES de inserir os cartões.
+   // Grade sem colunas falsas: API (3), orgânico (8), Performance (10).
    $('organicTop10Modal').dataset.source=source;
+   const titles=source==='api'?['Produto / SKU','Visualizações','Ação']:
+    source==='performance'?['Produto / SKU','Impressões','Visitantes','Cliques',
+     'CTR','Adic. ao carrinho','Unidades carrinho','Conv. carrinho','Pedidos','Ação']:
+    ['Produto / SKU','Impressões','Visitas','Cliques','CTR','No carrinho',
+     'Abandono','Ação'];
+   const header=$('organicTop10GridHeader');
+   if(header){
+    header.replaceChildren();
+    for(let i=0;i<titles.length;i++){
+     const item=el(header,'span',titles[i]);
+     if(i===1)item.id='organicTop10ViewsHeader';
+    }
+   }
    list.replaceChildren();
    const input=Array.isArray(rows)?rows:[];
    input.forEach((row,index)=>{
@@ -80,6 +92,17 @@
       row.viewsObserved!==null&&row.viewsObserved!==undefined?
        'Variação observada (parcial)':'Contador Shopee (sem período)',
       'organic-top10-views');
+    }else if(source==='performance'){
+     // Métricas exatamente como exportadas da Central do Vendedor.
+     // "Adicionou ao carrinho" não significa carrinho abandonado.
+     add(number(row.impressions),'Impressões');
+     add(number(row.visits),'Visitantes');
+     add(number(row.clicks),'Cliques');
+     add(percent(row.ctr),'CTR','organic-top10-ctr');
+     add(number(row.cartVisitors),'Visitantes que adicionaram','organic-top10-added');
+     add(number(row.cartUnits),'Unidades adicionadas','organic-top10-added');
+     add(percent(row.cartConversionRate),'Taxa de adição','organic-top10-ctr');
+     add(number(row.orders),'Pedidos');
     }else{
      // Só o relatório orgânico confirmado permite exibir CTR/carrinho/abandono.
      add(number(row.impressions),'Impressões');
@@ -186,46 +209,80 @@
    }finally{loading=false;}
   }
   function setSource(next){
-   source=next==='organic'?'organic':'api';
+   source=next==='performance'?'performance':next==='organic'?'organic':'api';
+   sort='combined';
+   if(loading){loadSequence++;loading=false;}
    $('organicTop10Modal').dataset.source=source;
    $('organicTop10ModeApi').setAttribute('aria-pressed',String(source==='api'));
+   $('organicTop10ModePerformance').setAttribute('aria-pressed',String(source==='performance'));
    $('organicTop10ModeOrganic').setAttribute('aria-pressed',String(source==='organic'));
    $('organicTop10ApiPeriods').hidden=source!=='api';
-   $('organicTop10Tools').hidden=source!=='organic';
-   $('organicTop10ShowImport').hidden=source!=='organic';
+   $('organicTop10Tools').hidden=source==='api';
+   $('organicTop10ShowImport').hidden=source==='api';
    $('organicTop10Update').textContent=source==='api'?
     '↻ Atualizar Shopee':'↻ Recarregar relatório';
+   $('organicTop10ShowImport').textContent=source==='performance'?
+    'Importar Performance do Produto':'Importar relatório orgânico';
    $('organicTop10SourceBadge').textContent=source==='api'?
     '● VISUALIZAÇÕES GERAIS · PODEM INCLUIR ADS':
+    source==='performance'?'● CENTRAL DO VENDEDOR · ORIGEM NÃO SEPARADA DE ADS':
     '● ORGÂNICO · RELATÓRIO EXCLUSIVO SEM ADS';
    $('organicTop10Title').textContent=source==='api'?
-    'TOP 10 · Visualizações Shopee':'TOP 10 · Desempenho Orgânico';
+    'TOP 10 · Visualizações Shopee':source==='performance'?
+    'TOP 10 · Performance do Produto':'TOP 10 · Desempenho Orgânico';
    $('organicTop10Subtitle').textContent=source==='api'?
-    'Acompanhe visualizações dos anúncios pelas medições oficiais Shopee. Por período, somente diferenças observadas após a primeira coleta.':
-    'Métricas exclusivamente orgânicas por SKU, conforme relatório filtrado da Central do Vendedor.';
-   $('organicTop10ViewsHeader').textContent=source==='api'?'Visualizações':'Impressões';
+    'Visualizações gerais de anúncios, inclusive tráfego potencialmente pago.':
+    source==='performance'?
+    'Impressões, cliques, visitantes, CTR, adição ao carrinho e pedidos do relatório da Central do Vendedor.':
+    'Métricas exclusivamente orgânicas por SKU, quando comprovadas na origem.';
+   const performance=source==='performance';
+   $('organicTop10ImportTitle').textContent=performance?
+    'Importar Performance do Produto da Shopee':'Importar relatório orgânico da Shopee';
+   $('organicTop10ImportDescription').textContent=performance?
+    'Central do Vendedor → Informações Gerenciais → Produto → Performance do Produto. '+
+    'Em Selecionar Métricas, escolha Impressões, Cliques, CTR, Visitantes do Produto, '+
+    'Visitantes/Unidades (Adicionar ao Carrinho), Taxa de Conversão (Adicionar ao Carrinho) '+
+    'e Pedidos. Exporte CSV ou Excel do período escolhido. A opção Produto Pago não comprova '+
+    'tráfego sem Ads. Itens adicionados não são carrinhos abandonados.':
+    'Importe apenas relatório filtrado exclusivamente para tráfego orgânico, sem Shopee Ads.';
+   $('organicTop10ConsentLabel').hidden=performance;
+   $('organicTop10OrganicConfirmed').required=!performance;
+   for(const button of sorts){
+    const key=button.dataset.sort;
+    button.hidden=performance?['cartPending','cartAbandonmentRate'].includes(key):
+     ['cartVisitors','cartUnits','cartConversionRate','orders'].includes(key);
+    button.setAttribute('aria-pressed',String(key==='combined'));
+   }
    if(!loading)void refresh();
   }
   async function refresh(){
    if(source==='api')return refreshApi();
    if(loading)return;
    loading=true;const serial=++loadSequence;
-   notice('Carregando o ranking orgânico salvo, sem consultar métricas de Ads…');
+   const performance=source==='performance';
+   notice(performance?'Consultando o relatório de Performance do Produto salvo…':
+    'Carregando o ranking orgânico salvo, sem consultar métricas de Ads…');
    try{
-    const response=await fetch('/api/shopee/organic/top10?'+
+    const response=await fetch((performance?'/api/shopee/performance/top10':
+     '/api/shopee/organic/top10')+'?'+
      new URLSearchParams({sort}),{credentials:'same-origin',cache:'no-store',
       headers:{Accept:'application/json'}});
     const data=await response.json().catch(()=>({}));
     if(serial!==loadSequence)return;
-    if(!response.ok||data.ok!==true)throw Error(data.error||'Não foi possível ler os dados orgânicos.');
+    if(!response.ok||data.ok!==true)throw Error(data.error||'Não foi possível ler o relatório salvo.');
     last=data;
     if(!data.available){
      render([]);
      $('organicTop10Period').textContent='Período: sem relatório salvo';
-     $('organicTop10Count').textContent='Dados orgânicos indisponíveis';
+     $('organicTop10Count').textContent=performance?'Sem relatório de Performance':
+      'Dados orgânicos indisponíveis';
      $('organicTop10Footnote').textContent=
       'Nenhuma métrica orgânica foi importada. O sistema não usa indicadores de Shopee Ads ou adicionados ao carrinho como abandono.';
-     notice('Nenhum relatório orgânico foi salvo nesta loja. Para mostrar produtos reais, importe o relatório de Informações Gerenciais, filtrado para tráfego sem Ads.');
+     notice(performance?
+      'Ainda não existe relatório de Performance do Produto salvo para esta loja. '+
+      'A API de visualizações não fornece automaticamente CTR, visitantes ou adição ao carrinho. '+
+      'Exporte o relatório na Central do Vendedor para importar com esses campos.':
+      'Nenhum relatório orgânico foi salvo. Importe apenas um relatório filtrado para tráfego sem Ads.');
      importBox.hidden=false;
      sorts.forEach(b=>b.disabled=b.dataset.sort!=='combined');
      return;
@@ -237,8 +294,13 @@
     $('organicTop10Count').textContent=
      items.length+' de '+number(data.rowCount)+' SKUs · atualizado em '+date(data.importedAt);
     $('organicTop10Footnote').textContent=
-     'Fonte: relatório orgânico importado em '+date(data.importedAt)+
-     '. Sem Shopee Ads. Adições ao carrinho não comprovam abandono; a porcentagem só aparece se a fonte informar ou permitir um cálculo com bases compatíveis. Campos ausentes = “—”.'+
+     (performance?'Fonte: Performance do Produto importada em ':
+      'Fonte: relatório orgânico importado em ')+date(data.importedAt)+
+     (performance?'. A origem de tráfego não foi separada da publicidade. '+
+      'Visitantes e unidades que adicionaram ao carrinho não são abandonos. '+
+      'Taxa de adição só aparece quando informada no relatório.':
+      '. Relatório declarado exclusivamente orgânico; adicionar ao carrinho não comprova abandono.')+
+     ' Campos ausentes = “—”.'+
      (data.catalogWarning?' '+data.catalogWarning:'');
     sorts.forEach(button=>{
      button.disabled=button.dataset.sort!=='combined'&&available[button.dataset.sort]!==true;
@@ -250,8 +312,8 @@
     if(importBox.dataset.open!=='manual')importBox.hidden=true;
    }catch(error){
     render([]);
-    notice('Não foi possível carregar o ranking orgânico salvo: '+String(error.message||error)+
-     '. As métricas de Ads não serão usadas.', 'error');
+    notice('Não foi possível carregar o relatório selecionado: '+String(error.message||error)+
+     '. Não serão inventadas impressões ou métricas de carrinho.', 'error');
     $('organicTop10Count').textContent='Consulta indisponível';
     importBox.hidden=true;
    }finally{
@@ -295,6 +357,7 @@
   });
   $('organicTop10ModeApi').addEventListener('click',()=>setSource('api'));
   $('organicTop10ModeOrganic').addEventListener('click',()=>setSource('organic'));
+  $('organicTop10ModePerformance').addEventListener('click',()=>setSource('performance'));
   $('organicTop10ApiPeriods').addEventListener('click',event=>{
    const choice=event.target.closest('button[data-period]');
    if(!choice)return;
@@ -341,11 +404,13 @@
    if(file.size>4_000_000){
     note.textContent='Arquivo maior que 4 MB. Exporte um período menor.';return;
    }
-   if(!$('organicTop10OrganicConfirmed').checked){
+   if(source==='organic'&&!$('organicTop10OrganicConfirmed').checked){
     note.textContent='Confirme que as métricas são exclusivamente orgânicas.';return;
    }
    button.disabled=true;note.dataset.kind='info';
-   note.textContent='Validando o período e os dados orgânicos…';
+   note.textContent=source==='performance'?
+    'Validando as métricas de Performance do Produto…':
+    'Validando o período e os dados orgânicos…';
    try{
     const base64=await new Promise((resolve,reject)=>{
      const reader=new FileReader();
@@ -353,7 +418,8 @@
      reader.onload=()=>resolve(String(reader.result||'').split(',')[1]||'');
      reader.readAsDataURL(file);
     });
-    const res=await fetch('/api/shopee/organic/top10/import',{
+    const res=await fetch(source==='performance'?'/api/shopee/performance/top10/import':
+     '/api/shopee/organic/top10/import',{
      method:'POST',credentials:'same-origin',
      headers:{'Content-Type':'application/json'},
      body:JSON.stringify({fileName:file.name,base64,
@@ -363,7 +429,7 @@
     });
     const data=await res.json().catch(()=>({}));
     if(!res.ok||data.ok!==true)throw Error(data.error||'Importação não confirmada.');
-    note.textContent=number(data.rowCount)+' SKUs orgânicas salvas na loja.';
+    note.textContent=number(data.rowCount)+' registros de produtos salvos na loja.';
     note.dataset.kind='success';
     importBox.hidden=true;importBox.dataset.open='';
     sort='combined';
