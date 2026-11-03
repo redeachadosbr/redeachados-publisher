@@ -309,8 +309,13 @@ async function run(){
   for(const rows of fiscalParentMap(all).values()){
    const representative=rows[0];
    const keys=rows.map(idOf);
-   if(rows.some(x=>x.fiscal?.status!==representative.fiscal?.status))
-    throw Error('Leituras fiscais conflitantes para Item ID '+representative.itemId+'. Nenhum envio autorizado.');
+   if(rows.some(x=>x.fiscal?.status!==representative.fiscal?.status)){
+    for(const key of keys){
+     state.done[key]='blocked';
+     state.errors[key]='Variações do mesmo Item ID divergem da tabela fiscal em campos diferentes. Revisar o anúncio-pai antes de qualquer atualização.';
+    }
+    continue; // Outros anúncios continuam normalmente; nunca alterar apenas parte do anúncio-pai.
+   }
    if(representative.fiscal?.status==='complete'){
     // Já preenchido na Shopee: limpar erros antigos, preservar confirmação de job
     // quando houver, e não executar outro POST.
