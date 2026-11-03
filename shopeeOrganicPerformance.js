@@ -147,7 +147,7 @@ export function parseOrganicReport(buffer,{
    metric[k]=columns[k]===undefined?null:count(row[columns[k]]);
   const ctr=columns.ctr===undefined?null:percent(row[columns.ctr]);
   const explicitAbandonment=columns.cartAbandonmentRate===undefined?
-   null:percent(row[columns.cartAbandonmentRate]]);
+   null:percent(row[columns.cartAbandonmentRate]);
   // Só calcular abandono quando numerador e denominador medem a MESMA
   // unidade. Carrinhos, pessoas e unidades não são intercambiáveis.
   const basis=header=>{
