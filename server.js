@@ -23,7 +23,7 @@ import {readShopeeWallet} from './shopeeWallet.js';
 import {financeAdsDates,matchFinanceAds} from './financeAdsSweep.js';
 import {financeRange} from './shopeeFinance.js';
 import {fetchCatalogPage,fetchCatalogPrices,normalizeShopeeModels,validItemId} from './catalog.js';
-import {scanShopeePendingImagesPage,PENDING_IMAGE_STATUSES} from './shopeePendingImageAudit.js';
+import {scanShopeePendingImagesPage,verifyShopeePendingImageItem,PENDING_IMAGE_STATUSES} from './shopeePendingImageAudit.js';
 import {suggestFiscalMeasureUnit} from './shopeeFiscalMeasure.js';
 import {getShopeeNewListingsSummary,clearShopeeNewListingsCache} from './shopeeNewListings.js';
 import {storeCatalogItems,storeCatalogModels,readCatalogCache,catalogStoreReady,findExactCatalogSku,findCatalogSkuIgnoringCase} from './catalogStore.js';
@@ -1333,6 +1333,22 @@ app.get('/api/shopee/optimizer/pending-images/page',mustLogin,requireWeDropAdmin
   res.status(503).json({ok:false,verified:false,
    error:'Auditoria de imagens incompleta: '+String(error.message||error).slice(0,270)+
     '. Nenhuma alteração foi enviada.'});
+ }
+});
+// Releitura unitária para prevenir otimização duplicada: nunca considerar
+// upload, prévia, checklist ou histórico como prova de 9 fotos na Shopee.
+app.get('/api/shopee/optimizer/pending-images/verify',mustLogin,requireWeDropAdmin,async(req,res)=>{
+ res.setHeader('Cache-Control','no-store');
+ try{
+  const {auth,cfg}=await getValidAuth(req);
+  const result=await verifyShopeePendingImageItem({
+   cfg,auth,callApi:callShopeeShopApi,itemId:req.query.item_id
+  });
+  res.json({ok:true,...result});
+ }catch(error){
+  res.status(503).json({ok:false,verified:false,
+   error:'Não foi possível confirmar as imagens do anúncio na Shopee: '+
+    String(error.message||error).slice(0,250)});
  }
 });
 // Conferência oficial SOMENTE LEITURA: diferencia anúncios de SKUs/modelos.
