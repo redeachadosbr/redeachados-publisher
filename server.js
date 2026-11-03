@@ -1378,7 +1378,7 @@ app.get('/api/shopee/optimizer/fiscal-migration/active-skus',mustLogin,requireWe
      const key=String(row?.item_id||'');
      if(!ids.includes(key)||returned.has(key))continue;
      returned.add(key);
-     fiscalById.set(key,inspectShopeeFiscalGap(row.tax_info));
+     fiscalById.set(key,row.tax_info||{});
     }
     if(returned.size!==ids.length)
      throw Error('Leitura fiscal incompleta: '+returned.size+' de '+ids.length+
@@ -1407,17 +1407,32 @@ app.get('/api/shopee/optimizer/fiscal-migration/active-skus',mustLogin,requireWe
         // get_model_list retorna MODEL_NORMAL/MODEL_UNAVAILABLE, não NORMAL/UNLIST.
         // Excluir esses modelos omitia silenciosamente todas as variações com SKU.
         if(!candidate.sku||candidate.status&&!['NORMAL','UNLIST','MODEL_NORMAL','MODEL_UNAVAILABLE'].includes(candidate.status))continue;
-        // Inventário para execução não precisa fazer 742 consultas separadas
-        // ao Supabase. A revisão será consultada durante a execução da SKU.
-        // Only incomplete Item IDs require source review lookup in fast mode.
-        const gapRequiresReview=inspect&&fiscalById.get(itemId)?.status!=='complete';
-        const review=fast&&!gapRequiresReview?null:
-         await getWorkflowReview(auth.shopId,itemId,candidate.modelId);
+        // A tabela aprovada (Motor Matriz e classificação exata WeDrop)
+        // é a referência, não apenas a presença do campo no tax_info.
+        const review=inspect||!fast?
+         await getWorkflowReview(auth.shopId,itemId,candidate.modelId):null;
         const checked=Boolean(review?.sku===candidate.sku&&
           review?.review_state?.stages?.fiscal?.reviewed&&review?.review_state?.tax?.ncm);
+        let fiscal;
+        if(inspect){
+          const supplier=await readWeDropProduct(auth.shopId,{
+            sku:candidate.sku,itemId,modelId:candidate.modelId});
+          const linked=supplier&&['exact-sku','reviewed-link'].includes(supplier.matchedBy);
+          const sourceNcm=String(linked?supplier.product_data?.ncm||'':'').replace(/\D/g,'');
+          const reviewedTax=checked?review.review_state.tax:{};
+          const reviewedNcm=String(reviewedTax.ncm||'').replace(/\D/g,'');
+          const ncm=/^\d{8}$/.test(sourceNcm)?sourceNcm:
+            (/^\d{8}$/.test(reviewedNcm)?reviewedNcm:'');
+          const reference={ncm,origin:'2',
+            measure_unit:String(reviewedTax.measure_unit||'UN'),
+            same_state_cfop:'5106',diff_state_cfop:'6106',csosn:'102',
+            pis_cofins_cst:'99',operation_type:'1',
+            cest:linked?wedropCestForSku(supplier):String(reviewedTax.cest||'00')};
+          fiscal=inspectShopeeFiscalGap(fiscalById.get(itemId),reference);
+        }
         output.push({sku:candidate.sku,itemId,modelId:candidate.modelId,
-          fiscal:inspect?fiscalById.get(itemId):undefined,
-          title:item.title||'',listingStatus:status,unitSuggestion:suggestFiscalMeasureUnit(item.title).unit,reviewed:checked,
+          fiscal,title:item.title||'',listingStatus:status,
+          unitSuggestion:suggestFiscalMeasureUnit(item.title).unit,reviewed:checked,
           status:checked?'revisado':'requer revisão fiscal'});
       }
       return output;
@@ -2944,9 +2959,6 @@ app.post('/api/shopee/optimizer/fiscal-migration/execute-one',mustLogin,requireW
   const previousTax=existing?.review_state?.tax||{};
   const missingOnly=req.body?.missingOnly===true;
   const gap=inspectShopeeFiscalGap(live.tax_info);
-  if(missingOnly&&gap.status==='complete')
-   return res.json({ok:true,sku,itemId,modelId,status:'already_current',
-    message:'Todos os campos fiscais principais já constam na Shopee. Sem alterações.'});
   if(missingOnly&&gap.invalid.length)
    return res.json({ok:true,sku,itemId,modelId,status:'blocked',needsReview:true,
     message:'Código fiscal inválido na Shopee ('+gap.invalid.join(', ')+
@@ -2984,6 +2996,15 @@ app.post('/api/shopee/optimizer/fiscal-migration/execute-one',mustLogin,requireW
   // ou 00 no cadastro interno. Nunca inferir CEST real a partir do NCM/Shopee.
   compileTax(tax,{tax_info:{}});
   const source=fiscalMatrixSource({sku,supplier:supplierLinked?supplier:null,tax});
+  // Campos preenchidos também precisam coincidir com a tabela fiscal aprovada.
+  const comparison=inspectShopeeFiscalGap(live.tax_info,tax);
+  if(missingOnly&&comparison.status==='complete')
+   return res.json({ok:true,sku,itemId,modelId,status:'already_current',
+    message:'Campos fiscais comparados à tabela aprovada e confirmados na Shopee.'});
+  if(missingOnly&&comparison.mismatched.length)
+   return res.json({ok:true,sku,itemId,modelId,status:'blocked',needsReview:true,
+    message:'Campos preenchidos, mas divergentes da referência fiscal: '+
+     comparison.mismatched.join(', ')+'. Revisar antes de alterar dados existentes.'});
   // Completar campos ausentes até mesmo nas fichas já marcadas como
   // revisadas, sem sobrescrever um único valor manual preexistente.
   const needsSave=!existing?.review_state?.stages?.fiscal?.reviewed||
