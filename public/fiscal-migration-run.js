@@ -174,18 +174,30 @@ function progress(state,phase='Pronto para executar',sku=''){
  renderFiscalGapInventory(state);
  const issues=$('raFiscalRunIssues');issues.replaceChildren();
  if(!trustworthy)return;
- const problem=Object.entries(state?.errors||{}).filter(([key])=>ids.has(key)&&
-  ['failed','blocked','uncertain'].includes(state.done?.[key]));
+ // Errors are logged per model SKU, but fiscal is parent-scoped. Show only
+ // one genuine unresolved issue per Item ID, never 639 SKU errors for 544 ads.
+ const itemByKey=new Map(items.map(x=>[idOf(x),x]));
+ const pendingIds=new Set(pendingParents
+  .filter(rows=>!rows.some(x=>['verified','already_current'].includes(state?.done?.[idOf(x)])))
+  .map(rows=>String(rows[0].itemId)));
+ const issueByParent=new Map();
+ for(const [key,message] of Object.entries(state?.errors||{})){
+  if(!ids.has(key)||!['failed','blocked','uncertain'].includes(state.done?.[key]))continue;
+  const item=itemByKey.get(key),parent=String(item?.itemId||'');
+  if(!item||!pendingIds.has(parent)||issueByParent.has(parent))continue;
+  issueByParent.set(parent,{item,message});
+ }
+ const problem=[...issueByParent.values()];
  if(problem.length){
   const head=document.createElement('strong');
-  head.textContent='Pendências reais ('+problem.length+')';issues.append(head);
-  for(const [key,message] of problem.slice(0,8)){
-   const line=document.createElement('p'),item=items.find(x=>idOf(x)===key);
-   line.textContent=(item?.sku||'SKU')+' — '+message;issues.append(line);
+  head.textContent='Pendências reais ('+problem.length+' anúncios)';issues.append(head);
+  for(const {item,message} of problem.slice(0,8)){
+   const line=document.createElement('p');
+   line.textContent='Item ID '+item.itemId+' · '+item.sku+' — '+message;issues.append(line);
   }
   if(problem.length>8){
    const more=document.createElement('small');
-   more.textContent='Exibindo 8 de '+problem.length+' pendências; demais informações permanecem salvas.';
+   more.textContent='Exibindo 8 de '+problem.length+' anúncios pendentes; demais informações permanecem salvas.';
    issues.append(more);
   }
  }
