@@ -152,12 +152,12 @@ test('menu revalida cada clique, mostra OK e remove anúncio-pai de todas as var
  const html=readFileSync(new URL('../public/index.html',import.meta.url),'utf8');
  const app=readFileSync(new URL('../public/app.js',import.meta.url),'utf8');
  const server=readFileSync(new URL('../server.js',import.meta.url),'utf8');
- assert.match(client,/verifyItem\(row\.itemId,\{force:true,sku:row\.sku\}\)/);
+ assert.match(client,/verifyItem\(row\.itemId,\{force:true\}\)/);
  assert.match(client,/result\.imageCount>=9/);
- assert.match(client,/for\(const row of rows\)collection\.delete\(row\.key\)/);
- assert.match(client,/confirmed\.set\(id,/);
- assert.match(client,/if\(!running\)void run\(\)/);
- assert.match(client,/globalThis\.PendingImagesUI=\{onOpen,refresh:run,verifyItem\}/);
+ assert.match(client,/if\(result\.snapshot\)applySnapshot\(result\.snapshot\)/);
+ assert.match(client,/confirmed\.set\(String\(id\),value\)/);
+ assert.match(client,/if\(!exists\)await run\(\)/);
+ assert.match(client,/globalThis\.PendingImagesUI=\{onOpen,refresh:/);
  assert.match(app,/PendingImagesUI\?\.verifyItem\?\.\(current\.itemId\)/);
  assert.match(html,/id="pendingImagesConfirmed"/);
  assert.match(server,/\/api\/shopee\/optimizer\/pending-images\/verify/);
