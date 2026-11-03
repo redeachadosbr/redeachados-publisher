@@ -66,3 +66,16 @@ test('mantém aprovação de CEST 00 e NCM válido sem alterar campos preenchido
  assert.equal(result.tax.ncm,'95066200');
  assert.equal(result.tax.cest,'00');
 });
+
+test('diferencia valores preenchidos divergentes da tabela fiscal aprovada',()=>{
+ const live={...approved,origin:'1',same_state_cfop:'5102',ncm:'95066200'};
+ const result=inspectShopeeFiscalGap(live,approved);
+ assert.equal(result.status,'partial');
+ assert.deepEqual(result.missing,[]);
+ assert.deepEqual(result.invalid,[]);
+ assert.deepEqual(result.mismatched.sort(),['origin','same_state_cfop','ncm'].sort());
+ assert.deepEqual(result.unverified,[]);
+ const semNcm=inspectShopeeFiscalGap(approved,{...approved,ncm:''});
+ assert.equal(semNcm.status,'partial');
+ assert.deepEqual(semNcm.unverified,['ncm']);
+});
