@@ -9,8 +9,10 @@
   inactive:'Inativos',unverified:'Não confirmados'};
  const cacheKey='ra-pending-image-audit-v1';
  const collection=new Map();
+ // Confirmação SEMPRE se baseia no readback oficial do Item ID.
+ const confirmed=new Map(),verifying=new Set();
  let running=false,completed=false,shopId='',checkedAt='',scannedListings=0,
-  totalListings=0,loadedStatuses=0,controller=null,scanSerial=0,shown=80,hasVisited=false;
+  totalListings=0,loadedStatuses=0,controller=null,scanSerial=0,shown=80;
  function distinct(group){
   return new Set([...collection.values()].filter(x=>x.category===group&&x.sku)
    .map(x=>x.sku)).size;
@@ -47,6 +49,10 @@
   setMetric('pendingImagesNoStock','active_no_stock');
   setMetric('pendingImagesInactive','inactive');
   setMetric('pendingImagesUnknown','unverified');
+  find('pendingImagesConfirmed').textContent=num(confirmed.size);
+  find('pendingImagesConfirmedDetail').textContent=
+   confirmed.size?'Anúncios-pai retirados da fila após leitura oficial 9/9.':
+   'Somente após leitura de 9 imagens na Shopee.';
   // Uma galeria é única por anúncio-pai: cinco SKUs de variação não
   // significam cinco fotografias faltantes no mesmo anúncio.
   const priority=groupRows('active_with_stock');
@@ -101,10 +107,21 @@
    if(row.category==='active_with_stock'&&row.sku){
     const button=build('Otimizar imagens',next,'button');
     button.type='button';button.dataset.sku=row.sku;
-    button.addEventListener('click',()=>{
-     if(typeof globalThis.RAOpenPendingImageSku==='function')
-      globalThis.RAOpenPendingImageSku(button.dataset.sku);
-     else state('Não foi possível abrir a otimização desta SKU. Use a busca em Otimização de anúncios.','error');
+    button.addEventListener('click',async()=>{
+     if(button.disabled)return;
+     button.disabled=true;button.textContent='Conferindo Shopee…';
+     try{
+      // Não reabrir a otimização de uma SKU já corrigida: ler sempre a
+      // galeria na API antes de liberar o botão, independentemente do cache.
+      const check=await verifyItem(row.itemId,{force:true,sku:row.sku});
+      if(check?.status==='confirmed')return;
+      if(check?.status!=='pending')return;
+      if(typeof globalThis.RAOpenPendingImageSku==='function')
+       globalThis.RAOpenPendingImageSku(button.dataset.sku);
+      else state('Não foi possível abrir a otimização da SKU.','error');
+     }finally{
+      button.disabled=false;button.textContent='Otimizar imagens';
+     }
     });
    }else build(row.reason||labels[row.category]||'Sem ação disponível',next,'span');
   }
@@ -120,25 +137,53 @@
    'Nenhum registro neste filtro até o momento. A auditoria ainda não foi concluída.';
  }
  function render(){renderMetrics();renderTable();}
- function save(){
-  try{sessionStorage.setItem(cacheKey,JSON.stringify({shopId,checkedAt,completed,
-   scannedListings,totalListings,rows:[...collection.values()]}));}catch{}
- }
- function restore(){
-  if(collection.size||running||completed)return false;
-  let data=null;
-  try{data=JSON.parse(sessionStorage.getItem(cacheKey)||'null');}catch{}
-  if(!data?.completed||!Array.isArray(data.rows)||
-     Date.now()-Date.parse(data.checkedAt||'')>10*60000)return false;
-  shopId=data.shopId||'';checkedAt=data.checkedAt;completed=true;
-  scannedListings=Number(data.scannedListings)||0;
-  totalListings=Number(data.totalListings)||0;loadedStatuses=4;
-  collection.clear();
-  for(const row of data.rows)if(row?.key)collection.set(row.key,row);
-  progress(100);render();
-  state('Resultado da última auditoria concluída em '+safeDate(checkedAt)+
-   '. Clique em “Atualizar auditoria” para conferir novamente a Shopee.','success');
-  return true;
+ // Registros anteriores NÃO são usados para manter pendências antigas.
+ // Ao voltar ao menu, uma varredura nova usa a Shopee como única verdade.
+ async function verifyItem(itemId,{force=false,sku=''}={}){
+  const id=String(itemId||'').trim();
+  if(!/^[1-9]\d{0,17}$/.test(id))return {status:'unverified'};
+  if(verifying.has(id))return {status:'checking'};
+  if(!force&&confirmed.has(id))return {status:'confirmed'};
+  verifying.add(id);
+  try{
+   const response=await fetch('/api/shopee/optimizer/pending-images/verify?'+
+    new URLSearchParams({item_id:id}),{
+     credentials:'same-origin',cache:'no-store',headers:{'Accept':'application/json'}
+    });
+   const result=await response.json().catch(()=>({}));
+   if(!response.ok||result.ok!==true||String(result.itemId)!==id)
+    throw Error(result.error||'Shopee não confirmou o Item ID consultado.');
+   if(shopId&&String(result.shopId)!==String(shopId))
+    throw Error('A loja da confirmação é diferente da loja do relatório.');
+   if(result.status==='confirmed'&&result.complete===true&&result.imageCount>=9){
+    const rows=[...collection.values()].filter(row=>String(row.itemId)===id);
+    const names=[...new Set([...rows.map(row=>row.sku),sku].filter(Boolean))];
+    for(const row of rows)collection.delete(row.key);
+    confirmed.set(id,{itemId:id,skus:names,verifiedAt:result.verifiedAt});
+    render();
+    state('✓ OK 9/9 confirmado pela Shopee — Item ID '+id+
+     (names.length?' · '+names.join(', '):'')+
+     '. Retirado da lista pendente; não será otimizado duas vezes.','success');
+   }else if(result.status==='pending'&&Number.isInteger(result.imageCount)){
+    confirmed.delete(id);
+    for(const row of collection.values())if(String(row.itemId)===id){
+     row.imageCount=result.imageCount;
+     row.missingImages=Math.max(0,9-result.imageCount);
+    }
+    render();
+    state('Item ID '+id+': a Shopee confirmou '+result.imageCount+
+     ' de 9 imagens. Ainda faltam '+result.missingImages+
+     '. A otimização pode continuar sem repetir etapas já publicadas.','info');
+   }else{
+    state('Item ID '+id+': a Shopee não confirmou a quantidade de imagens. '+
+     'Mantido para conferência; nenhuma conclusão foi registrada.','error');
+   }
+   return result;
+  }catch(error){
+   state('Não foi possível conferir as imagens do Item ID '+id+': '+
+    String(error.message||error)+'. A SKU continua pendente.','error');
+   return {status:'unverified',error:String(error.message||error)};
+  }finally{verifying.delete(id);}
  }
  function exportCsv(){
   if(!completed)return;
@@ -193,6 +238,11 @@
      for(const row of payload.rows){
       if(!row?.key||collection.has(row.key))
        throw Error('Um anúncio mudou de status ou apareceu duplicado durante a leitura. Refaça a auditoria.');
+      // Se a confirmação pontual foi MAIS RECENTE que a leitura da página,
+      // não ressuscitar a pendência com uma resposta de paginação antiga.
+      const old=confirmed.get(String(row.itemId));
+      if(old&&Date.parse(old.verifiedAt)>=Date.parse(payload.asOf||''))continue;
+      if(old)confirmed.delete(String(row.itemId));
       collection.set(row.key,row);
      }
      scannedListings+=payload.scannedListings;
@@ -216,7 +266,7 @@
    completed=true;checkedAt=new Date().toISOString();progress(100);
    state('Auditoria concluída: '+num(scannedListings)+' anúncios conferidos nos quatro status. '+
     num(distinct('active_with_stock'))+' SKUs ativas com estoque e menos de 9 imagens identificadas.','success');
-   save();render();
+   render();
   }catch(error){
    if(serial!==scanSerial)return;
    completed=false;
@@ -232,10 +282,9 @@
   }
  }
  function onOpen(){
-  if(!hasVisited){
-   hasVisited=true;
-   if(!restore())void run();
-  }
+  // Sempre consultar a Shopee ao reentrar, inclusive depois de publicar
+  // imagens pelo editor. Não restaurar lista pendente de sessionStorage.
+  if(!running)void run();
  }
  find('pendingImagesRefresh').addEventListener('click',()=>void run());
  find('pendingImagesCancel').addEventListener('click',()=>{
@@ -245,6 +294,6 @@
  find('pendingImagesFilter').addEventListener('change',()=>{shown=80;renderTable();});
  find('pendingImagesSearch').addEventListener('input',()=>{shown=80;renderTable();});
  find('pendingImagesMore').addEventListener('click',()=>{shown+=80;renderTable();});
- globalThis.PendingImagesUI={onOpen,refresh:run};
+ globalThis.PendingImagesUI={onOpen,refresh:run,verifyItem};
  if(root.classList.contains('active'))onOpen();
 })();
