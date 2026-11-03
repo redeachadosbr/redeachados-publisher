@@ -14,7 +14,7 @@
 <link rel="stylesheet" href="/shopee-discount-one-click.css?v=1.20.17">
 <link rel="stylesheet" href="/shopee-market-research.css?v=1.20.18">
 <link rel="stylesheet" href="/dashboard-new-listings.css?v=1.20.21-shopee">
-<link rel="stylesheet" href="/organic-top10.css?v=1.0.0-organic-performance">
+<link rel="stylesheet" href="/organic-top10.css?v=1.0.1-cart-metrics">
 <link rel="stylesheet" href="/finance-thumbnails.css?v=1.20.22">
 <link rel="stylesheet" href="/title-studio.css?v=1.21.16-ranked-best">
 <link rel="stylesheet" href="/seo-modern-layout.css?v=1.0.5-compact-cards">
@@ -2583,7 +2583,7 @@
 <script src="/ads-seo.js?v=6-ads-eligible-counter"></script>
 <script src="/optimizer-image-studio.js?v=1.0.5-move-enabled"></script>
 <script src="/optimizer-technical-studio.js?v=1.2.0-compact-fields"></script>
-<script src="/organic-top10.js?v=1.0.0-organic-performance"></script>
+<script src="/organic-top10.js?v=1.0.1-cart-metrics"></script>
 
 <!-- Modal independente do roteador: abre em cada login / carregamento autenticado -->
 <div id="organicTop10Overlay" class="organic-top10-overlay" hidden>
@@ -2612,16 +2612,18 @@
      <button type="button" data-sort="visits" aria-pressed="false">Visitas</button>
      <button type="button" data-sort="clicks" aria-pressed="false">Cliques</button>
      <button type="button" data-sort="ctr" aria-pressed="false">CTR</button>
+     <button type="button" data-sort="cartPending" aria-pressed="false">Parados</button>
+     <button type="button" data-sort="cartAbandonmentRate" aria-pressed="false">Abandono %</button>
     </div>
    </div>
    <p id="organicTop10Status" class="organic-top10-banner" role="status" aria-live="polite">Buscando o último relatório orgânico salvo da loja…</p>
    <div class="organic-top10-grid-header" aria-hidden="true">
-    <span>Produto / SKU</span><span>Impressões</span><span>Visitas</span><span>Cliques</span><span>CTR</span><span>Ação</span>
+    <span>Produto / SKU</span><span>Impressões</span><span>Visitas</span><span>Cliques</span><span>CTR</span><span>No carrinho</span><span>Abandono</span><span>Ação</span>
    </div>
    <div id="organicTop10List" class="organic-top10-list" aria-label="Dez melhores produtos do tráfego orgânico"></div>
    <form id="organicTop10Import" class="organic-top10-import" hidden>
     <h3>Vincular relatório orgânico da Shopee</h3>
-    <p>Na Central do Vendedor, abra <strong>Informações Gerenciais → Produto → Performance do Produto</strong>. Selecione um relatório exclusivamente de tráfego orgânico (sem Ads) e exporte CSV/Excel. Importe-o uma vez para que o TOP 10 reapareça automaticamente em cada abertura. Colunas ausentes serão mostradas como “—”.</p>
+    <p>Na Central do Vendedor, abra <strong>Informações Gerenciais → Produto → Performance do Produto</strong>. Exporte o relatório filtrado exclusivamente para orgânico (sem Ads), com as colunas de <strong>itens adicionados ao carrinho, itens abandonados e taxa de abandono</strong>, se estiverem disponíveis. O painel não confunde adicionar ao carrinho com abandonar uma compra. Importe CSV/Excel. Campos ausentes aparecem como “—”.</p>
     <div class="organic-top10-import-grid">
      <label>Relatório do produto (.csv, .xls, .xlsx)
       <input id="organicTop10File" type="file" accept=".csv,.xlsx,.xls" required>
@@ -2644,7 +2646,7 @@
    </form>
   </div>
   <footer class="organic-top10-footer">
-   <p id="organicTop10Footnote" class="organic-top10-footnote">Relatório orgânico salvo por período. Sem relatório, o sistema não inventa impressões, visitas, cliques ou CTR.</p>
+   <p id="organicTop10Footnote" class="organic-top10-footnote">Relatório orgânico salvo por período. Sem relatório, o sistema não inventa impressões, visitas, cliques, CTR ou abandono de carrinho.</p>
    <div class="organic-top10-import-footer">
     <button id="organicTop10Update" type="button" class="organic-top10-action organic-top10-secondary">↻ Recarregar ranking</button>
     <button id="organicTop10ShowImport" type="button" class="organic-top10-action">Importar relatório orgânico</button>
