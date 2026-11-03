@@ -11,34 +11,33 @@ export const SHOPEE_FISCAL_OPTIONAL_FIELDS=Object.freeze([
 const present=x=>String(x??'').trim().length>0;
 export function inspectShopeeFiscalGap(raw, reference=null){
  const tax=raw&&typeof raw==='object'&&!Array.isArray(raw)?raw:{};
- const missingCore=SHOPEE_FISCAL_REQUIRED_FIELDS.filter(k=>!present(tax[k]));
- // Rede Achados BR requested these three otherwise-optional fields be filled,
- // too. Missing configured values are a seller-template gap, not an API error.
- const missingConfigured=SHOPEE_FISCAL_OPTIONAL_FIELDS.filter(k=>!present(tax[k]));
- const missing=[...missingCore,...missingConfigured];
- const filled=SHOPEE_FISCAL_REQUIRED_FIELDS.length-missingCore.length;
- const invalid=[
-  ...(present(tax.ncm)&&!/^\d{8}$/.test(String(tax.ncm).trim())?['ncm']:[]),
-  ...(present(tax.cest)&&!/^(?:00|\d{7})$/.test(String(tax.cest).trim())?['cest']:[]),
-  ...(present(tax.origin)&&!/^[0-8]$/.test(String(tax.origin).trim())?['origin']:[]),
-  ...(present(tax.same_state_cfop)&&!/^5\d{3}$/.test(String(tax.same_state_cfop).trim())?['same_state_cfop']:[]),
-  ...(present(tax.diff_state_cfop)&&!/^6\d{3}$/.test(String(tax.diff_state_cfop).trim())?['diff_state_cfop']:[]),
-  ...(present(tax.csosn)&&!/^\d{3}$/.test(String(tax.csosn).trim())?['csosn']:[]),
-  ...(present(tax.pis_cofins_cst)&&!/^\d{2}$/.test(String(tax.pis_cofins_cst).trim())?['pis_cofins_cst']:[]),
-  ...(present(tax.operation_type)&&!/^[12]$/.test(String(tax.operation_type).trim())?['operation_type']:[])
- ];
- // A ficha fiscal aprovada é a referência: preenchido não significa correto.
- const fields=[...SHOPEE_FISCAL_REQUIRED_FIELDS,...SHOPEE_FISCAL_OPTIONAL_FIELDS];
+ // Com ficha de referência: somente campos que a tabela define são
+ // obrigatórios. Campos vazios fora dela NÃO constituem pendência.
+ const allFields=[...SHOPEE_FISCAL_REQUIRED_FIELDS,...SHOPEE_FISCAL_OPTIONAL_FIELDS];
  const hasReference=Boolean(reference&&typeof reference==='object'&&!Array.isArray(reference));
- const unverified=hasReference?fields.filter(k=>!present(reference[k])):[];
- const mismatched=hasReference?fields.filter(k=>present(tax[k])&&present(reference[k])&&
+ const expected=hasReference?allFields.filter(k=>present(reference[k])):allFields;
+ const missingCore=SHOPEE_FISCAL_REQUIRED_FIELDS.filter(k=>expected.includes(k)&&!present(tax[k]));
+ const missingConfigured=SHOPEE_FISCAL_OPTIONAL_FIELDS.filter(k=>expected.includes(k)&&!present(tax[k]));
+ const missing=[...missingCore,...missingConfigured];
+ const filled=SHOPEE_FISCAL_REQUIRED_FIELDS.filter(k=>expected.includes(k)&&present(tax[k])).length;
+ const validations={
+  ncm:/^\d{8}$/,cest:/^(?:00|\d{7})$/,origin:/^[0-8]$/,
+  same_state_cfop:/^5\d{3}$/,diff_state_cfop:/^6\d{3}$/,
+  csosn:/^\d{3}$/,pis_cofins_cst:/^\d{2}$/,operation_type:/^[12]$/
+ };
+ const invalid=expected.filter(k=>present(tax[k])&&validations[k]&&
+  !validations[k].test(String(tax[k]).trim()));
+ const mismatched=hasReference?expected.filter(k=>present(tax[k])&&
   String(tax[k]).trim()!==String(reference[k]).trim()):[];
- const hasAny=fields.some(k=>present(tax[k]));
+ // NCM sempre precisa de classificação específica da SKU; na ausência
+ // dessa referência, não declarar o anúncio como verificado.
+ const unverified=hasReference&&!present(reference.ncm)?['ncm']:[];
+ const hasAny=expected.some(k=>present(tax[k]));
  return {
   status:!hasAny?'empty':missing.length||invalid.length||mismatched.length||unverified.length?'partial':'complete',
   missing,missingCore,missingConfigured,invalid,mismatched,unverified,filled,
-  required:SHOPEE_FISCAL_REQUIRED_FIELDS.length,
-  configured:SHOPEE_FISCAL_OPTIONAL_FIELDS.length
+  required:SHOPEE_FISCAL_REQUIRED_FIELDS.filter(k=>expected.includes(k)).length,
+  configured:SHOPEE_FISCAL_OPTIONAL_FIELDS.filter(k=>expected.includes(k)).length
  };
 }
 // The seller's approved fiscal template may fill ONLY blank Shopee fields.
