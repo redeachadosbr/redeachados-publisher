@@ -68,3 +68,26 @@ body.organic-top10-open{overflow:hidden}
 @media(max-width:900px){.organic-top10-modal{width:min(720px,100%)}.organic-top10-grid-header{display:none}.organic-top10-item{grid-template-columns:repeat(4,1fr);gap:8px 12px}.organic-top10-product{grid-column:1/-1;padding-bottom:8px;border-bottom:1px solid #edf1f7}.organic-top10-value{text-align:left}.organic-top10-value small{display:block}.organic-top10-open-item{grid-column:1/-1}.organic-top10-import-grid{grid-template-columns:1fr 1fr}.organic-top10-import-grid label:first-child{grid-column:1/-1}}
 @media(max-width:540px){.organic-top10-overlay{padding:6px}.organic-top10-modal{border-radius:20px;max-height:97dvh}.organic-top10-header{padding:21px 20px}.organic-top10-heading{font-size:25px!important}.organic-top10-content{padding:14px 13px 0}.organic-top10-tools{display:block}.organic-top10-sorts{margin-top:8px}.organic-top10-sorts button{padding:7px 8px!important;font-size:11px!important}.organic-top10-item{grid-template-columns:repeat(2,minmax(0,1fr));padding:12px}.organic-top10-product{grid-column:1/-1}.organic-top10-import{padding:14px}.organic-top10-import-grid{grid-template-columns:1fr}.organic-top10-import-grid label:first-child{grid-column:auto}.organic-top10-footer{padding:12px 14px}.organic-top10-thumb{width:50px;height:50px}}
 @media(prefers-reduced-motion:reduce){.organic-top10-overlay,.organic-top10-modal,.organic-top10-item{animation:none!important;transition:none!important}}
+
+
+/* Dados de carrinho: duas métricas adicionais sem sacrificar miniatura ou SKU. */
+@media(min-width:901px){
+ .organic-top10-modal{width:min(1300px,100%)}
+ .organic-top10-grid-header,.organic-top10-item{
+  grid-template-columns:minmax(205px,2fr) repeat(6,minmax(70px,.74fr)) minmax(70px,.55fr);
+  gap:7px;
+ }
+}
+.organic-top10-content{overflow-x:auto}
+.organic-top10-value small{white-space:normal;line-height:1.35;overflow-wrap:anywhere}
+.organic-top10-pending{color:#ac531d}
+.organic-top10-abandonment{color:#ad5731}
+.organic-top10-added{color:#526d8e}
+@media(max-width:900px){
+ .organic-top10-value small{font-size:11px}
+ .organic-top10-item{grid-template-columns:repeat(3,minmax(0,1fr))}
+ .organic-top10-open-item{grid-column:1/-1}
+}
+@media(max-width:540px){
+ .organic-top10-item{grid-template-columns:repeat(2,minmax(0,1fr))}
+}
