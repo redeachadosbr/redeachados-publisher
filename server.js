@@ -23,6 +23,7 @@ import {readShopeeWallet} from './shopeeWallet.js';
 import {financeAdsDates,matchFinanceAds} from './financeAdsSweep.js';
 import {financeRange} from './shopeeFinance.js';
 import {fetchCatalogPage,fetchCatalogPrices,normalizeShopeeModels,validItemId} from './catalog.js';
+import {scanShopeePendingImagesPage,PENDING_IMAGE_STATUSES} from './shopeePendingImageAudit.js';
 import {suggestFiscalMeasureUnit} from './shopeeFiscalMeasure.js';
 import {getShopeeNewListingsSummary,clearShopeeNewListingsCache} from './shopeeNewListings.js';
 import {storeCatalogItems,storeCatalogModels,readCatalogCache,catalogStoreReady,findExactCatalogSku,findCatalogSkuIgnoringCase} from './catalogStore.js';
@@ -1313,6 +1314,26 @@ app.get('/api/shopee/catalog/page',mustLogin,async(req,res)=>{
   }catch(error){
     res.status(400).json({error:String(error.message||error).slice(0,320)});
   }
+});
+// Menu Otimização Pendente. Cada página realiza somente leitura OFICIAL na Shopee.
+ // A interface varre todas as páginas/status; não fabricar totais usando cache.
+app.get('/api/shopee/optimizer/pending-images/page',mustLogin,requireWeDropAdmin,async(req,res)=>{
+ res.setHeader('Cache-Control','no-store');
+ try{
+  const status=String(req.query.status||'NORMAL').toUpperCase();
+  if(!PENDING_IMAGE_STATUSES.includes(status))
+   throw Error('Status não permitido para auditoria de fotos.');
+  const {auth,cfg}=await getValidAuth(req);
+  const page=await scanShopeePendingImagesPage({
+   cfg,auth,callApi:callShopeeShopApi,status,
+   offset:req.query.offset??0,pageSize:25
+  });
+  res.json({ok:true,shopId:String(auth.shopId),...page});
+ }catch(error){
+  res.status(503).json({ok:false,verified:false,
+   error:'Auditoria de imagens incompleta: '+String(error.message||error).slice(0,270)+
+    '. Nenhuma alteração foi enviada.'});
+ }
 });
 // Conferência oficial SOMENTE LEITURA: diferencia anúncios de SKUs/modelos.
 // O total oficial de anúncios jamais deve ser inferido do histórico local de 38 SKUs.
