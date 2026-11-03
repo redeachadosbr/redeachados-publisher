@@ -10,7 +10,7 @@
   const importBox=$('organicTop10Import'),status=$('organicTop10Status');
   const sorts=[...group.querySelectorAll('button[data-sort]')];
   let visible=false,autoShown=false,loading=false,sort='combined',last=null,
-   focusBefore=null,loadSequence=0;
+   focusBefore=null,loadSequence=0,source='api',apiPeriod='7',apiAutoAttempted=false;
   const fmt=new Intl.NumberFormat('pt-BR');
   const dec=new Intl.NumberFormat('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2});
   const number=v=>v===null||v===undefined?'—':fmt.format(Number(v));
@@ -57,14 +57,20 @@
     const title=el(product,'div');
     const name=el(title,'strong',row.title||'Produto Shopee','organic-top10-product-name');
     name.title=row.title||'Produto Shopee';
-    el(title,'small','SKU '+(row.sku||'não identificada')+
-     (row.itemId?' · Item '+row.itemId:''),'organic-top10-product-code');
+    el(title,'small','SKU '+(row.sku||'anúncio de variações')+
+     (row.itemId?' · Item '+row.itemId:'')+
+     (source==='api'&&row.latestTotalViews!==null&&row.latestTotalViews!==undefined?
+      ' · Total acumulado '+number(row.latestTotalViews):''),'organic-top10-product-code');
     const add=(value,label,cls='')=>{
      const col=el(card,'div','','organic-top10-value '+cls);
      el(col,'span',value);
      el(col,'small',label);
     };
-    add(number(row.impressions),'Impressões');
+    if(source==='api')add(number(row.viewsObserved!==null&&row.viewsObserved!==undefined?
+     row.viewsObserved:row.latestTotalViews),
+     row.viewsObserved!==null&&row.viewsObserved!==undefined?
+      'Variação observada (parcial)':'Total histórico (não é do período)');
+    else add(number(row.impressions),'Impressões');
     add(number(row.visits),'Visitas');
     add(number(row.clicks),'Cliques');
     add(percent(row.ctr),'CTR','organic-top10-ctr');
@@ -92,7 +98,101 @@
     });
    });
   }
+  const apiQuery=()=>new URLSearchParams({
+   period:apiPeriod,...(apiPeriod==='custom'?{
+    start:$('organicTop10ApiStart').value,end:$('organicTop10ApiEnd').value
+   }:{})
+  });
+  async function getApiSummary(){
+   const response=await fetch('/api/shopee/product-views/top10?'+apiQuery(),{
+    credentials:'same-origin',cache:'no-store',
+    headers:{Accept:'application/json'}
+   });
+   const data=await response.json().catch(()=>({}));
+   if(!response.ok||data.ok!==true)
+    throw Error(data.error||'Não foi possível consultar as medições da Shopee.');
+   return data;
+  }
+  async function collectApiViews(force=false){
+   const response=await fetch('/api/shopee/product-views/collect',{
+    method:'POST',credentials:'same-origin',cache:'no-store',
+    headers:{'Content-Type':'application/json'},body:JSON.stringify({force})
+   });
+   const data=await response.json().catch(()=>({}));
+   if(!response.ok||data.ok!==true)
+    throw Error(data.error||'Shopee não confirmou a coleta de visualizações.');
+   return data;
+  }
+  async function refreshApi({forceCollect=false}={}){
+   if(loading)return;
+   loading=true;
+   const serial=++loadSequence;
+   $('organicTop10ViewsHeader').textContent='Visualizações';
+   notice('Lendo as visualizações oficiais já registradas. Os números não separam Ads…');
+   try{
+    let data=await getApiSummary();
+    if(forceCollect||data.needsCollection&&!apiAutoAttempted){
+     apiAutoAttempted=true;
+     notice('Consultando visualizações dos anúncios na Shopee. Isto é somente leitura e pode levar algum tempo…');
+     try{
+      await collectApiViews(forceCollect);
+      data=await getApiSummary();
+     }catch(error){
+      notice('A nova consulta não pôde ser concluída: '+String(error.message||error)+
+       '. Exibindo apenas medições salvas, quando disponíveis.','error');
+     }
+    }
+    if(serial!==loadSequence)return;
+    last=data;
+    const samples=data.list||[];
+    $('organicTop10Period').textContent='Janela solicitada: '+
+     period(data.window?.start)+' a '+period(data.window?.end);
+    $('organicTop10Count').textContent=
+     number(data.totalProducts)+' anúncios medidos · '+
+     number(data.withPeriodDelta)+' com diferença observada';
+    $('organicTop10Footnote').textContent=
+     'API Shopee get_item_extra_info. Visualizações gerais por Item ID: podem incluir Ads. '+
+     'As diferenças são parciais, apenas entre medições efetivas ('+
+     (data.lastSample?'última: '+date(data.lastSample):'nenhuma leitura salva')+
+     '). Impressões orgânicas, visitantes únicos, CTR e abandono não são retornados por esta API.';
+    importBox.hidden=true;importBox.dataset.open='';
+    render(samples);
+    if(!samples.length)
+     notice('Não há medições suficientes no período solicitado. A API não permite buscar dias anteriores à primeira coleta. '+
+      'Clique em “Atualizar Shopee” para registrar uma nova amostra.');
+    else if(data.withPeriodDelta===0)
+     notice('A primeira coleta registrou visualizações acumuladas, não números do período. '+
+      'Após novas medições, o painel poderá comparar apenas o intervalo realmente observado.');
+    else
+     notice('Exibindo diferenças OBSERVADAS nas datas escolhidas, não todo o período oficial. '+
+      number(data.withPeriodDelta)+' anúncios têm pelo menos duas medições.','success');
+   }catch(error){
+    render([]);
+    notice('Consulta da API indisponível: '+String(error.message||error)+
+     '. Não será exibida nenhuma estatística inventada.','error');
+    $('organicTop10Count').textContent='API indisponível';
+   }finally{loading=false;}
+  }
+  function setSource(next){
+   source=next==='organic'?'organic':'api';
+   $('organicTop10ModeApi').setAttribute('aria-pressed',String(source==='api'));
+   $('organicTop10ModeOrganic').setAttribute('aria-pressed',String(source==='organic'));
+   $('organicTop10ApiPeriods').hidden=source!=='api';
+   $('organicTop10Tools').hidden=source!=='organic';
+   $('organicTop10ShowImport').hidden=source!=='organic';
+   $('organicTop10SourceBadge').textContent=source==='api'?
+    '● VISUALIZAÇÕES GERAIS · PODEM INCLUIR ADS':
+    '● ORGÂNICO · RELATÓRIO EXCLUSIVO SEM ADS';
+   $('organicTop10Title').textContent=source==='api'?
+    'TOP 10 · Visualizações Shopee':'TOP 10 · Desempenho Orgânico';
+   $('organicTop10Subtitle').textContent=source==='api'?
+    'Acompanhe visualizações dos anúncios pelas medições oficiais Shopee. Por período, somente diferenças observadas após a primeira coleta.':
+    'Métricas exclusivamente orgânicas por SKU, conforme relatório filtrado da Central do Vendedor.';
+   $('organicTop10ViewsHeader').textContent=source==='api'?'Visualizações':'Impressões';
+   if(!loading)void refresh();
+  }
   async function refresh(){
+   if(source==='api')return refreshApi();
    if(loading)return;
    loading=true;const serial=++loadSequence;
    notice('Carregando o ranking orgânico salvo, sem consultar métricas de Ads…');
@@ -174,7 +274,28 @@
    }
   });
   $('organicTop10Open')?.addEventListener('click',()=>open());
-  $('organicTop10Update').addEventListener('click',()=>void refresh());
+  $('organicTop10Update').addEventListener('click',()=>{
+   if(source==='api')void refreshApi({forceCollect:true});
+   else void refresh();
+  });
+  $('organicTop10ModeApi').addEventListener('click',()=>setSource('api'));
+  $('organicTop10ModeOrganic').addEventListener('click',()=>setSource('organic'));
+  $('organicTop10ApiPeriods').addEventListener('click',event=>{
+   const choice=event.target.closest('button[data-period]');
+   if(!choice)return;
+   apiPeriod=choice.dataset.period;
+   for(const b of $('organicTop10ApiPeriods').querySelectorAll('button[data-period]'))
+    b.setAttribute('aria-pressed',String(b===choice));
+   $('organicTop10CustomRange').hidden=apiPeriod!=='custom';
+   if(apiPeriod!=='custom')void refreshApi();
+  });
+  $('organicTop10ApplyCustom').addEventListener('click',()=>void refreshApi());
+  const dayInput=new Date();
+  const localIso=d=>new Date(d.getTime()-d.getTimezoneOffset()*60000).toISOString().slice(0,10);
+  $('organicTop10ApiEnd').value=localIso(dayInput);
+  $('organicTop10ApiStart').value=localIso(new Date(dayInput.getTime()-6*86400000));
+  $('organicTop10ApiEnd').max=localIso(dayInput);
+  $('organicTop10ApiStart').max=localIso(dayInput);
   $('organicTop10ShowImport').addEventListener('click',()=>{
    importBox.hidden=false;importBox.dataset.open='manual';
    $('organicTop10File').focus();
