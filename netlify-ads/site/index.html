@@ -269,6 +269,7 @@
       <div id="resultContent" hidden>
         <div class="result-title"><div><div class="overline" id="resultName">Campanha</div><h2 id="resultScenario" style="font-size:23px;margin:1px 0">—</h2></div><span id="resultBadge" class="status">—</span></div>
         <div id="performanceStats" class="ads-kpis"></div>
+        <div id="dailyBudgetSummary" class="notice" style="margin-top:12px" aria-live="polite"></div>
         <div id="resultAlerts"></div>
         <h3 style="font-size:14px;margin:18px 0 6px">Regra do seu caderno</h3>
         <div id="ruleExplanation" class="muted-line"></div>
@@ -282,16 +283,16 @@
       </div>
     </div>
   </div></section>
-  <section class="view" id="regras"><div class="panel" style="margin-bottom:16px"><div class="overline">Referência rápida</div><h2>As quatro regras originais da Rede Achados BR</h2><p class="subtle">Consumo total = pelo menos 95% do teto comparável para um período fechado. O limite de 95% é uma tolerância de análise, não uma regra original do caderno. ROAS atingido significa ROAS real maior ou igual à meta.</p></div><div class="rule-grid">
+  <section class="view" id="regras"><div class="panel" style="margin-bottom:16px"><div class="overline">Referência rápida</div><h2>As quatro regras originais da Rede Achados BR</h2><p class="subtle">Consumo total = pelo menos 95% do teto comparável para um período fechado. O limite de 95% é uma tolerância de análise, não uma regra original do caderno. A comparação é feita por <strong>investimento total ÷ dias do período</strong> versus orçamento diário informado. ROAS atingido significa ROAS real maior ou igual à meta. A média não informa quais dias individuais atingiram o teto.</p></div><div class="rule-grid">
     <article class="rule-card"><span class="index">01</span><h3>Consome parte + atinge o ROAS</h3><p><strong>Reduzir ROAS alvo 20% e orçamento diário 20%.</strong></p><div class="formula">Ex.: R$ 30 → R$ 24 | ROAS 30 → 24</div><p class="small">Validar a margem antes de baixar a meta, pois isso pode ampliar gasto.</p></article>
     <article class="rule-card"><span class="index">02</span><h3>Consome parte + não atinge o ROAS</h3><p><strong>Revisar preço, concorrência e fotos; depois reduzir ambos 20%.</strong></p><div class="formula">Ex.: R$ 20 → R$ 16 | ROAS 30 → 24</div><p class="small">Sem vendas ou com margem apertada, a redução é somente uma hipótese de teste.</p></article>
     <article class="rule-card"><span class="index">03</span><h3>Consome tudo + não atinge o ROAS</h3><p><strong>Revisar a oferta; subir ROAS alvo 20% e manter orçamento.</strong></p><div class="formula">Ex.: R$ 10 → R$ 10 | ROAS 20 → 24</div><p class="small">Uma meta maior tende a restringir entrega; não garante ROAS realizado.</p></article>
     <article class="rule-card"><span class="index">04</span><h3>Consome tudo + atinge o ROAS</h3><p><strong>Três caminhos conforme verba disponível:</strong></p><div class="formula">A. Com verba: orçamento +20%, ROAS igual<br>B. Sem verba: orçamento igual, ROAS +20%<br>C. Com verba e maior ROAS: ambos +20%</div><p class="small">Ex.: R$ 15 / ROAS 30 → A: R$ 18 / 30; B: R$ 15 / 36; C: R$ 18 / 36.</p></article>
   </div><div class="panel" style="margin-top:16px"><div class="overline">Regra adicional</div><h2>05 · Meta ROAS 30x com orçamento ilimitado</h2>
- <p>Você informa manualmente quanto gostaria de gastar por dia, como R$ 10 ou R$ 15. Esse número é uma <strong>referência para acompanhamento</strong>: não limita o gasto real na Shopee. O sistema acompanha o ROAS real, o ROAS financeiro mínimo, a entrega e a diferença entre gasto médio e valor desejado.</p>
+ <p>Você informa manualmente quanto gostaria de gastar por dia, como R$ 10 ou R$ 15. Esse número é uma <strong>referência para acompanhamento</strong>: não limita o gasto real na Shopee. O sistema calcula <strong>investimento total ÷ dias</strong>, acompanha o ROAS real e o ROAS financeiro mínimo, e compara a média com o valor desejado; ultrapassar a referência não significa atingir um limite real.</p>
  <ul class="list-check"><li><strong>Primeiros 7 dias ou período incompleto:</strong> manter ROAS 30x e observar; não alterar com base em um dia.</li><li><strong>ROAS acima da meta e margem protegida:</strong> manter a meta. Se entrega muito baixa, avaliar redução gradual de 10% após estabilização e somente se preservar o lucro.</li><li><strong>ROAS abaixo de 30x, mas lucrativo:</strong> analisar cliques e conversão antes de mudar. Não aplicar automaticamente as reduções de 20% das regras de orçamento limitado.</li><li><strong>ROAS abaixo do equilíbrio ou sem vendas atribuídas:</strong> não reduzir a meta para buscar tráfego; revisar oferta e controlar o risco.</li><li><strong>Gasto acima da sua referência diária:</strong> emitir alerta. Para um teto verdadeiro, configurar orçamento diário real na Shopee.</li></ul>
  <p class="muted-line">Após um teste de 7 a 14 dias, reduções de até 10% podem ser consideradas para entrega baixa quando o mínimo de margem permitir. A meta nunca é mudada automaticamente. O mesmo mecanismo se aplica a metas diferentes de 30x.</p>
- </div><div class="panel" style="margin-top:16px"><h2>Proteções para o dropshipping</h2><ul class="list-check"><li>Com orçamento <strong>ilimitado</strong>, as regras 01–04 de consumo não se aplicam; o sistema usa a <strong>Regra 05</strong>. Uma referência diária não é teto real.</li><li>Não compare o <strong>gasto de vários dias</strong> ao teto de apenas um dia. Calcule orçamento diário × dias do período.</li><li>Campanha com data parcial: resultado <strong>provisório</strong>; não tome decisões fortes apenas com o dia em andamento.</li><li>ROAS de equilíbrio ≈ preço / (preço − custos unitários anteriores aos Ads). Se a contribuição for zero ou negativa, anúncios não resolvem a margem.</li><li>O ROAS necessário para atingir sua margem desejada é <strong>maior</strong> do que o ROAS de equilíbrio. Alvo de ROAS não é garantia de lucro.</li><li>Revisão diária na primeira semana; depois, semanal, sempre observando atrasos de atribuição e amostra de cliques/pedidos.</li></ul></div></section>
+ </div><div class="panel" style="margin-top:16px"><h2>Proteções para o dropshipping</h2><ul class="list-check"><li>Com orçamento <strong>ilimitado</strong>, as regras 01–04 de consumo não se aplicam; o sistema usa a <strong>Regra 05</strong>. Uma referência diária não é teto real.</li><li>Não compare o <strong>gasto de vários dias</strong> ao teto de apenas um dia. Calcule <strong>gasto total ÷ dias do período</strong> e compare com o orçamento diário (matematicamente equivalente a gasto total ÷ orçamento acumulado). A média não revela o consumo de cada dia.</li><li>Campanha com data parcial: resultado <strong>provisório</strong>; não tome decisões fortes apenas com o dia em andamento.</li><li>ROAS de equilíbrio ≈ preço / (preço − custos unitários anteriores aos Ads). Se a contribuição for zero ou negativa, anúncios não resolvem a margem.</li><li>O ROAS necessário para atingir sua margem desejada é <strong>maior</strong> do que o ROAS de equilíbrio. Alvo de ROAS não é garantia de lucro.</li><li>Revisão diária na primeira semana; depois, semanal, sempre observando atrasos de atribuição e amostra de cliques/pedidos.</li></ul></div></section>
   <section class="view" id="historico"><div class="panel"><div class="row-between"><div><div class="overline">No seu navegador</div><h2>Campanhas analisadas</h2><p class="subtle">Salvas apenas neste navegador. Para levar ao Google Drive ou a outro aparelho, use o backup JSON na aba Produtos.</p></div><div class="actions non-print"><button id="exportBtn" class="btn-secondary mini" type="button">Exportar CSV</button><button id="clearHistoryBtn" class="btn-secondary mini" type="button">Apagar histórico</button></div></div><div class="table-scroll"><table class="history-table"><thead><tr><th>Data da análise</th><th>Campanha</th><th>Período</th><th>Gasto</th><th>ROAS alvo/real</th><th>Cenário</th><th>Ações</th></tr></thead><tbody id="historyRows"><tr><td colspan="7">Nenhuma análise salva ainda.</td></tr></tbody></table></div></div>
     <div class="panel history-split" id="changeHistoryPanel">
       <div class="section-head"><div><div class="overline">Modificações do anúncio</div><h2>Registrar alteração por produto</h2></div><span class="subtle">Data e hora automáticas</span></div>
@@ -357,10 +358,10 @@ function validate(d){const issues=[];let days=daysInclusive(d.dateStart,d.dateEn
 function calcFinance(d,actual){const required=['price','cost','feePercent','feeFixed','taxPercent'];if(!required.every(k=>d[k]!==null)||d.price<=0)return null;const extras=(d.packing||0)+(d.shipping||0)+(d.coupon||0);const contrib=d.price-d.cost-d.price*(d.feePercent+d.taxPercent)/100-d.feeFixed-extras;const breakeven=contrib>0?d.price/contrib:Infinity;const desired=d.desiredMargin??5;const neededContribution=contrib-d.price*desired/100;const minRoas=neededContribution>0?d.price/neededContribution:Infinity;const margin=actual>0?(contrib-d.price/actual)/d.price*100:null;const unfilled=['packing','shipping','coupon'].filter(k=>d[k]===null);return {contrib,breakeven,minRoas,margin,desired,unfilled}}
 // Regra 05 — meta ROAS com orçamento ilimitado. A referência diária NÃO é um limite real.
 function unlimitedTargetRule(d,metrics){
- const {days,actual,fin,grossMax}=metrics;
+ const {days,actual,fin,grossMax,dailySpend}=metrics;
  const name=d.target===30?'Teste ROAS 30x':'ROAS alvo '+roas(d.target);
  const ref=d.budget!==null&&d.budget>0?d.budget:null;
- const daily=days>0?d.spent/days:null;
+ const daily=dailySpend;
  const limitExceeded=ref!==null&&daily!==null&&daily>ref;
  const referencePct=grossMax>0?d.spent/grossMax*100:null;
  const eligible=days>=7&&d.periodClosed;
@@ -410,7 +411,17 @@ function unlimitedTargetRule(d,metrics){
  }
  return {name,stage,action,candidate,ref,daily,referencePct,eligible,alerts,financialFloor:floor};
 }
-function analyze(d){const days=daysInclusive(d.dateStart,d.dateEnd);const simulated=d.budgetMode==='unlimited'&&d.budget!==null&&d.budget>0;const grossMax=(d.budgetMode==='daily'||simulated)?d.budget*days:null;const consumed=grossMax===null?null:d.spent/grossMax*100;const revenueSource=d.revenue!==null?'Receita Ads / gasto (calculado)':'ROAS real informado';const revenue=d.revenue!==null?d.revenue:(d.actual!==null?d.actual*d.spent:null);const actual=d.spent>0?(d.revenue!==null?d.revenue/d.spent:d.actual):null;const meets=actual===null?null:actual>=d.target;const reliableLimit=d.budgetMode==='daily'&&d.budgetStable;const total=consumed!==null&&consumed>=95;let scenario=null;
+function analyze(d){
+const days=daysInclusive(d.dateStart,d.dateEnd);
+const dailySpend=days>0?d.spent/days:null;
+const dailyReference=d.budget!==null&&d.budget>0?d.budget:null;
+const simulated=d.budgetMode==='unlimited'&&dailyReference!==null;
+const grossMax=dailyReference!==null?dailyReference*days:null;
+// Mesmo resultado de gasto total/(orçamento diário × dias), porém exibimos
+// explicitamente a média diária para facilitar a decisão do vendedor.
+const consumed=dailySpend!==null&&dailyReference!==null?dailySpend/dailyReference*100:null;
+const dailyReferenceReached=consumed!==null&&consumed>=95;
+const actualDailyLimit=d.budgetMode==='daily';const revenueSource=d.revenue!==null?'Receita Ads / gasto (calculado)':'ROAS real informado';const revenue=d.revenue!==null?d.revenue:(d.actual!==null?d.actual*d.spent:null);const actual=d.spent>0?(d.revenue!==null?d.revenue/d.spent:d.actual):null;const meets=actual===null?null:actual>=d.target;const reliableLimit=actualDailyLimit&&d.budgetStable;const total=dailyReferenceReached;let scenario=null;
 if(reliableLimit&&meets!==null&&d.spent>0)scenario=total?(meets?4:3):(meets?1:2);
 const suggestedBudget=(d.budgetMode==='daily'||simulated)?(scenario===1||scenario===2?d.budget*.8:(scenario===3?d.budget:null)):null;
 const suggestedROAS=scenario===1||scenario===2?d.target*.8:scenario===3?d.target*1.2:null;
@@ -436,12 +447,12 @@ else if(scenario===4){rule='Consumo total (≥95%) e ROAS real ≥ alvo: escolhe
 else{rule='Não foi possível aplicar com segurança um dos quatro cenários: falta limite comparável ou ROAS válido.';safeAction='Não aplicar porcentagens de forma automática. '+(d.budgetMode==='unlimited'?'Defina um teto diário (exemplo de teste conservador: R$ 5,00, se permitido) e acompanhe o gasto.':'Corrija período, orçamento ou dados de ROAS antes de decidir.')+' Revise margem e conversão.';}
 let unlimitedRule=null;
 if(d.budgetMode==='unlimited'){
- unlimitedRule=unlimitedTargetRule(d,{days,actual,fin,grossMax});
+ unlimitedRule=unlimitedTargetRule(d,{days,actual,fin,grossMax,dailySpend});
  rule='REGRA 05 — '+unlimitedRule.name+' com orçamento ILIMITADO: '+unlimitedRule.stage+'. Esta regra NÃO presume que a referência diária seja um orçamento configurado na Shopee.';
  safeAction=unlimitedRule.action;
  alerts.push(...unlimitedRule.alerts);
 }
-return {d,days,grossMax,consumed,revenue,revenueSource,actual,meets,scenario,suggestedBudget,suggestedROAS,fin,alerts,rule,safeAction,simulated,unlimitedRule};}
+return {d,days,dailySpend,dailyReference,dailyReferenceReached,grossMax,consumed,revenue,revenueSource,actual,meets,scenario,suggestedBudget,suggestedROAS,fin,alerts,rule,safeAction,simulated,unlimitedRule};}
 function showError(msg){$('resultEmpty').style.display='flex';$('resultContent').hidden=true;$('resultEmpty').innerHTML='<div class="empty-symbol">!</div><h2>Confira os dados</h2><p>'+safe(msg)+'</p>';switchTab('simulador')}
 function statusLabel(r){if(r.unlimitedRule)return 'Regra 05 · '+r.unlimitedRule.name+' · '+r.unlimitedRule.stage;if(!r.scenario)return 'Indeterminado';return 'Cenário '+String(r.scenario).padStart(2,'0')+(r.simulated?' · SIMULADO':'')+(r.d.periodClosed?'':' · provisório')}
 function tableRender(headers,rows){return '<table><thead><tr>'+headers.map(h=>'<th>'+safe(h)+'</th>').join('')+'</tr></thead><tbody>'+rows.map(row=>'<tr>'+row.map(cell=>'<td>'+cell+'</td>').join('')+'</tr>').join('')+'</tbody></table>'}
@@ -456,12 +467,30 @@ const performanceItems=[
  ['Impressões',r.d.impressions===null?'—':Number(r.d.impressions).toLocaleString('pt-BR')],
  ['Cliques',r.d.clicks===null?'—':Number(r.d.clicks).toLocaleString('pt-BR')],
  ['CTR',ctrCalculated!==null?pct(ctrCalculated):r.d.ctrReported!==null?pct(r.d.ctrReported):'—'],
- ['Investimento',money(r.d.spent)],
+ ['Investimento total',money(r.d.spent)],
+ ['Média de investimento diário',r.dailySpend===null?'—':money(r.dailySpend)],
+ ['Dias do período',String(r.days)],
  ['ROAS',r.actual===null?'—':roas(r.actual)],
  ['Adicionar ao carrinho',r.d.addToCart===null?'—':String(r.d.addToCart)],
  ['Itens vendidos',r.d.itemsSold===null?'—':String(r.d.itemsSold)],
  ['Vendas',r.revenue===null?'—':money(r.revenue)]];
 $('performanceStats').innerHTML=performanceItems.map(([k,v])=>'<div class="stat"><div class="k">'+safe(k)+'</div><div class="v">'+safe(v)+'</div></div>').join('');
+const dailySummary=$('dailyBudgetSummary');
+if(dailySummary){
+ const type=r.d.budgetMode==='daily'?'orçamento real':'valor diário desejado (simulação)';
+ const comp=r.dailyReference===null?'Sem referência diária informada':
+   ' • '+type+': '+money(r.dailyReference)+'/dia • utilização média: '+pct(r.consumed)+
+   (r.d.budgetMode==='daily'?
+     (r.d.budgetStable?(r.dailyReferenceReached?' • LIMITE MÉDIO ATINGIDO (critério ≥95%)':' • abaixo do limite médio'):' • limite mudou: comparação indisponível'):
+     (r.dailyReferenceReached?' • referência diária alcançada (NÃO é limite real)':' • abaixo da referência diária'));
+ const roasStatus=r.meets===null?'ROAS ainda não confirmado':r.meets?'ROAS alvo atingido':'ROAS alvo não atingido';
+ dailySummary.className='notice '+(r.d.budgetMode==='daily'&&r.d.budgetStable&&r.dailyReferenceReached?'':'');
+ dailySummary.textContent='📊 Orçamento diário: '+money(r.d.spent)+' investidos ÷ '+r.days+' dia(s) = '+money(r.dailySpend)+'/dia'+comp+
+  ' • '+roasStatus+' ('+(r.actual===null?'—':roas(r.actual))+' / '+roas(r.d.target)+'). '+
+  (r.d.budgetMode==='unlimited'?'Shopee permanece ILIMITADA. ':'')+
+  (!r.d.periodClosed?'Período com dia em andamento: média provisória. ':'')+
+  'A média do período não comprova que o limite foi atingido em cada dia individual.';
+}
 $('resultAlerts').innerHTML=r.alerts.map(a=>'<div class="notice '+(a.level==='danger'?'danger':a.level==='ok'?'ok':'')+'">'+safe(a.text)+'</div>').join('');$('ruleExplanation').textContent=r.rule;
 let table='';if(r.unlimitedRule){
  const u=r.unlimitedRule;
