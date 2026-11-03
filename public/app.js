@@ -7243,6 +7243,11 @@ async function optimizerRootAuditRefresh(force=false){
   if(!current||[current.sku,current.itemId,current.modelId].join('|')!==key)return;
   optimizerRootAuditCache.set(key,{audit:result.audit,at:Date.now()});
   optimizerRootAuditRender(result.audit);
+  // Mesmo quando a execução do plano termina, somente a API Shopee
+  // comprovando 9 imagens elimina o Item ID da Otimização Pendente.
+  const photoStage=result.audit?.stages?.find(stage=>stage.id==='images');
+  if(photoStage?.status==='confirmed')
+   void globalThis.PendingImagesUI?.verifyItem?.(current.itemId);
   globalThis.RAExecutionDialog?.refresh?.();
   // Atualizar o contador de pendências e a indicação de desconto
   // após a leitura oficial, em vez de depender do último job parcial.
