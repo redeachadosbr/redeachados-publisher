@@ -23,12 +23,18 @@
   const data=state||root.RAExecutionCurrentStatus?.()||{};
   const phase=data.state||'prepared';
   const busy=Boolean(data.busy);
-  action.disabled=busy||phase==='running'||Boolean(data.videoRelinkExhausted)||(phase==='verified'&&!data.videoTaskRejected);
+  // A confirmação do último job não significa que todas as nove etapas
+  // foram executadas. Habilitar novamente quando a auditoria geral apontar
+  // pendências, sem reenviar o que já está confirmado.
+  const fullyConfirmed=phase==='verified'&&!data.videoTaskRejected&&
+   data.rootAuditKnown===true&&data.rootAuditPending!==true;
+  action.disabled=busy||phase==='running'||Boolean(data.videoRelinkExhausted)||fullyConfirmed;
   action.textContent=busy?'◷ Conferindo Shopee e preparando pendências…':
    phase==='running'?'◷ Execução em andamento — acompanhando Shopee':
    data.videoRelinkExhausted?'⚠ Vínculo recusado — verificar com Shopee':
    data.videoTaskRejected?'↻ Reconectar vídeo sem novo upload':
-   phase==='verified'?'✓ Etapas deste envio confirmadas':
+   phase==='verified'?(data.rootAuditPending?'▶ Executar somente pendências':
+    data.rootAuditKnown?'✓ Todas as etapas confirmadas':'↻ Conferir pendências do anúncio'):
    phase==='uncertain'&&data.priceMismatchBeforeWrite?'▶ Corrigir preço e concluir desconto':
    phase==='uncertain'?'↻ Conferir resultado e continuar':
    phase==='failed'?'▶ Retomar apenas as pendências':
@@ -55,6 +61,7 @@
     phase==='uncertain'?
     'Consulta primeiro a tentativa anterior, sem repetir envios.':
     phase==='failed'?'Preserva as etapas já publicadas.':
+    phase==='verified'&&data.rootAuditPending?'O último envio foi confirmado, mas ainda existem etapas pendentes na auditoria geral. Clique para corrigir só o que falta.':
     phase==='verified'?'Somente as etapas deste envio foram confirmadas.':
     'Acompanhe as confirmações reais da Shopee.';
    label.textContent=(warning||hint)+(price?'  |  '+price:'');
