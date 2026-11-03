@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
 import {pendingImageCount,pendingImageCategory,pendingImageRows,
- scanShopeePendingImagesPage} from '../shopeePendingImageAudit.js';
+ scanShopeePendingImagesPage,verifyShopeePendingImageItem} from '../shopeePendingImageAudit.js';
 const base=(id,{sku='SKU-'+id,stock=5,images=8,hasModel=false,status='NORMAL'}={})=>({
  item_id:Number(id),item_sku:sku,item_name:'Produto '+id,item_status:status,
  has_model:hasModel,stock_info_v2:{summary_info:{total_available_stock:stock}},
@@ -32,6 +32,7 @@ test('menos de 9 fotos usa a galeria real e nunca a capa',()=>{
  assert.equal(pendingImageCount(base(100,{images:0})),0);
  assert.equal(pendingImageCount(base(100,{images:null})),null);
  assert.equal(pendingImageCount({image:{image_url_list:['a','b']}}),2);
+ assert.equal(pendingImageCount({image:{image_id_list:['a','b','b']}}),2);
 });
 test('só NORMAL com estoque positivo e status de variação confirmado é acionável',()=>{
  const args={listingStatus:'NORMAL',stock:4,sku:'ABC',imageCount:8};
@@ -108,4 +109,56 @@ test('menu e API estão ligados ao roteador e não executam update_item',()=>{
  assert.match(server,/mustLogin,requireWeDropAdmin/);
  assert.match(client,/status.*offset/);
  assert.doesNotMatch(client,/\/execution\/execute|update_item/);
+});
+
+test('confirmação pontual só dá OK 9/9 após consulta oficial ao Item ID',async()=>{
+ const sample=base(401,{images:9});
+ const m=mock({items:[sample]});
+ const good=await verifyShopeePendingImageItem({
+  cfg:{},auth:m.auth,callApi:m.run,itemId:'401'
+ });
+ assert.equal(good.status,'confirmed');
+ assert.equal(good.complete,true);
+ assert.equal(good.imageCount,9);
+ assert.equal(good.missingImages,0);
+ assert.equal(good.itemId,'401');
+ assert.deepEqual(m.calls,['/api/v2/product/get_item_base_info']);
+});
+test('8 imagens ou menos continuam pendentes e não podem dar OK',async()=>{
+ const m=mock({items:[base(402,{images:8})]});
+ const status=await verifyShopeePendingImageItem({
+  cfg:{},auth:m.auth,callApi:m.run,itemId:'402'
+ });
+ assert.equal(status.status,'pending');
+ assert.equal(status.complete,false);
+ assert.equal(status.missingImages,1);
+ assert.equal(pendingImageRows({status:'NORMAL',item:base(402,{images:9})}).length,0);
+});
+test('API sem galeria ou com Item ID divergente não elimina pendência',async()=>{
+ const auth=mock({items:[]}).auth;
+ const unverified=await verifyShopeePendingImageItem({
+  cfg:{},auth,itemId:'403',
+  callApi:async()=>({response:{item_list:[base(403,{images:null})]}})
+ });
+ assert.equal(unverified.complete,false);
+ assert.equal(unverified.status,'unverified');
+ await assert.rejects(()=>verifyShopeePendingImageItem({
+  cfg:{},auth,itemId:'403',
+  callApi:async()=>({response:{item_list:[base(404,{images:9})]}})
+ }),/não confirmou a galeria exata/);
+});
+test('menu revalida cada clique, mostra OK e remove anúncio-pai de todas as variações',()=>{
+ const client=readFileSync(new URL('../public/pending-images.js',import.meta.url),'utf8');
+ const html=readFileSync(new URL('../public/index.html',import.meta.url),'utf8');
+ const app=readFileSync(new URL('../public/app.js',import.meta.url),'utf8');
+ const server=readFileSync(new URL('../server.js',import.meta.url),'utf8');
+ assert.match(client,/verifyItem\(row\.itemId,\{force:true,sku:row\.sku\}\)/);
+ assert.match(client,/result\.imageCount>=9/);
+ assert.match(client,/for\(const row of rows\)collection\.delete\(row\.key\)/);
+ assert.match(client,/confirmed\.set\(id,/);
+ assert.match(client,/if\(!running\)void run\(\)/);
+ assert.match(client,/globalThis\.PendingImagesUI=\{onOpen,refresh:run,verifyItem\}/);
+ assert.match(app,/PendingImagesUI\?\.verifyItem\?\.\(current\.itemId\)/);
+ assert.match(html,/id="pendingImagesConfirmed"/);
+ assert.match(server,/\/api\/shopee\/optimizer\/pending-images\/verify/);
 });
