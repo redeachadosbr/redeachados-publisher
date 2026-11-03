@@ -42,6 +42,9 @@ export function fiscalFillMissingOnly(liveTax,approvedTax){
  if(!approvedTax||typeof approvedTax!=='object')throw Error('Ficha fiscal aprovada ausente.');
  const old=liveTax&&typeof liveTax==='object'&&!Array.isArray(liveTax)?liveTax:{};
  const gap=inspectShopeeFiscalGap(old);
+ // Do not send a no-op update for invalid live values; replacing those
+ // values requires an explicit manual review, not a fill-missing operation.
+ if(gap.invalid.length)throw Error('Dados fiscais existentes inválidos; revisar antes do envio: '+gap.invalid.join(', '));
  const merged={...old};
  const missingSource=[];
  for(const key of gap.missing){
@@ -50,6 +53,9 @@ export function fiscalFillMissingOnly(liveTax,approvedTax){
   else merged[key]=value;
  }
  if(missingSource.length)throw Error('Ficha fiscal incompleta: '+missingSource.join(', '));
+ const proposed=inspectShopeeFiscalGap(merged);
+ if(proposed.invalid.length||proposed.missing.length)
+  throw Error('Ficha fiscal com valores ausentes ou inválidos: '+[...proposed.missing,...proposed.invalid].join(', '));
  return {tax:merged,gap,changed:Object.keys(merged)
   .filter(k=>String(merged[k]??'')!==String(old[k]??''))};
 }
