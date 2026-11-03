@@ -169,3 +169,23 @@ test('popup exibe ambas as colunas e distingue adições de abandono confirmado'
  assert.match(backend,/cartAbandonmentRate/);
  assert.doesNotMatch(ui,/\/api\/shopee\/ads\//);
 });
+
+test('modo API só cria visualizações e ação; não renderiza métricas ausentes',()=>{
+ const ui=readFileSync(new URL('../public/organic-top10.js',import.meta.url),'utf8');
+ const css=readFileSync(new URL('../public/organic-top10.css',import.meta.url),'utf8');
+ const html=readFileSync(new URL('../public/index.html',import.meta.url),'utf8');
+ assert.match(ui,/if\(source==='api'\)\{\s*add\(number\(row\.viewsObserved/);
+ assert.match(ui,/else\{\s*\/\/ Só o relatório orgânico confirmado permite exibir CTR\/carrinho\/abandono/);
+ assert.match(ui,/name\.title=fullTitle/);
+ assert.match(ui,/const previewTitle=fullTitle\.length>titleLimit/);
+ assert.match(ui,/dataset\.source=source/);
+ assert.match(css,/\.organic-top10-modal\[data-source="api"\] \.organic-top10-grid-header > span:nth-child/);
+ assert.match(css,/\.organic-top10-modal\[data-source="api"\] \.organic-top10-item\{/);
+ assert.match(css,/grid-template-columns:minmax\(0,1fr\) minmax\(175px,215px\) minmax\(92px,108px\)/);
+ assert.match(css,/\.organic-top10-modal \.organic-top10-product-copy\{/);
+ assert.match(css,/overflow:hidden!important/);
+ assert.match(css,/text-overflow:ellipsis!important/);
+ assert.match(css,/font-variant-numeric:tabular-nums/);
+ assert.match(html,/organic-top10\.css\?v=1\.1\.1-responsive-numbers/);
+ assert.match(html,/organic-top10\.js\?v=1\.1\.1-responsive-numbers/);
+});
