@@ -292,20 +292,54 @@ async function run(){
    throw Error('Consulta incompleta: '+scannedParents+' de '+editableCount()+' anúncios editáveis. Nenhum envio será iniciado.');
   all=[...new Map(all.filter(x=>x.sku).map(x=>[idOf(x),x])).values()];
   if(!all.length)throw Error('Nenhuma SKU ativa identificada; não há envio permitido.');
-  // O histórico local é somente memória de trabalho. Conferir estados anteriores no servidor.
-  for(const item of all){
-   const key=idOf(item);
-   if(state.done[key]==='already_current'){
-    // Sem job de envio persistido, reconfirmar a informação na API em cada nova execução.
-    delete state.done[key];
+  // Reconciliação somente leitura: usar a leitura tax_info oficial recém-coletada,
+  // nunca o progresso do navegador como prova de que um anúncio foi atualizado.
+  // Operações sem confirmação NÃO são reenviadas automaticamente.
+  for(const rows of fiscalParentMap(all).values()){
+   const representative=rows[0];
+   const keys=rows.map(idOf);
+   if(rows.some(x=>x.fiscal?.status!==representative.fiscal?.status))
+    throw Error('Leituras fiscais conflitantes para Item ID '+representative.itemId+'. Nenhum envio autorizado.');
+   if(representative.fiscal?.status==='complete'){
+    // Já preenchido na Shopee: limpar erros antigos, preservar confirmação de job
+    // quando houver, e não executar outro POST.
+    const confirmed=keys.some(k=>state.done[k]==='verified');
+    for(const key of keys){
+     state.done[key]=confirmed?'verified':'already_current';
+     delete state.errors[key];
+    }
+    if(keys.includes(state.pending))state.pending=null;
+    continue;
    }
-   if(state.done[key]==='verified'&&fiscalIssue(item)){
-    delete state.done[key];delete state.errors[key];
+   const previous=keys.map(k=>state.done[k]).filter(Boolean);
+   const unresolved=keys.includes(state.pending)||
+    previous.some(s=>['uncertain','blocked','failed','verified','running'].includes(s));
+   if(!unresolved)continue;
+   // Um envio anterior pode ter sido concluído após o timeout do navegador.
+   // Consultar seu registro sem repetir a escrita nem presumir êxito.
+   let result=null;
+   try{result=await jobStatus(representative);}
+   catch(error){
+    for(const key of keys){
+     state.done[key]='uncertain';
+     state.errors[key]='Não foi possível confirmar o histórico do Item ID: '+String(error.message||error);
+    }
+    if(keys.includes(state.pending))state.pending=null;
+    continue;
    }
-   if(state.done[key]==='verified'){
-    const last=await jobStatus(item);
-    if(last?.status!=='verified'){delete state.done[key];delete state.errors[key];}
+   let status='blocked',message='';
+   if(['running','prepared','uncertain','not_found'].includes(result?.status)||!result){
+    status='uncertain';
+    message='Envio anterior não conclusivo ('+(result?.status||'sem resposta')+
+     '). Dados fiscais continuam incompletos; consultar a Shopee antes de reenviar.';
+   }else if(result.status==='verified'){
+    message='O job anterior consta como confirmado, mas a leitura fiscal atual segue incompleta. Revisão necessária.';
+   }else{
+    message='Dados fiscais ainda incompletos; envio anterior '+result.status+
+     '. Revisar a causa antes de autorizar outra tentativa.';
    }
+   for(const key of keys){state.done[key]=status;state.errors[key]=message;}
+   if(keys.includes(state.pending))state.pending=null;
   }
   state.inventory=all;
   state.inventoryComplete=true;
@@ -331,7 +365,7 @@ async function run(){
    // the backend verifies the exact WeDrop SKU and its own NCM.
    const item=candidates.find(x=>x.reviewed===true)||candidates[0],
      key=idOf(item);
-   if(state.done[key]==='verified'||state.done[key]==='uncertain')continue;
+   if(['verified','already_current','uncertain','blocked','failed'].includes(state.done[key]))continue;
    report(state,'Pendência '+(i+1)+'/'+pendingParents.length+' · Preparando dados fiscais',item.sku);
    try{
     // Uma única chamada: o backend aproveita os dados já salvos, preenche
