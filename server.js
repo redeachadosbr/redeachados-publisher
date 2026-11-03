@@ -5439,7 +5439,7 @@ app.get('/api/shopee/organic/top10',mustLogin,requireWeDropAdmin,async(req,res)=
    return res.json({ok:true,available:false,source:'seller_center_organic_export',
     message:'Ainda não há relatório orgânico da Central do Vendedor salvo. Dados de Ads nunca serão usados como substituto.'});
   }
-  const sort=['combined','impressions','visits','clicks','ctr'].includes(req.query.sort)?
+  const sort=['combined','impressions','visits','clicks','ctr','cartAdded','cartPending','cartAbandonmentRate'].includes(req.query.sort)?
    req.query.sort:'combined';
   const ranked=rankOrganicTop(snapshot.records,{sort,limit:10});
   let cached=[],catalogWarning='';
@@ -5488,7 +5488,7 @@ app.get('/api/shopee/organic/top10',mustLogin,requireWeDropAdmin,async(req,res)=
    importedAt:snapshot.imported_at,fileName:snapshot.file_name,
    metadata:snapshot.metadata||{},rowCount:snapshot.row_count,
    list:top,catalogWarning,readOnly:true,
-   caveat:'Origem orgânica declarada no relatório importado. Não é uma consulta automática de métricas de tráfego por API; nunca inclui métricas de Shopee Ads.'});
+   caveat:'Origem orgânica declarada no relatório importado. Adições ao carrinho NÃO são abandono. Carrinhos parados e % de abandono exigem valores explícitos ou numerador/denominador compatíveis no mesmo relatório. Nenhum valor é inferido de visitas ou pedidos e nunca inclui Shopee Ads.'});
  }catch(error){
   res.status(503).json({ok:false,available:false,error:'Não foi possível carregar os dados orgânicos: '+
    String(error.message||error).slice(0,240)});
