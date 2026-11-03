@@ -16,10 +16,11 @@ export function pendingImageCount(base){
  if(Array.isArray(urls))return urls.filter(x=>typeof x==='string'&&x.trim()).length;
  return null;
 }
-export function pendingImageCategory({listingStatus,modelStatus='',stock,sku,imageCount}){
+export function pendingImageCategory({listingStatus,modelStatus='',hasModel=false,stock,sku,imageCount}){
  if(imageCount===null||!sku)return 'unverified';
  if(imageCount>=IMAGE_GOAL)return 'complete';
  if(listingStatus!=='NORMAL')return 'inactive';
+ if(hasModel&&!modelStatus)return 'unverified';
  if(modelStatus&&modelStatus!=='MODEL_NORMAL'&&modelStatus!=='NORMAL')
   return modelStatus==='MODEL_UNAVAILABLE'?'inactive':'unverified';
  if(stock===null||!Number.isFinite(stock)||stock<0)return 'unverified';
@@ -59,7 +60,7 @@ export function pendingImageRows({status,item,models=null}){
   const stock=model.stock===null||model.stock===undefined?null:Number(model.stock);
   const modelStatus=String(model.status||'').toUpperCase();
   const category=pendingImageCategory({listingStatus:realStatus,modelStatus,
-   stock,sku,imageCount:count});
+   hasModel:parent.hasModel,stock,sku,imageCount:count});
   const reason=!sku?'SKU não informada pela Shopee; verifique o Item ID.':
    category==='unverified'?'Estoque ou status da variação não confirmado pela Shopee.':
    category==='inactive'?'Anúncio ou variação não está ativo.':
