@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
-import {compileShopeeExecutionPlan,normalizeShopeeExecutionStage,confirmShopeeExecution} from '../shopeeExecutionPlan.js';
+import {compileShopeeExecutionPlan,normalizeShopeeExecutionStage,confirmShopeeExecution,shouldAttachCommercialDiscount} from '../shopeeExecutionPlan.js';
 import {shopeeExecutionProgress} from '../shopeeExecutionProgress.js';
 import {advanceShopeeExecution} from '../shopeeExecutionWorker.js';
 const source=path=>fs.readFileSync(new URL('../'+path,import.meta.url),'utf8');
@@ -68,7 +68,8 @@ test('UI e servidor não exigem desconto ao executar somente variações',()=>{
  const app=source('public/app.js'),server=source('server.js');
  assert.match(server,/\['all','remaining','variants'\]\.includes\(selectedStage\)/);
  assert.match(server,/if\(modelVariations&&selectedStage!=='variants'\)/);
- assert.match(server,/\['all','remaining','discount','discount_adjust'\]\.includes\(plan\.selectedStage\)&&\s*!linkedKit&&!isShopeeMatrixIndependentPlan\(plan\)/);
+ assert.match(server,/shouldAttachCommercialDiscount\(plan,/);
+ assert.equal(shouldAttachCommercialDiscount({selectedStage:'variants',actions:['model_variations']},{hasSignedApproval:true}),false);
  assert.match(app,/\['all','remaining','discount','discount_adjust'\]\.includes\(p\.selectedStage\)/);
  assert.match(app,/p\?\.selectedStage==='variants'/);
  assert.match(app,/p\?\.selectedStage==='discount'/);
@@ -86,7 +87,8 @@ test('etapa 08 do motor raiz respeita o preço promocional salvo por SKU, sem ap
  assert.deepEqual(skuB.actions,['discount']);
  const app=source('public/app.js'),server=source('server.js');
  assert.match(server,/\['all','discount','discount_adjust'\]\.includes\(selectedStage\)/);
- assert.match(server,/\['all','remaining','discount','discount_adjust'\]\.includes\(plan\.selectedStage\)&&\s*!linkedKit&&!isShopeeMatrixIndependentPlan\(plan\)/);
+ assert.match(server,/shouldAttachCommercialDiscount\(plan,/);
+ assert.equal(shouldAttachCommercialDiscount({selectedStage:'variants',actions:['model_variations']},{hasSignedApproval:true}),false);
  assert.match(app,/\['all','discount','discount_adjust'\]\.includes\(\$\('#optimizerExecutionScope'\)\.value\)/);
  assert.match(app,/\['all','remaining','discount','discount_adjust'\]\.includes\(p\.selectedStage\)/);
  assert.match(app,/price bruto atual difere|preço bruto atual difere/i);
