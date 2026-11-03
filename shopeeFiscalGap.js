@@ -42,13 +42,16 @@ export function inspectShopeeFiscalGap(raw, reference=null){
 }
 // The seller's approved fiscal template may fill ONLY blank Shopee fields.
 // Existing tax_info values are authoritative; mismatches need manual review.
-export function fiscalFillMissingOnly(liveTax,approvedTax){
- if(!approvedTax||typeof approvedTax!=='object')throw Error('Ficha fiscal aprovada ausente.');
+export function fiscalFillMissingOnly(liveTax,approvedTax,{referenceOnly=false}={}){
+ if(!approvedTax||typeof approvedTax!=='object'||Array.isArray(approvedTax))
+  throw Error('Ficha fiscal aprovada ausente.');
  const old=liveTax&&typeof liveTax==='object'&&!Array.isArray(liveTax)?liveTax:{};
- const gap=inspectShopeeFiscalGap(old);
- // Do not send a no-op update for invalid live values; replacing those
- // values requires an explicit manual review, not a fill-missing operation.
+ // A execução fiscal em lote não pode exigir campos opcionais que a tabela
+ // aprovada não definiu. A regra antiga sem referência continua disponível.
+ const gap=inspectShopeeFiscalGap(old,referenceOnly?approvedTax:null);
  if(gap.invalid.length)throw Error('Dados fiscais existentes inválidos; revisar antes do envio: '+gap.invalid.join(', '));
+ if(gap.mismatched.length)throw Error('Dados fiscais diferentes da tabela aprovada; revisar antes do envio: '+gap.mismatched.join(', '));
+ if(gap.unverified.length)throw Error('Ficha fiscal sem referência confirmada: '+gap.unverified.join(', '));
  const merged={...old};
  const missingSource=[];
  for(const key of gap.missing){
@@ -57,9 +60,10 @@ export function fiscalFillMissingOnly(liveTax,approvedTax){
   else merged[key]=value;
  }
  if(missingSource.length)throw Error('Ficha fiscal incompleta: '+missingSource.join(', '));
- const proposed=inspectShopeeFiscalGap(merged);
- if(proposed.invalid.length||proposed.missing.length)
-  throw Error('Ficha fiscal com valores ausentes ou inválidos: '+[...proposed.missing,...proposed.invalid].join(', '));
+ const proposed=inspectShopeeFiscalGap(merged,referenceOnly?approvedTax:null);
+ if(proposed.invalid.length||proposed.missing.length||proposed.mismatched.length||proposed.unverified.length)
+  throw Error('Ficha fiscal com valores ausentes ou inválidos: '+
+   [...proposed.missing,...proposed.invalid,...proposed.mismatched,...proposed.unverified].join(', '));
  return {tax:merged,gap,changed:Object.keys(merged)
   .filter(k=>String(merged[k]??'')!==String(old[k]??''))};
 }
