@@ -1,6 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {auditRootShopeeExecution,ROOT_EXECUTION_STAGES} from '../shopeeExecutionHealth.js';
+import {shouldAttachCommercialDiscount} from '../shopeeExecutionPlan.js';
 
 const itemId='58272041645';
 const base=()=>({
@@ -50,4 +51,30 @@ test('SKU sem Item ID validado nunca pode ser concluída',()=>{
  const result=auditRootShopeeExecution(a);
  assert.equal(result.complete,false);
  assert.equal(result.pending.length,9);
+});
+
+test('desconto lido na campanha real continua confirmado após novo job prepared',()=>{
+ const x=base();
+ x.job={state:'prepared',plan:{selectedStage:'discount_adjust'},result:null};
+ x.discountReadback=true;
+ const audit=auditRootShopeeExecution(x);
+ assert.equal(audit.stages.find(stage=>stage.id==='discount').status,'confirmed');
+ assert.equal(audit.stages.find(stage=>stage.id==='images').status,'pending');
+});
+test('desconto não consultado não é rotulado falsamente como não executado',()=>{
+ const audit=auditRootShopeeExecution(base());
+ const discount=audit.stages.find(stage=>stage.id==='discount');
+ assert.equal(discount.status,'pending');
+ assert.match(discount.reason,/não verificado/i);
+});
+test('execução completa anexa desconto assinado junto com ações independentes',()=>{
+ const onlyContent={selectedStage:'all',canExecute:true,
+  actions:['item_name','description'],confirmedStages:{},proposed:{item_name:'Novo título'}};
+ assert.equal(shouldAttachCommercialDiscount(onlyContent),false);
+ assert.equal(shouldAttachCommercialDiscount(onlyContent,{hasSignedApproval:true}),true);
+ assert.equal(shouldAttachCommercialDiscount(onlyContent,{hasSignedApproval:true,linkedKit:true}),false);
+ assert.equal(shouldAttachCommercialDiscount({...onlyContent,selectedStage:'video'},{hasSignedApproval:true}),false);
+ const discountOnly={selectedStage:'discount_adjust',canExecute:true,
+  actions:['discount'],discountOnly:true};
+ assert.equal(shouldAttachCommercialDiscount(discountOnly),true);
 });
