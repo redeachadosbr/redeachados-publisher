@@ -14,7 +14,7 @@
 <link rel="stylesheet" href="/shopee-discount-one-click.css?v=1.20.17">
 <link rel="stylesheet" href="/shopee-market-research.css?v=1.20.18">
 <link rel="stylesheet" href="/dashboard-new-listings.css?v=1.20.21-shopee">
-<link rel="stylesheet" href="/organic-top10.css?v=1.0.1-cart-metrics">
+<link rel="stylesheet" href="/organic-top10.css?v=1.1.0-api-periods">
 <link rel="stylesheet" href="/finance-thumbnails.css?v=1.20.22">
 <link rel="stylesheet" href="/title-studio.css?v=1.21.16-ranked-best">
 <link rel="stylesheet" href="/seo-modern-layout.css?v=1.0.5-compact-cards">
@@ -2583,7 +2583,7 @@
 <script src="/ads-seo.js?v=6-ads-eligible-counter"></script>
 <script src="/optimizer-image-studio.js?v=1.0.5-move-enabled"></script>
 <script src="/optimizer-technical-studio.js?v=1.2.0-compact-fields"></script>
-<script src="/organic-top10.js?v=1.0.1-cart-metrics"></script>
+<script src="/organic-top10.js?v=1.1.0-api-periods"></script>
 
 <!-- Modal independente do roteador: abre em cada login / carregamento autenticado -->
 <div id="organicTop10Overlay" class="organic-top10-overlay" hidden>
@@ -2592,19 +2592,37 @@
    <div class="organic-top10-header-body">
     <div>
      <div class="organic-top10-eyebrow"><span class="organic-top10-dot"></span> REDE ACHADOS BR · INTELIGÊNCIA DE PRODUTO</div>
-     <h2 id="organicTop10Title" class="organic-top10-heading">TOP 10 · Desempenho Orgânico</h2>
-     <p id="organicTop10Subtitle" class="organic-top10-subtitle">Os produtos que atraem mais compradores sem Shopee Ads. Métricas do relatório oficial da Central do Vendedor, nunca das campanhas pagas.</p>
+     <h2 id="organicTop10Title" class="organic-top10-heading">TOP 10 · Desempenho dos Produtos</h2>
+     <p id="organicTop10Subtitle" class="organic-top10-subtitle">Acompanhe visualizações pela API da Shopee e, separadamente, métricas orgânicas verificadas da Central do Vendedor.</p>
     </div>
     <button id="organicTop10Close" class="organic-top10-close" type="button" aria-label="Fechar ranking orgânico">×</button>
    </div>
    <div class="organic-top10-meta">
-    <span class="organic-top10-pill featured">● SOMENTE ORGÂNICO · SEM ADS</span>
+    <span id="organicTop10SourceBadge" class="organic-top10-pill">● VISUALIZAÇÕES GERAIS · API SHOPEE</span>
     <span id="organicTop10Period" class="organic-top10-pill">Período: aguardando dados</span>
     <span id="organicTop10Count" class="organic-top10-pill">Ranking não carregado</span>
    </div>
   </header>
   <div class="organic-top10-content">
-   <div class="organic-top10-tools">
+   <div class="organic-top10-source-bar" role="group" aria-label="Fonte dos indicadores">
+    <button id="organicTop10ModeApi" type="button" class="organic-top10-mode" aria-pressed="true">API Shopee · Visualizações</button>
+    <button id="organicTop10ModeOrganic" type="button" class="organic-top10-mode" aria-pressed="false">Somente orgânico · Relatório</button>
+   </div>
+   <div id="organicTop10ApiPeriods" class="organic-top10-api-periods" aria-label="Período de visualizações">
+    <div class="organic-top10-period-pills" role="group" aria-label="Selecionar período">
+     <button type="button" data-period="today">Hoje</button>
+     <button type="button" data-period="7" aria-pressed="true">7 dias</button>
+     <button type="button" data-period="30">30 dias</button>
+     <button type="button" data-period="custom">Personalizado</button>
+    </div>
+    <div id="organicTop10CustomRange" class="organic-top10-custom-range" hidden>
+     <label>De <input type="date" id="organicTop10ApiStart"></label>
+     <label>Até <input type="date" id="organicTop10ApiEnd"></label>
+     <button id="organicTop10ApplyCustom" type="button">Aplicar período</button>
+    </div>
+    <p id="organicTop10ApiInfo">Visualizações gerais por anúncio-pai; podem incluir Ads. Variação de cada período calculada apenas entre medições efetivamente registradas.</p>
+   </div>
+   <div id="organicTop10Tools" class="organic-top10-tools" hidden>
     <span class="organic-top10-tools-label">Classificar os 10 melhores por</span>
     <div id="organicTop10Sorts" class="organic-top10-sorts" role="group" aria-label="Ordenar ranking orgânico">
      <button type="button" data-sort="combined" aria-pressed="true">Geral</button>
@@ -2616,9 +2634,9 @@
      <button type="button" data-sort="cartAbandonmentRate" aria-pressed="false">Abandono %</button>
     </div>
    </div>
-   <p id="organicTop10Status" class="organic-top10-banner" role="status" aria-live="polite">Buscando o último relatório orgânico salvo da loja…</p>
+   <p id="organicTop10Status" class="organic-top10-banner" role="status" aria-live="polite">Consultando visualizações disponíveis da API Shopee…</p>
    <div class="organic-top10-grid-header" aria-hidden="true">
-    <span>Produto / SKU</span><span>Impressões</span><span>Visitas</span><span>Cliques</span><span>CTR</span><span>No carrinho</span><span>Abandono</span><span>Ação</span>
+    <span>Produto / SKU</span><span id="organicTop10ViewsHeader">Visualizações</span><span>Visitas</span><span>Cliques</span><span>CTR</span><span>No carrinho</span><span>Abandono</span><span>Ação</span>
    </div>
    <div id="organicTop10List" class="organic-top10-list" aria-label="Dez melhores produtos do tráfego orgânico"></div>
    <form id="organicTop10Import" class="organic-top10-import" hidden>
@@ -2646,10 +2664,10 @@
    </form>
   </div>
   <footer class="organic-top10-footer">
-   <p id="organicTop10Footnote" class="organic-top10-footnote">Relatório orgânico salvo por período. Sem relatório, o sistema não inventa impressões, visitas, cliques, CTR ou abandono de carrinho.</p>
+   <p id="organicTop10Footnote" class="organic-top10-footnote">A API mostra visualizações gerais acumuladas, não impressões ou tráfego exclusivamente orgânico. Os totais por dia, 7 ou 30 dias dependem de medições guardadas após a ativação.</p>
    <div class="organic-top10-import-footer">
     <button id="organicTop10Update" type="button" class="organic-top10-action organic-top10-secondary">↻ Recarregar ranking</button>
-    <button id="organicTop10ShowImport" type="button" class="organic-top10-action">Importar relatório orgânico</button>
+    <button id="organicTop10ShowImport" type="button" class="organic-top10-action" hidden>Importar relatório orgânico</button>
    </div>
   </footer>
  </section>
