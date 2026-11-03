@@ -3488,7 +3488,11 @@ app.post('/api/shopee/optimizer/execution/execute',mustLogin,requireWeDropAdmin,
   // Motor Matriz rule across ALL SKUs: never require promotion approval
   // when every executable action is an independent, already-approved stage.
   if(['all','remaining','discount','discount_adjust'].includes(plan.selectedStage)&&
-     !linkedKit&&!isShopeeMatrixIndependentPlan(plan)){
+     !linkedKit&&(!isShopeeMatrixIndependentPlan(plan)||
+       Boolean(req.body?.discountApprovalToken))){
+   // Mesmo quando título/mídia são independentes, um token assinado
+   // aprovado neste mesmo clique inclui a promoção como etapa final.
+   // Sem token, o executor mantém apenas as ações independentes.
    // Em planos de variação, o clique autenticado + o plano imutável no banco
    // autorizam a promoção exibida. O token de 10 minutos não pode bloquear
    // anúncio e mídia depois de o usuário ter aprovado essa mesma prévia.
