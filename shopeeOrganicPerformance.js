@@ -8,9 +8,9 @@ const names={
  sku:['sku','sku do produto','sku do anuncio','sku da variacao','seller sku','product sku','codigo do produto','codigo sku'],
  itemId:['item id','id do item','id do produto','id do anuncio','product id'],
  title:['nome do produto','titulo do produto','produto','product name','nome do anuncio'],
- impressions:['impressoes','impressoes do produto','impressoes organicas','exibicoes organicas','product impressions','organic impressions'],
- visits:['visitantes do produto','visitantes','visitas','visitas do produto','visitas organicas','product visitors','unique product visitors','product visits','product page views','visualizacoes de pagina do produto'],
- clicks:['cliques','cliques do produto','cliques organicos','product clicks','organic clicks'],
+ impressions:['impressoes','impressoes do produto','impressoes organicas','exibicoes organicas','exibicoes do produto','product impressions','organic impressions'],
+ visits:['visitantes do produto','visitantes','visitas','visitas do produto','visitas organicas','visitas ao produto','product visitors','unique product visitors','product visits','product page views','visualizacoes de pagina do produto'],
+ clicks:['cliques','cliques do produto','cliques no produto','cliques organicos','product clicks','organic clicks'],
  ctr:['ctr','ctr %','ctr organico','taxa de cliques','taxa de cliques %','click through rate'],
  traffic:['origem do trafego','fonte de trafego','origem trafego','tipo de trafego','traffic source','traffic type','canal de trafego']
 };
@@ -96,7 +96,8 @@ function indexHeader(rows){
 function count(value){
  if(value===null||value===undefined||!String(value).trim())return null;
  const raw=String(value).trim().replace(/\s/g,'');
- const normalized=raw.includes(',')?raw.replace(/\./g,'').replace(',','.'):raw.replace(/,/g,'');
+ const normalized=raw.includes(',')?raw.replace(/\./g,'').replace(',','.'):
+  /^\d{1,3}(?:\.\d{3})+$/.test(raw)?raw.replace(/\./g,''):raw;
  if(!/^\d+(?:\.\d+)?$/.test(normalized))throw Error('Métrica com valor não numérico: '+raw.slice(0,40));
  const n=Number(normalized);
  if(!Number.isSafeInteger(n)||n<0)return null;
@@ -148,8 +149,7 @@ export function parseOrganicReport(buffer,{
    '. Use um relatório consolidado por SKU e período.');
   used.add(id);
   const computed=metric.impressions>0&&metric.clicks!==null?
-   Number((100*metric.clicks/metric.impressions).toFixed(2)):
-   metric.impressions===0&&metric.clicks===0?0:null;
+   Number((100*metric.clicks/metric.impressions).toFixed(2)):null;
   list.push({sku,itemId:/^[1-9]\d{0,18}$/.test(itemId)?itemId:'',
    title:label(row[columns.title]).slice(0,220),
    impressions:metric.impressions,visits:metric.visits,clicks:metric.clicks,
