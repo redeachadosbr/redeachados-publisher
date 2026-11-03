@@ -147,7 +147,7 @@ test('popup escolhe as quatro datas e separa API geral dos dados orgânicos',()=
  assert.match(ui,/product-views\/top10/);
  assert.match(ui,/product-views\/collect/);
  assert.match(ui,/viewsObserved/);
- assert.match(ui,/Total histórico \(não é do período\)/);
+ assert.match(ui,/Contador Shopee \(sem período\)/);
  assert.match(server,/get_item_extra_info|scanLiveShopViews/);
  assert.doesNotMatch(ui,/\/api\/shopee\/ads\//);
 });
