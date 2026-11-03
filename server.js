@@ -3318,6 +3318,30 @@ async function readLiveRootExecution(req){
       Math.round(Number(liveDiscount.gross)*100)===Math.round(Number(approvedKitDiscount.gross)*100));
    }catch(error){discountDiagnostic='Promoção não conferida pela Shopee: '+
     String(error.message||error).slice(0,130);}
+  }else if(!live.has_model&&/^\\d{1,18}$/.test(String(req.query?.campaign_id||'').trim())){
+   // Mesmo quando uma nova prévia substitui o histórico do último job,
+   // conferir a campanha informada nesta SKU com GET oficial Shopee.
+   // A prova é preço bruto + preço promocional conforme cotação salva;
+   // o status "verified" de um job antigo sozinho nunca comprova nada.
+   try{
+    const discountId=String(req.query.campaign_id).trim();
+    const savedPrice=await savedShopeePricePlan(auth.shopId,itemId,modelId);
+    if(savedPrice?.sku!==sku||savedPrice?.quote?.sku!==sku||
+       String(savedPrice.quote.itemId)!==String(itemId)||
+       String(savedPrice.quote.modelId)!==String(modelId))
+      throw Error('Cotação aprovada da SKU não localizada para a campanha informada.');
+    const {record:campaign,pages}=await readDiscountPages(callShopeeShopApi,
+     {cfg,auth,discountId});
+    const member=promotionMember(pages,itemId);
+    const result=discountPlanSnapshot({shopId:auth.shopId,sku,itemId,modelId,
+      discountId,quote:savedPrice.quote,record:campaign,existing:member,
+      originalPrice:promotionBasePrice(live)});
+    discountReadback=result.action==='already';
+    if(!discountReadback)discountDiagnostic=member?
+      'Desconto diferente da tabela de preços aprovada: verificar preço bruto e promocional nesta campanha.':
+      'Item ID não localizado na campanha Minha Promoção informada; desconto ainda pendente.';
+   }catch(error){discountDiagnostic='Promoção não confirmada pela Shopee: '+
+    String(error.message||error).slice(0,180);}
   }else if((job?.state==='verified'||job?.result?.discount?.status==='verified')&&job?.plan?.commercialDiscount?.snapshot?.discountId){
    // O histórico de desconto sozinho não prova a promoção atual.
    try{
@@ -3333,6 +3357,9 @@ async function readLiveRootExecution(req){
   }
   const audit=auditRootShopeeExecution({sku,itemId,record,review,live,
    images:manualImages,video:manualVideo,models,discountReadback,job});
+  const discountStage=audit.stages?.find(x=>x.id==='discount');
+  if(discountStage&&discountStage.status!=='confirmed'&&discountDiagnostic)
+   discountStage.reason=String(discountDiagnostic).slice(0,220);
   return {audit,discountDiagnostic,job,auth,itemId,modelId,sku};
 }
 app.get('/api/shopee/optimizer/execution/root-audit',mustLogin,requireWeDropAdmin,async(req,res)=>{
