@@ -4705,11 +4705,17 @@ app.post('/api/shopee/optimizer/images/manual',mustLogin,requireWeDropAdmin,
   // Reparos de medidas exigem a versão exata da foto atual. Nunca substituir
   // outra foto se o usuário trocou a posição 03 em uma segunda aba.
   const expectedSha=String(req.get('x-expected-sha256')||'');
-  if(expectedSha){
-   if(!/^[a-f0-9]{64}$/.test(expectedSha))return res.status(400).json({error:'Hash da imagem de origem inválido.'});
+  const expectEmpty=String(req.get('x-expect-empty-slot')||'')==='true';
+  if(expectedSha||expectEmpty){
+   if(expectedSha&&!/^[a-f0-9]{64}$/.test(expectedSha))
+    return res.status(400).json({error:'Hash da imagem de origem inválido.'});
+   if(expectedSha&&expectEmpty)
+    return res.status(400).json({error:'Conferência de imagem contraditória.'});
    const current=(await readPreparedImages(x.shopId,x.itemId,x.modelId,x.sku))
     .find(row=>Number(row.slot)===Number(req.query.slot));
-   if(!current||String(current.sha256)!==expectedSha)
+   if(expectEmpty&&current)
+    return res.status(409).json({error:'A posição foi preenchida por outra aba. Atualize a galeria antes de substituir.'});
+   if(expectedSha&&(!current||String(current.sha256)!==expectedSha))
     return res.status(409).json({error:'A foto desta posição mudou desde a conferência. Atualize a galeria antes de aplicar as medidas.'});
   }
   const image=await importPreparedImage({...x,slot:req.query.slot,file:req.body,
