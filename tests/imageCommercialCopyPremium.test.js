@@ -55,16 +55,16 @@ test('imagem de objeções exige perguntas e RESPOSTAS; não apenas microetiquet
  assert.doesNotMatch(objections,/microetiquetas de 1 a 3 palavras/);
 });
 
-test('imagem 03 manda produzir foto-base sem inventar números; camada é feita depois',()=>{
+test('imagem 03 gera arte final com valores verificados no próprio prompt',()=>{
  const src='Dimensões: 40cm altura x 30cm largura x 55cm comprimento';
  const brief=createChatGptPrompts({title:'Organizador de Roupas',supplierSourceText:src});
  assert.deepEqual(brief.confirmedDimensions.measurements.map(x=>x.value),['40 cm','30 cm','55 cm']);
- assert.match(brief.prompts[2],/FOTOGRAFIA BASE SEM QUALQUER TEXTO/);
- assert.match(brief.prompts[2],/fonte bonita, moderna e discreta/);
- assert.doesNotMatch(brief.prompts[2],/ALTURA: 40 cm|LARGURA: 30 cm|COMPRIMENTO: 55 cm/);
- const api=imagePrompt({record:{sku:'AAA',title:'Organizador de Roupas'},slot:3});
- assert.match(api,/REGRA FINAL MAIS IMPORTANTE/);
- assert.match(api,/imagem SOMENTE FOTOGRÁFICA/);
+ assert.match(brief.prompts[2],/ARTE FINAL PRONTA/);
+ assert.match(brief.prompts[2],/ALTURA: 40 cm; LARGURA: 30 cm; COMPRIMENTO: 55 cm/);
+ assert.match(brief.prompts[2],/BORDA AMARELA/);
+ const api=imagePrompt({record:{sku:'AAA',title:'Organizador de Roupas'},slot:3,supplierSourceText:src});
+ assert.match(api,/ARTE COMERCIAL FINAL PREMIUM/);
+ assert.match(api,/ALTURA: 40 cm; LARGURA: 30 cm; COMPRIMENTO: 55 cm/);
 });
 
 test('cotas da imagem 03 são desenhadas só quando a SKU e a origem são exatas',async()=>{
@@ -97,12 +97,15 @@ test('cotas da imagem 03 são desenhadas só quando a SKU e a origem são exatas
  }
 });
 
-test('Ponte e API aplicam a mesma camada verificada antes de afirmar a revisão da foto 03',()=>{
+test('Ponte e API preservam a arte 03 pronta sem desenhar outra camada',()=>{
  const app=readFileSync(new URL('../public/app.js',import.meta.url),'utf8');
  assert.match(app,/if\(Number\(m\.slot\)===3\)\{/);
- assert.match(app,/addConfirmedSpecificationCard\(prepared\.blob,spec\)/);
- assert.match(app,/if\(Number\(slot\)===3\)\{/);
- assert.match(app,/result\.dimensionOverlay=await optimizerAnnotateThirdGeneratedImage\(w,result\)/);
+ const bridge=app.slice(app.indexOf('if(Number(m.slot)===3)'),app.indexOf('const {imageBlobSha256}',app.indexOf('if(Number(m.slot)===3)'));
+ assert.doesNotMatch(bridge,/addConfirmedSpecificationCard/);
+ assert.match(bridge,/SEM sobrepor novas etiquetas/);
+ const apiPath=app.slice(app.indexOf('async function optimizerImagesGenerateSlot('),app.indexOf("$('#optimizerOpenAiSave')",app.indexOf('async function optimizerImagesGenerateSlot(')));
+ assert.doesNotMatch(apiPath,/optimizerAnnotateThirdGeneratedImage\(w,result\)/);
+ assert.match(apiPath,/nenhuma etiqueta adicional foi desenhada/);
  assert.match(app,/sourceEvidenceSku:source\.sku/);
  assert.match(app,/sourceSaved:Boolean\(source\.updatedAt\)/);
  assert.match(app,/optimizerRepairThirdImageDimensions\(w,image\)/);
@@ -110,20 +113,22 @@ test('Ponte e API aplicam a mesma camada verificada antes de afirmar a revisão 
  assert.match(app,/if\(!optimizerImagesSameSku\(w\)\)throw Error/);
 });
 
-test('imagem 03 vazia oferece importação da foto gerada e aplica cotas WeDrop na importação manual',()=>{
+test('imagem 03 vazia oferece importação da arte pronta ou foto-base limpa com cotas opcionais',()=>{
  const app=readFileSync(new URL('../public/app.js',import.meta.url),'utf8');
  const manual=app.slice(app.indexOf('async function optimizerImageCorrectionImportFile(file)'),
   app.indexOf("$('#optimizerImageCorrectionChoose')?.addEventListener",app.indexOf('async function optimizerImageCorrectionImportFile(file)')));
  assert.match(manual,/if\(slot===3\)/);
  assert.match(manual,/await optimizerVerifiedDimensionSpec\(w\)/);
+ assert.match(manual,/if\(optimizerManualThirdBaseMode&&dimensionCount\)/);
  assert.match(manual,/addConfirmedSpecificationCard\(imageBlob,spec\)/);
+ assert.match(manual,/arte FINAL/);
  assert.match(manual,/X-Expect-Empty-Slot/);
  assert.match(manual,/X-Expected-Sha256/);
  assert.doesNotMatch(manual,/method:'DELETE'|RA_SITE_ABORT|restart:true/);
  const ui=app.slice(app.indexOf('const generate=optimizerMake(',app.indexOf('async function optimizerImagesLoad()')),
   app.indexOf('const adjust=optimizerMake(',app.indexOf('async function optimizerImagesLoad()')));
  assert.match(ui,/if\(slot===3&&!image\)/);
- assert.match(ui,/Importar foto 03 \+ medidas/);
+ assert.match(ui,/Importar foto-base sem cotas/);
  assert.match(ui,/optimizerImageCorrectionFile/);
  assert.match(ui,/if\(slot===3&&image\)/);
  assert.match(ui,/Aplicar medidas WeDrop/);
