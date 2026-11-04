@@ -53,12 +53,12 @@ test('WS20357 aplica medidas 183 cm comprimento e 69 cm largura cadastradas manu
 test('prompt 03 informa somente medidas confirmadas pela SKU e fotografa sem numeros inventados',()=>{
  const x=createChatGptPrompts({sku:'2392',title:'Bicicleta Infantil Moto Cross Rosa',
   supplierSourceText:evidence});
- assert.match(x.prompts[2],/FOTOGRAFIA BASE SEM QUALQUER TEXTO/);
- assert.doesNotMatch(x.prompts[2],/ALTURA: 75 cm|LARGURA: 63 cm|COMPRIMENTO: 117 cm/);
+ assert.match(x.prompts[2],/ARTE FINAL PRONTA/);
+ assert.match(x.prompts[2],/ALTURA: 75 cm; LARGURA: 63 cm; COMPRIMENTO: 117 cm/);
  assert.deepEqual(x.confirmedDimensions.measurements.map(x=>x.value),['75 cm','63 cm','117 cm']);
  assert.doesNotMatch(x.prompts[2],/48 cm|58 cm|68 cm|72 cm|35 cm/);
 });
-test('imagem 03 aplica apenas medidas depois de receber a foto no Manager',()=>{
+test('imagem 03 importa arte pronta sem sobrepor outra camada de medidas',()=>{
  const app=readFileSync(new URL('../public/app.js',import.meta.url),'utf8');
  const card=readFileSync(new URL('../public/specificationCard.js',import.meta.url),'utf8');
  const img=app.indexOf("if(Number(m.slot)===3)");
@@ -66,7 +66,8 @@ test('imagem 03 aplica apenas medidas depois de receber a foto no Manager',()=>{
  assert(img>0&&hash>img);
  const block=app.slice(img,hash);
  assert.match(block,/optimizerVerifiedDimensionSpec\(w\)/);
- assert.match(block,/addConfirmedSpecificationCard/);
+ assert.doesNotMatch(block,/addConfirmedSpecificationCard/);
+ assert.match(block,/SEM sobrepor novas etiquetas/);
  const fresh=app.slice(app.indexOf('async function optimizerFreshSavedWeDrop(w)'),app.indexOf('async function optimizerChatgptRender(w)'));
  assert.match(fresh,/api\/shopee\/optimizer\/workflow\/source\?/);
  assert.match(fresh,/sourceEvidenceSku:source\.sku/);
