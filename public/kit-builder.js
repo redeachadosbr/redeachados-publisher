@@ -5123,9 +5123,43 @@ $('#kitClose')?.addEventListener('click',()=>kitCloseInlineEditor());
 kitWizardInit();
 window.RAKitBuilderLoad=async()=>{
  kitDisablePreOrder();
- setKitMode(kitCurrentMode);
+ const handoff=globalThis.__RA_PENDING_IMAGE_KIT_HANDOFF||null;
+ setKitMode(handoff?'builder':kitCurrentMode);
  await categories();
- await loadDrafts();
+ // Nunca abrir automaticamente outro kit quando o usuário veio de um Item ID.
+ await loadDrafts({restoreCurrent:!handoff});
+ if(!handoff||globalThis.__RA_PENDING_IMAGE_KIT_HANDOFF!==handoff)return;
+ globalThis.__RA_PENDING_IMAGE_KIT_HANDOFF=null;
+ const kitSku=String(handoff.kitSku||'');
+ const label=String(handoff.title||'anúncio').slice(0,120);
+ if(handoff.kind!=='kit'||!kitSku){
+  status('Possível kit na Shopee (Item ID '+handoff.itemId+'): '+label+
+   '. Não há vínculo confirmado com um kit salvo. Selecione o kit correto em Meus Kits e vincule o anúncio antes de gerar imagens.','info');
+  $('#kitDraftList')?.scrollIntoView({behavior:'smooth',block:'start'});
+  return;
+ }
+ if(handoff.editable===false){
+  status('Kit '+kitSku+' reconhecido pelo Item ID '+handoff.itemId+
+   ', mas sua publicação ou otimização já está finalizada. Confira a aba Publicados; edição automática bloqueada.','info');
+  $('#kitPublishedList')?.scrollIntoView({behavior:'smooth',block:'start'});
+  return;
+ }
+ const root=$('#kitDraftList');
+ if(root&&![...root.querySelectorAll('[data-kit-draft-sku]')]
+  .some(card=>card.dataset.kitDraftSku===kitSku)){
+  // O vínculo pode pertencer a lote anterior, não exibido na lista de hoje.
+  const card=elt('article','kit-card kit-pending-handoff');
+  card.dataset.kitDraftSku=kitSku;
+  card.append(elt('strong','',label||kitSku),
+   elt('small','','Kit salvo '+kitSku+' · Item ID '+handoff.itemId));
+  root.prepend(card);
+ }
+ await openDraft(kitSku,{scroll:false,title:label});
+ if(prepared?.kit?.kitSku===kitSku&&kitActiveDraftSku===kitSku){
+  kitWizardSetStage(2,{scroll:true});
+  status('✓ Kit '+kitSku+' reconhecido pelo Item ID '+handoff.itemId+
+   '. Etapa de imagens aberta; revise o kit antes de publicar.','success');
+ }else status('O kit '+kitSku+' foi identificado, mas o editor não confirmou a recuperação. Nenhum anúncio foi alterado.','error');
 };
 if(location.pathname.replace(/\/$/,'').endsWith('/kits'))window.RAKitBuilderLoad();
 document.querySelector('a[data-tab="kits"]')?.addEventListener('click',()=>window.RAKitBuilderLoad());
