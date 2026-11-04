@@ -159,8 +159,9 @@ export async function findKitDraftsLinkedToItemId(shopId,itemId){
   const components=Array.isArray(row.component_skus)?row.component_skus.map(String):[];
   const mainSku=String(current.sku||current.mainSku||done.sku||
    d.kit?.components?.[0]?.sku||'');
+  const modelId=String(current.modelId||done.modelId||'0');
   unique.set(kitSku,{
-   kitSku,itemId:target,mainSku,
+   kitSku,itemId:target,mainSku,modelId,
    title:String(d.creative?.title||'').slice(0,120),
    publication:String(d.publication?.status||'local_draft'),
    optimized:d.optimizationFinalization?.status==='verified',
