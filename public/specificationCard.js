@@ -71,9 +71,18 @@ export async function addConfirmedSpecificationCard(blob,spec){
   // Cotas visuais nos limites aparentes; não converter pixels em centímetros.
   // Não cruzar a região central nem esconder o produto.
   const height=get('altura'),width=get('largura'),length=get('comprimento'),depth=get('profundidade');
+  // Colchões/boias fotografados na vertical: comprimento ao longo do corpo,
+  // largura na transversal. NUNCA representar as duas dimensões no mesmo eixo.
+  const longPortrait=!height&&length&&width&&
+   /colch[aã]o|boia|infl[aá]vel/i.test(String(spec.productTitle||''))&&
+   Number(String(length.value).replace(',','.').split(' ')[0])>
+   Number(String(width.value).replace(',','.').split(' ')[0]);
   if(height){dimensionLine(ctx,168,248,168,938);textChip(ctx,'ALTURA '+height.value,280,600);}
   if(width){dimensionLine(ctx,353,225,922,225);textChip(ctx,'LARGURA '+width.value,638,169);}
-  if(length){dimensionLine(ctx,295,1013,958,1013);textChip(ctx,'COMPRIMENTO '+length.value,628,1080);}
+  if(length){
+   if(longPortrait){dimensionLine(ctx,168,280,168,954);textChip(ctx,'COMPRIMENTO '+length.value,305,735);}
+   else{dimensionLine(ctx,295,1013,958,1013);textChip(ctx,'COMPRIMENTO '+length.value,628,1080);}
+  }
   if(depth){
    if(length)textChip(ctx,'PROFUNDIDADE '+depth.value,973,1133,{small:true});
    else{dimensionLine(ctx,306,1013,925,1013);textChip(ctx,'PROFUNDIDADE '+depth.value,633,1080);}
