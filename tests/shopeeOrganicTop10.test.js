@@ -187,5 +187,5 @@ test('modo API só cria visualizações e ação; não renderiza métricas ausen
  assert.match(css,/text-overflow:ellipsis!important/);
  assert.match(css,/font-variant-numeric:tabular-nums/);
  assert.match(html,/organic-top10\.css\?v=1\.2\.1-colar-tabela/);
- assert.match(html,/organic-top10\.js\?v=1\.2\.1-colar-tabela/);
+ assert.match(html,/organic-top10\.js\?v=1\.2\.2-multisheet/);
 });
