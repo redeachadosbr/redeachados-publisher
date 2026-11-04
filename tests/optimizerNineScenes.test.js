@@ -48,7 +48,7 @@ test('o Motor Matriz muda somente a imagem 03 e usa o texto colado da WeDrop',()
  assert.match(p,/ALTURA: 75 cm; LARGURA: 63 cm; COMPRIMENTO: 117 cm/);
  for(const disallowed of ['66 cm','100 cm','27 cm','selim 48'])
   assert(!p.includes(disallowed));
- assert.match(p,/NÃO ALTERAR ALGARISMOS/);
+ assert.match(p,/SEM ALTERAR ALGARISMOS/);
  assert.match(result.prompts[0],/INJETAR_CUSTOM/);
  assert.match(result.prompts[0],/INJETAR_PROMPT_MESTRE/);
  assert.doesNotMatch(result.prompts[2],/INJETAR_NOTA/); // notas antigas não podem voltar a pedir texto na imagem 03
