@@ -11359,7 +11359,7 @@ globalThis.window?.addEventListener?.('message',async(event)=>{
    // confirmados, não confiar em textos/medidas imaginados pelo gerador.
    const {addConfirmedSpecificationCard}=await import('/specificationCard.js?v=1.4.1-saved-source-identity');
    const spec=await optimizerVerifiedDimensionSpec(w);
-   if(spec){
+   if(spec){spec.productTitle=w.draftTitle||w.productTitle||'';
     optimizerChatBridgeNotice('Imagem 03 recebida. Aplicando cotas finas e somente dados confirmados na WeDrop da SKU...');
     const annotated=await addConfirmedSpecificationCard(prepared.blob,spec);
     prepared={...prepared,blob:annotated,filename:'imagem-03-medidas.png'};
@@ -11707,6 +11707,58 @@ function optimizerCommercialActionMessage(message,isError=false){
  notice.style.color=isError?'#a02a21':'#165b3f';
  notice.textContent=message;
 }
+// Aplica apenas as cotas verificadas à foto 03 JÁ SALVA.
+// Não gera imagem de novo, não toca nas outras oito posições e não publica.
+async function optimizerRepairThirdImageDimensions(w,image){
+ if(!optimizerImagesSameSku(w)||optimizerImagesAutoBusy||!image)return;
+ const status=$('#optimizerImagesStatus');
+ if(/medidas/i.test(String(image.filename||''))){
+  optimizerCommercialActionMessage('A imagem 03 já consta como anotada. Confira a prévia; para ajustar use Refazer apenas se necessário.');
+  return;
+ }
+ const spec=await optimizerVerifiedDimensionSpec(w);
+ if(!spec?.measurements?.length)
+  throw Error('A SKU '+w.sku+' ainda não possui pelo menos duas medidas válidas em Informações da WeDrop.');
+ const labels=spec.measurements.map(x=>x.label+' '+x.value).join(' · ');
+ if(!window.confirm('Aplicar as medidas SALVAS DA WEDROP à imagem 03 deste anúncio?\n'+
+  labels+'\n\nConfirme que a fotografia atual ainda NÃO contém essas cotas, para evitar duplicar os textos. '+
+  'As demais imagens e a Shopee permanecerão intactas.'))return;
+ optimizerImagesAutoBusy=true;optimizerImagesSetProgress();
+ try{
+  const qs=new URLSearchParams({sku:w.sku,item_id:w.itemId,model_id:w.modelId,slot:3});
+  const current=await fetch('/api/shopee/optimizer/images/reference?'+qs,{
+   credentials:'same-origin',cache:'no-store',signal:AbortSignal.timeout(45000)
+  });
+  if(!current.ok)throw Error('Foto 03 indisponível para ajuste (HTTP '+current.status+').');
+  const sourceHash=String(current.headers.get('X-Image-SHA256')||'');
+  if(sourceHash!==String(image.sha256||''))
+   throw Error('A imagem 03 foi modificada em outra aba. Atualize a galeria.');
+  const {addConfirmedSpecificationCard}=
+   await import('/specificationCard.js?v=1.4.1-saved-source-identity');
+  spec.productTitle=w.draftTitle||w.productTitle||'';
+  const final=await addConfirmedSpecificationCard(await current.blob(),spec);
+  if(!optimizerImagesSameSku(w))throw Error('SKU mudou durante a edição da imagem 03.');
+  const saved=await fetch('/api/shopee/optimizer/images/manual?'+qs,{
+   method:'POST',credentials:'same-origin',
+   headers:{'Content-Type':'image/png',
+    'X-Image-Filename':'imagem-03-medidas-confirmadas.png',
+    'X-Expected-Sha256':sourceHash},
+   body:final,signal:AbortSignal.timeout(90000)
+  });
+  const result=await saved.json().catch(()=>({}));
+  if(!saved.ok||result.ok!==true)
+   throw Error(String(result.error||'Falha ao salvar medidas (HTTP '+saved.status+')'));
+  const stage=w.stages?.find(x=>x.key==='images');
+  if(stage){stage.reviewed=false;stage.status='pending';stage.reviewedAt=null;}
+  optimizerExecReset();
+  optimizerCommercialActionMessage('✓ Foto 03 atualizada com '+labels+
+   '. A fotografia foi preservada; confira o posicionamento das cotas antes de aprovar.');
+  status.textContent='✓ Imagem 03 com medidas WeDrop salvas. As imagens 01, 02 e 04–09 foram preservadas.';
+ }finally{
+  optimizerImagesAutoBusy=false;optimizerImagesSetProgress();
+  if(optimizerImagesSameSku(w))await optimizerImagesLoad();
+ }
+}
 async function optimizerImagesMove(w,fromSlot,toSlot,stored){
  if(!optimizerImagesSameSku(w)||optimizerImagesAutoBusy||fromSlot===toSlot)return;
  const source=stored.get(fromSlot),target=stored.get(toSlot);
@@ -11895,6 +11947,21 @@ async function optimizerImagesLoad(){
     finally{optimizerImagesAutoBusy=false;optimizerImagesSetProgress();if(optimizerImagesSameSku(w))await optimizerImagesLoad();}
    };
    actions.append(generate);
+   if(slot===3&&image){
+    const stamp=optimizerMake('button','secondary','📏 Aplicar medidas WeDrop');
+    stamp.type='button';stamp.disabled=optimizerImagesAutoBusy;
+    stamp.title='Aplicar comprimento/largura confirmados da própria SKU à fotografia 03 salva, sem gerar novamente';
+    stamp.onclick=async()=>{
+     try{await optimizerRepairThirdImageDimensions(w,image);}
+     catch(error){
+      const msg='Não foi possível inserir as medidas na imagem 03: '+String(error.message||error)+
+       '. A fotografia anterior foi preservada.';
+      optimizerCommercialActionMessage(msg,true);
+      status.textContent=msg;
+     }
+    };
+    actions.append(stamp);
+   }
    const adjust=optimizerMake('button','secondary','✎');adjust.type='button';
    adjust.title='Ajustar pedido da imagem '+slot;adjust.setAttribute('aria-label','Ajustar imagem '+slot);
    adjust.onclick=()=>{$('#optimizerImageCorrectionSlot').value=String(slot);optimizerImageCorrectionLoad();void optimizerOpenImagePromptEditor();};
@@ -11998,6 +12065,7 @@ async function optimizerAnnotateThirdGeneratedImage(w,generated){
   await import('/specificationCard.js?v=1.4.1-saved-source-identity');
  const spec=await optimizerVerifiedDimensionSpec(w);
  if(!spec)return {applied:false,reason:'Sem dimensões verificadas para a SKU: a imagem foi mantida limpa, sem números inventados.'};
+ spec.productTitle=w.draftTitle||w.productTitle||'';
  const qs=new URLSearchParams({sku:w.sku,item_id:w.itemId,model_id:w.modelId,slot:3});
  const image=await fetch('/api/shopee/optimizer/images/reference?'+qs,{
   credentials:'same-origin',cache:'no-store',signal:AbortSignal.timeout(45000)
