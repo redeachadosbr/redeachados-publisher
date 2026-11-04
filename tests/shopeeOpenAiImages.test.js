@@ -7,18 +7,12 @@ const sample={sku:'SKU-TESTE',title:'Chaleira de aço inox',attributeAudit:{attr
  {state:'missing',name:'Potência',values:[]}
 ]}};
 
-test('roteiro de nove imagens na ordem aprovada pela loja',()=>{
+test('roteiro de nove imagens na ordem premium solicitada',()=>{
  assert.equal(IMAGE_STORYBOARD.length,9);
- assert.match(IMAGE_STORYBOARD[0],/Capa/);
- assert.match(IMAGE_STORYBOARD[1],/Uso real/);
- assert.match(IMAGE_STORYBOARD[2],/ARTE FINAL premium/);
- assert.match(IMAGE_STORYBOARD[3],/2 ou 3 benefícios específicos/);
- assert.match(IMAGE_STORYBOARD[4],/CIMA.*4 a 8 palavras/);
- assert.match(IMAGE_STORYBOARD[5],/ZOOM MACRO/);
- assert.match(IMAGE_STORYBOARD[6],/Transformação/);
- assert.match(IMAGE_STORYBOARD[7],/PERGUNTAS.*RESPOSTAS/);
+ for(const [i,word] of ['Capa','Uso real','DIMENSÕES','BENEFÍCIOS','DETALHES','MOCKUP DA EMBALAGEM','INFORMAÇÕES TÉCNICAS','QUEBRA DE OBJEÇÕES','CONFIANÇA'].entries())
+  assert.match(IMAGE_STORYBOARD[i],new RegExp(word,'i'));
+ assert.match(IMAGE_STORYBOARD[7],/3 perguntas/i);
  assert.match(IMAGE_STORYBOARD[8],/Compra Segura, Entrega Rápida e Atendimento Online/);
- assert.doesNotMatch(IMAGE_STORYBOARD.join(' '),/ANAMÓRFICA|ANTES E DEPOIS|CTA/);
  assert.throws(()=>imagePrompt({record:sample,slot:0}),/Posição inválida/);
  assert.throws(()=>imagePrompt({record:sample,slot:10}),/Posição inválida/);
  const prompt=imagePrompt({record:sample,slot:4,masterPrompt:'Fundo moderno',note:'Luz natural'});
