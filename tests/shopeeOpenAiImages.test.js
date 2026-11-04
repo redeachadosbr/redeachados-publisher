@@ -11,7 +11,7 @@ test('roteiro de nove imagens na ordem aprovada pela loja',()=>{
  assert.equal(IMAGE_STORYBOARD.length,9);
  assert.match(IMAGE_STORYBOARD[0],/Capa/);
  assert.match(IMAGE_STORYBOARD[1],/Uso real/);
- assert.match(IMAGE_STORYBOARD[2],/dimensões verificadas da mesma SKU/);
+ assert.match(IMAGE_STORYBOARD[2],/UMA ÚNICA VEZ setas brancas/);
  assert.match(IMAGE_STORYBOARD[3],/2 ou 3 benefícios específicos/);
  assert.match(IMAGE_STORYBOARD[4],/CIMA.*4 a 8 palavras/);
  assert.match(IMAGE_STORYBOARD[5],/ZOOM MACRO/);
