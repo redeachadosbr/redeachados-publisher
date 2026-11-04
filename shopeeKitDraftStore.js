@@ -143,7 +143,7 @@ export async function listKitDrafts(shopId){
 // Consulta também rascunhos de lotes anteriores, não apenas o lote ativo.
 export async function findKitDraftsLinkedToItemId(shopId,itemId){
  const id=shop(shopId),target=String(itemId||'').trim();
- if(!/^[1-9]\\d{0,18}$/.test(target))throw Error('Item ID inválido para localizar kit.');
+ if(!/^[1-9]\d{0,18}$/.test(target))throw Error('Item ID inválido para localizar kit.');
  const fields=['optimization','optimizationFinalization','publication'];
  const found=await Promise.all(fields.map(field=>request('?shop_id=eq.'+id+
   '&draft->'+field+'->>itemId=eq.'+target+
