@@ -3604,13 +3604,36 @@ async function optimizerImageCorrectionImportFile(file){
  try{
   status.textContent='Preparando imagem '+String(slot).padStart(2,'0')+' para salvar...';
   const prepared=await optimizerChatgptScaleFile(file);
-  const mime=prepared.blob.type==='image/jpeg'?'image/jpeg':'image/png';
+  // A foto 03 baixada/copied do ChatGPT é uma base LIMPA. No recebimento
+  // manual, aplicar as mesmas cotas WeDrop que a Ponte automática aplicaria.
+  // Nunca marcar a posição como salva com medidas se a validação falhar.
+  let imageBlob=prepared.blob,dimensionCount=0;
+  if(slot===3){
+   status.textContent='Imagem 03 recebida. Lendo as medidas salvas da mesma SKU na WeDrop...';
+   const spec=await optimizerVerifiedDimensionSpec(w);
+   if(spec?.measurements?.length){
+    const {addConfirmedSpecificationCard}=
+     await import('/specificationCard.js?v=1.4.2-bulleted-wedrop');
+    spec.productTitle=w.draftTitle||w.productTitle||'';
+    imageBlob=await addConfirmedSpecificationCard(imageBlob,spec);
+    dimensionCount=spec.measurements.length;
+    status.textContent='Aplicando '+dimensionCount+' medidas confirmadas à fotografia 03...';
+   }else{
+    status.textContent='Sem medidas confirmadas: a foto 03 será importada sem cotas inventadas.';
+   }
+  }
+  if(!optimizerImagesSameSku(w))throw Error('SKU alterada antes de importar a imagem.');
+  const mime=imageBlob.type==='image/jpeg'?'image/jpeg':'image/png';
   const extension=mime==='image/jpeg'?'jpg':'png';
+  const filename=slot===3&&dimensionCount?'imagem-03-medidas-confirmadas.png':
+   'imagem-corrigida-'+String(slot).padStart(2,'0')+'.'+extension;
+  const headers={'Content-Type':mime,'X-Image-Filename':encodeURIComponent(filename)};
+  if(previous?.sha256)headers['X-Expected-Sha256']=previous.sha256;
+  else headers['X-Expect-Empty-Slot']='true';
   const response=await fetch('/api/shopee/optimizer/images/manual?'+new URLSearchParams({
    sku:w.sku,item_id:w.itemId,model_id:w.modelId,slot
-  }),{method:'POST',headers:{'Content-Type':mime,
-   'X-Image-Filename':encodeURIComponent('imagem-corrigida-'+String(slot).padStart(2,'0')+'.'+extension)},
-   body:prepared.blob,signal:AbortSignal.timeout(90000)});
+  }),{method:'POST',headers,
+   body:imageBlob,signal:AbortSignal.timeout(90000)});
   const result=await response.json().catch(()=>({}));
   if(!response.ok)throw Error(result.error||'Não foi possível gravar a imagem no servidor.');
   if(!result.image?.sha256||Number(result.image.slot)!==slot||
@@ -3620,7 +3643,9 @@ async function optimizerImageCorrectionImportFile(file){
   if(stage){stage.reviewed=false;stage.status='pending';stage.reviewedAt=null;}
   optimizerExecReset();optimizerWorkflowRender(w);
   importedSha=result.image.sha256;
-  status.textContent='✓ Imagem '+String(slot).padStart(2,'0')+' substituída na SKU '+w.sku+'. Revise antes de enviar à Shopee.';
+  status.textContent=slot===3&&dimensionCount
+   ?'✓ Imagem 03 importada com '+dimensionCount+' medidas confirmadas da WeDrop da SKU '+w.sku+'. Confira as cotas antes de aprovar.'
+   :'✓ Imagem '+String(slot).padStart(2,'0')+' salva na SKU '+w.sku+'. Revise antes de enviar à Shopee.';
   $('#optimizerImageCorrectionFile').value='';
  }finally{
   optimizerImagesAutoBusy=false;optimizerImagesSetProgress();
@@ -11917,7 +11942,9 @@ async function optimizerImagesLoad(){
    heading.append(optimizerMake('span',image?'optimizer-slot-ready':'optimizer-slot-pending',
     image?'● Pronta':originalUrl?'◉ Original':'◆ Pendente'));
    detail.append(heading);
-   if(!image)detail.append(optimizerMake('small','optimizer-commercial-original-caption','Posição vazia · foto original preservada na Shopee'));
+   if(!image)detail.append(optimizerMake('small','optimizer-commercial-original-caption',
+    slot===3?'Imagem 03 ainda não foi recebida no Manager. Gere ou importe a foto-base: as medidas WeDrop serão aplicadas ao salvar.':
+    'Posição vazia · foto original preservada na Shopee'));
    const actions=optimizerMake('div','optimizer-commercial-image-actions');
    const generate=optimizerMake('button','secondary',image?'↻ Refazer':'✧ Gerar');
    generate.type='button';generate.disabled=optimizerImagesAutoBusy;
@@ -11946,6 +11973,21 @@ async function optimizerImagesLoad(){
     finally{optimizerImagesAutoBusy=false;optimizerImagesSetProgress();if(optimizerImagesSameSku(w))await optimizerImagesLoad();}
    };
    actions.append(generate);
+   if(slot===3&&!image){
+    const importThird=optimizerMake('button','secondary','📏 Importar foto 03 + medidas');
+    importThird.type='button';
+    importThird.classList.add('optimizer-commercial-dimensions-import');
+    importThird.title='Escolher a fotografia-base 03 salva no ChatGPT: o Manager adiciona as medidas exatas da SKU';
+    importThird.onclick=()=>{
+     if(optimizerImagesAutoBusy||!optimizerImagesSameSku(w))return;
+     $('#optimizerImageCorrectionSlot').value='3';
+     optimizerImageCorrectionLoad();
+     optimizerCommercialActionMessage('Selecione a foto 03 SEM textos, baixada do ChatGPT. '+
+      'O Manager aplicará as medidas confirmadas da SKU antes de salvar. As imagens 01 e 02 permanecem intactas.');
+     $('#optimizerImageCorrectionFile')?.click();
+    };
+    actions.append(importThird);
+   }
    let measureButton=null;
    if(slot===3&&image){
     const stamp=optimizerMake('button','secondary','📏 Aplicar medidas WeDrop');
