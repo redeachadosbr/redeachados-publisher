@@ -107,3 +107,26 @@ test('Ponte e API aplicam a mesma camada verificada antes de afirmar a revisão 
  assert.match(app,/X-Expected-Sha256/);
  assert.match(app,/if\(!optimizerImagesSameSku\(w\)\)throw Error/);
 });
+
+test('imagem 03 vazia oferece importação da foto gerada e aplica cotas WeDrop na importação manual',()=>{
+ const app=readFileSync(new URL('../public/app.js',import.meta.url),'utf8');
+ const manual=app.slice(app.indexOf('async function optimizerImageCorrectionImportFile(file)'),
+  app.indexOf("$('#optimizerImageCorrectionChoose')?.addEventListener",app.indexOf('async function optimizerImageCorrectionImportFile(file)')));
+ assert.match(manual,/if\(slot===3\)/);
+ assert.match(manual,/await optimizerVerifiedDimensionSpec\(w\)/);
+ assert.match(manual,/addConfirmedSpecificationCard\(imageBlob,spec\)/);
+ assert.match(manual,/X-Expect-Empty-Slot/);
+ assert.match(manual,/X-Expected-Sha256/);
+ assert.doesNotMatch(manual,/method:'DELETE'|RA_SITE_ABORT|restart:true/);
+ const ui=app.slice(app.indexOf('const generate=optimizerMake(',app.indexOf('async function optimizerImagesLoad()')),
+  app.indexOf('const adjust=optimizerMake(',app.indexOf('async function optimizerImagesLoad()')));
+ assert.match(ui,/if\(slot===3&&!image\)/);
+ assert.match(ui,/Importar foto 03 \+ medidas/);
+ assert.match(ui,/optimizerImageCorrectionFile/);
+ assert.match(ui,/if\(slot===3&&image\)/);
+ assert.match(ui,/Aplicar medidas WeDrop/);
+ const server=readFileSync(new URL('../server.js',import.meta.url),'utf8');
+ assert.match(server,/x-expect-empty-slot/);
+ assert.match(server,/A posição foi preenchida por outra aba/);
+});
+
