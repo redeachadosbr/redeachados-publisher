@@ -3,12 +3,13 @@
 // Fotografia com fundo moderno/visível; preservar integralmente a base HD.
 import {confirmedProductDimensionsFromWeDrop,confirmedProductSideFactsFromWeDrop,confirmedAssembledTrackDimensionsFromWeDrop} from './productDimensions.js';
 
-export function confirmedSpecCard({sourceText='',sku='',sourceEvidenceSku='',supplierMatchedBy=''}={}){
- // Se a origem estiver associada a uma SKU real, não aceitar informações
- // importadas de outra SKU ou catálogo WeDrop sem vínculo confirmado.
+export function confirmedSpecCard({sourceText='',sku='',sourceEvidenceSku='',supplierMatchedBy='',sourceSaved=false}={}){
+ // O texto salvo manualmente em Informações da WeDrop já é vinculado pelo
+ // servidor a shop/item/model/SKU e não depende da correspondência do catálogo.
+ // Nunca aceitar texto de uma SKU diferente ou input sem origem validada.
  if(sku){
   if(String(sourceEvidenceSku||'').trim()!==String(sku).trim()||
-     !['exact-sku','reviewed-link'].includes(String(supplierMatchedBy||'')))
+     !(sourceSaved===true||['exact-sku','reviewed-link'].includes(String(supplierMatchedBy||''))))
    return null;
  }
  const assembled=confirmedAssembledTrackDimensionsFromWeDrop(sourceText);
