@@ -5126,45 +5126,125 @@ $('#kitCopyAllPrompts')?.addEventListener('click',()=>prepared&&void copy(
  Array.from({length:9},(_,i)=>kitImagePromptAt(i+1)).join('\n\n--- PRÓXIMA IMAGEM ---\n\n')));
 $('#kitClose')?.addEventListener('click',()=>kitCloseInlineEditor());
 kitWizardInit();
-window.RAKitBuilderLoad=async()=>{
- kitDisablePreOrder();
- const handoff=globalThis.__RA_PENDING_IMAGE_KIT_HANDOFF||null;
- setKitMode(handoff?'builder':kitCurrentMode);
- await categories();
- // Nunca abrir automaticamente outro kit quando o usuário veio de um Item ID.
- await loadDrafts({restoreCurrent:!handoff});
- if(!handoff||globalThis.__RA_PENDING_IMAGE_KIT_HANDOFF!==handoff)return;
- globalThis.__RA_PENDING_IMAGE_KIT_HANDOFF=null;
- const kitSku=String(handoff.kitSku||'');
- const label=String(handoff.title||'anúncio').slice(0,120);
- if(handoff.kind!=='kit'||!kitSku){
-  status('Possível kit na Shopee (Item ID '+handoff.itemId+'): '+label+
-   '. Não há vínculo confirmado com um kit salvo. Selecione o kit correto em Meus Kits e vincule o anúncio antes de gerar imagens.','info');
-  $('#kitDraftList')?.scrollIntoView({behavior:'smooth',block:'start'});
-  return;
- }
- if(handoff.editable===false){
-  status('Kit '+kitSku+' reconhecido pelo Item ID '+handoff.itemId+
-   ', mas sua publicação ou otimização já está finalizada. Confira a aba Publicados; edição automática bloqueada.','info');
-  $('#kitPublishedList')?.scrollIntoView({behavior:'smooth',block:'start'});
-  return;
- }
+// A origem foi conferida ao vivo pela rota pending-images/editor. A abertura
+// abaixo é somente edição do anúncio existente, NUNCA publicação de outro kit.
+async function kitOpenPendingLinked(handoff){
+ const kitSku=String(handoff.kitSku||''),itemId=String(handoff.itemId||'');
+ const label=String(handoff.title||kitSku).slice(0,120);
  const root=$('#kitDraftList');
  if(root&&![...root.querySelectorAll('[data-kit-draft-sku]')]
   .some(card=>card.dataset.kitDraftSku===kitSku)){
-  // O vínculo pode pertencer a lote anterior, não exibido na lista de hoje.
   const card=elt('article','kit-card kit-pending-handoff');
   card.dataset.kitDraftSku=kitSku;
   card.append(elt('strong','',label||kitSku),
-   elt('small','','Kit salvo '+kitSku+' · Item ID '+handoff.itemId));
+   elt('small','','Kit vinculado · Item ID '+itemId+' · edição existente'));
   root.prepend(card);
  }
- await openDraft(kitSku,{scroll:false,title:label});
- if(prepared?.kit?.kitSku===kitSku&&kitActiveDraftSku===kitSku){
-  kitWizardSetStage(2,{scroll:true});
-  status('✓ Kit '+kitSku+' reconhecido pelo Item ID '+handoff.itemId+
-   '. Etapa de imagens aberta; revise o kit antes de publicar.','success');
- }else status('O kit '+kitSku+' foi identificado, mas o editor não confirmou a recuperação. Nenhum anúncio foi alterado.','error');
+ const loaded=await openDraft(kitSku,{scroll:false,title:label});
+ if(!loaded||prepared?.kit?.kitSku!==kitSku||kitActiveDraftSku!==kitSku){
+  status('O editor não recuperou o kit '+kitSku+'. Nenhum anúncio foi modificado.','error');
+  return false;
+ }
+ const savedIds=[prepared?.optimization?.itemId,prepared?.publication?.itemId,
+  prepared?.optimizationFinalization?.itemId].map(String).filter(x=>/^[1-9]\d{0,18}$/.test(x));
+ if(!savedIds.includes(itemId)){
+  kitCloseInlineEditor();
+  status('Item ID '+itemId+' é diferente do vínculo salvo para o kit '+kitSku+
+   '. Edição interrompida para proteger o anúncio correto.','error');
+  return false;
+ }
+ const main=String(handoff.mainSku||prepared?.optimization?.mainSku||
+  prepared?.optimization?.sku||prepared?.optimizationFinalization?.sku||
+  prepared?.kit?.components?.[0]?.sku||'');
+ if(!prepared.kit.components.some(p=>String(p.sku)===main)){
+  kitCloseInlineEditor();
+  status('SKU principal incompatível com os componentes do kit. Edição interrompida.','error');
+  return false;
+ }
+ kitWizardSetStage(2,{scroll:true});
+ const resumed=kitExistingOptimizer.resumeLiveVerifiedTarget({
+  kitSku,sku:main,itemId,modelId:String(handoff.modelId||prepared?.optimization?.modelId||'0')
+ });
+ status(resumed?.ok?
+  '✓ Editando anúncio existente Item ID '+itemId+
+  ' · Etapa 02 Imagens aberta. Motor da Shopee carregando para revisão; sem nova publicação.':
+  'Editor de imagens do kit '+kitSku+' aberto. O motor do anúncio '+itemId+
+  ' ainda requer conferência: '+String(resumed?.error||'não carregou')+'. Nenhum envio iniciado.',
+  resumed?.ok?'success':'warning');
+ return true;
+}
+// Quando só existe a palavra Kit no título, exigir seleção da composição.
+// A SKU isolada NÃO é vínculo e não autoriza editar qualquer outro Item ID.
+function kitShowPendingLinkChoice(handoff){
+ const root=$('#kitDraftList');if(!root)return;
+ const itemId=String(handoff.itemId||''),sku=String(handoff.sku||'').trim();
+ root.querySelector('#kitPendingLinkChoices')?.remove();
+ const panel=elt('section','kit-card kit-pending-handoff');
+ panel.id='kitPendingLinkChoices';
+ panel.style.cssText='margin:10px 0 18px;padding:18px 20px;border:1px solid #c4d8f2;border-radius:16px;background:#f5f9ff;box-shadow:0 8px 24px rgba(23,62,117,.08)';
+ panel.append(elt('strong','','Editar anúncio existente · Item ID '+itemId),
+  elt('p','','Anúncio: '+String(handoff.title||'Kit Shopee').slice(0,130)));
+ const options=kitPendingLinkCatalog.filter(d=>
+  Array.isArray(d.skus)&&d.skus.some(x=>String(x)===sku)&&
+  d.publication==='local_draft'&&d.optimizationFinalization?.status!=='verified'&&
+  (!d.itemId||String(d.itemId)===itemId)&&
+  (!d.optimization?.itemId||String(d.optimization.itemId)===itemId));
+ if(!options.length){
+  panel.append(elt('p','','Não há uma composição salva, editável e compatível com a SKU principal '+sku+
+   '. Primeiro salve ou importe o kit correto. Nenhum anúncio será alterado ou substituído.'));
+ }else{
+  panel.append(elt('small','','Confirme a composição comercial correta antes de vincular o Item ID:'));
+  const actions=elt('div','kit-draft-actions');
+  for(const candidate of options){
+   const button=elt('button','kit-secondary','Editar kit: '+String(candidate.title||candidate.kitSku).slice(0,80));
+   button.type='button';
+   button.addEventListener('click',async()=>{
+    if(!window.confirm('Vincular o anúncio Shopee Item ID '+itemId+
+      ' ao kit '+candidate.kitSku+' com SKU principal '+sku+
+      '? A Shopee não será modificada; o servidor verificará a identidade.'))return;
+    button.disabled=true;button.textContent='Conferindo vínculo na Shopee...';
+    try{
+     const result=await api('/api/shopee/kits/optimization/prepare',{body:{
+      kitSku:candidate.kitSku,sku,mainSku:sku,itemId,
+      modelId:String(handoff.modelId||'0'),confirmedItemId:itemId
+     }});
+     if(result.prepared!==true||String(result.target?.itemId)!==itemId)
+      throw Error('Associação do anúncio não confirmada.');
+     await kitOpenPendingLinked({...handoff,kind:'kit',kitSku:candidate.kitSku,
+      mainSku:sku,modelId:String(result.target?.modelId||'0')});
+    }catch(error){
+     status('Não foi possível associar o Item ID '+itemId+': '+String(error.message||error)+
+      '. Nenhum anúncio publicado.','error');
+     button.disabled=false;button.textContent='Tentar novamente: '+candidate.kitSku;
+    }
+   });
+   actions.append(button);
+  }
+  panel.append(actions);
+ }
+ root.prepend(panel);
+ panel.scrollIntoView({behavior:'smooth',block:'start'});
+ status('O Item ID '+itemId+' parece ser um kit, mas ainda não possui vínculo confirmado. Selecione a composição exata para abrir a edição.','info');
+}
+let kitBuilderLoadSequence=Promise.resolve();
+window.RAKitBuilderLoad=()=>{
+ // Um único carregamento por vez: evitar que cliques/hand-offs simultâneos
+ // reponham um rascunho diferente no lugar do editor aberto.
+ kitBuilderLoadSequence=kitBuilderLoadSequence.catch(()=>{}).then(async()=>{
+  kitDisablePreOrder();
+  const handoff=globalThis.__RA_PENDING_IMAGE_KIT_HANDOFF||null;
+  setKitMode(handoff?'builder':kitCurrentMode);
+  await categories();
+  await loadDrafts({restoreCurrent:!handoff});
+  if(!handoff||globalThis.__RA_PENDING_IMAGE_KIT_HANDOFF!==handoff)return;
+  globalThis.__RA_PENDING_IMAGE_KIT_HANDOFF=null;
+  if(handoff.kind==='kit'&&handoff.kitSku)
+   await kitOpenPendingLinked(handoff);
+  else if(handoff.kind==='kit-unlinked')
+   kitShowPendingLinkChoice(handoff);
+  else status('Não foi possível validar a composição deste Item ID.','error');
+ });
+ return kitBuilderLoadSequence;
 };
-if(location.pathname.replace(/\/$/,'').endsWith('/kits'))window.RAKitBuilderLoad();
-document.querySelector('a[data-tab="kits"]')?.addEventListener('click',()=>window.RAKitBuilderLoad());
+if(location.pathname.replace(/\/$/,'').endsWith('/kits'))void window.RAKitBuilderLoad();
+// setTab('kits') já carrega a página: não registrar um segundo listener.
