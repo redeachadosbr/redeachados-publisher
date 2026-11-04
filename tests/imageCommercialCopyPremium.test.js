@@ -177,3 +177,35 @@ test('WS20357 exibe 183 cm vertical, 69 cm horizontal e selo de cores sortidas n
  assert.equal(confirmedSpecCard({sku:'WS20357',sourceEvidenceSku:'SKU-ERRADA',sourceSaved:true,sourceText:source}),null);
 });
 
+
+test('WS20357 gera comando final com 183cm x 69cm, três cores e selo sem overlay automático',()=>{
+ const evidence=[
+  'Colchão Inflável Piscina 183x69cm Verão',
+  'ESPECIFICAÇÕES:',
+  '- Material: 100% PVC',
+  '- Dimensões: 183cm comprimento x 69cm largura',
+  '- Cor: Azul, Amarelo e Rosa',
+  '**PRODUTO ENVIADO COM COR SORTIDA**'
+ ].join('\n');
+ const title='Colchão Inflável Piscina 183x69cm Verão';
+ const chat=createChatGptPrompts({title,supplierSourceText:evidence}).prompts[2];
+ const api=imagePrompt({record:{title,sku:'WS20357'},slot:3,supplierSourceText:evidence});
+ for(const prompt of [chat,api]){
+  assert.match(prompt,/183 cm/);
+  assert.match(prompt,/69 cm/);
+  assert.match(prompt,/ROSA, AMARELO e AZUL/);
+  assert.match(prompt,/Envio em cores sortidas/);
+  assert.match(prompt,/BORDA AMARELA/);
+  assert.match(prompt,/AZUL-MARINHO/);
+  assert.match(prompt,/não.*(?:um kit|três unidades)/i);
+  assert.doesNotMatch(prompt,/ALTURA: 183 cm|ALTURA: 69 cm/);
+ }
+ const app=readFileSync(new URL('../public/app.js',import.meta.url),'utf8');
+ const bridge=app.slice(app.indexOf('if(Number(m.slot)===3)'),app.indexOf('const {imageBlobSha256}',app.indexOf('if(Number(m.slot)===3)')));
+ assert.doesNotMatch(bridge,/addConfirmedSpecificationCard/);
+ assert.match(bridge,/Importando SEM sobrepor novas etiquetas/);
+ const manual=app.slice(app.indexOf('async function optimizerImageCorrectionImportFile(file)'),
+  app.indexOf("$('#optimizerImageCorrectionChoose')?.addEventListener",app.indexOf('async function optimizerImageCorrectionImportFile(file)')));
+ assert.match(manual,/if\(optimizerManualThirdBaseMode&&dimensionCount\)/);
+ assert.match(manual,/imagem-03-arte-pronta-com-medidas/);
+});
