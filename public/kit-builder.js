@@ -2639,10 +2639,13 @@ function kitCloseInlineEditor(){
  kitEditorReturnHome();
  kitWizardSetStage(0);
 }
+let kitPendingLinkCatalog=[];
 async function loadDrafts({restoreCurrent=true}={}){
  const root=$('#kitDraftList');if(!root)return;
  try{
   const result=await api('/api/shopee/kits/drafts');
+  kitPendingLinkCatalog=Array.isArray(result.linkCandidates)?result.linkCandidates:
+   [...(result.drafts||[]),...(result.published||[])];
   // Evita destruir o formulário se ele estiver dentro da lista ao atualizar.
   kitEditorReturnHome();
   root.replaceChildren();
@@ -2838,9 +2841,11 @@ async function openDraft(kitSku,{scroll=true,targetCard=null,title=''}={}){
    '✓ Kit '+kitSku+' recuperado. Você pode editar textos e imagens. Custos e estoque NÃO foram atualizados; a publicação continua bloqueada. '+(d.stockReason||''):
    'Rascunho selecionado: '+(title||d.creative?.title||kitSku)+'. Custos e estoque recalculados.',
    kitDraftNeedsRefresh?'info':'success');
+  return true;
  }catch(error){
   if(revision===kitDraftOpenRevision)
    status('Não foi possível recuperar o kit '+kitSku+': '+error.message,'error');
+  return false;
  }finally{
   if(button?.isConnected){button.disabled=false;button.textContent='Editar e continuar →';}
  }
