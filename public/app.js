@@ -11323,7 +11323,7 @@ globalThis.window?.addEventListener?.('message',async(event)=>{
   if(Number(m.slot)===3){
    // A foto gerada é SOMENTE a base. Montar a ficha com números de produto
    // confirmados, não confiar em textos/medidas imaginados pelo gerador.
-   const {confirmedSpecCard,addConfirmedSpecificationCard}=await import('/specificationCard.js?v=1.3.0-assembled-track-no-fake-specs');
+   const {confirmedSpecCard,addConfirmedSpecificationCard}=await import('/specificationCard.js?v=1.4.0-modern-dimensions');
    const spec=confirmedSpecCard({
     sourceText:w.sourceEvidence?.sourceText||'',
     sku:w.sku,sourceEvidenceSku:w.sourceEvidence?.sku||'',
@@ -11957,12 +11957,63 @@ async function optimizerImagesLoad(){
   if(!optimizerImagesAutoBusy)status.textContent=stored.size+'/9 imagens salvas. Revise todas e registre a conferência antes de executar na Shopee.';
  }catch(e){status.textContent='Falha ao carregar imagens: '+e.message;}
 }
+// A API gera a MESMA fotografia-base limpa que a Ponte ChatGPT.
+// Para a imagem 03, aplicar uma única camada de cotas verificadas da SKU,
+// sem pedir à IA que desenhe números ou reproduza medidas inventadas.
+async function optimizerAnnotateThirdGeneratedImage(w,generated){
+ if(!optimizerImagesSameSku(w))throw Error('SKU mudou antes de aplicar medidas.');
+ const {confirmedSpecCard,addConfirmedSpecificationCard}=
+  await import('/specificationCard.js?v=1.4.0-modern-dimensions');
+ const spec=confirmedSpecCard({
+  sourceText:w.sourceEvidence?.sourceText||'',
+  sku:w.sku,sourceEvidenceSku:w.sourceEvidence?.sku||'',
+  supplierMatchedBy:w.supplierProduct?.matchedBy||''
+ });
+ if(!spec)return {applied:false,reason:'Sem dimensões verificadas para a SKU: a imagem foi mantida limpa, sem números inventados.'};
+ const qs=new URLSearchParams({sku:w.sku,item_id:w.itemId,model_id:w.modelId,slot:3});
+ const image=await fetch('/api/shopee/optimizer/images/reference?'+qs,{
+  credentials:'same-origin',cache:'no-store',signal:AbortSignal.timeout(45000)
+ });
+ if(!image.ok)throw Error('Não foi possível recuperar a foto 03 para aplicar as cotas (HTTP '+image.status+').');
+ const sha=image.headers.get('X-Image-SHA256')||'';
+ // Nunca sobrescrever foto se outra aba alterou o item após a geração.
+ if(generated?.image?.sha256&&sha&&String(generated.image.sha256)!==sha)
+  throw Error('Foto 03 mudou durante a aplicação de medidas. Atualize a galeria antes de refazer.');
+ const clean=await image.blob();
+ const final=await addConfirmedSpecificationCard(clean,spec);
+ if(!optimizerImagesSameSku(w))throw Error('SKU mudou durante a aplicação de medidas da foto 03.');
+ const latest=await json('/api/shopee/optimizer/images/manual?'+new URLSearchParams({
+  sku:w.sku,item_id:w.itemId,model_id:w.modelId
+ }));
+ if(sha&&!latest.images?.some(x=>Number(x.slot)===3&&x.sha256===sha))
+  throw Error('Foto 03 foi alterada em outra sessão. Nenhuma camada adicional enviada.');
+ const uploaded=await fetch('/api/shopee/optimizer/images/manual?'+qs,{
+  method:'POST',credentials:'same-origin',headers:{
+   'Content-Type':'image/png','X-Image-Filename':'imagem-03-medidas-confirmadas.png'
+  },body:final,signal:AbortSignal.timeout(90000)
+ });
+ const response=await uploaded.json().catch(()=>({}));
+ if(!uploaded.ok||response.ok!==true)
+  throw Error('Não foi possível salvar as medidas sobre a imagem 03: '+
+   String(response.error||'HTTP '+uploaded.status).slice(0,160));
+ return {applied:true,measurements:spec.measurements?.length||0};
+}
 async function optimizerImagesGenerateSlot(w,slot,replace,{editCurrent=false}={}){
  const result=await json('/api/shopee/optimizer/images/generate',{
   method:'POST',headers:{'Content-Type':'application/json'},
   body:JSON.stringify({sku:w.sku,itemId:w.itemId,modelId:w.modelId,slot,replace,editCurrent}),
   signal:AbortSignal.timeout(210000)
  });
+ if(Number(slot)===3){
+  try{
+   result.dimensionOverlay=await optimizerAnnotateThirdGeneratedImage(w,result);
+   if(!result.dimensionOverlay.applied)
+    optimizerCommercialActionMessage('Imagem 03: '+result.dimensionOverlay.reason);
+  }catch(error){
+   throw Error('A foto-base 03 foi salva, mas a aplicação das medidas não terminou: '+
+    String(error.message||error)+'. Revise a posição 03 antes de publicar.');
+  }
+ }
  if(optimizerImagesSameSku(w)){
   optimizerImagesSavedSlots.add(slot);
   const stage=w.stages?.find(x=>x.key==='images');
