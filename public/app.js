@@ -10790,7 +10790,11 @@ async function optimizerChatgptMakeBrief(w,{defaultOnly=false}={}){
  const {createChatGptPrompts}=await import('/chatgptPrompts.js?v=20261104-premium-nine-images');
  return createChatGptPrompts({
   sku:w.sku,title:w.draftTitle||'Produto Shopee',
-  imageUrls:w.imageUrls||[],
+  // Sempre priorizar a foto ORIGINAL WeDrop da mesma SKU vinculada.
+  // Se não houver foto confiável, manter a fotografia atual da Shopee.
+  imageUrls:(['exact-sku','reviewed-link'].includes(String(w.supplierProduct?.matchedBy||''))&&
+   /^https:\/\/wedrop-products-images\.nyc3\.cdn\.digitaloceanspaces\.com\//i.test(String(w.supplierProduct?.imageUrl||''))?
+   [w.supplierProduct.imageUrl,...(w.imageUrls||[])]:w.imageUrls||[]),
   attributes:w.attributes||[],
   imageNotes:w.imageNotes||{},
   imagePrompts:defaultOnly?{}:(w.imagePrompts||{}),
