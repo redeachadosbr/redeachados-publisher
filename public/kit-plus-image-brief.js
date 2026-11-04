@@ -25,12 +25,12 @@ export function buildKitPlusImageBrief(kit,{manualFacts={}}={}){
  const stages=[
   '01 CAPA: todos os produtos juntos, 85–90% da área, fundo moderno, SEM texto.',
   '02 USO REAL: itens juntos em situação cotidiana coerente, frase curta se comprovada.',
-  '03 ESPECIFICAÇÕES: todos juntos; escrever junto a CADA produto as suas dimensões cadastradas com unidade, identificando pelo NOME COMERCIAL, sem escrever SKU ou misturar medidas. Se não houver dimensão com unidade naquela ficha, não criar número.',
-  '04 BENEFÍCIOS: 2–3 frases discretas, apenas fatos verdadeiros.',
-  '05 DOR E SOLUÇÃO: produtos juntos como solução coerente, uma frase curta.',
-  '06 PERSUASÃO: destaque a combinação, uma frase breve.',
-  '07 TRANSFORMAÇÃO: experiência realista, sem prometer efeitos não confirmados.',
-  '08 QUEBRA DE OBJEÇÕES: 3 dúvidas com respostas objetivas comprovadas.',
+  '03 ESPECIFICAÇÕES: todos os produtos juntos, dimensões confirmadas destacadas diretamente ao lado de CADA produto correto com linhas finas e fonte bonita, moderna, discreta e legível. Sem SKU, medidas de embalagem, números inventados ou etiquetas grandes; texto total até 10% da foto.',
+  '04 BENEFÍCIOS: uma frase comercial elaborada de 4 a 8 palavras, escolhida a partir do benefício REAL visível na foto, pequena e sem slogans genéricos.',
+  '05 DOR E SOLUÇÃO: produtos juntos resolvendo necessidade real e uma frase persuasiva de 4 a 8 palavras ligada diretamente à cena.',
+  '06 PERSUASÃO: mostrar a complementaridade real do kit; uma frase original de 4 a 8 palavras que traduza valor em uso, sem prometer economia.',
+  '07 TRANSFORMAÇÃO: mostrar experiência real com todos os itens e uma frase emocional moderada de 4 a 8 palavras, baseada na fotografia e sem exageros.',
+  '08 QUEBRA DE OBJEÇÕES: 2 perguntas REAIS de clientes com respostas curtas e comprovadas (até 3 se houver evidência e espaço), tipografia discreta em duas linhas por par: Pergunta? / Resposta. Não deixar a foto poluída.',
   '09 MOCKUP: ambos juntos em fundo premium; selos Compra Segura, Entrega Rápida e Atendimento Online somente se verdadeiros.'
  ].join('\n');
  return [
@@ -42,7 +42,7 @@ export function buildKitPlusImageBrief(kit,{manualFacts={}}={}){
   'REGRA ABSOLUTA: em cada uma das 9 imagens, TODOS OS '+items.length+' SKUs devem aparecer JUNTOS na MESMA cena, fielmente às fotos originais. Jamais somente o produto principal. Nunca dividir os produtos em quadros separados; não inventar acessórios, funções, cores, quantidades ou medidas.',
   'FOTOS: utilize as imagens reais anexadas nesta conversa, correspondentes aos SKUs. URLs acima são apenas referências; se você não conseguir ver fielmente uma foto, solicite que eu a anexe antes de gerar. Não crie componentes aproximados sem referência.',
   'FICHA TÉCNICA POR PRODUTO: as dimensões acima foram extraídas da seção "Informações por SKU · descrição, medidas e print" ou do catálogo WeDrop. Para a IMAGEM 03, mostrar visualmente as medidas que constam EXPRESSAMENTE em cada ficha, com unidade e junto ao produto correto. Os números fornecidos pelo vendedor são dados cadastrados pelo vendedor, não medições verificadas pela WeDrop. Nunca transferir medidas entre SKUs, inventar medidas ausentes ou confundir dimensões do produto com medidas da embalagem.',
-  'VISUAL: fotografia publicitária realista, fundo ambientado moderno HD, iluminação premium, diversidade de cenas e ângulos, pouco texto em português brasileiro. Sem preços, logotipos ou marca-d’água.',
+  'VISUAL: fotografia publicitária realista, fundo ambientado moderno HD, iluminação premium, diversidade de cenas e ângulos. Frases em português brasileiro ESPECÍFICAS DA CENA E DO PRODUTO, fonte sans-serif moderna, pequena e elegante, textos no máximo 10% da imagem e produtos como protagonistas. Sem preços, tarjas, títulos grandes, logotipos adicionados ou marca-d’água.',
   'AS NOVE IMAGENS DEVEM SEGUIR ESTA SEQUÊNCIA:',
   stages,
   'ENTREGA: 9 arquivos de imagem separados, com produtos completos nas nove artes. Se a interface gerar apenas uma imagem por mensagem, gere AGORA a IMAGEM 01 e depois continue sequencialmente quando eu solicitar “próxima imagem”. Não retorne apenas descrições ou prompts.',
