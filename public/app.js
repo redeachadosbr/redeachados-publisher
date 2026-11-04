@@ -2865,7 +2865,7 @@ function optimizerKitWorkflowActive(){
 const workflowImageGuide=[
  'Imagem 1 — Capa: produto em destaque, ocupando aproximadamente 85% da imagem.',
  'Imagem 2 — Uso real: ambiente, personagem e câmera diferentes das outras oito imagens; sem reutilizar a fotografia anterior.',
- 'Imagem 3 — Medidas: dimensões reais junto aos contornos do produto com setas finas; capacidade e peso laterais pequenos somente se confirmados na WeDrop. Fundo HD moderno visível, sem título ESPECIFICAÇÕES ou quadros brancos.',
+ 'Imagem 3 — Dimensões: fotografia premium de produto inteiro, preparada para uma única camada de medidas validadas da mesma SKU. Arte final com setas BRANCAS, boxes BRANCOS arredondados com BORDA AMARELA e valores AZUL-MARINHO; em colchões com cores sortidas confirmadas, três variantes lado a lado e cotas no produto azul à direita.',
  'Imagem 4 — Benefícios: vantagens visuais reais, com UMA frase de 2 a 5 palavras pequena, tipografia premium e outro ângulo e cenário.',
  'Imagem 5 — Dor e solução: mostrar como o produto resolve uma necessidade do comprador. Uma frase curta.',
  'Imagem 6 — Persuasão: destacar um diferencial real, com comunicação comercial.',
@@ -3613,7 +3613,7 @@ async function optimizerImageCorrectionImportFile(file){
    const spec=await optimizerVerifiedDimensionSpec(w);
    if(spec?.measurements?.length){
     const {addConfirmedSpecificationCard}=
-     await import('/specificationCard.js?v=1.4.2-bulleted-wedrop');
+     await import('/specificationCard.js?v=1.4.3-reference-design');
     spec.productTitle=w.draftTitle||w.productTitle||'';
     imageBlob=await addConfirmedSpecificationCard(imageBlob,spec);
     dimensionCount=spec.measurements.length;
@@ -10775,7 +10775,7 @@ function optimizerImagesRenderMode(){
  $('#optimizerModeApi').classList.toggle('is-active',!chat);
 }
 async function optimizerChatgptMakeBrief(w,{defaultOnly=false}={}){
- const {createChatGptPrompts}=await import('/chatgptPrompts.js?v=1.22.2-bulleted-wedrop');
+ const {createChatGptPrompts}=await import('/chatgptPrompts.js?v=1.22.3-reference-image03');
  return createChatGptPrompts({
   sku:w.sku,title:w.draftTitle||'Produto Shopee',
   imageUrls:w.imageUrls||[],
@@ -10810,7 +10810,7 @@ async function optimizerFreshSavedWeDrop(w){
 }
 async function optimizerVerifiedDimensionSpec(w){
  const source=await optimizerFreshSavedWeDrop(w);
- const {confirmedSpecCard}=await import('/specificationCard.js?v=1.4.2-bulleted-wedrop');
+ const {confirmedSpecCard}=await import('/specificationCard.js?v=1.4.3-reference-design');
  const spec=confirmedSpecCard({
   sourceText:source.sourceText||'',sku:w.sku,
   sourceEvidenceSku:source.sku||'',
@@ -11382,7 +11382,7 @@ globalThis.window?.addEventListener?.('message',async(event)=>{
   if(Number(m.slot)===3){
    // A foto gerada é SOMENTE a base. Montar a ficha com números de produto
    // confirmados, não confiar em textos/medidas imaginados pelo gerador.
-   const {addConfirmedSpecificationCard}=await import('/specificationCard.js?v=1.4.2-bulleted-wedrop');
+   const {addConfirmedSpecificationCard}=await import('/specificationCard.js?v=1.4.3-reference-design');
    const spec=await optimizerVerifiedDimensionSpec(w);
    if(spec){spec.productTitle=w.draftTitle||w.productTitle||'';
     optimizerChatBridgeNotice('Imagem 03 recebida. Aplicando cotas finas e somente dados confirmados na WeDrop da SKU...');
@@ -11758,7 +11758,7 @@ async function optimizerRepairThirdImageDimensions(w,image){
   if(sourceHash!==String(image.sha256||''))
    throw Error('A imagem 03 foi modificada em outra aba. Atualize a galeria.');
   const {addConfirmedSpecificationCard}=
-   await import('/specificationCard.js?v=1.4.2-bulleted-wedrop');
+   await import('/specificationCard.js?v=1.4.3-reference-design');
   spec.productTitle=w.draftTitle||w.productTitle||'';
   const final=await addConfirmedSpecificationCard(await current.blob(),spec);
   if(!optimizerImagesSameSku(w))throw Error('SKU mudou durante a edição da imagem 03.');
@@ -12117,7 +12117,7 @@ async function optimizerImagesLoad(){
 async function optimizerAnnotateThirdGeneratedImage(w,generated){
  if(!optimizerImagesSameSku(w))throw Error('SKU mudou antes de aplicar medidas.');
  const {addConfirmedSpecificationCard}=
-  await import('/specificationCard.js?v=1.4.2-bulleted-wedrop');
+  await import('/specificationCard.js?v=1.4.3-reference-design');
  const spec=await optimizerVerifiedDimensionSpec(w);
  if(!spec)return {applied:false,reason:'Sem dimensões verificadas para a SKU: a imagem foi mantida limpa, sem números inventados.'};
  spec.productTitle=w.draftTitle||w.productTitle||'';
