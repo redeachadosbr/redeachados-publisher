@@ -246,6 +246,7 @@
     'tráfego sem Ads. Itens adicionados não são carrinhos abandonados.':
     'Importe apenas relatório filtrado exclusivamente para tráfego orgânico, sem Shopee Ads.';
    $('organicTop10ConsentLabel').hidden=performance;
+   if(performance)$('organicTop10OrganicConfirmed').checked=false;
    $('organicTop10OrganicConfirmed').required=!performance;
    for(const button of sorts){
     const key=button.dataset.sort;
