@@ -12,9 +12,9 @@ test('roteiro de nove imagens na ordem aprovada pela loja',()=>{
  assert.match(IMAGE_STORYBOARD[0],/Capa/);
  assert.match(IMAGE_STORYBOARD[1],/Uso real/);
  assert.match(IMAGE_STORYBOARD[2],/dimensões verificadas da mesma SKU/);
- assert.match(IMAGE_STORYBOARD[3],/frase de conversão contextualizada/);
- assert.match(IMAGE_STORYBOARD[4],/frase natural e persuasiva de 4 a 8 palavras/);
- assert.match(IMAGE_STORYBOARD[5],/Persuasão/);
+ assert.match(IMAGE_STORYBOARD[3],/2 ou 3 benefícios específicos/);
+ assert.match(IMAGE_STORYBOARD[4],/CIMA.*4 a 8 palavras/);
+ assert.match(IMAGE_STORYBOARD[5],/ZOOM MACRO/);
  assert.match(IMAGE_STORYBOARD[6],/Transformação/);
  assert.match(IMAGE_STORYBOARD[7],/PERGUNTAS.*RESPOSTAS/);
  assert.match(IMAGE_STORYBOARD[8],/Compra Segura, Entrega Rápida e Atendimento Online/);
