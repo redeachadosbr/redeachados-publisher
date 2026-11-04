@@ -186,6 +186,15 @@ test('modo API só cria visualizações e ação; não renderiza métricas ausen
  assert.match(css,/overflow:hidden!important/);
  assert.match(css,/text-overflow:ellipsis!important/);
  assert.match(css,/font-variant-numeric:tabular-nums/);
- assert.match(html,/organic-top10\.css\?v=1\.2\.3-parentsku-fix/);
- assert.match(html,/organic-top10\.js\?v=1\.2\.3-parentsku-fix/);
+ assert.match(html,/organic-top10\.css\?v=1\.3\.0-ranking-layout/);
+ assert.match(html,/organic-top10\.js\?v=1\.3\.0-ranking-layout/);
+});
+
+test('ranking de origem orgânica suporta até 100 SKUs sem agregar Ads',()=>{
+ const data=Array.from({length:120},(_,i)=>({
+  sku:'ORG-'+i,impressions:300+i,visits:80+i,clicks:30+i,ctr:10
+ }));
+ assert.equal(rankOrganicTop(data,{sort:'impressions',limit:50}).length,50);
+ assert.equal(rankOrganicTop(data,{sort:'impressions',limit:100}).length,100);
+ assert.equal(rankOrganicTop(data,{sort:'impressions',limit:100})[0].sku,'ORG-119');
 });
