@@ -6,7 +6,7 @@ import {requestKitContent,kitContentResponseText} from './kit-content-handoff.js
 import {requestKitResearch} from './kit-research-handoff.js?v=1';
 import {detectSkuMeasurements,skuMeasurementSummary,kitImageMeasurementsBySku} from './kit-measurements.js?v=1.1.2-wedrop-axes-labels';
 import {kitImageFilenameSlot,kitImageNextSlot,kitPlanImageImports,kitMoveImage} from './kit-gallery-order.js';
-import {buildKitPlusImageBrief,kitPlusPromptLink} from './kit-plus-image-brief.js?v=1.1.3-benefits-topdown-macro';
+import {buildKitPlusImageBrief,kitPlusPromptLink} from './kit-plus-image-brief.js?v=20261104-premium-nine-brief';
 import {createKitPhotoStore} from './kit-extension-bridge.js?v=3-four-wedrop-references';
 import {createKitExtensionController} from './kit-extension-runtime.js?v=6-four-wedrop-references';
 import {parseKitLogisticsText} from './kit-logistics-parser.js?v=3-ocr-columns';
