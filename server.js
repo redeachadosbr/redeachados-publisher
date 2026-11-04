@@ -4702,6 +4702,16 @@ app.post('/api/shopee/optimizer/images/manual',mustLogin,requireWeDropAdmin,
  try{
   const x=await checkedManualVideoIdentity(req),job=await readShopeeExecution(x.shopId,x.itemId,x.modelId);
   if(['running','uncertain'].includes(job?.state))throw Error('Aguarde ou confira a execução antes de trocar as imagens.');
+  // Reparos de medidas exigem a versão exata da foto atual. Nunca substituir
+  // outra foto se o usuário trocou a posição 03 em uma segunda aba.
+  const expectedSha=String(req.get('x-expected-sha256')||'');
+  if(expectedSha){
+   if(!/^[a-f0-9]{64}$/.test(expectedSha))return res.status(400).json({error:'Hash da imagem de origem inválido.'});
+   const current=(await readPreparedImages(x.shopId,x.itemId,x.modelId,x.sku))
+    .find(row=>Number(row.slot)===Number(req.query.slot));
+   if(!current||String(current.sha256)!==expectedSha)
+    return res.status(409).json({error:'A foto desta posição mudou desde a conferência. Atualize a galeria antes de aplicar as medidas.'});
+  }
   const image=await importPreparedImage({...x,slot:req.query.slot,file:req.body,
    mime:String(req.get('content-type')||'').split(';')[0],filename:decodeURIComponent(req.get('x-image-filename')||'imagem')});
   // Um arquivo alterado nunca herda aprovação da versão anterior da imagem.
