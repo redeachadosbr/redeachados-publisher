@@ -7,7 +7,7 @@ import {imageScenePrompt} from './public/imageSceneDiversity.js';
 export const IMAGE_STORYBOARD=Object.freeze([
  'Imagem 1 — Capa: produto em destaque, ocupando aproximadamente 85% da imagem.',
  'Imagem 2 — Uso real: mostrar o produto em um ambiente de utilização.',
- 'Imagem 3 — Medidas: gerar fotografia-base para arte comercial premium, produto inteiro e legível com margem à direita e na base. O Manager adicionará UMA ÚNICA VEZ setas brancas, boxes brancos arredondados de borda amarela e medidas reais da própria SKU em azul-marinho. A IA não desenha números, setas nem selos.',
+ 'Imagem 3 — Medidas: gerar ARTE FINAL premium com as dimensões exatas da própria SKU integradas à imagem, setas brancas junto ao produto, boxes brancos arredondados com borda amarela fina e valores grandes azul-marinho. Uma cota por dimensão, sem etiquetas duplicadas nem dimensões inventadas.',
  'Imagem 4 — Benefícios: mostrar 2 ou 3 benefícios específicos e comprovados em microfrases de 3 a 7 palavras, distribuídas discretamente nas margens da foto ambientada, sem cobrir o produto.',
  'Imagem 5 — Dor e solução: produto visto INTEIRO de CIMA (top-down, flat lay), contexto de uso coerente, UMA frase discreta de 4 a 8 palavras explicando a solução real.',
  'Imagem 6 — Persuasão: ZOOM MACRO em detalhes reais de acabamento, textura, estrutura ou encaixe do produto, preservando reconhecimento; incluir 1 ou 2 microdescrições específicas de 3 a 7 palavras, pequenas e elegantes.',
@@ -35,26 +35,33 @@ export function imagePrompt({record,slot,masterPrompt='',note='',sourceImageCoun
  if(position===3){
   const product=String(record?.title||'Produto do anúncio Shopee').slice(0,240);
   const axes=confirmedProductDimensionsFromWeDrop(supplierSourceText)?.measurements||[];
-  const hasLengthWidth=axes.some(x=>x.axis==='comprimento')&&axes.some(x=>x.axis==='largura');
+  const length=axes.find(x=>x.axis==='comprimento'),width=axes.find(x=>x.axis==='largura');
   const verifiedColors=/envia(?:do|da|dos|das)\s+(?:com\s+)?cor(?:es)?\s+sortid[ao]s?/i.test(supplierSourceText)&&
    /cor(?:es)?\s*[:\-][^\n]*azul[^\n]*amarelo[^\n]*rosa/i.test(supplierSourceText);
   const showVariants=/colch[aã]o.*(?:infl[aá]vel|piscina)|(?:boia|infl[aá]vel).*colch[aã]o/i.test(product)&&
-   hasLengthWidth&&verifiedColors;
-  // NUNCA entregar números do fornecedor à IA para ela desenhar. O Manager
-  // insere cotas verificadas posteriormente em UMA camada deterministicamente.
+   Boolean(length&&width)&&verifiedColors;
   return [
-   'FOTOGRAFIA BASE LIMPA 1200 x 1200, imagem 03. Produto exato: '+product+'. SKU '+String(record?.sku||'').slice(0,120)+'.',
-   'Manter produto ORIGINAL, mesmas cores, formato e peças das referências, com cenário moderno realista e nítido em HD.',
+   'IMAGEM 03 — ARTE COMERCIAL FINAL PREMIUM 1200 x 1200. Produto REAL: '+product+'.',
+   'A imagem deve sair PRONTA, incluindo a apresentação fotográfica e as cotas VISUAIS com os números EXATOS da WeDrop da mesma SKU. Não aplicar outras etiquetas depois.',
+   'Preservar produto original: cor, formato, proporções, textura e peças vistas nas referências. Fundo ambientado moderno, arquitetura nítida, luz profissional, sem texto de título.',
    showVariants?
-    'Composição de referência: mostrar 3 versões visualmente iguais do colchão em pé na ordem ROSA, AMARELO, AZUL; produto AZUL à direita. São VARIAÇÕES da mesma unidade, não um kit com 3 unidades. Reservar faixa à direita da peça azul para futura seta de comprimento e faixa abaixo para largura. Reservar canto inferior esquerdo para selo de cores sortidas que será aplicado após a geração. Nenhum texto/etiqueta nesta foto-base.':
-    'Composição de produto único ou kit fiel às referências, com margem clara à direita e embaixo para as cotas após a geração. Não inventar variações de cor.',
-   /pista|conjunto|kit/i.test(product)?'O produto é um CONJUNTO, não só um carrinho: mostrar toda a montagem real de pista e acessórios vistos na referência, sem criar componentes.':'',
-   hasPreparedReference?'Editar a foto anterior removendo completamente TODA palavra, número, desenho de cota, seta, selo, legenda, infográfico, painel e características. Preservar apenas o produto e seu fundo realista.':'Gerar uma fotografia ambientada sem qualquer sobreposição gráfica.',
-   imageScenePrompt({slot:position,title:product}),
-   'REGRA FINAL MAIS IMPORTANTE: imagem SOMENTE FOTOGRÁFICA, nenhuma letra, algarismo, peso, altura, largura, comprimento, profundidade, quantidade, idade, rótulo, régua, linha de dimensão, seta, placa, etiqueta, ícone ou painel. Não desenhar especificações. IGNORAR qualquer comando anterior que solicite medidas ou características escritas.',
-   'NÃO invente altura do selim, guidão nem dimensões aparentes. NÃO usar medidas da pista montada, conjunto, embalagem ou outro SKU.',
-   'Deixar margens à direita e na base para o Manager acrescentar exatamente uma camada de setas brancas, boxes brancos arredondados com BORDA AMARELA e números azul-marinho da WeDrop, no padrão visual da referência. A fotografia deve ser entregue sem textos.',
-  ].join('\n');
+    'CENÁRIO ESPECIAL CONFIRMADO: apresentar 3 variações do MESMO colchão na ordem ROSA, AMARELO e AZUL, em pé e lado a lado, com o AZUL à direita. São opções de cor de UMA unidade, não um kit de três produtos. Mostrar piso e parede elegantes, mantendo o colchão azul inteiro e dominante.':
+    'Mostrar uma composição de produto único ou conjunto fiel à foto de referência; não criar variantes que não constem na ficha.',
+   axes.length?
+    'COTAS EXATAS CONFIRMADAS DA SKU (NÃO ALTERAR NÚMEROS, UNIDADES OU NOMES): '+
+    axes.map(x=>x.label+': '+x.value).join('; ')+'.':
+    'Nenhuma dimensão do produto foi confirmada. Entregar a FOTO LIMPA sem valores ou setas; não inventar números.',
+   length&&width&&showVariants?
+    'AO LADO DIREITO DO COLCHÃO AZUL: linha de dimensão VERTICAL BRANCA com setas nas pontas, e box BRANCO arredondado com BORDA AMARELA fina e texto AZUL-MARINHO “'+length.value+'” grande e “Comprimento” menor. SOB O COLCHÃO AZUL: seta HORIZONTAL BRANCA e box igual com “'+width.value+'” grande e “Largura” menor. Exibir as medidas SOMENTE no colchão azul.':
+    axes.length?
+    'Adicionar só as cotas confirmadas aos eixos correspondentes do produto, com setas brancas finas, boxes brancos arredondados de borda amarela e valor grande azul-marinho sobre legenda menor.':'',
+   showVariants?
+    'Selo discreto no canto inferior esquerdo: “Envio em cores sortidas”, fundo azul-marinho, borda amarela e três pequenos ícones de cor azul, amarelo e rosa. Não insinuar que o comprador recebe três unidades.':'',
+   'TIPOGRAFIA sofisticada sans-serif, valores em negrito e rótulos menores, nítidos, sem painéis grandes. Uma camada de dimensão por eixo, SEM duplicações, SEM textos genéricos.',
+   'NUNCA inventar altura, peso, capacidade, embalagem, pacote ou conteúdo não provados. Se a fonte não confirmar a medida, omitir esse número.',
+   hasPreparedReference?'Editar ou recriar a foto comercial anterior: remover cotas antigas e selos conflitantes ANTES de inserir as etiquetas finais solicitadas. NÃO sobrepor medidas novas a outras já existentes.':'',
+   'Entregue somente a IMAGEM FINAL pronta, sem explicação em texto separado.',
+  ].filter(Boolean).join('\n');
  }
 
  const attributes=(record?.attributeAudit?.attributes||[])
