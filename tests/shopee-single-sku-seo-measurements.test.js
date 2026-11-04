@@ -20,7 +20,7 @@ test('SKU individual não herda medidas de outro produto ou de fornecedor sem v�
  assert.throws(()=>validateReview({stage:'seo',reviewed:true,title},
   {singleProductName:'Colchão Inflável Piscina 180x69cm'}),/nome comercial WeDrop confirmado/);
  assert.throws(()=>validateReview({stage:'seo',reviewed:true,title},
-  {singleProductName:'Embalagem de transporte 183x69cm'}),/nome comercial WeDrop confirmado/);
+  {singleProductName:'Outro produto 200x69cm'}),/nome comercial WeDrop confirmado/);
  assert.equal(singleProductTitleDimensionsVerified(title,''),false);
 });
 
