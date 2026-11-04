@@ -11,7 +11,7 @@ test('geração ChatGPT Plus envia pedido de imagens, não só prompt explicativ
  assert.match(p,/GERE AGORA A IMAGEM 01/i);
  assert.match(p,/NÃO de redação de prompts/i);
  assert.match(p,/TODOS OS 2 SKUs/);
- for(let n=1;n<=9;n++)assert.match(p,new RegExp(String(n).padStart(2,'0')+' (?:CAPA|USO REAL|ESPECIFICAÇÕES|BENEFÍCIOS|DOR E SOLUÇÃO|PERSUASÃO|TRANSFORMAÇÃO|QUEBRA DE OBJEÇÕES|MOCKUP)'));
+ for(let n=1;n<=9;n++)assert.match(p,new RegExp(String(n).padStart(2,'0')+' (?:CAPA|USO REAL|ESPECIFICAÇÕES|BENEFÍCIOS|DETALHES DO PRODUTO|MOCKUP DE EMBALAGEM|INFORMAÇÕES TÉCNICAS|QUEBRA DE OBJEÇÕES|CONFIANÇA)'));
  assert.match(p,/19 cm/);
  assert.match(p,/https:\/\/files.example.com\/elefante.jpg/);
  assert.match(p,/Se a interface gerar apenas uma imagem por mensagem/);
