@@ -277,7 +277,8 @@
      $('organicTop10Period').textContent='Período: sem relatório salvo';
      $('organicTop10Count').textContent=performance?'Sem relatório de Performance':
       'Dados orgânicos indisponíveis';
-     $('organicTop10Footnote').textContent=
+     $('organicTop10Footnote').textContent=performance?
+      'Sem relatório geral de Performance do Produto. A Central do Vendedor pode incluir Ads; não é tráfego exclusivamente orgânico.':
       'Nenhuma métrica orgânica foi importada. O sistema não usa indicadores de Shopee Ads ou adicionados ao carrinho como abandono.';
      notice(performance?
       'Ainda não existe relatório de Performance do Produto salvo para esta loja. '+
