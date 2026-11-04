@@ -5175,56 +5175,90 @@ async function kitOpenPendingLinked(handoff){
 }
 // Quando só existe a palavra Kit no título, exigir seleção da composição.
 // A SKU isolada NÃO é vínculo e não autoriza editar qualquer outro Item ID.
+// Sem rascunho salvo, o Item ID AINDA pode abrir o editor real de imagens
+// da Shopee. Apenas a composição comercial completa exige vínculo WeDrop.
 function kitShowPendingLinkChoice(handoff){
- const root=$('#kitDraftList');if(!root)return;
+ const list=$('#kitDraftList');if(!list)return;
  const itemId=String(handoff.itemId||''),sku=String(handoff.sku||'').trim();
- root.querySelector('#kitPendingLinkChoices')?.remove();
- const panel=elt('section','kit-card kit-pending-handoff');
- panel.id='kitPendingLinkChoices';
- panel.style.cssText='margin:10px 0 18px;padding:18px 20px;border:1px solid #c4d8f2;border-radius:16px;background:#f5f9ff;box-shadow:0 8px 24px rgba(23,62,117,.08)';
- panel.append(elt('strong','','Editar anúncio existente · Item ID '+itemId),
-  elt('p','','Anúncio: '+String(handoff.title||'Kit Shopee').slice(0,130)));
+ globalThis.RAClosePendingKitDirectEditor?.();
+ $('#kitPendingDirectEditor')?.remove();
+ const panel=elt('section','kit-pending-direct-editor');
+ panel.id='kitPendingDirectEditor';
+ panel.setAttribute('aria-label','Edição de imagens de kit anunciado na Shopee');
+ const heading=elt('div','kit-pending-direct-header');
+ const details=elt('div','kit-pending-direct-details');
+ details.append(
+  elt('span','kit-pending-direct-eyebrow','EDIÇÃO DE ANÚNCIO EXISTENTE · SHOPEE'),
+  elt('strong','','🖼️ Otimizar imagens do kit'),
+  elt('p','','Anúncio: '+String(handoff.title||'Kit Shopee').slice(0,140)),
+  elt('small','','Item ID '+itemId+' · SKU '+sku+' · Sem criar um novo anúncio')
+ );
+ const close=elt('button','kit-secondary','✕ Fechar edição');
+ close.type='button';
+ close.addEventListener('click',()=>{
+  globalThis.RAClosePendingKitDirectEditor?.();
+  panel.remove();
+  status('Edição fechada. O anúncio original continua preservado na Shopee.','info');
+ });
+ heading.append(details,close);panel.append(heading);
+ const info=elt('p','kit-pending-direct-notice',
+  'A composição deste kit não está salva na WeDrop. As imagens do anúncio já existente podem ser preparadas e revisadas por Item ID. Preços, descontos, publicação de novo kit e textos que dependem dos componentes não serão executados.');
+ panel.append(info);
+ const live=elt('p','kit-pending-direct-status','Conferindo o anúncio pela API da Shopee...');
+ live.id='kitPendingDirectStatus';live.setAttribute('role','status');
+ panel.append(live);
+ const mount=elt('div','kit-pending-direct-mount');mount.id='kitPendingDirectMount';
+ panel.append(mount);
+ const source=list.closest('.kit-drafts-panel');
+ if(source)source.before(panel);
+ else list.parentElement?.prepend(panel);
+ const opened=globalThis.RAOpenPendingKitDirectEditor?.(handoff,mount);
+ if(!opened){
+  live.textContent='Não foi possível iniciar o editor oficial deste Item ID. Nenhum anúncio foi modificado.';
+  status('Erro ao abrir o editor de imagens do Item ID '+itemId+'. Recarregue a página e tente novamente.','error');
+ }else status('Abrindo o anúncio Shopee Item ID '+itemId+
+  ' diretamente na edição de imagens. Os demais dados do kit seguem preservados.','success');
+
+ // Vínculo é uma opção ADICIONAL: nunca bloquear a edição de imagens só porque
+ // nenhum kit rascunho foi salvo ou porque pertence a lote anterior.
  const options=kitPendingLinkCatalog.filter(d=>
   Array.isArray(d.skus)&&d.skus.some(x=>String(x)===sku)&&
   d.publication==='local_draft'&&d.optimizationFinalization?.status!=='verified'&&
   (!d.itemId||String(d.itemId)===itemId)&&
   (!d.optimization?.itemId||String(d.optimization.itemId)===itemId));
- if(!options.length){
-  panel.append(elt('p','','Não há uma composição salva, editável e compatível com a SKU principal '+sku+
-   '. Primeiro salve ou importe o kit correto. Nenhum anúncio será alterado ou substituído.'));
- }else{
-  panel.append(elt('small','','Confirme a composição comercial correta antes de vincular o Item ID:'));
-  const actions=elt('div','kit-draft-actions');
+ if(options.length){
+  const chooser=elt('details','kit-pending-direct-link');
+  chooser.append(elt('summary','','Opcional: vincular composição WeDrop para liberar as demais etapas'));
+  const controls=elt('div','kit-draft-actions');
   for(const candidate of options){
-   const button=elt('button','kit-secondary','Editar kit: '+String(candidate.title||candidate.kitSku).slice(0,80));
+   const button=elt('button','kit-secondary','Vincular: '+String(candidate.title||candidate.kitSku).slice(0,85));
    button.type='button';
    button.addEventListener('click',async()=>{
-    if(!window.confirm('Vincular o anúncio Shopee Item ID '+itemId+
-      ' ao kit '+candidate.kitSku+' com SKU principal '+sku+
-      '? A Shopee não será modificada; o servidor verificará a identidade.'))return;
-    button.disabled=true;button.textContent='Conferindo vínculo na Shopee...';
+    if(!window.confirm('Confirmar que o Item ID '+itemId+
+      ' usa a composição '+candidate.kitSku+' e a SKU principal '+sku+
+      '? A Shopee NÃO será alterada nesta associação.'))return;
+    button.disabled=true;button.textContent='Validando na Shopee...';
     try{
      const result=await api('/api/shopee/kits/optimization/prepare',{body:{
       kitSku:candidate.kitSku,sku,mainSku:sku,itemId,
       modelId:String(handoff.modelId||'0'),confirmedItemId:itemId
      }});
      if(result.prepared!==true||String(result.target?.itemId)!==itemId)
-      throw Error('Associação do anúncio não confirmada.');
+      throw Error('A identidade não foi confirmada.');
+     globalThis.RAClosePendingKitDirectEditor?.();
+     panel.remove();
      await kitOpenPendingLinked({...handoff,kind:'kit',kitSku:candidate.kitSku,
-      mainSku:sku,modelId:String(result.target?.modelId||'0')});
+      mainSku:sku,modelId:String(result.target.modelId||'0')});
     }catch(error){
-     status('Não foi possível associar o Item ID '+itemId+': '+String(error.message||error)+
-      '. Nenhum anúncio publicado.','error');
-     button.disabled=false;button.textContent='Tentar novamente: '+candidate.kitSku;
+     status('Não foi possível confirmar o vínculo do Item ID '+itemId+': '+
+      String(error.message||error)+'. O anúncio foi preservado.','error');
+     button.disabled=false;button.textContent='Tentar vincular: '+candidate.kitSku;
     }
-   });
-   actions.append(button);
+   });controls.append(button);
   }
-  panel.append(actions);
+  chooser.append(controls);panel.append(chooser);
  }
- root.prepend(panel);
  panel.scrollIntoView({behavior:'smooth',block:'start'});
- status('O Item ID '+itemId+' parece ser um kit, mas ainda não possui vínculo confirmado. Selecione a composição exata para abrir a edição.','info');
 }
 let kitBuilderLoadSequence=Promise.resolve();
 window.RAKitBuilderLoad=()=>{
