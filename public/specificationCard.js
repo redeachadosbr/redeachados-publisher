@@ -20,35 +20,38 @@ export function confirmedSpecCard({sourceText='',sku='',sourceEvidenceSku='',sup
  return {measurements:dims?.measurements||[],facts,source:'Informações da WeDrop da SKU'};
 }
 const SW=1200,SH=1200;
+// Legenda editorial: branco translúcido LEVE, borda fina, letra contemporânea.
+// As cotas usam apenas valores da própria SKU, nunca são inferidas dos pixels.
 function textChip(ctx,text,cx,cy,{small=false}={}){
  ctx.save();
- ctx.font=(small?'500 22px':'600 25px')+' Arial,sans-serif';
+ ctx.font=(small?'500 25px':'600 32px')+' "Inter","Segoe UI",Arial,sans-serif';
  const tw=ctx.measureText(text).width;
- const width=Math.min(380,tw+(small?28:32));
- const height=small?40:46;
- const x=Math.max(16,Math.min(SW-width-16,cx-width/2));
- const y=Math.max(18,Math.min(SH-height-18,cy-height/2));
- // Uma faixa translúcida e delicada, não uma caixa branca opaca.
- ctx.fillStyle='rgba(18,34,47,0.58)';
- ctx.beginPath();ctx.roundRect(x,y,width,height,10);ctx.fill();
- ctx.fillStyle='#ffffff';ctx.textAlign='center';ctx.textBaseline='middle';
- ctx.shadowColor='rgba(0,0,0,0.35)';ctx.shadowBlur=3;
- ctx.fillText(text,x+width/2,y+height/2,Math.max(70,width-20));
+ const width=Math.min(small?340:360,tw+(small?30:40));
+ const height=small?48:59;
+ const x=Math.max(22,Math.min(SW-width-22,cx-width/2));
+ const y=Math.max(22,Math.min(SH-height-22,cy-height/2));
+ ctx.shadowColor='rgba(10,29,44,0.16)';
+ ctx.shadowBlur=8;ctx.shadowOffsetY=2;
+ ctx.fillStyle='rgba(249,251,253,0.76)';
+ ctx.beginPath();ctx.roundRect(x,y,width,height,12);ctx.fill();
+ ctx.shadowColor='transparent';ctx.shadowBlur=0;ctx.shadowOffsetY=0;
+ ctx.strokeStyle='rgba(255,255,255,0.72)';ctx.lineWidth=1;
+ ctx.beginPath();ctx.roundRect(x+0.5,y+0.5,width-1,height-1,11.5);ctx.stroke();
+ ctx.fillStyle='#173550';ctx.textAlign='center';ctx.textBaseline='middle';
+ ctx.fillText(text,x+width/2,y+height/2,Math.max(70,width-24));
  ctx.restore();
 }
 function dimensionLine(ctx,x1,y1,x2,y2){
  const angle=Math.atan2(y2-y1,x2-x1);
- ctx.save();
- ctx.strokeStyle='rgba(18,34,47,0.72)';
- ctx.lineWidth=4;ctx.lineCap='round';
+ ctx.save();ctx.lineCap='round';
+ // Contorno clarinho para leitura em fotos claras e escuras.
+ ctx.strokeStyle='rgba(255,255,255,0.92)';ctx.lineWidth=4;
  ctx.beginPath();ctx.moveTo(x1,y1);ctx.lineTo(x2,y2);ctx.stroke();
- ctx.strokeStyle='rgba(255,255,255,0.95)';ctx.lineWidth=2;
+ ctx.strokeStyle='rgba(22,57,83,0.86)';ctx.lineWidth=1.8;
  ctx.beginPath();ctx.moveTo(x1,y1);ctx.lineTo(x2,y2);ctx.stroke();
- for(const [x,y,a] of [[x1,y1,angle+Math.PI],[x2,y2,angle]]){
-  ctx.beginPath();ctx.moveTo(x,y);
-  ctx.lineTo(x-12*Math.cos(a-0.5),y-12*Math.sin(a-0.5));
-  ctx.moveTo(x,y);ctx.lineTo(x-12*Math.cos(a+0.5),y-12*Math.sin(a+0.5));
-  ctx.stroke();
+ for(const [x,y] of [[x1,y1],[x2,y2]]){
+  const ax=Math.cos(angle+Math.PI/2)*11,ay=Math.sin(angle+Math.PI/2)*11;
+  ctx.beginPath();ctx.moveTo(x-ax,y-ay);ctx.lineTo(x+ax,y+ay);ctx.stroke();
  }
  ctx.restore();
 }
@@ -67,14 +70,17 @@ export async function addConfirmedSpecificationCard(blob,spec){
   // Cotas visuais nos limites aparentes; não converter pixels em centímetros.
   // Não cruzar a região central nem esconder o produto.
   const height=get('altura'),width=get('largura'),length=get('comprimento'),depth=get('profundidade');
-  if(height){dimensionLine(ctx,122,238,122,944);textChip(ctx,'ALTURA '+height.value,245,592);}
-  if(width){dimensionLine(ctx,355,188,910,188);textChip(ctx,'LARGURA '+width.value,632,137);}
-  if(length){dimensionLine(ctx,260,1010,970,1010);textChip(ctx,'COMPRIMENTO '+length.value,620,1062);}
-  if(depth){dimensionLine(ctx,314,1010,892,1010);textChip(ctx,'PROFUNDIDADE '+depth.value,610,1062);}
-  // Só dados realmente colados na WeDrop e secundários em relação às medidas.
-  // Para não sobrecarregar: até três microetiquetas no canto direito.
-  const facts=(spec.facts||[]).slice(0,3);
-  facts.forEach((fact,i)=>textChip(ctx,fact.label+': '+fact.value,972,755+i*53,{small:true}));
+  if(height){dimensionLine(ctx,168,248,168,938);textChip(ctx,'ALTURA '+height.value,280,600);}
+  if(width){dimensionLine(ctx,353,225,922,225);textChip(ctx,'LARGURA '+width.value,638,169);}
+  if(length){dimensionLine(ctx,295,1013,958,1013);textChip(ctx,'COMPRIMENTO '+length.value,628,1080);}
+  if(depth){
+   if(length)textChip(ctx,'PROFUNDIDADE '+depth.value,973,1133,{small:true});
+   else{dimensionLine(ctx,306,1013,925,1013);textChip(ctx,'PROFUNDIDADE '+depth.value,633,1080);}
+  }
+  // Dados adicionais não podem poluir a fotografia nem competir com as medidas.
+  // Para imagens com 3 cotas, no máximo uma etiqueta secundária.
+  const facts=(spec.facts||[]).slice(0,(height&&width&&(length||depth))?1:2);
+  facts.forEach((fact,i)=>textChip(ctx,fact.label+': '+fact.value,997,845+i*58,{small:true}));
   return await new Promise((resolve,reject)=>canvas.toBlob(
    output=>output?resolve(output):reject(Error('Falha ao aplicar dados WeDrop na Imagem 03.')),
    'image/png'
