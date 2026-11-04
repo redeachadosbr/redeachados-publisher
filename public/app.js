@@ -11720,9 +11720,8 @@ async function optimizerRepairThirdImageDimensions(w,image){
  if(!spec?.measurements?.length)
   throw Error('A SKU '+w.sku+' ainda não possui pelo menos duas medidas válidas em Informações da WeDrop.');
  const labels=spec.measurements.map(x=>x.label+' '+x.value).join(' · ');
- if(!window.confirm('Aplicar as medidas SALVAS DA WEDROP à imagem 03 deste anúncio?\n'+
-  labels+'\n\nConfirme que a fotografia atual ainda NÃO contém essas cotas, para evitar duplicar os textos. '+
-  'As demais imagens e a Shopee permanecerão intactas.'))return;
+ // Confirmação em dois cliques no cartão (sem janela modal que o Chrome possa bloquear).
+ // Só é executado depois de o usuário verificar que a fotografia ainda está limpa.
  optimizerImagesAutoBusy=true;optimizerImagesSetProgress();
  try{
   const qs=new URLSearchParams({sku:w.sku,item_id:w.itemId,model_id:w.modelId,slot:3});
@@ -11952,6 +11951,14 @@ async function optimizerImagesLoad(){
     stamp.type='button';stamp.disabled=optimizerImagesAutoBusy;
     stamp.title='Aplicar comprimento/largura confirmados da própria SKU à fotografia 03 salva, sem gerar novamente';
     stamp.onclick=async()=>{
+     if(stamp.dataset.confirmed!=='yes'){
+      stamp.dataset.confirmed='yes';
+      stamp.textContent='✓ Confirmar medidas nesta foto';
+      optimizerCommercialActionMessage('Confira a imagem 03: ela ainda NÃO deve conter cotas. '+
+       'Pressione “Confirmar medidas nesta foto” mais uma vez para adicionar somente comprimento e largura salvos na WeDrop.');
+      return;
+     }
+     stamp.disabled=true;
      try{await optimizerRepairThirdImageDimensions(w,image);}
      catch(error){
       const msg='Não foi possível inserir as medidas na imagem 03: '+String(error.message||error)+
