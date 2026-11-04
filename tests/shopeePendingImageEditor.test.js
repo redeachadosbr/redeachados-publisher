@@ -42,11 +42,11 @@ test('vínculo duplicado em dois kits bloqueia seleção arbitrária',()=>{
  assert.equal(route.kitSkus.length,2);
 });
 
-test('kit publicado é reconhecido sem liberar edição automática',()=>{
+test('kit já publicado permite revisar o anúncio existente sem publicar outro',()=>{
  const route=classifyPendingImageEditor({itemId:id,title:'Conjunto de utensílios',
   linkedKits:[{...saved,publication:'published'}]});
  assert.equal(route.kind,'kit');
- assert.equal(route.editable,false);
+ assert.equal(route.editable,true);
 });
 
 test('a busca de kits consulta somente vínculos de Item ID da loja e inclui lotes antigos',async()=>{
@@ -98,6 +98,10 @@ test('otimização pendente confirma Shopee antes de escolher editor e não alte
  assert.match(app,/setTab\('kits'\)/);
  assert.match(kits,/__RA_PENDING_IMAGE_KIT_HANDOFF/);
  assert.match(kits,/kitWizardSetStage\(2,\{scroll:true\}\)/);
+ assert.match(kits,/resumeLiveVerifiedTarget/);
+ assert.match(kits,/kitShowPendingLinkChoice/);
+ assert.match(kits,/savedIds\.includes\(itemId\)/);
+ assert.doesNotMatch(kits,/document\.querySelector\('a\[data-tab="kits"\]'\)\?\.addEventListener/);
  assert.match(server,/findKitDraftsLinkedToItemId\(auth\.shopId,itemId\)/);
  assert.match(server,/get_item_base_info/);
  assert.doesNotMatch(ui,/\/api\/shopee\/ads\//);
