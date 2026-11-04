@@ -38,10 +38,13 @@ test('imagem 03 aplica apenas medidas depois de receber a foto no Manager',()=>{
  const hash=app.indexOf("const sha256=await imageBlobSha256(prepared.blob)",img);
  assert(img>0&&hash>img);
  const block=app.slice(img,hash);
- assert.match(block,/confirmedSpecCard\(\{/);
- assert.match(block,/sourceEvidenceSku:w\.sourceEvidence\?\.sku/);
- assert.match(block,/supplierMatchedBy:w\.supplierProduct\?\.matchedBy/);
+ assert.match(block,/optimizerVerifiedDimensionSpec\(w\)/);
  assert.match(block,/addConfirmedSpecificationCard/);
+ const fresh=app.slice(app.indexOf('async function optimizerFreshSavedWeDrop(w)'),app.indexOf('async function optimizerChatgptRender(w)'));
+ assert.match(fresh,/api\/shopee\/optimizer\/workflow\/source\?/);
+ assert.match(fresh,/sourceEvidenceSku:source\.sku/);
+ assert.match(fresh,/sourceSaved:Boolean\(source\.updatedAt\)/);
+ assert.match(fresh,/supplierMatchedBy:w\.supplierProduct\?\.matchedBy/);
  assert.match(card,/confirmedProductDimensionsFromWeDrop\(sourceText\)/);
  assert.doesNotMatch(card,/MEDIDAS DO CAMINHÃO|CARACTERÍSTICAS CONFIRMADAS|Material: plástico/);
 });
