@@ -11,7 +11,7 @@ test('roteiro de nove imagens na ordem aprovada pela loja',()=>{
  assert.equal(IMAGE_STORYBOARD.length,9);
  assert.match(IMAGE_STORYBOARD[0],/Capa/);
  assert.match(IMAGE_STORYBOARD[1],/Uso real/);
- assert.match(IMAGE_STORYBOARD[2],/UMA ÚNICA VEZ setas brancas/);
+ assert.match(IMAGE_STORYBOARD[2],/ARTE FINAL premium/);
  assert.match(IMAGE_STORYBOARD[3],/2 ou 3 benefícios específicos/);
  assert.match(IMAGE_STORYBOARD[4],/CIMA.*4 a 8 palavras/);
  assert.match(IMAGE_STORYBOARD[5],/ZOOM MACRO/);
@@ -92,10 +92,10 @@ test('slot 03 API usa apenas medidas de produto da WeDrop colada, sem inferir me
  ].join('\n');
  const prompt=imagePrompt({record:{...sample,sku:'2392'},slot:3,
   supplierSourceText:text,supplierCatalogInfo:'Altura:66; Largura:100; Comprimento:27'});
- assert.match(prompt,/FOTOGRAFIA BASE LIMPA/);
- assert.match(prompt,/nenhuma letra, algarismo, peso/);
- assert.match(prompt,/NÃO invente altura do selim/);
- assert.doesNotMatch(prompt,/ALTURA: 75 cm|LARGURA: 63 cm|COMPRIMENTO: 117 cm|Peso: 11kg/);
+ assert.match(prompt,/ARTE COMERCIAL FINAL PREMIUM/);
+ assert.match(prompt,/ALTURA: 75 cm; LARGURA: 63 cm; COMPRIMENTO: 117 cm/);
+ assert.match(prompt,/NUNCA inventar altura/);
+ assert.doesNotMatch(prompt,/Peso: 11kg/);
  for(const forbidden of ['66cm','100cm','27cm','Altura:66','Largura:100'])
   assert(!prompt.includes(forbidden));
 });
