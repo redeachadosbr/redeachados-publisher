@@ -100,10 +100,12 @@ test('cotas da imagem 03 são desenhadas só quando a SKU e a origem são exatas
 test('Ponte e API preservam a arte 03 pronta sem desenhar outra camada',()=>{
  const app=readFileSync(new URL('../public/app.js',import.meta.url),'utf8');
  assert.match(app,/if\(Number\(m\.slot\)===3\)\{/);
- const bridge=app.slice(app.indexOf('if(Number(m.slot)===3)'),app.indexOf('const {imageBlobSha256}',app.indexOf('if(Number(m.slot)===3)'));
+ const bridgeStart=app.indexOf('if(Number(m.slot)===3)');
+ const bridge=app.slice(bridgeStart,app.indexOf('const {imageBlobSha256}',bridgeStart));
  assert.doesNotMatch(bridge,/addConfirmedSpecificationCard/);
  assert.match(bridge,/SEM sobrepor novas etiquetas/);
- const apiPath=app.slice(app.indexOf('async function optimizerImagesGenerateSlot('),app.indexOf("$('#optimizerOpenAiSave')",app.indexOf('async function optimizerImagesGenerateSlot(')));
+ const apiStart=app.indexOf('async function optimizerImagesGenerateSlot(');
+ const apiPath=app.slice(apiStart,app.indexOf("$('#optimizerOpenAiSave')",apiStart));
  assert.doesNotMatch(apiPath,/optimizerAnnotateThirdGeneratedImage\(w,result\)/);
  assert.match(apiPath,/nenhuma etiqueta adicional foi desenhada/);
  assert.match(app,/sourceEvidenceSku:source\.sku/);
