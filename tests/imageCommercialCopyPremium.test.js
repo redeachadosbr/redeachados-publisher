@@ -101,6 +101,9 @@ test('Ponte e API aplicam a mesma camada verificada antes de afirmar a revisão 
  assert.match(app,/addConfirmedSpecificationCard\(prepared\.blob,spec\)/);
  assert.match(app,/if\(Number\(slot\)===3\)\{/);
  assert.match(app,/result\.dimensionOverlay=await optimizerAnnotateThirdGeneratedImage\(w,result\)/);
- assert.match(app,/sourceEvidenceSku:w\.sourceEvidence\?\.sku/);
+ assert.match(app,/sourceEvidenceSku:source\.sku/);
+ assert.match(app,/sourceSaved:Boolean\(source\.updatedAt\)/);
+ assert.match(app,/optimizerRepairThirdImageDimensions\(w,image\)/);
+ assert.match(app,/X-Expected-Sha256/);
  assert.match(app,/if\(!optimizerImagesSameSku\(w\)\)throw Error/);
 });
