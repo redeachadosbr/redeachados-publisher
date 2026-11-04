@@ -5193,6 +5193,14 @@ function kitShowPendingLinkChoice(handoff){
   elt('p','','Anúncio: '+String(handoff.title||'Kit Shopee').slice(0,140)),
   elt('small','','Item ID '+itemId+' · SKU '+sku+' · Sem criar um novo anúncio')
  );
+ const actions=elt('div','kit-pending-direct-actions');
+ const retry=elt('button','kit-secondary','↻ Atualizar anúncio');
+ retry.type='button';retry.addEventListener('click',()=>{
+  const live=$('#kitPendingDirectStatus');
+  if(live)live.textContent='Consultando novamente o Item ID '+itemId+' na Shopee...';
+  const reopened=globalThis.RAOpenPendingKitDirectEditor?.(handoff,mount);
+  if(!reopened&&live)live.textContent='Não foi possível reiniciar a edição deste Item ID. Nenhum anúncio foi alterado.';
+ });
  const close=elt('button','kit-secondary','✕ Fechar edição');
  close.type='button';
  close.addEventListener('click',()=>{
@@ -5200,7 +5208,7 @@ function kitShowPendingLinkChoice(handoff){
   panel.remove();
   status('Edição fechada. O anúncio original continua preservado na Shopee.','info');
  });
- heading.append(details,close);panel.append(heading);
+ actions.append(retry,close);heading.append(details,actions);panel.append(heading);
  const info=elt('p','kit-pending-direct-notice',
   'A composição deste kit não está salva na WeDrop. As imagens do anúncio já existente podem ser preparadas e revisadas por Item ID. Preços, descontos, publicação de novo kit e textos que dependem dos componentes não serão executados.');
  panel.append(info);
