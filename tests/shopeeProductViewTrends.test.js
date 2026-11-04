@@ -159,3 +159,20 @@ test('API visualizações tem colunas próprias e não tenta renderizar CTR nem 
  assert.match(ui,/add\(percent\(row\.cartAbandonmentRate\)/);
  assert.match(ui,/if\(source==='api'\)\{\s*add\([\s\S]*?\}\s*else\{\s*\/\/ Só o relatório orgânico/);
 });
+
+test('visualizações gerais respeitam seleção de top 20/50/100 sem alterar a origem',()=>{
+ const rows=Array.from({length:124},(_,i)=>({
+  item_id:i+1,sku:'SKU-'+(i+1),title:'Produto '+(i+1),
+  observed_day:date,first_views:100+i,last_views:150+i,
+  first_seen_at:'2026-11-03T12:00:00Z',last_seen_at:'2026-11-03T20:00:00Z'
+ }));
+ const window=parseViewsWindow({period:'today'},date);
+ assert.equal(rankObservedViews(rows,window).list.length,10);
+ for(const n of [20,50,100]){
+  const result=rankObservedViews(rows,window,{limit:n});
+  assert.equal(result.list.length,n);
+  assert.equal(result.totalProducts,124);
+  assert.equal(result.list.every(v=>v.ctr===null&&v.impressions===null),true);
+ }
+ assert.equal(rankObservedViews(rows,window,{limit:500}).list.length,100);
+});

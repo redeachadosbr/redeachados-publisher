@@ -10,7 +10,8 @@
   const importBox=$('organicTop10Import'),status=$('organicTop10Status');
   const sorts=[...group.querySelectorAll('button[data-sort]')];
   let visible=false,autoShown=false,loading=false,sort='combined',last=null,
-   focusBefore=null,loadSequence=0,source='api',apiPeriod='7',apiAutoAttempted=false;
+   focusBefore=null,loadSequence=0,source='api',apiPeriod='7',apiAutoAttempted=false,
+   rankingLimit=10;
   const fmt=new Intl.NumberFormat('pt-BR');
   const dec=new Intl.NumberFormat('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2});
   const number=v=>v===null||v===undefined?'—':fmt.format(Number(v));
@@ -23,6 +24,30 @@
     day:'2-digit',month:'2-digit',year:'numeric',hour:'2-digit',minute:'2-digit'
    }):'não informada';
   };
+  const allowedLimits=[10,20,50,100];
+  function updateHeading(){
+   const importing=!importBox.hidden&&source!=='api';
+   $('organicTop10Modal').dataset.importing=String(importing);
+   const title=importing?
+    (source==='performance'?'Importar Performance do Produto':'Importar relatório orgânico'):
+    'TOP '+rankingLimit+' · '+(source==='api'?'Visualizações Shopee':
+     source==='performance'?'Performance do Produto':'Desempenho Orgânico');
+   $('organicTop10Title').textContent=title;
+   $('organicTop10Upload').textContent='↓ Importar e atualizar Top '+rankingLimit;
+   $('organicTop10ToolsLabel').textContent='Classificar os '+rankingLimit+' melhores por';
+  }
+  function setRankingLimit(next,{reload=true}={}){
+   const parsed=Number(next);
+   if(!allowedLimits.includes(parsed))return;
+   rankingLimit=parsed;
+   $('organicTop10Limit').value=String(parsed);
+   $('organicTop10ImportLimit').value=String(parsed);
+   updateHeading();
+   if(reload&&!(!importBox.hidden&&source!=='api')){
+    if(source==='api')void refreshApi();
+    else void refresh();
+   }
+  }
   function notice(text,kind='info'){
    status.hidden=false;
    status.textContent=String(text);
@@ -133,7 +158,7 @@
    });
   }
   const apiQuery=()=>new URLSearchParams({
-   period:apiPeriod,...(['custom','day'].includes(apiPeriod)?{
+   period:apiPeriod,limit:String(rankingLimit),...(['custom','day'].includes(apiPeriod)?{
     start:$('organicTop10ApiStart').value,end:apiPeriod==='day'?
      $('organicTop10ApiStart').value:$('organicTop10ApiEnd').value
    }:{})
@@ -191,6 +216,7 @@
      (data.lastSample?'última: '+date(data.lastSample):'nenhuma leitura salva')+
      '). Impressões orgânicas, visitantes únicos, CTR e abandono não são retornados por esta API.';
     importBox.hidden=true;importBox.dataset.open='';
+    updateHeading();
     render(samples);
     if(!samples.length)
      notice('Não há medições suficientes no período solicitado. A API não permite buscar dias anteriores à primeira coleta. '+
@@ -209,7 +235,10 @@
    }finally{loading=false;}
   }
   function setSource(next){
+   const wasImporting=!importBox.hidden;
    source=next==='performance'?'performance':next==='organic'?'organic':'api';
+   if(source==='api'){importBox.hidden=true;importBox.dataset.open='';}
+   else if(wasImporting){importBox.hidden=false;importBox.dataset.open='manual';}
    sort='combined';
    if(loading){loadSequence++;loading=false;}
    $('organicTop10Modal').dataset.source=source;
@@ -227,24 +256,17 @@
     '● VISUALIZAÇÕES GERAIS · PODEM INCLUIR ADS':
     source==='performance'?'● CENTRAL DO VENDEDOR · ORIGEM NÃO SEPARADA DE ADS':
     '● ORGÂNICO · RELATÓRIO EXCLUSIVO SEM ADS';
-   $('organicTop10Title').textContent=source==='api'?
-    'TOP 10 · Visualizações Shopee':source==='performance'?
-    'TOP 10 · Performance do Produto':'TOP 10 · Desempenho Orgânico';
+   updateHeading();
    $('organicTop10Subtitle').textContent=source==='api'?
     'Visualizações gerais de anúncios, inclusive tráfego potencialmente pago.':
     source==='performance'?
     'Impressões, cliques, visitantes, CTR, adição ao carrinho e pedidos do relatório da Central do Vendedor.':
     'Métricas exclusivamente orgânicas por SKU, quando comprovadas na origem.';
    const performance=source==='performance';
-   $('organicTop10ImportTitle').textContent=performance?
-    'Importar Performance do Produto da Shopee':'Importar relatório orgânico da Shopee';
+   $('organicTop10ImportTitle').textContent='Formato de importação';
    $('organicTop10ImportDescription').textContent=performance?
-    'Central do Vendedor → Informações Gerenciais → Produto → Performance do Produto. '+
-    'Em Selecionar Métricas, escolha Impressões, Cliques, CTR, Visitantes do Produto, '+
-    'Visitantes/Unidades (Adicionar ao Carrinho), Taxa de Conversão (Adicionar ao Carrinho) '+
-    'e Pedidos. Exporte CSV/Excel ou copie a tabela com os cabeçalhos do período escolhido. A opção Produto Pago não comprova '+
-    'tráfego sem Ads. Itens adicionados não são carrinhos abandonados.':
-    'Importe apenas relatório filtrado exclusivamente para tráfego orgânico, sem Shopee Ads.';
+    'Exporte o relatório da Central do Vendedor com Item ID, Impressões, Cliques, CTR, Visitantes, Adições ao Carrinho, Conversão e Pedidos. Dados gerais podem incluir Ads.':
+    'Exporte CSV ou Excel filtrado exclusivamente para tráfego orgânico, sem Shopee Ads. Os dados precisam comprovar a origem orgânica.';
    $('organicTop10ConsentLabel').hidden=performance;
    if(performance)$('organicTop10OrganicConfirmed').checked=false;
    $('organicTop10OrganicConfirmed').required=!performance;
@@ -254,6 +276,7 @@
      ['cartVisitors','cartUnits','cartConversionRate','orders'].includes(key);
     button.setAttribute('aria-pressed',String(key==='combined'));
    }
+   updateHeading();
    if(!loading)void refresh();
   }
   async function refresh(){
@@ -266,7 +289,7 @@
    try{
     const response=await fetch((performance?'/api/shopee/performance/top10':
      '/api/shopee/organic/top10')+'?'+
-     new URLSearchParams({sort}),{credentials:'same-origin',cache:'no-store',
+     new URLSearchParams({sort,limit:String(rankingLimit)}),{credentials:'same-origin',cache:'no-store',
       headers:{Accept:'application/json'}});
     const data=await response.json().catch(()=>({}));
     if(serial!==loadSequence)return;
@@ -286,6 +309,7 @@
       'Exporte o relatório na Central do Vendedor para importar com esses campos.':
       'Nenhum relatório orgânico foi salvo. Importe apenas um relatório filtrado para tráfego sem Ads.');
      importBox.hidden=false;
+     updateHeading();
      sorts.forEach(b=>b.disabled=b.dataset.sort!=='combined');
      return;
     }
@@ -312,12 +336,14 @@
     render(items);
     // Importação opcional enquanto já há dados; não toma a tela inteira.
     if(importBox.dataset.open!=='manual')importBox.hidden=true;
+    updateHeading();
    }catch(error){
     render([]);
     notice('Não foi possível carregar o relatório selecionado: '+String(error.message||error)+
      '. Não serão inventadas impressões ou métricas de carrinho.', 'error');
     $('organicTop10Count').textContent='Consulta indisponível';
     importBox.hidden=true;
+    updateHeading();
    }finally{
     loading=false;
    }
@@ -379,11 +405,17 @@
   $('organicTop10ApiStart').max=localIso(dayInput);
   $('organicTop10ShowImport').addEventListener('click',()=>{
    importBox.hidden=false;importBox.dataset.open='manual';
+   updateHeading();
    $('organicTop10File').focus();
   });
   $('organicTop10CancelImport').addEventListener('click',()=>{
    importBox.hidden=true;importBox.dataset.open='';
+   updateHeading();
   });
+  $('organicTop10Limit').addEventListener('change',event=>
+   setRankingLimit(event.target.value));
+  $('organicTop10ImportLimit').addEventListener('change',event=>
+   setRankingLimit(event.target.value,{reload:false}));
   group.addEventListener('click',event=>{
    const button=event.target.closest('button[data-sort]');
    if(!button||button.disabled)return;
@@ -397,19 +429,6 @@
   startDay.setDate(startDay.getDate()-29);
   $('organicTop10Start').value=localDate(startDay);
   $('organicTop10End').value=localDate(end);
-  // A cópia depende de gesto explícito: nunca lê o clipboard automaticamente.
-  $('organicTop10ReadClipboard').addEventListener('click',async()=>{
-   const note=$('organicTop10ImportNotice');
-   try{
-    if(!navigator.clipboard?.readText)throw Error('Seu navegador não permite leitura direta. Cole usando Ctrl+V no campo de texto.');
-    const copied=await navigator.clipboard.readText();
-    if(!copied.trim())throw Error('Área de transferência vazia. Copie a tabela da Shopee primeiro.');
-    if(new Blob([copied]).size>4_000_000)throw Error('Tabela muito grande. Copie um período menor.');
-    $('organicTop10PasteText').value=copied;
-    note.textContent='Texto copiado. Confira o período e clique em Importar e atualizar TOP 10.';
-    note.dataset.kind='info';
-   }catch(error){note.textContent=String(error.message||error);note.dataset.kind='error';}
-  });
   // O Excel pode conter abas de produto-pai, variações, Ads e totais. O
   // servidor identifica quais possuem métricas; o vendedor escolhe UMA.
   const sheetRow=document.createElement('label');
@@ -426,9 +445,10 @@
   importBox.querySelector('.organic-top10-import-grid')?.after(sheetRow);
   $('organicTop10File').addEventListener('change',()=>{
    sheetRow.hidden=true;sheetSelect.replaceChildren();
+   const note=$('organicTop10ImportNotice');
+   note.textContent='';note.dataset.kind='info';
    const name=String($('organicTop10File').files?.[0]?.name||'');
    if(source==='organic'&&/^parentskudetail\./i.test(name)){
-    const note=$('organicTop10ImportNotice');
     note.textContent='Esse arquivo costuma ser Performance do Produto (dados gerais). Para não incluir Ads indevidamente como orgânico, escolha “Performance do Produto · Shopee” acima.';
     note.dataset.kind='info';
    }
@@ -438,19 +458,7 @@
    const button=$('organicTop10Upload');
    const note=$('organicTop10ImportNotice');
    let file=$('organicTop10File').files?.[0];
-   const pasted=$('organicTop10PasteText').value.trim();
-   if(file&&pasted){note.textContent='Escolha uma opção: arquivo OU tabela colada.';note.dataset.kind='error';return;}
-   if(!file&&!pasted){note.textContent='Selecione um relatório ou cole uma tabela da Central do Vendedor.';note.dataset.kind='error';return;}
-   if(!file){
-    const firstLines=pasted.split(/\r?\n/).slice(0,8).join(' ').normalize('NFD')
-     .replace(/[\u0300-\u036f]/g,'').toLowerCase();
-    if(!/(\bsku\b|item id|id do produto|id do item)/.test(firstLines)||
-       !/(impress|cliqu|visit|carrinh|pedid|\bctr\b)/.test(firstLines)){
-     note.textContent='Texto sem cabeçalho reconhecível. Copie também os nomes das colunas da tabela.';
-     note.dataset.kind='error';return;
-    }
-    file=new File([pasted],'Performance_Produto_Colado.csv',{type:'text/csv;charset=utf-8'});
-   }
+   if(!file){note.textContent='Selecione um arquivo CSV ou Excel da Central do Vendedor.';note.dataset.kind='error';return;}
    if(file.size>4_000_000){
     note.textContent='Arquivo maior que 4 MB. Exporte um período menor.';return;
    }
@@ -513,6 +521,7 @@
     note.dataset.kind='success';
     importBox.hidden=true;importBox.dataset.open='';
     sort='combined';
+    updateHeading();
     void refresh();
    }catch(error){
     note.textContent=String(error.message||error);
@@ -527,6 +536,7 @@
    open({auto:true});
   globalThis.RAOrganicTop10={open,refresh,close};
   $('organicTop10Update').textContent='↻ Atualizar Shopee';
+  updateHeading();
  }
  if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',start,{once:true});
  else start();

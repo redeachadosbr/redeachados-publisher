@@ -5432,6 +5432,22 @@ app.get('/api/shopee/finance/orders',mustLogin,requireWeDropAdmin,async(req,res)
 // Visualizações de anúncios (GERAIS, não orgânicas) via API oficial.
 // Acumular amostras sem inventar datas de histórico ou porcentagem de cliques.
 const productViewsScanning=new Map();
+// Limites discretos: ranking não expõe milhares de anúncios em uma requisição.
+const productRankingLimit=value=>[10,20,50,100].includes(Number(value))?
+ Number(value):10;
+async function readBaseInfoBatches(cfg,auth,ids){
+ const found=new Map();
+ for(let offset=0;offset<ids.length;offset+=50){
+  const result=await callShopeeShopApi(cfg,{
+   path:'/api/v2/product/get_item_base_info',
+   accessToken:auth.accessToken,shopId:auth.shopId,
+   query:{item_id_list:ids.slice(offset,offset+50).join(',')}
+  });
+  for(const item of result?.response?.item_list||[])
+   found.set(String(item.item_id),item);
+ }
+ return found;
+}
 app.get('/api/shopee/product-views/top10',mustLogin,requireWeDropAdmin,async(req,res)=>{
  res.setHeader('Cache-Control','no-store');
  try{
@@ -5441,7 +5457,7 @@ app.get('/api/shopee/product-views/top10',mustLogin,requireWeDropAdmin,async(req
    start:String(req.query.start||''),end:String(req.query.end||'')
   });
   const snapshots=await listViewSamples(auth.shopId,window);
-  const ranked=rankObservedViews(snapshots,window);
+  const ranked=rankObservedViews(snapshots,window,{limit:productRankingLimit(req.query.limit)});
   const lastSample=snapshots.reduce((x,y)=>y.last_seen_at>x?y.last_seen_at:x,'');
   res.json({ok:true,available:Boolean(ranked.totalProducts),
    ...ranked,lastSample,source:'product.get_item_extra_info',
@@ -5496,7 +5512,7 @@ app.get('/api/shopee/performance/top10',mustLogin,requireWeDropAdmin,async(req,r
   const allowed=['combined','impressions','visits','clicks','ctr','cartVisitors','cartUnits',
    'cartConversionRate','orders','orderConversionRate'];
   const sort=allowed.includes(req.query.sort)?req.query.sort:'combined';
-  const top=rankOrganicTop(snapshot.records,{sort,limit:10});
+  const top=rankOrganicTop(snapshot.records,{sort,limit:productRankingLimit(req.query.limit)});
   let cached=[],catalogWarning='';
   try{cached=(await readCatalogCache(auth.shopId)).items||[];}
   catch(error){catalogWarning='Imagens do catálogo não carregadas: '+
@@ -5514,9 +5530,7 @@ app.get('/api/shopee/performance/top10',mustLogin,requireWeDropAdmin,async(req,r
   if(missing.length){
    try{
     const ids=[...new Set(missing.map(x=>x.itemId))];
-    const result=await callShopeeShopApi(cfg,{path:'/api/v2/product/get_item_base_info',
-     accessToken:auth.accessToken,shopId:auth.shopId,query:{item_id_list:ids.join(',')}});
-    const found=new Map((result?.response?.item_list||[]).map(x=>[String(x.item_id),x]));
+    const found=await readBaseInfoBatches(cfg,auth,ids);
     for(const row of missing){
      const item=found.get(row.itemId);
      if(!item)continue;
@@ -5574,7 +5588,7 @@ app.get('/api/shopee/organic/top10',mustLogin,requireWeDropAdmin,async(req,res)=
   }
   const sort=['combined','impressions','visits','clicks','ctr','cartAdded','cartPending','cartAbandonmentRate'].includes(req.query.sort)?
    req.query.sort:'combined';
-  const ranked=rankOrganicTop(snapshot.records,{sort,limit:10});
+  const ranked=rankOrganicTop(snapshot.records,{sort,limit:productRankingLimit(req.query.limit)});
   let cached=[],catalogWarning='';
   try{cached=(await readCatalogCache(auth.shopId)).items||[];}
   catch(error){catalogWarning='Miniaturas do catálogo indisponíveis: '+
@@ -5601,10 +5615,7 @@ app.get('/api/shopee/organic/top10',mustLogin,requireWeDropAdmin,async(req,res)=
   if(unresolved.length){
    try{
     const ids=[...new Set(unresolved.map(x=>x.itemId))];
-    const live=await callShopeeShopApi(cfg,{path:'/api/v2/product/get_item_base_info',
-     accessToken:auth.accessToken,shopId:auth.shopId,
-     query:{item_id_list:ids.join(',')}});
-    const details=new Map((live?.response?.item_list||[]).map(x=>[String(x.item_id),x]));
+    const details=await readBaseInfoBatches(cfg,auth,ids);
     for(const row of unresolved){
      const base=details.get(row.itemId);
      if(!base)continue;

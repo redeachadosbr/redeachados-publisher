@@ -191,7 +191,7 @@ export function rankObservedViews(samples,window,{limit=10}={}){
   (b.viewsObserved??-1)-(a.viewsObserved??-1)||
   (b.latestTotalViews??-1)-(a.latestTotalViews??-1)||
   a.itemId.localeCompare(b.itemId));
- return {list:ranked.slice(0,limit),totalProducts:ranked.length,
+ return {list:ranked.slice(0,Math.max(1,Math.min(Number(limit)||10,100))),totalProducts:ranked.length,
   withPeriodDelta:ranked.filter(x=>x.viewsObserved!==null).length,
   window,precision:'sampled_partial_not_full_period',
   warning:'Contagem geral por Item ID, inclusive tráfego potencialmente pago. A Shopee não fornece período neste endpoint. A diferença é observada apenas entre amostras gravadas, não representa todo o dia/7/30 dias e não fornece impressões, visitantes únicos, CTR ou carrinhos.'};

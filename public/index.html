@@ -14,7 +14,7 @@
 <link rel="stylesheet" href="/shopee-discount-one-click.css?v=1.20.17">
 <link rel="stylesheet" href="/shopee-market-research.css?v=1.20.18">
 <link rel="stylesheet" href="/dashboard-new-listings.css?v=1.20.21-shopee">
-<link rel="stylesheet" href="/organic-top10.css?v=1.2.3-parentsku-fix">
+<link rel="stylesheet" href="/organic-top10.css?v=1.3.0-ranking-layout">
 <link rel="stylesheet" href="/finance-thumbnails.css?v=1.20.22">
 <link rel="stylesheet" href="/title-studio.css?v=1.21.16-ranked-best">
 <link rel="stylesheet" href="/seo-modern-layout.css?v=1.0.5-compact-cards">
@@ -2583,7 +2583,7 @@
 <script src="/ads-seo.js?v=6-ads-eligible-counter"></script>
 <script src="/optimizer-image-studio.js?v=1.0.5-move-enabled"></script>
 <script src="/optimizer-technical-studio.js?v=1.2.0-compact-fields"></script>
-<script src="/organic-top10.js?v=1.2.3-parentsku-fix"></script>
+<script src="/organic-top10.js?v=1.3.0-ranking-layout"></script>
 
 <!-- Modal independente do roteador: abre em cada login / carregamento autenticado -->
 <div id="organicTop10Overlay" class="organic-top10-overlay" hidden>
@@ -2609,6 +2609,13 @@
     <button id="organicTop10ModePerformance" type="button" class="organic-top10-mode" aria-pressed="false">Performance do Produto · Shopee</button>
     <button id="organicTop10ModeOrganic" type="button" class="organic-top10-mode" aria-pressed="false">Orgânico comprovado · Relatório</button>
    </div>
+   <div class="organic-top10-ranking-limit">
+    <label for="organicTop10Limit">Quantidade de SKUs por melhor desempenho</label>
+    <select id="organicTop10Limit" aria-label="Quantidade de SKUs no ranking">
+     <option value="10">Top 10</option><option value="20">Top 20</option>
+     <option value="50">Top 50</option><option value="100">Top 100</option>
+    </select>
+   </div>
    <div id="organicTop10ApiPeriods" class="organic-top10-api-periods" aria-label="Período de visualizações">
     <div class="organic-top10-period-pills" role="group" aria-label="Selecionar período">
      <button type="button" data-period="today">Hoje</button>
@@ -2625,7 +2632,7 @@
     <p id="organicTop10ApiInfo">Visualizações gerais por anúncio-pai; podem incluir Ads. Variação de cada período calculada apenas entre medições efetivamente registradas.</p>
    </div>
    <div id="organicTop10Tools" class="organic-top10-tools" hidden>
-    <span class="organic-top10-tools-label">Classificar os 10 melhores por</span>
+    <span id="organicTop10ToolsLabel" class="organic-top10-tools-label">Classificar os 10 melhores por</span>
     <div id="organicTop10Sorts" class="organic-top10-sorts" role="group" aria-label="Ordenar ranking orgânico">
      <button type="button" data-sort="combined" aria-pressed="true">Geral</button>
      <button type="button" data-sort="impressions" aria-pressed="false">Impressões</button>
@@ -2646,34 +2653,42 @@
    </div>
    <div id="organicTop10List" class="organic-top10-list" aria-label="Dez melhores produtos do tráfego orgânico"></div>
    <form id="organicTop10Import" class="organic-top10-import" hidden>
-    <h3 id="organicTop10ImportTitle">Vincular relatório orgânico da Shopee</h3>
-    <p id="organicTop10ImportDescription">Na Central do Vendedor, abra Informações Gerenciais → Produto → Performance do Produto. Para resultados exclusivamente orgânicos, selecione uma fonte de tráfego comprovadamente sem Ads antes de exportar. Campos ausentes aparecem como “—”.</p>
-    <div class="organic-top10-import-grid">
-     <label>Relatório do produto (.csv, .xls, .xlsx)
-      <input id="organicTop10File" type="file" accept=".csv,.xlsx,.xls">
-     </label>
-     <label>Período inicial
-      <input id="organicTop10Start" type="date" required>
-     </label>
-     <label>Período final
-      <input id="organicTop10End" type="date" required>
-     </label>
-    </div>
-    <div class="organic-top10-clipboard">
-     <label for="organicTop10PasteText">Ou cole uma tabela copiada da Central do Vendedor (com cabeçalhos)</label>
-     <textarea id="organicTop10PasteText" rows="3" spellcheck="false" placeholder="Copie a tabela com as colunas ID do Produto, Impressões, Cliques, CTR… e cole aqui."></textarea>
-     <div class="organic-top10-clipboard-actions">
-      <button id="organicTop10ReadClipboard" type="button" class="organic-top10-action organic-top10-secondary">Colar texto copiado</button>
-      <small>Alternativa ao arquivo quando a Shopee permitir copiar a tabela. Revise o período antes de importar. Nada é enviado até clicar em Importar.</small>
+    <div class="organic-top10-import-layout">
+     <aside class="organic-top10-import-help">
+      <div class="organic-top10-import-help-heading"><span class="organic-top10-help-icon" aria-hidden="true">ⓘ</span>
+       <h3 id="organicTop10ImportTitle">Formato de importação</h3></div>
+      <p id="organicTop10ImportDescription">Importe o relatório exportado da Central do Vendedor com Item ID, impressões, cliques, CTR, visitantes, carrinho e pedidos.</p>
+      <div class="organic-top10-import-illustration" aria-hidden="true"><div class="organic-top10-paper"><span></span><span></span><span></span><span></span></div><div class="organic-top10-upload-mark">↑</div></div>
+     </aside>
+     <div class="organic-top10-import-fields">
+      <div class="organic-top10-import-grid">
+       <label class="organic-top10-file-field">Relatório de produto (.csv, .xls, .xlsx)
+        <input id="organicTop10File" type="file" accept=".csv,.xlsx,.xls">
+       </label>
+       <div class="organic-top10-import-date-grid">
+        <label>Período inicial
+         <input id="organicTop10Start" type="date" required>
+        </label>
+        <label>Período final
+         <input id="organicTop10End" type="date" required>
+        </label>
+       </div>
+       <label class="organic-top10-import-limit">Quantidade de SKUs no ranking (melhor desempenho)
+        <select id="organicTop10ImportLimit" aria-label="Quantidade de SKUs a mostrar após importar">
+         <option value="10">Top 10 SKUs</option><option value="20">Top 20 SKUs</option>
+         <option value="50">Top 50 SKUs</option><option value="100">Top 100 SKUs</option>
+        </select>
+       </label>
+      </div>
      </div>
     </div>
     <label id="organicTop10ConsentLabel" class="organic-top10-consent"><input id="organicTop10OrganicConfirmed" type="checkbox" required>
      Confirmo que este relatório foi filtrado exclusivamente para tráfego orgânico, sem campanhas Shopee Ads e sem somar métricas pagas.
     </label>
+    <span id="organicTop10ImportNotice" class="organic-top10-notice" role="status" aria-live="polite"></span>
     <div class="organic-top10-import-footer">
-     <button id="organicTop10Upload" type="submit" class="organic-top10-action">Importar e atualizar TOP 10</button>
-     <button id="organicTop10CancelImport" type="button" class="organic-top10-action organic-top10-secondary">Voltar ao ranking</button>
-     <span id="organicTop10ImportNotice" class="organic-top10-notice" role="status" aria-live="polite"></span>
+     <button id="organicTop10CancelImport" type="button" class="organic-top10-action organic-top10-secondary">← Voltar ao ranking</button>
+     <button id="organicTop10Upload" type="submit" class="organic-top10-action">↓ Importar e atualizar Top 10</button>
     </div>
    </form>
   </div>

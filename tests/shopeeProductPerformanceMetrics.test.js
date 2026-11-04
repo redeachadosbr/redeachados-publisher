@@ -111,19 +111,44 @@ test('tabela TSV copiada da Central é importada com métricas por produto',()=>
  assert.equal(row.cartPending,null);
  assert.equal(row.cartAbandonmentRate,null);
 });
-test('colagem depende de ação do vendedor e nunca chama API privada da Central',()=>{
+test('novo popup remove campo colar tabela e oferece seletor de quantidade',()=>{
  const html=readFileSync(new URL('../public/index.html',import.meta.url),'utf8');
  const js=readFileSync(new URL('../public/organic-top10.js',import.meta.url),'utf8');
- assert.match(html,/id="organicTop10PasteText"/);
- assert.match(html,/id="organicTop10ReadClipboard"/);
- assert.match(js,/organicTop10ReadClipboard'\)\.addEventListener\('click'/);
- assert.match(js,/navigator\.clipboard\?\.readText/);
- assert.match(js,/navigator\.clipboard\.readText\(\)/);
- assert.match(js,/Performance_Produto_Colado\.csv/);
- assert.match(js,/source==='organic'&&\$\('organicTop10OrganicConfirmed'\)\.checked/);
+ const css=readFileSync(new URL('../public/organic-top10.css',import.meta.url),'utf8');
+ assert.doesNotMatch(html,/id="organicTop10PasteText"/);
+ assert.doesNotMatch(html,/id="organicTop10ReadClipboard"/);
+ assert.doesNotMatch(js,/navigator\.clipboard|organicTop10PasteText/);
+ assert.match(html,/id="organicTop10ImportLimit"/);
+ assert.match(html,/id="organicTop10Limit"/);
+ for(const n of [10,20,50,100])assert.match(html,new RegExp('<option value="'+n+'">'));
+ assert.match(html,/organic-top10-import-help/);
+ assert.match(html,/organic-top10-import-date-grid/);
+ assert.match(js,/rankingLimit=10/);
+ assert.match(js,/limit:String\(rankingLimit\)/);
+ assert.match(css,/\[data-importing="true"\]/);
  assert.doesNotMatch(js,/fetch\(['"]https:\/\/seller\.shopee/);
 });
-
+test('limite configurável traz até 100 SKUs sem afetar ordenação',()=>{
+ const rows=Array.from({length:130},(_,i)=>({
+  itemId:String(i+1),sku:'SKU-'+(i+1),impressions:100+i,visits:10+i,
+  clicks:5+i,ctr:4
+ }));
+ assert.equal(rankOrganicTop(rows).length,10);
+ for(const limit of [10,20,50,100]){
+  const top=rankOrganicTop(rows,{sort:'impressions',limit});
+  assert.equal(top.length,limit);
+  assert.equal(top[0].itemId,'130');
+  assert.equal(top.at(-1).itemId,String(131-limit));
+ }
+ assert.equal(rankOrganicTop(rows,{limit:999}).length,100);
+});
+test('endpoints aplicam limite recebido antes de retornar ranking',()=>{
+ const server=readFileSync(new URL('../server.js',import.meta.url),'utf8');
+ assert.match(server,/const productRankingLimit=value=>\[10,20,50,100\]/);
+ assert.match(server,/rankObservedViews\(snapshots,window,\{limit:productRankingLimit\(req\.query\.limit\)\}\)/);
+ assert.match(server,/rankOrganicTop\(snapshot\.records,\{sort,limit:productRankingLimit\(req\.query\.limit\)\}\)/);
+ assert.match(server,/readBaseInfoBatches\(cfg,auth,ids\)/);
+});
 test('planilha com abas gerais não é misturada: usuário seleciona uma aba de produto',()=>{
  const workbook=XLSX.utils.book_new();
  XLSX.utils.book_append_sheet(workbook,XLSX.utils.aoa_to_sheet([
