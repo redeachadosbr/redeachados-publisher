@@ -96,7 +96,13 @@
     const img=element(wrap,'img');img.src=row.imageUrl;
     img.loading='lazy';img.alt='';
    }else element(wrap,'span','▧','no-photo');
-   element(wrap,'span',row.title||'Anúncio sem título');
+   const name=element(wrap,'span',row.title||'Anúncio sem título');
+   const probableKit=/^(?:kit|combo)(?:\b|\s*[-:/])/i.test(String(row.title||'').trim())||
+    /^KIT-[A-Z0-9-]{4,115}$/i.test(String(row.sku||''));
+   if(probableKit){
+    name.title='Possível kit: o sistema confirmará o Item ID e o vínculo salvo antes de abrir o editor.';
+    element(wrap,'small','KIT · conferir vínculo','pending-images-kit-badge');
+   }
    const sku=element(tr,'td');
    element(sku,'strong',row.sku);
    element(sku,'div','Item ID '+row.itemId+
@@ -107,20 +113,47 @@
    element(images,'strong',(row.imageCount??'—')+' / 9','pending-images-count');
    element(images,'div','Faltam '+row.missingImages);
    const action=element(tr,'td');
-   const button=element(action,'button','Otimizar imagens');
+   const defaultText=probableKit?'Otimizar kit':'Otimizar imagens';
+   const button=element(action,'button',defaultText);
    button.type='button';button.addEventListener('click',async()=>{
     if(button.disabled)return;
     button.disabled=true;button.textContent='Confirmando na Shopee…';
     try{
      const result=await verifyItem(row.itemId,{force:true});
-     // Não abrir a SKU caso já tenha completado 9/9. O servidor gravou
-     // a conclusão e a retirou da lista antes de qualquer nova edição.
-     if(result?.status==='confirmed')return;
+     // Nenhuma navegação se a Shopee confirmou as 9/9 imagens ou falhou.
      if(result?.status!=='pending')return;
-     if(typeof globalThis.RAOpenPendingImageSku==='function')
+     button.textContent='Identificando kit…';
+     const answer=await fetch('/api/shopee/optimizer/pending-images/editor?'+
+      new URLSearchParams({item_id:String(row.itemId),sku:String(row.sku||'')}),{
+       credentials:'same-origin',cache:'no-store',headers:{Accept:'application/json'}
+      });
+     const data=await answer.json().catch(()=>({}));
+     if(!answer.ok||data.ok!==true||!data.editor?.kind)
+      throw Error(data.error||'Não foi possível identificar o tipo de anúncio.');
+     const editor=data.editor;
+     if(String(editor.itemId)!==String(row.itemId))
+      throw Error('O tipo retornado pertence a outro Item ID.');
+     if(editor.kind==='ambiguous'){
+      state(editor.message||'Vários kits vinculados ao anúncio. Confira antes de editar.','error');
+      return;
+     }
+     if(editor.kind==='kit'||editor.kind==='kit-unlinked'){
+      if(typeof globalThis.RAOpenPendingImageKit!=='function')
+       throw Error('Otimizador de kits indisponível. Atualize a página.');
+      globalThis.RAOpenPendingImageKit(editor);
+      return;
+     }
+     if(editor.kind==='single'){
+      if(typeof globalThis.RAOpenPendingImageSku!=='function')
+       throw Error('Otimizador individual indisponível.');
       globalThis.RAOpenPendingImageSku(row.sku);
-     else state('O editor da SKU não está disponível.','error');
-    }finally{button.disabled=false;button.textContent='Otimizar imagens';}
+      return;
+     }
+     throw Error('Tipo de anúncio não reconhecido. A edição foi interrompida.');
+    }catch(error){
+     state('Não foi possível abrir o editor correto do Item ID '+row.itemId+
+      ': '+String(error.message||error)+'. Nenhum anúncio foi modificado.','error');
+    }finally{button.disabled=false;button.textContent=defaultText;}
    });
   }
   byId('pendingImagesVisible').textContent=completed?

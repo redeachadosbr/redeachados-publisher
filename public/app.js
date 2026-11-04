@@ -2541,6 +2541,21 @@ async function optimizerFindSku({deep=false}={}){
  }
 }
 $('#optimizerFind').onclick=()=>void optimizerFindSku();
+// Roteamento comprovado no servidor: somente Item ID vinculado abre o kit
+// correspondente; título 'Kit' sem vínculo abre apenas a lista de kits.
+globalThis.RAOpenPendingImageKit=editor=>{
+ const itemId=String(editor?.itemId||'');
+ if(!/^[1-9]\d{0,18}$/.test(itemId))return false;
+ if(!['kit','kit-unlinked'].includes(editor?.kind))return false;
+ globalThis.__RA_PENDING_IMAGE_KIT_HANDOFF={
+  kind:editor.kind,itemId,kitSku:String(editor.kitSku||''),
+  title:String(editor.title||'').slice(0,140),
+  editable:editor.editable!==false,
+  message:String(editor.message||'').slice(0,300)
+ };
+ setTab('kits');
+ return true;
+};
 // A lista de Otimização Pendente abre a SKU correta na etapa de imagens,
 // sem publicar nada nem recuperar o preço de outra SKU no handoff.
 globalThis.RAOpenPendingImageSku=sku=>{

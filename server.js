@@ -37,8 +37,9 @@ import {saveWeDropProducts,readWeDropProduct} from './wedropCosts.js';
 import {kitCatalog,suggestKits,suggestKitsForIdea,rankKitIdeaProducts,assessKitBuyerFit,composeKit,kitCreative,kitPrompts,kitPlusResearchBrief,kitPlusContentPrompt,kitContentBrief,categoryMatches,modifyKitSkus,clearKitCatalogCache,kitSku} from './shopeeKitBuilder.js';
 import {researchShopeeKitSeo} from './shopeeKitSeoResearch.js';
 import {saveKitStockImport,clearKitStockCache,parseWeDropAvailabilityCsv,readKitStockSnapshot} from './shopeeKitAvailability.js';
-import {saveKitDraft,saveKitDraftLogistics,saveKitDraftManualFacts,saveKitDraftCopy,listKitDrafts,loadKitDraft,deleteKitDraft,recordKitOptimization,recordKitOptimizationFinalization,saveKitFiscalOrigin} from './shopeeKitDraftStore.js';
+import {saveKitDraft,saveKitDraftLogistics,saveKitDraftManualFacts,saveKitDraftCopy,listKitDrafts,loadKitDraft,deleteKitDraft,recordKitOptimization,recordKitOptimizationFinalization,saveKitFiscalOrigin,findKitDraftsLinkedToItemId} from './shopeeKitDraftStore.js';
 import {validateKitOptimizationTarget,kitOptimizationLinkIsCurrent,linkedKitPricingCost,assertKitListingComposition} from './shopeeKitOptimization.js';
+import {classifyPendingImageEditor} from './shopeePendingImageEditor.js';
 import {recoverKitDraftForEditing,matchesStoredKitPhotos,validateStoredKitDraft} from './shopeeKitDraftRecovery.js';
 import {kitUploadPhoto,kitPublicationReadiness,kitPublicationPreview,kitPublishApproved,checkKitPublication,kitVideoPrepare,kitVideoAdvance,kitVideoStatus,kitVideoDiscard} from './shopeeKitPublicationService.js';
 import {previewKitDiscount,executeKitDiscount,inspectKitDiscountForExecution,validateKitDiscountMarketForExecution} from './shopeeKitDiscountService.js';
@@ -1357,6 +1358,34 @@ app.post('/api/shopee/optimizer/pending-images/confirm',mustLogin,requireWeDropA
    snapshot:saved.snapshot||null});
  }catch(error){
   res.status(503).json({ok:false,error:'Não foi possível confirmar a galeria na Shopee: '+
+   String(error.message||error).slice(0,240)});
+ }
+});
+// Abrir o editor correto: verificar o Item ID na Shopee e resolver vínculo
+// com o kit na loja. O título 'Kit' nunca cria vínculo nem autoriza publicar.
+app.get('/api/shopee/optimizer/pending-images/editor',mustLogin,requireWeDropAdmin,async(req,res)=>{
+ res.setHeader('Cache-Control','no-store');
+ const itemId=String(req.query.item_id||'').trim();
+ if(!/^[1-9]\d{0,18}$/.test(itemId))
+  return res.status(400).json({ok:false,error:'Item ID inválido.'});
+ try{
+  const {auth,cfg}=await getValidAuth(req);
+  const [linkedKits,verified]=await Promise.all([
+   findKitDraftsLinkedToItemId(auth.shopId,itemId),
+   callShopeeShopApi(cfg,{path:'/api/v2/product/get_item_base_info',
+    accessToken:auth.accessToken,shopId:auth.shopId,query:{item_id_list:itemId}})
+  ]);
+  const items=verified?.response?.item_list||[];
+  if(!Array.isArray(items)||items.length!==1||String(items[0]?.item_id)!==itemId)
+   throw Error('A Shopee não confirmou o anúncio deste Item ID.');
+  const listing=items[0],editor=classifyPendingImageEditor({
+   itemId,title:String(listing.item_name||''),sku:String(listing.item_sku||req.query.sku||''),
+   linkedKits
+  });
+  res.json({ok:true,source:'shopee-api-and-saved-kit-links',editor});
+ }catch(error){
+  // Não redirecionar para o editor normal quando a identificação falhar.
+  res.status(503).json({ok:false,error:'Não foi possível confirmar se o anúncio é kit: '+
    String(error.message||error).slice(0,240)});
  }
 });
