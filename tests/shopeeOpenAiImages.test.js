@@ -25,6 +25,7 @@ test('roteiro de nove imagens na ordem premium solicitada',()=>{
 
 test('validação bloqueia URLs externas, HTTP e redirecionamentos inseguros',()=>{
  assert.equal(validateImageSourceUrl('https://down-br.img.susercontent.com/file/example'),'https://down-br.img.susercontent.com/file/example');
+ assert.equal(validateImageSourceUrl('https://wedrop-products-images.nyc3.cdn.digitaloceanspaces.com/example.jpg'),'https://wedrop-products-images.nyc3.cdn.digitaloceanspaces.com/example.jpg');
  assert.throws(()=>validateImageSourceUrl('http://down-br.img.susercontent.com/file/x'),/fora dos domínios/);
  assert.throws(()=>validateImageSourceUrl('https://susercontent.com.evil.test/x'),/fora dos domínios/);
  assert.throws(()=>validateImageSourceUrl('https://127.0.0.1/file'),/fora dos domínios/);
