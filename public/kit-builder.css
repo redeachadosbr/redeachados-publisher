@@ -3399,3 +3399,43 @@
 #tab-kits .kit-fiscal-sku-line.kit-fiscal-sku-missing strong{font-weight:500;color:#9a661b}
 #tab-kits .kit-fiscal-sku-alert{font-size:12px;border:1px solid #efca85;background:#fff7e8;color:#81510c;padding:9px;border-radius:9px;margin-top:10px}
 #tab-kits .kit-wizard-fiscal-mount #optimizerFiscalPanel{border:1px solid #b8d3ed;border-radius:13px;padding:15px;background:#fff}
+
+/* Edição do Item ID existente quando o anúncio é um kit sem rascunho WeDrop.
+   Reutiliza o editor REAL do otimizador, limitado à revisão das 9 imagens. */
+#tab-kits .kit-pending-direct-editor{
+ margin:18px 0 24px;padding:20px;min-width:0;max-width:100%;
+ border:1px solid #c9dbee;border-radius:20px;background:#fff;
+ box-shadow:0 14px 36px rgba(24,67,124,.09);
+}
+#tab-kits .kit-pending-direct-header{
+ display:flex;justify-content:space-between;align-items:flex-start;
+ gap:16px;flex-wrap:wrap;margin-bottom:12px;
+}
+#tab-kits .kit-pending-direct-details{display:grid;gap:6px;min-width:0;flex:1}
+#tab-kits .kit-pending-direct-eyebrow{font-size:11px;letter-spacing:.065em;color:#4573a6;font-weight:800}
+#tab-kits .kit-pending-direct-details strong{font-size:21px;color:#143b6b}
+#tab-kits .kit-pending-direct-details p{font-size:14px;margin:0;color:#214e7c;overflow-wrap:anywhere}
+#tab-kits .kit-pending-direct-details small{color:#5b7591}
+#tab-kits .kit-pending-direct-notice{
+ padding:12px 14px;background:#f2f7ff;border:1px solid #d5e4f5;
+ border-radius:12px;color:#35597e;font-size:13px;line-height:1.55;margin:12px 0;
+}
+#tab-kits .kit-pending-direct-status{font-size:13px;font-weight:600;color:#164a86;margin:12px 0}
+#tab-kits .kit-pending-direct-mount{min-width:0;max-width:100%;overflow:visible}
+#tab-kits .kit-pending-direct-mount #optimizerWorkflowPanel{
+ display:block;width:100%;max-width:100%;min-width:0;margin:0;
+}
+#tab-kits .kit-pending-direct-mount #optimizerWorkflowPanel[hidden]{display:none}
+#kitPendingDirectEditor #optimizerWorkflowCards > :not([data-stage="images"]){display:none!important}
+#kitPendingDirectEditor #optimizerShowExecution,
+#kitPendingDirectEditor #optimizerWorkflowNext,
+#kitPendingDirectEditor .optimizer-has-variants,
+#kitPendingDirectEditor #optimizerDiscountReviewInline,
+#kitPendingDirectEditor #optimizerExecutionPanel{display:none!important}
+#tab-kits .kit-pending-direct-link{margin-top:18px;padding:12px;border-top:1px solid #dce7f4}
+#tab-kits .kit-pending-direct-link summary{cursor:pointer;font-size:13px;font-weight:650;color:#244d7c}
+@media(max-width:700px){
+ #tab-kits .kit-pending-direct-editor{padding:13px;border-radius:14px}
+ #tab-kits .kit-pending-direct-details strong{font-size:17px}
+ #tab-kits .kit-pending-direct-header > button{width:100%}
+}
