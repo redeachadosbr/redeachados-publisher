@@ -277,3 +277,51 @@ test('confirmação exclusivamente orgânica oculta na aba Performance do Produt
  const css=readFileSync(new URL('../public/organic-top10.css',import.meta.url),'utf8');
  assert.match(css,/\.organic-top10-consent\[hidden\]\{display:none!important\}/);
 });
+
+test('arquivo oficial TRC0886: 7 impressões, 13 cliques, CTR 185,71% sem bloquear importação',()=>{
+ const book=XLSX.utils.book_new();
+ XLSX.utils.book_append_sheet(book,XLSX.utils.aoa_to_sheet([
+  ['ID do Item','Produto','ID da Variação','SKU Principle','Impressão do Produto',
+   'Cliques Por Produto','CTR','Visitantes do Produto (Visita)','Pedido Feito',
+   'Taxa de Conversão (adicionar ao carrinho)'],
+  ['58214693188','Escorredor Louças 3 Andares','-','TRC0886',7,13,'185,71%',11,0,'0,00%'],
+  ['58214693189','Produto normal','-','SKU-2',500,25,'5,00%',40,2,'8,00%']
+ ]),'Produtos com Melhor Desempenho');
+ const buffer=XLSX.write(book,{bookType:'xlsx',type:'buffer'});
+ const report=parseProductPerformanceReport(buffer,{
+  ...info,fileName:'parentskudetail.20261004_20261102.xlsx',
+  periodStart:'2026-10-04',periodEnd:'2026-11-02'
+ });
+ assert.equal(report.records.length,2,'não interromper a importação dos demais anúncios');
+ const outlier=report.records.find(x=>x.sku==='TRC0886');
+ assert.equal(outlier.itemId,'58214693188');
+ assert.equal(outlier.impressions,7);
+ assert.equal(outlier.clicks,13);
+ assert.equal(outlier.ctr,185.71,'preservar o CTR efetivamente informado pela Shopee');
+ assert.equal(report.anomalies.clicksOverImpressions,1);
+ assert.equal(report.anomalies.ctrAbove100,1);
+ assert.deepEqual(report.anomalies.examples[0],{
+  sku:'TRC0886',itemId:'58214693188',impressions:7,clicks:13,ctr:185.71
+ });
+ assert.equal(report.records[1].cartConversionRate,8);
+ const organicSheet=Buffer.from('SKU;Impressões;Cliques;CTR\nTRC0886;7;13;185,71%\n','utf8');
+ assert.throws(()=>parseOrganicReport(organicSheet,{
+  ...info,fileName:'organico.csv',organicConfirmed:true
+ }),/Cliques maiores que impressões/,'a regra de origem comprovada não deve mudar');
+});
+test('taxas de conversão acima de 100 não ganham exceção do CTR oficial',()=>{
+ const csv='SKU;Impressões;Cliques;CTR;Taxa de Conversão (adicionar ao carrinho)\n'+
+  'TRC0886;7;13;185,71%;150,00%\n';
+ const report=parseProductPerformanceReport(Buffer.from(csv),{...info,fileName:'report.csv'});
+ assert.equal(report.records[0].ctr,185.71);
+ assert.equal(report.records[0].cartConversionRate,null);
+ assert.equal(report.anomalies.ctrAbove100,1);
+ assert.equal(report.anomalies.clicksOverImpressions,1);
+});
+test('interface alerta CTR incomum apenas na Performance geral sem modificar registros',()=>{
+ const server=readFileSync(new URL('../shopeeOrganicPerformance.js',import.meta.url),'utf8');
+ const ui=readFileSync(new URL('../public/organic-top10.js',import.meta.url),'utf8');
+ assert.match(server,/unusualMetrics:report\.anomalies/);
+ assert.match(ui,/data\.metadata\?\.unusualMetrics\?\.clicksOverImpressions/);
+ assert.match(ui,/CTR oficial preservado/);
+});

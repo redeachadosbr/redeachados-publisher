@@ -162,11 +162,13 @@ function count(value){
  if(!Number.isSafeInteger(n)||n<0)return null;
  return n;
 }
-const percent=x=>{
+const percent=(x,{allowAbove100=false}={})=>{
  const v=label(x);
  if(!v)return null;
  const n=Number(v.replace('%','').replace(/\s/g,'').replace(',','.'));
- return Number.isFinite(n)&&n>=0&&n<=100?n:null;
+ // Algumas exportações oficiais da Shopee informam CTR superior a 100%.
+ // Não aplicar essa exceção a conversões ou percentuais de abandono.
+ return Number.isFinite(n)&&n>=0&&(allowAbove100||n<=100)?n:null;
 };
 const isPaid=x=>{
  const source=fold(x);
@@ -192,6 +194,7 @@ function parseProductReport(buffer,{
  const {rows,sheetName:chosenSheet}=workbookRows(buffer,fileName,{sheetName,mode});
  const {start,columns}=indexHeader(rows);
  const list=[],used=new Set(),skipped={paid:0,empty:0,variation:0};
+ const anomalies={clicksOverImpressions:0,ctrAbove100:0,examples:[]};
  for(const row of rows.slice(start)){
   if(!Array.isArray(row)||row.every(x=>!label(x)))continue;
   // "Produtos com Melhor Desempenho" contém linhas do anúncio-pai E de
@@ -219,7 +222,8 @@ function parseProductReport(buffer,{
   const metric={};
   for(const k of ['impressions','visits','clicks','cartAdded','cartPending','uniqueImpressions','uniqueClicks','pageViews','searchClicks','cartVisitors','cartUnits','orders','soldUnits'])
    metric[k]=columns[k]===undefined?null:count(row[columns[k]]);
-  const ctr=columns.ctr===undefined?null:percent(row[columns.ctr]);
+  const ctr=columns.ctr===undefined?null:
+   percent(row[columns.ctr],{allowAbove100:mode==='performance'});
   const cartConversionRate=columns.cartConversionRate===undefined?null:percent(row[columns.cartConversionRate]);
   const orderConversionRate=columns.orderConversionRate===undefined?null:percent(row[columns.orderConversionRate]);
   const explicitAbandonment=columns.cartAbandonmentRate===undefined?
@@ -239,9 +243,20 @@ function parseProductReport(buffer,{
    throw Error('Carrinhos parados maiores que adições ao carrinho na SKU '+
     (sku||itemId)+'. Confirme os indicadores e suas unidades.');
   if(metric.impressions!==null&&metric.clicks!==null&&
-    metric.clicks>metric.impressions)
-   throw Error('Cliques maiores que impressões na SKU '+(sku||itemId)+
-    '. Verifique se as colunas estão corretas.');
+     metric.clicks>metric.impressions){
+   if(mode==='organic')
+    throw Error('Cliques maiores que impressões na SKU '+(sku||itemId)+
+     '. Verifique se as colunas estão corretas.');
+   // No relatório de Performance, esse caso é retornado pela própria
+   // Shopee: NÃO converter cliques em impressões, nem forçar CTR <=100%.
+   // Preservar valores originais, apenas registrar a ocorrência.
+   anomalies.clicksOverImpressions++;
+   if(anomalies.examples.length<10)anomalies.examples.push({
+    sku,itemId,impressions:metric.impressions,clicks:metric.clicks,ctr
+   });
+  }
+  if(mode==='performance'&&ctr!==null&&ctr>100)
+   anomalies.ctrAbove100++;
   if(Object.values(metric).every(v=>v===null)&&ctr===null&&explicitAbandonment===null&&cartConversionRate===null&&orderConversionRate===null)continue;
   // Uma SKU principal pode existir em anúncios diferentes; o Item ID é a
   // chave estável do anúncio. Sem Item ID, usar a SKU para evitar duplicatas.
@@ -274,7 +289,8 @@ function parseProductReport(buffer,{
  const metricAvailability=Object.fromEntries(['impressions','visits','clicks','ctr','cartAdded','cartPending','cartAbandonmentRate','cartVisitors','cartUnits','cartConversionRate','orders','orderConversionRate','uniqueImpressions','uniqueClicks','pageViews','searchClicks','soldUnits'].map(k=>
   [k,list.some(r=>r[k]!==null)]));
  return {records:list,periodStart,periodEnd,fileName:String(fileName).slice(0,180),
-  sheetName:chosenSheet,metricAvailability,skipped,source:mode==='organic'?'seller_center_organic_export':'seller_center_product_performance_export'};
+  sheetName:chosenSheet,metricAvailability,skipped,anomalies,
+  source:mode==='organic'?'seller_center_organic_export':'seller_center_product_performance_export'};
 }
 export function rankOrganicTop(records,{sort='combined',limit=10}={}){
  const keys=['impressions','visits','clicks','ctr','cartAdded','cartPending','cartAbandonmentRate','cartVisitors','cartUnits','cartConversionRate','orders','orderConversionRate'];
@@ -363,7 +379,8 @@ export async function savePerformanceSnapshot(shopId,report){
   row_count:report.records.length,records:report.records,
   metadata:{metrics:report.metricAvailability,sheetName:report.sheetName,
    rowsWithoutIdentity:report.skipped.empty,excludedVariationRows:report.skipped.variation||0,
-   trafficScope:'not_separated_from_ads'},
+   trafficScope:'not_separated_from_ads',
+   unusualMetrics:report.anomalies||{clicksOverImpressions:0,ctrAbove100:0,examples:[]}},
   imported_at:new Date().toISOString(),updated_at:new Date().toISOString()};
  const saved=await db(shopId,{method:'POST',data:[data],table:PERFORMANCE_TABLE});
  if(saved?.length!==1)throw Error('Relatório de Performance do Produto não confirmado.');
