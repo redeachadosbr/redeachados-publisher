@@ -3,18 +3,18 @@ import assert from 'node:assert/strict';
 import {CHATGPT_IMAGE_SCENES,createChatGptPrompts} from '../public/chatgptPrompts.js';
 
 const approved=[
-'Imagem 01 — Capa: produto original ocupando aproximadamente 85% a 90% da imagem, fundo limpo e apresentação profissional. imagem com fundo ambientado',
-'Imagem 02 — Uso real: mostrar o produto em um ambiente cotidiano de utilização, com composição diferente da capa. imagem com fundo ambientado. FRASES CURTAS DE CONVERSÃO',
-'Imagem 03 — Base fotográfica para ficha técnica: somente o produto original em fundo ambientado moderno, nítido e HD, sem texto, números, setas, títulos ou medidas na imagem gerada.',
-'Imagem 04 — Benefícios: demonstrar visualmente as principais vantagens do produto. imagem com fundo ambientado. FRASES CURTAS DE BENEFICIO',
-'Imagem 05 — Dor e solução: representar uma necessidade do comprador e como o produto atende a essa necessidade. imagem com fundo ambientado FRASE CURTA',
-'Imagem 06 — Persuasão: destacar um diferencial real com apresentação comercial. imagem com fundo ambientado. FRASE DE CONVERSÃO',
-'Imagem 07 — Transformação: demonstrar a experiência proporcionada pelo produto. imagem com fundo ambientado. FRASE DE CONVERSÃO',
-'Imagem 08 — Quebra de objeções: responder visualmente às três principais dúvidas do comprador, sem poluir a composição. imagem com fundo ambientado. FRASES CURTAS',
-'Imagem 09 — Mockup e confiança: apresentar o produto em cenário profissional com os três selos da loja: Compra Segura, Entrega Rápida e Atendimento Online. imagem com fundo ambientado'
+ "Imagem 01 — Capa: produto original ocupando aproximadamente 85% a 90% da imagem, fundo limpo e apresentação profissional. imagem com fundo ambientado",
+ "Imagem 02 — Uso real: mostrar o produto em um ambiente cotidiano de utilização, com composição diferente da capa. imagem com fundo ambientado. FRASES CURTAS DE CONVERSÃO",
+ "Imagem 03 — Mostrar o produto REAL inteiro e bem definido em perspectiva lateral ou três-quartos, fundo ambientado moderno, margens livres próximas ao seu contorno. Esta geração é uma BASE SEM texto: o Shopee Manager acrescentará as dimensões REAIS da SKU diretamente perto do produto em uma camada final de tipografia moderna fina, sem esconder a foto.",
+ "Imagem 04 — Benefícios: fotografar a vantagem mais relevante e realmente verificável do produto. Criar UMA frase original e persuasiva de 4 a 8 palavras, ligada ao que está visível na foto, sem slogan genérico; tipografia sofisticada e discreta.",
+ "Imagem 05 — Dor e solução: fotografar uma situação concreta em que o produto ajuda o comprador. Criar UMA frase contextualizada e persuasiva de 4 a 8 palavras, sem inventar problema, recurso ou resultado.",
+ "Imagem 06 — Persuasão: mostrar diferencial real e comprovado do produto em fotografia publicitária sofisticada. Criar UMA frase de 4 a 8 palavras que traduza esse diferencial em vantagem para o comprador; texto pequeno.",
+ "Imagem 07 — Transformação: experiência real usando o produto em ambiente diferente. Criar UMA frase de 4 a 8 palavras que faça o cliente imaginar o uso ou a conveniência real, sem prometer mudanças não comprovadas.",
+ "Imagem 08 — Quebra de objeções: produto protagonista em ambiente premium. Escrever 2 perguntas de clientes com respostas curtas, específicas e verdadeiras sobre o produto; se houver terceiro fato comprovado e espaço, permitir até 3 pares. Microtipografia moderna nas margens, duas linhas por par (Pergunta? / Resposta), sem prejudicar a foto.",
+ "Imagem 09 — Mockup e confiança: apresentar o produto em cenário profissional com os três selos da loja: Compra Segura, Entrega Rápida e Atendimento Online. imagem com fundo ambientado"
 ];
 
-test('os 9 comandos são literalmente os 9 textos aprovados',()=>{
+test('os 9 comandos aprovados preservam capa e uso real e atualizam cenas 03 a 08',()=>{
  assert.deepEqual(CHATGPT_IMAGE_SCENES.map(x=>x.guide),approved);
 });
 test('o Motor Matriz muda somente a imagem 03 e usa o texto colado da WeDrop',()=>{
