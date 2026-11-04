@@ -80,7 +80,7 @@ export function createChatGptPrompts({imageUrls=[],supplierSourceText='',title='
   'O gerador é responsável SOMENTE PELA FOTOGRAFIA. NENHUMA medida, número, palavra, letra, unidade, seta, ícone, régua, tabela, etiqueta, subtítulo, selo, painel lateral ou composição textual deve aparecer nesta fotografia-base.',
   'Não tentar extrair dimensões da foto, medidas de embalagem, da ficha de outro produto ou do produto montado. Não criar texto gráfico técnico.',
   /pista|conjunto|kit/i.test(title)?'Mostrar o CONJUNTO fiel às referências, sem isolar nem inventar componentes.':'',
-  'Preserve arquitetura e detalhes reais HD sem desfoque excessivo. Câmera frontal ligeiramente elevada, produto inteiro sem cortes e margens pequenas preparadas para etiquetas.',
+  'Preserve arquitetura e detalhes reais HD sem desfoque excessivo, com ambiente moderno HD visível. Câmera frontal ligeiramente elevada, produto inteiro sem cortes e margens pequenas preparadas para etiquetas. A camada final terá fonte bonita, moderna e discreta.',
   'ORDEM FINAL OBRIGATÓRIA DA IMAGEM 03: ENTREGAR SÓ FOTOGRAFIA, 100% SEM TEXTO. O Shopee Manager entregará a arte FINAL pronta com COMPRIMENTO, LARGURA e outras cotas confirmadas, em boxes brancos com borda amarela e números azul-marinho; não duplicar texto.'
  ].join('\\n\\n');
 
