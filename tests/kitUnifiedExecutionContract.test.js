@@ -147,7 +147,7 @@ test('check do titulo curto do kit funciona sem enfraquecer titulo SEO comum',()
  assert.throws(()=>validateReview({...reviewed,title:'A'.repeat(121)},{allowShortKitTitle:true}),/100 e 120/);
  assert.match(server,/req\.body\?\.kitPreparedTitle===true/);
  assert.match(server,/String\(linkedKit\.mainSku\)===String\(sku\)/);
- assert.match(server,/validateReview\(req\.body,\{allowShortKitTitle\}\)/);
+ assert.match(server,/validateReview\(req\.body,\{allowShortKitTitle,kitProductNames,singleProductName\}\)/);
  assert.match(app,/stage==='seo'\?\{kitPreparedTitle:true\}/);
  const execution=source('shopeeExecutionPlan.js');
  assert.match(execution,/allowShortKitTitle:Boolean\(/);
