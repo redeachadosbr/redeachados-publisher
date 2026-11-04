@@ -138,6 +138,38 @@ export async function listKitDrafts(shopId){
   ['publishing','uncertain','published_pending'].includes(x.publication)));
  return {drafts,published,activeBatchId:activeBatchId||null};
 }
+// Resolve um anúncio existente por seu Item ID OFICIAL, nunca por um título
+// parecido nem pela SKU isolada (uma SKU pode participar de vários kits).
+// Consulta também rascunhos de lotes anteriores, não apenas o lote ativo.
+export async function findKitDraftsLinkedToItemId(shopId,itemId){
+ const id=shop(shopId),target=String(itemId||'').trim();
+ if(!/^[1-9]\\d{0,18}$/.test(target))throw Error('Item ID inválido para localizar kit.');
+ const fields=['optimization','optimizationFinalization','publication'];
+ const found=await Promise.all(fields.map(field=>request('?shop_id=eq.'+id+
+  '&draft->'+field+'->>itemId=eq.'+target+
+  '&select=kit_sku,component_skus,draft,updated_at&limit=20')));
+ const unique=new Map();
+ for(const list of found)for(const row of list){
+  const kitSku=String(row.kit_sku||'');
+  if(!/^KIT-[A-Z0-9-]{4,115}$/.test(kitSku))continue;
+  const d=row.draft||{},matched=['optimization','optimizationFinalization','publication']
+   .some(field=>String(d[field]?.itemId||'')===target);
+  if(!matched)continue;
+  const current=d.optimization||{},done=d.optimizationFinalization||{};
+  const components=Array.isArray(row.component_skus)?row.component_skus.map(String):[];
+  const mainSku=String(current.sku||current.mainSku||done.sku||
+   d.kit?.components?.[0]?.sku||'');
+  unique.set(kitSku,{
+   kitSku,itemId:target,mainSku,
+   title:String(d.creative?.title||'').slice(0,120),
+   publication:String(d.publication?.status||'local_draft'),
+   optimized:d.optimizationFinalization?.status==='verified',
+   components
+  });
+ }
+ return [...unique.values()];
+}
+
 export async function loadKitDraft(shopId,kitSku){
  const id=shop(shopId),code=String(kitSku||'').trim();
  if(!/^KIT-[A-Z0-9-]{4,115}$/.test(code))throw Error('Código de kit inválido.');
