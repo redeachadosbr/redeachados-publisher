@@ -97,7 +97,7 @@
     img.loading='lazy';img.alt='';
    }else element(wrap,'span','▧','no-photo');
    const name=element(wrap,'span',row.title||'Anúncio sem título');
-   const probableKit=/^(?:kit|combo)(?:\\b|\\s*[-:/])/i.test(String(row.title||'').trim())||
+   const probableKit=/^(?:kit|combo)(?:\b|\s*[-:/])/i.test(String(row.title||'').trim())||
     /^KIT-[A-Z0-9-]{4,115}$/i.test(String(row.sku||''));
    if(probableKit){
     name.title='Possível kit: o sistema confirmará o Item ID e o vínculo salvo antes de abrir o editor.';
