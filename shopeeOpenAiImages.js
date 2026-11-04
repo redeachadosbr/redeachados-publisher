@@ -15,7 +15,7 @@ export function validateImageSourceUrl(input){
  let url;
  try{url=new URL(String(input||''));}catch{throw Error('URL da fotografia original inválida.');}
  const domain=url.hostname.toLowerCase();
- const accepted=['susercontent.com','shopee.com.br','shopeeusercontent.com','shopeemobile.com'];
+ const accepted=['susercontent.com','shopee.com.br','shopeeusercontent.com','shopeemobile.com','wedrop-products-images.nyc3.cdn.digitaloceanspaces.com'];
  if(url.protocol!=='https:'||url.username||url.password||url.port||!accepted.some(x=>domain===x||domain.endsWith('.'+x)))
   throw Error('Fotografia original fora dos domínios autorizados da Shopee.');
  return url.toString();
