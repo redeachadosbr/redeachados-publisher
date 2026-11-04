@@ -128,3 +128,23 @@
  #optimizerImagesPanel .ra-studio-gallery-column>.optimizer-commercial-gallery-section{padding:10px}
  #optimizerImagesPanel.ra-studio .ra-studio-gallery-column .ra-studio-bulk{padding:9px}
 }
+
+/* Bloqueio conservador do ChatGPT ao detectar texto de uma imagem anterior.
+   O usuário limpa a conversa; a extensão decide se o chat está seguro. */
+.optimizer-chat-clean-recovery{
+ margin:12px 0;padding:15px 16px;border:1px solid #e1bd7b;
+ border-radius:13px;background:#fff9ee;color:#693e0e;
+ box-shadow:0 4px 14px rgba(120,81,12,.06);line-height:1.5;
+}
+.optimizer-chat-clean-recovery[hidden]{display:none!important}
+.optimizer-chat-clean-recovery strong{display:block;font-size:14px;font-weight:750;line-height:1.35;color:#73420b}
+.optimizer-chat-clean-recovery p{margin:7px 0 10px;white-space:normal;color:#614316;font-size:13px}
+.optimizer-chat-clean-recovery small{display:block;margin-top:8px;color:#755c36;font-size:12px}
+.optimizer-chat-clean-actions{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+.optimizer-chat-clean-actions button{width:auto;min-width:175px;flex:1 1 auto;padding:10px 13px;white-space:normal}
+.optimizer-chat-clean-actions button:disabled{opacity:.65;cursor:wait}
+@media(max-width:700px){
+ .optimizer-chat-clean-recovery{padding:12px}
+ .optimizer-chat-clean-actions{flex-direction:column;align-items:stretch}
+ .optimizer-chat-clean-actions button{width:100%;min-width:0}
+}
