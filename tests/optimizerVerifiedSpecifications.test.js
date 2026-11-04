@@ -46,7 +46,7 @@ test('WS20357 aplica medidas 183 cm comprimento e 69 cm largura cadastradas manu
  assert.equal(confirmedSpecCard({...data,sourceSaved:false}),null,
   'Sem registro validado nem vínculo não se aceita o texto');
  const card=readFileSync(new URL('../public/specificationCard.js',import.meta.url),'utf8');
- assert.match(card,/const longPortrait=!height&&length&&width/);
+ assert.match(card,/const poolPortrait=!height&&Boolean\(length&&width\)/);
  assert.match(card,/COMPRIMENTO.*length.value/);
 });
 
