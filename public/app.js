@@ -11973,6 +11973,7 @@ async function optimizerImagesLoad(){
     finally{optimizerImagesAutoBusy=false;optimizerImagesSetProgress();if(optimizerImagesSameSku(w))await optimizerImagesLoad();}
    };
    actions.append(generate);
+   let importThirdButton=null;
    if(slot===3&&!image){
     const importThird=optimizerMake('button','secondary','📏 Importar foto 03 + medidas');
     importThird.type='button';
@@ -11986,7 +11987,7 @@ async function optimizerImagesLoad(){
       'O Manager aplicará as medidas confirmadas da SKU antes de salvar. As imagens 01 e 02 permanecem intactas.');
      $('#optimizerImageCorrectionFile')?.click();
     };
-    actions.append(importThird);
+    importThirdButton=importThird;
    }
    let measureButton=null;
    if(slot===3&&image){
@@ -12080,6 +12081,7 @@ async function optimizerImagesLoad(){
     optimizerCommercialActionMessage('Confirme a exclusão da imagem '+String(slot).padStart(2,'0')+' no próprio cartão. Nenhum arquivo foi apagado ainda.');
    };
    actions.append(remove);
+   if(importThirdButton)actions.append(importThirdButton);
    if(measureButton)actions.append(measureButton);
    detail.append(actions);
    if(image){
