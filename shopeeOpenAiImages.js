@@ -34,17 +34,26 @@ export function imagePrompt({record,slot,masterPrompt='',note='',sourceImageCoun
  if(!Number.isInteger(position)||position<1||position>9)throw Error('Posição inválida (1 a 9).');
  if(position===3){
   const product=String(record?.title||'Produto do anúncio Shopee').slice(0,240);
+  const axes=confirmedProductDimensionsFromWeDrop(supplierSourceText)?.measurements||[];
+  const hasLengthWidth=axes.some(x=>x.axis==='comprimento')&&axes.some(x=>x.axis==='largura');
+  const verifiedColors=/envia(?:do|da|dos|das)\s+(?:com\s+)?cor(?:es)?\s+sortid[ao]s?/i.test(supplierSourceText)&&
+   /cor(?:es)?\s*[:\-][^\n]*azul[^\n]*amarelo[^\n]*rosa/i.test(supplierSourceText);
+  const showVariants=/colch[aã]o.*(?:infl[aá]vel|piscina)|(?:boia|infl[aá]vel).*colch[aã]o/i.test(product)&&
+   hasLengthWidth&&verifiedColors;
   // NUNCA entregar números do fornecedor à IA para ela desenhar. O Manager
   // insere cotas verificadas posteriormente em UMA camada deterministicamente.
   return [
    'FOTOGRAFIA BASE LIMPA 1200 x 1200, imagem 03. Produto exato: '+product+'. SKU '+String(record?.sku||'').slice(0,120)+'.',
    'Manter produto ORIGINAL, mesmas cores, formato e peças das referências, com cenário moderno realista e nítido em HD.',
+   showVariants?
+    'Composição de referência: mostrar 3 versões visualmente iguais do colchão em pé na ordem ROSA, AMARELO, AZUL; produto AZUL à direita. São VARIAÇÕES da mesma unidade, não um kit com 3 unidades. Reservar faixa à direita da peça azul para futura seta de comprimento e faixa abaixo para largura. Reservar canto inferior esquerdo para selo de cores sortidas que será aplicado após a geração. Nenhum texto/etiqueta nesta foto-base.':
+    'Composição de produto único ou kit fiel às referências, com margem clara à direita e embaixo para as cotas após a geração. Não inventar variações de cor.',
    /pista|conjunto|kit/i.test(product)?'O produto é um CONJUNTO, não só um carrinho: mostrar toda a montagem real de pista e acessórios vistos na referência, sem criar componentes.':'',
    hasPreparedReference?'Editar a foto anterior removendo completamente TODA palavra, número, desenho de cota, seta, selo, legenda, infográfico, painel e características. Preservar apenas o produto e seu fundo realista.':'Gerar uma fotografia ambientada sem qualquer sobreposição gráfica.',
    imageScenePrompt({slot:position,title:product}),
    'REGRA FINAL MAIS IMPORTANTE: imagem SOMENTE FOTOGRÁFICA, nenhuma letra, algarismo, peso, altura, largura, comprimento, profundidade, quantidade, idade, rótulo, régua, linha de dimensão, seta, placa, etiqueta, ícone ou painel. Não desenhar especificações. IGNORAR qualquer comando anterior que solicite medidas ou características escritas.',
    'NÃO invente altura do selim, guidão nem dimensões aparentes. NÃO usar medidas da pista montada, conjunto, embalagem ou outro SKU.',
-   'Deixar margem pequena ao redor do produto para o Manager inserir o texto técnico validado fora da IA.',
+   'Deixar margens à direita e na base para o Manager acrescentar exatamente uma camada de setas brancas, boxes brancos arredondados com BORDA AMARELA e números azul-marinho da WeDrop, no padrão visual da referência. A fotografia deve ser entregue sem textos.',
   ].join('\n');
  }
 
