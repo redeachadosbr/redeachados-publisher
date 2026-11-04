@@ -2543,7 +2543,18 @@ app.post('/api/shopee/optimizer/workflow/review',mustLogin,requireWeDropAdmin,as
     const allowShortKitTitle=Boolean(req.body?.stage==='seo'&&
       req.body?.kitPreparedTitle===true&&linkedKit?.kitSku&&
       String(linkedKit.mainSku)===String(sku));
-    const change=validateReview(req.body,{allowShortKitTitle});
+    // Antes de aprovar um título INDIVIDUAL com 183x69cm, validar a medida
+    // contra o NOME comercial WeDrop da MESMA SKU, nunca contra uma lista
+    // de componentes de kit. Falha de vínculo NÃO autoriza dimensões novas.
+    let singleProductName='';
+    if(req.body?.stage==='seo'&&req.body?.reviewed===true&&!linkedKit?.kitSku){
+      const supplier=await readWeDropProduct(auth.shopId,{sku,itemId,modelId});
+      if(supplier&&['exact-sku','reviewed-link'].includes(String(supplier.matchedBy||'')))
+        singleProductName=String(supplier.product_data?.name||'');
+    }
+    const kitProductNames=linkedKit?.kitSku&&Array.isArray(linkedKit.componentNames)
+      ?linkedKit.componentNames:[];
+    const change=validateReview(req.body,{allowShortKitTitle,kitProductNames,singleProductName});
     if(change.stage==='video'&&change.reviewed){
       const asset=await getShopeeManualVideo(auth.shopId,itemId,modelId,sku);
       if(!asset)throw Error('Importe e visualize o vídeo antes de aprovar esta etapa.');
