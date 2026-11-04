@@ -186,8 +186,8 @@ test('modo API só cria visualizações e ação; não renderiza métricas ausen
  assert.match(css,/overflow:hidden!important/);
  assert.match(css,/text-overflow:ellipsis!important/);
  assert.match(css,/font-variant-numeric:tabular-nums/);
- assert.match(html,/organic-top10\.css\?v=1\.3\.0-ranking-layout/);
- assert.match(html,/organic-top10\.js\?v=1\.3\.1-official-ctr/);
+ assert.match(html,/organic-top10\.css\?v=1\.3\.1-fixed-ranking/);
+ assert.match(html,/organic-top10\.js\?v=1\.3\.2-fixed-ranking-scroll/);
 });
 
 test('ranking de origem orgânica suporta até 100 SKUs sem agregar Ads',()=>{
@@ -197,4 +197,30 @@ test('ranking de origem orgânica suporta até 100 SKUs sem agregar Ads',()=>{
  assert.equal(rankOrganicTop(data,{sort:'impressions',limit:50}).length,50);
  assert.equal(rankOrganicTop(data,{sort:'impressions',limit:100}).length,100);
  assert.equal(rankOrganicTop(data,{sort:'impressions',limit:100})[0].sku,'ORG-119');
+});
+
+test('popup TOP 20 fixa header, filtros, colunas e footer; só cards rolam',()=>{
+ const html=readFileSync(new URL('../public/index.html',import.meta.url),'utf8');
+ const css=readFileSync(new URL('../public/organic-top10.css',import.meta.url),'utf8');
+ const js=readFileSync(new URL('../public/organic-top10.js',import.meta.url),'utf8');
+ const header=html.indexOf('class="organic-top10-header"');
+ const content=html.indexOf('class="organic-top10-content"');
+ const controls=html.indexOf('class="organic-top10-fixed-controls"');
+ const tools=html.indexOf('id="organicTop10Tools"');
+ const columns=html.indexOf('id="organicTop10GridHeader"');
+ const scroll=html.indexOf('id="organicTop10ScrollArea"');
+ const cards=html.indexOf('id="organicTop10List"');
+ const form=html.indexOf('id="organicTop10Import"');
+ const footer=html.indexOf('class="organic-top10-footer"');
+ assert.ok(header<content&&content<controls&&controls<tools&&
+  tools<columns&&columns<scroll&&scroll<cards&&cards<form&&form<footer);
+ assert.match(html,/id="organicTop10ScrollArea"[^>]*role="region"/);
+ assert.match(css,/\.organic-top10-modal:not\(\[data-importing="true"\]\) \.organic-top10-content\{/);
+ assert.match(css,/\.organic-top10-modal:not\(\[data-importing="true"\]\) \.organic-top10-scroll-area\{/);
+ assert.match(css,/overflow-y:auto/);
+ assert.match(css,/overscroll-behavior-y:contain/);
+ assert.match(css,/\.organic-top10-modal\[data-importing="true"\] \.organic-top10-scroll-area\{/);
+ assert.match(css,/\.organic-top10-modal\[data-importing="true"\] \.organic-top10-content\{/);
+ assert.match(js,/scrollArea\.scrollTop=0/);
+ assert.match(js,/const scrollArea=\$\('organicTop10ScrollArea'\)/);
 });
