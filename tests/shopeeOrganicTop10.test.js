@@ -186,7 +186,7 @@ test('modo API só cria visualizações e ação; não renderiza métricas ausen
  assert.match(css,/overflow:hidden!important/);
  assert.match(css,/text-overflow:ellipsis!important/);
  assert.match(css,/font-variant-numeric:tabular-nums/);
- assert.match(html,/organic-top10\.css\?v=1\.3\.1-fixed-ranking/);
+ assert.match(html,/organic-top10\.css\?v=1\.3\.3-compact-visible/);
  assert.match(html,/organic-top10\.js\?v=1\.3\.2-fixed-ranking-scroll/);
 });
 
@@ -223,4 +223,30 @@ test('popup TOP 20 fixa header, filtros, colunas e footer; só cards rolam',()=>
  assert.match(css,/\.organic-top10-modal\[data-importing="true"\] \.organic-top10-content\{/);
  assert.match(js,/scrollArea\.scrollTop=0/);
  assert.match(js,/const scrollArea=\$\('organicTop10ScrollArea'\)/);
+});
+
+test('ranking compacto mantém os dados visíveis em vez de comprimir os cards abaixo dos filtros',()=>{
+ const html=readFileSync(new URL('../public/index.html',import.meta.url),'utf8');
+ const css=readFileSync(new URL('../public/organic-top10.css',import.meta.url),'utf8');
+ const modal=css.slice(css.indexOf('/* 1.3.3 — Ranking legível:'));
+ assert.match(modal,/\.organic-top10-modal:not\(\[data-importing="true"\]\)\{/);
+ assert.match(modal,/height:min\(95dvh,930px\)/);
+ assert.match(modal,/\.organic-top10-modal:not\(\[data-importing="true"\]\) \.organic-top10-header\{/);
+ assert.match(modal,/grid-template-columns:minmax\(0,1fr\) minmax\(280px,425px\)/);
+ assert.match(modal,/\.organic-top10-modal:not\(\[data-importing="true"\]\) \.organic-top10-fixed-controls\{/);
+ assert.match(modal,/grid-template-columns:minmax\(0,1fr\) auto/);
+ assert.match(modal,/\.organic-top10-modal:not\(\[data-importing="true"\]\) \.organic-top10-scroll-area\{/);
+ assert.match(modal,/flex:1 1 0!important/);
+ assert.match(modal,/overflow-y:auto!important/);
+ assert.match(modal,/\.organic-top10-modal:not\(\[data-importing="true"\]\) \.organic-top10-item\{/);
+ assert.match(modal,/min-height:62px/);
+ assert.match(modal,/\.organic-top10-modal:not\(\[data-importing="true"\]\) \.organic-top10-footer\{/);
+ assert.match(modal,/min-height:52px/);
+ assert.match(html,/<details class="organic-top10-source-details">/);
+ assert.match(html,/<summary>Fonte dos dados e observações<\/summary>/);
+ assert.match(html,/id="organicTop10Footnote"/);
+ assert.match(modal,/\.organic-top10-source-details\[open\] \.organic-top10-footnote\{/);
+ assert.match(modal,/@media\(max-width:650px\)/);
+ assert.equal((html.match(/id="organicTop10Close"/g)||[]).length,1);
+ assert.ok(html.indexOf('class="organic-top10-meta"')<html.indexOf('id="organicTop10Close"'));
 });
