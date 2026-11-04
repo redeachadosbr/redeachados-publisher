@@ -10785,7 +10785,7 @@ async function optimizerFreshSavedWeDrop(w){
 }
 async function optimizerVerifiedDimensionSpec(w){
  const source=await optimizerFreshSavedWeDrop(w);
- const {confirmedSpecCard}=await import('/specificationCard.js?v=1.4.1-saved-source-identity');
+ const {confirmedSpecCard}=await import('/specificationCard.js?v=1.4.2-bulleted-wedrop');
  const spec=confirmedSpecCard({
   sourceText:source.sourceText||'',sku:w.sku,
   sourceEvidenceSku:source.sku||'',
@@ -11357,7 +11357,7 @@ globalThis.window?.addEventListener?.('message',async(event)=>{
   if(Number(m.slot)===3){
    // A foto gerada é SOMENTE a base. Montar a ficha com números de produto
    // confirmados, não confiar em textos/medidas imaginados pelo gerador.
-   const {addConfirmedSpecificationCard}=await import('/specificationCard.js?v=1.4.1-saved-source-identity');
+   const {addConfirmedSpecificationCard}=await import('/specificationCard.js?v=1.4.2-bulleted-wedrop');
    const spec=await optimizerVerifiedDimensionSpec(w);
    if(spec){spec.productTitle=w.draftTitle||w.productTitle||'';
     optimizerChatBridgeNotice('Imagem 03 recebida. Aplicando cotas finas e somente dados confirmados na WeDrop da SKU...');
@@ -11734,7 +11734,7 @@ async function optimizerRepairThirdImageDimensions(w,image){
   if(sourceHash!==String(image.sha256||''))
    throw Error('A imagem 03 foi modificada em outra aba. Atualize a galeria.');
   const {addConfirmedSpecificationCard}=
-   await import('/specificationCard.js?v=1.4.1-saved-source-identity');
+   await import('/specificationCard.js?v=1.4.2-bulleted-wedrop');
   spec.productTitle=w.draftTitle||w.productTitle||'';
   const final=await addConfirmedSpecificationCard(await current.blob(),spec);
   if(!optimizerImagesSameSku(w))throw Error('SKU mudou durante a edição da imagem 03.');
@@ -12062,7 +12062,7 @@ async function optimizerImagesLoad(){
 async function optimizerAnnotateThirdGeneratedImage(w,generated){
  if(!optimizerImagesSameSku(w))throw Error('SKU mudou antes de aplicar medidas.');
  const {addConfirmedSpecificationCard}=
-  await import('/specificationCard.js?v=1.4.1-saved-source-identity');
+  await import('/specificationCard.js?v=1.4.2-bulleted-wedrop');
  const spec=await optimizerVerifiedDimensionSpec(w);
  if(!spec)return {applied:false,reason:'Sem dimensões verificadas para a SKU: a imagem foi mantida limpa, sem números inventados.'};
  spec.productTitle=w.draftTitle||w.productTitle||'';
