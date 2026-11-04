@@ -10758,13 +10758,47 @@ async function optimizerChatgptMakeBrief(w,{defaultOnly=false}={}){
   imageNotes:w.imageNotes||{},
   imagePrompts:defaultOnly?{}:(w.imagePrompts||{}),
   masterPrompt:$('#optimizerPrompt')?.value||'',
-  supplierSourceText:(String(w.sourceEvidence?.sku||'')===String(w.sku)&&
-   ['exact-sku','reviewed-link'].includes(String(w.supplierProduct?.matchedBy||'')))?
+   supplierSourceText:(String(w.sourceEvidence?.sku||'')===String(w.sku)&&
+   (Boolean(w.sourceEvidence?.updatedAt)||
+    ['exact-sku','reviewed-link'].includes(String(w.supplierProduct?.matchedBy||''))))?
    (w.sourceEvidence?.sourceText||''):'',
 
   supplierProduct:w.supplierProduct||null,
   supplierMetrics:w.sourceFacts?.metrics||[]
  });
+}
+// O campo "Informações da WeDrop" é salvo por shop + Item ID + modelo + SKU.
+// Antes de importar a fotografia 03, ler novamente do servidor; não depender
+// de vínculo opcional de catálogo nem de dados potencialmente antigos na aba.
+async function optimizerFreshSavedWeDrop(w){
+ if(!optimizerImagesSameSku(w))throw Error('SKU mudou antes de verificar as dimensões.');
+ const params=new URLSearchParams({sku:w.sku,item_id:w.itemId,model_id:w.modelId});
+ const result=await json('/api/shopee/optimizer/workflow/source?'+params,{
+  signal:AbortSignal.timeout(45000)
+ });
+ if(!optimizerImagesSameSku(w))throw Error('SKU mudou durante a leitura das dimensões.');
+ const evidence=result?.sourceEvidence;
+ if(!evidence||String(evidence.sku||'').trim()!==String(w.sku).trim())
+  throw Error('As informações WeDrop não foram confirmadas para a SKU '+w.sku+'.');
+ w.sourceEvidence=evidence;
+ return evidence;
+}
+async function optimizerVerifiedDimensionSpec(w){
+ const source=await optimizerFreshSavedWeDrop(w);
+ const {confirmedSpecCard}=await import('/specificationCard.js?v=1.4.1-saved-source-identity');
+ const spec=confirmedSpecCard({
+  sourceText:source.sourceText||'',sku:w.sku,
+  sourceEvidenceSku:source.sku||'',
+  sourceSaved:Boolean(source.updatedAt),
+  supplierMatchedBy:w.supplierProduct?.matchedBy||''
+ });
+ // Se já há uma linha de medidas, não confirmar uma foto-base sem cotas
+ // silenciosamente. Datas e medidas inválidas exigem revisão do usuário.
+ if(/(?:^|\n)\s*(?:dimensões|dimensoes|medidas)\s*[:\-]/im.test(String(source.sourceText||''))&&
+    !spec?.measurements?.length)
+  throw Error('Há medidas cadastradas na WeDrop, mas não foi possível validá-las para a SKU '+
+   w.sku+'. Confira o formato “Dimensões: 183cm comprimento x 69cm largura”. Nenhuma medida será inventada.');
+ return spec;
 }
 async function optimizerChatgptRender(w){
  try{
@@ -11323,12 +11357,8 @@ globalThis.window?.addEventListener?.('message',async(event)=>{
   if(Number(m.slot)===3){
    // A foto gerada é SOMENTE a base. Montar a ficha com números de produto
    // confirmados, não confiar em textos/medidas imaginados pelo gerador.
-   const {confirmedSpecCard,addConfirmedSpecificationCard}=await import('/specificationCard.js?v=1.4.0-modern-dimensions');
-   const spec=confirmedSpecCard({
-    sourceText:w.sourceEvidence?.sourceText||'',
-    sku:w.sku,sourceEvidenceSku:w.sourceEvidence?.sku||'',
-    supplierMatchedBy:w.supplierProduct?.matchedBy||''
-   });
+   const {addConfirmedSpecificationCard}=await import('/specificationCard.js?v=1.4.1-saved-source-identity');
+   const spec=await optimizerVerifiedDimensionSpec(w);
    if(spec){
     optimizerChatBridgeNotice('Imagem 03 recebida. Aplicando cotas finas e somente dados confirmados na WeDrop da SKU...');
     const annotated=await addConfirmedSpecificationCard(prepared.blob,spec);
@@ -11350,7 +11380,9 @@ globalThis.window?.addEventListener?.('message',async(event)=>{
   const queue=await optimizerChatBridgeQueue();
   // The queue ACKs immediately after server confirmation. Rendering is independent.
   await queue.enqueue({...job,slot:m.slot,blob:prepared.blob,sha256,wasPadded:prepared.wasPadded,
-   filename:'chatgpt-auto-'+String(m.slot).padStart(2,'0')+'.'+extension});
+   filename:Number(m.slot)===3&&prepared.filename==='imagem-03-medidas.png'?
+    'chatgpt-auto-03-medidas.'+extension:
+    'chatgpt-auto-'+String(m.slot).padStart(2,'0')+'.'+extension});
  }catch(e){
   // ACK negativo informa apenas o slot. NÃO enviar RA_SITE_ABORT, pois
   // isso transforma uma falha isolada em bloqueio de toda a automação.
@@ -11962,13 +11994,9 @@ async function optimizerImagesLoad(){
 // sem pedir à IA que desenhe números ou reproduza medidas inventadas.
 async function optimizerAnnotateThirdGeneratedImage(w,generated){
  if(!optimizerImagesSameSku(w))throw Error('SKU mudou antes de aplicar medidas.');
- const {confirmedSpecCard,addConfirmedSpecificationCard}=
-  await import('/specificationCard.js?v=1.4.0-modern-dimensions');
- const spec=confirmedSpecCard({
-  sourceText:w.sourceEvidence?.sourceText||'',
-  sku:w.sku,sourceEvidenceSku:w.sourceEvidence?.sku||'',
-  supplierMatchedBy:w.supplierProduct?.matchedBy||''
- });
+ const {addConfirmedSpecificationCard}=
+  await import('/specificationCard.js?v=1.4.1-saved-source-identity');
+ const spec=await optimizerVerifiedDimensionSpec(w);
  if(!spec)return {applied:false,reason:'Sem dimensões verificadas para a SKU: a imagem foi mantida limpa, sem números inventados.'};
  const qs=new URLSearchParams({sku:w.sku,item_id:w.itemId,model_id:w.modelId,slot:3});
  const image=await fetch('/api/shopee/optimizer/images/reference?'+qs,{
