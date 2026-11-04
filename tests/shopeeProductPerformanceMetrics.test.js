@@ -184,3 +184,71 @@ test('servidor e interface permitem indicar uma aba sem misturar fontes',()=>{
  assert.match(ui,/sheetName:\$\('organicTop10File'\)/);
  assert.match(ui,/data\.availableSheets/);
 });
+
+test('XLSX parentskudetail real: ignora hifens, escolhe aba correta, não duplica variações',()=>{
+ const workbook=XLSX.utils.book_new();
+ const cols=['ID do Item','Produto','ID da Variação','SKU da Variação','SKU Principle',
+  'Impressão do Produto','Cliques Por Produto','CTR','Visitantes do Produto (Visita)',
+  'Visitantes do Produto (Adicionar ao Carrinho)',
+  'Unidades (adicionar ao carrinho)','Taxa de Conversão (adicionar ao carrinho)',
+  'Pedido Feito','Unidades (Pedido realizado)','Taxa de Conversão de Pedido (Pedido Realizado)'];
+ XLSX.utils.book_append_sheet(workbook,XLSX.utils.aoa_to_sheet([
+  cols,
+  ['58268864630','Rena LED','-','-','NTM3001127V','4985','126','2,53%','96','4','6','4,17%','1','1','0,79%'],
+  ['58268864630','Rena LED','149557639203','NTM3001220V','NTM3001127V',
+   '-','-','-','-','2','4','-','-','1','-'],
+  // A mesma SKU principal aparece em vários Item IDs da Shopee.
+  ['58268864631','Outro anúncio','-','-','NTM3001127V','400','20','5%','30','-','-','-','-','-','-']
+ ]),'Produtos com Melhor Desempenho');
+ XLSX.utils.book_append_sheet(workbook,XLSX.utils.aoa_to_sheet([
+  ['ID do Item','Produto','Impressão do Produto','Cliques Por Produto','CTR'],
+  ['58272083884','Escova giratória','1','0','0,00%']
+ ]),'Produtos Recém-Cadastrados');
+ XLSX.utils.book_append_sheet(workbook,XLSX.utils.aoa_to_sheet([
+  ['ID do Item','Produto','Impressão do Produto','Cliques Por Produto','CTR'],
+  ['58268864630','Rena LED','999','50','5,01%']
+ ]),'Acompanhar Performance dos ADS');
+ const data=XLSX.write(workbook,{bookType:'xlsx',type:'buffer'});
+ const report=parseProductPerformanceReport(data,{
+  ...info,fileName:'parentskudetail.20261004_20261102.xlsx',
+  periodStart:'2026-10-04',periodEnd:'2026-11-02'
+ });
+ assert.equal(report.sheetName,'Produtos com Melhor Desempenho');
+ assert.equal(report.source,'seller_center_product_performance_export');
+ assert.equal(report.records.length,2);
+ assert.equal(report.skipped.variation,1);
+ const one=report.records[0],two=report.records[1];
+ assert.equal(one.itemId,'58268864630');
+ assert.equal(one.sku,'NTM3001127V','preferir SKU Principle, não SKU da Variação');
+ assert.equal(one.impressions,4985);
+ assert.equal(one.clicks,126);
+ assert.equal(one.visits,96);
+ assert.equal(one.ctr,2.53);
+ assert.equal(one.cartVisitors,4);
+ assert.equal(one.cartUnits,6);
+ assert.equal(one.cartConversionRate,4.17);
+ assert.equal(one.orders,1);
+ assert.equal(one.soldUnits,1);
+ assert.equal(one.orderConversionRate,0.79);
+ assert.equal(two.itemId,'58268864631');
+ assert.equal(two.sku,'NTM3001127V');
+ assert.equal(two.cartVisitors,null,'hífen indica dado ausente, não zero');
+ assert.equal(two.orders,null);
+ assert.equal(two.impressions,400);
+ assert.equal(report.records.some(x=>x.impressions===999),false,'não misturar abas Ads');
+});
+test('relatório com hífen nos campos numéricos ignora ausência sem interromper todo o arquivo',()=>{
+ const csv='ID do Item;Impressão do Produto;Cliques Por Produto;CTR;Pedido Feito\n'+
+   '58268864630;125;5;4,00%;-\n'+
+   '58268864631;10;0;0,00%;—\n';
+ const report=parseProductPerformanceReport(Buffer.from(csv),{
+  ...info,fileName:'parentskudetail.csv'
+ });
+ assert.equal(report.records[0].orders,null);
+ assert.equal(report.records[1].orders,null);
+ assert.equal(report.records[1].clicks,0);
+});
+test('confirmação exclusivamente orgânica oculta na aba Performance do Produto',()=>{
+ const css=readFileSync(new URL('../public/organic-top10.css',import.meta.url),'utf8');
+ assert.match(css,/\.organic-top10-consent\[hidden\]\{display:none!important\}/);
+});
