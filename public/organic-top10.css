@@ -339,7 +339,7 @@ body.organic-top10-open{overflow:hidden}
 .organic-top10-ranking-limit select,.organic-top10-import select{
  appearance:auto;min-width:142px;height:42px;max-width:100%;padding:8px 13px;
  border:1px solid #b7cffa;border-radius:11px;background:#fff;color:#123969;
- font:700 12px/1.2 inherit;box-shadow:0 2px 8px rgba(36,82,154,.06)
+ font-size:12px;font-weight:700;line-height:1.2;box-shadow:0 2px 8px rgba(36,82,154,.06)
 }
 .organic-top10-modal[data-importing="true"]{width:min(1110px,100%);max-height:min(94dvh,920px);background:#f7faff}
 .organic-top10-modal[data-importing="true"] .organic-top10-header{
