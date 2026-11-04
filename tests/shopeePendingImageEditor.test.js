@@ -35,6 +35,34 @@ test('Kit no título sem vínculo abre triagem de kits, não escolhe outro rascu
  assert.equal(route.linkSource,'title_only_unverified');
 });
 
+test('anúncio da imagem sem rascunho mantém SKU e Item ID para edição direta',()=>{
+ const route=classifyPendingImageEditor({itemId:'58214696269',sku:'C02317261',
+  title:'Kit Garrafa Térmica 190ml 4 Canecas Vidro Preto Prático Moderno Durável',
+  linkedKits:[]});
+ assert.equal(route.kind,'kit-unlinked');
+ assert.equal(route.itemId,'58214696269');
+ assert.equal(route.sku,'C02317261');
+ assert.equal(route.kitSku,undefined);
+});
+
+test('interface do kit sem rascunho abre imagens reais sem ativar preço e desconto',()=>{
+ const app=readFileSync(new URL('../public/app.js',import.meta.url),'utf8');
+ const kits=readFileSync(new URL('../public/kit-builder.js',import.meta.url),'utf8');
+ const css=readFileSync(new URL('../public/kit-builder.css',import.meta.url),'utf8');
+ assert.match(app,/RAOpenPendingKitDirectEditor=\(editor,mount\)=>/);
+ assert.match(app,/void optimizerRunAudit\(id,sku,modelId\)/);
+ assert.match(app,/if\(isPendingKitDirect\(sku,id\)\)/);
+ assert.match(app,/optimizerWorkflowOpen\('images'\)/);
+ assert.match(app,/if\(!isPendingKitDirect\(expectedSku,item\)\)/);
+ assert.match(app,/RAClosePendingKitDirectEditor/);
+ assert.match(kits,/kitShowPendingLinkChoice\(handoff\)/);
+ assert.match(kits,/RAOpenPendingKitDirectEditor\?\.\(handoff,mount\)/);
+ assert.match(kits,/kitPendingDirectEditor/);
+ assert.doesNotMatch(kits,/Não há uma composição salva, editável e compatível/);
+ assert.match(css,/#kitPendingDirectEditor #optimizerWorkflowCards/);
+ assert.match(css,/#kitPendingDirectEditor #optimizerShowExecution/);
+});
+
 test('vínculo duplicado em dois kits bloqueia seleção arbitrária',()=>{
  const route=classifyPendingImageEditor({itemId:id,sku:'C02317261',title:'Kit Canecas',
   linkedKits:[saved,{...saved,kitSku:'KIT-C02317261-TRC0688'}]});
