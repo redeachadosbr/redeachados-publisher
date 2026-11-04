@@ -9,7 +9,7 @@ import {imageScenePrompt} from './imageSceneDiversity.js?v=20261104-image03-refe
 export const CHATGPT_IMAGE_SCENES=Object.freeze([
  {label:"01 · Capa",guide:"Imagem 01 — Capa: produto original ocupando aproximadamente 85% a 90% da imagem, fundo limpo e apresentação profissional. imagem com fundo ambientado"},
  {label:"02 · Uso real",guide:"Imagem 02 — Uso real: mostrar o produto em um ambiente cotidiano de utilização, com composição diferente da capa. imagem com fundo ambientado. FRASES CURTAS DE CONVERSÃO"},
- {label:"03 · Especificações",guide:"Imagem 03 — Arte comercial premium 1200x1200 como referência aprovada: mostrar produto original grande e inteiro em cenário moderno HD, com área livre na direita e abaixo para cotas visuais. A IA gera apenas a fotografia limpa; o Shopee Manager incorpora UMA ÚNICA VEZ as medidas confirmadas em setas brancas e boxes arredondados brancos com borda amarela e tipografia azul-marinho. Não desenhar medidas ou selos pela IA."},
+ {label:"03 · Especificações",guide:"Imagem 03 — ARTE COMERCIAL FINAL 1200x1200, produto real inteiro em cenário moderno, com dimensões verificadas da WeDrop já integradas à imagem: setas BRANCAS e boxes BRANCOS arredondados com BORDA AMARELA e valores grandes AZUL-MARINHO. Medidas na peça principal, tipografia elegante e sem duplicar etiquetas. Nunca inventar números; se não houver medidas confirmadas, gerar apenas a fotografia limpa."},
  {label:"04 · Benefícios",guide:"Imagem 04 — Benefícios: produto protagonista em foto ambientada; destacar 2 ou 3 benefícios ESPECÍFICOS e comprovados por microfrases de 3 a 7 palavras cada, bem distribuídas nas margens, fonte bonita e moderna, sem títulos, listas ou elementos que escondam o produto."},
  {label:"05 · Dor e solução",guide:"Imagem 05 — Dor e solução: fotografar o PRODUTO INTEIRO VISTO DE CIMA (top-down 90°, flat lay), ambientado com contexto real de uso. Escrever UMA frase de 4 a 8 palavras mostrando exatamente a solução prática do produto, discreta e fora do objeto."},
  {label:"06 · Persuasão",guide:"Imagem 06 — Persuasão: ZOOM MACRO fotográfico em textura, acabamento, encaixe, estrutura ou detalhe realmente existente, mantendo parte reconhecível do produto. Usar 1 ou 2 microdescrições de 3 a 7 palavras, próximas ao detalhe, fonte pequena moderna, sem mosaico, setas grandes nem publicidade genérica."},
@@ -69,19 +69,29 @@ export function createChatGptPrompts({imageUrls=[],supplierSourceText='',title='
  const hasSortedBlueYellowPink=/envia(?:do|da|dos|das)\s+(?:com\s+)?cor(?:es)?\s+sortid[ao]s?/i.test(supplierSourceText)&&
   /cor(?:es)?\s*[:\-][^\n]*azul[^\n]*amarelo[^\n]*rosa/i.test(supplierSourceText);
  const poolDisplay=isPoolLounger&&hasLengthWidth&&hasSortedBlueYellowPink;
+ const axes=dims?.measurements||[];
+ const finalMeasurements=axes.map(x=>x.label+': '+x.value);
+ const length=axes.find(x=>x.axis==='comprimento'),width=axes.find(x=>x.axis==='largura');
  prompts[2]=[
   scenes[2].guide,
   imageScenePrompt({slot:3,title}),
-  'IMAGEM 03 — FOTOGRAFIA BASE SEM QUALQUER TEXTO.',
+  'IMAGEM 03 — ARTE FINAL PRONTA COM AS MEDIDAS. FOTOGRAFIA PREMIUM + COTAS INTEGRADAS DIRETAMENTE NA IMAGEM GERADA.',
   poolDisplay?
-   'COMPOSIÇÃO EXATA PARA ESTA SKU: mostrar TRÊS unidades do MESMO colchão inflável realmente disponível, em pé e lado a lado nas cores ROSA, AMARELO e AZUL, nesta ordem. O colchão AZUL à direita recebe as futuras medidas. Cenário interior moderno de madeira, luz suave, piso limpo. Reservar faixa estreita à direita do azul para a seta branca vertical de comprimento e uma faixa abaixo do azul para seta horizontal de largura. Reservar pequeno espaço livre no canto inferior esquerdo para o selo “Envio em cores sortidas”. O produto deve permanecer realista e inteiro.':
-   'COMPOSIÇÃO PREMIUM: produto real inteiro, legível e protagonista, enquadramento que permita cotas ao lado direito e abaixo sem encobrir detalhes, cenário ambientado moderno com margens livres. Não inventar cores ou variantes.',
-  'ESTILO DA ARTE FINAL: o Manager irá desenhar em uma camada única setas brancas e boxes BRANCOS ARREDONDADOS com BORDA AMARELA fina, valor em fonte AZUL-ESCURO grande e nome da dimensão logo abaixo em fonte menor. Não deixar a IA criar uma segunda camada.',
-  'O gerador é responsável SOMENTE PELA FOTOGRAFIA. NENHUMA medida, número, palavra, letra, unidade, seta, ícone, régua, tabela, etiqueta, subtítulo, selo, painel lateral ou composição textual deve aparecer nesta fotografia-base.',
-  'Não tentar extrair dimensões da foto, medidas de embalagem, da ficha de outro produto ou do produto montado. Não criar texto gráfico técnico.',
-  /pista|conjunto|kit/i.test(title)?'Mostrar o CONJUNTO fiel às referências, sem isolar nem inventar componentes.':'',
-  'Preserve arquitetura e detalhes reais HD sem desfoque excessivo, com ambiente moderno HD visível. Câmera frontal ligeiramente elevada, produto inteiro sem cortes e margens pequenas preparadas para etiquetas. A camada final terá fonte bonita, moderna e discreta.',
-  'ORDEM FINAL OBRIGATÓRIA DA IMAGEM 03: ENTREGAR SÓ FOTOGRAFIA, 100% SEM TEXTO. O Shopee Manager entregará a arte FINAL pronta com COMPRIMENTO, LARGURA e outras cotas confirmadas, em boxes brancos com borda amarela e números azul-marinho; não duplicar texto.'
+   'COMPOSIÇÃO EXATA: mostrar TRÊS variações do mesmo colchão inflável, lado a lado e em pé, da esquerda para a direita ROSA, AMARELO e AZUL. O AZUL à direita é o único a receber as cotas. Cenário interno moderno, paredes de madeira, piso clean e luz de estúdio. São opções de cor de uma unidade enviada sortida, não um kit de três colchões.':
+   'Mostrar o produto ORIGINAL grande e inteiro em cenário moderno, com boa visibilidade e bordas limpas reservadas para linhas de dimensão, sem inventar cores ou acessórios.',
+  finalMeasurements.length?
+   'DIMENSÕES CONFIRMADAS NAS INFORMAÇÕES WEDROP DA MESMA SKU — REPRODUZA EXATAMENTE, SEM ALTERAR ALGARISMOS, UNIDADES OU RÓTULOS: '+finalMeasurements.join('; ')+'.':
+   'SEM DIMENSÕES CONFIRMADAS NESTA SKU. Não escrever números, linhas de cota nem etiquetas de medidas. Entregar só a foto.',
+  length&&width&&poolDisplay?
+   'DESENHE À DIREITA DA PEÇA AZUL uma seta VERTICAL BRANCA acompanhando seu comprimento total. Ao lado um BOX BRANCO ARREDONDADO de borda AMARELA fina e texto AZUL-MARINHO contendo, em duas linhas, “'+length.value+'” grande e “Comprimento” menor. NA BASE DA PEÇA AZUL desenhe uma seta HORIZONTAL BRANCA indicando sua largura, com outro box branco/arredondado, borda amarela e as duas linhas “'+width.value+'” grande e “Largura” menor.':
+   finalMeasurements.length?
+   'Para cada dimensão confirmada, representar a cota APENAS UMA VEZ no eixo correspondente do produto, com seta branca elegante, box branco arredondado de borda amarela e valor azul-marinho grande acima da legenda menor. Não usar dados da embalagem.':'',
+  poolDisplay?
+   'No canto INFERIOR ESQUERDO, colocar selo comercial discreto azul-marinho com borda amarela, três pequenas amostras nas cores azul/amarelo/rosa, e o texto EXATO “Envio em cores sortidas”. Não insinuar que o pacote contém três peças.':'',
+  'TIPOGRAFIA: sans-serif moderna, limpa e bonita; números em negrito, palavras menores, alto contraste, composição premium. A área de texto deve ser discreta e não encobrir o produto. Sem títulos, especificações extras, peso, altura ou medidas estimadas. Não adicionar um segundo conjunto de cotas.',
+  'O produto deve continuar fiel à foto de referência (forma, quantidade, acabamento, proporções e acessórios), com ambiente real HD; nenhuma medida pode vir de fotos, de outra SKU ou de embalagem.',
+  /pista|conjunto|kit/i.test(title)?'Se for conjunto, preserve os componentes reais e não atribua medidas do conjunto a um componente isolado.':'',
+  'ORDEM FINAL OBRIGATÓRIA DA IMAGEM 03: ENTREGAR ARTE FINAL PRONTA, com todas as cotas confirmadas integradas visualmente e ZERO textos duplicados. NÃO entregue imagem limpa quando há dimensões confirmadas.'
  ].join('\\n\\n');
 
  return {batch:prompts[0],prompts,scenes,original,confirmedDimensions:dims};
