@@ -44,6 +44,7 @@ export function imagePrompt({record,slot,masterPrompt='',note='',sourceImageCoun
    'IMAGEM 03 — ARTE COMERCIAL FINAL PREMIUM 1200 x 1200. Produto REAL: '+product+'.',
    'A imagem deve sair PRONTA, incluindo a apresentação fotográfica e as cotas VISUAIS com os números EXATOS da WeDrop da mesma SKU. Não aplicar outras etiquetas depois.',
    'Preservar produto original: cor, formato, proporções, textura e peças vistas nas referências. Fundo ambientado moderno, arquitetura nítida, luz profissional, sem texto de título.',
+   imageScenePrompt({slot:position,title:product}),
    showVariants?
     'CENÁRIO ESPECIAL CONFIRMADO: apresentar 3 variações do MESMO colchão na ordem ROSA, AMARELO e AZUL, em pé e lado a lado, com o AZUL à direita. São opções de cor de UMA unidade, não um kit de três produtos. Mostrar piso e parede elegantes, mantendo o colchão azul inteiro e dominante.':
     'Mostrar uma composição de produto único ou conjunto fiel à foto de referência; não criar variantes que não constem na ficha.',
