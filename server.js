@@ -5544,20 +5544,21 @@ app.post('/api/shopee/performance/top10/import',mustLogin,requireWeDropAdmin,asy
  if(!verifiedSameOrigin(req))return res.status(403).json({ok:false,error:'Origem não autorizada.'});
  try{
   const {auth}=await getValidAuth(req);
-  const {fileName,base64,periodStart,periodEnd}=req.body||{};
+  const {fileName,base64,periodStart,periodEnd,sheetName}=req.body||{};
   if(typeof base64!=='string'||base64.length>5_400_000||
      !/^[A-Za-z0-9+/]+={0,2}$/.test(base64))
    throw Error('Arquivo inválido ou maior que 4 MB.');
   const file=Buffer.from(base64,'base64');
   if(file.length>4_000_000)throw Error('Arquivo excede 4 MB.');
-  const report=parseProductPerformanceReport(file,{fileName,periodStart,periodEnd});
+  const report=parseProductPerformanceReport(file,{fileName,periodStart,periodEnd,sheetName});
   const saved=await savePerformanceSnapshot(auth.shopId,report);
   res.json({ok:true,imported:true,source:saved.source,period:{
    start:saved.period_start,end:saved.period_end},
    importedAt:saved.imported_at,rowCount:saved.row_count,metadata:saved.metadata});
  }catch(error){
   res.status(422).json({ok:false,error:'Relatório de Performance não importado: '+
-   String(error.message||error).slice(0,250)});
+   String(error.message||error).slice(0,350),
+   availableSheets:error.availableSheets||null});
  }
 });
 // TOP 10 desempenho ORGÂNICO: dados somente de relatório da Central do
@@ -5630,13 +5631,13 @@ app.post('/api/shopee/organic/top10/import',mustLogin,requireWeDropAdmin,async(r
  res.setHeader('Cache-Control','no-store');
  try{
   const {auth}=await getValidAuth(req);
-  const {fileName,base64,periodStart,periodEnd,organicConfirmed}=req.body||{};
+  const {fileName,base64,periodStart,periodEnd,organicConfirmed,sheetName}=req.body||{};
   if(typeof base64!=='string'||base64.length>5_400_000||
     !/^[A-Za-z0-9+/]+={0,2}$/.test(base64))
    throw Error('Arquivo inválido ou maior que 4 MB.');
   const file=Buffer.from(base64,'base64');
   if(file.length>4_000_000)throw Error('Arquivo excede 4 MB.');
-  const report=parseOrganicReport(file,{fileName,periodStart,periodEnd,organicConfirmed});
+  const report=parseOrganicReport(file,{fileName,periodStart,periodEnd,organicConfirmed,sheetName});
   const saved=await saveOrganicSnapshot(auth.shopId,report);
   res.json({ok:true,imported:true,source:saved.source,period:{
    start:saved.period_start,end:saved.period_end},
@@ -5644,7 +5645,8 @@ app.post('/api/shopee/organic/top10/import',mustLogin,requireWeDropAdmin,async(r
    metadata:saved.metadata});
  }catch(error){
   res.status(422).json({ok:false,error:'Importação orgânica não concluída: '+
-   String(error.message||error).slice(0,250)});
+   String(error.message||error).slice(0,350),
+   availableSheets:error.availableSheets||null});
  }
 });
 // Integração Ads exigida no Task Center: diagnóstico e prévia seguros.
