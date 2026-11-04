@@ -10948,6 +10948,68 @@ const RA_CHAT_BRIDGE_JOB_KEY='redeAchadosBridgeJobV2';
 const RA_CHAT_BRIDGE_ACTIVE_KEY='redeAchadosBridgeActiveV3';
 let optimizerChatBridgeJob=null,optimizerChatBridgeQueuePromise=null;
 let optimizerChatBridgeStartConfirmed=false;
+// NOVO_CHAT_NAO_LIMPO é um bloqueio de SEGURANÇA da extensão. Não contornar
+// a verificação do campo nem descartar fotos já confirmadas por Item ID/SKU.
+const RA_BRIDGE_CHAT_PAUSE_KEY='redeAchadosChatBridgeDirtyChatV1';
+function optimizerBridgeChatPauseState(){
+ try{return JSON.parse(sessionStorage.getItem(RA_BRIDGE_CHAT_PAUSE_KEY)||'null')}catch{return null}
+}
+function optimizerBridgeChatPausePaint(){
+ const panel=$('#optimizerChatgptCleanRecovery'),w=optimizerWorkflowPlan;
+ if(!panel)return;
+ const state=optimizerBridgeChatPauseState();
+ const matching=Boolean(w&&state&&optimizerChatBridgeIdentity(w,state)&&
+  optimizerChatBridgeNonce===state.nonce&&optimizerChatBridgeJob?.nonce===state.nonce&&
+  !optimizerChatBridgeJob.stopped&&!optimizerChatBridgeJob.complete);
+ panel.hidden=!matching;
+ if(!matching)return;
+ const first=Array.from({length:9},(_,i)=>i+1).find(x=>!optimizerImagesSavedSlots.has(x));
+ const slot=first||Number(state.slot)||1,pos=String(slot).padStart(2,'0');
+ const message=$('#optimizerChatgptCleanRecoveryMessage');
+ if(message)message.textContent='SKU '+w.sku+' · '+optimizerImagesSavedSlots.size+'/9 fotos salvas. '+
+  'A imagem '+pos+'/09 foi pausada porque havia texto antigo no campo do ChatGPT. '+
+  'Clique em Novo chat e apague qualquer texto que já estiver no campo antes de continuar. '+
+  'As imagens confirmadas permanecem guardadas no servidor.';
+ const button=$('#optimizerChatgptResumeCleanChat');
+ if(button)button.textContent='2. Retomar somente pendentes (a partir da '+pos+')';
+}
+function optimizerBridgeChatPauseMark(message){
+ const reason=String(message?.error||'')+' '+String(message?.status||'');
+ if(!/NOVO_CHAT_NAO_LIMPO/i.test(reason))return false;
+ const job=optimizerChatBridgeJob,w=optimizerWorkflowPlan;
+ if(!job||!optimizerChatBridgeIdentity(w,job)||
+  String($('#optimizerSku')?.value||'').trim()!==String(job.sku))return false;
+ const first=Array.from({length:9},(_,i)=>i+1).find(x=>!optimizerImagesSavedSlots.has(x));
+ try{sessionStorage.setItem(RA_BRIDGE_CHAT_PAUSE_KEY,JSON.stringify({
+  sku:job.sku,itemId:job.itemId,modelId:job.modelId,nonce:job.nonce,
+  slot:first||Number(message?.slot)||1
+ }))}catch{}
+ optimizerBridgeChatPausePaint();
+ return true;
+}
+function optimizerBridgeChatPauseClear(){
+ try{sessionStorage.removeItem(RA_BRIDGE_CHAT_PAUSE_KEY)}catch{}
+ const panel=$('#optimizerChatgptCleanRecovery');if(panel)panel.hidden=true;
+}
+$('#optimizerChatgptOpenCleanChat')?.addEventListener?.('click',()=>{
+ // O Shopee Manager não tem acesso ao DOM do ChatGPT (origem separada).
+ // A Ponte continua responsável por confirmar que o novo campo está vazio.
+ window.open('https://chatgpt.com/','_blank','noopener,noreferrer');
+ const message=$('#optimizerChatgptCleanRecoveryMessage');
+ if(message)message.textContent='No ChatGPT clique em “Novo chat”, limpe o texto que estiver no campo e '+
+  'confirme que ficou vazio. Depois volte e clique em “Retomar somente pendentes”. '+
+  'Não utilize “Recomeçar tudo” — as imagens salvas serão mantidas.';
+});
+$('#optimizerChatgptResumeCleanChat')?.addEventListener?.('click',async()=>{
+ const state=optimizerBridgeChatPauseState(),w=optimizerWorkflowPlan;
+ if(!state||!optimizerChatBridgeIdentity(w,state))return;
+ if(!window.confirm('Você abriu um NOVO chat no ChatGPT e verificou que o campo de mensagem está vazio?\n\n'+
+  'Apenas as imagens ainda ausentes no servidor serão solicitadas; as imagens salvas serão preservadas.'))return;
+ const button=$('#optimizerChatgptResumeCleanChat');if(button)button.disabled=true;
+ try{await optimizerChatgptContinueFromServer();}
+ finally{if(button)button.disabled=false;}
+});
+optimizerBridgeChatPausePaint();
 // A identificação é compartilhada entre abas do Manager (sem dados privados).
 // A fila de arquivos continua isolada por nonce/SKU e conserva imagens salvas.
 function optimizerChatBridgeActive(){
@@ -11012,6 +11074,7 @@ window.addEventListener('storage',event=>{
 });
 function optimizerChatBridgeRelease(reason='Extensão interrompida. Fotos já salvas foram preservadas.'){
  const job=optimizerChatBridgeJob,nonce=optimizerChatBridgeNonce;
+ optimizerBridgeChatPauseClear();
  if(job&&!job.stopped&&nonce)window.postMessage({kind:'RA_SITE_ABORT',nonce},location.origin);
  if(job){job.stopped=true;job.complete=true;sessionStorage.setItem(RA_CHAT_BRIDGE_JOB_KEY,JSON.stringify(job));
   optimizerChatBridgeActiveClear(job.nonce);
@@ -11189,6 +11252,8 @@ globalThis.window?.addEventListener?.('message',async(event)=>{
   return;
  }
  if(m.kind==='RA_EXTENSION_START_RESULT'&&m.nonce===optimizerChatBridgeNonce){
+  if(!m.ok)optimizerBridgeChatPauseMark(m);
+  else optimizerBridgeChatPauseClear();
   optimizerChatBridgeStartConfirmed=true;
   report(m.ok?'Extensão confirmou o início. Gerando imagens individualmente, aguardando cada importação.':'Extensão recusou o comando: '+(m.error||'erro não identificado'));
   if(!m.ok){
@@ -11224,11 +11289,12 @@ globalThis.window?.addEventListener?.('message',async(event)=>{
  if(!job||job.nonce!==m.nonce||!optimizerChatBridgeIdentity(job,m))return;
  if(job.stopped){if(m.kind==='RA_EXTENSION_IMAGE')optimizerChatBridgeAck(m,false,'Envio anterior interrompido.');return;}
  if(m.kind==='RA_EXTENSION_WAKE_RESULT'){
-  if(!m.ok){optimizerChatBridgeBusy=false;$('#optimizerChatgptAbort').hidden=true;
+  if(!m.ok){optimizerBridgeChatPauseMark(m);optimizerChatBridgeBusy=false;$('#optimizerChatgptAbort').hidden=true;
    report('A Ponte não conseguiu retomar a imagem pendente: '+(m.error||'erro não identificado'));}
   return;
  }
  if(m.kind==='RA_EXTENSION_PROGRESS'){
+  optimizerBridgeChatPauseMark(m);
   const done=m.status==='9/9 imagens armazenadas. Confira e aprove a etapa no Shopee Manager antes de publicar na Shopee.';
   optimizerChatBridgeNotice(m.status+(m.error?' '+m.error:'')+
    (m.slot?' · posição '+Math.min(9,m.slot)+'/9':''));
@@ -11244,6 +11310,7 @@ globalThis.window?.addEventListener?.('message',async(event)=>{
   return;
  }
  if(m.kind!=='RA_EXTENSION_IMAGE')return;
+ optimizerBridgeChatPauseClear();
  try{
   if(!Number.isInteger(m.slot)||m.slot<1||m.slot>9||!job.slots.includes(m.slot))throw Error('Slot inválido.');
   if(typeof m.dataUrl!=='string'||m.dataUrl.length>28*1024*1024||
@@ -11676,6 +11743,7 @@ async function optimizerImagesLoad(){
   optimizerImageCorrectionPreviewMap=stored;
   optimizerImageCorrectionRefreshPreview();
   optimizerImagesSavedSlots=new Set(stored.keys());
+  optimizerBridgeChatPausePaint();
    // Servidor define a PRIMEIRA posição realmente vazia.
    const firstMissing=Array.from({length:9},(_,i)=>i+1).find(n=>!stored.has(n));
    const runButton=$('#optimizerChatgptAuto');
