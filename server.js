@@ -55,7 +55,7 @@ import {readKitFiscalPreset} from './shopeeKitFiscalPreset.js';
 import {readWeDropSyncState,getStoredWeDropCostCount} from './wedropCosts.js';
 import {getSkuReview,searchSupplierSku,confirmSkuLink,undoSkuLink} from './wedropSkuReview.js';
 import {auditShopeeItem,validateSkuLookup} from './productOptimizer.js';
-import {buildStages,safeTitle,validateReview} from './shopeeOptimizationWorkflow.js';
+import {buildStages,safeTitle,validateReview,titleHasUnhelpfulDimensions} from './shopeeOptimizationWorkflow.js';
 import {composeShopeeDescription,isCommercialDescription,isGenericShopeeDescription} from './shopeeDescriptionComposer.js';
 import {getWorkflowReview,saveWorkflowReview,mergeWorkflowTechnicalAutofill} from './shopeeOptimizationWorkflowStore.js';
 import {compileShopeeExecutionPlan,confirmShopeeExecution,
@@ -2547,7 +2547,8 @@ app.post('/api/shopee/optimizer/workflow/review',mustLogin,requireWeDropAdmin,as
     // contra o NOME comercial WeDrop da MESMA SKU, nunca contra uma lista
     // de componentes de kit. Falha de vínculo NÃO autoriza dimensões novas.
     let singleProductName='';
-    if(req.body?.stage==='seo'&&req.body?.reviewed===true&&!linkedKit?.kitSku){
+    if(req.body?.stage==='seo'&&req.body?.reviewed===true&&!linkedKit?.kitSku&&
+      titleHasUnhelpfulDimensions(req.body?.title)){
       const supplier=await readWeDropProduct(auth.shopId,{sku,itemId,modelId});
       if(supplier&&['exact-sku','reviewed-link'].includes(String(supplier.matchedBy||'')))
         singleProductName=String(supplier.product_data?.name||'');
