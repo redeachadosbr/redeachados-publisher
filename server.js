@@ -476,6 +476,7 @@ app.post('/api/shopee/kits/drafts/load',mustLogin,requireWeDropAdmin,async(req,r
   res.json({ok:true,kit:review.kit,logistics:stored.logistics||null,creative:{...stored.creative,
    prompts:kitPrompts(review.kit,{manualFacts:stored.creative?.manualFacts||{}})},
    publication:stored.publication||{status:'local_draft',itemId:null},optimization:stored.optimization||null,
+   optimizationFinalization:stored.optimizationFinalization||null,
    savedAt:stored.updatedAt,refreshedCosts:review.refreshedCosts,
    stockRevalidationRequired:review.stockRevalidationRequired,
    stockReason:review.stockReason,requiresReview:true});
