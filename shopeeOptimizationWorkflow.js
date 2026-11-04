@@ -41,14 +41,30 @@ export function kitTitleDimensionsVerified(title,kitProductNames=[]){
  const trusted=kitProductNames.map(compositeDimensions).flat();
  return dimensions.every(d=>trusted.includes(d));
 }
-export function validateContentRules({title,description},{allowShortKitTitle=false,kitProductNames=[]}={}){
+// Anúncio individual: aceitar apenas as cotas que já aparecem no NOME COMERCIAL
+// da WeDrop vinculada à mesma SKU. Nunca usar medidas da embalagem ou de outra SKU.
+export function singleProductTitleDimensionsVerified(title,wedropProductName=''){
+ const dimensions=compositeDimensions(title);
+ if(!dimensions.length)return true;
+ if(typeof wedropProductName!=='string'||!wedropProductName.trim())return false;
+ const trusted=compositeDimensions(wedropProductName);
+ return dimensions.every(d=>trusted.includes(d));
+}
+export function validateContentRules({title,description},{allowShortKitTitle=false,kitProductNames=[],singleProductName=''}={}){
  if(title!==undefined){
   const titleLength=codePointCount(normalizedTitle(title));
   // Regra uniforme para título SEO comum e kits novos: 100–120 caracteres.
   const minimum=100;
   if(titleLength<minimum||titleLength>120)
    throw Error('O título SEO precisa ter entre 100 e 120 caracteres (ideal: 120), incluindo espaços e emojis. Atual: '+titleLength+'. Use somente características confirmadas e termos relevantes.');
-  if(titleHasUnhelpfulDimensions(title)&&!kitTitleDimensionsVerified(title,kitProductNames))throw Error('Dimensões compostas no título só são aceitas quando aparecem exatamente no nome comercial WeDrop de um dos produtos deste kit.');
+  if(titleHasUnhelpfulDimensions(title)){
+   const kit=Array.isArray(kitProductNames)&&kitProductNames.length>0;
+   const verified=kit?kitTitleDimensionsVerified(title,kitProductNames):
+    singleProductTitleDimensionsVerified(title,singleProductName);
+   if(!verified)throw Error(kit?
+    'Dimensões compostas no título só são aceitas quando aparecem exatamente no nome comercial WeDrop de um dos produtos deste kit.':
+    'As dimensões do título precisam corresponder ao nome comercial WeDrop confirmado para esta SKU. Confira o vínculo e as medidas do produto.');
+  }
  }
  if(description!==undefined){
   const text=String(description).replace(/\r\n?/g,'\n').normalize('NFC').trim();
@@ -86,7 +102,7 @@ export function buildStages(record,review={}){
     return {...s,reviewed:skipped?false:reviewed,skipped,reviewedAt:reviewed?entry.reviewedAt||null:null,status:skipped?'skipped':reviewed?'reviewed':s.blocking?'attention':'pending'};
   });
 }
-export function validateReview(input,{allowShortKitTitle=false,kitProductNames=[]}={}){
+export function validateReview(input,{allowShortKitTitle=false,kitProductNames=[],singleProductName=''}={}){
   if(!input||typeof input!=='object'||Array.isArray(input))throw Error('Revisão inválida.');
   const stage=String(input.stage||'');
   if(!STAGE_IDS.includes(stage))throw Error('Etapa de otimização inválida.');
@@ -96,7 +112,7 @@ export function validateReview(input,{allowShortKitTitle=false,kitProductNames=[
   const description=input.description===undefined?undefined:String(input.description||'').replace(/\r\n?/g,'\n').normalize('NFC').trim();
   if(title!==undefined&&!title)throw Error('Título vazio.');
   // Texto longo pode ser salvo por SKU; limites reais são de responsabilidade da API Shopee.
-  if(input.reviewed&&stage==='seo')validateContentRules({title:title??''},{allowShortKitTitle,kitProductNames});
+  if(input.reviewed&&stage==='seo')validateContentRules({title:title??''},{allowShortKitTitle,kitProductNames,singleProductName});
   if(input.reviewed&&stage==='description')validateContentRules({description:description??''});
   const variationConfig=stage==='variants'?validateVariationConfig(input.variationConfig,input.reviewed):undefined;
   const imageNotes=stage==='images'&&input.imageNotes!==undefined?validateImageNotes(input.imageNotes):undefined;
