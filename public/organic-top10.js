@@ -327,6 +327,10 @@
       'Taxa de adição só aparece quando informada no relatório.':
       '. Relatório declarado exclusivamente orgânico; adicionar ao carrinho não comprova abandono.')+
      ' Campos ausentes = “—”.'+
+     (performance&&Number(data.metadata?.unusualMetrics?.clicksOverImpressions)>0?
+      ' Atenção: '+number(data.metadata.unusualMetrics.clicksOverImpressions)+
+      ' anúncio(s) com cliques maiores que impressões no arquivo da Shopee. '+
+      'CTR oficial preservado sem arredondamento artificial.':'')+
      (data.catalogWarning?' '+data.catalogWarning:'');
     sorts.forEach(button=>{
      button.disabled=button.dataset.sort!=='combined'&&available[button.dataset.sort]!==true;
