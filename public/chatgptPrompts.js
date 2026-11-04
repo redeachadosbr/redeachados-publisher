@@ -1,6 +1,6 @@
 // Montagem local dos roteiros ChatGPT por SKU. Sem chave API e sem conexão a contas pessoais.
 import {confirmedProductDimensionsFromWeDrop,confirmedProductSideFactsFromWeDrop} from './productDimensions.js?v=20261104-bulleted-saved-dimensions';
-import {imageScenePrompt} from './imageSceneDiversity.js?v=20261104-benefits-topdown-macro';
+import {imageScenePrompt} from './imageSceneDiversity.js?v=20261104-image03-reference';
 // Cenas com enquadramentos e benefícios distintos; não repetir a fotografia em outro fundo.
 // As nove instruções autorizadas pelo vendedor — NÃO acrescentar texto,
 // SKU, informações de catálogo, cabeçalho, notas, outro prompt ou rodapé.
