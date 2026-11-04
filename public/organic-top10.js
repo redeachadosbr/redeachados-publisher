@@ -263,15 +263,10 @@
     'Impressões, cliques, visitantes, CTR, adição ao carrinho e pedidos do relatório da Central do Vendedor.':
     'Métricas exclusivamente orgânicas por SKU, quando comprovadas na origem.';
    const performance=source==='performance';
-   $('organicTop10ImportTitle').textContent=performance?
-    'Importar Performance do Produto da Shopee':'Importar relatório orgânico da Shopee';
+   $('organicTop10ImportTitle').textContent='Formato de importação';
    $('organicTop10ImportDescription').textContent=performance?
-    'Central do Vendedor → Informações Gerenciais → Produto → Performance do Produto. '+
-    'Em Selecionar Métricas, escolha Impressões, Cliques, CTR, Visitantes do Produto, '+
-    'Visitantes/Unidades (Adicionar ao Carrinho), Taxa de Conversão (Adicionar ao Carrinho) '+
-    'e Pedidos. Exporte CSV/Excel do período escolhido. A opção Produto Pago não comprova '+
-    'tráfego sem Ads. Itens adicionados não são carrinhos abandonados.':
-    'Importe apenas relatório filtrado exclusivamente para tráfego orgânico, sem Shopee Ads.';
+    'Exporte o relatório da Central do Vendedor com Item ID, Impressões, Cliques, CTR, Visitantes, Adições ao Carrinho, Conversão e Pedidos. Dados gerais podem incluir Ads.':
+    'Exporte CSV ou Excel filtrado exclusivamente para tráfego orgânico, sem Shopee Ads. Os dados precisam comprovar a origem orgânica.';
    $('organicTop10ConsentLabel').hidden=performance;
    if(performance)$('organicTop10OrganicConfirmed').checked=false;
    $('organicTop10OrganicConfirmed').required=!performance;
@@ -450,9 +445,10 @@
   importBox.querySelector('.organic-top10-import-grid')?.after(sheetRow);
   $('organicTop10File').addEventListener('change',()=>{
    sheetRow.hidden=true;sheetSelect.replaceChildren();
+   const note=$('organicTop10ImportNotice');
+   note.textContent='';note.dataset.kind='info';
    const name=String($('organicTop10File').files?.[0]?.name||'');
    if(source==='organic'&&/^parentskudetail\./i.test(name)){
-    const note=$('organicTop10ImportNotice');
     note.textContent='Esse arquivo costuma ser Performance do Produto (dados gerais). Para não incluir Ads indevidamente como orgânico, escolha “Performance do Produto · Shopee” acima.';
     note.dataset.kind='info';
    }
