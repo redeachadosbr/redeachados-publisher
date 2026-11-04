@@ -52,7 +52,10 @@ function setSidebarOpen(open){
 function setTab(name,{updateHistory=true,scroll=true}={}){
   if(!APP_PAGES[name])name='overview';
   if(name==='optimizer')kitOptimizerUnmount();
- if(name!=='kits')globalThis.RAClosePendingKitDirectEditor?.();
+ if(name!=='kits'){
+  globalThis.RAClosePendingKitDirectEditor?.();
+  document.querySelector('#kitPendingDirectEditor')?.remove();
+ }
   const pendingAdsHandoff=name==='optimizer'&&Boolean(optimizerAdsHandoffSku);
   const pendingKitHandoff=name==='optimizer'&&Boolean(globalThis.__RA_KIT_OPTIMIZATION_HANDOFF);
   if(pendingAdsHandoff)optimizerAdsHandoffSku=null;
