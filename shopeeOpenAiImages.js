@@ -7,12 +7,12 @@ import {imageScenePrompt} from './public/imageSceneDiversity.js';
 export const IMAGE_STORYBOARD=Object.freeze([
  'Imagem 1 — Capa: produto em destaque, ocupando aproximadamente 85% da imagem.',
  'Imagem 2 — Uso real: mostrar o produto em um ambiente de utilização.',
- 'Imagem 3 — Medidas: destacar junto ao produto somente dimensões reais WeDrop com setas finas; dados laterais pequenos somente se confirmados. Fundo moderno HD visível. Sem título, painéis, textos grandes ou números inventados.',
- 'Imagem 4 — Benefícios: demonstrar visualmente as vantagens do produto, com frases ou palavras curtas, sem poluir a imagem.',
- 'Imagem 5 — Dor e solução: mostrar como o produto resolve uma necessidade do comprador. Uma frase curta.',
- 'Imagem 6 — Persuasão: destacar um diferencial real, com comunicação comercial.',
- 'Imagem 7 — Transformação: mostrar o resultado ou a experiência proporcionada pelo produto. Frase curta.',
- 'Imagem 8 — Quebra de objeções: responder às três principais dúvidas do comprador, com frases curtas e persuasivas, tirando dúvidas sem poluir a imagem.',
+ 'Imagem 3 — Medidas: criar fotografia-base premium do produto inteiro com margem próxima ao contorno. O Manager acrescentará as dimensões verificadas da mesma SKU com linhas finas e tipografia moderna e discreta; a IA não escreve números.',
+ 'Imagem 4 — Benefícios: demonstrar uma vantagem comprovada e criar UMA frase de conversão contextualizada, de 4 a 8 palavras, específica para a fotografia, em tipografia discreta.',
+ 'Imagem 5 — Dor e solução: demonstrar necessidade real resolvida pelo produto e criar UMA frase natural e persuasiva de 4 a 8 palavras sem promessas não comprovadas.',
+ 'Imagem 6 — Persuasão: destacar um diferencial real e criar UMA frase original de 4 a 8 palavras que traduza esse diferencial em vantagem real.',
+ 'Imagem 7 — Transformação: mostrar experiência de uso em contexto real e criar UMA frase de 4 a 8 palavras que represente utilidade perceptível da foto.',
+ 'Imagem 8 — Quebra de objeções: criar duas PERGUNTAS de clientes com RESPOSTAS curtas e comprovadas; excepcionalmente três se houver prova e espaço. Cada par na borda, letra pequena, sem bloco informativo, mantendo o produto em destaque.',
  'Imagem 9 — Mockup e confiança: apresentar o produto com três selos: Compra Segura, Entrega Rápida e Atendimento Online.'
 ]);
 
@@ -76,7 +76,7 @@ export function imagePrompt({record,slot,masterPrompt='',note='',sourceImageCoun
   'CRIE UMA CENA VISUAL DIFERENTE DAS OUTRAS OITO nas gerações novas. Mantenha idêntico o PRODUTO da foto original, não o cenário, o personagem ou o produto de uma foto comercial anterior.',
   image03?dimensionRule:
   (attributes.length?'CARACTERÍSTICAS CONFIRMADAS PELA FICHA ATUAL: '+attributes.join('; ').slice(0,1800):'Nenhuma especificação técnica independente foi confirmada. Evite inserir números, medidas, selos, certificações ou alegações técnicas.'),
-  'REGRA FIXA: fotografia fotorrealista profissional, objeto em foco, fundo ambientado moderno de alta definição com detalhes arquitetônicos legíveis e visíveis (não excessivamente desfocado ou lavado), ambiente coerente com a utilidade real do produto, 1200 × 1200, sem preço nem marca d’água. Seguir exclusivamente o roteiro da posição informada: não criar títulos, subtítulos, frases ou elementos não pedidos. Incluir somente fatos comprovados em português. Não inventar embalagem, conteúdo, medidas ou funções. Medidas de embalagem/pacote NÃO são medidas do produto. Na ausência de prova, omitir números e atributos incertos.',
+  'REGRA FIXA: fotografia fotorrealista profissional, objeto em foco, fundo ambientado moderno de alta definição com detalhes arquitetônicos legíveis e visíveis (não excessivamente desfocado ou lavado), ambiente coerente com a utilidade real do produto, 1200 × 1200, sem preço nem marca d’água. As frases devem nascer da foto e do produto EXATO, não de slogans genéricos. Textos ocupam menos de 10% da imagem, fonte moderna pequena em local livre; NÃO cobrir o produto nem criar grandes títulos ou subtítulos. Incluir somente fatos comprovados em português. Não inventar embalagem, conteúdo, medidas, frete ou funções. Medidas de embalagem/pacote NÃO são medidas do produto. Na ausência de prova, omitir números e atributos incertos.',
   'INSTRUÇÕES COMERCIAIS SALVAS DA LOJA (subordinadas à fidelidade factual): '+String(masterPrompt||'Nenhuma adicional.').slice(0,9000),
   'PRIORIDADE VISUAL SOBRE INSTRUÇÕES COMERCIAIS GENÉRICAS: respeitar as últimas regras visuais da loja, o limite de textos da posição e as regras de direção de arte premium acima. Não criar listagens, cabeçalhos, fichas longas, painéis ou mais textos para mostrar todas as características do fornecedor. Informações de catálogo servem para validar o produto, não para preencher a foto.',
   image03?
