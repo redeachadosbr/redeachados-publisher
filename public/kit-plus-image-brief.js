@@ -1,4 +1,3 @@
-import {PREMIUM_NINE_IMAGE_RULES} from './premiumNineImagePolicy.js';
 import {kitImageMeasurementsBySku} from './kit-measurements.js?v=1.1.2-wedrop-axes-labels';
 // Prompt curto do ChatGPT Plus para kit: uso em ?prompt= e na área de transferência.
 // NÃO utiliza API, não controla o chat externo, nem insere imagens no navegador.
@@ -46,7 +45,7 @@ export function buildKitPlusImageBrief(kit,{manualFacts={}}={}){
   'VISUAL: fotografia publicitária realista, fundo ambientado moderno HD, iluminação premium, diversidade de cenas e ângulos. Frases em português brasileiro ESPECÍFICAS DA CENA E DO PRODUTO, fonte sans-serif moderna, pequena e elegante, textos no máximo 10% da imagem e produtos como protagonistas. Sem preços, tarjas, títulos grandes, logotipos adicionados ou marca-d’água.',
   'AS NOVE IMAGENS DEVEM SEGUIR ESTA SEQUÊNCIA:',
   stages,
-  'CONTRATO VISUAL PREMIUM VIGENTE:\n'+PREMIUM_NINE_IMAGE_RULES.map((rule,i)=>String(i+1).padStart(2,'0')+' '+rule).join('\n'),
+  'POLÍTICA PREMIUM: fotografia realista, estética das nove referências, imagens independentes. Capa sem texto; três benefícios reais; zoom macro; embalagem real ou mockup ilustrativo; ficha técnica com até seis dados verificados; FAQ com três perguntas/respostas comprovadas; três selos de confiança. Não inventar dados, quantidades nem detalhes.',
   'ENTREGA: 9 arquivos de imagem separados, com produtos completos nas nove artes. Se a interface gerar apenas uma imagem por mensagem, gere AGORA a IMAGEM 01 e depois continue sequencialmente quando eu solicitar “próxima imagem”. Não retorne apenas descrições ou prompts.',
   'Comece pela geração de imagens, respeitando a fidelidade dos produtos.'
  ].join('\n\n');
