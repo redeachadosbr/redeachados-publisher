@@ -2867,11 +2867,11 @@ const workflowImageGuide=[
  'Imagem 2 — Uso real: ambiente, personagem e câmera diferentes das outras oito imagens; sem reutilizar a fotografia anterior.',
  'Imagem 3 — Dimensões: fotografia premium de produto inteiro, preparada para uma única camada de medidas validadas da mesma SKU. Arte final com setas BRANCAS, boxes BRANCOS arredondados com BORDA AMARELA e valores AZUL-MARINHO; em colchões com cores sortidas confirmadas, três variantes lado a lado e cotas no produto azul à direita.',
  'Imagem 4 — Benefícios: vantagens visuais reais, com UMA frase de 2 a 5 palavras pequena, tipografia premium e outro ângulo e cenário.',
- 'Imagem 5 — Dor e solução: mostrar como o produto resolve uma necessidade do comprador. Uma frase curta.',
- 'Imagem 6 — Persuasão: destacar um diferencial real, com comunicação comercial.',
- 'Imagem 7 — Transformação: mostrar o resultado ou a experiência proporcionada pelo produto. Frase curta.',
- 'Imagem 8 — Quebra de objeções: responder às três principais dúvidas do comprador, com frases curtas e persuasivas, tirando dúvidas sem poluir a imagem.',
- 'Imagem 9 — Mockup e confiança: apresentar o produto com três selos: Compra Segura, Entrega Rápida e Atendimento Online.',
+ 'Imagem 5 — Detalhes do produto: macro editorial em textura, fecho ou acabamento real e visível.',
+ 'Imagem 6 — Mockup da embalagem: produto real com embalagem oficial documentada ou caixa conceitual identificada como ilustrativa.',
+ 'Imagem 7 — Informações técnicas: até 6 fatos verificados em círculos de detalhe, setas finas e etiquetas elegantes.',
+ 'Imagem 8 — Quebra de objeções: 3 perguntas de comprador e 3 respostas comprovadas em cartões horizontais compactos.',
+ 'Imagem 9 — Confiança: apresentar o produto com três selos: Compra Segura, Entrega Rápida e Atendimento Online.',
  'VARIAÇÃO OBRIGATÓRIA: cada foto usa ambiente, ponto de vista, iluminação e (quando houver) pessoa diferentes. Preservar produto exato; não clonar pose, parque ou personagem de outras imagens.'
 ].join('\n');
 // Prévia INTEGRAL da descrição: organizada visualmente, sem truncamento.
@@ -10757,7 +10757,7 @@ function optimizerFiscalValues(){
 let optimizerImagesAutoBusy=false,optimizerImagesStopRequested=false;
 let optimizerImagesSavedSlots=new Set(),optimizerImagesApiConfigured=false;
 let optimizerImagesFilter='all';
-const optimizerCommercialPositionNames=["Capa","Uso real","Especificações","Benefícios","Dor e solução","Persuasão","Transformação","Quebra de objeções","Mockup e confiança"];
+const optimizerCommercialPositionNames=["Capa premium","Uso real","Dimensões","Benefícios","Detalhes do produto","Mockup da embalagem","Informações técnicas","Quebra de objeções","Confiança"];
 function optimizerCommercialSetFilter(filter){
  if(!['all','pending','saved'].includes(filter))return;
  optimizerImagesFilter=filter;
@@ -10787,7 +10787,7 @@ function optimizerImagesRenderMode(){
  $('#optimizerModeApi').classList.toggle('is-active',!chat);
 }
 async function optimizerChatgptMakeBrief(w,{defaultOnly=false}={}){
- const {createChatGptPrompts}=await import('/chatgptPrompts.js?v=1.22.4-direct-image03');
+ const {createChatGptPrompts}=await import('/chatgptPrompts.js?v=20261104-premium-nine-images');
  return createChatGptPrompts({
   sku:w.sku,title:w.draftTitle||'Produto Shopee',
   imageUrls:w.imageUrls||[],
