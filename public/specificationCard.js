@@ -18,42 +18,85 @@ export function confirmedSpecCard({sourceText='',sku='',sourceEvidenceSku='',sup
  const dims=assembled?null:confirmedProductDimensionsFromWeDrop(sourceText);
  const facts=confirmedProductSideFactsFromWeDrop(sourceText);
  if(!dims&&!facts.length)return null;
- return {measurements:dims?.measurements||[],facts,source:'Informações da WeDrop da SKU'};
+ // Identificar selo de cor sortida SOMENTE quando a própria ficha confirma
+ // envio sortido e as cores exatas. Não derivar das cores aparentes na foto.
+ const colors=String(sourceText||'').match(/(?:^|\n)\s*[-*•]?\s*cor(?:es)?\s*[:\-]\s*([^\n]+)/i)?.[1]||'';
+ const colorWords=colors.toLocaleLowerCase('pt-BR').normalize('NFD').replace(/[\u0300-\u036f]/g,'')
+  .split(/\s*(?:,|\be\b|\/|;)\s*/).map(x=>x.trim()).filter(Boolean);
+ const sortedColors=/(?:cor(?:es)?\s+sortid[ao]s?|envia(?:do|da|dos|das)\s+(?:com\s+)?cor(?:es)?\s+sortid[ao]s?)/i
+  .test(String(sourceText||''))&&['azul','amarelo','rosa'].every(c=>colorWords.includes(c));
+ return {measurements:dims?.measurements||[],facts,sortedColors,
+  source:'Informações da WeDrop da SKU'};
 }
 const SW=1200,SH=1200;
-// Legenda editorial: branco translúcido LEVE, borda fina, letra contemporânea.
-// As cotas usam apenas valores da própria SKU, nunca são inferidas dos pixels.
-function textChip(ctx,text,cx,cy,{small=false}={}){
+// Formato aprovado para arte 03: setas brancas, placas claras com borda
+// amarela e tipografia azul-marinho. Layout desenhado UMA VEZ no arquivo final.
+// Números vêm APENAS da ficha WeDrop validada para a SKU.
+function sizeChip(ctx,{value,label,x,y,width=208}){
  ctx.save();
- ctx.font=(small?'500 25px':'600 32px')+' "Inter","Segoe UI",Arial,sans-serif';
- const tw=ctx.measureText(text).width;
- const width=Math.min(small?340:360,tw+(small?30:40));
- const height=small?48:59;
- const x=Math.max(22,Math.min(SW-width-22,cx-width/2));
- const y=Math.max(22,Math.min(SH-height-22,cy-height/2));
- ctx.shadowColor='rgba(10,29,44,0.16)';
- ctx.shadowBlur=8;ctx.shadowOffsetY=2;
- ctx.fillStyle='rgba(249,251,253,0.76)';
- ctx.beginPath();ctx.roundRect(x,y,width,height,12);ctx.fill();
- ctx.shadowColor='transparent';ctx.shadowBlur=0;ctx.shadowOffsetY=0;
- ctx.strokeStyle='rgba(255,255,255,0.72)';ctx.lineWidth=1;
- ctx.beginPath();ctx.roundRect(x+0.5,y+0.5,width-1,height-1,11.5);ctx.stroke();
- ctx.fillStyle='#173550';ctx.textAlign='center';ctx.textBaseline='middle';
- ctx.fillText(text,x+width/2,y+height/2,Math.max(70,width-24));
+ const h=101,rx=Math.max(8,Math.min(SW-width-8,x-width/2));
+ const ry=Math.max(8,Math.min(SH-h-8,y-h/2));
+ ctx.shadowColor='rgba(19,50,75,.22)';ctx.shadowBlur=11;ctx.shadowOffsetY=3;
+ ctx.fillStyle='#fffefa';
+ ctx.beginPath();ctx.roundRect(rx,ry,width,h,29);ctx.fill();
+ ctx.shadowColor='transparent';ctx.shadowOffsetY=0;ctx.shadowBlur=0;
+ ctx.lineWidth=6;ctx.strokeStyle='#ffcb0b';
+ ctx.beginPath();ctx.roundRect(rx+3,ry+3,width-6,h-6,26);ctx.stroke();
+ ctx.textAlign='center';ctx.textBaseline='middle';ctx.fillStyle='#103764';
+ ctx.font='800 49px "Inter","Segoe UI",Arial,sans-serif';
+ ctx.fillText(value,rx+width/2,ry+40,width-24);
+ ctx.font='600 24px "Inter","Segoe UI",Arial,sans-serif';
+ ctx.fillText(label,rx+width/2,ry+76,width-24);
  ctx.restore();
 }
 function dimensionLine(ctx,x1,y1,x2,y2){
  const angle=Math.atan2(y2-y1,x2-x1);
  ctx.save();ctx.lineCap='round';
- // Contorno clarinho para leitura em fotos claras e escuras.
- ctx.strokeStyle='rgba(255,255,255,0.92)';ctx.lineWidth=4;
+ ctx.strokeStyle='rgba(11,40,64,.25)';ctx.lineWidth=10;
  ctx.beginPath();ctx.moveTo(x1,y1);ctx.lineTo(x2,y2);ctx.stroke();
- ctx.strokeStyle='rgba(22,57,83,0.86)';ctx.lineWidth=1.8;
+ ctx.strokeStyle='#fff';ctx.lineWidth=6;
  ctx.beginPath();ctx.moveTo(x1,y1);ctx.lineTo(x2,y2);ctx.stroke();
- for(const [x,y] of [[x1,y1],[x2,y2]]){
-  const ax=Math.cos(angle+Math.PI/2)*11,ay=Math.sin(angle+Math.PI/2)*11;
-  ctx.beginPath();ctx.moveTo(x-ax,y-ay);ctx.lineTo(x+ax,y+ay);ctx.stroke();
+ const tip=19,wing=12;
+ for(const [x,y,dir] of [[x1,y1,1],[x2,y2,-1]]){
+  const a=angle+(dir===1?Math.PI:0);
+  ctx.fillStyle='#fff';ctx.beginPath();
+  ctx.moveTo(x,y);
+  ctx.lineTo(x+tip*Math.cos(a)+wing*Math.cos(a+Math.PI/2),
+   y+tip*Math.sin(a)+wing*Math.sin(a+Math.PI/2));
+  ctx.lineTo(x+tip*Math.cos(a)-wing*Math.cos(a+Math.PI/2),
+   y+tip*Math.sin(a)-wing*Math.sin(a+Math.PI/2));
+  ctx.closePath();ctx.fill();
  }
+ ctx.restore();
+}
+function smallFact(ctx,text,x,y){
+ ctx.save();ctx.font='600 24px "Inter","Segoe UI",Arial,sans-serif';
+ const width=Math.min(290,ctx.measureText(text).width+32);
+ const rx=Math.max(12,Math.min(SW-width-12,x-width/2));
+ ctx.fillStyle='rgba(255,255,255,.89)';
+ ctx.beginPath();ctx.roundRect(rx,y,width,45,13);ctx.fill();
+ ctx.fillStyle='#143b67';ctx.textAlign='center';ctx.textBaseline='middle';
+ ctx.fillText(text,rx+width/2,y+23,width-20);ctx.restore();
+}
+function sortedColorBanner(ctx){
+ // Selo só aparece quando há COR SORTIDA confirmada na fonte da SKU.
+ ctx.save();
+ const x=46,y=1057,w=525,h=109;
+ ctx.shadowColor='rgba(14,36,60,.24)';ctx.shadowBlur=12;ctx.shadowOffsetY=3;
+ ctx.fillStyle='#093967';ctx.beginPath();ctx.roundRect(x,y,w,h,44);ctx.fill();
+ ctx.shadowColor='transparent';ctx.shadowBlur=0;ctx.shadowOffsetY=0;
+ ctx.lineWidth=5;ctx.strokeStyle='#ffcb0b';
+ ctx.beginPath();ctx.roundRect(x+3,y+3,w-6,h-6,41);ctx.stroke();
+ for(const [i,color] of ['#28a8ed','#ffd219','#f7358e'].entries()){
+  const sx=x+27+i*34,sy=y+24+(i===1?-7:i===2?5:0);
+  ctx.fillStyle=color;ctx.strokeStyle='#fff';ctx.lineWidth=5;
+  ctx.beginPath();ctx.roundRect(sx,sy,55,65,11);ctx.fill();ctx.stroke();
+ }
+ ctx.fillStyle='#fff';ctx.textAlign='center';ctx.textBaseline='middle';
+ ctx.font='600 27px "Inter","Segoe UI",Arial,sans-serif';
+ ctx.fillText('Envio em',x+340,y+35,300);
+ ctx.fillStyle='#ffdc24';ctx.font='800 37px "Inter","Segoe UI",Arial,sans-serif';
+ ctx.fillText('cores sortidas',x+342,y+76,325);
  ctx.restore();
 }
 export async function addConfirmedSpecificationCard(blob,spec){
@@ -68,29 +111,48 @@ export async function addConfirmedSpecificationCard(blob,spec){
   if(!ctx)throw Error('Não foi possível preparar a Imagem 03.');
   ctx.drawImage(bitmap,0,0,SW,SH);
   const get=name=>spec.measurements?.find(x=>x.axis===name);
-  // Cotas visuais nos limites aparentes; não converter pixels em centímetros.
-  // Não cruzar a região central nem esconder o produto.
   const height=get('altura'),width=get('largura'),length=get('comprimento'),depth=get('profundidade');
-  // Colchões/boias fotografados na vertical: comprimento ao longo do corpo,
-  // largura na transversal. NUNCA representar as duas dimensões no mesmo eixo.
-  const longPortrait=!height&&length&&width&&
-   /colch[aã]o|boia|infl[aá]vel/i.test(String(spec.productTitle||''))&&
+  const poolPortrait=!height&&Boolean(length&&width)&&
+   /colch[aã]o.*(?:piscina|infl[aá]vel)|(?:boia|colch[aã]o).*infl[aá]vel/i.test(String(spec.productTitle||''))&&
    Number(String(length.value).replace(',','.').split(' ')[0])>
    Number(String(width.value).replace(',','.').split(' ')[0]);
-  if(height){dimensionLine(ctx,168,248,168,938);textChip(ctx,'ALTURA '+height.value,280,600);}
-  if(width){dimensionLine(ctx,353,225,922,225);textChip(ctx,'LARGURA '+width.value,638,169);}
-  if(length){
-   if(longPortrait){dimensionLine(ctx,168,280,168,954);textChip(ctx,'COMPRIMENTO '+length.value,305,735);}
-   else{dimensionLine(ctx,295,1013,958,1013);textChip(ctx,'COMPRIMENTO '+length.value,628,1080);}
+  if(poolPortrait){
+   // Foto de colchões em pé: a peça AZUL à direita é a referência
+   // visual, como na arte aprovada. Só duas cotas, sem selo repetido.
+   dimensionLine(ctx,1091,85,1091,923);
+   sizeChip(ctx,{value:length.value,label:'Comprimento',x:1081,y:448,width:217});
+   dimensionLine(ctx,786,969,1060,969);
+   sizeChip(ctx,{value:width.value,label:'Largura',x:936,y:1046,width:216});
+   if(spec.sortedColors)sortedColorBanner(ctx);
+  }else{
+   if(height){
+    dimensionLine(ctx,1059,165,1059,937);
+    sizeChip(ctx,{value:height.value,label:'Altura',x:1079,y:510,width:213});
+   }
+   if(width){
+    dimensionLine(ctx,321,964,862,964);
+    sizeChip(ctx,{value:width.value,label:'Largura',x:604,y:1040,width:214});
+   }
+   if(length){
+    if(height||width)smallFact(ctx,'Comprimento '+length.value,842,1102);
+    else{
+     dimensionLine(ctx,1059,165,1059,937);
+     sizeChip(ctx,{value:length.value,label:'Comprimento',x:1079,y:510,width:214});
+    }
+   }
+   if(depth){
+    if(height||length)smallFact(ctx,'Profundidade '+depth.value,450,1102);
+    else{
+     dimensionLine(ctx,322,964,858,964);
+     sizeChip(ctx,{value:depth.value,label:'Profundidade',x:600,y:1040,width:237});
+    }
+   }
+   // Apenas um fato secundário quando NÃO há medidas. Nenhum painel grande.
+   if(!(height||width||length||depth)){
+    const fact=spec.facts?.[0];
+    if(fact)smallFact(ctx,fact.label+': '+fact.value,1000,1030);
+   }
   }
-  if(depth){
-   if(length)textChip(ctx,'PROFUNDIDADE '+depth.value,973,1133,{small:true});
-   else{dimensionLine(ctx,306,1013,925,1013);textChip(ctx,'PROFUNDIDADE '+depth.value,633,1080);}
-  }
-  // Dados adicionais não podem poluir a fotografia nem competir com as medidas.
-  // Para imagens com 3 cotas, no máximo uma etiqueta secundária.
-  const facts=(spec.facts||[]).slice(0,(height&&width&&(length||depth))?1:2);
-  facts.forEach((fact,i)=>textChip(ctx,fact.label+': '+fact.value,997,845+i*58,{small:true}));
   return await new Promise((resolve,reject)=>canvas.toBlob(
    output=>output?resolve(output):reject(Error('Falha ao aplicar dados WeDrop na Imagem 03.')),
    'image/png'
