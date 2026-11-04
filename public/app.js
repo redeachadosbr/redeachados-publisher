@@ -4159,6 +4159,9 @@ async function optimizerWorkflowLoad(record){
  }catch(e){
    if(serial===optimizerWorkflowSerial&&$('#optimizerSku').value.trim()===sku){
      optimizerWorkflowNotice('Não foi possível carregar as etapas: '+e.message+'. Refaça a análise desta SKU.','error');
+     if(isPendingKitDirect(sku,id)){
+      const live=$('#kitPendingDirectStatus');if(live)live.textContent='⚠ Não foi possível carregar a edição das imagens do Item ID '+id+': '+e.message+'. Use Atualizar anúncio para tentar novamente.';
+     }
      const status=$('#kitOptimizerWorkspaceStatus');
      if(status&&kitOptimizerEmbedded){status.hidden=false;status.textContent='Falha ao carregar etapas: '+e.message;}
      const handoff=globalThis.__RA_KIT_OPTIMIZATION_HANDOFF;
@@ -7759,6 +7762,9 @@ async function optimizerRunAudit(itemId,sku,modelId=''){
     if($('#optimizerSku').value.trim()===String(sku||'').trim()){
       optimizerNotice('Não foi possível validar a ficha técnica do SKU: '+e.message+
         '. O produto permanece intacto.','error');
+      if(isPendingKitDirect(sku,itemId)){
+       const live=$('#kitPendingDirectStatus');if(live)live.textContent='⚠ Falha ao conferir o Item ID '+itemId+' com a Shopee: '+e.message+'. O anúncio não foi modificado.';
+      }
       const handoff=globalThis.__RA_KIT_OPTIMIZATION_HANDOFF;
       if(handoff?.embed&&String(handoff.sku)===String(sku||'')){
         globalThis.RAKitWizardWorkflowLoadError?.({
