@@ -23,6 +23,33 @@ test('SKU 2392: usa somente dimensoes declaradas na secao Especificacoes do text
  for(const forbidden of ['66 cm','100 cm','27 cm','48 cm','72 cm','95 cm','35 cm','50 kg'])
   assert(!raw.includes(forbidden),'nao utilizar '+forbidden);
 });
+test('WS20357 aplica medidas 183 cm comprimento e 69 cm largura cadastradas manualmente',()=>{
+ const sourceText=[
+  'Colchão Inflável Piscina 183x69cm Verão',
+  'ESPECIFICAÇÕES:',
+  '- Material: 100% PVC',
+  '- Dimensões: 183cm comprimento x 69cm largura',
+  '- Cor: Azul, Amarelo e Rosa',
+  'PRODUTO ENVIADO COM COR SORTIDA'
+ ].join('\n');
+ const extracted=confirmedProductDimensionsFromWeDrop(sourceText);
+ assert.deepEqual(extracted?.measurements.map(x=>[x.axis,x.value]),[
+  ['largura','69 cm'],['comprimento','183 cm']
+ ]);
+ const data={sku:'WS20357',sourceEvidenceSku:'WS20357',sourceSaved:true,
+  supplierMatchedBy:'',sourceText};
+ const spec=confirmedSpecCard(data);
+ assert.deepEqual(spec.measurements.map(x=>[x.label,x.value]),[
+  ['LARGURA','69 cm'],['COMPRIMENTO','183 cm']
+ ]);
+ assert.equal(confirmedSpecCard({...data,sourceEvidenceSku:'OUTRA-SKU'}),null);
+ assert.equal(confirmedSpecCard({...data,sourceSaved:false}),null,
+  'Sem registro validado nem vínculo não se aceita o texto');
+ const card=readFileSync(new URL('../public/specificationCard.js',import.meta.url),'utf8');
+ assert.match(card,/const longPortrait=!height&&length&&width/);
+ assert.match(card,/COMPRIMENTO.*length.value/);
+});
+
 test('prompt 03 informa somente medidas confirmadas pela SKU e fotografa sem numeros inventados',()=>{
  const x=createChatGptPrompts({sku:'2392',title:'Bicicleta Infantil Moto Cross Rosa',
   supplierSourceText:evidence});
