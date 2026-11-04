@@ -52,6 +52,7 @@ function setSidebarOpen(open){
 function setTab(name,{updateHistory=true,scroll=true}={}){
   if(!APP_PAGES[name])name='overview';
   if(name==='optimizer')kitOptimizerUnmount();
+ if(name!=='kits')globalThis.RAClosePendingKitDirectEditor?.();
   const pendingAdsHandoff=name==='optimizer'&&Boolean(optimizerAdsHandoffSku);
   const pendingKitHandoff=name==='optimizer'&&Boolean(globalThis.__RA_KIT_OPTIMIZATION_HANDOFF);
   if(pendingAdsHandoff)optimizerAdsHandoffSku=null;
@@ -2558,6 +2559,48 @@ globalThis.RAOpenPendingImageKit=editor=>{
  setTab('kits');
  return true;
 };
+// Kit com anúncio Shopee confirmado mas SEM rascunho/itens WeDrop:
+// reutilizar a edição REAL de imagens por Item ID, sem inventar composição.
+let pendingKitDirect=null,pendingKitDirectHome=null,pendingKitDirectNext=null;
+function isPendingKitDirect(sku,itemId){
+ return Boolean(pendingKitDirect&&pendingKitDirect.sku===String(sku||'')&&
+  pendingKitDirect.itemId===String(itemId||''));
+}
+globalThis.RAClosePendingKitDirectEditor=()=>{
+ pendingKitDirect=null;
+ const panel=$('#optimizerWorkflowPanel');
+ if(pendingKitDirectHome&&panel&&panel.parentNode!==pendingKitDirectHome)
+  pendingKitDirectHome.insertBefore(panel,
+   pendingKitDirectNext?.parentNode===pendingKitDirectHome?pendingKitDirectNext:null);
+ const scope=$('#optimizerExecutionScope');if(scope)scope.disabled=false;
+ const execution=$('#optimizerShowExecution');if(execution)execution.hidden=false;
+ const forward=$('#optimizerWorkflowNext');if(forward)forward.hidden=false;
+ pendingKitDirectHome=null;pendingKitDirectNext=null;
+};
+globalThis.RAOpenPendingKitDirectEditor=(editor,mount)=>{
+ const id=String(editor?.itemId||''),sku=String(editor?.sku||'').trim();
+ const modelId=String(editor?.modelId||'0');
+ if(!mount?.isConnected||!/^[1-9]\d{0,17}$/.test(id)||!sku||
+    !/^(0|[1-9]\d{0,17})$/.test(modelId))return false;
+ globalThis.RAClosePendingKitDirectEditor();
+ globalThis.redeKitCloseOptimizerWorkspace?.();
+ const panel=$('#optimizerWorkflowPanel'),field=$('#optimizerSku');
+ if(!panel||!field)return false;
+ pendingKitDirectHome=panel.parentNode;pendingKitDirectNext=panel.nextSibling;
+ pendingKitDirect={itemId:id,sku,modelId};
+ globalThis.__RA_KIT_OPTIMIZATION_HANDOFF=null;
+ mount.append(panel);panel.hidden=false;
+ const scope=$('#optimizerExecutionScope');if(scope){scope.value='images';scope.disabled=true;}
+ const execution=$('#optimizerShowExecution');if(execution)execution.hidden=true;
+ const forward=$('#optimizerWorkflowNext');if(forward)forward.hidden=true;
+ field.value=sku;
+ field.dispatchEvent(new CustomEvent('input',{bubbles:true,detail:{onlyPrefill:true}}));
+ $('#optimizerItemId').value=id;
+ optimizerNotice('Anúncio de kit existente · Item ID '+id+
+  ' · Somente imagens até identificar os componentes WeDrop.','info');
+ void optimizerRunAudit(id,sku,modelId);
+ return true;
+};
 // A lista de Otimização Pendente abre a SKU correta na etapa de imagens,
 // sem publicar nada nem recuperar o preço de outra SKU no handoff.
 globalThis.RAOpenPendingImageSku=sku=>{
@@ -3032,7 +3075,7 @@ function optimizerWorkflowRender(data){
  // Sincronize os textos já montados no kit antes de calcular os cartões.
  optimizerKitSourceChanged();
  // A pesquisa e a precificação começam ao selecionar a SKU e continuam em paralelo.
- if(!optimizerKitWorkflowActive())void optimizerDiscountFinalLoad();
+ if(!optimizerKitWorkflowActive()&&!isPendingKitDirect(data.sku,data.itemId))void optimizerDiscountFinalLoad();
  globalThis.OptimizerSkuDashboard?.workflow?.(data);
  const cards=$('#optimizerWorkflowCards');cards.replaceChildren();
  if(data.anatel?.requiresAction){
@@ -3985,6 +4028,16 @@ async function optimizerWorkflowLoad(record){
    if(serial!==optimizerWorkflowSerial||$('#optimizerSku').value.trim()!==sku)return;
    optimizerContentRestore(data);
    optimizerWorkflowRender(data);
+   if(isPendingKitDirect(sku,id)){
+    const scope=$('#optimizerExecutionScope');if(scope){scope.value='images';scope.disabled=true;}
+    optimizerWorkflowOpen('images');
+    const status=$('#kitPendingDirectStatus');
+    if(status)status.textContent='✓ Anúncio Item ID '+id+
+     ' confirmado na Shopee. Editor de imagens pronto para revisão; nenhuma publicação iniciada.';
+    optimizerWorkflowNotice('Editor de imagens do anúncio de kit existente · Item ID '+id+
+     '. As etapas comerciais exigem uma composição WeDrop confirmada.','success');
+    return;
+   }
    const kitHandoff=globalThis.__RA_KIT_OPTIMIZATION_HANDOFF;
    const matchedTarget=Boolean(kitHandoff?.embed&&
      String(data.itemId)===String(kitHandoff.itemId)&&String(data.sku)===String(kitHandoff.sku));
@@ -7656,6 +7709,7 @@ async function optimizerRunAudit(itemId,sku,modelId=''){
     $('#priceResults').hidden=true;
     $('#optimizerQuickValues').hidden=true;
     $('#optimizerQuickStatus').textContent='Conferindo o custo WeDrop e calculando o preço bruto da SKU '+expectedSku+'...';
+    if(!isPendingKitDirect(expectedSku,item)){
     if(globalThis.__RA_KIT_OPTIMIZATION_HANDOFF?.sku===expectedSku){
       $('#optimizerQuickStatus').textContent='Kit WeDrop: conferindo custo dos componentes e calculando o preço bruto...';
       void shPriceLoadDefaults().then(()=>{
@@ -7686,6 +7740,9 @@ async function optimizerRunAudit(itemId,sku,modelId=''){
       }
       return shPricePrepare();
     });
+    }else{
+      $('#optimizerQuickStatus').textContent='Kit sem composição WeDrop salva: editor de imagens; sem cálculo de preço ou desconto.';
+    }
     const params=new URLSearchParams({item_id:item,sku:expectedSku,model_id:String(modelId||'')});
     const data=await json('/api/shopee/optimizer/audit?'+params.toString(),{
       signal:AbortSignal.timeout(60000)
