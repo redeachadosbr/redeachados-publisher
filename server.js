@@ -4640,7 +4640,13 @@ app.post('/api/shopee/optimizer/images/generate',mustLogin,requireWeDropAdmin,as
   ]);
   const supplierSourceText=supplierEvidenceResult.status==='fulfilled'
    ?String(supplierEvidenceResult.value.sourceText||''):'';
-  const product=supplierCatalogResult.status==='fulfilled'?supplierCatalogResult.value?.product_data||{}:{};
+  const linkedSupplier=supplierCatalogResult.status==='fulfilled'?supplierCatalogResult.value:null;
+  const product=linkedSupplier?.product_data||{};
+  // Não puxar foto de fornecedor por nome parecido. Só vínculo auditado da SKU.
+  const wedropImage=['exact-sku','reviewed-link'].includes(String(linkedSupplier?.matchedBy||''))&&
+   /^https:\/\/wedrop-products-images\.nyc3\.cdn\.digitaloceanspaces\.com\//i.test(String(product.imageUrl||''))?
+   String(product.imageUrl):'';
+  if(wedropImage&&!editCurrent)references.unshift(wedropImage);
   const supplierCatalogInfo=[product.name,product.brand,product.description||product.details]
    .filter(x=>typeof x==='string'&&x.trim()).join('\n').slice(0,1700);
   const output=await generateOpenAiImage({
