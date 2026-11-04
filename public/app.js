@@ -2549,6 +2549,8 @@ globalThis.RAOpenPendingImageKit=editor=>{
  if(!['kit','kit-unlinked'].includes(editor?.kind))return false;
  globalThis.__RA_PENDING_IMAGE_KIT_HANDOFF={
   kind:editor.kind,itemId,kitSku:String(editor.kitSku||''),
+  sku:String(editor.sku||'').trim(),mainSku:String(editor.mainSku||'').trim(),
+  modelId:String(editor.modelId||'0'),
   title:String(editor.title||'').slice(0,140),
   editable:editor.editable!==false,
   message:String(editor.message||'').slice(0,300)
