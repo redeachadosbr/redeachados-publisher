@@ -136,7 +136,13 @@ export async function listKitDrafts(shopId){
  const drafts=all.filter(x=>!isFinished(x)&&(
   !activeBatchId||x.importBatchId===activeBatchId||
   ['publishing','uncertain','published_pending'].includes(x.publication)));
- return {drafts,published,activeBatchId:activeBatchId||null};
+ const linkCandidates=all.filter(x=>x.publication==='local_draft'&&
+   x.optimizationFinalization?.status!=='verified').map(x=>({
+   kitSku:x.kitSku,skus:x.skus,title:x.title,publication:x.publication,
+   itemId:x.itemId,optimization:x.optimization,
+   optimizationFinalization:x.optimizationFinalization
+  }));
+  return {drafts,published,linkCandidates,activeBatchId:activeBatchId||null};
 }
 // Resolve um anúncio existente por seu Item ID OFICIAL, nunca por um título
 // parecido nem pela SKU isolada (uma SKU pode participar de vários kits).
