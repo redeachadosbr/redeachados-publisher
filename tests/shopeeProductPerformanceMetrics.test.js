@@ -117,16 +117,16 @@ test('novo popup remove campo colar tabela e oferece seletor de quantidade',()=>
  const css=readFileSync(new URL('../public/organic-top10.css',import.meta.url),'utf8');
  assert.doesNotMatch(html,/id="organicTop10PasteText"/);
  assert.doesNotMatch(html,/id="organicTop10ReadClipboard"/);
- assert.doesNotMatch(js,/navigator\\.clipboard|organicTop10PasteText/);
+ assert.doesNotMatch(js,/navigator\.clipboard|organicTop10PasteText/);
  assert.match(html,/id="organicTop10ImportLimit"/);
  assert.match(html,/id="organicTop10Limit"/);
  for(const n of [10,20,50,100])assert.match(html,new RegExp('<option value="'+n+'">'));
  assert.match(html,/organic-top10-import-help/);
  assert.match(html,/organic-top10-import-date-grid/);
  assert.match(js,/rankingLimit=10/);
- assert.match(js,/limit:String\\(rankingLimit\\)/);
- assert.match(css,/\\[data-importing="true"\\]/);
- assert.doesNotMatch(js,/fetch\\(['"]https:\\/\\/seller\\.shopee/);
+ assert.match(js,/limit:String\(rankingLimit\)/);
+ assert.match(css,/\[data-importing="true"\]/);
+ assert.doesNotMatch(js,/fetch\(['"]https:\/\/seller\.shopee/);
 });
 test('limite configurável traz até 100 SKUs sem afetar ordenação',()=>{
  const rows=Array.from({length:130},(_,i)=>({
@@ -144,10 +144,10 @@ test('limite configurável traz até 100 SKUs sem afetar ordenação',()=>{
 });
 test('endpoints aplicam limite recebido antes de retornar ranking',()=>{
  const server=readFileSync(new URL('../server.js',import.meta.url),'utf8');
- assert.match(server,/const productRankingLimit=value=>\\[10,20,50,100\\]/);
- assert.match(server,/rankObservedViews\\(snapshots,window,\\{limit:productRankingLimit\\(req\\.query\\.limit\\)\\}\\)/);
- assert.match(server,/rankOrganicTop\\(snapshot\\.records,\\{sort,limit:productRankingLimit\\(req\\.query\\.limit\\)\\}\\)/);
- assert.match(server,/readBaseInfoBatches\\(cfg,auth,ids\\)/);
+ assert.match(server,/const productRankingLimit=value=>\[10,20,50,100\]/);
+ assert.match(server,/rankObservedViews\(snapshots,window,\{limit:productRankingLimit\(req\.query\.limit\)\}\)/);
+ assert.match(server,/rankOrganicTop\(snapshot\.records,\{sort,limit:productRankingLimit\(req\.query\.limit\)\}\)/);
+ assert.match(server,/readBaseInfoBatches\(cfg,auth,ids\)/);
 });
 test('planilha com abas gerais não é misturada: usuário seleciona uma aba de produto',()=>{
  const workbook=XLSX.utils.book_new();
