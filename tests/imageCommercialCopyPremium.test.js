@@ -6,34 +6,21 @@ import {imageScenePrompt} from '../public/imageSceneDiversity.js';
 import {imagePrompt} from '../shopeeOpenAiImages.js';
 import {confirmedSpecCard,addConfirmedSpecificationCard} from '../public/specificationCard.js';
 
-test('imagens 04–07 exigem frases elaboradas coerentes com a cena e fonte discreta',()=>{
- const title='Colchão Inflável Piscina Verão';
- for(const slot of [4,5,6,7]){
-  const chat=createChatGptPrompts({title}).prompts[slot-1];
-  const api=imagePrompt({record:{sku:'WS20357',title},slot});
-  const expected=slot===4||slot===6?/3 a 7 palavras/:/4 a 8 palavras/;
-  assert.match(chat,expected);
-  assert.match(api,expected);
-  assert.match(imageScenePrompt({slot,title}),/10% da área/);
-  assert.match(chat,/fotografia|foto|cena/i);
+test('sequência nova usa benefícios, macro, mockup e ficha técnica sem informações inventadas',()=>{
+ const title='Recipiente de Vidro com Travas Azul';
+ const prompts=createChatGptPrompts({title}).prompts;
+ const api=n=>imagePrompt({record:{sku:'VID-1',title},slot:n});
+ for(const n of [4,5,6,7]){
+  assert.match(prompts[n-1],/1200×1200|1200 x 1200/);
+  assert.match(api(n),/WeDrop|WE DROP/);
+  assert.match(imageScenePrompt({slot:n,title}),/10% da área/);
  }
-});
-
-test('imagem 04 apresenta 2 ou 3 benefícios, imagem 05 vista de cima e 06 zoom macro',()=>{
- const title='Colchão Inflável Piscina Verão';
- const scenes=createChatGptPrompts({title}).prompts;
- assert.match(scenes[3],/2 ou 3 benefícios/);
- assert.match(scenes[3],/10% da foto/);
- assert.match(scenes[4],/top-down|VISTO DE CIMA/);
- assert.match(scenes[4],/UMA frase/);
- assert.match(scenes[5],/ZOOM MACRO/);
- assert.match(scenes[5],/1 ou 2 microdescrições/);
- const api4=imagePrompt({record:{sku:'WS20357',title},slot:4});
- const api5=imagePrompt({record:{sku:'WS20357',title},slot:5});
- const api6=imagePrompt({record:{sku:'WS20357',title},slot:6});
- assert.match(api4,/2 ou 3 benefícios/);
- assert.match(api5,/VISTA SUPERIOR REAL|CIMA/);
- assert.match(api6,/ZOOM MACRO/);
+ assert.match(prompts[3],/3 benefícios|benefícios específicos/i);
+ assert.match(api(5),/macro/i);
+ assert.match(prompts[5],/Mockup ilustrativo/);
+ assert.match(api(6),/EMBALAGEM|embalagem/i);
+ assert.match(prompts[6],/até 6 dados técnicos|até seis dados/i);
+ assert.match(api(7),/INFORMAÇÕES TÉCNICAS/i);
 });
 
 test('imagem de objeções exige perguntas e RESPOSTAS; não apenas microetiquetas',()=>{
@@ -43,12 +30,12 @@ test('imagem de objeções exige perguntas e RESPOSTAS; não apenas microetiquet
   {state:'filled',name:'Cor do produto',values:[{name:'Azul'}]}
  ]});
  const objections=prompts.prompts[7];
- assert.match(objections,/perguntas de clientes/i);
- assert.match(objections,/respostas curtas/i);
- assert.match(objections,/Pergunta\? \/ Resposta/i);
+ assert.match(objections,/perguntas de compradores|3 perguntas/i);
+ assert.match(objections,/respostas/i);
+ assert.match(objections,/3 perguntas|3 pares/i);
  assert.match(objections,/FATOS DA SKU PARA REDAÇÃO/);
  assert.match(objections,/Cor: azul|Cor do produto: Azul/i);
- assert.match(objections,/10% da foto/);
+ assert.match(objections,/10% da composição|10% da área/);
  const api=imagePrompt({record:{sku:'WS20357',title},slot:8});
  assert.match(api,/PERGUNTAS|perguntas/);
  assert.match(api,/RESPOSTAS|respostas/);
