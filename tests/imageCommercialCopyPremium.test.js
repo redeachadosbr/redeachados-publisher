@@ -132,3 +132,43 @@ test('imagem 03 vazia oferece importação da foto gerada e aplica cotas WeDrop 
  assert.match(server,/A posição foi preenchida por outra aba/);
 });
 
+
+test('WS20357 exibe 183 cm vertical, 69 cm horizontal e selo de cores sortidas na arte final',async()=>{
+ const source=[
+  'Colchão Inflável Piscina 183x69cm Verão',
+  'ESPECIFICAÇÕES:',
+  '- Material: 100% PVC',
+  '- Dimensões: 183cm comprimento x 69cm largura',
+  '- Cor: Azul, Amarelo e Rosa',
+  '**PRODUTO ENVIADO COM COR SORTIDA**'
+ ].join('\n');
+ const spec=confirmedSpecCard({sku:'WS20357',sourceEvidenceSku:'WS20357',
+  sourceSaved:true,sourceText:source});
+ assert.equal(spec?.sortedColors,true,'Banner só aparece se a WeDrop confirmar cor sortida e as três cores');
+ assert.deepEqual(spec.measurements.map(x=>x.value),['69 cm','183 cm']);
+ spec.productTitle='Colchão Inflável Piscina Verão';
+ const words=[],arrows=[];
+ const context={save(){},restore(){},beginPath(){},roundRect(){},fill(){},stroke(){},
+  moveTo:(x,y)=>arrows.push([x,y]),lineTo(){},drawImage(){},
+  measureText:t=>({width:t.length*15}),
+  fillText:t=>words.push(t)};
+ const prevDoc=globalThis.document,prevBitmap=globalThis.createImageBitmap;
+ globalThis.document={createElement:()=>({getContext:()=>context,
+  toBlob:cb=>cb(new Blob(['png'],{type:'image/png'}))})};
+ globalThis.createImageBitmap=async()=>({close(){}});
+ try{
+  await addConfirmedSpecificationCard(new Blob(['base'],{type:'image/png'}),spec);
+  assert.deepEqual(words.filter(x=>['183 cm','69 cm','Comprimento','Largura','Envio em','cores sortidas'].includes(x)),
+   ['183 cm','Comprimento','69 cm','Largura','Envio em','cores sortidas']);
+  assert(arrows.some(([x,y])=>x===1091&&y===85),'Cota vertical à direita do produto azul');
+  assert(arrows.some(([x,y])=>x===786&&y===969),'Cota horizontal na base do azul');
+ }finally{
+  if(prevDoc===undefined)delete globalThis.document;else globalThis.document=prevDoc;
+  if(prevBitmap===undefined)delete globalThis.createImageBitmap;else globalThis.createImageBitmap=prevBitmap;
+ }
+ const notSorted=confirmedSpecCard({sku:'WS20357',sourceEvidenceSku:'WS20357',
+  sourceSaved:true,sourceText:source.replace('COR SORTIDA','COR DEFINIDA')});
+ assert.equal(notSorted.sortedColors,false);
+ assert.equal(confirmedSpecCard({sku:'WS20357',sourceEvidenceSku:'SKU-ERRADA',sourceSaved:true,sourceText:source}),null);
+});
+
