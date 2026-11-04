@@ -26,9 +26,9 @@ export function buildKitPlusImageBrief(kit,{manualFacts={}}={}){
   '01 CAPA: todos os produtos juntos, 85–90% da área, fundo moderno, SEM texto.',
   '02 USO REAL: itens juntos em situação cotidiana coerente, frase curta se comprovada.',
   '03 ESPECIFICAÇÕES: todos os produtos juntos, dimensões confirmadas destacadas diretamente ao lado de CADA produto correto com linhas finas e fonte bonita, moderna, discreta e legível. Identificar o nome comercial apenas quando necessário, sem escrever SKU, medidas de embalagem, números inventados ou etiquetas grandes; texto total até 10% da foto.',
-  '04 BENEFÍCIOS: uma frase comercial elaborada de 4 a 8 palavras, escolhida a partir do benefício REAL visível na foto, pequena e sem slogans genéricos.',
-  '05 DOR E SOLUÇÃO: produtos juntos resolvendo necessidade real e uma frase persuasiva de 4 a 8 palavras ligada diretamente à cena.',
-  '06 PERSUASÃO: mostrar a complementaridade real do kit; uma frase original de 4 a 8 palavras que traduza valor em uso, sem prometer economia.',
+  '04 BENEFÍCIOS: todos os componentes juntos; detalhar 2 ou 3 benefícios reais e complementares em microfrases de 3 a 7 palavras, pequenas e distribuídas nas margens, sem prejudicar os produtos.',
+  '05 DOR E SOLUÇÃO: foto do KIT COMPLETO de CIMA (top-down/flat lay), todos os produtos visíveis e uma frase de 4 a 8 palavras demonstrando solução real na cena.',
+  '06 PERSUASÃO: ZOOM em detalhe real do componente principal na mesma foto em que todos os demais itens permaneçam reconhecíveis; 1 ou 2 microdescrições discretas de 3 a 7 palavras perto dos detalhes, sem quadros nem mosaico.',
   '07 TRANSFORMAÇÃO: mostrar experiência real com todos os itens e uma frase emocional moderada de 4 a 8 palavras, baseada na fotografia e sem exageros.',
   '08 QUEBRA DE OBJEÇÕES: 2 perguntas REAIS de clientes com respostas curtas e comprovadas (até 3 se houver evidência e espaço), tipografia discreta em duas linhas por par: Pergunta? / Resposta. Não deixar a foto poluída.',
   '09 MOCKUP: ambos juntos em fundo premium; selos Compra Segura, Entrega Rápida e Atendimento Online somente se verdadeiros.'
