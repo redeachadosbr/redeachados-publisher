@@ -10794,7 +10794,7 @@ async function optimizerVerifiedDimensionSpec(w){
  });
  // Se já há uma linha de medidas, não confirmar uma foto-base sem cotas
  // silenciosamente. Datas e medidas inválidas exigem revisão do usuário.
- if(/(?:^|\n)\s*(?:dimensões|dimensoes|medidas)\s*[:\-]/im.test(String(source.sourceText||''))&&
+ if(/(?:^|\n)\s*[-*•]?\s*(?:dimensões|dimensoes|medidas)\s*[:\-]/im.test(String(source.sourceText||''))&&
     !spec?.measurements?.length)
   throw Error('Há medidas cadastradas na WeDrop, mas não foi possível validá-las para a SKU '+
    w.sku+'. Confira o formato “Dimensões: 183cm comprimento x 69cm largura”. Nenhuma medida será inventada.');
