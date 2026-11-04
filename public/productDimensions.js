@@ -14,7 +14,7 @@ export function confirmedProductDimensionsFromWeDrop(sourceText){
   const lineTrim=line.trim();
   // Aceitar exclusivamente uma declaracao "Dimensoes/Medidas" do produto.
   // Excluir caixas, pacotes e medidas logisticas mesmo quando numericas.
-  const label=lineTrim.match(/^(dimensoes|medidas)(?:\s+(?:do|da|de)\s+(?:produto|item|bicicleta|piscina|montad[oa]|brinquedo))?\s*[:\-]\s*(.+)$/i);
+  const label=lineTrim.match(/^(?:[-*•]\s*)?(dimensoes|medidas)(?:\s+(?:do|da|de)\s+(?:produto|item|bicicleta|piscina|montad[oa]|brinquedo))?\s*[:\-]\s*(.+)$/i);
   if(!label||/embalagem|caixa|pacote|frete|logistic|transporte|volume da caixa/.test(lineTrim))continue;
   const axes={};
   for(const m of label[2].matchAll(axisPattern)){
@@ -52,7 +52,7 @@ export function confirmedAssembledTrackDimensionsFromWeDrop(sourceText){
  const lines=text.split('\n').map(x=>x.trim());
  const result=[];
  for(const line of lines){
-  if(!/^dimensoes\s+da\s+pista\s+montada\s*[:\-]/.test(line))continue;
+  if(!/^(?:[-*•]\s*)?dimensoes\s+da\s+pista\s+montada\s*[:\-]/.test(line))continue;
   const found={};
   for(const m of line.matchAll(axisPattern)){
    const raw=Number(m[1].replace(',','.'));
@@ -84,7 +84,7 @@ export function confirmedProductSideFactsFromWeDrop(sourceText){
  for(const definition of definitions){
   const values=[];
   for(const raw of text.split('\n')){
-   const line=raw.trim();
+   const line=raw.trim().replace(/^[-*•]\s*/,'');
    if(/embalagem|caixa|pacote|frete|logistic|transporte|bruto/i.test(line))continue;
    const m=line.match(definition.re);
    if(!m)continue;
