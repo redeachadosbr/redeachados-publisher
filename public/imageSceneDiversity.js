@@ -1,3 +1,4 @@
+import {PREMIUM_NINE_IMAGE_RULES,premiumNineImageRule} from './premiumNineImagePolicy.js';
 // Diretor de arte por posição. Garante instruções DIVERSAS até quando
 // cada foto for gerada em um chat novo (sem acesso às imagens anteriores).
 // Mudam somente câmera, iluminação, cenografia e pessoas; produto real imutável.
@@ -6,10 +7,10 @@ const cameras=Object.freeze([
  'Câmera lateral dinâmica ao nível do uso, plano médio horizontal, assunto principal à direita do quadro.',
  'Enquadramento lateral completo, câmera perpendicular ao produto, distância suficiente para ver suas extremidades e futuras cotas.',
  'Close editorial oblíquo de cima, câmera alta a 45 graus, revelando somente detalhes realmente visíveis do produto.',
- 'VISTA SUPERIOR REAL, câmera perpendicular de cima para baixo (flat lay / top-down 90°), produto inteiro e reconhecível, com contexto de uso ao redor sem esconder suas partes. Se a geometria não permitir 90°, usar a vista mais alta possível mantendo a leitura correta.',
- 'ZOOM MACRO FOTOGRÁFICO em detalhe real do produto — acabamento, textura, encaixe, estrutura ou mecanismo visível — com profundidade de campo elegante. Preservar no mesmo quadro parte suficiente do produto para reconhecê-lo, sem mosaico, recortes artificiais nem inventar detalhes.',
- 'Plano geral cinematográfico em diagonal, câmera distante e ambiente mais amplo do que nas imagens anteriores.',
- 'Enquadramento técnico quase de cima, camera elevada do lado oposto à foto 04, atenção aos detalhes reais.',
+ 'ZOOM MACRO editorial em detalhe realmente existente do produto, com um trecho reconhecível da peça, nitidez da textura e fundo arquitetônico real, sem colagem.',
+ 'Perspectiva 3/4 frontal de embalagem real ou caixa ilustrativa AO LADO do produto em primeiro plano, sem mudar a identidade visual do item.',
+ 'Câmera frontal técnica, produto central grande com espaço livre ao redor para círculos de detalhe, conectores e até seis etiquetas discretas.',
+ 'Câmera frontal elevada e afastada, produto na parte superior e área inferior reservada para três cartões elegantes de perguntas e respostas.',
  'Câmera frontal simétrica de exposição, iluminação de estúdio profissional, produto inteiro com espaço reservado para os três selos da loja.'
 ]);
 const people=Object.freeze([
@@ -117,7 +118,7 @@ export function imageSceneDirection({slot,title=''}={}){
  if(!Number.isInteger(pos)||pos<1||pos>9)throw Error('Posição de imagem inválida.');
  const family=imageProductFamily(title),i=pos-1;
  return {
-  slot:pos,family,environment:places[family][i],camera:cameras[i],
+  slot:pos,family,environment:pos===5?'Mesa ou bancada real apropriada para macro de detalhe, com luz lateral e fundo sofisticado.':pos===6?'Cenário editorial premium com superfície para produto e mockup ilustrativo ou embalagem real.':pos===7?'Estúdio técnico ambientado com cenário visível, produto inteiro ao centro e margens livres para infografia.':places[family][i],camera:cameras[i],
   people:family==='bicycle'&&[2,5,7].includes(pos)?
    [
     '','Criança A com capacete claro e roupa azul; não repetir modelo ou rosto da foto original.',
@@ -128,17 +129,7 @@ export function imageSceneDirection({slot,title=''}={}){
  };
 }
 // Hierarquia visual compartilhada pelo ChatGPT e pelo gerador via API.
-const premiumCopyRules=Object.freeze([
- 'CAPA SEM TEXTO: produto real ocupa aproximadamente 85% a 90% da foto; cenário ambientado sofisticado, iluminação profissional. Não imprimir títulos, subtítulos, faixas, selos ou chamadas.',
- 'USO REAL: uma única frase curta de 2 a 5 palavras, coerente com o uso mostrado, pequena e integrada ao cenário. Sem títulos e sem listas.',
- 'IMAGEM 03: GERAR A ARTE FINAL COM AS MEDIDAS INTEGRADAS quando o prompt trouxer valores confirmados da mesma SKU. Setas BRANCAS junto ao produto, boxes BRANCOS arredondados com borda AMARELA fina, valores grandes AZUL-MARINHO e legendas menores em português, uma cota por eixo. Se houver variações de cor explicitamente confirmadas, mostrá-las sem sugerir venda de um conjunto. SEM valores confirmados, não colocar texto nem medidas. NÃO duplicar cotas.',
- 'BENEFÍCIOS: detalhar 2 OU 3 benefícios reais, distintos e específicos para a cena e ficha do produto, usando microfrases naturais de 3 a 7 palavras CADA; sem títulos e sem listas/bolinhas. Posicionar em duas ou três áreas discretas das margens, fonte moderna fina, pequena e legível, sem tapar o produto; SOMA dos textos no máximo 10% da imagem. Omitir benefícios sem comprovação.',
- 'DOR E SOLUÇÃO: fotografar o produto INTEIRO VISTO DE CIMA (top-down / flat lay), com a necessidade real visível no contexto e o produto sendo a solução. Inserir UMA frase curta e inteligente de 4 a 8 palavras que diga QUAL solução ele oferece, específica para a cena, fonte discreta na margem. Sem caixas, comparativos falsos ou promessas não demonstradas.',
- 'PERSUASÃO: fotografia em CLOSE-UP / ZOOM MACRO de UM OU DOIS detalhes reais do produto (textura, acabamento, material, encaixe, estrutura, componente). Preservar identidade da peça e um recorte reconhecível do conjunto em cena ÚNICA sem colagem. Adicionar 1 OU 2 microdescrições objetivas de 3 a 7 palavras cada, alinhadas perto dos detalhes visíveis, em fonte fina moderna e discreta; texto TOTAL <=10% da foto. Não inventar material, mecanismo ou qualidade não comprovados.',
- 'TRANSFORMAÇÃO: UMA frase de 4 a 8 palavras ligada à experiência de uso real da cena e à mudança percebida pelo cliente, sem antes/depois artificial ou promessa não demonstrada. Tipografia fina, secundária.',
- 'QUEBRA DE OBJEÇÕES: criar preferencialmente DUAS e no máximo TRÊS perguntas REAIS de cliente, cada uma seguida de uma RESPOSTA direta e comprovada (pergunta de 2 a 6 palavras; resposta de 2 a 7). Mostrar pares Pergunta? / Resposta em microtipografia elegante nas bordas livres, sem caixas grandes, até 10% da área total. Só responder com fatos verificáveis na foto/ficha do produto; se houver apenas um fato, usar um único par. Nunca inventar prazo de entrega, material, medidas, garantia, capacidade ou compatibilidade.',
- 'CONFIANÇA: somente os três pequenos selos Compra Segura, Entrega Rápida e Atendimento Online, alinhados discretamente no rodapé, se refletirem as políticas reais da loja. Não incluir outras frases nem tarjas.'
-]);
+const premiumCopyRules=PREMIUM_NINE_IMAGE_RULES;
 export function imageScenePrompt({slot,title=''}={}){
  const s=imageSceneDirection({slot,title});
  return [
@@ -149,7 +140,8 @@ export function imageScenePrompt({slot,title=''}={}){
   'ILUMINAÇÃO: '+s.light,
   'DIREÇÃO DE ARTE PREMIUM: produto em primeiro plano, cenário REAL moderno e visível em alta definição, cores harmônicas e acabamento profissional de e-commerce. Fundo NÃO pode ficar excessivamente desfocado, estourado, vazio ou lavado: detalhes de arquitetura, piso e contexto devem ser reconhecíveis sem competir com o produto. Texto autoral em português brasileiro, de bom gosto, COMPACTO: no máximo 10% da área, fonte sans-serif moderna, leve, elegante e pequena, com alto contraste sutil. Priorizar cantos vazios e margens, nunca cobrir o produto. Proibidos títulos grandes, placas brancas opacas, tarjas, tabelas, emojis e listas.',
   'TEXTO PERMITIDO NESTA POSIÇÃO: '+premiumCopyRules[s.slot-1],
-  'A frase ou os pares de dúvidas devem nascer da CENA E DO PRODUTO EXATO da foto, sem slogans genéricos repetidos. Texto secundário e legível, nunca ocupar a região central do produto; em todos os casos a imagem deve converter pelo visual primeiro. Na imagem 03, a ARTE FINAL já deve conter as dimensões explicitamente confirmadas no prompt, com boxes premium BRANCO + AMARELO + AZUL e setas finas, sem qualquer repetição. Preservar detalhes reais nítidos.',
+  premiumNineImageRule(s.slot),
+  'Frases e respostas devem nascer dos FATOS da SKU e da cena, não de slogans genéricos. Na imagem 03, a ARTE FINAL deve conter apenas as medidas explícitas confirmadas, sem duplicar cotas. Na imagem 07 o infográfico pode ter até seis fatos reais; na 08 são três perguntas e respostas factuais em cartões, nunca preenchidas por invenção.',
   'Não reutilize o mesmo fundo, parque, jardim, rua, roupa, pessoa, pose, direção da câmera ou enquadramento das outras imagens desta série.',
   'A FOTO DE REFERÊNCIA serve apenas para preservar o PRODUTO EXATO: mesma cor, peças, formato, marca, adesivos, proporções e acessórios realmente presentes. Não copie o cenário nem a pessoa da referência.',
   'Não inventar componentes, medidas, certificações ou alegações. Se a cena prevista não for compatível com o uso real do produto, adapte apenas o ambiente a outro local apropriado mantendo o ângulo e a distinção visual.',
