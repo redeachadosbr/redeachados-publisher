@@ -68,7 +68,7 @@ export function parseOrganicCsv(text){
  row.push(cell);if(row.some(x=>x.trim()))rows.push(row);
  return rows;
 }
-function workbookRows(buffer,fileName){
+function workbookRows(buffer,fileName,{sheetName='',mode='organic'}={}){
  const isExcel=/\.xlsx?$/i.test(fileName);
  const isCsv=/\.csv$/i.test(fileName);
  if(!isExcel&&!isCsv)throw Error('Importe somente CSV, XLS ou XLSX da Central do Vendedor.');
@@ -92,14 +92,47 @@ function workbookRows(buffer,fileName){
   const rows=XLSX.utils.sheet_to_json(book.Sheets[sheetName],{
    header:1,raw:false,defval:'',blankrows:false});
   if(rows.length>MAX_ROWS+12)throw Error('Relatório acima do limite de SKUs.');
-  if(rows.some((r,i)=>i<8&&(fields(r).sku!==undefined||fields(r).itemId!==undefined)&&
+  if(rows.some((r,i)=>i<25&&(fields(r).sku!==undefined||fields(r).itemId!==undefined)&&
     ['impressions','visits','clicks','ctr','cartAdded','cartPending','cartAbandonmentRate','cartVisitors','cartUnits','cartConversionRate','orders','orderConversionRate'].some(k=>fields(r)[k]!==undefined)))
    matched.push({rows,sheetName});
  }
- if(matched.length!==1)throw Error(matched.length?
-  'Há várias abas com métricas. Mantenha apenas a aba orgânica.':
-  'Não encontrei a aba com SKU e métricas de produto.');
- return matched[0];
+ if(!matched.length)throw Error('Não encontrei uma aba com SKU ou Item ID e métricas de produto.');
+ // Não misturar abas (produto-pai, variações, Ads, resumo) nem somar seus
+ // números: cada importação seleciona uma aba, sem agregações implícitas.
+ const organicNamed=name=>/(?:^|\b)(organico|organic|sem ads|nao pago)(?:\b|$)/.test(fold(name));
+ const paidNamed=name=>/\b(ads|pago|paid|patrocinad|sponsored)\b/.test(fold(name))&&!organicNamed(name);
+ const choices=matched.map(item=>{
+  const {columns}=indexHeader(item.rows);
+  return {name:item.sheetName,metricCount:Object.keys(columns).filter(k=>k!=='sku'&&k!=='itemId'&&k!=='title'&&k!=='traffic').length,
+   organicCandidate:organicNamed(item.sheetName)||columns.traffic!==undefined&&!paidNamed(item.sheetName),
+   paidCandidate:paidNamed(item.sheetName)};
+ });
+ const fail=message=>{
+  const error=Error(message);
+  error.availableSheets=choices.map(({name,metricCount,organicCandidate,paidCandidate})=>
+   ({name,metricCount,organicCandidate,paidCandidate}));
+  throw error;
+ };
+ const choose=selected=>{
+  const item=matched.find(v=>v.sheetName===selected);
+  if(!item)fail('Aba do Excel não encontrada. Selecione uma das abas identificadas.');
+  if(mode==='organic'&&paidNamed(selected))
+   fail('A aba escolhida é identificada como paga/Ads. Não é permitido importá-la como orgânica.');
+  if(mode==='organic'&&matched.length>1&&!choices.find(v=>v.name===selected)?.organicCandidate)
+   fail('Essa aba não comprova tráfego exclusivamente orgânico. Use Performance do Produto ou selecione uma aba identificada como orgânica.');
+  return item;
+ };
+ if(sheetName)return choose(String(sheetName));
+ if(matched.length===1)return matched[0];
+ if(mode==='organic'){
+  const candidates=choices.filter(v=>v.organicCandidate&&!v.paidCandidate);
+  if(candidates.length===1)return choose(candidates[0].name);
+  fail('O Excel contém várias abas com métricas. Não é possível determinar qual delas contém exclusivamente tráfego orgânico. Selecione uma aba orgânica comprovada ou use Performance do Produto para dados gerais.');
+ }
+ const preferred=choices.filter(v=>/\b(performance|desempenho)\b/.test(fold(v.name))&&
+  !v.paidCandidate);
+ if(preferred.length===1)return choose(preferred[0].name);
+ fail('O Excel contém várias abas com métricas. Escolha a aba de Performance do Produto; não misturaremos produto-pai, variações ou relatórios de Ads.');
 }
 function indexHeader(rows){
  for(let i=0;i<Math.min(25,rows.length);i++){
@@ -139,7 +172,7 @@ export function parseProductPerformanceReport(buffer,options={}){
  return parseProductReport(buffer,{...options,mode:'performance'});
 }
 function parseProductReport(buffer,{
- fileName,periodStart,periodEnd,organicConfirmed=false,mode='organic'
+ fileName,periodStart,periodEnd,organicConfirmed=false,mode='organic',sheetName=''
 }={}){
  if(mode==='organic'&&organicConfirmed!==true)
   throw Error('Confirme que o arquivo representa exclusivamente tráfego orgânico, sem Ads.');
@@ -147,7 +180,7 @@ function parseProductReport(buffer,{
    !Number.isNaN(Date.parse(x+'T00:00:00Z'));
  if(!validDate(periodStart)||!validDate(periodEnd)||periodStart>periodEnd)
   throw Error('Informe as datas inicial e final do período da Shopee.');
- const {rows,sheetName}=workbookRows(buffer,fileName);
+ const {rows,sheetName:chosenSheet}=workbookRows(buffer,fileName,{sheetName,mode});
  const {start,columns}=indexHeader(rows);
  const list=[],used=new Set(),skipped={paid:0,empty:0};
  for(const row of rows.slice(start)){
@@ -220,7 +253,7 @@ function parseProductReport(buffer,{
  const metricAvailability=Object.fromEntries(['impressions','visits','clicks','ctr','cartAdded','cartPending','cartAbandonmentRate','cartVisitors','cartUnits','cartConversionRate','orders','orderConversionRate','uniqueImpressions','uniqueClicks','pageViews','searchClicks','soldUnits'].map(k=>
   [k,list.some(r=>r[k]!==null)]));
  return {records:list,periodStart,periodEnd,fileName:String(fileName).slice(0,180),
-  sheetName,metricAvailability,skipped,source:mode==='organic'?'seller_center_organic_export':'seller_center_product_performance_export'};
+  sheetName:chosenSheet,metricAvailability,skipped,source:mode==='organic'?'seller_center_organic_export':'seller_center_product_performance_export'};
 }
 export function rankOrganicTop(records,{sort='combined',limit=10}={}){
  const keys=['impressions','visits','clicks','ctr','cartAdded','cartPending','cartAbandonmentRate','cartVisitors','cartUnits','cartConversionRate','orders','orderConversionRate'];

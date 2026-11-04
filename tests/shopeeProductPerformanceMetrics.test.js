@@ -123,3 +123,64 @@ test('colagem depende de ação do vendedor e nunca chama API privada da Central
  assert.match(js,/source==='organic'&&\$\('organicTop10OrganicConfirmed'\)\.checked/);
  assert.doesNotMatch(js,/fetch\(['"]https:\/\/seller\.shopee/);
 });
+
+test('planilha com abas gerais não é misturada: usuário seleciona uma aba de produto',()=>{
+ const workbook=XLSX.utils.book_new();
+ XLSX.utils.book_append_sheet(workbook,XLSX.utils.aoa_to_sheet([
+  ['SKU','Impressões','Cliques'],['PROD-A',450,25]
+ ]),'Produto Pai');
+ XLSX.utils.book_append_sheet(workbook,XLSX.utils.aoa_to_sheet([
+  ['SKU','Impressões','Cliques'],['VARIACAO-A',300,11]
+ ]),'Variações');
+ const buffer=XLSX.write(workbook,{bookType:'xlsx',type:'buffer'});
+ const options={...info,fileName:'parentskudetail.20261004_20261102.xlsx'};
+ assert.throws(()=>parseProductPerformanceReport(buffer,options),error=>
+  Array.isArray(error.availableSheets)&&error.availableSheets.length===2&&
+  /Escolha a aba/.test(error.message));
+ const report=parseProductPerformanceReport(buffer,{...options,sheetName:'Produto Pai'});
+ assert.equal(report.sheetName,'Produto Pai');
+ assert.equal(report.records.length,1);
+ assert.equal(report.records[0].sku,'PROD-A');
+ assert.equal(report.records[0].impressions,450);
+ assert.equal(report.records.some(x=>x.sku==='VARIACAO-A'),false);
+ assert.equal(report.source,'seller_center_product_performance_export');
+});
+test('relatório com abas orgânica e Ads escolhe apenas orgânico e impede aba paga',()=>{
+ const workbook=XLSX.utils.book_new();
+ XLSX.utils.book_append_sheet(workbook,XLSX.utils.aoa_to_sheet([
+  ['SKU','Impressões','Cliques','Origem do Tráfego'],
+  ['ORG-A',1000,120,'Busca Orgânica']
+ ]),'Orgânico');
+ XLSX.utils.book_append_sheet(workbook,XLSX.utils.aoa_to_sheet([
+  ['SKU','Impressões','Cliques','Origem do Tráfego'],
+  ['ADS-A',5000,300,'Shopee Ads']
+ ]),'Ads');
+ const data=XLSX.write(workbook,{bookType:'xlsx',type:'buffer'});
+ const options={...info,fileName:'trafego.xlsx',organicConfirmed:true};
+ const report=parseOrganicReport(data,options);
+ assert.equal(report.sheetName,'Orgânico');
+ assert.equal(report.records.length,1);
+ assert.equal(report.records[0].sku,'ORG-A');
+ assert.throws(()=>parseOrganicReport(data,{...options,sheetName:'Ads'}),/paga\/Ads/);
+});
+test('não rotular abas genéricas com múltiplas fontes como orgânicas',()=>{
+ const workbook=XLSX.utils.book_new();
+ for(const [tab,sku] of [['Produto Pai','A'],['Variações','B']]){
+  XLSX.utils.book_append_sheet(workbook,XLSX.utils.aoa_to_sheet([
+   ['SKU','Impressões'],[sku,200]
+  ]),tab);
+ }
+ const data=XLSX.write(workbook,{bookType:'xlsx',type:'buffer'});
+ const options={...info,fileName:'parentskudetail.xlsx',organicConfirmed:true};
+ assert.throws(()=>parseOrganicReport(data,options),/não é possível determinar/i);
+ assert.throws(()=>parseOrganicReport(data,{...options,sheetName:'Produto Pai'}),/não comprova tráfego/);
+});
+test('servidor e interface permitem indicar uma aba sem misturar fontes',()=>{
+ const server=readFileSync(new URL('../server.js',import.meta.url),'utf8');
+ const ui=readFileSync(new URL('../public/organic-top10.js',import.meta.url),'utf8');
+ assert.match(server,/availableSheets:error\.availableSheets\|\|null/);
+ assert.match(server,/periodEnd,organicConfirmed,sheetName/);
+ assert.match(ui,/organicTop10SheetRow/);
+ assert.match(ui,/sheetName:\$\('organicTop10File'\)/);
+ assert.match(ui,/data\.availableSheets/);
+});

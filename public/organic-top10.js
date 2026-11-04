@@ -408,6 +408,29 @@
     note.dataset.kind='info';
    }catch(error){note.textContent=String(error.message||error);note.dataset.kind='error';}
   });
+  // O Excel pode conter abas de produto-pai, variações, Ads e totais. O
+  // servidor identifica quais possuem métricas; o vendedor escolhe UMA.
+  const sheetRow=document.createElement('label');
+  sheetRow.id='organicTop10SheetRow';
+  sheetRow.hidden=true;
+  sheetRow.textContent='Aba do Excel (somente esta aba será importada)';
+  const sheetSelect=document.createElement('select');
+  sheetSelect.id='organicTop10Sheet';
+  sheetSelect.style.display='block';
+  sheetSelect.style.width='100%';
+  sheetSelect.style.maxWidth='560px';
+  sheetSelect.style.minHeight='42px';
+  sheetRow.append(sheetSelect);
+  importBox.querySelector('.organic-top10-import-grid')?.after(sheetRow);
+  $('organicTop10File').addEventListener('change',()=>{
+   sheetRow.hidden=true;sheetSelect.replaceChildren();
+   const name=String($('organicTop10File').files?.[0]?.name||'');
+   if(source==='organic'&&/^parentskudetail\./i.test(name)){
+    const note=$('organicTop10ImportNotice');
+    note.textContent='Esse arquivo costuma ser Performance do Produto (dados gerais). Para não incluir Ads indevidamente como orgânico, escolha “Performance do Produto · Shopee” acima.';
+    note.dataset.kind='info';
+   }
+  });
   $('organicTop10Import').addEventListener('submit',async event=>{
    event.preventDefault();
    const button=$('organicTop10Upload');
@@ -432,6 +455,10 @@
    if(source==='organic'&&!$('organicTop10OrganicConfirmed').checked){
     note.textContent='Confirme que as métricas são exclusivamente orgânicas.';return;
    }
+   if(!sheetRow.hidden&&!sheetSelect.value){
+    note.textContent='Selecione qual aba do Excel deseja importar, sem combinar métricas de abas diferentes.';
+    note.dataset.kind='error';return;
+   }
    button.disabled=true;note.dataset.kind='info';
    note.textContent=source==='performance'?
     'Validando as métricas de Performance do Produto…':
@@ -450,10 +477,36 @@
      body:JSON.stringify({fileName:file.name,base64,
       periodStart:$('organicTop10Start').value,
       periodEnd:$('organicTop10End').value,
-      organicConfirmed:source==='organic'&&$('organicTop10OrganicConfirmed').checked})
+      organicConfirmed:source==='organic'&&$('organicTop10OrganicConfirmed').checked,
+      sheetName:$('organicTop10File').files?.length?sheetSelect.value:''})
     });
     const data=await res.json().catch(()=>({}));
-    if(!res.ok||data.ok!==true)throw Error(data.error||'Importação não confirmada.');
+    if(!res.ok||data.ok!==true){
+     if(Array.isArray(data.availableSheets)&&data.availableSheets.length){
+      const previous=sheetSelect.value;
+      sheetSelect.replaceChildren();
+      const placeholder=document.createElement('option');
+      placeholder.value='';placeholder.textContent='Selecione uma aba válida…';
+      sheetSelect.append(placeholder);
+      for(const choice of data.availableSheets){
+       if(!choice||typeof choice.name!=='string')continue;
+       const option=document.createElement('option');
+       option.value=choice.name;
+       option.textContent=choice.name+' · '+Number(choice.metricCount||0)+
+        ' métricas'+(choice.paidCandidate?' · tráfego pago identificado':
+        choice.organicCandidate?' · possível orgânico':' · origem não separada');
+       sheetSelect.append(option);
+      }
+      sheetRow.hidden=false;
+      if(previous&&[...sheetSelect.options].some(x=>x.value===previous))sheetSelect.value=previous;
+      note.textContent=String(data.error||'Há várias abas.')+
+       (source==='organic'?' Se o relatório não separa Ads, altere para “Performance do Produto · Shopee”.':
+       ' Escolha a aba correta abaixo e clique em Importar novamente.');
+      note.dataset.kind='error';
+      return;
+     }
+     throw Error(data.error||'Importação não confirmada.');
+    }
     note.textContent=number(data.rowCount)+' registros de produtos salvos na loja.';
     note.dataset.kind='success';
     importBox.hidden=true;importBox.dataset.open='';
