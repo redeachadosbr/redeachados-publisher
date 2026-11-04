@@ -14,7 +14,7 @@ RUN node --check public/optimizer-variations.js && node --test tests/shopeeVaria
 RUN node --test tests/shopee-execution-prepared-cta.test.js
 RUN node --check public/optimizer-execution-visual.js && node --check public/optimizer-execution-dialog.js && node --test tests/optimizer-execution-visual.test.js tests/shopee-discount-prewrite-reconcile.test.js tests/shopee-price-one-cent-recovery.test.js
 RUN node --test tests/shopee-execution-attribute-order.test.js tests/shopee-execution-rejected-start-recovery.test.js
-RUN node --check public/imageSceneDiversity.js && node --check public/chatgptPrompts.js && node --test tests/imageSceneDiversity.test.js tests/shopeeChatgptPrompts.test.js
+RUN node --check public/imageSceneDiversity.js && node --check public/chatgptPrompts.js && node --check public/specificationCard.js && node --test tests/imageSceneDiversity.test.js tests/shopeeChatgptPrompts.test.js tests/imageCommercialCopyPremium.test.js
 RUN node --check shopeeSupplierEvidenceFacts.js && node --test tests/shopee-technical-wedrop-complete-autofill.test.js
 RUN node --test tests/shopee-kit-technical-source-autofill.test.js
 RUN node --check catalog.js && node --test tests/catalogPriceRecovery.test.js
