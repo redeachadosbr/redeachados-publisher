@@ -7,7 +7,7 @@ import {imageScenePrompt} from './public/imageSceneDiversity.js';
 export const IMAGE_STORYBOARD=Object.freeze([
  'Imagem 1 — Capa: produto em destaque, ocupando aproximadamente 85% da imagem.',
  'Imagem 2 — Uso real: mostrar o produto em um ambiente de utilização.',
- 'Imagem 3 — Medidas: criar fotografia-base premium do produto inteiro com margem próxima ao contorno. O Manager acrescentará as dimensões verificadas da mesma SKU com linhas finas e tipografia moderna e discreta; a IA não escreve números.',
+ 'Imagem 3 — Medidas: gerar fotografia-base para arte comercial premium, produto inteiro e legível com margem à direita e na base. O Manager adicionará UMA ÚNICA VEZ setas brancas, boxes brancos arredondados de borda amarela e medidas reais da própria SKU em azul-marinho. A IA não desenha números, setas nem selos.',
  'Imagem 4 — Benefícios: mostrar 2 ou 3 benefícios específicos e comprovados em microfrases de 3 a 7 palavras, distribuídas discretamente nas margens da foto ambientada, sem cobrir o produto.',
  'Imagem 5 — Dor e solução: produto visto INTEIRO de CIMA (top-down, flat lay), contexto de uso coerente, UMA frase discreta de 4 a 8 palavras explicando a solução real.',
  'Imagem 6 — Persuasão: ZOOM MACRO em detalhes reais de acabamento, textura, estrutura ou encaixe do produto, preservando reconhecimento; incluir 1 ou 2 microdescrições específicas de 3 a 7 palavras, pequenas e elegantes.',
