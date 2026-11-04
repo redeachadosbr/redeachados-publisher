@@ -243,7 +243,9 @@ function parseProductReport(buffer,{
    throw Error('Cliques maiores que impressões na SKU '+(sku||itemId)+
     '. Verifique se as colunas estão corretas.');
   if(Object.values(metric).every(v=>v===null)&&ctr===null&&explicitAbandonment===null&&cartConversionRate===null&&orderConversionRate===null)continue;
-  const id=sku||'#'+itemId;
+  // Uma SKU principal pode existir em anúncios diferentes; o Item ID é a
+  // chave estável do anúncio. Sem Item ID, usar a SKU para evitar duplicatas.
+  const id=itemId?'#'+itemId:sku;
   if(used.has(id))throw Error('SKU repetida: '+id+
    '. Use um relatório consolidado por SKU e período.');
   used.add(id);
