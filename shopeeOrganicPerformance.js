@@ -6,23 +6,24 @@ const PERFORMANCE_TABLE='shopee_product_performance_snapshots';
 const LIMIT=4_000_000;
 const MAX_ROWS=20000;
 const names={
- sku:['sku','sku do produto','sku do anuncio','sku da variacao','seller sku','product sku','codigo do produto','codigo sku'],
+ sku:['sku','sku do produto','sku do anuncio','sku principal','sku principle','sku da variacao','seller sku','product sku','codigo do produto','codigo sku'],
  itemId:['item id','id do item','id do produto','id do anuncio','product id'],
+ variationId:['id da variacao','variation id','model id'],
  title:['nome do produto','titulo do produto','produto','product name','nome do anuncio'],
- impressions:['impressoes','impressoes de produto','impressoes do produto','impressoes organicas','exibicoes organicas','exibicoes do produto','product impressions','organic impressions'],
- visits:['visitantes do produto','visitantes','visitas','visitas do produto','visitas organicas','visitas ao produto','product visitors','unique product visitors','product visits','product page views','visualizacoes de pagina do produto'],
+ impressions:['impressoes','impressao do produto','impressoes de produto','impressoes do produto','impressoes organicas','exibicoes organicas','exibicoes do produto','product impressions','organic impressions'],
+ visits:['visitantes do produto','visitantes do produto (visita)','visitantes','visitas','visitas do produto','visitas organicas','visitas ao produto','product visitors','unique product visitors','product visits','product page views','visualizacoes de pagina do produto'],
  clicks:['cliques','cliques por produto','cliques do produto','cliques no produto','cliques organicos','product clicks','organic clicks'],
  ctr:['ctr','ctr %','ctr organico','taxa de cliques','taxa de cliques %','click through rate'],
  uniqueImpressions:['impressoes unicas de produto','impressoes unicas do produto','unique product impressions'],
  uniqueClicks:['cliques unicos no produto','cliques unicos de produto','unique product clicks'],
  pageViews:['visualizacoes da pagina do produto','visualizacoes da pagina','product page views'],
  searchClicks:['cliques em buscas','cliques nas buscas','search clicks'],
- cartVisitors:['visitantes (adicionar ao carrinho)','visitantes adicionar ao carrinho','visitantes que adicionaram ao carrinho','unique add to cart visitors'],
+ cartVisitors:['visitantes (adicionar ao carrinho)','visitantes do produto (adicionar ao carrinho)','visitantes adicionar ao carrinho','visitantes que adicionaram ao carrinho','unique add to cart visitors'],
  cartUnits:['unidades (adicionar ao carrinho)','unidades adicionar ao carrinho','unidades adicionadas ao carrinho','add to cart units'],
  cartConversionRate:['taxa de conversao (adicionar ao carrinho)','taxa de conversao adicionar ao carrinho','taxa de conversao do carrinho','add to cart conversion rate'],
- orderConversionRate:['taxa de conversao de pedidos','taxa conversao de pedidos','order conversion rate'],
- orders:['pedidos','quantidade de pedidos','orders','total orders'],
- soldUnits:['unidades','unidades vendidas','itens vendidos','units sold','products sold'],
+ orderConversionRate:['taxa de conversao de pedidos','taxa conversao de pedidos','taxa de conversao de pedido (pedido realizado)','order conversion rate'],
+ orders:['pedidos','pedido feito','quantidade de pedidos','orders','total orders'],
+ soldUnits:['unidades','unidades (pedido realizado)','unidades vendidas','itens vendidos','units sold','products sold'],
  cartAdded:['itens adicionados ao carrinho','produtos adicionados ao carrinho','unidades adicionadas ao carrinho','adicoes ao carrinho','adicionados ao carrinho','adicoes no carrinho','add to cart','add to cart units','items added to cart'],
  cartPending:['itens abandonados no carrinho','produtos abandonados no carrinho','unidades abandonadas no carrinho','itens deixados no carrinho','produtos deixados no carrinho','carrinhos abandonados','carrinhos parados','abandonos de carrinho','itens nao comprados no carrinho','cart abandonment units','abandoned cart units','abandoned carts'],
  cartAbandonmentRate:['taxa de abandono do carrinho','taxa de abandono de carrinho','taxa de abandono carrinho','abandono de carrinho %','porcentagem de abandono do carrinho','cart abandonment rate','abandoned cart rate','taxa de carrinho abandonado','taxa de carrinhos abandonados','taxa de abandono %'],
@@ -43,6 +44,10 @@ function fields(header){
   const idx=normalized.findIndex(value=>opts.has(value));
   if(idx!==-1)found[key]=idx;
  }
+ // O export "parentskudetail" tem SKU da Variação ANTES de "SKU Principle".
+ // Para métricas do anúncio-pai, sempre utilizar a SKU principal.
+ const mainSku=normalized.findIndex(v=>v==='sku principal'||v==='sku principle');
+ if(mainSku!==-1)found.sku=mainSku;
  return found;
 }
 export function parseOrganicCsv(text){
@@ -146,6 +151,10 @@ function indexHeader(rows){
 function count(value){
  if(value===null||value===undefined||!String(value).trim())return null;
  const raw=String(value).trim().replace(/\s/g,'');
+ // A Shopee usa hífen como valor AUSENTE nas linhas de variação.
+ // Hífen, travessão e N/A são nulos (nunca zero e nunca erro numérico).
+ if(/^[-–—]+$/.test(raw)||/^(?:n\/?a|naoaplicavel|naodisponivel)$/i.test(
+  raw.normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase()))return null;
  const normalized=raw.includes(',')?raw.replace(/\./g,'').replace(',','.'):
   /^\d{1,3}(?:\.\d{3})+$/.test(raw)?raw.replace(/\./g,''):raw;
  if(!/^\d+(?:\.\d+)?$/.test(normalized))throw Error('Métrica com valor não numérico: '+raw.slice(0,40));
@@ -182,9 +191,19 @@ function parseProductReport(buffer,{
   throw Error('Informe as datas inicial e final do período da Shopee.');
  const {rows,sheetName:chosenSheet}=workbookRows(buffer,fileName,{sheetName,mode});
  const {start,columns}=indexHeader(rows);
- const list=[],used=new Set(),skipped={paid:0,empty:0};
+ const list=[],used=new Set(),skipped={paid:0,empty:0,variation:0};
  for(const row of rows.slice(start)){
   if(!Array.isArray(row)||row.every(x=>!label(x)))continue;
+  // "Produtos com Melhor Desempenho" contém linhas do anúncio-pai E de
+  // variações. Indicadores como impressões/CTR ficam no anúncio-pai; linhas
+  // de variação podem ter unidades/pedidos próprios. Não somar nem duplicar.
+  if(columns.variationId!==undefined){
+   const variationId=label(row[columns.variationId]);
+   if(variationId&&!/^[-–—]+$/.test(variationId)){
+    skipped.variation++;
+    continue;
+   }
+  }
   const sku=label(row[columns.sku]).slice(0,120);
   const itemId=label(row[columns.itemId]).replace(/\.0$/,'');
   if(!sku&&!/^[1-9]\d{0,18}$/.test(itemId)){skipped.empty++;continue;}
@@ -322,7 +341,8 @@ export async function saveOrganicSnapshot(shopId,report){
   period_end:report.periodEnd,file_name:report.fileName,source:report.source,
   row_count:report.records.length,records:report.records,
   metadata:{metrics:report.metricAvailability,sheetName:report.sheetName,
-   excludedPaidRows:report.skipped.paid,rowsWithoutIdentity:report.skipped.empty},
+   excludedPaidRows:report.skipped.paid,rowsWithoutIdentity:report.skipped.empty,
+   excludedVariationRows:report.skipped.variation||0},
   imported_at:new Date().toISOString(),updated_at:new Date().toISOString()};
  const saved=await db(shopId,{method:'POST',data:[data]});
  if(saved?.length!==1)throw Error('Relatório não confirmado pelo banco.');
@@ -340,7 +360,8 @@ export async function savePerformanceSnapshot(shopId,report){
   period_end:report.periodEnd,file_name:report.fileName,source:report.source,
   row_count:report.records.length,records:report.records,
   metadata:{metrics:report.metricAvailability,sheetName:report.sheetName,
-   rowsWithoutIdentity:report.skipped.empty,trafficScope:'not_separated_from_ads'},
+   rowsWithoutIdentity:report.skipped.empty,excludedVariationRows:report.skipped.variation||0,
+   trafficScope:'not_separated_from_ads'},
   imported_at:new Date().toISOString(),updated_at:new Date().toISOString()};
  const saved=await db(shopId,{method:'POST',data:[data],table:PERFORMANCE_TABLE});
  if(saved?.length!==1)throw Error('Relatório de Performance do Produto não confirmado.');
