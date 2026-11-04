@@ -238,9 +238,9 @@ test('XLSX parentskudetail real: ignora hifens, escolhe aba correta, não duplic
  assert.equal(report.records.some(x=>x.impressions===999),false,'não misturar abas Ads');
 });
 test('relatório com hífen nos campos numéricos ignora ausência sem interromper todo o arquivo',()=>{
- const csv='ID do Item;Impressão do Produto;Cliques Por Produto;CTR;Pedido Feito\\n'+
-   '58268864630;125;5;4,00%;-\\n'+
-   '58268864631;10;0;0,00%;—\\n';
+ const csv='ID do Item;Impressão do Produto;Cliques Por Produto;CTR;Pedido Feito\n'+
+   '58268864630;125;5;4,00%;-\n'+
+   '58268864631;10;0;0,00%;—\n';
  const report=parseProductPerformanceReport(Buffer.from(csv),{
   ...info,fileName:'parentskudetail.csv'
  });
@@ -250,5 +250,5 @@ test('relatório com hífen nos campos numéricos ignora ausência sem interromp
 });
 test('confirmação exclusivamente orgânica oculta na aba Performance do Produto',()=>{
  const css=readFileSync(new URL('../public/organic-top10.css',import.meta.url),'utf8');
- assert.match(css,/\\.organic-top10-consent\\[hidden\\]\\{display:none!important\\}/);
+ assert.match(css,/\.organic-top10-consent\[hidden\]\{display:none!important\}/);
 });
