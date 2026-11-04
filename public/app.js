@@ -3584,6 +3584,7 @@ $('#optimizerImageCorrectionGenerate')?.addEventListener?.('click',async()=>{
  }
 });
 
+let optimizerManualThirdBaseMode=false;
 async function optimizerImageCorrectionImportFile(file){
  const w=optimizerWorkflowPlan,slot=Number($('#optimizerImageCorrectionSlot')?.value);
  const status=$('#optimizerImageCorrectionStatus');
@@ -3604,28 +3605,30 @@ async function optimizerImageCorrectionImportFile(file){
  try{
   status.textContent='Preparando imagem '+String(slot).padStart(2,'0')+' para salvar...';
   const prepared=await optimizerChatgptScaleFile(file);
-  // A foto 03 baixada/copied do ChatGPT é uma base LIMPA. No recebimento
-  // manual, aplicar as mesmas cotas WeDrop que a Ponte automática aplicaria.
-  // Nunca marcar a posição como salva com medidas se a validação falhar.
-  let imageBlob=prepared.blob,dimensionCount=0;
+  // Nova imagem 03 gerada no ChatGPT: a arte JÁ CONTÉM as cotas.
+  // Importação padrão não altera um pixel: evita medidas duplicadas.
+  // Somente a ação EXPLÍCITA "Importar foto-base sem medidas" usa o renderer
+  // determinístico como fallback para fotografias realmente limpas.
+  let imageBlob=prepared.blob,dimensionCount=0,usedLocalOverlay=false;
   if(slot===3){
-   status.textContent='Imagem 03 recebida. Lendo as medidas salvas da mesma SKU na WeDrop...';
    const spec=await optimizerVerifiedDimensionSpec(w);
-   if(spec?.measurements?.length){
+   dimensionCount=spec?.measurements?.length||0;
+   if(optimizerManualThirdBaseMode&&dimensionCount){
     const {addConfirmedSpecificationCard}=
      await import('/specificationCard.js?v=1.4.3-reference-design');
     spec.productTitle=w.draftTitle||w.productTitle||'';
     imageBlob=await addConfirmedSpecificationCard(imageBlob,spec);
-    dimensionCount=spec.measurements.length;
-    status.textContent='Aplicando '+dimensionCount+' medidas confirmadas à fotografia 03...';
-   }else{
-    status.textContent='Sem medidas confirmadas: a foto 03 será importada sem cotas inventadas.';
-   }
+    usedLocalOverlay=true;
+    status.textContent='Aplicadas cotas WeDrop à foto-base SEM texto. Confira antes de aprovar.';
+   }else if(dimensionCount)
+    status.textContent='Imagem 03 pronta importada como arte FINAL. O Manager NÃO adicionou outras medidas nem selos.';
+   else status.textContent='Sem dimensões validadas: a imagem 03 será importada sem novas cotas.';
   }
   if(!optimizerImagesSameSku(w))throw Error('SKU alterada antes de importar a imagem.');
   const mime=imageBlob.type==='image/jpeg'?'image/jpeg':'image/png';
   const extension=mime==='image/jpeg'?'jpg':'png';
-  const filename=slot===3&&dimensionCount?'imagem-03-medidas-confirmadas.png':
+  const filename=slot===3?
+   (usedLocalOverlay?'imagem-03-medidas-confirmadas.png':'imagem-03-arte-pronta-com-medidas.'+extension):
    'imagem-corrigida-'+String(slot).padStart(2,'0')+'.'+extension;
   const headers={'Content-Type':mime,'X-Image-Filename':encodeURIComponent(filename)};
   if(previous?.sha256)headers['X-Expected-Sha256']=previous.sha256;
@@ -3644,10 +3647,13 @@ async function optimizerImageCorrectionImportFile(file){
   optimizerExecReset();optimizerWorkflowRender(w);
   importedSha=result.image.sha256;
   status.textContent=slot===3&&dimensionCount
-   ?'✓ Imagem 03 importada com '+dimensionCount+' medidas confirmadas da WeDrop da SKU '+w.sku+'. Confira as cotas antes de aprovar.'
+   ?'✓ Imagem 03 salva. Medidas esperadas: '+dimensionCount+' conforme WeDrop; '+
+    (usedLocalOverlay?'cotas aplicadas à foto-base limpa.':'arte pronta preservada SEM duplicar os textos.')+
+    ' Confira o resultado visual antes de aprovar.'
    :'✓ Imagem '+String(slot).padStart(2,'0')+' salva na SKU '+w.sku+'. Revise antes de enviar à Shopee.';
   $('#optimizerImageCorrectionFile').value='';
  }finally{
+  optimizerManualThirdBaseMode=false;
   optimizerImagesAutoBusy=false;optimizerImagesSetProgress();
   $('#optimizerImageCorrectionPaste').disabled=false;
   $('#optimizerImageCorrectionChoose').disabled=false;
@@ -11973,16 +11979,18 @@ async function optimizerImagesLoad(){
    actions.append(generate);
    let importThirdButton=null;
    if(slot===3&&!image){
-    const importThird=optimizerMake('button','secondary','📏 Importar foto 03 + medidas');
+    const importThird=optimizerMake('button','secondary','📏 Importar foto-base sem cotas');
     importThird.type='button';
     importThird.classList.add('optimizer-commercial-dimensions-import');
-    importThird.title='Escolher a fotografia-base 03 salva no ChatGPT: o Manager adiciona as medidas exatas da SKU';
+    importThird.title='Somente para fotografia 03 SEM medidas. O Manager aplicará as cotas verificadas da WeDrop.';
     importThird.onclick=()=>{
      if(optimizerImagesAutoBusy||!optimizerImagesSameSku(w))return;
+     optimizerManualThirdBaseMode=true;
      $('#optimizerImageCorrectionSlot').value='3';
      optimizerImageCorrectionLoad();
-     optimizerCommercialActionMessage('Selecione a foto 03 SEM textos, baixada do ChatGPT. '+
-      'O Manager aplicará as medidas confirmadas da SKU antes de salvar. As imagens 01 e 02 permanecem intactas.');
+     optimizerCommercialActionMessage('IMPORTANTE: este botão é SOMENTE para foto-base 03 sem medidas. '+
+      'Se a imagem já tem 183 cm e 69 cm, use “Selecionar imagem” no painel da direita, pois ela já está pronta. '+
+      'Apenas fotos limpas recebem cotas do Manager.');
      $('#optimizerImageCorrectionFile')?.click();
     };
     importThirdButton=importThird;
