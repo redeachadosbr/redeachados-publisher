@@ -129,15 +129,15 @@ export function imageSceneDirection({slot,title=''}={}){
 }
 // Hierarquia visual compartilhada pelo ChatGPT e pelo gerador via API.
 const premiumCopyRules=Object.freeze([
- 'CAPA SEM TEXTO: produto original ocupa aproximadamente 85% a 90% da foto; fundo ambientado sofisticado, limpo e sem tarjas.',
- 'USO REAL: no máximo UMA frase curta de 2 a 5 palavras; tipografia pequena e elegante, sem outros blocos.',
- 'IMAGEM 03 BASE: somente fotografia do produto, SEM palavras, números, medidas, setas ou gráficos. O Manager adicionará qualquer camada técnica confirmada da mesma SKU DEPOIS da geração.',
- 'BENEFÍCIOS: no máximo UMA frase de 2 a 5 palavras; apresentar vantagens principalmente pela fotografia.',
- 'DOR E SOLUÇÃO: no máximo UMA frase de 2 a 5 palavras em canto discreto, sem caixas, listas ou painel comparativo.',
- 'PERSUASÃO: no máximo UMA frase de 2 a 5 palavras, texto secundário e produto dominante.',
- 'TRANSFORMAÇÃO: no máximo UMA frase de 2 a 5 palavras, sem títulos grandes ou sobreposições.',
- 'OBJEÇÕES: no máximo TRÊS microetiquetas de 1 a 3 palavras baseadas em fatos reais, sem perguntas completas ou parágrafos.',
- 'CONFIANÇA: somente os três pequenos selos Compra Segura, Entrega Rápida e Atendimento Online em uma linha discreta no rodapé; sem outros textos.'
+ 'CAPA SEM TEXTO: produto real ocupa aproximadamente 85% a 90% da foto; cenário ambientado sofisticado, iluminação profissional. Não imprimir títulos, subtítulos, faixas, selos ou chamadas.',
+ 'USO REAL: uma única frase curta de 2 a 5 palavras, coerente com o uso mostrado, pequena e integrada ao cenário. Sem títulos e sem listas.',
+ 'IMAGEM 03: fotografia-base SOMENTE, sem letras, números, setas, legendas ou textos. O Manager desenhará medidas confirmadas da mesma SKU junto ao contorno do produto após a geração, em tipografia elegante e discreta. Não escrever números diretamente pela IA.',
+ 'BENEFÍCIOS: criar UMA frase de conversão elaborada, natural e ESPECÍFICA para a vantagem REAL mostrada na fotografia, de 4 a 8 palavras; não usar palavras genéricas soltas nem alegações não comprovadas. Fonte moderna pequena, em espaço vazio.',
+ 'DOR E SOLUÇÃO: UMA frase de 4 a 8 palavras, persuasiva e contextualizada na cena, mostrando claramente como o produto ajuda em uma necessidade real, sem prometer resultados não demonstrados. Sem comparativos em caixas.',
+ 'PERSUASÃO: UMA frase original de 4 a 8 palavras que traduza um diferencial visual ou característica comprovada em utilidade para o comprador. Sem superlativos, descontos, garantias ou certificados não comprovados.',
+ 'TRANSFORMAÇÃO: UMA frase de 4 a 8 palavras ligada à experiência de uso real da cena e à mudança percebida pelo cliente, sem antes/depois artificial ou promessa não demonstrada. Tipografia fina, secundária.',
+ 'QUEBRA DE OBJEÇÕES: criar preferencialmente DUAS e no máximo TRÊS perguntas REAIS de cliente, cada uma seguida de uma RESPOSTA direta e comprovada (pergunta de 2 a 6 palavras; resposta de 2 a 7). Mostrar pares Pergunta? / Resposta em microtipografia elegante nas bordas livres, sem caixas grandes, até 10% da área total. Só responder com fatos verificáveis na foto/ficha do produto; se houver apenas um fato, usar um único par. Nunca inventar prazo de entrega, material, medidas, garantia, capacidade ou compatibilidade.',
+ 'CONFIANÇA: somente os três pequenos selos Compra Segura, Entrega Rápida e Atendimento Online, alinhados discretamente no rodapé, se refletirem as políticas reais da loja. Não incluir outras frases nem tarjas.'
 ]);
 export function imageScenePrompt({slot,title=''}={}){
  const s=imageSceneDirection({slot,title});
@@ -147,9 +147,9 @@ export function imageScenePrompt({slot,title=''}={}){
   'ÂNGULO E ENQUADRAMENTO: '+s.camera,
   'PERSONAGEM: '+s.people,
   'ILUMINAÇÃO: '+s.light,
-  'DIREÇÃO DE ARTE PREMIUM: produto em primeiro plano, cenário REAL moderno e visível em alta definição, cores harmônicas e acabamento profissional de e-commerce. Fundo NÃO pode ficar excessivamente desfocado, estourado, vazio ou lavado: detalhes de arquitetura, piso e contexto devem ser reconhecíveis sem competir com o produto. Textos ocupam no máximo 10% da foto, em tipografia pequena e elegante. Proibidos títulos grandes, placas brancas opacas, tarjas, tabelas, emojis, listas e excesso de informações.',
+  'DIREÇÃO DE ARTE PREMIUM: produto em primeiro plano, cenário REAL moderno e visível em alta definição, cores harmônicas e acabamento profissional de e-commerce. Fundo NÃO pode ficar excessivamente desfocado, estourado, vazio ou lavado: detalhes de arquitetura, piso e contexto devem ser reconhecíveis sem competir com o produto. Texto autoral em português brasileiro, de bom gosto, COMPACTO: no máximo 10% da área, fonte sans-serif moderna, leve, elegante e pequena, com alto contraste sutil. Priorizar cantos vazios e margens, nunca cobrir o produto. Proibidos títulos grandes, placas brancas opacas, tarjas, tabelas, emojis e listas.',
   'TEXTO PERMITIDO NESTA POSIÇÃO: '+premiumCopyRules[s.slot-1],
-  'Imagem comercial sofisticada: usar pouco espaço para microtextos nas demais imagens. Na imagem 03 a base gerada deve ser inteiramente SEM texto nem seta. Em todas as fotos preservar detalhes reais nítidos, sem alterar produto, fundo artificial genérico ou textos decorativos.',
+  'A frase ou os pares de dúvidas devem nascer da CENA E DO PRODUTO EXATO da foto, sem slogans genéricos repetidos. Texto secundário e legível, nunca ocupar a região central do produto; em todos os casos a imagem deve converter pelo visual primeiro. Na imagem 03 a base gerada é inteiramente SEM texto nem seta; o Manager adicionará as cotas depois. Preservar detalhes reais nítidos.',
   'Não reutilize o mesmo fundo, parque, jardim, rua, roupa, pessoa, pose, direção da câmera ou enquadramento das outras imagens desta série.',
   'A FOTO DE REFERÊNCIA serve apenas para preservar o PRODUTO EXATO: mesma cor, peças, formato, marca, adesivos, proporções e acessórios realmente presentes. Não copie o cenário nem a pessoa da referência.',
   'Não inventar componentes, medidas, certificações ou alegações. Se a cena prevista não for compatível com o uso real do produto, adapte apenas o ambiente a outro local apropriado mantendo o ângulo e a distinção visual.',
