@@ -307,7 +307,7 @@ export function rankOrganicTop(records,{sort='combined',limit=10}={}){
   return b.score-a.score||Number(b.impressions||0)-Number(a.impressions||0)||
    String(a.sku||a.itemId).localeCompare(String(b.sku||b.itemId));
  });
- return scored.slice(0,Math.max(1,Math.min(limit,10)));
+ return scored.slice(0,Math.max(1,Math.min(Number(limit)||10,100)));
 }
 function config(){
  const url=String(process.env.SUPABASE_URL||'').replace(/\/$/,'');
