@@ -10750,7 +10750,7 @@ function optimizerImagesRenderMode(){
  $('#optimizerModeApi').classList.toggle('is-active',!chat);
 }
 async function optimizerChatgptMakeBrief(w,{defaultOnly=false}={}){
- const {createChatGptPrompts}=await import('/chatgptPrompts.js?v=1.22.1-benefits-topdown-macro');
+ const {createChatGptPrompts}=await import('/chatgptPrompts.js?v=1.22.2-bulleted-wedrop');
  return createChatGptPrompts({
   sku:w.sku,title:w.draftTitle||'Produto Shopee',
   imageUrls:w.imageUrls||[],
