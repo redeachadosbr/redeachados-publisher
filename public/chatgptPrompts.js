@@ -9,12 +9,12 @@ import {imageScenePrompt} from './imageSceneDiversity.js';
 export const CHATGPT_IMAGE_SCENES=Object.freeze([
  {label:"01 · Capa",guide:"Imagem 01 — Capa: produto original ocupando aproximadamente 85% a 90% da imagem, fundo limpo e apresentação profissional. imagem com fundo ambientado"},
  {label:"02 · Uso real",guide:"Imagem 02 — Uso real: mostrar o produto em um ambiente cotidiano de utilização, com composição diferente da capa. imagem com fundo ambientado. FRASES CURTAS DE CONVERSÃO"},
- {label:"03 · Especificações",guide:"Imagem 03 — Base fotográfica para ficha técnica: somente o produto original em fundo ambientado moderno, nítido e HD, sem texto, números, setas, títulos ou medidas na imagem gerada."},
- {label:"04 · Benefícios",guide:"Imagem 04 — Benefícios: demonstrar visualmente as principais vantagens do produto. imagem com fundo ambientado. FRASES CURTAS DE BENEFICIO"},
- {label:"05 · Dor e solução",guide:"Imagem 05 — Dor e solução: representar uma necessidade do comprador e como o produto atende a essa necessidade. imagem com fundo ambientado FRASE CURTA"},
- {label:"06 · Persuasão",guide:"Imagem 06 — Persuasão: destacar um diferencial real com apresentação comercial. imagem com fundo ambientado. FRASE DE CONVERSÃO"},
- {label:"07 · Transformação",guide:"Imagem 07 — Transformação: demonstrar a experiência proporcionada pelo produto. imagem com fundo ambientado. FRASE DE CONVERSÃO"},
- {label:"08 · Quebra de objeções",guide:"Imagem 08 — Quebra de objeções: responder visualmente às três principais dúvidas do comprador, sem poluir a composição. imagem com fundo ambientado. FRASES CURTAS"},
+ {label:"03 · Especificações",guide:"Imagem 03 — Mostrar o produto REAL inteiro e bem definido em perspectiva lateral ou três-quartos, fundo ambientado moderno, margens livres próximas ao seu contorno. Esta geração é uma BASE SEM texto: o Shopee Manager acrescentará as dimensões REAIS da SKU diretamente perto do produto em uma camada final de tipografia moderna fina, sem esconder a foto."},
+ {label:"04 · Benefícios",guide:"Imagem 04 — Benefícios: fotografar a vantagem mais relevante e realmente verificável do produto. Criar UMA frase original e persuasiva de 4 a 8 palavras, ligada ao que está visível na foto, sem slogan genérico; tipografia sofisticada e discreta."},
+ {label:"05 · Dor e solução",guide:"Imagem 05 — Dor e solução: fotografar uma situação concreta em que o produto ajuda o comprador. Criar UMA frase contextualizada e persuasiva de 4 a 8 palavras, sem inventar problema, recurso ou resultado."},
+ {label:"06 · Persuasão",guide:"Imagem 06 — Persuasão: mostrar diferencial real e comprovado do produto em fotografia publicitária sofisticada. Criar UMA frase de 4 a 8 palavras que traduza esse diferencial em vantagem para o comprador; texto pequeno."},
+ {label:"07 · Transformação",guide:"Imagem 07 — Transformação: experiência real usando o produto em ambiente diferente. Criar UMA frase de 4 a 8 palavras que faça o cliente imaginar o uso ou a conveniência real, sem prometer mudanças não comprovadas."},
+ {label:"08 · Quebra de objeções",guide:"Imagem 08 — Quebra de objeções: produto protagonista em ambiente premium. Escrever 2 perguntas de clientes com respostas curtas, específicas e verdadeiras sobre o produto; se houver terceiro fato comprovado e espaço, permitir até 3 pares. Microtipografia moderna nas margens, duas linhas por par (Pergunta? / Resposta), sem prejudicar a foto."},
  {label:"09 · Mockup e confiança",guide:"Imagem 09 — Mockup e confiança: apresentar o produto em cenário profissional com os três selos da loja: Compra Segura, Entrega Rápida e Atendimento Online. imagem com fundo ambientado"}
 ]);
 export function createChatGptPrompts({imageUrls=[],supplierSourceText='',title='',imageNotes={},imagePrompts={},masterPrompt=''}={}){
@@ -30,7 +30,7 @@ export function createChatGptPrompts({imageUrls=[],supplierSourceText='',title='
   const storeRule=String(masterPrompt||'').trim().slice(0,4500);
   const mandatory=[
    'REGRA ATUAL DA REDE ACHADOS BR (prevalece sobre roteiros antigos e orientações gerais): imagem única 1200×1200, foto realista fiel ao produto original; fundo ambientado moderno, nítido e visível em HD, com luz, ângulo e ambiente diferentes em cada uma das 9 posições. Nunca repetir personagens, poses e composição.',
-   'Produto prioritário, tipografia discreta e sofisticada, frases curtas de conversão quando previstas; sem excesso de textos, painéis, números inventados ou títulos grandes. Imagem 01 com produto 85%–90%; imagem 09 com os três selos discretos.'
+   'Produto prioritário, tipografia moderna, fina e sofisticada, área TOTAL de textos <=10% da foto, sem painéis, tarjas, números inventados ou títulos grandes. Imagens 04 a 07: apenas UMA frase elaborada de 4 a 8 palavras, escolhida conforme a cena e as vantagens reais; imagem 08: perguntas com respostas objetivas (não meras palavras soltas), até 3 pares muito discretos. Imagem 01 com produto 85%–90% e SEM textos; imagem 09 somente os três selos aprovados.'
   ].join('\n');
   return [
    customized||guide,
@@ -55,7 +55,7 @@ export function createChatGptPrompts({imageUrls=[],supplierSourceText='',title='
   'Crie uma foto comercial limpa com produto fiel em destaque, ambiente moderno HD visível e espaço nas bordas para o Manager adicionar as informações verificadas DEPOIS.',
   // Não repassar os valores da WeDrop ao modelo de imagem: o próprio
   // modelo já gerou números conflitantes e o Manager desenhou outra camada.
-  'ORDEM FINAL OBRIGATÓRIA: ENTREGAR SÓ FOTOGRAFIA, 100% SEM TEXTO. Mesmo que uma orientação antiga acima solicite cotas, ignore-a. A camada técnica será feita fora da IA.'
+  'ORDEM FINAL OBRIGATÓRIA DA IMAGEM 03: ENTREGAR SÓ FOTOGRAFIA, 100% SEM TEXTO. A camada de dimensões reais da própria SKU será desenhada PELO SHOPEE MANAGER após a geração, com medidas visíveis junto ao produto, linhas finas e fonte bonita, moderna e discreta. Não criar medidas por conta própria.'
  ].join('\\n\\n');
 
  return {batch:prompts[0],prompts,scenes,original,confirmedDimensions:dims};
