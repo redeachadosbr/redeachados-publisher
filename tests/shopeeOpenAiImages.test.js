@@ -11,12 +11,12 @@ test('roteiro de nove imagens na ordem aprovada pela loja',()=>{
  assert.equal(IMAGE_STORYBOARD.length,9);
  assert.match(IMAGE_STORYBOARD[0],/Capa/);
  assert.match(IMAGE_STORYBOARD[1],/Uso real/);
- assert.match(IMAGE_STORYBOARD[2],/dimensões reais WeDrop com setas finas/);
- assert.match(IMAGE_STORYBOARD[3],/frases ou palavras curtas/);
- assert.match(IMAGE_STORYBOARD[4],/Uma frase curta/);
+ assert.match(IMAGE_STORYBOARD[2],/dimensões verificadas da mesma SKU/);
+ assert.match(IMAGE_STORYBOARD[3],/frase de conversão contextualizada/);
+ assert.match(IMAGE_STORYBOARD[4],/frase natural e persuasiva de 4 a 8 palavras/);
  assert.match(IMAGE_STORYBOARD[5],/Persuasão/);
  assert.match(IMAGE_STORYBOARD[6],/Transformação/);
- assert.match(IMAGE_STORYBOARD[7],/três principais dúvidas/);
+ assert.match(IMAGE_STORYBOARD[7],/PERGUNTAS.*RESPOSTAS/);
  assert.match(IMAGE_STORYBOARD[8],/Compra Segura, Entrega Rápida e Atendimento Online/);
  assert.doesNotMatch(IMAGE_STORYBOARD.join(' '),/ANAMÓRFICA|ANTES E DEPOIS|CTA/);
  assert.throws(()=>imagePrompt({record:sample,slot:0}),/Posição inválida/);
