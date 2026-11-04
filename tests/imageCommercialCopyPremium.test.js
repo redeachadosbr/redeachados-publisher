@@ -83,11 +83,13 @@ test('cotas da imagem 03 são desenhadas só quando a SKU e a origem são exatas
  try{
   const output=await addConfirmedSpecificationCard(new Blob(['base'],{type:'image/png'}),valid);
   assert.equal(output.type,'image/png');
-  assert.deepEqual(names.filter(x=>/^(ALTURA|LARGURA|COMPRIMENTO)/.test(x)),
-   ['ALTURA 40 cm','LARGURA 30 cm','COMPRIMENTO 55 cm']);
+  assert.deepEqual(names.filter(x=>/^(?:40 cm|30 cm|Altura|Largura|Comprimento)/.test(x)),
+   ['40 cm','Altura','30 cm','Largura','Comprimento 55 cm']);
   const script=readFileSync(new URL('../public/specificationCard.js',import.meta.url),'utf8');
   assert.match(script,/"Inter","Segoe UI"/);
-  assert.match(script,/rgba\(249,251,253,0\.76\)/);
+  assert.match(script,/#ffcb0b/);
+  assert.match(script,/#103764/);
+  assert.match(script,/sortedColorBanner/);
   assert.doesNotMatch(script,/rgba\(18,34,47,0\.58\)/);
  }finally{
   if(oldDoc===undefined)delete globalThis.document;else globalThis.document=oldDoc;
