@@ -458,3 +458,76 @@ body.organic-top10-open{overflow:hidden}
  .organic-top10-modal[data-importing="true"] .organic-top10-import-footer{flex-direction:column-reverse;align-items:stretch}
  .organic-top10-modal[data-importing="true"] #organicTop10Upload{margin-left:0}
 }
+
+/* 1.3.1: somente a lista do ranking rola. Header, filtros, nomes de colunas
+   e footer continuam ancorados no popup durante a navegação por 10–100 SKUs. */
+.organic-top10-modal:not([data-importing="true"]) .organic-top10-content{
+ display:flex!important;
+ flex-direction:column;
+ min-height:0;
+ overflow:hidden!important;
+}
+.organic-top10-modal:not([data-importing="true"]) .organic-top10-fixed-controls{
+ display:block;
+ flex:0 0 auto;
+ position:relative;
+ z-index:2;
+ background:#f8fbff;
+}
+.organic-top10-modal:not([data-importing="true"]) .organic-top10-grid-header{
+ box-sizing:border-box;
+ width:calc(100% - 13px)!important;
+ margin:0;
+ padding-top:11px;
+ padding-bottom:11px;
+ border-bottom:1px solid #dbe7f6;
+ background:#f8fbff;
+}
+.organic-top10-modal:not([data-importing="true"]) .organic-top10-scroll-area{
+ display:block;
+ flex:1 1 auto;
+ min-height:0;
+ overflow-y:auto;
+ overflow-x:hidden;
+ scrollbar-gutter:stable;
+ scrollbar-color:#b8cbe2 transparent;
+ overscroll-behavior-y:contain;
+ padding:4px 0 0;
+}
+.organic-top10-modal:not([data-importing="true"]) .organic-top10-scroll-area:focus-visible{
+ outline:2px solid #3c8af0;
+ outline-offset:-2px;
+ border-radius:12px;
+}
+.organic-top10-modal:not([data-importing="true"]) .organic-top10-scroll-area::-webkit-scrollbar{
+ width:12px;
+}
+.organic-top10-modal:not([data-importing="true"]) .organic-top10-scroll-area::-webkit-scrollbar-thumb{
+ background:#b8cbe2;
+ border-radius:999px;
+ border:3px solid #f8fbff;
+}
+.organic-top10-modal:not([data-importing="true"]) .organic-top10-list{
+ padding:5px 0 14px;
+}
+/* Na tela de importação, manter o formulário rolável caso a altura seja baixa;
+   essa exceção evita cortar campos e botões, sem afetar o ranking. */
+.organic-top10-modal[data-importing="true"] .organic-top10-content{
+ display:block!important;
+ overflow-y:auto!important;
+ overflow-x:hidden!important;
+}
+.organic-top10-modal[data-importing="true"] .organic-top10-scroll-area{
+ display:none!important;
+}
+@media(max-width:900px){
+ .organic-top10-modal:not([data-importing="true"]) .organic-top10-grid-header{
+  display:none!important;
+ }
+}
+@media(max-height:700px) and (max-width:900px){
+ .organic-top10-modal:not([data-importing="true"]) .organic-top10-fixed-controls{
+  max-height:38dvh;
+  overflow-y:auto;
+ }
+}

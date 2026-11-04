@@ -77,6 +77,10 @@
     }
    }
    list.replaceChildren();
+   // Nova classificação ou período sempre apresenta o ranking desde o topo.
+   // A rolagem fica isolada no container dos cards, sem mover o cabeçalho.
+   const scrollArea=$('organicTop10ScrollArea');
+   if(scrollArea)scrollArea.scrollTop=0;
    const input=Array.isArray(rows)?rows:[];
    input.forEach((row,index)=>{
     const card=el(list,'article','','organic-top10-item');

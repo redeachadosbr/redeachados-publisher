@@ -14,7 +14,7 @@
 <link rel="stylesheet" href="/shopee-discount-one-click.css?v=1.20.17">
 <link rel="stylesheet" href="/shopee-market-research.css?v=1.20.18">
 <link rel="stylesheet" href="/dashboard-new-listings.css?v=1.20.21-shopee">
-<link rel="stylesheet" href="/organic-top10.css?v=1.3.0-ranking-layout">
+<link rel="stylesheet" href="/organic-top10.css?v=1.3.1-fixed-ranking">
 <link rel="stylesheet" href="/finance-thumbnails.css?v=1.20.22">
 <link rel="stylesheet" href="/title-studio.css?v=1.21.16-ranked-best">
 <link rel="stylesheet" href="/seo-modern-layout.css?v=1.0.5-compact-cards">
@@ -2583,7 +2583,7 @@
 <script src="/ads-seo.js?v=6-ads-eligible-counter"></script>
 <script src="/optimizer-image-studio.js?v=1.0.5-move-enabled"></script>
 <script src="/optimizer-technical-studio.js?v=1.2.0-compact-fields"></script>
-<script src="/organic-top10.js?v=1.3.1-official-ctr"></script>
+<script src="/organic-top10.js?v=1.3.2-fixed-ranking-scroll"></script>
 
 <!-- Modal independente do roteador: abre em cada login / carregamento autenticado -->
 <div id="organicTop10Overlay" class="organic-top10-overlay" hidden>
@@ -2604,7 +2604,8 @@
    </div>
   </header>
   <div class="organic-top10-content">
-   <div class="organic-top10-source-bar" role="group" aria-label="Fonte dos indicadores">
+   <div class="organic-top10-fixed-controls">
+    <div class="organic-top10-source-bar" role="group" aria-label="Fonte dos indicadores">
     <button id="organicTop10ModeApi" type="button" class="organic-top10-mode" aria-pressed="true">API Shopee · Visualizações</button>
     <button id="organicTop10ModePerformance" type="button" class="organic-top10-mode" aria-pressed="false">Performance do Produto · Shopee</button>
     <button id="organicTop10ModeOrganic" type="button" class="organic-top10-mode" aria-pressed="false">Orgânico comprovado · Relatório</button>
@@ -2651,7 +2652,11 @@
    <div id="organicTop10GridHeader" class="organic-top10-grid-header" aria-hidden="true">
     <span>Produto / SKU</span><span id="organicTop10ViewsHeader">Visualizações</span><span>Visitas</span><span>Cliques</span><span>CTR</span><span>No carrinho</span><span>Abandono</span><span>Ação</span>
    </div>
-   <div id="organicTop10List" class="organic-top10-list" aria-label="Dez melhores produtos do tráfego orgânico"></div>
+   </div>
+   <div id="organicTop10ScrollArea" class="organic-top10-scroll-area" role="region"
+    aria-label="Produtos do ranking classificados por desempenho" tabindex="0">
+    <div id="organicTop10List" class="organic-top10-list" aria-label="Produtos classificados por desempenho"></div>
+   </div>
    <form id="organicTop10Import" class="organic-top10-import" hidden>
     <div class="organic-top10-import-layout">
      <aside class="organic-top10-import-help">
