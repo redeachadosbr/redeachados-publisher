@@ -140,7 +140,8 @@
      if(editor.kind==='kit'||editor.kind==='kit-unlinked'){
       if(typeof globalThis.RAOpenPendingImageKit!=='function')
        throw Error('Otimizador de kits indisponível. Atualize a página.');
-      globalThis.RAOpenPendingImageKit(editor);
+      if(globalThis.RAOpenPendingImageKit(editor)!==true)
+       throw Error('Não foi possível abrir a edição do kit deste Item ID.');
       return;
      }
      if(editor.kind==='single'){
