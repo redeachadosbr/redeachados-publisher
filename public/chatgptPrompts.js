@@ -9,7 +9,7 @@ import {imageScenePrompt} from './imageSceneDiversity.js?v=20261104-benefits-top
 export const CHATGPT_IMAGE_SCENES=Object.freeze([
  {label:"01 · Capa",guide:"Imagem 01 — Capa: produto original ocupando aproximadamente 85% a 90% da imagem, fundo limpo e apresentação profissional. imagem com fundo ambientado"},
  {label:"02 · Uso real",guide:"Imagem 02 — Uso real: mostrar o produto em um ambiente cotidiano de utilização, com composição diferente da capa. imagem com fundo ambientado. FRASES CURTAS DE CONVERSÃO"},
- {label:"03 · Especificações",guide:"Imagem 03 — Mostrar o produto REAL inteiro e bem definido em perspectiva lateral ou três-quartos, fundo ambientado moderno, margens livres próximas ao seu contorno. Esta geração é uma BASE SEM texto: o Shopee Manager acrescentará as dimensões REAIS da SKU diretamente perto do produto em uma camada final de tipografia moderna fina, sem esconder a foto."},
+ {label:"03 · Especificações",guide:"Imagem 03 — Arte comercial premium 1200x1200 como referência aprovada: mostrar produto original grande e inteiro em cenário moderno HD, com área livre na direita e abaixo para cotas visuais. A IA gera apenas a fotografia limpa; o Shopee Manager incorpora UMA ÚNICA VEZ as medidas confirmadas em setas brancas e boxes arredondados brancos com borda amarela e tipografia azul-marinho. Não desenhar medidas ou selos pela IA."},
  {label:"04 · Benefícios",guide:"Imagem 04 — Benefícios: produto protagonista em foto ambientada; destacar 2 ou 3 benefícios ESPECÍFICOS e comprovados por microfrases de 3 a 7 palavras cada, bem distribuídas nas margens, fonte bonita e moderna, sem títulos, listas ou elementos que escondam o produto."},
  {label:"05 · Dor e solução",guide:"Imagem 05 — Dor e solução: fotografar o PRODUTO INTEIRO VISTO DE CIMA (top-down 90°, flat lay), ambientado com contexto real de uso. Escrever UMA frase de 4 a 8 palavras mostrando exatamente a solução prática do produto, discreta e fora do objeto."},
  {label:"06 · Persuasão",guide:"Imagem 06 — Persuasão: ZOOM MACRO fotográfico em textura, acabamento, encaixe, estrutura ou detalhe realmente existente, mantendo parte reconhecível do produto. Usar 1 ou 2 microdescrições de 3 a 7 palavras, próximas ao detalhe, fonte pequena moderna, sem mosaico, setas grandes nem publicidade genérica."},
@@ -61,20 +61,27 @@ export function createChatGptPrompts({imageUrls=[],supplierSourceText='',title='
   ].filter(Boolean).join('\n\n');
  });
  const dims=dimensions;
- // A imagem gerada no ChatGPT deve ser uma BASE limpa: o Manager insere
- // SOMENTE os números exatos da WeDrop na imagem final. Não confiar em
- // letras/números que o modelo possa inventar, nem usar peso da caixa.
+ // A imagem ChatGPT é a fotografia-base: dimensões e selos factuais são
+ // incorporados UMA única vez no Manager no estilo visual aprovado.
+ const isPoolLounger=/colch[aã]o.*(?:infl[aá]vel|piscina)|(?:boia|infl[aá]vel).*colch[aã]o/i.test(title);
+ const hasLengthWidth=Boolean(dims?.measurements?.some(x=>x.axis==='comprimento')&&
+  dims.measurements.some(x=>x.axis==='largura'));
+ const hasSortedBlueYellowPink=/envia(?:do|da|dos|das)\s+(?:com\s+)?cor(?:es)?\s+sortid[ao]s?/i.test(supplierSourceText)&&
+  /cor(?:es)?\s*[:\-][^\n]*azul[^\n]*amarelo[^\n]*rosa/i.test(supplierSourceText);
+ const poolDisplay=isPoolLounger&&hasLengthWidth&&hasSortedBlueYellowPink;
  prompts[2]=[
   scenes[2].guide,
   imageScenePrompt({slot:3,title}),
   'IMAGEM 03 — FOTOGRAFIA BASE SEM QUALQUER TEXTO.',
-  'O gerador é responsável SOMENTE PELA FOTO AMBIENTADA do produto original. NENHUMA medida, número, palavra, letra, unidade, seta, ícone, régua, tabela, etiqueta, subtítulo, selo, painel lateral ou composição textual deve aparecer na imagem produzida.',
-  'Não tente extrair nem apresentar dimensões da foto, da ficha técnica, de outro produto, de um brinquedo montado ou da embalagem. Não crie absolutamente nenhum detalhe gráfico técnico.',
-  /pista|conjunto|kit/i.test(title)?'Esta SKU vende um CONJUNTO: mostrar o produto completo com os componentes reais da foto original. Não isolar apenas um caminhão se a referência mostrar pista, carrinho e personagem. Não inventar peças ou acessórios.':'',
-  'Crie uma foto comercial limpa com produto fiel em destaque, ambiente moderno HD visível e espaço nas bordas para o Manager adicionar as informações verificadas DEPOIS.',
-  // Não repassar os valores da WeDrop ao modelo de imagem: o próprio
-  // modelo já gerou números conflitantes e o Manager desenhou outra camada.
-  'ORDEM FINAL OBRIGATÓRIA DA IMAGEM 03: ENTREGAR SÓ FOTOGRAFIA, 100% SEM TEXTO. A camada de dimensões reais da própria SKU será desenhada PELO SHOPEE MANAGER após a geração, com medidas visíveis junto ao produto, linhas finas e fonte bonita, moderna e discreta. Não criar medidas por conta própria.'
+  poolDisplay?
+   'COMPOSIÇÃO EXATA PARA ESTA SKU: mostrar TRÊS unidades do MESMO colchão inflável realmente disponível, em pé e lado a lado nas cores ROSA, AMARELO e AZUL, nesta ordem. O colchão AZUL à direita recebe as futuras medidas. Cenário interior moderno de madeira, luz suave, piso limpo. Reservar faixa estreita à direita do azul para a seta branca vertical de comprimento e uma faixa abaixo do azul para seta horizontal de largura. Reservar pequeno espaço livre no canto inferior esquerdo para o selo “Envio em cores sortidas”. O produto deve permanecer realista e inteiro.':
+   'COMPOSIÇÃO PREMIUM: produto real inteiro, legível e protagonista, enquadramento que permita cotas ao lado direito e abaixo sem encobrir detalhes, cenário ambientado moderno com margens livres. Não inventar cores ou variantes.',
+  'ESTILO DA ARTE FINAL: o Manager irá desenhar em uma camada única setas brancas e boxes BRANCOS ARREDONDADOS com BORDA AMARELA fina, valor em fonte AZUL-ESCURO grande e nome da dimensão logo abaixo em fonte menor. Não deixar a IA criar uma segunda camada.',
+  'O gerador é responsável SOMENTE PELA FOTOGRAFIA. NENHUMA medida, número, palavra, letra, unidade, seta, ícone, régua, tabela, etiqueta, subtítulo, selo, painel lateral ou composição textual deve aparecer nesta fotografia-base.',
+  'Não tentar extrair dimensões da foto, medidas de embalagem, da ficha de outro produto ou do produto montado. Não criar texto gráfico técnico.',
+  /pista|conjunto|kit/i.test(title)?'Mostrar o CONJUNTO fiel às referências, sem isolar nem inventar componentes.':'',
+  'Preserve arquitetura e detalhes reais HD sem desfoque excessivo. Câmera frontal ligeiramente elevada, produto inteiro sem cortes e margens pequenas preparadas para etiquetas.',
+  'ORDEM FINAL OBRIGATÓRIA DA IMAGEM 03: ENTREGAR SÓ FOTOGRAFIA, 100% SEM TEXTO. O Shopee Manager entregará a arte FINAL pronta com COMPRIMENTO, LARGURA e outras cotas confirmadas, em boxes brancos com borda amarela e números azul-marinho; não duplicar texto.'
  ].join('\\n\\n');
 
  return {batch:prompts[0],prompts,scenes,original,confirmedDimensions:dims};
