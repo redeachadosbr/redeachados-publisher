@@ -11,11 +11,29 @@ test('imagens 04–07 exigem frases elaboradas coerentes com a cena e fonte disc
  for(const slot of [4,5,6,7]){
   const chat=createChatGptPrompts({title}).prompts[slot-1];
   const api=imagePrompt({record:{sku:'WS20357',title},slot});
-  assert.match(chat,/4 a 8 palavras/);
-  assert.match(api,/4 a 8 palavras/);
+  const expected=slot===4||slot===6?/3 a 7 palavras/:/4 a 8 palavras/;
+  assert.match(chat,expected);
+  assert.match(api,expected);
   assert.match(imageScenePrompt({slot,title}),/10% da área/);
   assert.match(chat,/fotografia|foto|cena/i);
  }
+});
+
+test('imagem 04 apresenta 2 ou 3 benefícios, imagem 05 vista de cima e 06 zoom macro',()=>{
+ const title='Colchão Inflável Piscina Verão';
+ const scenes=createChatGptPrompts({title}).prompts;
+ assert.match(scenes[3],/2 ou 3 benefícios/);
+ assert.match(scenes[3],/10% da foto/);
+ assert.match(scenes[4],/top-down|VISTO DE CIMA/);
+ assert.match(scenes[4],/UMA frase/);
+ assert.match(scenes[5],/ZOOM MACRO/);
+ assert.match(scenes[5],/1 ou 2 microdescrições/);
+ const api4=imagePrompt({record:{sku:'WS20357',title},slot:4});
+ const api5=imagePrompt({record:{sku:'WS20357',title},slot:5});
+ const api6=imagePrompt({record:{sku:'WS20357',title},slot:6});
+ assert.match(api4,/2 ou 3 benefícios/);
+ assert.match(api5,/VISTA SUPERIOR REAL|CIMA/);
+ assert.match(api6,/ZOOM MACRO/);
 });
 
 test('imagem de objeções exige perguntas e RESPOSTAS; não apenas microetiquetas',()=>{
