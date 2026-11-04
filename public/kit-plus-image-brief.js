@@ -25,7 +25,7 @@ export function buildKitPlusImageBrief(kit,{manualFacts={}}={}){
  const stages=[
   '01 CAPA: todos os produtos juntos, 85–90% da área, fundo moderno, SEM texto.',
   '02 USO REAL: itens juntos em situação cotidiana coerente, frase curta se comprovada.',
-  '03 ESPECIFICAÇÕES: todos os produtos juntos, dimensões confirmadas destacadas diretamente ao lado de CADA produto correto com linhas finas e fonte bonita, moderna, discreta e legível. Sem SKU, medidas de embalagem, números inventados ou etiquetas grandes; texto total até 10% da foto.',
+  '03 ESPECIFICAÇÕES: todos os produtos juntos, dimensões confirmadas destacadas diretamente ao lado de CADA produto correto com linhas finas e fonte bonita, moderna, discreta e legível. Identificar o nome comercial apenas quando necessário, sem escrever SKU, medidas de embalagem, números inventados ou etiquetas grandes; texto total até 10% da foto.',
   '04 BENEFÍCIOS: uma frase comercial elaborada de 4 a 8 palavras, escolhida a partir do benefício REAL visível na foto, pequena e sem slogans genéricos.',
   '05 DOR E SOLUÇÃO: produtos juntos resolvendo necessidade real e uma frase persuasiva de 4 a 8 palavras ligada diretamente à cena.',
   '06 PERSUASÃO: mostrar a complementaridade real do kit; uma frase original de 4 a 8 palavras que traduza valor em uso, sem prometer economia.',
