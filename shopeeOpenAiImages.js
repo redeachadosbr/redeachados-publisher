@@ -8,9 +8,9 @@ export const IMAGE_STORYBOARD=Object.freeze([
  'Imagem 1 — Capa: produto em destaque, ocupando aproximadamente 85% da imagem.',
  'Imagem 2 — Uso real: mostrar o produto em um ambiente de utilização.',
  'Imagem 3 — Medidas: criar fotografia-base premium do produto inteiro com margem próxima ao contorno. O Manager acrescentará as dimensões verificadas da mesma SKU com linhas finas e tipografia moderna e discreta; a IA não escreve números.',
- 'Imagem 4 — Benefícios: demonstrar uma vantagem comprovada e criar UMA frase de conversão contextualizada, de 4 a 8 palavras, específica para a fotografia, em tipografia discreta.',
- 'Imagem 5 — Dor e solução: demonstrar necessidade real resolvida pelo produto e criar UMA frase natural e persuasiva de 4 a 8 palavras sem promessas não comprovadas.',
- 'Imagem 6 — Persuasão: destacar um diferencial real e criar UMA frase original de 4 a 8 palavras que traduza esse diferencial em vantagem real.',
+ 'Imagem 4 — Benefícios: mostrar 2 ou 3 benefícios específicos e comprovados em microfrases de 3 a 7 palavras, distribuídas discretamente nas margens da foto ambientada, sem cobrir o produto.',
+ 'Imagem 5 — Dor e solução: produto visto INTEIRO de CIMA (top-down, flat lay), contexto de uso coerente, UMA frase discreta de 4 a 8 palavras explicando a solução real.',
+ 'Imagem 6 — Persuasão: ZOOM MACRO em detalhes reais de acabamento, textura, estrutura ou encaixe do produto, preservando reconhecimento; incluir 1 ou 2 microdescrições específicas de 3 a 7 palavras, pequenas e elegantes.',
  'Imagem 7 — Transformação: mostrar experiência de uso em contexto real e criar UMA frase de 4 a 8 palavras que represente utilidade perceptível da foto.',
  'Imagem 8 — Quebra de objeções: criar duas PERGUNTAS de clientes com RESPOSTAS curtas e comprovadas; excepcionalmente três se houver prova e espaço. Cada par na borda, letra pequena, sem bloco informativo, mantendo o produto em destaque.',
  'Imagem 9 — Mockup e confiança: apresentar o produto com três selos: Compra Segura, Entrega Rápida e Atendimento Online.'
