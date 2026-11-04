@@ -47,7 +47,7 @@ test('WS20357 aplica medidas 183 cm comprimento e 69 cm largura cadastradas manu
   'Sem registro validado nem vínculo não se aceita o texto');
  const card=readFileSync(new URL('../public/specificationCard.js',import.meta.url),'utf8');
  assert.match(card,/const poolPortrait=!height&&Boolean\(length&&width\)/);
- assert.match(card,/COMPRIMENTO.*length.value/);
+ assert.match(card,/value:length\.value,label:'Comprimento'/);
 });
 
 test('prompt 03 informa somente medidas confirmadas pela SKU e fotografa sem numeros inventados',()=>{
