@@ -1,3 +1,4 @@
+import {PREMIUM_NINE_IMAGE_RULES} from './premiumNineImagePolicy.js';
 import {kitImageMeasurementsBySku} from './kit-measurements.js?v=1.1.2-wedrop-axes-labels';
 // Prompt curto do ChatGPT Plus para kit: uso em ?prompt= e na área de transferência.
 // NÃO utiliza API, não controla o chat externo, nem insere imagens no navegador.
@@ -27,11 +28,11 @@ export function buildKitPlusImageBrief(kit,{manualFacts={}}={}){
   '02 USO REAL: itens juntos em situação cotidiana coerente, frase curta se comprovada.',
   '03 ESPECIFICAÇÕES: todos os produtos juntos, dimensões confirmadas destacadas diretamente ao lado de CADA produto correto com linhas finas e fonte bonita, moderna, discreta e legível. Identificar o nome comercial apenas quando necessário, sem escrever SKU, medidas de embalagem, números inventados ou etiquetas grandes; texto total até 10% da foto.',
   '04 BENEFÍCIOS: todos os componentes juntos; detalhar 2 ou 3 benefícios reais e complementares em microfrases de 3 a 7 palavras, pequenas e distribuídas nas margens, sem prejudicar os produtos.',
-  '05 DOR E SOLUÇÃO: foto do KIT COMPLETO de CIMA (top-down/flat lay), todos os produtos visíveis e uma frase de 4 a 8 palavras demonstrando solução real na cena.',
-  '06 PERSUASÃO: ZOOM em detalhe real do componente principal na mesma foto em que todos os demais itens permaneçam reconhecíveis; 1 ou 2 microdescrições discretas de 3 a 7 palavras perto dos detalhes, sem quadros nem mosaico.',
-  '07 TRANSFORMAÇÃO: mostrar experiência real com todos os itens e uma frase emocional moderada de 4 a 8 palavras, baseada na fotografia e sem exageros.',
-  '08 QUEBRA DE OBJEÇÕES: 2 perguntas REAIS de clientes com respostas curtas e comprovadas (até 3 se houver evidência e espaço), tipografia discreta em duas linhas por par: Pergunta? / Resposta. Não deixar a foto poluída.',
-  '09 MOCKUP: ambos juntos em fundo premium; selos Compra Segura, Entrega Rápida e Atendimento Online somente se verdadeiros.'
+  '05 DETALHES DO PRODUTO: macro editorial no componente principal real, mantendo os demais itens reconhecíveis no fundo. Microdescrição factual discreta.',
+  '06 MOCKUP DE EMBALAGEM: todos os componentes reais visíveis e embalagem verdadeira quando documentada; sem embalagem real, caixa CONCEITUAL com etiqueta Mockup ilustrativo. Não inventar conteúdo.',
+  '07 INFORMAÇÕES TÉCNICAS: produtos inteiros com até seis fatos técnicos confirmados, círculos pequenos, conectores finos e etiquetas harmonizadas sem transferir dados entre SKUs.',
+  '08 QUEBRA DE OBJEÇÕES: três perguntas reais com três respostas comprovadas em três cartões horizontais inferiores; produto completo na metade superior. Sem dados suficientes, sinalizar pendência, nunca inventar.',
+  '09 CONFIANÇA: kit completo em cenário premium com apenas os selos Compra Segura, Entrega Rápida e Atendimento Online se corresponderem às políticas reais da loja.',
  ].join('\n');
  return [
   'REDE ACHADOS BR — COMANDO PARA GERAR IMAGENS NO CHATGPT PLUS.',
@@ -45,6 +46,7 @@ export function buildKitPlusImageBrief(kit,{manualFacts={}}={}){
   'VISUAL: fotografia publicitária realista, fundo ambientado moderno HD, iluminação premium, diversidade de cenas e ângulos. Frases em português brasileiro ESPECÍFICAS DA CENA E DO PRODUTO, fonte sans-serif moderna, pequena e elegante, textos no máximo 10% da imagem e produtos como protagonistas. Sem preços, tarjas, títulos grandes, logotipos adicionados ou marca-d’água.',
   'AS NOVE IMAGENS DEVEM SEGUIR ESTA SEQUÊNCIA:',
   stages,
+  'CONTRATO VISUAL PREMIUM VIGENTE:\n'+PREMIUM_NINE_IMAGE_RULES.map((rule,i)=>String(i+1).padStart(2,'0')+' '+rule).join('\n'),
   'ENTREGA: 9 arquivos de imagem separados, com produtos completos nas nove artes. Se a interface gerar apenas uma imagem por mensagem, gere AGORA a IMAGEM 01 e depois continue sequencialmente quando eu solicitar “próxima imagem”. Não retorne apenas descrições ou prompts.',
   'Comece pela geração de imagens, respeitando a fidelidade dos produtos.'
  ].join('\n\n');
