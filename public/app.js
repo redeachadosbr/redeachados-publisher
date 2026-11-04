@@ -11946,6 +11946,7 @@ async function optimizerImagesLoad(){
     finally{optimizerImagesAutoBusy=false;optimizerImagesSetProgress();if(optimizerImagesSameSku(w))await optimizerImagesLoad();}
    };
    actions.append(generate);
+   let measureButton=null;
    if(slot===3&&image){
     const stamp=optimizerMake('button','secondary','📏 Aplicar medidas WeDrop');
     stamp.type='button';stamp.disabled=optimizerImagesAutoBusy;
@@ -11967,7 +11968,8 @@ async function optimizerImagesLoad(){
       status.textContent=msg;
      }
     };
-    actions.append(stamp);
+    stamp.classList.add('optimizer-commercial-dimensions-repair');
+    measureButton=stamp;
    }
    const adjust=optimizerMake('button','secondary','✎');adjust.type='button';
    adjust.title='Ajustar pedido da imagem '+slot;adjust.setAttribute('aria-label','Ajustar imagem '+slot);
@@ -12035,7 +12037,9 @@ async function optimizerImagesLoad(){
     buttons.append(yes,no);confirmPanel.append(buttons);card.append(confirmPanel);
     optimizerCommercialActionMessage('Confirme a exclusão da imagem '+String(slot).padStart(2,'0')+' no próprio cartão. Nenhum arquivo foi apagado ainda.');
    };
-   actions.append(remove);detail.append(actions);
+   actions.append(remove);
+   if(measureButton)actions.append(measureButton);
+   detail.append(actions);
    if(image){
     const moveSelect=optimizerMake('select','optimizer-commercial-move-select');
     moveSelect.setAttribute('aria-label','Mover imagem '+slot+' para outra posição');
