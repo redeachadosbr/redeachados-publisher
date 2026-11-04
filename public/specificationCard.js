@@ -65,7 +65,7 @@ function dimensionLine(ctx,x1,y1,x2,y2){
    y+tip*Math.sin(a)+wing*Math.sin(a+Math.PI/2));
   ctx.lineTo(x+tip*Math.cos(a)-wing*Math.cos(a+Math.PI/2),
    y+tip*Math.sin(a)-wing*Math.sin(a+Math.PI/2));
-  ctx.closePath();ctx.fill();
+  ctx.fill();
  }
  ctx.restore();
 }
