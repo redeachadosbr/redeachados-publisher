@@ -31,7 +31,7 @@
 <link rel="stylesheet" href="/optimizer-technical-compact.css?v=3-wedrop-visible">
 <link rel="stylesheet" href="/ads-premium.css?v=2.4.0-seo-ads-location">
 <link rel="stylesheet" href="/sidebar-collapse.css?v=1.0.0">
-<link rel="stylesheet" href="/optimizer-image-studio.css?v=1.0.2">
+<link rel="stylesheet" href="/optimizer-image-studio.css?v=1.0.3-chat-clean">
 <link rel="stylesheet" href="/kit-builder.css?v=20261104-direct-kit-images-v1">
 <link rel="stylesheet" href="/optimizer-technical-studio.css?v=1.2.0-compact-fields">
 <style>
@@ -802,6 +802,15 @@
               <button type="button" id="optimizerChatgptAbort" class="secondary" hidden>Pausar geração</button>
             </div>
             <p id="optimizerChatgptBridgeStatus" role="status" aria-live="polite">Gerar → receber → salvar → próxima imagem. As fotos originais da WeDrop servem como referência e não contam como imagens novas.</p>
+            <section id="optimizerChatgptCleanRecovery" class="optimizer-chat-clean-recovery" role="region" aria-label="Recuperar geração do ChatGPT com segurança" hidden>
+              <strong>⚠ ChatGPT com texto antigo — geração pausada por segurança</strong>
+              <p id="optimizerChatgptCleanRecoveryMessage">As imagens já salvas estão preservadas. Abra um novo chat, apague qualquer texto anterior do campo de mensagem e retome somente as posições pendentes.</p>
+              <div class="optimizer-chat-clean-actions">
+                <button id="optimizerChatgptOpenCleanChat" type="button" class="secondary">1. Abrir novo chat no ChatGPT</button>
+                <button id="optimizerChatgptResumeCleanChat" type="button">2. Retomar imagens pendentes</button>
+              </div>
+              <small>Confirme que o campo da mensagem está realmente vazio antes de retomar. Se a Ponte continuar pausada, na aba da extensão use “Recomeçar somente a imagem pendente”, sem selecionar “Recomeçar tudo”.</small>
+            </section>
             <details class="optimizer-chatgpt-assist-fallback"><summary>Opção manual (sem extensão)</summary>
             <div class="optimizer-chatgpt-actions">
               <button type="button" id="optimizerChatgptOpen">✦ Copiar imagem pendente e abrir ChatGPT</button>
@@ -2567,7 +2576,7 @@
 <script src="/technical-status.js?v=1.0.0-optional-coherence"></script>
 <script src="/optimizer-execution-visual.js?v=1.0.4-video-retry-confirmation"></script>
 <script src="/optimizer-execution-dialog.js?v=1.0.5-video-relink-sync"></script>
-<script src="/app.js?v=3.5.51-direct-kit-image-editor"></script>
+<script src="/app.js?v=3.5.52-chat-clean-recovery"></script>
 <script src="/pending-images.js?v=1.2.0-kit-routing"></script>
 <script type="module" src="/kit-builder.js?v=20261104-direct-kit-image-editor"></script>
 <link rel="stylesheet" href="/optimizer-variations.css?v=1.2.1-single-flow">
