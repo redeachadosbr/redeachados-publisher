@@ -3666,7 +3666,13 @@ async function optimizerImageCorrectionImportFile(file){
   }
  }
 }
-$('#optimizerImageCorrectionChoose')?.addEventListener?.('click',()=>$('#optimizerImageCorrectionFile')?.click());
+$('#optimizerImageCorrectionChoose')?.addEventListener?.('click',()=>{
+ optimizerManualThirdBaseMode=false;
+ $('#optimizerImageCorrectionFile')?.click();
+});
+$('#optimizerImageCorrectionFile')?.addEventListener?.('cancel',()=>{
+ optimizerManualThirdBaseMode=false;
+});
 $('#optimizerImageCorrectionFile')?.addEventListener?.('change',async e=>{
  const file=e.target.files?.[0];if(!file)return;
  try{await optimizerImageCorrectionImportFile(file);}
