@@ -11380,17 +11380,15 @@ globalThis.window?.addEventListener?.('message',async(event)=>{
   const file=new File([blob],'chatgpt-auto-'+String(m.slot).padStart(2,'0')+'.'+(blob.type==='image/jpeg'?'jpg':blob.type==='image/webp'?'webp':'png'),{type:blob.type});
   let prepared=await optimizerChatgptScaleFile(file);
   if(Number(m.slot)===3){
-   // A foto gerada é SOMENTE a base. Montar a ficha com números de produto
-   // confirmados, não confiar em textos/medidas imaginados pelo gerador.
-   const {addConfirmedSpecificationCard}=await import('/specificationCard.js?v=1.4.3-reference-design');
+   // O ChatGPT entrega a arte FINAL com cotas já integradas ao visual,
+   // conforme o prompt com medidas exatas. Não aplicar um SEGUNDO overlay.
    const spec=await optimizerVerifiedDimensionSpec(w);
-   if(spec){spec.productTitle=w.draftTitle||w.productTitle||'';
-    optimizerChatBridgeNotice('Imagem 03 recebida. Aplicando cotas finas e somente dados confirmados na WeDrop da SKU...');
-    const annotated=await addConfirmedSpecificationCard(prepared.blob,spec);
-    prepared={...prepared,blob:annotated,filename:'imagem-03-medidas.png'};
-   }else{
-    optimizerChatBridgeNotice('Imagem 03 sem vínculo WeDrop validado da mesma SKU ou sem medidas explícitas: nenhuma informação técnica será inventada. Revise a foto limpa.');
-   }
+   if(spec?.measurements?.length){
+    prepared={...prepared,filename:'imagem-03-arte-pronta-com-medidas.png'};
+    optimizerChatBridgeNotice('Imagem 03 recebida com cotas previstas na arte original: '+
+     spec.measurements.map(x=>x.label+' '+x.value).join(' · ')+
+     '. Importando SEM sobrepor novas etiquetas. Confira os textos visualmente antes de aprovar.');
+   }else optimizerChatBridgeNotice('Imagem 03 sem dimensões confirmadas. Importando a fotografia sem inserir números.');
   }
   const {imageBlobSha256}=await import('/chatgptUploadQueue.js?v=1.21.14-db-reconcile');
   const sha256=await imageBlobSha256(prepared.blob);
@@ -11405,8 +11403,8 @@ globalThis.window?.addEventListener?.('message',async(event)=>{
   const queue=await optimizerChatBridgeQueue();
   // The queue ACKs immediately after server confirmation. Rendering is independent.
   await queue.enqueue({...job,slot:m.slot,blob:prepared.blob,sha256,wasPadded:prepared.wasPadded,
-   filename:Number(m.slot)===3&&prepared.filename==='imagem-03-medidas.png'?
-    'chatgpt-auto-03-medidas.'+extension:
+   filename:Number(m.slot)===3&&prepared.filename==='imagem-03-arte-pronta-com-medidas.png'?
+    'chatgpt-auto-03-arte-pronta-com-medidas.'+extension:
     'chatgpt-auto-'+String(m.slot).padStart(2,'0')+'.'+extension});
  }catch(e){
   // ACK negativo informa apenas o slot. NÃO enviar RA_SITE_ABORT, pois
@@ -12156,14 +12154,14 @@ async function optimizerImagesGenerateSlot(w,slot,replace,{editCurrent=false}={}
   signal:AbortSignal.timeout(210000)
  });
  if(Number(slot)===3){
-  try{
-   result.dimensionOverlay=await optimizerAnnotateThirdGeneratedImage(w,result);
-   if(!result.dimensionOverlay.applied)
-    optimizerCommercialActionMessage('Imagem 03: '+result.dimensionOverlay.reason);
-  }catch(error){
-   throw Error('A foto-base 03 foi salva, mas a aplicação das medidas não terminou: '+
-    String(error.message||error)+'. Revise a posição 03 antes de publicar.');
-  }
+  // API gera a arte FINAL integrada com as medidas. Não desenhar overlay
+  // genérico por cima nem substituir a foto por outro arquivo.
+  const spec=await optimizerVerifiedDimensionSpec(w);
+  optimizerCommercialActionMessage(spec?.measurements?.length?
+   'Imagem 03 gerada com cotas na própria arte (valores WeDrop esperados: '+
+   spec.measurements.map(x=>x.label+' '+x.value).join(' · ')+
+   '). Confira visualmente antes de aprovar; nenhuma etiqueta adicional foi desenhada.':
+   'Imagem 03 gerada sem medidas confirmadas: confira a fotografia antes de aprovar.');
  }
  if(optimizerImagesSameSku(w)){
   optimizerImagesSavedSlots.add(slot);
