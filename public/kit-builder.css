@@ -3412,6 +3412,7 @@
  gap:16px;flex-wrap:wrap;margin-bottom:12px;
 }
 #tab-kits .kit-pending-direct-details{display:grid;gap:6px;min-width:0;flex:1}
+#tab-kits .kit-pending-direct-actions{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
 #tab-kits .kit-pending-direct-eyebrow{font-size:11px;letter-spacing:.065em;color:#4573a6;font-weight:800}
 #tab-kits .kit-pending-direct-details strong{font-size:21px;color:#143b6b}
 #tab-kits .kit-pending-direct-details p{font-size:14px;margin:0;color:#214e7c;overflow-wrap:anywhere}
@@ -3437,5 +3438,6 @@
 @media(max-width:700px){
  #tab-kits .kit-pending-direct-editor{padding:13px;border-radius:14px}
  #tab-kits .kit-pending-direct-details strong{font-size:17px}
- #tab-kits .kit-pending-direct-header > button{width:100%}
+ #tab-kits .kit-pending-direct-actions{width:100%}
+ #tab-kits .kit-pending-direct-actions > button{flex:1;min-width:150px}
 }
