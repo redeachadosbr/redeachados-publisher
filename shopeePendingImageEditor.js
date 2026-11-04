@@ -10,12 +10,13 @@ export function classifyPendingImageEditor({itemId,sku='',title='',linkedKits=[]
   kitSkus:unique.map(k=>k.kitSku),
   message:'O anúncio possui vínculos com vários kits. Confira o Item ID e escolha o kit antes de editar.'};
  if(unique.length===1){
-  const kit=unique[0],editable=kit.optimized!==true&&kit.publication!=='published';
+  // Publicação concluída bloqueia CRIAR outro anúncio, não revisar as imagens
+  // do Item ID existente (já confirmado ao vivo na rota de origem).
+  const kit=unique[0],editable=true;
   return {kind:'kit',itemId:id,kitSku:kit.kitSku,
-   mainSku:String(kit.mainSku||''),title:String(kit.title||title||''),
+   mainSku:String(kit.mainSku||''),modelId:String(kit.modelId||'0'),title:String(kit.title||title||''),
    editable,linkSource:'saved_item_id',
-   message:editable?'Kit vinculado ao Item ID na loja. Abrir a etapa de imagens.':
-    'Kit vinculado ao Item ID, mas a publicação ou otimização foi finalizada. Conferir sem modificar.'};
+   message:'Kit vinculado ao Item ID na loja. Abrir a edição das imagens deste anúncio existente, sem criar nova publicação.'};
  }
  const name=String(title||'').trim(),code=String(sku||'').trim();
  const probable=/^(?:kit|combo)(?:\b|\s*[-:/])/i.test(name)||
