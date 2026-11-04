@@ -5,7 +5,7 @@ import {CHATGPT_IMAGE_SCENES,createChatGptPrompts} from '../public/chatgptPrompt
 const approved=[
  "Imagem 01 — Capa: produto original ocupando aproximadamente 85% a 90% da imagem, fundo limpo e apresentação profissional. imagem com fundo ambientado",
  "Imagem 02 — Uso real: mostrar o produto em um ambiente cotidiano de utilização, com composição diferente da capa. imagem com fundo ambientado. FRASES CURTAS DE CONVERSÃO",
- "Imagem 03 — Arte comercial premium 1200x1200 como referência aprovada: mostrar produto original grande e inteiro em cenário moderno HD, com área livre na direita e abaixo para cotas visuais. A IA gera apenas a fotografia limpa; o Shopee Manager incorpora UMA ÚNICA VEZ as medidas confirmadas em setas brancas e boxes arredondados brancos com borda amarela e tipografia azul-marinho. Não desenhar medidas ou selos pela IA.",
+ "Imagem 03 — ARTE COMERCIAL FINAL 1200x1200, produto real inteiro em cenário moderno, com dimensões verificadas da WeDrop já integradas à imagem: setas BRANCAS e boxes BRANCOS arredondados com BORDA AMARELA e valores grandes AZUL-MARINHO. Medidas na peça principal, tipografia elegante e sem duplicar etiquetas. Nunca inventar números; se não houver medidas confirmadas, gerar apenas a fotografia limpa.",
  "Imagem 04 — Benefícios: produto protagonista em foto ambientada; destacar 2 ou 3 benefícios ESPECÍFICOS e comprovados por microfrases de 3 a 7 palavras cada, bem distribuídas nas margens, fonte bonita e moderna, sem títulos, listas ou elementos que escondam o produto.",
  "Imagem 05 — Dor e solução: fotografar o PRODUTO INTEIRO VISTO DE CIMA (top-down 90°, flat lay), ambientado com contexto real de uso. Escrever UMA frase de 4 a 8 palavras mostrando exatamente a solução prática do produto, discreta e fora do objeto.",
  "Imagem 06 — Persuasão: ZOOM MACRO fotográfico em textura, acabamento, encaixe, estrutura ou detalhe realmente existente, mantendo parte reconhecível do produto. Usar 1 ou 2 microdescrições de 3 a 7 palavras, próximas ao detalhe, fonte pequena moderna, sem mosaico, setas grandes nem publicidade genérica.",
@@ -43,23 +43,23 @@ test('o Motor Matriz muda somente a imagem 03 e usa o texto colado da WeDrop',()
  assert.match(result.prompts[2],/Sem personagens/);
  const p=result.prompts[2];
  assert.deepEqual(result.confirmedDimensions.measurements.map(x=>x.value),['75 cm','63 cm','117 cm']);
- assert.match(p,/FOTOGRAFIA BASE SEM QUALQUER TEXTO/);
- assert.match(p,/ENTREGAR SÓ FOTOGRAFIA/);
- assert.doesNotMatch(p,/ALTURA: 75 cm|LARGURA: 63 cm|COMPRIMENTO: 117 cm/);
+ assert.match(p,/ARTE FINAL PRONTA/);
+ assert.match(p,/ENTREGAR ARTE FINAL PRONTA/);
+ assert.match(p,/ALTURA: 75 cm; LARGURA: 63 cm; COMPRIMENTO: 117 cm/);
  for(const disallowed of ['66 cm','100 cm','27 cm','selim 48'])
   assert(!p.includes(disallowed));
- assert.match(p,/NENHUMA medida, número, palavra/);
+ assert.match(p,/NÃO ALTERAR ALGARISMOS/);
  assert.match(result.prompts[0],/INJETAR_CUSTOM/);
  assert.match(result.prompts[0],/INJETAR_PROMPT_MESTRE/);
  assert.doesNotMatch(result.prompts[2],/INJETAR_NOTA/); // notas antigas não podem voltar a pedir texto na imagem 03
- assert.match(p,/ambiente moderno HD visível/);
+ assert.match(p,/ambiente real HD/);
 });
 test('sem medidas confirmadas a foto 03 não pode inferir dimensões',()=>{
  const {prompts,confirmedDimensions}=createChatGptPrompts({
   sku:'2392',supplierSourceText:'ALTURA\n66cm\nLARGURA\n100cm\nCOMPRIMENTO\n27cm'
  });
  assert.equal(confirmedDimensions,null);
- assert.match(prompts[2],/FOTOGRAFIA BASE SEM QUALQUER TEXTO/);
+ assert.match(prompts[2],/SEM DIMENSÕES CONFIRMADAS/);
  assert(!prompts[2].includes('66 cm'));
 });
 
@@ -81,6 +81,7 @@ test('Imagem 03 mantém profundidade, capacidade e peso distintos e apenas se co
   ['Capacidade','20 L'],['Suporta','5 kg'],['Peso','1,550 kg']
  ]);
  const p=createChatGptPrompts({supplierSourceText:source}).prompts[2];
- assert.doesNotMatch(p,/PROFUNDIDADE: 26 cm|Capacidade: 20 L|Peso: 1,550 kg/);
+ assert.match(p,/PROFUNDIDADE: 26 cm/);
+ assert.doesNotMatch(p,/Capacidade: 20 L|Peso: 1,550 kg/);
  assert(!p.includes('COMPRIMENTO: 26 cm'));
 });
