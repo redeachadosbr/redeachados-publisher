@@ -10945,7 +10945,7 @@ async function optimizerChatgptMakeBrief(w,{defaultOnly=false}={}){
  const confirmedDimensionSpec=trustedText?confirmedSpecCard({
   sourceText:trustedText,sku:w.sku,sourceEvidenceSku:evidence.sku,
   sourceSaved:true,supplierMatchedBy:w.supplierProduct?.matchedBy||'',
-  catalogMeasurements:w.supplierProduct?.catalogMeasurements||null
+  catalogMeasurements:w.supplierProduct?.catalogMeasurements||w.supplierProduct?.product_data?.catalogMeasurements||null
  }):null;
  if(/(?:^|\n)\s*[-*•]?\s*(?:dimensões|dimensoes|medidas)\s*[:\-]/im.test(trustedText)&&
     !confirmedDimensionSpec?.measurements?.length&&
@@ -11007,7 +11007,7 @@ async function optimizerVerifiedDimensionSpec(w){
   sourceEvidenceSku:source.sku||'',
   sourceSaved:Boolean(source.updatedAt),
   supplierMatchedBy:w.supplierProduct?.matchedBy||'',
-  catalogMeasurements:w.supplierProduct?.catalogMeasurements||null
+  catalogMeasurements:w.supplierProduct?.catalogMeasurements||w.supplierProduct?.product_data?.catalogMeasurements||null
  });
  // Se já há uma linha de medidas, não confirmar uma foto-base sem cotas
  // silenciosamente. Datas e medidas inválidas exigem revisão do usuário.
