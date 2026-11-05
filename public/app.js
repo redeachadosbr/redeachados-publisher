@@ -11169,10 +11169,12 @@ async function optimizerCommercialRequestChatgptSlot(w,slot,{editMode=''}={}){
   if(!optimizerImagesSameSku(w))return;
   const original=(current.images||[]).find(x=>Number(x.slot)===slot);
   const shaToKeep=original?.sha256?{[slot]:original.sha256}:{};
+  if(slot===3)
+   await optimizerBridgeRetireSameSkuForNewThird(w,brief,(current.images||[]).map(x=>Number(x.slot)));
   const {isVisualReferenceError}=await import('/optimizer-visual-reference.js?v=20261105-shopee-source-safe-v2');
   const refs=(brief.referenceCandidates||[]).slice(0,4);
   if(!refs.length)throw Error('Nenhuma foto oficial da Shopee corresponde ao Item ID desta SKU.');
-  let lastError='';
+  let lastError='',busyRetried=false;
   optimizerChatBridgeRetryingSource=true;
   for(let i=0;i<refs.length;i++){
    if(!optimizerImagesSameSku(w))throw Error('A SKU mudou durante a tentativa. Nenhuma imagem foi alterada.');
@@ -11196,6 +11198,15 @@ async function optimizerCommercialRequestChatgptSlot(w,slot,{editMode=''}={}){
     return;
    }
    lastError=String(reply.error||'A extensão não confirmou a origem da fotografia.');
+   // Ponte pode conservar o nonce real da SKU enquanto o Manager tem outro.
+   // Recuperar a sessão REAL, encerrá-la por nonce e repetir somente 03 uma vez.
+   if(slot===3&&!busyRetried&&optimizerBridgeSkuHasRunningJob(lastError)){
+    busyRetried=true;
+    await optimizerChatBridgeRelease('Ponte ocupada: reconciliando a execução real da mesma SKU antes de solicitar a imagem 03.');
+    await optimizerBridgeRetireSameSkuForNewThird(w,brief,(current.images||[]).map(x=>Number(x.slot)));
+    optimizerCommercialActionMessage('Execução antiga da SKU liberada. Tentando novamente somente a imagem 03 com as medidas WeDrop.');
+    i--;continue;
+   }
    if(!isVisualReferenceError(lastError)||i===refs.length-1)break;
    optimizerCommercialActionMessage('A Ponte recusou uma URL da fotografia Shopee. '+ 
     'Conferindo outro CDN oficial do MESMO anúncio para a imagem '+slot+
@@ -11772,6 +11783,36 @@ function optimizerBridgeRecoverFromExtension(payload){
   window.postMessage({kind:'RA_SITE_CONTINUE',requestId,payload},location.origin);
  });
 }
+// Erro da extensão: o START não pode criar nova execução enquanto uma
+// sessão anterior da MESMA SKU ainda é registrada pelo Chrome.
+function optimizerBridgeSkuHasRunningJob(error){
+ return /(?:esta|a)\s+sku\s+j[aá]\s+possui\s+(?:uma\s+)?execu[cç][aã]o|(?:use|usar)\s+retomar\s+ou\s+parar|sku.{0,60}(?:already|active|ocupad[ao])/i
+  .test(String(error||''));
+}
+// Ao pedir NOVA imagem 03, primeiro perguntar à extensão pelo nonce REAL
+// da sessão da mesma SKU. Só esse nonce pode ser encerrado; um nonce local
+// já substituído não libera uma execução remota. Nunca tocar nos arquivos.
+async function optimizerBridgeRetireSameSkuForNewThird(w,brief,savedSlots=[]){
+ const payload={
+  sku:String(w.sku),itemId:String(w.itemId),modelId:String(w.modelId),
+  completed:[...new Set(savedSlots.filter(n=>Number.isInteger(n)&&n>=1&&n<=9))],
+  imageUrl:brief.bridgeOriginal,prompts:brief.prompts
+ };
+ for(let attempt=0;attempt<4;attempt++){
+  if(!optimizerImagesSameSku(w))throw Error('SKU mudou durante a reconciliação da Ponte.');
+  const result=await optimizerBridgeRecoverFromExtension(payload);
+  if(!optimizerImagesSameSku(w))throw Error('SKU mudou durante a verificação da sessão.');
+  if(['NO_RECOVERABLE_JOB','ALREADY_COMPLETE'].includes(result?.reason))return;
+  if(!result?.ok||typeof result.nonce!=='string'||!result.nonce)
+   throw Error('A Ponte não informou a execução ativa desta SKU. Abra o ícone da extensão e use Parar para liberar a imagem 03. Não reinicie as imagens 01 e 02. '+String(result?.error||result?.reason||'').slice(0,160));
+  window.postMessage({kind:'RA_SITE_ABORT',nonce:result.nonce,sku:String(w.sku),
+   reason:'Nova imagem 03 pedida pelo usuário, com as medidas WeDrop atualizadas. Preservar posições já salvas.'},location.origin);
+  // Não assumir que postMessage liberou a extensão. Consultar novamente
+  // a Ponte e impedir um START concorrente até que ela confirme o término.
+  await new Promise(resolve=>setTimeout(resolve,450));
+ }
+ throw Error('A Ponte ainda mantém uma execução da mesma SKU. Clique em Parar no ícone da Ponte ChatGPT e depois em Gerar 03. As imagens 01 e 02 continuam salvas.');
+}
 // Impedir execução duplicada mesmo se a galeria reativar o botão durante uma consulta.
 let optimizerChatgptContinueBusy=false;
 // Clique principal executa DIRETAMENTE a continuação, sem outro botão oculto.
@@ -11861,11 +11902,12 @@ async function optimizerChatgptContinueFromServer(){
    notify('Chat vazio confirmado. Criando sessão nova da imagem '+first+
     '/09 com roteiro atualizado da SKU '+w.sku+'. '+stored.length+'/9 imagens salvas permanecem intactas.');
   }else if(freshThird){
-   // O slot 03 já tinha um comando incorreto em sessões anteriores.
-   // Não despertar o prompt guardado no Chrome: usar sempre o pacote
-   // recém-verificado com as medidas exatas da WeDrop da SKU atual.
+   // Antes de um START novo, consultar a extensão, recuperar seu nonce real
+   // e finalizar SOMENTE a execução anterior desta SKU, caso ela exista.
+   // Nenhuma foto no servidor é excluída, nem se retoma um prompt antigo.
+   await optimizerBridgeRetireSameSkuForNewThird(w,brief,stored);
    recovered={reason:'NO_RECOVERABLE_JOB'};
-   notify('Imagem 03/09: enviando um comando NOVO com as dimensões WeDrop verificadas. As '+stored.length+' fotos salvas permanecerão intactas.');
+   notify('Imagem 03/09: sessão anterior da Ponte reconciliada. Criando NOVO comando com cotas WeDrop verificadas, preservando '+stored.length+'/9 imagens.');
   }else{
    // A Ponte pode rejeitar um domínio Shopee mesmo quando a prévia mostra a
    // foto. Repetir somente a leitura da referência, jamais apagar imagens.
@@ -11921,6 +11963,24 @@ async function optimizerChatgptContinueFromServer(){
     }},location.origin);
     startResult=await startAck;
     if(startResult?.ok)break;
+    if(optimizerBridgeSkuHasRunningJob(startResult?.error)){
+     await optimizerChatBridgeRelease('Ponte ainda tem execução ativa: conciliando nonce antes da nova imagem 03.');
+     await optimizerBridgeRetireSameSkuForNewThird(w,brief,stored);
+     // Novo comando apenas UMA vez; não deixar um clique virar loop infinito.
+     optimizerChatBridgeNonce=crypto.randomUUID();optimizerChatBridgeSku=w.sku;
+     sessionStorage.setItem(RA_CHAT_BRIDGE_SESSION_KEY,optimizerChatBridgeNonce);
+     optimizerChatBridgeRemember(w,missing);
+     optimizerChatBridgeBusy=true;optimizerChatBridgeStartConfirmed=false;
+     const secondAck=optimizerWaitBridgeReply('RA_EXTENSION_START_RESULT',optimizerChatBridgeNonce,18000);
+     window.postMessage({kind:'RA_SITE_START',payload:{
+      nonce:optimizerChatBridgeNonce,sku:w.sku,itemId:String(w.itemId),modelId:String(w.modelId),
+      imageUrl:referenceUrl,prompts:brief.prompts,completed:stored
+     }},location.origin);
+     startResult=await secondAck;
+     if(startResult?.ok)break;
+     throw Error('A Ponte ainda está ocupada na SKU '+w.sku+
+      '. Abra o ícone da extensão, use Parar na tarefa anterior e depois Gerar 03. As imagens 01 e 02 foram preservadas. '+String(startResult?.error||'').slice(0,180));
+    }
     if(!isVisualReferenceError(startResult?.error)||i===refs.length-1)
      throw Error('A Ponte não confirmou a nova sessão: '+(startResult?.error||'sem confirmação'));
     notify('Foto rejeitada pela Ponte. Alternando a referência original da mesma SKU, sem reiniciar posições concluídas.');
