@@ -226,9 +226,10 @@ test('imagem 03 coloca os números WeDrop no começo do prompt, antes da descri�
   sourceText:'Dimensões: 10 x 10 x 14'});
  const result=createChatGptPrompts({title:'Processador de Alimentos Manual 500ml',
   supplierSourceText:'Dimensões: 10 x 10 x 14',confirmedDimensionSpec:confirmed});
- const first=result.prompts[2].split('\\n\\n')[0];
- assert.match(first,/IMAGEM 03\/09 — MEDIDAS EXATAS WEDROP/);
- assert.match(first,/ALTURA: 10 cm; LARGURA: 10 cm; COMPRIMENTO: 14 cm/);
+ const paragraphs=result.prompts[2].split('\\n\\n');
+ assert.match(paragraphs[0],/ETAPA ATUAL EXCLUSIVA — IMAGEM 03\/09/);
+ assert.match(paragraphs[1],/IMAGEM 03\/09 — MEDIDAS EXATAS WEDROP/);
+ assert.match(paragraphs[1],/ALTURA: 10 cm; LARGURA: 10 cm; COMPRIMENTO: 14 cm/);
  assert.match(result.prompts[2],/OBRIGATÓRIO: ENTREGAR A IMAGEM 03 PRONTA/);
  assert.doesNotMatch(result.prompts[2],/\\\\n\\\\n/,'prompt não deve conter barra+n literal');
 });
