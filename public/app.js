@@ -4451,18 +4451,46 @@ globalThis.RAKitRefreshOptimizerWorkflow=async({kitSku,sku,itemId,modelId}={})=>
 globalThis.RAKitSyncApprovedFiscal=async({sku,itemId,modelId}={})=>{
  const w=optimizerWorkflowPlan;
  if(!optimizerKitWorkflowActive()||!w||w.sku!==sku||
-   String(w.itemId)!==String(itemId)||String(w.modelId||'0')!==String(modelId||'0'))
+    String(w.itemId)!==String(itemId)||String(w.modelId||'0')!==String(modelId||'0'))
   return {ok:false,error:'SKU/Item ID do fluxo fiscal não conferem.'};
- if(w.stages?.find(x=>x.key==='fiscal')?.reviewed===true)return {ok:true,already:true};
+ const link=w.kitOptimization;
+ const local=globalThis.RAKitWizardExecutionReviews?.();
+ const checked=String(local?.kitSku||'')===String(link?.kitSku||'')&&
+  local?.stages?.includes('fiscal');
  try{
-  // Reutiliza os campos fiscais originais, sem duplicar formulário nem
-  // transformar o check local em aprovação fictícia.
+  // O check verde da etapa 08 nao confirma envio. No clique da etapa 10,
+  // recuperar novamente o fiscal da SKU principal salva no kit, sem usar
+  // campos remanescentes de outro anuncio na aba.
+  let tax={...(w.tax||{})};
+  if(checked){
+   const params=new URLSearchParams({kitSku:String(link.kitSku),sku:String(sku)});
+   const preset=await json('/api/shopee/kits/fiscal-preset?'+params,{
+    signal:AbortSignal.timeout(30000)});
+   if(String(preset?.sku)!==String(sku)||String(preset?.kitSku)!==String(link.kitSku))
+    throw Error('Ficha fiscal recuperada pertence a outra SKU ou kit.');
+   const suggested=preset.taxSuggestion||{},saved=preset.taxDraft||{};
+   tax={...tax,...suggested,...saved};
+   // NCM e CEST sao exclusivos da SKU WeDrop atual. 00 nao e CEST valido.
+   if(/^\d{8}$/.test(String(suggested.ncm||'')))tax.ncm=suggested.ncm;
+   if(Object.hasOwn(suggested,'cest'))tax.cest=suggested.cest;
+   if(!/^\d{8}$/.test(String(tax.ncm||'')))
+    throw Error('NCM da SKU '+sku+' ausente ou sem oito digitos no catalogo WeDrop.');
+   if(!/^[0-8]$/.test(String(tax.origin||'')))
+    throw Error('Origem fiscal da SKU '+sku+' ainda nao foi confirmada na etapa Dados fiscais.');
+  }
+  // Revisao previamente checada so pode ser reutilizada se o conteudo
+  // persistido ainda coincidir com a origem exata da SKU.
+  const same=Object.keys(tax).every(key=>String(tax[key]??'')===String(w.tax?.[key]??''));
+  if(w.stages?.find(x=>x.key==='fiscal')?.reviewed===true&&w.tax&&same)
+   return {ok:true,already:true};
   const result=await optimizerSaveChecklistReview({
-   sku,itemId,modelId,stage:'fiscal',reviewed:true,tax:optimizerFiscalValues()
+   sku,itemId,modelId,stage:'fiscal',reviewed:true,tax
   });
   if(result?.saved!==true||result.stages?.find(x=>x.key==='fiscal')?.reviewed!==true)
-   throw Error('O servidor não confirmou os dados fiscais aprovados.');
-  optimizerWorkflowPlan={...w,...result,stages:result.stages};
+   throw Error('O servidor nao confirmou os dados fiscais aprovados.');
+  if(optimizerWorkflowPlan!==w)
+   throw Error('A SKU mudou durante a sincronizacao fiscal. Nenhum envio foi iniciado.');
+  optimizerWorkflowPlan={...w,...result,tax:result.tax||tax,stages:result.stages};
   return {ok:true};
  }catch(error){return {ok:false,error:String(error.message||error)};}
 };
@@ -6226,6 +6254,42 @@ async function kitAutoSweepPreparePlan(target){
  }
  throw Error('A preparação da próxima etapa não terminou após a conferência. Nenhum reenvio foi iniciado.');
 }
+// A auditoria pode mostrar pendencias mesmo quando o plano completo nao
+// possui nenhuma mudanca publicavel. Consultar fiscal e desconto ISOLADOS
+// antes de declarar que nao ha trabalho; cada previa exige os mesmos
+// controles de SKU, campanha, custo e autorizacao do servidor.
+async function kitAutoSweepChoosePlan(target,audit,firstStage='all'){
+ const scope=$('#optimizerExecutionScope');
+ if(!scope)return {plan:null,diagnostics:['Seletor de execucao indisponivel.']};
+ const stages=(audit?.stages||[]).filter(x=>x.id!=='final'&&
+  !['confirmed','not_applicable'].includes(x.status));
+ const pending=new Set(stages.map(x=>x.id));
+ const candidates=[firstStage,
+  ...(pending.has('fiscal')?['fiscal']:[]),
+  ...(pending.has('discount')?['discount']:[])].filter((stage,i,list)=>list.indexOf(stage)===i);
+ const diagnostics=[];
+ for(const stage of candidates){
+  if(!kitAutoSweepMatches(target))return {plan:null,diagnostics:['O Item ID mudou durante a preparacao.']};
+  if(![...scope.options].some(option=>option.value===stage))continue;
+  scope.value=stage;
+  const plan=await kitAutoSweepPreparePlan(target);
+  if(!kitAutoSweepMatches(target))return {plan:null,diagnostics:['O Item ID mudou durante a preparacao.']};
+  if(plan?.selectedStage===stage&&plan.sku===target.sku&&
+     String(plan.itemId)===String(target.itemId)&&plan.canExecute===true&&
+     Array.isArray(plan.actions)&&plan.actions.length){
+   if(stage!==firstStage)optimizerExecNotice('Plano geral sem alteracoes prontas. Etapa '+stage+
+    ' validada separadamente para a mesma SKU; demais pendencias preservadas.','info');
+   return {plan,diagnostics};
+  }
+  const cause=optimizerExecPrepareError||
+   (plan?.blocked||[]).join(' · ')||
+   (plan?.warnings||[]).filter(x=>/pendente|fiscal|desconto|campanha/i.test(x)).slice(0,2).join(' · ')||
+   'Nao existe alteracao aprovada diferente do anuncio atual.';
+  diagnostics.push(stage+': '+cause);
+ }
+ scope.value=firstStage;
+ return {plan:null,diagnostics};
+}
 function kitAutoSweepResume(target,firstFingerprint=''){
  const key=kitAutoSweepKey(target);
  if(kitAutoSweepActive.has(key)||!kitAutoSweepMatches(target))return;
@@ -6297,16 +6361,11 @@ function kitAutoSweepResume(target,firstFingerprint=''){
     optimizerExecNotice('Varredura encontrou '+pending.join(', ')+
      (onlyDiscount?'. Preparando exclusivamente Minha Promoção.':
       '. Preparando somente os campos ainda diferentes e já aprovados.'),'info');
-    const plan=await kitAutoSweepPreparePlan(target);
+    const prepared=await kitAutoSweepChoosePlan(target,audit,executionScope);
     if(!kitAutoSweepMatches(target))return;
-    if(!plan||plan.selectedStage!==executionScope||plan.sku!==target.sku||
-       String(plan.itemId)!==String(target.itemId))
-     throw Error(optimizerExecPrepareError||'Não foi possível preparar a próxima execução.');
-    if(onlyDiscount&&!(plan.actions||[]).some(a=>a==='kit_discount'||a==='discount'))
-     throw Error('Desconto pendente, mas ainda não existe autorização de Minha Promoção válida para execução exclusiva.');
-    if(!plan.canExecute||!(plan.actions||[]).length)
-     throw Error('Etapas ainda pendentes, mas sem nova ação publicável: '+pending.join(', ')+
-      '. '+(plan.blocked||[]).join(' · '));
+    const plan=prepared.plan;
+    if(!plan)throw Error('Pendencias ainda sem acao autorizada: '+pending.join(', ')+
+     '. '+prepared.diagnostics.join(' | '));
     if(attempted.has(plan.fingerprint))
      throw Error('O mesmo plano ainda não foi confirmado pela Shopee. Reenvio duplicado impedido. Pendências: '+pending.join(', '));
     attempted.add(plan.fingerprint);persist();
@@ -6363,9 +6422,10 @@ globalThis.RAKitExecutePendingAllStages=async({kitSku,sku,itemId,modelId}={})=>{
    kitAutoSweepResume({kitSku,sku,itemId,modelId});
    return {ok:true,submitted:true,alreadyRunning:true,message:'Execução em andamento: varredura 9/9 automática ativada sem reenvio.'};
   }
-  const p=await kitAutoSweepPreparePlan({kitSku,sku,itemId,modelId});
-  if(!p||p.selectedStage!==executionScope||p.sku!==sku||String(p.itemId)!==String(itemId))
-   return {ok:false,error:optimizerExecPrepareError||'A prévia completa ainda não foi carregada. Nenhuma publicação foi iniciada.'};
+  const prepared=await kitAutoSweepChoosePlan({kitSku,sku,itemId,modelId},audit,executionScope);
+  const p=prepared.plan;
+  if(!p)return {ok:false,error:'A auditoria encontrou pendencias, mas ainda nao ha acao aprovada para enviar. '+
+   prepared.diagnostics.join(' | ')+'. Nenhuma publicacao foi iniciada.'};
   const pending=(audit?.stages||[]).filter(x=>!['confirmed','not_applicable'].includes(x.status))
    .map(x=>x.label);
   const actions=(p.actions||[]);
