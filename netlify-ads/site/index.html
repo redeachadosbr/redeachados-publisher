@@ -310,7 +310,18 @@
       <div class="actions non-print"><button type="button" id="saveChangeBtn" class="btn-primary">✓ Salvar alteração com data e hora</button><button type="button" id="exportChangesBtn" class="btn-secondary">Exportar alterações CSV</button></div>
       <div class="tiny" id="changeStatus" aria-live="polite">O registro é manual; a hora corresponde ao clique em Salvar, não necessariamente à aplicação da mudança na Shopee.</div>
       <hr style="border:0;border-top:1px solid #34363d;margin:18px 0">
-      <div class="hist-toolbar"><div class="field"><label for="changeFilter">Filtrar histórico por produto</label><select id="changeFilter"><option value="">Todos os produtos</option></select></div><div class="field"><label for="apiHistoryFilter">Origem dos dados</label><select id="apiHistoryFilter"><option value="changes">Modificações manuais</option><option value="ads">Consultas da API (blocos)</option></select></div></div>
+      <div class="hist-toolbar">
+        <div class="field"><label for="adsHistoryStatusFilter">Situação atual nos Ads</label>
+          <select id="adsHistoryStatusFilter">
+            <option value="">Todos os produtos</option>
+            <option value="active">Em andamento nos Ads</option>
+            <option value="inactive">Fora dos Ads (retirados / nunca anunciados)</option>
+            <option value="unknown">Não informado / não confirmado</option>
+          </select></div>
+        <div class="field"><label for="changeFilter">Filtrar histórico por produto</label><select id="changeFilter"><option value="">Todos os produtos</option></select></div>
+        <div class="field"><label for="apiHistoryFilter">Origem dos dados</label><select id="apiHistoryFilter"><option value="changes">Modificações manuais</option><option value="ads">Consultas da API (blocos)</option></select></div>
+      </div>
+      <p class="tiny">A situação exibida é a atual: prioriza a API desta sessão quando disponível e, caso contrário, usa o status manual. Registros de produtos retirados continuam no histórico.</p>
       <div class="table-scroll" style="margin-top:10px"><table class="history-table"><thead id="changeTableHead"><tr><th>Data e hora</th><th>SKU / Produto</th><th>Alterações</th><th>Observação</th><th>Ações</th></tr></thead><tbody id="changeHistoryRows"></tbody></table></div>
       <p class="tiny">Histórico local deste navegador, incluído no backup JSON. Para armazenamento permanente e compartilhado, será necessária a integração com banco de dados.</p>
     </div>
@@ -822,41 +833,56 @@ function savedProductName(sku,storedName=''){
  if(name)return name;
  return readProducts().find(p=>p.sku===sku)?.name||'Produto não encontrado no cadastro atual';
 }
+function historyAdsStatus(sku,productsBySku){
+ const product=productsBySku.get(String(sku||'').trim());
+ return product?effectiveAdsStatus(product):'unknown';
+}
+function historyStatusMatches(status,filter){
+ return !filter||(filter==='active'&&status==='active')||
+ (filter==='inactive'&&(status==='removed'||status==='never'))||
+ (filter==='unknown'&&status==='unknown');
+}
+function historyStatusText(status){
+ return ({active:'Em Ads',removed:'Retirado dos Ads',never:'Nunca anunciado',unknown:'Não confirmado'})[status]||'Não confirmado';
+}
 function refreshChangeSelects(){
- const products=readProducts();
- const names=new Map(products.map(p=>[p.sku,p.name]));
+ const products=readProducts(),productsBySku=new Map(products.map(p=>[p.sku,p]));
  const registration=$('changeSku'),currentRegistration=registration.value;
  registration.innerHTML='<option value="">Selecione um produto cadastrado</option>'+
   products.map(p=>'<option value="'+safe(p.sku)+'">'+safe(p.sku+' · '+p.name)+'</option>').join('');
  if([...registration.options].some(x=>x.value===currentRegistration))registration.value=currentRegistration;
  const filter=$('changeFilter'),currentFilter=filter.value;
- const source=$('apiHistoryFilter').value;
+ const source=$('apiHistoryFilter').value,statusFilter=$('adsHistoryStatusFilter').value;
  const rows=source==='ads'?getAdsSnapshots():getChanges();
  const bySku=new Map();
  for(const entry of rows){
   const sku=String(entry.sku||'').trim();
-  if(!sku)continue;
+  if(!sku||!historyStatusMatches(historyAdsStatus(sku,productsBySku),statusFilter))continue;
   if(!bySku.has(sku))bySku.set(sku,savedProductName(sku,entry.productName||''));
  }
  filter.innerHTML='<option value="">Todos com histórico ('+bySku.size+')</option>'+
   [...bySku.entries()].sort((a,b)=>a[1].localeCompare(b[1],'pt-BR')).map(([sku,name])=>
    '<option value="'+safe(sku)+'">'+safe(sku+' · '+name)+'</option>').join('');
  if([...filter.options].some(x=>x.value===currentFilter))filter.value=currentFilter;
+ else filter.value='';
 }
 function renderChangeHistory(){
  refreshChangeSelects();
  const sku=$('changeFilter').value;
- const type=$('apiHistoryFilter').value;
+ const type=$('apiHistoryFilter').value,statusFilter=$('adsHistoryStatusFilter').value;
+ const productsBySku=new Map(readProducts().map(p=>[p.sku,p]));
+ const keep=x=>(!sku||x.sku===sku)&&historyStatusMatches(historyAdsStatus(x.sku,productsBySku),statusFilter);
+ const statusHtml=x=>'<small> · '+safe(historyStatusText(historyAdsStatus(x.sku,productsBySku)))+'</small>';
  const head=$('changeTableHead'),body=$('changeHistoryRows');
  if(type==='ads'){
   head.innerHTML='<tr><th>Consultado em</th><th>Produto / Campanha</th><th>Período</th><th>Investimento</th><th>ROAS</th></tr>';
-  const a=getAdsSnapshots().filter(x=>!sku||x.sku===sku).sort((a,b)=>b.syncedAt.localeCompare(a.syncedAt));
-  body.innerHTML=a.length?a.map(x=>'<tr><td>'+safe(fmtStamp(x.syncedAt))+'</td><td><strong>'+safe(x.sku||'')+'</strong><div>'+safe(savedProductName(x.sku,x.productName))+'</div><small>Campanha '+safe(x.campaignId)+'</small></td><td>'+safe(x.start)+' a '+safe(x.end)+'</td><td>'+money(Number(x.expense||0))+'</td><td>'+safe(x.roas===null||x.roas===undefined?'—':roas(Number(x.roas)))+'</td></tr>').join(''):'<tr><td colspan="5">Nenhuma consulta API salva para este filtro.</td></tr>';
+  const a=getAdsSnapshots().filter(keep).sort((a,b)=>b.syncedAt.localeCompare(a.syncedAt));
+  body.innerHTML=a.length?a.map(x=>'<tr><td>'+safe(fmtStamp(x.syncedAt))+'</td><td><strong>'+safe(x.sku||'')+'</strong><div>'+safe(savedProductName(x.sku,x.productName))+statusHtml(x)+'</div><small>Campanha '+safe(x.campaignId)+'</small></td><td>'+safe(x.start)+' a '+safe(x.end)+'</td><td>'+money(Number(x.expense||0))+'</td><td>'+safe(x.roas===null||x.roas===undefined?'—':roas(Number(x.roas)))+'</td></tr>').join(''):'<tr><td colspan="5">Nenhuma consulta API salva para este filtro.</td></tr>';
   return;
  }
  head.innerHTML='<tr><th>Data e hora</th><th>SKU / Produto</th><th>Alterações</th><th>Observação</th><th>Ações</th></tr>';
- const a=getChanges().filter(x=>!sku||x.sku===sku).sort((a,b)=>b.timestamp.localeCompare(a.timestamp));
- body.innerHTML=a.length?a.map(x=>'<tr><td>'+safe(fmtStamp(x.timestamp))+'</td><td><strong>'+safe(x.sku)+'</strong><div>'+safe(savedProductName(x.sku,x.productName))+'</div></td><td>'+safe(x.changes.join(' + '))+'</td><td>'+safe(x.note||'—')+'</td><td><button class="btn-secondary mini" data-del-change="'+safe(x.id)+'" type="button">Excluir</button></td></tr>').join(''):'<tr><td colspan="5">Ainda não há alterações registradas para este filtro.</td></tr>';
+ const a=getChanges().filter(keep).sort((a,b)=>b.timestamp.localeCompare(a.timestamp));
+ body.innerHTML=a.length?a.map(x=>'<tr><td>'+safe(fmtStamp(x.timestamp))+'</td><td><strong>'+safe(x.sku)+'</strong><div>'+safe(savedProductName(x.sku,x.productName))+statusHtml(x)+'</div></td><td>'+safe(x.changes.join(' + '))+'</td><td>'+safe(x.note||'—')+'</td><td><button class="btn-secondary mini" data-del-change="'+safe(x.id)+'" type="button">Excluir</button></td></tr>').join(''):'<tr><td colspan="5">Ainda não há alterações registradas para este filtro.</td></tr>';
  for(const btn of body.querySelectorAll('[data-del-change]'))btn.addEventListener('click',()=>{
   if(!confirm('Excluir este registro manual?'))return;
   setChanges(getChanges().filter(x=>x.id!==btn.dataset.delChange));
@@ -864,7 +890,7 @@ function renderChangeHistory(){
  });
 }
 $('saveChangeBtn').addEventListener('click',()=>{const sku=$('changeSku').value;const selected=[...$('changeChoices').querySelectorAll('input:checked')].map(x=>x.value);if(!sku||!readProducts().some(x=>x.sku===sku)){alert('Selecione um produto cadastrado.');return}if(!selected.length){alert('Marque pelo menos uma alteração.');return}const rec={id:typeof crypto!=='undefined'&&crypto.randomUUID?crypto.randomUUID():String(Date.now())+'-'+Math.random().toString(36).slice(2),sku,productName:readProducts().find(p=>p.sku===sku)?.name||'',changes:selected,note:$('changeNote').value.trim().slice(0,300),timestamp:new Date().toISOString()};if(!mergeChanges([rec])){alert('Não foi possível gravar no navegador. Faça backup.');return}const nowText=fmtStamp(rec.timestamp);$('changeStatus').textContent='✓ '+sku+': '+selected.join(' + ')+' · Salvo em '+nowText+' (horário de Brasília).';$('changeChoices').querySelectorAll('input').forEach(x=>x.checked=false);$('changeNote').value='';$('changeFilter').value=sku;$('apiHistoryFilter').value='changes';renderChangeHistory()});
-for(const id of ['changeFilter','apiHistoryFilter'])$(id).addEventListener('change',renderChangeHistory);
+for(const id of ['changeFilter','apiHistoryFilter','adsHistoryStatusFilter'])$(id).addEventListener('change',renderChangeHistory);
 $('exportChangesBtn').addEventListener('click',()=>{const a=getChanges();if(!a.length){alert('Não há alterações para exportar.');return}const enc=x=>'"'+String(x??'').replace(/"/g,'""')+'"';const csv='\uFEFF'+[['SKU','Nome_produto','Data_hora_UTC','Data_hora_Brasilia','Alteracoes','Observacao'],...a.map(x=>[x.sku,savedProductName(x.sku,x.productName),x.timestamp,fmtStamp(x.timestamp),x.changes.join(' + '),x.note])].map(r=>r.map(enc).join(';')).join('\r\n');downloadFile('Rede_Achados_BR_Alteracoes_Anuncios.csv',csv,'text/csv;charset=utf-8')});
 const oldSwitchTab=switchTab;
 switchTab=function(tab){oldSwitchTab(tab);if(tab==='historico')renderChangeHistory()};
