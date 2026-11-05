@@ -12251,6 +12251,7 @@ async function optimizerImagesMove(w,fromSlot,toSlot,stored){
   }
  }
 }
+let optimizerSlotBridgeStartInFlight=false;
 async function optimizerImagesLoad(){
  const w=optimizerWorkflowPlan;if(!w)return;
  const status=$('#optimizerImagesStatus');if(!optimizerImagesAutoBusy)status.textContent='Consultando imagens salvas...';
@@ -12394,8 +12395,19 @@ async function optimizerImagesLoad(){
     if(optimizerImagesMode!=='api'){
      const msg=(image?'Refazendo':'Gerando')+' imagem '+String(slot).padStart(2,'0')+
       ' pelo ChatGPT. A versão anterior permanece salva até a nova imagem ser confirmada.';
-     optimizerCommercialActionMessage(msg);
-     await optimizerCommercialRequestChatgptSlot(w,slot);return;
+     if(optimizerSlotBridgeStartInFlight){
+      optimizerCommercialActionMessage('Já há um comando de geração sendo conciliado com a Ponte. Uma segunda tentativa não será enviada; as fotos salvas estão protegidas.');
+      return;
+     }
+     optimizerSlotBridgeStartInFlight=true;generate.disabled=true;
+     try{
+      optimizerCommercialActionMessage(msg);
+      await optimizerCommercialRequestChatgptSlot(w,slot);
+     }finally{
+      optimizerSlotBridgeStartInFlight=false;
+      generate.disabled=optimizerImagesAutoBusy;
+     }
+     return;
     }
     if(!optimizerImagesApiConfigured){
      optimizerCommercialActionMessage('API não conectada. Selecione ChatGPT para refazer esta imagem sem consumir créditos da API.',true);return;
