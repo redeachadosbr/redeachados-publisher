@@ -264,6 +264,10 @@ export function compileShopeeExecutionPlan({shopId,itemId,modelId,sku,record,rev
       item_sku:String(live?.item_sku||''),category_id:live?.category_id,
       attribute_list:live?.attribute_list||[],tax_info:live?.tax_info||{},image:live?.image||{}
     },proposed,video,images,finalFiscal,modelVariations,kitDiscount,confirmedStages,
+    // A API de update recebe a lista mesclada completa, mas somente os
+    // atributos efetivamente revisados nesta SKU são diferenças aprovadas.
+    technicalReviewedAttributeIds:stages.technical?.reviewed===true?
+     (state.attributes||[]).map(x=>Number(x.attributeId)).filter(Number.isSafeInteger):[],
     actions:pendingActions,matrix,
     blocked,warnings,deferredStages,canExecute,
     fingerprint,fiscalDeferred,selectedStage,discountOnly,createdAt:new Date().toISOString(),marketplaceUpdated:false,
@@ -353,11 +357,22 @@ export function verifyShopeeFiscalExecution(plan,item,result={}){
   return verifyShopeeExecution(plan,item,result)&&
     (!plan.finalFiscal||fieldsVerified({tax_info:plan.finalFiscal},item));
 }
+export function verifiedCommercialFields(plan,item){
+ const proposed={...(plan?.proposed||{})};
+ const ids=Array.isArray(plan?.technicalReviewedAttributeIds)?
+  plan.technicalReviewedAttributeIds.filter(Number.isSafeInteger):[];
+ if(ids.length&&Array.isArray(proposed.attribute_list)){
+  const reviewed=new Set(ids);
+  proposed.attribute_list=proposed.attribute_list.filter(a=>
+   reviewed.has(Number(a.attribute_id)));
+ }
+ return fieldsVerified(proposed,item);
+}
 export function verifyShopeeExecution(plan,item,result={}){
   return String(item?.item_id)===String(plan.itemId)&&
     (!plan.video||videoPublishedAfterPlan(plan,item,result.video))&&
     (!plan.images?.length||sameData(item.image?.image_id_list||[],result.imageIds||[]))&&
-    fieldsVerified(plan.proposed||{},item);
+    verifiedCommercialFields(plan,item);
 }
 
 
