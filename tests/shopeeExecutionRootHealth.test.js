@@ -78,3 +78,33 @@ test('execução completa anexa desconto assinado junto com ações independente
   actions:['discount'],discountOnly:true};
  assert.equal(shouldAttachCommercialDiscount(discountOnly),true);
 });
+
+test('kit nao declara dados fiscais confirmados quando CFOP CSOSN e unidade estao vazios na Shopee',()=>{
+ const a=base();
+ a.review.kitOptimization={kitSku:'KIT-TX24507L-TX24508E'};
+ a.review.tax={ncm:'42029200',origin:'2',cest:'00',
+  pis_cofins_cst:'99',evidence:'WeDrop catalogo SKU exata'};
+ a.live.tax_info={ncm:'42029200',origin:'2',pis_cofins_cst:'99'};
+ const result=auditRootShopeeExecution(a);
+ const fiscal=result.stages.find(x=>x.id==='fiscal');
+ assert.equal(fiscal.status,'pending');
+ assert.match(fiscal.reason,/CFOP mesmo estado/);
+ assert.match(fiscal.reason,/CSOSN/);
+ assert.match(fiscal.reason,/Unidade de Medida/);
+});
+
+test('kit fiscal permanece pendente se revisao completa nao foi aplicada no anuncio',()=>{
+ const a=base();
+ a.review.kitOptimization={kitSku:'KIT-TX24507L-TX24508E'};
+ a.review.tax={ncm:'42029200',origin:'2',cest:'00',
+  same_state_cfop:'5106',diff_state_cfop:'6106',csosn:'102',
+  measure_unit:'UN',operation_type:'1',pis_cofins_cst:'99',
+  evidence:'WeDrop catalogo SKU exata'};
+ a.live.tax_info={ncm:'42029200',origin:'2',pis_cofins_cst:'99'};
+ let fiscal=auditRootShopeeExecution(a).stages.find(x=>x.id==='fiscal');
+ assert.equal(fiscal.status,'pending');
+ assert.match(fiscal.reason,/Campos vazios na Shopee/);
+ a.live.tax_info={...a.review.tax};
+ fiscal=auditRootShopeeExecution(a).stages.find(x=>x.id==='fiscal');
+ assert.equal(fiscal.status,'confirmed');
+});
