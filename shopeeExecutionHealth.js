@@ -119,8 +119,11 @@ export function auditRootShopeeExecution({
  if(Array.isArray(review.attributes)&&review.attributes.length){
   try{
    const compiled=compileAttributes(review.attributes,record,live);
-   technicalOK=fieldsVerified({attribute_list:compiled},live);
-   technicalReason='Atributos publicados diferem dos atributos aprovados';
+   const reviewedIds=new Set(review.attributes.map(a=>Number(a.attributeId)));
+   const reviewedFields=compiled.filter(a=>reviewedIds.has(Number(a.attribute_id)));
+   technicalOK=reviewedFields.length===reviewedIds.size&&
+    fieldsVerified({attribute_list:reviewedFields},live);
+   technicalReason='Os atributos efetivamente revisados ainda diferem do retorno oficial da Shopee';
   }catch(error){technicalReason='Ficha técnica: '+String(error.message||error).slice(0,150);}
  }
  // Se a revisão técnica anterior já foi aplicada, o job aprovado
@@ -129,8 +132,12 @@ export function auditRootShopeeExecution({
  if(!technicalOK&&job?.sku===sku&&String(job?.item_id)===String(itemId)&&
    Array.isArray(job?.plan?.proposed?.attribute_list)&&
    job.plan.proposed.attribute_list.length>0){
-  technicalOK=fieldsVerified({attribute_list:job.plan.proposed.attribute_list},live);
-  if(technicalOK)technicalReason='Ficha técnica do plano aprovado conferida na Shopee';
+  const reviewedIds=new Set((review.attributes||[]).map(a=>Number(a.attributeId)));
+  const effective=reviewedIds.size?
+   job.plan.proposed.attribute_list.filter(a=>reviewedIds.has(Number(a.attribute_id))):
+   job.plan.proposed.attribute_list;
+  technicalOK=effective.length>0&&fieldsVerified({attribute_list:effective},live);
+  if(technicalOK)technicalReason='Atributos revisados conferidos no anúncio pela Shopee';
  }
  add('technical',technicalOK,technicalReason);
  const hasVariants=review.variationConfig?.enabled===true||live.has_model===true;
