@@ -109,10 +109,7 @@
    if(!stage)continue;
    if(stage.status==='confirmed')states[i]='done';
    else if(stage.status==='not_applicable')states[i]='not_applicable';
-   // Auditoria de um rascunho antigo não pode apagar a confirmação
-   // posterior do worker do mesmo anúncio. O progresso "done" só vem
-   // de readback, nunca do simples upload para a biblioteca.
-   else if(states[i]!=='done'&&!['active','checking','staged','error'].includes(states[i]))states[i]='pending';
+   else if(!['active','checking','staged','error'].includes(states[i]))states[i]='pending';
   }
   if(rootAudit?.complete!==true&&states[8]==='done')states[8]='waiting';
   const attention=steps.find(s=>s.status==='attention');
