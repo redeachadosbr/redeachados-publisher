@@ -164,3 +164,21 @@ test('a interface oferece categoria e títulos SEO com referências dos preços'
  assert.match(js,/Média dos concorrentes/);
  assert.match(js,/new URLSearchParams\(\{limit:amount,curve,category,keyword\}\)/);
 });
+
+test('a média de concorrentes exclui a própria loja, inclusive no ranking',()=>{
+ const rows=matchCurveOffers({ownShopId:'201',catalog:[{
+  supplier_sku:'CQA-500',product_data:{
+   name:'Coqueteleira Shaker Inox 500ml',category:'Copos, Jarras e Servir'}
+ }],offers:[
+  {itemId:'8881',shopId:'201',productName:'Coqueteleira Shaker Inox 500ml',
+   priceMin:'10.90',priceMax:'10.90',sales:9000},
+  {itemId:'8882',shopId:'202',productName:'Coqueteleira Shaker Inox 500ml',
+   priceMin:'31.90',priceMax:'31.90',sales:930},
+  {itemId:'8883',shopId:'203',productName:'Coqueteleira Shaker Inox 500ml',
+   priceMin:'33.90',priceMax:'33.90',sales:915}
+ ]});
+ assert.equal(rows.length,1);
+ assert.equal(rows[0].shopId,'202');
+ assert.equal(rows[0].avgCompetitorPrice,32.90);
+ assert.equal(rows[0].competitorOfferCount,2);
+});
