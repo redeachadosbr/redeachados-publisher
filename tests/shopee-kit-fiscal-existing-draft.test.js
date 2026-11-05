@@ -60,3 +60,44 @@ test('o flag local de edição não bloqueia consulta fiscal de rascunho salvo',
  assert.match(code,/kitWizardRenderFiscalSkuPresets\(data\)/);
  assert.match(js,/kitWizardFiscalSkuSummary/);
 });
+
+test('recupera CFOP CSOSN unidade e CST da tabela da loja sem emprestar tax de outra SKU',async()=>{
+ const originalFetch=globalThis.fetch,oldUrl=process.env.SUPABASE_URL,
+  oldKey=process.env.SUPABASE_SECRET_KEY;
+ try{
+  process.env.SUPABASE_URL='https://fixture.supabase.co';
+  process.env.SUPABASE_SECRET_KEY='fixture-key';
+  globalThis.fetch=async(url)=>{
+   const u=new URL(String(url));
+   if(u.pathname.endsWith('/shopee_wedrop_kit_drafts'))return Response.json([{
+    kit_sku:kitSku,component_skus:codes,draft:{
+     kit:{components:codes.map(sku=>({sku,name:'Produto '+sku}))},
+     creative:{},publication:{status:'local_draft',itemId:null}},
+    updated_at:'2026-11-01T06:47:48Z'
+   }]);
+   if(u.pathname.endsWith('/shopee_wedrop_products')){
+    const sku=decodeURIComponent(u.searchParams.get('supplier_sku').replace(/^eq\./,''));
+    return Response.json([{supplier_sku:sku,source_file:'catalogo.xlsx',
+     source_line:4,product_data:{name:'Produto '+sku,ncm:ncm[sku]}}]);
+   }
+   if(u.pathname.endsWith('/shopee_optimizer_workflow_reviews'))
+    return Response.json([]);
+   throw Error('URL nao esperada: '+u.pathname);
+  };
+  const a=await readKitFiscalPreset(852701218,kitSku,codes[0]);
+  const tax=a.taxSuggestion;
+  assert.equal(tax.ncm,ncm[codes[0]]);
+  assert.equal(tax.same_state_cfop,'5106');
+  assert.equal(tax.diff_state_cfop,'6106');
+  assert.equal(tax.csosn,'102');
+  assert.equal(tax.measure_unit,'UN');
+  assert.equal(tax.operation_type,'1');
+  assert.equal(tax.pis_cofins_cst,'99');
+  assert.equal(tax.origin,undefined,'origem individual so por revisao aprovada');
+  assert.equal(a.skuPresets[1].taxSuggestion.ncm,ncm[codes[1]]);
+ }finally{
+  globalThis.fetch=originalFetch;
+  if(oldUrl===undefined)delete process.env.SUPABASE_URL;else process.env.SUPABASE_URL=oldUrl;
+  if(oldKey===undefined)delete process.env.SUPABASE_SECRET_KEY;else process.env.SUPABASE_SECRET_KEY=oldKey;
+ }
+});
