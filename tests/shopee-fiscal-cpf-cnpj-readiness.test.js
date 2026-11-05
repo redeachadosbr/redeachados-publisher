@@ -35,15 +35,16 @@ test('todas as etapas deixa o fiscal cadastrado intacto e executa conteúdo sem 
 test('execução explicitamente fiscal continua separada e depende da resposta Shopee',()=>{
  const plan=compileShopeeExecutionPlan({...args,selectedStage:'fiscal'});
  assert.deepEqual(Object.keys(plan.proposed),['tax_info']);
- assert.equal(plan.proposed.tax_info.cest,undefined);
+ assert.equal(plan.proposed.tax_info.cest,'00');
  assert.equal(fiscalPreviewDisposition({plan}).allowed,true);
  const oldError='product.error_busi: Please upload the corresponding CEST of NCM';
- const prior={proposed:{tax_info:{ncm:'95069900'}}};
+ const prior={proposed:{tax_info:{ncm:'95069900',cest:'00'}}};
  const issue=fiscalPreviewDisposition({plan,previousError:oldError,previousPlan:prior});
  assert.equal(issue.allowed,false);
  assert.equal(issue.knownCest,true);
  assert.match(issue.issues.join(' '),/Motor Matriz permanece salvo/);
  const corrected=compileShopeeExecutionPlan({...args,selectedStage:'fiscal',
+  live:{...live,tax_info:{cest:'1234567'}},
   review:{...review,tax:{...review.tax,cest:'1234567'}}});
  assert.equal(fiscalPreviewDisposition({plan:corrected,
   previousError:oldError,previousPlan:prior}).allowed,true);
