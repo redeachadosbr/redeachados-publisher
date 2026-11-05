@@ -76,28 +76,12 @@ export function createChatGptPrompts({imageUrls=[],supplierSourceText='',confirm
  const finalMeasurements=axes.map(x=>x.label+': '+x.value);
  const length=axes.find(x=>x.axis==='comprimento'),width=axes.find(x=>x.axis==='largura');
  prompts[2]=[
-  'ETAPA ATUAL EXCLUSIVA — IMAGEM 03/09. Arte de dimensões, sem reutilizar prompt de outra posição.',
-  'IMAGEM 03/09 — MEDIDAS EXATAS WEDROP DESTA SKU: '+(finalMeasurements.length?finalMeasurements.join('; '):'NÃO CONFIRMADAS — BLOQUEAR GERAÇÃO E SOLICITAR CONFERÊNCIA AO MANAGER')+'.',
-  'OBRIGATÓRIO: ENTREGAR A IMAGEM 03 PRONTA COM ESTAS MEDIDAS VISÍVEIS SOBRE A PRÓPRIA ARTE, SETAS DISCRETAS E COTAS LEGÍVEIS. NÃO ENTREGAR SOMENTE UMA FOTOGRAFIA LIMPA.',
-  scenes[2].guide,
-  imageScenePrompt({slot:3,title}),
-  'IMAGEM 03 — ARTE FINAL PRONTA COM AS MEDIDAS. FOTOGRAFIA PREMIUM + COTAS INTEGRADAS DIRETAMENTE NA IMAGEM GERADA.',
-  poolDisplay?
-   'COMPOSIÇÃO EXATA: mostrar TRÊS variações do mesmo colchão inflável, lado a lado e em pé, da esquerda para a direita ROSA, AMARELO e AZUL. O AZUL à direita é o único a receber as cotas. Cenário interno moderno, paredes de madeira, piso clean e luz de estúdio. São opções de cor de uma unidade enviada sortida, não um kit de três colchões.':
-   'Mostrar o produto ORIGINAL grande e inteiro em cenário moderno, com boa visibilidade e bordas limpas reservadas para linhas de dimensão, sem inventar cores ou acessórios.',
-  finalMeasurements.length?
-   'DIMENSÕES CONFIRMADAS NAS INFORMAÇÕES WEDROP DA MESMA SKU — REPRODUZA EXATAMENTE, SEM ALTERAR ALGARISMOS, UNIDADES OU RÓTULOS: '+finalMeasurements.join('; ')+'.':
-   'SEM DIMENSÕES CONFIRMADAS NESTA SKU. Não escrever números, linhas de cota nem etiquetas de medidas. Entregar só a foto.',
-  length&&width&&poolDisplay?
-   'DESENHE À DIREITA DA PEÇA AZUL uma seta VERTICAL BRANCA acompanhando seu comprimento total. Ao lado um BOX BRANCO ARREDONDADO de borda AMARELA fina e texto AZUL-MARINHO contendo, em duas linhas, “'+length.value+'” grande e “Comprimento” menor. NA BASE DA PEÇA AZUL desenhe uma seta HORIZONTAL BRANCA indicando sua largura, com outro box branco/arredondado, BORDA AMARELA e as duas linhas “'+width.value+'” grande e “Largura” menor.':
-   finalMeasurements.length?
-   'Para cada dimensão confirmada, representar a cota APENAS UMA VEZ no eixo correspondente do produto, com seta branca elegante, box branco arredondado de BORDA AMARELA e valor azul-marinho grande acima da legenda menor. Não usar dados da embalagem.':'',
-  poolDisplay?
-   'No canto INFERIOR ESQUERDO, colocar selo comercial discreto azul-marinho com BORDA AMARELA, três pequenas amostras nas cores azul/amarelo/rosa, e o texto EXATO “Envio em cores sortidas”. Não insinuar que o pacote contém três peças.':'',
-  'TIPOGRAFIA: sans-serif moderna, limpa e bonita; números em negrito, palavras menores, alto contraste, composição premium. A área de texto deve ser discreta e não encobrir o produto. Sem títulos, especificações extras, peso, altura ou medidas estimadas. Não adicionar um segundo conjunto de cotas.',
-  'O produto deve continuar fiel à foto de referência (forma, quantidade, acabamento, proporções e acessórios), com ambiente real HD; nenhuma medida pode vir de fotos, de outra SKU ou de embalagem.',
-  /pista|conjunto|kit/i.test(title)?'Se for conjunto, preserve os componentes reais e não atribua medidas do conjunto a um componente isolado.':'',
-  'ORDEM FINAL OBRIGATÓRIA DA IMAGEM 03: ENTREGAR ARTE FINAL PRONTA, com todas as cotas confirmadas integradas visualmente e ZERO textos duplicados. NÃO entregue imagem limpa quando há dimensões confirmadas.'
+  'ETAPA ATUAL EXCLUSIVA — IMAGEM 03/09. O ChatGPT deve criar uma fotografia NOVA da mesma SKU. NÃO reutilizar nem devolver a imagem 02.',
+  'DIMENSÕES WEDROP CONFERIDAS PARA A ARTE FINAL: '+(finalMeasurements.length?finalMeasurements.join('; '):'PENDENTES — O MANAGER DEVE IMPEDIR GERAÇÃO')+'.',
+  'FOTOGRAFIA NOVA OBRIGATÓRIA: baseie-se na FOTO ANEXADA do produto exato, preserve corpo, cor, componentes, escala visual e detalhes. Crie novo cenário moderno e limpo de cozinha, com perspectiva lateral/3-4 totalmente diferente da foto 02 de uso real. Sem mãos, sem pessoas, sem puxar o cordão, sem alimento dentro. Produto inteiro bem destacado, base sobre a bancada, ângulo técnico de catálogo, sem cortar nenhuma parte.',
+  'COMPOSIÇÃO PARA COTAS: produto centralizado ocupando aproximadamente 65% a 72% da largura; deixe margens livres à esquerda, à direita e abaixo para as setas e as três medidas verificadas. Fotografia quadrada 1200 × 1200, premium, nítida e fiel à referência.',
+  'PÓS-PROCESSAMENTO OBRIGATÓRIO PELO SHOPEE MANAGER: a fotografia que você gera é a BASE de uma arte de DIMENSÕES, não o resultado publicado. O Manager acrescentará uma única camada vetorial verificável com ALTURA, LARGURA e COMPRIMENTO EXATOS da WeDrop à imagem recebida e só então salvará a imagem 03. Para impedir duplicação ou erros de números na arte final, NÃO escreva texto, números, etiquetas ou setas na foto-base. As cotas serão aplicadas automaticamente sobre ESTA FOTO NOVA, não sobre a imagem 02.',
+  'O RESULTADO FINAL NA GALERIA DA SHOPEE TERÁ AS TRÊS COTAS VISÍVEIS. NÃO devolver cena de uso real da imagem 02; gerar foto comercial NOVA para servir à arte 03, sem elementos extras e sem inventar medidas.'
  ].join('\n\n');
 
  return {batch:prompts[0],prompts,scenes,original,confirmedDimensions:dims};
