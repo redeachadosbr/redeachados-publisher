@@ -184,7 +184,7 @@ test('o editor da posição 03 consulta sempre a fonte salva do item individual 
  const body=app.slice(start,end);
  assert.match(body,/api\/shopee\/optimizer\/workflow\/source\?/);
  assert.match(body,/const confirmedDimensionSpec=trustedText\?confirmedSpecCard\(/);
- assert.match(body,/catalogMeasurements:w\.supplierProduct\?\.catalogMeasurements/);
+ assert.match(body,/catalogMeasurements:measures\|\|/);
  assert.match(body,/confirmedDimensionSpec,/);
  const check=app.slice(app.indexOf('async function optimizerVerifiedDimensionSpec(w)'),
   app.indexOf('async function optimizerChatgptRender(w)'));
