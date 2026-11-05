@@ -10939,8 +10939,11 @@ async function optimizerChatgptMakeBrief(w,{defaultOnly=false}={}){
     'Clique em "Salvar informações" antes de gerar a próxima imagem. Nenhuma foto será apagada.');
  }
  const evidence=w.sourceEvidence;
- const trustedText=String(evidence?.sku||'')===String(w.sku)&&
-  Boolean(evidence?.updatedAt)?String(evidence.sourceText||''):'';
+ // Fonte recuperada por endpoint autenticado e vinculada à loja/Item ID/modelo/SKU.
+ // Alguns registros antigos não trazem updatedAt, apesar de já estarem salvos.
+ // Não descartar medidas válidas por falta apenas desse metadado opcional.
+ const trustedText=String(evidence?.sku||'').trim()===String(w.sku).trim()
+  ?String(evidence.sourceText||''):'';
  const {confirmedSpecCard}=await import('/specificationCard.js?v=20261105-exact-sku-triple');
  // A rota entrega as dimensões do catálogo da SKU exata, mesmo que o
  // plano aberto antes da importação ainda não tenha o supplierProduct.
@@ -11017,7 +11020,7 @@ async function optimizerVerifiedDimensionSpec(w){
  const spec=confirmedSpecCard({
   sourceText:source.sourceText||'',sku:w.sku,
   sourceEvidenceSku:source.sku||'',
-  sourceSaved:Boolean(source.updatedAt),
+  sourceSaved:true,
   supplierMatchedBy:w.verifiedWeDropMatchedBy||w.supplierProduct?.matchedBy||'',
   catalogMeasurements:w.verifiedWeDropMeasurements||
    w.supplierProduct?.catalogMeasurements||
@@ -11030,6 +11033,26 @@ async function optimizerVerifiedDimensionSpec(w){
   throw Error('Há medidas cadastradas na WeDrop, mas não foi possível validá-las para a SKU '+
    w.sku+'. Confira o formato “Dimensões: 183cm comprimento x 69cm largura”. Nenhuma medida será inventada.');
  return spec;
+}
+// A imagem 03 nunca pode ser solicitada com o antigo prompt "sem medidas":
+// o ChatGPT deve receber antes da abertura o mesmo conjunto de cotas que o
+// Manager acabou de confirmar no campo Informações da WeDrop da SKU exata.
+async function optimizerRequireThirdChatgptDimensions(w,brief){
+ const spec=await optimizerVerifiedDimensionSpec(w);
+ const measures=spec?.measurements||[];
+ if(measures.length<2)
+  throw Error('IMAGEM 03 NÃO INICIADA: não foi possível recuperar duas dimensões confirmadas em Informações da WeDrop da SKU '+w.sku+
+   '. Verifique a Etapa 01 e o vínculo exato com o catálogo WeDrop. Nenhuma imagem sem cotas será gerada.');
+ const expected=measures.map(x=>String(x.axis)+':'+String(x.value)).join('|');
+ const embedded=(brief?.confirmedDimensions?.measurements||[])
+  .map(x=>String(x.axis)+':'+String(x.value)).join('|');
+ if(expected!==embedded)
+  throw Error('IMAGEM 03 NÃO INICIADA: medidas WeDrop salvas divergem das medidas anexadas ao prompt. Recarregue o anúncio e tente novamente sem digitar valores.');
+ const prompt=String(brief?.prompts?.[2]||'');
+ if(!prompt.includes('IMAGEM 03/09 — MEDIDAS EXATAS WEDROP')||
+    measures.some(x=>!prompt.includes(x.label+': '+x.value)))
+  throw Error('IMAGEM 03 NÃO INICIADA: os valores confirmados não aparecem na orientação que seria enviada ao ChatGPT.');
+ return measures;
 }
 async function optimizerChatgptRender(w){
  try{
@@ -11090,6 +11113,10 @@ async function optimizerImageEditReference(w,slot){
 async function optimizerCommercialRequestChatgptSlot(w,slot,{editMode=''}={}){
  if(!optimizerImagesSameSku(w))return;
  const status=$('#optimizerImagesStatus');
+ // Solicitação explícita da imagem 03 nunca reutiliza um prompt antigo
+ // mantido na extensão, pois esse prompt podia mandar gerar foto sem cotas.
+ if(slot===3&&optimizerChatBridgeBusy)
+  await optimizerChatBridgeRelease('Imagem 03: descartando o comando anterior sem medidas para carregar o roteiro WeDrop atualizado.');
  if(optimizerChatBridgeBusy){
   const job=optimizerChatBridgeJob;
   if(optimizerChatBridgeIdentity(job,w)&&job?.slots?.length===1&&Number(job.slots[0])===Number(slot)){
@@ -11109,6 +11136,11 @@ async function optimizerCommercialRequestChatgptSlot(w,slot,{editMode=''}={}){
  try{
   if(optimizerChatBridgeIdentity(optimizerChatBridgeJob,w)&&optimizerChatBridgeJob?.slots?.length===1&&Number(optimizerChatBridgeJob.slots[0])===Number(slot)&&!optimizerChatBridgeJob.complete&&await optimizerChatBridgeRecover({includeBlocked:true}))return;
   const brief=await optimizerChatgptMakeBrief(w);
+  if(slot===3){
+   const measurements=await optimizerRequireThirdChatgptDimensions(w,brief);
+   optimizerCommercialActionMessage('Enviando ao ChatGPT a Imagem 03 com dimensões WeDrop verificadas: '+
+    measurements.map(x=>x.label+' '+x.value).join(' · ')+'. A arte final deverá ter as cotas visíveis junto ao produto.');
+  }
   if(!brief.bridgeOriginal)throw Error('Não existe foto oficial do Item ID nesta SKU para a Ponte ChatGPT. O Manager preservou as imagens prontas. Atualize as fotos do anúncio Shopee ou importe a imagem manualmente; uma miniatura da WeDrop não pode ser enviada como origem Shopee.');
   if(editMode&&!['improve','white-bg','custom'].includes(editMode))throw Error('Tipo de edição não permitido.');
   const prompts=[...brief.prompts];
@@ -11673,6 +11705,7 @@ $('#optimizerChatgptRestartAll')?.addEventListener?.('click',async()=>{
   }
   // Validate the original photo and the 9 scene prompts before mutating anything.
   const brief=await optimizerChatgptMakeBrief(w);
+  await optimizerRequireThirdChatgptDimensions(w,brief);
   if(!brief.bridgeOriginal||brief.prompts?.length!==9)throw Error('Fotografia oficial do Item ID ou roteiro de 9 imagens indisponível. Nenhuma imagem preparada será apagada.');
   if(!optimizerImagesSameSku(w))throw Error('A SKU mudou durante a preparação.');
   const current=await json('/api/shopee/optimizer/images/manual?'+new URLSearchParams({sku:w.sku,item_id:w.itemId,model_id:w.modelId}));
@@ -11783,6 +11816,11 @@ async function optimizerChatgptContinueFromServer(){
   const stored=[...new Set((data.images||[]).map(row=>Number(row.slot)).filter(x=>Number.isInteger(x)&&x>=1&&x<=9))].sort((a,b)=>a-b);
   const missing=Array.from({length:9},(_,i)=>i+1).filter(x=>!stored.includes(x));
   if(!missing.length){notify('9/9 imagens já preparadas. Revise a galeria ou use Gerar 9 imagens para refazer desde 01.');return;}
+  if(missing.includes(3)){
+   const confirmed=await optimizerRequireThirdChatgptDimensions(w,brief);
+   notify('Dimensões da imagem 03 confirmadas na WeDrop antes de enviar o prompt: '+
+    confirmed.map(x=>x.label+' '+x.value).join(' · ')+'. '+stored.length+'/9 imagens preservadas.');
+  }
   const first=String(missing[0]).padStart(2,'0');
   const pausedDirty=optimizerBridgeChatPauseState();
   const resumeDirty=Boolean(pausedDirty&&optimizerChatBridgeIdentity(pausedDirty,w));
@@ -12268,7 +12306,7 @@ async function optimizerImagesLoad(){
     image?'● Pronta':originalUrl?'◉ Original':'◆ Pendente'));
    detail.append(heading);
    if(!image)detail.append(optimizerMake('small','optimizer-commercial-original-caption',
-    slot===3?'Imagem 03 ainda não foi recebida no Manager. Gere ou importe a foto-base: as medidas WeDrop serão aplicadas ao salvar.':
+    slot===3?'Imagem 03 pendente: o botão Gerar verificará as medidas salvas em Informações da WeDrop ANTES de enviar o prompt com cotas ao ChatGPT.':
     'Posição vazia · foto original preservada na Shopee'));
    const actions=optimizerMake('div','optimizer-commercial-image-actions');
    const generate=optimizerMake('button','secondary',image?'↻ Refazer':'✧ Gerar');
@@ -12298,7 +12336,7 @@ async function optimizerImagesLoad(){
     finally{optimizerImagesAutoBusy=false;optimizerImagesSetProgress();if(optimizerImagesSameSku(w))await optimizerImagesLoad();}
    };
    actions.append(generate);
-   let importThirdButton=null;
+   let importThirdButton=null,thirdFallbackButton=null;
    if(slot===3&&!image){
     const importThird=optimizerMake('button','secondary','📏 Importar foto-base sem cotas');
     importThird.type='button';
@@ -12334,7 +12372,8 @@ async function optimizerImagesLoad(){
        status.textContent=message;
       }finally{fallback.disabled=false;}
      };
-     actions.append(fallback);
+     fallback.style.cssText='display:block;width:100%;box-sizing:border-box;white-space:normal;min-height:42px;line-height:1.25;font-size:12px;padding:8px 10px;margin-top:8px;';
+     thirdFallbackButton=fallback;
     }
    }
    let measureButton=null;
@@ -12432,6 +12471,7 @@ async function optimizerImagesLoad(){
    if(importThirdButton)actions.append(importThirdButton);
    if(measureButton)actions.append(measureButton);
    detail.append(actions);
+   if(thirdFallbackButton)detail.append(thirdFallbackButton);
    if(image){
     const moveSelect=optimizerMake('select','optimizer-commercial-move-select');
     moveSelect.setAttribute('aria-label','Mover imagem '+slot+' para outra posição');
