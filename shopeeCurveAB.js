@@ -36,8 +36,7 @@ export function curveGroup(sales30,salesDisplayed){
 }
 
 export function curveSearchTerms(products,{keyword=''}={}){
- const term=String(keyword||'').trim(),selectedCategory=String(category||'Todos').trim();
- if(selectedCategory.length>90)throw Error('Categoria inválida.');
+ const term=String(keyword||'').trim();
  if(term)return [term.slice(0,70)];
  const count=new Map();
  for(const p of products){
@@ -340,7 +339,8 @@ export async function researchCurveAB(shopId,{limit=10,curve='ALL',category='Tod
  const desired=Number(limit),chosen=String(curve||'ALL').toUpperCase();
  if(![5,10,15,20].includes(desired)||!['ALL','A','B'].includes(chosen))
   throw Error('Seleção de quantidade ou curva inválida.');
- const term=String(keyword||'').trim();
+ const term=String(keyword||'').trim(),selectedCategory=String(category||'Todos').trim();
+ if(selectedCategory.length>90)throw Error('Categoria inválida.');
  if(term.length>70)throw Error('Pesquisa muito longa (máximo 70 caracteres).');
  const configured=Boolean(env('SHOPEE_AFFILIATE_APP_ID')&&env('SHOPEE_AFFILIATE_SECRET'));
  if(!configured)return {ok:true,configured:false,requested:desired,curve:chosen,
@@ -383,7 +383,7 @@ export async function researchCurveAB(shopId,{limit=10,curve='ALL',category='Tod
  ].filter(Boolean);
  return {ok:true,configured:true,curve:chosen,...chosenResults,
   catalogCount:data.catalogCount,offerCount:data.offerCount,category:selectedCategory,
-  featuredSearchUrl:officialFeaturedSearchUrl(term||selectedCategory==='Todos'?'':selectedCategory),
+  featuredSearchUrl:officialFeaturedSearchUrl(term||(selectedCategory==='Todos'?'':selectedCategory)),
   queryCount:data.queries.length,checkedAt:data.checkedAt,
   recordedOffers:data.observations,rowsWith30Days:chosenResults.items.filter(x=>x.verified30).length,
   warning:notes.join(' '),readOnly:true,marketplaceUpdated:false};
