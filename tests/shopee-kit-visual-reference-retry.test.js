@@ -8,7 +8,9 @@ test('Kit anunciado usa fotos originais do Item ID e alterna CDN oficial',()=>{
  const refs=visualReferenceCandidates([url,'https://down-br.img.susercontent.com/file/outra-foto']);
  assert.equal(refs[0],'https://down-br.img.susercontent.com/file/sg-11134201-825ad-mqxk7vehq77wd0');
  assert.equal(refs[1],url);
- assert.equal(refs.length,3);
+ assert.equal(refs[2],'https://cf.shopee.com.br/file/outra-foto');
+ assert.equal(refs[3],'https://down-br.img.susercontent.com/file/outra-foto');
+ assert.equal(refs.length,4);
 });
 test('Rejeita URLs não oficiais e não gera referência de outra origem',()=>{
  assert.deepEqual(visualReferenceCandidates(['data:image/png;base64,abc','http://cf.shopee.com.br/file/test',
