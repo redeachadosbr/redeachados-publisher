@@ -172,6 +172,8 @@
   grid.replaceChildren();
   if(!result.configured){
    stats.hidden=true;
+   q('curveContinueSearch').hidden=true;
+   q('curveProgressNote').textContent='Busca automática indisponível: falta conexão da API Afiliados.';
    grid.append(t('div','curve-empty',
     'Pesquisa ainda não configurada. Conecte a API Shopee Afiliados no Render para consultar as ofertas em destaque.'));
    status(result.warning||'Credenciais de ofertas da Shopee não configuradas.','warning');
@@ -180,11 +182,18 @@
   const found=Number(result.found)||0;
   stats.hidden=false;
   q('curveCatalogCount').textContent=nf.format(result.catalogCount||0);
+  q('curveScannedCount').textContent=nf.format(result.skuSearchesCompleted||0);
   q('curveOfferCount').textContent=nf.format(result.offerCount||0);
   q('curveFoundCount').textContent=nf.format(found);
   q('curveVerifiedCount').textContent=nf.format(result.rowsWith30Days||0);
   q('curveResultsMeta').textContent=(result.items||[]).length+' de '+result.requested+
-   ' solicitados · consulta '+(result.checkedAt?new Date(result.checkedAt).toLocaleString('pt-BR'):'atual');
+   ' solicitados · '+nf.format(result.skuQueriesCompleted||0)+' buscas por SKU · consulta '+
+   (result.checkedAt?new Date(result.checkedAt).toLocaleString('pt-BR'):'atual');
+  q('curveProgressNote').textContent=
+   nf.format(result.skuSearchesCompleted||0)+' SKUs pesquisadas · '+
+   nf.format(result.catalogCount||0)+' SKUs da categoria · '+
+   nf.format(result.remainingSkuQueries||0)+' consultas ainda não efetuadas.';
+  q('curveContinueSearch').hidden=!result.hasMore||!result.shortage||Boolean(result.apiLimited);
   for(const item of result.items||[])grid.append(card(item));
   if(!result.items?.length){
    grid.append(t('div','curve-empty',
@@ -194,10 +203,17 @@
    'Encontrados '+result.items.length+' dos '+result.requested+
    ' solicitados. A pesquisa terminou normalmente; não há bloqueio. ':
    'Pesquisa concluída: '+result.items.length+' produtos selecionados. ';
-  const foot='Ranking obtido da amostra de ofertas da API Afiliados, não da aba oficial Em Destaque. Vendas acumuladas não são vendas mensais. Termos SEO são frequências de títulos, não volume de pesquisa.';
-  status(prefix+foot,result.shortage?'warning':'info');
+  const next=result.hasMore&&result.shortage?
+   ' Há mais SKUs para pesquisar; use Pesquisar mais SKUs desta categoria.':'';
+  const limitWarning=result.apiLimited?
+   ' A API Afiliados interrompeu as consultas. Verifique limite e autorização.':'';
+  const errors=result.successfulQueries===0&&result.queryCount>0?
+   ' Não houve resposta válida da API: '+String(result.warning||'').slice(-420):'';
+  const foot=' Fonte automática: API Shopee Afiliados ordenada por vendas (não é leitura direta da aba Em Destaque). Vendas acumuladas não comprovam vendas mensais.';
+  status(prefix+next+limitWarning+errors+foot,
+   result.shortage||result.apiLimited?'warning':'info');
  }
- async function search(event){
+ async function search(event,{advance=false}={}){
   event?.preventDefault?.();
   if(state.busy)return;
   state.busy=true;
@@ -205,10 +221,12 @@
    curve=q('curveType')?.value||'ALL',category=q('curveCategory')?.value||'Todos',
    keyword=q('curveKeyword')?.value.trim()||'';
   refreshFeaturedLink();
-  button.disabled=true;button.textContent='Pesquisando ofertas…';
-  status('Consultando ofertas ordenadas por vendas na Shopee e cruzando com as SKUs WeDrop. A primeira busca pode demorar por causa das consultas externas.');
+  button.disabled=true;button.textContent='Consultando SKUs WeDrop…';
+  q('curveContinueSearch').disabled=true;
+  status('Varredura automática: lendo as SKUs da categoria e pesquisando títulos de cada produto por lotes na API de ofertas Shopee. Não precisa escrever uma palavra-chave.');
   try{
    const params=new URLSearchParams({limit:amount,curve,category,keyword});
+   if(advance)params.set('advance','1');
    const response=await fetch('/api/shopee/curvas-ab/search?'+params,{
     credentials:'same-origin',cache:'no-store',signal:AbortSignal.timeout(90000)
    });
@@ -219,10 +237,15 @@
   }catch(error){
    status('Não foi possível concluir a pesquisa: '+String(error.message||error)+
     '. Nenhuma alteração foi feita na Shopee.','error');
-  }finally{state.busy=false;button.disabled=false;button.textContent='Pesquisar oportunidades';}
+  }finally{
+   state.busy=false;button.disabled=false;
+   q('curveContinueSearch').disabled=false;
+   button.textContent='Pesquisar SKUs automaticamente';
+  }
  }
  const form=q('curveSearchForm');
  if(form)form.addEventListener('submit',search);
+ q('curveContinueSearch')?.addEventListener('click',()=>search(null,{advance:true}));
  q('curveKeyword')?.addEventListener('input',refreshFeaturedLink);
  q('curveCategory')?.addEventListener('change',refreshFeaturedLink);
  refreshFeaturedLink();
