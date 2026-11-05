@@ -76,9 +76,9 @@ export function createChatGptPrompts({imageUrls=[],supplierSourceText='',confirm
  const finalMeasurements=axes.map(x=>x.label+': '+x.value);
  const length=axes.find(x=>x.axis==='comprimento'),width=axes.find(x=>x.axis==='largura');
  prompts[2]=[
+  'ETAPA ATUAL EXCLUSIVA — IMAGEM 03/09. Arte de dimensões, sem reutilizar prompt de outra posição.',
   'IMAGEM 03/09 — MEDIDAS EXATAS WEDROP DESTA SKU: '+(finalMeasurements.length?finalMeasurements.join('; '):'NÃO CONFIRMADAS — BLOQUEAR GERAÇÃO E SOLICITAR CONFERÊNCIA AO MANAGER')+'.',
   'OBRIGATÓRIO: ENTREGAR A IMAGEM 03 PRONTA COM ESTAS MEDIDAS VISÍVEIS SOBRE A PRÓPRIA ARTE, SETAS DISCRETAS E COTAS LEGÍVEIS. NÃO ENTREGAR SOMENTE UMA FOTOGRAFIA LIMPA.',
-  'ETAPA ATUAL EXCLUSIVA — IMAGEM 03/09. Arte de dimensões, sem reutilizar prompt de outra posição.',
   scenes[2].guide,
   imageScenePrompt({slot:3,title}),
   'IMAGEM 03 — ARTE FINAL PRONTA COM AS MEDIDAS. FOTOGRAFIA PREMIUM + COTAS INTEGRADAS DIRETAMENTE NA IMAGEM GERADA.',
