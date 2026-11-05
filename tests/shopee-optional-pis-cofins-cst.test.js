@@ -17,7 +17,7 @@ test('CST PIS/COFINS em branco é opcional na otimização, com NCM e fonte apro
  const info=compileTax(reviewed,{tax_info:{}});
  assert.equal(info.ncm,'95069900');
  assert.equal(Object.hasOwn(info,'pis_cofins_cst'),false);
- assert.equal(Object.hasOwn(info,'cest'),false);
+ assert.equal(info.cest,'00');
  assert.equal(info.csosn,'102');
  assert.deepEqual(fiscalMatrixSource({sku:'TRC1525',supplier,tax:reviewed}).ncm,'95069900');
 });
