@@ -227,7 +227,7 @@ test('motor busca lotes de SKUs e oferece continuidade, não apenas nome da cate
  const page=readFileSync(new URL('../public/index.html',import.meta.url),'utf8');
  assert.match(source,/const plan=curveSkuSearchPlan\(filtered,\{keyword\}\)/);
  assert.match(source,/const jobs=state\.plan\.slice\(state\.cursor/);
- assert.match(source,/if\(pickCurveResults\(state\.matches,\{limit:desired,curve\}\)\.items\.length>=desired\)break;/);
+ assert.match(source,/if\(pickCurveResults\(state\.matches,\{limit:desired,curve,verifiedOnly\}\)\.items\.length>=desired\)break;/);
  assert.match(source,/skuSearchesCompleted:state\.scannedSkus\.size/);
  assert.match(source,/hasMore,nextCursor:state\.cursor/);
  assert.match(ui,/params\.set\('advance','1'\)/);
