@@ -244,10 +244,13 @@
   for(const item of result.items||[])grid.append(card(item));
   if(!result.items?.length){
    grid.append(t('div','curve-empty',
-    'Nenhuma correspondência confiável encontrada nesta amostra. Tente outra categoria ou pesquise novamente depois.'));
+    result.verifiedOnly&&result.possibleMatches?
+     'Há '+result.possibleMatches+' correspondências possíveis, mas ainda sem comprovação de vendas mensais. Desmarque Somente Curvas A/B confirmadas para examinar os potenciais.':
+     'Nenhuma correspondência confiável encontrada nesta consulta. Experimente outra categoria ou continue a varredura.'));
   }
   const prefix=result.shortage?
-   'Encontrados '+result.items.length+' dos '+result.requested+
+   (result.verifiedOnly?'Curvas mensais confirmadas: ':'Oportunidades potenciais: ')+
+   result.items.length+' dos '+result.requested+
    ' solicitados. A pesquisa terminou normalmente; não há bloqueio. ':
    'Pesquisa concluída: '+result.items.length+' produtos selecionados. ';
   const next=result.hasMore&&result.shortage?
@@ -270,13 +273,15 @@
   state.busy=true;
   const button=q('curveSearchBtn'),amount=q('curveLimit')?.value||'10',
    curve=q('curveType')?.value||'ALL',category=q('curveCategory')?.value||'Todos',
-   keyword=q('curveKeyword')?.value.trim()||'';
+   keyword=q('curveKeyword')?.value.trim()||'',
+   verifiedOnly=q('curveConfirmedOnly')?.checked!==false;
   refreshFeaturedLink();
   button.disabled=true;button.textContent='Consultando SKUs WeDrop…';
   q('curveContinueSearch').disabled=true;
   status('Varredura automática: lendo as SKUs da categoria e pesquisando títulos de cada produto por lotes na API de ofertas Shopee. Não precisa escrever uma palavra-chave.');
   try{
-   const params=new URLSearchParams({limit:amount,curve,category,keyword});
+   const params=new URLSearchParams({limit:amount,curve,category,keyword,
+    verifiedOnly:verifiedOnly?'1':'0'});
    if(advance)params.set('advance','1');
    const response=await fetch('/api/shopee/curvas-ab/search?'+params,{
     credentials:'same-origin',cache:'no-store',signal:AbortSignal.timeout(90000)
