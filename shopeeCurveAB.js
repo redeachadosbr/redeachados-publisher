@@ -5,6 +5,7 @@ import crypto from 'node:crypto';
 import {readWeDropCatalogProducts,readWeDropCosts} from './wedropCosts.js';
 import {comparableTitle,evaluateMarketOffers} from './shopeeMarketResearch.js';
 import {categoryMatches} from './shopeeKitBuilder.js';
+import {searchFeaturedPublic} from './shopeeFeaturedSearch.js';
 
 const ENDPOINT='https://open-api.affiliate.shopee.com.br/graphql';
 const env=name=>String(process.env[name]||'').trim();
@@ -15,7 +16,7 @@ const words=value=>[...new Set(normal(value).split(' ').filter(x=>x.length>=3&&!
 const validId=value=>/^\d{1,18}$/.test(String(value??'').trim());
 const num=value=>{const n=Number(value);return Number.isFinite(n)&&n>=0?n:null};
 const available=raw=>!/(^|\s)(indisponivel|sem estoque|esgotado|inativo)(\s|$)/.test(normal(raw));
-const intSales=value=>{const n=Number(value);return Number.isSafeInteger(n)&&n>=0?n:null};
+const intSales=value=>{if(value===null||value===undefined||value==='')return null;const n=Number(value);return Number.isSafeInteger(n)&&n>=0?n:null};
 const isHttpImage=url=>{
  try{
   const value=new URL(String(url||''));
@@ -256,15 +257,24 @@ export function matchCurveOffers({catalog=[],offers=[],costs=[],baseline=new Map
    offersBySku.get(p.sku).set(unique,offer);
    const current=found.get(p.sku);
    const sales=intSales(offer.sales),price=num(offer.priceMin);
-   if(current&&(current.salesDisplayed>sales||
-     current.salesDisplayed===sales&&current.matchScore>=score))continue;
+   const monthly=intSales(offer.monthlySold);
    const history=baseline instanceof Map?baseline.get(String(offer.itemId)):null;
-   let sales30=null,observedDays=null;
-   if(history&&intSales(history.sales)!==null&&sales>=history.sales){
+   let sales30=monthly,observedDays=null,periodSource=monthly!==null?
+    'Shopee Em Destaque • campo sold (Vendido/Mês)':'';
+   if(monthly===null&&history&&intSales(history.sales)!==null&&sales>=history.sales){
     const age=Math.floor((Date.parse(today+'T00:00:00Z')-
      Date.parse(String(history.day)+'T00:00:00Z'))/86400000);
-    if(age>=29&&age<=31){sales30=sales-history.sales;observedDays=age;}
+    if(age>=29&&age<=31){
+     sales30=sales-history.sales;observedDays=age;
+     periodSource='Diferença de contadores acumulados em '+age+' dias';
+    }
    }
+   const rankVolume=sales30??sales;
+   const currentVolume=current?(current.sales30??current.salesDisplayed):null;
+   if(current&&(Number(current.verified30)>Number(sales30!==null)||
+    (Number(current.verified30)===Number(sales30!==null)&&
+    (currentVolume>rankVolume||
+     currentVolume===rankVolume&&current.matchScore>=score))))continue;
    const group=curveGroup(sales30,sales);
    found.set(p.sku,{sku:p.sku,name:p.name,category:p.category,
     imageUrl:p.imageUrl,availability:p.availability,inStock:p.inStock,
@@ -272,8 +282,11 @@ export function matchCurveOffers({catalog=[],offers=[],costs=[],baseline=new Map
     shopId:String(offer.shopId),itemId:String(offer.itemId),
     competitorUrl:'https://shopee.com.br/product/'+offer.shopId+'/'+offer.itemId,
     competitorPrice:price,salesDisplayed:sales,sales30,observedDays,
-    curve:group.curve,curveLabel:group.label,verified30:group.verified30,
-    matchScore:Number(score.toFixed(2)),source:'Shopee Affiliate productOfferV2',
+    periodSource,curve:group.curve,
+    curveLabel:sales30!==null&&monthly!==null?
+     'Curva '+group.curve+' • Vendido/Mês informado pela vitrine Shopee':group.label,
+    verified30:group.verified30,
+    matchScore:Number(score.toFixed(2)),source:offer.dataSource||'Shopee Affiliate productOfferV2',
     sourceFile:p.sourceFile});
   }
  }
@@ -282,7 +295,7 @@ export function matchCurveOffers({catalog=[],offers=[],costs=[],baseline=new Map
   row,[...(offersBySku.get(row.sku)||new Map()).values()],checkedAt,ownShopId)).sort((a,b)=>
   Number(b.verified30)-Number(a.verified30)||
   Number(b.inStock)-Number(a.inStock)||
-  b.salesDisplayed-a.salesDisplayed||b.matchScore-a.matchScore||
+  (b.sales30??b.salesDisplayed)-(a.sales30??a.salesDisplayed)||b.matchScore-a.matchScore||
   a.sku.localeCompare(b.sku));
 }
 export function pickCurveResults(rows,{curve='ALL',limit=10}={}){
