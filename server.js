@@ -3469,6 +3469,22 @@ async function readLiveRootExecution(req){
    readShopeeExecution(auth.shopId,itemId,modelId)
   ]);
   const review=stored?.sku===sku?stored.review_state||{}:{};
+  // Recuperar a associação perdida dos IDs APENAS quando o readback oficial
+  // comprova, em ordem, as mesmas nove imagens do job aprovado e da SKU.
+  // Sem correspondência, manter pendente: nunca inferir pelo número de fotos.
+  const actualImageIds=Array.isArray(live.image?.image_id_list)?live.image.image_id_list.map(String):[];
+  const jobImageIds=Array.isArray(job?.result?.imageIds)?job.result.imageIds.map(String):[];
+  const sameJob=job?.sku===sku&&String(job?.item_id)===String(itemId)&&
+   String(job?.model_id)===String(modelId);
+  const sameApprovedImages=sameJob&&job?.plan?.images?.length===9&&
+   manualImages.length===9&&job.plan.images.every(asset=>
+    manualImages.some(saved=>Number(saved.slot)===Number(asset.slot)&&
+      String(saved.sha256)===String(asset.sha256)));
+  if(sameApprovedImages&&jobImageIds.length===9&&sameData(actualImageIds,jobImageIds)&&
+     manualImages.some(row=>!row.shopee_image_id)){
+   try{await rememberPublishedImages(job.plan,job.result);}
+   catch(error){console.warn('[root-audit] salvar IDs oficiais:',String(error.message||error).slice(0,140));}
+  }
   let models=null,discountReadback=null,discountDiagnostic='';
   if(live.has_model===true){
    try{models=(await shopeeLiveVariationState(cfg,auth,itemId,live)).models;}
