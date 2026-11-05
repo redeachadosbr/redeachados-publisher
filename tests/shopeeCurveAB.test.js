@@ -236,3 +236,51 @@ test('motor busca lotes de SKUs e oferece continuidade, não apenas nome da cate
  assert.match(page,/id="curveScannedCount"/);
  assert.match(page,/id="curveKeyword".*placeholder=/);
 });
+
+test('Curva A usa Vendido/Mês Shopee em vez das vendas acumuladas',()=>{
+ const catalog=[{supplier_sku:'CQA500',product_data:{
+  name:'Coqueteleira Shaker Inox 500ml',category:'Copos, Jarras e Servir'
+ }}];
+ const rows=matchCurveOffers({catalog,offers:[
+  {itemId:'2255',shopId:'3344',
+   productName:'Coqueteleira Shaker Inox 500ml',sales:11000,
+   historicalSold:11000,monthlySold:950,priceMin:29.90,
+   dataSource:'shopee-featured-public'}
+ ]});
+ assert.equal(rows.length,1);
+ assert.equal(rows[0].curve,'A');
+ assert.equal(rows[0].verified30,true);
+ assert.equal(rows[0].sales30,950);
+ assert.equal(rows[0].salesDisplayed,11000);
+ assert.match(rows[0].periodSource,/Em Destaque/);
+ assert.equal(rows[0].source,'shopee-featured-public');
+});
+test('campo mensal ausente não é inferido dos totais da Shopee',()=>{
+ const catalog=[{supplier_sku:'CQA500',product_data:{
+  name:'Coqueteleira Shaker Inox 500ml',category:'Copos, Jarras e Servir'
+ }}];
+ const rows=matchCurveOffers({catalog,offers:[{
+  itemId:'2255',shopId:'3344',productName:'Coqueteleira Shaker Inox 500ml',
+  sales:950,monthlySold:null,priceMin:29.90,
+  dataSource:'shopee-featured-public'
+ }]});
+ assert.equal(rows.length,1);
+ assert.equal(rows[0].verified30,false);
+ assert.equal(rows[0].sales30,null);
+ assert.match(rows[0].curveLabel,/Potencial/);
+});
+test('entre anúncio com vendas acumuladas e anúncio com vendas mensais para mesma SKU prioriza mensal',()=>{
+ const catalog=[{supplier_sku:'CQA500',product_data:{
+  name:'Coqueteleira Shaker Inox 500ml',category:'Copos, Jarras e Servir'
+ }}];
+ const rows=matchCurveOffers({catalog,offers:[
+  {itemId:'1',shopId:'11',productName:'Coqueteleira Shaker Inox 500ml',
+   sales:85000,priceMin:29.9},
+  {itemId:'2',shopId:'12',productName:'Coqueteleira Shaker Inox 500ml',
+   sales:2300,monthlySold:901,priceMin:30.9,dataSource:'shopee-featured-public'}
+ ]});
+ assert.equal(rows.length,1);
+ assert.equal(rows[0].itemId,'2');
+ assert.equal(rows[0].sales30,901);
+ assert.equal(rows[0].curve,'A');
+});
