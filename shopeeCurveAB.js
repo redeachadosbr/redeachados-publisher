@@ -397,6 +397,18 @@ export function curveProvidersStatus(){
   affiliate:{configured:affiliateConfigured()},
   monthlyPolicy:'Somente sold da vitrine ou histórico observado em 29 a 31 dias'};
 }
+export async function probeCurveAffiliateAccess(){
+ if(!affiliateConfigured())return {status:'unconfigured',returnedOffers:0,
+  message:'API de Afiliados não configurada no Render (SHOPEE_AFFILIATE_APP_ID e SHOPEE_AFFILIATE_SECRET).'};
+ try{
+  const result=await signedRequest('coqueteleira',1,2);
+  return {status:'accessible',returnedOffers:result.length,
+   message:result.length?'API Afiliados respondeu com ofertas.':'API Afiliados respondeu, mas sem ofertas para a pesquisa de teste.'};
+ }catch(error){
+  return {status:'error',returnedOffers:0,
+   message:'API Afiliados não respondeu corretamente: '+String(error.message||error).slice(0,170)};
+ }
+}
 async function offersQuery(keyword,page){
  const expiry=featuredCircuit.state==='blocked'?20*60*1000:90*1000;
  const shouldProbe=featuredCircuit.state==='unknown'||
