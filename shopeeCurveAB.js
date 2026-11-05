@@ -75,7 +75,7 @@ export function curveSkuSearchPlan(catalog,{keyword=''}={}){
   const name=String(row.product_data?.name||'');
   const sku=String(row.supplier_sku||'').trim();
   if(!sku||!name||!available(row.product_data?.rawAvailability))continue;
-  if(term&&!normal(name+' '+row.product_data?.category).includes(term))continue;
+  if(term&&!normal(name).includes(term))continue;
   const query=curveSkuSearchQuery(name);
   if(!query||query.split(' ').length<2)continue;
   const bucket=String(row.product_data?.category||'Sem categoria');
