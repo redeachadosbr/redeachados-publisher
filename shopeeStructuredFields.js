@@ -1,4 +1,5 @@
 import {isShopeeCestConfirmed} from './shopeeMatrixRules.js';
+import {cestForShopeeField} from './shopeeFiscalGap.js';
 import {normalizeAttributeAudit} from './productOptimizer.js';
 import {assertAnatelCompliance} from './shopeeAnatel.js';
 const list=x=>Array.isArray(x)?x:[];
@@ -117,18 +118,16 @@ export function compileTax(input,live){
   diff_state_cfop:/^6\d{3}$/,csosn:/^\d{3}$/,cest:/^(\d{7}|00)$/,pis_cofins_cst:/^\d{2}$/,operation_type:/^[12]$/};
  const tax={...(live.tax_info||{})};
  for(const [key,regex] of Object.entries(patterns)){
-  // CST PIS/COFINS (e outros campos não enviados) não é obrigatório para
-  // preparar a otimização; valores já existentes no anúncio são preservados.
+  // O CEST do anúncio vem sempre da leitura oficial da Shopee, nunca do rascunho.
+  // Os demais campos mantêm o fluxo de revisão individual existente.
+  if(key==='cest')continue;
   if(input[key]===undefined||String(input[key]).trim()==='')continue;
   const value=String(input[key]).trim();if(!regex.test(value))throw Error('Campo fiscal '+key+' inválido.');
-  // REGRA ÚNICA: o CEST revisado e confirmado pelo vínculo WeDrop da
-  // própria SKU sempre prevalece sobre o dado antigo retornado pela Shopee.
-  // Se a WeDrop não tem CEST, a prévia contém literalmente "00" para
-  // aprovação explícita. NUNCA reintroduzir um CEST de sete dígitos da API.
-  // "00" é marcador interno, não código CEST fiscal de sete dígitos:
-  // o envio só ocorre após aprovação e a Shopee poderá rejeitá-lo.
   tax[key]=value;
  }
+ // Preservar exatamente o CEST publicado; só preencher "00" quando estiver vazio.
+ // O marcador 00 será submetido apenas por execução expressamente autorizada.
+ tax.cest=cestForShopeeField(live?.tax_info);
  if(!patterns.ncm.test(String(tax.ncm||'')))throw Error('NCM confirmado com 8 dígitos é obrigatório para preparar o fiscal.');
  if(input.measure_unit){
   const unit=String(input.measure_unit).toUpperCase().trim();
