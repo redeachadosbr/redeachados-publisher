@@ -90,3 +90,16 @@ test('interface importa CSV automaticamente ao selecionar arquivo',()=>{
   assert.match(html,/id="wedropAutoStatus"/);
   assert.match(html,/wedrop-manual-fallback/);
 });
+
+test('layout histórico com Disponibilidade ao final permanece aceito',()=>{
+ const cols=header.split(',');
+ const columns=[...cols,'Disponibilidade'];
+ const row=[...rows[0].split(','),'Disponível'];
+ const layout=identifyWeDropLayout(columns);
+ assert.equal(layout.recognized,true);
+ assert.equal(layout.costColumn,6);
+ assert.equal(layout.availabilityColumn,16);
+ const prepared=prepareAutomaticWeDropImport(columns.join(';')+'\n'+row.join(';')+'\n');
+ assert.equal(prepared.costs[0].unitCost,10.99);
+ assert.equal(prepared.products[0].data.rawAvailability,'Disponível');
+});

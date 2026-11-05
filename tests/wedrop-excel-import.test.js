@@ -3,7 +3,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import * as XLSX from '@stackline/xlsx';
 import {excelBufferToWeDropCsv,convertWeDropExcelBase64} from '../wedropExcel.js';
-import {parseCsv,previewWeDropCsv,prepareAutomaticWeDropImport,prepareWeDropImport} from '../wedropCsv.js';
+import {parseCsv,previewWeDropCsv,prepareAutomaticWeDropImport,prepareWeDropImport,identifyWeDropLayout} from '../wedropCsv.js';
 
 const headers=['SKU','Nome do Produto','Marca','Categoria','Fornecedor','Estado do fornecedor',
  'Preço','EAN','NCM','CEST','Peso (kg)','Largura (cm)','Altura (cm)',
@@ -90,4 +90,43 @@ test('kits: interface permite selecionar CSV, XLS e XLSX para catálogo e estoqu
  assert.match(js,/\/api\/shopee\/wedrop\/auto\/import/);
  assert.match(js,/\/api\/shopee\/kits\/availability\/import/);
  assert.match(js,/fileName:file\.name,purpose/);
+});
+
+test('Excel WeDrop de novembro 2026: disponibilidade em G e custo em H, SKU sem mistura',()=>{
+ const currentHeaders=['SKU','Nome do Produto','Marca','Categoria','Fornecedor','Estado do Fornecedor',
+  'Disponibilidade','Preço','EAN','NCM','CEST','Peso (kg)','Largura (cm)',
+  'Altura (cm)','Comprimento (cm)','Peso da Caixa (kg)','Imagem Principal'];
+ const currentRows=[
+  ['TX24508E','Estojo Escolar T-Rex Attack Bolsa Material Escolar Dinossauro - Multicolorido',
+   'Clio','Mochilas, Estojos e Lancheiras','WeDrop','SP','Disponível',7.99,
+   '7899753555799','42029200','25',85,31,11,8,0,
+   'https://wedrop-products-images.nyc3.cdn.digitaloceanspaces.com/jw825j1gp4-xl.jpg'],
+  ['TX24505K','Mochila Escolar de Rodinhas Clio Style Dinossauro Puxador Material - Multicolorido',
+   'Clio','Mochilas, Estojos e Lancheiras','WeDrop','SP','Disponível',41.99,
+   '7899753555768','42029200','25',854,32,49,19,0,
+   'https://wedrop-products-images.nyc3.cdn.digitaloceanspaces.com/n40j37aa2hc-xl.jpg']
+ ];
+ const excel=workbook('xlsx',[currentHeaders,...currentRows]);
+ const converted=excelBufferToWeDropCsv(excel,{fileName:'produtos-catalogo.xlsx'});
+ assert.equal(converted.recognizedLayout,true);
+ assert.equal(converted.sheetName,'Produtos');
+ const parsed=prepareAutomaticWeDropImport(converted.csv);
+ assert.equal(parsed.layout,'wedrop-catalog-17-stock');
+ assert.deepEqual(parsed.columnIndexes,{sku:0,cost:7});
+ assert.deepEqual(parsed.costs,[{sku:'TX24508E',unitCost:7.99},{sku:'TX24505K',unitCost:41.99}]);
+ const source=parsed.products.find(p=>p.sku==='TX24505K');
+ assert.equal(source.data.rawAvailability,'Disponível');
+ assert.equal(source.data.ean,'7899753555768');
+ assert.equal(source.data.ncm,'42029200');
+ assert.equal(source.data.catalogMeasurements.widthCm,'32');
+ assert.match(source.data.imageUrl,/n40j37aa2hc-xl.jpg$/);
+ assert.deepEqual(parsed.products.map(p=>p.sku),['TX24508E','TX24505K']);
+});
+
+test('um cabeçalho genérico parecido não autoriza importar preço de venda como custo',()=>{
+ const fake=['SKU','Nome do Produto','Marca','Categoria','Fornecedor','Estado do Fornecedor',
+ 'Disponibilidade','Preço de Venda','EAN','NCM','CEST','Peso (kg)','Largura (cm)',
+ 'Altura (cm)','Comprimento (cm)','Peso da Caixa (kg)','Imagem Principal'];
+ assert.equal(identifyWeDropLayout(fake).recognized,false);
+ assert.throws(()=>prepareAutomaticWeDropImport(fake.join(';')+'\nA;nome;x;y;z;SP;Disponível;100;1;2;3;4;5;6;7;8;https://image\n'),/bloqueada/);
 });

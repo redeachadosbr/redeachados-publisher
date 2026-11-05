@@ -74,8 +74,10 @@ export function parseMoneyBR(raw){
   if(!Number.isFinite(value)||value<=0||value>99999999)return null;
   return Math.round((value+Number.EPSILON)*100)/100;
 }
-// Reconhece APENAS layouts explicitamente conhecidos do fornecedor.
-// "Preço" só é custo quando pertence ao layout oficial WeDrop com 16 colunas.
+// Reconhece APENAS layouts explícitos e completos do fornecedor:
+// 16 colunas sem estoque, 17 com "Disponibilidade" no fim (legado),
+// ou 17 com "Disponibilidade" ENTRE Estado do Fornecedor e Preço.
+// "Preço" genérico fora desses layouts NUNCA é tratado como custo.
 const normalizeHeader=x=>String(x||'').trim().normalize('NFD')
   .replace(/[\u0300-\u036f]/g,'').toLowerCase().replace(/\s+/g,' ');
 export function identifyWeDropLayout(headers){
@@ -98,12 +100,19 @@ export function identifyWeDropLayout(headers){
     'peso da caixa (kg)','imagem principal'
   ];
   const validBase=expected.every((x,i)=>x===named[i]);
-  const withAvailability=validBase&&named.length===17&&named[16]==='disponibilidade';
   const isOfficial=validBase&&named.length===16;
-  if(isOfficial||withAvailability)
-    return {recognized:true,skuColumn:0,costColumn:6,
-     schema:withAvailability?'wedrop-catalog-17-stock':'wedrop-catalog-16',
-     availabilityColumn:withAvailability?16:null};
+  const withAvailabilityAtEnd=validBase&&named.length===17&&named[16]==='disponibilidade';
+  const withAvailabilityBeforePrice=named.length===17&&named[6]==='disponibilidade'&&
+    expected.every((x,i)=>x===named[i<6?i:i+1]);
+  if(isOfficial||withAvailabilityAtEnd||withAvailabilityBeforePrice){
+   // Três layouts exatos. Em 2026 o CSV/XLSX WeDrop mudou:
+   // coluna G = Disponibilidade; coluna H = Preço do fornecedor.
+   const availabilityColumn=withAvailabilityBeforePrice?6:withAvailabilityAtEnd?16:null;
+   const costColumn=withAvailabilityBeforePrice?7:6;
+   return {recognized:true,skuColumn:0,costColumn,
+    schema:availabilityColumn!==null?'wedrop-catalog-17-stock':'wedrop-catalog-16',
+    ...(availabilityColumn!==null?{availabilityColumn}:{})};
+  }
   return {recognized:false,reason:'Layout não reconhecido com segurança. A coluna Preço de uma planilha genérica pode ser preço de venda.'};
 }
 export function prepareAutomaticWeDropImport(raw,{skipInvalid=false}={}){
@@ -158,8 +167,15 @@ export function prepareWeDropImport(raw,{skuColumn,costColumn,skipInvalid=false}
 // Product facts are trusted only in the official catalog layout. Preserve raw
 // values: supplier shipping measurements must not become assembled dimensions.
 export function prepareWeDropProducts(headers,rows,allowedSkus){
-  if(!['wedrop-catalog-16','wedrop-catalog-17-stock'].includes(identifyWeDropLayout(headers).schema))return [];
+  const layout=identifyWeDropLayout(headers);
+  if(!['wedrop-catalog-16','wedrop-catalog-17-stock'].includes(layout.schema))return [];
   const products=new Map();
+  // Posições abaixo usam a base 16 colunas, sem deslocar o custo. Quando
+  // Disponibilidade fica na coluna G, os fatos das colunas H a Q avançam 1.
+  const facts=(row,i)=>row[i+(layout.availabilityColumn===6&&i>=6?1:0)];
+  const availability=row=>layout.availabilityColumn!==undefined?
+   {rawAvailability:String(row[layout.availabilityColumn]||'').trim()}:{};
+ 
   const code=(value,length)=>{
     const raw=String(value||'').trim();
     const normalized=raw.replace(/[.\s-]/g,'');
@@ -168,15 +184,15 @@ export function prepareWeDropProducts(headers,rows,allowedSkus){
   for(const [index,row] of rows.entries()){
     const sku=skuText(row[0]);if(!sku||!allowedSkus.has(sku))continue;
     const data={name:row[1]||'',brand:row[2]||'',category:row[3]||'',supplier:row[4]||'',supplierState:row[5]||'',
-      ...(headers.length===17?{rawAvailability:String(row[16]||'').trim()}:{}),
-      ean:String(row[7]||'').trim(),ncm:code(row[8],8),cest:code(row[9],7),
-      rawNcm:String(row[8]||''),rawCest:String(row[9]||''),
-      catalogMeasurements:{weightKg:String(row[10]||''),widthCm:String(row[11]||''),heightCm:String(row[12]||''),
-        lengthCm:String(row[13]||''),boxWeightKg:String(row[14]||'')},
-      imageUrl:/^https:\/\//i.test(row[15]||'')?row[15]:'',
+      ...availability(row),
+      ean:String(facts(row,7)||'').trim(),ncm:code(facts(row,8),8),cest:code(facts(row,9),7),
+      rawNcm:String(facts(row,8)||''),rawCest:String(facts(row,9)||''),
+      catalogMeasurements:{weightKg:String(facts(row,10)||''),widthCm:String(facts(row,11)||''),heightCm:String(facts(row,12)||''),
+        lengthCm:String(facts(row,13)||''),boxWeightKg:String(facts(row,14)||'')},
+      imageUrl:/^https:\/\//i.test(facts(row,15)||'')?facts(row,15):'',
       warnings:['Peso e medidas da planilha precisam de conferência: não presumir unidade incorreta nem medidas do produto montado.',
-        ...(!code(row[8],8)?['NCM ausente ou inválido na fonte.']:[]),
-        ...(row[9]&&!code(row[9],7)?['CEST inválido na fonte.']:[])]};
+        ...(!code(facts(row,8),8)?['NCM ausente ou inválido na fonte.']:[]),
+        ...(facts(row,9)&&!code(facts(row,9),7)?['CEST inválido na fonte.']:[])]};
     const previous=products.get(sku);
     if(previous&&JSON.stringify(previous.data)!==JSON.stringify(data)){
       previous.data={conflict:true,name:previous.data.name||data.name,
