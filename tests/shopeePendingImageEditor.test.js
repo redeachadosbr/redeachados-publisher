@@ -71,7 +71,7 @@ test('kit sem rascunho abre editor completo da Shopee sem inventar composição'
  assert.doesNotMatch(css,/#kitPendingDirectEditor #optimizerShowExecution,/);
  assert.match(css,/#tab-kits #kitWizard\[hidden\]\{display:none!important\}/);
  assert.match(css,/#tab-kits \.kit-pending-direct-mount #optimizerWorkflowCards/);
- assert.match(html,/app\.js\?v=3\.5\.65-kit-stage10-fiscal-discount-recovery/);
+ assert.match(html,/app\.js\?v=3\.5\.66-kit-fiscal-actually-required/);
 });
 test('vínculo duplicado em dois kits bloqueia seleção arbitrária',()=>{
  const route=classifyPendingImageEditor({itemId:id,sku:'C02317261',title:'Kit Canecas',
