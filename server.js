@@ -269,8 +269,9 @@ app.get('/api/shopee/curvas-ab/search',mustLogin,requireWeDropAdmin,async(req,re
   const keyword=String(req.query.keyword||'');
   const refresh=String(req.query.refresh||'')==='1';
   const advance=String(req.query.advance||'')==='1';
+  const verifiedOnly=String(req.query.verifiedOnly||'1')!=='0';
   const result=await researchCurveAB(auth.shopId,{
-   limit:count,curve,category,keyword,refresh,advance});
+   limit:count,curve,category,keyword,refresh,advance,verifiedOnly});
   res.json(result);
  }catch(error){
   res.status(400).json({ok:false,error:String(error.message||error).slice(0,380)});
