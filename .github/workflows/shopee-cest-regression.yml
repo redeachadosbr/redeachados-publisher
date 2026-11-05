@@ -1,6 +1,18 @@
 name: Regressão do CEST Shopee
 
 on:
+  push:
+    branches:
+      - shopee-service
+    paths:
+      - 'shopeeFiscalGap.js'
+      - 'shopeeStructuredFields.js'
+      - 'shopeeExecutionPlan.js'
+      - 'server.js'
+      - 'public/app.js'
+      - 'tests/shopee-*cest*'
+      - 'tests/shopee-fiscal-gap-official.test.js'
+      - '.github/workflows/shopee-cest-regression.yml'
   pull_request:
     branches:
       - shopee-service
@@ -13,6 +25,7 @@ on:
       - 'tests/shopee-*cest*'
       - 'tests/shopee-fiscal-gap-official.test.js'
       - '.github/workflows/shopee-cest-regression.yml'
+  workflow_dispatch:
 
 jobs:
   cest-regression:
