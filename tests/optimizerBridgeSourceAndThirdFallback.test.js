@@ -43,23 +43,34 @@ test('fallback da imagem 03 usa medidas WeDrop e só altera slot 03',()=>{
  assert.doesNotMatch(body,/method:'DELETE'|RA_SITE_ABORT|images\/reorder/);
 });
 
-test('botão principal Gerar 03 cria arte final com cotas locais antes de consultar a Ponte',()=>{
+test('motor raiz: botão Gerar 03 usa a Ponte ChatGPT e não copia a imagem 02',()=>{
  const app=readFileSync(new URL('../public/app.js',import.meta.url),'utf8');
- const clickStart=app.indexOf('generate.onclick=async()=>{',app.indexOf('async function optimizerImagesLoad()'));
- const clickEnd=app.indexOf('actions.append(generate);',clickStart);
- const click=app.slice(clickStart,clickEnd);
- assert(clickStart>0&&clickEnd>clickStart);
- assert.match(click,/if\(slot===3\)\{/);
- assert.match(click,/await optimizerThirdFromPreparedPhoto\(w,stored,\{replaceExisting:Boolean\(image\)\}\)/);
- assert.match(click,/await optimizerChatBridgeRelease\(/);
- assert(click.indexOf('if(slot===3)')<click.indexOf("if(optimizerImagesMode!=='api')"));
+ const a=app.indexOf('generate.onclick=async()=>{',app.indexOf('async function optimizerImagesLoad()'));
+ const b=app.indexOf('actions.append(generate);',a);
+ const click=app.slice(a,b);
+ assert.match(click,/await optimizerCommercialRequestChatgptSlot\(w,slot\)/);
+ assert.doesNotMatch(click,/await optimizerThirdFromPreparedPhoto/);
+ assert.match(click,/if\(optimizerImagesMode!=='api'\)/);
  const cont=app.slice(app.indexOf('async function optimizerChatgptContinueFromServer()'),
   app.indexOf('globalThis.__RA_SHOPEE_RESUME_BRIDGE'));
- assert.match(cont,/if\(firstMissing===3\)\{/);
- assert.match(cont,/await optimizerThirdFromPreparedPhoto\(w,savedThirdState\)/);
- assert(cont.indexOf('if(firstMissing===3)')<cont.indexOf('optimizerChatBridgeWaitReady()'));
- assert.doesNotMatch(cont.slice(0,cont.indexOf('optimizerChatBridgeWaitReady()')),
-  /method:'DELETE'|restart:true/);
+ assert.match(cont,/optimizerBridgeThirdReferenceDataUrl\(w,data.images\|\|\[\]\)/);
+ assert.doesNotMatch(cont,/localRendered:true/);
+ assert.doesNotMatch(cont,/await optimizerThirdFromPreparedPhoto/);
+});
+test('motor raiz: ao receber imagem 03 via extensão, aplica cotas na cena NOVA antes do upload',()=>{
+ const app=readFileSync(new URL('../public/app.js',import.meta.url),'utf8');
+ const start=app.indexOf("if(m.kind!=='RA_EXTENSION_IMAGE')return;");
+ const end=app.indexOf('const existing=await json(',start);
+ const received=app.slice(start,end);
+ assert.match(received,/await optimizerVerifiedDimensionSpec\(w\)/);
+ assert.match(received,/addConfirmedSpecificationCard\(prepared.blob,spec\)/);
+ assert.match(received,/sceneSha256/);
+ assert.match(received,/chatgpt-auto-03-cotas-wedrop.png/);
+ assert.match(received,/medidas verificadas|cotas confirmadas|cotas WeDrop/i);
+ const click=app.slice(app.indexOf('async function optimizerCommercialRequestChatgptSlot('),
+  app.indexOf('async function optimizerChatgptCopyAll('));
+ assert.match(click,/referenceDataUrl=await optimizerBridgeThirdReferenceDataUrl/);
+ assert.match(click,/imageUrl:refs\[i\],prompts,referenceDataUrl/);
 });
 test('imagem 03 usa hash condicional e não substitui fotos de outras posições',()=>{
  const app=readFileSync(new URL('../public/app.js',import.meta.url),'utf8');
