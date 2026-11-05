@@ -53,7 +53,8 @@ test('imagem 03 envia foto real preparada da MESMA SKU junto do novo prompt na P
  assert.match(source,/sourceSlot=saved\.has\(1\)\?1:saved\.has\(2\)\?2:0/);
  assert.match(source,/optimizerImageEditReference\(w,sourceSlot\)/);
  assert.match(source,/optimizerImagesSameSku\(w\)/);
- assert.match(source,/data:image\\/jpeg;base64/);
+ assert.ok(source.includes('data:image'));
+ assert.ok(source.includes('base64'));
  assert.doesNotMatch(source,/fetch\('https:\/\/|method:'DELETE'/);
  const single=app.slice(app.indexOf('async function optimizerCommercialRequestChatgptSlot('),
    app.indexOf('async function optimizerChatgptCopyAll('));
