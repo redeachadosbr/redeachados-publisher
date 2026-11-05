@@ -37,9 +37,11 @@ export function verifiedExistingKitListingVideo({sku,itemId,review={},live={},ma
   const validOfficialUrl=raw.some(value=>{
    try{
     const url=new URL(String(value||''));
-    return url.protocol==='https:'&&
-     /(?:^|\\.)shopee\\.(?:com\\.br|com|sg)$/.test(url.hostname)&&
-     url.pathname.length>5;
+    const host=url.hostname.toLowerCase();
+    const shopeeHost=['.shopee.com.br','.shopee.com','.shopee.sg']
+     .some(suffix=>host===suffix.slice(1)||host.endsWith(suffix));
+    return url.protocol==='https:'&&shopeeHost&&
+     url.pathname.length>5;;
    }catch{return false;}
   });
   const duration=Number(entry.duration??entry.video_duration);
