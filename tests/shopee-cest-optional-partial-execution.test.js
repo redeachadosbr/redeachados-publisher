@@ -20,10 +20,10 @@ const review={stages:{seo:{reviewed:true},description:{reviewed:true},fiscal:{re
 const input={shopId:9,itemId:record.itemId,modelId:'0',sku:record.sku,record,review,live};
 const oldError='product.error_busi: Please upload the corresponding CEST of NCM';
 
-test('CEST em branco nunca recebe valor inventado e fiscal pode ficar de fora da otimização',()=>{
+test('CEST vazio da Shopee recebe 00 na prévia, e fiscal pode ser adiado',()=>{
  const ordinary=compileShopeeExecutionPlan(input);
  assert.equal(ordinary.finalFiscal.ncm,'95069900');
- assert.equal(ordinary.finalFiscal.cest,undefined);
+ assert.equal(ordinary.finalFiscal.cest,'00');
  const deferred=compileShopeeExecutionPlan({...input,deferUnconfirmedFiscal:true});
  assert.equal(deferred.fiscalDeferred,true);
  assert.equal(deferred.canExecute,true);
