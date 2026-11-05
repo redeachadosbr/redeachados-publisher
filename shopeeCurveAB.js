@@ -77,6 +77,11 @@ export function matchCurveOffers({catalog=[],offers=[],costs=[],baseline=new Map
   const short=[...hits.values()].filter(x=>x.count>=2).sort((a,b)=>b.count-a.count).slice(0,110);
   for(const entry of short){
    const p=entry.item;
+   // Nunca confundir produtos que apenas compartilham tema/marca/cor.
+   // A categoria comercial principal precisa existir em ambos os nomes
+   // (ex.: lancheira nao pode herdar vendas de um estojo T-Rex).
+   const primary=p.tokens[0];
+   if(primary&&!tokens.includes(primary))continue;
    if(!comparableTitle(p.name,offer.productName))continue;
    const common=entry.count;
    const score=common/Math.max(1,Math.min(p.tokens.length,tokens.length));
