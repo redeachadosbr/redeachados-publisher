@@ -64,7 +64,7 @@ RUN node --check server.js && node --check shopeeExecutionPlan.js && node --test
 RUN node --check shopeeExecutionHealth.js && node --check shopeeExecutionProgress.js && node --test tests/shopee-kit-discount-pending-status.test.js
 RUN node --test tests/shopee-kit-trailing-space-link.test.js
 RUN node --check shopeeExecutionKitDiscount.js && node --test tests/shopee-kit-discount-single-run.test.js
-RUN node --check shopeeExecutionPlan.js && node --check shopeeExecutionWorker.js && node --test tests/shopee-root-individual-execution.test.js tests/shopee-TRC0413-video-rejection-split.test.js
+RUN node --check shopeeExecutionPlan.js && node --check shopeeExecutionWorker.js && node --test tests/shopee-execution-media-fast-checkpoint.test.js tests/shopee-root-individual-execution.test.js tests/shopee-TRC0413-video-rejection-split.test.js
 RUN node --check shopeeExecutionVideoRecovery.js && node --check shopeeExecutionStore.js && node --test tests/shopee-video-retry-completion.test.js tests/shopeeVideoListingReadback.test.js
 ENV NODE_ENV=production
 EXPOSE 10000

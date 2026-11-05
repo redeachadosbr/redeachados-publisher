@@ -9,6 +9,27 @@ import {buildVariationPayload} from './shopeeVariationMedia.js';
 import {guardRejectedVideoCompletion,prepareRejectedVideoRetry} from './shopeeExecutionVideoRecovery.js';
 const hasDiscount=p=>Boolean(p.commercialDiscount||p.kitDiscount);
 const discountPhase=p=>p.kitDiscount?'kit_discount_ready':p.modelVariations?'model_discount_ready':'discount_ready';
+// O envio para a biblioteca de mídia NÃO altera o anúncio. Depois da primeira
+// auditoria, os uploads restantes podem usar o checkpoint por SKU/Item ID,
+// sem fazer duas leituras adicionais da Shopee em CADA imagem. A checagem
+// integral do anúncio ainda é obrigatória imediatamente antes de update_item.
+// Continua havendo somente UM upload por lease, com seu ID salvo em Supabase:
+// em caso de reinício, não repetir as imagens já confirmadas.
+async function uploadNextApprovedImage(plan,result,io){
+ const index=(result.imageIds||[]).length,asset=plan.images[index];
+ if(!asset)throw Error('Imagem de mídia ausente do plano aprovado.');
+ const bounded=async(promise,ms,label)=>{
+  let timer;
+  try{return await Promise.race([promise,new Promise((_,reject)=>{
+   timer=setTimeout(()=>reject(Error('timeout: '+label+' excedeu '+Math.ceil(ms/1000)+' segundos')),ms);
+  })]);}finally{clearTimeout(timer);}
+ };
+ const file=await bounded(io.downloadImage(asset),90000,'download da imagem '+(index+1));
+ const id=await bounded(io.media.image(file,asset.mime_type),90000,'envio da imagem '+(index+1));
+ const current=[...(result.imageIds||[]),id];
+ return {state:'running',result:withExecutionEvent({...result,phase:'images_upload',imageIds:current,attempts:0},
+  'image-'+current.length,'Imagem '+current.length+' de '+plan.images.length+' enviada à biblioteca de mídia da Shopee.','success'),delay:500};
+}
 // One durable step per lease. No tokens or secret configuration are persisted.
 export async function advanceShopeeExecution(job,io){
  return guardRejectedVideoCompletion(await advanceShopeeExecutionStep(job,io),job.plan);
@@ -16,6 +37,13 @@ export async function advanceShopeeExecution(job,io){
 async function advanceShopeeExecutionStep(job,io){
  const plan=job.plan,result={...(job.result||{})};
  if(!plan?.requiresExplicitConfirmation||!plan.canExecute)throw Error('Plano sem aprovação válida.');
+ // Fast path seguro: a primeira imagem passou pela auditoria do anúncio;
+ // as seguintes apenas entram na biblioteca de mídia, sem update_item.
+ // No último upload esta condição deixa de valer: a leitura oficial volta
+ // a ser exigida antes da alteração do anúncio.
+ if(result.phase==='images_upload'&&Array.isArray(result.imageIds)&&
+    result.imageIds.length>0&&result.imageIds.length<(plan.images?.length||0))
+  return uploadNextApprovedImage(plan,result,io);
  // O vídeo é vinculado em operação separada e verificável; sua rejeição
  // não deve anular fotos, título ou descrição aprovados.
  const nonVideoPlan={...plan,video:null};
@@ -282,21 +310,9 @@ async function advanceShopeeExecutionStep(job,io){
   }
  }
  if(plan.images?.length&&(result.imageIds||[]).length<plan.images.length){
-  const index=(result.imageIds||[]).length,asset=plan.images[index];
-  // Operações externas não podem manter a execução presa indefinidamente.
-  // O timeout preserva os IDs confirmados; o próximo checkpoint recomeça
-  // exclusivamente pela posição não confirmada.
-  const bounded=async(promise,ms,label)=>{
-   let timer;
-   try{return await Promise.race([promise,new Promise((_,reject)=>{
-    timer=setTimeout(()=>reject(Error('timeout: '+label+' excedeu '+Math.ceil(ms/1000)+' segundos')),ms);
-   })]);}finally{clearTimeout(timer);}
-  };
-  const file=await bounded(io.downloadImage(asset),90000,'download da imagem '+(index+1));
-  const id=await bounded(io.media.image(file,asset.mime_type),90000,'envio da imagem '+(index+1));
-  const current=[...(result.imageIds||[]),id];
-  return {state:'running',result:withExecutionEvent({...result,phase:'images_upload',imageIds:current,attempts:0},
-   'image-'+current.length,'Imagem '+current.length+' de '+plan.images.length+' enviada à biblioteca de mídia da Shopee.','success'),delay:500};
+  // Primeira imagem: validação da identidade e leitura inicial acima.
+  // Últimas imagens: continuar pelo checkpoint durável sem leituras redundantes.
+  return uploadNextApprovedImage(plan,result,io);
  }
  if(plan.video&&result.video?.phase!=='ready'){
   const file=await io.download(plan.video);
