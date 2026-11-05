@@ -109,23 +109,38 @@ function verifiedKeywordEvidence(name,offers=[]){
  return chosen.slice(0,5);
 }
 export function seoTitleFromEvidence(productName,keywords=[],sku=''){
- // O anúncio proposto pode usar APENAS palavras verificadas na própria
- // ficha comercial WeDrop: títulos concorrentes não provam especificações.
+ // Somente fatos do produto WeDrop podem compor o título. Reordena termos
+ // com evidência em anúncios comparáveis sem duplicá-los deliberadamente.
  const skuEsc=String(sku||'').replace(/[^A-Za-z0-9]/g,'\\$&');
  let name=pretty(productName).replace(/\bSKU\s*[:#-]?\s*[A-Z0-9.-]+/gi,'');
- if(skuEsc)name=name.replace(new RegExp('\\b'+skuEsc+'\\b','gi'),'').trim();
+ if(skuEsc)name=name.replace(new RegExp('\\b'+skuEsc+'\\b','gi'),' ').trim();
  name=name.replace(/\bKIT-[A-Z0-9-]+\b/gi,'').replace(/\s+/g,' ').trim();
- // Prefere os termos compostos recorrentes desde que já existam na ficha.
- const normalized=normal(name);
- const lead=keywords.filter(x=>x.mentions>0&&x.term.includes(' ')&&
-  normalized.includes(x.term)).slice(0,2).map(x=>x.term);
- const sections=[...lead,name].filter(Boolean);
- let title=sections.join(' | ');
- if(title.length>117)title=name.slice(0,117).trim().replace(/[,;|\- ]+$/,'');
- if(!title)return '';
- if(title.length<=118)title+=' ✨';
+ if(!name)return '';
+ const best=keywords.find(x=>x.mentions>0&&x.term.includes(' ')&&
+  normal(name).includes(x.term));
+ if(best){
+  const regex=new RegExp(best.term.split(/\s+/).join('\\s+'),'i');
+  const match=regex.exec(name);
+  if(match&&match.index>0){
+   name=[match[0],name.slice(0,match.index),name.slice(match.index+match[0].length)]
+    .map(x=>x.trim()).filter(Boolean).join(' ').replace(/\s+/g,' ');
+  }
+ }
+ let title=name;
+ for(const entry of keywords){
+  const term=String(entry.term||'').trim();
+  if(entry.mentions<=0||!term.includes(' ')||normal(title).includes(term))continue;
+  if(title.length+term.length+4>117)continue;
+  title+=' | '+term;
+  if(title.split(' | ').length>2)break;
+ }
+ if(title.length>117){
+  title=title.slice(0,117).replace(/\s+\S*$/,'').replace(/[;,| ]+$/,'').trim();
+ }
+ if(title.length<=117)title+=' ✨';
  return title.slice(0,120);
 }
+
 function addMarketAnalysis(row,offers,checkedAt){
  const compare=evaluateMarketOffers({
   title:row.name,offers,ownShopId:'0',ownItemId:'0',queriedAt:checkedAt});
