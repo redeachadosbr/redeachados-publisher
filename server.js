@@ -2390,7 +2390,17 @@ app.get('/api/shopee/optimizer/workflow/source',mustLogin,requireWeDropAdmin,asy
  res.setHeader('Cache-Control','no-store');
  try{
   const {auth,itemId,modelId,sku}=await checkedWorkflowAudit(req);
-  res.json({ok:true,sourceEvidence:await readShopeeSourceEvidence(auth.shopId,itemId,modelId,sku,{preview:true})});
+  const [sourceEvidence,supplier]=await Promise.all([
+   readShopeeSourceEvidence(auth.shopId,itemId,modelId,sku,{preview:true}),
+   readWeDropProduct(auth.shopId,{sku,itemId,modelId})
+  ]);
+  const matched=supplier&&['exact-sku','reviewed-link'].includes(supplier.matchedBy);
+  res.json({ok:true,sourceEvidence,
+   // Medidas brutas da SKU exata: nunca aceitar outra SKU sem vínculo
+   // explícito, e nunca publicar medidas logísticas sem cruzar o texto salvo.
+   supplierMeasurements:matched?supplier.product_data?.catalogMeasurements||null:null,
+   supplierMatchedBy:matched?supplier.matchedBy:'',
+   supplierSku:matched?String(supplier.supplier_sku||''):''});
  }catch(e){res.status(400).json({error:String(e.message||e).slice(0,200)});}
 });
 app.post('/api/shopee/optimizer/workflow/source',mustLogin,requireWeDropAdmin,async(req,res)=>{
