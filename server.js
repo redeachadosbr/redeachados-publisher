@@ -3913,6 +3913,21 @@ app.post('/api/shopee/optimizer/execution/reconcile',mustLogin,requireWeDropAdmi
        discount:{status:'verified'}},'discount-verified','Promoção confirmada pela Shopee.','success'),lastError:null});
    }
   }
+  else if(!oldVideoFailure&&job.state==='uncertain'&&
+    job.plan?.video&&job.result?.video?.phase==='ready'&&
+    Boolean(job.result.video.id)&&
+    !videoPublishedAfterPlan(job.plan,live,job.result.video)&&
+    verifyShopeeExecution({...job.plan,video:null},live,job.result||{})){
+    // A parte comercial já foi confirmada na Shopee. A espera antiga
+    // não pode bloquear o vínculo isolado do vídeo pronto, nem reenviar
+    // imagem/título/descrição. O worker fará readback antes da escrita.
+    updated=await reconcileShopeeJob(job,{state:'running',
+     result:withExecutionEvent({...job.result,phase:'video_attach_ready',
+      contentVerified:true,primaryVerified:false},
+      'nonvideo-reconciled','Imagens e conteúdo conferidos. Executando somente o vínculo do vídeo aprovado.','success'),
+     lastError:null});
+    void runOptimizerJobs();
+  }
   else if(verified){
     // Apenas o ID/URL exato prova qual arquivo foi publicado. A existência
     // de um novo vídeo prova a vinculação, mas não autoriza registrar SHA
