@@ -95,6 +95,7 @@ import {findLiveShopeeSku} from './shopeeSkuFinder.js';
 import {optimizerSettings,saveOptimizerSettings} from './optimizerStore.js';
 import {quoteShopeePrice,quoteShopeeOptimizationPrice,normalizeShopeePricingSettings} from './shopeePricing.js';
 import {lookupShopeeCompetitors,marketResearchConfigured} from './shopeeMarketResearch.js';
+import {researchCurveAB} from './shopeeCurveAB.js';
 import {promotionFromQuote,promotionBasePrice,promotionMember,shopDiscountMembershipSignal,discountPlanSnapshot,signDiscountPreview,verifyDiscountPreview,readDiscountPages} from './shopeeDiscountPublish.js';
 import {auditCatalogDiscounts} from './shopeeCatalogDiscountAudit.js';
 import {discountPreviewStatus} from './shopeeDiscountDeferred.js';
@@ -187,7 +188,7 @@ app.use(express.static(path.join(__dirname,'public'),{
 // URLs próprias por setor do painel: recarregar/compartilhar não causa 404.
 // A sessão e autenticação das APIs continuam protegidas pelos mesmos middlewares.
 const appPagePaths=new Set([
-  'inicio','produtos','kits','otimizacao','otimizacao-pendente','precificacao','descontos','informacoes-fiscais','pedidos','envios','ads','wedrop','financeiro','configuracoes'
+  'inicio','produtos','kits','curvas-ab','otimizacao','otimizacao-pendente','precificacao','descontos','informacoes-fiscais','pedidos','envios','ads','wedrop','financeiro','configuracoes'
 ]);
 app.get('/app/:section',(req,res)=>{
   if(!appPagePaths.has(String(req.params.section||'')))return res.status(404).send('Página não encontrada.');
@@ -229,6 +230,23 @@ app.post('/api/shopee/kits/availability/import',mustLogin,requireWeDropAdmin,asy
   const imported=await saveKitStockImport(auth.shopId,req.body.csv);
   res.json({ok:true,...imported,marketplaceUpdated:false});
  }catch(error){res.status(400).json({error:String(error.message||error).slice(0,520)});}
+});
+// Pesquisa somente-leitura de oportunidades Curvas A/B. A fonte de vendas
+// de concorrentes e a Affiliate API, nunca metricas Ads da propria loja.
+app.get('/api/shopee/curvas-ab/search',mustLogin,requireWeDropAdmin,async(req,res)=>{
+ res.setHeader('Cache-Control','no-store');
+ try{
+  const {auth}=await getValidAuth(req);
+  const count=Number(req.query.limit||10);
+  const curve=String(req.query.curve||'ALL').toUpperCase();
+  const keyword=String(req.query.keyword||'');
+  const refresh=String(req.query.refresh||'')==='1';
+  const result=await researchCurveAB(auth.shopId,{
+   limit:count,curve,keyword,refresh});
+  res.json(result);
+ }catch(error){
+  res.status(400).json({ok:false,error:String(error.message||error).slice(0,380)});
+ }
 });
 app.get('/api/shopee/kits/catalog',mustLogin,requireWeDropAdmin,async(req,res)=>{
  res.setHeader('Cache-Control','no-store');
