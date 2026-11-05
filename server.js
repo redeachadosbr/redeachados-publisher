@@ -95,7 +95,7 @@ import {findLiveShopeeSku} from './shopeeSkuFinder.js';
 import {optimizerSettings,saveOptimizerSettings} from './optimizerStore.js';
 import {quoteShopeePrice,quoteShopeeOptimizationPrice,normalizeShopeePricingSettings} from './shopeePricing.js';
 import {lookupShopeeCompetitors,marketResearchConfigured} from './shopeeMarketResearch.js';
-import {researchCurveAB,curveProvidersStatus} from './shopeeCurveAB.js';
+import {researchCurveAB,curveProvidersStatus,probeCurveAffiliateAccess} from './shopeeCurveAB.js';
 import {searchFeaturedPublic} from './shopeeFeaturedSearch.js';
 import {promotionFromQuote,promotionBasePrice,promotionMember,shopDiscountMembershipSignal,discountPlanSnapshot,signDiscountPreview,verifyDiscountPreview,readDiscountPages} from './shopeeDiscountPublish.js';
 import {auditCatalogDiscounts} from './shopeeCatalogDiscountAudit.js';
@@ -242,8 +242,11 @@ app.get('/api/shopee/curvas-ab/sources',mustLogin,requireWeDropAdmin,async(req,r
   await getValidAuth(req);
   const providers=curveProvidersStatus();
   const doProbe=String(req.query.probe||'')==='1';
-  const live=doProbe?await searchFeaturedPublic('coqueteleira',{timeoutMs:6500}):null;
+  const [live,affiliate]=doProbe?
+   await Promise.all([searchFeaturedPublic('coqueteleira',{timeoutMs:6500}),probeCurveAffiliateAccess()]):
+   [null,null];
   res.json({ok:true,affiliateConfigured:providers.affiliate.configured,
+   affiliate:affiliate||{status:providers.affiliate.configured?'not_tested':'unconfigured'},
    storefront:{
     checked:doProbe||providers.featured.state!=='unknown',
     source:'Busca pública Shopee Em Destaque • by=sales',
