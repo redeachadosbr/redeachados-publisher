@@ -12000,6 +12000,63 @@ function optimizerCommercialActionMessage(message,isError=false){
  notice.style.color=isError?'#a02a21':'#165b3f';
  notice.textContent=message;
 }
+// Alternativa local não destrutiva quando a extensão Chrome recusa a origem
+// Shopee: utiliza SOMENTE uma foto comercial previamente salva NESTA SKU.
+// A foto 03 é uma derivação de 02 (ou 01) e precisa de revisão visual.
+async function optimizerThirdFromPreparedPhoto(w,stored){
+ if(!optimizerImagesSameSku(w)||optimizerImagesAutoBusy)throw Error('A etapa de imagens não está disponível.');
+ const fromSlot=stored.has(2)?2:stored.has(1)?1:0;
+ if(!fromSlot)throw Error('Prepare primeiro a imagem 01 ou 02 para criar uma imagem de dimensões.');
+ const spec=await optimizerVerifiedDimensionSpec(w);
+ if(!spec?.measurements?.length)
+  throw Error('Informações da WeDrop não têm medidas verificadas desta SKU. Confira a Etapa 01 e o vínculo do catálogo.');
+ if(!optimizerImagesSameSku(w))throw Error('A SKU mudou durante a leitura WeDrop.');
+ optimizerImagesAutoBusy=true;optimizerImagesSetProgress();
+ const status=$('#optimizerImagesStatus');
+ try{
+  const key=new URLSearchParams({sku:w.sku,item_id:w.itemId,model_id:w.modelId});
+  const before=await json('/api/shopee/optimizer/images/manual?'+key);
+  if((before.images||[]).some(image=>Number(image.slot)===3))
+   throw Error('A imagem 03 já foi preenchida por outra sessão. Atualize a galeria antes de substituí-la.');
+  const original=(before.images||[]).find(image=>Number(image.slot)===fromSlot);
+  if(!original||original.sha256!==stored.get(fromSlot)?.sha256)
+   throw Error('A foto-base foi alterada. Atualize a galeria antes de continuar.');
+  key.set('slot',String(fromSlot));
+  const photo=await fetch('/api/shopee/optimizer/images/reference?'+key,{
+   credentials:'same-origin',cache:'no-store',signal:AbortSignal.timeout(45000)
+  });
+  if(!photo.ok)throw Error('Não foi possível recuperar a fotografia-base (HTTP '+photo.status+').');
+  if(String(photo.headers.get('X-Image-SHA256')||'')!==String(original.sha256))
+   throw Error('A foto-base mudou durante a leitura. Nada foi salvo.');
+  const {addConfirmedSpecificationCard}=
+   await import('/specificationCard.js?v=1.4.3-reference-design');
+  spec.productTitle=w.draftTitle||w.productTitle||'';
+  const output=await addConfirmedSpecificationCard(await photo.blob(),spec);
+  if(!optimizerImagesSameSku(w))throw Error('A SKU mudou durante a criação. Nada foi salvo.');
+  key.set('slot','3');
+  const response=await fetch('/api/shopee/optimizer/images/manual?'+key,{
+   method:'POST',credentials:'same-origin',
+   headers:{'Content-Type':'image/png',
+    'X-Image-Filename':'imagem-03-medidas-confirmadas.png',
+    'X-Expect-Empty-Slot':'true'},
+   body:output,signal:AbortSignal.timeout(90000)
+  });
+  const saved=await response.json().catch(()=>({}));
+  if(!response.ok||saved?.image?.sha256==null||
+     Number(saved.image.slot)!==3||String(saved.image.sku)!==String(w.sku))
+   throw Error(String(saved.error||'Não houve confirmação do salvamento da imagem 03.'));
+  const stage=w.stages?.find(stage=>stage.key==='images');
+  if(stage){stage.reviewed=false;stage.status='pending';stage.reviewedAt=null;}
+  optimizerExecReset();
+  optimizerCommercialActionMessage('✓ Imagem 03 salva com '+spec.measurements.map(x=>x.label+' '+x.value).join(' · ')+
+   '. Foto-base derivada da posição '+String(fromSlot).padStart(2,'0')+
+   '. Confira a composição e as cotas antes de aprovar. Outras imagens preservadas.');
+  status.textContent='Imagem 03 criada e salva com medidas verificadas da WeDrop, sem depender da extensão.';
+ }finally{
+  optimizerImagesAutoBusy=false;optimizerImagesSetProgress();
+  if(optimizerImagesSameSku(w))await optimizerImagesLoad();
+ }
+}
 // Aplica apenas as cotas verificadas à foto 03 JÁ SALVA.
 // Não gera imagem de novo, não toca nas outras oito posições e não publica.
 async function optimizerRepairThirdImageDimensions(w,image){
@@ -12258,6 +12315,27 @@ async function optimizerImagesLoad(){
      $('#optimizerImageCorrectionFile')?.click();
     };
     importThirdButton=importThird;
+    // A Ponte Chrome pode rejeitar a URL Shopee. Não impedir a imagem 03
+    // quando já há fotografia comercial da própria SKU e cotas verificadas.
+    if(stored.has(2)||stored.has(1)){
+     const fallbackFrom=stored.has(2)?2:1;
+     const fallback=optimizerMake('button','secondary',
+      '📏 Criar com foto '+String(fallbackFrom).padStart(2,'0')+' + medidas');
+     fallback.type='button';
+     fallback.title='Criar apenas a imagem 03 com uma foto já salva nesta SKU e as cotas confirmadas nas Informações da WeDrop. Não usa ChatGPT.';
+     fallback.onclick=async()=>{
+      if(optimizerImagesAutoBusy||!optimizerImagesSameSku(w))return;
+      fallback.disabled=true;
+      try{await optimizerThirdFromPreparedPhoto(w,stored);}
+      catch(error){
+       const message='Não foi possível criar a imagem 03 com cotas: '+String(error.message||error)+
+        '. Todas as fotos existentes foram preservadas.';
+       optimizerCommercialActionMessage(message,true);
+       status.textContent=message;
+      }finally{fallback.disabled=false;}
+     };
+     actions.append(fallback);
+    }
    }
    let measureButton=null;
    if(slot===3&&image){
