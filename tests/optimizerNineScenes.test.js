@@ -26,7 +26,7 @@ test('Motor Matriz aplica as regras novas e mantém dimensões reais da WeDrop',
  assert.equal(result.original,'https://cf.shopee.com.br/file/reference');
  assert.equal(result.prompts.length,9);
  for(let i=0;i<9;i++){
-  assert.ok(result.prompts[i].startsWith(i===0?'INJETAR_CUSTOM':CHATGPT_IMAGE_SCENES[i].guide));
+  assert.ok(result.prompts[i].startsWith('ETAPA ATUAL EXCLUSIVA — IMAGEM '+String(i+1).padStart(2,'0')+'/09'));
   assert.match(result.prompts[i],/DIVERSIDADE OBRIGATÓRIA — CENA ÚNICA/);
   assert.match(result.prompts[i],/ÂNGULO E ENQUADRAMENTO:/);
   assert.match(result.prompts[i],/A FOTO DE REFERÊNCIA serve apenas para preservar o PRODUTO EXATO/);
