@@ -69,8 +69,18 @@ export function auditRootShopeeExecution({
  const imgs=Array.isArray(images)?images:[];
  const expectedImages=imgs.map(x=>String(x.shopee_image_id||''));
  const actualImages=Array.isArray(live.image?.image_id_list)?live.image.image_id_list.map(String):[];
+ // A biblioteca manual pode não ter os image IDs após a publicação.
+ // Recuperar somente IDs exatos do job da mesma SKU/Item ID e comparar
+ // a ordem real no anúncio. O contador de uploads sozinho nunca comprova.
+ const jobImages=job?.sku===sku&&String(job?.item_id)===String(itemId)&&
+  Array.isArray(job?.result?.imageIds)?job.result.imageIds.map(String):[];
+ const approvedJobImages=job?.plan?.images?.length===9&&jobImages.length===9&&
+  job?.plan?.images?.every(x=>Boolean(x?.source||x?.url||x?.sha256||x?.shopee_image_id));
  const imageReady=imgs.length===9&&expectedImages.every(x=>x.length>5);
- add('images',imageReady&&sameData(expectedImages,actualImages),
+ const exactManualImages=imageReady&&sameData(expectedImages,actualImages);
+ const exactJobImages=approvedJobImages&&sameData(jobImages,actualImages);
+ add('images',exactManualImages||exactJobImages,
+  exactJobImages?'Nove imagens do envio aprovado conferidas por ID e ordem na Shopee':
   !imageReady?'Nove imagens aprovadas não estão prontas ou vinculadas à SKU':
   'Conferir IDs e ordem das imagens publicadas no anúncio');
  const publishedVideo=video?.publication?.sha256&&video.publication.sha256===video.sha256?
