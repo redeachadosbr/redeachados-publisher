@@ -144,3 +144,17 @@ test('otimização pendente confirma Shopee antes de escolher editor e não alte
  assert.match(server,/get_item_base_info/);
  assert.doesNotMatch(ui,/\/api\/shopee\/ads\//);
 });
+
+test('kit sem composição recupera a etapa 01 e o formulário WeDrop original',()=>{
+ const app=readFileSync(new URL('../public/app.js',import.meta.url),'utf8');
+ const kit=readFileSync(new URL('../public/kit-builder.js',import.meta.url),'utf8');
+ const css=readFileSync(new URL('../public/kit-builder.css',import.meta.url),'utf8');
+ assert.match(kit,/kitPendingDirectSourceStep/);
+ assert.match(kit,/01 · Informações da WeDrop/);
+ assert.match(kit,/sourceMount\.id='kitPendingDirectSourceMount'/);
+ assert.match(app,/sourceMount\.append\(sourcePanel\)/);
+ assert.match(app,/pendingKitDirectSourceHome\.insertBefore\(sourcePanel/);
+ assert.match(app,/const stageOffset=directKit\?1:0/);
+ assert.match(css,/#tab-kits \.kit-pending-source-step #optimizerSourcePanel/);
+ assert.match(app,/optimizerSourceAction\('text'/);
+});

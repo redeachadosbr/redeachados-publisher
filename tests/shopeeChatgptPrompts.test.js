@@ -51,3 +51,12 @@ test('layout oferece escolha ChatGPT independente de API e mantém prévia antes
  assert.match(js,/prepareSquareImage\(file\)/);
  assert.match(js,/api\/shopee\/optimizer\/images\/manual/);
 });
+
+test('não reutiliza prompt da imagem 03 na imagem 04 após retomar',()=>{
+ const wrong='Imagem 03 — Especificações: foto sem medidas';
+ const result=createChatGptPrompts({title:'Kit Garrafa Térmica e 4 Canecas',
+  imagePrompts:{4:wrong}});
+ assert.match(result.prompts[3],/^ETAPA ATUAL EXCLUSIVA — IMAGEM 04\/09/);
+ assert.match(result.prompts[3],/BENEFÍCIOS|Benefícios/);
+ assert.doesNotMatch(result.prompts[3],/Imagem 03 — Especificações: foto sem medidas/);
+});

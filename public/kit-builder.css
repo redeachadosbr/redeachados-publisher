@@ -3448,3 +3448,11 @@
  #tab-kits .kit-pending-direct-actions{width:100%}
  #tab-kits .kit-pending-direct-actions > button{flex:1;min-width:150px}
 }
+
+/* Etapa 01 WeDrop do anúncio de kit já publicado: formulário original, não clone. */
+#tab-kits .kit-pending-source-step{border:1px solid #bdd6f0;border-radius:16px;background:#f4f9ff;padding:16px;margin:14px 0 18px;display:grid;gap:10px}
+#tab-kits .kit-pending-source-step>strong{font-size:16px;color:#123962}
+#tab-kits .kit-pending-source-step>p{font-size:13px;color:#315476;line-height:1.5;margin:0}
+#tab-kits .kit-pending-source-step #optimizerSourcePanel{display:block!important;visibility:visible!important;margin:0;max-width:100%}
+#tab-kits .kit-pending-source-step #optimizerSourcePanel[hidden]{display:none!important}
+#tab-kits .kit-pending-direct-step-help{color:#34597e;font-size:12px;line-height:1.6;padding:9px 12px;border-radius:10px;background:#eff5fc}

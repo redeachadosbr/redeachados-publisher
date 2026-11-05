@@ -8,6 +8,13 @@ import {imageScenePrompt} from './imageSceneDiversity.js?v=20261104-premium-nine
 // O formato 1200 x 1200 e os fatos WeDrop são tratados pelo Manager,
 // fora do campo de mensagem do ChatGPT.
 export const CHATGPT_IMAGE_SCENES=Object.freeze(PREMIUM_NINE_IMAGE_TITLES.map((label,i)=>({label,guide:premiumNineImageRule(i+1)})))
+// Um prompt antigo pode ter sido salvo na posição errada durante uma
+// retomada. Nunca enviar a instrução "Imagem 03" na posição 04.
+function declaredImagePosition(instruction){
+ const match=String(instruction||'').trim().slice(0,320)
+  .match(/^(?:(?:\*\*|#|>)\s*)?(?:imagem|image|foto)\s*0?([1-9])\s*(?:\/\s*0?9|[—–:-])/i);
+ return match?Number(match[1]):null;
+}
 export function createChatGptPrompts({imageUrls=[],supplierSourceText='',title='',attributes=[],imageNotes={},imagePrompts={},masterPrompt=''}={}){
  const original=(Array.isArray(imageUrls)?imageUrls:[]).find(x=>/^https:\/\//i.test(String(x||'')))||'';
  const scenes=CHATGPT_IMAGE_SCENES;
@@ -32,11 +39,15 @@ export function createChatGptPrompts({imageUrls=[],supplierSourceText='',title='
  const prompts=scenes.map(({guide},i)=>{
   const slot=i+1;
   // Priorizar a orientação específica salva da SKU (antes ignorada pelo motor).
-  const customized=String(imagePrompts?.[slot]||'').trim().slice(0,15000);
+  const candidate=String(imagePrompts?.[slot]||'').trim().slice(0,15000);
+  const declared=declaredImagePosition(candidate);
+  // Se o rascunho declara imagem anterior, não sobrescrever o roteiro certo.
+  const customized=declared!==null&&declared!==slot?'':candidate;
   const note=String(imageNotes?.[slot]||'').trim().slice(0,500);
   const storeRule=String(masterPrompt||'').trim().slice(0,4500);
   const mandatory=premiumNineImageRule(slot);
   return [
+   'ETAPA ATUAL EXCLUSIVA — IMAGEM '+String(slot).padStart(2,'0')+'/09. Não repetir a imagem anterior nem retornar outra posição.',
    customized||guide,
    imageScenePrompt({slot,title}),
    slot>=4&&slot<=8&&factualNotes.length?
@@ -61,6 +72,7 @@ export function createChatGptPrompts({imageUrls=[],supplierSourceText='',title='
  const finalMeasurements=axes.map(x=>x.label+': '+x.value);
  const length=axes.find(x=>x.axis==='comprimento'),width=axes.find(x=>x.axis==='largura');
  prompts[2]=[
+  'ETAPA ATUAL EXCLUSIVA — IMAGEM 03/09. Arte de dimensões, sem reutilizar prompt de outra posição.',
   scenes[2].guide,
   imageScenePrompt({slot:3,title}),
   'IMAGEM 03 — ARTE FINAL PRONTA COM AS MEDIDAS. FOTOGRAFIA PREMIUM + COTAS INTEGRADAS DIRETAMENTE NA IMAGEM GERADA.',

@@ -5226,6 +5226,19 @@ function kitShowPendingLinkChoice(handoff){
  const info=elt('p','kit-pending-direct-notice',
   'Este anúncio já existe na Shopee e pode ser revisado agora por Item ID: imagens, vídeo, título SEO, ficha técnica, descrição, variações e dados fiscais. Abra cada cartão abaixo para editar, salvar e conferir. Nenhuma mudança será publicada sem autorização. Para calcular preços/descontos do kit ou declarar o conteúdo dos componentes, primeiro confirme a composição e os custos WeDrop; não vamos inventar produtos nem quantidades.');
  panel.append(info);
+ // ETAPA 01 recuperada: usar o formulário original da WeDrop (texto e prints),
+ // não duplicar inputs nem salvar informação fora do vínculo shop+Item ID+SKU.
+ const sourceStep=elt('section','kit-pending-source-step');
+ sourceStep.id='kitPendingDirectSourceStep';
+ sourceStep.append(elt('strong','','01 · Informações da WeDrop — dados do produto'),
+  elt('p','','Cole a ficha do conjunto anunciado e anexe prints do fornecedor. Salve antes de gerar as imagens para que medidas e características comprovadas sejam usadas nos prompts, na ficha técnica e na descrição. Não inclua medidas de uma peça como se fossem do kit inteiro.'));
+ const sourceMount=elt('div','kit-pending-source-mount');
+ sourceMount.id='kitPendingDirectSourceMount';
+ sourceStep.append(sourceMount);
+ panel.append(sourceStep);
+ const stepHelp=elt('p','kit-pending-direct-step-help',
+  '02 · Imagens comerciais → 03 · Vídeo → 04 · Título SEO → 05 · Ficha técnica → 06 · Descrição → 07 · Variações → 08 · Fiscal → 09 · Desconto (com composição confirmada) → 10 · Execução autorizada.');
+ panel.append(stepHelp);
  const live=elt('p','kit-pending-direct-status','Conferindo o anúncio pela API da Shopee...');
  live.id='kitPendingDirectStatus';live.setAttribute('role','status');
  panel.append(live);

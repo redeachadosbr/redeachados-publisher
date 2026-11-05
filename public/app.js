@@ -2565,12 +2565,18 @@ globalThis.RAOpenPendingImageKit=editor=>{
 // Kit com anúncio Shopee confirmado mas SEM rascunho/itens WeDrop:
 // reutilizar a edição REAL de imagens por Item ID, sem inventar composição.
 let pendingKitDirect=null,pendingKitDirectHome=null,pendingKitDirectNext=null;
+let pendingKitDirectSourceHome=null,pendingKitDirectSourceNext=null;
 function isPendingKitDirect(sku,itemId){
  return Boolean(pendingKitDirect&&pendingKitDirect.sku===String(sku||'')&&
   pendingKitDirect.itemId===String(itemId||''));
 }
 globalThis.RAClosePendingKitDirectEditor=()=>{
  pendingKitDirect=null;
+ const sourcePanel=$('#optimizerSourcePanel');
+ if(pendingKitDirectSourceHome&&sourcePanel&&sourcePanel.parentNode!==pendingKitDirectSourceHome)
+  pendingKitDirectSourceHome.insertBefore(sourcePanel,
+   pendingKitDirectSourceNext?.parentNode===pendingKitDirectSourceHome?pendingKitDirectSourceNext:null);
+ pendingKitDirectSourceHome=null;pendingKitDirectSourceNext=null;
  const panel=$('#optimizerWorkflowPanel');
  if(pendingKitDirectHome&&panel&&panel.parentNode!==pendingKitDirectHome)
   pendingKitDirectHome.insertBefore(panel,
@@ -2590,6 +2596,11 @@ globalThis.RAOpenPendingKitDirectEditor=(editor,mount)=>{
  const panel=$('#optimizerWorkflowPanel'),field=$('#optimizerSku');
  if(!panel||!field)return false;
  pendingKitDirectHome=panel.parentNode;pendingKitDirectNext=panel.nextSibling;
+ const sourcePanel=$('#optimizerSourcePanel'),sourceMount=$('#kitPendingDirectSourceMount');
+ if(!sourcePanel||!sourceMount?.isConnected)return false;
+ pendingKitDirectSourceHome=sourcePanel.parentNode;
+ pendingKitDirectSourceNext=sourcePanel.nextSibling;
+ sourceMount.append(sourcePanel);
  pendingKitDirect={itemId:id,sku,modelId};
  globalThis.__RA_KIT_OPTIMIZATION_HANDOFF=null;
  mount.append(panel);panel.hidden=false;
@@ -3093,13 +3104,18 @@ function optimizerWorkflowRender(data){
  }
  const stages=data.stages||[];
  const visible=stages.filter(x=>x.key!=='final');
+ const directKit=isPendingKitDirect(data.sku,data.itemId);
+ const stageOffset=directKit?1:0;
  const kitMode=optimizerKitWorkflowActive();
  // Exibir as sete revisoes e a oitava etapa de desconto, sem refazer
  // automaticamente conteudos ja preparados na pagina de Kits.
  const resolved=visible.filter(x=>x.reviewed||x.skipped).length;
  const kitDiscountReviewed=kitMode&&optimizerKitDiscountReviewState(data).prepared;
- const total=visible.length+1;
- const completed=resolved+(kitMode?Number(kitDiscountReviewed):Number(optimizerDiscountFinalSent));
+ const sourceConfirmed=directKit&&Boolean(data.sourceEvidence?.updatedAt)&&
+  String(data.sourceEvidence.sku||'')===String(data.sku);
+ const total=visible.length+1+stageOffset;
+ const completed=resolved+(kitMode?Number(kitDiscountReviewed):Number(optimizerDiscountFinalSent))+
+  Number(sourceConfirmed);
  const progress=$('#optimizerWorkflowCounter');
  progress.textContent=completed+' / '+total+' etapas conferidas';
  progress.style.setProperty('--stage-progress',String(total?Math.round(completed/total*100):0)+'%');
@@ -3109,8 +3125,8 @@ function optimizerWorkflowRender(data){
    btn.type='button';btn.dataset.stage=stage.key;
    if(optimizerWorkflowActiveView==='source'&&optimizerWorkflowSourceStage===stage.key)
      btn.classList.add('is-current');
-   btn.setAttribute('aria-label','Abrir etapa '+(i+1)+': '+stage.name);
-   const number=optimizerMake('span','optimizer-workflow-number',String(i+1).padStart(2,'0'));
+   btn.setAttribute('aria-label','Abrir etapa '+(i+1+stageOffset)+': '+stage.name);
+   const number=optimizerMake('span','optimizer-workflow-number',String(i+1+stageOffset).padStart(2,'0'));
    const paths={
     images:'<rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><path d="m3 17 5-5 4 3 4-5 5 6"/>',
     video:'<rect x="3" y="5" width="13" height="14" rx="2"/><path d="m16 10 5-3v10l-5-3"/>',
@@ -3158,8 +3174,8 @@ function optimizerWorkflowRender(data){
  // Desconto permanece como etapa 08 dentro do mesmo fluxo.
  const discountCard=optimizerMake('button','optimizer-workflow-card optimizer-workflow-pending');
  discountCard.type='button';discountCard.dataset.stage='discount';
- discountCard.setAttribute('aria-label',data.kitOptimization?'Abrir etapa 08: desconto do kit na Shopee':'Abrir etapa 08: desconto do produto na Shopee');
- const discountNumber=optimizerMake('span','optimizer-workflow-number','08');
+ discountCard.setAttribute('aria-label','Abrir etapa '+(8+stageOffset)+': '+(data.kitOptimization?'desconto do kit':'desconto do produto')+' na Shopee');
+ const discountNumber=optimizerMake('span','optimizer-workflow-number',String(8+stageOffset).padStart(2,'0'));
  const discountIcon=optimizerMake('span','optimizer-workflow-icon');
  discountIcon.setAttribute('aria-hidden','true');
  discountIcon.innerHTML='<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M20 12 12 20 3 11V4h7z"/><circle cx="7.5" cy="8" r="1.25"/></svg>';
