@@ -3555,7 +3555,7 @@ app.get('/api/shopee/optimizer/execution/root-audit',mustLogin,requireWeDropAdmi
  try{
   const sku=validateSkuLookup(req.query?.sku),itemId=validItemId(req.query?.item_id);
   const modelId=String(req.query?.model_id??'0');
-  if(!/^\\d{1,18}$/.test(modelId))throw Error('Modelo inválido.');
+  if(!/^[0-9]{1,18}$/.test(modelId))throw Error('Modelo inválido.');
   const {auth}=await getValidAuth(req);
   const prior=await getWorkflowReview(auth.shopId,itemId,modelId);
   const review=prior?.sku===sku?prior.review_state||{}:{};
