@@ -109,9 +109,9 @@ test('attributes require a current official option and explicit evidence; unrela
  assert.throws(()=>compileAttributes([{attributeId:1,valueId:10}],r,existing),/fonte/);
 });
 test('tax code 99 is never treated as a 99 percent rate and unverified NCM is blocked',()=>{
- const result=compileTax({ncm:'39269090',pis_cofins_cst:'99',evidence:'Nota fornecedor',measure_unit:'UN'},{});
+ const result=compileTax({ncm:'39269090',pis_cofins_cst:'99',evidence:'Nota fornecedor',measure_unit:'UN'},{tax_info:{}});
  assert.equal(result.pis_cofins_cst,'99');assert.equal(result.pis,undefined);assert.equal(result.cofins,undefined);
- assert.throws(()=>compileTax({ncm:'00',evidence:'Sem informação'},{}),/inválido/);
+ assert.throws(()=>compileTax({ncm:'00',evidence:'Sem informação'},{tax_info:{}}),/inválido/);
 });
 test('public media signatures exclude shop tokens and preserve multipart boundary',async()=>{
  const before=globalThis.fetch,calls=[];
