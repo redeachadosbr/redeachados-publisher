@@ -11096,37 +11096,51 @@ async function optimizerCommercialRequestChatgptSlot(w,slot,{editMode=''}={}){
     'Edite EXCLUSIVAMENTE a imagem preparada anexada. Recorte fielmente o mesmo produto e retire totalmente o fundo atual. Substitua o cenário por BRANCO PURO (#FFFFFF), sem objetos, sem textura e sem decoração. Preserve geometria, escala, cores, componentes, número de peças, marcas originais e a disposição real. Permita apenas sombra suave e discreta, sem inventar acessórios. Remova quaisquer rótulos promocionais da fotografia anterior, sem apagar marcas físicas reais do produto. Imagem única, quadrada, para 1200 × 1200 pixels. Não colocar títulos nem textos. NÃO usar fundo ambientado nesta edição. Gere apenas esta imagem.',
    ].join('\n\n');
   }
-  optimizerChatBridgeNonce=crypto.randomUUID();
-  optimizerChatBridgeSku=w.sku;
-  sessionStorage.setItem(RA_CHAT_BRIDGE_SESSION_KEY,optimizerChatBridgeNonce);
   const current=await json('/api/shopee/optimizer/images/manual?'+new URLSearchParams({
    sku:w.sku,item_id:w.itemId,model_id:w.modelId
   }));
   if(!optimizerImagesSameSku(w))return;
   const original=(current.images||[]).find(x=>Number(x.slot)===slot);
-  optimizerChatBridgeRemember(w,[slot],original?.sha256?{[slot]:original.sha256}:{});
-  optimizerChatBridgeBusy=true;
-  $('#optimizerChatgptAbort').hidden=false;
-  status.textContent='Solicitando à extensão a imagem '+slot+' da SKU '+w.sku+'. Aguarde confirmação do upload.';
-  optimizerChatBridgeStartConfirmed=false;
-  const activeNonce=optimizerChatBridgeNonce;
-  window.postMessage({kind:'RA_SITE_START',payload:{
-   nonce:optimizerChatBridgeNonce,sku:w.sku,itemId:String(w.itemId),modelId:String(w.modelId),
-   imageUrl:brief.original,prompts,referenceDataUrl,imageMode:editMode,
-   // Só esta posição é autorizada. A próxima requer outro comando.
-   completed:Array.from({length:9},(_,i)=>i+1).filter(n=>n!==slot)
-  }},location.origin);
-  setTimeout(()=>{
-   if(!optimizerChatBridgeStartConfirmed&&optimizerChatBridgeNonce===activeNonce&&optimizerChatBridgeBusy){
-    void optimizerChatBridgeRelease('A extensão não confirmou o comando de imagem '+slot+'.');
-    optimizerCommercialActionMessage('A Ponte v1.0.26 não confirmou o pedido da imagem '+String(slot).padStart(2,'0')+' em 12 segundos. Confira a extensão do Chrome e use Refazer novamente. A imagem anterior foi mantida.',true);
+  const shaToKeep=original?.sha256?{[slot]:original.sha256}:{};
+  const {isVisualReferenceError}=await import('/optimizer-visual-reference.js?v=20261105-shopee-source-safe');
+  const refs=(brief.referenceCandidates||[]).slice(0,4);
+  if(!refs.length)throw Error('Nenhuma foto oficial da Shopee corresponde ao Item ID desta SKU.');
+  let lastError='';
+  optimizerChatBridgeRetryingSource=true;
+  for(let i=0;i<refs.length;i++){
+   if(!optimizerImagesSameSku(w))throw Error('A SKU mudou durante a tentativa. Nenhuma imagem foi alterada.');
+   optimizerChatBridgeNonce=crypto.randomUUID();optimizerChatBridgeSku=w.sku;
+   sessionStorage.setItem(RA_CHAT_BRIDGE_SESSION_KEY,optimizerChatBridgeNonce);
+   optimizerChatBridgeRemember(w,[slot],shaToKeep);
+   optimizerChatBridgeBusy=true;
+   $('#optimizerChatgptAbort').hidden=false;
+   optimizerChatBridgeStartConfirmed=false;
+   status.textContent='Solicitando imagem '+String(slot).padStart(2,'0')+
+    ' com fotografia oficial Shopee '+(i+1)+'/'+refs.length+'. As anteriores permanecem salvas.';
+   const ack=optimizerWaitBridgeReply('RA_EXTENSION_START_RESULT',optimizerChatBridgeNonce,18000);
+   window.postMessage({kind:'RA_SITE_START',payload:{
+    nonce:optimizerChatBridgeNonce,sku:w.sku,itemId:String(w.itemId),modelId:String(w.modelId),
+    imageUrl:refs[i],prompts,referenceDataUrl,imageMode:editMode,
+    completed:Array.from({length:9},(_,n)=>n+1).filter(n=>n!==slot)
+   }},location.origin);
+   const reply=await ack;
+   if(reply.ok){
+    optimizerChatBridgeRetryingSource=false;
+    return;
    }
-  },12000);
+   lastError=String(reply.error||'A extensão não confirmou a origem da fotografia.');
+   if(!isVisualReferenceError(lastError)||i===refs.length-1)break;
+   optimizerCommercialActionMessage('A Ponte recusou uma URL da fotografia Shopee. '+ 
+    'Conferindo outro CDN oficial do MESMO anúncio para a imagem '+slot+
+    ', sem excluir as imagens salvas.');
+  }
+  throw Error('A Ponte não conseguiu iniciar a imagem '+String(slot).padStart(2,'0')+
+   ': '+lastError+'. As fotos já preparadas continuam salvas.');
  }catch(e){
   optimizerChatBridgeBusy=false;$('#optimizerChatgptAbort').hidden=true;
   status.textContent='Não foi possível iniciar a posição '+slot+': '+e.message;
   optimizerCommercialActionMessage(status.textContent,true);
- }
+ }finally{optimizerChatBridgeRetryingSource=false;}
 }
 async function optimizerChatgptCopyAll({open=false}={}){
  const w=optimizerWorkflowPlan;
@@ -11182,6 +11196,7 @@ const RA_CHAT_BRIDGE_JOB_KEY='redeAchadosBridgeJobV2';
 const RA_CHAT_BRIDGE_ACTIVE_KEY='redeAchadosBridgeActiveV3';
 let optimizerChatBridgeJob=null,optimizerChatBridgeQueuePromise=null;
 let optimizerChatBridgeStartConfirmed=false;
+let optimizerChatBridgeRetryingSource=false;
 // NOVO_CHAT_NAO_LIMPO é um bloqueio de SEGURANÇA da extensão. Não contornar
 // a verificação do campo nem descartar fotos já confirmadas por Item ID/SKU.
 const RA_BRIDGE_CHAT_PAUSE_KEY='redeAchadosChatBridgeDirtyChatV1';
@@ -11493,9 +11508,14 @@ globalThis.window?.addEventListener?.('message',async(event)=>{
   return;
  }
  if(m.kind==='RA_EXTENSION_START_RESULT'&&m.nonce===optimizerChatBridgeNonce){
-  if(!m.ok)optimizerBridgeChatPauseMark(m);
-  else optimizerBridgeChatPauseClear();
+  const sourceRejected=!m.ok&&optimizerChatBridgeRetryingSource;
+  if(!m.ok&&!sourceRejected)optimizerBridgeChatPauseMark(m);
+  else if(m.ok)optimizerBridgeChatPauseClear();
   optimizerChatBridgeStartConfirmed=true;
+  if(sourceRejected){
+   report('Ponte conferindo outra fonte oficial Shopee para o mesmo Item ID, sem apagar fotos...');
+   return;
+  }
   report(m.ok?'Extensão confirmou o início. Gerando imagens individualmente, aguardando cada importação.':'Extensão recusou o comando: '+(m.error||'erro não identificado'));
   if(!m.ok){
    optimizerChatBridgeBusy=false;
