@@ -6258,6 +6258,21 @@ async function kitAutoSweepPreparePlan(target){
 // possui nenhuma mudanca publicavel. Consultar fiscal e desconto ISOLADOS
 // antes de declarar que nao ha trabalho; cada previa exige os mesmos
 // controles de SKU, campanha, custo e autorizacao do servidor.
+// Preferir a etapa fiscal exclusiva quando o restante ja foi confirmado
+// e o unico outro pendente e video NAO aprovado. Evita preparar o plano
+// integral varias vezes sem arquivo de video disponivel.
+function kitAutoSweepPreferredStage(audit){
+ const missing=(audit?.stages||[]).filter(x=>x.id!=='final'&&
+  !['confirmed','not_applicable'].includes(x.status)).map(x=>x.id);
+ if(!missing.length)return 'all';
+ const approved=new Set(globalThis.RAKitWizardExecutionReviews?.()?.stages||[]);
+ if(missing.every(x=>['video','fiscal','discount'].includes(x))&&
+    (!missing.includes('video')||!approved.has('video'))){
+  if(missing.includes('fiscal'))return 'fiscal';
+  if(missing.includes('discount'))return 'discount';
+ }
+ return 'all';
+}
 async function kitAutoSweepChoosePlan(target,audit,firstStage='all'){
  const scope=$('#optimizerExecutionScope');
  if(!scope)return {plan:null,diagnostics:['Seletor de execucao indisponivel.']};
@@ -6356,7 +6371,7 @@ function kitAutoSweepResume(target,firstFingerprint=''){
     const onlyDiscount=audit?.stages?.filter(s=>s.id!=='final'&&
      !['confirmed','not_applicable'].includes(s.status)).every(s=>s.id==='discount')&&
      audit?.stages?.some(s=>s.id==='discount'&&s.status==='pending');
-    const executionScope=onlyDiscount?'discount':'all';
+    const executionScope=onlyDiscount?'discount':kitAutoSweepPreferredStage(audit);
     scope.value=executionScope;
     optimizerExecNotice('Varredura encontrou '+pending.join(', ')+
      (onlyDiscount?'. Preparando exclusivamente Minha Promoção.':
@@ -6412,12 +6427,12 @@ globalThis.RAKitExecutePendingAllStages=async({kitSku,sku,itemId,modelId}={})=>{
    !['confirmed','not_applicable'].includes(s.status));
   const onlyDiscount=rootMissing.length===1&&rootMissing[0].id==='discount'&&
    rootMissing[0].status==='pending';
-  const executionScope=onlyDiscount?'discount':'all';
+  const executionScope=onlyDiscount?'discount':kitAutoSweepPreferredStage(audit);
   scope.value=executionScope;
   if(audit?.complete===true){
    return {ok:true,alreadyCurrent:true,message:'Auditoria da Shopee confirmou todas as 9 etapas. Nada precisa ser reenviado.'};
   }
-  const state=await optimizerExecutionRefresh(false);
+  const state=await optimizerExecutionRefresh(true);
   if(['running','uncertain'].includes(state?.state)){
    kitAutoSweepResume({kitSku,sku,itemId,modelId});
    return {ok:true,submitted:true,alreadyRunning:true,message:'Execução em andamento: varredura 9/9 automática ativada sem reenvio.'};
