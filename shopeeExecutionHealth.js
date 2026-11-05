@@ -11,6 +11,42 @@ export const ROOT_EXECUTION_STAGES=Object.freeze([
  ['final','09 · Conferência final']
 ]);
 
+/**
+ * A kit listing can already have a video published by the Seller Center,
+ * while the Manager has no locally imported video SHA/task. This is an
+ * existence audit, not permission to resend or replace a video.
+ * Require the exact linked kit/sku/item and a playable official Shopee
+ * listing video. A local approved upload, when present, still needs the
+ * normal SHA/task readback comparison instead.
+ */
+export function verifiedExistingKitListingVideo({sku,itemId,review={},live={},manualVideo=null,job=null}={}){
+ const link=review?.kitOptimization;
+ if(!link?.kitSku||String(link.sku||link.mainSku||'')!==String(sku)||
+    String(link.itemId||'')!==String(itemId)||
+    String(live?.item_id||'')!==String(itemId)||manualVideo||
+    job?.plan?.video)return false;
+ const entries=Array.isArray(live.video_info)?live.video_info:
+  live.video_info&&typeof live.video_info==='object'?[live.video_info]:[];
+ return entries.some(entry=>{
+  if(!entry||typeof entry!=='object')return false;
+  const status=String(entry.video_status||entry.status||'').toUpperCase();
+  if(/FAILED|REJECTED|CANCELLED|DELETED|TRANSCODING|PROCESSING|PENDING|WAITING/.test(status))
+   return false;
+  const raw=[entry.video_url,...(Array.isArray(entry.video_url_list)?
+   entry.video_url_list.map(x=>typeof x==='string'?x:x?.video_url):[])];
+  const validOfficialUrl=raw.some(value=>{
+   try{
+    const url=new URL(String(value||''));
+    return url.protocol==='https:'&&
+     /(?:^|\\.)shopee\\.(?:com\\.br|com|sg)$/.test(url.hostname)&&
+     url.pathname.length>5;
+   }catch{return false;}
+  });
+  const duration=Number(entry.duration??entry.video_duration);
+  return validOfficialUrl&&Number.isFinite(duration)&&duration>0;
+ });
+}
+
 export function auditRootShopeeExecution({
  sku,itemId,record={},review={},live={},images=[],video=null,models=null,
  discountReadback=null,job=null,checkedAt=new Date().toISOString()
@@ -39,11 +75,17 @@ export function auditRootShopeeExecution({
   video.publication.video:null;
  const videoEvidence=publishedVideo?{...publishedVideo,phase:'ready'}:(
   job?.state==='verified'&&job.plan?.video?.sha256===video?.sha256?job.result?.video:null);
- const officialVideo=Boolean(video&&(
+ const existingKitListingVideo=verifiedExistingKitListingVideo({
+  sku,itemId,review,live,manualVideo:video,job
+ });
+ const officialVideo=Boolean(existingKitListingVideo||(video&&(
   (videoEvidence&&videoMatches(live,videoEvidence))||
   (job?.plan?.video?.sha256===video?.sha256&&
-   videoPublishedAfterPlan(job.plan,live,job.result?.video))));
- add('video',officialVideo,reviewed('video')?'Vídeo aprovado ainda não corresponde ao vídeo publicado':'Vídeo ainda não aprovado para publicação');
+   videoPublishedAfterPlan(job.plan,live,job.result?.video)))));
+ add('video',officialVideo,existingKitListingVideo?
+  'Vídeo já publicado e confirmado pela leitura oficial do Item ID na Shopee; não reenviar.':
+  reviewed('video')?'Vídeo aprovado ainda não corresponde ao vídeo publicado':
+  'Vídeo ainda não aprovado para publicação');
  const title=String(review.draftTitle||'').normalize('NFC').replace(/\s+/g,' ').trim();
  add('seo',Boolean(title)&&
   title===String(live.item_name||'').normalize('NFC').replace(/\s+/g,' ').trim(),
