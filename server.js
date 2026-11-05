@@ -3562,7 +3562,7 @@ app.get('/api/shopee/optimizer/execution/root-audit',mustLogin,requireWeDropAdmi
   const cp=review.executionAuditCheckpoint;
   const current=await readShopeeExecution(auth.shopId,itemId,modelId);
   const now=Date.now(),age=now-Date.parse(cp?.checkedAt||'');
-  const jobIdentity=String(current?.run_id||'')+'|'+String(current?.plan?.fingerprint||'');
+  const jobIdentity=String(current?.state||'')+'|'+String(current?.plan?.planId||'')+'|'+String(current?.plan?.fingerprint||'');
   const cachedIdentity=String(cp?.jobIdentity||'');
   const recent=age>=0&&age<(current?.state==='running'?12000:45000);
   if(cp?.sku===sku&&String(cp.itemId)===String(itemId)&&
@@ -3577,7 +3577,7 @@ app.get('/api/shopee/optimizer/execution/root-audit',mustLogin,requireWeDropAdmi
   if(saved?.sku===sku){
    const nextReview=saved.review_state||{};
    const checkpoint={sku,itemId:String(itemId),modelId,
-    jobIdentity:String(current?.run_id||'')+'|'+String(current?.plan?.fingerprint||''),
+    jobIdentity:String(current?.state||'')+'|'+String(current?.plan?.planId||'')+'|'+String(current?.plan?.fingerprint||''),
     checkedAt:audit.checkedAt,reviewSignature:rootAuditReviewSignature(nextReview),
     audit,discountDiagnostic};
    try{await persistWorkflowExecutionAudit(auth.shopId,itemId,modelId,sku,checkpoint);}
