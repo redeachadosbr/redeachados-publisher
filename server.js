@@ -3979,6 +3979,27 @@ app.post('/api/shopee/optimizer/execution/reconcile',mustLogin,requireWeDropAdmi
      lastError:null});
     void runOptimizerJobs();
   }
+  else if(!oldVideoFailure&&job.state==='uncertain'&&
+    job.plan?.video&&job.result?.video?.phase==='ready'&&
+    Boolean(job.result.video.id)&&
+    !videoPublishedAfterPlan(job.plan,live,job.result.video)&&
+    job.plan?.images?.length===9&&
+    sameData(live.image?.image_id_list||[],job.result?.imageIds||[])&&
+    Object.keys(job.plan.proposed||{}).some(key=>key==='attribute_list')&&
+    Object.entries(job.plan.proposed||{}).every(([key,value])=>
+      key==='attribute_list'||fieldsVerified({[key]:value},live))){
+    // No anúncio atual o vídeo e as fotos podem estar independentes da
+    // ficha técnica. Permitir apenas vinculação do vídeo pronto, mantendo
+    // a ficha pendente. Uma nova leitura no worker impede escrita cega.
+    assertLiveShopeeUnchanged(job.plan,live,job.result||{});
+    updated=await reconcileShopeeJob(job,{state:'running',
+     result:withExecutionEvent({...job.result,phase:'video_attach_ready',
+      videoAttachmentNeedsCommercialReconcile:true,primaryVerified:false},
+      'video-independent-recovery',
+      'Nove imagens conferidas por IDs. Retomando só o vídeo; ficha técnica continuará pendente.','info'),
+     lastError:null});
+    void runOptimizerJobs();
+  }
   else if(verified){
     // Apenas o ID/URL exato prova qual arquivo foi publicado. A existência
     // de um novo vídeo prova a vinculação, mas não autoriza registrar SHA
