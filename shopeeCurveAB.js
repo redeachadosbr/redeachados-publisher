@@ -390,6 +390,8 @@ function signedRequest(keyword,page,mode=2){
 // houver credenciais próprias e distinguir métricas acumuladas de mensais.
 const featuredCircuit={state:'unknown',lastChecked:0,reason:''};
 const affiliateConfigured=()=>Boolean(env('SHOPEE_AFFILIATE_APP_ID')&&env('SHOPEE_AFFILIATE_SECRET'));
+// Registro seguro no log de implantação: somente conectividade configurada, nunca credenciais.
+console.info('[Curvas A/B] API Afiliados '+(affiliateConfigured()?'configurada':'não configurada')+'; leitura pública Em Destaque habilitada com respeito a bloqueios.');
 export function curveProvidersStatus(){
  return {featured:{state:featuredCircuit.state,
   checkedAt:featuredCircuit.lastChecked?new Date(featuredCircuit.lastChecked).toISOString():null,
