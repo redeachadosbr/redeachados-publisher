@@ -257,7 +257,7 @@
           <div class="field"><label for="revenue">11. Vendas (R$)</label><input id="revenue" inputmode="decimal" placeholder="Ex.: 65,99"></div>
         </div>
         <input type="hidden" id="orders" value="">
-        <p class="tip">ROAS e CTR podem ser recalculados a partir de investimento/vendas e cliques/impressões. Confirme o período. A API poderá não fornecer orçamento, meta e Impulsão Rápida; confira os valores antes de analisar.</p>
+        <p class="tip">ROAS real do período = vendas atribuídas ÷ investimento total do mesmo período (não é média simples de ROAS diário). CTR = cliques ÷ impressões. Confirme a campanha, o período e a janela de atribuição. A API poderá não fornecer orçamento, meta e Impulsão Rápida; confira os valores antes de analisar.</p>
         <label class="checkline"><input type="checkbox" id="periodClosed" checked><span><strong>Período completo</strong> — desmarcado automaticamente quando o relatório inclui o dia de hoje em andamento.</span></label>
         <label class="checkline"><input type="checkbox" id="budgetStable" checked><span><strong>Orçamento constante</strong> — não alterei o limite diário durante as datas selecionadas.</span></label>
         <p class="tip" id="adsFinancialHint">A margem será consultada automaticamente no cadastro do SKU selecionado em Produtos. Não é necessário repetir custos ou taxas aqui.</p>
@@ -434,7 +434,7 @@ function unlimitedTargetRule(d,{days,actual,fin,grossMax,dailySpend}){
   action='O ROAS real '+roas(actual)+' protege o mínimo '+roas(minimum)+', mas está abaixo da meta '+roas(d.target)+'. MANTER meta e revisar CTR, conversão, preço e volume antes de qualquer ajuste.';
  }
  return {name,stage,action,candidate,ref,daily,referencePct:grossMax>0?d.spent/grossMax*100:null,
-  financialFloor:financial,minDesired:personal,effectiveMin:minimum,minMet:meetsMin,goalMet:meetsTarget,
+  financialFloor:financial,minDesired:personal,effectiveMin:minimum,minMet:!!fin&&meetsMin,goalMet:meetsTarget,
   eligible:enough,risk:['risco de prejuízo','margem desejada não atingida','abaixo do mínimo escolhido'].includes(stage),alerts};
 }
 function analyze(d){
@@ -528,7 +528,10 @@ if(decision){
  if(r.unlimitedRule){
   const u=r.unlimitedRule;
   decision.className='notice'+(u.risk?' danger':u.stage==='meta atingida'?' ok':'');
-  decision.textContent='DECISÃO DA REGRA 05 · '+u.stage.toUpperCase()+': '+u.action;
+  decision.textContent='ROAS ALVO: '+roas(r.d.target)+' · MÍNIMO DESEJADO: '+(u.minDesired===null?'não informado':roas(u.minDesired))+
+   ' · MÍNIMO FINANCEIRO: '+(u.financialFloor===null?'não validado':Number.isFinite(u.financialFloor)?roas(u.financialFloor):'inviável')+
+   ' · ROAS REAL: '+(r.actual===null?'não disponível':roas(r.actual))+
+   '. DECISÃO · '+u.stage.toUpperCase()+': '+u.action;
  }
 }
 const dailySummary=$('dailyBudgetSummary');
@@ -558,7 +561,7 @@ let table='';if(r.unlimitedRule){
  ['ROAS mínimo desejado',u.minDesired===null?'Não informado':roas(u.minDesired),'Mínimo escolhido por você'],
  ['ROAS mínimo financeiro',u.financialFloor===null?'Não validado':Number.isFinite(u.financialFloor)?roas(u.financialFloor):'Inviável','Necessário para a margem cadastrada'],
  ['Mínimo de proteção',u.effectiveMin===null?'Não validado':Number.isFinite(u.effectiveMin)?roas(u.effectiveMin):'Inviável','Maior entre mínimo desejado e financeiro'],
- ['ROAS real',r.actual===null?'—':roas(r.actual),u.minMet?'Mínimo alcançado':'Mínimo não alcançado ou não validado'],
+ ['ROAS real',r.actual===null?'—':roas(r.actual),u.financialFloor===null?'Margem ainda não conferida':u.minMet?'Mínimo alcançado':'Mínimo NÃO alcançado'],
  ['Ajuste de ROAS',u.candidate===null?'Manter por enquanto':'Testar '+roas(u.candidate),'Somente após conferência e aprovação manual']
  ]);
 }else if(r.previewScenario){
