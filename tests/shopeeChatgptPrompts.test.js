@@ -23,7 +23,7 @@ test('nove prompts independentes com cenários e câmeras diferentes por produto
  assert.match(brief.prompts[1],/Criança A/);
  assert.match(brief.prompts[4],/Criança B/);
  assert.match(brief.prompts[6],/Criança C/);
- assert.match(brief.prompts[2],/ARTE FINAL PRONTA/);
+ assert.match(brief.prompts[2],/RESULTADO FINAL NA GALERIA DA SHOPEE TERÁ AS TRÊS COTAS/);
  assert.match(brief.prompts[2],/ALTURA: 75 cm; LARGURA: 63 cm; COMPRIMENTO: 117 cm/);
  assert.deepEqual(brief.confirmedDimensions.measurements.map(x=>x.value),['75 cm','63 cm','117 cm']);
  assert.match(brief.prompts[8],/Compra Segura, Entrega Rápida e Atendimento Online/);
@@ -67,6 +67,6 @@ test('editor de kit não envia medidas WeDrop digitadas antes de gravar e recons
  assert.match(app,/ETAPA 01 WEDROP PENDENTE/);
  assert.match(app,/source\?\x27\+new URLSearchParams/);
  assert.match(app,/typed!==saved/);
- assert.match(app,/chatgptPrompts\.js\?v=20261105-slot03-wedrop-photo-v4/);
+ assert.match(app,/chatgptPrompts\.js\?v=20261105-slot03-ai-photo-v5/);
  assert.match(kit,/Aplicar medidas WeDrop/);
 });
