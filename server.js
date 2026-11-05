@@ -1696,10 +1696,10 @@ app.post('/api/shopee/optimizer/fiscal-migration/validate-one',mustLogin,require
   const supplier=await readWeDropProduct(auth.shopId,{sku,itemId,modelId});
   if(!supplier||!['exact-sku','reviewed-link'].includes(supplier.matchedBy))
    throw Error('Não há vínculo WeDrop exato ou vínculo aprovado para esta SKU.');
-  const tax=existing.review_state?.tax;
-  if(!tax)throw Error('Rascunho fiscal ausente.');
-  if(String(tax.cest??'').trim()!==wedropCestForSku(supplier))
-   throw Error('CEST divergente da planilha WeDrop desta SKU. Reabra a revisão fiscal para atualizar o rascunho.');
+  const savedTax=existing.review_state?.tax;
+  if(!savedTax)throw Error('Rascunho fiscal ausente.');
+  const fiscalLive=await shopeeLiveEditableItem(cfg,auth,itemId);
+  const tax={...savedTax,cest:cestForShopeeField(fiscalLive.tax_info)};
   const source=fiscalMatrixSource({sku,supplier,tax});
   const unit=suggestFiscalMeasureUnit(record.title||'',supplier.product_data?.title||'');
   if(!tax.measure_unit)throw Error('Unidade de medida fiscal ausente.');
@@ -1717,8 +1717,8 @@ app.post('/api/shopee/optimizer/fiscal-migration/validate-one',mustLogin,require
   compileTax(tax,{tax_info:{}});
   const prior=await readShopeeExecution(auth.shopId,itemId,modelId);
   if(/Please upload the corresponding CEST of NCM/i.test(String(prior?.last_error||''))&&
-      String(tax.cest)==='00')
-   throw Error('Shopee já rejeitou CEST 00 para esta SKU; obter CEST oficial.');
+      !String(fiscalLive.tax_info?.cest??'').trim()&&String(tax.cest)==='00')
+   throw Error('Shopee já rejeitou CEST 00 para esta SKU; confirmar a classificação fiscal antes de tentar novamente.');
   await saveWorkflowReview(auth.shopId,itemId,modelId,sku,{
    stage:'fiscal',reviewed:true,tax,matrixFiscal:source
   });
