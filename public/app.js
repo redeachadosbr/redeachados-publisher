@@ -12442,9 +12442,9 @@ async function optimizerImagesLoad(){
    if(slot===3){
     generate.textContent=image?'↻ Refazer 03 no ChatGPT + medidas':'✧ Gerar 03 no ChatGPT + medidas';
     generate.title='Solicita uma NOVA fotografia pelo ChatGPT; o Manager desenha e confere as cotas da WeDrop antes de salvar somente 03. As outras posições não serão apagadas.';
-    if(image&&/imagem-03-medidas-confirmadas/i.test(String(image.filename||'')))
+    if(image&&!/^chatgpt-auto-03-cotas-wedrop\.png$/i.test(String(image.filename||'')))
      detail.append(optimizerMake('small','optimizer-commercial-original-caption',
-      '⚠ Versão anterior criada a partir da foto 02. Use Refazer 03 no ChatGPT + medidas para gerar enquadramento novo.'));
+      '⚠ Versão anterior sem garantia de cotas verificadas no arquivo final. Use Refazer 03 no ChatGPT + medidas: foto nova, cotas WeDrop aplicadas pelo Manager e conferência antes de publicar.'));
    }
    generate.onclick=async()=>{
     if(optimizerImagesAutoBusy)return;
