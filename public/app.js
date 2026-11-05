@@ -7127,8 +7127,9 @@ function optimizerExecutionAutoRecoverStale(job){
  const age=Date.now()-updated;
  if(!updated||age<25000)return;
  // Ler automaticamente a Shopee em intervalos limitados, sem POST de
- // publicação. Após 3 minutos, aplicar recuperação segura existente.
- const recover=age>=180000;
+ // publicação. Após 90 segundos, liberar a recuperação por duas leituras estáveis.
+ // A reconciliação não repete qualquer operação de escrita na Shopee.
+ const recover=age>=90000;
  const attempt=recover?'recover':'check-'+Math.floor((age-25000)/30000);
  const key=[w.sku,w.itemId,w.modelId,job.updated_at,attempt].join('|');
  if(optimizerAutoReadbackRecoveryKey===key)return;
@@ -7558,8 +7559,9 @@ async function optimizerExecutionRefresh(poll=false){
   }else if(!poll)void optimizerRootAuditRefresh(true);
   if(data.job?.state==='uncertain'&&data.issue?.code==='CEST_REQUIRED')
    void optimizerExecutionSafeRecoverCest(data.job,w);
-  const awaitingReadback=data.job?.state==='uncertain'&&
-   Date.now()-(Date.parse(data.job.updated_at||'')||0)<180000;
+  // Não parar a leitura quando o prazo de propagação expirar: a execução
+  // incerta deve continuar visível e a reconciliação segura seguirá ativa.
+  const awaitingReadback=data.job?.state==='uncertain';
   if(data.job?.state==='running'||awaitingReadback){
    if(optimizerExecPoll)clearTimeout(optimizerExecPoll);
    optimizerExecPoll=setTimeout(()=>void optimizerExecutionRefresh(true),awaitingReadback?15000:4000);
