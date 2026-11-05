@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
 import {curveGroup,curveSearchTerms,matchCurveOffers,pickCurveResults,
- officialFeaturedSearchUrl,seoTitleFromEvidence} from '../shopeeCurveAB.js';
+ officialFeaturedSearchUrl,seoTitleFromEvidence,curveSkuSearchPlan,curveSkuSearchQuery} from '../shopeeCurveAB.js';
 import {categoryMatches} from '../shopeeKitBuilder.js';
 
 const photo='https://wedrop-products-images.nyc3.cdn.digitaloceanspaces.com/teste-xl.jpg';
@@ -181,4 +181,58 @@ test('a média de concorrentes exclui a própria loja, inclusive no ranking',()=
  assert.equal(rows[0].shopId,'202');
  assert.equal(rows[0].avgCompetitorPrice,32.90);
  assert.equal(rows[0].competitorOfferCount,2);
+});
+
+test('categoria WeDrop dispara buscas pelos nomes das SKUs, sem depender de palavra digitada',()=>{
+ const catalog=[
+  {supplier_sku:'C001',product_data:{
+   name:'Coqueteleira Shaker Inox 500ml Prata',category:'Copos, Jarras e Servir',rawAvailability:'Disponível'}},
+  {supplier_sku:'P001',product_data:{
+   name:'Panela Antiaderente Tampa Vidro 24cm',category:'Panelas e Frigideiras',rawAvailability:'Disponível'}},
+  {supplier_sku:'C002',product_data:{
+   name:'Coqueteleira Shaker Inox 750ml Preto',category:'Copos, Jarras e Servir',rawAvailability:'Disponível'}},
+  {supplier_sku:'X999',product_data:{
+   name:'Garrafa Plástico Infantil 500ml',category:'Copos, Jarras e Servir',rawAvailability:'Indisponível'}}
+ ];
+ const plan=curveSkuSearchPlan(catalog);
+ assert.equal(plan.length,3);
+ assert.ok(plan.some(x=>x.query.includes('coqueteleira')&&x.query.includes('500ml')));
+ assert.ok(plan.some(x=>x.query.includes('panela')&&x.query.includes('24cm')));
+ assert.ok(plan.some(x=>x.query.includes('coqueteleira')&&x.query.includes('750ml')));
+ assert.ok(plan.every(x=>!x.skus.includes('X999')));
+ assert.notEqual(plan[0].category,plan[1].category,
+  'as primeiras buscas alternam entre as subcategorias WeDrop');
+ assert.ok(plan.every(x=>x.query.split(' ').length>=2));
+});
+test('seleção de palavra-chave restringe as SKUs do catálogo, mas não é obrigatória',()=>{
+ const plan=curveSkuSearchPlan(fixture);
+ const focus=curveSkuSearchPlan(fixture,{keyword:'lancheira'});
+ assert.ok(plan.length>=2);
+ assert.equal(focus.length,1);
+ assert.ok(focus[0].skus.includes('LAN001'));
+ assert.ok(!focus[0].skus.includes('EST002'));
+});
+test('consultas repetidas de variantes da WeDrop são agrupadas sem perder suas SKUs',()=>{
+ const data=[
+  {supplier_sku:'VA',product_data:{name:'Lixeira Inox 3L Branca',category:'Lixeiras'}},
+  {supplier_sku:'VB',product_data:{name:'Lixeira Inox 3L Preta',category:'Lixeiras'}}
+ ];
+ const plan=curveSkuSearchPlan(data);
+ assert.equal(plan.length,1);
+ assert.deepEqual(plan[0].skus,['VA','VB']);
+});
+test('motor busca lotes de SKUs e oferece continuidade, não apenas nome da categoria',()=>{
+ const source=readFileSync(new URL('../shopeeCurveAB.js',import.meta.url),'utf8');
+ const ui=readFileSync(new URL('../public/curvas-ab.js',import.meta.url),'utf8');
+ const page=readFileSync(new URL('../public/index.html',import.meta.url),'utf8');
+ assert.match(source,/const plan=curveSkuSearchPlan\(filtered,\{keyword\}\)/);
+ assert.match(source,/const jobs=state\.plan\.slice\(state\.cursor/);
+ assert.match(source,/if\(pickCurveResults\(state\.matches,\{limit:desired,curve\}\)\.items\.length>=desired\)break;/);
+ assert.match(source,/skuSearchesCompleted:state\.scannedSkus\.size/);
+ assert.match(source,/hasMore,nextCursor:state\.cursor/);
+ assert.match(ui,/params\.set\('advance','1'\)/);
+ assert.match(ui,/q\('curveContinueSearch'\)\?\.addEventListener/);
+ assert.match(page,/id="curveContinueSearch"/);
+ assert.match(page,/id="curveScannedCount"/);
+ assert.match(page,/id="curveKeyword".*placeholder=/);
 });
