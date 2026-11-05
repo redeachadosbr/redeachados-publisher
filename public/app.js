@@ -11211,7 +11211,8 @@ async function optimizerCommercialRequestChatgptSlot(w,slot,{editMode=''}={}){
    window.postMessage({kind:'RA_SITE_START',payload:{
     nonce:optimizerChatBridgeNonce,sku:w.sku,itemId:String(w.itemId),modelId:String(w.modelId),
     imageUrl:refs[i],prompts,referenceDataUrl,imageMode:editMode,
-    completed:Array.from({length:9},(_,n)=>n+1).filter(n=>n!==slot)
+    completed:Array.from({length:9},(_,n)=>n+1).filter(n=>n!==slot),
+    restart:slot===3
    }},location.origin);
    const reply=await ack;
    if(reply.ok){
@@ -11836,15 +11837,21 @@ async function optimizerBridgeRetireSameSkuForNewThird(w,brief,savedSlots=[]){
   const result=await optimizerBridgeRecoverFromExtension(payload);
   if(!optimizerImagesSameSku(w))throw Error('SKU mudou durante a verificação da sessão.');
   if(['NO_RECOVERABLE_JOB','ALREADY_COMPLETE'].includes(result?.reason))return;
-  if(!result?.ok||typeof result.nonce!=='string'||!result.nonce)
-   throw Error('A Ponte não informou a execução ativa desta SKU. Abra o ícone da extensão e use Parar para liberar a imagem 03. Não reinicie as imagens 01 e 02. '+String(result?.error||result?.reason||'').slice(0,160));
+  if(!result?.ok||typeof result.nonce!=='string'||!result.nonce){
+   if(optimizerBridgeSkuHasRunningJob(result?.error))
+    return {requiresRestart:true};
+   throw Error('A Ponte não informou a sessão ativa desta SKU. Use Parar na extensão e tente novamente. Fotos salvas preservadas. '+String(result?.error||result?.reason||'').slice(0,160));
+  }
   window.postMessage({kind:'RA_SITE_ABORT',nonce:result.nonce,sku:String(w.sku),
    reason:'Nova imagem 03 pedida pelo usuário, com as medidas WeDrop atualizadas. Preservar posições já salvas.'},location.origin);
   // Não assumir que postMessage liberou a extensão. Consultar novamente
   // a Ponte e impedir um START concorrente até que ela confirme o término.
   await new Promise(resolve=>setTimeout(resolve,450));
  }
- throw Error('A Ponte ainda mantém uma execução da mesma SKU. Clique em Parar no ícone da Ponte ChatGPT e depois em Gerar 03. As imagens 01 e 02 continuam salvas.');
+ // A extensão respondeu com o nonce correto mas ignorou o ABORT. O próximo
+ // RA_SITE_START pode usar o protocolo restart da Ponte, SEM excluir fotos
+ // do Manager e com o campo completed preservando as outras posições.
+ return {requiresRestart:true};
 }
 // Impedir execução duplicada mesmo se a galeria reativar o botão durante uma consulta.
 let optimizerChatgptContinueBusy=false;
@@ -11998,7 +12005,7 @@ async function optimizerChatgptContinueFromServer(){
     window.postMessage({kind:'RA_SITE_START',payload:{
      nonce:optimizerChatBridgeNonce,sku:w.sku,itemId:String(w.itemId),modelId:String(w.modelId),
      imageUrl:referenceUrl,prompts:brief.prompts,completed:stored,
-     referenceDataUrl:preparedThirdReference
+     referenceDataUrl:preparedThirdReference,restart:freshThird
     }},location.origin);
     startResult=await startAck;
     if(startResult?.ok)break;
@@ -12014,7 +12021,7 @@ async function optimizerChatgptContinueFromServer(){
      window.postMessage({kind:'RA_SITE_START',payload:{
       nonce:optimizerChatBridgeNonce,sku:w.sku,itemId:String(w.itemId),modelId:String(w.modelId),
       imageUrl:referenceUrl,prompts:brief.prompts,completed:stored,
-      referenceDataUrl:preparedThirdReference
+      referenceDataUrl:preparedThirdReference,restart:freshThird
      }},location.origin);
      startResult=await secondAck;
      if(startResult?.ok)break;
@@ -12434,7 +12441,10 @@ async function optimizerImagesLoad(){
    generate.setAttribute('aria-label',(image?'Refazer':'Gerar')+' imagem '+slot);
    if(slot===3){
     generate.textContent=image?'↻ Refazer 03 no ChatGPT + medidas':'✧ Gerar 03 no ChatGPT + medidas';
-    generate.title='A Ponte cria foto NOVA no ChatGPT; o Shopee Manager aplica as cotas verificadas da WeDrop na foto recebida e salva somente a posição 03.';
+    generate.title='Solicita uma NOVA fotografia pelo ChatGPT; o Manager desenha e confere as cotas da WeDrop antes de salvar somente 03. As outras posições não serão apagadas.';
+    if(image&&/imagem-03-medidas-confirmadas/i.test(String(image.filename||'')))
+     detail.append(optimizerMake('small','optimizer-commercial-original-caption',
+      '⚠ Versão anterior criada a partir da foto 02. Use Refazer 03 no ChatGPT + medidas para gerar enquadramento novo.'));
    }
    generate.onclick=async()=>{
     if(optimizerImagesAutoBusy)return;
