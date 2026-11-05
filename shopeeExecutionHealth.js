@@ -81,7 +81,8 @@ export function auditRootShopeeExecution({
  const exactJobImages=approvedJobImages&&sameData(jobImages,actualImages);
  add('images',exactManualImages||exactJobImages,
   exactJobImages?'Nove imagens do envio aprovado conferidas por ID e ordem na Shopee':
-  !imageReady?'Nove imagens aprovadas não estão prontas ou vinculadas à SKU':
+  actualImages.length===9?'A Shopee exibe nove imagens, mas falta reconciliar seus IDs com os arquivos aprovados. Não reenviar imagens apenas por ausência de vínculo local.':
+  !imageReady?'As imagens aprovadas ainda não possuem confirmação de identidade na Shopee':
   'Conferir IDs e ordem das imagens publicadas no anúncio');
  const publishedVideo=video?.publication?.sha256&&video.publication.sha256===video.sha256?
   video.publication.video:null;
