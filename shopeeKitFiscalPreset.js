@@ -41,9 +41,16 @@ export async function readKitFiscalPreset(shopId,kitSku,requestedSku=''){
  const skuPresets=skus.map((sku,index)=>{
   const supplier=suppliers[index],product=supplier?.product_data||{};
   const exact=reviews.exact.get(sku)||{},template=reviews.template||{};
-  // Padrões operacionais da loja são propostos, NUNCA publicados automaticamente.
-  const suggestion=Object.fromEntries(sharedDefaults.map(field=>[field,raw(template[field])]).filter(([,v])=>v));
-  suggestion.pis_cofins_cst=suggestion.pis_cofins_cst||REDE_ACHADOS_FISCAL_DEFAULTS.pis_cofins_cst;
+  // Tabela fiscal da Rede Achados BR, previamente aprovada pelo vendedor.
+  // Uma revisão de OUTRA SKU não é fonte confiável para estes campos.
+  // Os valores específicos desta SKU (saved) continuam prevalecendo.
+  const storeFiscalDefaults={
+   same_state_cfop:'5106',diff_state_cfop:'6106',csosn:'102',
+   measure_unit:'UN',operation_type:'1',
+   pis_cofins_cst:REDE_ACHADOS_FISCAL_DEFAULTS.pis_cofins_cst
+  };
+  const suggestion=Object.fromEntries(sharedDefaults.map(field=>
+   [field,raw(storeFiscalDefaults[field])]).filter(([,v])=>v));
   const supplierNcm=raw(product.ncm);
   const exactNcm=raw(exact.ncm);
   if(/^\d{8}$/.test(supplierNcm))suggestion.ncm=supplierNcm;
@@ -66,7 +73,7 @@ export async function readKitFiscalPreset(shopId,kitSku,requestedSku=''){
     '; demais valores são parâmetros fiscais para conferência.';
   const taxSuggestionSources=Object.fromEntries(Object.keys(suggestion).map(key=>
    [key,key==='ncm'?'NCM da SKU no catálogo WeDrop':key==='cest'?
-    'CEST da SKU WeDrop ou 00 sem informação':'Padrão fiscal já salvo na loja, conferir']));
+    'CEST da SKU WeDrop ou 00 sem informação':'Tabela fiscal aprovada da loja; exceções da SKU preservadas']));
   if(confirmedOrigin)taxSuggestionSources.origin='Origem confirmada e gravada para esta SKU no kit';
   const name=raw(draft.kit.components.find(p=>p.sku===sku)?.name||product.name||sku);
   return {sku,name,taxSuggestion:suggestion,taxDraft:saved,taxSuggestionSources,
