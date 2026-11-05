@@ -352,7 +352,8 @@ async function readBaselines(shopId,today){
 async function saveObservations(shopId,today,offers){
  const byId=new Map();
  for(const offer of offers){
-  if(validId(offer.itemId)&&intSales(offer.sales)!==null)
+  if(validId(offer.itemId)&&intSales(offer.sales)!==null&&
+    (offer.dataSource!=='shopee-featured-public'||intSales(offer.historicalSold)!==null))
    byId.set(String(offer.itemId),{shop_id:Number(shopId),
     item_id:Number(offer.itemId),observed_day:today,
     cumulative_sales:Number(offer.sales),observed_at:new Date().toISOString()});
@@ -384,32 +385,75 @@ function signedRequest(keyword,page,mode=2){
   return result.data.productOfferV2.nodes;
  });
 }
+// A Shopee pode desabilitar o acesso público sem aviso. Não contornar
+// autenticação, CAPTCHA, 403 ou limitação; usar a fonte de Afiliados se
+// houver credenciais próprias e distinguir métricas acumuladas de mensais.
+const featuredCircuit={state:'unknown',lastChecked:0,reason:''};
+const affiliateConfigured=()=>Boolean(env('SHOPEE_AFFILIATE_APP_ID')&&env('SHOPEE_AFFILIATE_SECRET'));
+export function curveProvidersStatus(){
+ return {featured:{state:featuredCircuit.state,
+  checkedAt:featuredCircuit.lastChecked?new Date(featuredCircuit.lastChecked).toISOString():null,
+  reason:featuredCircuit.reason},
+  affiliate:{configured:affiliateConfigured()},
+  monthlyPolicy:'Somente sold da vitrine ou histórico observado em 29 a 31 dias'};
+}
 async function offersQuery(keyword,page){
- try{return await signedRequest(keyword,page,2);}
- catch(err){
-  // Algumas contas não habilitam lista Top performance. Modo 0 ainda usa
-  // ordenação por vendidos; resultado identificado como amostra de ofertas.
-  if(/rate.limit|limit exceeded|signature|unauthorized|forbidden|credential/i.test(String(err.message)))throw err;
-  return signedRequest(keyword,page,0);
+ const expiry=featuredCircuit.state==='blocked'?20*60*1000:90*1000;
+ const shouldProbe=featuredCircuit.state==='unknown'||
+  featuredCircuit.state==='available'||
+  Date.now()-featuredCircuit.lastChecked>expiry;
+ let reason='';
+ if(shouldProbe){
+  const result=await searchFeaturedPublic(keyword);
+  featuredCircuit.lastChecked=Date.now();
+  featuredCircuit.state=result.ok?'available':result.blocked?'blocked':'unavailable';
+  featuredCircuit.reason=result.error||'';
+  if(result.ok)return {offers:result.offers,source:'shopee-featured-public'};
+  reason=result.error||'Fonte pública não retornou dados.';
+ }
+ if(!affiliateConfigured())
+  throw Error('Sem fonte automática acessível. Vitrine: '+
+   (featuredCircuit.reason||reason||'indisponível')+
+   '. Configure as credenciais da API Shopee Afiliados para a busca alternativa.');
+ try{
+  return {offers:await signedRequest(keyword,page,2),source:'shopee-affiliate'};
+ }catch(err){
+  if(/rate.limit|limit exceeded|signature|unauthorized|forbidden|credential/i.test(String(err.message)))
+   throw err;
+  return {offers:await signedRequest(keyword,page,0),source:'shopee-affiliate'};
  }
 }
 async function fetchOffers(terms){
- // Não faz consultas sem palavra-chave: a busca é sempre iniciada pela
- // descrição da SKU WeDrop, mantendo os resultados vinculados à categoria.
+ // Uma verificação inicial da vitrine antes de distribuir consultas evita
+ // dezenas de solicitações repetidas quando a Shopee limita acessos públicos.
  const tasks=[...new Set(terms.map(x=>String(x||'').trim()).filter(Boolean))];
- const offers=[],errors=[],queried=[];
+ const offers=[],errors=[],queried=[],sources={featured:0,affiliate:0};
  let cursor=0,limited=false;
- await Promise.all(Array.from({length:4},async()=>{
+ const collect=(term,result)=>{
+  queried.push(term);
+  offers.push(...result.offers.map(x=>result.source==='shopee-affiliate'?
+   {...x,dataSource:'shopee-affiliate'}:x));
+  if(result.source==='shopee-featured-public')sources.featured++;
+  else sources.affiliate++;
+ };
+ if(tasks.length){
+  cursor=1;
+  try{collect(tasks[0],await offersQuery(tasks[0],1));}
+  catch(error){
+   const message=String(error.message||error).slice(0,360);
+   errors.push(tasks[0]+': '+message);
+   if(/sem fonte|rate.limit|limit exceeded|too many|429|unauthorized|forbidden|credential|signature/i.test(message.toLowerCase()))
+    limited=true;
+  }
+ }
+ if(!limited)await Promise.all(Array.from({length:3},async()=>{
   while(cursor<tasks.length&&!limited){
    const term=tasks[cursor++];
-   try{
-    const results=await offersQuery(term,1);
-    queried.push(term);
-    offers.push(...results);
-   }catch(error){
-    const detail=String(error.message||error).slice(0,140);
+   try{collect(term,await offersQuery(term,1));}
+   catch(error){
+    const detail=String(error.message||error).slice(0,360);
     errors.push(term+': '+detail);
-    if(/rate.limit|limit exceeded|too many|429|unauthorized|forbidden|credential|signature/i.test(detail))
+    if(/sem fonte|rate.limit|limit exceeded|too many|429|unauthorized|forbidden|credential|signature/i.test(detail.toLowerCase()))
      limited=true;
    }
   }
@@ -417,10 +461,13 @@ async function fetchOffers(terms){
  const unique=new Map();
  for(const item of offers){
   if(!validId(item.itemId)||!validId(item.shopId))continue;
-  unique.set(String(item.shopId)+':'+String(item.itemId),item);
+  const key=String(item.shopId)+':'+String(item.itemId);
+  const old=unique.get(key);
+  if(!old||(intSales(item.monthlySold)!==null&&intSales(old.monthlySold)===null))
+   unique.set(key,item);
  }
- return {offers:[...unique.values()],queries:queried,errors:errors.slice(0,12),
-  attempted:cursor,limited};
+ return {offers:[...unique.values()],queries:queried,errors:errors.slice(0,10),
+  attempted:cursor,limited,sources};
 }
 
 const cache=new Map();
@@ -438,7 +485,8 @@ async function prepareCurveCatalog(shopId,{category,keyword}){
  const plan=curveSkuSearchPlan(filtered,{keyword});
  return {catalog:filtered,costs,plan,cursor:0,offers:new Map(),
   baseline:await readBaselines(shopId,saoPauloDay()).catch(()=>new Map()),
-  errors:[],queries:0,successfulQueries:0,limited:false,scannedSkus:new Set(),
+  errors:[],queries:0,successfulQueries:0,limited:false,
+  sources:{featured:0,affiliate:0},scannedSkus:new Set(),
   checkedAt:null,recordedOffers:0,matches:[]};
 }
 async function advanceCurveCatalog(shopId,state,{desired,curve}){
@@ -458,10 +506,14 @@ async function advanceCurveCatalog(shopId,state,{desired,curve}){
   state.queries+=used;state.successfulQueries+=result.queries.length;
   state.errors.push(...result.errors);
   state.errors=state.errors.slice(-12);
+  state.sources.featured+=result.sources.featured;
+  state.sources.affiliate+=result.sources.affiliate;
   for(const offer of result.offers){
    const id=String(offer.shopId)+':'+String(offer.itemId);
-   if(!state.offers.has(id))newOffers.push(offer);
-   state.offers.set(id,offer);
+   const previous=state.offers.get(id);
+   if(!previous)newOffers.push(offer);
+   if(!previous||(intSales(offer.monthlySold)!==null&&
+      intSales(previous.monthlySold)===null))state.offers.set(id,offer);
   }
   state.checkedAt=new Date().toISOString();
   state.matches=matchCurveOffers({
@@ -486,10 +538,7 @@ export async function researchCurveAB(shopId,{
  const term=String(keyword||'').trim(),selectedCategory=String(category||'Todos').trim();
  if(selectedCategory.length>90)throw Error('Categoria inválida.');
  if(term.length>70)throw Error('Pesquisa muito longa (máximo 70 caracteres).');
- const configured=Boolean(env('SHOPEE_AFFILIATE_APP_ID')&&env('SHOPEE_AFFILIATE_SECRET'));
- if(!configured)return {ok:true,configured:false,requested:desired,curve:chosen,
-  items:[],found:0,shortage:desired,catalogCount:0,offerCount:0,queries:[],
-  warning:'A API da loja (Seller API) é diferente da Shopee Afiliados. Configure SHOPEE_AFFILIATE_APP_ID e SHOPEE_AFFILIATE_SECRET no Render para executar automaticamente a busca de anúncios de outras lojas.'};
+
  const key=String(shopId)+'|'+normal(selectedCategory)+'|'+normal(term);
  let holder=cache.get(key);
  if(refresh||!holder||Date.now()-holder.at>CURVE_CACHE_MS){
@@ -519,9 +568,13 @@ export async function researchCurveAB(shopId,{
   hasMore?'A busca pausou no limite seguro de chamadas. Use Continuar varredura para pesquisar mais SKUs sem repetir consultas anteriores.':'',
   state.limited?'A API de ofertas interrompeu a pesquisa por limite de requisições ou autorização. Confira o diagnóstico antes de repetir.':'',
   state.recordedOffers===null?'Não foi possível registrar observações para a apuração de 30 dias.':'',
+  state.successfulQueries===0?'Nenhuma fonte automática retornou ofertas. Verifique diagnóstico: '+(state.errors[0]||'busca sem resultados'):'',
+  state.sources.featured?'Vendas mensais obtidas da busca pública Shopee para parte dos resultados.':'',
   state.errors.length?'Consultas que falharam: '+state.errors.slice(0,2).join(' | '):''
  ].filter(Boolean);
- return {ok:true,configured:true,curve:chosen,category:selectedCategory,
+ return {ok:true,configured:state.successfulQueries>0,
+  sources:state.sources,providers:curveProvidersStatus(),
+  curve:chosen,category:selectedCategory,
   ...selected,catalogCount:state.catalog.length,offerCount:state.offers.size,
   skuSearchesCompleted:state.scannedSkus.size,
   skuQueriesPlanned:state.plan.length,
