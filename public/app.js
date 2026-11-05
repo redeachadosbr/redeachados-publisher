@@ -11114,8 +11114,12 @@ async function optimizerCommercialRequestChatgptSlot(w,slot,{editMode=''}={}){
  if(!optimizerImagesSameSku(w))return;
  const status=$('#optimizerImagesStatus');
  // Solicitação explícita da imagem 03 nunca reutiliza um prompt antigo
- // mantido na extensão, pois esse prompt podia mandar gerar foto sem cotas.
- if(slot===3&&optimizerChatBridgeBusy)
+ // mantido na extensão, mesmo que a flag "busy" tenha sido desligada
+ // após a primeira falha. A foto que já foi salva continua preservada.
+ if(slot===3&&optimizerChatBridgeJob?.nonce&&
+    !optimizerChatBridgeJob.complete&&!optimizerChatBridgeJob.stopped)
+  await optimizerChatBridgeRelease('Imagem 03: encerrando a sessão anterior para reenviar os valores confirmados da WeDrop.');
+ else if(slot===3&&optimizerChatBridgeBusy)
   await optimizerChatBridgeRelease('Imagem 03: descartando o comando anterior sem medidas para carregar o roteiro WeDrop atualizado.');
  if(optimizerChatBridgeBusy){
   const job=optimizerChatBridgeJob;
@@ -11134,7 +11138,7 @@ async function optimizerCommercialRequestChatgptSlot(w,slot,{editMode=''}={}){
   status.textContent=msg;optimizerCommercialActionMessage(msg,true);return;
  }
  try{
-  if(optimizerChatBridgeIdentity(optimizerChatBridgeJob,w)&&optimizerChatBridgeJob?.slots?.length===1&&Number(optimizerChatBridgeJob.slots[0])===Number(slot)&&!optimizerChatBridgeJob.complete&&await optimizerChatBridgeRecover({includeBlocked:true}))return;
+  if(slot!==3&&optimizerChatBridgeIdentity(optimizerChatBridgeJob,w)&&optimizerChatBridgeJob?.slots?.length===1&&Number(optimizerChatBridgeJob.slots[0])===Number(slot)&&!optimizerChatBridgeJob.complete&&await optimizerChatBridgeRecover({includeBlocked:true}))return;
   const brief=await optimizerChatgptMakeBrief(w);
   if(slot===3){
    const measurements=await optimizerRequireThirdChatgptDimensions(w,brief);
@@ -11836,7 +11840,10 @@ async function optimizerChatgptContinueFromServer(){
   // NÃO enviar RA_SITE_ABORT antes de RA_SITE_CONTINUE: isso causava
   // competição e podia pausar a mesma execução que deveria ser retomada.
   const priorJob=optimizerChatBridgeJob;
-  if(priorJob&&!optimizerChatBridgeIdentity(priorJob,w))
+  const freshThird=Number(missing[0])===3;
+  if(freshThird&&priorJob?.nonce&&!priorJob.stopped&&!priorJob.complete)
+   await optimizerChatBridgeRelease('Imagem 03: substituindo a sessão com prompt anterior por medidas WeDrop confirmadas.');
+  else if(priorJob&&!optimizerChatBridgeIdentity(priorJob,w))
    await optimizerChatBridgeRelease('Outra SKU pausada. Continuando '+w.sku+'.');
   else if(priorJob&&!priorJob.stopped&&!priorJob.complete){
    const pendingUploads=await optimizerChatBridgeRecover({includeBlocked:true});
@@ -11853,6 +11860,12 @@ async function optimizerChatgptContinueFromServer(){
    recovered={reason:'NO_RECOVERABLE_JOB'};
    notify('Chat vazio confirmado. Criando sessão nova da imagem '+first+
     '/09 com roteiro atualizado da SKU '+w.sku+'. '+stored.length+'/9 imagens salvas permanecem intactas.');
+  }else if(freshThird){
+   // O slot 03 já tinha um comando incorreto em sessões anteriores.
+   // Não despertar o prompt guardado no Chrome: usar sempre o pacote
+   // recém-verificado com as medidas exatas da WeDrop da SKU atual.
+   recovered={reason:'NO_RECOVERABLE_JOB'};
+   notify('Imagem 03/09: enviando um comando NOVO com as dimensões WeDrop verificadas. As '+stored.length+' fotos salvas permanecerão intactas.');
   }else{
    // A Ponte pode rejeitar um domínio Shopee mesmo quando a prévia mostra a
    // foto. Repetir somente a leitura da referência, jamais apagar imagens.
