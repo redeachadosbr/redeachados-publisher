@@ -47,7 +47,7 @@ test('a Etapa 10 não força mídia/fiscal e o executor completo inclui tudo rev
  const executor=app.slice(start,end);
  assert.ok(start>0&&end>start);
  assert.ok(executor.includes("scope.value=executionScope"));
- assert.ok(executor.includes("onlyDiscount?'discount':'all'"));
+ assert.ok(executor.includes("onlyDiscount?'discount':kitAutoSweepPreferredStage(audit)"));
  assert.ok(executor.includes('optimizerRootAuditRefresh(true)'));
  assert.ok(executor.includes('kitAutoSweepChoosePlan({kitSku,sku,itemId,modelId},audit,executionScope)'));
  assert.ok(app.includes("pending.has('fiscal')?['fiscal']:[]"));
