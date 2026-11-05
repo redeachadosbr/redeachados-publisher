@@ -298,11 +298,11 @@ export function matchCurveOffers({catalog=[],offers=[],costs=[],baseline=new Map
   (b.sales30??b.salesDisplayed)-(a.sales30??a.salesDisplayed)||b.matchScore-a.matchScore||
   a.sku.localeCompare(b.sku));
 }
-export function pickCurveResults(rows,{curve='ALL',limit=10}={}){
+export function pickCurveResults(rows,{curve='ALL',limit=10,verifiedOnly=false}={}){
  if(![5,10,15,20].includes(Number(limit)))throw Error('Escolha 5, 10, 15 ou 20 produtos.');
  const choice=String(curve).toUpperCase();
  if(!['ALL','A','B'].includes(choice))throw Error('Filtro de curva inválido.');
- const accepted=rows.filter(x=>x.curve!=='HIGH'&&(choice==='ALL'||x.curve===choice));
+ const accepted=rows.filter(x=>x.curve!=='HIGH'&&(choice==='ALL'||x.curve===choice)&&(!verifiedOnly||x.verified30));
  return {items:accepted.slice(0,Number(limit)),found:accepted.length,requested:Number(limit),
   shortage:Math.max(0,Number(limit)-accepted.length)};
 }
@@ -503,7 +503,7 @@ async function prepareCurveCatalog(shopId,{category,keyword}){
   sources:{featured:0,affiliate:0},scannedSkus:new Set(),
   checkedAt:null,recordedOffers:0,matches:[]};
 }
-async function advanceCurveCatalog(shopId,state,{desired,curve}){
+async function advanceCurveCatalog(shopId,state,{desired,curve,verifiedOnly}){
  const started=Date.now(),newOffers=[];
  let performed=0;
  while(state.cursor<state.plan.length&&!state.limited&&
@@ -534,7 +534,7 @@ async function advanceCurveCatalog(shopId,state,{desired,curve}){
    catalog:state.catalog,offers:[...state.offers.values()],costs:state.costs,
    baseline:state.baseline,today:saoPauloDay(),ownShopId:shopId});
   if(result.limited){state.limited=true;break;}
-  if(pickCurveResults(state.matches,{limit:desired,curve}).items.length>=desired)break;
+  if(pickCurveResults(state.matches,{limit:desired,curve,verifiedOnly}).items.length>=desired)break;
  }
  if(newOffers.length){
   const n=await saveObservations(shopId,saoPauloDay(),newOffers).catch(()=>null);
@@ -544,7 +544,7 @@ async function advanceCurveCatalog(shopId,state,{desired,curve}){
  if(!state.checkedAt)state.checkedAt=new Date().toISOString();
 }
 export async function researchCurveAB(shopId,{
- limit=10,curve='ALL',category='Todos',keyword='',refresh=false,advance=false
+ limit=10,curve='ALL',category='Todos',keyword='',refresh=false,advance=false,verifiedOnly=true
 }={}){
  const desired=Number(limit),chosen=String(curve||'ALL').toUpperCase();
  if(![5,10,15,20].includes(desired)||!['ALL','A','B'].includes(chosen))
@@ -564,19 +564,20 @@ export async function researchCurveAB(shopId,{
  let state;
  try{state=await holder.ready;}
  catch(error){cache.delete(key);throw error;}
- const current=pickCurveResults(state.matches,{limit:desired,curve:chosen});
+ const current=pickCurveResults(state.matches,{limit:desired,curve:chosen,verifiedOnly});
  const shouldSearch=Boolean((advance||current.items.length<desired)&&
   state.cursor<state.plan.length&&!state.limited);
  if(shouldSearch){
   if(!holder.active)holder.active=advanceCurveCatalog(shopId,state,{
-   desired,curve:chosen}).finally(()=>{holder.active=null;});
+   desired,curve:chosen,verifiedOnly}).finally(()=>{holder.active=null;});
   await holder.active;
  }else if(holder.active)await holder.active;
- const selected=pickCurveResults(state.matches,{limit:desired,curve:chosen});
+ const selected=pickCurveResults(state.matches,{limit:desired,curve:chosen,verifiedOnly});
  const hasMore=state.cursor<state.plan.length&&!state.limited;
  const notes=[
   'Pesquisa automática iniciada nas descrições de SKUs WeDrop da categoria escolhida. Resultado obtido pela API Shopee Afiliados ordenada por vendas; a API não reproduz diretamente a aba Em Destaque do comprador.',
   'O contador sales da API é acumulado. A curva mensal só é confirmada quando há observações de aproximadamente 30 dias; antes disso a indicação A/B é potencial.',
+  verifiedOnly&&state.matches.length&&!selected.items.length?'Existem correspondências com o catálogo, mas nenhuma com indicador mensal confirmado. Desmarque Somente curvas confirmadas para consultar candidatos potencialmente promissores.':'',
   selected.shortage?'Encontrados '+selected.items.length+' dos '+desired+
    ' produtos solicitados. Não há bloqueio.':'',
   hasMore?'A busca pausou no limite seguro de chamadas. Use Continuar varredura para pesquisar mais SKUs sem repetir consultas anteriores.':'',
@@ -586,7 +587,8 @@ export async function researchCurveAB(shopId,{
   state.sources.featured?'Vendas mensais obtidas da busca pública Shopee para parte dos resultados.':'',
   state.errors.length?'Consultas que falharam: '+state.errors.slice(0,2).join(' | '):''
  ].filter(Boolean);
- return {ok:true,configured:state.successfulQueries>0,
+ return {ok:true,configured:state.successfulQueries>0,verifiedOnly,
+  possibleMatches:state.matches.length,
   sources:state.sources,providers:curveProvidersStatus(),
   curve:chosen,category:selectedCategory,
   ...selected,catalogCount:state.catalog.length,offerCount:state.offers.size,
