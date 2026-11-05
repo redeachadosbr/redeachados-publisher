@@ -34,7 +34,7 @@ test('etapa 10 executa TODAS as nove etapas da auditoria raiz, e nao apenas míd
  assert.ok(start>0&&end>start);
  const run=app.slice(start,end);
  assert.match(run,/scope\.value=executionScope/);
- assert.match(run,/onlyDiscount\?'discount':'all'/);
+ assert.match(run,/onlyDiscount\?'discount':kitAutoSweepPreferredStage\(audit\)/);
  assert.match(run,/optimizerRootAuditRefresh\(true\)/);
  assert.match(run,/kitAutoSweepChoosePlan\(\{kitSku,sku,itemId,modelId\},audit,executionScope\)/);
  const chooser=app.slice(app.indexOf('async function kitAutoSweepChoosePlan('),
