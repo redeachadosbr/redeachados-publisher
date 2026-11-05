@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
-import {visualReferenceCandidates,isVisualReferenceError} from '../public/optimizer-visual-reference.js';
+import {visualReferenceCandidates,isVisualReferenceError,bridgeShopeeReferenceCandidates} from '../public/optimizer-visual-reference.js';
 
 test('Kit anunciado usa fotos originais do Item ID e alterna CDN oficial',()=>{
  const url='https://cf.shopee.com.br/file/sg-11134201-825ad-mqxk7vehq77wd0';
@@ -28,4 +28,25 @@ test('Ponte faz retry não destrutivo e não usa WeDrop de SKU unitária para ki
  assert.match(server,/if\(wedropImage&&!editCurrent&&!listingIsKit\)/);
  assert.match(images,/for\(const u of sources\)\{/);
  assert.match(images,/break; \/\/ Referência boa/);
+});
+
+test('Ponte não envia imagem WeDrop quando anúncio individual está vinculado à Shopee',()=>{
+ const shopee='https://cf.shopee.com.br/file/sg-11134201-825ad-mqxk7vehq77wd0';
+ const wedrop='https://wedrop-products-images.nyc3.cdn.digitaloceanspaces.com/6s1dh1dctha-xl.jpg';
+ const refs=bridgeShopeeReferenceCandidates([wedrop,shopee]);
+ assert.ok(refs.length>=2);
+ assert.equal(refs[0],shopee);
+ assert.ok(refs.every(url=>!url.includes('digitaloceanspaces.com')));
+ assert.equal(isVisualReferenceError('Fotografia original fora da Shopee.'),true);
+});
+test('Imagem isolada tenta fontes oficiais do mesmo anúncio sem apagar as duas primeiras fotos',()=>{
+ const app=readFileSync(new URL('../public/app.js',import.meta.url),'utf8');
+ const handler=app.slice(app.indexOf('async function optimizerCommercialRequestChatgptSlot('),
+  app.indexOf('async function optimizerChatgptCopyAll('));
+ assert.match(handler,/brief\.referenceCandidates\|\|\[\]/);
+ assert.match(handler,/const reply=await ack/);
+ assert.match(handler,/isVisualReferenceError\(lastError\)/);
+ assert.match(handler,/completed:Array\.from\(\{length:9\}/);
+ assert.doesNotMatch(handler,/method:'DELETE'/);
+ assert.doesNotMatch(handler,/imageUrl:brief\.original/);
 });
