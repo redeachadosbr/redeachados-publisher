@@ -10919,7 +10919,7 @@ function optimizerImagesRenderMode(){
 async function optimizerChatgptMakeBrief(w,{defaultOnly=false}={}){
  const [{createChatGptPrompts},{visualReferenceCandidates,bridgeShopeeReferenceCandidates}]=await Promise.all([
   import('/chatgptPrompts.js?v=20261105-slot04-source-step1'),
-  import('/optimizer-visual-reference.js?v=20261105-shopee-kit-photo-fallback')
+  import('/optimizer-visual-reference.js?v=20261105-shopee-source-safe-v2')
  ]);
  const existingKit=isPendingKitDirect(w.sku,w.itemId);
  if(existingKit){
@@ -11102,7 +11102,7 @@ async function optimizerCommercialRequestChatgptSlot(w,slot,{editMode=''}={}){
   if(!optimizerImagesSameSku(w))return;
   const original=(current.images||[]).find(x=>Number(x.slot)===slot);
   const shaToKeep=original?.sha256?{[slot]:original.sha256}:{};
-  const {isVisualReferenceError}=await import('/optimizer-visual-reference.js?v=20261105-shopee-source-safe');
+  const {isVisualReferenceError}=await import('/optimizer-visual-reference.js?v=20261105-shopee-source-safe-v2');
   const refs=(brief.referenceCandidates||[]).slice(0,4);
   if(!refs.length)throw Error('Nenhuma foto oficial da Shopee corresponde ao Item ID desta SKU.');
   let lastError='';
@@ -11773,7 +11773,7 @@ async function optimizerChatgptContinueFromServer(){
    const pendingUploads=await optimizerChatBridgeRecover({includeBlocked:true});
    if(pendingUploads)notify('Recuperando '+pendingUploads+' arquivo(s) capturado(s) antes de continuar na imagem '+first+'/09.');
   }
-  const {isVisualReferenceError}=await import('/optimizer-visual-reference.js?v=20261105-shopee-kit-photo-fallback');
+  const {isVisualReferenceError}=await import('/optimizer-visual-reference.js?v=20261105-shopee-source-safe-v2');
   const refs=brief.referenceCandidates; // Somente CDNs oficiais Shopee, jamais WeDrop.
   let referenceIndex=0,referenceUrl=refs[0],recovered=null;
   if(resumeDirty&&optimizerChatgptCleanChatAuthorized){
