@@ -30,7 +30,32 @@ export function visualReferenceCandidates(input=[]){
  }
  return output.slice(0,8);
 }
+// A Ponte para anúncios individuais recebe SOMENTE fotos do Item ID Shopee.
+// Fotos da WeDrop continuam disponíveis para a prévia e os prompts, mas
+// podem ser rejeitadas pela validação de origem da extensão Chrome.
+export function bridgeShopeeReferenceCandidates(shopeeItemPhotos=[]){
+ const refs=visualReferenceCandidates(shopeeItemPhotos);
+ const official=refs.filter(value=>{
+  try{
+   const url=new URL(value),host=url.hostname.toLowerCase();
+   return url.protocol==='https:'&&!url.username&&!url.password&&!url.port&&
+    (host==='cf.shopee.com.br'||host==='down-br.img.susercontent.com'||
+     host.endsWith('.susercontent.com'));
+  }catch{return false;}
+ });
+ // Preferir o endereço cf.shopee.com.br que a extensão identifica como
+ // origem Shopee; a variante CDN é retentada apenas em caso de recusa.
+ return official.sort((a,b)=>{
+  const priority=url=>{
+   const host=new URL(url).hostname;
+   return host==='cf.shopee.com.br'?0:
+    host==='down-br.img.susercontent.com'?1:2;
+  };
+  return priority(a)-priority(b);
+ }).slice(0,6);
+}
+
 export function isVisualReferenceError(message){
- return /refer[eê]ncia visual inv[aá]lida|(?:refer[eê]ncia|foto|imagem)[^\n]{0,80}(?:inv[aá]lida|n[aã]o (?:carrega|abre|recebida))|invalid (?:visual |image )?reference/i
+ return /fotografia original fora da shopee|(?:foto|imagem|fotografia)[^\n]{0,80}fora da shopee|refer[eê]ncia visual inv[aá]lida|(?:refer[eê]ncia|foto|imagem)[^\n]{0,80}(?:inv[aá]lida|n[aã]o (?:carrega|abre|recebida))|invalid (?:visual |image )?reference/i
   .test(String(message||''));
 }
