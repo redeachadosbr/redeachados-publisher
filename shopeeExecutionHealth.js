@@ -75,7 +75,7 @@ export function auditRootShopeeExecution({
  const jobImages=job?.sku===sku&&String(job?.item_id)===String(itemId)&&
   Array.isArray(job?.result?.imageIds)?job.result.imageIds.map(String):[];
  const approvedJobImages=job?.plan?.images?.length===9&&jobImages.length===9&&
-  job?.plan?.images?.every(x=>Boolean(x?.source||x?.url||x?.sha256||x?.shopee_image_id));
+  jobImages.every(x=>x.length>5);
  const imageReady=imgs.length===9&&expectedImages.every(x=>x.length>5);
  const exactManualImages=imageReady&&sameData(expectedImages,actualImages);
  const exactJobImages=approvedJobImages&&sameData(jobImages,actualImages);
@@ -121,6 +121,15 @@ export function auditRootShopeeExecution({
    technicalOK=fieldsVerified({attribute_list:compiled},live);
    technicalReason='Atributos publicados diferem dos atributos aprovados';
   }catch(error){technicalReason='Ficha técnica: '+String(error.message||error).slice(0,150);}
+ }
+ // Se a revisão técnica anterior já foi aplicada, o job aprovado
+ // também é prova verificável, desde que os atributos continuem iguais
+ // na leitura atual da Shopee. Nunca usar somente o status "verified".
+ if(!technicalOK&&job?.sku===sku&&String(job?.item_id)===String(itemId)&&
+   Array.isArray(job?.plan?.proposed?.attribute_list)&&
+   job.plan.proposed.attribute_list.length>0){
+  technicalOK=fieldsVerified({attribute_list:job.plan.proposed.attribute_list},live);
+  if(technicalOK)technicalReason='Ficha técnica do plano aprovado conferida na Shopee';
  }
  add('technical',technicalOK,technicalReason);
  const hasVariants=review.variationConfig?.enabled===true||live.has_model===true;
