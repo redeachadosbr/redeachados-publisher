@@ -190,3 +190,31 @@ test('o editor da posição 03 consulta sempre a fonte salva do item individual 
   app.indexOf('async function optimizerChatgptRender(w)'));
  assert.match(check,/catalogMeasurements:w\.supplierProduct\?\.catalogMeasurements/);
 });
+
+test('Imagem 03 da SKU 1736 recupera dimensões catalogadas sem depender da ficha pré-carregada',()=>{
+ const sourceText=[
+  'Processador de alimentos com 3 lâminas',
+  'Especificações:',
+  'Dimensões: 10 x 10 x 14',
+  'Peso: 222',
+  'Capacidade: 500 ml'
+ ].join('\\n');
+ const catalogMeasurements={widthCm:'10',heightCm:'10',lengthCm:'14',weightKg:'222'};
+ const spec=confirmedSpecCard({
+  sourceText,sku:'1736',sourceEvidenceSku:'1736',
+  sourceSaved:true,supplierMatchedBy:'exact-sku',catalogMeasurements
+ });
+ assert.deepEqual(spec?.measurements?.map(x=>[x.axis,x.value]),[
+  ['altura','10 cm'],['largura','10 cm'],['comprimento','14 cm']
+ ]);
+ const prompt=createChatGptPrompts({title:'Processador de Alimentos Manual 500ml',
+  supplierSourceText:sourceText,confirmedDimensionSpec:spec});
+ assert.match(prompt.prompts[2],/ALTURA: 10 cm; LARGURA: 10 cm; COMPRIMENTO: 14 cm/);
+ assert.doesNotMatch(prompt.prompts[2],/222 cm|500 cm/);
+ const app=readFileSync(new URL('../public/app.js',import.meta.url),'utf8');
+ const server=readFileSync(new URL('../server.js',import.meta.url),'utf8');
+ assert.match(server,/supplierMeasurements:matched\?supplier\.product_data\?\.catalogMeasurements/);
+ assert.match(app,/const measures=verifiedCatalog\?source\.supplierMeasurements:null/);
+ assert.match(app,/w\.verifiedWeDropMeasurements/);
+ assert.match(app,/confirmedDimensionSpec,/);
+});
