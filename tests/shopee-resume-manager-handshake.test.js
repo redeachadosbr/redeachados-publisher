@@ -46,3 +46,28 @@ test('botão Gerar ignora clique duplicado enquanto reconcilia a Ponte',()=>{
  assert.match(main,/optimizerSlotBridgeStartInFlight=true;generate\.disabled=true/);
  assert.match(main,/finally\{\s*optimizerSlotBridgeStartInFlight=false/);
 });
+test('imagem 03 envia foto real preparada da MESMA SKU junto do novo prompt na Ponte',()=>{
+ const app=readFileSync(new URL('../public/app.js',import.meta.url),'utf8');
+ const source=app.slice(app.indexOf('async function optimizerBridgeThirdReferenceDataUrl('),
+   app.indexOf('async function optimizerCommercialRequestChatgptSlot('));
+ assert.match(source,/sourceSlot=saved\.has\(1\)\?1:saved\.has\(2\)\?2:0/);
+ assert.match(source,/optimizerImageEditReference\(w,sourceSlot\)/);
+ assert.match(source,/optimizerImagesSameSku\(w\)/);
+ assert.match(source,/data:image\\/jpeg;base64/);
+ assert.doesNotMatch(source,/fetch\('https:\/\/|method:'DELETE'/);
+ const single=app.slice(app.indexOf('async function optimizerCommercialRequestChatgptSlot('),
+   app.indexOf('async function optimizerChatgptCopyAll('));
+ assert.match(single,/referenceDataUrl=await optimizerBridgeThirdReferenceDataUrl\(w,current\.images\|\|\[\]\)/);
+ assert.match(single,/imageUrl:refs\[i\],prompts,referenceDataUrl/);
+ const continueFn=app.slice(app.indexOf('async function optimizerChatgptContinueFromServer('),
+   app.indexOf('globalThis.__RA_SHOPEE_RESUME_BRIDGE'));
+ assert.match(continueFn,/preparedThirdReference=Number\(missing\[0\]\)===3\?/);
+ assert.equal((continueFn.match(/referenceDataUrl:preparedThirdReference/g)||[]).length,2);
+ assert.doesNotMatch(continueFn,/method:'DELETE'|restart:true/);
+});
+test('não aceitar prompt legado de imagem 03 sem cotas e recarregar versão atual',()=>{
+ const app=readFileSync(new URL('../public/app.js',import.meta.url),'utf8');
+ assert.match(app,/PROMPT ANTIGO DETECTADO/);
+ assert.match(app,/SEM texto, setas/);
+ assert.match(app,/chatgptPrompts\.js\?v=20261105-slot03-wedrop-photo-v4/);
+});
