@@ -152,3 +152,27 @@ test('video importado no Manager continua exigindo correspondencia exata ao publ
  a.video={sha256:'different-approved-video-sha',publication:null};
  assert.equal(auditRootShopeeExecution(a).stages.find(x=>x.id==='video').status,'pending');
 });
+
+test('job da mesma SKU comprova nove imagens por IDs exatos sem depender de cache manual',()=>{
+ const a=base();
+ const ids=Array.from({length:9},(_,i)=>'shopee-image-'+i);
+ a.live.image.image_id_list=[...ids];
+ a.job={sku:a.sku,item_id:a.itemId,state:'uncertain',
+  plan:{images:ids.map((id,i)=>({slot:i+1,sha256:'sha-'+i}))},
+  result:{imageIds:[...ids]}};
+ assert.equal(auditRootShopeeExecution(a).stages.find(s=>s.id==='images').status,'confirmed');
+ a.live.image.image_id_list.reverse();
+ assert.equal(auditRootShopeeExecution(a).stages.find(s=>s.id==='images').status,'pending');
+ a.live.image.image_id_list=[...ids];
+ a.job.item_id='123456789';
+ assert.equal(auditRootShopeeExecution(a).stages.find(s=>s.id==='images').status,'pending');
+});
+test('ficha técnica publicada e conferida por campos do job mantém status confirmado',()=>{
+ const a=base();
+ a.live.attribute_list=[{attribute_id:101,attribute_value_list:[{value_id:1}]}];
+ a.job={sku:a.sku,item_id:a.itemId,state:'uncertain',
+  plan:{proposed:{attribute_list:[{attribute_id:101,attribute_value_list:[{value_id:1}]}]}},result:{}};
+ assert.equal(auditRootShopeeExecution(a).stages.find(s=>s.id==='technical').status,'confirmed');
+ a.live.attribute_list=[];
+ assert.equal(auditRootShopeeExecution(a).stages.find(s=>s.id==='technical').status,'pending');
+});
