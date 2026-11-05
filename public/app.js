@@ -11,6 +11,8 @@ const APP_PAGES={
     description:'Catálogo, variações, estoque e situação dos anúncios Shopee.'},
   kits:{slug:'kits',title:'Kits Inteligentes WeDrop',group:'Operação',
     description:'Pesquisa de oportunidades de kits por categoria, SKUs e custo WeDrop, lucro líquido e criação comercial com ChatGPT.'},
+  curves:{slug:'curvas-ab',title:'Curvas A e B',group:'Operação',
+    description:'Pesquisa de produtos mais vendidos na Shopee, cruzada com SKUs e fotos do catálogo WeDrop para avaliar Ads.'},
   optimizer:{slug:'otimizacao',title:'Otimização de anúncios',group:'Operação',
     description:'Localize o SKU, calcule preços, prepare descontos e faça a revisão completa do anúncio.'},
   'pending-images':{slug:'otimizacao-pendente',title:'Otimização Pendente',group:'Operação',
@@ -101,6 +103,7 @@ function setTab(name,{updateHistory=true,scroll=true}={}){
   if(name==='overview')void window.dashboardNewListingsLoad?.();
   if(name==='pending-images')globalThis.PendingImagesUI?.onOpen?.();
   if(name==='kits')void window.RAKitBuilderLoad?.();
+  if(name==='curves')void window.RACurvesAB?.onOpen?.();
   if(name==='wedrop'){refreshWeDropCoverage();loadWeDropSourceState();void loadWeDropSkuReview();}
   else if(name==='finance'){refreshWeDropCoverage();}
   else if(name==='orders')ordersEnsureLoaded();
