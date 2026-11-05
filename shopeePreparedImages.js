@@ -175,10 +175,18 @@ export async function downloadPreparedImage(asset){
 }
 export const imagesSignature=images=>images.map(x=>x.slot+':'+x.sha256).join('|');
 export async function rememberPublishedImages(plan,result){
- for(const [index,asset] of (plan.images||[]).entries()){
-  const id=result.imageIds?.[index];if(!id)continue;
-  await api('/rest/v1/shopee_optimizer_images'+where(plan.shopId,plan.itemId,plan.modelId)+
-   '&slot=eq.'+num(asset.slot)+'&sha256=eq.'+encodeURIComponent(asset.sha256),{method:'PATCH',
-   headers:{'Content-Type':'application/json'},body:JSON.stringify({shopee_image_id:id})});
- }
+ // Somente o readback oficial do anúncio autoriza registrar estes IDs.
+ // Os updates são independentes por slot/SHA; até três em paralelo evitam
+ // nove viagens sequenciais ao banco sem criar duplicidade.
+ const pairs=(plan.images||[]).map((asset,index)=>({asset,id:result.imageIds?.[index]}))
+  .filter(({asset,id})=>asset?.sha256&&id);
+ let cursor=0;
+ await Promise.all(Array.from({length:Math.min(3,pairs.length)},async()=>{
+  while(cursor<pairs.length){
+   const {asset,id}=pairs[cursor++];
+   await api('/rest/v1/shopee_optimizer_images'+where(plan.shopId,plan.itemId,plan.modelId)+
+    '&slot=eq.'+num(asset.slot)+'&sha256=eq.'+encodeURIComponent(asset.sha256),{method:'PATCH',
+    headers:{'Content-Type':'application/json'},body:JSON.stringify({shopee_image_id:id})});
+  }
+ }));
 }
