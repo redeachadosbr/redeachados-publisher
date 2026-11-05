@@ -143,9 +143,9 @@ export function seoTitleFromEvidence(productName,keywords=[],sku=''){
  return title.slice(0,120);
 }
 
-function addMarketAnalysis(row,offers,checkedAt){
+function addMarketAnalysis(row,offers,checkedAt,ownShopId='0'){
  const compare=evaluateMarketOffers({
-  title:row.name,offers,ownShopId:'0',ownItemId:'0',queriedAt:checkedAt});
+  title:row.name,offers,ownShopId,ownItemId:'0',queriedAt:checkedAt});
  const keywords=verifiedKeywordEvidence(row.name,offers);
  const strong=compare.verified===true&&Number(compare.count)>=2;
  return {...row,
@@ -164,7 +164,7 @@ function addMarketAnalysis(row,offers,checkedAt){
  };
 }
 
-export function matchCurveOffers({catalog=[],offers=[],costs=[],baseline=new Map(),today=new Date().toISOString().slice(0,10)}={}){
+export function matchCurveOffers({catalog=[],offers=[],costs=[],baseline=new Map(),today=new Date().toISOString().slice(0,10),ownShopId='0'}={}){
  const inventory=catalog.map(item=>{
   const d=item.product_data||{};
   return {sku:String(item.supplier_sku||''),name:String(d.name||'').trim(),
@@ -183,6 +183,7 @@ export function matchCurveOffers({catalog=[],offers=[],costs=[],baseline=new Map
  const found=new Map(),offersBySku=new Map();
  for(const offer of offers){
   if(!validId(offer.itemId)||!validId(offer.shopId)||
+    String(offer.shopId)===String(ownShopId)||
     !String(offer.productName||'').trim()||intSales(offer.sales)===null)continue;
   const tokens=words(offer.productName),hits=new Map();
   for(const token of tokens)for(const item of index.get(token)||[])
@@ -227,7 +228,7 @@ export function matchCurveOffers({catalog=[],offers=[],costs=[],baseline=new Map
  }
  const checkedAt=today+'T12:00:00.000Z';
  return [...found.values()].map(row=>addMarketAnalysis(
-  row,[...(offersBySku.get(row.sku)||new Map()).values()],checkedAt)).sort((a,b)=>
+  row,[...(offersBySku.get(row.sku)||new Map()).values()],checkedAt,ownShopId)).sort((a,b)=>
   Number(b.verified30)-Number(a.verified30)||
   Number(b.inStock)-Number(a.inStock)||
   b.salesDisplayed-a.salesDisplayed||b.matchScore-a.matchScore||
@@ -378,7 +379,7 @@ export async function researchCurveAB(shopId,{limit=10,curve='ALL',category='Tod
    const result=await fetchOffers(terms);
    const today=saoPauloDay();
    const baseline=await readBaselines(shopId,today).catch(()=>new Map());
-   const matches=matchCurveOffers({catalog:filtered,offers:result.offers,costs,baseline,today});
+   const matches=matchCurveOffers({catalog:filtered,offers:result.offers,costs,baseline,today,ownShopId:shopId});
    const observations=await saveObservations(shopId,today,result.offers)
     .catch(()=>null);
    return {matches,catalogCount:filtered.length,offerCount:result.offers.length,
