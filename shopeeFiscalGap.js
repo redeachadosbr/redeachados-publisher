@@ -10,7 +10,12 @@ export const SHOPEE_FISCAL_OPTIONAL_FIELDS=Object.freeze([
 ]);
 const present=x=>String(x??'').trim().length>0;
 // O CEST existente no anúncio-pai da Shopee é soberano. "00" só preenche campo vazio.
-export const cestForShopeeField=taxInfo=>String(taxInfo?.cest??'').trim()||'00';
+export function cestForShopeeField(taxInfo){
+ // Sem tax_info, não há prova de campo vazio: interromper envio.
+ if(!taxInfo||typeof taxInfo!=='object'||Array.isArray(taxInfo))
+  throw Error('Leitura fiscal incompleta: a Shopee não retornou tax_info; nenhuma alteração de CEST foi autorizada.');
+ return String(taxInfo.cest??'').trim()||'00';
+}
 export function inspectShopeeFiscalGap(raw, reference=null){
  const tax=raw&&typeof raw==='object'&&!Array.isArray(raw)?raw:{};
  // Com ficha de referência: somente campos que a tabela define são

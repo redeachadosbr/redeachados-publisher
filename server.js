@@ -1539,7 +1539,9 @@ app.get('/api/shopee/optimizer/fiscal-migration/active-skus',mustLogin,requireWe
      const key=String(row?.item_id||'');
      if(!ids.includes(key)||returned.has(key))continue;
      returned.add(key);
-     fiscalById.set(key,row.tax_info||{});
+     // Não transformar tax_info ausente em CEST vazio.
+     cestForShopeeField(row.tax_info);
+     fiscalById.set(key,row.tax_info);
     }
     if(returned.size!==ids.length)
      throw Error('Leitura fiscal incompleta: '+returned.size+' de '+ids.length+
@@ -3101,6 +3103,8 @@ app.post('/api/shopee/optimizer/execution/prepare',mustLogin,requireWeDropAdmin,
 // esquema de atributos, mídia ou preço, pois só envia tax_info.
 async function auditFiscalSkuLight(cfg,auth,itemId,modelId,sku){
  const live=await shopeeLiveEditableItem(cfg,auth,itemId);
+ // Se a Shopee omitiu tax_info, não enviar 00 nem confiar no rascunho.
+ cestForShopeeField(live.tax_info);
  let fiscalModels=[];
  const status=String(live.item_status||'');
  if(!['NORMAL','UNLIST'].includes(status))
@@ -3181,8 +3185,8 @@ app.post('/api/shopee/optimizer/fiscal-migration/execute-one',mustLogin,requireW
    pis_cofins_cst:previousTax.pis_cofins_cst||'99',
    ...(previousTax.operation_type?{operation_type:previousTax.operation_type}:{}),
    cest:wedropCestForSku(supplierLinked?supplier:null),measure_unit:measureUnit,evidence};
-  // Validar antes da revisão: demais dados permanecem; CEST é exclusivo da WeDrop
-  // ou 00 no cadastro interno. Nunca inferir CEST real a partir do NCM/Shopee.
+  // WeDrop sugere CEST apenas no rascunho; no envio prevalece a leitura
+  // oficial atual do anúncio Shopee, com 00 somente se o campo está vazio.
   compileTax(tax,{tax_info:{}});
   const source=fiscalMatrixSource({sku,supplier:supplierLinked?supplier:null,tax});
   // Campos preenchidos também precisam coincidir com a tabela fiscal aprovada.

@@ -49,3 +49,15 @@ test('o motor e a tela usam Shopee em vez da planilha para conferir CEST',()=>{
  assert.match(ui,/draft.cest=liveCest\|\|'00'/);
  assert.match(ui,/CEST já preenchido na Shopee/);
 });
+
+test('resposta fiscal ausente bloqueia envio sem confundir com CEST vazio',()=>{
+ for(const missing of [undefined,null,false,[],'']){
+  assert.throws(()=>cestForShopeeField(missing),/Leitura fiscal incompleta/);
+ }
+ assert.throws(()=>compileTax(tax,{}),/Leitura fiscal incompleta/);
+ assert.throws(()=>compileTax(tax,{tax_info:null}),/Leitura fiscal incompleta/);
+ assert.equal(compileTax(tax,{tax_info:{}}).cest,'00');
+ const api=readFileSync(new URL('../server.js',import.meta.url),'utf8');
+ assert.match(api,/cestForShopeeField\(row\.tax_info\)/);
+ assert.match(api,/cestForShopeeField\(live\.tax_info\)/);
+});
