@@ -7736,7 +7736,14 @@ globalThis.RAExecutionPrimaryAction=async(onlyStage=null)=>{
    optimizerExecNotice('A etapa '+picked.label+' tem resultado incerto. Conferir o envio anterior antes de tentar novamente: '+picked.reason,'warning');
    return;
   }
-  const one=picked||pending.length===1?picked||pending[0]:null;
+  // Quando o anúncio comercial já está confirmado e restam fiscal +
+  // desconto, publicar o fiscal em escopo isolado PRIMEIRO. Não refazer
+  // preço, vídeo, fotos ou conteúdo. A promoção só pode avançar com
+  // a autorização financeira válida depois da confirmação fiscal.
+  const independentFiscal=pending.some(x=>x.id==='fiscal')&&
+   pending.every(x=>['fiscal','discount'].includes(x.id));
+  const one=picked||(independentFiscal?pending.find(x=>x.id==='fiscal'):
+   pending.length===1?pending[0]:null);
   const scope=$('#optimizerExecutionScope');
   const chosen=one?(one.id==='discount'?'discount_adjust':one.id):'all';
   if(scope)scope.value=chosen;
