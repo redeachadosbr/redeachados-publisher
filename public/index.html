@@ -31,7 +31,7 @@
 <link rel="stylesheet" href="/optimizer-technical-compact.css?v=3-wedrop-visible">
 <link rel="stylesheet" href="/ads-premium.css?v=2.4.0-seo-ads-location">
 <link rel="stylesheet" href="/sidebar-collapse.css?v=1.0.0">
-<link rel="stylesheet" href="/curvas-ab.css?v=1">
+<link rel="stylesheet" href="/curvas-ab.css?v=2-categories-seo-prices">
 <link rel="stylesheet" href="/optimizer-image-studio.css?v=1.0.5-image03-direct-import">
 <link rel="stylesheet" href="/kit-builder.css?v=20261105-wedrop-step01-v1">
 <link rel="stylesheet" href="/optimizer-technical-studio.css?v=1.2.0-compact-fields">
@@ -1044,12 +1044,16 @@
    <label>Curva
     <select id="curveType"><option value="ALL">Curvas A e B</option><option value="A">Curva A</option><option value="B">Curva B</option></select>
    </label>
-   <label class="curve-keyword-field">Buscar categoria ou produto (opcional)
+   <label>Categoria WeDrop
+    <select id="curveCategory" aria-label="Categoria WeDrop igual à seleção dos Kits Inteligentes"><option value="Todos">Todas as categorias</option></select>
+   </label>
+   <label class="curve-keyword-field">Produto ou palavra-chave (opcional)
     <input id="curveKeyword" type="search" maxlength="70" placeholder="Ex.: lancheira, organizador, brinquedo">
    </label>
    <button id="curveSearchBtn" type="submit">Pesquisar oportunidades</button>
   </form>
-  <p class="curve-method"><strong>Critério:</strong> A = 900 a 1.000 vendas em até 30 dias; B = menos de 900 vendas em 30 dias. Enquanto não houver histórico desse intervalo, o sistema mostra <strong>potenciais A/B</strong> pelas vendas acumuladas da Shopee, identificadas como não confirmadas no período. A pesquisa usa ofertas da API Shopee Afiliados ordenadas por vendas, e não garante reproduzir integralmente a aba Em Destaque.</p>
+  <p class="curve-method"><strong>Origem:</strong> a aba oficial <strong>Em Destaque</strong> da Shopee ordena por vendas (<code>sortBy=sales</code>); o botão abaixo abre essa consulta exata para conferência. A pesquisa automática utiliza uma <strong>amostra da API Shopee Afiliados ordenada por vendidos</strong>, que não reproduz integralmente a vitrine. Curva A = 900–1.000 vendas em 30 dias; B = menos de 900. Sem histórico mensal válido, o resultado será identificado como <strong>potencial</strong>. As palavras-chave são frequentes nos <strong>títulos de anúncios comparáveis</strong>, não volumes oficiais de busca.</p>
+  <p class="curve-featured-control"><a id="curveFeaturedLink" href="https://shopee.com.br/search?keyword=&amp;page=0&amp;sortBy=sales" target="_blank" rel="noopener noreferrer">Conferir a aba Em Destaque na Shopee</a><span>Pesquisa oficial da Shopee (ordenada por vendas) • abre em outra guia</span></p>
   <div id="curveNotice" class="curve-notice" role="status" aria-live="polite">Selecione a quantidade e clique em Pesquisar oportunidades.</div>
   <div id="curveStats" class="curve-stats" hidden>
    <div><small>SKUs WeDrop avaliadas</small><strong id="curveCatalogCount">—</strong></div>
@@ -1061,7 +1065,7 @@
    <div class="curve-result-head"><h3 id="curveResultsHeading">Produtos encontrados</h3><span id="curveResultsMeta"></span></div>
    <div id="curveResults" class="curve-grid" aria-live="polite"></div>
   </section>
-  <p class="curve-disclaimer">A foto e a SKU exibidas são do catálogo WeDrop. O anúncio consultado é de outra loja e precisa ser conferido quanto a características, disponibilidade e concorrência. Esta página é somente de pesquisa: não cria anúncios nem ativa Ads automaticamente.</p>
+  <p class="curve-disclaimer">A imagem e a SKU são do catálogo WeDrop. A média de preços usa de duas a cinco ofertas realmente comparáveis, de lojas diferentes; quando não há base suficiente, o sistema não inventa uma média. Os títulos gerados são sugestões revisáveis, baseadas em características comprovadas da própria SKU; as expressões frequentes nos títulos não equivalem a palavras-chave comprovadamente mais pesquisadas. Esta página não publica anúncios nem ativa Ads.</p>
  </div>
 </section>
 <section class="tabpane" id="tab-kits" aria-label="Kits Inteligentes WeDrop">
@@ -2613,7 +2617,7 @@
 <script src="/optimizer-execution-visual.js?v=1.0.5-title-pending-readback"></script>
 <script src="/optimizer-execution-dialog.js?v=1.0.5-video-relink-sync"></script>
 <script src="/app.js?v=3.5.66-kit-fiscal-actually-required"></script>
-<script src="/curvas-ab.js?v=1"></script>
+<script src="/curvas-ab.js?v=2-categories-seo-prices"></script>
 <script src="/pending-images.js?v=1.2.0-kit-routing"></script>
 <script type="module" src="/kit-builder.js?v=20261105-kit-cost-diagnostics"></script>
 <link rel="stylesheet" href="/optimizer-variations.css?v=1.2.1-single-flow">
