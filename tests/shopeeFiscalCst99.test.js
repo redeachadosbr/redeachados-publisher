@@ -31,12 +31,12 @@ test('Catálogo vinculado fornece NCM e CEST comprovados; regra CST mantém 99',
  assert.equal(out.taxSuggestion.cest,'1234567');
 });
 
-test('Compilação fiscal mantém valor CST explícito e não cria CEST automaticamente',()=>{
+test('Compilação fiscal mantém CST explícito e usa 00 quando CEST Shopee está vazio',()=>{
  const fiscal=compileTax({
   ncm:'95069900',pis_cofins_cst:'99',evidence:'Contabilidade: cadastro Shopee autorizado'
  },{tax_info:{}});
  assert.equal(fiscal.pis_cofins_cst,'99');
- assert.equal(fiscal.cest,undefined);
+ assert.equal(fiscal.cest,'00');
  const corrected=compileTax({
   ncm:'95069900',pis_cofins_cst:'49',cest:'00',
   evidence:'Contabilidade: exceção específica conferida'
