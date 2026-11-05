@@ -7460,7 +7460,7 @@ async function optimizerKitAutoFinalizeFromAudit(w,audit){
    String(error.message||error)+'. Confira novamente a auditoria raiz.','warning');
  }finally{optimizerKitFinalizeRunning.delete(identity);}
 }
-async function optimizerRootAuditRefresh(force=false){
+async function optimizerRootAuditRefresh(force=false,fresh=false){
  const w=optimizerWorkflowPlan;if(!w)return;
  const key=[w.sku,w.itemId,w.modelId].join('|');
  const cached=optimizerRootAuditCache.get(key);
@@ -7479,6 +7479,7 @@ async function optimizerRootAuditRefresh(force=false){
   const campaignId=String($('#optimizerExecDiscountCampaign')?.value||
     $('#optimizerFinalCampaignId')?.value||$('#discountPromotionId')?.value||'').trim();
   if(/^\d{1,18}$/.test(campaignId))params.set('campaign_id',campaignId);
+  if(fresh)params.set('refresh','1');
   const result=await json('/api/shopee/optimizer/execution/root-audit?'+params,{
    signal:AbortSignal.timeout(45000)});
   const current=optimizerWorkflowPlan;
@@ -7703,10 +7704,10 @@ globalThis.RAExecutionPrimaryAction=async(onlyStage=null)=>{
    await optimizerOneClickExecute();
    return;
   }
-  // Auditoria do Item ID evita repetir imagens e conteúdo já publicados.
+  // A retomada capaz de escrever exige leitura fresca; o painel pode usar o checkpoint.
   optimizerExecutionLiveStep('Identificando etapas pendentes',
    'Conferindo a Shopee para executar somente o que ainda não foi confirmado.','info');
-  await optimizerRootAuditRefresh(true);
+  await optimizerRootAuditRefresh(true,true);
   if(!same())return;
   const audit=optimizerRootAuditCache.get(identity)?.audit;
   if(!Array.isArray(audit?.stages)||!audit.stages.length){
