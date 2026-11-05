@@ -24,12 +24,12 @@ test('etapas permitidas são fechadas e não aceitam opção arbitrária',()=>{
  assert.equal(normalizeShopeeExecutionStage(), 'all');
  assert.throws(()=>normalizeShopeeExecutionStage('stock'),/Etapa/);
 });
-test('fiscal isolado envia exclusivamente tax_info (CEST opcional continua vazio) sem título nem descrição',()=>{
+test('fiscal isolado envia exclusivamente tax_info com CEST 00 quando Shopee está vazia',()=>{
  const plan=compileShopeeExecutionPlan({...input,selectedStage:'fiscal'});
  assert.deepEqual(plan.actions,['tax_info']);
  assert.deepEqual(Object.keys(plan.proposed),['tax_info']);
  assert.equal(plan.proposed.tax_info.ncm,'95069900');
- assert.equal(Object.hasOwn(plan.proposed.tax_info,'cest'),false);
+ assert.equal(plan.proposed.tax_info.cest,'00');
  assert.equal(plan.selectedStage,'fiscal');
  assert.equal(plan.canExecute,true);
  assert.doesNotThrow(()=>confirmShopeeExecution(plan,{sku:'TRC1525',confirmation:'EXECUTAR TRC1525'}));

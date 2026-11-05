@@ -9,13 +9,15 @@ export const SHOPEE_FISCAL_OPTIONAL_FIELDS=Object.freeze([
  'pis_cofins_cst','operation_type','cest'
 ]);
 const present=x=>String(x??'').trim().length>0;
+// O CEST existente no anúncio-pai da Shopee é soberano. "00" só preenche campo vazio.
+export const cestForShopeeField=taxInfo=>String(taxInfo?.cest??'').trim()||'00';
 export function inspectShopeeFiscalGap(raw, reference=null){
  const tax=raw&&typeof raw==='object'&&!Array.isArray(raw)?raw:{};
  // Com ficha de referência: somente campos que a tabela define são
  // obrigatórios. Campos vazios fora dela NÃO constituem pendência.
  const allFields=[...SHOPEE_FISCAL_REQUIRED_FIELDS,...SHOPEE_FISCAL_OPTIONAL_FIELDS];
  const hasReference=Boolean(reference&&typeof reference==='object'&&!Array.isArray(reference));
- const expected=hasReference?allFields.filter(k=>present(reference[k])):allFields;
+ const expected=hasReference?allFields.filter(k=>k==='cest'||present(reference[k])):allFields;
  const missingCore=SHOPEE_FISCAL_REQUIRED_FIELDS.filter(k=>expected.includes(k)&&!present(tax[k]));
  const missingConfigured=SHOPEE_FISCAL_OPTIONAL_FIELDS.filter(k=>expected.includes(k)&&!present(tax[k]));
  const missing=[...missingCore,...missingConfigured];
@@ -27,7 +29,7 @@ export function inspectShopeeFiscalGap(raw, reference=null){
  };
  const invalid=expected.filter(k=>present(tax[k])&&validations[k]&&
   !validations[k].test(String(tax[k]).trim()));
- const mismatched=hasReference?expected.filter(k=>present(tax[k])&&
+ const mismatched=hasReference?expected.filter(k=>k!=='cest'&&present(tax[k])&&
   String(tax[k]).trim()!==String(reference[k]).trim()):[];
  // NCM sempre precisa de classificação específica da SKU; na ausência
  // dessa referência, não declarar o anúncio como verificado.
@@ -55,7 +57,7 @@ export function fiscalFillMissingOnly(liveTax,approvedTax,{referenceOnly=false}=
  const merged={...old};
  const missingSource=[];
  for(const key of gap.missing){
-  const value=String(approvedTax[key]??'').trim();
+  const value=key==='cest'?'00':String(approvedTax[key]??'').trim();
   if(!value)missingSource.push(key);
   else merged[key]=value;
  }

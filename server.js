@@ -75,7 +75,7 @@ import {hasRejectedShopeeVideo,prepareRejectedVideoRetry,prepareRejectedVideoRel
 import {recyclableShopeeMedia,archiveShopeeMedia} from './shopeeExecutionMediaReuse.js';
 import {normalizedShopeeFiscalBatchSkus,checkedShopeeFiscalBatchEntries} from './shopeeExecutionBatch.js';
 import {fiscalPreviewDisposition} from './shopeeFiscalReadiness.js';
-import {inspectShopeeFiscalGap,fiscalFillMissingOnly} from './shopeeFiscalGap.js';
+import {inspectShopeeFiscalGap,fiscalFillMissingOnly,cestForShopeeField} from './shopeeFiscalGap.js';
 import {detectShopeeExecutionIssue,needsCestRevalidation} from './shopeeExecutionIssues.js';
 import {createShopeeMediaApi} from './shopeeMediaApi.js';
 import {normalizeManualVideo} from './shopeeVideoValidation.js';
@@ -1596,7 +1596,7 @@ app.get('/api/shopee/optimizer/fiscal-migration/active-skus',mustLogin,requireWe
             csosn:String(savedTax.csosn||'102'),
             pis_cofins_cst:String(savedTax.pis_cofins_cst||'99'),
             ...(savedTax.operation_type?{operation_type:savedTax.operation_type}:{}),
-            cest:linked?wedropCestForSku(supplier):String(savedTax.cest||''),
+            cest:cestForShopeeField(fiscalById.get(itemId)),
             ncm
           };
           fiscal=inspectShopeeFiscalGap(fiscalById.get(itemId),reference);
@@ -1696,10 +1696,10 @@ app.post('/api/shopee/optimizer/fiscal-migration/validate-one',mustLogin,require
   const supplier=await readWeDropProduct(auth.shopId,{sku,itemId,modelId});
   if(!supplier||!['exact-sku','reviewed-link'].includes(supplier.matchedBy))
    throw Error('Não há vínculo WeDrop exato ou vínculo aprovado para esta SKU.');
-  const tax=existing.review_state?.tax;
-  if(!tax)throw Error('Rascunho fiscal ausente.');
-  if(String(tax.cest??'').trim()!==wedropCestForSku(supplier))
-   throw Error('CEST divergente da planilha WeDrop desta SKU. Reabra a revisão fiscal para atualizar o rascunho.');
+  const savedTax=existing.review_state?.tax;
+  if(!savedTax)throw Error('Rascunho fiscal ausente.');
+  const fiscalLive=await shopeeLiveEditableItem(cfg,auth,itemId);
+  const tax={...savedTax,cest:cestForShopeeField(fiscalLive.tax_info)};
   const source=fiscalMatrixSource({sku,supplier,tax});
   const unit=suggestFiscalMeasureUnit(record.title||'',supplier.product_data?.title||'');
   if(!tax.measure_unit)throw Error('Unidade de medida fiscal ausente.');
@@ -1717,8 +1717,8 @@ app.post('/api/shopee/optimizer/fiscal-migration/validate-one',mustLogin,require
   compileTax(tax,{tax_info:{}});
   const prior=await readShopeeExecution(auth.shopId,itemId,modelId);
   if(/Please upload the corresponding CEST of NCM/i.test(String(prior?.last_error||''))&&
-      String(tax.cest)==='00')
-   throw Error('Shopee já rejeitou CEST 00 para esta SKU; obter CEST oficial.');
+      !String(fiscalLive.tax_info?.cest??'').trim()&&String(tax.cest)==='00')
+   throw Error('Shopee já rejeitou CEST 00 para esta SKU; confirmar a classificação fiscal antes de tentar novamente.');
   await saveWorkflowReview(auth.shopId,itemId,modelId,sku,{
    stage:'fiscal',reviewed:true,tax,matrixFiscal:source
   });
@@ -2210,15 +2210,8 @@ app.get('/api/shopee/optimizer/workflow',mustLogin,requireWeDropAdmin,async(req,
     const [supplier,settings]=await Promise.all([
       readWeDropProduct(auth.shopId,primarySku===sku?{sku,itemId,modelId}:{sku:primarySku}),
       optimizerSettings(auth.shopId)]);
-    // Somente a WeDrop desta SKU pode definir o CEST interno, nunca a API Shopee.
-    // Corrigir também revisões fiscais antigas gravadas com CEST de outra origem.
-    const sourceCest=wedropCestForSku(supplier);
-    if(review.tax&&String(review.tax.cest??'').trim()!==sourceCest){
-      review=await saveWorkflowReview(auth.shopId,itemId,modelId,sku,{
-        stage:'fiscal',reviewed:false,tax:{...review.tax,cest:sourceCest}
-      });
-      stages=buildStages(record,review);
-    }
+    // A leitura de tax_info da Shopee é a referência para CEST.
+    // Abrir a revisão nunca altera nem invalida automaticamente o CEST já publicado.
     // Supplementary supplier evidence must never block the actual category audit.
     // Storage may reject a read/signing request; the main SKU workflow stays usable.
     let sourceEvidence={sku,sourceText:'',screenshots:[],updatedAt:null};
@@ -2667,7 +2660,10 @@ app.post('/api/shopee/optimizer/workflow/review',mustLogin,requireWeDropAdmin,as
     if(linkedKit&&fiscalSku!==String(sku))
       throw Error('Motor Matriz: SKU principal do kit diverge da SKU auditada na Shopee. Refaça o vínculo do kit.');
     const taxSupplier=change.tax?await readWeDropProduct(auth.shopId,{sku,itemId,modelId}):null;
-    if(change.tax)change.tax={...change.tax,cest:wedropCestForSku(taxSupplier)};
+    if(change.tax){
+      const fiscalLive=await shopeeLiveEditableItem(cfg,auth,itemId);
+      change.tax={...change.tax,cest:cestForShopeeField(fiscalLive.tax_info)};
+    }
     if(change.stage==='fiscal'&&change.reviewed){
       // Mesmo caminho seguro das SKUs simples: permite apenas vínculo
       // exato/revisado e bloqueia fonte WeDrop inexistente ou NCM diferente.
@@ -3330,16 +3326,10 @@ app.post('/api/shopee/optimizer/batch/fiscal/prepare',mustLogin,requireWeDropAdm
     if(!review||review.sku!==sku||review.review_state?.stages?.fiscal?.reviewed!==true||
       !review.review_state?.tax)throw Error('Informações fiscais ainda não conferidas para esta SKU.');
     const supplier=await readWeDropProduct(auth.shopId,{sku,itemId,modelId});
-    if(String(review.review_state.tax.cest??'').trim()!==wedropCestForSku(supplier))
-     throw Error('CEST salvo não corresponde à planilha WeDrop da SKU. Reabra a ficha fiscal.');
     fiscalMatrixSource({sku,supplier,tax:review.review_state.tax,
       reviewSource:review.review_state.matrixFiscal});
-    // Nunca reutilizar um plano fiscal preparado com CEST antigo da API:
-    // a execução em lote só autoriza CEST idêntico ao CSV WeDrop da SKU.
-    const expectedCest=wedropCestForSku(supplier);
-    if(String(job.plan?.proposed?.tax_info?.cest??'')!==expectedCest)
-      throw Error('CEST da prévia fiscal diverge da WeDrop ('+expectedCest+
-        '). Reprepare a SKU antes de autorizar; não foi enviado nenhum valor.');
+    // A prévia fiscal de lote sempre relê a Shopee antes de decidir o CEST.
+    // O CEST salvo na revisão local não é uma autorização para sobrescrever a loja.
     const live=await shopeeLiveEditableItem(cfg,auth,itemId);
     const plan=compileShopeeExecutionPlan({shopId:auth.shopId,itemId,modelId,sku,
       record,review:review.review_state,live,selectedStage:'fiscal'});
@@ -3759,16 +3749,13 @@ app.post('/api/shopee/optimizer/execution/execute',mustLogin,requireWeDropAdmin,
     const supplier=await readWeDropProduct(auth.shopId,linkedKit?
       {sku:linkedKit.mainSku}:{sku,itemId,modelId});
     fiscalMatrixSource({sku,supplier,tax:reviewState.tax,reviewSource:reviewState.matrixFiscal});
-    // Protege tanto fluxo completo como exclusivamente fiscal: mesmo se
-    // a revisão persistida diz 00, um plano antigo não pode carregar 2806100.
-    const expectedCest=wedropCestForSku(supplier);
-    const plannedTax=plan.finalFiscal||plan.proposed?.tax_info;
-    if(plannedTax&&String(plannedTax.cest??'')!==expectedCest)
-      throw Error('CEST antigo na prévia ('+String(plannedTax.cest||'vazio')+
-        '). A WeDrop desta SKU informa '+expectedCest+
-        '. Prepare uma nova prévia fiscal; nada foi enviado.');
+    // Nunca validar o CEST contra a WeDrop antes da leitura oficial:
+    // CEST que já existe na Shopee não pode ser substituído por "00".
   }
   const live=await shopeeLiveEditableItem(cfg,auth,itemId);
+  const plannedTax=plan.finalFiscal||plan.proposed?.tax_info;
+  if(plannedTax&&String(plannedTax.cest??'')!==cestForShopeeField(live.tax_info))
+    throw Error('CEST mudou na Shopee desde a prévia. Reprepare para preservar o valor atual; nada foi enviado.');
   const supplierForBrand=await readWeDropProduct(auth.shopId,linkedKit?
     {sku:linkedKit.mainSku}:{sku,itemId,modelId});
   const singleProductName=!linkedKit?.kitSku&&

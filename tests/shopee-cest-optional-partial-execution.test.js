@@ -20,10 +20,10 @@ const review={stages:{seo:{reviewed:true},description:{reviewed:true},fiscal:{re
 const input={shopId:9,itemId:record.itemId,modelId:'0',sku:record.sku,record,review,live};
 const oldError='product.error_busi: Please upload the corresponding CEST of NCM';
 
-test('CEST em branco nunca recebe valor inventado e fiscal pode ficar de fora da otimização',()=>{
+test('CEST vazio da Shopee recebe 00 na prévia, e fiscal pode ser adiado',()=>{
  const ordinary=compileShopeeExecutionPlan(input);
  assert.equal(ordinary.finalFiscal.ncm,'95069900');
- assert.equal(ordinary.finalFiscal.cest,undefined);
+ assert.equal(ordinary.finalFiscal.cest,'00');
  const deferred=compileShopeeExecutionPlan({...input,deferUnconfirmedFiscal:true});
  assert.equal(deferred.fiscalDeferred,true);
  assert.equal(deferred.canExecute,true);
@@ -33,7 +33,7 @@ test('CEST em branco nunca recebe valor inventado e fiscal pode ficar de fora da
  assert.equal(Object.hasOwn(deferred.proposed,'tax_info'),false);
  assert.ok(deferred.warnings.some(x=>/CEST sem código confirmado.*fiscal permanece pendente/i.test(x)));
  const prior={proposed:{tax_info:{ncm:'95069900'}},original:{tax_info:{}}};
- assert.equal(needsCestRevalidation(oldError,prior,ordinary),true);
+ assert.equal(needsCestRevalidation(oldError,prior,ordinary),false);
 });
 test('se só havia alteração fiscal e CEST está em branco, não simula sucesso',()=>{
  const onlyTax={...review,stages:{fiscal:{reviewed:true}},draftTitle:'',
@@ -44,11 +44,11 @@ test('se só havia alteração fiscal e CEST está em branco, não simula sucess
  assert.deepEqual(deferred.actions,[]);
  assert.equal(deferred.fiscalDeferred,true);
 });
-test('CEST validado restaura o processamento fiscal habitual sem enviar 00 automaticamente',()=>{
+test('com Shopee em branco, prévia usa 00 mesmo se rascunho sugere sete dígitos',()=>{
  const withCest={...input,review:{...review,tax:{...tax,cest:'1234567'}}};
  const result=compileShopeeExecutionPlan({...withCest,deferUnconfirmedFiscal:true});
  assert.equal(result.fiscalDeferred,false);
- assert.equal(result.finalFiscal.cest,'1234567');
+ assert.equal(result.finalFiscal.cest,'00');
  assert.ok(result.actions.includes('tax_info'));
 });
 test('rascunho fiscal alterado depois do pré-voo invalida a assinatura do plano',()=>{

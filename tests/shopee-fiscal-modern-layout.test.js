@@ -61,12 +61,12 @@ test('responsive design keeps real input serializer within fiscal fields',()=>{
 });
 
 
-test('CEST da tela somente da WeDrop, 00 quando ausente, sem substituir a Shopee',()=>{
+test('CEST da tela consulta Shopee, preserva preenchido e usa 00 quando vazio',()=>{
  const app=read('../public/app.js'),server=read('../server.js');
- assert.match(app,/draft\.cest=\/\^\\d\{7\}\$\/\.test\(suggestedCest\)\?suggestedCest:'00'/);
+ assert.match(app,/draft\.cest=liveCest\|\|'00'/);
  assert.match(app,/input\.readOnly=true/);
  assert.doesNotMatch(app,/draft\.cest=sellerCest\|\|liveCest/);
- assert.match(app,/CEST publicado na Shopee:/);
- assert.match(server,/tax:\{\.\.\.review\.tax,cest:sourceCest\}/);
- assert.match(server,/change\.tax=\{\.\.\.change\.tax,cest:wedropCestForSku\(taxSupplier\)\}/);
+ assert.match(app,/CEST já preenchido na Shopee/);
+ assert.match(server,/cestForShopeeField\(live.tax_info\)/);
+ assert.match(server,/change\.tax=\{\.\.\.change\.tax,cest:cestForShopeeField\(fiscalLive.tax_info\)\}/);
 });

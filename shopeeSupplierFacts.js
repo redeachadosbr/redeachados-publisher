@@ -1,7 +1,8 @@
 // Suggestions have explicit provenance and are never an approval to publish.
 import {fiscalStoreDefaults} from './shopeeMatrixRules.js';
 const clean=value=>String(value||'').trim();
-// Fonte exclusiva do CEST no Motor Matriz: catálogo WeDrop vinculado à SKU.
+// Fonte de sugestão fiscal local: o catálogo WeDrop vinculado à SKU.
+// O CEST já publicado pela Shopee prevalece em toda execução de anúncio existente.
 // Sem código de sete dígitos confirmado na planilha, guardar somente o marcador interno 00.
 export function wedropCestForSku(supplier){
  const linked=Boolean(supplier&&(!supplier.matchedBy||['exact-sku','reviewed-link'].includes(supplier.matchedBy)));

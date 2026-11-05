@@ -56,8 +56,7 @@ test('rejeita a ficha aprovada se a origem contém valores fiscais inválidos',(
   /Ficha fiscal com valores ausentes ou inválidos.*ncm/);
  assert.throws(()=>fiscalFillMissingOnly({}, {...approved,origin:'9'}),
   /Ficha fiscal com valores ausentes ou inválidos.*origin/);
- assert.throws(()=>fiscalFillMissingOnly({}, {...approved,cest:'0'}),
-  /Ficha fiscal com valores ausentes ou inválidos.*cest/);
+ assert.equal(fiscalFillMissingOnly({}, {...approved,cest:'0'}).tax.cest,'00');
 });
 test('mantém aprovação de CEST 00 e NCM válido sem alterar campos preenchidos',()=>{
  const existing={...approved,ncm:'95066200',cest:'00'};
@@ -80,13 +79,13 @@ test('diferencia valores preenchidos divergentes da tabela fiscal aprovada',()=>
  assert.deepEqual(semNcm.unverified,['ncm']);
 });
 
-test('campos vazios fora da tabela aprovada não tornam o anúncio pendente',()=>{
+test('CEST vazio é pendência mesmo quando a tabela não lista esse campo',()=>{
  const ref={ncm:'95030099',origin:'2',csosn:'102'};
  const live={ncm:'95030099',origin:'2',csosn:'102',
   cest:'',operation_type:'',measure_unit:'',same_state_cfop:'',diff_state_cfop:''};
  const result=inspectShopeeFiscalGap(live,ref);
- assert.equal(result.status,'complete');
- assert.deepEqual(result.missing,[]);
+ assert.equal(result.status,'partial');
+ assert.deepEqual(result.missing,['cest']);
  assert.deepEqual(result.invalid,[]);
  assert.deepEqual(result.mismatched,[]);
  assert.deepEqual(result.unverified,[]);
@@ -100,12 +99,13 @@ test('executor não exige campos fora da tabela de referência',()=>{
  const live={ncm:'95030099',origin:'2',csosn:'102',
   cest:'',operation_type:'',measure_unit:''};
  const unchanged=fiscalFillMissingOnly(live,reference,{referenceOnly:true});
- assert.deepEqual(unchanged.changed,[]);
- assert.equal(unchanged.tax.cest,'');
+ assert.deepEqual(unchanged.changed,['cest']);
+ assert.equal(unchanged.tax.cest,'00');
  const missing=fiscalFillMissingOnly({...live,origin:''},reference,{referenceOnly:true});
- assert.deepEqual(missing.changed,['origin']);
+ assert.deepEqual(missing.changed,['origin','cest']);
  assert.equal(missing.tax.origin,'2');
  assert.equal(missing.tax.operation_type,'');
+ assert.equal(missing.tax.cest,'00');
 });
 test('executor não sobrescreve campo já preenchido fora do padrão da referência',()=>{
  const reference={ncm:'95030099',origin:'2',csosn:'102'};

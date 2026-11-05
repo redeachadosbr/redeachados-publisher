@@ -19,38 +19,37 @@ const record={shopId:852701218,itemId:'58221348619',selectedModelId:'0',
  sku:'2392',status:'NORMAL',categoryId:101724,attributeAudit:{attributes:[],missingMandatory:0}};
 const options={shopId:852701218,itemId:'58221348619',modelId:'0',sku:'2392',record,live,
  review:{stages:{fiscal:{reviewed:true}},tax},selectedStage:'fiscal'};
-test('SKU 2392: somente WeDrop define CEST, sem coluna CEST usar 00',()=>{
+test('SKU 2392: WeDrop sugere 00, mas Shopee com CEST preenchido permanece intacta',()=>{
  assert.equal(wedropCestForSku(supplier),'00');
  assert.equal(supplierWorkflowFacts(supplier,record).taxSuggestion.cest,'00');
- assert.equal(compileTax(tax,live).cest,'00');
+ assert.equal(compileTax(tax,live).cest,'2806100');
  assert.equal(compileTax(tax,live).ncm,'87120010');
  assert.equal(live.tax_info.cest,'2806100','leitura Shopee continua factual');
 });
-test('não clonar CEST 2806100 da Shopee em nova execução fiscal',()=>{
+test('preservar o CEST 2806100 publicado na execução fiscal',()=>{
  const p=compileShopeeExecutionPlan(options);
  assert.equal(p.canExecute,true);
- assert.equal(p.proposed.tax_info.cest,'00');
- assert.notEqual(p.proposed.tax_info.cest,'2806100');
+ assert.equal(p.proposed.tax_info.cest,'2806100');
+ assert.notEqual(p.proposed.tax_info.cest,'00');
  assert.notEqual(p.fingerprint,'');
 });
-test('o CEST só pode ter sete dígitos se estiver realmente presente na WeDrop',()=>{
+test('CEST já preenchido na Shopee prevalece; em branco usa 00',()=>{
  const withReal={...supplier,product_data:{...supplier.product_data,cest:'1234567'}};
  assert.equal(wedropCestForSku(withReal),'1234567');
  const quote=compileTax({...tax,cest:wedropCestForSku(withReal)},live);
- assert.equal(quote.cest,'1234567');
+ assert.equal(quote.cest,'2806100');
+ assert.equal(compileTax({...tax,cest:'1234567'},{tax_info:{}}).cest,'00');
  assert.equal(wedropCestForSku({...supplier,matchedBy:'unreviewed'}),'00');
 });
-test('execução antiga já aprovada é rejeitada por divergência com WeDrop antes de gravar',()=>{
+test('execução aprovada revalida CEST real da Shopee antes de gravar',()=>{
  const server=readFileSync(new URL('../server.js',import.meta.url),'utf8');
- assert.match(server,/const expectedCest=wedropCestForSku\(supplier\)/);
- assert.match(server,/plannedTax&&String\(plannedTax.cest\?\?''\)!==expectedCest/);
- assert.match(server,/job.plan\?\.proposed\?\.tax_info\?\.cest\?\?''/);
- assert.match(server,/Reprepare a SKU antes de autorizar/);
+ assert.match(server,/cestForShopeeField\(live.tax_info\)/);
+ assert.match(server,/CEST mudou na Shopee desde a prévia/);
+ assert.doesNotMatch(server,/plannedTax&&String\(plannedTax.cest\?\?''\)!==expectedCest/);
 });
-test('interface mostra a divergência da Shopee e nunca diz que 00 foi publicado',()=>{
+test('interface exibe CEST existente da Shopee e preserva valor publicado',()=>{
  const client=readFileSync(new URL('../public/app.js',import.meta.url),'utf8');
- assert.match(client,/CEST DIVERGENTE/);
- assert.match(client,/NÃO informa CEST/);
- assert.match(client,/a Shopee poderá recusar 00/i);
- assert.match(client,/draft.cest=\/\^\\d\{7\}\$\/\.test\(suggestedCest\)\?suggestedCest:'00'/);
+ assert.match(client,/CEST já preenchido na Shopee/);
+ assert.match(client,/A gravação exige autorização e confirmação pela API/);
+ assert.match(client,/draft.cest=liveCest\|\|'00'/);
 });

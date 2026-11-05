@@ -1,0 +1,38 @@
+name: Regressão do CEST Shopee
+
+on:
+  pull_request:
+    branches:
+      - shopee-service
+    paths:
+      - 'shopeeFiscalGap.js'
+      - 'shopeeStructuredFields.js'
+      - 'shopeeExecutionPlan.js'
+      - 'server.js'
+      - 'public/app.js'
+      - 'tests/shopee-*cest*'
+      - 'tests/shopee-fiscal-gap-official.test.js'
+      - '.github/workflows/shopee-cest-regression.yml'
+
+jobs:
+  cest-regression:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Instalar dependências
+        run: npm install
+      - name: Verificar sintaxe
+        run: npm run check
+      - name: Testar CEST preenchido e campo vazio
+        run: |
+          node --test \
+            tests/shopee-cest-preserve-live.test.js \
+            tests/shopee-2392-cest-source-priority.test.js \
+            tests/shopee-fiscal-gap-official.test.js \
+            tests/shopee-fiscal-migration-cest00.test.js \
+            tests/shopee-cest-optional-partial-execution.test.js
