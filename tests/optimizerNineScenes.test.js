@@ -37,10 +37,10 @@ test('Motor Matriz aplica as regras novas e mantém dimensões reais da WeDrop',
  assert.match(result.prompts[1],/criança A|Criança A/);
  const p03=result.prompts[2];
  assert.deepEqual(result.confirmedDimensions.measurements.map(x=>x.value),['75 cm','63 cm','117 cm']);
- assert.match(p03,/ARTE FINAL PRONTA/);
+ assert.match(p03,/RESULTADO FINAL NA GALERIA DA SHOPEE TERÁ AS TRÊS COTAS/);
  assert.match(p03,/ALTURA: 75 cm; LARGURA: 63 cm; COMPRIMENTO: 117 cm/);
  for(const forbidden of ['66 cm','100 cm','27 cm'])assert(!p03.includes(forbidden));
- assert.match(p03,/SEM ALTERAR ALGARISMOS/);
+ assert.match(p03,/PÓS-PROCESSAMENTO OBRIGATÓRIO PELO SHOPEE MANAGER/);
  assert.match(result.prompts[0],/INJETAR_PROMPT_MESTRE/);
  assert.doesNotMatch(result.prompts[2],/INJETAR_NOTA/);
 });
@@ -50,7 +50,7 @@ test('sem medidas confirmadas a foto 03 não pode inferir dimensões',()=>{
   sku:'2392',supplierSourceText:'ALTURA\n66cm\nLARGURA\n100cm\nCOMPRIMENTO\n27cm'
  });
  assert.equal(confirmedDimensions,null);
- assert.match(prompts[2],/SEM DIMENSÕES CONFIRMADAS/);
+ assert.match(prompts[2],/PENDENTES — O MANAGER DEVE IMPEDIR GERAÇÃO/);
  assert(!prompts[2].includes('66 cm'));
 });
 
