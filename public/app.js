@@ -10917,7 +10917,7 @@ function optimizerImagesRenderMode(){
  $('#optimizerModeApi').classList.toggle('is-active',!chat);
 }
 async function optimizerChatgptMakeBrief(w,{defaultOnly=false}={}){
- const [{createChatGptPrompts},{visualReferenceCandidates}]=await Promise.all([
+ const [{createChatGptPrompts},{visualReferenceCandidates,bridgeShopeeReferenceCandidates}]=await Promise.all([
   import('/chatgptPrompts.js?v=20261105-slot04-source-step1'),
   import('/optimizer-visual-reference.js?v=20261105-shopee-kit-photo-fallback')
  ]);
@@ -10945,6 +10945,10 @@ async function optimizerChatgptMakeBrief(w,{defaultOnly=false}={}){
  // publicado no Item ID, não o produto individual da SKU principal.
  const referenceCandidates=visualReferenceCandidates(existingKit?(w.imageUrls||[]):
   [linkedSupplierPhoto,...(w.imageUrls||[])]);
+ // A origem enviada à extensão é exclusivamente da LISTAGEM atual na
+ // Shopee, nunca a miniatura WeDrop (ainda que o vínculo SKU seja correto).
+ // Mantemos a referência WeDrop apenas para prompt e prévia manual.
+ const bridgeReferences=bridgeShopeeReferenceCandidates(w.imageUrls||[]);
  const brief=createChatGptPrompts({
   sku:w.sku,title:w.draftTitle||w.productTitle||'Produto Shopee',
   imageUrls:referenceCandidates,
@@ -10960,7 +10964,8 @@ async function optimizerChatgptMakeBrief(w,{defaultOnly=false}={}){
   supplierProduct:existingKit?null:w.supplierProduct||null,
   supplierMetrics:existingKit?[]:w.sourceFacts?.metrics||[]
  });
- return {...brief,referenceCandidates};
+ return {...brief,referenceCandidates:bridgeReferences,
+  bridgeOriginal:bridgeReferences[0]||''};
 }
 // O campo "Informações da WeDrop" é salvo por shop + Item ID + modelo + SKU.
 // Antes de importar a fotografia 03, ler novamente do servidor; não depender
@@ -11073,7 +11078,7 @@ async function optimizerCommercialRequestChatgptSlot(w,slot,{editMode=''}={}){
  try{
   if(optimizerChatBridgeIdentity(optimizerChatBridgeJob,w)&&optimizerChatBridgeJob?.slots?.length===1&&Number(optimizerChatBridgeJob.slots[0])===Number(slot)&&!optimizerChatBridgeJob.complete&&await optimizerChatBridgeRecover({includeBlocked:true}))return;
   const brief=await optimizerChatgptMakeBrief(w);
-  if(!brief.original)throw Error('Não há fotografia original da Shopee para esta SKU.');
+  if(!brief.bridgeOriginal)throw Error('Não existe foto oficial do Item ID nesta SKU para a Ponte ChatGPT. O Manager preservou as imagens prontas. Atualize as fotos do anúncio Shopee ou importe a imagem manualmente; uma miniatura da WeDrop não pode ser enviada como origem Shopee.');
   if(editMode&&!['improve','white-bg','custom'].includes(editMode))throw Error('Tipo de edição não permitido.');
   const prompts=[...brief.prompts];
   let referenceDataUrl='';
@@ -11617,7 +11622,7 @@ $('#optimizerChatgptRestartAll')?.addEventListener?.('click',async()=>{
   }
   // Validate the original photo and the 9 scene prompts before mutating anything.
   const brief=await optimizerChatgptMakeBrief(w);
-  if(!brief.original||brief.prompts?.length!==9)throw Error('Foto original ou roteiro de 9 imagens indisponível.');
+  if(!brief.bridgeOriginal||brief.prompts?.length!==9)throw Error('Fotografia oficial do Item ID ou roteiro de 9 imagens indisponível. Nenhuma imagem preparada será apagada.');
   if(!optimizerImagesSameSku(w))throw Error('A SKU mudou durante a preparação.');
   const current=await json('/api/shopee/optimizer/images/manual?'+new URLSearchParams({sku:w.sku,item_id:w.itemId,model_id:w.modelId}));
   if(!optimizerImagesSameSku(w))throw Error('A SKU foi alterada.');
@@ -11647,7 +11652,7 @@ $('#optimizerChatgptRestartAll')?.addEventListener?.('click',async()=>{
   notify('Enviando imagem 01/09 da SKU '+w.sku+' à extensão. A próxima começará após confirmação da importação.');
   window.postMessage({kind:'RA_SITE_START',payload:{
    nonce:optimizerChatBridgeNonce,sku:w.sku,itemId:String(w.itemId),modelId:String(w.modelId),
-   imageUrl:brief.original,prompts:brief.prompts,completed:[],
+   imageUrl:brief.bridgeOriginal,prompts:brief.prompts,completed:[],
    // Reinício TOTAL da posição 01 autoriza invalidar o nonce anterior da mesma SKU.
    restart:true
   }},location.origin);
@@ -11721,7 +11726,7 @@ async function optimizerChatgptContinueFromServer(){
    throw Error('Ponte não conectada ao Manager. Em chrome://extensions, ative a Ponte e em Detalhes → Acesso a sites permita redeachados-shopee.onrender.com. Se tiver a Ponte v1.0.23, clique em Reconectar ao Manager no ícone da extensão. As fotos salvas permanecem intactas.');
   }
   const brief=await optimizerChatgptMakeBrief(w);
-  if(!brief.original||brief.prompts?.length!==9)throw Error('Foto original ou os nove roteiros não estão disponíveis.');
+  if(!brief.bridgeOriginal||brief.prompts?.length!==9)throw Error('Foto oficial da Shopee do Item ID atual ou os nove roteiros não estão disponíveis. As fotos comerciais já salvas continuam intactas.');
   const data=await json('/api/shopee/optimizer/images/manual?'+new URLSearchParams({sku:w.sku,item_id:w.itemId,model_id:w.modelId}));
   if(!optimizerImagesSameSku(w))throw Error('A SKU mudou durante a consulta. Nenhuma tarefa foi iniciada.');
   const stored=[...new Set((data.images||[]).map(row=>Number(row.slot)).filter(x=>Number.isInteger(x)&&x>=1&&x<=9))].sort((a,b)=>a-b);
@@ -11749,7 +11754,7 @@ async function optimizerChatgptContinueFromServer(){
    if(pendingUploads)notify('Recuperando '+pendingUploads+' arquivo(s) capturado(s) antes de continuar na imagem '+first+'/09.');
   }
   const {isVisualReferenceError}=await import('/optimizer-visual-reference.js?v=20261105-shopee-kit-photo-fallback');
-  const refs=brief.referenceCandidates?.length?brief.referenceCandidates:[brief.original];
+  const refs=brief.referenceCandidates; // Somente CDNs oficiais Shopee, jamais WeDrop.
   let referenceIndex=0,referenceUrl=refs[0],recovered=null;
   if(resumeDirty&&optimizerChatgptCleanChatAuthorized){
    // A sessão antiga contém o rascunho incorreto. Não reativar seus prompts:
