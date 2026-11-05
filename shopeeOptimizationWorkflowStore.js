@@ -152,3 +152,29 @@ export async function mergeWorkflowTechnicalAutofill(shop,item,model,sku,attribu
    review_state:next,updated_at:new Date().toISOString()}]});
  return next.technicalDraft;
 }
+
+/**
+ * Grava o último readback oficial de modo durável, com CAS sobre updated_at.
+ * A conferência nunca cria etapas verdes: persiste apenas o retorno já
+ * produzido pela auditoria da Shopee para a SKU/Item ID informado.
+ */
+export async function persistWorkflowExecutionAudit(shop,item,model,sku,checkpoint){
+ for(let attempt=0;attempt<2;attempt++){
+  const existing=await getWorkflowReview(shop,item,model);
+  if(!existing||existing.sku!==String(sku))return false;
+  const previous=existing.review_state||{};
+  const updated=new Date().toISOString();
+  const c=conf(),params=query(shop,item,model)+
+   '&updated_at=eq.'+encodeURIComponent(existing.updated_at)+'&select=updated_at';
+  const response=await fetch(c.u+'/rest/v1/shopee_optimizer_workflow_reviews'+params,{
+   method:'PATCH',
+   headers:{...c.h,Prefer:'return=representation'},
+   body:JSON.stringify({review_state:{...previous,executionAuditCheckpoint:checkpoint},updated_at:updated}),
+   signal:AbortSignal.timeout(16000)
+  });
+  if(!response.ok)throw Error('Não foi possível registrar checkpoint de auditoria (HTTP '+response.status+').');
+  const written=await response.json();
+  if(written.length===1)return true;
+ }
+ return false;
+}
