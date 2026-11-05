@@ -108,3 +108,47 @@ test('kit fiscal permanece pendente se revisao completa nao foi aplicada no anun
  fiscal=auditRootShopeeExecution(a).stages.find(x=>x.id==='fiscal');
  assert.equal(fiscal.status,'confirmed');
 });
+
+test('kit com video de 10 segundos ja publicado na Shopee encerra etapa mesmo sem upload local',()=>{
+ const a=base();
+ a.sku='TX24507L';a.itemId='58222301146';
+ a.record={sku:a.sku,itemId:a.itemId,selectedModelId:'0'};
+ a.live.item_id=58222301146;
+ a.live.video_info=[{
+  duration:10,
+  video_url:'https://cvf.shopee.com.br/file/api/v4/11110105/video-real.mp4',
+  thumbnail_url:'https://cf.shopee.com.br/file/video_cover'
+ }];
+ a.review.kitOptimization={kitSku:'KIT-TX24507L-TX24508E',
+  sku:a.sku,mainSku:a.sku,itemId:a.itemId};
+ a.video=null;
+ a.job={state:'verified',plan:{selectedStage:'fiscal',video:null},result:{}};
+ const audit=auditRootShopeeExecution(a);
+ const stage=audit.stages.find(x=>x.id==='video');
+ assert.equal(stage.status,'confirmed');
+ assert.equal(stage.confirmedBy,'live_shopee_readback');
+ assert.match(stage.reason,/Vídeo já publicado/);
+ assert.equal(audit.pending.includes('video'),false);
+});
+
+test('video externo, processamento e ausencia de link exato nao comprovam publicacao do kit',()=>{
+ const a=base();
+ a.sku='TX24507L';a.itemId='58222301146';a.live.item_id=58222301146;
+ a.review.kitOptimization={kitSku:'KIT-TX24507L-TX24508E',sku:a.sku,itemId:a.itemId};
+ a.live.video_info=[{duration:10,video_url:'https://example.org/movie.mp4'}];
+ assert.equal(auditRootShopeeExecution(a).stages.find(x=>x.id==='video').status,'pending');
+ a.live.video_info=[{duration:10,video_url:'https://cvf.shopee.com.br/file/real.mp4',video_status:'PROCESSING'}];
+ assert.equal(auditRootShopeeExecution(a).stages.find(x=>x.id==='video').status,'pending');
+ a.live.video_info=[{duration:10,video_url:'https://cvf.shopee.com.br/file/real.mp4'}];
+ a.review.kitOptimization.itemId='outro-anuncio';
+ assert.equal(auditRootShopeeExecution(a).stages.find(x=>x.id==='video').status,'pending');
+});
+
+test('video importado no Manager continua exigindo correspondencia exata ao publicado',()=>{
+ const a=base();
+ a.sku='TX24507L';a.itemId='58222301146';a.live.item_id=58222301146;
+ a.review.kitOptimization={kitSku:'KIT-TX24507L-TX24508E',sku:a.sku,itemId:a.itemId};
+ a.live.video_info=[{duration:10,video_url:'https://cvf.shopee.com.br/file/old.mp4'}];
+ a.video={sha256:'different-approved-video-sha',publication:null};
+ assert.equal(auditRootShopeeExecution(a).stages.find(x=>x.id==='video').status,'pending');
+});
