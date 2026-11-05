@@ -1,9 +1,9 @@
 // Imagem 03: cotas sobre o entorno do produto e dados laterais mínimos.
 // Fonte única: "Informações da WeDrop" SALVAS DA PRÓPRIA SKU.
 // Fotografia com fundo moderno/visível; preservar integralmente a base HD.
-import {confirmedProductDimensionsFromWeDrop,confirmedProductSideFactsFromWeDrop,confirmedAssembledTrackDimensionsFromWeDrop} from './productDimensions.js?v=20261104-bulleted-saved-dimensions';
+import {confirmedProductDimensionsFromWeDrop,confirmedProductSideFactsFromWeDrop,confirmedAssembledTrackDimensionsFromWeDrop,confirmedCatalogCrossCheckedDimensionsFromWeDrop} from './productDimensions.js?v=20261105-exact-sku-triple';
 
-export function confirmedSpecCard({sourceText='',sku='',sourceEvidenceSku='',supplierMatchedBy='',sourceSaved=false}={}){
+export function confirmedSpecCard({sourceText='',sku='',sourceEvidenceSku='',supplierMatchedBy='',sourceSaved=false,catalogMeasurements=null}={}){
  // O texto salvo manualmente em Informações da WeDrop já é vinculado pelo
  // servidor a shop/item/model/SKU e não depende da correspondência do catálogo.
  // Nunca aceitar texto de uma SKU diferente ou input sem origem validada.
@@ -15,7 +15,11 @@ export function confirmedSpecCard({sourceText='',sku='',sourceEvidenceSku='',sup
  const assembled=confirmedAssembledTrackDimensionsFromWeDrop(sourceText);
  // Quando existe uma pista montada, não desenhar setas ao redor de
  // um caminhão/carrinho isolado, mesmo se outra frase traz medidas gerais.
- const dims=assembled?null:confirmedProductDimensionsFromWeDrop(sourceText);
+ const dims=assembled?null:(
+  confirmedProductDimensionsFromWeDrop(sourceText)||
+  confirmedCatalogCrossCheckedDimensionsFromWeDrop(sourceText,{
+   sku,sourceEvidenceSku,sourceSaved,supplierMatchedBy,catalogMeasurements
+  }));
  const facts=confirmedProductSideFactsFromWeDrop(sourceText);
  if(!dims&&!facts.length)return null;
  // Identificar selo de cor sortida SOMENTE quando a própria ficha confirma
