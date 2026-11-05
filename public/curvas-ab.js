@@ -21,6 +21,95 @@
   const wrap=t('div',''),small=t('span','',label),strong=t('b','',value);
   wrap.append(small,strong);return wrap;
  };
+
+ function appendCopy(parent,value,label){
+  const button=t('button','',label);button.type='button';
+  button.addEventListener('click',async()=>{
+   try{
+    await navigator.clipboard.writeText(String(value||''));
+    button.textContent='✓ Copiado';
+    status('Texto copiado. Revise antes de publicar na Shopee.');
+   }catch(e){status('Não foi possível copiar automaticamente: selecione o texto e copie manualmente.','warning');}
+  });
+  parent.append(button);return button;
+ }
+ function appendSEO(main,row){
+  const section=t('section','curve-seo');
+  section.append(t('h5','','Palavras-chave e título sugerido para Shopee'));
+  section.append(t('p','curve-seo-subtitle',
+   'Até 5 termos recorrentes na amostra de títulos concorrentes. Não são volumes oficiais de busca.'));
+  const list=t('div','curve-keyword-list');
+  for(const item of row.keywords||[]){
+   const pill=t('a','curve-keyword-pill',item.term);
+   if(item.searchUrl&&item.searchUrl.startsWith('https://shopee.com.br/search?')){
+    pill.href=item.searchUrl;pill.target='_blank';pill.rel='noopener noreferrer';
+    pill.title=item.mentions>0?
+     'Termo encontrado em '+item.mentions+' anúncio(s) da amostra. Conferir Em Destaque.':
+     'Termo WeDrop sem evidência de demanda. Conferir Em Destaque.';
+   }else pill.removeAttribute('href');
+   const count=t('small','',item.mentions>0?item.mentions+' anúncio(s)':'WeDrop');
+   const box=t('span','curve-keyword-tag');
+   box.append(pill,count);list.append(box);
+  }
+  if(!row.keywords?.length)list.append(t('span','curve-seo-subtitle',
+   'Sem expressões verificáveis nesta amostra.'));
+  section.append(list);
+  const titleRow=t('div','curve-seo-title');
+  const title=t('p','',row.seoTitle||'Não há dados suficientes para criar título.');
+  const label=t('small','','Título SEO sugerido • conferir dados técnicos • '+
+   [...String(row.seoTitle||'')].length+'/120 caracteres');
+  titleRow.append(label,title);
+  if(row.seoTitle)appendCopy(titleRow,row.seoTitle,'Copiar título SEO');
+  section.append(titleRow);
+  main.append(section);
+ }
+ function appendPrices(main,row){
+  const details=t('details','curve-competitors');
+  const count=Number(row.competitorOfferCount||0);
+  details.append(t('summary','','Ver anúncios usados para comparar os preços ('+count+')'));
+  details.append(t('p','curve-evidence',row.priceEvidence||'Média indisponível.'));
+  const list=t('ol','curve-offers-list');
+  for(const offer of row.competitorOffers||[]){
+   const li=t('li','');
+   const a=t('a','',offer.title+' — '+money(offer.price));
+   if(/^https:\/\/shopee\.com\.br\/product\/\d+\/\d+$/.test(offer.url||'')){
+    a.href=offer.url;a.target='_blank';a.rel='noopener noreferrer';
+   }
+   li.append(a);list.append(li);
+  }
+  details.append(list);main.append(details);
+ }
+ let categoryLoaded=false,categoryBusy=false;
+ async function loadCategories(){
+  if(categoryLoaded||categoryBusy||!q('curveCategory'))return;
+  categoryBusy=true;
+  try{
+   const response=await fetch('/api/shopee/kits/catalog?category=Todos&limit=1',{
+    credentials:'same-origin',cache:'no-store',signal:AbortSignal.timeout(35000)});
+   const data=await response.json().catch(()=>({}));
+   if(!response.ok||!Array.isArray(data.categories))throw Error(data.error||'Falha na consulta de categorias');
+   const select=q('curveCategory'),keep=select.value;
+   select.replaceChildren();
+   for(const category of data.categories){
+    const op=t('option','',category==='Todos'?'Todas as categorias':category);
+    op.value=category;select.append(op);
+   }
+   if(data.categories.includes(keep))select.value=keep;
+   categoryLoaded=true;refreshFeaturedLink();
+  }catch(error){
+   status('Não foi possível recuperar categorias WeDrop: '+String(error.message||error)+
+    '. A pesquisa geral continua disponível.','warning');
+  }finally{categoryBusy=false;}
+ }
+ function refreshFeaturedLink(){
+  const link=q('curveFeaturedLink');if(!link)return;
+  const keyword=q('curveKeyword')?.value.trim()||'';
+  const category=q('curveCategory')?.value||'Todos';
+  const term=keyword||(category==='Todos'?'':category);
+  const params=new URLSearchParams({keyword:term,page:'0',sortBy:'sales'});
+  link.href='https://shopee.com.br/search?'+params.toString();
+ }
+
  function card(row){
   const box=t('article','curve-card'),frame=t('div',''),main=t('div','curve-card-main');
   if(row.imageUrl&&/^https:\/\/[^/]+\.digitaloceanspaces\.com\//.test(row.imageUrl)){
@@ -39,7 +128,8 @@
   facts.append(
    metric(row.sales30!==null?'Vendas observadas em ~30 dias':'Vendas exibidas na Shopee',
     nf.format(row.sales30!==null?row.sales30:row.salesDisplayed)),
-   metric('Preço do anúncio concorrente',money(row.competitorPrice)),
+   metric('Preço do anúncio comparado',money(row.competitorPrice)),
+   metric('Média dos concorrentes'+(row.avgCompetitorPrice!==null?' ('+row.competitorOfferCount+' lojas)':''),money(row.avgCompetitorPrice)),
    metric('Custo WeDrop',money(row.cost)),
    metric('Correspondência de nomes',nf.format(Math.round(100*Number(row.matchScore||0)))+'%')
   );
@@ -65,8 +155,15 @@
   if(/^https:\/\/shopee\.com\.br\/product\/\d+\/\d+$/.test(row.competitorUrl||'')){
    link.href=row.competitorUrl;link.target='_blank';link.rel='noopener noreferrer';
   }else link.hidden=true;
+  const featured=t('a','','Conferir Em Destaque');
+  if(/^https:\/\/shopee\.com\.br\/search\?/.test(row.featuredSearchUrl||'')){
+   featured.href=row.featuredSearchUrl;featured.target='_blank';featured.rel='noopener noreferrer';
+   actions.append(featured);
+  }
   actions.append(copy,link);
   main.append(top,sku,facts,competitor,evidence,stock,actions);
+  appendPrices(main,row);
+  appendSEO(main,row);
   box.append(frame,main);return box;
  }
  function render(result){
@@ -97,7 +194,7 @@
    'Encontrados '+result.items.length+' dos '+result.requested+
    ' solicitados. A pesquisa terminou normalmente; não há bloqueio. ':
    'Pesquisa concluída: '+result.items.length+' produtos selecionados. ';
-  const foot='Vendas totais da Shopee não equivalem a vendas em 30 dias. Revise os anúncios antes de criar Ads.';
+  const foot='Ranking obtido da amostra de ofertas da API Afiliados, não da aba oficial Em Destaque. Vendas acumuladas não são vendas mensais. Termos SEO são frequências de títulos, não volume de pesquisa.';
   status(prefix+foot,result.shortage?'warning':'info');
  }
  async function search(event){
@@ -105,11 +202,13 @@
   if(state.busy)return;
   state.busy=true;
   const button=q('curveSearchBtn'),amount=q('curveLimit')?.value||'10',
-   curve=q('curveType')?.value||'ALL',keyword=q('curveKeyword')?.value.trim()||'';
+   curve=q('curveType')?.value||'ALL',category=q('curveCategory')?.value||'Todos',
+   keyword=q('curveKeyword')?.value.trim()||'';
+  refreshFeaturedLink();
   button.disabled=true;button.textContent='Pesquisando ofertas…';
   status('Consultando ofertas ordenadas por vendas na Shopee e cruzando com as SKUs WeDrop. A primeira busca pode demorar por causa das consultas externas.');
   try{
-   const params=new URLSearchParams({limit:amount,curve,keyword});
+   const params=new URLSearchParams({limit:amount,curve,category,keyword});
    const response=await fetch('/api/shopee/curvas-ab/search?'+params,{
     credentials:'same-origin',cache:'no-store',signal:AbortSignal.timeout(90000)
    });
@@ -124,5 +223,12 @@
  }
  const form=q('curveSearchForm');
  if(form)form.addEventListener('submit',search);
- globalThis.RACurvesAB={onOpen:()=>{if(state.last)render(state.last);}};
+ q('curveKeyword')?.addEventListener('input',refreshFeaturedLink);
+ q('curveCategory')?.addEventListener('change',refreshFeaturedLink);
+ refreshFeaturedLink();
+ globalThis.RACurvesAB={onOpen:()=>{
+  void loadCategories();
+  refreshFeaturedLink();
+  if(state.last)render(state.last);
+ }};
 })();
