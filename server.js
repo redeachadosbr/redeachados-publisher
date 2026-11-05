@@ -27,6 +27,7 @@ import {fetchCatalogPage,fetchCatalogPrices,normalizeShopeeModels,validItemId} f
 import {scanShopeePendingImagesPage,verifyShopeePendingImageItem,PENDING_IMAGE_STATUSES} from './shopeePendingImageAudit.js';
 import {getPendingImageSnapshot,savePendingImageSnapshot,reconcilePendingImageVerification} from './shopeePendingImageStore.js';
 import {parseOrganicReport,rankOrganicTop,readOrganicSnapshot,saveOrganicSnapshot,parseProductPerformanceReport,readPerformanceSnapshot,savePerformanceSnapshot} from './shopeeOrganicPerformance.js';
+import {registerShopeeStoreTrafficRoutes} from './shopeeStoreTrafficRoutes.js';
 import {scanLiveShopViews,saveViewsScan,parseViewsWindow,listViewSamples,rankObservedViews,saoPauloDay} from './shopeeProductViewTrends.js';
 import {suggestFiscalMeasureUnit} from './shopeeFiscalMeasure.js';
 import {getShopeeNewListingsSummary,clearShopeeNewListingsCache} from './shopeeNewListings.js';
@@ -189,7 +190,7 @@ app.use(express.static(path.join(__dirname,'public'),{
 // URLs próprias por setor do painel: recarregar/compartilhar não causa 404.
 // A sessão e autenticação das APIs continuam protegidas pelos mesmos middlewares.
 const appPagePaths=new Set([
-  'inicio','produtos','kits','curvas-ab','otimizacao','otimizacao-pendente','precificacao','descontos','informacoes-fiscais','pedidos','envios','ads','wedrop','financeiro','configuracoes'
+  'inicio','produtos','kits','curvas-ab','otimizacao','otimizacao-pendente','precificacao','descontos','informacoes-fiscais','pedidos','envios','ads','trafego-loja','wedrop','financeiro','configuracoes'
 ]);
 app.get('/app/:section',(req,res)=>{
   if(!appPagePaths.has(String(req.params.section||'')))return res.status(404).send('Página não encontrada.');
@@ -5623,6 +5624,7 @@ app.post('/api/shopee/product-views/collect',mustLogin,requireWeDropAdmin,async(
 // PERFORMANCE DO PRODUTO (Central do Vendedor). A tela seller.shopee.com.br
 // não usa o mesmo conjunto de métricas que /product/get_item_extra_info.
 // Só apresentar valores que vieram do export oficial; nenhuma chamada Ads.
+registerShopeeStoreTrafficRoutes(app,{mustLogin,requireWeDropAdmin,getValidAuth,verifiedSameOrigin,readPerformanceSnapshot,readCatalogCache,rankOrganicTop});
 app.get('/api/shopee/performance/top10',mustLogin,requireWeDropAdmin,async(req,res)=>{
  res.setHeader('Cache-Control','no-store');
  try{

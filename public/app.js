@@ -29,6 +29,8 @@ const APP_PAGES={
     description:'Acompanhe prazos, prioridades e notificações de postagem.'},
   ads:{slug:'ads',title:'Shopee Ads',group:'Gestão',
     description:'Campanhas, impressões, cliques, CTR e eficiência dos anúncios.'},
+  traffic:{slug:'trafego-loja',title:'Tráfego e Vendas da Loja',group:'Relatórios',
+   description:'Fontes de tráfego, diagnóstico geral da loja e dados por SKU Shopee.'},
   wedrop:{slug:'wedrop',title:'Fornecedor WeDrop',group:'Gestão',
     description:'Catálogo armazenado, custos de aquisição e correspondência por SKU.'},
   finance:{slug:'financeiro',title:'Financeiro Shopee',group:'Gestão',
@@ -77,7 +79,7 @@ function setTab(name,{updateHistory=true,scroll=true}={}){
   document.body?.classList?.toggle?.('view-wedrop',name==='wedrop');
   document.body?.classList?.toggle?.('view-finance',name==='finance');
   document.body?.classList?.toggle?.('view-alerts',name==='alerts');
-  const reportTabs=new Set(['ads','wedrop']);
+  const reportTabs=new Set(['ads','wedrop','traffic']);
   const reportMenu=$('#sidebarReports');
   if(reportMenu&&reportTabs.has(name))reportMenu.open=true;
   document.querySelectorAll('.nav-link[data-tab]').forEach(link=>{
@@ -101,6 +103,7 @@ function setTab(name,{updateHistory=true,scroll=true}={}){
     history.pushState({page:name},'',nextUrl);
   setSidebarOpen(false);
   if(name==='overview')void window.dashboardNewListingsLoad?.();
+  if(name==='traffic')void window.RAStoreTraffic?.onOpen?.();
   if(name==='pending-images')globalThis.PendingImagesUI?.onOpen?.();
   if(name==='kits')void window.RAKitBuilderLoad?.();
   if(name==='curves')void window.RACurvesAB?.onOpen?.();

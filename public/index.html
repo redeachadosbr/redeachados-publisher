@@ -14,6 +14,7 @@
 <link rel="stylesheet" href="/shopee-discount-one-click.css?v=1.20.17">
 <link rel="stylesheet" href="/shopee-market-research.css?v=1.20.18">
 <link rel="stylesheet" href="/dashboard-new-listings.css?v=1.20.21-shopee">
+<link rel="stylesheet" href="/store-traffic.css?v=1.0.0">
 <link rel="stylesheet" href="/organic-top10.css?v=1.3.3-compact-visible">
 <link rel="stylesheet" href="/finance-thumbnails.css?v=1.20.22">
 <link rel="stylesheet" href="/title-studio.css?v=1.21.16-ranked-best">
@@ -142,7 +143,7 @@
         <div class="nav-group-title ads-v3-market-title">MARKETPLACES</div>
         <a class="tab nav-link" href="/app/ads" data-tab="ads" data-page="ads"><svg class="nav-icon" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M3 18h18M5 15V9h3v6M11 15V4h3v11M17 15V7h3v8"/></svg><span class="nav-name">Shopee Ads</span></a>
         <details class="sidebar-reports" id="sidebarReports"><summary><svg class="nav-icon" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M4 20V11h4v9M10 20V5h4v15M16 20V9h4v11"/><path d="M2 20h20"/></svg><span class="nav-name">Relatórios</span><span class="nav-chevron">⌄</span></summary>
-          <div class="sidebar-subnav"><a class="tab nav-link" href="/app/wedrop" data-tab="wedrop" data-page="wedrop"><svg class="nav-icon" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M3 10 12 4l9 6v10H3V10ZM3 10h18M9 20v-6h6v6"/></svg><span class="nav-name">Fornecedor WeDrop</span></a></div>
+          <div class="sidebar-subnav"><a class="tab nav-link" href="/app/trafego-loja" data-tab="traffic" data-page="trafego-loja"><svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M3 20h18M6 17V10m6 7V4m6 13V8"/></svg><span class="nav-name">Tráfego e Vendas da Loja</span></a><a class="tab nav-link" href="/app/wedrop" data-tab="wedrop" data-page="wedrop"><svg class="nav-icon" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M3 10 12 4l9 6v10H3V10ZM3 10h18M9 20v-6h6v6"/></svg><span class="nav-name">Fornecedor WeDrop</span></a></div>
         </details>
         <a class="tab nav-link" href="/app/configuracoes" data-tab="settings" data-page="configuracoes"><svg class="nav-icon" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a2 2 0 0 0 .5-2l2-1.6-2-3.5-2.4.7a7 7 0 0 0-1.7-1L15.4 5h-4l-.4 2.6-1.7 1L6.9 8l-2 3.5 2 1.5a7 7 0 0 0 0 2l-2 1.5 2 3.5 2.4-.7 1.7 1 .4 2.7h4l.4-2.7 1.7-1 2.4.7 2-3.5-2-1.5Z"/></svg><span class="nav-name">Configurações</span></a>
         <details class="sidebar-reports sidebar-help" id="sidebarHelp"><summary><svg class="nav-icon" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M9.7 9.4a2.6 2.6 0 0 1 5 1c0 1.7-2.7 2-2.7 3.8"/><circle cx="12" cy="17.5" r=".7" fill="currentColor" stroke="none"/></svg><span class="nav-name">Ajuda e suporte</span><span class="nav-chevron">⌄</span></summary>
@@ -170,7 +171,26 @@
       </section>
       <section id="app" class="hidden">
         <div class="page-intro"><div><p id="pageGroup" class="page-group">Visão geral</p><h1 id="pageTitle">Painel inicial</h1><p id="pageDescription">Acompanhe a operação da sua loja Shopee.</p></div><div id="pageTopAction"></div></div>
-              <section class="tabpane active" id="tab-overview" aria-labelledby="overviewTitle">
+              <section class="tabpane" id="tab-traffic" aria-label="Tráfego e Vendas da Loja">
+<div class="traffic-module">
+ <div class="traffic-card"><div class="traffic-head"><div><h2>Inteligência de Tráfego e Vendas da Loja</h2><p>Origens dos acessos e vendas dos cards, diagnósticos e SKUs da Shopee.</p></div><button class="traffic-btn secondary" type="button" id="trafficRefresh">↻ Atualizar relatório</button></div>
+ <p id="trafficWindow" class="traffic-note">Aguardando fontes da Shopee</p><div class="traffic-kpis" id="trafficKpis"></div></div>
+ <div class="traffic-two">
+  <div class="traffic-card"><h2>Origem das vendas e dos cliques</h2><p>Clique na origem para ver os SKUs vinculados, quando disponíveis no relatório.</p><div id="trafficSources"></div></div>
+  <div class="traffic-card"><h2>Diagnósticos e ações recomendadas</h2><p>Indicações baseadas em evidências. Nenhuma mudança em anúncios é executada sem autorização.</p><div class="traffic-insights" id="trafficInsights"></div></div>
+ </div>
+ <div class="traffic-card"><div class="traffic-head"><div><h2>Produtos e SKUs</h2><p id="trafficSkuHint">Métricas por anúncio e vínculo com as fontes somente quando comprovado.</p></div><label>Origem <select id="trafficSkuFilter" class="traffic-filter"><option value="all">Todas as fontes</option></select></label></div><div class="traffic-products" id="trafficSkuRows"></div></div>
+ <div class="traffic-card"><div class="traffic-head"><div><h2>Visualizações pela API Shopee</h2><p id="trafficApiStatus">Medições gerais por anúncio, sem separação de Ads ou fontes de tráfego.</p></div><button id="trafficRefreshApi" class="traffic-btn secondary" type="button">↻ Atualizar visualizações</button></div><div id="trafficLiveViews"></div></div>
+ <div class="traffic-card"><h2>Importar Tráfego do Produto da Shopee</h2><p>Central do Vendedor → Informações Gerenciais → Produto → Tráfego do Produto → Contribuição da Fonte → Exportar dados.</p>
+  <div class="traffic-import"><label>CSV, XLS ou XLSX<input id="trafficFile" type="file" accept=".csv,.xls,.xlsx"></label><label>Data inicial<input id="trafficStart" type="date"></label><label>Data final<input id="trafficEnd" type="date"></label><button class="traffic-btn" id="trafficImport" type="button">Importar e diagnosticar</button></div>
+  <p class="traffic-note">Cliques originados do Carrinho de Compras não equivalem a carrinhos abandonados. O relatório de fontes e a Performance por SKU são medidos separadamente.</p>
+  <p><a href="https://seller.shopee.com.br/datacenter/product/traffic?tab=sources" target="_blank" rel="noopener noreferrer">Abrir Tráfego do Produto na Shopee</a></p>
+  <div id="trafficStatus" class="traffic-status" role="status" aria-live="polite">Aguardando leitura dos dados.</div>
+ </div>
+</div>
+</section>
+
+<section class="tabpane active" id="tab-overview" aria-labelledby="overviewTitle">
         <div class="welcome-hero dashboard-hero-v2">
           <div class="welcome-hero-copy">
             <span class="welcome-kicker"><span class="welcome-dot"></span> REDE ACHADOS <em>BR</em></span>
@@ -2641,6 +2661,7 @@
 <script src="/ads-seo.js?v=6-ads-eligible-counter"></script>
 <script src="/optimizer-image-studio.js?v=1.0.5-move-enabled"></script>
 <script src="/optimizer-technical-studio.js?v=1.2.0-compact-fields"></script>
+<script src="/store-traffic.js?v=1.0.0"></script>
 <script src="/organic-top10.js?v=1.3.2-fixed-ranking-scroll"></script>
 
 <!-- Modal independente do roteador: abre em cada login / carregamento autenticado -->
