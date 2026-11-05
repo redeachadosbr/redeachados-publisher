@@ -600,3 +600,51 @@ test('desconto 09 consulta Item ID de forma independente, oferece vínculo expl�
  assert.ok(server.includes('const resetKitStages=Boolean(previousLink&&('));
  assert.ok(server.includes('kitOptimization:link,resetKitStages'));
 });
+
+test('diagnóstico da importação distingue código inexistente de custo ausente, sem sugerir substituição',async()=>{
+ const {explainMissingKitSkus,KitSkuCatalogError}=await import('../shopeeKitBuilder.js');
+ const source=new Map([
+  ['TX24505K',{productFound:true,hasName:true,costRows:0,validCost:false}],
+  ['TX24508E',{productFound:true,hasName:true,costRows:1,validCost:true}],
+  ['TRC0001',{productFound:false,hasName:false,costRows:1,validCost:true}],
+  ['TRC0002',{productFound:true,hasName:false,costRows:1,validCost:true}]
+ ]);
+ const issues=explainMissingKitSkus(['TX24505K','TX24508E','DESCONHECIDA','TRC0001','TRC0002'],source);
+ assert.deepEqual(issues.map(x=>x.status),['cost_not_imported','unresolved','not_imported','product_not_imported','product_name_missing']);
+ const failure=new KitSkuCatalogError(issues);
+ assert.equal(failure.code,'WEDROP_SOURCE_MISSING');
+ assert.equal(failure.issues.length,5);
+ assert.match(failure.message,/TX24505K.*produto localizado, mas custo não importado/);
+ assert.match(failure.message,/DESCONHECIDA.*não consta na importação/);
+ assert.doesNotMatch(failure.message,/CP24505B/);
+});
+test('custo inexistente não é presumido: reconsulta WeDrop uma vez e informa a causa',async()=>{
+ const {clearKitCatalogCache}=await import('../shopeeKitBuilder.js');
+ const oldFetch=globalThis.fetch,oldBase=process.env.SUPABASE_URL,oldKey=process.env.SUPABASE_SECRET_KEY;
+ process.env.SUPABASE_URL='https://fixture-missing-kit.supabase.co';
+ process.env.SUPABASE_SECRET_KEY='fixture-key';
+ let catalogReads=0;
+ globalThis.fetch=async url=>{
+  const u=new URL(url),p=u.pathname;
+  if(p.endsWith('shopee_wedrop_products')){catalogReads++;return Response.json([]);}
+  if(p.endsWith('shopee_wedrop_costs'))return Response.json([]);
+  if(p.endsWith('shopee_wedrop_availability_imports'))return Response.json([{last_success_at:new Date().toISOString(),batch_hash:'stock-fixture',imported_count:2}]);
+  if(p.endsWith('shopee_wedrop_sync_state'))return Response.json([{status:'success',last_success_at:new Date().toISOString()}]);
+  if(p.endsWith('shopee_wedrop_availability'))return Response.json([]);
+  throw Error('Unexpected table '+p);
+ };
+ try{
+  await assert.rejects(()=>composeKit(804501,['TX24505K','TX24508E']),e=>{
+   assert.equal(e.code,'WEDROP_SOURCE_MISSING');
+   assert.deepEqual(e.issues.map(x=>x.status),['not_imported','not_imported']);
+   assert.match(e.message,/TX24505K/);
+   return true;
+  });
+  assert.equal(catalogReads,6); // 3 páginas padrão, duas leituras (cache + fresh)
+ }finally{
+  clearKitCatalogCache(804501);
+  globalThis.fetch=oldFetch;
+  if(oldBase===undefined)delete process.env.SUPABASE_URL;else process.env.SUPABASE_URL=oldBase;
+  if(oldKey===undefined)delete process.env.SUPABASE_SECRET_KEY;else process.env.SUPABASE_SECRET_KEY=oldKey;
+ }
+});

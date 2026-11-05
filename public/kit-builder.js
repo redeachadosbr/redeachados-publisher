@@ -3775,6 +3775,13 @@ function renderKitImportReport(result,parserRejected=0){
  for(const item of result.rejected||[]){
   root.append(elt('p','', '✕ Kit '+(item.index||'?')+' ('+(item.skus||[]).join(' + ')+
    '): '+item.reason));
+  if(item.code==='WEDROP_SOURCE_MISSING'&&Array.isArray(item.issues)){
+   const line=elt('p','kit-import-missing-skus',
+    'Conferência individual: '+item.issues.map(x=>x.sku+' — '+x.reason).join(' | ')+'. ');
+   const link=elt('a','kit-import-help-link','Abrir catálogo WeDrop e atualizar importação');
+   link.href='/app/wedrop';
+   line.append(link);root.append(line);
+  }
  }
  if(parserRejected)root.append(elt('p','','⚠ '+parserRejected+
   ' combinação(ões) rejeitada(s) na leitura por SKU ausente, duplicada ou estrutura inválida.'));

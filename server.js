@@ -757,7 +757,8 @@ app.post('/api/shopee/kits/plus-import',mustLogin,requireWeDropAdmin,async(req,r
      demandEvidence:'não verificada',draftSaved:created.saved===true});
    }catch(error){
     rejected.push({index:index+1,skus:Array.isArray(input)?input.map(x=>String(x).slice(0,40)):[],
-     reason:String(error.message||error).slice(0,180)});
+     reason:String(error.message||error).slice(0,350),
+     ...(error.code==='WEDROP_SOURCE_MISSING'?{code:error.code,issues:error.issues}: {})});
    }
   }
   kits.sort((a,b)=>b.buyerFitScore-a.buyerFitScore||b.quote.netProfit-a.quote.netProfit);

@@ -69,10 +69,10 @@ export function categoryMatches(actual,filter){
  const value=norm(actual),terms=WEDROP_CATEGORY_TERMS[filter];
  return Boolean(terms&&terms.some(term=>value.includes(norm(term))));
 }
-async function readCatalog(shop){
+async function readCatalog(shop,{fresh=false}={}){
  const id=validShop(shop);
  const saved=cached.get(id);
- if(saved&&Date.now()-saved.at<CACHE_MS)return saved.rows;
+ if(!fresh&&saved&&Date.now()-saved.at<CACHE_MS)return saved.rows;
  const base=String(process.env.SUPABASE_URL||'').replace(/\/$/,'');
  const key=String(process.env.SUPABASE_SECRET_KEY||process.env.SUPABASE_SERVICE_ROLE_KEY||'');
  if(!base.startsWith('https://')||!key)throw Error('Catálogo WeDrop não conectado.');
@@ -100,8 +100,22 @@ async function readCatalog(shop){
    if(page.length<1000)break;
   }
  }
- const costGroups=new Map();
- for(const c of costs){const key=skuKey(c.supplier_sku);if(!costGroups.has(key))costGroups.set(key,[]);costGroups.get(key).push(c);}
+ const costGroups=new Map(),sourceIndex=new Map();
+ for(const c of costs){
+  const key=skuKey(c.supplier_sku);
+  if(!costGroups.has(key))costGroups.set(key,[]);
+  costGroups.get(key).push(c);
+  const info=sourceIndex.get(key)||{productFound:false,hasName:false,costRows:0,validCost:false};
+  info.costRows++;
+  info.validCost=Number.isFinite(Number(c.unit_cost))&&Number(c.unit_cost)>0;
+  sourceIndex.set(key,info);
+ }
+ for(const item of catalog){
+  const key=skuKey(item.supplier_sku);if(!key)continue;
+  const info=sourceIndex.get(key)||{productFound:false,hasName:false,costRows:0,validCost:false};
+  info.productFound=true;info.hasName=Boolean(clean(item.product_data?.name));
+  sourceIndex.set(key,info);
+ }
  const costFor=sku=>{const matches=costGroups.get(skuKey(sku))||[];
   if(matches.length!==1)return NaN;
   return Number(matches[0].unit_cost);};
@@ -111,7 +125,7 @@ async function readCatalog(shop){
    unitCost:brl(cost),imageUrl:asset(v.imageUrl),brand:clean(v.brand),
    ...kitWeDropFacts(v),stockStatus:'não verificado'};
  }).filter(p=>p.sku&&p.name&&Number.isFinite(p.unitCost)&&p.unitCost>0);
- cached.set(id,{at:Date.now(),rows});return rows;
+ cached.set(id,{at:Date.now(),rows,sourceIndex});return rows;
 }
 export async function kitCatalog(shop,{category='Todos',search='',limit=80}={}){
  const [rows,stock]=await Promise.all([readCatalog(shop),readKitStockSnapshot(shop)]);
@@ -480,13 +494,58 @@ export function kitSku(skus){
  const ids=skus.map(s=>String(s).toUpperCase().replace(/[^A-Z0-9]/g,'').slice(0,22)).sort();
  return 'KIT-'+ids.join('-').slice(0,112);
 }
+// Mensagem distinta para: SKU não importada, custo sem ficha, ficha sem
+// custo e custo inválido. Não preencher custos por semelhança entre SKUs.
+export function explainMissingKitSkus(skus,sourceIndex){
+ const index=sourceIndex instanceof Map?sourceIndex:new Map();
+ return skus.map(code=>{
+  const info=index.get(skuKey(code));
+  const status=!info?'not_imported':
+   !info.productFound?'product_not_imported':
+   info.costRows===0?'cost_not_imported':
+   info.costRows!==1?'cost_ambiguous':
+   !info.validCost?'cost_invalid':
+   !info.hasName?'product_name_missing':'unresolved';
+  const reason={
+   not_imported:'não consta na importação de produtos nem na de custos WeDrop',
+   product_not_imported:'custo localizado, mas ficha do produto não importada',
+   cost_not_imported:'produto localizado, mas custo não importado',
+   cost_ambiguous:'há custos duplicados ou ambíguos para a SKU',
+   cost_invalid:'custo cadastrado inválido ou igual a zero',
+   product_name_missing:'produto cadastrado sem nome comercial válido',
+   unresolved:'cadastro não pôde ser associado a uma SKU única'
+  }[status];
+  return {sku:String(code),status,reason};
+ });
+}
+export class KitSkuCatalogError extends Error {
+ constructor(issues,sourceAt=''){
+  const suffix=sourceAt?' Última sincronização: '+
+   new Date(sourceAt).toLocaleString('pt-BR',{timeZone:'America/Sao_Paulo'})+'.':'';
+  super('SKU não encontrada com dados WeDrop completos: '+
+   issues.map(x=>x.sku+' — '+x.reason).join('; ')+'.'+suffix+
+   ' Atualize o catálogo completo de produtos e custos; nenhuma cotação foi criada.');
+  this.name='KitSkuCatalogError';this.code='WEDROP_SOURCE_MISSING';
+  this.issues=issues;
+ }
+}
 export async function composeKit(shop,skus,{marginPct=15,packing=0,shipping=0}={}){
- const [items,stock]=await Promise.all([readCatalog(shop),readKitStockSnapshot(shop)]);
+ let [items,stock]=await Promise.all([readCatalog(shop),readKitStockSnapshot(shop)]);
  assertKitStockSnapshot(stock);
  if(!Array.isArray(skus)||skus.length<2||skus.length>4||new Set(skus).size!==skus.length)
   throw Error('Selecione dois a quatro SKUs distintos da WeDrop.');
- const lookup=new Map();
- for(const p of items){const k=skuKey(p.sku);if(!lookup.has(k))lookup.set(k,[]);lookup.get(k).push(p);}
+ const buildLookup=rows=>{
+  const map=new Map();
+  for(const p of rows){const k=skuKey(p.sku);if(!map.has(k))map.set(k,[]);map.get(k).push(p);}
+  return map;
+ };
+ let lookup=buildLookup(items);
+ // O cache do catálogo pode anteceder a importação de custo/produto recém
+ // realizada. Uma única reconsulta completa à mesma loja evita falso negativo.
+ if(skus.some(sku=>!lookup.has(skuKey(sku)))){
+  items=await readCatalog(shop,{fresh:true});
+  lookup=buildLookup(items);
+ }
  const products=skus.map(x=>{
   const matches=lookup.get(skuKey(x))||[];
   if(matches.length>1)throw Error('SKU ambígua no catálogo WeDrop: '+x+'. Verifique os códigos duplicados.');
@@ -496,7 +555,12 @@ export async function composeKit(shop,skus,{marginPct=15,packing=0,shipping=0}={
   if(statuses.length>1)throw Error('Disponibilidade ambígua para '+p.sku+'.');
   return {...p,stockStatus:statuses[0]?.[1]||'DESCONHECIDO'};
  });
- if(products.some(x=>!x))throw Error('SKU não encontrada com custo WeDrop válido no catálogo importado desta loja: '+skus.filter(x=>!lookup.has(skuKey(x))).join(', ')+'. Confirme a importação de custos WeDrop.');
+ if(products.some(x=>!x)){
+  const missing=skus.filter(x=>!lookup.has(skuKey(x)));
+  const sourceIndex=cached.get(validShop(shop))?.sourceIndex;
+  throw new KitSkuCatalogError(explainMissingKitSkus(missing,sourceIndex),
+   stock.catalogLastImportedAt);
+ }
  assertKitComponentsAvailable(products,stock);
  const costs=brl(products.reduce((a,p)=>a+p.unitCost,0));
  const n=Number(marginPct),extra=Number(packing),freight=Number(shipping);
