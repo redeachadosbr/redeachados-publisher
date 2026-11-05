@@ -630,7 +630,10 @@ test('custo inexistente não é presumido: reconsulta WeDrop uma vez e informa a
   if(p.endsWith('shopee_wedrop_costs'))return Response.json([]);
   if(p.endsWith('shopee_wedrop_availability_imports'))return Response.json([{last_success_at:new Date().toISOString(),batch_hash:'stock-fixture',imported_count:2}]);
   if(p.endsWith('shopee_wedrop_sync_state'))return Response.json([{status:'success',last_success_at:new Date().toISOString()}]);
-  if(p.endsWith('shopee_wedrop_availability'))return Response.json([]);
+  if(p.endsWith('shopee_wedrop_availability'))return Response.json([
+   {supplier_sku:'TX24505K',availability:'DISPONIVEL',batch_hash:'stock-fixture'},
+   {supplier_sku:'TX24508E',availability:'DISPONIVEL',batch_hash:'stock-fixture'}
+  ]);
   throw Error('Unexpected table '+p);
  };
  try{
