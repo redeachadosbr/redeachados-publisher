@@ -1,0 +1,49 @@
+/* Curvas A/B: somente a aba própria, sem alterar cartões ou estilos de Kits. */
+#tab-curves .curve-page{max-width:1320px;margin:0 auto;padding:10px 4px 32px;color:#173457}
+#tab-curves [hidden]{display:none!important}
+#tab-curves .curve-head{display:flex;align-items:center;justify-content:space-between;gap:18px;margin-bottom:20px}
+#tab-curves .curve-head h2{margin:4px 0 7px;font-size:29px;font-weight:850;color:#102e53;letter-spacing:-.035em}
+#tab-curves .curve-head p{max-width:790px;margin:0;font-size:14px;line-height:1.6;color:#52677e}
+#tab-curves .curve-eyebrow{display:block;font-size:11px;font-weight:900;letter-spacing:.14em;color:#f04c2e}
+#tab-curves .curve-ads-shortcut{display:inline-flex;align-items:center;justify-content:center;padding:10px 16px;text-decoration:none;background:white;color:#164b85;border:1px solid #d1e1f2;border-radius:11px;white-space:nowrap;font-size:13px;font-weight:800}
+#tab-curves .curve-filters{display:grid;grid-template-columns:minmax(150px,180px) minmax(140px,180px) minmax(200px,1fr) auto;align-items:end;gap:12px;padding:18px;background:#fff;border:1px solid #dde8f4;border-radius:18px;box-shadow:0 4px 22px #123b6310}
+#tab-curves .curve-filters label{display:block;font-size:12px;font-weight:800;color:#2c5076}
+#tab-curves .curve-filters select,#tab-curves .curve-filters input{display:block;width:100%;max-width:none;margin-top:7px;min-height:43px;padding:0 12px;border:1px solid #cedcec;border-radius:10px;background:#fff;color:#24405d;font-size:14px;box-shadow:none}
+#tab-curves .curve-filters button{min-height:43px;padding:10px 18px;border:0;border-radius:10px;background:linear-gradient(135deg,#f36637,#e94625);font-weight:850;color:white;white-space:nowrap;cursor:pointer}
+#tab-curves .curve-filters button:disabled{opacity:.65;cursor:wait}
+#tab-curves .curve-method{font-size:12.5px;line-height:1.6;color:#536a81;margin:12px 3px}
+#tab-curves .curve-notice{margin:15px 0;padding:13px 16px;border-radius:11px;border:1px solid #d5e3f4;background:#f1f7ff;color:#23517b;font-size:13px;line-height:1.5}
+#tab-curves .curve-notice.is-error{background:#fff2f1;border-color:#f2c9c6;color:#9d3330}
+#tab-curves .curve-notice.is-warning{background:#fff9eb;border-color:#f5dfaa;color:#7c5b18}
+#tab-curves .curve-stats{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px;margin:18px 0 24px}
+#tab-curves .curve-stats>div{background:#fff;border:1px solid #dce7f4;border-radius:14px;padding:15px 17px}
+#tab-curves .curve-stats small{display:block;color:#687b90;font-size:12px;margin-bottom:6px}
+#tab-curves .curve-stats strong{font-size:24px;font-weight:850;color:#153c69;font-variant-numeric:tabular-nums}
+#tab-curves .curve-result-head{display:flex;justify-content:space-between;align-items:center;gap:12px;margin-bottom:12px}
+#tab-curves .curve-result-head h3{margin:0;font-size:18px;color:#11365c}
+#tab-curves .curve-result-head span{font-size:12px;color:#697b90}
+#tab-curves .curve-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:13px}
+#tab-curves .curve-card{background:white;border:1px solid #dce7f4;border-radius:16px;padding:15px;display:grid;grid-template-columns:106px minmax(0,1fr);gap:16px;box-shadow:0 2px 13px #153b610c}
+#tab-curves .curve-card-image{width:106px;height:106px;object-fit:contain;background:#f4f8fc;border-radius:13px;border:1px solid #e3ebf2}
+#tab-curves .curve-card-placeholder{display:flex;align-items:center;justify-content:center;text-align:center;color:#8294a7;font-size:12px}
+#tab-curves .curve-card-main{min-width:0}
+#tab-curves .curve-card-top{display:flex;justify-content:space-between;gap:8px;align-items:flex-start}
+#tab-curves .curve-card h4{margin:0 0 7px;font-size:14px;line-height:1.35;color:#15365c}
+#tab-curves .curve-curve{font-weight:900;white-space:nowrap;font-size:12px;background:#edf5ff;color:#225998;border-radius:8px;padding:5px 8px}
+#tab-curves .curve-curve.a{background:#eaf5ff;color:#195a9b}
+#tab-curves .curve-curve.b{background:#fff2e4;color:#9b581a}
+#tab-curves .curve-sku{color:#5c6d80;font-size:12px;margin-bottom:9px}
+#tab-curves .curve-sku b{color:#193e6c}
+#tab-curves .curve-metrics{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:6px 12px;margin:8px 0}
+#tab-curves .curve-metrics div{font-size:12px;color:#5f7286}
+#tab-curves .curve-metrics b{display:block;font-size:14px;color:#183f66;margin-top:2px}
+#tab-curves .curve-evidence{font-size:11.5px;color:#5c7185;line-height:1.5;margin:6px 0}
+#tab-curves .curve-stock{font-size:12px;font-weight:700;margin:8px 0;color:#27805f}
+#tab-curves .curve-stock.not{color:#ae6a27}
+#tab-curves .curve-card-actions{display:flex;flex-wrap:wrap;gap:8px;margin-top:11px}
+#tab-curves .curve-card-actions a,#tab-curves .curve-card-actions button{display:inline-flex;padding:8px 10px;border-radius:9px;border:1px solid #d0deeb;background:white;color:#14528f;font-size:12px;font-weight:800;text-decoration:none;cursor:pointer}
+#tab-curves .curve-card-actions button{background:#eef5fd}
+#tab-curves .curve-empty{grid-column:1/-1;padding:30px 16px;text-align:center;background:white;color:#5b728c;border:1px dashed #d0deed;border-radius:13px;font-size:14px}
+#tab-curves .curve-disclaimer{font-size:11.5px;color:#74859a;line-height:1.6;margin-top:20px}
+@media(max-width:1100px){#tab-curves .curve-filters{grid-template-columns:1fr 1fr}#tab-curves .curve-keyword-field{grid-column:1/-1}#tab-curves .curve-grid{grid-template-columns:1fr}}
+@media(max-width:650px){#tab-curves .curve-head{align-items:flex-start;flex-direction:column}#tab-curves .curve-filters{grid-template-columns:1fr}#tab-curves .curve-keyword-field{grid-column:auto}#tab-curves .curve-stats{grid-template-columns:1fr 1fr}#tab-curves .curve-card{grid-template-columns:83px 1fr;gap:11px}#tab-curves .curve-card-image{height:83px;width:83px}#tab-curves .curve-head h2{font-size:24px}}
