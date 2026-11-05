@@ -16,7 +16,7 @@ test('um clique autoriza varredura e retomada das nove etapas sem exigir segundo
  assert.match(sweep,/execution\/root-audit/);
  assert.match(sweep,/scope\.value=executionScope/);
  assert.match(sweep,/onlyDiscount\?'discount':'all'/);
- assert.match(sweep,/await kitAutoSweepPreparePlan\(target\)/);
+ assert.match(sweep,/await kitAutoSweepChoosePlan\(target,audit,executionScope\)/);
  assert.match(sweep,/await optimizerExecuteApproved\(false\)/);
  assert.match(sweep,/audit\?\.complete===true/);
  assert.match(sweep,/optimizerKitAutoFinalizeFromAudit/);
@@ -46,8 +46,8 @@ test('auditoria da promocao do kit verifica Shopee mesmo se historico falhou',()
 });
 
 test('preparação lenta aguarda a prévia completa antes da primeira execução e de uma retomada',async()=>{
- assert.match(app,/const plan=await kitAutoSweepPreparePlan\(target\)/);
- assert.match(app,/const p=await kitAutoSweepPreparePlan\(\{kitSku,sku,itemId,modelId\}\)/);
+ assert.match(app,/const prepared=await kitAutoSweepChoosePlan\(target,audit,executionScope\)/);
+ assert.match(app,/const prepared=await kitAutoSweepChoosePlan\(\{kitSku,sku,itemId,modelId\},audit,executionScope\)/);
  const start=app.indexOf('async function kitAutoSweepPreparePlan(target)');
  const end=app.indexOf('function kitAutoSweepResume(',start);
  assert.ok(start>0&&end>start);
