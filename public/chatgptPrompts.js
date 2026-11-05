@@ -15,12 +15,16 @@ function declaredImagePosition(instruction){
   .match(/^(?:(?:\*\*|#|>)\s*)?(?:imagem|image|foto)\s*0?([1-9])\s*(?:\/\s*0?9|[—–:-])/i);
  return match?Number(match[1]):null;
 }
-export function createChatGptPrompts({imageUrls=[],supplierSourceText='',title='',attributes=[],imageNotes={},imagePrompts={},masterPrompt=''}={}){
+export function createChatGptPrompts({imageUrls=[],supplierSourceText='',confirmedDimensionSpec=null,title='',attributes=[],imageNotes={},imagePrompts={},masterPrompt=''}={}){
  const original=(Array.isArray(imageUrls)?imageUrls:[]).find(x=>/^https:\/\//i.test(String(x||'')))||'';
  const scenes=CHATGPT_IMAGE_SCENES;
  // O ChatGPT recebe somente evidências consolidadas da MESMA SKU, sem
  // instruções livres copiadas do fornecedor. O título/foto definem a cena.
- const dimensions=confirmedProductDimensionsFromWeDrop(supplierSourceText);
+ // O mesmo comprovante fiscal visual da imagem 03 já cruzou
+ // o texto WeDrop com a ficha da SKU EXATA. Não interpretar triplas
+ // sem rótulo apenas pelo texto e não usar medidas da embalagem.
+ const dimensions=confirmedDimensionSpec?.measurements?.length?
+  confirmedDimensionSpec:confirmedProductDimensionsFromWeDrop(supplierSourceText);
  const facts=confirmedProductSideFactsFromWeDrop(supplierSourceText);
  const evidence=facts.slice(0,6).map(f=>f.label+': '+f.value);
  const extra=(Array.isArray(attributes)?attributes:[])
