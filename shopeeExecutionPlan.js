@@ -153,8 +153,8 @@ export function compileShopeeExecutionPlan({shopId,itemId,modelId,sku,record,rev
   }
   // A rejected fiscal update must not turn unrelated, already reviewed
   // content and media stages into a permanent CEST hostage.
-  // The UI may display "00", but this is not a real CEST and is NEVER sent as tax_info.cest.
-  // Shopee may still reject update_item; that is reported from the API.
+  // Quando o CEST do anúncio estiver vazio, o preenchimento 00 poderá ser enviado
+  // somente em execução autorizada. A Shopee pode recusá-lo; nunca declarar sucesso sem leitura.
   const fiscalDeferred=selected('fiscal')&&(
     Boolean(omitFiscal)||selectedStage!=='fiscal'&&Boolean(deferUnconfirmedFiscal)&&
     !isShopeeCestConfirmed(state.tax?.cest)&&
