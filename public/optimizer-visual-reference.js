@@ -22,9 +22,17 @@ export function visualReferenceCandidates(input=[]){
    // A imagem oficial publicada em cf.shopee.com.br também é distribuída
    // pelo CDN de mídia. Testar o domínio de imagem direto ANTES do cf,
    // que em algumas extensões retorna conteúdo inválido ao anexar.
-   if(u.protocol==='https:'&&u.hostname==='cf.shopee.com.br'&&
-      /^\/file\/[A-Za-z0-9_-]{8,190}$/.test(u.pathname))
-    add('https://down-br.img.susercontent.com'+u.pathname);
+   if(u.protocol==='https:'&&
+      /^\/file\/[A-Za-z0-9_-]{8,190}$/.test(u.pathname)){
+    // A API Shopee costuma devolver o CDN de mídia diretamente.
+    // A Ponte Chrome pode aceitar somente a URL canônica cf.shopee.com.br.
+    // Oferecer ambos os endereços do MESMO arquivo e Item ID, sem
+    // autorizar domínios externos nem trocar a fotografia.
+    if(u.hostname==='down-br.img.susercontent.com')
+     add('https://cf.shopee.com.br'+u.pathname);
+    if(u.hostname==='cf.shopee.com.br')
+     add('https://down-br.img.susercontent.com'+u.pathname);
+   }
   }catch{}
   add(candidate);
  }
