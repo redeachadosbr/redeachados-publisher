@@ -139,3 +139,54 @@ test('A388105: dados da pista não viram medidas do carrinho e metadados logíst
  assert.ok(!JSON.stringify(spec).includes('272 g'));
  assert.ok(!JSON.stringify(spec).includes('550 g'));
 });
+
+test('SKU 1736: texto WeDrop 10 x 10 x 14 + catálogo da MESMA SKU comprova altura/largura/comprimento',()=>{
+ const sourceText=[
+  'Processador de Alimentos Manual 500ml 3 Lâminas',
+  'Especificações:',
+  'Dimensões: 10 x 10 x 14',
+  'Peso: 222',
+  'Capacidade: 500 ml'
+ ].join('\n');
+ assert.equal(confirmedProductDimensionsFromWeDrop(sourceText),null,
+  'sem confirmação não inferir as dimensões pelo triplo solto');
+ const exact={sku:'1736',sourceEvidenceSku:'1736',sourceSaved:true,
+  supplierMatchedBy:'exact-sku',
+  catalogMeasurements:{heightCm:'10',widthCm:'10',lengthCm:'14'},
+  sourceText};
+ const confirmed=confirmedSpecCard(exact);
+ assert.deepEqual(confirmed?.measurements.map(x=>[x.label,x.value]),[
+  ['ALTURA','10 cm'],['LARGURA','10 cm'],['COMPRIMENTO','14 cm']
+ ]);
+ const prompt=createChatGptPrompts({title:'Processador de Alimentos Manual 500ml',
+  supplierSourceText:sourceText,confirmedDimensionSpec:confirmed});
+ assert.match(prompt.prompts[2],/ALTURA: 10 cm; LARGURA: 10 cm; COMPRIMENTO: 14 cm/);
+ assert.equal(prompt.confirmedDimensions?.measurements.length,3);
+ assert.doesNotMatch(prompt.prompts[2],/222 cm|500 cm/);
+});
+test('dimensões triplas sem confirmação, outra SKU ou valores divergentes não entram na Imagem 03',()=>{
+ const base={sku:'1736',sourceEvidenceSku:'1736',sourceSaved:true,
+  supplierMatchedBy:'exact-sku',
+  catalogMeasurements:{heightCm:10,widthCm:10,lengthCm:14},
+  sourceText:'Dimensões: 10 x 10 x 14'};
+ assert.equal(confirmedSpecCard({...base,sourceEvidenceSku:'OUTRA-SKU'}),null);
+ assert.equal(confirmedSpecCard({...base,sourceSaved:false}),null);
+ assert.equal(confirmedSpecCard({...base,supplierMatchedBy:'inferred'}),null);
+ assert.equal(confirmedSpecCard({...base,catalogMeasurements:{
+  heightCm:10,widthCm:12,lengthCm:14}}),null);
+ assert.equal(confirmedSpecCard({...base,sourceText:'Dimensões da embalagem: 10 x 10 x 14'}),null);
+ assert.equal(confirmedSpecCard({...base,sourceText:'Dimensões: 10 x 10 x 12'}),null);
+});
+test('o editor da posição 03 consulta sempre a fonte salva do item individual e injeta dimensões comprovadas',()=>{
+ const app=readFileSync(new URL('../public/app.js',import.meta.url),'utf8');
+ const start=app.indexOf('async function optimizerChatgptMakeBrief(');
+ const end=app.indexOf('// O campo "Informações da WeDrop"',start);
+ const body=app.slice(start,end);
+ assert.match(body,/api\/shopee\/optimizer\/workflow\/source\?/);
+ assert.match(body,/const confirmedDimensionSpec=trustedText\?confirmedSpecCard\(/);
+ assert.match(body,/catalogMeasurements:w\.supplierProduct\?\.catalogMeasurements/);
+ assert.match(body,/confirmedDimensionSpec,/);
+ const check=app.slice(app.indexOf('async function optimizerVerifiedDimensionSpec(w)'),
+  app.indexOf('async function optimizerChatgptRender(w)'));
+ assert.match(check,/catalogMeasurements:w\.supplierProduct\?\.catalogMeasurements/);
+});
