@@ -162,7 +162,7 @@ test('a interface oferece categoria e títulos SEO com referências dos preços'
  assert.match(js,/function appendSEO/);
  assert.match(js,/function appendPrices/);
  assert.match(js,/Média dos concorrentes/);
- assert.match(js,/new URLSearchParams\(\{limit:amount,curve,category,keyword\}\)/);
+ assert.match(js,/verifiedOnly:verifiedOnly\?'1':'0'/);
 });
 
 test('a média de concorrentes exclui a própria loja, inclusive no ranking',()=>{
@@ -283,4 +283,28 @@ test('entre anúncio com vendas acumuladas e anúncio com vendas mensais para me
  assert.equal(rows[0].itemId,'2');
  assert.equal(rows[0].sales30,901);
  assert.equal(rows[0].curve,'A');
+});
+
+test('modo padrão só retorna Curvas com evidência mensal, candidatos potenciais são opt-in',()=>{
+ const candidates=matchCurveOffers({catalog:fixture,offers});
+ const strict=pickCurveResults(candidates,{limit:5,curve:'A',verifiedOnly:true});
+ assert.equal(strict.items.length,0);
+ assert.equal(strict.shortage,5);
+ const relaxed=pickCurveResults(candidates,{limit:5,curve:'A',verifiedOnly:false});
+ assert.equal(relaxed.items.length,1);
+ const monthly=matchCurveOffers({catalog:fixture,offers:[{
+  itemId:'1001',shopId:'999',
+  productName:'Lancheira Escolar Dinossauro T Rex Verde com Zíper',
+  priceMin:45.9,sales:23000,monthlySold:960,
+  dataSource:'shopee-featured-public'
+ }]});
+ assert.equal(pickCurveResults(monthly,{limit:5,curve:'A',verifiedOnly:true}).items.length,1);
+});
+test('rota autenticada expõe status das duas fontes sem fornecer segredos',()=>{
+ const api=readFileSync(new URL('../server.js',import.meta.url),'utf8');
+ const html=readFileSync(new URL('../public/index.html',import.meta.url),'utf8');
+ assert.match(api,/api\/shopee\/curvas-ab\/sources',mustLogin,requireWeDropAdmin/);
+ assert.match(api,/probeCurveAffiliateAccess/);
+ assert.match(html,/id="curveConfirmedOnly" checked/);
+ assert.match(html,/id="curveTestSources"/);
 });
