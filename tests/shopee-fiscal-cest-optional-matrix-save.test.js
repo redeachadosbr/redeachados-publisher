@@ -16,7 +16,7 @@ test('CEST vazio não impede registrar o fiscal revisado no Motor Matriz',()=>{
  const verified=compileTax(change.tax,{tax_info:{}});
  assert.deepEqual(verified,{
   ncm:'95069900',origin:'2',same_state_cfop:'5106',diff_state_cfop:'6106',
-  csosn:'102',operation_type:'1',measure_unit:'UN'
+  csosn:'102',operation_type:'1',measure_unit:'UN',cest:'00'
  });
  assert.equal(Object.hasOwn(verified,'cest'),false);
  assert.equal(fiscalMatrixSource({sku:'TRC1525',supplier,tax:change.tax}).ncm,'95069900');
@@ -31,12 +31,12 @@ test('campos do contador ficam aproveitáveis nas próximas SKUs com NCM própri
  assert.equal(result.csosn,'102');
  assert.equal(result.cest,'00');
 });
-test('CEST de 7 dígitos só prevalece se estiver comprovado na WeDrop; API Shopee não prevalece sobre 00',()=>{
+test('CEST existente da Shopee prevalece sobre 00 sugerido pela WeDrop',()=>{
  const actual=supplierWorkflowFacts({...supplier,product_data:{...supplier.product_data,cest:'1234567'}},
   {title:'Piscina Inflável',description:'',attributeAudit:{attributes:[]}},{fiscal_notes:''}).taxSuggestion;
  assert.equal(actual.cest,'1234567');
  const verified=compileTax({...fiscal,cest:'00'},{tax_info:{cest:'7654321'}});
- assert.equal(verified.cest,'00');
+ assert.equal(verified.cest,'7654321');
  const blank=compileTax({...fiscal,cest:'00'},{tax_info:{}});
  assert.equal(blank.cest,'00');
 });
