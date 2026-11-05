@@ -37,6 +37,13 @@ async function readAll(table,query,columns){
   }
   throw Error('Limite de 30.000 registros atingido. Não é possível apresentar cobertura completa.');
 }
+// Catálogo completo do fornecedor para a busca Curvas A/B. Somente leitura,
+// sempre isolada pelo shop_id da sessão autenticada no servidor.
+export async function readWeDropCatalogProducts(shopId){
+ const id=validShopId(shopId);
+ return readAll('shopee_wedrop_products','shop_id=eq.'+id+'&order=supplier_sku.asc',
+  'supplier_sku,product_data,source_file,imported_at');
+}
 export async function readWeDropCosts(shopId){
   const id=validShopId(shopId);
   return readAll('shopee_wedrop_costs','shop_id=eq.'+id+'&order=supplier_sku.asc',
