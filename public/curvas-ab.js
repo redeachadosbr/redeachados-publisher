@@ -196,13 +196,17 @@
    const data=await result.json().catch(()=>({}));
    if(!result.ok||!data.ok)throw Error(data.error||'Erro na consulta');
    const pub=data.storefront||{};
+   const aff=data.affiliate||{};
    if(label)label.textContent=
     'Shopee Em Destaque: '+(pub.status==='accessible'?'acessível':pub.status==='blocked'?'acesso restrito':pub.status==='unknown'?'ainda não testada':'indisponível')+
-    ' • Afiliados: '+(data.affiliateConfigured?'configurado':'não configurado');
-   if(detail)detail.textContent=pub.message||(pub.returnedOffers!==null?
-    pub.returnedOffers+' ofertas públicas retornadas; '+pub.returnedMonthly+
-    ' com campo de vendas mensais.':
-    'Use Testar fontes para verificar o acesso público em tempo real.');
+    ' • Afiliados: '+(aff.status==='accessible'?'API respondendo':aff.status==='error'?'erro na API':
+     data.affiliateConfigured?'configurado (não testado)':'não configurado');
+   if(detail)detail.textContent=[
+    pub.message||(pub.returnedOffers!==null?
+     pub.returnedOffers+' ofertas públicas retornadas; '+pub.returnedMonthly+' com indicador mensal.':''),
+    aff.message||'',
+    !probe?'Clique em Testar fontes para verificar o acesso em tempo real.':''
+   ].filter(Boolean).join(' | ');
   }catch(error){
    if(label)label.textContent='Falha ao verificar as fontes';
    if(detail)detail.textContent=String(error.message||error);
