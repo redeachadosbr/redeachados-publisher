@@ -72,7 +72,7 @@ test('imagem 03 importa arte pronta sem sobrepor outra camada de medidas',()=>{
  assert.match(fresh,/api\/shopee\/optimizer\/workflow\/source\?/);
  assert.match(fresh,/sourceEvidenceSku:source\.sku/);
  assert.match(fresh,/sourceSaved:Boolean\(source\.updatedAt\)/);
- assert.match(fresh,/supplierMatchedBy:w\.supplierProduct\?\.matchedBy/);
+ assert.match(fresh,/supplierMatchedBy:w\.verifiedWeDropMatchedBy\|\|w\.supplierProduct\?\.matchedBy/);
  assert.match(card,/confirmedProductDimensionsFromWeDrop\(sourceText\)/);
  assert.doesNotMatch(card,/MEDIDAS DO CAMINHÃO|CARACTERÍSTICAS CONFIRMADAS|Material: plástico/);
 });
@@ -188,7 +188,7 @@ test('o editor da posição 03 consulta sempre a fonte salva do item individual 
  assert.match(body,/confirmedDimensionSpec,/);
  const check=app.slice(app.indexOf('async function optimizerVerifiedDimensionSpec(w)'),
   app.indexOf('async function optimizerChatgptRender(w)'));
- assert.match(check,/catalogMeasurements:w\.supplierProduct\?\.catalogMeasurements/);
+ assert.match(check,/catalogMeasurements:w\.verifiedWeDropMeasurements/);
 });
 
 test('Imagem 03 da SKU 1736 recupera dimensões catalogadas sem depender da ficha pré-carregada',()=>{
