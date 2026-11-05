@@ -100,12 +100,13 @@ test('executor não exige campos fora da tabela de referência',()=>{
  const live={ncm:'95030099',origin:'2',csosn:'102',
   cest:'',operation_type:'',measure_unit:''};
  const unchanged=fiscalFillMissingOnly(live,reference,{referenceOnly:true});
- assert.deepEqual(unchanged.changed,[]);
- assert.equal(unchanged.tax.cest,'');
+ assert.deepEqual(unchanged.changed,['cest']);
+ assert.equal(unchanged.tax.cest,'00');
  const missing=fiscalFillMissingOnly({...live,origin:''},reference,{referenceOnly:true});
- assert.deepEqual(missing.changed,['origin']);
+ assert.deepEqual(missing.changed,['origin','cest']);
  assert.equal(missing.tax.origin,'2');
  assert.equal(missing.tax.operation_type,'');
+ assert.equal(missing.tax.cest,'00');
 });
 test('executor não sobrescreve campo já preenchido fora do padrão da referência',()=>{
  const reference={ncm:'95030099',origin:'2',csosn:'102'};
