@@ -57,6 +57,15 @@ async function advanceShopeeExecutionStep(job,io){
   }
  };
  const afterVideo=(confirmed=result)=>{
+  // A API pode publicar o vídeo enquanto a ficha técnica ainda diverge.
+  // Nesse caso confirmar SOMENTE o vídeo e liberar nova prévia para os
+  // atributos restantes, nunca declarar todo o conteúdo como concluído.
+  if(confirmed.videoAttachmentNeedsCommercialReconcile===true)
+   return {state:'failed',result:withExecutionEvent({...confirmed,
+     phase:'retry_allowed',verified:false,primaryVerified:false,
+     videoReadbackConfirmed:true,videoRejected:false},
+     'video-only-verified','Vídeo publicado e confirmado no anúncio. Ficha técnica e demais pendências preservadas.','success'),
+    lastError:'Vídeo confirmado; revisar somente campos comerciais ainda divergentes na Shopee.'};
   const next=plan.modelVariations&&confirmed.variation?.status!=='verified'?'variation_ready':
    plan.finalFiscal&&confirmed.fiscal?.status!=='verified'?'fiscal_ready':
    hasDiscount(plan)&&confirmed.discount?.status!=='verified'?discountPhase(plan):'verified';
@@ -116,7 +125,13 @@ async function advanceShopeeExecutionStep(job,io){
  }
  if(['video_attach_ready','video_attach_updating','video_attach_verifying'].includes(result.phase)){
   const live=await io.read();
-  if(!nonVideoVerified(live))
+  const partialVideoOnly=result.videoAttachmentNeedsCommercialReconcile===true&&
+   String(live?.item_id)===String(plan.itemId)&&
+   (!plan.images?.length||sameData(live.image?.image_id_list||[],result.imageIds||[]))&&
+   Object.entries(plan.proposed||{}).every(([key,value])=>
+    key==='attribute_list'||fieldsVerified({[key]:value},live));
+  if(partialVideoOnly)assertLiveShopeeUnchanged(plan,live,result);
+  if(!nonVideoVerified(live)&&!partialVideoOnly)
    return {state:'uncertain',result:withExecutionEvent(result,'video-content-pending',
     'A leitura da Shopee diverge do conteúdo; nenhuma alteração reenviada.','warning'),
     lastError:'Campos comerciais não coincidem com o plano aprovado antes do vídeo.'};
