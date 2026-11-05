@@ -81,3 +81,14 @@
 #tab-curves .curve-load-more>span{font-size:12px;color:#5c7186;line-height:1.5}
 @media(max-width:1150px){#tab-curves .curve-stats{grid-template-columns:repeat(3,minmax(0,1fr))}}
 @media(max-width:650px){#tab-curves .curve-stats{grid-template-columns:repeat(2,minmax(0,1fr))}}
+
+#tab-curves .curve-only-verified{grid-column:1/-1;display:flex!important;align-items:flex-start;gap:10px;font-weight:650!important;font-size:12px!important;line-height:1.5;color:#335571!important;padding:0 2px}
+#tab-curves .curve-only-verified>input{appearance:auto;width:17px!important;min-height:17px!important;height:17px!important;flex:0 0 17px;margin:0!important;padding:0!important;accent-color:#f04f2d}
+#tab-curves .curve-sources{display:flex;justify-content:space-between;gap:16px;align-items:center;padding:15px 18px;border:1px solid #d5e2f1;border-radius:13px;background:#fff;margin:13px 0}
+#tab-curves .curve-sources>div{display:flex;flex-direction:column;gap:4px;min-width:0}
+#tab-curves .curve-sources strong{font-size:12px;color:#1a426b}
+#tab-curves .curve-sources span{font-size:13px;color:#1d5c90;font-weight:800;overflow-wrap:anywhere}
+#tab-curves .curve-sources small{color:#687e94;font-size:12px;line-height:1.4;overflow-wrap:anywhere}
+#tab-curves .curve-sources button{border:1px solid #ceddec;background:#ecf5fe;color:#15558b;padding:10px 12px;border-radius:9px;white-space:nowrap;font-size:12px;font-weight:800;cursor:pointer}
+#tab-curves .curve-sources button:disabled{opacity:.6;cursor:wait}
+@media(max-width:700px){#tab-curves .curve-sources{flex-direction:column;align-items:stretch}#tab-curves .curve-sources button{white-space:normal}}
