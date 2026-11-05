@@ -52,6 +52,57 @@ export function curveSearchTerms(products,{keyword=''}={}){
  return [...new Set(sorted.map(x=>normal(x)).filter(Boolean))].slice(0,18);
 }
 
+// Cada consulta de descoberta é derivada de um produto REAL da WeDrop,
+// não só do rótulo de categoria. A ordenação por subcategoria evita que as
+// primeiras 40 buscas sejam todas, por exemplo, de utensílios.
+const genericColors=new Set([
+ 'preto','preta','branco','branca','azul','rosa','roxo','roxa',
+ 'vermelho','vermelha','verde','amarelo','amarela','cinza','bege',
+ 'colorido','colorida','sortida','sortido','multicolorido'
+]);
+export function curveSkuSearchQuery(name){
+ const title=String(name||'').slice(0,240);
+ const tokens=words(title).filter(token=>!genericColors.has(token));
+ // Ao buscar, preferir tipo e características da própria SKU.
+ const head=tokens.filter(x=>!(/^\d+$/.test(x))).slice(0,3);
+ const measure=normal(title).match(/\b\d{1,5}\s*(?:ml|litros|litro|l|cm|w)\b/);
+ if(measure&&!head.some(t=>t===measure[0]))head.push(measure[0]);
+ return head.join(' ').slice(0,70);
+}
+export function curveSkuSearchPlan(catalog,{keyword=''}={}){
+ const term=normal(keyword).slice(0,70),buckets=new Map();
+ for(const row of catalog){
+  const name=String(row.product_data?.name||'');
+  const sku=String(row.supplier_sku||'').trim();
+  if(!sku||!name||!available(row.product_data?.rawAvailability))continue;
+  if(term&&!normal(name+' '+row.product_data?.category).includes(term))continue;
+  const query=curveSkuSearchQuery(name);
+  if(!query||query.split(' ').length<2)continue;
+  const bucket=String(row.product_data?.category||'Sem categoria');
+  if(!buckets.has(bucket))buckets.set(bucket,[]);
+  buckets.get(bucket).push({query,sku,name,bucket});
+ }
+ // Distribui a pesquisa pela categoria WeDrop real (ex. Cozinha possui
+ // panelas, utensílios, potes e garrafas), sem escolher apenas os primeiros.
+ const groups=[...buckets].sort((a,b)=>a[0].localeCompare(b[0],'pt-BR'))
+  .map(([,rows])=>rows.sort((a,b)=>a.sku.localeCompare(b.sku)));
+ const plan=[],lookup=new Map();
+ let remaining=groups.reduce((count,group)=>count+group.length,0),cursor=0;
+ while(remaining>0){
+  for(const group of groups){
+   if(cursor>=group.length)continue;
+   const entry=group[cursor],key=normal(entry.query);
+   if(!lookup.has(key)){
+    const task={query:entry.query,skus:[entry.sku],category:entry.bucket};
+    lookup.set(key,task);plan.push(task);
+   }else lookup.get(key).skus.push(entry.sku);
+   remaining--;
+  }
+  cursor++;
+ }
+ return plan;
+}
+
 // A página oficial do comprador usa "Em Destaque" (sortBy=sales).
 // A API Afiliados é somente uma amostra, nunca o mesmo ranking da vitrine.
 export function officialFeaturedSearchUrl(keyword){
@@ -330,19 +381,24 @@ async function offersQuery(keyword,page){
  }
 }
 async function fetchOffers(terms){
- const tasks=[{term:'',page:1},{term:'',page:2},
-  ...terms.map(term=>({term,page:1}))];
+ // Não faz consultas sem palavra-chave: a busca é sempre iniciada pela
+ // descrição da SKU WeDrop, mantendo os resultados vinculados à categoria.
+ const tasks=[...new Set(terms.map(x=>String(x||'').trim()).filter(Boolean))];
  const offers=[],errors=[],queried=[];
- let cursor=0;
+ let cursor=0,limited=false;
  await Promise.all(Array.from({length:4},async()=>{
-  while(cursor<tasks.length){
-   const job=tasks[cursor++];
+  while(cursor<tasks.length&&!limited){
+   const term=tasks[cursor++];
    try{
-    const results=await offersQuery(job.term,job.page);
-    queried.push(job.term||'Top performance');
+    const results=await offersQuery(term,1);
+    queried.push(term);
     offers.push(...results);
-   }catch(error){errors.push((job.term||'Top performance')+': '+
-    String(error.message||error).slice(0,120));}
+   }catch(error){
+    const detail=String(error.message||error).slice(0,140);
+    errors.push(term+': '+detail);
+    if(/rate.limit|limit exceeded|too many|429|unauthorized|forbidden|credential|signature/i.test(detail))
+     limited=true;
+   }
   }
  }));
  const unique=new Map();
@@ -350,8 +406,10 @@ async function fetchOffers(terms){
   if(!validId(item.itemId)||!validId(item.shopId))continue;
   unique.set(String(item.shopId)+':'+String(item.itemId),item);
  }
- return {offers:[...unique.values()],queries:queried,errors:errors.slice(0,7)};
+ return {offers:[...unique.values()],queries:queried,errors:errors.slice(0,12),
+  attempted:cursor,limited};
 }
+
 const cache=new Map();
 export async function researchCurveAB(shopId,{limit=10,curve='ALL',category='Todos',keyword='',refresh=false}={}){
  const desired=Number(limit),chosen=String(curve||'ALL').toUpperCase();
