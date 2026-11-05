@@ -53,12 +53,12 @@ test('WS20357 aplica medidas 183 cm comprimento e 69 cm largura cadastradas manu
 test('prompt 03 informa somente medidas confirmadas pela SKU e fotografa sem numeros inventados',()=>{
  const x=createChatGptPrompts({sku:'2392',title:'Bicicleta Infantil Moto Cross Rosa',
   supplierSourceText:evidence});
- assert.match(x.prompts[2],/ARTE FINAL PRONTA/);
+ assert.match(x.prompts[2],/DIMENSÕES WEDROP CONFERIDAS PARA A ARTE FINAL/);
  assert.match(x.prompts[2],/ALTURA: 75 cm; LARGURA: 63 cm; COMPRIMENTO: 117 cm/);
  assert.deepEqual(x.confirmedDimensions.measurements.map(x=>x.value),['75 cm','63 cm','117 cm']);
  assert.doesNotMatch(x.prompts[2],/48 cm|58 cm|68 cm|72 cm|35 cm/);
 });
-test('imagem 03 importa arte pronta sem sobrepor outra camada de medidas',()=>{
+test('imagem 03 aplica medidas WeDrop na foto NOVA do ChatGPT antes de importar',()=>{
  const app=readFileSync(new URL('../public/app.js',import.meta.url),'utf8');
  const card=readFileSync(new URL('../public/specificationCard.js',import.meta.url),'utf8');
  const img=app.indexOf("if(Number(m.slot)===3)");
@@ -66,8 +66,8 @@ test('imagem 03 importa arte pronta sem sobrepor outra camada de medidas',()=>{
  assert(img>0&&hash>img);
  const block=app.slice(img,hash);
  assert.match(block,/optimizerVerifiedDimensionSpec\(w\)/);
- assert.doesNotMatch(block,/addConfirmedSpecificationCard/);
- assert.match(block,/SEM sobrepor novas etiquetas/);
+ assert.match(block,/addConfirmedSpecificationCard\(prepared.blob,spec\)/);
+ assert.match(block,/chatgpt-auto-03-cotas-wedrop.png/);
  const fresh=app.slice(app.indexOf('async function optimizerFreshSavedWeDrop(w)'),app.indexOf('async function optimizerChatgptRender(w)'));
  assert.match(fresh,/api\/shopee\/optimizer\/workflow\/source\?/);
  assert.match(fresh,/sourceEvidenceSku:source\.sku/);
@@ -228,9 +228,9 @@ test('imagem 03 coloca os números WeDrop no começo do prompt, antes da descri�
   supplierSourceText:'Dimensões: 10 x 10 x 14',confirmedDimensionSpec:confirmed});
  const paragraphs=result.prompts[2].split('\n\n');
  assert.match(paragraphs[0],/ETAPA ATUAL EXCLUSIVA — IMAGEM 03\/09/);
- assert.match(paragraphs[1],/IMAGEM 03\/09 — MEDIDAS EXATAS WEDROP/);
+ assert.match(paragraphs[1],/DIMENSÕES WEDROP CONFERIDAS PARA A ARTE FINAL/);
  assert.match(paragraphs[1],/ALTURA: 10 cm; LARGURA: 10 cm; COMPRIMENTO: 14 cm/);
- assert.match(result.prompts[2],/OBRIGATÓRIO: ENTREGAR A IMAGEM 03 PRONTA/);
+ assert.match(result.prompts[2],/FOTOGRAFIA NOVA OBRIGATÓRIA/);
  assert.doesNotMatch(result.prompts[2],/\\n\\n/,'prompt não deve conter barra+n literal');
 });
 
