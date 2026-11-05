@@ -71,7 +71,7 @@ test('imagem 03 importa arte pronta sem sobrepor outra camada de medidas',()=>{
  const fresh=app.slice(app.indexOf('async function optimizerFreshSavedWeDrop(w)'),app.indexOf('async function optimizerChatgptRender(w)'));
  assert.match(fresh,/api\/shopee\/optimizer\/workflow\/source\?/);
  assert.match(fresh,/sourceEvidenceSku:source\.sku/);
- assert.match(fresh,/sourceSaved:Boolean\(source\.updatedAt\)/);
+ assert.match(fresh,/sourceSaved:true/);
  assert.match(fresh,/supplierMatchedBy:w\.verifiedWeDropMatchedBy\|\|w\.supplierProduct\?\.matchedBy/);
  assert.match(card,/confirmedProductDimensionsFromWeDrop\(sourceText\)/);
  assert.doesNotMatch(card,/MEDIDAS DO CAMINHÃO|CARACTERÍSTICAS CONFIRMADAS|Material: plástico/);
@@ -217,4 +217,44 @@ test('Imagem 03 da SKU 1736 recupera dimensões catalogadas sem depender da fich
  assert.match(app,/const measures=verifiedCatalog\?source\.supplierMeasurements:null/);
  assert.match(app,/w\.verifiedWeDropMeasurements/);
  assert.match(app,/confirmedDimensionSpec,/);
+});
+
+test('imagem 03 coloca os números WeDrop no começo do prompt, antes da descrição da cena',()=>{
+ const confirmed=confirmedSpecCard({sku:'1736',sourceEvidenceSku:'1736',
+  sourceSaved:true,supplierMatchedBy:'exact-sku',
+  catalogMeasurements:{heightCm:10,widthCm:10,lengthCm:14},
+  sourceText:'Dimensões: 10 x 10 x 14'});
+ const result=createChatGptPrompts({title:'Processador de Alimentos Manual 500ml',
+  supplierSourceText:'Dimensões: 10 x 10 x 14',confirmedDimensionSpec:confirmed});
+ const first=result.prompts[2].split('\\n\\n')[0];
+ assert.match(first,/IMAGEM 03\/09 — MEDIDAS EXATAS WEDROP/);
+ assert.match(first,/ALTURA: 10 cm; LARGURA: 10 cm; COMPRIMENTO: 14 cm/);
+ assert.match(result.prompts[2],/OBRIGATÓRIO: ENTREGAR A IMAGEM 03 PRONTA/);
+ assert.doesNotMatch(result.prompts[2],/\\\\n\\\\n/,'prompt não deve conter barra+n literal');
+});
+
+test('geração do slot 03 verifica as cotas da SKU antes de enviar comando à Ponte',()=>{
+ const app=readFileSync(new URL('../public/app.js',import.meta.url),'utf8');
+ const make=app.slice(app.indexOf('async function optimizerChatgptMakeBrief('),
+  app.indexOf('async function optimizerFreshSavedWeDrop('));
+ assert.match(make,/const trustedText=String\(evidence\?\.sku/);
+ assert.doesNotMatch(make,/Boolean\(evidence\?\.updatedAt\)\?String\(evidence\.sourceText/);
+ const assertPrompt=app.slice(app.indexOf('async function optimizerRequireThirdChatgptDimensions('),
+  app.indexOf('async function optimizerChatgptRender('));
+ assert.match(assertPrompt,/optimizerVerifiedDimensionSpec\(w\)/);
+ assert.match(assertPrompt,/measures\.length<2/);
+ assert.match(assertPrompt,/expected!==embedded/);
+ assert.match(assertPrompt,/brief\?\.prompts\?\.\[2\]/);
+ assert.match(assertPrompt,/Nenhuma imagem sem cotas será gerada/);
+ const single=app.slice(app.indexOf('async function optimizerCommercialRequestChatgptSlot('),
+  app.indexOf('async function optimizerChatgptCopyAll('));
+ assert.match(single,/if\(slot===3\)\{\s*const measurements=await optimizerRequireThirdChatgptDimensions\(w,brief\)/);
+ const continu=app.slice(app.indexOf('async function optimizerChatgptContinueFromServer('),
+  app.indexOf('globalThis.__RA_SHOPEE_RESUME_BRIDGE'));
+ assert.match(continu,/if\(missing\.includes\(3\)\)/);
+ assert.match(continu,/await optimizerRequireThirdChatgptDimensions\(w,brief\)/);
+ const card=app.slice(app.indexOf('let importThirdButton=null,thirdFallbackButton=null'),
+  app.indexOf('let measureButton=null',app.indexOf('let importThirdButton=null,thirdFallbackButton=null')));
+ assert.match(card,/thirdFallbackButton=fallback/);
+ assert.doesNotMatch(card,/actions\.append\(fallback\)/);
 });
