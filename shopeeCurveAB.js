@@ -3,7 +3,8 @@
 // como "30 dias" um contador de vendas acumuladas sem histórico real.
 import crypto from 'node:crypto';
 import {readWeDropCatalogProducts,readWeDropCosts} from './wedropCosts.js';
-import {comparableTitle} from './shopeeMarketResearch.js';
+import {comparableTitle,evaluateMarketOffers} from './shopeeMarketResearch.js';
+import {categoryMatches} from './shopeeKitBuilder.js';
 
 const ENDPOINT='https://open-api.affiliate.shopee.com.br/graphql';
 const env=name=>String(process.env[name]||'').trim();
@@ -49,6 +50,101 @@ export function curveSearchTerms(products,{keyword=''}={}){
  }
  const sorted=[...count].sort((a,b)=>b[1]-a[1]).map(([word])=>word);
  return [...new Set(sorted.map(x=>normal(x)).filter(Boolean))].slice(0,18);
+}
+
+// A página oficial do comprador usa "Em Destaque" (sortBy=sales).
+// A API Afiliados é somente uma amostra, nunca o mesmo ranking da vitrine.
+export function officialFeaturedSearchUrl(keyword){
+ const term=String(keyword||'').trim().slice(0,100);
+ const params=new URLSearchParams({keyword:term,page:'0',sortBy:'sales'});
+ return 'https://shopee.com.br/search?'+params.toString();
+}
+const pretty=text=>String(text||'').replace(/\s+/g,' ').trim();
+const meaningful=(input)=>words(input).filter(w=>w.length>2);
+function verifiedKeywordEvidence(name,offers=[]){
+ const allowed=new Set(meaningful(name));
+ const counts=new Map(),names=new Map();
+ for(const offer of offers){
+  // Cada anúncio contribui uma única vez por expressão.
+  const seq=meaningful(offer.productName).filter(x=>allowed.has(x));
+  const phrases=new Set();
+  for(let i=0;i<seq.length;i++){
+   const w=seq[i];
+   if(w.length>=4)phrases.add(w);
+   if(i+1<seq.length&&seq[i+1]!==w)
+    phrases.add(w+' '+seq[i+1]);
+  }
+  for(const term of phrases){
+   counts.set(term,(counts.get(term)||0)+1);
+   if(!names.has(term))names.set(term,term);
+  }
+ }
+ const base=meaningful(name);
+ const options=[...counts.entries()].sort((a,b)=>
+   b[1]-a[1]||b[0].split(' ').length-a[0].split(' ').length||a[0].localeCompare(b[0]));
+ const chosen=[],seen=new Set();
+ const add=(term,count)=>{
+  if(!term||seen.has(term))return;
+  seen.add(term);
+  chosen.push({term,mentions:count,source:count?
+   'títulos de ofertas comparáveis (não é volume de busca)':
+   'termo da ficha WeDrop; demanda não aferida',
+   searchUrl:officialFeaturedSearchUrl(term)});
+ };
+ for(const [term,count] of options){
+  if(term.split(' ').length<2)continue;
+  add(term,count);
+  if(chosen.length>=5)break;
+ }
+ for(const [term,count] of options){
+  if(chosen.length>=5)break;
+  add(term,count);
+ }
+ if(chosen.length<5){
+  for(let i=0;i<base.length&&chosen.length<5;i++){
+   add(base[i],0);
+   if(i+1<base.length)add(base[i]+' '+base[i+1],0);
+  }
+ }
+ return chosen.slice(0,5);
+}
+export function seoTitleFromEvidence(productName,keywords=[],sku=''){
+ // O anúncio proposto pode usar APENAS palavras verificadas na própria
+ // ficha comercial WeDrop: títulos concorrentes não provam especificações.
+ const skuEsc=String(sku||'').replace(/[.*+?^$\x7b\x7d()|[\]\\]/g,'\\export function matchCurveOffers(');
+ let name=pretty(productName).replace(/\\bSKU\\s*[:#-]?\\s*[A-Z0-9.-]+/gi,'');
+ if(skuEsc)name=name.replace(new RegExp('\\b'+skuEsc+'\\b','gi'),'').trim();
+ name=name.replace(/\\bKIT-[A-Z0-9-]+\\b/gi,'').replace(/\s+/g,' ').trim();
+ // Prefere os termos compostos recorrentes desde que já existam na ficha.
+ const normalized=normal(name);
+ const lead=keywords.filter(x=>x.mentions>0&&x.term.includes(' ')&&
+  normalized.includes(x.term)).slice(0,2).map(x=>x.term);
+ const sections=[...lead,name].filter(Boolean);
+ let title=sections.join(' | ');
+ if(title.length>117)title=name.slice(0,117).trim().replace(/[,;|\- ]+$/,'');
+ if(!title)return '';
+ if(title.length<=118)title+=' ✨';
+ return title.slice(0,120);
+}
+function addMarketAnalysis(row,offers,checkedAt){
+ const compare=evaluateMarketOffers({
+  title:row.name,offers,ownShopId:'0',ownItemId:'0',queriedAt:checkedAt});
+ const keywords=verifiedKeywordEvidence(row.name,offers);
+ const strong=compare.verified===true&&Number(compare.count)>=2;
+ return {...row,
+  avgCompetitorPrice:strong?compare.average:null,
+  competitorOfferCount:strong?compare.count:compare.count,
+  competitorOffers:compare.sample.map(o=>({
+   title:o.title,shopId:o.shopId,itemId:o.itemId,
+   price:o.price,url:o.url,checkedAt:o.checkedAt})),
+  priceEvidence:strong?
+   'Média aritmética de '+compare.count+' anúncios comparáveis de lojas diferentes':
+   'Média indisponível: menos de 2 lojas independentes comparáveis nesta amostra',
+  keywords,
+  seoTitle:seoTitleFromEvidence(row.name,keywords,row.sku),
+  seoMethod:'Termos recorrentes em títulos de anúncios equivalentes; sem medição oficial de buscas',
+  featuredSearchUrl:officialFeaturedSearchUrl(row.name.split(/[,|-]/)[0]||row.name)
+ };
 }
 
 export function matchCurveOffers({catalog=[],offers=[],costs=[],baseline=new Map(),today=new Date().toISOString().slice(0,10)}={}){
