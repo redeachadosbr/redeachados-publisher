@@ -2971,9 +2971,14 @@ app.post('/api/shopee/optimizer/execution/prepare',mustLogin,requireWeDropAdmin,
     }
     // Marca proveniente da WeDrop precisa coincidir com a categoria mesmo que a
     // ficha técnica não esteja aprovada; nunca publicar com Marca: Novo por engano.
-    const supplierForBrand=['all','technical'].includes(selectedStage)?
+    const supplierForBrand=['all','technical','seo'].includes(selectedStage)?
      await readWeDropProduct(auth.shopId,kitLink?
       {sku:kitLink.mainSku}:{sku,itemId,modelId}):null;
+    // A publicação deve usar a MESMA prova de medidas aceita na revisão SEO.
+    // Reconsultar o vínculo desta SKU; nunca aceitar um nome enviado pelo cliente.
+    const singleProductName=!kitLink?.kitSku&&
+      ['exact-sku','reviewed-link'].includes(String(supplierForBrand?.matchedBy||''))?
+      String(supplierForBrand.product_data?.name||''):'';
     if(['all','technical'].includes(selectedStage))
       assertShopeeSupplierBrand({record,attributes:reviewState.stages?.technical?.reviewed?
         reviewState.attributes||[]:[],supplier:supplierForBrand});
@@ -2982,7 +2987,7 @@ app.post('/api/shopee/optimizer/execution/prepare',mustLogin,requireWeDropAdmin,
       await hydrateCategoryChoices(record,reviewState.attributes||[],cfg,auth,live);
     }
     const inputs={shopId:auth.shopId,itemId,modelId,sku,record,
-      review:reviewState,live,manualVideo,verifiedVideoSha256,manualImages,selectedStage,allowDiscountOnly,modelVariations,kitDiscount:kitDiscountPlan};
+      review:reviewState,live,singleProductName,manualVideo,verifiedVideoSha256,manualImages,selectedStage,allowDiscountOnly,modelVariations,kitDiscount:kitDiscountPlan};
     let plan=compileShopeeExecutionPlan({...inputs,omitFiscal:false});
     if(discountPreparationWarning)plan.warnings.push(discountPreparationWarning);
     if(['all','technical'].includes(selectedStage)&&reviewState.stages?.technical?.reviewed&&
@@ -3442,7 +3447,7 @@ async function readLiveRootExecution(req){
       Math.round(Number(liveDiscount.gross)*100)===Math.round(Number(approvedKitDiscount.gross)*100));
    }catch(error){discountDiagnostic='Promoção não conferida pela Shopee: '+
     String(error.message||error).slice(0,130);}
-  }else if(!live.has_model&&/^\\d{1,18}$/.test(String(req.query?.campaign_id||'').trim())){
+  }else if(!live.has_model&&/^\d{1,18}$/.test(String(req.query?.campaign_id||'').trim())){
    // Mesmo quando uma nova prévia substitui o histórico do último job,
    // conferir a campanha informada nesta SKU com GET oficial Shopee.
    // A prova é preço bruto + preço promocional conforme cotação salva;
@@ -3707,6 +3712,9 @@ app.post('/api/shopee/optimizer/execution/execute',mustLogin,requireWeDropAdmin,
   const live=await shopeeLiveEditableItem(cfg,auth,itemId);
   const supplierForBrand=await readWeDropProduct(auth.shopId,linkedKit?
     {sku:linkedKit.mainSku}:{sku,itemId,modelId});
+  const singleProductName=!linkedKit?.kitSku&&
+    ['exact-sku','reviewed-link'].includes(String(supplierForBrand?.matchedBy||''))?
+    String(supplierForBrand.product_data?.name||''):'';
   if(['all','technical'].includes(plan.selectedStage||'all'))
     assertShopeeSupplierBrand({record,attributes:reviewState.stages?.technical?.reviewed?
       reviewState.attributes||[]:[],supplier:supplierForBrand});
@@ -3718,7 +3726,7 @@ app.post('/api/shopee/optimizer/execution/execute',mustLogin,requireWeDropAdmin,
   const manualVideo=plan.video?await getShopeeManualVideo(auth.shopId,itemId,modelId,sku):null;
   const manualImages=plan.images?.length?await readPreparedImages(auth.shopId,itemId,modelId,sku):[];
   const fresh=compileShopeeExecutionPlan({shopId:auth.shopId,itemId,modelId,sku,record,
-   review:reviewState,live,manualVideo,manualImages,
+   review:reviewState,live,singleProductName,manualVideo,manualImages,
    deferUnconfirmedFiscal:plan.fiscalDeferred===true,
    omitFiscal:false,selectedStage:plan.selectedStage||'all',
    allowDiscountOnly:plan.discountOnly===true,

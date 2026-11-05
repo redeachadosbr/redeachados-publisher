@@ -60,7 +60,7 @@
   if(!Number.isFinite(n))return 0;
   return Math.min(100,Math.max(0,Math.round(n)));
  }
- function derive({progress={},job=null,eventTitle='',eventState='',history=[]}={}){
+ function derive({progress={},job=null,rootAudit=null,eventTitle='',eventState='',history=[]}={}){
   const priceMismatch=job?.state==='uncertain'&&
     String(job?.result?.phase||'')==='discount_ready'&&
     !Number(job?.result?.discountPriceStartedAt||0)&&
@@ -75,7 +75,7 @@
   const steps=Array.isArray(progress?.steps)?progress.steps:[];
   const byId=id=>steps.find(x=>x.id===id);
   const states=DEFINITIONS.map(d=>{
-    if(d.id==='final')return verified?'done':
+    if(d.id==='final')return rootAudit?.complete===true?'done':
       job?.state==='uncertain'&&!priceMismatch?'checking':'waiting';
     const step=byId(d.id);
     if(!step)return 'waiting';
@@ -99,10 +99,33 @@
   if(failed&&active>=0&&states[active]!=='done')states[active]='error';
   if(job?.state==='uncertain'&&active>=0&&states[active]!=='done')states[active]=priceMismatch?'error':'checking';
   if(videoTaskError){active=1;states[1]='error';}
-  if(verified)active=8;
+  // O job pode conter só uma etapa. A leitura do anúncio prevalece sobre
+  // checks antigos e é a única prova de conclusão das nove etapas.
+  const audited=Array.isArray(rootAudit?.stages)?rootAudit.stages:[];
+  const pending=audited.filter(s=>s.id!=='final'&&!['confirmed','not_applicable'].includes(s.status));
+  const reasons=DEFINITIONS.map(d=>audited.find(s=>s.id===d.id)?.reason||byId(d.id)?.reason||'');
+  for(let i=0;i<DEFINITIONS.length;i++){
+   const stage=audited.find(s=>s.id===DEFINITIONS[i].id);
+   if(!stage)continue;
+   if(stage.status==='confirmed')states[i]='done';
+   else if(stage.status==='not_applicable')states[i]='not_applicable';
+   else if(!['active','checking','staged','error'].includes(states[i]))states[i]='pending';
+  }
+  if(rootAudit?.complete!==true&&states[8]==='done')states[8]='waiting';
+  const attention=steps.find(s=>s.status==='attention');
+  if(!['running','uncertain'].includes(job?.state)){
+   const first=attention||pending[0];
+   if(first)active=DEFINITIONS.findIndex(d=>d.id===first.id);
+   else if(verified)active=8;
+  }
   const completed=states.filter(x=>x==='done').length;
+  const pendingDetail=pending.map(s=>s.label+': '+s.reason).join(' · ');
+  const blockedDetail=job?.state==='blocked'?String(progress.message||''):'';
   const title=videoTaskError?'Vídeo recusado pela Shopee — anúncio incompleto':
     videoRecovering?'Recuperando publicação do vídeo':
+    job?.state==='blocked'&&attention?attention.label+' pendente':
+    !['running','uncertain','failed'].includes(job?.state)&&pending.length?
+      'Pendências identificadas na Shopee':
     verified?'Execução deste plano confirmada':
     job?.state==='failed'?'Execução interrompida — pendências preservadas':
     priceMismatch?'Preço bruto divergente — desconto NÃO enviado':
@@ -117,9 +140,10 @@
     '. Vídeo pendente; etapas confirmadas permanecem preservadas.':
     priceMismatch?
     lastError+' Nenhum envio de preço ou desconto foi iniciado nesta etapa.':
-    failed?(lastError||serverMessage||'Consulte a pendência e continue sem repetir envios.'):
-    serverMessage||String(select('optimizerExecutionLiveDetail')?.textContent||'').trim()||'Aguardando confirmação oficial.',
-   states,completed,percent:normalizedPercent(progress,job),history,
+    blockedDetail||(!['running','uncertain','failed'].includes(job?.state)&&pendingDetail)||
+    (failed?(lastError||serverMessage||'Consulte a pendência e continue sem repetir envios.'):
+    serverMessage||String(select('optimizerExecutionLiveDetail')?.textContent||'').trim()||'Aguardando confirmação oficial.'),
+   states,reasons,completed,percent:normalizedPercent(progress,job),history,
    state:job?.state||'prepared',
    mediaInfo:progress?.imagesTotal>0?
     String(progress.imagesUploaded||0)+'/'+progress.imagesTotal+' imagens na mídia · '+
@@ -165,7 +189,8 @@
   nodes.forEach((node,i)=>{
    const st=state.states[i];
    node.className='ra-phase is-'+st+(i===state.active?' is-current':'');
-   const text=st==='done'?'Etapa verificada':st==='staged'?'Enviado à mídia, ainda não publicado':
+    const text=st==='done'?'Etapa verificada':st==='not_applicable'?'Não aplicável':
+    st==='pending'?'Pendente: '+state.reasons[i]:st==='staged'?'Enviado à mídia, ainda não publicado':
     st==='checking'?'Aguardando confirmação':st==='error'?'Verificar erro':st==='active'?'Em andamento':'Ainda não iniciado';
    node.setAttribute('aria-label',(i+1)+'. '+DEFINITIONS[i].label+' — '+text);
    node.title=text;

@@ -72,7 +72,7 @@ export function shopeeExecutionProgress(job){
  const hasVariants=Boolean(plan.modelVariations);
  const variantsDone=hasVariants&&result.variation?.status==='verified';
  const fiscalIncluded=Boolean(plan.finalFiscal||proposed.tax_info);
- const fiscalDone=fiscalIncluded&&!fiscalPartial&&
+ const fiscalDone=confirmedStages.fiscal===true||fiscalIncluded&&!fiscalPartial&&
   (result.fiscal?.status==='verified'||(verified&&!plan.finalFiscal));
  const discountDone=discountIncluded&&result.discount?.status==='verified';
  const activeCommercial=['updating','verifying','images_upload','video_upload','video_processing'].includes(phase);
@@ -95,18 +95,18 @@ export function shopeeExecutionProgress(job){
  const resumable=state==='prepared'&&plan.canExecute===true&&hasSavedProgress;
  const awaitingAuthorization=state==='prepared'&&!hasSavedProgress;
  const needs={
-  images:images>0,
-  video,
+  images:images>0||confirmedStages.images===true,
+  video:video||confirmedStages.video===true,
   seo:Object.hasOwn(proposed,'item_name')||confirmedStages.seo===true,
   description:Object.hasOwn(proposed,'description')||confirmedStages.description===true,
   technical:Object.hasOwn(proposed,'attribute_list')||confirmedStages.technical===true,
   variants:hasVariants,
-  fiscal:fiscalIncluded,
+  fiscal:fiscalIncluded||confirmedStages.fiscal===true,
   discount:discountIncluded
  };
  const done={
-  images:needs.images&&imagesConfirmed,
-  video:needs.video&&videoConfirmed,
+  images:confirmedStages.images===true||needs.images&&imagesConfirmed,
+  video:confirmedStages.video===true||needs.video&&videoConfirmed,
   seo:needs.seo&&(confirmedStages.seo===true||contentConfirmed),
   description:needs.description&&(confirmedStages.description===true||contentConfirmed),
   technical:needs.technical&&(confirmedStages.technical===true||contentConfirmed),
@@ -125,8 +125,10 @@ export function shopeeExecutionProgress(job){
   discount:needs.discount&&activeDiscount
  };
  const steps=SHOPEE_MATRIX_8_STAGES.map(({id,label})=>{
+  const deferred=arr(plan.deferredStages).find(x=>x.stage===id);
   let status;
-  if(id==='discount'&&fullWorkflow&&plan.selectedStage!=='media_fiscal'&&!discountIncluded)
+  if(deferred&&!done[id])status='attention';
+  else if(id==='discount'&&fullWorkflow&&plan.selectedStage!=='media_fiscal'&&!discountIncluded)
     status=state==='prepared'?'authorization':'review';
   else if(!needs[id])status='skipped';
   else if(done[id])status='done';
@@ -139,7 +141,7 @@ export function shopeeExecutionProgress(job){
    status=failure?'attention':'checking';
   else status='waiting';
   if(fiscalPartial&&id==='fiscal')status='attention';
-  return {id,label,status};
+  return {id,label,status,...(deferred?{reason:String(deferred.reason||'')}: {})};
  });
  // A barra acompanha marcos REAIS: upload/aceite/validação. O progresso
  // operacional jamais é apresentado como percentual publicado na Shopee.
@@ -228,6 +230,10 @@ export function shopeeExecutionProgress(job){
     imagesConfirmed?'Imagens confirmadas no anúncio':uploaded?uploaded+' imagens na biblioteca da Shopee':null,
     videoConfirmed?'Vídeo confirmado no anúncio':readyVideo?'Vídeo processado na mídia':null,
     'Nenhuma publicação foi iniciada. Clique em Executar na Shopee após conferir a prévia e o desconto.'].filter(Boolean).join(' · '):
+  state==='blocked'?
+   [...arr(plan.blocked),...arr(plan.deferredStages).map(x=>
+    (SHOPEE_MATRIX_8_STAGES.find(s=>s.id===x.stage)?.label||x.stage)+': '+x.reason)]
+    .filter(Boolean).join(' · ')||'Sem novas alterações aprovadas para enviar. Consulte a conferência das etapas na Shopee.':
   titles[phase]||title;
  return {
   state,phase,title,percent,progressMeaning:'andamento_operacional_nao_publicacao',

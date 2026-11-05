@@ -66,7 +66,7 @@ export function shouldAttachCommercialDiscount(plan,{hasSignedApproval=false,lin
  return !isShopeeMatrixIndependentPlan(plan)||hasSignedApproval===true;
 }
 
-export function compileShopeeExecutionPlan({shopId,itemId,modelId,sku,record,review,live,manualVideo=null,verifiedVideoSha256=null,manualImages=[],deferUnconfirmedFiscal=false,omitFiscal=false,selectedStage='all',allowDiscountOnly=false,modelVariations=null,kitDiscount=null}){
+export function compileShopeeExecutionPlan({shopId,itemId,modelId,sku,record,review,live,singleProductName='',manualVideo=null,verifiedVideoSha256=null,manualImages=[],deferUnconfirmedFiscal=false,omitFiscal=false,selectedStage='all',allowDiscountOnly=false,modelVariations=null,kitDiscount=null}){
   selectedStage=normalizeShopeeExecutionStage(selectedStage);
   const selected=name=>selectedStage==='all'||selectedStage===name||selectedStage==='remaining'&&name==='fiscal'||selectedStage==='media_fiscal'&&['images','video','fiscal'].includes(name);
   const wholeWorkflow=['all','remaining','media_fiscal'].includes(selectedStage);
@@ -96,7 +96,8 @@ export function compileShopeeExecutionPlan({shopId,itemId,modelId,sku,record,rev
       validateContentRules({title},{
        allowShortKitTitle:Boolean(state.kitOptimization?.kitSku&&
         String(state.kitOptimization.mainSku)===String(sku)),
-       kitProductNames:state.kitOptimization?.componentNames||[]
+       kitProductNames:state.kitOptimization?.componentNames||[],
+       singleProductName:state.kitOptimization?.kitSku?'':singleProductName
       });
       if(title!==currentTitle)proposed.item_name=title;
     }catch(e){contentPending('seo',e.message);}

@@ -48,6 +48,14 @@ export function auditRootShopeeExecution({
  add('seo',Boolean(title)&&
   title===String(live.item_name||'').normalize('NFC').replace(/\s+/g,' ').trim(),
   reviewed('seo')?'Título publicado não corresponde ao título aprovado':'Título SEO ainda não aprovado');
+ const titleStage=out.at(-1);
+ titleStage.currentValue=String(live.item_name||'');
+ titleStage.expectedValue=title;
+ titleStage.retryable=titleStage.status==='pending'&&reviewed('seo')&&Boolean(title);
+ if(titleStage.status==='pending'){
+  const deferred=job?.plan?.deferredStages?.find(x=>x.stage==='seo');
+  if(deferred?.reason)titleStage.reason+=' · Última preparação: '+String(deferred.reason).slice(0,180);
+ }
  const description=String(review.draftDescription||'').replace(/\r\n?/g,'\n').trim();
  add('description',Boolean(description)&&
   description===String(live.description||'').replace(/\r\n?/g,'\n').trim(),

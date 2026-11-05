@@ -5674,7 +5674,7 @@ function optimizerMatrixIndependentPendingPlan(plan){
   !plan.modelVariations&&!plan.kitDiscount&&!plan.discountOnly&&!plan.commercialDiscount;
 }
 const optimizerMatrixStageNames=Object.freeze({
- item_name:'Título SEO',description:'Descrição',attribute_list:'Ficha técnica',
+ item_name:'Título SEO',seo:'Título SEO',description:'Descrição',attribute_list:'Ficha técnica',technical:'Ficha técnica',fiscal:'Dados fiscais',
  images:'Imagens',video:'Vídeo',tax_info:'Dados fiscais',
  model_variations:'Variações',discount:'Desconto',kit_discount:'Desconto',
  kit_gross_price:'Preço bruto do kit'
@@ -6388,6 +6388,7 @@ function optimizerExecutionVisualPaint(progress=null,job=null){
  globalThis.RAExecutionVisual?.render?.({
   identity:key,progress:progress||optimizerExecProgress||{},
   job:job||optimizerExecJob||null,
+  rootAudit:optimizerRootAuditCache.get(key)?.audit||null,
   eventTitle:shownTitle,
   eventState:liveMatches?String(phase?.dataset?.state||''):'',
   history:(progress||optimizerExecProgress)?.events?.length?
@@ -6561,10 +6562,14 @@ async function optimizerOneClickExecute(){
    p=optimizerExecPlan;
   }
   if(!p?.canExecute){
-   optimizerExecutionLiveStep('Prévia não aprovada',
-    (p?.blocked||[]).slice(0,3).join(' · ')||'A prévia precisa ser validada antes de enviar.', 'warning');
-   optimizerExecNotice('Publicação não iniciada. '+(p?.blocked||[]).slice(0,3).join(' · ')+
-    ' Revise somente os dados não preparados. As etapas salvas foram preservadas.','warning');
+   const reasons=[optimizerExecPrepareError,...(p?.blocked||[]),
+    ...(p?.deferredStages||[]).map(s=>(optimizerMatrixStageNames[s.stage]||s.stage)+': '+s.reason)]
+    .filter(Boolean);
+   const reason=reasons.join(' · ')||'Nenhuma alteração aprovada para enviar. Consulte as pendências da conferência Shopee.';
+   optimizerExecutionLiveStep('Pendências identificadas para executar',reason,'warning');
+   optimizerExecNotice('Publicação não iniciada. '+reason+
+    ' As etapas já confirmadas foram preservadas.','warning');
+   void optimizerRootAuditRefresh(true);
    return;
   }
   if((!optimizerMatrixIndependentPendingPlan(p)||discountOutstanding)&&
@@ -7261,6 +7266,15 @@ function optimizerRootAuditRender(audit){
   if(['failed','uncertain'].includes(stage.status))
    state.style.color='#a53d2b';
   row.append(state);
+  if(stage.id==='seo'&&stage.status!=='confirmed'){
+   for(const [label,value] of [['Na Shopee',stage.currentValue],['Título aprovado',stage.expectedValue]]){
+    if(!value)continue;
+    const text=document.createElement('small');
+    text.style.cssText='display:block;margin-top:7px;line-height:1.45;color:#334b67';
+    text.textContent=label+': '+value;
+    row.append(text);
+   }
+  }
   // Somente etapas NÃO confirmadas oferecem ação. A correção abre o editor
   // original; executar reconsulta o Item ID e envia exclusivamente a etapa.
   if(!['confirmed','not_applicable'].includes(stage.status)&&stage.id!=='final'){
@@ -7344,13 +7358,18 @@ async function optimizerRootAuditRefresh(force=false){
  if(!force&&cached&&Date.now()-cached.at<45000){
   optimizerRootAuditRender(cached.audit);return;
  }
- if(optimizerRootAuditPending===key)return;
- optimizerRootAuditPending=key;
+ if(optimizerRootAuditPending?.key===key)return optimizerRootAuditPending.promise;
+ // Um clique de retomada deve aguardar a leitura em curso, nunca usar a
+ // auditoria antiga quando a consulta nova ainda não terminou ou falhou.
+ const request={key,promise:null};
+ optimizerRootAuditPending=request;
+ optimizerRootAuditCache.delete(key);
+ request.promise=(async()=>{
  try{
   const params=new URLSearchParams({sku:w.sku,item_id:w.itemId,model_id:w.modelId});
   const campaignId=String($('#optimizerExecDiscountCampaign')?.value||
     $('#optimizerFinalCampaignId')?.value||$('#discountPromotionId')?.value||'').trim();
-  if(/^\\d{1,18}$/.test(campaignId))params.set('campaign_id',campaignId);
+  if(/^\d{1,18}$/.test(campaignId))params.set('campaign_id',campaignId);
   const result=await json('/api/shopee/optimizer/execution/root-audit?'+params,{
    signal:AbortSignal.timeout(45000)});
   const current=optimizerWorkflowPlan;
@@ -7367,11 +7386,14 @@ async function optimizerRootAuditRefresh(force=false){
   // após a leitura oficial, em vez de depender do último job parcial.
   if(optimizerExecProgress&&optimizerExecJob)
    optimizerExecutionTrackerRender(optimizerExecProgress,optimizerExecJob);
+  else optimizerExecutionVisualPaint();
   if(result.audit?.complete===true)void optimizerKitAutoFinalizeFromAudit(current,result.audit);
  }catch(error){
   const panel=$('#optimizerRootAuditPanel');
   if(panel){panel.hidden=false;panel.textContent='Conferência geral indisponível: '+String(error.message||error)+'. Nenhuma etapa foi considerada concluída.';}
- }finally{if(optimizerRootAuditPending===key)optimizerRootAuditPending=null;}
+ }finally{if(optimizerRootAuditPending===request)optimizerRootAuditPending=null;}
+ })();
+ return request.promise;
 }
 let optimizerVideoAutoReadbackKey='',optimizerRootLastVerifiedKey='';
 function optimizerExecutionAutoRecoverPublishedVideo(job,w){

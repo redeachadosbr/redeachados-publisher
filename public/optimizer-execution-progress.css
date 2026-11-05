@@ -191,6 +191,9 @@ body.view-optimizer.optimizer-visual-mode .ra-visual-hero-icon{
  box-shadow:0 0 0 5px #fff2ef
 }
 .ra-phase.is-error .ra-phase-label{color:#a63d2f}
+.ra-phase.is-pending .ra-phase-icon{background:#fff7e8;color:#a8650a;border-color:#edcc91}
+.ra-phase.is-pending .ra-phase-label{color:#905909}
+.ra-phase.is-not_applicable .ra-phase-icon{background:#f2f4f7;color:#758296;border-style:dashed}
 .ra-visual-body{display:grid;grid-template-columns:minmax(0,1.65fr) minmax(245px,1fr);gap:16px;margin:0 8px}
 .ra-visual-current,.ra-visual-history{
  border-radius:16px;border:1px solid #d3e2f7;box-shadow:0 7px 17px #1d4a8d10;

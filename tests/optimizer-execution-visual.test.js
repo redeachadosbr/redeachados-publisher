@@ -68,7 +68,7 @@ test('verificação final de job parcial não finge que título, descrição ou 
  assert.equal(out.states[2],'waiting');
  assert.equal(out.states[3],'waiting');
  assert.equal(out.states[7],'waiting');
- assert.equal(out.states[8],'done');
+ assert.equal(out.states[8],'waiting');
  assert.ok(out.completed<9);
 });
 test('etapas reais Shopee são reconhecidas sem criar nova requisição',()=>{
