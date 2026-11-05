@@ -76,6 +76,8 @@ export function createChatGptPrompts({imageUrls=[],supplierSourceText='',confirm
  const finalMeasurements=axes.map(x=>x.label+': '+x.value);
  const length=axes.find(x=>x.axis==='comprimento'),width=axes.find(x=>x.axis==='largura');
  prompts[2]=[
+  'IMAGEM 03/09 — MEDIDAS EXATAS WEDROP DESTA SKU: '+(finalMeasurements.length?finalMeasurements.join('; '):'NÃO CONFIRMADAS — BLOQUEAR GERAÇÃO E SOLICITAR CONFERÊNCIA AO MANAGER')+'.',
+  'OBRIGATÓRIO: ENTREGAR A IMAGEM 03 PRONTA COM ESTAS MEDIDAS VISÍVEIS SOBRE A PRÓPRIA ARTE, SETAS DISCRETAS E COTAS LEGÍVEIS. NÃO ENTREGAR SOMENTE UMA FOTOGRAFIA LIMPA.',
   'ETAPA ATUAL EXCLUSIVA — IMAGEM 03/09. Arte de dimensões, sem reutilizar prompt de outra posição.',
   scenes[2].guide,
   imageScenePrompt({slot:3,title}),
@@ -96,7 +98,7 @@ export function createChatGptPrompts({imageUrls=[],supplierSourceText='',confirm
   'O produto deve continuar fiel à foto de referência (forma, quantidade, acabamento, proporções e acessórios), com ambiente real HD; nenhuma medida pode vir de fotos, de outra SKU ou de embalagem.',
   /pista|conjunto|kit/i.test(title)?'Se for conjunto, preserve os componentes reais e não atribua medidas do conjunto a um componente isolado.':'',
   'ORDEM FINAL OBRIGATÓRIA DA IMAGEM 03: ENTREGAR ARTE FINAL PRONTA, com todas as cotas confirmadas integradas visualmente e ZERO textos duplicados. NÃO entregue imagem limpa quando há dimensões confirmadas.'
- ].join('\\n\\n');
+ ].join('\n\n');
 
  return {batch:prompts[0],prompts,scenes,original,confirmedDimensions:dims};
 }
