@@ -111,7 +111,7 @@ function verifiedKeywordEvidence(name,offers=[]){
 export function seoTitleFromEvidence(productName,keywords=[],sku=''){
  // O anúncio proposto pode usar APENAS palavras verificadas na própria
  // ficha comercial WeDrop: títulos concorrentes não provam especificações.
- const skuEsc=String(sku||'').replace(/[.*+?^$\x7b\x7d()|[\]\\]/g,'\\export function matchCurveOffers(');
+ const skuEsc=String(sku||'').replace(/[^A-Za-z0-9]/g,'\\$&');
  let name=pretty(productName).replace(/\\bSKU\\s*[:#-]?\\s*[A-Z0-9.-]+/gi,'');
  if(skuEsc)name=name.replace(new RegExp('\\b'+skuEsc+'\\b','gi'),'').trim();
  name=name.replace(/\\bKIT-[A-Z0-9-]+\\b/gi,'').replace(/\s+/g,' ').trim();
