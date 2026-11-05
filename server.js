@@ -59,7 +59,7 @@ import {getSkuReview,searchSupplierSku,confirmSkuLink,undoSkuLink} from './wedro
 import {auditShopeeItem,validateSkuLookup} from './productOptimizer.js';
 import {buildStages,safeTitle,validateReview,titleHasUnhelpfulDimensions} from './shopeeOptimizationWorkflow.js';
 import {composeShopeeDescription,isCommercialDescription,isGenericShopeeDescription} from './shopeeDescriptionComposer.js';
-import {getWorkflowReview,saveWorkflowReview,mergeWorkflowTechnicalAutofill} from './shopeeOptimizationWorkflowStore.js';
+import {getWorkflowReview,saveWorkflowReview,mergeWorkflowTechnicalAutofill,persistWorkflowExecutionAudit} from './shopeeOptimizationWorkflowStore.js';
 import {compileShopeeExecutionPlan,confirmShopeeExecution,
   assertLiveShopeeUnchanged,verifyShopeeExecution,verifyShopeeFiscalExecution,normalizeShopeeExecutionStage,
   shopeeExecutionUnconfirmedFields,assessShopeeStableCommercialRecovery,
@@ -3544,11 +3544,46 @@ async function readLiveRootExecution(req){
    discountStage.reason=String(discountDiagnostic).slice(0,220);
   return {audit,discountDiagnostic,job,auth,itemId,modelId,sku};
 }
+// Checkpoint por SKU e Item ID: leitura estável após recarregar a página.
+// A impressão digital invalida a cache quando a revisão do anúncio muda.
+function rootAuditReviewSignature(review){
+ const {executionAuditCheckpoint,...approved}=review||{};
+ return crypto.createHash('sha256').update(JSON.stringify(approved)).digest('hex');
+}
 app.get('/api/shopee/optimizer/execution/root-audit',mustLogin,requireWeDropAdmin,async(req,res)=>{
  res.setHeader('Cache-Control','no-store');
  try{
+  const sku=validateSkuLookup(req.query?.sku),itemId=validItemId(req.query?.item_id);
+  const modelId=String(req.query?.model_id??'0');
+  if(!/^\\d{1,18}$/.test(modelId))throw Error('Modelo inválido.');
+  const {auth}=await getValidAuth(req);
+  const prior=await getWorkflowReview(auth.shopId,itemId,modelId);
+  const review=prior?.sku===sku?prior.review_state||{}:{};
+  const cp=review.executionAuditCheckpoint;
+  const current=await readShopeeExecution(auth.shopId,itemId,modelId);
+  const now=Date.now(),age=now-Date.parse(cp?.checkedAt||'');
+  const jobIdentity=String(current?.run_id||'')+'|'+String(current?.plan?.fingerprint||'');
+  const cachedIdentity=String(cp?.jobIdentity||'');
+  const recent=age>=0&&age<(current?.state==='running'?12000:45000);
+  if(cp?.sku===sku&&String(cp.itemId)===String(itemId)&&
+     String(cp.modelId)===modelId&&cachedIdentity===jobIdentity&&
+     cp.reviewSignature===rootAuditReviewSignature(review)&&recent&&
+     req.query?.refresh!=='1'){
+    return res.json({ok:true,audit:cp.audit,checkpoint:true,checkedAt:cp.checkedAt,
+      ...(cp.discountDiagnostic?{discountDiagnostic:cp.discountDiagnostic}:{})});
+  }
   const {audit,discountDiagnostic}=await readLiveRootExecution(req);
-  res.json({ok:true,audit,...(discountDiagnostic?{discountDiagnostic}:{})});
+  const saved=await getWorkflowReview(auth.shopId,itemId,modelId);
+  if(saved?.sku===sku){
+   const nextReview=saved.review_state||{};
+   const checkpoint={sku,itemId:String(itemId),modelId,
+    jobIdentity:String(current?.run_id||'')+'|'+String(current?.plan?.fingerprint||''),
+    checkedAt:audit.checkedAt,reviewSignature:rootAuditReviewSignature(nextReview),
+    audit,discountDiagnostic};
+   try{await persistWorkflowExecutionAudit(auth.shopId,itemId,modelId,sku,checkpoint);}
+   catch(error){console.warn('[root-audit] checkpoint:',String(error.message||error).slice(0,130));}
+  }
+  res.json({ok:true,audit,checkpoint:false,...(discountDiagnostic?{discountDiagnostic}:{})});
  }catch(error){
   res.status(409).json({ok:false,error:String(error.message||error).slice(0,270)});
  }
