@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {auditRootShopeeExecution,ROOT_EXECUTION_STAGES} from '../shopeeExecutionHealth.js';
-import {shouldAttachCommercialDiscount} from '../shopeeExecutionPlan.js';
+import {shouldAttachCommercialDiscount,verifiedCommercialFields} from '../shopeeExecutionPlan.js';
 
 const itemId='58272041645';
 const base=()=>({
@@ -175,4 +175,25 @@ test('ficha técnica publicada e conferida por campos do job mantém status conf
  assert.equal(auditRootShopeeExecution(a).stages.find(s=>s.id==='technical').status,'confirmed');
  a.live.attribute_list=[];
  assert.equal(auditRootShopeeExecution(a).stages.find(s=>s.id==='technical').status,'pending');
+});
+
+test('SKU 1736: condição revisada usa leitura oficial sem exigir 20 atributos antigos',()=>{
+ const a=base();
+ a.review.attributes=[{attributeId:100413,values:[{valueId:0,valueName:'Novo'}]}];
+ a.live.condition='NEW';
+ a.job={sku:a.sku,item_id:a.itemId,state:'failed',plan:{
+  proposed:{attribute_list:[
+   {attribute_id:100348,attribute_value_list:[{value_id:111}]},
+   {attribute_id:100413,attribute_value_list:[{value_id:0,original_value_name:'Novo'}]}
+  ]}},result:{}};
+ const audit=auditRootShopeeExecution(a);
+ assert.equal(audit.stages.find(x=>x.id==='technical').status,'confirmed');
+ assert.equal(verifiedCommercialFields({
+  technicalReviewedAttributeIds:[100413],
+  proposed:a.job.plan.proposed},a.live),true);
+ a.live.condition='USED';
+ assert.equal(auditRootShopeeExecution(a).stages.find(x=>x.id==='technical').status,'pending');
+ assert.equal(verifiedCommercialFields({
+  technicalReviewedAttributeIds:[100413],
+  proposed:a.job.plan.proposed},a.live),false);
 });
