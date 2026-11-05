@@ -95,7 +95,8 @@ import {findLiveShopeeSku} from './shopeeSkuFinder.js';
 import {optimizerSettings,saveOptimizerSettings} from './optimizerStore.js';
 import {quoteShopeePrice,quoteShopeeOptimizationPrice,normalizeShopeePricingSettings} from './shopeePricing.js';
 import {lookupShopeeCompetitors,marketResearchConfigured} from './shopeeMarketResearch.js';
-import {researchCurveAB} from './shopeeCurveAB.js';
+import {researchCurveAB,curveProvidersStatus} from './shopeeCurveAB.js';
+import {searchFeaturedPublic} from './shopeeFeaturedSearch.js';
 import {promotionFromQuote,promotionBasePrice,promotionMember,shopDiscountMembershipSignal,discountPlanSnapshot,signDiscountPreview,verifyDiscountPreview,readDiscountPages} from './shopeeDiscountPublish.js';
 import {auditCatalogDiscounts} from './shopeeCatalogDiscountAudit.js';
 import {discountPreviewStatus} from './shopeeDiscountDeferred.js';
@@ -233,6 +234,27 @@ app.post('/api/shopee/kits/availability/import',mustLogin,requireWeDropAdmin,asy
 });
 // Pesquisa somente-leitura de oportunidades Curvas A/B. A fonte de vendas
 // de concorrentes e a Affiliate API, nunca metricas Ads da propria loja.
+// Diagnóstico explícito e autenticado. Nunca revela App ID, segredos ou
+// sessão da Shopee, nem força acesso a conteúdo bloqueado.
+app.get('/api/shopee/curvas-ab/sources',mustLogin,requireWeDropAdmin,async(req,res)=>{
+ res.setHeader('Cache-Control','no-store');
+ try{
+  await getValidAuth(req);
+  const providers=curveProvidersStatus();
+  const doProbe=String(req.query.probe||'')==='1';
+  const live=doProbe?await searchFeaturedPublic('coqueteleira',{timeoutMs:6500}):null;
+  res.json({ok:true,affiliateConfigured:providers.affiliate.configured,
+   storefront:{
+    checked:doProbe||providers.featured.state!=='unknown',
+    source:'Busca pública Shopee Em Destaque • by=sales',
+    status:live?(live.ok?'accessible':live.blocked?'blocked':'unavailable'):providers.featured.state,
+    httpStatus:live?.status||null,
+    returnedOffers:live?.offers?.length??null,
+    returnedMonthly:live?.offers?.filter(x=>x.monthlySold!==null)?.length??null,
+    message:live?.error||providers.featured.reason||''
+   },helper:'Se a vitrine não responder e não houver credenciais Afiliados, a pesquisa não poderá inventar vendas mensais.'});
+ }catch(error){res.status(400).json({ok:false,error:String(error.message||error).slice(0,220)});}
+});
 app.get('/api/shopee/curvas-ab/search',mustLogin,requireWeDropAdmin,async(req,res)=>{
  res.setHeader('Cache-Control','no-store');
  try{
