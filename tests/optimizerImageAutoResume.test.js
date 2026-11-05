@@ -51,3 +51,17 @@ test('painel oferece reinício completo apenas explicitamente, fora da ação pr
  assert.match(restart,/method:'DELETE'/);
  assert.match(restart,/confirm\(/);
 });
+
+test('chat não limpo não reativa prompt antigo; sessão nova começa pelo próximo slot confirmado',()=>{
+ const start=app.indexOf('async function optimizerChatgptContinueFromServer()');
+ const end=app.indexOf('globalThis.__RA_SHOPEE_RESUME_BRIDGE',start);
+ const source=app.slice(start,end);
+ assert.match(app,/let optimizerChatgptCleanChatAuthorized=false/);
+ assert.match(app,/optimizerChatgptCleanChatAuthorized=true/);
+ assert.match(source,/const resumeDirty=Boolean\(pausedDirty&&optimizerChatBridgeIdentity\(pausedDirty,w\)\)/);
+ assert.match(source,/resumeDirty&&!optimizerChatgptCleanChatAuthorized/);
+ assert.match(source,/await optimizerChatBridgeRelease\('Chat novo confirmado/);
+ assert.match(source,/recovered=\{reason:'NO_RECOVERABLE_JOB'\}/);
+ assert.match(source,/completed:stored/);
+ assert.doesNotMatch(source,/method:'DELETE'|restart:true/);
+});

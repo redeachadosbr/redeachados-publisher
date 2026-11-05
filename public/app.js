@@ -11133,14 +11133,21 @@ $('#optimizerChatgptOpenCleanChat')?.addEventListener?.('click',()=>{
   'confirme que ficou vazio. Depois volte e clique em “Retomar somente pendentes”. '+
   'Não utilize “Recomeçar tudo” — as imagens salvas serão mantidas.';
 });
+// Confirmação explícita do usuário: nunca tentar limpar o DOM de outro site.
+let optimizerChatgptCleanChatAuthorized=false;
 $('#optimizerChatgptResumeCleanChat')?.addEventListener?.('click',async()=>{
  const state=optimizerBridgeChatPauseState(),w=optimizerWorkflowPlan;
  if(!state||!optimizerChatBridgeIdentity(w,state))return;
  if(!window.confirm('Você abriu um NOVO chat no ChatGPT e verificou que o campo de mensagem está vazio?\n\n'+
   'Apenas as imagens ainda ausentes no servidor serão solicitadas; as imagens salvas serão preservadas.'))return;
  const button=$('#optimizerChatgptResumeCleanChat');if(button)button.disabled=true;
- try{await optimizerChatgptContinueFromServer();}
- finally{if(button)button.disabled=false;}
+ try{
+  optimizerChatgptCleanChatAuthorized=true;
+  await optimizerChatgptContinueFromServer();
+ }finally{
+  optimizerChatgptCleanChatAuthorized=false;
+  if(button)button.disabled=false;
+ }
 });
 optimizerBridgeChatPausePaint();
 // A identificação é compartilhada entre abas do Manager (sem dados privados).
@@ -11625,6 +11632,14 @@ async function optimizerChatgptContinueFromServer(){
   const missing=Array.from({length:9},(_,i)=>i+1).filter(x=>!stored.includes(x));
   if(!missing.length){notify('9/9 imagens já preparadas. Revise a galeria ou use Gerar 9 imagens para refazer desde 01.');return;}
   const first=String(missing[0]).padStart(2,'0');
+  const pausedDirty=optimizerBridgeChatPauseState();
+  const resumeDirty=Boolean(pausedDirty&&optimizerChatBridgeIdentity(pausedDirty,w));
+  if(resumeDirty&&!optimizerChatgptCleanChatAuthorized){
+   const error='A Ponte parou porque o chat contém o prompt da imagem anterior. '+
+    'Abra um novo chat completamente vazio e use o botão "Retomar somente pendentes" no quadro de recuperação. '+
+    'A imagem atual pendente é '+first+'/09; as '+stored.length+' posições confirmadas permanecem salvas.';
+   notify(error,true);return {ok:false,error};
+  }
   // Esta ação NÃO deleta arquivos: preserva inclusive importações pendentes.
   // Se já há uma tentativa no Chrome, retomá-la recupera a imagem antes de criar outra.
   notify('Servidor conferido: '+stored.length+'/9 salvas. Primeira pendente: '+first+'/09. Sincronizando a Ponte sem excluir fotos.');
@@ -11640,17 +11655,27 @@ async function optimizerChatgptContinueFromServer(){
   const {isVisualReferenceError}=await import('/optimizer-visual-reference.js?v=20261105-shopee-kit-photo-fallback');
   const refs=brief.referenceCandidates?.length?brief.referenceCandidates:[brief.original];
   let referenceIndex=0,referenceUrl=refs[0],recovered=null;
-  // A Ponte pode rejeitar um domínio Shopee mesmo quando a prévia mostra a
-  // foto. Repetir somente a leitura da referência, jamais apagar imagens.
-  for(let i=0;i<refs.length;i++){
-   referenceIndex=i;referenceUrl=refs[i];
-   recovered=await optimizerBridgeRecoverFromExtension({
-    sku:String(w.sku),itemId:String(w.itemId),modelId:String(w.modelId),
-    completed:stored,imageUrl:referenceUrl,prompts:brief.prompts
-   });
-   if(recovered.ok||['NO_RECOVERABLE_JOB','ALREADY_COMPLETE'].includes(recovered.reason)||
-      !isVisualReferenceError(recovered.error)||i===refs.length-1)break;
-   notify('Referência '+(i+1)+' não foi aceita pela Ponte. Testando outra foto/CDN oficial do mesmo Item ID sem remover imagens salvas...');
+  if(resumeDirty&&optimizerChatgptCleanChatAuthorized){
+   // A sessão antiga contém o rascunho incorreto. Não reativar seus prompts:
+   // começar com os nove roteiros RECALCULADOS e somente slots pendentes.
+   // A fila atual e as imagens confirmadas no servidor ficam preservadas.
+   await optimizerChatBridgeRelease('Chat novo confirmado. Descartando somente a sessão com prompt antigo.');
+   recovered={reason:'NO_RECOVERABLE_JOB'};
+   notify('Chat vazio confirmado. Criando sessão nova da imagem '+first+
+    '/09 com roteiro atualizado da SKU '+w.sku+'. '+stored.length+'/9 imagens salvas permanecem intactas.');
+  }else{
+   // A Ponte pode rejeitar um domínio Shopee mesmo quando a prévia mostra a
+   // foto. Repetir somente a leitura da referência, jamais apagar imagens.
+   for(let i=0;i<refs.length;i++){
+    referenceIndex=i;referenceUrl=refs[i];
+    recovered=await optimizerBridgeRecoverFromExtension({
+     sku:String(w.sku),itemId:String(w.itemId),modelId:String(w.modelId),
+     completed:stored,imageUrl:referenceUrl,prompts:brief.prompts
+    });
+    if(recovered.ok||['NO_RECOVERABLE_JOB','ALREADY_COMPLETE'].includes(recovered.reason)||
+       !isVisualReferenceError(recovered.error)||i===refs.length-1)break;
+    notify('Referência '+(i+1)+' não foi aceita pela Ponte. Testando outra foto/CDN oficial do mesmo Item ID sem remover imagens salvas...');
+   }
   }
   if(!optimizerImagesSameSku(w))throw Error('A SKU mudou; o comando de recuperação foi interrompido.');
   if(recovered.ok){
