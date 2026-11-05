@@ -129,6 +129,8 @@ export function seoTitleFromEvidence(productName,keywords=[],sku=''){
  let title=name;
  for(const entry of keywords){
   const term=String(entry.term||'').trim();
+  const confirmedWords=new Set(meaningful(name));
+  if(!meaningful(term).every(word=>confirmedWords.has(word)))continue;
   if(entry.mentions<=0||!term.includes(' ')||normal(title).includes(term))continue;
   if(title.length+term.length+4>117)continue;
   title+=' | '+term;
