@@ -36,7 +36,11 @@ test('etapa 10 executa TODAS as nove etapas da auditoria raiz, e nao apenas míd
  assert.match(run,/scope\.value=executionScope/);
  assert.match(run,/onlyDiscount\?'discount':'all'/);
  assert.match(run,/optimizerRootAuditRefresh\(true\)/);
- assert.match(run,/selectedStage!==executionScope/);
+ assert.match(run,/kitAutoSweepChoosePlan\\(\\{kitSku,sku,itemId,modelId\\},audit,executionScope\\)/);
+ const chooser=app.slice(app.indexOf('async function kitAutoSweepChoosePlan('),
+  app.indexOf('function kitAutoSweepResume('));
+ assert.match(chooser,/plan\\?\\.selectedStage===stage/);
+ assert.match(chooser,/String\\(plan\\.itemId\\)===String\\(target\\.itemId\\)/);
  assert.match(run,/optimizerExecuteApproved\(false\)/);
  assert.doesNotMatch(run,/scope\.value='media_fiscal'/);
 });
