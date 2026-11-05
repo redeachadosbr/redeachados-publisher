@@ -125,3 +125,30 @@ test('vídeo com marcador de rejeição não é reutilizado mesmo em plano novo'
  assert.deepEqual(reused.imageIds,newImageIds);
  assert.equal(reused.video,null);
 });
+
+test('vídeo publica de forma isolada quando ficha técnica ainda não foi aplicada',async()=>{
+ const attributePlan={...plan,proposed:{attribute_list:[{
+  attribute_id:99,attribute_value_list:[{value_id:3}]
+ }]}};
+ const base={...live(true),item_name:'Nome antigo',attribute_list:[]};
+ const partial={...baseResult('video_attach_ready'),
+  videoAttachmentNeedsCommercialReconcile:true,primaryVerified:false};
+ const writes=[];
+ const input={state:'running',sku:'TRC0413',item_id:Number(itemId),plan:attributePlan,result:partial};
+ const first=await advanceShopeeExecution(input,{
+  read:async()=>base,validateIdentity:async()=>{},
+  beforeWrite:async()=>{},
+  update:async body=>{writes.push(body);return {request_id:'v'};}
+ });
+ assert.equal(first.state,'running');
+ assert.equal(first.result.phase,'video_attach_verifying');
+ assert.deepEqual(Object.keys(writes[0]).sort(),['item_id','video_upload_id']);
+ const second=await advanceShopeeExecution({...input,result:first.result},{
+  read:async()=>({...base,video_info:[{video_upload_id:video.id,video_status:'SUCCEEDED'}]}),
+  update:async()=>{throw Error('Não repetir vídeo');}
+ });
+ assert.equal(second.state,'failed');
+ assert.equal(second.result.videoReadbackConfirmed,true);
+ assert.equal(second.result.primaryVerified,false);
+ assert.match(second.lastError,/campos comerciais/i);
+});
