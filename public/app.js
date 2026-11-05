@@ -10918,7 +10918,7 @@ function optimizerImagesRenderMode(){
 }
 async function optimizerChatgptMakeBrief(w,{defaultOnly=false}={}){
  const [{createChatGptPrompts},{visualReferenceCandidates,bridgeShopeeReferenceCandidates}]=await Promise.all([
-  import('/chatgptPrompts.js?v=20261105-slot04-source-step1'),
+  import('/chatgptPrompts.js?v=20261105-slot03-wedrop-photo-v4'),
   import('/optimizer-visual-reference.js?v=20261105-shopee-source-safe-v2')
  ]);
  const existingKit=isPendingKitDirect(w.sku,w.itemId);
@@ -11049,6 +11049,8 @@ async function optimizerRequireThirdChatgptDimensions(w,brief){
  if(expected!==embedded)
   throw Error('IMAGEM 03 NÃO INICIADA: medidas WeDrop salvas divergem das medidas anexadas ao prompt. Recarregue o anúncio e tente novamente sem digitar valores.');
  const prompt=String(brief?.prompts?.[2]||'');
+ if(/SEM texto, setas, n[uú]meros, medidas|Shopee Manager adicionará somente dimensões WeDrop confirmadas depois/i.test(prompt))
+  throw Error('PROMPT ANTIGO DETECTADO: a imagem 03 deve ser gerada COM cotas WeDrop visíveis, nunca com a orientação antiga sem números.');
  if(!prompt.includes('IMAGEM 03/09 — MEDIDAS EXATAS WEDROP')||
     measures.some(x=>!prompt.includes(x.label+': '+x.value)))
   throw Error('IMAGEM 03 NÃO INICIADA: os valores confirmados não aparecem na orientação que seria enviada ao ChatGPT.');
@@ -11110,6 +11112,21 @@ async function optimizerImageEditReference(w,slot){
   return dataUrl;
  }finally{bitmap.close();}
 }
+// Usar a fotografia comercial JÁ SALVA do produto exato, e não depender
+// do CDN externo dentro do Chrome. O Manager lê por rota autenticada
+// com SKU, Item ID e modelo, sem modificar 01/02.
+async function optimizerBridgeThirdReferenceDataUrl(w,images=[]){
+ if(!optimizerImagesSameSku(w))throw Error('SKU alterada antes de carregar a foto da imagem 03.');
+ const saved=new Map((images||[]).map(img=>[Number(img.slot),img]));
+ const sourceSlot=saved.has(1)?1:saved.has(2)?2:0;
+ if(!sourceSlot)
+  throw Error('IMAGEM 03 SEM FOTO-REFERÊNCIA: não há imagem 01 ou 02 salva nesta SKU. Prepare uma foto do próprio produto antes de iniciar a imagem 03.');
+ const reference=await optimizerImageEditReference(w,sourceSlot);
+ if(!optimizerImagesSameSku(w))throw Error('SKU alterada enquanto a foto era preparada. Nada foi enviado.');
+ if(!/^data:image\/jpeg;base64,[A-Za-z0-9+/=]{1000,}$/.test(reference))
+  throw Error('IMAGEM 03 SEM FOTO-REFERÊNCIA: o arquivo salvo da SKU não pôde ser anexado com segurança.');
+ return reference;
+}
 async function optimizerCommercialRequestChatgptSlot(w,slot,{editMode=''}={}){
  if(!optimizerImagesSameSku(w))return;
  const status=$('#optimizerImagesStatus');
@@ -11169,6 +11186,10 @@ async function optimizerCommercialRequestChatgptSlot(w,slot,{editMode=''}={}){
   if(!optimizerImagesSameSku(w))return;
   const original=(current.images||[]).find(x=>Number(x.slot)===slot);
   const shaToKeep=original?.sha256?{[slot]:original.sha256}:{};
+  if(slot===3&&!editMode){
+   referenceDataUrl=await optimizerBridgeThirdReferenceDataUrl(w,current.images||[]);
+   optimizerCommercialActionMessage('Imagem 03: foto real da SKU preparada como anexo e cotas WeDrop confirmadas. Enviando o NOVO roteiro ao ChatGPT.');
+  }
   if(slot===3)
    await optimizerBridgeRetireSameSkuForNewThird(w,brief,(current.images||[]).map(x=>Number(x.slot)));
   const {isVisualReferenceError}=await import('/optimizer-visual-reference.js?v=20261105-shopee-source-safe-v2');
@@ -11867,6 +11888,8 @@ async function optimizerChatgptContinueFromServer(){
     confirmed.map(x=>x.label+' '+x.value).join(' · ')+'. '+stored.length+'/9 imagens preservadas.');
   }
   const first=String(missing[0]).padStart(2,'0');
+  const preparedThirdReference=Number(missing[0])===3?
+   await optimizerBridgeThirdReferenceDataUrl(w,data.images||[]):'';
   const pausedDirty=optimizerBridgeChatPauseState();
   const resumeDirty=Boolean(pausedDirty&&optimizerChatBridgeIdentity(pausedDirty,w));
   if(resumeDirty&&!optimizerChatgptCleanChatAuthorized){
@@ -11959,7 +11982,8 @@ async function optimizerChatgptContinueFromServer(){
     const startAck=optimizerWaitBridgeReply('RA_EXTENSION_START_RESULT',optimizerChatBridgeNonce,18000);
     window.postMessage({kind:'RA_SITE_START',payload:{
      nonce:optimizerChatBridgeNonce,sku:w.sku,itemId:String(w.itemId),modelId:String(w.modelId),
-     imageUrl:referenceUrl,prompts:brief.prompts,completed:stored
+     imageUrl:referenceUrl,prompts:brief.prompts,completed:stored,
+     referenceDataUrl:preparedThirdReference
     }},location.origin);
     startResult=await startAck;
     if(startResult?.ok)break;
@@ -11974,7 +11998,8 @@ async function optimizerChatgptContinueFromServer(){
      const secondAck=optimizerWaitBridgeReply('RA_EXTENSION_START_RESULT',optimizerChatBridgeNonce,18000);
      window.postMessage({kind:'RA_SITE_START',payload:{
       nonce:optimizerChatBridgeNonce,sku:w.sku,itemId:String(w.itemId),modelId:String(w.modelId),
-      imageUrl:referenceUrl,prompts:brief.prompts,completed:stored
+      imageUrl:referenceUrl,prompts:brief.prompts,completed:stored,
+      referenceDataUrl:preparedThirdReference
      }},location.origin);
      startResult=await secondAck;
      if(startResult?.ok)break;
