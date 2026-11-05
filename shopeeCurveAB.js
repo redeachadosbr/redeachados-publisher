@@ -36,7 +36,8 @@ export function curveGroup(sales30,salesDisplayed){
 }
 
 export function curveSearchTerms(products,{keyword=''}={}){
- const term=String(keyword||'').trim();
+ const term=String(keyword||'').trim(),selectedCategory=String(category||'Todos').trim();
+ if(selectedCategory.length>90)throw Error('Categoria inválida.');
  if(term)return [term.slice(0,70)];
  const count=new Map();
  for(const p of products){
@@ -112,9 +113,9 @@ export function seoTitleFromEvidence(productName,keywords=[],sku=''){
  // O anúncio proposto pode usar APENAS palavras verificadas na própria
  // ficha comercial WeDrop: títulos concorrentes não provam especificações.
  const skuEsc=String(sku||'').replace(/[^A-Za-z0-9]/g,'\\$&');
- let name=pretty(productName).replace(/\\bSKU\\s*[:#-]?\\s*[A-Z0-9.-]+/gi,'');
+ let name=pretty(productName).replace(/\bSKU\s*[:#-]?\s*[A-Z0-9.-]+/gi,'');
  if(skuEsc)name=name.replace(new RegExp('\\b'+skuEsc+'\\b','gi'),'').trim();
- name=name.replace(/\\bKIT-[A-Z0-9-]+\\b/gi,'').replace(/\s+/g,' ').trim();
+ name=name.replace(/\bKIT-[A-Z0-9-]+\b/gi,'').replace(/\s+/g,' ').trim();
  // Prefere os termos compostos recorrentes desde que já existam na ficha.
  const normalized=normal(name);
  const lead=keywords.filter(x=>x.mentions>0&&x.term.includes(' ')&&
@@ -163,7 +164,7 @@ export function matchCurveOffers({catalog=[],offers=[],costs=[],baseline=new Map
   }
  }
  const costIndex=new Map(costs.map(x=>[String(x.supplier_sku),num(x.unit_cost)]));
- const found=new Map();
+ const found=new Map(),offersBySku=new Map();
  for(const offer of offers){
   if(!validId(offer.itemId)||!validId(offer.shopId)||
     !String(offer.productName||'').trim()||intSales(offer.sales)===null)continue;
@@ -182,6 +183,9 @@ export function matchCurveOffers({catalog=[],offers=[],costs=[],baseline=new Map
    const common=entry.count;
    const score=common/Math.max(1,Math.min(p.tokens.length,tokens.length));
    if(score<0.62||common<Math.min(3,p.tokens.length))continue;
+   if(!offersBySku.has(p.sku))offersBySku.set(p.sku,new Map());
+   const unique=String(offer.shopId)+':'+String(offer.itemId);
+   offersBySku.get(p.sku).set(unique,offer);
    const current=found.get(p.sku);
    const sales=intSales(offer.sales),price=num(offer.priceMin);
    if(current&&(current.salesDisplayed>sales||
@@ -205,7 +209,9 @@ export function matchCurveOffers({catalog=[],offers=[],costs=[],baseline=new Map
     sourceFile:p.sourceFile});
   }
  }
- return [...found.values()].sort((a,b)=>
+ const checkedAt=today+'T12:00:00.000Z';
+ return [...found.values()].map(row=>addMarketAnalysis(
+  row,[...(offersBySku.get(row.sku)||new Map()).values()],checkedAt)).sort((a,b)=>
   Number(b.verified30)-Number(a.verified30)||
   Number(b.inStock)-Number(a.inStock)||
   b.salesDisplayed-a.salesDisplayed||b.matchScore-a.matchScore||
@@ -330,7 +336,7 @@ async function fetchOffers(terms){
  return {offers:[...unique.values()],queries:queried,errors:errors.slice(0,7)};
 }
 const cache=new Map();
-export async function researchCurveAB(shopId,{limit=10,curve='ALL',keyword='',refresh=false}={}){
+export async function researchCurveAB(shopId,{limit=10,curve='ALL',category='Todos',keyword='',refresh=false}={}){
  const desired=Number(limit),chosen=String(curve||'ALL').toUpperCase();
  if(![5,10,15,20].includes(desired)||!['ALL','A','B'].includes(chosen))
   throw Error('Seleção de quantidade ou curva inválida.');
@@ -340,21 +346,25 @@ export async function researchCurveAB(shopId,{limit=10,curve='ALL',keyword='',re
  if(!configured)return {ok:true,configured:false,requested:desired,curve:chosen,
   items:[],found:0,shortage:desired,catalogCount:0,offerCount:0,queries:[],
   warning:'A pesquisa automática depende das credenciais Shopee Affiliate App ID e Secret configuradas no Render. A API de vendedor não fornece vendas dos concorrentes.'};
- const cacheKey=String(shopId)+'|'+normal(term),prior=cache.get(cacheKey);
+ const cacheKey=String(shopId)+'|'+normal(selectedCategory)+'|'+normal(term),prior=cache.get(cacheKey);
  let work;
  if(!refresh&&prior&&Date.now()-prior.at<3*60000)work=prior.promise;
  else{
   work=(async()=>{
    const [catalog,costs]=await Promise.all([
     readWeDropCatalogProducts(shopId),readWeDropCosts(shopId)]);
-   const terms=curveSearchTerms(catalog,{keyword:term});
+   // Reutiliza EXATAMENTE o agrupamento de categorias dos Kits WeDrop.
+   // Nenhuma SKU de outra categoria pode entrar no resultado.
+   const filtered=catalog.filter(row=>categoryMatches(
+    String(row.product_data?.category||''),selectedCategory));
+   const terms=curveSearchTerms(filtered,{keyword:term}).slice(0,12);
    const result=await fetchOffers(terms);
    const today=saoPauloDay();
    const baseline=await readBaselines(shopId,today).catch(()=>new Map());
-   const matches=matchCurveOffers({catalog,offers:result.offers,costs,baseline,today});
+   const matches=matchCurveOffers({catalog:filtered,offers:result.offers,costs,baseline,today});
    const observations=await saveObservations(shopId,today,result.offers)
     .catch(()=>null);
-   return {matches,catalogCount:catalog.length,offerCount:result.offers.length,
+   return {matches,catalogCount:filtered.length,offerCount:result.offers.length,
     queries:result.queries,errors:result.errors,observations,checkedAt:new Date().toISOString()};
   })();
   cache.set(cacheKey,{promise:work,at:Date.now()});
@@ -372,7 +382,8 @@ export async function researchCurveAB(shopId,{limit=10,curve='ALL',keyword='',re
   data.errors.length?'Algumas buscas não responderam: '+data.errors.slice(0,2).join(' | '):''
  ].filter(Boolean);
  return {ok:true,configured:true,curve:chosen,...chosenResults,
-  catalogCount:data.catalogCount,offerCount:data.offerCount,
+  catalogCount:data.catalogCount,offerCount:data.offerCount,category:selectedCategory,
+  featuredSearchUrl:officialFeaturedSearchUrl(term||selectedCategory==='Todos'?'':selectedCategory),
   queryCount:data.queries.length,checkedAt:data.checkedAt,
   recordedOffers:data.observations,rowsWith30Days:chosenResults.items.filter(x=>x.verified30).length,
   warning:notes.join(' '),readOnly:true,marketplaceUpdated:false};
