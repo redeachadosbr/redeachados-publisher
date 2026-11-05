@@ -411,7 +411,62 @@ async function fetchOffers(terms){
 }
 
 const cache=new Map();
-export async function researchCurveAB(shopId,{limit=10,curve='ALL',category='Todos',keyword='',refresh=false}={}){
+const CURVE_SCAN_BATCH_SIZE=8;
+const CURVE_SCAN_MAX_QUERIES=32;
+const CURVE_SCAN_MAX_MS=55000;
+const CURVE_CACHE_MS=30*60*1000;
+async function prepareCurveCatalog(shopId,{category,keyword}){
+ const [catalog,costs]=await Promise.all([
+  readWeDropCatalogProducts(shopId),readWeDropCosts(shopId)]);
+ const term=normal(keyword);
+ const filtered=catalog.filter(row=>
+  categoryMatches(String(row.product_data?.category||''),category)&&
+  (!term||normal(String(row.product_data?.name||'')).includes(term)));
+ const plan=curveSkuSearchPlan(filtered,{keyword});
+ return {catalog:filtered,costs,plan,cursor:0,offers:new Map(),
+  baseline:await readBaselines(shopId,saoPauloDay()).catch(()=>new Map()),
+  errors:[],queries:0,successfulQueries:0,limited:false,scannedSkus:new Set(),
+  checkedAt:null,recordedOffers:0,matches:[]};
+}
+async function advanceCurveCatalog(shopId,state,{desired,curve}){
+ const started=Date.now(),newOffers=[];
+ let performed=0;
+ while(state.cursor<state.plan.length&&!state.limited&&
+       performed<CURVE_SCAN_MAX_QUERIES&&Date.now()-started<CURVE_SCAN_MAX_MS){
+  const jobs=state.plan.slice(state.cursor,
+   state.cursor+Math.min(CURVE_SCAN_BATCH_SIZE,CURVE_SCAN_MAX_QUERIES-performed));
+  if(!jobs.length)break;
+  const result=await fetchOffers(jobs.map(x=>x.query));
+  const used=Math.max(0,Math.min(jobs.length,result.attempted));
+  if(!used)break;
+  for(const job of jobs.slice(0,used))for(const sku of job.skus)
+   state.scannedSkus.add(sku);
+  state.cursor+=used;performed+=used;
+  state.queries+=used;state.successfulQueries+=result.queries.length;
+  state.errors.push(...result.errors);
+  state.errors=state.errors.slice(-12);
+  for(const offer of result.offers){
+   const id=String(offer.shopId)+':'+String(offer.itemId);
+   if(!state.offers.has(id))newOffers.push(offer);
+   state.offers.set(id,offer);
+  }
+  state.checkedAt=new Date().toISOString();
+  state.matches=matchCurveOffers({
+   catalog:state.catalog,offers:[...state.offers.values()],costs:state.costs,
+   baseline:state.baseline,today:saoPauloDay(),ownShopId:shopId});
+  if(result.limited){state.limited=true;break;}
+  if(pickCurveResults(state.matches,{limit:desired,curve}).items.length>=desired)break;
+ }
+ if(newOffers.length){
+  const n=await saveObservations(shopId,saoPauloDay(),newOffers).catch(()=>null);
+  if(n===null)state.recordedOffers=null;
+  else if(state.recordedOffers!==null)state.recordedOffers+=n;
+ }
+ if(!state.checkedAt)state.checkedAt=new Date().toISOString();
+}
+export async function researchCurveAB(shopId,{
+ limit=10,curve='ALL',category='Todos',keyword='',refresh=false,advance=false
+}={}){
  const desired=Number(limit),chosen=String(curve||'ALL').toUpperCase();
  if(![5,10,15,20].includes(desired)||!['ALL','A','B'].includes(chosen))
   throw Error('Seleção de quantidade ou curva inválida.');
@@ -421,46 +476,50 @@ export async function researchCurveAB(shopId,{limit=10,curve='ALL',category='Tod
  const configured=Boolean(env('SHOPEE_AFFILIATE_APP_ID')&&env('SHOPEE_AFFILIATE_SECRET'));
  if(!configured)return {ok:true,configured:false,requested:desired,curve:chosen,
   items:[],found:0,shortage:desired,catalogCount:0,offerCount:0,queries:[],
-  warning:'A pesquisa automática depende das credenciais Shopee Affiliate App ID e Secret configuradas no Render. A API de vendedor não fornece vendas dos concorrentes.'};
- const cacheKey=String(shopId)+'|'+normal(selectedCategory)+'|'+normal(term),prior=cache.get(cacheKey);
- let work;
- if(!refresh&&prior&&Date.now()-prior.at<3*60000)work=prior.promise;
- else{
-  work=(async()=>{
-   const [catalog,costs]=await Promise.all([
-    readWeDropCatalogProducts(shopId),readWeDropCosts(shopId)]);
-   // Reutiliza EXATAMENTE o agrupamento de categorias dos Kits WeDrop.
-   // Nenhuma SKU de outra categoria pode entrar no resultado.
-   const filtered=catalog.filter(row=>categoryMatches(
-    String(row.product_data?.category||''),selectedCategory));
-   const terms=curveSearchTerms(filtered,{keyword:term}).slice(0,12);
-   const result=await fetchOffers(terms);
-   const today=saoPauloDay();
-   const baseline=await readBaselines(shopId,today).catch(()=>new Map());
-   const matches=matchCurveOffers({catalog:filtered,offers:result.offers,costs,baseline,today,ownShopId:shopId});
-   const observations=await saveObservations(shopId,today,result.offers)
-    .catch(()=>null);
-   return {matches,catalogCount:filtered.length,offerCount:result.offers.length,
-    queries:result.queries,errors:result.errors,observations,checkedAt:new Date().toISOString()};
-  })();
-  cache.set(cacheKey,{promise:work,at:Date.now()});
-  if(cache.size>22)cache.delete(cache.keys().next().value);
+  warning:'A API da loja (Seller API) é diferente da Shopee Afiliados. Configure SHOPEE_AFFILIATE_APP_ID e SHOPEE_AFFILIATE_SECRET no Render para executar automaticamente a busca de anúncios de outras lojas.'};
+ const key=String(shopId)+'|'+normal(selectedCategory)+'|'+normal(term);
+ let holder=cache.get(key);
+ if(refresh||!holder||Date.now()-holder.at>CURVE_CACHE_MS){
+  holder={at:Date.now(),ready:prepareCurveCatalog(shopId,{
+   category:selectedCategory,keyword:term}),active:null};
+  cache.set(key,holder);
+  while(cache.size>18)cache.delete(cache.keys().next().value);
  }
- let data;
- try{data=await work;}catch(error){cache.delete(cacheKey);throw error;}
- const chosenResults=pickCurveResults(data.matches,{limit:desired,curve:chosen});
+ let state;
+ try{state=await holder.ready;}
+ catch(error){cache.delete(key);throw error;}
+ const current=pickCurveResults(state.matches,{limit:desired,curve:chosen});
+ const shouldSearch=Boolean((advance||current.items.length<desired)&&
+  state.cursor<state.plan.length&&!state.limited);
+ if(shouldSearch){
+  if(!holder.active)holder.active=advanceCurveCatalog(shopId,state,{
+   desired,curve:chosen}).finally(()=>{holder.active=null;});
+  await holder.active;
+ }else if(holder.active)await holder.active;
+ const selected=pickCurveResults(state.matches,{limit:desired,curve:chosen});
+ const hasMore=state.cursor<state.plan.length&&!state.limited;
  const notes=[
-  'A fonte Shopee Afiliados mostra vendas acumuladas, NÃO vendas oficiais de 30 dias. Quando não há duas observações separadas por aproximadamente 30 dias, a curva é apenas uma indicação de demanda.',
-  'Amostra de anúncios elegíveis à API de afiliados, ordenados por vendas: não reproduz literalmente a aba Em Destaque nem cobre todo o marketplace.',
-  chosenResults.shortage?'Foram encontrados '+chosenResults.items.length+' dos '+desired+
-   ' produtos solicitados. A consulta não foi bloqueada.':'',
-  data.observations===null?'Histórico temporal não pôde ser gravado; indicadores de 30 dias indisponíveis.':'',
-  data.errors.length?'Algumas buscas não responderam: '+data.errors.slice(0,2).join(' | '):''
+  'Pesquisa automática iniciada nas descrições de SKUs WeDrop da categoria escolhida. Resultado obtido pela API Shopee Afiliados ordenada por vendas; a API não reproduz diretamente a aba Em Destaque do comprador.',
+  'O contador sales da API é acumulado. A curva mensal só é confirmada quando há observações de aproximadamente 30 dias; antes disso a indicação A/B é potencial.',
+  selected.shortage?'Encontrados '+selected.items.length+' dos '+desired+
+   ' produtos solicitados. Não há bloqueio.':'',
+  hasMore?'A busca pausou no limite seguro de chamadas. Use Continuar varredura para pesquisar mais SKUs sem repetir consultas anteriores.':'',
+  state.limited?'A API de ofertas interrompeu a pesquisa por limite de requisições ou autorização. Confira o diagnóstico antes de repetir.':'',
+  state.recordedOffers===null?'Não foi possível registrar observações para a apuração de 30 dias.':'',
+  state.errors.length?'Consultas que falharam: '+state.errors.slice(0,2).join(' | '):''
  ].filter(Boolean);
- return {ok:true,configured:true,curve:chosen,...chosenResults,
-  catalogCount:data.catalogCount,offerCount:data.offerCount,category:selectedCategory,
+ return {ok:true,configured:true,curve:chosen,category:selectedCategory,
+  ...selected,catalogCount:state.catalog.length,offerCount:state.offers.size,
+  skuSearchesCompleted:state.scannedSkus.size,
+  skuQueriesPlanned:state.plan.length,
+  skuQueriesCompleted:state.cursor,
+  remainingSkuQueries:Math.max(0,state.plan.length-state.cursor),
+  queryCount:state.queries,successfulQueries:state.successfulQueries,
+  hasMore,nextCursor:state.cursor,
+  apiLimited:state.limited,
+  checkedAt:state.checkedAt,recordedOffers:state.recordedOffers,
+  rowsWith30Days:selected.items.filter(x=>x.verified30).length,
   featuredSearchUrl:officialFeaturedSearchUrl(term||(selectedCategory==='Todos'?'':selectedCategory)),
-  queryCount:data.queries.length,checkedAt:data.checkedAt,
-  recordedOffers:data.observations,rowsWith30Days:chosenResults.items.filter(x=>x.verified30).length,
-  warning:notes.join(' '),readOnly:true,marketplaceUpdated:false};
+  warning:notes.join(' '),searchMode:'sku-first-affiliate-ranked-sales',
+  readOnly:true,marketplaceUpdated:false};
 }
