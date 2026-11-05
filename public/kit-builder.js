@@ -2817,6 +2817,13 @@ globalThis.RAKitOptimizationFinalized=({kitSku,itemId}={})=>{
  void loadDrafts({restoreCurrent:false});
 };
 async function openDraft(kitSku,{scroll=true,targetCard=null,title=''}={}){
+ // Abrir um kit salvo substitui o modo anúncio avulso; restaurar o wizard e
+ // devolver o editor original à sua posição, sem duplicar componentes.
+ if($('#kitPendingDirectEditor')){
+  globalThis.RAClosePendingKitDirectEditor?.();
+  $('#kitPendingDirectEditor').remove();
+  const wizard=$('#kitWizard');if(wizard)wizard.hidden=false;
+ }
  const revision=++kitDraftOpenRevision;
  const button=targetCard?.querySelector('[data-draft-edit-button]');
  if(button){button.disabled=true;button.textContent='Abrindo editor...';}
@@ -5185,14 +5192,17 @@ function kitShowPendingLinkChoice(handoff){
  const itemId=String(handoff.itemId||''),sku=String(handoff.sku||'').trim();
  globalThis.RAClosePendingKitDirectEditor?.();
  $('#kitPendingDirectEditor')?.remove();
+ // O wizard de 10 etapas exige um rascunho completo. Para anúncio existente
+ // sem vínculo mostramos o editor real em vez de dez botões vazios/desabilitados.
+ const wizard=$('#kitWizard');if(wizard)wizard.hidden=true;
  const panel=elt('section','kit-pending-direct-editor');
  panel.id='kitPendingDirectEditor';
- panel.setAttribute('aria-label','Edição de imagens de kit anunciado na Shopee');
+ panel.setAttribute('aria-label','Otimização completa de kit já anunciado na Shopee');
  const heading=elt('div','kit-pending-direct-header');
  const details=elt('div','kit-pending-direct-details');
  details.append(
   elt('span','kit-pending-direct-eyebrow','EDIÇÃO DE ANÚNCIO EXISTENTE · SHOPEE'),
-  elt('strong','','🖼️ Otimizar imagens do kit'),
+  elt('strong','','🛠️ Otimizar anúncio existente — kit'),
   elt('p','','Anúncio: '+String(handoff.title||'Kit Shopee').slice(0,140)),
   elt('small','','Item ID '+itemId+' · SKU '+sku+' · Sem criar um novo anúncio')
  );
@@ -5209,11 +5219,12 @@ function kitShowPendingLinkChoice(handoff){
  close.addEventListener('click',()=>{
   globalThis.RAClosePendingKitDirectEditor?.();
   panel.remove();
+  const wizard=$('#kitWizard');if(wizard)wizard.hidden=false;
   status('Edição fechada. O anúncio original continua preservado na Shopee.','info');
  });
  actions.append(retry,close);heading.append(details,actions);panel.append(heading);
  const info=elt('p','kit-pending-direct-notice',
-  'A composição deste kit não está salva na WeDrop. As imagens do anúncio já existente podem ser preparadas e revisadas por Item ID. Preços, descontos, publicação de novo kit e textos que dependem dos componentes não serão executados.');
+  'Este anúncio já existe na Shopee e pode ser revisado agora por Item ID: imagens, vídeo, título SEO, ficha técnica, descrição, variações e dados fiscais. Abra cada cartão abaixo para editar, salvar e conferir. Nenhuma mudança será publicada sem autorização. Para calcular preços/descontos do kit ou declarar o conteúdo dos componentes, primeiro confirme a composição e os custos WeDrop; não vamos inventar produtos nem quantidades.');
  panel.append(info);
  const live=elt('p','kit-pending-direct-status','Conferindo o anúncio pela API da Shopee...');
  live.id='kitPendingDirectStatus';live.setAttribute('role','status');
@@ -5226,9 +5237,9 @@ function kitShowPendingLinkChoice(handoff){
  const opened=globalThis.RAOpenPendingKitDirectEditor?.(handoff,mount);
  if(!opened){
   live.textContent='Não foi possível iniciar o editor oficial deste Item ID. Nenhum anúncio foi modificado.';
-  status('Erro ao abrir o editor de imagens do Item ID '+itemId+'. Recarregue a página e tente novamente.','error');
+  status('Erro ao abrir a otimização do Item ID '+itemId+'. Recarregue a página e tente novamente.','error');
  }else status('Abrindo o anúncio Shopee Item ID '+itemId+
-  ' diretamente na edição de imagens. Os demais dados do kit seguem preservados.','success');
+  ' no editor completo, sem criar outra publicação. O vínculo e os dados salvos seguem preservados.','success');
 
  // Vínculo é uma opção ADICIONAL: nunca bloquear a edição de imagens só porque
  // nenhum kit rascunho foi salvo ou porque pertence a lote anterior.
@@ -5239,7 +5250,7 @@ function kitShowPendingLinkChoice(handoff){
   (!d.optimization?.itemId||String(d.optimization.itemId)===itemId));
  if(options.length){
   const chooser=elt('details','kit-pending-direct-link');
-  chooser.append(elt('summary','','Opcional: vincular composição WeDrop para liberar as demais etapas'));
+  chooser.append(elt('summary','','Opcional: vincular composição WeDrop para habilitar preço/desconto do kit'));
   const controls=elt('div','kit-draft-actions');
   for(const candidate of options){
    const button=elt('button','kit-secondary','Vincular: '+String(candidate.title||candidate.kitSku).slice(0,85));
@@ -5258,6 +5269,7 @@ function kitShowPendingLinkChoice(handoff){
       throw Error('A identidade não foi confirmada.');
      globalThis.RAClosePendingKitDirectEditor?.();
      panel.remove();
+     const wizard=$('#kitWizard');if(wizard)wizard.hidden=false;
      await kitOpenPendingLinked({...handoff,kind:'kit',kitSku:candidate.kitSku,
       mainSku:sku,modelId:String(result.target.modelId||'0')});
     }catch(error){
@@ -5278,6 +5290,7 @@ window.RAKitBuilderLoad=()=>{
  kitBuilderLoadSequence=kitBuilderLoadSequence.catch(()=>{}).then(async()=>{
   kitDisablePreOrder();
   const handoff=globalThis.__RA_PENDING_IMAGE_KIT_HANDOFF||null;
+  if(!handoff){const wizard=$('#kitWizard');if(wizard)wizard.hidden=false;}
   setKitMode(handoff?'builder':kitCurrentMode);
   await categories();
   await loadDrafts({restoreCurrent:!handoff});

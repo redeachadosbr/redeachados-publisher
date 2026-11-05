@@ -2593,14 +2593,17 @@ globalThis.RAOpenPendingKitDirectEditor=(editor,mount)=>{
  pendingKitDirect={itemId:id,sku,modelId};
  globalThis.__RA_KIT_OPTIMIZATION_HANDOFF=null;
  mount.append(panel);panel.hidden=false;
- const scope=$('#optimizerExecutionScope');if(scope){scope.value='images';scope.disabled=true;}
- const execution=$('#optimizerShowExecution');if(execution)execution.hidden=true;
- const forward=$('#optimizerWorkflowNext');if(forward)forward.hidden=true;
+ // O Item ID foi validado pela Shopee. Mesmo sem composição salva,
+ // as etapas do anúncio existente devem permanecer editáveis.
+ const scope=$('#optimizerExecutionScope');if(scope){scope.value='all';scope.disabled=false;}
+ const execution=$('#optimizerShowExecution');if(execution)execution.hidden=false;
+ const forward=$('#optimizerWorkflowNext');if(forward)forward.hidden=false;
  field.value=sku;
  field.dispatchEvent(new CustomEvent('input',{bubbles:true,detail:{onlyPrefill:true}}));
  $('#optimizerItemId').value=id;
  optimizerNotice('Anúncio de kit existente · Item ID '+id+
-  ' · Somente imagens até identificar os componentes WeDrop.','info');
+  ' · Revisão completa aberta: imagens, vídeo, título, ficha técnica, descrição e fiscal. '+
+  'Preço/desconto e informações dos componentes só podem ser executados com fontes e custos confirmados.','info');
  void optimizerRunAudit(id,sku,modelId);
  return true;
 };
@@ -3165,6 +3168,12 @@ function optimizerWorkflowRender(data){
  const discountMark=optimizerMake('span','optimizer-workflow-symbol','→');
  discountCard.append(discountNumber,discountIcon,discountLabel,discountMark);
  discountCard.onclick=()=>{
+  if(isPendingKitDirect(data.sku,data.itemId)){
+   optimizerWorkflowNotice('O anúncio já pode ser otimizado nas etapas de conteúdo e mídia. '+
+    'Para alterar PREÇO ou DESCONTO deste kit, primeiro vincule sua composição WeDrop e confira custos e quantidades; '+
+    'não é seguro precificar um kit usando apenas a SKU do anúncio.','warning');
+   return;
+  }
   if(kitMode)globalThis.RAKitOpenStagePanel?.('discount');
   optimizerDiscountOpenReview();
  };
@@ -4069,13 +4078,15 @@ async function optimizerWorkflowLoad(record){
    optimizerContentRestore(data);
    optimizerWorkflowRender(data);
    if(isPendingKitDirect(sku,id)){
-    const scope=$('#optimizerExecutionScope');if(scope){scope.value='images';scope.disabled=true;}
+    const scope=$('#optimizerExecutionScope');if(scope)scope.disabled=false;
     optimizerWorkflowOpen('images');
     const status=$('#kitPendingDirectStatus');
     if(status)status.textContent='✓ Anúncio Item ID '+id+
-     ' confirmado na Shopee. Editor de imagens pronto para revisão; nenhuma publicação iniciada.';
-    optimizerWorkflowNotice('Editor de imagens do anúncio de kit existente · Item ID '+id+
-     '. As etapas comerciais exigem uma composição WeDrop confirmada.','success');
+     ' confirmado na Shopee. Todas as etapas do editor do anúncio estão disponíveis para revisão. Nenhuma publicação iniciada.';
+    optimizerWorkflowNotice('Editor completo do anúncio existente · Item ID '+id+
+     '. Selecione Imagens, Vídeo, Título SEO, Ficha técnica, Descrição ou Fiscal. '+
+     'As alterações só serão enviadas após conferência e autorização. '+
+     'Preços e descontos de kits exigem composição e custos confirmados.','success');
     return;
    }
    const kitHandoff=globalThis.__RA_KIT_OPTIMIZATION_HANDOFF;

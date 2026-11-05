@@ -45,24 +45,34 @@ test('anúncio da imagem sem rascunho mantém SKU e Item ID para edição direta
  assert.equal(route.kitSku,undefined);
 });
 
-test('interface do kit sem rascunho abre imagens reais sem ativar preço e desconto',()=>{
+test('kit sem rascunho abre editor completo da Shopee sem inventar composição',()=>{
  const app=readFileSync(new URL('../public/app.js',import.meta.url),'utf8');
  const kits=readFileSync(new URL('../public/kit-builder.js',import.meta.url),'utf8');
  const css=readFileSync(new URL('../public/kit-builder.css',import.meta.url),'utf8');
+ const html=readFileSync(new URL('../public/index.html',import.meta.url),'utf8');
  assert.match(app,/RAOpenPendingKitDirectEditor=\(editor,mount\)=>/);
  assert.match(app,/void optimizerRunAudit\(id,sku,modelId\)/);
  assert.match(app,/if\(isPendingKitDirect\(sku,id\)\)/);
  assert.match(app,/optimizerWorkflowOpen\('images'\)/);
+ assert.match(app,/scope\.value='all';scope\.disabled=false/);
  assert.match(app,/if\(!isPendingKitDirect\(expectedSku,item\)\)/);
+ assert.match(app,/const execution=\$\('#optimizerShowExecution'\);if\(execution\)execution\.hidden=false/);
+ assert.match(app,/const forward=\$\('#optimizerWorkflowNext'\);if\(forward\)forward\.hidden=false/);
+ assert.match(app,/Para alterar PREÇO ou DESCONTO deste kit/);
  assert.match(app,/RAClosePendingKitDirectEditor/);
  assert.match(kits,/kitShowPendingLinkChoice\(handoff\)/);
  assert.match(kits,/RAOpenPendingKitDirectEditor\?\.\(handoff,mount\)/);
- assert.match(kits,/kitPendingDirectEditor/);
+ assert.match(kits,/Otimizar anúncio existente — kit/);
+ assert.match(kits,/const wizard=\$\('#kitWizard'\);if\(wizard\)wizard\.hidden=true/);
+ assert.match(kits,/const wizard=\$\('#kitWizard'\);if\(wizard\)wizard\.hidden=false/);
+ assert.match(kits,/imagens, vídeo, título SEO, ficha técnica, descrição, variações e dados fiscais/);
  assert.doesNotMatch(kits,/Não há uma composição salva, editável e compatível/);
- assert.match(css,/#kitPendingDirectEditor #optimizerWorkflowCards/);
- assert.match(css,/#kitPendingDirectEditor #optimizerShowExecution/);
+ assert.doesNotMatch(css,/#kitPendingDirectEditor #optimizerWorkflowCards > :not\(\[data-stage="images"\]\)/);
+ assert.doesNotMatch(css,/#kitPendingDirectEditor #optimizerShowExecution,/);
+ assert.match(css,/#tab-kits #kitWizard\[hidden\]\{display:none!important\}/);
+ assert.match(css,/#tab-kits \.kit-pending-direct-mount #optimizerWorkflowCards/);
+ assert.match(html,/app\.js\?v=3\.5\.62-existing-kit-all-stages/);
 });
-
 test('vínculo duplicado em dois kits bloqueia seleção arbitrária',()=>{
  const route=classifyPendingImageEditor({itemId:id,sku:'C02317261',title:'Kit Canecas',
   linkedKits:[saved,{...saved,kitSku:'KIT-C02317261-TRC0688'}]});

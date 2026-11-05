@@ -3400,8 +3400,8 @@
 #tab-kits .kit-fiscal-sku-alert{font-size:12px;border:1px solid #efca85;background:#fff7e8;color:#81510c;padding:9px;border-radius:9px;margin-top:10px}
 #tab-kits .kit-wizard-fiscal-mount #optimizerFiscalPanel{border:1px solid #b8d3ed;border-radius:13px;padding:15px;background:#fff}
 
-/* Edição do Item ID existente quando o anúncio é um kit sem rascunho WeDrop.
-   Reutiliza o editor REAL do otimizador, limitado à revisão das 9 imagens. */
+/* Kit existente sem rascunho WeDrop: editor ORIGINAL completo do anúncio
+   validado pelo Item ID; wizard formal oculto somente durante esta sessão. */
 #tab-kits .kit-pending-direct-editor{
  margin:18px 0 24px;padding:20px;min-width:0;max-width:100%;
  border:1px solid #c9dbee;border-radius:20px;background:#fff;
@@ -3427,12 +3427,19 @@
  display:block;width:100%;max-width:100%;min-width:0;margin:0;
 }
 #tab-kits .kit-pending-direct-mount #optimizerWorkflowPanel[hidden]{display:none}
-#kitPendingDirectEditor #optimizerWorkflowCards > :not([data-stage="images"]){display:none!important}
-#kitPendingDirectEditor #optimizerShowExecution,
-#kitPendingDirectEditor #optimizerWorkflowNext,
-#kitPendingDirectEditor .optimizer-has-variants,
-#kitPendingDirectEditor #optimizerDiscountReviewInline,
-#kitPendingDirectEditor #optimizerExecutionPanel{display:none!important}
+#tab-kits #kitWizard[hidden]{display:none!important}
+#tab-kits .kit-pending-direct-mount #optimizerWorkflowCards{
+ display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px
+}
+#tab-kits .kit-pending-direct-mount #optimizerWorkflowCards > [data-stage]{
+ display:flex;min-width:0
+}
+@media(max-width:1000px){
+ #tab-kits .kit-pending-direct-mount #optimizerWorkflowCards{grid-template-columns:repeat(2,minmax(0,1fr))}
+}
+@media(max-width:560px){
+ #tab-kits .kit-pending-direct-mount #optimizerWorkflowCards{grid-template-columns:1fr}
+}
 #tab-kits .kit-pending-direct-link{margin-top:18px;padding:12px;border-top:1px solid #dce7f4}
 #tab-kits .kit-pending-direct-link summary{cursor:pointer;font-size:13px;font-weight:650;color:#244d7c}
 @media(max-width:700px){
