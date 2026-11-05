@@ -11871,6 +11871,20 @@ async function optimizerChatgptContinueFromServer(){
  if(!button||optimizerChatgptContinueBusy||button.disabled){notify('O comando já está em execução ou não existem imagens pendentes.',true);return;}
  optimizerChatgptContinueBusy=true;button.disabled=true;
  try{
+  // O botão "Gerar / continuar" deve resolver primeiro a posição 03
+  // pendente, sem ficar preso a sessões antigas da extensão Chrome.
+  const currentThirdState=await json('/api/shopee/optimizer/images/manual?'+
+   new URLSearchParams({sku:w.sku,item_id:w.itemId,model_id:w.modelId}));
+  if(!optimizerImagesSameSku(w))throw Error('A SKU mudou durante a leitura das imagens.');
+  const savedThirdState=new Map((currentThirdState.images||[]).map(x=>[Number(x.slot),x]));
+  const firstMissing=Array.from({length:9},(_,i)=>i+1).find(n=>!savedThirdState.has(n));
+  if(firstMissing===3){
+   await optimizerChatBridgeRelease('Imagem 03 será gerada diretamente com cotas WeDrop; sessão antiga da Ponte interrompida.');
+   await optimizerThirdFromPreparedPhoto(w,savedThirdState);
+   const message='✓ Imagem 03 salva com as dimensões verificadas da WeDrop, sem depender da Ponte. As imagens 01 e 02 foram preservadas. Confira a galeria e continue pela imagem 04.';
+   notify(message);
+   return {ok:false,localRendered:true,error:message};
+  }
   optimizerImagesMode='chatgpt';optimizerImagesRenderMode();
   if(!await optimizerChatBridgeWaitReady()){
    throw Error('Ponte não conectada ao Manager. Em chrome://extensions, ative a Ponte e em Detalhes → Acesso a sites permita redeachados-shopee.onrender.com. Se tiver a Ponte v1.0.23, clique em Reconectar ao Manager no ícone da extensão. As fotos salvas permanecem intactas.');
@@ -12139,21 +12153,24 @@ function optimizerCommercialActionMessage(message,isError=false){
 // Alternativa local não destrutiva quando a extensão Chrome recusa a origem
 // Shopee: utiliza SOMENTE uma foto comercial previamente salva NESTA SKU.
 // A foto 03 é uma derivação de 02 (ou 01) e precisa de revisão visual.
-async function optimizerThirdFromPreparedPhoto(w,stored){
+async function optimizerThirdFromPreparedPhoto(w,stored,{replaceExisting=false}={}){
  if(!optimizerImagesSameSku(w)||optimizerImagesAutoBusy)throw Error('A etapa de imagens não está disponível.');
  const fromSlot=stored.has(2)?2:stored.has(1)?1:0;
  if(!fromSlot)throw Error('Prepare primeiro a imagem 01 ou 02 para criar uma imagem de dimensões.');
  const spec=await optimizerVerifiedDimensionSpec(w);
- if(!spec?.measurements?.length)
-  throw Error('Informações da WeDrop não têm medidas verificadas desta SKU. Confira a Etapa 01 e o vínculo do catálogo.');
+ if((spec?.measurements?.length||0)<2)
+  throw Error('Informações da WeDrop não possuem pelo menos duas dimensões confirmadas desta SKU. Confira a Etapa 01 e o vínculo do catálogo. A imagem 03 não foi criada.');
  if(!optimizerImagesSameSku(w))throw Error('A SKU mudou durante a leitura WeDrop.');
  optimizerImagesAutoBusy=true;optimizerImagesSetProgress();
  const status=$('#optimizerImagesStatus');
  try{
   const key=new URLSearchParams({sku:w.sku,item_id:w.itemId,model_id:w.modelId});
   const before=await json('/api/shopee/optimizer/images/manual?'+key);
-  if((before.images||[]).some(image=>Number(image.slot)===3))
-   throw Error('A imagem 03 já foi preenchida por outra sessão. Atualize a galeria antes de substituí-la.');
+  const currentThird=(before.images||[]).find(image=>Number(image.slot)===3);
+  if(currentThird&&!replaceExisting)
+   throw Error('A imagem 03 foi preenchida por outra sessão. Atualize a galeria para não substituir uma foto sem autorização.');
+  if(currentThird&&(!stored.has(3)||currentThird.sha256!==stored.get(3)?.sha256))
+   throw Error('A imagem 03 mudou desde a última conferência. Atualize a galeria; nenhuma foto foi substituída.');
   const original=(before.images||[]).find(image=>Number(image.slot)===fromSlot);
   if(!original||original.sha256!==stored.get(fromSlot)?.sha256)
    throw Error('A foto-base foi alterada. Atualize a galeria antes de continuar.');
@@ -12174,12 +12191,14 @@ async function optimizerThirdFromPreparedPhoto(w,stored){
    method:'POST',credentials:'same-origin',
    headers:{'Content-Type':'image/png',
     'X-Image-Filename':'imagem-03-medidas-confirmadas.png',
-    'X-Expect-Empty-Slot':'true'},
+    ...(currentThird?{'X-Expected-Sha256':currentThird.sha256}:
+      {'X-Expect-Empty-Slot':'true'})},
    body:output,signal:AbortSignal.timeout(90000)
   });
   const saved=await response.json().catch(()=>({}));
   if(!response.ok||saved?.image?.sha256==null||
-     Number(saved.image.slot)!==3||String(saved.image.sku)!==String(w.sku))
+     Number(saved.image.slot)!==3||String(saved.image.sku)!==String(w.sku)||
+     Boolean(currentThird&&saved.image.sha256===currentThird.sha256))
    throw Error(String(saved.error||'Não houve confirmação do salvamento da imagem 03.'));
   const stage=w.stages?.find(stage=>stage.key==='images');
   if(stage){stage.reviewed=false;stage.status='pending';stage.reviewedAt=null;}
@@ -12187,7 +12206,8 @@ async function optimizerThirdFromPreparedPhoto(w,stored){
   optimizerCommercialActionMessage('✓ Imagem 03 salva com '+spec.measurements.map(x=>x.label+' '+x.value).join(' · ')+
    '. Foto-base derivada da posição '+String(fromSlot).padStart(2,'0')+
    '. Confira a composição e as cotas antes de aprovar. Outras imagens preservadas.');
-  status.textContent='Imagem 03 criada e salva com medidas verificadas da WeDrop, sem depender da extensão.';
+  status.textContent='✓ Imagem 03 criada e salva com '+spec.measurements.map(x=>x.label+' '+x.value).join(' · ')+
+   '. Nenhuma execução da Ponte ChatGPT foi necessária. Revise as cotas antes de aprovar.';
  }finally{
   optimizerImagesAutoBusy=false;optimizerImagesSetProgress();
   if(optimizerImagesSameSku(w))await optimizerImagesLoad();
@@ -12411,10 +12431,36 @@ async function optimizerImagesLoad(){
    const generate=optimizerMake('button','secondary',image?'↻ Refazer':'✧ Gerar');
    generate.type='button';generate.disabled=optimizerImagesAutoBusy;
    generate.setAttribute('aria-label',(image?'Refazer':'Gerar')+' imagem '+slot);
+   if(slot===3){
+    generate.textContent=image?'↻ Refazer com medidas WeDrop':'📏 Gerar com medidas WeDrop';
+    generate.title='Criar a imagem 03 COM as dimensões sobre a própria fotografia da SKU. Usa as Informações da WeDrop e não depende da Ponte ChatGPT.';
+   }
    generate.onclick=async()=>{
     if(optimizerImagesAutoBusy)return;
     if(!optimizerImagesSameSku(w))return;
     $('#optimizerImageCorrectionSlot').value=String(slot);optimizerImageCorrectionLoad();
+    if(slot===3){
+     if(optimizerSlotBridgeStartInFlight){
+      optimizerCommercialActionMessage('A imagem 03 já está sendo preparada. Nenhuma outra solicitação será aberta.');
+      return;
+     }
+     optimizerSlotBridgeStartInFlight=true;generate.disabled=true;
+     try{
+      // A extensão pode guardar uma sessão antiga e reenviar uma foto SEM
+      // cotas. O slot 03 é composto localmente com medidas verificadas.
+      await optimizerChatBridgeRelease('Imagem 03 será criada com cotas WeDrop. Ponte antiga pausada; fotos anteriores preservadas.');
+      await optimizerThirdFromPreparedPhoto(w,stored,{replaceExisting:Boolean(image)});
+     }catch(error){
+      const msg='Imagem 03 não foi criada: '+String(error.message||error)+
+       '. As imagens anteriores permaneceram salvas.';
+      optimizerCommercialActionMessage(msg,true);
+      status.textContent=msg;
+     }finally{
+      optimizerSlotBridgeStartInFlight=false;
+      generate.disabled=optimizerImagesAutoBusy;
+     }
+     return;
+    }
     // A loja escolheu ChatGPT: a API paga só pode ser usada quando selecionada
     // explicitamente, e nunca como fallback automático do botão Refazer.
     if(optimizerImagesMode!=='api'){
