@@ -10922,21 +10922,36 @@ async function optimizerChatgptMakeBrief(w,{defaultOnly=false}={}){
   import('/optimizer-visual-reference.js?v=20261105-shopee-source-safe-v2')
  ]);
  const existingKit=isPendingKitDirect(w.sku,w.itemId);
+ // ANTES de gerar QUALQUER imagem, recarregar o texto salvo da SKU atual
+ // tanto para Kits quanto para produtos individuais. Antes esta leitura
+ // só acontecia para kits, deixando a Imagem 03 sem as medidas da WeDrop.
+ const source=await json('/api/shopee/optimizer/workflow/source?'+new URLSearchParams({
+  sku:w.sku,item_id:w.itemId,model_id:w.modelId
+ }),{signal:AbortSignal.timeout(45000)});
+ if(!optimizerImagesSameSku(w))throw Error('A SKU foi alterada durante a leitura WeDrop.');
+ if(String(source?.sourceEvidence?.sku||'')===String(w.sku))
+  w.sourceEvidence=source.sourceEvidence;
  if(existingKit){
-  // Resgatar a fonte mais recente antes de criar QUALQUER prompt. Se o usuário
-  // digitou medidas na etapa 01 e ainda não salvou, não enviar a IA uma foto 03
-  // sem cotas ou benefícios inventados com informações desatualizadas.
-  const source=await json('/api/shopee/optimizer/workflow/source?'+new URLSearchParams({
-   sku:w.sku,item_id:w.itemId,model_id:w.modelId
-  }),{signal:AbortSignal.timeout(45000)});
-  if(!optimizerImagesSameSku(w))throw Error('A SKU foi alterada durante a leitura WeDrop.');
-  if(source?.sourceEvidence?.sku===w.sku)w.sourceEvidence=source.sourceEvidence;
   const saved=String(w.sourceEvidence?.sourceText||'').trim();
   const typed=String($('#optimizerSourceText')?.value||'').trim();
   if(typed!==saved)
    throw Error('ETAPA 01 WEDROP PENDENTE: existem informações editadas e ainda não salvas. '+
     'Clique em "Salvar informações" antes de gerar a próxima imagem. Nenhuma foto será apagada.');
  }
+ const evidence=w.sourceEvidence;
+ const trustedText=String(evidence?.sku||'')===String(w.sku)&&
+  Boolean(evidence?.updatedAt)?String(evidence.sourceText||''):'';
+ const {confirmedSpecCard}=await import('/specificationCard.js?v=20261105-exact-sku-triple');
+ const confirmedDimensionSpec=trustedText?confirmedSpecCard({
+  sourceText:trustedText,sku:w.sku,sourceEvidenceSku:evidence.sku,
+  sourceSaved:true,supplierMatchedBy:w.supplierProduct?.matchedBy||'',
+  catalogMeasurements:w.supplierProduct?.catalogMeasurements||null
+ }):null;
+ if(/(?:^|\n)\s*[-*•]?\s*(?:dimensões|dimensoes|medidas)\s*[:\-]/im.test(trustedText)&&
+    !confirmedDimensionSpec?.measurements?.length&&
+    !/dimensões da pista montada/i.test(trustedText))
+  throw Error('Há dimensões salvas na WeDrop da SKU '+w.sku+
+   ', mas não foi possível identificar os eixos com segurança. Confira os valores do catálogo. Nenhuma medida será inventada.');
  const linkedSupplierPhoto=!existingKit&&
   ['exact-sku','reviewed-link'].includes(String(w.supplierProduct?.matchedBy||''))&&
   /^https:\/\/wedrop-products-images\.nyc3\.cdn\.digitaloceanspaces\.com\//i.test(
@@ -10952,6 +10967,7 @@ async function optimizerChatgptMakeBrief(w,{defaultOnly=false}={}){
  const brief=createChatGptPrompts({
   sku:w.sku,title:w.draftTitle||w.productTitle||'Produto Shopee',
   imageUrls:referenceCandidates,
+  confirmedDimensionSpec,
   attributes:w.attributes||[],
   imageNotes:w.imageNotes||{},
   imagePrompts:defaultOnly?{}:(w.imagePrompts||{}),
@@ -10985,12 +11001,13 @@ async function optimizerFreshSavedWeDrop(w){
 }
 async function optimizerVerifiedDimensionSpec(w){
  const source=await optimizerFreshSavedWeDrop(w);
- const {confirmedSpecCard}=await import('/specificationCard.js?v=1.4.3-reference-design');
+ const {confirmedSpecCard}=await import('/specificationCard.js?v=20261105-exact-sku-triple');
  const spec=confirmedSpecCard({
   sourceText:source.sourceText||'',sku:w.sku,
   sourceEvidenceSku:source.sku||'',
   sourceSaved:Boolean(source.updatedAt),
-  supplierMatchedBy:w.supplierProduct?.matchedBy||''
+  supplierMatchedBy:w.supplierProduct?.matchedBy||'',
+  catalogMeasurements:w.supplierProduct?.catalogMeasurements||null
  });
  // Se já há uma linha de medidas, não confirmar uma foto-base sem cotas
  // silenciosamente. Datas e medidas inválidas exigem revisão do usuário.
