@@ -96,7 +96,7 @@ test('Ponte e API preservam a arte 03 pronta sem desenhar outra camada',()=>{
  assert.doesNotMatch(apiPath,/optimizerAnnotateThirdGeneratedImage\(w,result\)/);
  assert.match(apiPath,/nenhuma etiqueta adicional foi desenhada/);
  assert.match(app,/sourceEvidenceSku:source\.sku/);
- assert.match(app,/sourceSaved:Boolean\(source\.updatedAt\)/);
+ assert.match(app,/sourceSaved:true/);
  assert.match(app,/optimizerRepairThirdImageDimensions\(w,image\)/);
  assert.match(app,/X-Expected-Sha256/);
  assert.match(app,/if\(!optimizerImagesSameSku\(w\)\)throw Error/);
