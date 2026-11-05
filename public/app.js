@@ -10942,10 +10942,17 @@ async function optimizerChatgptMakeBrief(w,{defaultOnly=false}={}){
  const trustedText=String(evidence?.sku||'')===String(w.sku)&&
   Boolean(evidence?.updatedAt)?String(evidence.sourceText||''):'';
  const {confirmedSpecCard}=await import('/specificationCard.js?v=20261105-exact-sku-triple');
+ // A rota entrega as dimensões do catálogo da SKU exata, mesmo que o
+ // plano aberto antes da importação ainda não tenha o supplierProduct.
+ const verifiedCatalog=String(source?.supplierSku||'')===String(w.sku)||
+  source?.supplierMatchedBy==='reviewed-link';
+ const measures=verifiedCatalog?source.supplierMeasurements:null;
  const confirmedDimensionSpec=trustedText?confirmedSpecCard({
   sourceText:trustedText,sku:w.sku,sourceEvidenceSku:evidence.sku,
-  sourceSaved:true,supplierMatchedBy:w.supplierProduct?.matchedBy||'',
-  catalogMeasurements:w.supplierProduct?.catalogMeasurements||w.supplierProduct?.product_data?.catalogMeasurements||null
+  sourceSaved:true,supplierMatchedBy:source?.supplierMatchedBy||w.supplierProduct?.matchedBy||'',
+  catalogMeasurements:measures||
+   w.supplierProduct?.catalogMeasurements||
+   w.supplierProduct?.product_data?.catalogMeasurements||null
  }):null;
  if(/(?:^|\n)\s*[-*•]?\s*(?:dimensões|dimensoes|medidas)\s*[:\-]/im.test(trustedText)&&
     !confirmedDimensionSpec?.measurements?.length&&
@@ -10997,6 +11004,11 @@ async function optimizerFreshSavedWeDrop(w){
  if(!evidence||String(evidence.sku||'').trim()!==String(w.sku).trim())
   throw Error('As informações WeDrop não foram confirmadas para a SKU '+w.sku+'.');
  w.sourceEvidence=evidence;
+ w.verifiedWeDropMeasurements=
+  (String(result.supplierSku||'')===String(w.sku)||
+   result.supplierMatchedBy==='reviewed-link')?
+   result.supplierMeasurements||null:null;
+ w.verifiedWeDropMatchedBy=String(result.supplierMatchedBy||'');
  return evidence;
 }
 async function optimizerVerifiedDimensionSpec(w){
@@ -11006,8 +11018,10 @@ async function optimizerVerifiedDimensionSpec(w){
   sourceText:source.sourceText||'',sku:w.sku,
   sourceEvidenceSku:source.sku||'',
   sourceSaved:Boolean(source.updatedAt),
-  supplierMatchedBy:w.supplierProduct?.matchedBy||'',
-  catalogMeasurements:w.supplierProduct?.catalogMeasurements||w.supplierProduct?.product_data?.catalogMeasurements||null
+  supplierMatchedBy:w.verifiedWeDropMatchedBy||w.supplierProduct?.matchedBy||'',
+  catalogMeasurements:w.verifiedWeDropMeasurements||
+   w.supplierProduct?.catalogMeasurements||
+   w.supplierProduct?.product_data?.catalogMeasurements||null
  });
  // Se já há uma linha de medidas, não confirmar uma foto-base sem cotas
  // silenciosamente. Datas e medidas inválidas exigem revisão do usuário.
