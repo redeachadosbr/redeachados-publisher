@@ -42,6 +42,47 @@ export function confirmedProductDimensionsFromWeDrop(sourceText){
 }
 
 
+// Fichas WeDrop às vezes trazem "Dimensões: 10 x 10 x 14", sem
+// nomear eixos ou unidades. NUNCA inferir a partir desses números sozinhos.
+// Conciliar SOMENTE com a ficha de catálogo vinculada à SKU exata, cujo
+// próprio campo widthCm/heightCm/lengthCm determina unidade e eixo.
+// Exigir texto salvo e os três valores idênticos, na ordem dos campos da
+// planilha; em caso de divergência, não montar cotas.
+export function confirmedCatalogCrossCheckedDimensionsFromWeDrop(sourceText,{
+ sku='',sourceEvidenceSku='',sourceSaved=false,supplierMatchedBy='',
+ catalogMeasurements=null
+}={}){
+ if(!sku||String(sku).trim()!==String(sourceEvidenceSku).trim()||
+  !sourceSaved||!['exact-sku','reviewed-link'].includes(String(supplierMatchedBy))||
+  !catalogMeasurements)return null;
+ const values=['heightCm','widthCm','lengthCm'].map(k=>{
+  const n=Number(String(catalogMeasurements[k]??'').replace(',','.'));
+  return Number.isFinite(n)&&n>0&&n<=10000?n:null;
+ });
+ if(values.some(x=>x===null))return null;
+ const text=normalized(sourceText).slice(0,12000),matches=[];
+ for(const line of text.split('\n')){
+  const match=line.trim().match(/^(?:[-*•]\s*)?(?:dimensoes|medidas)(?:\s+(?:do|da|de)\s+(?:produto|item))?\s*[:\-]\s*(\d{1,4}(?:[.,]\d{1,2})?)\s*[x×]\s*(\d{1,4}(?:[.,]\d{1,2})?)\s*[x×]\s*(\d{1,4}(?:[.,]\d{1,2})?)\s*(?:cm)?\s*$/i);
+  if(!match||/embalagem|caixa|pacote|frete|transport/.test(line))continue;
+  const nums=match.slice(1,4).map(x=>Number(x.replace(',','.')));
+  if(nums.some(x=>!Number.isFinite(x)||x<=0))return null;
+  matches.push(nums);
+ }
+ if(!matches.length)return null;
+ // Os dois formatos frequentes A×L×C e L×A×C são aceitos somente
+ // quando ambos concordam com os eixos registrados na ficha exata.
+ const heightFirst=values.every((n,i)=>matches.every(arr=>arr[i]===n));
+ const widthFirst=[values[1],values[0],values[2]].every((n,i)=>
+  matches.every(arr=>arr[i]===n));
+ if(!heightFirst&&!widthFirst)return null;
+ return {measurements:[
+  {label:'ALTURA',value:fmtNumber(values[0])+' cm',axis:'altura'},
+  {label:'LARGURA',value:fmtNumber(values[1])+' cm',axis:'largura'},
+  {label:'COMPRIMENTO',value:fmtNumber(values[2])+' cm',axis:'comprimento'}
+ ],source:'Texto salvo WeDrop reconciliado com as medidas catalogadas da mesma SKU',
+  sourceLine:'Dimensões: '+matches[0].map(fmtNumber).join(' × ')};
+}
+
 // Informações laterais opcionais da imagem 03. A fonte é EXCLUSIVAMENTE
 // o campo "Informações da WeDrop" da mesma SKU, nunca dados logísticos.
 // Medidas de uma PISTA montada são do conjunto, NUNCA do carrinho
