@@ -84,8 +84,30 @@ export function auditRootShopeeExecution({
  }
  let fiscalOK=false,fiscalReason='Dados fiscais não aprovados ou divergentes';
  if(review.tax){
-  try{fiscalOK=fieldsVerified({tax_info:compileTax(review.tax,live)},live);}
-  catch(error){fiscalReason='Dados fiscais: '+String(error.message||error).slice(0,155);}
+  try{
+   const expected=compileTax(review.tax,live);
+   fiscalOK=fieldsVerified({tax_info:expected},live);
+   // Um rascunho com apenas NCM/Origem nao pode marcar o KIT como
+   // fiscalmente concluido quando CFOP, CSOSN e unidade estao vazios.
+   // Validar ambas as fontes: revisao da SKU e leitura REAL da Shopee.
+   if(review.kitOptimization?.kitSku){
+    const required=[
+     ['ncm','NCM'],['origin','Origem'],
+     ['same_state_cfop','CFOP mesmo estado'],
+     ['diff_state_cfop','CFOP outros estados'],
+     ['csosn','CSOSN'],['measure_unit','Unidade de Medida']
+    ];
+    const missingReview=required.filter(([key])=>
+     !String(review.tax?.[key]??'').trim()).map(([,label])=>label);
+    const missingLive=required.filter(([key])=>
+     !String(live.tax_info?.[key]??'').trim()).map(([,label])=>label);
+    if(missingReview.length||missingLive.length){
+     fiscalOK=false;
+     fiscalReason=(missingReview.length?'Rascunho fiscal sem '+missingReview.join(', ')+'. ':'')+
+      (missingLive.length?'Campos vazios na Shopee: '+missingLive.join(', '):'');
+    }
+   }
+  }catch(error){fiscalReason='Dados fiscais: '+String(error.message||error).slice(0,155);}
  }
  add('fiscal',fiscalOK,fiscalReason);
  add('discount',discountReadback===true,
