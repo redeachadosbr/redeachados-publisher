@@ -18,7 +18,7 @@ test('CEST vazio não impede registrar o fiscal revisado no Motor Matriz',()=>{
   ncm:'95069900',origin:'2',same_state_cfop:'5106',diff_state_cfop:'6106',
   csosn:'102',operation_type:'1',measure_unit:'UN',cest:'00'
  });
- assert.equal(Object.hasOwn(verified,'cest'),false);
+ assert.equal(verified.cest,'00');
  assert.equal(fiscalMatrixSource({sku:'TRC1525',supplier,tax:change.tax}).ncm,'95069900');
 });
 test('campos do contador ficam aproveitáveis nas próximas SKUs com NCM próprio',()=>{
