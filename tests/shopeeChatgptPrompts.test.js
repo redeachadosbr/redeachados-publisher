@@ -60,3 +60,13 @@ test('não reutiliza prompt da imagem 03 na imagem 04 após retomar',()=>{
  assert.match(result.prompts[3],/BENEFÍCIOS|Benefícios/);
  assert.doesNotMatch(result.prompts[3],/Imagem 03 — Especificações: foto sem medidas/);
 });
+
+test('editor de kit não envia medidas WeDrop digitadas antes de gravar e reconsulta a mesma SKU',()=>{
+ const app=readFileSync(new URL('../public/app.js',import.meta.url),'utf8');
+ const kit=readFileSync(new URL('../public/kit-builder.js',import.meta.url),'utf8');
+ assert.match(app,/ETAPA 01 WEDROP PENDENTE/);
+ assert.match(app,/source\?\x27\+new URLSearchParams/);
+ assert.match(app,/typed!==saved/);
+ assert.match(app,/chatgptPrompts\.js\?v=20261105-slot04-source-step1/);
+ assert.match(kit,/Aplicar medidas WeDrop/);
+});

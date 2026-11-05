@@ -5231,7 +5231,7 @@ function kitShowPendingLinkChoice(handoff){
  const sourceStep=elt('section','kit-pending-source-step');
  sourceStep.id='kitPendingDirectSourceStep';
  sourceStep.append(elt('strong','','01 · Informações da WeDrop — dados do produto'),
-  elt('p','','Cole a ficha do conjunto anunciado e anexe prints do fornecedor. Salve antes de gerar as imagens para que medidas e características comprovadas sejam usadas nos prompts, na ficha técnica e na descrição. Não inclua medidas de uma peça como se fossem do kit inteiro.'));
+  elt('p','','Cole a ficha do conjunto anunciado e anexe prints do fornecedor. Salve antes de gerar as imagens para que medidas e características comprovadas sejam usadas nos prompts, na ficha técnica e na descrição. Para a foto 03, informe somente medidas físicas verificadas em uma linha como “Dimensões: ...”; medidas isoladas de componentes devem ser identificadas como tal, nunca atribuídas ao conjunto. Se a imagem 03 já está salva sem cotas, use “Aplicar medidas WeDrop” no cartão 03 depois de salvar.'));
  const sourceMount=elt('div','kit-pending-source-mount');
  sourceMount.id='kitPendingDirectSourceMount';
  sourceStep.append(sourceMount);

@@ -10837,10 +10837,25 @@ function optimizerImagesRenderMode(){
 }
 async function optimizerChatgptMakeBrief(w,{defaultOnly=false}={}){
  const [{createChatGptPrompts},{visualReferenceCandidates}]=await Promise.all([
-  import('/chatgptPrompts.js?v=20261104-premium-nine-images'),
+  import('/chatgptPrompts.js?v=20261105-slot04-source-step1'),
   import('/optimizer-visual-reference.js?v=20261105-shopee-kit-photo-fallback')
  ]);
  const existingKit=isPendingKitDirect(w.sku,w.itemId);
+ if(existingKit){
+  // Resgatar a fonte mais recente antes de criar QUALQUER prompt. Se o usuário
+  // digitou medidas na etapa 01 e ainda não salvou, não enviar a IA uma foto 03
+  // sem cotas ou benefícios inventados com informações desatualizadas.
+  const source=await json('/api/shopee/optimizer/workflow/source?'+new URLSearchParams({
+   sku:w.sku,item_id:w.itemId,model_id:w.modelId
+  }),{signal:AbortSignal.timeout(45000)});
+  if(!optimizerImagesSameSku(w))throw Error('A SKU foi alterada durante a leitura WeDrop.');
+  if(source?.sourceEvidence?.sku===w.sku)w.sourceEvidence=source.sourceEvidence;
+  const saved=String(w.sourceEvidence?.sourceText||'').trim();
+  const typed=String($('#optimizerSourceText')?.value||'').trim();
+  if(typed!==saved)
+   throw Error('ETAPA 01 WEDROP PENDENTE: existem informações editadas e ainda não salvas. '+
+    'Clique em "Salvar informações" antes de gerar a próxima imagem. Nenhuma foto será apagada.');
+ }
  const linkedSupplierPhoto=!existingKit&&
   ['exact-sku','reviewed-link'].includes(String(w.supplierProduct?.matchedBy||''))&&
   /^https:\/\/wedrop-products-images\.nyc3\.cdn\.digitaloceanspaces\.com\//i.test(
