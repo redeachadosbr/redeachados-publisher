@@ -1,3 +1,4 @@
+import {visualReferenceCandidates} from './public/optimizer-visual-reference.js';
 import express from 'express';
 import session from 'express-session';
 import {createShopeeSessionStore,SESSION_TTL_MS} from './shopeeSessionStore.js';
@@ -4650,7 +4651,7 @@ app.post('/api/shopee/optimizer/images/generate',mustLogin,requireWeDropAdmin,as
    optimizerSettings(auth.shopId),getWorkflowReview(auth.shopId,itemId,modelId)
   ]);
   const review=stored?.sku===sku?stored.review_state||{}:{};
-  const references=(record.imageUrls||[]).slice(0,2);
+  const references=visualReferenceCandidates((record.imageUrls||[]).slice(0,3));
   if(!references.length&&!referenceImages.length)throw Error('Sem fotografia de referência disponível nesta SKU.');
   // Aproveitar informações do fornecedor apenas como dados auxiliares.
   // Falhas de leitura complementar não devem impedir a geração de imagens.
@@ -4666,7 +4667,10 @@ app.post('/api/shopee/optimizer/images/generate',mustLogin,requireWeDropAdmin,as
   const wedropImage=['exact-sku','reviewed-link'].includes(String(linkedSupplier?.matchedBy||''))&&
    /^https:\/\/wedrop-products-images\.nyc3\.cdn\.digitaloceanspaces\.com\//i.test(String(product.imageUrl||''))?
    String(product.imageUrl):'';
-  if(wedropImage&&!editCurrent)references.unshift(wedropImage);
+  // Anúncio de kit = foto do CONJUNTO real na Shopee, não fotografia
+  // WeDrop da garrafa/unidade que por acaso compartilha a SKU principal.
+  const listingIsKit=/^(?:kit|combo|conjunto)\b/i.test(String(record.title||'').trim());
+  if(wedropImage&&!editCurrent&&!listingIsKit)references.unshift(wedropImage);
   const supplierCatalogInfo=[product.name,product.brand,product.description||product.details]
    .filter(x=>typeof x==='string'&&x.trim()).join('\n').slice(0,1700);
   const output=await generateOpenAiImage({

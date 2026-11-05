@@ -10820,14 +10820,22 @@ function optimizerImagesRenderMode(){
  $('#optimizerModeApi').classList.toggle('is-active',!chat);
 }
 async function optimizerChatgptMakeBrief(w,{defaultOnly=false}={}){
- const {createChatGptPrompts}=await import('/chatgptPrompts.js?v=20261104-premium-nine-images');
- return createChatGptPrompts({
-  sku:w.sku,title:w.draftTitle||'Produto Shopee',
-  // Sempre priorizar a foto ORIGINAL WeDrop da mesma SKU vinculada.
-  // Se não houver foto confiável, manter a fotografia atual da Shopee.
-  imageUrls:(['exact-sku','reviewed-link'].includes(String(w.supplierProduct?.matchedBy||''))&&
-   /^https:\/\/wedrop-products-images\.nyc3\.cdn\.digitaloceanspaces\.com\//i.test(String(w.supplierProduct?.imageUrl||''))?
-   [w.supplierProduct.imageUrl,...(w.imageUrls||[])]:w.imageUrls||[]),
+ const [{createChatGptPrompts},{visualReferenceCandidates}]=await Promise.all([
+  import('/chatgptPrompts.js?v=20261104-premium-nine-images'),
+  import('/optimizer-visual-reference.js?v=20261105-shopee-kit-photo-fallback')
+ ]);
+ const existingKit=isPendingKitDirect(w.sku,w.itemId);
+ const linkedSupplierPhoto=!existingKit&&
+  ['exact-sku','reviewed-link'].includes(String(w.supplierProduct?.matchedBy||''))&&
+  /^https:\/\/wedrop-products-images\.nyc3\.cdn\.digitaloceanspaces\.com\//i.test(
+   String(w.supplierProduct?.imageUrl||''))?w.supplierProduct.imageUrl:'';
+ // Kit SEM composição WeDrop: referência visual tem de mostrar o KIT REAL
+ // publicado no Item ID, não o produto individual da SKU principal.
+ const referenceCandidates=visualReferenceCandidates(existingKit?(w.imageUrls||[]):
+  [linkedSupplierPhoto,...(w.imageUrls||[])]);
+ const brief=createChatGptPrompts({
+  sku:w.sku,title:w.draftTitle||w.productTitle||'Produto Shopee',
+  imageUrls:referenceCandidates,
   attributes:w.attributes||[],
   imageNotes:w.imageNotes||{},
   imagePrompts:defaultOnly?{}:(w.imagePrompts||{}),
@@ -10837,9 +10845,10 @@ async function optimizerChatgptMakeBrief(w,{defaultOnly=false}={}){
     ['exact-sku','reviewed-link'].includes(String(w.supplierProduct?.matchedBy||''))))?
    (w.sourceEvidence?.sourceText||''):'',
 
-  supplierProduct:w.supplierProduct||null,
-  supplierMetrics:w.sourceFacts?.metrics||[]
+  supplierProduct:existingKit?null:w.supplierProduct||null,
+  supplierMetrics:existingKit?[]:w.sourceFacts?.metrics||[]
  });
+ return {...brief,referenceCandidates};
 }
 // O campo "Informações da WeDrop" é salvo por shop + Item ID + modelo + SKU.
 // Antes de importar a fotografia 03, ler novamente do servidor; não depender
@@ -11612,10 +11621,21 @@ async function optimizerChatgptContinueFromServer(){
    const pendingUploads=await optimizerChatBridgeRecover({includeBlocked:true});
    if(pendingUploads)notify('Recuperando '+pendingUploads+' arquivo(s) capturado(s) antes de continuar na imagem '+first+'/09.');
   }
-  const recovered=await optimizerBridgeRecoverFromExtension({
-   sku:String(w.sku),itemId:String(w.itemId),modelId:String(w.modelId),
-   completed:stored,imageUrl:brief.original,prompts:brief.prompts
-  });
+  const {isVisualReferenceError}=await import('/optimizer-visual-reference.js?v=20261105-shopee-kit-photo-fallback');
+  const refs=brief.referenceCandidates?.length?brief.referenceCandidates:[brief.original];
+  let referenceIndex=0,referenceUrl=refs[0],recovered=null;
+  // A Ponte pode rejeitar um domínio Shopee mesmo quando a prévia mostra a
+  // foto. Repetir somente a leitura da referência, jamais apagar imagens.
+  for(let i=0;i<refs.length;i++){
+   referenceIndex=i;referenceUrl=refs[i];
+   recovered=await optimizerBridgeRecoverFromExtension({
+    sku:String(w.sku),itemId:String(w.itemId),modelId:String(w.modelId),
+    completed:stored,imageUrl:referenceUrl,prompts:brief.prompts
+   });
+   if(recovered.ok||['NO_RECOVERABLE_JOB','ALREADY_COMPLETE'].includes(recovered.reason)||
+      !isVisualReferenceError(recovered.error)||i===refs.length-1)break;
+   notify('Referência '+(i+1)+' não foi aceita pela Ponte. Testando outra foto/CDN oficial do mesmo Item ID sem remover imagens salvas...');
+  }
   if(!optimizerImagesSameSku(w))throw Error('A SKU mudou; o comando de recuperação foi interrompido.');
   if(recovered.ok){
    // Só encerrar uma sessão anterior se seu nonce NÃO for o recuperado.
@@ -11640,19 +11660,27 @@ async function optimizerChatgptContinueFromServer(){
    optimizerChatBridgeJob=null;optimizerChatBridgeNonce='';optimizerChatBridgeSku='';
    sessionStorage.removeItem(RA_CHAT_BRIDGE_JOB_KEY);
    sessionStorage.removeItem(RA_CHAT_BRIDGE_SESSION_KEY);
-   optimizerChatBridgeNonce=crypto.randomUUID();optimizerChatBridgeSku=w.sku;
-   sessionStorage.setItem(RA_CHAT_BRIDGE_SESSION_KEY,optimizerChatBridgeNonce);
-   optimizerChatBridgeRemember(w,missing);
-   optimizerChatBridgeBusy=true;optimizerChatBridgeStartConfirmed=false;
-   $('#optimizerChatgptAbort').hidden=false;
-   notify('Iniciando nova sessão pela primeira imagem pendente '+first+'/09. '+stored.length+' imagem(ns) salva(s) preservada(s).');
-   const startAck=optimizerWaitBridgeReply('RA_EXTENSION_START_RESULT',optimizerChatBridgeNonce,18000);
-   window.postMessage({kind:'RA_SITE_START',payload:{
-    nonce:optimizerChatBridgeNonce,sku:w.sku,itemId:String(w.itemId),modelId:String(w.modelId),
-    imageUrl:brief.original,prompts:brief.prompts,completed:stored
-   }},location.origin);
-   const startResult=await startAck;
-   if(!startResult?.ok)throw Error('A Ponte não confirmou a nova sessão: '+(startResult?.error||'sem confirmação'));
+   let startResult=null;
+   for(let i=referenceIndex;i<refs.length;i++){
+    referenceUrl=refs[i];
+    optimizerChatBridgeNonce=crypto.randomUUID();optimizerChatBridgeSku=w.sku;
+    sessionStorage.setItem(RA_CHAT_BRIDGE_SESSION_KEY,optimizerChatBridgeNonce);
+    optimizerChatBridgeRemember(w,missing);
+    optimizerChatBridgeBusy=true;optimizerChatBridgeStartConfirmed=false;
+    $('#optimizerChatgptAbort').hidden=false;
+    notify('Iniciando imagem '+first+'/09 com a referência '+(i+1)+'/'+refs.length+
+     ' do mesmo Item ID. '+stored.length+' imagens salvas preservadas.');
+    const startAck=optimizerWaitBridgeReply('RA_EXTENSION_START_RESULT',optimizerChatBridgeNonce,18000);
+    window.postMessage({kind:'RA_SITE_START',payload:{
+     nonce:optimizerChatBridgeNonce,sku:w.sku,itemId:String(w.itemId),modelId:String(w.modelId),
+     imageUrl:referenceUrl,prompts:brief.prompts,completed:stored
+    }},location.origin);
+    startResult=await startAck;
+    if(startResult?.ok)break;
+    if(!isVisualReferenceError(startResult?.error)||i===refs.length-1)
+     throw Error('A Ponte não confirmou a nova sessão: '+(startResult?.error||'sem confirmação'));
+    notify('Foto rejeitada pela Ponte. Alternando a referência original da mesma SKU, sem reiniciar posições concluídas.');
+   }
    const issuedNonce=optimizerChatBridgeNonce;
    setTimeout(()=>{
     if(!optimizerChatBridgeStartConfirmed&&optimizerChatBridgeBusy&&optimizerChatBridgeNonce===issuedNonce){

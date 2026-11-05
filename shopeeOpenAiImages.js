@@ -147,7 +147,7 @@ export async function generateOpenAiImage({record,slot,masterPrompt='',note='',r
  const status=imageGenerationStatus();
  const token=String(apiKey||process.env.OPENAI_API_KEY||'').trim();
  if(!token)throw Error('Conecte sua conta da API OpenAI em Otimização > Gerador de imagens.');
- const sources=[...new Set(referenceUrls.filter(Boolean))].slice(0,1);
+ const sources=[...new Set(referenceUrls.filter(Boolean))].slice(0,6);
  const originals=[];
  for(const reference of referenceImages.slice(0,1)){
   if(!Buffer.isBuffer(reference?.file)||!['image/png','image/jpeg'].includes(reference?.mime))
@@ -155,8 +155,15 @@ export async function generateOpenAiImage({record,slot,masterPrompt='',note='',r
   imageDimensions(reference.file,reference.mime);
   originals.push({file:reference.file,mime:reference.mime});
  }
- for(const u of sources)originals.push(await fetchShopeeReference(u));
- if(!originals.length)throw Error('Nenhuma fotografia de referência disponível para o ajuste.');
+ let referenceFailure=null;
+ for(const u of sources){
+  try{
+   originals.push(await fetchShopeeReference(u));
+   break; // Referência boa: não misturar todas as variações na geração.
+  }catch(error){referenceFailure=error;}
+ }
+ if(!originals.length)throw Error('Nenhuma fotografia de referência válida para esta SKU. '+
+  String(referenceFailure?.message||'Envie uma fotografia original do produto.').slice(0,160));
  const form=new FormData();
  form.set('model',status.model);
  form.set('size',status.model.startsWith('gpt-image-1')?'1024x1024':'1200x1200');
