@@ -440,7 +440,8 @@ test('dados fiscais do kit: etapa 08 reutiliza presets locais sem Shopee',()=>{
  const request=wizard.slice(wizard.indexOf('async function kitWizardRequestFiscal'),wizard.indexOf('function kitWizardSetStage'));
  assert.doesNotMatch(request,/kitOptimizeStart|button\.click\(\)|RAKitOpenFiscalEditor/);
  assert.ok(app.includes('globalThis.RAKitRenderStoredFiscal='));
- assert.ok(app.includes('optimizerFiscalRender({...data,taxCurrent:{},readOnlyMarketplace:true})'));
+ assert.ok(app.includes('optimizerFiscalRender({...data,taxCurrent:null,readOnlyMarketplace:true})'),
+  'O preset local não pode declarar CEST vazio sem leitura da Shopee');
  assert.ok(server.includes("app.get('/api/shopee/kits/fiscal-preset'"));
  assert.ok(helper.includes('skus.map(sku=>readWeDropProduct(shopId,{sku}))'));
  assert.ok(helper.includes('skuPresets=skus.map'));
