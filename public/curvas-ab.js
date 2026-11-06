@@ -126,11 +126,9 @@
   top.append(title,curve);
   const sku=t('div','curve-sku');sku.append('SKU WeDrop: ',t('b','',row.sku));
   const fit=row.adsCompetitiveness||null;
-  if(fit?.eligible){
-   const label=fit.status==='within_market'?
-    'Apta para Ads • preço na média':'Apta para Ads • até 40% acima da média';
-   main.append(t('div','curve-ads-fit',label));
-  }
+  const fitTag=fit?.eligible?t('div','curve-ads-fit',
+   fit.status==='within_market'?'Pré-qualificada • preço na média':
+   'Pré-qualificada • até 40% acima da média'):null;
   const facts=t('div','curve-metrics');
   facts.append(
    metric(row.periodSource?.includes('Em Destaque')?'Vendido/Mês • Shopee':
@@ -152,10 +150,8 @@
   const evidence=t('p','curve-evidence',row.periodSource?
    'Fonte da classificação: '+row.periodSource+'.':
    'Somente vendas acumuladas disponíveis: classificação potencial, não vendas confirmadas em 30 dias.');
-  if(fit?.eligible){
-   main.append(t('p','curve-ads-scenario',
-    'Simulação: custo WeDrop, taxas padrão, 10% para Ads e margem líquida mínima de 5%. Revise as taxas reais antes de anunciar.'));
-  }
+  const fitScenario=fit?.eligible?t('p','curve-ads-scenario',
+   'Simulação: custo WeDrop, taxas padrão, 10% para Ads e margem líquida mínima de 5%. Confira taxas e ROAS reais antes de anunciar.'):null;
   const proof=t('details','curve-monthly-competitors');
   const count=Number(row.monthlyCompetitorCount||0);
   proof.append(t('summary','',count+' lojas com vendas mensais'+
@@ -194,7 +190,8 @@
    actions.append(featured);
   }
   actions.append(copy,link);
-  main.append(top,sku,facts,competitor,evidence,proof,stock,actions);
+  main.append(top,sku,...(fitTag?[fitTag]:[]),facts,competitor,evidence,
+   ...(fitScenario?[fitScenario]:[]),proof,stock,actions);
   appendPrices(main,row);
   appendSEO(main,row);
   box.append(frame,main);return box;

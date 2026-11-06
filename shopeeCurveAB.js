@@ -330,7 +330,8 @@ export function pickCurveResults(rows,{curve='ALL',limit=10,verifiedOnly=false,c
  const choice=String(curve).toUpperCase();
  if(!['ALL','A','B'].includes(choice))throw Error('Filtro de curva inválido.');
  const accepted=rows.filter(x=>
-  (!competitiveOnly||x.adsCompetitiveness?.eligible===true)&&
+  (!competitiveOnly||(x.adsCompetitiveness?.eligible===true&&
+   Number(x.monthlyCompetitorCount||0)>=CURVE_ADS_POLICY.minMonthlyCompetitors))&&
   (x.verified30&&(x.curve==='A'||x.curve==='B')&&(choice==='ALL'||x.curve===choice)||
    (!competitiveOnly&&!verifiedOnly&&choice==='ALL'&&!x.verified30&&x.curve==='PENDING')));
  return {items:accepted.slice(0,Number(limit)),found:accepted.length,requested:Number(limit),
