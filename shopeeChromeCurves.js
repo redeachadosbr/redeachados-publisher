@@ -118,7 +118,10 @@ export async function importChromeOffers(shopId,{
  return {ok:true,configured:true,verifiedOnly:true,curve,category,readOnly:true,
   ...picked,competitiveOnly:true,pricePolicy:CURVE_ADS_POLICY,
   ...priceStats,possibleMatches:rows.length,matchedSkuCount:rows.length,
-  viableSkuCount:qualified.length,pendingCount:pending.length,
+  viableSkuCount:qualified.length,
+  matchedSkuIds:rows.map(row=>row.sku),
+  viableSkuIds:qualified.map(row=>row.sku),
+  pendingCount:pending.length,
   pendingItems:[],catalogCount:state.catalog.length,
   offerCount:state.offers.size,skuSearchesCompleted:state.scanned.size,
   skuQueriesCompleted:state.queries,remainingSkuQueries:Math.max(0,state.plan.length-state.queries),
@@ -132,7 +135,7 @@ export async function importChromeOffers(shopId,{
   chromeImport:{
    query:search,imported:normalized.length,
    monthlyOffers:normalized.filter(x=>x.monthlySold!==null).length,
-   skuCount:task.skus.length,
+   skuCount:task.skus.length,searchedSkus:task.skus,
    matchedSkus:task.skus.filter(sku=>rows.some(row=>row.sku===sku)),
    viableSkus:task.skus.filter(sku=>qualified.some(row=>row.sku===sku))},
   warning:'Somente Curvas A/B com 3 concorrentes mensais, média do preço de venda de 3 a 5 lojas diferentes, custo inferior a essa média e preço rentável até 40% acima dela. '+
