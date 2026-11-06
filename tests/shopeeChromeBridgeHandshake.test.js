@@ -6,8 +6,8 @@ const manager=readFileSync(new URL('../chrome-extension-shopee/manager.js',impor
 const background=readFileSync(new URL('../chrome-extension-shopee/background.js',import.meta.url),'utf8');
 const ui=readFileSync(new URL('../public/curvas-chrome.js',import.meta.url),'utf8');
 const manifest=JSON.parse(readFileSync(new URL('../chrome-extension-shopee/manifest.json',import.meta.url),'utf8'));
-test('ponte v1.2.2 recupera guias Manager e verifica versão antes da pesquisa',()=>{
- assert.equal(manifest.version,'1.2.2');
+test('ponte v1.2.3 recupera guias Manager e verifica versão antes da pesquisa',()=>{
+ assert.equal(manifest.version,'1.2.3');
  assert.ok(manifest.permissions.includes('scripting'));
  assert.ok(manifest.permissions.includes('storage'));
  assert.match(background,/chrome\.scripting\.executeScript/);
@@ -28,7 +28,7 @@ test('script reinjetado responde uma única vez a cada ping',async()=>{
    });
   }
  };
- const runtime={getManifest:()=>({version:'1.2.2'}),
+ const runtime={getManifest:()=>({version:'1.2.3'}),
   onMessage:{addListener(){}},sendMessage(){}};
  const ctx={window,location:{origin},chrome:{runtime},globalThis:null,console};
  ctx.globalThis=ctx;
@@ -38,6 +38,6 @@ test('script reinjetado responde uma única vez a cada ping',async()=>{
  window.postMessage({kind:'RA_CURVE_CHROME_PROBE',nonce},origin);
  await new Promise(r=>setImmediate(r));
  assert.equal(events.filter(x=>x.kind==='RA_CURVE_CHROME_READY').length,1);
- assert.equal(events.find(x=>x.kind==='RA_CURVE_CHROME_READY').version,'1.2.2');
+ assert.equal(events.find(x=>x.kind==='RA_CURVE_CHROME_READY').version,'1.2.3');
  assert.equal(listeners.length,1);
 });
