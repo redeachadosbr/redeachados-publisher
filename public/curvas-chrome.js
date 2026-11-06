@@ -20,14 +20,17 @@
   summaryEl('curveChromeSummaryTitle').textContent=headline;
   summaryEl('curveChromeSummaryCategory').textContent='Categoria WeDrop: '+
    (s.selected.category==='Todos'?'Todas as categorias':s.selected.category)+
-   (s.selected.keyword?' • Produto: '+s.selected.keyword:'');
+   (s.selected.keyword?' • Produto: '+s.selected.keyword:'')+
+   ' • '+countFmt.format(Number(s.plan?.catalogCount)||0)+' SKUs no catálogo filtrado';
   summaryEl('curveChromeSummaryStatus').textContent=statusText;
   summaryEl('curveChromeSummaryScanned').textContent=countFmt.format(searched);
   summaryEl('curveChromeSummaryMatched').textContent=countFmt.format(matched);
   summaryEl('curveChromeSummaryViable').textContent=countFmt.format(viable);
   summaryEl('curveChromeSummaryExcluded').textContent=countFmt.format(Math.max(0,searched-viable));
   summaryEl('curveChromeSummaryDetail').textContent=
-   countFmt.format(s.scanned)+' tentativa(s) de consulta Shopee • '+
+   countFmt.format(Number(s.plan?.catalogCount)||0)+' SKUs no catálogo filtrado • '+
+   countFmt.format(s.scanned)+' de '+
+   countFmt.format(Number(s.plan?.totalQueries)||0)+' buscas planejadas percorridas • '+
    countFmt.format(s.received)+' consulta(s) importadas com sucesso. '+
    countFmt.format(s.searchedSkuIds.size)+' SKU(s) com resultados importados; '+
    countFmt.format(Math.max(0,searched-s.searchedSkuIds.size))+
@@ -35,7 +38,9 @@
    ' consulta(s) com falha de leitura ou dados parciais. '+countFmt.format(viable)+
    ' de '+countFmt.format(searched)+' SKU(s) consultadas comprovaram Curva A/B '+
    'em 30 dias, 3 concorrentes e preço viável com média de 3 a 5 lojas. '+
-   (note||'')+' Consulta incompleta não representa produto definitivamente reprovado.';
+   (note||'')+' Consulta incompleta não representa produto definitivamente reprovado. '+
+   'Sem três concorrentes com vendas dos últimos 30 dias verificáveis, '+
+   'nenhuma Curva pode ser confirmada, mesmo que existam anúncios na Shopee.';
  }
  const stages={iniciando:'Preparando pesquisa',navegando:'Pesquisando SKU',
   carregando:'Carregando Shopee',lendo:'Lendo anúncios',
@@ -47,9 +52,11 @@
  function updateStage(name,detail='',s=null){
   if(progress)progress.hidden=false;
   if(stepLabel)stepLabel.textContent=stages[name]||name;
-  if(counters&&s)counters.textContent=s.scanned+' consultas realizadas • '+
+  if(counters&&s)counters.textContent=s.scanned+'/'+
+   (Number(s.plan?.totalQueries)||'?')+' buscas planejadas • '+
    s.found+'/'+s.selected.limit+' SKUs aptas para Ads • '+
-   s.monthly+' anúncio(s) com dados mensais';
+   s.monthly+' anúncio(s) com dados mensais • '+
+   s.errors+' consulta(s) com dados incompletos';
   if(bar&&s){bar.max=s.selected.limit;bar.value=Math.min(s.found,s.selected.limit);}
   if(feed&&detail){
    const item=document.createElement('li');item.textContent=String(detail).slice(0,260);
