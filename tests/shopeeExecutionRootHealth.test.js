@@ -197,3 +197,17 @@ test('SKU 1736: condição revisada usa leitura oficial sem exigir 20 atributos 
   technicalReviewedAttributeIds:[100413],
   proposed:a.job.plan.proposed},a.live),false);
 });
+
+test('atributo opcional divergente não bloqueia fiscal e desconto nem fica verde falsamente',()=>{
+ const a=base();
+ a.review.attributes=[{attributeId:100413,values:[{valueId:2556,valueName:'Used'}]}];
+ a.record.attributeAudit={missingMandatory:0,attributes:[{id:100413,mandatory:false}]};
+ a.live.condition='NEW';
+ const audit=auditRootShopeeExecution(a);
+ const technical=audit.stages.find(x=>x.id==='technical');
+ assert.equal(technical.status,'not_applicable');
+ assert.match(technical.reason,/opcional/i);
+ assert.equal(technical.confirmedBy,null);
+ a.record.attributeAudit.attributes[0].mandatory=true;
+ assert.equal(auditRootShopeeExecution(a).stages.find(x=>x.id==='technical').status,'pending');
+});
