@@ -256,7 +256,7 @@
     const hd=el('div','');
     hd.append(el('div','seo-studio-kicker','OTIMIZAÇÃO DE ANÚNCIOS · TÍTULO SEO'),
       el('h4','','Escolha um título que destaque seu produto'),
-      el('p','','4 opções elaboradas com termos do produto, de 100 a 120 caracteres, com edição manual.'));
+      el('p','','4 opções de exatamente 120 caracteres, com pesquisa de palavras-chave e nota SEO 0 a 100.'));
     const badge=el('span','seo-studio-sku','SKU '+(sku||'—'));
     head.append(hd,badge);mount.append(head);
     const note=el('div','seo-studio-alert','Os quatro títulos são pedidos ao ChatGPT pela Ponte do Chrome (sem API paga). Palavras-chave pesquisadas terão fontes indicadas, quando o ChatGPT conseguir consultá-las.');
@@ -293,7 +293,7 @@
         const meter=el('div','seo-studio-meter');
         meter.append(el('strong','','— /100'),el('small','','nota SEO'));
         top.append(group,meter);
-        const title=el('p','seo-studio-candidate','Aguardando título validado de 100 a 120 caracteres.');
+        const title=el('p','seo-studio-candidate','Aguardando título validado de exatamente 120 caracteres.');
         const info=el('div','seo-studio-metrics');
         info.append(el('span','seo-studio-caution','Sem título recebido'));
         const action=el('div','seo-studio-card-actions');
@@ -318,7 +318,7 @@
       for(const [i,o] of ranking.entries()){
         const n=count(o.title),score=o.score;
         const repeated=used.has(key(o.title));used.add(key(o.title));
-        const eligible=n>=MIN&&n<=LIMIT&&!repeated&&o.valid!==false;
+        const eligible=n===LIMIT&&!repeated&&o.valid!==false&&o.breakdown.emojis===10;
         const card=el('article','seo-studio-card'+(eligible?' valid':' needs-review')+
          (o.ideal?' seo-studio-ideal':''));
         const meta=el('div','seo-studio-card-top');
@@ -341,15 +341,15 @@
         const keys=el('div','seo-studio-metrics');
         keys.append(el('span',eligible?'seo-studio-ok':'seo-studio-caution',n+'/120 caracteres'+(repeated?' · repetido':'')),
           el('span','',o.matchedKeywords.length+' termos da pesquisa incorporados'),
-          el('span','',o.warning||('Emojis separados · pesquisa '+(researchResult?.researchStatus==='verified'?'com URLs citadas':'sem fonte comprovada'))));
+          el('span','',o.warning||('Emoji após nome do produto · pesquisa '+(researchResult?.researchStatus==='verified'?'com URLs citadas':'sem fonte comprovada'))));
         card.append(keys);
         // Reduzir a altura dos cartões: explicação e metodologia sob demanda.
         const analysis=el('details','seo-studio-analysis-details');
         const analysisSummary=el('summary','','▸ Ver análise e critérios da nota');
         const explain=el('small','seo-studio-score-detail',
-         'Nota: aproveitamento do limite '+o.breakdown.length+'/30 · palavras-chave '+o.breakdown.keywords+
-         '/35 · posição da busca '+o.breakdown.front+'/10 · nome do produto '+o.breakdown.product+
-         '/10 · emojis '+o.breakdown.emojis+'/10 · clareza '+o.breakdown.readability+'/5.');
+         'Nota: 120 caracteres '+o.breakdown.length+'/20 · palavras-chave '+o.breakdown.keywords+
+         '/40 · posição da busca '+o.breakdown.front+'/15 · nome do produto '+o.breakdown.product+
+         '/10 · emoji natural '+o.breakdown.emojis+'/10 · clareza '+o.breakdown.readability+'/5.');
         analysis.append(analysisSummary,el('p','seo-studio-why',o.reason),explain);
         card.append(analysis);
         const actions=el('div','seo-studio-card-actions');
@@ -387,8 +387,22 @@
       research.replaceChildren();
       const verified=result.researchStatus==='verified';
       research.append(el('strong','',verified?'URLs citadas pelo ChatGPT (verifique as fontes):':'Sem fontes verificáveis: não afirmar que são as palavras mais buscadas.'));
-      if(Array.isArray(result.keywords)&&result.keywords.length)
-       research.append(el('p','','Palavras-chave por relevância apontada na pesquisa: '+result.keywords.map((t,i)=>(i+1)+'º '+t).join(' · ')));
+      const groups=result.keywordGroups||{};
+      const categories=[
+       ['principais','Principais (busca direta)'],
+       ['secundarias','Secundárias (sinônimos)'],
+       ['caudaLonga','Cauda longa (busca específica)'],
+       ['emAlta','Em alta (somente com fonte atual)']
+      ];
+      let grouped=false;
+      for(const [id,label] of categories){
+       const items=Array.isArray(groups[id])?groups[id].filter(Boolean):[];
+       if(!items.length)continue;
+       grouped=true;
+       research.append(el('p','seo-studio-keyword-group',label+': '+items.join(' · ')));
+      }
+      if(!grouped&&Array.isArray(result.keywords)&&result.keywords.length)
+       research.append(el('p','','Termos relacionados: '+result.keywords.join(' · ')));
       for(const url of result.sources||[]){
        const anchor=el('a','seo-studio-research-link',url);anchor.href=url;anchor.target='_blank';anchor.rel='noopener noreferrer';
        research.append(anchor);
