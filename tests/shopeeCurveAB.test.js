@@ -418,7 +418,7 @@ test('Curva B com custo baixo e três lojas de preços comparáveis recebe simul
  assert.equal(pickCurveResults(rows,{limit:5,competitiveOnly:true,verifiedOnly:true}).found,1);
 });
 
-test('média do preço de venda exige ao menos 3 lojas e usa no máximo 5 anúncios distintos',()=>{
+test('média em Curvas valida 2 lojas e pode usar até 10 anúncios distintos',()=>{
  const name='Organizador de Gaveta Modular Plástico Grande';
  const catalog=[{supplier_sku:'C123',product_data:{
   name,category:'Organizadores',rawAvailability:'Disponível'}}];
@@ -431,8 +431,8 @@ test('média do preço de venda exige ao menos 3 lojas e usa no máximo 5 anúnc
  }));
  const apply=n=>matchCurveOffers({catalog,costs,offers:offers.slice(0,n),ownShopId:'999'})[0];
  const two=apply(2);
- assert.equal(two.avgCompetitorPrice,null);
- assert.equal(two.adsCompetitiveness.eligible,false);
+ assert.equal(two.avgCompetitorPrice,92.5);
+ assert.equal(two.adsCompetitiveness.eligible,true);
  const three=apply(3);
  assert.equal(three.avgCompetitorPrice,95);
  assert.equal(three.competitorOfferCount,3);
@@ -441,6 +441,6 @@ test('média do preço de venda exige ao menos 3 lojas e usa no máximo 5 anúnc
  assert.equal(five.avgCompetitorPrice,100);
  assert.equal(five.competitorOfferCount,5);
  const six=apply(6);
- assert.ok(six.competitorOfferCount<=5);
+ assert.ok(six.competitorOfferCount<=10);
  assert.equal(new Set(six.competitorOffers.map(x=>x.shopId)).size,six.competitorOffers.length);
 });

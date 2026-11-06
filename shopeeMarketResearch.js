@@ -102,7 +102,10 @@ const median=arr=>{
 export const MARKET_COMPARISON_MIN=REDE_ACHADOS_MARKET_RULES.minimumOffers;
 export const MARKET_COMPARISON_MAX=REDE_ACHADOS_MARKET_RULES.maximumOffers;
 // Amostra observada de 2 até 5 anúncios diferentes, não estimativa de demanda.
-export function evaluateMarketOffers({title,offers=[],ownItemId,ownShopId,queriedAt=new Date().toISOString()}){
+export function evaluateMarketOffers({title,offers=[],ownItemId,ownShopId,
+ queriedAt=new Date().toISOString(),minOffers=MARKET_COMPARISON_MIN,maxOffers=MARKET_COMPARISON_MAX}){
+ const minimumCount=Number.isInteger(minOffers)&&minOffers>=2&&minOffers<=5?minOffers:MARKET_COMPARISON_MIN;
+ const maximumCount=Number.isInteger(maxOffers)&&maxOffers>=minimumCount&&maxOffers<=10?maxOffers:MARKET_COMPARISON_MAX;
  const comparable=[],seen=new Set();
  for(const offer of offers){
   const shop=String(offer.shopId||'').trim(),id=String(offer.itemId||'').trim();
@@ -120,8 +123,8 @@ export function evaluateMarketOffers({title,offers=[],ownItemId,ownShopId,querie
    itemId:id,price:min,url:'https://shopee.com.br/product/'+shop+'/'+id,
    checkedAt:queriedAt,similarity:Number(similarity.toFixed(3))});
  }
- if(comparable.length<MARKET_COMPARISON_MIN)return {verified:false,reference:null,average:null,
-  count:comparable.length,sample:comparable.slice(0,MARKET_COMPARISON_MAX),
+ if(comparable.length<minimumCount)return {verified:false,reference:null,average:null,
+  count:comparable.length,sample:comparable.slice(0,maximumCount),
   reason:'Menos de 2 anúncios comparáveis encontrados para esta SKU.'};
  const center=median(comparable.map(x=>x.price));
  // Evitar que anúncio de acessório ou preço promocional anômalo contamine a média.
@@ -133,15 +136,15 @@ export function evaluateMarketOffers({title,offers=[],ownItemId,ownShopId,querie
  for(const offer of filtered){
   if(shops.has(offer.shopId))continue;
   shops.add(offer.shopId);selected.push(offer);
-  if(selected.length>=MARKET_COMPARISON_MAX)break;
+  if(selected.length>=maximumCount)break;
  }
- if(selected.length<MARKET_COMPARISON_MIN)return {verified:false,reference:null,average:null,
+ if(selected.length<minimumCount)return {verified:false,reference:null,average:null,
   count:selected.length,sample:selected,
   reason:'Não há pelo menos 2 lojas diferentes com preços comparáveis consistentes.'};
  const average=Math.round(selected.reduce((total,o)=>total+o.price,0)/selected.length*100)/100;
  return {verified:true,reference:average,average,count:selected.length,
-  sample:selected,method:'arithmetic_mean',minimumCount:MARKET_COMPARISON_MIN,
-  maximumCount:MARKET_COMPARISON_MAX,reason:null};
+  sample:selected,method:'arithmetic_mean',minimumCount,
+  maximumCount,reason:null};
 }
 
 const safeError=e=>String(e?.message||'Falha na consulta').slice(0,170);

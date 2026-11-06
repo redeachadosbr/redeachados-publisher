@@ -113,7 +113,7 @@
   link.href='https://shopee.com.br/search?'+params.toString();
  }
 
- function card(row){
+ function card(row,{pending=false}={}){
   const box=t('article','curve-card'),frame=t('div',''),main=t('div','curve-card-main');
   if(row.imageUrl&&/^https:\/\/[^/]+\.digitaloceanspaces\.com\//.test(row.imageUrl)){
    const image=t('img','curve-card-image');
@@ -124,11 +124,11 @@
   }else frame.append(t('div','curve-card-image curve-card-placeholder','Imagem WeDrop não disponível'));
   const top=t('div','curve-card-top'),title=t('h4','',row.name);
   const curve=t('span','curve-curve '+(row.curve==='A'?'a':row.curve==='B'?'b':'pending'),
-     row.verified30?(row.curve==='LOW'?'Abaixo de 700':'Curva '+row.curve):'Pendente • 30 dias');
+     pending?'Potencial • em verificação':row.verified30?(row.curve==='LOW'?'Abaixo de 700':'Curva '+row.curve):'Pendente • 30 dias');
   top.append(title,curve);
   const sku=t('div','curve-sku');sku.append('SKU WeDrop: ',t('b','',row.sku));
   const fit=row.adsCompetitiveness||null;
-  const fitTag=fit?.eligible?t('div','curve-ads-fit',
+  const fitTag=!pending&&fit?.eligible?t('div','curve-ads-fit',
    fit.status==='within_market'?'Pré-qualificada • preço na média':
    'Pré-qualificada • até 40% acima da média'):null;
   const facts=t('div','curve-metrics');
@@ -158,7 +158,7 @@
   const proof=t('details','curve-monthly-competitors');
   const count=Number(row.monthlyCompetitorCount||0);
   proof.append(t('summary','',count+' lojas com vendas mensais'+
-   (count>=3?' • amostra comprovada':' • mínimo 3 lojas')));
+   (count>=2?' • amostra mínima encontrada':' • mínimo 2 lojas na curva')));
   const salesProof=t('ol','curve-offers-list');
   for(const company of row.monthlyCompetitors||[]){
    const li=t('li','');
@@ -173,7 +173,8 @@
    row.inStock?(row.availability?'WeDrop: '+row.availability:'Estoque WeDrop não confirmado'):
     'WeDrop: '+(row.availability||'Indisponível'));
   const actions=t('div','curve-card-actions');
-  const copy=t('button','','Copiar SKU para Ads');copy.type='button';
+  const copy=t('button','',pending?'Aguardando confirmação para Ads':'Copiar SKU para Ads');copy.type='button';
+  copy.disabled=pending;
   copy.addEventListener('click',async()=>{
    try{
     await navigator.clipboard.writeText(row.sku);
@@ -280,19 +281,16 @@
    nf.format(result.remainingSkuQueries||0)+' consultas ainda não efetuadas.';
   q('curveContinueSearch').hidden=true;
   for(const item of result.items||[])grid.append(card(item));
-  if(!result.items?.length){
-    const pending=Array.isArray(result.pendingItems)?result.pendingItems:[];
-    if(pending.length){
-     grid.append(t('p','curve-evidence',
-      'Nenhuma Curva A/B comprovada nesta consulta. Encontramos '+result.pendingCount+
-      ' SKUs WeDrop com anúncios concorrentes equivalentes. Os itens abaixo ainda NÃO estão classificados porque faltam vendas dos últimos 30 dias.'));
-     for(const item of pending)grid.append(card(item));
-    }else grid.append(t('div','curve-empty',
-     result.competitiveOnly?
-      'Nenhuma SKU A/B com custo e preço viáveis para Ads nesta etapa. '+
-      Number(result.excludedByPrice||0)+' SKU(s) A/B rejeitadas por preço/custo, estoque ou ausência de média confiável. Continue a pesquisa.':
-      'Nenhuma SKU comprovada nesta etapa da varredura. Continue a pesquisa ou confira o acesso a vendas mensais na aba Em Destaque.'));
-   }
+  const pending=Array.isArray(result.pendingItems)?result.pendingItems:[];
+  if(pending.length){
+   grid.append(t('p','curve-evidence',
+    'Candidatos em análise: '+result.pendingCount+
+    ' SKUs com ofertas comparáveis, mas ainda sem TODOS os requisitos de Curva e Ads. '+
+    'São necessárias 2 a 5 lojas com vendas/mês na faixa A/B, preço, custo e estoque. '+
+    'Os itens abaixo NÃO estão aprovados para anunciar.'));
+   for(const item of pending)grid.append(card(item,{pending:true}));
+  }else if(!result.items?.length)grid.append(t('div','curve-empty',
+   'Nenhuma SKU aprovada nesta etapa. Ainda existem consultas ou evidências pendentes; isso não é reprovação definitiva.'));
   const prefix=result.shortage?
    (result.competitiveOnly?'Curvas A/B competitivas para Ads: ':result.verifiedOnly?'Curvas mensais confirmadas: ':'Oportunidades potenciais: ')+
    result.items.length+' dos '+result.requested+

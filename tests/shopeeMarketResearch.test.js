@@ -65,3 +65,12 @@ test('Com referência válida desconto variável protege margem e não conserva 
  const below=quoteShopeePrice({unitCost:99.99,settings,marketAverage:80});
  assert.equal(below.status,'MERCADO_ABAIXO_DO_PISO');
 });
+
+test('amostra dedicada à Curvas aceita até 10 lojas sem alterar a regra geral',()=>{
+ const offers=Array.from({length:12},(_,i)=>offer(i,i+100,i+200,170+i));
+ const standard=evaluateMarketOffers({title:original,offers});
+ const curves=evaluateMarketOffers({title:original,offers,minOffers:2,maxOffers:10});
+ assert.equal(standard.count,5);
+ assert.equal(curves.count,10);
+ assert.equal(curves.sample.length,10);
+});

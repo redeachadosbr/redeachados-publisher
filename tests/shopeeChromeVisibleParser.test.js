@@ -43,3 +43,16 @@ test('página com cards sem marcador mensal é considerada carregada, nunca Curv
  assert.match(bg,/chrome\.tabs\.reload\(tab\.id\)/);
  assert.doesNotMatch(bg,/chrome\.tabs\.create\(/);
 });
+
+test('Vendido/Mês lê exatamente a vitrine da Shopee com 1mil+ e números inteiros',()=>{
+ assert.equal(parser.monthlyEvidence('1mil+ Vendido/Mês').monthlySold,1000);
+ assert.equal(parser.monthlyEvidence('952 Vendido/Mês').monthlySold,952);
+ assert.equal(parser.monthlyEvidence('946 Vendido/Mês').monthlySold,946);
+ assert.equal(parser.monthlyEvidence('931 Vendido/Mês').monthlySold,931);
+ assert.equal(parser.monthlyEvidence('1mil+ Vendido').monthlySold,null);
+ assert.equal(parser.parseCount('1mil+'),1000);
+});
+test('leitor procura Vendido/Mês no cartão pai quando o link inclui só o título',()=>{
+ assert.match(source,/function cardFor\(link,identity\)/);
+ assert.match(source,/const card=cardFor\(link,identity\)/);
+});

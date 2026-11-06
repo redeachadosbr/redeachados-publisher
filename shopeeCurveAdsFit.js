@@ -3,7 +3,7 @@
 import {SHOPEE_PRICE_DEFAULTS,normalizeShopeePricingSettings,
  calculateShopeeSale,minimumGrossForNetMargin} from './shopeePricing.js';
 export const CURVE_ADS_POLICY=Object.freeze({
- maxAboveMarketPct:40,minMonthlyCompetitors:3,minMarketStores:3,
+ maxAboveMarketPct:40,minMonthlyCompetitors:2,minMarketStores:2,
  screeningAdsPct:10,screeningMinMarginPct:5
 });
 const cents=x=>Math.round(x*100);
@@ -28,7 +28,7 @@ export function assessCurveAdsCompetitiveness({
  if(inStock!==true)return reject('out_of_stock','SKU sem estoque WeDrop.');
  if(!positive(unit))return reject('missing_cost','Custo WeDrop não cadastrado.');
  if(!positive(avg)||Number(competitorOfferCount)<CURVE_ADS_POLICY.minMarketStores)
-  return reject('missing_market','Média do preço de venda não confirmada: exigir 3 a 5 anúncios comparáveis de lojas diferentes.');
+  return reject('missing_market','Média não confirmada: exigir 2 a 10 anúncios comparáveis de lojas diferentes.');
  const ceiling=round2(avg*1.4);
  if(unit>=avg)return reject('cost_above_market','Custo WeDrop acima ou igual à média de venda dos concorrentes.',
   {marketAverage:avg,maxMarketPrice:ceiling});

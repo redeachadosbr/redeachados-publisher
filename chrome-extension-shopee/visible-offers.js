@@ -4,7 +4,7 @@
  if(!allowed.test(location.origin))return;
  const clean=x=>String(x??'').replace(/\s+/g,' ').trim();
  const parseCount=raw=>{
-  const text=clean(raw).toLowerCase();
+  const text=clean(raw).toLowerCase().replace(/\+\s*$/,'').trim();
   const m=text.match(/^(\d[\d.,\s]*)(?:\s*(milh(?:ão|ões)|mil|k))?$/i);
   if(!m)return null;
   const number=m[1].replace(/\s/g,'');
@@ -17,7 +17,7 @@
   const value=Math.round(n*scale);
   return Number.isSafeInteger(value)&&value>=0?value:null;
  };
- const quantity='(\\d[\\d.,]*(?:\\s*(?:milh(?:ão|ões)|mil|k))?)';
+ const quantity='(\\d[\\d.,]*(?:\\s*(?:milh(?:ão|ões)|mil|k))?\\s*\\+?)';
  function monthlyEvidence(text){
   const patterns=[
    new RegExp(quantity+'\\s*(?:vendid[oa]s?|vendas)\\s*(?:\\/|por|no|nos|em)\\s*m[eê]s','i'),
@@ -67,9 +67,31 @@
   // Vendas mensais exibidas não equivalem ao contador histórico acumulado.
   const sold=historicalSales(monthly.monthlyEvidence?
    content.replace(monthly.monthlyEvidence,''):content);
-  if(monthly.monthlySold===null&&sold===null)return null;
-  return {...identity,productName,historicalSold:sold,priceMin:amount(content),
+  const price=amount(content);
+  // Anúncio com preço mas sem vendas também pode ser usado na média de preços.
+  if(monthly.monthlySold===null&&sold===null&&price===null)return null;
+  return {...identity,productName,historicalSold:sold,priceMin:price,
    ...monthly,featuredRank:rank};
+ }
+ function cardFor(link,identity){
+  const known=link.closest('[data-sqe="item"],.shopee-search-item-result__item,[class*="search-item-result__item"]');
+  if(known)return known;
+  // Na vitrine Shopee, a quantidade Vendido/Mês pode estar FORA do <a>.
+  // Nunca subir ao grid que contém anúncios diferentes.
+  let current=link,fallback=link;
+  for(let depth=0;depth<6&&current;depth++,current=current.parentElement){
+   const content=clean(current.innerText||current.textContent||'');
+   if(content.length>1800)break;
+   if(!/R\$\s*\d/.test(content))continue;
+   const other=[...current.querySelectorAll('a[href]')].some(a=>{
+    const found=ids(a.getAttribute('href'));
+    return found&&(found.shopId!==identity.shopId||found.itemId!==identity.itemId);
+   });
+   if(other)break;
+   fallback=current;
+   if(/vendid[oa]s?|vendas/i.test(content))return current;
+  }
+  return fallback;
  }
  function extract(){
   if(!/\/search(?:\/|$)/.test(location.pathname))
@@ -82,7 +104,7 @@
    const identity=ids(link.getAttribute('href'));if(!identity)continue;
    const id=identity.shopId+':'+identity.itemId;
    if(seen.has(id))continue;
-   const card=link.closest('[data-sqe="item"],.shopee-search-item-result__item,[class*="search-item-result__item"]')||link;
+   const card=cardFor(link,identity);
    if(clean(card.innerText||card.textContent||'').length>=6)seenCards.add(id);
    const product=fromCard(card,link,identity,found.length+1);
    if(product){seen.add(id);found.push(product);}

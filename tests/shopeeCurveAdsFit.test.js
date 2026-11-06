@@ -38,8 +38,9 @@ test('estatística conta apenas rejeições de Curvas A/B confirmadas',()=>{
  assert.equal(q.rejectedReasons.missing_market,1);
 });
 
-test('média com somente 2 anúncios não é suficiente para aprovação Curvas Ads',()=>{
+test('a média de 2 lojas permite triagem, comparações podem chegar a 10',()=>{
  const q=fit({cost:40,avgCompetitorPrice:100,competitorOfferCount:2,inStock:true});
- assert.equal(q.eligible,false);
- assert.equal(q.status,'missing_market');
+ assert.equal(q.eligible,true);
+ assert.equal(CURVE_ADS_POLICY.minMonthlyCompetitors,2);
+ assert.equal(CURVE_ADS_POLICY.minMarketStores,2);
 });

@@ -201,11 +201,11 @@ export function seoTitleFromEvidence(productName,keywords=[],sku=''){
 
 function addMarketAnalysis(row,offers,checkedAt,ownShopId='0'){
  const compare=evaluateMarketOffers({
-  title:row.name,offers,ownShopId,ownItemId:'0',queriedAt:checkedAt});
+  title:row.name,offers,ownShopId,ownItemId:'0',queriedAt:checkedAt,minOffers:2,maxOffers:10});
  const keywords=verifiedKeywordEvidence(row.name,offers);
- // Somente triagem Curvas/Ads: mínimo 3 e máximo 5 preços observados
- // de lojas diferentes. Não alterar o mínimo global do pesquisador de mercado.
- const strong=compare.verified===true&&Number(compare.count)>=3;
+ // Triagem Curvas/Ads: entre 2 e 10 preços reais de lojas diferentes.
+ // Não alterar o padrão global de outros módulos de mercado.
+ const strong=compare.verified===true&&Number(compare.count)>=2;
  return {...row,
   avgCompetitorPrice:strong?compare.average:null,
   competitorOfferCount:strong?compare.count:compare.count,
@@ -214,8 +214,8 @@ function addMarketAnalysis(row,offers,checkedAt,ownShopId='0'){
    price:o.price,url:o.url,checkedAt:o.checkedAt})),
   priceEvidence:strong?
    'Média aritmética do preço de venda na Shopee, baseada em '+compare.count+
-    ' anúncios comparáveis de lojas diferentes (amostra de 3 a 5 preços reais)':
-   'Média indisponível para Ads: são necessários 3 a 5 anúncios de lojas independentes com preços comparáveis',
+    ' anúncios comparáveis de lojas diferentes (amostra de 2 a 10 preços reais)':
+   'Média indisponível para Ads: são necessários pelo menos 2 anúncios de lojas independentes com preços comparáveis',
   keywords,
   seoTitle:seoTitleFromEvidence(row.name,keywords,row.sku),
   seoMethod:'Termos recorrentes em títulos de anúncios equivalentes; sem medição oficial de buscas',
@@ -246,7 +246,8 @@ export function matchCurveOffers({catalog=[],offers=[],costs=[],baseline=new Map
  for(const offer of offers){
   if(!validId(offer.itemId)||!validId(offer.shopId)||
     String(offer.shopId)===String(ownShopId)||
-    !String(offer.productName||'').trim()||intSales(offer.sales)===null)continue;
+    !String(offer.productName||'').trim()||
+     (intSales(offer.sales)===null&&num(offer.priceMin)===null))continue;
   const tokens=words(offer.productName),hits=new Map();
   for(const token of tokens)for(const item of index.get(token)||[])
    hits.set(item.sku,{item,count:(hits.get(item.sku)?.count||0)+1});
@@ -265,7 +266,9 @@ export function matchCurveOffers({catalog=[],offers=[],costs=[],baseline=new Map
    if(!offersBySku.has(p.sku))offersBySku.set(p.sku,new Map());
    const unique=String(offer.shopId)+':'+String(offer.itemId);
    offersBySku.get(p.sku).set(unique,offer);
-   const current=found.get(p.sku);
+   // Oferta apenas com preço participa da média, nunca da Curva A/B.
+    if(intSales(offer.sales)===null)continue;
+    const current=found.get(p.sku);
    const sales=intSales(offer.sales),price=num(offer.priceMin);
    const monthly=intSales(offer.monthlySold);
    const history=baseline instanceof Map?baseline.get(String(offer.itemId)):null;

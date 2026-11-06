@@ -67,8 +67,8 @@ export function normalizeVisibleOffers(rows,{ownShopId='0'}={}){
   const monthly=amount(row.monthlySold),historical=amount(row.historicalSold);
   const evidence=String(row.monthlyEvidence||'').slice(0,160);
   const monthlySold=row.monthlyPeriod==='month'&&verifiedMonthlyEvidence(evidence)?monthly:null;
-  if(monthlySold===null&&historical===null)continue;
   const price=Number(row.priceMin);
+  if(monthlySold===null&&historical===null&&!(Number.isFinite(price)&&price>0))continue;
   out.push({itemId,shopId,productName,
    sales:historical??monthlySold,historicalSold:historical,monthlySold,
    priceMin:Number.isFinite(price)&&price>0&&price<100000?price:null,
@@ -80,11 +80,25 @@ export function normalizeVisibleOffers(rows,{ownShopId='0'}={}){
  }
  return out;
 }
-// Uma SKU só entra no Top A/B quando três LOJAS concorrentes distintas
-// têm dados mensais verificáveis. Um anúncio isolado não valida a pesquisa.
-export function qualifyChromeMatches(rows,{minCompetitors=3}={}){
- if(!Number.isInteger(minCompetitors)||minCompetitors<3)throw Error('Amostra mínima inválida.');
- return rows.filter(row=>row.verified30===true&&
+// Duas a cinco lojas distintas precisam comprovar 700+ vendas/mês.
+// Curva A: no mínimo duas com >=900; B: no mínimo duas com >=700 (conservadora se mista).
+export function confirmChromeMonthlySamples(rows){
+ return rows.map(row=>{
+  const monthly=(row.monthlyCompetitors||[]).filter(o=>
+   Number.isSafeInteger(Number(o.monthlySold))&&Number(o.monthlySold)>=700).slice(0,5);
+  const aCount=monthly.filter(o=>Number(o.monthlySold)>=900).length;
+  const curve=aCount>=2?'A':monthly.length>=2?'B':null;
+  const confirmed=Boolean(curve&&row.verified30);
+  return {...row,curve:curve||row.curve,curveSampleConfirmed:confirmed,
+   monthlyCompetitorCount:monthly.length,monthlyCompetitors:monthly,
+   curveLabel:confirmed?'Curva '+curve+' • '+monthly.length+
+    ' lojas com vendas mensais verificadas':row.curveLabel};
+ });
+}
+export function qualifyChromeMatches(rows,{minCompetitors=2}={}){
+ if(!Number.isInteger(minCompetitors)||minCompetitors<2||minCompetitors>5)
+  throw Error('Amostra mensal fora do intervalo de 2 a 5.');
+ return rows.filter(row=>row.curveSampleConfirmed===true&&row.verified30===true&&
   (row.curve==='A'||row.curve==='B')&&
   Number(row.monthlyCompetitorCount||0)>=minCompetitors&&
   row.adsCompetitiveness?.eligible===true);
@@ -110,11 +124,10 @@ export async function importChromeOffers(shopId,{
   offers:[...state.offers.values()],costs:state.costs,ownShopId:shopId});
  // Não contabilizar SKU ainda não pesquisada que apenas coincidiu com
  // um anúncio pesquisado para outra SKU da mesma categoria.
- const rows=allMatches.filter(row=>state.scanned.has(row.sku));
+ const rows=confirmChromeMonthlySamples(allMatches.filter(row=>state.scanned.has(row.sku)));
  const qualified=qualifyChromeMatches(rows);
  const picked=pickCurveResults(qualified,{curve,limit,verifiedOnly:true});
- const pending=rows.filter(x=>!qualified.includes(x)&&
-  (!x.verified30||!['A','B'].includes(x.curve)));
+ const pending=rows.filter(x=>!qualified.includes(x));
  const priceStats=curveAdsRejectionStats(rows);
  return {ok:true,configured:true,verifiedOnly:true,curve,category,readOnly:true,
   ...picked,competitiveOnly:true,pricePolicy:CURVE_ADS_POLICY,
@@ -123,23 +136,23 @@ export async function importChromeOffers(shopId,{
   matchedSkuIds:rows.map(row=>row.sku),
   viableSkuIds:qualified.map(row=>row.sku),
   pendingCount:pending.length,
-  pendingItems:[],catalogCount:state.catalog.length,
+  pendingItems:pending.slice(0,20),catalogCount:state.catalog.length,
   offerCount:state.offers.size,skuSearchesCompleted:state.scanned.size,
   skuQueriesCompleted:state.queries,remainingSkuQueries:Math.max(0,state.plan.length-state.queries),
   sources:{featured:0,affiliate:0,chrome:state.queries},
   rowsWith30Days:picked.items.filter(x=>x.verified30).length,
   checkedAt:state.lastAt,hasMore:false,chromeHasMore:state.queries<state.plan.length,
-  shortage:picked.shortage,qualifiedCount:picked.found,monthlyCompetitorsRequired:3,
+  shortage:picked.shortage,qualifiedCount:picked.found,monthlyCompetitorsRequired:2,
   inspectedCompetitors:rows.reduce((n,row)=>n+Number(row.comparableCompetitorCount||0),0),
   shortageReason:picked.shortage?'Ainda não foram identificadas '+Number(limit)+
-   ' SKUs com 3 lojas concorrentes, evidência mensal e preço competitivo para Ads.':'',
+   ' SKUs com 2 a 5 lojas com vendas mensais na curva e preço competitivo para Ads.':'',
   chromeImport:{
    query:search,imported:normalized.length,
    monthlyOffers:normalized.filter(x=>x.monthlySold!==null).length,
    skuCount:task.skus.length,searchedSkus:task.skus,
    matchedSkus:task.skus.filter(sku=>rows.some(row=>row.sku===sku)),
    viableSkus:task.skus.filter(sku=>qualified.some(row=>row.sku===sku))},
-  warning:'Somente Curvas A/B com 3 concorrentes mensais, média do preço de venda de 3 a 5 lojas diferentes, custo inferior a essa média e preço rentável até 40% acima dela. '+
+  warning:'Somente Curvas A/B com 2 a 5 concorrentes de 700+ vendas/mês, média do preço de 2 a 10 lojas, custo inferior à média e preço rentável até 40% acima dela. '+
    priceStats.excludedByPrice+' SKUs Curva A/B excluídas por custo/preço ou falta de média. Sem confirmação, não indicar Ads.',
   searchMode:'wedrop-first-chrome-visible-featured',marketplaceUpdated:false};
 }

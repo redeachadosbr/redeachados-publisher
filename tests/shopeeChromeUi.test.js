@@ -16,22 +16,23 @@ test('botão abre lote de pesquisas Shopee no Chrome e envia para cruzamento WeD
  assert.match(other,/showChromeResults/);
 });
 
-test('pesquisa continua entre lotes até 10 SKUs e demonstra 3 concorrentes reais',()=>{
+test('pesquisa continua até a quantidade solicitada, sem limite fixo de 60 buscas',()=>{
  const code=readFileSync(new URL('../public/curvas-chrome.js',import.meta.url),'utf8');
  const ui=readFileSync(new URL('../public/curvas-ab.js',import.meta.url),'utf8');
  assert.match(code,/s\.found>=s\.selected\.limit/);
- assert.match(code,/s\.scanned>=MAX_SEARCHES_PER_RUN/);
+ assert.doesNotMatch(code,/MAX_SEARCHES_PER_RUN/);
+ assert.match(code,/s\.targetReached=true/);
  assert.doesNotMatch(code,/NO_MONTHLY_LIMIT/);
  assert.match(ui,/row\.monthlyCompetitors/);
- assert.match(ui,/mínimo 3 lojas/);
+ assert.match(ui,/mínimo 2 lojas/);
 });
 
 test('exige a extensão Shopee Chrome 1.2.0 para pesquisas sem novas abas',()=>{
  const code=readFileSync(new URL('../public/curvas-chrome.js',import.meta.url),'utf8');
  const manifest=JSON.parse(readFileSync(new URL('../chrome-extension-shopee/manifest.json',import.meta.url),'utf8'));
- assert.equal(manifest.version,'1.2.2');
+ assert.equal(manifest.version,'1.2.3');
  assert.match(code,/parts\[1\]>2/);
- assert.match(code,/Number\(parts\[2\]\|\|0\)>=2/);
+ assert.match(code,/Number\(parts\[2\]\|\|0\)>=3/);
 });
 
 test('filtro único categoria, quantidade e nome só inicia pesquisa Chrome',()=>{
@@ -112,6 +113,6 @@ test('consulta incompleta não bloqueia outras SKUs e mensagem informa erro recu
  assert.match(bridge,/recoverable:Boolean\(msg\.recoverable\)/);
  assert.match(bridge,/warning:String\(msg\.warning\|\|''\)/);
  assert.match(ui,/if\(m\.recoverable\)/);
- assert.match(ui,/MAX_SEARCHES_PER_RUN=60/);
+ assert.doesNotMatch(ui,/MAX_SEARCHES_PER_RUN/);
  assert.doesNotMatch(ui,/NO_MONTHLY_LIMIT/);
 });

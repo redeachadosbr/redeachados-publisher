@@ -38,9 +38,9 @@
    ' SKU(s) com consulta incompleta. '+countFmt.format(s.errors)+
    ' consulta(s) com falha de leitura ou dados parciais. '+countFmt.format(viable)+
    ' de '+countFmt.format(searched)+' SKU(s) consultadas comprovaram Curva A/B '+
-   'em 30 dias, 3 concorrentes e preço viável com média de 3 a 5 lojas. '+
+   'em 30 dias, 2 a 5 concorrentes e preço viável com média de até 10 lojas. '+
    (note||'')+' Consulta incompleta não representa produto definitivamente reprovado. '+
-   'Sem três concorrentes com vendas dos últimos 30 dias verificáveis, '+
+   'Sem dois concorrentes com vendas dos últimos 30 dias verificáveis, '+
    'nenhuma Curva pode ser confirmada, mesmo que existam anúncios na Shopee.';
  }
  const stages={iniciando:'Preparando pesquisa',navegando:'Pesquisando SKU',
@@ -48,7 +48,7 @@
   recuperando:'Restaurando janela para carregar Shopee',
   comparando:'Conferindo concorrência',continuando:'Avançando na categoria',
   importando:'Cruzando catálogo WeDrop',
-  validando:'Validando Curva e preço',concluido:'Pesquisa finalizada',
+  validando:'Validando Curva e preço',concluido:'Pesquisa concluída',
   erro:'Leitura Shopee indisponível',cancelado:'Pesquisa interrompida'};
  function updateStage(name,detail='',s=null){
   if(progress)progress.hidden=false;
@@ -71,7 +71,6 @@
  }
  if(!button||!label)return;
  let active=null,offset=0,lastFilter='',queue=Promise.resolve();
- const MAX_SEARCHES_PER_RUN=60;
  const say=text=>{label.textContent=String(text||'').slice(0,550);};
  const config=()=>({category:el('curveCategory')?.value||'Todos',
   keyword:el('curveKeyword')?.value?.trim()||'',
@@ -102,7 +101,7 @@
     const version=String(event.data.version||'0.0.0');
     const parts=version.split('.').map(Number);
     const ok=parts[0]>1||(parts[0]===1&&
-     (parts[1]>2||parts[1]===2&&Number(parts[2]||0)>=2));
+     (parts[1]>2||parts[1]===2&&Number(parts[2]||0)>=3));
     finish({ok,version,reason:ok?'':'Extensão '+version+' é antiga. Requer 1.2.2.'});
    };
    window.addEventListener('message',listener);
@@ -132,7 +131,7 @@
   say('Verificando instalação da Ponte Chrome…');
   try{
    const bridge=await ping(nonce);
-   if(!bridge.ok)throw Error(bridge.reason+' Baixe a versão 1.2.2, ative o acesso ao site, atualize a extensão em chrome://extensions e recarregue o Manager.');
+   if(!bridge.ok)throw Error(bridge.reason+' Baixe a versão 1.2.3, ative o acesso ao site, atualize a extensão em chrome://extensions e recarregue o Manager.');
    const params=new URLSearchParams({category:selected.category,keyword:selected.keyword,
     offset:String(offset),limit:'6'});
    let plan=await json('/api/shopee/curvas-ab/chrome-plan?'+params);
@@ -143,7 +142,7 @@
    if(!plan.jobs.length)throw Error('Não há SKUs WeDrop disponíveis nesta categoria.');
    active={nonce,selected,plan,received:0,errors:0,scanned:0,monthly:0,found:0,blocked:false,
     searchedSkuIds:new Set(),attemptedSkuIds:new Set(),
-    matchedSkuIds:new Set(),viableSkuIds:new Set()};
+    matchedSkuIds:new Set(),viableSkuIds:new Set(),targetReached:false};
    offset=plan.nextOffset;
    updateStage('iniciando','Janela auxiliar minimizada • primeiro lote com '+plan.jobs.length+' consultas.',active);
    say('Pesquisa em janela minimizada; nenhuma aba é adicionada à sua janela principal.');
@@ -156,7 +155,8 @@
   }
  }
  async function accept(s,m){
-  s.scanned++;
+  if(s.targetReached)return;
+   s.scanned++;
   const job=s.plan.jobs.find(x=>x.query===m.query);
   for(const sku of job?.skus||[])s.attemptedSkuIds.add(String(sku));
   if(m.error){
@@ -189,8 +189,14 @@
    s.monthly+=Number(data.chromeImport?.monthlyOffers)||0;
    for(const sku of data.chromeImport?.searchedSkus||[])s.searchedSkuIds.add(String(sku));
    s.matchedSkuIds=new Set((data.matchedSkuIds||[]).map(String));
-   s.viableSkuIds=new Set((data.viableSkuIds||[]).map(String));
+    s.viableSkuIds=new Set((data.viableSkuIds||[]).map(String));
    globalThis.RACurvesAB?.showChromeResults?.(data);
+   if(s.found>=s.selected.limit&&!s.targetReached){
+    s.targetReached=true;
+    updateStage('validando','Meta de '+s.selected.limit+
+     ' SKUs aptas atingida; encerrando pesquisas restantes.',s);
+    window.postMessage({kind:'RA_CURVE_CHROME_CANCEL',nonce:s.nonce},ORIGIN);
+   }
    updateStage('validando',data.found+' SKUs Curva A/B viáveis para Ads; '+
     data.pendingCount+' sem comprovação mensal.',s);
    say('Ponte: '+s.received+' consultas importadas; '+data.found+' SKUs classificadas e '+
@@ -223,16 +229,13 @@
    void queue.then(async()=>{
     if(active!==s)return;
     let finished='';
-    if(s.cancelRequested||m.cancelled)
+    if(s.targetReached||s.found>=s.selected.limit)
+     finished='Meta atingida: '+s.found+'/'+s.selected.limit+
+      ' SKUs Curva A/B aprovadas; buscas restantes encerradas.';
+    else if(s.cancelRequested||m.cancelled)
      finished='Pesquisa interrompida. '+s.found+'/'+s.selected.limit+' SKUs qualificadas até aqui.';
-    else if(s.found>=s.selected.limit)
-     finished='Meta atingida: '+s.found+'/'+s.selected.limit+' SKUs A/B com três concorrentes mensais.';
     else if(s.blocked)
      finished='Leitura Shopee insuficiente ou verificação: '+s.found+'/'+s.selected.limit+' SKUs comprovadas. Pesquisa interrompida.';
-    else if(s.scanned>=MAX_SEARCHES_PER_RUN)
-     finished='Foram realizadas '+s.scanned+' consultas; '+s.found+'/'+s.selected.limit+
-       ' SKUs tiveram dados suficientes para Ads. Ainda há produtos por verificar: '+
-       'clique em Pesquisar no Chrome para continuar a categoria.';
     else if(s.plan.hasMore){
      const params=new URLSearchParams({category:s.selected.category,keyword:s.selected.keyword,
       offset:String(offset),limit:'6'});
@@ -252,11 +255,12 @@
     if(s.blocked)offset=0; // repetir a pesquisa interrompida no próximo clique
     active=null;button.disabled=false;
     if(cancel)cancel.hidden=true;
-    updateStage(s.cancelRequested?'cancelado':s.blocked?'erro':'concluido',finished,s);
-    finishReport(s,s.cancelRequested||m.cancelled?'Pesquisa interrompida':s.blocked?
+    const stoppedByUser=s.cancelRequested||(m.cancelled&&!s.targetReached);
+    updateStage(stoppedByUser?'cancelado':s.blocked?'erro':'concluido',finished,s);
+    finishReport(s,stoppedByUser?'Pesquisa interrompida':s.blocked?
      'Pesquisa interrompida pela Shopee':'Resultado da pesquisa',
-     s.cancelRequested||m.cancelled?'Interrompida':s.blocked?'Acesso limitado':
-     s.found>=s.selected.limit?'Meta alcançada':'Pesquisa encerrada',
+     stoppedByUser?'Interrompida':s.blocked?'Acesso limitado':
+     s.found>=s.selected.limit?'Meta alcançada':'Categoria percorrida',
      finished);
     say(finished);
    }).catch(error=>{

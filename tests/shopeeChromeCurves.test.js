@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
-import {normalizeVisibleOffers,verifiedMonthlyEvidence,qualifyChromeMatches} from '../shopeeChromeCurves.js';
+import {normalizeVisibleOffers,verifiedMonthlyEvidence,qualifyChromeMatches,confirmChromeMonthlySamples} from '../shopeeChromeCurves.js';
 test('somente texto explícito de período permite vendas mensais',()=>{
  assert.equal(verifiedMonthlyEvidence('950 vendidos/mês'),true);
  assert.equal(verifiedMonthlyEvidence('Vendido no mês: 950'),true);
@@ -36,15 +36,17 @@ test('rota da extensão usa autenticação, origem e plano pelo catálogo',()=>{
  assert.match(server,/if\(!verifiedSameOrigin\(req\)\)/);
 });
 
-test('três lojas independentes com evidência mensal são obrigatórias antes da Curva A/B',()=>{
- const candidates=[
-  {sku:'A',curve:'A',verified30:true,monthlyCompetitorCount:3,adsCompetitiveness:{eligible:true}},
-  {sku:'B',curve:'B',verified30:true,monthlyCompetitorCount:4,adsCompetitiveness:{eligible:true}},
-  {sku:'FRACO',curve:'A',verified30:true,monthlyCompetitorCount:2},
-  {sku:'ACUMULADO',curve:'PENDING',verified30:false,monthlyCompetitorCount:9},
-  {sku:'SEMDEMANDA',curve:'LOW',verified30:true,monthlyCompetitorCount:3}
- ];
- assert.deepEqual(qualifyChromeMatches(candidates).map(x=>x.sku),['A','B']);
+test('duas lojas comprovam B acima de 700 e A acima de 900 vendas/mês',()=>{
+ const rows=confirmChromeMonthlySamples([
+  {sku:'A',curve:'A',verified30:true,monthlyCompetitors:[{monthlySold:1100},{monthlySold:990},{monthlySold:710}],adsCompetitiveness:{eligible:true}},
+  {sku:'MISTA',curve:'A',verified30:true,monthlyCompetitors:[{monthlySold:1100},{monthlySold:820}],adsCompetitiveness:{eligible:true}},
+  {sku:'UMA',curve:'A',verified30:true,monthlyCompetitors:[{monthlySold:1100}],adsCompetitiveness:{eligible:true}},
+  {sku:'ACUMULADO',curve:'PENDING',verified30:false,monthlyCompetitors:[{monthlySold:1000},{monthlySold:950}],adsCompetitiveness:{eligible:true}},
+  {sku:'SEMDEMANDA',curve:'LOW',verified30:true,monthlyCompetitors:[{monthlySold:600},{monthlySold:550}],adsCompetitiveness:{eligible:true}}
+ ]);
+ assert.equal(rows[0].curve,'A');
+ assert.equal(rows[1].curve,'B');
+ assert.deepEqual(qualifyChromeMatches(rows).map(x=>x.sku),['A','MISTA']);
 });
 
 test('lotes comportam até 100 anúncios distintos das páginas Em Destaque',()=>{
@@ -62,9 +64,9 @@ test('vendas/mês e Vendas 30d são reconhecidas como período mensal explícito
 
 test('Ponte Chrome exclui Curva A se preço WeDrop não competir e corrige média antes ausente',()=>{
  const candidates=[
-  {sku:'OK',curve:'A',verified30:true,monthlyCompetitorCount:3,
+  {sku:'OK',curve:'A',verified30:true,curveSampleConfirmed:true,monthlyCompetitorCount:3,
    adsCompetitiveness:{eligible:true}},
-  {sku:'BICICLETA',curve:'A',verified30:true,monthlyCompetitorCount:4,
+  {sku:'BICICLETA',curve:'A',verified30:true,curveSampleConfirmed:true,monthlyCompetitorCount:4,
    adsCompetitiveness:{eligible:false,status:'cost_above_market'}}
  ];
  assert.deepEqual(qualifyChromeMatches(candidates).map(x=>x.sku),['OK']);
@@ -74,4 +76,13 @@ test('Ponte Chrome exclui Curva A se preço WeDrop não competir e corrige médi
  }])[0];
  assert.equal(offer.priceMin,79.99);
  assert.equal(offer.priceMax,79.99);
+});
+
+test('preço visível sem vendas continua na média, nunca vira Venda/Mês',()=>{
+ const out=normalizeVisibleOffers([{itemId:'15',shopId:'77',
+  productName:'Pano Multiuso Rolo 600 Unidades',priceMin:53.99}]);
+ assert.equal(out.length,1);
+ assert.equal(out[0].monthlySold,null);
+ assert.equal(out[0].sales,null);
+ assert.equal(out[0].priceMin,53.99);
 });
