@@ -166,7 +166,7 @@ test('a interface oferece categoria e títulos SEO com referências dos preços'
  assert.match(js,/api\/shopee\/kits\/catalog\?category=Todos&limit=1/);
  assert.match(js,/function appendSEO/);
  assert.match(js,/function appendPrices/);
- assert.match(js,/Média dos concorrentes/);
+ assert.match(js,/Média do preço de venda na Shopee/);
  const chrome=readFileSync(new URL('../public/curvas-chrome.js',import.meta.url),'utf8');
  assert.match(chrome,/verifiedOnly:true/);
  assert.match(chrome,/curve:'ALL'/);
@@ -183,12 +183,14 @@ test('a média de concorrentes exclui a própria loja, inclusive no ranking',()=
   {itemId:'8882',shopId:'202',productName:'Coqueteleira Shaker Inox 500ml',
    priceMin:'31.90',priceMax:'31.90',sales:930},
   {itemId:'8883',shopId:'203',productName:'Coqueteleira Shaker Inox 500ml',
-   priceMin:'33.90',priceMax:'33.90',sales:915}
+   priceMin:'33.90',priceMax:'33.90',sales:915},
+  {itemId:'8884',shopId:'204',productName:'Coqueteleira Shaker Inox 500ml',
+   priceMin:'32.90',priceMax:'32.90',sales:910}
  ]});
  assert.equal(rows.length,1);
  assert.equal(rows[0].shopId,'202');
  assert.equal(rows[0].avgCompetitorPrice,32.90);
- assert.equal(rows[0].competitorOfferCount,2);
+ assert.equal(rows[0].competitorOfferCount,3);
 });
 
 test('categoria WeDrop dispara buscas pelos nomes das SKUs, sem depender de palavra digitada',()=>{
