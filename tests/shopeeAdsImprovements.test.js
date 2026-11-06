@@ -70,3 +70,11 @@ test('acompanhamento contempla todas as ativas e mantém alertas separados',()=>
  assert.equal(output.filter(x=>x.kind==='monitoring').length,1);
  assert.equal(output.find(x=>x.campaignId==='102').id,'conversion_unknown');
 });
+
+test('avisos de CTR e ACOS seguem limites do indicador de saúde',()=>{
+ const low={...baseline,impressions:150,clicks:1,expense:0,directOrdersObserved:false};
+ assert.equal(module().recommendations([low])[0].id,'low_ctr');
+ const acos={...baseline,impressions:900,clicks:10,expense:3,broadGmv:6,
+  acos:50,directOrdersObserved:true,directOrders:1};
+ assert.equal(module().recommendations([acos])[0].id,'high_acos');
+});

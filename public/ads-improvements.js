@@ -38,7 +38,7 @@
    why:count(imps)+' visualizações do anúncio sem cliques.',
    solution:'Revisar a capa principal, as primeiras palavras do título SEO, preço, palavras-chave e relevância. Testar nova capa fiel ao produto antes de ampliar o Ads.',
    target:'Capa, título e relevância'});
-  else if(imps>=200&&traffic.ctr!==null&&traffic.ctr<1)problems.push({
+  else if(imps>=100&&traffic.ctr!==null&&traffic.ctr<1)problems.push({
    id:'low_ctr',weight:65,title:'CTR baixo',
    why:'CTR '+pct(traffic.ctr)+' em '+count(imps)+' impressões. O limite de 1% é uma referência interna, não um padrão oficial.',
    solution:'Comparar a foto de capa com anúncios concorrentes, revisar título e público. Só o CTR não comprova que a foto esteja ruim.',
@@ -55,7 +55,7 @@
    why:money(expense)+' investidos sem pedido direto atribuído no período.',
    solution:'Conferir preço, frete e margem. Avaliar uma pausa ou redução de orçamento somente depois de revisar o anúncio.',
    target:'Rentabilidade e orçamento'});
-  if(expense>=10&&c.acos!==null&&Number.isFinite(Number(c.acos))&&number(c.acos)>30)problems.push({
+  if(number(c.broadGmv)>0&&c.acos!==null&&Number.isFinite(Number(c.acos))&&number(c.acos)>30)problems.push({
    id:'high_acos',weight:72,title:'ACOS elevado',
    why:'ACOS '+pct(c.acos)+' na campanha (regra interna acima de 30%).',
    solution:'Comparar o custo da publicidade com a margem líquida real, custo WeDrop e pedidos atribuídos; avaliar ajustar orçamento ou pausar via API.',
