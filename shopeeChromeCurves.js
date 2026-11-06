@@ -105,8 +105,11 @@ export async function importChromeOffers(shopId,{
  for(const sku of task.skus)state.scanned.add(sku);
  state.queries++;
  state.lastAt=new Date().toISOString();
- const rows=matchCurveOffers({catalog:state.catalog,
+ const allMatches=matchCurveOffers({catalog:state.catalog,
   offers:[...state.offers.values()],costs:state.costs,ownShopId:shopId});
+ // Não contabilizar SKU ainda não pesquisada que apenas coincidiu com
+ // um anúncio pesquisado para outra SKU da mesma categoria.
+ const rows=allMatches.filter(row=>state.scanned.has(row.sku));
  const qualified=qualifyChromeMatches(rows);
  const picked=pickCurveResults(qualified,{curve,limit,verifiedOnly:true});
  const pending=rows.filter(x=>!qualified.includes(x)&&
@@ -114,7 +117,8 @@ export async function importChromeOffers(shopId,{
  const priceStats=curveAdsRejectionStats(rows);
  return {ok:true,configured:true,verifiedOnly:true,curve,category,readOnly:true,
   ...picked,competitiveOnly:true,pricePolicy:CURVE_ADS_POLICY,
-  ...priceStats,possibleMatches:rows.length,pendingCount:pending.length,
+  ...priceStats,possibleMatches:rows.length,matchedSkuCount:rows.length,
+  viableSkuCount:qualified.length,pendingCount:pending.length,
   pendingItems:[],catalogCount:state.catalog.length,
   offerCount:state.offers.size,skuSearchesCompleted:state.scanned.size,
   skuQueriesCompleted:state.queries,remainingSkuQueries:Math.max(0,state.plan.length-state.queries),
@@ -126,8 +130,12 @@ export async function importChromeOffers(shopId,{
   shortageReason:picked.shortage?'Ainda não foram identificadas '+Number(limit)+
    ' SKUs com 3 lojas concorrentes, evidência mensal e preço competitivo para Ads.':'',
   chromeImport:{
-   query:search,imported:normalized.length,monthlyOffers:normalized.filter(x=>x.monthlySold!==null).length},
-  warning:'Somente Curvas A/B com 3 concorrentes mensais, custo menor que a média de mercado e simulação de preço rentável até 40% acima dela. '+
+   query:search,imported:normalized.length,
+   monthlyOffers:normalized.filter(x=>x.monthlySold!==null).length,
+   skuCount:task.skus.length,
+   matchedSkus:task.skus.filter(sku=>rows.some(row=>row.sku===sku)),
+   viableSkus:task.skus.filter(sku=>qualified.some(row=>row.sku===sku))},
+  warning:'Somente Curvas A/B com 3 concorrentes mensais, média do preço de venda de 3 a 5 lojas diferentes, custo inferior a essa média e preço rentável até 40% acima dela. '+
    priceStats.excludedByPrice+' SKUs Curva A/B excluídas por custo/preço ou falta de média. Sem confirmação, não indicar Ads.',
   searchMode:'wedrop-first-chrome-visible-featured',marketplaceUpdated:false};
 }

@@ -37,3 +37,9 @@ test('estatística conta apenas rejeições de Curvas A/B confirmadas',()=>{
  assert.equal(q.excludedByPrice,2);
  assert.equal(q.rejectedReasons.missing_market,1);
 });
+
+test('média com somente 2 anúncios não é suficiente para aprovação Curvas Ads',()=>{
+ const q=fit({cost:40,avgCompetitorPrice:100,competitorOfferCount:2,inStock:true});
+ assert.equal(q.eligible,false);
+ assert.equal(q.status,'missing_market');
+});

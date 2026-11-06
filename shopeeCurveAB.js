@@ -203,7 +203,9 @@ function addMarketAnalysis(row,offers,checkedAt,ownShopId='0'){
  const compare=evaluateMarketOffers({
   title:row.name,offers,ownShopId,ownItemId:'0',queriedAt:checkedAt});
  const keywords=verifiedKeywordEvidence(row.name,offers);
- const strong=compare.verified===true&&Number(compare.count)>=2;
+ // Somente triagem Curvas/Ads: mínimo 3 e máximo 5 preços observados
+ // de lojas diferentes. Não alterar o mínimo global do pesquisador de mercado.
+ const strong=compare.verified===true&&Number(compare.count)>=3;
  return {...row,
   avgCompetitorPrice:strong?compare.average:null,
   competitorOfferCount:strong?compare.count:compare.count,
@@ -211,8 +213,9 @@ function addMarketAnalysis(row,offers,checkedAt,ownShopId='0'){
    title:o.title,shopId:o.shopId,itemId:o.itemId,
    price:o.price,url:o.url,checkedAt:o.checkedAt})),
   priceEvidence:strong?
-   'Média aritmética de '+compare.count+' anúncios comparáveis de lojas diferentes':
-   'Média indisponível: menos de 2 lojas independentes comparáveis nesta amostra',
+   'Média aritmética do preço de venda na Shopee, baseada em '+compare.count+
+    ' anúncios comparáveis de lojas diferentes (amostra de 3 a 5 preços reais)':
+   'Média indisponível para Ads: são necessários 3 a 5 anúncios de lojas independentes com preços comparáveis',
   keywords,
   seoTitle:seoTitleFromEvidence(row.name,keywords,row.sku),
   seoMethod:'Termos recorrentes em títulos de anúncios equivalentes; sem medição oficial de buscas',
