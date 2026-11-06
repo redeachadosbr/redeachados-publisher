@@ -89,3 +89,13 @@ test('Curvas calcula média com 5 anúncios distintos de uma única loja, sem du
  assert.equal(new Set(complete.sample.map(x=>x.itemId)).size,5);
  assert.equal(new Set(complete.sample.map(x=>x.shopId)).size,1);
 });
+
+test('Curvas calcula media com dois anúncios da mesma loja e Item IDs distintos',()=>{
+ const pair=[170,190].map((price,i)=>offer(i,i+850,700,price));
+ const result=evaluateMarketOffers({title:original,offers:[...pair,pair[0]],
+  minOffers:2,maxOffers:10,allowSameShop:true});
+ assert.equal(result.verified,true);
+ assert.equal(result.count,2);
+ assert.equal(result.average,180);
+ assert.equal(new Set(result.sample.map(x=>x.shopId)).size,1);
+});

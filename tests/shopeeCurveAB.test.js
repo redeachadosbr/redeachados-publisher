@@ -116,7 +116,7 @@ test('categorias seguem o MESMO agrupamento dos Kits Inteligentes WeDrop',()=>{
  assert.match(module,/categoryMatches\(/);
  assert.match(module,/selectedCategory/);
 });
-test('média de Curvas usa 5 a 10 anúncios do mesmo produto, sem exigir lojas distintas',()=>{
+test('média de Curvas usa 2 a 10 anúncios do mesmo produto, sem exigir lojas distintas',()=>{
  const catalog=[{supplier_sku:'CQA-500',source_file:'wedrop.xlsx',product_data:{
   name:'Coqueteleira Shaker Inox 500ml',category:'Copos, Jarras e Servir',
   imageUrl:photo,rawAvailability:'Disponível'}}];
@@ -434,7 +434,7 @@ test('Curva B com custo baixo e três lojas de preços comparáveis recebe simul
  assert.equal(pickCurveResults(rows,{limit:5,competitiveOnly:true,verifiedOnly:true}).found,1);
 });
 
-test('média em Curvas exige no mínimo 5 anúncios distintos e permite lojas repetidas',()=>{
+test('média em Curvas aceita a partir de 2 anúncios distintos e permite lojas repetidas',()=>{
  const name='Organizador de Gaveta Modular Plástico Grande';
  const catalog=[{supplier_sku:'C123',product_data:{
   name,category:'Organizadores',rawAvailability:'Disponível'}}];
@@ -447,12 +447,12 @@ test('média em Curvas exige no mínimo 5 anúncios distintos e permite lojas re
  }));
  const apply=n=>matchCurveOffers({catalog,costs,offers:offers.slice(0,n),ownShopId:'999'})[0];
  const two=apply(2);
- assert.equal(two.avgCompetitorPrice,null);
- assert.equal(two.adsCompetitiveness.eligible,false);
+ assert.equal(two.avgCompetitorPrice,92.5);
+ assert.equal(two.adsCompetitiveness.eligible,true);
  const three=apply(3);
- assert.equal(three.avgCompetitorPrice,null);
+ assert.equal(three.avgCompetitorPrice,95);
  assert.equal(three.competitorOfferCount,3);
- assert.equal(three.adsCompetitiveness.eligible,false);
+ assert.equal(three.adsCompetitiveness.eligible,true);
  const five=apply(5);
  assert.equal(five.avgCompetitorPrice,100);
  assert.equal(five.competitorOfferCount,5);
@@ -479,4 +479,20 @@ test('Curvas faz média com 5 anúncios da mesma loja e ignora embalagens de qua
  assert.equal(rows[0].avgCompetitorPrice,52);
  assert.equal(new Set(rows[0].competitorOffers.map(x=>x.shopId)).size,1);
  assert.ok(!rows[0].competitorOffers.some(x=>x.itemId==='4000'));
+});
+
+test('Curvas calcula preço médio com só dois anúncios de uma mesma loja sem confirmar demanda',()=>{
+ const name='Pano Multiuso em Rolo com 600 Unidades';
+ const catalog=[{supplier_sku:'P600',product_data:{name,
+  rawAvailability:'Disponível',category:'Limpeza'}}];
+ const offers=[53.99,54.50].map((price,i)=>({
+  shopId:'123',itemId:String(3000+i),productName:name,
+  priceMin:price,priceMax:price,sales:1200,monthlySold:1000
+ }));
+ const rows=matchCurveOffers({catalog,offers,costs:[{supplier_sku:'P600',unit_cost:10}]});
+ assert.equal(rows.length,1);
+ assert.equal(rows[0].competitorOfferCount,2);
+ assert.equal(rows[0].avgCompetitorPrice,54.25);
+ assert.equal(new Set(rows[0].competitorOffers.map(x=>x.shopId)).size,1);
+ assert.equal(rows[0].monthlyCompetitorCount,1);
 });

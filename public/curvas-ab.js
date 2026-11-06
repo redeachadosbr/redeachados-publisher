@@ -68,7 +68,7 @@
   const details=t('details','curve-competitors');
   const count=Number(row.competitorOfferCount||0);
   details.append(t('summary','',row.avgCompetitorPrice===null?
-   'Amostra parcial: '+count+' anúncio(s) • mínimo de 5 ofertas do mesmo produto':
+   'Amostra parcial: '+count+' anúncio(s) • mínimo de 2 ofertas do mesmo produto':
    'Média do preço Shopee: '+count+' ofertas equivalentes (mesma loja permitida)'));
   details.append(t('p','curve-evidence',row.priceEvidence||'Média indisponível.'));
   const list=t('ol','curve-offers-list');

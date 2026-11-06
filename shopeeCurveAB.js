@@ -209,14 +209,14 @@ export function seoTitleFromEvidence(productName,keywords=[],sku=''){
 }
 
 function addMarketAnalysis(row,offers,checkedAt,ownShopId='0'){
- // Preço médio de 5 a 10 anúncios do mesmo produto, independentemente da loja.
+ // Preço médio de 2 a 10 anúncios do mesmo produto, independentemente da loja.
  // Anúncios distintos usam Item ID, sem contar uma oferta repetida duas vezes.
  const compare=evaluateMarketOffers({
   title:row.name,offers,ownShopId,ownItemId:'0',queriedAt:checkedAt,
-  minOffers:5,maxOffers:10,allowSameShop:true});
+  minOffers:2,maxOffers:10,allowSameShop:true});
  const keywords=verifiedKeywordEvidence(row.name,offers);
  // Não alterar o padrão de preços dos demais módulos.
- const strong=compare.verified===true&&Number(compare.count)>=5;
+ const strong=compare.verified===true&&Number(compare.count)>=2;
  return {...row,
   avgCompetitorPrice:strong?compare.average:null,
   competitorOfferCount:strong?compare.count:compare.count,
@@ -225,8 +225,8 @@ function addMarketAnalysis(row,offers,checkedAt,ownShopId='0'){
    price:o.price,url:o.url,checkedAt:o.checkedAt})),
   priceEvidence:strong?
    'Média aritmética do preço de venda na Shopee, baseada em '+compare.count+
-    ' anúncios distintos do mesmo produto (5 a 10 preços reais; mesma loja permitida)':
-   'Média indisponível para Ads: são necessários pelo menos 5 anúncios distintos do mesmo produto, até 10, independentemente da loja',
+    ' anúncios distintos do mesmo produto (2 a 10 preços reais; mesma loja permitida)':
+   'Média indisponível para Ads: são necessários pelo menos 2 anúncios distintos do mesmo produto, até 10, independentemente da loja',
   keywords,
   seoTitle:seoTitleFromEvidence(row.name,keywords,row.sku),
   seoMethod:'Termos recorrentes em títulos de anúncios equivalentes; sem medição oficial de buscas',

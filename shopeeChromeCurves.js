@@ -152,7 +152,7 @@ export async function importChromeOffers(shopId,{
    skuCount:task.skus.length,searchedSkus:task.skus,
    matchedSkus:task.skus.filter(sku=>rows.some(row=>row.sku===sku)),
    viableSkus:task.skus.filter(sku=>qualified.some(row=>row.sku===sku))},
-  warning:'Somente Curvas A/B com 2 a 5 concorrentes de 700+ vendas/mês, média do preço de 5 a 10 anúncios do mesmo produto (mesma loja permitida), custo inferior à média e preço rentável até 40% acima dela. '+
+  warning:'Somente Curvas A/B com 2 a 5 concorrentes de 700+ vendas/mês, média do preço de 2 a 10 anúncios do mesmo produto (mesma loja permitida), custo inferior à média e preço rentável até 40% acima dela. '+
    priceStats.excludedByPrice+' SKUs Curva A/B excluídas por custo/preço ou falta de média. Sem confirmação, não indicar Ads.',
   searchMode:'wedrop-first-chrome-visible-featured',marketplaceUpdated:false};
 }

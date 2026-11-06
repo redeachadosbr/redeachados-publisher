@@ -38,11 +38,11 @@ test('estatística conta apenas rejeições de Curvas A/B confirmadas',()=>{
  assert.equal(q.rejectedReasons.missing_market,1);
 });
 
-test('média Curvas depende de pelo menos 5 anúncios do mesmo produto',()=>{
- for(const count of [2,3,4]){
-  assert.equal(fit({cost:40,avgCompetitorPrice:100,competitorOfferCount:count}).eligible,false);
+test('média Curvas admite dois anúncios distintos do mesmo produto, não cinco',()=>{
+ assert.equal(fit({cost:40,avgCompetitorPrice:100,competitorOfferCount:1}).eligible,false);
+ for(const count of [2,3,4,5,10]){
+  assert.equal(fit({cost:40,avgCompetitorPrice:100,competitorOfferCount:count}).eligible,true);
  }
- assert.equal(fit({cost:40,avgCompetitorPrice:100,competitorOfferCount:5}).eligible,true);
  assert.equal(CURVE_ADS_POLICY.minMonthlyCompetitors,2);
- assert.equal(CURVE_ADS_POLICY.minPriceOffers,5);
+ assert.equal(CURVE_ADS_POLICY.minPriceOffers,2);
 });

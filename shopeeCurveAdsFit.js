@@ -1,9 +1,9 @@
 // Triagem Curvas A/B: demanda real não é suficiente sem preço competitivo.
-// Usa custo WeDrop e a média de 5 a 10 anúncios distintos do mesmo produto.
+// Usa custo WeDrop e a média de 2 a 10 anúncios distintos do mesmo produto.
 import {SHOPEE_PRICE_DEFAULTS,normalizeShopeePricingSettings,
  calculateShopeeSale,minimumGrossForNetMargin} from './shopeePricing.js';
 export const CURVE_ADS_POLICY=Object.freeze({
- maxAboveMarketPct:40,minMonthlyCompetitors:2,minPriceOffers:5,
+ maxAboveMarketPct:40,minMonthlyCompetitors:2,minPriceOffers:2,
  screeningAdsPct:10,screeningMinMarginPct:5
 });
 const cents=x=>Math.round(x*100);
@@ -28,7 +28,7 @@ export function assessCurveAdsCompetitiveness({
  if(inStock!==true)return reject('out_of_stock','SKU sem estoque WeDrop.');
  if(!positive(unit))return reject('missing_cost','Custo WeDrop não cadastrado.');
  if(!positive(avg)||Number(competitorOfferCount)<CURVE_ADS_POLICY.minPriceOffers)
-  return reject('missing_market','Média não confirmada: exigir 5 a 10 anúncios do mesmo produto, mesmo que sejam da mesma loja.');
+  return reject('missing_market','Média não confirmada: exigir 2 a 10 anúncios do mesmo produto, mesmo que sejam da mesma loja.');
  const ceiling=round2(avg*1.4);
  if(unit>=avg)return reject('cost_above_market','Custo WeDrop acima ou igual à média de venda dos concorrentes.',
   {marketAverage:avg,maxMarketPrice:ceiling});

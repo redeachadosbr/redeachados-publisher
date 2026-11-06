@@ -13,6 +13,6 @@ A Shopee Em Destaque é aberta em uma única janela auxiliar reutilizada.
 Quando necessário, a própria janela é restaurada para leitura visual.
 CAPTCHA, bloqueio real ou verificação de acesso interrompem a pesquisa, sem
 contornar proteção. A classificação A/B (900+ ou 700–899 vendas em 30 dias)
-exige vendas/mês explícitas de 2 a 5 lojas; médias de preço usam 5 a 10 anúncios distintos do mesmo produto, inclusive da mesma loja.
+exige vendas/mês explícitas de 2 a 5 lojas; médias de preço usam 2 a 10 anúncios distintos do mesmo produto, inclusive da mesma loja.
 Reconhece indicadores como "1mil+ Vendido/Mês" e "952 Vendido/Mês".
 Sem evidência mensal não há classificação, e nenhum anúncio é criado.
