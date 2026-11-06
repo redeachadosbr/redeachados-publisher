@@ -174,7 +174,7 @@ test('modo API só cria visualizações e ação; não renderiza métricas ausen
  const ui=readFileSync(new URL('../public/organic-top10.js',import.meta.url),'utf8');
  const css=readFileSync(new URL('../public/organic-top10.css',import.meta.url),'utf8');
  const html=readFileSync(new URL('../public/index.html',import.meta.url),'utf8');
- assert.match(ui,/if\(source==='api'\)\{\s*add\(number\(row\.viewsObserved/);
+ assert.match(ui,/if\(source==='api'\)\{\s*const measured=/);
  assert.match(ui,/else\{\s*\/\/ Só o relatório orgânico confirmado permite exibir CTR\/carrinho\/abandono/);
  assert.match(ui,/name\.title=fullTitle/);
  assert.match(ui,/const previewTitle=fullTitle\.length>titleLimit/);
