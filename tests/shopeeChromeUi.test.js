@@ -30,7 +30,8 @@ test('exige a extensão Shopee Chrome 1.2.0 para pesquisas sem novas abas',()=>{
  const code=readFileSync(new URL('../public/curvas-chrome.js',import.meta.url),'utf8');
  const manifest=JSON.parse(readFileSync(new URL('../chrome-extension-shopee/manifest.json',import.meta.url),'utf8'));
  assert.equal(manifest.version,'1.2.1');
- assert.match(code,/parts\[1\]>=2/);
+ assert.match(code,/parts\[1\]>2/);
+ assert.match(code,/Number\(parts\[2\]\|\|0\)>=1/);
 });
 
 test('filtro único categoria, quantidade e nome só inicia pesquisa Chrome',()=>{
@@ -88,4 +89,14 @@ test('final da pesquisa apresenta categoria, total pesquisado, retornos e viáve
  assert.match(source,/matchedSkuIds:rows\.map/);
  assert.match(source,/viableSkuIds:qualified\.map/);
  assert.match(source,/searchedSkus:task\.skus/);
+});
+
+test('relatório da Ponte conta SKUs tentadas em consultas incompletas sem pular lote',()=>{
+ const ui=readFileSync(new URL('../public/curvas-chrome.js',import.meta.url),'utf8');
+ const backend=readFileSync(new URL('../shopeeChromeCurves.js',import.meta.url),'utf8');
+ assert.match(backend,/skuCount:job\.skus\.length,skus:job\.skus/);
+ assert.match(ui,/attemptedSkuIds:new Set\(\)/);
+ assert.match(ui,/const searched=s\.attemptedSkuIds\.size/);
+ assert.match(ui,/for\(const sku of job\?\.skus\|\|\[\]\)s\.attemptedSkuIds\.add/);
+ assert.match(ui,/if\(s\.blocked\)offset=0/);
 });
