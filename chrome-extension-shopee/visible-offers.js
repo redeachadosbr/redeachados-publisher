@@ -62,7 +62,10 @@
   const productName=clean(nameNode?.innerText||nameNode?.textContent||image?.alt||
     link.getAttribute('title')||link.getAttribute('aria-label')||content.split('R$')[0]).slice(0,210);
   if(productName.length<6)return null;
-  const monthly=monthlyEvidence(content),sold=historicalSales(content);
+  const monthly=monthlyEvidence(content);
+  // Vendas mensais exibidas não equivalem ao contador histórico acumulado.
+  const sold=historicalSales(monthly.monthlyEvidence?
+   content.replace(monthly.monthlyEvidence,''):content);
   if(monthly.monthlySold===null&&sold===null)return null;
   return {...identity,productName,historicalSold:sold,priceMin:amount(content),
    ...monthly,featuredRank:rank};
