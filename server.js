@@ -1644,6 +1644,11 @@ app.post('/api/shopee/optimizer/fiscal-migration/prepare-drafts',mustLogin,requi
     const record=await auditShopeeItem(cfg,auth,callShopeeShopApi,itemId,
       {expectedSku:sku,expectedModelId:modelId});
     if(!['NORMAL','UNLIST'].includes(record.status))throw Error('Anúncio não está ativo.');
+    // O rascunho de lote também usa o CEST DO PRÓPRIO Item ID.
+    // Nenhuma sugestão WeDrop pode gravar o CEST de outra SKU no rascunho.
+    const fiscalLive=await shopeeLiveEditableItem(cfg,auth,itemId);
+    if(String(fiscalLive.item_id)!==String(itemId))throw Error('Item ID fiscal divergente da Shopee.');
+    const currentCest=cestForShopeeField(fiscalLive.tax_info);
     const supplier=await readWeDropProduct(auth.shopId,{sku,itemId,modelId});
     if(!supplier||!['exact-sku','reviewed-link'].includes(supplier.matchedBy))
       throw Error('Correspondência WeDrop não confirmada.');
@@ -1663,7 +1668,7 @@ app.post('/api/shopee/optimizer/fiscal-migration/prepare-drafts',mustLogin,requi
       same_state_cfop:previous.same_state_cfop||'5106',
       diff_state_cfop:previous.diff_state_cfop||'6106',
       csosn:previous.csosn||'102',pis_cofins_cst:previous.pis_cofins_cst||'99',
-      cest:wedropCestForSku(supplier),measure_unit:measureUnit,
+      cest:currentCest,measure_unit:measureUnit,
       evidence:previous.evidence||('NCM WeDrop '+supplier.supplier_sku+' · '+(supplier.source_file||'cadastro importado'))};
     fiscalMatrixSource({sku,supplier,tax});
     compileTax(tax,{tax_info:{}});
@@ -3184,7 +3189,7 @@ app.post('/api/shopee/optimizer/fiscal-migration/execute-one',mustLogin,requireW
    csosn:previousTax.csosn||'102',
    pis_cofins_cst:previousTax.pis_cofins_cst||'99',
    ...(previousTax.operation_type?{operation_type:previousTax.operation_type}:{}),
-   cest:wedropCestForSku(supplierLinked?supplier:null),measure_unit:measureUnit,evidence};
+   cest:cestForShopeeField(live.tax_info),measure_unit:measureUnit,evidence};
   // WeDrop sugere CEST apenas no rascunho; no envio prevalece a leitura
   // oficial atual do anúncio Shopee, com 00 somente se o campo está vazio.
   compileTax(tax,{tax_info:{}});
