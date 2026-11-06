@@ -25,15 +25,14 @@ const isHttpImage=url=>{
 };
 
 export function curveGroup(sales30,salesDisplayed){
- if(Number.isSafeInteger(sales30)&&sales30>=0)
-  return sales30>=900&&sales30<=1000?
-   {curve:'A',verified30:true,label:'Curva A • 30 dias observados'}:
-   sales30<900?{curve:'B',verified30:true,label:'Curva B • 30 dias observados'}:
-   {curve:'HIGH',verified30:true,label:'Acima de 1.000 / 30 dias'};
- // Campo sales da API é acumulado: só sinaliza candidatos.
- return Number.isSafeInteger(salesDisplayed)&&salesDisplayed>=900?
-  {curve:'A',verified30:false,label:'Potencial A • acumulado'}:
-  {curve:'B',verified30:false,label:'Potencial B • acumulado'};
+ // Classificação baseada em concorrentes equivalentes, inclusive para SKUs ainda não publicadas.
+ if(Number.isSafeInteger(sales30)&&sales30>=0){
+  if(sales30>=900)return {curve:'A',verified30:true,label:'Curva A • 900 ou mais vendas em 30 dias'};
+  if(sales30>=700)return {curve:'B',verified30:true,label:'Curva B • 700 a 899 vendas em 30 dias'};
+  return {curve:'LOW',verified30:true,label:'Abaixo de 700 vendas em 30 dias'};
+ }
+ // Vendas acumuladas nunca são evidência suficiente para classificar a curva mensal.
+ return {curve:'PENDING',verified30:false,label:'Vendas dos últimos 30 dias não disponíveis; conferir concorrente Em Destaque'};
 }
 
 export function curveSearchTerms(products,{keyword=''}={}){
@@ -78,7 +77,7 @@ export function curveSkuSearchPlan(catalog,{keyword=''}={}){
   if(!sku||!name||!available(row.product_data?.rawAvailability))continue;
   if(term&&!normal(name).includes(term))continue;
   const query=curveSkuSearchQuery(name);
-  if(!query||query.split(' ').length<2)continue;
+  if(query.length<3)continue; // pesquisar também SKUs com nome curto
   const bucket=String(row.product_data?.category||'Sem categoria');
   if(!buckets.has(bucket))buckets.set(bucket,[]);
   buckets.get(bucket).push({query,sku,name,bucket});
@@ -302,7 +301,9 @@ export function pickCurveResults(rows,{curve='ALL',limit=10,verifiedOnly=false}=
  if(![5,10,15,20].includes(Number(limit)))throw Error('Escolha 5, 10, 15 ou 20 produtos.');
  const choice=String(curve).toUpperCase();
  if(!['ALL','A','B'].includes(choice))throw Error('Filtro de curva inválido.');
- const accepted=rows.filter(x=>x.curve!=='HIGH'&&(choice==='ALL'||x.curve===choice)&&(!verifiedOnly||x.verified30));
+ const accepted=rows.filter(x=>
+  (x.verified30&&(x.curve==='A'||x.curve==='B')&&(choice==='ALL'||x.curve===choice))||
+  (!verifiedOnly&&choice==='ALL'&&!x.verified30&&x.curve==='PENDING'));
  return {items:accepted.slice(0,Number(limit)),found:accepted.length,requested:Number(limit),
   shortage:Math.max(0,Number(limit)-accepted.length)};
 }
@@ -575,11 +576,11 @@ export async function researchCurveAB(shopId,{
  const selected=pickCurveResults(state.matches,{limit:desired,curve:chosen,verifiedOnly});
  const hasMore=state.cursor<state.plan.length&&!state.limited;
  const notes=[
-  'Pesquisa automática iniciada nas descrições de SKUs WeDrop da categoria escolhida. Resultado obtido pela API Shopee Afiliados ordenada por vendas; a API não reproduz diretamente a aba Em Destaque do comprador.',
-  'O contador sales da API é acumulado. A curva mensal só é confirmada quando há observações de aproximadamente 30 dias; antes disso a indicação A/B é potencial.',
-  verifiedOnly&&state.matches.length&&!selected.items.length?'Existem correspondências com o catálogo, mas nenhuma com indicador mensal confirmado. Desmarque Somente curvas confirmadas para consultar candidatos potencialmente promissores.':'',
-  selected.shortage?'Encontrados '+selected.items.length+' dos '+desired+
-   ' produtos solicitados. Não há bloqueio.':'',
+  'Pesquisa parte do catálogo WeDrop, inclusive SKUs ainda não anunciadas na sua loja; cruza produtos equivalentes com concorrentes da Shopee, priorizando a busca pública Em Destaque.',
+  'Curva A: 900 ou mais vendas em 30 dias; Curva B: 700 a 899. A API de Afiliados informa vendas acumuladas e não pode confirmar curva mensal sozinha.',
+  verifiedOnly&&state.matches.some(x=>!x.verified30)&&!selected.items.length?'Foram encontrados concorrentes equivalentes, mas faltam vendas mensais. Exibimos candidatos pendentes com SKU WeDrop, sem inventar Curva A/B.':'',
+  selected.shortage?'Encontradas '+selected.items.length+' das '+desired+
+    ' SKUs solicitadas com classificação comprovada. Sem dados mensais não é possível confirmar curva.':'',
   hasMore?'A busca pausou no limite seguro de chamadas. Use Continuar varredura para pesquisar mais SKUs sem repetir consultas anteriores.':'',
   state.limited?'A API de ofertas interrompeu a pesquisa por limite de requisições ou autorização. Confira o diagnóstico antes de repetir.':'',
   state.recordedOffers===null?'Não foi possível registrar observações para a apuração de 30 dias.':'',
@@ -587,8 +588,10 @@ export async function researchCurveAB(shopId,{
   state.sources.featured?'Vendas mensais obtidas da busca pública Shopee para parte dos resultados.':'',
   state.errors.length?'Consultas que falharam: '+state.errors.slice(0,2).join(' | '):''
  ].filter(Boolean);
- return {ok:true,configured:state.successfulQueries>0,verifiedOnly,
-  possibleMatches:state.matches.length,
+ const pending=state.matches.filter(x=>!x.verified30&&x.curve==='PENDING');
+  return {ok:true,configured:state.successfulQueries>0,verifiedOnly,
+   possibleMatches:state.matches.length,pendingCount:pending.length,
+   pendingItems:pending.slice(0,desired),
   sources:state.sources,providers:curveProvidersStatus(),
   curve:chosen,category:selectedCategory,
   ...selected,catalogCount:state.catalog.length,offerCount:state.offers.size,
@@ -602,6 +605,6 @@ export async function researchCurveAB(shopId,{
   checkedAt:state.checkedAt,recordedOffers:state.recordedOffers,
   rowsWith30Days:selected.items.filter(x=>x.verified30).length,
   featuredSearchUrl:officialFeaturedSearchUrl(term||(selectedCategory==='Todos'?'':selectedCategory)),
-  warning:notes.join(' '),searchMode:'sku-first-affiliate-ranked-sales',
+  warning:notes.join(' '),searchMode:'wedrop-first-featured-competitor-monthly',
   readOnly:true,marketplaceUpdated:false};
 }

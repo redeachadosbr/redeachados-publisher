@@ -20,17 +20,21 @@ const offers=[
  {itemId:'1002',shopId:'998',productName:'Estojo Escolar Dinossauro T Rex com Zíper',
   priceMin:'24.90',sales:650}
 ];
-test('curva A exige 900 a 1.000 em 30 dias observados e B abaixo de 900',()=>{
+test('curva A começa em 900 sem teto, B entre 700 e 899 e valores inferiores não classificam',()=>{
  assert.equal(curveGroup(900,7000).curve,'A');
  assert.equal(curveGroup(1000,7000).curve,'A');
+ assert.equal(curveGroup(1001,7000).curve,'A');
+ assert.equal(curveGroup(12000,7000).curve,'A');
  assert.equal(curveGroup(899,7000).curve,'B');
- assert.equal(curveGroup(1001,7000).curve,'HIGH');
+ assert.equal(curveGroup(700,7000).curve,'B');
+ assert.equal(curveGroup(699,7000).curve,'LOW');
+ assert.equal(curveGroup(0,7000).curve,'LOW');
 });
-test('vendas acumuladas geram apenas potencial e nunca 30 dias inventados',()=>{
+test('vendas acumuladas de concorrentes nunca confirmam A/B sem período mensal',()=>{
  const x=curveGroup(null,950),y=curveGroup(null,400);
- assert.equal(x.curve,'A');assert.equal(x.verified30,false);
- assert.match(x.label,/acumulado/);
- assert.equal(y.curve,'B');assert.equal(y.verified30,false);
+ assert.equal(x.curve,'PENDING');assert.equal(x.verified30,false);
+ assert.match(x.label,/não disponíveis/);
+ assert.equal(y.curve,'PENDING');assert.equal(y.verified30,false);
 });
 test('cruzamento valida identidade do produto e traz SKU imagem WeDrop e concorrente',()=>{
  const rows=matchCurveOffers({catalog:fixture,offers,costs:[
@@ -43,7 +47,7 @@ test('cruzamento valida identidade do produto e traz SKU imagem WeDrop e concorr
  assert.equal(rows[0].competitorUrl,'https://shopee.com.br/product/999/1001');
  assert.equal(rows[0].cost,19.5);
  assert.equal(rows[1].sku,'EST002');
- assert.equal(rows[1].curve,'B');
+ assert.equal(rows[1].curve,'PENDING');
 });
 test('histórico de 30 dias observa delta verdadeiro e nao total acumulado',()=>{
  const rows=matchCurveOffers({catalog:fixture,offers,baseline:new Map([
@@ -53,6 +57,7 @@ test('histórico de 30 dias observa delta verdadeiro e nao total acumulado',()=>
  assert.equal(rows[0].sales30,950);
  assert.equal(rows[0].verified30,true);
  assert.equal(rows[1].sales30,530);
+ assert.equal(rows[1].curve,'LOW');
  assert.equal(rows[1].verified30,true);
 });
 test('quantidades 5, 10, 15, 20 retornam menos sem bloquear',()=>{
@@ -62,8 +67,8 @@ test('quantidades 5, 10, 15, 20 retornam menos sem bloquear',()=>{
   assert.equal(result.items.length,2);
   assert.equal(result.shortage,limit-2);
  }
- assert.equal(pickCurveResults(rows,{limit:10,curve:'A'}).items.length,1);
- assert.equal(pickCurveResults(rows,{limit:10,curve:'B'}).items.length,1);
+ assert.equal(pickCurveResults(rows,{limit:10,curve:'A'}).items.length,0);
+ assert.equal(pickCurveResults(rows,{limit:10,curve:'B'}).items.length,0);
  assert.throws(()=>pickCurveResults(rows,{limit:12}),/Escolha/);
 });
 test('pesquisa sem termos usa categorias do catálogo e ignora indisponíveis',()=>{
@@ -291,7 +296,8 @@ test('modo padrão só retorna Curvas com evidência mensal, candidatos potencia
  assert.equal(strict.items.length,0);
  assert.equal(strict.shortage,5);
  const relaxed=pickCurveResults(candidates,{limit:5,curve:'A',verifiedOnly:false});
- assert.equal(relaxed.items.length,1);
+ assert.equal(relaxed.items.length,0);
+ assert.equal(pickCurveResults(candidates,{limit:5,curve:'ALL',verifiedOnly:false}).items.length,2);
  const monthly=matchCurveOffers({catalog:fixture,offers:[{
   itemId:'1001',shopId:'999',
   productName:'Lancheira Escolar Dinossauro T Rex Verde com Zíper',
@@ -307,4 +313,23 @@ test('rota autenticada expõe status das duas fontes sem fornecer segredos',()=>
  assert.match(api,/probeCurveAffiliateAccess/);
  assert.match(html,/id="curveConfirmedOnly" checked/);
  assert.match(html,/id="curveTestSources"/);
+});
+
+test('SKU não precisa estar publicada na loja para ganhar Curva A pelo concorrente',()=>{
+ const catalog=[{supplier_sku:'WEDROP-NOVO',product_data:{name:'Coqueteleira Shaker Inox 500ml',category:'Cozinha',rawAvailability:'Disponível'}}];
+ const rows=matchCurveOffers({catalog,offers:[{itemId:'9988',shopId:'8877',
+  productName:'Coqueteleira Shaker Inox 500ml',sales:15000,monthlySold:1350,
+  priceMin:32.9,dataSource:'shopee-featured-public'}]});
+ assert.equal(rows.length,1);
+ assert.equal(rows[0].sku,'WEDROP-NOVO');
+ assert.equal(rows[0].curve,'A');
+ assert.equal(rows[0].sales30,1350);
+ assert.equal(pickCurveResults(rows,{curve:'A',limit:5,verifiedOnly:true}).items.length,1);
+});
+test('sem volume mensal, nem anúncio com 100 mil vendas acumuladas vira Curva A',()=>{
+ const rows=matchCurveOffers({catalog:fixture,offers:[{itemId:'1001',shopId:'999',
+  productName:'Lancheira Escolar Dinossauro T Rex Verde com Zíper',sales:100000,
+  priceMin:35.9,dataSource:'shopee-affiliate'}]});
+ assert.equal(rows[0].curve,'PENDING');
+ assert.equal(pickCurveResults(rows,{curve:'A',limit:5,verifiedOnly:true}).items.length,0);
 });

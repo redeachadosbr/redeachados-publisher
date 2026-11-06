@@ -1072,10 +1072,10 @@
    </label>
    <button id="curveSearchBtn" type="submit">Pesquisar SKUs automaticamente</button>
    <label class="curve-only-verified"><input type="checkbox" id="curveConfirmedOnly" checked/>
-    <span>Somente Curvas A/B com vendas do mês confirmadas. Desmarque para ver potenciais por vendas acumuladas.</span>
+    <span>Somente curvas A/B comprovadas em 30 dias. Concorrentes sem vendas mensais aparecem como pendentes, não como A/B.</span>
    </label>
   </form>
-  <p class="curve-method"><strong>Origem:</strong> a aba oficial <strong>Em Destaque</strong> da Shopee ordena por vendas (<code>sortBy=sales</code>); o botão abaixo abre essa consulta exata para conferência. A pesquisa automática percorre as SKUs WeDrop e tenta primeiro a busca pública <strong>Em Destaque (by=sales)</strong>. Se a Shopee restringir o acesso, utiliza a <strong>API de Afiliados ordenada por vendas</strong> quando conectada. A fonte utilizada aparece nos resultados; a API de Afiliados não reproduz integralmente a vitrine. Curva A = 900–1.000 vendas em 30 dias; B = menos de 900. Sem histórico mensal válido, o resultado será identificado como <strong>potencial</strong>. As palavras-chave são frequentes nos <strong>títulos de anúncios comparáveis</strong>, não volumes oficiais de busca.</p>
+  <p class="curve-method"><strong>Origem:</strong> a aba oficial <strong>Em Destaque</strong> da Shopee ordena por vendas (<code>sortBy=sales</code>); o botão abaixo abre essa consulta exata para conferência. A pesquisa automática percorre as SKUs WeDrop e tenta primeiro a busca pública <strong>Em Destaque (by=sales)</strong>. Se a Shopee restringir o acesso, utiliza a <strong>API de Afiliados ordenada por vendas</strong> quando conectada. A fonte utilizada aparece nos resultados; a API de Afiliados não reproduz integralmente a vitrine. Curva A = 900 ou mais vendas em 30 dias; B = 700–899. Abaixo de 700 não se classifica. O cruzamento parte das SKUs do catálogo WeDrop da categoria, inclusive as não publicadas na própria loja. Sem vendas mensais verificáveis, a SKU fica <strong>pendente</strong> e não recebe curva inventada. As palavras-chave são frequentes nos <strong>títulos de anúncios comparáveis</strong>, não volumes oficiais de busca.</p>
   <p class="curve-featured-control"><a id="curveFeaturedLink" href="https://shopee.com.br/search?keyword=&amp;page=0&amp;sortBy=sales" target="_blank" rel="noopener noreferrer">Conferir a aba Em Destaque na Shopee</a><span>Pesquisa oficial da Shopee (ordenada por vendas) • abre em outra guia</span></p>
   <div class="curve-sources" role="group" aria-label="Conexões de pesquisa Shopee">
    <div><strong>Fonte de vendas</strong>
@@ -1088,7 +1088,7 @@
    <div><small>SKUs WeDrop na categoria</small><strong id="curveCatalogCount">—</strong></div>
    <div><small>SKUs pesquisadas</small><strong id="curveScannedCount">—</strong></div>
    <div><small>Ofertas Shopee retornadas</small><strong id="curveOfferCount">—</strong></div>
-   <div><small>Produtos correspondentes</small><strong id="curveFoundCount">—</strong></div>
+   <div><small>SKUs classificadas no filtro</small><strong id="curveFoundCount">—</strong></div>
    <div><small>Curvas com evidência mensal</small><strong id="curveVerifiedCount">—</strong></div>
   </div>
   <section class="curve-results" aria-labelledby="curveResultsHeading">

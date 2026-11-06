@@ -120,8 +120,8 @@
    frame.append(image);
   }else frame.append(t('div','curve-card-image curve-card-placeholder','Imagem WeDrop não disponível'));
   const top=t('div','curve-card-top'),title=t('h4','',row.name);
-  const curve=t('span','curve-curve '+(row.curve==='A'?'a':'b'),
-    row.verified30?'Curva '+row.curve:'Potencial '+row.curve);
+  const curve=t('span','curve-curve '+(row.curve==='A'?'a':row.curve==='B'?'b':'pending'),
+     row.verified30?(row.curve==='LOW'?'Abaixo de 700':'Curva '+row.curve):'Pendente • 30 dias');
   top.append(title,curve);
   const sku=t('div','curve-sku');sku.append('SKU WeDrop: ',t('b','',row.sku));
   const facts=t('div','curve-metrics');
@@ -243,15 +243,19 @@
   q('curveContinueSearch').hidden=!result.hasMore||!result.shortage||Boolean(result.apiLimited);
   for(const item of result.items||[])grid.append(card(item));
   if(!result.items?.length){
-   grid.append(t('div','curve-empty',
-    result.verifiedOnly&&result.possibleMatches?
-     'Há '+result.possibleMatches+' correspondências possíveis, mas ainda sem comprovação de vendas mensais. Desmarque Somente Curvas A/B confirmadas para examinar os potenciais.':
-     'Nenhuma correspondência confiável encontrada nesta consulta. Experimente outra categoria ou continue a varredura.'));
-  }
+    const pending=Array.isArray(result.pendingItems)?result.pendingItems:[];
+    if(pending.length){
+     grid.append(t('p','curve-evidence',
+      'Nenhuma Curva A/B comprovada nesta consulta. Encontramos '+result.pendingCount+
+      ' SKUs WeDrop com anúncios concorrentes equivalentes. Os itens abaixo ainda NÃO estão classificados porque faltam vendas dos últimos 30 dias.'));
+     for(const item of pending)grid.append(card(item));
+    }else grid.append(t('div','curve-empty',
+     'Nenhuma SKU comprovada nesta etapa da varredura. Continue a pesquisa ou confira o acesso a vendas mensais na aba Em Destaque.'));
+   }
   const prefix=result.shortage?
    (result.verifiedOnly?'Curvas mensais confirmadas: ':'Oportunidades potenciais: ')+
    result.items.length+' dos '+result.requested+
-   ' solicitados. A pesquisa terminou normalmente; não há bloqueio. ':
+   ' solicitados. Confira a fonte: sem dados mensais não é possível confirmar curvas. ':
    'Pesquisa concluída: '+result.items.length+' produtos selecionados. ';
   const next=result.hasMore&&result.shortage?
    ' Há mais SKUs para pesquisar; use Pesquisar mais SKUs desta categoria.':'';
@@ -278,7 +282,7 @@
   refreshFeaturedLink();
   button.disabled=true;button.textContent='Consultando SKUs WeDrop…';
   q('curveContinueSearch').disabled=true;
-  status('Varredura automática: lendo as SKUs da categoria e pesquisando títulos de cada produto por lotes na API de ofertas Shopee. Não precisa escrever uma palavra-chave.');
+  status('Catálogo WeDrop → Em Destaque Shopee → produtos equivalentes de concorrentes → vendas em 30 dias → Curva A (900+) ou B (700–899). Inclui SKUs ainda não anunciadas na sua loja.');
   try{
    const params=new URLSearchParams({limit:amount,curve,category,keyword,
     verifiedOnly:verifiedOnly?'1':'0'});
