@@ -14,14 +14,14 @@ test('visual premium isolado da página Curvas A/B, sem alterar a lógica',()=>{
  assert.match(css,/@container\(max-width:690px\)/);
  assert.match(css,/prefers-reduced-motion/);
  assert.match(css,/curve-mini-chart/);
- assert.match(page,/class="curve-integration-grid"/);
+ assert.match(page,/class="curve-chrome-filters"/);
  assert.match(page,/class="curve-panel-title"/);
  assert.match(page,/class="curve-chrome-symbol"/);
  assert.match(page,/class="curve-mini-chart"/);
 });
 test('todas as funções e pontos de integração existentes permanecem',()=>{
- const ids=['curveCategory','curveType','curveLimit','curveKeyword','curveSearchForm','curveSearchBtn',
-  'curveConfirmedOnly','curveSourceStatus','curveTestSources','curveFeaturedLink',
+ const ids=['curveCategory','curveLimit','curveKeyword','curveSearchForm',
+  'curveSourceStatus','curveTestSources','curveFeaturedLink',
   'curveChromeStatus','curveChromeDownload','curveChromeStart','curveNotice',
   'curveStats','curveResults','curveResultsMeta','curveContinueSearch'];
  for(const id of ids)assert.match(page,new RegExp('id="'+id+'"'),id);
@@ -31,8 +31,8 @@ test('todas as funções e pontos de integração existentes permanecem',()=>{
  assert.ok(page.includes('aria-live="polite"'));
 });
 test('estrutura da tela fecha as seções antes da próxima aba',()=>{
- assert.ok(page.includes('class="curve-integration-grid"'));
- assert.ok(page.indexOf('class="curve-sources"')<page.indexOf('class="curve-chrome-bridge"'));
- assert.ok(page.indexOf('class="curve-chrome-bridge"')<page.indexOf('class="curve-help"'));
+ assert.ok(page.includes('class="curve-chrome-unified"'));
+ assert.ok(page.indexOf('id="curveSearchForm"')<page.indexOf('class="curve-technical-diagnostics"'));
+ assert.ok(page.indexOf('class="curve-technical-diagnostics"')<page.indexOf('class="curve-help"'));
  assert.ok(page.indexOf('class="curve-help"')<page.indexOf('id="curveResults"'));
 });

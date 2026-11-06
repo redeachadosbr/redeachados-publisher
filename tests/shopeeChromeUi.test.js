@@ -32,3 +32,20 @@ test('exige a extensão Shopee Chrome 1.1.0 para leitura aprimorada',()=>{
  assert.equal(manifest.version,'1.1.1');
  assert.match(code,/parts\[1\]>=1/);
 });
+
+test('filtro único categoria, quantidade e nome só inicia pesquisa Chrome',()=>{
+ const html=readFileSync(new URL('../public/index.html',import.meta.url),'utf8');
+ const start=html.indexOf('id="tab-curves"'),stop=html.indexOf('id="tab-kits"',start);
+ const page=html.slice(start,stop);
+ const bridge=readFileSync(new URL('../public/curvas-chrome.js',import.meta.url),'utf8');
+ const old=readFileSync(new URL('../public/curvas-ab.js',import.meta.url),'utf8');
+ for(const id of ['curveCategory','curveLimit','curveKeyword','curveChromeStart'])
+  assert.match(page,new RegExp('id="'+id+'"'));
+ for(const id of ['curveType','curveSearchBtn','curveConfirmedOnly'])
+  assert.doesNotMatch(page,new RegExp('id="'+id+'"'));
+ assert.match(page,/class="curve-chrome-unified"/);
+ assert.match(bridge,/form\.addEventListener\('submit'/);
+ assert.match(bridge,/curve:'ALL'/);
+ assert.match(bridge,/verifiedOnly:true/);
+ assert.doesNotMatch(old,/form\.addEventListener\('submit',search/);
+});

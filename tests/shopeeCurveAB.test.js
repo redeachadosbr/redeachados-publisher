@@ -235,8 +235,10 @@ test('motor busca lotes de SKUs e oferece continuidade, não apenas nome da cate
  assert.match(source,/if\(pickCurveResults\(state\.matches,\{limit:desired,curve,verifiedOnly,competitiveOnly\}\)\.items\.length>=desired\)break;/);
  assert.match(source,/skuSearchesCompleted:state\.scannedSkus\.size/);
  assert.match(source,/hasMore,nextCursor:state\.cursor/);
- assert.match(ui,/params\.set\('advance','1'\)/);
- assert.match(ui,/q\('curveContinueSearch'\)\?\.addEventListener/);
+ assert.doesNotMatch(ui,/\/api\/shopee\/curvas-ab\/search\?/);
+ const bridge=readFileSync(new URL('../public/curvas-chrome.js',import.meta.url),'utf8');
+ assert.match(bridge,/\/api\/shopee\/curvas-ab\/chrome-plan/);
+ assert.match(bridge,/\/api\/shopee\/curvas-ab\/chrome-import/);
  assert.match(page,/id="curveContinueSearch"/);
  assert.match(page,/id="curveScannedCount"/);
  assert.match(page,/id="curveKeyword".*placeholder=/);

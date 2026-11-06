@@ -1,0 +1,64 @@
+/* Página Curvas A/B: um só fluxo de pesquisa no Chrome. */
+#tab-curves .curve-chrome-unified{margin-bottom:8px;border-radius:18px;border:1px solid #dae5f4;
+ background:linear-gradient(135deg,#fff,#fafcff);box-shadow:0 5px 17px #133e6d12,0 2px 0 #e5ecf6;overflow:visible}
+#tab-curves .curve-chrome-unified .curve-panel-heading{padding:16px 18px 0}
+#tab-curves .curve-chrome-unified .curve-panel-title>.curve-chrome-symbol{position:relative;top:auto;left:auto;
+ width:42px;height:42px;flex:none;border-radius:12px}
+#tab-curves .curve-chrome-unified .curve-panel-heading h2{font-size:17px;font-weight:850}
+#tab-curves .curve-chrome-unified .curve-panel-heading p{font-size:11px}
+#tab-curves .curve-chrome-filters{display:grid;grid-template-columns:minmax(170px,1.25fr)
+ minmax(105px,.65fr) minmax(210px,1.45fr) minmax(170px,.85fr);
+ align-items:end;gap:10px 13px;padding:12px 18px 0}
+#tab-curves .curve-chrome-filters>label{font-size:11px;font-weight:750}
+#tab-curves .curve-chrome-filters :is(select,input[type="search"]){min-height:42px;margin-top:5px;
+ font-size:12px;border:1px solid #d5e0f1;background:#f9fbff;border-radius:10px}
+#tab-curves .curve-chrome-filters #curveChromeStart{display:flex;gap:7px;align-items:center;
+ justify-content:center;min-height:42px;margin:0 0 2px;padding:9px 13px;
+ border:1px solid #2a6bad;border-radius:11px;background:linear-gradient(180deg,#478fd3,#2163a8);
+ color:#fff;font-size:12px;font-weight:800;box-shadow:0 3px 0 #174b82,0 7px 12px #2a6bad24}
+#tab-curves .curve-chrome-filters #curveChromeStart svg{width:16px;height:16px;stroke:#fff}
+#tab-curves .curve-chrome-unified .curve-filter-footer{display:flex;grid-column:1/-1;
+ padding:9px 0;margin-top:0;gap:9px;justify-content:space-between;flex-wrap:wrap}
+#tab-curves .curve-criteria-note{display:flex;gap:7px;align-items:center;
+ font-size:10.5px;color:#41617e;font-weight:650;line-height:1.5}
+#tab-curves .curve-criteria-note svg{width:14px;height:14px;color:#19875c;stroke-width:2.5}
+#tab-curves .curve-unified-support{display:flex;align-items:center;justify-content:space-between;
+ gap:15px;padding:10px 18px;background:linear-gradient(90deg,#f9fbff,#f3f8ff);
+ border-top:1px solid #eaf0f8;border-radius:0 0 17px 17px}
+#tab-curves .curve-unified-support #curveChromeStatus{display:block;flex:1;
+ font-size:10.5px;font-weight:650;color:#54728c;line-height:1.5;overflow-wrap:anywhere}
+#tab-curves .curve-unified-help{display:flex;gap:14px;align-items:center;flex-wrap:wrap}
+#tab-curves .curve-unified-help a,#tab-curves .curve-unified-help summary{color:#2b628f;
+ font-size:10.5px;font-weight:750;cursor:pointer}
+#tab-curves .curve-unified-help a{text-decoration:none}
+#tab-curves .curve-unified-help details p{font-size:11px;color:#657f9a;max-width:400px;line-height:1.5}
+#tab-curves .curve-technical-diagnostics{margin:0 4px 6px}
+#tab-curves .curve-technical-diagnostics>summary{font-size:10.5px;font-weight:700;color:#507295;cursor:pointer}
+#tab-curves .curve-technical-diagnostics>summary>span{color:#8499af;font-weight:400}
+#tab-curves .curve-technical-diagnostics .curve-sources{margin:9px 0;
+ display:flex;flex-direction:row;align-items:center;min-height:0;padding:12px 15px}
+#tab-curves .curve-technical-diagnostics .curve-source-copy{padding-left:0}
+#tab-curves .curve-technical-diagnostics .curve-source-actions{max-width:none;align-self:center}
+#tab-curves .curve-help{margin:1px 2px 11px}
+@container(max-width:900px){
+ #tab-curves .curve-chrome-filters{grid-template-columns:1fr .75fr}
+ #tab-curves .curve-keyword-field{grid-column:1/-1}
+ #tab-curves .curve-chrome-filters #curveChromeStart{grid-column:1/-1}
+}
+@container(max-width:690px){
+ #tab-curves .curve-chrome-filters{grid-template-columns:1fr 1fr;gap:9px}
+ #tab-curves .curve-chrome-filters .curve-keyword-field{grid-column:1/-1}
+ #tab-curves .curve-chrome-filters #curveChromeStart{grid-column:1/-1}
+ #tab-curves .curve-unified-support{flex-direction:column;align-items:flex-start}
+ #tab-curves .curve-unified-help{justify-content:flex-start}
+ #tab-curves .curve-chrome-unified .curve-panel-heading>span{display:none}
+}
+@container(max-width:490px){
+ #tab-curves .curve-chrome-filters{grid-template-columns:1fr;padding:10px 13px 0}
+ #tab-curves .curve-chrome-filters .curve-category-field,
+ #tab-curves .curve-chrome-filters .curve-amount-field,
+ #tab-curves .curve-chrome-filters .curve-keyword-field{grid-column:1/-1}
+ #tab-curves .curve-chrome-unified .curve-panel-heading{padding:14px 13px 0}
+ #tab-curves .curve-unified-support{padding:10px 13px}
+ #tab-curves .curve-chrome-filters :is(select,input[type="search"]){font-size:16px}
+}

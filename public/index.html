@@ -35,6 +35,7 @@
 <link rel="stylesheet" href="/curvas-ab.css?v=6-compact-depth">
 <link rel="stylesheet" href="/curvas-premium.css?v=20261106-premium-v1">
 <link rel="stylesheet" href="/curvas-ads-fit.css?v=20261106-market40-v2">
+<link rel="stylesheet" href="/curvas-chrome-unified.css?v=20261106-single-v1">
 <link rel="stylesheet" href="/optimizer-image-studio.css?v=1.0.5-image03-direct-import">
 <link rel="stylesheet" href="/kit-builder.css?v=20261105-wedrop-step01-v1">
 <link rel="stylesheet" href="/optimizer-technical-studio.css?v=1.2.0-compact-fields">
@@ -1072,46 +1073,57 @@
    </div>
    <div class="curve-rule curve-rule-pending"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg><div><strong>Sem evidência mensal?</strong><small>A SKU fica pendente de confirmação.</small></div></div>
   </div>
-  <section class="curve-search-panel" aria-labelledby="curveSearchHeading">
-   <div class="curve-panel-heading">
-    <div class="curve-panel-title"><span class="curve-search-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><circle cx="10.5" cy="10.5" r="6.5"/><path d="m16 16 5 5"/></svg></span><div><h2 id="curveSearchHeading">Pesquisar oportunidades</h2><p>Escolha a categoria e refine sua busca.</p></div></div>
-    <span>Inclui SKUs ainda não publicadas</span>
-   </div>
-  <form id="curveSearchForm" class="curve-filters">
-   <label class="curve-category-field">Categoria WeDrop
-    <select id="curveCategory" aria-label="Categoria WeDrop igual à seleção dos Kits Inteligentes"><option value="Todos">Todas as categorias</option></select>
-   </label>
-   <label>Curva
-    <select id="curveType"><option value="ALL">Curvas A e B</option><option value="A">Curva A</option><option value="B">Curva B</option></select>
-   </label>
-   <label>Quantidade
-    <select id="curveLimit"><option value="5">5 produtos</option><option value="10" selected>10 produtos</option><option value="15">15 produtos</option><option value="20">20 produtos</option></select>
-   </label>
-   <label class="curve-keyword-field">Nome do produto <span>opcional</span>
-    <input id="curveKeyword" type="search" maxlength="70" placeholder="Ex.: lancheira, organizador" aria-describedby="curveKeywordHint">
-   </label>
-   <button id="curveSearchBtn" class="curve-button curve-button-primary" type="submit">Pesquisar SKUs</button>
-   <div class="curve-filter-footer"><label class="curve-only-verified"><input type="checkbox" id="curveConfirmedOnly" checked disabled title="Filtro obrigatório para oportunidades de Ads"/>
-    <span>Somente Curvas A/B com preço viável para Ads (média até +40%)</span>
-   </label><span id="curveKeywordHint">Sem nome, pesquisa toda a categoria.</span></div>
-  </form>
-  </section>
-  <div class="curve-integration-grid">
-  <div class="curve-sources" role="group" aria-label="Conexões de pesquisa Shopee">
-   <div class="curve-source-copy"><span class="curve-source-symbol" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="m12 2 9 5-9 5-9-5 9-5Z"/><path d="m3 12 9 5 9-5M3 17l9 5 9-5"/></svg></span><strong>Fontes de pesquisa</strong>
-    <span id="curveSourceStatus">Conferindo conexão com Shopee...</span>
-    <details id="curveSourceDiagnostics" class="curve-source-diagnostics"><summary>Ver diagnóstico</summary><p id="curveSourceDetail">Vendido/Mês só é confirmado quando a fonte retorna dado mensal.</p></details></div>
-   <div class="curve-source-actions"><button id="curveTestSources" class="curve-button" type="button">Testar fontes</button>
-    <a id="curveFeaturedLink" class="curve-button" href="https://shopee.com.br/search?keyword=&amp;page=0&amp;sortBy=sales" target="_blank" rel="noopener noreferrer" title="Conferir Em Destaque na Shopee, ordenado por vendas. Abre em outra guia.">Em Destaque <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M14 3h7v7m0-7L10 14m0-11H5a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-5"/></svg></a></div>
+  <section class="curve-search-panel curve-chrome-unified" aria-labelledby="curveSearchHeading">
+ <div class="curve-panel-heading">
+  <div class="curve-panel-title">
+   <span class="curve-chrome-symbol" aria-hidden="true"></span>
+   <div><h2 id="curveSearchHeading">Pesquisar pela aba do Chrome</h2>
+    <p>Encontre SKUs WeDrop com Curva A/B comprovada e preço competitivo na Shopee.</p></div>
   </div>
-  <section class="curve-chrome-bridge" aria-label="Ponte Shopee Chrome">
-   <div class="curve-chrome-copy"><span class="curve-chrome-symbol" aria-hidden="true"></span><strong>Pesquisar pela aba do Chrome</strong><p>Consulte os concorrentes em Em Destaque com a extensão Ponte Chrome.</p><small id="curveChromeStatus" role="status" aria-live="polite">Instale a Ponte Chrome uma única vez.</small></div>
-   <div class="curve-chrome-actions"><a id="curveChromeDownload" class="curve-button" href="/api/shopee/curvas-ab/chrome-extension.zip" download>Baixar extensão 1.1.1</a><button type="button" id="curveChromeStart" class="curve-button">Pesquisar SKUs Curva A/B no Chrome</button>
-    <details><summary>Como instalar a Ponte Chrome</summary><p>Extraia o ZIP; abra chrome://extensions; ative Modo do desenvolvedor; clique Carregar sem compactação e selecione a pasta redeachados-shopee-chrome. Atualize o Manager.</p></details>
-   </div>
-  </section>
+  <span>Inclui SKUs ainda não publicadas</span>
  </div>
-  <details class="curve-help"><summary>Como funciona a classificação <span>Critérios, fontes e comparação de preços</span></summary>
+ <form id="curveSearchForm" class="curve-filters curve-chrome-filters" role="search">
+  <label class="curve-category-field">Categoria WeDrop
+   <select id="curveCategory" aria-label="Categoria WeDrop"><option value="Todos">Todas as categorias</option></select>
+  </label>
+  <label class="curve-amount-field">Quantidade
+   <select id="curveLimit"><option value="5">5 produtos</option><option value="10" selected>10 produtos</option><option value="15">15 produtos</option><option value="20">20 produtos</option></select>
+  </label>
+  <label class="curve-keyword-field">Nome do produto <span>opcional</span>
+   <input id="curveKeyword" type="search" maxlength="70" placeholder="Ex.: bicicleta sem pedal, lancheira" aria-describedby="curveKeywordHint">
+  </label>
+  <button id="curveChromeStart" class="curve-button curve-button-primary" type="submit">
+   <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="10.5" cy="10.5" r="6.5"/><path d="m16 16 5 5"/></svg>Pesquisar no Chrome
+  </button>
+  <div class="curve-filter-footer">
+   <span class="curve-criteria-note"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m5 12 5 5L20 7"/></svg>Curvas A e B com vendas em 30 dias, 3 concorrentes e custo viável para Ads (até +40% da média).</span>
+   <span id="curveKeywordHint">Sem nome, pesquisa toda a categoria.</span>
+  </div>
+ </form>
+ <div class="curve-unified-support">
+  <small id="curveChromeStatus" role="status" aria-live="polite">Utilize a Ponte Chrome para consultar os concorrentes.</small>
+  <div class="curve-unified-help">
+   <a id="curveChromeDownload" href="/api/shopee/curvas-ab/chrome-extension.zip" download>Baixar extensão 1.1.1</a>
+   <details class="curve-install-help"><summary>Como instalar</summary>
+    <p>Extraia o ZIP; acesse chrome://extensions; ative Modo do desenvolvedor e selecione Carregar sem compactação. Escolha a pasta redeachados-shopee-chrome e recarregue o Manager.</p>
+   </details>
+  </div>
+ </div>
+</section>
+<details class="curve-technical-diagnostics">
+ <summary>Diagnóstico das fontes de pesquisa <span>(opcional)</span></summary>
+ <div class="curve-sources" role="group" aria-label="Diagnóstico Shopee">
+  <div class="curve-source-copy"><strong>Fontes de pesquisa</strong>
+   <span id="curveSourceStatus">Conferindo conexão...</span>
+   <details id="curveSourceDiagnostics" class="curve-source-diagnostics"><summary>Detalhes técnicos</summary><p id="curveSourceDetail">Vendas mensais precisam ser verificáveis.</p></details>
+  </div>
+  <div class="curve-source-actions">
+   <button id="curveTestSources" class="curve-button" type="button">Testar fontes</button>
+   <a id="curveFeaturedLink" class="curve-button" href="https://shopee.com.br/search?keyword=&amp;page=0&amp;sortBy=sales" target="_blank" rel="noopener noreferrer">Em Destaque</a>
+  </div>
+ </div>
+</details>
+<details class="curve-help"><summary>Como funciona a classificação <span>Critérios, fontes e comparação de preços</span></summary>
    <div class="curve-help-content"><div><h3>Do catálogo à concorrência</h3><p>A pesquisa parte das SKUs WeDrop, inclusive as ainda não publicadas na sua loja, e procura anúncios equivalentes na Shopee. Curva A: 900 ou mais vendas em 30 dias. Curva B: 700–899. Abaixo de 700 não se classifica; sem dados mensais verificáveis, fica pendente.</p><h3>De onde vêm as vendas?</h3><p>A busca tenta primeiro <strong>Em Destaque</strong>, ordenada por vendas. Se o acesso estiver restrito, usa a API de Afiliados quando conectada. Essa alternativa não reproduz integralmente a vitrine nem garante vendas mensais. A fonte utilizada aparece em cada resultado.</p></div>
    <div><h3>Preços e títulos</h3><p>A média usa de duas a cinco ofertas comparáveis, de lojas diferentes. Sem base suficiente, a média fica indisponível. Os títulos sugeridos usam características comprovadas da SKU; as palavras-chave são termos recorrentes nos anúncios comparados, não volumes oficiais de busca.</p><p class="curve-help-note">Imagens e SKUs são do catálogo WeDrop. Esta tela pesquisa oportunidades; não publica anúncios nem ativa Ads.</p></div></div>
   </details>
@@ -1125,8 +1137,8 @@
   </div>
   <section class="curve-results" aria-labelledby="curveResultsHeading">
    <div class="curve-result-head"><h2 id="curveResultsHeading"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m12 2 9 5-9 5-9-5 9-5Z"/><path d="M3 7v10l9 5 9-5V12M21 7v10l-9 5"/></svg>Produtos encontrados</h2><span id="curveResultsMeta">Aguardando pesquisa</span></div>
-   <div id="curveResults" class="curve-grid" aria-live="polite"><div class="curve-empty curve-empty-initial"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m12 3 9 5-9 5-9-5 9-5Z"/><path d="M3 8v10l9 5 9-5V8M12 13v10M3 8l-2-3m20 3 2-3"/><path d="M9 2v-2m6 2 2-2"/></svg><div><strong>Encontre sua próxima oportunidade</strong><p>Selecione uma categoria e clique em <b>Pesquisar SKUs</b>.</p><small>Os produtos e as evidências de vendas aparecerão aqui.</small></div></div></div>
-   <div class="curve-load-more"><button id="curveContinueSearch" type="button" hidden>Pesquisar mais SKUs desta categoria</button><span id="curveProgressNote"></span></div>
+   <div id="curveResults" class="curve-grid" aria-live="polite"><div class="curve-empty curve-empty-initial"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m12 3 9 5-9 5-9-5 9-5Z"/><path d="M3 8v10l9 5 9-5V8M12 13v10M3 8l-2-3m20 3 2-3"/><path d="M9 2v-2m6 2 2-2"/></svg><div><strong>Encontre sua próxima oportunidade</strong><p>Escolha uma categoria ou informe o nome e clique em <b>Pesquisar no Chrome</b>.</p><small>Os produtos e as evidências de vendas aparecerão aqui.</small></div></div></div>
+   <div class="curve-load-more"><button id="curveContinueSearch" type="button" hidden aria-hidden="true" tabindex="-1">Continuar</button><span id="curveProgressNote"></span></div>
   </section>
  </div>
 </section>
@@ -2679,8 +2691,8 @@
 <script src="/optimizer-execution-visual.js?v=1.0.5-title-pending-readback"></script>
 <script src="/optimizer-execution-dialog.js?v=1.0.5-video-relink-sync"></script>
 <script src="/app.js?v=3.5.67-shopee-photo-and-wedrop-dimensions&amp;layout=curves-compact-v1"></script>
-<script src="/curvas-ab.js?v=20261106-market40-v2"></script>
-<script src="/curvas-chrome.js?v=20261106-market40-v1"></script>
+<script src="/curvas-ab.js?v=20261106-single-v1"></script>
+<script src="/curvas-chrome.js?v=20261106-single-v1"></script>
 <script src="/pending-images.js?v=1.2.0-kit-routing"></script>
 <script type="module" src="/kit-builder.js?v=20261105-kit-cost-diagnostics"></script>
 <link rel="stylesheet" href="/optimizer-variations.css?v=1.2.1-single-flow">

@@ -10,9 +10,9 @@
  const say=text=>{label.textContent=String(text||'').slice(0,550);};
  const config=()=>({category:el('curveCategory')?.value||'Todos',
   keyword:el('curveKeyword')?.value?.trim()||'',
-  curve:el('curveType')?.value||'ALL',
+  curve:'ALL',
   limit:Number(el('curveLimit')?.value||10),
-  verifiedOnly:el('curveConfirmedOnly')?.checked!==false});
+  verifiedOnly:true});
  async function json(url,opts={}){
   const response=await fetch(url,{credentials:'same-origin',cache:'no-store',
    signal:AbortSignal.timeout(45000),...opts});
@@ -146,5 +146,8 @@
    });
   }
  });
- button.addEventListener('click',()=>{void begin();});
+ const form=el('curveSearchForm');
+ if(form)form.addEventListener('submit',event=>{
+  event.preventDefault();void begin();
+ });
 })();
