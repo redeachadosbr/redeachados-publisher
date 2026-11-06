@@ -136,7 +136,21 @@ export function compileShopeeExecutionPlan({shopId,itemId,modelId,sku,record,rev
       // A API pode devolver o atributo "Condição: NOVO" em condition="NEW".
       // Se TODOS os atributos revisados já corresponderem ao anúncio,
       // nunca reenviar a ficha técnica.
-      if(!fieldsVerified({attribute_list:attributes},live))proposed.attribute_list=attributes;
+      const reviewedIds=new Set((state.attributes||[]).map(x=>Number(x.attributeId)));
+      const actualReviewed=attributes.filter(x=>reviewedIds.has(Number(x.attribute_id)));
+      const missingReviewed=actualReviewed.filter(x=>!fieldsVerified({attribute_list:[x]},live));
+      const mandatoryMissing=missingReviewed.filter(x=>{
+       const meta=(record.attributeAudit?.attributes||[]).find(a=>Number(a.id)===Number(x.attribute_id));
+       // Sem metadados suficientes, manter revisão exigida; só ignorar
+       // quando a árvore oficial declara expressamente que é OPCIONAL.
+       return meta?.mandatory!==false;
+      });
+      if(mandatoryMissing.length)proposed.attribute_list=attributes;
+      else if(missingReviewed.length){
+       warnings.push('Ficha técnica: '+missingReviewed.length+
+        ' campo(s) opcionais ainda divergentes na Shopee; não impedem fiscal ou desconto. A correção opcional pode ser executada isoladamente.');
+       if(selectedStage==='technical')proposed.attribute_list=attributes;
+      }
     }catch(e){contentPending('technical',e.message);}
   }
   // Não bloquear uma alteração EXCLUSIVAMENTE fiscal por atributos técnicos
