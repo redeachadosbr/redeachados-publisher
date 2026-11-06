@@ -157,7 +157,9 @@ test('API visualizações tem colunas próprias e não tenta renderizar CTR nem 
  assert.match(ui,/if\(source==='api'\)\{\s*const measured=/);
  assert.match(ui,/add\(percent\(row\.ctr\),'CTR'/);
  assert.match(ui,/add\(percent\(row\.cartAbandonmentRate\)/);
- assert.match(ui,/if\(source==='api'\)\{\s*add\([\s\S]*?\}\s*else\{\s*\/\/ Só o relatório orgânico/);
+ assert.match(ui,/if\(source==='api'\)\{\s*const measured=/);
+ assert.match(ui,/else if\(source==='performance'\)\{/);
+ assert.match(ui,/\/\/ Só o relatório orgânico confirmado/);
 });
 
 test('visualizações gerais respeitam seleção de top 20/50/100 sem alterar a origem',()=>{
