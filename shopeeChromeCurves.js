@@ -38,7 +38,8 @@ export async function chromeCurvePlan(shopId,{category='Todos',keyword='',offset
  if(!Number.isInteger(limit)||limit<1||limit>10)throw Error('Escolha entre 1 e 10 buscas por lote.');
  const state=await stateFor(shopId,{category,keyword});
  const jobs=state.plan.slice(offset,offset+limit).map(job=>({
-  query:job.query,skuCount:job.skus.length,searchUrl:officialFeaturedSearchUrl(job.query)
+  query:job.query,skuCount:job.skus.length,skus:job.skus,
+  searchUrl:officialFeaturedSearchUrl(job.query)
  }));
  return {ok:true,catalogCount:state.catalog.length,totalQueries:state.plan.length,
   offset,nextOffset:offset+jobs.length,hasMore:offset+jobs.length<state.plan.length,jobs};
