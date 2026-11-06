@@ -102,13 +102,15 @@
   // O job pode conter só uma etapa. A leitura do anúncio prevalece sobre
   // checks antigos e é a única prova de conclusão das nove etapas.
   const audited=Array.isArray(rootAudit?.stages)?rootAudit.stages:[];
-  const pending=audited.filter(s=>s.id!=='final'&&!['confirmed','not_applicable'].includes(s.status));
+  const auditComplete=rootAudit?.complete===true&&audited.some(s=>
+   s.id==='final'&&s.status==='confirmed');
+  const pending=audited.filter(s=>s.id!=='final'&&!['confirmed','not_applicable'].includes(s.status)&&s.nonBlocking!==true);
   const reasons=DEFINITIONS.map(d=>audited.find(s=>s.id===d.id)?.reason||byId(d.id)?.reason||'');
   for(let i=0;i<DEFINITIONS.length;i++){
    const stage=audited.find(s=>s.id===DEFINITIONS[i].id);
    if(!stage)continue;
    if(stage.status==='confirmed')states[i]='done';
-   else if(stage.status==='not_applicable')states[i]='not_applicable';
+   else if(stage.status==='not_applicable'||stage.nonBlocking===true)states[i]='not_applicable';
    else if(!['active','checking','staged','error'].includes(states[i]))states[i]='pending';
   }
   if(rootAudit?.complete!==true&&states[8]==='done')states[8]='waiting';
@@ -119,9 +121,14 @@
    else if(verified)active=8;
   }
   const completed=states.filter(x=>x==='done').length;
+  const excused=states.filter(x=>x==='not_applicable').length;
+  const countLabel=auditComplete?
+   completed+' confirmadas · '+excused+' não exigidas · execução concluída':
+   completed+' de 9 etapas confirmadas';
   const pendingDetail=pending.map(s=>s.label+': '+s.reason).join(' · ');
   const blockedDetail=job?.state==='blocked'?String(progress.message||''):'';
-  const title=videoTaskError?'Vídeo recusado pela Shopee — anúncio incompleto':
+  const title=auditComplete?'✓ Otimização concluída na Shopee':
+    videoTaskError?'Vídeo recusado pela Shopee — anúncio incompleto':
     videoRecovering?'Recuperando publicação do vídeo':
     job?.state==='blocked'&&attention?attention.label+' pendente':
     !['running','uncertain','failed'].includes(job?.state)&&pending.length?
@@ -135,7 +142,9 @@
     eventTitle||'Aguardando status da Shopee';
   const serverMessage=String(progress?.message||'').trim();
   const lastError=String(job?.last_error||'').trim();
-  return {active,title,detail:videoTaskError?
+  return {active:auditComplete?8:active,title,detail:auditComplete?
+    'Todas as etapas exigidas foram confirmadas pela Shopee. Campos opcionais não comprovados ficam registrados sem bloquear a conclusão. Nenhum envio adicional necessário.':
+    videoTaskError?
     'Erro oficial: '+String(job?.last_error||job?.result?.videoError||progress?.lastError||'video task not found')+
     '. Vídeo pendente; etapas confirmadas permanecem preservadas.':
     priceMismatch?
@@ -143,7 +152,7 @@
     blockedDetail||(!['running','uncertain','failed'].includes(job?.state)&&pendingDetail)||
     (failed?(lastError||serverMessage||'Consulte a pendência e continue sem repetir envios.'):
     serverMessage||String(select('optimizerExecutionLiveDetail')?.textContent||'').trim()||'Aguardando confirmação oficial.'),
-   states,reasons,completed,percent:normalizedPercent(progress,job),history,
+   states,reasons,completed,countLabel,percent:auditComplete?100:normalizedPercent(progress,job),history,
    state:job?.state||'prepared',
    mediaInfo:progress?.imagesTotal>0?
     String(progress.imagesUploaded||0)+'/'+progress.imagesTotal+' imagens na mídia · '+
@@ -177,7 +186,7 @@
   panel.hidden=false;
   const val=(id,value)=>{const el=select(id);if(el)el.textContent=value;};
   val('optimizerVisualPercent',state.percent+'%');
-  val('optimizerVisualCount',state.completed+' de 9 etapas confirmadas');
+  val('optimizerVisualCount',state.countLabel);
   val('optimizerVisualSummary',state.mediaInfo);
   val('optimizerVisualCurrentTitle',state.title);
   val('optimizerVisualCurrentDetail',state.detail);
