@@ -97,6 +97,7 @@ import {optimizerSettings,saveOptimizerSettings} from './optimizerStore.js';
 import {quoteShopeePrice,quoteShopeeOptimizationPrice,normalizeShopeePricingSettings} from './shopeePricing.js';
 import {lookupShopeeCompetitors,marketResearchConfigured} from './shopeeMarketResearch.js';
 import {researchCurveAB,curveProvidersStatus,probeCurveAffiliateAccess} from './shopeeCurveAB.js';
+import {chromeCurvePlan,importChromeOffers} from './shopeeChromeCurves.js';
 import {searchFeaturedPublic} from './shopeeFeaturedSearch.js';
 import {promotionFromQuote,promotionBasePrice,promotionMember,shopDiscountMembershipSignal,discountPlanSnapshot,signDiscountPreview,verifyDiscountPreview,readDiscountPages} from './shopeeDiscountPublish.js';
 import {auditCatalogDiscounts} from './shopeeCatalogDiscountAudit.js';
@@ -277,6 +278,32 @@ app.get('/api/shopee/curvas-ab/search',mustLogin,requireWeDropAdmin,async(req,re
   res.status(400).json({ok:false,error:String(error.message||error).slice(0,380)});
  }
 });
+
+// Chrome Shopee: importação autenticada de ofertas VISÍVEIS da aba Em Destaque.
+// Não recebe cookies, senhas, token Shopee ou dados pessoais de compradores.
+app.get('/api/shopee/curvas-ab/chrome-plan',mustLogin,requireWeDropAdmin,async(req,res)=>{
+ res.setHeader('Cache-Control','no-store');
+ try{
+  const {auth}=await getValidAuth(req);
+  res.json(await chromeCurvePlan(auth.shopId,{
+   category:String(req.query.category||'Todos'),
+   keyword:String(req.query.keyword||''),
+   offset:Number(req.query.offset||0),limit:Number(req.query.limit||6)}));
+ }catch(error){res.status(400).json({ok:false,error:String(error.message||error).slice(0,400)});}
+});
+app.post('/api/shopee/curvas-ab/chrome-import',mustLogin,requireWeDropAdmin,async(req,res)=>{
+ res.setHeader('Cache-Control','no-store');
+ if(!verifiedSameOrigin(req))return res.status(403).json({ok:false,error:'Origem não autorizada.'});
+ try{
+  const {auth}=await getValidAuth(req);
+  res.json(await importChromeOffers(auth.shopId,{
+   category:String(req.body?.category||'Todos'),keyword:String(req.body?.keyword||''),
+   query:String(req.body?.query||''),offers:req.body?.offers,
+   curve:String(req.body?.curve||'ALL'),limit:Number(req.body?.limit||10),
+   verifiedOnly:req.body?.verifiedOnly!==false}));
+ }catch(error){res.status(400).json({ok:false,error:String(error.message||error).slice(0,420)});}
+});
+
 app.get('/api/shopee/kits/catalog',mustLogin,requireWeDropAdmin,async(req,res)=>{
  res.setHeader('Cache-Control','no-store');
  try{
