@@ -200,6 +200,7 @@ test('SKU 1736: condição revisada usa leitura oficial sem exigir 20 atributos 
 
 test('atributo opcional divergente não bloqueia fiscal e desconto nem fica verde falsamente',()=>{
  const a=base();
+ a.review.stages.technical={reviewed:true};
  a.review.attributes=[{attributeId:100413,values:[{valueId:2556,valueName:'Used'}]}];
  a.record.attributeAudit={missingMandatory:0,attributes:[{id:100413,mandatory:false}]};
  a.live.condition='NEW';
