@@ -136,21 +136,9 @@ export function compileShopeeExecutionPlan({shopId,itemId,modelId,sku,record,rev
       // A API pode devolver o atributo "Condição: NOVO" em condition="NEW".
       // Se TODOS os atributos revisados já corresponderem ao anúncio,
       // nunca reenviar a ficha técnica.
-      const reviewedIds=new Set((state.attributes||[]).map(x=>Number(x.attributeId)));
-      const actualReviewed=attributes.filter(x=>reviewedIds.has(Number(x.attribute_id)));
-      const missingReviewed=actualReviewed.filter(x=>!fieldsVerified({attribute_list:[x]},live));
-      const mandatoryMissing=missingReviewed.filter(x=>{
-       const meta=(record.attributeAudit?.attributes||[]).find(a=>Number(a.id)===Number(x.attribute_id));
-       // Sem metadados suficientes, manter revisão exigida; só ignorar
-       // quando a árvore oficial declara expressamente que é OPCIONAL.
-       return meta?.mandatory!==false;
-      });
-      if(mandatoryMissing.length)proposed.attribute_list=attributes;
-      else if(missingReviewed.length){
-       warnings.push('Ficha técnica: '+missingReviewed.length+
-        ' campo(s) opcionais ainda divergentes na Shopee; não impedem fiscal ou desconto. A correção opcional pode ser executada isoladamente.');
-       if(selectedStage==='technical')proposed.attribute_list=attributes;
-      }
+      // Enviar revisão técnica continua possível. Divergências opcionais
+      // seguem visíveis, mas não devem bloquear as etapas independentes.
+      if(!fieldsVerified({attribute_list:attributes},live))proposed.attribute_list=attributes;
     }catch(e){contentPending('technical',e.message);}
   }
   // Não bloquear uma alteração EXCLUSIVAMENTE fiscal por atributos técnicos
@@ -282,6 +270,9 @@ export function compileShopeeExecutionPlan({shopId,itemId,modelId,sku,record,rev
     // atributos efetivamente revisados nesta SKU são diferenças aprovadas.
     technicalReviewedAttributeIds:stages.technical?.reviewed===true?
      (state.attributes||[]).map(x=>Number(x.attributeId)).filter(Number.isSafeInteger):[],
+    optionalTechnicalAttributeIds:stages.technical?.reviewed===true?
+     (state.attributes||[]).map(x=>Number(x.attributeId)).filter(id=>
+      (record.attributeAudit?.attributes||[]).some(meta=>Number(meta.id)===id&&meta.mandatory===false)):[],
     actions:pendingActions,matrix,
     blocked,warnings,deferredStages,canExecute,
     fingerprint,fiscalDeferred,selectedStage,discountOnly,createdAt:new Date().toISOString(),marketplaceUpdated:false,
@@ -377,8 +368,10 @@ export function verifiedCommercialFields(plan,item){
   plan.technicalReviewedAttributeIds.filter(Number.isSafeInteger):[];
  if(ids.length&&Array.isArray(proposed.attribute_list)){
   const reviewed=new Set(ids);
+  const optional=new Set(plan.selectedStage==='technical'?[]:
+   (Array.isArray(plan.optionalTechnicalAttributeIds)?plan.optionalTechnicalAttributeIds:[]));
   proposed.attribute_list=proposed.attribute_list.filter(a=>
-   reviewed.has(Number(a.attribute_id)));
+   reviewed.has(Number(a.attribute_id))&&!optional.has(Number(a.attribute_id)));
  }
  return fieldsVerified(proposed,item);
 }
