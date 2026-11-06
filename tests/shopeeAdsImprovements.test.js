@@ -68,5 +68,5 @@ test('acompanhamento contempla todas as ativas e mantém alertas separados',()=>
  assert.equal(output.length,2);
  assert.equal(output.filter(x=>x.kind==='alert').length,1);
  assert.equal(output.filter(x=>x.kind==='monitoring').length,1);
- assert.equal(output.find(x=>x.campaignId==='102').id,'monitoring');
+ assert.equal(output.find(x=>x.campaignId==='102').id,'conversion_unknown');
 });
