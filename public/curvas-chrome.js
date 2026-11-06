@@ -6,6 +6,7 @@
  const button=el('curveChromeStart'),label=el('curveChromeStatus');
  if(!button||!label)return;
  let active=null,offset=0,lastFilter='',queue=Promise.resolve();
+ const MAX_SEARCHES_PER_RUN=60, NO_MONTHLY_LIMIT=18;
  const say=text=>{label.textContent=String(text||'').slice(0,550);};
  const config=()=>({category:el('curveCategory')?.value||'Todos',
   keyword:el('curveKeyword')?.value?.trim()||'',
@@ -50,7 +51,7 @@
     plan=await json('/api/shopee/curvas-ab/chrome-plan?'+params);
    }
    if(!plan.jobs.length)throw Error('Não há SKUs WeDrop disponíveis nesta categoria.');
-   active={nonce,selected,plan,received:0,errors:0};
+   active={nonce,selected,plan,received:0,errors:0,scanned:0,monthly:0,found:0,blocked:false};
    offset=plan.nextOffset;
    say('Abrindo a busca Shopee para '+plan.jobs.length+' consultas. A extensão importará os anúncios visíveis.');
    window.postMessage({kind:'RA_CURVE_CHROME_START',nonce,jobs:plan.jobs},ORIGIN);
@@ -59,15 +60,19 @@
   }
  }
  async function accept(s,m){
-  if(m.error){s.errors++;say('Busca '+m.position+'/'+m.total+': '+m.error);return;}
+  s.scanned++;
+  if(m.error){s.errors++;if(/captcha|bloque|verifica[cç][aã]o/i.test(m.error))s.blocked=true;
+   say('Busca '+m.position+'/'+m.total+': '+m.error);return;}
   try{
    const data=await json('/api/shopee/curvas-ab/chrome-import',{
     method:'POST',headers:{'Content-Type':'application/json'},
     body:JSON.stringify({...s.selected,query:m.query,
-     offers:Array.isArray(m.offers)?m.offers.slice(0,60):[]})
+     offers:Array.isArray(m.offers)?m.offers.slice(0,100):[]})
    });
    if(active!==s)return;
    s.received++;
+   s.found=Number(data.found)||0;
+   s.monthly+=Number(data.chromeImport?.monthlyOffers)||0;
    globalThis.RACurvesAB?.showChromeResults?.(data);
    say('Ponte: '+s.received+' consultas importadas; '+data.found+' SKUs classificadas e '+
     data.pendingCount+' pendentes. Busca '+m.position+'/'+m.total+'.');
@@ -85,16 +90,38 @@
   }else if(m.kind==='RA_CURVE_CHROME_RESULT'){
    queue=queue.then(()=>accept(s,m));
   }else if(m.kind==='RA_CURVE_CHROME_ERROR'){
-   s.errors++;say('Ponte Chrome: '+String(m.error||'Falha na captura.'));
+   s.errors++;s.blocked=true;say('Ponte Chrome: '+String(m.error||'Falha na captura.'));
   }else if(m.kind==='RA_CURVE_CHROME_DONE'){
-   void queue.finally(()=>{
+   void queue.then(async()=>{
+    if(active!==s)return;
+    let finished='';
+    if(s.found>=s.selected.limit)
+     finished='Meta atingida: '+s.found+'/'+s.selected.limit+' SKUs A/B com três concorrentes mensais.';
+    else if(s.blocked)
+     finished='Bloqueio/verificação Shopee: '+s.found+'/'+s.selected.limit+' SKUs comprovadas. Pesquisa interrompida.';
+    else if(s.monthly===0&&s.scanned>=NO_MONTHLY_LIMIT)
+     finished='Sem vendas mensais: '+s.scanned+' pesquisas realizadas. “Vendidos” não comprova 30 dias. Precisa de fonte mensal autorizada.';
+    else if(s.scanned>=MAX_SEARCHES_PER_RUN)
+     finished='Limite desta execução: '+s.scanned+' buscas, '+s.found+'/'+s.selected.limit+
+      ' SKUs comprovadas. Clique novamente para continuar sem repetir.';
+    else if(s.plan.hasMore){
+     const params=new URLSearchParams({category:s.selected.category,keyword:s.selected.keyword,
+      offset:String(offset),limit:'6'});
+     const plan=await json('/api/shopee/curvas-ab/chrome-plan?'+params);
+     if(plan.jobs.length){
+      s.plan=plan;offset=plan.nextOffset;
+      say('Continuando automaticamente: '+s.found+'/'+s.selected.limit+
+       ' SKUs classificadas, '+s.scanned+' pesquisas. Novo lote: '+plan.jobs.length+'.');
+      window.postMessage({kind:'RA_CURVE_CHROME_START',nonce:s.nonce,jobs:plan.jobs},ORIGIN);
+      return;
+     }
+     finished='Catálogo percorrido: '+s.found+'/'+s.selected.limit+' SKUs comprovadas.';
+    }else finished='Categoria percorrida: '+s.found+'/'+s.selected.limit+' SKUs comprovadas.';
+    active=null;button.disabled=false;say(finished);
+   }).catch(error=>{
     if(active!==s)return;
     active=null;button.disabled=false;
-    say('Lote concluído: '+s.received+' buscas importadas'+
-     (s.errors?', '+s.errors+' falharam':'')+'. '+
-     (s.plan.hasMore?'Clique novamente para pesquisar mais SKUs WeDrop.':
-      'Todas as consultas planejadas foram percorridas.')+
-     ' A ausência de dado mensal não significa vendas zero.');
+    say('Falha ao continuar a pesquisa: '+String(error.message||error));
    });
   }
  });

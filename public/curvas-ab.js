@@ -141,6 +141,20 @@
   const evidence=t('p','curve-evidence',row.periodSource?
    'Fonte da classificação: '+row.periodSource+'.':
    'Somente vendas acumuladas disponíveis: classificação potencial, não vendas confirmadas em 30 dias.');
+  const proof=t('details','curve-monthly-competitors');
+  const count=Number(row.monthlyCompetitorCount||0);
+  proof.append(t('summary','',count+' lojas com vendas mensais'+
+   (count>=3?' • amostra comprovada':' • mínimo 3 lojas')));
+  const salesProof=t('ol','curve-offers-list');
+  for(const company of row.monthlyCompetitors||[]){
+   const li=t('li','');
+   const link=t('a','',company.title+' — '+nf.format(company.monthlySold)+' vendidos/30 dias');
+   if(/^https:\/\/shopee\.com\.br\/product\/\d+\/\d+$/.test(company.url||'')){
+    link.href=company.url;link.target='_blank';link.rel='noopener noreferrer';
+   }
+   li.append(link);salesProof.append(li);
+  }
+  proof.append(salesProof);
   const stock=t('div','curve-stock'+(row.inStock?'':' not'),
    row.inStock?(row.availability?'WeDrop: '+row.availability:'Estoque WeDrop não confirmado'):
     'WeDrop: '+(row.availability||'Indisponível'));
@@ -165,7 +179,7 @@
    actions.append(featured);
   }
   actions.append(copy,link);
-  main.append(top,sku,facts,competitor,evidence,stock,actions);
+  main.append(top,sku,facts,competitor,evidence,proof,stock,actions);
   appendPrices(main,row);
   appendSEO(main,row);
   box.append(frame,main);return box;
