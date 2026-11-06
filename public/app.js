@@ -7740,9 +7740,16 @@ globalThis.RAExecutionPrimaryAction=async(onlyStage=null)=>{
   // desconto, publicar o fiscal em escopo isolado PRIMEIRO. Não refazer
   // preço, vídeo, fotos ou conteúdo. A promoção só pode avançar com
   // a autorização financeira válida depois da confirmação fiscal.
+  // Uma divergência de ficha técnica NÃO bloqueia fiscal ou promoção.
+  // A etapa técnica permanece pendente até comparação oficial; no fluxo
+  // automático seguimos a etapa fiscal, depois a campanha aprovada.
   const independentFiscal=pending.some(x=>x.id==='fiscal')&&
-   pending.every(x=>['fiscal','discount'].includes(x.id));
+   pending.every(x=>['technical','fiscal','discount'].includes(x.id));
+  const independentDiscount=!pending.some(x=>x.id==='fiscal')&&
+   pending.some(x=>x.id==='discount')&&
+   pending.every(x=>['technical','discount'].includes(x.id));
   const one=picked||(independentFiscal?pending.find(x=>x.id==='fiscal'):
+   independentDiscount?pending.find(x=>x.id==='discount'):
    pending.length===1?pending[0]:null);
   const scope=$('#optimizerExecutionScope');
   const chosen=one?(one.id==='discount'?'discount_adjust':one.id):'all';
