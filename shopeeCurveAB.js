@@ -36,7 +36,9 @@ function comparablePackSize(source,offer){
  const required=count(source);
  return required===null||required===count(offer);
 }
-const words=value=>[...new Set(normal(value).split(' ').filter(x=>x.length>=3&&!ignored.has(x)))];
+const words=value=>[...new Set(normal(value)
+ .replace(/\b(\d{1,5})\s+(kg|g|ml)\b/g,'$1$2')
+ .split(' ').filter(x=>x.length>=3&&!ignored.has(x)))];
 const validId=value=>/^\d{1,18}$/.test(String(value??'').trim());
 const num=value=>{const n=Number(value);return Number.isFinite(n)&&n>=0?n:null};
 const available=raw=>!/(^|\s)(indisponivel|sem estoque|esgotado|inativo)(\s|$)/.test(normal(raw));

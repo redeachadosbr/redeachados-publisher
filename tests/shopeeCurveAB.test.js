@@ -607,3 +607,23 @@ test('somente preços sem volume não desaparecem: SKU fica pendente com média 
  assert.equal(result[0].verified30,false);
  assert.equal(result[0].monthlyCompetitorCount,0);
 });
+
+test('média de mercado percorre amostras de 2, 5 e 10 balanças comparáveis',()=>{
+ const catalog=[{supplier_sku:'PL001.U02',product_data:{name:'Balança Digital de Cozinha 10kg',
+  category:'Cozinha',rawAvailability:'Disponível'}}];
+ for(const count of [2,5,10]){
+  const offers=Array.from({length:count},(_,i)=>({
+   shopId:String(1300+i),itemId:String(2300+i),
+   productName:i%2?'Balança Digital Alta Precisão 10 KG':
+    'Balança Digital de Cozinha 10kg Alta Precisão',
+   priceMin:16.5+i/10,priceMax:16.5+i/10,
+   sales:null,monthlySold:null
+  }));
+  const rows=matchCurveOffers({catalog,offers,
+   costs:[{supplier_sku:'PL001.U02',unit_cost:10.99}]});
+  assert.equal(rows.length,1,'amostra '+count);
+  assert.equal(rows[0].competitorOfferCount,count,'contar todos os anúncios compatíveis');
+  assert.equal(rows[0].marketCandidateCount,count);
+  assert.equal(rows[0].monthlyCompetitorCount,0);
+ }
+});

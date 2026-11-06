@@ -38,6 +38,12 @@ export async function chromeCurvePlan(shopId,{category='Todos',keyword='',offset
  if(!Number.isSafeInteger(offset)||offset<0||offset>10000)throw Error('Posição de busca inválida.');
  if(!Number.isInteger(limit)||limit<1||limit>10)throw Error('Escolha entre 1 e 10 buscas por lote.');
  const state=await stateFor(shopId,{category,keyword});
+ if(offset===0){
+  // Nova pesquisa deve começar com os dados atuais, nunca misturar
+  // preços e volumes de uma tentativa anterior da mesma categoria.
+  state.offers.clear();state.scanned.clear();
+  state.queries=0;state.lastAt=null;state.featuredUnavailableUntil=0;
+ }
  const jobs=state.plan.slice(offset,offset+limit).map(job=>({
   query:job.query,skuCount:job.skus.length,skus:job.skus,
   searchUrl:officialFeaturedSearchUrl(job.query)
@@ -204,6 +210,8 @@ export async function importChromeOffers(shopId,{
    ' SKUs com 2 a 5 lojas com vendas mensais na curva e preço competitivo para Ads.':'',
   chromeImport:{
    query:search,imported:normalized.length,
+   importedWithPrice:normalized.filter(o=>o.priceMin!==null).length,
+   inspectedRawOffers:offers.length,
    monthlyOffers:normalized.filter(x=>x.monthlySold!==null).length+recoveredMonthly,
    recoveredMonthly,recoverySource,recoveryReason,
    skuCount:task.skus.length,searchedSkus:task.skus,

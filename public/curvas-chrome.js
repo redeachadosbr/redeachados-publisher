@@ -240,8 +240,12 @@
    updateStage('validando',data.found+' SKUs aprovadas para Ads; '+
     data.pendingCount+' aguardam dados e '+
     Number(data.discardedCount||0)+' estão descartadas por custo, margem ou estoque.',s);
-   say('Ponte: '+s.received+' consultas importadas; '+data.found+' SKUs classificadas e '+
-    data.pendingCount+' candidatos pendentes. Busca '+m.position+'/'+m.total+'.');
+   say('Ponte: '+s.received+' consultas. Shopee: '+
+    Number(m.stats?.rawInspected||m.offers?.length||0)+' anúncios inspecionados; '+
+    Number(m.stats?.relevantWithPrice||0)+' com preço relacionado; '+
+    Number(data.chromeImport?.importedWithPrice||0)+' preços importados. '+
+    Number(data.pendingCount||0)+' SKUs pendentes; '+Number(data.found||0)+
+    ' aprovadas para Ads. Busca '+m.position+'/'+m.total+'.');
   }catch(error){
    if(active!==s)return;
    s.errors++;

@@ -117,30 +117,58 @@ async function waitLoaded(tabId){
   chrome.tabs.get(tabId).then(tab=>{if(tab.status==='complete')end();}).catch(end);
  });
 }
+// A leitura é acumulativa: não substituir uma varredura de 40 preços
+// por uma releitura com dois selos Vendido/Mês.
+const mergeEvidence=(old,next)=>!old?next:{
+ ...old,...next,
+ priceMin:next.priceMin??old.priceMin,
+ historicalSold:next.historicalSold??old.historicalSold,
+ monthlySold:next.monthlySold??old.monthlySold,
+ monthlyPeriod:next.monthlySold!==null?next.monthlyPeriod:old.monthlyPeriod,
+ monthlyEvidence:next.monthlyEvidence||old.monthlyEvidence,
+ monthlyLabelVisible:next.monthlyLabelVisible||old.monthlyLabelVisible
+};
+const normalizeTerms=text=>String(text||'').normalize('NFD')
+ .replace(/[\u0300-\u036f]/g,'').toLowerCase()
+ .replace(/\b(\d+)\s+(kg|ml|g)\b/g,'$1$2')
+ .replace(/[^a-z0-9 ]+/g,' ').split(/\s+/)
+ .filter(x=>x.length>=3&&!/^(?:com|para|uma|uns|dos|das|por|alta|tipo)$/.test(x));
+const relatedToQuery=(query,offer)=>{
+ const target=[...new Set(normalizeTerms(query))];
+ const candidate=new Set(normalizeTerms(offer.productName));
+ if(!target.length)return false;
+ const matched=target.filter(term=>candidate.has(term)).length;
+ return matched>=Math.max(2,Math.ceil(target.length*0.6));
+};
+const offerPriority=(query,offer)=>{
+ const target=[...new Set(normalizeTerms(query))];
+ const candidate=new Set(normalizeTerms(offer.productName));
+ return target.filter(term=>candidate.has(term)).length*10+
+  Number(offer.priceMin!==null)*2+Number(offer.monthlySold!==null);
+};
 async function readPage(tabId){
- let best=null,bestMonthly=-1;
+ const merged=new Map();let last=null,blocked=null;
  for(let i=0;i<4;i++){
   if(stopRequested)return {ok:false,error:'Pesquisa interrompida.',offers:[]};
-  await delay(i===0?1800:1300);
+  await delay(i===0?1500:1000);
   try{
    const result=await chrome.tabs.sendMessage(tabId,{kind:'RA_CURVE_READ_VISIBLE',deep:i===0});
-   if(result?.blocked)return {ok:false,blocked:true,
-    error:result.error||'Verificação humana exigida pela Shopee.',offers:[]};
+   if(result?.blocked){blocked=result;break;}
    if(!result?.ok||!Array.isArray(result.offers))continue;
-   const monthly=result.offers.filter(offer=>Number.isSafeInteger(offer.monthlySold)).length;
-   if(result.offers.length||Number(result.visibleCards)>0){
-    if(monthly>bestMonthly||(monthly===bestMonthly&&
-       result.offers.length>(best?.offers?.length||0))){
-     best=result;bestMonthly=monthly;
-    }
-    // O rótulo Vendido/Mês é renderizado DEPOIS do preço em várias vitrines.
-    // Não encerrar a primeira leitura com 0 ou 1 anúncios mensais.
-    if(monthly>=2)return result;
+   last=result;
+   for(const offer of result.offers){
+    const id=String(offer.shopId)+':'+String(offer.itemId);
+    merged.set(id,mergeEvidence(merged.get(id),offer));
    }
+   const monthly=[...merged.values()].filter(x=>x.monthlySold!==null).length;
+   // 2 vendas mensais são um MÍNIMO, não justificam descartar os demais preços.
+   if(merged.size>=45&&monthly>=5)break;
   }catch{}
  }
- // Retornar a amostra parcial, deixando vendas mensais ausentes como pendentes.
- if(best)return best;
+ if(blocked&&!merged.size)return blocked;
+ if(merged.size)return {...last,ok:true,offers:[...merged.values()],
+  monthlyCards:[...merged.values()].filter(x=>x.monthlySold!==null).length,
+  visibleCards:Math.max(Number(last?.visibleCards||0),merged.size)};
  return {ok:false,error:'Shopee não apresentou cartões verificáveis nesta pesquisa. '+
   'Não foi possível comprovar vendas mensais; nenhuma venda foi estimada.',offers:[]};
 }
@@ -157,7 +185,10 @@ async function batch(managerTab,nonce,jobs){
    // ainda estiver incompleta. O critério usa anúncios reais, nunca estimativas.
    const collected=new Map();
    let failure='',hardStop=false,pages=0,visibleCards=0,labelsSeen=0,labelsInCards=0;
-   for(let page=0;page<2;page++){
+   // A Shopee pode ter diversas páginas. 10 preços comparáveis são o alvo
+   // da amostra; 2 não encerram a investigação, e anúncios de outra versão
+   // não contam para a meta.
+   for(let page=0;page<9;page++){
     if(stopRequested)break;
     const url=buildUrl(query,page);
     const tab=await researchTab(managerTab,nonce,url);
@@ -186,9 +217,8 @@ async function batch(managerTab,nonce,jobs){
       if(refreshed?.ok){
        const merged=new Map();
        for(const item of [...data.offers,...refreshed.offers]){
-        const key=item.shopId+':'+item.itemId,old=merged.get(key);
-        if(!old||(old.monthlySold===null&&item.monthlySold!==null)||
-         (old.priceMin===null&&item.priceMin!==null))merged.set(key,item);
+        const key=item.shopId+':'+item.itemId;
+        merged.set(key,mergeEvidence(merged.get(key),item));
        }
        data={...refreshed,offers:[...merged.values()],
         monthlyCards:[...merged.values()].filter(x=>x.monthlySold!==null).length,
@@ -232,16 +262,24 @@ async function batch(managerTab,nonce,jobs){
       i+1,jobs.length,{visible:visibleCards,monthlyLabels:data.monthlyLabelsVisible});
     for(const offer of data.offers||[]){
      const id=String(offer.shopId)+':'+String(offer.itemId);
-     const previous=collected.get(id);
-      if(!previous||(previous.monthlySold===null&&offer.monthlySold!==null))
-       collected.set(id,offer);
+     collected.set(id,mergeEvidence(collected.get(id),offer));
     }
     const monthly=[...collected.values()].filter(x=>x.monthlySold!==null).length;
     await stage(managerTab,nonce,'comparando',
      collected.size+' concorrentes com vendas; '+monthly+
      ' com rótulo mensal explícito • '+visibleCards+' cartões inspecionados.',
      i+1,jobs.length,{visible:collected.size,monthly,pages});
-    if((monthly>=5&&collected.size>=10)||collected.size>=100)break;
+    const related=[...collected.values()].filter(item=>
+     relatedToQuery(query,item)&&item.priceMin!==null);
+    const relatedMonthly=related.filter(item=>item.monthlySold!==null).length;
+    await stage(managerTab,nonce,'comparando',
+     'Amostra: '+related.length+'/10 anúncios de preço relacionados • '+
+     relatedMonthly+' com vendas mensais • '+collected.size+' ofertas inspecionadas.',
+     i+1,jobs.length,{related:related.length,relatedMonthly,pages});
+    // Parar após encontrar até 10 candidatos com preços E 2 selos mensais.
+    // Se não atingir, percorrer mais páginas existentes, até o limite.
+    if(related.length>=10&&relatedMonthly>=2)break;
+    if(collected.size>=300)break;
     await delay(900);
    }
    // Recuperação isolada, sem criar outras abas nem contornar CAPTCHA.
@@ -261,9 +299,7 @@ async function batch(managerTab,nonce,jobs){
        labelsInCards+=Number(recovered.monthlyLabelsInCards||0);
        for(const offer of recovered.offers||[]){
         const key=String(offer.shopId)+':'+String(offer.itemId);
-        const old=collected.get(key);
-        if(!old||(old.monthlySold===null&&offer.monthlySold!==null))
-         collected.set(key,offer);
+        collected.set(key,mergeEvidence(collected.get(key),offer));
        }
       }
      }
@@ -274,7 +310,11 @@ async function batch(managerTab,nonce,jobs){
     }
    }
    if(stopRequested)break;
-   const offers=[...collected.values()].slice(0,100);
+   // Priorizar a relevância com a consulta para que uma vitrine com 100+
+   // anúncios gerais não expulse os 10 modelos realmente procurados.
+   const allOffers=[...collected.values()];
+   const offers=allOffers.sort((a,b)=>
+    offerPriority(query,b)-offerPriority(query,a)).slice(0,100);
    if(!failure&&offers.length===0)await stage(managerTab,nonce,'comparando',
     'Página carregada, mas sem vendas verificáveis. Nenhuma Curva será atribuída.',
     i+1,jobs.length,{visibleCards,pages});
@@ -300,7 +340,9 @@ async function batch(managerTab,nonce,jobs){
     recoverable:incomplete&&!hardStop,
     stats:{visible:offers.length,visibleCards,pages,
      monthly:monthlyCount,monthlyLabelsVisible:labelsSeen,
-     monthlyLabelsInCards:labelsInCards,sourceStatus}});
+     monthlyLabelsInCards:labelsInCards,sourceStatus,
+     rawInspected:collected.size,
+     relevantWithPrice:offers.filter(o=>relatedToQuery(query,o)&&o.priceMin!==null).length}});
    if(hardStop)break; // CAPTCHA/verificação explícita deve parar.
    if(incomplete)await stage(managerTab,nonce,'continuando',
     'Esta consulta ficou incompleta; avançando para outra SKU da categoria.',

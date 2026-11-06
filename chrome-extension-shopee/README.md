@@ -1,4 +1,4 @@
-# Ponte Chrome Rede Achados BR — 1.2.6
+# Ponte Chrome Rede Achados BR — 1.2.7
 
 Atualização obrigatória: baixe o ZIP no menu Curvas A/B, extraia e carregue
 novamente a pasta redeachados-shopee-chrome em chrome://extensions.
@@ -32,3 +32,11 @@ menos de oito cartões ou menos de dois rótulos mensais, restaura
 automaticamente a mesma janela sem foco, recarrega e agrega os anúncios
 por shopId:itemId, preservando o dado mensal mais completo. Não usa números
 inventados nem contorna CAPTCHA.
+
+Versão 1.2.7: a pesquisa maximiza a amostra de 2 a 10 anúncios
+comparáveis e não encerra só por localizar duas vendas mensais. Percorre
+até 9 páginas da mesma janela quando os resultados forem insuficientes,
+acumula cartões sem perder preços quando uma releitura encontra o selo
+Vendido/Mês e prioriza anúncios semelhantes para o limite de importação.
+Cada nova pesquisa começa com preços e evidências limpos; captura e análise
+continuam separadas e não inventam volumes.

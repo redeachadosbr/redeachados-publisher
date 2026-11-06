@@ -57,3 +57,35 @@ test('uma única janela minimizada é reutilizada entre lotes e fechada somente 
  assert.equal(calls.filter(x=>x[0]==='close').length,1);
  assert.equal(state[key],undefined);
 });
+
+test('releitura da vitrine preserva 11 preços mesmo quando só 2 cartões mostram Vendido/Mês',async()=>{
+ const offers=Array.from({length:11},(_,i)=>({
+  shopId:String(300+i),itemId:String(1000+i),
+  productName:'Balança Digital de Cozinha 10kg',
+  priceMin:16.9+i/100,monthlySold:null,historicalSold:null
+ }));
+ let index=0;
+ const responses=[
+  {ok:true,offers,visibleCards:11,monthlyCards:0},
+  {ok:true,offers:offers.slice(0,2).map(o=>({...o,priceMin:null,
+   monthlySold:3000,monthlyPeriod:'month'})),visibleCards:2,monthlyCards:2},
+  {ok:true,offers:offers.slice(2,3).map(o=>({...o,monthlySold:1000})),
+   visibleCards:1,monthlyCards:1},
+  {ok:true,offers:[],visibleCards:0,monthlyCards:0}
+ ];
+ const chrome={runtime:{onInstalled:{addListener(){}},onStartup:{addListener(){}},
+  onMessage:{addListener(){}}},tabs:{onActivated:{addListener(){}},
+  onUpdated:{addListener(){}},onRemoved:{addListener(){}}},
+  windows:{onRemoved:{addListener(){}}},storage:{session:{get:async()=>({})}}};
+ chrome.tabs.sendMessage=async()=>responses[Math.min(index++,responses.length-1)];
+ const local={chrome,console,URL,globalThis:null,
+  setTimeout:callback=>{callback();return 1;},clearTimeout(){}};
+ local.globalThis=local;
+ vm.runInNewContext(source,local);
+ const result=await local.readPage(15);
+ assert.equal(result.ok,true);
+ assert.equal(result.offers.length,11);
+ assert.equal(result.monthlyCards,3);
+ assert.equal(result.offers[0].priceMin,16.9);
+ assert.equal(result.offers[0].monthlySold,3000);
+});

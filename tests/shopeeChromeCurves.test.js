@@ -117,3 +117,11 @@ test('novos preços da mesma oferta substituem informações anteriores sem perd
  assert.match(content,/state\.offers\.set\(id,prev\?\{\.\.\.prev,\.\.\.offer/);
  assert.match(content,/monthlySold:offer\.monthlySold\?\?prev\.monthlySold/);
 });
+
+test('novo plano de Curvas zera evidências anteriores antes da primeira consulta',()=>{
+ const source=readFileSync(new URL('../shopeeChromeCurves.js',import.meta.url),'utf8');
+ assert.match(source,/if\(offset===0\)\{/);
+ assert.match(source,/state\.offers\.clear\(\)/);
+ assert.match(source,/state\.scanned\.clear\(\)/);
+ assert.match(source,/state\.queries=0/);
+});
