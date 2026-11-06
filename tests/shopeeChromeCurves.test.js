@@ -38,8 +38,8 @@ test('rota da extensão usa autenticação, origem e plano pelo catálogo',()=>{
 
 test('três lojas independentes com evidência mensal são obrigatórias antes da Curva A/B',()=>{
  const candidates=[
-  {sku:'A',curve:'A',verified30:true,monthlyCompetitorCount:3},
-  {sku:'B',curve:'B',verified30:true,monthlyCompetitorCount:4},
+  {sku:'A',curve:'A',verified30:true,monthlyCompetitorCount:3,adsCompetitiveness:{eligible:true}},
+  {sku:'B',curve:'B',verified30:true,monthlyCompetitorCount:4,adsCompetitiveness:{eligible:true}},
   {sku:'FRACO',curve:'A',verified30:true,monthlyCompetitorCount:2},
   {sku:'ACUMULADO',curve:'PENDING',verified30:false,monthlyCompetitorCount:9},
   {sku:'SEMDEMANDA',curve:'LOW',verified30:true,monthlyCompetitorCount:3}
@@ -58,4 +58,20 @@ test('vendas/mês e Vendas 30d são reconhecidas como período mensal explícito
  assert.equal(verifiedMonthlyEvidence('950 vendas/mês'),true);
  assert.equal(verifiedMonthlyEvidence('Vendas 30d: 850'),true);
  assert.equal(verifiedMonthlyEvidence('Vendas acumuladas 850'),false);
+});
+
+test('Ponte Chrome exclui Curva A se preço WeDrop não competir e corrige média antes ausente',()=>{
+ const candidates=[
+  {sku:'OK',curve:'A',verified30:true,monthlyCompetitorCount:3,
+   adsCompetitiveness:{eligible:true}},
+  {sku:'BICICLETA',curve:'A',verified30:true,monthlyCompetitorCount:4,
+   adsCompetitiveness:{eligible:false,status:'cost_above_market'}}
+ ];
+ assert.deepEqual(qualifyChromeMatches(candidates).map(x=>x.sku),['OK']);
+ const offer=normalizeVisibleOffers([{
+  itemId:'9981',shopId:'8878',productName:'Bicicleta de Equilíbrio Infantil Sem Pedal',
+  priceMin:79.99,monthlySold:950,monthlyPeriod:'month',monthlyEvidence:'950 vendidos/mês'
+ }])[0];
+ assert.equal(offer.priceMin,79.99);
+ assert.equal(offer.priceMax,79.99);
 });

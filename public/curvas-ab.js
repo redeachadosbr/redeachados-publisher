@@ -125,6 +125,12 @@
      row.verified30?(row.curve==='LOW'?'Abaixo de 700':'Curva '+row.curve):'Pendente • 30 dias');
   top.append(title,curve);
   const sku=t('div','curve-sku');sku.append('SKU WeDrop: ',t('b','',row.sku));
+  const fit=row.adsCompetitiveness||null;
+  if(fit?.eligible){
+   const label=fit.status==='within_market'?
+    'Apta para Ads • preço na média':'Apta para Ads • até 40% acima da média';
+   main.append(t('div','curve-ads-fit',label));
+  }
   const facts=t('div','curve-metrics');
   facts.append(
    metric(row.periodSource?.includes('Em Destaque')?'Vendido/Mês • Shopee':
@@ -133,6 +139,11 @@
    metric('Preço do anúncio comparado',money(row.competitorPrice)),
    metric('Média dos concorrentes'+(row.avgCompetitorPrice!==null?' ('+row.competitorOfferCount+' lojas)':''),money(row.avgCompetitorPrice)),
    metric('Custo WeDrop',money(row.cost)),
+   ...(fit?.eligible?[
+    metric('Preço sugerido para Ads',money(fit.suggestedSalePrice)),
+    metric('Teto competitivo (+40%)',money(fit.maxMarketPrice)),
+    metric('Lucro líquido estimado',money(fit.estimatedNetProfit))
+   ]:[]),
    metric('Correspondência de nomes',nf.format(Math.round(100*Number(row.matchScore||0)))+'%')
   );
   const competitor=t('p','curve-evidence','Oferta comparada: '+row.competitorName+
@@ -141,6 +152,10 @@
   const evidence=t('p','curve-evidence',row.periodSource?
    'Fonte da classificação: '+row.periodSource+'.':
    'Somente vendas acumuladas disponíveis: classificação potencial, não vendas confirmadas em 30 dias.');
+  if(fit?.eligible){
+   main.append(t('p','curve-ads-scenario',
+    'Simulação: custo WeDrop, taxas padrão, 10% para Ads e margem líquida mínima de 5%. Revise as taxas reais antes de anunciar.'));
+  }
   const proof=t('details','curve-monthly-competitors');
   const count=Number(row.monthlyCompetitorCount||0);
   proof.append(t('summary','',count+' lojas com vendas mensais'+
@@ -273,10 +288,13 @@
       ' SKUs WeDrop com anúncios concorrentes equivalentes. Os itens abaixo ainda NÃO estão classificados porque faltam vendas dos últimos 30 dias.'));
      for(const item of pending)grid.append(card(item));
     }else grid.append(t('div','curve-empty',
-     'Nenhuma SKU comprovada nesta etapa da varredura. Continue a pesquisa ou confira o acesso a vendas mensais na aba Em Destaque.'));
+     result.competitiveOnly?
+      'Nenhuma SKU A/B com custo e preço viáveis para Ads nesta etapa. '+
+      Number(result.excludedByPrice||0)+' SKU(s) A/B rejeitadas por preço/custo, estoque ou ausência de média confiável. Continue a pesquisa.':
+      'Nenhuma SKU comprovada nesta etapa da varredura. Continue a pesquisa ou confira o acesso a vendas mensais na aba Em Destaque.'));
    }
   const prefix=result.shortage?
-   (result.verifiedOnly?'Curvas mensais confirmadas: ':'Oportunidades potenciais: ')+
+   (result.competitiveOnly?'Curvas A/B competitivas para Ads: ':result.verifiedOnly?'Curvas mensais confirmadas: ':'Oportunidades potenciais: ')+
    result.items.length+' dos '+result.requested+
    ' solicitados. Confira a fonte: sem dados mensais não é possível confirmar curvas. ':
    'Pesquisa concluída: '+result.items.length+' produtos selecionados. ';
@@ -289,11 +307,13 @@
   const feature=Number(result.sources?.featured||0);
   const affiliate=Number(result.sources?.affiliate||0);
    const chromeCount=Number(result.sources?.chrome||0);
+  const marketNotice=result.competitiveOnly?
+   ' '+Number(result.excludedByPrice||0)+' SKU(s) A/B excluídas por preço/custo, estoque ou média indisponível. Teto +40%, cenário de Ads aplicado.':'';
   const foot=' Fonte: '+(feature?'busca pública Em Destaque Shopee ('+feature+' consultas). ':'')+
    (affiliate?'API Afiliados ('+affiliate+' consultas). ':'')+
     (chromeCount?'Ponte Chrome ('+chromeCount+' consultas visíveis). ':'')+
    'Somente os anúncios com vendas mensais disponíveis ou histórico de 30 dias podem ter curva mensal confirmada.';
-  status(prefix+next+limitWarning+errors+foot,
+  status(prefix+next+limitWarning+errors+marketNotice+foot,
    result.shortage||result.apiLimited?'warning':'info');
  }
  async function search(event,{advance=false}={}){

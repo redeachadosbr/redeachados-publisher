@@ -353,3 +353,14 @@ test('busca exclui prefixos genéricos e usa o nome exato da SKU WeDrop',()=>{
  assert.equal(curveSkuSearchQuery('Cuidados Higiene Bebes'),'');
  assert.match(curveSkuSearchQuery('Coqueteleira Shaker Inox 500ml'),/coqueteleira/);
 });
+
+test('seleção para Ads não conta Curva A/B com custo inviável nem pendências',()=>{
+ const rows=[
+  {sku:'AZUL',curve:'A',verified30:true,adsCompetitiveness:{eligible:false}},
+  {sku:'APTO',curve:'B',verified30:true,adsCompetitiveness:{eligible:true}},
+  {sku:'PENDENTE',curve:'PENDING',verified30:false,adsCompetitiveness:{eligible:true}}
+ ];
+ const found=pickCurveResults(rows,{curve:'ALL',limit:5,verifiedOnly:false,competitiveOnly:true});
+ assert.deepEqual(found.items.map(row=>row.sku),['APTO']);
+ assert.equal(found.found,1);
+});

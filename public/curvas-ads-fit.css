@@ -1,0 +1,5 @@
+/* Aprovação financeira ilustrativa somente no menu Curvas A/B. */
+#tab-curves .curve-ads-fit{display:inline-flex;margin:0 0 6px;padding:5px 9px;
+ background:linear-gradient(120deg,#e8f9f0,#f4fff9);border:1px solid #abe3c6;
+ border-radius:8px;color:#16683e;font-size:10.5px;font-weight:800;box-shadow:inset 0 1px 0 #fff}
+#tab-curves .curve-ads-scenario{margin:9px 0 7px;color:#687f95;font-size:10px;line-height:1.55}

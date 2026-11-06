@@ -5,6 +5,7 @@ COPY package*.json ./
 RUN npm install --omit=dev
 COPY . .
 RUN node --check shopeeFeaturedSearch.js && node --test tests/shopeeFeaturedSearch.test.js && node --check shopeeCurveAB.js && node --check public/curvas-ab.js && node --test tests/shopeeCurveAB.test.js
+RUN node --check shopeeCurveAdsFit.js && node --test tests/shopeeCurveAdsFit.test.js
 RUN node --check shopeeChromeCurves.js && node --check shopeeChromeExtensionZip.js && node --check chrome-extension-shopee/manager.js && node --check chrome-extension-shopee/background.js && node --check chrome-extension-shopee/visible-offers.js && node --test tests/shopeeChromeCurves.test.js tests/shopeeChromeExtensionZip.test.js
 RUN node --check public/curvas-chrome.js && node --test tests/shopeeChromeUi.test.js tests/shopeeChromeBridgeHandshake.test.js && node --test tests/shopeeCurvasPremiumLayout.test.js
 RUN node --test tests/shopeeChromeVisibleParser.test.js
