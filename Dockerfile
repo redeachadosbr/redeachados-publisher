@@ -6,6 +6,7 @@ RUN npm install --omit=dev
 COPY . .
 RUN node --check shopeeFeaturedSearch.js && node --test tests/shopeeFeaturedSearch.test.js && node --check shopeeCurveAB.js && node --check public/curvas-ab.js && node --test tests/shopeeCurveAB.test.js
 RUN node --check shopeeChromeCurves.js && node --check shopeeChromeExtensionZip.js && node --check chrome-extension-shopee/manager.js && node --check chrome-extension-shopee/background.js && node --check chrome-extension-shopee/visible-offers.js && node --test tests/shopeeChromeCurves.test.js tests/shopeeChromeExtensionZip.test.js
+RUN node --check public/curvas-chrome.js && node --test tests/shopeeChromeUi.test.js
 RUN node --check shopeeProductViewTrends.js && node --check public/organic-top10.js && node --test tests/shopeeProductViewTrends.test.js
 RUN node --check shopeeOrganicPerformance.js && node --check public/organic-top10.js && node --test tests/shopeeOrganicTop10.test.js tests/shopeeProductPerformanceMetrics.test.js
 RUN node --check public/optimizer-visual-reference.js && node --test tests/shopee-kit-visual-reference-retry.test.js tests/optimizerBridgeSourceAndThirdFallback.test.js
