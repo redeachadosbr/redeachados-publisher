@@ -53,3 +53,9 @@ test('lotes comportam até 100 anúncios distintos das páginas Em Destaque',()=
  assert.equal(normalizeVisibleOffers(rows).length,80);
  assert.throws(()=>normalizeVisibleOffers([...rows,...rows.slice(0,21)]),/Máximo de 100/);
 });
+
+test('vendas/mês e Vendas 30d são reconhecidas como período mensal explícito',()=>{
+ assert.equal(verifiedMonthlyEvidence('950 vendas/mês'),true);
+ assert.equal(verifiedMonthlyEvidence('Vendas 30d: 850'),true);
+ assert.equal(verifiedMonthlyEvidence('Vendas acumuladas 850'),false);
+});

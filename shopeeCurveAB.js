@@ -60,11 +60,15 @@ const genericColors=new Set([
  'vermelho','vermelha','verde','amarelo','amarela','cinza','bege',
  'colorido','colorida','sortida','sortido','multicolorido'
 ]);
+const genericCategoryTerms=new Set('cuidados higiene bebe bebes categorias categoria departamentos departamento diversos utilidades utensilios acessorios produtos artigos outros geral gerais'.split(' '));
 export function curveSkuSearchQuery(name){
  const title=String(name||'').slice(0,240);
  const tokens=words(title).filter(token=>!genericColors.has(token));
- // Ao buscar, preferir tipo e características da própria SKU.
- const head=tokens.filter(x=>!(/^\d+$/.test(x))).slice(0,3);
+ // Ignorar prefixos genéricos de departamento, como "cuidados higiene bebes".
+ // Uma pesquisa sem produto específico não deve consultar a categoria inteira.
+ const identified=tokens.filter(token=>!genericCategoryTerms.has(token)&&!/^[0-9]+$/.test(token));
+ if(!identified.length)return '';
+ const head=identified.slice(0,4);
  const measure=normal(title).match(/\b\d{1,5}\s*(?:ml|litros|litro|l|cm|w)\b/);
  if(measure&&!head.some(t=>t===measure[0]))head.push(measure[0]);
  return head.join(' ').slice(0,70);
@@ -259,7 +263,9 @@ export function matchCurveOffers({catalog=[],offers=[],costs=[],baseline=new Map
    const monthly=intSales(offer.monthlySold);
    const history=baseline instanceof Map?baseline.get(String(offer.itemId)):null;
    let sales30=monthly,observedDays=null,periodSource=monthly!==null?
-    'Shopee Em Destaque • campo sold (Vendido/Mês)':'';
+    (offer.dataSource==='shopee-featured-chrome'?
+     'Ponte Chrome • venda mensal visível na Shopee':
+     'Shopee Em Destaque • campo sold (Vendido/Mês)'):'';
    if(monthly===null&&history&&intSales(history.sales)!==null&&sales>=history.sales){
     const age=Math.floor((Date.parse(today+'T00:00:00Z')-
      Date.parse(String(history.day)+'T00:00:00Z'))/86400000);

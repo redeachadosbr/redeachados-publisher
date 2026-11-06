@@ -22,3 +22,8 @@ test('leitor visual reconhece links reais e mantém vendas históricas separadas
  assert.equal(parser.historicalSales('Sem informações de vendas'),null);
  assert.equal(parser.ids('https://example.com/product/123/456'),null);
 });
+
+test('parser identifica a quantidade mensal quando vem após o período de 30 dias',()=>{
+ assert.equal(parser.monthlyEvidence('Vendas 30d: 950').monthlySold,950);
+ assert.equal(parser.monthlyEvidence('950 vendas/mês').monthlySold,950);
+});

@@ -346,3 +346,10 @@ test('cruzamento agrupa concorrentes mensais por loja sem somar volumes e respei
  assert.deepEqual(rows[0].monthlyCompetitors.map(x=>x.monthlySold),[1100,850,740]);
  assert.equal(rows[0].curve,'A');
 });
+
+test('busca exclui prefixos genéricos e usa o nome exato da SKU WeDrop',()=>{
+ const query=curveSkuSearchQuery('Cuidados Higiene Bebes - Escova Macia para Banho');
+ assert.equal(query,'escova macia banho');
+ assert.equal(curveSkuSearchQuery('Cuidados Higiene Bebes'),'');
+ assert.match(curveSkuSearchQuery('Coqueteleira Shaker Inox 500ml'),/coqueteleira/);
+});

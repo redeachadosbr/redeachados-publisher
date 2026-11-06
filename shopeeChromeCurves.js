@@ -45,9 +45,10 @@ export async function chromeCurvePlan(shopId,{category='Todos',keyword='',offset
 export function verifiedMonthlyEvidence(value){
  const text=String(value||'').replace(/\s+/g,' ').trim();
  return text.length<=160&&(
-  /\bvendid[oa]s?\s*(?:\/|por|no|nos|em)\s*m[eê]s\b/i.test(text)||
+  /\b(?:vendid[oa]s?|vendas)\s*(?:\/|por|no|nos|em)\s*m[eê]s\b/i.test(text)||
   /\b(?:vendas|vendid[oa]s?)\s*(?:nos\s+)?(?:[uú]ltimos\s+)?30\s*dias\b/i.test(text)||
-  /\bm[eê]s\s*[:\-]\s*\d/i.test(text)
+  /\bm[eê]s\s*[:\-]\s*\d/i.test(text)||
+  /\b(?:vendas|vendidos?)\s*(?:nos\s+)?(?:[uú]ltimos\s+)?30\s*(?:dias|d)\s*[:\-]?\s*\d/i.test(text)
  );
 }
 export function normalizeVisibleOffers(rows,{ownShopId='0'}={}){
