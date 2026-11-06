@@ -1,0 +1,38 @@
+{
+  "manifest_version": 3,
+  "name": "Rede Achados BR - Shopee Em Destaque",
+  "version": "1.0.0",
+  "description": "Le somente dados visiveis da busca Em Destaque e envia ao Shopee Manager apos acao do usuario.",
+  "permissions": [
+    "tabs"
+  ],
+  "host_permissions": [
+    "https://shopee.com.br/*",
+    "https://www.shopee.com.br/*",
+    "https://redeachados-shopee.onrender.com/*"
+  ],
+  "background": {
+    "service_worker": "background.js"
+  },
+  "content_scripts": [
+    {
+      "matches": [
+        "https://redeachados-shopee.onrender.com/*"
+      ],
+      "js": [
+        "manager.js"
+      ],
+      "run_at": "document_start"
+    },
+    {
+      "matches": [
+        "https://shopee.com.br/*",
+        "https://www.shopee.com.br/*"
+      ],
+      "js": [
+        "visible-offers.js"
+      ],
+      "run_at": "document_idle"
+    }
+  ]
+}

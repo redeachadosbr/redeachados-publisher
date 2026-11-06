@@ -1,0 +1,78 @@
+// Um lote por vez. Navega na vitrine normal sem APIs internas.
+let busy=false;
+const delay=ms=>new Promise(resolve=>setTimeout(resolve,ms));
+const nonceOk=s=>/^[a-f0-9-]{30,50}$/i.test(String(s||''));
+const managerOk=sender=>/^https:\/\/redeachados-shopee\.onrender\.com\//.test(sender?.tab?.url||'');
+function buildUrl(query){
+ const u=new URL('https://shopee.com.br/search');
+ u.searchParams.set('keyword',String(query).trim().slice(0,70));
+ u.searchParams.set('page','0');u.searchParams.set('sortBy','sales');
+ return u.href;
+}
+async function deliver(tabId,data){
+ try{await chrome.tabs.sendMessage(tabId,data);}catch{}
+}
+async function waitLoaded(tabId){
+ return await new Promise(resolve=>{
+  let settled=false;
+  const end=()=>{if(settled)return;settled=true;clearTimeout(timer);
+   chrome.tabs.onUpdated.removeListener(listener);resolve();};
+  const listener=(id,change)=>{if(id===tabId&&change.status==='complete')end();};
+  const timer=setTimeout(end,22000);
+  chrome.tabs.onUpdated.addListener(listener);
+  chrome.tabs.get(tabId).then(tab=>{if(tab.status==='complete')end();}).catch(end);
+ });
+}
+async function readPage(tabId){
+ for(let i=0;i<4;i++){
+  await delay(i===0?1800:1300);
+  try{
+   const result=await chrome.tabs.sendMessage(tabId,{kind:'RA_CURVE_READ_VISIBLE'});
+   if(result?.ok&&Array.isArray(result.offers)&&(result.offers.length||i===3))return result;
+   if(result?.blocked)return {ok:false,error:result.error||'Página indisponível.',offers:[]};
+  }catch{}
+ }
+ return {ok:false,error:'Página sem cartões legíveis. Confira a busca no Chrome.',offers:[]};
+}
+async function batch(managerTab,nonce,jobs){
+ let tabId=null;
+ try{
+  for(let i=0;i<jobs.length;i++){
+   const query=jobs[i].query,url=buildUrl(query);
+   await deliver(managerTab,{kind:'RA_CURVE_CHROME_PROGRESS',nonce,query,
+    position:i+1,total:jobs.length});
+   if(tabId===null){
+    const tab=await chrome.tabs.create({url,active:true});
+    tabId=tab.id;
+   }else await chrome.tabs.update(tabId,{url});
+   await waitLoaded(tabId);
+   const data=await readPage(tabId);
+   await deliver(managerTab,{kind:'RA_CURVE_CHROME_RESULT',nonce,query,
+    position:i+1,total:jobs.length,offers:data.offers||[],
+    error:data.ok?'':data.error||'Busca não confirmada.',
+    stats:{visible:data.offers?.length||0,monthly:(data.offers||[]).filter(x=>x.monthlySold!==null).length}});
+   if(i+1<jobs.length)await delay(1800);
+  }
+ }catch(error){
+  await deliver(managerTab,{kind:'RA_CURVE_CHROME_ERROR',nonce,
+   error:String(error.message||error).slice(0,220)});
+ }finally{
+  busy=false;
+  await deliver(managerTab,{kind:'RA_CURVE_CHROME_DONE',nonce,total:jobs.length});
+ }
+}
+chrome.runtime.onMessage.addListener((message,sender,respond)=>{
+ if(message?.kind!=='RA_CURVE_BROWSER_BATCH')return;
+ if(!managerOk(sender)||!nonceOk(message.nonce)){
+  respond({ok:false,error:'Solicitação fora do Shopee Manager.'});return;
+ }
+ const jobs=Array.isArray(message.jobs)?message.jobs:[];
+ if(!jobs.length||jobs.length>10||jobs.some(x=>!x||String(x.query||'').length<3||
+  String(x.query||'').length>70)){
+  respond({ok:false,error:'Lote inválido.'});return;
+ }
+ if(busy){respond({ok:false,error:'A Ponte já pesquisa outro lote.'});return;}
+ busy=true;
+ void batch(sender.tab.id,message.nonce,jobs);
+ respond({ok:true});
+});
