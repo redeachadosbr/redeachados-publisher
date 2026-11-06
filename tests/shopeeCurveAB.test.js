@@ -167,7 +167,10 @@ test('a interface oferece categoria e títulos SEO com referências dos preços'
  assert.match(js,/function appendSEO/);
  assert.match(js,/function appendPrices/);
  assert.match(js,/Média dos concorrentes/);
- assert.match(js,/verifiedOnly:verifiedOnly\?'1':'0'/);
+ const chrome=readFileSync(new URL('../public/curvas-chrome.js',import.meta.url),'utf8');
+ assert.match(chrome,/verifiedOnly:true/);
+ assert.match(chrome,/curve:'ALL'/);
+ assert.doesNotMatch(js,/\/api\/shopee\/curvas-ab\/search\?/);
 });
 
 test('a média de concorrentes exclui a própria loja, inclusive no ranking',()=>{
