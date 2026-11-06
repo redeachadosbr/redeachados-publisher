@@ -1,16 +1,17 @@
-# Ponte Chrome Rede Achados BR 1.2.1
+# Ponte Chrome Rede Achados BR — 1.2.2
 
-Instale novamente pelo ZIP do menu Curvas A e B, descompactando e carregando
-a pasta redeachados-shopee-chrome em chrome://extensions.
+Atualização obrigatória: baixe o ZIP no menu Curvas A/B, extraia e carregue
+novamente a pasta redeachados-shopee-chrome em chrome://extensions.
 
-A extensão cria uma única janela auxiliar inicialmente minimizada e reutiliza
-a mesma aba em todos os lotes. Se a Shopee não carregar nessa condição,
-a Ponte restaura a mesma janela em estado normal sem solicitar foco, relê
-a página e informa a recuperação no Manager. Assim, ela **pode aparecer
-visível** na área de trabalho, mas não cria novas abas na janela principal.
-Fecha somente a própria janela ao fim ou no cancelamento.
+A pesquisa considera todas as SKUs da categoria WeDrop, inclusive não
+publicadas na loja. Uma busca com anúncios não mensais, página sem cartões ou
+falha isolada não interrompe a categoria: registra o item pendente e avança.
+Preserva anúncios parcialmente coletados. Após 60 consultas, permite
+continuar nas próximas pesquisas ao clicar novamente.
 
-Não confunde anúncios visíveis sem indicação mensal com vendas dos últimos
-30 dias. Curvas A/B exigem 3 concorrentes distintos, indicadores mensais
-explícitos e viabilidade de preço com média de 3 a 5 lojas. CAPTCHA e
-bloqueios exigem intervenção humana; não são contornados.
+A Shopee Em Destaque é aberta em uma única janela auxiliar reutilizada.
+Quando necessário, a própria janela é restaurada para leitura visual.
+CAPTCHA, bloqueio real ou verificação de acesso interrompem a pesquisa, sem
+contornar proteção. A classificação A/B (900+ ou 700–899 vendas em 30 dias)
+exige dados mensais explícitos de 3 lojas; médias de preço usam 3–5 lojas.
+Sem evidência mensal não há classificação, e nenhum anúncio é criado.

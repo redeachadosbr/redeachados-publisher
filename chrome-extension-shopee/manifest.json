@@ -1,8 +1,8 @@
 {
   "manifest_version": 3,
   "name": "Rede Achados BR - Shopee Em Destaque",
-  "version": "1.2.1",
-  "description": "Pesquisa Curvas A/B em uma janela auxiliar reutilizada, com recuperação se Shopee não renderizar minimizada.",
+  "version": "1.2.2",
+  "description": "Pesquisa Curvas A/B por categoria sem parar em falhas isoladas; uma janela auxiliar reutilizada, progresso auditável no Manager.",
   "permissions": [
     "tabs",
     "scripting",

@@ -21,7 +21,7 @@ test('pesquisa continua entre lotes até 10 SKUs e demonstra 3 concorrentes reai
  const ui=readFileSync(new URL('../public/curvas-ab.js',import.meta.url),'utf8');
  assert.match(code,/s\.found>=s\.selected\.limit/);
  assert.match(code,/s\.scanned>=MAX_SEARCHES_PER_RUN/);
- assert.match(code,/NO_MONTHLY_LIMIT/);
+ assert.doesNotMatch(code,/NO_MONTHLY_LIMIT/);
  assert.match(ui,/row\.monthlyCompetitors/);
  assert.match(ui,/mínimo 3 lojas/);
 });
@@ -29,9 +29,9 @@ test('pesquisa continua entre lotes até 10 SKUs e demonstra 3 concorrentes reai
 test('exige a extensão Shopee Chrome 1.2.0 para pesquisas sem novas abas',()=>{
  const code=readFileSync(new URL('../public/curvas-chrome.js',import.meta.url),'utf8');
  const manifest=JSON.parse(readFileSync(new URL('../chrome-extension-shopee/manifest.json',import.meta.url),'utf8'));
- assert.equal(manifest.version,'1.2.1');
+ assert.equal(manifest.version,'1.2.2');
  assert.match(code,/parts\[1\]>2/);
- assert.match(code,/Number\(parts\[2\]\|\|0\)>=1/);
+ assert.match(code,/Number\(parts\[2\]\|\|0\)>=2/);
 });
 
 test('filtro único categoria, quantidade e nome só inicia pesquisa Chrome',()=>{
@@ -99,4 +99,19 @@ test('relatório da Ponte conta SKUs tentadas em consultas incompletas sem pular
  assert.match(ui,/const searched=s\.attemptedSkuIds\.size/);
  assert.match(ui,/for\(const sku of job\?\.skus\|\|\[\]\)s\.attemptedSkuIds\.add/);
  assert.match(ui,/if\(s\.blocked\)offset=0/);
+});
+
+test('consulta incompleta não bloqueia outras SKUs e mensagem informa erro recuperável',()=>{
+ const bg=readFileSync(new URL('../chrome-extension-shopee/background.js',import.meta.url),'utf8');
+ const bridge=readFileSync(new URL('../chrome-extension-shopee/manager.js',import.meta.url),'utf8');
+ const ui=readFileSync(new URL('../public/curvas-chrome.js',import.meta.url),'utf8');
+ assert.match(bg,/recoverable:incomplete&&!hardStop/);
+ assert.match(bg,/if\(hardStop\)break/);
+ assert.match(bg,/if\(incomplete\)await stage/);
+ assert.match(bg,/blocked:true/);
+ assert.match(bridge,/recoverable:Boolean\(msg\.recoverable\)/);
+ assert.match(bridge,/warning:String\(msg\.warning\|\|''\)/);
+ assert.match(ui,/if\(m\.recoverable\)/);
+ assert.match(ui,/MAX_SEARCHES_PER_RUN=60/);
+ assert.doesNotMatch(ui,/NO_MONTHLY_LIMIT/);
 });

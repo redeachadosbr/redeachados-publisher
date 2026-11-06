@@ -39,7 +39,8 @@
   if(!msg||!nonceOk(msg.nonce)||!/^RA_CURVE_CHROME_(RESULT|PROGRESS|DONE|ERROR|STEP)$/.test(msg.kind||''))return;
   publish({kind:msg.kind,nonce:msg.nonce,query:msg.query||'',
    position:msg.position||0,total:msg.total||0,offers:msg.offers||[],
-   error:msg.error||'',stats:msg.stats||{},
+   error:msg.error||'',warning:String(msg.warning||'').slice(0,220),
+   recoverable:Boolean(msg.recoverable),stats:msg.stats||{},
    stage:String(msg.stage||'').slice(0,40),
    detail:String(msg.detail||'').slice(0,240),
    cancelled:Boolean(msg.cancelled)});

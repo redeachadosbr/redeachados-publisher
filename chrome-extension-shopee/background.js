@@ -126,7 +126,8 @@ async function readPage(tabId){
    // Cartões sem vendas ainda comprovam carregamento, mas nunca Curva A/B.
    if(result?.ok&&Array.isArray(result.offers)&&
     (result.offers.length||Number(result.visibleCards)>0))return result;
-   if(result?.blocked)return {ok:false,error:result.error||'Página indisponível.',offers:[]};
+   if(result?.blocked)return {ok:false,blocked:true,
+    error:result.error||'Verificação humana exigida pela Shopee.',offers:[]};
   }catch{}
  }
  return {ok:false,error:'Shopee não apresentou cartões verificáveis nesta pesquisa. '+
