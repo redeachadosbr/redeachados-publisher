@@ -4,6 +4,7 @@
 import {readWeDropCatalogProducts,readWeDropCosts} from './wedropCosts.js';
 import {categoryMatches} from './shopeeKitBuilder.js';
 import {curveSkuSearchPlan,officialFeaturedSearchUrl,matchCurveOffers,pickCurveResults} from './shopeeCurveAB.js';
+import {curveAdsRejectionStats,CURVE_ADS_POLICY} from './shopeeCurveAdsFit.js';
 const fold=s=>String(s||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase().replace(/\s+/g,' ').trim();
 const validId=v=>/^\d{1,18}$/.test(String(v??''));
 const amount=v=>{if(v===null||v===undefined||v==='')return null;const n=Number(v);return Number.isSafeInteger(n)&&n>=0?n:null;};
@@ -70,6 +71,9 @@ export function normalizeVisibleOffers(rows,{ownShopId='0'}={}){
   out.push({itemId,shopId,productName,
    sales:historical??monthlySold,historicalSold:historical,monthlySold,
    priceMin:Number.isFinite(price)&&price>0&&price<100000?price:null,
+   // Valor unitário visível no cartão, usado como uma observação de preço.
+   // Não representa preços de variações ocultas do anúncio.
+   priceMax:Number.isFinite(price)&&price>0&&price<100000?price:null,
    dataSource:'shopee-featured-chrome',monthlyEvidence:evidence,
    featuredRank:amount(row.featuredRank)});
  }
@@ -81,7 +85,8 @@ export function qualifyChromeMatches(rows,{minCompetitors=3}={}){
  if(!Number.isInteger(minCompetitors)||minCompetitors<3)throw Error('Amostra mínima inválida.');
  return rows.filter(row=>row.verified30===true&&
   (row.curve==='A'||row.curve==='B')&&
-  Number(row.monthlyCompetitorCount||0)>=minCompetitors);
+  Number(row.monthlyCompetitorCount||0)>=minCompetitors&&
+  row.adsCompetitiveness?.eligible===true);
 }
 export async function importChromeOffers(shopId,{
  category='Todos',keyword='',query='',offers=[],curve='ALL',limit=10,verifiedOnly=true
@@ -104,9 +109,12 @@ export async function importChromeOffers(shopId,{
   offers:[...state.offers.values()],costs:state.costs,ownShopId:shopId});
  const qualified=qualifyChromeMatches(rows);
  const picked=pickCurveResults(qualified,{curve,limit,verifiedOnly:true});
- const pending=rows.filter(x=>!qualified.includes(x));
+ const pending=rows.filter(x=>!qualified.includes(x)&&
+  (!x.verified30||!['A','B'].includes(x.curve)));
+ const priceStats=curveAdsRejectionStats(rows);
  return {ok:true,configured:true,verifiedOnly:true,curve,category,readOnly:true,
-  ...picked,possibleMatches:rows.length,pendingCount:pending.length,
+  ...picked,competitiveOnly:true,pricePolicy:CURVE_ADS_POLICY,
+  ...priceStats,possibleMatches:rows.length,pendingCount:pending.length,
   pendingItems:[],catalogCount:state.catalog.length,
   offerCount:state.offers.size,skuSearchesCompleted:state.scanned.size,
   skuQueriesCompleted:state.queries,remainingSkuQueries:Math.max(0,state.plan.length-state.queries),
@@ -116,9 +124,10 @@ export async function importChromeOffers(shopId,{
   shortage:picked.shortage,qualifiedCount:picked.found,monthlyCompetitorsRequired:3,
   inspectedCompetitors:rows.reduce((n,row)=>n+Number(row.comparableCompetitorCount||0),0),
   shortageReason:picked.shortage?'Ainda não foram identificadas '+Number(limit)+
-   ' SKUs com 3 concorrentes distintos e evidência mensal. Continue a pesquisa ou conecte uma fonte com vendas em 30 dias.':'',
+   ' SKUs com 3 lojas concorrentes, evidência mensal e preço competitivo para Ads.':'',
   chromeImport:{
    query:search,imported:normalized.length,monthlyOffers:normalized.filter(x=>x.monthlySold!==null).length},
-  warning:'Apenas SKUs com ao menos 3 lojas concorrentes com evidência de vendas nos últimos 30 dias entram nas Curvas A/B. Totais acumulados não classificam; não se somam vendas das lojas.',
+  warning:'Somente Curvas A/B com 3 concorrentes mensais, custo menor que a média de mercado e simulação de preço rentável até 40% acima dela. '+
+   priceStats.excludedByPrice+' SKUs Curva A/B excluídas por custo/preço ou falta de média. Sem confirmação, não indicar Ads.',
   searchMode:'wedrop-first-chrome-visible-featured',marketplaceUpdated:false};
 }
