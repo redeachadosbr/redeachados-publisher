@@ -272,7 +272,7 @@ test('campo mensal ausente não é inferido dos totais da Shopee',()=>{
  assert.equal(rows.length,1);
  assert.equal(rows[0].verified30,false);
  assert.equal(rows[0].sales30,null);
- assert.match(rows[0].curveLabel,/Potencial/);
+ assert.match(rows[0].curveLabel,/não disponíveis/);
 });
 test('entre anúncio com vendas acumuladas e anúncio com vendas mensais para mesma SKU prioriza mensal',()=>{
  const catalog=[{supplier_sku:'CQA500',product_data:{
