@@ -144,7 +144,7 @@ async function batch(managerTab,nonce,jobs){
    // Conferir a primeira página; ampliar à segunda somente se ainda não
    // houver três anúncios com vendas mensais explícitas visíveis.
    const collected=new Map();
-   let failure='',pages=0,visibleCards=0;
+   let failure='',hardStop=false,pages=0,visibleCards=0;
    for(let page=0;page<2;page++){
     if(stopRequested)break;
     const url=buildUrl(query,page);
@@ -173,7 +173,11 @@ async function batch(managerTab,nonce,jobs){
      }
     }
     pages++;
-    if(!data.ok){failure=data.error||'Busca não confirmada.';break;}
+    if(!data.ok){
+     failure=data.error||'Não foi possível ler esta página.';
+     hardStop=Boolean(data.blocked);
+     break; // Preserva as evidências das páginas anteriores.
+    }
     visibleCards+=Number(data.visibleCards||data.offers?.length||0);
     for(const offer of data.offers||[]){
      const id=String(offer.shopId)+':'+String(offer.itemId);
@@ -192,15 +196,21 @@ async function batch(managerTab,nonce,jobs){
    if(!failure&&offers.length===0)await stage(managerTab,nonce,'comparando',
     'Página carregada, mas sem vendas verificáveis. Nenhuma Curva será atribuída.',
     i+1,jobs.length,{visibleCards,pages});
-   if(!failure)await stage(managerTab,nonce,'importando',
-    'Enviando dados para cruzar SKU WeDrop, custos e classificação A/B.',
+   if(!hardStop&&offers.length)await stage(managerTab,nonce,'importando',
+    'Cruzando os anúncios da SKU com catálogo e viabilidade de Ads.',
     i+1,jobs.length,{visible:offers.length,pages});
+   const incomplete=Boolean(failure);
    await deliver(managerTab,{kind:'RA_CURVE_CHROME_RESULT',nonce,query,
     position:i+1,total:jobs.length,offers,
-    error:failure, // não continuar automaticamente após bloqueio mesmo com itens parciais
+    error:hardStop?failure:incomplete&&!offers.length?failure:'',
+    warning:incomplete?'Leitura parcial: '+failure:'',
+    recoverable:incomplete&&!hardStop,
     stats:{visible:offers.length,visibleCards,pages,
      monthly:offers.filter(x=>x.monthlySold!==null).length}});
-   if(failure)break; // Nunca insistir em bloqueio/verificação da Shopee.
+   if(hardStop)break; // CAPTCHA/verificação explícita deve parar.
+   if(incomplete)await stage(managerTab,nonce,'continuando',
+    'Esta consulta ficou incompleta; avançando para outra SKU da categoria.',
+    i+1,jobs.length,{visible:offers.length,pages});
    if(i+1<jobs.length)await delay(1600);
   }
  }catch(error){
