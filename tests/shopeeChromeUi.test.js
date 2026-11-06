@@ -136,9 +136,20 @@ test('relatório diferencia candidatos, SKUs sem equivalência e consultas incom
  const ui=readFileSync(new URL('../public/curvas-chrome.js',import.meta.url),'utf8');
  const page=readFileSync(new URL('../public/index.html',import.meta.url),'utf8');
  assert.match(page,/Candidatos pendentes/);
- assert.match(ui,/const pending=Math\.max\(0,matched-viable\)/);
+ assert.match(ui,/s\.pendingSkuIds/);
+ assert.match(ui,/s\.discardedSkuIds/);
+ assert.doesNotMatch(ui,/const pending=Math\.max\(0,matched-viable\)/);
  assert.match(ui,/const missingSearch=Math\.max\(0,searched-imported\)/);
  assert.match(ui,/const noMatch=Math\.max\(0,imported-matched\)/);
  assert.match(ui,/monthly_labels_unbound/);
  assert.match(ui,/s\.plan\.offset\+Math\.max/);
+});
+
+test('inviáveis para Ads não aparecem como potencial e ficam na auditoria',()=>{
+ const ui=readFileSync(new URL('../public/curvas-ab.js',import.meta.url),'utf8');
+ assert.doesNotMatch(ui,/Potencial • em verificação/);
+ assert.match(ui,/Inviável para Ads/);
+ assert.match(ui,/Descartados para Ads:/);
+ assert.match(ui,/card\(item,\{rejected:true\}\)/);
+ assert.match(ui,/if\(!rejected\)actions\.append\(featured\)/);
 });

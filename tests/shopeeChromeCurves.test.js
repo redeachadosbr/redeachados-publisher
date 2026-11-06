@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
-import {normalizeVisibleOffers,verifiedMonthlyEvidence,qualifyChromeMatches,confirmChromeMonthlySamples} from '../shopeeChromeCurves.js';
+import {normalizeVisibleOffers,verifiedMonthlyEvidence,qualifyChromeMatches,confirmChromeMonthlySamples,splitChromeAdsCandidates} from '../shopeeChromeCurves.js';
 test('somente texto explícito de período permite vendas mensais',()=>{
  assert.equal(verifiedMonthlyEvidence('950 vendidos/mês'),true);
  assert.equal(verifiedMonthlyEvidence('Vendido no mês: 950'),true);
@@ -93,4 +93,21 @@ test('recuperação de Curvas utiliza vitrine pública somente quando a extensã
  assert.match(source,/if\(normalized\.length&&!normalized\.some/);
  assert.match(source,/recoveredMonthly/);
  assert.match(source,/featuredUnavailableUntil/);
+});
+
+test('custo acima da média nunca aparece como Potencial em verificação',()=>{
+ const qualified=[{sku:'APROVADO',adsCompetitiveness:{eligible:true,status:'within_market'}}];
+ const candidates=[
+  ...qualified,
+  {sku:'INOX',verified30:false,adsCompetitiveness:{eligible:false,status:'cost_above_market'}},
+  {sku:'SEM_MARGEM',verified30:false,adsCompetitiveness:{eligible:false,status:'above_40_pct'}},
+  {sku:'SEM_ESTOQUE',adsCompetitiveness:{eligible:false,status:'out_of_stock'}},
+  {sku:'SEM_PRECO',adsCompetitiveness:{eligible:false,status:'missing_market'}},
+  {sku:'DEMADA',adsCompetitiveness:{eligible:true,status:'within_market'}}
+ ];
+ const groups=splitChromeAdsCandidates(candidates,qualified);
+ assert.deepEqual(groups.discarded.map(x=>x.sku),['INOX','SEM_MARGEM','SEM_ESTOQUE']);
+ assert.deepEqual(groups.pending.map(x=>x.sku),['SEM_PRECO','DEMADA']);
+ assert.equal(groups.discardedReasons.cost_above_market,1);
+ assert.ok(!groups.pending.some(x=>x.sku==='INOX'));
 });

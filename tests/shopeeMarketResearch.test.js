@@ -118,3 +118,10 @@ test('mini processador manual nunca herda preço de processador elétrico 300 wa
  assert.equal(result.average,14.49);
  assert.ok(result.sample.every(x=>x.price<50));
 });
+
+test('não comparar escova plástica com anúncio de escova de cabo inox',()=>{
+ const source='Escova Sanitária Plástico com Suporte - Sortida';
+ const mismatch='Escova Sanitária Cabo Inox Suporte Plástico Polipropileno Redondo Banheiro';
+ assert.equal(comparableTitle(source,mismatch),false);
+ assert.equal(comparableTitle('Escova Sanitária de Banheiro com Suporte - Inox',mismatch),true);
+});

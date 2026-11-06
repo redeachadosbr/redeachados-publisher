@@ -18,7 +18,8 @@
   const imported=s.searchedSkuIds.size;
   const matched=[...s.matchedSkuIds].filter(sku=>s.searchedSkuIds.has(sku)).length;
   const viable=[...s.viableSkuIds].filter(sku=>s.searchedSkuIds.has(sku)).length;
-  const pending=Math.max(0,matched-viable);
+  const pending=[...s.pendingSkuIds].filter(sku=>s.searchedSkuIds.has(sku)).length;
+  const discarded=[...s.discardedSkuIds].filter(sku=>s.searchedSkuIds.has(sku)).length;
   const missingSearch=Math.max(0,searched-imported);
   const noMatch=Math.max(0,imported-matched);
   summary.hidden=false;
@@ -34,7 +35,8 @@
   summaryEl('curveChromeSummaryExcluded').textContent=countFmt.format(pending);
   const diagnostics=s.sourceStats||{};
   const causes=[
-   pending+' candidato(s) encontrados, ainda sem todos os requisitos de Ads',
+   pending+' candidato(s) aguardando dados para Ads',
+   discarded+' SKU(s) descartadas por custo, margem ou estoque',
    noMatch+' SKU(s) sem produto equivalente encontrado',
    missingSearch+' SKU(s) com consulta incompleta ou sem importação',
    (diagnostics.monthly_labels_unbound||0)+' pesquisa(s) com Vendido/Mês visível, mas sem vínculo ao anúncio',
@@ -162,7 +164,8 @@
    if(!plan.jobs.length)throw Error('Não há SKUs WeDrop disponíveis nesta categoria.');
    active={nonce,selected,plan,received:0,errors:0,scanned:0,monthly:0,found:0,blocked:false,
     searchedSkuIds:new Set(),attemptedSkuIds:new Set(),
-    matchedSkuIds:new Set(),viableSkuIds:new Set(),targetReached:false,
+    matchedSkuIds:new Set(),viableSkuIds:new Set(),
+     pendingSkuIds:new Set(),discardedSkuIds:new Set(),targetReached:false,
      batchStartScanned:0,sourceStats:{monthly_captured:0,
       monthly_labels_unbound:0,monthly_not_rendered:0,
       no_visible_offers:0,featured_public_recovered:0}};
@@ -224,6 +227,8 @@
    }
    for(const sku of data.chromeImport?.searchedSkus||[])s.searchedSkuIds.add(String(sku));
    s.matchedSkuIds=new Set((data.matchedSkuIds||[]).map(String));
+   s.pendingSkuIds=new Set((data.pendingSkuIds||[]).map(String));
+   s.discardedSkuIds=new Set((data.discardedSkuIds||[]).map(String));
     s.viableSkuIds=new Set((data.viableSkuIds||[]).map(String));
    globalThis.RACurvesAB?.showChromeResults?.(data);
    if(s.found>=s.selected.limit&&!s.targetReached){
@@ -232,8 +237,9 @@
      ' SKUs aptas atingida; encerrando pesquisas restantes.',s);
     window.postMessage({kind:'RA_CURVE_CHROME_CANCEL',nonce:s.nonce},ORIGIN);
    }
-   updateStage('validando',data.found+' SKUs Curva A/B viáveis para Ads; '+
-    data.pendingCount+' candidatos pendentes de demanda, preço ou margem.',s);
+   updateStage('validando',data.found+' SKUs aprovadas para Ads; '+
+    data.pendingCount+' aguardam dados e '+
+    Number(data.discardedCount||0)+' estão descartadas por custo, margem ou estoque.',s);
    say('Ponte: '+s.received+' consultas importadas; '+data.found+' SKUs classificadas e '+
     data.pendingCount+' candidatos pendentes. Busca '+m.position+'/'+m.total+'.');
   }catch(error){

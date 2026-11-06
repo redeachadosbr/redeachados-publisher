@@ -113,7 +113,7 @@
   link.href='https://shopee.com.br/search?'+params.toString();
  }
 
- function card(row,{pending=false}={}){
+ function card(row,{pending=false,rejected=false}={}){
   const box=t('article','curve-card'),frame=t('div',''),main=t('div','curve-card-main');
   if(row.imageUrl&&/^https:\/\/[^/]+\.digitaloceanspaces\.com\//.test(row.imageUrl)){
    const image=t('img','curve-card-image');
@@ -123,8 +123,12 @@
    frame.append(image);
   }else frame.append(t('div','curve-card-image curve-card-placeholder','Imagem WeDrop não disponível'));
   const top=t('div','curve-card-top'),title=t('h4','',row.name);
-  const curve=t('span','curve-curve '+(row.curve==='A'?'a':row.curve==='B'?'b':'pending'),
-     pending?'Potencial • em verificação':row.verified30?(row.curve==='LOW'?'Abaixo de 700':'Curva '+row.curve):'Pendente • 30 dias');
+  const pendingLabel=row.adsCompetitiveness?.status==='missing_market'?
+   'Pendente • preço insuficiente':row.adsCompetitiveness?.status==='missing_cost'?
+   'Pendente • custo WeDrop':'Pendente • vendas mensais';
+  const curve=t('span','curve-curve '+(rejected?'pending':row.curve==='A'?'a':row.curve==='B'?'b':'pending'),
+    rejected?'Inviável para Ads':pending?pendingLabel:
+     row.verified30?(row.curve==='LOW'?'Abaixo de 700':'Curva '+row.curve):'Pendente • 30 dias');
   top.append(title,curve);
   const sku=t('div','curve-sku');sku.append('SKU WeDrop: ',t('b','',row.sku));
   const fit=row.adsCompetitiveness||null;
@@ -165,10 +169,15 @@
   if(fit?.eligible===false&&fit.reason&&fit.status!=='missing_market')
    issues.push('Viabilidade de Ads: '+fit.reason);
   const issueNote=pending&&issues.length?
-   t('p','curve-evidence','O que falta para aprovar: '+issues.join(' • ')):null;
-  const evidence=t('p','curve-evidence',row.periodSource?
-   'Fonte da classificação: '+row.periodSource+'.':
-   'Somente vendas acumuladas disponíveis: classificação potencial, não vendas confirmadas em 30 dias.');
+   t('p','curve-evidence','Dados pendentes: '+issues.join(' • ')):null;
+  const rejectedNote=rejected?t('p','curve-evidence',
+   'DESCARTADA PARA ADS: '+(fit?.reason||'Custo, estoque ou margem incompatíveis.')+
+   ' • Custo WeDrop: '+money(row.cost)+' • Média do mercado: '+
+   money(row.avgCompetitorPrice)+'. Somente reavaliar se custo, preço ou estoque mudarem.'):null;
+  const evidence=t('p','curve-evidence',rejected?
+   'Somente no histórico de auditoria; esta SKU não é oportunidade Ads nas condições atuais.':
+   row.periodSource?'Fonte da classificação: '+row.periodSource+'.':
+   'Somente vendas acumuladas disponíveis; vendas mensais ainda não comprovadas.');
   const fitScenario=fit?.eligible?t('p','curve-ads-scenario',
    'Simulação: custo WeDrop, taxas padrão, 10% para Ads e margem líquida mínima de 5%. Confira taxas e ROAS reais antes de anunciar.'):null;
   const proof=t('details','curve-monthly-competitors');
@@ -189,8 +198,9 @@
    row.inStock?(row.availability?'WeDrop: '+row.availability:'Estoque WeDrop não confirmado'):
     'WeDrop: '+(row.availability||'Indisponível'));
   const actions=t('div','curve-card-actions');
-  const copy=t('button','',pending?'Aguardando confirmação para Ads':'Copiar SKU para Ads');copy.type='button';
-  copy.disabled=pending;
+  const copy=t('button','',rejected?'Descartada para Ads':
+   pending?'Aguardando dados para Ads':'Copiar SKU para Ads');copy.type='button';
+  copy.disabled=pending||rejected;
   copy.addEventListener('click',async()=>{
    try{
     await navigator.clipboard.writeText(row.sku);
@@ -207,11 +217,11 @@
   const featured=t('a','','Conferir Em Destaque');
   if(/^https:\/\/shopee\.com\.br\/search\?/.test(row.featuredSearchUrl||'')){
    featured.href=row.featuredSearchUrl;featured.target='_blank';featured.rel='noopener noreferrer';
-   actions.append(featured);
+   if(!rejected)actions.append(featured);
   }
   actions.append(copy,link);
   main.append(top,sku,...(fitTag?[fitTag]:[]),facts,competitor,
-   ...(issueNote?[issueNote]:[]),evidence,
+   ...(issueNote?[issueNote]:[]),...(rejectedNote?[rejectedNote]:[]),evidence,
    ...(fitScenario?[fitScenario]:[]),proof,stock,actions);
   appendPrices(main,row);
   appendSEO(main,row);
@@ -299,15 +309,32 @@
   q('curveContinueSearch').hidden=true;
   for(const item of result.items||[])grid.append(card(item));
   const pending=Array.isArray(result.pendingItems)?result.pendingItems:[];
+  const discarded=Array.isArray(result.discardedItems)?result.discardedItems:[];
   if(pending.length){
-   grid.append(t('p','curve-evidence',
-    'Candidatos em análise: '+result.pendingCount+
-    ' SKUs com ofertas comparáveis, mas ainda sem TODOS os requisitos de Curva e Ads. '+
-    'São necessárias 2 a 5 lojas com vendas/mês na faixa A/B, preço, custo e estoque. '+
-    'Os itens abaixo NÃO estão aprovados para anunciar.'));
+   const note=t('p','curve-evidence','Pendentes de dados: '+result.pendingCount+
+    ' SKU(s) sem comprovação mensal ou com preço/custo ainda insuficientes. '+
+    'Itens com inviabilidade financeira comprovada NÃO aparecem nesta lista.');
+   note.style.gridColumn='1 / -1';grid.append(note);
    for(const item of pending)grid.append(card(item,{pending:true}));
-  }else if(!result.items?.length)grid.append(t('div','curve-empty',
-   'Nenhuma SKU aprovada nesta etapa. Ainda existem consultas ou evidências pendentes; isso não é reprovação definitiva.'));
+  }
+  if(Number(result.discardedCount)>0){
+   const audit=t('details','curve-discarded-audit');
+   audit.style.gridColumn='1 / -1';audit.style.width='100%';
+   audit.style.padding='12px 15px';audit.style.border='1px solid #e2d2cf';
+   audit.style.borderRadius='12px';
+   audit.append(t('summary','',
+    'Descartados para Ads: '+result.discardedCount+
+    ' SKU(s) — custo maior que a média, margem inviável ou estoque indisponível. Ver auditoria.'));
+   const auditGrid=t('div','curve-discarded-grid');
+   auditGrid.style.display='grid';
+   auditGrid.style.gridTemplateColumns='repeat(auto-fit,minmax(320px,1fr))';
+   auditGrid.style.gap='12px';auditGrid.style.marginTop='12px';
+   for(const item of discarded)auditGrid.append(card(item,{rejected:true}));
+   audit.append(auditGrid);grid.append(audit);
+  }
+  if(!result.items?.length&&!pending.length&&!Number(result.discardedCount))
+   grid.append(t('div','curve-empty',
+    'Nenhuma oportunidade encontrada. Verifique a correspondência e as fontes da pesquisa.'));
   const prefix=result.shortage?
    (result.competitiveOnly?'Curvas A/B competitivas para Ads: ':result.verifiedOnly?'Curvas mensais confirmadas: ':'Oportunidades potenciais: ')+
    result.items.length+' dos '+result.requested+
@@ -323,7 +350,8 @@
   const affiliate=Number(result.sources?.affiliate||0);
    const chromeCount=Number(result.sources?.chrome||0);
   const marketNotice=result.competitiveOnly?
-   ' '+Number(result.excludedByPrice||0)+' SKU(s) A/B excluídas por preço/custo, estoque ou média indisponível. Teto +40%, cenário de Ads aplicado.':'';
+   ' '+Number(result.discardedCount||0)+' SKU(s) descartadas para Ads por custo, margem ou estoque; '+
+   Number(result.pendingCount||0)+' SKU(s) aguardam informações. Teto +40% aplicado.':'';
   const foot=' Fonte: '+(feature?'busca pública Em Destaque Shopee ('+feature+' consultas). ':'')+
    (affiliate?'API Afiliados ('+affiliate+' consultas). ':'')+
     (chromeCount?'Ponte Chrome ('+chromeCount+' consultas visíveis). ':'')+

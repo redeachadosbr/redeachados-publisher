@@ -75,6 +75,9 @@ const comparableSpecs=(source,candidate)=>{
  if(specs.some(([a,b])=>a!==null&&(b===null||Math.abs(a-b)>0.01)))return false;
  // Mesmo sem especificação numérica, materiais e formatos incompatíveis importam.
  if(/\binox\b/.test(sn)&&/\bplastico\b/.test(cn)&&!/\binox\b/.test(cn))return false;
+ // "Escova plástica" não é o mesmo modelo que "escova com cabo inox e
+ // suporte plástico". O acabamento predominante da SKU precisa corresponder.
+ if(/\bplastico\b/.test(sn)&&!/\binox\b/.test(sn)&&/\binox\b/.test(cn))return false;
  const size=dimension(source),otherSize=dimension(candidate);
  if(size&&otherSize&&size!==otherSize)return false;
  return true;
