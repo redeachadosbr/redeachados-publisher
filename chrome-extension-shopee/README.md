@@ -1,16 +1,20 @@
-# Ponte Shopee Em Destaque - Rede Achados BR
+# Ponte Chrome Shopee Em Destaque 1.2.0
 
-Instalacao no Google Chrome (uma unica vez):
-1. No Shopee Manager, clique em "Baixar Ponte Shopee (Chrome)" e extraia o arquivo ZIP.
-2. Acesse chrome://extensions e ative "Modo do desenvolvedor".
-3. Clique em "Carregar sem compactacao" e selecione a pasta redeachados-shopee-chrome (onde fica manifest.json).
-4. Atualize o Shopee Manager e abra Curvas A e B.
-5. Selecione a categoria WeDrop e clique em "Pesquisar no Chrome (Em Destaque)".
+Instale o ZIP baixado pelo menu Curvas A/B do Shopee Manager:
+extraia o arquivo, abra chrome://extensions, ative Modo do desenvolvedor,
+clique em Carregar sem compactação e selecione redeachados-shopee-chrome.
 
-O navegador abre a busca comum da Shopee e analisa anuncios equivalentes.
-O Manager recebe dados da vitrine, nao usa senhas ou cookies da Shopee e nao altera anuncios/Ads.
+A pesquisa cria **uma janela auxiliar minimizada** com **uma aba reutilizada**
+durante os lotes. Nenhuma aba é adicionada à janela principal. Essa janela
+ainda pode aparecer na barra de tarefas ou brevemente na tela, dependendo
+do Windows/Chrome: não é invisível em nível de sistema operacional.
+Ao finalizar/cancelar, o Manager fecha somente a janela que criou.
+O andamento aparece no Manager, com opção de interromper.
 
-Curva A: 900 ou mais vendas do mes (sem teto). Curva B: 700 a 899.
-Sem texto explicito de vendido/mes ou 30 dias, classificacao fica pendente.
-A captura depende do que a Shopee realmente mostrar; se houver CAPTCHA,
-bloqueio ou mudanca de layout, nenhum resultado mensal e inventado.
+Se a Shopee solicitar verificação humana ou não renderizar anúncios em
+segundo plano, a pesquisa para sem contornar bloqueios e sem inventar
+volume de vendas mensais.
+
+Curva A = 900+ vendas em 30 dias. Curva B = 700–899.
+Requer 3 lojas com evidência mensal e custo/preço competitivo para Ads.
+A extensão não publica anúncios nem ativa campanhas.

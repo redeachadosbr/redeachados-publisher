@@ -1,11 +1,12 @@
 {
   "manifest_version": 3,
   "name": "Rede Achados BR - Shopee Em Destaque",
-  "version": "1.1.1",
-  "description": "Le somente dados visiveis da busca Em Destaque e envia ao Shopee Manager apos acao do usuario.",
+  "version": "1.2.0",
+  "description": "Pesquisa na Shopee por janela auxiliar minimizada; mostra etapas no Manager sem abrir abas na janela principal.",
   "permissions": [
     "tabs",
-    "scripting"
+    "scripting",
+    "storage"
   ],
   "host_permissions": [
     "https://shopee.com.br/*",
