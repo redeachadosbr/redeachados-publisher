@@ -116,11 +116,16 @@
      el(col,'small',label);
     };
     if(source==='api'){
-     add(number(row.viewsObserved!==null&&row.viewsObserved!==undefined?
-      row.viewsObserved:row.latestTotalViews),
-      row.viewsObserved!==null&&row.viewsObserved!==undefined?
-       'Variação observada (parcial)':'Contador Shopee (sem período)',
-      'organic-top10-views');
+     const measured=row.viewsObserved!==null&&row.viewsObserved!==undefined;
+     add(number(measured?row.viewsObserved:null),measured?
+      row.viewsObserved===0?'Sem aumento entre leituras':'Novas visualizações observadas':
+      'Sem duas leituras neste período','organic-top10-views');
+     const metric=card.querySelector('.organic-top10-views');
+     if(metric)metric.title=measured?
+      'Medições de '+date(row.observedFrom)+' até '+date(row.observedTo)+
+      '; não são o total oficial do dia.':
+      'Contador acumulado: '+number(row.latestTotalViews)+
+      '. Para obter a diferença no período são necessárias duas leituras.';
     }else if(source==='performance'){
      // Métricas exatamente como exportadas da Central do Vendedor.
      // "Adicionou ao carrinho" não significa carrinho abandonado.
@@ -180,63 +185,133 @@
   async function collectApiViews(force=false){
    const response=await fetch('/api/shopee/product-views/collect',{
     method:'POST',credentials:'same-origin',cache:'no-store',
-    headers:{'Content-Type':'application/json'},body:JSON.stringify({force})
+    headers:{'Content-Type':'application/json'},body:JSON.stringify({force}),
+    signal:AbortSignal.timeout(300000)
    });
    const data=await response.json().catch(()=>({}));
    if(!response.ok||data.ok!==true)
     throw Error(data.error||'Shopee não confirmou a coleta de visualizações.');
    return data;
   }
+  function apiBusy(on,step=''){
+   const button=$('organicTop10Update'),progress=$('organicTop10RefreshProgress');
+   button.disabled=on;button.dataset.refreshing=String(on);
+   button.setAttribute('aria-busy',String(on));
+   button.textContent=on?'⟳ Consultando Shopee…':'↻ Atualizar Shopee';
+   if(progress)progress.hidden=!on;
+   if(on){
+    $('organicTop10RefreshStep').textContent=step||'Preparando consulta…';
+    $('organicTop10RefreshCount').textContent='Aguardando resposta da API Shopee.';
+    $('organicTop10RefreshBar').removeAttribute('value');
+   }
+  }
+  async function pollCollectionProgress(){
+   if($('organicTop10RefreshProgress')?.hidden)return;
+   try{
+    const response=await fetch('/api/shopee/product-views/collect-status',{
+     credentials:'same-origin',cache:'no-store',signal:AbortSignal.timeout(7000)});
+    if(!response.ok)return;
+    const progress=await response.json();
+    if(!progress.ok||!progress.running)return;
+    const name={connecting:'Conectando à Shopee…',scanning:'Lendo contadores por anúncio…',
+     saving:'Gravando medições verificadas…',completed:'Consulta registrada.'};
+    const stage=name[progress.phase]||'Consultando Shopee…';
+    $('organicTop10RefreshStep').textContent=stage;
+    const total=Number(progress.total)||0,done=Number(progress.processed)||0;
+    if(total){
+     const msg=number(done)+' de '+number(total)+' anúncios processados';
+     $('organicTop10RefreshCount').textContent=msg;
+     $('organicTop10RefreshBar').max=total;
+     $('organicTop10RefreshBar').value=Math.min(total,done);
+     notice(stage+' '+msg+'. Consulta somente leitura, sem modificar anúncios.');
+    }else $('organicTop10RefreshCount').textContent='Identificando anúncios ativos…';
+   }catch{
+    // Falhar ao exibir o progresso não cancela nem falseia a coleta.
+   }
+  }
   async function refreshApi({forceCollect=false}={}){
-   if(loading)return;
+   if(loading){
+    notice('Já existe uma consulta em andamento. Acompanhe a etapa exibida antes de atualizar novamente.');
+    return;
+   }
    loading=true;
-   const serial=++loadSequence;
-   $('organicTop10ViewsHeader').textContent='Visualizações';
-   notice('Lendo as visualizações oficiais já registradas. Os números não separam Ads…');
+   const serial=++loadSequence,selectedPeriod=apiPeriod;
+   let polling=null,collectionResult=null,collectionError=null;
+   apiBusy(true,forceCollect?'Atualização manual iniciada…':'Consultando medições salvas…');
+   notice('Carregando leituras da Shopee; contadores acumulados não equivalem às visitas de hoje.');
    try{
     let data=await getApiSummary();
-    if(forceCollect||data.needsCollection&&!apiAutoAttempted){
+    if(forceCollect||(data.needsCollection&&!apiAutoAttempted)){
      apiAutoAttempted=true;
-     notice('Consultando visualizações dos anúncios na Shopee. Isto é somente leitura e pode levar algum tempo…');
+     notice('Consultando visualizações diretamente na Shopee. O progresso dos anúncios será exibido no rodapé.');
+     $('organicTop10RefreshStep').textContent='Iniciando leitura pela API Shopee…';
+     polling=setInterval(()=>{void pollCollectionProgress();},1300);
      try{
-      await collectApiViews(forceCollect);
+      collectionResult=await collectApiViews(forceCollect);
+     }catch(error){collectionError=String(error.message||error);}
+     finally{if(polling!==null){clearInterval(polling);polling=null;}}
+     if(collectionResult){
+      if(collectionResult.skipped){
+       notice('A Shopee já tinha uma amostra recente em '+date(collectionResult.capturedAt)+
+        '. Não foi feita nova coleta.');
+      }else{
+       $('organicTop10RefreshStep').textContent='Leitura concluída — atualizando ranking…';
+       $('organicTop10RefreshCount').textContent=
+        number(collectionResult.saved??collectionResult.scanned??0)+' anúncios consultados e gravados.';
+       notice('Consulta concluída: '+number(collectionResult.saved??collectionResult.scanned??0)+
+        ' anúncios foram atualizados. Calculando apenas o aumento efetivamente observado.','success');
+      }
       data=await getApiSummary();
-     }catch(error){
-      notice('A nova consulta não pôde ser concluída: '+String(error.message||error)+
-       '. Exibindo apenas medições salvas, quando disponíveis.','error');
      }
     }
-    if(serial!==loadSequence)return;
+    if(serial!==loadSequence||source!=='api')return;
     last=data;
-    const samples=data.list||[];
-    $('organicTop10Period').textContent='Janela solicitada: '+
+    const rows=data.list||[],measured=Number(data.withPeriodDelta||0);
+    const increased=Number(data.withPositiveDelta||0);
+    const from=data.observedFrom?date(data.observedFrom):null;
+    const to=data.observedTo?date(data.observedTo):null;
+    $('organicTop10Period').textContent='Período selecionado: '+
      period(data.window?.start)+' a '+period(data.window?.end);
-    $('organicTop10Count').textContent=
-     number(data.totalProducts)+' anúncios medidos · '+
-     number(data.withPeriodDelta)+' com diferença observada';
+    $('organicTop10Count').textContent=number(data.totalProducts)+
+     ' anúncios registrados · '+number(measured)+' com 2 medições · '+
+     number(increased)+' com aumento';
     $('organicTop10Footnote').textContent=
-     'API Shopee get_item_extra_info. Visualizações gerais por Item ID: podem incluir Ads. '+
-     'As diferenças são parciais, apenas entre medições efetivas ('+
-     (data.lastSample?'última: '+date(data.lastSample):'nenhuma leitura salva')+
-     '). Impressões orgânicas, visitantes únicos, CTR e abandono não são retornados por esta API.';
+     'API Shopee get_item_extra_info: visualizações acumuladas por anúncio; podem incluir Ads. '+
+     'Diferenças válidas somente no intervalo de leituras'+(from&&to?' de '+from+' até '+to:'')+
+     '. Não é um relatório oficial de Hoje, 7 ou 30 dias. '+
+     'Última leitura: '+(data.lastSample?date(data.lastSample):'nenhuma')+
+     '. Impressões, visitantes únicos, CTR e carrinhos não são fornecidos.';
     importBox.hidden=true;importBox.dataset.open='';
-    updateHeading();
-    render(samples);
-    if(!samples.length)
-     notice('Não há medições suficientes no período solicitado. A API não permite buscar dias anteriores à primeira coleta. '+
-      'Clique em “Atualizar Shopee” para registrar uma nova amostra.');
-    else if(data.withPeriodDelta===0)
-     notice('A primeira coleta registrou o contador de visualizações da Shopee, não números do período. '+
-      'Após novas medições, o painel poderá comparar apenas o intervalo realmente observado.');
-    else
-     notice('Exibindo diferenças OBSERVADAS nas datas escolhidas, não todo o período oficial. '+
-      number(data.withPeriodDelta)+' anúncios têm pelo menos duas medições.','success');
+    updateHeading();render(rows);
+    if(collectionError){
+     notice('Atualização não concluída: '+collectionError+
+      '. Mantidas as últimas leituras salvas, sem inventar resultados.','error');
+    }else if(!rows.length){
+     notice('Não há leituras deste período. A API não permite recuperar visitas anteriores à primeira medição. '+
+      'Clique em Atualizar Shopee para gravar outra leitura.');
+    }else if(measured===0){
+     notice('Sem duas medições válidas no período. O número acumulado do anúncio não representa '+
+      'as visualizações de hoje. Clique em Atualizar Shopee para gravar outra medição.');
+    }else if(increased===0){
+     notice('Nenhum aumento observado nos '+number(measured)+' anúncios entre '+
+      (from||'a primeira leitura')+' e '+(to||'a última leitura')+
+      '. Isso NÃO significa zero visualizações no dia inteiro.');
+    }else{
+     notice(number(increased)+' anúncios tiveram novas visualizações entre '+
+      (from||'a primeira leitura')+' e '+(to||'a última leitura')+
+      '. Esses valores são parciais, não o total oficial do dia.','success');
+    }
    }catch(error){
-    render([]);
-    notice('Consulta da API indisponível: '+String(error.message||error)+
-     '. Não será exibida nenhuma estatística inventada.','error');
-    $('organicTop10Count').textContent='API indisponível';
-   }finally{loading=false;}
+    if(serial!==loadSequence)return;
+    if(!last)render([]);
+    notice('Consulta Shopee indisponível: '+String(error.message||error)+
+     '. Confira a conexão antes de tentar novamente.','error');
+    $('organicTop10Count').textContent='Consulta indisponível';
+   }finally{
+    if(polling!==null)clearInterval(polling);
+    loading=false;apiBusy(false);
+    if(selectedPeriod!==apiPeriod&&source==='api')void refreshApi();
+   }
   }
   function setSource(next){
    const wasImporting=!importBox.hidden;

@@ -1127,3 +1127,24 @@ body.organic-top10-open{overflow:hidden}
  .organic-top10-modal:not([data-importing="true"]){height:calc(100dvh - 22px)}
  .organic-top10-modal:not([data-importing="true"]) .organic-top10-header{min-height:108px;padding-top:12px;padding-bottom:12px}
 }
+
+/* Coleta API monitorada: barra e resposta visível, sem esconder execução. */
+.organic-top10-modal #organicTop10RefreshProgress[hidden]{display:none!important}
+.organic-top10-modal #organicTop10RefreshProgress{
+ order:-1;flex:1 1 100%;min-width:0;padding:10px 13px;
+ background:#fff;border:1px solid #cbdcf1;border-radius:11px;
+ display:flex;align-items:center;justify-content:space-between;gap:12px;
+ box-shadow:0 3px 12px #123f7512
+}
+.organic-top10-modal #organicTop10RefreshProgress strong{display:block;font-size:11px;color:#1d4e80}
+.organic-top10-modal #organicTop10RefreshCount{display:block;font-size:10px;color:#567597}
+.organic-top10-modal #organicTop10RefreshBar{width:min(210px,37%);flex:none;height:9px;accent-color:#2672c5}
+.organic-top10-modal #organicTop10Update[data-refreshing="true"]{
+ cursor:progress!important;opacity:.88!important;
+ background:linear-gradient(120deg,#2e78c8,#155399)!important
+}
+.organic-top10-modal #organicTop10Update[data-refreshing="true"]:disabled{opacity:.88!important}
+@media(max-width:590px){
+ .organic-top10-modal #organicTop10RefreshProgress{flex-direction:column;align-items:stretch;gap:7px}
+ .organic-top10-modal #organicTop10RefreshBar{width:100%}
+}

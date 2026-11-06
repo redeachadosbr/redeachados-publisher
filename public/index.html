@@ -15,7 +15,7 @@
 <link rel="stylesheet" href="/shopee-market-research.css?v=1.20.18">
 <link rel="stylesheet" href="/dashboard-new-listings.css?v=1.20.21-shopee">
 <link rel="stylesheet" href="/store-traffic.css?v=1.0.0">
-<link rel="stylesheet" href="/organic-top10.css?v=1.3.4-premium-3d-compact">
+<link rel="stylesheet" href="/organic-top10.css?v=1.3.5-views-tracking">
 <link rel="stylesheet" href="/finance-thumbnails.css?v=1.20.22">
 <link rel="stylesheet" href="/title-studio.css?v=1.21.16-ranked-best">
 <link rel="stylesheet" href="/seo-modern-layout.css?v=1.0.5-compact-cards">
@@ -2734,7 +2734,7 @@
 <script src="/optimizer-image-studio.js?v=1.0.5-move-enabled"></script>
 <script src="/optimizer-technical-studio.js?v=1.2.0-compact-fields"></script>
 <script src="/store-traffic.js?v=1.0.0"></script>
-<script src="/organic-top10.js?v=1.3.2-fixed-ranking-scroll"></script>
+<script src="/organic-top10.js?v=1.3.5-views-tracking"></script>
 
 <!-- Modal independente do roteador: abre em cada login / carregamento autenticado -->
 <div id="organicTop10Overlay" class="organic-top10-overlay" hidden>
@@ -2849,6 +2849,11 @@
    </form>
   </div>
   <footer class="organic-top10-footer">
+   <div id="organicTop10RefreshProgress" class="organic-top10-refresh-progress" role="status" aria-live="polite" hidden>
+    <div><strong id="organicTop10RefreshStep">Consultando Shopee…</strong>
+     <span id="organicTop10RefreshCount">Preparando consulta</span></div>
+    <progress id="organicTop10RefreshBar" max="100" value="0" aria-label="Anúncios consultados na Shopee"></progress>
+   </div>
    <details class="organic-top10-source-details">
     <summary>Fonte dos dados e observações</summary>
     <p id="organicTop10Footnote" class="organic-top10-footnote">A API mostra visualizações gerais acumuladas, não impressões ou tráfego exclusivamente orgânico. Os totais por dia, 7 ou 30 dias dependem de medições guardadas após a ativação.</p>

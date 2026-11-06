@@ -202,3 +202,19 @@ test('coleta informa progresso efetivo por lote, incluindo total consultado',asy
  assert.ok(events.some(e=>e.phase==='scanning'&&e.processed===1&&e.total===1));
  assert.equal(events.at(-1).phase,'saving');
 });
+
+test('UI informa estado do botão, barra com contagem real, e não exibe acumulado como Hoje',()=>{
+ const ui=readFileSync(new URL('../public/organic-top10.js',import.meta.url),'utf8');
+ const html=readFileSync(new URL('../public/index.html',import.meta.url),'utf8');
+ const server=readFileSync(new URL('../server.js',import.meta.url),'utf8');
+ for(const id of ['organicTop10RefreshProgress','organicTop10RefreshStep',
+  'organicTop10RefreshCount','organicTop10RefreshBar'])
+  assert.match(html,new RegExp('id="'+id+'"'));
+ assert.match(ui,/apiBusy\(true/);
+ assert.match(ui,/apiBusy\(false/);
+ assert.match(ui,/\/api\/shopee\/product-views\/collect-status/);
+ assert.match(ui,/signal:AbortSignal\.timeout\(300000\)/);
+ assert.match(ui,/number\(measured\?row\.viewsObserved:null\)/);
+ assert.match(server,/product-views\/collect-status/);
+ assert.match(server,/onProgress:next/);
+});
