@@ -108,7 +108,7 @@ test('rolagem acumula anúncios e Vendido/Mês carregados fora da primeira dobra
    const title='Balança Digital de Cozinha 10kg Alta Precisão';
    const href='https://shopee.com.br/balanca-cozinha-i.'+String(700+slot)+'.'+id;
    const link={innerText:title,textContent:title,getAttribute:k=>k==='href'?href:null,
-    closest:()=>card,parentElement:null};
+    closest:()=>card,parentElement:null,querySelectorAll:()=>[]};
    const card={innerText:title+' R$ 16,90 '+label,
     textContent:title+' R$ 16,90 '+label,
     querySelector:selector=>selector==='img[alt]'?null:{innerText:title},
