@@ -3,6 +3,35 @@ let busy=false;
 const delay=ms=>new Promise(resolve=>setTimeout(resolve,ms));
 const nonceOk=s=>/^[a-f0-9-]{30,50}$/i.test(String(s||''));
 const managerOk=sender=>/^https:\/\/redeachados-shopee\.onrender\.com\//.test(sender?.tab?.url||'');
+const MANAGER_MATCH='https://redeachados-shopee.onrender.com/*';
+async function injectManagerBridge(tabId){
+ try{
+  if(!Number.isInteger(tabId))return;
+  const tab=await chrome.tabs.get(tabId);
+  if(!managerOk({tab}))return;
+  await chrome.scripting.executeScript({
+   target:{tabId},files:['manager.js'],world:'ISOLATED'
+  });
+ }catch(error){
+  console.warn('Ponte: não foi possível reativar a guia do Manager.',
+   String(error?.message||error).slice(0,160));
+ }
+}
+async function repairOpenManagerTabs(){
+ try{
+  const tabs=await chrome.tabs.query({url:MANAGER_MATCH});
+  for(const tab of tabs)await injectManagerBridge(tab.id);
+ }catch(error){
+  console.warn('Ponte: não foi possível conferir as guias abertas.',
+   String(error?.message||error).slice(0,160));
+ }
+}
+chrome.runtime.onInstalled.addListener(()=>{void repairOpenManagerTabs();});
+chrome.runtime.onStartup.addListener(()=>{void repairOpenManagerTabs();});
+chrome.tabs.onActivated.addListener(info=>{void injectManagerBridge(info.tabId);});
+chrome.tabs.onUpdated.addListener((tabId,info,tab)=>{
+ if(info.status==='complete'&&managerOk({tab}))void injectManagerBridge(tabId);
+});
 function buildUrl(query,page=0){
  const u=new URL('https://shopee.com.br/search');
  u.searchParams.set('keyword',String(query).trim().slice(0,70));

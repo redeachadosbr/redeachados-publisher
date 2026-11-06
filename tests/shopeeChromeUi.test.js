@@ -29,6 +29,6 @@ test('pesquisa continua entre lotes até 10 SKUs e demonstra 3 concorrentes reai
 test('exige a extensão Shopee Chrome 1.1.0 para leitura aprimorada',()=>{
  const code=readFileSync(new URL('../public/curvas-chrome.js',import.meta.url),'utf8');
  const manifest=JSON.parse(readFileSync(new URL('../chrome-extension-shopee/manifest.json',import.meta.url),'utf8'));
- assert.equal(manifest.version,'1.1.0');
+ assert.equal(manifest.version,'1.1.1');
  assert.match(code,/parts\[1\]>=1/);
 });

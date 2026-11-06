@@ -2,6 +2,8 @@
 (()=>{'use strict';
  const ORIGIN='https://redeachados-shopee.onrender.com';
  if(location.origin!==ORIGIN)return;
+ if(globalThis.__RA_CURVE_BRIDGE_111__)return;
+ globalThis.__RA_CURVE_BRIDGE_111__=true;
  const nonceOk=s=>/^[a-f0-9-]{30,50}$/i.test(String(s||''));
  const publish=payload=>window.postMessage(payload,ORIGIN);
  window.addEventListener('message',event=>{
@@ -9,7 +11,13 @@
   const m=event.data||{};
   if(!nonceOk(m.nonce))return;
   if(m.kind==='RA_CURVE_CHROME_PROBE'){
-   publish({kind:'RA_CURVE_CHROME_READY',nonce:m.nonce,version:chrome.runtime.getManifest().version});
+   try{
+    publish({kind:'RA_CURVE_CHROME_READY',nonce:m.nonce,
+     version:chrome.runtime.getManifest().version});
+   }catch{
+    publish({kind:'RA_CURVE_CHROME_DIAGNOSTIC',nonce:m.nonce,
+     error:'A extensão perdeu o contexto. Atualize a extensão e recarregue a guia.'});
+   }
   }else if(m.kind==='RA_CURVE_CHROME_START'){
    const jobs=Array.isArray(m.jobs)?m.jobs:[];
    if(!jobs.length||jobs.length>10||jobs.some(x=>!x||String(x.query||'').length<3||

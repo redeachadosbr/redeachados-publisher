@@ -20,22 +20,39 @@
   if(!response.ok||data.ok!==true)throw Error(data.error||'HTTP '+response.status);
   return data;
  }
- function ping(nonce){
+ function pingOnce(nonce){
   return new Promise(resolve=>{
    let done=false;
-   function finish(ok){if(done)return;done=true;clearTimeout(timer);
-    window.removeEventListener('message',listener);resolve(ok);}
-   const listener=e=>{
-    if(e.source===window&&e.origin===ORIGIN&&e.data?.kind==='RA_CURVE_CHROME_READY'&&
-     e.data?.nonce===nonce){
-      const parts=String(e.data.version||'0.0.0').split('.').map(Number);
-      finish(parts[0]>1||(parts[0]===1&&parts[1]>=1));
-     }
+   const finish=value=>{
+    if(done)return;done=true;clearTimeout(timer);
+    window.removeEventListener('message',listener);resolve(value);
+   };
+   const listener=event=>{
+    if(event.source!==window||event.origin!==ORIGIN||event.data?.nonce!==nonce)return;
+    if(event.data?.kind==='RA_CURVE_CHROME_DIAGNOSTIC'){
+     finish({ok:false,reason:String(event.data.error||'Contexto da extensão expirado.')});
+     return;
+    }
+    if(event.data?.kind!=='RA_CURVE_CHROME_READY')return;
+    const version=String(event.data.version||'0.0.0');
+    const parts=version.split('.').map(Number);
+    const ok=parts[0]>1||(parts[0]===1&&parts[1]>=1&&
+     (parts[1]>1||Number(parts[2]||0)>=1));
+    finish({ok,version,reason:ok?'':'Extensão '+version+' é antiga. Requer 1.1.1.'});
    };
    window.addEventListener('message',listener);
-   const timer=setTimeout(()=>finish(false),1900);
+   const timer=setTimeout(()=>finish({ok:false,reason:'A extensão não respondeu na aba do Manager.'}),2600);
    window.postMessage({kind:'RA_CURVE_CHROME_PROBE',nonce},ORIGIN);
   });
+ }
+ async function ping(nonce){
+  let result={ok:false,reason:'Ponte não detectada.'};
+  for(let attempt=0;attempt<3;attempt++){
+   result=await pingOnce(nonce);
+   if(result.ok||result.version)return result;
+   if(attempt<2)await new Promise(resolve=>setTimeout(resolve,450));
+  }
+  return result;
  }
  async function begin(){
   if(active)return;
@@ -45,7 +62,8 @@
   button.disabled=true;
   say('Verificando instalação da Ponte Chrome…');
   try{
-   if(!await ping(nonce))throw Error('Ponte não detectada ou desatualizada. Baixe a versão 1.1.0, atualize a extensão em chrome://extensions e recarregue o Manager.');
+   const bridge=await ping(nonce);
+   if(!bridge.ok)throw Error(bridge.reason+' Baixe a versão 1.1.1, ative o acesso ao site em Detalhes da extensão, atualize a extensão e use Ctrl + Shift + R no Manager.');
    const params=new URLSearchParams({category:selected.category,keyword:selected.keyword,
     offset:String(offset),limit:'6'});
    let plan=await json('/api/shopee/curvas-ab/chrome-plan?'+params);
