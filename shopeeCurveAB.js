@@ -290,8 +290,26 @@ export function matchCurveOffers({catalog=[],offers=[],costs=[],baseline=new Map
   }
  }
  const checkedAt=today+'T12:00:00.000Z';
- return [...found.values()].map(row=>addMarketAnalysis(
-  row,[...(offersBySku.get(row.sku)||new Map()).values()],checkedAt,ownShopId)).sort((a,b)=>
+ return [...found.values()].map(row=>{
+  // Várias ofertas independentes com volume mensal são necessárias para
+  // validar a oportunidade. Não somar as vendas das diferentes lojas.
+  const comparable=[...(offersBySku.get(row.sku)||new Map()).values()];
+  const independent=new Map();
+  for(const offer of comparable){
+   const monthly=intSales(offer.monthlySold);
+   if(monthly===null)continue;
+   const key=String(offer.shopId),prior=independent.get(key);
+   if(!prior||monthly>prior.monthlySold)independent.set(key,{
+    shopId:key,itemId:String(offer.itemId),title:String(offer.productName||'').slice(0,210),
+    price:num(offer.priceMin),monthlySold:monthly,source:offer.dataSource||'',
+    url:'https://shopee.com.br/product/'+offer.shopId+'/'+offer.itemId});
+  }
+  const monthlyCompetitors=[...independent.values()].sort((a,b)=>b.monthlySold-a.monthlySold);
+  return {...addMarketAnalysis(row,comparable,checkedAt,ownShopId),
+   monthlyCompetitorCount:monthlyCompetitors.length,
+   monthlyCompetitors:monthlyCompetitors.slice(0,5),
+   comparableCompetitorCount:new Set(comparable.map(o=>String(o.shopId))).size};
+ }).sort((a,b)=>
   Number(b.verified30)-Number(a.verified30)||
   Number(b.inStock)-Number(a.inStock)||
   (b.sales30??b.salesDisplayed)-(a.sales30??a.salesDisplayed)||b.matchScore-a.matchScore||

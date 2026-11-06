@@ -333,3 +333,16 @@ test('sem volume mensal, nem anúncio com 100 mil vendas acumuladas vira Curva A
  assert.equal(rows[0].curve,'PENDING');
  assert.equal(pickCurveResults(rows,{curve:'A',limit:5,verifiedOnly:true}).items.length,0);
 });
+
+test('cruzamento agrupa concorrentes mensais por loja sem somar volumes e respeita SKU não publicada',()=>{
+ const catalog=[{supplier_sku:'WDR-5',product_data:{
+  name:'Coqueteleira Shaker Inox 500ml',category:'Cozinha',rawAvailability:'Disponível'}}];
+ const offers=[['11','1',1100],['11','2',990],['12','3',850],['13','4',740]].map(([shopId,itemId,monthlySold])=>({
+  shopId,itemId,monthlySold,sales:5000,priceMin:29.9,
+  productName:'Coqueteleira Shaker Inox 500ml',dataSource:'shopee-featured-chrome'}));
+ const rows=matchCurveOffers({catalog,offers,ownShopId:'999'});
+ assert.equal(rows.length,1);
+ assert.equal(rows[0].monthlyCompetitorCount,3);
+ assert.deepEqual(rows[0].monthlyCompetitors.map(x=>x.monthlySold),[1100,850,740]);
+ assert.equal(rows[0].curve,'A');
+});

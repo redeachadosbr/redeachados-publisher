@@ -74,6 +74,14 @@ export function normalizeVisibleOffers(rows,{ownShopId='0'}={}){
  }
  return out;
 }
+// Uma SKU só entra no Top A/B quando três LOJAS concorrentes distintas
+// têm dados mensais verificáveis. Um anúncio isolado não valida a pesquisa.
+export function qualifyChromeMatches(rows,{minCompetitors=3}={}){
+ if(!Number.isInteger(minCompetitors)||minCompetitors<3)throw Error('Amostra mínima inválida.');
+ return rows.filter(row=>row.verified30===true&&
+  (row.curve==='A'||row.curve==='B')&&
+  Number(row.monthlyCompetitorCount||0)>=minCompetitors);
+}
 export async function importChromeOffers(shopId,{
  category='Todos',keyword='',query='',offers=[],curve='ALL',limit=10,verifiedOnly=true
 }={}){
@@ -93,18 +101,23 @@ export async function importChromeOffers(shopId,{
  state.lastAt=new Date().toISOString();
  const rows=matchCurveOffers({catalog:state.catalog,
   offers:[...state.offers.values()],costs:state.costs,ownShopId:shopId});
- const picked=pickCurveResults(rows,{curve,limit,verifiedOnly});
- const pending=rows.filter(x=>x.curve==='PENDING');
- return {ok:true,configured:true,verifiedOnly,curve,category,readOnly:true,
+ const qualified=qualifyChromeMatches(rows);
+ const picked=pickCurveResults(qualified,{curve,limit,verifiedOnly:true});
+ const pending=rows.filter(x=>!qualified.includes(x));
+ return {ok:true,configured:true,verifiedOnly:true,curve,category,readOnly:true,
   ...picked,possibleMatches:rows.length,pendingCount:pending.length,
-  pendingItems:pending.slice(0,Number(limit)),catalogCount:state.catalog.length,
+  pendingItems:[],catalogCount:state.catalog.length,
   offerCount:state.offers.size,skuSearchesCompleted:state.scanned.size,
   skuQueriesCompleted:state.queries,remainingSkuQueries:Math.max(0,state.plan.length-state.queries),
   sources:{featured:0,affiliate:0,chrome:state.queries},
   rowsWith30Days:picked.items.filter(x=>x.verified30).length,
   checkedAt:state.lastAt,hasMore:false,chromeHasMore:state.queries<state.plan.length,
-  shortage:picked.shortage,chromeImport:{
+  shortage:picked.shortage,qualifiedCount:picked.found,monthlyCompetitorsRequired:3,
+  inspectedCompetitors:rows.reduce((n,row)=>n+Number(row.comparableCompetitorCount||0),0),
+  shortageReason:picked.shortage?'Ainda não foram identificadas '+Number(limit)+
+   ' SKUs com 3 concorrentes distintos e evidência mensal. Continue a pesquisa ou conecte uma fonte com vendas em 30 dias.':'',
+  chromeImport:{
    query:search,imported:normalized.length,monthlyOffers:normalized.filter(x=>x.monthlySold!==null).length},
-  warning:'Ponte Chrome: somente dados visíveis dos anúncios concorrentes. Sem indicador explícito de mês/30 dias, a SKU permanece pendente; vendas acumuladas não classificam.',
+  warning:'Apenas SKUs com ao menos 3 lojas concorrentes com evidência de vendas nos últimos 30 dias entram nas Curvas A/B. Totais acumulados não classificam; não se somam vendas das lojas.',
   searchMode:'wedrop-first-chrome-visible-featured',marketplaceUpdated:false};
 }

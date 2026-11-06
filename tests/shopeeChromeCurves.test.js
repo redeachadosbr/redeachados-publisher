@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
-import {normalizeVisibleOffers,verifiedMonthlyEvidence} from '../shopeeChromeCurves.js';
+import {normalizeVisibleOffers,verifiedMonthlyEvidence,qualifyChromeMatches} from '../shopeeChromeCurves.js';
 test('somente texto explícito de período permite vendas mensais',()=>{
  assert.equal(verifiedMonthlyEvidence('950 vendidos/mês'),true);
  assert.equal(verifiedMonthlyEvidence('Vendido no mês: 950'),true);
@@ -34,4 +34,15 @@ test('rota da extensão usa autenticação, origem e plano pelo catálogo',()=>{
  assert.match(server,/api\/shopee\/curvas-ab\/chrome-plan',mustLogin,requireWeDropAdmin/);
  assert.match(server,/api\/shopee\/curvas-ab\/chrome-import',mustLogin,requireWeDropAdmin/);
  assert.match(server,/if\(!verifiedSameOrigin\(req\)\)/);
+});
+
+test('três lojas independentes com evidência mensal são obrigatórias antes da Curva A/B',()=>{
+ const candidates=[
+  {sku:'A',curve:'A',verified30:true,monthlyCompetitorCount:3},
+  {sku:'B',curve:'B',verified30:true,monthlyCompetitorCount:4},
+  {sku:'FRACO',curve:'A',verified30:true,monthlyCompetitorCount:2},
+  {sku:'ACUMULADO',curve:'PENDING',verified30:false,monthlyCompetitorCount:9},
+  {sku:'SEMDEMANDA',curve:'LOW',verified30:true,monthlyCompetitorCount:3}
+ ];
+ assert.deepEqual(qualifyChromeMatches(candidates).map(x=>x.sku),['A','B']);
 });
