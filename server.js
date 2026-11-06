@@ -98,6 +98,7 @@ import {quoteShopeePrice,quoteShopeeOptimizationPrice,normalizeShopeePricingSett
 import {lookupShopeeCompetitors,marketResearchConfigured} from './shopeeMarketResearch.js';
 import {researchCurveAB,curveProvidersStatus,probeCurveAffiliateAccess} from './shopeeCurveAB.js';
 import {chromeCurvePlan,importChromeOffers} from './shopeeChromeCurves.js';
+import {chromeExtensionZip} from './shopeeChromeExtensionZip.js';
 import {searchFeaturedPublic} from './shopeeFeaturedSearch.js';
 import {promotionFromQuote,promotionBasePrice,promotionMember,shopDiscountMembershipSignal,discountPlanSnapshot,signDiscountPreview,verifyDiscountPreview,readDiscountPages} from './shopeeDiscountPublish.js';
 import {auditCatalogDiscounts} from './shopeeCatalogDiscountAudit.js';
@@ -281,6 +282,16 @@ app.get('/api/shopee/curvas-ab/search',mustLogin,requireWeDropAdmin,async(req,re
 
 // Chrome Shopee: importação autenticada de ofertas VISÍVEIS da aba Em Destaque.
 // Não recebe cookies, senhas, token Shopee ou dados pessoais de compradores.
+app.get('/api/shopee/curvas-ab/chrome-extension.zip',mustLogin,requireWeDropAdmin,async(req,res)=>{
+ res.setHeader('Cache-Control','no-store');
+ try{
+  await getValidAuth(req);
+  res.setHeader('Content-Type','application/zip');
+  res.setHeader('Content-Disposition','attachment; filename="redeachados-shopee-chrome.zip"');
+  res.send(chromeExtensionZip());
+ }catch(error){res.status(400).json({error:String(error.message||error).slice(0,220)});}
+});
+
 app.get('/api/shopee/curvas-ab/chrome-plan',mustLogin,requireWeDropAdmin,async(req,res)=>{
  res.setHeader('Cache-Control','no-store');
  try{
