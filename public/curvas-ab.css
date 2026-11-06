@@ -92,3 +92,17 @@
 #tab-curves .curve-sources button{border:1px solid #ceddec;background:#ecf5fe;color:#15558b;padding:10px 12px;border-radius:9px;white-space:nowrap;font-size:12px;font-weight:800;cursor:pointer}
 #tab-curves .curve-sources button:disabled{opacity:.6;cursor:wait}
 @media(max-width:700px){#tab-curves .curve-sources{flex-direction:column;align-items:stretch}#tab-curves .curve-sources button{white-space:normal}}
+
+#tab-curves .curve-chrome-bridge{display:flex;justify-content:space-between;align-items:center;gap:18px;flex-wrap:wrap;margin:14px 0;padding:17px;background:#fff;border:1px solid #d7e4f1;border-radius:15px}
+#tab-curves .curve-chrome-bridge>div:first-child{flex:1;min-width:270px}
+#tab-curves .curve-chrome-bridge strong{font-size:14px;color:#173d69}
+#tab-curves .curve-chrome-bridge p{margin:5px 0;line-height:1.5;font-size:12px;color:#65788e}
+#tab-curves .curve-chrome-bridge small{display:block;font-weight:750;color:#245983;font-size:12px;margin-top:7px}
+#tab-curves .curve-chrome-actions{display:flex;align-items:center;gap:9px;flex-wrap:wrap;max-width:480px}
+#tab-curves .curve-chrome-actions>a,#tab-curves .curve-chrome-actions>button{border:1px solid #bcd0e6;background:#ecf5ff;border-radius:9px;padding:10px 12px;color:#164e86;font-size:12px;font-weight:800;text-decoration:none;cursor:pointer}
+#tab-curves .curve-chrome-actions>button{background:#ee512d;color:white;border-color:#ee512d}
+#tab-curves .curve-chrome-actions>button:disabled{opacity:.65;cursor:wait}
+#tab-curves .curve-chrome-actions details{width:100%;font-size:12px;color:#46637d}
+#tab-curves .curve-chrome-actions summary{cursor:pointer;color:#235e90;font-weight:750}
+#tab-curves .curve-chrome-actions details p{font-size:12px}
+#tab-curves .curve-curve.pending{background:#f5f0df;color:#795c21}

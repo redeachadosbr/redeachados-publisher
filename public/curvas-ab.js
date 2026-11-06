@@ -135,7 +135,8 @@
    metric('Correspondência de nomes',nf.format(Math.round(100*Number(row.matchScore||0)))+'%')
   );
   const competitor=t('p','curve-evidence','Oferta comparada: '+row.competitorName+
-   ' • Fonte: '+(row.source==='shopee-featured-public'?'busca pública Em Destaque Shopee':'API Afiliados Shopee'));
+   ' • Fonte: '+(row.source==='shopee-featured-chrome'?'Ponte Chrome • Em Destaque Shopee':
+     row.source==='shopee-featured-public'?'busca pública Em Destaque Shopee':'API Afiliados Shopee'));
   const evidence=t('p','curve-evidence',row.periodSource?
    'Fonte da classificação: '+row.periodSource+'.':
    'Somente vendas acumuladas disponíveis: classificação potencial, não vendas confirmadas em 30 dias.');
@@ -171,10 +172,13 @@
  function reportSource(result){
   const label=q('curveSourceStatus'),detail=q('curveSourceDetail');
   if(!label||!detail)return;
-  const feat=Number(result?.sources?.featured||0),aff=Number(result?.sources?.affiliate||0);
+  const feat=Number(result?.sources?.featured||0),aff=Number(result?.sources?.affiliate||0),chromeCount=Number(result?.sources?.chrome||0);
   const available=Boolean(result?.providers?.affiliate?.configured);
   const block=result?.providers?.featured?.state==='blocked';
-  if(feat>0){
+  if(chromeCount>0){
+   label.textContent='Ponte Chrome Em Destaque: '+chromeCount+' consultas visíveis recebidas';
+   detail.textContent='A/B exige vendas mensais explícitas na vitrine. Sem mês, a SKU permanece pendente.';
+  }else if(feat>0){
    label.textContent='Busca pública Shopee Em Destaque: retornou ofertas em '+feat+' consultas';
    detail.textContent='Os anúncios com campo sold mensal podem receber classificação A/B mensal. Demais ofertas ficam como potencial.';
   }else if(aff>0){
@@ -265,8 +269,10 @@
    ' Não houve resposta válida da API: '+String(result.warning||'').slice(-420):'';
   const feature=Number(result.sources?.featured||0);
   const affiliate=Number(result.sources?.affiliate||0);
+   const chromeCount=Number(result.sources?.chrome||0);
   const foot=' Fonte: '+(feature?'busca pública Em Destaque Shopee ('+feature+' consultas). ':'')+
    (affiliate?'API Afiliados ('+affiliate+' consultas). ':'')+
+    (chromeCount?'Ponte Chrome ('+chromeCount+' consultas visíveis). ':'')+
    'Somente os anúncios com vendas mensais disponíveis ou histórico de 30 dias podem ter curva mensal confirmada.';
   status(prefix+next+limitWarning+errors+foot,
    result.shortage||result.apiLimited?'warning':'info');
@@ -310,7 +316,7 @@
  q('curveKeyword')?.addEventListener('input',refreshFeaturedLink);
  q('curveCategory')?.addEventListener('change',refreshFeaturedLink);
  refreshFeaturedLink();
- globalThis.RACurvesAB={onOpen:()=>{
+ globalThis.RACurvesAB={showChromeResults(result){state.last=result;render(result);},onOpen:()=>{
   void loadCategories();
   void checkSources(false);
   refreshFeaturedLink();

@@ -32,7 +32,7 @@
 <link rel="stylesheet" href="/optimizer-technical-compact.css?v=3-wedrop-visible">
 <link rel="stylesheet" href="/ads-premium.css?v=2.4.0-seo-ads-location">
 <link rel="stylesheet" href="/sidebar-collapse.css?v=1.0.0">
-<link rel="stylesheet" href="/curvas-ab.css?v=5-monthly-evidence-required">
+<link rel="stylesheet" href="/curvas-ab.css?v=20261106-chrome-batch-1">
 <link rel="stylesheet" href="/optimizer-image-studio.css?v=1.0.5-image03-direct-import">
 <link rel="stylesheet" href="/kit-builder.css?v=20261105-wedrop-step01-v1">
 <link rel="stylesheet" href="/optimizer-technical-studio.css?v=1.2.0-compact-fields">
@@ -1083,7 +1083,21 @@
     <small id="curveSourceDetail">Vendido/Mês só é confirmado quando a fonte retorna dado mensal.</small></div>
    <button id="curveTestSources" type="button">Testar fontes de pesquisa</button>
   </div>
-  <div id="curveNotice" class="curve-notice" role="status" aria-live="polite">Selecione a categoria, a curva e clique em Pesquisar SKUs automaticamente.</div>
+  <section class="curve-chrome-bridge" aria-label="Ponte Shopee Chrome">
+ <div>
+  <strong>Ponte Chrome — conferir Em Destaque dos concorrentes</strong>
+  <p>Pesquisa as SKUs WeDrop na aba Shopee, inclusive produtos ainda não publicados na sua loja. Lê só dados visíveis; sem número mensal, a SKU fica pendente.</p>
+  <small id="curveChromeStatus" role="status" aria-live="polite">Instale a Ponte Chrome uma única vez.</small>
+ </div>
+ <div class="curve-chrome-actions">
+  <a id="curveChromeDownload" href="/api/shopee/curvas-ab/chrome-extension.zip" download>Baixar Ponte Chrome (ZIP)</a>
+  <button type="button" id="curveChromeStart">Pesquisar no Chrome (Em Destaque)</button>
+  <details><summary>Como instalar</summary>
+   <p>Extraia o ZIP; abra chrome://extensions; ative Modo do desenvolvedor; clique Carregar sem compactação e selecione a pasta redeachados-shopee-chrome. Atualize o Manager.</p>
+  </details>
+ </div>
+</section>
+<div id="curveNotice" class="curve-notice" role="status" aria-live="polite">Selecione a categoria, a curva e clique em Pesquisar SKUs automaticamente.</div>
   <div id="curveStats" class="curve-stats" hidden>
    <div><small>SKUs WeDrop na categoria</small><strong id="curveCatalogCount">—</strong></div>
    <div><small>SKUs pesquisadas</small><strong id="curveScannedCount">—</strong></div>
@@ -2648,7 +2662,8 @@
 <script src="/optimizer-execution-visual.js?v=1.0.5-title-pending-readback"></script>
 <script src="/optimizer-execution-dialog.js?v=1.0.5-video-relink-sync"></script>
 <script src="/app.js?v=3.5.67-shopee-photo-and-wedrop-dimensions"></script>
-<script src="/curvas-ab.js?v=20261105-curve-a900-b700-pending"></script>
+<script src="/curvas-ab.js?v=20261106-chrome-batch-1"></script>
+<script src="/curvas-chrome.js?v=20261106-chrome-batch-1"></script>
 <script src="/pending-images.js?v=1.2.0-kit-routing"></script>
 <script type="module" src="/kit-builder.js?v=20261105-kit-cost-diagnostics"></script>
 <link rel="stylesheet" href="/optimizer-variations.css?v=1.2.1-single-flow">

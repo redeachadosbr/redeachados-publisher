@@ -102,7 +102,7 @@ export async function importChromeOffers(shopId,{
   skuQueriesCompleted:state.queries,remainingSkuQueries:Math.max(0,state.plan.length-state.queries),
   sources:{featured:0,affiliate:0,chrome:state.queries},
   rowsWith30Days:picked.items.filter(x=>x.verified30).length,
-  checkedAt:state.lastAt,hasMore:state.queries<state.plan.length,
+  checkedAt:state.lastAt,hasMore:false,chromeHasMore:state.queries<state.plan.length,
   shortage:picked.shortage,chromeImport:{
    query:search,imported:normalized.length,monthlyOffers:normalized.filter(x=>x.monthlySold!==null).length},
   warning:'Ponte Chrome: somente dados visíveis dos anúncios concorrentes. Sem indicador explícito de mês/30 dias, a SKU permanece pendente; vendas acumuladas não classificam.',
