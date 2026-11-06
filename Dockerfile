@@ -11,6 +11,7 @@ RUN node --check public/curvas-chrome.js && node --test tests/shopeeChromeUi.tes
 RUN node --test tests/shopeeChromeVisibleParser.test.js
 RUN node --check shopeeProductViewTrends.js && node --check public/organic-top10.js && node --test tests/shopeeProductViewTrends.test.js
 RUN node --check shopeeOrganicPerformance.js && node --check public/organic-top10.js && node --test tests/shopeeOrganicTop10.test.js tests/shopeeProductPerformanceMetrics.test.js
+RUN node --check public/ads-improvements.js && node --check public/app.js && node --test tests/shopeeAdsImprovements.test.js tests/shopee-ads-date-1-19-9.test.js
 RUN node --check public/optimizer-visual-reference.js && node --test tests/shopee-kit-visual-reference-retry.test.js tests/optimizerBridgeSourceAndThirdFallback.test.js
 RUN node --check shopeePendingImageAudit.js && node --check shopeePendingImageStore.js && node --check shopeePendingImageEditor.js && node --check public/pending-images.js && node --test tests/shopeePendingImageAudit.test.js tests/shopeePendingImageStore.test.js tests/shopeePendingImageEditor.test.js
 # Bloquear deploys com sintaxe inválida no editor de imagens e nas rotas Shopee.

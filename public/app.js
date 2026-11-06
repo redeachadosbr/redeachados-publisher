@@ -1291,9 +1291,9 @@ function adsBrazilDayOffset(offset=0){
 function adsShiftIsoDay(value,days){
  return new Date(Date.parse(value+'T00:00:00Z')+days*86400000).toISOString().slice(0,10);
 }
-// Por padrão, consultar sete dias completos, sem data futura na Shopee Brasil.
+// Sete dias completos inclusivos (D-7 a D-1), sem o dia de hoje possivelmente parcial.
 $('#adsEnd').value=adsBrazilDayOffset(-1);
-$('#adsStart').value=adsBrazilDayOffset(-8);
+$('#adsStart').value=adsBrazilDayOffset(-7);
 const adsMoney=value=>value===null||value===undefined||!Number.isFinite(Number(value))?
  '—':new Intl.NumberFormat('pt-BR',{style:'currency',currency:'BRL'}).format(Number(value));
 const adsNum=value=>new Intl.NumberFormat('pt-BR',{maximumFractionDigits:2}).format(Number(value));
@@ -1590,7 +1590,7 @@ function renderShopeeAds(data){
  adsSetKpi('adsItemsSold','Não disponível');
  $('#adsStatusExplanation').textContent=data.statusWarning?
   'Status atual não confirmado: '+data.statusWarning:
-  'A lista exibe somente campanhas ativas confirmadas. Indicadores financeiros do período incluem histórico de campanhas inativas; GMV atribuído não é lucro.';
+  'Os KPIs somam o desempenho no período de '+data.campaignCount+' campanhas de Anúncios de Produtos, inclusive histórico de campanhas hoje pausadas. A tabela abaixo exibe apenas '+activeCampaigns.length+' ativas. Compare exatamente as mesmas datas e filtros na Shopee. GMV atribuído não é lucro.';
  adsRenderHealth(data);adsRenderSuggestions();adsRenderExecution();
  globalThis.RedeAdsPremium?.onData?.(activeCampaigns);
  $('#adsExportBtn').disabled=!activeCampaigns.length;

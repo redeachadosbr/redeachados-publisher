@@ -8,7 +8,7 @@ test('Ads 1.19.9 seleciona data no calendário brasileiro e evita dia UTC futuro
  assert.match(app,/function adsBrazilDayOffset\(offset=0\)/);
  assert.match(app,/timeZone:'America\/Sao_Paulo'/);
  assert.match(app,/adsEnd'\)\.value=adsBrazilDayOffset\(-1\)/);
- assert.match(app,/adsStart'\)\.value=adsBrazilDayOffset\(-8\)/);
+ assert.match(app,/adsStart'\)\.value=adsBrazilDayOffset\(-7\)/);
  assert.match(app,/const todayBr=adsBrazilDayOffset\(0\)/);
  assert.match(app,/start=adsShiftIsoDay\(start,-days\)/);
  assert.match(app,/end=adsShiftIsoDay\(end,-days\)/);

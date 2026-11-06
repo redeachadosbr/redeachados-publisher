@@ -71,6 +71,48 @@
   return (Array.isArray(campaigns)?campaigns:[]).map(diagnose).filter(Boolean)
    .sort((a,b)=>b.rank-a.rank||number(b.raw.expense)-number(a.raw.expense));
  }
+
+ function monitoring(campaigns){
+  const active=(Array.isArray(campaigns)?campaigns:[]).filter(c=>c.statusGroup==='active');
+  const alerts=recommendations(active).map(entry=>({...entry,kind:'alert'}));
+  const flagged=new Set(alerts.map(entry=>entry.campaignId));
+  const impsTotal=active.reduce((n,c)=>n+number(c.impressions),0);
+  const clicksTotal=active.reduce((n,c)=>n+number(c.clicks),0);
+  const baselineCtr=impsTotal>0?clicksTotal/impsTotal*100:null;
+  const reference=baselineCtr===null?1.5:Math.max(1.5,Math.min(2.2,baselineCtr*0.85));
+  const others=active.filter(c=>!flagged.has(String(c.campaignId))).map(c=>{
+   const imps=number(c.impressions),clicks=number(c.clicks),ctr=imps>0?clicks/imps*100:null;
+   let id='monitoring',title='Acompanhamento sem alerta',rank=0;
+   let why='Nenhum limite interno de alerta foi atingido nesta campanha durante o período.';
+   let target='CTR, cliques, conversão e margem';
+   let solution='Continuar acompanhando CTR, ROAS, pedidos e margem real. Não alterar orçamento só por ausência de alerta.';
+   if(number(c.daysWithData)<1){
+    id='pending_metrics';title='Métricas ainda indisponíveis';rank=14;
+    why='Campanha ativa sem métricas verificadas no período.';
+    target='Coleta de métricas e datas';
+    solution='Atualizar dados da API, conferir o intervalo e a entrega antes de recomendar alteração.';
+   }else if(imps>=200&&ctr!==null&&ctr>=1&&ctr<reference){
+    id='ctr_watch';title='Oportunidade de revisar CTR';rank=20;
+    why='CTR '+pct(ctr)+' com '+count(imps)+' impressões. Faixa de referência interna: '+pct(reference)+' (não é padrão oficial da Shopee).';
+    target='Atratividade da capa e título SEO';
+    solution='Comparar capa, título e preço com ofertas equivalentes. Testar uma melhoria de cada vez sem ampliar gastos prematuramente.';
+   }else if(c.directOrdersObserved!==true&&clicks>0){
+    id='conversion_unknown';title='Conferir pedidos atribuídos';rank=12;
+    why=count(clicks)+' cliques, porém os pedidos diretos não foram confirmados na resposta da API.';
+    target='Atribuição de pedidos e conversão';
+    solution='Conferir os pedidos e o ROAS no painel da Shopee antes de avaliar a conversão.';
+   }else if(clicks>=20&&c.directOrdersObserved===true&&number(c.directOrders)>0){
+    id='traffic_with_orders';title='Tráfego com pedidos';rank=5;
+    why=count(clicks)+' cliques e '+count(c.directOrders)+' pedido(s) diretos registrados.';
+    target='Manutenção do retorno';
+    solution='Comparar ROAS com a margem real e acompanhar CTR e impressões; alterações somente com evidências.';
+   }
+   return {id,kind:'monitoring',title,rank,why,target,solution,problems:[],
+    raw:c,campaignId:String(c.campaignId)};
+  });
+  return [...alerts,...others].sort((a,b)=>(b.kind==='alert')-(a.kind==='alert')||
+   b.rank-a.rank||number(b.raw.expense)-number(a.raw.expense));
+ }
  function imageElement(c){
   const src=allowedImage(c.productImage);
   const fallback=node('div','ads-improvement-thumb ads-improvement-no-thumb','▣');
@@ -86,7 +128,8 @@
   const values=[
    ['Impressões',count(c.impressions)],['Cliques',count(c.clicks)],
    ['CTR',number(c.impressions)>0?pct(number(c.clicks)/number(c.impressions)*100):'—'],
-   ['Pedidos diretos',c.directOrdersObserved?count(c.directOrders):'—']
+   ['Pedidos diretos',c.directOrdersObserved?count(c.directOrders):'—'],
+   ['Investimento',money(c.expense)],['ROAS amplo',c.roas===null||c.roas===undefined?'—':Number(c.roas).toLocaleString('pt-BR',{maximumFractionDigits:2})+'x']
   ];
   for(const [name,value] of values){
    const tile=node('div');
@@ -96,7 +139,8 @@
  }
  function render({campaigns,expanded=false,container,onReview,onProduct}){
   if(!container)return false;
-  const entries=recommendations(campaigns);
+  const entries=monitoring(campaigns);
+  const alertCount=entries.filter(c=>c.kind==='alert').length;
   container.replaceChildren();
   container.classList.add('ads-improvement-grid');
   const show=expanded?entries.slice(0,80):entries.slice(0,4);
@@ -104,11 +148,11 @@
   if(toggle)toggle.textContent=expanded?'Mostrar menos':'Ver todas ('+entries.length+')';
   const intro=document.getElementById('adsImprovementCount');
   if(intro)intro.textContent=entries.length?
-   entries.length+' campanha(s) ativas com sinais de melhoria · por prioridade':
-   'Monitoramento de campanhas ativas';
+   entries.length+' campanhas ativas acompanhadas · '+alertCount+' com alertas · '+(entries.length-alertCount)+' em monitoramento':
+   'Nenhuma campanha ativa confirmada para acompanhar';
   if(!entries.length){
    container.append(node('p','ads-improvement-empty',
-    'Não há campanhas ativas com alertas verificáveis neste período. Confira as datas, a conexão Ads e os indicadores antes de concluir que todas estão saudáveis.'));
+    'Nenhuma campanha ativa confirmada. Confira datas, status e conexão Ads; campanhas pausadas não entram neste acompanhamento.'));
    return true;
   }
   for(const entry of show){
@@ -124,7 +168,7 @@
    top.append(identity);card.append(top,node('span','ads-improvement-kind',entry.title),
     metrics(c),node('p','ads-improvement-description',entry.why));
    const solution=node('div','ads-improvement-solution');
-   solution.append(node('strong','','Onde melhorar: '+entry.target),
+   solution.append(node('strong','',entry.kind==='alert'?'Onde melhorar: '+entry.target:'O que acompanhar: '+entry.target),
     node('p','',entry.solution));
    if(entry.problems.length>1)solution.append(node('p','',
      'Outros sinais: '+entry.problems.slice(1).map(x=>x.title).join(' · ')));
@@ -145,7 +189,7 @@
     productButton.type='button';productButton.onclick=()=>onProduct?.(c);
     actions.append(productButton);
    }
-   const apiButton=node('button','ads-improvement-api','Ajuste de campanha via API');
+   const apiButton=node('button','ads-improvement-api',entry.kind==='alert'?'Revisar ajuste via API':'Ver opções da campanha');
    apiButton.type='button';apiButton.onclick=()=>onReview?.(c);
    actions.append(apiButton);card.append(actions);
    card.append(node('small','ads-improvement-hint',
@@ -156,5 +200,5 @@
    'Exibindo os primeiros 80 de '+entries.length+' alertas por prioridade.'));
   return true;
  }
- globalThis.RedeAdsImprovements={render,recommendations};
+ globalThis.RedeAdsImprovements={render,recommendations,monitoring};
 })();

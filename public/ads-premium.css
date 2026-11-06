@@ -335,3 +335,12 @@ body.view-ads .workspace-content{max-width:none;width:100%;padding:9px 14px 30px
 @media(max-width:650px){
  #tab-ads #adsSeoDisclosure.ads-seo-disclosure{grid-row:11!important}
 }
+
+/* Distinguish watch-only Ads monitoring from verified alerts. */
+#tab-ads .ads-improvement-card[data-diagnosis="ctr_watch"] .ads-improvement-kind,
+#tab-ads .ads-improvement-card[data-diagnosis="conversion_unknown"] .ads-improvement-kind,
+#tab-ads .ads-improvement-card[data-diagnosis="pending_metrics"] .ads-improvement-kind{background:#e9f2ff;color:#235a99}
+#tab-ads .ads-improvement-card[data-diagnosis="monitoring"] .ads-improvement-kind,
+#tab-ads .ads-improvement-card[data-diagnosis="traffic_with_orders"] .ads-improvement-kind{background:#e8f7ee;color:#23734c}
+#tab-ads .ads-improvement-card[data-diagnosis="monitoring"],
+#tab-ads .ads-improvement-card[data-diagnosis="traffic_with_orders"]{border-color:#d3e8da}

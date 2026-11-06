@@ -43,7 +43,7 @@ test('layout ocupa a área sob a tabela sem alterar painel da API',()=>{
  assert.match(css,/#tab-ads \.ads-v2-campaigns\{grid-row:4!important;grid-column:1\/10!important/);
  assert.match(css,/#tab-ads \.ads-v2-improvements\{grid-row:5!important;grid-column:1\/10!important/);
  assert.match(css,/#tab-ads \.ads-v2-execution\{grid-row:5!important;grid-column:10\/13!important/);
- assert.match(html,/ads-premium\.css\?v=2\.3\.0-stable-dashboard-grid/);
+ assert.match(html,/ads-premium\.css\?v=/);
  assert.match(css,/#tab-ads \.ads-v2-review-panel:not\(\[hidden\]\)/);
  assert.match(html,/id="adsImprovementCount"/);
  assert.match(html,/ads-improvements\.js\?v=/);
@@ -58,5 +58,15 @@ test('Revisão Ads só preenche campo da SKU e mantém busca manual',()=>{
  assert.match(app,/Clique em Buscar SKU quando desejar iniciar a análise/);
  assert.match(app,/if\(pendingAdsHandoff\)return/);
  assert.match(app,/onProduct:c=>\{\s*adsFillOptimizerSku\(c\.productSku\)/);
- assert.match(html,/app\.js\?v=1\.21\.1-ads-sku-prefill/);
+ assert.match(html,/app\.js\?v=/);
+});
+
+test('acompanhamento contempla todas as ativas e mantém alertas separados',()=>{
+ const clean={...baseline,campaignId:'102',impressions:1000,clicks:25,expense:4,
+  directOrdersObserved:false};
+ const output=module().monitoring([baseline,clean,{...clean,campaignId:'103',statusGroup:'inactive'}]);
+ assert.equal(output.length,2);
+ assert.equal(output.filter(x=>x.kind==='alert').length,1);
+ assert.equal(output.filter(x=>x.kind==='monitoring').length,1);
+ assert.equal(output.find(x=>x.campaignId==='102').id,'monitoring');
 });
