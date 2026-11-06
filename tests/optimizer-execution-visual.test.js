@@ -126,3 +126,29 @@ test('etapa pendente oferece diagnóstico, correção e execução isolada sem r
  assert.match(dialog,/rootAuditPending/);
  assert.match(dialog,/Executar somente pendências/);
 });
+
+test('SKU 1736: auditoria final persistida mostra conclusão mesmo com opcional pendente',()=>{
+ const stages=['images','video','seo','description','technical','variants','fiscal','discount','final']
+  .map(id=>({id,status:'confirmed'}));
+ stages[4]={id:'technical',status:'pending',nonBlocking:true,reason:'Atributo opcional'};
+ stages[5]={id:'variants',status:'not_applicable'};
+ const state=derive({job:{state:'verified',result:{phase:'verified'}},
+  progress:{percent:100,hasStarted:true,steps:[
+   {id:'images',status:'done'},{id:'video',status:'waiting'},
+   {id:'fiscal',status:'done'},{id:'discount',status:'waiting'}]},
+  rootAudit:{complete:true,stages}});
+ assert.equal(state.percent,100);
+ assert.match(state.title,/concluída/);
+ assert.equal(state.states[1],'done');
+ assert.equal(state.states[7],'done');
+ assert.equal(state.states[8],'done');
+ assert.equal(state.states[4],'not_applicable');
+ assert.match(state.countLabel,/7 confirmadas.*2 não exigidas.*concluída/);
+});
+test('não declarar audit completo sem confirmação final explícita',()=>{
+ const stages=[{id:'images',status:'confirmed'},{id:'final',status:'pending'}];
+ const state=derive({job:{state:'verified'},progress:{percent:100,hasStarted:true},
+  rootAudit:{complete:false,stages}});
+ assert.notEqual(state.states[8],'done');
+ assert.doesNotMatch(state.title,/Otimização concluída/);
+});
