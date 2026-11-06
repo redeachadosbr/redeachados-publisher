@@ -43,7 +43,7 @@ test('filtro único categoria, quantidade e nome só inicia pesquisa Chrome',()=
   assert.match(page,new RegExp('id="'+id+'"'));
  for(const id of ['curveType','curveSearchBtn','curveConfirmedOnly'])
   assert.doesNotMatch(page,new RegExp('id="'+id+'"'));
- assert.match(page,/class="curve-chrome-unified"/);
+ assert.match(page,/class="curve-search-panel curve-chrome-unified"/);
  assert.match(bridge,/form\.addEventListener\('submit'/);
  assert.match(bridge,/curve:'ALL'/);
  assert.match(bridge,/verifiedOnly:true/);
