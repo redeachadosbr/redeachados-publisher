@@ -1,0 +1,21 @@
+/* Painel de andamento da pesquisa Chrome — somente Curvas A/B */
+#tab-curves .curve-chrome-progress[hidden]{display:none!important}
+#tab-curves .curve-chrome-progress{margin:5px 16px 13px;padding:12px 14px;
+ border-radius:12px;background:linear-gradient(115deg,#f1f7ff,#fff);
+ border:1px solid #dbe8f7;box-shadow:inset 0 1px 0 #fff}
+#tab-curves .curve-chrome-progress-heading{display:flex;align-items:center;
+ justify-content:space-between;gap:12px}
+#tab-curves .curve-chrome-progress-heading strong{display:block;
+ color:#173c68;font-size:12px;margin-bottom:3px}
+#tab-curves .curve-chrome-progress-heading small{display:block;
+ color:#6a839f;font-size:10.5px}
+#tab-curves #curveChromeCancel{min-height:30px;padding:6px 10px;font-size:10.5px;
+ color:#9a5838;background:#fff;box-shadow:0 2px 0 #e8d4c5}
+#tab-curves #curveChromeProgressBar{display:block;width:100%;height:8px;margin:12px 0;
+ border:0;border-radius:15px;accent-color:#387fca;overflow:hidden}
+#tab-curves .curve-chrome-activity{margin:0;padding:0 0 0 18px;
+ max-height:140px;overflow:auto;display:grid;gap:5px;scrollbar-width:thin}
+#tab-curves .curve-chrome-activity li{font-size:10.5px;color:#67809c;line-height:1.4}
+#tab-curves .curve-chrome-activity li:first-child{font-weight:700;color:#245e94}
+@container(max-width:520px){#tab-curves .curve-chrome-progress{margin:4px 10px 12px}
+ #tab-curves .curve-chrome-progress-heading{align-items:flex-start;flex-wrap:wrap}}

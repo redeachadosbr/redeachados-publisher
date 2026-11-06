@@ -36,6 +36,7 @@
 <link rel="stylesheet" href="/curvas-premium.css?v=20261106-premium-v1">
 <link rel="stylesheet" href="/curvas-ads-fit.css?v=20261106-market40-v2">
 <link rel="stylesheet" href="/curvas-chrome-unified.css?v=20261106-single-v1">
+<link rel="stylesheet" href="/curvas-chrome-progress.css?v=20261106-minimized-v120">
 <link rel="stylesheet" href="/optimizer-image-studio.css?v=1.0.5-image03-direct-import">
 <link rel="stylesheet" href="/kit-builder.css?v=20261105-wedrop-step01-v1">
 <link rel="stylesheet" href="/optimizer-technical-studio.css?v=1.2.0-compact-fields">
@@ -1101,13 +1102,22 @@
   </div>
  </form>
  <div class="curve-unified-support">
-  <small id="curveChromeStatus" role="status" aria-live="polite">Utilize a Ponte Chrome para consultar os concorrentes.</small>
+  <small id="curveChromeStatus" role="status" aria-live="polite">Pesquisa em janela auxiliar minimizada, com uma única aba reutilizada.</small>
   <div class="curve-unified-help">
-   <a id="curveChromeDownload" href="/api/shopee/curvas-ab/chrome-extension.zip" download>Baixar extensão 1.1.1</a>
+   <a id="curveChromeDownload" href="/api/shopee/curvas-ab/chrome-extension.zip" download>Baixar extensão 1.2.0</a>
    <details class="curve-install-help"><summary>Como instalar</summary>
     <p>Extraia o ZIP; acesse chrome://extensions; ative Modo do desenvolvedor e selecione Carregar sem compactação. Escolha a pasta redeachados-shopee-chrome e recarregue o Manager.</p>
    </details>
   </div>
+ </div>
+ <div id="curveChromeProgress" class="curve-chrome-progress" hidden>
+  <div class="curve-chrome-progress-heading">
+   <div><strong id="curveChromeStage">Preparando pesquisa</strong>
+    <small id="curveChromeCounters">0 consultas • 0 SKUs classificadas</small></div>
+   <button type="button" id="curveChromeCancel" class="curve-button" hidden>Interromper</button>
+  </div>
+  <progress id="curveChromeProgressBar" max="10" value="0" aria-label="SKUs classificadas em relação à quantidade solicitada"></progress>
+  <ol id="curveChromeActivity" class="curve-chrome-activity" aria-label="Histórico da pesquisa"></ol>
  </div>
 </section>
 <details class="curve-technical-diagnostics">
@@ -2692,7 +2702,7 @@
 <script src="/optimizer-execution-dialog.js?v=1.0.5-video-relink-sync"></script>
 <script src="/app.js?v=3.5.67-shopee-photo-and-wedrop-dimensions&amp;layout=curves-compact-v1"></script>
 <script src="/curvas-ab.js?v=20261106-single-v1"></script>
-<script src="/curvas-chrome.js?v=20261106-single-v1"></script>
+<script src="/curvas-chrome.js?v=20261106-minimized-v120"></script>
 <script src="/pending-images.js?v=1.2.0-kit-routing"></script>
 <script type="module" src="/kit-builder.js?v=20261105-kit-cost-diagnostics"></script>
 <link rel="stylesheet" href="/optimizer-variations.css?v=1.2.1-single-flow">
