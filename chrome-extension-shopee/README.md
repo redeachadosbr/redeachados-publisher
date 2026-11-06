@@ -1,20 +1,16 @@
-# Ponte Chrome Shopee Em Destaque 1.2.0
+# Ponte Chrome Rede Achados BR 1.2.1
 
-Instale o ZIP baixado pelo menu Curvas A/B do Shopee Manager:
-extraia o arquivo, abra chrome://extensions, ative Modo do desenvolvedor,
-clique em Carregar sem compactação e selecione redeachados-shopee-chrome.
+Instale novamente pelo ZIP do menu Curvas A e B, descompactando e carregando
+a pasta redeachados-shopee-chrome em chrome://extensions.
 
-A pesquisa cria **uma janela auxiliar minimizada** com **uma aba reutilizada**
-durante os lotes. Nenhuma aba é adicionada à janela principal. Essa janela
-ainda pode aparecer na barra de tarefas ou brevemente na tela, dependendo
-do Windows/Chrome: não é invisível em nível de sistema operacional.
-Ao finalizar/cancelar, o Manager fecha somente a janela que criou.
-O andamento aparece no Manager, com opção de interromper.
+A extensão cria uma única janela auxiliar inicialmente minimizada e reutiliza
+a mesma aba em todos os lotes. Se a Shopee não carregar nessa condição,
+a Ponte restaura a mesma janela em estado normal sem solicitar foco, relê
+a página e informa a recuperação no Manager. Assim, ela **pode aparecer
+visível** na área de trabalho, mas não cria novas abas na janela principal.
+Fecha somente a própria janela ao fim ou no cancelamento.
 
-Se a Shopee solicitar verificação humana ou não renderizar anúncios em
-segundo plano, a pesquisa para sem contornar bloqueios e sem inventar
-volume de vendas mensais.
-
-Curva A = 900+ vendas em 30 dias. Curva B = 700–899.
-Requer 3 lojas com evidência mensal e custo/preço competitivo para Ads.
-A extensão não publica anúncios nem ativa campanhas.
+Não confunde anúncios visíveis sem indicação mensal com vendas dos últimos
+30 dias. Curvas A/B exigem 3 concorrentes distintos, indicadores mensais
+explícitos e viabilidade de preço com média de 3 a 5 lojas. CAPTCHA e
+bloqueios exigem intervenção humana; não são contornados.

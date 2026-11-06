@@ -32,3 +32,14 @@ test('leitura visual so marca ID como visto depois de extrair os dados',()=>{
  const code=readFileSync(new URL('../chrome-extension-shopee/visible-offers.js',import.meta.url),'utf8');
  assert.match(code,/if\(product\)\{seen\.add\(id\);found\.push\(product\);\}/);
 });
+
+test('página com cards sem marcador mensal é considerada carregada, nunca Curva A/B',()=>{
+ const source=readFileSync(new URL('../chrome-extension-shopee/visible-offers.js',import.meta.url),'utf8');
+ const bg=readFileSync(new URL('../chrome-extension-shopee/background.js',import.meta.url),'utf8');
+ assert.match(source,/seenCards\.add\(id\)/);
+ assert.match(source,/visibleCards:seenCards\.size/);
+ assert.match(bg,/Number\(result\.visibleCards\)>0/);
+ assert.match(bg,/restoreResearchWindow\(managerTab,nonce\)/);
+ assert.match(bg,/chrome\.tabs\.reload\(tab\.id\)/);
+ assert.doesNotMatch(bg,/chrome\.tabs\.create\(/);
+});

@@ -29,7 +29,7 @@ test('pesquisa continua entre lotes até 10 SKUs e demonstra 3 concorrentes reai
 test('exige a extensão Shopee Chrome 1.2.0 para pesquisas sem novas abas',()=>{
  const code=readFileSync(new URL('../public/curvas-chrome.js',import.meta.url),'utf8');
  const manifest=JSON.parse(readFileSync(new URL('../chrome-extension-shopee/manifest.json',import.meta.url),'utf8'));
- assert.equal(manifest.version,'1.2.0');
+ assert.equal(manifest.version,'1.2.1');
  assert.match(code,/parts\[1\]>=2/);
 });
 
@@ -57,6 +57,7 @@ test('a Ponte Chrome reutiliza janela minimizada e expõe etapas, andamento e ca
  const page=read('../public/index.html');
  const chromeUi=read('../public/curvas-chrome.js');
  assert.match(background,/chrome\.windows\.create\(\{url,focused:false,state:'minimized'/);
+ assert.match(background,/restoreResearchWindow\(managerTab,nonce\)/);
  assert.match(background,/chrome\.storage\.session\.set/);
  assert.match(background,/chrome\.tabs\.update\(tab\.id,\{url\}\)/);
  assert.match(background,/chrome\.windows\.remove\(session\.windowId\)/);

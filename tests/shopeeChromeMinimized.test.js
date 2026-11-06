@@ -24,7 +24,7 @@ test('uma única janela minimizada é reutilizada entre lotes e fechada somente 
    create:async opts=>{calls.push(['create',opts]);return {id:8,
     state:'minimized',tabs:[{id:71,windowId:8}]};},
    get:async()=>({id:8,state:'minimized'}),
-   update:async()=>{},
+   update:async(id,info)=>{calls.push(['restore',id,info]);return {id,state:info.state};},
    remove:async id=>{calls.push(['close',id]);}
   },
   storage:{session:{
@@ -46,6 +46,11 @@ test('uma única janela minimizada é reutilizada entre lotes e fechada somente 
  assert.equal(calls[0][1].focused,false);
  assert.equal(calls[0][1].state,'minimized');
  assert.equal(await ctx.closeSession(nonce,999),false);
+ const restored=await ctx.restoreResearchWindow(45,nonce);
+ assert.equal(restored,71);
+ assert.equal(calls.filter(x=>x[0]==='create').length,1);
+ assert.deepEqual(JSON.parse(JSON.stringify(calls.find(x=>x[0]==='restore')[2])),
+  {state:'normal',focused:false});
  assert.ok(state[key]);
  await assert.rejects(ctx.researchTab(72,nonce,'https://shopee.com.br/search'),/Já existe uma pesquisa/);
  assert.equal(await ctx.closeSession(nonce,45),true);

@@ -77,18 +77,19 @@
   const body=clean(document.body?.innerText||'');
   if(/verifique que voc[eê] [eé] humano|captcha|acesso negado/i.test(body.slice(0,1000)))
    return {ok:false,blocked:true,error:'A Shopee apresentou verificação; conclua-a manualmente.',offers:[]};
-  const found=[],seen=new Set();
+  const found=[],seen=new Set(),seenCards=new Set();
   for(const link of document.querySelectorAll('a[href]')){
    const identity=ids(link.getAttribute('href'));if(!identity)continue;
    const id=identity.shopId+':'+identity.itemId;
    if(seen.has(id))continue;
    const card=link.closest('[data-sqe="item"],.shopee-search-item-result__item,[class*="search-item-result__item"]')||link;
+   if(clean(card.innerText||card.textContent||'').length>=6)seenCards.add(id);
    const product=fromCard(card,link,identity,found.length+1);
    if(product){seen.add(id);found.push(product);}
    if(found.length>=50)break;
   }
-  return {ok:true,offers:found,visibleCards:seen.size,
-   monthlyCards:found.filter(x=>x.monthlySold!==null).length};
+  return {ok:true,offers:found,visibleCards:seenCards.size,
+   saleCards:found.length,monthlyCards:found.filter(x=>x.monthlySold!==null).length};
  }
  globalThis.RAShopeeVisible={parseCount,monthlyEvidence,historicalSales,ids,extract};
  chrome.runtime.onMessage.addListener((msg,_sender,reply)=>{

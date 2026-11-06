@@ -22,7 +22,7 @@ async function researchTab(managerTabId,nonce,url){
    const tab=await chrome.tabs.get(session.tabId);
    const win=await chrome.windows.get(session.windowId);
    if(tab?.windowId===win?.id){
-    if(win.state!=='minimized')await chrome.windows.update(win.id,{state:'minimized'});
+    // Recuperação visual mantém a mesma aba em modo normal até encerrar.
     return {id:tab.id,newWindow:false};
    }
   }catch{}
@@ -52,6 +52,15 @@ async function researchTab(managerTabId,nonce,url){
  return {id:tabId,newWindow:true};
 }
 
+// Quando a Shopee não renderiza minimizada, restaurar somente a nossa janela.
+async function restoreResearchWindow(managerTabId,nonce){
+ const session=await currentSession();
+ if(!session||session.nonce!==nonce||session.managerTab!==managerTabId)
+  throw Error('Sessão de pesquisa não encontrada para recuperação.');
+ const win=await chrome.windows.get(session.windowId);
+ if(win.state!=='normal')await chrome.windows.update(session.windowId,{state:'normal',focused:false});
+ return session.tabId;
+}
 const delay=ms=>new Promise(resolve=>setTimeout(resolve,ms));
 const nonceOk=s=>/^[a-f0-9-]{30,50}$/i.test(String(s||''));
 const managerOk=sender=>/^https:\/\/redeachados-shopee\.onrender\.com\//.test(sender?.tab?.url||'');
@@ -114,12 +123,14 @@ async function readPage(tabId){
   await delay(i===0?1800:1300);
   try{
    const result=await chrome.tabs.sendMessage(tabId,{kind:'RA_CURVE_READ_VISIBLE'});
-   if(result?.ok&&Array.isArray(result.offers)&&result.offers.length)return result;
+   // Cartões sem vendas ainda comprovam carregamento, mas nunca Curva A/B.
+   if(result?.ok&&Array.isArray(result.offers)&&
+    (result.offers.length||Number(result.visibleCards)>0))return result;
    if(result?.blocked)return {ok:false,error:result.error||'Página indisponível.',offers:[]};
   }catch{}
  }
- return {ok:false,error:'Shopee não carregou anúncios visíveis na janela minimizada. '+
-  'O Chrome pode limitar a renderização em segundo plano. Nenhuma venda foi estimada.',offers:[]};
+ return {ok:false,error:'Shopee não apresentou cartões verificáveis nesta pesquisa. '+
+  'Não foi possível comprovar vendas mensais; nenhuma venda foi estimada.',offers:[]};
 }
 async function batch(managerTab,nonce,jobs){
  try{
@@ -146,7 +157,21 @@ async function batch(managerTab,nonce,jobs){
     if(stopRequested)break;
     await stage(managerTab,nonce,'lendo','Lendo cartões e vendas mensais da Shopee…',
      i+1,jobs.length,{page:page+1});
-    const data=await readPage(tab.id);
+    let data=await readPage(tab.id);
+    if(!data.ok&&!data.blocked&&!stopRequested){
+     await stage(managerTab,nonce,'recuperando',
+      'Shopee não carregou minimizada. Restaurando a mesma janela auxiliar sem foco.',
+      i+1,jobs.length,{page:page+1});
+     try{
+      await restoreResearchWindow(managerTab,nonce);
+      await chrome.tabs.reload(tab.id);
+      await waitLoaded(tab.id);
+      data=await readPage(tab.id);
+     }catch(error){
+      data={ok:false,error:'Falha ao recuperar a janela auxiliar: '+
+       String(error?.message||error).slice(0,150),offers:[]};
+     }
+    }
     pages++;
     if(!data.ok){failure=data.error||'Busca não confirmada.';break;}
     visibleCards+=Number(data.visibleCards||data.offers?.length||0);
@@ -156,13 +181,17 @@ async function batch(managerTab,nonce,jobs){
     }
     const monthly=[...collected.values()].filter(x=>x.monthlySold!==null).length;
     await stage(managerTab,nonce,'comparando',
-     collected.size+' concorrentes capturados; '+monthly+' com vendas mensais explícitas.',
+     collected.size+' concorrentes com vendas; '+monthly+
+     ' com rótulo mensal explícito • '+visibleCards+' cartões inspecionados.',
      i+1,jobs.length,{visible:collected.size,monthly,pages});
     if(monthly>=3||collected.size>=100)break;
     await delay(900);
    }
    if(stopRequested)break;
    const offers=[...collected.values()].slice(0,100);
+   if(!failure&&offers.length===0)await stage(managerTab,nonce,'comparando',
+    'Página carregada, mas sem vendas verificáveis. Nenhuma Curva será atribuída.',
+    i+1,jobs.length,{visibleCards,pages});
    if(!failure)await stage(managerTab,nonce,'importando',
     'Enviando dados para cruzar SKU WeDrop, custos e classificação A/B.',
     i+1,jobs.length,{visible:offers.length,pages});
@@ -182,7 +211,7 @@ async function batch(managerTab,nonce,jobs){
   await deliver(managerTab,{kind:'RA_CURVE_CHROME_DONE',nonce,total:jobs.length,
    cancelled:stopRequested});
   stopRequested=false;
-  // Janela permanece minimizada entre lotes; Manager a fecha no fim.
+  // Reusar uma janela auxiliar até o final; o Manager fecha somente a própria janela.
  }
 }
 chrome.tabs.onRemoved.addListener(tabId=>{

@@ -1,8 +1,8 @@
 {
   "manifest_version": 3,
   "name": "Rede Achados BR - Shopee Em Destaque",
-  "version": "1.2.0",
-  "description": "Pesquisa na Shopee por janela auxiliar minimizada; mostra etapas no Manager sem abrir abas na janela principal.",
+  "version": "1.2.1",
+  "description": "Pesquisa Curvas A/B em uma janela auxiliar reutilizada, com recuperação se Shopee não renderizar minimizada.",
   "permissions": [
     "tabs",
     "scripting",
