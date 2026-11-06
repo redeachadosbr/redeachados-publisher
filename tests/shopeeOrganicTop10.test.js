@@ -186,8 +186,8 @@ test('modo API só cria visualizações e ação; não renderiza métricas ausen
  assert.match(css,/overflow:hidden!important/);
  assert.match(css,/text-overflow:ellipsis!important/);
  assert.match(css,/font-variant-numeric:tabular-nums/);
- assert.match(html,/organic-top10\.css\?v=1\.3\.4-premium-3d-compact/);
- assert.match(html,/organic-top10\.js\?v=1\.3\.2-fixed-ranking-scroll/);
+ assert.match(html,/organic-top10\.css\?v=1\.3\.5-views-tracking/);
+ assert.match(html,/organic-top10\.js\?v=1\.3\.5-views-tracking/);
 });
 
 test('ranking de origem orgânica suporta até 100 SKUs sem agregar Ads',()=>{
