@@ -147,14 +147,14 @@ test('popup escolhe as quatro datas e separa API geral dos dados orgânicos',()=
  assert.match(ui,/product-views\/top10/);
  assert.match(ui,/product-views\/collect/);
  assert.match(ui,/viewsObserved/);
- assert.match(ui,/Contador Shopee \(sem período\)/);
+ assert.match(ui,/Contador acumulado:/);
  assert.match(server,/get_item_extra_info|scanLiveShopViews/);
  assert.doesNotMatch(ui,/\/api\/shopee\/ads\//);
 });
 
 test('API visualizações tem colunas próprias e não tenta renderizar CTR nem carrinhos',()=>{
  const ui=readFileSync(new URL('../public/organic-top10.js',import.meta.url),'utf8');
- assert.match(ui,/if\(source==='api'\)\{\s*add\(number\(row\.viewsObserved/);
+ assert.match(ui,/if\(source==='api'\)\{\s*const measured=/);
  assert.match(ui,/add\(percent\(row\.ctr\),'CTR'/);
  assert.match(ui,/add\(percent\(row\.cartAbandonmentRate\)/);
  assert.match(ui,/if\(source==='api'\)\{\s*add\([\s\S]*?\}\s*else\{\s*\/\/ Só o relatório orgânico/);
