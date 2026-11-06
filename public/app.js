@@ -70,6 +70,7 @@ function setTab(name,{updateHistory=true,scroll=true}={}){
   document.body?.classList?.toggle?.('view-optimizer',name==='optimizer');
   document.body?.classList?.toggle?.('view-overview',name==='overview');
   document.body?.classList?.toggle?.('view-products',name==='products');
+  document.body?.classList?.toggle?.('view-curves',name==='curves');
   document.body?.classList?.toggle?.('view-pricing',name==='pricing');
   document.body?.classList?.toggle?.('view-discounts',name==='discounts');
   document.body?.classList?.toggle?.('view-fiscal',name==='fiscal');

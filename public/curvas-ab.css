@@ -1,108 +1,228 @@
-/* Curvas A/B: somente a aba própria, sem alterar cartões ou estilos de Kits. */
-#tab-curves .curve-page{max-width:1320px;margin:0 auto;padding:10px 4px 32px;color:#173457}
+/* Curvas A/B: layout isolado; os demais setores mantêm seus estilos. */
+body.view-curves .page-intro{display:none!important}
+body.view-curves .workspace-content{max-width:1840px;padding:22px 24px 36px}
+#tab-curves{--curve-ink:#163657;--curve-muted:#60748b;--curve-line:#dce5ef;--curve-orange:#ed4d2d}
+#tab-curves .curve-page{container-type:inline-size;max-width:1440px;margin:0 auto;color:var(--curve-ink)}
 #tab-curves [hidden]{display:none!important}
-#tab-curves .curve-head{display:flex;align-items:center;justify-content:space-between;gap:18px;margin-bottom:20px}
-#tab-curves .curve-head h2{margin:4px 0 7px;font-size:29px;font-weight:850;color:#102e53;letter-spacing:-.035em}
-#tab-curves .curve-head p{max-width:790px;margin:0;font-size:14px;line-height:1.6;color:#52677e}
-#tab-curves .curve-eyebrow{display:block;font-size:11px;font-weight:900;letter-spacing:.14em;color:#f04c2e}
-#tab-curves .curve-ads-shortcut{display:inline-flex;align-items:center;justify-content:center;padding:10px 16px;text-decoration:none;background:white;color:#164b85;border:1px solid #d1e1f2;border-radius:11px;white-space:nowrap;font-size:13px;font-weight:800}
-#tab-curves .curve-filters{display:grid;grid-template-columns:minmax(140px,175px) minmax(135px,165px) minmax(170px,210px) minmax(220px,1fr) auto;align-items:end;gap:12px;padding:18px;background:#fff;border:1px solid #dde8f4;border-radius:18px;box-shadow:0 4px 22px #123b6310}
-#tab-curves .curve-filters label{display:block;font-size:12px;font-weight:800;color:#2c5076}
-#tab-curves .curve-filters select,#tab-curves .curve-filters input{display:block;width:100%;max-width:none;margin-top:7px;min-height:43px;padding:0 12px;border:1px solid #cedcec;border-radius:10px;background:#fff;color:#24405d;font-size:14px;box-shadow:none}
-#tab-curves .curve-filters button{min-height:43px;padding:10px 18px;border:0;border-radius:10px;background:linear-gradient(135deg,#f36637,#e94625);font-weight:850;color:white;white-space:nowrap;cursor:pointer}
-#tab-curves .curve-filters button:disabled{opacity:.65;cursor:wait}
-#tab-curves .curve-method{font-size:12.5px;line-height:1.6;color:#536a81;margin:12px 3px}
-#tab-curves .curve-notice{margin:15px 0;padding:13px 16px;border-radius:11px;border:1px solid #d5e3f4;background:#f1f7ff;color:#23517b;font-size:13px;line-height:1.5}
-#tab-curves .curve-notice.is-error{background:#fff2f1;border-color:#f2c9c6;color:#9d3330}
-#tab-curves .curve-notice.is-warning{background:#fff9eb;border-color:#f5dfaa;color:#7c5b18}
-#tab-curves .curve-stats{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:12px;margin:18px 0 24px}
-#tab-curves .curve-stats>div{background:#fff;border:1px solid #dce7f4;border-radius:14px;padding:15px 17px}
-#tab-curves .curve-stats small{display:block;color:#687b90;font-size:12px;margin-bottom:6px}
-#tab-curves .curve-stats strong{font-size:24px;font-weight:850;color:#153c69;font-variant-numeric:tabular-nums}
+#tab-curves svg{width:18px;height:18px;flex:none;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
+#tab-curves .curve-head{display:flex;justify-content:space-between;align-items:center;gap:20px;margin-bottom:18px}
+#tab-curves .curve-eyebrow{display:block;color:#c44428;font-size:10px;font-weight:800;letter-spacing:.14em;margin-bottom:6px}
+#tab-curves .curve-head h1{display:flex;flex-wrap:wrap;align-items:center;gap:12px;margin:0;color:#102e53;font-size:28px;font-weight:800;letter-spacing:-.04em;line-height:1.2}
+#tab-curves .curve-heading-tag{padding:5px 8px;border:1px solid #dce5f0;border-radius:7px;background:#fff;color:#61768d;font-size:10px;font-weight:650;letter-spacing:0;line-height:1.2}
+#tab-curves .curve-head p{margin:7px 0 0;color:var(--curve-muted);font-size:13px;line-height:1.5}
+
+/* Borda inferior e luz interna dão profundidade sem prejudicar a leitura. */
+#tab-curves :is(.curve-button,.curve-card-actions a,.curve-card-actions button,.curve-seo-title button,.curve-load-more>button){
+ display:inline-flex;align-items:center;justify-content:center;gap:8px;min-height:40px;padding:9px 13px;
+ border:1px solid #cad7e5;border-radius:10px;background:linear-gradient(180deg,#fff,#f1f5fa);
+ color:#254b72;font-family:inherit;font-size:12px;font-weight:750;line-height:1.35;
+ text-decoration:none;white-space:nowrap;cursor:pointer;box-shadow:0 3px 0 #b9c9db,0 5px 10px #183d6210,inset 0 1px 0 #fff;
+ transition:transform .15s ease,box-shadow .15s ease,background .15s ease;margin:0;
+}
+#tab-curves :is(.curve-button,.curve-card-actions a,.curve-card-actions button,.curve-seo-title button,.curve-load-more>button):hover{transform:translateY(-1px);background:linear-gradient(180deg,#fff,#e9f1fa);box-shadow:0 4px 0 #afc2d8,0 7px 14px #183d6217,inset 0 1px 0 #fff}
+#tab-curves :is(.curve-button,.curve-card-actions a,.curve-card-actions button,.curve-seo-title button,.curve-load-more>button):active{transform:translateY(2px);box-shadow:0 1px 0 #afc2d8,inset 0 1px 2px #183d6212}
+#tab-curves :is(button,a,summary,input,select):focus-visible{outline:3px solid #296bac;outline-offset:3px}
+#tab-curves :is(button,a):disabled{transform:none;opacity:.65;cursor:wait;box-shadow:0 1px 0 #cad7e5}
+#tab-curves #curveSearchBtn{min-height:43px;border-color:#e54a29;background:linear-gradient(180deg,#ff784e,#ef4e2c);color:#fff;box-shadow:0 4px 0 #bd3c21,0 7px 13px #ed4d2d24,inset 0 1px 0 #ffffff63}
+#tab-curves #curveSearchBtn:hover{background:linear-gradient(180deg,#ff845e,#f35833);box-shadow:0 5px 0 #bd3c21,0 9px 16px #ed4d2d2b,inset 0 1px 0 #ffffff63}
+#tab-curves #curveSearchBtn:active{box-shadow:0 1px 0 #bd3c21,inset 0 1px 2px #a92f2022}
+#tab-curves #curveSearchBtn::before{content:"";width:16px;height:16px;flex:none;background:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='white' stroke-width='2' stroke-linecap='round'%3E%3Ccircle cx='10.5' cy='10.5' r='6.5'/%3E%3Cpath d='m16 16 5 5'/%3E%3C/svg%3E") center/contain no-repeat}
+#tab-curves #curveSearchBtn[aria-busy="true"]::before{background:none;border:2px solid #ffffff66;border-top-color:#fff;border-radius:50%;animation:curve-spin .8s linear infinite}
+@keyframes curve-spin{to{transform:rotate(360deg)}}
+
+#tab-curves .curve-rules{display:grid;grid-template-columns:1fr 1fr 1.2fr;gap:12px;margin-bottom:16px}
+#tab-curves .curve-rule{display:flex;gap:12px;align-items:center;min-width:0;padding:13px 15px;border:1px solid var(--curve-line);border-radius:12px;background:linear-gradient(130deg,#fff,#f9fbfe);box-shadow:0 2px 0 #e3eaf3,0 5px 12px #173b6110}
+#tab-curves .curve-rule-letter{display:grid;place-items:center;width:34px;height:34px;flex:none;border-radius:10px;background:linear-gradient(145deg,#eaf5ff,#cfe6fc);color:#24639d;font-size:17px;font-weight:850;box-shadow:inset 0 1px 0 #fff,0 2px 0 #b9d4ed}
+#tab-curves .curve-rule-b .curve-rule-letter{background:linear-gradient(145deg,#fff2e5,#ffe2be);color:#9b591c;box-shadow:inset 0 1px 0 #fff,0 2px 0 #efcda6}
+#tab-curves .curve-rule strong{display:flex;align-items:baseline;flex-wrap:wrap;gap:6px 10px;font-size:12px;font-weight:650;line-height:1.35}
+#tab-curves .curve-rule b{font-size:15px;font-weight:800;letter-spacing:-.025em}
+#tab-curves .curve-rule small{display:block;margin-top:3px;font-size:11px;color:var(--curve-muted);line-height:1.35}
+#tab-curves .curve-rule-pending>svg{width:27px;height:27px;color:#8294a9}
+#tab-curves .curve-rule-pending strong{font-size:12px;font-weight:750}
+
+#tab-curves .curve-search-panel{background:#fff;border:1px solid var(--curve-line);border-radius:15px;box-shadow:0 3px 0 #e4ebf3,0 8px 24px #163b6210;overflow:hidden}
+#tab-curves .curve-panel-heading{display:flex;justify-content:space-between;align-items:center;gap:12px;padding:16px 18px 0}
+#tab-curves .curve-panel-heading h2{font-size:15px;font-weight:800;margin:0;color:#163657}
+#tab-curves .curve-panel-heading p{font-size:12px;color:var(--curve-muted);margin:4px 0 0}
+#tab-curves .curve-panel-heading>span{font-size:11px;color:#62768e;background:#f4f7fb;border:1px solid #e6edf5;border-radius:6px;padding:5px 8px;text-align:right}
+#tab-curves .curve-filters{display:grid;grid-template-columns:minmax(170px,1.4fr) minmax(130px,1fr) minmax(110px,.8fr) minmax(180px,1.5fr) auto;align-items:end;gap:12px;padding:17px 18px 0;margin:0}
+#tab-curves .curve-filters>label{display:block;min-width:0;font-size:11px;font-weight:750;color:#405875;line-height:1.5}
+#tab-curves .curve-keyword-field>span{margin-left:3px;font-size:10px;font-weight:500;color:#77899c}
+#tab-curves .curve-filters :is(select,input[type="search"]){display:block;width:100%;max-width:none;min-width:0;margin:6px 0 0;min-height:43px;padding:10px 11px;border:1px solid #d4deeb;border-radius:9px;background:#f8fafd;color:#24405d;font-family:inherit;font-size:12px;line-height:1.4;box-shadow:inset 0 1px 2px #173b6105;transition:border-color .15s,background .15s}
+#tab-curves .curve-filters select{padding-right:24px;text-overflow:ellipsis}
+#tab-curves .curve-filters :is(select,input[type="search"]):focus{background:#fff;border-color:#648db6}
+#tab-curves .curve-filters input::placeholder{color:#8796a8}
+#tab-curves #curveSearchBtn{margin-bottom:3px}
+#tab-curves .curve-filter-footer{grid-column:1/-1;display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;border-top:1px solid #edf1f6;padding:12px 0;margin-top:3px}
+#tab-curves .curve-only-verified{display:flex;align-items:center;gap:8px;margin:0;font-size:11px;font-weight:650;color:#47617b;cursor:pointer}
+#tab-curves .curve-only-verified>input{appearance:auto;width:16px;min-height:16px;height:16px;flex:0 0 16px;margin:0;padding:0;accent-color:var(--curve-orange);box-shadow:none}
+#tab-curves #curveKeywordHint{font-size:11px;color:#74849a}
+
+#tab-curves .curve-sources{display:flex;justify-content:space-between;align-items:center;gap:16px;padding:13px 16px;margin:14px 0 0;border:1px solid var(--curve-line);border-radius:12px;background:#fff;box-shadow:0 2px 0 #e8edf5}
+#tab-curves .curve-source-copy{min-width:0;flex:1}
+#tab-curves .curve-source-copy>strong{display:block;margin-bottom:5px;font-size:11px;font-weight:750;color:#425d79}
+#tab-curves #curveSourceStatus{display:block;font-size:12px;color:#284f73;font-weight:650;line-height:1.45;overflow-wrap:anywhere}
+#tab-curves .curve-source-actions{display:flex;align-items:center;flex-wrap:wrap;gap:10px;flex-shrink:0}
+#tab-curves .curve-source-diagnostics{margin-top:6px}
+#tab-curves .curve-source-diagnostics summary{font-size:11px;color:#657e98;cursor:pointer;width:fit-content}
+#tab-curves #curveSourceDetail{font-size:11px;color:#5d7289;line-height:1.6;overflow-wrap:anywhere;margin:8px 0 0}
+#tab-curves .curve-help{margin:10px 0 18px;padding:0 2px}
+#tab-curves .curve-help>summary{display:flex;align-items:center;gap:8px;list-style:none;cursor:pointer;color:#44617e;font-size:11px;font-weight:750;min-height:32px;width:fit-content}
+#tab-curves .curve-help>summary::-webkit-details-marker{display:none}
+#tab-curves .curve-help>summary::before{content:"";width:6px;height:6px;border-right:1.5px solid currentColor;border-bottom:1.5px solid currentColor;transform:rotate(-45deg);margin:0 4px 0 2px;transition:transform .15s}
+#tab-curves .curve-help[open]>summary::before{transform:rotate(45deg)}
+#tab-curves .curve-help>summary>span{font-size:10px;font-weight:400;color:#70849b;margin-left:4px}
+#tab-curves .curve-help-content{display:grid;grid-template-columns:1.2fr 1fr;gap:24px;background:#fff;border:1px solid var(--curve-line);border-radius:12px;padding:16px 18px;margin-top:4px}
+#tab-curves .curve-help-content h3{font-size:12px;color:#345676;margin:0 0 5px}
+#tab-curves .curve-help-content p{color:#64788e;font-size:12px;line-height:1.65;margin:0 0 13px}
+#tab-curves .curve-help-content p:last-child{margin-bottom:0}
+#tab-curves .curve-help-note{border-top:1px solid #e5edf5;padding-top:12px}
+
+#tab-curves .curve-notice{margin:0 0 16px;padding:12px 14px;border-radius:10px;border:1px solid #d5e3f4;border-left:3px solid #6c9dcb;background:#f1f7ff;color:#23517b;font-size:12px;line-height:1.6;overflow-wrap:anywhere}
+#tab-curves .curve-notice.is-error{background:#fff2f1;border-color:#efccc8;border-left-color:#c6574d;color:#963b32}
+#tab-curves .curve-notice.is-warning{background:#fff9ed;border-color:#eddfbb;border-left-color:#ca973c;color:#7c5b18}
+#tab-curves .curve-stats{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:10px;margin:0 0 20px}
+#tab-curves .curve-stats>div{background:#fff;border:1px solid var(--curve-line);border-radius:11px;padding:12px 14px;box-shadow:0 2px 0 #e5ebf3}
+#tab-curves .curve-stats small{display:block;color:#63788f;font-size:11px;margin-bottom:5px;line-height:1.4}
+#tab-curves .curve-stats strong{font-size:22px;font-weight:800;color:#153c69;font-variant-numeric:tabular-nums;line-height:1.2}
 #tab-curves .curve-result-head{display:flex;justify-content:space-between;align-items:center;gap:12px;margin-bottom:12px}
-#tab-curves .curve-result-head h3{margin:0;font-size:18px;color:#11365c}
-#tab-curves .curve-result-head span{font-size:12px;color:#697b90}
-#tab-curves .curve-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:13px}
-#tab-curves .curve-card{background:white;border:1px solid #dce7f4;border-radius:16px;padding:15px;display:grid;grid-template-columns:106px minmax(0,1fr);gap:16px;box-shadow:0 2px 13px #153b610c}
-#tab-curves .curve-card-image{width:106px;height:106px;object-fit:contain;background:#f4f8fc;border-radius:13px;border:1px solid #e3ebf2}
-#tab-curves .curve-card-placeholder{display:flex;align-items:center;justify-content:center;text-align:center;color:#8294a7;font-size:12px}
+#tab-curves .curve-result-head h2{margin:0;font-size:16px;font-weight:800;color:#163657}
+#tab-curves .curve-result-head>span{font-size:11px;color:#6d8198;text-align:right;line-height:1.5}
+#tab-curves .curve-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px;align-items:start}
+#tab-curves .curve-grid>.curve-evidence{grid-column:1/-1;margin:0;padding:12px 14px;border:1px solid #eddfbb;border-radius:10px;background:#fff9ed;color:#7c5b18}
+#tab-curves .curve-empty{grid-column:1/-1;padding:24px;text-align:center;background:linear-gradient(135deg,#fff,#f9fbfe);color:#5b728c;border:1px dashed #ccd9e8;border-radius:13px;font-size:13px;line-height:1.6}
+#tab-curves .curve-empty-initial{display:flex;justify-content:center;align-items:center;gap:18px;min-height:146px;text-align:left}
+#tab-curves .curve-empty-initial>svg{width:52px;height:52px;padding:13px;border:1px solid #e0e9f3;border-radius:15px;background:linear-gradient(145deg,#f5f9fe,#e7eef7);color:#6788ab;box-shadow:0 3px 0 #d7e2ee}
+#tab-curves .curve-empty strong{display:block;font-size:14px;font-weight:750;color:#345676}
+#tab-curves .curve-empty p{font-size:12px;margin:4px 0 2px}
+#tab-curves .curve-empty small{font-size:11px;color:#7a8da2}
+#tab-curves .curve-card{background:#fff;border:1px solid var(--curve-line);border-radius:14px;padding:16px;display:grid;grid-template-columns:86px minmax(0,1fr);gap:14px;align-items:start;box-shadow:0 3px 0 #e3eaf2,0 7px 18px #173b610a}
+#tab-curves .curve-card-image{width:86px;height:86px;object-fit:contain;background:#f8fafd;border-radius:11px;border:1px solid #e3ebf2}
+#tab-curves .curve-card-placeholder{display:flex;align-items:center;justify-content:center;text-align:center;color:#7e91a6;font-size:10px;line-height:1.4;padding:8px}
 #tab-curves .curve-card-main{min-width:0}
 #tab-curves .curve-card-top{display:flex;justify-content:space-between;gap:8px;align-items:flex-start}
-#tab-curves .curve-card h4{margin:0 0 7px;font-size:14px;line-height:1.35;color:#15365c}
-#tab-curves .curve-curve{font-weight:900;white-space:nowrap;font-size:12px;background:#edf5ff;color:#225998;border-radius:8px;padding:5px 8px}
+#tab-curves .curve-card h4{margin:0 0 7px;font-size:14px;line-height:1.45;color:#15365c;overflow-wrap:anywhere}
+#tab-curves .curve-curve{font-weight:800;white-space:nowrap;font-size:10px;background:#edf5ff;color:#225998;border-radius:7px;padding:5px 7px}
 #tab-curves .curve-curve.a{background:#eaf5ff;color:#195a9b}
-#tab-curves .curve-curve.b{background:#fff2e4;color:#9b581a}
-#tab-curves .curve-sku{color:#5c6d80;font-size:12px;margin-bottom:9px}
-#tab-curves .curve-sku b{color:#193e6c}
-#tab-curves .curve-metrics{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:6px 12px;margin:8px 0}
-#tab-curves .curve-metrics div{font-size:12px;color:#5f7286}
-#tab-curves .curve-metrics b{display:block;font-size:14px;color:#183f66;margin-top:2px}
-#tab-curves .curve-evidence{font-size:11.5px;color:#5c7185;line-height:1.5;margin:6px 0}
-#tab-curves .curve-stock{font-size:12px;font-weight:700;margin:8px 0;color:#27805f}
-#tab-curves .curve-stock.not{color:#ae6a27}
-#tab-curves .curve-card-actions{display:flex;flex-wrap:wrap;gap:8px;margin-top:11px}
-#tab-curves .curve-card-actions a,#tab-curves .curve-card-actions button{display:inline-flex;padding:8px 10px;border-radius:9px;border:1px solid #d0deeb;background:white;color:#14528f;font-size:12px;font-weight:800;text-decoration:none;cursor:pointer}
-#tab-curves .curve-card-actions button{background:#eef5fd}
-#tab-curves .curve-empty{grid-column:1/-1;padding:30px 16px;text-align:center;background:white;color:#5b728c;border:1px dashed #d0deed;border-radius:13px;font-size:14px}
-#tab-curves .curve-disclaimer{font-size:11.5px;color:#74859a;line-height:1.6;margin-top:20px}
-@media(max-width:1100px){#tab-curves .curve-filters{grid-template-columns:1fr 1fr}#tab-curves .curve-keyword-field{grid-column:1/-1}#tab-curves .curve-grid{grid-template-columns:1fr}}
-@media(max-width:650px){#tab-curves .curve-head{align-items:flex-start;flex-direction:column}#tab-curves .curve-filters{grid-template-columns:1fr}#tab-curves .curve-keyword-field{grid-column:auto}#tab-curves .curve-stats{grid-template-columns:1fr 1fr}#tab-curves .curve-card{grid-template-columns:83px 1fr;gap:11px}#tab-curves .curve-card-image{height:83px;width:83px}#tab-curves .curve-head h2{font-size:24px}}
-
-#tab-curves .curve-featured-control{display:flex;align-items:center;gap:15px;flex-wrap:wrap;margin:12px 2px 16px}
-#tab-curves .curve-featured-control>a{display:inline-flex;background:#f04d2e;color:#fff;text-decoration:none;font-weight:800;font-size:12px;padding:10px 14px;border-radius:10px;align-items:center}
-#tab-curves .curve-featured-control>span{font-size:12px;color:#677b90}
-#tab-curves .curve-card{align-items:start}
-#tab-curves .curve-metrics{grid-template-columns:repeat(2,minmax(0,1fr));margin:10px 0}
-#tab-curves .curve-metrics b{overflow-wrap:anywhere}
-#tab-curves .curve-competitors{border-top:1px solid #e8eff7;margin-top:14px;padding-top:12px}
-#tab-curves .curve-competitors summary{font-size:12px;font-weight:800;color:#20568a;cursor:pointer;list-style-position:inside}
-#tab-curves .curve-offers-list{margin:8px 0 4px;padding-left:20px;display:grid;gap:8px}
-#tab-curves .curve-offers-list a{font-size:12px;color:#19548f;text-decoration:none;line-height:1.4}
+#tab-curves .curve-curve.b{background:#fff2e4;color:#935418}
+#tab-curves .curve-curve.pending{background:#fff6e3;color:#87611d}
+#tab-curves .curve-sku{color:#6d7f93;font-size:11px;margin-bottom:10px;overflow-wrap:anywhere}
+#tab-curves .curve-sku b{color:#3e5e7e}
+#tab-curves .curve-metrics{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px 14px;margin:10px 0 12px;padding:12px;background:#f6f9fc;border:1px solid #e8eef5;border-radius:10px}
+#tab-curves .curve-metrics div{font-size:10px;color:#687d93;line-height:1.45}
+#tab-curves .curve-metrics b{display:block;font-size:14px;color:#183f66;margin-top:3px;overflow-wrap:anywhere;font-variant-numeric:tabular-nums}
+#tab-curves .curve-evidence{font-size:11px;color:#687d92;line-height:1.55;margin:6px 0;overflow-wrap:anywhere}
+#tab-curves .curve-stock{font-size:11px;font-weight:700;margin:10px 0;color:#27805f}
+#tab-curves .curve-stock.not{color:#9b662c}
+#tab-curves .curve-card-actions{display:flex;flex-wrap:wrap;gap:10px 8px;margin:12px 0 3px}
+#tab-curves .curve-card-actions :is(a,button),#tab-curves .curve-seo-title button{min-height:34px;font-size:11px;padding:7px 9px;border-radius:8px;white-space:normal;text-align:center}
+#tab-curves :is(.curve-competitors,.curve-seo){border-top:1px solid #e8eff7;margin-top:14px;padding-top:12px}
+#tab-curves :is(.curve-competitors,.curve-seo)>summary{font-size:11px;font-weight:750;line-height:1.5;color:#315f89;cursor:pointer;list-style-position:inside}
+#tab-curves .curve-offers-list{margin:8px 0 4px;padding-left:18px;display:grid;gap:8px}
+#tab-curves .curve-offers-list a{font-size:11px;color:#19548f;text-decoration:none;line-height:1.5;overflow-wrap:anywhere}
 #tab-curves .curve-offers-list a:hover{text-decoration:underline}
-#tab-curves .curve-seo{border-top:1px solid #e8eff7;margin-top:14px;padding-top:12px}
-#tab-curves .curve-seo h5{font-size:13px;margin:0 0 6px;color:#163f68}
-#tab-curves .curve-seo-subtitle{font-size:11.5px;color:#6c7f92;line-height:1.5;margin:6px 0 10px}
+#tab-curves .curve-seo-subtitle{font-size:11px;color:#6c7f92;line-height:1.5;margin:10px 0}
 #tab-curves .curve-keyword-list{display:flex;gap:7px;flex-wrap:wrap;margin:8px 0 12px}
-#tab-curves .curve-keyword-tag{display:flex;align-items:center;flex-wrap:wrap;gap:5px;padding:5px 8px;background:#f2f7fe;border:1px solid #dfeaf7;border-radius:8px}
-#tab-curves .curve-keyword-pill{font-size:11.5px;color:#175587;text-decoration:none;font-weight:750}
+#tab-curves .curve-keyword-tag{display:flex;align-items:center;flex-wrap:wrap;gap:5px;padding:5px 8px;background:#f2f7fe;border:1px solid #dfeaf7;border-radius:7px;max-width:100%}
+#tab-curves .curve-keyword-pill{font-size:11px;color:#175587;text-decoration:none;font-weight:750;overflow-wrap:anywhere}
 #tab-curves .curve-keyword-tag small{font-size:10px;color:#75879a;font-weight:500}
-#tab-curves .curve-seo-title{background:#f7faff;border-radius:11px;border:1px solid #e3eaf2;padding:11px}
-#tab-curves .curve-seo-title small{color:#5d748c;font-size:11px}
-#tab-curves .curve-seo-title p{margin:7px 0 10px;color:#123d69;font-weight:800;font-size:13px;line-height:1.55;overflow-wrap:anywhere}
-#tab-curves .curve-seo-title button{border:1px solid #c7dbf1;border-radius:8px;background:#eaf3ff;color:#155799;padding:7px 11px;font-size:12px;font-weight:750;cursor:pointer}
-@media (max-width:1300px){#tab-curves .curve-filters{grid-template-columns:1fr 1fr 1fr}#tab-curves .curve-keyword-field{grid-column:1/3}#tab-curves .curve-filters>button{grid-column:3/4}}
-@media (max-width:760px){#tab-curves .curve-filters{grid-template-columns:1fr 1fr}#tab-curves .curve-keyword-field{grid-column:1/-1}#tab-curves .curve-filters>button{grid-column:1/-1}}
-@media (max-width:480px){#tab-curves .curve-filters{grid-template-columns:1fr}#tab-curves .curve-keyword-field,#tab-curves .curve-filters>button{grid-column:auto}}
-
+#tab-curves .curve-seo-title{background:#f7faff;border-radius:10px;border:1px solid #e3eaf2;padding:11px}
+#tab-curves .curve-seo-title small{color:#5d748c;font-size:10px}
+#tab-curves .curve-seo-title p{margin:7px 0 12px;color:#123d69;font-weight:750;font-size:12px;line-height:1.55;overflow-wrap:anywhere}
 #tab-curves .curve-load-more{display:flex;flex-wrap:wrap;gap:14px;align-items:center;justify-content:center;margin:20px 0 8px}
-#tab-curves .curve-load-more>button{border:1px solid #bfd6ec;border-radius:11px;background:#e9f3fd;color:#164a80;padding:12px 17px;font-size:13px;font-weight:850;cursor:pointer}
-#tab-curves .curve-load-more>button:disabled{opacity:.6;cursor:wait}
-#tab-curves .curve-load-more>button[hidden]{display:none}
-#tab-curves .curve-load-more>span{font-size:12px;color:#5c7186;line-height:1.5}
-@media(max-width:1150px){#tab-curves .curve-stats{grid-template-columns:repeat(3,minmax(0,1fr))}}
-@media(max-width:650px){#tab-curves .curve-stats{grid-template-columns:repeat(2,minmax(0,1fr))}}
+#tab-curves .curve-load-more:has(button[hidden]):has(span:empty){display:none}
+#tab-curves .curve-load-more>span{font-size:11px;color:#6b8197;line-height:1.5;text-align:center}
 
-#tab-curves .curve-only-verified{grid-column:1/-1;display:flex!important;align-items:flex-start;gap:10px;font-weight:650!important;font-size:12px!important;line-height:1.5;color:#335571!important;padding:0 2px}
-#tab-curves .curve-only-verified>input{appearance:auto;width:17px!important;min-height:17px!important;height:17px!important;flex:0 0 17px;margin:0!important;padding:0!important;accent-color:#f04f2d}
-#tab-curves .curve-sources{display:flex;justify-content:space-between;gap:16px;align-items:center;padding:15px 18px;border:1px solid #d5e2f1;border-radius:13px;background:#fff;margin:13px 0}
-#tab-curves .curve-sources>div{display:flex;flex-direction:column;gap:4px;min-width:0}
-#tab-curves .curve-sources strong{font-size:12px;color:#1a426b}
-#tab-curves .curve-sources span{font-size:13px;color:#1d5c90;font-weight:800;overflow-wrap:anywhere}
-#tab-curves .curve-sources small{color:#687e94;font-size:12px;line-height:1.4;overflow-wrap:anywhere}
-#tab-curves .curve-sources button{border:1px solid #ceddec;background:#ecf5fe;color:#15558b;padding:10px 12px;border-radius:9px;white-space:nowrap;font-size:12px;font-weight:800;cursor:pointer}
-#tab-curves .curve-sources button:disabled{opacity:.6;cursor:wait}
-@media(max-width:700px){#tab-curves .curve-sources{flex-direction:column;align-items:stretch}#tab-curves .curve-sources button{white-space:normal}}
+#tab-curves .curve-chrome-bridge{display:flex;justify-content:space-between;align-items:center;gap:16px;margin:12px 0 0;padding:13px 16px;border:1px solid #d5e2f1;border-radius:12px;background:linear-gradient(115deg,#f5f9ff,#fff);box-shadow:0 2px 0 #e3ebf4}
+#tab-curves .curve-chrome-copy{flex:1;min-width:0}
+#tab-curves .curve-chrome-copy>strong{font-size:12px;color:#214b74}
+#tab-curves .curve-chrome-copy>p{margin:4px 0;font-size:11px;line-height:1.5;color:#647d97}
+#tab-curves #curveChromeStatus{display:block;margin-top:5px;font-size:11px;font-weight:650;line-height:1.5;color:#365f86;overflow-wrap:anywhere}
+#tab-curves .curve-chrome-actions{display:flex;align-items:center;flex-wrap:wrap;justify-content:flex-end;gap:9px;max-width:400px;flex-shrink:0}
+#tab-curves .curve-chrome-actions details{flex-basis:100%;font-size:11px;color:#526c86;text-align:right}
+#tab-curves .curve-chrome-actions summary{font-weight:650;cursor:pointer}
+#tab-curves .curve-chrome-actions details p{max-width:360px;line-height:1.6;text-align:left;margin:8px 0 0}
+#tab-curves #curveChromeStart{background:linear-gradient(180deg,#4384c5,#2d66a0);border-color:#31699f;box-shadow:0 3px 0 #204e7b,0 5px 10px #234d7918,inset 0 1px 0 #ffffff50;color:#fff}
+#tab-curves #curveChromeStart:hover{background:linear-gradient(180deg,#4c91d4,#3473b0)}
+#tab-curves #curveChromeStart:active{box-shadow:0 1px 0 #204e7b;transform:translateY(2px)}
 
-#tab-curves .curve-chrome-bridge{display:flex;justify-content:space-between;align-items:center;gap:18px;flex-wrap:wrap;margin:14px 0;padding:17px;background:#fff;border:1px solid #d7e4f1;border-radius:15px}
-#tab-curves .curve-chrome-bridge>div:first-child{flex:1;min-width:270px}
-#tab-curves .curve-chrome-bridge strong{font-size:14px;color:#173d69}
-#tab-curves .curve-chrome-bridge p{margin:5px 0;line-height:1.5;font-size:12px;color:#65788e}
-#tab-curves .curve-chrome-bridge small{display:block;font-weight:750;color:#245983;font-size:12px;margin-top:7px}
-#tab-curves .curve-chrome-actions{display:flex;align-items:center;gap:9px;flex-wrap:wrap;max-width:480px}
-#tab-curves .curve-chrome-actions>a,#tab-curves .curve-chrome-actions>button{border:1px solid #bcd0e6;background:#ecf5ff;border-radius:9px;padding:10px 12px;color:#164e86;font-size:12px;font-weight:800;text-decoration:none;cursor:pointer}
-#tab-curves .curve-chrome-actions>button{background:#ee512d;color:white;border-color:#ee512d}
-#tab-curves .curve-chrome-actions>button:disabled{opacity:.65;cursor:wait}
-#tab-curves .curve-chrome-actions details{width:100%;font-size:12px;color:#46637d}
-#tab-curves .curve-chrome-actions summary{cursor:pointer;color:#235e90;font-weight:750}
-#tab-curves .curve-chrome-actions details p{font-size:12px}
-#tab-curves .curve-curve.pending{background:#f5f0df;color:#795c21}
+/* A largura útil acompanha o menu lateral aberto ou recolhido. */
+@container(max-width:1020px){
+ #tab-curves .curve-filters{grid-template-columns:1.3fr 1fr 1fr}
+ #tab-curves .curve-keyword-field{grid-column:1/3}
+ #tab-curves #curveSearchBtn{grid-column:3;min-height:43px}
+ #tab-curves .curve-grid{grid-template-columns:1fr}
+ #tab-curves .curve-rule strong{display:block}
+ #tab-curves .curve-rule b{display:block;margin-top:2px}
+}
+@container(max-width:690px){
+ #tab-curves .curve-chrome-bridge{flex-direction:column;align-items:stretch;gap:12px}
+ #tab-curves .curve-chrome-actions{max-width:none;justify-content:flex-start}
+ #tab-curves .curve-chrome-actions>.curve-button{flex:1}
+ #tab-curves .curve-chrome-actions details{text-align:left}
+ #tab-curves .curve-head{align-items:flex-start;gap:12px}
+ #tab-curves .curve-head h1{font-size:25px;gap:7px}
+ #tab-curves .curve-heading-tag{font-size:9px}
+ #tab-curves .curve-head p{font-size:12px}
+ #tab-curves .curve-rules{grid-template-columns:1fr 1fr;gap:10px}
+ #tab-curves .curve-rule{padding:12px}
+ #tab-curves .curve-rule-pending{grid-column:1/-1;padding:9px 12px;gap:9px;box-shadow:none;background:#f0f5fb}
+ #tab-curves .curve-rule-pending>svg{width:18px;height:18px}
+ #tab-curves .curve-rule-pending>div{display:flex;flex-wrap:wrap;gap:4px 8px;align-items:center}
+ #tab-curves .curve-rule-pending small{margin:0}
+ #tab-curves .curve-sources{align-items:flex-start;flex-direction:column;gap:12px}
+ #tab-curves .curve-source-actions{width:100%}
+ #tab-curves .curve-source-actions>*{flex:1}
+ #tab-curves .curve-help>summary>span{display:none}
+ #tab-curves .curve-help-content{grid-template-columns:1fr;gap:14px}
+ #tab-curves .curve-stats{grid-template-columns:repeat(3,minmax(0,1fr))}
+ #tab-curves .curve-result-head{align-items:flex-start;flex-direction:column;gap:4px}
+ #tab-curves .curve-result-head>span{text-align:left}
+ #tab-curves .curve-panel-heading>span{display:none}
+}
+@container(max-width:490px){
+ #tab-curves .curve-head{flex-wrap:wrap}
+ #tab-curves .curve-ads-shortcut{min-height:36px;font-size:11px;padding:7px 11px}
+ #tab-curves .curve-head h1{font-size:26px}
+ #tab-curves .curve-panel-heading{padding:15px 14px 0}
+ #tab-curves .curve-filters{grid-template-columns:1fr 1fr;padding:15px 14px 0;gap:11px}
+ #tab-curves .curve-category-field,#tab-curves .curve-keyword-field,#tab-curves #curveSearchBtn{grid-column:1/-1}
+ #tab-curves .curve-filters :is(select,input[type="search"]){font-size:16px;min-height:44px}
+ #tab-curves #curveSearchBtn{min-height:44px;font-size:13px;margin-top:2px}
+ #tab-curves .curve-filter-footer{gap:8px}
+ #tab-curves .curve-stats{grid-template-columns:repeat(2,minmax(0,1fr))}
+ #tab-curves .curve-card{grid-template-columns:1fr;padding:14px;gap:10px}
+ #tab-curves .curve-card-image{width:72px;height:72px}
+ #tab-curves .curve-card-top{flex-wrap:wrap}
+ #tab-curves .curve-card-actions :is(a,button),#tab-curves .curve-seo-title button{min-height:40px}
+ #tab-curves .curve-empty-initial{flex-direction:column;gap:12px;text-align:center;padding:22px 14px}
+ #tab-curves .curve-load-more>button{white-space:normal;width:100%}
+}
+@media(max-width:1280px){
+ body.view-curves .topbar-account{display:none}
+ body.view-curves .topbar-location{font-size:0}
+ body.view-curves .topbar-location strong{font-size:12px}
+ body.view-curves .topbar-separator{display:none}
+ body.view-curves :is(.topbar-leading,.topbar-trailing){gap:10px}
+}
+@media(max-width:1100px){
+ body.view-curves .topbar-settings-button{display:none}
+ body.view-curves .workspace-topbar .shopee-integration-mark{display:none}
+}
+@media(max-width:980px){body.view-curves .workspace-content{padding:18px 18px 32px}}
+@media(max-width:540px){
+ body.view-curves .workspace-content{padding:16px 12px 28px}
+ body.view-curves .workspace-topbar{padding:0 12px;gap:10px}
+ body.view-curves :is(.topbar-leading,.topbar-trailing){gap:8px}
+ body.view-curves .topbar-location{font-size:0}
+ body.view-curves .topbar-location strong{font-size:12px}
+ body.view-curves :is(.topbar-settings-button,.topbar-separator){display:none}
+ body.view-curves .organic-top10-toolbar-button{font-size:0!important;white-space:nowrap;min-width:55px;width:auto;padding:8px}
+ body.view-curves .organic-top10-toolbar-button::after{content:"TOP 10";font-size:10px}
+ body.view-curves button.topbar-alert-button{width:30px;padding:5px}
+ body.view-curves button.topbar-logout{padding:8px 10px;font-size:11px}
+}
+@media(prefers-reduced-motion:reduce){
+ #tab-curves *,#tab-curves *::before{transition:none!important;animation:none!important}
+ #tab-curves :is(button,a):hover,#tab-curves :is(button,a):active{transform:none}
+}

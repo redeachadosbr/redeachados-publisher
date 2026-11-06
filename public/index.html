@@ -32,7 +32,7 @@
 <link rel="stylesheet" href="/optimizer-technical-compact.css?v=3-wedrop-visible">
 <link rel="stylesheet" href="/ads-premium.css?v=2.4.0-seo-ads-location">
 <link rel="stylesheet" href="/sidebar-collapse.css?v=1.0.0">
-<link rel="stylesheet" href="/curvas-ab.css?v=20261106-chrome-batch-1">
+<link rel="stylesheet" href="/curvas-ab.css?v=6-compact-depth">
 <link rel="stylesheet" href="/optimizer-image-studio.css?v=1.0.5-image03-direct-import">
 <link rel="stylesheet" href="/kit-builder.css?v=20261105-wedrop-step01-v1">
 <link rel="stylesheet" href="/optimizer-technical-studio.css?v=1.2.0-compact-fields">
@@ -1052,65 +1052,67 @@
               <section class="tabpane" id="tab-curves" aria-label="Curvas A e B">
  <div class="curve-page">
   <header class="curve-head">
-   <div><span class="curve-eyebrow">INTELIGÊNCIA DE MERCADO • SHOPEE + WEDROP</span>
-   <h2>Curvas A e B</h2>
-   <p>Selecione uma categoria: o sistema identifica as SKUs WeDrop, pesquisa automaticamente anúncios equivalentes ordenados por vendas e apresenta oportunidades para Ads.</p></div>
-   <a href="/app/ads" data-go="ads" class="curve-ads-shortcut">Ver Shopee Ads</a>
+   <div><span class="curve-eyebrow">INTELIGÊNCIA DE MERCADO</span>
+   <h1>Curvas A e B <span class="curve-heading-tag">Shopee + WeDrop</span></h1>
+   <p>Encontre SKUs do catálogo com demanda comprovada nos anúncios da concorrência.</p></div>
+   <a href="/app/ads" data-go="ads" class="curve-button curve-ads-shortcut">Shopee Ads <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12h14m-5-5 5 5-5 5"/></svg></a>
   </header>
+  <div class="curve-rules" aria-label="Regras de classificação">
+   <div class="curve-rule curve-rule-a"><span class="curve-rule-letter" aria-hidden="true">A</span><div><strong>Curva A <b>900+ vendas</b></strong><small>nos últimos 30 dias</small></div></div>
+   <div class="curve-rule curve-rule-b"><span class="curve-rule-letter" aria-hidden="true">B</span><div><strong>Curva B <b>700–899 vendas</b></strong><small>nos últimos 30 dias</small></div></div>
+   <div class="curve-rule curve-rule-pending"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg><div><strong>Sem evidência mensal?</strong><small>A SKU fica pendente de confirmação.</small></div></div>
+  </div>
+  <section class="curve-search-panel" aria-labelledby="curveSearchHeading">
+   <div class="curve-panel-heading"><div><h2 id="curveSearchHeading">Pesquisar oportunidades</h2><p>Escolha a categoria e refine sua busca.</p></div><span>Inclui SKUs ainda não publicadas</span></div>
   <form id="curveSearchForm" class="curve-filters">
-   <label>Quantidade de produtos
-    <select id="curveLimit"><option value="5">5 produtos</option><option value="10" selected>10 produtos</option><option value="15">15 produtos</option><option value="20">20 produtos</option></select>
+   <label class="curve-category-field">Categoria WeDrop
+    <select id="curveCategory" aria-label="Categoria WeDrop igual à seleção dos Kits Inteligentes"><option value="Todos">Todas as categorias</option></select>
    </label>
    <label>Curva
     <select id="curveType"><option value="ALL">Curvas A e B</option><option value="A">Curva A</option><option value="B">Curva B</option></select>
    </label>
-   <label>Categoria WeDrop
-    <select id="curveCategory" aria-label="Categoria WeDrop igual à seleção dos Kits Inteligentes"><option value="Todos">Todas as categorias</option></select>
+   <label>Quantidade
+    <select id="curveLimit"><option value="5">5 produtos</option><option value="10" selected>10 produtos</option><option value="15">15 produtos</option><option value="20">20 produtos</option></select>
    </label>
-   <label class="curve-keyword-field">Refinar por nome (opcional — vazio pesquisa a categoria inteira)
-    <input id="curveKeyword" type="search" maxlength="70" placeholder="Ex.: lancheira, organizador, brinquedo">
+   <label class="curve-keyword-field">Nome do produto <span>opcional</span>
+    <input id="curveKeyword" type="search" maxlength="70" placeholder="Ex.: lancheira, organizador" aria-describedby="curveKeywordHint">
    </label>
-   <button id="curveSearchBtn" type="submit">Pesquisar SKUs automaticamente</button>
-   <label class="curve-only-verified"><input type="checkbox" id="curveConfirmedOnly" checked/>
-    <span>Somente curvas A/B comprovadas em 30 dias. Concorrentes sem vendas mensais aparecem como pendentes, não como A/B.</span>
-   </label>
+   <button id="curveSearchBtn" class="curve-button curve-button-primary" type="submit">Pesquisar SKUs</button>
+   <div class="curve-filter-footer"><label class="curve-only-verified"><input type="checkbox" id="curveConfirmedOnly" checked/>
+    <span>Somente curvas comprovadas em 30 dias</span>
+   </label><span id="curveKeywordHint">Sem nome, pesquisa toda a categoria.</span></div>
   </form>
-  <p class="curve-method"><strong>Origem:</strong> a aba oficial <strong>Em Destaque</strong> da Shopee ordena por vendas (<code>sortBy=sales</code>); o botão abaixo abre essa consulta exata para conferência. A pesquisa automática percorre as SKUs WeDrop e tenta primeiro a busca pública <strong>Em Destaque (by=sales)</strong>. Se a Shopee restringir o acesso, utiliza a <strong>API de Afiliados ordenada por vendas</strong> quando conectada. A fonte utilizada aparece nos resultados; a API de Afiliados não reproduz integralmente a vitrine. Curva A = 900 ou mais vendas em 30 dias; B = 700–899. Abaixo de 700 não se classifica. O cruzamento parte das SKUs do catálogo WeDrop da categoria, inclusive as não publicadas na própria loja. Sem vendas mensais verificáveis, a SKU fica <strong>pendente</strong> e não recebe curva inventada. As palavras-chave são frequentes nos <strong>títulos de anúncios comparáveis</strong>, não volumes oficiais de busca.</p>
-  <p class="curve-featured-control"><a id="curveFeaturedLink" href="https://shopee.com.br/search?keyword=&amp;page=0&amp;sortBy=sales" target="_blank" rel="noopener noreferrer">Conferir a aba Em Destaque na Shopee</a><span>Pesquisa oficial da Shopee (ordenada por vendas) • abre em outra guia</span></p>
+  </section>
   <div class="curve-sources" role="group" aria-label="Conexões de pesquisa Shopee">
-   <div><strong>Fonte de vendas</strong>
+   <div class="curve-source-copy"><strong>Fontes de pesquisa</strong>
     <span id="curveSourceStatus">Conferindo conexão com Shopee...</span>
-    <small id="curveSourceDetail">Vendido/Mês só é confirmado quando a fonte retorna dado mensal.</small></div>
-   <button id="curveTestSources" type="button">Testar fontes de pesquisa</button>
+    <details id="curveSourceDiagnostics" class="curve-source-diagnostics"><summary>Ver diagnóstico</summary><p id="curveSourceDetail">Vendido/Mês só é confirmado quando a fonte retorna dado mensal.</p></details></div>
+   <div class="curve-source-actions"><button id="curveTestSources" class="curve-button" type="button">Testar fontes</button>
+    <a id="curveFeaturedLink" class="curve-button" href="https://shopee.com.br/search?keyword=&amp;page=0&amp;sortBy=sales" target="_blank" rel="noopener noreferrer" title="Conferir Em Destaque na Shopee, ordenado por vendas. Abre em outra guia.">Em Destaque <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M14 3h7v7m0-7L10 14m0-11H5a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-5"/></svg></a></div>
   </div>
   <section class="curve-chrome-bridge" aria-label="Ponte Shopee Chrome">
- <div>
-  <strong>Ponte Chrome — conferir Em Destaque dos concorrentes</strong>
-  <p>Pesquisa as SKUs WeDrop na aba Shopee, inclusive produtos ainda não publicados na sua loja. Lê só dados visíveis; sem número mensal, a SKU fica pendente.</p>
-  <small id="curveChromeStatus" role="status" aria-live="polite">Instale a Ponte Chrome uma única vez.</small>
- </div>
- <div class="curve-chrome-actions">
-  <a id="curveChromeDownload" href="/api/shopee/curvas-ab/chrome-extension.zip" download>Baixar Ponte Chrome (ZIP)</a>
-  <button type="button" id="curveChromeStart">Pesquisar no Chrome (Em Destaque)</button>
-  <details><summary>Como instalar</summary>
-   <p>Extraia o ZIP; abra chrome://extensions; ative Modo do desenvolvedor; clique Carregar sem compactação e selecione a pasta redeachados-shopee-chrome. Atualize o Manager.</p>
+   <div class="curve-chrome-copy"><strong>Pesquisar pela aba do Chrome</strong><p>Consulte os concorrentes em Em Destaque com a extensão Ponte Chrome.</p><small id="curveChromeStatus" role="status" aria-live="polite">Instale a Ponte Chrome uma única vez.</small></div>
+   <div class="curve-chrome-actions"><a id="curveChromeDownload" class="curve-button" href="/api/shopee/curvas-ab/chrome-extension.zip" download>Baixar extensão</a><button type="button" id="curveChromeStart" class="curve-button">Pesquisar no Chrome</button>
+    <details><summary>Como instalar a Ponte Chrome</summary><p>Extraia o ZIP; abra chrome://extensions; ative Modo do desenvolvedor; clique Carregar sem compactação e selecione a pasta redeachados-shopee-chrome. Atualize o Manager.</p></details>
+   </div>
+  </section>
+  <details class="curve-help"><summary>Como funciona a classificação <span>Critérios, fontes e comparação de preços</span></summary>
+   <div class="curve-help-content"><div><h3>Do catálogo à concorrência</h3><p>A pesquisa parte das SKUs WeDrop, inclusive as ainda não publicadas na sua loja, e procura anúncios equivalentes na Shopee. Curva A: 900 ou mais vendas em 30 dias. Curva B: 700–899. Abaixo de 700 não se classifica; sem dados mensais verificáveis, fica pendente.</p><h3>De onde vêm as vendas?</h3><p>A busca tenta primeiro <strong>Em Destaque</strong>, ordenada por vendas. Se o acesso estiver restrito, usa a API de Afiliados quando conectada. Essa alternativa não reproduz integralmente a vitrine nem garante vendas mensais. A fonte utilizada aparece em cada resultado.</p></div>
+   <div><h3>Preços e títulos</h3><p>A média usa de duas a cinco ofertas comparáveis, de lojas diferentes. Sem base suficiente, a média fica indisponível. Os títulos sugeridos usam características comprovadas da SKU; as palavras-chave são termos recorrentes nos anúncios comparados, não volumes oficiais de busca.</p><p class="curve-help-note">Imagens e SKUs são do catálogo WeDrop. Esta tela pesquisa oportunidades; não publica anúncios nem ativa Ads.</p></div></div>
   </details>
- </div>
-</section>
-<div id="curveNotice" class="curve-notice" role="status" aria-live="polite">Selecione a categoria, a curva e clique em Pesquisar SKUs automaticamente.</div>
+  <div id="curveNotice" class="curve-notice" role="status" aria-live="polite" hidden></div>
   <div id="curveStats" class="curve-stats" hidden>
-   <div><small>SKUs WeDrop na categoria</small><strong id="curveCatalogCount">—</strong></div>
+   <div><small>SKUs na categoria</small><strong id="curveCatalogCount">—</strong></div>
    <div><small>SKUs pesquisadas</small><strong id="curveScannedCount">—</strong></div>
-   <div><small>Ofertas Shopee retornadas</small><strong id="curveOfferCount">—</strong></div>
-   <div><small>SKUs classificadas no filtro</small><strong id="curveFoundCount">—</strong></div>
-   <div><small>Curvas com evidência mensal</small><strong id="curveVerifiedCount">—</strong></div>
+   <div><small>Ofertas Shopee</small><strong id="curveOfferCount">—</strong></div>
+   <div><small>SKUs classificadas</small><strong id="curveFoundCount">—</strong></div>
+   <div><small>Com evidência mensal</small><strong id="curveVerifiedCount">—</strong></div>
   </div>
   <section class="curve-results" aria-labelledby="curveResultsHeading">
-   <div class="curve-result-head"><h3 id="curveResultsHeading">Produtos encontrados</h3><span id="curveResultsMeta"></span></div>
-   <div id="curveResults" class="curve-grid" aria-live="polite"></div>
+   <div class="curve-result-head"><h2 id="curveResultsHeading">Produtos encontrados</h2><span id="curveResultsMeta">Aguardando pesquisa</span></div>
+   <div id="curveResults" class="curve-grid" aria-live="polite"><div class="curve-empty curve-empty-initial"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="10.5" cy="10.5" r="6.5"/><path d="m16 16 5 5M8 11h5m-2.5-2.5v5"/></svg><div><strong>Encontre sua próxima oportunidade</strong><p>Selecione uma categoria e clique em <b>Pesquisar SKUs</b>.</p><small>Os produtos e as evidências de vendas aparecerão aqui.</small></div></div></div>
    <div class="curve-load-more"><button id="curveContinueSearch" type="button" hidden>Pesquisar mais SKUs desta categoria</button><span id="curveProgressNote"></span></div>
   </section>
-  <p class="curve-disclaimer">A imagem e a SKU são do catálogo WeDrop. A média de preços usa de duas a cinco ofertas realmente comparáveis, de lojas diferentes; quando não há base suficiente, o sistema não inventa uma média. Os títulos gerados são sugestões revisáveis, baseadas em características comprovadas da própria SKU; as expressões frequentes nos títulos não equivalem a palavras-chave comprovadamente mais pesquisadas. Esta página não publica anúncios nem ativa Ads.</p>
  </div>
 </section>
 <section class="tabpane" id="tab-kits" aria-label="Kits Inteligentes WeDrop">
@@ -2661,8 +2663,8 @@
 <script src="/technical-status.js?v=1.0.0-optional-coherence"></script>
 <script src="/optimizer-execution-visual.js?v=1.0.5-title-pending-readback"></script>
 <script src="/optimizer-execution-dialog.js?v=1.0.5-video-relink-sync"></script>
-<script src="/app.js?v=3.5.67-shopee-photo-and-wedrop-dimensions"></script>
-<script src="/curvas-ab.js?v=20261106-chrome-batch-1"></script>
+<script src="/app.js?v=3.5.67-shopee-photo-and-wedrop-dimensions&amp;layout=curves-compact-v1"></script>
+<script src="/curvas-ab.js?v=20261106-compact-depth"></script>
 <script src="/curvas-chrome.js?v=20261106-chrome-batch-1"></script>
 <script src="/pending-images.js?v=1.2.0-kit-routing"></script>
 <script type="module" src="/kit-builder.js?v=20261105-kit-cost-diagnostics"></script>

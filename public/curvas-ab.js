@@ -14,6 +14,7 @@
  };
  const status=(message,kind='info')=>{
   const el=q('curveNotice');if(!el)return;
+  el.hidden=false;
   el.textContent=message;
   el.className='curve-notice'+(kind==='error'?' is-error':kind==='warning'?' is-warning':'');
  };
@@ -34,8 +35,8 @@
   parent.append(button);return button;
  }
  function appendSEO(main,row){
-  const section=t('section','curve-seo');
-  section.append(t('h5','','Palavras-chave e título sugerido para Shopee'));
+  const section=t('details','curve-seo');
+  section.append(t('summary','','Palavras-chave e título sugerido para Shopee'));
   section.append(t('p','curve-seo-subtitle',
    'Até 5 termos recorrentes na amostra de títulos concorrentes. Não são volumes oficiais de busca.'));
   const list=t('div','curve-keyword-list');
@@ -193,7 +194,7 @@
  }
  async function checkSources(probe=false){
   const btn=q('curveTestSources'),label=q('curveSourceStatus'),detail=q('curveSourceDetail');
-  if(btn){btn.disabled=true;btn.textContent='Verificando fontes...';}
+  if(btn){btn.disabled=true;btn.textContent='Verificando…';}
   try{
    const result=await fetch('/api/shopee/curvas-ab/sources'+(probe?'?probe=1':''),{
     credentials:'same-origin',cache:'no-store',signal:AbortSignal.timeout(18000)});
@@ -202,19 +203,21 @@
    const pub=data.storefront||{};
    const aff=data.affiliate||{};
    if(label)label.textContent=
-    'Shopee Em Destaque: '+(pub.status==='accessible'?'acessível':pub.status==='blocked'?'acesso restrito':pub.status==='unknown'?'ainda não testada':'indisponível')+
-    ' • Afiliados: '+(aff.status==='accessible'?'API respondendo':aff.status==='error'?'erro na API':
-     data.affiliateConfigured?'configurado (não testado)':'não configurado');
+    'Em Destaque: '+(pub.status==='accessible'?'acessível':pub.status==='blocked'?'acesso restrito':pub.status==='unknown'?'não testado':'indisponível')+
+    ' · Afiliados: '+(aff.status==='accessible'?'respondendo':aff.status==='error'?'erro na API':
+     data.affiliateConfigured?'configurado, não testado':'não configurado');
    if(detail)detail.textContent=[
     pub.message||(pub.returnedOffers!==null?
      pub.returnedOffers+' ofertas públicas retornadas; '+pub.returnedMonthly+' com indicador mensal.':''),
     aff.message||'',
     !probe?'Clique em Testar fontes para verificar o acesso em tempo real.':''
    ].filter(Boolean).join(' | ');
+   if(probe&&q('curveSourceDiagnostics'))q('curveSourceDiagnostics').open=true;
   }catch(error){
    if(label)label.textContent='Falha ao verificar as fontes';
    if(detail)detail.textContent=String(error.message||error);
-  }finally{if(btn){btn.disabled=false;btn.textContent='Testar fontes de pesquisa';}}
+   if(q('curveSourceDiagnostics'))q('curveSourceDiagnostics').open=true;
+  }finally{if(btn){btn.disabled=false;btn.textContent='Testar fontes';}}
  }
  function render(result){
   const grid=q('curveResults'),stats=q('curveStats');
@@ -223,6 +226,8 @@
   reportSource(result);
   if(!result.configured){
    stats.hidden=true;
+   q('curveResultsMeta').textContent='Pesquisa indisponível';
+   if(q('curveSourceDiagnostics'))q('curveSourceDiagnostics').open=true;
    q('curveContinueSearch').hidden=true;
    q('curveProgressNote').textContent='Fontes de pesquisa indisponíveis ou sem ofertas; confira o diagnóstico acima.';
    grid.append(t('div','curve-empty',
@@ -286,7 +291,9 @@
    keyword=q('curveKeyword')?.value.trim()||'',
    verifiedOnly=q('curveConfirmedOnly')?.checked!==false;
   refreshFeaturedLink();
-  button.disabled=true;button.textContent='Consultando SKUs WeDrop…';
+  button.disabled=true;button.textContent='Pesquisando…';
+  button.setAttribute('aria-busy','true');
+  q('curveResults').setAttribute('aria-busy','true');
   q('curveContinueSearch').disabled=true;
   status('Catálogo WeDrop → Em Destaque Shopee → produtos equivalentes de concorrentes → vendas em 30 dias → Curva A (900+) ou B (700–899). Inclui SKUs ainda não anunciadas na sua loja.');
   try{
@@ -305,8 +312,10 @@
     '. Nenhuma alteração foi feita na Shopee.','error');
   }finally{
    state.busy=false;button.disabled=false;
+   button.setAttribute('aria-busy','false');
+   q('curveResults').setAttribute('aria-busy','false');
    q('curveContinueSearch').disabled=false;
-   button.textContent='Pesquisar SKUs automaticamente';
+   button.textContent='Pesquisar SKUs';
   }
  }
  const form=q('curveSearchForm');
