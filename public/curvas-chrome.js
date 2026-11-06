@@ -123,8 +123,8 @@
     const version=String(event.data.version||'0.0.0');
     const parts=version.split('.').map(Number);
     const ok=parts[0]>1||(parts[0]===1&&
-     (parts[1]>2||parts[1]===2&&Number(parts[2]||0)>=6));
-    finish({ok,version,reason:ok?'':'Extensão '+version+' é antiga. Requer 1.2.6.'});
+     (parts[1]>2||parts[1]===2&&Number(parts[2]||0)>=7));
+    finish({ok,version,reason:ok?'':'Extensão '+version+' é antiga. Requer 1.2.7.'});
    };
    window.addEventListener('message',listener);
    const timer=setTimeout(()=>finish({ok:false,reason:'A extensão não respondeu na aba do Manager.'}),2600);
@@ -149,11 +149,11 @@
   if(cancel){cancel.hidden=false;cancel.disabled=false;}
   if(feed)feed.replaceChildren();
   if(summary)summary.hidden=true;
-  updateStage('iniciando','Verificando Ponte Chrome 1.2.6 e carregamento da Shopee.');
+  updateStage('iniciando','Verificando Ponte Chrome 1.2.7 e carregamento da Shopee.');
   say('Verificando instalação da Ponte Chrome…');
   try{
    const bridge=await ping(nonce);
-   if(!bridge.ok)throw Error(bridge.reason+' Baixe a versão 1.2.6, ative o acesso ao site, atualize a extensão em chrome://extensions e recarregue o Manager.');
+   if(!bridge.ok)throw Error(bridge.reason+' Baixe a versão 1.2.7, ative o acesso ao site, atualize a extensão em chrome://extensions e recarregue o Manager.');
    const params=new URLSearchParams({category:selected.category,keyword:selected.keyword,
     offset:String(offset),limit:'6'});
    let plan=await json('/api/shopee/curvas-ab/chrome-plan?'+params);
@@ -240,12 +240,8 @@
    updateStage('validando',data.found+' SKUs aprovadas para Ads; '+
     data.pendingCount+' aguardam dados e '+
     Number(data.discardedCount||0)+' estão descartadas por custo, margem ou estoque.',s);
-   say('Ponte: '+s.received+' consultas. Shopee: '+
-    Number(m.stats?.rawInspected||m.offers?.length||0)+' anúncios inspecionados; '+
-    Number(m.stats?.relevantWithPrice||0)+' com preço relacionado; '+
-    Number(data.chromeImport?.importedWithPrice||0)+' preços importados. '+
-    Number(data.pendingCount||0)+' SKUs pendentes; '+Number(data.found||0)+
-    ' aprovadas para Ads. Busca '+m.position+'/'+m.total+'.');
+   say('Ponte: '+s.received+' consultas importadas; '+data.found+' SKUs classificadas e '+
+    data.pendingCount+' candidatos pendentes. Busca '+m.position+'/'+m.total+'.');
   }catch(error){
    if(active!==s)return;
    s.errors++;

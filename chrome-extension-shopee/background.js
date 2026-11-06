@@ -165,7 +165,8 @@ async function readPage(tabId){
    if(merged.size>=45&&monthly>=5)break;
   }catch{}
  }
- if(blocked&&!merged.size)return blocked;
+ if(blocked&&!merged.size)return {ok:false,blocked:true,
+  error:blocked.error||'A Shopee exigiu verificação humana.',offers:[]};
  if(merged.size)return {...last,ok:true,offers:[...merged.values()],
   monthlyCards:[...merged.values()].filter(x=>x.monthlySold!==null).length,
   visibleCards:Math.max(Number(last?.visibleCards||0),merged.size)};
