@@ -520,3 +520,44 @@ test('Curvas protege o mini processador manual de preços e vendas do elétrico 
  assert.ok(rows[0].competitorOffers.every(x=>x.price<50));
  assert.ok(!rows[0].competitorOffers.some(x=>x.itemId==='111'));
 });
+
+test('foto de referência SKU 639384: só suporte de modelo inox/esférico entra na média',()=>{
+ const title='Escova Sanitária de Banheiro com Suporte - Inox';
+ const catalog=[{supplier_sku:'639384',product_data:{
+  name:title,rawAvailability:'Disponível',category:'Banheiro'}}];
+ const plastic={shopId:'201',itemId:'801',
+  productName:'Escova Sanitária Cabo Inox Suporte Plástico Polipropileno Redondo Banheiro',
+  priceMin:24.87,priceMax:24.87,sales:10000,monthlySold:5000};
+ const metal=[
+  {shopId:'301',itemId:'901',
+   productName:'Escova Sanitária com Suporte Inox Esférico Banheiro',
+   priceMin:81.90,priceMax:81.90,sales:1200,monthlySold:1100},
+  {shopId:'302',itemId:'902',
+   productName:'Escova Sanitária com Suporte Inox Globo Banheiro',
+   priceMin:85.90,priceMax:85.90,sales:1100,monthlySold:1000}
+ ];
+ const onlyPlastic=matchCurveOffers({catalog,offers:[plastic],
+  costs:[{supplier_sku:'639384',unit_cost:37.99}]});
+ assert.deepEqual(onlyPlastic,[],'produto de suporte plástico não comprova preço do modelo esférico inox');
+ const incomplete=matchCurveOffers({catalog,offers:[plastic,metal[0]],
+  costs:[{supplier_sku:'639384',unit_cost:37.99}]});
+ assert.equal(incomplete.length,1);
+ assert.equal(incomplete[0].avgCompetitorPrice,null);
+ assert.equal(incomplete[0].adsCompetitiveness.status,'missing_market');
+ const complete=matchCurveOffers({catalog,offers:[plastic,...metal],
+  costs:[{supplier_sku:'639384',unit_cost:37.99}]});
+ assert.equal(complete.length,1);
+ assert.equal(complete[0].competitorOfferCount,2);
+ assert.equal(complete[0].avgCompetitorPrice,83.90);
+ assert.equal(complete[0].monthlyCompetitorCount,2);
+ assert.equal(complete[0].curve,'A');
+ assert.ok(complete[0].competitorPrice>=80);
+ assert.ok(!complete[0].competitorOffers.some(x=>x.itemId==='801'));
+});
+
+test('pesquisa usa o atributo inox mesmo quando aparece no final do nome WeDrop',()=>{
+ const query=curveSkuSearchQuery('Escova Sanitária de Banheiro com Suporte - Inox');
+ assert.match(query,/escova sanitaria/);
+ assert.match(query,/inox/);
+ assert.match(query,/suporte/);
+});

@@ -40,8 +40,45 @@ export function marketSearchQueries(title){
 }
 // Características essenciais das variações não podem ser misturadas
 // só porque os anúncios têm palavras parecidas (ex. 900ml vs 750ml).
+// Materiais e formatos devem corresponder à PEÇA principal, não só à palavra
+// "inox". Ex.: cabo inox com suporte plástico NÃO equivale a suporte inox.
+export function bathroomBrushVariantCompatible(source,candidate){
+ const a=normalize(source),b=normalize(candidate);
+ const brush=/\bescova\b.*\bsanitari[ao]\b/;
+ if(!brush.test(a)||!brush.test(b))return true;
+ const inox=/\binox\b/;
+ const plastic=/\b(plastico|polipropileno|pvc|acrilico)\b/;
+ const holder=/(?:suporte|base|porta escova|recipiente|copo|portaescova)/;
+ const holderMaterial=(text,material)=>{
+  const pattern=material==='inox'?'inox':'(?:plastico|polipropileno|pvc|acrilico)';
+  return new RegExp('(?:'+holder.source+')\\s+(?:de\\s+)?'+pattern+'\\b|\\b'+
+   pattern+'\\s+(?:'+holder.source+')\\b').test(text);
+ };
+ const handleOnlyInox=/\b(?:cabo|haste)\s+(?:de\s+)?inox\b/.test(b);
+ const sourceInoxHolder=holderMaterial(a,'inox')||
+  (inox.test(a)&&!holderMaterial(a,'plastic')&&!/\b(?:cabo|haste)\s+(?:de\s+)?inox\b/.test(a));
+ const sourcePlasticHolder=holderMaterial(a,'plastic')||
+  (plastic.test(a)&&!inox.test(a));
+ const candidateInoxHolder=holderMaterial(b,'inox');
+ const candidatePlasticHolder=holderMaterial(b,'plastic');
+ if(sourceInoxHolder&&(candidatePlasticHolder||handleOnlyInox&&!candidateInoxHolder))
+  return false;
+ if(sourcePlasticHolder&&candidateInoxHolder)return false;
+ // Geometrias opostas não pertencem ao mesmo modelo, mesmo se o metal
+ // e as palavras "escova sanitária" coincidirem.
+ const shape=text=>{
+  if(/\b(esferic[ao]|esfera|bola|globo|globular)\b/.test(text))return 'sphere';
+  if(/\b(cilindric[ao]|cilindro|tubular)\b/.test(text))return 'cylinder';
+  if(/\b(quadrad[ao]|retangular)\b/.test(text))return 'angular';
+  return null;
+ };
+ const sa=shape(a),sb=shape(b);
+ if(sa&&sb&&sa!==sb)return false;
+ return true;
+}
 const comparableSpecs=(source,candidate)=>{
  const sn=normalize(source),cn=normalize(candidate);
+ if(!bathroomBrushVariantCompatible(source,candidate))return false;
  // Não comparar motor elétrico com utensílio manual mesmo que compartilhem
  // "mini processador de alimentos". Isso evita preço e lucro fantasiosos.
  const manual=/\b(manual|manivela|puxador|corda|cordao|puxar)\b/;
@@ -112,7 +149,8 @@ export const MARKET_COMPARISON_MIN=REDE_ACHADOS_MARKET_RULES.minimumOffers;
 export const MARKET_COMPARISON_MAX=REDE_ACHADOS_MARKET_RULES.maximumOffers;
 // Amostra observada de 2 até 5 anúncios diferentes, não estimativa de demanda.
 export function evaluateMarketOffers({title,offers=[],ownItemId,ownShopId,
- queriedAt=new Date().toISOString(),minOffers=MARKET_COMPARISON_MIN,maxOffers=MARKET_COMPARISON_MAX,allowSameShop=false}){
+ queriedAt=new Date().toISOString(),minOffers=MARKET_COMPARISON_MIN,
+ maxOffers=MARKET_COMPARISON_MAX,allowSameShop=false,strictPriceCluster=false}){
  const minimumCount=Number.isInteger(minOffers)&&minOffers>=2&&minOffers<=5?minOffers:MARKET_COMPARISON_MIN;
  const maximumCount=Number.isInteger(maxOffers)&&maxOffers>=minimumCount&&maxOffers<=10?maxOffers:MARKET_COMPARISON_MAX;
  const comparable=[],seen=new Set();
@@ -136,9 +174,43 @@ export function evaluateMarketOffers({title,offers=[],ownItemId,ownShopId,
   count:comparable.length,sample:comparable.slice(0,maximumCount),
   reason:'Menos de '+minimumCount+' anúncios comparáveis encontrados para esta SKU.'};
  const center=median(comparable.map(x=>x.price));
- // Evitar que anúncio de acessório ou preço promocional anômalo contamine a média.
- const filtered=comparable.filter(x=>x.price>=center*REDE_ACHADOS_MARKET_RULES.minimumPriceRatioToMedian&&
-  x.price<=center*REDE_ACHADOS_MARKET_RULES.maximumPriceRatioToMedian);
+ // Em Curvas, tratar anúncios como grupos de produtos equivalentes também
+ // pelo patamar de preços. Um anúncio de R$ 25 e outro de R$ 150 NÃO
+ // comprovam a mesma média, mesmo se tiverem títulos semelhantes.
+ let filtered;
+ if(strictPriceCluster){
+  const ordered=[...comparable].sort((a,b)=>a.price-b.price);
+  const ratio=1.45; // até 45% entre menor/maior do mesmo grupo de preços
+  let groups=[];
+  for(let i=0;i<ordered.length;i++){
+   let end=i;
+   while(end+1<ordered.length&&
+    ordered[end+1].price<=ordered[i].price*ratio)end++;
+   const items=ordered.slice(i,end+1);
+   const signature=items.map(x=>x.shopId+':'+x.itemId).join('|');
+   if(!groups.some(g=>g.signature===signature))
+    groups.push({items,signature,center:median(items.map(x=>x.price))});
+  }
+  groups.sort((a,b)=>b.items.length-a.items.length||
+   b.items.reduce((n,x)=>n+x.similarity,0)-
+    a.items.reduce((n,x)=>n+x.similarity,0));
+  const best=groups[0];
+  const alternate=groups.find(g=>g!==best&&g.items.length===best.items.length&&
+   Math.max(g.center,best.center)/Math.min(g.center,best.center)>ratio);
+  if(alternate||best.items.length<minimumCount){
+   return {verified:false,reference:null,average:null,count:best.items.length,
+    sample:best.items.slice(0,maximumCount),rejectedPriceOutliers:
+     comparable.length-best.items.length,
+    reason:alternate?'Há faixas de preços divergentes; falta identificar o mesmo modelo antes de calcular a média.':
+     'Anúncios semelhantes com preços muito diferentes não formam uma amostra segura do mesmo produto.'};
+  }
+  filtered=best.items;
+ }else{
+  // Política padrão dos outros módulos de mercado permanece inalterada.
+  filtered=comparable.filter(x=>
+   x.price>=center*REDE_ACHADOS_MARKET_RULES.minimumPriceRatioToMedian&&
+   x.price<=center*REDE_ACHADOS_MARKET_RULES.maximumPriceRatioToMedian);
+ }
  filtered.sort((a,b)=>b.similarity-a.similarity||
   Math.abs(a.price-center)-Math.abs(b.price-center)||a.price-b.price);
  const shops=new Set(),selected=[];
@@ -154,7 +226,8 @@ export function evaluateMarketOffers({title,offers=[],ownItemId,ownShopId,
  const average=Math.round(selected.reduce((total,o)=>total+o.price,0)/selected.length*100)/100;
  return {verified:true,reference:average,average,count:selected.length,
   sample:selected,method:'arithmetic_mean',minimumCount,
-  maximumCount,reason:null};
+  maximumCount,rejectedPriceOutliers:comparable.length-filtered.length,
+  reason:null};
 }
 
 const safeError=e=>String(e?.message||'Falha na consulta').slice(0,170);

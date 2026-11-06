@@ -13,6 +13,20 @@ const env=name=>String(process.env[name]||'').trim();
 const normal=value=>String(value??'').normalize('NFD').replace(/[\u0300-\u036f]/g,'')
  .toLowerCase().replace(/[^a-z0-9 ]/g,' ').replace(/\s+/g,' ').trim();
 const ignored=new Set('de do da das dos e em para com sem um uma o a os as infantil crianca criancas kit produto produtos sortido cores cor modelo original escolar'.split(' '));
+// Detalhes estruturados já conhecidos da própria ficha WeDrop e da foto
+// conferida para a SKU abaixo. Não estimar visualmente itens sem evidência.
+const observedReferenceFeatures=new Map([
+ ['639384','suporte esferico inox']
+]);
+function comparisonName(sku,data){
+ const name=String(data?.name||'').trim();
+ const explicit=[data?.marketComparisonDetails,data?.supportMaterial,
+  data?.baseShape].filter(x=>typeof x==='string'&&x.length<=100&&x.trim());
+ const known=observedReferenceFeatures.get(String(sku));
+ if(known&&/escova sanitari/i.test(normal(name))&&/\binox\b/i.test(normal(name)))
+  explicit.push(known);
+ return [name,...explicit].join(' ').slice(0,350);
+}
 function comparablePackSize(source,offer){
  // Proteger SKU de pacote: 600 unidades nao equivale a 100 ou 200 unidades.
  const count=text=>{
@@ -78,7 +92,12 @@ export function curveSkuSearchQuery(name){
  // Uma pesquisa sem produto específico não deve consultar a categoria inteira.
  const identified=tokens.filter(token=>!genericCategoryTerms.has(token)&&!/^[0-9]+$/.test(token));
  if(!identified.length)return '';
- const head=identified.slice(0,4);
+ // Atributos decisivos para identidade do produto não podem ficar fora
+ // da pesquisa só porque aparecem no FINAL do nome WeDrop.
+ const priority=/^(?:inox|plastico|metal|madeira|vidro|ceramica|manual|eletrico|eletrica|esferico|esferica|cilindrico|cilindrica|suporte|base|500ml|750ml)$/;
+ const head=[...new Set([...identified.slice(0,2),
+  ...identified.filter(token=>priority.test(token)),
+  ...identified.slice(2)])].slice(0,4);
  const measure=normal(title).match(/\b\d{1,5}\s*(?:ml|litros|litro|l|cm|w)\b/);
  if(measure&&!head.some(t=>t===measure[0]))head.push(measure[0]);
  return head.join(' ').slice(0,70);
@@ -212,8 +231,9 @@ function addMarketAnalysis(row,offers,checkedAt,ownShopId='0'){
  // Preço médio de 2 a 10 anúncios do mesmo produto, independentemente da loja.
  // Anúncios distintos usam Item ID, sem contar uma oferta repetida duas vezes.
  const compare=evaluateMarketOffers({
-  title:row.name,offers,ownShopId,ownItemId:'0',queriedAt:checkedAt,
-  minOffers:2,maxOffers:10,allowSameShop:true});
+  title:row.comparisonName||row.name,offers,ownShopId,ownItemId:'0',
+  queriedAt:checkedAt,minOffers:2,maxOffers:10,
+  allowSameShop:true,strictPriceCluster:true});
  const keywords=verifiedKeywordEvidence(row.name,offers);
  // Não alterar o padrão de preços dos demais módulos.
  const strong=compare.verified===true&&Number(compare.count)>=2;
@@ -224,9 +244,12 @@ function addMarketAnalysis(row,offers,checkedAt,ownShopId='0'){
    title:o.title,shopId:o.shopId,itemId:o.itemId,
    price:o.price,url:o.url,checkedAt:o.checkedAt})),
   priceEvidence:strong?
-   'Média aritmética do preço de venda na Shopee, baseada em '+compare.count+
-    ' anúncios distintos do mesmo produto (2 a 10 preços reais; mesma loja permitida)':
-   'Média indisponível para Ads: são necessários pelo menos 2 anúncios distintos do mesmo produto, até 10, independentemente da loja',
+   'Média de '+compare.count+' anúncios de modelo/material comparáveis, '+
+    'com preços na mesma faixa (2 a 10 ofertas; mesma loja permitida). '+
+    (compare.rejectedPriceOutliers?
+      compare.rejectedPriceOutliers+' preço(s) fora do grupo foram excluídos.':''):
+   'Média não confirmada: '+(compare.reason||
+    'São necessários 2 anúncios do mesmo material/modelo e faixa de preço.'),
   keywords,
   seoTitle:seoTitleFromEvidence(row.name,keywords,row.sku),
   seoMethod:'Termos recorrentes em títulos de anúncios equivalentes; sem medição oficial de buscas',
@@ -243,7 +266,8 @@ export function matchCurveOffers({catalog=[],offers=[],costs=[],baseline=new Map
   return {sku:String(item.supplier_sku||''),name:String(d.name||'').trim(),
    category:String(d.category||''),imageUrl:isHttpImage(d.imageUrl)?String(d.imageUrl):'',
    availability:String(d.rawAvailability||''),inStock:available(d.rawAvailability),
-   sourceFile:String(item.source_file||''),tokens:words(d.name)};
+   sourceFile:String(item.source_file||''),tokens:words(d.name),
+   comparisonName:comparisonName(item.supplier_sku,d)};
  }).filter(x=>x.sku&&x.tokens.length>=2);
  const index=new Map();
  for(const p of inventory){
@@ -270,7 +294,8 @@ export function matchCurveOffers({catalog=[],offers=[],costs=[],baseline=new Map
    // (ex.: lancheira nao pode herdar vendas de um estojo T-Rex).
    const primary=p.tokens[0];
    if(primary&&!tokens.includes(primary))continue;
-   if(!comparableTitle(p.name,offer.productName)||!comparablePackSize(p.name,offer.productName))continue;
+   if(!comparableTitle(p.comparisonName,offer.productName)||
+       !comparablePackSize(p.name,offer.productName))continue;
    const common=entry.count;
    const score=common/Math.max(1,Math.min(p.tokens.length,tokens.length));
    if(score<0.62||common<Math.min(3,p.tokens.length))continue;
@@ -302,7 +327,8 @@ export function matchCurveOffers({catalog=[],offers=[],costs=[],baseline=new Map
     (currentVolume>rankVolume||
      currentVolume===rankVolume&&current.matchScore>=score))))continue;
    const group=curveGroup(sales30,sales);
-   found.set(p.sku,{sku:p.sku,name:p.name,category:p.category,
+   found.set(p.sku,{sku:p.sku,name:p.name,comparisonName:p.comparisonName,
+    category:p.category,
     imageUrl:p.imageUrl,availability:p.availability,inStock:p.inStock,
     cost:costIndex.get(p.sku)??null,competitorName:String(offer.productName).slice(0,200),
     shopId:String(offer.shopId),itemId:String(offer.itemId),
@@ -321,8 +347,16 @@ export function matchCurveOffers({catalog=[],offers=[],costs=[],baseline=new Map
   // Várias ofertas independentes com volume mensal são necessárias para
   // validar a oportunidade. Não somar as vendas das diferentes lojas.
   const comparable=[...(offersBySku.get(row.sku)||new Map()).values()];
+  const market=addMarketAnalysis(row,comparable,checkedAt,ownShopId);
+  // Somente anúncios do mesmo grupo de modelo e preço podem comprovar
+  // vendas mensais da curva. Não somar procura de acessórios/versões distintas.
+  const confirmedIds=market.avgCompetitorPrice!==null?
+   new Set(market.competitorOffers.map(o=>o.shopId+':'+o.itemId)):null;
+  const verifiedGroup=confirmedIds?
+   comparable.filter(o=>confirmedIds.has(String(o.shopId)+':'+String(o.itemId))):
+   comparable;
   const independent=new Map();
-  for(const offer of comparable){
+  for(const offer of verifiedGroup){
    const monthly=intSales(offer.monthlySold);
    if(monthly===null)continue;
    const key=String(offer.shopId),prior=independent.get(key);
@@ -332,10 +366,19 @@ export function matchCurveOffers({catalog=[],offers=[],costs=[],baseline=new Map
     url:'https://shopee.com.br/product/'+offer.shopId+'/'+offer.itemId});
   }
   const monthlyCompetitors=[...independent.values()].sort((a,b)=>b.monthlySold-a.monthlySold);
-  return {...addMarketAnalysis(row,comparable,checkedAt,ownShopId),
+  // O preço do anúncio exibido também deve vir da amostra confiável,
+  // não do mais vendido que ficou FORA do grupo de preços.
+  const reference=market.avgCompetitorPrice!==null&&market.competitorOffers.length?
+   market.competitorOffers.find(o=>o.itemId===row.itemId&&o.shopId===row.shopId)||
+    market.competitorOffers[0]:null;
+  return {...market,
+   ...(reference?{
+    competitorName:reference.title,competitorPrice:reference.price,
+    competitorUrl:reference.url,shopId:reference.shopId,itemId:reference.itemId
+   }:{competitorPrice:null}),
    monthlyCompetitorCount:monthlyCompetitors.length,
    monthlyCompetitors:monthlyCompetitors.slice(0,5),
-   comparableCompetitorCount:new Set(comparable.map(o=>String(o.shopId))).size};
+   comparableCompetitorCount:new Set(verifiedGroup.map(o=>String(o.shopId))).size};
  }).sort((a,b)=>
   Number(b.verified30)-Number(a.verified30)||
   Number(b.inStock)-Number(a.inStock)||

@@ -125,3 +125,51 @@ test('não comparar escova plástica com anúncio de escova de cabo inox',()=>{
  assert.equal(comparableTitle(source,mismatch),false);
  assert.equal(comparableTitle('Escova Sanitária de Banheiro com Suporte - Inox',mismatch),true);
 });
+
+test('escova premium com suporte inox não usa cabo inox com suporte plástico',()=>{
+ const source='Escova Sanitária de Banheiro com Suporte - Inox';
+ const different='Escova Sanitária Cabo Inox Suporte Plástico Polipropileno Redondo Banheiro';
+ const similar='Escova Sanitária com Suporte Inox Redondo para Banheiro';
+ assert.equal(comparableTitle(source,different),false);
+ assert.equal(comparableTitle(source,similar),true);
+ assert.equal(comparableTitle(source+' suporte esferico inox',
+  'Escova Sanitária com Suporte Inox Cilíndrico'),false);
+ assert.equal(comparableTitle(source+' suporte esferico inox',
+  'Escova Sanitária com Suporte Inox Esférico'),true);
+});
+
+test('Curvas calcula média com similares de preço próximo e descarta outro material caro/barato',()=>{
+ const original='Escova Sanitária de Banheiro com Suporte - Inox suporte esferico inox';
+ const offers=[
+  offer(1,701,301,25.88,
+   'Escova Sanitária Cabo Inox Suporte Plástico Polipropileno Redondo Banheiro'),
+  offer(2,702,302,81.90,'Escova Sanitária com Suporte Inox Esférico Banheiro'),
+  offer(3,703,303,85.90,'Escova Sanitária com Suporte Inox Globo Banheiro')
+ ];
+ const result=evaluateMarketOffers({title:original,offers,
+  minOffers:2,maxOffers:10,allowSameShop:true,strictPriceCluster:true});
+ assert.equal(result.verified,true);
+ assert.equal(result.count,2);
+ assert.equal(result.average,83.90);
+ assert.ok(result.sample.every(x=>x.price>75));
+});
+
+test('Curvas não confirma média com dois preços em patamares incompatíveis',()=>{
+ const prices=[24.87,161.41].map((price,i)=>
+  offer(i,800+i,900+i,price,'Escova Sanitária com Suporte Inox Redondo Banheiro'));
+ const result=evaluateMarketOffers({title:'Escova Sanitária de Banheiro com Suporte - Inox',
+  offers:prices,minOffers:2,maxOffers:10,allowSameShop:true,strictPriceCluster:true});
+ assert.equal(result.verified,false);
+ assert.equal(result.average,null);
+ assert.match(result.reason,/preços muito diferentes|faixas de preços/);
+});
+
+test('Curvas mantém média de dois anúncios similares com preços próximos',()=>{
+ const offers=[79.90,89.90].map((price,i)=>offer(i,900+i,200+i,price,
+  'Escova Sanitária Banheiro com Suporte Inox'));
+ const result=evaluateMarketOffers({title:'Escova Sanitária de Banheiro com Suporte - Inox',
+  offers,minOffers:2,maxOffers:10,allowSameShop:true,strictPriceCluster:true});
+ assert.equal(result.verified,true);
+ assert.equal(result.count,2);
+ assert.equal(result.average,84.9);
+});
