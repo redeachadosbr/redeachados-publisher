@@ -66,11 +66,26 @@ test('Com referência válida desconto variável protege margem e não conserva 
  assert.equal(below.status,'MERCADO_ABAIXO_DO_PISO');
 });
 
-test('amostra dedicada à Curvas aceita até 10 lojas sem alterar a regra geral',()=>{
+test('amostra dedicada à Curvas aceita até 10 anúncios sem alterar a regra geral',()=>{
  const offers=Array.from({length:12},(_,i)=>offer(i,i+100,i+200,170+i));
  const standard=evaluateMarketOffers({title:original,offers});
  const curves=evaluateMarketOffers({title:original,offers,minOffers:2,maxOffers:10});
  assert.equal(standard.count,5);
  assert.equal(curves.count,10);
  assert.equal(curves.sample.length,10);
+});
+
+test('Curvas calcula média com 5 anúncios distintos de uma única loja, sem duplicar Item ID',()=>{
+ const sample=[170,175,180,185,190].map((price,i)=>offer(i,i+900,700,price));
+ const incomplete=evaluateMarketOffers({title:original,offers:sample.slice(0,4),
+  minOffers:5,maxOffers:10,allowSameShop:true});
+ assert.equal(incomplete.verified,false);
+ assert.equal(incomplete.count,4);
+ const complete=evaluateMarketOffers({title:original,offers:[...sample,sample[0]],
+  minOffers:5,maxOffers:10,allowSameShop:true});
+ assert.equal(complete.verified,true);
+ assert.equal(complete.count,5);
+ assert.equal(complete.average,180);
+ assert.equal(new Set(complete.sample.map(x=>x.itemId)).size,5);
+ assert.equal(new Set(complete.sample.map(x=>x.shopId)).size,1);
 });

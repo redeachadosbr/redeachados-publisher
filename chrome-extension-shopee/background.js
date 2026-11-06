@@ -189,7 +189,7 @@ async function batch(managerTab,nonce,jobs){
      collected.size+' concorrentes com vendas; '+monthly+
      ' com rótulo mensal explícito • '+visibleCards+' cartões inspecionados.',
      i+1,jobs.length,{visible:collected.size,monthly,pages});
-    if((monthly>=5&&new Set([...collected.values()].map(x=>x.shopId)).size>=10)||collected.size>=100)break;
+    if((monthly>=5&&collected.size>=10)||collected.size>=100)break;
     await delay(900);
    }
    if(stopRequested)break;

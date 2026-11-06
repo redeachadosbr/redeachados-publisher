@@ -116,7 +116,7 @@ test('categorias seguem o MESMO agrupamento dos Kits Inteligentes WeDrop',()=>{
  assert.match(module,/categoryMatches\(/);
  assert.match(module,/selectedCategory/);
 });
-test('média de preços usa 2 a 5 concorrentes comparáveis em lojas diferentes',()=>{
+test('média de Curvas usa 5 a 10 anúncios do mesmo produto, sem exigir lojas distintas',()=>{
  const catalog=[{supplier_sku:'CQA-500',source_file:'wedrop.xlsx',product_data:{
   name:'Coqueteleira Shaker Inox 500ml',category:'Copos, Jarras e Servir',
   imageUrl:photo,rawAvailability:'Disponível'}}];
@@ -126,13 +126,17 @@ test('média de preços usa 2 a 5 concorrentes comparáveis em lojas diferentes'
   {itemId:'8882',shopId:'202',productName:'Coqueteleira Shaker Inox 500ml com Tampa',
    priceMin:'31.90',priceMax:'31.90',sales:930},
   {itemId:'8883',shopId:'203',productName:'Coqueteleira Shaker Inox 500ml',
-   priceMin:'33.90',priceMax:'33.90',sales:915}
+   priceMin:'33.90',priceMax:'33.90',sales:915},
+  {itemId:'8884',shopId:'201',productName:'Coqueteleira Shaker Inox 500ml',
+   priceMin:'31.90',priceMax:'31.90',sales:930},
+  {itemId:'8885',shopId:'201',productName:'Coqueteleira Shaker Inox 500ml',
+   priceMin:'31.90',priceMax:'31.90',sales:935}
  ];
  const rows=matchCurveOffers({catalog,offers:competitors});
  assert.equal(rows.length,1);
  assert.equal(rows[0].avgCompetitorPrice,31.90);
- assert.equal(rows[0].competitorOfferCount,3);
- assert.equal(rows[0].competitorOffers.length,3);
+ assert.equal(rows[0].competitorOfferCount,5);
+ assert.equal(rows[0].competitorOffers.length,5);
  assert.equal(rows[0].keywords.length,5);
  assert.ok(rows[0].keywords.every(x=>x.mentions>0));
  assert.ok(rows[0].keywords.every(x=>x.searchUrl.includes('sortBy=sales')));
@@ -185,12 +189,16 @@ test('a média de concorrentes exclui a própria loja, inclusive no ranking',()=
   {itemId:'8883',shopId:'203',productName:'Coqueteleira Shaker Inox 500ml',
    priceMin:'33.90',priceMax:'33.90',sales:915},
   {itemId:'8884',shopId:'204',productName:'Coqueteleira Shaker Inox 500ml',
-   priceMin:'32.90',priceMax:'32.90',sales:910}
+   priceMin:'32.90',priceMax:'32.90',sales:910},
+  {itemId:'8885',shopId:'202',productName:'Coqueteleira Shaker Inox 500ml',
+   priceMin:'32.90',priceMax:'32.90',sales:920},
+  {itemId:'8886',shopId:'202',productName:'Coqueteleira Shaker Inox 500ml',
+   priceMin:'32.90',priceMax:'32.90',sales:905}
  ]});
  assert.equal(rows.length,1);
  assert.equal(rows[0].shopId,'202');
  assert.equal(rows[0].avgCompetitorPrice,32.90);
- assert.equal(rows[0].competitorOfferCount,3);
+ assert.equal(rows[0].competitorOfferCount,5);
 });
 
 test('categoria WeDrop dispara buscas pelos nomes das SKUs, sem depender de palavra digitada',()=>{
@@ -385,6 +393,9 @@ test('bicicletas Curva A não passam para Ads quando preço médio da concorrên
   priceMin:79.99,priceMax:79.99,sales:6000,monthlySold:991,
   dataSource:'shopee-featured-chrome'
  }));
+ offers.push({shopId:'501',itemId:'8888',productName:'Bicicleta de Equilíbrio Infantil Sem Pedal',
+  priceMin:79.99,priceMax:79.99,sales:6000,monthlySold:991,
+  dataSource:'shopee-featured-chrome'});
  const rows=matchCurveOffers({catalog,costs:[
   {supplier_sku:'3284',unit_cost:115.99},
   {supplier_sku:'3290',unit_cost:129.99}],offers,ownShopId:'999'});
@@ -407,6 +418,11 @@ test('Curva B com custo baixo e três lojas de preços comparáveis recebe simul
   priceMin:100,priceMax:100,sales:1500,monthlySold:780,
   dataSource:'shopee-featured-chrome'
  }));
+ offers.push(...[950,951].map(itemId=>({
+  shopId:'601',itemId:String(itemId),productName:'Organizador de Gaveta Modular Plástico Grande',
+  priceMin:100,priceMax:100,sales:null,monthlySold:null,
+  dataSource:'shopee-featured-chrome'
+ })));
  const rows=matchCurveOffers({catalog,costs:[
   {supplier_sku:'SHP123',unit_cost:40}],offers,ownShopId:'999'});
  assert.equal(rows.length,1);
@@ -418,7 +434,7 @@ test('Curva B com custo baixo e três lojas de preços comparáveis recebe simul
  assert.equal(pickCurveResults(rows,{limit:5,competitiveOnly:true,verifiedOnly:true}).found,1);
 });
 
-test('média em Curvas valida 2 lojas e pode usar até 10 anúncios distintos',()=>{
+test('média em Curvas exige no mínimo 5 anúncios distintos e permite lojas repetidas',()=>{
  const name='Organizador de Gaveta Modular Plástico Grande';
  const catalog=[{supplier_sku:'C123',product_data:{
   name,category:'Organizadores',rawAvailability:'Disponível'}}];
@@ -431,16 +447,36 @@ test('média em Curvas valida 2 lojas e pode usar até 10 anúncios distintos',(
  }));
  const apply=n=>matchCurveOffers({catalog,costs,offers:offers.slice(0,n),ownShopId:'999'})[0];
  const two=apply(2);
- assert.equal(two.avgCompetitorPrice,92.5);
- assert.equal(two.adsCompetitiveness.eligible,true);
+ assert.equal(two.avgCompetitorPrice,null);
+ assert.equal(two.adsCompetitiveness.eligible,false);
  const three=apply(3);
- assert.equal(three.avgCompetitorPrice,95);
+ assert.equal(three.avgCompetitorPrice,null);
  assert.equal(three.competitorOfferCount,3);
- assert.equal(three.adsCompetitiveness.eligible,true);
+ assert.equal(three.adsCompetitiveness.eligible,false);
  const five=apply(5);
  assert.equal(five.avgCompetitorPrice,100);
  assert.equal(five.competitorOfferCount,5);
  const six=apply(6);
  assert.ok(six.competitorOfferCount<=10);
- assert.equal(new Set(six.competitorOffers.map(x=>x.shopId)).size,six.competitorOffers.length);
+ assert.equal(new Set(six.competitorOffers.map(x=>x.itemId)).size,six.competitorOffers.length);
+});
+
+test('Curvas faz média com 5 anúncios da mesma loja e ignora embalagens de quantidades diferentes',()=>{
+ const title='Pano Multiuso em Rolo com 600 Unidades';
+ const catalog=[{supplier_sku:'P600',product_data:{
+  name:title,rawAvailability:'Disponível',category:'Limpeza'}}];
+ const valid=Array.from({length:5},(_,i)=>({
+  shopId:'123',itemId:String(3000+i),productName:title,
+  priceMin:50+i,priceMax:50+i,sales:1200,monthlySold:1000
+ }));
+ const different={shopId:'124',itemId:'4000',
+  productName:'Pano Multiuso em Rolo com 200 Unidades',
+  priceMin:5,priceMax:5,sales:3000,monthlySold:2000};
+ const rows=matchCurveOffers({catalog,offers:[...valid,different],
+  costs:[{supplier_sku:'P600',unit_cost:10}]});
+ assert.equal(rows.length,1);
+ assert.equal(rows[0].competitorOfferCount,5);
+ assert.equal(rows[0].avgCompetitorPrice,52);
+ assert.equal(new Set(rows[0].competitorOffers.map(x=>x.shopId)).size,1);
+ assert.ok(!rows[0].competitorOffers.some(x=>x.itemId==='4000'));
 });

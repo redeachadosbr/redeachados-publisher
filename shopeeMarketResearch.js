@@ -103,7 +103,7 @@ export const MARKET_COMPARISON_MIN=REDE_ACHADOS_MARKET_RULES.minimumOffers;
 export const MARKET_COMPARISON_MAX=REDE_ACHADOS_MARKET_RULES.maximumOffers;
 // Amostra observada de 2 até 5 anúncios diferentes, não estimativa de demanda.
 export function evaluateMarketOffers({title,offers=[],ownItemId,ownShopId,
- queriedAt=new Date().toISOString(),minOffers=MARKET_COMPARISON_MIN,maxOffers=MARKET_COMPARISON_MAX}){
+ queriedAt=new Date().toISOString(),minOffers=MARKET_COMPARISON_MIN,maxOffers=MARKET_COMPARISON_MAX,allowSameShop=false}){
  const minimumCount=Number.isInteger(minOffers)&&minOffers>=2&&minOffers<=5?minOffers:MARKET_COMPARISON_MIN;
  const maximumCount=Number.isInteger(maxOffers)&&maxOffers>=minimumCount&&maxOffers<=10?maxOffers:MARKET_COMPARISON_MAX;
  const comparable=[],seen=new Set();
@@ -125,7 +125,7 @@ export function evaluateMarketOffers({title,offers=[],ownItemId,ownShopId,
  }
  if(comparable.length<minimumCount)return {verified:false,reference:null,average:null,
   count:comparable.length,sample:comparable.slice(0,maximumCount),
-  reason:'Menos de 2 anúncios comparáveis encontrados para esta SKU.'};
+  reason:'Menos de '+minimumCount+' anúncios comparáveis encontrados para esta SKU.'};
  const center=median(comparable.map(x=>x.price));
  // Evitar que anúncio de acessório ou preço promocional anômalo contamine a média.
  const filtered=comparable.filter(x=>x.price>=center*REDE_ACHADOS_MARKET_RULES.minimumPriceRatioToMedian&&
@@ -134,13 +134,14 @@ export function evaluateMarketOffers({title,offers=[],ownItemId,ownShopId,
   Math.abs(a.price-center)-Math.abs(b.price-center)||a.price-b.price);
  const shops=new Set(),selected=[];
  for(const offer of filtered){
-  if(shops.has(offer.shopId))continue;
+  if(!allowSameShop&&shops.has(offer.shopId))continue;
   shops.add(offer.shopId);selected.push(offer);
   if(selected.length>=maximumCount)break;
  }
  if(selected.length<minimumCount)return {verified:false,reference:null,average:null,
   count:selected.length,sample:selected,
-  reason:'Não há pelo menos 2 lojas diferentes com preços comparáveis consistentes.'};
+  reason:allowSameShop?'Não há pelo menos '+minimumCount+' anúncios distintos do mesmo produto com preços consistentes.':
+   'Não há pelo menos '+minimumCount+' lojas diferentes com preços comparáveis consistentes.'};
  const average=Math.round(selected.reduce((total,o)=>total+o.price,0)/selected.length*100)/100;
  return {verified:true,reference:average,average,count:selected.length,
   sample:selected,method:'arithmetic_mean',minimumCount,
