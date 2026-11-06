@@ -67,7 +67,7 @@
  function appendPrices(main,row){
   const details=t('details','curve-competitors');
   const count=Number(row.competitorOfferCount||0);
-  details.append(t('summary','','Ver anúncios usados para comparar os preços ('+count+')'));
+  details.append(t('summary','','Ver os '+count+' anúncios considerados na média de venda Shopee'));
   details.append(t('p','curve-evidence',row.priceEvidence||'Média indisponível.'));
   const list=t('ol','curve-offers-list');
   for(const offer of row.competitorOffers||[]){
@@ -135,7 +135,8 @@
      row.sales30!==null?'Vendas apuradas em ~30 dias':'Vendas acumuladas • período não confirmado',
     nf.format(row.sales30!==null?row.sales30:row.salesDisplayed)),
    metric('Preço do anúncio comparado',money(row.competitorPrice)),
-   metric('Média dos concorrentes'+(row.avgCompetitorPrice!==null?' ('+row.competitorOfferCount+' lojas)':''),money(row.avgCompetitorPrice)),
+   metric('Média do preço de venda na Shopee'+
+    (row.avgCompetitorPrice!==null?' ('+row.competitorOfferCount+' anúncios)':''),money(row.avgCompetitorPrice)),
    metric('Custo WeDrop',money(row.cost)),
    ...(fit?.eligible?[
     metric('Preço sugerido para Ads',money(fit.suggestedSalePrice)),

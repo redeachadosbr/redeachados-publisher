@@ -415,3 +415,30 @@ test('Curva B com custo baixo e três lojas de preços comparáveis recebe simul
  assert.ok(rows[0].adsCompetitiveness.suggestedSalePrice<=140);
  assert.equal(pickCurveResults(rows,{limit:5,competitiveOnly:true,verifiedOnly:true}).found,1);
 });
+
+test('média do preço de venda exige ao menos 3 lojas e usa no máximo 5 anúncios distintos',()=>{
+ const name='Organizador de Gaveta Modular Plástico Grande';
+ const catalog=[{supplier_sku:'C123',product_data:{
+  name,category:'Organizadores',rawAvailability:'Disponível'}}];
+ const costs=[{supplier_sku:'C123',unit_cost:30}];
+ const priceList=[90,95,100,105,110,200];
+ const offers=priceList.map((price,i)=>({
+  shopId:String(200+i),itemId:String(1000+i),productName:name,
+  priceMin:price,priceMax:price,monthlySold:780,sales:1500,
+  dataSource:'shopee-featured-chrome'
+ }));
+ const apply=n=>matchCurveOffers({catalog,costs,offers:offers.slice(0,n),ownShopId:'999'})[0];
+ const two=apply(2);
+ assert.equal(two.avgCompetitorPrice,null);
+ assert.equal(two.adsCompetitiveness.eligible,false);
+ const three=apply(3);
+ assert.equal(three.avgCompetitorPrice,95);
+ assert.equal(three.competitorOfferCount,3);
+ assert.equal(three.adsCompetitiveness.eligible,true);
+ const five=apply(5);
+ assert.equal(five.avgCompetitorPrice,100);
+ assert.equal(five.competitorOfferCount,5);
+ const six=apply(6);
+ assert.ok(six.competitorOfferCount<=5);
+ assert.equal(new Set(six.competitorOffers.map(x=>x.shopId)).size,six.competitorOffers.length);
+});

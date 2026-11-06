@@ -70,3 +70,21 @@ test('a Ponte Chrome reutiliza janela minimizada e expõe etapas, andamento e ca
   'curveChromeProgressBar','curveChromeActivity','curveChromeCancel'])
   assert.match(page,new RegExp('id="'+id+'"'));
 });
+
+test('final da pesquisa apresenta categoria, total pesquisado, retornos e viáveis para Ads',()=>{
+ const page=readFileSync(new URL('../public/index.html',import.meta.url),'utf8');
+ const ui=readFileSync(new URL('../public/curvas-chrome.js',import.meta.url),'utf8');
+ const source=readFileSync(new URL('../shopeeChromeCurves.js',import.meta.url),'utf8');
+ for(const id of ['curveChromeFinalReport','curveChromeSummaryCategory','curveChromeSummaryStatus',
+  'curveChromeSummaryScanned','curveChromeSummaryMatched','curveChromeSummaryViable',
+  'curveChromeSummaryExcluded','curveChromeSummaryDetail'])
+  assert.match(page,new RegExp('id="'+id+'"'));
+ assert.match(ui,/function finishReport/);
+ assert.match(ui,/s\.searchedSkuIds/);
+ assert.match(ui,/s\.matchedSkuIds/);
+ assert.match(ui,/s\.viableSkuIds/);
+ assert.match(ui,/finishReport\(s,/);
+ assert.match(source,/matchedSkuIds:rows\.map/);
+ assert.match(source,/viableSkuIds:qualified\.map/);
+ assert.match(source,/searchedSkus:task\.skus/);
+});

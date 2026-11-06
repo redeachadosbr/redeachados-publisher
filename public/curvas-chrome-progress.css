@@ -19,3 +19,32 @@
 #tab-curves .curve-chrome-activity li:first-child{font-weight:700;color:#245e94}
 @container(max-width:520px){#tab-curves .curve-chrome-progress{margin:4px 10px 12px}
  #tab-curves .curve-chrome-progress-heading{align-items:flex-start;flex-wrap:wrap}}
+
+/* Relatório final compacto: cobertura, correspondências e viabilidade para Ads. */
+#tab-curves .curve-chrome-summary[hidden]{display:none!important}
+#tab-curves .curve-chrome-summary{margin:8px 16px 15px;padding:15px 16px;
+ border:1px solid #b7d3f3;border-radius:14px;
+ background:linear-gradient(120deg,#f4f9ff 0%,#fff 80%);
+ box-shadow:0 5px 16px #275f9814}
+#tab-curves .curve-chrome-summary-heading{display:flex;align-items:center;
+ justify-content:space-between;gap:10px;margin-bottom:13px}
+#tab-curves .curve-chrome-summary-heading small{font-size:9px;font-weight:800;
+ letter-spacing:.09em;color:#437cb2}
+#tab-curves .curve-chrome-summary-heading h3{font-size:16px;margin:3px 0;
+ color:#173b62;font-weight:850}
+#tab-curves .curve-chrome-summary-heading p{margin:0;font-size:11px;color:#68819d}
+#tab-curves .curve-chrome-summary-heading>span{padding:5px 10px;border-radius:9px;
+ background:#e4f1ff;color:#225e9b;font-size:10px;font-weight:800}
+#tab-curves .curve-chrome-summary-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:9px}
+#tab-curves .curve-chrome-summary-grid>div{background:#fff;border:1px solid #e0eaf7;
+ border-radius:11px;padding:10px;min-width:0}
+#tab-curves .curve-chrome-summary-grid small{display:block;color:#6d829b;
+ font-size:10px;line-height:1.4}
+#tab-curves .curve-chrome-summary-grid strong{display:block;margin-top:3px;
+ color:#163c65;font-size:20px;font-weight:850;font-variant-numeric:tabular-nums}
+#tab-curves #curveChromeSummaryDetail{font-size:10.5px;line-height:1.65;
+ color:#587493;margin:12px 0 0}
+@container(max-width:700px){
+ #tab-curves .curve-chrome-summary-grid{grid-template-columns:repeat(2,minmax(0,1fr))}
+ #tab-curves .curve-chrome-summary{margin:8px 10px 13px}
+}

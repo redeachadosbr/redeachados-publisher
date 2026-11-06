@@ -7,6 +7,31 @@
  const progress=el('curveChromeProgress'),stepLabel=el('curveChromeStage');
  const counters=el('curveChromeCounters'),feed=el('curveChromeActivity');
  const bar=el('curveChromeProgressBar'),cancel=el('curveChromeCancel');
+ const summary=el('curveChromeFinalReport');
+ const summaryEl=id=>document.getElementById(id);
+ const countFmt=new Intl.NumberFormat('pt-BR');
+ function finishReport(s,headline,statusText,note){
+  if(!s||!summary)return;
+  const searched=s.searchedSkuIds.size;
+  const matched=[...s.matchedSkuIds].filter(sku=>s.searchedSkuIds.has(sku)).length;
+  const viable=[...s.viableSkuIds].filter(sku=>s.searchedSkuIds.has(sku)).length;
+  summary.hidden=false;
+  summaryEl('curveChromeSummaryTitle').textContent=headline;
+  summaryEl('curveChromeSummaryCategory').textContent='Categoria WeDrop: '+
+   (s.selected.category==='Todos'?'Todas as categorias':s.selected.category)+
+   (s.selected.keyword?' • Produto: '+s.selected.keyword:'');
+  summaryEl('curveChromeSummaryStatus').textContent=statusText;
+  summaryEl('curveChromeSummaryScanned').textContent=countFmt.format(searched);
+  summaryEl('curveChromeSummaryMatched').textContent=countFmt.format(matched);
+  summaryEl('curveChromeSummaryViable').textContent=countFmt.format(viable);
+  summaryEl('curveChromeSummaryExcluded').textContent=countFmt.format(Math.max(0,searched-viable));
+  summaryEl('curveChromeSummaryDetail').textContent=
+   countFmt.format(s.scanned)+' consulta(s) na Shopee • '+countFmt.format(s.received)+
+   ' consulta(s) importadas com sucesso. '+countFmt.format(viable)+' de '+
+   countFmt.format(searched)+' SKUs pesquisadas nesta execução tiveram demanda A/B comprovada, '+
+   'média do preço de venda em 3 a 5 anúncios de lojas diferentes, custo WeDrop e preço viáveis para Ads. '+
+   (note||'')+' Os números não representam produtos que ainda não foram pesquisados.';
+ }
  const stages={iniciando:'Preparando pesquisa',navegando:'Pesquisando SKU',
   carregando:'Carregando Shopee',lendo:'Lendo anúncios',
   comparando:'Conferindo concorrência',importando:'Cruzando catálogo WeDrop',
@@ -81,6 +106,7 @@
   button.disabled=true;
   if(cancel){cancel.hidden=false;cancel.disabled=false;}
   if(feed)feed.replaceChildren();
+  if(summary)summary.hidden=true;
   updateStage('iniciando','Verificando a Ponte Chrome para iniciar em janela minimizada.');
   say('Verificando instalação da Ponte Chrome…');
   try{
@@ -94,7 +120,8 @@
     plan=await json('/api/shopee/curvas-ab/chrome-plan?'+params);
    }
    if(!plan.jobs.length)throw Error('Não há SKUs WeDrop disponíveis nesta categoria.');
-   active={nonce,selected,plan,received:0,errors:0,scanned:0,monthly:0,found:0,blocked:false};
+   active={nonce,selected,plan,received:0,errors:0,scanned:0,monthly:0,found:0,blocked:false,
+    searchedSkuIds:new Set(),matchedSkuIds:new Set(),viableSkuIds:new Set()};
    offset=plan.nextOffset;
    updateStage('iniciando','Janela auxiliar minimizada • primeiro lote com '+plan.jobs.length+' consultas.',active);
    say('Pesquisa em janela minimizada; nenhuma aba é adicionada à sua janela principal.');
@@ -123,6 +150,9 @@
    s.received++;
    s.found=Number(data.found)||0;
    s.monthly+=Number(data.chromeImport?.monthlyOffers)||0;
+   for(const sku of data.chromeImport?.searchedSkus||[])s.searchedSkuIds.add(String(sku));
+   s.matchedSkuIds=new Set((data.matchedSkuIds||[]).map(String));
+   s.viableSkuIds=new Set((data.viableSkuIds||[]).map(String));
    globalThis.RACurvesAB?.showChromeResults?.(data);
    updateStage('validando',data.found+' SKUs Curva A/B viáveis para Ads; '+
     data.pendingCount+' sem comprovação mensal.',s);
@@ -183,6 +213,11 @@
     active=null;button.disabled=false;
     if(cancel)cancel.hidden=true;
     updateStage(s.cancelRequested?'cancelado':s.blocked?'erro':'concluido',finished,s);
+    finishReport(s,s.cancelRequested||m.cancelled?'Pesquisa interrompida':s.blocked?
+     'Pesquisa interrompida pela Shopee':'Resultado da pesquisa',
+     s.cancelRequested||m.cancelled?'Interrompida':s.blocked?'Acesso limitado':
+     s.found>=s.selected.limit?'Meta alcançada':'Pesquisa encerrada',
+     finished);
     say(finished);
    }).catch(error=>{
     if(active!==s)return;
@@ -190,6 +225,8 @@
     active=null;button.disabled=false;
     if(cancel)cancel.hidden=true;
     updateStage('erro','Falha ao continuar a pesquisa: '+String(error.message||error),s);
+    finishReport(s,'Pesquisa interrompida','Erro na continuidade',
+     'Não foi possível concluir o restante: '+String(error.message||error));
     say('Falha ao continuar a pesquisa: '+String(error.message||error));
    });
   }

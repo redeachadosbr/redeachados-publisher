@@ -36,7 +36,7 @@
 <link rel="stylesheet" href="/curvas-premium.css?v=20261106-premium-v1">
 <link rel="stylesheet" href="/curvas-ads-fit.css?v=20261106-market40-v2">
 <link rel="stylesheet" href="/curvas-chrome-unified.css?v=20261106-single-v1">
-<link rel="stylesheet" href="/curvas-chrome-progress.css?v=20261106-minimized-v120">
+<link rel="stylesheet" href="/curvas-chrome-progress.css?v=20261106-summary-market3-v1">
 <link rel="stylesheet" href="/optimizer-image-studio.css?v=1.0.5-image03-direct-import">
 <link rel="stylesheet" href="/kit-builder.css?v=20261105-wedrop-step01-v1">
 <link rel="stylesheet" href="/optimizer-technical-studio.css?v=1.2.0-compact-fields">
@@ -1119,6 +1119,21 @@
   <progress id="curveChromeProgressBar" max="10" value="0" aria-label="SKUs classificadas em relação à quantidade solicitada"></progress>
   <ol id="curveChromeActivity" class="curve-chrome-activity" aria-label="Histórico da pesquisa"></ol>
  </div>
+ <section id="curveChromeFinalReport" class="curve-chrome-summary" role="status" aria-live="polite" hidden>
+  <div class="curve-chrome-summary-heading">
+   <div><small>RELATÓRIO DA PESQUISA SHOPEE</small>
+    <h3 id="curveChromeSummaryTitle">Pesquisa concluída</h3>
+    <p id="curveChromeSummaryCategory">Categoria WeDrop: —</p></div>
+   <span id="curveChromeSummaryStatus">Resumo</span>
+  </div>
+  <div class="curve-chrome-summary-grid">
+   <div><small>SKUs pesquisadas</small><strong id="curveChromeSummaryScanned">0</strong></div>
+   <div><small>Com anúncios equivalentes</small><strong id="curveChromeSummaryMatched">0</strong></div>
+   <div><small>Viáveis para Shopee Ads</small><strong id="curveChromeSummaryViable">0</strong></div>
+   <div><small>Não aprovadas nesta pesquisa</small><strong id="curveChromeSummaryExcluded">0</strong></div>
+  </div>
+  <p id="curveChromeSummaryDetail">Apenas SKUs com Curva A/B comprovada, média de 3 a 5 anúncios e preço competitivo são recomendadas.</p>
+ </section>
 </section>
 <details class="curve-technical-diagnostics">
  <summary>Diagnóstico das fontes de pesquisa <span>(opcional)</span></summary>
@@ -1135,14 +1150,14 @@
 </details>
 <details class="curve-help"><summary>Como funciona a classificação <span>Critérios, fontes e comparação de preços</span></summary>
    <div class="curve-help-content"><div><h3>Do catálogo à concorrência</h3><p>A pesquisa parte das SKUs WeDrop, inclusive as ainda não publicadas na sua loja, e procura anúncios equivalentes na Shopee. Curva A: 900 ou mais vendas em 30 dias. Curva B: 700–899. Abaixo de 700 não se classifica; sem dados mensais verificáveis, fica pendente.</p><h3>De onde vêm as vendas?</h3><p>A busca tenta primeiro <strong>Em Destaque</strong>, ordenada por vendas. Se o acesso estiver restrito, usa a API de Afiliados quando conectada. Essa alternativa não reproduz integralmente a vitrine nem garante vendas mensais. A fonte utilizada aparece em cada resultado.</p></div>
-   <div><h3>Preços e títulos</h3><p>A média usa de duas a cinco ofertas comparáveis, de lojas diferentes. Sem base suficiente, a média fica indisponível. Os títulos sugeridos usam características comprovadas da SKU; as palavras-chave são termos recorrentes nos anúncios comparados, não volumes oficiais de busca.</p><p class="curve-help-note">Imagens e SKUs são do catálogo WeDrop. Esta tela pesquisa oportunidades; não publica anúncios nem ativa Ads.</p></div></div>
+   <div><h3>Preços e títulos</h3><p>Para recomendar Ads, a média do preço de venda usa de três a cinco anúncios comparáveis de lojas diferentes. Sem essa base, a média fica indisponível e a SKU não entra na lista de Ads. Os títulos sugeridos usam características comprovadas da SKU; as palavras-chave são termos recorrentes nos anúncios comparados, não volumes oficiais de busca.</p><p class="curve-help-note">Imagens e SKUs são do catálogo WeDrop. Esta tela pesquisa oportunidades; não publica anúncios nem ativa Ads.</p></div></div>
   </details>
   <div id="curveNotice" class="curve-notice" role="status" aria-live="polite" hidden></div>
   <div id="curveStats" class="curve-stats" hidden>
    <div><small>SKUs na categoria</small><strong id="curveCatalogCount">—</strong></div>
    <div><small>SKUs pesquisadas</small><strong id="curveScannedCount">—</strong></div>
    <div><small>Ofertas Shopee</small><strong id="curveOfferCount">—</strong></div>
-   <div><small>SKUs classificadas</small><strong id="curveFoundCount">—</strong></div>
+   <div><small>Viáveis para Ads</small><strong id="curveFoundCount">—</strong></div>
    <div><small>Com evidência mensal</small><strong id="curveVerifiedCount">—</strong></div>
   </div>
   <section class="curve-results" aria-labelledby="curveResultsHeading">
@@ -2701,8 +2716,8 @@
 <script src="/optimizer-execution-visual.js?v=1.0.5-title-pending-readback"></script>
 <script src="/optimizer-execution-dialog.js?v=1.0.5-video-relink-sync"></script>
 <script src="/app.js?v=3.5.67-shopee-photo-and-wedrop-dimensions&amp;layout=curves-compact-v1"></script>
-<script src="/curvas-ab.js?v=20261106-single-v1"></script>
-<script src="/curvas-chrome.js?v=20261106-minimized-v120"></script>
+<script src="/curvas-ab.js?v=20261106-summary-market3-v1"></script>
+<script src="/curvas-chrome.js?v=20261106-summary-market3-v1"></script>
 <script src="/pending-images.js?v=1.2.0-kit-routing"></script>
 <script type="module" src="/kit-builder.js?v=20261105-kit-cost-diagnostics"></script>
 <link rel="stylesheet" href="/optimizer-variations.css?v=1.2.1-single-flow">
