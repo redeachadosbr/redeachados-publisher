@@ -357,7 +357,7 @@ test('busca exclui prefixos genéricos e usa o nome exato da SKU WeDrop',()=>{
 test('seleção para Ads não conta Curva A/B com custo inviável nem pendências',()=>{
  const rows=[
   {sku:'AZUL',curve:'A',verified30:true,adsCompetitiveness:{eligible:false}},
-  {sku:'APTO',curve:'B',verified30:true,adsCompetitiveness:{eligible:true}},
+  {sku:'APTO',curve:'B',verified30:true,monthlyCompetitorCount:3,adsCompetitiveness:{eligible:true}},
   {sku:'PENDENTE',curve:'PENDING',verified30:false,adsCompetitiveness:{eligible:true}}
  ];
  const found=pickCurveResults(rows,{curve:'ALL',limit:5,verifiedOnly:false,competitiveOnly:true});
