@@ -31,7 +31,8 @@
    countFmt.format(s.received)+' consulta(s) importadas com sucesso. '+
    countFmt.format(s.searchedSkuIds.size)+' SKU(s) com resultados importados; '+
    countFmt.format(Math.max(0,searched-s.searchedSkuIds.size))+
-   ' SKU(s) com consulta interrompida ou incompleta. '+countFmt.format(viable)+
+   ' SKU(s) com consulta incompleta. '+countFmt.format(s.errors)+
+   ' consulta(s) com falha de leitura ou dados parciais. '+countFmt.format(viable)+
    ' de '+countFmt.format(searched)+' SKU(s) consultadas comprovaram Curva A/B '+
    'em 30 dias, 3 concorrentes e preço viável com média de 3 a 5 lojas. '+
    (note||'')+' Consulta incompleta não representa produto definitivamente reprovado.';
@@ -39,7 +40,8 @@
  const stages={iniciando:'Preparando pesquisa',navegando:'Pesquisando SKU',
   carregando:'Carregando Shopee',lendo:'Lendo anúncios',
   recuperando:'Restaurando janela para carregar Shopee',
-  comparando:'Conferindo concorrência',importando:'Cruzando catálogo WeDrop',
+  comparando:'Conferindo concorrência',continuando:'Avançando na categoria',
+  importando:'Cruzando catálogo WeDrop',
   validando:'Validando Curva e preço',concluido:'Pesquisa finalizada',
   erro:'Leitura Shopee indisponível',cancelado:'Pesquisa interrompida'};
  function updateStage(name,detail='',s=null){
@@ -56,7 +58,7 @@
  }
  if(!button||!label)return;
  let active=null,offset=0,lastFilter='',queue=Promise.resolve();
- const MAX_SEARCHES_PER_RUN=60, NO_MONTHLY_LIMIT=18;
+ const MAX_SEARCHES_PER_RUN=60;
  const say=text=>{label.textContent=String(text||'').slice(0,550);};
  const config=()=>({category:el('curveCategory')?.value||'Todos',
   keyword:el('curveKeyword')?.value?.trim()||'',
@@ -87,8 +89,8 @@
     const version=String(event.data.version||'0.0.0');
     const parts=version.split('.').map(Number);
     const ok=parts[0]>1||(parts[0]===1&&
-     (parts[1]>2||parts[1]===2&&Number(parts[2]||0)>=1));
-    finish({ok,version,reason:ok?'':'Extensão '+version+' é antiga. Requer 1.2.1.'});
+     (parts[1]>2||parts[1]===2&&Number(parts[2]||0)>=2));
+    finish({ok,version,reason:ok?'':'Extensão '+version+' é antiga. Requer 1.2.2.'});
    };
    window.addEventListener('message',listener);
    const timer=setTimeout(()=>finish({ok:false,reason:'A extensão não respondeu na aba do Manager.'}),2600);
@@ -113,11 +115,11 @@
   if(cancel){cancel.hidden=false;cancel.disabled=false;}
   if(feed)feed.replaceChildren();
   if(summary)summary.hidden=true;
-  updateStage('iniciando','Verificando Ponte Chrome 1.2.1 e carregamento da Shopee.');
+  updateStage('iniciando','Verificando Ponte Chrome 1.2.2 e carregamento da Shopee.');
   say('Verificando instalação da Ponte Chrome…');
   try{
    const bridge=await ping(nonce);
-   if(!bridge.ok)throw Error(bridge.reason+' Baixe a versão 1.2.1, ative o acesso ao site, atualize a extensão em chrome://extensions e recarregue o Manager.');
+   if(!bridge.ok)throw Error(bridge.reason+' Baixe a versão 1.2.2, ative o acesso ao site, atualize a extensão em chrome://extensions e recarregue o Manager.');
    const params=new URLSearchParams({category:selected.category,keyword:selected.keyword,
     offset:String(offset),limit:'6'});
    let plan=await json('/api/shopee/curvas-ab/chrome-plan?'+params);
@@ -145,9 +147,17 @@
   const job=s.plan.jobs.find(x=>x.query===m.query);
   for(const sku of job?.skus||[])s.attemptedSkuIds.add(String(sku));
   if(m.error){
-   s.errors++;s.blocked=true;
-   updateStage('erro','Busca '+s.scanned+' incompleta: '+String(m.error).slice(0,190),s);
-   say('Busca '+m.position+'/'+m.total+': '+m.error);return;
+   s.errors++;
+   if(m.recoverable){
+    updateStage('continuando','Busca '+s.scanned+' incompleta: '+
+     String(m.error).slice(0,145)+'. Avançando para outra SKU.',s);
+    say('Busca '+m.position+'/'+m.total+' incompleta. Seguindo com a categoria.');
+   }else{
+    s.blocked=true;
+    updateStage('erro','Shopee exige verificação: '+String(m.error).slice(0,180),s);
+    say('Pesquisa pausada: '+m.error);
+   }
+   return;
   }
   try{
    const data=await json('/api/shopee/curvas-ab/chrome-import',{
@@ -157,6 +167,11 @@
    });
    if(active!==s)return;
    s.received++;
+   if(m.warning){
+    s.errors++;
+    updateStage('continuando','Consulta com dados parciais: '+
+     String(m.warning).slice(0,145),s);
+   }
    s.found=Number(data.found)||0;
    s.monthly+=Number(data.chromeImport?.monthlyOffers)||0;
    for(const sku of data.chromeImport?.searchedSkus||[])s.searchedSkuIds.add(String(sku));
@@ -169,9 +184,10 @@
     data.pendingCount+' pendentes. Busca '+m.position+'/'+m.total+'.');
   }catch(error){
    if(active!==s)return;
-   s.errors++;s.blocked=true;
-   updateStage('erro','Falha ao importar '+m.query+': '+String(error.message||error),s);
-   say('Falha ao importar '+m.query+': '+String(error.message||error));
+   s.errors++;
+   updateStage('continuando','Não foi possível importar '+m.query+
+    '. Marcada para conferência e avançando na categoria.',s);
+   say('Importação desta SKU incompleta: '+String(error.message||error));
   }
  }
  window.addEventListener('message',event=>{
@@ -200,11 +216,10 @@
      finished='Meta atingida: '+s.found+'/'+s.selected.limit+' SKUs A/B com três concorrentes mensais.';
     else if(s.blocked)
      finished='Leitura Shopee insuficiente ou verificação: '+s.found+'/'+s.selected.limit+' SKUs comprovadas. Pesquisa interrompida.';
-    else if(s.monthly===0&&s.scanned>=NO_MONTHLY_LIMIT)
-     finished='Sem vendas mensais: '+s.scanned+' pesquisas realizadas. “Vendidos” não comprova 30 dias. Precisa de fonte mensal autorizada.';
     else if(s.scanned>=MAX_SEARCHES_PER_RUN)
-     finished='Limite desta execução: '+s.scanned+' buscas, '+s.found+'/'+s.selected.limit+
-      ' SKUs comprovadas. Clique novamente para continuar sem repetir.';
+     finished='Foram realizadas '+s.scanned+' consultas; '+s.found+'/'+s.selected.limit+
+       ' SKUs tiveram dados suficientes para Ads. Ainda há produtos por verificar: '+
+       'clique em Pesquisar no Chrome para continuar a categoria.';
     else if(s.plan.hasMore){
      const params=new URLSearchParams({category:s.selected.category,keyword:s.selected.keyword,
       offset:String(offset),limit:'6'});
