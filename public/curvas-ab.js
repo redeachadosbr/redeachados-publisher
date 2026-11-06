@@ -67,7 +67,9 @@
  function appendPrices(main,row){
   const details=t('details','curve-competitors');
   const count=Number(row.competitorOfferCount||0);
-  details.append(t('summary','','Ver os '+count+' anúncios considerados na média de venda Shopee'));
+  details.append(t('summary','',row.avgCompetitorPrice===null?
+   'Amostra parcial: '+count+' anúncio(s) • mínimo de 3 preços necessário':
+   'Média do preço de venda Shopee: '+count+' anúncios de lojas diferentes'));
   details.append(t('p','curve-evidence',row.priceEvidence||'Média indisponível.'));
   const list=t('ol','curve-offers-list');
   for(const offer of row.competitorOffers||[]){
