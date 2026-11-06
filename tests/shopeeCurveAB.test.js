@@ -313,7 +313,8 @@ test('rota autenticada expõe status das duas fontes sem fornecer segredos',()=>
  const html=readFileSync(new URL('../public/index.html',import.meta.url),'utf8');
  assert.match(api,/api\/shopee\/curvas-ab\/sources',mustLogin,requireWeDropAdmin/);
  assert.match(api,/probeCurveAffiliateAccess/);
- assert.match(html,/id="curveConfirmedOnly" checked/);
+ assert.match(html,/id="curveChromeStart"/);
+ assert.doesNotMatch(html,/id="curveConfirmedOnly"/);
  assert.match(html,/id="curveTestSources"/);
 });
 

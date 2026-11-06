@@ -14,7 +14,7 @@ test('visual premium isolado da página Curvas A/B, sem alterar a lógica',()=>{
  assert.match(css,/@container\(max-width:690px\)/);
  assert.match(css,/prefers-reduced-motion/);
  assert.match(css,/curve-mini-chart/);
- assert.match(page,/class="curve-chrome-filters"/);
+ assert.match(page,/class="curve-filters curve-chrome-filters"/);
  assert.match(page,/class="curve-panel-title"/);
  assert.match(page,/class="curve-chrome-symbol"/);
  assert.match(page,/class="curve-mini-chart"/);
