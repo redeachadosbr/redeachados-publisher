@@ -67,7 +67,7 @@ async function batch(managerTab,nonce,jobs){
    const offers=[...collected.values()].slice(0,100);
    await deliver(managerTab,{kind:'RA_CURVE_CHROME_RESULT',nonce,query,
     position:i+1,total:jobs.length,offers,
-    error:failure&&!offers.length?failure:'',
+    error:failure, // não continuar automaticamente após bloqueio mesmo com itens parciais
     stats:{visible:offers.length,visibleCards,pages,
      monthly:offers.filter(x=>x.monthlySold!==null).length}});
    if(failure)break; // Nunca insistir em bloqueio/verificação da Shopee.

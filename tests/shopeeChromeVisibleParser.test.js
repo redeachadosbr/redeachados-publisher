@@ -27,3 +27,8 @@ test('parser identifica a quantidade mensal quando vem após o período de 30 di
  assert.equal(parser.monthlyEvidence('Vendas 30d: 950').monthlySold,950);
  assert.equal(parser.monthlyEvidence('950 vendas/mês').monthlySold,950);
 });
+
+test('leitura visual so marca ID como visto depois de extrair os dados',()=>{
+ const code=readFileSync(new URL('../chrome-extension-shopee/visible-offers.js',import.meta.url),'utf8');
+ assert.match(code,/if\(product\)\{seen\.add\(id\);found\.push\(product\);\}/);
+});

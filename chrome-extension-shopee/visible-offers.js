@@ -81,10 +81,10 @@
   for(const link of document.querySelectorAll('a[href]')){
    const identity=ids(link.getAttribute('href'));if(!identity)continue;
    const id=identity.shopId+':'+identity.itemId;
-   if(seen.has(id))continue;seen.add(id);
+   if(seen.has(id))continue;
    const card=link.closest('[data-sqe="item"],.shopee-search-item-result__item,[class*="search-item-result__item"]')||link;
    const product=fromCard(card,link,identity,found.length+1);
-   if(product)found.push(product);
+   if(product){seen.add(id);found.push(product);}
    if(found.length>=50)break;
   }
   return {ok:true,offers:found,visibleCards:seen.size,
