@@ -5693,6 +5693,19 @@ app.get('/api/shopee/finance/orders',mustLogin,requireWeDropAdmin,async(req,res)
 // Visualizações de anúncios (GERAIS, não orgânicas) via API oficial.
 // Acumular amostras sem inventar datas de histórico ou porcentagem de cliques.
 const productViewsScanning=new Map();
+// Acompanhamento apenas da loja autenticada, sem expor outros usuários.
+app.get('/api/shopee/product-views/collect-status',mustLogin,requireWeDropAdmin,async(req,res)=>{
+ res.setHeader('Cache-Control','no-store');
+ try{
+  const {auth}=await getValidAuth(req);
+  const job=productViewsScanning.get(String(auth.shopId));
+  res.json({ok:true,running:Boolean(job),
+   phase:job?.progress?.phase||'idle',
+   processed:job?.progress?.processed||0,total:job?.progress?.total||0,
+   updatedAt:job?.progress?.updatedAt||null});
+ }catch(error){res.status(503).json({ok:false,error:'Status da Shopee indisponível: '+
+  String(error.message||error).slice(0,180)});}
+});
 // Limites discretos: ranking não expõe milhares de anúncios em uma requisição.
 const productRankingLimit=value=>[10,20,50,100].includes(Number(value))?
  Number(value):10;
@@ -5743,14 +5756,23 @@ app.post('/api/shopee/product-views/collect',mustLogin,requireWeDropAdmin,async(
   if(req.body?.force!==true&&latest&&Date.now()-Date.parse(latest)<4*3600000)
    return res.json({ok:true,skipped:true,alreadyObserved:true,
     capturedAt:latest,message:'Amostra Shopee recente reutilizada para evitar chamadas duplicadas.'});
+  const progress={phase:'connecting',processed:0,total:0,updatedAt:new Date().toISOString()};
+  const entry={progress};
+  productViewsScanning.set(id,entry);
   const scanJob=(async()=>{
-   const scan=await scanLiveShopViews({cfg,auth,callApi:callShopeeShopApi});
-   return saveViewsScan(auth.shopId,scan);
+   const scan=await scanLiveShopViews({cfg,auth,callApi:callShopeeShopApi,
+    onProgress:next=>Object.assign(progress,next,{updatedAt:new Date().toISOString()})});
+   progress.phase='saving';progress.updatedAt=new Date().toISOString();
+   const saved=await saveViewsScan(auth.shopId,scan);
+   progress.phase='completed';progress.updatedAt=new Date().toISOString();
+   return saved;
   })();
-  productViewsScanning.set(id,scanJob);
+  entry.promise=scanJob;
   try{
    const result=await scanJob;
    res.json({ok:true,source:'product.get_item_extra_info',readOnly:true,...result,
+    skipped:false,scanned:result.saved,
+    message:'Nova medição concluída: '+result.saved+' anúncios consultados e registrados.',
     warning:'Somente visualizações gerais cumulativas, por anúncio-pai. Períodos dependem de ao menos duas amostras; não separam Ads e não revelam cliques ou carrinhos.'});
   }finally{productViewsScanning.delete(id);}
  }catch(error){

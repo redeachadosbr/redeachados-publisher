@@ -59,7 +59,7 @@ export function normalizeExtraItem(row){
  if(views===null)throw Error('Shopee não retornou views para Item ID '+itemId+'.');
  return {itemId,views,sale:safeCount(row.sale),likes:safeCount(row.likes)};
 }
-export async function scanLiveShopViews({cfg,auth,callApi,now=new Date()}){
+export async function scanLiveShopViews({cfg,auth,callApi,now=new Date(),onProgress=()=>{}}){
  let offset=0,total=null,loops=0;
  const output=new Map();
  while(++loops<=150){
@@ -73,6 +73,7 @@ export async function scanLiveShopViews({cfg,auth,callApi,now=new Date()}){
   if(count===null||count>MAX_ITEMS||(total!==null&&count!==total))
    throw Error('Listagem da Shopee inconsistente ou acima do limite de '+MAX_ITEMS+' anúncios.');
   total=count;
+  onProgress({phase:'scanning',processed:output.size,total});
   const listing=Array.isArray(body.item)?body.item:
    Array.isArray(body.item_list)?body.item_list:null;
   if(!listing&&!(count===0&&offset===0))
@@ -106,6 +107,7 @@ export async function scanLiveShopViews({cfg,auth,callApi,now=new Date()}){
      imageUrl:/^https:\/\//i.test(String(image))?String(image):'',
      status:String(info.item_status||'NORMAL')});
    }
+   onProgress({phase:'scanning',processed:output.size,total});
   }
   const next=Number.isSafeInteger(Number(body.next_offset))&&Number(body.next_offset)>offset?
    Number(body.next_offset):offset+items.length;
@@ -116,6 +118,7 @@ export async function scanLiveShopViews({cfg,auth,callApi,now=new Date()}){
  }
  if(output.size!==total)throw Error('A Shopee informou '+total+
   ' anúncios, mas somente '+output.size+' retornaram dados. Nada foi gravado.');
+ onProgress({phase:'saving',processed:output.size,total});
  return {items:[...output.values()],total,observedAt:now.toISOString(),day:saoPauloDay(now),
   source:'product.get_item_extra_info',scope:'general_views_including_possible_ads'};
 }
@@ -191,8 +194,13 @@ export function rankObservedViews(samples,window,{limit=10}={}){
   (b.viewsObserved??-1)-(a.viewsObserved??-1)||
   (b.latestTotalViews??-1)-(a.latestTotalViews??-1)||
   a.itemId.localeCompare(b.itemId));
+ const observed=ranked.filter(x=>x.viewsObserved!==null);
  return {list:ranked.slice(0,Math.max(1,Math.min(Number(limit)||10,100))),totalProducts:ranked.length,
-  withPeriodDelta:ranked.filter(x=>x.viewsObserved!==null).length,
+  withPeriodDelta:observed.length,
+  withPositiveDelta:observed.filter(x=>x.viewsObserved>0).length,
+  withZeroDelta:observed.filter(x=>x.viewsObserved===0).length,
+  observedFrom:observed.length?observed.map(x=>x.observedFrom).sort()[0]:null,
+  observedTo:observed.length?observed.map(x=>x.observedTo).sort().at(-1):null,
   window,precision:'sampled_partial_not_full_period',
   warning:'Contagem geral por Item ID, inclusive tráfego potencialmente pago. A Shopee não fornece período neste endpoint. A diferença é observada apenas entre amostras gravadas, não representa todo o dia/7/30 dias e não fornece impressões, visitantes únicos, CTR ou carrinhos.'};
 }

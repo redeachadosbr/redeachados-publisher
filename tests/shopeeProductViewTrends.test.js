@@ -176,3 +176,29 @@ test('visualizações gerais respeitam seleção de top 20/50/100 sem alterar a 
  }
  assert.equal(rankObservedViews(rows,window,{limit:500}).list.length,100);
 });
+
+test('Hoje: zero vale apenas entre leituras registradas, não o dia completo',()=>{
+ const rows=[{item_id:321,sku:'SKU321',observed_day:date,first_views:272,last_views:272,
+  first_seen_at:'2026-11-03T12:52:00Z',last_seen_at:'2026-11-03T14:00:00Z'}];
+ const out=rankObservedViews(rows,parseViewsWindow({period:'today'},date));
+ assert.equal(out.list[0].viewsObserved,0);
+ assert.equal(out.withPeriodDelta,1);
+ assert.equal(out.withPositiveDelta,0);
+ assert.equal(out.withZeroDelta,1);
+ assert.equal(out.observedFrom,'2026-11-03T12:52:00Z');
+ assert.equal(out.observedTo,'2026-11-03T14:00:00Z');
+});
+test('coleta informa progresso efetivo por lote, incluindo total consultado',async()=>{
+ const events=[];
+ const api=async(_cfg,r)=>{
+  if(r.path.endsWith('/get_item_list'))return {response:{total_count:1,has_next_page:false,
+   item:[{item_id:123}]}};
+  if(r.path.endsWith('/get_item_extra_info'))return {response:{
+   item_list:[{item_id:123,views:100,sale:1,likes:0}]}};
+  return {response:{item_list:[{item_id:123,item_name:'Produto',image:{image_url_list:[]}}]}};
+ };
+ await scanLiveShopViews({cfg:{},auth:{shopId:1,accessToken:'t'},callApi:api,
+  onProgress:evt=>events.push({...evt})});
+ assert.ok(events.some(e=>e.phase==='scanning'&&e.processed===1&&e.total===1));
+ assert.equal(events.at(-1).phase,'saving');
+});
