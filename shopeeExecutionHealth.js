@@ -147,8 +147,9 @@ export function auditRootShopeeExecution({
    return meta?.mandatory===false;
   });
  add('technical',technicalOK,optionalUnconfirmed?
-  'Atributo opcional revisado não confirmado na Shopee; não impede execução fiscal ou desconto.':
-  technicalReason,{notApplicable:optionalUnconfirmed});
+  'Atributo opcional revisado não confirmado na Shopee; permanece pendente, sem impedir fiscal ou desconto.':
+  technicalReason);
+ if(optionalUnconfirmed)out.at(-1).nonBlocking=true;
  const hasVariants=review.variationConfig?.enabled===true||live.has_model===true;
  if(!hasVariants)add('variants',false,'SKU sem variações', {notApplicable:true});
  else{
@@ -221,19 +222,19 @@ export function auditRootShopeeExecution({
       attribute_list:'technical',model_variations:'variants',tax_info:'fiscal',
       kit_discount:'discount',discount:'discount'}[a]||a)===x.id)));
   for(const row of selected){
-   if(row.status==='confirmed'||row.status==='not_applicable')continue;
+   if(row.status==='confirmed'||row.status==='not_applicable'||row.nonBlocking===true)continue;
    row.status=job.state==='uncertain'?'uncertain':'failed';
    row.reason=(job.state==='uncertain'?'Resultado incerto: ':'Falha na execução: ')+
     String(job.last_error||'etapa sem confirmação oficial').slice(0,150);
   }
  }
- const missing=out.filter(x=>!['confirmed','not_applicable'].includes(x.status));
+ const missing=out.filter(x=>!['confirmed','not_applicable'].includes(x.status)&&x.nonBlocking!==true);
  const complete=missing.length===0&&out.length===8&&
   !['running','uncertain'].includes(job?.state);
  add('final',complete,complete?'Todas as etapas aplicáveis conferidas no anúncio e na promoção':
   'Conferência final bloqueada: '+missing.map(x=>x.label).join(', ').slice(0,165));
  return {sku,itemId,checkedAt,complete,stages:out,
-  pending:out.filter(x=>!['confirmed','not_applicable'].includes(x.status)).map(x=>x.id),
+  pending:out.filter(x=>!['confirmed','not_applicable'].includes(x.status)&&x.nonBlocking!==true).map(x=>x.id),
   jobState:job?.state||null,latestJobPartial:Boolean(job?.plan?.selectedStage&&job.plan.selectedStage!=='all'),
   lastJobError:job?.last_error?String(job.last_error).slice(0,250):null};
 }
