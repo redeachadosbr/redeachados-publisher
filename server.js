@@ -3581,10 +3581,16 @@ app.get('/api/shopee/optimizer/execution/root-audit',mustLogin,requireWeDropAdmi
   const jobIdentity=String(current?.state||'')+'|'+String(current?.plan?.planId||'')+'|'+String(current?.plan?.fingerprint||'');
   const cachedIdentity=String(cp?.jobIdentity||'');
   const recent=age>=0&&age<(current?.state==='running'?12000:45000);
+  // Uma auditoria final já confirmada pertence ao plano e à revisão exatos.
+  // Não refazer leitura de nove etapas em todo reload ou clique: a revisão
+  // ou novo job invalidam automaticamente este checkpoint persistido.
+  const durableComplete=cp?.audit?.complete===true&&current?.state==='verified';
+  const campaign=String(req.query?.campaign_id||'').trim();
+  const sameCampaign=!campaign||String(cp?.campaignId||'')===campaign;
   if(cp?.sku===sku&&String(cp.itemId)===String(itemId)&&
      String(cp.modelId)===modelId&&cachedIdentity===jobIdentity&&
-     cp.reviewSignature===rootAuditReviewSignature(review)&&recent&&
-     req.query?.refresh!=='1'){
+     cp.reviewSignature===rootAuditReviewSignature(review)&&sameCampaign&&
+     (recent||durableComplete)&&req.query?.refresh!=='1'){
     return res.json({ok:true,audit:cp.audit,checkpoint:true,checkedAt:cp.checkedAt,
       ...(cp.discountDiagnostic?{discountDiagnostic:cp.discountDiagnostic}:{})});
   }
@@ -3595,7 +3601,7 @@ app.get('/api/shopee/optimizer/execution/root-audit',mustLogin,requireWeDropAdmi
    const checkpoint={sku,itemId:String(itemId),modelId,
     jobIdentity:String(current?.state||'')+'|'+String(current?.plan?.planId||'')+'|'+String(current?.plan?.fingerprint||''),
     checkedAt:audit.checkedAt,reviewSignature:rootAuditReviewSignature(nextReview),
-    audit,discountDiagnostic};
+    campaignId:String(req.query?.campaign_id||'').trim(),audit,discountDiagnostic};
    try{await persistWorkflowExecutionAudit(auth.shopId,itemId,modelId,sku,checkpoint);}
    catch(error){console.warn('[root-audit] checkpoint:',String(error.message||error).slice(0,130));}
   }
