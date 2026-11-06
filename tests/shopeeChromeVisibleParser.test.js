@@ -38,7 +38,7 @@ test('página com cards sem marcador mensal é considerada carregada, nunca Curv
  const bg=readFileSync(new URL('../chrome-extension-shopee/background.js',import.meta.url),'utf8');
  assert.match(source,/seenCards\.add\(id\)/);
  assert.match(source,/visibleCards:seenCards\.size/);
- assert.match(bg,/Number\(result\.visibleCards\)>0/);
+ assert.match(bg,/visibleCards:Math\.max\(Number\(last\?\.visibleCards\|\|0\),merged\.size\)/);
  assert.match(bg,/restoreResearchWindow\(managerTab,nonce\)/);
  assert.match(bg,/chrome\.tabs\.reload\(tab\.id\)/);
  assert.doesNotMatch(bg,/chrome\.tabs\.create\(/);
