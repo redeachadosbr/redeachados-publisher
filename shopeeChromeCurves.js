@@ -163,8 +163,12 @@ export async function importChromeOffers(shopId,{
  }
  for(const offer of [...normalized,...recovered]){
   const id=offer.shopId+':'+offer.itemId,prev=state.offers.get(id);
-  if(!prev||(offer.monthlySold!==null&&prev.monthlySold===null))
-   state.offers.set(id,offer);
+  // Atualização da extensão precisa substituir preços/títulos obsoletos
+  // do mesmo anúncio, preservando prova mensal quando a página atual omitir o rótulo.
+  state.offers.set(id,prev?{...prev,...offer,
+   monthlySold:offer.monthlySold??prev.monthlySold,
+   monthlyEvidence:offer.monthlySold!==null?offer.monthlyEvidence:prev.monthlyEvidence,
+   sales:offer.sales??prev.sales}:offer);
  }
  for(const sku of task.skus)state.scanned.add(sku);
  state.queries++;

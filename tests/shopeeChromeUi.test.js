@@ -30,9 +30,9 @@ test('pesquisa continua até a quantidade solicitada, sem limite fixo de 60 busc
 test('exige a extensão Shopee Chrome 1.2.0 para pesquisas sem novas abas',()=>{
  const code=readFileSync(new URL('../public/curvas-chrome.js',import.meta.url),'utf8');
  const manifest=JSON.parse(readFileSync(new URL('../chrome-extension-shopee/manifest.json',import.meta.url),'utf8'));
- assert.equal(manifest.version,'1.2.5');
+ assert.equal(manifest.version,'1.2.6');
  assert.match(code,/parts\[1\]>2/);
- assert.match(code,/Number\(parts\[2\]\|\|0\)>=5/);
+ assert.match(code,/Number\(parts\[2\]\|\|0\)>=6/);
 });
 
 test('filtro único categoria, quantidade e nome só inicia pesquisa Chrome',()=>{
@@ -128,8 +128,8 @@ test('botão usa versão instalada no manifesto e consulta versão real no servi
  assert.match(page,/média de 2 a 10 anúncios equivalentes/);
  assert.match(code,/chrome-extension-version/);
  assert.match(code,/Baixar extensão.*version/);
- assert.match(code,/Requer 1\.2\.5/);
- assert.match(code,/Verificando Ponte Chrome 1\.2\.5/);
+ assert.match(code,/Requer 1\.2\.6/);
+ assert.match(code,/Verificando Ponte Chrome 1\.2\.6/);
 });
 
 test('relatório diferencia candidatos, SKUs sem equivalência e consultas incompletas',()=>{
@@ -152,4 +152,15 @@ test('inviáveis para Ads não aparecem como potencial e ficam na auditoria',()=
  assert.match(ui,/Descartados para Ads:/);
  assert.match(ui,/card\(item,\{rejected:true\}\)/);
  assert.match(ui,/if\(!rejected\)actions\.append\(featured\)/);
+});
+
+test('captura profunda percorre anúncios carregados por scroll e recupera janela parcial',()=>{
+ const reader=readFileSync(new URL('../chrome-extension-shopee/visible-offers.js',import.meta.url),'utf8');
+ const background=readFileSync(new URL('../chrome-extension-shopee/background.js',import.meta.url),'utf8');
+ assert.match(reader,/async function scanPage\(\)/);
+ assert.match(reader,/window\.scrollTo/);
+ assert.match(reader,/monthlyCards:offers\.filter/);
+ assert.match(background,/deep:i===0/);
+ assert.match(background,/Number\(data\.offers\?\.length\|\|0\)<8/);
+ assert.match(background,/await restoreResearchWindow\(managerTab,nonce\)/);
 });

@@ -119,9 +119,60 @@
    monthlyLabelsVisible:labelInPage,
    monthlyLabelsInCards:found.filter(x=>x.monthlyLabelVisible).length};
  }
- globalThis.RAShopeeVisible={parseCount,monthlyEvidence,historicalSales,ids,extract};
+ // A vitrine Shopee carrega anúncios por rolagem. Uma leitura do DOM no topo
+ // captura só parte dos preços e frequentemente retorna 0 rótulos mensais.
+ // Percorrer a página atual sem abrir abas; preservar IDs e números do MESMO cartão.
+ async function scanPage(){
+  const seen=new Map();
+  let totalVisible=0,labelsSeen=0,blocked=null;
+  const y=typeof window!=='undefined'?window.scrollY||0:0;
+  const collect=()=>{
+   const batch=extract();
+   if(!batch.ok){blocked=batch;return;}
+   totalVisible=Math.max(totalVisible,Number(batch.visibleCards||0));
+   labelsSeen=Math.max(labelsSeen,Number(batch.monthlyLabelsVisible||0));
+   for(const item of batch.offers||[]){
+    const key=item.shopId+':'+item.itemId,old=seen.get(key);
+    const improved=!old||
+     (old.monthlySold===null&&item.monthlySold!==null)||
+     (old.priceMin===null&&item.priceMin!==null);
+    if(improved)seen.set(key,item);
+   }
+  };
+  collect();
+  if(!blocked&&typeof window!=='undefined'){
+   const body=document.body,root=document.documentElement;
+   const max=Math.max(0,Math.max(root?.scrollHeight||0,body?.scrollHeight||0)-
+    (window.innerHeight||720));
+   // Até oito passos; preservar os anúncios já vistos em grids virtualizados.
+   for(let step=1;step<=8&&seen.size<100;step++){
+    if(blocked)break;
+    const next=Math.min(max,Math.round(step*Math.max(400,(window.innerHeight||720)*0.85)));
+    window.scrollTo(0,next);
+    await new Promise(resolve=>setTimeout(resolve,420));
+    collect();
+    if(next>=max)break;
+   }
+   window.scrollTo(0,y);
+  }
+  if(blocked&&!seen.size)return blocked;
+  const offers=[...seen.values()].slice(0,100);
+  return {ok:true,offers,visibleCards:Math.max(totalVisible,offers.length),
+   saleCards:offers.length,
+   monthlyCards:offers.filter(x=>x.monthlySold!==null).length,
+   monthlyLabelsVisible:labelsSeen,
+   monthlyLabelsInCards:offers.filter(x=>x.monthlyLabelVisible).length,
+   deepScan:true};
+ }
+ globalThis.RAShopeeVisible={parseCount,monthlyEvidence,historicalSales,ids,extract,scanPage};
  chrome.runtime.onMessage.addListener((msg,_sender,reply)=>{
   if(msg?.kind!=='RA_CURVE_READ_VISIBLE')return;
+  if(msg.deep){
+   scanPage().then(reply).catch(error=>reply({ok:false,
+    error:'Falha na leitura de cartões: '+String(error?.message||error).slice(0,130),
+    offers:[]}));
+   return true;
+  }
   reply(extract());
  });
 })();

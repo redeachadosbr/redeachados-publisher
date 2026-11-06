@@ -1,4 +1,4 @@
-# Ponte Chrome Rede Achados BR — 1.2.5
+# Ponte Chrome Rede Achados BR — 1.2.6
 
 Atualização obrigatória: baixe o ZIP no menu Curvas A/B, extraia e carregue
 novamente a pasta redeachados-shopee-chrome em chrome://extensions.
@@ -24,3 +24,11 @@ e impede comparar utensílio manual com processador elétrico.
 Versão 1.2.5: distingue rótulos mensais visíveis de volumes vinculados,
 repete uma leitura na mesma janela para recuperar a vitrine e informa a
 causa quando uma consulta não traz dados mensais. Não estima vendas.
+
+Versão 1.2.6: a extensão percorre a vitrine na mesma aba e reúne preços
+e vendas mensais dos cartões carregados por rolagem, inclusive de linhas
+que não estavam no DOM ao carregar. Se a janela minimizada apresentar
+menos de oito cartões ou menos de dois rótulos mensais, restaura
+automaticamente a mesma janela sem foco, recarrega e agrega os anúncios
+por shopId:itemId, preservando o dado mensal mais completo. Não usa números
+inventados nem contorna CAPTCHA.

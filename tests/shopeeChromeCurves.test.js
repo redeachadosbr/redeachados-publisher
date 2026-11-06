@@ -111,3 +111,9 @@ test('custo acima da média nunca aparece como Potencial em verificação',()=>{
  assert.equal(groups.discardedReasons.cost_above_market,1);
  assert.ok(!groups.pending.some(x=>x.sku==='INOX'));
 });
+
+test('novos preços da mesma oferta substituem informações anteriores sem perder evidência mensal',()=>{
+ const content=readFileSync(new URL('../shopeeChromeCurves.js',import.meta.url),'utf8');
+ assert.match(content,/state\.offers\.set\(id,prev\?\{\.\.\.prev,\.\.\.offer/);
+ assert.match(content,/monthlySold:offer\.monthlySold\?\?prev\.monthlySold/);
+});

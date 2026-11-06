@@ -98,3 +98,36 @@ test('Ponte registra rótulo mensal visível separadamente da contagem comprovad
  assert.match(source,/monthlyLabelsInCards/);
  assert.match(source,/monthlyLabelVisible/);
 });
+
+test('rolagem acumula anúncios e Vendido/Mês carregados fora da primeira dobra',async()=>{
+ let pos=0;
+ const pages=Array.from({length:4},(_,page)=>
+  Array.from({length:4},(_,slot)=>{
+   const id=String(5000+page*4+slot);
+   const label=(page%2?'1mil+':'4mil+')+' Vendido/Mês';
+   const title='Balança Digital de Cozinha 10kg Alta Precisão';
+   const href='https://shopee.com.br/balanca-cozinha-i.'+String(700+slot)+'.'+id;
+   const link={innerText:title,textContent:title,getAttribute:k=>k==='href'?href:null,
+    closest:()=>card,parentElement:null};
+   const card={innerText:title+' R$ 16,90 '+label,
+    textContent:title+' R$ 16,90 '+label,
+    querySelector:selector=>selector==='img[alt]'?null:{innerText:title},
+    querySelectorAll:()=>[link],parentElement:null};
+   link.parentElement=card;
+   return link;
+  }));
+ const win={scrollY:0,innerHeight:700,scrollTo(x,y){pos=Math.min(3,Math.floor(y/500));this.scrollY=y;}};
+ const doc={documentElement:{scrollHeight:2400},body:{scrollHeight:2400,
+  get innerText(){return pages[pos].map(x=>x.parentElement.innerText).join(' ');}},
+  querySelectorAll:selector=>selector==='a[href]'?pages[pos]:[]};
+ const local={URL,location:ctx.location,document:doc,window:win,globalThis:null,
+  chrome:{runtime:{onMessage:{addListener(){}}}},setTimeout:(fn)=>fn()};
+ local.globalThis=local;
+ vm.runInNewContext(source,local);
+ const result=await local.RAShopeeVisible.scanPage();
+ assert.equal(result.ok,true);
+ assert.ok(result.offers.length>=10);
+ assert.ok(result.monthlyCards>=10);
+ assert.ok(result.offers.every(x=>x.priceMin===16.9));
+ assert.ok(result.offers.every(x=>x.monthlyPeriod==='month'));
+});

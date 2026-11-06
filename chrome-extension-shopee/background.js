@@ -123,7 +123,7 @@ async function readPage(tabId){
   if(stopRequested)return {ok:false,error:'Pesquisa interrompida.',offers:[]};
   await delay(i===0?1800:1300);
   try{
-   const result=await chrome.tabs.sendMessage(tabId,{kind:'RA_CURVE_READ_VISIBLE'});
+   const result=await chrome.tabs.sendMessage(tabId,{kind:'RA_CURVE_READ_VISIBLE',deep:i===0});
    if(result?.blocked)return {ok:false,blocked:true,
     error:result.error||'Verificação humana exigida pela Shopee.',offers:[]};
    if(!result?.ok||!Array.isArray(result.offers))continue;
@@ -170,6 +170,39 @@ async function batch(managerTab,nonce,jobs){
     await stage(managerTab,nonce,'lendo','Lendo cartões e vendas mensais da Shopee…',
      i+1,jobs.length,{page:page+1});
     let data=await readPage(tab.id);
+    // A janela minimizada pode suspender renderização/lazy loading e retornar
+    // apenas 1 preço apesar de dezenas de anúncios. Revalidar sem focar janela.
+    if(data.ok&&!stopRequested&&page===0&&
+      (Number(data.offers?.length||0)<8||Number(data.monthlyCards||0)<2)){
+     await stage(managerTab,nonce,'recuperando',
+      'Vitrine parcial: '+Number(data.offers?.length||0)+
+      ' anúncios. Restaurando sem foco para carregar mais preços e Vendido/Mês.',
+      i+1,jobs.length,{visible:data.offers?.length||0,monthly:data.monthlyCards||0});
+     try{
+      await restoreResearchWindow(managerTab,nonce);
+      await chrome.tabs.reload(tab.id);
+      await waitLoaded(tab.id);
+      const refreshed=await readPage(tab.id);
+      if(refreshed?.ok){
+       const merged=new Map();
+       for(const item of [...data.offers,...refreshed.offers]){
+        const key=item.shopId+':'+item.itemId,old=merged.get(key);
+        if(!old||(old.monthlySold===null&&item.monthlySold!==null)||
+         (old.priceMin===null&&item.priceMin!==null))merged.set(key,item);
+       }
+       data={...refreshed,offers:[...merged.values()],
+        monthlyCards:[...merged.values()].filter(x=>x.monthlySold!==null).length,
+        visibleCards:Math.max(Number(data.visibleCards||0),
+         Number(refreshed.visibleCards||0),merged.size),
+        monthlyLabelsVisible:Math.max(Number(data.monthlyLabelsVisible||0),
+         Number(refreshed.monthlyLabelsVisible||0))};
+      }
+     }catch(error){
+      await stage(managerTab,nonce,'recuperando',
+       'Recuperação da vitrine parcial não concluída: '+
+       String(error?.message||error).slice(0,100),i+1,jobs.length);
+     }
+    }
     if(!data.ok&&!data.blocked&&!stopRequested){
      await stage(managerTab,nonce,'recuperando',
       'Shopee não carregou minimizada. Restaurando a mesma janela auxiliar sem foco.',

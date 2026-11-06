@@ -12,7 +12,9 @@ const env=n=>String(process.env[n]||'').trim();
 export const marketResearchConfigured=()=>Boolean(env('SHOPEE_AFFILIATE_APP_ID')&&
  env('SHOPEE_AFFILIATE_SECRET'));
 const normalize=t=>String(t||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'')
- .toLowerCase().replace(/[^a-z0-9 ]+/g,' ').replace(/\s+/g,' ').trim();
+ .toLowerCase().replace(/[^a-z0-9 ]+/g,' ').replace(/\s+/g,' ')
+ // 10kg, 10 KG e 10 kg identificam a MESMA capacidade.
+ .replace(/\b(\d{1,5})\s+(kg|g|ml)\b/g,'$1$2').trim();
 const stops=new Set(['de','do','da','dos','das','com','para','em','e','ou','a','o','na',
  'no','sem','cor','cores','azul','branco','preto','rosa','verde','top','rio','unidade',
  'litros','litro','litre','l','cm','ml','kit','produto','infantil','crianca','criancas',

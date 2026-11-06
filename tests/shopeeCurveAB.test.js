@@ -588,3 +588,22 @@ test('o preço e as vendas exibidas são do mesmo anúncio, não do outlier',()=
  assert.equal(rows[0].monthlyCompetitorCount,2);
  assert.ok(rows[0].competitorOffers.every(o=>o.itemId!=='1000'));
 });
+
+test('somente preços sem volume não desaparecem: SKU fica pendente com média válida',()=>{
+ const catalog=[{supplier_sku:'TRC1325',product_data:{name:'Balança Digital de Cozinha 10kg',
+  category:'Cozinha',rawAvailability:'Disponível'}}];
+ const offers=[15.95,16.90,16.38].map((price,i)=>({
+  shopId:String(101+i),itemId:String(2001+i),
+  productName:i===1?'Balança Digital Alta Precisão 10 KG Cozinha':
+   'Balança Digital de Cozinha 10kg',
+  priceMin:price,priceMax:price,sales:null,monthlySold:null
+ }));
+ const result=matchCurveOffers({catalog,offers,costs:[{
+  supplier_sku:'TRC1325',unit_cost:12.99}]});
+ assert.equal(result.length,1);
+ assert.equal(result[0].marketCandidateCount,3);
+ assert.equal(result[0].competitorOfferCount,3);
+ assert.ok(result[0].avgCompetitorPrice>15);
+ assert.equal(result[0].verified30,false);
+ assert.equal(result[0].monthlyCompetitorCount,0);
+});

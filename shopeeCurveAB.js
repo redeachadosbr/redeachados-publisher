@@ -302,9 +302,9 @@ export function matchCurveOffers({catalog=[],offers=[],costs=[],baseline=new Map
    if(!offersBySku.has(p.sku))offersBySku.set(p.sku,new Map());
    const unique=String(offer.shopId)+':'+String(offer.itemId);
    offersBySku.get(p.sku).set(unique,offer);
-   // Oferta apenas com preço participa da média, nunca da Curva A/B.
-    if(intSales(offer.sales)===null)continue;
-    const current=found.get(p.sku);
+   // A oferta só com preço também precisa criar uma linha de oportunidade;
+   // sem rótulo de venda ela continua PENDENTE, mas os preços são preservados.
+   const current=found.get(p.sku);
    const sales=intSales(offer.sales),price=num(offer.priceMin);
    const monthly=intSales(offer.monthlySold);
    const history=baseline instanceof Map?baseline.get(String(offer.itemId)):null;
@@ -320,8 +320,8 @@ export function matchCurveOffers({catalog=[],offers=[],costs=[],baseline=new Map
      periodSource='Diferença de contadores acumulados em '+age+' dias';
     }
    }
-   const rankVolume=sales30??sales;
-   const currentVolume=current?(current.sales30??current.salesDisplayed):null;
+   const rankVolume=sales30??sales??0;
+   const currentVolume=current?(current.sales30??current.salesDisplayed??0):null;
    if(current&&(Number(current.verified30)>Number(sales30!==null)||
     (Number(current.verified30)===Number(sales30!==null)&&
     (currentVolume>rankVolume||
@@ -348,6 +348,7 @@ export function matchCurveOffers({catalog=[],offers=[],costs=[],baseline=new Map
   // validar a oportunidade. Não somar as vendas das diferentes lojas.
   const comparable=[...(offersBySku.get(row.sku)||new Map()).values()];
   const market=addMarketAnalysis(row,comparable,checkedAt,ownShopId);
+  market.marketCandidateCount=comparable.length;
   // Somente anúncios do mesmo grupo de modelo e preço podem comprovar
   // vendas mensais da curva. Não somar procura de acessórios/versões distintas.
   const confirmedIds=market.avgCompetitorPrice!==null?

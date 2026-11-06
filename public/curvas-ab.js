@@ -162,7 +162,9 @@
     'A extensão e a vitrine pública tentam recuperar os dados que faltam.');
   if(row.avgCompetitorPrice===null)
    issues.push('Preço de mercado: '+Number(row.competitorOfferCount||0)+
-    '/2 anúncios equivalentes com preço válido.');
+    '/2 anúncios validados; '+Number(row.marketCandidateCount||0)+
+    ' anúncio(s) com título/modelo relacionado identificados nesta SKU. '+
+    (row.priceEvidence||'Amostra de preço insuficiente.'));
   if(!row.inStock)issues.push('Estoque WeDrop não disponível.');
   if(!Number.isFinite(Number(row.cost))||Number(row.cost)<=0)
    issues.push('Custo WeDrop não cadastrado.');
