@@ -6,14 +6,10 @@ const context={globalThis:null};
 context.globalThis=context;
 vm.runInNewContext(readFileSync(new URL('../public/seo-title-scoring.js',import.meta.url),'utf8'),context);
 const {scoreTitle,rank}=context.RASeoTitleScore;
-const example='🦖 🚚 Caminhão Dinossauro Verde 3 Mini Carrinhos Brinquedo Infantil para Crianças Presente e Diversão com Amigos';
+const make=(id)=>{const base='Caminhão Dinossauro Verde 🦖 Brinquedo Infantil com Mini Carrinhos para Crianças e Brincadeiras Criativas '+id;return base+'a'.repeat(120-[...base].length);};
+const example=make(1);
 test('quatro títulos retornam na ordem de maior para menor nota, com vencedor único',()=>{
- const source=[
- {title:'🦖 Caminhão Dinossauro Verde 3 Mini Carrinhos Brinquedo Infantil para Crianças Presente e Diversão com Amigos 🚚'},
- {title:'🦖 Dino Caminhão Brinquedo Infantil Verde com Mini Carrinhos para Crianças Presentear e Brincar no Dia a Dia 🚚'},
- {title:'🦖 Caminhão Verde com Mini Carrinhos e Dinossauro Brinquedo Infantil para Crianças em Momentos de Lazer 🚚'},
- {title:'🦖 Caminhão Dinossauro Brinquedo com Mini Carrinhos Verde para Crianças Diversão Criativa Infantil 🚚'}
- ];
+ const source=[1,2,3,4].map(n=>({title:make(n),valid:true}));
  const list=rank(source,{productTitle:'Caminhão Dinossauro com 3 Mini Carrinhos - Verde',keywords:['caminhão dinossauro','mini carrinhos','brinquedo infantil','para crianças']});
  assert.equal(list.length,4);
  assert.equal(list.filter(t=>t.ideal).length,1);
@@ -23,10 +19,11 @@ test('quatro títulos retornam na ordem de maior para menor nota, com vencedor �
  for(const s of list){assert.ok(s.score>=0&&s.score<=100);assert.equal(Math.min(89,Object.values(s.breakdown).reduce((a,b)=>a+b,0)),s.score);}
 });
 test('título incompleto recebe nota, mas nunca ganha destaque como ideal',()=>{
- const original='🦖 Caminhão Dinossauro Verde com 3 Mini Carrinhos Infantil para Crianças Aventura Brinquedo de Transporte 🚚';
+ const original=make(1);
  const rows=rank([{title:original,valid:false,warning:'Não confirmado'},
- {title:original+' Especial',valid:false}, {title:original.replace('Infantil','Brinquedo Infantil'),valid:true},
- {title:original.replace('Transporte','Brincadeira'),valid:false}],
+ {title:make(2).slice(0,-2),valid:false},
+ {title:make(3),valid:true},
+ {title:make(4).slice(0,-1),valid:false}],
  {productTitle:'Caminhão Dinossauro 3 Mini Carrinhos',keywords:['caminhão dinossauro']});
  assert.equal(rows.length,4);
  assert.equal(rows.filter(x=>x.ideal).length,1);
@@ -48,8 +45,8 @@ test('o módulo de pesquisa inclui o texto salvo em Informações da WeDrop',()=
  });
  assert.match(prompt,/WeDrop confirmado: produto verde, 3 mini carrinhos/);
  assert.match(prompt,/PESQUISE AGORA NA WEB/);
- assert.match(prompt,/buscar 120 quando houver palavras-chave confirmadas/);
- assert.match(prompt,/um emoji NO INÍCIO e outro NO FIM/);
+ assert.match(prompt,/EXATAMENTE 120 caracteres Unicode/);
+ assert.match(prompt,/UM emoji apropriado após a identificação inicial/);
 });
 
 test('quatro cartões em grade 2x2 exibem notas e destacam a recomendação',()=>{
@@ -63,7 +60,7 @@ test('quatro cartões em grade 2x2 exibem notas e destacam a recomendação',()=
  assert.match(studio,/RASeoTitleScore\?\.rank/);
  assert.match(studio,/seo-studio-score-track/);
  assert.match(studio,/RECOMENDADO — maior nota SEO/);
- assert.match(studio,/Aguardando título validado de 100 a 120 caracteres/);
+ assert.match(studio,/Aguardando título validado de exatamente 120 caracteres/);
  assert.match(page,/seo-modern-layout\.css\?v=1\.0\.5-compact-cards/);
 });
 
