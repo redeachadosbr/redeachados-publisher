@@ -364,3 +364,48 @@ test('seleção para Ads não conta Curva A/B com custo inviável nem pendência
  assert.deepEqual(found.items.map(row=>row.sku),['APTO']);
  assert.equal(found.found,1);
 });
+
+test('bicicletas Curva A não passam para Ads quando preço médio da concorrência é inferior ao custo WeDrop',()=>{
+ const catalog=[
+  {supplier_sku:'3284',product_data:{name:'Bicicleta de Equilíbrio Infantil Sem Pedal - Azul',
+   category:'Brinquedos',rawAvailability:'Disponível'}},
+  {supplier_sku:'3290',product_data:{name:'Bicicleta de Equilíbrio Infantil Sem Pedal - Bege',
+   category:'Brinquedos',rawAvailability:'Disponível'}}
+ ];
+ const offers=['501','502','503','504'].map((shopId,i)=>({
+  shopId,itemId:String(800+i),productName:'Bicicleta de Equilíbrio Infantil Sem Pedal',
+  priceMin:79.99,priceMax:79.99,sales:6000,monthlySold:991,
+  dataSource:'shopee-featured-chrome'
+ }));
+ const rows=matchCurveOffers({catalog,costs:[
+  {supplier_sku:'3284',unit_cost:115.99},
+  {supplier_sku:'3290',unit_cost:129.99}],offers,ownShopId:'999'});
+ assert.equal(rows.length,2);
+ for(const row of rows){
+  assert.equal(row.curve,'A');
+  assert.equal(row.monthlyCompetitorCount,4);
+  assert.equal(row.avgCompetitorPrice,79.99);
+  assert.equal(row.adsCompetitiveness.eligible,false);
+  assert.equal(row.adsCompetitiveness.status,'cost_above_market');
+ }
+ assert.equal(pickCurveResults(rows,{limit:10,curve:'ALL',competitiveOnly:true}).found,0);
+});
+test('Curva B com custo baixo e três lojas de preços comparáveis recebe simulação dentro de +40%',()=>{
+ const catalog=[{supplier_sku:'SHP123',product_data:{
+  name:'Organizador de Gaveta Modular Plástico Grande',category:'Organizadores',
+  rawAvailability:'Disponível'}}];
+ const offers=['601','602','603'].map((shopId,i)=>({
+  shopId,itemId:String(900+i),productName:'Organizador de Gaveta Modular Plástico Grande',
+  priceMin:100,priceMax:100,sales:1500,monthlySold:780,
+  dataSource:'shopee-featured-chrome'
+ }));
+ const rows=matchCurveOffers({catalog,costs:[
+  {supplier_sku:'SHP123',unit_cost:40}],offers,ownShopId:'999'});
+ assert.equal(rows.length,1);
+ assert.equal(rows[0].curve,'B');
+ assert.equal(rows[0].avgCompetitorPrice,100);
+ assert.equal(rows[0].monthlyCompetitorCount,3);
+ assert.equal(rows[0].adsCompetitiveness.eligible,true);
+ assert.ok(rows[0].adsCompetitiveness.suggestedSalePrice<=140);
+ assert.equal(pickCurveResults(rows,{limit:5,competitiveOnly:true,verifiedOnly:true}).found,1);
+});
