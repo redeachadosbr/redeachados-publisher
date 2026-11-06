@@ -561,3 +561,30 @@ test('pesquisa usa o atributo inox mesmo quando aparece no final do nome WeDrop'
  assert.match(query,/inox/);
  assert.match(query,/suporte/);
 });
+
+test('o preço e as vendas exibidas são do mesmo anúncio, não do outlier',()=>{
+ const title='Coqueteleira Shaker Inox 500ml';
+ const catalog=[{supplier_sku:'SKU-COQ',product_data:{name:title,
+  category:'Cozinha',rawAvailability:'Disponível'}}];
+ const offers=[
+  {shopId:'100',itemId:'1000',productName:title,
+   priceMin:200,priceMax:200,sales:7000,monthlySold:5000,
+   dataSource:'shopee-featured-chrome'},
+  {shopId:'200',itemId:'2000',productName:title,
+   priceMin:50,priceMax:50,sales:1100,monthlySold:900,
+   dataSource:'shopee-featured-chrome'},
+  {shopId:'300',itemId:'3000',productName:title,
+   priceMin:55,priceMax:55,sales:1200,monthlySold:950,
+   dataSource:'shopee-featured-chrome'}
+ ];
+ const rows=matchCurveOffers({catalog,offers,
+  costs:[{supplier_sku:'SKU-COQ',unit_cost:10}]});
+ assert.equal(rows.length,1);
+ assert.equal(rows[0].avgCompetitorPrice,52.5);
+ assert.equal(rows[0].competitorOfferCount,2);
+ assert.equal(rows[0].competitorPrice,55);
+ assert.equal(rows[0].sales30,950);
+ assert.equal(rows[0].itemId,'3000');
+ assert.equal(rows[0].monthlyCompetitorCount,2);
+ assert.ok(rows[0].competitorOffers.every(o=>o.itemId!=='1000'));
+});

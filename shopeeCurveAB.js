@@ -366,15 +366,40 @@ export function matchCurveOffers({catalog=[],offers=[],costs=[],baseline=new Map
     url:'https://shopee.com.br/product/'+offer.shopId+'/'+offer.itemId});
   }
   const monthlyCompetitors=[...independent.values()].sort((a,b)=>b.monthlySold-a.monthlySold);
-  // O preço do anúncio exibido também deve vir da amostra confiável,
-  // não do mais vendido que ficou FORA do grupo de preços.
-  const reference=market.avgCompetitorPrice!==null&&market.competitorOffers.length?
-   market.competitorOffers.find(o=>o.itemId===row.itemId&&o.shopId===row.shopId)||
-    market.competitorOffers[0]:null;
+  // Não misturar o preço do anúncio A com vendas do anúncio B:
+  // todos os campos exibidos usam uma MESMA oferta do grupo validado.
+  const ranked=[...verifiedGroup].sort((a,b)=>
+   Number(intSales(b.monthlySold)!==null)-Number(intSales(a.monthlySold)!==null)||
+   (intSales(b.monthlySold)||0)-(intSales(a.monthlySold)||0)||
+   (intSales(b.sales)||0)-(intSales(a.sales)||0));
+  const anchor=market.avgCompetitorPrice!==null?ranked[0]:null;
+  const same=anchor&&row.itemId===String(anchor.itemId)&&
+   row.shopId===String(anchor.shopId);
+  const anchorSales=anchor?intSales(anchor.sales):null;
+  const anchorMonthly=anchor?intSales(anchor.monthlySold):null;
+  const coherentSales30=anchorMonthly!==null?anchorMonthly:
+   same?row.sales30:null;
+  const coherentSales=anchorSales!==null?anchorSales:
+   same?row.salesDisplayed:null;
+  const group=anchor?curveGroup(coherentSales30,coherentSales):null;
+  const sourceTokens=words(row.name),anchorTokens=anchor?words(anchor.productName):[];
+  const sameWords=sourceTokens.filter(x=>anchorTokens.includes(x)).length;
   return {...market,
-   ...(reference?{
-    competitorName:reference.title,competitorPrice:reference.price,
-    competitorUrl:reference.url,shopId:reference.shopId,itemId:reference.itemId
+   ...(anchor?{
+    competitorName:String(anchor.productName).slice(0,200),
+    competitorPrice:num(anchor.priceMin),
+    competitorUrl:'https://shopee.com.br/product/'+anchor.shopId+'/'+anchor.itemId,
+    shopId:String(anchor.shopId),itemId:String(anchor.itemId),
+    salesDisplayed:coherentSales,sales30:coherentSales30,
+    observedDays:anchorMonthly!==null?null:same?row.observedDays:null,
+    periodSource:anchorMonthly!==null?
+     (anchor.dataSource==='shopee-featured-chrome'?
+      'Ponte Chrome • venda mensal visível na Shopee':
+      'Shopee Em Destaque • vendas mensais visíveis'):
+     same?row.periodSource:'',
+    verified30:group.verified30,curve:group.curve,
+    curveLabel:group.label,source:anchor.dataSource||row.source,
+    matchScore:Number((sameWords/Math.max(1,Math.min(sourceTokens.length,anchorTokens.length))).toFixed(2))
    }:{competitorPrice:null}),
    monthlyCompetitorCount:monthlyCompetitors.length,
    monthlyCompetitors:monthlyCompetitors.slice(0,5),
