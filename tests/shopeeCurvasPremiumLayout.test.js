@@ -31,7 +31,7 @@ test('todas as funções e pontos de integração existentes permanecem',()=>{
  assert.ok(page.includes('aria-live="polite"'));
 });
 test('estrutura da tela fecha as seções antes da próxima aba',()=>{
- assert.ok(page.includes('class="curve-chrome-unified"'));
+ assert.ok(page.includes('class="curve-search-panel curve-chrome-unified"'));
  assert.ok(page.indexOf('id="curveSearchForm"')<page.indexOf('class="curve-technical-diagnostics"'));
  assert.ok(page.indexOf('class="curve-technical-diagnostics"')<page.indexOf('class="curve-help"'));
  assert.ok(page.indexOf('class="curve-help"')<page.indexOf('id="curveResults"'));
