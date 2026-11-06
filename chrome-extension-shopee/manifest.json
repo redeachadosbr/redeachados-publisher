@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "Rede Achados BR - Shopee Em Destaque",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "description": "Le somente dados visiveis da busca Em Destaque e envia ao Shopee Manager apos acao do usuario.",
   "permissions": [
     "tabs"

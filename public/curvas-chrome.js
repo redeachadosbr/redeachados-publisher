@@ -27,7 +27,10 @@
     window.removeEventListener('message',listener);resolve(ok);}
    const listener=e=>{
     if(e.source===window&&e.origin===ORIGIN&&e.data?.kind==='RA_CURVE_CHROME_READY'&&
-     e.data?.nonce===nonce)finish(true);
+     e.data?.nonce===nonce){
+      const parts=String(e.data.version||'0.0.0').split('.').map(Number);
+      finish(parts[0]>1||(parts[0]===1&&parts[1]>=1));
+     }
    };
    window.addEventListener('message',listener);
    const timer=setTimeout(()=>finish(false),1900);
@@ -42,7 +45,7 @@
   button.disabled=true;
   say('Verificando instalação da Ponte Chrome…');
   try{
-   if(!await ping(nonce))throw Error('Ponte não detectada. Baixe o ZIP, extraia, instale em chrome://extensions e atualize esta página.');
+   if(!await ping(nonce))throw Error('Ponte não detectada ou desatualizada. Baixe a versão 1.1.0, atualize a extensão em chrome://extensions e recarregue o Manager.');
    const params=new URLSearchParams({category:selected.category,keyword:selected.keyword,
     offset:String(offset),limit:'6'});
    let plan=await json('/api/shopee/curvas-ab/chrome-plan?'+params);
