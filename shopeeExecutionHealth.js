@@ -139,7 +139,16 @@ export function auditRootShopeeExecution({
   technicalOK=effective.length>0&&fieldsVerified({attribute_list:effective},live);
   if(technicalOK)technicalReason='Atributos revisados conferidos no anúncio pela Shopee';
  }
- add('technical',technicalOK,technicalReason);
+ const approvedIds=new Set((review.attributes||[]).map(x=>Number(x.attributeId)));
+ const optionalUnconfirmed=reviewed('technical')&&!technicalOK&&approvedIds.size>0&&
+  Number(record.attributeAudit?.missingMandatory||0)===0&&
+  [...approvedIds].every(id=>{
+   const meta=(record.attributeAudit?.attributes||[]).find(x=>Number(x.id)===id);
+   return meta?.mandatory===false;
+  });
+ add('technical',technicalOK,optionalUnconfirmed?
+  'Atributo opcional revisado não confirmado na Shopee; não impede execução fiscal ou desconto.':
+  technicalReason,{notApplicable:optionalUnconfirmed});
  const hasVariants=review.variationConfig?.enabled===true||live.has_model===true;
  if(!hasVariants)add('variants',false,'SKU sem variações', {notApplicable:true});
  else{
