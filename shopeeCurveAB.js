@@ -4,6 +4,7 @@
 import crypto from 'node:crypto';
 import {readWeDropCatalogProducts,readWeDropCosts} from './wedropCosts.js';
 import {comparableTitle,evaluateMarketOffers} from './shopeeMarketResearch.js';
+import {assessCurveAdsCompetitiveness,curveAdsRejectionStats,CURVE_ADS_POLICY} from './shopeeCurveAdsFit.js';
 import {categoryMatches} from './shopeeKitBuilder.js';
 import {searchFeaturedPublic} from './shopeeFeaturedSearch.js';
 
@@ -215,7 +216,10 @@ function addMarketAnalysis(row,offers,checkedAt,ownShopId='0'){
   keywords,
   seoTitle:seoTitleFromEvidence(row.name,keywords,row.sku),
   seoMethod:'Termos recorrentes em títulos de anúncios equivalentes; sem medição oficial de buscas',
-  featuredSearchUrl:officialFeaturedSearchUrl(row.name.split(/[,|-]/)[0]||row.name)
+  featuredSearchUrl:officialFeaturedSearchUrl(row.name.split(/[,|-]/)[0]||row.name),
+  adsCompetitiveness:assessCurveAdsCompetitiveness({
+   cost:row.cost,avgCompetitorPrice:strong?compare.average:null,
+   competitorOfferCount:compare.count,inStock:row.inStock})
  };
 }
 
@@ -321,13 +325,14 @@ export function matchCurveOffers({catalog=[],offers=[],costs=[],baseline=new Map
   (b.sales30??b.salesDisplayed)-(a.sales30??a.salesDisplayed)||b.matchScore-a.matchScore||
   a.sku.localeCompare(b.sku));
 }
-export function pickCurveResults(rows,{curve='ALL',limit=10,verifiedOnly=false}={}){
+export function pickCurveResults(rows,{curve='ALL',limit=10,verifiedOnly=false,competitiveOnly=false}={}){
  if(![5,10,15,20].includes(Number(limit)))throw Error('Escolha 5, 10, 15 ou 20 produtos.');
  const choice=String(curve).toUpperCase();
  if(!['ALL','A','B'].includes(choice))throw Error('Filtro de curva inválido.');
  const accepted=rows.filter(x=>
-  (x.verified30&&(x.curve==='A'||x.curve==='B')&&(choice==='ALL'||x.curve===choice))||
-  (!verifiedOnly&&choice==='ALL'&&!x.verified30&&x.curve==='PENDING'));
+  (!competitiveOnly||x.adsCompetitiveness?.eligible===true)&&
+  (x.verified30&&(x.curve==='A'||x.curve==='B')&&(choice==='ALL'||x.curve===choice)||
+   (!competitiveOnly&&!verifiedOnly&&choice==='ALL'&&!x.verified30&&x.curve==='PENDING')));
  return {items:accepted.slice(0,Number(limit)),found:accepted.length,requested:Number(limit),
   shortage:Math.max(0,Number(limit)-accepted.length)};
 }
@@ -528,7 +533,7 @@ async function prepareCurveCatalog(shopId,{category,keyword}){
   sources:{featured:0,affiliate:0},scannedSkus:new Set(),
   checkedAt:null,recordedOffers:0,matches:[]};
 }
-async function advanceCurveCatalog(shopId,state,{desired,curve,verifiedOnly}){
+async function advanceCurveCatalog(shopId,state,{desired,curve,verifiedOnly,competitiveOnly=false}){
  const started=Date.now(),newOffers=[];
  let performed=0;
  while(state.cursor<state.plan.length&&!state.limited&&
@@ -559,7 +564,7 @@ async function advanceCurveCatalog(shopId,state,{desired,curve,verifiedOnly}){
    catalog:state.catalog,offers:[...state.offers.values()],costs:state.costs,
    baseline:state.baseline,today:saoPauloDay(),ownShopId:shopId});
   if(result.limited){state.limited=true;break;}
-  if(pickCurveResults(state.matches,{limit:desired,curve,verifiedOnly}).items.length>=desired)break;
+  if(pickCurveResults(state.matches,{limit:desired,curve,verifiedOnly,competitiveOnly}).items.length>=desired)break;
  }
  if(newOffers.length){
   const n=await saveObservations(shopId,saoPauloDay(),newOffers).catch(()=>null);
@@ -589,20 +594,22 @@ export async function researchCurveAB(shopId,{
  let state;
  try{state=await holder.ready;}
  catch(error){cache.delete(key);throw error;}
- const current=pickCurveResults(state.matches,{limit:desired,curve:chosen,verifiedOnly});
+ const current=pickCurveResults(state.matches,{limit:desired,curve:chosen,verifiedOnly:true,competitiveOnly:true});
  const shouldSearch=Boolean((advance||current.items.length<desired)&&
   state.cursor<state.plan.length&&!state.limited);
  if(shouldSearch){
   if(!holder.active)holder.active=advanceCurveCatalog(shopId,state,{
-   desired,curve:chosen,verifiedOnly}).finally(()=>{holder.active=null;});
+   desired,curve:chosen,verifiedOnly:true,competitiveOnly:true}).finally(()=>{holder.active=null;});
   await holder.active;
  }else if(holder.active)await holder.active;
- const selected=pickCurveResults(state.matches,{limit:desired,curve:chosen,verifiedOnly});
+ const selected=pickCurveResults(state.matches,{limit:desired,curve:chosen,verifiedOnly:true,competitiveOnly:true});
+ const priceStats=curveAdsRejectionStats(state.matches);
  const hasMore=state.cursor<state.plan.length&&!state.limited;
  const notes=[
   'Pesquisa parte do catálogo WeDrop, inclusive SKUs ainda não anunciadas na sua loja; cruza produtos equivalentes com concorrentes da Shopee, priorizando a busca pública Em Destaque.',
-  'Curva A: 900 ou mais vendas em 30 dias; Curva B: 700 a 899. A API de Afiliados informa vendas acumuladas e não pode confirmar curva mensal sozinha.',
-  verifiedOnly&&state.matches.some(x=>!x.verified30)&&!selected.items.length?'Foram encontrados concorrentes equivalentes, mas faltam vendas mensais. Exibimos candidatos pendentes com SKU WeDrop, sem inventar Curva A/B.':'',
+  'Curva A: 900+ vendas em 30 dias; Curva B: 700 a 899. Somente SKUs com custo WeDrop menor que a média de concorrentes e preço lucrativo até 40% acima da média entram no Top para Ads.',
+  priceStats.excludedByPrice?priceStats.excludedByPrice+' SKUs com curva mensal foram excluídas por preço/custo inviável.':'',
+  state.matches.some(x=>!x.verified30)&&!selected.items.length?'Anúncios sem evidência mensal não entram na lista apta para Ads.':'',
   selected.shortage?'Encontradas '+selected.items.length+' das '+desired+
     ' SKUs solicitadas com classificação comprovada. Sem dados mensais não é possível confirmar curva.':'',
   hasMore?'A busca pausou no limite seguro de chamadas. Use Continuar varredura para pesquisar mais SKUs sem repetir consultas anteriores.':'',
@@ -613,9 +620,10 @@ export async function researchCurveAB(shopId,{
   state.errors.length?'Consultas que falharam: '+state.errors.slice(0,2).join(' | '):''
  ].filter(Boolean);
  const pending=state.matches.filter(x=>!x.verified30&&x.curve==='PENDING');
-  return {ok:true,configured:state.successfulQueries>0,verifiedOnly,
+  return {ok:true,configured:state.successfulQueries>0,verifiedOnly:true,
    possibleMatches:state.matches.length,pendingCount:pending.length,
-   pendingItems:pending.slice(0,desired),
+   pendingItems:[],competitiveOnly:true,pricePolicy:CURVE_ADS_POLICY,
+   ...priceStats,
   sources:state.sources,providers:curveProvidersStatus(),
   curve:chosen,category:selectedCategory,
   ...selected,catalogCount:state.catalog.length,offerCount:state.offers.size,
