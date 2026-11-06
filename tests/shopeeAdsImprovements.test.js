@@ -56,7 +56,7 @@ test('Revisão Ads só preenche campo da SKU e mantém busca manual',()=>{
  assert.match(app,/field\.dispatchEvent\(new CustomEvent\('input',\{bubbles:true,detail:\{onlyPrefill:true\}\}\)\)/);
  assert.match(app,/if\(event\?\.detail\?\.onlyPrefill===true\)\{/);
  assert.match(app,/Clique em Buscar SKU quando desejar iniciar a análise/);
- assert.match(app,/if\(pendingAdsHandoff\)return/);
+ assert.match(app,/if\(pendingAdsHandoff\|\|pendingKitHandoff\)return/);
  assert.match(app,/onProduct:c=>\{\s*adsFillOptimizerSku\(c\.productSku\)/);
  assert.match(html,/app\.js\?v=/);
 });
