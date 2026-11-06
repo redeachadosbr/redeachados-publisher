@@ -2,6 +2,11 @@
 import {readFileSync} from 'node:fs';
 const folder=new URL('./chrome-extension-shopee/',import.meta.url);
 const entries=['manifest.json','manager.js','background.js','visible-offers.js','README.md'];
+export function chromeExtensionVersion(){
+ const version=JSON.parse(readFileSync(new URL('manifest.json',folder),'utf8')).version;
+ if(!/^\d+\.\d+\.\d+$/.test(String(version||'')))throw Error('Versão inválida da extensão Chrome.');
+ return version;
+}
 function crc32(buf){
  let crc=0xffffffff;
  for(const byte of buf){

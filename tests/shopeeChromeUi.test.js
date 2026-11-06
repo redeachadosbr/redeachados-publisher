@@ -116,3 +116,17 @@ test('consulta incompleta não bloqueia outras SKUs e mensagem informa erro recu
  assert.doesNotMatch(ui,/MAX_SEARCHES_PER_RUN/);
  assert.doesNotMatch(ui,/NO_MONTHLY_LIMIT/);
 });
+
+test('botão usa versão instalada no manifesto e consulta versão real no servidor',()=>{
+ const page=readFileSync(new URL('../public/index.html',import.meta.url),'utf8');
+ const code=readFileSync(new URL('../public/curvas-chrome.js',import.meta.url),'utf8');
+ const manifest=JSON.parse(readFileSync(new URL('../chrome-extension-shopee/manifest.json',import.meta.url),'utf8'));
+ assert.match(page,new RegExp('Baixar extensão '+manifest.version.replace(/\./g,'\\.')));
+ assert.doesNotMatch(page,/Baixar extensão 1\.2\.2/);
+ assert.match(page,/vendas mensais em 2 a 5 lojas/);
+ assert.match(page,/média de 2 a 10 anúncios equivalentes/);
+ assert.match(code,/chrome-extension-version/);
+ assert.match(code,/Baixar extensão.*version/);
+ assert.match(code,/Requer 1\.2\.3/);
+ assert.match(code,/Verificando Ponte Chrome 1\.2\.3/);
+});

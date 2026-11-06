@@ -98,7 +98,7 @@ import {quoteShopeePrice,quoteShopeeOptimizationPrice,normalizeShopeePricingSett
 import {lookupShopeeCompetitors,marketResearchConfigured} from './shopeeMarketResearch.js';
 import {researchCurveAB,curveProvidersStatus,probeCurveAffiliateAccess} from './shopeeCurveAB.js';
 import {chromeCurvePlan,importChromeOffers} from './shopeeChromeCurves.js';
-import {chromeExtensionZip} from './shopeeChromeExtensionZip.js';
+import {chromeExtensionZip,chromeExtensionVersion} from './shopeeChromeExtensionZip.js';
 import {searchFeaturedPublic} from './shopeeFeaturedSearch.js';
 import {promotionFromQuote,promotionBasePrice,promotionMember,shopDiscountMembershipSignal,discountPlanSnapshot,signDiscountPreview,verifyDiscountPreview,readDiscountPages} from './shopeeDiscountPublish.js';
 import {auditCatalogDiscounts} from './shopeeCatalogDiscountAudit.js';
@@ -287,9 +287,17 @@ app.get('/api/shopee/curvas-ab/chrome-extension.zip',mustLogin,requireWeDropAdmi
  try{
   await getValidAuth(req);
   res.setHeader('Content-Type','application/zip');
-  res.setHeader('Content-Disposition','attachment; filename="redeachados-shopee-chrome.zip"');
+  res.setHeader('Content-Disposition','attachment; filename="redeachados-shopee-chrome-'+chromeExtensionVersion()+'.zip"');
   res.send(chromeExtensionZip());
  }catch(error){res.status(400).json({error:String(error.message||error).slice(0,220)});}
+});
+
+app.get('/api/shopee/curvas-ab/chrome-extension-version',mustLogin,requireWeDropAdmin,async(req,res)=>{
+ res.setHeader('Cache-Control','no-store');
+ try{
+  await getValidAuth(req);
+  res.json({ok:true,version:chromeExtensionVersion()});
+ }catch(error){res.status(400).json({ok:false,error:String(error.message||error).slice(0,220)});}
 });
 
 app.get('/api/shopee/curvas-ab/chrome-plan',mustLogin,requireWeDropAdmin,async(req,res)=>{

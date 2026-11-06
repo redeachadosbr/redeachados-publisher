@@ -70,6 +70,19 @@
   }
  }
  if(!button||!label)return;
+ // Versão do manifesto é a fonte de verdade do botão de download, sem caches antigos.
+ const download=el('curveChromeDownload');
+ if(download){
+  fetch('/api/shopee/curvas-ab/chrome-extension-version',{
+   credentials:'same-origin',cache:'no-store',signal:AbortSignal.timeout(8000)
+  }).then(response=>response.ok?response.json():null).then(info=>{
+   const version=String(info?.version||'');
+   if(info?.ok!==true||!/^[0-9]+\.[0-9]+\.[0-9]+$/.test(version))return;
+   download.textContent='Baixar extensão '+version;
+   download.href='/api/shopee/curvas-ab/chrome-extension.zip?v='+encodeURIComponent(version);
+   download.download='redeachados-shopee-chrome-'+version+'.zip';
+  }).catch(()=>{ /* O link HTML permanece funcional sem consulta de versão. */ });
+ }
  let active=null,offset=0,lastFilter='',queue=Promise.resolve();
  const say=text=>{label.textContent=String(text||'').slice(0,550);};
  const config=()=>({category:el('curveCategory')?.value||'Todos',
@@ -102,7 +115,7 @@
     const parts=version.split('.').map(Number);
     const ok=parts[0]>1||(parts[0]===1&&
      (parts[1]>2||parts[1]===2&&Number(parts[2]||0)>=3));
-    finish({ok,version,reason:ok?'':'Extensão '+version+' é antiga. Requer 1.2.2.'});
+    finish({ok,version,reason:ok?'':'Extensão '+version+' é antiga. Requer 1.2.3.'});
    };
    window.addEventListener('message',listener);
    const timer=setTimeout(()=>finish({ok:false,reason:'A extensão não respondeu na aba do Manager.'}),2600);
@@ -127,7 +140,7 @@
   if(cancel){cancel.hidden=false;cancel.disabled=false;}
   if(feed)feed.replaceChildren();
   if(summary)summary.hidden=true;
-  updateStage('iniciando','Verificando Ponte Chrome 1.2.2 e carregamento da Shopee.');
+  updateStage('iniciando','Verificando Ponte Chrome 1.2.3 e carregamento da Shopee.');
   say('Verificando instalação da Ponte Chrome…');
   try{
    const bridge=await ping(nonce);
