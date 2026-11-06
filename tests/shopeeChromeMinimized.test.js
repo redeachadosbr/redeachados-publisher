@@ -47,7 +47,7 @@ test('uma única janela minimizada é reutilizada entre lotes e fechada somente 
  assert.equal(calls[0][1].state,'minimized');
  assert.equal(await ctx.closeSession(nonce,999),false);
  assert.ok(state[key]);
- await assert.rejects(ctx.researchTab(72,nonce,'https://shopee.com.br/search'),/Outra pesquisa/);
+ await assert.rejects(ctx.researchTab(72,nonce,'https://shopee.com.br/search'),/Já existe uma pesquisa/);
  assert.equal(await ctx.closeSession(nonce,45),true);
  assert.equal(calls.filter(x=>x[0]==='close').length,1);
  assert.equal(state[key],undefined);

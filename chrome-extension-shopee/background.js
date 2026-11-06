@@ -114,11 +114,11 @@ async function readPage(tabId){
   await delay(i===0?1800:1300);
   try{
    const result=await chrome.tabs.sendMessage(tabId,{kind:'RA_CURVE_READ_VISIBLE'});
-   if(result?.ok&&Array.isArray(result.offers)&&(result.offers.length||i===3))return result;
+   if(result?.ok&&Array.isArray(result.offers)&&result.offers.length)return result;
    if(result?.blocked)return {ok:false,error:result.error||'Página indisponível.',offers:[]};
   }catch{}
  }
- return {ok:false,error:'Shopee não carregou cartões legíveis na janela minimizada. '+
+ return {ok:false,error:'Shopee não carregou anúncios visíveis na janela minimizada. '+
   'O Chrome pode limitar a renderização em segundo plano. Nenhuma venda foi estimada.',offers:[]};
 }
 async function batch(managerTab,nonce,jobs){
