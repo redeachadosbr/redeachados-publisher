@@ -205,7 +205,8 @@ test('atributo opcional divergente não bloqueia fiscal e desconto nem fica verd
  a.live.condition='NEW';
  const audit=auditRootShopeeExecution(a);
  const technical=audit.stages.find(x=>x.id==='technical');
- assert.equal(technical.status,'not_applicable');
+ assert.equal(technical.status,'pending');
+ assert.equal(technical.nonBlocking,true);
  assert.match(technical.reason,/opcional/i);
  assert.equal(technical.confirmedBy,null);
  a.record.attributeAudit.attributes[0].mandatory=true;
