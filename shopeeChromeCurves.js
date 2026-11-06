@@ -171,7 +171,7 @@ export async function importChromeOffers(shopId,{
   offerCount:state.offers.size,skuSearchesCompleted:state.scanned.size,
   skuQueriesCompleted:state.queries,remainingSkuQueries:Math.max(0,state.plan.length-state.queries),
   sources:{featured:recoveredMonthly?1:0,affiliate:0,chrome:state.queries},
-  rowsWith30Days:picked.items.filter(x=>x.verified30).length,
+  rowsWith30Days:rows.filter(x=>x.verified30&&x.curveSampleConfirmed).length,
   checkedAt:state.lastAt,hasMore:false,chromeHasMore:state.queries<state.plan.length,
   shortage:picked.shortage,qualifiedCount:picked.found,monthlyCompetitorsRequired:2,
   inspectedCompetitors:rows.reduce((n,row)=>n+Number(row.comparableCompetitorCount||0),0),
