@@ -26,11 +26,11 @@ test('pesquisa continua entre lotes até 10 SKUs e demonstra 3 concorrentes reai
  assert.match(ui,/mínimo 3 lojas/);
 });
 
-test('exige a extensão Shopee Chrome 1.1.0 para leitura aprimorada',()=>{
+test('exige a extensão Shopee Chrome 1.2.0 para pesquisas sem novas abas',()=>{
  const code=readFileSync(new URL('../public/curvas-chrome.js',import.meta.url),'utf8');
  const manifest=JSON.parse(readFileSync(new URL('../chrome-extension-shopee/manifest.json',import.meta.url),'utf8'));
- assert.equal(manifest.version,'1.1.1');
- assert.match(code,/parts\[1\]>=1/);
+ assert.equal(manifest.version,'1.2.0');
+ assert.match(code,/parts\[1\]>=2/);
 });
 
 test('filtro único categoria, quantidade e nome só inicia pesquisa Chrome',()=>{
@@ -48,4 +48,25 @@ test('filtro único categoria, quantidade e nome só inicia pesquisa Chrome',()=
  assert.match(bridge,/curve:'ALL'/);
  assert.match(bridge,/verifiedOnly:true/);
  assert.doesNotMatch(old,/form\.addEventListener\('submit',search/);
+});
+
+test('a Ponte Chrome reutiliza janela minimizada e expõe etapas, andamento e cancelamento',()=>{
+ const read=p=>readFileSync(new URL(p,import.meta.url),'utf8');
+ const background=read('../chrome-extension-shopee/background.js');
+ const manager=read('../chrome-extension-shopee/manager.js');
+ const page=read('../public/index.html');
+ const chromeUi=read('../public/curvas-chrome.js');
+ assert.match(background,/chrome\.windows\.create\(\{url,focused:false,state:'minimized'/);
+ assert.match(background,/chrome\.storage\.session\.set/);
+ assert.match(background,/chrome\.tabs\.update\(tab\.id,\{url\}\)/);
+ assert.match(background,/chrome\.windows\.remove\(session\.windowId\)/);
+ assert.doesNotMatch(background,/chrome\.tabs\.create\(/);
+ assert.match(background,/RA_CURVE_CHROME_STEP/);
+ assert.match(manager,/RA_CURVE_BROWSER_CANCEL/);
+ assert.match(manager,/RA_CURVE_BROWSER_CLOSE/);
+ assert.match(chromeUi,/RA_CURVE_CHROME_STEP/);
+ assert.match(chromeUi,/RA_CURVE_CHROME_CANCEL/);
+ for(const id of ['curveChromeProgress','curveChromeStage','curveChromeCounters',
+  'curveChromeProgressBar','curveChromeActivity','curveChromeCancel'])
+  assert.match(page,new RegExp('id="'+id+'"'));
 });
