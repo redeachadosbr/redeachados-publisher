@@ -14,12 +14,16 @@
   const weights=[12,10,8,6,4];
   const matched=terms.filter(t=>standard.includes(t));
   const points={
-   length:n>=100&&n<=120?20:0,
+   length:n===120?20:n>=100&&n<120?8:0,
    keywords:terms.reduce((sum,term,i)=>sum+(standard.includes(term)?weights[i]:0),0),
    front:terms.some(t=>standard.slice(0,55).includes(t))?15:0,
    product:base.split(' ').filter(x=>x.length>3).slice(0,4).some(t=>standard.includes(t))?10:0,
-   emojis:emojiCount(name)===2&&/^\p{Extended_Pictographic}/u.test(name)&&
-    /\p{Extended_Pictographic}(?:\uFE0F|\uFE0E)?$/u.test(name)?10:0,
+   emojis:(()=>{
+    const emoji=/\p{Extended_Pictographic}/u.exec(name);
+    const before=emoji?name.slice(0,emoji.index).trim():'';
+    return emojiCount(name)===1&&before.split(/\s+/).filter(Boolean).length>=2&&
+     Boolean(name.slice(emoji.index+emoji[0].length).trim())?10:0;
+   })(),
    readability:!/\b(gr[aá]tis|melhor pre[cç]o|100% garantido|frete 24h)\b/iu.test(name)&&
     !/[!]{2,}|\s{2,}/.test(name)?5:0
   };
@@ -31,7 +35,7 @@
   const ranked=titles.map((v,i)=>{
    const score=scoreTitle(v.title,context);
    return {...v,originalOrder:i+1,...score,
-    usable:v.valid!==false&&score.length>=100&&score.length<=120&&score.breakdown.emojis===10};
+    usable:v.valid!==false&&score.length===120&&score.breakdown.emojis===10};
   }).sort((a,b)=>Number(b.usable)-Number(a.usable)||b.score-a.score||b.length-a.length||a.originalOrder-b.originalOrder);
   const firstValid=ranked.findIndex(v=>v.usable);
   return ranked.map((v,i)=>({...v,rank:i+1,ideal:firstValid>=0&&i===firstValid}));
