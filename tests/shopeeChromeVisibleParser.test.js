@@ -56,3 +56,39 @@ test('leitor procura Vendido/Mês no cartão pai quando o link inclui só o tít
  assert.match(source,/function cardFor\(link,identity\)/);
  assert.match(source,/const card=cardFor\(link,identity\)/);
 });
+
+test('o leitor busca rótulo mensal no ancestral do mesmo anúncio, sem usar outro cartão',()=>{
+ const href='https://shopee.com.br/processador-manual-i.100.200';
+ const cardText='Mini Processador de Alimentos Manual R$ 13,98 3mil+ Vendido/Mês';
+ const name={innerText:'Mini Processador de Alimentos Manual'};
+ const link={innerText:'Mini Processador de Alimentos Manual',textContent:'Mini Processador de Alimentos Manual',
+  getAttribute:()=>href,closest(){return inner;},parentElement:null,
+  querySelectorAll:()=>[]};
+ const inner={innerText:'Mini Processador de Alimentos Manual R$ 13,98',
+  textContent:'Mini Processador de Alimentos Manual R$ 13,98',
+  parentElement:null,querySelectorAll:()=>[link],
+  querySelector:()=>name};
+ const outer={innerText:cardText,textContent:cardText,parentElement:null,
+  querySelectorAll:()=>[link],querySelector:()=>name};
+ const grid={innerText:cardText+' Processador 300 watts R$ 161,41 5mil+ Vendido/Mês',
+  textContent:cardText+' Processador 300 watts R$ 161,41 5mil+ Vendido/Mês',
+  parentElement:null,
+  querySelectorAll:()=>[link,{getAttribute:()=>'/product/101/201'}]};
+ link.parentElement=inner;inner.parentElement=outer;outer.parentElement=grid;
+ const doc={body:{innerText:'Resultado da pesquisa'},
+  querySelectorAll:selector=>selector==='a[href]'?[link]:[]};
+ const local={URL,location:ctx.location,document:doc,globalThis:null,
+  chrome:{runtime:{onMessage:{addListener(){}}}}};
+ local.globalThis=local;
+ vm.runInNewContext(source,local);
+ const response=local.RAShopeeVisible.extract();
+ assert.equal(response.offers.length,1);
+ assert.equal(response.offers[0].monthlySold,3000);
+ assert.equal(response.offers[0].monthlyPeriod,'month');
+ assert.equal(response.offers[0].priceMin,13.98);
+ assert.equal(response.offers[0].productName,'Mini Processador de Alimentos Manual');
+});
+test('a extensão lê 3mil+ e 2mil+ na mesma regra mensal',()=>{
+ assert.equal(parser.monthlyEvidence('3mil+ Vendido/Mês').monthlySold,3000);
+ assert.equal(parser.monthlyEvidence('2mil+ Vendido/Mês').monthlySold,2000);
+});

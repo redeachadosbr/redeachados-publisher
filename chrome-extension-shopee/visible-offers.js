@@ -74,22 +74,23 @@
    ...monthly,featuredRank:rank};
  }
  function cardFor(link,identity){
+  // O nó .search-item pode conter só o preço. Vendido/Mês pode surgir
+  // depois, no ancestral do MESMO anúncio (ou após renderização tardia).
+  // NÃO retornar o primeiro .search-item antes de procurar o selo mensal.
   const known=link.closest('[data-sqe="item"],.shopee-search-item-result__item,[class*="search-item-result__item"]');
-  if(known)return known;
-  // Na vitrine Shopee, a quantidade Vendido/Mês pode estar FORA do <a>.
-  // Nunca subir ao grid que contém anúncios diferentes.
-  let current=link,fallback=link;
-  for(let depth=0;depth<6&&current;depth++,current=current.parentElement){
+  let current=link,fallback=known||link;
+  for(let depth=0;depth<10&&current;depth++,current=current.parentElement){
    const content=clean(current.innerText||current.textContent||'');
    if(content.length>1800)break;
-   if(!/R\$\s*\d/.test(content))continue;
+   // Pare no limite entre anúncios para não copiar vendas/preços do vizinho.
    const other=[...current.querySelectorAll('a[href]')].some(a=>{
     const found=ids(a.getAttribute('href'));
     return found&&(found.shopId!==identity.shopId||found.itemId!==identity.itemId);
    });
    if(other)break;
+   if(!/R\$\s*\d/.test(content))continue;
    fallback=current;
-   if(/vendid[oa]s?|vendas/i.test(content))return current;
+   if(monthlyEvidence(content).monthlySold!==null)return current;
   }
   return fallback;
  }

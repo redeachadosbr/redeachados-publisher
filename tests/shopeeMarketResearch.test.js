@@ -99,3 +99,22 @@ test('Curvas calcula media com dois anúncios da mesma loja e Item IDs distintos
  assert.equal(result.average,180);
  assert.equal(new Set(result.sample.map(x=>x.shopId)).size,1);
 });
+
+test('mini processador manual nunca herda preço de processador elétrico 300 watts',()=>{
+ const source='Mini Processador de Alimentos Manual - Sortido';
+ const electric='Mini Processador de alimentos 300 watts preto Turbo Pratic MP-16-B Mondial';
+ const manual='Mini Processador de Alimentos Manual Triturador de Cebola';
+ assert.equal(comparableTitle(source,electric),false);
+ assert.equal(comparableTitle(source,manual),true);
+ const offered=[
+  offer(1,1,201,161.41,electric),
+  offer(2,2,202,13.98,manual),
+  offer(3,3,203,14.99,'Mini Processador Manual de Alimentos Puxador')
+ ];
+ const result=evaluateMarketOffers({title:source,offers:offered,
+  minOffers:2,maxOffers:10,allowSameShop:true});
+ assert.equal(result.verified,true);
+ assert.equal(result.count,2);
+ assert.equal(result.average,14.49);
+ assert.ok(result.sample.every(x=>x.price<50));
+});

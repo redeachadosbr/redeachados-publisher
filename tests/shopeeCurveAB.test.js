@@ -496,3 +496,27 @@ test('Curvas calcula preço médio com só dois anúncios de uma mesma loja sem 
  assert.equal(new Set(rows[0].competitorOffers.map(x=>x.shopId)).size,1);
  assert.equal(rows[0].monthlyCompetitorCount,1);
 });
+
+test('Curvas protege o mini processador manual de preços e vendas do elétrico 300 watts',()=>{
+ const name='Mini Processador de Alimentos Manual - Sortido';
+ const catalog=[{supplier_sku:'TRC0393',product_data:{
+  name,category:'Cozinha',rawAvailability:'Disponível'}}];
+ const offers=[
+  {shopId:'991',itemId:'111',productName:'Mini Processador de alimentos 300 watts preto Turbo Pratic Mondial',
+   priceMin:161.41,priceMax:161.41,monthlySold:5000,sales:5000},
+  {shopId:'992',itemId:'112',productName:'Mini Processador de Alimentos Manual Triturador',
+   priceMin:13.98,priceMax:13.98,monthlySold:3000,sales:3000},
+  {shopId:'993',itemId:'113',productName:'Mini Processador Manual de Alimentos 500ml',
+   priceMin:14.99,priceMax:14.99,monthlySold:2000,sales:2000}
+ ];
+ const rows=matchCurveOffers({catalog,costs:[{supplier_sku:'TRC0393',unit_cost:5.99}],offers});
+ assert.equal(rows.length,1);
+ assert.equal(rows[0].curve,'A');
+ assert.equal(rows[0].monthlyCompetitorCount,2);
+ assert.equal(rows[0].sales30,3000);
+ assert.equal(rows[0].competitorPrice,13.98);
+ assert.equal(rows[0].avgCompetitorPrice,14.49);
+ assert.equal(rows[0].competitorOfferCount,2);
+ assert.ok(rows[0].competitorOffers.every(x=>x.price<50));
+ assert.ok(!rows[0].competitorOffers.some(x=>x.itemId==='111'));
+});

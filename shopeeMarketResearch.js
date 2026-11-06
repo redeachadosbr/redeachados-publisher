@@ -42,6 +42,12 @@ export function marketSearchQueries(title){
 // só porque os anúncios têm palavras parecidas (ex. 900ml vs 750ml).
 const comparableSpecs=(source,candidate)=>{
  const sn=normalize(source),cn=normalize(candidate);
+ // Não comparar motor elétrico com utensílio manual mesmo que compartilhem
+ // "mini processador de alimentos". Isso evita preço e lucro fantasiosos.
+ const manual=/\b(manual|manivela|puxador|corda|cordao|puxar)\b/;
+ const powered=/\b(eletric[oa]|eletronico|motor(?:izado)?|usb|recarregavel|bateria|pilhas?|bivolt|watts?)\b|\b\d{1,4}\s*w\b/;
+ if(manual.test(sn)&&powered.test(cn))return false;
+ if(powered.test(sn)&&manual.test(cn)&&!powered.test(cn))return false;
  const cap=txt=>{
   const m=normalize(txt).match(/\b(\d{1,5})\s*(ml|mililitros|litros|litro|l)\b/);
   return m?Number(m[1])*(m[2]==='ml'||m[2]==='mililitros'?1:1000):null;

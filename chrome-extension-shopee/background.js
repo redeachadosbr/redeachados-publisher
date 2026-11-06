@@ -118,18 +118,29 @@ async function waitLoaded(tabId){
  });
 }
 async function readPage(tabId){
+ let best=null,bestMonthly=-1;
  for(let i=0;i<4;i++){
   if(stopRequested)return {ok:false,error:'Pesquisa interrompida.',offers:[]};
   await delay(i===0?1800:1300);
   try{
    const result=await chrome.tabs.sendMessage(tabId,{kind:'RA_CURVE_READ_VISIBLE'});
-   // Cartões sem vendas ainda comprovam carregamento, mas nunca Curva A/B.
-   if(result?.ok&&Array.isArray(result.offers)&&
-    (result.offers.length||Number(result.visibleCards)>0))return result;
    if(result?.blocked)return {ok:false,blocked:true,
     error:result.error||'Verificação humana exigida pela Shopee.',offers:[]};
+   if(!result?.ok||!Array.isArray(result.offers))continue;
+   const monthly=result.offers.filter(offer=>Number.isSafeInteger(offer.monthlySold)).length;
+   if(result.offers.length||Number(result.visibleCards)>0){
+    if(monthly>bestMonthly||(monthly===bestMonthly&&
+       result.offers.length>(best?.offers?.length||0))){
+     best=result;bestMonthly=monthly;
+    }
+    // O rótulo Vendido/Mês é renderizado DEPOIS do preço em várias vitrines.
+    // Não encerrar a primeira leitura com 0 ou 1 anúncios mensais.
+    if(monthly>=2)return result;
+   }
   }catch{}
  }
+ // Retornar a amostra parcial, deixando vendas mensais ausentes como pendentes.
+ if(best)return best;
  return {ok:false,error:'Shopee não apresentou cartões verificáveis nesta pesquisa. '+
   'Não foi possível comprovar vendas mensais; nenhuma venda foi estimada.',offers:[]};
 }
@@ -142,8 +153,8 @@ async function batch(managerTab,nonce,jobs){
     position:i+1,total:jobs.length});
    await stage(managerTab,nonce,'navegando',
     'Consultando SKU '+(i+1)+'/'+jobs.length+': '+query,i+1,jobs.length);
-   // Conferir a primeira página; ampliar à segunda somente se ainda não
-   // houver três anúncios com vendas mensais explícitas visíveis.
+   // Conferir a primeira página e ampliar à segunda se a coleta mensal/preço
+   // ainda estiver incompleta. O critério usa anúncios reais, nunca estimativas.
    const collected=new Map();
    let failure='',hardStop=false,pages=0,visibleCards=0;
    for(let page=0;page<2;page++){
@@ -182,7 +193,9 @@ async function batch(managerTab,nonce,jobs){
     visibleCards+=Number(data.visibleCards||data.offers?.length||0);
     for(const offer of data.offers||[]){
      const id=String(offer.shopId)+':'+String(offer.itemId);
-     if(!collected.has(id))collected.set(id,offer);
+     const previous=collected.get(id);
+      if(!previous||(previous.monthlySold===null&&offer.monthlySold!==null))
+       collected.set(id,offer);
     }
     const monthly=[...collected.values()].filter(x=>x.monthlySold!==null).length;
     await stage(managerTab,nonce,'comparando',
