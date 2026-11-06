@@ -248,7 +248,7 @@ function addMarketAnalysis(row,offers,checkedAt,ownShopId='0'){
     'com preços na mesma faixa (2 a 10 ofertas; mesma loja permitida). '+
     (compare.rejectedPriceOutliers?
       compare.rejectedPriceOutliers+' preço(s) fora do grupo foram excluídos.':''):
-   'Média não confirmada: '+(compare.reason||
+   'Média indisponível para Ads: '+(compare.reason||
     'São necessários 2 anúncios do mesmo material/modelo e faixa de preço.'),
   keywords,
   seoTitle:seoTitleFromEvidence(row.name,keywords,row.sku),
