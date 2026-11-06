@@ -7,6 +7,7 @@
  const progress=el('curveChromeProgress'),stepLabel=el('curveChromeStage');
  const counters=el('curveChromeCounters'),feed=el('curveChromeActivity');
  const bar=el('curveChromeProgressBar'),cancel=el('curveChromeCancel');
+ const percent=el('curveChromeProgressPercent');
  const summary=el('curveChromeFinalReport');
  const summaryEl=id=>document.getElementById(id);
  const countFmt=new Intl.NumberFormat('pt-BR');
@@ -57,7 +58,12 @@
    s.found+'/'+s.selected.limit+' SKUs aptas para Ads • '+
    s.monthly+' anúncio(s) com dados mensais • '+
    s.errors+' consulta(s) com dados incompletos';
-  if(bar&&s){bar.max=s.selected.limit;bar.value=Math.min(s.found,s.selected.limit);}
+  if(s){
+   const planned=Math.max(1,Number(s.plan?.totalQueries)||Number(s.selected.limit)||1);
+   const done=Math.min(planned,Math.max(0,Number(s.scanned)||0));
+   if(bar){bar.max=planned;bar.value=done;}
+   if(percent)percent.textContent=Math.floor(done/planned*100)+'% ('+done+'/'+planned+')';
+  }
   if(feed&&detail){
    const item=document.createElement('li');item.textContent=String(detail).slice(0,260);
    feed.prepend(item);while(feed.children.length>7)feed.lastChild.remove();

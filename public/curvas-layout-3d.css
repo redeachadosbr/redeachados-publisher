@@ -1,0 +1,296 @@
+/* Curvas A e B · Área de resultados 3D compacto · 06/11/2026
+   Somente visual, com progress real por buscas. IDs e eventos originais intactos. */
+#tab-curves{
+ --curve-3d-shadow:0 12px 26px rgba(22,60,115,.105),0 3px 0 rgba(179,201,230,.48),inset 0 1px 0 #fff;
+ --curve-3d-border:#d6e3f5;
+}
+#tab-curves .curve-chrome-unified{
+ border:1px solid #ccdcf3;
+ background:linear-gradient(148deg,#fff 35%,#f6f9ff 100%);
+ box-shadow:0 12px 28px rgba(27,70,130,.1),0 3px 0 #dce8f8;
+}
+#tab-curves .curve-chrome-progress[hidden]{display:none!important}
+#tab-curves .curve-chrome-progress{
+ position:relative;isolation:isolate;overflow:hidden;
+ margin:9px 15px 12px;padding:14px 19px 13px;
+ border:1px solid #c8dbf6;border-radius:19px;
+ background:linear-gradient(113deg,#fff 0%,#f9fbff 62%,#edf4ff 100%);
+ box-shadow:var(--curve-3d-shadow),0 16px 32px rgba(66,117,198,.06);
+}
+#tab-curves .curve-chrome-progress::before{
+ content:"";position:absolute;right:-110px;bottom:-145px;width:410px;height:310px;
+ border-radius:50%;background:radial-gradient(ellipse,#cfe1ff99 0%,#dce8ff66 46%,transparent 70%);
+ z-index:-1;pointer-events:none
+}
+#tab-curves .curve-chrome-progress-heading{
+ display:flex;align-items:center;justify-content:flex-start;gap:13px;min-width:0;margin-bottom:8px
+}
+#tab-curves .curve-progress-emblem{
+ display:grid;place-items:center;flex:0 0 48px;height:48px;border-radius:13px;
+ background:linear-gradient(155deg,#72bbff 0%,#2b8af1 35%,#1465c8 100%);
+ border:1px solid #7abaff;color:white;
+ box-shadow:inset 0 2px 0 #ffffff73,0 3px 0 #1c62aa,0 8px 15px #2a83de57
+}
+#tab-curves .curve-progress-emblem svg{
+ width:27px;height:27px;stroke:currentColor;stroke-width:2.4;fill:none
+}
+#tab-curves .curve-progress-heading-copy{flex:1;min-width:0}
+#tab-curves .curve-chrome-progress-heading #curveChromeStage{
+ color:#0d2b5e;font-size:17px;line-height:1.27;font-weight:850;
+ letter-spacing:-.026em;margin-bottom:3px
+}
+#tab-curves .curve-chrome-progress-heading #curveChromeCounters{
+ font-size:11px;color:#53719b;line-height:1.45;overflow-wrap:anywhere
+}
+#tab-curves #curveChromeCancel{
+ flex:none;min-height:35px;padding:7px 15px;margin-left:auto;
+ border:1px solid #fac9ad;border-radius:11px;background:linear-gradient(#fff,#fff3e9);
+ color:#d65624;font-size:11px;font-weight:850;
+ box-shadow:0 3px 0 #f0d0bd,0 7px 12px #ad673128,inset 0 1px #fff
+}
+#tab-curves #curveChromeCancel:hover{
+ transform:translateY(-1px);box-shadow:0 4px 0 #eac4aa,0 9px 15px #ad673133
+}
+#tab-curves .curve-progress-meter{
+ display:grid;grid-template-columns:minmax(0,1fr) auto;align-items:center;
+ gap:14px;margin:10px 0 9px 35px
+}
+#tab-curves #curveChromeProgressBar{
+ display:block;width:100%;height:13px;min-height:13px;margin:0;
+ overflow:hidden;border:1px solid #d1def4;border-radius:999px;
+ background:#e3ebfa;box-shadow:inset 0 2px 4px #3869a522
+}
+#tab-curves #curveChromeProgressBar::-webkit-progress-bar{
+ border-radius:999px;background:linear-gradient(#edf3ff,#dbe6f8)
+}
+#tab-curves #curveChromeProgressBar::-webkit-progress-value{
+ border-radius:999px;background:linear-gradient(90deg,#236cdf,#55b0ff);
+ box-shadow:0 0 9px #3494ffc7,inset 0 1px #ffffff7a
+}
+#tab-curves #curveChromeProgressBar::-moz-progress-bar{
+ border-radius:999px;background:linear-gradient(90deg,#236cdf,#55b0ff)
+}
+#tab-curves #curveChromeProgressPercent{
+ font-size:11.5px;font-weight:850;color:#123d79;font-variant-numeric:tabular-nums;
+ white-space:nowrap
+}
+#tab-curves .curve-progress-layout{
+ display:grid;grid-template-columns:minmax(0,1fr) minmax(195px,24%);
+ align-items:stretch;gap:14px;min-width:0
+}
+#tab-curves .curve-chrome-activity{
+ position:relative;counter-reset:curve-steps;list-style:none;
+ padding:0 0 0 29px;margin:0;min-width:0;
+ display:grid;align-content:start;gap:1px;
+ max-height:150px;overflow:auto;scrollbar-width:thin;scrollbar-color:#c1d2e8 transparent
+}
+#tab-curves .curve-chrome-activity::before{
+ content:"";position:absolute;left:12px;top:9px;bottom:9px;width:2px;
+ background:linear-gradient(#a5cbfa,#dce7f6)
+}
+#tab-curves .curve-chrome-activity li{
+ counter-increment:curve-steps;position:relative;min-width:0;
+ padding:3px 8px 3px 12px;margin:0;
+ font-size:10.7px;line-height:1.32;color:#426086;
+ border-radius:8px;overflow-wrap:anywhere
+}
+#tab-curves .curve-chrome-activity li::before{
+ content:"";position:absolute;left:-23px;top:7px;width:10px;height:10px;
+ border:1.5px solid #a5b9d4;border-radius:50%;background:#fff;
+ box-shadow:0 1px 2px #33598420
+}
+#tab-curves .curve-chrome-activity li:first-child{
+ font-weight:800;color:#0b3c79;
+ background:linear-gradient(90deg,#e1edff 0%,#dce9ff 90%,transparent)
+}
+#tab-curves .curve-chrome-activity li:first-child::before{
+ content:"✓";display:grid;place-items:center;color:#fff;
+ width:14px;height:14px;left:-25px;top:4px;border:0;
+ background:linear-gradient(#3f9dff,#1871e0);font-size:9px;
+ box-shadow:0 2px 6px #1674e644
+}
+#tab-curves .curve-progress-illustration{
+ position:relative;min-height:136px;border-radius:34px;
+ display:grid;place-items:center;overflow:hidden;
+ background:radial-gradient(ellipse at 65% 70%,#bed7ffb0,transparent 70%)
+}
+#tab-curves .curve-progress-illustration::before{
+ content:"";position:absolute;inset:15% -20% -45% 8%;transform:rotate(-14deg);
+ background:linear-gradient(130deg,#dce9ffb0,#a6cbff83);border-radius:50%
+}
+#tab-curves .curve-progress-browser{
+ position:relative;width:145px;height:97px;margin:4px 16px 7px 0;
+ border:1px solid #afcbf0;border-radius:13px;
+ background:linear-gradient(155deg,#fff,#e8f3ff);
+ box-shadow:inset 0 1px #fff,9px 15px 25px #1b5fab3e,0 5px 0 #80b1e8;
+ transform:perspective(650px) rotateY(-10deg) rotateX(4deg) rotateZ(-4deg)
+}
+#tab-curves .curve-progress-browser-top{
+ display:flex;gap:5px;align-items:center;height:23px;padding:0 10px;
+ border-radius:12px 12px 0 0;background:linear-gradient(#61adff,#257de4)
+}
+#tab-curves .curve-progress-browser-top i{width:6px;height:6px;background:#f4faff;border-radius:50%;box-shadow:0 1px 2px #063d8933}
+#tab-curves .curve-progress-shop-bag{
+ position:absolute;top:41px;left:58px;width:29px;height:30px;display:grid;place-items:center;
+ background:#f35a2c;color:#fff;border-radius:4px;font-size:16px;font-weight:900;
+ box-shadow:0 5px 10px #e65d3242
+}
+#tab-curves .curve-progress-shop-bag::before{
+ content:"";position:absolute;top:-7px;width:12px;height:11px;border:2px solid #f35a2c;
+ border-radius:9px 9px 1px 1px;z-index:-1
+}
+#tab-curves .curve-progress-browser-bar{
+ position:absolute;left:15px;bottom:11px;width:54px;height:7px;border-radius:8px;
+ background:linear-gradient(90deg,#2484f1 74%,#cbdff5 74%);box-shadow:inset 0 2px #b6d8ff
+}
+#tab-curves .curve-progress-sync{
+ position:absolute;right:17px;bottom:9px;width:43px;height:43px;border-radius:50%;
+ display:grid;place-items:center;color:#217be5;background:linear-gradient(#fff,#e4f1ff);
+ border:2px solid #d0e6ff;font-size:32px;font-weight:700;line-height:1;
+ box-shadow:0 7px 12px #1255aa42,inset 0 1px #fff
+}
+/* Two genuine details elements: accordion state remains native. */
+#tab-curves :is(.curve-technical-diagnostics,.curve-help){
+ margin:0 0 6px;border:1px solid #dde6f5;border-radius:12px;
+ background:linear-gradient(180deg,#fff,#f4f8ff);
+ box-shadow:0 5px 13px #204e8c13,0 2px 0 #dfe9f6;
+ overflow:visible
+}
+#tab-curves :is(.curve-technical-diagnostics,.curve-help)>summary{
+ display:flex;align-items:center;width:100%;min-height:35px;
+ padding:6px 12px 6px 44px;position:relative;
+ list-style:none;cursor:pointer;color:#193868;font-size:11px;
+ font-weight:850;line-height:1.3;gap:8px
+}
+#tab-curves :is(.curve-technical-diagnostics,.curve-help)>summary::-webkit-details-marker{display:none}
+#tab-curves :is(.curve-technical-diagnostics,.curve-help)>summary::before{
+ content:"";position:absolute;left:12px;top:50%;transform:translateY(-50%);
+ width:24px;height:24px;border:0;border-radius:7px;
+ background-color:#e8f1ff;background-position:center;background-repeat:no-repeat;
+ background-size:16px 16px;box-shadow:inset 0 1px #fff
+}
+#tab-curves .curve-technical-diagnostics>summary::before{
+ background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%232a72ba' stroke-width='2' stroke-linecap='round'%3E%3Ccircle cx='11' cy='11' r='6'/%3E%3Cpath d='m16 16 5 5M8 11h6'/%3E%3C/svg%3E")
+}
+#tab-curves .curve-help>summary::before{
+ background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%232a72ba' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m12 2 9 5-9 5-9-5 9-5ZM3 11l9 5 9-5M3 16l9 5 9-5'/%3E%3C/svg%3E")
+}
+#tab-curves :is(.curve-technical-diagnostics,.curve-help)>summary::after{
+ content:"";width:8px;height:8px;margin-left:auto;flex:none;
+ border-right:2px solid #274f8c;border-bottom:2px solid #274f8c;
+ transform:rotate(45deg);transition:transform .2s
+}
+#tab-curves :is(.curve-technical-diagnostics,.curve-help)[open]>summary::after{transform:rotate(225deg)}
+#tab-curves :is(.curve-technical-diagnostics,.curve-help)>summary span{
+ font-size:10px;font-weight:500;color:#7388a4;margin:0
+}
+#tab-curves .curve-technical-diagnostics .curve-sources{margin:6px 10px 10px}
+#tab-curves .curve-help-content{margin:2px 10px 10px}
+#tab-curves .curve-notice{
+ position:relative;margin:11px 0 12px;min-height:0;
+ padding:11px 15px 11px 54px;border:1px solid #f3d69a;
+ border-left:5px solid #eba622;border-radius:13px;
+ background:linear-gradient(100deg,#fffaf1,#fff1d7);
+ box-shadow:0 6px 15px #bf85351e,0 2px 0 #ecd9b4,inset 0 1px #fff;
+ font-size:11.2px;line-height:1.5;color:#76511f
+}
+#tab-curves .curve-notice::before{
+ content:"i";display:grid;place-items:center;position:absolute;left:13px;top:calc(50% - 12px);
+ width:23px;height:23px;border:2px solid #efa629;border-radius:50%;
+ font-size:15px;font-weight:900;font-family:Georgia,serif;color:#e29921;
+ background:#fff8e8
+}
+#tab-curves .curve-notice.is-error{border-color:#edc0ba;border-left-color:#e06b60;background:linear-gradient(100deg,#fff5f4,#fff0f0);color:#963b32}
+#tab-curves .curve-notice.is-error::before{border-color:#d46a62;color:#c54a41;background:#fff}
+#tab-curves .curve-stats{
+ grid-template-columns:repeat(5,minmax(0,1fr));gap:10px;margin:12px 0 13px
+}
+#tab-curves .curve-stats>div{
+ position:relative;min-width:0;min-height:76px;overflow:hidden;
+ display:grid;grid-template-columns:42px minmax(0,1fr);
+ grid-template-rows:min-content 1fr;align-items:center;column-gap:10px;
+ padding:12px 12px;border:1px solid #cddff6;border-radius:14px;
+ background:linear-gradient(137deg,#fff 35%,#e6f1ff);
+ box-shadow:0 6px 14px #20518b1e,0 3px 0 #c5dcf9,inset 0 1px #fff
+}
+#tab-curves .curve-stats>div::after{
+ content:"";position:absolute;right:-34px;bottom:-49px;width:120px;height:86px;
+ transform:rotate(-28deg);border-radius:22px;background:#9cc9ff2d;pointer-events:none
+}
+#tab-curves .curve-stats>div:nth-child(2){background:linear-gradient(135deg,#fff,#f1eaff);border-color:#dcd2fb;box-shadow:0 6px 14px #7451ac1c,0 3px 0 #e3dafb,inset 0 1px #fff}
+#tab-curves .curve-stats>div:nth-child(3){background:linear-gradient(135deg,#fff,#e8faef);border-color:#caecd6;box-shadow:0 6px 14px #3889651a,0 3px 0 #c8e9d9,inset 0 1px #fff}
+#tab-curves .curve-stats>div:nth-child(4){background:linear-gradient(135deg,#fff,#fff0dd);border-color:#f8e0bd;box-shadow:0 6px 14px #b97c3619,0 3px 0 #f2dfc6,inset 0 1px #fff}
+#tab-curves .curve-stats>div:nth-child(5){background:linear-gradient(135deg,#fff,#eeedff);border-color:#deddf9;box-shadow:0 6px 14px #6957bd1a,0 3px 0 #dedff7,inset 0 1px #fff}
+#tab-curves .curve-stat-icon{
+ display:grid;place-items:center;grid-column:1;grid-row:1/3;
+ width:40px;height:40px;border-radius:11px;
+ color:#237fe9;background:linear-gradient(#eaf4ff,#dcecff);box-shadow:inset 0 1px #fff
+}
+#tab-curves .curve-stats>div:nth-child(2) .curve-stat-icon{color:#8058e5;background:linear-gradient(#f6f0ff,#ebdfff)}
+#tab-curves .curve-stats>div:nth-child(3) .curve-stat-icon{color:#19955f;background:linear-gradient(#e9fbf1,#dff4e9)}
+#tab-curves .curve-stats>div:nth-child(4) .curve-stat-icon{color:#d88016;background:linear-gradient(#fff3e3,#fce5c9)}
+#tab-curves .curve-stats>div:nth-child(5) .curve-stat-icon{color:#6753d9;background:linear-gradient(#f1efff,#e5e1ff)}
+#tab-curves .curve-stat-icon svg{width:21px;height:21px;stroke-width:2.3}
+#tab-curves .curve-stats small{
+ grid-column:2;grid-row:1;font-size:10.5px;font-weight:700;
+ margin:0 0 3px;color:#425d7f;line-height:1.2
+}
+#tab-curves .curve-stats strong{
+ grid-column:2;grid-row:2;align-self:start;font-size:24px;
+ font-weight:900;line-height:1.1;color:#0e2b58;letter-spacing:-.035em
+}
+#tab-curves .curve-results{
+ margin-top:5px;padding:12px 15px 15px;border:1px solid #cedff6;border-radius:18px;
+ background:linear-gradient(150deg,#fff,#f9fbff);
+ box-shadow:0 10px 23px #174c8a1b,0 3px 0 #d9e6f7,inset 0 1px #fff
+}
+#tab-curves .curve-result-head{margin:0 0 9px;min-height:26px}
+#tab-curves .curve-result-head h2{
+ font-size:17px;font-weight:900;color:#102e5d;line-height:1.2
+}
+#tab-curves .curve-result-head h2 svg{width:24px;height:24px;color:#295fa3}
+#tab-curves .curve-result-head>span{font-size:10px;color:#607a9d}
+#tab-curves .curve-results .curve-empty{
+ display:flex;align-items:center;justify-content:center;gap:17px;min-height:66px;
+ padding:13px 16px;border:1px dashed #aac8f1;border-radius:12px;
+ background:linear-gradient(110deg,#f8fbff,#f1f6ff);color:#49678e;
+ box-shadow:inset 0 1px #fff;text-align:left;font-size:11.5px
+}
+#tab-curves .curve-results .curve-empty:not(.curve-empty-initial)::before{
+ content:"";display:block;flex:0 0 48px;height:42px;
+ border-right:1px solid #c1d5ee;padding-right:14px;
+ background:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 50 42' fill='none' stroke='%232f7ac9' stroke-width='2' stroke-linejoin='round'%3E%3Cpath d='M9 15 25 9l16 6-16 7-16-7Zm0 0v18l16 7 16-7V15M25 22v18M3 11l6 4-5 8 20 5 1-6M47 11l-6 4 5 8-20 5-1-6' fill='%23e3f2ff'/%3E%3C/svg%3E") left center/43px 38px no-repeat
+}
+#tab-curves .curve-results .curve-empty-initial{min-height:110px}
+#tab-curves .curve-results .curve-empty-initial>svg{width:56px;height:56px;flex:none}
+@container(max-width:1020px){
+ #tab-curves .curve-progress-layout{grid-template-columns:minmax(0,1fr) 170px;gap:6px}
+ #tab-curves .curve-stats{grid-template-columns:repeat(3,minmax(0,1fr))}
+}
+@container(max-width:690px){
+ #tab-curves .curve-chrome-progress{padding:13px;margin:8px 10px 11px}
+ #tab-curves .curve-progress-illustration{display:none}
+ #tab-curves .curve-progress-layout{grid-template-columns:minmax(0,1fr)}
+ #tab-curves .curve-progress-meter{margin-left:0}
+ #tab-curves .curve-chrome-activity{max-height:170px}
+ #tab-curves .curve-stats{grid-template-columns:repeat(2,minmax(0,1fr))}
+ #tab-curves .curve-results .curve-empty{flex-wrap:wrap;justify-content:flex-start}
+}
+@container(max-width:490px){
+ #tab-curves .curve-chrome-progress-heading{gap:9px;flex-wrap:wrap}
+ #tab-curves .curve-progress-emblem{width:40px;height:40px;flex-basis:40px}
+ #tab-curves .curve-chrome-progress-heading #curveChromeStage{font-size:14px}
+ #tab-curves .curve-chrome-progress-heading #curveChromeCounters{font-size:10px}
+ #tab-curves #curveChromeCancel{margin-left:auto}
+ #tab-curves .curve-stats{gap:8px}
+ #tab-curves .curve-stats>div{grid-template-columns:34px 1fr;padding:10px 8px;column-gap:7px}
+ #tab-curves .curve-stat-icon{width:33px;height:33px}
+ #tab-curves .curve-stat-icon svg{width:18px;height:18px}
+ #tab-curves .curve-stats strong{font-size:20px}
+ #tab-curves .curve-stats small{font-size:9px}
+ #tab-curves .curve-results{padding:10px}
+}
+@media(prefers-reduced-motion:reduce){
+ #tab-curves .curve-chrome-progress *,#tab-curves .curve-chrome-progress *::before,
+ #tab-curves .curve-chrome-progress *::after{transition:none!important;animation:none!important}
+}

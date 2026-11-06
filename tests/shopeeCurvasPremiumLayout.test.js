@@ -36,3 +36,18 @@ test('estrutura da tela fecha as seções antes da próxima aba',()=>{
  assert.ok(page.indexOf('class="curve-technical-diagnostics"')<page.indexOf('class="curve-help"'));
  assert.ok(page.indexOf('class="curve-help"')<page.indexOf('id="curveResults"'));
 });
+
+test('layout 3D compacto preserva os IDs de pesquisa e mostra andamento real por consultas',()=>{
+ const visual=readFileSync(new URL('../public/curvas-layout-3d.css',import.meta.url),'utf8');
+ const js=readFileSync(new URL('../public/curvas-chrome.js',import.meta.url),'utf8');
+ assert.match(html,/curvas-layout-3d\.css\?v=/);
+ assert.match(page,/id="curveChromeProgressPercent"/);
+ assert.match(page,/class="curve-progress-illustration"/);
+ assert.match(page,/class="curve-stat-icon"/);
+ assert.match(js,/const planned=Math\.max\(1,Number\(s\.plan\?\.totalQueries\)/);
+ assert.match(js,/Math\.floor\(done\/planned\*100\)/);
+ for(const name of ['curve-chrome-progress','curve-technical-diagnostics','curve-help',
+  'curve-notice','curve-stats','curve-results'])assert.ok(visual.includes(name),name);
+ assert.match(visual,/@container\s*\(max-width:690px\)/);
+ assert.match(visual,/prefers-reduced-motion/);
+});
