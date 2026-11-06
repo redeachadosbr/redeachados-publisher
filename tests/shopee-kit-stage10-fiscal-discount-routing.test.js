@@ -79,7 +79,8 @@ test('fiscal usa NCM da SKU exata e salva revisao antes da execucao',async()=>{
  const body=between('globalThis.RAKitSyncApprovedFiscal=async(', '// Pré-execução parcial Shopee.');
  const w={sku:'PRINCIPAL',itemId:'123',modelId:'0',
   kitOptimization:{kitSku:'KIT-PRINCIPAL-COMPONENTE'},
-  stages:[{key:'fiscal',reviewed:false}],tax:{origin:'2',ncm:'00000000'}};
+  stages:[{key:'fiscal',reviewed:false}],tax:{origin:'2',ncm:'00000000'},
+  taxCurrent:{cest:'2806100'}};
  const posts=[];
  const context={optimizerWorkflowPlan:w,optimizerKitWorkflowActive:()=>true,
   RAKitWizardExecutionReviews:()=>({kitSku:w.kitOptimization.kitSku,stages:['fiscal']}),
@@ -98,6 +99,26 @@ test('fiscal usa NCM da SKU exata e salva revisao antes da execucao',async()=>{
  assert.equal(done.ok,true);
  assert.equal(posts[0].tax.ncm,'12345678');
  assert.equal(posts[0].tax.origin,'2');
+ assert.equal(posts[0].tax.cest,'2806100','CEST real da Shopee não pode virar sugestão 00');
  assert.equal(posts[0].stage,'fiscal');
  assert.equal(context.optimizerWorkflowPlan.tax.ncm,'12345678');
+});
+
+test('sincronização fiscal de kit não transforma tax_info ausente em CEST 00',async()=>{
+ const body=between('globalThis.RAKitSyncApprovedFiscal=async(', '// Pré-execução parcial Shopee.');
+ const w={sku:'PRINCIPAL',itemId:'123',modelId:'0',
+  kitOptimization:{kitSku:'KIT-PRINCIPAL-COMPONENTE'},
+  stages:[{key:'fiscal',reviewed:false}],tax:{origin:'2',ncm:'12345678'}};
+ let posts=0;
+ const context={optimizerWorkflowPlan:w,optimizerKitWorkflowActive:()=>true,
+  RAKitWizardExecutionReviews:()=>({kitSku:w.kitOptimization.kitSku,stages:['fiscal']}),
+  URLSearchParams,AbortSignal,
+  json:async()=>({sku:'PRINCIPAL',kitSku:w.kitOptimization.kitSku,
+   taxSuggestion:{ncm:'12345678',cest:'7654321'},taxDraft:{origin:'2'}}),
+  optimizerSaveChecklistReview:async()=>{posts++;return {saved:true}}};
+ runInNewContext(body,context);
+ const result=await context.RAKitSyncApprovedFiscal({sku:'PRINCIPAL',itemId:'123',modelId:'0'});
+ assert.equal(result.ok,false);
+ assert.match(result.error,/não retornou tax_info/i);
+ assert.equal(posts,0);
 });
