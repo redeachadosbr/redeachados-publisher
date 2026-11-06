@@ -92,3 +92,9 @@ test('a extensão lê 3mil+ e 2mil+ na mesma regra mensal',()=>{
  assert.equal(parser.monthlyEvidence('3mil+ Vendido/Mês').monthlySold,3000);
  assert.equal(parser.monthlyEvidence('2mil+ Vendido/Mês').monthlySold,2000);
 });
+
+test('Ponte registra rótulo mensal visível separadamente da contagem comprovada',()=>{
+ assert.match(source,/monthlyLabelsVisible:labelInPage/);
+ assert.match(source,/monthlyLabelsInCards/);
+ assert.match(source,/monthlyLabelVisible/);
+});

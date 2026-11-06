@@ -5,6 +5,7 @@ import {readWeDropCatalogProducts,readWeDropCosts} from './wedropCosts.js';
 import {categoryMatches} from './shopeeKitBuilder.js';
 import {curveSkuSearchPlan,officialFeaturedSearchUrl,matchCurveOffers,pickCurveResults} from './shopeeCurveAB.js';
 import {curveAdsRejectionStats,CURVE_ADS_POLICY} from './shopeeCurveAdsFit.js';
+import {searchFeaturedPublic} from './shopeeFeaturedSearch.js';
 const fold=s=>String(s||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase().replace(/\s+/g,' ').trim();
 const validId=v=>/^\d{1,18}$/.test(String(v??''));
 const amount=v=>{if(v===null||v===undefined||v==='')return null;const n=Number(v);return Number.isSafeInteger(n)&&n>=0?n:null;};
@@ -112,7 +113,37 @@ export async function importChromeOffers(shopId,{
  const task=state.plan.find(j=>fold(j.query)===fold(search));
  if(!task)throw Error('Pesquisa não pertence ao catálogo WeDrop selecionado.');
  const normalized=normalizeVisibleOffers(offers,{ownShopId:shopId});
- for(const offer of normalized){
+ // Segundo caminho de recuperação: somente quando a Ponte trouxe ofertas,
+ // mas NENHUMA venda mensal. A vitrine pública é uma fonte opcional, não
+ // substituir rótulos não verificados por vendas acumuladas.
+ let recoverySource='not_needed',recoveryReason='',recoveredMonthly=0;
+ let recovered=[];
+ if(normalized.length&&!normalized.some(o=>o.monthlySold!==null)){
+  if(Date.now()<Number(state.featuredUnavailableUntil||0)){
+   recoverySource='temporarily_unavailable';
+   recoveryReason='Fonte pública temporariamente indisponível; não repetir chamadas bloqueadas.';
+  }else{
+   const fallback=await searchFeaturedPublic(search,{timeoutMs:5000});
+   if(fallback.ok){
+    recovered=normalizeVisibleOffers((fallback.offers||[]).map(offer=>({
+     ...offer,monthlyPeriod:offer.monthlySold!==null?'month':null,
+     monthlyEvidence:offer.monthlySold!==null?'Vendido/Mês • vitrine pública Shopee':''
+    })),{ownShopId:shopId}).map((offer,i)=>({
+     ...offer,dataSource:'shopee-featured-public',
+     featuredRank:i+1
+    }));
+    recoveredMonthly=recovered.filter(o=>o.monthlySold!==null).length;
+    recoverySource=recoveredMonthly?'featured_public':'featured_without_monthly';
+    recoveryReason=recoveredMonthly?'Vendas/mês verificadas na segunda fonte oficial':
+     'Vitrine pública não apresentou vendas mensais verificáveis.';
+   }else{
+    recoverySource=fallback.blocked?'featured_blocked':'featured_unavailable';
+    recoveryReason=String(fallback.error||'A fonte pública não retornou evidências.').slice(0,180);
+    state.featuredUnavailableUntil=Date.now()+10*60000;
+   }
+  }
+ }
+ for(const offer of [...normalized,...recovered]){
   const id=offer.shopId+':'+offer.itemId,prev=state.offers.get(id);
   if(!prev||(offer.monthlySold!==null&&prev.monthlySold===null))
    state.offers.set(id,offer);
@@ -139,7 +170,7 @@ export async function importChromeOffers(shopId,{
   pendingItems:pending.slice(0,20),catalogCount:state.catalog.length,
   offerCount:state.offers.size,skuSearchesCompleted:state.scanned.size,
   skuQueriesCompleted:state.queries,remainingSkuQueries:Math.max(0,state.plan.length-state.queries),
-  sources:{featured:0,affiliate:0,chrome:state.queries},
+  sources:{featured:recoveredMonthly?1:0,affiliate:0,chrome:state.queries},
   rowsWith30Days:picked.items.filter(x=>x.verified30).length,
   checkedAt:state.lastAt,hasMore:false,chromeHasMore:state.queries<state.plan.length,
   shortage:picked.shortage,qualifiedCount:picked.found,monthlyCompetitorsRequired:2,
@@ -148,7 +179,8 @@ export async function importChromeOffers(shopId,{
    ' SKUs com 2 a 5 lojas com vendas mensais na curva e preço competitivo para Ads.':'',
   chromeImport:{
    query:search,imported:normalized.length,
-   monthlyOffers:normalized.filter(x=>x.monthlySold!==null).length,
+   monthlyOffers:normalized.filter(x=>x.monthlySold!==null).length+recoveredMonthly,
+   recoveredMonthly,recoverySource,recoveryReason,
    skuCount:task.skus.length,searchedSkus:task.skus,
    matchedSkus:task.skus.filter(sku=>rows.some(row=>row.sku===sku)),
    viableSkus:task.skus.filter(sku=>qualified.some(row=>row.sku===sku))},

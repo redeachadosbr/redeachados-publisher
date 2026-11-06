@@ -156,7 +156,7 @@ async function batch(managerTab,nonce,jobs){
    // Conferir a primeira página e ampliar à segunda se a coleta mensal/preço
    // ainda estiver incompleta. O critério usa anúncios reais, nunca estimativas.
    const collected=new Map();
-   let failure='',hardStop=false,pages=0,visibleCards=0;
+   let failure='',hardStop=false,pages=0,visibleCards=0,labelsSeen=0,labelsInCards=0;
    for(let page=0;page<2;page++){
     if(stopRequested)break;
     const url=buildUrl(query,page);
@@ -191,6 +191,12 @@ async function batch(managerTab,nonce,jobs){
      break; // Preserva as evidências das páginas anteriores.
     }
     visibleCards+=Number(data.visibleCards||data.offers?.length||0);
+    labelsSeen+=Number(data.monthlyLabelsVisible||0);
+    labelsInCards+=Number(data.monthlyLabelsInCards||0);
+    if(Number(data.monthlyLabelsVisible)>0&&Number(data.monthlyCards||0)===0)
+     await stage(managerTab,nonce,'recuperando',
+      'Vendido/Mês visível na Shopee, mas não vinculado aos cartões. Tentando recuperar.',
+      i+1,jobs.length,{visible:visibleCards,monthlyLabels:data.monthlyLabelsVisible});
     for(const offer of data.offers||[]){
      const id=String(offer.shopId)+':'+String(offer.itemId);
      const previous=collected.get(id);
@@ -205,6 +211,35 @@ async function batch(managerTab,nonce,jobs){
     if((monthly>=5&&collected.size>=10)||collected.size>=100)break;
     await delay(900);
    }
+   // Recuperação isolada, sem criar outras abas nem contornar CAPTCHA.
+   if(!stopRequested&&!hardStop&&collected.size>0&&
+      ![...collected.values()].some(x=>x.monthlySold!==null)){
+    await stage(managerTab,nonce,'recuperando',
+     'Ofertas sem dados mensais: recarregando uma vez a vitrine Em Destaque.',
+     i+1,jobs.length,{visible:collected.size,monthlyLabels:labelsSeen});
+    try{
+     const session=await currentSession();
+     if(session?.tabId){
+      await chrome.tabs.update(session.tabId,{url:buildUrl(query,0)});
+      await waitLoaded(session.tabId);
+      const recovered=await readPage(session.tabId);
+      if(recovered?.ok){
+       labelsSeen+=Number(recovered.monthlyLabelsVisible||0);
+       labelsInCards+=Number(recovered.monthlyLabelsInCards||0);
+       for(const offer of recovered.offers||[]){
+        const key=String(offer.shopId)+':'+String(offer.itemId);
+        const old=collected.get(key);
+        if(!old||(old.monthlySold===null&&offer.monthlySold!==null))
+         collected.set(key,offer);
+       }
+      }
+     }
+    }catch(error){
+     await stage(managerTab,nonce,'recuperando',
+      'Releitura incompleta: '+String(error?.message||error).slice(0,110),
+      i+1,jobs.length);
+    }
+   }
    if(stopRequested)break;
    const offers=[...collected.values()].slice(0,100);
    if(!failure&&offers.length===0)await stage(managerTab,nonce,'comparando',
@@ -214,13 +249,25 @@ async function batch(managerTab,nonce,jobs){
     'Cruzando os anúncios da SKU com catálogo e viabilidade de Ads.',
     i+1,jobs.length,{visible:offers.length,pages});
    const incomplete=Boolean(failure);
+   const monthlyCount=offers.filter(x=>x.monthlySold!==null).length;
+   const sourceStatus=monthlyCount?'monthly_captured':
+    labelsSeen>0?'monthly_labels_unbound':
+    offers.length?'monthly_not_rendered':'no_visible_offers';
+   await stage(managerTab,nonce,'comparando',
+    monthlyCount?monthlyCount+' anúncios com Vendido/Mês capturados.':
+     sourceStatus==='monthly_labels_unbound'?
+      'Rótulos mensais visíveis, mas sem vínculo confiável ao anúncio.':
+      offers.length?'A Shopee não exibiu Vendido/Mês nos anúncios lidos.':
+       'Nenhuma oferta legível nesta consulta.',
+    i+1,jobs.length,{visible:offers.length,monthly:monthlyCount,labels:labelsSeen});
    await deliver(managerTab,{kind:'RA_CURVE_CHROME_RESULT',nonce,query,
     position:i+1,total:jobs.length,offers,
     error:hardStop?failure:incomplete&&!offers.length?failure:'',
     warning:incomplete?'Leitura parcial: '+failure:'',
     recoverable:incomplete&&!hardStop,
     stats:{visible:offers.length,visibleCards,pages,
-     monthly:offers.filter(x=>x.monthlySold!==null).length}});
+     monthly:monthlyCount,monthlyLabelsVisible:labelsSeen,
+     monthlyLabelsInCards:labelsInCards,sourceStatus}});
    if(hardStop)break; // CAPTCHA/verificação explícita deve parar.
    if(incomplete)await stage(managerTab,nonce,'continuando',
     'Esta consulta ficou incompleta; avançando para outra SKU da categoria.',

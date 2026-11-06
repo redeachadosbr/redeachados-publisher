@@ -150,6 +150,22 @@
   const competitor=t('p','curve-evidence','Oferta comparada: '+row.competitorName+
    ' • Fonte: '+(row.source==='shopee-featured-chrome'?'Ponte Chrome • Em Destaque Shopee':
      row.source==='shopee-featured-public'?'busca pública Em Destaque Shopee':'API Afiliados Shopee'));
+  const issues=[];
+  const monthlyCount=Number(row.monthlyCompetitorCount||0);
+  const inCurve=(row.monthlyCompetitors||[]).filter(x=>Number(x.monthlySold)>=700).length;
+  if(monthlyCount<2||inCurve<2)
+   issues.push('Demanda: '+inCurve+'/2 lojas com pelo menos 700 vendas/mês comprovadas. '+
+    'A extensão e a vitrine pública tentam recuperar os dados que faltam.');
+  if(row.avgCompetitorPrice===null)
+   issues.push('Preço de mercado: '+Number(row.competitorOfferCount||0)+
+    '/2 anúncios equivalentes com preço válido.');
+  if(!row.inStock)issues.push('Estoque WeDrop não disponível.');
+  if(!Number.isFinite(Number(row.cost))||Number(row.cost)<=0)
+   issues.push('Custo WeDrop não cadastrado.');
+  if(fit?.eligible===false&&fit.reason&&fit.status!=='missing_market')
+   issues.push('Viabilidade de Ads: '+fit.reason);
+  const issueNote=pending&&issues.length?
+   t('p','curve-evidence','O que falta para aprovar: '+issues.join(' • ')):null;
   const evidence=t('p','curve-evidence',row.periodSource?
    'Fonte da classificação: '+row.periodSource+'.':
    'Somente vendas acumuladas disponíveis: classificação potencial, não vendas confirmadas em 30 dias.');
@@ -194,7 +210,8 @@
    actions.append(featured);
   }
   actions.append(copy,link);
-  main.append(top,sku,...(fitTag?[fitTag]:[]),facts,competitor,evidence,
+  main.append(top,sku,...(fitTag?[fitTag]:[]),facts,competitor,
+   ...(issueNote?[issueNote]:[]),evidence,
    ...(fitScenario?[fitScenario]:[]),proof,stock,actions);
   appendPrices(main,row);
   appendSEO(main,row);

@@ -30,9 +30,9 @@ test('pesquisa continua até a quantidade solicitada, sem limite fixo de 60 busc
 test('exige a extensão Shopee Chrome 1.2.0 para pesquisas sem novas abas',()=>{
  const code=readFileSync(new URL('../public/curvas-chrome.js',import.meta.url),'utf8');
  const manifest=JSON.parse(readFileSync(new URL('../chrome-extension-shopee/manifest.json',import.meta.url),'utf8'));
- assert.equal(manifest.version,'1.2.4');
+ assert.equal(manifest.version,'1.2.5');
  assert.match(code,/parts\[1\]>2/);
- assert.match(code,/Number\(parts\[2\]\|\|0\)>=4/);
+ assert.match(code,/Number\(parts\[2\]\|\|0\)>=5/);
 });
 
 test('filtro único categoria, quantidade e nome só inicia pesquisa Chrome',()=>{
@@ -127,6 +127,17 @@ test('botão usa versão instalada no manifesto e consulta versão real no servi
  assert.match(page,/média de 2 a 10 anúncios equivalentes/);
  assert.match(code,/chrome-extension-version/);
  assert.match(code,/Baixar extensão.*version/);
- assert.match(code,/Requer 1\.2\.4/);
- assert.match(code,/Verificando Ponte Chrome 1\.2\.4/);
+ assert.match(code,/Requer 1\.2\.5/);
+ assert.match(code,/Verificando Ponte Chrome 1\.2\.5/);
+});
+
+test('relatório diferencia candidatos, SKUs sem equivalência e consultas incompletas',()=>{
+ const ui=readFileSync(new URL('../public/curvas-chrome.js',import.meta.url),'utf8');
+ const page=readFileSync(new URL('../public/index.html',import.meta.url),'utf8');
+ assert.match(page,/Candidatos pendentes/);
+ assert.match(ui,/const pending=Math\.max\(0,matched-viable\)/);
+ assert.match(ui,/const missingSearch=Math\.max\(0,searched-imported\)/);
+ assert.match(ui,/const noMatch=Math\.max\(0,imported-matched\)/);
+ assert.match(ui,/monthly_labels_unbound/);
+ assert.match(ui,/s\.plan\.offset\+Math\.max/);
 });

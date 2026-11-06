@@ -64,6 +64,7 @@
     link.getAttribute('title')||link.getAttribute('aria-label')||content.split('R$')[0]).slice(0,210);
   if(productName.length<6)return null;
   const monthly=monthlyEvidence(content);
+  const monthlyLabelVisible=/(?:vendid[oa]s?|vendas)\s*(?:\/|por|no|nos|em)\s*m[eê]s/i.test(content);
   // Vendas mensais exibidas não equivalem ao contador histórico acumulado.
   const sold=historicalSales(monthly.monthlyEvidence?
    content.replace(monthly.monthlyEvidence,''):content);
@@ -71,7 +72,7 @@
   // Anúncio com preço mas sem vendas também pode ser usado na média de preços.
   if(monthly.monthlySold===null&&sold===null&&price===null)return null;
   return {...identity,productName,historicalSold:sold,priceMin:price,
-   ...monthly,featuredRank:rank};
+   ...monthly,monthlyLabelVisible,featuredRank:rank};
  }
  function cardFor(link,identity){
   // O nó .search-item pode conter só o preço. Vendido/Mês pode surgir
@@ -111,8 +112,12 @@
    if(product){seen.add(id);found.push(product);}
    if(found.length>=50)break;
   }
+  // Diagnóstico não comprova vendas sem vínculo ao anúncio.
+  const labelInPage=(body.match(/(?:vendid[oa]s?|vendas)\s*(?:\/|por|no|nos|em)\s*m[eê]s/gi)||[]).length;
   return {ok:true,offers:found,visibleCards:seenCards.size,
-   saleCards:found.length,monthlyCards:found.filter(x=>x.monthlySold!==null).length};
+   saleCards:found.length,monthlyCards:found.filter(x=>x.monthlySold!==null).length,
+   monthlyLabelsVisible:labelInPage,
+   monthlyLabelsInCards:found.filter(x=>x.monthlyLabelVisible).length};
  }
  globalThis.RAShopeeVisible={parseCount,monthlyEvidence,historicalSales,ids,extract};
  chrome.runtime.onMessage.addListener((msg,_sender,reply)=>{

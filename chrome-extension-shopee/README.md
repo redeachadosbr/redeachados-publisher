@@ -1,4 +1,4 @@
-# Ponte Chrome Rede Achados BR — 1.2.4
+# Ponte Chrome Rede Achados BR — 1.2.5
 
 Atualização obrigatória: baixe o ZIP no menu Curvas A/B, extraia e carregue
 novamente a pasta redeachados-shopee-chrome em chrome://extensions.
@@ -20,3 +20,7 @@ Sem evidência mensal não há classificação, e nenhum anúncio é criado.
 A versão 1.2.4 aguarda o rótulo Vendido/Mês dos cartões carregados,
 procura o indicador no ancestral do MESMO anúncio sem misturar cartões,
 e impede comparar utensílio manual com processador elétrico.
+
+Versão 1.2.5: distingue rótulos mensais visíveis de volumes vinculados,
+repete uma leitura na mesma janela para recuperar a vitrine e informa a
+causa quando uma consulta não traz dados mensais. Não estima vendas.

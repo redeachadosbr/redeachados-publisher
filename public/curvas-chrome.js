@@ -15,8 +15,12 @@
   if(!s||!summary)return;
   // Também registrar SKUs de consultas interrompidas antes da importação.
   const searched=s.attemptedSkuIds.size;
+  const imported=s.searchedSkuIds.size;
   const matched=[...s.matchedSkuIds].filter(sku=>s.searchedSkuIds.has(sku)).length;
   const viable=[...s.viableSkuIds].filter(sku=>s.searchedSkuIds.has(sku)).length;
+  const pending=Math.max(0,matched-viable);
+  const missingSearch=Math.max(0,searched-imported);
+  const noMatch=Math.max(0,imported-matched);
   summary.hidden=false;
   summaryEl('curveChromeSummaryTitle').textContent=headline;
   summaryEl('curveChromeSummaryCategory').textContent='Categoria WeDrop: '+
@@ -27,21 +31,24 @@
   summaryEl('curveChromeSummaryScanned').textContent=countFmt.format(searched);
   summaryEl('curveChromeSummaryMatched').textContent=countFmt.format(matched);
   summaryEl('curveChromeSummaryViable').textContent=countFmt.format(viable);
-  summaryEl('curveChromeSummaryExcluded').textContent=countFmt.format(Math.max(0,searched-viable));
+  summaryEl('curveChromeSummaryExcluded').textContent=countFmt.format(pending);
+  const diagnostics=s.sourceStats||{};
+  const causes=[
+   pending+' candidato(s) encontrados, ainda sem todos os requisitos de Ads',
+   noMatch+' SKU(s) sem produto equivalente encontrado',
+   missingSearch+' SKU(s) com consulta incompleta ou sem importação',
+   (diagnostics.monthly_labels_unbound||0)+' pesquisa(s) com Vendido/Mês visível, mas sem vínculo ao anúncio',
+   (diagnostics.monthly_not_rendered||0)+' pesquisa(s) cujos cartões não exibiram Vendido/Mês',
+   (diagnostics.no_visible_offers||0)+' pesquisa(s) sem anúncios legíveis',
+   (diagnostics.featured_public_recovered||0)+' consulta(s) recuperadas na fonte pública Shopee'
+  ];
   summaryEl('curveChromeSummaryDetail').textContent=
-   countFmt.format(Number(s.plan?.catalogCount)||0)+' SKUs no catálogo filtrado • '+
-   countFmt.format(s.scanned)+' de '+
-   countFmt.format(Number(s.plan?.totalQueries)||0)+' buscas planejadas percorridas • '+
-   countFmt.format(s.received)+' consulta(s) importadas com sucesso. '+
-   countFmt.format(s.searchedSkuIds.size)+' SKU(s) com resultados importados; '+
-   countFmt.format(Math.max(0,searched-s.searchedSkuIds.size))+
-   ' SKU(s) com consulta incompleta. '+countFmt.format(s.errors)+
-   ' consulta(s) com falha de leitura ou dados parciais. '+countFmt.format(viable)+
-   ' de '+countFmt.format(searched)+' SKU(s) consultadas comprovaram Curva A/B '+
-   'em 30 dias, 2 a 5 concorrentes e preço viável com média de até 10 lojas. '+
-   (note||'')+' Consulta incompleta não representa produto definitivamente reprovado. '+
-   'Sem dois concorrentes com vendas dos últimos 30 dias verificáveis, '+
-   'nenhuma Curva pode ser confirmada, mesmo que existam anúncios na Shopee.';
+   countFmt.format(Number(s.plan?.catalogCount)||0)+' SKUs no catálogo • '+
+   countFmt.format(s.scanned)+' consultas realizadas de '+
+   countFmt.format(Number(s.plan?.totalQueries)||0)+' planejadas • '+
+   countFmt.format(s.received)+' consultas importadas • '+causes.join(' • ')+'. '+
+   (note||'')+' A extensão tenta recuperar as vendas mensais na mesma janela. '+
+   'A falta de prova mensal não significa produto definitivamente reprovado.';
  }
  const stages={iniciando:'Preparando pesquisa',navegando:'Pesquisando SKU',
   carregando:'Carregando Shopee',lendo:'Lendo anúncios',
@@ -114,8 +121,8 @@
     const version=String(event.data.version||'0.0.0');
     const parts=version.split('.').map(Number);
     const ok=parts[0]>1||(parts[0]===1&&
-     (parts[1]>2||parts[1]===2&&Number(parts[2]||0)>=4));
-    finish({ok,version,reason:ok?'':'Extensão '+version+' é antiga. Requer 1.2.4.'});
+     (parts[1]>2||parts[1]===2&&Number(parts[2]||0)>=5));
+    finish({ok,version,reason:ok?'':'Extensão '+version+' é antiga. Requer 1.2.5.'});
    };
    window.addEventListener('message',listener);
    const timer=setTimeout(()=>finish({ok:false,reason:'A extensão não respondeu na aba do Manager.'}),2600);
@@ -140,11 +147,11 @@
   if(cancel){cancel.hidden=false;cancel.disabled=false;}
   if(feed)feed.replaceChildren();
   if(summary)summary.hidden=true;
-  updateStage('iniciando','Verificando Ponte Chrome 1.2.4 e carregamento da Shopee.');
+  updateStage('iniciando','Verificando Ponte Chrome 1.2.5 e carregamento da Shopee.');
   say('Verificando instalação da Ponte Chrome…');
   try{
    const bridge=await ping(nonce);
-   if(!bridge.ok)throw Error(bridge.reason+' Baixe a versão 1.2.4, ative o acesso ao site, atualize a extensão em chrome://extensions e recarregue o Manager.');
+   if(!bridge.ok)throw Error(bridge.reason+' Baixe a versão 1.2.5, ative o acesso ao site, atualize a extensão em chrome://extensions e recarregue o Manager.');
    const params=new URLSearchParams({category:selected.category,keyword:selected.keyword,
     offset:String(offset),limit:'6'});
    let plan=await json('/api/shopee/curvas-ab/chrome-plan?'+params);
@@ -155,7 +162,10 @@
    if(!plan.jobs.length)throw Error('Não há SKUs WeDrop disponíveis nesta categoria.');
    active={nonce,selected,plan,received:0,errors:0,scanned:0,monthly:0,found:0,blocked:false,
     searchedSkuIds:new Set(),attemptedSkuIds:new Set(),
-    matchedSkuIds:new Set(),viableSkuIds:new Set(),targetReached:false};
+    matchedSkuIds:new Set(),viableSkuIds:new Set(),targetReached:false,
+     batchStartScanned:0,sourceStats:{monthly_captured:0,
+      monthly_labels_unbound:0,monthly_not_rendered:0,
+      no_visible_offers:0,featured_public_recovered:0}};
    offset=plan.nextOffset;
    updateStage('iniciando','Janela auxiliar minimizada • primeiro lote com '+plan.jobs.length+' consultas.',active);
    say('Pesquisa em janela minimizada; nenhuma aba é adicionada à sua janela principal.');
@@ -170,6 +180,8 @@
  async function accept(s,m){
   if(s.targetReached)return;
    s.scanned++;
+   const reason=String(m.stats?.sourceStatus||'');
+   if(Object.hasOwn(s.sourceStats,reason))s.sourceStats[reason]++;
   const job=s.plan.jobs.find(x=>x.query===m.query);
   for(const sku of job?.skus||[])s.attemptedSkuIds.add(String(sku));
   if(m.error){
@@ -200,6 +212,16 @@
    }
    s.found=Number(data.found)||0;
    s.monthly+=Number(data.chromeImport?.monthlyOffers)||0;
+   if(Number(data.chromeImport?.recoveredMonthly)>0){
+    s.sourceStats.featured_public_recovered++;
+    updateStage('recuperando',
+     'Fonte alternativa da vitrine Shopee confirmou '+
+     data.chromeImport.recoveredMonthly+' anúncios com Vendido/Mês.',s);
+   }else if(data.chromeImport?.recoveryReason&&
+      data.chromeImport.recoverySource!=='not_needed'){
+    updateStage('recuperando',
+     'Fonte alternativa: '+String(data.chromeImport.recoveryReason).slice(0,135),s);
+   }
    for(const sku of data.chromeImport?.searchedSkus||[])s.searchedSkuIds.add(String(sku));
    s.matchedSkuIds=new Set((data.matchedSkuIds||[]).map(String));
     s.viableSkuIds=new Set((data.viableSkuIds||[]).map(String));
@@ -211,9 +233,9 @@
     window.postMessage({kind:'RA_CURVE_CHROME_CANCEL',nonce:s.nonce},ORIGIN);
    }
    updateStage('validando',data.found+' SKUs Curva A/B viáveis para Ads; '+
-    data.pendingCount+' sem comprovação mensal.',s);
+    data.pendingCount+' candidatos pendentes de demanda, preço ou margem.',s);
    say('Ponte: '+s.received+' consultas importadas; '+data.found+' SKUs classificadas e '+
-    data.pendingCount+' pendentes. Busca '+m.position+'/'+m.total+'.');
+    data.pendingCount+' candidatos pendentes. Busca '+m.position+'/'+m.total+'.');
   }catch(error){
    if(active!==s)return;
    s.errors++;
@@ -254,7 +276,7 @@
       offset:String(offset),limit:'6'});
      const plan=await json('/api/shopee/curvas-ab/chrome-plan?'+params);
      if(plan.jobs.length){
-      s.plan=plan;offset=plan.nextOffset;
+      s.plan=plan;s.batchStartScanned=s.scanned;offset=plan.nextOffset;
       updateStage('navegando','Próximo lote: '+plan.jobs.length+
        ' pesquisas, '+s.scanned+' consultas já concluídas.',s);
       say('Continuando automaticamente: '+s.found+'/'+s.selected.limit+
@@ -265,7 +287,12 @@
      finished='Catálogo percorrido: '+s.found+'/'+s.selected.limit+' SKUs comprovadas.';
     }else finished='Categoria percorrida: '+s.found+'/'+s.selected.limit+' SKUs comprovadas.';
     window.postMessage({kind:'RA_CURVE_CHROME_CLOSE',nonce:s.nonce},ORIGIN);
-    if(s.blocked)offset=0; // repetir a pesquisa interrompida no próximo clique
+    if(s.blocked||s.cancelRequested||m.cancelled&&!s.targetReached){
+      // Reservas de lote não são pesquisas efetuadas. Retomar a partir da
+      // primeira consulta que não produziu resultado na extensão.
+      offset=s.plan.offset+Math.max(0,Math.min(s.plan.jobs.length,
+       s.scanned-s.batchStartScanned));
+     }
     active=null;button.disabled=false;
     if(cancel)cancel.hidden=true;
     const stoppedByUser=s.cancelRequested||(m.cancelled&&!s.targetReached);
