@@ -51,7 +51,7 @@ export function verifiedMonthlyEvidence(value){
  );
 }
 export function normalizeVisibleOffers(rows,{ownShopId='0'}={}){
- if(!Array.isArray(rows)||rows.length>60)throw Error('Máximo de 60 anúncios por consulta.');
+ if(!Array.isArray(rows)||rows.length>100)throw Error('Máximo de 100 anúncios por consulta.');
  const seen=new Set(),out=[];
  for(const row of rows){
   if(!row||!validId(row.itemId)||!validId(row.shopId)||

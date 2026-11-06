@@ -46,3 +46,10 @@ test('três lojas independentes com evidência mensal são obrigatórias antes d
  ];
  assert.deepEqual(qualifyChromeMatches(candidates).map(x=>x.sku),['A','B']);
 });
+
+test('lotes comportam até 100 anúncios distintos das páginas Em Destaque',()=>{
+ const rows=Array.from({length:80},(_,i)=>({itemId:String(i+1),shopId:String(i+200),
+  productName:'Organizador de cozinha plástico 500ml',historicalSold:100+i,priceMin:19.9}));
+ assert.equal(normalizeVisibleOffers(rows).length,80);
+ assert.throws(()=>normalizeVisibleOffers([...rows,...rows.slice(0,21)]),/Máximo de 100/);
+});

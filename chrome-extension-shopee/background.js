@@ -3,10 +3,10 @@ let busy=false;
 const delay=ms=>new Promise(resolve=>setTimeout(resolve,ms));
 const nonceOk=s=>/^[a-f0-9-]{30,50}$/i.test(String(s||''));
 const managerOk=sender=>/^https:\/\/redeachados-shopee\.onrender\.com\//.test(sender?.tab?.url||'');
-function buildUrl(query){
+function buildUrl(query,page=0){
  const u=new URL('https://shopee.com.br/search');
  u.searchParams.set('keyword',String(query).trim().slice(0,70));
- u.searchParams.set('page','0');u.searchParams.set('sortBy','sales');
+ u.searchParams.set('page',String(page));u.searchParams.set('sortBy','sales');
  return u.href;
 }
 async function deliver(tabId,data){
@@ -38,20 +38,40 @@ async function batch(managerTab,nonce,jobs){
  let tabId=null;
  try{
   for(let i=0;i<jobs.length;i++){
-   const query=jobs[i].query,url=buildUrl(query);
+   const query=jobs[i].query;
    await deliver(managerTab,{kind:'RA_CURVE_CHROME_PROGRESS',nonce,query,
     position:i+1,total:jobs.length});
-   if(tabId===null){
-    const tab=await chrome.tabs.create({url,active:true});
-    tabId=tab.id;
-   }else await chrome.tabs.update(tabId,{url});
-   await waitLoaded(tabId);
-   const data=await readPage(tabId);
+   // Conferir a primeira página; ampliar à segunda somente se ainda não
+   // houver três anúncios com vendas mensais explícitas visíveis.
+   const collected=new Map();
+   let failure='',pages=0,visibleCards=0;
+   for(let page=0;page<2;page++){
+    const url=buildUrl(query,page);
+    if(tabId===null){
+     const tab=await chrome.tabs.create({url,active:true});
+     tabId=tab.id;
+    }else await chrome.tabs.update(tabId,{url});
+    await waitLoaded(tabId);
+    const data=await readPage(tabId);
+    pages++;
+    if(!data.ok){failure=data.error||'Busca não confirmada.';break;}
+    visibleCards+=Number(data.visibleCards||data.offers?.length||0);
+    for(const offer of data.offers||[]){
+     const id=String(offer.shopId)+':'+String(offer.itemId);
+     if(!collected.has(id))collected.set(id,offer);
+    }
+    const monthly=[...collected.values()].filter(x=>x.monthlySold!==null).length;
+    if(monthly>=3||collected.size>=100)break;
+    await delay(900);
+   }
+   const offers=[...collected.values()].slice(0,100);
    await deliver(managerTab,{kind:'RA_CURVE_CHROME_RESULT',nonce,query,
-    position:i+1,total:jobs.length,offers:data.offers||[],
-    error:data.ok?'':data.error||'Busca não confirmada.',
-    stats:{visible:data.offers?.length||0,monthly:(data.offers||[]).filter(x=>x.monthlySold!==null).length}});
-   if(i+1<jobs.length)await delay(1800);
+    position:i+1,total:jobs.length,offers,
+    error:failure&&!offers.length?failure:'',
+    stats:{visible:offers.length,visibleCards,pages,
+     monthly:offers.filter(x=>x.monthlySold!==null).length}});
+   if(failure)break; // Nunca insistir em bloqueio/verificação da Shopee.
+   if(i+1<jobs.length)await delay(1600);
   }
  }catch(error){
   await deliver(managerTab,{kind:'RA_CURVE_CHROME_ERROR',nonce,
