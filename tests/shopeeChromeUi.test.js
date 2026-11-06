@@ -99,7 +99,8 @@ test('relatório da Ponte conta SKUs tentadas em consultas incompletas sem pular
  assert.match(ui,/attemptedSkuIds:new Set\(\)/);
  assert.match(ui,/const searched=s\.attemptedSkuIds\.size/);
  assert.match(ui,/for\(const sku of job\?\.skus\|\|\[\]\)s\.attemptedSkuIds\.add/);
- assert.match(ui,/if\(s\.blocked\)offset=0/);
+ assert.match(ui,/if\(s\.blocked\|\|s\.cancelRequested/);
+ assert.match(ui,/offset=s\.plan\.offset\+Math\.max/);
 });
 
 test('consulta incompleta não bloqueia outras SKUs e mensagem informa erro recuperável',()=>{
