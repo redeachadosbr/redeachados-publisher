@@ -40,7 +40,7 @@ const words=value=>[...new Set(normal(value)
  .replace(/\b(\d{1,5})\s+(kg|g|ml)\b/g,'$1$2')
  .split(' ').filter(x=>x.length>=3&&!ignored.has(x)))];
 const validId=value=>/^\d{1,18}$/.test(String(value??'').trim());
-const num=value=>{const n=Number(value);return Number.isFinite(n)&&n>=0?n:null};
+const num=value=>{if(value===null||value===undefined||value==='')return null;const n=Number(value);return Number.isFinite(n)&&n>=0?n:null};
 const available=raw=>!/(^|\s)(indisponivel|sem estoque|esgotado|inativo)(\s|$)/.test(normal(raw));
 const intSales=value=>{if(value===null||value===undefined||value==='')return null;const n=Number(value);return Number.isSafeInteger(n)&&n>=0?n:null};
 const isHttpImage=url=>{
@@ -380,7 +380,7 @@ export function matchCurveOffers({catalog=[],offers=[],costs=[],baseline=new Map
    (intSales(b.monthlySold)||0)-(intSales(a.monthlySold)||0)||
    (intSales(b.sales)||0)-(intSales(a.sales)||0));
   // A falta da MÉDIA não apaga o PREÇO individual já observado.
-  const anchor=ranked.find(o=>num(o.priceMin)!==null)??ranked[0]??null;
+  const anchor=ranked.find(o=>num(o.priceMin)>0)??ranked[0]??null;
   const same=anchor&&row.itemId===String(anchor.itemId)&&
    row.shopId===String(anchor.shopId);
   const anchorSales=anchor?intSales(anchor.sales):null;
@@ -395,7 +395,7 @@ export function matchCurveOffers({catalog=[],offers=[],costs=[],baseline=new Map
   return {...market,
    ...(anchor?{
     competitorName:String(anchor.productName).slice(0,200),
-    competitorPrice:num(anchor.priceMin),
+    competitorPrice:num(anchor.priceMin)>0?num(anchor.priceMin):null,
     competitorUrl:'https://shopee.com.br/product/'+anchor.shopId+'/'+anchor.itemId,
     shopId:String(anchor.shopId),itemId:String(anchor.itemId),
     salesDisplayed:coherentSales,sales30:coherentSales30,
