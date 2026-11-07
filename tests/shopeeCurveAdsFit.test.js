@@ -47,6 +47,21 @@ test('aceita exatamente +60% com margem mínima, mas rejeita quando precisa ultr
  assert.equal(overLimit.maxMarketPrice,160);
  assert.equal(overLimit.suggestedSalePrice,null);
 });
+test('teto de +60% é truncado aos centavos sem permitir arredondamento para cima',()=>{
+ const marketAverage=100.06;
+ const q=fit({cost:82.47,avgCompetitorPrice:marketAverage,competitorOfferCount:5});
+ assert.equal(q.maxMarketPrice,160.09);
+ assert.ok(q.maxMarketPrice<=marketAverage*1.6);
+ assert.equal(q.eligible,false);
+ assert.equal(q.status,'above_60_pct');
+});
+test('não aprova médias com contagens inválidas de anúncios comparáveis',()=>{
+ for(const count of [NaN,Infinity,'incerto',2.5,-1]){
+  const q=fit({cost:40,avgCompetitorPrice:100,competitorOfferCount:count});
+  assert.equal(q.eligible,false,String(count));
+  assert.equal(q.status,'missing_market');
+ }
+});
 test('estatística conta apenas rejeições de Curvas A/B confirmadas',()=>{
  const rows=[
   {curve:'A',verified30:true,adsCompetitiveness:{eligible:false,status:'cost_above_market'}},

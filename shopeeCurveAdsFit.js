@@ -28,9 +28,13 @@ export function assessCurveAdsCompetitiveness({
   NaN:Number(avgCompetitorPrice);
  if(inStock!==true)return reject('out_of_stock','SKU sem estoque WeDrop.');
  if(!positive(unit))return reject('missing_cost','Custo WeDrop não cadastrado.');
- if(!positive(avg)||Number(competitorOfferCount)<CURVE_ADS_POLICY.minPriceOffers)
+ const offerCount=Number(competitorOfferCount);
+ if(!positive(avg)||!Number.isSafeInteger(offerCount)||
+    offerCount<CURVE_ADS_POLICY.minPriceOffers)
   return reject('missing_market','Média não confirmada: exigir 2 a 10 anúncios do mesmo produto, mesmo que sejam da mesma loja.');
- const ceiling=round2(avg*(1+CURVE_ADS_POLICY.maxAboveMarketPct/100));
+ // Não arredondar o limite para cima: uma diferença de centavos pode
+ // fazer um anúncio ultrapassar a regra de +60% sem ser percebido.
+ const ceiling=Math.floor(avg*(1+CURVE_ADS_POLICY.maxAboveMarketPct/100)*100+1e-8)/100;
  if(unit>=avg)return reject('cost_above_market','Custo WeDrop acima ou igual à média de venda dos concorrentes.',
   {marketAverage:avg,maxMarketPrice:ceiling});
  const floor=minimumGrossForNetMargin(unit,settings,CURVE_ADS_POLICY.screeningMinMarginPct);
@@ -55,7 +59,7 @@ export function assessCurveAdsCompetitiveness({
   priceGapPct:round2((solution.finalPrice/avg-1)*100),
   estimatedAdsPct:CURVE_ADS_POLICY.screeningAdsPct,
   minimumNetMarginPct:CURVE_ADS_POLICY.screeningMinMarginPct,
-  marketPriceSampleCount:Number(competitorOfferCount)};
+  marketPriceSampleCount:offerCount};
 }
 export function curveAdsRejectionStats(rows=[]){
  const excluded=rows.filter(row=>row.verified30&&['A','B'].includes(row.curve)&&
