@@ -8509,6 +8509,54 @@ function financeRenderPendingOrders(report){
     body.append(tr);
   }
 }
+function financeEditOrderCost(entry,button){
+ const cell=button.parentElement;
+ if(cell.querySelector('form'))return;
+ const form=document.createElement('form');form.className='finance-cost-editor';
+ const fields=[
+  ['supplierCost','Custo efetivo da compra WeDrop (R$)',entry.totalCost??'','number'],
+  ['supplierCredit','Crédito ou reembolso da WeDrop (R$)',entry.supplierCredit??0,'number'],
+  ['externalExpense','Despesa externa do pedido (R$)',entry.externalExpense??0,'number'],
+  ['sourceReference','Referência da compra/nota WeDrop',entry.supplierReference||'','text']
+ ];
+ const inputs={};
+ for(const [key,caption,value,kind] of fields){
+  const label=document.createElement('label');label.textContent=caption;
+  const input=document.createElement('input');
+  input.type=kind;input.required=true;input.value=String(value);
+  if(kind==='number'){input.min='0';input.max='1000000';input.step='0.01';}
+  else{input.minLength=3;input.maxLength=140;input.placeholder='Nº do pedido ou nota do fornecedor';}
+  label.appendChild(input);form.appendChild(label);inputs[key]=input;
+ }
+ const actions=document.createElement('div');actions.className='finance-cost-actions';
+ const save=document.createElement('button');save.type='submit';save.textContent='Salvar e recalcular';
+ const cancel=document.createElement('button');cancel.type='button';cancel.className='secondary';
+ cancel.textContent='Cancelar';cancel.onclick=()=>{form.remove();button.disabled=false;};
+ actions.append(save,cancel);form.appendChild(actions);
+ const feedback=document.createElement('small');feedback.setAttribute('role','status');
+ form.appendChild(feedback);button.disabled=true;cell.appendChild(form);
+ form.addEventListener('submit',async event=>{
+  event.preventDefault();save.disabled=true;cancel.disabled=true;
+  feedback.textContent='Conferindo pedido e gravando custo...';
+  try{
+   const payload={orderSn:entry.orderSn,
+    supplierCost:inputs.supplierCost.value,
+    supplierCredit:inputs.supplierCredit.value,
+    externalExpense:inputs.externalExpense.value,
+    sourceReference:inputs.sourceReference.value};
+   const response=await fetch('/api/shopee/finance/order-cost',{method:'POST',
+    credentials:'same-origin',headers:{'Content-Type':'application/json'},
+    body:JSON.stringify(payload)});
+   const data=await response.json();
+   if(!response.ok||!data.ok)throw Error(data.error||'Não foi possível salvar a compra.');
+   feedback.textContent='Registro salvo. Atualizando resultados de todos os pedidos...';
+   $('#shopeeFinanceLoad').click();
+  }catch(error){
+   feedback.textContent=String(error.message||error);
+   save.disabled=false;cancel.disabled=false;
+  }
+ });
+}
 function financePaidLedgerRender(report){
   const ledger=report?.paidProfit||null;
   const status=$('#financePaidCoverage');
@@ -8554,6 +8602,18 @@ function financePaidLedgerRender(report){
     (ledger.complete?'':'≈ ')+
     Number(marginToDisplay).toLocaleString('pt-BR',{maximumFractionDigits:2})+'%':'—');
   set('financePaidCount',known?ledger.paidOrders+' pedidos pagos':'—');
+  set('financeFinalizedNet',known&&ledger.finalizedResultKnown!==null&&
+    ledger.finalizedResultKnown!==undefined?
+    '≈ '+wdMoney(ledger.finalizedResultKnown):'—');
+  set('financeFinalizedMargin',known&&ledger.finalizedMarginKnown!==null&&
+    ledger.finalizedMarginKnown!==undefined?
+    '≈ '+Number(ledger.finalizedMarginKnown).toLocaleString('pt-BR')+'%':'—');
+  set('financeFinalizedNetHelp',known?
+    (ledger.finalizedOrdersAnalyzed||0)+' de '+ledger.closedOrders+
+    ' finalizados com cálculo após Ads, com rateio estimado.':'Aguardando consulta');
+  set('financeActualCostCount',known?
+    (ledger.rows||[]).filter(x=>x.costSource==='wedrop_order_recorded').length+
+    ' de '+ledger.paidOrders:'—');
   if(status)status.textContent=known?
     ledger.paidOrders+' vendas pagas: '+ledger.closedOrders+' com repasse concluído, '+
     ledger.projectedOrders+' com repasse previsto/ajustes. '+
@@ -8580,7 +8640,7 @@ function financePaidLedgerRender(report){
     const title=entry.items?.length?entry.items.map(item=>
       (item.name||'Produto')+' ('+(item.sku||'SKU indisponível')+') × '+(item.qty||'?'))
       .join(' · '):(entry.skuList||[]).join(' · ')||'SKU não informado';
-    const result=entry.afterAds!==null?wdMoney(entry.afterAds):'— (sem comprovação)';
+    const result=entry.afterAds!==null?'≈ '+wdMoney(entry.afterAds):'— (sem comprovação)';
     const risk=entry.risk==='loss'?'PREJUÍZO':entry.risk==='low_margin'?
       'MARGEM BAIXA':entry.risk==='positive'?'Margem positiva':'Dados insuficientes';
     const note=entry.risk==='loss'&&entry.breakEvenPrice!==null?
@@ -8604,6 +8664,18 @@ function financePaidLedgerRender(report){
     ];
     for(const [i,v] of values.entries()){
       const td=document.createElement('td');td.textContent=v;
+      if(i===4){
+        td.textContent=amount(entry.totalCost)+
+          (entry.costSource==='wedrop_order_recorded'?
+           ' · registrado por compra'+(entry.supplierReference?' ('+entry.supplierReference+')':''):
+           entry.totalCost!==null?' · estimativa do catálogo':' · não encontrado');
+        if(Number(entry.supplierCredit)>0)td.textContent+=' · crédito '+wdMoney(entry.supplierCredit);
+        if(Number(entry.externalExpense)>0)td.textContent+=' · extra '+wdMoney(entry.externalExpense);
+        const edit=document.createElement('button');edit.type='button';
+        edit.className='secondary finance-cost-button';edit.textContent='Conferir custo';
+        edit.setAttribute('aria-label','Conferir custo WeDrop do pedido '+entry.orderSn);
+        edit.onclick=()=>financeEditOrderCost(entry,edit);td.appendChild(edit);
+      }
       if(i===7)td.className=entry.risk==='loss'?'finance-paid-number-loss':'finance-paid-number';
       if(i===8&&entry.risk==='loss')td.className='finance-paid-number-loss';
       tr.appendChild(td);
