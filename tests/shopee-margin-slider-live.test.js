@@ -55,7 +55,7 @@ test('SKU PL001.U02: 3%, 12% e 24% produzem preço e desconto diferentes',()=>{
 });
 test('a tela não oculta o desvio quando terminações 0/9 impedem atingir exatamente a meta',()=>{
  assert.match(app,/real · meta/);
- assert.match(app,/O cupom de /);
+ assert.match(app,/cupom condicional de /);
  const q=quoteShopeeOptimizationPrice({unitCost:10.99,
    settings:{...defaults,marginPct:12},marginOverride:true});
  if(q.netMarginPct>12.3)assert.match(q.notice,/margem escolhida é um mínimo/i);
