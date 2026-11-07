@@ -96,7 +96,8 @@
   return null;
  }
  function amount(text){
-  const m=text.match(/R\$\s*(\d[\d.\s]*(?:,\s*\d{2})?)/i);
+  const m=String(text).replace(/(\d)\s*,\s*(\d{2})(?!\d)/g,(_full,integer,cents)=>
+   integer+','+cents).match(/R\$\s*(\d[\d.\s]*(?:,\s*\d{2})?)/i);
   if(!m)return null;
   const n=Number(m[1].replace(/\s/g,'').replace(/\./g,'').replace(',','.'));
   return Number.isFinite(n)&&n>0&&n<100000?Number(n.toFixed(2)):null;
@@ -104,10 +105,20 @@
  function fromCard(card,link,identity,rank){
   const content=clean(card.innerText||card.textContent||'').slice(0,1300);
   if(!content)return null;
-  const nameNode=card.querySelector('[data-sqe="name"],h3,[class*="line-clamp"],[class*="truncate"]');
   const image=card.querySelector('img[alt]');
-  const productName=clean(nameNode?.innerText||nameNode?.textContent||image?.alt||
-    link.getAttribute('title')||link.getAttribute('aria-label')||content.split('R$')[0]).slice(0,210);
+  // Priorizar o título do anúncio, não selos "Indicado" ou "Vendido/Mês".
+  const titleNodes=[
+   link.querySelector?.('[data-sqe="name"]'),card.querySelector('[data-sqe="name"]'),
+   link.querySelector?.('h3'),card.querySelector('h3'),
+   card.querySelector('[class*="line-clamp"]'),card.querySelector('[class*="truncate"]')
+  ];
+  const candidates=[...titleNodes.map(node=>clean(node?.innerText||node?.textContent||'')),
+   clean(image?.alt||''),clean(link.getAttribute('title')||''),
+   clean(link.getAttribute('aria-label')||''),
+   clean(link.innerText||link.textContent||''),clean(content.split('R$')[0])];
+  const productName=(candidates.find(value=>value.length>=6&&
+   !/^(?:indicado|patrocinado|vendid[oa]s?\s*\/\s*m[eê]s|\d+[.,]?\d*\s*vendid[oa])/i.test(value)&&
+   !/R\$\s*\d/.test(value))||'').slice(0,210);
   if(productName.length<6)return null;
   const monthly=cardMonthly(card);
   const monthlyLabelVisible=monthly.monthlyLabelVisible;
@@ -158,13 +169,14 @@
    if(clean(card.innerText||card.textContent||'').length>=6)seenCards.add(id);
    const product=fromCard(card,link,identity,found.length+1);
    if(product){seen.add(id);found.push(product);}
-   if(found.length>=50)break;
+   if(found.length>=100)break;
   }
   // Diagnóstico não comprova vendas sem vínculo ao anúncio.
   const labelInPage=Math.max(
    (body.match(/(?:vendid[oa]s?|vendas)\s*(?:\/|por|no|nos|em)\s*m[eê]s/gi)||[]).length,
    found.filter(x=>x.monthlyLabelVisible).length);
   return {ok:true,offers:found,visibleCards:seenCards.size,
+   pricedCards:found.filter(x=>x.priceMin!==null).length,
    saleCards:found.length,monthlyCards:found.filter(x=>x.monthlySold!==null).length,
    monthlyLabelsVisible:labelInPage,
    monthlyLabelsInCards:found.filter(x=>x.monthlyLabelVisible).length};

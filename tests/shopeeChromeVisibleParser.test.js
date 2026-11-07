@@ -206,3 +206,15 @@ test('aria-hidden não esconde visualmente um contador mensal renderizado',()=>{
  assert.equal(extractFixture([card]).offers[0].monthlySold,866);
 });
 
+
+test('preço da Shopee separado em spans mantém centavos e título real do cartão',()=>{
+ const card=cardFixture(0,'4mil+',{omitFooter:false});
+ card.childNodes[1].childNodes[0].textContent='R$ 16 , 90';
+ const result=extractFixture([card]);
+ assert.equal(result.offers.length,1);
+ assert.equal(result.offers[0].priceMin,16.90);
+ assert.match(result.offers[0].productName,/Dispenser Lavanderia/);
+});
+test('coletor de cartões não encerra a busca em 50 anúncios',()=>{
+ assert.match(source,/if\(found.length>=100\)break/);
+});

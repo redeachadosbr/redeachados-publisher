@@ -629,3 +629,33 @@ test('média de mercado percorre amostras de 2, 5 e 10 balanças comparáveis',(
  }
 });
 
+
+test('balança de cozinha 10kg com dez anúncios não pode ficar com preço pendente por ausência de amostra',()=>{
+ const catalog=[{supplier_sku:'PL001.U02',product_data:{
+  name:'Balança Digital de Cozinha 10kg',category:'Cozinha',rawAvailability:'Disponível'}}];
+ const names=[
+  'Balança Digital Alta Precisão até 10kg Cozinha SF-400',
+  'Balança Digital Precisão Eletrônica 10kg para Cozinha',
+  'Balança Rosa De Cozinha Digital Alta Precisão 10kg',
+  'Balança Digital de Cozinha Inox Alta Precisão 10kg',
+  'Balança de Cozinha Digital Alta Precisão Compacta 10kg',
+  'Balança de Cozinha Digital 10kg Com Pilhas',
+  'Balança de Cozinha Digital Inox 10Kg',
+  'Balança Digital de Cozinha de 1g a 10Kg Alta Precisão',
+  'Balança Digital Cozinha 10Kg Precisão Balança',
+  'Balança Digital Cozinha 10Kg Precisão Alta'
+ ];
+ const prices=[16.90,15.85,18.90,24.99,16.90,15.77,24.95,16.95,16.38,16.99];
+ const offers=names.map((productName,i)=>({
+  itemId:String(50000+i),shopId:String(7000+i),productName,
+  priceMin:prices[i],priceMax:prices[i],monthlySold:4000-i*300,
+  sales:4000-i*300,dataSource:'shopee-featured-chrome'
+ }));
+ const rows=matchCurveOffers({catalog,offers,
+  costs:[{supplier_sku:'PL001.U02',unit_cost:10.99}]});
+ assert.equal(rows.length,1);
+ assert.ok(rows[0].marketCandidateCount>=8,JSON.stringify(rows[0].marketCandidateCount));
+ assert.ok(rows[0].competitorOfferCount>=5,JSON.stringify(rows[0].priceEvidence));
+ assert.ok(rows[0].avgCompetitorPrice>15&&rows[0].avgCompetitorPrice<20);
+ assert.ok(rows[0].monthlyCompetitorCount>=2);
+});

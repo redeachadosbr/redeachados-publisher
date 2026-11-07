@@ -108,3 +108,31 @@ test('releitura preserva diagnóstico mensal visto antes do último lote',async(
  assert.equal(result.offers[0].monthlySold,null);
 });
 
+
+test('recupera 10 anúncios da pesquisa de balança já aberta sem navegar nem rolar',async()=>{
+ const offers=Array.from({length:10},(_,i)=>({
+  shopId:String(700+i),itemId:String(5000+i),
+  productName:'Balança Digital de Cozinha 10kg Alta Precisão',
+  priceMin:[16.90,15.85,18.90,24.99,16.90,15.77,24.95,16.95,16.38,16.99][i],
+  monthlySold:i<2?4000-i*1000:null
+ }));
+ const sends=[],queries=[];
+ const chrome={runtime:{onInstalled:{addListener(){}},onStartup:{addListener(){}},
+  onMessage:{addListener(){}}},tabs:{
+   onActivated:{addListener(){}},onUpdated:{addListener(){}},onRemoved:{addListener(){}},
+   query:async filters=>{queries.push(filters);return [
+    {id:91,url:'https://shopee.com.br/search?keyword=balan%C3%A7a%20digital%20de%20cozinha%2010kg&page=0&sortBy=sales'},
+    {id:92,url:'https://shopee.com.br/search?keyword=outra%20categoria'}];},
+   sendMessage:async(id,msg)=>{sends.push({id,msg});return {ok:true,offers,monthlyLabelsVisible:2};}
+  },windows:{onRemoved:{addListener(){}}}};
+ const local={chrome,console,URL,globalThis:null};
+ local.globalThis=local;vm.runInNewContext(source,local);
+ const result=await local.recoverVisibleSearchAlreadyOpen('balanca digital cozinha 10kg',-1);
+ assert.equal(result.offers.length,10);
+ assert.equal(result.offers.filter(o=>o.priceMin!==null).length,10);
+ assert.equal(result.offers.filter(o=>o.monthlySold!==null).length,2);
+ assert.equal(sends.length,1);
+ assert.equal(sends[0].id,91);
+ assert.equal(sends[0].msg.deep,false);
+ assert.equal(queries.length,1);
+});

@@ -1,7 +1,14 @@
-# Ponte Chrome Rede Achados BR — 1.2.8
+# Ponte Chrome Rede Achados BR — 1.2.9
 
 Atualização obrigatória: baixe o ZIP no menu Curvas A/B, extraia e carregue
 novamente a pasta redeachados-shopee-chrome em chrome://extensions.
+
+Versão 1.2.9: reforça a leitura do título, captura até 100 anúncios
+distintos por consulta e aproveita pesquisas Shopee exatas já abertas
+sem abrir, rolar ou navegar a guia do usuário. Depois, completa a amostra
+pela janela automática quando necessário. O Manager mostra quantos anúncios
+foram coletados, quantos possuem preço e quantos se ligaram à SKU.
+Atualizar a pasta e clicar em Recarregar em chrome://extensions.
 
 Versão 1.2.8: lê quantidade e Vendido/Mês nos campos renderizados de cada
 cartão, inclusive quando innerText omite o rodapé ou junta nota e vendas.

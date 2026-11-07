@@ -165,7 +165,13 @@
    issues.push('Preço de mercado: '+Number(row.competitorOfferCount||0)+
     '/2 anúncios validados; '+Number(row.marketCandidateCount||0)+
     ' anúncio(s) com título/modelo relacionado identificados nesta SKU. '+
-    (row.priceEvidence||'Amostra de preço insuficiente.'));
+    (Number(row.chromeCapturedOffers)>0?
+      'Ponte recebeu '+row.chromeCapturedOffers+' anúncios distintos ('+
+      Number(row.chromeCapturedWithPrice||0)+' com preço); apenas '+
+      Number(row.marketCandidateCount||0)+' relacionado(s) a esta SKU. ':
+      '')+
+     'Sem média significa captura/vínculo insuficiente, NÃO ausência de preços na Shopee. '+
+     (row.priceEvidence||'Amostra de preço insuficiente.'));
   if(!row.inStock)issues.push('Estoque WeDrop não disponível.');
   if(!Number.isFinite(Number(row.cost))||Number(row.cost)<=0)
    issues.push('Custo WeDrop não cadastrado.');

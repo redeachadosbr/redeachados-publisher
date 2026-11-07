@@ -177,6 +177,37 @@ async function readPage(tabId){
  return {ok:false,error:'Shopee não apresentou cartões verificáveis nesta pesquisa. '+
   'Não foi possível comprovar vendas mensais; nenhuma venda foi estimada.',offers:[]};
 }
+// Uma pesquisa do mesmo produto já aberta pode fornecer preços visíveis
+// sem navegar, rolar ou mudar a guia do usuário.
+const normalizedQuery=text=>String(text||'').normalize('NFD')
+ .replace(/[\u0300-\u036f]/g,'').toLowerCase().replace(/[^a-z0-9]+/g,' ')
+ .split(/\s+/).filter(x=>x&&!['de','do','da','dos','das','e','para','com'].includes(x)).join(' ');
+async function recoverVisibleSearchAlreadyOpen(query,excludeTabId){
+ let tabs=[];
+ try{tabs=await chrome.tabs.query({url:[
+  'https://shopee.com.br/search*','https://www.shopee.com.br/search*']});}
+ catch{return null;}
+ const merged=new Map();let labels=0,checked=0;
+ for(const tab of tabs.slice(0,10)){
+  if(!Number.isInteger(tab.id)||tab.id===excludeTabId||!tab.url)continue;
+  let url;
+  try{url=new URL(tab.url);}catch{continue;}
+  if(!/^https:\/\/(?:www\.)?shopee\.com\.br$/.test(url.origin)||
+     url.pathname!=='/search'||
+     normalizedQuery(url.searchParams.get('keyword'))!==normalizedQuery(query))continue;
+  let read;
+  try{read=await chrome.tabs.sendMessage(tab.id,{kind:'RA_CURVE_READ_VISIBLE',deep:false});}
+  catch{continue;}
+  if(!read?.ok||!Array.isArray(read.offers))continue;
+  checked++;
+  labels+=Number(read.monthlyLabelsVisible||0);
+  for(const offer of read.offers){
+   const key=String(offer.shopId)+':'+String(offer.itemId);
+   merged.set(key,mergeEvidence(merged.get(key),offer));
+  }
+ }
+ return merged.size?{offers:[...merged.values()],labels,checked}:null;
+}
 async function batch(managerTab,nonce,jobs){
  try{
   for(let i=0;i<jobs.length;i++){
@@ -190,11 +221,27 @@ async function batch(managerTab,nonce,jobs){
    // ainda estiver incompleta. O critério usa anúncios reais, nunca estimativas.
    const collected=new Map();
    let failure='',hardStop=false,pages=0,visibleCards=0,labelsSeen=0,labelsInCards=0;
+   const openTab=await recoverVisibleSearchAlreadyOpen(query,(await currentSession())?.tabId);
+   if(openTab){
+    for(const offer of openTab.offers){
+     const key=String(offer.shopId)+':'+String(offer.itemId);
+     collected.set(key,mergeEvidence(collected.get(key),offer));
+    }
+    labelsSeen+=openTab.labels;
+    visibleCards+=openTab.offers.length;
+    await stage(managerTab,nonce,'lendo',
+     'Pesquisa já aberta: '+openTab.offers.length+' anúncios recuperados sem alterar sua guia.',
+     i+1,jobs.length,{visible:openTab.offers.length,
+      monthly:openTab.offers.filter(x=>x.monthlySold!==null).length});
+   }
    // A Shopee pode ter diversas páginas. 10 preços comparáveis são o alvo
    // da amostra; 2 não encerram a investigação, e anúncios de outra versão
    // não contam para a meta.
    for(let page=0;page<9;page++){
     if(stopRequested)break;
+    const existing=[...collected.values()].filter(item=>
+     relatedToQuery(query,item)&&item.priceMin!==null);
+    if(existing.length>=10&&existing.filter(item=>item.monthlySold!==null).length>=2)break;
     const url=buildUrl(query,page);
     const tab=await researchTab(managerTab,nonce,url);
     await stage(managerTab,nonce,'carregando',
@@ -347,7 +394,7 @@ async function batch(managerTab,nonce,jobs){
     stats:{visible:offers.length,visibleCards,pages,
      monthly:monthlyCount,monthlyLabelsVisible:labelsSeen,
      monthlyLabelsInCards:labelsInCards,sourceStatus,
-     rawInspected:collected.size,
+     rawInspected:collected.size,openTabRecovered:openTab?.offers.length||0,
      relevantWithPrice:offers.filter(o=>relatedToQuery(query,o)&&o.priceMin!==null).length}});
    if(hardStop)break; // CAPTCHA/verificação explícita deve parar.
    if(incomplete)await stage(managerTab,nonce,'continuando',

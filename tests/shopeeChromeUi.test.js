@@ -27,12 +27,12 @@ test('pesquisa continua até a quantidade solicitada, sem limite fixo de 60 busc
  assert.match(ui,/mínimo 2 lojas/);
 });
 
-test('exige a extensão Shopee Chrome 1.2.8 para corrigir a leitura mensal',()=>{
+test('exige a extensão Shopee Chrome 1.2.9 para corrigir a leitura mensal',()=>{
  const code=readFileSync(new URL('../public/curvas-chrome.js',import.meta.url),'utf8');
  const manifest=JSON.parse(readFileSync(new URL('../chrome-extension-shopee/manifest.json',import.meta.url),'utf8'));
- assert.equal(manifest.version,'1.2.8');
+ assert.equal(manifest.version,'1.2.9');
  assert.match(code,/parts\[1\]>2/);
- assert.match(code,/Number\(parts\[2\]\|\|0\)>=8/);
+ assert.match(code,/Number\(parts\[2\]\|\|0\)>=9/);
 });
 
 test('filtro único categoria, quantidade e nome só inicia pesquisa Chrome',()=>{

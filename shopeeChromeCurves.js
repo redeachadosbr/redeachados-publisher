@@ -185,7 +185,10 @@ export async function importChromeOffers(shopId,{
   offers:[...state.offers.values()],costs:state.costs,ownShopId:shopId});
  // Não contabilizar SKU ainda não pesquisada que apenas coincidiu com
  // um anúncio pesquisado para outra SKU da mesma categoria.
- const rows=confirmChromeMonthlySamples(allMatches.filter(row=>state.scanned.has(row.sku)));
+ const captured=[...state.offers.values()];
+  const rows=confirmChromeMonthlySamples(allMatches.filter(row=>state.scanned.has(row.sku)))
+   .map(row=>({...row,chromeCapturedOffers:captured.length,
+    chromeCapturedWithPrice:captured.filter(o=>Number(o.priceMin)>0).length}));
  const qualified=qualifyChromeMatches(rows);
  const picked=pickCurveResults(qualified,{curve,limit,verifiedOnly:true});
  const {pending,discarded,discardedReasons}=splitChromeAdsCandidates(rows,qualified);
@@ -214,6 +217,12 @@ export async function importChromeOffers(shopId,{
    query:search,imported:normalized.length,
    importedWithPrice:normalized.filter(o=>o.priceMin!==null).length,
    inspectedRawOffers:offers.length,
+    skuPriceDiagnostics:task.skus.map(sku=>{
+     const row=rows.find(x=>x.sku===sku);
+     return {sku,candidates:row?.marketCandidateCount||0,
+      validated:row?.competitorOfferCount||0,
+      average:row?.avgCompetitorPrice??null};
+    }).slice(0,20),
    monthlyOffers:normalized.filter(x=>x.monthlySold!==null).length+recoveredMonthly,
    recoveredMonthly,recoverySource,recoveryReason,
    skuCount:task.skus.length,searchedSkus:task.skus,
