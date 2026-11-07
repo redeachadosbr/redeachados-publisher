@@ -6,9 +6,28 @@ import {categoryMatches} from './shopeeKitBuilder.js';
 import {curveSkuSearchPlan,officialFeaturedSearchUrl,matchCurveOffers,pickCurveResults} from './shopeeCurveAB.js';
 import {curveAdsRejectionStats,CURVE_ADS_POLICY} from './shopeeCurveAdsFit.js';
 import {searchFeaturedPublic} from './shopeeFeaturedSearch.js';
+import {lookupShopeeCompetitors,marketResearchConfigured} from './shopeeMarketResearch.js';
 const fold=s=>String(s||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase().replace(/\s+/g,' ').trim();
 const validId=v=>/^\d{1,18}$/.test(String(v??''));
 const amount=v=>{if(v===null||v===undefined||v==='')return null;const n=Number(v);return Number.isSafeInteger(n)&&n>=0?n:null;};
+// Evidências complementares só entram se tiverem ID, título e preço real.
+// Nunca sobrepor dados capturados pela Ponte Chrome para o mesmo anúncio.
+export function mergeCurvePriceSamples(store,samples=[]){
+ let count=0;
+ for(const item of samples){
+  const shopId=String(item?.shopId??''),itemId=String(item?.itemId??'');
+  const title=String(item?.title||'').trim().slice(0,220);
+  const price=Number(item?.price);
+  if(!validId(shopId)||!validId(itemId)||title.length<6||
+   !Number.isFinite(price)||price<=0||price>=100000)continue;
+  const key=shopId+':'+itemId,existing=store.get(key);
+  if(existing&&Number(existing.priceMin)>0)continue;
+  store.set(key,{...existing,shopId,itemId,productName:title,
+   priceMin:price,priceMax:price,dataSource:existing?.dataSource||'shopee-affiliate-recovery'});
+  count++;
+ }
+ return count;
+}
 const stateCache=new Map();
 const TTL=90*60*1000;
 const KEY=(shopId,category,keyword)=>String(shopId)+'|'+fold(category)+'|'+fold(keyword);
@@ -26,7 +45,7 @@ async function stateFor(shopId,input){
     const subset=catalog.filter(row=>categoryMatches(String(row.product_data?.category||''),cat)&&
      (!term||fold(String(row.product_data?.name||'')).includes(fold(term))));
     return {catalog:subset,costs,plan:curveSkuSearchPlan(subset,{keyword:term}),
-     offers:new Map(),scanned:new Set(),queries:0,lastAt:null};
+     offers:new Map(),scanned:new Set(),marketAttempted:new Set(),queries:0,lastAt:null};
    });
   entry={createdAt:Date.now(),promise};
   stateCache.set(key,entry);
@@ -41,7 +60,7 @@ export async function chromeCurvePlan(shopId,{category='Todos',keyword='',offset
  if(offset===0){
   // Nova pesquisa deve começar com os dados atuais, nunca misturar
   // preços e volumes de uma tentativa anterior da mesma categoria.
-  state.offers.clear();state.scanned.clear();
+  state.offers.clear();state.scanned.clear();state.marketAttempted.clear();
   state.queries=0;state.lastAt=null;state.featuredUnavailableUntil=0;
  }
  const jobs=state.plan.slice(offset,offset+limit).map(job=>({
@@ -178,6 +197,36 @@ export async function importChromeOffers(shopId,{
    monthlyEvidence:offer.monthlySold!==null?offer.monthlyEvidence:prev.monthlyEvidence,
    sales:offer.sales??prev.sales}:offer);
  }
+ // Com 1/2 anúncio relacionado, recuperar ofertas com preços verificáveis
+ // da API de Afiliados, quando configurada. Vendas/mês continuam independentes.
+ const initialRows=matchCurveOffers({catalog:state.catalog,
+  offers:[...state.offers.values()],costs:state.costs,ownShopId:shopId});
+ const priceRecovery=[];
+ if(marketResearchConfigured()){
+  const missing=task.skus.filter(sku=>{
+   const row=initialRows.find(x=>x.sku===sku);
+   return row&&row.avgCompetitorPrice===null&&
+    Number(row.marketCandidateCount||0)<2&&!state.marketAttempted.has(sku);
+  }).slice(0,2);
+  for(const sku of missing)state.marketAttempted.add(sku);
+  await Promise.all(missing.map(async sku=>{
+   const record=state.catalog.find(x=>String(x.supplier_sku)===sku);
+   if(!record)return;
+   try{
+    const sample=await lookupShopeeCompetitors({
+     title:String(record.product_data?.name||''),
+     ownShopId:shopId,ownItemId:'0',curveRecovery:true});
+    const added=mergeCurvePriceSamples(state.offers,sample.sample);
+    priceRecovery.push({sku,source:'shopee-affiliate',added,
+     verified:sample.verified===true,status:sample.status,
+     searchedQueries:sample.searchedQueries?.length||0,
+     referenceCount:sample.count||0});
+   }catch(error){
+    priceRecovery.push({sku,source:'shopee-affiliate',added:0,
+     status:'error',reason:String(error?.message||error).slice(0,130)});
+   }
+  }));
+ }
  for(const sku of task.skus)state.scanned.add(sku);
  state.queries++;
  state.lastAt=new Date().toISOString();
@@ -216,6 +265,7 @@ export async function importChromeOffers(shopId,{
   chromeImport:{
    query:search,imported:normalized.length,
    importedWithPrice:normalized.filter(o=>o.priceMin!==null).length,
+    priceRecovery,affiliatePricesAdded:priceRecovery.reduce((sum,row)=>sum+row.added,0),
    inspectedRawOffers:offers.length,
     skuPriceDiagnostics:task.skus.map(sku=>{
      const row=rows.find(x=>x.sku===sku);

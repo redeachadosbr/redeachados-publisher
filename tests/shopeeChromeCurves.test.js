@@ -1,7 +1,29 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
-import {normalizeVisibleOffers,verifiedMonthlyEvidence,qualifyChromeMatches,confirmChromeMonthlySamples,splitChromeAdsCandidates} from '../shopeeChromeCurves.js';
+import {normalizeVisibleOffers,verifiedMonthlyEvidence,qualifyChromeMatches,confirmChromeMonthlySamples,splitChromeAdsCandidates,mergeCurvePriceSamples} from '../shopeeChromeCurves.js';
+import {matchCurveOffers} from '../shopeeCurveAB.js';
+test('média é recuperada só com ofertas reais e modelos equivalentes',()=>{
+ const store=new Map([['100:101',{shopId:'100',itemId:'101',
+  productName:'Balança Digital Cozinha 10kg',priceMin:47.99,priceMax:47.99,
+  sales:146,monthlySold:null,dataSource:'shopee-featured-chrome'}]]);
+ const added=mergeCurvePriceSamples(store,[
+  {shopId:'201',itemId:'301',title:'Balança Digital Cozinha 10kg Alta Precisão',price:16.90},
+  {shopId:'202',itemId:'302',title:'Balança Eletrônica Precisão 10 KG',price:17.90},
+  {shopId:'203',itemId:'303',title:'Balança Digital Corporal 10kg',price:5},
+  {shopId:'201',itemId:'301',title:'Balança Digital Cozinha 10kg',price:16.90}
+ ]);
+ assert.equal(added,3);
+ const rows=matchCurveOffers({catalog:[{supplier_sku:'PL001.U02',product_data:{
+  name:'Balança Digital de Cozinha 10kg',rawAvailability:'Disponível'}}],
+  offers:[...store.values()]});
+ assert.equal(rows.length,1);
+ assert.equal(rows[0].marketCandidateCount,3);
+ assert.equal(rows[0].competitorOfferCount,2);
+ assert.equal(rows[0].avgCompetitorPrice,17.4);
+ assert.ok(rows[0].competitorOffers.every(offer=>offer.price<30));
+ assert.equal(rows[0].verified30,false);
+});
 test('somente texto explícito de período permite vendas mensais',()=>{
  assert.equal(verifiedMonthlyEvidence('950 vendidos/mês'),true);
  assert.equal(verifiedMonthlyEvidence('Vendido no mês: 950'),true);
