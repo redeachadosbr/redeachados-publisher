@@ -13,6 +13,7 @@ import {loadShopeeAdsOverview,brazilAdsToday} from './adsReport.js';
 import {adsSevenDayWindows,buildAdsMonitor} from './shopeeAdsInsights.js';
 import {loadShopeeFinance,MAX_FINANCE_ORDERS} from './shopeeFinance.js';
 import {buildPaidOrderProfitLedger} from './shopeeFinancePaid.js';
+import {saveFinanceOrderCost,normalizeFinanceOrderCostInput} from './shopeeFinanceOrderCosts.js';
 import {installFinanceBridge,installWalletBridge,installAdsFinanceBridge} from './financeBridge.js';
 import {buildAdsFinanceSnapshot} from './financeAdsBridge.js';
 import {readShopeeAdsAccount} from './shopeeAdsAccount.js';
@@ -5665,6 +5666,26 @@ installWalletBridge(app,async()=>{
 
 // Financeiro Shopee baseado nos pedidos concluídos e no repasse efetivo da API Payment.
 // Retorna somente campos necessários, sem nome, telefone ou endereço de compradores.
+// Custo efetivo de compra, crédito do fornecedor e despesas específicas por
+// pedido. Nunca altera preço/anúncio. Confere que o pedido pertence à loja.
+app.post('/api/shopee/finance/order-cost',mustLogin,requireWeDropAdmin,async(req,res)=>{
+ res.setHeader('Cache-Control','no-store');
+ if(!verifiedSameOrigin(req))return res.status(403).json({ok:false,error:'Origem não autorizada.'});
+ try{
+  const input=normalizeFinanceOrderCostInput(req.body);
+  const {auth,cfg}=await getValidAuth(req);
+  const check=await callShopeeShopApi(cfg,{path:'/api/v2/order/get_order_detail',
+   accessToken:auth.accessToken,shopId:auth.shopId,
+   query:{order_sn_list:input.orderSn,response_optional_fields:'pay_time'}});
+  if(!Array.isArray(check?.response?.order_list)||!check.response.order_list.some(
+    x=>String(x.order_sn)===input.orderSn))
+   return res.status(404).json({ok:false,error:'Pedido não encontrado na Shopee autenticada; custo não gravado.'});
+  const saved=await saveFinanceOrderCost(auth.shopId,input);
+  res.json({ok:true,saved,source:'declarado com referência de compra; não verificado automaticamente pela WeDrop'});
+ }catch(error){
+  res.status(400).json({ok:false,error:String(error.message||error).slice(0,250)});
+ }
+});
 app.get('/api/shopee/finance/orders',mustLogin,requireWeDropAdmin,async(req,res)=>{
   res.setHeader('Cache-Control','no-store');
   try{
