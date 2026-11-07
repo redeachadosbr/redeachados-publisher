@@ -60,7 +60,7 @@ test('prejuízo aparece negativo após TODOS os Ads; lucro fiscal não é invent
  assert.match(js,/const result=valid\?Math\.round\(\(total-Number\(sweep\.spendTotal\)\)\*100\)\/100:null/);
  assert.match(js,/net\.classList\.toggle\('negative',result!==null&&result<0\)/);
  assert.match(js,/net\.textContent=result===null\?'—':wdMoney\(result\)/);
- assert.match(html,/Repasses conciliados − Ads do período/);
+ assert.match(html,/Resultado após Ads · loja\*/);
  assert.match(html,/Impostos e despesas externas pendentes/);
  assert.match(js,/financeTaxNetKpi'\)\.textContent='Em apuração'/);
 });

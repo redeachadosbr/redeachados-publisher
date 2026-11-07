@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
 import {
- finiteMoney,financePeriod,normalizeEscrowOrder,summarizeFinance,loadShopeeFinance
+ finiteMoney,financePeriod,normalizeEscrowOrder,summarizeFinance,loadShopeeFinance,summarizeFinanceOrderPipeline
 } from '../shopeeFinance.js';
 
 const base={order_sn:'261014TEST1',order_status:'COMPLETED'};
