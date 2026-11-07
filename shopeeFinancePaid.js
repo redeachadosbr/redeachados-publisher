@@ -98,6 +98,8 @@ export function buildPaidOrderProfitLedger(finance,adsSweep,{minMargin=lowMargin
  const projectedOperatingProfit=numbersComplete?subtotal('afterAds'):null;
  const allGross=rows.length>0&&rows.every(x=>x.grossProductSales!==null)?
    subtotal('grossProductSales'):null;
+ const allBuyer=rows.length>0&&rows.every(x=>x.buyerTotal!==null)?
+   subtotal('buyerTotal'):null;
  return {
   definition:'Resultado operacional dos pedidos pagos = repasse ajustado (ou previsto) - custo WeDrop + créditos do fornecedor - despesas externas registradas - Ads rateados; tributos não conciliados não incluídos.',
   basis:'Pedidos pagos por criação no período; Ads do mesmo período de calendário. Não há correspondência financeira individual por clique.',
@@ -106,6 +108,8 @@ export function buildPaidOrderProfitLedger(finance,adsSweep,{minMargin=lowMargin
   paidGrossKnown:subtotal('grossProductSales'),
   paidGross:allGross,
   paidGrossCoverage:rows.filter(x=>x.grossProductSales!==null).length,
+  paidBuyerTotal:allBuyer,paidBuyerKnown:subtotal('buyerTotal'),
+  paidBuyerCoverage:rows.filter(x=>x.buyerTotal!==null).length,
   escrowKnown:subtotal('payout'),escrowCoverage:rows.filter(x=>x.payout!==null).length,
   costKnown:subtotal('totalCost'),costCoverage:rows.filter(x=>x.totalCost!==null).length,
   adsTotal:spend,adsAllocated:shares?subtotal('adsAllocated'):null,
