@@ -9444,9 +9444,12 @@ function shPriceRender(q){
     shPricePercent(q.netMarginPct)+' real · meta '+shPricePercent(q.targetMarginPct);
   const centsMarginNotice=q.marginOverride===true&&
     Number(q.netMarginPct)>Number(q.targetMarginPct)+0.3?
-    ' · Meta '+shPricePercent(q.targetMarginPct)+'; margem possível '+
-    shPricePercent(q.netMarginPct)+'. O cupom de '+shPricePercent(q.couponPct)+
-    ' e a regra de centavos 0/9 nos dois preços impedem aproximar mais sem mudar as condições.':'';
+    ' · Meta '+shPricePercent(q.targetMarginPct)+'; margem efetiva '+
+    shPricePercent(q.netMarginPct)+'. '+
+    (Number(q.targetMarginPct)<Number(q.minMarginPct)?
+     'Piso mínimo configurado: '+shPricePercent(q.minMarginPct)+'. ':'')+
+    'Preço anunciado com centavos 0/9; cupom condicional de '+
+    shPricePercent(q.couponPct)+' já considerado no lucro.':'';
   shQuickSetStatus((q.source==='kit_wedrop_components'?
     'KIT '+q.kitSku+' · SKU Principal '+q.mainSku+' · '+q.componentSkus.length+' SKUs · custo total dos produtos ':
     'SKU '+q.sku+' · Custo WeDrop ')+shPriceMoney(q.unitCost)+centsMarginNotice+
