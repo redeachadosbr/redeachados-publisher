@@ -8217,6 +8217,12 @@ function financeExportRows(report){
   ['Lucro líquido fiscal','Em apuração'],
   ['Vendas pagas (quantidade)',report.paidProfit?.paidOrders??'Não verificado'],
   ['Venda total paga conhecida',report.paidProfit?.paidGrossKnown??'Não verificado'],
+  ['Total global cobrado comprador conhecido (inclui possíveis fretes)',report.paidProfit?.paidBuyerKnown??'Não verificado'],
+  ['Total global cobrado comprador cobertura',report.paidProfit?.paidBuyerCoverage??0],
+  ['Finalizados com resultado calculado após Ads, estimado',report.paidProfit?.finalizedOrdersAnalyzed??0],
+  ['Finalizados resultado estimado após Ads',report.paidProfit?.finalizedResultKnown??'Não verificado'],
+  ['Finalizados margem estimada após Ads',report.paidProfit?.finalizedMarginKnown??'Não verificado'],
+  ['Custos estimados pelo catálogo, sem compra conciliada',report.paidProfit?.costEstimatedOrders??'Não verificado'],
   ['Receita líquida Shopee conhecida, recebida ou prevista',report.paidProfit?.escrowKnown??'Não verificado'],
   ['Custos de pedidos pagos conhecidos',report.paidProfit?.costKnown??'Não verificado'],
   ['Lucro operacional conhecido dos pagos após Ads',report.paidProfit?.operationalKnown??'Não verificado'],
@@ -8225,10 +8231,12 @@ function financeExportRows(report){
   ['Margem de operação do total pago',report.paidProfit?.operatingMargin??'Incompleta'],
   ['Conferência de devoluções',report.returnsCoverage?.complete?'Completa':'Indisponível ou parcial'],
   [],['PEDIDOS PAGOS — RATEIO GERENCIAL DE ADS, NÃO CUSTO EXATO POR PEDIDO'],
-  ['Pedido','Status','Valor venda paga','Repasse Shopee','Custo WeDrop','Ads rateado','Resultado após Ads','Margem','Devolução'],
+  ['Pedido','Status','Valor venda de produtos','Total global comprador','Repasse Shopee','Custo WeDrop','Fonte custo','Crédito WeDrop','Despesa externa','Referência compra fornecedor','Ads rateado','Resultado após Ads','Margem','Devolução'],
   ...(report.paidProfit?.rows||[]).map(row=>[
     row.orderSn,row.status,row.grossProductSales??'Indisponível',
-    row.payout??'Indisponível',row.totalCost??'Indisponível',
+    row.buyerTotal??'Indisponível',row.payout??'Indisponível',
+    row.totalCost??'Indisponível',row.costSource??'Indisponível',
+    row.supplierCredit??0,row.externalExpense??0,row.supplierReference||'',
     row.adsAllocated??'Indisponível',row.afterAds??'Indisponível',
     row.margin??'Indisponível',row.refundStatus]),
   [],['SKU','Produto','Unidades','Repasse Shopee','Custo WeDrop','Ads SKU','Resultado após Ads','Situação']
@@ -8567,6 +8575,12 @@ function financePaidLedgerRender(report){
   set('financePaidGrossHelp',known?
     ledger.paidGrossCoverage+' de '+ledger.paidOrders+' pedidos pagos com valores.':
     'Subtotal de mercadorias pagas');
+  set('financePaidBuyerTotal',known&&ledger.paidBuyerCoverage?
+    wdMoney(ledger.paidBuyerKnown):'—');
+  set('financePaidBuyerTotalHelp',known?
+    ledger.paidBuyerCoverage+' de '+ledger.paidOrders+
+    ' pedidos com total global cobrado pela Shopee (pode incluir frete).':
+    'Total global do comprador, não é repasse');
   set('financePaidEscrow',known&&ledger.escrowCoverage?wdMoney(ledger.escrowKnown):'—');
   set('financePaidEscrowHelp',known?
     ledger.escrowCoverage+' de '+ledger.paidOrders+' pagamentos com repasse recebido ou previsto.':
@@ -8655,7 +8669,9 @@ function financePaidLedgerRender(report){
     const values=[
       entry.orderSn+' · '+entry.status+
         (entry.provisional?' · valor previsto':' · liquidado'),
-      title,amount(entry.grossProductSales),
+      title,amount(entry.grossProductSales)+
+        (entry.buyerTotal!==null&&entry.buyerTotal!==undefined?
+          ' · total global '+amount(entry.buyerTotal):''),
       amount(entry.payout)+' ('+(entry.payoutConfirmed?'confirmado':'previsto/pendente')+')',
       amount(entry.totalCost),amount(entry.adsAllocated),
       refund,result,
