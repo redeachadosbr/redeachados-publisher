@@ -5147,6 +5147,13 @@ app.post('/api/shopee/optimizer/pricing/prepare',mustLogin,requireWeDropAdmin,as
     const sourceSettings=req.body?.settings===undefined
       ?await shopeePricingPreferences(auth.shopId)
       :normalizeShopeePricingSettings(req.body.settings);
+    // Prioridade absoluta da margem escolhida no slider para ESTA cotação.
+    // Não depender apenas de preferências globais ou de um objeto que pode
+    // ter sido carregado assincronamente antes da última mudança da barra.
+    const manualMargin=req.body?.marginOverride===true&&req.body?.marginPct!==undefined
+      ?Number(req.body.marginPct):null;
+    const pricingSettings=manualMargin===null?sourceSettings:
+      normalizeShopeePricingSettings({...sourceSettings,marginPct:manualMargin});
     const review=await getWorkflowReview(auth.shopId,itemId,modelId);
     const kitLink=review?.review_state?.kitOptimization;
     const linkedKit=kitLink?await verifiedLinkedKitQuote(auth,kitLink):null;
@@ -5160,9 +5167,9 @@ app.post('/api/shopee/optimizer/pricing/prepare',mustLogin,requireWeDropAdmin,as
     const adsBudgetPct=adsBudgetEnabled?Number(req.body?.adsBudgetPct):0;
     if(adsBudgetEnabled&&(!Number.isFinite(adsBudgetPct)||adsBudgetPct<=0||adsBudgetPct>60))
       throw Error('Marque Ads e informe uma reserva entre 0,1% e 60% para esta SKU.');
-    const settings={...sourceSettings,adsPct:adsBudgetPct,
-      ...(linkedKit?{shipping:Math.max(sourceSettings.shipping,cost.shipping),
-        packing:Math.max(sourceSettings.packing,cost.packing)}:{})};
+    const settings={...pricingSettings,adsPct:adsBudgetPct,
+      ...(linkedKit?{shipping:Math.max(pricingSettings.shipping,cost.shipping),
+        packing:Math.max(pricingSettings.packing,cost.packing)}:{})};
     // Referências de concorrentes: consulta automática separada da API de seller.
     // Não herdar um valor manual antigo como se fosse pesquisa verificada.
     const live=await shopeeLiveEditableItem(cfg,auth,itemId);

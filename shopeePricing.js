@@ -363,6 +363,13 @@ export function quoteShopeeOptimizationPrice({unitCost,settings={},marketAverage
   notice+=' A margem definida na barra tem prioridade sobre a referência de mercado.';
  }else notice+=' Sem pesquisa comparável, o desconto é calculado pelo custo e pela margem, nunca fixado em 20%.';
  const f=chosen.financial;
+ if(marginOverride&&f.marginPct>desired+0.3)
+  notice+=' Meta desejada: '+desired.toFixed(2).replace('.',',')+
+   '%. Margem viável: '+f.marginPct.toFixed(2).replace('.',',')+
+   '%. A margem escolhida é um mínimo. Sob o cupom de '+c.couponPct+
+   '% e terminações obrigatórias 0/9 no preço bruto, na vitrine e após cupom, '+
+   'não há uma combinação comercial mais próxima sem reduzir abaixo da meta. '+
+   'Ajustar a meta dentro dessa faixa pode manter o mesmo preço, sem falha de atualização.';
  if(chosen.discountPct<=0||chosen.discountPct>50||
     f.marginPct+1e-8<c.minMarginPct||
     ![chosen.grossCents,money(f.marketplaceDisplayPrice),f.saleCents].every(validEnding))

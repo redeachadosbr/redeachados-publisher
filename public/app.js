@@ -9163,6 +9163,7 @@ if(typeof setInterval==='function')setInterval(()=>refreshMonitor(),60000);
 let shPriceSelection=null,shPriceSettingsLoaded=false,shPriceSettingsPromise=null;
 let shPriceSupplierQuote=null,shPricePreviewSerial=0;
 let shPriceCurrentQuote=null,shPricePrepareBusy=false,shPricePrepareAgain=false;
+let shPriceMarginRevision=0;
 let shPriceAdsLoadedKey='';
 let shDiscountQuote=null;
 const shPriceSelectionKey='shopee-optimizer-active-sku-v1142';
@@ -9183,6 +9184,11 @@ function shPriceSetStatus(message,state='info'){
   const e=$('#priceStatus');e.textContent=message;e.dataset.state=state;
 }
 function shPriceFillSettings(c){
+  // Uma resposta assíncrona de /pricing/settings não pode sobrescrever a
+  // margem que o usuário acabou de ajustar no slider do otimizador.
+  const manualMarginNode=$('#optimizerQuickMargin');
+  const keepManualMargin=manualMarginNode?.dataset?.manualMargin==='true';
+  const manualMargin=keepManualMargin?Number(manualMarginNode.value):null;
   const fields={
     marginPct:'#priceMargin',minMarginPct:'#priceMinMargin',
     discountPct:'#priceDiscount',taxPct:'#priceTax',flashPct:'#priceFlash',
@@ -9191,6 +9197,8 @@ function shPriceFillSettings(c){
   };
   for(const [key,selector] of Object.entries(fields))
     if(c[key]!==undefined)$(selector).value=c[key];
+  if(keepManualMargin&&Number.isFinite(manualMargin)&&manualMargin>=0&&manualMargin<=70)
+    $('#priceMargin').value=String(manualMargin);
   $('#priceHighVolume').checked=c.highVolumeCpf===true;
   for(let i=0;i<4;i++){
     $('#priceRate'+i).value=Number(c.commissionRates?.[i]??[20,14,14,14][i]);
@@ -9426,11 +9434,15 @@ function shPriceRender(q){
   $('#optimizerQuickAfterCoupon').textContent='Com cupom de '+shPricePercent(q.couponPct)+
     ', se utilizado: '+shPriceMoney(q.customerPrice);
   $('#optimizerQuickProfit').textContent=shPriceMoney(q.netProfit);
-  $('#optimizerQuickMarginPercent').textContent=shPricePercent(q.netMarginPct)+' de margem';
+  // A barra define o piso desejado: sempre mostrar o piso e a margem real
+  // quando finais comerciais 0/9 e cupom impedem atingir o número exato.
+  $('#optimizerQuickMarginPercent').textContent=
+    shPricePercent(q.netMarginPct)+' real · meta '+shPricePercent(q.targetMarginPct);
   const centsMarginNotice=q.marginOverride===true&&
     Number(q.netMarginPct)>Number(q.targetMarginPct)+0.3?
-    ' · Meta mínima '+shPricePercent(q.targetMarginPct)+'; margem real '+
-    shPricePercent(q.netMarginPct)+' porque os dois preços (Shopee e cupom) devem terminar em 0/9.':'';
+    ' · Meta '+shPricePercent(q.targetMarginPct)+'; margem possível '+
+    shPricePercent(q.netMarginPct)+'. O cupom de '+shPricePercent(q.couponPct)+
+    ' e a regra de centavos 0/9 nos dois preços impedem aproximar mais sem mudar as condições.':'';
   shQuickSetStatus((q.source==='kit_wedrop_components'?
     'KIT '+q.kitSku+' · SKU Principal '+q.mainSku+' · '+q.componentSkus.length+' SKUs · custo total dos produtos ':
     'SKU '+q.sku+' · Custo WeDrop ')+shPriceMoney(q.unitCost)+centsMarginNotice+
@@ -9529,6 +9541,7 @@ async function shPricePrepare({silent=false}={}){
   }
   if(shPricePrepareBusy){shPricePrepareAgain=true;return;}
   shPricePrepareBusy=true;
+  const revision=shPriceMarginRevision;
   const btn=$('#priceRecalculate');btn.disabled=true;
   const selected={...shPriceSelection};
   const marginKey=[selected.sku,selected.itemId,selected.modelId].join('|');
@@ -9547,9 +9560,14 @@ async function shPricePrepare({silent=false}={}){
     const market=$('#priceMarketAvg').value.trim();
     const manualOverride=shManualMarginChoice||$('#optimizerQuickMargin')?.dataset?.manualMargin==='true';
     const requestedMargin=Number($('#optimizerQuickMargin').value);
+    const requestedSettings=shPriceReadSettings();
+    // O percentual enviado deve ser exatamente o da barra no início desta
+    // cotação, mesmo que outro carregamento de configurações termine depois.
+    if(manualOverride)requestedSettings.marginPct=requestedMargin;
     const d=await json('/api/shopee/optimizer/pricing/prepare',{
       method:'POST',headers:{'Content-Type':'application/json'},
-      body:JSON.stringify({...selected,settings:shPriceReadSettings(),
+      body:JSON.stringify({...selected,settings:requestedSettings,
+        ...(manualOverride?{marginPct:requestedMargin}:{}),
         adsBudgetEnabled:$('#priceAdsEnabled').checked,
         adsBudgetPct:$('#priceAdsEnabled').checked?Number($('#priceAds').value):0,
         marketAverage:market===''?null:Number(market),
@@ -9560,6 +9578,12 @@ async function shPricePrepare({silent=false}={}){
     if(shPriceSelection?.sku!==selected.sku||
       shPriceSelection?.itemId!==selected.itemId||
       shPriceSelection?.modelId!==selected.modelId)return;
+    if(revision!==shPriceMarginRevision){
+      shPricePrepareAgain=true;
+      return; // Não exibir nem salvar a cotação obsoleta em Descontos.
+    }
+    if(manualOverride&&Number(d.quote?.targetMarginPct)!==requestedMargin)
+      throw Error('A cotação retornou meta diferente da barra ('+requestedMargin+'%). Recalculando antes de preparar qualquer desconto.');
     if(manualOverride&&Number(d.quote?.netMarginPct)+0.01<requestedMargin)
       throw Error('O motor retornou margem inferior aos '+requestedMargin+'% escolhidos. Cotação rejeitada; nenhum preço foi publicado.');
     shPriceRender(d.quote);
@@ -9570,6 +9594,10 @@ async function shPricePrepare({silent=false}={}){
       setTab('discounts');
     }
   }catch(e){
+    if(revision!==shPriceMarginRevision){
+      shPricePrepareAgain=true;
+      return; // Falha de resposta antiga não pode apagar uma cotação mais nova.
+    }
     if(shPriceSelection?.sku===selected.sku&&shPriceSelection?.itemId===selected.itemId){
       $('#optimizerQuickValues').hidden=true;shPriceCurrentQuote=null;
       pricingResetQuote();
@@ -9583,6 +9611,25 @@ async function shPricePrepare({silent=false}={}){
   }
 }
 let shQuickMarginTimer=null;
+function shPriceMarginMarkDirty(){
+  ++shPriceMarginRevision;
+  // Exibir que o resultado antigo está em recálculo, nunca apresentá-lo
+  // como se atendesse à margem recém-escolhida.
+  const real=$('#optimizerQuickMarginPercent');
+  if(real)real.textContent='Recalculando para meta '+$('#optimizerQuickMargin').value+'%…';
+  const preview=$('#optimizerQuickValues');if(preview)preview.hidden=true;
+  const results=$('#priceResults');if(results)results.hidden=true;
+  shPriceCurrentQuote=null;
+  // Invalida autorização de desconto calculada com a margem anterior.
+  // Não altera nada na Shopee: é somente o estado de prévia local.
+  optimizerDiscountFinalQuote=null;
+  optimizerDiscountFinalPreviewData=null;
+  optimizerDiscountFinalPreviewKey='';
+  optimizerDiscountFinalSent=false;
+  ++optimizerDiscountFinalLoading;
+  optimizerDiscountFinalPaint();
+  ++shPricePreviewSerial; // descartar supplier-preview iniciado antes do movimento
+}
 let shManualMarginChoice=false;
 let shManualMarginSkuKey='';
 for(const [selector,delta] of [['#optimizerMarginPlus',1],['#optimizerMarginMinus',-1]]){
@@ -9599,6 +9646,7 @@ $('#optimizerQuickMargin')?.addEventListener?.('input',()=>{
   shManualMarginChoice=true;
   if(shPriceSelection)shManualMarginSkuKey=[shPriceSelection.sku,shPriceSelection.itemId,shPriceSelection.modelId].join('|');
   $('#priceMargin').value=$('#optimizerQuickMargin').value;
+  shPriceMarginMarkDirty();
   shPriceRefreshMarginLabel();
   shQuickSyncSlider();
   if(shQuickMarginTimer)clearTimeout(shQuickMarginTimer);
@@ -9613,7 +9661,9 @@ $('#priceMargin')?.addEventListener?.('input',()=>{
   $('#optimizerQuickMargin').dataset.manualMargin='true';
   shManualMarginChoice=true;
   if(shPriceSelection)shManualMarginSkuKey=[shPriceSelection.sku,shPriceSelection.itemId,shPriceSelection.modelId].join('|');
-  shPriceRefreshMarginLabel();shQuickSyncSlider();
+  shQuickSyncSlider();
+  shPriceMarginMarkDirty();
+  shPriceRefreshMarginLabel();
   if(shQuickMarginTimer)clearTimeout(shQuickMarginTimer);
   if(shPriceSelection)shQuickMarginTimer=setTimeout(()=>void shPricePrepare(),380);
   else if(shPriceSupplierQuote)

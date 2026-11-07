@@ -8,5 +8,7 @@ test('main Shopee SKU pricing POST forwards manual slider priority',()=>{
  assert.ok(start>0&&end>start);
  const body=code.slice(start,end);
  assert.match(body,/\/api\/shopee\/optimizer\/pricing\/prepare/);
- assert.match(body,/marginOverride:shManualMarginChoice/);
+ assert.match(body,/marginOverride:manualOverride/);
+ assert.match(body,/marginPct:requestedMargin/);
+ assert.match(body,/revision!==shPriceMarginRevision/);
 });
