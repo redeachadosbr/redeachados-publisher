@@ -292,12 +292,16 @@ export function summarizeFinance(rows,{more=false,eligible=0}={}){
  * acontecer após a venda. O valor informado não é subtraído manualmente;
  * somente o ajuste de Payment/Wallet efetivamente conciliado altera o saldo.
  */
-export async function readFinanceReturns(cfg,auth,callApi,range){
+export async function readFinanceReturns(cfg,auth,callApi,range,{now=Math.floor(Date.now()/1000)}={}){
  const records=new Map();
  const step=14*86400;
+ // Atualização de uma devolução pode ocorrer DEPOIS da compra e até depois
+ // da janela de criação do pedido. Revisitar os ajustes por até 60 dias.
+ const last=Math.min(now,range.to+60*86400);
+ const completeWindow=last>=now;
  try{
-  for(let from=range.from;from<=range.to;from+=step){
-   const to=Math.min(range.to,from+step-1);
+  for(let from=range.from;from<=last;from+=step){
+   const to=Math.min(last,from+step-1);
    for(let page=1;page<=30;page++){
     const api=await callApi(cfg,{
      path:'/api/v2/returns/get_return_list',accessToken:auth.accessToken,
@@ -318,7 +322,8 @@ export async function readFinanceReturns(cfg,auth,callApi,range){
     if(page===30)throw Error('Devoluções excederam limite de páginas.');
    }
   }
-  return {complete:true,source:'Shopee Returns (atualização no período)',
+  return {complete:completeWindow,source:'Shopee Returns (atualizações até '+last+')',
+   error:completeWindow?null:'A consulta retroativa cobre apenas 60 dias após o período escolhido.',
    records:[...records.values()]};
  }catch(error){
   return {complete:false,source:'Shopee Returns',
@@ -423,7 +428,7 @@ export async function loadShopeeFinance(cfg,auth,callApi,{days=15,now=Math.floor
   const completedBySn=new Map(rows.map(x=>[String(x.orderSn),x]));
   const orderedPaid=listed.filter(x=>isFinancePaid(x.order_status,
     detailMap.get(String(x.order_sn||''))?.pay_time));
-  const allReturns=await readFinanceReturns(cfg,auth,callApi,range);
+  const allReturns=await readFinanceReturns(cfg,auth,callApi,range,{now});
   const returnsBySn=new Map();
   for(const item of allReturns.records){
    const key=String(item.orderSn);

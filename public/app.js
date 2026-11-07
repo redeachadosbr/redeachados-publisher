@@ -8221,6 +8221,7 @@ function financeExportRows(report){
   ['Custos de pedidos pagos conhecidos',report.paidProfit?.costKnown??'Não verificado'],
   ['Lucro operacional conhecido dos pagos após Ads',report.paidProfit?.operationalKnown??'Não verificado'],
   ['Lucro operacional total fechado',report.paidProfit?.complete?report.paidProfit.operatingProfit:'Incompleto'],
+  ['Projeção após Ads sobre vendas pagas',report.paidProfit?.projectedOperatingProfit??'Amostra parcial'],
   ['Margem de operação do total pago',report.paidProfit?.operatingMargin??'Incompleta'],
   ['Conferência de devoluções',report.returnsCoverage?.complete?'Completa':'Indisponível ou parcial'],
   [],['PEDIDOS PAGOS — RATEIO GERENCIAL DE ADS, NÃO CUSTO EXATO POR PEDIDO'],
@@ -8533,17 +8534,25 @@ function financePaidLedgerRender(report){
     'Gasto do período; rateio não disponível sem valores completos.':
     'Rateio é gerencial, não atribuição por pedido');
   set('financePaidNet',known&&ledger.operationalCoverage?
-    wdMoney(ledger.operationalKnown):'—');
+    (ledger.complete?wdMoney(ledger.operatingProfit):
+     ledger.projectedOperatingProfit!==null?
+      '≈ '+wdMoney(ledger.projectedOperatingProfit):
+      wdMoney(ledger.operationalKnown)+' (parcial)'):'—');
   const netNode=$('#financePaidNet');
   if(netNode)netNode.classList.toggle('negative',known&&ledger.operationalKnown<0&&
     ledger.operationalCoverage>0);
   set('financePaidNetHelp',known?
     ledger.operationalCoverage+' de '+ledger.paidOrders+
-    ' pedidos calculados. '+(ledger.complete?'Cobertura da apuração completa.':
-      'Resultado parcial; não é lucro líquido final.') :
+    ' pedidos calculados. '+(ledger.complete?'Repasses conciliados.':
+      ledger.projectedOperatingProfit!==null?
+      'Projeção com repasses ainda previstos; não é lucro líquido definitivo.':
+      'Resultado apenas dos pedidos com dados; NÃO é total.') :
     'Sem impostos e despesas externas não cadastradas');
-  set('financePaidMargin',known&&ledger.operatingMargin!==null?
-    Number(ledger.operatingMargin).toLocaleString('pt-BR',{maximumFractionDigits:2})+'%':'—');
+  const marginToDisplay=ledger?.complete?ledger.operatingMargin:
+    ledger?.projectedOperatingMargin;
+  set('financePaidMargin',known&&marginToDisplay!==null&&marginToDisplay!==undefined?
+    (ledger.complete?'':'≈ ')+
+    Number(marginToDisplay).toLocaleString('pt-BR',{maximumFractionDigits:2})+'%':'—');
   set('financePaidCount',known?ledger.paidOrders+' pedidos pagos':'—');
   if(status)status.textContent=known?
     ledger.paidOrders+' vendas pagas: '+ledger.closedOrders+' com repasse concluído, '+

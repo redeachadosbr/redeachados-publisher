@@ -77,12 +77,14 @@ export function buildPaidOrderProfitLedger(finance,adsSweep,{minMargin=lowMargin
  const eligible=rows.filter(x=>x.payout!==null&&x.totalCost!==null);
  const confirmed=eligible.filter(x=>!x.provisional);
  const subtotal=(field,source=rows)=>money(source.reduce((sum,r)=>sum+(valid(r[field])?Number(r[field]):0),0));
- const complete=rows.length>0&&rows.every(x=>x.afterAds!==null)&&
+ const numbersComplete=rows.length>0&&rows.every(x=>x.afterAds!==null)&&
+  finance?.paidOrderCoverage?.complete!==false;
+ const complete=numbersComplete&&
   finance?.returnsCoverage?.complete===true&&
-  finance?.paidOrderCoverage?.complete!==false&&
-  rows.every(x=>!x.refundPending);
+  rows.every(x=>!x.provisional&&!x.refundPending);
  const adjusted=rows.filter(x=>x.refundStatus!=='sem devolução').length;
  const operational=complete?subtotal('afterAds'):null;
+ const projectedOperatingProfit=numbersComplete?subtotal('afterAds'):null;
  const allGross=rows.length>0&&rows.every(x=>x.grossProductSales!==null)?
    subtotal('grossProductSales'):null;
  return {
@@ -99,13 +101,15 @@ export function buildPaidOrderProfitLedger(finance,adsSweep,{minMargin=lowMargin
   adsAllocationComplete:shares!==null,adsMethod:shares?'proportional_paid_sales':'insufficient_sales_or_ads_data',
   operationalKnown:subtotal('afterAds',rows.filter(x=>x.afterAds!==null)),
   operationalCoverage:rows.filter(x=>x.afterAds!==null).length,
-  operatingProfit:operational,
+  operatingProfit:operational,projectedOperatingProfit,
   operatingMargin:operational!==null&&allGross>0?money(operational/allGross*100):null,
+  projectedOperatingMargin:projectedOperatingProfit!==null&&allGross>0?
+   money(projectedOperatingProfit/allGross*100):null,
   complete,refundAffectedOrders:adjusted,
   missingOrders:rows.filter(x=>x.afterAds===null).map(x=>x.orderSn),
   rows,
   warnings:[
-    !complete?'A apuração líquida TOTAL ainda não é verificável para todas as vendas pagas. Confira os pedidos e devoluções sem valor confirmado.':null,
+    !complete?'O resultado das vendas pagas ainda é PROVISÓRIO: parte dos pedidos não teve repasse final ou há devoluções/valores a confirmar.':null,
     spend===null?'Gasto Ads não retornado: é impossível computar o resultado depois da publicidade.':null,
     spend!==null&&!shares?'Faltam valores de produtos para distribuir o gasto Ads entre todos os pedidos; não atribuir custos fictícios.':null,
     'O gasto Ads por pedido é rateio gerencial, nunca atribuição comprovada pelo anúncio. Não é lucro líquido fiscal: tributos e despesas externas ainda precisam ser conciliados.'

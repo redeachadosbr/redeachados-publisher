@@ -45,13 +45,14 @@ test('lucro operacional e margem das vendas pagas: 2 pedidos, um previsto',()=>{
  assert.equal(result.escrowKnown,110);
  assert.equal(result.costKnown,70);
  assert.equal(result.adsAllocated,15);
- assert.equal(result.operatingProfit,25);
- assert.equal(result.operatingMargin,16.67);
+ assert.equal(result.operatingProfit,null,'um pedido ainda não liquidado não gera total definitivo');
+ assert.equal(result.projectedOperatingProfit,25);
+ assert.equal(result.projectedOperatingMargin,16.67);
  assert.deepEqual(result.rows.map(r=>r.adsAllocated),[10,5]);
  assert.deepEqual(result.rows.map(r=>r.afterAds),[15,10]);
  assert.equal(result.rows[0].provisional,false);
  assert.equal(result.rows[1].provisional,true);
- assert.equal(result.complete,true);
+ assert.equal(result.complete,false);
  assert.match(result.rows[0].adsMethod,/rateio gerencial/);
 });
 test('prejuízo ou margem abaixo de 5% alerta e sugere preço de equilíbrio simulado',()=>{
