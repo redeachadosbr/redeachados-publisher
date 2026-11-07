@@ -8214,8 +8214,23 @@ function financeExportRows(report){
   ['Ads sem vínculo seguro',adsReady?sw.spendUnassigned:'Não verificado'],
   ['Resultado após Ads',adsReady&&Number.isFinite(Number(t.balanceBeforeAds))?
    Math.round((Number(t.balanceBeforeAds)-Number(sw.spendTotal))*100)/100:'Não verificado'],
-  ['Lucro líquido fiscal','Em apuração'],[],
-  ['SKU','Produto','Unidades','Repasse Shopee','Custo WeDrop','Ads SKU','Resultado após Ads','Situação']
+  ['Lucro líquido fiscal','Em apuração'],
+  ['Vendas pagas (quantidade)',report.paidProfit?.paidOrders??'Não verificado'],
+  ['Venda total paga conhecida',report.paidProfit?.paidGrossKnown??'Não verificado'],
+  ['Receita líquida Shopee conhecida, recebida ou prevista',report.paidProfit?.escrowKnown??'Não verificado'],
+  ['Custos de pedidos pagos conhecidos',report.paidProfit?.costKnown??'Não verificado'],
+  ['Lucro operacional conhecido dos pagos após Ads',report.paidProfit?.operationalKnown??'Não verificado'],
+  ['Lucro operacional total fechado',report.paidProfit?.complete?report.paidProfit.operatingProfit:'Incompleto'],
+  ['Margem de operação do total pago',report.paidProfit?.operatingMargin??'Incompleta'],
+  ['Conferência de devoluções',report.returnsCoverage?.complete?'Completa':'Indisponível ou parcial'],
+  [],['PEDIDOS PAGOS — RATEIO GERENCIAL DE ADS, NÃO CUSTO EXATO POR PEDIDO'],
+  ['Pedido','Status','Valor venda paga','Repasse Shopee','Custo WeDrop','Ads rateado','Resultado após Ads','Margem','Devolução'],
+  ...(report.paidProfit?.rows||[]).map(row=>[
+    row.orderSn,row.status,row.grossProductSales??'Indisponível',
+    row.payout??'Indisponível',row.totalCost??'Indisponível',
+    row.adsAllocated??'Indisponível',row.afterAds??'Indisponível',
+    row.margin??'Indisponível',row.refundStatus]),
+  [],['SKU','Produto','Unidades','Repasse Shopee','Custo WeDrop','Ads SKU','Resultado após Ads','Situação']
  ];
  const skuAds=financeAdsBySku(report),safeZero=adsReady&&Number(sw.spendUnassigned)===0;
  for(const x of financeSkuEntries(report)){
@@ -8493,7 +8508,102 @@ function financeRenderPendingOrders(report){
     body.append(tr);
   }
 }
+function financePaidLedgerRender(report){
+  const ledger=report?.paidProfit||null;
+  const status=$('#financePaidCoverage');
+  const set=(id,value)=>{const node=$('#'+id);if(node)node.textContent=String(value);};
+  const amount=(value)=>value===null||value===undefined?'—':wdMoney(value);
+  const known=ledger!==null;
+  set('financePaidGross',known&&ledger.paidGrossCoverage?wdMoney(ledger.paidGrossKnown):'—');
+  set('financePaidGrossHelp',known?
+    ledger.paidGrossCoverage+' de '+ledger.paidOrders+' pedidos pagos com valores.':
+    'Subtotal de mercadorias pagas');
+  set('financePaidEscrow',known&&ledger.escrowCoverage?wdMoney(ledger.escrowKnown):'—');
+  set('financePaidEscrowHelp',known?
+    ledger.escrowCoverage+' de '+ledger.paidOrders+' pagamentos com repasse recebido ou previsto.':
+    'Repasse confirmado + previsto');
+  set('financePaidCosts',known&&ledger.costCoverage?wdMoney(ledger.costKnown):'—');
+  set('financePaidCostsHelp',known?
+    ledger.costCoverage+' de '+ledger.paidOrders+' custos conhecidos.':
+    'Por SKU e quantidade');
+  set('financePaidAds',known?amount(ledger.adsTotal):'—');
+  set('financePaidAdsHelp',known?
+    ledger.adsAllocationComplete?
+    'Rateado entre '+ledger.paidOrders+' pedidos por valor de venda; não é custo individual comprovado.':
+    'Gasto do período; rateio não disponível sem valores completos.':
+    'Rateio é gerencial, não atribuição por pedido');
+  set('financePaidNet',known&&ledger.operationalCoverage?
+    wdMoney(ledger.operationalKnown):'—');
+  const netNode=$('#financePaidNet');
+  if(netNode)netNode.classList.toggle('negative',known&&ledger.operationalKnown<0&&
+    ledger.operationalCoverage>0);
+  set('financePaidNetHelp',known?
+    ledger.operationalCoverage+' de '+ledger.paidOrders+
+    ' pedidos calculados. '+(ledger.complete?'Cobertura da apuração completa.':
+      'Resultado parcial; não é lucro líquido final.') :
+    'Sem impostos e despesas externas não cadastradas');
+  set('financePaidMargin',known&&ledger.operatingMargin!==null?
+    Number(ledger.operatingMargin).toLocaleString('pt-BR',{maximumFractionDigits:2})+'%':'—');
+  set('financePaidCount',known?ledger.paidOrders+' pedidos pagos':'—');
+  if(status)status.textContent=known?
+    ledger.paidOrders+' vendas pagas: '+ledger.closedOrders+' com repasse concluído, '+
+    ledger.projectedOrders+' com repasse previsto/ajustes. '+
+    ledger.refundAffectedOrders+' com devolução registrada.':
+    'Aguardando consulta dos pedidos pagos.';
+  set('financePaidWarning',known?(ledger.warnings||[]).join(' ')+
+    (report.returnsCoverage?.error?
+      ' Devoluções Shopee: '+String(report.returnsCoverage.error)+'.':''):
+    'É necessário obter os dados de Shopee Payment, Ads, WeDrop e devoluções para fechar a apuração.');
+  const body=$('#financePaidOrdersBody');
+  if(!body)return;
+  body.replaceChildren();
+  if(!known||!ledger.rows?.length){
+    const tr=document.createElement('tr'),td=document.createElement('td');
+    td.colSpan=9;td.textContent=known?
+      'Nenhum pedido pago identificado no período selecionado.':
+      'Atualize o financeiro para consultar.';
+    tr.appendChild(td);body.appendChild(tr);return;
+  }
+  for(const entry of ledger.rows){
+    const tr=document.createElement('tr');
+    if(entry.risk==='loss')tr.classList.add('finance-paid-loss');
+    else if(entry.risk==='low_margin')tr.classList.add('finance-paid-risk');
+    const title=entry.items?.length?entry.items.map(item=>
+      (item.name||'Produto')+' ('+(item.sku||'SKU indisponível')+') × '+(item.qty||'?'))
+      .join(' · '):(entry.skuList||[]).join(' · ')||'SKU não informado';
+    const result=entry.afterAds!==null?wdMoney(entry.afterAds):'— (sem comprovação)';
+    const risk=entry.risk==='loss'?'PREJUÍZO':entry.risk==='low_margin'?
+      'MARGEM BAIXA':entry.risk==='positive'?'Margem positiva':'Dados insuficientes';
+    const note=entry.risk==='loss'&&entry.breakEvenPrice!==null?
+      ' · preço de equilíbrio simulado: '+wdMoney(entry.breakEvenPrice):
+      entry.risk==='low_margin'&&entry.priceForFivePercent!==null?
+      ' · preço para 5% estimado: '+wdMoney(entry.priceForFivePercent):'';
+    const refund=entry.refundStatus!=='sem devolução'?
+      entry.refundStatus+(entry.refundRequested!==null?
+        ' · solicitado '+wdMoney(entry.refundRequested):'')+
+      (entry.refundPending?' · ajuste pendente':
+        entry.adjustedEscrow?' · repasse ajustado':' · revisar repasse'):'Sem devolução identificada';
+    const values=[
+      entry.orderSn+' · '+entry.status+
+        (entry.provisional?' · valor previsto':' · liquidado'),
+      title,amount(entry.grossProductSales),
+      amount(entry.payout)+' ('+(entry.payoutConfirmed?'confirmado':'previsto/pendente')+')',
+      amount(entry.totalCost),amount(entry.adsAllocated),
+      refund,result,
+      (entry.margin!==null?Number(entry.margin).toLocaleString('pt-BR')+'% · ':'')+
+       risk+note
+    ];
+    for(const [i,v] of values.entries()){
+      const td=document.createElement('td');td.textContent=v;
+      if(i===7)td.className=entry.risk==='loss'?'finance-paid-number-loss':'finance-paid-number';
+      if(i===8&&entry.risk==='loss')td.className='finance-paid-number-loss';
+      tr.appendChild(td);
+    }
+    body.appendChild(tr);
+  }
+}
 function financeReconciliationRender(report){
+  financePaidLedgerRender(report);
   financeRenderPendingOrders(report);
   const pipeline=report?.salesPipeline||{},fees=report?.fees||{},totals=report?.totals||{};
   const current=report!==null;

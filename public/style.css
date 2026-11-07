@@ -4203,3 +4203,29 @@ body.view-wedrop .page-intro{display:none!important}
 @media(max-width:1150px){.finance-reconciliation-grid{grid-template-columns:repeat(3,minmax(0,1fr))}}
 @media(max-width:750px){.finance-reconciliation-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}
 @media(max-width:450px){.finance-reconciliation-grid{grid-template-columns:1fr}}
+
+/* Financeiro — pagamentos, devoluções, Ads rateados e risco por pedido */
+.finance-paid-ledger{margin:14px 0 17px;padding:15px 16px;background:#f8fafc;border:1px solid #dce6f2;border-radius:18px;box-shadow:0 8px 20px #0c32670a;min-width:0}
+.finance-paid-title{display:flex;align-items:flex-start;justify-content:space-between;gap:12px;flex-wrap:wrap;margin-bottom:12px}
+.finance-paid-title h3{font-size:16px;line-height:1.4;margin:0;color:#142c4c}
+.finance-paid-title h3 small{display:block;font-size:11px;color:#687f9c;font-weight:500;margin-top:3px}
+.finance-paid-title p{font-size:11px;line-height:1.5;color:#476686;margin:0;max-width:540px}
+.finance-paid-metrics{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px}
+.finance-paid-metrics article{background:#fff;border:1px solid #e0eaf7;border-radius:13px;padding:12px;min-width:0}
+.finance-paid-metrics article span{display:block;color:#456280;font-size:11px;font-weight:700}
+.finance-paid-metrics article strong{display:block;color:#1a3351;font-size:21px;margin:7px 0 4px;overflow-wrap:anywhere;letter-spacing:-.03em}
+.finance-paid-metrics article small{font-size:10px;color:#7489a1;display:block;line-height:1.45}
+.finance-paid-metrics article.finance-paid-result{border-color:#b8d7f9;background:#f0f7ff}
+.finance-paid-metrics article strong.negative{color:#be2937}
+.finance-paid-alert{background:#fff8e9;border:1px solid #efdfba;border-radius:10px;padding:11px 12px;font-size:11px;line-height:1.5;color:#7d5a1a;margin:12px 0}
+.finance-paid-details{background:white;border:1px solid #d9e6f5;border-radius:13px;overflow:hidden}
+.finance-paid-details summary{padding:13px;cursor:pointer;font-size:12px;font-weight:700;color:#1e4168}
+.finance-paid-table{min-width:1220px;width:100%;font-size:11px}
+.finance-paid-table td{vertical-align:top;font-size:11px;line-height:1.55;white-space:normal;max-width:245px}
+.finance-paid-table th{font-size:10px;white-space:nowrap}
+.finance-paid-table tr.finance-paid-loss{background:#fff0f1}
+.finance-paid-table tr.finance-paid-risk{background:#fff9eb}
+.finance-paid-number-loss{color:#b62030;font-weight:800}
+.finance-paid-number{font-weight:700;color:#19395b}
+@media(max-width:900px){.finance-paid-metrics{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media(max-width:560px){.finance-paid-metrics{grid-template-columns:1fr}}

@@ -6,7 +6,7 @@
 <meta name="theme-color" content="#0A1C3A">
 <link rel="icon" type="image/svg+xml" href="/brand-logo.svg">
 <title>Rede Achados BR · Gestão Shopee</title>
-<link rel="stylesheet" href="/style.css?v=1.20.47-finance-reconciliation">
+<link rel="stylesheet" href="/style.css?v=1.20.48-finance-paid-ledger">
 <link rel="stylesheet" href="/optimizer-compact.css?v=1.20.13-wedrop">
 <link rel="stylesheet" href="/optimizer-fiscal-premium.css?v=1.20.13">
 <link rel="stylesheet" href="/optimizer-ads-reserve.css?v=1.20.15">
@@ -2599,6 +2599,30 @@
             <article class="finance-kpi finance-kpi-result"><span class="finance-kpi-icon finance-tone-muted">◇</span><div><span>Resultado após Ads · loja*</span><strong id="financeSkuNetKpi">—</strong><small id="financeResultCompleteness">Aguardando conciliação</small></div><span class="finance-kpi-help optimizer-tip" tabindex="0" data-help="Saldo antes Ads menos TODOS os gastos Ads verificados do período. Resultado operacional parcial, antes de impostos, despesas externas e outras limitações de cobertura.">?</span></article>
             <article class="finance-kpi finance-kpi-net"><span class="finance-kpi-icon finance-tone-muted">⌁</span><div><span>Lucro líquido final</span><strong id="financeTaxNetKpi">Em apuração</strong><small>Impostos e despesas externas pendentes</small></div><span class="finance-kpi-help optimizer-tip" tabindex="0" data-help="Lucro líquido fiscal não é exibido até que impostos e despesas externas estejam conciliados. Resultado após Ads não deve ser chamado de lucro final.">?</span></article>
           </div>
+          <section class="finance-paid-ledger" aria-label="Resultado financeiro das vendas pagas">
+            <div class="finance-paid-title">
+              <h3>Lucro operacional por pedido pago <small>Devoluções, taxas, WeDrop e Ads — mesmo período</small></h3>
+              <p id="financePaidCoverage" role="status" aria-live="polite">Aguardando consulta dos pedidos pagos.</p>
+            </div>
+            <div class="finance-paid-metrics">
+              <article><span>Vendas pagas (produtos)</span><strong id="financePaidGross">—</strong><small id="financePaidGrossHelp">Subtotal de mercadorias pagas</small></article>
+              <article><span>Receita líquida Shopee</span><strong id="financePaidEscrow">—</strong><small id="financePaidEscrowHelp">Repasse recebido + previsto, separado por status</small></article>
+              <article><span>Custos WeDrop identificados</span><strong id="financePaidCosts">—</strong><small id="financePaidCostsHelp">Por SKU e quantidade</small></article>
+              <article><span>Ads total / rateio</span><strong id="financePaidAds">—</strong><small id="financePaidAdsHelp">Rateio é gerencial, não atribuição por pedido</small></article>
+              <article class="finance-paid-result"><span>Resultado operacional das vendas pagas</span><strong id="financePaidNet">—</strong><small id="financePaidNetHelp">Sem impostos e despesas externas não cadastradas</small></article>
+              <article><span>Margem operacional paga</span><strong id="financePaidMargin">—</strong><small>Resultado ÷ vendas pagas, quando completo</small></article>
+            </div>
+            <p class="finance-paid-alert" id="financePaidWarning" role="status" aria-live="polite">
+              O gasto exato de Ads de cada pedido não é informado pela Shopee: o rateio será identificado como estimativa. Devoluções abertas não geram lucro definitivo.
+            </p>
+            <details class="finance-details finance-paid-details" open>
+              <summary><span class="finance-bottom-icon">▤</span> Conferência de cada pedido pago e risco de prejuízo <span id="financePaidCount">—</span></summary>
+              <div class="table-wrap"><table class="finance-paid-table">
+                <thead><tr><th>Pedido / situação</th><th>Produto(s) / SKU</th><th>Venda paga</th><th>Repasse líquido Shopee</th><th>Custo WeDrop</th><th>Ads estimado</th><th>Devolução / ajuste</th><th>Resultado após Ads</th><th>Margem / diagnóstico</th></tr></thead>
+                <tbody id="financePaidOrdersBody"><tr><td colspan="9">Atualize o financeiro para consultar.</td></tr></tbody>
+              </table></div>
+            </details>
+          </section>
           <div class="finance-visual-row" aria-label="Gráficos e análise do período">
             <section class="finance-visual-card finance-trend-card">
               <h3>Evolução do resultado <small id="financePeriodCaption">Últimos 15 dias (pedidos criados)</small></h3>
@@ -2740,7 +2764,7 @@
 <script src="/technical-status.js?v=1.0.0-optional-coherence"></script>
 <script src="/optimizer-execution-visual.js?v=1.0.5-title-pending-readback"></script>
 <script src="/optimizer-execution-dialog.js?v=1.0.5-video-relink-sync"></script>
-<script src="/app.js?v=3.5.68-finance-reconciliation&amp;layout=curves-compact-v1&amp;ads=monitor-reconcile-20261106"></script>
+<script src="/app.js?v=3.5.69-finance-paid-ledger&amp;layout=curves-compact-v1&amp;ads=monitor-reconcile-20261106"></script>
 <script src="/curvas-ab.js?v=20261106-comparable-diagnostics-v5"></script>
 <script src="/curvas-chrome.js?v=20261106-max-ten127-v7"></script>
 <script src="/pending-images.js?v=1.2.0-kit-routing"></script>

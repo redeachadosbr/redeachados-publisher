@@ -12,6 +12,7 @@ import {createShopeeOrderMonitor} from './orderMonitor.js';
 import {loadShopeeAdsOverview,brazilAdsToday} from './adsReport.js';
 import {adsSevenDayWindows,buildAdsMonitor} from './shopeeAdsInsights.js';
 import {loadShopeeFinance,MAX_FINANCE_ORDERS} from './shopeeFinance.js';
+import {buildPaidOrderProfitLedger} from './shopeeFinancePaid.js';
 import {installFinanceBridge,installWalletBridge,installAdsFinanceBridge} from './financeBridge.js';
 import {buildAdsFinanceSnapshot} from './financeAdsBridge.js';
 import {readShopeeAdsAccount} from './shopeeAdsAccount.js';
@@ -5687,7 +5688,8 @@ app.get('/api/shopee/finance/orders',mustLogin,requireWeDropAdmin,async(req,res)
       ?{...matchFinanceAds(finance,adsResult.value),dates}
       :{status:'unavailable',dates,error:adsResult.error,
         message:'Não foi possível concluir a varredura de Ads. O custo de publicidade e o resultado após Ads continuam indisponíveis; NÃO considere R$ 0.'};
-    res.json({ok:true,...finance,adsSweep});
+    const paidProfit=buildPaidOrderProfitLedger(finance,adsSweep);
+    res.json({ok:true,...finance,adsSweep,paidProfit});
   }catch(e){
     const error=String(e.message||e).slice(0,360);
     const forbidden=/permission|denied|403|forbidden/i.test(error);
