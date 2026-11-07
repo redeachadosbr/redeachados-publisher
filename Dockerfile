@@ -10,7 +10,7 @@ RUN node --check shopeeChromeCurves.js && node --check shopeeChromeExtensionZip.
 RUN node --check public/curvas-chrome.js && node --test tests/shopeeChromeUi.test.js tests/shopeeChromeBridgeHandshake.test.js tests/shopeeChromeMinimized.test.js && node --test tests/shopeeCurvasPremiumLayout.test.js
 RUN node --test tests/shopeeChromeVisibleParser.test.js
 # Financeiro: pedidos pagos, devoluções, rateio gerencial de Ads e regressões fiscais.
-RUN node --check shopeeFinancePaid.js && node --check shopeeFinance.js && node --test tests/shopeeFinancePaid.test.js tests/shopee-finance-audit.test.js tests/shopee-finance-layout-period-1-13-0.test.js tests/shopee-finance-dashboard-1-11-0.test.js
+RUN node --check shopeeFinanceOrderCosts.js && node --check shopeeFinancePaid.js && node --check shopeeFinance.js && node --test tests/shopee-finance-order-costs.test.js tests/shopeeFinancePaid.test.js tests/shopee-finance-audit.test.js tests/shopee-finance-layout-period-1-13-0.test.js tests/shopee-finance-dashboard-1-11-0.test.js
 RUN node --check shopeeProductViewTrends.js && node --check public/organic-top10.js && node --test tests/shopeeProductViewTrends.test.js
 RUN node --check shopeeOrganicPerformance.js && node --check public/organic-top10.js && node --test tests/shopeeOrganicTop10.test.js tests/shopeeProductPerformanceMetrics.test.js
 RUN node --check public/ads-improvements.js && node --check public/app.js && node --test tests/shopeeAdsImprovements.test.js tests/shopee-ads-date-1-19-9.test.js
