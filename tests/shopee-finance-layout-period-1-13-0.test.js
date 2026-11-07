@@ -60,7 +60,7 @@ test('prejuízo aparece negativo após TODOS os Ads; lucro fiscal não é invent
  assert.match(js,/const result=valid\?Math\.round\(\(total-Number\(sweep\.spendTotal\)\)\*100\)\/100:null/);
  assert.match(js,/net\.classList\.toggle\('negative',result!==null&&result<0\)/);
  assert.match(js,/net\.textContent=result===null\?'—':wdMoney\(result\)/);
- assert.match(html,/Resultado após Ads · loja/);
+ assert.match(html,/Repasses conciliados − Ads do período/);
  assert.match(html,/Impostos e despesas externas pendentes/);
  assert.match(js,/financeTaxNetKpi'\)\.textContent='Em apuração'/);
 });
@@ -76,4 +76,16 @@ test('tabela tem 8 colunas, espaço para valores e detalhamento do pedido',()=>{
  assert.match(css,/\.finance-expanded-content/);
  assert.match(html,/app\.js\?v=\d+\.\d+\.\d+/);
  assert.match(html,/style\.css\?v=\d+\.\d+\.\d+/);
+});
+
+test('período Este mês alinha o financeiro ao mês da Shopee e da WeDrop',()=>{
+ const now=Date.parse('2026-11-06T22:53:00-03:00')/1000;
+ const range=financeRange({days:'month'},now);
+ assert.equal(range.from,Date.parse('2026-11-01T00:00:00-03:00')/1000);
+ assert.equal(range.to,now);
+ assert.equal(range.days,6);
+ assert.equal(range.mode,'month');
+ assert.deepEqual(financeAdsDates(range),{start:'2026-11-01',end:'2026-11-06'});
+ assert.match(html,/<option value="month" selected>Este mês/);
+ assert.match(js,/financeReconciliationRender\(report\)/);
 });

@@ -4189,3 +4189,17 @@ body.view-wedrop .page-intro{display:none!important}
  .kit-price-cost-chip small{font-size:10px}
  .kit-price-cost-chip strong{font-size:12px}
 }
+
+/* Financeiro Shopee — conciliação independente de vendas, liquidação e publicidade */
+.finance-reconciliation-section{margin:14px 0 16px;padding:15px 16px;background:#f8fafc;border:1px solid #dbe5f1;border-radius:17px;box-shadow:0 6px 18px #15375a08}
+.finance-reconciliation-section h3{display:flex;align-items:center;gap:10px;flex-wrap:wrap;font-size:15px;margin:0 0 12px;color:#173053}
+.finance-reconciliation-section h3 small{font-weight:500;color:#607791;font-size:11px}
+.finance-reconciliation-grid{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:10px}
+.finance-reconciliation-stat{background:#fff;border:1px solid #dfebf8;border-radius:13px;padding:12px;min-width:0}
+.finance-reconciliation-stat>span{display:block;font-size:11px;font-weight:700;color:#476180;min-height:30px}
+.finance-reconciliation-stat strong{display:block;color:#152e50;font-size:20px;letter-spacing:-.02em;line-height:1.2;margin:7px 0 5px;overflow-wrap:anywhere}
+.finance-reconciliation-stat small{display:block;color:#6d8099;font-size:10px;line-height:1.35}
+.finance-reconciliation-note{font-size:11px;line-height:1.55;color:#49647e;margin:11px 0 0;overflow-wrap:anywhere}
+@media(max-width:1150px){.finance-reconciliation-grid{grid-template-columns:repeat(3,minmax(0,1fr))}}
+@media(max-width:750px){.finance-reconciliation-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media(max-width:450px){.finance-reconciliation-grid{grid-template-columns:1fr}}

@@ -146,3 +146,15 @@ test('evolução financeira diária usa somente pedidos com repasse/custo concil
  ]);
  assert.equal(daily.some(x=>'ads' in x),false);
 });
+
+test('auditoria mostra pedidos em andamento e separa as taxas do repasse',()=>{
+ for(const id of ['financePendingOrdersDetails','financePendingOrdersCount','financePendingOrdersBody']){
+  assert.equal((html.match(new RegExp('id="'+id+'"','g'))||[]).length,1,id);
+ }
+ assert.match(js,/function financeRenderPendingOrders\(report\)/);
+ assert.match(js,/financeRenderPendingOrders\(report\)/);
+ assert.match(js,/fees\.commission/);
+ assert.match(js,/fees\.service/);
+ assert.match(js,/fees\.transaction/);
+ assert.match(js,/fees\.shipping/);
+});

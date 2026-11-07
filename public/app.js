@@ -8199,7 +8199,14 @@ function financeExportRows(report){
   ['Período',p],['Gerado em',new Date().toLocaleString('pt-BR',{timeZone:'America/Sao_Paulo'})],
   ['Fonte repasse','API Shopee Payment'],['Fonte custos','WeDrop conciliado'],
   ['Pedidos conferidos',t.verified],['Pedidos elegíveis',t.eligible],
-  ['Repasse Shopee',t.received],['Custo WeDrop',t.supplierCost],
+  ['Repasse Shopee (somente liquidados)',t.received],['Custo WeDrop',t.supplierCost],
+  ['Pedidos ativos',report.salesPipeline?.active??'Não verificado'],
+  ['Pedidos aguardando liquidação',report.salesPipeline?.awaitingSettlement??'Não verificado'],
+  ['Subtotal de produtos Shopee',report.salesPipeline?.goodsSubtotal??'Não verificado'],
+  ['Subtotal de produtos com cobertura completa',report.salesPipeline?.goodsComplete?'Sim':'Não'],
+  ['Taxas Shopee identificadas (já descontadas no repasse)',report.fees?.knownFees??'Não verificado'],
+  ['Frete informado pela Shopee (separado)',report.fees?.shipping??'Não verificado'],
+  ['Margem sobre vendas liquidadas antes de Ads',t.marginBeforeAdsOnSales??'Não apurável'],
   ['Saldo antes Ads',t.balanceBeforeAds],
   ['Ads total',adsReady?sw.spendTotal:'Não verificado'],
   ['Ads com vínculo seguro',adsReady?sw.spendAllocatedToSoldSku:'Não verificado'],
@@ -8245,8 +8252,8 @@ function renderFinanceAdsScan(report){
  net.classList.toggle('positive',result!==null&&result>=0);
  $('#financeResultCompleteness').textContent=result===null
   ?'Sem dados completos de Ads e repasses'
-  :report.complete?'Após todos os Ads; antes de tributos'
-    :'Resultado parcial: ainda há pedidos não conciliados';
+  :'Repasses dos concluídos − todos Ads do período; NÃO é lucro/prejuízo total da loja. '+
+   Number(report.salesPipeline?.awaitingSettlement||0)+' pedido(s) ainda aguardam liquidação.';
  $('#financeTaxNetKpi').textContent='Em apuração';
  $('#financeAdsScanBadge').textContent=good?'Ads conferidos':'Ads não verificados';
  $('#financeAdsScanBadge').dataset.state=good?'ready':'error';
@@ -8454,10 +8461,84 @@ document.querySelectorAll('[data-finance-filter]').forEach(btn=>{
 $('#financeSkuSearch').oninput=()=>{financeSkuShown=24;$('#financeGlobalSearch').value=$('#financeSkuSearch').value;renderFinanceSkuList();};
 $('#financeGlobalSearch').oninput=()=>{financeSkuShown=24;$('#financeSkuSearch').value=$('#financeGlobalSearch').value;renderFinanceSkuList();};
 $('#financeSkuMore').onclick=()=>{financeSkuShown+=24;renderFinanceSkuList();};
+function financeRenderPendingOrders(report){
+  const orders=Array.isArray(report?.salesPipeline?.pendingOrders)?
+    report.salesPipeline.pendingOrders:[];
+  const body=$('#financePendingOrdersBody');
+  const count=$('#financePendingOrdersCount');
+  if(count)count.textContent=report?
+    wdNum(report.salesPipeline?.awaitingSettlement||0)+' pedido(s) aguardando':'—';
+  if(!body)return;
+  body.replaceChildren();
+  if(!orders.length){
+    const tr=document.createElement('tr'),td=document.createElement('td');
+    td.colSpan=4;td.textContent=report?
+      'Nenhum pedido ativo aguardando liquidação nesta consulta.':
+      'Atualize o Financeiro Shopee para conferir pedidos em andamento.';
+    tr.append(td);body.append(tr);return;
+  }
+  for(const order of orders){
+    const tr=document.createElement('tr');
+    const details=(order.items||[]).map(item=>
+      (item.sku||'SKU indisponível')+' · '+String(item.name||'Produto').slice(0,95)+
+      ' × '+String(item.quantity||'?')).join(' | ');
+    const columns=[String(order.orderSn||'—'),String(order.status||'—'),
+      details||'Produto/variação não informado pela Shopee',
+      order.goodsSubtotal===null||order.goodsSubtotal===undefined?
+       '— (detalhe sem preço)':wdMoney(order.goodsSubtotal)];
+    for(const value of columns){
+      const td=document.createElement('td');
+      td.textContent=value;tr.append(td);
+    }
+    body.append(tr);
+  }
+}
+function financeReconciliationRender(report){
+  financeRenderPendingOrders(report);
+  const pipeline=report?.salesPipeline||{},fees=report?.fees||{},totals=report?.totals||{};
+  const current=report!==null;
+  const set=(id,value)=>{const el=$('#'+id);if(el)el.textContent=String(value);};
+  set('financeActiveOrders',current?wdNum(pipeline.active??0)+' de '+wdNum(pipeline.listed??0):'—');
+  set('financeActiveDetail',current?wdNum(pipeline.cancelled??0)+' cancelado(s) · '+
+    wdNum(pipeline.unpaid??0)+' não pago(s)':'Aguardando conferência por status');
+  set('financeGrossSales',current&&pipeline.goodsSubtotal!==null&&pipeline.goodsSubtotal!==undefined?
+    wdMoney(pipeline.goodsSubtotal):'—');
+  set('financeGrossCoverage',current?
+    wdNum(pipeline.goodsConfirmed||0)+' de '+wdNum(pipeline.active||0)+
+    ' pedidos ativos com valor de produtos conhecido'+
+    (pipeline.goodsComplete?' · amostra completa':' · amostra parcial'):
+    'Valores reais dos itens no detalhe dos pedidos');
+  set('financeShopeeFees',current&&fees.knownFees!==null&&fees.knownFees!==undefined?
+    wdMoney(fees.knownFees):'—');
+  set('financeFeesCoverage',current?
+    (fees.feeOrders?
+      'Comissão '+wdMoney(fees.commission)+' · Serviço '+wdMoney(fees.service)+
+      ' · Transação '+wdMoney(fees.transaction)+
+      ' · Frete registrado '+wdMoney(fees.shipping)+'. ':'')+
+    wdNum(fees.completeFeeOrders||0)+' de '+wdNum(totals.eligible||0)+
+    ' concluídos com todas as taxas. Já refletidas no repasse.':
+    'Comissão, serviço e transação discriminados no Payment');
+  set('financeUnsettledOrders',current?wdNum(pipeline.awaitingSettlement||0):'—');
+  const margin=totals.marginBeforeAdsOnSales;
+  set('financeOperatingMargin',current&&margin!==null&&margin!==undefined?
+    Number(margin).toLocaleString('pt-BR',{maximumFractionDigits:2})+'%':'—');
+  const note=current?
+    'Período: '+(report.selection?.label||'não informado')+'. '+
+    'Shopee listou '+wdNum(pipeline.listed||0)+' pedidos: '+
+    wdNum(pipeline.active||0)+' ativos, '+
+    wdNum(pipeline.completed||0)+' concluídos, '+
+    wdNum(pipeline.awaitingSettlement||0)+' ainda sem repasse final. '+
+    'Vendas e taxas desta faixa podem incluir pedidos que NÃO entraram no total de repasses. '+
+    'WeDrop é uma base independente e precisa ser cruzada pelo ID/SKU de cada pedido. '+
+    'Impostos, reembolsos e despesas externas precisam de registros para fechar lucro líquido.':
+    'Atualize para conciliar vendas, pedidos, repasses, taxas e Ads no mesmo período.';
+  set('financeReconciliationNote',note);
+}
 function financeSelectionChanged(){
   const selected=$('#shopeeFinanceDays').value;
   $('#financeCustomDates').hidden=selected!=='custom';
   financeReport=null;financeSkuShown=24;renderFinanceSkuList();
+  financeReconciliationRender(null);
   $('#shopeeFinanceData').hidden=true;
   $('#financeExportCsv').disabled=true;
   renderFinanceTrend(null);renderFinanceDistribution(null);
@@ -8469,6 +8550,7 @@ function financeSelectionChanged(){
   $('#financeResultCompleteness').textContent='Atualize para o novo período';
   $('#financePeriodCaption').textContent=selected==='custom'
     ?'Personalizado: selecione as duas datas e clique Atualizar financeiro.'
+    :selected==='month'?'Este mês, a partir do dia 1º (calendário Brasil).'
     :'Últimos '+selected+' dias civis no Brasil; clique Atualizar financeiro para consultar.';
   wdSetNotice('#shopeeFinanceStatus',
     'O período mudou. Clique em Atualizar financeiro para não misturar vendas e Ads de outras datas.','info');
@@ -8485,6 +8567,7 @@ $('#shopeeFinanceLoad').onclick=async()=>{
   button.disabled=true;button.textContent='Consultando repasses reais...';
   // Esconder números da consulta anterior ao trocar período: nunca exibir como atual.
   financeReport=null;financeSkuBalances.clear();renderFinanceSkuList();
+  financeReconciliationRender(null);
   $('#financeExportCsv').disabled=true;
   renderFinanceTrend(null);renderFinanceDistribution(null);
   $('#financeVerifiedCaption').textContent='Consultando pedidos...';
@@ -8511,6 +8594,7 @@ $('#shopeeFinanceLoad').onclick=async()=>{
     const t=report.totals||{};
     financeReport=report;financeSkuShown=24;
     renderFinanceTrend(report);renderFinanceDistribution(report);
+    financeReconciliationRender(report);
     $('#financeExportCsv').disabled=false;
     $('#financeVerifiedCaption').textContent=(t.eligible>0&&t.verified===t.eligible&&report.complete?'100% dos elegíveis':'Conciliação parcial');
     $('#financePeriodCaption').title='Exibindo apenas pedidos criados em '+
@@ -8574,13 +8658,21 @@ $('#shopeeFinanceLoad').onclick=async()=>{
       (t.incomplete?'Pedidos sem custo/repasse confirmado: '+wdNum(t.incomplete)+'. ':'')+
       (report.skippedCompleted?'Pedidos concluídos não examinados nesta consulta: '+
         wdNum(report.skippedCompleted)+'. ':'')+
+      (report.salesPipeline?.awaitingSettlement?
+        'ATENÇÃO: '+wdNum(report.salesPipeline.awaitingSettlement)+
+        ' pedido(s) ativos não estão liquidados; o saldo após Ads NÃO representa o lucro nem o prejuízo da loja. ':'')+
+      (report.salesPipeline&&!report.salesPipeline.goodsComplete?
+        'Os valores de vendas de produtos cobrem '+wdNum(report.salesPipeline.goodsConfirmed||0)+
+        '/'+wdNum(report.salesPipeline.active||0)+' pedidos; faltam detalhes para a conciliação. ':'')+
       'As taxas e o frete estão no repasse, não devem ser descontados novamente. '+
       'Os Ads só entram no resultado do SKU quando existe venda atribuída e vínculo de campanha seguro; '+
       'despesa de Ads sem conversão permanece contabilizada separadamente na loja. '+
       'Resultado após Ads é parcial, ainda sem tributos e custos externos.';
     wdSetNotice('#shopeeFinanceStatus',
       'Consulta concluída: '+wdNum(t.verified)+' de '+wdNum(t.eligible)+
-      ' pedidos concluídos com custo e repasse verificados. '+
+      ' pedidos concluídos com custo e repasse verificados; '+
+      wdNum(report.salesPipeline?.awaitingSettlement||0)+
+      ' pedido(s) aguardando liquidação. '+
       'Varredura de Ads '+(report.adsSweep?.status==='verified_campaign_period'
         ?'concluída':'pendente')+'. Máximo de 100 pedidos concluídos por consulta.'+
       ' Prejuízos são mostrados em vermelho. O resultado após Ads não inclui tributos.',
@@ -8590,6 +8682,7 @@ $('#shopeeFinanceLoad').onclick=async()=>{
   }catch(error){
     $('#financeExportCsv').disabled=true;renderFinanceTrend(null);renderFinanceDistribution(null);
     financeReport=null;financeSkuBalances.clear();
+    financeReconciliationRender(null);
     $('#shopeeFinanceData').hidden=true;renderFinanceSkuList();
     wdSetNotice('#shopeeFinanceStatus','Não foi possível verificar os dados financeiros: '+
       error.message+'. Lucro líquido e margem permanecem indisponíveis.','error');

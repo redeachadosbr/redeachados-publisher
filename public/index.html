@@ -6,7 +6,7 @@
 <meta name="theme-color" content="#0A1C3A">
 <link rel="icon" type="image/svg+xml" href="/brand-logo.svg">
 <title>Rede Achados BR · Gestão Shopee</title>
-<link rel="stylesheet" href="/style.css?v=1.20.46-kit-cost-chips">
+<link rel="stylesheet" href="/style.css?v=1.20.47-finance-reconciliation">
 <link rel="stylesheet" href="/optimizer-compact.css?v=1.20.13-wedrop">
 <link rel="stylesheet" href="/optimizer-fiscal-premium.css?v=1.20.13">
 <link rel="stylesheet" href="/optimizer-ads-reserve.css?v=1.20.15">
@@ -2644,7 +2644,15 @@
               <button id="financeSkuMore" type="button" class="secondary" hidden>Mostrar mais produtos</button>
             </div>
             </div>
-            <details class="finance-ads-scan" id="financeAdsScanAccordion">
+            <details class="finance-details finance-pending-orders" id="financePendingOrdersDetails">
+              <summary><span class="finance-bottom-icon">▥</span> Pedidos vendidos ou enviados ainda sem repasse <span id="financePendingOrdersCount">—</span></summary>
+              <p class="hint">Pedidos ativos que ainda não estão COMPLETED. Valores dos produtos são provisórios; não representam dinheiro recebido nem lucro. Use os IDs para conferir o pedido na Shopee e a compra correspondente na WeDrop.</p>
+              <div class="table-wrap"><table>
+                <thead><tr><th>Pedido Shopee</th><th>Situação</th><th>Produtos / SKUs</th><th>Subtotal dos produtos</th></tr></thead>
+                <tbody id="financePendingOrdersBody"></tbody>
+              </table></div>
+            </details>
+                        <details class="finance-ads-scan" id="financeAdsScanAccordion">
               <summary><span class="finance-bottom-icon">◁</span><strong id="financeAdsScanTitle">Varredura de publicidade</strong>
                 <span id="financeAdsScanBadge" class="finance-ads-scan-badge">Aguardando Ads</span>
                 <span class="finance-expand-arrow">›</span></summary>
@@ -2732,7 +2740,7 @@
 <script src="/technical-status.js?v=1.0.0-optional-coherence"></script>
 <script src="/optimizer-execution-visual.js?v=1.0.5-title-pending-readback"></script>
 <script src="/optimizer-execution-dialog.js?v=1.0.5-video-relink-sync"></script>
-<script src="/app.js?v=3.5.67-shopee-photo-and-wedrop-dimensions&amp;layout=curves-compact-v1&amp;ads=monitor-reconcile-20261106"></script>
+<script src="/app.js?v=3.5.68-finance-reconciliation&amp;layout=curves-compact-v1&amp;ads=monitor-reconcile-20261106"></script>
 <script src="/curvas-ab.js?v=20261106-comparable-diagnostics-v5"></script>
 <script src="/curvas-chrome.js?v=20261106-max-ten127-v7"></script>
 <script src="/pending-images.js?v=1.2.0-kit-routing"></script>

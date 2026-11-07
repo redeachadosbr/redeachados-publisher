@@ -36,15 +36,102 @@ export function financeRange({days=15,start='',end=''}={},now=Math.floor(Date.no
       throw Error('Intervalo inválido: escolha no máximo 30 dias, sem datas futuras.');
     return {from,to,days:Math.ceil((to-from+1)/86400),label:start+' a '+end,mode:'custom'};
   }
-  const n=financePeriod(days);
+  const monthRequested=String(days)==='month';
+  const n=monthRequested?null:financePeriod(days);
   const parts=new Intl.DateTimeFormat('en-US',{
     timeZone:'America/Sao_Paulo',year:'numeric',month:'2-digit',day:'2-digit'
   }).formatToParts(new Date(now*1000));
   const values=Object.fromEntries(parts.map(p=>[p.type,p.value]));
   const today=values.year+'-'+values.month+'-'+values.day;
   const midnight=Math.floor(Date.parse(today+'T00:00:00-03:00')/1000);
+  if(monthRequested){
+    const first=values.year+'-'+values.month+'-01';
+    const from=Math.floor(Date.parse(first+'T00:00:00-03:00')/1000);
+    return {from,to:now,days:Math.ceil((now-from+1)/86400),
+      label:values.month+'/'+values.year+' (até hoje)',mode:'month'};
+  }
   return {from:midnight-(n-1)*86400,to:now,days:n,
     label:'Últimos '+n+' dias (calendário BR)',mode:'rolling'};
+}
+// Preço dos produtos sem frete; nunca usar o valor total do comprador
+// (que pode conter frete, moedas e outras deduções) como faturamento líquido.
+export function orderMerchandiseSubtotal(detail){
+  const items=Array.isArray(detail?.item_list)?detail.item_list:[];
+  if(!items.length)return null;
+  let cents=0;
+  for(const item of items){
+    const unit=finiteMoney(item.model_discounted_price??item.discounted_price);
+    const qty=Number(item.model_quantity_purchased??item.quantity_purchased??item.quantity);
+    if(unit===null||unit<0||!Number.isSafeInteger(qty)||qty<1)return null;
+    cents+=Math.round(unit*100)*qty;
+  }
+  return Math.round(cents)/100;
+}
+export function summarizeFinanceOrderPipeline(orders,detailMap=new Map(),{truncated=false}={}){
+  const counts={},money=n=>Math.round(n*100)/100;
+  let active=0,completed=0,cancelled=0,unpaid=0,
+    goodsSubtotal=0,goodsConfirmed=0,chargedTotal=0,chargedConfirmed=0;
+  for(const x of orders||[]){
+    const sn=String(x.order_sn||''),status=String(x.order_status||'UNKNOWN').toUpperCase();
+    counts[status]=(counts[status]||0)+1;
+    if(status==='CANCELLED'){cancelled++;continue;}
+    if(status==='UNPAID'){unpaid++;continue;}
+    active++;
+    if(status==='COMPLETED')completed++;
+    const detail=detailMap.get(sn);
+    const product=orderMerchandiseSubtotal(detail);
+    if(product!==null){goodsSubtotal=money(goodsSubtotal+product);goodsConfirmed++;}
+    const buyer=finiteMoney(detail?.total_amount);
+    if(buyer!==null){chargedTotal=money(chargedTotal+buyer);chargedConfirmed++;}
+  }
+  return {
+    listed:(orders||[]).length,active,completed,cancelled,unpaid,
+    awaitingSettlement:active-completed,statusCounts:counts,
+    goodsSubtotal:goodsConfirmed?goodsSubtotal:null,
+    goodsConfirmed,goodsComplete:!truncated&&active===goodsConfirmed,
+    chargedByBuyer:chargedConfirmed?chargedTotal:null,
+    buyerTotalConfirmed:chargedConfirmed,
+    pendingOrders:(orders||[]).filter(x=>!['COMPLETED','CANCELLED','UNPAID']
+      .includes(String(x.order_status||'').toUpperCase())).slice(0,100).map(x=>{
+       const detail=detailMap.get(String(x.order_sn||''));
+       const items=Array.isArray(detail?.item_list)?detail.item_list:[];
+       return {orderSn:String(x.order_sn||''),status:String(x.order_status||'UNKNOWN'),
+        createdAt:Number.isSafeInteger(Number(x.create_time??detail?.create_time))?
+          Number(x.create_time??detail?.create_time):null,
+        goodsSubtotal:orderMerchandiseSubtotal(detail),
+        items:items.slice(0,12).map(item=>({
+         sku:String(item.model_sku||item.item_sku||'').slice(0,90),
+         name:String(item.item_name||item.model_name||'Produto').slice(0,140),
+         quantity:Number(item.model_quantity_purchased??item.quantity_purchased??item.quantity)||null
+        }))
+       };
+      }),
+    truncated,
+    definition:'Pedidos por data de criação, excluídos Cancelled e Unpaid. Subtotal de mercadorias usa preço descontado por item no detalhe da Shopee, quando disponível. Não equivale ao repasse ou à carteira.'
+  };
+}
+export function summarizeFinanceFees(rows){
+  const money=n=>Math.round(n*100)/100;
+  const fields=['commission','service','transaction'];
+  const totals={commission:0,service:0,transaction:0,shipping:0};
+  let feeOrders=0,completeFeeOrders=0,shippingOrders=0;
+  for(const row of rows||[]){
+    const f=row.feeBreakdown;
+    if(!f)continue;
+    feeOrders++;
+    if(fields.every(key=>f[key]!==null&&Number.isFinite(Number(f[key]))))
+      completeFeeOrders++;
+    for(const key of fields){
+      if(f[key]!==null&&Number.isFinite(Number(f[key])))
+        totals[key]=money(totals[key]+Math.abs(Number(f[key])));
+    }
+    if(f.actualShipping!==null&&Number.isFinite(Number(f.actualShipping))){
+      shippingOrders++;totals.shipping=money(totals.shipping+Math.abs(Number(f.actualShipping)));
+    }
+  }
+  return {...totals,knownFees:feeOrders?money(totals.commission+totals.service+totals.transaction):null,
+    feeOrders,completeFeeOrders,shippingOrders,
+    definition:'Comissão, serviço e transação declarados no Payment dos pedidos concluídos. Frete separado. Valores informativos, já refletidos no repasse, sem desconto duplicado.'};
 }
 export function normalizeEscrowOrder(order,detail,escrow,costMap,linkMap=new Map()){
   const income=escrow?.response?.order_income;
@@ -102,10 +189,12 @@ export function normalizeEscrowOrder(order,detail,escrow,costMap,linkMap=new Map
   const marginBeforeAds=ready&&payout>0?
     Math.round(balanceBeforeAds/payout*10000)/100:null;
   return {
-    orderSn,status,ready,createdAt:Number.isSafeInteger(Number(order.create_time))&&Number(order.create_time)>0?Number(order.create_time):null,
+    orderSn,status,ready,createdAt:Number.isSafeInteger(Number(order.create_time??detail?.create_time))&&Number(order.create_time??detail?.create_time)>0?
+      Number(order.create_time??detail?.create_time):null,
     sku:onlySku,skuList:presentSkuList,items:items.length,
     quantity:costs.reduce((n,x)=>n+x.qty,0),
     buyerTotal:finiteMoney(income.buyer_total_amount),
+    grossProductSales:orderMerchandiseSubtotal(detail),
     payout,totalCost,balanceBeforeAds,marginBeforeAds,
     // Sem atribuição de Ads e tributos externos, NÃO nomear lucro líquido.
     netProfit:null,netMargin:null,
@@ -176,6 +265,13 @@ export function summarizeFinance(rows,{more=false,eligible=0}={}){
       incomplete:rows.length-verified.length,
       received:total('payout'),supplierCost:total('totalCost'),
       balanceBeforeAds:total('balanceBeforeAds'),
+      grossProductSales:verified.length&&verified.every(x=>
+        x.grossProductSales!==null&&x.grossProductSales!==undefined)?
+        total('grossProductSales'):null,
+      marginBeforeAdsOnSales:verified.length&&verified.every(x=>
+        x.grossProductSales!==null&&x.grossProductSales!==undefined)&&
+        total('grossProductSales')>0?
+        Math.round(total('balanceBeforeAds')/total('grossProductSales')*10000)/100:null,
       incompletePeriod:Boolean(more||eligible>rows.length),
       profitabilityComplete:false
     },
@@ -233,11 +329,18 @@ export async function loadShopeeFinance(cfg,auth,callApi,{days=15,now=Math.floor
   }
   const completed=[...found.values()].filter(x=>String(x.order_status||'').toUpperCase()==='COMPLETED');
   const limited=completed.slice(0,MAX_FINANCE_ORDERS);
+  const listed=[...found.values()];
+  // Inclui itens dos pedidos ainda não concluídos: eles geram faturamento
+  // em formação, não repasse recebido. COMPLETED continua prioritário.
+  const detailTargets=[...limited,...listed.filter(x=>
+    String(x.order_status||'').toUpperCase()!=='COMPLETED'&&
+    !['CANCELLED','UNPAID'].includes(String(x.order_status||'').toUpperCase()))]
+    .slice(0,MAX_FINANCE_ORDERS);
   const detailMap=new Map();
-  for(let i=0;i<limited.length;i+=50){
+  for(let i=0;i<detailTargets.length;i+=50){
     const d=await callApi(cfg,{
       path:'/api/v2/order/get_order_detail',accessToken:auth.accessToken,shopId:auth.shopId,
-      query:{order_sn_list:limited.slice(i,i+50).map(x=>x.order_sn).join(',')}
+      query:{order_sn_list:detailTargets.slice(i,i+50).map(x=>x.order_sn).join(',')}
     });
     if(!Array.isArray(d?.response?.order_list))
       throw Error('Não foi possível obter itens dos pedidos da Shopee.');
@@ -268,14 +371,24 @@ export async function loadShopeeFinance(cfg,auth,callApi,{days=15,now=Math.floor
     rows.push(normalizeEscrowOrder(item,detailMap.get(String(item.order_sn)),escrow,costs,linkMap));
   }
   const summary=summarizeFinance(rows,{eligible:completed.length,more:false});
+  const salesPipeline=summarizeFinanceOrderPipeline(listed,detailMap,{
+    truncated:detailTargets.length<listed.filter(x=>
+      !['CANCELLED','UNPAID'].includes(String(x.order_status||'').toUpperCase())).length
+  });
+  const fees=summarizeFinanceFees(rows);
+  // "9 de 9 concluídos" NÃO significa "23 de 23 pedidos liquidados".
+  summary.totals.incompletePeriod=Boolean(summary.totals.incompletePeriod||
+    salesPipeline.awaitingSettlement>0||!salesPipeline.goodsComplete);
   return {
     shopId:auth.shopId,days,window:{from:periodFrom,to:periodTo},selection:range,rows,
+    salesPipeline,fees,
     dailySeries:summarizeFinanceDaily(rows),
     catalogProducts,catalogError,
     ...summary,paymentAccessWarning,
     skippedCompleted:completed.length-limited.length,
     complete:Boolean(!paymentAccessWarning&&completed.length===rows.length&&
-      rows.every(x=>x.ready)),
+      rows.every(x=>x.ready)&&salesPipeline.awaitingSettlement===0&&
+      salesPipeline.goodsComplete),
     adsAttribution:'not_available',
     caveat:'Somente pedidos COMPLETED criados entre as datas selecionadas; máximo de '+MAX_FINANCE_ORDERS+
       ' pedidos concluídos por consulta. Não equivale ao extrato bancário.'

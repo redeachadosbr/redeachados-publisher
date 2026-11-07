@@ -112,3 +112,24 @@ test('integração consulta dados do detalhe de escrow por pedido concluído sem
  assert.match(code,/order_status.*COMPLETED/);
  assert.doesNotMatch(code,/recipient_address/);
 });
+
+test('pipeline mostra pedidos não liquidados sem informações pessoais',()=>{
+ const orders=[{order_sn:'A1',order_status:'SHIPPED',create_time:1783500000},
+  {order_sn:'A2',order_status:'COMPLETED',create_time:1783500100},
+  {order_sn:'A3',order_status:'CANCELLED',create_time:1783500200}];
+ const details=new Map([
+  ['A1',{item_list:[{item_sku:'TRC',item_name:'Balança Digital',model_quantity_purchased:1,
+   model_discounted_price:16.9}],total_amount:22.3}],
+  ['A2',{item_list:[{item_sku:'PL001',item_name:'Pano Multiuso',model_quantity_purchased:1,
+   model_discounted_price:25.9}],total_amount:25.9}]
+ ]);
+ const result=summarizeFinanceOrderPipeline(orders,details);
+ assert.equal(result.pendingOrders.length,1);
+ assert.equal(result.pendingOrders[0].orderSn,'A1');
+ assert.equal(result.pendingOrders[0].status,'SHIPPED');
+ assert.equal(result.pendingOrders[0].goodsSubtotal,16.9);
+ assert.deepEqual(result.pendingOrders[0].items,[{sku:'TRC',name:'Balança Digital',quantity:1}]);
+ assert.equal(result.goodsSubtotal,42.8);
+ assert.equal(result.active,2);
+ assert.equal(result.awaitingSettlement,1);
+});
