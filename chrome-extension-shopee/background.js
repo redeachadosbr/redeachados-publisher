@@ -124,8 +124,8 @@ const mergeEvidence=(old,next)=>!old?next:{
  priceMin:next.priceMin??old.priceMin,
  historicalSold:next.historicalSold??old.historicalSold,
  monthlySold:next.monthlySold??old.monthlySold,
- monthlyPeriod:next.monthlySold!==null?next.monthlyPeriod:old.monthlyPeriod,
- monthlyEvidence:next.monthlyEvidence||old.monthlyEvidence,
+ monthlyPeriod:next.monthlySold!=null?next.monthlyPeriod:old.monthlyPeriod,
+ monthlyEvidence:next.monthlySold!=null?next.monthlyEvidence:old.monthlyEvidence,
  monthlyLabelVisible:next.monthlyLabelVisible||old.monthlyLabelVisible
 };
 const normalizeTerms=text=>String(text||'').normalize('NFD')
@@ -147,15 +147,18 @@ const offerPriority=(query,offer)=>{
   Number(offer.priceMin!==null)*2+Number(offer.monthlySold!==null);
 };
 async function readPage(tabId){
- const merged=new Map();let last=null,blocked=null;
+ const merged=new Map();let last=null,blocked=null,labelsSeen=0,labelsInCards=0;
  for(let i=0;i<4;i++){
   if(stopRequested)return {ok:false,error:'Pesquisa interrompida.',offers:[]};
   await delay(i===0?1500:1000);
   try{
-   const result=await chrome.tabs.sendMessage(tabId,{kind:'RA_CURVE_READ_VISIBLE',deep:i===0});
+   const result=await chrome.tabs.sendMessage(tabId,{kind:'RA_CURVE_READ_VISIBLE',
+    deep:i===0||(i===3&&![...merged.values()].some(x=>x.monthlySold!=null))});
    if(result?.blocked){blocked=result;break;}
    if(!result?.ok||!Array.isArray(result.offers))continue;
    last=result;
+   labelsSeen=Math.max(labelsSeen,Number(result.monthlyLabelsVisible||0));
+   labelsInCards=Math.max(labelsInCards,Number(result.monthlyLabelsInCards||0));
    for(const offer of result.offers){
     const id=String(offer.shopId)+':'+String(offer.itemId);
     merged.set(id,mergeEvidence(merged.get(id),offer));
@@ -168,6 +171,7 @@ async function readPage(tabId){
  if(blocked&&!merged.size)return {ok:false,blocked:true,
   error:blocked.error||'A Shopee exigiu verificação humana.',offers:[]};
  if(merged.size)return {...last,ok:true,offers:[...merged.values()],
+  monthlyLabelsVisible:labelsSeen,monthlyLabelsInCards:labelsInCards,
   monthlyCards:[...merged.values()].filter(x=>x.monthlySold!==null).length,
   visibleCards:Math.max(Number(last?.visibleCards||0),merged.size)};
  return {ok:false,error:'Shopee não apresentou cartões verificáveis nesta pesquisa. '+
@@ -326,18 +330,19 @@ async function batch(managerTab,nonce,jobs){
    const monthlyCount=offers.filter(x=>x.monthlySold!==null).length;
    const sourceStatus=monthlyCount?'monthly_captured':
     labelsSeen>0?'monthly_labels_unbound':
-    offers.length?'monthly_not_rendered':'no_visible_offers';
+    offers.length?'monthly_capture_failed':'no_visible_offers';
    await stage(managerTab,nonce,'comparando',
     monthlyCount?monthlyCount+' anúncios com Vendido/Mês capturados.':
      sourceStatus==='monthly_labels_unbound'?
       'Rótulos mensais visíveis, mas sem vínculo confiável ao anúncio.':
-      offers.length?'A Shopee não exibiu Vendido/Mês nos anúncios lidos.':
+      offers.length?'Falha de leitura de Vendido/Mês nesta consulta. Isso não confirma ausência do indicador na Shopee.':
        'Nenhuma oferta legível nesta consulta.',
     i+1,jobs.length,{visible:offers.length,monthly:monthlyCount,labels:labelsSeen});
    await deliver(managerTab,{kind:'RA_CURVE_CHROME_RESULT',nonce,query,
     position:i+1,total:jobs.length,offers,
     error:hardStop?failure:incomplete&&!offers.length?failure:'',
-    warning:incomplete?'Leitura parcial: '+failure:'',
+    warning:incomplete?'Leitura parcial: '+failure:offers.length&&!monthlyCount?
+     'Vendido/Mês não capturado após releitura. Dados mensais pendentes; não significa zero vendas.':'',
     recoverable:incomplete&&!hardStop,
     stats:{visible:offers.length,visibleCards,pages,
      monthly:monthlyCount,monthlyLabelsVisible:labelsSeen,

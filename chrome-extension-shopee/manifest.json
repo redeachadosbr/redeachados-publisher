@@ -1,8 +1,8 @@
 {
   "manifest_version": 3,
   "name": "Rede Achados BR - Shopee Em Destaque",
-  "version": "1.2.7",
-  "description": "Pesquisa Curvas A/B por categoria sem parar em falhas isoladas; uma janela auxiliar reutilizada, progresso auditável no Manager.",
+  "version": "1.2.8",
+  "description": "Lê Vendido/Mês nos campos de cada cartão Shopee, recupera carregamento parcial e informa falhas de captura nas Curvas A/B.",
   "permissions": [
     "tabs",
     "scripting",
@@ -38,3 +38,4 @@
     }
   ]
 }
+

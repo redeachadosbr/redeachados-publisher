@@ -9,6 +9,16 @@ test('somente texto explícito de período permite vendas mensais',()=>{
  assert.equal(verifiedMonthlyEvidence('950 vendidos'),false);
  assert.equal(verifiedMonthlyEvidence('10 mil vendidos ao todo'),false);
 });
+test('importação mantém o volume mensal quando número e rótulo chegam sem espaço',()=>{
+ const rows=['2mil+Vendido/Mês','1mil+Vendido/Mês','866Vendido/Mês',
+  '495Vendido/Me\u0302s','392\u200bVendido／Mês','0Vendido/Mês'].map((monthlyEvidence,i)=>({
+  itemId:String(100+i),shopId:String(200+i),productName:'Dispenser Lavanderia Sabão Líquido',
+  priceMin:30.9,monthlySold:[2000,1000,866,495,392,0][i],monthlyPeriod:'month',monthlyEvidence
+ }));
+ for(const row of rows)assert.equal(verifiedMonthlyEvidence(row.monthlyEvidence),true);
+ assert.deepEqual(normalizeVisibleOffers(rows).map(x=>x.monthlySold),[2000,1000,866,495,392,0]);
+ assert.equal(verifiedMonthlyEvidence('866 Vendidos'),false);
+});
 test('não transforma vendas acumuladas em mensais e ignora anúncio próprio',()=>{
  const out=normalizeVisibleOffers([
   {itemId:'1',shopId:'9',productName:'Coqueteleira Shaker Inox 500ml',
@@ -125,3 +135,4 @@ test('novo plano de Curvas zera evidências anteriores antes da primeira consult
  assert.match(source,/state\.scanned\.clear\(\)/);
  assert.match(source,/state\.queries=0/);
 });
+

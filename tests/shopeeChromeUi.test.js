@@ -27,12 +27,12 @@ test('pesquisa continua até a quantidade solicitada, sem limite fixo de 60 busc
  assert.match(ui,/mínimo 2 lojas/);
 });
 
-test('exige a extensão Shopee Chrome 1.2.0 para pesquisas sem novas abas',()=>{
+test('exige a extensão Shopee Chrome 1.2.8 para corrigir a leitura mensal',()=>{
  const code=readFileSync(new URL('../public/curvas-chrome.js',import.meta.url),'utf8');
  const manifest=JSON.parse(readFileSync(new URL('../chrome-extension-shopee/manifest.json',import.meta.url),'utf8'));
- assert.equal(manifest.version,'1.2.7');
+ assert.equal(manifest.version,'1.2.8');
  assert.match(code,/parts\[1\]>2/);
- assert.match(code,/Number\(parts\[2\]\|\|0\)>=7/);
+ assert.match(code,/Number\(parts\[2\]\|\|0\)>=8/);
 });
 
 test('filtro único categoria, quantidade e nome só inicia pesquisa Chrome',()=>{
@@ -128,8 +128,8 @@ test('botão usa versão instalada no manifesto e consulta versão real no servi
  assert.match(page,/média de 2 a 10 anúncios equivalentes/);
  assert.match(code,/chrome-extension-version/);
  assert.match(code,/Baixar extensão.*version/);
- assert.match(code,/Requer 1\.2\.7/);
- assert.match(code,/Verificando Ponte Chrome 1\.2\.7/);
+ assert.match(code,/Requer 1\.2\.8/);
+ assert.match(code,/Verificando Ponte Chrome 1\.2\.8/);
 });
 
 test('relatório diferencia candidatos, SKUs sem equivalência e consultas incompletas',()=>{
@@ -173,3 +173,4 @@ test('pesquisa por preço tenta amostra completa de dez anúncios em vez de ence
  assert.match(bg,/mergeEvidence\(merged\.get\(id\),offer\)/);
  assert.match(bg,/readPage\(tabId\)/);
 });
+

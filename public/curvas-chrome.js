@@ -40,7 +40,8 @@
    noMatch+' SKU(s) sem produto equivalente encontrado',
    missingSearch+' SKU(s) com consulta incompleta ou sem importação',
    (diagnostics.monthly_labels_unbound||0)+' pesquisa(s) com Vendido/Mês visível, mas sem vínculo ao anúncio',
-   (diagnostics.monthly_not_rendered||0)+' pesquisa(s) cujos cartões não exibiram Vendido/Mês',
+   ((diagnostics.monthly_capture_failed||0)+(diagnostics.monthly_not_rendered||0))+
+    ' pesquisa(s) com falha na captura de Vendido/Mês; não comprova ausência do indicador na Shopee',
    (diagnostics.no_visible_offers||0)+' pesquisa(s) sem anúncios legíveis',
    (diagnostics.featured_public_recovered||0)+' consulta(s) recuperadas na fonte pública Shopee'
   ];
@@ -123,8 +124,8 @@
     const version=String(event.data.version||'0.0.0');
     const parts=version.split('.').map(Number);
     const ok=parts[0]>1||(parts[0]===1&&
-     (parts[1]>2||parts[1]===2&&Number(parts[2]||0)>=7));
-    finish({ok,version,reason:ok?'':'Extensão '+version+' é antiga. Requer 1.2.7.'});
+     (parts[1]>2||parts[1]===2&&Number(parts[2]||0)>=8));
+    finish({ok,version,reason:ok?'':'Extensão '+version+' é antiga. Requer 1.2.8 para corrigir a leitura de Vendido/Mês.'});
    };
    window.addEventListener('message',listener);
    const timer=setTimeout(()=>finish({ok:false,reason:'A extensão não respondeu na aba do Manager.'}),2600);
@@ -149,11 +150,11 @@
   if(cancel){cancel.hidden=false;cancel.disabled=false;}
   if(feed)feed.replaceChildren();
   if(summary)summary.hidden=true;
-  updateStage('iniciando','Verificando Ponte Chrome 1.2.7 e carregamento da Shopee.');
+  updateStage('iniciando','Verificando Ponte Chrome 1.2.8 e carregamento da Shopee.');
   say('Verificando instalação da Ponte Chrome…');
   try{
    const bridge=await ping(nonce);
-   if(!bridge.ok)throw Error(bridge.reason+' Baixe a versão 1.2.7, ative o acesso ao site, atualize a extensão em chrome://extensions e recarregue o Manager.');
+   if(!bridge.ok)throw Error(bridge.reason+' Baixe a versão 1.2.8, substitua os arquivos da pasta instalada, clique em Recarregar em chrome://extensions e recarregue o Manager.');
    const params=new URLSearchParams({category:selected.category,keyword:selected.keyword,
     offset:String(offset),limit:'6'});
    let plan=await json('/api/shopee/curvas-ab/chrome-plan?'+params);
@@ -167,7 +168,7 @@
     matchedSkuIds:new Set(),viableSkuIds:new Set(),
      pendingSkuIds:new Set(),discardedSkuIds:new Set(),targetReached:false,
      batchStartScanned:0,sourceStats:{monthly_captured:0,
-      monthly_labels_unbound:0,monthly_not_rendered:0,
+      monthly_labels_unbound:0,monthly_not_rendered:0,monthly_capture_failed:0,
       no_visible_offers:0,featured_public_recovered:0}};
    offset=plan.nextOffset;
    updateStage('iniciando','Janela auxiliar minimizada • primeiro lote com '+plan.jobs.length+' consultas.',active);

@@ -2,6 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import vm from 'node:vm';
 import {readFileSync} from 'node:fs';
+import {normalizeVisibleOffers} from '../shopeeChromeCurves.js';
 const source=readFileSync(new URL('../chrome-extension-shopee/visible-offers.js',import.meta.url),'utf8');
 const ctx={URL,globalThis:null,location:{origin:'https://shopee.com.br',href:'https://shopee.com.br/search?keyword=caneca',pathname:'/search'},
  chrome:{runtime:{onMessage:{addListener(){}}}}};
@@ -131,3 +132,77 @@ test('rolagem acumula anúncios e Vendido/Mês carregados fora da primeira dobra
  assert.ok(result.offers.every(x=>x.priceMin===16.9));
  assert.ok(result.offers.every(x=>x.monthlyPeriod==='month'));
 });
+
+// Estrutura mínima de DOM: texto visual do cartão e campos inline podem
+// divergir, como nos cartões que usam display:contents/lazy rendering.
+function element(tag,children=[],attrs={}){
+ const node={nodeType:1,tagName:tag.toUpperCase(),attrs,hidden:Boolean(attrs.hidden),childNodes:[],parentElement:null,
+  getAttribute(key){return this.attrs[key]??null;},
+  get textContent(){return this.childNodes.map(x=>x.textContent).join('');},
+  get innerText(){return this.visualText??this.textContent;},
+  querySelectorAll(selector){
+   const all=this.childNodes.filter(x=>x.nodeType===1).flatMap(x=>[x,...x.querySelectorAll('*')]);
+   return selector==='*'?all:selector==='a[href]'?all.filter(x=>x.tagName==='A'&&x.attrs.href):[];
+  },
+  querySelector(selector){return this.querySelectorAll('*').find(x=>selector.includes('h3')&&x.tagName==='H3')||null;},
+  closest(){for(let n=this;n;n=n.parentElement)if(n.attrs?.['data-sqe']==='item')return n;return null;}
+ };
+ node.childNodes=children.map(x=>typeof x==='string'?{nodeType:3,textContent:x}:x);
+ for(const child of node.childNodes)child.parentElement=node;
+ return node;
+}
+function cardFixture(index,quantity,{omitFooter=true,hiddenQuantity=null}={}){
+ const title='Dispenser Lavanderia Sabão Líquido 1,5 Litros';
+ const link=element('a',[element('h3',[title])],{href:'/product/'+(500+index)+'/'+(1000+index)});
+ const badge=element('div',[element('span',[quantity]),element('span',['Vendido']),
+  element('span',['/']),element('span',['Me\u0302s'])]);
+ const hidden=hiddenQuantity===null?[]:[element('div',[
+  element('span',[hiddenQuantity+' Vendido/Mês'])],{hidden:true})];
+ const card=element('div',[link,element('div',['R$ 30,90']),...hidden,
+  element('div',[element('span',['4.9']),badge])],{'data-sqe':'item'});
+ if(omitFooter)card.visualText=title+' R$ 30,90';
+ return card;
+}
+function extractFixture(cards){
+ const body=element('body',cards);
+ const local={URL,location:ctx.location,document:{body,
+  querySelectorAll:selector=>body.querySelectorAll(selector)},globalThis:null,
+  chrome:{runtime:{onMessage:{addListener(){}}}}};
+ local.globalThis=local;vm.runInNewContext(source,local);
+ return local.RAShopeeVisible.extract();
+}
+test('valores do print: cinco cartões preservam 2mil+, 1mil+, 866, 495 e 392 até a importação',()=>{
+ const result=extractFixture(['2mil+','1mil+','866','495','392'].map((q,i)=>cardFixture(i,q)));
+ assert.equal(result.monthlyCards,5);
+ assert.equal(result.monthlyLabelsVisible,5);
+ assert.deepEqual(Array.from(result.offers,x=>x.monthlySold),[2000,1000,866,495,392]);
+ const imported=normalizeVisibleOffers(result.offers);
+ assert.deepEqual(imported.map(x=>x.monthlySold),[2000,1000,866,495,392]);
+ assert.ok(imported.every(x=>x.priceMin===30.9));
+});
+test('nota 4.9 colada ao contador não altera as 866 vendas mensais',()=>{
+ const card=cardFixture(0,'866',{omitFooter:false});
+ const result=extractFixture([card]);
+ assert.equal(result.offers[0].monthlySold,866);
+ assert.equal(result.offers[0].monthlyEvidence,'866 Vendido / Mês');
+});
+test('cartão sem quantidade mensal não herda o número do vizinho nem de campo oculto',()=>{
+ const result=extractFixture([cardFixture(0,'',{hiddenQuantity:'9000'}),cardFixture(1,'2mil+')]);
+ assert.equal(result.offers[0].monthlySold,null);
+ assert.equal(result.offers[0].monthlyLabelVisible,true);
+ assert.equal(result.offers[1].monthlySold,2000);
+ assert.equal(result.monthlyCards,1);
+});
+test('texto mensal normaliza acento decomposto, separadores e espaços invisíveis',()=>{
+ for(const text of ['866Vendido/Me\u0302s','866\u200bVendido／Mês','1mil+\u00a0Vendido/Mês'])
+  assert.ok(parser.monthlyEvidence(text).monthlySold>0,text);
+ assert.equal(parser.monthlyEvidence('1.2mil+ Vendido/Mês').monthlySold,1200);
+ assert.equal(parser.monthlyEvidence('1,2mil+ Vendido/Mês').monthlySold,1200);
+ assert.equal(parser.monthlyEvidence('866 vendidos no total').monthlySold,null);
+});
+test('aria-hidden não esconde visualmente um contador mensal renderizado',()=>{
+ const card=cardFixture(0,'866');
+ card.childNodes.at(-1).attrs['aria-hidden']='true';
+ assert.equal(extractFixture([card]).offers[0].monthlySold,866);
+});
+

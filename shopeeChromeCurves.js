@@ -52,12 +52,14 @@ export async function chromeCurvePlan(shopId,{category='Todos',keyword='',offset
   offset,nextOffset:offset+jobs.length,hasMore:offset+jobs.length<state.plan.length,jobs};
 }
 export function verifiedMonthlyEvidence(value){
- const text=String(value||'').replace(/\s+/g,' ').trim();
+ const text=String(value||'').normalize('NFC')
+  .replace(/[\u200b-\u200d\u2060\ufeff]/g,'').replace(/[\u2044\u2215\uff0f]/g,'/')
+  .replace(/\s+/g,' ').trim();
  return text.length<=160&&(
-  /\b(?:vendid[oa]s?|vendas)\s*(?:\/|por|no|nos|em)\s*m[eê]s\b/i.test(text)||
-  /\b(?:vendas|vendid[oa]s?)\s*(?:nos\s+)?(?:[uú]ltimos\s+)?30\s*dias\b/i.test(text)||
+  /(?<![a-z])(?:vendid[oa]s?|vendas)\s*(?:\/|por|no|nos|em)\s*m[eê]s\b/i.test(text)||
+  /(?<![a-z])(?:vendas|vendid[oa]s?)\s*(?:nos\s+)?(?:[uú]ltimos\s+)?30\s*dias\b/i.test(text)||
   /\bm[eê]s\s*[:\-]\s*\d/i.test(text)||
-  /\b(?:vendas|vendidos?)\s*(?:nos\s+)?(?:[uú]ltimos\s+)?30\s*(?:dias|d)\s*[:\-]?\s*\d/i.test(text)
+  /(?<![a-z])(?:vendas|vendidos?)\s*(?:nos\s+)?(?:[uú]ltimos\s+)?30\s*(?:dias|d)\s*[:\-]?\s*\d/i.test(text)
  );
 }
 export function normalizeVisibleOffers(rows,{ownShopId='0'}={}){
@@ -223,3 +225,4 @@ export async function importChromeOffers(shopId,{
    'Vendas acumuladas não comprovam uma Curva A/B.',
   searchMode:'wedrop-first-chrome-visible-featured',marketplaceUpdated:false};
 }
+

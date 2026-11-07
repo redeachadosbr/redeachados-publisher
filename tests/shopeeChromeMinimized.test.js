@@ -89,3 +89,22 @@ test('releitura da vitrine preserva 11 preços mesmo quando só 2 cartões mostr
  assert.equal(result.offers[0].priceMin,16.9);
  assert.equal(result.offers[0].monthlySold,3000);
 });
+
+test('releitura preserva diagnóstico mensal visto antes do último lote',async()=>{
+ let index=0;
+ const chrome={runtime:{onInstalled:{addListener(){}},onStartup:{addListener(){}},
+  onMessage:{addListener(){}}},tabs:{onActivated:{addListener(){}},
+  onUpdated:{addListener(){}},onRemoved:{addListener(){}},sendMessage:async()=>({
+   ok:true,offers:[{shopId:'10',itemId:'20',productName:'Dispenser Lavanderia',priceMin:30.9,
+    monthlySold:null,historicalSold:null}],monthlyLabelsVisible:index++===0?5:0,
+   monthlyLabelsInCards:index===1?2:0
+  })},windows:{onRemoved:{addListener(){}}}};
+ const local={chrome,console,URL,setTimeout:fn=>{fn();return 1;},clearTimeout(){}};
+ vm.runInNewContext(source,local);
+ const result=await local.readPage(15);
+ assert.equal(result.monthlyLabelsVisible,5);
+ assert.equal(result.monthlyLabelsInCards,2);
+ assert.equal(result.monthlyCards,0);
+ assert.equal(result.offers[0].monthlySold,null);
+});
+

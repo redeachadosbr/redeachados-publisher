@@ -1,7 +1,17 @@
-# Ponte Chrome Rede Achados BR — 1.2.7
+# Ponte Chrome Rede Achados BR — 1.2.8
 
 Atualização obrigatória: baixe o ZIP no menu Curvas A/B, extraia e carregue
 novamente a pasta redeachados-shopee-chrome em chrome://extensions.
+
+Versão 1.2.8: lê quantidade e Vendido/Mês nos campos renderizados de cada
+cartão, inclusive quando innerText omite o rodapé ou junta nota e vendas.
+Normaliza acentos, espaços e separadores Unicode. A importação aceita o
+número encostado no rótulo (866Vendido/Mês), sem descartar a prova mensal.
+Preserva evidências nas releituras e restaura páginas parcialmente carregadas.
+Falha de captura é informada como pendência, nunca como prova de que a
+Shopee não exibe o indicador. A versão anterior não inicia novas pesquisas.
+Depois de substituir os arquivos, clique em Recarregar na extensão e
+recarregue a página Curvas A e B antes de refazer a pesquisa.
 
 A pesquisa considera todas as SKUs da categoria WeDrop, inclusive não
 publicadas na loja. Uma busca com anúncios não mensais, página sem cartões ou
@@ -40,3 +50,4 @@ acumula cartões sem perder preços quando uma releitura encontra o selo
 Vendido/Mês e prioriza anúncios semelhantes para o limite de importação.
 Cada nova pesquisa começa com preços e evidências limpos; captura e análise
 continuam separadas e não inventam volumes.
+
