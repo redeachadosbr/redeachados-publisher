@@ -2612,6 +2612,9 @@
               <article><span>Ads total / rateio</span><strong id="financePaidAds">—</strong><small id="financePaidAdsHelp">Rateio é gerencial, não atribuição por pedido</small></article>
               <article class="finance-paid-result"><span>Resultado operacional das vendas pagas</span><strong id="financePaidNet">—</strong><small id="financePaidNetHelp">Sem impostos e despesas externas não cadastradas</small></article>
               <article><span>Margem operacional paga</span><strong id="financePaidMargin">—</strong><small>Resultado ÷ vendas pagas, quando completo</small></article>
+              <article><span>Finalizados: resultado após Ads</span><strong id="financeFinalizedNet">—</strong><small id="financeFinalizedNetHelp">Somente repasses finalizados, Ads rateados</small></article>
+              <article><span>Finalizados: margem após Ads</span><strong id="financeFinalizedMargin">—</strong><small>Resultado ÷ vendas dos pedidos finalizados</small></article>
+              <article><span>Custos WeDrop por compra</span><strong id="financeActualCostCount">—</strong><small>Registrados com referência do pedido do fornecedor</small></article>
             </div>
             <p class="finance-paid-alert" id="financePaidWarning" role="status" aria-live="polite">
               O gasto exato de Ads de cada pedido não é informado pela Shopee: o rateio será identificado como estimativa. Devoluções abertas não geram lucro definitivo.
@@ -2619,7 +2622,7 @@
             <details class="finance-details finance-paid-details" open>
               <summary><span class="finance-bottom-icon">▤</span> Conferência de cada pedido pago e risco de prejuízo <span id="financePaidCount">—</span></summary>
               <div class="table-wrap"><table class="finance-paid-table">
-                <thead><tr><th>Pedido / situação</th><th>Produto(s) / SKU</th><th>Venda paga</th><th>Repasse líquido Shopee</th><th>Custo WeDrop</th><th>Ads estimado</th><th>Devolução / ajuste</th><th>Resultado após Ads</th><th>Margem / diagnóstico</th></tr></thead>
+                <thead><tr><th>Pedido / situação</th><th>Produto(s) / SKU</th><th>Venda paga</th><th>Repasse líquido Shopee</th><th>Custo WeDrop / conferir compra</th><th>Ads estimado</th><th>Devolução / ajuste</th><th>Resultado após Ads</th><th>Margem / diagnóstico</th></tr></thead>
                 <tbody id="financePaidOrdersBody"><tr><td colspan="9">Atualize o financeiro para consultar.</td></tr></tbody>
               </table></div>
             </details>
