@@ -141,7 +141,9 @@
    metric(row.periodSource?.includes('Em Destaque')?'Vendido/Mês • Shopee':
      row.sales30!==null?'Vendas apuradas em ~30 dias':'Vendas acumuladas • período não confirmado',
     row.sales30==null&&row.salesDisplayed==null?'—':nf.format(row.sales30??row.salesDisplayed)),
-   metric('Preço do anúncio comparado',money(row.competitorPrice)),
+   metric(row.avgCompetitorPrice===null?
+     'Preço observado no anúncio (não é média)':'Preço do anúncio comparado',
+     money(row.competitorPrice)),
    metric('Média do preço de venda na Shopee'+
     (row.avgCompetitorPrice!==null?' ('+row.competitorOfferCount+' anúncios)':''),money(row.avgCompetitorPrice)),
    metric('Custo WeDrop',money(row.cost)),

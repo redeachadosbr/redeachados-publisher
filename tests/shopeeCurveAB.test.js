@@ -630,6 +630,36 @@ test('média de mercado percorre amostras de 2, 5 e 10 balanças comparáveis',(
 });
 
 
+test('balanças 10kg com título reduzido entram na média, modelos incompatíveis não',()=>{
+ const catalog=[{supplier_sku:'PL001.U02',product_data:{
+  name:'Balança Digital de Cozinha 10kg',category:'Cozinha',rawAvailability:'Disponível'}}];
+ const offers=[
+  {shopId:'9101',itemId:'8101',productName:'Balança Eletrônica Precisão 10kg SF400',priceMin:16.90,priceMax:16.90},
+  {shopId:'9102',itemId:'8102',productName:'Balança Digital 10 KG Compacta',priceMin:26.90,priceMax:26.90},
+  {shopId:'9103',itemId:'8103',productName:'Balança Digital Corporal 10kg',priceMin:7.50,priceMax:7.50},
+  {shopId:'9104',itemId:'8104',productName:'Balança Digital Cozinha 5kg 10kg',priceMin:9.50,priceMax:9.50}
+ ];
+ const rows=matchCurveOffers({catalog,offers,costs:[{supplier_sku:'PL001.U02',unit_cost:10.99}]});
+ assert.equal(rows.length,1);
+ assert.equal(rows[0].marketCandidateCount,2);
+ assert.equal(rows[0].competitorOfferCount,2);
+ assert.equal(rows[0].avgCompetitorPrice,21.9);
+ assert.deepEqual(rows[0].competitorOffers.map(o=>o.itemId).sort(),['8101','8102']);
+});
+test('preço de anúncio identificado permanece visível mesmo com média pendente',()=>{
+ const catalog=[{supplier_sku:'TRC1325',product_data:{
+  name:'Balança Digital de Cozinha 10kg',category:'Cozinha',rawAvailability:'Disponível'}}];
+ const rows=matchCurveOffers({catalog,offers:[{
+  shopId:'9191',itemId:'8191',productName:'Balança Digital Cozinha 10kg',
+  priceMin:18.90,priceMax:18.90,sales:146
+ }]});
+ assert.equal(rows.length,1);
+ assert.equal(rows[0].competitorPrice,18.9);
+ assert.equal(rows[0].avgCompetitorPrice,null);
+ assert.equal(rows[0].competitorOffers.length,1);
+ assert.equal(rows[0].salesDisplayed,146);
+ assert.equal(rows[0].verified30,false);
+});
 test('balança de cozinha 10kg com dez anúncios não pode ficar com preço pendente por ausência de amostra',()=>{
  const catalog=[{supplier_sku:'PL001.U02',product_data:{
   name:'Balança Digital de Cozinha 10kg',category:'Cozinha',rawAvailability:'Disponível'}}];

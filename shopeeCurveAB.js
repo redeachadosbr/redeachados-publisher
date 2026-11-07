@@ -3,7 +3,7 @@
 // como "30 dias" um contador de vendas acumuladas sem histórico real.
 import crypto from 'node:crypto';
 import {readWeDropCatalogProducts,readWeDropCosts} from './wedropCosts.js';
-import {comparableTitle,evaluateMarketOffers} from './shopeeMarketResearch.js';
+import {comparableTitle,evaluateMarketOffers,kitchenScaleVariantCompatible} from './shopeeMarketResearch.js';
 import {assessCurveAdsCompetitiveness,curveAdsRejectionStats,CURVE_ADS_POLICY} from './shopeeCurveAdsFit.js';
 import {categoryMatches} from './shopeeKitBuilder.js';
 import {searchFeaturedPublic} from './shopeeFeaturedSearch.js';
@@ -235,7 +235,8 @@ function addMarketAnalysis(row,offers,checkedAt,ownShopId='0'){
  const compare=evaluateMarketOffers({
   title:row.comparisonName||row.name,offers,ownShopId,ownItemId:'0',
   queriedAt:checkedAt,minOffers:2,maxOffers:10,
-  allowSameShop:true,strictPriceCluster:true});
+  allowSameShop:true,strictPriceCluster:true,
+   priceClusterRatio:kitchenScaleVariantCompatible(row.name,row.name)===true?1.6:1.45});
  const keywords=verifiedKeywordEvidence(row.name,offers);
  // Não alterar o padrão de preços dos demais módulos.
  const strong=compare.verified===true&&Number(compare.count)>=2;
@@ -300,7 +301,10 @@ export function matchCurveOffers({catalog=[],offers=[],costs=[],baseline=new Map
        !comparablePackSize(p.name,offer.productName))continue;
    const common=entry.count;
    const score=common/Math.max(1,Math.min(p.tokens.length,tokens.length));
-   if(score<0.62||common<Math.min(3,p.tokens.length))continue;
+   // Em balanças 10 kg, títulos curtos podem omitir "digital" ou "cozinha".
+    // A função anterior já conferiu identidade, categoria e capacidade.
+    const scaleMatch=kitchenScaleVariantCompatible(p.comparisonName,offer.productName)===true;
+    if((score<0.62||common<Math.min(3,p.tokens.length))&&!scaleMatch)continue;
    if(!offersBySku.has(p.sku))offersBySku.set(p.sku,new Map());
    const unique=String(offer.shopId)+':'+String(offer.itemId);
    offersBySku.get(p.sku).set(unique,offer);
@@ -375,7 +379,8 @@ export function matchCurveOffers({catalog=[],offers=[],costs=[],baseline=new Map
    Number(intSales(b.monthlySold)!==null)-Number(intSales(a.monthlySold)!==null)||
    (intSales(b.monthlySold)||0)-(intSales(a.monthlySold)||0)||
    (intSales(b.sales)||0)-(intSales(a.sales)||0));
-  const anchor=market.avgCompetitorPrice!==null?ranked[0]:null;
+  // A falta da MÉDIA não apaga o PREÇO individual já observado.
+  const anchor=ranked.find(o=>num(o.priceMin)!==null)??ranked[0]??null;
   const same=anchor&&row.itemId===String(anchor.itemId)&&
    row.shopId===String(anchor.shopId);
   const anchorSales=anchor?intSales(anchor.sales):null;

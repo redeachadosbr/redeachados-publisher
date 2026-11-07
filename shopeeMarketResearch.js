@@ -121,6 +121,21 @@ const comparableSpecs=(source,candidate)=>{
  if(size&&otherSize&&size!==otherSize)return false;
  return true;
 };
+// Em balanças de cozinha de 10 kg, reconhecer títulos curtos equivalentes,
+// sem confundir balanças corporais, de bagagem ou versões de 5 kg.
+export function kitchenScaleVariantCompatible(source,candidate){
+ const src=normalize(source),dst=normalize(candidate);
+ if(!/\bbalanca\b/.test(src)||!/\bcozinha\b/.test(src)||!/\b10kg\b/.test(src))
+  return null;
+ if(!/\bbalanca\b/.test(dst)||!/\b10kg\b/.test(dst))return false;
+ if(!/\b(digital|eletronica|cozinha|precisao|culinaria|alimentos|confeitaria)\b/.test(dst))
+  return false;
+ if(/\b(corporal|banheiro|pessoas?|industrial|comercial|plataforma|gancho|pesca|bagagem|malas?)\b/.test(dst))
+  return false;
+ const weights=[...dst.matchAll(/\b(\d{1,3})kg\b/g)].map(match=>Number(match[1]));
+ if(weights.some(weight=>weight!==10))return false;
+ return true;
+}
 export function comparableTitle(source,candidate){
  if(!source||!candidate)return false;
  const src=wordset(source),dst=wordset(candidate);
@@ -130,6 +145,8 @@ export function comparableTitle(source,candidate){
  if(!comparableSpecs(source,candidate))return false;
  const accessories=/\b(capa|inflador|bomba|adesivo|reparo|conserto|borda|filtro|somente|pecas avulsas|acessorio avulso|refil|reposicao)\b/;
  if(accessories.test(candidateText)&&!accessories.test(sourceText))return false;
+ const kitchenScale=kitchenScaleVariantCompatible(source,candidate);
+ if(kitchenScale!==null)return kitchenScale;
  if(marketMatrixProfile(source).family==='mochila_construtor'&&
     /\b(profissional|pedreiro|eletricista|lona|impermeavel|oxford)\b/.test(candidateText))return false;
  if(family===true)return true;
@@ -152,7 +169,8 @@ export const MARKET_COMPARISON_MAX=REDE_ACHADOS_MARKET_RULES.maximumOffers;
 // Amostra observada de 2 até 5 anúncios diferentes, não estimativa de demanda.
 export function evaluateMarketOffers({title,offers=[],ownItemId,ownShopId,
  queriedAt=new Date().toISOString(),minOffers=MARKET_COMPARISON_MIN,
- maxOffers=MARKET_COMPARISON_MAX,allowSameShop=false,strictPriceCluster=false}){
+ maxOffers=MARKET_COMPARISON_MAX,allowSameShop=false,strictPriceCluster=false,
+ priceClusterRatio=1.45}){
  const minimumCount=Number.isInteger(minOffers)&&minOffers>=2&&minOffers<=5?minOffers:MARKET_COMPARISON_MIN;
  const maximumCount=Number.isInteger(maxOffers)&&maxOffers>=minimumCount&&maxOffers<=10?maxOffers:MARKET_COMPARISON_MAX;
  const comparable=[],seen=new Set();
@@ -182,7 +200,9 @@ export function evaluateMarketOffers({title,offers=[],ownItemId,ownShopId,
  let filtered;
  if(strictPriceCluster){
   const ordered=[...comparable].sort((a,b)=>a.price-b.price);
-  const ratio=1.45; // até 45% entre menor/maior do mesmo grupo de preços
+  // Padrão 45%; Curvas só permite tolerância distinta para família confirmada.
+  const ratio=Number.isFinite(priceClusterRatio)&&priceClusterRatio>=1.2&&
+   priceClusterRatio<=1.8?priceClusterRatio:1.45;
   let groups=[];
   for(let i=0;i<ordered.length;i++){
    let end=i;
