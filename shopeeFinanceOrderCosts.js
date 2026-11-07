@@ -4,7 +4,7 @@ const fixed=v=>Math.round(v*100)/100;
 const validShop=v=>{const n=Number(v);if(!Number.isSafeInteger(n)||n<=0)throw Error('Loja inválida.');return n;};
 const validOrder=v=>{const sn=String(v||'').trim();if(!/^[A-Za-z0-9-]{8,65}$/.test(sn))throw Error('Número do pedido inválido.');return sn;};
 function credentials(){
- const url=String(process.env.SUPABASE_URL||'').trim().replace(/\\/$/,'');
+ const url=String(process.env.SUPABASE_URL||'').trim().replace(/\/$/,'');
  const key=String(process.env.SUPABASE_SECRET_KEY||process.env.SUPABASE_SERVICE_ROLE_KEY||'').trim();
  if(!url||!key)throw Error('Banco de dados indisponível para conciliar custo efetivo.');
  return {url,key};
@@ -12,7 +12,7 @@ function credentials(){
 async function request(path,{method='GET',body}={}){
  const {url,key}=credentials();
  const headers={apikey:key,Accept:'application/json','Content-Type':'application/json'};
- if(/^eyJ[A-Za-z0-9_-]*\\./.test(key))headers.Authorization='Bearer '+key;
+ if(key.startsWith('eyJ'))headers.Authorization='Bearer '+key;
  if(method!=='GET')headers.Prefer='resolution=merge-duplicates,return=representation';
  const response=await fetch(url+'/rest/v1/shopee_finance_order_costs'+path,{
   method,headers,...(body!==undefined?{body:JSON.stringify(body)}:{}),
