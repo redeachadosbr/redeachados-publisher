@@ -660,6 +660,15 @@ test('preço de anúncio identificado permanece visível mesmo com média penden
  assert.equal(rows[0].salesDisplayed,146);
  assert.equal(rows[0].verified30,false);
 });
+test('oferta sem preço não deve exibir R$ 0,00 como valor de concorrente',()=>{
+ const rows=matchCurveOffers({catalog:[{supplier_sku:'TRC1325',product_data:{
+  name:'Balança Digital de Cozinha 10kg',category:'Cozinha',rawAvailability:'Disponível'}}],
+  offers:[{itemId:'8399',shopId:'9399',productName:'Balança Digital Cozinha 10kg',
+   priceMin:null,priceMax:null,sales:146}]});
+ assert.equal(rows.length,1);
+ assert.equal(rows[0].avgCompetitorPrice,null);
+ assert.equal(rows[0].competitorPrice,null);
+});
 test('balança de cozinha 10kg com dez anúncios não pode ficar com preço pendente por ausência de amostra',()=>{
  const catalog=[{supplier_sku:'PL001.U02',product_data:{
   name:'Balança Digital de Cozinha 10kg',category:'Cozinha',rawAvailability:'Disponível'}}];
